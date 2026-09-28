@@ -1,5 +1,5 @@
 // Capture pipeline: URL facts -> model extraction -> trip assignment -> merge or insert item.
-import { addEvent, db, listTrips, newId, notifyChanged } from "./db";
+import { addEvent, db, listTrips, newId, nextTime, notifyChanged } from "./db";
 import type { Extraction } from "./extract";
 import { describeError, getProvider } from "./llm";
 import { buildItem, CATEGORY_LABELS, findDuplicate, isoDate, mergeItem } from "./items";
@@ -35,7 +35,7 @@ function baseCapture(kind: Capture["kind"]): Capture {
     jsonLd: [],
     meta: {},
     screenshot: null,
-    capturedAt: Date.now(),
+    capturedAt: nextTime(), // strictly increasing: captures are processed in click order
     status: "pending",
     error: null,
     itemId: null,
