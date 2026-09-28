@@ -108,10 +108,17 @@ export interface ChatMessage {
   stateHash?: string;
   /** Event row that starts a fresh model context (older turns are no longer sent). */
   resetsContext?: boolean;
+  /** Provider whose native format `content` is in. Missing on rows written before Gemini support = Claude. */
+  provider?: "gemini" | "anthropic";
   createdAt: number;
 }
 
 export interface Settings {
+  provider: "gemini" | "anthropic";
+  /** Claude API key and model. */
   apiKey: string;
   model: string;
+  /** Google AI Studio (Gemini) key and model. */
+  geminiKey: string;
+  geminiModel: string;
 }

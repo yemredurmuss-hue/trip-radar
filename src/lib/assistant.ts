@@ -1,11 +1,10 @@
 // Chat assistant. Every plan change goes through a tool, so the board always reflects what was said.
 // History is append-only: the trip state rides along in a user turn only when it changed, and a
 // long conversation starts a fresh context instead of rewriting old turns.
-import Anthropic from "@anthropic-ai/sdk";
-import { getClient } from "./claude";
 import { db, listItems, listMessages, listPreferences, newId, notifyChanged } from "./db";
-import { effortFor } from "./extract";
 import { tripDateRange } from "./items";
+import { getProvider, type LlmProvider, type ProviderId } from "./llm";
+import type { ToolResult, ToolSpec } from "./llm/types";
 import type { ChatMessage, Item, ItemStatus, Trip } from "./types";
 
 const SYSTEM = `Sen kullanıcının seyahat karar asistanısın. Kullanıcı seçeneklerini (otel, uçuş, etkinlik, restoran, eSIM) kendisi kaydeder; sen arama yapmazsın, yalnız kaydedilenler üzerinden karar vermesine yardım edersin.
@@ -23,13 +22,12 @@ Kurallar:
 
 const nullable = (schema: object) => ({ anyOf: [schema, { type: "null" }] });
 
-const TOOLS: Anthropic.Tool[] = [
+export const TOOLS: ToolSpec[] = [
   {
     name: "update_items",
     description:
       "Seçeneklerin durumunu değiştirir. chosen = plana alındı, booked = kullanıcı rezervasyonu yaptı, dismissed = elendi, saved = tekrar seçenek.",
-    strict: true,
-    input_schema: {
+    schema: {
       type: "object",
       properties: {
         changes: {
@@ -53,8 +51,7 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "recommend",
     description: "Bir ihtiyaç grubunda (need_key) önerilen seçeneği işaretler; gruptaki önceki öneriyi kaldırır.",
-    strict: true,
-    input_schema: {
+    schema: {
       type: "object",
       properties: {
         item_id: { type: "string" },
@@ -67,8 +64,7 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "save_preference",
     description: "Kullanıcının tercihini hatırlar (ör. 'Merkezi konum önemli', 'Sabah uçuşu sevmiyor').",
-    strict: true,
-    input_schema: {
+    schema: {
       type: "object",
       properties: {
         text: { type: "string" },
@@ -81,8 +77,7 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "update_trip",
     description: "Gezinin adını, kesin tarihlerini veya toplam bütçesini günceller. Değişmeyen alanlar için null ver.",
-    strict: true,
-    input_schema: {
+    schema: {
       type: "object",
       properties: {
         title: nullable({ type: "string" }),
@@ -98,8 +93,7 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "offer_choices",
     description: "Son mesajının altında kullanıcıya en fazla 2 hızlı yanıt butonu gösterir.",
-    strict: true,
-    input_schema: {
+    schema: {
       type: "object",
       properties: { options: { type: "array", items: { type: "string" } } },
       required: ["options"],
@@ -160,10 +154,14 @@ async function saveMessage(message: Omit<ChatMessage, "id" | "createdAt">): Prom
   notifyChanged();
 }
 
-/** Messages the model sees: user/assistant turns after the last context reset. */
-export function currentSession(messages: ChatMessage[]): ChatMessage[] {
-  const lastReset = messages.findLastIndex((m) => m.resetsContext);
-  return messages.slice(lastReset + 1).filter((m) => m.role !== "event");
+/**
+ * Messages the model sees: user/assistant turns after the last context reset, and only the trailing
+ * run written by the current provider (switching provider starts a fresh context).
+ */
+export function currentSession(messages: ChatMessage[], provider: ProviderId): ChatMessage[] {
+  const afterReset = messages.slice(messages.findLastIndex((m) => m.resetsContext) + 1).filter((m) => m.role !== "event");
+  const firstOther = afterReset.findLastIndex((m) => (m.provider ?? "anthropic") !== provider);
+  return afterReset.slice(firstOther + 1);
 }
 
 export async function resetConversation(tripId: string, note = "— Yeni sohbet —"): Promise<void> {
@@ -232,17 +230,13 @@ const MAX_STEPS = 6;
 const SESSION_CHAR_LIMIT = 400_000; // ~100k tokens; beyond this a fresh context starts
 
 /** Sends one user message and runs the tool loop until the assistant answers. */
-export async function sendMessage(
-  tripId: string,
-  userText: string,
-  api?: { client: Anthropic; model: string },
-): Promise<void> {
+export async function sendMessage(tripId: string, userText: string, llm?: LlmProvider): Promise<void> {
   const d = await db();
   const trip = await d.get("trips", tripId);
   if (!trip) throw new Error("Gezi bulunamadı.");
-  const { client, model } = api ?? (await getClient());
+  const provider = llm ?? (await getProvider());
 
-  let session = currentSession(await listMessages(tripId));
+  let session = currentSession(await listMessages(tripId), provider.id);
   if (JSON.stringify(session.map((m) => m.content)).length > SESSION_CHAR_LIMIT) {
     await resetConversation(tripId, "— Sohbet uzadı, yeni oturum başladı (kararların kayıtlı) —");
     session = [];
@@ -252,48 +246,49 @@ export async function sendMessage(
   const state = tripState(trip, await listItems(tripId), prefs);
   const stateHash = hash(state);
   const lastStateHash = session.findLast((m) => m.stateHash)?.stateHash;
-  const content: Anthropic.TextBlockParam[] =
-    stateHash === lastStateHash ? [] : [{ type: "text", text: `<trip_state>${state}</trip_state>` }];
-  content.push({ type: "text", text: userText });
-  await saveMessage({ tripId, role: "user", content, text: userText, choices: [], stateHash });
+  const texts = stateHash === lastStateHash ? [userText] : [`<trip_state>${state}</trip_state>`, userText];
+  await saveMessage({
+    tripId,
+    role: "user",
+    content: provider.userContent(texts),
+    text: userText,
+    choices: [],
+    stateHash,
+    provider: provider.id,
+  });
 
   for (let step = 0; step < MAX_STEPS; step++) {
-    const history = currentSession(await listMessages(tripId)).map(
-      (m) => ({ role: m.role, content: m.content }) as Anthropic.MessageParam,
-    );
+    const history = currentSession(await listMessages(tripId), provider.id);
+    const answer = await provider.chatStep(history, SYSTEM, TOOLS);
+    if (!answer) return;
 
-    const response = await client.messages.create({
-      model,
-      max_tokens: 16000,
-      system: SYSTEM,
-      tools: TOOLS,
-      messages: history,
-      cache_control: { type: "ephemeral" },
-      ...(model.startsWith("claude-haiku") ? {} : { output_config: effortFor(model, "medium") }),
-    });
-
-    // An empty assistant turn would make every later request invalid, so it is never stored.
-    if (response.content.length === 0) return;
-
-    const text = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("\n")
-      .trim();
     const choices: string[] = [];
-    const results: Anthropic.ToolResultBlockParam[] = [];
-    for (const use of response.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use")) {
+    const results: ToolResult[] = [];
+    for (const call of answer.calls) {
       try {
-        results.push({ type: "tool_result", tool_use_id: use.id, content: await runTool(tripId, use.name, use.input, choices) });
+        results.push({ call, content: await runTool(tripId, call.name, call.input, choices), isError: false });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        results.push({ type: "tool_result", tool_use_id: use.id, content: message, is_error: true });
+        results.push({ call, content: error instanceof Error ? error.message : String(error), isError: true });
       }
     }
 
-    const fallback = response.stop_reason === "refusal" ? "Bu isteğe yanıt veremiyorum." : "";
-    await saveMessage({ tripId, role: "assistant", content: response.content, text: text || fallback, choices });
-    if (response.stop_reason !== "tool_use" || results.length === 0) return;
-    await saveMessage({ tripId, role: "user", content: results, text: "", choices: [] });
+    const fallback = answer.refused ? "Bu isteğe yanıt veremiyorum." : "";
+    await saveMessage({
+      tripId,
+      role: "assistant",
+      content: answer.content,
+      text: answer.text || fallback,
+      choices,
+      provider: provider.id,
+    });
+    if (results.length === 0) return;
+    await saveMessage({
+      tripId,
+      role: "user",
+      content: provider.toolResultContent(results),
+      text: "",
+      choices: [],
+      provider: provider.id,
+    });
   }
 }

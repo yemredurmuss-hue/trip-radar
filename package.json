@@ -1,6 +1,6 @@
 {
   "name": "trip-radar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Kişisel seyahat karar panosu (Chrome eklentisi)",
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -11,6 +11,7 @@
   "license": "UNLICENSED",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
+    "@google/genai": "^2.24.0",
     "idb": "^8.0.3",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

@@ -3,6 +3,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
 import { currentSession, resetConversation, sendMessage } from "../src/lib/assistant";
 import { db, listItems, listMessages, listPreferences } from "../src/lib/db";
+import { anthropicProvider } from "../src/lib/llm/anthropic";
 import type { Item, Trip } from "../src/lib/types";
 
 function fakeClient(responses: Partial<Anthropic.Message>[]) {
@@ -69,7 +70,7 @@ describe("assistant", () => {
       { stop_reason: "end_turn", content: [{ type: "text", text: "Ekledim.", citations: null }] as Anthropic.ContentBlock[] },
     ]);
 
-    await sendMessage("t1", "Merkezi olsun ama bütçeyi aşmayalım.", { client, model: "claude-opus-5" });
+    await sendMessage("t1", "Merkezi olsun ama bütçeyi aşmayalım.", anthropicProvider(client, "claude-opus-5"));
 
     let items = await listItems("t1");
     expect(items.find((i) => i.id === "a")!.recommendation).toBe("Merkezi");
@@ -83,7 +84,7 @@ describe("assistant", () => {
     expect(messages.map((m) => m.role)).toEqual(["user", "assistant", "user"]);
 
     // Second message: the state changed (recommendation), so it is sent again.
-    await sendMessage("t1", "Evet, ekleyelim", { client, model: "claude-opus-5" });
+    await sendMessage("t1", "Evet, ekleyelim", anthropicProvider(client, "claude-opus-5"));
     const lastUserTurn = calls[2].messages.at(-1)!;
     expect(JSON.stringify(lastUserTurn.content)).toContain("trip_state");
     // Unknown id is reported back as an error and nothing is changed by that call.
@@ -105,15 +106,15 @@ describe("assistant", () => {
     const ok = { stop_reason: "end_turn", content: [{ type: "text", text: "Tamam.", citations: null }] } as Partial<Anthropic.Message>;
     const { client, calls } = fakeClient([ok, ok, ok]);
     // The previous test's last tool call changed the state, so the first message carries it...
-    await sendMessage("t1", "Bir şey sorayım", { client, model: "claude-opus-5" });
+    await sendMessage("t1", "Bir şey sorayım", anthropicProvider(client, "claude-opus-5"));
     expect(JSON.stringify(calls[0].messages.at(-1)!.content)).toContain("trip_state");
     // ...and a follow-up with nothing changed does not.
-    await sendMessage("t1", "Bir şey daha", { client, model: "claude-opus-5" });
+    await sendMessage("t1", "Bir şey daha", anthropicProvider(client, "claude-opus-5"));
     expect(JSON.stringify(calls[1].messages.at(-1)!.content)).not.toContain("trip_state");
 
     await resetConversation("t1");
-    expect(currentSession(await listMessages("t1"))).toHaveLength(0);
-    await sendMessage("t1", "Yeniden başlayalım", { client, model: "claude-opus-5" });
+    expect(currentSession(await listMessages("t1"), "anthropic")).toHaveLength(0);
+    await sendMessage("t1", "Yeniden başlayalım", anthropicProvider(client, "claude-opus-5"));
     expect(calls[2].messages).toHaveLength(1);
     expect(JSON.stringify(calls[2].messages[0].content)).toContain("trip_state");
   });

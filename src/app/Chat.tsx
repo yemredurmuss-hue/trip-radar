@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { sendMessage } from "../lib/assistant";
 import { downscale, fileToDataUrl, requestProcessing } from "../lib/browser";
-import { describeError } from "../lib/claude";
+import { describeError } from "../lib/llm";
 import { saveImage, savePastedLink } from "../lib/process";
 import type { ChatMessage, Trip } from "../lib/types";
 import { looksLikeUrl } from "../lib/url";

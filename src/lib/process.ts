@@ -1,7 +1,7 @@
 // Capture pipeline: URL facts -> model extraction -> trip assignment -> merge or insert item.
 import { addEvent, db, listTrips, newId, notifyChanged } from "./db";
-import { describeError, getClient } from "./claude";
-import { extract, type Extraction } from "./extract";
+import type { Extraction } from "./extract";
+import { describeError, getProvider } from "./llm";
 import { buildItem, CATEGORY_LABELS, findDuplicate, mergeItem } from "./items";
 import type { PageSnapshot } from "./pagecapture";
 import type { Capture, Trip } from "./types";
@@ -16,10 +16,7 @@ export interface Deps {
 }
 
 const defaultDeps: Deps = {
-  extract: async (capture, facts, trips) => {
-    const { client, model } = await getClient();
-    return extract(client, model, capture, facts, trips);
-  },
+  extract: async (capture, facts, trips) => (await getProvider()).extract(capture, facts, trips),
   heroImage: destinationImage,
 };
 
@@ -165,6 +162,15 @@ export async function recoverStuck(): Promise<void> {
   for (const capture of await d.getAllFromIndex("captures", "status", "processing")) {
     await d.put("captures", { ...capture, status: "pending" });
   }
+}
+
+/** Puts every failed capture back in the queue (e.g. after a key was added or a quota reset). */
+export async function retryAllFailed(): Promise<void> {
+  const d = await db();
+  for (const capture of await d.getAllFromIndex("captures", "status", "error")) {
+    await d.put("captures", { ...capture, status: "pending", error: null });
+  }
+  notifyChanged();
 }
 
 export async function retryCapture(captureId: string): Promise<void> {

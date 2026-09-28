@@ -139,6 +139,13 @@ a { color: var(--accent); text-decoration: none; }
 .field { display: block; margin: 16px 0; font-size: 14px; color: #3a3a3c; }
 .field input, .field select { display: block; width: 100%; margin-top: 6px; padding: 12px; font-size: 15px; border: 1px solid var(--line); border-radius: 10px; }
 .modal-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+.segmented { display: grid; grid-template-columns: 1fr 1fr; background: var(--soft); border-radius: 12px; padding: 4px; gap: 4px; }
+.segmented button { border: 0; background: none; border-radius: 9px; padding: 10px; font-size: 15px; color: #3a3a3c; }
+.segmented button.on { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.08); color: var(--text); font-weight: 600; }
+.row-inline { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.row-inline select { margin-top: 0; flex: 1; }
+.small { font-size: 13px; margin-top: -6px; }
+.note { background: #fff8eb; color: #7a5200; border-radius: 10px; padding: 10px 12px; margin-top: 4px; line-height: 1.5; }
 
 /* ---------- popup ---------- */
 body.popup { width: 320px; }

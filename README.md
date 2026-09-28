@@ -19,9 +19,11 @@ Sohbetle birlikte karar verirsiniz.
    - Sağ üstten **Geliştirici modu**nu aç.
    - **Paketlenmemiş öğe yükle** → `dist/` klasörünü seç.
 3. **Sabitle:** Araç çubuğundaki yapboz simgesi → Trip Radar → 📌.
-4. **API anahtarını ekle:**
-   - Trip Radar simgesine tıkla → **Ayarları aç**.
-   - [console.anthropic.com](https://console.anthropic.com) → API Keys'ten aldığın anahtarı yapıştır.
+4. **Ücretsiz Gemini anahtarını ekle:**
+   - [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → **Create API key** (kart gerekmez).
+   - Trip Radar simgesine tıkla → **Ayarları aç** → **Gemini · ücretsiz** → anahtarı yapıştır.
+   - **Modelleri getir**'e basıp listeden modeli seç (varsayılan `gemini-3-flash-preview`) → **Kaydet**.
+   - İstersen **Claude · ücretli** sekmesinden Claude anahtarıyla da çalışır.
 
 Kodu güncellediğinde `npm run build` çalıştır, sonra `chrome://extensions`'ta Trip Radar'ın ↻ simgesine bas.
 
@@ -49,10 +51,16 @@ Kodu güncellediğinde `npm run build` çalıştır, sonra `chrome://extensions`
 - Farklı tarih ya da kişi sayısı için alınmış fiyatlar karşılaştırılmaz; satırda "Farklı tarih" uyarısı çıkar.
 - Fiyatın ne zaman görüldüğü tutulur; eskiyen fiyat için uyarı çıkar (konaklamada 3 gün, uçuşta 1 gün).
 
-## Maliyet
+## Sağlayıcı ve maliyet
 
-Varsayılan model `claude-opus-5`. Kayıt başına kabaca birkaç sent tutar; sayfa ne kadar uzunsa o kadar
-artar. Ayarlardan daha ucuz bir modele (`claude-sonnet-5`, `claude-haiku-4-5`) geçebilirsin.
+| | Gemini (varsayılan) | Claude |
+|---|---|---|
+| Ücret | Ücretsiz katman (günlük istek sınırı var) | Kullandıkça ödeme; kayıt başına birkaç sent |
+| Gizlilik | Ücretsiz katmanda Google içeriği ürün geliştirmede kullanabilir, insanlar okuyabilir | İçerik model eğitiminde kullanılmaz |
+| Sınır dolunca | Kayıt "Tekrar dene" ile sonra işlenir | — |
+
+Her kayıt 1 istek, her sohbet mesajı 1–3 istektir. Sağlayıcı değiştirince sohbet yeni bağlamla başlar;
+kararlar ve kayıtlar olduğu gibi kalır.
 
 ## Geliştirme
 
@@ -65,7 +73,8 @@ npm run build && xvfb-run -a node scripts/e2e.mjs   # eklentiyi Chromium'da yük
 Yapı:
 - `src/lib/url.ts`: linkten sağlayıcı, ilan kimliği, tarih ve kişi sayısı.
 - `src/lib/pagecapture.ts`: tıklanınca sayfada çalışır; yazı, görünen kısım, JSON-LD ve meta verisini toplar.
-- `src/lib/extract.ts`: AI çıkarımı (yapılandırılmış çıktı, alıntı zorunlu).
+- `src/lib/extract.ts`: çıkarım şeması ve talimatları (alıntı zorunlu).
+- `src/lib/llm/`: sağlayıcılar (Gemini, Claude) ortak arayüzle.
 - `src/lib/evidence.ts`: alıntı doğrulama.
 - `src/lib/items.ts`: kart oluşturma, tekrar birleştirme, gruplama, etiketler, rota.
 - `src/lib/process.ts`: kayıt kuyruğu (arka planda çalışır).

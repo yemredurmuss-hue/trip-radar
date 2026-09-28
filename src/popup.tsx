@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { downscale, openBoard, requestProcessing } from "./lib/browser";
-import { db, getSettings, onChanged } from "./lib/db";
+import { db, hasActiveKey, onChanged } from "./lib/db";
 import { CATEGORY_LABELS } from "./lib/items";
 import { collectPage } from "./lib/pagecapture";
 import { saveSnapshot } from "./lib/process";
@@ -36,7 +36,7 @@ function Popup() {
   const [hasKey, setHasKey] = useState(true);
 
   useEffect(() => {
-    void getSettings().then((s) => setHasKey(Boolean(s.apiKey)));
+    void hasActiveKey().then(setHasKey);
     captureActiveTab()
       .then((captureId) => setState({ step: "working", captureId }))
       .catch((error: unknown) => setState({ step: "error", text: error instanceof Error ? error.message : String(error) }));

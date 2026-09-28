@@ -50,13 +50,26 @@ export function onChanged(listener: () => void): () => void {
 // --- settings (chrome.storage so the service worker can read them too) ------------------------
 
 export const DEFAULT_MODEL = "claude-opus-5";
+export const DEFAULT_GEMINI_MODEL = "gemini-3-flash-preview";
+
+const text = (value: unknown, fallback = "") => (typeof value === "string" && value ? value : fallback);
 
 export async function getSettings(): Promise<Settings> {
-  const stored = await chrome.storage.local.get(["apiKey", "model"]);
+  const stored = await chrome.storage.local.get(["provider", "apiKey", "model", "geminiKey", "geminiModel"]);
+  const apiKey = text(stored.apiKey);
   return {
-    apiKey: typeof stored.apiKey === "string" ? stored.apiKey : "",
-    model: typeof stored.model === "string" && stored.model ? stored.model : DEFAULT_MODEL,
+    // Free Gemini is the default unless a Claude key was set up before a provider was chosen.
+    provider: stored.provider === "anthropic" || (!stored.provider && apiKey) ? "anthropic" : "gemini",
+    apiKey,
+    model: text(stored.model, DEFAULT_MODEL),
+    geminiKey: text(stored.geminiKey),
+    geminiModel: text(stored.geminiModel, DEFAULT_GEMINI_MODEL),
   };
+}
+
+export async function hasActiveKey(): Promise<boolean> {
+  const s = await getSettings();
+  return Boolean(s.provider === "gemini" ? s.geminiKey : s.apiKey);
 }
 
 export async function saveSettings(settings: Partial<Settings>): Promise<void> {

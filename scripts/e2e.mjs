@@ -93,8 +93,16 @@ try {
 
   // 5. Settings dialog.
   await app.goto(`chrome-extension://${id}/app.html#settings`);
-  await app.getByText("Claude API anahtarı").waitFor();
+  await app.getByText("Gemini API anahtarı").waitFor(); // free Gemini is the default provider
   await app.screenshot({ path: `${out}/6-settings.png` });
+  await app.getByRole("radio", { name: /Claude/ }).click();
+  await app.getByText("Claude API anahtarı").waitFor();
+  await app.getByRole("radio", { name: /Gemini/ }).click();
+  await app.getByPlaceholder("AIza…").fill("test-key");
+  await app.getByRole("button", { name: "Kaydet" }).click();
+  const stored = await app.evaluate(() => chrome.storage.local.get(["provider", "geminiKey", "geminiModel"]));
+  assert.deepEqual(stored, { provider: "gemini", geminiKey: "test-key", geminiModel: "gemini-3-flash-preview" });
+  console.log("✓ settings: Gemini default, provider switch, key saved");
 
   // 6. Popup refuses non-web pages with a clear message.
   const popup = await context.newPage();

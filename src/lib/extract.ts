@@ -1,7 +1,6 @@
-// One structured-output call turns a capture into facts. The model must quote the page for
-// price / rating / cancellation; evidence.ts checks those quotes afterwards.
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+// Provider-independent extraction contract: schema, instructions and prompt. One structured-output
+// call turns a capture into facts; the model must quote the page for price / rating / cancellation
+// and evidence.ts checks those quotes afterwards. Provider calls live in llm/.
 import { z } from "zod";
 import type { Capture, Trip } from "./types";
 import type { UrlFacts } from "./url";
@@ -77,7 +76,7 @@ export const ExtractionSchema = z.object({
 
 export type Extraction = z.infer<typeof ExtractionSchema>;
 
-const SYSTEM = `Kullanıcının kaydettiği bir seyahat seçeneğinden (otel, uçuş, etkinlik, restoran, eSIM...) yapılandırılmış bilgi çıkarıyorsun.
+export const EXTRACTION_SYSTEM = `Kullanıcının kaydettiği bir seyahat seçeneğinden (otel, uçuş, etkinlik, restoran, eSIM...) yapılandırılmış bilgi çıkarıyorsun.
 
 Kurallar:
 - Yalnız URL'de, sayfa metninde veya ekran görüntüsünde gördüğünü yaz. Fiyat, tarih, iptal koşulu ve puanı asla tahmin etme; yoksa null bırak ve "missing" listesine ekle.
@@ -118,38 +117,10 @@ export function compact(text: string): string {
     .trim();
 }
 
-export async function extract(
-  client: Anthropic,
-  model: string,
-  capture: Capture,
-  facts: UrlFacts,
-  trips: Trip[],
-): Promise<Extraction> {
-  const content: Anthropic.ContentBlockParam[] = [];
-  if (capture.screenshot) {
-    const [header, data] = capture.screenshot.split(",", 2);
-    const mediaType = header.includes("image/png") ? "image/png" : "image/jpeg";
-    content.push({ type: "image", source: { type: "base64", media_type: mediaType, data } });
-  }
-  content.push({
-    type: "text",
-    text: buildPrompt(capture, facts, trips, new Date().toISOString().slice(0, 10)),
-  });
-
-  const response = await client.messages.parse({
-    model,
-    max_tokens: 16000,
-    system: SYSTEM,
-    messages: [{ role: "user", content }],
-    output_config: { format: zodOutputFormat(ExtractionSchema), ...effortFor(model, "low") },
-  });
-
-  if (response.stop_reason === "refusal") throw new Error("Model bu sayfayı işlemeyi reddetti.");
-  if (!response.parsed_output) throw new Error("Model geçerli bir yanıt döndürmedi.");
-  return response.parsed_output;
+/** Splits a data URL into media type and base64 payload. */
+export function imagePart(dataUrl: string): { mediaType: "image/png" | "image/jpeg"; data: string } {
+  const [header, data] = dataUrl.split(",", 2);
+  return { mediaType: header.includes("image/png") ? "image/png" : "image/jpeg", data };
 }
 
-/** Haiku 4.5 rejects the effort parameter; the other supported models accept it. */
-export function effortFor(model: string, effort: "low" | "medium" | "high") {
-  return model.startsWith("claude-haiku") ? {} : { effort };
-}
+export const today = () => new Date().toISOString().slice(0, 10);
