@@ -17,13 +17,35 @@ const context = await chromium.launchPersistentContext(mkdtempSync(path.join(tmp
   executablePath,
   headless: false,
   viewport: { width: 1440, height: 900 },
-  args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+  args: [
+    `--disable-extensions-except=${extension}`,
+    `--load-extension=${extension}`,
+    // e.g. --ignore-certificate-errors-spki-list=<hash> to trust a sandbox proxy's own CA
+    ...(process.env.E2E_CHROMIUM_ARGS?.split(" ").filter(Boolean) ?? []),
+  ],
+  // Behind a proxy (CI/sandbox), route the browser through it so real API calls can be checked.
+  ...(process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY } } : {}),
 });
 
 try {
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
   const id = new URL(worker.url()).host;
   console.log("extension id:", id);
+
+  // 0. First install opens the one-step setup.
+  const setupTab = context.pages().find((p) => p.url().endsWith("app.html#settings")) ??
+    (await context.waitForEvent("page", { predicate: (p) => p.url().endsWith("app.html#settings"), timeout: 10000 }));
+  await setupTab.getByText("Google'dan ücretsiz anahtar al").waitFor();
+  await setupTab.screenshot({ path: `${out}/0-setup.png` });
+  // A pasted key is checked against Google right away (a fake one must be rejected with a clear message).
+  await setupTab.getByPlaceholder("AIza… (yapıştır)").fill("AIzaSyDUMMYDUMMYDUMMYDUMMYDUMMYDUMMY123");
+  const verdict = await setupTab
+    .getByText(/anahtarı geçersiz|bağlanılamadı|Gemini hatası/)
+    .first()
+    .textContent({ timeout: 20000 });
+  if (process.env.E2E_EXPECT_LIVE) assert.match(verdict ?? "", /anahtarı geçersiz/);
+  console.log("✓ setup: opens on install; pasted key checked live →", verdict?.trim());
+  await setupTab.close();
 
   // 1. Page reader on a hotel-like page, scrolled to the room the user is looking at.
   const reader = (
@@ -98,7 +120,7 @@ try {
   await app.getByRole("radio", { name: /Claude/ }).click();
   await app.getByText("Claude API anahtarı").waitFor();
   await app.getByRole("radio", { name: /Gemini/ }).click();
-  await app.getByPlaceholder("AIza…").fill("test-key");
+  await app.getByPlaceholder("AIza… (yapıştır)").fill("test-key");
   await app.getByRole("button", { name: "Kaydet" }).click();
   const stored = await app.evaluate(() => chrome.storage.local.get(["provider", "geminiKey", "geminiModel"]));
   assert.deepEqual(stored, { provider: "gemini", geminiKey: "test-key", geminiModel: "gemini-3-flash-preview" });

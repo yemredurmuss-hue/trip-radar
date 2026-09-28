@@ -19,10 +19,9 @@ Sohbetle birlikte karar verirsiniz.
    - Sağ üstten **Geliştirici modu**nu aç.
    - **Paketlenmemiş öğe yükle** → `dist/` klasörünü seç.
 3. **Sabitle:** Araç çubuğundaki yapboz simgesi → Trip Radar → 📌.
-4. **Ücretsiz Gemini anahtarını ekle:**
-   - [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → **Create API key** (kart gerekmez).
-   - Trip Radar simgesine tıkla → **Ayarları aç** → **Gemini · ücretsiz** → anahtarı yapıştır.
-   - **Modelleri getir**'e basıp listeden modeli seç (varsayılan `gemini-3-flash-preview`) → **Kaydet**.
+4. **Ücretsiz Gemini anahtarını bağla (ilk kurulumda kurulum ekranı kendiliğinden açılır):**
+   - **Google'dan ücretsiz anahtar al** düğmesine bas → açılan sayfada **Create API key** → kopyala (kart gerekmez).
+   - Trip Radar sekmesine dön, anahtarı yapıştır. Eklenti anahtarı doğrular, en uygun ücretsiz modeli seçer ve kaydeder.
    - İstersen **Claude · ücretli** sekmesinden Claude anahtarıyla da çalışır.
 
 Kodu güncellediğinde `npm run build` çalıştır, sonra `chrome://extensions`'ta Trip Radar'ın ↻ simgesine bas.
@@ -68,6 +67,7 @@ kararlar ve kayıtlar olduğu gibi kalır.
 npm run typecheck      # TypeScript
 npm test               # birim + akış testleri (sahte API ile)
 npm run build && xvfb-run -a node scripts/e2e.mjs   # eklentiyi Chromium'da yükleyip test eder, ekran görüntüleri e2e-output/
+# Proxy arkasında gerçek API kontrolü: E2E_EXPECT_LIVE=1 E2E_CHROMIUM_ARGS="--ignore-certificate-errors-spki-list=<proxy CA SPKI>"
 ```
 
 Yapı:

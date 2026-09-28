@@ -100,9 +100,9 @@ function Empty({ captures, onDemo, onSettings }: { captures: Capture[]; onDemo: 
       <ol>
         <li>
           <a href="#settings" onClick={onSettings}>
-            Ayarlar
-          </a>
-          'dan Claude API anahtarını ekle.
+            Ücretsiz Gemini anahtarını bağla
+          </a>{" "}
+          (1 dakika, kart gerekmez).
         </li>
         <li>Bir otel, uçuş, etkinlik ya da eSIM sayfasındayken araç çubuğundaki Trip Radar simgesine tıkla (veya Alt+Shift+S).</li>
         <li>Ya da soldaki kutuya link yapıştır, ekran görüntüsü sürükle.</li>

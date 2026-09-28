@@ -74,9 +74,9 @@ function Popup() {
       )}
       {state.step === "done" && <p>✓ {state.text}</p>}
       {state.step === "error" && <p className="error">{state.text}</p>}
-      {!hasKey && <p className="warning">API anahtarı yok: kayıt duruyor, işlemek için Ayarlar'dan ekle.</p>}
+      {!hasKey && <p className="warning">Kayıt duruyor. AI'ın işlemesi için ücretsiz Gemini anahtarını bir kez bağla.</p>}
       <button className="primary" onClick={() => void openBoard(hasKey ? "" : "#settings")}>
-        {hasKey ? "Panoyu aç" : "Ayarları aç"}
+        {hasKey ? "Panoyu aç" : "1 dakikalık kurulum"}
       </button>
     </div>
   );

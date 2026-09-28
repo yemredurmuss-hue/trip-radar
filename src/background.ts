@@ -23,4 +23,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 chrome.runtime.onStartup.addListener(() => void run());
-chrome.runtime.onInstalled.addListener(() => void run());
+chrome.runtime.onInstalled.addListener((details) => {
+  // First install: open the one-step setup (free Gemini key) right away.
+  if (details.reason === "install") void chrome.tabs.create({ url: chrome.runtime.getURL("app.html#settings") });
+  void run();
+});

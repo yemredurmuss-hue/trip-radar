@@ -154,3 +154,7 @@ body.popup { width: 320px; }
 .popup-card .primary { width: 100%; padding: 10px; font-size: 15px; border-radius: 12px; margin-top: 8px; }
 .popup-card .error { color: var(--danger); }
 .popup-card .warning { color: var(--warning); }
+
+.setup { margin: 18px 0 4px; padding-left: 22px; line-height: 1.55; color: #3a3a3c; font-size: 15px; }
+.setup li { margin: 8px 0; }
+.setup-btn { display: inline-block; padding: 10px 18px; font-size: 15px; border-radius: 12px; }

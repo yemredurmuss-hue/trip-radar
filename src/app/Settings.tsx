@@ -12,6 +12,8 @@ const CLAUDE_MODELS = [
   { id: "claude-haiku-4-5", label: "Claude Haiku 4.5 — en ucuz" },
 ];
 
+const GEMINI_KEY = /^AIza[0-9A-Za-z_-]{30,}$/;
+
 export function Settings({ onClose }: { onClose: () => void }) {
   const [s, setS] = useState<SettingsShape | null>(null);
   const [geminiModels, setGeminiModels] = useState<string[]>([]);
@@ -22,7 +24,33 @@ export function Settings({ onClose }: { onClose: () => void }) {
   }, []);
 
   if (!s) return null;
-  const update = (patch: Partial<SettingsShape>) => setS({ ...s, ...patch });
+  const update = (patch: Partial<SettingsShape>) => setS((prev) => (prev ? { ...prev, ...patch } : prev));
+
+  /** Pasting a key is all it takes: validate it, pick the best free model, save, close. */
+  async function connectGemini(key: string) {
+    setModelStatus("Anahtar kontrol ediliyor…");
+    try {
+      const ids = await listGeminiModels(key);
+      if (!ids.length) {
+        setModelStatus("Bu anahtarla kullanılabilir model bulunamadı.");
+        return;
+      }
+      const geminiModel = ids.includes(s!.geminiModel) ? s!.geminiModel : ids[0];
+      setGeminiModels(ids);
+      update({ provider: "gemini", geminiKey: key, geminiModel });
+      await persist({ ...s!, provider: "gemini", geminiKey: key, geminiModel });
+      setModelStatus(`✓ Bağlandı (${geminiModel}). Hazırsın.`);
+      setTimeout(onClose, 1200);
+    } catch (error) {
+      setModelStatus(describeError(error));
+    }
+  }
+
+  async function persist(next: SettingsShape) {
+    await saveSettings({ ...next, apiKey: next.apiKey.trim(), geminiKey: next.geminiKey.trim() });
+    await retryAllFailed(); // captures that failed without a key (or on quota) get another go
+    requestProcessing();
+  }
 
   async function fetchModels() {
     if (!s?.geminiKey.trim()) return;
@@ -39,9 +67,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
 
   async function save() {
     if (!s) return;
-    await saveSettings({ ...s, apiKey: s.apiKey.trim(), geminiKey: s.geminiKey.trim() });
-    await retryAllFailed(); // captures that failed without a key (or on quota) get another go
-    requestProcessing();
+    await persist(s);
     onClose();
   }
 
@@ -72,24 +98,28 @@ export function Settings({ onClose }: { onClose: () => void }) {
 
         {s.provider === "gemini" ? (
           <>
+            <ol className="setup">
+              <li>
+                <a className="btn-primary setup-btn" href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
+                  Google'dan ücretsiz anahtar al ↗
+                </a>
+              </li>
+              <li>Açılan sayfada <b>Create API key</b>'e bas, anahtarı kopyala. Kart istemez.</li>
+              <li>Bu sekmeye dön, aşağıya yapıştır. Gerisini eklenti halleder.</li>
+            </ol>
             <label className="field">
               Gemini API anahtarı
               <input
                 type="password"
                 value={s.geminiKey}
-                placeholder="AIza…"
-                onChange={(e) => update({ geminiKey: e.target.value })}
-                onBlur={() => void fetchModels()}
+                placeholder="AIza… (yapıştır)"
+                onChange={(e) => {
+                  update({ geminiKey: e.target.value });
+                  if (GEMINI_KEY.test(e.target.value.trim())) void connectGemini(e.target.value.trim());
+                }}
                 autoFocus
               />
             </label>
-            <p className="muted small">
-              Ücretsiz anahtar:{" "}
-              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
-                aistudio.google.com/apikey
-              </a>{" "}
-              → Create API key. Kart gerekmez.
-            </p>
             <label className="field">
               Model
               <span className="row-inline">
