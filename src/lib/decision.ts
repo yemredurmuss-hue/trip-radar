@@ -4,6 +4,7 @@
 import { convert, type Rates } from "./currency";
 import { distanceKm, formatDistance, walkingMinutes } from "./geo";
 import { formatPrice, metricsOf, nightsBetween, tripDateRange } from "./items";
+import { buildPlan, groupKeyOf, liveGroups } from "./plan";
 import type { Amenity, Analysis, Category, CriterionId, Item, ItemMetrics, PriorityLevel, Trip } from "./types";
 
 export const CRITERION_LABELS: Record<CriterionId, string> = {
@@ -201,7 +202,7 @@ const ASPECT_LABELS: Partial<Record<string, string>> = {
 };
 const SENTIMENT_VALUE = { positive: 0.9, mixed: 0.65, negative: 0.35 } as const;
 
-function measure(criterion: CriterionId, item: Item, ctx: DecisionContext): Measure | null {
+function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analysis: Analysis | null): Measure | null {
   const m = metricsOf(item);
   switch (criterion) {
     case "price": {
@@ -339,8 +340,7 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext): Meas
       };
     }
     case "ai": {
-      const analysis = ctx.analyses.get(item.needKey);
-      if (analysis?.error) return null;
+      if (!analysis || analysis.error) return null;
       const judged = analysis?.aiScores.find((s) => s.itemId === item.id);
       if (!judged) return null;
       const value = clamp01(judged.score / 10);
@@ -383,6 +383,8 @@ export interface OptionResult {
   parts: Part[];
   missing: string[];
   excluded: string | null;
+  /** Another option is at least as good on everything that matters and better on something. */
+  dominatedBy: string | null;
 }
 
 export interface Reason {
@@ -393,7 +395,8 @@ export interface Reason {
 }
 
 export interface GroupDecision {
-  needKey: string;
+  /** The group's key (see groupKeyOf): stays by exact nights, other needs by need key. */
+  key: string;
   category: Category;
   status: "ok" | "tie" | "single" | "insufficient";
   options: OptionResult[]; // ranked; unscorable and excluded last
@@ -419,18 +422,16 @@ const TIE_POINTS = 2;
  * Two passes: without AI scores first (that result's hash identifies the inputs); the cached AI
  * analysis is used only if it was made for exactly these inputs, so a stale AI note never counts.
  */
-export function decideGroup(groupItems: Item[], ctx: DecisionContext): GroupDecision {
-  const needKey = groupItems[0]?.needKey ?? "";
-  const plain = decideWith(groupItems, { ...ctx, analyses: new Map() });
-  const analysis = ctx.analyses.get(needKey);
+export function decideGroup(groupItems: Item[], ctx: DecisionContext, key = groupItems[0] ? groupKeyOf(groupItems[0]) : ""): GroupDecision {
+  const plain = decideWith(groupItems, ctx, key, null);
+  const analysis = ctx.analyses.get(key);
   if (!analysis || analysis.inputHash !== plain.inputHash) return plain;
   if (analysis.error) return { ...plain, analysisFailure: { error: analysis.error, at: analysis.createdAt } };
-  return { ...decideWith(groupItems, ctx), inputHash: plain.inputHash, analysis };
+  return { ...decideWith(groupItems, ctx, key, analysis), inputHash: plain.inputHash, analysis };
 }
 
-function decideWith(groupItems: Item[], ctx: DecisionContext): GroupDecision {
+function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analysis: Analysis | null): GroupDecision {
   const category = groupItems[0]?.category ?? "other";
-  const needKey = groupItems[0]?.needKey ?? "";
   const active = groupItems.filter((i) => i.status !== "dismissed");
 
   // Stays for different dates aren't alternatives for the same need: keep them out of the ranking.
@@ -448,7 +449,7 @@ function decideWith(groupItems: Item[], ctx: DecisionContext): GroupDecision {
   const allCriteria = (Object.keys(DEFAULT_LEVELS[category]) as CriterionId[]).filter(
     (c) => c !== "amenities" || Boolean(ctx.trip.wantedAmenities?.length),
   );
-  const measures = new Map(eligible.map((i) => [i.id, new Map(allCriteria.map((c) => [c, measure(c, i, ctx)]))]));
+  const measures = new Map(eligible.map((i) => [i.id, new Map(allCriteria.map((c) => [c, measure(c, i, ctx, analysis)]))]));
   const enough = eligible.length > 1 ? 2 : 1;
   const criteria = allCriteria.filter((c) => eligible.filter((i) => measures.get(i.id)!.get(c)).length >= enough);
 
@@ -485,16 +486,19 @@ function decideWith(groupItems: Item[], ctx: DecisionContext): GroupDecision {
     const lacksRequired = required.some((c) => !measures.get(item.id)!.get(c));
     const scorable = s.confidence >= MIN_CONFIDENCE && !lacksRequired && criteria.length > 0;
     for (const c of required) if (!measures.get(item.id)!.get(c) && !missing.includes(CRITERION_LABELS[c].toLowerCase())) missing.unshift(CRITERION_LABELS[c].toLowerCase());
-    return { item, score: scorable ? Math.round(s.value) : null, confidence: s.confidence, parts: s.parts, missing, excluded: null };
+    return { item, score: scorable ? Math.round(s.value) : null, confidence: s.confidence, parts: s.parts, missing, excluded: null, dominatedBy: null };
   });
   options.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+  markDominated(options.filter((o) => o.score != null));
   options = [
     ...options,
-    ...active.filter((i) => excluded.has(i.id)).map((item) => ({ item, score: null, confidence: 0, parts: [], missing: [], excluded: excluded.get(item.id)! })),
+    ...active
+      .filter((i) => excluded.has(i.id))
+      .map((item) => ({ item, score: null, confidence: 0, parts: [], missing: [], excluded: excluded.get(item.id)!, dominatedBy: null })),
   ];
 
   const scored = options.filter((o) => o.score != null);
-  const base = { needKey, category, options, criteria, inputHash: hashInputs(category, options, ctx), analysis: null, analysisFailure: null };
+  const base = { key, category, options, criteria, inputHash: hashInputs(category, options, ctx), analysis: null, analysisFailure: null };
   if (eligible.length === 1) {
     return { ...base, status: "single", winner: null, runnerUp: null, reasons: [], tradeoffs: [], flips: [], summary: "Karşılaştırmak için bu ihtiyaca bir seçenek daha kaydet." };
   }
@@ -539,6 +543,37 @@ function decideWith(groupItems: Item[], ctx: DecisionContext): GroupDecision {
     flips,
     summary: `${first.item.name} öne çıkıyor (${first.score} – ${second.score})${why ? `: ${why} farkı yaratıyor.` : "."}${cost}`,
   };
+}
+
+const SAME = 0.02; // sub-scores this close count as equal
+
+/**
+ * Marks options another one beats or matches on every criterion that matters (price included) —
+ * safe to drop whatever the weights. Checked against better-ranked options first.
+ */
+function markDominated(scored: OptionResult[]): void {
+  for (const b of scored) {
+    for (const a of scored) {
+      if (a === b) continue;
+      let common = 0;
+      let better = false;
+      let worse = false;
+      let price = false;
+      for (const pa of a.parts) {
+        const pb = b.parts.find((p) => p.criterion === pa.criterion);
+        if (!pb || pa.s == null || pb.s == null || pa.weight === 0 || pa.criterion === "ai") continue;
+        common++;
+        if (pa.criterion === "price") price = true;
+        if (pa.s > pb.s + SAME) better = true;
+        if (pa.s < pb.s - SAME) worse = true;
+      }
+      // Three shared criteria at least: with sparse data "better on everything" means little.
+      if (common >= 3 && price && better && !worse) {
+        b.dominatedBy = a.item.name;
+        break;
+      }
+    }
+  }
 }
 
 /** Per-criterion contribution to the gap between two options, in score points. */
@@ -631,17 +666,10 @@ function advantageText(p: Part, w: Part, currency: string): string | null {
 
 // --- whole trip ------------------------------------------------------------------------------------
 
-/** Categories whose saved options are alternatives for one need (places to visit are not). */
-export const COMPARABLE: Category[] = ["stay", "flight", "transport", "esim"];
-
+/** Every need still being decided, keyed like the plan: settled (booked) needs aren't ranked. */
 export function decideTrip(items: Item[], ctx: DecisionContext): Map<string, GroupDecision> {
-  const groups = new Map<string, Item[]>();
-  for (const item of items.filter((i) => COMPARABLE.includes(i.category))) {
-    const list = groups.get(item.needKey) ?? [];
-    list.push(item);
-    groups.set(item.needKey, list);
-  }
-  return new Map([...groups].map(([key, list]) => [key, decideGroup(list, ctx)]));
+  const groups = liveGroups(buildPlan(ctx.trip, items));
+  return new Map(groups.map((g) => [g.key, decideGroup(g.items, ctx, g.key)]));
 }
 
 // --- helpers ---------------------------------------------------------------------------------------

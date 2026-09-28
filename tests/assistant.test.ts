@@ -80,7 +80,7 @@ describe("assistant", () => {
     // The tool answers with the recomputed decision so the model can explain what changed.
     const priorityResult = (calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[])[0];
     expect(priorityResult.is_error).toBeFalsy();
-    expect(String(priorityResult.content)).toContain('"need_key":"stay:porto"');
+    expect(String(priorityResult.content)).toContain('"group":"stay@2026-10-08_2026-10-11"');
     expect(String(priorityResult.content)).toContain("Çok önemli");
     expect((await listPreferences("t1")).map((p) => p.text)).toEqual(["Merkezi konum önemli"]);
 

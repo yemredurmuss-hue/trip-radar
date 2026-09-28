@@ -24,6 +24,10 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] Gezileri ülkeye göre ayırma (Portekiz ≠ Tayland), elle taşıma; hata ekranı (boş sayfa yok)
 - [x] Karar zekası: kriter bazlı 0–100 puan, kullanıcının belirlediği önem, nedenler/bedeller,
       "ne değişirse sonuç değişir", ücretsiz konum ve kur, AI yorumu ayrı ve düşük ağırlıklı (`src/lib/decision.ts`, `analysis.ts`)
+- [x] Plan iskeleti (0.7): gece gece rezerve / seçildi / açık / boş, rezervasyonla kapanan seçenekler
+      (geri alınabilir), şehirler arası eksik ulaşım uyarısı, aynı gecelere göre karşılaştırma, "elenebilir" (`src/lib/plan.ts`)
+- [ ] 0.8: niyet profili (sohbet + kaydedilen linkler + seçimler), "değer mi?" hesabı, bütçe paylaştırma, karar kartı
+- [ ] 0.9: hafızalı yargıç (yeni gelen yalnız liderle tartılır), açık sekmeleri toplu kaydetme
 - [ ] İlk gerçek gezide kullanım: 20–50 gerçek kayıt, hangi alanların yanlış/eksik geldiğini not et
 
 ## v1: Telefon

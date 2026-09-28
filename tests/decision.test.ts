@@ -157,6 +157,18 @@ describe("decideGroup", () => {
     expect(advantageOver(d.options[1], d.winner!, "EUR")).toBe("€60 daha ucuz");
   });
 
+  it("marks an option another one beats on price and everything else as safe to drop", () => {
+    const best = item("Best", { price: price(200), rating: rating(9.2, 10, 900), metrics: { cancellationType: "free" }, geo: { lat: 41.1455, lng: -8.611, source: "page" } });
+    const worse = item("Worse", { price: price(260), rating: rating(8.1, 10, 900), metrics: { cancellationType: "non_refundable" }, geo: { lat: 41.1620, lng: -8.5890, source: "page" } });
+    const tradeoff = item("Tradeoff", { price: price(150), rating: rating(7.9, 10, 900), metrics: { cancellationType: "free" }, geo: { lat: 41.1455, lng: -8.611, source: "page" } });
+    const all = [best, worse, tradeoff, ...POIS];
+    const d = decideGroup([best, worse, tradeoff], makeContext(trip(), all));
+    const find = (n: string) => d.options.find((o) => o.item.name === n)!;
+    expect(find("Worse").dominatedBy).toBe("Best");
+    expect(find("Tradeoff").dominatedBy).toBeNull(); // cheaper: a real trade-off, not dominated
+    expect(find("Best").dominatedBy).toBeNull();
+  });
+
   it("scores eSIM data against the trip length", () => {
     const esim = (name: string, amount: number, metrics: Partial<ItemMetrics>) =>
       item(name, { category: "esim", needKey: "esim:pt", price: price(amount), dates: { start: null, end: null, source: "none" }, metrics });
@@ -174,7 +186,7 @@ describe("decideGroup", () => {
     const ctxFor = (analysis?: Analysis) => makeContext(trip(), [jardim, casa, ...POIS], { analyses: analysis ? [analysis] : [] });
     const plain = decideGroup([jardim, casa], ctxFor());
     const analysis: Analysis = {
-      key: "t|stay:porto", tripId: "t", needKey: "stay:porto", inputHash: plain.inputHash, createdAt: 1,
+      key: "t|stay@2026-10-08_2026-10-11", tripId: "t", needKey: "stay@2026-10-08_2026-10-11", inputHash: plain.inputHash, createdAt: 1,
       verdict: "", reasons: [], tradeoffs: [], risks: [], question: null,
       aiScores: [{ itemId: jardim.id, score: 6, note: "gece gürültüsü" }, { itemId: casa.id, score: 9, note: "sakin" }],
     };

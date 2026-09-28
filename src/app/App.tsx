@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { resetConversation } from "../lib/assistant";
 import { db, notifyChanged } from "../lib/db";
 import { loadDemoTrip } from "../lib/demo";
-import { groupTitle } from "../lib/items";
+import { buildPlan, groupKeyOf, liveGroups } from "../lib/plan";
 import type { Item } from "../lib/types";
 import { Chat } from "./Chat";
 import { CompareView } from "./CompareView";
@@ -41,8 +41,9 @@ export function App() {
 
   const trip = board.trip;
   const openItem = board.items.find((i) => i.id === openItemId) ?? null;
-  const compared = compareKey ? decisions?.byNeed.get(compareKey) : undefined;
-  const comparedTitle = compared ? groupTitle(compared.category, board.items.filter((i) => i.needKey === compared.needKey && i.status !== "dismissed")) : null;
+  const plan = useMemo(() => (trip ? buildPlan(trip, board.items) : null), [trip, board.items]);
+  const compared = compareKey ? decisions?.byGroup.get(compareKey) : undefined;
+  const comparedTitle = compared && plan ? (liveGroups(plan).find((g) => g.key === compared.key)?.title ?? null) : null;
 
   // A capture landed in a different trip than the one on screen: say where, offer to go there.
   const arrival = board.arrivals[0];
@@ -87,6 +88,7 @@ export function App() {
             <TripPanel
               trip={trip}
               items={board.items}
+              plan={plan!}
               openCaptures={board.openCaptures}
               decisions={decisions}
               onOpenItem={(i: Item) => setOpenItemId(i.id)}
@@ -130,14 +132,14 @@ export function App() {
       {openItem && (
         <ItemDrawer
           item={openItem}
-          group={board.items.filter((i) => i.needKey === openItem.needKey)}
+          group={board.items.filter((i) => groupKeyOf(i) === groupKeyOf(openItem))}
           trips={board.trips}
-          decision={decisions?.byNeed.get(openItem.needKey)}
+          decision={decisions?.byGroup.get(groupKeyOf(openItem))}
           onClose={() => setOpenItemId(null)}
           onMoved={board.selectTrip}
           onCompare={() => {
             setOpenItemId(null);
-            setCompareKey(openItem.needKey);
+            setCompareKey(groupKeyOf(openItem));
           }}
         />
       )}

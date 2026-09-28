@@ -267,7 +267,7 @@ export function groupItems(items: Item[], rank?: (item: Item) => number | null):
       category,
       title: groupTitle(category, list),
       // Alternatives for one need are ranked; lists of places keep the order the user saved them.
-      items: RANKED.includes(category) ? sortForDecision(list, rank) : [...list].sort((a, b) => a.createdAt - b.createdAt),
+      items: RANKED.includes(category) ? rankItems(list, rank) : [...list].sort((a, b) => a.createdAt - b.createdAt),
     }));
     return { category, groups };
   }).filter((section) => section.groups.length > 0);
@@ -283,7 +283,7 @@ export function groupTitle(category: Category, items: Item[]): string | null {
 }
 
 /** Booked/chosen first, then the decision engine's ranking, then by price. */
-function sortForDecision(items: Item[], rank?: (item: Item) => number | null): Item[] {
+export function rankItems(items: Item[], rank?: (item: Item) => number | null): Item[] {
   const status = (i: Item) => (i.status === "booked" ? 0 : i.status === "chosen" ? 1 : 2);
   const ranked = (i: Item) => rank?.(i) ?? Infinity;
   return [...items].sort(

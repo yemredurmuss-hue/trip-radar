@@ -7,6 +7,8 @@ import { EMPTY_METRICS } from "../src/lib/items";
 import { MissingKeyError, type LlmProvider } from "../src/lib/llm";
 import type { Item, Trip } from "../src/lib/types";
 
+const STAY = "stay@2026-10-08_2026-10-11"; // stays are compared by exact nights
+
 const trip: Trip = {
   id: "ta", title: "Portekiz", confirmedDates: { start: "2026-10-08", end: "2026-10-11" }, budget: null, heroImage: null,
   createdAt: 1, updatedAt: 1,
@@ -74,7 +76,7 @@ describe("analysis", () => {
     expect(stored.aiScores.map((s) => s.itemId)).toEqual(["a", "b"]); // unknown ids dropped
 
     const { decisions } = await loadDecisions(trip, [stay("a", "Jardim Stay", 285, 9.1, "Konum harika, hafta sonu gece gürültüsü var."), stay("b", "Casa Azul", 240, 8.8, "Sakin sokak, ev sahibi ilgili.")]);
-    const d = decisions.get("stay:porto")!;
+    const d = decisions.get(STAY)!;
     expect(d.analysis?.verdict).toContain("Jardim");
     expect(d.criteria).toContain("ai");
     expect(needsAnalysis(d)).toBe(false);
@@ -96,7 +98,7 @@ describe("analysis", () => {
 
     const items = [stay("a", "Jardim Stay", 285, 9.1, "Konum harika, hafta sonu gece gürültüsü var."), stay("b", "Casa Azul", 240, 8.8, "Sakin sokak, ev sahibi ilgili.")];
     const { decisions } = await loadDecisions(changed, items);
-    const group = decisions.get("stay:porto")!;
+    const group = decisions.get(STAY)!;
     expect(group.analysis).toBeNull();
     expect(group.criteria).not.toContain("ai"); // a stale or failed review never counts
     expect(group.analysisFailure?.error).toContain("kotası");
@@ -122,7 +124,7 @@ describe("analysis", () => {
   it("builds a prompt with priorities, preferences and every option's table", async () => {
     const items = [stay("a", "Jardim Stay", 285, 9.1, "x"), stay("b", "Casa Azul", 240, 8.8, "y")];
     const { ctx, decisions } = await loadDecisions(trip, items);
-    const prompt = analysisPrompt(trip, decisions.get("stay:porto")!, { ...ctx, preferences: ["Bebekle seyahat"] });
+    const prompt = analysisPrompt(trip, decisions.get(STAY)!, { ...ctx, preferences: ["Bebekle seyahat"] });
     expect(prompt).toContain('"Fiyat":"Önemli"');
     expect(prompt).toContain("Bebekle seyahat");
     expect(prompt).toContain('"id":"b"');

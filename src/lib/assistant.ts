@@ -14,6 +14,7 @@ import {
   type GroupDecision,
 } from "./decision";
 import { tripDateRange } from "./items";
+import { buildPlan, type Plan } from "./plan";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
 import type { ToolResult, ToolSpec } from "./llm/types";
 import {
@@ -31,6 +32,8 @@ import {
 export { withPriorities };
 
 const SYSTEM = `Sen kullanıcının seyahat karar asistanısın. Kullanıcı seçeneklerini (otel, uçuş, etkinlik, restoran, eSIM) kendisi kaydeder; sen arama yapmazsın, yalnız kaydedilenler üzerinden karar vermesine yardım edersin. Son kararı her zaman kullanıcı verir.
+
+Plan: trip_state.plan gecelerin durumunu verir (booked = rezerve, chosen = plana alındı, open = boş) ve eksik ulaşımları bildirir. Rezerve edilen gecelerle çakışan seçenekler kapanmıştır; onları önerme. Boş geceler varsa bunu doğal bir anda hatırlat.
 
 Karar motoru: trip_state.decisions her ihtiyaç grubu için kodun hesapladığı 0-100 puanları, sıralamayı, nedenleri (reasons), bedelleri (tradeoffs) ve hangi öncelik değişirse sonucun değişeceğini (would_change_if) içerir. Puanlar kullanıcının önceliklerine (trip_state.priorities) göre hesaplanır. ai alanı ayrı bir AI incelemesinin yorumudur.
 
@@ -155,7 +158,7 @@ export function decisionState(decisions: Map<string, GroupDecision>, ctx: Decisi
   return [...decisions.values()]
     .filter((d) => d.options.length > 1)
     .map((d) => ({
-      need_key: d.needKey,
+      group: d.key,
       status: d.status,
       summary: d.summary,
       ranking: d.options.map((o) => ({
@@ -165,12 +168,29 @@ export function decisionState(decisions: Map<string, GroupDecision>, ctx: Decisi
         ...(o.excluded ? { excluded: o.excluded } : {}),
         ...(o.score == null && o.missing.length ? { missing: o.missing } : {}),
         ...(d.winner && o !== d.winner && o.score != null ? { advantage: advantageOver(o, d.winner, ctx.currency) } : {}),
+        ...(o.dominatedBy ? { dominated_by: o.dominatedBy } : {}),
       })),
       reasons: d.reasons.map((r) => r.text),
       tradeoffs: d.tradeoffs.map((r) => r.text),
       would_change_if: d.flips.map((f) => `${f.label} çok önemli olursa → ${f.winner}`),
       ai: d.analysis ? { verdict: d.analysis.verdict, risks: d.analysis.risks, question: d.analysis.question } : null,
     }));
+}
+
+/** The trip's nights: what is booked, chosen or still open, and what is missing between them. */
+export function planState(plan: Plan) {
+  return {
+    nights: plan.nights,
+    stays: plan.stayBlocks.map((b) => ({
+      status: b.kind,
+      nights: `${b.range.start}..${b.range.end}`,
+      count: b.nights,
+      city: b.city,
+      ...(b.kind === "open" ? { options: b.groups.reduce((n, g) => n + g.items.length, 0) } : { item: b.item.name }),
+    })),
+    notices: plan.notices.map((n) => n.text),
+    closed_by_bookings: plan.closed.length,
+  };
 }
 
 /** Current priority levels per category present on the trip, as words. */
@@ -205,6 +225,7 @@ export function tripState(
     preferences,
     priorities: priorityState(trip, items),
     wanted_amenities: trip.wantedAmenities ?? [],
+    plan: planState(buildPlan(trip, items)),
     decisions,
     items: items.map((i) => ({
       id: i.id,

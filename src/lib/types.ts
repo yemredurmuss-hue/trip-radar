@@ -215,8 +215,9 @@ export interface Settings {
 
 /** Cached AI analysis of one need group; stale when the inputs' hash changes. */
 export interface Analysis {
-  key: string; // `${tripId}|${needKey}`
+  key: string; // `${tripId}|${group key}`
   tripId: string;
+  /** The compared group's key (see plan.groupKeyOf); named needKey in stored records. */
   needKey: string;
   inputHash: string;
   createdAt: number;

@@ -280,3 +280,20 @@ body.popup { width: 320px; }
 .part { display: grid; grid-template-columns: 1fr 1.3fr 70px; gap: 10px; align-items: center; padding: 5px 0; font-size: 13.5px; border-top: 1px solid var(--line); }
 .part.off { opacity: .5; }
 .part .bar { margin-top: 0; }
+
+/* ---------- plan: nights, gaps, closed options ---------- */
+.stay-block { margin: 10px 0 4px; border: 1px solid var(--line); border-radius: 14px; padding: 4px 4px 6px; }
+.stay-block.booked { border-color: #cfe9d9; background: #f6fbf8; }
+.stay-block.empty { border-style: dashed; }
+.block-head { display: flex; align-items: center; gap: 10px; padding: 8px 8px 6px; font-size: 15px; color: #3a3a3c; }
+.block-chip { font-size: 12px; font-weight: 700; border-radius: 6px; padding: 2px 8px; white-space: nowrap; }
+.block-chip.booked { background: #e3f4ea; color: var(--success); }
+.block-chip.chosen { background: var(--accent-soft); color: var(--accent); }
+.block-chip.open { background: #fff3e0; color: var(--warning); }
+.block-chip.empty { background: var(--soft); color: #6e6e73; }
+.stay-block .row { border-bottom: 0; }
+.group.nested + .group.nested { border-top: 1px solid var(--line); }
+.group-head { display: flex; justify-content: space-between; padding: 6px 8px 0; font-size: 13.5px; }
+.empty-slot { padding: 4px 10px 8px; font-size: 14px; color: #6e6e73; }
+.notice { margin: 10px 0 2px; padding: 8px 12px; border-radius: 10px; background: #fff8eb; color: #7a5200; font-size: 14px; }
+.row.closed .row-name { color: #6e6e73; }

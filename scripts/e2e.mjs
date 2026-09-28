@@ -110,6 +110,11 @@ try {
   await app.getByText("Örnek geziyi yükle →").click();
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
   await app.getByText("Jardim Stay").first().waitFor();
+  // The nights: Porto still open with three options, Lisbon booked, its alternative closed.
+  await app.locator(".stay-block.open .block-head", { hasText: "8–11 Ekim · 3 gece" }).waitFor();
+  await app.locator(".stay-block.booked", { hasText: "Lisboa Loft" }).waitFor();
+  await app.getByText("Kapanan seçenekler (1)").waitFor();
+  assert.equal(await app.locator(".stay-block", { hasText: "Alfama Suites" }).count(), 0, "a booking closes its alternatives");
   // The engine's pick among the stays carries its score on the row.
   await app.locator("button.row", { hasText: "Jardim Stay" }).locator(".score-pill.best").waitFor();
   await app.screenshot({ path: `${out}/3-board.png` });
@@ -138,6 +143,9 @@ try {
   await app.getByRole("button", { name: "Plana al" }).click();
   await app.getByRole("button", { name: "Kapat" }).click();
   await app.getByText("Jardim Stay plana alındı").waitFor();
+  // Porto chosen, Lisbon booked: nothing gets them from one to the other yet.
+  await app.locator(".stay-block.chosen", { hasText: "Jardim Stay" }).waitFor();
+  await app.locator(".notice", { hasText: "Porto → Lizbon ulaşımı yok" }).waitFor();
   await app.getByText("Etkinlikler").click();
   assert.equal(await app.locator(".crash").count(), 0, "board crashed after chat updates");
   await app.screenshot({ path: `${out}/5-chosen.png` });
@@ -326,7 +334,7 @@ try {
   assert.deepEqual(second.map((c) => c.role), ["user", "model", "user"]);
   assert.equal(second[1].parts[1].thoughtSignature, "c2ln");
   assert.equal(second[2].parts[0].functionResponse.id, "fc-1");
-  assert.match(JSON.stringify(second[2].parts[0].functionResponse.response), /stay:porto/); // new ranking returned to the model
+  assert.match(JSON.stringify(second[2].parts[0].functionResponse.response), /stay@2026-10-08_2026-10-11/); // new ranking returned to the model
   assert.ok(chatCalls[0].body.tools[0].functionDeclarations.some((f) => f.name === "update_items"));
   await board.screenshot({ path: `${out}/9-flow-chat.png` });
   console.log("✓ flow: chat → set_priorities → comparison reweighted; history replayed with signatures");

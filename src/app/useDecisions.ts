@@ -7,7 +7,8 @@ import type { Item, Trip } from "../lib/types";
 
 export interface Decisions {
   ctx: DecisionContext;
-  byNeed: Map<string, GroupDecision>;
+  /** Decisions by group key (see plan.groupKeyOf). */
+  byGroup: Map<string, GroupDecision>;
 }
 
 /** The decision engine's result for the trip on screen, recomputed whenever the board data changes. */
@@ -21,7 +22,7 @@ export function useDecisions(trip: Trip | null, items: Item[]): Decisions | null
     }
     let alive = true;
     loadDecisions(trip, items)
-      .then(({ ctx, decisions }) => alive && setState({ ctx, byNeed: decisions }))
+      .then(({ ctx, decisions }) => alive && setState({ ctx, byGroup: decisions }))
       .catch((error) => console.error("decision engine", error));
     return () => {
       alive = false;
@@ -31,7 +32,7 @@ export function useDecisions(trip: Trip | null, items: Item[]): Decisions | null
   // Groups whose AI review doesn't match the current inputs: ask the worker once things settle
   // (clicking through priorities shouldn't start a model call per click).
   const stale = state
-    ? [...state.byNeed.values()]
+    ? [...state.byGroup.values()]
         .filter((d) => needsAnalysis(d))
         .map((d) => d.inputHash)
         .join(",")
@@ -64,7 +65,13 @@ export function decisionLabel(item: Item, decision: GroupDecision | undefined, c
   }
   const topTwo = decision.options.slice(0, 2).map((o) => o.item.id);
   if (decision.status === "tie" && topTwo.includes(item.id)) return { text: "Başa baş", tone: "accent", score: option.score, best: true };
-  if (decision.winner?.item.id === item.id) return { text: "En uygun", tone: "accent", score: option.score, best: true };
+  if (decision.winner?.item.id === item.id) {
+    const why = decision.reasons[0]?.label.toLowerCase();
+    return { text: why ? `En uygun · ${why}` : "En uygun", tone: "accent", score: option.score, best: true };
+  }
+  if (option.dominatedBy) {
+    return { text: `Elenebilir · ${option.dominatedBy} her açıdan önde`, tone: "warning", score: option.score, best: false };
+  }
   const advantage = decision.winner ? advantageOver(option, decision.winner, currency) : null;
   return { text: advantage ?? item.summary, tone: "muted", score: option.score, best: false };
 }

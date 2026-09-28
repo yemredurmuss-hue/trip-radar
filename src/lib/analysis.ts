@@ -122,9 +122,9 @@ export async function analyzeGroup(trip: Trip, decision: GroupDecision, ctx: Dec
   const ids = new Set(decision.options.filter((o) => !o.excluded).map((o) => o.item.id));
   const clean = (list: string[], max: number) => list.map((s) => s.trim()).filter(Boolean).slice(0, max);
   const analysis: Analysis = {
-    key: `${trip.id}|${decision.needKey}`,
+    key: `${trip.id}|${decision.key}`,
     tripId: trip.id,
-    needKey: decision.needKey,
+    needKey: decision.key,
     inputHash: decision.inputHash,
     createdAt: Date.now(),
     verdict: out.verdict.trim(),
@@ -143,9 +143,9 @@ export async function analyzeGroup(trip: Trip, decision: GroupDecision, ctx: Dec
 
 async function saveFailure(trip: Trip, decision: GroupDecision, error: unknown): Promise<void> {
   const failure: Analysis = {
-    key: `${trip.id}|${decision.needKey}`,
+    key: `${trip.id}|${decision.key}`,
     tripId: trip.id,
-    needKey: decision.needKey,
+    needKey: decision.key,
     inputHash: decision.inputHash,
     createdAt: Date.now(),
     verdict: "",

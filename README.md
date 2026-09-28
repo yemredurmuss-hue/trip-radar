@@ -56,6 +56,14 @@ Kodu güncellediğinde `npm run build` çalıştır, sonra `chrome://extensions`
 **Her gezi ayrı bir pano ve sohbettir.** Açılışta **Seyahatlerim** listesi gelir; bir geziye girince
 solda o gezinin kendi sohbeti, sağda panosu olur. **‹ Seyahatlerim** ile listeye dönülür.
 
+**Konaklama gece gece planlanır.** Gezinin geceleri (onaylı tarihler, yoksa uçuşlar ve konaklamalar)
+sırayla gösterilir: **✓ Rezerve**, **Seçildi**, **Açık** (bu gecelere uyan seçeneklerle) ya da **Boş**
+(Booking'de o tarihlerle arama linkiyle). Bir yeri rezerve edince aynı geceleri isteyen diğer seçenekler
+**Kapanan seçenekler**e geçer; silinmez, rezervasyonu geri alırsan geri gelir. Seçilen/rezerve edilen iki
+konaklama arasında şehir değişiyorsa ve o gün uçuş/ulaşım yoksa "Porto → Funchal ulaşımı yok" uyarısı çıkar.
+Konaklamalar yalnız aynı gecelere ait olanlarla karşılaştırılır. Her konuda başka bir seçenek her açıdan
+(fiyat dahil) daha iyiyse satırda "Elenebilir" yazar.
+
 **Geziler kendiliğinden ayrılır.** Her kaydın ülkesi (PT, TH gibi kodla) ve tarihleri belirlenir:
 aynı ülke + yakın tarihler (en fazla ~1 hafta ara) aynı geziye, başka ülke ya da uzak tarih yeni geziye gider.
 AI yanlış gezi önerse bile karar bu kurala göre verilir. Açık olan gezi dışında bir yere kayıt düşerse
