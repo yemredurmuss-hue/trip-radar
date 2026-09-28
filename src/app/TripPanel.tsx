@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
+import { FallbackImg } from "./FallbackImg";
 import { requestProcessing } from "../lib/browser";
 import {
   CATEGORY_LABELS,
@@ -65,7 +66,7 @@ export function TripPanel({ trip, items, openCaptures, onOpenItem, menu }: Props
         <div className="errors">
           {failed.map((c) => (
             <div key={c.id}>
-              <span className="error-text">
+              <span className="error-text" title={c.error ?? ""}>
                 <span className="err">⚠ {c.title || c.url || "Ekran görüntüsü"}</span>
                 <span className="muted"> — {c.error}</span>
               </span>
@@ -198,13 +199,6 @@ function Row({ item, group, onOpen }: { item: Item; group: Item[]; onOpen: () =>
   );
 }
 
-/** Shows the fallback when there is no image or it fails to load (blocked, moved, offline). */
-function FallbackImg({ src, className, fallback }: { src: string | null; className: string; fallback: ReactNode }) {
-  const [failed, setFailed] = useState<string | null>(null);
-  if (!src || failed === src) return <>{fallback}</>;
-  return <img className={className} src={src} alt="" loading="lazy" onError={() => setFailed(src)} />;
-}
-
-function joinTr(names: string[]): string {
+export function joinTr(names: string[]): string {
   return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} ve ${names.at(-1)}`;
 }

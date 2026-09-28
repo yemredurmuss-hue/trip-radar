@@ -108,7 +108,7 @@ try {
 
   // 4. Demo trip, a group expanded, and the detail drawer.
   await app.getByText("Örnek geziyi yükle →").click();
-  await app.getByText("Portekiz (örnek)").waitFor();
+  await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
   await app.getByText("Jardim Stay").first().waitFor();
   await app.screenshot({ path: `${out}/3-board.png` });
   await app.getByRole("button", { name: /Jardim Stay/ }).click();
@@ -170,6 +170,12 @@ try {
     flight: null, highlights: ["Merkezi", "Sessiz"], concerns: [], review_summary: "Konum çok övülüyor.",
     image_url: "/relative.jpg", missing: [], trip: { existing_trip_id: null, new_trip_title: "Portekiz" }, need_key: "stay:porto",
   };
+  const bangkokExtraction = {
+    ...extraction, name: "Bangkok River Hotel", city: "Bangkok", country: "Tayland", country_code: "TH",
+    summary: "Nehir kenarı", need_key: "stay:bangkok", dates: { start: "2027-01-10", end: "2027-01-14", source: "page" },
+    price: { ...extraction.price, amount: 3200, currency: "THB", evidence: "฿ 3,200" },
+    trip: { existing_trip_id: null, new_trip_title: "Tayland" },
+  };
   const reply = (parts) => ({ json: { candidates: [{ content: { role: "model", parts }, finishReason: "STOP" }] } });
   await flow.route("https://generativelanguage.googleapis.com/**", async (route) => {
     const request = route.request();
@@ -183,7 +189,10 @@ try {
     }
     const body = request.postDataJSON();
     geminiBodies.push({ url: request.url(), body });
-    if (body.generationConfig?.responseJsonSchema) return route.fulfill(reply([{ text: JSON.stringify(extraction) }]));
+    if (body.generationConfig?.responseJsonSchema) {
+      const bangkok = JSON.stringify(body.contents).includes("Bangkok River Hotel");
+      return route.fulfill(reply([{ text: JSON.stringify(bangkok ? bangkokExtraction : extraction) }]));
+    }
     const text = JSON.stringify(body.contents);
     if (text.includes("functionResponse")) return route.fulfill(reply([{ text: "Jardim Stay'i öneri olarak işaretledim." }]));
     const state = JSON.parse(text.match(/<trip_state>(.*?)<\/trip_state>/)[1].replace(/\\"/g, '"'));
@@ -225,7 +234,9 @@ try {
     await new Promise((resolve) => (tx.oncomplete = resolve));
     await chrome.runtime.sendMessage({ type: "process" });
   }, snap);
-  await board.getByRole("heading", { name: "Portekiz" }).waitFor({ timeout: 20000 });
+  // The new trip appears as a card on "Seyahatlerim"; opening it shows its own board.
+  await board.locator(".trip-card", { hasText: "Portekiz" }).click({ timeout: 20000 });
+  await board.getByRole("heading", { name: "Portekiz" }).waitFor();
   await board.getByText("Jardim Stay").first().waitFor();
   assert.equal(await board.locator(".crash").count(), 0, "board must not crash on real-shaped data");
   const extractionCall = geminiBodies.find((b) => b.body.generationConfig?.responseJsonSchema);
@@ -248,6 +259,33 @@ try {
   assert.ok(chatCalls[0].body.tools[0].functionDeclarations.some((f) => f.name === "update_items"));
   await board.screenshot({ path: `${out}/9-flow-chat.png` });
   console.log("✓ flow: chat → function call → recommendation shown; history replayed with signatures");
+
+  // A Thailand hotel saved while the Portugal trip is open → its own trip, and a notice to go there.
+  await board.evaluate(async () => {
+    const request = indexedDB.open("trip-radar", 1);
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tx = database.transaction("captures", "readwrite");
+    tx.objectStore("captures").put({
+      id: "flow-2", kind: "extension", url: "https://www.booking.com/hotel/th/bangkok-river.html?checkin=2027-01-10&checkout=2027-01-14",
+      title: "Bangkok River Hotel", pageText: "Bangkok River Hotel\n฿ 3,200 total", viewportText: "", selection: "", jsonLd: [], meta: {},
+      screenshot: null, capturedAt: Date.now(), status: "pending", error: null, itemId: null,
+    });
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    await chrome.runtime.sendMessage({ type: "process" });
+  });
+  await board.locator(".toast", { hasText: "Tayland" }).waitFor({ timeout: 20000 });
+  await board.screenshot({ path: `${out}/11-toast.png` });
+  await board.locator(".toast").getByRole("button", { name: "Aç" }).click();
+  await board.getByRole("heading", { name: "Tayland" }).waitFor();
+  assert.equal(await board.getByText("Jardim Stay").count(), 0, "Portugal items must not show in the Thailand trip");
+  await board.getByRole("button", { name: /Seyahatlerim/ }).click();
+  await board.locator(".trip-card").nth(1).waitFor();
+  assert.equal(await board.locator(".trip-card").count(), 2);
+  await board.screenshot({ path: `${out}/12-trips.png` });
+  console.log("✓ flow: Thailand capture → separate trip + notice; overview lists both trips, each with its own board");
   console.log(`screenshots: ${out}`);
 } finally {
   await flow.close();

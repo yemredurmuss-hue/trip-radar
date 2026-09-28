@@ -11,6 +11,7 @@ export async function loadDemoTrip(): Promise<string> {
     confirmedDates: { start: "2026-10-08", end: "2026-10-14" },
     budget: { amount: 1500, currency: "EUR" },
     heroImage: null,
+    demo: true,
     createdAt: now,
     updatedAt: now,
   };

@@ -101,9 +101,25 @@ export async function listPreferences(tripId: string): Promise<Preference[]> {
   return rows.filter((p) => p.tripId === null || p.tripId === tripId);
 }
 
+/** Pending, processing and failed captures (via the status index: done captures carry big screenshots). */
 export async function listOpenCaptures(): Promise<Capture[]> {
-  const rows = await (await db()).getAll("captures");
-  return rows.filter((c) => c.status !== "done").sort((a, b) => a.capturedAt - b.capturedAt);
+  const d = await db();
+  const rows = (
+    await Promise.all(["pending", "processing", "error"].map((status) => d.getAllFromIndex("captures", "status", status)))
+  ).flat();
+  return rows.sort((a, b) => a.capturedAt - b.capturedAt);
+}
+
+export async function listAllItems(): Promise<Item[]> {
+  return (await db()).getAll("items");
+}
+
+/** "✓ … kaydedildi" events newer than `since`, across all trips (for the "added to another trip" notice). */
+export async function listArrivals(since: number): Promise<ChatMessage[]> {
+  const rows = await (await db()).getAll("messages");
+  return rows
+    .filter((m) => m.role === "event" && m.createdAt > since && m.text.startsWith("✓"))
+    .sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export async function addEvent(tripId: string, text: string): Promise<void> {

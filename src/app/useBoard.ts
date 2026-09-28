@@ -1,19 +1,25 @@
 import { useCallback, useEffect, useState } from "react";
-import { listItems, listMessages, listOpenCaptures, listTrips, onChanged } from "../lib/db";
+import { listAllItems, listArrivals, listMessages, listOpenCaptures, listTrips, onChanged } from "../lib/db";
 import type { Capture, ChatMessage, Item, Trip } from "../lib/types";
 
 export interface BoardData {
   trips: Trip[];
   trip: Trip | null;
+  /** Items of the selected trip. */
   items: Item[];
+  /** Items of every trip (for the trips overview). */
+  allItems: Item[];
   messages: ChatMessage[];
   openCaptures: Capture[];
+  /** Captures saved since this page opened, newest first. */
+  arrivals: ChatMessage[];
   loaded: boolean;
 }
 
 const STORAGE_KEY = "trip-radar:selected-trip";
+const openedAt = Date.now();
 
-function readSelected(): string | null {
+export function readSelectedTrip(): string | null {
   try {
     return localStorage.getItem(STORAGE_KEY);
   } catch {
@@ -21,26 +27,30 @@ function readSelected(): string | null {
   }
 }
 
-export function useBoard() {
-  const [selectedId, setSelectedId] = useState<string | null>(readSelected);
+export function useBoard(initialTripId: string | null) {
+  const [selectedId, setSelectedId] = useState<string | null>(initialTripId);
   const [data, setData] = useState<BoardData>({
     trips: [],
     trip: null,
     items: [],
+    allItems: [],
     messages: [],
     openCaptures: [],
+    arrivals: [],
     loaded: false,
   });
 
   const load = useCallback(async () => {
-    const trips = await listTrips();
-    const trip = trips.find((t) => t.id === selectedId) ?? trips[0] ?? null;
-    const [items, messages, openCaptures] = await Promise.all([
-      trip ? listItems(trip.id) : Promise.resolve([]),
-      trip ? listMessages(trip.id) : Promise.resolve([]),
+    const [trips, allItems, openCaptures, arrivals] = await Promise.all([
+      listTrips(),
+      listAllItems(),
       listOpenCaptures(),
+      listArrivals(openedAt),
     ]);
-    setData({ trips, trip, items, messages, openCaptures, loaded: true });
+    const trip = trips.find((t) => t.id === selectedId) ?? null;
+    const messages = trip ? await listMessages(trip.id) : [];
+    const items = trip ? allItems.filter((i) => i.tripId === trip.id) : [];
+    setData({ trips, trip, items, allItems, messages, openCaptures, arrivals, loaded: true });
   }, [selectedId]);
 
   useEffect(() => {
@@ -48,9 +58,10 @@ export function useBoard() {
     return onChanged(() => void load());
   }, [load]);
 
-  const selectTrip = useCallback((id: string) => {
+  const selectTrip = useCallback((id: string | null) => {
     try {
-      localStorage.setItem(STORAGE_KEY, id);
+      if (id) localStorage.setItem(STORAGE_KEY, id);
+      else localStorage.removeItem(STORAGE_KEY);
     } catch {
       // storage unavailable: selection just won't persist
     }

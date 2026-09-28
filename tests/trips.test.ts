@@ -2,8 +2,9 @@ import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { listItems, listTrips } from "../src/lib/db";
 import type { Extraction } from "../src/lib/extract";
-import { processPending, saveSnapshot, type Deps } from "../src/lib/process";
-import { chooseTrip, profileTrips, type TripProfile } from "../src/lib/trips";
+import { db } from "../src/lib/db";
+import { processPending, rehomeFromDemoTrips, saveSnapshot, type Deps } from "../src/lib/process";
+import { chooseTrip, profileTrips, uniqueTitle, type TripProfile } from "../src/lib/trips";
 import type { Item, Trip } from "../src/lib/types";
 
 const trip = (id: string, title: string, updatedAt = 1): Trip => ({
@@ -49,6 +50,29 @@ describe("chooseTrip", () => {
     const two = profileTrips([pt, pt2], [item("pt", "PT", "Portekiz", "2026-10-08", "2026-10-14"), item("pt2", "PT", "Portekiz", "2027-06-01", "2027-06-07")]);
     expect(chooseTrip(signal({ countryCode: "PT", start: "2026-10-09" }), two)).toEqual({ tripId: "pt" });
     expect(chooseTrip(signal({ countryCode: "PT", start: "2027-06-02" }), two)).toEqual({ tripId: "pt2" });
+  });
+
+  it("opens a new trip for the same country when the dates are far apart", () => {
+    expect(chooseTrip(signal({ countryCode: "PT", start: "2027-06-01", end: "2027-06-05", suggestedTripId: "pt" }), profiles)).toEqual({
+      newTitle: "Portekiz",
+    });
+    // ...but a week apart is still "similar dates".
+    expect(chooseTrip(signal({ countryCode: "PT", start: "2026-10-20" }), profiles)).toEqual({ tripId: "pt" });
+  });
+
+  it("never routes real captures into a sample trip", () => {
+    const demo = { ...trip("demo", "Portekiz (örnek)", 9), demo: true };
+    const withDemo = profileTrips([demo], [item("demo", "PT", "Portekiz", "2026-10-08", "2026-10-14")]);
+    expect(chooseTrip(signal({ countryCode: "PT", start: "2026-10-09", suggestedTripId: "demo" }), withDemo)).toEqual({ newTitle: "Portekiz" });
+    const legacy = profileTrips([trip("old", "Portekiz (örnek)")], []); // created before the demo flag existed
+    expect(chooseTrip(signal({ suggestedTripId: "old" }), legacy)).toEqual({ newTitle: "Yeni gezi" });
+  });
+
+  it("keeps trip titles unique", () => {
+    const existing = [trip("a", "Portekiz")];
+    expect(uniqueTitle("Tayland", null, existing)).toBe("Tayland");
+    expect(uniqueTitle("Portekiz", "2027-06-01", existing)).toBe("Portekiz · Haziran 2027");
+    expect(uniqueTitle("Portekiz", null, existing)).toBe("Portekiz 2");
   });
 
   it("falls back to the model, then the latest trip, when the country is unknown", () => {
@@ -97,5 +121,24 @@ describe("pipeline keeps trips apart", () => {
     const thailand = trips.find((t) => t.title === "Tayland")!;
     expect((await listItems(portugal.id)).map((i) => i.name).sort()).toEqual(["Lisbon Loft", "Majestic Café"]);
     expect((await listItems(thailand.id)).map((i) => i.name)).toEqual(["Bangkok River Hotel"]);
+  });
+});
+
+describe("sample trips", () => {
+  it("moves real captures out of a sample trip into their own trip", async () => {
+    const d = await db();
+    const demo: Trip = { ...trip("demo-x", "Portekiz (örnek)"), demo: true };
+    await d.put("trips", demo);
+    const sample = { ...item("demo-x", "PT", "Portekiz", "2026-10-08", "2026-10-11"), id: "s1", name: "Örnek otel", captureIds: [] } as Item;
+    const real = { ...item("demo-x", "PT", "Portekiz", "2027-03-01", "2027-03-05"), id: "r1", name: "FAA Rentals", city: "Funchal", captureIds: ["c1"], imageUrl: null } as Item;
+    await d.put("items", sample);
+    await d.put("items", real);
+
+    await rehomeFromDemoTrips(async () => null);
+
+    expect((await d.get("items", "s1"))!.tripId).toBe("demo-x");
+    const moved = (await d.get("items", "r1"))!;
+    expect(moved.tripId).not.toBe("demo-x");
+    expect((await d.get("trips", moved.tripId))!.title).toMatch(/^Portekiz/);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { amountInQuote, classify, quoteFound } from "../src/lib/evidence";
+import { amountInQuote, classify, parseLocaleNumber, quoteFound } from "../src/lib/evidence";
 import type { Extraction } from "../src/lib/extract";
 import { buildItem, findDuplicate, groupItems, mergeItem, routeUrl, rowLabel } from "../src/lib/items";
 import type { Capture } from "../src/lib/types";
@@ -63,6 +63,29 @@ describe("evidence", () => {
     expect(amountInQuote(1234, "€ 1.234")).toBe(true);
     expect(amountInQuote(155.25, "155,25 €")).toBe(true);
     expect(amountInQuote(240, "€ 285")).toBe(false);
+  });
+
+  it("reads page numbers the way they are written", () => {
+    expect(parseLocaleNumber("21.228")).toBe(21228);
+    expect(parseLocaleNumber("21,228")).toBe(21228);
+    expect(parseLocaleNumber("1.234,56")).toBe(1234.56);
+    expect(parseLocaleNumber("1,234.56")).toBe(1234.56);
+    expect(parseLocaleNumber("8,9")).toBe(8.9);
+    expect(parseLocaleNumber("155.25")).toBe(155.25);
+    expect(parseLocaleNumber("21 228")).toBe(21228);
+  });
+
+  it("accepts a reformatted quote when the value itself is on the page", () => {
+    // Booking shows "TL 21.228"; the model quoted it as "₺21.228".
+    expect(classify("page", "₺21.228", "Toplam fiyat\nTL 21.228\nVergiler dahil", 21228)).toBe("page");
+    // A bare number elsewhere on the page (e.g. review count) is not a price.
+    expect(classify("page", "₺1.204", "Scored 8.9 · 1.204 reviews", 1204)).toBe("unverified");
+    // Ratings need no currency.
+    expect(classify("page", "Puan 8,9", "Fabulous 8,9 Konum", 8.9, "rating")).toBe("page");
+    // Seen only in the screenshot, but also on the page → verified.
+    expect(classify("screenshot", null, "€ 285 total", 285)).toBe("page");
+    // Cancellation reworded but all its words are on the page.
+    expect(classify("page", "free cancellation before October 5", "Free cancellation · before 5 October 2026", null)).toBe("page");
   });
 
   it("marks invented quotes as unverified", () => {

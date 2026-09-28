@@ -57,39 +57,73 @@ function gapDays(a: { start: string; end: string }, start: string, end: string |
   return 0;
 }
 
-/** Trips closer than this in time count as the same journey (e.g. a 2-country trip). */
-const SAME_JOURNEY_DAYS = 3;
+/** Same country and dates at most this far apart = the same trip ("benzer tarihler"). */
+const SAME_TRIP_DAYS = 7;
+/** A different country joins a trip only when its dates touch it (e.g. Portugal → Spain). */
+const SAME_JOURNEY_DAYS = 2;
 
-export function chooseTrip(signal: TripSignal, profiles: TripProfile[]): TripChoice {
+/** "PT" → "Portekiz" (used when the model gave a code but no name). */
+export function countryName(code: string | null): string | null {
+  if (!code) return null;
+  try {
+    return new Intl.DisplayNames(["tr"], { type: "region" }).of(code) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Sample trips never receive real captures. */
+export const isDemoTrip = (trip: Trip) => Boolean(trip.demo) || trip.title.trim().endsWith("(örnek)");
+
+export function chooseTrip(signal: TripSignal, allProfiles: TripProfile[]): TripChoice {
+  const profiles = allProfiles.filter((p) => !isDemoTrip(p.trip));
   const code = countryCodeOf(signal.countryCode);
   const country = name(signal.country);
   const byRecency = [...profiles].sort((a, b) => b.trip.updatedAt - a.trip.updatedAt);
   const suggested = profiles.find((p) => p.trip.id === signal.suggestedTripId);
+  const gap = (p: TripProfile) =>
+    signal.start && p.range ? gapDays(p.range, signal.start, signal.end) : null; // null = can't tell
+  const newTrip = (): TripChoice => ({
+    newTitle: signal.suggestedTitle?.trim() || signal.country?.trim() || countryName(code) || "Yeni gezi",
+  });
 
   if (code || country) {
     const sameCountry = byRecency.filter(
       (p) => (code && p.countryCodes.has(code)) || (country && p.countryNames.has(country)),
     );
-    if (sameCountry.length === 1) return { tripId: sameCountry[0].trip.id };
-    if (sameCountry.length > 1) {
-      // Same country twice (e.g. Portugal 2026 and 2027): dates decide, then the model, then recency.
-      if (signal.start) {
-        const dated = sameCountry.filter((p) => p.range);
-        const nearest = dated.sort((a, b) => gapDays(a.range!, signal.start!, signal.end) - gapDays(b.range!, signal.start!, signal.end))[0];
-        if (nearest) return { tripId: nearest.trip.id };
-      }
-      return { tripId: (sameCountry.find((p) => p === suggested) ?? sameCountry[0]).trip.id };
+    // Same place and similar (or unknown) dates → same trip; the nearest dates win.
+    const compatible = sameCountry.filter((p) => {
+      const g = gap(p);
+      return g === null || g <= SAME_TRIP_DAYS;
+    });
+    if (compatible.length) {
+      const dated = compatible.filter((p) => gap(p) !== null).sort((a, b) => gap(a)! - gap(b)!);
+      return { tripId: (dated[0] ?? compatible.find((p) => p === suggested) ?? compatible[0]).trip.id };
     }
-    // A new country joins an existing trip only when the dates say it is the same journey.
-    if (signal.start) {
-      const journey = byRecency.find((p) => p.range && gapDays(p.range, signal.start!, signal.end) <= SAME_JOURNEY_DAYS);
-      if (journey) return { tripId: journey.trip.id };
-    }
-    return { newTitle: signal.suggestedTitle?.trim() || signal.country?.trim() || "Yeni gezi" };
+    // Different country whose dates touch an existing trip → one journey.
+    const journey = byRecency.find((p) => {
+      const g = gap(p);
+      return g !== null && g <= SAME_JOURNEY_DAYS;
+    });
+    return journey ? { tripId: journey.trip.id } : newTrip();
   }
 
   // No country (e.g. a regional eSIM or an unclear screenshot): trust the model, else the latest trip.
   if (suggested) return { tripId: suggested.trip.id };
   if (byRecency[0]) return { tripId: byRecency[0].trip.id };
-  return { newTitle: signal.suggestedTitle?.trim() || "Yeni gezi" };
+  return newTrip();
+}
+
+const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+/** "Portekiz" is taken by another trip → "Portekiz · Haziran 2027" (or a number when undated). */
+export function uniqueTitle(title: string, start: string | null, trips: Trip[]): string {
+  const taken = new Set(trips.map((t) => t.title.trim().toLowerCase()));
+  if (!taken.has(title.toLowerCase())) return title;
+  if (start) {
+    const [y, m] = start.split("-").map(Number);
+    const dated = `${title} · ${MONTHS[m - 1]} ${y}`;
+    if (!taken.has(dated.toLowerCase())) return dated;
+  }
+  for (let n = 2; ; n++) if (!taken.has(`${title} ${n}`.toLowerCase())) return `${title} ${n}`;
 }

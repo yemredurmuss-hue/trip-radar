@@ -126,7 +126,7 @@ export function buildItem(
       value: x.rating.value,
       scale: x.rating.scale,
       count: x.rating.count,
-      source: x.rating.value == null ? "none" : classify(x.rating.source, x.rating.evidence, corpus, x.rating.value),
+      source: x.rating.value == null ? "none" : classify(x.rating.source, x.rating.evidence, corpus, x.rating.value, "rating"),
     },
     flight: x.flight
       ? {

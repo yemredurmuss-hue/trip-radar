@@ -1,24 +1,21 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { sendMessage } from "../lib/assistant";
-import { downscale, fileToDataUrl, requestProcessing } from "../lib/browser";
 import { describeError } from "../lib/llm";
-import { saveImage, savePastedLink } from "../lib/process";
 import type { ChatMessage, Trip } from "../lib/types";
-import { looksLikeUrl } from "../lib/url";
+import { addImages, addLinks } from "./capture";
 import { ArrowUp, Back, Plus } from "./Icons";
 
 interface Props {
-  trips: Trip[];
-  trip: Trip | null;
+  trip: Trip;
   messages: ChatMessage[];
-  onSelectTrip: (id: string) => void;
+  onBack: () => void;
 }
 
-export function Chat({ trips, trip, messages, onSelectTrip }: Props) {
+/** The selected trip's own conversation; every trip has its own chat and context. */
+export function Chat({ trip, messages, onBack }: Props) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
@@ -33,27 +30,12 @@ export function Chat({ trips, trip, messages, onSelectTrip }: Props) {
     bottom.current?.scrollIntoView({ block: "end" });
   }, [visible.length, busy]);
 
-  async function addImages(files: Iterable<File>) {
-    for (const file of files) {
-      if (!file.type.startsWith("image/")) continue;
-      await saveImage(await downscale(await fileToDataUrl(file)));
-    }
-    requestProcessing();
-  }
-
   async function submit(value = text) {
     const input = value.trim();
     if (!input || busy) return;
     setError(null);
-    const tokens = input.split(/\s+/);
-    if (tokens.every(looksLikeUrl)) {
-      for (const url of tokens) await savePastedLink(url);
-      requestProcessing();
+    if (await addLinks(input)) {
       setText("");
-      return;
-    }
-    if (!trip) {
-      setError("Önce bir seçenek kaydet ya da link yapıştır; gezi otomatik oluşur.");
       return;
     }
     setText("");
@@ -84,20 +66,11 @@ export function Chat({ trips, trip, messages, onSelectTrip }: Props) {
   return (
     <section className="chat" onDragOver={(e) => (e.preventDefault(), setDragging(true))} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
       <div className="chat-top">
-        <button className="trip-switch" onClick={() => setMenuOpen(!menuOpen)}>
+        <button className="trip-switch" onClick={onBack}>
           <Back /> Seyahatlerim
         </button>
-        {menuOpen && (
-          <div className="trip-menu">
-            {trips.length === 0 && <div className="muted" style={{ padding: 10 }}>Henüz gezi yok</div>}
-            {trips.map((t) => (
-              <button key={t.id} className={t.id === trip?.id ? "active" : ""} onClick={() => (onSelectTrip(t.id), setMenuOpen(false))}>
-                {t.title}
-              </button>
-            ))}
-          </div>
-        )}
         <div className="chat-title">Asistan</div>
+        <div className="muted chat-sub">{trip.title} için</div>
       </div>
 
       <div className="messages">

@@ -1,31 +1,46 @@
 import { useEffect, useState } from "react";
 import { resetConversation } from "../lib/assistant";
-import { requestProcessing } from "../lib/browser";
 import { db, notifyChanged } from "../lib/db";
 import { loadDemoTrip } from "../lib/demo";
-import { retryCapture } from "../lib/process";
-import type { Capture, Item } from "../lib/types";
+import type { Item } from "../lib/types";
 import { Chat } from "./Chat";
 import { ItemDrawer } from "./ItemDrawer";
 import { Settings } from "./Settings";
 import { TripPanel } from "./TripPanel";
+import { TripsHome } from "./TripsHome";
 import { UpdateBanner } from "./UpdateBanner";
-import { useBoard } from "./useBoard";
+import { readSelectedTrip, useBoard } from "./useBoard";
+
+/** "#trip=<id>" (from the popup) opens that trip; otherwise the last trip viewed, or the overview. */
+function tripFromHash(): string | null {
+  const match = location.hash.match(/^#trip=([\w-]+)/);
+  return match ? match[1] : null;
+}
 
 export function App() {
-  const board = useBoard();
+  const board = useBoard(tripFromHash() ?? readSelectedTrip());
   const [openItemId, setOpenItemId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(location.hash === "#settings");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [seenArrival, setSeenArrival] = useState<string | null>(null);
 
   useEffect(() => {
-    const onHash = () => location.hash === "#settings" && setSettingsOpen(true);
+    const onHash = () => {
+      if (location.hash === "#settings") setSettingsOpen(true);
+      const tripId = tripFromHash();
+      if (tripId) board.selectTrip(tripId);
+    };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
-  }, []);
+  }, [board.selectTrip]);
 
-  const openItem = board.items.find((i) => i.id === openItemId) ?? null;
   const trip = board.trip;
+  const openItem = board.items.find((i) => i.id === openItemId) ?? null;
+
+  // A capture landed in a different trip than the one on screen: say where, offer to go there.
+  const arrival = board.arrivals[0];
+  const arrivalTrip = arrival ? board.trips.find((t) => t.id === arrival.tripId) : undefined;
+  const showArrival = arrival && arrivalTrip && trip && arrival.tripId !== trip.id && arrival.id !== seenArrival;
 
   async function deleteTrip() {
     if (!trip || !confirm(`"${trip.title}" ve içindeki her şey silinsin mi?`)) return;
@@ -33,6 +48,7 @@ export function App() {
     for (const i of board.items) await d.delete("items", i.id);
     for (const m of board.messages) await d.delete("messages", m.id);
     await d.delete("trips", trip.id);
+    board.selectTrip(null);
     notifyChanged();
   }
 
@@ -44,8 +60,10 @@ export function App() {
       {menuOpen && (
         <div className="menu" onClick={() => setMenuOpen(false)}>
           <button onClick={() => setSettingsOpen(true)}>Ayarlar</button>
-          {trip && <button onClick={() => void resetConversation(trip.id)}>Yeni sohbet başlat</button>}
-          <button onClick={() => void loadDemoTrip().then(board.selectTrip)}>Örnek geziyi yükle</button>
+          {trip && <button onClick={() => void resetConversation(trip.id)}>Bu gezide yeni sohbet başlat</button>}
+          {!board.trips.some((t) => t.demo) && (
+            <button onClick={() => void loadDemoTrip().then(board.selectTrip)}>Örnek geziyi yükle</button>
+          )}
           {trip && <button onClick={() => void deleteTrip()}>Bu geziyi sil</button>}
         </div>
       )}
@@ -53,27 +71,53 @@ export function App() {
   );
 
   return (
-    <div className="board">
+    <>
       <UpdateBanner />
-      <Chat trips={board.trips} trip={trip} messages={board.messages} onSelectTrip={board.selectTrip} />
-      <main className="panel">
-        {trip ? (
-          <TripPanel
-            trip={trip}
-            items={board.items}
+      {trip ? (
+        <div className="board">
+          <Chat trip={trip} messages={board.messages} onBack={() => board.selectTrip(null)} />
+          <main className="panel">
+            <TripPanel
+              trip={trip}
+              items={board.items}
+              openCaptures={board.openCaptures}
+              onOpenItem={(i: Item) => setOpenItemId(i.id)}
+              menu={menu}
+            />
+          </main>
+        </div>
+      ) : (
+        board.loaded && (
+          <TripsHome
+            trips={board.trips}
+            items={board.allItems}
             openCaptures={board.openCaptures}
-            onOpenItem={(i: Item) => setOpenItemId(i.id)}
+            onOpen={board.selectTrip}
+            onDemo={() => void loadDemoTrip().then(board.selectTrip)}
+            onSettings={() => setSettingsOpen(true)}
             menu={menu}
           />
-        ) : (
-          board.loaded && (
-            <>
-              <div className="panel-top">{menu}</div>
-              <Empty captures={board.openCaptures} onDemo={() => void loadDemoTrip().then(board.selectTrip)} onSettings={() => setSettingsOpen(true)} />
-            </>
-          )
-        )}
-      </main>
+        )
+      )}
+      {showArrival && (
+        <div className="toast">
+          <span>
+            {arrival.text.replace(/^✓\s*/, "✓ ").replace(/ → .*$/, "")} → <b>{arrivalTrip.title}</b>
+          </span>
+          <button
+            className="small-btn"
+            onClick={() => {
+              setSeenArrival(arrival.id);
+              board.selectTrip(arrivalTrip.id);
+            }}
+          >
+            Aç
+          </button>
+          <button className="toast-close" aria-label="Kapat" onClick={() => setSeenArrival(arrival.id)}>
+            ×
+          </button>
+        </div>
+      )}
       {openItem && (
         <ItemDrawer
           item={openItem}
@@ -91,45 +135,6 @@ export function App() {
           }}
         />
       )}
-    </div>
-  );
-}
-
-function Empty({ captures, onDemo, onSettings }: { captures: Capture[]; onDemo: () => void; onSettings: () => void }) {
-  const failed = captures.filter((c) => c.status === "error");
-  const working = captures.length - failed.length;
-  return (
-    <div className="empty">
-      <h2>İlk seçeneğini kaydet</h2>
-      <ol>
-        <li>
-          <a href="#settings" onClick={onSettings}>
-            Ücretsiz Gemini anahtarını bağla
-          </a>{" "}
-          (1 dakika, kart gerekmez).
-        </li>
-        <li>Bir otel, uçuş, etkinlik ya da eSIM sayfasındayken araç çubuğundaki Trip Radar simgesine tıkla (veya Alt+Shift+S).</li>
-        <li>Ya da soldaki kutuya link yapıştır, ekran görüntüsü sürükle.</li>
-      </ol>
-      <p className="muted">AI destinasyonu ve tarihleri bulur, geziyi kendisi oluşturur.</p>
-      {working > 0 && <p>{working} kayıt işleniyor…</p>}
-      {failed.map((c) => (
-        <p key={c.id} className="chat-error">
-          ⚠ {c.title || c.url || "Ekran görüntüsü"}: {c.error}{" "}
-          <button
-            className="small-btn"
-            onClick={async () => {
-              await retryCapture(c.id);
-              requestProcessing();
-            }}
-          >
-            Tekrar dene
-          </button>
-        </p>
-      ))}
-      <button className="btn-link" style={{ fontSize: 15, marginTop: 12 }} onClick={onDemo}>
-        Örnek geziyi yükle →
-      </button>
-    </div>
+    </>
   );
 }

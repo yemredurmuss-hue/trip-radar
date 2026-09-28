@@ -2,8 +2,9 @@
 import { addEvent, db, listTrips, newId, nextTime, notifyChanged } from "./db";
 import type { Extraction } from "./extract";
 import { describeError, getProvider } from "./llm";
-import { buildItem, CATEGORY_LABELS, findDuplicate, isoDate, mergeItem } from "./items";
-import { chooseTrip, profileTrips } from "./trips";
+import { valueOnPage } from "./evidence";
+import { buildItem, CATEGORY_LABELS, corpusOf, findDuplicate, isoDate, mergeItem } from "./items";
+import { chooseTrip, isDemoTrip, profileTrips, uniqueTitle } from "./trips";
 import type { PageSnapshot } from "./pagecapture";
 import type { Capture, Trip } from "./types";
 import { parseUrl, type UrlFacts } from "./url";
@@ -110,7 +111,7 @@ async function resolveTrip(extraction: Extraction, trips: Trip[], deps: Deps, fa
   const now = Date.now();
   const trip: Trip = {
     id: newId(),
-    title: choice.newTitle,
+    title: uniqueTitle(choice.newTitle, facts.checkIn ?? isoDate(extraction.dates.start), trips),
     confirmedDates: null,
     budget: null,
     heroImage: await deps.heroImage(extraction.city ?? extraction.country),
@@ -160,6 +161,73 @@ export function processPending(deps?: Deps): Promise<void> {
     }
   })();
   return running;
+}
+
+/** Re-checks facts marked "unverified" against the stored page text with the current rules. */
+export async function reverifyFacts(): Promise<void> {
+  const d = await db();
+  let changed = false;
+  for (const item of await d.getAll("items")) {
+    const needsPrice = item.price.source === "unverified" && item.price.amount != null;
+    const needsRating = item.rating.source === "unverified" && item.rating.value != null;
+    if (!needsPrice && !needsRating) continue;
+    const capture = await d.get("captures", item.captureIds.at(-1) ?? "");
+    if (!capture) continue;
+    const corpus = corpusOf(capture);
+    const next = { ...item };
+    if (needsPrice && valueOnPage(item.price.amount!, corpus, true)) next.price = { ...item.price, source: "page" };
+    if (needsRating && valueOnPage(item.rating.value!, corpus, false)) next.rating = { ...item.rating, source: "page" };
+    if (next.price !== item.price || next.rating !== item.rating) {
+      await d.put("items", next);
+      changed = true;
+    }
+  }
+  if (changed) notifyChanged();
+}
+
+/**
+ * Real captures that landed in a sample trip (before sample trips were excluded from routing)
+ * move to where they belong. Safe to run repeatedly.
+ */
+export async function rehomeFromDemoTrips(heroImage: Deps["heroImage"] = destinationImage): Promise<void> {
+  const d = await db();
+  const trips = await listTrips();
+  const demoIds = new Set(trips.filter(isDemoTrip).map((t) => t.id));
+  if (!demoIds.size) return;
+  const strays = (await d.getAll("items")).filter((i) => demoIds.has(i.tripId) && i.captureIds.length > 0);
+  for (const item of strays) {
+    const current = await listTrips();
+    const choice = chooseTrip(
+      {
+        countryCode: item.countryCode,
+        country: item.country,
+        start: item.dates.start,
+        end: item.dates.end,
+        suggestedTripId: null,
+        suggestedTitle: item.country,
+      },
+      profileTrips(current, await d.getAll("items")),
+    );
+    let tripId: string;
+    if ("tripId" in choice) tripId = choice.tripId;
+    else {
+      const now = Date.now();
+      const trip: Trip = {
+        id: newId(),
+        title: uniqueTitle(choice.newTitle, item.dates.start, current),
+        confirmedDates: null,
+        budget: null,
+        heroImage: (await heroImage(item.city ?? item.country)) ?? item.imageUrl,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await d.put("trips", trip);
+      tripId = trip.id;
+    }
+    await d.put("items", { ...item, tripId, updatedAt: Date.now() });
+    await addEvent(tripId, `✓ ${item.name} örnek geziden buraya taşındı`);
+  }
+  if (strays.length) notifyChanged();
 }
 
 /**

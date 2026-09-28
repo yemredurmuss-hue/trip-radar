@@ -10,7 +10,7 @@ import { saveSnapshot } from "./lib/process";
 type State =
   | { step: "saving" }
   | { step: "working"; captureId: string }
-  | { step: "done"; text: string }
+  | { step: "done"; text: string; tripId: string }
   | { step: "error"; text: string }
   | { step: "hint"; text: string };
 
@@ -67,7 +67,7 @@ function Popup() {
         const trip = item ? await d.get("trips", item.tripId) : undefined;
         if (item) {
           const where = [trip?.title, CATEGORY_LABELS[item.category], item.city].filter(Boolean).join(" · ");
-          setState({ step: "done", text: `${item.name} → ${where}` });
+          setState({ step: "done", text: `${item.name} → ${where}`, tripId: item.tripId });
         }
       }
     };
@@ -90,8 +90,11 @@ function Popup() {
       {state.step === "error" && <p className="error">{state.text}</p>}
       {state.step === "hint" && <p>{state.text}</p>}
       {!hasKey && <p className="warning">Kayıt duruyor. AI'ın işlemesi için ücretsiz Gemini anahtarını bir kez bağla.</p>}
-      <button className="primary" onClick={() => void openBoard(hasKey ? "" : "#settings")}>
-        {hasKey ? "Panoyu aç" : "1 dakikalık kurulum"}
+      <button
+        className="primary"
+        onClick={() => void openBoard(!hasKey ? "#settings" : state.step === "done" ? `#trip=${state.tripId}` : "")}
+      >
+        {!hasKey ? "1 dakikalık kurulum" : state.step === "done" ? "Geziyi aç" : "Panoyu aç"}
       </button>
     </div>
   );

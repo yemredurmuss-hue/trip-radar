@@ -1,5 +1,5 @@
 // Service worker: runs the capture queue so processing continues after the popup closes.
-import { isProcessing, processPending, recoverStuck } from "./lib/process";
+import { isProcessing, processPending, recoverStuck, rehomeFromDemoTrips, reverifyFacts } from "./lib/process";
 import { updateWaiting } from "./lib/update";
 
 let recovery: Promise<void> | null = null;
@@ -8,7 +8,8 @@ async function run(): Promise<void> {
   // Extension API calls reset the worker's idle timer while a model call is in flight.
   const keepAlive = setInterval(() => void chrome.runtime.getPlatformInfo(), 20_000);
   try {
-    recovery ??= recoverStuck(); // once per worker lifetime, before anything is processed
+    // Once per worker lifetime, before anything is processed.
+    recovery ??= recoverStuck().then(() => rehomeFromDemoTrips()).then(() => reverifyFacts());
     await recovery;
     await processPending();
   } finally {

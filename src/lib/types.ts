@@ -14,6 +14,8 @@ export interface Trip {
   confirmedDates: { start: string; end: string } | null;
   budget: { amount: number; currency: string } | null;
   heroImage: string | null;
+  /** Sample data; never receives real captures. */
+  demo?: boolean;
   createdAt: number;
   updatedAt: number;
 }

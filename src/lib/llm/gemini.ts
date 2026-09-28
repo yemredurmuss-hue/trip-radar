@@ -19,12 +19,14 @@ export interface GeminiClient {
 
 const RETRY_AFTER_MS = 20_000;
 
-/** Free-tier per-minute limits are tight; one patient retry covers most bursts. */
+/** Rate limits (429) and "model overloaded" (5xx) are usually gone after a short wait: retry once. */
+const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+
 async function withRetry<T>(call: () => Promise<T>, waitMs = RETRY_AFTER_MS): Promise<T> {
   try {
     return await call();
   } catch (error) {
-    if (!(error instanceof ApiError) || error.status !== 429) throw error;
+    if (!(error instanceof ApiError) || !RETRYABLE.has(error.status)) throw error;
     await new Promise((resolve) => setTimeout(resolve, waitMs));
     return call();
   }
@@ -175,5 +177,6 @@ export function describeGeminiError(error: unknown): string | null {
   if (error.status === 404) return "Gemini modeli bulunamadı. Ayarlar'da 'Modelleri getir' ile güncel modeli seç.";
   if (error.status === 429)
     return "Gemini ücretsiz kotası doldu (dakikalık ya da günlük). Biraz bekleyip 'Tekrar dene'ye bas.";
+  if (error.status >= 500) return "Gemini şu an meşgul ya da geçici bir sorun var. Biraz sonra 'Tekrar dene'ye bas.";
   return `Gemini hatası (${error.status}): ${message.slice(0, 200)}`;
 }

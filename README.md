@@ -52,8 +52,13 @@ Kodu güncellediğinde `npm run build` çalıştır, sonra `chrome://extensions`
 | Sohbete yaz | "Merkezi olsun, bütçe €1500", "Hangisi daha iyi?", "Casa Azul'u ele", "Jardim'i rezerve ettim" gibi. |
 | Satıra tıkla | Fiyatın bağlamı (tarih, kişi, oda, iptal), kaynağı, karşılaştırma, orijinal link. |
 
-**Geziler kendiliğinden ayrılır.** Her kaydın ülkesi (PT, TH gibi kodla) belirlenir. Portekiz kaydı
-Portekiz gezisine, Tayland kaydı Tayland gezisine gider; AI yanlış gezi önerse bile karar ülkeye göre verilir.
+**Her gezi ayrı bir pano ve sohbettir.** Açılışta **Seyahatlerim** listesi gelir; bir geziye girince
+solda o gezinin kendi sohbeti, sağda panosu olur. **‹ Seyahatlerim** ile listeye dönülür.
+
+**Geziler kendiliğinden ayrılır.** Her kaydın ülkesi (PT, TH gibi kodla) ve tarihleri belirlenir:
+aynı ülke + yakın tarihler (en fazla ~1 hafta ara) aynı geziye, başka ülke ya da uzak tarih yeni geziye gider.
+AI yanlış gezi önerse bile karar bu kurala göre verilir. Açık olan gezi dışında bir yere kayıt düşerse
+altta "→ Tayland · Aç" bildirimi çıkar. Örnek gezi kayıt almaz.
 - Aynı ülkeye iki ayrı gezi varsa tarihe en yakın olanı seçilir.
 - Tarihleri bitişik yeni bir ülke (ör. Portekiz'den sonra İspanya) aynı geziye eklenir.
 - Ülkesi belli olmayan kayıtlar (ör. bölgesel eSIM) AI'ın önerdiği ya da en son gezine gider.
