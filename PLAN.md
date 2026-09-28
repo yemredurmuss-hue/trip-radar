@@ -22,6 +22,8 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] Link yapıştırma, ekran görüntüsü sürükleme, Google Maps rota linki, JSON dışa aktarma
 - [x] Ücretsiz Gemini varsayılan sağlayıcı; Claude isteğe bağlı (ortak arayüz: `src/lib/llm/`)
 - [x] Gezileri ülkeye göre ayırma (Portekiz ≠ Tayland), elle taşıma; hata ekranı (boş sayfa yok)
+- [x] Karar zekası: kriter bazlı 0–100 puan, kullanıcının belirlediği önem, nedenler/bedeller,
+      "ne değişirse sonuç değişir", ücretsiz konum ve kur, AI yorumu ayrı ve düşük ağırlıklı (`src/lib/decision.ts`, `analysis.ts`)
 - [ ] İlk gerçek gezide kullanım: 20–50 gerçek kayıt, hangi alanların yanlış/eksik geldiğini not et
 
 ## v1: Telefon
@@ -37,4 +39,5 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 ## Açık sorular (gerçek kullanımda cevaplanacak)
 - Booking/Airbnb sayfalarında iptal koşulu ve oda fiyatı sayfa yazısında güvenilir geliyor mu?
 - Mobil uygulama paylaşım linkleri tarih taşıyor mu?
+- Varsayılan önemler (konaklamada fiyat ve konum "önemli") gerçek kararlarımla örtüşüyor mu?
 - Gemini ücretsiz modeli gerçek sayfalarda fiyat/iptal/oda bilgisini ne kadar doğru çıkarıyor? Günlük sınır yetiyor mu?

@@ -50,7 +50,8 @@ Kodu güncellediğinde `npm run build` çalıştır, sonra `chrome://extensions`
 | Panoda kutuya **link yapıştır** | Linkten tarih/kişi okunur. Ayrıntı için sayfayı açıp simgeye tıkla. |
 | Panoya **ekran görüntüsü sürükle/yapıştır** | Telefondan attığın ekran görüntüleri de işlenir. |
 | Sohbete yaz | "Merkezi olsun, bütçe €1500", "Hangisi daha iyi?", "Casa Azul'u ele", "Jardim'i rezerve ettim" gibi. |
-| Satıra tıkla | Fiyatın bağlamı (tarih, kişi, oda, iptal), kaynağı, karşılaştırma, orijinal link. |
+| Satıra tıkla | Fiyatın bağlamı (tarih, kişi, oda, iptal), kaynağı, puan dökümü, orijinal link. |
+| Grubun altındaki **Karşılaştır →** | Seçenekler yan yana: her kriterin değeri, önemi (sen seçersin), nedenler, "ne değişirse sonuç değişir". |
 
 **Her gezi ayrı bir pano ve sohbettir.** Açılışta **Seyahatlerim** listesi gelir; bir geziye girince
 solda o gezinin kendi sohbeti, sağda panosu olur. **‹ Seyahatlerim** ile listeye dönülür.
@@ -71,6 +72,28 @@ altta "→ Tayland · Aç" bildirimi çıkar. Örnek gezi kayıt almaz.
 - **Yorumlar:** "Tüm yorumlar" penceresini açıp tıklarsan o yorumlar da okunur.
 - **Fiyat güncelleme:** Aynı sayfayı tekrar kaydedince kart güncellenir, fiyat geçmişi tutulur.
 
+## Karar zekası: puan nasıl çıkıyor?
+
+Aynı ihtiyaç için kaydettiğin seçenekler (ör. Porto'da 3 gece) 0–100 arası puanlanır. Puanı **kod** hesaplar,
+aynı bilgiyle hep aynı sonucu verir ve her sayısı açıklanabilir:
+
+1. **Ölçüm:** Her seçenek için kriterler sayfadan okunur. Konaklamada fiyat (toplam, gerekirse kurla €'ya
+   çevrilir), konum, puan/yorum, konfor/temizlik alt puanları, iptal esnekliği ve istediğin olanaklar
+   ölçülür. Uçuşta fiyat, süre, aktarma, saatler ve bagaj; eSIM'de fiyat, veri ve geçerlilik süresi.
+2. **Konum:** Otelden, gezide kaydettiğin yerlere (müze, restoran…) tipik yürüme süresi hesaplanır.
+   Yer kaydetmediysen şehir merkezine uzaklık kullanılır. Adresler OpenStreetMap ile ücretsiz konuma çevrilir.
+3. **Adil puan:** Az yorumlu yüksek puan temkinli sayılır (96 yorumla 4,9 ≠ 1.200 yorumla 8,9). Airbnb'nin
+   5'lik puanları Booking ölçeğine göre ayarlanır (4,8 ≈ 8,5).
+4. **Ağırlık:** Her kriterin önemi senin elinde (Önemsiz → Çok önemli). Karşılaştır ekranından ya da
+   sohbette ("merkezi olsun", "fiyat o kadar önemli değil") değiştirirsin, puanlar anında yeniden hesaplanır.
+5. **AI değerlendirmesi:** AI yorumları, artı/eksileri ve tercihlerini okuyup sayıların yakalayamadığını
+   yazar (ör. "hafta sonu gece gürültüsü") ve 0–10 arası bir uygunluk puanı verir. Bu, düşük ağırlıklı ve
+   etiketli ayrı bir kriterdir; bilgiler değişince yeniden istenir, eskisi kullanılmaz.
+6. **Dürüstlük:** Fiyatı olmayan ya da bilgisi yetersiz seçenek puanlanmaz, neyin eksik olduğu yazılır.
+   Fark 2 puandan azsa "başa baş" denir. Farklı tarih için alınmış fiyat karşılaştırmaya girmez.
+
+Son karar senin: "Plana al" ile seçersin; sistem yalnız nedenleriyle gösterir.
+
 ## Doğruluk kuralları
 
 - AI fiyat, puan ve iptal koşulu için sayfadan **birebir alıntı** vermek zorunda. Alıntı sayfada yoksa
@@ -87,7 +110,8 @@ altta "→ Tayland · Aç" bildirimi çıkar. Örnek gezi kayıt almaz.
 | Gizlilik | Ücretsiz katmanda Google içeriği ürün geliştirmede kullanabilir, insanlar okuyabilir | İçerik model eğitiminde kullanılmaz |
 | Sınır dolunca | Kayıt "Tekrar dene" ile sonra işlenir | — |
 
-Her kayıt 1 istek, her sohbet mesajı 1–3 istektir. Sağlayıcı değiştirince sohbet yeni bağlamla başlar;
+Her kayıt 1 istek, her sohbet mesajı 1–3 istektir; karşılaştırılan her grup için bilgiler değiştiğinde
+1 analiz isteği daha yapılır. Sağlayıcı değiştirince sohbet yeni bağlamla başlar;
 kararlar ve kayıtlar olduğu gibi kalır.
 
 ## Geliştirme

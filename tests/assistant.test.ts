@@ -34,7 +34,7 @@ async function seed(): Promise<{ trip: Trip; items: Item[] }> {
     price: { amount, currency: "EUR", scope: "total", taxesIncluded: "yes", source: "page", observedAt: 1 },
     priceHistory: [], cancellation: { summary: null, freeUntil: null, source: "none" },
     rating: { value: null, scale: null, count: null, source: "none" }, flight: null, highlights: [], concerns: [],
-    reviewSummary: null, missing: [], status: "saved", statusNote: null, recommendation: null, createdAt: 1, updatedAt: 1,
+    reviewSummary: null, missing: [], status: "saved", statusNote: null, createdAt: 1, updatedAt: 1,
   });
   const items = [item("a", "Jardim Stay", 285), item("b", "Casa Azul", 240)];
   for (const i of items) await d.put("items", i);
@@ -49,7 +49,7 @@ describe("assistant", () => {
         stop_reason: "tool_use",
         content: [
           { type: "text", text: "Jardim Stay iyi bir denge. Planına alalım mı?", citations: null },
-          { type: "tool_use", id: "tu1", name: "recommend", input: { item_id: "a", reason: "Merkezi" }, caller: { type: "direct" } },
+          { type: "tool_use", id: "tu1", name: "set_priorities", input: { changes: [{ criterion: "location", level: "cok_onemli", category: "stay" }, { criterion: "price", level: "onemli", category: null }], wanted_amenities: ["mutfak", "havuz"] }, caller: { type: "direct" } },
           { type: "tool_use", id: "tu2", name: "save_preference", input: { text: "Merkezi konum önemli", scope: "trip" }, caller: { type: "direct" } },
           { type: "tool_use", id: "tu3", name: "offer_choices", input: { options: ["Evet, ekleyelim", "Diğerlerini konuşalım", "fazla"] }, caller: { type: "direct" } },
         ] as Anthropic.ContentBlock[],
@@ -73,8 +73,15 @@ describe("assistant", () => {
     await sendMessage("t1", "Merkezi olsun ama bütçeyi aşmayalım.", anthropicProvider(client, "claude-opus-5"));
 
     let items = await listItems("t1");
-    expect(items.find((i) => i.id === "a")!.recommendation).toBe("Merkezi");
-    expect(items.find((i) => i.id === "b")!.recommendation).toBeNull();
+    const trip = (await (await db()).get("trips", "t1"))!;
+    expect(trip.categoryPriorities?.stay?.location).toBe(4);
+    expect(trip.priorities?.price).toBe(3);
+    expect(trip.wantedAmenities).toEqual(["mutfak", "havuz"]);
+    // The tool answers with the recomputed decision so the model can explain what changed.
+    const priorityResult = (calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[])[0];
+    expect(priorityResult.is_error).toBeFalsy();
+    expect(String(priorityResult.content)).toContain('"need_key":"stay:porto"');
+    expect(String(priorityResult.content)).toContain("Çok önemli");
     expect((await listPreferences("t1")).map((p) => p.text)).toEqual(["Merkezi konum önemli"]);
 
     let messages = await listMessages("t1");
@@ -83,7 +90,7 @@ describe("assistant", () => {
     // The empty end_turn response was not stored.
     expect(messages.map((m) => m.role)).toEqual(["user", "assistant", "user"]);
 
-    // Second message: the state changed (recommendation), so it is sent again.
+    // Second message: the state changed (priorities), so it is sent again.
     await sendMessage("t1", "Evet, ekleyelim", anthropicProvider(client, "claude-opus-5"));
     const lastUserTurn = calls[2].messages.at(-1)!;
     expect(JSON.stringify(lastUserTurn.content)).toContain("trip_state");

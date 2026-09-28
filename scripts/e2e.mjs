@@ -82,7 +82,7 @@ try {
 
   // 3. Queue a capture without an API key: the worker must pick it up and report a readable error.
   await app.evaluate(async (snapshot) => {
-    const request = indexedDB.open("trip-radar", 1);
+    const request = indexedDB.open("trip-radar");
     const database = await new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
@@ -110,9 +110,30 @@ try {
   await app.getByText("Örnek geziyi yükle →").click();
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
   await app.getByText("Jardim Stay").first().waitFor();
+  // The engine's pick among the stays carries its score on the row.
+  await app.locator("button.row", { hasText: "Jardim Stay" }).locator(".score-pill.best").waitFor();
   await app.screenshot({ path: `${out}/3-board.png` });
-  await app.getByRole("button", { name: /Jardim Stay/ }).click();
+
+  // Comparison: numbers side by side, the weights the user controls, and why.
+  await app.locator(".verdict-line", { hasText: "Jardim Stay öne çıkıyor" }).click();
+  const compare = app.getByRole("dialog", { name: "Karşılaştırma" });
+  const winner = compare.locator("thead th.win .opt-name");
+  assert.equal(await winner.innerText(), "Jardim Stay");
+  await compare.getByText("Neden Jardim Stay?").waitFor();
+  await compare.getByText("AI yorumu için Ayarlar'dan", { exact: false }).waitFor(); // no key yet
+  await app.screenshot({ path: `${out}/3b-compare.png`, fullPage: true });
+  // Location stops mattering → the cheaper stay wins, and the view says what would flip it back.
+  await compare.locator("tr", { hasText: "Konum" }).locator("select").selectOption("0");
+  await compare.locator("thead th.win .opt-name", { hasText: "Casa Azul" }).waitFor();
+  await compare.getByText("Konum çok önemli olursa").waitFor();
+  await app.screenshot({ path: `${out}/3c-compare-priority.png`, fullPage: true });
+  await compare.getByText("Önemleri varsayılana döndür").click();
+  await compare.locator("thead th.win .opt-name", { hasText: "Jardim Stay" }).waitFor();
+  await compare.getByRole("button", { name: "Kapat" }).click();
+
+  await app.locator("button.row", { hasText: "Jardim Stay" }).click();
   await app.getByRole("dialog").waitFor();
+  await app.locator(".breakdown .score-big").waitFor(); // per-criterion breakdown in the drawer
   await app.screenshot({ path: `${out}/4-drawer.png` });
   await app.getByRole("button", { name: "Plana al" }).click();
   await app.getByRole("button", { name: "Kapat" }).click();
@@ -120,7 +141,7 @@ try {
   await app.getByText("Etkinlikler").click();
   assert.equal(await app.locator(".crash").count(), 0, "board crashed after chat updates");
   await app.screenshot({ path: `${out}/5-chosen.png` });
-  console.log("✓ board: demo trip, drawer, status change and chat event");
+  console.log("✓ board: demo trip, decision labels, comparison with priorities, drawer, status change and chat event");
 
   // 5. Settings dialog.
   await app.goto(`chrome-extension://${id}/app.html#settings`);
@@ -167,7 +188,7 @@ try {
     price: { amount: 285, currency: "€", scope: "total", taxes_included: "yes", source: "page", evidence: "€ 285 total · includes taxes and fees" },
     cancellation: { summary: "5 Eki'ye kadar ücretsiz iptal", free_until: "2026-10-05", source: "page", evidence: "Free cancellation before 5 October 2026" },
     rating: { value: 8.9, scale: 10, count: 1204, source: "page", evidence: "Scored 8.9" },
-    flight: null, highlights: ["Merkezi", "Sessiz"], concerns: [], review_summary: "Konum çok övülüyor.",
+    flight: null, metrics: null, highlights: ["Merkezi", "Sessiz"], concerns: [], review_summary: "Konum çok övülüyor.",
     image_url: "/relative.jpg", missing: [], trip: { existing_trip_id: null, new_trip_title: "Portekiz" }, need_key: "stay:porto",
   };
   const bangkokExtraction = {
@@ -176,7 +197,23 @@ try {
     price: { ...extraction.price, amount: 3200, currency: "THB", evidence: "฿ 3,200" },
     trip: { existing_trip_id: null, new_trip_title: "Tayland" },
   };
+  const casaExtraction = {
+    ...extraction, name: "Casa Azul", provider: "Airbnb", summary: "Bonfim, mutfaklı daire", option_detail: null,
+    location: { address: null, area: "Bonfim", approximate: true },
+    dates: { start: "2026-10-08", end: "2026-10-11", source: "page" },
+    price: { ...extraction.price, amount: 240, evidence: "€ 240 total" },
+    rating: { value: 4.8, scale: 5, count: 96, source: "page", evidence: "4.8 · 96 reviews" },
+    review_summary: "Ev sahibi ilgili; merkeze dönüş yokuş yukarı.", image_url: null,
+  };
+  const chatPrompts = [];
   const reply = (parts) => ({ json: { candidates: [{ content: { role: "model", parts }, finishReason: "STOP" }] } });
+  // Free geocoding and exchange rates, simulated (the worker calls them while processing).
+  await flow.route("https://nominatim.openstreetmap.org/**", (route) => {
+    const q = new URL(route.request().url()).searchParams.get("q") ?? "";
+    const at = /almada/i.test(q) ? [41.1466, -8.6116] : /casa azul/i.test(q) ? [41.162, -8.589] : /porto/i.test(q) ? [41.1496, -8.6109] : null;
+    return route.fulfill({ json: at ? [{ lat: String(at[0]), lon: String(at[1]) }] : [] });
+  });
+  await flow.route(/frankfurter/, (route) => route.fulfill({ json: { date: "2026-09-28", rates: { TRY: 40, THB: 38, USD: 1.1 } } }));
   await flow.route("https://generativelanguage.googleapis.com/**", async (route) => {
     const request = route.request();
     if (request.method() === "GET") {
@@ -190,15 +227,27 @@ try {
     const body = request.postDataJSON();
     geminiBodies.push({ url: request.url(), body });
     if (body.generationConfig?.responseJsonSchema) {
-      const bangkok = JSON.stringify(body.contents).includes("Bangkok River Hotel");
-      return route.fulfill(reply([{ text: JSON.stringify(bangkok ? bangkokExtraction : extraction) }]));
+      const prompt = body.contents[0].parts.map((p) => p.text ?? "").join("");
+      if (prompt.includes("<engine_result>")) {
+        // Decision analysis: a verdict in words plus a 0–10 fit score per option.
+        const options = JSON.parse(prompt.match(/<options>(.*)<\/options>/)[1]);
+        return route.fulfill(reply([{ text: JSON.stringify({
+          verdict: "Jardim Stay merkezde ve yorumları tutarlı; Casa Azul daha ucuz ama dönüşü yokuş.",
+          reasons: ["Merkeze 5 dk → akşam dönüşleri kolay"], tradeoffs: ["€45 daha pahalı"],
+          risks: ["Casa Azul'un konumu rezervasyondan sonra netleşiyor"], question: "Akşamları geç mi döneceksiniz?",
+          ai_scores: options.map((o) => ({ item_id: o.id, score: o.name === "Jardim Stay" ? 8 : 6, note: "test notu" })),
+        }) }]));
+      }
+      const casa = prompt.includes("Casa Azul");
+      const bangkok = prompt.includes("Bangkok River Hotel");
+      return route.fulfill(reply([{ text: JSON.stringify(bangkok ? bangkokExtraction : casa ? casaExtraction : extraction) }]));
     }
     const text = JSON.stringify(body.contents);
-    if (text.includes("functionResponse")) return route.fulfill(reply([{ text: "Jardim Stay'i öneri olarak işaretledim." }]));
-    const state = JSON.parse(text.match(/<trip_state>(.*?)<\/trip_state>/)[1].replace(/\\"/g, '"'));
+    chatPrompts.push(text);
+    if (text.includes("functionResponse")) return route.fulfill(reply([{ text: "Fiyatı konaklamada çok önemli yaptım." }]));
     return route.fulfill(reply([
-      { text: "Merkezi ve iptal esnek: Jardim Stay iyi bir seçim." },
-      { functionCall: { id: "fc-1", name: "recommend", args: { item_id: state.items[0].id, reason: "Merkezi, ücretsiz iptal" } }, thoughtSignature: "c2ln" },
+      { text: "Fiyatı öne alalım." },
+      { functionCall: { id: "fc-1", name: "set_priorities", args: { changes: [{ criterion: "price", level: "cok_onemli", category: "stay" }], wanted_amenities: null } }, thoughtSignature: "c2ln" },
     ]));
   });
 
@@ -224,13 +273,19 @@ try {
   await hotel.close();
   await board.bringToFront();
   await board.evaluate(async (snapshot) => {
-    const request = indexedDB.open("trip-radar", 1);
+    const request = indexedDB.open("trip-radar");
     const database = await new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
     const tx = database.transaction("captures", "readwrite");
     tx.objectStore("captures").put({ ...snapshot, id: "flow-1", kind: "extension", screenshot: null, capturedAt: Date.now(), status: "pending", error: null, itemId: null });
+    // A second option for the same stay, so there is something to compare.
+    tx.objectStore("captures").put({
+      id: "flow-1b", kind: "extension", url: "https://www.airbnb.com/rooms/123?check_in=2026-10-08&check_out=2026-10-11&adults=2",
+      title: "Casa Azul", pageText: "Casa Azul\n€ 240 total\nFree cancellation before 5 October 2026\n4.8 · 96 reviews",
+      viewportText: "", selection: "", jsonLd: [], meta: {}, screenshot: null, capturedAt: Date.now() + 1, status: "pending", error: null, itemId: null,
+    });
     await new Promise((resolve) => (tx.oncomplete = resolve));
     await chrome.runtime.sendMessage({ type: "process" });
   }, snap);
@@ -246,23 +301,39 @@ try {
   await board.screenshot({ path: `${out}/8-flow-board.png` });
   console.log("✓ flow: capture → Gemini extraction (SDK request shape checked) → trip on the board");
 
+  // Two stays → the engine ranks them and the worker asks Gemini for the written analysis.
+  await board.locator(".verdict-line", { hasText: "öne çıkıyor" }).click({ timeout: 20000 });
+  let compare = board.getByRole("dialog", { name: "Karşılaştırma" });
+  await compare.getByText("Jardim Stay merkezde ve yorumları tutarlı", { exact: false }).waitFor({ timeout: 20000 });
+  await compare.locator("tr", { hasText: "AI değerlendirmesi" }).waitFor(); // fresh analysis → counts, labelled
+  await compare.locator(".cell-value", { hasText: "merkeze 5 dk yürüme" }).waitFor(); // geocoded, measured from the city centre
+  await compare.getByText("Airbnb ölçeği", { exact: false }).waitFor();
+  await board.screenshot({ path: `${out}/8b-flow-compare.png`, fullPage: true });
+  await compare.getByRole("button", { name: "Kapat" }).click();
+  console.log("✓ flow: two options → ranked with geocoded distance, AI analysis fetched, shown and counted");
+
   await board.getByPlaceholder("Bir link bırak, görsel yapıştır veya yaz…").fill("Hangisi daha mantıklı?");
   await board.getByRole("button", { name: "Gönder" }).click();
-  await board.getByText("Jardim Stay'i öneri olarak işaretledim.").waitFor({ timeout: 20000 });
-  await board.getByText("Senin için önerilen").waitFor();
+  await board.getByText("Fiyatı konaklamada çok önemli yaptım.").waitFor({ timeout: 20000 });
+  assert.ok(chatPrompts[0].includes("decisions") && chatPrompts[0].includes("would_change_if"), "chat sees the engine's result");
+  await board.locator(".verdict-line").first().click();
+  compare = board.getByRole("dialog", { name: "Karşılaştırma" });
+  assert.equal(await compare.locator("tr", { hasText: "Fiyat" }).locator("select").inputValue(), "4");
+  await compare.getByRole("button", { name: "Kapat" }).click();
   const chatCalls = geminiBodies.filter((b) => !b.body.generationConfig?.responseJsonSchema);
   assert.equal(chatCalls.length, 2);
   const second = chatCalls[1].body.contents;
   assert.deepEqual(second.map((c) => c.role), ["user", "model", "user"]);
   assert.equal(second[1].parts[1].thoughtSignature, "c2ln");
   assert.equal(second[2].parts[0].functionResponse.id, "fc-1");
+  assert.match(JSON.stringify(second[2].parts[0].functionResponse.response), /stay:porto/); // new ranking returned to the model
   assert.ok(chatCalls[0].body.tools[0].functionDeclarations.some((f) => f.name === "update_items"));
   await board.screenshot({ path: `${out}/9-flow-chat.png` });
-  console.log("✓ flow: chat → function call → recommendation shown; history replayed with signatures");
+  console.log("✓ flow: chat → set_priorities → comparison reweighted; history replayed with signatures");
 
   // A Thailand hotel saved while the Portugal trip is open → its own trip, and a notice to go there.
   await board.evaluate(async () => {
-    const request = indexedDB.open("trip-radar", 1);
+    const request = indexedDB.open("trip-radar");
     const database = await new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);

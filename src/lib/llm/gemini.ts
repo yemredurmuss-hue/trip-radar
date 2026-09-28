@@ -6,11 +6,13 @@ import { buildPrompt, EXTRACTION_SYSTEM, ExtractionSchema, imagePart, today } fr
 import type { ChatMessage } from "../types";
 import type { ChatStep, LlmProvider, ToolResult, ToolSpec } from "./types";
 
-const extractionJsonSchema = (() => {
-  const schema = z.toJSONSchema(ExtractionSchema) as Record<string, unknown>;
+function jsonSchemaFor(zodSchema: z.ZodType): Record<string, unknown> {
+  const schema = z.toJSONSchema(zodSchema) as Record<string, unknown>;
   delete schema.$schema; // not in Gemini's supported JSON Schema subset
   return schema;
-})();
+}
+
+const extractionJsonSchema = jsonSchemaFor(ExtractionSchema);
 
 /** Minimal slice of the SDK client used here (lets tests pass a fake). */
 export interface GeminiClient {
@@ -97,6 +99,28 @@ export function geminiProvider(client: GeminiClient, model: string, retryWaitMs 
       }
       const parsed = ExtractionSchema.safeParse(json);
       if (!parsed.success) throw new Error("Gemini yanıtı beklenen formatta değil.");
+      return parsed.data;
+    },
+
+    async generateJson(system, prompt, schema) {
+      const response = await withRetry(
+        () =>
+          client.models.generateContent({
+            model,
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            config: { systemInstruction: system, responseMimeType: "application/json", responseJsonSchema: jsonSchemaFor(schema) },
+          }),
+        retryWaitMs,
+      );
+      const text = visibleText(answerParts(response));
+      let json: unknown;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error("Gemini geçerli JSON döndürmedi.");
+      }
+      const parsed = schema.safeParse(json);
+      if (!parsed.success) throw new Error("Gemini analizi beklenen formatta değil.");
       return parsed.data;
     },
 

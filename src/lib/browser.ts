@@ -32,6 +32,13 @@ export function requestProcessing(): void {
   });
 }
 
+/** Asks the worker to refresh AI reviews of comparisons; `force` retries ones that just failed. */
+export function requestAnalysis(force = false): void {
+  chrome.runtime.sendMessage({ type: "analyze", force }).catch(() => {
+    // Worker is starting up; the next capture or board change asks again.
+  });
+}
+
 /** Focuses an open board tab or opens a new one. */
 export async function openBoard(hash = ""): Promise<void> {
   const base = chrome.runtime.getURL("app.html");

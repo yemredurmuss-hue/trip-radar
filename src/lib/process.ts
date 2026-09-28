@@ -3,10 +3,11 @@ import { addEvent, db, listTrips, newId, nextTime, notifyChanged } from "./db";
 import type { Extraction } from "./extract";
 import { describeError, getProvider } from "./llm";
 import { valueOnPage } from "./evidence";
+import { geocode } from "./geo";
 import { buildItem, CATEGORY_LABELS, corpusOf, findDuplicate, isoDate, mergeItem } from "./items";
 import { chooseTrip, isDemoTrip, profileTrips, uniqueTitle } from "./trips";
 import type { PageSnapshot } from "./pagecapture";
-import type { Capture, Trip } from "./types";
+import type { Capture, Geo, Item, Trip } from "./types";
 import { parseUrl, type UrlFacts } from "./url";
 
 export type Extractor = (capture: Capture, facts: UrlFacts, trips: Trip[]) => Promise<Extraction>;
@@ -15,6 +16,8 @@ export type Extractor = (capture: Capture, facts: UrlFacts, trips: Trip[]) => Pr
 export interface Deps {
   extract: Extractor;
   heroImage: (place: string | null) => Promise<string | null>;
+  /** Place name → coordinates (defaults to cached OpenStreetMap lookup). */
+  geocode?: (query: string) => Promise<Geo | null>;
 }
 
 const defaultDeps: Deps = {
@@ -83,7 +86,7 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
     const existing = await d.getAll("items");
     const duplicate = findDuplicate(existing, incoming);
     const item = duplicate ? mergeItem(duplicate, incoming) : incoming;
-    await d.put("items", item);
+    await d.put("items", await withGeo(item, deps.geocode ?? geocode));
 
     const where = [CATEGORY_LABELS[item.category], item.city].filter(Boolean).join(" · ");
     await addEvent(item.tripId, duplicate ? `↻ ${item.name} güncellendi` : `✓ ${item.name} kaydedildi → ${where}`);
@@ -120,6 +123,22 @@ async function resolveTrip(extraction: Extraction, trips: Trip[], deps: Deps, fa
   };
   await (await db()).put("trips", trip);
   return trip;
+}
+
+/**
+ * Coordinates for distance comparisons: the page's own if it had them, else a lookup by address or
+ * name. The city centre is looked up too (cached) as the fallback reference point.
+ */
+async function withGeo(item: Item, lookup: (q: string) => Promise<Geo | null>): Promise<Item> {
+  const place = [item.city, item.country].filter(Boolean).join(", ");
+  if (place) await lookup(place).catch(() => null); // warms the centre cache used by the board
+  if (item.geo || !["stay", "activity", "food", "other"].includes(item.category)) return item;
+  const queries = [item.location.address, [item.name, place].filter(Boolean).join(", ")].filter(Boolean) as string[];
+  for (const q of queries) {
+    const geo = await lookup(q).catch(() => null);
+    if (geo) return { ...item, geo };
+  }
+  return item;
 }
 
 /** Scenic header image from Wikipedia's page summary; silently null when unavailable. */

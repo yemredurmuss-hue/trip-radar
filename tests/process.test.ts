@@ -20,6 +20,7 @@ const base: Extraction = {
   cancellation: { summary: null, free_until: null, source: "none", evidence: null },
   rating: { value: null, scale: null, count: null, source: "none", evidence: null },
   flight: null,
+  metrics: null,
   highlights: [],
   concerns: [],
   review_summary: null,
@@ -37,6 +38,7 @@ const snapshot = (url: string, text: string) => ({
   selection: "",
   jsonLd: [],
   meta: {},
+  coords: [],
 });
 
 describe("capture pipeline", () => {
@@ -50,7 +52,7 @@ describe("capture pipeline", () => {
       return { ...base, trip };
     };
 
-    const deps: Deps = { extract: extractor, heroImage: async () => null };
+    const deps: Deps = { extract: extractor, heroImage: async () => null, geocode: async () => null };
     const url = "https://www.booking.com/hotel/pt/jardim-stay.html?checkin=2026-10-08&checkout=2026-10-11";
     await saveSnapshot(snapshot(url, "Jardim Stay € 285"), null);
     await processPending(deps);
@@ -85,6 +87,7 @@ describe("capture pipeline", () => {
         throw new Error("API anahtarı yok.");
       },
       heroImage: async () => null,
+      geocode: async () => null,
     });
     const stored = await (await db()).get("captures", capture.id);
     expect(stored?.status).toBe("error");

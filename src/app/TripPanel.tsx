@@ -11,15 +11,19 @@ import {
   tripDateRange,
   type NeedGroup,
 } from "../lib/items";
+import type { GroupDecision } from "../lib/decision";
 import { retryCapture } from "../lib/process";
 import type { Capture, Category, Item, Trip } from "../lib/types";
 import { CategoryIcon, Chevron } from "./Icons";
+import { decisionLabel, type Decisions } from "./useDecisions";
 
 interface Props {
   trip: Trip;
   items: Item[];
   openCaptures: Capture[];
+  decisions: Decisions | null;
   onOpenItem: (item: Item) => void;
+  onCompare: (needKey: string) => void;
   menu: React.ReactNode;
 }
 
@@ -27,13 +31,18 @@ const ROWS_PER_GROUP = 3;
 /** Categories shown as one summary row until expanded (like "Tiyatro, tekne turu ve 4 yer"). */
 const SUMMARIZED: Category[] = ["activity", "food", "other"];
 
-export function TripPanel({ trip, items, openCaptures, onOpenItem, menu }: Props) {
+export function TripPanel({ trip, items, openCaptures, decisions, onOpenItem, onCompare, menu }: Props) {
   const range = trip.confirmedDates ?? tripDateRange(items);
   const cities = [...new Set(items.filter((i) => i.status !== "dismissed" && i.category === "stay" && i.city).map((i) => i.city!))];
   const subtitle = [range ? formatDateRange(range.start, range.end) : null, cities.length ? joinTr(cities) : null]
     .filter(Boolean)
     .join(" · ");
-  const sections = groupItems(items);
+  // Alternatives are listed in the decision engine's order.
+  const sections = groupItems(items, (item) => {
+    const index = decisions?.byNeed.get(item.needKey)?.options.findIndex((o) => o.item.id === item.id) ?? -1;
+    return index >= 0 ? index : null;
+  });
+  const currency = decisions?.ctx.currency ?? "EUR";
   const dismissed = items.filter((i) => i.status === "dismissed");
   const route = routeUrl(items);
   const working = openCaptures.filter((c) => c.status === "pending" || c.status === "processing");
@@ -93,7 +102,10 @@ export function TripPanel({ trip, items, openCaptures, onOpenItem, menu }: Props
               key={group.key}
               title={index === 0 || group.title ? CATEGORY_LABELS[category] : null}
               group={group}
+              decision={decisions?.byNeed.get(group.key)}
+              currency={currency}
               onOpenItem={onOpenItem}
+              onCompare={() => onCompare(group.key)}
             />
           ))
         ),
@@ -111,10 +123,25 @@ export function TripPanel({ trip, items, openCaptures, onOpenItem, menu }: Props
   );
 }
 
-function Group({ title, group, onOpenItem }: { title: string | null; group: NeedGroup; onOpenItem: (i: Item) => void }) {
+function Group({
+  title,
+  group,
+  decision,
+  currency,
+  onOpenItem,
+  onCompare,
+}: {
+  title: string | null;
+  group: NeedGroup;
+  decision: GroupDecision | undefined;
+  currency: string;
+  onOpenItem: (i: Item) => void;
+  onCompare: () => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? group.items : group.items.slice(0, ROWS_PER_GROUP);
   const hidden = group.items.length - shown.length;
+  const comparable = decision && decision.options.filter((o) => !o.excluded).length > 1;
   return (
     <div className="section">
       {(title || group.title) && (
@@ -124,11 +151,17 @@ function Group({ title, group, onOpenItem }: { title: string | null; group: Need
         </div>
       )}
       {shown.map((item) => (
-        <Row key={item.id} item={item} group={group.items} onOpen={() => onOpenItem(item)} />
+        <Row key={item.id} item={item} group={group.items} decision={decision} currency={currency} onOpen={() => onOpenItem(item)} />
       ))}
       {hidden > 0 && (
         <button className="more" onClick={() => setExpanded(true)}>
           + {hidden} seçenek daha
+        </button>
+      )}
+      {comparable && (
+        <button className="verdict-line" onClick={onCompare}>
+          <span>{decision.summary}</span>
+          <span className="verdict-cta">Karşılaştır →</span>
         </button>
       )}
     </div>
@@ -169,10 +202,26 @@ function SummarySection({
   );
 }
 
-function Row({ item, group, onOpen }: { item: Item; group: Item[]; onOpen: () => void }) {
-  const label = rowLabel(item, group);
+function Row({
+  item,
+  group,
+  decision,
+  currency,
+  onOpen,
+}: {
+  item: Item;
+  group: Item[];
+  decision?: GroupDecision;
+  currency?: string;
+  onOpen: () => void;
+}) {
+  const base = rowLabel(item, group);
+  const decided = item.status === "saved" ? decisionLabel(item, decision, currency ?? "EUR") : null;
+  // A stale or unverified price stays visible next to the decision label.
+  const warning = decided && base.tone === "warning" && decided.tone !== "warning" ? base.text : null;
+  const label = decided ?? base;
   const image = item.imageUrl;
-  const highlight = item.recommendation || item.status === "chosen" || item.status === "booked";
+  const highlight = decided?.best || item.status === "chosen" || item.status === "booked";
   return (
     <button className={`row${highlight ? " highlight" : ""}`} onClick={onOpen}>
       <FallbackImg
@@ -186,7 +235,11 @@ function Row({ item, group, onOpen }: { item: Item; group: Item[]; onOpen: () =>
       />
       <span style={{ minWidth: 0 }}>
         <div className="row-name">{item.name}</div>
-        <div className={`row-label tone-${label.tone}`}>{label.text}</div>
+        <div className="row-label">
+          {decided?.score != null && <span className={`score-pill${decided.best ? " best" : ""}`}>{decided.score}</span>}
+          <span className={`tone-${label.tone}`}>{label.text}</span>
+          {warning && <span className="tone-warning"> · {warning}</span>}
+        </div>
       </span>
       <span className="row-price">
         {item.price.amount != null ? formatPrice(item.price.amount, item.price.currency) : ""}

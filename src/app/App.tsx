@@ -2,14 +2,17 @@ import { useEffect, useState } from "react";
 import { resetConversation } from "../lib/assistant";
 import { db, notifyChanged } from "../lib/db";
 import { loadDemoTrip } from "../lib/demo";
+import { groupTitle } from "../lib/items";
 import type { Item } from "../lib/types";
 import { Chat } from "./Chat";
+import { CompareView } from "./CompareView";
 import { ItemDrawer } from "./ItemDrawer";
 import { Settings } from "./Settings";
 import { TripPanel } from "./TripPanel";
 import { TripsHome } from "./TripsHome";
 import { UpdateBanner } from "./UpdateBanner";
 import { readSelectedTrip, useBoard } from "./useBoard";
+import { useDecisions } from "./useDecisions";
 
 /** "#trip=<id>" (from the popup) opens that trip; otherwise the last trip viewed, or the overview. */
 function tripFromHash(): string | null {
@@ -23,6 +26,8 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(location.hash === "#settings");
   const [menuOpen, setMenuOpen] = useState(false);
   const [seenArrival, setSeenArrival] = useState<string | null>(null);
+  const [compareKey, setCompareKey] = useState<string | null>(null);
+  const decisions = useDecisions(board.trip, board.items);
 
   useEffect(() => {
     const onHash = () => {
@@ -36,6 +41,8 @@ export function App() {
 
   const trip = board.trip;
   const openItem = board.items.find((i) => i.id === openItemId) ?? null;
+  const compared = compareKey ? decisions?.byNeed.get(compareKey) : undefined;
+  const comparedTitle = compared ? groupTitle(compared.category, board.items.filter((i) => i.needKey === compared.needKey && i.status !== "dismissed")) : null;
 
   // A capture landed in a different trip than the one on screen: say where, offer to go there.
   const arrival = board.arrivals[0];
@@ -81,7 +88,9 @@ export function App() {
               trip={trip}
               items={board.items}
               openCaptures={board.openCaptures}
+              decisions={decisions}
               onOpenItem={(i: Item) => setOpenItemId(i.id)}
+              onCompare={setCompareKey}
               menu={menu}
             />
           </main>
@@ -123,8 +132,22 @@ export function App() {
           item={openItem}
           group={board.items.filter((i) => i.needKey === openItem.needKey)}
           trips={board.trips}
+          decision={decisions?.byNeed.get(openItem.needKey)}
           onClose={() => setOpenItemId(null)}
           onMoved={board.selectTrip}
+          onCompare={() => {
+            setOpenItemId(null);
+            setCompareKey(openItem.needKey);
+          }}
+        />
+      )}
+      {trip && compared && !openItem && (
+        <CompareView
+          trip={trip}
+          decision={compared}
+          title={comparedTitle}
+          onClose={() => setCompareKey(null)}
+          onOpenItem={(i) => setOpenItemId(i.id)}
         />
       )}
       {settingsOpen && (

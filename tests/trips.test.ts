@@ -90,7 +90,7 @@ describe("pipeline keeps trips apart", () => {
       price: { amount: null, currency: null, scope: "unknown", taxes_included: "unknown", source: "none", evidence: null },
       cancellation: { summary: null, free_until: null, source: "none", evidence: null },
       rating: { value: null, scale: null, count: null, source: "none", evidence: null },
-      flight: null, highlights: [], concerns: [], review_summary: null, image_url: null, missing: [],
+      flight: null, metrics: null, highlights: [], concerns: [], review_summary: null, image_url: null, missing: [],
     };
     const byPage: Record<string, (trips: Trip[]) => Extraction> = {
       lisbon: () => ({ ...base, category: "stay", name: "Lisbon Loft", city: "Lizbon", country: "Portekiz", country_code: "PT",
@@ -105,8 +105,9 @@ describe("pipeline keeps trips apart", () => {
     const deps: Deps = {
       extract: async (capture, _facts, trips) => byPage[capture.pageText](trips),
       heroImage: async () => null,
+      geocode: async () => null,
     };
-    const snap = (page: string) => ({ url: `https://example.com/${page}`, title: page, pageText: page, viewportText: "", selection: "", jsonLd: [], meta: {} });
+    const snap = (page: string) => ({ url: `https://example.com/${page}`, title: page, pageText: page, viewportText: "", selection: "", jsonLd: [], meta: {}, coords: [] });
 
     await saveSnapshot(snap("lisbon"), null);
     await processPending(deps);

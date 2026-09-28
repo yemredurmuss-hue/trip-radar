@@ -1,7 +1,7 @@
 // Pure logic: extraction -> Item, duplicate detection, merging, grouping and row labels.
 import { classify, normalize } from "./evidence";
 import type { Extraction } from "./extract";
-import type { Capture, Category, FactSource, Item } from "./types";
+import type { Capture, Category, FactSource, Item, ItemMetrics } from "./types";
 import { countryCodeOf } from "./trips";
 import type { UrlFacts } from "./url";
 
@@ -45,6 +45,51 @@ export function currencyCode(value: string | null | undefined): string | null {
   const v = value.trim().toUpperCase();
   const code = CURRENCY_SYMBOLS[v] ?? CURRENCY_SYMBOLS[value.trim()] ?? v;
   return /^[A-Z]{3}$/.test(code) ? code : null;
+}
+
+export const EMPTY_METRICS: ItemMetrics = {
+  reviewAspects: [],
+  amenities: [],
+  cancellationType: "unknown",
+  distanceToCenterKm: null,
+  durationMinutes: null,
+  checkedBagIncluded: null,
+  dataGb: null,
+  unlimitedData: null,
+  validityDays: null,
+};
+
+/** Items saved before the decision engine have no metrics. */
+export const metricsOf = (item: Item): ItemMetrics => item.metrics ?? EMPTY_METRICS;
+
+function metricsFrom(x: Extraction["metrics"]): ItemMetrics {
+  if (!x) return EMPTY_METRICS;
+  const positive = (n: number | null) => (typeof n === "number" && Number.isFinite(n) && n > 0 ? n : null);
+  return {
+    reviewAspects: x.review_aspects
+      .filter((a) => a.score != null || a.sentiment != null)
+      .map((a) => ({ aspect: a.aspect, score: positive(a.score), scale: positive(a.scale), sentiment: a.sentiment })),
+    amenities: [...new Set(x.amenities)],
+    cancellationType: x.cancellation_type,
+    distanceToCenterKm: positive(x.distance_to_center_km),
+    durationMinutes: positive(x.duration_minutes),
+    checkedBagIncluded: x.checked_bag_included,
+    dataGb: positive(x.data_gb),
+    unlimitedData: x.unlimited_data,
+    validityDays: positive(x.validity_days),
+  };
+}
+
+/** First sane coordinate the page itself carried (map link, data attribute, JSON-LD geo). */
+export function pageGeo(capture: Capture): Item["geo"] {
+  const fromJsonLd = capture.jsonLd
+    .map((raw) => raw.match(/"latitude"\s*:\s*"?(-?\d+\.\d+)"?[\s\S]{0,80}?"longitude"\s*:\s*"?(-?\d+\.\d+)"?/))
+    .find(Boolean);
+  const candidate = fromJsonLd
+    ? { lat: Number(fromJsonLd[1]), lng: Number(fromJsonLd[2]) }
+    : capture.coords?.[0];
+  if (!candidate || !Number.isFinite(candidate.lat) || !Number.isFinite(candidate.lng)) return null;
+  return { lat: candidate.lat, lng: candidate.lng, source: "page" };
 }
 
 const finite = (n: number | null | undefined) => (typeof n === "number" && Number.isFinite(n) ? n : null);
@@ -139,13 +184,14 @@ export function buildItem(
           stops: x.flight.stops,
         }
       : null,
+    metrics: metricsFrom(x.metrics),
+    geo: pageGeo(capture),
     highlights: x.highlights.slice(0, 4),
     concerns: x.concerns.slice(0, 3),
     reviewSummary: x.review_summary,
     missing: x.missing,
     status: "saved",
     statusNote: null,
-    recommendation: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -187,6 +233,8 @@ export function mergeItem(existing: Item, incoming: Item): Item {
     cancellation: incoming.cancellation.summary ? incoming.cancellation : existing.cancellation,
     rating: incoming.rating.value != null ? incoming.rating : existing.rating,
     flight: incoming.flight ?? existing.flight,
+    metrics: incoming.metrics && incoming.metrics !== EMPTY_METRICS ? incoming.metrics : existing.metrics,
+    geo: incoming.geo ?? existing.geo,
     highlights: incoming.highlights.length ? incoming.highlights : existing.highlights,
     concerns: incoming.concerns.length ? incoming.concerns : existing.concerns,
     reviewSummary: pick(incoming.reviewSummary, existing.reviewSummary),
@@ -204,7 +252,8 @@ export interface NeedGroup {
   items: Item[];
 }
 
-export function groupItems(items: Item[]): { category: Category; groups: NeedGroup[] }[] {
+/** `rank` is the decision engine's order within a group (0 = best); unranked options go after. */
+export function groupItems(items: Item[], rank?: (item: Item) => number | null): { category: Category; groups: NeedGroup[] }[] {
   const active = items.filter((i) => i.status !== "dismissed");
   return CATEGORY_ORDER.map((category) => {
     const byNeed = new Map<string, Item[]>();
@@ -218,13 +267,13 @@ export function groupItems(items: Item[]): { category: Category; groups: NeedGro
       category,
       title: groupTitle(category, list),
       // Alternatives for one need are ranked; lists of places keep the order the user saved them.
-      items: RANKED.includes(category) ? sortForDecision(list) : [...list].sort((a, b) => a.createdAt - b.createdAt),
+      items: RANKED.includes(category) ? sortForDecision(list, rank) : [...list].sort((a, b) => a.createdAt - b.createdAt),
     }));
     return { category, groups };
   }).filter((section) => section.groups.length > 0);
 }
 
-function groupTitle(category: Category, items: Item[]): string | null {
+export function groupTitle(category: Category, items: Item[]): string | null {
   const city = mostCommon(items.map((i) => i.city).filter(Boolean) as string[]);
   if (category === "stay") {
     const nights = mostCommon(items.map((i) => nightsBetween(i.dates.start, i.dates.end)).filter((n) => n > 0));
@@ -233,12 +282,13 @@ function groupTitle(category: Category, items: Item[]): string | null {
   return category === "flight" ? null : city;
 }
 
-/** Booked/chosen first, then the recommendation, then by price. */
-function sortForDecision(items: Item[]): Item[] {
-  const rank = (i: Item) =>
-    i.status === "booked" ? 0 : i.status === "chosen" ? 1 : i.recommendation ? 2 : 3;
+/** Booked/chosen first, then the decision engine's ranking, then by price. */
+function sortForDecision(items: Item[], rank?: (item: Item) => number | null): Item[] {
+  const status = (i: Item) => (i.status === "booked" ? 0 : i.status === "chosen" ? 1 : 2);
+  const ranked = (i: Item) => rank?.(i) ?? Infinity;
   return [...items].sort(
-    (a, b) => rank(a) - rank(b) || (a.price.amount ?? Infinity) - (b.price.amount ?? Infinity),
+    (a, b) =>
+      status(a) - status(b) || ranked(a) - ranked(b) || (a.price.amount ?? Infinity) - (b.price.amount ?? Infinity),
   );
 }
 
@@ -255,7 +305,6 @@ const DEFAULT_STALE_MS = 3 * 24 * 3600e3;
 export function rowLabel(item: Item, group: Item[], now = Date.now()): RowLabel {
   if (item.status === "booked") return { text: "Rezerve edildi", tone: "success" };
   if (item.status === "chosen") return { text: "Seçildi", tone: "success" };
-  if (item.recommendation) return { text: "Senin için önerilen", tone: "accent" };
 
   const majority = mostCommon(group.map((i) => `${i.dates.start}|${i.dates.end}`));
   if (item.dates.start && majority && `${item.dates.start}|${item.dates.end}` !== majority) {

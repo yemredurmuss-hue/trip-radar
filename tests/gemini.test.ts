@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { ApiError, type GenerateContentParameters, type GenerateContentResponse } from "@google/genai";
 import { describe, expect, it } from "vitest";
+import { AnalysisSchema } from "../src/lib/analysis";
 import { currentSession, sendMessage } from "../src/lib/assistant";
 import { db, listItems, listMessages } from "../src/lib/db";
 import type { Extraction } from "../src/lib/extract";
@@ -39,7 +40,7 @@ const extraction: Extraction = {
   price: { amount: 285, currency: "EUR", scope: "total", taxes_included: "unknown", source: "page", evidence: "€ 285" },
   cancellation: { summary: null, free_until: null, source: "none", evidence: null },
   rating: { value: null, scale: null, count: null, source: "none", evidence: null },
-  flight: null, highlights: [], concerns: [], review_summary: null, image_url: null, missing: [],
+  flight: null, metrics: null, highlights: [], concerns: [], review_summary: null, image_url: null, missing: [],
   trip: { existing_trip_id: null, new_trip_title: "Portekiz" }, need_key: "stay:porto",
 };
 
@@ -75,6 +76,16 @@ describe("gemini extraction", () => {
     expect(calls).toHaveLength(2);
   });
 
+  it("returns schema-checked JSON for the decision analysis", async () => {
+    const answer = { verdict: "A öne çıkıyor.", reasons: [], tradeoffs: [], risks: [], question: null, ai_scores: [] };
+    const { client, calls } = fakeGemini([modelTurn([{ text: JSON.stringify(answer) }]), modelTurn([{ text: '{"verdict":1}' }])]);
+    const gemini = geminiProvider(client, "gemini-test", 0);
+    expect(await gemini.generateJson("sys", "prompt", AnalysisSchema)).toEqual(answer);
+    expect(calls[0].config?.systemInstruction).toBe("sys");
+    expect((calls[0].config?.responseJsonSchema as { required: string[] }).required).toContain("ai_scores");
+    await expect(gemini.generateJson("sys", "prompt", AnalysisSchema)).rejects.toThrow("beklenen formatta değil");
+  });
+
   it("explains common API errors in Turkish", () => {
     expect(describeGeminiError(new ApiError({ message: "API key not valid", status: 400 }))).toContain("anahtarı geçersiz");
     expect(describeGeminiError(new ApiError({ message: "quota", status: 429 }))).toContain("kotası doldu");
@@ -94,7 +105,7 @@ describe("gemini chat", () => {
       price: { amount: 285, currency: "EUR", scope: "total", taxesIncluded: "yes", source: "page", observedAt: 1 },
       priceHistory: [], cancellation: { summary: null, freeUntil: null, source: "none" },
       rating: { value: null, scale: null, count: null, source: "none" }, flight: null, highlights: [], concerns: [],
-      reviewSummary: null, missing: [], status: "saved", statusNote: null, recommendation: null, createdAt: 1, updatedAt: 1 } as Item;
+      reviewSummary: null, missing: [], status: "saved", statusNote: null, createdAt: 1, updatedAt: 1 } as Item;
     await d.put("items", item);
   }
 
@@ -115,7 +126,7 @@ describe("gemini chat", () => {
     expect(second.map((c) => c.role)).toEqual(["user", "model", "user"]);
     expect(second[1].parts[1].thoughtSignature).toBe("sig-1");
     expect(second[2].parts[0].functionResponse).toEqual({ id: "fc1", name: "update_items", response: { result: "ok" } });
-    expect(calls[1].config?.tools?.[0]).toMatchObject({ functionDeclarations: expect.arrayContaining([expect.objectContaining({ name: "recommend" })]) });
+    expect(calls[1].config?.tools?.[0]).toMatchObject({ functionDeclarations: expect.arrayContaining([expect.objectContaining({ name: "set_priorities" })]) });
 
     const messages = await listMessages("g1");
     expect(messages.filter((m) => m.role !== "event").every((m) => m.provider === "gemini")).toBe(true);

@@ -1,5 +1,6 @@
 // What the rest of the app needs from a model provider. Each provider stores chat turns in its own
 // native format (ChatMessage.content) so history replays exactly, thinking/thought signatures included.
+import type { ZodType } from "zod";
 import type { Extraction } from "../extract";
 import type { Capture, ChatMessage, Trip } from "../types";
 import type { UrlFacts } from "../url";
@@ -36,6 +37,8 @@ export interface ChatStep {
 export interface LlmProvider {
   id: ProviderId;
   extract(capture: Capture, facts: UrlFacts, trips: Trip[]): Promise<Extraction>;
+  /** One structured-output call validated against the schema (used by the decision analysis). */
+  generateJson<T>(system: string, prompt: string, schema: ZodType<T>): Promise<T>;
   /** One model call over the stored session. Null when the model returned nothing to store. */
   chatStep(history: ChatMessage[], system: string, tools: ToolSpec[]): Promise<ChatStep | null>;
   /** Native content for a user turn made of text blocks. */

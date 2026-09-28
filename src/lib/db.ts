@@ -1,6 +1,6 @@
 // IndexedDB storage shared by the popup, the board page and the service worker (same extension origin).
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { Capture, ChatMessage, Item, Preference, Settings, Trip } from "./types";
+import type { Analysis, Capture, ChatMessage, Item, Preference, Settings, Trip } from "./types";
 
 interface TripRadarDB extends DBSchema {
   trips: { key: string; value: Trip };
@@ -8,20 +8,28 @@ interface TripRadarDB extends DBSchema {
   items: { key: string; value: Item; indexes: { tripId: string; key: string } };
   messages: { key: string; value: ChatMessage; indexes: { tripId: string } };
   preferences: { key: string; value: Preference };
+  analyses: { key: string; value: Analysis; indexes: { tripId: string } };
+  geocache: { key: string; value: { query: string; lat: number | null; lng: number | null; at: number } };
 }
 
 let dbPromise: Promise<IDBPDatabase<TripRadarDB>> | null = null;
 
 export function db(): Promise<IDBPDatabase<TripRadarDB>> {
-  dbPromise ??= openDB<TripRadarDB>("trip-radar", 1, {
-    upgrade(d) {
-      d.createObjectStore("trips", { keyPath: "id" });
-      d.createObjectStore("captures", { keyPath: "id" }).createIndex("status", "status");
-      const items = d.createObjectStore("items", { keyPath: "id" });
-      items.createIndex("tripId", "tripId");
-      items.createIndex("key", "key");
-      d.createObjectStore("messages", { keyPath: "id" }).createIndex("tripId", "tripId");
-      d.createObjectStore("preferences", { keyPath: "id" });
+  dbPromise ??= openDB<TripRadarDB>("trip-radar", 2, {
+    upgrade(d, oldVersion) {
+      if (oldVersion < 1) {
+        d.createObjectStore("trips", { keyPath: "id" });
+        d.createObjectStore("captures", { keyPath: "id" }).createIndex("status", "status");
+        const items = d.createObjectStore("items", { keyPath: "id" });
+        items.createIndex("tripId", "tripId");
+        items.createIndex("key", "key");
+        d.createObjectStore("messages", { keyPath: "id" }).createIndex("tripId", "tripId");
+        d.createObjectStore("preferences", { keyPath: "id" });
+      }
+      if (oldVersion < 2) {
+        d.createObjectStore("analyses", { keyPath: "key" }).createIndex("tripId", "tripId");
+        d.createObjectStore("geocache", { keyPath: "query" });
+      }
     },
   });
   return dbPromise;
@@ -133,6 +141,10 @@ export async function addEvent(tripId: string, text: string): Promise<void> {
     createdAt: nextTime(),
   };
   await (await db()).put("messages", message);
+}
+
+export async function listAnalyses(tripId: string): Promise<Analysis[]> {
+  return (await db()).getAllFromIndex("analyses", "tripId", tripId);
 }
 
 /** Full JSON backup of everything except screenshots. */

@@ -34,6 +34,19 @@ export function anthropicProvider(client: Anthropic, model: string): LlmProvider
       return response.parsed_output;
     },
 
+    async generateJson(system, prompt, schema) {
+      const response = await client.messages.parse({
+        model,
+        max_tokens: 16000,
+        system,
+        messages: [{ role: "user", content: prompt }],
+        output_config: { format: zodOutputFormat(schema), ...outputEffort(model, "medium") },
+      });
+      if (response.stop_reason === "refusal") throw new Error("Model bu analizi yapmayı reddetti.");
+      if (!response.parsed_output) throw new Error("Model geçerli bir analiz döndürmedi.");
+      return response.parsed_output;
+    },
+
     async chatStep(history: ChatMessage[], system: string, tools: ToolSpec[]): Promise<ChatStep | null> {
       const effort = outputEffort(model, "medium");
       const response = await client.messages.create({

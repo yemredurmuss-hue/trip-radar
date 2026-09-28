@@ -42,6 +42,7 @@ function extraction(overrides: Partial<Extraction> = {}): Extraction {
     cancellation: { summary: "5 Eki'ye kadar ücretsiz iptal", free_until: "2026-10-05", source: "page", evidence: "Free cancellation before 5 October 2026" },
     rating: { value: 8.9, scale: 10, count: 1204, source: "page", evidence: "Scored 8.9" },
     flight: null,
+    metrics: null,
     highlights: ["Merkezi"],
     concerns: [],
     review_summary: null,
@@ -178,7 +179,7 @@ describe("labels and groups", () => {
     expect(rowLabel(b, group, now).text).toBe("En ekonomik");
     expect(rowLabel(c, group, now).text).toBe("Fiyat yok");
     expect(rowLabel(d, group, now).text).toBe("Farklı tarih");
-    expect(rowLabel({ ...a, recommendation: "Merkezi" }, group, now).text).toBe("Senin için önerilen");
+    expect(rowLabel({ ...a, status: "chosen" }, group, now).text).toBe("Seçildi");
     expect(rowLabel(b, group, now + 4 * 24 * 3600e3).text).toBe("Fiyat 4 gün önce");
   });
 

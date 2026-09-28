@@ -1,4 +1,5 @@
 import { addEvent, db, newId, notifyChanged } from "../lib/db";
+import { LEVEL_LABELS, type GroupDecision } from "../lib/decision";
 import { CATEGORY_LABELS, formatDateRange, formatPrice } from "../lib/items";
 import type { FactSource, Item, ItemStatus, Trip } from "../lib/types";
 
@@ -26,15 +27,66 @@ function daysAgo(ms: number): string {
   return days <= 0 ? "bugün" : `${days} gün önce`;
 }
 
+/** This option's score, rank and per-criterion breakdown within its need group. */
+function DecisionBreakdown({ item, decision, onCompare }: { item: Item; decision: GroupDecision | undefined; onCompare: () => void }) {
+  const option = decision?.options.find((o) => o.item.id === item.id);
+  if (!decision || !option || decision.status === "single") return null;
+  const ranked = decision.options.filter((o) => o.score != null);
+  const rank = ranked.indexOf(option) + 1;
+  const aiNote = decision.analysis?.aiScores.find((s) => s.itemId === item.id);
+  return (
+    <div className="breakdown">
+      <div className="breakdown-head">
+        <span>
+          {option.score != null ? (
+            <>
+              <span className={`score-big${option === decision.winner ? " best" : ""}`}>{option.score}</span>
+              <span className="muted"> / 100 · {rank}. sırada ({ranked.length} seçenek)</span>
+            </>
+          ) : option.excluded ? (
+            <span className="tone-warning">{option.excluded} — karşılaştırmaya alınmadı</span>
+          ) : (
+            <span className="tone-warning">Puan yok{option.missing.length ? ` · eksik: ${option.missing.join(", ")}` : ""}</span>
+          )}
+        </span>
+        <button className="link-btn" onClick={onCompare}>
+          Karşılaştır →
+        </button>
+      </div>
+      {option.parts.length > 0 && (
+        <div className="parts">
+          {option.parts.map((p) => (
+            <div key={p.criterion} className={`part${p.weight === 0 ? " off" : ""}`}>
+              <span className="part-label">
+                {p.label}
+                <span className="muted"> · {LEVEL_LABELS[p.level].toLowerCase()}</span>
+              </span>
+              <span className="part-value">{p.display ?? <span className="muted">bilinmiyor</span>}</span>
+              <span className="bar">
+                {p.s != null && (
+                  <span style={{ width: `${Math.max(4, Math.round(p.s * 100))}%` }} className={p.s >= 0.75 ? "good" : p.s >= 0.45 ? "mid" : "low"} />
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {aiNote && <p className="muted small-note">AI değerlendirmesi: {aiNote.score}/10 · {aiNote.note}</p>}
+    </div>
+  );
+}
+
 interface Props {
   item: Item;
   group: Item[];
   trips: Trip[];
+  decision: GroupDecision | undefined;
   onClose: () => void;
   onMoved: (tripId: string) => void;
+  onCompare: () => void;
 }
 
-export function ItemDrawer({ item, group, trips, onClose, onMoved }: Props) {
+export function ItemDrawer({ item, group, trips, decision, onClose, onMoved, onCompare }: Props) {
   async function setStatus(status: ItemStatus, event: string) {
     const d = await db();
     await d.put("items", { ...item, status, updatedAt: Date.now() });
@@ -54,7 +106,7 @@ export function ItemDrawer({ item, group, trips, onClose, onMoved }: Props) {
       await d.put("trips", target);
     }
     if (!target || target.id === item.tripId) return;
-    await d.put("items", { ...item, tripId: target.id, status: "saved", recommendation: null, updatedAt: Date.now() });
+    await d.put("items", { ...item, tripId: target.id, status: "saved", updatedAt: Date.now() });
     await addEvent(item.tripId, `${item.name} → ${target.title} gezisine taşındı`);
     await addEvent(target.id, `${item.name} bu geziye taşındı`);
     notifyChanged();
@@ -77,7 +129,6 @@ export function ItemDrawer({ item, group, trips, onClose, onMoved }: Props) {
     item.guests.children ? `${item.guests.children} çocuk` : null,
     item.guests.rooms != null && `${item.guests.rooms} oda`,
   ].filter(Boolean);
-  const peers = group.filter((i) => i.status !== "dismissed");
 
   return (
     <>
@@ -111,11 +162,7 @@ export function ItemDrawer({ item, group, trips, onClose, onMoved }: Props) {
           ))}
         </div>
 
-        {item.recommendation && (
-          <p className="tone-accent">
-            <b>Neden önerildi:</b> {item.recommendation}
-          </p>
-        )}
+        <DecisionBreakdown item={item} decision={decision} onCompare={onCompare} />
 
         <div className="facts">
           <div className="fact">
@@ -209,32 +256,6 @@ export function ItemDrawer({ item, group, trips, onClose, onMoved }: Props) {
             <p className="muted">
               {item.missing.join(", ")}. Sayfayı açıp (tarih seçiliyken) eklentiyle tekrar kaydedersen tamamlanır.
             </p>
-          </>
-        )}
-
-        {peers.length > 1 && (
-          <>
-            <h3>Aynı ihtiyaçtaki seçenekler</h3>
-            <table className="compare">
-              <thead>
-                <tr>
-                  <th>Seçenek</th>
-                  <th>Fiyat</th>
-                  <th>Puan</th>
-                  <th>İptal</th>
-                </tr>
-              </thead>
-              <tbody>
-                {peers.map((i) => (
-                  <tr key={i.id} className={i.id === item.id ? "me" : ""}>
-                    <td>{i.name}</td>
-                    <td>{formatPrice(i.price.amount, i.price.currency)}</td>
-                    <td>{i.rating.value ?? "—"}</td>
-                    <td>{i.cancellation.summary ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </>
         )}
 

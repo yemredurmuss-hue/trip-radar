@@ -9,6 +9,7 @@ export interface PageSnapshot {
   selection: string;
   jsonLd: string[];
   meta: Record<string, string>;
+  coords: { lat: number; lng: number; source: string }[];
 }
 
 export function collectPage(): PageSnapshot {
@@ -43,7 +44,38 @@ export function collectPage(): PageSnapshot {
     length += text.length + 1;
   }
 
+  // Coordinates from generic markup (no site-specific code): map links, data attributes, meta tags.
+  const coords: { lat: number; lng: number; source: string }[] = [];
+  const addCoord = (lat: number, lng: number, source: string) => {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
+    if (lat === 0 && lng === 0) return;
+    if (coords.length < 10 && !coords.some((c) => c.lat === lat && c.lng === lng)) coords.push({ lat, lng, source });
+  };
+  const PAIR = /(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/;
+  const latMeta = document.querySelector('meta[property$="latitude"], meta[name$="latitude"]')?.getAttribute("content");
+  const lngMeta = document.querySelector('meta[property$="longitude"], meta[name$="longitude"]')?.getAttribute("content");
+  if (latMeta && lngMeta) addCoord(Number(latMeta), Number(lngMeta), "meta");
+  for (const attr of ["data-atlas-latlng", "data-latlng", "data-coordinates", "data-location"]) {
+    document.querySelectorAll(`[${attr}]`).forEach((el) => {
+      const m = el.getAttribute(attr)?.match(PAIR);
+      if (m) addCoord(Number(m[1]), Number(m[2]), attr);
+    });
+  }
+  document.querySelectorAll("[data-lat][data-lng], [data-latitude][data-longitude]").forEach((el) => {
+    const lat = el.getAttribute("data-lat") ?? el.getAttribute("data-latitude");
+    const lng = el.getAttribute("data-lng") ?? el.getAttribute("data-longitude");
+    addCoord(Number(lat), Number(lng), "data-lat");
+  });
+  document.querySelectorAll("a[href*='map'], iframe[src*='map'], img[src*='map']").forEach((el) => {
+    const url = el.getAttribute("href") ?? el.getAttribute("src") ?? "";
+    const m =
+      url.match(/@(-?\d{1,2}\.\d{3,}),(-?\d{1,3}\.\d{3,})/) ??
+      url.match(/[?&](?:ll|center|q|query|destination|markers|daddr)=(?:[^&]*?[|:])?(-?\d{1,2}\.\d{3,})(?:,|%2C)(-?\d{1,3}\.\d{3,})/i);
+    if (m) addCoord(Number(m[1]), Number(m[2]), "map-link");
+  });
+
   return {
+    coords,
     url: location.href,
     title: document.title,
     pageText: (document.body?.innerText ?? "").slice(0, 200000),
