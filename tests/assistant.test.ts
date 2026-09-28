@@ -1,0 +1,120 @@
+import "fake-indexeddb/auto";
+import type Anthropic from "@anthropic-ai/sdk";
+import { describe, expect, it } from "vitest";
+import { currentSession, resetConversation, sendMessage } from "../src/lib/assistant";
+import { db, listItems, listMessages, listPreferences } from "../src/lib/db";
+import type { Item, Trip } from "../src/lib/types";
+
+function fakeClient(responses: Partial<Anthropic.Message>[]) {
+  const calls: Anthropic.MessageCreateParams[] = [];
+  const client = {
+    messages: {
+      create: async (params: Anthropic.MessageCreateParams) => {
+        calls.push(structuredClone(params));
+        const next = responses.shift();
+        if (!next) throw new Error("no more fake responses");
+        return next;
+      },
+    },
+  } as unknown as Anthropic;
+  return { client, calls };
+}
+
+async function seed(): Promise<{ trip: Trip; items: Item[] }> {
+  const d = await db();
+  const trip: Trip = { id: "t1", title: "Portekiz", confirmedDates: null, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 };
+  await d.put("trips", trip);
+  const item = (id: string, name: string, amount: number): Item => ({
+    id, tripId: "t1", captureIds: [], key: null, category: "stay", needKey: "stay:porto", name, provider: null,
+    summary: "", optionDetail: null, url: null, imageUrl: null, city: "Porto", country: "Portekiz",
+    location: { address: null, area: null, approximate: false },
+    dates: { start: "2026-10-08", end: "2026-10-11", source: "url" },
+    guests: { adults: 2, children: null, rooms: 1 },
+    price: { amount, currency: "EUR", scope: "total", taxesIncluded: "yes", source: "page", observedAt: 1 },
+    priceHistory: [], cancellation: { summary: null, freeUntil: null, source: "none" },
+    rating: { value: null, scale: null, count: null, source: "none" }, flight: null, highlights: [], concerns: [],
+    reviewSummary: null, missing: [], status: "saved", statusNote: null, recommendation: null, createdAt: 1, updatedAt: 1,
+  });
+  const items = [item("a", "Jardim Stay", 285), item("b", "Casa Azul", 240)];
+  for (const i of items) await d.put("items", i);
+  return { trip, items };
+}
+
+describe("assistant", () => {
+  it("runs tools, stores choices, and only resends trip state when it changed", async () => {
+    await seed();
+    const { client, calls } = fakeClient([
+      {
+        stop_reason: "tool_use",
+        content: [
+          { type: "text", text: "Jardim Stay iyi bir denge. Planına alalım mı?", citations: null },
+          { type: "tool_use", id: "tu1", name: "recommend", input: { item_id: "a", reason: "Merkezi" }, caller: { type: "direct" } },
+          { type: "tool_use", id: "tu2", name: "save_preference", input: { text: "Merkezi konum önemli", scope: "trip" }, caller: { type: "direct" } },
+          { type: "tool_use", id: "tu3", name: "offer_choices", input: { options: ["Evet, ekleyelim", "Diğerlerini konuşalım", "fazla"] }, caller: { type: "direct" } },
+        ] as Anthropic.ContentBlock[],
+      },
+      { stop_reason: "end_turn", content: [] },
+      {
+        stop_reason: "tool_use",
+        content: [
+          { type: "tool_use", id: "tu4", name: "update_items", input: { changes: [{ item_id: "a", status: "chosen", note: null }, { item_id: "zzz", status: "dismissed", note: null }] }, caller: { type: "direct" } },
+        ] as Anthropic.ContentBlock[],
+      },
+      {
+        stop_reason: "tool_use",
+        content: [
+          { type: "tool_use", id: "tu5", name: "update_items", input: { changes: [{ item_id: "a", status: "chosen", note: null }] }, caller: { type: "direct" } },
+        ] as Anthropic.ContentBlock[],
+      },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Ekledim.", citations: null }] as Anthropic.ContentBlock[] },
+    ]);
+
+    await sendMessage("t1", "Merkezi olsun ama bütçeyi aşmayalım.", { client, model: "claude-opus-5" });
+
+    let items = await listItems("t1");
+    expect(items.find((i) => i.id === "a")!.recommendation).toBe("Merkezi");
+    expect(items.find((i) => i.id === "b")!.recommendation).toBeNull();
+    expect((await listPreferences("t1")).map((p) => p.text)).toEqual(["Merkezi konum önemli"]);
+
+    let messages = await listMessages("t1");
+    const assistantTurn = messages.find((m) => m.role === "assistant")!;
+    expect(assistantTurn.choices).toEqual(["Evet, ekleyelim", "Diğerlerini konuşalım"]);
+    // The empty end_turn response was not stored.
+    expect(messages.map((m) => m.role)).toEqual(["user", "assistant", "user"]);
+
+    // Second message: the state changed (recommendation), so it is sent again.
+    await sendMessage("t1", "Evet, ekleyelim", { client, model: "claude-opus-5" });
+    const lastUserTurn = calls[2].messages.at(-1)!;
+    expect(JSON.stringify(lastUserTurn.content)).toContain("trip_state");
+    // Unknown id is reported back as an error and nothing is changed by that call.
+    const errorResult = (calls[3].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[])[0];
+    expect(errorResult.is_error).toBe(true);
+    items = await listItems("t1");
+    expect(items.find((i) => i.id === "a")!.status).toBe("chosen");
+
+    // History sent to the API alternates correctly and is append-only.
+    for (let i = 1; i < calls.length; i++) {
+      const prev = calls[i - 1].messages;
+      expect(calls[i].messages.slice(0, prev.length)).toEqual(prev.slice(0, Math.min(prev.length, calls[i].messages.length)));
+    }
+    messages = await listMessages("t1");
+    expect(messages.at(-1)!.text).toBe("Ekledim.");
+  });
+
+  it("does not resend an unchanged state and starts fresh after a reset", async () => {
+    const ok = { stop_reason: "end_turn", content: [{ type: "text", text: "Tamam.", citations: null }] } as Partial<Anthropic.Message>;
+    const { client, calls } = fakeClient([ok, ok, ok]);
+    // The previous test's last tool call changed the state, so the first message carries it...
+    await sendMessage("t1", "Bir şey sorayım", { client, model: "claude-opus-5" });
+    expect(JSON.stringify(calls[0].messages.at(-1)!.content)).toContain("trip_state");
+    // ...and a follow-up with nothing changed does not.
+    await sendMessage("t1", "Bir şey daha", { client, model: "claude-opus-5" });
+    expect(JSON.stringify(calls[1].messages.at(-1)!.content)).not.toContain("trip_state");
+
+    await resetConversation("t1");
+    expect(currentSession(await listMessages("t1"))).toHaveLength(0);
+    await sendMessage("t1", "Yeniden başlayalım", { client, model: "claude-opus-5" });
+    expect(calls[2].messages).toHaveLength(1);
+    expect(JSON.stringify(calls[2].messages[0].content)).toContain("trip_state");
+  });
+});
