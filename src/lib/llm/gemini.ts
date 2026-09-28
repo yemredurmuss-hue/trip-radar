@@ -156,7 +156,10 @@ export async function listGeminiModels(apiKey: string): Promise<string[]> {
   const pager = await new GoogleGenAI({ apiKey }).models.list();
   const ids: string[] = [];
   for await (const m of pager) {
-    if (m.name && m.supportedActions?.includes("generateContent")) ids.push(m.name.replace(/^models\//, ""));
+    // Keep models that can generate text; if the capability list is missing, don't drop them.
+    if (m.name && (!m.supportedActions || m.supportedActions.includes("generateContent"))) {
+      ids.push(m.name.replace(/^models\//, ""));
+    }
   }
   const usable = ids.filter((id) => id.startsWith("gemini") && !/(image|tts|audio|live|embed|robotics|computer)/.test(id));
   const rank = (id: string) =>

@@ -1,7 +1,7 @@
 // Chat assistant. Every plan change goes through a tool, so the board always reflects what was said.
 // History is append-only: the trip state rides along in a user turn only when it changed, and a
 // long conversation starts a fresh context instead of rewriting old turns.
-import { db, listItems, listMessages, listPreferences, newId, notifyChanged } from "./db";
+import { db, listItems, listMessages, listPreferences, newId, nextTime, notifyChanged } from "./db";
 import { tripDateRange } from "./items";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
 import type { ToolResult, ToolSpec } from "./llm/types";
@@ -122,6 +122,7 @@ export function tripState(trip: Trip, items: Item[], preferences: string[]): str
       recommended: i.recommendation,
       provider: i.provider,
       city: i.city,
+      country: i.country,
       area: i.location.area,
       address: i.location.address,
       location_approximate: i.location.approximate,
@@ -145,9 +146,6 @@ function hash(text: string): string {
   for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
   return (h >>> 0).toString(36);
 }
-
-let clock = 0;
-const nextTime = () => (clock = Math.max(Date.now(), clock + 1));
 
 async function saveMessage(message: Omit<ChatMessage, "id" | "createdAt">): Promise<void> {
   await (await db()).put("messages", { ...message, id: newId(), createdAt: nextTime() });

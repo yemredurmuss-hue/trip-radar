@@ -1,6 +1,6 @@
-import { addEvent, db, notifyChanged } from "../lib/db";
+import { addEvent, db, newId, notifyChanged } from "../lib/db";
 import { CATEGORY_LABELS, formatDateRange, formatPrice } from "../lib/items";
-import type { FactSource, Item, ItemStatus } from "../lib/types";
+import type { FactSource, Item, ItemStatus, Trip } from "../lib/types";
 
 const SOURCE_TEXT: Record<FactSource, string> = {
   url: "URL'den",
@@ -26,12 +26,40 @@ function daysAgo(ms: number): string {
   return days <= 0 ? "bugün" : `${days} gün önce`;
 }
 
-export function ItemDrawer({ item, group, onClose }: { item: Item; group: Item[]; onClose: () => void }) {
+interface Props {
+  item: Item;
+  group: Item[];
+  trips: Trip[];
+  onClose: () => void;
+  onMoved: (tripId: string) => void;
+}
+
+export function ItemDrawer({ item, group, trips, onClose, onMoved }: Props) {
   async function setStatus(status: ItemStatus, event: string) {
     const d = await db();
     await d.put("items", { ...item, status, updatedAt: Date.now() });
     await addEvent(item.tripId, `${item.name} ${event}`);
     notifyChanged();
+  }
+
+  /** Manual fix when a capture landed in the wrong trip. */
+  async function moveTo(value: string) {
+    const d = await db();
+    let target = trips.find((t) => t.id === value);
+    if (value === "__new") {
+      const title = prompt("Yeni gezinin adı", item.country ?? item.city ?? "")?.trim();
+      if (!title) return;
+      const now = Date.now();
+      target = { id: newId(), title, confirmedDates: null, budget: null, heroImage: item.imageUrl, createdAt: now, updatedAt: now };
+      await d.put("trips", target);
+    }
+    if (!target || target.id === item.tripId) return;
+    await d.put("items", { ...item, tripId: target.id, status: "saved", recommendation: null, updatedAt: Date.now() });
+    await addEvent(item.tripId, `${item.name} → ${target.title} gezisine taşındı`);
+    await addEvent(target.id, `${item.name} bu geziye taşındı`);
+    notifyChanged();
+    onClose();
+    onMoved(target.id);
   }
 
   async function remove() {
@@ -58,11 +86,22 @@ export function ItemDrawer({ item, group, onClose }: { item: Item; group: Item[]
         <button className="close" onClick={onClose} aria-label="Kapat">
           ×
         </button>
-        {item.imageUrl && <img className="cover" src={item.imageUrl} alt="" />}
+        {item.imageUrl && <img className="cover" src={item.imageUrl} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />}
         <h2>{item.name}</h2>
         <div className="muted">
           {[CATEGORY_LABELS[item.category], item.provider, item.city].filter(Boolean).join(" · ")}
         </div>
+        <label className="move">
+          Gezi:
+          <select value={item.tripId} onChange={(e) => void moveTo(e.target.value)}>
+            {trips.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.title}
+              </option>
+            ))}
+            <option value="__new">+ Yeni gezi…</option>
+          </select>
+        </label>
 
         <div className="actions">
           {STATUS_ACTIONS.filter((a) => a.status !== "saved" || item.status !== "saved").map((a) => (

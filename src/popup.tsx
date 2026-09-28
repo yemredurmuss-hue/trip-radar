@@ -11,10 +11,18 @@ type State =
   | { step: "saving" }
   | { step: "working"; captureId: string }
   | { step: "done"; text: string }
-  | { step: "error"; text: string };
+  | { step: "error"; text: string }
+  | { step: "hint"; text: string };
+
+class HintError extends Error {}
 
 async function captureActiveTab(): Promise<string> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  // Our own pages (board, popup-in-a-tab) are extension contexts; their URL is not always visible here.
+  const ownTabs = await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.TAB] });
+  if (ownTabs.some((c) => c.tabId === tab?.id) || tab?.url?.startsWith(chrome.runtime.getURL(""))) {
+    throw new HintError("Burası pano. Bir otel, uçuş, etkinlik veya eSIM sayfası açıp orada simgeye bas; o sayfa buraya eklenir.");
+  }
   if (tab?.id == null || !tab.url || !/^https?:/.test(tab.url)) {
     throw new Error("Bu sayfa kaydedilemiyor. Bir otel, uçuş veya etkinlik sayfasındayken dene.");
   }
@@ -39,7 +47,13 @@ function Popup() {
     void hasActiveKey().then(setHasKey);
     captureActiveTab()
       .then((captureId) => setState({ step: "working", captureId }))
-      .catch((error: unknown) => setState({ step: "error", text: error instanceof Error ? error.message : String(error) }));
+      .catch((error: unknown) =>
+        setState(
+          error instanceof HintError
+            ? { step: "hint", text: error.message }
+            : { step: "error", text: error instanceof Error ? error.message : String(error) },
+        ),
+      );
   }, []);
 
   useEffect(() => {
@@ -74,6 +88,7 @@ function Popup() {
       )}
       {state.step === "done" && <p>✓ {state.text}</p>}
       {state.step === "error" && <p className="error">{state.text}</p>}
+      {state.step === "hint" && <p>{state.text}</p>}
       {!hasKey && <p className="warning">Kayıt duruyor. AI'ın işlemesi için ücretsiz Gemini anahtarını bir kez bağla.</p>}
       <button className="primary" onClick={() => void openBoard(hasKey ? "" : "#settings")}>
         {hasKey ? "Panoyu aç" : "1 dakikalık kurulum"}

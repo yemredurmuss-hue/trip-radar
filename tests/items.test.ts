@@ -34,6 +34,7 @@ function extraction(overrides: Partial<Extraction> = {}): Extraction {
     option_detail: "Deluxe Double",
     city: "Porto",
     country: "Portekiz",
+    country_code: "PT",
     location: { address: "Rua X 1, Porto", area: "Baixa", approximate: false },
     dates: { start: "2026-10-08", end: "2026-10-11", source: "page" },
     guests: { adults: 2, children: null, rooms: 1 },

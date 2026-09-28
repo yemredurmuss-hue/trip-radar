@@ -12,6 +12,7 @@ const base: Extraction = {
   option_detail: null,
   city: "Porto",
   country: "Portekiz",
+  country_code: "PT",
   location: { address: null, area: null, approximate: false },
   dates: { start: null, end: null, source: "none" },
   guests: { adults: null, children: null, rooms: null },

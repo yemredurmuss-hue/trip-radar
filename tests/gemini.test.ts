@@ -34,7 +34,7 @@ const capture: Capture = {
 
 const extraction: Extraction = {
   category: "stay", name: "Jardim Stay", provider: "Booking.com", summary: "Merkezi", option_detail: null,
-  city: "Porto", country: "Portekiz", location: { address: null, area: null, approximate: false },
+  city: "Porto", country: "Portekiz", country_code: "PT", location: { address: null, area: null, approximate: false },
   dates: { start: null, end: null, source: "none" }, guests: { adults: null, children: null, rooms: null },
   price: { amount: 285, currency: "EUR", scope: "total", taxes_included: "unknown", source: "page", evidence: "€ 285" },
   cancellation: { summary: null, free_until: null, source: "none", evidence: null },
@@ -88,7 +88,7 @@ describe("gemini chat", () => {
     const trip: Trip = { id: "g1", title: "Portekiz", confirmedDates: null, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 };
     await d.put("trips", trip);
     const item = { id: "a", tripId: "g1", captureIds: [], key: null, category: "stay", needKey: "stay:porto", name: "Jardim Stay",
-      provider: null, summary: "", optionDetail: null, url: null, imageUrl: null, city: "Porto", country: null,
+      provider: null, summary: "", optionDetail: null, url: null, imageUrl: null, city: "Porto", country: null, countryCode: null,
       location: { address: null, area: null, approximate: false }, dates: { start: null, end: null, source: "none" },
       guests: { adults: null, children: null, rooms: null },
       price: { amount: 285, currency: "EUR", scope: "total", taxesIncluded: "yes", source: "page", observedAt: 1 },

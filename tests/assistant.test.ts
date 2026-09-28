@@ -27,7 +27,7 @@ async function seed(): Promise<{ trip: Trip; items: Item[] }> {
   await d.put("trips", trip);
   const item = (id: string, name: string, amount: number): Item => ({
     id, tripId: "t1", captureIds: [], key: null, category: "stay", needKey: "stay:porto", name, provider: null,
-    summary: "", optionDetail: null, url: null, imageUrl: null, city: "Porto", country: "Portekiz",
+    summary: "", optionDetail: null, url: null, imageUrl: null, city: "Porto", country: "Portekiz", countryCode: "PT",
     location: { address: null, area: null, approximate: false },
     dates: { start: "2026-10-08", end: "2026-10-11", source: "url" },
     guests: { adults: 2, children: null, rooms: 1 },

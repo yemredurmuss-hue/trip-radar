@@ -76,7 +76,9 @@ export function App() {
         <ItemDrawer
           item={openItem}
           group={board.items.filter((i) => i.needKey === openItem.needKey)}
+          trips={board.trips}
           onClose={() => setOpenItemId(null)}
+          onMoved={board.selectTrip}
         />
       )}
       {settingsOpen && (

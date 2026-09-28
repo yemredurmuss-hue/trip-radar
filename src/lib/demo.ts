@@ -37,6 +37,7 @@ export async function loadDemoTrip(): Promise<string> {
     imageUrl: null,
     city: "Porto",
     country: "Portekiz",
+    countryCode: "PT",
     location: { address: null, area: null, approximate: false },
     dates: { start: "2026-10-08", end: "2026-10-11", source: "url" },
     guests: { adults: 2, children: null, rooms: 1 },

@@ -2,6 +2,7 @@
 import { classify, normalize } from "./evidence";
 import type { Extraction } from "./extract";
 import type { Capture, Category, FactSource, Item } from "./types";
+import { countryCodeOf } from "./trips";
 import type { UrlFacts } from "./url";
 
 export const CATEGORY_LABELS: Record<Category, string> = {
@@ -30,6 +31,25 @@ export function corpusOf(capture: Capture): string {
   ].join("\n");
 }
 
+const CURRENCY_SYMBOLS: Record<string, string> = { "€": "EUR", $: "USD", "£": "GBP", "₺": "TRY", TL: "TRY", YTL: "TRY" };
+
+/** Model output is schema-shaped but not format-checked; keep only values the UI can rely on. */
+export function isoDate(value: string | null | undefined): string | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const d = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== value ? null : value;
+}
+
+export function currencyCode(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const v = value.trim().toUpperCase();
+  const code = CURRENCY_SYMBOLS[v] ?? CURRENCY_SYMBOLS[value.trim()] ?? v;
+  return /^[A-Z]{3}$/.test(code) ? code : null;
+}
+
+const finite = (n: number | null | undefined) => (typeof n === "number" && Number.isFinite(n) ? n : null);
+const httpUrl = (u: string | null | undefined) => (u && /^https?:\/\//i.test(u.trim()) ? u.trim() : null);
+
 export function buildItem(
   extraction: Extraction,
   capture: Capture,
@@ -38,7 +58,16 @@ export function buildItem(
   now = Date.now(),
 ): Item {
   const corpus = corpusOf(capture);
-  const x = extraction;
+  const raw = extraction;
+  const x: Extraction = {
+    ...raw,
+    name: raw.name.trim() || capture.title?.trim() || "Adsız kayıt",
+    dates: { ...raw.dates, start: isoDate(raw.dates.start), end: isoDate(raw.dates.end) },
+    price: { ...raw.price, amount: finite(raw.price.amount), currency: currencyCode(raw.price.currency) },
+    cancellation: { ...raw.cancellation, free_until: isoDate(raw.cancellation.free_until) },
+    rating: { ...raw.rating, value: finite(raw.rating.value), scale: finite(raw.rating.scale), count: finite(raw.rating.count) },
+    image_url: httpUrl(raw.image_url),
+  };
   const urlDates = facts.checkIn || facts.checkOut;
   const flightKey =
     x.flight?.flight_number && x.flight.departure
@@ -61,9 +90,10 @@ export function buildItem(
     summary: x.summary,
     optionDetail: x.option_detail,
     url: capture.url,
-    imageUrl: x.image_url ?? capture.meta["og:image"] ?? null,
+    imageUrl: x.image_url ?? httpUrl(capture.meta["og:image"]),
     city: x.city,
     country: x.country,
+    countryCode: countryCodeOf(x.country_code),
     location: { ...x.location },
     dates: urlDates
       ? { start: facts.checkIn, end: facts.checkOut, source: "url" }
@@ -75,7 +105,7 @@ export function buildItem(
     },
     price: {
       amount: x.price.amount,
-      currency: x.price.currency?.toUpperCase() ?? facts.currency,
+      currency: x.price.currency ?? currencyCode(facts.currency),
       scope: x.price.scope,
       taxesIncluded: x.price.taxes_included,
       source: priceSource,
@@ -83,7 +113,7 @@ export function buildItem(
     },
     priceHistory:
       x.price.amount != null && x.price.currency
-        ? [{ amount: x.price.amount, currency: x.price.currency.toUpperCase(), observedAt: now }]
+        ? [{ amount: x.price.amount, currency: x.price.currency, observedAt: now }]
         : [],
     cancellation: {
       summary: x.cancellation.summary,
@@ -148,6 +178,7 @@ export function mergeItem(existing: Item, incoming: Item): Item {
     imageUrl: pick(incoming.imageUrl, existing.imageUrl),
     city: pick(incoming.city, existing.city),
     country: pick(incoming.country, existing.country),
+    countryCode: pick(incoming.countryCode, existing.countryCode),
     location: incoming.location.address || incoming.location.area ? incoming.location : existing.location,
     dates: incoming.dates.start ? incoming.dates : existing.dates,
     guests: incoming.guests.adults != null ? incoming.guests : existing.guests,
@@ -273,6 +304,8 @@ export function nightsBetween(start: string | null, end: string | null): number 
 const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
 export function formatDateRange(start: string, end: string | null): string {
+  if (!isoDate(start)) return start;
+  if (end && !isoDate(end)) end = null;
   const [, sm, sd] = start.split("-").map(Number);
   if (!end || end === start) return `${sd} ${MONTHS[sm - 1]}`;
   const [, em, ed] = end.split("-").map(Number);

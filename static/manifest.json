@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trip Radar",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Seyahat seçeneklerini tek tıkla kaydet; AI anlamlandırsın, karşılaştırsın, plana koysun.",
   "action": {
     "default_title": "Bu sayfayı geziye kaydet",

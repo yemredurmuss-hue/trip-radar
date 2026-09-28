@@ -61,6 +61,8 @@ export interface Item {
   imageUrl: string | null;
   city: string | null;
   country: string | null;
+  /** ISO 3166-1 alpha-2; used to keep trips apart. */
+  countryCode: string | null;
   location: { address: string | null; area: string | null; approximate: boolean };
   dates: { start: string | null; end: string | null; source: FactSource };
   guests: { adults: number | null; children: number | null; rooms: number | null };

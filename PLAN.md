@@ -21,6 +21,7 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] Sohbet: seçim / eleme / rezerve / öneri / tercih / bütçe araçları, en fazla bir soru, hızlı yanıt butonları
 - [x] Link yapıştırma, ekran görüntüsü sürükleme, Google Maps rota linki, JSON dışa aktarma
 - [x] Ücretsiz Gemini varsayılan sağlayıcı; Claude isteğe bağlı (ortak arayüz: `src/lib/llm/`)
+- [x] Gezileri ülkeye göre ayırma (Portekiz ≠ Tayland), elle taşıma; hata ekranı (boş sayfa yok)
 - [ ] İlk gerçek gezide kullanım: 20–50 gerçek kayıt, hangi alanların yanlış/eksik geldiğini not et
 
 ## v1: Telefon

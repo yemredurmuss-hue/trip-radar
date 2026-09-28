@@ -116,6 +116,8 @@ a { color: var(--accent); text-decoration: none; }
 .drawer img.cover { width: 100%; border-radius: 14px; aspect-ratio: 16/9; object-fit: cover; }
 .drawer h2 { font-size: 28px; margin: 14px 0 2px; letter-spacing: -.02em; }
 .drawer .close { float: right; background: var(--soft); border: 0; border-radius: 50%; width: 36px; height: 36px; font-size: 18px; }
+.move { display: inline-flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 14px; color: var(--muted); }
+.move select { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 14px; background: #fff; }
 .facts { margin: 18px 0; border-top: 1px solid var(--line); }
 .fact { display: grid; grid-template-columns: 130px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
 .fact .k { color: var(--muted); }
@@ -146,6 +148,15 @@ a { color: var(--accent); text-decoration: none; }
 .row-inline select { margin-top: 0; flex: 1; }
 .small { font-size: 13px; margin-top: -6px; }
 .note { background: #fff8eb; color: #7a5200; border-radius: 10px; padding: 10px 12px; margin-top: 4px; line-height: 1.5; }
+
+/* ---------- crash & error banner ---------- */
+.crash { max-width: 720px; margin: 10vh auto; padding: 0 24px; line-height: 1.5; }
+.crash pre { background: var(--soft); border-radius: 12px; padding: 14px; font-size: 12.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.crash-actions { display: flex; gap: 20px; align-items: center; }
+#error-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50; background: #fdecea; color: var(--danger);
+  font-size: 13.5px; padding: 8px 16px; cursor: pointer; border-bottom: 1px solid #f5c2bd;
+}
 
 /* ---------- popup ---------- */
 body.popup { width: 320px; }

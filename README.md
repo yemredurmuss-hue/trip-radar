@@ -36,6 +36,14 @@ Kodu güncellediğinde `npm run build` çalıştır, sonra `chrome://extensions`
 | Sohbete yaz | "Merkezi olsun, bütçe €1500", "Hangisi daha iyi?", "Casa Azul'u ele", "Jardim'i rezerve ettim" gibi. |
 | Satıra tıkla | Fiyatın bağlamı (tarih, kişi, oda, iptal), kaynağı, karşılaştırma, orijinal link. |
 
+**Geziler kendiliğinden ayrılır.** Her kaydın ülkesi (PT, TH gibi kodla) belirlenir. Portekiz kaydı
+Portekiz gezisine, Tayland kaydı Tayland gezisine gider; AI yanlış gezi önerse bile karar ülkeye göre verilir.
+- Aynı ülkeye iki ayrı gezi varsa tarihe en yakın olanı seçilir.
+- Tarihleri bitişik yeni bir ülke (ör. Portekiz'den sonra İspanya) aynı geziye eklenir.
+- Ülkesi belli olmayan kayıtlar (ör. bölgesel eSIM) AI'ın önerdiği ya da en son gezine gider.
+- Yanlış yere düşen bir kaydı detay ekranındaki **Gezi** seçiminden taşıyabilirsin. Geziler arasında
+  soldaki **Seyahatlerim** menüsünden geçilir.
+
 İpuçları:
 - **Fiyat için tarih seç.** Booking/Airbnb tarih seçilmeden fiyat göstermez.
 - **Oda seçimi:** Birçok oda varsa istediğin odanın hizasına kaydırıp tıkla; AI ekranda gördüğünü öne alır.
@@ -76,7 +84,8 @@ Yapı:
 - `src/lib/extract.ts`: çıkarım şeması ve talimatları (alıntı zorunlu).
 - `src/lib/llm/`: sağlayıcılar (Gemini, Claude) ortak arayüzle.
 - `src/lib/evidence.ts`: alıntı doğrulama.
-- `src/lib/items.ts`: kart oluşturma, tekrar birleştirme, gruplama, etiketler, rota.
+- `src/lib/items.ts`: kart oluşturma, veri temizleme, tekrar birleştirme, gruplama, etiketler, rota.
+- `src/lib/trips.ts`: kaydın hangi geziye gideceği (ülke kodu + tarih; AI önerisi yalnız ipucu).
 - `src/lib/process.ts`: kayıt kuyruğu (arka planda çalışır).
 - `src/lib/assistant.ts`: sohbet ve plan güncelleyen araçlar.
 - `src/app/`: pano arayüzü. `src/popup.tsx`: eklenti açılır penceresi.

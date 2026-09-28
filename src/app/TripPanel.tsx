@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { requestProcessing } from "../lib/browser";
 import {
   CATEGORY_LABELS,
@@ -47,7 +47,7 @@ export function TripPanel({ trip, items, openCaptures, onOpenItem, menu }: Props
         {range && !trip.confirmedDates && <span className="estimated">~tahmini</span>}
         {trip.budget && <span className="estimated">· bütçe {formatPrice(trip.budget.amount, trip.budget.currency)}</span>}
       </div>
-      {trip.heroImage ? <img className="hero" src={trip.heroImage} alt="" /> : <div className="hero" />}
+      <FallbackImg className="hero" src={trip.heroImage} fallback={<div className="hero" />} />
 
       <div className="hero-row">
         <span className="status-line">
@@ -174,13 +174,15 @@ function Row({ item, group, onOpen }: { item: Item; group: Item[]; onOpen: () =>
   const highlight = item.recommendation || item.status === "chosen" || item.status === "booked";
   return (
     <button className={`row${highlight ? " highlight" : ""}`} onClick={onOpen}>
-      {image && item.category !== "flight" ? (
-        <img className="thumb" src={image} alt="" loading="lazy" />
-      ) : (
-        <span className="thumb icon">
-          <CategoryIcon category={item.category} />
-        </span>
-      )}
+      <FallbackImg
+        className="thumb"
+        src={item.category === "flight" ? null : image}
+        fallback={
+          <span className="thumb icon">
+            <CategoryIcon category={item.category} />
+          </span>
+        }
+      />
       <span style={{ minWidth: 0 }}>
         <div className="row-name">{item.name}</div>
         <div className={`row-label tone-${label.tone}`}>{label.text}</div>
@@ -194,6 +196,13 @@ function Row({ item, group, onOpen }: { item: Item; group: Item[]; onOpen: () =>
       </span>
     </button>
   );
+}
+
+/** Shows the fallback when there is no image or it fails to load (blocked, moved, offline). */
+function FallbackImg({ src, className, fallback }: { src: string | null; className: string; fallback: ReactNode }) {
+  const [failed, setFailed] = useState<string | null>(null);
+  if (!src || failed === src) return <>{fallback}</>;
+  return <img className={className} src={src} alt="" loading="lazy" onError={() => setFailed(src)} />;
 }
 
 function joinTr(names: string[]): string {

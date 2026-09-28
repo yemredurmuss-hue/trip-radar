@@ -2,7 +2,8 @@
 import { addEvent, db, listTrips, newId, notifyChanged } from "./db";
 import type { Extraction } from "./extract";
 import { describeError, getProvider } from "./llm";
-import { buildItem, CATEGORY_LABELS, findDuplicate, mergeItem } from "./items";
+import { buildItem, CATEGORY_LABELS, findDuplicate, isoDate, mergeItem } from "./items";
+import { chooseTrip, profileTrips } from "./trips";
 import type { PageSnapshot } from "./pagecapture";
 import type { Capture, Trip } from "./types";
 import { parseUrl, type UrlFacts } from "./url";
@@ -75,7 +76,7 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
     const facts = parseUrl(capture.url ?? "");
     const trips = await listTrips();
     const extraction = await deps.extract(capture, facts, trips);
-    const trip = await resolveTrip(extraction, trips, deps);
+    const trip = await resolveTrip(extraction, trips, deps, facts);
     const incoming = buildItem(extraction, capture, facts, trip.id);
 
     const existing = await d.getAll("items");
@@ -93,17 +94,23 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
   notifyChanged();
 }
 
-async function resolveTrip(extraction: Extraction, trips: Trip[], deps: Deps): Promise<Trip> {
-  const existing = trips.find((t) => t.id === extraction.trip.existing_trip_id);
-  if (existing) return existing;
-  const title =
-    extraction.trip.new_trip_title?.trim() || extraction.country || extraction.city || "Yeni gezi";
-  const sameTitle = trips.find((t) => t.title.toLowerCase() === title.toLowerCase());
-  if (sameTitle) return sameTitle;
+async function resolveTrip(extraction: Extraction, trips: Trip[], deps: Deps, facts: UrlFacts): Promise<Trip> {
+  const choice = chooseTrip(
+    {
+      countryCode: extraction.country_code,
+      country: extraction.country,
+      start: facts.checkIn ?? isoDate(extraction.dates.start),
+      end: facts.checkOut ?? isoDate(extraction.dates.end),
+      suggestedTripId: extraction.trip.existing_trip_id,
+      suggestedTitle: extraction.trip.new_trip_title,
+    },
+    profileTrips(trips, await (await db()).getAll("items")),
+  );
+  if ("tripId" in choice) return trips.find((t) => t.id === choice.tripId)!;
   const now = Date.now();
   const trip: Trip = {
     id: newId(),
-    title,
+    title: choice.newTitle,
     confirmedDates: null,
     budget: null,
     heroImage: await deps.heroImage(extraction.city ?? extraction.country),

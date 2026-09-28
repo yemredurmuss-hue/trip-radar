@@ -29,6 +29,10 @@ export function db(): Promise<IDBPDatabase<TripRadarDB>> {
 
 export const newId = () => crypto.randomUUID();
 
+let lastTime = 0;
+/** Strictly increasing timestamp so rows created in the same millisecond keep their order. */
+export const nextTime = () => (lastTime = Math.max(Date.now(), lastTime + 1));
+
 // --- change notifications between extension pages -------------------------------------------
 
 // BroadcastChannel reaches the other extension pages and the worker but never the sender itself,
@@ -110,7 +114,7 @@ export async function addEvent(tripId: string, text: string): Promise<void> {
     content: null,
     text,
     choices: [],
-    createdAt: Date.now(),
+    createdAt: nextTime(),
   };
   await (await db()).put("messages", message);
 }
