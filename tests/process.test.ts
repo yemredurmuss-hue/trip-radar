@@ -2,7 +2,16 @@ import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { db, listItems, listMessages, listTrips } from "../src/lib/db";
 import type { Extraction } from "../src/lib/extract";
-import { processPending, saveImage, savePastedLink, saveSnapshot, type Deps, type Extractor } from "../src/lib/process";
+import {
+  processPending,
+  retryCapture,
+  retryTransientFailures,
+  saveImage,
+  savePastedLink,
+  saveSnapshot,
+  type Deps,
+  type Extractor,
+} from "../src/lib/process";
 
 const base: Extraction = {
   category: "stay",
@@ -92,5 +101,23 @@ describe("capture pipeline", () => {
     const stored = await (await db()).get("captures", capture.id);
     expect(stored?.status).toBe("error");
     expect(stored?.error).toBe("API anahtarı yok.");
+  });
+
+  it("re-queues busy/rate-limit failures by itself, a few times, but not real errors", async () => {
+    const d = await db();
+    const failed = (id: string, error: string, autoRetries?: number) => ({
+      id, kind: "paste-link" as const, url: null, title: id, pageText: "", viewportText: "", selection: "", jsonLd: [], meta: {},
+      screenshot: null, capturedAt: 1, status: "error" as const, error, itemId: null, autoRetries,
+    });
+    await d.put("captures", failed("busy", 'Gemini hatası (503): {"message":"This model is currently experiencing high demand."}'));
+    await d.put("captures", failed("badkey", "Gemini API anahtarı geçersiz. Ayarlardan kontrol et."));
+    await d.put("captures", failed("tired", "Gemini hatası (503): high demand", 3));
+    expect(await retryTransientFailures()).toBe(1);
+    expect((await d.get("captures", "busy"))!).toMatchObject({ status: "pending", autoRetries: 1 });
+    expect((await d.get("captures", "badkey"))!.status).toBe("error");
+    expect((await d.get("captures", "tired"))!.status).toBe("error"); // gave up after 3 tries...
+    await retryCapture("tired"); // ...until the user asks again
+    expect((await d.get("captures", "tired"))!).toMatchObject({ status: "pending", autoRetries: 0 });
+    for (const id of ["busy", "badkey", "tired"]) await d.delete("captures", id);
   });
 });

@@ -117,6 +117,8 @@ export interface Capture {
   capturedAt: number;
   status: "pending" | "processing" | "done" | "error";
   error: string | null;
+  /** Times a busy/rate-limit failure was put back in the queue automatically. */
+  autoRetries?: number;
   itemId: string | null;
 }
 

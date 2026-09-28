@@ -27,6 +27,7 @@ const MAX_COLUMNS = 5;
 /** Side-by-side comparison of one need: the numbers, the weights the user controls, and why. */
 export function CompareView({ trip, decision, title, onClose, onOpenItem }: Props) {
   const d = decision;
+  const single = d.status === "single";
   const columns = d.options.filter((o) => !o.excluded).slice(0, MAX_COLUMNS);
   const excluded = d.options.filter((o) => o.excluded);
   const unmeasured = (Object.keys(DEFAULT_LEVELS[d.category]) as CriterionId[]).filter(
@@ -86,7 +87,9 @@ export function CompareView({ trip, decision, title, onClose, onOpenItem }: Prop
                     </button>
                     <div className="muted opt-provider">{o.item.provider ?? ""}</div>
                     <div className="opt-score">
-                      {o.score != null ? (
+                      {single ? (
+                        <span className="muted">Puan, karşılaştırınca çıkar</span>
+                      ) : o.score != null ? (
                         <>
                           <span className={`score-big${o === d.winner ? " best" : ""}`}>{o.score}</span>
                           {o.confidence < 0.85 && <span className="muted conf"> · bilgi %{Math.round(o.confidence * 100)}</span>}
@@ -114,7 +117,7 @@ export function CompareView({ trip, decision, title, onClose, onOpenItem }: Prop
                     <LevelPicker level={levelOf(c)} onChange={(level) => void setLevel(c, level)} />
                   </th>
                   {columns.map((o) => (
-                    <Cell key={o.item.id} part={o.parts.find((p) => p.criterion === c)} />
+                    <Cell key={o.item.id} part={o.parts.find((p) => p.criterion === c)} bar={!single} />
                   ))}
                 </tr>
               ))}
@@ -223,15 +226,17 @@ export function CompareView({ trip, decision, title, onClose, onOpenItem }: Prop
   );
 }
 
-function Cell({ part }: { part: Part | undefined }) {
+function Cell({ part, bar }: { part: Part | undefined; bar: boolean }) {
   if (!part || part.s == null) return <td className="muted">bilinmiyor</td>;
   const pct = Math.round(part.s * 100);
   return (
     <td>
       <div className="cell-value">{part.display}</div>
-      <div className="bar" aria-label={`%${pct}`}>
-        <span style={{ width: `${Math.max(4, pct)}%` }} className={pct >= 75 ? "good" : pct >= 45 ? "mid" : "low"} />
-      </div>
+      {bar && (
+        <div className="bar" aria-label={`%${pct}`}>
+          <span style={{ width: `${Math.max(4, pct)}%` }} className={pct >= 75 ? "good" : pct >= 45 ? "mid" : "low"} />
+        </div>
+      )}
       {part.note && <div className="tone-warning cell-note">{part.note}</div>}
     </td>
   );

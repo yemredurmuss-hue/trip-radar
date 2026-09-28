@@ -30,7 +30,8 @@ function daysAgo(ms: number): string {
 /** This option's score, rank and per-criterion breakdown within its need group. */
 function DecisionBreakdown({ item, decision, onCompare }: { item: Item; decision: GroupDecision | undefined; onCompare: () => void }) {
   const option = decision?.options.find((o) => o.item.id === item.id);
-  if (!decision || !option || decision.status === "single") return null;
+  if (!decision || !option) return null;
+  const single = decision.status === "single";
   const ranked = decision.options.filter((o) => o.score != null);
   const rank = ranked.indexOf(option) + 1;
   const aiNote = decision.analysis?.aiScores.find((s) => s.itemId === item.id);
@@ -38,7 +39,9 @@ function DecisionBreakdown({ item, decision, onCompare }: { item: Item; decision
     <div className="breakdown">
       <div className="breakdown-head">
         <span>
-          {option.score != null ? (
+          {single ? (
+            <span className="muted">Tek seçenek · bir tane daha kaydedince puanlanır</span>
+          ) : option.score != null ? (
             <>
               <span className={`score-big${option === decision.winner ? " best" : ""}`}>{option.score}</span>
               <span className="muted"> / 100 · {rank}. sırada ({ranked.length} seçenek)</span>
@@ -63,7 +66,7 @@ function DecisionBreakdown({ item, decision, onCompare }: { item: Item; decision
               </span>
               <span className="part-value">{p.display ?? <span className="muted">bilinmiyor</span>}</span>
               <span className="bar">
-                {p.s != null && (
+                {p.s != null && !single && (
                   <span style={{ width: `${Math.max(4, Math.round(p.s * 100))}%` }} className={p.s >= 0.75 ? "good" : p.s >= 0.45 ? "mid" : "low"} />
                 )}
               </span>

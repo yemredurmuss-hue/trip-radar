@@ -1,6 +1,13 @@
 // Service worker: runs the capture queue and the decision analyses so they continue after the popup closes.
 import { analyzeStale, isAnalyzing } from "./lib/analysis";
-import { isProcessing, processPending, recoverStuck, rehomeFromDemoTrips, reverifyFacts } from "./lib/process";
+import {
+  isProcessing,
+  processPending,
+  recoverStuck,
+  rehomeFromDemoTrips,
+  retryTransientFailures,
+  reverifyFacts,
+} from "./lib/process";
 import { updateWaiting } from "./lib/update";
 
 let recovery: Promise<void> | null = null;
@@ -60,7 +67,14 @@ async function applyUpdateIfIdle(): Promise<void> {
 }
 
 chrome.alarms.create("update-check", { periodInMinutes: 10 });
+// A busy model ("high demand") or a rate limit shouldn't need a click: try those captures again.
+chrome.alarms.create("retry-failed", { periodInMinutes: 10 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "update-check") void applyUpdateIfIdle();
+  if (alarm.name === "retry-failed") {
+    void retryTransientFailures().then((count) => {
+      if (count && !isProcessing()) void run();
+    });
+  }
 });
 void applyUpdateIfIdle();

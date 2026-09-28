@@ -142,6 +142,7 @@ function Group({
   const shown = expanded ? group.items : group.items.slice(0, ROWS_PER_GROUP);
   const hidden = group.items.length - shown.length;
   const comparable = decision && decision.options.filter((o) => !o.excluded).length > 1;
+  const single = decision?.status === "single";
   return (
     <div className="section">
       {(title || group.title) && (
@@ -158,10 +159,10 @@ function Group({
           + {hidden} seçenek daha
         </button>
       )}
-      {comparable && (
+      {(comparable || single) && (
         <button className="verdict-line" onClick={onCompare}>
-          <span>{decision.summary}</span>
-          <span className="verdict-cta">Karşılaştır →</span>
+          <span className={single ? "muted" : ""}>{decision!.summary}</span>
+          <span className="verdict-cta">{single ? "Kriterleri gör →" : "Karşılaştır →"}</span>
         </button>
       )}
     </div>

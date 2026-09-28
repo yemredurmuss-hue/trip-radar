@@ -273,7 +273,25 @@ export async function retryCapture(captureId: string): Promise<void> {
   const d = await db();
   const capture = await d.get("captures", captureId);
   if (capture?.status === "error") {
-    await d.put("captures", { ...capture, status: "pending", error: null });
+    await d.put("captures", { ...capture, status: "pending", error: null, autoRetries: 0 });
     notifyChanged();
   }
+}
+
+/** Busy model (503), rate limit (429), server or connection errors: worth another try later. */
+const TRANSIENT = /\((429|500|502|503|504)\)|kotası|hız sınırı|bağlanılamadı|high demand|overloaded/i;
+const AUTO_RETRIES = 3;
+
+/** Re-queues captures that failed for a temporary reason, a few times at most. Returns how many. */
+export async function retryTransientFailures(): Promise<number> {
+  const d = await db();
+  let count = 0;
+  for (const capture of await d.getAllFromIndex("captures", "status", "error")) {
+    const tries = capture.autoRetries ?? 0;
+    if (!capture.error || !TRANSIENT.test(capture.error) || tries >= AUTO_RETRIES) continue;
+    await d.put("captures", { ...capture, status: "pending", error: null, autoRetries: tries + 1 });
+    count++;
+  }
+  if (count) notifyChanged();
+  return count;
 }

@@ -352,6 +352,10 @@ try {
   await board.locator(".toast").getByRole("button", { name: "Aç" }).click();
   await board.getByRole("heading", { name: "Tayland" }).waitFor();
   assert.equal(await board.getByText("Jardim Stay").count(), 0, "Portugal items must not show in the Thailand trip");
+  // A lone option has nothing to be compared with: no score, but its measured criteria are one click away.
+  await board.locator(".verdict-line", { hasText: "bir seçenek daha kaydet" }).click();
+  await board.getByRole("dialog", { name: "Karşılaştırma" }).getByText("Puan, karşılaştırınca çıkar").waitFor();
+  await board.getByRole("dialog", { name: "Karşılaştırma" }).getByRole("button", { name: "Kapat" }).click();
   await board.getByRole("button", { name: /Seyahatlerim/ }).click();
   await board.locator(".trip-card").nth(1).waitFor();
   assert.equal(await board.locator(".trip-card").count(), 2);
