@@ -17,7 +17,10 @@ import {
 import type { OptionGroup, Plan, StayBlock } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 import type { Capture, Category, Item, Trip } from "../lib/types";
+import { DecisionCard } from "./DecisionCard";
 import { CategoryIcon, Chevron } from "./Icons";
+import { IntentCard } from "./IntentCard";
+import type { ValueCard } from "../lib/value";
 import { decisionLabel, type Decisions } from "./useDecisions";
 
 interface Props {
@@ -58,6 +61,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       subtitle={groupSubtitle}
       nested={nested}
       decision={decisions?.byGroup.get(group.key)}
+      card={decisions?.cards.get(group.key)}
       currency={currency}
       onOpenItem={onOpenItem}
       onCompare={() => onCompare(group.key)}
@@ -108,6 +112,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           ))}
         </div>
       )}
+
+      <IntentCard trip={trip} decisions={decisions} />
 
       {CATEGORY_ORDER.map((category) => {
         if (category === "stay") return <StaySection key="stay" plan={plan} renderGroup={renderGroup} onOpenItem={onOpenItem} />;
@@ -214,6 +220,7 @@ function OptionGroupView({
   subtitle,
   nested,
   decision,
+  card,
   currency,
   onOpenItem,
   onCompare,
@@ -223,6 +230,7 @@ function OptionGroupView({
   subtitle: string | null;
   nested: boolean;
   decision: GroupDecision | undefined;
+  card: ValueCard | undefined;
   currency: string;
   onOpenItem: (i: Item) => void;
   onCompare: () => void;
@@ -257,7 +265,9 @@ function OptionGroupView({
           + {hidden.length} seçenek daha{droppable ? ` (${droppable} elenebilir)` : ""}
         </button>
       )}
-      {(comparable || single) && (
+      {live && card ? (
+        <DecisionCard card={card} decision={decision} onCompare={onCompare} />
+      ) : (comparable || single) && (
         <button className="verdict-line" onClick={onCompare}>
           <span className={single ? "muted" : ""}>{decision!.summary}</span>
           <span className="verdict-cta">{single ? "Kriterleri gör →" : "Karşılaştır →"}</span>

@@ -74,6 +74,8 @@ function DecisionBreakdown({ item, decision, onCompare }: { item: Item; decision
           ))}
         </div>
       )}
+      {option.unmet.length > 0 && <p className="tone-warning small-note">Şartına uymuyor: {option.unmet.join(", ")}</p>}
+      {option.unsure.length > 0 && <p className="muted small-note">Kontrol et: {option.unsure.join(", ")} sayfada görünmüyor</p>}
       {aiNote && <p className="muted small-note">AI değerlendirmesi: {aiNote.score}/10 · {aiNote.note}</p>}
     </div>
   );

@@ -109,6 +109,27 @@ describe("assistant", () => {
     expect(messages.at(-1)!.text).toBe("Ekledim.");
   });
 
+  it("records hard requirements from the chat and rejects malformed ones", async () => {
+    const { client, calls } = fakeClient([
+      {
+        stop_reason: "tool_use",
+        content: [
+          { type: "tool_use", id: "r1", name: "set_requirements", input: { requirements: [{ kind: "amenity", amenity: "mutfak", minutes: null }, { kind: "free_cancellation", amenity: null, minutes: null }] }, caller: { type: "direct" } },
+          { type: "tool_use", id: "r2", name: "set_requirements", input: { requirements: [{ kind: "amenity", amenity: "jakuzi", minutes: null }] }, caller: { type: "direct" } },
+        ] as Anthropic.ContentBlock[],
+      },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Not aldım: mutfak şart.", citations: null }] as Anthropic.ContentBlock[] },
+    ]);
+    await sendMessage("t1", "Mutfak şart, iadesiz de olmasın.", anthropicProvider(client, "claude-opus-5"));
+    const trip = (await (await db()).get("trips", "t1"))!;
+    expect(trip.requirements).toEqual([{ kind: "amenity", amenity: "mutfak" }, { kind: "free_cancellation" }]);
+    const [ok, bad] = calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[];
+    expect(String(ok.content)).toContain('"requirements":["mutfak","ücretsiz iptal"]');
+    expect(bad.is_error).toBe(true);
+    // The model sees how it understood the traveller.
+    expect(JSON.stringify(calls[0].messages.at(-1)!.content)).toContain('\\"intent\\"');
+  });
+
   it("does not resend an unchanged state and starts fresh after a reset", async () => {
     const ok = { stop_reason: "end_turn", content: [{ type: "text", text: "Tamam.", citations: null }] } as Partial<Anthropic.Message>;
     const { client, calls } = fakeClient([ok, ok, ok]);

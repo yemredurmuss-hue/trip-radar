@@ -119,8 +119,17 @@ try {
   await app.locator("button.row", { hasText: "Jardim Stay" }).locator(".score-pill.best").waitFor();
   await app.screenshot({ path: `${out}/3-board.png` });
 
+  // The answer first: which one, what the extra money buys, what would change it, budget left.
+  const stayCard = app.locator(".stay-block .decision-card");
+  await stayCard.getByText("Senin için").waitFor();
+  assert.match(await stayCard.innerText(), /Jardim Stay[\s\S]*€45 fazlasına her yolda ~\d+ dk daha yakın[\s\S]*Casa Azul: €45 cebinde kalır[\s\S]*Bununla kalan bütçe/);
+  // How it understood the traveller so far (here: a pattern in the saved stays), with the evidence.
+  await app.locator(".intent-card .intent-head").click();
+  await app.locator(".intent-list", { hasText: "ücretsiz iptalli" }).waitFor();
+  await app.screenshot({ path: `${out}/3a-card.png` });
+
   // Comparison: numbers side by side, the weights the user controls, and why.
-  await app.locator(".verdict-line", { hasText: "Jardim Stay öne çıkıyor" }).click();
+  await stayCard.getByRole("button", { name: "Karşılaştır →" }).click();
   const compare = app.getByRole("dialog", { name: "Karşılaştırma" });
   const winner = compare.locator("thead th.win .opt-name");
   assert.equal(await winner.innerText(), "Jardim Stay");
@@ -140,8 +149,8 @@ try {
   await app.getByRole("dialog").waitFor();
   await app.locator(".breakdown .score-big").waitFor(); // per-criterion breakdown in the drawer
   await app.screenshot({ path: `${out}/4-drawer.png` });
-  await app.getByRole("button", { name: "Plana al" }).click();
-  await app.getByRole("button", { name: "Kapat" }).click();
+  await app.getByRole("dialog").getByRole("button", { name: "Plana al", exact: true }).click();
+  await app.getByRole("dialog").getByRole("button", { name: "Kapat" }).click();
   await app.getByText("Jardim Stay plana alındı").waitFor();
   // Porto chosen, Lisbon booked: nothing gets them from one to the other yet.
   await app.locator(".stay-block.chosen", { hasText: "Jardim Stay" }).waitFor();
@@ -310,7 +319,7 @@ try {
   console.log("✓ flow: capture → Gemini extraction (SDK request shape checked) → trip on the board");
 
   // Two stays → the engine ranks them and the worker asks Gemini for the written analysis.
-  await board.locator(".verdict-line", { hasText: "öne çıkıyor" }).click({ timeout: 20000 });
+  await board.locator(".decision-card").getByRole("button", { name: "Karşılaştır →" }).click({ timeout: 20000 });
   let compare = board.getByRole("dialog", { name: "Karşılaştırma" });
   await compare.getByText("Jardim Stay merkezde ve yorumları tutarlı", { exact: false }).waitFor({ timeout: 20000 });
   await compare.locator("tr", { hasText: "AI değerlendirmesi" }).waitFor(); // fresh analysis → counts, labelled
@@ -324,7 +333,9 @@ try {
   await board.getByRole("button", { name: "Gönder" }).click();
   await board.getByText("Fiyatı konaklamada çok önemli yaptım.").waitFor({ timeout: 20000 });
   assert.ok(chatPrompts[0].includes("decisions") && chatPrompts[0].includes("would_change_if"), "chat sees the engine's result");
-  await board.locator(".verdict-line").first().click();
+  // Remembered as something the traveller said, and removable from "Seni böyle anladım".
+  await board.locator(".intent-card .intent-head", { hasText: "Fiyat: çok önemli" }).waitFor();
+  await board.locator(".decision-card").getByRole("button", { name: "Karşılaştır →" }).click();
   compare = board.getByRole("dialog", { name: "Karşılaştırma" });
   assert.equal(await compare.locator("tr", { hasText: "Fiyat" }).locator("select").inputValue(), "4");
   await compare.getByRole("button", { name: "Kapat" }).click();

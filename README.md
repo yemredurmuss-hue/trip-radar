@@ -100,6 +100,21 @@ aynı bilgiyle hep aynı sonucu verir ve her sayısı açıklanabilir:
 6. **Dürüstlük:** Fiyatı olmayan ya da bilgisi yetersiz seçenek puanlanmaz, neyin eksik olduğu yazılır.
    Fark 2 puandan azsa "başa baş" denir. Farklı tarih için alınmış fiyat karşılaştırmaya girmez.
 
+7. **Karar kartı ("değer mi?"):** Her açık ihtiyacın altında "Senin için: X" kartı çıkar. Önerilen seçenek
+   en iyi daha ucuz alternatifle tartılır ve fark somut birimle yazılır ("€45 fazlasına her yolda ~37 dk
+   daha yakın; 3 gecede ~4 saat, saat başı ~€12"). Kartta ayrıca şunlar yer alır: hangi önceliğin bunu
+   değerli kıldığı, "Ama konum o kadar önemli değilse Casa Azul: €45 cebinde kalır" ve seçimle kalan bütçe.
+8. **Seni böyle anladım:** Söylediklerin (önem, kesin şart, not) ve sezilenler burada kaynağıyla durur.
+   Sezilenler iki kaynaktan gelir:
+   - Kaydettiklerindeki kalıp: "5 konaklamadan 4'ü ücretsiz iptalli".
+   - Motorun önerisinden farklı seçimlerin: "Seçimin Casa Azul, Jardim yerine: €45 daha ucuz".
+
+   Bir sezgi varsayılanı en fazla bir kademe kaydırır ve senin söylediğini asla ezmez. × ile kaldırılır ya
+   da yok sayılır.
+9. **Kesin şartlar:** "Mutfak şart", "iadesiz olmasın", "direkt uçuş", "merkeze en fazla 15 dk"
+   sohbetten kaydedilir. Şarta uymayan seçenek önerilmez. Sayfada görünmeyen bir olanak "yok" sayılmaz,
+   "kontrol et" diye yazılır.
+
 Son karar senin: "Plana al" ile seçersin; sistem yalnız nedenleriyle gösterir.
 
 ## Doğruluk kuralları

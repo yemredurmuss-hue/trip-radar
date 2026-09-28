@@ -147,6 +147,8 @@ export function App() {
         <CompareView
           trip={trip}
           decision={compared}
+          card={decisions?.cards.get(compared.key)}
+          inferred={decisions?.ctx.inferred}
           title={comparedTitle}
           onClose={() => setCompareKey(null)}
           onOpenItem={(i) => setOpenItemId(i.id)}

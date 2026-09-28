@@ -5,18 +5,25 @@ import {
   CRITERION_LABELS,
   DEFAULT_LEVELS,
   LEVEL_LABELS,
+  inferredKey,
   resetPriorities,
   withPriorities,
   type GroupDecision,
+  type Inferred,
   type OptionResult,
   type Part,
 } from "../lib/decision";
 import { CATEGORY_LABELS, formatPrice } from "../lib/items";
+import type { ValueCard } from "../lib/value";
+import { updateTrip } from "./actions";
 import { AMENITIES, type Amenity, type CriterionId, type Item, type PriorityLevel, type Trip } from "../lib/types";
 
 interface Props {
   trip: Trip;
   decision: GroupDecision;
+  card?: ValueCard;
+  /** Signals currently nudging weights, to mark levels that came from them. */
+  inferred?: Inferred;
   title: string | null;
   onClose: () => void;
   onOpenItem: (item: Item) => void;
@@ -25,7 +32,7 @@ interface Props {
 const MAX_COLUMNS = 5;
 
 /** Side-by-side comparison of one need: the numbers, the weights the user controls, and why. */
-export function CompareView({ trip, decision, title, onClose, onOpenItem }: Props) {
+export function CompareView({ trip, decision, card, inferred, title, onClose, onOpenItem }: Props) {
   const d = decision;
   const single = d.status === "single";
   const columns = d.options.filter((o) => !o.excluded).slice(0, MAX_COLUMNS);
@@ -35,16 +42,14 @@ export function CompareView({ trip, decision, title, onClose, onOpenItem }: Prop
   );
   const levelOf = (c: CriterionId) => columns[0]?.parts.find((p) => p.criterion === c)?.level ?? 0;
 
-  async function saveTrip(next: Trip) {
-    await (await db()).put("trips", next);
-    notifyChanged();
-  }
+  // Changes go to the trip as stored now, so a concurrent update (e.g. from the chat) isn't undone.
   const setLevel = (criterion: CriterionId, level: PriorityLevel) =>
-    saveTrip(withPriorities(trip, [{ criterion, level, category: d.category }]));
-  const toggleAmenity = (a: Amenity) => {
-    const wanted = trip.wantedAmenities ?? [];
-    return saveTrip({ ...trip, wantedAmenities: wanted.includes(a) ? wanted.filter((x) => x !== a) : [...wanted, a], updatedAt: Date.now() });
-  };
+    updateTrip(trip.id, (t) => withPriorities(t, [{ criterion, level, category: d.category }]));
+  const toggleAmenity = (a: Amenity) =>
+    updateTrip(trip.id, (t) => {
+      const wanted = t.wantedAmenities ?? [];
+      return { ...t, wantedAmenities: wanted.includes(a) ? wanted.filter((x) => x !== a) : [...wanted, a] };
+    });
 
   async function choose(option: OptionResult) {
     const chosen = option.item.status === "chosen";
@@ -69,7 +74,10 @@ export function CompareView({ trip, decision, title, onClose, onOpenItem }: Prop
         <h2>{[CATEGORY_LABELS[d.category], title].filter(Boolean).join(" · ")}</h2>
 
         <div className={`verdict-box status-${d.status}`}>
-          <div className="verdict-main">{d.summary}</div>
+          <div className="verdict-main">{card && !card.tie ? `Senin için: ${card.pick.item.name}` : d.summary}</div>
+          {card && <div className="verdict-because">{card.because}</div>}
+          {card?.unless && <div className="verdict-because">Ama {card.unless.charAt(0).toLocaleLowerCase("tr") + card.unless.slice(1)}</div>}
+          {card?.budget && <div className="verdict-because muted">{card.budget}</div>}
           <AiVerdict decision={d} />
         </div>
 
@@ -115,6 +123,11 @@ export function CompareView({ trip, decision, title, onClose, onOpenItem }: Prop
                   <th className="crit-col">
                     <div>{CRITERION_LABELS[c]}</div>
                     <LevelPicker level={levelOf(c)} onChange={(level) => void setLevel(c, level)} />
+                    {inferred?.has(inferredKey(d.category, c)) && (
+                      <div className="muted level-note" title={inferred.get(inferredKey(d.category, c))!.evidence}>
+                        sezgi · seçersen senin ayarın olur
+                      </div>
+                    )}
                   </th>
                   {columns.map((o) => (
                     <Cell key={o.item.id} part={o.parts.find((p) => p.criterion === c)} bar={!single} />
@@ -214,7 +227,7 @@ export function CompareView({ trip, decision, title, onClose, onOpenItem }: Prop
           <span className="muted">
             Puanları kaydettiğin sayfalardaki bilgilerden kod hesaplar; önemlerini sen belirlersin. AI değerlendirmesi düşük ağırlıklı ayrı bir kriterdir. Son karar senin.
           </span>
-          <button className="link-btn" onClick={() => void saveTrip(resetPriorities(trip, d.category))}>
+          <button className="link-btn" onClick={() => void updateTrip(trip.id, (t) => resetPriorities(t, d.category))}>
             Önemleri varsayılana döndür
           </button>
         </div>

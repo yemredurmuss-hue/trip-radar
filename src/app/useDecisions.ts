@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
-import { loadDecisions, needsAnalysis } from "../lib/analysis";
+import { loadDecisions, needsAnalysis, type TripDecisions } from "../lib/analysis";
 import { requestAnalysis } from "../lib/browser";
-import { advantageOver, type DecisionContext, type GroupDecision } from "../lib/decision";
+import { advantageOver, type GroupDecision } from "../lib/decision";
 import type { Tone } from "../lib/items";
 import type { Item, Trip } from "../lib/types";
 
-export interface Decisions {
-  ctx: DecisionContext;
+export interface Decisions extends TripDecisions {
   /** Decisions by group key (see plan.groupKeyOf). */
   byGroup: Map<string, GroupDecision>;
 }
@@ -22,7 +21,7 @@ export function useDecisions(trip: Trip | null, items: Item[]): Decisions | null
     }
     let alive = true;
     loadDecisions(trip, items)
-      .then(({ ctx, decisions }) => alive && setState({ ctx, byGroup: decisions }))
+      .then((result) => alive && setState({ ...result, byGroup: result.decisions }))
       .catch((error) => console.error("decision engine", error));
     return () => {
       alive = false;
@@ -68,6 +67,9 @@ export function decisionLabel(item: Item, decision: GroupDecision | undefined, c
   if (decision.winner?.item.id === item.id) {
     const why = decision.reasons[0]?.label.toLowerCase();
     return { text: why ? `En uygun · ${why}` : "En uygun", tone: "accent", score: option.score, best: true };
+  }
+  if (option.unmet.length) {
+    return { text: `Şartına uymuyor · ${option.unmet.join(", ")}`, tone: "warning", score: option.score, best: false };
   }
   if (option.dominatedBy) {
     return { text: `Elenebilir · ${option.dominatedBy} her açıdan önde`, tone: "warning", score: option.score, best: false };

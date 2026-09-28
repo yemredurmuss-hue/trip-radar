@@ -46,6 +46,12 @@ export const AMENITIES = [
 ] as const;
 export type Amenity = (typeof AMENITIES)[number];
 
+export type Requirement =
+  | { kind: "amenity"; amenity: Amenity }
+  | { kind: "free_cancellation" }
+  | { kind: "direct_flight" }
+  | { kind: "max_walk"; minutes: number };
+
 export const REVIEW_ASPECTS = [
   "location",
   "cleanliness",
@@ -96,6 +102,10 @@ export interface Trip {
   categoryPriorities?: Partial<Record<Category, Partial<Record<CriterionId, PriorityLevel>>>>;
   /** Amenities the user asked for; options are compared on how many they have. */
   wantedAmenities?: Amenity[];
+  /** Hard requirements ("mutfak şart", "iadesiz olmasın"): options that fail them can't win. */
+  requirements?: Requirement[];
+  /** Inferred signals the user dismissed ("bunu yok say"), by signal id. */
+  ignoredSignals?: string[];
   createdAt: number;
   updatedAt: number;
 }

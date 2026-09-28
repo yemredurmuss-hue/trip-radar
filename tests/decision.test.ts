@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { advantageOver, decideGroup, levelFor, makeContext, resetPriorities, withPriorities } from "../src/lib/decision";
+import { activeSignals, inferSignals, toInferred } from "../src/lib/intent";
+import { budgetState, valueCard } from "../src/lib/value";
 import { EMPTY_METRICS } from "../src/lib/items";
 import { distanceKm, walkingMinutes } from "../src/lib/geo";
 import type { Analysis, Item, ItemMetrics, Trip } from "../src/lib/types";
@@ -197,5 +199,106 @@ describe("decideGroup", () => {
     const stale = decideGroup([jardim, casa], ctxFor({ ...analysis, inputHash: "old" }));
     expect(stale.analysis).toBeNull();
     expect(stale.criteria).not.toContain("ai");
+  });
+});
+
+describe("requirements", () => {
+  it("never recommends an option that breaks a hard requirement, and flags unknowns", () => {
+    const { jardim, casa, ribeira } = portoStays();
+    const all = [jardim, casa, ribeira, ...POIS];
+    const t = trip({ requirements: [{ kind: "free_cancellation" }, { kind: "amenity", amenity: "mutfak" }], priorities: { rating: 4 } });
+    const d = decideGroup([jardim, casa, ribeira], makeContext(t, all));
+    const find = (n: string) => d.options.find((o) => o.item.name === n)!;
+    expect(find("Ribeira Rooms").unmet).toEqual(["ücretsiz iptal"]); // non-refundable
+    expect(d.winner?.item.name).not.toBe("Ribeira Rooms");
+    expect(d.options.findIndex((o) => o.item.name === "Ribeira Rooms")).toBe(2); // after compliant ones
+    expect(find("Jardim Stay").unsure).toEqual(["mutfak"]); // not listed on the page ≠ absent
+    expect(d.summary).toContain("Ribeira Rooms şartına uymuyor (ücretsiz iptal)");
+  });
+
+  it("checks walking distance and direct flights", () => {
+    const { jardim, casa } = portoStays();
+    const d = decideGroup([jardim, casa], makeContext(trip({ requirements: [{ kind: "max_walk", minutes: 15 }] }), [jardim, casa, ...POIS]));
+    expect(d.options.find((o) => o.item.name === "Casa Azul")!.unmet).toEqual(["en fazla 15 dk yürüme"]);
+    expect(d.winner?.item.name).toBe("Jardim Stay");
+  });
+});
+
+describe("intent", () => {
+  it("lets what the traveller said win over a signal, and a signal over the default", () => {
+    const inferred = new Map([["stay:location", { delta: -1, evidence: "x" }]]);
+    expect(levelFor(trip(), "stay", "location")).toBe(3);
+    expect(levelFor(trip(), "stay", "location", inferred)).toBe(2);
+    expect(levelFor(trip({ priorities: { location: 4 } }), "stay", "location", inferred)).toBe(4);
+    expect(levelFor(trip(), "stay", "rating", new Map([["stay:rating", { delta: 1, evidence: "x" }]]))).toBe(3);
+  });
+
+  it("learns from choosing against the engine: paying more for location, or saving money", () => {
+    const { jardim, casa } = portoStays();
+    // Engine prefers Jardim; picking Casa (cheaper, farther) says price matters, location less.
+    const choseCasa = [jardim, { ...casa, status: "chosen" as const }, ...POIS];
+    const cheap = inferSignals(choseCasa, makeContext(trip(), choseCasa));
+    expect(cheap.map((s) => s.id).sort()).toEqual(["stay:location:down", "stay:price:up"]);
+    expect(cheap[0].evidence).toContain("Seçimin Casa Azul, Jardim Stay yerine: €45 daha ucuz");
+    // With location unimportant the engine prefers Casa; picking Jardim then says location matters.
+    const t = trip({ priorities: { location: 0 } });
+    const choseJardim = [{ ...jardim, status: "chosen" as const }, casa, ...POIS];
+    const signals = inferSignals(choseJardim, makeContext(t, choseJardim));
+    expect(signals.map((s) => s.id).sort()).toEqual(["stay:location:up", "stay:price:down"]);
+    // ...but an explicit setting always wins: those signals don't apply.
+    expect(activeSignals(signals, t).map((s) => s.id)).toEqual(["stay:price:down"]);
+    expect(activeSignals(signals, { ...t, ignoredSignals: ["stay:price:down"] })).toEqual([]);
+  });
+
+  it("reads patterns in saved stays only with enough evidence", () => {
+    const near = (name: string) => item(name, { geo: { lat: 41.1462, lng: -8.6112, source: "page" } });
+    const centers = { cityCenters: { "porto, portekiz": { lat: 41.1496, lng: -8.6109 } } };
+    const three = [near("A"), near("B"), near("C")];
+    expect(inferSignals(three, makeContext(trip(), three, centers))).toEqual([]);
+    const four = [...three, near("D")];
+    const [s] = inferSignals(four, makeContext(trip(), four, centers));
+    expect(s).toMatchObject({ id: "stay:location:up", evidence: "Kaydettiğin 4 konaklamadan 4 tanesi 15 dk yürüme içinde" });
+    // Applied as a one-step nudge, visible in the context.
+    expect(toInferred([s]).get("stay:location")?.delta).toBe(1);
+  });
+});
+
+describe("value card", () => {
+  it("says what the extra money buys, why it's worth it for this traveller, and what would change it", () => {
+    const { jardim, casa } = portoStays();
+    const all = [jardim, casa, ...POIS];
+    const t = trip({ budget: { amount: 1000, currency: "EUR" }, priorities: { location: 4 } });
+    const ctx = makeContext(t, all);
+    const d = decideGroup([jardim, casa], ctx);
+    const card = valueCard(d, ctx, budgetState(null, all, ctx))!;
+    expect(card.pick.item.name).toBe("Jardim Stay");
+    expect(card.priceDiff).toBe(45);
+    expect(card.because).toMatch(/^Konum senin için "Çok önemli": €45 fazlasına her yolda ~\d+ dk daha yakın; günde bir gidiş-dönüşle 3 gecede ~\d+ saat \(saat başı ~€\d+\)/);
+    expect(card.unless).toBe("Konum o kadar önemli değilse Casa Azul: €45 cebinde kalır.");
+    expect(card.budget).toBe("Bununla kalan bütçe €715 (Casa Azul ile €760)");
+  });
+
+  it("doesn't count the current choice twice, and says so when the traveller chose differently", () => {
+    const { jardim, casa } = portoStays();
+    const chosenCasa = { ...casa, status: "chosen" as const };
+    const all = [jardim, chosenCasa, ...POIS];
+    const ctx = makeContext(trip({ budget: { amount: 1000, currency: "EUR" } }), all);
+    const d = decideGroup([jardim, chosenCasa], ctx);
+    const card = valueCard(d, ctx, budgetState(null, all, ctx))!;
+    expect(card.budget).toBe("Bununla kalan bütçe €715 (Casa Azul ile €760)");
+    expect(card.chosenOther).toMatch(/^Seçimin: Casa Azul \(€45 daha ucuz, daha iyi yorumlar\)\. Önceliklerine göre Jardim Stay \d+ puan önde; karar senin\.$/);
+  });
+
+  it("explains a cheaper winner and a tie without inventing a trade-off", () => {
+    const a = item("A", { price: price(100), rating: rating(9, 10, 500) });
+    const b = item("B", { price: price(101), rating: rating(9, 10, 500) });
+    const tieCtx = makeContext(trip(), [a, b]);
+    const tie = valueCard(decideGroup([a, b], tieCtx), tieCtx, null)!;
+    expect(tie.tie).toBe(true);
+    expect(tie.because).toContain("A ile B başa baş.");
+    const cheap = item("Cheap", { price: price(80), rating: rating(9.1, 10, 500) });
+    const ctx = makeContext(trip(), [cheap, b]);
+    const card = valueCard(decideGroup([cheap, b], ctx), ctx, null)!;
+    expect(card.because).toMatch(/^Hem €21 daha ucuz hem /);
   });
 });
