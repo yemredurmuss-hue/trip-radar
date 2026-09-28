@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { UpdateBanner } from "./UpdateBanner";
 
 /** Never leave a blank page: show what broke so it can be reported, plus a way out. */
 export class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null; stack: string }> {
@@ -19,6 +20,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
     const report = `${error.name}: ${error.message}\n${(error.stack ?? "").split("\n").slice(1, 6).join("\n")}\n${stack.split("\n").slice(0, 6).join("\n")}`;
     return (
       <div className="crash">
+        <UpdateBanner />
         <h2>Pano açılırken bir hata oldu</h2>
         <p>Verilerin yerinde. Sayfayı yenilemeyi dene; tekrar olursa aşağıdaki metni kopyalayıp gönder.</p>
         <pre>{report}</pre>

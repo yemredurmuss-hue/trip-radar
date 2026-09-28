@@ -27,7 +27,11 @@ export function Chat({ trips, trip, messages, onSelectTrip }: Props) {
   const last = visible.at(-1);
   const choices = last?.role === "assistant" && !busy ? last.choices : [];
 
-  useEffect(() => bottom.current?.scrollIntoView({ block: "end" }), [visible.length, busy]);
+  // Block body on purpose: newer Chrome returns a Promise from scrollIntoView, and a value returned
+  // from an effect is treated as its cleanup function (React then crashes calling it).
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ block: "end" });
+  }, [visible.length, busy]);
 
   async function addImages(files: Iterable<File>) {
     for (const file of files) {

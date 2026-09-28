@@ -66,8 +66,16 @@ try {
   assert.doesNotMatch(snap.viewportText, /Footer links/);
   console.log("✓ page reader: JSON-LD, meta, full text and viewport text captured");
 
-  // 2. Board empty state.
+  // 2. Board empty state. Newer Chrome returns a Promise from scrollIntoView; mimic it so an effect
+  // that leaks that value as its "cleanup" crashes here too (it blanked the board in real Chrome).
   const app = await context.newPage();
+  await app.addInitScript(() => {
+    const scroll = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (...args) {
+      scroll.apply(this, args);
+      return Promise.resolve();
+    };
+  });
   await app.goto(`chrome-extension://${id}/app.html`);
   await app.getByText("İlk seçeneğini kaydet").waitFor();
   await app.screenshot({ path: `${out}/1-empty.png` });
@@ -110,6 +118,7 @@ try {
   await app.getByRole("button", { name: "Kapat" }).click();
   await app.getByText("Jardim Stay plana alındı").waitFor();
   await app.getByText("Etkinlikler").click();
+  assert.equal(await app.locator(".crash").count(), 0, "board crashed after chat updates");
   await app.screenshot({ path: `${out}/5-chosen.png` });
   console.log("✓ board: demo trip, drawer, status change and chat event");
 
