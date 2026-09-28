@@ -2,7 +2,7 @@
 // Usage: npm run build && xvfb-run -a node scripts/e2e.mjs   (screenshots go to e2e-output/)
 import { build } from "esbuild";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -242,4 +242,43 @@ try {
   console.log(`screenshots: ${out}`);
 } finally {
   await flow.close();
+}
+
+// ---------------------------------------------------------------------------------------------
+// Part 3: self-update. The installed folder is swapped for a newer version (as scripts/mac/update.sh
+// does); the open board offers the update and the extension reloads into the new version.
+// ---------------------------------------------------------------------------------------------
+const installDir = path.join(mkdtempSync(path.join(tmpdir(), "trip-radar-install-")), "TripRadar");
+cpSync(extension, installDir, { recursive: true });
+const updating = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-upd-")), {
+  executablePath,
+  headless: false,
+  viewport: { width: 1200, height: 800 },
+  args: [`--disable-extensions-except=${installDir}`, `--load-extension=${installDir}`],
+});
+try {
+  const worker = updating.serviceWorkers()[0] ?? (await updating.waitForEvent("serviceworker"));
+  const id = new URL(worker.url()).host;
+  const board = await updating.newPage();
+  await board.goto(`chrome-extension://${id}/app.html`);
+  const before = await board.evaluate(() => chrome.runtime.getManifest().version);
+
+  const next = `${installDir}.new`;
+  cpSync(installDir, next, { recursive: true });
+  const manifest = JSON.parse(readFileSync(path.join(next, "manifest.json"), "utf8"));
+  manifest.version = "99.0.0";
+  writeFileSync(path.join(next, "manifest.json"), JSON.stringify(manifest));
+  renameSync(installDir, `${installDir}.old`);
+  renameSync(next, installDir);
+  rmSync(`${installDir}.old`, { recursive: true });
+
+  await board.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await board.getByText("Yeni sürüm hazır (99.0.0)").waitFor({ timeout: 10000 });
+  await board.screenshot({ path: `${out}/10-update-banner.png` });
+  // The reload itself (chrome.runtime.reload) can't be exercised here: extensions loaded with
+  // --load-extension do not come back after a runtime reload in this Chromium, even without changes.
+  // In Chrome, "Load unpacked" extensions reload normally (the same call hot-reload tools use).
+  console.log(`✓ self-update: board noticed ${before} → 99.0.0 on disk after the folder swap and offers the update`);
+} finally {
+  await updating.close();
 }

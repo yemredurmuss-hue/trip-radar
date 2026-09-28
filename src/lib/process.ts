@@ -142,6 +142,8 @@ async function destinationImage(place: string | null): Promise<string | null> {
 
 let running: Promise<void> | null = null;
 
+export const isProcessing = () => running !== null;
+
 /** Processes every pending capture one at a time. Safe to call repeatedly. */
 export function processPending(deps?: Deps): Promise<void> {
   running ??= (async () => {

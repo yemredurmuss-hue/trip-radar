@@ -7,7 +7,23 @@ Sohbetle birlikte karar verirsiniz.
 > Kişisel sürüm (v0): sunucu yok. Her şey Chrome eklentisinin içinde çalışır. Veriler yalnız bu
 > tarayıcıda (IndexedDB) durur.
 
-## Kurulum (5 dakika)
+## Kurulum: otomatik güncellenen (Mac, önerilen)
+
+Terminal'e bir kez yapıştır:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/yemredurmuss-hue/trip-radar/release/install.sh | bash
+```
+
+Sonra Chrome'da `chrome://extensions` → Geliştirici modu → **Paketlenmemiş öğe yükle** → `~/TripRadar`.
+Bundan sonra yeni sürümler saatte bir kendiliğinden iner. Pano kapalıysa eklenti kendini yeniler;
+açıksa sağ altta **Yeni sürüm hazır → Şimdi güncelle** çıkar. Kapatmak için:
+`curl -fsSL https://raw.githubusercontent.com/yemredurmuss-hue/trip-radar/release/uninstall.sh | bash`
+
+Yayınlama (geliştirici): `static/manifest.json` sürümünü artır → `scripts/release.sh` (`release` dalına gönderir).
+Eklenti kimliği `manifest.json`'daki `key` ile sabittir; klasör değişse de ayarlar ve veriler kalır.
+
+## Kurulum: elle (5 dakika)
 
 1. **Derle** (Node 20+ gerekir):
    ```bash

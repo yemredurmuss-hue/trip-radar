@@ -9,6 +9,7 @@ import { Chat } from "./Chat";
 import { ItemDrawer } from "./ItemDrawer";
 import { Settings } from "./Settings";
 import { TripPanel } from "./TripPanel";
+import { UpdateBanner } from "./UpdateBanner";
 import { useBoard } from "./useBoard";
 
 export function App() {
@@ -53,6 +54,7 @@ export function App() {
 
   return (
     <div className="board">
+      <UpdateBanner />
       <Chat trips={board.trips} trip={trip} messages={board.messages} onSelectTrip={board.selectTrip} />
       <main className="panel">
         {trip ? (

@@ -169,3 +169,10 @@ body.popup { width: 320px; }
 .setup { margin: 18px 0 4px; padding-left: 22px; line-height: 1.55; color: #3a3a3c; font-size: 15px; }
 .setup li { margin: 8px 0; }
 .setup-btn { display: inline-block; padding: 10px 18px; font-size: 15px; border-radius: 12px; }
+
+.update-banner {
+  position: fixed; bottom: 20px; right: 20px; z-index: 40; background: #111; color: #fff; border-radius: 14px;
+  padding: 12px 14px 12px 18px; display: flex; gap: 14px; align-items: center; font-size: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.2);
+}
+.update-banner .small-btn { background: #fff; color: #111; }
