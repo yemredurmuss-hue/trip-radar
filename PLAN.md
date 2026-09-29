@@ -85,6 +85,8 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] 0.19: iki görünüm — Plan (Layla gibi: solda etiket, sağda kart; yalnız kararlar ve rezervasyonlar, check-in/out
       ve boş gün yok) ve Günlük akış (gün gün, saat saat; uçuş/taksi/etkinlik küçük blok, bilgi ince satır, bloğa
       dokununca Plan'daki kartı); şehir bloğunun içi dışıyla aynı hizada
+- [x] 0.19.1: gece bölme — sohbette "o gece ayrı konaklama" boş blok açar, önce seçilen yer kalan gecelerde kalır,
+      asistan otel seçmez; söylenen fiyat karta yazılır (set_price); asistan yalnız araçların yaptığını söyler
 - [ ] Sonraki öneriler (onay bekliyor): 7 sade karşılaştırma, 8 zaman çizelgesinde tekrarların kalkması,
       9 sohbet ↔ pano bağlantısı, 10 sırayla karar ver modu
 - [ ] 0.17: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),

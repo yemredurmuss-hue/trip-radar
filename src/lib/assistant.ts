@@ -21,7 +21,7 @@ import { prosConsFor } from "./proscons";
 import { activeSignals } from "./intent";
 import { buildLegs, legTiming, withLegChoice } from "./legs";
 import { checkPlanned, fillPlanned, plannedInput, plannedItem, PLANNED_KINDS, samePlan } from "./planned";
-import { buildPlan, liveGroups, type Plan } from "./plan";
+import { buildPlan, liveGroups, stayRange, type Plan } from "./plan";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
 import type { ToolResult, ToolSpec } from "./llm/types";
 import {
@@ -62,7 +62,10 @@ Nasıl konuşursun:
   • kalıcı bağlam ("bebekle gidiyoruz", "balayı", "geç döneriz") → save_preference
   Kaydettiğini tek cümleyle söyle ("Not aldım: mutfak şart.") ve sonucun nasıl değiştiğini anlat.
 - Sezilen bir tercihi (intent.inferred) uygun bir anda doğal biçimde teyit edebilirsin; ısrar etme.
-- Kullanıcı bir karar verdiğinde (seçtim, ele, rezerve ettim) update_items; bütçe ya da tarih söylediğinde update_trip. Seçeneklerin durumunu yalnız kullanıcının son mesajı bunu istiyorsa değiştir; eski bir konuşmaya dayanarak değiştirme.
+- Kullanıcı bir karar verdiğinde (seçtim, ele, rezerve ettim) update_items; bütçe ya da tarih söylediğinde update_trip. Seçeneklerin durumunu yalnız kullanıcının son mesajı bunu istiyorsa değiştir; eski bir konuşmaya dayanarak değiştirme. Kullanıcı bir otelin (ya da uçuşun) adını söyleyip seçmedikçe kendin seçme; önerini söyle, seçimi ona bırak.
+- Konaklamayı bölmek: "7 Ekim gecesi başka bir otel koy", "ilk gece havalimanına yakın kalalım", "son iki gece başka yerde" → plan_item kind stay (o gecelerin tarihi, şehir, booked false). O geceler için ayrı, boş bir konaklama bloğu açılır; önceden seçilen yer kalan gecelerde kalır. Otel seçme; kullanıcı kaydettiği yerlerden seçer.
+- Fiyat: kullanıcı bir fiyat söylerse ("biletim 312 dolardı", "oteli 90 euroya aldım") set_price ile ilgili seçeneğe yaz.
+- Yalnız araçların yaptığını söyle: bir aracı çağırmadıysan ya da araç hata verdiyse "güncelledim/not ettim/böldüm" deme. Aracın döndürdüğü sonuçla (ör. plan_item'ın board alanı) panoda gerçekten ne olduğunu anlat.
 - Boş geceler varsa uygun bir anda bir kez hatırlat.
 - Planlar: kullanıcı bir planını söylediğinde, linki olmasa da (ör. "7 Ekim'de İstanbul'dan Porto'ya uçuyoruz", "11 Ekim'de Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız", "10-17 Ekim Funchal'da kalacağız", "9 Ekim akşamı fado") plan_item ile hemen panoya ekle; tarih ve nereden/nereye ya da şehir ver. Gün belli değilse beklemeden date null ile ekle (şehrin bloğunda "gün belli değil" diye durur); gün plandan açıksa (ör. Madeira'ya varış günü) o tarihi kullan; gün sonra söylenince aynı şeyi plan_item ile tarihle tekrar ver, kart o güne geçer. "gideriz/düşünüyoruz" → planlanıyor (booked false); "aldım/rezerve ettim" → booked true. Aynı şey items'ta zaten varsa plan_item yerine update_items kullan. Şehir değişimi için ulaşım söylenirse (Madeira'ya uçakla) kind flight ile ekle; şehir içi transferler (metro, taksi) için set_leg kullan.
 - Gerek olmayanı sil: "transfere gerek yok", "orayı arabayla hallederiz, transfer yok" → set_leg mode "none" (transfer gizlenir, geri getirilebilir). "X'i ele / istemiyorum" → update_items status dismissed (Elenenler'de durur, silinmez).
@@ -104,6 +107,22 @@ export const TOOLS: ToolSpec[] = [
         },
       },
       required: ["changes"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "set_price",
+    description:
+      "Kullanıcının söylediği fiyatı bir seçeneğe yazar ('biletim 312 dolardı', 'oteli 90 euroya aldım'); kartta o fiyat görünür ve bütçeye girer. Fiyat uydurma: yalnız kullanıcı söylediyse.",
+    schema: {
+      type: "object",
+      properties: {
+        item_id: { type: "string" },
+        amount: { type: "number", description: "Söylenen tutar" },
+        currency: { type: "string", description: "ISO kodu: USD, EUR, TRY..." },
+        scope: { type: "string", enum: ["total", "per_night", "per_person"], description: "Toplam mı, gecelik mi, kişi başı mı" },
+      },
+      required: ["item_id", "amount", "currency", "scope"],
       additionalProperties: false,
     },
   },
@@ -196,7 +215,7 @@ export const TOOLS: ToolSpec[] = [
   {
     name: "plan_item",
     description:
-      "Kullanıcının sohbette söylediği bir planı (linki, tarihi olmasa da) hemen panoya ekler: uçuş, tren, otobüs, feribot, transfer, araç kiralama, konaklama, etkinlik. Tarihliyse kendi gününde, tarihsizse şehrinin bloğunda görünür; booked false ise 'planlanıyor' yazar. Aynı plan tekrar söylenirse (tarih sonradan gelse de) onu günceller.",
+      "Kullanıcının sohbette söylediği bir planı (linki, tarihi olmasa da) hemen panoya ekler: uçuş, tren, otobüs, feribot, transfer, araç kiralama, konaklama, etkinlik. Tarihliyse kendi gününde, tarihsizse şehrinin bloğunda görünür; booked false ise 'planlanıyor' yazar. Konaklama (kind stay, booked false) o geceler için ayrı, boş bir konaklama bloğu açar: otel seçilmez, o gecelere önceden seçilmiş bir yer varsa kalan gecelerde kalır. Aynı plan tekrar söylenirse (tarih sonradan gelse de) onu günceller. Sonuç panonun o gecelerde ne gösterdiğini döndürür.",
     schema: {
       type: "object",
       properties: {
@@ -317,7 +336,7 @@ export function planState(plan: Plan, trip?: Trip, listings?: Map<string, Listin
       nights: `${b.range.start}..${b.range.end}`,
       count: b.nights,
       city: b.city,
-      ...(b.kind === "open" ? { options: b.groups.reduce((n, g) => n + g.items.length, 0) } : { item: b.item.name }),
+      ...(b.kind === "open" ? { options: b.groups.reduce((n, g) => n + g.items.length, 0), ...(b.slot ? { said_apart: true } : {}) } : { item: b.item.name }),
     })),
     notices: plan.notices.map((n) => n.text),
     legs: trip ? legsState(plan, trip, listings) : [],
@@ -492,17 +511,35 @@ async function runTool(tripId: string, name: string, input: any, choices: string
           for (const other of group?.items ?? []) {
             const latest = current.get(other.id)!;
             if (other.id === item.id || latest.status !== "chosen" || latest.origin === "chat") continue;
-            const demoted = { ...latest, status: "saved" as const, updatedAt: Date.now() };
+            const demoted = { ...latest, status: "saved" as const, statusAt: Date.now(), updatedAt: Date.now() };
             current.set(other.id, demoted);
             await d.put("items", demoted);
           }
         }
         const note = typeof c.note === "string" && c.note.trim() ? c.note.trim() : item.statusNote;
-        const updated = { ...item, status: c.status, statusNote: note, updatedAt: Date.now() };
+        const updated = { ...item, status: c.status, statusNote: note, ...(c.status !== item.status ? { statusAt: Date.now() } : {}), updatedAt: Date.now() };
         current.set(item.id, updated);
         await d.put("items", updated);
       }
       return "ok";
+    }
+    case "set_price": {
+      const item = byId.get(input.item_id);
+      if (!item) throw new ToolError(`Bu id'le seçenek yok: ${input.item_id}`);
+      const amount = Number(input.amount);
+      if (!Number.isFinite(amount) || amount <= 0) throw new ToolError(`Geçersiz tutar: ${input.amount}`);
+      const currency = currencyCode(input.currency);
+      if (!currency) throw new ToolError(`Para birimi ISO kodu olmalı (USD, EUR, TRY...): ${input.currency}`);
+      const scope = ["total", "per_night", "per_person"].includes(input.scope) ? (input.scope as "total" | "per_night" | "per_person") : "total";
+      const now = Date.now();
+      const updated: Item = {
+        ...item,
+        price: { amount, currency, scope, taxesIncluded: "unknown", source: "user", observedAt: now },
+        priceHistory: [...item.priceHistory, { amount, currency, observedAt: now }],
+        updatedAt: now,
+      };
+      await d.put("items", updated);
+      return JSON.stringify({ item: item.name, price: `${amount} ${currency}`, scope, shown: "Kartta bu fiyat yazıyor." });
     }
     case "set_priorities": {
       const trip = await d.get("trips", tripId);
@@ -577,7 +614,17 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       const status = plan.booked || same?.status === "booked" ? ("booked" as const) : ("chosen" as const);
       const saved = same ? { ...same, ...fresh, id: same.id, createdAt: same.createdAt, status } : fresh;
       await d.put("items", saved);
-      return JSON.stringify({ [same ? "updated" : "added"]: saved.name, item_id: saved.id, status: saved.status === "booked" ? "booked" : "planned" });
+      const result: Record<string, unknown> = { [same ? "updated" : "added"]: saved.name, item_id: saved.id, status: saved.status === "booked" ? "booked" : "planned" };
+      // A stay: what the board now shows for those nights, so the reply says what's really there.
+      const nights = saved.category === "stay" ? stayRange(saved) : null;
+      const trip = nights ? await d.get("trips", tripId) : undefined;
+      if (nights && trip) {
+        const after = buildPlan(trip, [...items.filter((i) => i.id !== saved.id), saved]);
+        result.board = after.stayBlocks
+          .filter((b) => b.range.start < nights.end && nights.start < b.range.end)
+          .map((b) => ({ nights: `${b.range.start}..${b.range.end}`, status: b.kind, ...(b.kind === "open" ? { hotel: null } : { hotel: b.item.name }) }));
+      }
+      return JSON.stringify(result);
     }
     case "set_leg": {
       const trip = await d.get("trips", tripId);

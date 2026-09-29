@@ -190,6 +190,7 @@ function shown(items: Item[], plan: ReturnType<typeof buildPlan>, timeline: Retu
       if (e.kind === "stay") {
         if (e.block.kind === "booked") [e.block.item, ...(e.block.clashes ?? [])].forEach((i) => add(i, "stay-booked"));
         else for (const g of e.block.groups) g.items.forEach((i) => add(i, `stay:${g.key}`));
+        if (e.block.kind === "open" && e.block.slot) add(e.block.slot, "stay-slot");
       } else if (e.kind === "travel") e.travel?.items.forEach((i) => add(i, `travel:${e.role}`));
       else if (e.kind === "plan") e.items.forEach((i) => add(i, "plan"));
       else if (e.kind === "rental") e.group.items.forEach((i) => add(i, "rental"));

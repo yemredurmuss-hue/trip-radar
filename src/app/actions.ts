@@ -12,7 +12,7 @@ const EVENT: Record<ItemStatus, string> = {
 export async function setItemStatus(item: Item, status: ItemStatus): Promise<void> {
   const d = await db();
   const fresh = (await d.get("items", item.id)) ?? item;
-  await d.put("items", { ...fresh, status, updatedAt: Date.now() });
+  await d.put("items", { ...fresh, status, statusAt: Date.now(), updatedAt: Date.now() });
   await addEvent(item.tripId, `${item.name} ${EVENT[status]}`);
   notifyChanged();
 }
@@ -41,7 +41,7 @@ export async function chooseItem(item: Item, alternatives: Item[]): Promise<void
       if (other.id === item.id || other.origin === "chat") continue;
       const fresh = (await d.get("items", other.id)) ?? other;
       if (fresh.status !== "chosen") continue;
-      await d.put("items", { ...fresh, status: "saved", updatedAt: Date.now() });
+      await d.put("items", { ...fresh, status: "saved", statusAt: Date.now(), updatedAt: Date.now() });
     }
   }
   await setItemStatus(item, "chosen");

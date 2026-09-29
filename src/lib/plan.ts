@@ -43,7 +43,16 @@ export type StayBlock =
       clashes?: Item[];
     }
   | { kind: "chosen"; range: DateRange; nights: number; city: string | null; item: Item; groups: OptionGroup[] }
-  | { kind: "open"; range: DateRange; nights: number; city: string | null; groups: OptionGroup[]; searchUrl: string };
+  | {
+      kind: "open";
+      range: DateRange;
+      nights: number;
+      city: string | null;
+      groups: OptionGroup[];
+      searchUrl: string;
+      /** A stay said in the chat ("7 Ekim gecesi başka bir yerde kalalım"): these nights are one stay of their own. */
+      slot?: Item;
+    };
 
 /** Transfers (between cities, to the airport...) are legs, see legs.ts. */
 export interface PlanNotice {
@@ -152,19 +161,39 @@ export function tripRange(trip: Trip, items: Item[]): DateRange | null {
   return nightsBetween(range.start, range.end) <= MAX_NIGHTS ? range : null;
 }
 
+/** When a choice was made (older items only know when they last changed). */
+const chosenAt = (i: Item) => i.statusAt ?? i.updatedAt;
+
+/** A stay said in the chat and not booked: its nights are one stay of their own, a hotel still to pick. */
+const isSlot = (i: Item) => i.origin === "chat" && i.category === "stay" && i.status === "chosen" && Boolean(stayRange(i));
+
 /**
- * Stays said in the chat ("Madeira'da kalacağız") that a saved page now covers: one chosen or booked in
- * the same place for all of those nights. A plan only partly covered stays (for the other nights).
+ * Whether a chosen page takes a stay said in the chat: one for those nights only (or fewer), or one
+ * chosen after it was said. A choice made before ("7 Ekim gecesi başka bir yerde kalalım" said after
+ * choosing a place for 7–11) keeps only its other nights.
+ */
+function fills(choice: Item, slot: Item): boolean {
+  const [c, s] = [stayRange(choice)!, stayRange(slot)!];
+  return (s.start <= c.start && c.end <= s.end) || chosenAt(choice) >= slot.updatedAt;
+}
+
+/**
+ * Stays said in the chat ("Madeira'da kalacağız") that a saved page now covers: one booked, or chosen
+ * for them (see fills), in the same place for all of those nights. A plan only partly covered stays
+ * (for the other nights).
  */
 function replacedChatStays(stays: Item[]): Map<string, Item> {
-  const real = stays.filter((i) => i.origin !== "chat" && (i.status === "chosen" || i.status === "booked") && stayRange(i));
+  // A choice a booking closed takes nothing over.
+  const booked = stays.filter((i) => i.status === "booked" && stayRange(i));
+  const standing = (i: Item) => i.status === "booked" || !booked.some((b) => overlaps(stayRange(b)!, stayRange(i)!));
+  const real = stays.filter((i) => i.origin !== "chat" && (i.status === "chosen" || i.status === "booked") && stayRange(i) && standing(i));
   const out = new Map<string, Item>();
   for (const i of stays) {
     const r = i.origin === "chat" ? stayRange(i) : null;
     if (!r) continue;
     const by = real.find((x) => {
       const xr = stayRange(x)!;
-      return xr.start <= r.start && xr.end >= r.end && samePlace([x], [i]);
+      return xr.start <= r.start && xr.end >= r.end && samePlace([x], [i]) && (x.status === "booked" || fills(x, i));
     });
     if (by) out.set(i.id, by);
   }
@@ -456,14 +485,16 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
     }
     const r = stayRange(i);
     if (i.status === "booked" && r) continue;
-    const blocker = r ? bookedStays.find((b) => overlaps(stayRange(b)!, r)) : undefined;
+    // A stay said in the chat keeps the nights a booking leaves (it's closed below if none are left).
+    const blocker = r && !isSlot(i) ? bookedStays.find((b) => overlaps(stayRange(b)!, r)) : undefined;
     if (blocker) closed.push({ item: i, reason: `${blocker.name} rezervasyonu bu geceleri kapsıyor` });
     else openStays.push(i);
   }
   const chosenStays = openStays.filter((i) => i.status === "chosen" && stayRange(i)).sort(byStart);
 
   const byKey = new Map<string, Item[]>();
-  for (const i of openStays) byKey.set(groupKeyOf(i), [...(byKey.get(groupKeyOf(i)) ?? []), i]);
+  // A stay said in the chat is a stretch of nights, not an option to pick.
+  for (const i of openStays.filter((x) => !isSlot(x))) byKey.set(groupKeyOf(i), [...(byKey.get(groupKeyOf(i)) ?? []), i]);
   // The same nights in different places (Porto and Braga, 8–12) are two needs; pages without a city go
   // with the rest of those nights.
   const stayGroups = [...byKey].flatMap(([key, list]) => {
@@ -487,23 +518,35 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
   const stayBlocks: StayBlock[] = [];
   const looseStays: OptionGroup[] = [];
   if (range) {
-    type Run = { key: string; start: string; end: string; item: Item | null; booked: boolean };
+    type Run = { key: string; start: string; end: string; item: Item | null; booked: boolean; slot: Item | null };
     const runs: Run[] = [];
+    // The latest choice wins a night two choices share; a stay said in the chat keeps its nights to
+    // itself (the latest said first), open until a page is chosen for it.
+    const picks = chosenStays.filter((i) => i.origin !== "chat").sort((a, b) => chosenAt(b) - chosenAt(a) || byStart(a, b));
+    const slots = stays.filter(isSlot).sort((a, b) => b.updatedAt - a.updatedAt);
     for (let night = range.start; night < range.end; night = addDays(night, 1)) {
       const booked = bookedStays.find((b) => holds(stayRange(b)!, night));
-      const chosen = booked ? undefined : chosenStays.find((c) => holds(stayRange(c)!, night));
+      const slot = booked ? undefined : slots.find((s) => holds(stayRange(s)!, night));
+      const chosen = booked ? undefined : picks.find((c) => holds(stayRange(c)!, night) && (!slot || fills(c, slot)));
       const item = booked ?? chosen ?? null;
-      const key = item ? `${booked ? "b" : "c"}:${item.id}` : "open";
+      const key = item ? `${booked ? "b" : "c"}:${item.id}` : slot ? `s:${slot.id}` : "open";
       const last = runs.at(-1);
       if (last && last.key === key) last.end = addDays(night, 1);
-      else runs.push({ key, start: night, end: addDays(night, 1), item, booked: Boolean(booked) });
+      else runs.push({ key, start: night, end: addDays(night, 1), item, booked: Boolean(booked), slot: item ? null : (slot ?? null) });
     }
     for (const run of runs) {
       const r = { start: run.start, end: run.end };
       const nights = nightsBetween(r.start, r.end);
       if (run.item && run.booked) stayBlocks.push({ kind: "booked", range: r, nights, city: run.item.city, item: run.item });
       else if (run.item) stayBlocks.push({ kind: "chosen", range: r, nights, city: run.item.city, item: run.item, groups: [] });
+      else if (run.slot) stayBlocks.push({ kind: "open", range: r, nights, city: run.slot.city, groups: [], searchUrl: "", slot: run.slot });
       else stayBlocks.push({ kind: "open", range: r, nights, city: null, groups: [], searchUrl: "" });
+    }
+    // A stay said in the chat whose nights were all taken (chosen pages for each of them): its job is done.
+    for (const slot of slots) {
+      if (closed.some((c) => c.item.id === slot.id) || stayBlocks.some((b) => b.kind === "open" && b.slot === slot)) continue;
+      const by = stayBlocks.filter((b) => b.kind !== "open" && overlaps(b.range, stayRange(slot)!)).map((b) => (b.kind === "open" ? "" : b.item.name));
+      closed.push({ item: slot, reason: `Yerine ${[...new Set(by)].join(", ")} geldi` });
     }
     // A booking wholly inside another one's nights got no stretch of its own: it sits with the one it clashes with.
     for (const b of bookedStays) {
@@ -545,6 +588,7 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
         return i.city && d && d >= block.range.start && d < block.range.end && (DAY_PLACES.includes(i.category) || isRental(i));
       });
       const candidates = [
+        block.slot?.city,
         mostCommon(block.groups.flatMap((g) => g.items.map((i) => i.city))),
         arriving?.city ?? arriving?.flight?.to,
         leaving?.flight?.from,
@@ -571,7 +615,9 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
       const fits = stayBlocks.filter(
         (b) => b.kind !== "booked" && (sameCity(b.city, city) || samePlace(group.items, b.groups.flatMap((g) => g.items), city, b.city)),
       );
-      const block = fits.length === 1 ? fits[0] : null;
+      // Two stretches in its city (a night said apart, the rest chosen): the one still open.
+      const open = fits.filter((b) => b.kind === "open");
+      const block = fits.length === 1 ? fits[0] : open.length === 1 ? open[0] : null;
       if (!block || block.kind === "booked") {
         looseStays.push(group);
         continue;

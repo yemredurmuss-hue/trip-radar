@@ -58,7 +58,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
 
   async function choose(option: OptionResult) {
     const chosen = option.item.status === "chosen";
-    await (await db()).put("items", { ...option.item, status: chosen ? "saved" : "chosen", updatedAt: Date.now() });
+    await (await db()).put("items", { ...option.item, status: chosen ? "saved" : "chosen", statusAt: Date.now(), updatedAt: Date.now() });
     await addEvent(option.item.tripId, `${option.item.name} ${chosen ? "seçeneklere geri alındı" : "plana alındı"}`);
     notifyChanged();
   }

@@ -139,7 +139,7 @@ a { color: var(--accent); text-decoration: none; }
 .fact { display: grid; grid-template-columns: 130px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
 .fact .k { color: var(--muted); }
 .badge { display: inline-block; font-size: 12px; border-radius: 6px; padding: 1px 7px; margin-left: 6px; background: var(--soft); color: #555; }
-.badge.page { background: #e8f6ee; color: var(--success); }
+.badge.page, .badge.user { background: #e8f6ee; color: var(--success); }
 .badge.unverified, .badge.none { background: #fff3e0; color: var(--warning); }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
 .actions button { border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 10px 16px; }
@@ -514,6 +514,7 @@ body.popup { width: 320px; }
 .city-head .muted { font-size: 14.5px; }
 .city-no { align-self: center; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 1.5px solid #d6cfc4; font-size: 14px; font-weight: 700; }
 .city-block .timeline::before { left: 21px; }
+.slot-note { margin: 6px 4px 0; font-size: 13px; }
 .timeline.between { margin: 0 0 22px; }
 .timeline.between::before { display: none; }
 .route-mode { position: relative; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #fff; font-size: 14px; line-height: 1; }

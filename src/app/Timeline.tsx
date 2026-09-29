@@ -7,7 +7,7 @@ import { dayRows, daySummary, journeyTitle, rowsLeft, type DayRow } from "../lib
 import { entryDomId } from "../lib/progress";
 import { flightSearchUrl, nightsKey, type RentalEntry, type Timeline, type TimelineEntry, type TimelineSection } from "../lib/timeline";
 import type { Category, Item, LegMode, Listing } from "../lib/types";
-import { setHidden, updateTrip } from "./actions";
+import { removeItem, setHidden, updateTrip } from "./actions";
 import { Carousel } from "./Carousel";
 import { CategoryIcon } from "./Icons";
 import { StatusBar, type Standing } from "./Status";
@@ -592,6 +592,19 @@ function MoveCard({ leg, tripId, startOpen = false }: { leg: Leg; tripId: string
   );
 }
 
+/** A stay said apart in the chat goes back into the nights around it. */
+const SlotUndo = ({ slot }: { slot: Item }) => (
+  <button className="link-btn quiet" onClick={() => void removeItem(slot)} title="Bu geceler ayrı konaklama olmasın">
+    Ayrı olmasın
+  </button>
+);
+
+const SlotNote = ({ slot }: { slot: Item }) => (
+  <p className="slot-note muted">
+    Bu geceler ayrı konaklama (sohbette söyledin) · <SlotUndo slot={slot} />
+  </p>
+);
+
 const blockState = (block: StayBlock) => (block.kind === "open" && !block.groups.length ? "empty" : block.kind);
 
 function Block({ block, skipped, tripId, renderGroup, settled }: { block: StayBlock; skipped: boolean; tripId: string; renderGroup: RenderGroup; settled: SettledFor }) {
@@ -620,9 +633,10 @@ function Block({ block, skipped, tripId, renderGroup, settled }: { block: StayBl
         block.groups.map((g) =>
           renderGroup(g, null, g.range && g.range.start === block.range.start && g.range.end === block.range.end ? null : g.title, true),
         )}
+      {block.kind === "open" && block.slot && block.groups.length > 0 && <SlotNote slot={block.slot} />}
       {block.kind === "open" && !block.groups.length && (
         <div className="settled-card st-open stay-open">
-          <StatusBar standing="open" text="Planlanmadı" sub="bu geceler için kayıtlı yer yok" />
+          <StatusBar standing="open" text="Planlanmadı" sub={block.slot ? "ayrı konaklama · otel seçilmedi" : "bu geceler için kayıtlı yer yok"} />
           <div className="empty-card">
             <span>
               <b>{block.city ?? "Konaklama"}</b>
@@ -631,9 +645,13 @@ function Block({ block, skipped, tripId, renderGroup, settled }: { block: StayBl
               </span>
             </span>
             <span className="sc-actions">
-              <button className="link-btn quiet" onClick={() => void setHidden(tripId, nightsKey(block.range), true, label)} title="Bu geceler için yer gerekmiyor">
-                Gerek yok
-              </button>
+              {block.slot ? (
+                <SlotUndo slot={block.slot} />
+              ) : (
+                <button className="link-btn quiet" onClick={() => void setHidden(tripId, nightsKey(block.range), true, label)} title="Bu geceler için yer gerekmiyor">
+                  Gerek yok
+                </button>
+              )}
               <a className="pill-btn outline" href={block.searchUrl} target="_blank" rel="noreferrer">
                 Booking'de ara ↗
               </a>

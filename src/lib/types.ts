@@ -5,8 +5,11 @@ export type Category = "flight" | "stay" | "transport" | "activity" | "food" | "
 export const ITEM_STATUSES = ["saved", "chosen", "booked", "dismissed"] as const;
 export type ItemStatus = (typeof ITEM_STATUSES)[number];
 
-/** Where a fact came from. "unverified" = the model quoted text we could not find on the page. */
-export type FactSource = "url" | "page" | "screenshot" | "unverified" | "none";
+/**
+ * Where a fact came from. "unverified" = the model quoted text we could not find on the page; "user" =
+ * the traveller said it in the chat ("biletim 312 dolardı").
+ */
+export type FactSource = "url" | "page" | "screenshot" | "unverified" | "user" | "none";
 
 /** Criteria the decision engine compares options on (see decision.ts). */
 export type CriterionId =
@@ -215,6 +218,8 @@ export interface Item {
   missing: string[];
   status: ItemStatus;
   statusNote: string | null;
+  /** When the status last changed (a choice made after a stay was said in the chat fills its nights). */
+  statusAt?: number;
   /** "chat": the traveller said it in the chat, no page behind it (a plan until a saved page replaces it). */
   origin?: "chat";
   /** What kind of plan was said in the chat (a car rental or a transfer can carry any title). */

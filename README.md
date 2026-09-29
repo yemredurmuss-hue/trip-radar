@@ -167,6 +167,12 @@ hangi dilde yazıldığı da önemsiz (Lisbon = Lisboa = Lizbon), haritada birbi
 nehrin karşısındaki Gaia) aynı yer sayılır. Her konuda başka bir seçenek her açıdan (fiyat dahil) daha iyiyse
 "Elenebilir" yazar.
 
+**Geceleri bölmek sohbetle.** "7 Ekim gecesi başka bir otel koy" dersen o gece kendi, boş konaklama bloğu olur
+("ayrı konaklama · otel seçilmedi"; o gece için kaydettiğin yerler orada seçenek olarak durur). Önceden seçtiğin yer
+kalan gecelerde kalır; asistan senin yerine otel seçmez. Bir yeri o gece için seçince blok dolar; "Ayrı olmasın"
+geceleri birleştirir. İki seçim aynı geceyi isterse son seçilen alır. Söylediğin fiyat ("biletim 312 dolardı")
+kartta "sen söyledin" diye yazar.
+
 **Transferler kendiliğinden açılır.** Geceler arasına, planın gerektirdiği her yol parçası boş olarak
 eklenir; hiçbirini eklemen gerekmez:
 - **Varış:** havalimanı/gar → ilk konaklama (uçuş varsa iniş saatiyle).

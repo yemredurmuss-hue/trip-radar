@@ -10,6 +10,7 @@ const SOURCE_TEXT: Record<FactSource, string> = {
   page: "sayfada doğrulandı",
   screenshot: "ekran görüntüsünden",
   unverified: "doğrulanmadı",
+  user: "sen söyledin",
   none: "bilinmiyor",
 };
 
@@ -102,7 +103,7 @@ interface Props {
 export function ItemDrawer({ item, group, trips, decision, decisions, onClose, onMoved, onCompare }: Props) {
   async function setStatus(status: ItemStatus, event: string) {
     const d = await db();
-    await d.put("items", { ...item, status, updatedAt: Date.now() });
+    await d.put("items", { ...item, status, statusAt: Date.now(), updatedAt: Date.now() });
     await addEvent(item.tripId, `${item.name} ${event}`);
     notifyChanged();
   }

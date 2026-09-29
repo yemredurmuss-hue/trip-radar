@@ -164,8 +164,9 @@ function Links({ item, decision, onOpen, onCompare }: { item: Item; decision?: G
   );
 }
 
-function Price({ price, compact = false }: { price: CardFacts["price"]; compact?: boolean }) {
-  if (!price) return <span className="muted">Fiyat yok · tarih seçip tekrar kaydet</span>;
+function Price({ price, compact = false, dated }: { price: CardFacts["price"]; compact?: boolean; dated: boolean }) {
+  // With its dates known, the price is simply missing: saying it in the chat is enough.
+  if (!price) return <span className="muted">{dated ? "Fiyat yok · sohbette yazabilirsin" : "Fiyat yok · tarih seçip tekrar kaydet"}</span>;
   return (
     <span className={`price-block${compact ? " compact" : ""}`}>
       <span className="price-main">
@@ -230,7 +231,7 @@ export function SwipeCard({ item, group, decision, decisions, roles = [], onOpen
           {facts.subtitle && <div className="sc-sub">{facts.subtitle}</div>}
         </div>
         <div className="sc-price">
-          <Price price={facts.price} />
+          <Price price={facts.price} dated={Boolean(item.dates.start || item.flight?.departure)} />
         </div>
         <ProsCons pros={facts.pros} cons={facts.cons} />
         {open && (
@@ -424,7 +425,7 @@ export function SettledCard({
         {route ? <Route item={item} facts={facts} /> : <Media item={item} facts={facts} />}
       </div>
       <div className="stc-foot">
-        {(facts.price || !planned) && <Price price={facts.price} compact />}
+        {(facts.price || !planned) && <Price price={facts.price} compact dated={Boolean(item.dates.start || item.flight?.departure) || booked} />}
         <span className="stc-actions">
           {booked ? (
             // A misclick shouldn't stick: the booking can be taken back (the options it closed come back too).

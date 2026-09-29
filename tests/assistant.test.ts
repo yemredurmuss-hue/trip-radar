@@ -234,4 +234,28 @@ describe("assistant", () => {
     flights = (await listItems("t1")).filter((i) => i.origin === "chat");
     expect(flights.map((i) => i.status)).toEqual(["booked"]); // the same plan, now booked; no second item
   });
+  it("writes a price the traveller says, and opens a night said apart without picking a place", async () => {
+    const { items } = await seed();
+    await (await db()).put("items", { ...items[0], status: "chosen", statusAt: 5 });
+    const { client, calls } = fakeClient([
+      {
+        stop_reason: "tool_use",
+        content: [
+          { type: "tool_use", id: "s1", name: "plan_item", caller: { type: "direct" }, input: { kind: "stay", date: "2026-10-08", end_date: "2026-10-09", time: null, from: null, to: null, city: "Porto", title: null, booked: false, note: null } },
+          { type: "tool_use", id: "s2", name: "set_price", caller: { type: "direct" }, input: { item_id: "b", amount: 312, currency: "$", scope: "total" } },
+          { type: "tool_use", id: "s3", name: "set_price", caller: { type: "direct" }, input: { item_id: "b", amount: -1, currency: "USD", scope: "total" } },
+        ] as Anthropic.ContentBlock[],
+      },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "8 Ekim gecesi için ayrı bir konaklama açtım.", citations: null }] as Anthropic.ContentBlock[] },
+    ]);
+    await sendMessage("t1", "8 Ekim gecesi başka bir yerde kalalım; Casa Azul 312 dolardı", anthropicProvider(client, "claude-opus-5"));
+    const [slot, price, bad] = calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[];
+    // The reply can say what the board really shows: that night open, the chosen place for the rest.
+    expect(JSON.parse(String(slot.content)).board).toEqual([{ nights: "2026-10-08..2026-10-09", status: "open", hotel: null }]);
+    expect(JSON.parse(String(price.content))).toMatchObject({ price: "312 USD" });
+    expect(bad.is_error).toBe(true);
+    const saved = await listItems("t1");
+    expect(saved.find((i) => i.id === "a")!.status).toBe("chosen");
+    expect(saved.find((i) => i.id === "b")!.price).toMatchObject({ amount: 312, currency: "USD", scope: "total", source: "user" });
+  });
 });

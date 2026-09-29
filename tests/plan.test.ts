@@ -274,3 +274,55 @@ describe("edge cases the random-trip test found", () => {
   });
 });
 
+
+describe("plan: nights said apart in the chat", () => {
+  const dates = trip({ confirmedDates: { start: "2026-10-07", end: "2026-10-11" } });
+  const said = (start: string, end: string, at: number, city = "Porto") => ({
+    ...stay(`Konaklama · ${city}`, start, end, "chosen", city), origin: "chat" as const, plannedKind: "stay" as const, createdAt: at, updatedAt: at,
+  });
+  const chosen = (name: string, start: string, end: string, at: number) => ({ ...stay(name, start, end, "chosen"), statusAt: at });
+  const layout = (items: Item[]) =>
+    buildPlan(dates, items).stayBlocks.map((b) => [b.kind, b.range.start, b.range.end, b.kind === "open" ? (b.slot?.name ?? null) : b.item.name]);
+
+  // "7 bir gecelik başka bir otel koy", said after choosing a place for 7–11.
+  it("opens those nights on their own, empty; the place chosen before keeps the rest", () => {
+    const teras = chosen("Büyük TERAS", "2026-10-07", "2026-10-11", 10);
+    const night = said("2026-10-07", "2026-10-08", 20);
+    expect(layout([teras, night])).toEqual([
+      ["open", "2026-10-07", "2026-10-08", "Konaklama · Porto"],
+      ["chosen", "2026-10-08", "2026-10-11", "Büyük TERAS"],
+    ]);
+    const plan = buildPlan(dates, [teras, night]);
+    expect(plan.stayBlocks[0].city).toBe("Porto");
+    expect(plan.nights).toMatchObject({ chosen: 3, open: 1 });
+    // A place saved for that night is an option there, not a choice.
+    const impar = stay("Impar Studios", "2026-10-07", "2026-10-08");
+    expect(names(buildPlan(dates, [teras, night, impar]).stayBlocks[0])).toEqual([["Impar Studios"]]);
+    // Picked, it fills the night; the said stay has done its job.
+    const picked = { ...impar, status: "chosen" as const, statusAt: 30 };
+    expect(layout([teras, night, picked])).toEqual([
+      ["chosen", "2026-10-07", "2026-10-08", "Impar Studios"],
+      ["chosen", "2026-10-08", "2026-10-11", "Büyük TERAS"],
+    ]);
+    expect(buildPlan(dates, [teras, night, picked]).closed.map((c) => [c.item.name, c.reason])).toEqual([["Konaklama · Porto", "Yerine Impar Studios geldi"]]);
+    // Choosing the first place again (after the night was said) takes the night back.
+    expect(layout([{ ...teras, statusAt: 40 }, night])).toEqual([["chosen", "2026-10-07", "2026-10-11", "Büyük TERAS"]]);
+  });
+
+  it("a page chosen after the stay was said fills it, whatever its nights", () => {
+    const funchal = said("2026-10-07", "2026-10-11", 10);
+    expect(layout([funchal, chosen("Villa", "2026-10-07", "2026-10-11", 20)])).toEqual([["chosen", "2026-10-07", "2026-10-11", "Villa"]]);
+    // For some of the nights: the rest stay open, still that stay.
+    expect(layout([funchal, chosen("Villa", "2026-10-07", "2026-10-09", 5)])).toEqual([
+      ["chosen", "2026-10-07", "2026-10-09", "Villa"],
+      ["open", "2026-10-09", "2026-10-11", "Konaklama · Porto"],
+    ]);
+  });
+
+  it("the latest choice takes the nights two choices share", () => {
+    expect(layout([chosen("Loft", "2026-10-07", "2026-10-11", 10), chosen("Airport Inn", "2026-10-07", "2026-10-08", 20)])).toEqual([
+      ["chosen", "2026-10-07", "2026-10-08", "Airport Inn"],
+      ["chosen", "2026-10-08", "2026-10-11", "Loft"],
+    ]);
+  });
+});
