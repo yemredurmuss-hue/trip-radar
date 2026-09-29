@@ -159,7 +159,7 @@ function legStep(j: Journey, e: Extract<TimelineEntry, { kind: "leg" }>): Journe
     title: legShortTitle(leg),
     sub: `${leg.from.label} → ${leg.to.label}`,
     standing,
-    status: leg.status === "empty" ? "Planlanmadı" : leg.status === "options" ? `${leg.options.length} seçenek` : leg.mode && standing === "planned" ? `${MODE_LABELS[leg.mode]} · planlandı` : leg.statusText,
+    status: leg.status === "empty" ? "Planlanmadı" : leg.status === "options" ? `${leg.options.length} seçenek` : leg.statusText,
     notes: leg.notes,
     entry: e,
     stayKey: null,
@@ -205,12 +205,12 @@ export function stepsReady(steps: JourneyStep[]): number {
 // into a line with a ✓; what's only information (check-in, picking up the car) is always a line. A
 // hotel or a rented car spans days: its card is above, the days only say when you get in and out.
 
-/** Done (booked, or nothing to book), still to book, to pick from, nothing yet; or only information. */
+/** Booked, still to book, to pick from, nothing yet; or only information (nothing to book: metro, check-in). */
 export type RowState = "done" | "pending" | "decide" | "open" | "info";
 
 export interface DayRow {
   key: string;
-  kind: "info" | "travel" | "leg" | "item" | "ideas";
+  kind: "info" | "travel" | "leg" | "item" | "rental" | "ideas";
   time: string | null;
   estimated: boolean;
   hint: string | null;
@@ -228,13 +228,15 @@ export interface DayRow {
   item: Item | null;
   /** Ideas saved for the day, to pick from. */
   items: Item[];
+  /** A car rented from this day: its card. */
+  rental: RentalEntry | null;
   stayKey: string | null;
 }
 
 type DayEntry = Extract<TimelineEntry, { kind: "day" }>;
 
 const row = (over: Partial<DayRow> & Pick<DayRow, "key" | "kind" | "title" | "state">): DayRow => ({
-  time: null, estimated: false, hint: null, otherDay: null, sub: null, line: null, status: "", notes: [], entry: null, leg: null, item: null, items: [], stayKey: null, ...over,
+  time: null, estimated: false, hint: null, otherDay: null, sub: null, line: null, status: "", notes: [], entry: null, leg: null, item: null, items: [], rental: null, stayKey: null, ...over,
 });
 
 function legState(leg: Leg): RowState {
@@ -244,8 +246,8 @@ function legState(leg: Leg): RowState {
     case "chosen":
       return "pending";
     case "planned":
-      // Metro, a walk, their own car: nothing to book.
-      return leg.choice?.mode && BOOKABLE.includes(leg.choice.mode) ? "pending" : "done";
+      // Metro, a walk, their own car: nothing to book, only how they'll go.
+      return leg.choice?.mode && BOOKABLE.includes(leg.choice.mode) ? "pending" : "info";
     case "options":
       return "decide";
     default:
@@ -259,7 +261,7 @@ function travelState(e: Extract<TimelineEntry, { kind: "travel" }>): RowState {
   if (t?.items.length) return "decide";
   const choice = e.leg?.choice;
   if (choice?.booked) return "done";
-  if (choice?.mode) return BOOKABLE.includes(choice.mode) ? "pending" : "done";
+  if (choice?.mode) return BOOKABLE.includes(choice.mode) ? "pending" : "info";
   return "open";
 }
 
@@ -310,8 +312,8 @@ function itemRow(item: Item): DayRow {
   });
 }
 
-/** "Araç teslim" on the day it starts, "Araç iade" on the day it ends. */
-function rentalLines(date: string, rentals: RentalEntry[]): { start: DayRow[]; end: DayRow[] } {
+/** A car rented from this day is a card there (at its pick-up time); on the day it ends, "Araç iade" is a line. */
+function rentalRows(date: string, rentals: RentalEntry[]): { start: DayRow[]; end: DayRow[] } {
   const start: DayRow[] = [];
   const end: DayRow[] = [];
   for (const r of rentals) {
@@ -319,7 +321,8 @@ function rentalLines(date: string, rentals: RentalEntry[]): { start: DayRow[]; e
     const lead = items.find((i) => i.status === "booked") ?? items.find((i) => i.status === "chosen") ?? null;
     const name = lead?.name ?? (items.length === 1 ? items[0].name : `${items.length} seçenek`);
     if (r.date === date) {
-      start.push(row({ key: `${r.key}:pickup`, kind: "info", state: "info", title: "Araç teslim", sub: name, time: clockOf(lead?.flight?.departure) }));
+      const state: RowState = lead?.status === "booked" ? "done" : lead ? "pending" : "decide";
+      start.push(row({ key: r.key, kind: "rental", state, title: "Araç kiralama", sub: name, time: clockOf(lead?.flight?.departure), rental: r }));
     }
     if (r.end === date && r.end !== r.date) {
       end.push(row({ key: `${r.key}:return`, kind: "info", state: "info", title: "Araç iade", sub: name, time: clockOf(lead?.flight?.arrival) }));
@@ -349,7 +352,7 @@ export function dayRows(input: { journey?: JourneySection; day?: DayEntry | null
   const date = input.journey?.journey.date ?? day?.date ?? null;
   const rows: DayRow[] = input.journey ? journeySteps(input.journey, input.listings).map(fromStep) : (day?.legs ?? []).map(legRow);
   if (date) {
-    const cars = rentalLines(date, input.rentals ?? []);
+    const cars = rentalRows(date, input.rentals ?? []);
     // Without a time, the car is picked up first thing and returned last (on the way, after the steps).
     for (const r of cars.start) (r.time || input.journey ? place(rows, r) : rows.unshift(r));
     for (const r of cars.end) place(rows, r);

@@ -27,7 +27,8 @@ export const MODE_LABELS: Record<LegMode, string> = {
 /** Modes that leave from a station: a move by one of them needs a transfer at both ends. */
 const FROM_HUB: LegMode[] = ["flight", "train", "bus", "ferry"];
 /** Modes one books ahead; the others (metro, a street taxi, walking, one's own car) only need planning. */
-export const BOOKABLE: LegMode[] = ["flight", "train", "ferry", "transfer"];
+/** Ways that are a reservation of their own (a ticket, a car booked to wait for you); the rest you just take. */
+export const BOOKABLE: LegMode[] = ["flight", "train", "ferry", "transfer", "taxi"];
 /** How early to be at the station: check-in and security for a flight, finding the platform for a train. */
 const HUB_BUFFER: Record<string, number> = { flight: 120, train: 20, bus: 20, ferry: 30 };
 /** Roughly how long getting between a stay and the airport or station takes, for timing notes only. */

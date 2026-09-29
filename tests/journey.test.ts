@@ -48,19 +48,28 @@ describe("a day on the move", () => {
     const steps = journeySteps(move);
     expect(steps.map(row)).toEqual([
       "~11:00 (genelde) | Check-out · Jardim Stay | Rezerve",
-      "13:00 (en geç havalimanında) | Otel → Havalimanı · Jardim Stay → OPO havalimanı | Taksi · planlandı",
+      "13:00 (en geç havalimanında) | Otel → Havalimanı · Jardim Stay → OPO havalimanı | Taksi · rezerve edilmedi",
       "15:00 | Uçuş Porto → Madeira · TAP TP1693 · 15:00 → 16:55 · 1 sa 55 dk | Bilet alınmadı",
       "16:55 (iniş) | Havalimanı → Otel · FNC havalimanı → Quinta Vista | Planlanmadı",
       // Not before landing and getting there: the usual 15:00 check-in is past by then.
       "~17:55 (varıştan sonra) | Check-in · Quinta Vista | Rezerve",
     ]);
     expect(stepsReady(steps)).toBe(2);
+    // A taxi is a reservation (its card); the metro is only how they'll go (a line).
+    const out = (t: Trip) => {
+      const p = buildPlan(t, items);
+      const j = buildTimeline(p, buildLegs(p, t), items).sections.find((s): s is Journey => s.kind === "journey" && s.journey.role === "move")!;
+      return dayRows({ journey: j }).find((r) => r.leg?.kind === "departure")!;
+    };
+    expect(out(trip)).toMatchObject({ kind: "leg", state: "pending" });
+    const metro: Trip = { ...trip, legs: { "2026-10-10:departure:porto": { mode: "metro", booked: false, note: null, updatedAt: 1 } } };
+    expect(out(metro)).toMatchObject({ kind: "leg", state: "info", line: "Metro · planlandı" });
     // The day's own card isn't among Madeira's days any more: it's this card.
     const madeira = timeline.sections.find((s) => s.kind === "city" && s.city === "Madeira")!;
     expect(madeira.kind === "city" && madeira.entries.filter((e) => e.kind === "day").map((e) => e.kind === "day" && e.title)).toEqual(["5. gün", "6. gün", "7. gün"]);
   });
 
-  it("reads a day as rows: information as lines, bookings as cards until booked, the car's pick-up and return", () => {
+  it("reads a day as rows: reservations as cards (the car on its first day), information as lines", () => {
     const trip: Trip = { id: "t", title: "Madeira", confirmedDates: { start: "2026-10-10", end: "2026-10-14" }, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 };
     const base = (over: Partial<Item>): Item => ({
       id: Math.random().toString(36).slice(2), tripId: "t", captureIds: [], key: null, category: "stay", needKey: "stay:madeira", name: "x", provider: null, summary: "",
@@ -87,17 +96,17 @@ describe("a day on the move", () => {
     const rowsOf = (d: string) => dayRows({ day: day(d) as never, rentals });
     const show = (d: string) => rowsOf(d).map((r) => `${r.time ?? "-"} ${r.kind}/${r.state} ${r.title}${r.sub ? ` · ${r.sub}` : ""}`);
     expect(show("2026-10-11")).toEqual([
-      "09:00 info/info Araç teslim · FAA Rentals",
+      "09:00 rental/pending Araç kiralama · FAA Rentals",
       "10:00 item/pending Levada yürüyüşü · €90",
       "15:30 item/done Balina turu · €90 · rezerve",
       "- ideas/info Armazém do Sal",
     ]);
     expect(show("2026-10-13")).toEqual(["- info/info Araç iade · FAA Rentals"]);
     // Open while something is left to book; folded, a day says itself in a line.
-    expect(rowsLeft(rowsOf("2026-10-11"))).toBe(1);
-    expect(daySummary(rowsOf("2026-10-11"))).toBe("2 plan · 1 iş kaldı · 1 fikir");
+    expect(rowsLeft(rowsOf("2026-10-11"))).toBe(2);
+    expect(daySummary(rowsOf("2026-10-11"))).toBe("3 plan · 2 iş kaldı · 1 fikir");
     expect(daySummary(rowsOf("2026-10-13"))).toBe("Araç iade");
-    // The car itself is on the line once, above its first day, not among that day's plans.
+    // The car is one entry of the plan (its to-dos point at it), shown as a card of its first day.
     const madeira = timeline.sections.find((x) => x.kind === "city")!;
     expect(madeira.kind === "city" && madeira.entries.map((e) => e.kind)).toEqual(["rental", "day", "day", "day"]); // the 10th is the day they land
   });

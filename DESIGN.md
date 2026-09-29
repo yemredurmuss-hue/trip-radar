@@ -29,14 +29,13 @@ yıldız almaz.
 
 ## Gün, saat saat
 
-- Kendi rezervasyonu olan şey (uçuş, tren, taksi/transfer, etkinlik, restoran) karttır: fiyat, durum, tek ana
-  düğme. Rezerve edilince kart küçülür, ✓ ile tek satıra döner; dokununca açılır.
-- Bilgi (check-in, check-out, araç teslim/iade, iniş) ince satırdır; kartı ve düğmesi yoktur.
-- Günlere yayılan (otel, kiralık araç) günün içinde kart olmaz: otel şehrin başında, araç kiralamanın başladığı
-  günün üstünde bir kez. Günlerde yalnız giriş/çıkış satırı.
-- Saat solda: kayıttan gelen düz, alışılmış ya da hesaplanan "~" ve nedeni küçük yazıyla; bilinmeyen boş.
+- Rezervasyon gerektiren her şey (uçuş, tren, taksi/transfer, etkinlik, restoran, araç kiralama) o günün içinde,
+  kendi saatinde kendi kartıdır. Rezerve edilince de kart kalır, yeşil olur; satıra küçülmez.
+- Bilgi (check-in, check-out, metroyla/yürüyerek gidiş, araç iadesi) ince satırdır; kartı ve düğmesi yoktur.
+- Bir şey iki yerde yazılmaz: ayrı bir "akış" listesi yok, gün zaten saat sırasıdır.
+- Otel şehrin başında bir kez; araç kiralama alış gününün kartı.
+- Saat solda: kayıttan gelen düz, alışılmış ya da hesaplanan "~"; altına açıklama yazılmaz, bilinmeyen boş.
 - Günler açılır, kapanır: işi kalan açık gelir ("3 iş"), hepsi hazır olan tek satıra katlanır.
-- Yolculuk günü aynı satırlarla, iki şehrin arasında durur.
 
 ## Azaltmak
 

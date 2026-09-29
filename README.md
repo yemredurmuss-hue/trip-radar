@@ -136,23 +136,21 @@ Arayüz kuralları (renklerin anlamı, butonlar, yazı ölçeği, okunurluk) [DE
 **Gezinin özeti** en üsttedir: resim, ad, tarihler ve "7 gün · 2 şehir · 5 etkinlik · 1 konaklama · 1 ulaşım"
 (konaklama ve ulaşım: seçilen ya da rezerve edilenler).
 
-**Gün, saat saat; rezervasyonu olan kart, bilgi satır.** Her gün (şehir değiştirdiğin, vardığın ve döndüğün gün
-dahil) solda saatleriyle okunur. Kendi rezervasyonu olan şey (uçuş, tren, taksi/transfer, etkinlik, restoran)
-bir **kart**tır: fiyatı, durumu ve tek ana düğmesiyle ("Bileti aldım", "Rezerve ettim"). **Rezerve edilince kart
-küçülür**, "✓ Taksi · Metro · planlandı" gibi tek satıra döner; dokununca yeniden açılır. Böylece göz hep bekleyen
-işe gider. Check-out, check-in, araç teslim ve iade gibi **bilgiler** ince satırdır. Sayfadan ya da kayıttan gelen
-saat düz yazar; alışılmış ya da hesaplanan saat "~" ile ve nedeniyle ("genelde", "varıştan sonra").
+**Gün, saat saat: rezervasyon kart, bilgi satır.** Her gün (şehir değiştirdiğin, vardığın ve döndüğün gün
+dahil) solda saatleriyle okunur. Rezervasyon gerektiren her şey (uçuş, tren, taksi/transfer, etkinlik, restoran,
+araç kiralama) o gün, kendi saatinde **kendi kartıdır**: fiyatı, durumu, tek ana düğmesi. Rezerve edilince de
+kart kalır, yeşile döner. Check-out, check-in, metroyla ya da yürüyerek gidiş, araç iadesi gibi **bilgiler** ince
+satırdır; bir şey iki kez yazılmaz. Saat kayıttan gelirse düz, alışılmış ya da hesaplanmışsa "~" ile yazar.
 
 **Günler açılır, kapanır.** İşi kalan gün açık gelir ve yanında kaç iş kaldığı yazar ("3 iş"). Hepsi hazır olan
 gün tek satıra katlanır ("3 plan · hepsi hazır"); gün başlığına dokununca açılır.
 
-**Yolculuk günü iki şehrin arasında.** "4. gün · Porto → Lizbon · Yolculuk günü": check-out, garaj/havalimanı
-transferi, uçuş ya da tren (aktarmalar önce), varış transferi, check-in. Seçilecek uçuşlar varsa o gün tam
-genişlikte açılır, seçenekler yan yana durur.
+**Yolculuk günü iki şehrin arasında.** "4. gün · Porto → Lizbon": check-out, havalimanı/gar transferi, uçuş ya da
+tren kartı (aktarmalar önce), varış transferi, check-in. Seçilecek uçuşlar varsa o gün tam genişlikte açılır.
 
-**Otel ve kiralık araç günlere yayılır.** Otel şehrin başında bir kez, büyük durur. Kiralık araç, kiralamanın
-başladığı günün hemen üstünde kendi kartıdır ("Araç kiralama · 11–14 Ekim"); rezerve etmeden önce de seçenekleriyle
-orada görünür. Alış ve iade o günlerde bilgi satırı olur ("09:00 Araç teslim · FAA Rentals").
+**Otel şehrin başında, araç alış gününde.** Otel şehrin başında bir kez, büyük durur; günlerde yalnız
+check-in/check-out satırı. Kiralık araç, alış gününün kartıdır ("Araç kiralama · FAA Rentals"); rezerve etmeden
+önce seçenekleriyle orada görünür. İade günü bir satırdır ("Araç iade").
 
 Gezi başladıysa özet "Seyahat başladı · 4. gün" der, bugünün kartında **Bugün** yazar.
 

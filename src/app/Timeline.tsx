@@ -110,9 +110,11 @@ function Section({ section, ...render }: { section: TimelineSection } & RenderPr
         {section.stays.map((entry) => (
           <Row key={entry.key} entry={entry} {...render} />
         ))}
-        {section.entries.map((entry) => (
-          <Row key={entry.key} entry={entry} {...render} />
-        ))}
+        {section.entries
+          .filter((entry) => entry.kind !== "rental") // a rented car is a card of the day it starts
+          .map((entry) => (
+            <Row key={entry.key} entry={entry} {...render} />
+          ))}
       </ol>
     </section>
   );
@@ -386,10 +388,7 @@ function JourneyCard({ section, ...render }: { section: Extract<TimelineSection,
           <DayToggle title={journeyTitle(j)} date={j.date} today={render.today} left={left} open={open} onToggle={() => setOpen(!open)} />
         </div>
         <div className="tl-content">
-          <div className="journey-head">
-            <b>{route}</b>
-            <span className="jc-chip">Yolculuk günü</span>
-          </div>
+          <p className="journey-head">{route}</p>
           {open ? (
             <DayRows rows={rows} {...render} />
           ) : (
@@ -426,13 +425,24 @@ function fullCard(row: DayRow, render: RenderProps, embedded: boolean): ReactNod
 }
 
 /**
- * A row of a day. Information (check-in, the car's pick-up) is a line; something to book is its card
- * until it's booked, then a ✓ line that opens on a tap.
+ * A row of a day. A reservation (a flight, a taxi, a tour, a car) is its card, booked or not;
+ * information (check-in, the metro to the airport, the car going back) is a line.
  */
 function DayRowView({ row, ...render }: { row: DayRow } & RenderProps) {
   const [open, setOpen] = useState(false);
   let body: ReactNode;
-  if (row.kind === "info") {
+  if (row.kind === "leg" && row.state === "info" && row.leg) {
+    // Metro, a walk: how they'll go, in a line; a tap to change it.
+    body = (
+      <>
+        <button className="dr-info" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <b>{row.line ?? row.title}</b>
+          <span>{row.title}</span>
+        </button>
+        {open && <div className="dr-more">{render.leg(row.leg, { embedded: true, timed: true })}</div>}
+      </>
+    );
+  } else if (row.kind === "info") {
     const text = (
       <>
         <b>{row.title}</b>
@@ -448,30 +458,16 @@ function DayRowView({ row, ...render }: { row: DayRow } & RenderProps) {
     );
   } else if (row.kind === "ideas") {
     body = <Carousel label="Fikirler">{row.items.map((i) => render.card(i, row.items.filter((x) => x.category === i.category)))}</Carousel>;
-  } else if (row.state === "done") {
-    body = (
-      <>
-        <button className="dr-line" aria-expanded={open} onClick={() => setOpen(!open)}>
-          <span className="ok" aria-hidden>
-            ✓
-          </span>
-          <b>{row.title}</b>
-          {(row.line ?? row.sub) && <span className="muted">{row.line ?? row.sub}</span>}
-          <span className="dr-chev" aria-hidden>
-            {open ? "▴" : "▾"}
-          </span>
-        </button>
-        {open && <div className="dr-more">{fullCard(row, render, true)}</div>}
-      </>
-    );
+  } else if (row.kind === "rental" && row.rental) {
+    body = <div className="tl-rental">{render.renderGroup(row.rental.group, null, null, true)}</div>;
   } else {
     body = fullCard(row, render, false);
   }
+  const id = row.entry ? entryDomId(row.entry.key) : row.rental ? entryDomId(row.rental.key) : undefined;
   return (
-    <li id={row.entry ? entryDomId(row.entry.key) : undefined} className={`dr dr-${row.kind} st-${row.state}`} data-title={row.title}>
+    <li id={id} className={`dr dr-${row.kind} st-${row.state}`} data-title={row.title}>
       <span className="dr-time">
         {row.time && <b className={row.estimated ? "est" : ""}>{`${row.estimated ? "~" : ""}${row.time}`}</b>}
-        {row.time && row.hint && <small>{row.hint}</small>}
         {row.otherDay && <small>{fmt(row.otherDay)}</small>}
       </span>
       <span className="dr-pin" aria-hidden />

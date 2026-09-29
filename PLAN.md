@@ -78,6 +78,8 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] 0.17: rezervasyon kartları — kendi rezervasyonu olan şey kart (rezerve edilince ✓ satıra küçülür), bilgi
       (check-in/out, araç teslim/iade) ince satır, günler açılır/kapanır (işi kalan açık, "N iş"), yolculuk günü aynı
       satırlarla, kiralık araç kiralamanın başladığı günün üstünde kendi kartı
+- [x] 0.18: rezervasyon kartları katlanmaz (rezerve edilince yeşil kart kalır), taksi rezervasyon sayılır, metro/yürüyüş
+      bilgi satırı, araç kiralama alış gününün kartı, saat altı açıklamalar kalktı, yolculuk başlığı sade
 - [ ] Sonraki öneriler (onay bekliyor): 7 sade karşılaştırma, 8 zaman çizelgesinde tekrarların kalkması,
       9 sohbet ↔ pano bağlantısı, 10 sırayla karar ver modu
 - [ ] 0.17: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
