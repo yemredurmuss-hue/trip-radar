@@ -167,4 +167,14 @@ describe("legs: every transfer the plan needs", () => {
   it("has no legs without nights", () => {
     expect(legsOf([], { confirmedDates: null })).toEqual([]);
   });
+
+  it("dates the transfers by the flights' day even before one is chosen", () => {
+    const legs = legsOf([
+      stay("Jardim Stay", "2026-10-07", "2026-10-14", "booked"),
+      flight("A", "OPO", "IST", "2026-10-13T18:00", "2026-10-13T23:00"),
+      flight("B", "OPO", "IST", "2026-10-13T20:00", "2026-10-14T01:00"),
+    ]);
+    expect(legs.at(-1)!.date).toBe("2026-10-13");
+  });
 });
+

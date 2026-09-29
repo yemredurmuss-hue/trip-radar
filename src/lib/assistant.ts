@@ -15,17 +15,18 @@ import {
   type DecisionContext,
   type GroupDecision,
 } from "./decision";
-import { listingKeyOf, tripDateRange } from "./items";
+import { currencyCode, isoDate, listingKeyOf, tripDateRange } from "./items";
 import { coverageText, searchText } from "./listing";
 import { prosConsFor } from "./proscons";
 import { activeSignals } from "./intent";
 import { buildLegs, legTiming, withLegChoice } from "./legs";
-import { checkPlanned, plannedItem, PLANNED_KINDS, samePlan, type PlannedInput } from "./planned";
-import { buildPlan, type Plan } from "./plan";
+import { checkPlanned, fillPlanned, plannedInput, plannedItem, PLANNED_KINDS, samePlan } from "./planned";
+import { buildPlan, liveGroups, type Plan } from "./plan";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
 import type { ToolResult, ToolSpec } from "./llm/types";
 import {
   AMENITIES,
+  ITEM_STATUSES,
   LEG_MODES,
   type Amenity,
   type Category,
@@ -473,11 +474,31 @@ async function runTool(tripId: string, name: string, input: any, choices: string
   const byId = new Map(items.map((i) => [i.id, i]));
   switch (name) {
     case "update_items": {
-      const changes = input.changes as { item_id: string; status: ItemStatus; note: string | null }[];
+      const changes = (Array.isArray(input.changes) ? input.changes : []) as { item_id: string; status: ItemStatus; note?: string | null }[];
       const unknown = changes.filter((c) => !byId.has(c.item_id)).map((c) => c.item_id);
       if (unknown.length) throw new ToolError(`Bu id'lerle seçenek yok: ${unknown.join(", ")}`);
+      const badStatus = changes.filter((c) => !(ITEM_STATUSES as readonly string[]).includes(c.status));
+      if (badStatus.length) throw new ToolError(`Geçersiz durum: ${badStatus.map((c) => c.status).join(", ")}`);
+      const trip = await d.get("trips", tripId);
+      const groups = trip ? liveGroups(buildPlan(trip, items)) : [];
+      const current = new Map(items.map((i) => [i.id, i]));
       for (const c of changes) {
-        await d.put("items", { ...byId.get(c.item_id)!, status: c.status, statusNote: c.note, updatedAt: Date.now() });
+        const item = current.get(c.item_id)!;
+        // One option per need is in the plan: choosing one sends the one chosen before back to the options.
+        if (c.status === "chosen") {
+          const group = groups.find((g) => g.items.some((i) => i.id === item.id));
+          for (const other of group?.items ?? []) {
+            const latest = current.get(other.id)!;
+            if (other.id === item.id || latest.status !== "chosen" || latest.origin === "chat") continue;
+            const demoted = { ...latest, status: "saved" as const, updatedAt: Date.now() };
+            current.set(other.id, demoted);
+            await d.put("items", demoted);
+          }
+        }
+        const note = typeof c.note === "string" && c.note.trim() ? c.note.trim() : item.statusNote;
+        const updated = { ...item, status: c.status, statusNote: note, updatedAt: Date.now() };
+        current.set(item.id, updated);
+        await d.put("items", updated);
       }
       return "ok";
     }
@@ -525,29 +546,34 @@ async function runTool(tripId: string, name: string, input: any, choices: string
     case "update_trip": {
       const trip = await d.get("trips", tripId);
       if (!trip) throw new ToolError("Gezi bulunamadı.");
+      for (const key of ["start", "end"] as const) {
+        if (input[key] != null && !isoDate(input[key])) throw new ToolError(`${key} YYYY-AA-GG olmalı: ${input[key]}`);
+      }
       const start = input.start ?? trip.confirmedDates?.start ?? null;
       const end = input.end ?? trip.confirmedDates?.end ?? null;
+      if (start && end && end <= start) throw new ToolError(`Bitiş (${end}) başlangıçtan (${start}) sonra olmalı.`);
+      const amount = typeof input.budget_amount === "number" && input.budget_amount > 0 ? input.budget_amount : null;
+      if (input.budget_amount != null && amount == null) throw new ToolError(`Geçersiz bütçe: ${input.budget_amount}`);
       await d.put("trips", {
         ...trip,
-        title: input.title ?? trip.title,
+        title: typeof input.title === "string" && input.title.trim() ? input.title.trim() : trip.title,
         confirmedDates: start && end ? { start, end } : trip.confirmedDates,
-        budget:
-          input.budget_amount != null
-            ? { amount: input.budget_amount, currency: input.budget_currency ?? trip.budget?.currency ?? "EUR" }
-            : trip.budget,
+        budget: amount != null ? { amount, currency: currencyCode(input.budget_currency) ?? trip.budget?.currency ?? "EUR" } : trip.budget,
         updatedAt: Date.now(),
       });
       return "ok";
     }
     case "plan_item": {
-      const plan = input as PlannedInput;
-      const problem = checkPlanned(plan);
+      const said = plannedInput(input);
+      const problem = checkPlanned(said);
       if (problem) throw new ToolError(problem);
+      const probe = plannedItem(said, tripId, "", 0);
+      const same = items.find((i) => samePlan(i, probe));
+      const plan = same ? fillPlanned(said, same) : said;
       const fresh = plannedItem(plan, tripId, newId(), Date.now());
-      const same = items.find((i) => samePlan(i, fresh));
-      const saved = same
-        ? { ...same, ...fresh, id: same.id, createdAt: same.createdAt, status: plan.booked ? ("booked" as const) : same.status }
-        : fresh;
+      // Said again: it stays planned (a plan removed earlier comes back) unless it's now booked.
+      const status = plan.booked || same?.status === "booked" ? ("booked" as const) : ("chosen" as const);
+      const saved = same ? { ...same, ...fresh, id: same.id, createdAt: same.createdAt, status } : fresh;
       await d.put("items", saved);
       return JSON.stringify({ [same ? "updated" : "added"]: saved.name, item_id: saved.id, status: saved.status === "booked" ? "booked" : "planned" });
     }

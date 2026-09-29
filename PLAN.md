@@ -46,6 +46,12 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] 0.13: sohbette söylenen planlar panoda (uçuş, tren, araç kiralama, konaklama; "planlanıyor" / "bilet alındı"),
       uçuşlar rota ve tarihe göre ayrı ihtiyaç (dönüş gidişi kapatmaz) ve her uçuş kendi gününde, şehir blokları,
       şehir değişimi uçuş kartı olarak, rezervasyonu geri alma, tarih bandı kaldırıldı, sohbet layla ölçüsünde
+- [x] 0.13.1: denetim — 20.000 rastgele gezilik stres testi (`tests/scenarios.test.ts`) ve düzeltmeler: Claude'da
+      sayfa okuma şema sınırını aşıyordu (talimatla JSON + doğrulama), katı araçlar sınır içinde; havalimanı
+      kodları ve istasyon adları şehir sayılır, ters yöndeki uçuş varış/dönüş sayılmaz; transfer planı başka uçuş
+      seçilince kaybolmaz; sohbetteki araç kiralama ve transferler kaydedilen sayfayla birleşir; tekrar söylenen
+      plan öncekini korur; asistan geçersiz durum/tarih kabul etmez ve seçince öncekini geri alır; kişi başı
+      konaklama fiyatı; "Seç" artık sohbet planını silmez (kenara koyar, geri alınınca döner)
 - [ ] 0.14: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
       açık sekmeleri toplu kaydetme (booking.com / airbnb izni gerekir), yeni gelen için "2. sırada, çünkü…" notu
 - [ ] İlk gerçek gezide kullanım: 20–50 gerçek kayıt, hangi alanların yanlış/eksik geldiğini not et

@@ -1,6 +1,6 @@
 // Small write actions shared by the board's views.
 import { addEvent, db, notifyChanged } from "../lib/db";
-import type { Item, ItemStatus, Trip } from "../lib/types";
+import type { Category, Item, ItemStatus, Trip } from "../lib/types";
 
 const EVENT: Record<ItemStatus, string> = {
   chosen: "plana alındı",
@@ -26,22 +26,23 @@ export async function updateTrip(tripId: string, change: (trip: Trip) => Trip): 
   notifyChanged();
 }
 
+/** Needs that take one option (a stay, a flight...); activities and places can be chosen side by side. */
+const ONE_PER_NEED: Category[] = ["stay", "flight", "transport", "esim"];
+
 /**
- * "Seç": this option goes into the plan; one chosen before it for the same need goes back to the
- * options, and a plan only said in the chat gives way to it.
+ * "Seç": this option goes into the plan and one chosen before it for the same need goes back to the
+ * options. A plan only said in the chat stays as it is: the plan sets it aside ("Yerine X geldi")
+ * while a saved page is chosen for it, and it comes back if that choice is undone.
  */
 export async function chooseItem(item: Item, alternatives: Item[]): Promise<void> {
   const d = await db();
-  for (const other of alternatives) {
-    if (other.id === item.id) continue;
-    // A plan said in the chat ("uçuş var") is replaced by the page chosen for it.
-    if (other.origin === "chat" && item.origin !== "chat") {
-      await d.delete("items", other.id);
-      continue;
+  if (ONE_PER_NEED.includes(item.category)) {
+    for (const other of alternatives) {
+      if (other.id === item.id || other.origin === "chat") continue;
+      const fresh = (await d.get("items", other.id)) ?? other;
+      if (fresh.status !== "chosen") continue;
+      await d.put("items", { ...fresh, status: "saved", updatedAt: Date.now() });
     }
-    if (other.status !== "chosen") continue;
-    const fresh = (await d.get("items", other.id)) ?? other;
-    await d.put("items", { ...fresh, status: "saved", updatedAt: Date.now() });
   }
   await setItemStatus(item, "chosen");
 }

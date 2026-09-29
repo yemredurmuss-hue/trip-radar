@@ -242,3 +242,35 @@ describe("the same stay need, whatever the site or language", () => {
     expect(liveGroups(plan).map((g) => g.items.map((i) => i.name).sort())).toEqual([["Gaia Flat", "Jardim Stay"], ["Braga Inn"]]);
   });
 });
+
+describe("edge cases the random-trip test found", () => {
+  it("keeps a booking that lies inside another booking's nights on the board, with the clash noted", () => {
+    const outer = stay("Outer Hotel", "2026-10-07", "2026-10-12", "booked");
+    const inner = stay("Inner Flat", "2026-10-08", "2026-10-10", "booked");
+    const plan = buildPlan(trip(), [outer, inner]);
+    const block = plan.stayBlocks.find((b) => b.kind === "booked")!;
+    expect(block.kind === "booked" && [block.item.name, ...(block.clashes ?? []).map((i) => i.name)]).toEqual(["Outer Hotel", "Inner Flat"]);
+    expect(plan.notices[0].text).toMatch(/iki rezervasyon var: Outer Hotel ve Inner Flat/);
+  });
+
+  it("closes a stay said in the chat once a saved page is booked for those nights, and shows it only there", () => {
+    const said = { ...stay("Konaklama · Porto", "2026-10-07", "2026-10-10", "booked"), origin: "chat" as const };
+    const real = stay("Jardim Stay", "2026-10-07", "2026-10-10", "booked");
+    const plan = buildPlan(trip(), [said, real]);
+    expect(plan.stayBlocks.filter((b) => b.kind === "booked").map((b) => b.kind === "booked" && b.item.name)).toEqual(["Jardim Stay"]);
+    expect(plan.closed.map((c) => [c.item.name, c.reason])).toEqual([["Konaklama · Porto", "Yerine Jardim Stay geldi"]]);
+    expect(plan.notices).toEqual([]);
+  });
+
+  it("gives groups for the same nights in different places their own keys", () => {
+    const plan = buildPlan(trip(), [
+      stay("Funchal A", "2026-10-07", "2026-10-09", "saved", "Funchal"),
+      stay("Funchal B", "2026-10-08", "2026-10-10", "saved", "Funchal"),
+      stay("Braga C", "2026-10-07", "2026-10-10", "saved", "Braga"),
+    ]);
+    const keys = liveGroups(plan).map((g) => g.key);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys).toEqual(["stay@2026-10-07_2026-10-10", "stay@2026-10-07_2026-10-10#braga"]);
+  });
+});
+

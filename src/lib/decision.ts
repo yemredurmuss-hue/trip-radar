@@ -224,17 +224,22 @@ function comparablePrice(item: Item, ctx: DecisionContext): { amount: number; or
   let ownNights: number | null = null;
   const groupNights = item.category === "stay" && ctx.groupRange ? nightsBetween(ctx.groupRange.start, ctx.groupRange.end) : 0;
   const own = stayRange(item);
+  const ownCount = own ? nightsBetween(own.start, own.end) : 0;
   if (p.scope === "per_night") {
-    const nights = groupNights || nightsBetween(item.dates.start, item.dates.end) || ctx.tripNights;
+    const nights = groupNights || ownCount || ctx.tripNights;
     if (!nights) return null;
     total *= nights;
-    if (groupNights && own && nightsBetween(own.start, own.end) !== groupNights) ownNights = nightsBetween(own.start, own.end);
-  } else if (groupNights && own && (p.scope === "total" || p.scope === "unknown") && nightsBetween(own.start, own.end) !== groupNights) {
-    ownNights = nightsBetween(own.start, own.end);
-    total = (total / ownNights) * groupNights;
-  } else if (p.scope === "per_person") {
-    if (!item.guests.adults) return null;
-    total *= item.guests.adults;
+    if (groupNights && ownCount && ownCount !== groupNights) ownNights = ownCount;
+  } else {
+    // A price per person is for everyone first; a stay's price is then for its own nights.
+    if (p.scope === "per_person") {
+      if (!item.guests.adults) return null;
+      total *= item.guests.adults;
+    }
+    if (groupNights && ownCount && ownCount !== groupNights) {
+      ownNights = ownCount;
+      total = (total / ownCount) * groupNights;
+    }
   }
   const converted = convert(total, p.currency, ctx.currency, ctx.rates);
   return converted == null ? null : { amount: converted, original: total, currency: p.currency, ownNights };

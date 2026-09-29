@@ -68,8 +68,9 @@ function sourceOf(item: Item): CardFacts["source"] {
 const clock = (iso: string | null | undefined) => (iso && /T\d{2}:\d{2}/.test(iso) ? iso.slice(11, 16) : null);
 
 export function durationText(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = Math.round(minutes % 60);
+  const total = Math.max(0, Math.round(minutes));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
   return h ? `${h} sa${m ? ` ${m} dk` : ""}` : `${m} dk`;
 }
 
@@ -137,7 +138,10 @@ function priceOf(item: Item, decision: GroupDecision | undefined, currency: stri
     if (compared != null && groupNights) perNight = compared / groupNights;
     else if (item.price.amount != null) {
       money = item.price.currency ?? currency;
-      perNight = item.price.scope === "per_night" ? item.price.amount : ownNights ? item.price.amount / ownNights : null;
+      // A price per person is for everyone first (unknown how many: shown as the page gives it).
+      const whole = item.price.scope === "per_person" ? (item.guests.adults ? item.price.amount * item.guests.adults : null) : item.price.amount;
+      if (whole == null) return { text: formatPrice(item.price.amount, money), label: "kişi başı", perNight: null, provisional };
+      perNight = item.price.scope === "per_night" ? whole : ownNights ? whole / ownNights : null;
       if (perNight == null) return { text: formatPrice(item.price.amount, money), label: "toplam", perNight: null, provisional };
     }
     if (perNight == null) return null;

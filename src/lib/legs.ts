@@ -5,7 +5,8 @@
 // on the trip, by leg key; the key names the day and the cities, not the hotels, so a plan survives
 // switching hotels.
 import { formatDateRange, listingKeyOf } from "./items";
-import { addDays, arrivalDay, departureDay, sameCity, type OptionGroup, type Plan, type StayBlock } from "./plan";
+import { addDays, arrivalDay, cityKeyOf, departureDay, knownPlace, placeKeyOf, sameCity, type OptionGroup, type Plan, type StayBlock } from "./plan";
+import { isLocalTransfer, isRental, itemText, LOCAL, RENTAL } from "./travelKinds";
 import type { HouseRules, Item, LegChoice, LegMode, Listing, Trip } from "./types";
 
 export type LegKind = "arrival" | "move" | "change" | "departure";
@@ -79,16 +80,8 @@ export interface Travel {
   used: boolean;
 }
 
-const LOCAL = /havaliman|airport|aeroporto|aeropuerto|a[ée]roport|flughafen|transfer|shuttle|servis|taksi|taxi|uber|bolt|cabify|pick ?up|karşılama/i;
-const text = (i: Item) => [i.name, i.summary, i.optionDetail, i.provider].filter(Boolean).join(" ");
-
-const RENTAL = /araç kiralama|araba kiralama|rent a car|car rental|kiralık araç|car hire|autoeurope|rentalcars|discover cars|sixt|europcar|hertz|avis\b/i;
-
-/** A car (or bike) rented for days in one place: it belongs to that place's days, not to a trip between cities. */
-export const isRental = (i: Item) => i.category === "transport" && RENTAL.test(text(i));
-
-/** A transfer within a city (to or from the airport, a taxi...) rather than a trip between cities. */
-export const isLocalTransfer = (i: Item) => i.category === "transport" && LOCAL.test(text(i)) && !RENTAL.test(text(i));
+const text = itemText;
+export { isLocalTransfer, isRental };
 
 function modeOf(i: Item): LegMode | null {
   if (i.category === "flight") return "flight";
@@ -197,7 +190,17 @@ const slug = (city: string | null) =>
     .replace(/ı/g, "i")
     .replace(/[^a-z0-9?]+/g, "-");
 
+const placeSlug = (city: string | null) => slug(cityKeyOf(city));
+
+/**
+ * A transfer's key, for the traveller's plan for it. It follows the stays' dates and the cities (by
+ * key: "Lisbon" and "Lizbon" are one), so picking a different flight doesn't lose "metroyla".
+ */
 export const legKey = (date: string, kind: LegKind, from: string | null, to: string | null) =>
+  kind === "move" ? `${date}:move:${placeSlug(from)}>${placeSlug(to)}` : `${date}:${kind}:${placeSlug(kind === "departure" ? from : to)}`;
+
+/** Keys before 0.13.1 (the city as written, the leg's own date): plans saved under them still count. */
+const legacyKey = (date: string, kind: LegKind, from: string | null, to: string | null) =>
   kind === "move" ? `${date}:move:${slug(from)}>${slug(to)}` : `${date}:${kind}:${slug(kind === "departure" ? from : to)}`;
 
 function status(options: Item[], choice: LegChoice | null, mode: LegMode | null): Pick<Leg, "status" | "statusText"> {
@@ -210,6 +213,29 @@ function status(options: Item[], choice: LegChoice | null, mode: LegMode | null)
   }
   if (options.length) return { status: "options", statusText: `${options.length} seçenek` };
   return { status: "empty", statusText: "Boş" };
+}
+
+/** Where a trip leaves from and goes to, as city keys (its settled option's, else what its options mostly say). */
+function endsOf(t: Travel): { from: string | null; to: string | null } {
+  const list = t.settled ? [t.settled] : t.items;
+  return {
+    from: mostCommon(list.map((i) => placeKeyOf(i.flight?.from))),
+    to: mostCommon(list.map((i) => placeKeyOf(i.flight?.to ?? (i.category === "transport" ? null : i.city)))),
+  };
+}
+
+/**
+ * How well a trip fits going from one city to another (null: either): -1 when it's known to go
+ * elsewhere or the other way, else one point per end that matches.
+ */
+function directionScore(t: Travel, from: string | null, to: string | null): number {
+  const ends = endsOf(t);
+  const [want, wantTo] = [cityKeyOf(from), cityKeyOf(to)];
+  const matches = (end: string | null, city: string | null) => Boolean(end && city && end === city);
+  const elsewhere = (end: string | null, city: string | null) => Boolean(end && city && end !== city && knownPlace(end) && knownPlace(city));
+  if (matches(ends.from, wantTo) || matches(ends.to, want)) return -1; // the other way round
+  if (elsewhere(ends.from, want) || elsewhere(ends.to, wantTo)) return -1;
+  return Number(matches(ends.from, want)) + Number(matches(ends.to, wantTo));
 }
 
 /** The saved option that settles a leg (booked, else chosen), for showing its name. */
@@ -242,12 +268,13 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
     notes: string[],
     via: LegMode | null = null,
     travel: Travel | null = null,
+    keyDate = date,
   ): Leg => {
     const city = kind === "departure" ? from.city : to.city;
-    const key = legKey(date, kind, from.city, to.city);
+    const key = legKey(keyDate, kind, from.city, to.city);
     const options = locals.filter((i) => !takenLocals.has(i.id) && departureDay(i) === date && (!i.city || !city || sameCity(i.city, city)));
     options.forEach((i) => takenLocals.add(i.id));
-    const choice = choiceOf(key);
+    const choice = choiceOf(key) ?? choiceOf(legacyKey(date, kind, from.city, to.city));
     const settled = settledOf(options);
     const mode = (settled && modeOf(settled)) ?? choice?.mode ?? null;
     return {
@@ -268,10 +295,16 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
     const [from, to] = [pointOf(a), pointOf(b)];
     const here: Leg[] = [];
     if (a.city && b.city && !sameCity(a.city, b.city)) {
-      const travel = travels.find((t) => !t.used && (t.day === date || t.arrives === date)) ?? null;
+      // That day's trip from a to b; one known to go elsewhere (or the other way) isn't this move.
+      const fits = travels
+        .filter((t) => !t.used && (t.day === date || t.arrives === date))
+        .map((t) => ({ t, score: directionScore(t, a.city, b.city) }))
+        .filter((x) => x.score >= 0)
+        .sort((x, y) => y.score - x.score);
+      const travel = fits[0]?.t ?? null;
       if (travel) travel.used = true;
       const key = legKey(date, "move", a.city, b.city);
-      const choice = choiceOf(key);
+      const choice = choiceOf(key) ?? choiceOf(legacyKey(date, "move", a.city, b.city));
       const options = travel?.items ?? [];
       const booked = options.find((x) => x.status === "booked");
       const mode = (booked && modeOf(booked)) ?? choice?.mode ?? travel?.mode ?? null;
@@ -285,11 +318,13 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
         ...status(options, choice, mode),
       };
       if (mode && FROM_HUB.includes(mode)) {
-        here.push(departing(from, date, i + 1, travel, mode, 0));
+        // An overnight trip can leave the evening before: the transfer to the station is then.
+        const leaves = travel?.settled ? travel.day : date;
+        here.push(departing(from, leaves, i + 1, travel, mode, dayDiff(leaves, a.range.end), date));
         here.push(move);
         // An overnight trip lands the next day: the transfer is then, and the first night there goes unused.
         const lands = travel?.settled ? travel.arrives : date;
-        here.push(arriving(to, lands, i + 1, travel, mode, dayDiff(lands, b.range.start)));
+        here.push(arriving(to, lands, i + 1, travel, mode, dayDiff(lands, b.range.start), date));
       } else {
         here.push(move);
       }
@@ -308,24 +343,32 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
   const last = blocks.at(-1)!;
   // In: landing up to three days before the first night (or the day after); out: leaving from the
   // day before the last morning to three days after. The closest wins.
-  const pick = (want: (t: Travel) => number, from: number, to: number) => {
-    const free = travels.filter((t) => !t.used && want(t) >= from && want(t) <= to);
-    const best = free.sort((x, y) => Math.abs(want(x)) - Math.abs(want(y)))[0] ?? null;
+  // A trip known to leave the first place isn't the way in (nor one arriving at the last place the way
+  // out); one known to go the right way is preferred over one that doesn't say.
+  const pick = (want: (t: Travel) => number, from: number, to: number, fit: (t: Travel) => number) => {
+    const free = travels.filter((t) => !t.used && want(t) >= from && want(t) <= to && fit(t) >= 0);
+    const best = free.sort((x, y) => fit(y) - fit(x) || Math.abs(want(x)) - Math.abs(want(y)))[0] ?? null;
     if (best) best.used = true;
     return best;
   };
-  const inbound = pick((t) => dayDiff(t.arrives, first.range.start), -3, 1);
-  const outbound = pick((t) => dayDiff(t.day, last.range.end), -1, 3);
+  const inbound = pick((t) => dayDiff(t.arrives, first.range.start), -3, 1, (t) => directionScore(t, null, first.city));
+  const outbound = pick((t) => dayDiff(t.day, last.range.end), -1, 3, (t) => directionScore(t, last.city, null));
 
-  legs.push(arriving(pointOf(first), inbound?.settled ? inbound.arrives : first.range.start, 0, inbound, inbound?.mode ?? null, inbound?.settled ? dayDiff(inbound.arrives, first.range.start) : 0));
+  // The transfers are on the flights' days (the options' common day until one is chosen), so the board
+  // never shows "Transfer 18 Ekim" next to "Dönüş 17 Ekim". The timing notes need a chosen flight.
+  legs.push(
+    arriving(pointOf(first), inbound ? inbound.arrives : first.range.start, 0, inbound, inbound?.mode ?? null, inbound?.settled ? dayDiff(inbound.arrives, first.range.start) : 0, first.range.start),
+  );
   for (let i = 1; i < blocks.length; i++) legs.push(...(middle.get(i) ?? []));
-  legs.push(departing(pointOf(last), outbound?.settled ? outbound.day : last.range.end, blocks.length, outbound, outbound?.mode ?? null, outbound?.settled ? dayDiff(outbound.day, last.range.end) : 0));
+  legs.push(
+    departing(pointOf(last), outbound ? outbound.day : last.range.end, blocks.length, outbound, outbound?.mode ?? null, outbound?.settled ? dayDiff(outbound.day, last.range.end) : 0, last.range.end),
+  );
   return legs;
 
   // Hoisted helpers: they share the saved local transfers and choices above.
 
   /** From the airport or station (or wherever the traveller arrives) to a stay. `offset`: landing day minus the first night. */
-  function arriving(to: LegPoint, date: string, slot: number, travel: Travel | null, mode: LegMode | null, offset: number): Leg {
+  function arriving(to: LegPoint, date: string, slot: number, travel: Travel | null, mode: LegMode | null, offset: number, keyDate: string): Leg {
     const settled = travel?.settled ?? null;
     const lands = settled?.flight?.arrival ? clock(settled.flight.arrival) : null;
     const hub = hubLabel(travel, "to", to.city, mode);
@@ -355,11 +398,11 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
       }
     }
     if (mode === "flight" && t.house?.airportShuttle) notes.push("Havalimanı servisi var (sayfada yazıyor); saatini ve ücretini sor.");
-    return local("arrival", date, slot, { label: hub, city: to.city, item: null }, to, { after: lands }, notes, mode, travel);
+    return local("arrival", date, slot, { label: hub, city: to.city, item: null }, to, { after: lands }, notes, mode, travel, keyDate);
   }
 
   /** From a stay to the airport or station (or however the traveller leaves). `offset`: departure day minus the check-out day. */
-  function departing(from: LegPoint, date: string, slot: number, travel: Travel | null, mode: LegMode | null, offset: number): Leg {
+  function departing(from: LegPoint, date: string, slot: number, travel: Travel | null, mode: LegMode | null, offset: number, keyDate: string): Leg {
     const settled = travel?.settled ?? null;
     const leaves = clock(settled?.flight?.departure);
     const buffer = mode ? HUB_BUFFER[mode] : undefined;
@@ -374,6 +417,8 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
       notes.push(`Gidiş gece ${leaves} (${fmtDay(date)}): çıkıştan sonraki akşamı ve geceyi nerede geçireceğini planla, bavul emaneti sor.`);
     } else if (settled && offset < 0) {
       notes.push(`Gidiş ${fmtDay(date)} ama son gece ${fmtDay(date)}: o gece ${from.item ? "boşa ödeniyor" : "gerekmiyor"}.`);
+    } else if (settled && offset === 0 && leaves && minutes(leaves) < 6 * 60) {
+      notes.push(`Gidiş gece ${leaves}: ${fmtDay(addDays(date, -1))} gecesinin yalnız birkaç saati kullanılır; o akşam yola çıkmayı ya da havalimanına yakın kalmayı düşün.`);
     }
     if (leaves && by && buffer) {
       const byMin = minutes(leaves) - buffer;
@@ -389,7 +434,7 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
       }
     }
     if (mode === "flight" && t.house?.airportShuttle) notes.push("Havalimanı servisi var (sayfada yazıyor); saatini ve ücretini sor.");
-    return local("departure", date, slot, from, { label: hub, city: from.city, item: null }, { before: by }, notes, mode, travel);
+    return local("departure", date, slot, from, { label: hub, city: from.city, item: null }, { before: by }, notes, mode, travel, keyDate);
   }
 }
 

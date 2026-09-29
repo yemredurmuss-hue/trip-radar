@@ -75,7 +75,9 @@ export function flightSearchUrl(direction: "to" | "from", city: string | null, d
 
 export function buildTimeline(plan: Plan, legs: Leg[], items: Item[]): Timeline {
   const blocks = plan.stayBlocks;
-  const dayItems = items.filter((i) => onADay(i) && i.status !== "dismissed");
+  // A rental set aside by the plan (another booked, or a page chosen instead of the one said in the chat) isn't on its day.
+  const closed = new Set(plan.closed.map((c) => c.item.id));
+  const dayItems = items.filter((i) => onADay(i) && i.status !== "dismissed" && !closed.has(i.id));
   if (!blocks.length || !plan.range) {
     return {
       entries: [],
@@ -91,12 +93,14 @@ export function buildTimeline(plan: Plan, legs: Leg[], items: Item[]): Timeline 
   const last = legs.find((l) => l.slot === blocks.length && l.kind === "departure") ?? null;
   const home = homeOf(first?.travel ?? null, last?.travel ?? null);
 
-  // What's planned on each day of the trip, by category.
+  // What's planned on each day of the trip, by category. Days after the flight home aren't on this trip's
+  // line: they stay in the list below, with their date.
+  const lastDay = last && last.travel && last.date < end ? last.date : end;
   const byDay = new Map<string, Map<Category, Item[]>>();
   const placedDays = new Set<string>();
   for (const i of dayItems) {
     const d = isoDate(i.dates.start);
-    if (!d || d < start || d > end) continue;
+    if (!d || d < start || d > lastDay) continue;
     const day = byDay.get(d) ?? new Map<Category, Item[]>();
     day.set(i.category, [...(day.get(i.category) ?? []), i]);
     byDay.set(d, day);
@@ -236,12 +240,14 @@ function sectionsOf(entries: TimelineEntry[]): TimelineSection[] {
   let current: Extract<TimelineSection, { kind: "city" }> | null = null;
   let index = 0;
   const open = () => {
-    current = { kind: "city", key: `city:${sections.length}`, index: ++index, city: null, range: null, nights: 0, entries: [] };
+    current = { kind: "city", key: "", index: ++index, city: null, range: null, nights: 0, entries: [] };
     sections.push(current);
     return current;
   };
   for (const e of entries) {
-    if (e.kind === "travel" && e.role !== "other") {
+    // Arriving, moving on and leaving sit on the rail between the places; so does any other trip
+    // that isn't during a stay (one during a stay, like a day trip, stays in that place).
+    if (e.kind === "travel" && (e.role !== "other" || !current)) {
       sections.push({ kind: "travel", key: e.key, entry: e });
       current = null;
       continue;
@@ -257,6 +263,15 @@ function sectionsOf(entries: TimelineEntry[]): TimelineSection[] {
         ? { start: block.range.start < e.block.range.start ? block.range.start : e.block.range.start, end: block.range.end > e.block.range.end ? block.range.end : e.block.range.end }
         : { ...e.block.range };
     }
+  }
+  // Keys follow what a block holds, not its position, so a block added earlier doesn't remount the rest.
+  const used = new Set<string>();
+  for (const section of sections) {
+    if (section.kind !== "city") continue;
+    let key = `city:${section.range?.start ?? section.entries[0]?.key ?? section.index}`;
+    while (used.has(key)) key += "+";
+    used.add(key);
+    section.key = key;
   }
   return sections;
 }

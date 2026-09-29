@@ -274,9 +274,9 @@ function MoveCard({ leg, tripId }: { leg: Leg; tripId: string }) {
               Uçuş ara ↗
             </a>
           )}
-          {mode && (
+          {(mode || booked) && (
             <button className="pill-btn outline" onClick={() => save({ booked: !booked })}>
-              {booked ? "Geri al" : TICKETED.includes(mode) ? "Bileti aldım" : "Ayarlandı"}
+              {booked ? "Geri al" : mode && TICKETED.includes(mode) ? "Bileti aldım" : "Ayarlandı"}
             </button>
           )}
         </span>
@@ -304,6 +304,7 @@ function Block({ block, renderGroup, settled }: { block: StayBlock; renderGroup:
   return (
     <div className={`stay-block ${state}`} id={`block-${block.range.start}`}>
       {block.kind === "booked" && settled(block.item)}
+      {block.kind === "booked" && block.clashes?.map((i) => <div key={i.id}>{settled(i)}</div>)}
       {block.kind !== "booked" &&
         block.groups.map((g) =>
           renderGroup(g, null, g.range && g.range.start === block.range.start && g.range.end === block.range.end ? null : g.title, true),

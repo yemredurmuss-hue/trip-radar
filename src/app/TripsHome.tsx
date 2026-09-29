@@ -90,7 +90,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
       )}
 
       {trips.length === 0 ? (
-        <div className="empty">
+        <div className="trips-empty">
           <h2>İlk seçeneğini kaydet</h2>
           <ol>
             <li>

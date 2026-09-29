@@ -100,9 +100,9 @@ a { color: var(--accent); text-decoration: none; }
 .row-price { font-size: 18px; font-variant-numeric: tabular-nums; }
 .chev { color: #9a9aa0; }
 .more { background: none; border: 0; color: var(--accent); padding: 10px 12px; font-size: 14px; }
-.empty { max-width: 460px; margin: 12vh auto; line-height: 1.6; }
-.empty h2 { font-size: 28px; margin-bottom: 8px; }
-.empty ol { padding-left: 20px; color: #3a3a3c; }
+.trips-empty { max-width: 460px; margin: 12vh auto; line-height: 1.6; }
+.trips-empty h2 { font-size: 28px; margin-bottom: 8px; }
+.trips-empty ol { padding-left: 20px; color: #3a3a3c; }
 .errors { margin: 8px 4px; font-size: 13.5px; }
 .errors div { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin: 4px 0; }
 .error-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

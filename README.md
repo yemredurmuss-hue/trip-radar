@@ -240,6 +240,7 @@ kararlar ve kayıtlar olduğu gibi kalır.
 ```bash
 npm run typecheck      # TypeScript
 npm test               # birim + akış testleri (sahte API ile)
+SCENARIOS=20000 npx vitest run tests/scenarios.test.ts   # rastgele gezilerle stres testi (varsayılan 3000)
 npm run build && xvfb-run -a node scripts/e2e.mjs   # eklentiyi Chromium'da yükleyip test eder, ekran görüntüleri e2e-output/
 # Proxy arkasında gerçek API kontrolü: E2E_EXPECT_LIVE=1 E2E_CHROMIUM_ARGS="--ignore-certificate-errors-spki-list=<proxy CA SPKI>"
 ```

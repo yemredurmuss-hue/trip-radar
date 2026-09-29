@@ -3,6 +3,7 @@ import { cardFacts, durationText, whyLines, type CardFacts } from "../lib/cardFa
 import type { GroupDecision } from "../lib/decision";
 import { formatDateRange, metricsOf } from "../lib/items";
 import { rangeOfGroupKey, stayRange } from "../lib/plan";
+import { isTrip } from "../lib/travelKinds";
 import { withDates } from "../lib/url";
 import type { Category, Item } from "../lib/types";
 import { chooseItem, removeItem, setItemStatus } from "./actions";
@@ -26,9 +27,10 @@ export function SourceBadge({ source }: { source: CardFacts["source"] }) {
   );
 }
 
-const TICKETED: Category[] = ["flight", "transport", "activity"];
-const bookedWord = (c: Category) => (TICKETED.includes(c) ? "Bilet alındı ✓" : "Rezerve ✓");
-const notBookedWord = (c: Category) => (TICKETED.includes(c) ? "bilet alınmadı" : "rezerve edilmedi");
+/** A ticket is bought for a flight, a train or an activity; a stay, a rental car or a transfer is reserved. */
+const ticketed = (i: Item) => i.category === "flight" || i.category === "activity" || (i.category === "transport" && isTrip(i));
+const bookedWord = (i: Item) => (ticketed(i) ? "Bilet alındı ✓" : "Rezerve ✓");
+const notBookedWord = (i: Item) => (ticketed(i) ? "bilet alınmadı" : "rezerve edilmedi");
 
 /** Saved without dates but compared for a group's nights: the page reopened with those dates. */
 function datedLink(item: Item, decision: GroupDecision | undefined) {
@@ -179,7 +181,7 @@ export function SwipeCard({ item, group, decision, decisions, roles = [], onOpen
             {open ? "Kapat ▴" : "Detaylar ▾"}
           </button>
           {item.status === "booked" ? (
-            <span className="tone-success">{bookedWord(item.category)}</span>
+            <span className="tone-success">{bookedWord(item)}</span>
           ) : item.status === "chosen" ? (
             <button className="pill-btn soft" onClick={() => void setItemStatus(item, "saved")} title="Seçimi geri al">
               Planda ✓
@@ -330,11 +332,11 @@ export function SettledCard({
       <div className="stc-foot">
         <span className="stc-state">
           {booked ? (
-            <span className="state-chip booked">{bookedWord(item.category)}</span>
+            <span className="state-chip booked">{bookedWord(item)}</span>
           ) : (
             <>
               <span className="state-chip chosen">{planned ? "Planlanıyor" : "Seçildi"}</span>
-              <small className="muted">{notBookedWord(item.category)}</small>
+              <small className="muted">{notBookedWord(item)}</small>
             </>
           )}
         </span>
@@ -347,7 +349,7 @@ export function SettledCard({
             </button>
           ) : (
             <button className="pill-btn outline" onClick={() => void setItemStatus(item, "booked")}>
-              {TICKETED.includes(item.category) ? "Bileti aldım" : "Rezerve ettim"}
+              {ticketed(item) ? "Bileti aldım" : "Rezerve ettim"}
             </button>
           )}
           {onChange && !booked && (

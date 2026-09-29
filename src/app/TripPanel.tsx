@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FallbackImg } from "./FallbackImg";
 import { requestProcessing } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
@@ -250,7 +250,10 @@ function OptionGroupView({
     ) : null;
   // Decided: one line (the cards come back with "Değiştir"). A booking settles it for good.
   const change = decided && decided.status === "chosen" && ranked.length > 1 ? () => setChanging(!changing) : undefined;
-  if (decided && !changing) {
+  // A new pick (or a booking) closes the cards again.
+  const decidedId = decided?.id;
+  useEffect(() => setChanging(false), [decidedId]);
+  if (decided && !(changing && change)) {
     return (
       <div className={nested ? "group nested" : "section"}>
         {head && <div className={nested ? "group-head" : "section-head"}>{head}</div>}

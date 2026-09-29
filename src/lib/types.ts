@@ -2,7 +2,8 @@
 
 export type Category = "flight" | "stay" | "transport" | "activity" | "food" | "esim" | "other";
 
-export type ItemStatus = "saved" | "chosen" | "booked" | "dismissed";
+export const ITEM_STATUSES = ["saved", "chosen", "booked", "dismissed"] as const;
+export type ItemStatus = (typeof ITEM_STATUSES)[number];
 
 /** Where a fact came from. "unverified" = the model quoted text we could not find on the page. */
 export type FactSource = "url" | "page" | "screenshot" | "unverified" | "none";
@@ -211,6 +212,8 @@ export interface Item {
   statusNote: string | null;
   /** "chat": the traveller said it in the chat, no page behind it (a plan until a saved page replaces it). */
   origin?: "chat";
+  /** What kind of plan was said in the chat (a car rental or a transfer can carry any title). */
+  plannedKind?: "flight" | "train" | "bus" | "ferry" | "transfer" | "car_rental" | "stay" | "activity" | "other";
   createdAt: number;
   updatedAt: number;
 }
