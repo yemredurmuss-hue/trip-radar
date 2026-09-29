@@ -77,6 +77,8 @@ function metricsFrom(x: Extraction["metrics"]): ItemMetrics {
     dataGb: positive(x.data_gb),
     unlimitedData: x.unlimited_data,
     validityDays: positive(x.validity_days),
+    stayKind: x.stay_kind ?? null,
+    bedrooms: positive(x.bedrooms ?? null),
   };
 }
 

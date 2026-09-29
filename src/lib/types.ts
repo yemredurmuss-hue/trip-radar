@@ -80,7 +80,14 @@ export interface ItemMetrics {
   dataGb: number | null;
   unlimitedData: boolean | null;
   validityDays: number | null;
+  /** Stays: what kind of place (older items don't have it). */
+  stayKind?: StayKind | null;
+  /** Flats and houses: bedrooms, as the page states. */
+  bedrooms?: number | null;
 }
+
+export const STAY_KINDS = ["hotel_room", "apartment", "house", "guesthouse", "hostel", "other"] as const;
+export type StayKind = (typeof STAY_KINDS)[number];
 
 export interface Geo {
   lat: number;

@@ -737,13 +737,13 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
   const { byItem: eliminated, checks } = eliminationsOf(record, eligible, ctx);
   let options: OptionResult[] = eligible.map((item) => {
     const s = score(item.id);
-    const missing = s.parts.filter((p) => p.s == null).map((p) => p.label.toLowerCase());
+    const missing = s.parts.filter((p) => p.s == null).map((p) => p.label.toLocaleLowerCase("tr"));
     // Missing information limits the verdict instead of stopping it: the option is scored on what is
     // known and ranked after complete ones until the rest arrives.
     const lacking = required.filter((c) => !measures.get(item.id)!.get(c));
-    for (const c of lacking) if (!missing.includes(CRITERION_LABELS[c].toLowerCase())) missing.unshift(CRITERION_LABELS[c].toLowerCase());
+    for (const c of lacking) if (!missing.includes(CRITERION_LABELS[c].toLocaleLowerCase("tr"))) missing.unshift(CRITERION_LABELS[c].toLocaleLowerCase("tr"));
     // A price in another currency with no exchange rate is known, just not comparable yet.
-    const limited = lacking.map((c) => (c === "price" && item.price.amount != null ? "kur bilgisi" : CRITERION_LABELS[c].toLowerCase()));
+    const limited = lacking.map((c) => (c === "price" && item.price.amount != null ? "kur bilgisi" : CRITERION_LABELS[c].toLocaleLowerCase("tr")));
     // Saved without dates: its price isn't this stay's price yet (no fees, maybe a "from" rate).
     if (groupNights && !stayRange(item) && !lacking.includes("price")) limited.push("bu gecelerin fiyatı");
     const scorable = s.confidence >= MIN_CONFIDENCE && criteria.length > 0;
@@ -858,8 +858,8 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
       summary: `${first.item.name} ile ${second.item.name} başa baş (${first.score} – ${second.score}). Karar önceliklerine kalmış.${failNote}`,
     };
   }
-  const why = reasons.slice(0, 2).map((r) => r.label.toLowerCase()).join(" ve ");
-  const cost = tradeoffs[0] ? ` Karşılığında ${tradeoffs[0].label.toLowerCase()} tarafında geride.` : "";
+  const why = reasons.slice(0, 2).map((r) => r.label.toLocaleLowerCase("tr")).join(" ve ");
+  const cost = tradeoffs[0] ? ` Karşılığında ${tradeoffs[0].label.toLocaleLowerCase("tr")} tarafında geride.` : "";
   return {
     ...base,
     status: "ok",

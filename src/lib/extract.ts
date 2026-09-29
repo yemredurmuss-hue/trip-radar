@@ -2,7 +2,7 @@
 // call turns a capture into facts; the model must quote the page for price / rating / cancellation
 // and evidence.ts checks those quotes afterwards. Provider calls live in llm/.
 import { z } from "zod";
-import { AMENITIES, REVIEW_ASPECTS, type Capture, type Trip } from "./types";
+import { AMENITIES, REVIEW_ASPECTS, STAY_KINDS, type Capture, type Trip } from "./types";
 import type { UrlFacts } from "./url";
 
 const Source = z.enum(["url", "page", "screenshot", "none"]);
@@ -83,6 +83,12 @@ export const ExtractionSchema = z.object({
       data_gb: z.number().nullable().describe("eSIM veri miktarı (GB)"),
       unlimited_data: z.boolean().nullable(),
       validity_days: z.number().nullable().describe("eSIM geçerlilik süresi (gün)"),
+      stay_kind: z
+        .enum(STAY_KINDS)
+        .nullable()
+        .optional()
+        .describe("Konaklamada yerin türü: hotel_room (otel odası), apartment (daire), house (ev/villa), guesthouse (pansiyon/B&B), hostel"),
+      bedrooms: z.number().nullable().optional().describe("Daire/evde sayfada yazan yatak odası sayısı; otel odasında null"),
     })
     .nullable(),
   highlights: z.array(z.string()).describe("En fazla 4 kısa Türkçe artı"),

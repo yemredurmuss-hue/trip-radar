@@ -59,6 +59,21 @@ Kodu güncellediğinde `npm run build` çalıştır, sonra `chrome://extensions`
 **Her gezi ayrı bir pano ve sohbettir.** Açılışta **Seyahatlerim** listesi gelir; bir geziye girince
 solda o gezinin kendi sohbeti, sağda panosu olur. **‹ Seyahatlerim** ile listeye dönülür.
 
+**Pano, gezinin kendisi gibi sıralıdır.** Solda bir çizgi boyunca: gidiş uçuşu ("8 Ekim · Uçuş · IST → OPO"),
+havalimanından otele transfer, konaklama geceleri, o günlere tarihli etkinlikler ("9 Ekim · Etkinlik"), şehir
+değişimi ("11 Ekim · Şehir değişimi" ve iki uçtaki gar/havalimanı transferleri), sonraki konaklama ve dönüş
+("14 Ekim · Dönüş"). Gidiş ya da dönüş için kayıt yoksa "Henüz eklenmedi" yazar ve o günün uçuş aramasına link
+verir (arabayla gideceğini söylediysen sormaz). Tarihsiz yerler ve plana oturmayan uçuşlar altta ayrı durur.
+
+**Seçilmemiş her ihtiyaç kartlarla karşılaştırılır.** Uçuş, konaklama, tren, eSIM... seçenekleri yan yana
+kartlardır; parmakla, trackpad'le ya da ‹ › ile kaydırılır, en iyi puanlı önde, elenenler sonda ve soluk. Kartta:
+kaynak (site ya da şirket), görsel, 0–100 uyum puanı, ne olduğu ("Otel odası · Baixa", "07:10–10:05 · Direkt ·
+4 sa 55 dk"), bu tarihler için fiyat ("€285 · 3 gece toplam"), durum ve rozetler, en önemli iki artı ve iki eksi
+(eleme sebebi her zaman önce). **Detaylar** kartın içinde açılır: neden önde/geride olduğu, bütün artı/eksiler
+kanıtıyla ("Kanıt", "Sorun değil"), koşullar ve linkler. **Seç** ile ihtiyaç tek satıra iner: "Seçildi · rezerve
+edilmedi" (uçuş, tren ve etkinlikte "bilet alınmadı"); oradan **Rezerve ettim / Bileti aldım** ya da **Değiştir**
+(kartlar geri gelir). Kartlardaki her şey kayıttan ya da hesaptan gelir; kart için ayrıca AI çağrılmaz.
+
 **Konaklama gece gece planlanır.** Gezinin geceleri (onaylı tarihler, yoksa uçuşlar ve konaklamalar)
 sırayla gösterilir: **✓ Rezerve**, **Seçildi**, **Açık** (bu gecelere uyan seçeneklerle) ya da **Boş**
 (Booking'de o tarihlerle arama linkiyle). Bir yeri rezerve edince aynı geceleri isteyen diğer seçenekler

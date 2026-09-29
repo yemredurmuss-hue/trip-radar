@@ -118,6 +118,7 @@ export async function loadDemoTrip(): Promise<string> {
           { aspect: "staff", score: 9.3, scale: 10, sentiment: "positive" },
         ],
         amenities: ["klima", "ücretsiz wifi", "kahvaltı dahil", "asansör"],
+        stayKind: "hotel_room",
       },
     }),
     item("stay", "stay:porto", "Casa Azul", 240, {
@@ -137,6 +138,8 @@ export async function loadDemoTrip(): Promise<string> {
           { aspect: "communication", score: 4.9, scale: 5, sentiment: "positive" },
         ],
         amenities: ["mutfak", "çamaşır makinesi", "ücretsiz wifi", "balkon/teras"],
+        stayKind: "apartment",
+        bedrooms: 1,
       },
     }),
     item("stay", "stay:porto", "Ribeira Rooms", 330, {
@@ -157,6 +160,7 @@ export async function loadDemoTrip(): Promise<string> {
           { aspect: "noise", score: null, scale: null, sentiment: "negative" },
         ],
         amenities: ["klima", "ücretsiz wifi", "manzara"],
+        stayKind: "hotel_room",
       },
     }),
     // Getting to Lisbon: a saved train (the move and the station transfers show up on their own), and home by air.
@@ -195,7 +199,14 @@ export async function loadDemoTrip(): Promise<string> {
       rating: { value: 9.0, scale: 10, count: 530, source: "page" },
     }),
     item("activity", "activity:porto", "Tiyatro", 36, { dates: noDates, geo: geo(41.1437, -8.6076) }),
-    item("activity", "activity:porto", "Douro tekne turu", 25, { dates: noDates, geo: geo(41.1405, -8.612) }),
+    item("activity", "activity:porto", "Douro tekne turu", 25, {
+      summary: "Altı köprü turu",
+      status: "chosen",
+      dates: { start: "2026-10-09", end: null, source: "page" },
+      flight: { from: null, to: null, departure: "2026-10-09T16:00", arrival: null, carrier: null, flightNumber: null, stops: null },
+      metrics: { durationMinutes: 50 },
+      geo: geo(41.1405, -8.612),
+    }),
     item("activity", "activity:porto", "Livraria Lello", 10, { dates: noDates, geo: geo(41.1469, -8.6149) }),
     item("activity", "activity:porto", "Serralves Müzesi", 22, { dates: noDates, geo: geo(41.1597, -8.6597) }),
     item("food", "food:porto", "Majestic Café", null, { dates: noDates, geo: geo(41.1471, -8.6066) }),

@@ -5,7 +5,7 @@
 // on the trip, by leg key; the key names the day and the cities, not the hotels, so a plan survives
 // switching hotels.
 import { formatDateRange, listingKeyOf } from "./items";
-import { addDays, arrivalDay, departureDay, sameCity, type Plan, type StayBlock } from "./plan";
+import { addDays, arrivalDay, departureDay, sameCity, type OptionGroup, type Plan, type StayBlock } from "./plan";
 import type { HouseRules, Item, LegChoice, LegMode, Listing, Trip } from "./types";
 
 export type LegKind = "arrival" | "move" | "change" | "departure";
@@ -55,6 +55,8 @@ export interface Leg {
   mode: LegMode | null;
   /** For a transfer to or from a station: how the trip on from there goes (a flight: the airport). */
   via: LegMode | null;
+  /** The flight or train this leg connects to (arriving, leaving, or the move itself). */
+  travel: Travel | null;
   status: LegStatus;
   statusText: string;
   choice: LegChoice | null;
@@ -65,7 +67,10 @@ export interface Leg {
 // --- what's saved for getting there ---------------------------------------------------------------------
 
 /** A trip between cities (or in and out of the trip): one flight need, or one intercity transport. */
-interface Travel {
+export interface Travel {
+  /** The saved need it comes from (its decision is found by this group's key). */
+  group: OptionGroup;
+  /** Its options (for a transport need: the ones on this day). */
   items: Item[];
   settled: Item | null;
   mode: LegMode | null;
@@ -113,7 +118,7 @@ function travelsOf(plan: Plan): Travel[] {
       const day = (settled && departureDay(settled)) ?? mostCommon(list.map(departureDay));
       const arrives = (settled && arrivalDay(settled)) ?? mostCommon(list.map(arrivalDay)) ?? day;
       if (!list.length || !day || !arrives) continue;
-      out.push({ items: list, settled, mode: settled ? modeOf(settled) : mostCommon(list.map(modeOf)) as LegMode | null, day, arrives, used: false });
+      out.push({ group: g, items: list, settled, mode: settled ? modeOf(settled) : mostCommon(list.map(modeOf)) as LegMode | null, day, arrives, used: false });
     }
   }
   return out;
@@ -230,6 +235,7 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
     times: { after?: string | null; before?: string | null },
     notes: string[],
     via: LegMode | null = null,
+    travel: Travel | null = null,
   ): Leg => {
     const city = kind === "departure" ? from.city : to.city;
     const key = legKey(date, kind, from.city, to.city);
@@ -243,7 +249,7 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
       after: times.after ?? null,
       before: times.before ?? null,
       options: settled?.status === "booked" ? [settled] : options,
-      mode, via, choice, notes,
+      mode, via, travel, choice, notes,
       ...status(options, choice, mode),
     };
   };
@@ -269,7 +275,7 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
         after: clock(settled?.flight?.departure),
         before: clock(settled?.flight?.arrival),
         options: booked ? [booked] : options,
-        mode, via: null, choice, notes: [],
+        mode, via: null, travel, choice, notes: [],
         ...status(options, choice, mode),
       };
       if (mode && FROM_HUB.includes(mode)) {
@@ -341,7 +347,7 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
       }
     }
     if (mode === "flight" && t.house?.airportShuttle) notes.push("Havalimanı servisi var (sayfada yazıyor); saatini ve ücretini sor.");
-    return local("arrival", date, slot, { label: hub, city: to.city, item: null }, to, { after: lands }, notes, mode);
+    return local("arrival", date, slot, { label: hub, city: to.city, item: null }, to, { after: lands }, notes, mode, travel);
   }
 
   /** From a stay to the airport or station (or however the traveller leaves). `offset`: departure day minus the check-out day. */
@@ -375,7 +381,7 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
       }
     }
     if (mode === "flight" && t.house?.airportShuttle) notes.push("Havalimanı servisi var (sayfada yazıyor); saatini ve ücretini sor.");
-    return local("departure", date, slot, from, { label: hub, city: from.city, item: null }, { before: by }, notes, mode);
+    return local("departure", date, slot, from, { label: hub, city: from.city, item: null }, { before: by }, notes, mode, travel);
   }
 }
 

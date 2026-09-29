@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FallbackImg } from "./FallbackImg";
 import { requestProcessing } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
@@ -16,8 +16,9 @@ import {
   type NeedGroup,
 } from "../lib/items";
 import { buildLegs, type Leg } from "../lib/legs";
+import { buildTimeline } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
-import type { OptionGroup, Plan, StayBlock } from "../lib/plan";
+import type { OptionGroup, Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 
 import type { Capture, Category, Item, Trip } from "../lib/types";
@@ -25,7 +26,9 @@ import { DecisionCard } from "./DecisionCard";
 import { CategoryIcon, Chevron } from "./Icons";
 import { IntentCard } from "./IntentCard";
 import { LegRow } from "./LegRow";
-import { OptionCard } from "./OptionCard";
+import { Carousel } from "./Carousel";
+import { SettledRow, SwipeCard } from "./SwipeCard";
+import { TimelineView, type CardFor, type RenderGroup, type SettledFor } from "./Timeline";
 import { rolesOf, type ValueCard } from "../lib/value";
 import { decisionLabel, type Decisions } from "./useDecisions";
 
@@ -40,17 +43,8 @@ interface Props {
   menu: React.ReactNode;
 }
 
-const ROWS_PER_GROUP = 3;
 /** Categories shown as one summary row until expanded (like "Tiyatro, tekne turu ve 4 yer"). */
 const SUMMARIZED: Category[] = ["activity", "food", "other"];
-
-type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => React.ReactNode;
-type CardFor = (item: Item, group: Item[], decision?: GroupDecision, roles?: string[], onCompare?: () => void) => React.ReactNode;
-
-const WEEKDAYS = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
-const weekday = (iso: string) => WEEKDAYS[new Date(`${iso}T00:00:00Z`).getUTCDay()];
-const dayOfMonth = (iso: string) => Number(iso.slice(8, 10));
-const addDay = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
 
 export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, menu }: Props) {
   const range = trip.confirmedDates ?? tripDateRange(items);
@@ -58,8 +52,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const subtitle = [range ? formatDateRange(range.start, range.end) : null, cities.length ? joinTr(cities) : null]
     .filter(Boolean)
     .join(" · ");
-  const currency = decisions?.ctx.currency ?? "EUR";
-  const places = groupItems(items).filter((s) => SUMMARIZED.includes(s.category));
+  const places = () => groupItems(timeline.undated).filter((s) => SUMMARIZED.includes(s.category));
   const dismissed = items.filter((i) => i.status === "dismissed");
   const route = routeUrl(items);
   const working = openCaptures.filter((c) => c.status === "pending" || c.status === "processing");
@@ -69,19 +62,34 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const reading = listings
     ? new Set(items.filter((i) => needsReading(i, listings.get(listingKeyOf(i))) && !listings.get(listingKeyOf(i))?.error).map(listingKeyOf)).size
     : 0;
-  /** One saved option as a card that opens in place (pros and cons, evidence, actions). */
+  const timeline = useMemo(() => buildTimeline(plan, legs, items), [plan, legs, items]);
+  const decisionOf = (item: Item) => [...(decisions?.byGroup.values() ?? [])].find((d) => d.options.some((o) => o.item.id === item.id));
+  /** One undecided option as a decision card: swipe through them, open one for the reasons. */
   const card: CardFor = (item, group, decision, roles, onCompareGroup) => (
-    <OptionCard
+    <SwipeCard
       key={item.id}
       item={item}
       group={group}
-      decision={decision}
+      decision={decision ?? decisionOf(item)}
       decisions={decisions}
       roles={roles}
       onOpen={() => onOpenItem(item)}
       onCompare={onCompareGroup}
     />
   );
+  /** A decided need in one line ("Seçildi · bilet alınmadı"). */
+  const settled: SettledFor = (item, decision, onChange, changing) => (
+    <SettledRow
+      key={item.id}
+      item={item}
+      decision={decision ?? decisionOf(item)}
+      decisions={decisions}
+      onOpen={() => onOpenItem(item)}
+      onChange={onChange}
+      changing={changing}
+    />
+  );
+  const leg = (l: Leg) => <LegRow key={l.key} leg={l} tripId={trip.id} onOpenItem={onOpenItem} />;
 
   const renderGroup: RenderGroup = (group, heading, groupSubtitle, nested = false) => (
     <OptionGroupView
@@ -93,6 +101,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       decision={decisions?.byGroup.get(group.key)}
       card={decisions?.cards.get(group.key)}
       renderCard={card}
+      renderSettled={settled}
       onCompare={() => onCompare(group.key)}
     />
   );
@@ -145,18 +154,21 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
 
       <IntentCard trip={trip} decisions={decisions} />
 
+      {timeline.entries.length > 0 && (
+        <TimelineView plan={plan} timeline={timeline} leg={leg} renderGroup={renderGroup} card={card} settled={settled} />
+      )}
+
       {CATEGORY_ORDER.map((category) => {
-        if (category === "stay") {
-          const leg = (l: Leg) => <LegRow key={l.key} leg={l} tripId={trip.id} onOpenItem={onOpenItem} />;
-          return <StaySection key="stay" plan={plan} legs={legs} leg={leg} renderGroup={renderGroup} card={card} />;
-        }
+        if (category === "stay") return <LooseStays key="stay" plan={plan} renderGroup={renderGroup} />;
         if (SUMMARIZED.includes(category)) {
-          const section = places.find((s) => s.category === category);
+          const section = places().find((s) => s.category === category);
           return section ? (
             <SummarySection key={category} category={category} groups={section.groups} card={card} onOpenItem={onOpenItem} />
           ) : null;
         }
-        return plan.groups
+        // Flights and transport the timeline placed on their day are there; the rest (and eSIMs) here.
+        const groups = category === "flight" || category === "transport" ? timeline.unplaced : plan.groups;
+        return groups
           .filter((g) => g.category === category)
           .map((g, index) => renderGroup(g, index === 0 ? CATEGORY_LABELS[category] : null, g.title));
       })}
@@ -175,42 +187,14 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   );
 }
 
-/** The trip's nights in order: booked, chosen and open stretches, with the transfers between them. */
-function StaySection({
-  plan,
-  legs,
-  leg,
-  renderGroup,
-  card,
-}: {
-  plan: Plan;
-  legs: Leg[];
-  leg: (l: Leg) => React.ReactNode;
-  renderGroup: RenderGroup;
-  card: CardFor;
-}) {
-  if (!plan.stayBlocks.length && !plan.looseStays.length) return null;
-  const n = plan.nights;
-  const parts = [n.booked && `${n.booked} rezerve`, n.chosen && `${n.chosen} seçildi`, n.open && `${n.open} açık`].filter(Boolean);
+/** Stays that don't fit the trip's nights (no dates, or outside them); every stay when there are no dates yet. */
+function LooseStays({ plan, renderGroup }: { plan: Plan; renderGroup: RenderGroup }) {
+  if (!plan.looseStays.length) return null;
   return (
     <div className="section">
       <div className="section-head">
-        <span>{CATEGORY_LABELS.stay}</span>
-        {n.total > 0 && <span className="muted">{[`${n.total} gece`, ...parts].join(" · ")}</span>}
+        <span>{plan.stayBlocks.length ? "Diğer konaklamalar" : CATEGORY_LABELS.stay}</span>
       </div>
-      <DayStrip blocks={plan.stayBlocks} />
-      {plan.notices.map((x) => (
-          <div key={x.text} className="notice">
-            ⚠ {x.text}
-          </div>
-        ))}
-      {plan.stayBlocks.map((block, index) => (
-        <Fragment key={block.range.start}>
-          {legs.filter((l) => l.slot === index).map(leg)}
-          <Block block={block} renderGroup={renderGroup} card={card} />
-        </Fragment>
-      ))}
-      {legs.filter((l) => l.slot === plan.stayBlocks.length).map(leg)}
       {plan.looseStays.map((g) =>
         renderGroup(
           g,
@@ -218,79 +202,8 @@ function StaySection({
           plan.range
             ? `${g.title ?? ""}${g.range ? " · gezi tarihleri dışında" : " · tarih seçilmemiş"}`
             : `${g.title ?? ""}${g.range ? "" : " · tarih seçilmemiş"}`,
-          Boolean(plan.stayBlocks.length),
+          true,
         ),
-      )}
-    </div>
-  );
-}
-
-const BLOCK_LABEL = { booked: "✓ Rezerve", chosen: "Seçildi", open: "Açık", empty: "Boş" } as const;
-
-const blockState = (block: StayBlock) => (block.kind === "open" && !block.groups.length ? "empty" : block.kind);
-
-/** The trip's nights at a glance, one cell per night, coloured by whether it's booked, chosen or open. */
-function DayStrip({ blocks }: { blocks: StayBlock[] }) {
-  if (!blocks.length) return null;
-  return (
-    <div className="day-strip" role="list" aria-label="Geceler">
-      {blocks.map((block) => {
-        const state = blockState(block);
-        const nights = Array.from({ length: block.nights }, (_, i) => addDay(block.range.start, i));
-        return (
-          <button
-            key={block.range.start}
-            role="listitem"
-            className={`strip-block ${state}`}
-            style={{ flexGrow: block.nights }}
-            title={`${formatDateRange(block.range.start, block.range.end)} · ${block.nights} gece · ${BLOCK_LABEL[state]}`}
-            onClick={() => document.getElementById(`block-${block.range.start}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-          >
-            <span className="strip-days">
-              {nights.map((d) => (
-                <span key={d} className="strip-day">
-                  <b>{dayOfMonth(d)}</b>
-                  <small>{weekday(d)}</small>
-                </span>
-              ))}
-            </span>
-            <span className="strip-label">
-              {block.city ? `${block.city} · ` : ""}
-              {BLOCK_LABEL[state]}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function Block({ block, renderGroup, card }: { block: StayBlock; renderGroup: RenderGroup; card: CardFor }) {
-  const state = blockState(block);
-  return (
-    <div className={`stay-block ${state}`} id={`block-${block.range.start}`}>
-      <div className="block-head">
-        <span className="block-date">
-          <span className="block-range">{formatDateRange(block.range.start, block.range.end)}</span>
-          <span className="block-days">
-            {weekday(block.range.start)} – {weekday(block.range.end)} · {block.nights} gece
-            {block.city && ` · ${block.city}`}
-          </span>
-        </span>
-        <span className={`block-chip ${state}`}>{BLOCK_LABEL[state]}</span>
-      </div>
-      {block.kind === "booked" && card(block.item, [block.item])}
-      {block.kind !== "booked" &&
-        block.groups.map((g) =>
-          renderGroup(g, null, g.range && g.range.start === block.range.start && g.range.end === block.range.end ? null : g.title, true),
-        )}
-      {block.kind === "open" && !block.groups.length && (
-        <div className="empty-slot">
-          Bu geceler için kayıtlı seçenek yok.{" "}
-          <a href={block.searchUrl} target="_blank" rel="noreferrer">
-            Booking'de bu tarihlerle ara ↗
-          </a>
-        </div>
       )}
     </div>
   );
@@ -304,6 +217,7 @@ function OptionGroupView({
   decision,
   card,
   renderCard,
+  renderSettled,
   onCompare,
 }: {
   group: OptionGroup;
@@ -313,45 +227,55 @@ function OptionGroupView({
   decision: GroupDecision | undefined;
   card: ValueCard | undefined;
   renderCard: CardFor;
+  renderSettled: SettledFor;
   onCompare: () => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [changing, setChanging] = useState(false);
   const rank = (item: Item) => {
     const index = decision?.options.findIndex((o) => o.item.id === item.id) ?? -1;
     return index >= 0 ? index : null;
   };
   const ranked = rankItems(group.items, rank);
-  // Once something is chosen, its alternatives fold away (still one click from view).
-  const limit = ranked.some((i) => i.status === "chosen" || i.status === "booked") ? 1 : ROWS_PER_GROUP;
-  const shown = expanded ? ranked : ranked.slice(0, limit);
-  const hidden = ranked.slice(shown.length);
-  const droppable = hidden.filter((i) => decision?.options.find((o) => o.item.id === i.id)?.dominatedBy).length;
+  const decided = ranked.find((i) => i.status === "booked") ?? ranked.find((i) => i.status === "chosen");
   const live = !group.booked && decision;
   const comparable = live && decision.options.filter((o) => !o.excluded).length > 1;
   const single = live && decision.status === "single";
   const roles = live ? rolesOf(decision) : new Map<string, string[]>();
+  const head =
+    heading || subtitle ? (
+      <span className="group-title">
+        {heading && <span>{heading}</span>}
+        {subtitle && <span className="muted">{subtitle}</span>}
+      </span>
+    ) : null;
+  // Decided: one line (the cards come back with "Değiştir"). A booking settles it for good.
+  const change = decided && decided.status === "chosen" && ranked.length > 1 ? () => setChanging(!changing) : undefined;
+  if (decided && !changing) {
+    return (
+      <div className={nested ? "group nested" : "section"}>
+        {head && <div className={nested ? "group-head" : "section-head"}>{head}</div>}
+        {renderSettled(decided, decision, change, false)}
+      </div>
+    );
+  }
+  // Eliminated and rule-breaking options go last (the engine ranks them there already).
   return (
     <div className={nested ? "group nested" : "section"}>
-      {(heading || subtitle) && (
-        <div className={nested ? "group-head" : "section-head"}>
-          <span>{heading}</span>
-          {subtitle && <span className="muted">{subtitle}</span>}
-        </div>
-      )}
-      {shown.map((item) => renderCard(item, group.items, decision, roles.get(item.id), comparable || single ? onCompare : undefined))}
-      {hidden.length > 0 && (
-        <button className="more" onClick={() => setExpanded(true)}>
-          + {hidden.length} seçenek daha{droppable ? ` (${droppable} elenebilir)` : ""}
-        </button>
-      )}
-      {live && card ? (
-        <DecisionCard card={card} decision={decision} onCompare={onCompare} />
-      ) : (comparable || single) && (
-        <button className="verdict-line" onClick={onCompare}>
-          <span className={single ? "muted" : ""}>{decision!.summary}</span>
-          <span className="verdict-cta">{single ? "Kriterleri gör →" : "Karşılaştır →"}</span>
-        </button>
-      )}
+      {decided && renderSettled(decided, decision, change, true)}
+      <Carousel head={head} label={heading ?? subtitle ?? "Seçenekler"}>
+        {ranked.map((item) => renderCard(item, group.items, decision, roles.get(item.id), comparable || single ? onCompare : undefined))}
+      </Carousel>
+      {!decided &&
+        (live && card ? (
+          <DecisionCard card={card} decision={decision} onCompare={onCompare} />
+        ) : (
+          (comparable || single) && (
+            <button className="verdict-line" onClick={onCompare}>
+              <span className={single ? "muted" : ""}>{decision!.summary}</span>
+              <span className="verdict-cta">{single ? "Kriterleri gör →" : "Karşılaştır →"}</span>
+            </button>
+          )
+        ))}
     </div>
   );
 }
@@ -414,7 +338,11 @@ function SummarySection({
         </span>
       </button>
       {open &&
-        items.map((item) => (card ? card(item, items) : <Row key={item.id} item={item} group={items} onOpen={() => onOpenItem(item)} />))}
+        (card ? (
+          <Carousel label={label ?? CATEGORY_LABELS[category]}>{items.map((item) => card(item, items))}</Carousel>
+        ) : (
+          items.map((item) => <Row key={item.id} item={item} group={items} onOpen={() => onOpenItem(item)} />)
+        ))}
     </div>
   );
 }

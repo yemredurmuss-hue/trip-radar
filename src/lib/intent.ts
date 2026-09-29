@@ -89,12 +89,12 @@ function fromChoices(items: Item[], ctx: DecisionContext): Signal[] {
     const losses = gaps(engine, mine);
     if (pricier && gains.length) {
       // Paid more for something: that something matters, the price less.
-      const evidence = `${lead}: ${gains.map((p) => `${p.label.toLowerCase()} daha iyi`).join(", ")}, ${formatPrice(pricier, base.currency)} daha pahalı`;
+      const evidence = `${lead}: ${gains.map((p) => `${p.label.toLocaleLowerCase("tr")} daha iyi`).join(", ")}, ${formatPrice(pricier, base.currency)} daha pahalı`;
       for (const p of gains) signals.push(signal("choice", d.category, p.criterion, 1, evidence));
       signals.push(signal("choice", d.category, "price", -1, evidence));
     } else if (cheaper) {
       // Saved money at a cost: the price matters, the main thing given up less.
-      const evidence = `${lead}: ${formatPrice(cheaper, base.currency)} daha ucuz${losses[0] ? `, ${losses[0].label.toLowerCase()} daha zayıf` : ""}`;
+      const evidence = `${lead}: ${formatPrice(cheaper, base.currency)} daha ucuz${losses[0] ? `, ${losses[0].label.toLocaleLowerCase("tr")} daha zayıf` : ""}`;
       signals.push(signal("choice", d.category, "price", 1, evidence));
       if (losses[0]) signals.push(signal("choice", d.category, losses[0].criterion, -1, evidence));
     } else if (gains.length) {
