@@ -14,7 +14,8 @@ export interface CardFacts {
   image: string | null;
   title: string;
   subtitle: string | null;
-  price: { text: string; label: string | null; provisional: boolean } | null;
+  /** The total (for a stay: its own nights) and, for stays, the price per night. */
+  price: { text: string; label: string | null; perNight: string | null; provisional: boolean } | null;
   score: number | null;
   best: boolean;
   /** Where it stands ("En uygun · konum", "Elendi", "Seçildi"); null when the pros and cons say it. */
@@ -117,24 +118,46 @@ function subtitleOf(item: Item): string | null {
 
 const SCOPE_LABELS: Record<Item["price"]["scope"], string | null> = { total: "toplam", per_night: "/gece", per_person: "kişi başı", unknown: null };
 
-/** The price for these dates in the trip's currency when the engine compared it, else as the page gave it. */
+/**
+ * The price for these dates in the trip's currency when the engine compared it, else as the page gave
+ * it. Stays show the total for their own nights and the price per night (what compares fairly when
+ * stays cover different nights).
+ */
 function priceOf(item: Item, decision: GroupDecision | undefined, currency: string): CardFacts["price"] {
   const option = decision?.options.find((o) => o.item.id === item.id);
   const provisional = Boolean(option?.limited.length);
   const compared = option?.parts.find((p) => p.criterion === "price")?.value;
+  if (item.category === "stay") {
+    const own = stayRange(item);
+    const group = decision ? rangeOfGroupKey(decision.key) : null;
+    const ownNights = own ? nightsBetween(own.start, own.end) : 0;
+    const groupNights = group ? nightsBetween(group.start, group.end) : ownNights;
+    let perNight: number | null = null;
+    let money = currency;
+    if (compared != null && groupNights) perNight = compared / groupNights;
+    else if (item.price.amount != null) {
+      money = item.price.currency ?? currency;
+      perNight = item.price.scope === "per_night" ? item.price.amount : ownNights ? item.price.amount / ownNights : null;
+      if (perNight == null) return { text: formatPrice(item.price.amount, money), label: "toplam", perNight: null, provisional };
+    }
+    if (perNight == null) return null;
+    const nights = ownNights || groupNights;
+    return {
+      text: formatPrice(perNight * (nights || 1), money),
+      label: nights ? `${nights} gece toplam` : "gecelik",
+      perNight: nights ? `${formatPrice(perNight, money)} / gece` : null,
+      provisional,
+    };
+  }
   if (compared != null) {
     let label: string | null = "toplam";
-    if (item.category === "stay") {
-      const range = stayRange(item) ?? (decision ? rangeOfGroupKey(decision.key) : null);
-      const nights = range ? nightsBetween(range.start, range.end) : 0;
-      if (nights) label = `${nights} gece toplam`;
-    } else if ((item.category === "flight" || item.category === "transport") && item.guests.adults) {
+    if ((item.category === "flight" || item.category === "transport") && item.guests.adults) {
       label = item.guests.adults === 1 ? "kişi başı" : `${item.guests.adults} kişi toplam`;
     }
-    return { text: formatPrice(compared, currency), label, provisional };
+    return { text: formatPrice(compared, currency), label, perNight: null, provisional };
   }
   if (item.price.amount == null) return null;
-  return { text: formatPrice(item.price.amount, item.price.currency), label: SCOPE_LABELS[item.price.scope], provisional };
+  return { text: formatPrice(item.price.amount, item.price.currency), label: SCOPE_LABELS[item.price.scope], perNight: null, provisional };
 }
 
 export function cardFacts(

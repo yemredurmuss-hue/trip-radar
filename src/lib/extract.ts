@@ -121,7 +121,7 @@ Kurallar:
 - country ve country_code seçeneğin bulunduğu ülkedir (uçuşta varış ülkesi). Emin değilsen null.
 - Gezi ataması: existing_trips içinde destinasyon ve tarih olarak uyan gezi varsa onun id'sini ver. Yoksa new_trip_title ver (ör. "Portekiz"). Tarihsiz bir restoran/etkinlik, aynı şehri kapsayan geziye gider.
 - need_key: "<kategori>:<şehir>" küçük harf ASCII (ör. "stay:porto", "activity:lisbon"); uçuşlarda "flight:<nereden>-<nereye>" (ör. "flight:ist-opo"). Site adı need_key'e girmez.
-- city: semt ya da ilçe değil, şehir (ör. Ribeira/Bonfim → "Porto"; Funchal'daki bir ev → "Funchal"). Aynı şehirdeki seçenekler aynı şehir adını almalı.`;
+- city: semt ya da ilçe değil, şehir (ör. Ribeira/Bonfim → "Porto"; Funchal'daki bir ev → "Funchal"). Aynı şehirdeki seçenekler aynı şehir adını almalı. Sayfa hangi dilde olursa olsun şehrin Türkçedeki yaygın adını yaz (Lisbon/Lisboa → "Lizbon", Rome → "Roma", Athens → "Atina").`;
 
 const PAGE_TEXT_LIMIT = 40_000;
 const JSON_LD_LIMIT = 8_000;

@@ -114,23 +114,24 @@ try {
   await app.locator(".day-strip .strip-block.open", { hasText: "Porto · Açık" }).waitFor();
   assert.match(await app.locator(".day-strip .strip-block.open").innerText(), /8\s*Per[\s\S]*9\s*Cum[\s\S]*10\s*Cmt/);
   await app.locator(".day-strip .strip-block.booked", { hasText: "Lizbon · ✓ Rezerve" }).waitFor();
-  await app.locator(".stay-block.open .block-head", { hasText: "8–11 Ekim" }).getByText("Per – Paz · 3 gece · Porto").waitFor();
+  assert.match(await app.locator(".tl-stay .tl-label").first().innerText(), /Konaklama\s*1–4\. gün\s*8–11 Ekim\s*3 gece\s*Açık/);
   await app.locator(".stay-block.booked", { hasText: "Lisboa Loft" }).waitFor();
   await app.getByText("Kapanan seçenekler (1)").waitFor();
   assert.equal(await app.locator(".stay-block", { hasText: "Alfama Suites" }).count(), 0, "a booking closes its alternatives");
   // The trip in order: the flight in, the Porto nights, the day with the boat tour, the move, Lisbon, home.
-  const heads = await app.locator(".timeline .tl-head b").allInnerTexts();
-  assert.deepEqual(heads, ["8 Ekim · Uçuş", "9 Ekim · Etkinlik", "11 Ekim · Şehir değişimi", "14 Ekim · Dönüş"]);
+  const heads = await app.locator(".timeline .tl-label b").allInnerTexts();
+  assert.deepEqual(heads, ["Varış", "Transfer", "Konaklama", "Etkinlik", "Transfer", "Şehir değişimi", "Transfer", "Konaklama", "Transfer", "Dönüş"]);
+  assert.deepEqual((await app.locator(".timeline .tl-pill").allInnerTexts()).map((t) => t.replace(/\s+/g, " ")), ["1 Porto", "2 Lizbon"]);
   // Undecided needs are decision cards to swipe through, best first; decided ones are one line.
   const card = (name) => app.locator(`.swipe-card[aria-label="${name}"]`);
   await card("Jardim Stay").locator(".sc-score.best").waitFor();
   assert.match(await card("Jardim Stay").locator(".sc-source").innerText(), /Booking\.com$/);
   assert.equal(await card("Jardim Stay").locator(".sc-sub").innerText(), "Otel odası · Baixa");
-  assert.match(await card("Jardim Stay").locator(".sc-price").innerText(), /€285\s*3 gece toplam/);
+  assert.match(await card("Jardim Stay").locator(".sc-price").innerText(), /€285\s*3 gece toplam\s*€95 \/ gece/);
   assert.equal(await card("Jardim Stay").locator(".sc-col.pros .sc-line").count(), 2);
   // Casa Azul is out for this traveller (asked for somewhere quiet): the reason leads its cons, and it goes last.
   await card("Casa Azul").locator(".sc-col.cons .sc-line.strong", { hasText: "Yan binada inşaat var; sessiz bir yer istiyorsun" }).waitFor();
-  await card("Casa Azul").locator(".sc-tags", { hasText: "Elendi" }).waitFor();
+  await card("Casa Azul").locator(".sc-flag.warning", { hasText: "Elendi" }).waitFor();
   const porto = app.locator(".stay-block.open .carousel");
   assert.deepEqual(await porto.locator(".swipe-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Jardim Stay", "Ribeira Rooms", "Casa Azul"]);
   await porto.getByText("1 / 3").waitFor();
@@ -143,8 +144,15 @@ try {
   await stayCard.getByText("Senin için").waitFor();
   assert.match(await stayCard.innerText(), /Jardim Stay[\s\S]*Casa Azul elendi: Yan binada inşaat var; sessiz bir yer istiyorsun[\s\S]*Bununla kalan bütçe/);
   // Decided already: the boat tour on the 9th and the flight home.
-  await app.locator(".tl-day .settled-row", { hasText: "Douro tekne turu" }).getByText("bilet alınmadı").waitFor();
-  await app.locator(".tl-travel.role-departure .settled-row", { hasText: "TAP · Lizbon → İstanbul" }).getByText("Bilet alındı ✓").waitFor();
+  const douro = app.locator(".tl-day .settled-card", { hasText: "Douro tekne turu" });
+  await douro.getByText("bilet alınmadı").waitFor();
+  const home = app.locator(".tl-travel.role-departure .settled-card");
+  await home.getByText("Bilet alındı ✓").waitFor();
+  assert.match(await home.locator(".route").innerText(), /LIS[\s\S]*19:40 · 14 Ekim[\s\S]*4 sa 55 dk[\s\S]*Direkt[\s\S]*IST[\s\S]*01:35 · 15 Ekim/);
+  // A decided card opens on a tap, with its details.
+  await douro.locator(".stc-main").click();
+  await douro.locator(".stc-details").getByRole("button", { name: "Tüm detaylar" }).waitFor();
+  await douro.locator(".stc-main").click();
   await app.locator(".timeline").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/3-board.png` });
 
@@ -169,7 +177,7 @@ try {
   await app.screenshot({ path: `${out}/3a-evidence.png` });
   await construction.getByRole("button", { name: "Sorun değil" }).click();
   await casaBody.locator(".pc-line.accepted", { hasText: "Yan binada inşaat gürültüsü" }).waitFor();
-  await card("Casa Azul").locator(".sc-tags", { hasText: "Elendi" }).waitFor({ state: "detached" });
+  await card("Casa Azul").locator(".sc-flag.warning", { hasText: "Elendi" }).waitFor({ state: "detached" });
   assert.doesNotMatch(await stayCard.innerText(), /Casa Azul elendi/);
   await card("Casa Azul").getByRole("button", { name: "Kapat ▴" }).click();
   // How it understood the traveller so far: what they said (incl. "sorun değil") and a pattern in the saved stays.
@@ -209,16 +217,16 @@ try {
   await app.getByRole("dialog").getByRole("button", { name: "Kapat" }).click();
   await app.getByText("Jardim Stay plana alındı").waitFor();
   // Chosen: the cards fold into one line; "Değiştir" brings them back.
-  const jardimRow = app.locator(".stay-block.chosen .settled-row", { hasText: "Jardim Stay" });
+  const jardimRow = app.locator(".stay-block.chosen .settled-card", { hasText: "Jardim Stay" });
   await jardimRow.getByText("rezerve edilmedi").waitFor();
   assert.equal(await app.locator(".stay-block.chosen .swipe-card").count(), 0);
-  await jardimRow.getByRole("button", { name: "Değiştir" }).click();
+  await jardimRow.getByRole("button", { name: "⇄ Değiştir" }).click();
   await app.locator(".stay-block.chosen .swipe-card").first().waitFor();
   await card("Jardim Stay").getByRole("button", { name: "Planda ✓" }).waitFor();
   await jardimRow.getByRole("button", { name: "Kapat" }).click();
   // "Seç" on a flight card: the flight folds into a line, and its landing time reaches the transfer to the hotel.
   await card("Pegasus · direkt").getByRole("button", { name: "Seç" }).click();
-  await app.locator(".tl-travel.role-arrival .settled-row", { hasText: "Pegasus · direkt" }).getByText("bilet alınmadı").waitFor();
+  await app.locator(".tl-travel.role-arrival .settled-card", { hasText: "IST" }).getByText("bilet alınmadı").waitFor();
   // Porto chosen, Lisbon booked: the transfers between them lay themselves out (the saved train is
   // the move, with a station transfer on each side), and the way home says what's easy to miss.
   const leg = (title) => app.locator(".leg", { has: app.locator(".leg-title", { hasText: title }) });

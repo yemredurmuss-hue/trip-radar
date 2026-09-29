@@ -13,7 +13,7 @@ import {
   type OptionResult,
   type Part,
 } from "./decision";
-import { formatPrice, listingKeyOf } from "./items";
+import { formatDateRange, formatPrice, listingKeyOf } from "./items";
 import { acceptKey, evidenceOf, monthLabel } from "./listing";
 import type { Finding, Item, Listing } from "./types";
 
@@ -242,6 +242,17 @@ export function prosCons(input: { item: Item; option?: OptionResult; decision?: 
           ? "Tarihsiz kaydedildi: bu gecelerin fiyatı belli değil"
           : `${capital(label)} eksik; sayfayı tarih seçiliyken tekrar kaydet`;
     cons.push({ key: `l:${label}`, text, short: label === "kur bilgisi" ? "Kur bekleniyor" : "Fiyat geçici", detail: null, weight: 7, kind: "check" });
+  }
+  if (option?.coverage) {
+    const c = option.coverage;
+    cons.push({
+      key: "v:coverage",
+      text: `Yalnız ${formatDateRange(c.range.start, c.range.end)} (${c.nights}/${c.of} gece): kalan ${c.of - c.nights} gece için ayrıca yer gerekir`,
+      short: `Yalnız ${c.nights}/${c.of} gece`,
+      detail: "fiyatı gece başına kıyaslandı",
+      weight: 6,
+      kind: "compare",
+    });
   }
   for (const label of option?.unsure ?? []) {
     cons.push({ key: `u:${label}`, text: `Kontrol et: ${label} sayfada görünmüyor`, detail: null, weight: 2.5, kind: "check" });

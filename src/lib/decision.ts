@@ -134,6 +134,8 @@ export interface DecisionContext {
   /** What was read on each place's pages, by listing key (see listing.ts). */
   listings: Map<string, Listing>;
   today: string;
+  /** Stays: the nights their group is compared over; prices count per night for these (set per group). */
+  groupRange?: { start: string; end: string } | null;
 }
 
 export const cityKey = (city: string | null, country: string | null) =>
@@ -210,20 +212,32 @@ function median(values: number[]): number {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-function comparablePrice(item: Item, ctx: DecisionContext): { amount: number; original: number; currency: string } | null {
+/**
+ * The price to compare, in the trip's currency. Stays compared over a group's nights count per night
+ * for all of them, so a flat for 8–12 and a hotel for 7–12 compare fairly (`ownNights` says the stay
+ * itself covers fewer).
+ */
+function comparablePrice(item: Item, ctx: DecisionContext): { amount: number; original: number; currency: string; ownNights: number | null } | null {
   const p = item.price;
   if (p.amount == null || !p.currency) return null;
   let total = p.amount;
+  let ownNights: number | null = null;
+  const groupNights = item.category === "stay" && ctx.groupRange ? nightsBetween(ctx.groupRange.start, ctx.groupRange.end) : 0;
+  const own = stayRange(item);
   if (p.scope === "per_night") {
-    const nights = nightsBetween(item.dates.start, item.dates.end) || ctx.tripNights;
+    const nights = groupNights || nightsBetween(item.dates.start, item.dates.end) || ctx.tripNights;
     if (!nights) return null;
     total *= nights;
+    if (groupNights && own && nightsBetween(own.start, own.end) !== groupNights) ownNights = nightsBetween(own.start, own.end);
+  } else if (groupNights && own && (p.scope === "total" || p.scope === "unknown") && nightsBetween(own.start, own.end) !== groupNights) {
+    ownNights = nightsBetween(own.start, own.end);
+    total = (total / ownNights) * groupNights;
   } else if (p.scope === "per_person") {
     if (!item.guests.adults) return null;
     total *= item.guests.adults;
   }
   const converted = convert(total, p.currency, ctx.currency, ctx.rates);
-  return converted == null ? null : { amount: converted, original: total, currency: p.currency };
+  return converted == null ? null : { amount: converted, original: total, currency: p.currency, ownNights };
 }
 
 export function cancellationType(item: Item, m: ItemMetrics = metricsOf(item)): ItemMetrics["cancellationType"] {
@@ -251,6 +265,16 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
       const price = comparablePrice(item, ctx);
       if (!price) return null;
       const original = price.currency !== ctx.currency ? ` (${formatPrice(price.original, price.currency)})` : "";
+      if (price.ownNights && ctx.groupRange) {
+        const nights = nightsBetween(ctx.groupRange.start, ctx.groupRange.end);
+        const perNight = price.amount / nights;
+        return {
+          value: price.amount,
+          display: `${formatPrice(perNight, ctx.currency)}/gece · ${nights} geceye göre ${formatPrice(price.amount, ctx.currency)}`,
+          mode: "lower",
+          note: `kendi ${price.ownNights} gecesi ${formatPrice(perNight * price.ownNights, ctx.currency)}`,
+        };
+      }
       return { value: price.amount, display: `${formatPrice(price.amount, ctx.currency)}${original}`, mode: "lower" };
     }
     case "location": {
@@ -564,6 +588,8 @@ export interface OptionResult {
   confidence: number; // share of the weight backed by real data
   parts: Part[];
   missing: string[];
+  /** A stay covering only some of its group's nights (compared per night; the rest needs another bed). */
+  coverage?: { range: { start: string; end: string }; nights: number; of: number } | null;
   excluded: string | null;
   /** Another option is at least as good on everything that matters and better on something. */
   dominatedBy: string | null;
@@ -681,12 +707,18 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
   // Stays are compared for their group's nights: a price per night (or a stay saved without dates)
   // counts for those nights, not the whole trip.
   const groupNights = category === "stay" ? rangeOfGroupKey(key) : null;
-  if (groupNights) ctx = { ...ctx, tripNights: nightsBetween(groupNights.start, groupNights.end) };
+  if (groupNights) ctx = { ...ctx, tripNights: nightsBetween(groupNights.start, groupNights.end), groupRange: groupNights };
   const active = groupItems.filter((i) => i.status !== "dismissed");
 
-  // Stays for different dates aren't alternatives for the same need: keep them out of the ranking.
+  // Stays for other nights aren't alternatives for the same need: keep them out of the ranking. A
+  // group's nights are the span of stays that overlap (see plan.ts); any of those is in.
   const excluded = new Map<string, string>();
-  if (category === "stay") {
+  if (category === "stay" && groupNights) {
+    for (const i of active) {
+      const r = stayRange(i);
+      if (r && !(r.start < groupNights.end && groupNights.start < r.end)) excluded.set(i.id, "Farklı tarih için fiyat");
+    }
+  } else if (category === "stay") {
     const majority = mostCommon(active.map((i) => `${i.dates.start}|${i.dates.end}`).filter((k) => k !== "null|null"));
     for (const i of active) {
       if (majority && i.dates.start && `${i.dates.start}|${i.dates.end}` !== majority) excluded.set(i.id, "Farklı tarih için fiyat");
@@ -754,12 +786,18 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
       if (result === "fail") unmet.push(requirementLabel(r));
       if (result === "unknown") unsure.push(requirementLabel(r));
     }
+    const own = stayRange(item);
+    const coverage =
+      groupNights && own && (own.start !== groupNights.start || own.end !== groupNights.end)
+        ? { range: own, nights: nightsBetween(own.start, own.end), of: nightsBetween(groupNights.start, groupNights.end) }
+        : null;
     return {
       item,
       score: scorable ? Math.round(s.value) : null,
       confidence: s.confidence,
       parts: s.parts,
       missing,
+      coverage,
       excluded: null,
       dominatedBy: null,
       unmet,
@@ -783,6 +821,7 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
         confidence: 0,
         parts: [],
         missing: [],
+        coverage: null,
         excluded: excluded.get(item.id)!,
         dominatedBy: null,
         unmet: [],

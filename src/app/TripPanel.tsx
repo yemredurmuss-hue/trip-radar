@@ -27,7 +27,7 @@ import { CategoryIcon, Chevron } from "./Icons";
 import { IntentCard } from "./IntentCard";
 import { LegRow } from "./LegRow";
 import { Carousel } from "./Carousel";
-import { SettledRow, SwipeCard } from "./SwipeCard";
+import { SettledCard, SwipeCard } from "./SwipeCard";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor } from "./Timeline";
 import { rolesOf, type ValueCard } from "../lib/value";
 import { decisionLabel, type Decisions } from "./useDecisions";
@@ -79,7 +79,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   );
   /** A decided need in one line ("Seçildi · bilet alınmadı"). */
   const settled: SettledFor = (item, decision, onChange, changing) => (
-    <SettledRow
+    <SettledCard
       key={item.id}
       item={item}
       decision={decision ?? decisionOf(item)}

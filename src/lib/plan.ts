@@ -153,8 +153,7 @@ function mostCommon(values: (string | null)[]): string | null {
 
 const rangeTitle = (r: DateRange) => `${formatDateRange(r.start, r.end)} · ${nightsBetween(r.start, r.end)} gece`;
 
-function stayGroup(key: string, items: Item[]): OptionGroup {
-  const range = stayRange(items[0]);
+function stayGroup(key: string, items: Item[], range: DateRange | null = stayRange(items[0])): OptionGroup {
   const city = mostCommon(items.map((i) => i.city));
   const booked = items.find((i) => i.status === "booked") ?? null;
   return {
@@ -187,8 +186,108 @@ function bookingSearchUrl(range: DateRange, city: string | null, stays: Item[]):
 }
 
 const byStart = (a: Item, b: Item) => (stayRange(a)?.start ?? "").localeCompare(stayRange(b)?.start ?? "");
-export const sameCity = (a: string | null, b: string | null) =>
-  Boolean(a && b && a.trim().toLocaleLowerCase("tr") === b.trim().toLocaleLowerCase("tr"));
+// --- places -----------------------------------------------------------------------------------------
+
+/** The same city as pages in other languages name it ("Lisbon", "Lisboa" and "Lizbon" are one). */
+const CITY_ALIASES: Record<string, string> = Object.fromEntries(
+  Object.entries({
+    lizbon: ["lisbon", "lisboa", "lisbonne", "lissabon", "lisbona"],
+    porto: ["oporto"],
+    roma: ["rome", "rom"],
+    atina: ["athens", "athina", "athen", "athenes"],
+    munih: ["munich", "munchen", "muenchen"],
+    viyana: ["vienna", "wien", "vienne"],
+    prag: ["prague", "praha", "praga"],
+    floransa: ["florence", "firenze", "florenz"],
+    venedik: ["venice", "venezia", "venise", "venedig"],
+    napoli: ["naples", "neapel"],
+    milano: ["milan", "mailand"],
+    sevilla: ["seville"],
+    bruksel: ["brussels", "bruxelles", "brussel"],
+    kopenhag: ["copenhagen", "kobenhavn", "kopenhagen"],
+    varsova: ["warsaw", "warszawa"],
+    moskova: ["moscow", "moskva"],
+    cenevre: ["geneva", "geneve", "genf"],
+    koln: ["cologne", "koeln"],
+    londra: ["london"],
+    barselona: ["barcelona"],
+    nis: ["nice", "nizza"],
+    marsilya: ["marseille"],
+    budapeste: ["budapest"],
+    bukres: ["bucharest", "bucuresti"],
+    belgrad: ["belgrade", "beograd"],
+    selanik: ["thessaloniki", "thessalonica", "salonica"],
+    lefkosa: ["nicosia", "lefkosia"],
+    kahire: ["cairo"],
+    edinburg: ["edinburgh"],
+    lahey: ["the hague", "den haag"],
+    anvers: ["antwerp", "antwerpen"],
+    zurih: ["zurich"],
+    kudus: ["jerusalem"],
+    tiflis: ["tbilisi"],
+  }).flatMap(([name, others]) => others.map((o) => [o, name])),
+);
+
+/** A city's name reduced to compare: case, accents and other languages' names don't matter. */
+export function cityKeyOf(city: string | null | undefined): string | null {
+  if (!city) return null;
+  const plain = city
+    .trim()
+    .toLocaleLowerCase("tr")
+    .replace(/ø/g, "o")
+    .replace(/æ/g, "ae")
+    .replace(/ß/g, "ss")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ı/g, "i")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  return plain ? (CITY_ALIASES[plain] ?? plain) : null;
+}
+
+export const sameCity = (a: string | null, b: string | null) => {
+  const [x, y] = [cityKeyOf(a), cityKeyOf(b)];
+  return Boolean(x && y && x === y);
+};
+
+/** Pages this close on the map are the same place to stay (Porto and Gaia across the river). */
+const NEAR_KM = 25;
+
+/** Great-circle distance (kept here so the plan stays free of the network-bound geo module). */
+function kmBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const rad = Math.PI / 180;
+  const h = Math.sin(((b.lat - a.lat) * rad) / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(((b.lng - a.lng) * rad) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+}
+
+/** Stays in the same place: the same city by name, or map points close together. */
+function samePlace(a: Item[], b: Item[], cityA = mostCommon(a.map((i) => i.city)), cityB = mostCommon(b.map((i) => i.city))): boolean {
+  if (sameCity(cityA, cityB)) return true;
+  return a.some((x) => x.geo && b.some((y) => y.geo && kmBetween(x.geo!, y.geo!) <= NEAR_KM));
+}
+
+/**
+ * Stays whose nights overlap in the same place answer the same need, whatever the site: a flat for
+ * 8–12 and a hotel for 7–12 are one decision, compared per night over 7–12 (see decision.ts).
+ */
+function mergeOverlapping(groups: OptionGroup[]): OptionGroup[] {
+  let merged = [...groups];
+  for (let changed = true; changed; ) {
+    changed = false;
+    outer: for (let a = 0; a < merged.length; a++) {
+      for (let b = a + 1; b < merged.length; b++) {
+        const [x, y] = [merged[a], merged[b]];
+        if (!x.range || !y.range || !overlaps(x.range, y.range) || !samePlace(x.items, y.items)) continue;
+        const range = { start: minDate(x.range.start, y.range.start), end: maxDate(x.range.end, y.range.end) };
+        const joined = stayGroup(`stay@${range.start}_${range.end}`, [...x.items, ...y.items], range);
+        merged = [...merged.slice(0, a), joined, ...merged.slice(a + 1, b), ...merged.slice(b + 1)];
+        changed = true;
+        break outer;
+      }
+    }
+  }
+  return merged;
+}
 
 // --- the plan -----------------------------------------------------------------------------------------
 
@@ -273,12 +372,17 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
       block.searchUrl = bookingSearchUrl(block.range, block.city, stays);
     }
 
+    for (const block of stayBlocks) if (block.kind !== "booked") block.groups = mergeOverlapping(block.groups);
+
     // A stay saved without dates (e.g. an Airbnb page before picking dates) is for the nights still
-    // to fill in its city. With exactly one such stretch it joins that comparison, whatever the site;
-    // the decision engine treats its price as provisional until it's saved again with the dates.
+    // to fill in its city. With exactly one such stretch it joins that comparison, whatever the site
+    // or the language the page named the city in; the decision engine treats its price as
+    // provisional until it's saved again with the dates.
     for (const group of undated) {
       const city = mostCommon(group.items.map((i) => i.city));
-      const fits = stayBlocks.filter((b) => b.kind !== "booked" && sameCity(b.city, city));
+      const fits = stayBlocks.filter(
+        (b) => b.kind !== "booked" && (sameCity(b.city, city) || samePlace(group.items, b.groups.flatMap((g) => g.items), city, b.city)),
+      );
       const block = fits.length === 1 ? fits[0] : null;
       if (!block || block.kind === "booked") {
         looseStays.push(group);

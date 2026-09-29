@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { decideTrip, makeContext } from "../src/lib/decision";
 import { EMPTY_METRICS } from "../src/lib/items";
 import { buildLegs } from "../src/lib/legs";
-import { buildPlan, groupKeyOf, liveGroups, tripRange, type StayBlock } from "../src/lib/plan";
+import { buildPlan, cityKeyOf, groupKeyOf, liveGroups, tripRange, type StayBlock } from "../src/lib/plan";
 import type { Item, ItemStatus, Trip } from "../src/lib/types";
 
 const trip = (over: Partial<Trip> = {}): Trip => ({
@@ -62,7 +62,8 @@ describe("plan: nights, bookings and gaps", () => {
       ["open", "2026-10-14", "2026-10-17"],
     ]);
     const [first, , last] = plan.stayBlocks;
-    expect(names(first)).toEqual([["Jardim Stay", "Casa Azul"], ["Late Inn"]]);
+    // Late Inn (8–10) overlaps Jardim and Casa (7–10) in Porto: one decision over 7–10, compared per night.
+    expect(names(first)).toEqual([["Jardim Stay", "Casa Azul", "Late Inn"]]);
     expect(first.city).toBe("Porto");
     // Nothing saved for the last three nights: say so, and link a search with the right dates.
     expect(names(last)).toEqual([]);
@@ -76,7 +77,9 @@ describe("plan: nights, bookings and gaps", () => {
     const plan = buildPlan(trip(), items.map((i) => (i === faa ? { ...i, status: "saved" as const } : i)));
     expect(plan.closed).toEqual([]);
     expect(plan.stayBlocks.map((b) => b.kind)).toEqual(["open"]);
-    expect(liveGroups(plan).map((g) => g.key)).toContain(groupKeyOf(faa));
+    // Clash Suites (Funchal 9–12) overlaps FAA (10–14) in the same city: they're one decision now.
+    const funchal = liveGroups(plan).find((g) => g.items.some((i) => i.id === faa.id))!;
+    expect([funchal.key, funchal.items.map((i) => i.name).sort()]).toEqual(["stay@2026-10-09_2026-10-14", ["Clash Suites", "FAA Rentals", "Other Funchal"]]);
   });
 
   it("keeps a choice with its alternatives and opens the transfer between cities", () => {
@@ -90,7 +93,7 @@ describe("plan: nights, bookings and gaps", () => {
     const plan = buildPlan(trip(), items);
     const chosen = plan.stayBlocks[0];
     expect(chosen.kind).toBe("chosen");
-    expect(names(chosen)).toEqual([["Jardim Stay", "Casa Azul"], ["Late Inn"]]);
+    expect(names(chosen)).toEqual([["Jardim Stay", "Casa Azul", "Late Inn"]]);
     const move = buildLegs(plan, trip()).find((l) => l.kind === "move")!;
     expect([move.date, move.from.label, move.to.label, move.status]).toEqual(["2026-10-10", "Jardim Stay", "FAA Rentals", "empty"]);
     // A flight saved for that day is its option, with the airport transfers on both sides.
@@ -176,7 +179,7 @@ describe("plan: nights, bookings and gaps", () => {
 });
 
 describe("decisions follow the plan", () => {
-  it("ranks only open needs, grouping stays by exact nights, and never booked or closed options", () => {
+  it("ranks only open needs, stays with overlapping nights together (per night), never booked or closed options", () => {
     const items = [
       stay("Jardim Stay", "2026-10-07", "2026-10-10"),
       stay("Casa Azul", "2026-10-07", "2026-10-10"),
@@ -185,8 +188,57 @@ describe("decisions follow the plan", () => {
       stay("Other Funchal", "2026-10-10", "2026-10-14", "saved", "Funchal"),
     ];
     const decisions = decideTrip(items, makeContext(trip(), items));
-    expect([...decisions.keys()].sort()).toEqual(["stay@2026-10-07_2026-10-10", "stay@2026-10-08_2026-10-10"]);
-    expect(decisions.get("stay@2026-10-07_2026-10-10")!.options.map((o) => o.item.name).sort()).toEqual(["Casa Azul", "Jardim Stay"]);
-    expect(decisions.get("stay@2026-10-08_2026-10-10")!.status).toBe("single");
+    expect([...decisions.keys()]).toEqual(["stay@2026-10-07_2026-10-10"]);
+    const porto = decisions.get("stay@2026-10-07_2026-10-10")!;
+    expect(porto.options.map((o) => o.item.name).sort()).toEqual(["Casa Azul", "Jardim Stay", "Late Inn"]);
+    // Late Inn covers 2 of the 3 nights: its €200 counts as €100 a night, €300 over the three.
+    const late = porto.options.find((o) => o.item.name === "Late Inn")!;
+    expect(late.coverage).toMatchObject({ nights: 2, of: 3 });
+    expect(late.parts.find((p) => p.criterion === "price")).toMatchObject({ value: 300, display: "€100/gece · 3 geceye göre €300" });
+    expect(porto.options.find((o) => o.item.name === "Jardim Stay")!.coverage).toBeNull();
+  });
+});
+
+describe("the same stay need, whatever the site or language", () => {
+  const lisbonTrip = trip({ confirmedDates: { start: "2026-10-08", end: "2026-10-12" } });
+  const geo = (lat: number, lng: number) => ({ lat, lng, source: "page" as const });
+
+  it("names a city the same in every language", () => {
+    expect(["Lisbon", "Lisboa", "Lizbon", " LISBOA "].map(cityKeyOf)).toEqual(["lizbon", "lizbon", "lizbon", "lizbon"]);
+    expect(cityKeyOf("København")).toBe(cityKeyOf("Copenhagen"));
+    expect(cityKeyOf("İstanbul")).toBe(cityKeyOf("Istanbul"));
+    expect(cityKeyOf("Porto")).not.toBe(cityKeyOf("Lizbon"));
+  });
+
+  it("puts an Airbnb for overlapping nights in the same list as the hotels", () => {
+    const items = [
+      stay("Tesouro da Baixa", "2026-10-08", "2026-10-12", "saved", "Lizbon"),
+      stay("Alfama Suites", "2026-10-08", "2026-10-12", "saved", "Lizbon"),
+      { ...stay("Airbnb Loft", "2026-10-09", "2026-10-12", "saved", "Lisbon"), provider: "Airbnb" },
+    ];
+    const plan = buildPlan(lisbonTrip, items);
+    expect(liveGroups(plan).map((g) => [g.key, g.items.map((i) => i.name)])).toEqual([
+      ["stay@2026-10-08_2026-10-12", ["Tesouro da Baixa", "Alfama Suites", "Airbnb Loft"]],
+    ]);
+  });
+
+  it("joins an undated Airbnb whose page says 'Lisbon' to the 'Lizbon' nights", () => {
+    const items = [
+      stay("Tesouro da Baixa", "2026-10-08", "2026-10-12", "saved", "Lizbon"),
+      item("Airbnb Loft", { city: "Lisbon", needKey: "stay:lisbon", provider: "Airbnb" }),
+    ];
+    const plan = buildPlan(lisbonTrip, items);
+    expect(plan.looseStays).toEqual([]);
+    expect(liveGroups(plan)[0].items.map((i) => i.name)).toEqual(["Tesouro da Baixa", "Airbnb Loft"]);
+  });
+
+  it("treats places across the river as the same place, and other cities as another need", () => {
+    const items = [
+      { ...stay("Jardim Stay", "2026-10-08", "2026-10-12"), geo: geo(41.1455, -8.611) },
+      { ...stay("Gaia Flat", "2026-10-08", "2026-10-11", "saved", "Vila Nova de Gaia"), geo: geo(41.1335, -8.6174) },
+      { ...stay("Braga Inn", "2026-10-10", "2026-10-12", "saved", "Braga"), geo: geo(41.5454, -8.4265) },
+    ];
+    const plan = buildPlan(lisbonTrip, items);
+    expect(liveGroups(plan).map((g) => g.items.map((i) => i.name).sort())).toEqual([["Gaia Flat", "Jardim Stay"], ["Braga Inn"]]);
   });
 });

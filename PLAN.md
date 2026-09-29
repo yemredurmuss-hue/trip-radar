@@ -40,6 +40,9 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
       sayfadan okunan giriş/çıkış saatleriyle ince detay notları (`legs.ts`)
 - [x] 0.11: karar kartları (seçim yapılmamış her karşılaştırma yana kaydırılan kartlarla) ve tek zaman çizelgesi
       (uçuş → konaklama → transferler → etkinlik → dönüş); ayrıntısı aşağıda
+- [x] 0.12: geceleri örtüşen konaklamalar tek karşılaştırma (gece başına fiyat, eksik gece notu), şehir adları
+      dilden bağımsız (Lisbon = Lizbon) ve haritada yakın yerler aynı yer; dar sohbet; seçilenler sade yuvarlak
+      kartlar (uçuş rota olarak, konaklama resim + puan + toplam/gecelik fiyat), solda simgeli etiket sütunu, şehir etiketleri
 - [ ] 0.13: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
       açık sekmeleri toplu kaydetme (booking.com / airbnb izni gerekir), yeni gelen için "2. sırada, çünkü…" notu
 - [ ] İlk gerçek gezide kullanım: 20–50 gerçek kayıt, hangi alanların yanlış/eksik geldiğini not et
