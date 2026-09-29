@@ -445,14 +445,6 @@ body.popup { width: 320px; }
 .price-night { font-size: 13.5px; font-weight: 600; color: #3a3a3c; }
 .price-block.compact { width: auto; flex-direction: column; align-items: flex-end; gap: 0; }
 .price-block.compact .price-main b { font-size: 19px; }
-.sc-pc { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 4px; }
-.sc-col + .sc-col { padding-left: 2px; }
-.sc-col-head { margin-bottom: 4px; font-size: 12.5px; font-weight: 700; }
-.sc-line { display: flex; gap: 6px; margin: 3px 0; font-size: 13px; line-height: 1.35; }
-.sc-line .tick { flex: none; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700; line-height: 1; }
-.sc-col.pros .tick { background: #3aa76d; }
-.sc-col.cons .tick { background: #e08a5c; }
-.sc-line.strong { color: var(--danger); font-weight: 600; }
 .sc-foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 8px; }
 .pill-btn { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 8px 18px; font-size: 14px; font-weight: 600; border: 0; white-space: nowrap; }
 .pill-btn.dark { background: var(--ink); color: #fff; padding: 8px 26px; }
@@ -630,3 +622,21 @@ body.popup { width: 320px; }
 /* Transfers speak the same colours: planned amber, booked green, open grey. */
 .leg-chip.st-planned, .leg-chip.st-chosen { background: #fff1d9; color: #8a5300; }
 .leg-chip.st-empty { background: #f1efeb; color: #6e6a64; }
+
+/* ---------- the card front: the biggest plus and minus on top, a few more as tags ---------- */
+.card-tags { display: flex; flex-direction: column; gap: 6px; margin: 2px 0; }
+.top-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.top-tag { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 12px 4px 5px; border-radius: 999px; font-size: 14px; font-weight: 700; line-height: 1.3; }
+.top-tag i { flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: #fff; font-style: normal; font-size: 14px; line-height: 1; }
+.top-tag.pro { background: #e6f4ec; color: #16623a; }
+.top-tag.pro i { background: #2e9b5f; }
+.top-tag.con { background: #fdefe6; color: #93461a; }
+.top-tag.con i { background: #e07b45; }
+.top-tag.con.strong { background: #fdeaea; color: var(--danger); }
+.top-tag.con.strong i { background: var(--danger); }
+.more-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag { padding: 2px 9px; border-radius: 999px; border: 1px solid; background: #fff; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.tag.pro { color: #1f7a48; border-color: #bfe3cd; }
+.tag.con { color: #a4501c; border-color: #f3cdb6; }
+.tag.con.strong { color: var(--danger); border-color: #f2b8b8; }
+.stc-info .card-tags { margin: 4px 0; }
