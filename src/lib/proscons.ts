@@ -163,14 +163,29 @@ function comparisons(option: OptionResult, decision: GroupDecision, ctx: Ctx): {
     const bestS = Math.max(p.s, ...others.map((o) => o.s!));
     switch (p.criterion) {
       case "price": {
+        // Against what: the other one when there are two, the average of what was saved when more.
         if (!others.length) break;
-        const cheapest = Math.min(...others.map((o) => o.value!));
+        const values = others.map((o) => o.value!);
+        const cheapest = Math.min(...values);
+        if (values.length === 1) {
+          const other = values[0];
+          if (p.value < other - 0.5) {
+            const less = formatPrice(other - p.value, currency);
+            add(pros, p, `Diğerinden ${less} ucuz`, Math.min(1, (other - p.value) / other + 0.3), `${less} daha ucuz`, `Diğerinden ${less} ucuz`);
+          } else if (p.value > other * 1.03) {
+            const more = formatPrice(p.value - other, currency);
+            add(cons, p, `Diğerinden ${more} pahalı`, Math.min(1, (p.value - other) / other + 0.2), `${more} daha pahalı`, `Diğerinden ${more} pahalı`);
+          }
+          break;
+        }
+        const average = (p.value + values.reduce((a, b) => a + b, 0)) / (values.length + 1);
+        const gap = formatPrice(Math.abs(p.value - average), currency);
         if (p.value < cheapest - 0.5) {
-          const less = formatPrice(cheapest - p.value, currency);
-          add(pros, p, `En ucuz: ${less} daha az`, Math.min(1, (cheapest - p.value) / cheapest + 0.3), `${less} daha ucuz`, "En ucuz");
-        } else if (p.value > cheapest * 1.03) {
-          const more = formatPrice(p.value - cheapest, currency);
-          add(cons, p, `En ucuzdan ${more} pahalı`, Math.min(1, (p.value - cheapest) / cheapest + 0.2), `${more} daha pahalı`, `${more} pahalı`);
+          add(pros, p, `En ucuz: ortalamadan ${gap} ucuz`, Math.min(1, (average - p.value) / average + 0.3), `En ucuz`, "En ucuz");
+        } else if (p.value < average * 0.97) {
+          add(pros, p, `Ortalamadan ${gap} ucuz`, Math.min(1, (average - p.value) / average + 0.2), `Ortalamadan ${gap} ucuz`, `Ortalamadan ${gap} ucuz`);
+        } else if (p.value > average * 1.03) {
+          add(cons, p, `Ortalamadan ${gap} pahalı`, Math.min(1, (p.value - average) / average + 0.2), `Ortalamadan ${gap} pahalı`, `Ortalamadan ${gap} pahalı`);
         }
         break;
       }

@@ -24,30 +24,50 @@ async function demo() {
   return { trip, items, ctx, decisions, plan, timeline };
 }
 
-describe("decision queue", () => {
-  it("lists what's still open in date order, the near ones marked, with the leading option", async () => {
+describe("to-do strip", () => {
+  it("lists what to decide, book and plan, and the cancellations running out", async () => {
     const { items, decisions, plan, timeline } = await demo();
     const p = decisionProgress(timeline, items, plan, decisions, TODAY);
-    expect([p.made, p.total]).toEqual([2, 5]);
-    expect(p.open.map((o) => [o.title, o.note, o.days, o.soon])).toEqual([
-      ["Varış · 8 Ekim", "2 seçenek · Pegasus · direkt önde", 9, true],
-      ["Porto konaklama · 8–11 Ekim", "3 seçenek · Jardim Stay önde", 9, true],
-      ["Porto → Lizbon · 11 Ekim", "kayıtlı: CP Alfa Pendular · Porto → Lizbon", 12, true],
+    expect(p.count).toEqual({ decide: 3, book: 1, plan: 4, deadline: 2 });
+    expect(p.todos.map((t) => [t.kind, t.title, t.note, t.days])).toEqual([
+      ["deadline", "Lisboa Loft", "ücretsiz iptal 5 Ekim'e kadar", 6],
+      ["deadline", "TAP · Lizbon → İstanbul", "ücretsiz iptal 5 Ekim'e kadar", 6],
+      ["decide", "Gidiş uçuşu · 8 Ekim", "2 seçenek · Pegasus · direkt önde", 9],
+      ["decide", "Porto konaklama · 8–11 Ekim", "3 seçenek · Jardim Stay önde", 9],
+      ["plan", "Varış transferi · 8 Ekim", "OPO havalimanı → Porto konaklaması · nasıl?", 9],
+      ["book", "Douro tekne turu", "bilet alınmadı · 9 Ekim · ücretsiz iptalli", 10],
+      ["plan", "Ayrılış transferi · 11 Ekim", "Porto konaklaması → Porto Campanhã · nasıl?", 12],
+      ["decide", "Porto → Lizbon · 11 Ekim", "1 seçenek · seç ya da başka ekle", 12],
+      ["plan", "Varış transferi · 11 Ekim", "Lisboa Santa Apolónia → Lisboa Loft · nasıl?", 12],
+      ["plan", "Ayrılış transferi · 14 Ekim", "Lisboa Loft → LIS havalimanı · nasıl?", 15],
     ]);
-    // Each one points at its place on the line.
-    for (const o of p.open) expect(timeline.entries.some((e) => e.key === o.target)).toBe(true);
+    // Within two weeks is marked; the last transfer isn't.
+    expect(p.todos.filter((t) => !t.soon).map((t) => t.title)).toEqual(["Ayrılış transferi · 14 Ekim"]);
+    // Each one points at its place on the board.
+    const legKeys = new Set(timeline.entries.flatMap((e) => (e.kind === "leg" ? [e.leg.key] : e.kind === "day" ? e.legs.map((l) => l.key) : [])));
+    for (const t of p.todos) {
+      if (t.target.entry) expect(timeline.entries.some((e) => e.key === t.target.entry)).toBe(true);
+      if (t.target.leg) expect(legKeys.has(t.target.leg)).toBe(true);
+      expect(t.target.entry ?? t.target.leg).toBeTruthy();
+    }
+    // Far from the dates, no cancellation nags.
+    expect(decisionProgress(timeline, items, plan, decisions, "2026-06-01").count.deadline).toBe(0);
   });
 
-  it("reminds of free cancellations running out first, then what's chosen but not booked", async () => {
-    const { items, decisions, plan, timeline } = await demo();
+  it("drops a transfer or nights said not needed, and lists a chat plan to book even without a day", async () => {
+    const { trip, items, decisions, plan, ctx } = await demo();
+    const legs = buildLegs(plan, trip, ctx.listings);
+    const transfer = legs.find((l) => l.kind === "arrival")!;
+    const hidden = new Set([`leg:${transfer.key}`]);
+    const timeline = buildTimeline(plan, legs, items, hidden);
     const p = decisionProgress(timeline, items, plan, decisions, TODAY);
-    expect(p.reminders.map((r) => [r.tone, r.text])).toEqual([
-      ["red", "Lisboa Loft: ücretsiz iptal için 6 gün kaldı (5 Ekim)"],
-      ["red", "TAP · Lizbon → İstanbul: ücretsiz iptal için 6 gün kaldı (5 Ekim)"],
-      ["amber", "Douro tekne turu: bilet alınmadı · etkinliğe 10 gün · ücretsiz iptalli, şimdi ayırmak risksiz"],
-    ]);
-    // Far from the dates, nothing nags.
-    expect(decisionProgress(timeline, items, plan, decisions, "2026-06-01").reminders).toEqual([]);
+    expect(p.todos.some((t) => t.target.leg === transfer.key)).toBe(false);
+    expect(p.count.plan).toBe(3);
+
+    const car: Item = { ...items.find((i) => i.name === "Douro tekne turu")!, id: "car", name: "Araç kiralama · Porto", category: "transport", dates: { start: null, end: null, source: "unverified" }, flight: null, origin: "chat", status: "chosen", cancellation: { summary: null, freeUntil: null, source: "none" } };
+    const withCar = [...items, car];
+    const q = decisionProgress(buildTimeline(buildPlan(trip, withCar), legs, withCar), withCar, buildPlan(trip, withCar), decisions, TODAY);
+    expect(q.todos.find((t) => t.key === "book:car")).toMatchObject({ kind: "book", note: "rezerve edilmedi · gün belli değil", days: null, soon: false });
   });
 });
 

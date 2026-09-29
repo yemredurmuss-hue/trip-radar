@@ -27,7 +27,7 @@ export const MODE_LABELS: Record<LegMode, string> = {
 /** Modes that leave from a station: a move by one of them needs a transfer at both ends. */
 const FROM_HUB: LegMode[] = ["flight", "train", "bus", "ferry"];
 /** Modes one books ahead; the others (metro, a street taxi, walking, one's own car) only need planning. */
-const BOOKABLE: LegMode[] = ["flight", "train", "ferry", "transfer"];
+export const BOOKABLE: LegMode[] = ["flight", "train", "ferry", "transfer"];
 /** How early to be at the station: check-in and security for a flight, finding the platform for a train. */
 const HUB_BUFFER: Record<string, number> = { flight: 120, train: 20, bus: 20, ferry: 30 };
 /** Roughly how long getting between a stay and the airport or station takes, for timing notes only. */
@@ -444,6 +444,21 @@ export function legTitle(leg: Leg): string {
 }
 
 /** The leg's timing in words ("10:05 inişten sonra", "05:10'a kadar havalimanında"). */
+const STAY_WORDS: Partial<Record<string, string>> = { apartment: "Daire", house: "Ev", hostel: "Hostel", guesthouse: "Pansiyon" };
+const stayWord = (p: LegPoint) => STAY_WORDS[p.item?.metrics?.stayKind ?? ""] ?? "Otel";
+
+/**
+ * A transfer in a few words, like a ticket: "Havalimanı → Otel", "Daire → Gar", "Otel değişimi". The
+ * names (OPO, the stay's name) go under it; the notes open with it.
+ */
+export function legShortTitle(leg: Leg): string {
+  if (leg.kind === "move") return `${leg.from.city ?? leg.from.label} → ${leg.to.city ?? leg.to.label}`;
+  if (leg.kind === "change") return `${stayWord(leg.from)} değişimi`;
+  const word = leg.via && HUB_NAMES[leg.via];
+  const hub = word ? word[0].toLocaleUpperCase("tr") + word.slice(1) : leg.kind === "arrival" ? leg.from.label : leg.to.label;
+  return leg.kind === "arrival" ? `${hub} → ${stayWord(leg.to)}` : `${stayWord(leg.from)} → ${hub}`;
+}
+
 export function legTiming(leg: Leg): string | null {
   if (leg.kind === "move") return leg.after && leg.before ? `${leg.after} → ${leg.before}` : null;
   if (leg.after) return `Varış ${leg.after}`;

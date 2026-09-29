@@ -129,7 +129,10 @@ try {
   );
   // Days with nothing yet say so; the day in has its transfer, the 9th its boat tour.
   assert.equal(await app.locator(".tl-day .day-card.empty").count(), 3);
-  await app.locator(".tl-day", { hasText: "1. gün" }).locator(".leg-title", { hasText: "OPO havalimanı →" }).waitFor();
+  // Transfers read like a ticket: "Havalimanı → Otel", the names under it.
+  const firstLeg = app.locator(".tl-day", { hasText: "1. gün" }).locator(".leg").first();
+  assert.equal(await firstLeg.locator(".leg-title").innerText(), "Havalimanı → Otel");
+  await firstLeg.locator(".leg-sub", { hasText: "OPO havalimanı →" }).waitFor();
   // Where each plan stands is on top of its card: booked in green, planned in amber.
   await app.locator(".tl-stay.st-booked .status-bar.st-booked", { hasText: "Rezerve edildi" }).waitFor();
   // Undecided needs are decision cards to swipe through, best first; decided ones are one line.
@@ -160,13 +163,21 @@ try {
     await card("Jardim Stay").locator(".sc-col.pros li:has(.mine) > span").allInnerTexts(),
     ["Ücretsiz iptal★", "Sessiz odalar★"],
   );
-  // The strip under the summary: what's left, the near ones first, and bookings running out.
-  const queue = app.locator(".queue");
-  await queue.getByText("3 karar kaldı").waitFor();
-  assert.match(await queue.innerText(), /2 \/ 5 karar verildi/);
-  await queue.locator(".qchip", { hasText: "Porto konaklama · 8–11 Ekim" }).click();
+  // The slim strip under the summary: what to decide, book and plan, counted; a chip lists them, a tap goes there.
+  const todo = app.locator(".todo-wrap");
+  const chip = (kind) => todo.locator(`.todo-chip.k-${kind}`);
+  assert.deepEqual(
+    await Promise.all(["decide", "book", "plan"].map((k) => chip(k).locator("b").innerText())),
+    ["3", "1", "4"],
+  );
+  await chip("decide").click();
+  await todo.locator(".todo-list button", { hasText: "Porto konaklama · 8–11 Ekim" }).click();
   await app.locator(".tl-stay.flash").waitFor();
-  // Bookings running out and choices not booked show up there too (the sample trip is dated, so only when those dates are near).
+  await chip("plan").click();
+  assert.match(await todo.locator(".todo-list").innerText(), /Varış transferi · 8 Ekim[\s\S]*nasıl\?/);
+  await chip("plan").click();
+  assert.equal(await todo.locator(".todo-list").count(), 0);
+  // Cancellations running out show up there too (the sample trip is dated, so only when those dates are near).
   // And the money: booked, chosen and a guess for what's open, against the budget.
   assert.match(await app.locator(".budget").innerText(), /\/ €1\.500 bütçe/);
   // Decided already: the boat tour on the 9th and the flight home.
@@ -252,31 +263,54 @@ try {
   await app.getByRole("dialog").getByRole("button", { name: "Plana al", exact: true }).click();
   await app.getByRole("dialog").getByRole("button", { name: "Kapat" }).click();
   await app.getByText("Jardim Stay plana alındı").waitFor();
-  // Chosen: the cards fold into one line; "Değiştir" brings them back.
+  // Chosen: the cards fold into one card; a tap on it brings the other options back, ⓘ opens its details.
   const jardimRow = app.locator(".stay-block.chosen .settled-card", { hasText: "Jardim Stay" });
   await jardimRow.locator(".status-bar").getByText("rezerve edilmedi").waitFor();
   assert.equal(await app.locator(".stay-block.chosen .swipe-card").count(), 0);
-  await jardimRow.getByRole("button", { name: "⇄ Değiştir" }).click();
+  await jardimRow.getByRole("button", { name: "Diğer 2 seçenek" }).waitFor();
+  await jardimRow.locator(".stc-main").click();
   await app.locator(".stay-block.chosen .swipe-card").first().waitFor();
   await card("Jardim Stay").getByRole("button", { name: "Planda ✓" }).waitFor();
   await jardimRow.getByRole("button", { name: "Kapat" }).click();
+  assert.equal(await app.locator(".stay-block.chosen .swipe-card").count(), 0);
+  await jardimRow.getByRole("button", { name: "Detaylar", exact: true }).click();
+  await jardimRow.locator(".stc-details .card-details").waitFor();
+  await jardimRow.getByRole("button", { name: "Detaylar", exact: true }).click();
   // "Seç" on a flight card: the flight folds into a line, and its landing time reaches the transfer to the hotel.
   await card("Pegasus · direkt").getByRole("button", { name: "Seç" }).click();
   await app.locator(".tl-travel.role-arrival .settled-card", { hasText: "IST" }).locator(".status-bar").getByText("bilet alınmadı").waitFor();
   // Porto chosen, Lisbon booked: the transfers between them lay themselves out (the saved train is
   // the move, with a station transfer on each side), and the way home says what's easy to miss.
-  const leg = (title) => app.locator(".leg", { has: app.locator(".leg-title", { hasText: title }) });
+  const leg = (names) => app.locator(".leg", { has: app.locator(".leg-sub", { hasText: names }) });
   await leg("OPO havalimanı → Jardim Stay").locator(".leg-chip.st-empty").waitFor();
+  // The notes wait behind a tap (a small ⓘ says there are some).
+  assert.equal(await leg("OPO havalimanı → Jardim Stay").locator(".leg-note").count(), 0);
+  await leg("OPO havalimanı → Jardim Stay").locator(".leg-hint").waitFor();
+  await leg("OPO havalimanı → Jardim Stay").locator(".leg-head").click();
   await leg("OPO havalimanı → Jardim Stay").locator(".leg-note", { hasText: "Varış 10:05, giriş en erken 14:00 (sayfada yazıyor)" }).waitFor();
+  await leg("OPO havalimanı → Jardim Stay").locator(".leg-head").click();
   await leg("Jardim Stay → Porto Campanhã").waitFor();
+  assert.equal(await leg("Jardim Stay → Porto Campanhã").locator(".leg-title").innerText(), "Otel → Gar");
   await app.locator(".tl-travel.role-move .swipe-card", { hasText: "CP Alfa Pendular" }).waitFor(); // the move is the saved train
   await leg("Lisboa Santa Apolónia → Lisboa Loft").waitFor();
-  await leg("Lisboa Loft → LIS havalimanı").locator(".leg-note", { hasText: "arada ~6 saat boşluk" }).waitFor();
   assert.match(await leg("Lisboa Loft → LIS havalimanı").innerText(), /En geç 17:40 havalimanında/);
+  await leg("Lisboa Loft → LIS havalimanı").locator(".leg-head").click();
+  await leg("Lisboa Loft → LIS havalimanı").locator(".leg-note", { hasText: "arada ~6 saat boşluk" }).waitFor();
+  await leg("Lisboa Loft → LIS havalimanı").locator(".leg-head").click();
   // "Metroyla gideceğim": marked on the leg, still not something to book.
   await leg("OPO havalimanı → Jardim Stay").locator(".leg-head").click();
   await leg("OPO havalimanı → Jardim Stay").getByRole("button", { name: "🚇 Metro" }).click();
   await leg("OPO havalimanı → Jardim Stay").locator(".leg-chip.st-planned", { hasText: "Metro · planlandı" }).waitFor();
+  // "Gerek yok": a transfer they don't need leaves the line (and the to-dos), and comes back from "Gizlenenler".
+  const lisbonIn = leg("Lisboa Santa Apolónia → Lisboa Loft");
+  await lisbonIn.locator(".leg-head").click();
+  await lisbonIn.getByRole("button", { name: "Gerek yok · gizle" }).click();
+  await lisbonIn.waitFor({ state: "detached" });
+  const hiddenRow = app.locator(".section", { has: app.locator(".row-name", { hasText: "Gizlenenler (1)" }) });
+  await hiddenRow.locator(".row").click();
+  await hiddenRow.getByRole("button", { name: "Geri getir", exact: true }).click();
+  await lisbonIn.waitFor();
+  assert.equal(await app.locator(".row-name", { hasText: "Gizlenenler" }).count(), 0);
   await leg("OPO havalimanı → Jardim Stay").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5-legs.png` });
   await leg("Jardim Stay → Porto Campanhã").evaluate((el) => el.scrollIntoView({ block: "start" }));
@@ -289,10 +323,9 @@ try {
   assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll");
   await app.setViewportSize(wide);
   // Without the train, Porto → Lizbon is a move to plan: by plane it reads as a flight, with its status on it.
-  await card("CP Alfa Pendular · Porto → Lizbon").getByRole("button", { name: "Detaylar ▾" }).click();
-  await card("CP Alfa Pendular · Porto → Lizbon").getByRole("button", { name: "Tüm detaylar" }).click();
-  await app.getByRole("dialog").getByRole("button", { name: "Ele", exact: true }).click();
-  await app.getByRole("dialog").getByRole("button", { name: "Kapat" }).click();
+  // "Ele" right on the card: it leaves the options and waits under "Elenenler".
+  await card("CP Alfa Pendular · Porto → Lizbon").getByRole("button", { name: "Ele", exact: true }).click();
+  await app.locator(".row-name", { hasText: "Elenenler (1)" }).waitFor();
   const move = app.locator(".move-card");
   await move.locator(".status-bar.st-open", { hasText: "Planlanmadı" }).waitFor();
   assert.match(await move.locator(".route").innerText(), /Porto[\s\S]*Lizbon/);

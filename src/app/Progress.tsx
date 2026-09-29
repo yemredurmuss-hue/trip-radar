@@ -1,8 +1,9 @@
-// The trip's decisions at a glance, under its summary: what's still open (the near ones first in line),
-// how many are made, the bookings still to make and the free cancellations running out. A tap takes
-// you to it. And the money: booked, chosen, and a guess for what's still open, against the budget.
+// What's left to do, in one slim line under the trip's summary: a chip per kind (decide, book, plan,
+// cancellations running out) with its count; a tap lists them, a tap on one takes you to it. And the
+// money: booked, chosen, and a guess for what's still open, against the budget.
+import { useState } from "react";
 import { formatPrice } from "../lib/items";
-import { entryDomId, type BudgetBar, type DecisionProgress } from "../lib/progress";
+import { entryDomId, type BudgetBar, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
 
 /** Scrolls to an element and makes it glow for a moment. */
 function show(el: Element | null) {
@@ -14,44 +15,70 @@ function show(el: Element | null) {
   setTimeout(() => el.classList.remove("flash"), 1700);
 }
 
-export function DecisionQueue({ progress }: { progress: DecisionProgress }) {
-  const { made, total, open, reminders } = progress;
-  if (!total) return null;
-  const extra = reminders.length - 4;
-  return (
-    <section className="queue" aria-label="Karar sırası">
-      <div className="queue-top">
-        <b>{open.length ? `${open.length} karar kaldı` : "Tüm kararlar verildi ✓"}</b>
-        <span className="queue-progress">
-          <span className="queue-bar" aria-hidden>
-            <span style={{ width: `${(made / total) * 100}%` }} />
-          </span>
-          {made} / {total} karar verildi
-        </span>
+/** The card itself when it's on screen, else its transfer, else its place on the line. */
+function go(target: Todo["target"]) {
+  const card = target.item ? document.querySelector(`[data-item-id="${CSS.escape(target.item)}"]`) : null;
+  const leg = target.leg ? document.getElementById(`leg-${target.leg}`) : null;
+  const entry = target.entry ? document.getElementById(entryDomId(target.entry)) : null;
+  show(card ?? leg ?? entry);
+}
+
+const KINDS: { kind: TodoKind; label: string }[] = [
+  { kind: "decide", label: "Karar ver" },
+  { kind: "book", label: "Rezerve et" },
+  { kind: "plan", label: "Planla" },
+  { kind: "deadline", label: "İptal süresi" },
+];
+
+const when = (t: Todo) => (t.days == null ? null : t.days < 0 ? null : t.days === 0 ? "bugün" : `${t.days} gün`);
+
+export function TodoStrip({ progress }: { progress: DecisionProgress }) {
+  const [open, setOpen] = useState<TodoKind | null>(null);
+  const { todos, count } = progress;
+  const shown = KINDS.filter((k) => count[k.kind] > 0);
+  if (!todos.length) {
+    return (
+      <div className="todo-strip done" aria-label="Yapılacaklar">
+        <span className="todo-done">✓ Her şey karara bağlandı</span>
       </div>
-      {open.length > 0 && (
-        <div className="queue-chips">
-          {open.map((o) => (
-            <button key={o.key} className={`qchip${o.soon ? " soon" : ""}`} onClick={() => show(document.getElementById(entryDomId(o.target)))}>
-              <span>{o.title}</span>
-              <small>
-                {o.soon && <b className="due">{o.days === 0 ? "bugün" : `${o.days} gün kaldı`}</b>}
-                {o.soon && " · "}
-                {o.note}
-              </small>
+    );
+  }
+  const list = open ? todos.filter((t) => t.kind === open) : [];
+  return (
+    <section className="todo-wrap" aria-label="Yapılacaklar">
+      <div className="todo-strip" role="tablist">
+        {shown.map(({ kind, label }) => {
+          const soon = todos.some((t) => t.kind === kind && t.soon);
+          return (
+            <button
+              key={kind}
+              role="tab"
+              aria-selected={open === kind}
+              className={`todo-chip k-${kind}${open === kind ? " on" : ""}`}
+              onClick={() => setOpen(open === kind ? null : kind)}
+            >
+              {kind === "deadline" && <span aria-hidden>⏳</span>}
+              {label}
+              <b>{count[kind]}</b>
+              {soon && kind !== "deadline" && <i className="todo-soon" title="İki hafta içinde olanı var" />}
             </button>
+          );
+        })}
+      </div>
+      {open && list.length > 0 && (
+        <ul className="todo-list">
+          {list.map((t) => (
+            <li key={t.key}>
+              <button onClick={() => go(t.target)}>
+                <span className="todo-text">
+                  <b>{t.title}</b>
+                  <span className="muted">{t.note}</span>
+                </span>
+                {when(t) && <span className={`todo-when${t.soon ? " soon" : ""}`}>{when(t)}</span>}
+              </button>
+            </li>
           ))}
-        </div>
-      )}
-      {reminders.length > 0 && (
-        <div className="queue-reminders">
-          {reminders.slice(0, 4).map((r) => (
-            <button key={r.key} className={`qrem ${r.tone}`} onClick={() => show(document.querySelector(`[data-item-id="${r.itemId}"]`))}>
-              {r.tone === "red" ? "⏳" : "◷"} {r.text}
-            </button>
-          ))}
-          {extra > 0 && <span className="qrem more">+{extra}</span>}
-        </div>
+        </ul>
       )}
     </section>
   );

@@ -35,7 +35,8 @@ describe("decision card facts", () => {
     expect(jardim.score).toBeGreaterThan(60);
     // The biggest plus and minus first, then a few more; each a few words.
     expect(jardim.pros.map((p) => p.text)).toEqual(["Yakın", "Ücretsiz iptal", "Sessiz odalar", "Kahvaltı çok iyi"]);
-    expect(jardim.cons.map((c) => c.text)).toEqual(["Odalar küçük", "€45 pahalı", "TV yok"]);
+    // Jardim is the average price of the three: no price line either way.
+    expect(jardim.cons.map((c) => c.text)).toEqual(["Odalar küçük", "TV yok"]);
     // ★: what the traveller made important (free cancellation, inferred) or said ("sessiz bir yer istiyoruz").
     expect(jardim.pros.filter((p) => p.mine).map((p) => p.text)).toEqual(["Ücretsiz iptal", "Sessiz odalar"]);
     expect(jardim.cons.some((c) => c.mine)).toBe(false);

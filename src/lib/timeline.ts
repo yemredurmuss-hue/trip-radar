@@ -27,9 +27,11 @@ export type TimelineEntry =
     }
   /** A transfer on a day that has no card of its own (landing the night before, leaving for the station). */
   | { kind: "leg"; key: string; date: string; leg: Leg }
-  | { kind: "stay"; key: string; date: string; block: StayBlock; title: string; subtitle: string }
+  | { kind: "stay"; key: string; date: string; block: StayBlock; title: string; subtitle: string; skipped?: boolean }
   /** One day of the trip in its city: its transfers and what's planned, empty until something is. */
-  | { kind: "day"; key: string; date: string; dayNo: number; title: string; items: Item[]; legs: Leg[] };
+  | { kind: "day"; key: string; date: string; dayNo: number; title: string; items: Item[]; legs: Leg[] }
+  /** Plans for a city without a day yet ("Madeira'da araba kiralarız"): in its block until the day is known. */
+  | { kind: "plan"; key: string; date: string; city: string | null; items: Item[] };
 
 export type StayEntry = Extract<TimelineEntry, { kind: "stay" }>;
 
@@ -89,7 +91,12 @@ export function flightSearchUrl(direction: "to" | "from", city: string | null, d
   return `https://www.google.com/travel/flights?q=${encodeURIComponent(q)}`;
 }
 
-export function buildTimeline(plan: Plan, legs: Leg[], items: Item[]): Timeline {
+/** The key under which a stretch of nights is hidden ("no place needed"). */
+export const nightsKey = (range: DateRange) => `nights:${range.start}_${range.end}`;
+
+export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden: Set<string> = new Set()): Timeline {
+  // A transfer the traveller said isn't needed stays out (a change of city never does: it's the way on).
+  const legs = allLegs.filter((l) => l.kind === "move" || !hidden.has(`leg:${l.key}`));
   const blocks = plan.stayBlocks;
   // A rental set aside by the plan (another booked, or a page chosen instead of the one said in the chat) isn't on its day.
   const closed = new Set(plan.closed.map((c) => c.item.id));
@@ -105,12 +112,14 @@ export function buildTimeline(plan: Plan, legs: Leg[], items: Item[]): Timeline 
   const start = plan.range.start;
   const end = plan.range.end;
   const entries: TimelineEntry[] = [];
-  const first = legs.find((l) => l.slot === 0 && l.kind === "arrival") ?? null;
-  const last = legs.find((l) => l.slot === blocks.length && l.kind === "departure") ?? null;
+  // The flights in and out stay on the line even when their transfer is hidden.
+  const first = allLegs.find((l) => l.slot === 0 && l.kind === "arrival") ?? null;
+  const last = allLegs.find((l) => l.slot === blocks.length && l.kind === "departure") ?? null;
+  const shown = (l: Leg) => legs.includes(l);
 
   // Trips the transfers didn't take: connections on the way in or home go with them on the line
   // (Istanbul → Copenhagen before Copenhagen → Porto); the rest go on their day.
-  const used = new Set(legs.flatMap((l) => l.travel?.items ?? []).map((i) => i.id));
+  const used = new Set(allLegs.flatMap((l) => l.travel?.items ?? []).map((i) => i.id));
   const others = travelsOf(plan).filter((t) => !t.items.some((i) => used.has(i.id)) && t.day >= addDaysIso(start, -7) && t.day <= addDaysIso(end, 7));
   others.forEach((t) => t.items.forEach((i) => used.add(i.id)));
   const [firstCity, lastCity] = [cityKeyOf(blocks[0].city), cityKeyOf(blocks.at(-1)!.city)];
@@ -171,6 +180,16 @@ export function buildTimeline(plan: Plan, legs: Leg[], items: Item[]): Timeline 
     return days;
   });
   const placedDays = new Set(dayCards.flat().flatMap((d) => d.items.map((i) => i.id)));
+  // What's planned in a city without a day (a car to rent there, a tour they chose) goes in that city's
+  // block; places only saved as ideas stay in the lists below.
+  const cityPlans = blocks.map(() => [] as Item[]);
+  for (const i of dayItems) {
+    if (placedDays.has(i.id) || !i.city || isoDate(i.dates.start) || (i.status === "saved" && !isRental(i))) continue;
+    const index = blocks.findIndex((b) => sameCity(b.city, i.city));
+    if (index < 0) continue;
+    cityPlans[index].push(i);
+    placedDays.add(i.id);
+  }
   /** A transfer goes in its day's card in its city; without one it has its own row. */
   const into = (leg: Leg, index: number) => {
     const day = dayCards[index]?.find((d) => d.date === leg.date);
@@ -197,7 +216,7 @@ export function buildTimeline(plan: Plan, legs: Leg[], items: Item[]): Timeline 
         searchUrl: t ? null : flightSearchUrl("to", first.to.city, date, home),
       });
     }
-    if (!into(first, 0)) entries.push(legRow(first));
+    if (shown(first) && !into(first, 0)) entries.push(legRow(first));
   }
 
   blocks.forEach((block, index) => {
@@ -229,13 +248,17 @@ export function buildTimeline(plan: Plan, legs: Leg[], items: Item[]): Timeline 
       block,
       title: `${formatDateRange(block.range.start, block.range.end)} · Konaklama`,
       subtitle: [block.city, `${nights} gece`].filter(Boolean).join(" · "),
+      ...(block.kind === "open" && !block.groups.length && hidden.has(nightsKey(block.range)) ? { skipped: true } : {}),
     });
+    if (cityPlans[index].length) {
+      entries.push({ kind: "plan", key: `plan:${block.range.start}`, date: block.range.start, city: block.city, items: cityPlans[index] });
+    }
     entries.push(...dayCards[index]);
   });
 
   // Getting home.
   if (last) {
-    if (!into(last, blocks.length - 1)) entries.push(legRow(last));
+    if (shown(last) && !into(last, blocks.length - 1)) entries.push(legRow(last));
     const t = last.travel;
     const date = t?.day ?? last.date;
     if (t || !last.choice?.mode) {
@@ -262,7 +285,7 @@ export function buildTimeline(plan: Plan, legs: Leg[], items: Item[]): Timeline 
   }
 
   // Everything saved still shows somewhere: travel the plan didn't use, and places without a day.
-  const placed = new Set([...legs.flatMap((l) => [...(l.travel?.items ?? []), ...l.options]).map((i) => i.id), ...used, ...placedDays]);
+  const placed = new Set([...allLegs.flatMap((l) => [...(l.travel?.items ?? []), ...l.options]).map((i) => i.id), ...used, ...placedDays]);
   const unplaced = plan.groups
     .filter((g) => g.category === "flight" || g.category === "transport")
     .map((g) => {

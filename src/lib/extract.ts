@@ -101,6 +101,10 @@ export const ExtractionSchema = z.object({
     new_trip_title: z.string().nullable().describe("Yeni gezi gerekiyorsa: ülke/bölge adı, Türkçe"),
   }),
   need_key: z.string().describe("Aynı ihtiyacı paylaşan seçenekler için anahtar, ör. 'stay:porto'"),
+  booked: z
+    .boolean()
+    .optional()
+    .describe("Bu bir rezervasyon ya da bilet onayı mı (onay/rezervasyon numarası, 'onaylandı', 'confirmed', e-bilet, PNR)? Arama ya da ilan sayfasıysa false"),
 });
 
 export type Extraction = z.infer<typeof ExtractionSchema>;
@@ -120,6 +124,7 @@ Kurallar:
 - category: Kalacak her yer "stay"dir: otel, pansiyon, hostel ve Airbnb/Vrbo/Booking'deki ev, daire, apart, oda kiralamaları. Hangi siteden geldiği önemsizdir. (Airbnb "Deneyimler" gibi turlar "activity"dir.)
 - country ve country_code seçeneğin bulunduğu ülkedir (uçuşta varış ülkesi). Emin değilsen null.
 - Gezi ataması: existing_trips içinde destinasyon ve tarih olarak uyan gezi varsa onun id'sini ver. Yoksa new_trip_title ver (ör. "Portekiz"). Tarihsiz bir restoran/etkinlik, aynı şehri kapsayan geziye gider.
+- booked: Sayfa ya da ekran görüntüsü yapılmış bir rezervasyonun/biletin onayıysa true (onay veya rezervasyon numarası, "Rezervasyonunuz onaylandı", "Booking confirmed", "Your trip is booked", e-bilet, PNR, "Ödendi"). Bu durumda tarihleri, gece sayısını ve ödenen toplam fiyatı onaydan aynen al. Arama, ilan ya da ödeme öncesi sayfa ise false.
 - need_key: "<kategori>:<şehir>" küçük harf ASCII (ör. "stay:porto", "activity:lisbon"); uçuşlarda "flight:<nereden>-<nereye>" (ör. "flight:ist-opo"). Site adı need_key'e girmez.
 - city: semt ya da ilçe değil, şehir (ör. Ribeira/Bonfim → "Porto"; Funchal'daki bir ev → "Funchal"). Aynı şehirdeki seçenekler aynı şehir adını almalı. Sayfa hangi dilde olursa olsun şehrin Türkçedeki yaygın adını yaz (Lisbon/Lisboa → "Lizbon", Rome → "Roma", Athens → "Atina").`;
 

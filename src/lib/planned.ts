@@ -11,8 +11,8 @@ export type PlannedKind = (typeof PLANNED_KINDS)[number];
 
 export interface PlannedInput {
   kind: PlannedKind;
-  /** YYYY-MM-DD */
-  date: string;
+  /** YYYY-MM-DD; null when not said yet ("Madeira'da araba kiralarız"): the plan then sits in its city. */
+  date: string | null;
   end_date: string | null;
   /** HH:MM */
   time: string | null;
@@ -55,7 +55,7 @@ const text = (v: unknown): string | null => (typeof v === "string" && v.trim() ?
 export function plannedInput(raw: any): PlannedInput {
   return {
     kind: raw?.kind,
-    date: typeof raw?.date === "string" ? raw.date.trim() : raw?.date,
+    date: text(raw?.date),
     end_date: text(raw?.end_date),
     time: text(raw?.time),
     from: text(raw?.from),
@@ -70,9 +70,10 @@ export function plannedInput(raw: any): PlannedInput {
 /** Checks what the model passed; a wrong date is refused rather than guessed. */
 export function checkPlanned(input: PlannedInput): string | null {
   if (!(PLANNED_KINDS as readonly string[]).includes(input.kind)) return `Bilinmeyen tür: ${input.kind}`;
-  if (!isoDate(input.date)) return `Tarih YYYY-AA-GG olmalı: ${input.date}`;
-  if (input.end_date && (!isoDate(input.end_date) || input.end_date < input.date)) return `Bitiş tarihi geçersiz: ${input.end_date}`;
-  if (input.kind === "stay" && input.end_date && input.end_date <= input.date) return "Konaklamanın çıkış günü girişten sonra olmalı.";
+  if (input.date != null && !isoDate(input.date)) return `Tarih YYYY-AA-GG olmalı: ${input.date}`;
+  if (input.end_date && (!isoDate(input.end_date) || (input.date && input.end_date < input.date))) return `Bitiş tarihi geçersiz: ${input.end_date}`;
+  if (input.end_date && !input.date) return "Bitiş varsa başlangıç tarihini de yaz.";
+  if (input.kind === "stay" && input.date && input.end_date && input.end_date <= input.date) return "Konaklamanın çıkış günü girişten sonra olmalı.";
   if (input.time && !TIME.test(input.time)) return `Saat SS:DD olmalı: ${input.time}`;
   if (TRAVEL.includes(input.kind) && !input.to && !input.city) return "Nereye gidildiğini (to) yaz.";
   if ((input.kind === "car_rental" || input.kind === "stay") && !input.city && !input.to) return "Hangi şehirde olduğunu (city) yaz.";
@@ -98,7 +99,7 @@ function needKeyOf(i: PlannedInput): string {
 /** The board item for a plan said in the chat. */
 export function plannedItem(input: PlannedInput, tripId: string, id: string, now: number): Item {
   const travel = TRAVEL.includes(input.kind);
-  const at = input.time ? `${input.date}T${input.time}` : null;
+  const at = input.time && input.date ? `${input.date}T${input.time}` : null;
   return {
     id,
     tripId,
@@ -146,7 +147,9 @@ const where = (s: string | null | undefined) => (s ? cityKeyOf(s) : null);
  * same place (for a trip: where it goes, and where from when both say it; for an activity: its name).
  */
 export function samePlan(a: Item, b: Item): boolean {
-  if (a.origin !== "chat" || b.origin !== "chat" || a.category !== b.category || a.dates.start !== b.dates.start) return false;
+  if (a.origin !== "chat" || b.origin !== "chat" || a.category !== b.category) return false;
+  // Said without a day first and with one later ("araba kiralarız" → "12–16 Ekim arası"): the same plan.
+  if (a.dates.start && b.dates.start && a.dates.start !== b.dates.start) return false;
   if (a.plannedKind && b.plannedKind && a.plannedKind !== b.plannedKind) return false;
   const kind = a.plannedKind ?? b.plannedKind;
   if (kind && TRAVEL.includes(kind)) {
@@ -164,6 +167,7 @@ export function fillPlanned(input: PlannedInput, before: Item): PlannedInput {
   const time = before.flight?.departure?.slice(11, 16) || null;
   return {
     ...input,
+    date: input.date ?? before.dates.start,
     end_date: input.end_date ?? before.dates.end,
     time: input.time ?? time,
     from: input.from ?? before.flight?.from ?? null,

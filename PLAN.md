@@ -67,9 +67,16 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] 0.15: karar kolaylığı — karar sırası ve ilerleme, bütçe çubuğu, seçenekler yan yana ve tek satır öneri,
       ★ kendi önceliklerin, tarih uyarıları (ücretsiz iptal bitişi, rezerve edilmedi), DESIGN.md arayüz kuralları
       (renk anlamları, tek ana buton, okunur gri, kırmızı eksi)
+- [x] 0.16: yapılacaklar şeridi (Karar ver / Rezerve et / Planla / ⏳ iptal süresi; planlanıp rezerve edilmeyen ve
+      hiç seçeneği olmayan her şey dahil), kartta Ele, transfer ve boş gecelerde "Gerek yok" (Gizlenenler'den geri),
+      sohbette söylenen günü belirsiz plan şehrin bloğunda hemen, rezervasyon onayı ekran görüntüsü planı yeniden
+      kurar, seçili karta dokun = diğer seçenekler / ⓘ = detay, fiyat seçeneklerin ortalamasına göre, transferler
+      "Havalimanı → Otel" sadeliğinde (notlar açınca)
+- [ ] Yolculuk günü (onay bekliyor): şehir değiştirilen gün tek kartta saat sırasıyla (çıkış, taksi, uçuş, giriş);
+      taslak: https://claude.ai/artifact/SRfbmW5VkiGw11ooZWzMT5
 - [ ] Sonraki öneriler (onay bekliyor): 7 sade karşılaştırma, 8 zaman çizelgesinde tekrarların kalkması,
       9 sohbet ↔ pano bağlantısı, 10 sırayla karar ver modu
-- [ ] 0.16: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
+- [ ] 0.17: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
       açık sekmeleri toplu kaydetme (booking.com / airbnb izni gerekir), yeni gelen için "2. sırada, çünkü…" notu
 - [ ] İlk gerçek gezide kullanım: 20–50 gerçek kayıt, hangi alanların yanlış/eksik geldiğini not et
 

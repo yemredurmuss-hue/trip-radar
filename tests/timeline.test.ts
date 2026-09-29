@@ -16,6 +16,7 @@ const titles = (t: ReturnType<typeof buildTimeline>) =>
   t.entries.map((e) => {
     if (e.kind === "leg") return `  ${e.leg.from.label} → ${e.leg.to.label}`;
     if (e.kind === "day") return `${e.title} [${[...e.legs.map((l) => `${l.from.label} → ${l.to.label}`), ...e.items.map((i) => i.name)].join("; ")}]`;
+    if (e.kind === "plan") return `Planlar [${e.items.map((i) => i.name).join("; ")}]`;
     return `${e.title}${"subtitle" in e && e.subtitle ? ` | ${e.subtitle}` : ""}`;
   });
 
@@ -115,6 +116,7 @@ describe("timeline from what's said and saved", () => {
           const what = [...e.legs.map(() => "transfer"), ...e.items.map((i) => i.name)];
           return what.length ? [`${e.title}: ${what.join(" + ")}`] : [];
         }
+        if (e.kind === "plan") return [`plan: ${e.items.map((i) => i.name).join(" + ")}`];
         return [e.kind === "leg" ? `transfer ${e.date.slice(8)}` : e.kind === "travel" ? `${e.role}:${e.travel?.items[0].name}` : e.kind];
       });
       return `[${s.index} ${s.city} · ${s.nights} gece · ${s.stays.length} konaklama · ${days.length} gün] ${filled.join(" / ")}`;
@@ -211,5 +213,18 @@ describe("timeline from what's said and saved", () => {
     // Without the flight said in the chat, the car rented there still says where those nights are.
     const quiet = build(items.slice(0, 4), t);
     expect(quiet.timeline.sections.filter((x) => x.kind === "city").map((x) => x.kind === "city" && x.city)).toEqual(["Porto", "Madeira"]);
+  });
+
+  it("puts a car said in the chat without a day in its city's block at once, then on its day", () => {
+    const stays = [stay("Jardim Stay", "2026-10-07", "2026-10-11", "Porto"), stay("FAA Rentals", "2026-10-11", "2026-10-17", "Funchal")];
+    const undated = plannedItem({ kind: "car_rental", date: null, end_date: null, time: null, from: null, to: null, city: "Madeira", title: null, booked: false, note: null }, "t", "car", 1);
+    const { timeline } = build([...stays, undated]);
+    const madeira = timeline.sections.filter((x) => x.kind === "city")[1];
+    expect(madeira.kind === "city" && madeira.entries[0]).toMatchObject({ kind: "plan", items: [{ name: "Araç kiralama · Madeira" }] });
+    // Days known later: it moves to its day.
+    const dated = { ...undated, dates: { start: "2026-10-12", end: "2026-10-16", source: "unverified" as const } };
+    const later = build([...stays, dated]).timeline;
+    expect(later.entries.some((e) => e.kind === "plan")).toBe(false);
+    expect(later.entries.find((e) => e.kind === "day" && e.items.some((i) => i.id === "car"))?.date).toBe("2026-10-12");
   });
 });

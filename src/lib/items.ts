@@ -192,8 +192,9 @@ export function buildItem(
     concerns: x.concerns.slice(0, 3),
     reviewSummary: x.review_summary,
     missing: x.missing,
-    status: "saved",
-    statusNote: null,
+    // A booking confirmation (the page after paying, or its screenshot) is a booking, not an option.
+    status: x.booked ? "booked" : "saved",
+    statusNote: x.booked ? "Onay ekranından" : null,
     createdAt: now,
     updatedAt: now,
   };
@@ -291,6 +292,9 @@ export function mergeItem(existing: Item, incoming: Item, placeOnly = false): It
     concerns: incoming.concerns.length ? incoming.concerns : existing.concerns,
     reviewSummary: pick(incoming.reviewSummary, existing.reviewSummary),
     missing: incoming.missing,
+    // The traveller's decision stands, except that a booking confirmation books it.
+    status: incoming.status === "booked" ? "booked" : existing.status,
+    statusNote: incoming.status === "booked" ? incoming.statusNote : existing.statusNote,
     updatedAt: incoming.updatedAt,
   };
 }

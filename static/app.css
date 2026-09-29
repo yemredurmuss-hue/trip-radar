@@ -324,6 +324,7 @@ body.popup { width: 320px; }
 .leg-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .leg-title { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
 .leg-sub { font-size: 12.5px; color: var(--muted); }
+.leg-hint { color: #9a5b00; font-weight: 700; }
 .leg-chip { flex: none; font-size: 12px; font-weight: 700; border-radius: 6px; padding: 2px 8px; white-space: nowrap; }
 .leg-chip.st-empty { background: #fff3e0; color: var(--warning); }
 .leg-chip.st-options { background: var(--soft); color: #3a3a3c; }
@@ -447,6 +448,9 @@ body.popup { width: 320px; }
 .price-block.compact { width: auto; flex-direction: column; align-items: flex-end; gap: 0; }
 .price-block.compact .price-main b { font-size: 19px; }
 .sc-foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 8px; }
+.sc-actions { display: inline-flex; align-items: center; gap: 12px; }
+.link-btn.quiet { color: var(--muted); font-size: 13.5px; }
+.link-btn.quiet:hover { color: var(--danger); }
 .pill-btn { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 8px 18px; font-size: 14px; font-weight: 600; border: 0; white-space: nowrap; }
 .pill-btn.dark { background: var(--ink); color: #fff; padding: 8px 26px; }
 .pill-btn.dark:hover { background: #000; }
@@ -585,6 +589,8 @@ body.popup { width: 320px; }
 .settled-card.st-planned { box-shadow: 0 0 0 2px #f3c98a, 0 6px 20px rgba(40, 30, 20, .05); }
 .settled-card.st-open { box-shadow: none; border: 1.5px dashed #d6cfc4; background: rgba(255, 255, 255, .7); }
 .stay-open .empty-card { border: 0; background: none; }
+.empty-card.quiet { padding: 8px 12px; border-style: dashed; background: none; }
+.empty-card.quiet > span { flex-direction: row; font-size: 13.5px; }
 .tl-badge {
   position: absolute; right: -4px; bottom: -4px; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
   background: #1f8f4e; color: #fff; font-size: 11px; font-weight: 800; border: 2px solid #efebe4;
@@ -672,24 +678,29 @@ body.popup { width: 320px; }
 .flash { animation: flash 1.6s ease-out; border-radius: 22px; }
 @media (prefers-reduced-motion: reduce) { .flash { animation: none; outline: 3px solid var(--accent); } }
 
-/* ---------- where the decisions stand: the queue under the summary ---------- */
-.queue { display: flex; flex-direction: column; gap: 10px; margin: 0 0 18px; padding: 14px 16px; border-radius: 22px; background: var(--ink); color: #fff; }
-.queue-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; }
-.queue-top b { font-size: 16px; }
-.queue-progress { display: inline-flex; align-items: center; gap: 10px; font-size: 13.5px; color: #ddd6e3; font-variant-numeric: tabular-nums; }
-.queue-bar { display: block; width: 120px; height: 6px; border-radius: 3px; background: #5a4f63; overflow: hidden; }
-.queue-bar span { display: block; height: 100%; background: #7fd4a0; }
-.queue-chips, .queue-reminders { display: flex; flex-wrap: wrap; gap: 8px; }
-.qchip { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 14px; border: 0; border-radius: 14px; background: #3d3345; color: #fff; text-align: left; font-size: 14px; }
-.qchip small { color: #d3cadb; font-size: 12px; }
-.qchip.soon { background: #fff; color: var(--ink); }
-.qchip.soon small { color: var(--muted); }
-.qchip .due { color: var(--danger); font-weight: 700; }
-.qchip:hover, .qrem:hover { filter: brightness(1.12); }
-.qrem { border: 0; border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 600; text-align: left; }
-.qrem.red { background: #fcebea; color: #9c2a22; }
-.qrem.amber { background: #fff0d6; color: #7a4a00; }
-.qrem.more { background: #3d3345; color: #fff; }
+/* ---------- what's left to do: one slim line under the summary ---------- */
+.todo-wrap { margin: 0 0 16px; }
+.todo-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 16px; }
+.todo-wrap .todo-strip { margin: 0; }
+.todo-chip {
+  display: inline-flex; align-items: center; gap: 7px; padding: 6px 8px 6px 14px; border-radius: 999px;
+  border: 1px solid #e3ddd3; background: #fff; color: var(--ink); font-size: 14px; font-weight: 600; position: relative;
+}
+.todo-chip b { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: #f1ede6; font-size: 13px; text-align: center; font-variant-numeric: tabular-nums; }
+.todo-chip.k-book b { background: #fff0d6; color: #7a4a00; }
+.todo-chip.k-deadline b { background: #fcebea; color: #9c2a22; }
+.todo-chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.todo-chip.on b { background: rgba(255, 255, 255, .18); color: #fff; }
+.todo-soon { position: absolute; top: 2px; right: 2px; width: 8px; height: 8px; border-radius: 50%; background: #f0a53a; border: 1.5px solid #fff; }
+.todo-done { font-size: 14px; font-weight: 600; color: var(--success); }
+.todo-list { list-style: none; margin: 8px 0 0; padding: 4px; border-radius: 18px; background: #fff; border: 1px solid #ece7df; max-width: 640px; }
+.todo-list li + li { border-top: 1px solid #f1ede6; }
+.todo-list button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; border: 0; background: none; text-align: left; border-radius: 12px; color: var(--ink); }
+.todo-list button:hover { background: #f7f4ef; }
+.todo-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; font-size: 14px; }
+.todo-text .muted { font-size: 13px; }
+.todo-when { flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.todo-when.soon { color: #9a5b00; font-weight: 700; }
 
 /* ---------- money: booked, chosen, and a guess for what's open ---------- */
 .budget { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; max-width: 560px; }
@@ -708,3 +719,13 @@ body.popup { width: 320px; }
 .card-alert { padding: 7px 18px; font-size: 13.5px; font-weight: 600; }
 .card-alert.red { background: #fcebea; color: #9c2a22; }
 .card-alert.amber { background: #fff7e8; color: #7a4a00; border-top: 1px solid #f6e2bd; }
+
+/* ⓘ on a decided card: details; the card itself shows the other options. */
+.settled-card { position: relative; }
+.info-btn {
+  position: absolute; top: 44px; right: 12px; z-index: 2; display: grid; place-items: center; width: 26px; height: 26px;
+  border-radius: 50%; border: 1.5px solid #d6cfc4; background: #fff; color: var(--ink); font: italic 700 14px/1 Georgia, "Times New Roman", serif;
+}
+.info-btn[aria-expanded="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.move-card .info-btn { display: none; }
+.hidden-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; font-size: 14px; border-top: 1px solid var(--line, #ece7df); }

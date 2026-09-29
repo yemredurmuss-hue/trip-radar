@@ -88,7 +88,8 @@ describe("pros and cons per option", () => {
   it("puts what was read on the page next to how it compares, most important first", () => {
     const { casa, of } = scene();
     const pc = of(casa);
-    expect(pc.pros.map((p) => p.text)).toContain("En ucuz: €45 daha az");
+    // Price against the average of what was saved (€285 here): the cheapest says so.
+    expect(pc.pros.map((p) => p.text)).toContain("En ucuz: ortalamadan €45 ucuz");
     expect(pc.pros.map((p) => p.text)).toContain("Yanında çok iyi bir İtalyan restoranı");
     expect(pc.pros.find((p) => p.text === "Geniş, rahat yatak")?.detail).toBe("açıklamada");
     expect(pc.cons[0].text).toBe("Yan binada inşaat gürültüsü"); // a recent, repeated, serious complaint leads
@@ -107,7 +108,7 @@ describe("pros and cons per option", () => {
 
   it("shows the comparison lines for the others: price gap, no refunds, distance", () => {
     const { ribeira, jardim, of } = scene();
-    expect(of(ribeira).cons.map((c) => c.text)).toEqual(expect.arrayContaining(["En ucuzdan €90 pahalı", "İade yok"]));
+    expect(of(ribeira).cons.map((c) => c.text)).toEqual(expect.arrayContaining(["Ortalamadan €45 pahalı", "İade yok"]));
     expect(of(jardim).pros.map((p) => p.text)).toEqual(expect.arrayContaining(["5 Eki'ye kadar ücretsiz iptal"]));
     // Not read yet: nothing from its page, and no invented findings.
     expect(of(jardim).pros.every((p) => p.kind === "compare")).toBe(true);

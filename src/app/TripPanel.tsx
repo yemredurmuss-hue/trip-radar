@@ -25,11 +25,11 @@ import { cityKeyOf, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 
 import type { Capture, Category, Item, Trip } from "../lib/types";
-import { chooseItem } from "./actions";
+import { chooseItem, setHidden } from "./actions";
 import { CategoryIcon, Chevron, SummaryIcon } from "./Icons";
 import { IntentCard } from "./IntentCard";
-import { BudgetBarView, DecisionQueue } from "./Progress";
-import { LegRow } from "./LegRow";
+import { BudgetBarView, TodoStrip } from "./Progress";
+import { KIND_LABEL, LegRow } from "./LegRow";
 import { Carousel } from "./Carousel";
 import { SettledCard, SwipeCard } from "./SwipeCard";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor } from "./Timeline";
@@ -51,7 +51,8 @@ interface Props {
 const SUMMARIZED: Category[] = ["activity", "food", "other"];
 
 export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, menu }: Props) {
-  const range = trip.confirmedDates ?? tripDateRange(items);
+  // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
+  const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
   const cities = [...new Set(items.filter((i) => i.status !== "dismissed" && i.category === "stay" && i.city).map((i) => i.city!))];
   const subtitle = [range ? formatDateRange(range.start, range.end) : null, cities.length ? joinTr(cities) : null]
     .filter(Boolean)
@@ -66,7 +67,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const reading = listings
     ? new Set(items.filter((i) => needsReading(i, listings.get(listingKeyOf(i))) && !listings.get(listingKeyOf(i))?.error).map(listingKeyOf)).size
     : 0;
-  const timeline = useMemo(() => buildTimeline(plan, legs, items), [plan, legs, items]);
+  const hidden = useMemo(() => new Set(trip.hidden ?? []), [trip.hidden]);
+  const timeline = useMemo(() => buildTimeline(plan, legs, items, hidden), [plan, legs, items, hidden]);
+  const hiddenLegs = legs.filter((l) => l.kind !== "move" && hidden.has(`leg:${l.key}`));
   const decisionOf = (item: Item) => [...(decisions?.byGroup.values() ?? [])].find((d) => d.options.some((o) => o.item.id === item.id));
   /** One undecided option as a decision card: swipe through them, open one for the reasons. */
   const card: CardFor = (item, group, decision, roles, onCompareGroup) => (
@@ -139,7 +142,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           </div>
         </div>
       </header>
-      <DecisionQueue progress={decisionProgress(timeline, items, plan, decisions?.byGroup, decisions?.ctx.today ?? new Date().toISOString().slice(0, 10))} />
+      <TodoStrip progress={decisionProgress(timeline, items, plan, decisions?.byGroup, decisions?.ctx.today ?? new Date().toISOString().slice(0, 10))} />
 
       {failed.length > 0 && (
         <div className="errors">
@@ -185,6 +188,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       })}
 
       {plan.closed.length > 0 && <ClosedSection closed={plan.closed} onOpenItem={onOpenItem} />}
+
+      {hiddenLegs.length > 0 && <HiddenSection legs={hiddenLegs} tripId={trip.id} />}
 
       {dismissed.length > 0 && (
         <SummarySection
@@ -385,6 +390,42 @@ function Recommendation({
           Karşılaştır →
         </button>
       </span>
+    </div>
+  );
+}
+
+/** Transfers the traveller said aren't needed: out of the way, one tap from coming back. */
+function HiddenSection({ legs, tripId }: { legs: Leg[]; tripId: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="section">
+      <button className="row" onClick={() => setOpen(!open)} style={{ gridTemplateColumns: "72px 1fr 20px" }}>
+        <span className="thumb icon">
+          <CategoryIcon category="transport" />
+        </span>
+        <span>
+          <div className="row-name">Gizlenenler ({legs.length})</div>
+          <div className="row-label tone-muted">"Gerek yok" dediğin transferler; geri getirebilirsin</div>
+        </span>
+        <span className="chev" style={{ transform: open ? "rotate(90deg)" : undefined }}>
+          <Chevron />
+        </span>
+      </button>
+      {open &&
+        legs.map((l) => (
+          <div key={l.key} className="hidden-row">
+            <span>
+              <b>{KIND_LABEL[l.kind]}</b>
+              <span className="muted">
+                {" "}
+                · {formatDateRange(l.date, null)} · {l.from.label} → {l.to.label}
+              </span>
+            </span>
+            <button className="link-btn" onClick={() => void setHidden(tripId, `leg:${l.key}`, false, KIND_LABEL[l.kind])}>
+              Geri getir
+            </button>
+          </div>
+        ))}
     </div>
   );
 }

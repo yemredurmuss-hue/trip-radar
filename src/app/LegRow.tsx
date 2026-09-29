@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { legItem, legTiming, MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib/legs";
+import { legItem, legShortTitle, legTiming, MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib/legs";
 import type { Item, LegMode } from "../lib/types";
-import { updateTrip } from "./actions";
+import { setHidden, updateTrip } from "./actions";
 
 const ICONS: Record<LegMode, string> = {
   flight: "✈",
@@ -15,7 +15,7 @@ const ICONS: Record<LegMode, string> = {
   walk: "🚶",
 };
 
-const KIND_LABEL = { arrival: "Varış transferi", move: "Şehir değişimi", change: "Otel değişimi", departure: "Gidiş transferi" } as const;
+export const KIND_LABEL = { arrival: "Varış transferi", move: "Şehir değişimi", change: "Otel değişimi", departure: "Gidiş transferi" } as const;
 
 /**
  * One transfer between the stays: where from and to, when, and where it stands (open, planned by
@@ -37,19 +37,19 @@ export function LegRow({ leg, tripId, onOpenItem }: { leg: Leg; tripId: string; 
           {leg.mode ? ICONS[leg.mode] : "↓"}
         </span>
         <span className="leg-main">
-          <span className="leg-title">
-            {leg.from.label} → {leg.to.label}
+          <span className="leg-title">{legShortTitle(leg)}</span>
+          <span className="leg-sub">
+            {[timing, `${leg.from.label} → ${leg.to.label}`, settled?.name].filter(Boolean).join(" · ")}
+            {!open && leg.notes.length > 0 && (
+              <span className="leg-hint" title={leg.notes.join("\n")} aria-label={`${leg.notes.length} not`}>
+                {" "}
+                ⓘ
+              </span>
+            )}
           </span>
-          {(timing || settled) && <span className="leg-sub">{[timing, settled?.name].filter(Boolean).join(" · ")}</span>}
         </span>
         <span className={`leg-chip st-${leg.status}`}>{leg.statusText}</span>
       </button>
-      {!open && leg.notes.length > 0 && (
-        <p className="leg-note">
-          ⓘ {leg.notes[0]}
-          {leg.notes.length > 1 && <span className="muted"> (+{leg.notes.length - 1})</span>}
-        </p>
-      )}
       {open && (
         <div className="leg-body">
           {leg.notes.map((n) => (
@@ -91,6 +91,11 @@ export function LegRow({ leg, tripId, onOpenItem }: { leg: Leg; tripId: string; 
           <p className="muted small-note">
             Sohbette “metroyla gideceğim” ya da “transferi ayarladım” demen de yeter; seçenekleri birlikte konuşabiliriz.
           </p>
+          {leg.kind !== "move" && (
+            <button className="link-btn quiet" onClick={() => void setHidden(tripId, `leg:${leg.key}`, true, KIND_LABEL[leg.kind])}>
+              Gerek yok · gizle
+            </button>
+          )}
         </div>
       )}
     </div>

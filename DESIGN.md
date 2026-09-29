@@ -5,7 +5,7 @@ Bu panonun tek işi karar vermeyi kolaylaştırmak. Her yeni ekran ve bileşen b
 
 ## Önce karar
 
-- Bir bakışta üç şey görünür: **ne kaldı** (karar sırası), **ne öneriliyor** (tek satır öneri), **neden**
+- Bir bakışta üç şey görünür: **ne kaldı** (yapılacaklar şeridi: Karar ver / Rezerve et / Planla / ⏳), **ne öneriliyor** (tek satır öneri), **neden**
   (kartın solunda artılar, sağında eksiler). Gerisi bir dokunuş ötededir: kartın "Detaylar"ı, sonra
   "Tüm detaylar".
 - Aynı şey iki yerde söylenmez. Öneri tek satırdır; uzun gerekçe Karşılaştır'da durur.
@@ -27,11 +27,18 @@ Durum hiçbir yerde yalnız renkle anlatılmaz: yanında hep yazısı olur ("Bil
 ★ yalnız gezginin kendi önceliğine dokunan satırı işaretler (söylediği ya da ayarladığı); varsayılanlar
 yıldız almaz.
 
+## Azaltmak
+
+- Hiçbir şey silinmez, önden kalkar: **Ele** (Elenenler), **Gerek yok** (Gizlenenler / Geri al). Sayılar ve
+  yapılacaklar yalnız öndekini sayar.
+- Seçili karta dokunmak diğer seçenekleri açar; ayrıntı ⓘ'dadır.
+
 ## Butonlar
 
 - **Ana eylem** (Seç, Rezerve ettim): koyu dolgu (`--ink`), beyaz yazı, yuvarlak. Bir alanda en fazla bir tane.
 - **İkincil** (Geri al, Değiştir, Yine de seç): beyaz, ince çerçeve.
 - **Link** (Karşılaştır →, Detaylar ▾, Tüm detaylar): mavi yazı, çerçevesiz.
+- **Sessiz** (Ele, Gerek yok): gri yazı, üstüne gelince kırmızı; ana butonun yanında küçük durur.
 
 ## Yazı
 
@@ -46,6 +53,7 @@ büyük harfle etiket yazılmaz (İ/i sorun çıkarır); etiketler küçük ve g
 
 ## Dil
 
-- Kısa ve şehirlerle: "Porto → Madeira", "3 karar kaldı", "Ücretsiz iptal için 6 gün kaldı".
+- Kısa ve şehirlerle: "Porto → Madeira", "Karar ver 3", "Ücretsiz iptal için 6 gün kaldı".
+- Özet satırı bilet gibi: ne → ne ("Havalimanı → Otel"), adlar ve saat alt satırda, notlar açınca.
 - Artı/eksi birkaç kelimedir; sayfada okunan somut şey kendi sözleriyle yazar ("Karşısında genelev var").
 - Uydurma yok: fiyat, saat, süre yalnız kayıttan ya da hesaptan gelir.

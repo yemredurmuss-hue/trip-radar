@@ -64,7 +64,8 @@ Nasıl konuşursun:
 - Sezilen bir tercihi (intent.inferred) uygun bir anda doğal biçimde teyit edebilirsin; ısrar etme.
 - Kullanıcı bir karar verdiğinde (seçtim, ele, rezerve ettim) update_items; bütçe ya da tarih söylediğinde update_trip. Seçeneklerin durumunu yalnız kullanıcının son mesajı bunu istiyorsa değiştir; eski bir konuşmaya dayanarak değiştirme.
 - Boş geceler varsa uygun bir anda bir kez hatırlat.
-- Planlar: kullanıcı bir planını söylediğinde, linki olmasa da (ör. "7 Ekim'de İstanbul'dan Porto'ya uçuyoruz", "11 Ekim'de Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız", "10-17 Ekim Funchal'da kalacağız", "9 Ekim akşamı fado") plan_item ile hemen panoya ekle; tarih ve nereden/nereye ya da şehir ver. "gideriz/düşünüyoruz" → planlanıyor (booked false); "aldım/rezerve ettim" → booked true. Aynı şey items'ta zaten varsa plan_item yerine update_items kullan. Şehir değişimi için ulaşım söylenirse (Madeira'ya uçakla) kind flight ile ekle; şehir içi transferler (metro, taksi) için set_leg kullan.
+- Planlar: kullanıcı bir planını söylediğinde, linki olmasa da (ör. "7 Ekim'de İstanbul'dan Porto'ya uçuyoruz", "11 Ekim'de Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız", "10-17 Ekim Funchal'da kalacağız", "9 Ekim akşamı fado") plan_item ile hemen panoya ekle; tarih ve nereden/nereye ya da şehir ver. Gün belli değilse beklemeden date null ile ekle (şehrin bloğunda "gün belli değil" diye durur); gün plandan açıksa (ör. Madeira'ya varış günü) o tarihi kullan; gün sonra söylenince aynı şeyi plan_item ile tarihle tekrar ver, kart o güne geçer. "gideriz/düşünüyoruz" → planlanıyor (booked false); "aldım/rezerve ettim" → booked true. Aynı şey items'ta zaten varsa plan_item yerine update_items kullan. Şehir değişimi için ulaşım söylenirse (Madeira'ya uçakla) kind flight ile ekle; şehir içi transferler (metro, taksi) için set_leg kullan.
+- Gerek olmayanı sil: "transfere gerek yok", "orayı arabayla hallederiz, transfer yok" → set_leg mode "none" (transfer gizlenir, geri getirilebilir). "X'i ele / istemiyorum" → update_items status dismissed (Elenenler'de durur, silinmez).
 - Soruların kısa ve sade olsun, şehirlerle sor: "Porto → Madeira nasıl geçeceksiniz?" gibi; otel adlarıyla, uzun ya da karışık cümle kurma.
 - Transferler: kullanıcı nasıl gideceğini söylediğinde ("metroyla gideceğim", "trenle geçeriz", "transferi ayarladım", "otel servisiyle") set_leg ile ilgili transferi işaretle (tarih ve şehirden hangisi olduğunu bul); booked yalnız "ayarladım/aldım/rezerve ettim" derse true. Plan konuşurken boş (empty) bir transferi uygun anda, bir seferde bir tane, sor; notes'taki ince detayı ilgili olduğunda söyle. Nasıl gidilebileceğini genel bilginle önerebilirsin ("genelde havalimanından metro var") ama fiyat ya da sefer saati uydurma.
 - Kullanıcı bir seçeneğin trip_state'te olmayan bir detayını sorarsa (TV, havuz, check-in saati, otopark...) search_page ile kayıtlı sayfasında ara. Bulduğunu alıntıyla söyle; bulamazsan "kaydettiğin sayfada göremedim" de, tahmin etme.
@@ -195,12 +196,12 @@ export const TOOLS: ToolSpec[] = [
   {
     name: "plan_item",
     description:
-      "Kullanıcının sohbette söylediği bir planı (linki olmasa da) panoya ekler: uçuş, tren, otobüs, feribot, transfer, araç kiralama, konaklama, etkinlik. Kendi gününde ve şehrinde görünür; booked false ise 'planlanıyor' yazar. Aynı gün aynı plan tekrar söylenirse günceller.",
+      "Kullanıcının sohbette söylediği bir planı (linki, tarihi olmasa da) hemen panoya ekler: uçuş, tren, otobüs, feribot, transfer, araç kiralama, konaklama, etkinlik. Tarihliyse kendi gününde, tarihsizse şehrinin bloğunda görünür; booked false ise 'planlanıyor' yazar. Aynı plan tekrar söylenirse (tarih sonradan gelse de) onu günceller.",
     schema: {
       type: "object",
       properties: {
         kind: { type: "string", enum: [...PLANNED_KINDS] },
-        date: { type: "string", description: "YYYY-MM-DD (uçuş/tren: gidiş günü; konaklama/kiralama: başlangıç)" },
+        date: { ...nullable({ type: "string" }), description: "YYYY-MM-DD (uçuş/tren: gidiş günü; konaklama/kiralama: başlangıç). Söylenmediyse ve plandan da belli değilse null: plan şehrin bloğunda durur." },
         end_date: { ...nullable({ type: "string" }), description: "YYYY-MM-DD; konaklama çıkışı ya da kiralama bitişi" },
         time: { ...nullable({ type: "string" }), description: "HH:MM, söylendiyse" },
         from: { ...nullable({ type: "string" }), description: "Nereden (şehir ya da havalimanı kodu)" },
@@ -217,12 +218,12 @@ export const TOOLS: ToolSpec[] = [
   {
     name: "set_leg",
     description:
-      "Bir transferi (plan.legs) kullanıcının söylediğine göre işaretler. mode: nasıl gidecek ('metroyla gideceğim' → metro; 'unknown' planı siler); booked: ayarladı/aldı/rezerve etti mi; note: kısa not ('otel servisi 10:30'). Değiştirmediğin alanı null bırak.",
+      "Bir transferi (plan.legs) kullanıcının söylediğine göre işaretler. mode: nasıl gidecek ('metroyla gideceğim' → metro; 'unknown' planı siler; 'none' → 'transfere gerek yok' dediyse transferi panodan gizler, şehir değişiminde kullanılmaz); booked: ayarladı/aldı/rezerve etti mi; note: kısa not ('otel servisi 10:30'). Değiştirmediğin alanı null bırak.",
     schema: {
       type: "object",
       properties: {
         leg_key: { type: "string" },
-        mode: nullable({ type: "string", enum: [...LEG_MODES, "unknown"] }),
+        mode: nullable({ type: "string", enum: [...LEG_MODES, "unknown", "none"] }),
         booked: nullable({ type: "boolean" }),
         note: nullable({ type: "string" }),
       },
@@ -338,6 +339,7 @@ function legsState(plan: Plan, trip: Trip, listings?: Map<string, Listing>) {
     options: l.options.map((i) => i.id),
     notes: l.notes,
     note: l.choice?.note ?? null,
+    hidden: trip.hidden?.includes(`leg:${l.key}`) ?? false,
   }));
 }
 
@@ -585,14 +587,24 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       if (!legs.some((l) => l.key === input.leg_key)) {
         throw new ToolError(`Bu anahtarla transfer yok: ${input.leg_key}. Olanlar: ${legs.map((l) => l.key).join(", ")}`);
       }
-      const mode = input.mode as LegMode | "unknown" | null;
+      const mode = input.mode as LegMode | "unknown" | "none" | null;
+      const leg = legs.find((l) => l.key === input.leg_key)!;
+      const hiddenKey = `leg:${leg.key}`;
+      if (mode === "none") {
+        if (leg.kind === "move") throw new ToolError("Şehir değişimi gizlenemez; nasıl geçileceğini mode ile söyle.");
+        const hidden = [...(trip.hidden ?? []).filter((k) => k !== hiddenKey), hiddenKey];
+        await d.put("trips", { ...trip, hidden, updatedAt: Date.now() });
+        return JSON.stringify({ hidden: leg.key, note: "Panodan gizlendi; 'Gizlenenler'den geri getirilebilir." });
+      }
       if (mode != null && mode !== "unknown" && !(LEG_MODES as readonly string[]).includes(mode)) throw new ToolError(`Geçersiz ulaşım: ${mode}`);
       const patch = {
         ...(mode != null ? { mode: mode === "unknown" ? null : mode } : {}),
         ...(typeof input.booked === "boolean" ? { booked: input.booked } : {}),
         ...(typeof input.note === "string" ? { note: input.note.trim().slice(0, 200) || null } : {}),
       };
-      const updated = withLegChoice(trip, input.leg_key, patch);
+      // Saying how they'll go brings a hidden transfer back.
+      const shown = mode != null && trip.hidden?.includes(hiddenKey) ? { ...trip, hidden: trip.hidden.filter((k) => k !== hiddenKey) } : trip;
+      const updated = withLegChoice(shown, input.leg_key, patch);
       await d.put("trips", { ...updated, updatedAt: Date.now() });
       return JSON.stringify(legsState(buildPlan(updated, items), updated, listings).find((l) => l.key === input.leg_key));
     }

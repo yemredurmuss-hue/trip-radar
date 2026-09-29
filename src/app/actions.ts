@@ -53,3 +53,13 @@ export async function removeItem(item: Item): Promise<void> {
   await addEvent(item.tripId, `${item.name} plandan kaldırıldı`);
   notifyChanged();
 }
+
+/** "Gerek yok": a transfer or nights the traveller doesn't need leave the board (and the to-dos); "Geri getir" undoes it. */
+export async function setHidden(tripId: string, key: string, hide: boolean, label: string): Promise<void> {
+  await updateTrip(tripId, (t) => {
+    const rest = (t.hidden ?? []).filter((k) => k !== key);
+    return { ...t, hidden: hide ? [...rest, key] : rest };
+  });
+  await addEvent(tripId, hide ? `${label}: gerek yok denildi, gizlendi` : `${label} geri getirildi`);
+  notifyChanged();
+}

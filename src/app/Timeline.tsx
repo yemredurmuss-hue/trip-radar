@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from "react";
 import type { GroupDecision } from "../lib/decision";
 import { formatDateRange } from "../lib/items";
-import { MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib/legs";
+import { isRental, MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib/legs";
 import type { OptionGroup, Plan, StayBlock } from "../lib/plan";
 import { entryDomId } from "../lib/progress";
-import { flightSearchUrl, type Timeline, type TimelineEntry, type TimelineSection } from "../lib/timeline";
+import { flightSearchUrl, nightsKey, type Timeline, type TimelineEntry, type TimelineSection } from "../lib/timeline";
 import type { Category, Item, LegMode } from "../lib/types";
-import { updateTrip } from "./actions";
+import { setHidden, updateTrip } from "./actions";
 import { Carousel } from "./Carousel";
 import { CategoryIcon } from "./Icons";
 import { StatusBar, type Standing } from "./Status";
@@ -176,6 +176,10 @@ function Label({ entry }: { entry: TimelineEntry }) {
       title = entry.title;
       lines = [`${fmt(entry.date)} ${weekday(entry.date)}`];
       break;
+    case "plan":
+      title = entry.items.every(isRental) ? "Araç kiralama" : "Planlar";
+      lines = ["gün belli değil"];
+      break;
   }
   return (
     <div className="tl-label">
@@ -191,6 +195,8 @@ function iconOf(entry: TimelineEntry): Category {
   switch (entry.kind) {
     case "stay":
       return "stay";
+    case "plan":
+      return entry.items.every(isRental) ? "transport" : "activity";
     case "travel": {
       const mode = entry.travel?.mode ?? entry.leg?.mode;
       return mode && mode !== "flight" ? "transport" : entry.role === "move" && !mode ? "transport" : "flight";
@@ -205,7 +211,7 @@ function Entry({ entry, tripId, leg, renderGroup, card, settled }: { entry: Time
     case "leg":
       return <>{leg(entry.leg)}</>;
     case "stay":
-      return <Block block={entry.block} renderGroup={renderGroup} settled={settled} />;
+      return <Block block={entry.block} skipped={Boolean(entry.skipped)} tripId={tripId} renderGroup={renderGroup} settled={settled} />;
     case "travel":
       if (entry.travel) {
         return (
@@ -235,6 +241,8 @@ function Entry({ entry, tripId, leg, renderGroup, card, settled }: { entry: Time
       );
     case "day":
       return <DayCard entry={entry} leg={leg} card={card} settled={settled} />;
+    case "plan":
+      return <DayCard entry={{ ...entry, legs: [], title: "Planlar" }} leg={leg} card={card} settled={settled} />;
   }
 }
 
@@ -245,7 +253,7 @@ function DayCard({
   card,
   settled,
 }: {
-  entry: Extract<TimelineEntry, { kind: "day" }>;
+  entry: { title: string; items: Item[]; legs: Leg[] };
   leg: (l: Leg) => ReactNode;
   card: CardFor;
   settled: SettledFor;
@@ -354,8 +362,24 @@ function MoveCard({ leg, tripId }: { leg: Leg; tripId: string }) {
 
 const blockState = (block: StayBlock) => (block.kind === "open" && !block.groups.length ? "empty" : block.kind);
 
-function Block({ block, renderGroup, settled }: { block: StayBlock; renderGroup: RenderGroup; settled: SettledFor }) {
+function Block({ block, skipped, tripId, renderGroup, settled }: { block: StayBlock; skipped: boolean; tripId: string; renderGroup: RenderGroup; settled: SettledFor }) {
   const state = blockState(block);
+  const label = `${block.city ?? "Konaklama"} ${formatDateRange(block.range.start, block.range.end)}`;
+  // "Gerek yok" (a night bus, friends' place): the nights stay on the line, quietly, and leave the to-dos.
+  if (skipped && state === "empty") {
+    return (
+      <div className="stay-block skipped" id={`block-${block.range.start}`}>
+        <div className="empty-card quiet">
+          <span className="muted">
+            {formatDateRange(block.range.start, block.range.end)} · {block.nights} gece · konaklama gerekmiyor
+          </span>
+          <button className="link-btn" onClick={() => void setHidden(tripId, nightsKey(block.range), false, label)}>
+            Geri al
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className={`stay-block ${state}`} id={`block-${block.range.start}`}>
       {block.kind === "booked" && settled(block.item)}
@@ -374,9 +398,14 @@ function Block({ block, renderGroup, settled }: { block: StayBlock; renderGroup:
                 {formatDateRange(block.range.start, block.range.end)} · {block.nights} gece
               </span>
             </span>
-            <a className="pill-btn outline" href={block.searchUrl} target="_blank" rel="noreferrer">
-              Booking'de ara ↗
-            </a>
+            <span className="sc-actions">
+              <button className="link-btn quiet" onClick={() => void setHidden(tripId, nightsKey(block.range), true, label)} title="Bu geceler için yer gerekmiyor">
+                Gerek yok
+              </button>
+              <a className="pill-btn outline" href={block.searchUrl} target="_blank" rel="noreferrer">
+                Booking'de ara ↗
+              </a>
+            </span>
           </div>
         </div>
       )}

@@ -7,12 +7,12 @@ import { planState, tripState } from "../src/lib/assistant";
 import { cardFacts, whyLines } from "../src/lib/cardFacts";
 import { decideTrip, makeContext } from "../src/lib/decision";
 import { EMPTY_METRICS, nightsBetween } from "../src/lib/items";
-import { buildLegs } from "../src/lib/legs";
+import { buildLegs, type Leg } from "../src/lib/legs";
 import { buildPlan, liveGroups } from "../src/lib/plan";
 import { plannedItem, type PlannedKind } from "../src/lib/planned";
 import { budgetBar, decisionProgress } from "../src/lib/progress";
 import { prosConsFor } from "../src/lib/proscons";
-import { buildTimeline } from "../src/lib/timeline";
+import { buildTimeline, nightsKey } from "../src/lib/timeline";
 import { rolesOf, valueCard, budgetState } from "../src/lib/value";
 import type { Item, ItemStatus, LegChoice, Trip } from "../src/lib/types";
 
@@ -179,15 +179,18 @@ function scenario(seed: number) {
 }
 
 /** Every place an item can show on the board, and how many times it does. */
-function shown(items: Item[], plan: ReturnType<typeof buildPlan>, timeline: ReturnType<typeof buildTimeline>) {
+function shown(items: Item[], plan: ReturnType<typeof buildPlan>, timeline: ReturnType<typeof buildTimeline>, hiddenLegs: Leg[] = []) {
   const seen = new Map<string, string[]>();
   const add = (i: Item, where: string) => seen.set(i.id, [...(seen.get(i.id) ?? []), where]);
+  // A hidden transfer's options wait with it under "Gizlenenler".
+  hiddenLegs.forEach((l) => l.options.forEach((i) => add(i, "hidden")));
   if (timeline.entries.length) {
     for (const e of timeline.entries) {
       if (e.kind === "stay") {
         if (e.block.kind === "booked") [e.block.item, ...(e.block.clashes ?? [])].forEach((i) => add(i, "stay-booked"));
         else for (const g of e.block.groups) g.items.forEach((i) => add(i, `stay:${g.key}`));
       } else if (e.kind === "travel") e.travel?.items.forEach((i) => add(i, `travel:${e.role}`));
+      else if (e.kind === "plan") e.items.forEach((i) => add(i, "plan"));
       else if (e.kind === "day") {
         e.items.forEach((i) => add(i, "day"));
         e.legs.forEach((l) => l.options.forEach((i) => add(i, "leg")));
@@ -225,7 +228,17 @@ describe("any trip", () => {
           );
         }
         const legs = buildLegs(plan, trip);
-        const timeline = buildTimeline(plan, legs, items);
+        // Some transfers and empty nights said not needed ("Gerek yok").
+        const hr = rng(seed * 104729);
+        const hidden = new Set([
+          ...legs.filter(() => hr() < 0.2).map((l) => `leg:${l.key}`),
+          ...plan.stayBlocks.filter((b) => b.kind === "open" && hr() < 0.3).map((b) => nightsKey(b.range)),
+        ]);
+        const timeline = buildTimeline(plan, legs, items, hidden);
+        const hiddenLegs = legs.filter((l) => l.kind !== "move" && hidden.has(`leg:${l.key}`));
+        const onLine = new Set(timeline.entries.flatMap((e) => (e.kind === "leg" ? [e.leg.key] : e.kind === "day" ? e.legs.map((l) => l.key) : e.kind === "travel" && e.leg ? [e.leg.key] : [])));
+        for (const l of hiddenLegs) if (onLine.has(l.key)) note(seed, `hidden transfer ${l.key} still on the line`);
+        for (const l of legs.filter((l) => l.kind === "move")) if (!onLine.has(l.key)) note(seed, `move ${l.key} missing from the line`);
 
         // Nights add up and the stretches cover the trip without gaps.
         const n = plan.nights;
@@ -235,7 +248,7 @@ describe("any trip", () => {
         }
 
         // Every saved item shows once (a chosen stay's group card is its one place); dismissed ones don't.
-        const seen = shown(items, plan, timeline);
+        const seen = shown(items, plan, timeline, hiddenLegs);
         for (const i of items) {
           const where = seen.get(i.id) ?? [];
           if (i.status === "dismissed") {
@@ -298,8 +311,15 @@ describe("any trip", () => {
 
         // Where the decisions stand and what it costs: counts add up, no NaN, each open one has a place to go.
         const progress = decisionProgress(timeline, items, plan, decisions, "2026-09-29");
-        if (progress.made + progress.open.length !== progress.total) note(seed, `progress ${progress.made} + ${progress.open.length} ≠ ${progress.total}`);
-        for (const o of progress.open) if (!timeline.entries.some((e) => e.key === o.target)) note(seed, `queue target ${o.target} not on the line`);
+        const kinds = Object.values(progress.count).reduce((a, b) => a + b, 0);
+        if (kinds !== progress.todos.length) note(seed, `todo counts ${kinds} ≠ ${progress.todos.length}`);
+        if (new Set(progress.todos.map((t) => t.key)).size !== progress.todos.length) note(seed, "todo keys repeat");
+        const legKeys = new Set(timeline.entries.flatMap((e) => (e.kind === "leg" ? [e.leg.key] : e.kind === "day" ? e.legs.map((l) => l.key) : [])));
+        for (const t of progress.todos) {
+          const { item, leg, entry } = t.target;
+          const found = (item && items.some((i) => i.id === item)) || (leg && legKeys.has(leg)) || (entry && timeline.entries.some((e) => e.key === entry));
+          if (!found || (entry && !timeline.entries.some((e) => e.key === entry))) note(seed, `todo ${t.key} points nowhere`);
+        }
         if (/NaN|undefined|Infinity/.test(JSON.stringify(progress))) note(seed, "progress has NaN");
         const money = budgetBar(plan, items, ctx, decisions);
         if ([money.booked, money.chosen, money.open].some((n) => !Number.isFinite(n) || n < 0)) note(seed, `budget ${JSON.stringify(money)}`);

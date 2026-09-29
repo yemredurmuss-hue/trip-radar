@@ -95,11 +95,34 @@ ve gecelik). Durumu kartın üstünde renkli bir şerittir: yeşil **✓ Bilet a
 Altta **Rezerve ettim / Bileti aldım** (yanlışlıkla basıldıysa **Geri al**) ve **⇄ Değiştir** (kartlar geri gelir).
 Seçilen kartta artı/eksi yoktur; karşılaştırma seçim yapılana kadar kartlardadır. Karta dokununca ayrıntılar açılır.
 
-**Karar sırası** özetin hemen altındadır: "3 karar kaldı · 2/5 karar verildi". Açık kararlar tarih sırasıyla
-(yakın olanlarda "9 gün kaldı"), her biri öndeki seçenekle; tıklayınca o karara gider ve kart bir an parlar.
-Altında rezervasyon tarafı: bitmek üzere olan ücretsiz iptaller (kırmızı) ve seçilip rezerve edilmeyenler
-(amber). Özetteki **bütçe çubuğu** rezerve, seçilen ve açık kararların öndeki seçeneğiyle tahmini toplamı
-bütçeyle karşılaştırır ("€1.019 / €1.500 · €481 kalıyor").
+**Yapılacaklar şeridi** özetin hemen altında tek satırdır: **Karar ver 3 · Rezerve et 1 · Planla 4 · ⏳ İptal süresi 2**.
+Karar ver: seçenekleri olup seçilmemiş şeyler. Rezerve et: seçilen ya da sohbette planlanan ama rezerve edilmeyen
+her şey (günü belli olmasa da). Planla: hiç seçeneği olmayanlar (boş geceler, uçuşu olmayan gidiş/dönüş, nasıl
+geçileceği söylenmemiş şehir değişimi, boş transferler). ⏳: 14 gün içinde biten ücretsiz iptaller. Çipe dokununca
+kısa liste açılır (iki hafta içindekiler işaretli); bir satıra dokununca pano oraya gider ve kart bir an parlar.
+"Gerek yok" denen transfer ve geceler şeritte sayılmaz. Özetteki **bütçe çubuğu** rezerve, seçilen ve açık
+kararların öndeki seçeneğiyle tahmini toplamı bütçeyle karşılaştırır ("€1.019 / €1.500 · €481 kalıyor").
+
+**Ele ve gerek yok.** Her seçenek kartında **Ele** vardır: kart seçeneklerden çıkar, **Elenenler**de durur (silinmez,
+**Geri al**). İstenmeyen bir transferde (açınca) **Gerek yok · gizle**, yer gerekmeyen boş gecelerde **Gerek yok**:
+panodan ve yapılacaklardan kalkar; transferler **Gizlenenler**den, geceler yerindeki **Geri al**la döner. Sohbette
+"transfere gerek yok" ya da "X'i ele" demek de aynısını yapar. Şehir değişimi gizlenmez.
+
+**Transferler bilet gibi sade.** "Havalimanı → Otel" (alt satırda saat ve adlar: "Varış 10:05 · OPO havalimanı →
+Jardim Stay"), sağda durumu ("Metro · planlandı"). Dikkat notları küçük bir ⓘ ile işaretlidir, satıra dokununca
+açılır.
+
+**Fiyat neye göre?** Karttaki "pahalı/ucuz", o ihtiyaç için kaydettiğin seçeneklerin ortalamasına göredir
+("Ortalamadan €40 pahalı", en ucuzsa "En ucuz: ortalamadan €30 ucuz"); iki seçenekte doğrudan diğerine göre
+("Diğerinden €45 ucuz"). Önerideki fark adıyla söylenir ("Ribeira Rooms karşısında").
+
+**Seçili karta dokununca diğer seçenekler** açılır (Apple'daki gibi: dokun = değiştir); ayrıntılar kartın
+köşesindeki **ⓘ** ile açılır.
+
+**Sohbet panoyu hemen şekillendirir.** "Madeira'da araba kiralayacağım" denince Madeira bloğunda "Araç kiralama ·
+gün belli değil" kartı hemen açılır; günü söyleyince ya da bir kiralama sayfası kaydedince o güne geçer.
+Rezervasyon onayının ekran görüntüsünü atınca kayıt rezerve olur ve plan onun tarihlerine göre yeniden kurulur
+(4+3 gece iki yer ya da plandan farklı 7 gece tek yer).
 
 **Seçenekler yan yana.** Karşılaştırılan bir ihtiyaç satırın tamamını kullanır: seçenekler kaydırılmadan yan
 yana (üçten fazlası "+N seçenek daha" arkasında), üstünde tek satır öneri: "Önerim Jardim Stay: Ribeira Rooms

@@ -4,7 +4,7 @@ import type { Extraction } from "./extract";
 import { describeError, getProvider } from "./llm";
 import { valueOnPage } from "./evidence";
 import { geocode } from "./geo";
-import { buildItem, CATEGORY_LABELS, corpusOf, findDuplicate, isoDate, mergeItem } from "./items";
+import { buildItem, CATEGORY_LABELS, corpusOf, findDuplicate, formatDateRange, isoDate, mergeItem } from "./items";
 import { chooseTrip, isDemoTrip, profileTrips, uniqueTitle } from "./trips";
 import type { PageSnapshot } from "./pagecapture";
 import type { Capture, Geo, Item, Trip } from "./types";
@@ -89,7 +89,15 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
     await d.put("items", await withGeo(item, deps.geocode ?? geocode));
 
     const where = [CATEGORY_LABELS[item.category], item.city].filter(Boolean).join(" · ");
-    await addEvent(item.tripId, duplicate ? `↻ ${item.name} güncellendi` : `✓ ${item.name} kaydedildi → ${where}`);
+    const dates = item.dates.start ? ` · ${formatDateRange(item.dates.start, item.dates.end)}` : "";
+    await addEvent(
+      item.tripId,
+      incoming.status === "booked"
+        ? `✓ ${item.name} rezerve edildi${dates} (onaydan); plan buna göre güncellendi`
+        : duplicate
+          ? `↻ ${item.name} güncellendi`
+          : `✓ ${item.name} kaydedildi → ${where}`,
+    );
     await d.put("trips", { ...trip, heroImage: trip.heroImage ?? item.imageUrl, updatedAt: Date.now() });
     await d.put("captures", { ...capture, status: "done", error: null, itemId: item.id });
   } catch (error) {

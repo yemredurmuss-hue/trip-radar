@@ -1,39 +1,35 @@
-// Where the trip's decisions stand, for the strip under the trip's summary: what's still open (in date
-// order, the near ones marked), how many are made, what's chosen but not booked, and which free
-// cancellations run out soon. Also the money: booked, chosen and a guess for what's still open. Pure.
+// What's left to do on the trip, for the slim strip under its summary: what to decide (options
+// waiting), what to book (chosen or planned, not booked), what to plan (nothing saved yet: nights,
+// a flight, a transfer) and the free cancellations running out. Each points at its place on the
+// board. Also the money: booked, chosen and a guess for what's still open. Pure.
 import { totalPrice, type DecisionContext, type GroupDecision } from "./decision";
 import { formatDateRange, nightsBetween } from "./items";
+import { BOOKABLE, MODE_LABELS, type Leg } from "./legs";
 import { departureDay, liveGroups, type Plan } from "./plan";
 import type { Timeline, TimelineEntry } from "./timeline";
 import { isTrip } from "./travelKinds";
 import type { Item } from "./types";
 
-export interface OpenDecision {
+export type TodoKind = "decide" | "book" | "plan" | "deadline";
+
+export interface Todo {
   key: string;
-  /** The timeline entry to scroll to (its key). */
-  target: string;
+  kind: TodoKind;
+  /** Where it is on the board: the card of an item, a transfer, or a timeline entry (tried in that order). */
+  target: { item?: string; leg?: string; entry?: string };
   title: string;
-  date: string;
-  /** "3 seçenek · Jardim Stay önde", "seçenek yok", "nasıl geçeceksin?". */
+  /** "3 seçenek · Jardim Stay önde", "seçenek yok", "bilet alınmadı". */
   note: string;
-  /** Days until it (negative once it's past). */
-  days: number;
+  date: string | null;
+  /** Days until it (for a deadline, until it runs out); null without a date. */
+  days: number | null;
   /** Within two weeks. */
   soon: boolean;
 }
 
-export interface Reminder {
-  key: string;
-  itemId: string;
-  text: string;
-  tone: "red" | "amber";
-}
-
 export interface DecisionProgress {
-  made: number;
-  total: number;
-  open: OpenDecision[];
-  reminders: Reminder[];
+  todos: Todo[];
+  count: Record<TodoKind, number>;
 }
 
 const SOON_DAYS = 14;
@@ -51,44 +47,63 @@ function winnerOf(keys: string[], decisions: Map<string, GroupDecision> | undefi
   return null;
 }
 
-/** One entry of the timeline as a decision: made or not, and how to name it when it's not. */
-function asDecision(e: TimelineEntry, decisions: Map<string, GroupDecision> | undefined): { made: boolean; open?: Omit<OpenDecision, "soon" | "days"> } | null {
-  const options = (n: number, lead: string | null) => `${n} seçenek${lead ? ` · ${lead} önde` : ""}`;
+const options = (n: number, lead: string | null) => (n === 1 ? "1 seçenek · seç ya da başka ekle" : `${n} seçenek${lead ? ` · ${lead} önde` : ""}`);
+const LEG_WORDS = { arrival: "Varış transferi", departure: "Ayrılış transferi", change: "Otel değişimi", move: "Şehir değişimi" } as const;
+
+type Draft = Omit<Todo, "days" | "soon">;
+
+/** What an entry of the timeline still needs, if anything. */
+function entryTodo(e: TimelineEntry, decisions: Map<string, GroupDecision> | undefined): Draft | null {
   if (e.kind === "stay") {
     const b = e.block;
-    if (b.kind !== "open") return { made: true };
+    if (b.kind !== "open" || e.skipped) return null;
     const count = new Set(b.groups.flatMap((g) => g.items.map((i) => i.id))).size;
-    return {
-      made: false,
-      open: {
-        key: e.key,
-        target: e.key,
-        title: `${b.city ?? "Konaklama"} konaklama · ${formatDateRange(b.range.start, b.range.end)}`,
-        date: b.range.start,
-        note: count ? options(count, winnerOf(b.groups.map((g) => g.key), decisions)) : "seçenek yok",
-      },
-    };
+    const title = `${b.city ? `${b.city} konaklama` : "Konaklama"} · ${formatDateRange(b.range.start, b.range.end)}`;
+    return count
+      ? { key: e.key, kind: "decide", target: { entry: e.key }, title, note: options(count, winnerOf(b.groups.map((g) => g.key), decisions)), date: b.range.start }
+      : { key: e.key, kind: "plan", target: { entry: e.key }, title, note: "seçenek yok · ara ya da sohbette söyle", date: b.range.start };
   }
   if (e.kind !== "travel") return null;
   const t = e.travel;
-  if (t?.settled || (e.role === "move" && e.leg?.choice?.mode)) return { made: true };
-  if (e.role === "other" && !t) return null;
-  const count = t?.items.length ?? 0;
+  // Chosen or booked: the booking side is the item's own to-do.
+  if (t?.settled) return null;
   const title =
-    e.role === "arrival"
-      ? `Varış · ${fmt(e.date)}`
-      : e.role === "departure"
-        ? `Dönüş · ${fmt(e.date)}`
-        : `${e.subtitle ?? "Ulaşım"} · ${fmt(e.date)}`;
-  const note =
-    count === 1
-      ? `kayıtlı: ${t!.items[0].name}`
-      : count
-        ? options(count, winnerOf(t ? [t.group.key] : [], decisions))
-        : e.role === "move"
-          ? "nasıl geçeceksin?"
-          : "kayıtlı uçuş yok";
-  return { made: false, open: { key: e.key, target: e.key, title, date: e.date, note } };
+    e.role === "arrival" ? `Gidiş uçuşu · ${fmt(e.date)}` : e.role === "departure" ? `Dönüş uçuşu · ${fmt(e.date)}` : `${e.subtitle ?? "Ulaşım"} · ${fmt(e.date)}`;
+  if (t?.items.length) {
+    return { key: e.key, kind: "decide", target: { entry: e.key }, title, note: options(t.items.length, winnerOf([t.group.key], decisions)), date: e.date };
+  }
+  if (e.role === "move") {
+    const leg = e.leg;
+    const mode = leg?.choice?.mode ?? null;
+    if (leg?.choice?.booked) return null;
+    if (mode) {
+      if (!BOOKABLE.includes(mode)) return null;
+      return { key: e.key, kind: "book", target: { entry: e.key }, title, note: `${MODE_LABELS[mode]} · ${mode === "flight" || mode === "train" || mode === "ferry" ? "bilet alınmadı" : "rezerve edilmedi"}`, date: e.date };
+    }
+    return { key: e.key, kind: "plan", target: { entry: e.key }, title, note: "nasıl geçeceksin?", date: e.date };
+  }
+  if (e.role === "other") return null;
+  return { key: e.key, kind: "plan", target: { entry: e.key }, title, note: "uçuş yok · kaydet ya da sohbette söyle", date: e.date };
+}
+
+/** A transfer on the board: its options, its booking, or nothing planned yet. */
+function legTodo(leg: Leg): Draft | null {
+  const title = `${LEG_WORDS[leg.kind]} · ${fmt(leg.date)}`;
+  const key = `leg:${leg.key}`;
+  const where = `${leg.from.label} → ${leg.to.label}`;
+  switch (leg.status) {
+    case "options":
+      return { key, kind: "decide", target: { leg: leg.key }, title, note: `${leg.options.length} seçenek · ${where}`, date: leg.date };
+    case "planned":
+      return leg.choice?.mode && BOOKABLE.includes(leg.choice.mode)
+        ? { key, kind: "book", target: { leg: leg.key }, title, note: `${MODE_LABELS[leg.choice.mode]} · rezerve edilmedi`, date: leg.date }
+        : null;
+    case "empty":
+      return { key, kind: "plan", target: { leg: leg.key }, title, note: `${where} · nasıl?`, date: leg.date };
+    default:
+      // Chosen: its item's to-do. Booked: done.
+      return null;
+  }
 }
 
 /** "Rezerve edilmedi · girişe 9 gün" / "Ücretsiz iptal için 6 gün kaldı (5 Eki)": null when nothing's near. */
@@ -111,6 +126,29 @@ export function dateAlert(item: Item, today: string): { tone: "red" | "amber"; t
   return { tone: "amber", text: `${ticket ? "Bilet alınmadı" : "Rezerve edilmedi"} · ${what} ${days} gün${safe}` };
 }
 
+/** The timeline entry an item sits in, so a to-do about it can take you there even when its card is folded. */
+function entryOf(timeline: Timeline, id: string): string | undefined {
+  const has = (list: Item[] | undefined) => Boolean(list?.some((i) => i.id === id));
+  return timeline.entries.find((e) => {
+    switch (e.kind) {
+      case "stay":
+        return e.block.kind === "booked"
+          ? e.block.item.id === id || has(e.block.clashes)
+          : (e.block.kind === "chosen" && e.block.item.id === id) || e.block.groups.some((g) => has(g.items));
+      case "travel":
+        return has(e.travel?.items);
+      case "day":
+        return has(e.items) || e.legs.some((l) => has(l.options));
+      case "plan":
+        return has(e.items);
+      case "leg":
+        return has(e.leg.options);
+    }
+  })?.key;
+}
+
+const BOOK_CATEGORIES = ["stay", "flight", "transport", "activity"];
+
 export function decisionProgress(
   timeline: Timeline,
   items: Item[],
@@ -118,36 +156,63 @@ export function decisionProgress(
   decisions: Map<string, GroupDecision> | undefined,
   today: string,
 ): DecisionProgress {
-  let made = 0;
-  let total = 0;
-  const open: OpenDecision[] = [];
+  const drafts: Draft[] = [];
   for (const e of timeline.entries) {
-    const d = asDecision(e, decisions);
-    if (!d) continue;
-    total++;
-    if (d.made) made++;
-    else if (d.open) {
-      const days = daysUntil(d.open.date, today);
-      open.push({ ...d.open, days, soon: days >= 0 && days <= SOON_DAYS });
+    if (e.kind === "leg") drafts.push(...[legTodo(e.leg)].filter((d): d is Draft => d != null));
+    else if (e.kind === "day") drafts.push(...e.legs.map(legTodo).filter((d): d is Draft => d != null));
+    else if (e.kind === "plan") {
+      // A car said in the chat with pages saved for it but none picked yet.
+      const saved = e.items.filter((i) => i.status === "saved");
+      if (saved.length && !e.items.some((i) => i.status === "chosen" || i.status === "booked")) {
+        drafts.push({ key: `${e.key}:options`, kind: "decide", target: { entry: e.key }, title: `${saved[0].city ?? e.city ?? ""} · ${saved[0].category === "transport" ? "araç kiralama" : "planlar"}`.replace(/^ · /, ""), note: options(saved.length, null), date: null });
+      }
+    } else {
+      const d = entryTodo(e, decisions);
+      if (d) drafts.push(d);
     }
   }
-  open.sort((a, b) => a.date.localeCompare(b.date));
 
-  // Chosen but not booked, and free cancellations running out: the booking-side to-dos.
+  // Chosen but not booked (a chat plan as much as a saved page), and free cancellations running out.
   const closed = new Set(plan.closed.map((c) => c.item.id));
-  const reminders: Reminder[] = [];
   for (const item of items) {
-    if (closed.has(item.id) || !["stay", "flight", "transport", "activity"].includes(item.category)) continue;
-    const alert = dateAlert(item, today);
-    if (alert) reminders.push({ key: `r:${item.id}`, itemId: item.id, text: `${item.name}: ${alert.text.charAt(0).toLocaleLowerCase("tr")}${alert.text.slice(1)}`, tone: alert.tone });
+    if (closed.has(item.id) || !BOOK_CATEGORIES.includes(item.category)) continue;
+    const start = departureDay(item);
+    if (item.status === "chosen") {
+      if (start && start < today) continue;
+      const ticket = item.category === "flight" || item.category === "activity" || (item.category === "transport" && isTrip(item));
+      const free = item.cancellation.freeUntil && item.cancellation.freeUntil >= today ? " · ücretsiz iptalli" : "";
+      drafts.push({
+        key: `book:${item.id}`,
+        kind: "book",
+        target: { item: item.id, entry: entryOf(timeline, item.id) },
+        title: item.name,
+        note: `${ticket ? "bilet alınmadı" : "rezerve edilmedi"} · ${start ? fmt(start) : "gün belli değil"}${free}`,
+        date: start,
+      });
+    } else if (item.status === "booked") {
+      const until = item.cancellation.freeUntil;
+      if (!until || until < today || daysUntil(until, today) > SOON_DAYS) continue;
+      const days = daysUntil(until, today);
+      drafts.push({
+        key: `deadline:${item.id}`,
+        kind: "deadline",
+        target: { item: item.id, entry: entryOf(timeline, item.id) },
+        title: item.name,
+        note: days === 0 ? "ücretsiz iptal bugün bitiyor" : `ücretsiz iptal ${fmt(until)}'e kadar`,
+        date: until,
+      });
+    }
   }
-  // Running out first, then the nearest, then by name, so the strip doesn't reshuffle.
-  const when = (r: Reminder) => {
-    const item = items.find((i) => i.id === r.itemId)!;
-    return (r.tone === "red" ? item.cancellation.freeUntil : departureDay(item)) ?? "9999";
-  };
-  reminders.sort((a, b) => (a.tone === b.tone ? 0 : a.tone === "red" ? -1 : 1) || when(a).localeCompare(when(b)) || a.text.localeCompare(b.text, "tr"));
-  return { made, total, open, reminders };
+
+  const todos: Todo[] = drafts.map((d) => {
+    const days = d.date ? daysUntil(d.date, today) : null;
+    return { ...d, days, soon: days != null && days >= 0 && days <= SOON_DAYS };
+  });
+  // By date (undated last), then by name, so the list doesn't reshuffle.
+  todos.sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999") || a.title.localeCompare(b.title, "tr"));
+  const count: Record<TodoKind, number> = { decide: 0, book: 0, plan: 0, deadline: 0 };
+  for (const t of todos) count[t.kind]++;
+  return { todos, count };
 }
 
 export interface BudgetBar {

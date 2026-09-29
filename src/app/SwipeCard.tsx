@@ -255,10 +255,19 @@ export function SwipeCard({ item, group, decision, decisions, roles = [], onOpen
             <button className="pill-btn soft" onClick={() => void setItemStatus(item, "saved")} title="Seçimi geri al">
               Planda ✓
             </button>
-          ) : (
-            <button className="pill-btn dark" onClick={() => void chooseItem(item, group)}>
-              Seç
+          ) : item.status === "dismissed" ? (
+            <button className="pill-btn outline" onClick={() => void setItemStatus(item, "saved")} title="Seçeneklere geri al">
+              Geri al
             </button>
+          ) : (
+            <span className="sc-actions">
+              <button className="link-btn quiet" onClick={() => void setItemStatus(item, "dismissed")} title="Seçeneklerden çıkar; Elenenler'de durur">
+                Ele
+              </button>
+              <button className="pill-btn dark" onClick={() => void chooseItem(item, group)}>
+                Seç
+              </button>
+            </span>
           )}
         </div>
       </div>
@@ -388,6 +397,10 @@ export function SettledCard({
   const planned = item.origin === "chat";
   const route = (item.category === "flight" || item.category === "transport") && Boolean(item.flight?.from && item.flight?.to);
   const toggle = () => setOpen(!open);
+  // A tap on the card shows the other options for this need (when there are some to switch to);
+  // ⓘ opens the details. Without alternatives, a tap opens the details too.
+  const alternatives = onChange && !booked ? Math.max(0, (decision?.options.length ?? 1) - 1) : 0;
+  const tap = alternatives ? onChange! : toggle;
   return (
     <div className={`settled-card st-${booked ? "booked" : "planned"}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
       <StatusBar
@@ -396,13 +409,17 @@ export function SettledCard({
         sub={booked ? null : notBookedWord(item)}
       />
       {alert && <div className={`card-alert ${alert.tone}`}>⏳ {alert.text}</div>}
+      <button className="info-btn" aria-label="Detaylar" aria-expanded={open} title="Detaylar" onClick={toggle}>
+        i
+      </button>
       <div
         className="stc-main"
         role="button"
         tabIndex={0}
-        aria-expanded={open}
-        onClick={toggle}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), toggle())}
+        aria-expanded={alternatives ? changing : open}
+        aria-label={alternatives ? `${item.name}: diğer seçenekleri göster` : `${item.name}: detaylar`}
+        onClick={tap}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), tap())}
       >
         {route ? <Route item={item} facts={facts} /> : <Media item={item} facts={facts} />}
       </div>
@@ -419,9 +436,9 @@ export function SettledCard({
               {ticketed(item) ? "Bileti aldım" : "Rezerve ettim"}
             </button>
           )}
-          {onChange && !booked && (
+          {alternatives > 0 && (
             <button className="pill-btn outline" aria-expanded={changing} onClick={onChange}>
-              {changing ? "Kapat" : "⇄ Değiştir"}
+              {changing ? "Kapat" : `Diğer ${alternatives} seçenek`}
             </button>
           )}
         </span>

@@ -119,6 +119,11 @@ export interface Trip {
   acceptedFindings?: string[];
   /** What the traveller decided for each transfer (see legs.ts), by leg key. */
   legs?: Record<string, LegChoice>;
+  /**
+   * What the traveller said isn't needed: a transfer (`leg:<key>`) or nights without a place to book
+   * (`nights:<start>_<end>`). Hidden from the board and the to-dos, never deleted; "Geri getir" restores it.
+   */
+  hidden?: string[];
   createdAt: number;
   updatedAt: number;
 }
