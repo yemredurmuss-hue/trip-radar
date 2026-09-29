@@ -38,9 +38,65 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] 0.10: transferler plandan kendiliğinden açılır (varış, şehir değişimi ve iki uçtaki havalimanı/gar,
       otel değişimi, gidiş), durumuyla (boş / planlandı / seçenek / rezerve); sohbetten "metroyla" işaretleme;
       sayfadan okunan giriş/çıkış saatleriyle ince detay notları (`legs.ts`)
-- [ ] 0.11: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
+- [ ] 0.11: karar kartları (seçim yapılmamış her karşılaştırma yana kaydırılan kartlarla), ayrıntısı aşağıda
+- [ ] 0.12: tek zaman çizelgesi (uçuş → konaklama → transferler → etkinlik → dönüş), ayrıntısı aşağıda
+- [ ] 0.13: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
       açık sekmeleri toplu kaydetme (booking.com / airbnb izni gerekir), yeni gelen için "2. sırada, çünkü…" notu
 - [ ] İlk gerçek gezide kullanım: 20–50 gerçek kayıt, hangi alanların yanlış/eksik geldiğini not et
+
+## 0.11–0.12 uygulama planı: karar kartları ve zaman çizelgesi
+
+Hedef: seçilmemiş her ihtiyaç (uçuş, konaklama, tren, eSIM...) yana kaydırılan kartlarla karşılaştırılır.
+Kartta kaynak, görsel, puan, fiyat ve en fazla iki artı ile iki eksi olur; "Detaylar" kartın içinde nedenleri
+açar; "Seç" ile grup tek satıra iner. Sonra bütün gezi tek bir zaman çizelgesinde okunur.
+
+Hazır olan altyapı: sıralama ve puan (`decision.ts`), artı/eksi ve kanıt (`proscons.ts`, `Evidence.tsx`),
+karşılaştırılabilir toplam fiyat (`totalPrice`), rozetler (`rolesOf`), geceler ve transferler (`plan.ts`,
+`legs.ts`), sayfanın görseli (`imageUrl`) ve sağlayıcı adı (`provider`).
+
+### A. Kart verisi (arayüzsüz, testli)
+- [ ] `cardFacts.ts` (saf fonksiyon): kaynak rozeti (site adı + sitenin kendi favicon'u, yoksa baş harf), başlık,
+      kategoriye göre alt satır, fiyat ve etiketi, puan, en fazla 2 artı + 2 eksi, durum.
+  - Alt satır: konaklama "Daire · Baixa · 1 yatak odası"; uçuş "09:00–11:10 · Direkt · 2 sa 10 dk";
+    tren/otobüs "13:09–16:04 · 2 sa 55 dk"; etkinlik "9 Ekim 16:00 · 2 saat"; eSIM "5 GB · 7 gün".
+  - Fiyat: gezinin para biriminde karşılaştırılabilir tutar + etiket ("3 gece toplam", "kişi başı",
+    "2 kişi toplam"); fiyat yoksa "Fiyat için tarih seç"; geçici fiyatsa işaretli.
+  - Durum: Elendi (sebebiyle, kart sona ve soluk), Şartına uymuyor, Geçici puan, Seçildi, Rezerve.
+- [ ] Kısa artı/eksi: karşılaştırma satırlarına 2–4 kelimelik `short` metin ("€45 daha ucuz", "Merkeze yakın",
+      "Direkt uçuş", "Ücretsiz iptal", "İade yok", "Uzun yolculuk"). Bulgular zaten kısa. Kartta: belirleyici eksi
+      önce; eski ya da doğrulanmamış bulgu kartta gösterilmez (detayda kalır).
+- [ ] Çıkarım: konaklama türü (otel odası / daire / ev / pansiyon) ve yatak odası sayısı; eski kayıtlar için
+      isteğe bağlı alanlar, yoksa oda adı ve bölge kullanılır.
+- [ ] Görsel kuralı: yalnız sayfanın kendi görseli; uçuş ve trende kategori renginde sade bir zemin ve simge.
+      Hazır stok fotoğraf ya da üçüncü taraf görsel servisi yok.
+
+### B. Kaydırmalı kartlar (0.11 sürümü)
+- [ ] `Carousel.tsx`: CSS scroll-snap ile dokunmatik ve trackpad kaydırma, başlıkta ‹ › düğmeleri, klavyede ←/→,
+      "2 / 4" göstergesi. Kart ~300 px; sonraki kartın kenarı görünür. Sıra: en iyi puan önce, elenenler sonda.
+- [ ] `SwipeCard.tsx`: üstte görsel, sol üstte kaynak rozeti, sağ üstte puan dairesi; ad, alt satır, büyük fiyat,
+      iki sütun artı | eksi; altta "Detaylar" ve "Seç".
+- [ ] "Detaylar" kartın içinde açılır: bütün artı/eksiler kanıtıyla, bir sonrakine göre neden önde/geride,
+      iptal ve vergi koşulları, okunan yorum sayısı, "Karşılaştır →", "Sayfayı aç ↗" / "Tarihlerle aç ↗".
+- [ ] Seçilince grup tek satıra iner: "Seçildi · rezerve edilmedi" + "Değiştir" (kartları geri açar).
+      Rezervede "Rezerve ✓" / "Bilet alındı ✓".
+- [ ] "Senin için X" karar kartı kartların altında kalır.
+- [ ] Testler: `cardFacts` her kategori için, kısa artı/eksi seçimi, kart sırası. e2e: ileri düğmesi, Detaylar,
+      Seç → tek satır, Değiştir. Ekran görüntüsü geniş ve dar panelde.
+
+### C. Tek zaman çizelgesi (0.12 sürümü)
+- [ ] `timeline.ts` (saf): gezi günlerine göre sıralı bölümler: "8 Ekim · Uçuş · İstanbul → Porto",
+      "8–11 Ekim · Konaklama · Porto", transferler, "11 Ekim · Şehir değişimi", tarihli etkinlikler kendi gününde,
+      "14 Ekim · Dönüş". Varış, şehir değişimi ve dönüş eşleştirmesi `legs.ts`'teki mantıktan gelir.
+- [ ] Boş yerler: kayıt yoksa "Henüz eklenmedi" + tarihli arama linki. Uçuş araması için kalkış şehri gerekir:
+      ilk uçuştan öğrenilir (`trip.home`), bilinmiyorsa asistan bir kez sorar.
+- [ ] Sol kenarda simgeli çizgi; her bölüm başlığında tarih ve tür. Tarihsiz etkinlikler sonda
+      "Tarihi belli değil" altında.
+- [ ] Testler: sıralama, boş yerler, iç içe tarihler, tek şehirli ve çok şehirli gezi.
+
+Kararlar:
+- Puan kartta da 0–100 ve "uyum" etiketiyle gösterilir; diğer ekranlarla tutarlı kalır ve yalnız AI'ın
+  verdiği bir not olmadığını belli eder.
+- Kartta gösterilen her şey kayıttan ya da kod hesabından gelir; kart metni üretmek için ek AI çağrısı yok.
 
 ## v1: Telefon
 - Küçük bir sunucu (ör. Supabase) + senkron. Veri modeli buna hazır (`src/lib/types.ts`).
