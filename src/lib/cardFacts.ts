@@ -1,12 +1,12 @@
 // What a decision card shows, from the saved record and the engine's result: where it's from, what it
 // is, what it costs for these dates, where it stands, and the two things for and against it that
 // matter most. Pure, and no model calls: everything on a card is read from a page or computed.
-import { advantageOver, type DecisionContext, type GroupDecision } from "./decision";
+import { advantageOver, levelFor, levelSource, TOPIC_CRITERION, type DecisionContext, type GroupDecision } from "./decision";
 import { formatDateRange, formatPrice, listingKeyOf, metricsOf, nightsBetween, type Tone } from "./items";
 import { decisionLabel } from "./labels";
 import { rangeOfGroupKey, stayRange } from "./plan";
 import { cardLines, prosConsFor, tagOf, type ProCon } from "./proscons";
-import type { Item, Listing, StayKind } from "./types";
+import type { CriterionId, Item, Listing, StayKind } from "./types";
 
 export interface CardFacts {
   /** The site or company it's from ("Booking.com", "TAP Air Portugal"), with the site's host for its icon. */
@@ -22,10 +22,10 @@ export interface CardFacts {
   status: { text: string; tone: Tone } | null;
   /** Ruled out or failing a requirement: shown last and dimmed. */
   out: boolean;
-  /** Short tags, the biggest first (shown on top): "Yakın", "Ücretsiz iptal"... */
-  pros: string[];
-  /** Short tags against it, the biggest (or the reason it's out) first: "İade yok", "Uzak"... */
-  cons: { text: string; strong: boolean }[];
+  /** A few words each, the biggest first: "Yakın", "Ücretsiz iptal"... `mine`: it touches a priority the traveller gave. */
+  pros: { text: string; mine: boolean }[];
+  /** Against it, the biggest (or the reason it's out) first: "İade yok", "Uzak"... */
+  cons: { text: string; strong: boolean; mine: boolean }[];
 }
 
 const STAY_KIND_LABELS: Record<StayKind, string> = {
@@ -159,6 +159,47 @@ function priceOf(item: Item, decision: GroupDecision | undefined, currency: stri
   return { text: formatPrice(item.price.amount, item.price.currency), label: SCOPE_LABELS[item.price.scope], perNight: null, provisional };
 }
 
+/**
+ * A line the traveller's own words stand behind: a requirement, or a criterion they (or what they
+ * said) made important, the reason an option is out included. Defaults don't count.
+ */
+function touchesPriority(
+  line: ProCon,
+  item: Item,
+  ctx: (Pick<DecisionContext, "trip" | "inferred"> & { preferences?: string[] }) | undefined,
+): boolean {
+  if (!ctx) return false;
+  const said = saidTopics(ctx.preferences ?? []);
+  if (line.kind === "requirement") return true;
+  const topic = line.finding?.topic ?? null;
+  if (topic && said.has(topic)) return true;
+  // "Elendi: yan binada inşaat; sessiz bir yer istiyorsun": out because of what they said.
+  if (line.kind === "elimination" && [...saidTopics([line.text])].some((t) => said.has(t))) return true;
+  const criterion = line.key.startsWith("c:") ? (line.key.slice(2) as CriterionId) : topic ? TOPIC_CRITERION[topic] : null;
+  if (!criterion) return false;
+  if ((criterion === "cancellation" || criterion === "location") && said.has(criterion)) return true;
+  return levelSource(ctx.trip, item.category, criterion, ctx.inferred) !== "default" && levelFor(ctx.trip, item.category, criterion, ctx.inferred) >= 3;
+}
+
+/** What the traveller said they care about ("sessiz bir yer istiyoruz", "merkezi olsun"), as finding topics. */
+const SAID: [RegExp, string[]][] = [
+  [/sessiz|gürültü|quiet|noise/i, ["noise"]],
+  [/merkez|yürü|yakın|central|walk|konum/i, ["location", "nearby", "transport"]],
+  [/temiz|hijyen|clean/i, ["cleanliness"]],
+  [/iptal|iade|esnek|cancel/i, ["cancellation"]],
+  [/kahvaltı|yemek|breakfast/i, ["food"]],
+  [/geniş|ferah|alan|space/i, ["space"]],
+  [/manzara|view/i, ["view"]],
+  [/yatak|uyku|bed/i, ["bed"]],
+  [/asansör|merdiven|bebek|engelli|tekerlekli|stairs|lift/i, ["access"]],
+  [/güven|safe/i, ["safety"]],
+];
+function saidTopics(preferences: string[]): Set<string> {
+  const topics = new Set<string>();
+  for (const text of preferences) for (const [re, list] of SAID) if (re.test(text)) list.forEach((t) => topics.add(t));
+  return topics;
+}
+
 /** Lines about the same thing share a tag slot (by comparison key or finding topic). */
 const TAG_TOPICS: Record<string, string> = {
   "c:location": "location",
@@ -183,15 +224,22 @@ export function cardFacts(
   const said = new Set<string>();
   const once = (l: ProCon, text: string) => {
     const about = TAG_TOPICS[l.key] ?? (l.finding && TAG_TOPICS[`t:${l.finding.topic}`]) ?? text;
-    if (said.has(about) || said.has(text)) return false;
+    if (said.has(about) || said.has(text) || said.has(l.key)) return false;
     said.add(about).add(text);
     return true;
   };
-  const pros = lines.pros.map((l) => ({ l, text: tagOf(l, "pro") })).filter((x) => once(x.l, x.text)).map((x) => x.text).slice(0, 4);
+  const mine = (l: ProCon) => touchesPriority(l, item, ctx);
+  // The reason an option is out already says what the finding behind it says.
+  for (const l of lines.cons) if (l.kind === "elimination" && l.finding) said.add(`f:${l.finding.id}`);
+  const pros = lines.pros
+    .map((l) => ({ l, text: tagOf(l, "pro") }))
+    .filter((x) => once(x.l, x.text))
+    .map((x) => ({ text: x.text, mine: mine(x.l) }))
+    .slice(0, 4);
   const cons: CardFacts["cons"] = lines.cons
     .map((l) => ({ l, text: tagOf(l, "con") }))
     .filter((x) => once(x.l, x.text))
-    .map((x) => ({ text: x.text, strong: Boolean(x.l.decisive || x.l.serious) }));
+    .map((x) => ({ text: x.text, strong: Boolean(x.l.decisive || x.l.serious), mine: mine(x.l) }));
   const label = item.status === "saved" ? decisionLabel(item, decision, currency) : null;
   const status: CardFacts["status"] =
     item.status === "booked"

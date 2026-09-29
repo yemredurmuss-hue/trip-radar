@@ -64,7 +64,12 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] 0.14.2: kart önünde artılar solda eksiler sağda alt alta (en büyüğü üstte), somut bulgu kendi sözleriyle
       ("Karşısında genelev var"), kapalı kartlar aynı boy, seçilen kartta artı/eksi yok; üstte özet: resim, ad,
       tarih, gün/şehir/etkinlik/konaklama/ulaşım
-- [ ] 0.15: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
+- [x] 0.15: karar kolaylığı — karar sırası ve ilerleme, bütçe çubuğu, seçenekler yan yana ve tek satır öneri,
+      ★ kendi önceliklerin, tarih uyarıları (ücretsiz iptal bitişi, rezerve edilmedi), DESIGN.md arayüz kuralları
+      (renk anlamları, tek ana buton, okunur gri, kırmızı eksi)
+- [ ] Sonraki öneriler (onay bekliyor): 7 sade karşılaştırma, 8 zaman çizelgesinde tekrarların kalkması,
+      9 sohbet ↔ pano bağlantısı, 10 sırayla karar ver modu
+- [ ] 0.16: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
       açık sekmeleri toplu kaydetme (booking.com / airbnb izni gerekir), yeni gelen için "2. sırada, çünkü…" notu
 - [ ] İlk gerçek gezide kullanım: 20–50 gerçek kayıt, hangi alanların yanlış/eksik geldiğini not et
 

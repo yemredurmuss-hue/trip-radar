@@ -95,6 +95,21 @@ ve gecelik). Durumu kartın üstünde renkli bir şerittir: yeşil **✓ Bilet a
 Altta **Rezerve ettim / Bileti aldım** (yanlışlıkla basıldıysa **Geri al**) ve **⇄ Değiştir** (kartlar geri gelir).
 Seçilen kartta artı/eksi yoktur; karşılaştırma seçim yapılana kadar kartlardadır. Karta dokununca ayrıntılar açılır.
 
+**Karar sırası** özetin hemen altındadır: "3 karar kaldı · 2/5 karar verildi". Açık kararlar tarih sırasıyla
+(yakın olanlarda "9 gün kaldı"), her biri öndeki seçenekle; tıklayınca o karara gider ve kart bir an parlar.
+Altında rezervasyon tarafı: bitmek üzere olan ücretsiz iptaller (kırmızı) ve seçilip rezerve edilmeyenler
+(amber). Özetteki **bütçe çubuğu** rezerve, seçilen ve açık kararların öndeki seçeneğiyle tahmini toplamı
+bütçeyle karşılaştırır ("€1.019 / €1.500 · €481 kalıyor").
+
+**Seçenekler yan yana.** Karşılaştırılan bir ihtiyaç satırın tamamını kullanır: seçenekler kaydırılmadan yan
+yana (üçten fazlası "+N seçenek daha" arkasında), üstünde tek satır öneri: "Önerim Jardim Stay: Ribeira Rooms
+karşısında €45 daha ucuz; yakın, ücretsiz iptal ve sessiz odalar" + Seç + Karşılaştır. ★ gezginin kendi
+önceliğine dokunan satırı işaretler (söylediği "sessiz bir yer istiyoruz", ayarladığı ya da sezilen öncelik).
+Seçilen ya da rezerve edilen kartta zamanı yaklaşan şey yazar: "Ücretsiz iptal için 6 gün kaldı",
+"Bilet alınmadı · etkinliğe 10 gün · ücretsiz iptalli, şimdi ayırmak risksiz".
+
+Arayüz kuralları (renklerin anlamı, butonlar, yazı ölçeği, okunurluk) [DESIGN.md](DESIGN.md)'de.
+
 **Gezinin özeti** en üsttedir: resim, ad, tarihler ve "7 gün · 2 şehir · 5 etkinlik · 1 konaklama · 1 ulaşım"
 (konaklama ve ulaşım: seçilen ya da rezerve edilenler).
 

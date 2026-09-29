@@ -3,6 +3,7 @@ import { cardDetails, cardFacts, durationText, type CardFacts } from "../lib/car
 import type { GroupDecision } from "../lib/decision";
 import { formatDateRange, listingKeyOf, metricsOf } from "../lib/items";
 import { readingLine } from "../lib/listing";
+import { dateAlert } from "../lib/progress";
 import { rangeOfGroupKey, stayRange } from "../lib/plan";
 import { isTrip } from "../lib/travelKinds";
 import { withDates } from "../lib/url";
@@ -43,15 +44,19 @@ function datedLink(item: Item, decision: GroupDecision | undefined) {
  * What speaks for it (left) and against it (right), a few words a line, one under another; the
  * biggest of each on top. The reason an option is out always leads on the right.
  */
-function ProsCons({ pros, cons }: { pros: string[]; cons: CardFacts["cons"] }) {
+function ProsCons({ pros, cons }: { pros: CardFacts["pros"]; cons: CardFacts["cons"] }) {
   if (!pros.length && !cons.length) return null;
+  const mine = <span className="mine" title="Senin için önemli">★</span>;
   return (
     <div className="sc-pc">
       <ul className="sc-col pros" aria-label="Artıları">
         {pros.map((p) => (
-          <li key={p}>
+          <li key={p.text}>
             <i aria-hidden>+</i>
-            <span>{p}</span>
+            <span>
+              {p.text}
+              {p.mine && mine}
+            </span>
           </li>
         ))}
       </ul>
@@ -59,7 +64,10 @@ function ProsCons({ pros, cons }: { pros: string[]; cons: CardFacts["cons"] }) {
         {cons.map((c) => (
           <li key={c.text} className={c.strong ? "strong" : undefined}>
             <i aria-hidden>−</i>
-            <span>{c.text}</span>
+            <span>
+              {c.text}
+              {c.mine && mine}
+            </span>
           </li>
         ))}
       </ul>
@@ -195,7 +203,7 @@ export function SwipeCard({ item, group, decision, decisions, roles = [], onOpen
   const tag = !facts.out && !flag ? (roles[0] ?? (facts.best ? "En uygun" : null)) : null;
 
   return (
-    <article className={`swipe-card${facts.best ? " best" : ""}${facts.out ? " out" : ""}${open ? " open" : ""}`} aria-label={item.name}>
+    <article className={`swipe-card${facts.best ? " best" : ""}${facts.out ? " out" : ""}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
       <div className="sc-media">
         <FallbackImg
           className="sc-img"
@@ -374,17 +382,20 @@ export function SettledCard({
   const [open, setOpen] = useState(false);
   const facts = cardFacts(item, decision, decisions?.ctx);
   const booked = item.status === "booked";
+  // Time running out: a free cancellation ending, or a trip near and still not booked.
+  const alert = dateAlert(item, decisions?.ctx.today ?? new Date().toISOString().slice(0, 10));
   /** Said in the chat, no page yet: a plan. */
   const planned = item.origin === "chat";
   const route = (item.category === "flight" || item.category === "transport") && Boolean(item.flight?.from && item.flight?.to);
   const toggle = () => setOpen(!open);
   return (
-    <div className={`settled-card st-${booked ? "booked" : "planned"}${open ? " open" : ""}`} aria-label={item.name}>
+    <div className={`settled-card st-${booked ? "booked" : "planned"}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
       <StatusBar
         standing={booked ? "booked" : "planned"}
         text={booked ? bookedWord(item) : planned ? "Planlanıyor" : "Seçildi"}
         sub={booked ? null : notBookedWord(item)}
       />
+      {alert && <div className={`card-alert ${alert.tone}`}>⏳ {alert.text}</div>}
       <div
         className="stc-main"
         role="button"

@@ -10,6 +10,7 @@ import { EMPTY_METRICS, nightsBetween } from "../src/lib/items";
 import { buildLegs } from "../src/lib/legs";
 import { buildPlan, liveGroups } from "../src/lib/plan";
 import { plannedItem, type PlannedKind } from "../src/lib/planned";
+import { budgetBar, decisionProgress } from "../src/lib/progress";
 import { prosConsFor } from "../src/lib/proscons";
 import { buildTimeline } from "../src/lib/timeline";
 import { rolesOf, valueCard, budgetState } from "../src/lib/value";
@@ -283,7 +284,7 @@ describe("any trip", () => {
           valueCard(d, ctx, budgetState(plan, items, ctx));
           for (const i of g.items) {
             const f = cardFacts(i, d, ctx);
-            const text = [f.title, f.subtitle, f.price?.text, f.price?.label, f.price?.perNight, f.status?.text, ...f.pros, ...f.cons.map((c) => c.text)].filter((x) => x != null).join(" | ");
+            const text = [f.title, f.subtitle, f.price?.text, f.price?.label, f.price?.perNight, f.status?.text, ...f.pros.map((p) => p.text), ...f.cons.map((c) => c.text)].filter((x) => x != null).join(" | ");
             if (/NaN|undefined|\[object|Infinity/.test(text)) note(seed, `card ${i.name}: ${text}`);
             whyLines(i, d, ctx.currency);
             prosConsFor(i, d, ctx.listings, ctx);
@@ -294,6 +295,14 @@ describe("any trip", () => {
           const f = cardFacts(i, undefined, ctx);
           if (/NaN|undefined|Infinity/.test(JSON.stringify(f))) note(seed, `card (no decision) ${i.name}: ${JSON.stringify(f.price)}`);
         }
+
+        // Where the decisions stand and what it costs: counts add up, no NaN, each open one has a place to go.
+        const progress = decisionProgress(timeline, items, plan, decisions, "2026-09-29");
+        if (progress.made + progress.open.length !== progress.total) note(seed, `progress ${progress.made} + ${progress.open.length} ≠ ${progress.total}`);
+        for (const o of progress.open) if (!timeline.entries.some((e) => e.key === o.target)) note(seed, `queue target ${o.target} not on the line`);
+        if (/NaN|undefined|Infinity/.test(JSON.stringify(progress))) note(seed, "progress has NaN");
+        const money = budgetBar(plan, items, ctx, decisions);
+        if ([money.booked, money.chosen, money.open].some((n) => !Number.isFinite(n) || n < 0)) note(seed, `budget ${JSON.stringify(money)}`);
 
         // What the assistant sees serializes cleanly.
         const state = tripState(trip, items, [], [], null, undefined, { ctx, decisions });

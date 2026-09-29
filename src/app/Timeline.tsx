@@ -3,6 +3,7 @@ import type { GroupDecision } from "../lib/decision";
 import { formatDateRange } from "../lib/items";
 import { MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib/legs";
 import type { OptionGroup, Plan, StayBlock } from "../lib/plan";
+import { entryDomId } from "../lib/progress";
 import { flightSearchUrl, type Timeline, type TimelineEntry, type TimelineSection } from "../lib/timeline";
 import type { Category, Item, LegMode } from "../lib/types";
 import { updateTrip } from "./actions";
@@ -121,10 +122,18 @@ function standingOf(entry: TimelineEntry): Standing | null {
   }
 }
 
+/** Options still to compare get the whole width, side by side; the label sits above them. */
+function comparing(entry: TimelineEntry): boolean {
+  const undecided = (items: Item[]) => items.length >= 2 && !items.some((i) => i.status === "chosen" || i.status === "booked");
+  if (entry.kind === "stay") return entry.block.kind === "open" && entry.block.groups.some((g) => undecided(g.items));
+  if (entry.kind === "travel") return Boolean(entry.travel && !entry.travel.settled && undecided(entry.travel.items));
+  return false;
+}
+
 function Row({ entry, ...render }: { entry: TimelineEntry } & RenderProps) {
   const standing = standingOf(entry);
   return (
-    <li className={`tl-entry tl-${entry.kind}${standing ? ` st-${standing}` : ""}`}>
+    <li id={entryDomId(entry.key)} className={`tl-entry tl-${entry.kind}${standing ? ` st-${standing}` : ""}${comparing(entry) ? " tl-wide" : ""}`}>
       <div className="tl-side">
         <span className="tl-icon" aria-hidden>
           {entry.kind === "day" ? <b className="tl-day-no">{entry.dayNo}</b> : <CategoryIcon category={iconOf(entry)} size={20} />}

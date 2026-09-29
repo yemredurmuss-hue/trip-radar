@@ -34,15 +34,18 @@ describe("decision card facts", () => {
     });
     expect(jardim.score).toBeGreaterThan(60);
     // The biggest plus and minus first, then a few more; each a few words.
-    expect(jardim.pros).toEqual(["Yakın", "Ücretsiz iptal", "Sessiz odalar", "Kahvaltı çok iyi"]);
+    expect(jardim.pros.map((p) => p.text)).toEqual(["Yakın", "Ücretsiz iptal", "Sessiz odalar", "Kahvaltı çok iyi"]);
     expect(jardim.cons.map((c) => c.text)).toEqual(["Odalar küçük", "€45 pahalı", "TV yok"]);
-    for (const tag of [...jardim.pros, ...jardim.cons.map((c) => c.text)]) expect(tag.split(" ").length).toBeLessThanOrEqual(5);
+    // ★: what the traveller made important (free cancellation, inferred) or said ("sessiz bir yer istiyoruz").
+    expect(jardim.pros.filter((p) => p.mine).map((p) => p.text)).toEqual(["Ücretsiz iptal", "Sessiz odalar"]);
+    expect(jardim.cons.some((c) => c.mine)).toBe(false);
+    for (const tag of [...jardim.pros, ...jardim.cons].map((l) => l.text)) expect(tag.split(" ").length).toBeLessThanOrEqual(5);
 
     const casa = facts("Casa Azul");
     expect(casa.subtitle).toBe("Daire · 1 yatak odası");
     expect(casa.out).toBe(true);
     expect(casa.status).toEqual({ text: "Elendi", tone: "warning" });
-    expect(casa.cons[0]).toEqual({ text: "Elendi: Yan binada inşaat var", strong: true });
+    expect(casa.cons[0]).toMatchObject({ text: "Elendi: Yan binada inşaat var", strong: true, mine: true });
     // Far by the comparison and weak location in the reviews: one tag, not two.
     expect(casa.cons.filter((c) => /Uzak|Konum/.test(c.text))).toHaveLength(1);
   });
