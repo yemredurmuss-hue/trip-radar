@@ -22,6 +22,8 @@ export interface ProCon {
   text: string;
   /** Two to four words for a card ("€45 daha ucuz", "Merkeze yakın"); `text` when it's already short. */
   short?: string;
+  /** One to three words for a tag on the card front ("Yakın", "İade yok", "Sessiz"). */
+  tag?: string;
   /** Where it comes from: "7 yorum · en yenisi Eyl 2026", "açıklamada", "diğerleriyle kıyasla". */
   detail: string | null;
   weight: number;
@@ -70,6 +72,66 @@ function locationWords(display: string | null): [string, string] {
   return ["Gezeceğin yerlere yakın", "Gezeceğin yerlere uzak"];
 }
 
+/** The same, as a tag: "Merkezi", "Uzak". */
+function locationTags(display: string | null): [string, string] {
+  if (display?.startsWith("merkeze")) return ["Merkezi", "Merkeze uzak"];
+  if (display?.startsWith("konum puanı")) return ["Konum iyi", "Konum zayıf"];
+  return ["Yakın", "Uzak"];
+}
+
+/** Tags for the comparisons that say the same thing for every option: [for, against]. */
+const COMPARE_TAGS: Partial<Record<Part["criterion"], [string, string]>> = {
+  rating: ["Puanı yüksek", "Puanı düşük"],
+  comfort: ["Yorumlar iyi", "Yorumlar zayıf"],
+  cancellation: ["Ücretsiz iptal", "İade yok"],
+  duration: ["Kısa yolculuk", "Uzun yolculuk"],
+  stops: ["Direkt", "Aktarmalı"],
+  schedule: ["Rahat saat", "Zor saat"],
+  baggage: ["Bagaj dahil", "Bagaj yok"],
+  data: ["Bol veri", "Az veri"],
+  validity: ["Süre yetmiyor", "Süre yetmiyor"],
+};
+
+/** What a finding is about, in a word or two, for when its own words are too long: [for, against]. */
+const TOPIC_TAGS: Record<Finding["topic"], [string, string]> = {
+  location: ["Konum iyi", "Konum zayıf"],
+  nearby: ["Çevresi iyi", "Çevre sorunlu"],
+  transport: ["Ulaşım kolay", "Ulaşım zor"],
+  cleanliness: ["Temiz", "Temizlik sorunu"],
+  comfort: ["Rahat", "Konforsuz"],
+  bed: ["İyi yatak", "Yatak kötü"],
+  noise: ["Sessiz", "Gürültülü"],
+  space: ["Geniş", "Küçük"],
+  view: ["Manzaralı", "Manzara yok"],
+  staff: ["Güler yüzlü", "Personel sorunlu"],
+  host: ["İyi ev sahibi", "Ev sahibi sorunlu"],
+  food: ["Yemek iyi", "Yemek zayıf"],
+  amenities: ["Olanaklar iyi", "Olanak eksik"],
+  facilities: ["Tesis iyi", "Tesis eksik"],
+  access: ["Erişim kolay", "Erişim zor"],
+  condition: ["Bakımlı", "Yıpranmış"],
+  safety: ["Güvenli", "Güvenlik sorunu"],
+  value: ["Fiyatına değer", "Fiyatına değmez"],
+  check_in: ["Kolay giriş", "Giriş zor"],
+  accuracy: ["İlandaki gibi", "İlandan farklı"],
+  other: ["Artısı var", "Dikkat"],
+};
+
+/** A phrase's first clause when it's three words or fewer ("Asansör yok, 3. kat" → "Asansör yok"). */
+function fewWords(text: string, max = 3): string | null {
+  const clause = text.split(/[,;:(—–]| - /)[0].trim();
+  const words = clause.split(/\s+/).filter(Boolean);
+  return words.length && words.length <= max ? capital(clause) : null;
+}
+
+/** A line as a tag on the card front: one to three words. */
+export function tagOf(line: ProCon, polarity: "pro" | "con"): string {
+  if (line.tag) return line.tag;
+  const side = polarity === "pro" ? 0 : 1;
+  if (line.finding) return fewWords(line.text) ?? TOPIC_TAGS[line.finding.topic][side];
+  return fewWords(line.short ?? line.text, line.decisive ? 4 : 3) ?? fewWords(line.text) ?? (line.short ?? line.text).split(/\s+/).slice(0, 3).join(" ");
+}
+
 /** Lines from comparing the option with the others in its group on the traveller's criteria. */
 function comparisons(option: OptionResult, decision: GroupDecision, ctx: Ctx): { pros: ProCon[]; cons: ProCon[] } {
   const currency = ctx.currency;
@@ -77,11 +139,12 @@ function comparisons(option: OptionResult, decision: GroupDecision, ctx: Ctx): {
   const cons: ProCon[] = [];
   const peers = decision.options.filter((o) => o !== option && !o.excluded && o.parts.length);
   const single = peers.length === 0;
-  const add = (list: ProCon[], p: Part, text: string, strength: number, short?: string) =>
+  const add = (list: ProCon[], p: Part, text: string, strength: number, short?: string, tag?: string) =>
     list.push({
       key: `c:${p.criterion}`,
       text,
       ...(short ? { short } : {}),
+      tag: tag ?? COMPARE_TAGS[p.criterion]?.[list === pros ? 0 : 1] ?? short ?? text,
       detail: single ? null : "diğerleriyle kıyasla",
       weight: p.weight * strength * 3,
       kind: "compare",
@@ -97,10 +160,10 @@ function comparisons(option: OptionResult, decision: GroupDecision, ctx: Ctx): {
         const cheapest = Math.min(...others.map((o) => o.value!));
         if (p.value < cheapest - 0.5) {
           const less = formatPrice(cheapest - p.value, currency);
-          add(pros, p, `En ucuz: ${less} daha az`, Math.min(1, (cheapest - p.value) / cheapest + 0.3), `${less} daha ucuz`);
+          add(pros, p, `En ucuz: ${less} daha az`, Math.min(1, (cheapest - p.value) / cheapest + 0.3), `${less} daha ucuz`, "En ucuz");
         } else if (p.value > cheapest * 1.03) {
           const more = formatPrice(p.value - cheapest, currency);
-          add(cons, p, `En ucuzdan ${more} pahalı`, Math.min(1, (p.value - cheapest) / cheapest + 0.2), `${more} daha pahalı`);
+          add(cons, p, `En ucuzdan ${more} pahalı`, Math.min(1, (p.value - cheapest) / cheapest + 0.2), `${more} daha pahalı`, `${more} pahalı`);
         }
         break;
       }
@@ -113,8 +176,9 @@ function comparisons(option: OptionResult, decision: GroupDecision, ctx: Ctx): {
       }
       case "location": {
         const [near, far] = locationWords(p.display);
-        if (p.s >= 0.75 && p.s >= bestS - 0.05) add(pros, p, capital(p.display ?? ""), p.s - 0.4, near);
-        else if (p.s <= 0.4 || (!single && p.s < bestS - 0.3)) add(cons, p, capital(p.display ?? ""), Math.max(0.3, 0.8 - p.s), far);
+        const [nearTag, farTag] = locationTags(p.display);
+        if (p.s >= 0.75 && p.s >= bestS - 0.05) add(pros, p, capital(p.display ?? ""), p.s - 0.4, near, nearTag);
+        else if (p.s <= 0.4 || (!single && p.s < bestS - 0.3)) add(cons, p, capital(p.display ?? ""), Math.max(0.3, 0.8 - p.s), far, farTag);
         break;
       }
       case "rating":
@@ -136,8 +200,8 @@ function comparisons(option: OptionResult, decision: GroupDecision, ctx: Ctx): {
         const theirs = new Set(peers.flatMap((o) => amenitiesOf(o.item, ctx)));
         const missing = wanted.filter((a) => !mine.includes(a) && theirs.has(a));
         const only = wanted.filter((a) => mine.includes(a) && peers.some((o) => !amenitiesOf(o.item, ctx).includes(a)));
-        if (only.length) add(pros, p, `İstediğin: ${only.join(", ")}`, 0.6, `${capital(only[0])} var`);
-        if (missing.length) add(cons, p, `Diğerlerinde var, bunda görünmüyor: ${missing.join(", ")}`, 0.5, `${capital(missing[0])} yok`);
+        if (only.length) add(pros, p, `İstediğin: ${only.join(", ")}`, 0.6, `${capital(only[0])} var`, `${capital(only[0])} var`);
+        if (missing.length) add(cons, p, `Diğerlerinde var, bunda görünmüyor: ${missing.join(", ")}`, 0.5, `${capital(missing[0])} yok`, `${capital(missing[0])} yok`);
         break;
       }
       case "stops":
@@ -162,7 +226,7 @@ function comparisons(option: OptionResult, decision: GroupDecision, ctx: Ctx): {
     }
   }
   if (option.dominatedBy) {
-    cons.push({ key: "c:dominated", text: `${option.dominatedBy} her açıdan önde`, detail: "diğerleriyle kıyasla", weight: 6, kind: "compare" });
+    cons.push({ key: "c:dominated", text: `${option.dominatedBy} her açıdan önde`, tag: "Her açıdan geride", detail: "diğerleriyle kıyasla", weight: 6, kind: "compare" });
   }
   return { pros, cons };
 }
@@ -221,6 +285,7 @@ export function prosCons(input: { item: Item; option?: OptionResult; decision?: 
       key: "x:eliminated",
       text: `Elendi: ${option.eliminated.reason}`,
       short: option.eliminated.reason,
+      tag: `Elendi: ${fewWords(option.eliminated.reason, 4) ?? TOPIC_TAGS[option.eliminated.findings[0]?.topic ?? "other"][1]}`,
       detail: count ? `${count} yorum` : SOURCE_TEXT[option.eliminated.findings[0]?.source ?? "other"],
       weight: 1000,
       kind: "elimination",
@@ -229,10 +294,10 @@ export function prosCons(input: { item: Item; option?: OptionResult; decision?: 
     });
   }
   for (const label of option?.unmet ?? []) {
-    cons.push({ key: `r:${label}`, text: `Şartın karşılanmıyor: ${label}`, short: `Şart: ${label}`, detail: null, weight: 900, kind: "requirement", decisive: true });
+    cons.push({ key: `r:${label}`, text: `Şartın karşılanmıyor: ${label}`, short: `Şart: ${label}`, tag: `Şart: ${label}`, detail: null, weight: 900, kind: "requirement", decisive: true });
   }
   for (const c of decision?.checks.filter((c) => c.itemId === item.id) ?? []) {
-    cons.push({ key: `k:${c.reason}`, text: `Kontrol gerekiyor: ${c.reason}`, detail: "sayfada doğrulanamadı", weight: 8, kind: "check", unverified: true });
+    cons.push({ key: `k:${c.reason}`, text: `Kontrol gerekiyor: ${c.reason}`, tag: "Kontrol et", detail: "sayfada doğrulanamadı", weight: 8, kind: "check", unverified: true });
   }
   for (const label of option?.limited ?? []) {
     const text =
@@ -255,7 +320,7 @@ export function prosCons(input: { item: Item; option?: OptionResult; decision?: 
     });
   }
   for (const label of option?.unsure ?? []) {
-    cons.push({ key: `u:${label}`, text: `Kontrol et: ${label} sayfada görünmüyor`, detail: null, weight: 2.5, kind: "check" });
+    cons.push({ key: `u:${label}`, text: `Kontrol et: ${label} sayfada görünmüyor`, tag: `${capital(label)}?`, detail: null, weight: 2.5, kind: "check" });
   }
 
   if (option && decision) {
@@ -301,7 +366,7 @@ export function cardLines(pc: ProsCons | null, max = 2): { pros: ProCon[]; cons:
   const decisive = pc.cons.filter((l) => l.decisive);
   return {
     pros: pc.pros.filter(shown).slice(0, max),
-    cons: (decisive.length ? decisive : pc.cons.filter(shown)).slice(0, max),
+    cons: [...decisive, ...pc.cons.filter((l) => !l.decisive && shown(l))].slice(0, max),
   };
 }
 

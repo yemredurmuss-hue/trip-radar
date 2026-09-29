@@ -21,27 +21,30 @@ async function demo() {
 }
 
 describe("decision card facts", () => {
-  it("stays: source, kind and area, the price for these nights, the pros and cons in short", async () => {
+  it("stays: source, what it is, the price for these nights, the pros and cons as short tags", async () => {
     const { facts } = await demo();
     const jardim = facts("Jardim Stay");
     expect(jardim).toMatchObject({
       source: { label: "Booking.com" },
       title: "Jardim Stay",
-      subtitle: "Otel odası · Baixa",
+      subtitle: "Otel odası", // not the district's name: that's in the details
       price: { text: "€285", label: "3 gece toplam", provisional: false },
       best: true,
       out: false,
     });
     expect(jardim.score).toBeGreaterThan(60);
-    expect(jardim.pros.length).toBe(2);
-    expect(jardim.cons.length).toBeLessThanOrEqual(2);
-    expect(jardim.pros.join(" ")).not.toMatch(/diğerleriyle/);
+    // The biggest plus and minus first, then a few more; each a word or three.
+    expect(jardim.pros).toEqual(["Yakın", "Ücretsiz iptal", "Sessiz odalar", "Kahvaltı çok iyi"]);
+    expect(jardim.cons.map((c) => c.text)).toEqual(["Odalar küçük", "€45 pahalı", "TV yok"]);
+    for (const tag of [...jardim.pros, ...jardim.cons.map((c) => c.text)]) expect(tag.split(" ").length).toBeLessThanOrEqual(3);
 
     const casa = facts("Casa Azul");
-    expect(casa.subtitle).toBe("Daire · 1 yatak odası · Bonfim");
+    expect(casa.subtitle).toBe("Daire · 1 yatak odası");
     expect(casa.out).toBe(true);
     expect(casa.status).toEqual({ text: "Elendi", tone: "warning" });
-    expect(casa.cons[0]).toEqual({ text: "Yan binada inşaat var; sessiz bir yer istiyorsun", strong: true });
+    expect(casa.cons[0]).toEqual({ text: "Elendi: Yan binada inşaat var", strong: true });
+    // Far by the comparison and weak location in the reviews: one tag, not two.
+    expect(casa.cons.filter((c) => /Uzak|Konum/.test(c.text))).toHaveLength(1);
   });
 
   it("flights, trains and eSIMs: times, stops and duration; bookings say so", async () => {

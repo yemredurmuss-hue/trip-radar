@@ -134,11 +134,14 @@ try {
   const card = (name) => app.locator(`.swipe-card[aria-label="${name}"]`);
   await card("Jardim Stay").locator(".sc-score.best").waitFor();
   assert.match(await card("Jardim Stay").locator(".sc-source").innerText(), /Booking\.com$/);
-  assert.equal(await card("Jardim Stay").locator(".sc-sub").innerText(), "Otel odası · Baixa");
+  assert.equal(await card("Jardim Stay").locator(".sc-sub").innerText(), "Otel odası");
   assert.match(await card("Jardim Stay").locator(".sc-price").innerText(), /€285\s*3 gece toplam\s*€95 \/ gece/);
-  assert.equal(await card("Jardim Stay").locator(".sc-col.pros .sc-line").count(), 2);
+  // The biggest plus and minus on top, a few more as short tags.
+  assert.equal(await card("Jardim Stay").locator(".top-tag.pro").innerText().then((t) => t.replace(/^\+\s*/, "")), "Yakın");
+  assert.equal(await card("Jardim Stay").locator(".top-tag.con").innerText().then((t) => t.replace(/^−\s*/, "")), "Odalar küçük");
+  assert.ok((await card("Jardim Stay").locator(".more-tags .tag").count()) >= 3);
   // Casa Azul is out for this traveller (asked for somewhere quiet): the reason leads its cons, and it goes last.
-  await card("Casa Azul").locator(".sc-col.cons .sc-line.strong", { hasText: "Yan binada inşaat var; sessiz bir yer istiyorsun" }).waitFor();
+  await card("Casa Azul").locator(".top-tag.con.strong", { hasText: "Elendi: Yan binada inşaat var" }).waitFor();
   await card("Casa Azul").locator(".sc-flag.warning", { hasText: "Elendi" }).waitFor();
   const porto = app.locator(".stay-block.open .carousel");
   assert.deepEqual(await porto.locator(".swipe-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Jardim Stay", "Ribeira Rooms", "Casa Azul"]);
@@ -511,7 +514,7 @@ try {
   // Each page is then read closely (any site): findings with the reviews behind them, counted by code.
   // Ruled out on that evidence by the analysis, which sees the findings with their counts.
   const casaCard = board.locator('.swipe-card[aria-label="Casa Azul"]');
-  await casaCard.locator(".sc-col.cons .sc-line.strong", { hasText: "Yan binada inşaat; sessizlik istiyorsun" }).waitFor({ timeout: 40000 });
+  await casaCard.locator(".top-tag.con.strong", { hasText: "Elendi: Yan binada inşaat" }).waitFor({ timeout: 40000 });
   assert.ok(analysisPrompts.some((p) => p.includes("Yan binada inşaat gürültüsü") && p.includes('"count":2')), "analysis sees findings and counts");
   await casaCard.getByRole("button", { name: "Detaylar ▾" }).click();
   const casaDetails = casaCard.locator(".card-details");

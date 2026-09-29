@@ -76,9 +76,11 @@ verir (arabayla gideceğini söylediysen sormaz). Tarihsiz yerler ve plana oturm
 
 **Seçilmemiş her ihtiyaç kartlarla karşılaştırılır.** Uçuş, konaklama, tren, eSIM... seçenekleri yan yana
 kartlardır; parmakla, trackpad'le ya da ‹ › ile kaydırılır, en iyi puanlı önde, elenenler sonda ve soluk. Kartta:
-kaynak (site ya da şirket), görsel, 0–100 uyum puanı, ne olduğu ("Otel odası · Baixa", "07:10–10:05 · Direkt ·
-4 sa 55 dk"), bu tarihler için fiyat ("€285 · 3 gece toplam"), durum ve rozetler, en önemli iki artı ve iki eksi
-(eleme sebebi her zaman önce). Konaklamada toplamın yanında gecelik fiyat da yazar ("€285 · 3 gece toplam ·
+kaynak (site ya da şirket), görsel, 0–100 uyum puanı, ne olduğu ("Otel odası", "07:10–10:05 · Direkt ·
+4 sa 55 dk"), bu tarihler için fiyat ("€285 · 3 gece toplam"), durum ve rozetler. Artı ve eksiler bir-üç kelimelik
+etiketlerdir ("Yakın", "Uzak", "Ücretsiz iptal", "İade yok", "Sessiz odalar", "€45 pahalı"): en büyük artı ve en
+büyük eksi en üstte renkli, sonra birkaç tane daha küçük etiket (eleme sebebi her zaman önce). Aynı şeyi söyleyen
+iki etiket ("Uzak" ve "Konum zayıf") tek etikete iner. Konaklamada toplamın yanında gecelik fiyat da yazar ("€285 · 3 gece toplam ·
 €95 / gece"). **Detaylar** kartın içinde kısa açılır: tek cümleyle neden önde/geride olduğu, karar veren
 bilgiler (tarih, yer, puan, iptal, giriş/çıkış saati; uçuşta kalkış, varış, süre, aktarma, bagaj), en fazla dört
 artı ve dört "Dikkat". Bütün bulgular kanıtıyla ("Kanıt", "Sorun değil") **Tüm detaylar**da. Duman dedektörü, saç

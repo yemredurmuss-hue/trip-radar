@@ -59,6 +59,8 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
       "Planlanıyor / Seçildi" amber şerit kartın üstünde; açılan kart kısa: tek cümle durum, bilgiler, en fazla 4
       artı ve 4 dikkat (kanıt "Tüm detaylar"da); duman dedektörü, saç kurutma makinesi gibi önemsiz ayrıntılar puana
       ve kartlara girmez
+- [x] 0.14.1: kart önü sade etiketler — en büyük artı ve eksi en üstte, birkaç kısa etiket daha ("Yakın", "İade yok",
+      "Sessiz odalar", "€45 pahalı"); aynı konudaki etiketler teke iner; semt/mahalle adı kart önünden kalktı (detaylarda)
 - [ ] 0.15: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
       açık sekmeleri toplu kaydetme (booking.com / airbnb izni gerekir), yeni gelen için "2. sırada, çünkü…" notu
 - [ ] İlk gerçek gezide kullanım: 20–50 gerçek kayıt, hangi alanların yanlış/eksik geldiğini not et

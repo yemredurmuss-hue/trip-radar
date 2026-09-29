@@ -5,7 +5,7 @@ import { advantageOver, type DecisionContext, type GroupDecision } from "./decis
 import { formatDateRange, formatPrice, listingKeyOf, metricsOf, nightsBetween, type Tone } from "./items";
 import { decisionLabel } from "./labels";
 import { rangeOfGroupKey, stayRange } from "./plan";
-import { cardLines, prosConsFor, shortText } from "./proscons";
+import { cardLines, prosConsFor, tagOf, type ProCon } from "./proscons";
 import type { Item, Listing, StayKind } from "./types";
 
 export interface CardFacts {
@@ -22,7 +22,9 @@ export interface CardFacts {
   status: { text: string; tone: Tone } | null;
   /** Ruled out or failing a requirement: shown last and dimmed. */
   out: boolean;
+  /** Short tags, the biggest first (shown on top): "Yakın", "Ücretsiz iptal"... */
   pros: string[];
+  /** Short tags against it, the biggest (or the reason it's out) first: "İade yok", "Uzak"... */
   cons: { text: string; strong: boolean }[];
 }
 
@@ -88,15 +90,8 @@ function subtitleOf(item: Item): string | null {
   const join = (parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(" · ") || null;
   switch (item.category) {
     case "stay":
-      return (
-        join([
-          m.stayKind && m.stayKind !== "other" ? STAY_KIND_LABELS[m.stayKind] : null,
-          m.bedrooms ? `${m.bedrooms} yatak odası` : null,
-          item.location.area,
-        ]) ??
-        item.optionDetail ??
-        (item.summary || null)
-      );
+      // What it is, not the district's official name ("União de Freguesias do Centro"): that's in the details.
+      return join([m.stayKind && m.stayKind !== "other" ? STAY_KIND_LABELS[m.stayKind] : null, m.bedrooms ? `${m.bedrooms} yatak odası` : null]);
     case "flight":
     case "transport": {
       const stops = item.flight?.stops;
@@ -112,7 +107,7 @@ function subtitleOf(item: Item): string | null {
       return join([m.unlimitedData ? "Sınırsız" : m.dataGb ? `${m.dataGb} GB` : null, m.validityDays ? `${m.validityDays} gün` : null]) ?? (item.summary || null);
     default: {
       const day = item.dates.start ? formatDateRange(item.dates.start, null) : null;
-      return join([day, clock(item.flight?.departure), m.durationMinutes ? durationText(m.durationMinutes) : null, item.location.area]) ?? (item.summary || null);
+      return join([day, clock(item.flight?.departure), m.durationMinutes ? durationText(m.durationMinutes) : null]);
     }
   }
 }
@@ -164,6 +159,17 @@ function priceOf(item: Item, decision: GroupDecision | undefined, currency: stri
   return { text: formatPrice(item.price.amount, item.price.currency), label: SCOPE_LABELS[item.price.scope], perNight: null, provisional };
 }
 
+/** Lines about the same thing share a tag slot (by comparison key or finding topic). */
+const TAG_TOPICS: Record<string, string> = {
+  "c:location": "location",
+  "t:location": "location",
+  "c:cancellation": "cancellation",
+  "c:price": "price",
+  "t:value": "price",
+  "c:rating": "reviews",
+  "c:comfort": "reviews",
+};
+
 export function cardFacts(
   item: Item,
   decision: GroupDecision | undefined,
@@ -172,7 +178,20 @@ export function cardFacts(
 ): CardFacts {
   const currency = ctx?.currency ?? "EUR";
   const option = decision?.options.find((o) => o.item.id === item.id);
-  const lines = cardLines(prosConsFor(item, decision, listings, ctx));
+  const lines = cardLines(prosConsFor(item, decision, listings, ctx), 8);
+  // One tag per thing: "Uzak" from the comparison and "Konum zayıf" from the reviews say the same.
+  const said = new Set<string>();
+  const once = (l: ProCon, text: string) => {
+    const about = TAG_TOPICS[l.key] ?? (l.finding && TAG_TOPICS[`t:${l.finding.topic}`]) ?? text;
+    if (said.has(about) || said.has(text)) return false;
+    said.add(about).add(text);
+    return true;
+  };
+  const pros = lines.pros.map((l) => ({ l, text: tagOf(l, "pro") })).filter((x) => once(x.l, x.text)).map((x) => x.text).slice(0, 4);
+  const cons: CardFacts["cons"] = lines.cons
+    .map((l) => ({ l, text: tagOf(l, "con") }))
+    .filter((x) => once(x.l, x.text))
+    .map((x) => ({ text: x.text, strong: Boolean(x.l.decisive || x.l.serious) }));
   const label = item.status === "saved" ? decisionLabel(item, decision, currency) : null;
   const status: CardFacts["status"] =
     item.status === "booked"
@@ -192,8 +211,8 @@ export function cardFacts(
     best: Boolean(label?.best),
     status,
     out: Boolean(option?.eliminated || option?.unmet.length),
-    pros: lines.pros.map(shortText),
-    cons: lines.cons.map((l) => ({ text: shortText(l), strong: Boolean(l.decisive || l.serious) })),
+    pros,
+    cons: cons.slice(0, 4),
   };
 }
 
