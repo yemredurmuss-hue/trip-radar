@@ -747,19 +747,22 @@ body.popup { width: 320px; }
 .journey-head { margin: 6px 0 12px; font-size: 16px; font-weight: 700; color: var(--ink); }
 .tl-entry.tl-wide .day-toggle { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
 
-.day-rows { position: relative; display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
-.day-rows::before { content: ""; position: absolute; left: calc(56px + 8px + 5px); top: 12px; bottom: 12px; width: 2px; background: #e4ddd2; }
-.dr { position: relative; display: grid; grid-template-columns: 56px 12px minmax(0, 1fr); column-gap: 8px; align-items: start; }
-.dr-time { display: flex; flex-direction: column; align-items: flex-end; padding-top: 5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.dr-time b { font-size: 14px; color: var(--ink); }
+/* The rows span the whole entry: the pin sits on the trip's line, the time where the labels start, the card
+   where every other card starts. */
+.day-rows { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.dr { display: grid; grid-template-columns: 180px minmax(0, 1fr); column-gap: 20px; align-items: start; }
+.dr-side { position: relative; min-height: 24px; padding: 5px 0 0 56px; }
+.dr-time { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dr-time b { font-size: 14.5px; color: var(--ink); }
 .dr-time b.est { color: var(--muted); font-weight: 600; }
 .dr-time small { font-size: 11px; line-height: 1.25; color: var(--muted); }
-.dr-pin { position: relative; z-index: 1; width: 12px; height: 12px; margin-top: 8px; border-radius: 50%; background: #fff; border: 2px solid #dcd7cf; }
-.dr.st-info .dr-pin { width: 8px; height: 8px; margin: 10px 0 0 2px; border: 0; background: #c9c2b8; }
+.dr-pin { position: absolute; z-index: 1; left: 16px; top: 8px; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px solid #dcd7cf; }
+.dr.st-info .dr-pin { left: 18px; top: 10px; width: 8px; height: 8px; border: 0; background: #c9c2b8; }
 .dr.st-done .dr-pin { background: #1f8f4e; border-color: #1f8f4e; }
 .dr.st-pending .dr-pin { border-color: #f0a53a; }
 .dr.st-decide .dr-pin { border-color: var(--accent); }
 .dr.st-open .dr-pin { border-style: dashed; border-color: #c9c2b8; }
+.tl-entry.tl-wide .dr { grid-template-columns: 110px minmax(0, 1fr); column-gap: 12px; }
 .dr-body { min-width: 0; }
 .dr-info { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 0; padding: 4px 0 0; border: 0; background: none; text-align: left; font: inherit; font-size: 14px; color: var(--muted); }
 .dr-info b { font-weight: 600; color: var(--text); }
@@ -773,6 +776,6 @@ button.dr-info:hover b { text-decoration: underline; text-decoration-color: #cfc
 .dr .leg.st-planned, .dr .leg.st-chosen { border: 1.5px solid #f0a53a; }
 .dr .leg.st-options { border: 1.5px solid var(--accent-soft); }
 @media (max-width: 700px) {
-  .dr { grid-template-columns: 46px 12px minmax(0, 1fr); }
-  .day-rows::before { left: calc(46px + 8px + 5px); }
+  .dr, .tl-entry.tl-wide .dr { grid-template-columns: 96px minmax(0, 1fr); column-gap: 10px; }
+  .dr-side { padding-left: 50px; }
 }

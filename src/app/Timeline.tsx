@@ -354,14 +354,16 @@ function DayEntry({ entry, ...render }: { entry: Extract<TimelineEntry, { kind: 
             <span>Boş gün</span>
             <span className="muted">Bir plan kaydet ya da sohbette söyle</span>
           </div>
-        ) : open ? (
-          <DayRows rows={rows} {...render} />
         ) : (
-          <button className="day-summary" onClick={() => setOpen(true)}>
-            {daySummary(rows)}
-          </button>
+          !open && (
+            <button className="day-summary" onClick={() => setOpen(true)}>
+              {daySummary(rows)}
+            </button>
+          )
         )}
       </div>
+      {/* The rows use the whole entry: times on the trip's line, cards in line with every other card. */}
+      {open && !empty && <DayRows rows={rows} {...render} />}
     </li>
   );
 }
@@ -389,14 +391,13 @@ function JourneyCard({ section, ...render }: { section: Extract<TimelineSection,
         </div>
         <div className="tl-content">
           <p className="journey-head">{route}</p>
-          {open ? (
-            <DayRows rows={rows} {...render} />
-          ) : (
+          {!open && (
             <button className="day-summary" onClick={() => setOpen(true)}>
               {daySummary(rows)}
             </button>
           )}
         </div>
+        {open && <DayRows rows={rows} {...render} />}
       </li>
     </ol>
   );
@@ -465,12 +466,14 @@ function DayRowView({ row, ...render }: { row: DayRow } & RenderProps) {
   }
   const id = row.entry ? entryDomId(row.entry.key) : row.rental ? entryDomId(row.rental.key) : undefined;
   return (
-    <li id={id} className={`dr dr-${row.kind} st-${row.state}`} data-title={row.title}>
-      <span className="dr-time">
-        {row.time && <b className={row.estimated ? "est" : ""}>{`${row.estimated ? "~" : ""}${row.time}`}</b>}
-        {row.otherDay && <small>{fmt(row.otherDay)}</small>}
+    <li id={id} className={`dr k-${row.kind} st-${row.state}`} data-title={row.title}>
+      <span className="dr-side">
+        <span className="dr-pin" aria-hidden />
+        <span className="dr-time">
+          {row.time && <b className={row.estimated ? "est" : ""}>{`${row.estimated ? "~" : ""}${row.time}`}</b>}
+          {row.otherDay && <small>{fmt(row.otherDay)}</small>}
+        </span>
       </span>
-      <span className="dr-pin" aria-hidden />
       <div className="dr-body">{body}</div>
     </li>
   );

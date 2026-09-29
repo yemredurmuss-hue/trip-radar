@@ -35,6 +35,8 @@ yıldız almaz.
 - Bir şey iki yerde yazılmaz: ayrı bir "akış" listesi yok, gün zaten saat sırasıdır.
 - Otel şehrin başında bir kez; araç kiralama alış gününün kartı.
 - Saat solda: kayıttan gelen düz, alışılmış ya da hesaplanan "~"; altına açıklama yazılmaz, bilinmeyen boş.
+- Hiza: noktası gezinin çizgisinde, saati gün etiketinin hizasında; kartlar panodaki her kartın başladığı
+  sütundan başlar, ayrıca içeri girmez.
 - Günler açılır, kapanır: işi kalan açık gelir ("3 iş"), hepsi hazır olan tek satıra katlanır.
 
 ## Azaltmak
