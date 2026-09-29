@@ -744,9 +744,7 @@ body.popup { width: 320px; }
   background: rgba(255, 255, 255, .6); font-size: 14px; color: #6e6a64; text-align: left;
 }
 .day-summary:hover { background: #fff; }
-.journey-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 6px 0 12px; }
-.journey-head b { font-size: 17px; color: var(--ink); }
-.jc-chip { padding: 2px 9px; border-radius: 999px; background: #efe7fb; color: #5b3b9b; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.journey-head { margin: 6px 0 12px; font-size: 16px; font-weight: 700; color: var(--ink); }
 .tl-entry.tl-wide .day-toggle { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
 
 .day-rows { position: relative; display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
@@ -766,19 +764,14 @@ body.popup { width: 320px; }
 .dr-info { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 0; padding: 4px 0 0; border: 0; background: none; text-align: left; font: inherit; font-size: 14px; color: var(--muted); }
 .dr-info b { font-weight: 600; color: var(--text); }
 button.dr-info:hover b { text-decoration: underline; text-decoration-color: #cfc8bd; }
-.dr-line {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; width: 100%; padding: 4px 0; border: 0; background: none;
-  text-align: left; font: inherit; font-size: 14px; color: var(--text);
-}
-.dr-line .ok { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: #e1f3e8; color: #16623a; font-size: 11px; font-weight: 800; }
-.dr-line b { font-weight: 600; }
-.dr-line .muted { font-size: 13.5px; }
-.dr-chev { margin-left: auto; font-size: 11px; color: var(--muted); }
 .dr-more { margin-top: 8px; }
 .dr-more .leg.embedded { padding: 0; box-shadow: none; background: none; }
 .dr-more .leg.embedded .leg-body { padding: 0; }
 .dr .leg { margin: 0; }
 .dr .leg.st-empty { background: rgba(255, 255, 255, .6); box-shadow: none; border: 1.5px dashed #d6cfc4; }
+.dr .leg.st-booked { border: 1.5px solid #bfe3cc; }
+.dr .leg.st-planned, .dr .leg.st-chosen { border: 1.5px solid #f0a53a; }
+.dr .leg.st-options { border: 1.5px solid var(--accent-soft); }
 @media (max-width: 700px) {
   .dr { grid-template-columns: 46px 12px minmax(0, 1fr); }
   .day-rows::before { left: calc(46px + 8px + 5px); }
