@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { GroupDecision } from "../lib/decision";
 import { formatPrice, listingKeyOf, rowLabel } from "../lib/items";
 import { readingLine } from "../lib/listing";
+import { rangeOfGroupKey, stayRange } from "../lib/plan";
+import { withDates } from "../lib/url";
 import { prosConsFor, type ProCon } from "../lib/proscons";
 import type { Item } from "../lib/types";
 import { setItemStatus } from "./actions";
@@ -41,6 +43,9 @@ export function OptionCard({ item, group, decision, decisions, roles = [], onOpe
   const pro = pc?.pros.find((p) => !p.unverified && !p.stale);
   const con = pc?.cons.find((c) => !c.accepted && !c.stale);
   const highlight = !out && (decided?.best || settled);
+  // Saved without dates but compared for these nights: reopen the page with them to get the real price.
+  const nights = decision && item.category === "stay" && !stayRange(item) ? rangeOfGroupKey(decision.key) : null;
+  const dated = nights ? withDates(item.url, nights, item.guests.adults) : null;
 
   return (
     <div className={`opt-card${highlight ? " highlight" : ""}${out ? " out" : ""}${open ? " open" : ""}`}>
@@ -87,6 +92,12 @@ export function OptionCard({ item, group, decision, decisions, roles = [], onOpe
         <div className="opt-body">
           <Evidence item={item} decision={decision} decisions={decisions} heading={false} />
           {!pc?.pros.length && !pc?.cons.length && !reading && <p className="muted small-note">Bu kayıt için henüz artı/eksi yok.</p>}
+          {nights && (
+            <p className="muted small-note">
+              Tarihsiz kaydedildiği için bu gecelerle geçici olarak karşılaştırılıyor. Sayfayı tarihlerle açıp eklentiyle tekrar
+              kaydedersen gerçek fiyatı bu kayda işlenir.
+            </p>
+          )}
           <div className="opt-actions">
             {item.status === "booked" ? (
               <span className="tone-success">Rezerve edildi ✓</span>
@@ -107,10 +118,16 @@ export function OptionCard({ item, group, decision, decisions, roles = [], onOpe
             <button className="link-btn" onClick={onOpen}>
               Tüm detaylar
             </button>
-            {item.url && (
-              <a href={item.url} target="_blank" rel="noreferrer">
-                Sayfayı aç ↗
+            {dated ? (
+              <a href={dated} target="_blank" rel="noreferrer" title="Bu gecelerle açılır; eklentiyle tekrar kaydedince fiyat bu kayda işlenir">
+                Tarihlerle aç ↗
               </a>
+            ) : (
+              item.url && (
+                <a href={item.url} target="_blank" rel="noreferrer">
+                  Sayfayı aç ↗
+                </a>
+              )
             )}
           </div>
         </div>

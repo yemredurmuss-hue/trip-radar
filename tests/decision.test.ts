@@ -119,6 +119,21 @@ describe("decideGroup", () => {
     expect(d.summary).toContain("Mystery Loft: fiyat eksik, gelince yeniden tartılır.");
   });
 
+  it("prices a stay saved without dates for its group's nights, and keeps it provisional", () => {
+    const { jardim } = portoStays();
+    const undated = item("Airbnb loft", {
+      provider: "Airbnb", dates: { start: null, end: null, source: "none" },
+      price: { amount: 80, currency: "EUR", scope: "per_night", taxesIncluded: "unknown", source: "page", observedAt: 1 },
+      rating: rating(4.9, 5, 300),
+    });
+    const ctx = makeContext(trip({ confirmedDates: { start: "2026-10-01", end: "2026-10-20" } }), [jardim, undated]);
+    const d = decideGroup([jardim, undated], ctx, "stay@2026-10-08_2026-10-11");
+    const loft = d.options.find((o) => o.item.name === "Airbnb loft")!;
+    expect(loft.parts.find((p) => p.criterion === "price")!.value).toBe(240); // €80 × 3 nights, not × the whole trip
+    expect(loft.limited).toEqual(["bu gecelerin fiyatı"]);
+    expect(d.options[0].item.name).toBe("Jardim Stay"); // complete options first
+  });
+
   it("still says what is missing when too little is known to score", () => {
     const bare = (name: string) => item(name, { price: { amount: null, currency: null, scope: "unknown", taxesIncluded: "unknown", source: "none", observedAt: 0 } });
     const d = decideGroup([bare("A"), bare("B")], makeContext(trip(), []));

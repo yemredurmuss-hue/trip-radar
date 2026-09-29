@@ -5,7 +5,7 @@ import { convert, type Rates } from "./currency";
 import { distanceKm, formatDistance, walkingMinutes } from "./geo";
 import { formatPrice, listingKeyOf, metricsOf, nightsBetween, tripDateRange } from "./items";
 import { acceptKey, evidenceOf, isDecisive } from "./listing";
-import { buildPlan, groupKeyOf, liveGroups } from "./plan";
+import { buildPlan, groupKeyOf, liveGroups, rangeOfGroupKey, stayRange } from "./plan";
 import type {
   Amenity,
   Analysis,
@@ -678,6 +678,10 @@ function eliminationsOf(record: Analysis | null, eligible: Item[], ctx: Decision
 
 function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analysis: Analysis | null, record: Analysis | null = analysis): GroupDecision {
   const category = groupItems[0]?.category ?? "other";
+  // Stays are compared for their group's nights: a price per night (or a stay saved without dates)
+  // counts for those nights, not the whole trip.
+  const groupNights = category === "stay" ? rangeOfGroupKey(key) : null;
+  if (groupNights) ctx = { ...ctx, tripNights: nightsBetween(groupNights.start, groupNights.end) };
   const active = groupItems.filter((i) => i.status !== "dismissed");
 
   // Stays for different dates aren't alternatives for the same need: keep them out of the ranking.
@@ -740,6 +744,8 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
     for (const c of lacking) if (!missing.includes(CRITERION_LABELS[c].toLowerCase())) missing.unshift(CRITERION_LABELS[c].toLowerCase());
     // A price in another currency with no exchange rate is known, just not comparable yet.
     const limited = lacking.map((c) => (c === "price" && item.price.amount != null ? "kur bilgisi" : CRITERION_LABELS[c].toLowerCase()));
+    // Saved without dates: its price isn't this stay's price yet (no fees, maybe a "from" rate).
+    if (groupNights && !stayRange(item) && !lacking.includes("price")) limited.push("bu gecelerin fiyatı");
     const scorable = s.confidence >= MIN_CONFIDENCE && criteria.length > 0;
     const unmet: string[] = [];
     const unsure: string[] = [];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseUrl } from "../src/lib/url";
+import { parseUrl, withDates } from "../src/lib/url";
 
 describe("parseUrl", () => {
   it("reads Booking hotel identity, dates and guests", () => {
@@ -68,5 +68,17 @@ describe("parseUrl", () => {
   it("rejects invalid dates and garbage URLs", () => {
     expect(parseUrl("https://www.booking.com/hotel/pt/x.html?checkin=2026-02-30").checkIn).toBeNull();
     expect(parseUrl("not a url").provider).toBeNull();
+  });
+
+  it("reopens a listing with the stay's dates so saving it again brings the price for those nights", () => {
+    const range = { start: "2026-10-07", end: "2026-10-10" };
+    expect(withDates("https://www.airbnb.com.tr/rooms/42?source=x", range, 2)).toBe(
+      "https://www.airbnb.com.tr/rooms/42?source=x&check_in=2026-10-07&check_out=2026-10-10&adults=2",
+    );
+    expect(withDates("https://www.booking.com/hotel/pt/impar.html", range, 2)).toBe(
+      "https://www.booking.com/hotel/pt/impar.html?checkin=2026-10-07&checkout=2026-10-10&group_adults=2",
+    );
+    expect(withDates("https://example-hotel.pt/rooms", range, 2)).toBeNull();
+    expect(withDates(null, range, 2)).toBeNull();
   });
 });

@@ -155,6 +155,10 @@ Son karar senin: "Plana al" ile seçersin; sistem yalnız nedenleriyle gösterir
 - Bilinmeyen bilgi tahmin edilmez, boş kalır. Detayda "Eksik bilgi" olarak görünür.
 - Farklı tarih ya da kişi sayısı için alınmış fiyatlar karşılaştırılmaz; satırda "Farklı tarih" uyarısı çıkar.
 - Fiyatın ne zaman görüldüğü tutulur; eskiyen fiyat için uyarı çıkar (konaklamada 3 gün, uçuşta 1 gün).
+- Sayfanın hangi siteden geldiği (Booking, Airbnb, otelin kendi sitesi...) karşılaştırmada önemsizdir: aynı
+  geceler için kaydedilen her konaklama aynı karşılaştırmadadır. Tarihsiz kaydedilen bir konaklama (ör. Airbnb'de
+  tarih seçmeden), şehrinde tek bir açık gece aralığı varsa o gecelerle geçici olarak karşılaştırılır; kartındaki
+  "Tarihlerle aç ↗" sayfayı o gecelerle açar, tekrar kaydedince gerçek fiyat aynı kayda işlenir.
 - Aynı yer farklı tarih ya da oda için kaydedilirse ayrı teklif olur; biri diğerinin üstüne yazılmaz. Tarihsiz
   bir kayıt yalnız yer bilgisini (yorumlar, açıklama) tazeler, seçili gecelerin fiyatına dokunmaz.
 - Sohbette bir detay sorarsan ("TV var mı?") asistan kayıtlı sayfanın tamamında arar; bulamazsa tahmin

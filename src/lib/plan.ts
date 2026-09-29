@@ -124,7 +124,17 @@ export function tripRange(trip: Trip, items: Item[]): DateRange | null {
 
 // --- grouping -----------------------------------------------------------------------------------------
 
-/** Which options are compared with each other: stays by exact nights, everything else by need. */
+/** The nights a stay group is for ("stay@2026-10-07_2026-10-10"), or null for other keys. */
+export function rangeOfGroupKey(key: string): DateRange | null {
+  const m = key.match(/^stay@(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/);
+  return m && m[1] < m[2] ? { start: m[1], end: m[2] } : null;
+}
+
+/**
+ * Which options are compared with each other: stays by exact nights, everything else by need. The
+ * site a page came from (Booking, Airbnb, a hotel's own site...) never matters. (A stay saved without
+ * dates may still join the comparison for its city's open nights; see buildPlan.)
+ */
 export function groupKeyOf(item: Item): string {
   if (item.category !== "stay") return item.needKey;
   const range = stayRange(item);
@@ -243,9 +253,10 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
 
     // Each group of alternatives sits under the first stretch of nights it could fill; a chosen
     // option's own group always stays with its choice.
+    const undated: OptionGroup[] = [];
     for (const group of stayGroups) {
       if (!group.range) {
-        looseStays.push(group);
+        undated.push(group);
         continue;
       }
       const own = stayBlocks.find((b) => b.kind === "chosen" && group.items.includes(b.item));
@@ -259,6 +270,33 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
       const arriving = live.find((i) => TRAVEL.includes(i.category) && arrivalDay(i) === block.range.start && i.city);
       block.city = mostCommon(block.groups.flatMap((g) => g.items.map((i) => i.city))) ?? arriving?.city ?? null;
       block.searchUrl = bookingSearchUrl(block.range, block.city, stays);
+    }
+
+    // A stay saved without dates (e.g. an Airbnb page before picking dates) is for the nights still
+    // to fill in its city. With exactly one such stretch it joins that comparison, whatever the site;
+    // the decision engine treats its price as provisional until it's saved again with the dates.
+    for (const group of undated) {
+      const city = mostCommon(group.items.map((i) => i.city));
+      const fits = stayBlocks.filter((b) => b.kind !== "booked" && sameCity(b.city, city));
+      const block = fits.length === 1 ? fits[0] : null;
+      if (!block || block.kind === "booked") {
+        looseStays.push(group);
+        continue;
+      }
+      const whole = block.groups.find((g) => g.range?.start === block.range.start && g.range.end === block.range.end);
+      const largest = [...block.groups].sort((a, b) => b.items.length - a.items.length)[0];
+      const target = whole ?? largest;
+      if (target) target.items.push(...group.items);
+      else {
+        block.groups.push({
+          key: `stay@${block.range.start}_${block.range.end}`,
+          category: "stay",
+          title: [city, rangeTitle(block.range)].filter(Boolean).join(" · "),
+          items: group.items,
+          range: block.range,
+          booked: null,
+        });
+      }
     }
 
     // Moving between cities from one settled stay to the next needs a flight or transfer that day.

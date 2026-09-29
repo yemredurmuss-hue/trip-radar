@@ -261,6 +261,13 @@ try {
     rating: { value: 4.8, scale: 5, count: 96, source: "page", evidence: "4.8 · 96 reviews" },
     review_summary: "Ev sahibi ilgili; merkeze dönüş yokuş yukarı.", image_url: null,
   };
+  // An Airbnb page saved before picking dates: no dates, a per-night price.
+  const loftExtraction = {
+    ...casaExtraction, name: "Ribeira Loft", summary: "Ribeira, nehir kenarı daire",
+    dates: { start: null, end: null, source: "none" },
+    price: { ...extraction.price, amount: 90, scope: "per_night", evidence: "€ 90 night" },
+    rating: { value: 4.9, scale: 5, count: 210, source: "page", evidence: "4.9 · 210 reviews" },
+  };
   const chatPrompts = [];
   const analysisPrompts = [];
   const reply = (parts) => ({ json: { candidates: [{ content: { role: "model", parts }, finishReason: "STOP" }] } });
@@ -331,7 +338,8 @@ try {
       }
       const casa = prompt.includes("Casa Azul");
       const bangkok = prompt.includes("Bangkok River Hotel");
-      return route.fulfill(reply([{ text: JSON.stringify(bangkok ? bangkokExtraction : casa ? casaExtraction : extraction) }]));
+      const loft = prompt.includes("Ribeira Loft");
+      return route.fulfill(reply([{ text: JSON.stringify(bangkok ? bangkokExtraction : loft ? loftExtraction : casa ? casaExtraction : extraction) }]));
     }
     const text = JSON.stringify(body.contents);
     chatPrompts.push(text);
@@ -419,13 +427,41 @@ try {
   await casaCard.locator(".opt-head").click();
   console.log("✓ flow: pages read closely → verified findings with counts; invented quotes dropped; ruled out with evidence");
 
+  // An Airbnb page saved without dates joins the same Porto nights (whatever the site), provisionally,
+  // and offers to reopen the page with those dates to get the real price.
+  await board.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tx = database.transaction("captures", "readwrite");
+    tx.objectStore("captures").put({
+      id: "flow-loft", kind: "extension", url: "https://www.airbnb.com.tr/rooms/777?source_impression_id=p3",
+      title: "Ribeira Loft", pageText: "Ribeira Loft\n€ 90 night\n4.9 · 210 reviews", viewportText: "", selection: "", jsonLd: [], meta: {},
+      screenshot: null, capturedAt: Date.now(), status: "pending", error: null, itemId: null,
+    });
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    await chrome.runtime.sendMessage({ type: "process" });
+  });
+  const loftCard = board.locator(".stay-block.open .opt-card", { has: board.locator(".row-name", { hasText: "Ribeira Loft" }) });
+  await loftCard.waitFor({ timeout: 20000 });
+  assert.equal(await board.getByText("tarih seçilmemiş").count(), 0, "the undated stay is not set aside");
+  await loftCard.locator(".opt-head").click();
+  await loftCard.locator(".opt-body .pc-col.cons", { hasText: "Tarihsiz kaydedildi: bu gecelerin fiyatı belli değil" }).waitFor();
+  const reopen = await loftCard.getByRole("link", { name: "Tarihlerle aç ↗" }).getAttribute("href");
+  assert.match(reopen, /airbnb\.com\.tr\/rooms\/777\?.*check_in=2026-10-08&check_out=2026-10-11&adults=2/);
+  await board.screenshot({ path: `${out}/8c-flow-undated.png`, fullPage: true });
+  await loftCard.locator(".opt-head").click();
+  console.log("✓ flow: an undated Airbnb page joins the same nights' comparison, provisionally, with a link to add the dates");
+
   // Two stays → the engine ranks them and the worker asks Gemini for the written analysis.
   await board.locator(".decision-card").getByRole("button", { name: "Karşılaştır →" }).click({ timeout: 20000 });
   let compare = board.getByRole("dialog", { name: "Karşılaştırma" });
   await compare.getByText("Jardim Stay merkezde ve yorumları tutarlı", { exact: false }).waitFor({ timeout: 20000 });
   await compare.locator("tr", { hasText: "AI değerlendirmesi" }).waitFor(); // fresh analysis → counts, labelled
   await compare.locator(".cell-value", { hasText: "merkeze 5 dk yürüme" }).waitFor(); // geocoded, measured from the city centre
-  await compare.getByText("Airbnb ölçeği", { exact: false }).waitFor();
+  await compare.getByText("Airbnb ölçeği", { exact: false }).first().waitFor();
   await board.screenshot({ path: `${out}/8b-flow-compare.png`, fullPage: true });
   await compare.getByRole("button", { name: "Kapat" }).click();
   console.log("✓ flow: two options → ranked with geocoded distance, AI analysis fetched, shown and counted");

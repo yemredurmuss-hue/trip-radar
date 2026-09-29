@@ -211,7 +211,12 @@ export function prosCons(input: { item: Item; option?: OptionResult; decision?: 
     cons.push({ key: `k:${c.reason}`, text: `Kontrol gerekiyor: ${c.reason}`, detail: "sayfada doğrulanamadı", weight: 8, kind: "check", unverified: true });
   }
   for (const label of option?.limited ?? []) {
-    const text = label === "kur bilgisi" ? "Fiyat başka para biriminde; kur gelince karşılaştırılır" : `${capital(label)} eksik; sayfayı tarih seçiliyken tekrar kaydet`;
+    const text =
+      label === "kur bilgisi"
+        ? "Fiyat başka para biriminde; kur gelince karşılaştırılır"
+        : label === "bu gecelerin fiyatı"
+          ? "Tarihsiz kaydedildi: bu gecelerin fiyatı belli değil"
+          : `${capital(label)} eksik; sayfayı tarih seçiliyken tekrar kaydet`;
     cons.push({ key: `l:${label}`, text, detail: null, weight: 7, kind: "check" });
   }
   for (const label of option?.unsure ?? []) {

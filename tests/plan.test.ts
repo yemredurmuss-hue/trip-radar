@@ -133,6 +133,30 @@ describe("plan: nights, bookings and gaps", () => {
     expect(tripRange(trip({ confirmedDates: { start: "2026-01-01", end: "2027-06-01" } }), [])).toBeNull();
   });
 
+  it("compares a stay saved without dates (any site) with the others for its city's open nights", () => {
+    const booking = stay("Impar Studios", "2026-10-07", "2026-10-10");
+    const gallery = stay("The Gallery", "2026-10-07", "2026-10-10");
+    const airbnb = item("Airbnb loft", { provider: "Airbnb", url: "https://www.airbnb.com.tr/rooms/42" });
+    const funchal = stay("FAA Rentals", "2026-10-10", "2026-10-14", "booked", "Funchal");
+    const plan = buildPlan(trip({ confirmedDates: { start: "2026-10-07", end: "2026-10-14" } }), [booking, gallery, airbnb, funchal]);
+    const porto = plan.stayBlocks[0];
+    expect(porto.kind).toBe("open");
+    expect(names(porto)).toEqual([["Impar Studios", "The Gallery", "Airbnb loft"]]);
+    expect(plan.looseStays).toEqual([]);
+    // Ranked together: one comparison for those nights, whichever site each came from.
+    const d = decideTrip([booking, gallery, airbnb, funchal], makeContext(trip(), [booking, gallery, airbnb, funchal])).get("stay@2026-10-07_2026-10-10")!;
+    expect(d.options.map((o) => o.item.name).sort()).toEqual(["Airbnb loft", "Impar Studios", "The Gallery"]);
+  });
+
+  it("keeps an undated stay aside when its city has more than one open stretch (which nights is unclear)", () => {
+    const early = stay("Early", "2026-10-07", "2026-10-09");
+    const late = stay("Late", "2026-10-12", "2026-10-14");
+    const middle = stay("Madeira", "2026-10-09", "2026-10-12", "booked", "Funchal");
+    const undated = item("Airbnb loft", { provider: "Airbnb" });
+    const plan = buildPlan(trip({ confirmedDates: { start: "2026-10-07", end: "2026-10-14" } }), [early, late, middle, undated]);
+    expect(plan.looseStays.map((g) => g.items.map((i) => i.name))).toEqual([["Airbnb loft"]]);
+  });
+
   it("closes a booked flight leg's alternatives but not other legs", () => {
     const plan = buildPlan(trip(), [
       flight("SAS A", "IST", "CPH", "2026-10-07", "booked"),

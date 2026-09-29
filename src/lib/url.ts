@@ -151,3 +151,30 @@ function int(value: string | null): number | null {
 export function looksLikeUrl(text: string): boolean {
   return /^https?:\/\/\S+$/i.test(text.trim());
 }
+
+/**
+ * The same listing with the stay's dates (and guests) filled in, so saving it again brings the real
+ * price for those nights. Only for sites whose date parameters are known; null otherwise.
+ */
+export function withDates(url: string | null, range: { start: string; end: string }, adults: number | null): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (/(^|\.)airbnb\.[a-z.]+$/.test(host)) {
+      u.searchParams.set("check_in", range.start);
+      u.searchParams.set("check_out", range.end);
+      if (adults) u.searchParams.set("adults", String(adults));
+      return u.toString();
+    }
+    if (/(^|\.)booking\.com$/.test(host)) {
+      u.searchParams.set("checkin", range.start);
+      u.searchParams.set("checkout", range.end);
+      if (adults) u.searchParams.set("group_adults", String(adults));
+      return u.toString();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}

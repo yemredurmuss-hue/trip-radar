@@ -41,6 +41,10 @@ export function App() {
 
   const trip = board.trip;
   const openItem = board.items.find((i) => i.id === openItemId) ?? null;
+  /** The comparison an item is in (a stay saved without dates can be in its city's group). */
+  const decisionOf = (item: Item) =>
+    [...(decisions?.byGroup.values() ?? [])].find((d) => d.options.some((o) => o.item.id === item.id)) ??
+    decisions?.byGroup.get(groupKeyOf(item));
   const plan = useMemo(() => (trip ? buildPlan(trip, board.items) : null), [trip, board.items]);
   const compared = compareKey ? decisions?.byGroup.get(compareKey) : undefined;
   const comparedTitle = compared && plan ? (liveGroups(plan).find((g) => g.key === compared.key)?.title ?? null) : null;
@@ -134,13 +138,13 @@ export function App() {
           item={openItem}
           group={board.items.filter((i) => groupKeyOf(i) === groupKeyOf(openItem))}
           trips={board.trips}
-          decision={decisions?.byGroup.get(groupKeyOf(openItem))}
+          decision={decisionOf(openItem)}
           decisions={decisions}
           onClose={() => setOpenItemId(null)}
           onMoved={board.selectTrip}
           onCompare={() => {
             setOpenItemId(null);
-            setCompareKey(groupKeyOf(openItem));
+            setCompareKey(decisionOf(openItem)?.key ?? groupKeyOf(openItem));
           }}
         />
       )}
