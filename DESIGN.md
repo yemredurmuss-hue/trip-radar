@@ -27,13 +27,16 @@ Durum hiçbir yerde yalnız renkle anlatılmaz: yanında hep yazısı olur ("Bil
 ★ yalnız gezginin kendi önceliğine dokunan satırı işaretler (söylediği ya da ayarladığı); varsayılanlar
 yıldız almaz.
 
-## Yolculuk günü
+## Gün, saat saat
 
-- Şehir değiştirilen gün (varış ve dönüş günü de) tek karttır ve çizgide iki şehrin arasında durur; ayrı "Şehir
-  değişimi" satırı yoktur.
-- Adımlar saat sırasıyla: saat solda, durum noktası çizgide, ne olduğu ortada, durumu sağda. Uçuş/tren adımı açık
-  mor zeminle öne çıkar. Tek seferde bir adım açılır.
-- Saat: kayıttan gelen düz, alışılmış ya da hesaplanan "~" ve nedeni küçük yazıyla, bilinmeyen "saat yok".
+- Kendi rezervasyonu olan şey (uçuş, tren, taksi/transfer, etkinlik, restoran) karttır: fiyat, durum, tek ana
+  düğme. Rezerve edilince kart küçülür, ✓ ile tek satıra döner; dokununca açılır.
+- Bilgi (check-in, check-out, araç teslim/iade, iniş) ince satırdır; kartı ve düğmesi yoktur.
+- Günlere yayılan (otel, kiralık araç) günün içinde kart olmaz: otel şehrin başında, araç kiralamanın başladığı
+  günün üstünde bir kez. Günlerde yalnız giriş/çıkış satırı.
+- Saat solda: kayıttan gelen düz, alışılmış ya da hesaplanan "~" ve nedeni küçük yazıyla; bilinmeyen boş.
+- Günler açılır, kapanır: işi kalan açık gelir ("3 iş"), hepsi hazır olan tek satıra katlanır.
+- Yolculuk günü aynı satırlarla, iki şehrin arasında durur.
 
 ## Azaltmak
 

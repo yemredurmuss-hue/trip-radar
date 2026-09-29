@@ -17,6 +17,7 @@ const titles = (t: ReturnType<typeof buildTimeline>) =>
     if (e.kind === "leg") return `  ${e.leg.from.label} → ${e.leg.to.label}`;
     if (e.kind === "day") return `${e.title} [${[...e.legs.map((l) => `${l.from.label} → ${l.to.label}`), ...e.items.map((i) => i.name)].join("; ")}]`;
     if (e.kind === "plan") return `Planlar [${e.items.map((i) => i.name).join("; ")}]`;
+    if (e.kind === "rental") return `Araç ${e.date}–${e.end} [${e.group.items.map((i) => i.name).join("; ")}]`;
     return `${e.title}${"subtitle" in e && e.subtitle ? ` | ${e.subtitle}` : ""}`;
   });
 
@@ -145,6 +146,7 @@ describe("timeline from what's said and saved", () => {
           return what.length ? [`${e.title}: ${what.join(" + ")}`] : [];
         }
         if (e.kind === "plan") return [`plan: ${e.items.map((i) => i.name).join(" + ")}`];
+        if (e.kind === "rental") return [`rental ${e.date.slice(8)}–${e.end?.slice(8)}: ${e.group.items.map((i) => i.name).join(" + ")}`];
         return [e.kind === "leg" ? `transfer ${e.date.slice(8)}` : e.kind === "travel" ? `${e.role}:${e.travel?.items[0].name}` : e.kind];
       });
       return `[${s.index} ${s.city} · ${s.nights} gece · ${s.stays.length} konaklama · ${days.length} gün] ${filled.join(" / ")}`;
@@ -182,7 +184,8 @@ describe("timeline from what's said and saved", () => {
       "{1. gün İstanbul → Porto} arrival:Uçuş · İstanbul → Porto / transfer / 1. gün",
       "[1 Porto · 4 gece · 1 konaklama · 3 gün] ",
       "{5. gün Porto → Funchal} transfer / move:Uçuş · Porto → Funchal / transfer / 5. gün",
-      "[2 Funchal · 6 gece · 1 konaklama · 5 gün] 6. gün: Araç kiralama · Funchal",
+      // The car is its own booking above the day it starts (12th), like the hotel.
+      "[2 Funchal · 6 gece · 1 konaklama · 5 gün] rental 12–16: Araç kiralama · Funchal",
       "{11. gün Funchal → ?} 11. gün / transfer / departure:Funchal →",
     ]);
     const move = timeline.entries.find((e) => e.kind === "travel" && e.role === "move")!;
@@ -232,8 +235,9 @@ describe("timeline from what's said and saved", () => {
       // The connection comes first, in the day's card: SAW → CPH, CPH → OPO, the transfer, check-in.
       "{1. gün SAW → Porto} other:Pegasus SAW-CPH / arrival:SAS CPH-OPO / transfer / 1. gün",
       "[1 Porto · 4 gece · 1 konaklama · 3 gün] ",
-      "{5. gün Porto → Madeira} transfer / move:Uçuş · Porto → Madeira / transfer / 5. gün[FAA Rentals]",
-      "[2 Madeira · 7 gece · 1 konaklama · 6 gün] ",
+      "{5. gün Porto → Madeira} transfer / move:Uçuş · Porto → Madeira / transfer / 5. gün",
+      // Picked up on the day they land: its card opens Madeira's block, its pick-up is a line of that day.
+      "[2 Madeira · 7 gece · 1 konaklama · 6 gün] rental 11–18: FAA Rentals",
       "{12. gün Madeira → ?} 12. gün / transfer / departure:Madeira →",
     ]);
     const madeira = timeline.sections.filter((x) => x.kind === "city")[1];
@@ -253,6 +257,6 @@ describe("timeline from what's said and saved", () => {
     const dated = { ...undated, dates: { start: "2026-10-12", end: "2026-10-16", source: "unverified" as const } };
     const later = build([...stays, dated]).timeline;
     expect(later.entries.some((e) => e.kind === "plan")).toBe(false);
-    expect(later.entries.find((e) => e.kind === "day" && e.items.some((i) => i.id === "car"))?.date).toBe("2026-10-12");
+    expect(later.entries.find((e) => e.kind === "rental" && e.group.items.some((i) => i.id === "car"))?.date).toBe("2026-10-12");
   });
 });

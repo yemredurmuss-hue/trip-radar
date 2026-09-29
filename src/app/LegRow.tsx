@@ -22,7 +22,21 @@ export const KIND_LABEL = { arrival: "Varış transferi", move: "Şehir değişi
  * metro, a saved option, booked). Opening it shows what's easy to miss and lets the traveller say
  * how they'll go; saying it in the chat ("metroyla gideceğim") does the same.
  */
-export function LegRow({ leg, tripId, onOpenItem, embedded = false }: { leg: Leg; tripId: string; onOpenItem: (item: Item) => void; embedded?: boolean }) {
+export function LegRow({
+  leg,
+  tripId,
+  onOpenItem,
+  embedded = false,
+  timed = false,
+}: {
+  leg: Leg;
+  tripId: string;
+  onOpenItem: (item: Item) => void;
+  /** Only the body, open: the line above it is its head. */
+  embedded?: boolean;
+  /** Its time is beside it already (a day's rows): the sub line keeps only the places. */
+  timed?: boolean;
+}) {
   const [toggled, setOpen] = useState(false);
   // Inside a day on the move the step is the head; only the body shows, open.
   const open = embedded || toggled;
@@ -42,7 +56,7 @@ export function LegRow({ leg, tripId, onOpenItem, embedded = false }: { leg: Leg
           <span className="leg-main">
             <span className="leg-title">{legShortTitle(leg)}</span>
             <span className="leg-sub">
-              {[timing, `${leg.from.label} → ${leg.to.label}`, settled?.name].filter(Boolean).join(" · ")}
+              {[timed ? null : timing, `${leg.from.label} → ${leg.to.label}`, settled?.name].filter(Boolean).join(" · ")}
               {!open && leg.notes.length > 0 && (
                 <span className="leg-hint" title={leg.notes.join("\n")} aria-label={`${leg.notes.length} not`}>
                   {" "}

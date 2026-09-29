@@ -75,6 +75,9 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] 0.16: yolculuk günü tek kart (seçenek 1, geçiş kartı): şehir değiştirilen, varış ve dönüş günü çizgide iki şehrin
       arasında; adımlar saat sırasıyla (check-out, transfer, uçuş/tren, transfer, check-in), her biri durumuyla;
       tahmini saat "~" ile, bilinmeyen "saat yok"; "Bugün" işareti ve "Seyahat başladı · N. gün"
+- [x] 0.17: rezervasyon kartları — kendi rezervasyonu olan şey kart (rezerve edilince ✓ satıra küçülür), bilgi
+      (check-in/out, araç teslim/iade) ince satır, günler açılır/kapanır (işi kalan açık, "N iş"), yolculuk günü aynı
+      satırlarla, kiralık araç kiralamanın başladığı günün üstünde kendi kartı
 - [ ] Sonraki öneriler (onay bekliyor): 7 sade karşılaştırma, 8 zaman çizelgesinde tekrarların kalkması,
       9 sohbet ↔ pano bağlantısı, 10 sırayla karar ver modu
 - [ ] 0.17: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),

@@ -31,7 +31,14 @@ export type TimelineEntry =
   /** One day of the trip in its city: its transfers and what's planned, empty until something is. */
   | { kind: "day"; key: string; date: string; dayNo: number; title: string; items: Item[]; legs: Leg[] }
   /** Plans for a city without a day yet ("Madeira'da araba kiralarız"): in its block until the day is known. */
-  | { kind: "plan"; key: string; date: string; city: string | null; items: Item[] };
+  | { kind: "plan"; key: string; date: string; city: string | null; items: Item[] }
+  /**
+   * A car rented for some days: one booking above the day it starts (like the hotel, it spans days);
+   * picking it up and bringing it back are lines on those days.
+   */
+  | { kind: "rental"; key: string; date: string; end: string | null; group: OptionGroup };
+
+export type RentalEntry = Extract<TimelineEntry, { kind: "rental" }>;
 
 export type StayEntry = Extract<TimelineEntry, { kind: "stay" }>;
 
@@ -181,10 +188,35 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
   // What's planned on each day of the trip. Days after the flight home aren't on this trip's line: they
   // stay in the list below, with their date.
   const lastDay = last && last.travel && last.date < end ? last.date : end;
+  // Rentals during the trip: one entry per need (its options together), from the chosen one's day.
+  const rentalLists = new Map<string, { group: OptionGroup | null; items: Item[] }>();
+  for (const i of dayItems) {
+    const d = isoDate(i.dates.start);
+    if (!isRental(i) || !d || d < start || d > lastDay) continue;
+    const group = plan.groups.find((g) => g.items.some((x) => x.id === i.id)) ?? null;
+    const key = group?.key ?? `rental:${i.id}`;
+    const list = rentalLists.get(key) ?? { group, items: [] };
+    list.items.push(i);
+    rentalLists.set(key, list);
+  }
+  const rentals: RentalEntry[] = [...rentalLists].map(([key, { group, items: list }]) => {
+    const settled = list.find((i) => i.status === "booked") ?? list.find((i) => i.status === "chosen") ?? null;
+    const starts = list.map((i) => isoDate(i.dates.start)!).sort();
+    const ends = list.map((i) => isoDate(i.dates.end)).filter((d): d is string => Boolean(d)).sort();
+    return {
+      kind: "rental",
+      key: `rental:${key}`,
+      date: settled ? isoDate(settled.dates.start)! : starts[0],
+      end: settled ? isoDate(settled.dates.end) : (ends.at(-1) ?? null),
+      group: { key, category: "transport", title: null, range: null, booked: null, ...group, items: list },
+    };
+  });
+  const inRental = new Set(rentals.flatMap((r) => r.group.items.map((i) => i.id)));
+
   const byDay = new Map<string, Item[]>();
   for (const i of dayItems) {
     const d = isoDate(i.dates.start);
-    if (!d || d < start || d > lastDay) continue;
+    if (!d || d < start || d > lastDay || inRental.has(i.id)) continue;
     byDay.set(d, [...(byDay.get(d) ?? []), i]);
   }
   const at = (i: Item) => i.flight?.departure?.slice(11, 16) ?? "99";
@@ -200,7 +232,7 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
     }
     return days;
   });
-  const placedDays = new Set(dayCards.flat().flatMap((d) => d.items.map((i) => i.id)));
+  const placedDays = new Set([...dayCards.flat().flatMap((d) => d.items.map((i) => i.id)), ...inRental]);
   // What's planned in a city without a day (a car to rent there, a tour they chose) goes in that city's
   // block; places only saved as ideas stay in the lists below.
   const cityPlans = blocks.map(() => [] as Item[]);
@@ -303,7 +335,10 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
     if (cityPlans[index].length) {
       entries.push({ kind: "plan", key: `plan:${block.range.start}`, date: block.range.start, city: block.city, items: cityPlans[index] });
     }
-    entries.push(...dayCards[index]);
+    for (const day of dayCards[index]) {
+      entries.push(...rentals.filter((r) => r.date === day.date));
+      entries.push(day);
+    }
   });
 
   // Getting home.

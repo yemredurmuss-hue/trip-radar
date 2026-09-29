@@ -144,6 +144,8 @@ function entryOf(timeline: Timeline, id: string): string | undefined {
         return has(e.items);
       case "leg":
         return has(e.leg.options);
+      case "rental":
+        return has(e.group.items);
     }
   })?.key;
 }
@@ -166,6 +168,19 @@ export function decisionProgress(
       const saved = e.items.filter((i) => i.status === "saved");
       if (saved.length && !e.items.some((i) => i.status === "chosen" || i.status === "booked")) {
         drafts.push({ key: `${e.key}:options`, kind: "decide", target: { entry: e.key }, title: `${saved[0].city ?? e.city ?? ""} · ${saved[0].category === "transport" ? "araç kiralama" : "planlar"}`.replace(/^ · /, ""), note: options(saved.length, null), date: null });
+      }
+    } else if (e.kind === "rental") {
+      // A car with pages saved and none picked: a decision, above the day it starts.
+      const items = e.group.items;
+      if (!items.some((i) => i.status === "chosen" || i.status === "booked")) {
+        drafts.push({
+          key: `${e.key}:decide`,
+          kind: "decide",
+          target: { entry: e.key },
+          title: `Araç kiralama · ${formatDateRange(e.date, e.end)}`,
+          note: options(items.length, winnerOf([e.group.key], decisions)),
+          date: e.date,
+        });
       }
     } else {
       const d = entryTodo(e, decisions);

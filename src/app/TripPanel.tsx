@@ -99,7 +99,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       changing={changing}
     />
   );
-  const leg = (l: Leg, embedded = false) => <LegRow key={l.key} leg={l} tripId={trip.id} onOpenItem={onOpenItem} embedded={embedded} />;
+  const leg = (l: Leg, opts: { embedded?: boolean; timed?: boolean } = {}) => (
+    <LegRow key={l.key} leg={l} tripId={trip.id} onOpenItem={onOpenItem} embedded={opts.embedded} timed={opts.timed} />
+  );
 
   const renderGroup: RenderGroup = (group, heading, groupSubtitle, nested = false) => (
     <OptionGroupView

@@ -3,9 +3,9 @@ import type { GroupDecision } from "../lib/decision";
 import { formatDateRange } from "../lib/items";
 import { isRental, MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib/legs";
 import type { OptionGroup, Plan, StayBlock } from "../lib/plan";
-import { journeySteps, journeyTitle, stepsReady, type JourneyStep } from "../lib/journey";
+import { dayRows, daySummary, journeyTitle, rowsLeft, type DayRow } from "../lib/journey";
 import { entryDomId } from "../lib/progress";
-import { flightSearchUrl, nightsKey, type Timeline, type TimelineEntry, type TimelineSection } from "../lib/timeline";
+import { flightSearchUrl, nightsKey, type RentalEntry, type Timeline, type TimelineEntry, type TimelineSection } from "../lib/timeline";
 import type { Category, Item, LegMode, Listing } from "../lib/types";
 import { setHidden, updateTrip } from "./actions";
 import { Carousel } from "./Carousel";
@@ -16,8 +16,8 @@ import { StatusBar, type Standing } from "./Status";
 export type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => ReactNode;
 export type CardFor = (item: Item, group: Item[], decision?: GroupDecision, roles?: string[], onCompare?: () => void) => ReactNode;
 export type SettledFor = (item: Item, decision?: GroupDecision, onChange?: () => void, changing?: boolean) => ReactNode;
-/** A transfer: its own row, or (embedded) only its body under a step of a day on the move. */
-export type LegFor = (l: Leg, embedded?: boolean) => ReactNode;
+/** A transfer: its own row; `embedded`, only its body (under a line that is its head); `timed`, its time is beside it already. */
+export type LegFor = (l: Leg, opts?: { embedded?: boolean; timed?: boolean }) => ReactNode;
 
 const fmt = (d: string) => formatDateRange(d, null);
 
@@ -50,7 +50,8 @@ export function TimelineView({
   const start = plan.range?.start ?? null;
   const n = plan.nights;
   const parts = [n.booked && `${n.booked} rezerve`, n.chosen && `${n.chosen} seçildi`, n.open && `${n.open} açık`].filter(Boolean);
-  const render = { tripId, leg, renderGroup, card, settled, start, listings, today };
+  const rentals = timeline.entries.filter((e): e is RentalEntry => e.kind === "rental");
+  const render = { tripId, leg, renderGroup, card, settled, start, listings, today, rentals };
   return (
     <div className="section trip-plan">
       <div className="section-head">
@@ -80,6 +81,8 @@ interface RenderProps {
   settled: SettledFor;
   listings?: Map<string, Listing>;
   today: string;
+  /** The trip's rented cars: their pick-up and return are lines on those days. */
+  rentals: RentalEntry[];
 }
 
 function Section({ section, ...render }: { section: TimelineSection } & RenderProps) {
@@ -128,6 +131,8 @@ function standingOf(entry: TimelineEntry): Standing | null {
     }
     case "leg":
       return entry.leg.status === "booked" ? "booked" : entry.leg.status === "planned" || entry.leg.status === "chosen" ? "planned" : "open";
+    case "rental":
+      return entry.group.items.some((i) => i.status === "booked") ? "booked" : entry.group.items.some((i) => i.status === "chosen") ? "planned" : "open";
     default:
       return null;
   }
@@ -138,16 +143,18 @@ function comparing(entry: TimelineEntry): boolean {
   const undecided = (items: Item[]) => items.length >= 2 && !items.some((i) => i.status === "chosen" || i.status === "booked");
   if (entry.kind === "stay") return entry.block.kind === "open" && entry.block.groups.some((g) => undecided(g.items));
   if (entry.kind === "travel") return Boolean(entry.travel && !entry.travel.settled && undecided(entry.travel.items));
+  if (entry.kind === "rental") return undecided(entry.group.items);
   return false;
 }
 
 function Row({ entry, ...render }: { entry: TimelineEntry } & RenderProps) {
+  if (entry.kind === "day") return <DayEntry entry={entry} {...render} />;
   const standing = standingOf(entry);
   return (
     <li id={entryDomId(entry.key)} className={`tl-entry tl-${entry.kind}${standing ? ` st-${standing}` : ""}${comparing(entry) ? " tl-wide" : ""}`}>
       <div className="tl-side">
         <span className="tl-icon" aria-hidden>
-          {entry.kind === "day" ? <b className="tl-day-no">{entry.dayNo}</b> : <CategoryIcon category={iconOf(entry)} size={20} />}
+          <CategoryIcon category={iconOf(entry)} size={20} />
           {standing === "booked" && <span className="tl-badge">✓</span>}
         </span>
         <Label entry={entry} today={render.today} />
@@ -190,6 +197,10 @@ function Label({ entry, today }: { entry: TimelineEntry; today: string }) {
     case "plan":
       title = entry.items.every(isRental) ? "Araç kiralama" : "Planlar";
       lines = ["gün belli değil"];
+      break;
+    case "rental":
+      title = "Araç kiralama";
+      lines = [formatDateRange(entry.date, entry.end)];
       break;
   }
   return (
@@ -253,6 +264,8 @@ function Entry({ entry, tripId, leg, renderGroup, card, settled }: { entry: Time
       );
     case "day":
       return <DayCard entry={entry} leg={leg} card={card} settled={settled} />;
+    case "rental":
+      return <div className="tl-rental">{renderGroup(entry.group, null, null, true)}</div>;
     case "plan":
       return <DayCard entry={{ ...entry, legs: [], title: "Planlar" }} leg={leg} card={card} settled={settled} />;
   }
@@ -295,103 +308,175 @@ function DayCard({
   );
 }
 
-const STEP_ICONS: Record<JourneyStep["kind"], Category> = { checkout: "stay", checkin: "stay", transfer: "transport", travel: "flight" };
+/** "4. gün · 11 Ekim Paz", today marked, how much is left; a tap folds or opens the day. */
+function DayToggle({ title, date, today, left, open, onToggle }: { title: string; date: string; today: string; left: number; open: boolean; onToggle: () => void }) {
+  return (
+    <button className="tl-label day-toggle" aria-expanded={open} onClick={onToggle}>
+      <span className="day-title">
+        <b>{title}</b>
+        <span className="day-chev" aria-hidden>
+          {open ? "▴" : "▾"}
+        </span>
+      </span>
+      <span>{`${fmt(date)} ${weekday(date)}`}</span>
+      {date === today && <span className="today-chip">Bugün</span>}
+      {left > 0 && <span className="day-left">{left} iş</span>}
+    </button>
+  );
+}
 
 /**
- * A day on the move as one card on the line between the cities: "4. gün · Porto → Madeira", and the
- * day's steps in order with their time and where each stands. A tap on a step opens its card (the
- * flight to pick or mark bought, how to get to the airport); a stay's step takes you to the stay.
+ * One day of a city: its time on the left and, in order, what happens. Open while something is left
+ * to book or pick; folded into one line once it's all set (a tap opens it again).
+ */
+function DayEntry({ entry, ...render }: { entry: Extract<TimelineEntry, { kind: "day" }> } & RenderProps) {
+  const rows = dayRows({ day: entry, rentals: render.rentals, listings: render.listings });
+  const left = rowsLeft(rows);
+  const [open, setOpen] = useState(left > 0);
+  const empty = rows.length === 0;
+  return (
+    <li id={entryDomId(entry.key)} className={`tl-entry tl-day${open && !empty ? " open" : ""}`}>
+      <div className="tl-side">
+        <span className="tl-icon" aria-hidden>
+          <b className="tl-day-no">{entry.dayNo}</b>
+        </span>
+        {empty ? (
+          <Label entry={entry} today={render.today} />
+        ) : (
+          <DayToggle title={entry.title} date={entry.date} today={render.today} left={left} open={open} onToggle={() => setOpen(!open)} />
+        )}
+      </div>
+      <div className="tl-content">
+        {empty ? (
+          <div className="day-card empty">
+            <span>Boş gün</span>
+            <span className="muted">Bir plan kaydet ya da sohbette söyle</span>
+          </div>
+        ) : open ? (
+          <DayRows rows={rows} {...render} />
+        ) : (
+          <button className="day-summary" onClick={() => setOpen(true)}>
+            {daySummary(rows)}
+          </button>
+        )}
+      </div>
+    </li>
+  );
+}
+
+/**
+ * A day on the move, on the line between the cities: "4. gün · Porto → Madeira", then its rows —
+ * check-out, the transfer, the flight, the transfer, check-in — like any other day.
  */
 function JourneyCard({ section, ...render }: { section: Extract<TimelineSection, { kind: "journey" }> } & RenderProps) {
   const j = section.journey;
-  const steps = journeySteps(section, render.listings);
-  // A flight still to pick opens by itself: that's the decision on this day.
-  const [open, setOpen] = useState<string | null>(() => steps.find((st) => st.entry && comparing(st.entry))?.key ?? null);
-  const day = section.entries.find((e): e is Extract<TimelineEntry, { kind: "day" }> => e.kind === "day");
-  const ready = stepsReady(steps);
+  const rows = dayRows({ journey: section, rentals: render.rentals, listings: render.listings });
+  const left = rowsLeft(rows);
+  const [open, setOpen] = useState(left > 0);
   const route = j.from && j.to ? `${j.from} → ${j.to}` : j.to ? `→ ${j.to}` : j.from ? `${j.from} →` : "Yolculuk";
-  const tap = (st: JourneyStep) => {
-    if (st.entry) setOpen(open === st.key ? null : st.key);
-    else if (st.stayKey) show(document.getElementById(entryDomId(st.stayKey)));
-  };
+  // Flights to pick from get the whole width, side by side.
+  const wide = open && rows.some((r) => r.state === "decide" && r.entry?.kind === "travel" && (r.entry.travel?.items.length ?? 0) >= 2);
   return (
     <ol className="timeline between">
-      <li id={entryDomId(j.key)} className="tl-entry tl-journey">
+      <li id={entryDomId(j.key)} className={`tl-entry tl-journey${wide ? " tl-wide" : ""}${open ? " open" : ""}`}>
         <div className="tl-side">
           <span className="tl-icon" aria-hidden>
             {j.dayNo ? <b className="tl-day-no">{j.dayNo}</b> : <CategoryIcon category="flight" size={20} />}
           </span>
-          <div className="tl-label">
-            <b>{journeyTitle(j)}</b>
-            <span>{`${fmt(j.date)} ${weekday(j.date)}`}</span>
-            {j.date === render.today && <span className="today-chip">Bugün</span>}
-          </div>
+          <DayToggle title={journeyTitle(j)} date={j.date} today={render.today} left={left} open={open} onToggle={() => setOpen(!open)} />
         </div>
         <div className="tl-content">
-          <article className="journey-card" aria-label={`${journeyTitle(j)} · ${route}`}>
-            <header className="jc-head">
-              <b>{route}</b>
-              <span className="jc-chip">Yolculuk günü</span>
-              <span className="jc-ready">
-                {ready}/{steps.length} hazır
-              </span>
-            </header>
-            <ol className="jc-steps">
-              {steps.map((st) => (
-                <li
-                  key={st.key}
-                  id={st.entry ? entryDomId(st.entry.key) : undefined}
-                  className={`jc-step st-${st.standing} k-${st.kind}${open === st.key ? " open" : ""}`}
-                >
-                  <button className="jc-row" onClick={() => tap(st)} aria-expanded={st.entry ? open === st.key : undefined}>
-                    <span className="jc-time">
-                      <b className={st.time ? (st.estimated ? "est" : "") : "none"}>{st.time ? `${st.estimated ? "~" : ""}${st.time}` : "saat yok"}</b>
-                      {st.hint && <small>{st.hint}</small>}
-                      {st.otherDay && <small>{fmt(st.otherDay)}</small>}
-                    </span>
-                    <span className="jc-node" aria-hidden>
-                      <CategoryIcon category={st.kind === "travel" && st.entry?.kind === "travel" ? iconOf(st.entry) : STEP_ICONS[st.kind]} size={15} />
-                    </span>
-                    <span className="jc-what">
-                      <b>{st.title}</b>
-                      {(st.sub || st.notes.length > 0) && (
-                        <span className="muted">
-                          {st.sub}
-                          {st.notes.length > 0 && open !== st.key && (
-                            <span className="leg-hint" title={st.notes.join("\n")} aria-label={`${st.notes.length} not`}>
-                              {" "}
-                              ⓘ
-                            </span>
-                          )}
-                        </span>
-                      )}
-                    </span>
-                    <span className={`jc-status st-${st.standing}`}>{st.status}</span>
-                  </button>
-                  {open === st.key && st.entry && (
-                    <div className="jc-more">
-                      {st.entry.kind === "leg" ? (
-                        render.leg(st.entry.leg, true)
-                      ) : st.entry.kind === "travel" && !st.entry.travel && st.entry.role === "move" && st.entry.leg ? (
-                        <MoveCard leg={st.entry.leg} tripId={render.tripId} startOpen />
-                      ) : (
-                        <Entry entry={st.entry} {...render} />
-                      )}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ol>
-            {day && (day.items.length > 0 || day.legs.length > 0) && (
-              <div className="jc-day">
-                <span className="jc-day-label">O gün</span>
-                <DayCard entry={day} leg={render.leg} card={render.card} settled={render.settled} />
-              </div>
-            )}
-          </article>
+          <div className="journey-head">
+            <b>{route}</b>
+            <span className="jc-chip">Yolculuk günü</span>
+          </div>
+          {open ? (
+            <DayRows rows={rows} {...render} />
+          ) : (
+            <button className="day-summary" onClick={() => setOpen(true)}>
+              {daySummary(rows)}
+            </button>
+          )}
         </div>
       </li>
     </ol>
+  );
+}
+
+function DayRows({ rows, ...render }: { rows: DayRow[] } & RenderProps) {
+  return (
+    <ol className="day-rows">
+      {rows.map((r) => (
+        <DayRowView key={r.key} row={r} {...render} />
+      ))}
+    </ol>
+  );
+}
+
+/** The card behind a row: the flight to pick or mark bought, the transfer, the tour to book. */
+function fullCard(row: DayRow, render: RenderProps, embedded: boolean): ReactNode {
+  if (row.kind === "leg" && row.leg) return render.leg(row.leg, { embedded, timed: true });
+  if (row.kind === "item" && row.item) return render.settled(row.item);
+  if (row.kind === "travel" && row.entry?.kind === "travel") {
+    const e = row.entry;
+    if (!e.travel && e.role === "move" && e.leg) return <MoveCard leg={e.leg} tripId={render.tripId} startOpen={embedded} />;
+    return <Entry entry={e} {...render} />;
+  }
+  return null;
+}
+
+/**
+ * A row of a day. Information (check-in, the car's pick-up) is a line; something to book is its card
+ * until it's booked, then a ✓ line that opens on a tap.
+ */
+function DayRowView({ row, ...render }: { row: DayRow } & RenderProps) {
+  const [open, setOpen] = useState(false);
+  let body: ReactNode;
+  if (row.kind === "info") {
+    const text = (
+      <>
+        <b>{row.title}</b>
+        {row.sub && <span>{row.sub}</span>}
+      </>
+    );
+    body = row.stayKey ? (
+      <button className="dr-info" onClick={() => show(document.getElementById(entryDomId(row.stayKey!)))}>
+        {text}
+      </button>
+    ) : (
+      <p className="dr-info">{text}</p>
+    );
+  } else if (row.kind === "ideas") {
+    body = <Carousel label="Fikirler">{row.items.map((i) => render.card(i, row.items.filter((x) => x.category === i.category)))}</Carousel>;
+  } else if (row.state === "done") {
+    body = (
+      <>
+        <button className="dr-line" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <span className="ok" aria-hidden>
+            ✓
+          </span>
+          <b>{row.title}</b>
+          {(row.line ?? row.sub) && <span className="muted">{row.line ?? row.sub}</span>}
+          <span className="dr-chev" aria-hidden>
+            {open ? "▴" : "▾"}
+          </span>
+        </button>
+        {open && <div className="dr-more">{fullCard(row, render, true)}</div>}
+      </>
+    );
+  } else {
+    body = fullCard(row, render, false);
+  }
+  return (
+    <li id={row.entry ? entryDomId(row.entry.key) : undefined} className={`dr dr-${row.kind} st-${row.state}`} data-title={row.title}>
+      <span className="dr-time">
+        {row.time && <b className={row.estimated ? "est" : ""}>{`${row.estimated ? "~" : ""}${row.time}`}</b>}
+        {row.time && row.hint && <small>{row.hint}</small>}
+        {row.otherDay && <small>{fmt(row.otherDay)}</small>}
+      </span>
+      <span className="dr-pin" aria-hidden />
+      <div className="dr-body">{body}</div>
+    </li>
   );
 }
 
