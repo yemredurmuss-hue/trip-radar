@@ -54,7 +54,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
   if (message?.type === "apply-update") {
     sendResponse({ ok: true });
-    chrome.runtime.reload();
+    // The board closes with the reload; say where to bring it back (see onInstalled).
+    void chrome.storage.local.set({ reopenBoard: message.reopen ?? null }).then(() => chrome.runtime.reload());
   }
 });
 
@@ -62,8 +63,20 @@ chrome.runtime.onStartup.addListener(() => void run());
 chrome.runtime.onInstalled.addListener((details) => {
   // First install: open the one-step setup (free Gemini key) right away.
   if (details.reason === "install") void chrome.tabs.create({ url: chrome.runtime.getURL("app.html#settings") });
+  // Updated from the board: bring the board back where it was.
+  if (details.reason === "update") void reopenBoard();
   void run();
 });
+
+async function reopenBoard(): Promise<void> {
+  const { reopenBoard: hash } = await chrome.storage.local.get("reopenBoard");
+  if (typeof hash !== "string") return;
+  await chrome.storage.local.remove("reopenBoard");
+  const base = chrome.runtime.getURL("app.html");
+  const open = await chrome.tabs.query({ url: `${base}*` });
+  if (open.length) for (const tab of open) void chrome.tabs.reload(tab.id!);
+  else await chrome.tabs.create({ url: `${base}${hash}` });
+}
 
 // --- self-update -------------------------------------------------------------------------------
 // New files on disk (written by the Mac updater) are applied by reloading. If the board is open,
@@ -76,7 +89,8 @@ async function applyUpdateIfIdle(): Promise<void> {
   if (openPages.length === 0) chrome.runtime.reload();
 }
 
-chrome.alarms.create("update-check", { periodInMinutes: 10 });
+// The Mac updater checks every minute; notice its new files as quickly.
+chrome.alarms.create("update-check", { periodInMinutes: 1 });
 // A busy model ("high demand") or a rate limit shouldn't need a click: try again later.
 chrome.alarms.create("retry-failed", { periodInMinutes: 10 });
 chrome.alarms.onAlarm.addListener((alarm) => {

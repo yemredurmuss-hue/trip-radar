@@ -489,7 +489,9 @@ try {
   const worker = updating.serviceWorkers()[0] ?? (await updating.waitForEvent("serviceworker"));
   const id = new URL(worker.url()).host;
   const board = await updating.newPage();
-  await board.goto(`chrome-extension://${id}/app.html`);
+  // Settings open: an update must not reload the page under an open dialog.
+  await board.goto(`chrome-extension://${id}/app.html#settings`);
+  await board.locator(".modal-card").waitFor();
   const before = await board.evaluate(() => chrome.runtime.getManifest().version);
 
   const next = `${installDir}.new`;
@@ -504,10 +506,23 @@ try {
   await board.evaluate(() => window.dispatchEvent(new Event("focus")));
   await board.getByText("Yeni sürüm hazır (99.0.0)").waitFor({ timeout: 10000 });
   await board.screenshot({ path: `${out}/10-update-banner.png` });
+  // Dialog closed, nothing typed: it updates by itself after a short notice and asks to come back
+  // to the same place. (The reload itself is stubbed; see below.)
+  await board.evaluate(() => {
+    window.__sent = [];
+    chrome.runtime.sendMessage = (message) => {
+      window.__sent.push(message);
+      return Promise.resolve({ ok: true });
+    };
+  });
+  await board.locator(".modal").click({ position: { x: 5, y: 5 } });
+  await board.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await board.getByText("Yeni sürüm (99.0.0) yükleniyor…").waitFor({ timeout: 10000 });
+  await board.waitForFunction(() => window.__sent.some((m) => m.type === "apply-update"), null, { timeout: 6000 });
   // The reload itself (chrome.runtime.reload) can't be exercised here: extensions loaded with
   // --load-extension do not come back after a runtime reload in this Chromium, even without changes.
   // In Chrome, "Load unpacked" extensions reload normally (the same call hot-reload tools use).
-  console.log(`✓ self-update: board noticed ${before} → 99.0.0 on disk after the folder swap and offers the update`);
+  console.log(`✓ self-update: board noticed ${before} → 99.0.0 on disk; waits while a dialog is open, then updates by itself`);
 } finally {
   await updating.close();
 }

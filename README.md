@@ -16,8 +16,11 @@ curl -fsSL https://raw.githubusercontent.com/yemredurmuss-hue/trip-radar/release
 ```
 
 Sonra Chrome'da `chrome://extensions` → Geliştirici modu → **Paketlenmemiş öğe yükle** → `~/TripRadar`.
-Bundan sonra yeni sürümler saatte bir kendiliğinden iner. Pano kapalıysa eklenti kendini yeniler;
-açıksa sağ altta **Yeni sürüm hazır → Şimdi güncelle** çıkar. Kapatmak için:
+Bundan sonra yeni sürüm yayınlandıktan 1-2 dakika sonra kendiliğinden gelir: güncelleyici dakikada bir
+`release` dalının commit'ine bakar (önbellek gecikmesi yok) ve kendini de günceller. Pano açıksa ve
+yazılı bir şey ya da açık pencere yoksa kendini yenileyip kaldığı yerde açılır; varsa sağ altta
+**Yeni sürüm hazır → Şimdi güncelle** çıkar. Eski (saatlik) kurulumu hızlandırmak için yukarıdaki komutu
+bir kez daha çalıştırmak yeter. Kapatmak için:
 `curl -fsSL https://raw.githubusercontent.com/yemredurmuss-hue/trip-radar/release/uninstall.sh | bash`
 
 Yayınlama (geliştirici): `static/manifest.json` sürümünü artır → `scripts/release.sh` (`release` dalına gönderir).
