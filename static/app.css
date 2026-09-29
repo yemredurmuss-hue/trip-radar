@@ -73,11 +73,25 @@ a { color: var(--accent); text-decoration: none; }
 .menu { position: absolute; top: 42px; right: 0; z-index: 5; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.1); padding: 6px; min-width: 200px; }
 .menu button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 10px 12px; border-radius: 8px; }
 .menu button:hover { background: var(--soft); }
-.trip-title { font-size: 46px; font-weight: 800; letter-spacing: -.03em; margin: 8px 0 0; }
-.trip-sub { font-size: 20px; color: #6e6e73; margin: 4px 0 14px; }
+.trip-title { font-size: 40px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; margin: 0; }
+.trip-sub { font-size: 17px; color: #6e6e73; margin: 6px 0 14px; }
 .estimated { font-size: 13px; color: var(--muted); margin-left: 6px; }
-.hero { width: 100%; aspect-ratio: 3.7 / 1; border-radius: 18px; object-fit: cover; display: block; background: linear-gradient(120deg, #f7c77e, #7aa6d8); }
-.hero-row { display: flex; justify-content: space-between; align-items: center; margin: 12px 4px 4px; font-size: 14px; }
+/* The trip at a glance: its picture, then the title, dates and what's in it. */
+.trip-hero { display: flex; align-items: center; gap: 28px; margin: 4px 0 18px; }
+.hero-img {
+  flex: none; width: 200px; height: 200px; border-radius: 28px; object-fit: cover; display: block;
+  background: linear-gradient(140deg, #f7c77e, #7aa6d8); box-shadow: 0 8px 24px rgba(40, 30, 20, .14);
+}
+.hero-main { min-width: 0; flex: 1; }
+.hero-stats { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0 0 14px; padding: 0; list-style: none; font-size: 16px; color: #2b2230; }
+.hero-stats li { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.hero-stats svg { color: #4a4540; }
+.hero-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 14px; }
+@media (max-width: 700px) {
+  .trip-hero { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .hero-img { width: 100%; height: 160px; }
+  .trip-title { font-size: 30px; }
+}
 .status-line { color: var(--muted); }
 .status-line .err { color: var(--danger); }
 .section { margin-top: 18px; }
@@ -623,20 +637,26 @@ body.popup { width: 320px; }
 .leg-chip.st-planned, .leg-chip.st-chosen { background: #fff1d9; color: #8a5300; }
 .leg-chip.st-empty { background: #f1efeb; color: #6e6a64; }
 
-/* ---------- the card front: the biggest plus and minus on top, a few more as tags ---------- */
-.card-tags { display: flex; flex-direction: column; gap: 6px; margin: 2px 0; }
-.top-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.top-tag { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 12px 4px 5px; border-radius: 999px; font-size: 14px; font-weight: 700; line-height: 1.3; }
-.top-tag i { flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: #fff; font-style: normal; font-size: 14px; line-height: 1; }
-.top-tag.pro { background: #e6f4ec; color: #16623a; }
-.top-tag.pro i { background: #2e9b5f; }
-.top-tag.con { background: #fdefe6; color: #93461a; }
-.top-tag.con i { background: #e07b45; }
-.top-tag.con.strong { background: #fdeaea; color: var(--danger); }
-.top-tag.con.strong i { background: var(--danger); }
-.more-tags { display: flex; flex-wrap: wrap; gap: 5px; }
-.tag { padding: 2px 9px; border-radius: 999px; border: 1px solid; background: #fff; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
-.tag.pro { color: #1f7a48; border-color: #bfe3cd; }
-.tag.con { color: #a4501c; border-color: #f3cdb6; }
-.tag.con.strong { color: var(--danger); border-color: #f2b8b8; }
-.stc-info .card-tags { margin: 4px 0; }
+/* ---------- the card front: for it on the left, against it on the right, biggest first ---------- */
+.sc-pc { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-height: 104px; padding-top: 8px; border-top: 1px solid #f1ede7; }
+.sc-col { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.sc-col li { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; line-height: 1.3; }
+.sc-col li span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.sc-col li i {
+  flex: none; display: grid; place-items: center; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%;
+  color: #fff; font-style: normal; font-size: 12px; font-weight: 700; line-height: 1;
+}
+.sc-col.pros li i { background: #3aa76d; }
+.sc-col.cons li i { background: #e08a5c; }
+.sc-col li:first-child { font-weight: 700; font-size: 13.5px; }
+.sc-col.pros li:first-child { color: #16623a; }
+.sc-col.cons li:first-child { color: #93461a; }
+.sc-col li.strong { color: var(--danger); font-weight: 700; }
+.sc-col.cons li.strong i { background: var(--danger); }
+/* Closed cards stand the same height side by side; an opened one grows on its own. */
+.carousel-track { align-items: stretch; }
+.carousel-track:has(.swipe-card.open) { align-items: flex-start; }
+/* Name and what it is take the same room on every card, so prices and pros line up across them. */
+.sc-head { display: flex; flex-direction: column; gap: 3px; min-height: 66px; }
+.sc-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sc-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

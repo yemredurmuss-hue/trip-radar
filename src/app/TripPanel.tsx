@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { FallbackImg } from "./FallbackImg";
 import { requestProcessing } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
@@ -9,6 +9,7 @@ import {
   formatPrice,
   groupItems,
   listingKeyOf,
+  nightsBetween,
   rankItems,
   routeUrl,
   rowLabel,
@@ -18,12 +19,12 @@ import {
 import { buildLegs, type Leg } from "../lib/legs";
 import { buildTimeline } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
-import type { OptionGroup, Plan } from "../lib/plan";
+import { cityKeyOf, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 
 import type { Capture, Category, Item, Trip } from "../lib/types";
 import { DecisionCard } from "./DecisionCard";
-import { CategoryIcon, Chevron } from "./Icons";
+import { CategoryIcon, Chevron, SummaryIcon } from "./Icons";
 import { IntentCard } from "./IntentCard";
 import { LegRow } from "./LegRow";
 import { Carousel } from "./Carousel";
@@ -109,26 +110,30 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   return (
     <>
       <div className="panel-top">{menu}</div>
-      <h1 className="trip-title">{trip.title}</h1>
-      <div className="trip-sub">
-        {subtitle || "Tarih ve şehir, kaydettikçe netleşir"}
-        {range && !trip.confirmedDates && <span className="estimated">~tahmini</span>}
-        {trip.budget && <span className="estimated">· bütçe {formatPrice(trip.budget.amount, trip.budget.currency)}</span>}
-      </div>
-      <FallbackImg className="hero" src={trip.heroImage} fallback={<div className="hero" />} />
-
-      <div className="hero-row">
-        <span className="status-line">
-          {working.length > 0 && `${working.length} kayıt işleniyor… `}
-          {reading > 0 && `${reading} sayfa okunuyor… `}
-          {failed.length > 0 && <span className="err">{failed.length} kayıt işlenemedi</span>}
-        </span>
-        {route && (
-          <a href={route} target="_blank" rel="noreferrer">
-            Rotayı gör ↗
-          </a>
-        )}
-      </div>
+      <header className="trip-hero">
+        <FallbackImg className="hero-img" src={trip.heroImage} fallback={<div className="hero-img" />} />
+        <div className="hero-main">
+          <h1 className="trip-title">{trip.title}</h1>
+          <div className="trip-sub">
+            {subtitle || "Tarih ve şehir, kaydettikçe netleşir"}
+            {range && !trip.confirmedDates && <span className="estimated">~tahmini</span>}
+            {trip.budget && <span className="estimated">· bütçe {formatPrice(trip.budget.amount, trip.budget.currency)}</span>}
+          </div>
+          <TripSummary items={items} plan={plan} range={range} />
+          <div className="hero-row">
+            {route && (
+              <a className="pill-btn outline" href={route} target="_blank" rel="noreferrer">
+                Rotayı gör ↗
+              </a>
+            )}
+            <span className="status-line">
+              {working.length > 0 && `${working.length} kayıt işleniyor… `}
+              {reading > 0 && `${reading} sayfa okunuyor… `}
+              {failed.length > 0 && <span className="err">{failed.length} kayıt işlenemedi</span>}
+            </span>
+          </div>
+        </div>
+      </header>
 
       {failed.length > 0 && (
         <div className="errors">
@@ -184,6 +189,39 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         />
       )}
     </>
+  );
+}
+
+/**
+ * The trip at a glance, beside its picture: how many days and cities, and what's in the plan so far
+ * (experiences saved, stays and trips chosen or booked).
+ */
+function TripSummary({ items, plan, range }: { items: Item[]; plan: Plan; range: { start: string; end: string } | null }) {
+  const live = items.filter((i) => i.status !== "dismissed" && !plan.closed.some((c) => c.item.id === i.id));
+  const settled = (i: Item) => i.status === "chosen" || i.status === "booked";
+  const days = range ? nightsBetween(range.start, range.end) + 1 : 0;
+  const cities = new Set(
+    [...plan.stayBlocks.map((b) => b.city), ...live.filter((i) => i.category === "stay").map((i) => i.city)].map((c) => cityKeyOf(c)).filter(Boolean),
+  ).size;
+  const experiences = live.filter((i) => i.category === "activity" || i.category === "food" || i.category === "other").length;
+  const stays = new Set(plan.stayBlocks.flatMap((b) => (b.kind === "open" ? [] : [b.item.id]))).size;
+  const trips = live.filter((i) => (i.category === "flight" || i.category === "transport") && settled(i)).length;
+  const stats: [ReactNode, string][] = [
+    [<SummaryIcon name="calendar" />, days ? `${days} gün` : "Tarih yok"],
+    [<SummaryIcon name="pin" />, `${cities} şehir`],
+    [<SummaryIcon name="star" />, `${experiences} etkinlik`],
+    [<CategoryIcon category="stay" size={22} />, `${stays} konaklama`],
+    [<CategoryIcon category="transport" size={22} />, `${trips} ulaşım`],
+  ];
+  return (
+    <ul className="hero-stats" aria-label="Gezi özeti">
+      {stats.map(([icon, text]) => (
+        <li key={text}>
+          {icon}
+          <span>{text}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

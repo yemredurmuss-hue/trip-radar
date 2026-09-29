@@ -41,3 +41,18 @@ export const Plus = () => (
     <path d="M12 5v14M5 12h14" />
   </svg>
 );
+
+/** Small line icons for the trip summary (days, cities, experiences). */
+const SUMMARY_PATHS = {
+  calendar: "M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z",
+  pin: "M12 21s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12zM12 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
+  star: "M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z",
+} as const;
+
+export function SummaryIcon({ name, size = 22 }: { name: keyof typeof SUMMARY_PATHS; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d={SUMMARY_PATHS[name]} />
+    </svg>
+  );
+}

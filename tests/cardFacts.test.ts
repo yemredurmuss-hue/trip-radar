@@ -33,10 +33,10 @@ describe("decision card facts", () => {
       out: false,
     });
     expect(jardim.score).toBeGreaterThan(60);
-    // The biggest plus and minus first, then a few more; each a word or three.
+    // The biggest plus and minus first, then a few more; each a few words.
     expect(jardim.pros).toEqual(["Yakın", "Ücretsiz iptal", "Sessiz odalar", "Kahvaltı çok iyi"]);
     expect(jardim.cons.map((c) => c.text)).toEqual(["Odalar küçük", "€45 pahalı", "TV yok"]);
-    for (const tag of [...jardim.pros, ...jardim.cons.map((c) => c.text)]) expect(tag.split(" ").length).toBeLessThanOrEqual(3);
+    for (const tag of [...jardim.pros, ...jardim.cons.map((c) => c.text)]) expect(tag.split(" ").length).toBeLessThanOrEqual(5);
 
     const casa = facts("Casa Azul");
     expect(casa.subtitle).toBe("Daire · 1 yatak odası");

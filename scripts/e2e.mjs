@@ -109,6 +109,8 @@ try {
   // 4. Demo trip, a group expanded, and the detail drawer.
   await app.getByText("Örnek geziyi yükle →").click();
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
+  // The trip at a glance beside its picture.
+  assert.deepEqual(await app.locator(".hero-stats li").allInnerTexts(), ["7 gün", "2 şehir", "5 etkinlik", "1 konaklama", "1 ulaşım"]);
   await app.getByText("Jardim Stay").first().waitFor();
   // A block per city (Porto, Lisbon) with its transfers, nights and days; the flights and the train between them.
   assert.equal(await app.locator(".day-strip").count(), 0, "no band of nights");
@@ -136,12 +138,14 @@ try {
   assert.match(await card("Jardim Stay").locator(".sc-source").innerText(), /Booking\.com$/);
   assert.equal(await card("Jardim Stay").locator(".sc-sub").innerText(), "Otel odası");
   assert.match(await card("Jardim Stay").locator(".sc-price").innerText(), /€285\s*3 gece toplam\s*€95 \/ gece/);
-  // The biggest plus and minus on top, a few more as short tags.
-  assert.equal(await card("Jardim Stay").locator(".top-tag.pro").innerText().then((t) => t.replace(/^\+\s*/, "")), "Yakın");
-  assert.equal(await card("Jardim Stay").locator(".top-tag.con").innerText().then((t) => t.replace(/^−\s*/, "")), "Odalar küçük");
-  assert.ok((await card("Jardim Stay").locator(".more-tags .tag").count()) >= 3);
+  // For it on the left, against it on the right, a few words a line, the biggest first.
+  assert.deepEqual(await card("Jardim Stay").locator(".sc-col.pros li span").allInnerTexts(), ["Yakın", "Ücretsiz iptal", "Sessiz odalar", "Kahvaltı çok iyi"]);
+  assert.equal(await card("Jardim Stay").locator(".sc-col.cons li span").first().innerText(), "Odalar küçük");
+  // Closed cards side by side stand the same height.
+  const heights = await app.locator(".stay-block.open .carousel .swipe-card").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+  assert.equal(new Set(heights).size, 1, `card heights ${heights}`);
   // Casa Azul is out for this traveller (asked for somewhere quiet): the reason leads its cons, and it goes last.
-  await card("Casa Azul").locator(".top-tag.con.strong", { hasText: "Elendi: Yan binada inşaat var" }).waitFor();
+  await card("Casa Azul").locator(".sc-col.cons li.strong", { hasText: "Elendi: Yan binada inşaat var" }).waitFor();
   await card("Casa Azul").locator(".sc-flag.warning", { hasText: "Elendi" }).waitFor();
   const porto = app.locator(".stay-block.open .carousel");
   assert.deepEqual(await porto.locator(".swipe-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Jardim Stay", "Ribeira Rooms", "Casa Azul"]);
@@ -514,7 +518,7 @@ try {
   // Each page is then read closely (any site): findings with the reviews behind them, counted by code.
   // Ruled out on that evidence by the analysis, which sees the findings with their counts.
   const casaCard = board.locator('.swipe-card[aria-label="Casa Azul"]');
-  await casaCard.locator(".top-tag.con.strong", { hasText: "Elendi: Yan binada inşaat" }).waitFor({ timeout: 40000 });
+  await casaCard.locator(".sc-col.cons li.strong", { hasText: "Elendi: Yan binada inşaat" }).waitFor({ timeout: 40000 });
   assert.ok(analysisPrompts.some((p) => p.includes("Yan binada inşaat gürültüsü") && p.includes('"count":2')), "analysis sees findings and counts");
   await casaCard.getByRole("button", { name: "Detaylar ▾" }).click();
   const casaDetails = casaCard.locator(".card-details");

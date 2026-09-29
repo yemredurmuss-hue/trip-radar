@@ -22,7 +22,7 @@ export interface ProCon {
   text: string;
   /** Two to four words for a card ("€45 daha ucuz", "Merkeze yakın"); `text` when it's already short. */
   short?: string;
-  /** One to three words for a tag on the card front ("Yakın", "İade yok", "Sessiz"). */
+  /** A few words for the card front ("Yakın", "İade yok", "Karşısında genelev var"). */
   tag?: string;
   /** Where it comes from: "7 yorum · en yenisi Eyl 2026", "açıklamada", "diğerleriyle kıyasla". */
   detail: string | null;
@@ -117,19 +117,26 @@ const TOPIC_TAGS: Record<Finding["topic"], [string, string]> = {
   other: ["Artısı var", "Dikkat"],
 };
 
-/** A phrase's first clause when it's three words or fewer ("Asansör yok, 3. kat" → "Asansör yok"). */
+/**
+ * A phrase's first clause when it's short enough ("Asansör yok, 3. kat" → "Asansör yok"), without the
+ * article ("çok iyi bir restoran" → "çok iyi restoran").
+ */
 function fewWords(text: string, max = 3): string | null {
   const clause = text.split(/[,;:(—–]| - /)[0].trim();
-  const words = clause.split(/\s+/).filter(Boolean);
-  return words.length && words.length <= max ? capital(clause) : null;
+  const words = clause.split(/\s+/).filter((w) => w && w.toLocaleLowerCase("tr") !== "bir");
+  return words.length && words.length <= max ? capital(words.join(" ")) : null;
 }
 
-/** A line as a tag on the card front: one to three words. */
+/**
+ * A line as a card line, a few words: what was read keeps its own words when they're short
+ * ("Karşısında genelev var", "Odalar küçük"), so the specific thing is never lost to a general word;
+ * only a long sentence becomes its topic ("Gürültülü").
+ */
 export function tagOf(line: ProCon, polarity: "pro" | "con"): string {
   if (line.tag) return line.tag;
   const side = polarity === "pro" ? 0 : 1;
-  if (line.finding) return fewWords(line.text) ?? TOPIC_TAGS[line.finding.topic][side];
-  return fewWords(line.short ?? line.text, line.decisive ? 4 : 3) ?? fewWords(line.text) ?? (line.short ?? line.text).split(/\s+/).slice(0, 3).join(" ");
+  if (line.finding) return fewWords(line.text, 5) ?? TOPIC_TAGS[line.finding.topic][side];
+  return fewWords(line.short ?? line.text, line.decisive ? 5 : 4) ?? fewWords(line.text, 4) ?? (line.short ?? line.text).split(/\s+/).slice(0, 4).join(" ");
 }
 
 /** Lines from comparing the option with the others in its group on the traveller's criteria. */
@@ -285,7 +292,7 @@ export function prosCons(input: { item: Item; option?: OptionResult; decision?: 
       key: "x:eliminated",
       text: `Elendi: ${option.eliminated.reason}`,
       short: option.eliminated.reason,
-      tag: `Elendi: ${fewWords(option.eliminated.reason, 4) ?? TOPIC_TAGS[option.eliminated.findings[0]?.topic ?? "other"][1]}`,
+      tag: `Elendi: ${fewWords(option.eliminated.reason, 5) ?? TOPIC_TAGS[option.eliminated.findings[0]?.topic ?? "other"][1]}`,
       detail: count ? `${count} yorum` : SOURCE_TEXT[option.eliminated.findings[0]?.source ?? "other"],
       weight: 1000,
       kind: "elimination",

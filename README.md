@@ -77,10 +77,11 @@ verir (arabayla gideceğini söylediysen sormaz). Tarihsiz yerler ve plana oturm
 **Seçilmemiş her ihtiyaç kartlarla karşılaştırılır.** Uçuş, konaklama, tren, eSIM... seçenekleri yan yana
 kartlardır; parmakla, trackpad'le ya da ‹ › ile kaydırılır, en iyi puanlı önde, elenenler sonda ve soluk. Kartta:
 kaynak (site ya da şirket), görsel, 0–100 uyum puanı, ne olduğu ("Otel odası", "07:10–10:05 · Direkt ·
-4 sa 55 dk"), bu tarihler için fiyat ("€285 · 3 gece toplam"), durum ve rozetler. Artı ve eksiler bir-üç kelimelik
-etiketlerdir ("Yakın", "Uzak", "Ücretsiz iptal", "İade yok", "Sessiz odalar", "€45 pahalı"): en büyük artı ve en
-büyük eksi en üstte renkli, sonra birkaç tane daha küçük etiket (eleme sebebi her zaman önce). Aynı şeyi söyleyen
-iki etiket ("Uzak" ve "Konum zayıf") tek etikete iner. Konaklamada toplamın yanında gecelik fiyat da yazar ("€285 · 3 gece toplam ·
+4 sa 55 dk"), bu tarihler için fiyat ("€285 · 3 gece toplam"), durum ve rozetler. Artılar solda, eksiler sağda, alt alta ve
+birkaç kelimeyle ("Yakın", "Ücretsiz iptal", "Sessiz odalar" / "İade yok", "€45 pahalı", "Karşısında genelev var"):
+en büyüğü en üstte ve kalın; eleme sebebi sağda hep ilk sırada. Sayfada okunan somut bir şey kendi sözleriyle
+yazar; yalnız uzun bir cümle konusuna iner ("Gürültülü"). Aynı şeyi söyleyen iki satır ("Uzak" ve "Konum zayıf")
+teke iner. Kapalı kartlar yan yana aynı boydadır; fiyatlar ve artı/eksiler aynı hizadadır. Konaklamada toplamın yanında gecelik fiyat da yazar ("€285 · 3 gece toplam ·
 €95 / gece"). **Detaylar** kartın içinde kısa açılır: tek cümleyle neden önde/geride olduğu, karar veren
 bilgiler (tarih, yer, puan, iptal, giriş/çıkış saati; uçuşta kalkış, varış, süre, aktarma, bagaj), en fazla dört
 artı ve dört "Dikkat". Bütün bulgular kanıtıyla ("Kanıt", "Sorun değil") **Tüm detaylar**da. Duman dedektörü, saç
@@ -92,7 +93,10 @@ konaklama ve etkinlik resmi, adı, oda/tür, iptal koşulu, puanı ("8,9 · Çok
 ve gecelik). Durumu kartın üstünde renkli bir şerittir: yeşil **✓ Bilet alındı / Rezerve edildi**, amber
 **Planlanıyor / Seçildi · bilet alınmadı**, kesikli **Planlanmadı**; zaman çizgisindeki simge de aynı renktedir.
 Altta **Rezerve ettim / Bileti aldım** (yanlışlıkla basıldıysa **Geri al**) ve **⇄ Değiştir** (kartlar geri gelir).
-Karta dokununca ayrıntılar açılır.
+Seçilen kartta artı/eksi yoktur; karşılaştırma seçim yapılana kadar kartlardadır. Karta dokununca ayrıntılar açılır.
+
+**Gezinin özeti** en üsttedir: resim, ad, tarihler ve "7 gün · 2 şehir · 5 etkinlik · 1 konaklama · 1 ulaşım"
+(konaklama ve ulaşım: seçilen ya da rezerve edilenler).
 
 **Gün gün plan.** Her şehir bir bloktur: önce konaklamalar tarih sırasıyla (yeri seçilmemiş geceler
 "Planlanmadı" kartı), sonra her gün için bir kart ("5. gün · 11 Ekim Cmt"). Günün transferleri, etkinlikleri ve

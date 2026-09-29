@@ -40,39 +40,29 @@ function datedLink(item: Item, decision: GroupDecision | undefined) {
 }
 
 /**
- * What speaks for and against it, in a word or two each: the biggest of each on top, a few more as
- * small tags. The reason an option is out always leads.
+ * What speaks for it (left) and against it (right), a few words a line, one under another; the
+ * biggest of each on top. The reason an option is out always leads on the right.
  */
-function Tags({ pros, cons, max = 3 }: { pros: string[]; cons: CardFacts["cons"]; max?: number }) {
+function ProsCons({ pros, cons }: { pros: string[]; cons: CardFacts["cons"] }) {
   if (!pros.length && !cons.length) return null;
-  const [pro, ...morePros] = pros;
-  const [con, ...moreCons] = cons;
-  const rest = [...morePros.slice(0, max).map((text) => ({ text, side: "pro", strong: false })), ...moreCons.slice(0, max).map((c) => ({ ...c, side: "con" }))];
   return (
-    <div className="card-tags">
-      <div className="top-tags">
-        {pro && (
-          <span className="top-tag pro">
+    <div className="sc-pc">
+      <ul className="sc-col pros" aria-label="Artıları">
+        {pros.map((p) => (
+          <li key={p}>
             <i aria-hidden>+</i>
-            {pro}
-          </span>
-        )}
-        {con && (
-          <span className={`top-tag con${con.strong ? " strong" : ""}`}>
+            <span>{p}</span>
+          </li>
+        ))}
+      </ul>
+      <ul className="sc-col cons" aria-label="Eksileri">
+        {cons.map((c) => (
+          <li key={c.text} className={c.strong ? "strong" : undefined}>
             <i aria-hidden>−</i>
-            {con.text}
-          </span>
-        )}
-      </div>
-      {rest.length > 0 && (
-        <div className="more-tags">
-          {rest.map((t) => (
-            <span key={`${t.side}:${t.text}`} className={`tag ${t.side}${t.strong ? " strong" : ""}`}>
-              {t.text}
-            </span>
-          ))}
-        </div>
-      )}
+            <span>{c.text}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -227,12 +217,14 @@ export function SwipeCard({ item, group, decision, decisions, roles = [], onOpen
         {tag && <span className="sc-flag">{tag}</span>}
       </div>
       <div className="sc-body">
-        <h3 className="sc-title">{facts.title}</h3>
-        {facts.subtitle && <div className="sc-sub">{facts.subtitle}</div>}
-        <Tags pros={facts.pros} cons={facts.cons} />
+        <div className="sc-head">
+          <h3 className="sc-title">{facts.title}</h3>
+          {facts.subtitle && <div className="sc-sub">{facts.subtitle}</div>}
+        </div>
         <div className="sc-price">
           <Price price={facts.price} />
         </div>
+        <ProsCons pros={facts.pros} cons={facts.cons} />
         {open && (
           <div className="sc-details">
             <Details item={item} decision={decision} decisions={decisions} status={flag ? null : facts.status} />
@@ -345,7 +337,6 @@ function Media({ item, facts }: { item: Item; facts: CardFacts }) {
             {l}
           </div>
         ))}
-        {item.status !== "booked" && <Tags pros={facts.pros.slice(0, 1)} cons={facts.cons.slice(0, 1)} />}
         {rating && (
           <div className="rating-badge">
             <b>{rating.value}</b>

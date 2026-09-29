@@ -61,6 +61,9 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
       ve kartlara girmez
 - [x] 0.14.1: kart önü sade etiketler — en büyük artı ve eksi en üstte, birkaç kısa etiket daha ("Yakın", "İade yok",
       "Sessiz odalar", "€45 pahalı"); aynı konudaki etiketler teke iner; semt/mahalle adı kart önünden kalktı (detaylarda)
+- [x] 0.14.2: kart önünde artılar solda eksiler sağda alt alta (en büyüğü üstte), somut bulgu kendi sözleriyle
+      ("Karşısında genelev var"), kapalı kartlar aynı boy, seçilen kartta artı/eksi yok; üstte özet: resim, ad,
+      tarih, gün/şehir/etkinlik/konaklama/ulaşım
 - [ ] 0.15: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
       açık sekmeleri toplu kaydetme (booking.com / airbnb izni gerekir), yeni gelen için "2. sırada, çünkü…" notu
 - [ ] İlk gerçek gezide kullanım: 20–50 gerçek kayıt, hangi alanların yanlış/eksik geldiğini not et

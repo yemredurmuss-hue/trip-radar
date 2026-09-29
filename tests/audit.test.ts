@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { AnalysisSchema } from "../src/lib/analysis";
 import { sendMessage, TOOLS } from "../src/lib/assistant";
-import { cardDetails, durationText } from "../src/lib/cardFacts";
+import { cardDetails, cardFacts, durationText } from "../src/lib/cardFacts";
 import { makeContext } from "../src/lib/decision";
 import { emptyListing, usefulListing } from "../src/lib/listing";
 import { db, listItems } from "../src/lib/db";
@@ -229,5 +229,21 @@ describe("0.14: what decides, and what a card says when opened", () => {
     f.metrics = { ...EMPTY_METRICS, durationMinutes: 150, checkedBagIncluded: false };
     const facts = cardDetails(f, undefined, undefined).facts.map((x) => `${x.label}: ${x.value}`);
     expect(facts).toEqual(["Kalkış: 09:40 · 7 Ekim · SAW", "Varış: 12:10 · 7 Ekim · CPH", "Süre: 2 sa 30 dk", "Aktarma: Direkt", "Bagaj: Bavul dahil değil", "Kişi: 2 yetişkin"]);
+  });
+
+  it("keeps a specific thing read on the page in its own words on the card", () => {
+    const place = stay("Terrace flat", "2026-10-07", "2026-10-11");
+    const listing: Listing = {
+      ...emptyListing(place, 1),
+      readAt: 1,
+      findings: [
+        { id: "nearby:negative:x", text: "Binanın hemen karşısında genelev var", polarity: "negative", topic: "nearby", source: "reviews", severity: "high", reviewIds: [], quotes: ["x"], verified: true },
+        { id: "noise:negative:y", text: "Hafta sonları gece geç saatlere kadar sokaktan gelen yoğun gürültü", polarity: "negative", topic: "noise", source: "reviews", severity: "medium", reviewIds: [], quotes: ["y"], verified: true },
+      ],
+    };
+    const ctx = makeContext(trip(), [place], { listings: new Map([[listing.key, listing]]) });
+    const cons = cardFacts(place, undefined, ctx).cons.map((c) => c.text);
+    expect(cons).toContain("Binanın hemen karşısında genelev var"); // not "Çevre sorunlu"
+    expect(cons).toContain("Gürültülü"); // a long sentence becomes its topic
   });
 });
