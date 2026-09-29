@@ -26,13 +26,29 @@ export async function updateTrip(tripId: string, change: (trip: Trip) => Trip): 
   notifyChanged();
 }
 
-/** "Seç": this option goes into the plan; one chosen before it for the same need goes back to the options. */
+/**
+ * "Seç": this option goes into the plan; one chosen before it for the same need goes back to the
+ * options, and a plan only said in the chat gives way to it.
+ */
 export async function chooseItem(item: Item, alternatives: Item[]): Promise<void> {
   const d = await db();
   for (const other of alternatives) {
-    if (other.id === item.id || other.status !== "chosen") continue;
+    if (other.id === item.id) continue;
+    // A plan said in the chat ("uçuş var") is replaced by the page chosen for it.
+    if (other.origin === "chat" && item.origin !== "chat") {
+      await d.delete("items", other.id);
+      continue;
+    }
+    if (other.status !== "chosen") continue;
     const fresh = (await d.get("items", other.id)) ?? other;
     await d.put("items", { ...fresh, status: "saved", updatedAt: Date.now() });
   }
   await setItemStatus(item, "chosen");
+}
+
+/** "Planı kaldır": a plan said in the chat has no page behind it, so it simply goes. */
+export async function removeItem(item: Item): Promise<void> {
+  await (await db()).delete("items", item.id);
+  await addEvent(item.tripId, `${item.name} plandan kaldırıldı`);
+  notifyChanged();
 }

@@ -20,6 +20,7 @@ import { coverageText, searchText } from "./listing";
 import { prosConsFor } from "./proscons";
 import { activeSignals } from "./intent";
 import { buildLegs, legTiming, withLegChoice } from "./legs";
+import { checkPlanned, plannedItem, PLANNED_KINDS, samePlan, type PlannedInput } from "./planned";
 import { buildPlan, type Plan } from "./plan";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
 import type { ToolResult, ToolSpec } from "./llm/types";
@@ -62,6 +63,8 @@ Nasıl konuşursun:
 - Sezilen bir tercihi (intent.inferred) uygun bir anda doğal biçimde teyit edebilirsin; ısrar etme.
 - Kullanıcı bir karar verdiğinde (seçtim, ele, rezerve ettim) update_items; bütçe ya da tarih söylediğinde update_trip. Seçeneklerin durumunu yalnız kullanıcının son mesajı bunu istiyorsa değiştir; eski bir konuşmaya dayanarak değiştirme.
 - Boş geceler varsa uygun bir anda bir kez hatırlat.
+- Planlar: kullanıcı bir planını söylediğinde, linki olmasa da (ör. "7 Ekim'de İstanbul'dan Porto'ya uçuyoruz", "11 Ekim'de Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız", "10-17 Ekim Funchal'da kalacağız", "9 Ekim akşamı fado") plan_item ile hemen panoya ekle; tarih ve nereden/nereye ya da şehir ver. "gideriz/düşünüyoruz" → planlanıyor (booked false); "aldım/rezerve ettim" → booked true. Aynı şey items'ta zaten varsa plan_item yerine update_items kullan. Şehir değişimi için ulaşım söylenirse (Madeira'ya uçakla) kind flight ile ekle; şehir içi transferler (metro, taksi) için set_leg kullan.
+- Soruların kısa ve sade olsun, şehirlerle sor: "Porto → Madeira nasıl geçeceksiniz?" gibi; otel adlarıyla, uzun ya da karışık cümle kurma.
 - Transferler: kullanıcı nasıl gideceğini söylediğinde ("metroyla gideceğim", "trenle geçeriz", "transferi ayarladım", "otel servisiyle") set_leg ile ilgili transferi işaretle (tarih ve şehirden hangisi olduğunu bul); booked yalnız "ayarladım/aldım/rezerve ettim" derse true. Plan konuşurken boş (empty) bir transferi uygun anda, bir seferde bir tane, sor; notes'taki ince detayı ilgili olduğunda söyle. Nasıl gidilebileceğini genel bilginle önerebilirsin ("genelde havalimanından metro var") ama fiyat ya da sefer saati uydurma.
 - Kullanıcı bir seçeneğin trip_state'te olmayan bir detayını sorarsa (TV, havuz, check-in saati, otopark...) search_page ile kayıtlı sayfasında ara. Bulduğunu alıntıyla söyle; bulamazsan "kaydettiğin sayfada göremedim" de, tahmin etme.
 
@@ -185,6 +188,28 @@ export const TOOLS: ToolSpec[] = [
         budget_currency: nullable({ type: "string" }),
       },
       required: ["title", "start", "end", "budget_amount", "budget_currency"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "plan_item",
+    description:
+      "Kullanıcının sohbette söylediği bir planı (linki olmasa da) panoya ekler: uçuş, tren, otobüs, feribot, transfer, araç kiralama, konaklama, etkinlik. Kendi gününde ve şehrinde görünür; booked false ise 'planlanıyor' yazar. Aynı gün aynı plan tekrar söylenirse günceller.",
+    schema: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: [...PLANNED_KINDS] },
+        date: { type: "string", description: "YYYY-MM-DD (uçuş/tren: gidiş günü; konaklama/kiralama: başlangıç)" },
+        end_date: { ...nullable({ type: "string" }), description: "YYYY-MM-DD; konaklama çıkışı ya da kiralama bitişi" },
+        time: { ...nullable({ type: "string" }), description: "HH:MM, söylendiyse" },
+        from: { ...nullable({ type: "string" }), description: "Nereden (şehir ya da havalimanı kodu)" },
+        to: { ...nullable({ type: "string" }), description: "Nereye" },
+        city: { ...nullable({ type: "string" }), description: "Konaklama, kiralama ya da etkinliğin şehri" },
+        title: { ...nullable({ type: "string" }), description: "Kısa ad; boşsa türden üretilir" },
+        booked: { type: "boolean", description: "Kullanıcı aldığını/rezerve ettiğini söylediyse true" },
+        note: nullable({ type: "string" }),
+      },
+      required: ["kind", "date", "end_date", "time", "from", "to", "city", "title", "booked", "note"],
       additionalProperties: false,
     },
   },
@@ -390,6 +415,7 @@ export function tripState(
       flight: i.flight,
       ...readState(i, reading),
       missing: i.missing,
+      ...(i.origin === "chat" ? { said_in_chat: true } : {}),
     })),
   });
 }
@@ -512,6 +538,18 @@ async function runTool(tripId: string, name: string, input: any, choices: string
         updatedAt: Date.now(),
       });
       return "ok";
+    }
+    case "plan_item": {
+      const plan = input as PlannedInput;
+      const problem = checkPlanned(plan);
+      if (problem) throw new ToolError(problem);
+      const fresh = plannedItem(plan, tripId, newId(), Date.now());
+      const same = items.find((i) => samePlan(i, fresh));
+      const saved = same
+        ? { ...same, ...fresh, id: same.id, createdAt: same.createdAt, status: plan.booked ? ("booked" as const) : same.status }
+        : fresh;
+      await d.put("items", saved);
+      return JSON.stringify({ [same ? "updated" : "added"]: saved.name, item_id: saved.id, status: saved.status === "booked" ? "booked" : "planned" });
     }
     case "set_leg": {
       const trip = await d.get("trips", tripId);

@@ -5,7 +5,7 @@ import { formatDateRange, metricsOf } from "../lib/items";
 import { rangeOfGroupKey, stayRange } from "../lib/plan";
 import { withDates } from "../lib/url";
 import type { Category, Item } from "../lib/types";
-import { chooseItem, setItemStatus } from "./actions";
+import { chooseItem, removeItem, setItemStatus } from "./actions";
 import { Evidence } from "./Evidence";
 import { FallbackImg } from "./FallbackImg";
 import { CategoryIcon } from "./Icons";
@@ -231,7 +231,7 @@ function Route({ item, facts }: { item: Item; facts: CardFacts }) {
       <div className="route-line">
         <div className="route-end">
           <b className={f.from!.length > 5 ? "long" : ""}>{f.from}</b>
-          <span className="muted">{[clock(f.departure), shortDay(f.departure)].filter(Boolean).join(" · ")}</span>
+          <span className="muted">{[clock(f.departure), shortDay(f.departure ?? item.dates.start)].filter(Boolean).join(" · ")}</span>
         </div>
         <div className="route-mid">
           <span>{m.durationMinutes ? durationText(m.durationMinutes) : ""}</span>
@@ -242,7 +242,7 @@ function Route({ item, facts }: { item: Item; facts: CardFacts }) {
         </div>
         <div className="route-end right">
           <b className={f.to!.length > 5 ? "long" : ""}>{f.to}</b>
-          <span className="muted">{[clock(f.arrival), shortDay(f.arrival)].filter(Boolean).join(" · ")}</span>
+          <span className="muted">{[clock(f.arrival), shortDay(f.arrival ?? f.departure ?? item.dates.start)].filter(Boolean).join(" · ")}</span>
         </div>
       </div>
     </div>
@@ -252,7 +252,7 @@ function Route({ item, facts }: { item: Item; facts: CardFacts }) {
 /** A stay, a tour, a restaurant: picture, name, what it is, the rating and the price. */
 function Media({ item, facts }: { item: Item; facts: CardFacts }) {
   const rating = ratingOf(item);
-  const lines = [facts.subtitle, item.category === "stay" ? item.optionDetail : null, item.cancellation.summary].filter(
+  const lines = [facts.subtitle, item.category === "stay" ? item.optionDetail : null, item.cancellation.summary, item.origin === "chat" ? "Sohbette söyledin" : null].filter(
     (l, i, all): l is string => Boolean(l) && all.indexOf(l) === i,
   );
   return (
@@ -311,6 +311,8 @@ export function SettledCard({
   const [open, setOpen] = useState(false);
   const facts = cardFacts(item, decision, decisions?.ctx);
   const booked = item.status === "booked";
+  /** Said in the chat, no page yet: a plan. */
+  const planned = item.origin === "chat";
   const route = (item.category === "flight" || item.category === "transport") && Boolean(item.flight?.from && item.flight?.to);
   const toggle = () => setOpen(!open);
   return (
@@ -331,14 +333,19 @@ export function SettledCard({
             <span className="state-chip booked">{bookedWord(item.category)}</span>
           ) : (
             <>
-              <span className="state-chip chosen">Seçildi</span>
+              <span className="state-chip chosen">{planned ? "Planlanıyor" : "Seçildi"}</span>
               <small className="muted">{notBookedWord(item.category)}</small>
             </>
           )}
         </span>
-        <Price price={facts.price} compact />
+        {(facts.price || !planned) && <Price price={facts.price} compact />}
         <span className="stc-actions">
-          {!booked && (
+          {booked ? (
+            // A misclick shouldn't stick: the booking can be taken back (the options it closed come back too).
+            <button className="pill-btn outline" onClick={() => void setItemStatus(item, "chosen")} title="Rezerve edilmedi olarak geri al">
+              Geri al
+            </button>
+          ) : (
             <button className="pill-btn outline" onClick={() => void setItemStatus(item, "booked")}>
               {TICKETED.includes(item.category) ? "Bileti aldım" : "Rezerve ettim"}
             </button>
@@ -355,10 +362,16 @@ export function SettledCard({
           <Evidence item={item} decision={decision} decisions={decisions} heading={false} />
           <div className="sc-links">
             <Links item={item} decision={decision} onOpen={onOpen} />
-            {!booked && (
-              <button className="link-btn" onClick={() => void setItemStatus(item, "saved")}>
-                Seçimi geri al
+            {planned ? (
+              <button className="link-btn" onClick={() => void removeItem(item)}>
+                Planı kaldır
               </button>
+            ) : (
+              !booked && (
+                <button className="link-btn" onClick={() => void setItemStatus(item, "saved")}>
+                  Seçimi geri al
+                </button>
+              )
             )}
           </div>
         </div>

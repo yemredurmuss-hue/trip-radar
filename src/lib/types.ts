@@ -209,6 +209,8 @@ export interface Item {
   missing: string[];
   status: ItemStatus;
   statusNote: string | null;
+  /** "chat": the traveller said it in the chat, no page behind it (a plan until a saved page replaces it). */
+  origin?: "chat";
   createdAt: number;
   updatedAt: number;
 }

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { legItem, legTiming, MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib/legs";
-import { formatDateRange } from "../lib/items";
 import type { Item, LegMode } from "../lib/types";
 import { updateTrip } from "./actions";
 
@@ -41,11 +40,7 @@ export function LegRow({ leg, tripId, onOpenItem }: { leg: Leg; tripId: string; 
           <span className="leg-title">
             {leg.from.label} → {leg.to.label}
           </span>
-          <span className="leg-sub">
-            {KIND_LABEL[leg.kind]} · {formatDateRange(leg.date, null)}
-            {timing && ` · ${timing}`}
-            {settled && ` · ${settled.name}`}
-          </span>
+          {(timing || settled) && <span className="leg-sub">{[timing, settled?.name].filter(Boolean).join(" · ")}</span>}
         </span>
         <span className={`leg-chip st-${leg.status}`}>{leg.statusText}</span>
       </button>

@@ -155,7 +155,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       <IntentCard trip={trip} decisions={decisions} />
 
       {timeline.entries.length > 0 && (
-        <TimelineView plan={plan} timeline={timeline} leg={leg} renderGroup={renderGroup} card={card} settled={settled} />
+        <TimelineView plan={plan} timeline={timeline} tripId={trip.id} leg={leg} renderGroup={renderGroup} card={card} settled={settled} />
       )}
 
       {CATEGORY_ORDER.map((category) => {

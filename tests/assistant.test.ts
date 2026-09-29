@@ -205,4 +205,33 @@ describe("assistant", () => {
     const trip = (await (await db()).get("trips", "t1"))!;
     expect(trip.legs?.["2026-10-08:arrival:porto"]).toMatchObject({ mode: "metro", booked: false, note: null });
   });
+
+  it("puts a plan said in the chat on the board, and updates it when the ticket is bought", async () => {
+    const plan = (booked: boolean, id: string) => ({
+      type: "tool_use", id, name: "plan_item", caller: { type: "direct" },
+      input: { kind: "flight", date: "2026-10-11", end_date: null, time: null, from: "Porto", to: "Madeira", city: null, title: null, booked, note: null },
+    });
+    const { client, calls } = fakeClient([
+      {
+        stop_reason: "tool_use",
+        content: [
+          plan(false, "p1"),
+          { type: "tool_use", id: "p2", name: "plan_item", caller: { type: "direct" }, input: { kind: "car_rental", date: "11 Ekim", end_date: null, time: null, from: null, to: null, city: "Madeira", title: null, booked: false, note: null } },
+        ] as Anthropic.ContentBlock[],
+      },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Ekledim: 11 Ekim Porto → Madeira uçuşu, planlanıyor.", citations: null }] as Anthropic.ContentBlock[] },
+      { stop_reason: "tool_use", content: [plan(true, "p3")] as Anthropic.ContentBlock[] },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Bilet alındı olarak işaretledim.", citations: null }] as Anthropic.ContentBlock[] },
+    ]);
+    await sendMessage("t1", "11 Ekim'de Madeira'ya uçakla geçeriz", anthropicProvider(client, "claude-opus-5"));
+    const [added, bad] = calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[];
+    expect(JSON.parse(String(added.content))).toMatchObject({ added: "Uçuş · Porto → Madeira", status: "planned" });
+    expect(bad.is_error).toBe(true); // "11 Ekim" isn't a date the board can place
+    let flights = (await listItems("t1")).filter((i) => i.origin === "chat");
+    expect(flights.map((i) => [i.name, i.status, i.dates.start, i.category])).toEqual([["Uçuş · Porto → Madeira", "chosen", "2026-10-11", "flight"]]);
+
+    await sendMessage("t1", "Madeira uçağını aldık", anthropicProvider(client, "claude-opus-5"));
+    flights = (await listItems("t1")).filter((i) => i.origin === "chat");
+    expect(flights.map((i) => i.status)).toEqual(["booked"]); // the same plan, now booked; no second item
+  });
 });

@@ -313,10 +313,18 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
       });
     }
   }
+  // A stay said in the chat ("Madeira'da kalacağız") gives way to a saved page chosen or booked for those nights.
+  const realSettled = stays.filter((i) => i.origin !== "chat" && (i.status === "chosen" || i.status === "booked") && stayRange(i));
   const openStays: Item[] = [];
   for (const i of stays) {
-    if (i.status === "booked" && stayRange(i)) continue;
+    if (i.status === "booked" && stayRange(i) && i.origin !== "chat") continue;
     const r = stayRange(i);
+    const replaced = i.origin === "chat" && r ? realSettled.find((x) => overlaps(stayRange(x)!, r)) : undefined;
+    if (replaced) {
+      closed.push({ item: i, reason: `Yerine ${replaced.name} geldi` });
+      continue;
+    }
+    if (i.status === "booked" && r) continue;
     const blocker = r ? bookedStays.find((b) => overlaps(stayRange(b)!, r)) : undefined;
     if (blocker) closed.push({ item: i, reason: `${blocker.name} rezervasyonu bu geceleri kapsıyor` });
     else openStays.push(i);
@@ -412,7 +420,26 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
   for (const category of COMPARABLE.filter((c) => c !== "stay")) {
     const byNeed = new Map<string, Item[]>();
     for (const i of live.filter((x) => x.category === category)) byNeed.set(i.needKey, [...(byNeed.get(i.needKey) ?? []), i]);
-    for (const [key, list] of byNeed) {
+    const needs = [...byNeed].flatMap(([key, list]) => (category === "esim" ? [{ key, items: list }] : travelNeeds(key, list)));
+    // A flight said in the chat ("7 Ekim'de uçuyoruz") and a flight page saved for that day are the same need.
+    if (category === "flight") {
+      for (const plan of needs.filter((n) => n.items.every((i) => i.origin === "chat"))) {
+        const day = departureDay(plan.items[0]);
+        const real = needs.find((n) => n !== plan && n.items.some((i) => i.origin !== "chat") && day && departureDay(n.items[0]) === day);
+        if (!real) continue;
+        real.items.push(...plan.items);
+        plan.items = [];
+      }
+    }
+    for (const need of needs.filter((n) => n.items.length)) {
+      const { key } = need;
+      let list = need.items;
+      // Once a saved page is chosen or booked, the plan said in the chat has done its job.
+      const real = list.find((i) => i.origin !== "chat" && (i.status === "chosen" || i.status === "booked"));
+      if (real) {
+        for (const i of list.filter((x) => x.origin === "chat")) closed.push({ item: i, reason: `Yerine ${real.name} geldi` });
+        list = list.filter((x) => x.origin !== "chat");
+      }
       const booked = list.filter((i) => i.status === "booked");
       if (booked.length) {
         for (const i of list.filter((x) => x.status !== "booked")) closed.push({ item: i, reason: `${booked[0].name} rezerve edildi` });
@@ -445,6 +472,46 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
     groups,
     closed,
   };
+}
+
+const daysApart = (a: string, b: string) => Math.abs(Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / DAY_MS));
+
+/**
+ * Flights and transport split into one need per trip: the same direction on the same day (options a
+ * day apart count as alternatives). Pages can give the flight out and the flight home the same need
+ * key; a booked flight home must never settle, close or hide the flight out.
+ */
+export function travelNeeds(key: string, list: Item[]): { key: string; items: Item[] }[] {
+  const direction = (i: Item) => (i.flight?.from && i.flight.to ? `${cityKeyOf(i.flight.from)}>${cityKeyOf(i.flight.to)}` : "");
+  const byDirection = new Map<string, Item[]>();
+  for (const i of list) byDirection.set(direction(i), [...(byDirection.get(direction(i)) ?? []), i]);
+  // Options without a route go with the only route there is.
+  const routes = [...byDirection.keys()].filter(Boolean);
+  if (routes.length === 1 && byDirection.has("")) {
+    byDirection.set(routes[0], [...byDirection.get(routes[0])!, ...byDirection.get("")!]);
+    byDirection.delete("");
+  }
+  const needs: Item[][] = [];
+  for (const items of byDirection.values()) {
+    const sorted = [...items].sort((a, b) => (departureDay(a) ?? "9").localeCompare(departureDay(b) ?? "9"));
+    const clusters: Item[][] = [];
+    for (const i of sorted) {
+      const day = departureDay(i);
+      const last = clusters.at(-1);
+      const lastDay = last ? departureDay(last[0]) : null;
+      if (last && (!day || (lastDay && daysApart(day, lastDay) <= 1))) last.push(i);
+      else clusters.push([i]);
+    }
+    needs.push(...clusters);
+  }
+  if (needs.length <= 1) return needs.map((items) => ({ key, items }));
+  const seen = new Set<string>();
+  return needs.map((items, n) => {
+    let k = `${key}@${departureDay(items[0]) ?? "tarihsiz"}`;
+    if (seen.has(k)) k = `${k}#${n}`;
+    seen.add(k);
+    return { key: k, items };
+  });
 }
 
 /** Every group whose options are still being decided (what the decision engine ranks). */

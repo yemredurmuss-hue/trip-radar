@@ -82,8 +82,13 @@ export interface Travel {
 const LOCAL = /havaliman|airport|aeroporto|aeropuerto|a[ée]roport|flughafen|transfer|shuttle|servis|taksi|taxi|uber|bolt|cabify|pick ?up|karşılama/i;
 const text = (i: Item) => [i.name, i.summary, i.optionDetail, i.provider].filter(Boolean).join(" ");
 
+const RENTAL = /araç kiralama|araba kiralama|rent a car|car rental|kiralık araç|car hire|autoeurope|rentalcars|discover cars|sixt|europcar|hertz|avis\b/i;
+
+/** A car (or bike) rented for days in one place: it belongs to that place's days, not to a trip between cities. */
+export const isRental = (i: Item) => i.category === "transport" && RENTAL.test(text(i));
+
 /** A transfer within a city (to or from the airport, a taxi...) rather than a trip between cities. */
-export const isLocalTransfer = (i: Item) => i.category === "transport" && LOCAL.test(text(i));
+export const isLocalTransfer = (i: Item) => i.category === "transport" && LOCAL.test(text(i)) && !RENTAL.test(text(i));
 
 function modeOf(i: Item): LegMode | null {
   if (i.category === "flight") return "flight";
@@ -92,7 +97,7 @@ function modeOf(i: Item): LegMode | null {
   if (/feribot|ferry|ferri|vapur/i.test(t)) return "ferry";
   if (/otobüs|\bbus\b|flixbus|coach|autocarro|rede expressos|alsa/i.test(t)) return "bus";
   if (/metro|subway|u-bahn/i.test(t)) return "metro";
-  if (/araç kiralama|rent a car|car rental|kiralık araç/i.test(t)) return "car";
+  if (RENTAL.test(t)) return "car";
   if (LOCAL.test(t)) return "transfer";
   return null;
 }
@@ -105,11 +110,12 @@ function mostCommon(values: (string | null)[]): string | null {
   return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 }
 
-function travelsOf(plan: Plan): Travel[] {
+/** The trips between places the plan's saved flights and transport make (not transfers within a city, nor rentals). */
+export function travelsOf(plan: Plan): Travel[] {
   const out: Travel[] = [];
   for (const g of plan.groups) {
     if (g.category !== "flight" && g.category !== "transport") continue;
-    const items = g.items.filter((i) => !isLocalTransfer(i));
+    const items = g.items.filter((i) => !isLocalTransfer(i) && !isRental(i));
     // A transport "need" can hold trips on different days; each day is its own trip.
     const days = g.category === "flight" ? [null] : [...new Set(items.map(departureDay))];
     for (const d of days) {
@@ -300,14 +306,16 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
   // In and out: the travel landing closest to the first night, and leaving closest to the last morning.
   const first = blocks[0];
   const last = blocks.at(-1)!;
-  const pick = (want: (t: Travel) => number) => {
-    const free = travels.filter((t) => !t.used && Math.abs(want(t)) <= 1);
+  // In: landing up to three days before the first night (or the day after); out: leaving from the
+  // day before the last morning to three days after. The closest wins.
+  const pick = (want: (t: Travel) => number, from: number, to: number) => {
+    const free = travels.filter((t) => !t.used && want(t) >= from && want(t) <= to);
     const best = free.sort((x, y) => Math.abs(want(x)) - Math.abs(want(y)))[0] ?? null;
     if (best) best.used = true;
     return best;
   };
-  const inbound = pick((t) => dayDiff(t.arrives, first.range.start));
-  const outbound = pick((t) => dayDiff(t.day, last.range.end));
+  const inbound = pick((t) => dayDiff(t.arrives, first.range.start), -3, 1);
+  const outbound = pick((t) => dayDiff(t.day, last.range.end), -1, 3);
 
   legs.push(arriving(pointOf(first), inbound?.settled ? inbound.arrives : first.range.start, 0, inbound, inbound?.mode ?? null, inbound?.settled ? dayDiff(inbound.arrives, first.range.start) : 0));
   for (let i = 1; i < blocks.length; i++) legs.push(...(middle.get(i) ?? []));

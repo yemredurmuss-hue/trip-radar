@@ -59,10 +59,19 @@ Kodu güncellediğinde `npm run build` çalıştır, sonra `chrome://extensions`
 **Her gezi ayrı bir pano ve sohbettir.** Açılışta **Seyahatlerim** listesi gelir; bir geziye girince
 solda o gezinin kendi sohbeti, sağda panosu olur. **‹ Seyahatlerim** ile listeye dönülür.
 
+**Söylediğin de panoya gelir, linki olmasa da.** Sohbette "7 Ekim'de İstanbul'dan Porto'ya uçuyoruz", "11 Ekim'de
+Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız" ya da "10–17 Ekim Funchal'da kalacağız" dersen hemen kendi
+gününe ve şehrine eklenir, üstünde durumu yazar: "Planlanıyor · bilet alınmadı"; "aldık" dersen "Bilet alındı ✓".
+Sonra o gün için bir uçuş (ya da konaklama) sayfası kaydedip seçince, planın yerini o alır. Bir şehir değişimini
+kartından da işaretleyebilirsin (✈ Uçak, 🚆 Tren...): uçakla ise uçuş kartı gibi görünür, o günün uçuş araması
+ve iki uçtaki havalimanı transferleri açılır. "Bileti aldım"ı yanlışlıkla bastıysan **Geri al** ile dönersin.
+
 **Pano, gezinin kendisi gibi sıralıdır.** Bir çizgi boyunca solda ne ve ne zaman (koyu yuvarlak simge, "Varış ·
 8 Ekim", "Konaklama · 1–4. gün · 8–11 Ekim · 3 gece"), sağda büyük yuvarlak kartlar: gidiş uçuşu, havalimanından
 otele transfer, konaklama, o günlere tarihli etkinlikler, şehir değişimi (iki uçtaki gar/havalimanı transferleriyle),
-sonraki konaklama ve dönüş. Her şehrin başında numaralı bir etiket olur ("1 Porto", "2 Lizbon"). Gidiş ya da dönüş için kayıt yoksa "Henüz eklenmedi" yazar ve o günün uçuş aramasına link
+sonraki konaklama ve dönüş. Her şehir tek bir blok olur ("1 Porto · 8–11 Ekim · 3 gece"): içinde o şehrin transferleri,
+geceleri, günleri ve kiralanan araç; şehirler arasındaki uçuş ya da tren blokların arasında durur. Tarihi olan her
+uçuş kendi gününe konur; kayıt sayfaları aynı "ihtiyaç" adını verse de dönüş uçuşu gidiş uçuşunu kapatmaz. Gidiş ya da dönüş için kayıt yoksa "Henüz eklenmedi" yazar ve o günün uçuş aramasına link
 verir (arabayla gideceğini söylediysen sormaz). Tarihsiz yerler ve plana oturmayan uçuşlar altta ayrı durur.
 
 **Seçilmemiş her ihtiyaç kartlarla karşılaştırılır.** Uçuş, konaklama, tren, eSIM... seçenekleri yan yana

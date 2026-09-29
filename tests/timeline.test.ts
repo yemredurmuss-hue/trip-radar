@@ -8,6 +8,7 @@ import { loadDemoTrip } from "../src/lib/demo";
 import { EMPTY_METRICS } from "../src/lib/items";
 import { buildLegs } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
+import { plannedItem, type PlannedInput } from "../src/lib/planned";
 import { buildTimeline, flightSearchUrl } from "../src/lib/timeline";
 import type { Item, Trip } from "../src/lib/types";
 
@@ -68,5 +69,93 @@ describe("timeline", () => {
     expect(decodeURIComponent(flightSearchUrl("from", "Lizbon", "2026-10-14", "IST")!)).toBe(
       "https://www.google.com/travel/flights?q=Flights from Lizbon to IST on 2026-10-14",
     );
+  });
+});
+
+describe("timeline from what's said and saved", () => {
+  const trip: Trip = { id: "t", title: "Porto ve Madeira", confirmedDates: { start: "2026-10-07", end: "2026-10-17" }, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 };
+  const base = (over: Partial<Item>): Item => ({
+    id: Math.random().toString(36).slice(2), tripId: "t", captureIds: [], key: null, category: "stay", needKey: "stay:porto", name: "x", provider: null, summary: "",
+    optionDetail: null, url: null, imageUrl: null, city: "Porto", country: null, countryCode: null, location: { address: null, area: null, approximate: false },
+    dates: { start: null, end: null, source: "url" }, guests: { adults: 2, children: null, rooms: 1 },
+    price: { amount: 200, currency: "EUR", scope: "total", taxesIncluded: "yes", source: "page", observedAt: 1 }, priceHistory: [],
+    cancellation: { summary: null, freeUntil: null, source: "none" }, rating: { value: null, scale: null, count: null, source: "none" }, flight: null,
+    metrics: EMPTY_METRICS, geo: null, highlights: [], concerns: [], reviewSummary: null, missing: [], status: "saved", statusNote: null, createdAt: 1, updatedAt: 1,
+    ...over,
+  });
+  const stay = (name: string, start: string, end: string, city: string, status: Item["status"] = "booked") =>
+    base({ name, city, needKey: `stay:${city.toLowerCase()}`, dates: { start, end, source: "url" }, status });
+  const flight = (name: string, from: string, to: string, day: string, status: Item["status"], needKey = `flight:${from}-${to}`.toLowerCase()) =>
+    base({ name, category: "flight", needKey, city: to, dates: { start: day, end: null, source: "page" }, status, flight: { from, to, departure: `${day}T09:00`, arrival: `${day}T12:00`, carrier: null, flightNumber: null, stops: 0 } });
+  const said = (input: Partial<PlannedInput> & Pick<PlannedInput, "kind" | "date">) =>
+    plannedItem({ end_date: null, time: null, from: null, to: null, city: null, title: null, booked: false, note: null, ...input }, "t", `chat-${input.kind}-${input.date}`, 1);
+  const build = (items: Item[], t = trip) => {
+    const plan = buildPlan(t, items);
+    return { plan, timeline: buildTimeline(plan, buildLegs(plan, t), items) };
+  };
+  const outline = (t: ReturnType<typeof buildTimeline>) =>
+    t.sections.map((s) =>
+      s.kind === "travel"
+        ? `${s.entry.role}: ${(s.entry.travel?.items ?? []).map((i) => i.name).join(", ") || s.entry.subtitle}`
+        : `[${s.index} ${s.city} · ${s.nights} gece] ${s.entries.map((e) => (e.kind === "leg" ? "transfer" : e.kind === "day" ? e.title : e.kind === "travel" ? `${e.role}:${e.travel?.items[0].name}` : e.kind)).join(" / ")}`,
+    );
+
+  it("never lets a booked flight home hide the flight out, even with the same need key from the pages", () => {
+    const items = [
+      flight("Pegasus IST-OPO", "IST", "OPO", "2026-10-07", "saved", "flight:ist-opo"),
+      flight("TAP FNC-IST", "FNC", "IST", "2026-10-17", "booked", "flight:ist-opo"),
+      stay("Jardim Stay", "2026-10-07", "2026-10-10", "Porto"),
+      stay("FAA Rentals", "2026-10-10", "2026-10-17", "Funchal"),
+    ];
+    const { plan, timeline } = build(items);
+    expect(plan.closed).toEqual([]);
+    expect(outline(timeline)).toEqual([
+      "arrival: Pegasus IST-OPO",
+      "[1 Porto · 3 gece] transfer / stay",
+      "move: Porto → Funchal", // how is still open: no station transfers yet
+      "[2 Funchal · 7 gece] stay / transfer",
+      "departure: TAP FNC-IST",
+    ]);
+    expect(timeline.unplaced).toEqual([]);
+  });
+
+  it("puts what was said in the chat on its day: the flight in, the flight to Madeira, the car there", () => {
+    const items = [
+      stay("Jardim Stay", "2026-10-07", "2026-10-11", "Porto"),
+      stay("FAA Rentals", "2026-10-11", "2026-10-17", "Funchal"),
+      said({ kind: "flight", date: "2026-10-07", from: "İstanbul", to: "Porto" }),
+      said({ kind: "flight", date: "2026-10-11", from: "Porto", to: "Funchal" }),
+      said({ kind: "car_rental", date: "2026-10-12", end_date: "2026-10-16", city: "Funchal" }),
+    ];
+    const { timeline } = build(items);
+    expect(outline(timeline)).toEqual([
+      "arrival: Uçuş · İstanbul → Porto",
+      "[1 Porto · 4 gece] transfer / stay / transfer",
+      "move: Uçuş · Porto → Funchal",
+      "[2 Funchal · 6 gece] transfer / stay / 12 Ekim · Araç kiralama / transfer",
+      "departure: Funchal →",
+    ]);
+    const move = timeline.sections.find((s) => s.kind === "travel" && s.entry.role === "move")!;
+    expect(move.kind === "travel" && move.entry.travel?.settled?.status).toBe("chosen"); // planned, not booked
+  });
+
+  it("lets a flight page saved for that day take the place of the one said in the chat", () => {
+    const planned = said({ kind: "flight", date: "2026-10-07", from: "İstanbul", to: "Porto" });
+    const page = flight("Pegasus PC1201", "IST", "OPO", "2026-10-07", "saved");
+    const { plan } = build([stay("Jardim Stay", "2026-10-07", "2026-10-10", "Porto"), planned, page]);
+    const group = plan.groups.find((g) => g.category === "flight")!;
+    expect(group.items.map((i) => i.name).sort()).toEqual(["Pegasus PC1201", "Uçuş · İstanbul → Porto"]);
+    const chosen = build([stay("Jardim Stay", "2026-10-07", "2026-10-10", "Porto"), planned, { ...page, status: "chosen" }]);
+    expect(chosen.plan.groups.find((g) => g.category === "flight")!.items.map((i) => i.name)).toEqual(["Pegasus PC1201"]);
+    expect(chosen.plan.closed.map((c) => c.reason)).toEqual(["Yerine Pegasus PC1201 geldi"]);
+  });
+
+  it("puts a flight that isn't a way in, out or between cities on its own day, inside its city", () => {
+    const items = [
+      stay("Jardim Stay", "2026-10-07", "2026-10-17", "Porto"),
+      flight("Day trip", "OPO", "LIS", "2026-10-12", "chosen"),
+    ];
+    const { timeline } = build(items);
+    expect(outline(timeline)).toEqual(["arrival: → Porto", "[1 Porto · 10 gece] transfer / stay / other:Day trip / transfer", "departure: Porto →"]);
   });
 });

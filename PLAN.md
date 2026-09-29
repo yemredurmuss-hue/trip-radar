@@ -43,7 +43,10 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] 0.12: geceleri örtüşen konaklamalar tek karşılaştırma (gece başına fiyat, eksik gece notu), şehir adları
       dilden bağımsız (Lisbon = Lizbon) ve haritada yakın yerler aynı yer; dar sohbet; seçilenler sade yuvarlak
       kartlar (uçuş rota olarak, konaklama resim + puan + toplam/gecelik fiyat), solda simgeli etiket sütunu, şehir etiketleri
-- [ ] 0.13: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
+- [x] 0.13: sohbette söylenen planlar panoda (uçuş, tren, araç kiralama, konaklama; "planlanıyor" / "bilet alındı"),
+      uçuşlar rota ve tarihe göre ayrı ihtiyaç (dönüş gidişi kapatmaz) ve her uçuş kendi gününde, şehir blokları,
+      şehir değişimi uçuş kartı olarak, rezervasyonu geri alma, tarih bandı kaldırıldı, sohbet layla ölçüsünde
+- [ ] 0.14: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
       açık sekmeleri toplu kaydetme (booking.com / airbnb izni gerekir), yeni gelen için "2. sırada, çünkü…" notu
 - [ ] İlk gerçek gezide kullanım: 20–50 gerçek kayıt, hangi alanların yanlış/eksik geldiğini not et
 
