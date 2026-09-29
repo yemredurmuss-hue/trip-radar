@@ -27,7 +27,7 @@ export function ProsConsView({ pc, limit, stacked = false }: { pc: ProsCons; lim
 }
 
 function Line({ line, sign, compact }: { line: ProCon; sign: string; compact: boolean }) {
-  const classes = ["pc-line", line.decisive && "decisive", line.unverified && "unverified", line.stale && "stale", line.accepted && "accepted"]
+  const classes = ["pc-line", line.decisive && "decisive", line.serious && "serious", line.unverified && "unverified", line.stale && "stale", line.accepted && "accepted"]
     .filter(Boolean)
     .join(" ");
   // In compact views only what was read carries its source ("7 yorum"); comparisons speak for themselves.

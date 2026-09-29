@@ -107,33 +107,44 @@ aynı bilgiyle hep aynı sonucu verir ve her sayısı açıklanabilir:
    - Yalnız bir yıldan eski yorumların söylediği şey "eski" diye işaretlenir ve hiçbir kararı belirlemez.
    - Okuma başarısız olursa kayıt kaybolmaz; birkaç kez kendiliğinden yeniden denenir.
    - Bulgular "Yorum ve detaylar" kriteriyle puana girer.
-6. **Artılar ve eksiler:** Her kaydın altında solda artılar, sağda eksiler önem sırasıyla durur. Bir seçenek
-   elendiyse sebebi en üstte kırmızıyla yazar. Detayda her bulgunun "Kanıt"ı (yorum alıntısı ve tarihi)
-   açılır; eksilerde "Sorun değil" dersen o bulgu bu yer için artık aleyhine sayılmaz ve asistan bunu öğrenir.
+6. **Kartlar ve artı/eksiler:** Kapalı kartta puan, rozetler ("Fiyat/performans", "En iyi konum", "En iyi
+   yorumlar", "En ucuz") ve en önemli bir artı ile bir eksi görünür; elenmişse sebebi. Karta tıklayınca
+   içinde solda bütün artılar, sağda bütün eksiler açılır; her bulgunun "Kanıt"ı (yorum alıntısı ve tarihi)
+   ve eksilerde "Sorun değil" vardır. "Sorun değil" dersen o bulgu bu yer için artık aleyhine sayılmaz ve
+   asistan bunu öğrenir.
+   - **Ciddi sorun puandan düşer:** Doğrulanmış, güncel ve ciddi bir eksi (ör. yan binada inşaat) puandan
+     doğrudan 8 puan götürür (en fazla iki sorun). Satırında "puandan −8" yazar. Böylece böyle bir yer,
+     on kriterin ortalamasında kaybolup öbürlerine yakın puan almaz.
 7. **AI değerlendirmesi ve eleme:** AI bulguları, sayıları ve tercihlerini okuyup kararı yazar. Bir
    bulgu senin için bir seçeneği anlamsız kılıyorsa (sessizlik istiyorsun + yan binada inşaat) eler.
    - Eleme hangi bulguya dayandığını söylemek zorunda. Kod, bulgunun sayfada doğrulandığını ve eski
      olmadığını kontrol eder; tutmayan eleme "Kontrol gerekiyor" olarak kalır, karar vermez.
    - Eleme, dayandığı bulgular durdukça geçerlidir; yeni bir seçenek eklenince kaybolmaz.
    - AI'ya ulaşılamazsa son iyi yorumu tarihiyle görünür kalır.
-8. **Eksik bilgi durdurmaz:** Fiyatı henüz bilinmeyen seçenek bilinenlerle geçici puan alır ve tam
+8. **Başa baş durumda taraf tutar:** İki seçenek önceliklerine göre başa başsa (fark 2 puandan az) daha
+   ucuz olan "Fiyat/performans" diye önerilir: "Puanlar başa baş (77–76); The Gallery ₺3.077 daha ucuz,
+   fiyat/performans onda. Daha iyi konum senin için daha önemliyse Impar."
+9. **Eksik bilgi durdurmaz:** Fiyatı henüz bilinmeyen seçenek bilinenlerle geçici puan alır ve tam
    bilgili seçeneklerin arkasında sıralanır ("fiyat eksik, gelince yeniden tartılır"). Fark 2 puandan
    azsa "başa baş" denir. Farklı tarih için alınmış fiyat karşılaştırmaya girmez.
 
-9. **Karar kartı ("değer mi?"):** Her açık ihtiyacın altında "Senin için: X" kartı çıkar. Önerilen seçenek
+10. **Karar kartı ("değer mi?"):** Her açık ihtiyacın altında "Senin için: X" kartı çıkar. Önerilen seçenek
    en iyi daha ucuz alternatifle tartılır ve fark somut birimle yazılır ("€45 fazlasına her yolda ~37 dk
    daha yakın; 3 gecede ~4 saat, saat başı ~€12"). Kartta ayrıca şunlar yer alır: hangi önceliğin bunu
    değerli kıldığı, "Ama konum o kadar önemli değilse Casa Azul: €45 cebinde kalır" ve seçimle kalan bütçe.
-10. **Seni böyle anladım:** Söylediklerin (önem, kesin şart, not) ve sezilenler burada kaynağıyla durur.
+11. **Seni böyle anladım:** Söylediklerin (önem, kesin şart, not) ve sezilenler burada kaynağıyla durur.
    Sezilenler iki kaynaktan gelir:
    - Kaydettiklerindeki kalıp: "5 konaklamadan 4'ü ücretsiz iptalli".
    - Motorun önerisinden farklı seçimlerin: "Seçimin Casa Azul, Jardim yerine: €45 daha ucuz".
 
    Bir sezgi varsayılanı en fazla bir kademe kaydırır ve senin söylediğini asla ezmez. × ile kaldırılır ya
    da yok sayılır.
-11. **Kesin şartlar:** "Mutfak şart", "iadesiz olmasın", "direkt uçuş", "merkeze en fazla 15 dk"
+12. **Kesin şartlar:** "Mutfak şart", "iadesiz olmasın", "direkt uçuş", "merkeze en fazla 15 dk"
    sohbetten kaydedilir. Şarta uymayan seçenek önerilmez. Sayfada görünmeyen bir olanak "yok" sayılmaz,
    "kontrol et" diye yazılır.
+
+Konaklamanın başında gece gece bir şerit durur (gün, hafta günü, şehir; rezerve / seçildi / açık / boş
+renkleriyle). Her gece aralığı kendi bloğunda, tarih başlığıyla gösterilir.
 
 Son karar senin: "Plana al" ile seçersin; sistem yalnız nedenleriyle gösterir.
 

@@ -82,7 +82,7 @@ export function Chat({ trip, messages, onBack }: Props) {
         )}
         {visible.map((m) => (
           <div key={m.id} className={`msg-${m.role}`}>
-            {m.text}
+            <RichText text={m.text} />
           </div>
         ))}
         {choices.length > 0 && (
@@ -127,4 +127,10 @@ export function Chat({ trip, messages, onBack }: Props) {
       </form>
     </section>
   );
+}
+
+/** The model's light formatting: **bold** is shown bold, everything else as plain text. */
+function RichText({ text }: { text: string }) {
+  const parts = text.split(/\*\*(.+?)\*\*/g);
+  return <>{parts.map((part, i) => (i % 2 ? <b key={i}>{part}</b> : part))}</>;
 }

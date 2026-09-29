@@ -79,7 +79,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
         <h2>{[CATEGORY_LABELS[d.category], title].filter(Boolean).join(" · ")}</h2>
 
         <div className={`verdict-box status-${d.status}`}>
-          <div className="verdict-main">{card && !card.tie ? `Senin için: ${card.pick.item.name}` : d.summary}</div>
+          <div className="verdict-main">{card && !card.tie ? `${card.kicker}: ${card.pick.item.name}` : d.summary}</div>
           {card && <div className="verdict-because">{card.because}</div>}
           {card?.unless && <div className="verdict-because">Ama {card.unless.charAt(0).toLocaleLowerCase("tr") + card.unless.slice(1)}</div>}
           {card?.budget && <div className="verdict-because muted">{card.budget}</div>}
@@ -180,7 +180,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
               <h3>{d.winner ? `Neden ${d.winner.item.name}?` : "Öndekinin artıları"}</h3>
               <ul>
                 {d.reasons.map((r) => (
-                  <li key={r.criterion}>
+                  <li key={r.key ?? r.criterion}>
                     {r.text} <span className="pts plus">+{r.points}</span>
                   </li>
                 ))}
@@ -192,7 +192,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
               <h3>Karşılığında</h3>
               <ul>
                 {d.tradeoffs.map((r) => (
-                  <li key={r.criterion}>
+                  <li key={r.key ?? r.criterion}>
                     {r.text} <span className="pts minus">{r.points}</span>
                   </li>
                 ))}

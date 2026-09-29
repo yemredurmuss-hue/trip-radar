@@ -12,7 +12,7 @@ export function DecisionCard({ card, decision, onCompare }: { card: ValueCard; d
   return (
     <div className={`decision-card${card.tie ? " tie" : ""}`}>
       <div className="dc-head">
-        <span className="dc-kicker">{card.tie ? "Başa baş" : "Senin için"}</span>
+        <span className="dc-kicker">{card.kicker}</span>
         <b>{pick.item.name}</b>
         {pick.score != null && <span className="score-pill best">{pick.score}</span>}
       </div>

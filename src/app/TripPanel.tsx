@@ -15,16 +15,16 @@ import {
   tripDateRange,
   type NeedGroup,
 } from "../lib/items";
-import { needsReading, readingLine } from "../lib/listing";
+import { needsReading } from "../lib/listing";
 import type { OptionGroup, Plan, StayBlock } from "../lib/plan";
 import { retryCapture } from "../lib/process";
-import { prosConsFor, type ProsCons } from "../lib/proscons";
+
 import type { Capture, Category, Item, Trip } from "../lib/types";
 import { DecisionCard } from "./DecisionCard";
 import { CategoryIcon, Chevron } from "./Icons";
 import { IntentCard } from "./IntentCard";
-import { ProsConsView } from "./ProsConsView";
-import type { ValueCard } from "../lib/value";
+import { OptionCard } from "./OptionCard";
+import { rolesOf, type ValueCard } from "../lib/value";
 import { decisionLabel, type Decisions } from "./useDecisions";
 
 interface Props {
@@ -43,7 +43,12 @@ const ROWS_PER_GROUP = 3;
 const SUMMARIZED: Category[] = ["activity", "food", "other"];
 
 type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => React.ReactNode;
-type Details = (item: Item, decision?: GroupDecision) => { pc: ProsCons | null; reading: ReturnType<typeof readingLine> };
+type CardFor = (item: Item, group: Item[], decision?: GroupDecision, roles?: string[], onCompare?: () => void) => React.ReactNode;
+
+const WEEKDAYS = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
+const weekday = (iso: string) => WEEKDAYS[new Date(`${iso}T00:00:00Z`).getUTCDay()];
+const dayOfMonth = (iso: string) => Number(iso.slice(8, 10));
+const addDay = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
 
 export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, menu }: Props) {
   const range = trip.confirmedDates ?? tripDateRange(items);
@@ -61,11 +66,19 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const reading = listings
     ? new Set(items.filter((i) => needsReading(i, listings.get(listingKeyOf(i))) && !listings.get(listingKeyOf(i))?.error).map(listingKeyOf)).size
     : 0;
-  /** What speaks for and against an item, and what was read on its page. */
-  const details: Details = (item, decision) => ({
-    pc: prosConsFor(item, decision, listings, decisions?.ctx),
-    reading: readingLine(item, listings?.get(listingKeyOf(item))),
-  });
+  /** One saved option as a card that opens in place (pros and cons, evidence, actions). */
+  const card: CardFor = (item, group, decision, roles, onCompareGroup) => (
+    <OptionCard
+      key={item.id}
+      item={item}
+      group={group}
+      decision={decision}
+      decisions={decisions}
+      roles={roles}
+      onOpen={() => onOpenItem(item)}
+      onCompare={onCompareGroup}
+    />
+  );
 
   const renderGroup: RenderGroup = (group, heading, groupSubtitle, nested = false) => (
     <OptionGroupView
@@ -76,9 +89,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       nested={nested}
       decision={decisions?.byGroup.get(group.key)}
       card={decisions?.cards.get(group.key)}
-      currency={currency}
-      details={details}
-      onOpenItem={onOpenItem}
+      renderCard={card}
       onCompare={() => onCompare(group.key)}
     />
   );
@@ -132,11 +143,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       <IntentCard trip={trip} decisions={decisions} />
 
       {CATEGORY_ORDER.map((category) => {
-        if (category === "stay") return <StaySection key="stay" plan={plan} renderGroup={renderGroup} details={details} onOpenItem={onOpenItem} />;
+        if (category === "stay") return <StaySection key="stay" plan={plan} renderGroup={renderGroup} card={card} />;
         if (SUMMARIZED.includes(category)) {
           const section = places.find((s) => s.category === category);
           return section ? (
-            <SummarySection key={category} category={category} groups={section.groups} details={details} onOpenItem={onOpenItem} />
+            <SummarySection key={category} category={category} groups={section.groups} card={card} onOpenItem={onOpenItem} />
           ) : null;
         }
         return plan.groups
@@ -159,17 +170,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
 }
 
 /** The trip's nights in order: booked, chosen and open stretches, with what's missing between them. */
-function StaySection({
-  plan,
-  renderGroup,
-  details,
-  onOpenItem,
-}: {
-  plan: Plan;
-  renderGroup: RenderGroup;
-  details: Details;
-  onOpenItem: (i: Item) => void;
-}) {
+function StaySection({ plan, renderGroup, card }: { plan: Plan; renderGroup: RenderGroup; card: CardFor }) {
   if (!plan.stayBlocks.length && !plan.looseStays.length) return null;
   const n = plan.nights;
   const parts = [n.booked && `${n.booked} rezerve`, n.chosen && `${n.chosen} seçildi`, n.open && `${n.open} açık`].filter(Boolean);
@@ -179,6 +180,7 @@ function StaySection({
         <span>{CATEGORY_LABELS.stay}</span>
         {n.total > 0 && <span className="muted">{[`${n.total} gece`, ...parts].join(" · ")}</span>}
       </div>
+      <DayStrip blocks={plan.stayBlocks} />
       {plan.notices
         .filter((x) => x.kind === "conflict")
         .map((x) => (
@@ -195,7 +197,7 @@ function StaySection({
                 ⚠ {x.text}
               </div>
             ))}
-          <Block block={block} renderGroup={renderGroup} details={details} onOpenItem={onOpenItem} />
+          <Block block={block} renderGroup={renderGroup} card={card} />
         </Fragment>
       ))}
       {plan.looseStays.map((g) =>
@@ -214,28 +216,59 @@ function StaySection({
 
 const BLOCK_LABEL = { booked: "✓ Rezerve", chosen: "Seçildi", open: "Açık", empty: "Boş" } as const;
 
-function Block({
-  block,
-  renderGroup,
-  details,
-  onOpenItem,
-}: {
-  block: StayBlock;
-  renderGroup: RenderGroup;
-  details: Details;
-  onOpenItem: (i: Item) => void;
-}) {
-  const state = block.kind === "open" && !block.groups.length ? "empty" : block.kind;
+const blockState = (block: StayBlock) => (block.kind === "open" && !block.groups.length ? "empty" : block.kind);
+
+/** The trip's nights at a glance, one cell per night, coloured by whether it's booked, chosen or open. */
+function DayStrip({ blocks }: { blocks: StayBlock[] }) {
+  if (!blocks.length) return null;
   return (
-    <div className={`stay-block ${state}`}>
+    <div className="day-strip" role="list" aria-label="Geceler">
+      {blocks.map((block) => {
+        const state = blockState(block);
+        const nights = Array.from({ length: block.nights }, (_, i) => addDay(block.range.start, i));
+        return (
+          <button
+            key={block.range.start}
+            role="listitem"
+            className={`strip-block ${state}`}
+            style={{ flexGrow: block.nights }}
+            title={`${formatDateRange(block.range.start, block.range.end)} · ${block.nights} gece · ${BLOCK_LABEL[state]}`}
+            onClick={() => document.getElementById(`block-${block.range.start}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          >
+            <span className="strip-days">
+              {nights.map((d) => (
+                <span key={d} className="strip-day">
+                  <b>{dayOfMonth(d)}</b>
+                  <small>{weekday(d)}</small>
+                </span>
+              ))}
+            </span>
+            <span className="strip-label">
+              {block.city ? `${block.city} · ` : ""}
+              {BLOCK_LABEL[state]}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Block({ block, renderGroup, card }: { block: StayBlock; renderGroup: RenderGroup; card: CardFor }) {
+  const state = blockState(block);
+  return (
+    <div className={`stay-block ${state}`} id={`block-${block.range.start}`}>
       <div className="block-head">
-        <span className={`block-chip ${state}`}>{BLOCK_LABEL[state]}</span>
-        <span>
-          {formatDateRange(block.range.start, block.range.end)} · {block.nights} gece
-          {block.city && <span className="muted"> · {block.city}</span>}
+        <span className="block-date">
+          <span className="block-range">{formatDateRange(block.range.start, block.range.end)}</span>
+          <span className="block-days">
+            {weekday(block.range.start)} – {weekday(block.range.end)} · {block.nights} gece
+            {block.city && ` · ${block.city}`}
+          </span>
         </span>
+        <span className={`block-chip ${state}`}>{BLOCK_LABEL[state]}</span>
       </div>
-      {block.kind === "booked" && <Row item={block.item} group={[block.item]} {...details(block.item)} onOpen={() => onOpenItem(block.item)} />}
+      {block.kind === "booked" && card(block.item, [block.item])}
       {block.kind !== "booked" &&
         block.groups.map((g) =>
           renderGroup(g, null, g.range && g.range.start === block.range.start && g.range.end === block.range.end ? null : g.title, true),
@@ -259,9 +292,7 @@ function OptionGroupView({
   nested,
   decision,
   card,
-  currency,
-  details,
-  onOpenItem,
+  renderCard,
   onCompare,
 }: {
   group: OptionGroup;
@@ -270,9 +301,7 @@ function OptionGroupView({
   nested: boolean;
   decision: GroupDecision | undefined;
   card: ValueCard | undefined;
-  currency: string;
-  details: Details;
-  onOpenItem: (i: Item) => void;
+  renderCard: CardFor;
   onCompare: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -289,6 +318,7 @@ function OptionGroupView({
   const live = !group.booked && decision;
   const comparable = live && decision.options.filter((o) => !o.excluded).length > 1;
   const single = live && decision.status === "single";
+  const roles = live ? rolesOf(decision) : new Map<string, string[]>();
   return (
     <div className={nested ? "group nested" : "section"}>
       {(heading || subtitle) && (
@@ -297,17 +327,7 @@ function OptionGroupView({
           {subtitle && <span className="muted">{subtitle}</span>}
         </div>
       )}
-      {shown.map((item) => (
-        <Row
-          key={item.id}
-          item={item}
-          group={group.items}
-          decision={decision}
-          currency={currency}
-          {...details(item, decision)}
-          onOpen={() => onOpenItem(item)}
-        />
-      ))}
+      {shown.map((item) => renderCard(item, group.items, decision, roles.get(item.id), comparable || single ? onCompare : undefined))}
       {hidden.length > 0 && (
         <button className="more" onClick={() => setExpanded(true)}>
           + {hidden.length} seçenek daha{droppable ? ` (${droppable} elenebilir)` : ""}
@@ -353,13 +373,14 @@ function ClosedSection({ closed, onOpenItem }: { closed: Plan["closed"]; onOpenI
 function SummarySection({
   category,
   groups,
-  details,
+  card,
   onOpenItem,
   label,
 }: {
   category: Category;
   groups: NeedGroup[];
-  details?: Details;
+  /** Cards that open in place; without it, plain rows (e.g. the dismissed list). */
+  card?: CardFor;
   onOpenItem: (i: Item) => void;
   label?: string;
 }) {
@@ -381,7 +402,8 @@ function SummarySection({
           <Chevron />
         </span>
       </button>
-      {open && items.map((item) => <Row key={item.id} item={item} group={items} {...details?.(item)} onOpen={() => onOpenItem(item)} />)}
+      {open &&
+        items.map((item) => (card ? card(item, items) : <Row key={item.id} item={item} group={items} onOpen={() => onOpenItem(item)} />))}
     </div>
   );
 }
@@ -392,8 +414,6 @@ function Row({
   decision,
   currency,
   closedReason,
-  pc,
-  reading,
   onOpen,
 }: {
   item: Item;
@@ -401,8 +421,6 @@ function Row({
   decision?: GroupDecision;
   currency?: string;
   closedReason?: string;
-  pc?: ProsCons | null;
-  reading?: ReturnType<typeof readingLine>;
   onOpen: () => void;
 }) {
   const base = closedReason ? { text: closedReason, tone: "muted" as const } : rowLabel(item, group);
@@ -438,12 +456,6 @@ function Row({
       <span className="chev">
         <Chevron />
       </span>
-      {(pc || reading) && !closedReason && (
-        <span className="row-details">
-          {pc && <ProsConsView pc={pc} limit={3} />}
-          {reading && <span className={`reading tone-${reading.tone}`}>{reading.text}</span>}
-        </span>
-      )}
     </button>
   );
 }

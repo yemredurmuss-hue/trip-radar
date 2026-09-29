@@ -32,6 +32,9 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
       sayımı kod yapar, sayfada olmayan alıntı atılır, eski yorum karar vermez (`reader.ts`, `listing.ts`);
       her kayıtta solda artılar / sağda eksiler (`proscons.ts`); kanıta dayalı eleme ve "sorun değil";
       ilan ≠ teklif (farklı tarih/oda üstüne yazmaz); eksik fiyat kararı durdurmaz; tanı dosyası
+- [x] 0.9.2: ciddi sorun puandan düşer, başa başta "fiyat/performans" önerisi, rozetler; açılır kartlar
+      (kapalıyken özet, açıkken kanıtlı artı/eksi), gece gece gün şeridi ve belirgin tarih blokları;
+      güncellemeler 1-2 dakikada gelir
 - [ ] 0.10: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
       açık sekmeleri toplu kaydetme (booking.com / airbnb izni gerekir), yeni gelen için "2. sırada, çünkü…" notu
 - [ ] İlk gerçek gezide kullanım: 20–50 gerçek kayıt, hangi alanların yanlış/eksik geldiğini not et

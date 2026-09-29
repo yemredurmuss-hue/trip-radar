@@ -92,7 +92,7 @@ describe("pros and cons per option", () => {
     expect(pc.pros.map((p) => p.text)).toContain("Yanında çok iyi bir İtalyan restoranı");
     expect(pc.pros.find((p) => p.text === "Geniş, rahat yatak")?.detail).toBe("açıklamada");
     expect(pc.cons[0].text).toBe("Yan binada inşaat gürültüsü"); // a recent, repeated, serious complaint leads
-    expect(pc.cons[0].detail).toBe("2 yorum · en yenisi Eyl 2026");
+    expect(pc.cons[0]).toMatchObject({ serious: true, detail: "2 yorum · en yenisi Eyl 2026 · puandan −8" }); // costs points outright
     expect(pc.cons.map((c) => c.text)).toContain("TV yok");
   });
 

@@ -21,6 +21,8 @@ export interface ValueCard {
   /** The option it is weighed against: the best cheaper one, else the runner-up. */
   alt: OptionResult | null;
   tie: boolean;
+  /** The card's stance: "Senin için", "Fiyat/performans" (level on priorities, cheaper) or "Başa baş". */
+  kicker: string;
   /** pick − alt in the context currency; positive = the pick costs more. */
   priceDiff: number | null;
   /** "Konum senin için "Çok önemli": €45 fazlasına her yolda ~31 dk daha yakın; …". */
@@ -158,13 +160,24 @@ export function valueCard(d: GroupDecision, ctx: DecisionContext, budget: Budget
   const scored = d.options.filter((o) => o.score != null);
   const inPlay = (o: OptionResult) => !o.unmet.length && !o.eliminated;
   const contenders = scored.some(inPlay) ? scored.filter(inPlay) : scored;
-  const pick = contenders[0];
-  if (!pick) return null;
+  if (!contenders[0]) return null;
   const tie = d.status === "tie";
+  // A tie is still a decision: level on the traveller's priorities, the cheaper one is the better value.
+  let pick = contenders[0];
+  let valuePick = false;
+  if (tie && contenders[1]) {
+    const [a, b] = contenders;
+    const pa = priceOf(a);
+    const pb = priceOf(b);
+    if (pa != null && pb != null && Math.abs(pa - pb) >= 0.03 * Math.max(pa, pb)) {
+      pick = pa < pb ? a : b;
+      valuePick = true;
+    }
+  }
   const pickPrice = priceOf(pick);
   // The question people actually ask: is it worth paying more than the best cheaper option?
   const cheaper = contenders.slice(1).find((o) => pickPrice != null && priceOf(o) != null && priceOf(o)! < pickPrice - 0.5);
-  const alt = tie ? contenders[1] ?? null : cheaper ?? contenders[1] ?? null;
+  const alt = tie ? (contenders.slice(0, 2).find((o) => o !== pick) ?? null) : cheaper ?? contenders[1] ?? null;
   const altPrice = alt ? priceOf(alt) : null;
   const priceDiff = pickPrice != null && altPrice != null ? pickPrice - altPrice : null;
   const money = (n: number) => formatPrice(Math.abs(n), ctx.currency);
@@ -176,7 +189,15 @@ export function valueCard(d: GroupDecision, ctx: DecisionContext, budget: Budget
     const gains = gainsOver(pick, alt, ctx, priceDiff);
     const top = gains[0] ? partOf(pick, gains[0].criterion)! : null;
     const what = gains.slice(0, 2).map((g) => g.text).join("; ");
-    if (tie) {
+    if (valuePick) {
+      const theirs = gainsOver(alt, pick, ctx, null, true)[0];
+      because = [
+        `Puanlar başa baş (${contenders[0].score}–${contenders[1].score}); ${pick.item.name} ${money(priceDiff!)} daha ucuz, fiyat/performans onda.`,
+        theirs ? `${alt.item.name}: ${theirs.text}.` : null,
+      ]
+        .filter(Boolean)
+        .join(" ");
+    } else if (tie) {
       const theirs = gainsOver(alt, pick, ctx, null, true)[0];
       const cheaperSide = priceDiff ? (priceDiff > 0 ? `${alt.item.name} ${money(priceDiff)} daha ucuz` : `${pick.item.name} ${money(priceDiff)} daha ucuz`) : null;
       because = [
@@ -207,7 +228,10 @@ export function valueCard(d: GroupDecision, ctx: DecisionContext, budget: Budget
   }
 
   let unless: string | null = null;
-  if (alt && !tie) {
+  if (alt && valuePick) {
+    const theirs = gainsOver(alt, pick, ctx, null, true)[0];
+    if (theirs) unless = `${theirs.text.charAt(0).toLocaleUpperCase("tr")}${theirs.text.slice(1)} senin için daha önemliyse ${alt.item.name}.`;
+  } else if (alt && !tie) {
     const flip = d.unless.find((u) => u.winner === alt.item.name) ?? d.unless[0];
     if (flip) {
       const keeps = flip.winner === alt.item.name && priceDiff != null && priceDiff > 0.5 ? `: ${money(priceDiff)} cebinde kalır` : "";
@@ -253,5 +277,40 @@ export function valueCard(d: GroupDecision, ctx: DecisionContext, budget: Budget
     ...d.checks.map((c) => `Kontrol gerekiyor: ${d.options.find((o) => o.item.id === c.itemId)?.item.name ?? ""} — ${c.reason} (sayfada doğrulanamadı)`),
   ];
 
-  return { pick, alt, tie, priceDiff, because, unless, budget: budgetLine, chosenOther, ruledOut };
+  const kicker = valuePick ? "Fiyat/performans" : tie ? "Başa baş" : "Senin için";
+  return { pick, alt, tie: tie && !valuePick, kicker, priceDiff, because, unless, budget: budgetLine, chosenOther, ruledOut };
 }
+
+/**
+ * What sets each option apart in its group, as short badges: the best value (cheapest among those
+ * level with the top), the cheapest, the best location, the best reviews, the shortest journey.
+ * Only for options still in play, and only when one clearly stands out.
+ */
+export function rolesOf(d: GroupDecision): Map<string, string[]> {
+  const roles = new Map<string, string[]>();
+  if (d.status !== "ok" && d.status !== "tie") return roles;
+  const inPlay = d.options.filter((o) => o.score != null && !o.unmet.length && !o.eliminated);
+  if (inPlay.length < 2) return roles;
+  const add = (o: OptionResult, role: string) => roles.set(o.item.id, [...(roles.get(o.item.id) ?? []), role]);
+
+  const priced = inPlay.filter((o) => priceOf(o) != null && !o.limited.length).sort((a, b) => priceOf(a)! - priceOf(b)!);
+  const top = inPlay[0].score!;
+  const value = priced.find((o) => o.score! >= top - VALUE_BAND);
+  if (value) add(value, "Fiyat/performans");
+  if (priced[0] && priced[0] !== value && priceOf(priced[0])! < priceOf(value ?? priced[0])! - 0.5) add(priced[0], "En ucuz");
+
+  const standout = (criterion: CriterionId, role: string) => {
+    const ranked = inPlay
+      .map((o) => ({ o, s: partOf(o, criterion)?.s ?? null, w: partOf(o, criterion)?.weight ?? 0 }))
+      .filter((x) => x.s != null && x.w > 0)
+      .sort((a, b) => b.s! - a.s!);
+    if (ranked.length >= 2 && ranked[0].s! - ranked[1].s! >= 0.05) add(ranked[0].o, role);
+  };
+  standout("location", "En iyi konum");
+  standout("rating", "En iyi yorumlar");
+  standout("duration", "En kısa yolculuk");
+  return roles;
+}
+
+/** Options within this many points of the top count as level with it for "Fiyat/performans". */
+const VALUE_BAND = 5;

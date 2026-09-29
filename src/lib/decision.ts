@@ -323,8 +323,9 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
     case "amenities": {
       const wanted = ctx.trip.wantedAmenities ?? [];
       if (!wanted.length) return null;
-      const has = wanted.filter((a) => m.amenities.includes(a));
-      const lacking = wanted.filter((a) => !m.amenities.includes(a));
+      const known = amenitiesOf(item, ctx);
+      const has = wanted.filter((a) => known.includes(a));
+      const lacking = wanted.filter((a) => !known.includes(a));
       return {
         value: has.length / wanted.length,
         display: `${has.length}/${wanted.length}${lacking.length ? ` · yok/bilinmiyor: ${lacking.join(", ")}` : ""}`,
@@ -413,6 +414,36 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
   }
 }
 
+/**
+ * Amenities the page lists, plus the ones a close reading shows: "sessiz" when guests praise the
+ * quiet and nothing on the page says otherwise, "manzara" when the view is praised.
+ */
+export function amenitiesOf(item: Item, ctx: Pick<DecisionContext, "listings" | "today">): Amenity[] {
+  const listed = metricsOf(item).amenities;
+  const listing = ctx.listings.get(listingKeyOf(item));
+  if (!listing?.readAt) return listed;
+  const said = (topics: FindingTopic[], polarity: Finding["polarity"]) =>
+    listing.findings.some((f) => topics.includes(f.topic) && f.polarity === polarity && isDecisive(f, listing, ctx.today));
+  const extra: Amenity[] = [];
+  if (said(["noise"], "positive") && !said(["noise", "condition"], "negative")) extra.push("sessiz");
+  if (said(["view"], "positive")) extra.push("manzara");
+  return [...new Set([...listed, ...extra])];
+}
+
+/** Points taken off per serious problem (a verified, recent, high-severity con the traveller didn't accept). */
+export const SERIOUS_PENALTY = 8;
+const MAX_SERIOUS = 2;
+
+/** Serious problems read on the place's pages: each costs SERIOUS_PENALTY points, whatever the weights. */
+export function seriousIssues(item: Item, ctx: Pick<DecisionContext, "listings" | "today" | "trip">): Finding[] {
+  const listing = ctx.listings.get(listingKeyOf(item));
+  if (!listing?.readAt) return [];
+  const accepted = new Set(ctx.trip.acceptedFindings ?? []);
+  return listing.findings
+    .filter((f) => f.polarity === "negative" && f.severity === "high" && isDecisive(f, listing, ctx.today) && !accepted.has(acceptKey(listing.key, f)))
+    .slice(0, MAX_SERIOUS);
+}
+
 const SEVERITY_WEIGHT = { high: 3, medium: 2, low: 1 } as const;
 
 /** How much a finding counts: severity, how many reviews say it (a little), and whether it's old. */
@@ -495,7 +526,7 @@ export function checkRequirement(r: Requirement, item: Item, ctx: DecisionContex
   const m = metricsOf(item);
   switch (r.kind) {
     case "amenity":
-      return m.amenities.includes(r.amenity) ? "pass" : "unknown";
+      return amenitiesOf(item, ctx).includes(r.amenity) ? "pass" : "unknown";
     case "free_cancellation": {
       const type = cancellationType(item, m);
       if (type === "unknown") return "unknown";
@@ -544,10 +575,14 @@ export interface OptionResult {
   eliminated: { reason: string; findings: Finding[] } | null;
   /** Scored without something it needs (e.g. no price yet): provisional, ranked after complete options. */
   limited: string[];
+  /** Serious problems taken off the score (SERIOUS_PENALTY points each). */
+  penalties: Finding[];
 }
 
 export interface Reason {
   criterion: CriterionId;
+  /** Distinct key when the criterion alone isn't unique (serious problems). */
+  key?: string;
   label: string;
   points: number; // contribution to the score gap, in score points
   text: string;
@@ -618,7 +653,19 @@ function eliminationsOf(record: Analysis | null, eligible: Item[], ctx: Decision
     const item = eligible.find((i) => i.id === e.itemId);
     if (!item) continue;
     const listing = ctx.listings.get(listingKeyOf(item));
-    const cited = listing ? e.findingIds.map((id) => listing.findings.find((f) => f.id === id)).filter((f): f is Finding => Boolean(f)) : [];
+    // By id; if the place was read again since (texts, so ids, may differ), by the same kind of finding.
+    const cited = listing
+      ? [
+          ...new Set(
+            e.findingIds.flatMap((id) => {
+              const exact = listing.findings.find((f) => f.id === id);
+              if (exact) return [exact];
+              const kind = id.split(":").slice(0, 2).join(":");
+              return listing.findings.filter((f) => `${f.topic}:${f.polarity}` === kind);
+            }),
+          ),
+        ]
+      : [];
     const open = cited.filter((f) => !accepted.has(acceptKey(listing!.key, f)));
     // The traveller said every cited finding is fine: nothing left to say.
     if (cited.length && !open.length) continue;
@@ -661,6 +708,9 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
     return mine.mode === "lower" ? Math.min(...values) / mine.value : mine.value / Math.max(...values);
   };
 
+  // A serious problem (verified, recent, high severity) costs points directly: a weighted average
+  // alone would let one construction site next door sink into ten other criteria.
+  const serious = new Map(eligible.map((i) => [i.id, seriousIssues(i, ctx)]));
   const score = (itemId: string, levels: Partial<Record<CriterionId, PriorityLevel>> = {}) => {
     let total = 0;
     let weight = 0;
@@ -675,7 +725,8 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
       if (s != null) known += w;
       return { criterion: c, label: CRITERION_LABELS[c], level, weight: w, s, value: m?.value ?? null, display: m?.display ?? null, note: m?.note };
     });
-    return { value: weight ? (100 * total) / weight : 0, confidence: weight ? known / weight : 0, parts };
+    const penalty = serious.get(itemId)!.length * SERIOUS_PENALTY;
+    return { value: weight ? Math.max(0, (100 * total) / weight - penalty) : 0, confidence: weight ? known / weight : 0, parts };
   };
 
   const required = REQUIRED[category] ?? [];
@@ -709,6 +760,7 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
       unsure,
       eliminated: eliminated.get(item.id) ?? null,
       limited: scorable ? limited : [],
+      penalties: serious.get(item.id)!,
     };
   });
   // Complete, compliant options first; then provisional ones; then ones that fail a requirement or
@@ -731,6 +783,7 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
         unsure: [],
         eliminated: null,
         limited: [],
+        penalties: [],
       }),
     ),
   ];
@@ -864,6 +917,18 @@ function explain(a: OptionResult, b: OptionResult): { reasons: Reason[]; tradeof
       };
     })
     .filter((r): r is Reason => r != null && Math.abs(r.points) >= 0.5);
+  // Serious problems taken off one side's score and not the other's.
+  const gap = (b.penalties.length - a.penalties.length) * SERIOUS_PENALTY;
+  if (gap) {
+    const worse = gap > 0 ? b : a;
+    rows.push({
+      criterion: "details",
+      key: "serious",
+      label: "Ciddi sorun",
+      points: gap,
+      text: `Ciddi sorun: ${worse.item.name} — ${worse.penalties.map((f) => f.text.toLocaleLowerCase("tr")).join(", ")}`,
+    });
+  }
   return {
     reasons: rows.filter((r) => r.points > 0).sort((x, y) => y.points - x.points).slice(0, 4),
     tradeoffs: rows.filter((r) => r.points < 0).sort((x, y) => x.points - y.points).slice(0, 3),
@@ -995,8 +1060,12 @@ function mostCommon<T>(values: T[]): T | null {
   return best;
 }
 
+/** Bumped when the analysis prompt changes in a way old analyses can't carry (2: findings cited by ref). */
+const ANALYSIS_VERSION = 2;
+
 function hashInputs(category: Category, options: OptionResult[], ctx: DecisionContext): string {
   const input = JSON.stringify({
+    v: ANALYSIS_VERSION,
     p: ctx.trip.priorities ?? {},
     cp: ctx.trip.categoryPriorities?.[category] ?? {},
     req: ctx.trip.requirements ?? [],

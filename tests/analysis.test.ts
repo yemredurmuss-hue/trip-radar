@@ -173,19 +173,26 @@ describe("eliminations", () => {
   it("rules an option out only with verified, recent findings, and never for what the traveller accepted", async () => {
     const { t, items } = await setup([construction]);
     const before = (await loadDecisions(t, items)).decisions.get(STAY)!;
-    expect(before.options[0].item.name).toBe("Casa Azul"); // cheaper and better rated on the numbers
-    expect(before.criteria).toContain("details"); // ...and its findings are part of the score
+    // Cheaper and better rated, but a serious, recent, verified problem costs it points outright.
+    const casaBefore = before.options.find((o) => o.item.id === "eb")!;
+    expect(casaBefore.penalties.map((f) => f.text)).toEqual(["Yan binada inşaat gürültüsü"]);
+    expect(before.options[0].item.name).toBe("Jardim Stay");
+    expect(before.reasons.map((r) => r.label)).toContain("Ciddi sorun");
+    expect(before.criteria).toContain("details");
 
     const { provider, prompts } = fakeProvider(() =>
       output({
         verdict: "Jardim Stay, çünkü Casa Azul'da inşaat var.",
         ai_scores: [],
-        eliminations: [{ item_id: "eb", reason: "Yan binada inşaat; sessizlik istiyorsun.", finding_ids: [construction.id, "made-up"] }],
+        // Cited by the short ref the prompt shows ("f1" = Casa Azul's first finding); unknown refs are dropped.
+        eliminations: [{ item_id: "eb", reason: "Yan binada inşaat; sessizlik istiyorsun.", finding_ids: ["f1", "f9"] }],
       }),
     );
     await analyzeStale({ provider: async () => provider });
     expect(prompts.at(-1)).toContain("Yan binada inşaat gürültüsü");
     expect(prompts.at(-1)).toContain('"count":2');
+    expect(prompts.at(-1)).toContain('"ref":"f1"');
+    expect((await listAnalyses("te"))[0].eliminations?.[0].findingIds).toEqual([construction.id]);
 
     const after = (await loadDecisions(t, items)).decisions.get(STAY)!;
     const casa = after.options.find((o) => o.item.id === "eb")!;

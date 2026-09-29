@@ -3,8 +3,10 @@
 // Two sources: how the option compares with the others on the traveller's criteria (computed), and
 // what was read on its pages (findings, each with the reviews or text behind it).
 import {
+  amenitiesOf,
   findingWeight,
   levelFor,
+  SERIOUS_PENALTY,
   TOPIC_CRITERION,
   type DecisionContext,
   type GroupDecision,
@@ -24,6 +26,8 @@ export interface ProCon {
   kind: "compare" | "finding" | "summary" | "requirement" | "elimination" | "check";
   /** The reason the option is out (ruled out, or fails a requirement): shown first. */
   decisive?: boolean;
+  /** A serious problem that costs the option points (shown right after decisive lines). */
+  serious?: boolean;
   /** Couldn't be found on the stored page. */
   unverified?: boolean;
   /** Only reviews over a year old say it. */
@@ -38,7 +42,7 @@ export interface ProsCons {
   cons: ProCon[];
 }
 
-type Ctx = Pick<DecisionContext, "trip" | "today" | "currency" | "inferred">;
+type Ctx = Pick<DecisionContext, "trip" | "today" | "currency" | "inferred" | "listings">;
 
 const LEVEL_WEIGHT = [0, 0.5, 1, 2, 3];
 const SOURCE_TEXT: Record<Finding["source"], string> = {
@@ -58,7 +62,8 @@ function minutesText(m: number): string {
 }
 
 /** Lines from comparing the option with the others in its group on the traveller's criteria. */
-function comparisons(option: OptionResult, decision: GroupDecision, currency: string): { pros: ProCon[]; cons: ProCon[] } {
+function comparisons(option: OptionResult, decision: GroupDecision, ctx: Ctx): { pros: ProCon[]; cons: ProCon[] } {
+  const currency = ctx.currency;
   const pros: ProCon[] = [];
   const cons: ProCon[] = [];
   const peers = decision.options.filter((o) => o !== option && !o.excluded && o.parts.length);
@@ -101,10 +106,17 @@ function comparisons(option: OptionResult, decision: GroupDecision, currency: st
         if (p.s >= 1) add(pros, p, capital(p.display ?? "Ücretsiz iptal"), 0.6);
         else if (p.s <= 0.3) add(cons, p, capital(p.display ?? "İade yok"), 0.7);
         break;
-      case "amenities":
-        if (p.s >= 1) add(pros, p, `İstediğin olanakların hepsi var`, 0.6);
-        else if (p.s < 1) add(cons, p, capital((p.display ?? "").replace(/^\d+\/\d+ · /, "")), 1 - p.s);
+      case "amenities": {
+        // Only what tells options apart: an amenity others have and this one doesn't show.
+        const wanted = ctx.trip.wantedAmenities ?? [];
+        const mine = amenitiesOf(option.item, ctx);
+        const theirs = new Set(peers.flatMap((o) => amenitiesOf(o.item, ctx)));
+        const missing = wanted.filter((a) => !mine.includes(a) && theirs.has(a));
+        const only = wanted.filter((a) => mine.includes(a) && peers.some((o) => !amenitiesOf(o.item, ctx).includes(a)));
+        if (only.length) add(pros, p, `İstediğin: ${only.join(", ")}`, 0.6);
+        if (missing.length) add(cons, p, `Diğerlerinde var, bunda görünmüyor: ${missing.join(", ")}`, 0.5);
         break;
+      }
       case "stops":
         if (p.s >= 1) add(pros, p, "Direkt", 0.7);
         else add(cons, p, capital(p.display ?? "Aktarmalı"), 1 - p.s);
@@ -139,7 +151,7 @@ function relevance(f: Finding, item: Item, ctx: Ctx): number {
   return Math.max(0.3, (LEVEL_WEIGHT[level] + 0.5) / 1.5);
 }
 
-function findingLines(listing: Listing, item: Item, ctx: Ctx): { pros: ProCon[]; cons: ProCon[] } {
+function findingLines(listing: Listing, item: Item, ctx: Ctx, penalties: Set<string>): { pros: ProCon[]; cons: ProCon[] } {
   const accepted = new Set(ctx.trip.acceptedFindings ?? []);
   const pros: ProCon[] = [];
   const cons: ProCon[] = [];
@@ -147,7 +159,16 @@ function findingLines(listing: Listing, item: Item, ctx: Ctx): { pros: ProCon[];
     const e = evidenceOf(f, listing, ctx.today);
     const isAccepted = f.polarity === "negative" && accepted.has(acceptKey(listing.key, f));
     const where = e.count ? `${e.count} yorum${e.newest ? ` · en yenisi ${monthLabel(e.newest)}` : ""}` : SOURCE_TEXT[f.source];
-    const detail = !f.verified ? "sayfada doğrulanamadı" : isAccepted ? "sorun değil dedin" : e.stale ? `eski: ${where}` : where;
+    const penalized = penalties.has(f.id);
+    const detail = !f.verified
+      ? "sayfada doğrulanamadı"
+      : isAccepted
+        ? "sorun değil dedin"
+        : e.stale
+          ? `eski: ${where}`
+          : penalized
+            ? `${where} · puandan −${SERIOUS_PENALTY}`
+            : where;
     const weight = findingWeight(f, listing, ctx.today) * relevance(f, item, ctx) * (f.verified ? 1 : 0.3) * (isAccepted ? 0.2 : 1);
     (f.polarity === "positive" ? pros : cons).push({
       key: `f:${f.id}`,
@@ -158,6 +179,7 @@ function findingLines(listing: Listing, item: Item, ctx: Ctx): { pros: ProCon[];
       ...(f.verified ? {} : { unverified: true }),
       ...(e.stale ? { stale: true } : {}),
       ...(isAccepted ? { accepted: true } : {}),
+      ...(penalized ? { serious: true } : {}),
       finding: f,
     });
   }
@@ -197,13 +219,13 @@ export function prosCons(input: { item: Item; option?: OptionResult; decision?: 
   }
 
   if (option && decision) {
-    const c = comparisons(option, decision, ctx.currency);
+    const c = comparisons(option, decision, ctx);
     pros.push(...c.pros);
     cons.push(...c.cons);
   }
 
   if (listing?.readAt && listing.findings.length) {
-    const f = findingLines(listing, item, ctx);
+    const f = findingLines(listing, item, ctx, new Set(option?.penalties.map((p) => p.id) ?? []));
     pros.push(...f.pros);
     cons.push(...f.cons);
   } else {
@@ -212,7 +234,8 @@ export function prosCons(input: { item: Item; option?: OptionResult; decision?: 
     item.concerns.forEach((h, i) => cons.push({ key: `s:-${i}`, text: h, detail: "sayfa özeti", weight: 1.5, kind: "summary" }));
   }
 
-  const order = (a: ProCon, b: ProCon) => Number(Boolean(b.decisive)) - Number(Boolean(a.decisive)) || b.weight - a.weight;
+  const rank = (x: ProCon) => (x.decisive ? 2 : x.serious ? 1 : 0);
+  const order = (a: ProCon, b: ProCon) => rank(b) - rank(a) || b.weight - a.weight;
   return { pros: pros.sort(order), cons: cons.sort(order) };
 }
 

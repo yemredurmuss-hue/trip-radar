@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { advantageOver, decideGroup, levelFor, makeContext, resetPriorities, withPriorities } from "../src/lib/decision";
 import { activeSignals, inferSignals, toInferred } from "../src/lib/intent";
-import { budgetState, valueCard } from "../src/lib/value";
+import { budgetState, rolesOf, valueCard } from "../src/lib/value";
 import { EMPTY_METRICS } from "../src/lib/items";
 import { distanceKm, walkingMinutes } from "../src/lib/geo";
 import type { Analysis, Item, ItemMetrics, Trip } from "../src/lib/types";
@@ -315,5 +315,22 @@ describe("value card", () => {
     const ctx = makeContext(trip(), [cheap, b]);
     const card = valueCard(decideGroup([cheap, b], ctx), ctx, null)!;
     expect(card.because).toMatch(/^Hem €21 daha ucuz hem /);
+  });
+
+  it("takes a stance on a tie: the cheaper of two level options is the better value", () => {
+    // Level on the priorities: one is central, the other €50 cheaper.
+    const central = item("Central", { price: price(300), rating: rating(8.8, 10, 500), geo: { lat: 41.1462, lng: -8.6125, source: "page" }, metrics: { cancellationType: "free" } });
+    const cheaper = item("Cheaper", { price: price(250), rating: rating(9.0, 10, 500), geo: { lat: 41.155, lng: -8.602, source: "page" }, metrics: { cancellationType: "free" } });
+    const ctx = makeContext(trip(), [central, cheaper, ...POIS]);
+    const d = decideGroup([central, cheaper], ctx);
+    expect(d.status).toBe("tie");
+    const card = valueCard(d, ctx, null)!;
+    expect(card.kicker).toBe("Fiyat/performans");
+    expect(card.pick.item.name).toBe("Cheaper");
+    expect(card.because).toMatch(/^Puanlar başa baş \(\d+–\d+\); Cheaper €50 daha ucuz, fiyat\/performans onda\./);
+    expect(card.unless).toMatch(/senin için daha önemliyse Central\.$/);
+    const roles = rolesOf(d);
+    expect(roles.get(cheaper.id)).toContain("Fiyat/performans");
+    expect(roles.get(central.id)).toContain("En iyi konum");
   });
 });
