@@ -136,7 +136,9 @@ try {
   const dayRow = (n, title) => journey(n).locator(`.dr[data-title="${title}"]`);
   assert.equal(await journey(4).locator(".journey-head").innerText(), "Porto → Lizbon");
   assert.deepEqual(await titles(4), ["Check-out", "Otel → Gar", "Tren Porto → Lizbon", "Gar → Otel", "Check-in"]);
-  assert.deepEqual(await journey(7).locator(".dr-time > b").allInnerTexts(), ["~11:00", "17:40", "19:40"]);
+  // Lines start with their time; cards carry their own.
+  assert.deepEqual(await journey(7).locator(".dr-time").allInnerTexts(), ["~11:00"]);
+  await dayRow(7, "Otel → Havalimanı").locator(".leg-sub", { hasText: "En geç 17:40 havalimanında" }).waitFor();
   // Information is a line; a reservation is its card, booked or not.
   assert.deepEqual(await states(7), ["st-info", "st-open", "st-done"]);
   await dayRow(7, "Uçuş LIS → IST").locator(".tl-travel.role-departure .settled-card .status-bar.st-booked").waitFor();
@@ -295,7 +297,7 @@ try {
   const landing = leg("OPO havalimanı → Jardim Stay");
   await landing.locator(".leg-chip.st-empty").waitFor();
   // Landing 10:05: the transfer then, check-in from 14:00 as the page says (just the times, no notes under them).
-  assert.equal(await dayRow(1, "Havalimanı → Otel").locator(".dr-time").innerText(), "10:05");
+  await dayRow(1, "Havalimanı → Otel").locator(".leg-sub", { hasText: "Varış 10:05" }).waitFor();
   assert.match(await dayRow(1, "Check-in").innerText(), /^14:00\s*Check-in\s*Jardim Stay$/);
   // The notes wait behind a tap (a small ⓘ says there are some).
   assert.equal(await landing.locator(".leg-note").count(), 0);
@@ -306,7 +308,6 @@ try {
   assert.equal(await leg("Jardim Stay → Porto Campanhã").locator(".leg-title").innerText(), "Otel → Gar");
   await app.locator(".tl-travel.role-move .swipe-card", { hasText: "CP Alfa Pendular" }).waitFor(); // the move is the saved train, still to pick
   await leg("Lisboa Santa Apolónia → Lisboa Loft").waitFor();
-  assert.equal(await dayRow(7, "Otel → Havalimanı").locator(".dr-time").innerText(), "17:40");
   await leg("Lisboa Loft → LIS havalimanı").locator(".leg-head").click();
   await leg("Lisboa Loft → LIS havalimanı").locator(".leg-note", { hasText: "arada ~6 saat boşluk" }).waitFor();
   // "Metroyla gideceğim": nothing to book, so the transfer becomes a line of the day (a tap changes it).

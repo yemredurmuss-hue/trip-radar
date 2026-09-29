@@ -415,7 +415,7 @@ function DayRows({ rows, ...render }: { rows: DayRow[] } & RenderProps) {
 
 /** The card behind a row: the flight to pick or mark bought, the transfer, the tour to book. */
 function fullCard(row: DayRow, render: RenderProps, embedded: boolean): ReactNode {
-  if (row.kind === "leg" && row.leg) return render.leg(row.leg, { embedded, timed: true });
+  if (row.kind === "leg" && row.leg) return render.leg(row.leg, { embedded });
   if (row.kind === "item" && row.item) return render.settled(row.item);
   if (row.kind === "travel" && row.entry?.kind === "travel") {
     const e = row.entry;
@@ -431,12 +431,15 @@ function fullCard(row: DayRow, render: RenderProps, embedded: boolean): ReactNod
  */
 function DayRowView({ row, ...render }: { row: DayRow } & RenderProps) {
   const [open, setOpen] = useState(false);
+  // A line starts with its time; a card carries its own.
+  const time = row.time ? <span className={`dr-time${row.estimated ? " est" : ""}`}>{`${row.estimated ? "~" : ""}${row.time}`}</span> : null;
   let body: ReactNode;
   if (row.kind === "leg" && row.state === "info" && row.leg) {
     // Metro, a walk: how they'll go, in a line; a tap to change it.
     body = (
       <>
         <button className="dr-info" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {time}
           <b>{row.line ?? row.title}</b>
           <span>{row.title}</span>
         </button>
@@ -446,6 +449,7 @@ function DayRowView({ row, ...render }: { row: DayRow } & RenderProps) {
   } else if (row.kind === "info") {
     const text = (
       <>
+        {time}
         <b>{row.title}</b>
         {row.sub && <span>{row.sub}</span>}
       </>
@@ -467,13 +471,7 @@ function DayRowView({ row, ...render }: { row: DayRow } & RenderProps) {
   const id = row.entry ? entryDomId(row.entry.key) : row.rental ? entryDomId(row.rental.key) : undefined;
   return (
     <li id={id} className={`dr k-${row.kind} st-${row.state}`} data-title={row.title}>
-      <span className="dr-side">
-        <span className="dr-pin" aria-hidden />
-        <span className="dr-time">
-          {row.time && <b className={row.estimated ? "est" : ""}>{`${row.estimated ? "~" : ""}${row.time}`}</b>}
-          {row.otherDay && <small>{fmt(row.otherDay)}</small>}
-        </span>
-      </span>
+      <span className="dr-pin" aria-hidden />
       <div className="dr-body">{body}</div>
     </li>
   );

@@ -81,6 +81,7 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] 0.18: rezervasyon kartları katlanmaz (rezerve edilince yeşil kart kalır), taksi rezervasyon sayılır, metro/yürüyüş
       bilgi satırı, araç kiralama alış gününün kartı, saat altı açıklamalar kalktı, yolculuk başlığı sade
 - [x] 0.18.1: gün satırları hizalı — nokta gezi çizgisinde, saat gün etiketinin altında, kartlar diğer kartlarla aynı sütunda
+- [x] 0.18.2: sol sütun kalktı — solda yalnız çizgi, etiketler kartın üstünde başlık, kartlar genişliği kullanıyor
 - [ ] Sonraki öneriler (onay bekliyor): 7 sade karşılaştırma, 8 zaman çizelgesinde tekrarların kalkması,
       9 sohbet ↔ pano bağlantısı, 10 sırayla karar ver modu
 - [ ] 0.17: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
