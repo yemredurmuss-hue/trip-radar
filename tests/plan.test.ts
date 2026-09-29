@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { decideTrip, makeContext } from "../src/lib/decision";
 import { EMPTY_METRICS } from "../src/lib/items";
+import { buildLegs } from "../src/lib/legs";
 import { buildPlan, groupKeyOf, liveGroups, tripRange, type StayBlock } from "../src/lib/plan";
 import type { Item, ItemStatus, Trip } from "../src/lib/types";
 
@@ -78,7 +79,7 @@ describe("plan: nights, bookings and gaps", () => {
     expect(liveGroups(plan).map((g) => g.key)).toContain(groupKeyOf(faa));
   });
 
-  it("keeps a choice with its alternatives and flags a missing transfer between cities", () => {
+  it("keeps a choice with its alternatives and opens the transfer between cities", () => {
     const jardim = stay("Jardim Stay", "2026-10-07", "2026-10-10", "chosen");
     const items = [
       jardim,
@@ -90,10 +91,11 @@ describe("plan: nights, bookings and gaps", () => {
     const chosen = plan.stayBlocks[0];
     expect(chosen.kind).toBe("chosen");
     expect(names(chosen)).toEqual([["Jardim Stay", "Casa Azul"], ["Late Inn"]]);
-    expect(plan.notices).toEqual([{ kind: "transfer", date: "2026-10-10", text: "10 Ekim: Porto → Funchal ulaşımı yok" }]);
-    // A flight that day covers it.
-    const covered = buildPlan(trip(), [...items, flight("TAP", "OPO", "FNC", "2026-10-10")]);
-    expect(covered.notices).toEqual([]);
+    const move = buildLegs(plan, trip()).find((l) => l.kind === "move")!;
+    expect([move.date, move.from.label, move.to.label, move.status]).toEqual(["2026-10-10", "Jardim Stay", "FAA Rentals", "empty"]);
+    // A flight saved for that day is its option, with the airport transfers on both sides.
+    const covered = buildLegs(buildPlan(trip(), [...items, flight("TAP", "OPO", "FNC", "2026-10-10")]), trip());
+    expect(covered.filter((l) => l.date === "2026-10-10").map((l) => `${l.kind} ${l.status}`)).toEqual(["departure empty", "move options", "arrival empty"]);
   });
 
   it("warns about overlapping bookings", () => {

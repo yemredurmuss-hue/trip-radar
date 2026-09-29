@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { applyReading, coverageText, evidenceOf, failedReading, isDecisive, needsReading } from "../src/lib/listing";
+import { applyReading, clockTimes, coverageText, evidenceOf, failedReading, isDecisive, needsReading } from "../src/lib/listing";
 import type { ReaderOutput } from "../src/lib/reader";
 import type { Capture, Item } from "../src/lib/types";
 
 const PAGE = `Casa Azul · Apartment in Porto
 Spacious flat with a king-size bed and a fully equipped kitchen. Third floor, no elevator.
 Not included: TV
+House rules: Check-in from 3:00 PM · Check-out before 11:00 · Self check-in with lockbox
 Guest reviews (96)
 Maria · September 2026
 The bed is huge and very comfortable. There is a great Italian restaurant right next door!
@@ -79,6 +80,15 @@ const reading: ReaderOutput = {
     { text: "Asansör yok, 3. kat", polarity: "negative", topic: "access", source: "description", severity: "medium", quotes: ["Third floor, no elevator."] },
     { text: "Havuz var", polarity: "positive", topic: "facilities", source: "description", severity: "low", quotes: ["Rooftop pool open all year"] },
   ],
+  house: {
+    check_in_from: "15:00",
+    check_in_until: "23:00", // not written anywhere: dropped
+    check_out_until: "11:00",
+    self_check_in: true,
+    luggage_storage: null,
+    airport_shuttle: null,
+    quotes: ["Check-in from 3:00 PM · Check-out before 11:00 · Self check-in with lockbox"],
+  },
 };
 
 const TODAY = "2026-09-29";
@@ -95,6 +105,21 @@ describe("reading a page into evidence", () => {
     expect(listing.reviews.find((r) => r.text.startsWith("Construction"))?.date).toBe("2026-08");
     expect(listing.reviewTotal).toBe(96);
     expect(listing.dropped).toBe(2); // the invented review and the invented pool quote
+  });
+
+  it("keeps check-in/out times only when the quoted page text shows them", () => {
+    expect(listing.house).toEqual({
+      checkInFrom: "15:00",
+      checkInUntil: null,
+      checkOutUntil: "11:00",
+      selfCheckIn: true,
+      luggageStorage: null,
+      airportShuttle: null,
+      quotes: ["Check-in from 3:00 PM · Check-out before 11:00 · Self check-in with lockbox"],
+    });
+    const invented = applyReading(undefined, item, capture(), { ...reading, house: { ...reading.house!, quotes: ["Check-in from 1:00 PM"] } }, TODAY, 1000);
+    expect(invented.house).toBeNull();
+    expect(clockTimes("Check-in 14.30 – 23:00, check-out 11 AM, 12 PM, 12 guests")).toEqual(["14:30", "23:00", "11:00", "12:00"]);
   });
 
   it("counts the reviews behind a finding from stored review ids, not from the model", () => {
@@ -133,6 +158,7 @@ describe("reading a page into evidence", () => {
           { text: "Construction next door started at 8 every morning, very noisy.", date_text: "August 2026", date: "2026-08" },
         ],
         findings: [{ text: "İnce duvarlar", polarity: "negative", topic: "noise", source: "reviews", severity: "medium", quotes: ["The walls are thin"] }],
+        house: null,
       },
       TODAY,
       2000,

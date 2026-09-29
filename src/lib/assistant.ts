@@ -19,17 +19,21 @@ import { listingKeyOf, tripDateRange } from "./items";
 import { coverageText, searchText } from "./listing";
 import { prosConsFor } from "./proscons";
 import { activeSignals } from "./intent";
+import { buildLegs, legTiming, withLegChoice } from "./legs";
 import { buildPlan, type Plan } from "./plan";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
 import type { ToolResult, ToolSpec } from "./llm/types";
 import {
   AMENITIES,
+  LEG_MODES,
   type Amenity,
   type Category,
   type ChatMessage,
   type CriterionId,
   type Item,
   type ItemStatus,
+  type LegMode,
+  type Listing,
   type PriorityLevel,
   type Requirement,
   type Trip,
@@ -40,7 +44,8 @@ export { withPriorities };
 const SYSTEM = `Sen kullanıcının seyahat arkadaşı ve karar asistanısın. Kullanıcı seçeneklerini (otel, uçuş, etkinlik, restoran, eSIM) kendisi kaydeder; sen arama yapmazsın, kaydedilenler üzerinden karar vermesine yardım edersin. Son kararı her zaman kullanıcı verir.
 
 Elindekiler (trip_state):
-- plan: gecelerin durumu (booked = rezerve, chosen = plana alındı, open = boş) ve eksik ulaşımlar. Rezervasyonla kapanan seçenekleri önerme.
+- plan: gecelerin durumu (booked = rezerve, chosen = plana alındı, open = boş). Rezervasyonla kapanan seçenekleri önerme.
+- plan.legs: plandan otomatik çıkan transferler: varış (havalimanı/gar → ilk konaklama), şehir değişimi (move; uçak/tren/otobüsle ise iki uçtaki havalimanı/gar transferleriyle), aynı şehirde otel değişimi (change) ve gidiş (son konaklama → havalimanı). status: empty = kimse planlamadı, planned = kullanıcı nasıl gideceğini söyledi, options = kayıtlı seçenek var, chosen/booked = seçildi/rezerve. notes: kolay gözden kaçan ince detaylar (girişten saatler önce varış, metro çalışmadan kalkan uçuş, çıkışla uçuş arası boşluk...).
 - decisions: her açık ihtiyaç için kodun hesapladığı 0-100 puan, sıralama, nedenler, bedeller, would_change_if ve card. card.because "neden bu", card.unless "ne olursa diğeri", card.budget bütçe etkisi. ai alanı ayrı bir AI incelemesidir.
 - intent: kullanıcıyı nasıl anladığın. Açıkça söyledikleri (priorities, requirements, notes) ve kaydettiklerinden ya da seçimlerinden sezilenler (inferred, kanıtıyla).
 - items[].pros / cons: her seçeneğin sayfası baştan sona okunarak çıkarılan artı ve eksiler, en önemliden başlayarak; detail kaynağını söyler ("7 yorum · en yenisi Eyl 2026", "açıklamada"). "Elendi:" ile başlayan eksi, seçeneğin bu kullanıcı için elenme sebebidir. items[].read incelenen yorum sayısıdır (sitedeki tüm yorumlar değil).
@@ -56,7 +61,8 @@ Nasıl konuşursun:
   Kaydettiğini tek cümleyle söyle ("Not aldım: mutfak şart.") ve sonucun nasıl değiştiğini anlat.
 - Sezilen bir tercihi (intent.inferred) uygun bir anda doğal biçimde teyit edebilirsin; ısrar etme.
 - Kullanıcı bir karar verdiğinde (seçtim, ele, rezerve ettim) update_items; bütçe ya da tarih söylediğinde update_trip. Seçeneklerin durumunu yalnız kullanıcının son mesajı bunu istiyorsa değiştir; eski bir konuşmaya dayanarak değiştirme.
-- Boş geceler ya da eksik ulaşım varsa uygun bir anda bir kez hatırlat.
+- Boş geceler varsa uygun bir anda bir kez hatırlat.
+- Transferler: kullanıcı nasıl gideceğini söylediğinde ("metroyla gideceğim", "trenle geçeriz", "transferi ayarladım", "otel servisiyle") set_leg ile ilgili transferi işaretle (tarih ve şehirden hangisi olduğunu bul); booked yalnız "ayarladım/aldım/rezerve ettim" derse true. Plan konuşurken boş (empty) bir transferi uygun anda, bir seferde bir tane, sor; notes'taki ince detayı ilgili olduğunda söyle. Nasıl gidilebileceğini genel bilginle önerebilirsin ("genelde havalimanından metro var") ama fiyat ya da sefer saati uydurma.
 - Kullanıcı bir seçeneğin trip_state'te olmayan bir detayını sorarsa (TV, havuz, check-in saati, otopark...) search_page ile kayıtlı sayfasında ara. Bulduğunu alıntıyla söyle; bulamazsan "kaydettiğin sayfada göremedim" de, tahmin etme.
 
 Doğruluk:
@@ -183,6 +189,22 @@ export const TOOLS: ToolSpec[] = [
     },
   },
   {
+    name: "set_leg",
+    description:
+      "Bir transferi (plan.legs) kullanıcının söylediğine göre işaretler. mode: nasıl gidecek ('metroyla gideceğim' → metro; 'unknown' planı siler); booked: ayarladı/aldı/rezerve etti mi; note: kısa not ('otel servisi 10:30'). Değiştirmediğin alanı null bırak.",
+    schema: {
+      type: "object",
+      properties: {
+        leg_key: { type: "string" },
+        mode: nullable({ type: "string", enum: [...LEG_MODES, "unknown"] }),
+        booked: nullable({ type: "boolean" }),
+        note: nullable({ type: "string" }),
+      },
+      required: ["leg_key", "mode", "booked", "note"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "search_page",
     description:
       "Bir seçeneğin kaydedilmiş sayfasının tüm metninde (açıklama, olanaklar, kurallar, yorumlar) kelime arar ve geçtiği yerleri döndürür. trip_state'te olmayan bir detayı doğrulamak için kullan. Sayfanın dilindeki karşılıkları da ver (ör. ['TV','televizyon','television']).",
@@ -259,8 +281,8 @@ export function intentState(trip: Trip, t: Pick<TripDecisions, "signals" | "pref
   };
 }
 
-/** The trip's nights: what is booked, chosen or still open, and what is missing between them. */
-export function planState(plan: Plan) {
+/** The trip's nights (booked, chosen or still open) and the transfers between them. */
+export function planState(plan: Plan, trip?: Trip, listings?: Map<string, Listing>) {
   return {
     nights: plan.nights,
     stays: plan.stayBlocks.map((b) => ({
@@ -271,8 +293,26 @@ export function planState(plan: Plan) {
       ...(b.kind === "open" ? { options: b.groups.reduce((n, g) => n + g.items.length, 0) } : { item: b.item.name }),
     })),
     notices: plan.notices.map((n) => n.text),
+    legs: trip ? legsState(plan, trip, listings) : [],
     closed_by_bookings: plan.closed.length,
   };
+}
+
+function legsState(plan: Plan, trip: Trip, listings?: Map<string, Listing>) {
+  return buildLegs(plan, trip, listings).map((l) => ({
+    key: l.key,
+    kind: l.kind,
+    date: l.date,
+    from: l.from.label,
+    to: l.to.label,
+    timing: legTiming(l),
+    mode: l.mode,
+    status: l.status,
+    status_text: l.statusText,
+    options: l.options.map((i) => i.id),
+    notes: l.notes,
+    note: l.choice?.note ?? null,
+  }));
 }
 
 /** Current priority levels per category present on the trip, as words. */
@@ -326,7 +366,7 @@ export function tripState(
     intent,
     priorities: priorityState(trip, items, inferred),
     wanted_amenities: trip.wantedAmenities ?? [],
-    plan: planState(buildPlan(trip, items)),
+    plan: planState(buildPlan(trip, items), trip, reading?.ctx.listings),
     decisions,
     items: items.map((i) => ({
       id: i.id,
@@ -472,6 +512,25 @@ async function runTool(tripId: string, name: string, input: any, choices: string
         updatedAt: Date.now(),
       });
       return "ok";
+    }
+    case "set_leg": {
+      const trip = await d.get("trips", tripId);
+      if (!trip) throw new ToolError("Gezi bulunamadı.");
+      const listings = (await loadDecisions(trip, items)).ctx.listings;
+      const legs = buildLegs(buildPlan(trip, items), trip, listings);
+      if (!legs.some((l) => l.key === input.leg_key)) {
+        throw new ToolError(`Bu anahtarla transfer yok: ${input.leg_key}. Olanlar: ${legs.map((l) => l.key).join(", ")}`);
+      }
+      const mode = input.mode as LegMode | "unknown" | null;
+      if (mode != null && mode !== "unknown" && !(LEG_MODES as readonly string[]).includes(mode)) throw new ToolError(`Geçersiz ulaşım: ${mode}`);
+      const patch = {
+        ...(mode != null ? { mode: mode === "unknown" ? null : mode } : {}),
+        ...(typeof input.booked === "boolean" ? { booked: input.booked } : {}),
+        ...(typeof input.note === "string" ? { note: input.note.trim().slice(0, 200) || null } : {}),
+      };
+      const updated = withLegChoice(trip, input.leg_key, patch);
+      await d.put("trips", { ...updated, updatedAt: Date.now() });
+      return JSON.stringify(legsState(buildPlan(updated, items), updated, listings).find((l) => l.key === input.leg_key));
     }
     case "search_page": {
       const item = byId.get(input.item_id);

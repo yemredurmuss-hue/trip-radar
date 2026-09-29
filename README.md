@@ -62,10 +62,34 @@ solda o gezinin kendi sohbeti, sağda panosu olur. **‹ Seyahatlerim** ile list
 **Konaklama gece gece planlanır.** Gezinin geceleri (onaylı tarihler, yoksa uçuşlar ve konaklamalar)
 sırayla gösterilir: **✓ Rezerve**, **Seçildi**, **Açık** (bu gecelere uyan seçeneklerle) ya da **Boş**
 (Booking'de o tarihlerle arama linkiyle). Bir yeri rezerve edince aynı geceleri isteyen diğer seçenekler
-**Kapanan seçenekler**e geçer; silinmez, rezervasyonu geri alırsan geri gelir. Seçilen/rezerve edilen iki
-konaklama arasında şehir değişiyorsa ve o gün uçuş/ulaşım yoksa "Porto → Funchal ulaşımı yok" uyarısı çıkar.
+**Kapanan seçenekler**e geçer; silinmez, rezervasyonu geri alırsan geri gelir.
 Konaklamalar yalnız aynı gecelere ait olanlarla karşılaştırılır. Her konuda başka bir seçenek her açıdan
 (fiyat dahil) daha iyiyse satırda "Elenebilir" yazar.
+
+**Transferler kendiliğinden açılır.** Geceler arasına, planın gerektirdiği her yol parçası boş olarak
+eklenir; hiçbirini eklemen gerekmez:
+- **Varış:** havalimanı/gar → ilk konaklama (uçuş varsa iniş saatiyle).
+- **Şehir değişimi:** bir yerden çıkış ile başka şehirde giriş aynı günse. Uçak, tren, otobüs ya da feribotla
+  gidiliyorsa iki uçtaki havalimanı/gar transferleri de açılır (arabayla gidiliyorsa açılmaz).
+- **Otel değişimi:** aynı şehirde bir yerden diğerine geçerken.
+- **Gidiş:** son konaklama → havalimanı (uçuşun kalkış saatinden, havalimanında en geç ne zaman olman gerektiği).
+
+Her transferin yanında durumu yazar: **Boş**, **Metro · planlandı**, **Tren · rezerve edilmedi**, **1 seçenek**,
+**Seçildi**, **Rezerve ✓**. Satıra tıklayıp nasıl gideceğini seçebilir ya da sohbete "havalimanından metroyla
+gideceğim", "Lizbon'a trenle geçeriz", "transferi ayarladım" yazabilirsin; asistan ilgili transferi işaretler.
+Kaydettiğin bir tren bileti ya da havalimanı transferi sayfası, o günün transferine seçenek olarak kendiliğinden
+bağlanır; rezerve edince transfer de kapanır.
+
+Gözden kaçan ince detaylar transferin altında not olarak çıkar (konaklamanın sayfasında yazan giriş/çıkış
+saatleri okunur, yazmıyorsa genel saatler kullanılır ve bu belirtilir):
+- Girişten saatler önce varış → bavulları erken bırakmayı ya da erken girişi sor.
+- En geç giriş saatinden sonra varış → geç girişi önceden ayarla (kendi kendine giriş varsa sorun yok).
+- Gece yarısından sonra iniş, ama ilk gece o gün → o saatten girişe kadar yerin yok.
+- İniş ilk geceden bir gün sonra → bir gece boşa ödeniyor; dönüş uçuşu çıkıştan bir gün sonra → bir gece yersiz.
+- Metro çalışmadan kalkan uçuş → taksi/transferi önceden ayarla.
+- Çıkışla uçuş arasında saatler var → bavul emaneti (sayfada varsa söylenir) ya da geç çıkış.
+- Aynı şehirde otel değişimi → çıkış ve giriş saatleri arasında bavullar.
+- Otelin havalimanı servisi sayfada yazıyorsa hatırlatılır.
 
 **Geziler kendiliğinden ayrılır.** Her kaydın ülkesi (PT, TH gibi kodla) ve tarihleri belirlenir:
 aynı ülke + yakın tarihler (en fazla ~1 hafta ara) aynı geziye, başka ülke ya da uzak tarih yeni geziye gider.

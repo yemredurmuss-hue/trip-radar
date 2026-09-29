@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { FallbackImg } from "./FallbackImg";
 import { requestProcessing } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
@@ -15,6 +15,7 @@ import {
   tripDateRange,
   type NeedGroup,
 } from "../lib/items";
+import { buildLegs, type Leg } from "../lib/legs";
 import { needsReading } from "../lib/listing";
 import type { OptionGroup, Plan, StayBlock } from "../lib/plan";
 import { retryCapture } from "../lib/process";
@@ -23,6 +24,7 @@ import type { Capture, Category, Item, Trip } from "../lib/types";
 import { DecisionCard } from "./DecisionCard";
 import { CategoryIcon, Chevron } from "./Icons";
 import { IntentCard } from "./IntentCard";
+import { LegRow } from "./LegRow";
 import { OptionCard } from "./OptionCard";
 import { rolesOf, type ValueCard } from "../lib/value";
 import { decisionLabel, type Decisions } from "./useDecisions";
@@ -63,6 +65,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const working = openCaptures.filter((c) => c.status === "pending" || c.status === "processing");
   const failed = openCaptures.filter((c) => c.status === "error");
   const listings = decisions?.ctx.listings;
+  const legs = useMemo(() => buildLegs(plan, trip, listings), [plan, trip, listings]);
   const reading = listings
     ? new Set(items.filter((i) => needsReading(i, listings.get(listingKeyOf(i))) && !listings.get(listingKeyOf(i))?.error).map(listingKeyOf)).size
     : 0;
@@ -143,7 +146,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       <IntentCard trip={trip} decisions={decisions} />
 
       {CATEGORY_ORDER.map((category) => {
-        if (category === "stay") return <StaySection key="stay" plan={plan} renderGroup={renderGroup} card={card} />;
+        if (category === "stay") {
+          const leg = (l: Leg) => <LegRow key={l.key} leg={l} tripId={trip.id} onOpenItem={onOpenItem} />;
+          return <StaySection key="stay" plan={plan} legs={legs} leg={leg} renderGroup={renderGroup} card={card} />;
+        }
         if (SUMMARIZED.includes(category)) {
           const section = places.find((s) => s.category === category);
           return section ? (
@@ -169,8 +175,20 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   );
 }
 
-/** The trip's nights in order: booked, chosen and open stretches, with what's missing between them. */
-function StaySection({ plan, renderGroup, card }: { plan: Plan; renderGroup: RenderGroup; card: CardFor }) {
+/** The trip's nights in order: booked, chosen and open stretches, with the transfers between them. */
+function StaySection({
+  plan,
+  legs,
+  leg,
+  renderGroup,
+  card,
+}: {
+  plan: Plan;
+  legs: Leg[];
+  leg: (l: Leg) => React.ReactNode;
+  renderGroup: RenderGroup;
+  card: CardFor;
+}) {
   if (!plan.stayBlocks.length && !plan.looseStays.length) return null;
   const n = plan.nights;
   const parts = [n.booked && `${n.booked} rezerve`, n.chosen && `${n.chosen} seçildi`, n.open && `${n.open} açık`].filter(Boolean);
@@ -181,25 +199,18 @@ function StaySection({ plan, renderGroup, card }: { plan: Plan; renderGroup: Ren
         {n.total > 0 && <span className="muted">{[`${n.total} gece`, ...parts].join(" · ")}</span>}
       </div>
       <DayStrip blocks={plan.stayBlocks} />
-      {plan.notices
-        .filter((x) => x.kind === "conflict")
-        .map((x) => (
+      {plan.notices.map((x) => (
           <div key={x.text} className="notice">
             ⚠ {x.text}
           </div>
         ))}
-      {plan.stayBlocks.map((block) => (
+      {plan.stayBlocks.map((block, index) => (
         <Fragment key={block.range.start}>
-          {plan.notices
-            .filter((x) => x.kind === "transfer" && x.date === block.range.start)
-            .map((x) => (
-              <div key={x.text} className="notice">
-                ⚠ {x.text}
-              </div>
-            ))}
+          {legs.filter((l) => l.slot === index).map(leg)}
           <Block block={block} renderGroup={renderGroup} card={card} />
         </Fragment>
       ))}
+      {legs.filter((l) => l.slot === plan.stayBlocks.length).map(leg)}
       {plan.looseStays.map((g) =>
         renderGroup(
           g,

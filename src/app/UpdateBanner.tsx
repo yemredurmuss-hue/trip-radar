@@ -6,7 +6,9 @@ const COUNTDOWN_MS = 3_000;
 
 /** Nothing would be lost by reloading now: no typed text, no dialog or drawer open. */
 function safeToReload(): boolean {
-  const fields = document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input:not([type=file]):not([type=hidden]), textarea");
+  const fields = document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+    "input:not([type=file]):not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea",
+  );
   const typed = [...fields].some((el) => el.value.trim() !== "");
   return !typed && !document.querySelector(".drawer, .compare-modal, .modal");
 }

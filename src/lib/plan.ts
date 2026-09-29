@@ -36,8 +36,9 @@ export type StayBlock =
   | { kind: "chosen"; range: DateRange; nights: number; city: string | null; item: Item; groups: OptionGroup[] }
   | { kind: "open"; range: DateRange; nights: number; city: string | null; groups: OptionGroup[]; searchUrl: string };
 
+/** Transfers (between cities, to the airport...) are legs, see legs.ts. */
 export interface PlanNotice {
-  kind: "transfer" | "conflict";
+  kind: "conflict";
   /** The day it concerns, so the board can show it in place. */
   date: string;
   text: string;
@@ -76,12 +77,12 @@ const minDate = (a: string, b: string) => (a < b ? a : b);
 const maxDate = (a: string, b: string) => (a > b ? a : b);
 
 /** Day a flight/transfer leaves (or the item's start date). */
-function departureDay(item: Item): string | null {
+export function departureDay(item: Item): string | null {
   return isoDate(item.flight?.departure?.slice(0, 10)) ?? isoDate(item.dates.start);
 }
 
 /** Day a flight/transfer arrives (falls back to the departure day). */
-function arrivalDay(item: Item): string | null {
+export function arrivalDay(item: Item): string | null {
   return isoDate(item.flight?.arrival?.slice(0, 10)) ?? departureDay(item);
 }
 
@@ -186,7 +187,7 @@ function bookingSearchUrl(range: DateRange, city: string | null, stays: Item[]):
 }
 
 const byStart = (a: Item, b: Item) => (stayRange(a)?.start ?? "").localeCompare(stayRange(b)?.start ?? "");
-const sameCity = (a: string | null, b: string | null) =>
+export const sameCity = (a: string | null, b: string | null) =>
   Boolean(a && b && a.trim().toLocaleLowerCase("tr") === b.trim().toLocaleLowerCase("tr"));
 
 // --- the plan -----------------------------------------------------------------------------------------
@@ -296,17 +297,6 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
           range: block.range,
           booked: null,
         });
-      }
-    }
-
-    // Moving between cities from one settled stay to the next needs a flight or transfer that day.
-    for (let i = 0; i + 1 < stayBlocks.length; i++) {
-      const [a, b] = [stayBlocks[i], stayBlocks[i + 1]];
-      if (a.kind === "open" || b.kind === "open" || !a.city || !b.city || sameCity(a.city, b.city)) continue;
-      const day = b.range.start;
-      const travels = live.some((x) => TRAVEL.includes(x.category) && (departureDay(x) === day || arrivalDay(x) === day));
-      if (!travels) {
-        notices.push({ kind: "transfer", date: day, text: `${formatDateRange(day, null)}: ${a.city} → ${b.city} ulaşımı yok` });
       }
     }
   } else {

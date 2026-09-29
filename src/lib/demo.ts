@@ -159,6 +159,23 @@ export async function loadDemoTrip(): Promise<string> {
         amenities: ["klima", "ücretsiz wifi", "manzara"],
       },
     }),
+    // Getting to Lisbon: a saved train (the move and the station transfers show up on their own), and home by air.
+    item("transport", "transport:porto-lizbon", "CP Alfa Pendular · Porto → Lizbon", 31, {
+      provider: "CP",
+      summary: "11 Ekim 13:09 · 2 sa 55 dk",
+      dates: { start: "2026-10-11", end: null, source: "page" },
+      flight: { from: "Porto Campanhã", to: "Lisboa Santa Apolónia", departure: "2026-10-11T13:09", arrival: "2026-10-11T16:04", carrier: "CP", flightNumber: null, stops: 0 },
+      cancellation: { summary: "Kalkıştan 15 dk öncesine kadar iade", freeUntil: null, source: "page" },
+    }),
+    item("flight", "flight:lis-ist", "TAP · Lizbon → İstanbul", 162, {
+      summary: "14 Ekim 19:40 · Direkt",
+      provider: "TAP Air Portugal",
+      status: "booked",
+      city: "İstanbul",
+      dates: { start: "2026-10-14", end: null, source: "page" },
+      flight: { from: "LIS", to: "IST", departure: "2026-10-14T19:40", arrival: "2026-10-15T01:35", carrier: "TAP", flightNumber: "TP 1760", stops: 0 },
+      metrics: { durationMinutes: 295, checkedBagIncluded: true },
+    }),
     // Lisbon is already booked: its nights are settled and the other Lisbon option is out of the way.
     item("stay", "stay:lizbon", "Lisboa Loft", 390, {
       provider: "Airbnb",
@@ -244,6 +261,16 @@ export async function loadDemoTrip(): Promise<string> {
       ]),
     ],
   ];
+  // What Jardim's page says about arriving and leaving (the transfers' notes use it).
+  listings[0][1].house = {
+    checkInFrom: "14:00",
+    checkInUntil: "23:00",
+    checkOutUntil: "11:00",
+    selfCheckIn: false,
+    luggageStorage: true,
+    airportShuttle: null,
+    quotes: ["Check-in from 14:00 until 23:00 · Check-out until 11:00 · Luggage storage available"],
+  };
   for (const [, l] of listings) await d.put("listings", l);
   await d.put("preferences", { id: newId(), tripId: trip.id, text: "Sessiz bir yer istiyoruz", createdAt: now });
 

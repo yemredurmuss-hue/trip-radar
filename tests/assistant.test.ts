@@ -181,4 +181,28 @@ describe("assistant", () => {
     expect(String(tv.content)).toContain("Not included: TV");
     expect(String(pool.content)).toContain("Kaydedilen sayfada geçmiyor");
   });
+
+  it("marks a transfer the way the traveller said it ('metroyla gideceğim')", async () => {
+    const { client, calls } = fakeClient([
+      {
+        stop_reason: "tool_use",
+        content: [
+          { type: "tool_use", id: "l1", name: "set_leg", input: { leg_key: "2026-10-08:arrival:porto", mode: "metro", booked: null, note: null }, caller: { type: "direct" } },
+          { type: "tool_use", id: "l2", name: "set_leg", input: { leg_key: "2026-10-09:arrival:porto", mode: "taxi", booked: null, note: null }, caller: { type: "direct" } },
+        ] as Anthropic.ContentBlock[],
+      },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Tamam, havalimanından metroyla.", citations: null }] as Anthropic.ContentBlock[] },
+    ]);
+    await resetConversation("t1");
+    await sendMessage("t1", "Havalimanından metroyla gideceğim", anthropicProvider(client, "claude-opus-5"));
+    const state = JSON.stringify(calls[0].messages.at(-1)!.content);
+    expect(state).toContain("2026-10-08:arrival:porto");
+    expect(state).toContain("Boş");
+    const [ok, bad] = calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[];
+    expect(String(ok.content)).toContain("Metro · planlandı");
+    expect(bad.is_error).toBe(true);
+    expect(String(bad.content)).toContain("Olanlar: 2026-10-08:arrival:porto, 2026-10-11:departure:porto");
+    const trip = (await (await db()).get("trips", "t1"))!;
+    expect(trip.legs?.["2026-10-08:arrival:porto"]).toMatchObject({ mode: "metro", booked: false, note: null });
+  });
 });

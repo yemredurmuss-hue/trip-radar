@@ -109,7 +109,22 @@ export interface Trip {
   ignoredSignals?: string[];
   /** Findings the traveller said are fine ("sorun değil"): `${listingKey}#${topic}:${polarity}`. */
   acceptedFindings?: string[];
+  /** What the traveller decided for each transfer (see legs.ts), by leg key. */
+  legs?: Record<string, LegChoice>;
   createdAt: number;
+  updatedAt: number;
+}
+
+/** How a transfer is made. Flights, trains, buses and ferries go from a station, so they bring their own transfers. */
+export const LEG_MODES = ["flight", "train", "bus", "ferry", "metro", "taxi", "transfer", "car", "walk"] as const;
+export type LegMode = (typeof LEG_MODES)[number];
+
+/** The traveller's own plan for one transfer ("metroyla gideceğim", "otel servisi ayarlandı"). */
+export interface LegChoice {
+  mode: LegMode | null;
+  /** Arranged outside the tool: a ticket, the hotel's shuttle, a friend picking them up... */
+  booked: boolean;
+  note: string | null;
   updatedAt: number;
 }
 
@@ -308,7 +323,23 @@ export interface Listing {
   error: string | null;
   errorAt: number | null;
   autoRetries?: number;
+  /** Check-in/out times and arrival rules the page states (checked against it, see listing.ts). */
+  house?: HouseRules | null;
   updatedAt: number;
+}
+
+/** Times and arrival rules as the page states them; each read from the quoted page text. */
+export interface HouseRules {
+  /** "15:00": check-in starts. */
+  checkInFrom: string | null;
+  /** "23:00": arriving later needs arranging. */
+  checkInUntil: string | null;
+  /** "11:00": check-out by. */
+  checkOutUntil: string | null;
+  selfCheckIn: boolean | null;
+  luggageStorage: boolean | null;
+  airportShuttle: boolean | null;
+  quotes: string[];
 }
 
 /** Cached AI analysis of one need group; stale when the inputs' hash changes. */

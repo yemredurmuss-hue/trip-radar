@@ -5,7 +5,7 @@ import { excerptOnPage, plainPage, plainText, samePlain, textId } from "./eviden
 import { compact } from "./extract";
 import { corpusOf, listingKeyOf } from "./items";
 import type { ReaderOutput } from "./reader";
-import type { Capture, Category, Finding, Item, Listing, ReviewEvidence } from "./types";
+import type { Capture, Category, Finding, HouseRules, Item, Listing, ReviewEvidence } from "./types";
 
 /** Places whose pages are worth reading closely. Flights and eSIMs are covered by extraction. */
 export const READ_CATEGORIES: Category[] = ["stay", "activity", "food", "other", "transport"];
@@ -122,6 +122,8 @@ export function applyReading(
   const covered = new Set(fresh.map((f) => `${f.topic}:${f.polarity}`));
   const kept = base.findings.filter((f) => f.verified && !covered.has(`${f.topic}:${f.polarity}`));
 
+  const house = houseRules(out.house ?? null, page);
+  if (house.dropped) dropped += house.dropped;
   const total =
     typeof out.review_total === "number" && Number.isFinite(out.review_total) && out.review_total > 0 ? Math.round(out.review_total) : null;
   return {
@@ -130,6 +132,7 @@ export function applyReading(
     reviews: stored,
     reviewTotal: total ?? base.reviewTotal,
     findings: [...fresh, ...kept].slice(0, MAX_FINDINGS),
+    house: house.rules ?? base.house ?? null,
     readCaptureIds: [...new Set([...base.readCaptureIds, capture.id])],
     readAt: now,
     dropped,
@@ -138,6 +141,48 @@ export function applyReading(
     autoRetries: 0,
     updatedAt: now,
   };
+}
+
+/** Clock times written in a text, as HH:MM: "15:00", "3 PM", "11.30" (a bare number isn't one). */
+export function clockTimes(text: string): string[] {
+  const out = new Set<string>();
+  const pad = (h: number, m: number) => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  for (const m of text.matchAll(/(\d{1,2})(?:[:.](\d{2}))?\s*(a\.?m\.?|p\.?m\.?|öö|ös)?/gi)) {
+    let h = Number(m[1]);
+    const min = m[2] ? Number(m[2]) : 0;
+    const half = m[3]?.toLowerCase().replace(/\./g, "");
+    if (!m[2] && !half) continue; // a bare number isn't a time
+    if (half === "pm" || half === "ös") h = h === 12 ? 12 : h + 12;
+    if ((half === "am" || half === "öö") && h === 12) h = 0;
+    if (h <= 23 && min <= 59) out.add(pad(h, min));
+  }
+  return [...out];
+}
+
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/**
+ * The stay's times and arrival rules, kept only when the page says them: the quotes must be on the
+ * page, and each time must appear in them ("15:00" in "Giriş: 15:00'ten itibaren", or as "3:00 PM").
+ */
+function houseRules(house: ReaderOutput["house"], page: string): { rules: HouseRules | null; dropped: number } {
+  if (!house) return { rules: null, dropped: 0 };
+  const quotes = house.quotes.map((q) => q.trim()).filter((q) => q && excerptOnPage(q, page));
+  const dropped = house.quotes.length - quotes.length;
+  if (!quotes.length) return { rules: null, dropped };
+  const shown = new Set(quotes.flatMap(clockTimes));
+  const time = (t: string | null) => (t && HHMM.test(t) && shown.has(t) ? t : null);
+  const rules: HouseRules = {
+    checkInFrom: time(house.check_in_from),
+    checkInUntil: time(house.check_in_until),
+    checkOutUntil: time(house.check_out_until),
+    selfCheckIn: house.self_check_in,
+    luggageStorage: house.luggage_storage,
+    airportShuttle: house.airport_shuttle,
+    quotes: quotes.map((q) => q.slice(0, 300)),
+  };
+  const any = rules.checkInFrom || rules.checkInUntil || rules.checkOutUntil || [rules.selfCheckIn, rules.luggageStorage, rules.airportShuttle].some((b) => b !== null);
+  return { rules: any ? rules : null, dropped };
 }
 
 /** A failed reading: the evidence already gathered stays; the next try waits (see needsReading). */

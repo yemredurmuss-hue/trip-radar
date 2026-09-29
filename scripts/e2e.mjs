@@ -191,9 +191,24 @@ try {
   await app.getByRole("dialog").getByRole("button", { name: "Plana al", exact: true }).click();
   await app.getByRole("dialog").getByRole("button", { name: "Kapat" }).click();
   await app.getByText("Jardim Stay plana alındı").waitFor();
-  // Porto chosen, Lisbon booked: nothing gets them from one to the other yet.
+  // Porto chosen, Lisbon booked: the transfers between them lay themselves out (the saved train is
+  // the move, with a station transfer on each side), and the way home says what's easy to miss.
   await app.locator(".stay-block.chosen", { hasText: "Jardim Stay" }).waitFor();
-  await app.locator(".notice", { hasText: "Porto → Lizbon ulaşımı yok" }).waitFor();
+  const leg = (title) => app.locator(".leg", { has: app.locator(".leg-title", { hasText: title }) });
+  await leg("OPO havalimanı → Jardim Stay").locator(".leg-chip.st-empty").waitFor();
+  await leg("Jardim Stay → Porto Campanhã").waitFor();
+  await leg("Jardim Stay → Lisboa Loft").locator(".leg-chip", { hasText: "1 seçenek" }).waitFor();
+  await leg("Lisboa Santa Apolónia → Lisboa Loft").waitFor();
+  await leg("Lisboa Loft → LIS havalimanı").locator(".leg-note", { hasText: "arada ~6 saat boşluk" }).waitFor();
+  assert.match(await leg("Lisboa Loft → LIS havalimanı").innerText(), /En geç 17:40 havalimanında/);
+  // "Metroyla gideceğim": marked on the leg, still not something to book.
+  await leg("OPO havalimanı → Jardim Stay").locator(".leg-head").click();
+  await leg("OPO havalimanı → Jardim Stay").getByRole("button", { name: "🚇 Metro" }).click();
+  await leg("OPO havalimanı → Jardim Stay").locator(".leg-chip.st-planned", { hasText: "Metro · planlandı" }).waitFor();
+  await leg("OPO havalimanı → Jardim Stay").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.screenshot({ path: `${out}/5-legs.png` });
+  await leg("Jardim Stay → Porto Campanhã").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.screenshot({ path: `${out}/5b-legs.png` });
   await app.getByText("Etkinlikler").click();
   assert.equal(await app.locator(".crash").count(), 0, "board crashed after chat updates");
   await app.screenshot({ path: `${out}/5-chosen.png` });

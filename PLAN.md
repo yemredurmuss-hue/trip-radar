@@ -25,7 +25,7 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] Karar zekası: kriter bazlı 0–100 puan, kullanıcının belirlediği önem, nedenler/bedeller,
       "ne değişirse sonuç değişir", ücretsiz konum ve kur, AI yorumu ayrı ve düşük ağırlıklı (`src/lib/decision.ts`, `analysis.ts`)
 - [x] Plan iskeleti (0.7): gece gece rezerve / seçildi / açık / boş, rezervasyonla kapanan seçenekler
-      (geri alınabilir), şehirler arası eksik ulaşım uyarısı, aynı gecelere göre karşılaştırma, "elenebilir" (`src/lib/plan.ts`)
+      (geri alınabilir), aynı gecelere göre karşılaştırma, "elenebilir" (`src/lib/plan.ts`)
 - [x] 0.8: niyet profili (söylenen + kaydedilenlerden/seçimlerden sezilen, kaynağıyla, yok sayılabilir),
       kesin şartlar, "değer mi?" karar kartı (somut birimle fark, "ama … ise", kalan bütçe) (`intent.ts`, `value.ts`)
 - [x] 0.9: her sayfa (her site) baştan sona okunur; bulgular kanıtıyla (yorum alıntısı, tarih) saklanır,
@@ -35,7 +35,10 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] 0.9.2: ciddi sorun puandan düşer, başa başta "fiyat/performans" önerisi, rozetler; açılır kartlar
       (kapalıyken özet, açıkken kanıtlı artı/eksi), gece gece gün şeridi ve belirgin tarih blokları;
       güncellemeler 1-2 dakikada gelir
-- [ ] 0.10: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
+- [x] 0.10: transferler plandan kendiliğinden açılır (varış, şehir değişimi ve iki uçtaki havalimanı/gar,
+      otel değişimi, gidiş), durumuyla (boş / planlandı / seçenek / rezerve); sohbetten "metroyla" işaretleme;
+      sayfadan okunan giriş/çıkış saatleriyle ince detay notları (`legs.ts`)
+- [ ] 0.11: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
       açık sekmeleri toplu kaydetme (booking.com / airbnb izni gerekir), yeni gelen için "2. sırada, çünkü…" notu
 - [ ] İlk gerçek gezide kullanım: 20–50 gerçek kayıt, hangi alanların yanlış/eksik geldiğini not et
 
