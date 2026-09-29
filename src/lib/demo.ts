@@ -1,7 +1,22 @@
 // Sample trip so the board and the decision view can be explored before anything is captured.
+import { loadDecisions } from "./analysis";
 import { db, newId, notifyChanged } from "./db";
-import { EMPTY_METRICS } from "./items";
-import type { Category, ChatMessage, Item, ItemMetrics, Trip } from "./types";
+import { textId } from "./evidence";
+import { EMPTY_METRICS, listingKeyOf } from "./items";
+import type { Analysis, Category, ChatMessage, Finding, Item, ItemMetrics, Listing, Trip } from "./types";
+
+/** A sample finding; review indexes point into the reading's reviews. */
+function finding(
+  text: string,
+  polarity: Finding["polarity"],
+  topic: Finding["topic"],
+  source: Finding["source"],
+  severity: Finding["severity"],
+  reviews: number[],
+  quotes: string[] = [],
+): Finding {
+  return { id: `${topic}:${polarity}:${textId(text)}`, text, polarity, topic, source, severity, reviewIds: reviews.map(String), quotes, verified: true };
+}
 
 export async function loadDemoTrip(): Promise<string> {
   const d = await db();
@@ -179,6 +194,102 @@ export async function loadDemoTrip(): Promise<string> {
     }),
   ];
   for (const i of items) await d.put("items", i);
+
+  // What a close reading of the three Porto pages found (sample reviews, as a site shows them).
+  const [jardim, casa, ribeira] = ["Jardim Stay", "Casa Azul", "Ribeira Rooms"].map((n) => items.find((i) => i.name === n)!);
+  const listings: [Item, Listing][] = [
+    [
+      jardim,
+      reading(jardim, 1204, [
+        ["Quiet room at the back, we slept really well.", "2026-09"],
+        ["Very quiet even though it is so central. Breakfast was excellent.", "2026-09"],
+        ["The breakfast is fantastic, fresh pastries every morning.", "2026-08"],
+        ["Room was small but spotless and quiet.", "2026-08"],
+        ["Small room, barely space for two suitcases.", "2026-07"],
+      ], [
+        finding("Sessiz odalar, iyi uyku", "positive", "noise", "reviews", "medium", [0, 1, 3]),
+        finding("Kahvaltı çok iyi", "positive", "food", "reviews", "medium", [1, 2]),
+        finding("Odalar küçük", "negative", "space", "reviews", "medium", [3, 4]),
+        finding("TV yok", "negative", "amenities", "amenities", "low", [], ["No TV in the rooms"]),
+      ]),
+    ],
+    [
+      casa,
+      reading(casa, 96, [
+        ["The bed is huge and very comfortable, and there is a great Italian restaurant right next door.", "2026-09"],
+        ["Construction next door starts at 8 every morning, very noisy.", "2026-09"],
+        ["Loved the host but the building work next to the flat was loud all day.", "2026-08"],
+        ["Pizza place downstairs is amazing. Walk back from the river is steep uphill.", "2026-08"],
+        ["Noise from the construction site next door, otherwise great.", "2026-07"],
+      ], [
+        finding("Yan binada inşaat gürültüsü", "negative", "condition", "reviews", "high", [1, 2, 4]),
+        finding("Geniş, rahat yatak", "positive", "bed", "description", "medium", [], ["king-size bed"]),
+        finding("Yanında çok iyi bir İtalyan restoranı", "positive", "nearby", "reviews", "medium", [0, 3]),
+        finding("Merkezden dönüş dik yokuş", "negative", "location", "reviews", "medium", [3]),
+      ]),
+    ],
+    [
+      ribeira,
+      reading(ribeira, 640, [
+        ["Waking up to the river view was unforgettable.", "2026-09"],
+        ["Beautiful view of the Douro from our window. Saturday night was loud until 3am.", "2026-09"],
+        ["Street noise on Friday and Saturday nights, bring earplugs.", "2026-08"],
+        ["River view, great location, but noisy at the weekend.", "2026-07"],
+        ["Bathroom was not very clean when we arrived.", "2024-05"],
+      ], [
+        finding("Odadan nehir manzarası", "positive", "view", "reviews", "medium", [0, 1, 3]),
+        finding("Hafta sonu gece gürültüsü", "negative", "noise", "reviews", "medium", [1, 2, 3]),
+        finding("Asansör yok, 3. kat", "negative", "access", "description", "medium", [], ["Third floor, no elevator"]),
+        finding("Banyo temizliği şikâyeti", "negative", "cleanliness", "reviews", "low", [4]),
+      ]),
+    ],
+  ];
+  for (const [, l] of listings) await d.put("listings", l);
+  await d.put("preferences", { id: newId(), tripId: trip.id, text: "Sessiz bir yer istiyoruz", createdAt: now });
+
+  // The assistant's review of the Porto stays, made for exactly these inputs, ruling Casa Azul out
+  // on the construction reviews (a sample; with a key, real reviews replace it when inputs change).
+  const { decisions } = await loadDecisions(trip, items);
+  const porto = [...decisions.values()].find((g) => g.options.some((o) => o.item.id === casa.id));
+  if (porto) {
+    const construction = listings[1][1].findings[0];
+    const analysis: Analysis = {
+      key: `${trip.id}|${porto.key}`,
+      tripId: trip.id,
+      needKey: porto.key,
+      inputHash: porto.inputHash,
+      createdAt: now,
+      verdict: "Jardim Stay: kaydettiğin yerlere yakın ve odaları sessiz. Casa Azul daha ucuz ama yan binadaki inşaat sessiz bir yer isteğine ters.",
+      reasons: ["Kaydettiğin 5 yere 5-9 dk → akşam dönüşleri kolay", "3 yorum sessiz oda diyor → iyi uyku"],
+      tradeoffs: ["Odalar küçük"],
+      risks: ["Ribeira Rooms iadesiz ve hafta sonu geceleri gürültülü"],
+      question: null,
+      aiScores: [
+        { itemId: jardim.id, score: 8.5, note: "sessiz, kahvaltı iyi" },
+        { itemId: casa.id, score: 4, note: "inşaat gürültüsü" },
+        { itemId: ribeira.id, score: 6, note: "manzara ama gürültü" },
+      ],
+      eliminations: [{ itemId: casa.id, reason: "Yan binada inşaat var; sessiz bir yer istiyorsun", findingIds: [construction.id] }],
+    };
+    await d.put("analyses", analysis);
+  }
+
+  function reading(item: Item, total: number, reviews: [string, string][], findings: Finding[]): Listing {
+    const stored = reviews.map(([text, date]) => ({ id: textId(text), text, date, captureId: "demo" }));
+    return {
+      key: listingKeyOf(item),
+      name: item.name,
+      reviews: stored,
+      reviewTotal: total,
+      findings: findings.map((f) => ({ ...f, reviewIds: f.reviewIds.map((i) => stored[Number(i)].id) })),
+      readCaptureIds: ["demo"],
+      readAt: now,
+      dropped: 0,
+      error: null,
+      errorAt: null,
+      updatedAt: now,
+    };
+  }
 
   const message = (role: ChatMessage["role"], text: string, choices: string[] = [], offset = 0): ChatMessage => ({
     id: newId(),

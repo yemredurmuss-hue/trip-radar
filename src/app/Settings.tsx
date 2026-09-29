@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { requestProcessing } from "../lib/browser";
-import { DEFAULT_GEMINI_MODEL, DEFAULT_MODEL, exportAll, getSettings, saveSettings } from "../lib/db";
+import { DEFAULT_GEMINI_MODEL, DEFAULT_MODEL, exportAll, exportDiagnostics, getSettings, saveSettings } from "../lib/db";
 import { describeError } from "../lib/llm";
 import { listGeminiModels } from "../lib/llm/gemini";
 import { retryAllFailed } from "../lib/process";
@@ -71,11 +71,12 @@ export function Settings({ onClose }: { onClose: () => void }) {
     onClose();
   }
 
-  async function download() {
-    const blob = new Blob([await exportAll()], { type: "application/json" });
+  async function download(kind: "backup" | "diagnostics") {
+    const json = kind === "backup" ? await exportAll() : await exportDiagnostics();
+    const blob = new Blob([json], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `trip-radar-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `trip-radar-${kind === "backup" ? "yedek" : "tani"}-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -163,8 +164,14 @@ export function Settings({ onClose }: { onClose: () => void }) {
         )}
 
         <p className="muted small">Anahtarlar yalnız bu tarayıcıda saklanır.</p>
+        <p className="muted small">
+          <button className="btn-link" style={{ fontSize: 13, padding: 0 }} onClick={() => void download("diagnostics")}>
+            Tanı dosyası indir
+          </button>{" "}
+          — kaydettiğin sayfaları ve okunanları içerir, anahtarlarını ve sohbetini içermez. Bir şey yanlış okunduysa bu dosyayı paylaşabilirsin.
+        </p>
         <div className="modal-actions">
-          <button className="btn-link" style={{ fontSize: 14 }} onClick={() => void download()}>
+          <button className="btn-link" style={{ fontSize: 14 }} onClick={() => void download("backup")}>
             Verileri dışa aktar (JSON)
           </button>
           <button className="btn-primary" onClick={() => void save()}>

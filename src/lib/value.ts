@@ -31,6 +31,8 @@ export interface ValueCard {
   budget: string | null;
   /** The traveller already chose/booked another option in this group: how it compares. */
   chosenOther: string | null;
+  /** "Casa Azul elendi: yan binada inşaat (7 yorum)" and proposed eliminations the evidence doesn't back. */
+  ruledOut: string[];
 }
 
 export interface BudgetState {
@@ -77,6 +79,7 @@ const SHORT: Partial<Record<CriterionId, string>> = {
   schedule: "daha uygun saatler",
   data: "daha çok veri",
   validity: "daha uzun geçerlilik",
+  details: "yorumlarda ve detaylarda daha iyi",
 };
 
 /**
@@ -153,7 +156,8 @@ function intentPhrase(d: GroupDecision, ctx: DecisionContext, part: Part): strin
 export function valueCard(d: GroupDecision, ctx: DecisionContext, budget: BudgetState | null): ValueCard | null {
   if (d.status !== "ok" && d.status !== "tie") return null;
   const scored = d.options.filter((o) => o.score != null);
-  const contenders = scored.filter((o) => !o.unmet.length).length ? scored.filter((o) => !o.unmet.length) : scored;
+  const inPlay = (o: OptionResult) => !o.unmet.length && !o.eliminated;
+  const contenders = scored.some(inPlay) ? scored.filter(inPlay) : scored;
   const pick = contenders[0];
   if (!pick) return null;
   const tie = d.status === "tie";
@@ -193,6 +197,10 @@ export function valueCard(d: GroupDecision, ctx: DecisionContext, budget: Budget
       because = what
         ? `Hem ${money(priceDiff)} daha ucuz hem ${what}.`
         : `${money(priceDiff)} daha ucuz${theirs ? `; diğerinin artısı (${theirs.text}) önceliklerine göre bu farka değmez` : ""}.`;
+    } else if (pickPrice == null || altPrice == null) {
+      // A missing price is not a similar price: say what is known and what the verdict waits for.
+      const waiting = (pickPrice == null ? pick : alt).item.name;
+      because = `${what ? `${what.charAt(0).toLocaleUpperCase("tr")}${what.slice(1)}.` : `${pick.item.name} bilinenlerde önde.`} ${waiting} için fiyat eksik; gelince yeniden tartarım.`;
     } else {
       because = what ? `Fiyat benzer; ${what}.` : `${pick.item.name} toplamda önde.`;
     }
@@ -238,5 +246,12 @@ export function valueCard(d: GroupDecision, ctx: DecisionContext, budget: Budget
     }
   }
 
-  return { pick, alt, tie, priceDiff, because, unless, budget: budgetLine, chosenOther };
+  const ruledOut = [
+    ...d.options
+      .filter((o) => o.eliminated)
+      .map((o) => `${o.item.name} elendi: ${o.eliminated!.reason}`),
+    ...d.checks.map((c) => `Kontrol gerekiyor: ${d.options.find((o) => o.item.id === c.itemId)?.item.name ?? ""} — ${c.reason} (sayfada doğrulanamadı)`),
+  ];
+
+  return { pick, alt, tie, priceDiff, because, unless, budget: budgetLine, chosenOther, ruledOut };
 }

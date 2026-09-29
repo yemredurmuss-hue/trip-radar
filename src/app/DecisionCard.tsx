@@ -19,6 +19,11 @@ export function DecisionCard({ card, decision, onCompare }: { card: ValueCard; d
       <p className="dc-because">{card.because}</p>
       {card.unless && <p className="dc-unless">Ama {lowerFirst(card.unless)}</p>}
       {card.chosenOther && <p className="dc-chosen">{card.chosenOther}</p>}
+      {card.ruledOut.map((line) => (
+        <p key={line} className="dc-out">
+          {line}
+        </p>
+      ))}
       {card.budget && <p className="dc-budget">{card.budget}</p>}
       {pick.unsure.length > 0 && <p className="dc-check">Kontrol et: {pick.unsure.join(", ")} sayfada görünmüyor.</p>}
       {question && <p className="dc-question">❓ {question}</p>}

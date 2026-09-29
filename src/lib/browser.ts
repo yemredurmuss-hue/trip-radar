@@ -39,6 +39,13 @@ export function requestAnalysis(force = false): void {
   });
 }
 
+/** Asks the worker to read pages not read yet (`force`: also ones that just failed), then re-judge. */
+export function requestReading(force = false): void {
+  chrome.runtime.sendMessage({ type: "read", force }).catch(() => {
+    // Worker is starting up; its first run reads what is pending.
+  });
+}
+
 /** Focuses an open board tab or opens a new one. */
 export async function openBoard(hash = ""): Promise<void> {
   const base = chrome.runtime.getURL("app.html");

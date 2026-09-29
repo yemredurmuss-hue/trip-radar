@@ -77,12 +77,12 @@ describe("gemini extraction", () => {
   });
 
   it("returns schema-checked JSON for the decision analysis", async () => {
-    const answer = { verdict: "A öne çıkıyor.", reasons: [], tradeoffs: [], risks: [], question: null, ai_scores: [] };
+    const answer = { verdict: "A öne çıkıyor.", reasons: [], tradeoffs: [], risks: [], question: null, ai_scores: [], eliminations: [] };
     const { client, calls } = fakeGemini([modelTurn([{ text: JSON.stringify(answer) }]), modelTurn([{ text: '{"verdict":1}' }])]);
     const gemini = geminiProvider(client, "gemini-test", 0);
     expect(await gemini.generateJson("sys", "prompt", AnalysisSchema)).toEqual(answer);
     expect(calls[0].config?.systemInstruction).toBe("sys");
-    expect((calls[0].config?.responseJsonSchema as { required: string[] }).required).toContain("ai_scores");
+    expect((calls[0].config?.responseJsonSchema as { required: string[] }).required).toContain("eliminations");
     await expect(gemini.generateJson("sys", "prompt", AnalysisSchema)).rejects.toThrow("beklenen formatta değil");
   });
 

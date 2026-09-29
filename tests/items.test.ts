@@ -138,7 +138,7 @@ describe("dedupe and merge", () => {
       "t2",
       2000,
     );
-    expect(findDuplicate([first], second)?.id).toBe(first.id);
+    expect(findDuplicate([first], second)?.item.id).toBe(first.id);
     const merged = mergeItem(first, second);
     expect(merged.status).toBe("chosen");
     expect(merged.tripId).toBe("t1");
@@ -152,8 +152,47 @@ describe("dedupe and merge", () => {
     const c = capture({ url: null });
     const a = buildItem(extraction(), c, parseUrl(""), "t1");
     const b = buildItem(extraction({ name: "jardim  stay" }), c, parseUrl(""), "t1");
-    expect(findDuplicate([a], b)?.id).toBe(a.id);
+    expect(findDuplicate([a], b)?.item.id).toBe(a.id);
     expect(findDuplicate([a], { ...b, tripId: "t2" })).toBeUndefined();
+  });
+
+  it("keeps the same place for other dates or another room as a separate offer", () => {
+    const c1 = capture();
+    const first = buildItem(extraction(), c1, parseUrl(c1.url!), "t1", 1000);
+    const c2 = capture({ url: "https://www.booking.com/hotel/pt/jardim-stay.html?checkin=2026-10-11&checkout=2026-10-14&group_adults=2" });
+    const later = buildItem(extraction(), c2, parseUrl(c2.url!), "t1", 2000);
+    expect(later.key).toBe(first.key);
+    expect(findDuplicate([first], later)).toBeUndefined();
+
+    const suite = buildItem(extraction({ option_detail: "Junior Suite" }), c1, parseUrl(c1.url!), "t1", 3000);
+    expect(findDuplicate([first], suite)).toBeUndefined();
+    // Same nights, same room: a re-save refreshes the offer.
+    expect(findDuplicate([first, later], buildItem(extraction(), c1, parseUrl(c1.url!), "t1", 4000))?.item.id).toBe(first.id);
+  });
+
+  it("lets a dateless save refresh the place without touching the offer's nights and price", () => {
+    const c1 = capture();
+    const offer = { ...buildItem(extraction(), c1, parseUrl(c1.url!), "t1", 1000), status: "chosen" as const };
+    const c2 = capture({ url: "https://www.booking.com/hotel/pt/jardim-stay.html", pageText: "Jardim Stay from € 80 per night" });
+    const browse = buildItem(
+      extraction({
+        dates: { start: null, end: null, source: "none" },
+        price: { ...extraction().price, amount: 80, scope: "per_night", evidence: "€ 80 per night" },
+        rating: { ...extraction().rating, value: 9.0, evidence: null, source: "none" },
+        option_detail: null,
+      }),
+      c2,
+      parseUrl(c2.url!),
+      "t1",
+      2000,
+    );
+    const match = findDuplicate([offer], browse);
+    expect(match).toEqual({ item: offer, placeOnly: true });
+    const merged = mergeItem(match!.item, browse, true);
+    expect(merged.price.amount).toBe(285);
+    expect(merged.dates.start).toBe("2026-10-08");
+    expect(merged.status).toBe("chosen");
+    expect(merged.captureIds).toHaveLength(2);
   });
 });
 

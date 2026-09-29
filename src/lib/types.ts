@@ -21,6 +21,7 @@ export type CriterionId =
   | "baggage"
   | "data"
   | "validity"
+  | "details"
   | "ai";
 
 /** 0 önemsiz · 1 az · 2 normal · 3 önemli · 4 çok önemli */
@@ -106,6 +107,8 @@ export interface Trip {
   requirements?: Requirement[];
   /** Inferred signals the user dismissed ("bunu yok say"), by signal id. */
   ignoredSignals?: string[];
+  /** Findings the traveller said are fine ("sorun değil"): `${listingKey}#${topic}:${polarity}`. */
+  acceptedFindings?: string[];
   createdAt: number;
   updatedAt: number;
 }
@@ -223,6 +226,91 @@ export interface Settings {
   geminiModel: string;
 }
 
+// --- what was read on a place's pages -------------------------------------------------------------
+
+export const FINDING_TOPICS = [
+  "location",
+  "nearby",
+  "transport",
+  "cleanliness",
+  "comfort",
+  "bed",
+  "noise",
+  "space",
+  "view",
+  "staff",
+  "host",
+  "food",
+  "amenities",
+  "facilities",
+  "access",
+  "condition",
+  "safety",
+  "value",
+  "check_in",
+  "accuracy",
+  "other",
+] as const;
+export type FindingTopic = (typeof FINDING_TOPICS)[number];
+
+/** Where on the page a finding was read. */
+export type FindingSource = "reviews" | "description" | "amenities" | "policy" | "other";
+
+/** A guest review excerpt kept exactly as the page showed it. The id comes from the text, so re-reads don't duplicate it. */
+export interface ReviewEvidence {
+  id: string;
+  text: string;
+  /** YYYY-MM when the page showed a date. */
+  date: string | null;
+  captureId: string;
+}
+
+/**
+ * One fact about a place, positive or negative ("Geniş yatak", "Yan binada inşaat"). The Reader
+ * finds it; code checks its quotes against the stored page and counts the reviews behind it.
+ * Whether it rules a place out depends on the traveller, so that is decided elsewhere.
+ */
+export interface Finding {
+  /** `${topic}:${polarity}:${text hash}`. */
+  id: string;
+  text: string;
+  polarity: "positive" | "negative";
+  topic: FindingTopic;
+  source: FindingSource;
+  /** How much it would matter to a typical traveller. */
+  severity: "high" | "medium" | "low";
+  /** Stored reviews that say it. Counted by code, never by the model. */
+  reviewIds: string[];
+  /** Verbatim text from the description, amenities or rules that says it. */
+  quotes: string[];
+  /** At least one supporting quote was found on the stored page. Unverified findings are never decisive. */
+  verified: boolean;
+}
+
+/**
+ * What has been read about one place (hotel, flat, tour...). Shared by every offer of it (different
+ * dates or rooms are different items), so a place is read once and its evidence grows with each save.
+ */
+export interface Listing {
+  /** listingKeyOf(item): the item's canonical key, else `item:<id>`. */
+  key: string;
+  name: string;
+  reviews: ReviewEvidence[];
+  /** Total the site states ("1.204 yorum"); the stored reviews are a sample of it. */
+  reviewTotal: number | null;
+  findings: Finding[];
+  /** Captures already read, and when the last one was. */
+  readCaptureIds: string[];
+  readAt: number | null;
+  /** Quotes the model gave that weren't on the page (dropped, not shown). */
+  dropped: number;
+  /** Last reading failure, retried later. */
+  error: string | null;
+  errorAt: number | null;
+  autoRetries?: number;
+  updatedAt: number;
+}
+
 /** Cached AI analysis of one need group; stale when the inputs' hash changes. */
 export interface Analysis {
   key: string; // `${tripId}|${group key}`
@@ -237,6 +325,17 @@ export interface Analysis {
   risks: string[];
   question: string | null;
   aiScores: { itemId: string; score: number; note: string }[];
-  /** Set when the analysis call failed for these inputs (retried later, or on request). */
+  /**
+   * Options the assistant ruled out for this traveller, each citing findings. Code only applies one
+   * while a cited finding is still verified, recent and not accepted by the traveller.
+   */
+  eliminations?: { itemId: string; reason: string; findingIds: string[] }[];
+  /**
+   * The last call failed. A failure never replaces a good verdict: the record keeps the last good
+   * analysis (empty verdict if there was none) and notes which inputs failed.
+   */
   error?: string;
+  errorAt?: number;
+  /** Inputs the failed call was for (older records: inputHash). */
+  errorHash?: string;
 }

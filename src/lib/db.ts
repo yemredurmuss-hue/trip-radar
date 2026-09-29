@@ -1,6 +1,6 @@
 // IndexedDB storage shared by the popup, the board page and the service worker (same extension origin).
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { Analysis, Capture, ChatMessage, Item, Preference, Settings, Trip } from "./types";
+import type { Analysis, Capture, ChatMessage, Item, Listing, Preference, Settings, Trip } from "./types";
 
 interface TripRadarDB extends DBSchema {
   trips: { key: string; value: Trip };
@@ -10,12 +10,13 @@ interface TripRadarDB extends DBSchema {
   preferences: { key: string; value: Preference };
   analyses: { key: string; value: Analysis; indexes: { tripId: string } };
   geocache: { key: string; value: { query: string; lat: number | null; lng: number | null; at: number } };
+  listings: { key: string; value: Listing };
 }
 
 let dbPromise: Promise<IDBPDatabase<TripRadarDB>> | null = null;
 
 export function db(): Promise<IDBPDatabase<TripRadarDB>> {
-  dbPromise ??= openDB<TripRadarDB>("trip-radar", 2, {
+  dbPromise ??= openDB<TripRadarDB>("trip-radar", 3, {
     upgrade(d, oldVersion) {
       if (oldVersion < 1) {
         d.createObjectStore("trips", { keyPath: "id" });
@@ -29,6 +30,9 @@ export function db(): Promise<IDBPDatabase<TripRadarDB>> {
       if (oldVersion < 2) {
         d.createObjectStore("analyses", { keyPath: "key" }).createIndex("tripId", "tripId");
         d.createObjectStore("geocache", { keyPath: "query" });
+      }
+      if (oldVersion < 3) {
+        d.createObjectStore("listings", { keyPath: "key" });
       }
     },
   });
@@ -147,6 +151,36 @@ export async function listAnalyses(tripId: string): Promise<Analysis[]> {
   return (await db()).getAllFromIndex("analyses", "tripId", tripId);
 }
 
+/** What was read about these places, by listing key (see reader.listingKeyOf). */
+export async function listListings(keys: string[]): Promise<Map<string, Listing>> {
+  const d = await db();
+  const rows = await Promise.all([...new Set(keys)].map((k) => d.get("listings", k)));
+  return new Map(rows.filter((l): l is Listing => Boolean(l)).map((l) => [l.key, l]));
+}
+
+/**
+ * Everything needed to reproduce what the extension saw and concluded: pages, items, readings and
+ * analyses. No settings (so no API keys), no chat, no screenshots.
+ */
+export async function exportDiagnostics(): Promise<string> {
+  const d = await db();
+  const captures = (await d.getAll("captures")).map((c) => ({ ...c, screenshot: c.screenshot ? "(ekran görüntüsü çıkarıldı)" : null }));
+  return JSON.stringify(
+    {
+      kind: "trip-radar-diagnostics",
+      version: chrome.runtime?.getManifest?.().version ?? null,
+      exportedAt: new Date().toISOString(),
+      trips: await d.getAll("trips"),
+      items: await d.getAll("items"),
+      listings: await d.getAll("listings"),
+      analyses: await d.getAll("analyses"),
+      captures,
+    },
+    null,
+    1,
+  );
+}
+
 /** Full JSON backup of everything except screenshots. */
 export async function exportAll(): Promise<string> {
   const d = await db();
@@ -158,6 +192,7 @@ export async function exportAll(): Promise<string> {
       items: await d.getAll("items"),
       preferences: await d.getAll("preferences"),
       messages: await d.getAll("messages"),
+      listings: await d.getAll("listings"),
       captures,
     },
     null,

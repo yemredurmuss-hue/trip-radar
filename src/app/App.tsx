@@ -135,6 +135,7 @@ export function App() {
           group={board.items.filter((i) => groupKeyOf(i) === groupKeyOf(openItem))}
           trips={board.trips}
           decision={decisions?.byGroup.get(groupKeyOf(openItem))}
+          decisions={decisions}
           onClose={() => setOpenItemId(null)}
           onMoved={board.selectTrip}
           onCompare={() => {
@@ -149,6 +150,7 @@ export function App() {
           decision={compared}
           card={decisions?.cards.get(compared.key)}
           inferred={decisions?.ctx.inferred}
+          ctx={decisions?.ctx}
           title={comparedTitle}
           onClose={() => setCompareKey(null)}
           onOpenItem={(i) => setOpenItemId(i.id)}

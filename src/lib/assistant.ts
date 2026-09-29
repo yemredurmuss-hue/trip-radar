@@ -15,7 +15,9 @@ import {
   type DecisionContext,
   type GroupDecision,
 } from "./decision";
-import { tripDateRange } from "./items";
+import { listingKeyOf, tripDateRange } from "./items";
+import { coverageText, searchText } from "./listing";
+import { prosConsFor } from "./proscons";
 import { activeSignals } from "./intent";
 import { buildPlan, type Plan } from "./plan";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
@@ -41,6 +43,7 @@ Elindekiler (trip_state):
 - plan: gecelerin durumu (booked = rezerve, chosen = plana alındı, open = boş) ve eksik ulaşımlar. Rezervasyonla kapanan seçenekleri önerme.
 - decisions: her açık ihtiyaç için kodun hesapladığı 0-100 puan, sıralama, nedenler, bedeller, would_change_if ve card. card.because "neden bu", card.unless "ne olursa diğeri", card.budget bütçe etkisi. ai alanı ayrı bir AI incelemesidir.
 - intent: kullanıcıyı nasıl anladığın. Açıkça söyledikleri (priorities, requirements, notes) ve kaydettiklerinden ya da seçimlerinden sezilenler (inferred, kanıtıyla).
+- items[].pros / cons: her seçeneğin sayfası baştan sona okunarak çıkarılan artı ve eksiler, en önemliden başlayarak; detail kaynağını söyler ("7 yorum · en yenisi Eyl 2026", "açıklamada"). "Elendi:" ile başlayan eksi, seçeneğin bu kullanıcı için elenme sebebidir. items[].read incelenen yorum sayısıdır (sitedeki tüm yorumlar değil).
 
 Nasıl konuşursun:
 - Doğal, sıcak ve kısa: 2-4 cümle. Form ya da rapor gibi değil, bir arkadaş gibi.
@@ -52,8 +55,9 @@ Nasıl konuşursun:
   • kalıcı bağlam ("bebekle gidiyoruz", "balayı", "geç döneriz") → save_preference
   Kaydettiğini tek cümleyle söyle ("Not aldım: mutfak şart.") ve sonucun nasıl değiştiğini anlat.
 - Sezilen bir tercihi (intent.inferred) uygun bir anda doğal biçimde teyit edebilirsin; ısrar etme.
-- Kullanıcı bir karar verdiğinde (seçtim, ele, rezerve ettim) update_items; bütçe ya da tarih söylediğinde update_trip.
+- Kullanıcı bir karar verdiğinde (seçtim, ele, rezerve ettim) update_items; bütçe ya da tarih söylediğinde update_trip. Seçeneklerin durumunu yalnız kullanıcının son mesajı bunu istiyorsa değiştir; eski bir konuşmaya dayanarak değiştirme.
 - Boş geceler ya da eksik ulaşım varsa uygun bir anda bir kez hatırlat.
+- Kullanıcı bir seçeneğin trip_state'te olmayan bir detayını sorarsa (TV, havuz, check-in saati, otopark...) search_page ile kayıtlı sayfasında ara. Bulduğunu alıntıyla söyle; bulamazsan "kaydettiğin sayfada göremedim" de, tahmin etme.
 
 Doğruluk:
 - Yalnız en son trip_state'e dayan. source "unverified" ya da "screenshot" olanları "kontrol edilmeli" diye belirt; "none" bilinmiyor demektir.
@@ -179,6 +183,20 @@ export const TOOLS: ToolSpec[] = [
     },
   },
   {
+    name: "search_page",
+    description:
+      "Bir seçeneğin kaydedilmiş sayfasının tüm metninde (açıklama, olanaklar, kurallar, yorumlar) kelime arar ve geçtiği yerleri döndürür. trip_state'te olmayan bir detayı doğrulamak için kullan. Sayfanın dilindeki karşılıkları da ver (ör. ['TV','televizyon','television']).",
+    schema: {
+      type: "object",
+      properties: {
+        item_id: { type: "string" },
+        words: { type: "array", items: { type: "string" } },
+      },
+      required: ["item_id", "words"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "offer_choices",
     description: "Son mesajının altında kullanıcıya en fazla 2 hızlı yanıt butonu gösterir.",
     schema: {
@@ -207,6 +225,8 @@ export function decisionState(decisions: Map<string, GroupDecision>, ctx: Decisi
         ...(d.winner && o !== d.winner && o.score != null ? { advantage: advantageOver(o, d.winner, ctx.currency) } : {}),
         ...(o.dominatedBy ? { dominated_by: o.dominatedBy } : {}),
         ...(o.unmet.length ? { fails: o.unmet } : {}),
+        ...(o.eliminated ? { ruled_out: o.eliminated.reason } : {}),
+        ...(o.limited.length ? { provisional: `${o.limited.join(", ")} eksik` } : {}),
         ...(o.unsure.length ? { check: o.unsure } : {}),
       })),
       reasons: d.reasons.map((r) => r.text),
@@ -270,6 +290,21 @@ function priorityState(trip: Trip, items: Item[], inferred?: Inferred) {
   );
 }
 
+/** What was read about an item, for the model: its top pros and cons with their sources. */
+function readState(item: Item, t: Pick<TripDecisions, "ctx" | "decisions"> | undefined) {
+  if (!t) return { highlights: item.highlights, concerns: item.concerns, reviews: item.reviewSummary };
+  const decision = [...t.decisions.values()].find((d) => d.options.some((o) => o.item.id === item.id));
+  const pc = prosConsFor(item, decision, t.ctx.listings, t.ctx);
+  const listing = t.ctx.listings.get(listingKeyOf(item));
+  const line = (l: { text: string; detail: string | null }) => (l.detail ? `${l.text} (${l.detail})` : l.text);
+  return {
+    ...(listing?.readAt ? { read: coverageText(listing) } : {}),
+    pros: pc?.pros.slice(0, 5).map(line) ?? [],
+    cons: pc?.cons.slice(0, 5).map(line) ?? [],
+    reviews: item.reviewSummary,
+  };
+}
+
 /** Compact view of the trip for the model: decision-relevant fields, fact sources and the engine's result. */
 export function tripState(
   trip: Trip,
@@ -278,6 +313,7 @@ export function tripState(
   decisions: ReturnType<typeof decisionState> = [],
   intent: ReturnType<typeof intentState> | null = null,
   inferred?: Inferred,
+  reading?: Pick<TripDecisions, "ctx" | "decisions">,
 ): string {
   const range = tripDateRange(items);
   return JSON.stringify({
@@ -312,9 +348,7 @@ export function tripState(
       cancellation: i.cancellation,
       rating: i.rating,
       flight: i.flight,
-      highlights: i.highlights,
-      concerns: i.concerns,
-      reviews: i.reviewSummary,
+      ...readState(i, reading),
       missing: i.missing,
     })),
   });
@@ -439,6 +473,19 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       });
       return "ok";
     }
+    case "search_page": {
+      const item = byId.get(input.item_id);
+      if (!item) throw new ToolError(`Bu id'le seçenek yok: ${input.item_id}`);
+      const words = (input.words as unknown[]).filter((w): w is string => typeof w === "string");
+      const passages: string[] = [];
+      for (const id of [...item.captureIds].reverse()) {
+        const capture = await d.get("captures", id);
+        if (!capture?.pageText) continue;
+        for (const p of searchText(capture.pageText, words)) if (!passages.includes(p)) passages.push(p);
+      }
+      if (!item.captureIds.length) return "Bu seçeneğin kayıtlı bir sayfası yok.";
+      return passages.length ? JSON.stringify({ found: passages.slice(0, 8) }) : `Kaydedilen sayfada geçmiyor: ${words.join(", ")}`;
+    }
     case "offer_choices":
       choices.splice(0, choices.length, ...(input.options as string[]).slice(0, 2));
       return "Butonlar gösterildi.";
@@ -473,6 +520,7 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
     decisionState(result.decisions, result.ctx, result.cards),
     intentState(trip, result),
     result.ctx.inferred,
+    result,
   );
   const stateHash = hash(state);
   const lastStateHash = session.findLast((m) => m.stateHash)?.stateHash;

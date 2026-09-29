@@ -1,0 +1,229 @@
+// Why this one, why not that one, at a glance: for every saved option, what speaks for it and what
+// against it, most important first, and the reason it is out (if it is) on top. Pure.
+// Two sources: how the option compares with the others on the traveller's criteria (computed), and
+// what was read on its pages (findings, each with the reviews or text behind it).
+import {
+  findingWeight,
+  levelFor,
+  TOPIC_CRITERION,
+  type DecisionContext,
+  type GroupDecision,
+  type OptionResult,
+  type Part,
+} from "./decision";
+import { formatPrice, listingKeyOf } from "./items";
+import { acceptKey, evidenceOf, monthLabel } from "./listing";
+import type { Finding, Item, Listing } from "./types";
+
+export interface ProCon {
+  key: string;
+  text: string;
+  /** Where it comes from: "7 yorum · en yenisi Eyl 2026", "açıklamada", "diğerleriyle kıyasla". */
+  detail: string | null;
+  weight: number;
+  kind: "compare" | "finding" | "summary" | "requirement" | "elimination" | "check";
+  /** The reason the option is out (ruled out, or fails a requirement): shown first. */
+  decisive?: boolean;
+  /** Couldn't be found on the stored page. */
+  unverified?: boolean;
+  /** Only reviews over a year old say it. */
+  stale?: boolean;
+  /** The traveller said it's fine. */
+  accepted?: boolean;
+  finding?: Finding;
+}
+
+export interface ProsCons {
+  pros: ProCon[];
+  cons: ProCon[];
+}
+
+type Ctx = Pick<DecisionContext, "trip" | "today" | "currency" | "inferred">;
+
+const LEVEL_WEIGHT = [0, 0.5, 1, 2, 3];
+const SOURCE_TEXT: Record<Finding["source"], string> = {
+  reviews: "yorumlarda",
+  description: "açıklamada",
+  amenities: "olanaklarda",
+  policy: "kurallarda",
+  other: "sayfada",
+};
+
+const capital = (t: string) => (t ? t.charAt(0).toLocaleUpperCase("tr") + t.slice(1) : t);
+
+function minutesText(m: number): string {
+  const h = Math.floor(m / 60);
+  const rest = Math.round(m % 60);
+  return h ? `${h} sa${rest ? ` ${rest} dk` : ""}` : `${rest} dk`;
+}
+
+/** Lines from comparing the option with the others in its group on the traveller's criteria. */
+function comparisons(option: OptionResult, decision: GroupDecision, currency: string): { pros: ProCon[]; cons: ProCon[] } {
+  const pros: ProCon[] = [];
+  const cons: ProCon[] = [];
+  const peers = decision.options.filter((o) => o !== option && !o.excluded && o.parts.length);
+  const single = peers.length === 0;
+  const add = (list: ProCon[], p: Part, text: string, strength: number) =>
+    list.push({ key: `c:${p.criterion}`, text, detail: single ? null : "diğerleriyle kıyasla", weight: p.weight * strength * 3, kind: "compare" });
+
+  for (const p of option.parts) {
+    if (p.criterion === "ai" || p.criterion === "details" || p.weight === 0 || p.s == null || p.value == null) continue;
+    const others = peers.map((o) => o.parts.find((x) => x.criterion === p.criterion)).filter((x): x is Part => x?.value != null && x.s != null);
+    const bestS = Math.max(p.s, ...others.map((o) => o.s!));
+    switch (p.criterion) {
+      case "price": {
+        if (!others.length) break;
+        const cheapest = Math.min(...others.map((o) => o.value!));
+        if (p.value < cheapest - 0.5) add(pros, p, `En ucuz: ${formatPrice(cheapest - p.value, currency)} daha az`, Math.min(1, (cheapest - p.value) / cheapest + 0.3));
+        else if (p.value > cheapest * 1.03) add(cons, p, `En ucuzdan ${formatPrice(p.value - cheapest, currency)} pahalı`, Math.min(1, (p.value - cheapest) / cheapest + 0.2));
+        break;
+      }
+      case "duration": {
+        if (!others.length) break;
+        const shortest = Math.min(...others.map((o) => o.value!));
+        if (p.value < shortest - 10) add(pros, p, `En kısa yolculuk: ${minutesText(p.value)}`, 0.7);
+        else if (p.value > shortest * 1.3) add(cons, p, `${minutesText(p.value - shortest)} daha uzun yolculuk`, Math.min(1, (p.value - shortest) / shortest));
+        break;
+      }
+      case "location":
+        if (p.s >= 0.75 && p.s >= bestS - 0.05) add(pros, p, capital(p.display ?? ""), p.s - 0.4);
+        else if (p.s <= 0.4 || (!single && p.s < bestS - 0.3)) add(cons, p, capital(p.display ?? ""), Math.max(0.3, 0.8 - p.s));
+        break;
+      case "rating":
+        if (p.s >= 0.75 && p.s >= bestS - 0.05) add(pros, p, `Puan ${p.display}`, p.s - 0.4);
+        else if (p.s <= 0.4) add(cons, p, `Puan düşük: ${p.display}`, 0.8 - p.s);
+        break;
+      case "comfort":
+        if (p.s >= 0.75 && p.s >= bestS - 0.05) add(pros, p, capital(p.display ?? ""), p.s - 0.4);
+        else if (p.s <= 0.4) add(cons, p, capital(p.display ?? ""), 0.8 - p.s);
+        break;
+      case "cancellation":
+        if (p.s >= 1) add(pros, p, capital(p.display ?? "Ücretsiz iptal"), 0.6);
+        else if (p.s <= 0.3) add(cons, p, capital(p.display ?? "İade yok"), 0.7);
+        break;
+      case "amenities":
+        if (p.s >= 1) add(pros, p, `İstediğin olanakların hepsi var`, 0.6);
+        else if (p.s < 1) add(cons, p, capital((p.display ?? "").replace(/^\d+\/\d+ · /, "")), 1 - p.s);
+        break;
+      case "stops":
+        if (p.s >= 1) add(pros, p, "Direkt", 0.7);
+        else add(cons, p, capital(p.display ?? "Aktarmalı"), 1 - p.s);
+        break;
+      case "schedule":
+        if (p.s < 0.7) add(cons, p, `Zor saat: ${p.display}`, 1 - p.s);
+        else if (p.s >= 1 && others.some((o) => o.s! < 0.7)) add(pros, p, `Rahat saatler: ${p.display}`, 0.5);
+        break;
+      case "baggage":
+        if (p.s >= 1) add(pros, p, "Bagaj dahil", 0.6);
+        else add(cons, p, "Yalnız kabin bagajı", 0.6);
+        break;
+      case "data":
+        if (p.s >= 0.9) add(pros, p, capital(p.display ?? ""), 0.6);
+        else if (p.s < 0.5) add(cons, p, `Az veri: ${p.display}`, 1 - p.s);
+        break;
+      case "validity":
+        if (p.s < 1) add(cons, p, `Gezi süresine yetmiyor: ${p.display}`, 1 - p.s);
+        break;
+    }
+  }
+  if (option.dominatedBy) {
+    cons.push({ key: "c:dominated", text: `${option.dominatedBy} her açıdan önde`, detail: "diğerleriyle kıyasla", weight: 6, kind: "compare" });
+  }
+  return { pros, cons };
+}
+
+/** How much a finding's topic matters to this traveller, from the level of the criterion it speaks to. */
+function relevance(f: Finding, item: Item, ctx: Ctx): number {
+  const level = levelFor(ctx.trip, item.category, TOPIC_CRITERION[f.topic], ctx.inferred);
+  // Criteria that don't apply to the category (level 0 by default) still count a little: a finding is a fact.
+  return Math.max(0.3, (LEVEL_WEIGHT[level] + 0.5) / 1.5);
+}
+
+function findingLines(listing: Listing, item: Item, ctx: Ctx): { pros: ProCon[]; cons: ProCon[] } {
+  const accepted = new Set(ctx.trip.acceptedFindings ?? []);
+  const pros: ProCon[] = [];
+  const cons: ProCon[] = [];
+  for (const f of listing.findings) {
+    const e = evidenceOf(f, listing, ctx.today);
+    const isAccepted = f.polarity === "negative" && accepted.has(acceptKey(listing.key, f));
+    const where = e.count ? `${e.count} yorum${e.newest ? ` · en yenisi ${monthLabel(e.newest)}` : ""}` : SOURCE_TEXT[f.source];
+    const detail = !f.verified ? "sayfada doğrulanamadı" : isAccepted ? "sorun değil dedin" : e.stale ? `eski: ${where}` : where;
+    const weight = findingWeight(f, listing, ctx.today) * relevance(f, item, ctx) * (f.verified ? 1 : 0.3) * (isAccepted ? 0.2 : 1);
+    (f.polarity === "positive" ? pros : cons).push({
+      key: `f:${f.id}`,
+      text: f.text,
+      detail,
+      weight,
+      kind: "finding",
+      ...(f.verified ? {} : { unverified: true }),
+      ...(e.stale ? { stale: true } : {}),
+      ...(isAccepted ? { accepted: true } : {}),
+      finding: f,
+    });
+  }
+  return { pros, cons };
+}
+
+export function prosCons(input: { item: Item; option?: OptionResult; decision?: GroupDecision; listing?: Listing; ctx: Ctx }): ProsCons {
+  const { item, option, decision, listing, ctx } = input;
+  const pros: ProCon[] = [];
+  const cons: ProCon[] = [];
+
+  if (option?.eliminated) {
+    const e = option.eliminated.findings.map((f) => (listing ? evidenceOf(f, listing, ctx.today) : null));
+    const count = e.reduce((n, x) => n + (x?.count ?? 0), 0);
+    cons.push({
+      key: "x:eliminated",
+      text: `Elendi: ${option.eliminated.reason}`,
+      detail: count ? `${count} yorum` : SOURCE_TEXT[option.eliminated.findings[0]?.source ?? "other"],
+      weight: 1000,
+      kind: "elimination",
+      decisive: true,
+      finding: option.eliminated.findings[0],
+    });
+  }
+  for (const label of option?.unmet ?? []) {
+    cons.push({ key: `r:${label}`, text: `Şartın karşılanmıyor: ${label}`, detail: null, weight: 900, kind: "requirement", decisive: true });
+  }
+  for (const c of decision?.checks.filter((c) => c.itemId === item.id) ?? []) {
+    cons.push({ key: `k:${c.reason}`, text: `Kontrol gerekiyor: ${c.reason}`, detail: "sayfada doğrulanamadı", weight: 8, kind: "check", unverified: true });
+  }
+  for (const label of option?.limited ?? []) {
+    const text = label === "kur bilgisi" ? "Fiyat başka para biriminde; kur gelince karşılaştırılır" : `${capital(label)} eksik; sayfayı tarih seçiliyken tekrar kaydet`;
+    cons.push({ key: `l:${label}`, text, detail: null, weight: 7, kind: "check" });
+  }
+  for (const label of option?.unsure ?? []) {
+    cons.push({ key: `u:${label}`, text: `Kontrol et: ${label} sayfada görünmüyor`, detail: null, weight: 2.5, kind: "check" });
+  }
+
+  if (option && decision) {
+    const c = comparisons(option, decision, ctx.currency);
+    pros.push(...c.pros);
+    cons.push(...c.cons);
+  }
+
+  if (listing?.readAt && listing.findings.length) {
+    const f = findingLines(listing, item, ctx);
+    pros.push(...f.pros);
+    cons.push(...f.cons);
+  } else {
+    // Not read yet (or nothing to read): the extraction's short summary, labelled as such.
+    item.highlights.forEach((h, i) => pros.push({ key: `s:+${i}`, text: h, detail: "sayfa özeti", weight: 1.5, kind: "summary" }));
+    item.concerns.forEach((h, i) => cons.push({ key: `s:-${i}`, text: h, detail: "sayfa özeti", weight: 1.5, kind: "summary" }));
+  }
+
+  const order = (a: ProCon, b: ProCon) => Number(Boolean(b.decisive)) - Number(Boolean(a.decisive)) || b.weight - a.weight;
+  return { pros: pros.sort(order), cons: cons.sort(order) };
+}
+
+/** Pros and cons for an item from the board's decision data. */
+export function prosConsFor(
+  item: Item,
+  decision: GroupDecision | undefined,
+  listings: Map<string, Listing> | undefined,
+  ctx: Ctx | undefined,
+): ProsCons | null {
+  if (!ctx) return null;
+  const option = decision?.options.find((o) => o.item.id === item.id);
+  return prosCons({ item, option, decision, listing: listings?.get(listingKeyOf(item)), ctx });
+}

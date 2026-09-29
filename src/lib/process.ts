@@ -85,7 +85,7 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
 
     const existing = await d.getAll("items");
     const duplicate = findDuplicate(existing, incoming);
-    const item = duplicate ? mergeItem(duplicate, incoming) : incoming;
+    const item = duplicate ? mergeItem(duplicate.item, incoming, duplicate.placeOnly) : incoming;
     await d.put("items", await withGeo(item, deps.geocode ?? geocode));
 
     const where = [CATEGORY_LABELS[item.category], item.city].filter(Boolean).join(" · ");

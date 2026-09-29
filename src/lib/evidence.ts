@@ -71,6 +71,52 @@ function wordsOnPage(quote: string, corpus: string): boolean {
   return words.length >= 2 && words.every((w) => page.includes(w));
 }
 
+/** Letters and digits only, one space between words: tolerates the quote marks, dashes and line breaks models change. */
+export function plainText(text: string): string {
+  return plain(text);
+}
+
+function plain(text: string): string {
+  return normalize(text)
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+/**
+ * Is this excerpt really on the page? Punctuation and spacing may differ; a shortened quote
+ * ("… çok gürültülü …") passes when each of its pieces is on the page. Pieces shorter than 12
+ * characters say too little to count, so a quote needs at least one real piece.
+ */
+export function excerptOnPage(quote: string | null | undefined, pagePlain: string): boolean {
+  if (!quote) return false;
+  const pieces = quote
+    .split(/\.\.\.|…|\[\.\.\.\]/)
+    .map(plain)
+    .filter((p) => p.length >= 12);
+  return pieces.length > 0 && pieces.every((p) => pagePlain.includes(p));
+}
+
+/** The page text in the form excerptOnPage compares against (compute once per page). */
+export const plainPage = (corpus: string) => ` ${plain(corpus)} `;
+
+/** Short stable id for a piece of text (FNV-1a over its plain form). */
+export function textId(text: string): string {
+  let h = 0x811c9dc5;
+  const s = plain(text);
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36);
+}
+
+/** Same text after dropping punctuation and case (for matching a finding's quote to a stored review). */
+export function samePlain(a: string, b: string): boolean {
+  const x = plain(a);
+  const y = plain(b);
+  return x.length >= 12 && y.length >= 12 && (x.includes(y) || y.includes(x));
+}
+
 export type FactKind = "price" | "rating" | "text";
 
 export function classify(

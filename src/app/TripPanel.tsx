@@ -8,18 +8,22 @@ import {
   formatDateRange,
   formatPrice,
   groupItems,
+  listingKeyOf,
   rankItems,
   routeUrl,
   rowLabel,
   tripDateRange,
   type NeedGroup,
 } from "../lib/items";
+import { needsReading, readingLine } from "../lib/listing";
 import type { OptionGroup, Plan, StayBlock } from "../lib/plan";
 import { retryCapture } from "../lib/process";
+import { prosConsFor, type ProsCons } from "../lib/proscons";
 import type { Capture, Category, Item, Trip } from "../lib/types";
 import { DecisionCard } from "./DecisionCard";
 import { CategoryIcon, Chevron } from "./Icons";
 import { IntentCard } from "./IntentCard";
+import { ProsConsView } from "./ProsConsView";
 import type { ValueCard } from "../lib/value";
 import { decisionLabel, type Decisions } from "./useDecisions";
 
@@ -39,6 +43,7 @@ const ROWS_PER_GROUP = 3;
 const SUMMARIZED: Category[] = ["activity", "food", "other"];
 
 type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => React.ReactNode;
+type Details = (item: Item, decision?: GroupDecision) => { pc: ProsCons | null; reading: ReturnType<typeof readingLine> };
 
 export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, menu }: Props) {
   const range = trip.confirmedDates ?? tripDateRange(items);
@@ -52,6 +57,15 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const route = routeUrl(items);
   const working = openCaptures.filter((c) => c.status === "pending" || c.status === "processing");
   const failed = openCaptures.filter((c) => c.status === "error");
+  const listings = decisions?.ctx.listings;
+  const reading = listings
+    ? new Set(items.filter((i) => needsReading(i, listings.get(listingKeyOf(i))) && !listings.get(listingKeyOf(i))?.error).map(listingKeyOf)).size
+    : 0;
+  /** What speaks for and against an item, and what was read on its page. */
+  const details: Details = (item, decision) => ({
+    pc: prosConsFor(item, decision, listings, decisions?.ctx),
+    reading: readingLine(item, listings?.get(listingKeyOf(item))),
+  });
 
   const renderGroup: RenderGroup = (group, heading, groupSubtitle, nested = false) => (
     <OptionGroupView
@@ -63,6 +77,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       decision={decisions?.byGroup.get(group.key)}
       card={decisions?.cards.get(group.key)}
       currency={currency}
+      details={details}
       onOpenItem={onOpenItem}
       onCompare={() => onCompare(group.key)}
     />
@@ -82,6 +97,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       <div className="hero-row">
         <span className="status-line">
           {working.length > 0 && `${working.length} kayıt işleniyor… `}
+          {reading > 0 && `${reading} sayfa okunuyor… `}
           {failed.length > 0 && <span className="err">{failed.length} kayıt işlenemedi</span>}
         </span>
         {route && (
@@ -116,10 +132,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       <IntentCard trip={trip} decisions={decisions} />
 
       {CATEGORY_ORDER.map((category) => {
-        if (category === "stay") return <StaySection key="stay" plan={plan} renderGroup={renderGroup} onOpenItem={onOpenItem} />;
+        if (category === "stay") return <StaySection key="stay" plan={plan} renderGroup={renderGroup} details={details} onOpenItem={onOpenItem} />;
         if (SUMMARIZED.includes(category)) {
           const section = places.find((s) => s.category === category);
-          return section ? <SummarySection key={category} category={category} groups={section.groups} onOpenItem={onOpenItem} /> : null;
+          return section ? (
+            <SummarySection key={category} category={category} groups={section.groups} details={details} onOpenItem={onOpenItem} />
+          ) : null;
         }
         return plan.groups
           .filter((g) => g.category === category)
@@ -141,7 +159,17 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
 }
 
 /** The trip's nights in order: booked, chosen and open stretches, with what's missing between them. */
-function StaySection({ plan, renderGroup, onOpenItem }: { plan: Plan; renderGroup: RenderGroup; onOpenItem: (i: Item) => void }) {
+function StaySection({
+  plan,
+  renderGroup,
+  details,
+  onOpenItem,
+}: {
+  plan: Plan;
+  renderGroup: RenderGroup;
+  details: Details;
+  onOpenItem: (i: Item) => void;
+}) {
   if (!plan.stayBlocks.length && !plan.looseStays.length) return null;
   const n = plan.nights;
   const parts = [n.booked && `${n.booked} rezerve`, n.chosen && `${n.chosen} seçildi`, n.open && `${n.open} açık`].filter(Boolean);
@@ -167,7 +195,7 @@ function StaySection({ plan, renderGroup, onOpenItem }: { plan: Plan; renderGrou
                 ⚠ {x.text}
               </div>
             ))}
-          <Block block={block} renderGroup={renderGroup} onOpenItem={onOpenItem} />
+          <Block block={block} renderGroup={renderGroup} details={details} onOpenItem={onOpenItem} />
         </Fragment>
       ))}
       {plan.looseStays.map((g) =>
@@ -186,7 +214,17 @@ function StaySection({ plan, renderGroup, onOpenItem }: { plan: Plan; renderGrou
 
 const BLOCK_LABEL = { booked: "✓ Rezerve", chosen: "Seçildi", open: "Açık", empty: "Boş" } as const;
 
-function Block({ block, renderGroup, onOpenItem }: { block: StayBlock; renderGroup: RenderGroup; onOpenItem: (i: Item) => void }) {
+function Block({
+  block,
+  renderGroup,
+  details,
+  onOpenItem,
+}: {
+  block: StayBlock;
+  renderGroup: RenderGroup;
+  details: Details;
+  onOpenItem: (i: Item) => void;
+}) {
   const state = block.kind === "open" && !block.groups.length ? "empty" : block.kind;
   return (
     <div className={`stay-block ${state}`}>
@@ -197,7 +235,7 @@ function Block({ block, renderGroup, onOpenItem }: { block: StayBlock; renderGro
           {block.city && <span className="muted"> · {block.city}</span>}
         </span>
       </div>
-      {block.kind === "booked" && <Row item={block.item} group={[block.item]} onOpen={() => onOpenItem(block.item)} />}
+      {block.kind === "booked" && <Row item={block.item} group={[block.item]} {...details(block.item)} onOpen={() => onOpenItem(block.item)} />}
       {block.kind !== "booked" &&
         block.groups.map((g) =>
           renderGroup(g, null, g.range && g.range.start === block.range.start && g.range.end === block.range.end ? null : g.title, true),
@@ -222,6 +260,7 @@ function OptionGroupView({
   decision,
   card,
   currency,
+  details,
   onOpenItem,
   onCompare,
 }: {
@@ -232,6 +271,7 @@ function OptionGroupView({
   decision: GroupDecision | undefined;
   card: ValueCard | undefined;
   currency: string;
+  details: Details;
   onOpenItem: (i: Item) => void;
   onCompare: () => void;
 }) {
@@ -258,7 +298,15 @@ function OptionGroupView({
         </div>
       )}
       {shown.map((item) => (
-        <Row key={item.id} item={item} group={group.items} decision={decision} currency={currency} onOpen={() => onOpenItem(item)} />
+        <Row
+          key={item.id}
+          item={item}
+          group={group.items}
+          decision={decision}
+          currency={currency}
+          {...details(item, decision)}
+          onOpen={() => onOpenItem(item)}
+        />
       ))}
       {hidden.length > 0 && (
         <button className="more" onClick={() => setExpanded(true)}>
@@ -305,11 +353,13 @@ function ClosedSection({ closed, onOpenItem }: { closed: Plan["closed"]; onOpenI
 function SummarySection({
   category,
   groups,
+  details,
   onOpenItem,
   label,
 }: {
   category: Category;
   groups: NeedGroup[];
+  details?: Details;
   onOpenItem: (i: Item) => void;
   label?: string;
 }) {
@@ -331,7 +381,7 @@ function SummarySection({
           <Chevron />
         </span>
       </button>
-      {open && items.map((item) => <Row key={item.id} item={item} group={items} onOpen={() => onOpenItem(item)} />)}
+      {open && items.map((item) => <Row key={item.id} item={item} group={items} {...details?.(item)} onOpen={() => onOpenItem(item)} />)}
     </div>
   );
 }
@@ -342,6 +392,8 @@ function Row({
   decision,
   currency,
   closedReason,
+  pc,
+  reading,
   onOpen,
 }: {
   item: Item;
@@ -349,6 +401,8 @@ function Row({
   decision?: GroupDecision;
   currency?: string;
   closedReason?: string;
+  pc?: ProsCons | null;
+  reading?: ReturnType<typeof readingLine>;
   onOpen: () => void;
 }) {
   const base = closedReason ? { text: closedReason, tone: "muted" as const } : rowLabel(item, group);
@@ -384,6 +438,12 @@ function Row({
       <span className="chev">
         <Chevron />
       </span>
+      {(pc || reading) && !closedReason && (
+        <span className="row-details">
+          {pc && <ProsConsView pc={pc} limit={3} />}
+          {reading && <span className={`reading tone-${reading.tone}`}>{reading.text}</span>}
+        </span>
+      )}
     </button>
   );
 }

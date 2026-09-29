@@ -70,7 +70,28 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
       change: (t) => ({ ...t, wantedAmenities: (t.wantedAmenities ?? []).filter((x) => x !== a) }),
     });
   }
+  // "Sorun değil" on a finding: shown with the place, removable (the note written for the assistant goes too).
+  for (const key of trip.acceptedFindings ?? []) {
+    const [listingKey, kind] = key.split("#");
+    const listing = decisions?.ctx.listings.get(listingKey);
+    const finding = listing?.findings.find((f) => `${f.topic}:${f.polarity}` === kind);
+    if (!listing || !finding) continue;
+    const note = `"${finding.text}" benim için sorun değil`;
+    entries.push({
+      key: `ok:${key}`,
+      short: `${finding.text.toLocaleLowerCase("tr")} sorun değil`,
+      text: `Sorun değil: ${finding.text}`,
+      detail: `söylediğin · ${listing.name}`,
+      action: async () => {
+        await updateTrip(trip.id, (t) => ({ ...t, acceptedFindings: (t.acceptedFindings ?? []).filter((k) => k !== key) }));
+        const d = await db();
+        for (const p of await d.getAll("preferences")) if (p.tripId === trip.id && p.text === note) await d.delete("preferences", p.id);
+        notifyChanged();
+      },
+    });
+  }
   for (const p of decisions?.preferences ?? []) {
+    if (/^".+" benim için sorun değil$/.test(p.text) && entries.some((e) => e.key.startsWith("ok:"))) continue;
     entries.push({
       key: `n:${p.id}`,
       short: p.text,

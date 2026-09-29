@@ -14,6 +14,9 @@ import {
   type Part,
 } from "../lib/decision";
 import { CATEGORY_LABELS, formatPrice } from "../lib/items";
+import { prosConsFor } from "../lib/proscons";
+import type { DecisionContext } from "../lib/decision";
+import { ProsConsView } from "./ProsConsView";
 import type { ValueCard } from "../lib/value";
 import { updateTrip } from "./actions";
 import { AMENITIES, type Amenity, type CriterionId, type Item, type PriorityLevel, type Trip } from "../lib/types";
@@ -24,6 +27,8 @@ interface Props {
   card?: ValueCard;
   /** Signals currently nudging weights, to mark levels that came from them. */
   inferred?: Inferred;
+  /** For each option's pros and cons (what was read on its page). */
+  ctx?: DecisionContext;
   title: string | null;
   onClose: () => void;
   onOpenItem: (item: Item) => void;
@@ -32,7 +37,7 @@ interface Props {
 const MAX_COLUMNS = 5;
 
 /** Side-by-side comparison of one need: the numbers, the weights the user controls, and why. */
-export function CompareView({ trip, decision, card, inferred, title, onClose, onOpenItem }: Props) {
+export function CompareView({ trip, decision, card, inferred, ctx, title, onClose, onOpenItem }: Props) {
   const d = decision;
   const single = d.status === "single";
   const columns = d.options.filter((o) => !o.excluded).slice(0, MAX_COLUMNS);
@@ -118,6 +123,17 @@ export function CompareView({ trip, decision, card, inferred, title, onClose, on
               </tr>
             </thead>
             <tbody>
+              {ctx && (
+                <tr className="pc-row">
+                  <th className="crit-col">
+                    <span className="muted">Artılar · eksiler</span>
+                  </th>
+                  {columns.map((o) => {
+                    const pc = prosConsFor(o.item, d, ctx.listings, ctx);
+                    return <td key={o.item.id}>{pc && <ProsConsView pc={pc} limit={3} stacked />}</td>;
+                  })}
+                </tr>
+              )}
               {d.criteria.map((c) => (
                 <tr key={c} className={levelOf(c) === 0 ? "off" : ""}>
                   <th className="crit-col">
@@ -275,6 +291,20 @@ function AiVerdict({ decision }: { decision: GroupDecision }) {
   const eligible = decision.options.filter((o) => !o.excluded).length;
   if (eligible < 2) return null;
   const a = decision.analysis;
+  const previous = decision.staleAnalysis;
+  if (!a && previous?.verdict) {
+    // The last good review stays visible (dated) while a new one is pending or the model is busy.
+    return (
+      <div className="ai-verdict">
+        <span className="ai-tag">AI yorumu · {new Date(previous.createdAt).toLocaleDateString("tr-TR")}</span> {previous.verdict}
+        <div className="muted small-note">
+          {hasKey === false
+            ? "Yeni bilgiler geldi; güncellemek için Ayarlar'dan ücretsiz Gemini anahtarı ekle."
+            : `Yeni bilgiler geldi; yorum güncelleniyor${decision.analysisFailure ? ` (son deneme: ${decision.analysisFailure.error})` : ""}.`}
+        </div>
+      </div>
+    );
+  }
   if (a) {
     return (
       <div className="ai-verdict">

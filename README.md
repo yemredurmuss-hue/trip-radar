@@ -94,24 +94,41 @@ aynı bilgiyle hep aynı sonucu verir ve her sayısı açıklanabilir:
    5'lik puanları Booking ölçeğine göre ayarlanır (4,8 ≈ 8,5).
 4. **Ağırlık:** Her kriterin önemi senin elinde (Önemsiz → Çok önemli). Karşılaştır ekranından ya da
    sohbette ("merkezi olsun", "fiyat o kadar önemli değil") değiştirirsin, puanlar anında yeniden hesaplanır.
-5. **AI değerlendirmesi:** AI yorumları, artı/eksileri ve tercihlerini okuyup sayıların yakalayamadığını
-   yazar (ör. "hafta sonu gece gürültüsü") ve 0–10 arası bir uygunluk puanı verir. Bu, düşük ağırlıklı ve
-   etiketli ayrı bir kriterdir; bilgiler değişince yeniden istenir, eskisi kullanılmaz.
-6. **Dürüstlük:** Fiyatı olmayan ya da bilgisi yetersiz seçenek puanlanmaz, neyin eksik olduğu yazılır.
-   Fark 2 puandan azsa "başa baş" denir. Farklı tarih için alınmış fiyat karşılaştırmaya girmez.
+5. **Sayfanın tamamı okunur (Okuyucu, 0.9):** Kaydettiğin her sayfa (hangi site olursa olsun) kayıttan
+   sonra arka planda baştan sona ikinci kez okunur: açıklama, oda/ev detayları, olanaklar (olmayanlar dahil),
+   kurallar, ücretler, çevre ve görünen bütün yorumlar. Çıkan her bulgu ("Geniş yatak", "Yanında iyi bir
+   İtalyan restoranı", "Yan binada inşaat") bir artı ya da eksidir ve arkasındaki yorumlar/metinle saklanır.
+   - Alıntı sayfada yoksa atılır; atılan sayısı detayda yazılır.
+   - "7 yorum" sayısını AI değil kod, saklanan yorumlardan sayar. Bu, erişilen yorumların sayısıdır;
+     sitedeki bütün misafirlerin değil ("48 yorum incelendi (sitede 1.204)").
+   - Yalnız bir yıldan eski yorumların söylediği şey "eski" diye işaretlenir ve hiçbir kararı belirlemez.
+   - Okuma başarısız olursa kayıt kaybolmaz; birkaç kez kendiliğinden yeniden denenir.
+   - Bulgular "Yorum ve detaylar" kriteriyle puana girer.
+6. **Artılar ve eksiler:** Her kaydın altında solda artılar, sağda eksiler önem sırasıyla durur. Bir seçenek
+   elendiyse sebebi en üstte kırmızıyla yazar. Detayda her bulgunun "Kanıt"ı (yorum alıntısı ve tarihi)
+   açılır; eksilerde "Sorun değil" dersen o bulgu bu yer için artık aleyhine sayılmaz ve asistan bunu öğrenir.
+7. **AI değerlendirmesi ve eleme:** AI bulguları, sayıları ve tercihlerini okuyup kararı yazar. Bir
+   bulgu senin için bir seçeneği anlamsız kılıyorsa (sessizlik istiyorsun + yan binada inşaat) eler.
+   - Eleme hangi bulguya dayandığını söylemek zorunda. Kod, bulgunun sayfada doğrulandığını ve eski
+     olmadığını kontrol eder; tutmayan eleme "Kontrol gerekiyor" olarak kalır, karar vermez.
+   - Eleme, dayandığı bulgular durdukça geçerlidir; yeni bir seçenek eklenince kaybolmaz.
+   - AI'ya ulaşılamazsa son iyi yorumu tarihiyle görünür kalır.
+8. **Eksik bilgi durdurmaz:** Fiyatı henüz bilinmeyen seçenek bilinenlerle geçici puan alır ve tam
+   bilgili seçeneklerin arkasında sıralanır ("fiyat eksik, gelince yeniden tartılır"). Fark 2 puandan
+   azsa "başa baş" denir. Farklı tarih için alınmış fiyat karşılaştırmaya girmez.
 
-7. **Karar kartı ("değer mi?"):** Her açık ihtiyacın altında "Senin için: X" kartı çıkar. Önerilen seçenek
+9. **Karar kartı ("değer mi?"):** Her açık ihtiyacın altında "Senin için: X" kartı çıkar. Önerilen seçenek
    en iyi daha ucuz alternatifle tartılır ve fark somut birimle yazılır ("€45 fazlasına her yolda ~37 dk
    daha yakın; 3 gecede ~4 saat, saat başı ~€12"). Kartta ayrıca şunlar yer alır: hangi önceliğin bunu
    değerli kıldığı, "Ama konum o kadar önemli değilse Casa Azul: €45 cebinde kalır" ve seçimle kalan bütçe.
-8. **Seni böyle anladım:** Söylediklerin (önem, kesin şart, not) ve sezilenler burada kaynağıyla durur.
+10. **Seni böyle anladım:** Söylediklerin (önem, kesin şart, not) ve sezilenler burada kaynağıyla durur.
    Sezilenler iki kaynaktan gelir:
    - Kaydettiklerindeki kalıp: "5 konaklamadan 4'ü ücretsiz iptalli".
    - Motorun önerisinden farklı seçimlerin: "Seçimin Casa Azul, Jardim yerine: €45 daha ucuz".
 
    Bir sezgi varsayılanı en fazla bir kademe kaydırır ve senin söylediğini asla ezmez. × ile kaldırılır ya
    da yok sayılır.
-9. **Kesin şartlar:** "Mutfak şart", "iadesiz olmasın", "direkt uçuş", "merkeze en fazla 15 dk"
+11. **Kesin şartlar:** "Mutfak şart", "iadesiz olmasın", "direkt uçuş", "merkeze en fazla 15 dk"
    sohbetten kaydedilir. Şarta uymayan seçenek önerilmez. Sayfada görünmeyen bir olanak "yok" sayılmaz,
    "kontrol et" diye yazılır.
 
@@ -124,6 +141,12 @@ Son karar senin: "Plana al" ile seçersin; sistem yalnız nedenleriyle gösterir
 - Bilinmeyen bilgi tahmin edilmez, boş kalır. Detayda "Eksik bilgi" olarak görünür.
 - Farklı tarih ya da kişi sayısı için alınmış fiyatlar karşılaştırılmaz; satırda "Farklı tarih" uyarısı çıkar.
 - Fiyatın ne zaman görüldüğü tutulur; eskiyen fiyat için uyarı çıkar (konaklamada 3 gün, uçuşta 1 gün).
+- Aynı yer farklı tarih ya da oda için kaydedilirse ayrı teklif olur; biri diğerinin üstüne yazılmaz. Tarihsiz
+  bir kayıt yalnız yer bilgisini (yorumlar, açıklama) tazeler, seçili gecelerin fiyatına dokunmaz.
+- Sohbette bir detay sorarsan ("TV var mı?") asistan kayıtlı sayfanın tamamında arar; bulamazsa tahmin
+  etmez, "sayfada göremedim" der.
+- Ayarlar → "Tanı dosyası indir": kaydettiğin sayfalar ve okunanlar (anahtarlar ve sohbet hariç). Bir şey
+  yanlış okunduysa bu dosyayla gerçek sayfa üzerinden düzeltilebilir.
 
 ## Sağlayıcı ve maliyet
 

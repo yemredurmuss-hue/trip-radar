@@ -62,18 +62,19 @@ export function decisionLabel(item: Item, decision: GroupDecision | undefined, c
     const missing = option.missing.slice(0, 2).join(", ");
     return { text: `Puan yok${missing ? ` · eksik: ${missing}` : ""}`, tone: "warning", score: null, best: false };
   }
+  // The reasons sit right under the row (pros and cons), so the label stays short.
+  if (option.eliminated) return { text: "Elendi", tone: "warning", score: option.score, best: false };
+  if (option.unmet.length) return { text: "Şartına uymuyor", tone: "warning", score: option.score, best: false };
   const topTwo = decision.options.slice(0, 2).map((o) => o.item.id);
   if (decision.status === "tie" && topTwo.includes(item.id)) return { text: "Başa baş", tone: "accent", score: option.score, best: true };
   if (decision.winner?.item.id === item.id) {
     const why = decision.reasons[0]?.label.toLowerCase();
     return { text: why ? `En uygun · ${why}` : "En uygun", tone: "accent", score: option.score, best: true };
   }
-  if (option.unmet.length) {
-    return { text: `Şartına uymuyor · ${option.unmet.join(", ")}`, tone: "warning", score: option.score, best: false };
+  if (option.limited.length) {
+    return { text: `Geçici puan · ${option.limited.join(", ")} eksik`, tone: "warning", score: option.score, best: false };
   }
-  if (option.dominatedBy) {
-    return { text: `Elenebilir · ${option.dominatedBy} her açıdan önde`, tone: "warning", score: option.score, best: false };
-  }
+  if (option.dominatedBy) return { text: "Elenebilir", tone: "warning", score: option.score, best: false };
   const advantage = decision.winner ? advantageOver(option, decision.winner, currency) : null;
   return { text: advantage ?? item.summary, tone: "muted", score: option.score, best: false };
 }

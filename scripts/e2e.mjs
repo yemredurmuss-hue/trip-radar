@@ -119,14 +119,37 @@ try {
   await app.locator("button.row", { hasText: "Jardim Stay" }).locator(".score-pill.best").waitFor();
   await app.screenshot({ path: `${out}/3-board.png` });
 
-  // The answer first: which one, what the extra money buys, what would change it, budget left.
+  // Every option shows what speaks for it (left) and against it (right), from its page's reviews.
+  const row = (name) => app.locator("button.row", { hasText: name });
+  await row("Jardim Stay").locator(".pc-col.pros", { hasText: "Sessiz odalar, iyi uyku · 3 yorum" }).waitFor();
+  await row("Jardim Stay").locator(".reading", { hasText: "5 yorum incelendi (sitede 1.204)" }).waitFor();
+  await row("Ribeira Rooms").locator(".pc-col.cons", { hasText: "Hafta sonu gece gürültüsü" }).waitFor();
+  // Casa Azul is out for this traveller (asked for somewhere quiet), with the reason on top.
+  await row("Casa Azul").locator(".pc-col.cons .pc-line.decisive", { hasText: "Elendi: Yan binada inşaat var" }).waitFor();
+  await row("Casa Azul").locator(".row-label", { hasText: "Elendi" }).waitFor();
   const stayCard = app.locator(".stay-block .decision-card");
   await stayCard.getByText("Senin için").waitFor();
-  assert.match(await stayCard.innerText(), /Jardim Stay[\s\S]*€45 fazlasına her yolda ~\d+ dk daha yakın[\s\S]*Casa Azul: €45 cebinde kalır[\s\S]*Bununla kalan bütçe/);
-  // How it understood the traveller so far (here: a pattern in the saved stays), with the evidence.
+  assert.match(await stayCard.innerText(), /Jardim Stay[\s\S]*Casa Azul elendi: Yan binada inşaat var; sessiz bir yer istiyorsun[\s\S]*Bununla kalan bütçe/);
+  await app.screenshot({ path: `${out}/3-pros-cons.png`, fullPage: true });
+
+  // The evidence behind a finding, and "sorun değil": the construction no longer rules Casa Azul out.
+  await row("Casa Azul").click();
+  const casaDrawer = app.getByRole("dialog", { name: "Casa Azul" });
+  const construction = casaDrawer.locator(".pc-line", { hasText: "Yan binada inşaat gürültüsü" });
+  await construction.getByText("3 yorum · en yenisi Eyl 2026").waitFor();
+  await construction.getByRole("button", { name: "Kanıt" }).click();
+  await construction.locator("blockquote", { hasText: "Construction next door starts at 8 every morning" }).waitFor();
+  await app.screenshot({ path: `${out}/3a-evidence.png` });
+  await construction.getByRole("button", { name: "Sorun değil" }).click();
+  await casaDrawer.locator(".pc-line.accepted", { hasText: "Yan binada inşaat gürültüsü" }).waitFor();
+  await casaDrawer.getByRole("button", { name: "Kapat" }).click();
+  await row("Casa Azul").locator(".row-label", { hasText: "Elendi" }).waitFor({ state: "detached" });
+  assert.doesNotMatch(await stayCard.innerText(), /Casa Azul elendi/);
+  // How it understood the traveller so far: what they said (incl. "sorun değil") and a pattern in the saved stays.
   await app.locator(".intent-card .intent-head").click();
   await app.locator(".intent-list", { hasText: "ücretsiz iptalli" }).waitFor();
-  await app.screenshot({ path: `${out}/3a-card.png` });
+  await app.locator(".intent-list", { hasText: "Sorun değil: Yan binada inşaat gürültüsü" }).waitFor();
+  await app.screenshot({ path: `${out}/3b-card.png` });
 
   // Comparison: numbers side by side, the weights the user controls, and why.
   await stayCard.getByRole("button", { name: "Karşılaştır →" }).click();
@@ -134,13 +157,18 @@ try {
   const winner = compare.locator("thead th.win .opt-name");
   assert.equal(await winner.innerText(), "Jardim Stay");
   await compare.getByText("Neden Jardim Stay?").waitFor();
-  await compare.getByText("AI yorumu için Ayarlar'dan", { exact: false }).waitFor(); // no key yet
-  await app.screenshot({ path: `${out}/3b-compare.png`, fullPage: true });
+  // Pros and cons per column, and the sample AI review kept (dated) now that the inputs changed.
+  await compare.locator(".pc-row .pc-col.pros", { hasText: "Sessiz odalar, iyi uyku" }).waitFor().catch(async (e) => {
+    console.log("pros/cons row:", await compare.locator(".pc-row").innerText());
+    throw e;
+  });
+  await compare.getByText("güncellemek için Ayarlar'dan ücretsiz Gemini anahtarı ekle", { exact: false }).waitFor(); // no key yet
+  await app.screenshot({ path: `${out}/3c-compare.png`, fullPage: true });
   // Location stops mattering → the cheaper stay wins, and the view says what would flip it back.
   await compare.locator("tr", { hasText: "Konum" }).locator("select").selectOption("0");
   await compare.locator("thead th.win .opt-name", { hasText: "Casa Azul" }).waitFor();
   await compare.getByText("Konum çok önemli olursa").waitFor();
-  await app.screenshot({ path: `${out}/3c-compare-priority.png`, fullPage: true });
+  await app.screenshot({ path: `${out}/3d-compare-priority.png`, fullPage: true });
   await compare.getByText("Önemleri varsayılana döndür").click();
   await compare.locator("thead th.win .opt-name", { hasText: "Jardim Stay" }).waitFor();
   await compare.getByRole("button", { name: "Kapat" }).click();
@@ -168,7 +196,7 @@ try {
   await app.getByText("Claude API anahtarı").waitFor();
   await app.getByRole("radio", { name: /Gemini/ }).click();
   await app.getByPlaceholder("AIza… (yapıştır)").fill("test-key");
-  await app.getByRole("button", { name: "Kaydet" }).click();
+  await app.getByRole("button", { name: "Kaydet", exact: true }).click();
   const stored = await app.evaluate(() => chrome.storage.local.get(["provider", "geminiKey", "geminiModel"]));
   assert.deepEqual(stored, { provider: "gemini", geminiKey: "test-key", geminiModel: "gemini-3-flash-preview" });
   console.log("✓ settings: Gemini default, provider switch, key saved");
@@ -223,7 +251,33 @@ try {
     review_summary: "Ev sahibi ilgili; merkeze dönüş yokuş yukarı.", image_url: null,
   };
   const chatPrompts = [];
+  const analysisPrompts = [];
   const reply = (parts) => ({ json: { candidates: [{ content: { role: "model", parts }, finishReason: "STOP" }] } });
+  // The Reader's answer for the Casa Azul page: real excerpts, plus a review and a quote that aren't
+  // on the page (code must drop both).
+  const casaReading = {
+    review_total: 96,
+    reviews: [
+      { text: "Construction next door starts at 8 every morning, very noisy.", date_text: "September 2026", date: "2026-09" },
+      { text: "The building work next to the flat was loud all day. Lovely host though.", date_text: "August 2026", date: "2026-08" },
+      { text: "Great Italian restaurant right downstairs, and the bed is huge.", date_text: "August 2026", date: "2026-08" },
+      { text: "The pool was freezing cold all week.", date_text: "July 2026", date: "2026-07" },
+    ],
+    findings: [
+      { text: "Yan binada inşaat gürültüsü", polarity: "negative", topic: "condition", source: "reviews", severity: "high", quotes: ["Construction next door starts at 8 every morning", "The building work next to the flat was loud all day"] },
+      { text: "Altında çok iyi bir İtalyan restoranı", polarity: "positive", topic: "nearby", source: "reviews", severity: "medium", quotes: ["Great Italian restaurant right downstairs"] },
+      { text: "Geniş, rahat yatak", polarity: "positive", topic: "bed", source: "description", severity: "medium", quotes: ["King-size bed"] },
+      { text: "Çatı havuzu", polarity: "positive", topic: "facilities", source: "description", severity: "low", quotes: ["Rooftop pool with a view"] },
+    ],
+  };
+  const jardimReading = {
+    review_total: 1204,
+    reviews: [],
+    findings: [
+      { text: "Bahçe manzaralı oda", polarity: "positive", topic: "view", source: "description", severity: "low", quotes: ["Deluxe Double with Garden View"] },
+      { text: "Sessiz odalar", polarity: "positive", topic: "noise", source: "reviews", severity: "medium", quotes: ['Guest reviews: "Great location", "Quiet rooms"'] },
+    ],
+  };
   // Free geocoding and exchange rates, simulated (the worker calls them while processing).
   await flow.route("https://nominatim.openstreetmap.org/**", (route) => {
     const q = new URL(route.request().url()).searchParams.get("q") ?? "";
@@ -246,14 +300,23 @@ try {
     if (body.generationConfig?.responseJsonSchema) {
       const prompt = body.contents[0].parts.map((p) => p.text ?? "").join("");
       if (prompt.includes("<engine_result>")) {
-        // Decision analysis: a verdict in words plus a 0–10 fit score per option.
+        // Decision analysis: a verdict in words, a 0–10 fit score per option, and, once the pages
+        // have been read, Casa Azul ruled out on the construction finding (cited by id).
+        analysisPrompts.push(prompt);
         const options = JSON.parse(prompt.match(/<options>(.*)<\/options>/)[1]);
+        const casaOption = options.find((o) => o.name === "Casa Azul");
+        const construction = casaOption?.findings?.find((f) => f.id.startsWith("condition:negative:"));
         return route.fulfill(reply([{ text: JSON.stringify({
           verdict: "Jardim Stay merkezde ve yorumları tutarlı; Casa Azul daha ucuz ama dönüşü yokuş.",
           reasons: ["Merkeze 5 dk → akşam dönüşleri kolay"], tradeoffs: ["€45 daha pahalı"],
           risks: ["Casa Azul'un konumu rezervasyondan sonra netleşiyor"], question: "Akşamları geç mi döneceksiniz?",
           ai_scores: options.map((o) => ({ item_id: o.id, score: o.name === "Jardim Stay" ? 8 : 6, note: "test notu" })),
+          eliminations: construction ? [{ item_id: casaOption.id, reason: "Yan binada inşaat; sessizlik istiyorsun", finding_ids: [construction.id] }] : [],
         }) }]));
+      }
+      if (prompt.includes("<place>")) {
+        // The Reader: a close reading of one saved page.
+        return route.fulfill(reply([{ text: JSON.stringify(prompt.includes('"name":"Casa Azul"') ? casaReading : jardimReading) }]));
       }
       const casa = prompt.includes("Casa Azul");
       const bangkok = prompt.includes("Bangkok River Hotel");
@@ -300,7 +363,14 @@ try {
     // A second option for the same stay, so there is something to compare.
     tx.objectStore("captures").put({
       id: "flow-1b", kind: "extension", url: "https://www.airbnb.com/rooms/123?check_in=2026-10-08&check_out=2026-10-11&adults=2",
-      title: "Casa Azul", pageText: "Casa Azul\n€ 240 total\nFree cancellation before 5 October 2026\n4.8 · 96 reviews",
+      title: "Casa Azul",
+      pageText: [
+        "Casa Azul", "Entire flat in Bonfim · King-size bed · Fully equipped kitchen", "€ 240 total",
+        "Free cancellation before 5 October 2026", "4.8 · 96 reviews", "Reviews",
+        "Ana · September 2026", "Construction next door starts at 8 every morning, very noisy.",
+        "Pedro · August 2026", "The building work next to the flat was loud all day. Lovely host though.",
+        "Lena · August 2026", "Great Italian restaurant right downstairs, and the bed is huge.",
+      ].join("\n"),
       viewportText: "", selection: "", jsonLd: [], meta: {}, screenshot: null, capturedAt: Date.now() + 1, status: "pending", error: null, itemId: null,
     });
     await new Promise((resolve) => (tx.oncomplete = resolve));
@@ -317,6 +387,24 @@ try {
   assert.equal(extractionCall.body.generationConfig.responseMimeType, "application/json");
   await board.screenshot({ path: `${out}/8-flow-board.png` });
   console.log("✓ flow: capture → Gemini extraction (SDK request shape checked) → trip on the board");
+
+  // Each page is then read closely (any site): findings with the reviews behind them, counted by code.
+  const casaRow = board.locator("button.row", { hasText: "Casa Azul" });
+  await casaRow.locator(".reading", { hasText: "3 yorum incelendi (sitede 96)" }).waitFor({ timeout: 30000 });
+  await casaRow.locator(".pc-col.pros", { hasText: "Altında çok iyi bir İtalyan restoranı · 1 yorum" }).waitFor();
+  // Ruled out on that evidence by the analysis, which now sees the findings with their counts.
+  await casaRow.locator(".pc-line.decisive", { hasText: "Elendi: Yan binada inşaat; sessizlik istiyorsun" }).waitFor({ timeout: 30000 });
+  assert.ok(analysisPrompts.some((p) => p.includes("Yan binada inşaat gürültüsü") && p.includes('"count":2')), "analysis sees findings and counts");
+  await casaRow.click();
+  const casaDrawer = board.getByRole("dialog", { name: "Casa Azul" });
+  const unverifiedPool = casaDrawer.locator(".pc-line.unverified", { hasText: "Çatı havuzu" });
+  await unverifiedPool.getByText("sayfada doğrulanamadı").waitFor();
+  await casaDrawer.getByText("Sayfada bulunamayan 2 alıntı gösterilmedi.").waitFor(); // the invented review and quote
+  await casaDrawer.locator(".pc-line", { hasText: "Yan binada inşaat gürültüsü" }).getByRole("button", { name: "Kanıt" }).click();
+  await casaDrawer.locator("blockquote", { hasText: "The building work next to the flat was loud all day" }).waitFor();
+  await board.screenshot({ path: `${out}/8a-flow-reading.png` });
+  await casaDrawer.getByRole("button", { name: "Kapat" }).click();
+  console.log("✓ flow: pages read closely → verified findings with counts; invented quotes dropped; ruled out with evidence");
 
   // Two stays → the engine ranks them and the worker asks Gemini for the written analysis.
   await board.locator(".decision-card").getByRole("button", { name: "Karşılaştır →" }).click({ timeout: 20000 });

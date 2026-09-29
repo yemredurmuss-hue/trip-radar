@@ -3,9 +3,23 @@
 // everything else - normalisation, weights, ranking, reasons - is computed here and explainable.
 import { convert, type Rates } from "./currency";
 import { distanceKm, formatDistance, walkingMinutes } from "./geo";
-import { formatPrice, metricsOf, nightsBetween, tripDateRange } from "./items";
+import { formatPrice, listingKeyOf, metricsOf, nightsBetween, tripDateRange } from "./items";
+import { acceptKey, evidenceOf, isDecisive } from "./listing";
 import { buildPlan, groupKeyOf, liveGroups } from "./plan";
-import type { Amenity, Analysis, Category, CriterionId, Item, ItemMetrics, PriorityLevel, Requirement, Trip } from "./types";
+import type {
+  Amenity,
+  Analysis,
+  Category,
+  CriterionId,
+  Finding,
+  FindingTopic,
+  Item,
+  ItemMetrics,
+  Listing,
+  PriorityLevel,
+  Requirement,
+  Trip,
+} from "./types";
 
 export const CRITERION_LABELS: Record<CriterionId, string> = {
   price: "Fiyat",
@@ -20,6 +34,7 @@ export const CRITERION_LABELS: Record<CriterionId, string> = {
   baggage: "Bagaj",
   data: "Veri miktarı",
   validity: "Geçerlilik",
+  details: "Yorum ve detaylar",
   ai: "AI değerlendirmesi",
 };
 
@@ -28,16 +43,16 @@ const LEVEL_WEIGHT = [0, 0.5, 1, 2, 3];
 
 /** Which criteria apply to a category, and how much they matter by default. */
 export const DEFAULT_LEVELS: Record<Category, Partial<Record<CriterionId, PriorityLevel>>> = {
-  stay: { price: 3, location: 3, rating: 2, comfort: 2, cancellation: 2, amenities: 2, ai: 1 },
+  stay: { price: 3, location: 3, rating: 2, comfort: 2, cancellation: 2, amenities: 2, details: 2, ai: 1 },
   flight: { price: 3, duration: 2, stops: 2, schedule: 2, baggage: 2, cancellation: 1, ai: 1 },
-  activity: { price: 2, rating: 3, location: 2, cancellation: 1, ai: 1 },
-  food: { rating: 3, location: 2, price: 1, ai: 1 },
+  activity: { price: 2, rating: 3, location: 2, cancellation: 1, details: 2, ai: 1 },
+  food: { rating: 3, location: 2, price: 1, details: 2, ai: 1 },
   esim: { price: 3, data: 3, validity: 3, rating: 1, ai: 1 },
-  transport: { price: 3, duration: 2, cancellation: 1, ai: 1 },
-  other: { price: 2, rating: 2, location: 1, ai: 1 },
+  transport: { price: 3, duration: 2, cancellation: 1, details: 1, ai: 1 },
+  other: { price: 2, rating: 2, location: 1, details: 1, ai: 1 },
 };
 
-/** Without these a category can't be scored fairly (e.g. a stay without a price). */
+/** Without these an option's score is provisional (e.g. a stay without a price): ranked after complete ones. */
 const REQUIRED: Partial<Record<Category, CriterionId[]>> = { stay: ["price"], flight: ["price"], esim: ["price"], transport: ["price"] };
 
 /** Soft signals read from what the traveller saves and chooses: ±1 step on a default, with why. */
@@ -116,6 +131,8 @@ export interface DecisionContext {
   preferences: string[];
   /** Priority nudges inferred from saves and choices (see intent.ts). */
   inferred: Inferred;
+  /** What was read on each place's pages, by listing key (see listing.ts). */
+  listings: Map<string, Listing>;
   today: string;
 }
 
@@ -131,6 +148,7 @@ export function makeContext(
     analyses?: Analysis[];
     preferences?: string[];
     inferred?: Inferred;
+    listings?: Map<string, Listing>;
     today?: string;
   } = {},
 ): DecisionContext {
@@ -148,6 +166,7 @@ export function makeContext(
     analyses: new Map((extra.analyses ?? []).map((a) => [a.needKey, a])),
     preferences: extra.preferences ?? [],
     inferred: extra.inferred ?? new Map(),
+    listings: extra.listings ?? new Map(),
     today: extra.today ?? new Date().toISOString().slice(0, 10),
   };
 }
@@ -363,6 +382,27 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
         absolute: value,
       };
     }
+    case "details": {
+      // What the Reader found on the place's pages, weighed by code: verified findings only, old
+      // ones count little, and ones the traveller accepted ("sorun değil") don't count against it.
+      const listing = ctx.listings.get(listingKeyOf(item));
+      if (!listing?.readAt) return null;
+      const counted = listing.findings.filter((f) => f.verified);
+      if (!counted.length) return null;
+      const accepted = new Set(ctx.trip.acceptedFindings ?? []);
+      let plus = 0;
+      let minus = 0;
+      for (const f of counted) {
+        if (f.polarity === "negative" && accepted.has(acceptKey(listing.key, f))) continue;
+        const w = findingWeight(f, listing, ctx.today);
+        if (f.polarity === "positive") plus += w;
+        else minus += w;
+      }
+      const value = clamp01(0.5 + (plus - minus) / (2 * Math.max(6, plus + minus)));
+      const pros = counted.filter((f) => f.polarity === "positive").length;
+      const cons = counted.length - pros;
+      return { value, display: `${pros} artı · ${cons} eksi`, mode: "absolute", absolute: value };
+    }
     case "ai": {
       if (!analysis || analysis.error) return null;
       const judged = analysis?.aiScores.find((s) => s.itemId === item.id);
@@ -372,6 +412,40 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
     }
   }
 }
+
+const SEVERITY_WEIGHT = { high: 3, medium: 2, low: 1 } as const;
+
+/** How much a finding counts: severity, how many reviews say it (a little), and whether it's old. */
+export function findingWeight(f: Finding, listing: Listing, today: string): number {
+  const evidence = evidenceOf(f, listing, today);
+  const backing = 1 + Math.min(evidence.count, 10) / 10;
+  return SEVERITY_WEIGHT[f.severity] * backing * (evidence.stale ? 0.3 : 1);
+}
+
+/** The criterion a finding's topic speaks to, for how much it matters to this traveller. */
+export const TOPIC_CRITERION: Record<FindingTopic, CriterionId> = {
+  location: "location",
+  nearby: "location",
+  transport: "location",
+  safety: "location",
+  cleanliness: "comfort",
+  comfort: "comfort",
+  bed: "comfort",
+  noise: "comfort",
+  space: "comfort",
+  view: "comfort",
+  staff: "comfort",
+  host: "comfort",
+  food: "comfort",
+  condition: "comfort",
+  check_in: "comfort",
+  accuracy: "comfort",
+  amenities: "amenities",
+  facilities: "amenities",
+  access: "amenities",
+  value: "price",
+  other: "details",
+};
 
 /** Where "location" is measured from: the places saved on the trip, else the chosen stay, else the centre. */
 function locationAnchors(item: Item, ctx: DecisionContext): { label: string; points: { lat: number; lng: number }[] } {
@@ -466,6 +540,10 @@ export interface OptionResult {
   unmet: string[];
   /** Requirements the page didn't answer; worth checking before booking. */
   unsure: string[];
+  /** Ruled out for this traveller by the assistant, citing findings still on record and not accepted. */
+  eliminated: { reason: string; findings: Finding[] } | null;
+  /** Scored without something it needs (e.g. no price yet): provisional, ranked after complete options. */
+  limited: string[];
 }
 
 export interface Reason {
@@ -496,6 +574,13 @@ export interface GroupDecision {
   analysis: Analysis | null;
   /** The last AI analysis attempt for these exact inputs failed. */
   analysisFailure: { error: string; at: number } | null;
+  /**
+   * The last good analysis when it was made for earlier inputs: shown with its date while a new one
+   * is pending, so a busy model doesn't make the advice disappear.
+   */
+  staleAnalysis: Analysis | null;
+  /** Eliminations the assistant proposed that the evidence doesn't back: shown as "kontrol gerekiyor". */
+  checks: { itemId: string; reason: string }[];
 }
 
 const MIN_CONFIDENCE = 0.6;
@@ -504,16 +589,47 @@ const TIE_POINTS = 2;
 /**
  * Two passes: without AI scores first (that result's hash identifies the inputs); the cached AI
  * analysis is used only if it was made for exactly these inputs, so a stale AI note never counts.
+ * Eliminations are different: they rest on findings about a place, so they hold while those findings
+ * do, whatever else changed in the group.
  */
 export function decideGroup(groupItems: Item[], ctx: DecisionContext, key = groupItems[0] ? groupKeyOf(groupItems[0]) : ""): GroupDecision {
-  const plain = decideWith(groupItems, ctx, key, null);
-  const analysis = ctx.analyses.get(key);
-  if (!analysis || analysis.inputHash !== plain.inputHash) return plain;
-  if (analysis.error) return { ...plain, analysisFailure: { error: analysis.error, at: analysis.createdAt } };
-  return { ...decideWith(groupItems, ctx, key, analysis), inputHash: plain.inputHash, analysis };
+  const record = ctx.analyses.get(key) ?? null;
+  const plain = decideWith(groupItems, ctx, key, null, record);
+  if (!record) return plain;
+  // A record with only an error is a failure; anything else holds a usable analysis.
+  const good = record.verdict || !record.error ? record : null;
+  if (good && good.inputHash === plain.inputHash) {
+    return { ...decideWith(groupItems, ctx, key, good, record), inputHash: plain.inputHash, analysis: good };
+  }
+  const failedFor = record.error ? (record.errorHash ?? record.inputHash) : null;
+  return {
+    ...plain,
+    analysisFailure: failedFor === plain.inputHash ? { error: record.error!, at: record.errorAt ?? record.createdAt } : null,
+    staleAnalysis: good,
+  };
 }
 
-function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analysis: Analysis | null): GroupDecision {
+/** The assistant's eliminations that the evidence still backs, and the ones to show as "kontrol gerekiyor". */
+function eliminationsOf(record: Analysis | null, eligible: Item[], ctx: DecisionContext) {
+  const byItem = new Map<string, NonNullable<OptionResult["eliminated"]>>();
+  const checks: GroupDecision["checks"] = [];
+  const accepted = new Set(ctx.trip.acceptedFindings ?? []);
+  for (const e of record?.eliminations ?? []) {
+    const item = eligible.find((i) => i.id === e.itemId);
+    if (!item) continue;
+    const listing = ctx.listings.get(listingKeyOf(item));
+    const cited = listing ? e.findingIds.map((id) => listing.findings.find((f) => f.id === id)).filter((f): f is Finding => Boolean(f)) : [];
+    const open = cited.filter((f) => !accepted.has(acceptKey(listing!.key, f)));
+    // The traveller said every cited finding is fine: nothing left to say.
+    if (cited.length && !open.length) continue;
+    const backing = open.filter((f) => isDecisive(f, listing!, ctx.today));
+    if (backing.length) byItem.set(item.id, { reason: e.reason, findings: backing });
+    else checks.push({ itemId: item.id, reason: e.reason });
+  }
+  return { byItem, checks };
+}
+
+function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analysis: Analysis | null, record: Analysis | null = analysis): GroupDecision {
   const category = groupItems[0]?.category ?? "other";
   const active = groupItems.filter((i) => i.status !== "dismissed");
 
@@ -563,12 +679,17 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
   };
 
   const required = REQUIRED[category] ?? [];
+  const { byItem: eliminated, checks } = eliminationsOf(record, eligible, ctx);
   let options: OptionResult[] = eligible.map((item) => {
     const s = score(item.id);
     const missing = s.parts.filter((p) => p.s == null).map((p) => p.label.toLowerCase());
-    const lacksRequired = required.some((c) => !measures.get(item.id)!.get(c));
-    const scorable = s.confidence >= MIN_CONFIDENCE && !lacksRequired && criteria.length > 0;
-    for (const c of required) if (!measures.get(item.id)!.get(c) && !missing.includes(CRITERION_LABELS[c].toLowerCase())) missing.unshift(CRITERION_LABELS[c].toLowerCase());
+    // Missing information limits the verdict instead of stopping it: the option is scored on what is
+    // known and ranked after complete ones until the rest arrives.
+    const lacking = required.filter((c) => !measures.get(item.id)!.get(c));
+    for (const c of lacking) if (!missing.includes(CRITERION_LABELS[c].toLowerCase())) missing.unshift(CRITERION_LABELS[c].toLowerCase());
+    // A price in another currency with no exchange rate is known, just not comparable yet.
+    const limited = lacking.map((c) => (c === "price" && item.price.amount != null ? "kur bilgisi" : CRITERION_LABELS[c].toLowerCase()));
+    const scorable = s.confidence >= MIN_CONFIDENCE && criteria.length > 0;
     const unmet: string[] = [];
     const unsure: string[] = [];
     for (const r of ctx.trip.requirements ?? []) {
@@ -586,21 +707,47 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
       dominatedBy: null,
       unmet,
       unsure,
+      eliminated: eliminated.get(item.id) ?? null,
+      limited: scorable ? limited : [],
     };
   });
-  // Scored options that meet every requirement first, then scored ones that don't, then unscored.
-  const tier = (o: OptionResult) => (o.score == null ? 2 : o.unmet.length ? 1 : 0);
+  // Complete, compliant options first; then provisional ones; then ones that fail a requirement or
+  // were ruled out for this traveller; unscorable last.
+  const tier = (o: OptionResult) => (o.score == null ? 3 : o.unmet.length || o.eliminated ? 2 : o.limited.length ? 1 : 0);
   options.sort((a, b) => tier(a) - tier(b) || (b.score ?? -1) - (a.score ?? -1));
   markDominated(options.filter((o) => o.score != null));
   options = [
     ...options,
-    ...active
-      .filter((i) => excluded.has(i.id))
-      .map((item) => ({ item, score: null, confidence: 0, parts: [], missing: [], excluded: excluded.get(item.id)!, dominatedBy: null, unmet: [], unsure: [] })),
+    ...active.filter((i) => excluded.has(i.id)).map(
+      (item): OptionResult => ({
+        item,
+        score: null,
+        confidence: 0,
+        parts: [],
+        missing: [],
+        excluded: excluded.get(item.id)!,
+        dominatedBy: null,
+        unmet: [],
+        unsure: [],
+        eliminated: null,
+        limited: [],
+      }),
+    ),
   ];
 
   const scored = options.filter((o) => o.score != null);
-  const base = { key, category, options, criteria, inputHash: hashInputs(category, options, ctx), analysis: null, analysisFailure: null, unless: [] };
+  const base = {
+    key,
+    category,
+    options,
+    criteria,
+    inputHash: hashInputs(category, options, ctx),
+    analysis: null,
+    analysisFailure: null,
+    staleAnalysis: null,
+    checks,
+    unless: [],
+  };
   if (eligible.length === 1) {
     return { ...base, status: "single", winner: null, runnerUp: null, reasons: [], tradeoffs: [], flips: [], summary: "Karşılaştırmak için bu ihtiyaca bir seçenek daha kaydet." };
   }
@@ -620,15 +767,26 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
 
   const [first, second] = scored;
   const { reasons, tradeoffs } = explain(first, second);
-  // Options failing a requirement can't be crowned by a change of weights either.
-  const contenders = first.unmet.length ? scored : scored.filter((o) => !o.unmet.length);
+  // Options failing a requirement or ruled out can't be crowned by a change of weights either.
+  const out = (o: OptionResult) => o.unmet.length > 0 || o.eliminated != null;
+  const contenders = out(first) ? scored : scored.filter((o) => !out(o));
   const flips = sensitivity(first, contenders, criteria, score);
   const unless = whatIfNot(first, contenders, criteria, score);
   const failing = scored.filter((o) => o.unmet.length);
-  const failNote = failing.length
-    ? ` ${failing.map((o) => o.item.name).join(", ")} şartına uymuyor (${[...new Set(failing.flatMap((o) => o.unmet))].join(", ")}).`
-    : "";
-  if (first.score! - second.score! < TIE_POINTS) {
+  const ruledOut = scored.filter((o) => o.eliminated && !o.unmet.length);
+  const provisional = scored.filter((o) => o.limited.length && !out(o));
+  const failNote = [
+    failing.length ? `${failing.map((o) => o.item.name).join(", ")} şartına uymuyor (${[...new Set(failing.flatMap((o) => o.unmet))].join(", ")}).` : null,
+    ...ruledOut.map((o) => `${o.item.name} elendi: ${o.eliminated!.reason}.`),
+    provisional.length
+      ? `${provisional.map((o) => o.item.name).join(", ")}: ${[...new Set(provisional.flatMap((o) => o.limited))].join(", ")} eksik, gelince yeniden tartılır.`
+      : null,
+  ]
+    .filter(Boolean)
+    .map((t) => ` ${t}`)
+    .join("");
+  // Only options on the same footing can tie: a complete option isn't "level" with a provisional or ruled-out one.
+  if (tier(first) === tier(second) && first.score! - second.score! < TIE_POINTS) {
     return {
       ...base,
       status: "tie",
@@ -665,8 +823,10 @@ const SAME = 0.02; // sub-scores this close count as equal
 function markDominated(scored: OptionResult[]): void {
   for (const b of scored) {
     for (const a of scored) {
-      // An option that breaks a requirement can't make another one redundant.
-      if (a === b || (a.unmet.length && !b.unmet.length)) continue;
+      // An option that breaks a requirement or was ruled out can't make another one redundant.
+      const outA = a.unmet.length > 0 || a.eliminated != null;
+      const outB = b.unmet.length > 0 || b.eliminated != null;
+      if (a === b || (outA && !outB)) continue;
       let common = 0;
       let better = false;
       let worse = false;
@@ -789,6 +949,8 @@ function advantageText(p: Part, w: Part, currency: string): string | null {
       return "daha çok veri";
     case "validity":
       return "daha uzun geçerli";
+    case "details":
+      return "yorum ve detaylarda daha iyi";
     case "ai":
       return "AI değerlendirmesi daha olumlu";
   }
@@ -851,7 +1013,10 @@ function hashInputs(category: Category, options: OptionResult[], ctx: DecisionCo
       r: o.item.reviewSummary,
       c: o.item.concerns,
       h: o.item.highlights,
+      // What was read about the place: new findings are new evidence for the analysis.
+      f: ctx.listings.get(listingKeyOf(o.item))?.findings.map((f) => (f.verified ? f.id : `?${f.id}`)) ?? null,
     })),
+    acc: (ctx.trip.acceptedFindings ?? []).filter((k) => options.some((o) => k.startsWith(`${listingKeyOf(o.item)}#`))),
   });
   let h = 5381;
   for (let i = 0; i < input.length; i++) h = ((h << 5) + h + input.charCodeAt(i)) | 0;

@@ -197,16 +197,66 @@ export function buildItem(
   };
 }
 
-export function findDuplicate(existing: Item[], candidate: Item): Item | undefined {
-  if (candidate.key) return existing.find((i) => i.key === candidate.key);
-  const name = normalize(candidate.name);
-  return existing.find(
-    (i) => i.tripId === candidate.tripId && i.category === candidate.category && normalize(i.name) === name,
-  );
+/**
+ * The place an item is an offer for (hotel, flat, tour...): what is read about it is shared by every
+ * offer of it. Items without a canonical key are their own place.
+ */
+export const listingKeyOf = (item: Pick<Item, "key" | "id">): string => item.key ?? `item:${item.id}`;
+
+/**
+ * An offer is a place for particular dates (and room, when the page names one): saving the same
+ * hotel for 7–10 and then for 10–14 gives two items, not one overwritten by the other.
+ */
+function sameOffer(a: Item, b: Item): boolean {
+  if (a.dates.start && b.dates.start && (a.dates.start !== b.dates.start || a.dates.end !== b.dates.end)) return false;
+  if (a.optionDetail && b.optionDetail && normalize(a.optionDetail) !== normalize(b.optionDetail)) return false;
+  return true;
+}
+
+export interface Duplicate {
+  item: Item;
+  /**
+   * The capture only refreshes what is known about the place: it had no dates while the offer has
+   * some (a dateless page's "from" price must not replace the price for the chosen nights).
+   */
+  placeOnly: boolean;
+}
+
+export function findDuplicate(existing: Item[], candidate: Item): Duplicate | undefined {
+  const samePlace = candidate.key
+    ? existing.filter((i) => i.key === candidate.key)
+    : existing.filter((i) => i.tripId === candidate.tripId && i.category === candidate.category && normalize(i.name) === normalize(candidate.name));
+  if (!samePlace.length) return undefined;
+  const newest = (list: Item[]) => [...list].sort((a, b) => b.updatedAt - a.updatedAt)[0];
+  if (candidate.dates.start) {
+    const exact = samePlace.filter((i) => i.dates.start === candidate.dates.start && i.dates.end === candidate.dates.end && sameOffer(i, candidate));
+    if (exact.length) return { item: newest(exact), placeOnly: false };
+    // A dateless save of this place gains its dates now.
+    const dateless = samePlace.filter((i) => !i.dates.start && sameOffer(i, candidate));
+    return dateless.length ? { item: newest(dateless), placeOnly: false } : undefined;
+  }
+  const dateless = samePlace.filter((i) => !i.dates.start && sameOffer(i, candidate));
+  if (dateless.length) return { item: newest(dateless), placeOnly: false };
+  return { item: newest(samePlace), placeOnly: true };
 }
 
 /** Newer capture wins for facts it actually has; the user's decisions (status, notes) are kept. */
-export function mergeItem(existing: Item, incoming: Item): Item {
+export function mergeItem(existing: Item, incoming: Item, placeOnly = false): Item {
+  if (placeOnly) {
+    // Only what describes the place; dates, guests, price and conditions stay the offer's own.
+    const merged = mergeItem(existing, incoming);
+    return {
+      ...merged,
+      optionDetail: existing.optionDetail,
+      dates: existing.dates,
+      guests: existing.guests,
+      price: existing.price,
+      priceHistory: existing.priceHistory,
+      cancellation: existing.cancellation,
+      summary: existing.summary,
+      missing: existing.missing,
+    };
+  }
   const pick = <T>(next: T | null | undefined, prev: T): T => (next == null || next === "" ? prev : next);
   const priceChanged =
     incoming.price.amount != null &&

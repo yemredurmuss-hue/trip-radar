@@ -105,13 +105,25 @@ describe("decideGroup", () => {
     expect(back.flips.some((f) => f.criterion === "location" && f.winner === "Jardim Stay")).toBe(true);
   });
 
-  it("does not score options without the essentials and says what is missing", () => {
+  it("scores an option without its price provisionally, after complete ones, and says what is missing", () => {
     const { jardim } = portoStays();
-    const noPrice = item("Mystery Loft", { rating: rating(9, 10, 50) });
+    const noPrice = item("Mystery Loft", { rating: rating(9.6, 10, 800) });
     const d = decideGroup([jardim, noPrice], makeContext(trip(), [jardim, noPrice]));
+    const mystery = d.options.find((o) => o.item.name === "Mystery Loft")!;
+    expect(mystery.score).not.toBeNull();
+    expect(mystery.limited).toEqual(["fiyat"]);
+    expect(mystery.missing[0]).toBe("fiyat");
+    // Missing information limits the verdict instead of stopping it.
+    expect(d.status).toBe("ok");
+    expect(d.winner?.item.name).toBe("Jardim Stay");
+    expect(d.summary).toContain("Mystery Loft: fiyat eksik, gelince yeniden tartılır.");
+  });
+
+  it("still says what is missing when too little is known to score", () => {
+    const bare = (name: string) => item(name, { price: { amount: null, currency: null, scope: "unknown", taxesIncluded: "unknown", source: "none", observedAt: 0 } });
+    const d = decideGroup([bare("A"), bare("B")], makeContext(trip(), []));
     expect(d.status).toBe("insufficient");
-    expect(d.options.find((o) => o.item.name === "Mystery Loft")!.score).toBeNull();
-    expect(d.options.find((o) => o.item.name === "Mystery Loft")!.missing[0]).toBe("fiyat");
+    expect(d.options.every((o) => o.score == null)).toBe(true);
   });
 
   it("handles a single option and ties honestly", () => {
@@ -141,7 +153,10 @@ describe("decideGroup", () => {
     expect(lira.parts.find((p) => p.criterion === "price")!.display).toBe("€225 (₺9.000)");
     expect(d.winner?.item.name).toBe("Lira Hotel");
     const noRates = decideGroup([eur, tl], makeContext(trip({ budget: { amount: 1500, currency: "EUR" } }), [eur, tl]));
-    expect(noRates.options.find((o) => o.item.name === "Lira Hotel")!.score).toBeNull();
+    const provisional = noRates.options.find((o) => o.item.name === "Lira Hotel")!;
+    expect(provisional.limited).toEqual(["kur bilgisi"]);
+    expect(noRates.options[0].item.name).toBe("Euro Hotel");
+    expect(noRates.summary).toContain("Lira Hotel: kur bilgisi eksik");
   });
 
   it("scores flights on stops, times and baggage", () => {

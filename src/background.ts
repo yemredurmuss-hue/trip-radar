@@ -8,6 +8,7 @@ import {
   retryTransientFailures,
   reverifyFacts,
 } from "./lib/process";
+import { isReading, readingsDue, readPending } from "./lib/reader";
 import { updateWaiting } from "./lib/update";
 
 let recovery: Promise<void> | null = null;
@@ -28,7 +29,9 @@ function run(): Promise<void> {
     recovery ??= recoverStuck().then(() => rehomeFromDemoTrips()).then(() => reverifyFacts());
     await recovery;
     await processPending();
-    // New options change the comparisons: refresh the AI review of affected groups.
+    // Then read each new page closely (reviews, description, rules) before judging the options.
+    await readPending();
+    // New options and new findings change the comparisons: refresh the AI review of affected groups.
     await analyzeStale();
   });
 }
@@ -40,6 +43,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
   if (message?.type === "analyze") {
     void keepingAlive(() => analyzeStale({ force: Boolean(message.force) }));
+    sendResponse({ ok: true });
+  }
+  if (message?.type === "read") {
+    void keepingAlive(async () => {
+      await readPending({ force: Boolean(message.force) });
+      await analyzeStale();
+    });
     sendResponse({ ok: true });
   }
   if (message?.type === "apply-update") {
@@ -59,7 +69,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 // New files on disk (written by the Mac updater) are applied by reloading. If the board is open,
 // it shows a "new version" banner instead so nothing typed gets lost; a capture in progress waits.
 async function applyUpdateIfIdle(): Promise<void> {
-  if (!(await updateWaiting()) || isProcessing() || isAnalyzing()) return;
+  if (!(await updateWaiting()) || isProcessing() || isReading() || isAnalyzing()) return;
   const openPages = await chrome.runtime.getContexts({
     contextTypes: [chrome.runtime.ContextType.TAB, chrome.runtime.ContextType.POPUP],
   });
@@ -67,13 +77,15 @@ async function applyUpdateIfIdle(): Promise<void> {
 }
 
 chrome.alarms.create("update-check", { periodInMinutes: 10 });
-// A busy model ("high demand") or a rate limit shouldn't need a click: try those captures again.
+// A busy model ("high demand") or a rate limit shouldn't need a click: try again later.
 chrome.alarms.create("retry-failed", { periodInMinutes: 10 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "update-check") void applyUpdateIfIdle();
   if (alarm.name === "retry-failed") {
-    void retryTransientFailures().then((count) => {
-      if (count && !isProcessing()) void run();
+    // Only when something is actually waiting: re-queued captures, or readings whose retry time has come.
+    // (A failed analysis is retried when the board asks, so a spent quota isn't hammered in the background.)
+    void Promise.all([retryTransientFailures(), readingsDue()]).then(([requeued, due]) => {
+      if ((requeued || due) && !isProcessing() && !isReading()) void run();
     });
   }
 });

@@ -146,4 +146,39 @@ describe("assistant", () => {
     expect(calls[2].messages).toHaveLength(1);
     expect(JSON.stringify(calls[2].messages[0].content)).toContain("trip_state");
   });
+
+  it("searches a saved page for a detail the reading didn't cover, and shows the reading's pros and cons", async () => {
+    const d = await db();
+    await d.put("captures", {
+      id: "cap-b", kind: "extension", url: "https://www.airbnb.com/rooms/9", title: "Casa Azul",
+      pageText: "Casa Azul\nWhat this place offers\nKitchen · Washer\nNot included: TV\nCheck-in after 15:00",
+      viewportText: "", selection: "", jsonLd: [], meta: {}, screenshot: null, capturedAt: 1, status: "done", error: null, itemId: "b",
+    });
+    const casa = (await d.get("items", "b"))!;
+    await d.put("items", { ...casa, captureIds: ["cap-b"], key: "airbnb:9" });
+    await d.put("listings", {
+      key: "airbnb:9", name: "Casa Azul", reviewTotal: 96, readCaptureIds: ["cap-b"], readAt: 1, dropped: 0, error: null, errorAt: null, updatedAt: 1,
+      reviews: [{ id: "r1", text: "Great Italian restaurant next door", date: "2026-09", captureId: "cap-b" }],
+      findings: [
+        { id: "nearby:positive:1", text: "Yanında çok iyi bir İtalyan restoranı", polarity: "positive", topic: "nearby", source: "reviews", severity: "medium", reviewIds: ["r1"], quotes: [], verified: true },
+      ],
+    });
+    const { client, calls } = fakeClient([
+      {
+        stop_reason: "tool_use",
+        content: [
+          { type: "tool_use", id: "s1", name: "search_page", input: { item_id: "b", words: ["TV", "televizyon"] }, caller: { type: "direct" } },
+          { type: "tool_use", id: "s2", name: "search_page", input: { item_id: "b", words: ["havuz", "pool"] }, caller: { type: "direct" } },
+        ] as Anthropic.ContentBlock[],
+      },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Sayfada 'Not included: TV' yazıyor.", citations: null }] as Anthropic.ContentBlock[] },
+    ]);
+    await sendMessage("t1", "Casa Azul'da TV var mı?", anthropicProvider(client, "claude-opus-5"));
+    const state = JSON.stringify(calls[0].messages.at(-1)!.content);
+    expect(state).toContain("Yanında çok iyi bir İtalyan restoranı (1 yorum · en yenisi Eyl 2026)");
+    expect(state).toContain("1 yorum incelendi (sitede 96)");
+    const [tv, pool] = calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[];
+    expect(String(tv.content)).toContain("Not included: TV");
+    expect(String(pool.content)).toContain("Kaydedilen sayfada geçmiyor");
+  });
 });

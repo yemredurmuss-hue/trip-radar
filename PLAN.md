@@ -28,7 +28,12 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
       (geri alınabilir), şehirler arası eksik ulaşım uyarısı, aynı gecelere göre karşılaştırma, "elenebilir" (`src/lib/plan.ts`)
 - [x] 0.8: niyet profili (söylenen + kaydedilenlerden/seçimlerden sezilen, kaynağıyla, yok sayılabilir),
       kesin şartlar, "değer mi?" karar kartı (somut birimle fark, "ama … ise", kalan bütçe) (`intent.ts`, `value.ts`)
-- [ ] 0.9: hafızalı yargıç (yeni gelen yalnız liderle tartılır), açık sekmeleri toplu kaydetme
+- [x] 0.9: her sayfa (her site) baştan sona okunur; bulgular kanıtıyla (yorum alıntısı, tarih) saklanır,
+      sayımı kod yapar, sayfada olmayan alıntı atılır, eski yorum karar vermez (`reader.ts`, `listing.ts`);
+      her kayıtta solda artılar / sağda eksiler (`proscons.ts`); kanıta dayalı eleme ve "sorun değil";
+      ilan ≠ teklif (farklı tarih/oda üstüne yazmaz); eksik fiyat kararı durdurmaz; tanı dosyası
+- [ ] 0.10: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
+      açık sekmeleri toplu kaydetme (booking.com / airbnb izni gerekir), yeni gelen için "2. sırada, çünkü…" notu
 - [ ] İlk gerçek gezide kullanım: 20–50 gerçek kayıt, hangi alanların yanlış/eksik geldiğini not et
 
 ## v1: Telefon
@@ -46,3 +51,5 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - Mobil uygulama paylaşım linkleri tarih taşıyor mu?
 - Varsayılan önemler (konaklamada fiyat ve konum "önemli") gerçek kararlarımla örtüşüyor mu?
 - Gemini ücretsiz modeli gerçek sayfalarda fiyat/iptal/oda bilgisini ne kadar doğru çıkarıyor? Günlük sınır yetiyor mu?
+- Okuyucu gerçek Booking/Airbnb/tur sayfalarında yorumları birebir alıntılayabiliyor mu, kaç yorum görünüyor?
+  (Tanı dosyasından gerçek sayfalarla test seti kurulacak.)
