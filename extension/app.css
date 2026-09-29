@@ -1,6 +1,6 @@
 :root {
   --text: #111114;
-  --muted: #86868b;
+  --muted: #6b665f;
   --line: #ececef;
   --soft: #f4f4f6;
   --accent: #1768ff;
@@ -52,7 +52,7 @@ a { color: var(--accent); text-decoration: none; }
 .choices .btn-link { font-size: 14.5px; }
 .choices { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
 .btn-primary, .primary {
-  background: var(--accent); color: #fff; border: 0; border-radius: 16px; padding: 14px 28px; font-size: 17px;
+  background: var(--ink); color: #fff; border: 0; border-radius: 16px; padding: 14px 28px; font-size: 17px;
 }
 .btn-link { background: none; border: 0; color: var(--accent); font-size: 17px; padding: 0; }
 .thinking { color: var(--muted); font-size: 15px; }
@@ -340,17 +340,6 @@ body.popup { width: 320px; }
 .row.closed .row-name { color: #6e6e73; }
 
 /* ---------- decision card & intent ---------- */
-.decision-card { margin: 8px 4px 6px; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); line-height: 1.45; }
-.decision-card.tie { background: #f6f3ff; }
-.dc-head { display: flex; align-items: center; gap: 8px; font-size: 16px; }
-.dc-kicker { font-size: 12px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .03em; }
-.decision-card.tie .dc-kicker { color: #6b3fd4; }
-.decision-card p { margin: 6px 0 0; font-size: 14.5px; color: #26262a; }
-.dc-unless { color: #3a3a3c; }
-.dc-budget { color: #6e6e73 !important; font-size: 13.5px !important; }
-.dc-check { color: var(--warning) !important; font-size: 13.5px !important; }
-.dc-actions { display: flex; gap: 16px; align-items: center; margin-top: 10px; font-size: 14px; }
-.dc-choose { background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 7px 14px; font-size: 14px; }
 .verdict-because { margin-top: 6px; font-size: 15px; }
 .intent-card { margin: 14px 0 4px; border: 1px solid var(--line); border-radius: 14px; font-size: 14px; }
 .intent-card.empty { padding: 10px 14px; color: #6e6e73; border-style: dashed; }
@@ -360,7 +349,6 @@ body.popup { width: 320px; }
 .intent-list { list-style: none; margin: 0; padding: 0 14px 10px; }
 .intent-list li { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--line); line-height: 1.4; }
 .intent-remove { background: var(--soft); border: 0; border-radius: 50%; width: 24px; height: 24px; flex: none; color: #6e6e73; }
-.dc-chosen { color: var(--success) !important; }
 .level-note { font-size: 11.5px; font-weight: 400; margin-top: 3px; }
 
 /* ---------- pros & cons, evidence ---------- */
@@ -391,7 +379,6 @@ body.popup { width: 320px; }
 .pc-actions .link-btn { font-size: 12.5px; padding: 0; }
 .quotes { margin-top: 4px; }
 .quotes blockquote { margin: 4px 0; padding: 4px 8px; border-left: 3px solid var(--line); background: #fafafa; font-size: 12.5px; color: #3a3a3c; border-radius: 0 6px 6px 0; }
-.dc-out { color: var(--danger) !important; font-size: 13.5px !important; }
 .pc-row td { vertical-align: top; }
 @media (max-width: 700px) {
   .pc { grid-template-columns: 1fr; }
@@ -548,7 +535,6 @@ body.popup { width: 320px; }
 .timeline .stay-block { margin: 0; padding: 0; border: 0; background: none; }
 .timeline .group.nested { border: 0; }
 .timeline .group-head { padding: 0 4px 6px; }
-.timeline .decision-card { margin: 4px 0 6px; border-radius: 22px; }
 .timeline .tl-travel .leg { margin-bottom: 10px; }
 @media (max-width: 700px) {
   .tl-entry { grid-template-columns: 1fr; gap: 10px; }
@@ -624,11 +610,11 @@ body.popup { width: 320px; }
 .cd-verdict { margin: 0; padding: 10px 12px; border-radius: 12px; background: #f5f1fb; color: var(--ink); font-weight: 600; }
 .cd-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 16px; margin: 0; }
 .cd-facts div { min-width: 0; }
-.cd-facts dt { font-size: 12.5px; color: #86868b; }
+.cd-facts dt { font-size: 12.5px; color: var(--muted); }
 .cd-facts dd { margin: 1px 0 0; color: var(--text); overflow-wrap: anywhere; }
 .cd-list h4 { margin: 0 0 4px; font-size: 13px; letter-spacing: .02em; }
 .cd-list.pros h4 { color: var(--success); }
-.cd-list.cons h4 { color: var(--warning); }
+.cd-list.cons h4 { color: var(--danger); }
 .cd-list ul { margin: 0; padding-left: 18px; }
 .cd-list li { margin: 2px 0; }
 .cd-list li.strong { color: var(--danger); font-weight: 600; }
@@ -641,16 +627,16 @@ body.popup { width: 320px; }
 .sc-pc { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-height: 104px; padding-top: 8px; border-top: 1px solid #f1ede7; }
 .sc-col { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .sc-col li { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; line-height: 1.3; }
-.sc-col li span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.sc-col li > span { min-width: 0; overflow-wrap: anywhere; }
 .sc-col li i {
   flex: none; display: grid; place-items: center; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%;
   color: #fff; font-style: normal; font-size: 12px; font-weight: 700; line-height: 1;
 }
 .sc-col.pros li i { background: #3aa76d; }
-.sc-col.cons li i { background: #e08a5c; }
+.sc-col.cons li i { background: #d9534f; }
 .sc-col li:first-child { font-weight: 700; font-size: 13.5px; }
 .sc-col.pros li:first-child { color: #16623a; }
-.sc-col.cons li:first-child { color: #93461a; }
+.sc-col.cons li:first-child { color: #97241d; }
 .sc-col li.strong { color: var(--danger); font-weight: 700; }
 .sc-col.cons li.strong i { background: var(--danger); }
 /* Closed cards stand the same height side by side; an opened one grows on its own. */
@@ -660,3 +646,65 @@ body.popup { width: 320px; }
 .sc-head { display: flex; flex-direction: column; gap: 3px; min-height: 66px; }
 .sc-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .sc-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- a decision: the recommendation in one line, the options side by side ---------- */
+.reco-line {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 12px; padding: 10px 14px;
+  border-radius: 16px; background: #fff; border: 1.5px solid #cddcff;
+}
+.reco-line.tie { border-color: #ddd3f5; }
+.reco-line p { flex: 1; min-width: 220px; margin: 0; font-size: 14.5px; line-height: 1.4; color: var(--text); }
+.reco-line b { color: var(--ink); }
+.reco-mark { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 13px; font-weight: 800; }
+.reco-question { color: var(--muted); }
+.reco-actions { display: flex; align-items: center; gap: 14px; }
+.option-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; align-items: stretch; margin: 2px 0 8px; }
+.option-grid:has(.swipe-card.open) { align-items: start; }
+.option-grid .swipe-card { flex: none; width: auto; max-width: none; }
+.option-grid .swipe-card.open { grid-column: 1 / -1; }
+.more-options { margin: 0 0 8px 4px; font-size: 14px; }
+.mine { margin-left: 3px; color: #c98a00; font-size: 12px; font-weight: 700; }
+/* A comparison takes the whole row: the label sits above the options. */
+.tl-entry.tl-wide { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.tl-entry.tl-wide .tl-side { align-items: center; }
+.tl-entry.tl-wide .tl-label { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding-top: 0; }
+@keyframes flash { 0%, 100% { box-shadow: none; } 20%, 60% { box-shadow: 0 0 0 3px var(--accent); } }
+.flash { animation: flash 1.6s ease-out; border-radius: 22px; }
+@media (prefers-reduced-motion: reduce) { .flash { animation: none; outline: 3px solid var(--accent); } }
+
+/* ---------- where the decisions stand: the queue under the summary ---------- */
+.queue { display: flex; flex-direction: column; gap: 10px; margin: 0 0 18px; padding: 14px 16px; border-radius: 22px; background: var(--ink); color: #fff; }
+.queue-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; }
+.queue-top b { font-size: 16px; }
+.queue-progress { display: inline-flex; align-items: center; gap: 10px; font-size: 13.5px; color: #ddd6e3; font-variant-numeric: tabular-nums; }
+.queue-bar { display: block; width: 120px; height: 6px; border-radius: 3px; background: #5a4f63; overflow: hidden; }
+.queue-bar span { display: block; height: 100%; background: #7fd4a0; }
+.queue-chips, .queue-reminders { display: flex; flex-wrap: wrap; gap: 8px; }
+.qchip { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 14px; border: 0; border-radius: 14px; background: #3d3345; color: #fff; text-align: left; font-size: 14px; }
+.qchip small { color: #d3cadb; font-size: 12px; }
+.qchip.soon { background: #fff; color: var(--ink); }
+.qchip.soon small { color: var(--muted); }
+.qchip .due { color: var(--danger); font-weight: 700; }
+.qchip:hover, .qrem:hover { filter: brightness(1.12); }
+.qrem { border: 0; border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 600; text-align: left; }
+.qrem.red { background: #fcebea; color: #9c2a22; }
+.qrem.amber { background: #fff0d6; color: #7a4a00; }
+.qrem.more { background: #3d3345; color: #fff; }
+
+/* ---------- money: booked, chosen, and a guess for what's open ---------- */
+.budget { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; max-width: 560px; }
+.budget-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.budget-top b { color: var(--ink); font-size: 15px; }
+.budget-bar { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: #ece7df; }
+.budget-bar span { display: block; height: 100%; }
+.b-booked { background: #1f8f4e; }
+.b-chosen { background: #f0a53a; }
+.b-open { background: repeating-linear-gradient(45deg, #cfc6b8 0 5px, #e3dccf 5px 10px); }
+.budget-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.budget-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 3px; vertical-align: -1px; }
+.tone-danger { color: var(--danger); }
+
+/* ---------- time running out, on the card ---------- */
+.card-alert { padding: 7px 18px; font-size: 13.5px; font-weight: 600; }
+.card-alert.red { background: #fcebea; color: #9c2a22; }
+.card-alert.amber { background: #fff7e8; color: #7a4a00; border-top: 1px solid #f6e2bd; }
