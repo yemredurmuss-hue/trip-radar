@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { cardFacts, durationText, whyLines, type CardFacts } from "../lib/cardFacts";
+import { cardDetails, cardFacts, durationText, type CardFacts } from "../lib/cardFacts";
 import type { GroupDecision } from "../lib/decision";
-import { formatDateRange, metricsOf } from "../lib/items";
+import { formatDateRange, listingKeyOf, metricsOf } from "../lib/items";
+import { readingLine } from "../lib/listing";
 import { rangeOfGroupKey, stayRange } from "../lib/plan";
 import { isTrip } from "../lib/travelKinds";
 import { withDates } from "../lib/url";
 import type { Category, Item } from "../lib/types";
 import { chooseItem, removeItem, setItemStatus } from "./actions";
-import { Evidence } from "./Evidence";
 import { FallbackImg } from "./FallbackImg";
+import { StatusBar } from "./Status";
 import { CategoryIcon } from "./Icons";
 import type { Decisions } from "./useDecisions";
 
@@ -29,13 +30,75 @@ export function SourceBadge({ source }: { source: CardFacts["source"] }) {
 
 /** A ticket is bought for a flight, a train or an activity; a stay, a rental car or a transfer is reserved. */
 const ticketed = (i: Item) => i.category === "flight" || i.category === "activity" || (i.category === "transport" && isTrip(i));
-const bookedWord = (i: Item) => (ticketed(i) ? "Bilet alındı ✓" : "Rezerve ✓");
+const bookedWord = (i: Item) => (ticketed(i) ? "Bilet alındı" : "Rezerve edildi");
 const notBookedWord = (i: Item) => (ticketed(i) ? "bilet alınmadı" : "rezerve edilmedi");
 
 /** Saved without dates but compared for a group's nights: the page reopened with those dates. */
 function datedLink(item: Item, decision: GroupDecision | undefined) {
   const nights = decision && item.category === "stay" && !stayRange(item) ? rangeOfGroupKey(decision.key) : null;
   return { nights, url: nights ? withDates(item.url, nights, item.guests.adults) : null };
+}
+
+/**
+ * An opened card: one line on where it stands, the facts that decide (only what's known), and the few
+ * things for and against it that matter. Everything read about it is in "Tüm detaylar".
+ */
+function Details({
+  item,
+  decision,
+  decisions,
+  status = null,
+}: {
+  item: Item;
+  decision?: GroupDecision;
+  decisions: Decisions | null;
+  status?: CardFacts["status"];
+}) {
+  const d = cardDetails(item, decision, decisions?.ctx);
+  const listing = decisions?.ctx.listings.get(listingKeyOf(item));
+  const reading = readingLine(item, listing);
+  return (
+    <div className="card-details">
+      {d.verdict ? <p className="cd-verdict">{d.verdict}</p> : status && <p className={`small-note tone-${status.tone}`}>{status.text}</p>}
+      {d.facts.length > 0 && (
+        <dl className="cd-facts">
+          {d.facts.map((f) => (
+            <div key={f.label}>
+              <dt>{f.label}</dt>
+              <dd>{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {d.pros.length > 0 && (
+        <div className="cd-list pros">
+          <h4>Artıları</h4>
+          <ul>
+            {d.pros.map((p) => (
+              <li key={p.text}>
+                {p.text}
+                {p.detail && <span className="muted"> · {p.detail}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {d.cons.length > 0 && (
+        <div className="cd-list cons">
+          <h4>Dikkat</h4>
+          <ul>
+            {d.cons.map((c) => (
+              <li key={c.text} className={c.strong ? "strong" : undefined}>
+                {c.text}
+                {c.detail && <span className="muted"> · {c.detail}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {reading && <p className={`small-note tone-${reading.tone}`}>{reading.text}</p>}
+    </div>
+  );
 }
 
 function Links({ item, decision, onOpen, onCompare }: { item: Item; decision?: GroupDecision; onOpen: () => void; onCompare?: () => void }) {
@@ -98,7 +161,6 @@ interface CardProps {
 export function SwipeCard({ item, group, decision, decisions, roles = [], onOpen, onCompare }: CardProps) {
   const [open, setOpen] = useState(false);
   const facts = cardFacts(item, decision, decisions?.ctx);
-  const why = open ? whyLines(item, decision, decisions?.ctx.currency ?? "EUR") : [];
   const { nights } = datedLink(item, decision);
   // Only what changes the decision is flagged on the picture: ruled out, provisional, the best pick.
   const flag = facts.status && facts.status.tone === "warning" ? facts.status : null;
@@ -152,25 +214,11 @@ export function SwipeCard({ item, group, decision, decisions, roles = [], onOpen
         )}
         {open && (
           <div className="sc-details">
-            {facts.status && !flag && <p className={`small-note tone-${facts.status.tone}`}>{facts.status.text}</p>}
-            {why.length > 0 && (
-              <div className="sc-why">
-                <div className="sc-col-head">Neden</div>
-                {why.map((w) => (
-                  <p key={w}>{w}</p>
-                ))}
-              </div>
-            )}
-            <Evidence item={item} decision={decision} decisions={decisions} heading={false} />
-            {(item.cancellation.summary || item.price.taxesIncluded === "no") && (
-              <p className="muted small-note">
-                {[item.cancellation.summary, item.price.taxesIncluded === "no" ? "Vergiler fiyata dahil değil" : null].filter(Boolean).join(" · ")}
-              </p>
-            )}
+            <Details item={item} decision={decision} decisions={decisions} status={flag ? null : facts.status} />
             {nights && (
               <p className="muted small-note">
-                Tarihsiz kaydedildi; {formatDateRange(nights.start, nights.end)} için geçici olarak karşılaştırılıyor. Tarihlerle açıp tekrar
-                kaydedersen gerçek fiyat işlenir.
+                Tarihsiz kaydedildi; {formatDateRange(nights.start, nights.end)} için geçici karşılaştırılıyor. Tarihlerle açıp tekrar kaydedersen
+                gerçek fiyat işlenir.
               </p>
             )}
             <Links item={item} decision={decision} onOpen={onOpen} onCompare={onCompare} />
@@ -181,7 +229,7 @@ export function SwipeCard({ item, group, decision, decisions, roles = [], onOpen
             {open ? "Kapat ▴" : "Detaylar ▾"}
           </button>
           {item.status === "booked" ? (
-            <span className="tone-success">{bookedWord(item)}</span>
+            <span className="tone-success">✓ {bookedWord(item)}</span>
           ) : item.status === "chosen" ? (
             <button className="pill-btn soft" onClick={() => void setItemStatus(item, "saved")} title="Seçimi geri al">
               Planda ✓
@@ -318,7 +366,12 @@ export function SettledCard({
   const route = (item.category === "flight" || item.category === "transport") && Boolean(item.flight?.from && item.flight?.to);
   const toggle = () => setOpen(!open);
   return (
-    <div className={`settled-card${booked ? " booked" : ""}${open ? " open" : ""}`} aria-label={item.name}>
+    <div className={`settled-card st-${booked ? "booked" : "planned"}${open ? " open" : ""}`} aria-label={item.name}>
+      <StatusBar
+        standing={booked ? "booked" : "planned"}
+        text={booked ? bookedWord(item) : planned ? "Planlanıyor" : "Seçildi"}
+        sub={booked ? null : notBookedWord(item)}
+      />
       <div
         className="stc-main"
         role="button"
@@ -330,16 +383,6 @@ export function SettledCard({
         {route ? <Route item={item} facts={facts} /> : <Media item={item} facts={facts} />}
       </div>
       <div className="stc-foot">
-        <span className="stc-state">
-          {booked ? (
-            <span className="state-chip booked">{bookedWord(item)}</span>
-          ) : (
-            <>
-              <span className="state-chip chosen">{planned ? "Planlanıyor" : "Seçildi"}</span>
-              <small className="muted">{notBookedWord(item)}</small>
-            </>
-          )}
-        </span>
         {(facts.price || !planned) && <Price price={facts.price} compact />}
         <span className="stc-actions">
           {booked ? (
@@ -361,7 +404,7 @@ export function SettledCard({
       </div>
       {open && (
         <div className="stc-details">
-          <Evidence item={item} decision={decision} decisions={decisions} heading={false} />
+          <Details item={item} decision={decision} decisions={decisions} />
           <div className="sc-links">
             <Links item={item} decision={decision} onOpen={onOpen} />
             {planned ? (

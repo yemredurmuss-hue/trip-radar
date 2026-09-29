@@ -3,8 +3,8 @@
 // legs on every render; nothing here is stored. Whatever can't be placed on a day (another flight,
 // an undated museum) is returned separately, so nothing saved goes missing from the board.
 import { formatDateRange, isoDate, nightsBetween } from "./items";
-import { isRental, travelsOf, type Leg, type Travel } from "./legs";
-import { sameCity, type DateRange, type OptionGroup, type Plan, type StayBlock } from "./plan";
+import { endsOf, isRental, travelsOf, type Leg, type Travel } from "./legs";
+import { cityKeyOf, sameCity, type DateRange, type OptionGroup, type Plan, type StayBlock } from "./plan";
 import type { Category, Item, LegMode } from "./types";
 
 /** In, between cities, out; "other" is any other trip on its day (a day trip, a flight the plan can't pair). */
@@ -25,17 +25,31 @@ export type TimelineEntry =
       /** Where to look for one when nothing is saved. */
       searchUrl: string | null;
     }
+  /** A transfer on a day that has no card of its own (landing the night before, leaving for the station). */
   | { kind: "leg"; key: string; date: string; leg: Leg }
   | { kind: "stay"; key: string; date: string; block: StayBlock; title: string; subtitle: string }
-  | { kind: "day"; key: string; date: string; category: Category; title: string; items: Item[] };
+  /** One day of the trip in its city: its transfers and what's planned, empty until something is. */
+  | { kind: "day"; key: string; date: string; dayNo: number; title: string; items: Item[]; legs: Leg[] };
+
+export type StayEntry = Extract<TimelineEntry, { kind: "stay" }>;
 
 /**
- * The board's blocks: each city with everything in it (its transfers, nights, days, a rented car), and
- * the trips between them on the line.
+ * The board's blocks: each city with its stays (in date order) and its days, and the trips between
+ * them on the line.
  */
 export type TimelineSection =
   | { kind: "travel"; key: string; entry: Extract<TimelineEntry, { kind: "travel" }> }
-  | { kind: "city"; key: string; index: number; city: string | null; range: DateRange | null; nights: number; entries: TimelineEntry[] };
+  | {
+      kind: "city";
+      key: string;
+      index: number;
+      city: string | null;
+      range: DateRange | null;
+      nights: number;
+      stays: StayEntry[];
+      /** Its days, and any transfer or trip on a day without a card, in order. */
+      entries: TimelineEntry[];
+    };
 
 export interface Timeline {
   entries: TimelineEntry[];
@@ -47,10 +61,9 @@ export interface Timeline {
 }
 
 const DAY_CATEGORIES: Category[] = ["activity", "food", "other"];
-const DAY_LABELS: Partial<Record<Category, string>> = { activity: "Etkinlik", food: "Yeme-içme", other: "Plan", transport: "Araç kiralama" };
 /** Things that belong to a day in a place: visits, meals, plans, and a car rented there. */
 const onADay = (i: Item) => DAY_CATEGORIES.includes(i.category) || isRental(i);
-const DAY_ORDER: Category[] = [...DAY_CATEGORIES, "transport"];
+const DAY_ORDER: Category[] = ["transport", ...DAY_CATEGORIES];
 const MODE_WORDS: Partial<Record<LegMode, string>> = { flight: "Uçuş", train: "Tren", bus: "Otobüs", ferry: "Feribot", car: "Araba" };
 const fmt = (date: string) => formatDateRange(date, null);
 
@@ -59,7 +72,10 @@ function route(travel: Travel | null): string | null {
   return f?.from && f.to ? `${f.from} → ${f.to}` : null;
 }
 
-/** Where the trip starts from, as the saved flights say: the way home's destination, or the way in's origin. */
+/** When a trip leaves ("2026-10-07T09:40"), for ordering trips on the same day. */
+const leaves = (t: Travel) => (t.settled ?? t.items[0])?.flight?.departure ?? t.day;
+
+/** Where the trip starts from, as the saved flights say: the way home's destination, or the first flight's origin. */
 function homeOf(inbound: Travel | null, outbound: Travel | null): string | null {
   const back = (outbound?.settled ?? outbound?.items[0])?.flight?.to;
   const out = (inbound?.settled ?? inbound?.items[0])?.flight?.from;
@@ -91,33 +107,80 @@ export function buildTimeline(plan: Plan, legs: Leg[], items: Item[]): Timeline 
   const entries: TimelineEntry[] = [];
   const first = legs.find((l) => l.slot === 0 && l.kind === "arrival") ?? null;
   const last = legs.find((l) => l.slot === blocks.length && l.kind === "departure") ?? null;
-  const home = homeOf(first?.travel ?? null, last?.travel ?? null);
 
-  // What's planned on each day of the trip, by category. Days after the flight home aren't on this trip's
-  // line: they stay in the list below, with their date.
+  // Trips the transfers didn't take: connections on the way in or home go with them on the line
+  // (Istanbul → Copenhagen before Copenhagen → Porto); the rest go on their day.
+  const used = new Set(legs.flatMap((l) => l.travel?.items ?? []).map((i) => i.id));
+  const others = travelsOf(plan).filter((t) => !t.items.some((i) => used.has(i.id)) && t.day >= addDaysIso(start, -7) && t.day <= addDaysIso(end, 7));
+  others.forEach((t) => t.items.forEach((i) => used.add(i.id)));
+  const [firstCity, lastCity] = [cityKeyOf(blocks[0].city), cityKeyOf(blocks.at(-1)!.city)];
+  const inbound = first?.travel ?? null;
+  const outbound = last?.travel ?? null;
+  const connectsIn = (t: Travel) => {
+    const ends = endsOf(t);
+    if (inbound) {
+      const chain = Boolean(ends.to && ends.to === endsOf(inbound).from);
+      return t.day <= inbound.day && t.day >= addDaysIso(inbound.day, -2) && (chain || leaves(t) < leaves(inbound));
+    }
+    return t.day <= start && t.day >= addDaysIso(start, -2) && !(ends.from && ends.from === firstCity);
+  };
+  const connectsOut = (t: Travel) => {
+    const ends = endsOf(t);
+    if (outbound) {
+      const chain = Boolean(ends.from && ends.from === endsOf(outbound).to);
+      return t.day >= outbound.day && t.day <= addDaysIso(outbound.day, 2) && (chain || leaves(t) > leaves(outbound));
+    }
+    return t.day >= end && t.day <= addDaysIso(end, 2) && !(ends.to && ends.to === lastCity);
+  };
+  const before = others.filter(connectsIn).sort((a, b) => leaves(a).localeCompare(leaves(b)));
+  const after = others.filter((t) => !before.includes(t) && connectsOut(t)).sort((a, b) => leaves(a).localeCompare(leaves(b)));
+  const rest = others.filter((t) => !before.includes(t) && !after.includes(t));
+  const home = homeOf(before[0] ?? inbound, after.at(-1) ?? outbound);
+  const tripEntry = (t: Travel): TimelineEntry => ({
+    kind: "travel",
+    key: `travel:other:${t.group.key}:${t.day}`,
+    role: "other",
+    date: t.day,
+    title: `${fmt(t.day)} · ${(t.mode && MODE_WORDS[t.mode]) ?? "Ulaşım"}`,
+    subtitle: route(t),
+    travel: t,
+    leg: null,
+    searchUrl: null,
+  });
+
+  // What's planned on each day of the trip. Days after the flight home aren't on this trip's line: they
+  // stay in the list below, with their date.
   const lastDay = last && last.travel && last.date < end ? last.date : end;
-  const byDay = new Map<string, Map<Category, Item[]>>();
-  const placedDays = new Set<string>();
+  const byDay = new Map<string, Item[]>();
   for (const i of dayItems) {
     const d = isoDate(i.dates.start);
     if (!d || d < start || d > lastDay) continue;
-    const day = byDay.get(d) ?? new Map<Category, Item[]>();
-    day.set(i.category, [...(day.get(i.category) ?? []), i]);
-    byDay.set(d, day);
-    placedDays.add(i.id);
+    byDay.set(d, [...(byDay.get(d) ?? []), i]);
   }
-  const daysIn = (from: string, to: string, inclusive: boolean) => {
-    for (const d of [...byDay.keys()].sort()) {
-      if (d < from || (inclusive ? d > to : d >= to)) continue;
-      for (const category of DAY_ORDER) {
-        const list = byDay.get(d)!.get(category);
-        if (list) entries.push({ kind: "day", key: `day:${d}:${category}`, date: d, category, title: `${fmt(d)} · ${DAY_LABELS[category]}`, items: list });
-      }
-      byDay.delete(d);
+  const at = (i: Item) => i.flight?.departure?.slice(11, 16) ?? "99";
+  for (const list of byDay.values()) list.sort((a, b) => DAY_ORDER.indexOf(a.category) - DAY_ORDER.indexOf(b.category) || at(a).localeCompare(at(b)));
+
+  // Every day of every stay gets a card (the last city's also the day home), empty until something's planned.
+  const dayCards = blocks.map((block, index) => {
+    const days: Extract<TimelineEntry, { kind: "day" }>[] = [];
+    const isLast = index === blocks.length - 1;
+    for (let d = block.range.start; isLast ? d <= lastDay : d < block.range.end; d = addDaysIso(d, 1)) {
+      const dayNo = nightsBetween(start, d) + 1;
+      days.push({ kind: "day", key: `day:${d}`, date: d, dayNo, title: `${dayNo}. gün`, items: byDay.get(d) ?? [], legs: [] });
     }
+    return days;
+  });
+  const placedDays = new Set(dayCards.flat().flatMap((d) => d.items.map((i) => i.id)));
+  /** A transfer goes in its day's card in its city; without one it has its own row. */
+  const into = (leg: Leg, index: number) => {
+    const day = dayCards[index]?.find((d) => d.date === leg.date);
+    if (day) day.legs.push(leg);
+    return Boolean(day);
   };
+  const legRow = (leg: Leg): TimelineEntry => ({ kind: "leg", key: `leg:${leg.key}`, date: leg.date, leg });
 
   // Getting there.
+  entries.push(...before.map(tripEntry));
   if (first) {
     const t = first.travel;
     const date = t?.day ?? first.date;
@@ -134,12 +197,13 @@ export function buildTimeline(plan: Plan, legs: Leg[], items: Item[]): Timeline 
         searchUrl: t ? null : flightSearchUrl("to", first.to.city, date, home),
       });
     }
-    entries.push({ kind: "leg", key: `leg:${first.key}`, date: first.date, leg: first });
+    if (!into(first, 0)) entries.push(legRow(first));
   }
 
   blocks.forEach((block, index) => {
     if (index > 0) {
-      for (const leg of legs.filter((l) => l.slot === index)) {
+      const slot = legs.filter((l) => l.slot === index);
+      for (const leg of slot) {
         if (leg.kind === "move") {
           entries.push({
             kind: "travel",
@@ -152,8 +216,8 @@ export function buildTimeline(plan: Plan, legs: Leg[], items: Item[]): Timeline 
             leg,
             searchUrl: null,
           });
-        } else {
-          entries.push({ kind: "leg", key: `leg:${leg.key}`, date: leg.date, leg });
+        } else if (!into(leg, leg.kind === "departure" ? index - 1 : index)) {
+          entries.push(legRow(leg));
         }
       }
     }
@@ -166,13 +230,12 @@ export function buildTimeline(plan: Plan, legs: Leg[], items: Item[]): Timeline 
       title: `${formatDateRange(block.range.start, block.range.end)} · Konaklama`,
       subtitle: [block.city, `${nights} gece`].filter(Boolean).join(" · "),
     });
-    const isLast = index === blocks.length - 1;
-    daysIn(block.range.start, block.range.end, isLast);
+    entries.push(...dayCards[index]);
   });
 
   // Getting home.
   if (last) {
-    entries.push({ kind: "leg", key: `leg:${last.key}`, date: last.date, leg: last });
+    if (!into(last, blocks.length - 1)) entries.push(legRow(last));
     const t = last.travel;
     const date = t?.day ?? last.date;
     if (t || !last.choice?.mode) {
@@ -189,26 +252,13 @@ export function buildTimeline(plan: Plan, legs: Leg[], items: Item[]): Timeline 
       });
     }
   }
+  entries.push(...after.map(tripEntry));
 
-  // Any other trip with a day goes on that day: a flight the plan can't pair with a change of city
-  // is still where it happens, never at the bottom.
-  const used = new Set(legs.flatMap((l) => l.travel?.items ?? []).map((i) => i.id));
-  for (const t of travelsOf(plan)) {
-    if (t.items.some((i) => used.has(i.id)) || t.day < addDaysIso(start, -7) || t.day > addDaysIso(end, 7)) continue;
-    t.items.forEach((i) => used.add(i.id));
-    const entry: TimelineEntry = {
-      kind: "travel",
-      key: `travel:other:${t.group.key}:${t.day}`,
-      role: "other",
-      date: t.day,
-      title: `${fmt(t.day)} · ${(t.mode && MODE_WORDS[t.mode]) ?? "Ulaşım"}`,
-      subtitle: route(t),
-      travel: t,
-      leg: null,
-      searchUrl: null,
-    };
-    const at = entries.findIndex((e) => e.date > t.day);
-    entries.splice(at < 0 ? entries.length : at, 0, entry);
+  // Any other trip with a day goes on that day (after its card): a flight the plan can't pair with a
+  // change of city is still where it happens, never at the bottom.
+  for (const t of rest) {
+    const index = entries.findIndex((e) => e.date > t.day);
+    entries.splice(index < 0 ? entries.length : index, 0, tripEntry(t));
   }
 
   // Everything saved still shows somewhere: travel the plan didn't use, and places without a day.
@@ -240,7 +290,7 @@ function sectionsOf(entries: TimelineEntry[]): TimelineSection[] {
   let current: Extract<TimelineSection, { kind: "city" }> | null = null;
   let index = 0;
   const open = () => {
-    current = { kind: "city", key: "", index: ++index, city: null, range: null, nights: 0, entries: [] };
+    current = { kind: "city", key: "", index: ++index, city: null, range: null, nights: 0, stays: [], entries: [] };
     sections.push(current);
     return current;
   };
@@ -253,15 +303,18 @@ function sectionsOf(entries: TimelineEntry[]): TimelineSection[] {
       continue;
     }
     let block = current as Extract<TimelineSection, { kind: "city" }> | null;
-    if (e.kind === "stay" && block?.city && e.block.city && !sameCity(block.city, e.block.city)) block = null;
+    // Stays somewhere else (or somewhere not known yet) start their own block.
+    if (e.kind === "stay" && block?.city && !(e.block.city && sameCity(block.city, e.block.city))) block = null;
     block ??= open();
-    block.entries.push(e);
     if (e.kind === "stay") {
+      block.stays.push(e);
       block.city ??= e.block.city;
       block.nights += e.block.nights;
       block.range = block.range
         ? { start: block.range.start < e.block.range.start ? block.range.start : e.block.range.start, end: block.range.end > e.block.range.end ? block.range.end : e.block.range.end }
         : { ...e.block.range };
+    } else {
+      block.entries.push(e);
     }
   }
   // Keys follow what a block holds, not its position, so a block added earlier doesn't remount the rest.

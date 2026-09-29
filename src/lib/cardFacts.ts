@@ -2,7 +2,7 @@
 // is, what it costs for these dates, where it stands, and the two things for and against it that
 // matter most. Pure, and no model calls: everything on a card is read from a page or computed.
 import { advantageOver, type DecisionContext, type GroupDecision } from "./decision";
-import { formatDateRange, formatPrice, metricsOf, nightsBetween, type Tone } from "./items";
+import { formatDateRange, formatPrice, listingKeyOf, metricsOf, nightsBetween, type Tone } from "./items";
 import { decisionLabel } from "./labels";
 import { rangeOfGroupKey, stayRange } from "./plan";
 import { cardLines, prosConsFor, shortText } from "./proscons";
@@ -216,4 +216,95 @@ export function whyLines(item: Item, decision: GroupDecision | undefined, curren
   const ai = (decision.analysis ?? decision.staleAnalysis)?.aiScores.find((s) => s.itemId === item.id);
   if (ai?.note) lines.push(`AI incelemesi: ${ai.note}`);
   return lines;
+}
+
+export interface CardDetails {
+  /** Where it stands in one sentence ("Ribeira Rooms 27 puan önde; bunun artısı: €45 daha ucuz."). */
+  verdict: string | null;
+  /** The facts that decide, filtered: dates, what it is, rating, cancellation, times... only what's known. */
+  facts: { label: string; value: string }[];
+  pros: { text: string; detail: string | null }[];
+  cons: { text: string; detail: string | null; strong: boolean }[];
+}
+
+const CANCELLATION_WORDS = { free: "Ücretsiz iptal", partial: "Kısmi iade", non_refundable: "İade yok", unknown: null } as const;
+
+const dayOf = (iso: string | null | undefined) => (iso ? formatDateRange(iso.slice(0, 10), null) : null);
+
+/** "8,9 / 10 · 1.204 yorum". */
+function ratingText(item: Item): string | null {
+  const r = item.rating;
+  if (r.value == null || !r.scale) return null;
+  const value = r.value.toLocaleString("tr-TR", { maximumFractionDigits: 1 });
+  return [`${value} / ${r.scale}`, r.count ? `${r.count.toLocaleString("tr-TR")} yorum` : null].filter(Boolean).join(" · ");
+}
+
+function factsOf(item: Item, listing: Listing | null): CardDetails["facts"] {
+  const m = metricsOf(item);
+  const facts: CardDetails["facts"] = [];
+  const add = (label: string, value: string | null | undefined | false) => {
+    if (value) facts.push({ label, value });
+  };
+  const join = (parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(" · ") || null;
+  const cancellation = item.cancellation.summary ?? CANCELLATION_WORDS[m.cancellationType];
+  switch (item.category) {
+    case "stay": {
+      const r = stayRange(item);
+      add("Tarih", r ? `${formatDateRange(r.start, r.end)} · ${nightsBetween(r.start, r.end)} gece` : "Tarih seçilmeden kaydedildi");
+      add("Yer", join([m.stayKind && m.stayKind !== "other" ? STAY_KIND_LABELS[m.stayKind] : null, m.bedrooms ? `${m.bedrooms} yatak odası` : null, item.location.area ?? item.city]));
+      add("Kişi", item.guests.adults ? `${item.guests.adults} yetişkin${item.guests.children ? `, ${item.guests.children} çocuk` : ""}` : null);
+      add("Puan", ratingText(item));
+      add("İptal", cancellation);
+      const h = listing?.house;
+      add("Giriş / çıkış", h && (h.checkInFrom || h.checkOutUntil) ? `${h.checkInFrom ?? "?"} / ${h.checkOutUntil ?? "?"}` : null);
+      add("Merkeze", m.distanceToCenterKm != null ? `${m.distanceToCenterKm.toLocaleString("tr-TR", { maximumFractionDigits: 1 })} km` : null);
+      add("Olanaklar", m.amenities.length ? m.amenities.slice(0, 6).join(", ") : null);
+      break;
+    }
+    case "flight":
+    case "transport": {
+      const f = item.flight;
+      add("Kalkış", join([clock(f?.departure), dayOf(f?.departure ?? item.dates.start), f?.from]));
+      add("Varış", join([clock(f?.arrival), f?.arrival ? dayOf(f.arrival) : null, f?.to]));
+      add("Süre", m.durationMinutes ? durationText(m.durationMinutes) : null);
+      add("Aktarma", item.category === "flight" && f?.stops != null ? (f.stops === 0 ? "Direkt" : `${f.stops} aktarma`) : null);
+      add("Bagaj", m.checkedBagIncluded == null ? null : m.checkedBagIncluded ? "Bavul dahil" : "Bavul dahil değil");
+      add("Tarife", item.optionDetail);
+      add("Kişi", item.guests.adults ? `${item.guests.adults} yetişkin` : null);
+      add("İptal", cancellation);
+      break;
+    }
+    case "esim":
+      add("Veri", m.unlimitedData ? "Sınırsız" : m.dataGb ? `${m.dataGb} GB` : null);
+      add("Geçerlilik", m.validityDays ? `${m.validityDays} gün` : null);
+      break;
+    default:
+      add("Tarih", join([dayOf(item.dates.start), clock(item.flight?.departure)]));
+      add("Süre", m.durationMinutes ? durationText(m.durationMinutes) : null);
+      add("Yer", item.location.address ?? item.location.area ?? item.city);
+      add("Puan", ratingText(item));
+      add("İptal", cancellation);
+  }
+  if (item.price.taxesIncluded === "no") add("Fiyat", "Vergiler dahil değil");
+  return facts;
+}
+
+/**
+ * What a card says when opened, kept short: one line on where it stands, the facts that decide, and
+ * the few things for and against it that matter. Everything read stays in "Tüm detaylar".
+ */
+export function cardDetails(
+  item: Item,
+  decision: GroupDecision | undefined,
+  ctx: Pick<DecisionContext, "trip" | "today" | "currency" | "inferred" | "listings"> | undefined,
+  listings: Map<string, Listing> | undefined = ctx?.listings,
+): CardDetails {
+  const pc = prosConsFor(item, decision, listings, ctx);
+  const fresh = <T extends { stale?: boolean; accepted?: boolean }>(l: T) => !l.stale && !l.accepted;
+  return {
+    verdict: whyLines(item, decision, ctx?.currency ?? "EUR")[0] ?? null,
+    facts: factsOf(item, listings?.get(listingKeyOf(item)) ?? null),
+    pros: (pc?.pros ?? []).filter(fresh).slice(0, 4).map((l) => ({ text: l.text, detail: l.detail })),
+    cons: (pc?.cons ?? []).filter(fresh).slice(0, 4).map((l) => ({ text: l.text, detail: l.detail, strong: Boolean(l.decisive || l.serious) })),
+  };
 }

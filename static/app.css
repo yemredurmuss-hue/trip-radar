@@ -577,3 +577,56 @@ body.popup { width: 320px; }
 .block-date { display: flex; flex-direction: column; gap: 1px; }
 .block-range { font-size: 19px; font-weight: 700; letter-spacing: -.01em; color: var(--text); }
 .block-days { font-size: 13.5px; color: #6e6e73; }
+
+/* ---------- where each plan stands: booked, planned, open ---------- */
+.status-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; padding: 9px 18px; font-size: 13.5px; }
+.status-bar b { font-weight: 700; }
+.status-sub { opacity: .8; }
+.status-mark { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: 12px; font-weight: 800; line-height: 1; }
+.status-bar.st-booked { background: #e1f3e8; color: #16623a; }
+.status-bar.st-booked .status-mark { background: #1f8f4e; color: #fff; }
+.status-bar.st-planned { background: #fff1d9; color: #8a5300; }
+.status-bar.st-planned .status-mark { background: #f0a53a; color: #fff; }
+.status-bar.st-open { background: #f1efeb; color: #5f5a54; }
+.status-bar.st-open .status-mark { border: 1.5px dashed #a39d95; }
+.settled-card.st-booked { box-shadow: 0 0 0 2px #7cc79b, 0 6px 20px rgba(40, 30, 20, .05); }
+.settled-card.st-planned { box-shadow: 0 0 0 2px #f3c98a, 0 6px 20px rgba(40, 30, 20, .05); }
+.settled-card.st-open { box-shadow: none; border: 1.5px dashed #d6cfc4; background: rgba(255, 255, 255, .7); }
+.stay-open .empty-card { border: 0; background: none; }
+.tl-badge {
+  position: absolute; right: -4px; bottom: -4px; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+  background: #1f8f4e; color: #fff; font-size: 11px; font-weight: 800; border: 2px solid #efebe4;
+}
+.tl-entry.st-booked > .tl-side .tl-icon { background: #1f8f4e; }
+.tl-entry.st-planned > .tl-side .tl-icon { background: #fff; color: #b86e00; border: 2px solid #f0a53a; }
+.tl-entry.st-open > .tl-side .tl-icon { background: #fff; color: #8a847c; border: 2px dashed #c9c2b8; }
+.tl-entry.tl-leg.st-booked .tl-icon { background: #1f8f4e; color: #fff; border: 0; }
+
+/* ---------- a card for each day ---------- */
+.tl-entry.tl-day { margin-bottom: 14px; }
+.tl-entry.tl-day .tl-icon { width: 36px; height: 36px; margin-left: 4px; background: #fff; color: var(--ink); border: 1.5px solid #cfc8bd; }
+.tl-day-no { font-size: 15px; }
+.day-card { display: flex; flex-direction: column; gap: 8px; }
+.day-card.empty {
+  flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 12px 18px; border-radius: 18px;
+  border: 1.5px dashed #d6cfc4; font-size: 14px; color: #6e6a64;
+}
+.day-card.empty .muted { font-size: 13px; }
+
+/* ---------- an opened card: where it stands, the facts, what matters ---------- */
+.card-details { display: flex; flex-direction: column; gap: 12px; margin: 4px 0 8px; font-size: 14px; line-height: 1.45; }
+.cd-verdict { margin: 0; padding: 10px 12px; border-radius: 12px; background: #f5f1fb; color: var(--ink); font-weight: 600; }
+.cd-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 16px; margin: 0; }
+.cd-facts div { min-width: 0; }
+.cd-facts dt { font-size: 12.5px; color: #86868b; }
+.cd-facts dd { margin: 1px 0 0; color: var(--text); overflow-wrap: anywhere; }
+.cd-list h4 { margin: 0 0 4px; font-size: 13px; letter-spacing: .02em; }
+.cd-list.pros h4 { color: var(--success); }
+.cd-list.cons h4 { color: var(--warning); }
+.cd-list ul { margin: 0; padding-left: 18px; }
+.cd-list li { margin: 2px 0; }
+.cd-list li.strong { color: var(--danger); font-weight: 600; }
+.cd-list .muted { font-size: 12.5px; }
+/* Transfers speak the same colours: planned amber, booked green, open grey. */
+.leg-chip.st-planned, .leg-chip.st-chosen { background: #fff1d9; color: #8a5300; }
+.leg-chip.st-empty { background: #f1efeb; color: #6e6a64; }

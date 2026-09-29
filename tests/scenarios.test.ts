@@ -187,7 +187,10 @@ function shown(items: Item[], plan: ReturnType<typeof buildPlan>, timeline: Retu
         if (e.block.kind === "booked") [e.block.item, ...(e.block.clashes ?? [])].forEach((i) => add(i, "stay-booked"));
         else for (const g of e.block.groups) g.items.forEach((i) => add(i, `stay:${g.key}`));
       } else if (e.kind === "travel") e.travel?.items.forEach((i) => add(i, `travel:${e.role}`));
-      else if (e.kind === "day") e.items.forEach((i) => add(i, "day"));
+      else if (e.kind === "day") {
+        e.items.forEach((i) => add(i, "day"));
+        e.legs.forEach((l) => l.options.forEach((i) => add(i, "leg")));
+      }
       else if (e.kind === "leg") e.leg.options.forEach((i) => add(i, "leg"));
     }
   }

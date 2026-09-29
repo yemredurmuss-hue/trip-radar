@@ -7,7 +7,9 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { AnalysisSchema } from "../src/lib/analysis";
 import { sendMessage, TOOLS } from "../src/lib/assistant";
-import { durationText } from "../src/lib/cardFacts";
+import { cardDetails, durationText } from "../src/lib/cardFacts";
+import { makeContext } from "../src/lib/decision";
+import { emptyListing, usefulListing } from "../src/lib/listing";
 import { db, listItems } from "../src/lib/db";
 import { ExtractionSchema } from "../src/lib/extract";
 import { EMPTY_METRICS } from "../src/lib/items";
@@ -18,7 +20,7 @@ import { buildPlan, placeKeyOf } from "../src/lib/plan";
 import { checkPlanned, fillPlanned, plannedInput, plannedItem, samePlan } from "../src/lib/planned";
 import { ReaderSchema } from "../src/lib/reader";
 import { isRental } from "../src/lib/travelKinds";
-import type { Item, ItemStatus, Trip } from "../src/lib/types";
+import type { Finding, Item, ItemStatus, Listing, Trip } from "../src/lib/types";
 
 function fakeClient(responses: Partial<Anthropic.Message>[]) {
   const calls: Anthropic.MessageCreateParams[] = [];
@@ -200,5 +202,32 @@ describe("numbers", () => {
   it("rounds durations to whole minutes", () => {
     expect(durationText(59.6)).toBe("1 sa");
     expect(durationText(125)).toBe("2 sa 5 dk");
+  });
+});
+
+describe("0.14: what decides, and what a card says when opened", () => {
+  it("leaves trivia read on a page (no smoke alarm, no hair dryer) out of the decision", () => {
+    const place = stay("Terrace flat", "2026-10-07", "2026-10-11");
+    const finding = (text: string, topic: Finding["topic"]) => ({
+      id: `${topic}:negative:${text}`, text, polarity: "negative" as const, topic, source: "amenities" as const, severity: "medium" as const,
+      reviewIds: [], quotes: [text], verified: true,
+    });
+    const listing: Listing = {
+      ...emptyListing(place, 1),
+      readAt: 1,
+      findings: [finding("Duman ve karbonmonoksit dedektörü bulunmuyor", "safety"), finding("Saç kurutma makinesi yok", "amenities"), finding("Asansör yok, 4. kat", "access")],
+    };
+    expect(usefulListing(listing).findings.map((f) => f.text)).toEqual(["Asansör yok, 4. kat"]);
+    const ctx = makeContext(trip(), [place], { listings: new Map([[listing.key, listing]]) });
+    expect(ctx.listings.get(listing.key)!.findings.map((f) => f.text)).toEqual(["Asansör yok, 4. kat"]);
+    const details = cardDetails(place, undefined, ctx);
+    expect(details.cons.map((c) => c.text).join(" ")).not.toMatch(/dedektör|kurutma/);
+  });
+
+  it("opens a flight card on the facts: when, where, how long, stops, bag", () => {
+    const f = flight("Pegasus", "SAW", "CPH", "2026-10-07T09:40", "2026-10-07T12:10", "booked");
+    f.metrics = { ...EMPTY_METRICS, durationMinutes: 150, checkedBagIncluded: false };
+    const facts = cardDetails(f, undefined, undefined).facts.map((x) => `${x.label}: ${x.value}`);
+    expect(facts).toEqual(["Kalkış: 09:40 · 7 Ekim · SAW", "Varış: 12:10 · 7 Ekim · CPH", "Süre: 2 sa 30 dk", "Aktarma: Direkt", "Bagaj: Bavul dahil değil", "Kişi: 2 yetişkin"]);
   });
 });

@@ -208,6 +208,21 @@ export interface FindingEvidence {
 }
 
 /** The reviews behind a finding, how recent the newest one is, and whether it is too old to go on. */
+/**
+ * Standard things a page lists as there or missing that don't decide where to stay: a smoke alarm, a
+ * hair dryer, hangers... Kept in what was read, left out of the decision and the cards.
+ */
+const TRIVIAL =
+  /(?<!\p{L})(duman|karbon ?monoksit|co alarm|smoke|carbon monoxide|yangın söndür|yangın alarm|fire extinguisher|fire alarm|ilk ?yardım|first ?aid|saç kurutma|hair ?dryer|ütü(?!\p{L})|iron(?!\p{L})|askı|hangers?(?!\p{L})|şampuan|shampoo|sabun|soap|duş jeli|body wash|temel (malzeme|ihtiyaç)|essentials|nevresim|bed linens?|tabak|çatal|bıçak|dishes|silverware|cutlery)/iu;
+
+export const isTrivialFinding = (f: Pick<Finding, "text">) => TRIVIAL.test(f.text);
+
+/** The place as the decision sees it: what was read, without the trivia. */
+export function usefulListing(listing: Listing): Listing {
+  const findings = listing.findings.filter((f) => !isTrivialFinding(f));
+  return findings.length === listing.findings.length ? listing : { ...listing, findings };
+}
+
 export function evidenceOf(finding: Finding, listing: Listing, today: string): FindingEvidence {
   const reviews = finding.reviewIds
     .map((id) => listing.reviews.find((r) => r.id === id))

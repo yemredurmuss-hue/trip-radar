@@ -8,13 +8,13 @@ import type { Category, Item, LegMode } from "../lib/types";
 import { updateTrip } from "./actions";
 import { Carousel } from "./Carousel";
 import { CategoryIcon } from "./Icons";
+import { StatusBar, type Standing } from "./Status";
 
 export type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => ReactNode;
 export type CardFor = (item: Item, group: Item[], decision?: GroupDecision, roles?: string[], onCompare?: () => void) => ReactNode;
 export type SettledFor = (item: Item, decision?: GroupDecision, onChange?: () => void, changing?: boolean) => ReactNode;
 
 const fmt = (d: string) => formatDateRange(d, null);
-const dayNo = (start: string | null, d: string) => (start ? Math.round((Date.parse(d) - Date.parse(start)) / 864e5) + 1 : null);
 
 /**
  * The trip as it happens: a block for each city (its transfers, nights, days, a rented car), and on the
@@ -92,6 +92,9 @@ function Section({ section, ...render }: { section: TimelineSection } & RenderPr
         )}
       </header>
       <ol className="timeline">
+        {section.stays.map((entry) => (
+          <Row key={entry.key} entry={entry} {...render} />
+        ))}
         {section.entries.map((entry) => (
           <Row key={entry.key} entry={entry} {...render} />
         ))}
@@ -100,14 +103,34 @@ function Section({ section, ...render }: { section: TimelineSection } & RenderPr
   );
 }
 
+/** Where a row stands, for the dot on the line: booked, planned (chosen, not bought) or open. */
+function standingOf(entry: TimelineEntry): Standing | null {
+  switch (entry.kind) {
+    case "stay":
+      return entry.block.kind === "booked" ? "booked" : entry.block.kind === "chosen" ? "planned" : "open";
+    case "travel": {
+      const items = entry.travel?.items ?? [];
+      if (items.some((i) => i.status === "booked") || entry.leg?.choice?.booked) return "booked";
+      if (items.some((i) => i.status === "chosen") || entry.leg?.choice?.mode) return "planned";
+      return "open";
+    }
+    case "leg":
+      return entry.leg.status === "booked" ? "booked" : entry.leg.status === "planned" || entry.leg.status === "chosen" ? "planned" : "open";
+    default:
+      return null;
+  }
+}
+
 function Row({ entry, ...render }: { entry: TimelineEntry } & RenderProps) {
+  const standing = standingOf(entry);
   return (
-    <li className={`tl-entry tl-${entry.kind}`}>
+    <li className={`tl-entry tl-${entry.kind}${standing ? ` st-${standing}` : ""}`}>
       <div className="tl-side">
         <span className="tl-icon" aria-hidden>
-          <CategoryIcon category={iconOf(entry)} size={20} />
+          {entry.kind === "day" ? <b className="tl-day-no">{entry.dayNo}</b> : <CategoryIcon category={iconOf(entry)} size={20} />}
+          {standing === "booked" && <span className="tl-badge">✓</span>}
         </span>
-        <Label entry={entry} start={render.start} />
+        <Label entry={entry} />
       </div>
       <div className="tl-content">
         <Entry entry={entry} {...render} />
@@ -118,10 +141,11 @@ function Row({ entry, ...render }: { entry: TimelineEntry } & RenderProps) {
 
 const LEG_LABELS = { arrival: "Transfer", departure: "Transfer", change: "Otel değişimi", move: "Şehir değişimi" } as const;
 const TRAVEL_LABELS = { arrival: "Varış", move: "Şehir değişimi", departure: "Dönüş", other: "Ulaşım" } as const;
-const DAY_WORDS: Partial<Record<Category, string>> = { activity: "Etkinlik", food: "Yeme-içme", other: "Plan", transport: "Araç kiralama" };
 
-/** What and when, beside the line: "Konaklama · 1–4. gün · 8–11 Ekim · 3 gece". */
-function Label({ entry, start }: { entry: TimelineEntry; start: string | null }) {
+const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("tr-TR", { weekday: "short", timeZone: "UTC" });
+
+/** What and when, beside the line: "Konaklama · 8–11 Ekim · 3 gece", "5. gün · 11 Ekim Cmt". */
+function Label({ entry }: { entry: TimelineEntry }) {
   let title: string;
   let lines: (string | null)[];
   switch (entry.kind) {
@@ -135,14 +159,13 @@ function Label({ entry, start }: { entry: TimelineEntry; start: string | null })
       break;
     case "stay": {
       const b = entry.block;
-      const [from, to] = [dayNo(start, b.range.start), dayNo(start, b.range.end)];
       title = "Konaklama";
-      lines = [from && to ? `${from}–${to}. gün` : null, formatDateRange(b.range.start, b.range.end), `${b.nights} gece`];
+      lines = [formatDateRange(b.range.start, b.range.end), `${b.nights} gece`];
       break;
     }
     case "day":
-      title = DAY_WORDS[entry.category] ?? "Plan";
-      lines = [fmt(entry.date)];
+      title = entry.title;
+      lines = [`${fmt(entry.date)} ${weekday(entry.date)}`];
       break;
   }
   return (
@@ -159,8 +182,6 @@ function iconOf(entry: TimelineEntry): Category {
   switch (entry.kind) {
     case "stay":
       return "stay";
-    case "day":
-      return entry.category;
     case "travel": {
       const mode = entry.travel?.mode ?? entry.leg?.mode;
       return mode && mode !== "flight" ? "transport" : entry.role === "move" && !mode ? "transport" : "flight";
@@ -203,19 +224,46 @@ function Entry({ entry, tripId, leg, renderGroup, card, settled }: { entry: Time
           )}
         </div>
       );
-    case "day": {
-      const decided = entry.items.filter((i) => i.status === "chosen" || i.status === "booked");
-      const open = entry.items.filter((i) => i.status === "saved");
-      return (
-        <div className="tl-day">
-          {decided.map((i) => (
-            <div key={i.id}>{settled(i)}</div>
-          ))}
-          {open.length > 0 && <Carousel label={entry.title}>{open.map((i) => card(i, entry.items))}</Carousel>}
-        </div>
-      );
-    }
+    case "day":
+      return <DayCard entry={entry} leg={leg} card={card} settled={settled} />;
   }
+}
+
+/** One day: its transfers, then what's decided, then options still to pick from; an empty day says so. */
+function DayCard({
+  entry,
+  leg,
+  card,
+  settled,
+}: {
+  entry: Extract<TimelineEntry, { kind: "day" }>;
+  leg: (l: Leg) => ReactNode;
+  card: CardFor;
+  settled: SettledFor;
+}) {
+  const decided = entry.items.filter((i) => i.status === "chosen" || i.status === "booked");
+  const open = entry.items.filter((i) => i.status === "saved");
+  if (!entry.legs.length && !entry.items.length) {
+    return (
+      <div className="day-card empty">
+        <span>Boş gün</span>
+        <span className="muted">Bir plan kaydet ya da sohbette söyle</span>
+      </div>
+    );
+  }
+  return (
+    <div className="day-card">
+      {entry.legs.map((l) => (
+        <div key={l.key}>{leg(l)}</div>
+      ))}
+      {decided.map((i) => (
+        <div key={i.id}>{settled(i)}</div>
+      ))}
+      {open.length > 0 && (
+        <Carousel label={entry.title}>{open.map((i) => card(i, entry.items.filter((x) => x.category === i.category)))}</Carousel>
+      )}
+    </div>
+  );
 }
 
 const MODE_ICONS: Record<LegMode, string> = { flight: "✈", train: "🚆", bus: "🚌", ferry: "⛴", metro: "🚇", taxi: "🚕", transfer: "🚐", car: "🚗", walk: "🚶" };
@@ -235,13 +283,15 @@ function MoveCard({ leg, tripId }: { leg: Leg; tripId: string }) {
   const save = (patch: Parameters<typeof withLegChoice>[2]) => void updateTrip(tripId, (t) => withLegChoice(t, leg.key, patch));
   // "Flights from Porto to Madeira on …": the search's "home" end is simply where this move goes.
   const search = mode === "flight" ? flightSearchUrl("from", from, leg.date, to) : null;
+  const standing: Standing = booked ? "booked" : mode ? "planned" : "open";
   const state = booked
-    ? { text: mode && TICKETED.includes(mode) ? "Bilet alındı ✓" : "Ayarlandı ✓", tone: "booked" }
+    ? { text: mode && TICKETED.includes(mode) ? "Bilet alındı" : "Ayarlandı", sub: null }
     : mode
-      ? { text: "Planlanıyor", tone: "chosen", sub: TICKETED.includes(mode) ? "bilet alınmadı" : null }
-      : { text: "Boş", tone: "empty", sub: "nasıl geçeceksiniz?" };
+      ? { text: "Planlanıyor", sub: TICKETED.includes(mode) ? "bilet alınmadı" : null }
+      : { text: "Planlanmadı", sub: "nasıl geçeceksiniz?" };
   return (
-    <div className={`settled-card move-card${booked ? " booked" : ""}`} aria-label={`${from} → ${to}`}>
+    <div className={`settled-card move-card st-${standing}`} aria-label={`${from} → ${to}`}>
+      <StatusBar standing={standing} text={state.text} sub={state.sub} />
       <div className="stc-main" role="button" tabIndex={0} aria-expanded={open} onClick={() => setOpen(!open)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setOpen(!open))}>
         <div className="route">
           <div className="route-line">
@@ -264,10 +314,6 @@ function MoveCard({ leg, tripId }: { leg: Leg; tripId: string }) {
         </div>
       </div>
       <div className="stc-foot">
-        <span className="stc-state">
-          <span className={`state-chip ${state.tone}`}>{state.text}</span>
-          {"sub" in state && state.sub && <small className="muted">{state.sub}</small>}
-        </span>
         <span className="stc-actions">
           {search && !booked && (
             <a className="pill-btn outline" href={search} target="_blank" rel="noreferrer">
@@ -310,14 +356,19 @@ function Block({ block, renderGroup, settled }: { block: StayBlock; renderGroup:
           renderGroup(g, null, g.range && g.range.start === block.range.start && g.range.end === block.range.end ? null : g.title, true),
         )}
       {block.kind === "open" && !block.groups.length && (
-        <div className="empty-card">
-          <span>
-            <b>{block.city ?? "Konaklama"}</b>
-            <span className="muted">Bu geceler için kayıtlı seçenek yok</span>
-          </span>
-          <a className="pill-btn outline" href={block.searchUrl} target="_blank" rel="noreferrer">
-            Booking'de ara ↗
-          </a>
+        <div className="settled-card st-open stay-open">
+          <StatusBar standing="open" text="Planlanmadı" sub="bu geceler için kayıtlı yer yok" />
+          <div className="empty-card">
+            <span>
+              <b>{block.city ?? "Konaklama"}</b>
+              <span className="muted">
+                {formatDateRange(block.range.start, block.range.end)} · {block.nights} gece
+              </span>
+            </span>
+            <a className="pill-btn outline" href={block.searchUrl} target="_blank" rel="noreferrer">
+              Booking'de ara ↗
+            </a>
+          </div>
         </div>
       )}
     </div>

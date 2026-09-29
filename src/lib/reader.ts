@@ -63,6 +63,7 @@ findings: Bu yeri diğerlerinden ayıran somut artılar ve eksiler.
 - Genel laf yazma: "iyi konum" yerine nedenini yaz ("Metroya 2 dk").
 - Yorumlarda tekrar eden konuları mutlaka yaz. Tek bir yorumda geçse de ciddi şikâyetleri (inşaat, haşere, güvenlik, pislik, ilandan farklı yer) yaz.
 - Bir şeyin olmadığını yalnız sayfa açıkça söylüyorsa yaz ("Dahil değil: TV", "asansör yok"). Listede görmemen yokluk demek değildir.
+- Karar için önemsiz standart ayrıntıları yazma: duman/karbonmonoksit dedektörü, yangın söndürücü, ilk yardım çantası, saç kurutma makinesi, ütü, askı, şampuan/sabun, temel malzemeler, nevresim, tabak-çatal. Gezgini gerçekten etkileyenleri yaz: konum, gürültü, temizlik, yatak, alan, merdiven/asansör, klima/ısıtma, mutfak, Wi-Fi, giriş, gizli masraf.
 - quotes: bulguyu söyleyen metinden birebir 1-5 alıntı; yorumdan geliyorsa o yorumların metninden.
 - severity tipik bir gezgine göredir (high = tek başına vazgeçirebilir). Kullanıcıyı tanımıyorsun; kişisel eleme yapma.
 - house: Giriş/çıkış saatlerini, en geç giriş saatini, kendi kendine giriş, bavul emaneti ve havalimanı servisini yalnız sayfa açıkça yazıyorsa doldur; saatleri 24 saat HH:MM yaz, yazıldıkları yeri quotes'a birebir koy.

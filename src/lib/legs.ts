@@ -216,7 +216,7 @@ function status(options: Item[], choice: LegChoice | null, mode: LegMode | null)
 }
 
 /** Where a trip leaves from and goes to, as city keys (its settled option's, else what its options mostly say). */
-function endsOf(t: Travel): { from: string | null; to: string | null } {
+export function endsOf(t: Travel): { from: string | null; to: string | null } {
   const list = t.settled ? [t.settled] : t.items;
   return {
     from: mostCommon(list.map((i) => placeKeyOf(i.flight?.from))),

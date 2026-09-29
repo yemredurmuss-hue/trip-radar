@@ -95,7 +95,8 @@ export function arrivalDay(item: Item): string | null {
   return isoDate(item.flight?.arrival?.slice(0, 10)) ?? departureDay(item);
 }
 
-const TRAVEL: Category[] = ["flight", "transport"];
+/** Things planned on a day in a place. */
+const DAY_PLACES: Category[] = ["activity", "food", "other"];
 const isSettled = (i: Item) => i.status === "booked" || i.status === "chosen";
 
 /**
@@ -525,12 +526,39 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
       else looseStays.push(group);
     }
 
+    // Nights with nothing chosen still have a place when the plan says it: the options for them, the
+    // trip arriving that day ("11 Ekim'de Madeira'ya uçuyoruz") or leaving at the end, or what's planned
+    // in those days (a car rented in Madeira).
     for (const block of stayBlocks) {
       if (block.kind !== "open") continue;
-      const arriving = live.find((i) => TRAVEL.includes(i.category) && arrivalDay(i) === block.range.start && i.city);
-      block.city = mostCommon(block.groups.flatMap((g) => g.items.map((i) => i.city))) ?? arriving?.city ?? null;
-      block.searchUrl = bookingSearchUrl(block.range, block.city, stays);
+      const trips = live.filter(isTrip);
+      // With a connection (Istanbul → Copenhagen → Porto) the last flight in says where, the first one out where from.
+      const when = (i: Item, end: "arrival" | "departure") => i.flight?.[end] ?? i.flight?.departure ?? "";
+      const arriving = trips
+        .filter((i) => arrivalDay(i) === block.range.start && (i.flight?.to || i.city))
+        .sort((a, b) => when(b, "arrival").localeCompare(when(a, "arrival")))[0];
+      const leaving = trips
+        .filter((i) => departureDay(i) === block.range.end && i.flight?.from)
+        .sort((a, b) => when(a, "departure").localeCompare(when(b, "departure")))[0];
+      const during = live.filter((i) => {
+        const d = departureDay(i);
+        return i.city && d && d >= block.range.start && d < block.range.end && (DAY_PLACES.includes(i.category) || isRental(i));
+      });
+      const candidates = [
+        mostCommon(block.groups.flatMap((g) => g.items.map((i) => i.city))),
+        arriving?.city ?? arriving?.flight?.to,
+        leaving?.flight?.from,
+        mostCommon(during.map((i) => i.city)),
+      ];
+      block.city = candidates.find((c): c is string => Boolean(c)) ?? null;
     }
+    // Nights between two stays in the same city are in that city.
+    stayBlocks.forEach((block, i) => {
+      if (block.kind !== "open") return;
+      const [before, after] = [stayBlocks[i - 1]?.city ?? null, stayBlocks[i + 1]?.city ?? null];
+      if (!block.city && before && sameCity(before, after)) block.city = before;
+      block.searchUrl = bookingSearchUrl(block.range, block.city, stays);
+    });
 
     for (const block of stayBlocks) if (block.kind !== "booked") block.groups = mergeOverlapping(block.groups);
 

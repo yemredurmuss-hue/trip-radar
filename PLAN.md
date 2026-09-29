@@ -52,7 +52,14 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
       seçilince kaybolmaz; sohbetteki araç kiralama ve transferler kaydedilen sayfayla birleşir; tekrar söylenen
       plan öncekini korur; asistan geçersiz durum/tarih kabul etmez ve seçince öncekini geri alır; kişi başı
       konaklama fiyatı; "Seç" artık sohbet planını silmez (kenara koyar, geri alınınca döner)
-- [ ] 0.14: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
+- [x] 0.14: gün gün plan — her şehirde önce konaklamalar (tarih sırasıyla; yer yoksa "Planlanmadı"), sonra her gün
+      için bir kart ("5. gün · 11 Ekim Cmt"; transferler ve planlar içinde, boş gün de görünür); aktarmalı gidiş
+      (İstanbul → Kopenhag → Porto) varıştan önce; rezervasyonu olmayan gecelerin şehri oraya giden uçuştan,
+      oradan kalkan uçuştan ya da o günlerdeki kiralık araçtan; "Bilet alındı / Rezerve edildi" yeşil,
+      "Planlanıyor / Seçildi" amber şerit kartın üstünde; açılan kart kısa: tek cümle durum, bilgiler, en fazla 4
+      artı ve 4 dikkat (kanıt "Tüm detaylar"da); duman dedektörü, saç kurutma makinesi gibi önemsiz ayrıntılar puana
+      ve kartlara girmez
+- [ ] 0.15: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
       açık sekmeleri toplu kaydetme (booking.com / airbnb izni gerekir), yeni gelen için "2. sırada, çünkü…" notu
 - [ ] İlk gerçek gezide kullanım: 20–50 gerçek kayıt, hangi alanların yanlış/eksik geldiğini not et
 

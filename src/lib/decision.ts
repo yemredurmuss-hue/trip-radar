@@ -4,7 +4,7 @@
 import { convert, type Rates } from "./currency";
 import { distanceKm, formatDistance, walkingMinutes } from "./geo";
 import { formatPrice, listingKeyOf, metricsOf, nightsBetween, tripDateRange } from "./items";
-import { acceptKey, evidenceOf, isDecisive } from "./listing";
+import { acceptKey, evidenceOf, isDecisive, usefulListing } from "./listing";
 import { buildPlan, groupKeyOf, liveGroups, rangeOfGroupKey, stayRange } from "./plan";
 import type {
   Amenity,
@@ -168,7 +168,8 @@ export function makeContext(
     analyses: new Map((extra.analyses ?? []).map((a) => [a.needKey, a])),
     preferences: extra.preferences ?? [],
     inferred: extra.inferred ?? new Map(),
-    listings: extra.listings ?? new Map(),
+    // Trivia read on a page (no smoke alarm, no hair dryer) never weighs on a decision.
+    listings: new Map([...(extra.listings ?? new Map<string, Listing>())].map(([k, l]) => [k, usefulListing(l)])),
     today: extra.today ?? new Date().toISOString().slice(0, 10),
   };
 }

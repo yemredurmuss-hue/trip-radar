@@ -79,14 +79,24 @@ kartlardır; parmakla, trackpad'le ya da ‹ › ile kaydırılır, en iyi puanl
 kaynak (site ya da şirket), görsel, 0–100 uyum puanı, ne olduğu ("Otel odası · Baixa", "07:10–10:05 · Direkt ·
 4 sa 55 dk"), bu tarihler için fiyat ("€285 · 3 gece toplam"), durum ve rozetler, en önemli iki artı ve iki eksi
 (eleme sebebi her zaman önce). Konaklamada toplamın yanında gecelik fiyat da yazar ("€285 · 3 gece toplam ·
-€95 / gece"). **Detaylar** kartın içinde açılır: neden önde/geride olduğu, bütün artı/eksiler kanıtıyla ("Kanıt",
-"Sorun değil"), koşullar ve linkler. Kartlardaki her şey kayıttan ya da hesaptan gelir; kart için ayrıca AI çağrılmaz.
+€95 / gece"). **Detaylar** kartın içinde kısa açılır: tek cümleyle neden önde/geride olduğu, karar veren
+bilgiler (tarih, yer, puan, iptal, giriş/çıkış saati; uçuşta kalkış, varış, süre, aktarma, bagaj), en fazla dört
+artı ve dört "Dikkat". Bütün bulgular kanıtıyla ("Kanıt", "Sorun değil") **Tüm detaylar**da. Duman dedektörü, saç
+kurutma makinesi gibi önemsiz ayrıntılar puana ve kartlara girmez. Kartlardaki her şey kayıttan ya da hesaptan
+gelir; kart için ayrıca AI çağrılmaz.
 
 **Seçilen şey sade tek bir karta iner.** Uçuş bir rota olarak (IST ——✈—— OPO, süre, direkt/aktarma, paket),
 konaklama ve etkinlik resmi, adı, oda/tür, iptal koşulu, puanı ("8,9 · Çok iyi · 1.204 yorum") ve fiyatıyla (toplam
-ve gecelik). Altında durumu: "Seçildi · rezerve edilmedi" (uçuş, tren ve etkinlikte "bilet alınmadı") ya da
-"Rezerve ✓ / Bilet alındı ✓", yanında **Rezerve ettim / Bileti aldım** ve **⇄ Değiştir** (kartlar geri gelir).
+ve gecelik). Durumu kartın üstünde renkli bir şerittir: yeşil **✓ Bilet alındı / Rezerve edildi**, amber
+**Planlanıyor / Seçildi · bilet alınmadı**, kesikli **Planlanmadı**; zaman çizgisindeki simge de aynı renktedir.
+Altta **Rezerve ettim / Bileti aldım** (yanlışlıkla basıldıysa **Geri al**) ve **⇄ Değiştir** (kartlar geri gelir).
 Karta dokununca ayrıntılar açılır.
+
+**Gün gün plan.** Her şehir bir bloktur: önce konaklamalar tarih sırasıyla (yeri seçilmemiş geceler
+"Planlanmadı" kartı), sonra her gün için bir kart ("5. gün · 11 Ekim Cmt"). Günün transferleri, etkinlikleri ve
+kiralık aracı o günün kartındadır; boş gün de görünür. Aktarmalı gidiş (İstanbul → Kopenhag → Porto) varıştan
+önce gelir. Yeri seçilmemiş gecelerin şehri, oraya giden ya da oradan kalkan uçuştan veya o günlerdeki kiralık
+araçtan anlaşılır.
 
 **Konaklama gece gece planlanır.** Gezinin geceleri (onaylı tarihler, yoksa uçuşlar ve konaklamalar)
 sırayla gösterilir: **✓ Rezerve**, **Seçildi**, **Açık** (bu gecelere uyan seçeneklerle) ya da **Boş**
