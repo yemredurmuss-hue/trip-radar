@@ -20,7 +20,7 @@ import { buildLegs, type Leg } from "../lib/legs";
 import { buildTimeline } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
 import { cardFacts } from "../lib/cardFacts";
-import { budgetBar, decisionProgress } from "../lib/progress";
+import { budgetBar, decisionProgress, entryDomId, type Todo } from "../lib/progress";
 import { cityKeyOf, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 
@@ -28,11 +28,11 @@ import type { Capture, Category, Item, Trip } from "../lib/types";
 import { chooseItem, setHidden } from "./actions";
 import { CategoryIcon, Chevron, SummaryIcon } from "./Icons";
 import { IntentCard } from "./IntentCard";
-import { BudgetBarView, TodoStrip } from "./Progress";
+import { BudgetBarView, findTarget, show, TodoStrip } from "./Progress";
 import { KIND_LABEL, LegRow } from "./LegRow";
 import { Carousel } from "./Carousel";
 import { SettledCard, SwipeCard } from "./SwipeCard";
-import { TimelineView, type CardFor, type RenderGroup, type SettledFor } from "./Timeline";
+import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
 import { rolesOf, type ValueCard } from "../lib/value";
 import { decisionLabel, type Decisions } from "./useDecisions";
 
@@ -58,9 +58,27 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     .filter(Boolean)
     .join(" · ");
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
+  const [view, setView] = useState<TimelineMode>("plan");
+  /** Opens a block of the plan (from the itinerary). */
+  const showOnPlan = (key: string) => {
+    setView("plan");
+    setTimeout(() => show(document.getElementById(entryDomId(key))), 60);
+  };
+  /** A to-do's place: on this view if it's there, else on the other (an empty transfer is only in the itinerary). */
+  const reveal = (target: Todo["target"]) => {
+    const here = findTarget(target);
+    if (here) return show(here);
+    setView((v) => (v === "plan" ? "days" : "plan"));
+    setTimeout(() => show(findTarget(target)), 60);
+  };
   // On the way: which day of the trip it is.
   const onDay = plan.range && today >= plan.range.start && today <= plan.range.end ? nightsBetween(plan.range.start, today) + 1 : null;
-  const places = () => groupItems(timeline.undated).filter((s) => SUMMARIZED.includes(s.category));
+  // Ideas for a day (saved, not chosen) aren't blocks of the plan's front: they wait with the undated ones.
+  const places = () =>
+    groupItems([
+      ...timeline.undated,
+      ...timeline.entries.flatMap((e) => (e.kind === "day" ? e.items.filter((i) => i.status === "saved" && SUMMARIZED.includes(i.category)) : [])),
+    ]).filter((s) => SUMMARIZED.includes(s.category));
   const dismissed = items.filter((i) => i.status === "dismissed");
   const route = routeUrl(items);
   const working = openCaptures.filter((c) => c.status === "pending" || c.status === "processing");
@@ -148,7 +166,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           </div>
         </div>
       </header>
-      <TodoStrip progress={decisionProgress(timeline, items, plan, decisions?.byGroup, today)} />
+      <TodoStrip progress={decisionProgress(timeline, items, plan, decisions?.byGroup, today)} onGo={reveal} />
 
       {failed.length > 0 && (
         <div className="errors">
@@ -175,7 +193,19 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       <IntentCard trip={trip} decisions={decisions} />
 
       {timeline.entries.length > 0 && (
+        <div className="view-tabs" role="tablist" aria-label="Görünüm">
+          <button role="tab" aria-selected={view === "plan"} className={view === "plan" ? "on" : ""} onClick={() => setView("plan")}>
+            Plan
+          </button>
+          <button role="tab" aria-selected={view === "days"} className={view === "days" ? "on" : ""} onClick={() => setView("days")}>
+            Günlük akış
+          </button>
+        </div>
+      )}
+      {timeline.entries.length > 0 && (
         <TimelineView
+          mode={view}
+          onShow={showOnPlan}
           plan={plan}
           timeline={timeline}
           tripId={trip.id}
@@ -188,7 +218,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         />
       )}
 
-      {CATEGORY_ORDER.map((category) => {
+      {view === "plan" && CATEGORY_ORDER.map((category) => {
         if (category === "stay") return <LooseStays key="stay" plan={plan} renderGroup={renderGroup} />;
         if (SUMMARIZED.includes(category)) {
           const section = places().find((s) => s.category === category);
@@ -203,11 +233,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           .map((g, index) => renderGroup(g, index === 0 ? CATEGORY_LABELS[category] : null, g.title));
       })}
 
-      {plan.closed.length > 0 && <ClosedSection closed={plan.closed} onOpenItem={onOpenItem} />}
+      {view === "plan" && plan.closed.length > 0 && <ClosedSection closed={plan.closed} onOpenItem={onOpenItem} />}
 
-      {hiddenLegs.length > 0 && <HiddenSection legs={hiddenLegs} tripId={trip.id} />}
+      {view === "plan" && hiddenLegs.length > 0 && <HiddenSection legs={hiddenLegs} tripId={trip.id} />}
 
-      {dismissed.length > 0 && (
+      {view === "plan" && dismissed.length > 0 && (
         <SummarySection
           category="other"
           label={`Elenenler (${dismissed.length})`}

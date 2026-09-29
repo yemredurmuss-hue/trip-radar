@@ -322,7 +322,8 @@ function rentalRows(date: string, rentals: RentalEntry[]): { start: DayRow[]; en
     const name = lead?.name ?? (items.length === 1 ? items[0].name : `${items.length} seçenek`);
     if (r.date === date) {
       const state: RowState = lead?.status === "booked" ? "done" : lead ? "pending" : "decide";
-      start.push(row({ key: r.key, kind: "rental", state, title: "Araç kiralama", sub: name, time: clockOf(lead?.flight?.departure), rental: r }));
+      const status = state === "done" ? "Rezerve" : state === "pending" ? "Rezerve edilmedi" : `${items.length} seçenek`;
+      start.push(row({ key: r.key, kind: "rental", state, status, title: "Araç kiralama", sub: name, time: clockOf(lead?.flight?.departure), rental: r }));
     }
     if (r.end === date && r.end !== r.date) {
       end.push(row({ key: `${r.key}:return`, kind: "info", state: "info", title: "Araç iade", sub: name, time: clockOf(lead?.flight?.arrival) }));

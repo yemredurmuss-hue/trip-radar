@@ -27,17 +27,16 @@ Durum hiçbir yerde yalnız renkle anlatılmaz: yanında hep yazısı olur ("Bil
 ★ yalnız gezginin kendi önceliğine dokunan satırı işaretler (söylediği ya da ayarladığı); varsayılanlar
 yıldız almaz.
 
-## Gün, saat saat
+## İki görünüm
 
-- Rezervasyon gerektiren her şey (uçuş, tren, taksi/transfer, etkinlik, restoran, araç kiralama) o günün içinde,
-  kendi saatinde kendi kartıdır. Rezerve edilince de kart kalır, yeşil olur; satıra küçülmez.
-- Bilgi (check-in, check-out, metroyla/yürüyerek gidiş, araç iadesi) ince satırdır; kartı ve düğmesi yoktur.
-- Bir şey iki yerde yazılmaz: ayrı bir "akış" listesi yok, gün zaten saat sırasıdır.
-- Otel şehrin başında bir kez; araç kiralama alış gününün kartı.
-- Saat solda: kayıttan gelen düz, alışılmış ya da hesaplanan "~"; altına açıklama yazılmaz, bilinmeyen boş.
-- Hiza: solda yalnız gezinin çizgisi (simgeler ve noktalar onun üstünde). Ne olduğu ve ne zaman olduğu ("1. gün ·
-  8 Ekim Per", "Konaklama · 8–11 Ekim") kartın üstünde başlıktır; kartlar genişliği kullanır, hepsi aynı sütundan
-  başlar. Kart saatini kendi taşır; bilgi satırı saatle başlar.
+- **Plan** kararların ön yüzü: yalnız kararı ya da rezervasyonu olan şeyler, her biri kendi büyük kartı (uçuş, otel,
+  şehir değişimi, seçilen etkinlik, kiralık araç, planı olan transfer). Solda simge ve etiket sütunu (ne, ne zaman,
+  kaçıncı gün), sağda kart; şehir bloğunun içindekiler dışındakilerle aynı hizada.
+- Plan'da check-in/check-out satırı, boş gün, planı olmayan transfer yok.
+- **Günlük akış** gün gün, saat saat: rezervasyon gerektiren her şey (uçuş, tren, taksi/transfer, etkinlik,
+  restoran, araç kiralama) küçük bir blok, bilgi (check-in, check-out, metro/yürüyüş, araç iadesi) ince satır.
+- Blok Plan'daki kartına götürür; bir şey iki görünümde de büyük yazılmaz.
+- Saat solda: kayıttan gelen düz, alışılmış ya da hesaplanan "~"; bilinmeyen boş.
 - Günler açılır, kapanır: işi kalan açık gelir ("3 iş"), hepsi hazır olan tek satıra katlanır.
 
 ## Azaltmak

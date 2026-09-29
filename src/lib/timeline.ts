@@ -27,7 +27,19 @@ export type TimelineEntry =
     }
   /** A transfer on a day that has no card of its own (landing the night before, leaving for the station). */
   | { kind: "leg"; key: string; date: string; leg: Leg }
-  | { kind: "stay"; key: string; date: string; block: StayBlock; title: string; subtitle: string; skipped?: boolean }
+  | {
+      kind: "stay";
+      key: string;
+      date: string;
+      block: StayBlock;
+      title: string;
+      subtitle: string;
+      /** Its days of the trip, check-out day included ("1–5. gün"). */
+      days?: string;
+      skipped?: boolean;
+    }
+  /** Something decided for a day (a tour, a table): its own block on the plan's front. */
+  | { kind: "event"; key: string; date: string; dayNo: number | null; item: Item }
   /** One day of the trip in its city: its transfers and what's planned, empty until something is. */
   | { kind: "day"; key: string; date: string; dayNo: number; title: string; items: Item[]; legs: Leg[] }
   /** Plans for a city without a day yet ("Madeira'da araba kiralarız"): in its block until the day is known. */
@@ -83,7 +95,13 @@ export type TimelineSection =
 
 export interface Timeline {
   entries: TimelineEntry[];
+  /** Day by day, a day on the move as one: the itinerary. */
   sections: TimelineSection[];
+  /**
+   * The plan's front: a block for each thing booked or to decide (flights, transfers with a plan,
+   * stays, what's chosen for a day, a rented car), no days or check-in lines.
+   */
+  board: TimelineSection[];
   /** Flights and transport not tied to a day of the plan (e.g. an extra flight); shown after the timeline. */
   unplaced: OptionGroup[];
   /** Places to visit, eat or do without a day in the trip. */
@@ -133,6 +151,7 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
     return {
       entries: [],
       sections: [],
+      board: [],
       unplaced: plan.groups.filter((g) => g.category === "flight" || g.category === "transport"),
       undated: dayItems.filter((i) => i.category !== "transport"),
     };
@@ -330,6 +349,7 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
       block,
       title: `${formatDateRange(block.range.start, block.range.end)} · Konaklama`,
       subtitle: [block.city, `${nights} gece`].filter(Boolean).join(" · "),
+      days: `${nightsBetween(start, block.range.start) + 1}–${nightsBetween(start, block.range.end) + 1}. gün`,
       ...(block.kind === "open" && !block.groups.length && hidden.has(nightsKey(block.range)) ? { skipped: true } : {}),
     });
     if (cityPlans[index].length) {
@@ -380,9 +400,23 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
       return { ...g, items: rest, booked: rest.find((i) => i.status === "booked") ?? null };
     })
     .filter((g) => g.items.length > 0);
+  // The front: days give way to what's in them that is a block of its own; a transfer shows once there's
+  // a plan for it (an empty one is a to-do, and a line of the itinerary).
+  const board: TimelineEntry[] = [];
+  for (const e of entries) {
+    if (e.kind === "day") {
+      for (const l of e.legs) if (l.status !== "empty") board.push(legRow(l));
+      for (const i of e.items) {
+        if (i.status === "chosen" || i.status === "booked") board.push({ kind: "event", key: `event:${i.id}`, date: e.date, dayNo: e.dayNo, item: i });
+      }
+    } else if (!(e.kind === "leg" && e.leg.status === "empty")) {
+      board.push(e);
+    }
+  }
   return {
     entries,
     sections: sectionsOf(entries, journeyOf),
+    board: sectionsOf(board, new Map()),
     unplaced,
     undated: dayItems.filter((i) => !placedDays.has(i.id) && i.category !== "transport"),
   };

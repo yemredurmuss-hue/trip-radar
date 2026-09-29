@@ -136,27 +136,23 @@ Arayüz kuralları (renklerin anlamı, butonlar, yazı ölçeği, okunurluk) [DE
 **Gezinin özeti** en üsttedir: resim, ad, tarihler ve "7 gün · 2 şehir · 5 etkinlik · 1 konaklama · 1 ulaşım"
 (konaklama ve ulaşım: seçilen ya da rezerve edilenler).
 
-**Gün, saat saat: rezervasyon kart, bilgi satır.** Her gün (şehir değiştirdiğin, vardığın ve döndüğün gün
-dahil) solda saatleriyle okunur. Rezervasyon gerektiren her şey (uçuş, tren, taksi/transfer, etkinlik, restoran,
-araç kiralama) o gün, kendi saatinde **kendi kartıdır**: fiyatı, durumu, tek ana düğmesi. Rezerve edilince de
-kart kalır, yeşile döner. Check-out, check-in, metroyla ya da yürüyerek gidiş, araç iadesi gibi **bilgiler** ince
-satırdır; bir şey iki kez yazılmaz. Saat kayıttan gelirse düz, alışılmış ya da hesaplanmışsa "~" ile yazar.
+**İki görünüm: Plan ve Günlük akış.** Plan, verdiğin kararların ve rezervasyonların tek bakışta durduğu yerdir:
+solda ne olduğu ve ne zaman ("Varış · 8 Ekim", "Konaklama · 1–4. gün · 8–11 Ekim · 3 gece", "Etkinlik · 9 Ekim ·
+2. gün"), sağda büyük kartı: uçuşlar, oteller, şehir değişimi, seçtiğin etkinlikler, kiralık araç ve planı olan
+transferler. Check-in/check-out satırı, boş gün, planı olmayan transfer burada yer kaplamaz.
 
-**Günler açılır, kapanır.** İşi kalan gün açık gelir ve yanında kaç iş kaldığı yazar ("3 iş"). Hepsi hazır olan
-gün tek satıra katlanır ("3 plan · hepsi hazır"); gün başlığına dokununca açılır.
-
-**Yolculuk günü iki şehrin arasında.** "4. gün · Porto → Lizbon": check-out, havalimanı/gar transferi, uçuş ya da
-tren kartı (aktarmalar önce), varış transferi, check-in. Seçilecek uçuşlar varsa o gün tam genişlikte açılır.
-
-**Otel şehrin başında, araç alış gününde.** Otel şehrin başında bir kez, büyük durur; günlerde yalnız
-check-in/check-out satırı. Kiralık araç, alış gününün kartıdır ("Araç kiralama · FAA Rentals"); rezerve etmeden
-önce seçenekleriyle orada görünür. İade günü bir satırdır ("Araç iade").
+**Günlük akış** gün gün, saat saat okunur. Rezervasyon gerektiren her şey (uçuş, tren, taksi/transfer, etkinlik,
+restoran, araç kiralama) kendi saatinde **küçük bir bloktur**, durumu yanında ("planlanmadı", "Rezerve edilmedi",
+"✓ Bilet alındı"). Check-out, check-in, metroyla ya da yürüyerek gidiş, araç iadesi gibi bilgiler ince satırdır.
+Bloğa dokununca Plan'daki kartı açılır; planı olmayan transfer orada açılır (nasıl gideceğin, "Gerek yok").
+Saat kayıttan gelirse düz, alışılmış ya da hesaplanmışsa "~" ile yazar. İşi kalan gün açık gelir ("3 iş"), hepsi
+hazır olan tek satıra katlanır; şehir değiştirdiğin gün "4. gün · Porto → Lizbon" diye okunur.
 
 Gezi başladıysa özet "Seyahat başladı · 4. gün" der, bugünün kartında **Bugün** yazar.
 
-**Gün gün plan.** Her şehir bir bloktur: önce konaklamalar tarih sırasıyla (yeri seçilmemiş geceler
-"Planlanmadı" kartı), sonra her gün için bir kart ("5. gün · 11 Ekim Cmt"). Günün transferleri, etkinlikleri ve
-kiralık aracı o günün kartındadır; boş gün de görünür. Aktarmalı gidiş (İstanbul → Kopenhag → Porto) varıştan
+**Şehir şehir.** Plan'da her şehir bir bloktur: önce konaklamalar tarih sırasıyla (yeri seçilmemiş geceler
+"Planlanmadı" kartı), sonra o şehirde seçtiğin etkinlikler ve kiralık araç, günleriyle. Günlük akışta aynı şehir
+başlığı konaklamasıyla durur, altında günleri (boş gün de görünür). Aktarmalı gidiş (İstanbul → Kopenhag → Porto) varıştan
 önce gelir. Yeri seçilmemiş gecelerin şehri, oraya giden ya da oradan kalkan uçuştan veya o günlerdeki kiralık
 araçtan anlaşılır.
 

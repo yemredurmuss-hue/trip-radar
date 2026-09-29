@@ -15,12 +15,17 @@ export function show(el: Element | null) {
   setTimeout(() => el.classList.remove("flash"), 1700);
 }
 
-/** The card itself when it's on screen, else its transfer, else its place on the line. */
-function go(target: Todo["target"]) {
+/** The card itself when it's on screen, else its transfer, else its place on the plan or in the itinerary. */
+export function findTarget(target: Todo["target"]): Element | null {
   const card = target.item ? document.querySelector(`[data-item-id="${CSS.escape(target.item)}"]`) : null;
   const leg = target.leg ? document.getElementById(`leg-${target.leg}`) : null;
   const entry = target.entry ? document.getElementById(entryDomId(target.entry)) : null;
-  show(card ?? leg ?? entry);
+  const inDays = target.leg
+    ? document.querySelector(`[data-it-key="${CSS.escape(`leg:${target.leg}`)}"]`)
+    : target.entry
+      ? document.querySelector(`[data-it-key="${CSS.escape(target.entry)}"]`)
+      : null;
+  return card ?? leg ?? entry ?? inDays;
 }
 
 const KINDS: { kind: TodoKind; label: string }[] = [
@@ -32,7 +37,7 @@ const KINDS: { kind: TodoKind; label: string }[] = [
 
 const when = (t: Todo) => (t.days == null ? null : t.days < 0 ? null : t.days === 0 ? "bugün" : `${t.days} gün`);
 
-export function TodoStrip({ progress }: { progress: DecisionProgress }) {
+export function TodoStrip({ progress, onGo }: { progress: DecisionProgress; onGo: (target: Todo["target"]) => void }) {
   const [open, setOpen] = useState<TodoKind | null>(null);
   const { todos, count } = progress;
   const shown = KINDS.filter((k) => count[k.kind] > 0);
@@ -69,7 +74,7 @@ export function TodoStrip({ progress }: { progress: DecisionProgress }) {
         <ul className="todo-list">
           {list.map((t) => (
             <li key={t.key}>
-              <button onClick={() => go(t.target)}>
+              <button onClick={() => onGo(t.target)}>
                 <span className="todo-text">
                   <b>{t.title}</b>
                   <span className="muted">{t.note}</span>

@@ -323,6 +323,11 @@ describe("any trip", () => {
           if (x.entries.filter((e) => e.kind === "day").length > 1) note(seed, `journey ${x.key} took two days`);
           if (x.journey.dayNo != null && !x.entries.some((e) => e.kind === "day")) note(seed, `journey ${x.key} numbered without its day`);
         }
+        // The plan's front has no days: each decided thing of a day is a block of its own, once.
+        if (timeline.board.some((x) => x.kind === "journey")) note(seed, "a day on the move on the plan's front");
+        const events = timeline.board.flatMap((x) => (x.kind === "city" ? x.entries.filter((e) => e.kind === "event") : []));
+        const decidedOnDays = timeline.entries.flatMap((e) => (e.kind === "day" ? e.items.filter((i) => i.status === "chosen" || i.status === "booked") : []));
+        if (events.length !== decidedOnDays.length) note(seed, `events ${events.length} ≠ ${decidedOnDays.length}`);
         const kinds = Object.values(progress.count).reduce((a, b) => a + b, 0);
         if (kinds !== progress.todos.length) note(seed, `todo counts ${kinds} ≠ ${progress.todos.length}`);
         if (new Set(progress.todos.map((t) => t.key)).size !== progress.todos.length) note(seed, "todo keys repeat");

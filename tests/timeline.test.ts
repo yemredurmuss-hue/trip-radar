@@ -18,6 +18,7 @@ const titles = (t: ReturnType<typeof buildTimeline>) =>
     if (e.kind === "day") return `${e.title} [${[...e.legs.map((l) => `${l.from.label} → ${l.to.label}`), ...e.items.map((i) => i.name)].join("; ")}]`;
     if (e.kind === "plan") return `Planlar [${e.items.map((i) => i.name).join("; ")}]`;
     if (e.kind === "rental") return `Araç ${e.date}–${e.end} [${e.group.items.map((i) => i.name).join("; ")}]`;
+    if (e.kind === "event") return `  ${e.item.name}`;
     return `${e.title}${"subtitle" in e && e.subtitle ? ` | ${e.subtitle}` : ""}`;
   });
 
@@ -69,6 +70,16 @@ describe("timeline", () => {
     expect(train.kind === "travel" && train.travel?.items.map((i) => i.name)).toEqual(["CP Alfa Pendular · Porto → Lizbon"]);
     expect(timeline.unplaced).toEqual([]);
     expect(timeline.undated.map((i) => i.name).sort()).toEqual(["Livraria Lello", "Majestic Café", "Serralves Müzesi", "Tiyatro"]);
+    // The plan's front: blocks only — the flights, each stay (with its days), the boat tour chosen for the
+    // 9th; no days, no check-in lines, no transfers without a plan.
+    const board = timeline.board.map((x) =>
+      x.kind === "travel"
+        ? `travel:${x.entry.role}`
+        : x.kind === "city"
+          ? `${x.city}: ${[...x.stays.map((e) => `stay ${e.days}`), ...x.entries.map((e) => (e.kind === "event" ? `event ${e.item.name} (${e.dayNo}. gün)` : e.kind))].join(", ")}`
+          : x.kind,
+    );
+    expect(board).toEqual(["travel:arrival", "Porto: stay 1–4. gün, event Douro tekne turu (2. gün)", "travel:move", "Lizbon: stay 4–7. gün", "travel:departure"]);
   });
 
   it("leaves a slot to fill when nothing gets the traveller there or home, unless they said how", () => {

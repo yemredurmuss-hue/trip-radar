@@ -116,35 +116,30 @@ try {
   assert.equal(await app.locator(".day-strip").count(), 0, "no band of nights");
   const cities = await app.locator(".city-block .city-head").allInnerTexts();
   assert.deepEqual(cities.map((t) => t.replace(/\s+/g, " ")), ["1 Porto 8–11 Ekim · 3 gece", "2 Lizbon 11–14 Ekim · 3 gece"]);
-  assert.match(await app.locator(".tl-stay .tl-label").first().innerText(), /Konaklama\s*8–11 Ekim\s*3 gece/);
+  assert.match(await app.locator(".tl-stay .tl-label").first().innerText(), /Konaklama\s*1–4\. gün\s*8–11 Ekim\s*3 gece/);
   await app.locator(".stay-block.booked", { hasText: "Lisboa Loft" }).waitFor();
   await app.getByText("Kapanan seçenekler (1)").waitFor();
   assert.equal(await app.locator(".stay-block", { hasText: "Alfama Suites" }).count(), 0, "a booking closes its alternatives");
-  // The trip in order: day 1 on the way in, Porto (its stay, then a card for each day), day 4 on the move, Lisbon, day 7 home.
+  // The plan's front, a block for each thing: the flight in, Porto's stay and the boat tour, the train, Lisbon's stay, home.
   const heads = await app.locator(".trip-line .tl-label b").allInnerTexts();
-  assert.deepEqual(heads, ["1. gün", "Konaklama", "2. gün", "3. gün", "4. gün", "Konaklama", "5. gün", "6. gün", "7. gün"]);
-  assert.deepEqual(
-    await app.locator(".city-block").evaluateAll((els) => els.map((e) => [...e.querySelectorAll(".tl-label b")].map((b) => b.textContent).join(","))),
-    ["Konaklama,2. gün,3. gün", "Konaklama,5. gün,6. gün"],
-  );
-  // Days with nothing yet say so; the 9th has its boat tour.
-  assert.equal(await app.locator(".tl-day .day-card.empty").count(), 3);
-  // A day on the move is one card on the line between the cities: its steps in order, each with its time and where it stands.
-  const journey = (n) => app.locator(".tl-journey", { has: app.locator(".tl-label b", { hasText: new RegExp(`^${n}\\. gün$`) }) });
-  const titles = (n) => journey(n).locator(".dr").evaluateAll((els) => els.map((e) => e.dataset.title));
-  const states = (n) => journey(n).locator(".dr").evaluateAll((els) => els.map((e) => [...e.classList].find((c) => c.startsWith("st-"))));
-  const dayRow = (n, title) => journey(n).locator(`.dr[data-title="${title}"]`);
-  assert.equal(await journey(4).locator(".journey-head").innerText(), "Porto → Lizbon");
-  assert.deepEqual(await titles(4), ["Check-out", "Otel → Gar", "Tren Porto → Lizbon", "Gar → Otel", "Check-in"]);
-  // Lines start with their time; cards carry their own.
-  assert.deepEqual(await journey(7).locator(".dr-time").allInnerTexts(), ["~11:00"]);
-  await dayRow(7, "Otel → Havalimanı").locator(".leg-sub", { hasText: "En geç 17:40 havalimanında" }).waitFor();
-  // Information is a line; a reservation is its card, booked or not.
-  assert.deepEqual(await states(7), ["st-info", "st-open", "st-done"]);
-  await dayRow(7, "Uçuş LIS → IST").locator(".tl-travel.role-departure .settled-card .status-bar.st-booked").waitFor();
-  // Transfers read like a ticket: "Havalimanı → Otel", the names under it.
-  assert.equal(await dayRow(1, "Havalimanı → Otel").locator(".leg-title").innerText(), "Havalimanı → Otel");
-  await dayRow(1, "Havalimanı → Otel").locator(".leg-sub", { hasText: "OPO havalimanı →" }).waitFor();
+  assert.deepEqual(heads, ["Varış", "Konaklama", "Etkinlik", "Şehir değişimi", "Konaklama", "Dönüş"]);
+  // No days, no check-in lines, no transfers without a plan on the front.
+  assert.equal(await app.locator(".trip-line .tl-day, .trip-line .leg").count(), 0);
+  // The itinerary, a tab away: day by day, hour by hour; each booking a small block, information a line.
+  const tab = (name) => app.getByRole("tab", { name, exact: true });
+  await tab("Günlük akış").click();
+  const day = (n) => app.locator(".it-day", { has: app.locator(".it-day-head b", { hasText: new RegExp(`^${n}\\. gün$`) }) });
+  const dayTitles = (n) => day(n).locator(".it-row").evaluateAll((els) => els.map((e) => e.querySelector(".it-t b, .it-line b")?.textContent));
+  const itRow = (n, title) => day(n).locator(".it-row", { has: app.locator(".it-t b", { hasText: title }) });
+  assert.equal(await day(4).locator(".it-route").innerText(), "Porto → Lizbon");
+  assert.deepEqual(await dayTitles(4), ["Check-out", "Otel → Gar", "Tren Porto → Lizbon", "Gar → Otel", "Check-in"]);
+  assert.deepEqual(await day(7).locator(".it-time").allInnerTexts(), ["~11:00", "17:40", "19:40"]);
+  await day(7).locator(".it-block.st-done", { hasText: "Uçuş LIS → IST" }).waitFor();
+  assert.equal(await app.locator(".it-day.empty").count(), 3);
+  await app.screenshot({ path: `${out}/3e-itinerary.png` });
+  // A block opens its card on the plan.
+  await day(7).locator(".it-block", { hasText: "Uçuş LIS → IST" }).click();
+  await app.locator("li.tl-travel.flash").waitFor();
   // Where each plan stands is on top of its card: booked in green, planned in amber.
   await app.locator(".tl-stay.st-booked .status-bar.st-booked", { hasText: "Rezerve edildi" }).waitFor();
   // Undecided needs are decision cards to swipe through, best first; decided ones are one line.
@@ -193,7 +188,7 @@ try {
   // And the money: booked, chosen and a guess for what's open, against the budget.
   assert.match(await app.locator(".budget").innerText(), /\/ €1\.500 bütçe/);
   // Decided already: the boat tour on the 9th and the flight home.
-  const douro = app.locator(".tl-day .settled-card", { hasText: "Douro tekne turu" });
+  const douro = app.locator(".tl-event .settled-card", { hasText: "Douro tekne turu" });
   await douro.locator(".status-bar").getByText("bilet alınmadı").waitFor();
   const home = app.locator(".tl-travel.role-departure .settled-card");
   await home.locator(".status-bar.st-booked", { hasText: "Bilet alındı" }).waitFor();
@@ -291,50 +286,47 @@ try {
   // "Seç" on a flight card: the flight folds into a line, and its landing time reaches the transfer to the hotel.
   await card("Pegasus · direkt").getByRole("button", { name: "Seç" }).click();
   await app.locator(".tl-travel.role-arrival .settled-card", { hasText: "IST" }).locator(".status-bar").getByText("bilet alınmadı").waitFor();
-  // Porto chosen, Lisbon booked: the transfers between them lay themselves out (the saved train is
+  // Porto chosen, Lisbon booked: in the itinerary the transfers lay themselves out (the saved train is
   // the move, with a station transfer on each side), and the way home says what's easy to miss.
-  const leg = (names) => app.locator(".leg", { has: app.locator(".leg-sub", { hasText: names }) });
-  const landing = leg("OPO havalimanı → Jardim Stay");
-  await landing.locator(".leg-chip.st-empty").waitFor();
-  // Landing 10:05: the transfer then, check-in from 14:00 as the page says (just the times, no notes under them).
-  await dayRow(1, "Havalimanı → Otel").locator(".leg-sub", { hasText: "Varış 10:05" }).waitFor();
-  assert.match(await dayRow(1, "Check-in").innerText(), /^14:00\s*Check-in\s*Jardim Stay$/);
-  // The notes wait behind a tap (a small ⓘ says there are some).
-  assert.equal(await landing.locator(".leg-note").count(), 0);
-  await landing.locator(".leg-hint").waitFor();
-  await landing.locator(".leg-head").click();
-  await landing.locator(".leg-note", { hasText: "Varış 10:05, giriş en erken 14:00 (sayfada yazıyor)" }).waitFor();
-  await leg("Jardim Stay → Porto Campanhã").waitFor();
-  assert.equal(await leg("Jardim Stay → Porto Campanhã").locator(".leg-title").innerText(), "Otel → Gar");
-  await app.locator(".tl-travel.role-move .swipe-card", { hasText: "CP Alfa Pendular" }).waitFor(); // the move is the saved train, still to pick
-  await leg("Lisboa Santa Apolónia → Lisboa Loft").waitFor();
-  await leg("Lisboa Loft → LIS havalimanı").locator(".leg-head").click();
-  await leg("Lisboa Loft → LIS havalimanı").locator(".leg-note", { hasText: "arada ~6 saat boşluk" }).waitFor();
-  // "Metroyla gideceğim": nothing to book, so the transfer becomes a line of the day (a tap changes it).
-  await landing.getByRole("button", { name: "🚇 Metro" }).click();
-  await journey(1).locator('.dr.st-info[data-title="Havalimanı → Otel"] .dr-info', { hasText: "Metro · planlandı" }).waitFor();
-  // "Gerek yok": a transfer they don't need leaves the line (and the to-dos), and comes back from "Gizlenenler".
-  const lisbonIn = leg("Lisboa Santa Apolónia → Lisboa Loft");
-  await lisbonIn.locator(".leg-head").click();
+  await tab("Günlük akış").click();
+  // Landing 10:05: the transfer then, check-in from 14:00 as the page says.
+  assert.equal(await itRow(1, "Havalimanı → Otel").locator(".it-time").innerText(), "10:05");
+  await itRow(1, "Havalimanı → Otel").locator(".it-t", { hasText: "OPO havalimanı → Jardim Stay" }).waitFor();
+  assert.match(await day(1).locator(".it-row.info", { hasText: "Check-in" }).innerText(), /14:00\s*Check-in\s*Jardim Stay/);
+  // A transfer with no plan opens right there: what's easy to miss, how to go, "Gerek yok".
+  await itRow(1, "Havalimanı → Otel").locator(".it-block").click();
+  await itRow(1, "Havalimanı → Otel").locator(".leg-note", { hasText: "Varış 10:05, giriş en erken 14:00 (sayfada yazıyor)" }).waitFor();
+  assert.equal(await itRow(4, "Otel → Gar").locator(".it-t span").innerText(), "Jardim Stay → Porto Campanhã");
+  await itRow(7, "Otel → Havalimanı").locator(".it-block").click();
+  await itRow(7, "Otel → Havalimanı").locator(".leg-note", { hasText: "arada ~6 saat boşluk" }).waitFor();
+  // "Metroyla gideceğim": nothing to book, so the transfer becomes a line of the day.
+  await itRow(1, "Havalimanı → Otel").getByRole("button", { name: "🚇 Metro" }).click();
+  await day(1).locator(".it-row.info", { hasText: "Metro · planlandı" }).waitFor();
+  // "Gerek yok": a transfer they don't need leaves the day (and the to-dos), and comes back from "Gizlenenler".
+  const lisbonIn = itRow(4, "Gar → Otel");
+  await lisbonIn.locator(".it-block").click();
   await lisbonIn.getByRole("button", { name: "Gerek yok · gizle" }).click();
   await lisbonIn.waitFor({ state: "detached" });
+  await tab("Plan").click();
   const hiddenRow = app.locator(".section", { has: app.locator(".row-name", { hasText: "Gizlenenler (1)" }) });
   await hiddenRow.locator(".row").click();
   await hiddenRow.getByRole("button", { name: "Geri getir", exact: true }).click();
+  await hiddenRow.waitFor({ state: "detached" });
+  await tab("Günlük akış").click();
   await lisbonIn.waitFor();
-  assert.equal(await app.locator(".row-name", { hasText: "Gizlenenler" }).count(), 0);
-  await journey(1).evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await day(1).evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5-legs.png` });
-  await journey(4).evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await day(4).evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5b-legs.png` });
-  // A narrow window: the cards still swipe, nothing spills out sideways.
+  // A narrow window: nothing spills out sideways.
   const wide = app.viewportSize();
   await app.setViewportSize({ width: 820, height: 900 });
-  await journey(4).evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await day(4).evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5c-narrow.png` });
   assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll");
   await app.setViewportSize(wide);
-  // Without the train, Porto → Lizbon is a move to plan: by plane it reads as a flight, with its status on it.
+  // Back on the plan, without the train Porto → Lizbon is a move to plan: by plane it reads as a flight, with its status on it.
+  await tab("Plan").click();
   // "Ele" right on the card: it leaves the options and waits under "Elenenler".
   await card("CP Alfa Pendular · Porto → Lizbon").getByRole("button", { name: "Ele", exact: true }).click();
   await app.locator(".row-name", { hasText: "Elenenler (1)" }).waitFor();
@@ -343,21 +335,21 @@ try {
   assert.match(await move.locator(".route").innerText(), /Porto[\s\S]*Lizbon/);
   await move.locator(".stc-main").click();
   await move.getByRole("button", { name: "✈ Uçak" }).click();
-  await dayRow(4, "Uçuş Porto → Lizbon").waitFor();
   await move.locator(".status-bar.st-planned", { hasText: "Planlanıyor" }).waitFor();
   await move.locator(".status-bar").getByText("bilet alınmadı").waitFor();
   assert.equal(
     decodeURIComponent(await move.getByRole("link", { name: "Uçuş ara ↗" }).getAttribute("href")),
     "https://www.google.com/travel/flights?q=Flights from Porto to Lizbon on 2026-10-11",
   );
-  // By plane there's an airport at each end: the transfers show up.
-  await leg("Jardim Stay → Porto havalimanı").waitFor();
   await move.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await app.screenshot({ path: `${out}/5d-move.png` });
   await move.getByRole("button", { name: "Bileti aldım" }).click();
-  // Bought: the card stays, green.
   await move.locator(".status-bar.st-booked", { hasText: "Bilet alındı" }).waitFor();
-  await dayRow(4, "Uçuş Porto → Lizbon").and(app.locator(".st-done")).waitFor();
+  // By plane there's an airport at each end: the itinerary's day 4 now has them, around the flight.
+  await tab("Günlük akış").click();
+  await itRow(4, "Otel → Havalimanı").waitFor();
+  await day(4).locator(".it-block.st-done", { hasText: "Uçuş Porto → Lizbon" }).waitFor();
+  await tab("Plan").click();
   // Places without a day stay together, as cards to browse.
   await app.getByText("Etkinlikler").click();
   await card("Tiyatro").waitFor();

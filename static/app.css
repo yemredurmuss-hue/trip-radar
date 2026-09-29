@@ -506,13 +506,14 @@ body.popup { width: 320px; }
 
 /* ---------- the trip: a block per city, travel between them ---------- */
 .trip-line { position: relative; margin-top: 14px; }
-.trip-line::before { content: ""; position: absolute; left: 26px; top: 20px; bottom: 20px; width: 2px; background: #dcd7cf; }
-.city-block { position: relative; margin: 0 0 22px; padding: 16px 16px 4px; border-radius: 32px; background: #efebe4; }
-.city-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 16px; padding-left: 4px; }
+.trip-line::before { content: ""; position: absolute; left: 21px; top: 20px; bottom: 20px; width: 2px; background: #dcd7cf; }
+/* The block's tint reaches past the column so what's inside lines up with what's outside: one rail, one card edge. */
+.city-block { position: relative; margin: 0 -16px 22px; padding: 16px 16px 4px; border-radius: 32px; background: #efebe4; }
+.city-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 16px; padding-left: 7px; }
 .city-head b { font-size: 22px; letter-spacing: -.01em; color: var(--ink); }
 .city-head .muted { font-size: 14.5px; }
 .city-no { align-self: center; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 1.5px solid #d6cfc4; font-size: 14px; font-weight: 700; }
-.city-block .timeline::before { left: 26px; }
+.city-block .timeline::before { left: 21px; }
 .timeline.between { margin: 0 0 22px; }
 .timeline.between::before { display: none; }
 .route-mode { position: relative; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #fff; font-size: 14px; line-height: 1; }
@@ -521,16 +522,18 @@ body.popup { width: 320px; }
 
 /* ---------- the trip, in order ---------- */
 .timeline { position: relative; margin: 0; padding: 0; list-style: none; }
-.timeline::before { content: ""; position: absolute; left: 26px; top: 22px; bottom: 22px; width: 2px; background: #dcd7cf; }
-/* Only the trip's line on the left (its icons and pins on it); what an entry is and when is a heading
-   above its card, so the cards use the width. */
-.tl-entry { position: relative; display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 8px 12px; margin: 0 0 22px; }
-.tl-side { display: contents; }
-.tl-icon { position: relative; z-index: 1; grid-column: 1; grid-row: 1 / span 2; justify-self: center; align-self: start; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: #fff; }
-.tl-label { grid-column: 2; grid-row: 1; align-self: center; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: 14px; color: #4a4540; }
-.tl-label b { font-size: 16px; color: var(--ink); }
-.tl-label > :not(:first-child):not([class])::before { content: "·"; margin-right: 8px; color: #b9b2a8; }
-.tl-content { grid-column: 2; grid-row: 2; }
+.timeline::before { content: ""; position: absolute; left: 21px; top: 22px; bottom: 22px; width: 2px; background: #dcd7cf; }
+/* The plan's front, like a trip app: the icon on the trip's line, what it is and when beside it, the
+   block itself on the right. */
+.tl-entry { position: relative; display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 18px; margin: 0 0 24px; }
+.tl-side { display: flex; align-items: flex-start; gap: 12px; }
+.tl-icon { position: relative; z-index: 1; flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: #fff; }
+.tl-label { display: flex; flex-direction: column; gap: 2px; padding-top: 1px; font-size: 14px; color: #4a4540; font-variant-numeric: tabular-nums; }
+.tl-label b { font-size: 17px; color: var(--ink); letter-spacing: -.01em; }
+.tl-content { min-width: 0; }
+.tl-entry.tl-wide { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.tl-entry.tl-wide .tl-side { align-items: center; }
+.tl-entry.tl-wide .tl-label { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding-top: 0; }
 .tl-content { min-width: 0; }
 .tl-entry.tl-leg { margin-bottom: 16px; }
 .tl-entry.tl-leg .tl-icon { width: 36px; height: 36px; background: #fff; color: var(--ink); border: 1.5px solid #dcd7cf; }
@@ -544,9 +547,11 @@ body.popup { width: 320px; }
 .timeline .group-head { padding: 0 4px 6px; }
 .timeline .tl-travel .leg { margin-bottom: 10px; }
 @media (max-width: 700px) {
-  .tl-entry { grid-template-columns: 40px minmax(0, 1fr); gap: 6px 10px; }
-  .tl-icon { width: 36px; height: 36px; }
-  .trip-line::before, .timeline::before, .city-block .timeline::before { left: 19px; }
+  .tl-entry { grid-template-columns: 1fr; gap: 10px; }
+  .tl-side { align-items: center; }
+  .tl-label { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+  .timeline::before, .trip-line::before { display: none; }
+  .city-block { margin: 0 0 22px; padding: 14px 12px 4px; border-radius: 24px; }
   .tl-pill { margin-left: 0; }
   .stc-media-row { grid-template-columns: 110px minmax(0, 1fr); gap: 12px; }
   .stc-img { width: 110px; height: 96px; }
@@ -731,46 +736,66 @@ body.popup { width: 320px; }
 .move-card .info-btn { display: none; }
 .hidden-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; font-size: 14px; border-top: 1px solid var(--line, #ece7df); }
 
-/* ---------- a day, in rows: time on the left, lines for information, cards for bookings ---------- */
-.tl-entry.tl-journey .tl-icon { width: 36px; height: 36px; background: #fff; color: #5b3b9b; border: 1.5px solid #cdbdf0; }
-.today-chip { padding: 1px 9px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 700; }
+/* ---------- the plan and the itinerary: two views of the trip ---------- */
+.today-chip { align-self: flex-start; padding: 1px 9px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 700; }
 .trip-now { display: inline-block; margin: 6px 0 0; padding: 3px 12px; border-radius: 999px; background: #efe7fb; color: #5b3b9b; font-size: 14px; font-weight: 700; }
-.day-toggle { border: 0; background: none; padding: 0; text-align: left; font: inherit; font-size: 14px; color: #4a4540; cursor: pointer; align-items: baseline; }
-.day-toggle:hover b { text-decoration: underline; text-decoration-color: #cfc8bd; }
-.day-title { display: inline-flex; align-items: baseline; gap: 6px; }
+.view-tabs { display: flex; gap: 4px; max-width: 380px; margin: 0 0 16px; padding: 4px; border-radius: 14px; background: #efebe4; }
+.view-tabs button { flex: 1; border: 0; border-radius: 10px; padding: 8px 14px; background: none; font-weight: 700; font-size: 14.5px; color: var(--muted); }
+.view-tabs button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(40, 30, 20, .1); }
 .day-chev { font-size: 11px; color: var(--muted); font-weight: 400; }
 .day-left { padding: 1px 8px; border-radius: 999px; background: #fff1d9; color: #8a5300; font-size: 12.5px; font-weight: 700; }
-.day-summary {
-  display: flex; align-items: center; gap: 8px; width: 100%; padding: 11px 16px; border-radius: 16px; border: 1px solid #e7e1d7;
-  background: rgba(255, 255, 255, .6); font-size: 14px; color: #6e6a64; text-align: left;
-}
-.day-summary:hover { background: #fff; }
-.journey-head { margin: 6px 0 12px; font-size: 16px; font-weight: 700; color: var(--ink); }
 
-/* The rows span the whole entry: each pin on the trip's line, each card in the cards' column. A card
-   carries its own time; an information line starts with it. */
-.day-rows { grid-column: 1 / -1; grid-row: 3; display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
-.dr { display: grid; grid-template-columns: 54px minmax(0, 1fr); column-gap: 12px; align-items: start; }
-.dr-pin { position: relative; z-index: 1; justify-self: center; margin-top: 12px; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px solid #dcd7cf; }
-.dr.st-info .dr-pin { margin-top: 9px; width: 8px; height: 8px; border: 0; background: #c9c2b8; }
-.dr.st-done .dr-pin { background: #1f8f4e; border-color: #1f8f4e; }
-.dr.st-pending .dr-pin { border-color: #f0a53a; }
-.dr.st-decide .dr-pin { border-color: var(--accent); }
-.dr.st-open .dr-pin { border-style: dashed; border-color: #c9c2b8; }
-.dr-time { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.dr-time.est { color: var(--muted); font-weight: 600; }
-.dr-body { min-width: 0; }
-.dr-info { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 0; padding: 4px 0; border: 0; background: none; text-align: left; font: inherit; font-size: 14px; color: var(--muted); }
-.dr-info b { font-weight: 600; color: var(--text); }
-button.dr-info:hover b { text-decoration: underline; text-decoration-color: #cfc8bd; }
-.dr-more { margin-top: 8px; }
-.dr-more .leg.embedded { padding: 0; box-shadow: none; background: none; }
-.dr-more .leg.embedded .leg-body { padding: 0; }
-.dr .leg { margin: 0; }
-.dr .leg.st-empty { background: rgba(255, 255, 255, .6); box-shadow: none; border: 1.5px dashed #d6cfc4; }
-.dr .leg.st-booked { border: 1.5px solid #bfe3cc; }
-.dr .leg.st-planned, .dr .leg.st-chosen { border: 1.5px solid #f0a53a; }
-.dr .leg.st-options { border: 1.5px solid var(--accent-soft); }
-@media (max-width: 700px) {
-  .dr { grid-template-columns: 40px minmax(0, 1fr); column-gap: 10px; }
+/* the itinerary: day by day, a small block for each booking, a line for information */
+.itinerary { display: flex; flex-direction: column; gap: 12px; }
+.it-city { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.it-city-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 0 4px; }
+.it-city-head b { font-size: 21px; letter-spacing: -.01em; color: var(--ink); }
+.it-stay { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid #e7e1d7; border-radius: 999px; background: #fff; font-size: 13px; color: var(--text); }
+.it-stay.st-booked { border-color: #bfe3cc; }
+.it-stay.st-chosen { border-color: #f0a53a; }
+.it-stay.st-open { border-style: dashed; color: var(--muted); }
+.it-day { border-radius: 18px; background: #fff; box-shadow: 0 1px 2px rgba(40, 30, 20, .05), 0 4px 14px rgba(40, 30, 20, .05); }
+.it-day-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; width: 100%; padding: 12px 16px; border: 0; background: none; text-align: left; font: inherit; font-size: 14px; }
+.it-day-head b { font-size: 16px; color: var(--ink); }
+.it-day-head .day-chev { margin-left: auto; }
+.it-route { padding: 1px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 700; }
+.it-day.empty { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 9px 16px; background: none; box-shadow: none; border: 1.5px dashed #e2dcd2; font-size: 14px; }
+.it-folded { margin: 0; padding: 0 16px 12px; font-size: 14px; color: var(--muted); }
+.it-rows { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0 16px 14px; list-style: none; }
+.it-row { display: grid; grid-template-columns: 52px 12px minmax(0, 1fr); gap: 10px; align-items: center; }
+.it-time { text-align: right; font-size: 14px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+.it-dot { justify-self: center; width: 8px; height: 8px; border-radius: 50%; background: #c9c2b8; }
+.it-row.st-done .it-dot { background: #1f8f4e; }
+.it-row.st-pending .it-dot, .it-row.st-decide .it-dot, .it-row.st-open .it-dot { width: 10px; height: 10px; background: #fff; border: 2px solid #f0a53a; }
+.it-row.st-decide .it-dot { border-color: var(--accent); }
+.it-row.st-open .it-dot { border: 2px dashed #c9c2b8; }
+.it-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 4px 0; border: 0; background: none; text-align: left; font: inherit; font-size: 14px; color: var(--muted); }
+.it-line b { font-weight: 600; color: var(--text); }
+button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc8bd; }
+.it-cell { min-width: 0; }
+.it-block {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%;
+  padding: 7px 10px; border: 1px solid #ece7df; border-radius: 12px; background: #faf9f6; text-align: left; font: inherit;
+}
+.it-block:hover { background: #fff; border-color: #dcd7cf; }
+.it-block.st-done { border-color: #cfe9d9; }
+.it-block.st-pending { border-color: #f5cf92; }
+.it-block.st-decide { border-color: #cddcff; }
+.it-block.st-open { border-style: dashed; }
+.it-ic { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: #fff; color: var(--ink); }
+.it-t { display: flex; flex-direction: column; min-width: 0; }
+.it-t b { font-size: 14.5px; color: var(--ink); }
+.it-t span { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.it-chip { padding: 2px 9px; border-radius: 999px; background: #f1efeb; color: #5f5a54; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.it-chip.st-done { background: #e1f3e8; color: #16623a; }
+.it-chip.st-pending { background: #fff1d9; color: #8a5300; }
+.it-chip.st-decide { background: var(--accent-soft); color: var(--accent); }
+.it-more { margin-top: 8px; }
+.it-more .leg.embedded { padding: 0; box-shadow: none; background: none; }
+.it-more .leg.embedded .leg-body { padding: 0; }
+.it-note { margin: 0; padding: 8px 14px; border-radius: 14px; border: 1.5px dashed #e2dcd2; font-size: 13.5px; color: var(--muted); }
+@media (max-width: 600px) {
+  .it-row { grid-template-columns: 44px 10px minmax(0, 1fr); }
+  .it-block { grid-template-columns: 26px minmax(0, 1fr); }
+  .it-chip { grid-column: 2; justify-self: start; }
 }

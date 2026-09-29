@@ -10,7 +10,6 @@ import type { Category, Item, LegMode, Listing } from "../lib/types";
 import { setHidden, updateTrip } from "./actions";
 import { Carousel } from "./Carousel";
 import { CategoryIcon } from "./Icons";
-import { show } from "./Progress";
 import { StatusBar, type Standing } from "./Status";
 
 export type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => ReactNode;
@@ -21,10 +20,13 @@ export type LegFor = (l: Leg, opts?: { embedded?: boolean; timed?: boolean }) =>
 
 const fmt = (d: string) => formatDateRange(d, null);
 
+export type TimelineMode = "plan" | "days";
+
 /**
- * The trip as it happens: a block for each city (its transfers, nights, days, a rented car), and on the
- * line between them how you get there, from the way in to the way home. Undecided needs are cards to
- * swipe through; decided ones one calm card with where they stand.
+ * The trip, two ways. "plan" is its front: a block for each thing booked or to decide — flights,
+ * transfers with a plan, stays, what's chosen for a day, a rented car — in order, a city at a time.
+ * "days" is the itinerary: day by day, hour by hour, each booking a small block that opens its card
+ * on the plan, information (check-in, the metro) a line.
  */
 export function TimelineView({
   plan,
@@ -36,6 +38,8 @@ export function TimelineView({
   settled,
   listings,
   today,
+  mode,
+  onShow,
 }: {
   plan: Plan;
   timeline: Timeline;
@@ -46,28 +50,36 @@ export function TimelineView({
   settled: SettledFor;
   listings?: Map<string, Listing>;
   today: string;
+  mode: TimelineMode;
+  /** Shows a block of the plan (from the itinerary). */
+  onShow: (entryKey: string) => void;
 }) {
   const start = plan.range?.start ?? null;
   const n = plan.nights;
   const parts = [n.booked && `${n.booked} rezerve`, n.chosen && `${n.chosen} seçildi`, n.open && `${n.open} açık`].filter(Boolean);
   const rentals = timeline.entries.filter((e): e is RentalEntry => e.kind === "rental");
-  const render = { tripId, leg, renderGroup, card, settled, start, listings, today, rentals };
+  const render = { tripId, leg, renderGroup, card, settled, start, listings, today, rentals, onShow };
   return (
     <div className="section trip-plan">
-      <div className="section-head">
-        <span>Gezi planı</span>
-        {n.total > 0 && <span className="muted">{[`${n.total} gece`, ...parts].join(" · ")}</span>}
-      </div>
-      {plan.notices.map((x) => (
-        <div key={x.text} className="notice">
-          ⚠ {x.text}
-        </div>
-      ))}
-      <div className="trip-line">
-        {timeline.sections.map((section) => (
-          <Section key={section.key} section={section} {...render} />
-        ))}
-      </div>
+      {mode === "plan" && (
+        <>
+          <div className="section-head">
+            <span>Gezi planı</span>
+            {n.total > 0 && <span className="muted">{[`${n.total} gece`, ...parts].join(" · ")}</span>}
+          </div>
+          {plan.notices.map((x) => (
+            <div key={x.text} className="notice">
+              ⚠ {x.text}
+            </div>
+          ))}
+          <div className="trip-line">
+            {timeline.board.map((section) => (
+              <Section key={section.key} section={section} {...render} />
+            ))}
+          </div>
+        </>
+      )}
+      {mode === "days" && <Itinerary sections={timeline.sections} {...render} />}
     </div>
   );
 }
@@ -83,6 +95,7 @@ interface RenderProps {
   today: string;
   /** The trip's rented cars: their pick-up and return are lines on those days. */
   rentals: RentalEntry[];
+  onShow: (entryKey: string) => void;
 }
 
 function Section({ section, ...render }: { section: TimelineSection } & RenderProps) {
@@ -93,7 +106,7 @@ function Section({ section, ...render }: { section: TimelineSection } & RenderPr
       </ol>
     );
   }
-  if (section.kind === "journey") return <JourneyCard section={section} {...render} />;
+  if (section.kind === "journey") return null; // the itinerary's; the plan's front has no days
   const range = section.range;
   return (
     <section className="city-block" aria-label={section.city ?? "Konaklama"}>
@@ -110,11 +123,9 @@ function Section({ section, ...render }: { section: TimelineSection } & RenderPr
         {section.stays.map((entry) => (
           <Row key={entry.key} entry={entry} {...render} />
         ))}
-        {section.entries
-          .filter((entry) => entry.kind !== "rental") // a rented car is a card of the day it starts
-          .map((entry) => (
-            <Row key={entry.key} entry={entry} {...render} />
-          ))}
+        {section.entries.map((entry) => (
+          <Row key={entry.key} entry={entry} {...render} />
+        ))}
       </ol>
     </section>
   );
@@ -135,6 +146,8 @@ function standingOf(entry: TimelineEntry): Standing | null {
       return entry.leg.status === "booked" ? "booked" : entry.leg.status === "planned" || entry.leg.status === "chosen" ? "planned" : "open";
     case "rental":
       return entry.group.items.some((i) => i.status === "booked") ? "booked" : entry.group.items.some((i) => i.status === "chosen") ? "planned" : "open";
+    case "event":
+      return entry.item.status === "booked" ? "booked" : "planned";
     default:
       return null;
   }
@@ -150,7 +163,6 @@ function comparing(entry: TimelineEntry): boolean {
 }
 
 function Row({ entry, ...render }: { entry: TimelineEntry } & RenderProps) {
-  if (entry.kind === "day") return <DayEntry entry={entry} {...render} />;
   const standing = standingOf(entry);
   return (
     <li id={entryDomId(entry.key)} className={`tl-entry tl-${entry.kind}${standing ? ` st-${standing}` : ""}${comparing(entry) ? " tl-wide" : ""}`}>
@@ -168,6 +180,7 @@ function Row({ entry, ...render }: { entry: TimelineEntry } & RenderProps) {
   );
 }
 
+const EVENT_LABELS: Partial<Record<Category, string>> = { activity: "Etkinlik", food: "Yemek", transport: "Ulaşım", other: "Plan" };
 const LEG_LABELS = { arrival: "Transfer", departure: "Transfer", change: "Otel değişimi", move: "Şehir değişimi" } as const;
 const TRAVEL_LABELS = { arrival: "Varış", move: "Şehir değişimi", departure: "Dönüş", other: "Ulaşım" } as const;
 
@@ -189,9 +202,13 @@ function Label({ entry, today }: { entry: TimelineEntry; today: string }) {
     case "stay": {
       const b = entry.block;
       title = "Konaklama";
-      lines = [formatDateRange(b.range.start, b.range.end), `${b.nights} gece`];
+      lines = [entry.days ?? null, formatDateRange(b.range.start, b.range.end), `${b.nights} gece`];
       break;
     }
+    case "event":
+      title = EVENT_LABELS[entry.item.category] ?? "Plan";
+      lines = [fmt(entry.date), entry.dayNo ? `${entry.dayNo}. gün` : null];
+      break;
     case "day":
       title = entry.title;
       lines = [`${fmt(entry.date)} ${weekday(entry.date)}`];
@@ -222,6 +239,8 @@ function iconOf(entry: TimelineEntry): Category {
       return "stay";
     case "plan":
       return entry.items.every(isRental) ? "transport" : "activity";
+    case "event":
+      return entry.item.category;
     case "travel": {
       const mode = entry.travel?.mode ?? entry.leg?.mode;
       return mode && mode !== "flight" ? "transport" : entry.role === "move" && !mode ? "transport" : "flight";
@@ -268,6 +287,8 @@ function Entry({ entry, tripId, leg, renderGroup, card, settled }: { entry: Time
       return <DayCard entry={entry} leg={leg} card={card} settled={settled} />;
     case "rental":
       return <div className="tl-rental">{renderGroup(entry.group, null, null, true)}</div>;
+    case "event":
+      return <>{settled(entry.item)}</>;
     case "plan":
       return <DayCard entry={{ ...entry, legs: [], title: "Planlar" }} leg={leg} card={card} settled={settled} />;
   }
@@ -310,169 +331,186 @@ function DayCard({
   );
 }
 
-/** "4. gün · 11 Ekim Paz", today marked, how much is left; a tap folds or opens the day. */
-function DayToggle({ title, date, today, left, open, onToggle }: { title: string; date: string; today: string; left: number; open: boolean; onToggle: () => void }) {
+// --- the itinerary: day by day, small blocks -----------------------------------------------------------
+
+const ROW_ICONS: Partial<Record<DayRow["kind"], Category>> = { leg: "transport", rental: "transport" };
+
+/** Where a row's block lives on the plan's front (to open it there). */
+function planKey(row: DayRow): string | null {
+  if (row.entry) return row.entry.key;
+  if (row.leg) return `leg:${row.leg.key}`;
+  if (row.rental) return row.rental.key;
+  if (row.item) return `event:${row.item.id}`;
+  return row.stayKey;
+}
+
+function rowIcon(row: DayRow): Category {
+  if (row.item) return row.item.category;
+  if (row.entry?.kind === "travel") return iconOf(row.entry);
+  return ROW_ICONS[row.kind] ?? "other";
+}
+
+/** What a small block says of where it stands, in a word or two. */
+function rowStatus(row: DayRow): string {
+  if (row.state === "decide") return row.status || "karar ver";
+  if (row.state === "open") return row.kind === "leg" ? "planlanmadı" : row.status || "planlanmadı";
+  // Done says so in a word; what was booked is on the block itself.
+  if (row.state === "done") return `✓ ${row.status.replace(/\s*✓$/, "")}`;
+  return row.status;
+}
+
+function Itinerary({ sections, ...render }: { sections: TimelineSection[] } & RenderProps) {
   return (
-    <button className="tl-label day-toggle" aria-expanded={open} onClick={onToggle}>
-      <span className="day-title">
+    <div className="itinerary">
+      {sections.map((section) => {
+        if (section.kind === "journey") {
+          const j = section.journey;
+          const route = j.from && j.to ? `${j.from} → ${j.to}` : j.to ? `→ ${j.to}` : j.from ? `${j.from} →` : null;
+          const rows = dayRows({ journey: section, rentals: render.rentals, listings: render.listings });
+          return <ItDay key={section.key} id={entryDomId(`it:${j.key}`)} title={journeyTitle(j)} date={j.date} route={route} rows={rows} {...render} />;
+        }
+        if (section.kind === "travel") {
+          // A trip on the line outside a day (a connection the day before).
+          const rows = dayRows({ journey: { kind: "journey", key: section.key, journey: { key: section.key, role: "move", date: section.entry.date, dayNo: null, from: null, to: null, out: null, in: null }, entries: [section.entry] } });
+          return <ItDay key={section.key} id={entryDomId(`it:${section.key}`)} title={fmt(section.entry.date)} date={section.entry.date} route={null} rows={rows} {...render} />;
+        }
+        const stays = section.stays.map((st) => st.block);
+        return (
+          <section key={section.key} className="it-city" aria-label={section.city ?? "Konaklama"}>
+            <header className="it-city-head">
+              <b>{section.city ?? "Konaklama"}</b>
+              {section.range && <span className="muted num">{formatDateRange(section.range.start, section.range.end)}</span>}
+              {stays.map((b) => (
+                <button key={b.range.start} className={`it-stay st-${b.kind}`} onClick={() => render.onShow(`stay:${b.range.start}`)}>
+                  <CategoryIcon category="stay" size={15} />
+                  {b.kind === "open" ? (b.groups.length ? "konaklama · karar ver" : "konaklama · planlanmadı") : b.item.name}
+                  {b.kind === "booked" && " ✓"}
+                </button>
+              ))}
+            </header>
+            {section.entries.map((e) => {
+              if (e.kind === "day") {
+                const rows = dayRows({ day: e, rentals: render.rentals, listings: render.listings });
+                return <ItDay key={e.key} id={entryDomId(`it:${e.key}`)} title={e.title} date={e.date} route={null} rows={rows} {...render} />;
+              }
+              if (e.kind === "plan") {
+                return (
+                  <p key={e.key} className="it-note">
+                    {e.items.map((i) => i.name).join(", ")} · gün belli değil
+                  </p>
+                );
+              }
+              return null;
+            })}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A day of the itinerary: its number, date and route, then what happens, hour by hour. */
+function ItDay({ id, title, date, route, rows, ...render }: { id: string; title: string; date: string; route: string | null; rows: DayRow[] } & RenderProps) {
+  const left = rowsLeft(rows);
+  const [open, setOpen] = useState(true);
+  if (!rows.length) {
+    return (
+      <div className="it-day empty" id={id}>
         <b>{title}</b>
+        <span className="muted num">{`${fmt(date)} ${weekday(date)}`}</span>
+        <span className="muted">boş gün</span>
+      </div>
+    );
+  }
+  return (
+    <article className="it-day" id={id}>
+      <button className="it-day-head" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <b>{title}</b>
+        <span className="muted num">{`${fmt(date)} ${weekday(date)}`}</span>
+        {route && <span className="it-route">{route}</span>}
+        {date === render.today && <span className="today-chip">Bugün</span>}
+        {left > 0 && <span className="day-left">{left} iş</span>}
         <span className="day-chev" aria-hidden>
           {open ? "▴" : "▾"}
         </span>
-      </span>
-      <span>{`${fmt(date)} ${weekday(date)}`}</span>
-      {date === today && <span className="today-chip">Bugün</span>}
-      {left > 0 && <span className="day-left">{left} iş</span>}
-    </button>
+      </button>
+      {open ? (
+        <ol className="it-rows">
+          {rows.map((r) => (
+            <ItRow key={r.key} row={r} {...render} />
+          ))}
+        </ol>
+      ) : (
+        <p className="it-folded">{daySummary(rows)}</p>
+      )}
+    </article>
   );
 }
 
 /**
- * One day of a city: its time on the left and, in order, what happens. Open while something is left
- * to book or pick; folded into one line once it's all set (a tap opens it again).
+ * A row of the itinerary: a small block for a booking (the flight, the taxi, the tour, the car) that
+ * opens its card on the plan; a line for information. A transfer with no plan yet opens right here.
  */
-function DayEntry({ entry, ...render }: { entry: Extract<TimelineEntry, { kind: "day" }> } & RenderProps) {
-  const rows = dayRows({ day: entry, rentals: render.rentals, listings: render.listings });
-  const left = rowsLeft(rows);
-  const [open, setOpen] = useState(left > 0);
-  const empty = rows.length === 0;
-  return (
-    <li id={entryDomId(entry.key)} className={`tl-entry tl-day${open && !empty ? " open" : ""}`}>
-      <div className="tl-side">
-        <span className="tl-icon" aria-hidden>
-          <b className="tl-day-no">{entry.dayNo}</b>
-        </span>
-        {empty ? (
-          <Label entry={entry} today={render.today} />
-        ) : (
-          <DayToggle title={entry.title} date={entry.date} today={render.today} left={left} open={open} onToggle={() => setOpen(!open)} />
-        )}
-      </div>
-      <div className="tl-content">
-        {empty ? (
-          <div className="day-card empty">
-            <span>Boş gün</span>
-            <span className="muted">Bir plan kaydet ya da sohbette söyle</span>
-          </div>
-        ) : (
-          !open && (
-            <button className="day-summary" onClick={() => setOpen(true)}>
-              {daySummary(rows)}
-            </button>
-          )
-        )}
-      </div>
-      {/* The rows use the whole entry: times on the trip's line, cards in line with every other card. */}
-      {open && !empty && <DayRows rows={rows} {...render} />}
-    </li>
-  );
-}
-
-/**
- * A day on the move, on the line between the cities: "4. gün · Porto → Madeira", then its rows —
- * check-out, the transfer, the flight, the transfer, check-in — like any other day.
- */
-function JourneyCard({ section, ...render }: { section: Extract<TimelineSection, { kind: "journey" }> } & RenderProps) {
-  const j = section.journey;
-  const rows = dayRows({ journey: section, rentals: render.rentals, listings: render.listings });
-  const left = rowsLeft(rows);
-  const [open, setOpen] = useState(left > 0);
-  const route = j.from && j.to ? `${j.from} → ${j.to}` : j.to ? `→ ${j.to}` : j.from ? `${j.from} →` : "Yolculuk";
-  // Flights to pick from get the whole width, side by side.
-  const wide = open && rows.some((r) => r.state === "decide" && r.entry?.kind === "travel" && (r.entry.travel?.items.length ?? 0) >= 2);
-  return (
-    <ol className="timeline between">
-      <li id={entryDomId(j.key)} className={`tl-entry tl-journey${wide ? " tl-wide" : ""}${open ? " open" : ""}`}>
-        <div className="tl-side">
-          <span className="tl-icon" aria-hidden>
-            {j.dayNo ? <b className="tl-day-no">{j.dayNo}</b> : <CategoryIcon category="flight" size={20} />}
-          </span>
-          <DayToggle title={journeyTitle(j)} date={j.date} today={render.today} left={left} open={open} onToggle={() => setOpen(!open)} />
-        </div>
-        <div className="tl-content">
-          <p className="journey-head">{route}</p>
-          {!open && (
-            <button className="day-summary" onClick={() => setOpen(true)}>
-              {daySummary(rows)}
-            </button>
-          )}
-        </div>
-        {open && <DayRows rows={rows} {...render} />}
-      </li>
-    </ol>
-  );
-}
-
-function DayRows({ rows, ...render }: { rows: DayRow[] } & RenderProps) {
-  return (
-    <ol className="day-rows">
-      {rows.map((r) => (
-        <DayRowView key={r.key} row={r} {...render} />
-      ))}
-    </ol>
-  );
-}
-
-/** The card behind a row: the flight to pick or mark bought, the transfer, the tour to book. */
-function fullCard(row: DayRow, render: RenderProps, embedded: boolean): ReactNode {
-  if (row.kind === "leg" && row.leg) return render.leg(row.leg, { embedded });
-  if (row.kind === "item" && row.item) return render.settled(row.item);
-  if (row.kind === "travel" && row.entry?.kind === "travel") {
-    const e = row.entry;
-    if (!e.travel && e.role === "move" && e.leg) return <MoveCard leg={e.leg} tripId={render.tripId} startOpen={embedded} />;
-    return <Entry entry={e} {...render} />;
-  }
-  return null;
-}
-
-/**
- * A row of a day. A reservation (a flight, a taxi, a tour, a car) is its card, booked or not;
- * information (check-in, the metro to the airport, the car going back) is a line.
- */
-function DayRowView({ row, ...render }: { row: DayRow } & RenderProps) {
+function ItRow({ row, ...render }: { row: DayRow } & RenderProps) {
   const [open, setOpen] = useState(false);
-  // A line starts with its time; a card carries its own.
-  const time = row.time ? <span className={`dr-time${row.estimated ? " est" : ""}`}>{`${row.estimated ? "~" : ""}${row.time}`}</span> : null;
-  let body: ReactNode;
-  if (row.kind === "leg" && row.state === "info" && row.leg) {
-    // Metro, a walk: how they'll go, in a line; a tap to change it.
-    body = (
-      <>
-        <button className="dr-info" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {time}
+  const time = row.time ? `${row.estimated ? "~" : ""}${row.time}` : "";
+  const key = planKey(row);
+  const itKey = row.leg ? `leg:${row.leg.key}` : key;
+  if (row.kind === "info" || row.kind === "ideas" || (row.kind === "leg" && row.state === "info")) {
+    const text =
+      row.kind === "ideas" ? (
+        <>
+          <b>Fikirler</b>
+          <span>{row.items.map((i) => i.name).join(", ")}</span>
+        </>
+      ) : row.kind === "leg" ? (
+        <>
           <b>{row.line ?? row.title}</b>
           <span>{row.title}</span>
-        </button>
-        {open && <div className="dr-more">{render.leg(row.leg, { embedded: true, timed: true })}</div>}
-      </>
+        </>
+      ) : (
+        <>
+          <b>{row.title}</b>
+          {row.sub && <span>{row.sub}</span>}
+        </>
+      );
+    return (
+      <li className="it-row info" data-it-key={itKey ?? undefined}>
+        <span className="it-time num">{time}</span>
+        <span className="it-dot" aria-hidden />
+        {row.stayKey ? (
+          <button className="it-line" onClick={() => render.onShow(row.stayKey!)}>
+            {text}
+          </button>
+        ) : (
+          <span className="it-line">{text}</span>
+        )}
+      </li>
     );
-  } else if (row.kind === "info") {
-    const text = (
-      <>
-        {time}
-        <b>{row.title}</b>
-        {row.sub && <span>{row.sub}</span>}
-      </>
-    );
-    body = row.stayKey ? (
-      <button className="dr-info" onClick={() => show(document.getElementById(entryDomId(row.stayKey!)))}>
-        {text}
-      </button>
-    ) : (
-      <p className="dr-info">{text}</p>
-    );
-  } else if (row.kind === "ideas") {
-    body = <Carousel label="Fikirler">{row.items.map((i) => render.card(i, row.items.filter((x) => x.category === i.category)))}</Carousel>;
-  } else if (row.kind === "rental" && row.rental) {
-    body = <div className="tl-rental">{render.renderGroup(row.rental.group, null, null, true)}</div>;
-  } else {
-    body = fullCard(row, render, false);
   }
-  const id = row.entry ? entryDomId(row.entry.key) : row.rental ? entryDomId(row.rental.key) : undefined;
+  // A transfer with nothing planned: say how, right here; everything else opens on the plan.
+  const planHere = row.kind === "leg" && row.state === "open" && row.leg;
   return (
-    <li id={id} className={`dr k-${row.kind} st-${row.state}`} data-title={row.title}>
-      <span className="dr-pin" aria-hidden />
-      <div className="dr-body">{body}</div>
+    <li className={`it-row st-${row.state}`} data-it-key={itKey ?? undefined}>
+      <span className="it-time num">{time}</span>
+      <span className="it-dot" aria-hidden />
+      <div className="it-cell">
+        <button
+          className={`it-block st-${row.state}`}
+          aria-expanded={planHere ? open : undefined}
+          onClick={() => (planHere ? setOpen(!open) : key && render.onShow(key))}
+        >
+          <span className="it-ic" aria-hidden>
+            <CategoryIcon category={rowIcon(row)} size={16} />
+          </span>
+          <span className="it-t">
+            <b>{row.title}</b>
+            {row.sub && <span>{row.sub}</span>}
+          </span>
+          <span className={`it-chip st-${row.state}`}>{rowStatus(row)}</span>
+        </button>
+        {planHere && open && <div className="it-more">{render.leg(row.leg!, { embedded: true })}</div>}
+      </div>
     </li>
   );
 }
