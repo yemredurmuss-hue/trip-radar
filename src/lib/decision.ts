@@ -59,6 +59,33 @@ const REQUIRED: Partial<Record<Category, CriterionId[]>> = { stay: ["price"], fl
 export type Inferred = Map<string, { delta: number; evidence: string }>;
 export const inferredKey = (category: Category, criterion: CriterionId) => `${category}:${criterion}`;
 
+/** Every amenity the traveller asked for: wanted ones and the ones they made a requirement. */
+export function wantedAmenities(trip: Pick<Trip, "wantedAmenities" | "requirements">): Amenity[] {
+  const required = (trip.requirements ?? []).flatMap((r) => (r.kind === "amenity" ? [r.amenity] : []));
+  return [...new Set([...(trip.wantedAmenities ?? []), ...required])];
+}
+
+/** What the traveller's notes ask for ("sessiz bir yer istiyoruz", "merkezi olsun"), as finding topics. */
+const SAID: [RegExp, string[]][] = [
+  [/sessiz|gürültü|quiet|noise/i, ["noise"]],
+  [/merkez|yürü|yakın|central|walk|konum/i, ["location", "nearby", "transport"]],
+  [/temiz|hijyen|clean/i, ["cleanliness"]],
+  [/iptal|iade|esnek|cancel/i, ["cancellation"]],
+  [/kahvaltı|yemek|breakfast/i, ["food"]],
+  [/geniş|ferah|alan|space/i, ["space"]],
+  [/manzara|view/i, ["view"]],
+  [/yatak|uyku|bed/i, ["bed"]],
+  [/asansör|merdiven|bebek|engelli|tekerlekli|stairs|lift/i, ["access"]],
+  [/güven|safe/i, ["safety"]],
+];
+export function saidTopics(preferences: string[]): Set<string> {
+  const topics = new Set<string>();
+  for (const text of preferences) for (const [re, list] of SAID) if (re.test(text)) list.forEach((t) => topics.add(t));
+  return topics;
+}
+/** A finding on something the traveller asked for counts this much more. */
+export const SAID_WEIGHT = 2.5;
+
 function explicitLevel(trip: Trip, category: Category, criterion: CriterionId): PriorityLevel | undefined {
   return trip.categoryPriorities?.[category]?.[criterion] ?? trip.priorities?.[criterion];
 }
@@ -67,7 +94,7 @@ function explicitLevel(trip: Trip, category: Category, criterion: CriterionId): 
 export function levelFor(trip: Trip, category: Category, criterion: CriterionId, inferred?: Inferred): PriorityLevel {
   const fallback = DEFAULT_LEVELS[category][criterion];
   if (fallback === undefined) return 0; // not applicable to this category
-  if (criterion === "amenities" && !trip.wantedAmenities?.length) return 0;
+  if (criterion === "amenities" && !wantedAmenities(trip).length) return 0;
   const explicit = explicitLevel(trip, category, criterion);
   if (explicit !== undefined) return explicit;
   const delta = inferred?.get(inferredKey(category, criterion))?.delta ?? 0;
@@ -351,7 +378,7 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
       return { value, display: expired ? `${display} (süresi geçmiş)` : display, mode: "absolute", absolute: value };
     }
     case "amenities": {
-      const wanted = ctx.trip.wantedAmenities ?? [];
+      const wanted = wantedAmenities(ctx.trip);
       if (!wanted.length) return null;
       const known = amenitiesOf(item, ctx);
       const has = wanted.filter((a) => known.includes(a));
@@ -421,11 +448,13 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
       const counted = listing.findings.filter((f) => f.verified);
       if (!counted.length) return null;
       const accepted = new Set(ctx.trip.acceptedFindings ?? []);
+      // What they asked for ("sessiz bir yer") weighs more: a quiet room, or a noisy street.
+      const said = saidTopics(ctx.preferences);
       let plus = 0;
       let minus = 0;
       for (const f of counted) {
         if (f.polarity === "negative" && accepted.has(acceptKey(listing.key, f))) continue;
-        const w = findingWeight(f, listing, ctx.today);
+        const w = findingWeight(f, listing, ctx.today) * (said.has(f.topic) ? SAID_WEIGHT : 1);
         if (f.polarity === "positive") plus += w;
         else minus += w;
       }
@@ -735,7 +764,7 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
   // Every applicable criterion is measured, even ones set to "önemsiz": they then weigh 0 but stay
   // visible in the comparison and can still show "raise this and the result flips".
   const allCriteria = (Object.keys(DEFAULT_LEVELS[category]) as CriterionId[]).filter(
-    (c) => c !== "amenities" || Boolean(ctx.trip.wantedAmenities?.length),
+    (c) => c !== "amenities" || Boolean(wantedAmenities(ctx.trip).length),
   );
   const measures = new Map(eligible.map((i) => [i.id, new Map(allCriteria.map((c) => [c, measure(c, i, ctx, analysis)]))]));
   const enough = eligible.length > 1 ? 2 : 1;

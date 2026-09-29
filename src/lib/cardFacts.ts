@@ -1,16 +1,17 @@
 // What a decision card shows, from the saved record and the engine's result: where it's from, what it
 // is, what it costs for these dates, where it stands, and the two things for and against it that
 // matter most. Pure, and no model calls: everything on a card is read from a page or computed.
-import { advantageOver, levelFor, levelSource, TOPIC_CRITERION, type DecisionContext, type GroupDecision } from "./decision";
+import { advantageOver, levelFor, levelSource, saidTopics, TOPIC_CRITERION, type DecisionContext, type GroupDecision } from "./decision";
 import { formatDateRange, formatPrice, listingKeyOf, metricsOf, nightsBetween, type Tone } from "./items";
 import { decisionLabel } from "./labels";
 import { rangeOfGroupKey, stayRange } from "./plan";
+import { checkNeeds, type NeedCheck } from "./needs";
 import { cardLines, prosConsFor, tagOf, type ProCon } from "./proscons";
 import type { CriterionId, Item, Listing, StayKind } from "./types";
 
 export interface CardFacts {
-  /** The site or company it's from ("Booking.com", "TAP Air Portugal"), with the site's host for its icon. */
-  source: { label: string; host: string | null } | null;
+  /** The site or company it's from ("Booking.com", "TAP Air Portugal"), the site's host for its icon, and its page. */
+  source: { label: string; host: string | null; url: string | null } | null;
   image: string | null;
   title: string;
   subtitle: string | null;
@@ -22,7 +23,9 @@ export interface CardFacts {
   status: { text: string; tone: Tone } | null;
   /** Ruled out or failing a requirement: shown last and dimmed. */
   out: boolean;
-  /** A few words each, the biggest first: "Yakın", "Ücretsiz iptal"... `mine`: it touches a priority the traveller gave. */
+  /** What the traveller asked for, checked on this one: "Mutfak var", "İade yok", "Sessiz odalar · 3 yorum". */
+  needs: NeedCheck[];
+  /** A few words each, the biggest first, beyond the needs: "Gezeceğin yerlere 6 dk"... `mine`: it touches a priority the traveller gave. */
   pros: { text: string; mine: boolean }[];
   /** Against it, the biggest (or the reason it's out) first: "İade yok", "Uzak"... */
   cons: { text: string; strong: boolean; mine: boolean }[];
@@ -64,7 +67,7 @@ function sourceOf(item: Item): CardFacts["source"] {
   const host = hostOf(item.url);
   const site = host ? SITE_NAMES.find(([re]) => re.test(host))?.[1] : undefined;
   const label = item.provider?.trim() || site || host;
-  return label ? { label, host } : null;
+  return label ? { label, host, url: item.url } : null;
 }
 
 const clock = (iso: string | null | undefined) => (iso && /T\d{2}:\d{2}/.test(iso) ? iso.slice(11, 16) : null);
@@ -181,25 +184,6 @@ function touchesPriority(
   return levelSource(ctx.trip, item.category, criterion, ctx.inferred) !== "default" && levelFor(ctx.trip, item.category, criterion, ctx.inferred) >= 3;
 }
 
-/** What the traveller said they care about ("sessiz bir yer istiyoruz", "merkezi olsun"), as finding topics. */
-const SAID: [RegExp, string[]][] = [
-  [/sessiz|gürültü|quiet|noise/i, ["noise"]],
-  [/merkez|yürü|yakın|central|walk|konum/i, ["location", "nearby", "transport"]],
-  [/temiz|hijyen|clean/i, ["cleanliness"]],
-  [/iptal|iade|esnek|cancel/i, ["cancellation"]],
-  [/kahvaltı|yemek|breakfast/i, ["food"]],
-  [/geniş|ferah|alan|space/i, ["space"]],
-  [/manzara|view/i, ["view"]],
-  [/yatak|uyku|bed/i, ["bed"]],
-  [/asansör|merdiven|bebek|engelli|tekerlekli|stairs|lift/i, ["access"]],
-  [/güven|safe/i, ["safety"]],
-];
-function saidTopics(preferences: string[]): Set<string> {
-  const topics = new Set<string>();
-  for (const text of preferences) for (const [re, list] of SAID) if (re.test(text)) list.forEach((t) => topics.add(t));
-  return topics;
-}
-
 /** Lines about the same thing share a tag slot (by comparison key or finding topic). */
 const TAG_TOPICS: Record<string, string> = {
   "c:location": "location",
@@ -211,17 +195,28 @@ const TAG_TOPICS: Record<string, string> = {
   "c:comfort": "reviews",
 };
 
+type CardCtx = Pick<DecisionContext, "trip" | "today" | "currency" | "inferred" | "listings"> & { preferences?: string[] };
+
+/** The traveller's needs checked on an option, against the others it's compared with. */
+export function needsFor(item: Item, decision: GroupDecision | undefined, ctx: CardCtx | undefined, listings: Map<string, Listing> | undefined = ctx?.listings): NeedCheck[] {
+  const option = decision?.options.find((o) => o.item.id === item.id);
+  const peers = decision?.options.filter((o) => o !== option && !o.excluded && o.parts.length) ?? [];
+  return checkNeeds(item, option, peers, ctx, listings?.get(listingKeyOf(item)));
+}
+
 export function cardFacts(
   item: Item,
   decision: GroupDecision | undefined,
-  ctx: Pick<DecisionContext, "trip" | "today" | "currency" | "inferred" | "listings"> | undefined,
+  ctx: CardCtx | undefined,
   listings: Map<string, Listing> | undefined = ctx?.listings,
 ): CardFacts {
   const currency = ctx?.currency ?? "EUR";
   const option = decision?.options.find((o) => o.item.id === item.id);
   const lines = cardLines(prosConsFor(item, decision, listings, ctx), 8);
-  // One tag per thing: "Uzak" from the comparison and "Konum zayıf" from the reviews say the same.
-  const said = new Set<string>();
+  const needs = needsFor(item, decision, ctx, listings);
+  // One tag per thing: "Uzak" from the comparison and "Konum zayıf" from the reviews say the same; and
+  // what a need already says ("Mutfak var", "Ücretsiz iptal") isn't said again below it.
+  const said = new Set<string>(needs.flatMap((n) => n.covers.flatMap((k) => [k, TAG_TOPICS[k] ?? k])));
   const once = (l: ProCon, text: string) => {
     const about = TAG_TOPICS[l.key] ?? (l.finding && TAG_TOPICS[`t:${l.finding.topic}`]) ?? text;
     if (said.has(about) || said.has(text) || said.has(l.key)) return false;
@@ -259,6 +254,7 @@ export function cardFacts(
     best: Boolean(label?.best),
     status,
     out: Boolean(option?.eliminated || option?.unmet.length),
+    needs,
     pros,
     cons: cons.slice(0, 4),
   };
@@ -286,6 +282,8 @@ export function whyLines(item: Item, decision: GroupDecision | undefined, curren
 }
 
 export interface CardDetails {
+  /** The needs again, when opened (the front shows the first few). */
+  needs: NeedCheck[];
   /** Where it stands in one sentence ("Ribeira Rooms 27 puan önde; bunun artısı: €45 daha ucuz."). */
   verdict: string | null;
   /** The facts that decide, filtered: dates, what it is, rating, cancellation, times... only what's known. */
@@ -363,12 +361,15 @@ function factsOf(item: Item, listing: Listing | null): CardDetails["facts"] {
 export function cardDetails(
   item: Item,
   decision: GroupDecision | undefined,
-  ctx: Pick<DecisionContext, "trip" | "today" | "currency" | "inferred" | "listings"> | undefined,
+  ctx: CardCtx | undefined,
   listings: Map<string, Listing> | undefined = ctx?.listings,
 ): CardDetails {
   const pc = prosConsFor(item, decision, listings, ctx);
-  const fresh = <T extends { stale?: boolean; accepted?: boolean }>(l: T) => !l.stale && !l.accepted;
+  const needs = needsFor(item, decision, ctx, listings);
+  const covered = new Set(needs.flatMap((n) => n.covers));
+  const fresh = <T extends { stale?: boolean; accepted?: boolean; key: string }>(l: T) => !l.stale && !l.accepted && !covered.has(l.key);
   return {
+    needs,
     verdict: whyLines(item, decision, ctx?.currency ?? "EUR")[0] ?? null,
     facts: factsOf(item, listings?.get(listingKeyOf(item)) ?? null),
     pros: (pc?.pros ?? []).filter(fresh).slice(0, 4).map((l) => ({ text: l.text, detail: l.detail })),

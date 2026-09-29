@@ -126,8 +126,15 @@ Rezervasyon onayının ekran görüntüsünü atınca kayıt rezerve olur ve pla
 
 **Seçenekler yan yana.** Karşılaştırılan bir ihtiyaç satırın tamamını kullanır: seçenekler kaydırılmadan yan
 yana (üçten fazlası "+N seçenek daha" arkasında), üstünde tek satır öneri: "Önerim Jardim Stay: Ribeira Rooms
-karşısında €45 daha ucuz; yakın, ücretsiz iptal ve sessiz odalar" + Seç + Karşılaştır. ★ gezginin kendi
-önceliğine dokunan satırı işaretler (söylediği "sessiz bir yer istiyoruz", ayarladığı ya da sezilen öncelik).
+karşısında €45 daha ucuz; sessiz odalar, ücretsiz iptal ve gezeceğin yerlere 6 dk" + Seç + Karşılaştır.
+
+**Kartta önce istediklerin.** "Seni böyle anladım"daki her şey (mutfak, ücretsiz iptal, "sessiz bir yer istiyoruz",
+önemli dediğin konum ya da fiyat) her kartın üstünde tek tek denetlenir: ✓ "Mutfak var", ✕ "İade yok",
+✕ "Hafta sonu gece gürültüsü · 3 yorum", ? "Mutfak yazmıyor" (sayfa söylemiyorsa "yok" denmez). Bunlar puana
+da girer: istenen olanak (şart dediğin de) puanlanır, istediğin konudaki yorumlar (sessizlik gibi) 2,5 kat sayılır.
+Altındaki artı/eksiler somut yazar: "Gezeceğin yerlere 6 dk", "Uzak · merkeze 25 dk", "Puan 8,9/10", "Erken
+kalkış 05:40". Kartın üstündeki site adı (Booking.com ↗, Airbnb ↗) sayfayı yeni sekmede açar; pano yerinde kalır.
+Tarihsiz kaydedilen bir bilet ya da sayfa için sohbette "o bilet 12 Ekim'di" demen yeter, kart kendi gününe geçer.
 Seçilen ya da rezerve edilen kartta zamanı yaklaşan şey yazar: "Ücretsiz iptal için 6 gün kaldı",
 "Bilet alınmadı · etkinliğe 10 gün · ücretsiz iptalli, şimdi ayırmak risksiz".
 

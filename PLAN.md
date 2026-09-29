@@ -87,6 +87,9 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
       dokununca Plan'daki kartı); şehir bloğunun içi dışıyla aynı hizada
 - [x] 0.19.1: gece bölme — sohbette "o gece ayrı konaklama" boş blok açar, önce seçilen yer kalan gecelerde kalır,
       asistan otel seçmez; söylenen fiyat karta yazılır (set_price); asistan yalnız araçların yaptığını söyler
+- [x] 0.20: kartta önce istediklerin (✓ var / ✕ yok / ? yazmıyor), istenenler puana girer (şart olanak, söylenen
+      konulardaki yorumlar 2,5 kat), somut kart satırları, site adı sayfayı yeni sekmede açar; sohbetten tarih/saat
+      düzeltme (set_details) ile tarihsiz bilet kendi gününe geçer
 - [ ] Sonraki öneriler (onay bekliyor): 7 sade karşılaştırma, 8 zaman çizelgesinde tekrarların kalkması,
       9 sohbet ↔ pano bağlantısı, 10 sırayla karar ver modu
 - [ ] 0.17: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),

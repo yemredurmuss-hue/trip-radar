@@ -102,6 +102,7 @@ export async function loadDemoTrip(): Promise<string> {
     }),
     item("stay", "stay:porto", "Jardim Stay", 285, {
       provider: "Booking.com",
+      url: "https://www.booking.com/hotel/pt/jardim-stay.html?checkin=2026-10-08&checkout=2026-10-11&group_adults=2",
       summary: "Baixa, Ribeira'ya 8 dk",
       location: { address: null, area: "Baixa", approximate: false },
       geo: geo(41.1455, -8.611),
@@ -123,6 +124,7 @@ export async function loadDemoTrip(): Promise<string> {
     }),
     item("stay", "stay:porto", "Casa Azul", 240, {
       provider: "Airbnb",
+      url: "https://www.airbnb.com/rooms/48213377?check_in=2026-10-08&check_out=2026-10-11&adults=2",
       summary: "Bonfim, mutfaklı daire",
       location: { address: null, area: "Bonfim", approximate: true },
       geo: geo(41.162, -8.589),
@@ -144,6 +146,7 @@ export async function loadDemoTrip(): Promise<string> {
     }),
     item("stay", "stay:porto", "Ribeira Rooms", 330, {
       provider: "Booking.com",
+      url: "https://www.booking.com/hotel/pt/ribeira-rooms.html?checkin=2026-10-08&checkout=2026-10-11&group_adults=2",
       summary: "Nehir kıyısı, manzaralı",
       location: { address: null, area: "Ribeira", approximate: false },
       geo: geo(41.141, -8.613),

@@ -6,6 +6,9 @@ import {
   amenitiesOf,
   findingWeight,
   levelFor,
+  SAID_WEIGHT,
+  saidTopics,
+  wantedAmenities,
   SERIOUS_PENALTY,
   TOPIC_CRITERION,
   type DecisionContext,
@@ -15,6 +18,7 @@ import {
 } from "./decision";
 import { formatDateRange, formatPrice, listingKeyOf } from "./items";
 import { acceptKey, evidenceOf, monthLabel } from "./listing";
+import { cancellationText, locationText } from "./needs";
 import type { Finding, Item, Listing } from "./types";
 
 export interface ProCon {
@@ -46,7 +50,7 @@ export interface ProsCons {
   cons: ProCon[];
 }
 
-type Ctx = Pick<DecisionContext, "trip" | "today" | "currency" | "inferred" | "listings">;
+type Ctx = Pick<DecisionContext, "trip" | "today" | "currency" | "inferred" | "listings"> & { preferences?: string[] };
 
 const LEVEL_WEIGHT = [0, 0.5, 1, 2, 3];
 const SOURCE_TEXT: Record<Finding["source"], string> = {
@@ -82,7 +86,7 @@ function locationTags(display: string | null): [string, string] {
 /** Tags for the comparisons that say the same thing for every option: [for, against]. */
 const COMPARE_TAGS: Partial<Record<Part["criterion"], [string, string]>> = {
   rating: ["Puanı yüksek", "Puanı düşük"],
-  comfort: ["Yorumlar iyi", "Yorumlar zayıf"],
+  comfort: ["Yorum puanları yüksek", "Yorum puanları düşük"],
   cancellation: ["Ücretsiz iptal", "İade yok"],
   duration: ["Kısa yolculuk", "Uzun yolculuk"],
   stops: ["Direkt", "Aktarmalı"],
@@ -139,6 +143,17 @@ export function tagOf(line: ProCon, polarity: "pro" | "con"): string {
   return fewWords(line.short ?? line.text, line.decisive ? 5 : 4) ?? fewWords(line.text, 4) ?? (line.short ?? line.text).split(/\s+/).slice(0, 4).join(" ");
 }
 
+/** Which end of a trip is at a hard hour, said with the hour: "Erken kalkış 05:40", "Geç varış 01:35". */
+function hardHour(item: Item): string {
+  const at = (iso: string | null | undefined) => iso?.match(/T(\d{2}):(\d{2})/);
+  const dep = at(item.flight?.departure);
+  const arr = at(item.flight?.arrival);
+  if (dep && Number(dep[1]) < 7) return `Erken kalkış ${dep[1]}:${dep[2]}`;
+  if (arr && (Number(arr[1]) >= 23 || Number(arr[1]) < 5)) return `Geç varış ${arr[1]}:${arr[2]}`;
+  if (dep && Number(dep[1]) >= 22) return `Geç kalkış ${dep[1]}:${dep[2]}`;
+  return "Zor saat";
+}
+
 /** Lines from comparing the option with the others in its group on the traveller's criteria. */
 function comparisons(option: OptionResult, decision: GroupDecision, ctx: Ctx): { pros: ProCon[]; cons: ProCon[] } {
   const currency = ctx.currency;
@@ -192,32 +207,39 @@ function comparisons(option: OptionResult, decision: GroupDecision, ctx: Ctx): {
       case "duration": {
         if (!others.length) break;
         const shortest = Math.min(...others.map((o) => o.value!));
-        if (p.value < shortest - 10) add(pros, p, `En kısa yolculuk: ${minutesText(p.value)}`, 0.7, "En kısa yolculuk");
-        else if (p.value > shortest * 1.3) add(cons, p, `${minutesText(p.value - shortest)} daha uzun yolculuk`, Math.min(1, (p.value - shortest) / shortest), "Uzun yolculuk");
+        if (p.value < shortest - 10) add(pros, p, `En kısa yolculuk: ${minutesText(p.value)}`, 0.7, "En kısa yolculuk", `En kısa · ${minutesText(p.value)}`);
+        else if (p.value > shortest * 1.3)
+          add(cons, p, `${minutesText(p.value - shortest)} daha uzun yolculuk`, Math.min(1, (p.value - shortest) / shortest), "Uzun yolculuk", `${minutesText(p.value - shortest)} daha uzun`);
         break;
       }
       case "location": {
+        // The card says how far, not just "Yakın": "Gezeceğin yerlere 6 dk", "Uzak · merkeze 25 dk".
         const [near, far] = locationWords(p.display);
         const [nearTag, farTag] = locationTags(p.display);
-        if (p.s >= 0.75 && p.s >= bestS - 0.05) add(pros, p, capital(p.display ?? ""), p.s - 0.4, near, nearTag);
-        else if (p.s <= 0.4 || (!single && p.s < bestS - 0.3)) add(cons, p, capital(p.display ?? ""), Math.max(0.3, 0.8 - p.s), far, farTag);
+        const exact = locationText(p.display);
+        if (p.s >= 0.75 && p.s >= bestS - 0.05) add(pros, p, capital(p.display ?? ""), p.s - 0.4, near, exact ?? nearTag);
+        else if (p.s <= 0.4 || (!single && p.s < bestS - 0.3)) add(cons, p, capital(p.display ?? ""), Math.max(0.3, 0.8 - p.s), far, exact ? `Uzak · ${exact.toLocaleLowerCase("tr")}` : farTag);
         break;
       }
-      case "rating":
-        if (p.s >= 0.75 && p.s >= bestS - 0.05) add(pros, p, `Puan ${p.display}`, p.s - 0.4);
-        else if (p.s <= 0.4) add(cons, p, `Puan düşük: ${p.display}`, 0.8 - p.s, "Puanı düşük");
+      case "rating": {
+        const score = (p.display ?? "").split(" · ")[0];
+        if (p.s >= 0.75 && p.s >= bestS - 0.05) add(pros, p, `Puan ${p.display}`, p.s - 0.4, undefined, `Puan ${score}`);
+        else if (p.s <= 0.4) add(cons, p, `Puan düşük: ${p.display}`, 0.8 - p.s, "Puanı düşük", `Puanı düşük · ${score}`);
         break;
+      }
       case "comfort":
         if (p.s >= 0.75 && p.s >= bestS - 0.05) add(pros, p, capital(p.display ?? ""), p.s - 0.4, "Yorum puanları yüksek");
         else if (p.s <= 0.4) add(cons, p, capital(p.display ?? ""), 0.8 - p.s, "Yorum puanları düşük");
         break;
-      case "cancellation":
-        if (p.s >= 1) add(pros, p, capital(p.display ?? "Ücretsiz iptal"), 0.6);
-        else if (p.s <= 0.3) add(cons, p, capital(p.display ?? "İade yok"), 0.7);
+      case "cancellation": {
+        const said = cancellationText(option.item, ctx.today).text;
+        if (p.s >= 1) add(pros, p, capital(p.display ?? "Ücretsiz iptal"), 0.6, undefined, said);
+        else if (p.s <= 0.3) add(cons, p, capital(p.display ?? "İade yok"), 0.7, undefined, said);
         break;
+      }
       case "amenities": {
         // Only what tells options apart: an amenity others have and this one doesn't show.
-        const wanted = ctx.trip.wantedAmenities ?? [];
+        const wanted = wantedAmenities(ctx.trip);
         const mine = amenitiesOf(option.item, ctx);
         const theirs = new Set(peers.flatMap((o) => amenitiesOf(o.item, ctx)));
         const missing = wanted.filter((a) => !mine.includes(a) && theirs.has(a));
@@ -228,11 +250,11 @@ function comparisons(option: OptionResult, decision: GroupDecision, ctx: Ctx): {
       }
       case "stops":
         if (p.s >= 1) add(pros, p, "Direkt", 0.7, "Direkt");
-        else add(cons, p, capital(p.display ?? "Aktarmalı"), 1 - p.s);
+        else add(cons, p, capital(p.display ?? "Aktarmalı"), 1 - p.s, undefined, capital(p.display ?? "Aktarmalı"));
         break;
       case "schedule":
-        if (p.s < 0.7) add(cons, p, `Zor saat: ${p.display}`, 1 - p.s, "Zor saat");
-        else if (p.s >= 1 && others.some((o) => o.s! < 0.7)) add(pros, p, `Rahat saatler: ${p.display}`, 0.5);
+        if (p.s < 0.7) add(cons, p, `Zor saat: ${p.display}`, 1 - p.s, "Zor saat", hardHour(option.item));
+        else if (p.s >= 1 && others.some((o) => o.s! < 0.7)) add(pros, p, `Rahat saatler: ${p.display}`, 0.5, undefined, "Rahat saat");
         break;
       case "baggage":
         if (p.s >= 1) add(pros, p, "Bagaj dahil", 0.6);
@@ -255,6 +277,7 @@ function comparisons(option: OptionResult, decision: GroupDecision, ctx: Ctx): {
 
 /** How much a finding's topic matters to this traveller, from the level of the criterion it speaks to. */
 function relevance(f: Finding, item: Item, ctx: Ctx): number {
+  if (saidTopics(ctx.preferences ?? []).has(f.topic)) return SAID_WEIGHT;
   const level = levelFor(ctx.trip, item.category, TOPIC_CRITERION[f.topic], ctx.inferred);
   // Criteria that don't apply to the category (level 0 by default) still count a little: a finding is a fact.
   return Math.max(0.3, (LEVEL_WEIGHT[level] + 0.5) / 1.5);

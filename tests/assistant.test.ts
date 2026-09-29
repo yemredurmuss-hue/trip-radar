@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
-import { currentSession, resetConversation, sendMessage } from "../src/lib/assistant";
+import { currentSession, resetConversation, sendMessage, withDetails } from "../src/lib/assistant";
 import { db, listItems, listMessages, listPreferences } from "../src/lib/db";
 import { anthropicProvider } from "../src/lib/llm/anthropic";
 import type { Item, Trip } from "../src/lib/types";
@@ -257,5 +257,32 @@ describe("assistant", () => {
     const saved = await listItems("t1");
     expect(saved.find((i) => i.id === "a")!.status).toBe("chosen");
     expect(saved.find((i) => i.id === "b")!.price).toMatchObject({ amount: 312, currency: "USD", scope: "total", source: "user" });
+  });
+  it("moves an undated ticket to its day when the traveller says the date, keeping the times read from it", async () => {
+    const { items } = await seed();
+    const ticket: Item = {
+      ...items[0], id: "r", category: "flight", needKey: "flight:opo-fnc", name: "Ryanair", city: "Funchal",
+      dates: { start: null, end: null, source: "none" },
+      flight: { from: "OPO", to: "FNC", departure: null, arrival: "00:45", carrier: "Ryanair", flightNumber: null, stops: 0 },
+    };
+    // A late flight: landing in the small hours is the next day; a stated departure decides it otherwise.
+    expect(withDetails(ticket, { date: "2026-10-12", end_date: null, departure_time: null, arrival_time: null, arrival_date: null, from: null, to: null })).toMatchObject({
+      dates: { start: "2026-10-12", source: "user" },
+      flight: { departure: null, arrival: "2026-10-13T00:45", from: "OPO", to: "FNC" },
+    });
+    expect(withDetails(ticket, { date: "2026-10-12", end_date: null, departure_time: "22:40", arrival_time: null, arrival_date: null, from: null, to: null })).toMatchObject({
+      flight: { departure: "2026-10-12T22:40", arrival: "2026-10-13T00:45" },
+    });
+    expect(withDetails(ticket, { date: "12 Ekim", end_date: null, departure_time: null, arrival_time: null, arrival_date: null, from: null, to: null })).toContain("YYYY-AA-GG");
+
+    await (await db()).put("items", ticket);
+    const { client, calls } = fakeClient([
+      { stop_reason: "tool_use", content: [{ type: "tool_use", id: "d1", name: "set_details", caller: { type: "direct" }, input: { item_id: "r", date: "2026-10-12", end_date: null, departure_time: null, arrival_time: null, arrival_date: null, from: null, to: null } }] as Anthropic.ContentBlock[] },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Uçuşu 12 Ekim'e taşıdım.", citations: null }] as Anthropic.ContentBlock[] },
+    ]);
+    await sendMessage("t1", "attığım bilet 12 Ekim'di", anthropicProvider(client, "claude-opus-5"));
+    const [done] = calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[];
+    expect(done.is_error).toBeFalsy();
+    expect((await listItems("t1")).find((i) => i.id === "r")!.dates.start).toBe("2026-10-12");
   });
 });

@@ -407,7 +407,9 @@ function Recommendation({
 }) {
   const pick = card.pick.item;
   const facts = cardFacts(pick, decision, ctx);
-  const good = facts.pros.map((p) => p.text).filter((t) => !/ucuz|pahalı/i.test(t)).slice(0, 3).map(lowerFirst);
+  // What the traveller asked for and it has comes first ("sessiz odalar, ücretsiz iptal"), then the rest.
+  const asked = facts.needs.filter((n) => n.state === "yes").map((n) => n.text.split(/,| · /)[0]);
+  const good = [...asked, ...facts.pros.map((p) => p.text)].filter((t) => !/ucuz|pahalı/i.test(t)).slice(0, 3).map(lowerFirst);
   // Money against the option it's weighed against, named, so it never reads as the card's other number.
   const diff = card.priceDiff;
   const against = card.alt ? `${card.alt.item.name} karşısında ` : "";

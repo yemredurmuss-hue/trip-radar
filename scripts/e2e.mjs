@@ -145,11 +145,18 @@ try {
   // Undecided needs are decision cards to swipe through, best first; decided ones are one line.
   const card = (name) => app.locator(`.swipe-card[aria-label="${name}"]`);
   await card("Jardim Stay").locator(".sc-score.best").waitFor();
-  assert.match(await card("Jardim Stay").locator(".sc-source").innerText(), /Booking\.com$/);
+  // The site's name is the way to the page: one click, a new tab, the board stays.
+  const site = card("Jardim Stay").locator("a.sc-source");
+  assert.match(await site.innerText(), /Booking\.com\s*↗$/);
+  assert.equal(await site.getAttribute("target"), "_blank");
+  assert.match(await site.getAttribute("href"), /^https:\/\/www\.booking\.com\//);
   assert.equal(await card("Jardim Stay").locator(".sc-sub").innerText(), "Otel odası");
   assert.match(await card("Jardim Stay").locator(".sc-price").innerText(), /€285\s*3 gece toplam\s*€95 \/ gece/);
-  // For it on the left, against it on the right, a few words a line, the biggest first.
-  assert.deepEqual((await card("Jardim Stay").locator(".sc-col.pros li > span").allInnerTexts()).map((t) => t.replace("★", "")), ["Yakın", "Ücretsiz iptal", "Sessiz odalar", "Kahvaltı çok iyi"]);
+  // What the traveller asked for first, checked on each: quiet (they said so), free cancellation (their pattern).
+  assert.deepEqual(await card("Jardim Stay").locator(".sc-needs .need.yes > span").allInnerTexts(), ["Sessiz odalar, iyi uyku · 3 yorum", "Ücretsiz iptal · son gün 5 Ekim"]);
+  assert.deepEqual(await card("Ribeira Rooms").locator(".sc-needs .need.no > span").allInnerTexts(), ["Hafta sonu gece gürültüsü · 3 yorum", "İade yok"]);
+  // Then for it on the left, against it on the right, with the specifics, the biggest first.
+  assert.deepEqual(await card("Jardim Stay").locator(".sc-col.pros li > span").allInnerTexts(), ["Gezeceğin yerlere 6 dk", "Kahvaltı çok iyi", "Yorum puanları yüksek"]);
   assert.equal(await card("Jardim Stay").locator(".sc-col.cons li > span").first().innerText(), "Odalar küçük");
   // Closed cards side by side stand the same height.
   const heights = await app.locator(".stay-block.open .option-grid .swipe-card").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
@@ -164,12 +171,7 @@ try {
   assert.equal(new Set(tops).size, 1, "the options sit in one row");
   // The recommendation in one line above them, with what makes it the one.
   const stayCard = app.locator(".stay-block .reco-line");
-  assert.match(await stayCard.innerText(), /Önerim Jardim Stay:\s*Ribeira Rooms karşısında €45 daha ucuz; yakın, ücretsiz iptal ve sessiz odalar/);
-  // ★ where the traveller's own priorities are: free cancellation (their pattern), quiet (they said so).
-  assert.deepEqual(
-    await card("Jardim Stay").locator(".sc-col.pros li:has(.mine) > span").allInnerTexts(),
-    ["Ücretsiz iptal★", "Sessiz odalar★"],
-  );
+  assert.match(await stayCard.innerText(), /Önerim Jardim Stay:\s*Ribeira Rooms karşısında €45 daha ucuz; sessiz odalar, ücretsiz iptal ve gezeceğin yerlere 6 dk/);
   // The slim strip under the summary: what to decide, book and plan, counted; a chip lists them, a tap goes there.
   const todo = app.locator(".todo-wrap");
   const chip = (kind) => todo.locator(`.todo-chip.k-${kind}`);
@@ -209,13 +211,13 @@ try {
   await card("Jardim Stay").getByRole("button", { name: "Detaylar ▾" }).click();
   const jardimDetails = card("Jardim Stay").locator(".card-details");
   await jardimDetails.locator(".cd-verdict").waitFor();
-  await jardimDetails.locator(".cd-list.pros li", { hasText: "Sessiz odalar, iyi uyku · 3 yorum" }).waitFor();
+  await jardimDetails.locator(".cd-list.needs li.yes", { hasText: "Sessiz: Sessiz odalar, iyi uyku · 3 yorum" }).waitFor();
   assert.match(await jardimDetails.locator(".cd-facts").innerText(), /Tarih\s*8–11 Ekim · 3 gece[\s\S]*Puan\s*8,9 \/ 10 · 1\.204 yorum[\s\S]*İptal/i);
   await jardimDetails.locator(".small-note", { hasText: "5 yorum incelendi (sitede 1.204)" }).waitFor();
   await app.screenshot({ path: `${out}/3-cards.png` });
   await card("Jardim Stay").getByRole("button", { name: "Kapat ▴" }).click();
   await card("Ribeira Rooms").getByRole("button", { name: "Detaylar ▾" }).click();
-  await card("Ribeira Rooms").locator(".card-details .cd-list.cons", { hasText: "Hafta sonu gece gürültüsü" }).waitFor();
+  await card("Ribeira Rooms").locator(".card-details .cd-list.needs li.no", { hasText: "Hafta sonu gece gürültüsü" }).waitFor();
   await card("Ribeira Rooms").getByRole("button", { name: "Kapat ▴" }).click();
 
   // The evidence behind a finding is one tap deeper ("Tüm detaylar"), with "sorun değil": the
@@ -253,8 +255,10 @@ try {
   });
   await compare.getByText("güncellemek için Ayarlar'dan ücretsiz Gemini anahtarı ekle", { exact: false }).waitFor(); // no key yet
   await app.screenshot({ path: `${out}/3c-compare.png`, fullPage: true });
-  // Location stops mattering → the cheaper stay wins, and the view says what would flip it back.
+  // Location stops mattering and price matters most → the cheaper stay wins (quiet, which they asked for,
+  // still keeps Jardim close), and the view says what would flip it back.
   await compare.locator("tr", { hasText: "Konum" }).locator("select").selectOption("0");
+  await compare.locator("tr", { hasText: "Fiyat" }).first().locator("select").selectOption("4");
   await compare.locator("thead th.win .opt-name", { hasText: "Casa Azul" }).waitFor();
   await compare.getByText("Konum çok önemli olursa").waitFor();
   await app.screenshot({ path: `${out}/3d-compare-priority.png`, fullPage: true });

@@ -33,22 +33,32 @@ describe("decision card facts", () => {
       out: false,
     });
     expect(jardim.score).toBeGreaterThan(60);
-    // The biggest plus and minus first, then a few more; each a few words.
-    expect(jardim.pros.map((p) => p.text)).toEqual(["Yakın", "Ücretsiz iptal", "Sessiz odalar", "Kahvaltı çok iyi"]);
+    // What the traveller asked for comes first, checked: "sessiz bir yer istiyoruz" (said) and free
+    // cancellation (read from their saves), each with what this place has for it.
+    expect(jardim.needs.map((n) => [n.label, n.state, n.text])).toEqual([
+      ["Sessiz", "yes", "Sessiz odalar, iyi uyku · 3 yorum"],
+      ["Ücretsiz iptal", "yes", "Ücretsiz iptal · son gün 5 Ekim"],
+    ]);
+    // Then the rest, biggest first, with the specifics ("6 dk", not "Yakın"); nothing a need already said.
+    expect(jardim.pros.map((p) => p.text)).toEqual(["Gezeceğin yerlere 6 dk", "Kahvaltı çok iyi", "Yorum puanları yüksek"]);
     // Jardim is the average price of the three: no price line either way.
     expect(jardim.cons.map((c) => c.text)).toEqual(["Odalar küçük", "TV yok"]);
-    // ★: what the traveller made important (free cancellation, inferred) or said ("sessiz bir yer istiyoruz").
-    expect(jardim.pros.filter((p) => p.mine).map((p) => p.text)).toEqual(["Ücretsiz iptal", "Sessiz odalar"]);
-    expect(jardim.cons.some((c) => c.mine)).toBe(false);
     for (const tag of [...jardim.pros, ...jardim.cons].map((l) => l.text)) expect(tag.split(" ").length).toBeLessThanOrEqual(5);
+    // A need the page answers the other way is said as plainly: the noise, no refund.
+    expect(facts("Ribeira Rooms").needs.map((n) => [n.state, n.text])).toEqual([
+      ["no", "Hafta sonu gece gürültüsü · 3 yorum"],
+      ["no", "İade yok"],
+    ]);
 
     const casa = facts("Casa Azul");
     expect(casa.subtitle).toBe("Daire · 1 yatak odası");
     expect(casa.out).toBe(true);
     expect(casa.status).toEqual({ text: "Elendi", tone: "warning" });
     expect(casa.cons[0]).toMatchObject({ text: "Elendi: Yan binada inşaat var", strong: true, mine: true });
-    // Far by the comparison and weak location in the reviews: one tag, not two.
-    expect(casa.cons.filter((c) => /Uzak|Konum/.test(c.text))).toHaveLength(1);
+    // Far by the comparison and weak location in the reviews: one tag, not two, and it says how far.
+    expect(casa.cons.filter((c) => /Uzak|Konum/.test(c.text)).map((c) => c.text)).toEqual(["Uzak · gezeceğin yerlere 43 dk"]);
+    // What the reviews don't mention is said as not known, never as missing.
+    expect(casa.needs[0]).toMatchObject({ state: "unknown", text: "Sessiz: yorumlarda geçmiyor" });
   });
 
   it("flights, trains and eSIMs: times, stops and duration; bookings say so", async () => {

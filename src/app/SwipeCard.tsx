@@ -3,6 +3,7 @@ import { cardDetails, cardFacts, durationText, type CardFacts } from "../lib/car
 import type { GroupDecision } from "../lib/decision";
 import { formatDateRange, listingKeyOf, metricsOf } from "../lib/items";
 import { readingLine } from "../lib/listing";
+import { NEED_MARK, type NeedCheck } from "../lib/needs";
 import { dateAlert } from "../lib/progress";
 import { rangeOfGroupKey, stayRange } from "../lib/plan";
 import { isTrip } from "../lib/travelKinds";
@@ -15,17 +16,56 @@ import { CategoryIcon } from "./Icons";
 import type { Decisions } from "./useDecisions";
 
 /** The site it's from, with the site's own icon (the traveller has been there), else its first letter. */
-export function SourceBadge({ source }: { source: CardFacts["source"] }) {
+/** Where it's from; with a page, one click opens it in a new tab (the board stays where it is). */
+export function SourceBadge({ source, href }: { source: CardFacts["source"]; href?: string | null }) {
   if (!source) return null;
-  return (
-    <span className="sc-source">
+  const url = href ?? source.url;
+  const inner = (
+    <>
       <FallbackImg
         className="sc-favicon"
         src={source.host ? `https://${source.host}/favicon.ico` : null}
         fallback={<span className="sc-favicon letter">{source.label.charAt(0).toLocaleUpperCase("tr")}</span>}
       />
       {source.label}
-    </span>
+    </>
+  );
+  if (!url) return <span className="sc-source">{inner}</span>;
+  return (
+    <a
+      className="sc-source link"
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      title={`${source.label} sayfasını yeni sekmede aç`}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      {inner}
+      <span className="sc-open" aria-hidden>
+        ↗
+      </span>
+    </a>
+  );
+}
+
+/** What the traveller asked for, checked on this one: ✓ there, ✕ not, ? the page doesn't say. */
+export function Needs({ needs, max = 4 }: { needs: NeedCheck[]; max?: number }) {
+  if (!needs.length) return null;
+  const shown = needs.slice(0, max);
+  return (
+    <div className="sc-needs">
+      <span className="sc-needs-head">İstediklerin</span>
+      <ul aria-label="İstediklerin">
+        {shown.map((n) => (
+          <li key={n.key} className={`need ${n.state}`} title={`${n.label}: ${n.text}`}>
+            <i aria-hidden>{NEED_MARK[n.state]}</i>
+            <span>{n.text}</span>
+          </li>
+        ))}
+        {needs.length > max && <li className="need more">+{needs.length - max}</li>}
+      </ul>
+    </div>
   );
 }
 
@@ -46,17 +86,13 @@ function datedLink(item: Item, decision: GroupDecision | undefined) {
  */
 function ProsCons({ pros, cons }: { pros: CardFacts["pros"]; cons: CardFacts["cons"] }) {
   if (!pros.length && !cons.length) return null;
-  const mine = <span className="mine" title="Senin için önemli">★</span>;
   return (
     <div className="sc-pc">
       <ul className="sc-col pros" aria-label="Artıları">
         {pros.map((p) => (
           <li key={p.text}>
             <i aria-hidden>+</i>
-            <span>
-              {p.text}
-              {p.mine && mine}
-            </span>
+            <span>{p.text}</span>
           </li>
         ))}
       </ul>
@@ -64,10 +100,7 @@ function ProsCons({ pros, cons }: { pros: CardFacts["pros"]; cons: CardFacts["co
         {cons.map((c) => (
           <li key={c.text} className={c.strong ? "strong" : undefined}>
             <i aria-hidden>−</i>
-            <span>
-              {c.text}
-              {c.mine && mine}
-            </span>
+            <span>{c.text}</span>
           </li>
         ))}
       </ul>
@@ -105,6 +138,18 @@ function Details({
             </div>
           ))}
         </dl>
+      )}
+      {d.needs.length > 0 && (
+        <div className="cd-list needs">
+          <h4>İstediklerin</h4>
+          <ul>
+            {d.needs.map((n) => (
+              <li key={n.key} className={`need ${n.state}`}>
+                <i aria-hidden>{NEED_MARK[n.state]}</i> <b>{n.label}:</b> {n.text}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {d.pros.length > 0 && (
         <div className="cd-list pros">
@@ -198,7 +243,7 @@ interface CardProps {
 export function SwipeCard({ item, group, decision, decisions, roles = [], onOpen, onCompare }: CardProps) {
   const [open, setOpen] = useState(false);
   const facts = cardFacts(item, decision, decisions?.ctx);
-  const { nights } = datedLink(item, decision);
+  const { nights, url: datedUrl } = datedLink(item, decision);
   // Only what changes the decision is flagged on the picture: ruled out, provisional, the best pick.
   const flag = facts.status && facts.status.tone === "warning" ? facts.status : null;
   const tag = !facts.out && !flag ? (roles[0] ?? (facts.best ? "En uygun" : null)) : null;
@@ -215,11 +260,11 @@ export function SwipeCard({ item, group, decision, decisions, roles = [], onOpen
             </div>
           }
         />
-        <SourceBadge source={facts.source} />
+        <SourceBadge source={facts.source} href={datedUrl} />
         {facts.score != null && (
-          <span className={`sc-score${facts.best ? " best" : ""}`} title="Kriterlerine ve okunan yorumlara göre uyum (0–100)">
+          <span className={`sc-score${facts.best ? " best" : ""}`} title="Sana uygunluk puanı (100 üzerinden): istediklerin, önceliklerin ve okunan yorumlar">
             <b>{facts.score}</b>
-            <small>uyum</small>
+            <small>puan</small>
           </span>
         )}
         {flag && <span className="sc-flag warning">{flag.text}</span>}
@@ -233,6 +278,7 @@ export function SwipeCard({ item, group, decision, decisions, roles = [], onOpen
         <div className="sc-price">
           <Price price={facts.price} dated={Boolean(item.dates.start || item.flight?.departure)} />
         </div>
+        <Needs needs={facts.needs} />
         <ProsCons pros={facts.pros} cons={facts.cons} />
         {open && (
           <div className="sc-details">

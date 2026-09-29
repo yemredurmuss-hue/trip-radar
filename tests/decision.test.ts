@@ -349,3 +349,19 @@ describe("value card", () => {
     expect(roles.get(central.id)).toContain("En iyi konum");
   });
 });
+
+describe("what the traveller asked for weighs in, and every card checks it", () => {
+  // "Mutfak şart": a kitchen said as a requirement counts in the score too, not only as a filter.
+  it("a required amenity scores; the card says it's there, or that the page doesn't say", async () => {
+    const { needsFor } = await import("../src/lib/cardFacts");
+    const withKitchen = item("Kitchen Loft", { price: price(300), metrics: { amenities: ["mutfak"] } });
+    const without = item("Plain Room", { price: price(300) });
+    const t = trip({ requirements: [{ kind: "amenity", amenity: "mutfak" }] });
+    const ctx = makeContext(t, [withKitchen, without]);
+    expect(levelFor(t, "stay", "amenities")).toBeGreaterThan(0);
+    const d = decideGroup([withKitchen, without], ctx);
+    expect(d.winner?.item.name).toBe("Kitchen Loft");
+    expect(needsFor(withKitchen, d, ctx).map((n) => [n.state, n.text])).toEqual([["yes", "Mutfak var"]]);
+    expect(needsFor(without, d, ctx).map((n) => [n.state, n.text])).toEqual([["unknown", "Mutfak yazmıyor"]]);
+  });
+});
