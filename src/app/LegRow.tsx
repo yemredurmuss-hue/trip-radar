@@ -22,8 +22,10 @@ export const KIND_LABEL = { arrival: "Varış transferi", move: "Şehir değişi
  * metro, a saved option, booked). Opening it shows what's easy to miss and lets the traveller say
  * how they'll go; saying it in the chat ("metroyla gideceğim") does the same.
  */
-export function LegRow({ leg, tripId, onOpenItem }: { leg: Leg; tripId: string; onOpenItem: (item: Item) => void }) {
-  const [open, setOpen] = useState(false);
+export function LegRow({ leg, tripId, onOpenItem, embedded = false }: { leg: Leg; tripId: string; onOpenItem: (item: Item) => void; embedded?: boolean }) {
+  const [toggled, setOpen] = useState(false);
+  // Inside a day on the move the step is the head; only the body shows, open.
+  const open = embedded || toggled;
   const timing = legTiming(leg);
   const choice = leg.choice;
   const save = (patch: Parameters<typeof withLegChoice>[2]) => void updateTrip(tripId, (t) => withLegChoice(t, leg.key, patch));
@@ -31,25 +33,27 @@ export function LegRow({ leg, tripId, onOpenItem }: { leg: Leg; tripId: string; 
   const settled = legItem(leg);
 
   return (
-    <div className={`leg st-${leg.status}${open ? " open" : ""}`} id={`leg-${leg.key}`}>
-      <button className="leg-head" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`${KIND_LABEL[leg.kind]}: ${leg.from.label} → ${leg.to.label}`}>
-        <span className="leg-icon" aria-hidden>
-          {leg.mode ? ICONS[leg.mode] : "↓"}
-        </span>
-        <span className="leg-main">
-          <span className="leg-title">{legShortTitle(leg)}</span>
-          <span className="leg-sub">
-            {[timing, `${leg.from.label} → ${leg.to.label}`, settled?.name].filter(Boolean).join(" · ")}
-            {!open && leg.notes.length > 0 && (
-              <span className="leg-hint" title={leg.notes.join("\n")} aria-label={`${leg.notes.length} not`}>
-                {" "}
-                ⓘ
-              </span>
-            )}
+    <div className={`leg st-${leg.status}${open ? " open" : ""}${embedded ? " embedded" : ""}`} id={`leg-${leg.key}`}>
+      {!embedded && (
+        <button className="leg-head" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`${KIND_LABEL[leg.kind]}: ${leg.from.label} → ${leg.to.label}`}>
+          <span className="leg-icon" aria-hidden>
+            {leg.mode ? ICONS[leg.mode] : "↓"}
           </span>
-        </span>
-        <span className={`leg-chip st-${leg.status}`}>{leg.statusText}</span>
-      </button>
+          <span className="leg-main">
+            <span className="leg-title">{legShortTitle(leg)}</span>
+            <span className="leg-sub">
+              {[timing, `${leg.from.label} → ${leg.to.label}`, settled?.name].filter(Boolean).join(" · ")}
+              {!open && leg.notes.length > 0 && (
+                <span className="leg-hint" title={leg.notes.join("\n")} aria-label={`${leg.notes.length} not`}>
+                  {" "}
+                  ⓘ
+                </span>
+              )}
+            </span>
+          </span>
+          <span className={`leg-chip st-${leg.status}`}>{leg.statusText}</span>
+        </button>
+      )}
       {open && (
         <div className="leg-body">
           {leg.notes.map((n) => (

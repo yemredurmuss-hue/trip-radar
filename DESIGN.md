@@ -27,6 +27,14 @@ Durum hiçbir yerde yalnız renkle anlatılmaz: yanında hep yazısı olur ("Bil
 ★ yalnız gezginin kendi önceliğine dokunan satırı işaretler (söylediği ya da ayarladığı); varsayılanlar
 yıldız almaz.
 
+## Yolculuk günü
+
+- Şehir değiştirilen gün (varış ve dönüş günü de) tek karttır ve çizgide iki şehrin arasında durur; ayrı "Şehir
+  değişimi" satırı yoktur.
+- Adımlar saat sırasıyla: saat solda, durum noktası çizgide, ne olduğu ortada, durumu sağda. Uçuş/tren adımı açık
+  mor zeminle öne çıkar. Tek seferde bir adım açılır.
+- Saat: kayıttan gelen düz, alışılmış ya da hesaplanan "~" ve nedeni küçük yazıyla, bilinmeyen "saat yok".
+
 ## Azaltmak
 
 - Hiçbir şey silinmez, önden kalkar: **Ele** (Elenenler), **Gerek yok** (Gizlenenler / Geri al). Sayılar ve

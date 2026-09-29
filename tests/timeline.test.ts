@@ -30,26 +30,42 @@ describe("timeline", () => {
     const timeline = buildTimeline(plan, buildLegs(plan, trip, ctx.listings), items);
     expect(titles(timeline)).toEqual([
       "8 Ekim · Uçuş | IST → OPO",
+      "  OPO havalimanı → Porto konaklaması",
       "8–11 Ekim · Konaklama | Porto · 3 gece",
-      "1. gün [OPO havalimanı → Porto konaklaması]",
+      "1. gün []",
       "2. gün [Douro tekne turu]",
       "3. gün []",
       "  Porto konaklaması → Porto Campanhã",
       "11 Ekim · Şehir değişimi | Porto → Lizbon",
+      "  Lisboa Santa Apolónia → Lisboa Loft",
       "11–14 Ekim · Konaklama | Lizbon · 3 gece",
-      "4. gün [Lisboa Santa Apolónia → Lisboa Loft]",
+      "4. gün []",
       "5. gün []",
       "6. gün []",
-      "7. gün [Lisboa Loft → LIS havalimanı]",
+      "7. gün []",
+      "  Lisboa Loft → LIS havalimanı",
       "14 Ekim · Dönüş | LIS → IST",
     ]);
-    // Each city shows its stays first, then a card for every day.
+    // Each city shows its stays first, then a card for every day; days on the move are one card on the line.
+    expect(timeline.sections.map((x) => (x.kind === "journey" ? `${x.journey.dayNo}. gün ${x.journey.role}` : x.kind === "city" ? x.city : x.kind))).toEqual([
+      "1. gün arrival",
+      "Porto",
+      "4. gün move",
+      "Lizbon",
+      "7. gün departure",
+    ]);
     const porto = timeline.sections.find((x) => x.kind === "city")!;
-    expect(porto.kind === "city" && [porto.stays.length, porto.entries.map((e) => e.kind)]).toEqual([1, ["day", "day", "day", "leg"]]);
+    expect(porto.kind === "city" && [porto.stays.length, porto.entries.map((e) => e.kind)]).toEqual([1, ["day", "day"]]);
+    const move = timeline.sections.find((x) => x.kind === "journey" && x.journey.role === "move")!;
+    expect(move.kind === "journey" && [move.journey.out?.kind, move.journey.in?.kind, move.entries.map((e) => e.kind)]).toEqual([
+      "open",
+      "booked",
+      ["leg", "travel", "leg", "day"],
+    ]);
     const day = timeline.entries.find((e) => e.kind === "day" && e.items.length)!;
     expect(day.kind === "day" && [day.title, day.items.map((i) => i.name)]).toEqual(["2. gün", ["Douro tekne turu"]]);
-    const move = timeline.entries.find((e) => e.kind === "travel" && e.role === "move")!;
-    expect(move.kind === "travel" && move.travel?.items.map((i) => i.name)).toEqual(["CP Alfa Pendular · Porto → Lizbon"]);
+    const train = timeline.entries.find((e) => e.kind === "travel" && e.role === "move")!;
+    expect(train.kind === "travel" && train.travel?.items.map((i) => i.name)).toEqual(["CP Alfa Pendular · Porto → Lizbon"]);
     expect(timeline.unplaced).toEqual([]);
     expect(timeline.undated.map((i) => i.name).sort()).toEqual(["Livraria Lello", "Majestic Café", "Serralves Müzesi", "Tiyatro"]);
   });
@@ -74,8 +90,8 @@ describe("timeline", () => {
     const driving = { ...trip, legs: { "2026-10-07:arrival:porto": { mode: "car" as const, booked: false, note: null, updatedAt: 1 } } };
     const t = buildTimeline(plan, buildLegs(plan, driving), [stay]);
     expect(t.entries.some((e) => e.kind === "travel" && e.role === "arrival")).toBe(false);
-    const firstDay = t.entries.find((e) => e.kind === "day")!;
-    expect(firstDay.kind === "day" && firstDay.legs.map((l) => l.mode)).toEqual(["car"]);
+    const way = t.sections[0];
+    expect(way.kind === "journey" && way.entries.map((e) => (e.kind === "leg" ? e.leg.mode : e.kind))).toEqual(["car", "day"]);
   });
 
   it("searches flights in plain words, with home when the saved flights tell it", () => {
@@ -110,6 +126,18 @@ describe("timeline from what's said and saved", () => {
   const outline = (t: ReturnType<typeof buildTimeline>) =>
     t.sections.map((s) => {
       if (s.kind === "travel") return `${s.entry.role}: ${(s.entry.travel?.items ?? []).map((i) => i.name).join(", ") || s.entry.subtitle}`;
+      if (s.kind === "journey") {
+        const parts = s.entries.map((e) =>
+          e.kind === "travel"
+            ? `${e.role}:${(e.travel?.items ?? []).map((i) => i.name).join(", ") || e.subtitle}`
+            : e.kind === "leg"
+              ? "transfer"
+              : e.kind === "day"
+                ? `${e.title}${e.items.length ? `[${e.items.map((i) => i.name).join(" + ")}]` : ""}`
+                : e.kind,
+        );
+        return `{${s.journey.dayNo ? `${s.journey.dayNo}. gün ` : ""}${s.journey.from ?? "?"} → ${s.journey.to ?? "?"}} ${parts.join(" / ")}`;
+      }
       const days = s.entries.filter((e) => e.kind === "day");
       const filled = s.entries.flatMap((e) => {
         if (e.kind === "day") {
@@ -132,11 +160,11 @@ describe("timeline from what's said and saved", () => {
     const { plan, timeline } = build(items);
     expect(plan.closed).toEqual([]);
     expect(outline(timeline)).toEqual([
-      "arrival: Pegasus IST-OPO",
-      "[1 Porto · 3 gece · 1 konaklama · 3 gün] 1. gün: transfer",
-      "move: Porto → Funchal", // how is still open: no station transfers yet
-      "[2 Funchal · 7 gece · 1 konaklama · 8 gün] 11. gün: transfer",
-      "departure: TAP FNC-IST",
+      "{1. gün IST → Porto} arrival:Pegasus IST-OPO / transfer / 1. gün",
+      "[1 Porto · 3 gece · 1 konaklama · 2 gün] ",
+      "{4. gün Porto → Funchal} move:Porto → Funchal / 4. gün", // how is still open: no station transfers yet
+      "[2 Funchal · 7 gece · 1 konaklama · 6 gün] ",
+      "{11. gün Funchal → IST} 11. gün / transfer / departure:TAP FNC-IST",
     ]);
     expect(timeline.unplaced).toEqual([]);
   });
@@ -151,14 +179,14 @@ describe("timeline from what's said and saved", () => {
     ];
     const { timeline } = build(items);
     expect(outline(timeline)).toEqual([
-      "arrival: Uçuş · İstanbul → Porto",
-      "[1 Porto · 4 gece · 1 konaklama · 4 gün] 1. gün: transfer / transfer 11",
-      "move: Uçuş · Porto → Funchal",
-      "[2 Funchal · 6 gece · 1 konaklama · 7 gün] 5. gün: transfer / 6. gün: Araç kiralama · Funchal / 11. gün: transfer",
-      "departure: Funchal →",
+      "{1. gün İstanbul → Porto} arrival:Uçuş · İstanbul → Porto / transfer / 1. gün",
+      "[1 Porto · 4 gece · 1 konaklama · 3 gün] ",
+      "{5. gün Porto → Funchal} transfer / move:Uçuş · Porto → Funchal / transfer / 5. gün",
+      "[2 Funchal · 6 gece · 1 konaklama · 5 gün] 6. gün: Araç kiralama · Funchal",
+      "{11. gün Funchal → ?} 11. gün / transfer / departure:Funchal →",
     ]);
-    const move = timeline.sections.find((s) => s.kind === "travel" && s.entry.role === "move")!;
-    expect(move.kind === "travel" && move.entry.travel?.settled?.status).toBe("chosen"); // planned, not booked
+    const move = timeline.entries.find((e) => e.kind === "travel" && e.role === "move")!;
+    expect(move.kind === "travel" && move.travel?.settled?.status).toBe("chosen"); // planned, not booked
   });
 
   it("lets a flight page saved for that day take the place of the one said in the chat", () => {
@@ -179,9 +207,9 @@ describe("timeline from what's said and saved", () => {
     ];
     const { timeline } = build(items);
     expect(outline(timeline)).toEqual([
-      "arrival: → Porto",
-      "[1 Porto · 10 gece · 1 konaklama · 11 gün] 1. gün: transfer / other:Day trip / 11. gün: transfer",
-      "departure: Porto →",
+      "{1. gün ? → Porto} arrival:→ Porto / transfer / 1. gün",
+      "[1 Porto · 10 gece · 1 konaklama · 9 gün] other:Day trip",
+      "{11. gün Porto → ?} 11. gün / transfer / departure:Porto →",
     ]);
   });
 
@@ -201,12 +229,12 @@ describe("timeline from what's said and saved", () => {
     const items = [leg1, leg2, stay("Büyük TERAS DAİRE", "2026-10-07", "2026-10-11", "Porto"), car, said({ kind: "flight", date: "2026-10-11", from: "Porto", to: "Madeira" })];
     const { timeline } = build(items, t);
     expect(outline(timeline)).toEqual([
-      "other: Pegasus SAW-CPH", // the connection comes first, on the line
-      "arrival: SAS CPH-OPO",
-      "[1 Porto · 4 gece · 1 konaklama · 4 gün] 1. gün: transfer / transfer 11",
-      "move: Uçuş · Porto → Madeira",
-      "[2 Madeira · 7 gece · 1 konaklama · 8 gün] 5. gün: transfer + FAA Rentals / 12. gün: transfer",
-      "departure: Madeira →",
+      // The connection comes first, in the day's card: SAW → CPH, CPH → OPO, the transfer, check-in.
+      "{1. gün SAW → Porto} other:Pegasus SAW-CPH / arrival:SAS CPH-OPO / transfer / 1. gün",
+      "[1 Porto · 4 gece · 1 konaklama · 3 gün] ",
+      "{5. gün Porto → Madeira} transfer / move:Uçuş · Porto → Madeira / transfer / 5. gün[FAA Rentals]",
+      "[2 Madeira · 7 gece · 1 konaklama · 6 gün] ",
+      "{12. gün Madeira → ?} 12. gün / transfer / departure:Madeira →",
     ]);
     const madeira = timeline.sections.filter((x) => x.kind === "city")[1];
     expect(madeira.kind === "city" && madeira.stays[0].block.kind).toBe("open"); // "Planlanmadı"

@@ -72,8 +72,9 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
       sohbette söylenen günü belirsiz plan şehrin bloğunda hemen, rezervasyon onayı ekran görüntüsü planı yeniden
       kurar, seçili karta dokun = diğer seçenekler / ⓘ = detay, fiyat seçeneklerin ortalamasına göre, transferler
       "Havalimanı → Otel" sadeliğinde (notlar açınca)
-- [ ] Yolculuk günü (onay bekliyor): şehir değiştirilen gün tek kartta saat sırasıyla (çıkış, taksi, uçuş, giriş);
-      taslak: https://claude.ai/artifact/SRfbmW5VkiGw11ooZWzMT5
+- [x] 0.16: yolculuk günü tek kart (seçenek 1, geçiş kartı): şehir değiştirilen, varış ve dönüş günü çizgide iki şehrin
+      arasında; adımlar saat sırasıyla (check-out, transfer, uçuş/tren, transfer, check-in), her biri durumuyla;
+      tahmini saat "~" ile, bilinmeyen "saat yok"; "Bugün" işareti ve "Seyahat başladı · N. gün"
 - [ ] Sonraki öneriler (onay bekliyor): 7 sade karşılaştırma, 8 zaman çizelgesinde tekrarların kalkması,
       9 sohbet ↔ pano bağlantısı, 10 sırayla karar ver modu
 - [ ] 0.17: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),

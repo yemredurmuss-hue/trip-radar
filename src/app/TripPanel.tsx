@@ -57,6 +57,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const subtitle = [range ? formatDateRange(range.start, range.end) : null, cities.length ? joinTr(cities) : null]
     .filter(Boolean)
     .join(" · ");
+  const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
+  // On the way: which day of the trip it is.
+  const onDay = plan.range && today >= plan.range.start && today <= plan.range.end ? nightsBetween(plan.range.start, today) + 1 : null;
   const places = () => groupItems(timeline.undated).filter((s) => SUMMARIZED.includes(s.category));
   const dismissed = items.filter((i) => i.status === "dismissed");
   const route = routeUrl(items);
@@ -96,7 +99,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       changing={changing}
     />
   );
-  const leg = (l: Leg) => <LegRow key={l.key} leg={l} tripId={trip.id} onOpenItem={onOpenItem} />;
+  const leg = (l: Leg, embedded = false) => <LegRow key={l.key} leg={l} tripId={trip.id} onOpenItem={onOpenItem} embedded={embedded} />;
 
   const renderGroup: RenderGroup = (group, heading, groupSubtitle, nested = false) => (
     <OptionGroupView
@@ -121,6 +124,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         <FallbackImg className="hero-img" src={trip.heroImage} fallback={<div className="hero-img" />} />
         <div className="hero-main">
           <h1 className="trip-title">{trip.title}</h1>
+          {onDay && <div className="trip-now">Seyahat başladı · {onDay}. gün</div>}
           <div className="trip-sub">
             {subtitle || "Tarih ve şehir, kaydettikçe netleşir"}
             {range && !trip.confirmedDates && <span className="estimated">~tahmini</span>}
@@ -142,7 +146,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           </div>
         </div>
       </header>
-      <TodoStrip progress={decisionProgress(timeline, items, plan, decisions?.byGroup, decisions?.ctx.today ?? new Date().toISOString().slice(0, 10))} />
+      <TodoStrip progress={decisionProgress(timeline, items, plan, decisions?.byGroup, today)} />
 
       {failed.length > 0 && (
         <div className="errors">
@@ -169,7 +173,17 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       <IntentCard trip={trip} decisions={decisions} />
 
       {timeline.entries.length > 0 && (
-        <TimelineView plan={plan} timeline={timeline} tripId={trip.id} leg={leg} renderGroup={renderGroup} card={card} settled={settled} />
+        <TimelineView
+          plan={plan}
+          timeline={timeline}
+          tripId={trip.id}
+          leg={leg}
+          renderGroup={renderGroup}
+          card={card}
+          settled={settled}
+          listings={listings}
+          today={today}
+        />
       )}
 
       {CATEGORY_ORDER.map((category) => {

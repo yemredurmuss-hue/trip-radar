@@ -180,6 +180,18 @@ function timesOf(item: Item | null, listings: Map<string, Listing>): Times {
 
 const said = (stated: boolean) => (stated ? "sayfada yazıyor" : "genelde");
 
+/** A stay's check-in and check-out hours, and whether its page says them (otherwise the usual 15:00 / 11:00). */
+export function stayTimes(item: Item | null, listings: Map<string, Listing> | undefined) {
+  const t = timesOf(item, listings ?? new Map());
+  return { checkIn: t.checkIn, checkOut: t.checkOut, stated: t.stated };
+}
+
+/** "10:05" from "2026-10-08T10:05"; minutes since midnight and back. */
+export const clockOf = (iso: string | null | undefined) => clock(iso);
+export const addMinutes = (time: string, add: number) => hhmm(minutes(time) + add);
+export const laterOf = (a: string, b: string) => (minutes(a) >= minutes(b) ? a : b);
+export const minutesOf = (time: string) => minutes(time);
+
 // --- the legs ----------------------------------------------------------------------------------------------
 
 const slug = (city: string | null) =>

@@ -12,6 +12,7 @@ import { buildPlan, liveGroups } from "../src/lib/plan";
 import { plannedItem, type PlannedKind } from "../src/lib/planned";
 import { budgetBar, decisionProgress } from "../src/lib/progress";
 import { prosConsFor } from "../src/lib/proscons";
+import { journeySteps } from "../src/lib/journey";
 import { buildTimeline, nightsKey } from "../src/lib/timeline";
 import { rolesOf, valueCard, budgetState } from "../src/lib/value";
 import type { Item, ItemStatus, LegChoice, Trip } from "../src/lib/types";
@@ -311,6 +312,16 @@ describe("any trip", () => {
 
         // Where the decisions stand and what it costs: counts add up, no NaN, each open one has a place to go.
         const progress = decisionProgress(timeline, items, plan, decisions, "2026-09-29");
+        // Every entry is in exactly one block, day on the move or place on the line.
+        const placedEntries = timeline.sections.flatMap((x) => (x.kind === "travel" ? [x.entry.key] : x.kind === "journey" ? x.entries.map((e) => e.key) : [...x.stays, ...x.entries].map((e) => e.key)));
+        if (placedEntries.length !== timeline.entries.length || new Set(placedEntries).size !== placedEntries.length) note(seed, "sections don't hold every entry once");
+        for (const x of timeline.sections) {
+          if (x.kind !== "journey") continue;
+          const steps = journeySteps(x, undefined);
+          if (/NaN|undefined|Infinity/.test(JSON.stringify(steps.map(({ entry, ...rest }) => rest)))) note(seed, `journey steps ${x.key}`);
+          if (x.entries.filter((e) => e.kind === "day").length > 1) note(seed, `journey ${x.key} took two days`);
+          if (x.journey.dayNo != null && !x.entries.some((e) => e.kind === "day")) note(seed, `journey ${x.key} numbered without its day`);
+        }
         const kinds = Object.values(progress.count).reduce((a, b) => a + b, 0);
         if (kinds !== progress.todos.length) note(seed, `todo counts ${kinds} ≠ ${progress.todos.length}`);
         if (new Set(progress.todos.map((t) => t.key)).size !== progress.todos.length) note(seed, "todo keys repeat");

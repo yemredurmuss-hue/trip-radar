@@ -35,12 +35,33 @@ export type TimelineEntry =
 
 export type StayEntry = Extract<TimelineEntry, { kind: "stay" }>;
 
+export type JourneyRole = "arrival" | "move" | "departure";
+
 /**
- * The board's blocks: each city with its stays (in date order) and its days, and the trips between
- * them on the line.
+ * A day on the move (the way in, a change of city, the way home): one card on the line between the
+ * cities with the day's steps in order — check-out, the transfer, the flight, the transfer, check-in.
+ */
+export interface Journey {
+  key: string;
+  role: JourneyRole;
+  date: string;
+  /** Its day of the trip ("4. gün"); null when it falls outside the trip's days (landing the day before). */
+  dayNo: number | null;
+  from: string | null;
+  to: string | null;
+  /** The stay left that day (check-out) and the one reached (check-in); null for none or nights said not needed. */
+  out: StayBlock | null;
+  in: StayBlock | null;
+}
+
+/**
+ * The board's blocks: each city with its stays (in date order) and its days, the trips between
+ * them on the line, and a day on the move as one card there.
  */
 export type TimelineSection =
   | { kind: "travel"; key: string; entry: Extract<TimelineEntry, { kind: "travel" }> }
+  /** Its travel and transfer entries in order, and that day's card (what else is planned on it). */
+  | { kind: "journey"; key: string; journey: Journey; entries: TimelineEntry[] }
   | {
       kind: "city";
       key: string;
@@ -198,13 +219,35 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
   };
   const legRow = (leg: Leg): TimelineEntry => ({ kind: "leg", key: `leg:${leg.key}`, date: leg.date, leg });
 
+  // Days on the move: their trips, transfers and that day's card go in one card on the line.
+  const journeyOf = new Map<string, Journey>();
+  const claimed = new Set<string>();
+  const needed = (b: StayBlock | undefined) => (!b || (b.kind === "open" && !b.groups.length && hidden.has(nightsKey(b.range))) ? null : b);
+  const journey = (role: JourneyRole, date: string, from: string | null, to: string | null, out: StayBlock | null, reached: StayBlock | null): Journey => ({
+    key: `journey:${role}:${date}`, role, date, dayNo: null, from, to, out: needed(out ?? undefined), in: needed(reached ?? undefined),
+  });
+  const join = (j: Journey | null, e: TimelineEntry): TimelineEntry => {
+    if (j) journeyOf.set(e.key, j);
+    return e;
+  };
+  /** That day's card goes in the journey (once), and gives it its number. */
+  const claimDay = (j: Journey, index: number, date: string) => {
+    const day = dayCards[index]?.find((d) => d.date === date);
+    if (!day || claimed.has(day.key)) return;
+    claimed.add(day.key);
+    journeyOf.set(day.key, j);
+    j.dayNo = day.dayNo;
+  };
+  const end_ = (t: Travel | null | undefined, which: "from" | "to") => (t ? ((t.settled ?? t.items[0])?.flight?.[which] ?? null) : null);
+
   // Getting there.
-  entries.push(...before.map(tripEntry));
+  const inJ = first ? journey("arrival", first.date, end_(before[0] ?? inbound, "from"), blocks[0].city, null, blocks[0]) : null;
+  entries.push(...before.map((t) => join(inJ, tripEntry(t))));
   if (first) {
     const t = first.travel;
     const date = t?.day ?? first.date;
     if (t || !first.choice?.mode) {
-      entries.push({
+      entries.push(join(inJ, {
         kind: "travel",
         key: `travel:arrival:${date}`,
         role: "arrival",
@@ -214,17 +257,20 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
         travel: t,
         leg: null,
         searchUrl: t ? null : flightSearchUrl("to", first.to.city, date, home),
-      });
+      }));
     }
-    if (shown(first) && !into(first, 0)) entries.push(legRow(first));
+    if (shown(first)) entries.push(join(inJ, legRow(first)));
+    claimDay(inJ!, 0, first.date);
   }
 
   blocks.forEach((block, index) => {
     if (index > 0) {
       const slot = legs.filter((l) => l.slot === index);
+      const move = slot.find((l) => l.kind === "move");
+      const j = move ? journey("move", move.date, move.from.city ?? move.from.label, move.to.city ?? move.to.label, blocks[index - 1], block) : null;
       for (const leg of slot) {
         if (leg.kind === "move") {
-          entries.push({
+          entries.push(join(j, {
             kind: "travel",
             key: `travel:move:${leg.key}`,
             role: "move",
@@ -234,11 +280,15 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
             travel: leg.travel,
             leg,
             searchUrl: null,
-          });
+          }));
+        } else if (j) {
+          // The station transfers of a change of city are steps of that day's journey.
+          entries.push(join(j, legRow(leg)));
         } else if (!into(leg, leg.kind === "departure" ? index - 1 : index)) {
           entries.push(legRow(leg));
         }
       }
+      if (j && move) claimDay(j, index, move.date);
     }
     const nights = nightsBetween(block.range.start, block.range.end);
     entries.push({
@@ -257,12 +307,14 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
   });
 
   // Getting home.
+  const outJ = last ? journey("departure", last.date, blocks.at(-1)!.city, end_(after.at(-1) ?? outbound, "to"), blocks.at(-1)!, null) : null;
   if (last) {
-    if (shown(last) && !into(last, blocks.length - 1)) entries.push(legRow(last));
+    claimDay(outJ!, blocks.length - 1, last.date);
+    if (shown(last)) entries.push(join(outJ, legRow(last)));
     const t = last.travel;
     const date = t?.day ?? last.date;
     if (t || !last.choice?.mode) {
-      entries.push({
+      entries.push(join(outJ, {
         kind: "travel",
         key: `travel:departure:${date}`,
         role: "departure",
@@ -272,10 +324,10 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
         travel: t,
         leg: null,
         searchUrl: t ? null : flightSearchUrl("from", last.from.city, date, home),
-      });
+      }));
     }
   }
-  entries.push(...after.map(tripEntry));
+  entries.push(...after.map((t) => join(outJ, tripEntry(t))));
 
   // Any other trip with a day goes on that day (after its card): a flight the plan can't pair with a
   // change of city is still where it happens, never at the bottom.
@@ -295,7 +347,7 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
     .filter((g) => g.items.length > 0);
   return {
     entries,
-    sections: sectionsOf(entries),
+    sections: sectionsOf(entries, journeyOf),
     unplaced,
     undated: dayItems.filter((i) => !placedDays.has(i.id) && i.category !== "transport"),
   };
@@ -308,7 +360,7 @@ const addDaysIso = (date: string, days: number) => new Date(Date.parse(`${date}T
  * nights, days, other trips) goes in the block of the city it happens in, a new block starting where
  * the stays move to another city.
  */
-function sectionsOf(entries: TimelineEntry[]): TimelineSection[] {
+function sectionsOf(entries: TimelineEntry[], journeyOf: Map<string, Journey>): TimelineSection[] {
   const sections: TimelineSection[] = [];
   let current: Extract<TimelineSection, { kind: "city" }> | null = null;
   let index = 0;
@@ -317,7 +369,21 @@ function sectionsOf(entries: TimelineEntry[]): TimelineSection[] {
     sections.push(current);
     return current;
   };
+  const journeys = new Map<string, Extract<TimelineSection, { kind: "journey" }>>();
   for (const e of entries) {
+    // A day on the move sits on the line; its day card joins it from inside the city's days.
+    const j = journeyOf.get(e.key);
+    if (j) {
+      let section = journeys.get(j.key);
+      if (!section) {
+        section = { kind: "journey", key: j.key, journey: j, entries: [] };
+        journeys.set(j.key, section);
+        sections.push(section);
+      }
+      if (sections.at(-1) === section) current = null;
+      section.entries.push(e);
+      continue;
+    }
     // Arriving, moving on and leaving sit on the rail between the places; so does any other trip
     // that isn't during a stay (one during a stay, like a day trip, stays in that place).
     if (e.kind === "travel" && (e.role !== "other" || !current)) {

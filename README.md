@@ -136,6 +136,17 @@ Arayüz kuralları (renklerin anlamı, butonlar, yazı ölçeği, okunurluk) [DE
 **Gezinin özeti** en üsttedir: resim, ad, tarihler ve "7 gün · 2 şehir · 5 etkinlik · 1 konaklama · 1 ulaşım"
 (konaklama ve ulaşım: seçilen ya da rezerve edilenler).
 
+**Yolculuk günü tek kart.** Şehir değiştirdiğin gün (ve varış ile dönüş günü) iki şehrin arasında, çizginin
+üstünde tek bir karttır: "4. gün · 11 Ekim Paz · Porto → Lizbon · Yolculuk günü · 1/5 hazır". İçinde günün adımları
+saat sırasıyla: **Check-out** (11:00 en geç) → **Otel → Havalimanı** (13:00 en geç havalimanında) → **Uçuş Porto →
+Madeira** (15:00 → 16:55) → **Havalimanı → Otel** (16:55 iniş) → **Check-in** (~17:55 varıştan sonra). Her adımın
+durumu yanında (Rezerve, Bilet alınmadı, Planlanmadı). Sayfadan ya da kayıttan gelen saat düz yazar; alışılmış ya da
+hesaplanan saat "~" ile ve nedeniyle ("genelde", "varıştan sonra"); bilinmeyen "saat yok". Adıma dokununca kartı
+açılır (seçilecek uçuşlar, "Bileti aldım", transferin nasıl olacağı, "Gerek yok"); konaklama adımı seni o
+konaklamaya götürür. Seçilecek uçuş varsa o adım kendiliğinden açıktır. Aktarmalı gidiş (İstanbul → Kopenhag →
+Porto) varış kartının ilk adımlarıdır. O gün başka plan varsa kartın altında "O gün" olarak durur. Gezi
+başladıysa özet "Seyahat başladı · 4. gün" der, bugünün kartında **Bugün** yazar.
+
 **Gün gün plan.** Her şehir bir bloktur: önce konaklamalar tarih sırasıyla (yeri seçilmemiş geceler
 "Planlanmadı" kartı), sonra her gün için bir kart ("5. gün · 11 Ekim Cmt"). Günün transferleri, etkinlikleri ve
 kiralık aracı o günün kartındadır; boş gün de görünür. Aktarmalı gidiş (İstanbul → Kopenhag → Porto) varıştan

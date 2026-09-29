@@ -3,17 +3,21 @@ import type { GroupDecision } from "../lib/decision";
 import { formatDateRange } from "../lib/items";
 import { isRental, MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib/legs";
 import type { OptionGroup, Plan, StayBlock } from "../lib/plan";
+import { journeySteps, journeyTitle, stepsReady, type JourneyStep } from "../lib/journey";
 import { entryDomId } from "../lib/progress";
 import { flightSearchUrl, nightsKey, type Timeline, type TimelineEntry, type TimelineSection } from "../lib/timeline";
-import type { Category, Item, LegMode } from "../lib/types";
+import type { Category, Item, LegMode, Listing } from "../lib/types";
 import { setHidden, updateTrip } from "./actions";
 import { Carousel } from "./Carousel";
 import { CategoryIcon } from "./Icons";
+import { show } from "./Progress";
 import { StatusBar, type Standing } from "./Status";
 
 export type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => ReactNode;
 export type CardFor = (item: Item, group: Item[], decision?: GroupDecision, roles?: string[], onCompare?: () => void) => ReactNode;
 export type SettledFor = (item: Item, decision?: GroupDecision, onChange?: () => void, changing?: boolean) => ReactNode;
+/** A transfer: its own row, or (embedded) only its body under a step of a day on the move. */
+export type LegFor = (l: Leg, embedded?: boolean) => ReactNode;
 
 const fmt = (d: string) => formatDateRange(d, null);
 
@@ -30,19 +34,23 @@ export function TimelineView({
   renderGroup,
   card,
   settled,
+  listings,
+  today,
 }: {
   plan: Plan;
   timeline: Timeline;
   tripId: string;
-  leg: (l: Leg) => ReactNode;
+  leg: LegFor;
   renderGroup: RenderGroup;
   card: CardFor;
   settled: SettledFor;
+  listings?: Map<string, Listing>;
+  today: string;
 }) {
   const start = plan.range?.start ?? null;
   const n = plan.nights;
   const parts = [n.booked && `${n.booked} rezerve`, n.chosen && `${n.chosen} seçildi`, n.open && `${n.open} açık`].filter(Boolean);
-  const render = { tripId, leg, renderGroup, card, settled, start };
+  const render = { tripId, leg, renderGroup, card, settled, start, listings, today };
   return (
     <div className="section trip-plan">
       <div className="section-head">
@@ -66,10 +74,12 @@ export function TimelineView({
 interface RenderProps {
   tripId: string;
   start: string | null;
-  leg: (l: Leg) => ReactNode;
+  leg: LegFor;
   renderGroup: RenderGroup;
   card: CardFor;
   settled: SettledFor;
+  listings?: Map<string, Listing>;
+  today: string;
 }
 
 function Section({ section, ...render }: { section: TimelineSection } & RenderProps) {
@@ -80,6 +90,7 @@ function Section({ section, ...render }: { section: TimelineSection } & RenderPr
       </ol>
     );
   }
+  if (section.kind === "journey") return <JourneyCard section={section} {...render} />;
   const range = section.range;
   return (
     <section className="city-block" aria-label={section.city ?? "Konaklama"}>
@@ -139,7 +150,7 @@ function Row({ entry, ...render }: { entry: TimelineEntry } & RenderProps) {
           {entry.kind === "day" ? <b className="tl-day-no">{entry.dayNo}</b> : <CategoryIcon category={iconOf(entry)} size={20} />}
           {standing === "booked" && <span className="tl-badge">✓</span>}
         </span>
-        <Label entry={entry} />
+        <Label entry={entry} today={render.today} />
       </div>
       <div className="tl-content">
         <Entry entry={entry} {...render} />
@@ -154,7 +165,7 @@ const TRAVEL_LABELS = { arrival: "Varış", move: "Şehir değişimi", departure
 const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("tr-TR", { weekday: "short", timeZone: "UTC" });
 
 /** What and when, beside the line: "Konaklama · 8–11 Ekim · 3 gece", "5. gün · 11 Ekim Cmt". */
-function Label({ entry }: { entry: TimelineEntry }) {
+function Label({ entry, today }: { entry: TimelineEntry; today: string }) {
   let title: string;
   let lines: (string | null)[];
   switch (entry.kind) {
@@ -187,6 +198,7 @@ function Label({ entry }: { entry: TimelineEntry }) {
       {lines.filter(Boolean).map((l) => (
         <span key={l}>{l}</span>
       ))}
+      {entry.kind === "day" && entry.date === today && <span className="today-chip">Bugün</span>}
     </div>
   );
 }
@@ -254,7 +266,7 @@ function DayCard({
   settled,
 }: {
   entry: { title: string; items: Item[]; legs: Leg[] };
-  leg: (l: Leg) => ReactNode;
+  leg: LegFor;
   card: CardFor;
   settled: SettledFor;
 }) {
@@ -283,6 +295,106 @@ function DayCard({
   );
 }
 
+const STEP_ICONS: Record<JourneyStep["kind"], Category> = { checkout: "stay", checkin: "stay", transfer: "transport", travel: "flight" };
+
+/**
+ * A day on the move as one card on the line between the cities: "4. gün · Porto → Madeira", and the
+ * day's steps in order with their time and where each stands. A tap on a step opens its card (the
+ * flight to pick or mark bought, how to get to the airport); a stay's step takes you to the stay.
+ */
+function JourneyCard({ section, ...render }: { section: Extract<TimelineSection, { kind: "journey" }> } & RenderProps) {
+  const j = section.journey;
+  const steps = journeySteps(section, render.listings);
+  // A flight still to pick opens by itself: that's the decision on this day.
+  const [open, setOpen] = useState<string | null>(() => steps.find((st) => st.entry && comparing(st.entry))?.key ?? null);
+  const day = section.entries.find((e): e is Extract<TimelineEntry, { kind: "day" }> => e.kind === "day");
+  const ready = stepsReady(steps);
+  const route = j.from && j.to ? `${j.from} → ${j.to}` : j.to ? `→ ${j.to}` : j.from ? `${j.from} →` : "Yolculuk";
+  const tap = (st: JourneyStep) => {
+    if (st.entry) setOpen(open === st.key ? null : st.key);
+    else if (st.stayKey) show(document.getElementById(entryDomId(st.stayKey)));
+  };
+  return (
+    <ol className="timeline between">
+      <li id={entryDomId(j.key)} className="tl-entry tl-journey">
+        <div className="tl-side">
+          <span className="tl-icon" aria-hidden>
+            {j.dayNo ? <b className="tl-day-no">{j.dayNo}</b> : <CategoryIcon category="flight" size={20} />}
+          </span>
+          <div className="tl-label">
+            <b>{journeyTitle(j)}</b>
+            <span>{`${fmt(j.date)} ${weekday(j.date)}`}</span>
+            {j.date === render.today && <span className="today-chip">Bugün</span>}
+          </div>
+        </div>
+        <div className="tl-content">
+          <article className="journey-card" aria-label={`${journeyTitle(j)} · ${route}`}>
+            <header className="jc-head">
+              <b>{route}</b>
+              <span className="jc-chip">Yolculuk günü</span>
+              <span className="jc-ready">
+                {ready}/{steps.length} hazır
+              </span>
+            </header>
+            <ol className="jc-steps">
+              {steps.map((st) => (
+                <li
+                  key={st.key}
+                  id={st.entry ? entryDomId(st.entry.key) : undefined}
+                  className={`jc-step st-${st.standing} k-${st.kind}${open === st.key ? " open" : ""}`}
+                >
+                  <button className="jc-row" onClick={() => tap(st)} aria-expanded={st.entry ? open === st.key : undefined}>
+                    <span className="jc-time">
+                      <b className={st.time ? (st.estimated ? "est" : "") : "none"}>{st.time ? `${st.estimated ? "~" : ""}${st.time}` : "saat yok"}</b>
+                      {st.hint && <small>{st.hint}</small>}
+                      {st.otherDay && <small>{fmt(st.otherDay)}</small>}
+                    </span>
+                    <span className="jc-node" aria-hidden>
+                      <CategoryIcon category={st.kind === "travel" && st.entry?.kind === "travel" ? iconOf(st.entry) : STEP_ICONS[st.kind]} size={15} />
+                    </span>
+                    <span className="jc-what">
+                      <b>{st.title}</b>
+                      {(st.sub || st.notes.length > 0) && (
+                        <span className="muted">
+                          {st.sub}
+                          {st.notes.length > 0 && open !== st.key && (
+                            <span className="leg-hint" title={st.notes.join("\n")} aria-label={`${st.notes.length} not`}>
+                              {" "}
+                              ⓘ
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </span>
+                    <span className={`jc-status st-${st.standing}`}>{st.status}</span>
+                  </button>
+                  {open === st.key && st.entry && (
+                    <div className="jc-more">
+                      {st.entry.kind === "leg" ? (
+                        render.leg(st.entry.leg, true)
+                      ) : st.entry.kind === "travel" && !st.entry.travel && st.entry.role === "move" && st.entry.leg ? (
+                        <MoveCard leg={st.entry.leg} tripId={render.tripId} startOpen />
+                      ) : (
+                        <Entry entry={st.entry} {...render} />
+                      )}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ol>
+            {day && (day.items.length > 0 || day.legs.length > 0) && (
+              <div className="jc-day">
+                <span className="jc-day-label">O gün</span>
+                <DayCard entry={day} leg={render.leg} card={render.card} settled={render.settled} />
+              </div>
+            )}
+          </article>
+        </div>
+      </li>
+    </ol>
+  );
+}
+
 const MODE_ICONS: Record<LegMode, string> = { flight: "✈", train: "🚆", bus: "🚌", ferry: "⛴", metro: "🚇", taxi: "🚕", transfer: "🚐", car: "🚗", walk: "🚶" };
 const TICKETED: LegMode[] = ["flight", "train", "bus", "ferry"];
 
@@ -291,8 +403,8 @@ const TICKETED: LegMode[] = ["flight", "train", "bus", "ferry"];
  * traveller said they'll go. By plane it reads as a flight; its status is on it ("Planlanıyor · bilet
  * alınmadı"). A tap picks the way; saving a flight page for that day takes its place.
  */
-function MoveCard({ leg, tripId }: { leg: Leg; tripId: string }) {
-  const [open, setOpen] = useState(false);
+function MoveCard({ leg, tripId, startOpen = false }: { leg: Leg; tripId: string; startOpen?: boolean }) {
+  const [open, setOpen] = useState(startOpen);
   const mode = leg.choice?.mode ?? leg.mode;
   const booked = Boolean(leg.choice?.booked);
   const from = leg.from.city ?? leg.from.label;

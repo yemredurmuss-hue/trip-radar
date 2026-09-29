@@ -6,7 +6,7 @@ import { formatPrice } from "../lib/items";
 import { entryDomId, type BudgetBar, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
 
 /** Scrolls to an element and makes it glow for a moment. */
-function show(el: Element | null) {
+export function show(el: Element | null) {
   if (!el) return;
   el.scrollIntoView({ behavior: "smooth", block: "center" });
   el.classList.remove("flash");

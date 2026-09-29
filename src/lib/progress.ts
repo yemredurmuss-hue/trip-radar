@@ -87,19 +87,20 @@ function entryTodo(e: TimelineEntry, decisions: Map<string, GroupDecision> | und
 }
 
 /** A transfer on the board: its options, its booking, or nothing planned yet. */
-function legTodo(leg: Leg): Draft | null {
+function legTodo(leg: Leg, entry?: string): Draft | null {
   const title = `${LEG_WORDS[leg.kind]} · ${fmt(leg.date)}`;
   const key = `leg:${leg.key}`;
   const where = `${leg.from.label} → ${leg.to.label}`;
+  const target = { leg: leg.key, ...(entry ? { entry } : {}) };
   switch (leg.status) {
     case "options":
-      return { key, kind: "decide", target: { leg: leg.key }, title, note: `${leg.options.length} seçenek · ${where}`, date: leg.date };
+      return { key, kind: "decide", target, title, note: `${leg.options.length} seçenek · ${where}`, date: leg.date };
     case "planned":
       return leg.choice?.mode && BOOKABLE.includes(leg.choice.mode)
-        ? { key, kind: "book", target: { leg: leg.key }, title, note: `${MODE_LABELS[leg.choice.mode]} · rezerve edilmedi`, date: leg.date }
+        ? { key, kind: "book", target, title, note: `${MODE_LABELS[leg.choice.mode]} · rezerve edilmedi`, date: leg.date }
         : null;
     case "empty":
-      return { key, kind: "plan", target: { leg: leg.key }, title, note: `${where} · nasıl?`, date: leg.date };
+      return { key, kind: "plan", target, title, note: `${where} · nasıl?`, date: leg.date };
     default:
       // Chosen: its item's to-do. Booked: done.
       return null;
@@ -158,8 +159,8 @@ export function decisionProgress(
 ): DecisionProgress {
   const drafts: Draft[] = [];
   for (const e of timeline.entries) {
-    if (e.kind === "leg") drafts.push(...[legTodo(e.leg)].filter((d): d is Draft => d != null));
-    else if (e.kind === "day") drafts.push(...e.legs.map(legTodo).filter((d): d is Draft => d != null));
+    if (e.kind === "leg") drafts.push(...[legTodo(e.leg, e.key)].filter((d): d is Draft => d != null));
+    else if (e.kind === "day") drafts.push(...e.legs.map((l) => legTodo(l)).filter((d): d is Draft => d != null));
     else if (e.kind === "plan") {
       // A car said in the chat with pages saved for it but none picked yet.
       const saved = e.items.filter((i) => i.status === "saved");
