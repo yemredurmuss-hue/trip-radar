@@ -10,7 +10,7 @@ import {
   saidTopics,
   touchesTopic,
   wantedAmenities,
-  SERIOUS_PENALTY,
+  penaltyFor,
   TOPIC_CRITERION,
   type DecisionContext,
   type GroupDecision,
@@ -18,7 +18,7 @@ import {
   type Part,
 } from "./decision";
 import { formatDateRange, formatPrice, listingKeyOf } from "./items";
-import { acceptKey, evidenceOf, isWeakFinding, monthLabel, saysSame } from "./listing";
+import { acceptKey, evidenceOf, isWeakFinding, monthLabel, saysSame, stillText } from "./listing";
 import { cancellationText, locationText } from "./needs";
 import type { Finding, Item, Listing } from "./types";
 
@@ -41,6 +41,8 @@ export interface ProCon {
   unverified?: boolean;
   /** Only reviews over a year old say it. */
   stale?: boolean;
+  /** A passing thing later guests stopped mentioning: probably over (kept in the details, off the card). */
+  faded?: boolean;
   /** The traveller said it's fine. */
   accepted?: boolean;
   /** The traveller said it matters to them ("Önemli, kalsın"): it rules the place out. */
@@ -310,12 +312,14 @@ function findingLines(listing: Listing, item: Item, ctx: Ctx, penalties: Set<str
   const pros: ProCon[] = [];
   const cons: ProCon[] = [];
   // What the others' pages say (read ones only: an unread page says nothing either way).
-  const theirs = peers.map((p) => p.findings.filter((f) => f.verified && !evidenceOf(f, p, ctx.today).stale));
+  const theirs = peers.map((p) => p.findings.filter((f) => f.verified && !evidenceOf(f, p, ctx.today).faded));
   for (const f of listing.findings) {
     const e = evidenceOf(f, listing, ctx.today);
     const isAccepted = f.polarity === "negative" && accepted.has(acceptKey(listing.key, f));
     const isConfirmed = !isAccepted && f.polarity === "negative" && confirmed.has(acceptKey(listing.key, f));
-    const where = e.count ? `${e.count} yorum${e.newest ? ` · en yenisi ${monthLabel(e.newest)}` : ""}` : SOURCE_TEXT[f.source];
+    // Why a passing thing is in doubt: "son söz Mar 2026, sonraki 10 yorum bahsetmiyor".
+    const doubt = f.polarity === "negative" ? stillText(e.still) : null;
+    const where = e.count ? `${e.count} yorum${doubt ? ` · ${doubt}` : e.newest ? ` · en yenisi ${monthLabel(e.newest)}` : ""}` : SOURCE_TEXT[f.source];
     const penalized = penalties.has(f.id);
     const detail = !f.verified
       ? "sayfada doğrulanamadı"
@@ -326,7 +330,7 @@ function findingLines(listing: Listing, item: Item, ctx: Ctx, penalties: Set<str
           : e.stale
             ? `eski: ${where}`
             : penalized
-              ? `${where} · puandan −${SERIOUS_PENALTY}`
+              ? `${where} · puandan −${penaltyFor(f, listing, ctx.today)}`
               : where;
     // What sets it apart comes first; what every place has doesn't help choose.
     const matches = theirs.map((list) => list.some((o) => saysSame(f, o)));
@@ -343,6 +347,7 @@ function findingLines(listing: Listing, item: Item, ctx: Ctx, penalties: Set<str
       kind: "finding",
       ...(f.verified ? {} : { unverified: true }),
       ...(e.stale ? { stale: true } : {}),
+      ...(e.faded && !e.stale ? { faded: true } : {}),
       ...(isAccepted ? { accepted: true } : {}),
       ...(isConfirmed ? { confirmed: true } : {}),
       ...(penalized ? { serious: true } : {}),
@@ -452,7 +457,7 @@ export function cardLines(pc: ProsCons | null, max = 2): { pros: ProCon[]; cons:
   if (!pc) return { pros: [], cons: [] };
   // Minor one-review things and what every place has stay in the details.
   const shown = (l: ProCon) =>
-    !l.unverified && !l.stale && !l.accepted && !l.weak && !(l.common && !l.serious) && l.key !== "v:coverage" && (l.kind !== "check" || l.key.startsWith("l:"));
+    !l.unverified && !l.stale && !l.faded && !l.accepted && !l.weak && !(l.common && !l.serious) && l.key !== "v:coverage" && (l.kind !== "check" || l.key.startsWith("l:"));
   const decisive = pc.cons.filter((l) => l.decisive);
   return {
     pros: pc.pros.filter(shown).slice(0, max),

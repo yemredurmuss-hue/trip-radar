@@ -70,7 +70,7 @@ function EvidenceLine({ line, sign, item, listing }: { line: ProCon; sign: strin
   const f = line.finding;
   const reviews = f && listing ? f.reviewIds.map((id) => listing.reviews.find((r) => r.id === id)).filter((r) => r != null) : [];
   const hasEvidence = Boolean(f && (reviews.length || f.quotes.length));
-  const classes = ["pc-line", line.decisive && "decisive", line.serious && "serious", line.unverified && "unverified", line.stale && "stale", line.accepted && "accepted"]
+  const classes = ["pc-line", line.decisive && "decisive", line.serious && "serious", line.unverified && "unverified", (line.stale || line.faded) && "stale", line.accepted && "accepted"]
     .filter(Boolean)
     .join(" ");
   return (

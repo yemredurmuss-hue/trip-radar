@@ -64,6 +64,7 @@ const reading: ReaderOutput = {
       topic: "nearby",
       source: "reviews",
       severity: "medium",
+      nature: "lasting",
       quotes: ["There is a great Italian restaurant right next door", "the Italian place downstairs is amazing"],
     },
     {
@@ -72,13 +73,14 @@ const reading: ReaderOutput = {
       topic: "condition",
       source: "reviews",
       severity: "high",
+      nature: "event",
       quotes: ["Construction next door started at 8 every morning, very noisy."],
     },
-    { text: "Karşıda eski bir inşaat", polarity: "negative", topic: "noise", source: "reviews", severity: "medium", quotes: ["Building work across the street was loud"] },
-    { text: "Geniş, rahat yatak", polarity: "positive", topic: "bed", source: "description", severity: "medium", quotes: ["king-size bed"] },
-    { text: "TV yok", polarity: "negative", topic: "amenities", source: "amenities", severity: "low", quotes: ["Not included: TV"] },
-    { text: "Asansör yok, 3. kat", polarity: "negative", topic: "access", source: "description", severity: "medium", quotes: ["Third floor, no elevator."] },
-    { text: "Havuz var", polarity: "positive", topic: "facilities", source: "description", severity: "low", quotes: ["Rooftop pool open all year"] },
+    { text: "Karşıda eski bir inşaat", polarity: "negative", topic: "noise", source: "reviews", severity: "medium", nature: "event", quotes: ["Building work across the street was loud"] },
+    { text: "Geniş, rahat yatak", polarity: "positive", topic: "bed", source: "description", severity: "medium", nature: "stated", quotes: ["king-size bed"] },
+    { text: "TV yok", polarity: "negative", topic: "amenities", source: "amenities", severity: "low", nature: "stated", quotes: ["Not included: TV"] },
+    { text: "Asansör yok, 3. kat", polarity: "negative", topic: "access", source: "description", severity: "medium", nature: "stated", quotes: ["Third floor, no elevator."] },
+    { text: "Havuz var", polarity: "positive", topic: "facilities", source: "description", severity: "low", nature: "stated", quotes: ["Rooftop pool open all year"] },
   ],
   house: {
     check_in_from: "15:00",
@@ -131,6 +133,9 @@ describe("reading a page into evidence", () => {
     expect(bed.quotes).toEqual(["king-size bed"]);
     const pool = listing.findings.find((f) => f.topic === "facilities")!;
     expect(pool.verified).toBe(false);
+    // What kind of thing it is, as the reader said: the construction passes, the bed is what the page states.
+    expect(listing.findings.find((f) => f.topic === "condition")!.nature).toBe("event");
+    expect(bed.nature).toBe("stated");
   });
 
   it("treats a complaint only old reviews make as history, not evidence", () => {
@@ -157,7 +162,7 @@ describe("reading a page into evidence", () => {
           { text: "The walls are thin, we heard the neighbours.", date_text: "September 2026", date: "2026-09" },
           { text: "Construction next door started at 8 every morning, very noisy.", date_text: "August 2026", date: "2026-08" },
         ],
-        findings: [{ text: "İnce duvarlar", polarity: "negative", topic: "noise", source: "reviews", severity: "medium", quotes: ["The walls are thin"] }],
+        findings: [{ text: "İnce duvarlar", polarity: "negative", topic: "noise", source: "reviews", severity: "medium", nature: "lasting", quotes: ["The walls are thin"] }],
         house: null,
       },
       TODAY,

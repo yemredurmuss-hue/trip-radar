@@ -103,13 +103,14 @@ describe("what's true before any preference", () => {
     expect(mine.penalties).toEqual([]);
     expect(mine.fit).toBe("check");
     expect(mine.fitNotes).toEqual(["1 misafir bildirmiş: yatakta tahtakurusu"]);
-    // Second, marked as the cheaper one, with what to check before choosing it.
+    // It meets every must and is better on what's known: first, flagged with what to check before choosing it
+    // (one review doesn't send it below the others; that's the traveller's call).
     const choice = choiceOf(d, ctxOf(trip(), [infante, carmo], pages));
     expect(choice.ranked.map((r) => [r.rank, r.option.item.name, r.badges])).toEqual([
-      [1, "Hotel Carmo", []],
-      [2, "Hotel Infante", ["En ekonomik"]],
+      [1, "Hotel Infante", ["En ekonomik"]],
+      [2, "Hotel Carmo", []],
     ]);
-    expect(choice.headline).toBe("Önerim Hotel Carmo. Tasarruf için 2. Hotel Infante (€20 daha ucuz).");
+    expect(choice.headline).toBe("Önerim Hotel Infante: en ekonomik; yorumlar daha iyi (9,1/10 – 8,5/10).");
     expect(choice.verify.map((v) => v.what)).toEqual(["1 misafir bildirmiş: yatakta tahtakurusu"]);
   });
 
@@ -189,6 +190,7 @@ describe("the choice", () => {
     const b = stay("Hotel B", 300, { rating: { value: 8.2, scale: 10, count: 500, source: "page" } });
     const d = decide(trip(), [a, b]);
     const choice = choiceOf(d, ctxOf(trip(), [a, b]));
+    console.log(JSON.stringify([choice.headline, choice.verify]));
     expect(choice.ranked.map((r) => [r.rank, r.option.item.name, r.badges])).toEqual([
       [1, "Hotel A", []],
       [2, "Hotel B", []],

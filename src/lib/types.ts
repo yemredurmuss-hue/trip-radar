@@ -344,7 +344,14 @@ export interface Finding {
   quotes: string[];
   /** At least one supporting quote was found on the stored page. Unverified findings are never decisive. */
   verified: boolean;
+  /**
+   * Lasting (thin walls), an event that passes (scaffolding, a renovation) or stated by the page itself.
+   * Older readings don't have it (see natureOf).
+   */
+  nature?: FindingNature;
 }
+
+export type FindingNature = "lasting" | "event" | "stated";
 
 /**
  * What has been read about one place (hotel, flat, tour...). Shared by every offer of it (different

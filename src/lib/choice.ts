@@ -3,7 +3,7 @@
 // does: against the first (for the first, against the second) what it costs or saves, what it gives and
 // what it gives up. Above them one sentence: the pick and why, and the alternatives for each priority.
 // Pure.
-import { amenityState, CRITERION_LABELS, levelSource, saidOf, type DecisionContext, type GroupDecision, type OptionResult, type Part } from "./decision";
+import { amenityState, checksOnlyReading, CRITERION_LABELS, levelSource, saidOf, type DecisionContext, type GroupDecision, type OptionResult, type Part } from "./decision";
 import { formatPrice, nightsBetween } from "./items";
 import { rangeOfGroupKey } from "./plan";
 import type { Amenity, CriterionId } from "./types";
@@ -236,8 +236,9 @@ export function tradeText(t: Trade, currency: string): string {
  */
 export function choiceOf(d: GroupDecision, ctx: Ctx): Choice {
   const scored = d.options.filter((o) => o.score != null && !o.excluded);
-  const fit = scored.filter((o) => o.fit === "fit");
-  const check = scored.filter((o) => o.fit === "check");
+  // One that only has something read to check (a doubtful complaint) meets the musts: it counts as fitting, flagged.
+  const fit = scored.filter((o) => o.fit === "fit" || checksOnlyReading(o));
+  const check = scored.filter((o) => o.fit === "check" && !checksOnlyReading(o));
   const contenders = [...fit, ...check];
   const range = d.category === "stay" ? rangeOfGroupKey(d.key) : null;
   const nights = range ? nightsBetween(range.start, range.end) : 0;

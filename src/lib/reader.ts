@@ -31,6 +31,9 @@ export const ReaderSchema = z.object({
         topic: z.enum(FINDING_TOPICS),
         source: z.enum(["reviews", "description", "amenities", "policy", "other"]),
         severity: z.enum(["high", "medium", "low"]).describe("Tipik bir gezgin için önemi"),
+        nature: z
+          .enum(["lasting", "event", "stated"])
+          .describe("lasting: kalıcı (ince duvar, asansör yok, sokak gürültüsü, konum); event: geçip giden olay (iskele, inşaat, tadilat, bir kez bozulan klima, kapalı havuz); stated: sayfanın kendisi söylüyor"),
         quotes: z.array(z.string()).describe("Bunu söyleyen 1-5 birebir alıntı"),
       }),
     )
@@ -69,6 +72,7 @@ findings: Bu yeri diğerlerinden ayıran somut artılar ve eksiler.
 - Karar için önemsiz standart ayrıntıları yazma: duman/karbonmonoksit dedektörü, yangın söndürücü, ilk yardım çantası, saç kurutma makinesi, ütü, askı, şampuan/sabun, temel malzemeler, nevresim, tabak-çatal. Gezgini gerçekten etkileyenleri yaz: konum, gürültü, temizlik, yatak, alan, merdiven/asansör, klima/ısıtma, mutfak, Wi-Fi, giriş, gizli masraf.
 - quotes: bulguyu söyleyen metinden birebir 1-5 alıntı; yorumdan geliyorsa o yorumların metninden.
 - severity tipik bir gezgine göredir (high = tek başına vazgeçirebilir). Kullanıcıyı tanımıyorsun; kişisel eleme yapma.
+- nature: kalıcı olan (ince duvar, asansör yok, sokak gürültüsü, konum) lasting; geçip giden olay (iskele, inşaat, tadilat, bir kez bozulan klima, kapalı havuz) event; açıklama/olanak/kural metninin kendisi söylüyorsa stated. Bir olayın bittiğini söyleyen yorum varsa ("tadilat bitmiş", "iskele kaldırılmış") onu aynı topic ile ayrı bir olumlu bulgu olarak yaz.
 - house: Giriş/çıkış saatlerini, en geç giriş saatini, kendi kendine giriş, bavul emaneti ve havalimanı servisini yalnız sayfa açıkça yazıyorsa doldur; saatleri 24 saat HH:MM yaz, yazıldıkları yeri quotes'a birebir koy.
 - Fiyat, puan ve tarih ayrıca çıkarıldı; "fiyat uygun" gibi bulgu yazma. Gizli masraf (temizlik ücreti, şehir vergisi, depozito) varsa yaz; iade edilen depozitoyu masraf gibi yazma.
 

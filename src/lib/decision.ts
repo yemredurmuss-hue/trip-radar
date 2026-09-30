@@ -4,7 +4,7 @@
 import { convert, type Rates } from "./currency";
 import { distanceKm, formatDistance, walkingMinutes } from "./geo";
 import { formatPrice, listingKeyOf, metricsOf, nightsBetween, tripDateRange } from "./items";
-import { acceptKey, evidenceOf, isDecisive, saysSame, usefulListing } from "./listing";
+import { acceptKey, evidenceOf, holds, isDecisive, questionFor, saysSame, standing, stillText, usefulListing } from "./listing";
 import { buildPlan, groupKeyOf, liveGroups, rangeOfGroupKey, stayRange } from "./plan";
 import type {
   Amenity,
@@ -580,7 +580,7 @@ function wishMeasure(wish: WishId, item: Item, ctx: DecisionContext): Measure | 
   const accepted = new Set(ctx.trip.acceptedFindings ?? []);
   const found = listing?.readAt
     ? listing.findings.filter(
-        (f) => f.verified && touchesTopic(f, topic) && !evidenceOf(f, listing, ctx.today).stale && !(f.polarity === "negative" && accepted.has(acceptKey(listing.key, f))),
+        (f) => f.verified && touchesTopic(f, topic) && !evidenceOf(f, listing, ctx.today).faded && !(f.polarity === "negative" && accepted.has(acceptKey(listing.key, f))),
       )
     : [];
   if (found.length && listing) {
@@ -651,10 +651,10 @@ export function amenityState(item: Item, amenity: Amenity, ctx: Pick<DecisionCon
   if (amenitiesOf(item, ctx).includes(amenity)) return "yes";
   const listing = ctx.listings.get(listingKeyOf(item));
   if (!listing?.readAt) return "unknown";
-  const said = listing.findings.filter((f) => f.verified && f.polarity === "negative" && !evidenceOf(f, listing, ctx.today).stale);
+  const said = listing.findings.filter((f) => f.verified && f.polarity === "negative" && !evidenceOf(f, listing, ctx.today).faded);
   if (amenity === "sessiz") {
-    // Noise that several guests (or the page) report is a no; one guest's night is only a doubt.
-    return said.some((f) => touchesTopic(f, "noise") && (f.source !== "reviews" || evidenceOf(f, listing, ctx.today).count >= 2)) ? "no" : "unknown";
+    // Noise that holds (the page, or several recent guests) is a no; one guest's night is only a doubt.
+    return said.some((f) => touchesTopic(f, "noise") && holds(evidenceOf(f, listing, ctx.today))) ? "no" : "unknown";
   }
   return said.some((f) => AMENITY_WORDS[amenity].test(f.text) && ABSENT.test(f.text)) ? "no" : "unknown";
 }
@@ -668,44 +668,60 @@ function wishedTopics(category: Category, ctx: Pick<DecisionContext, "trip" | "i
   return new Set(WISHES.filter((w) => levelFor(ctx.trip, category, w, ctx.inferred, saidOf(ctx)) > 0).map((w) => WISH_TOPIC[w] as string));
 }
 
+/** Serious (high severity), verified, not history, and not something the traveller said is fine. */
+function seriousOpen(listing: Listing, ctx: Pick<DecisionContext, "today" | "trip">): Finding[] {
+  const accepted = new Set(ctx.trip.acceptedFindings ?? []);
+  return listing.findings.filter(
+    (f) => f.polarity === "negative" && f.severity === "high" && isDecisive(f, listing, ctx.today) && !accepted.has(acceptKey(listing.key, f)),
+  );
+}
+
 /**
- * Serious problems read on the place's pages: each costs SERIOUS_PENALTY points, whatever the weights,
- * and only there (not in "Yorum ve detaylar" as well). One on a topic the traveller wished for (noise,
- * for a quiet place) counts in that wish instead, with the weight they gave it: once either way.
+ * Serious problems read on the place's pages that hold (well backed and still so, see holds): each costs
+ * up to SERIOUS_PENALTY points (penaltyFor), whatever the weights, and only there (not in "Yorum ve
+ * detaylar" as well). One on a topic the traveller wished for (noise, for a quiet place) counts in that
+ * wish instead, with the weight they gave it: once either way.
  */
 export function seriousIssues(item: Item, ctx: Pick<DecisionContext, "listings" | "today" | "trip" | "inferred" | "preferences"> & { said?: Set<string> }): Finding[] {
   const listing = ctx.listings.get(listingKeyOf(item));
   if (!listing?.readAt) return [];
-  const accepted = new Set(ctx.trip.acceptedFindings ?? []);
   const wished = wishedTopics(item.category, ctx);
-  return listing.findings
-    .filter(
-      (f) =>
-        f.polarity === "negative" &&
-        f.severity === "high" &&
-        isDecisive(f, listing, ctx.today) &&
-        !accepted.has(acceptKey(listing.key, f)) &&
-        backed(f, listing, ctx.today) &&
-        !touchesAny(f, wished),
-    )
+  return seriousOpen(listing, ctx)
+    .filter((f) => holds(evidenceOf(f, listing, ctx.today)) && !touchesAny(f, wished))
     .slice(0, MAX_SERIOUS);
 }
 
-/** Said by the page itself or by at least two guests: enough to hold against a place. */
-const backed = (f: Finding, listing: Listing, today: string) => f.source !== "reviews" || evidenceOf(f, listing, today).count >= 2;
+/** The points a serious problem costs: SERIOUS_PENALTY for one the page says or several recent guests do, less when less backed. */
+export function penaltyFor(f: Finding, listing: Listing, today: string): number {
+  return Math.round(SERIOUS_PENALTY * standing(evidenceOf(f, listing, today)));
+}
 
 /**
- * A serious problem only one guest reports ("yatakta tahtakurusu", once): not held against the place,
- * but worth checking before booking.
+ * Serious problems that don't hold, or not yet: one guest's report ("yatakta tahtakurusu", once), a
+ * passing thing later guests stopped mentioning (scaffolding in March, ten quiet reviews since), reviews
+ * without dates. Not held against the place (no points, no ruling), but worth checking before booking,
+ * with the question to ask and why it's in doubt.
  */
-export function singleReports(item: Item, ctx: Pick<DecisionContext, "listings" | "today" | "trip">): Finding[] {
+export function seriousDoubts(item: Item, ctx: Pick<DecisionContext, "listings" | "today" | "trip">): { finding: Finding; note: string }[] {
   const listing = ctx.listings.get(listingKeyOf(item));
   if (!listing?.readAt) return [];
-  const accepted = new Set(ctx.trip.acceptedFindings ?? []);
-  return listing.findings.filter(
-    (f) => f.polarity === "negative" && f.severity === "high" && isDecisive(f, listing, ctx.today) && !accepted.has(acceptKey(listing.key, f)) && !backed(f, listing, ctx.today),
-  );
+  const confirmed = new Set(ctx.trip.confirmedFindings ?? []);
+  return seriousOpen(listing, ctx)
+    .filter((f) => !confirmed.has(acceptKey(listing.key, f)))
+    .flatMap((f) => {
+      const e = evidenceOf(f, listing, ctx.today);
+      if (holds(e)) return [];
+      const why = stillText(e.still);
+      // One recent guest, nothing since to say otherwise: said as it is.
+      if (e.count <= 1 && !why) return [{ finding: f, note: `1 misafir bildirmiş: ${lowerFirst(f.text)}` }];
+      return [{ finding: f, note: `${lowerFirst(questionFor(f))}${why ? ` (${why})` : ""}` }];
+    });
 }
+
+/** @deprecated The single-guest case of seriousDoubts, kept for callers that want only the findings. */
+export const singleReports = (item: Item, ctx: Pick<DecisionContext, "listings" | "today" | "trip">): Finding[] => seriousDoubts(item, ctx).map((d) => d.finding);
+
+const lowerFirst = (t: string) => t.charAt(0).toLocaleLowerCase("tr") + t.slice(1);
 
 /**
  * What rules a place out: only the traveller does. A problem read on the page (construction next door,
@@ -745,11 +761,14 @@ export function againstRequirement(f: Finding, trip: Pick<Trip, "requirements">)
 
 const SEVERITY_WEIGHT = { high: 3, medium: 2, low: 1 } as const;
 
-/** How much a finding counts: severity, how many reviews say it (a little), and whether it's old. */
+/**
+ * How much a finding counts: severity, how many reviews say it (a little), and how likely it's still so
+ * (old, undated, or a passing thing later guests don't mention count less; see stillTrue).
+ */
 export function findingWeight(f: Finding, listing: Listing, today: string): number {
   const evidence = evidenceOf(f, listing, today);
   const backing = 1 + Math.min(evidence.count, 10) / 10;
-  return SEVERITY_WEIGHT[f.severity] * backing * (evidence.stale ? 0.3 : 1);
+  return SEVERITY_WEIGHT[f.severity] * backing * evidence.still.confidence;
 }
 
 /** The criterion a finding's topic speaks to, for how much it matters to this traveller. */
@@ -860,14 +879,15 @@ export function checkRequirement(r: Requirement, item: Item, ctx: DecisionContex
       return location.value <= r.minutes ? "pass" : "fail";
     }
     case "avoid": {
-      // Backed (the page, or two guests or more): out. One guest: worth a check. Nobody: fine.
+      // Holds (the page, or several guests, and still so): out. One guest, or a passing thing later guests
+      // stopped mentioning: worth a check. Nobody: fine.
       const listing = ctx.listings.get(listingKeyOf(item));
       if (!listing?.readAt) return "unknown";
       const accepted = new Set(ctx.trip.acceptedFindings ?? []);
       const against = listing.findings.filter(
         (f) => f.verified && f.polarity === "negative" && touchesTopic(f, r.topic) && !evidenceOf(f, listing, ctx.today).stale && !accepted.has(acceptKey(listing.key, f)),
       );
-      if (against.some((f) => backed(f, listing, ctx.today))) return "fail";
+      if (against.some((f) => holds(evidenceOf(f, listing, ctx.today)))) return "fail";
       return against.length ? "unknown" : "pass";
     }
   }
@@ -905,8 +925,15 @@ export interface OptionResult {
   eliminated: { reason: string; findings: Finding[] } | null;
   /** Scored without something it needs (e.g. no price yet): provisional, ranked after complete options. */
   limited: string[];
-  /** Serious problems taken off the score (SERIOUS_PENALTY points each). */
+  /** Serious problems taken off the score (up to SERIOUS_PENALTY points each, see penaltyFor). */
   penalties: Finding[];
+  /** The points they cost together. */
+  penaltyPoints: number;
+  /**
+   * The notes to check that come only from what was read (a doubtful serious problem, a ruling the
+   * assistant proposed): flagged, but they don't move the option below the ones that fit.
+   */
+  readChecks: string[];
   /**
    * Where it stands before any preference: meets the musts (fit), needs something checked first
    * (check), covers only some of the nights (partial), or doesn't meet a must (unfit).
@@ -919,6 +946,16 @@ export interface OptionResult {
 export type Fit = "fit" | "check" | "partial" | "unfit";
 /** Fit first: an option that needs a check comes after the ones that don't, one that's out last. */
 export const FIT_ORDER: Record<Fit, number> = { fit: 0, check: 1, partial: 2, unfit: 3 };
+
+/**
+ * To check only for what was read (a doubtful problem, a proposed ruling), nothing about the musts or
+ * the price: it meets what the traveller asked, so it's ranked with the ones that fit, flagged.
+ */
+export const checksOnlyReading = (o: Pick<OptionResult, "fit" | "fitNotes" | "readChecks">) =>
+  o.fit === "check" && o.fitNotes.every((n) => o.readChecks.includes(n));
+
+/** Its tier in the ranking: fit (and read-only checks), then to check, then partial, then out; unscorable last. */
+export const tierOf = (o: OptionResult) => (o.score == null ? 4 : checksOnlyReading(o) ? 0 : FIT_ORDER[o.fit]);
 
 export interface Reason {
   criterion: CriterionId;
@@ -1014,7 +1051,9 @@ function eliminationsOf(record: Analysis | null, eligible: Item[], ctx: Decision
     // (or a finding they said matters). Anything else it proposes is a thing to check before booking.
     const confirmed = new Set(ctx.trip.confirmedFindings ?? []);
     const backing = open.filter(
-      (f) => isDecisive(f, listing!, ctx.today) && (againstRequirement(f, ctx.trip) || confirmed.has(acceptKey(listing!.key, f))),
+      (f) =>
+        isDecisive(f, listing!, ctx.today) &&
+        (confirmed.has(acceptKey(listing!.key, f)) || (againstRequirement(f, ctx.trip) && holds(evidenceOf(f, listing!, ctx.today)))),
     );
     if (backing.length) byItem.set(item.id, { reason: e.reason, findings: backing });
     else checks.push({ itemId: item.id, reason: e.reason });
@@ -1066,9 +1105,15 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
     return mine.mode === "lower" ? Math.min(...values) / mine.value : mine.value / Math.max(...values);
   };
 
-  // A serious problem (verified, recent, high severity) costs points directly: a weighted average
-  // alone would let one construction site next door sink into ten other criteria.
+  // A serious problem that holds (verified, well backed, still so) costs points directly: a weighted
+  // average alone would let one construction site next door sink into ten other criteria.
   const serious = new Map(eligible.map((i) => [i.id, seriousIssues(i, ctx)]));
+  const penaltyPoints = new Map(
+    eligible.map((i) => {
+      const listing = ctx.listings.get(listingKeyOf(i));
+      return [i.id, listing ? serious.get(i.id)!.reduce((sum, f) => sum + penaltyFor(f, listing, ctx.today), 0) : 0];
+    }),
+  );
   const score = (itemId: string, levels: Partial<Record<CriterionId, PriorityLevel>> = {}) => {
     let total = 0;
     let weight = 0;
@@ -1083,7 +1128,7 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
       if (s != null) known += w;
       return { criterion: c, label: CRITERION_LABELS[c], level, weight: w, s, value: m?.value ?? null, display: m?.display ?? null, note: m?.note };
     });
-    const penalty = serious.get(itemId)!.length * SERIOUS_PENALTY;
+    const penalty = penaltyPoints.get(itemId)!;
     return { value: weight ? Math.max(0, (100 * total) / weight - penalty) : 0, confidence: weight ? known / weight : 0, parts };
   };
 
@@ -1141,11 +1186,12 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
     const price = measures.get(item.id)!.get("price")?.value ?? null;
     const over = ceiling != null && price != null && committed + price > ceiling + 0.5 ? committed + price - ceiling : null;
     const aiCheck = checks.filter((c) => c.itemId === item.id).map((c) => `kontrol: ${c.reason}`);
+    // What was read and is in doubt: to ask before booking, not points off and not a ruling.
+    const readChecks = [...seriousDoubts(item, ctx).map((d) => d.note), ...aiCheck];
     const doubts = [
       ...unsure.map(unsureNote),
-      ...singleReports(item, ctx).map((f) => `1 misafir bildirmiş: ${f.text.charAt(0).toLocaleLowerCase("tr")}${f.text.slice(1)}`),
       ...limited.map((l) => (l.startsWith("fiyatın kapsamı") ? "fiyat netleşmedi: toplam mı, gecelik mi?" : `${l} eksik`)),
-      ...aiCheck,
+      ...readChecks,
     ];
     const outNotes = [
       ...unmet.map((u) => `şart karşılanmıyor: ${u}`),
@@ -1173,12 +1219,14 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
       eliminated: elimination,
       limited: scorable ? limited : [],
       penalties: serious.get(item.id)!,
+      penaltyPoints: penaltyPoints.get(item.id)!,
+      readChecks,
     };
   });
-  // Fit first; then the ones to check (a must the page doesn't answer, a price not clear yet, one guest's
-  // serious complaint); then stays covering only some of the nights; then the ones that are out;
-  // unscorable last.
-  const tier = (o: OptionResult) => (o.score == null ? 4 : FIT_ORDER[o.fit]);
+  // Fit first (with the ones that only have something read to check: one guest's serious complaint, a
+  // passing thing to ask about); then the ones to check (a must the page doesn't answer, a price not
+  // clear yet); then stays covering only some of the nights; then the ones that are out; unscorable last.
+  const tier = tierOf;
   options.sort((a, b) => tier(a) - tier(b) || (b.score ?? -1) - (a.score ?? -1));
   markDominated(options.filter((o) => o.score != null));
   options = [
@@ -1198,6 +1246,8 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
         eliminated: null,
         limited: [],
         penalties: [],
+        penaltyPoints: 0,
+        readChecks: [],
         fit: "unfit",
         fitNotes: [excluded.get(item.id)!],
       }),
@@ -1343,7 +1393,7 @@ function explain(a: OptionResult, b: OptionResult): { reasons: Reason[]; tradeof
     })
     .filter((r): r is Reason => r != null && Math.abs(r.points) >= 0.5);
   // Serious problems taken off one side's score and not the other's.
-  const gap = (b.penalties.length - a.penalties.length) * SERIOUS_PENALTY;
+  const gap = b.penaltyPoints - a.penaltyPoints;
   if (gap) {
     const worse = gap > 0 ? b : a;
     rows.push({

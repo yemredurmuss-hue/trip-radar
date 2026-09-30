@@ -149,7 +149,7 @@ function criterionCheck(c: CriterionId, item: Item, option: OptionResult | undef
 function topicCheck(topic: Finding["topic"], label: string, listing: Listing | undefined, ctx: Ctx): Omit<NeedCheck, "key" | "label"> {
   if (!listing?.readAt) return { state: "unknown", text: `${label}: sayfa okunmadı`, covers: [] };
   const accepted = new Set(ctx.trip.acceptedFindings ?? []);
-  const found = listing.findings.filter((f) => f.verified && touchesTopic(f, topic) && !evidenceOf(f, listing, ctx.today).stale);
+  const found = listing.findings.filter((f) => f.verified && touchesTopic(f, topic) && !evidenceOf(f, listing, ctx.today).faded);
   const against = found.filter((f) => f.polarity === "negative" && !accepted.has(acceptKey(listing.key, f)));
   const pick = (list: Finding[]) => {
     const f = [...list].sort((a, b) => evidenceOf(b, listing, ctx.today).count - evidenceOf(a, listing, ctx.today).count)[0];

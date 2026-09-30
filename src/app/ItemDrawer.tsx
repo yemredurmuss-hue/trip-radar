@@ -1,5 +1,5 @@
 import { addEvent, db, newId, notifyChanged } from "../lib/db";
-import { LEVEL_LABELS, SERIOUS_PENALTY, type GroupDecision } from "../lib/decision";
+import { LEVEL_LABELS, type GroupDecision } from "../lib/decision";
 import { CATEGORY_LABELS, formatDateRange, formatPrice } from "../lib/items";
 import type { FactSource, Item, ItemStatus, Trip } from "../lib/types";
 import { Evidence } from "./Evidence";
@@ -79,7 +79,7 @@ function DecisionBreakdown({ item, decision, onCompare }: { item: Item; decision
       )}
       {option.penalties.length > 0 && (
         <p className="tone-warning small-note">
-          Ciddi sorun, puandan düşüldü: {option.penalties.map((f) => f.text).join(", ")} (−{option.penalties.length * SERIOUS_PENALTY})
+          Ciddi sorun, puandan düşüldü: {option.penalties.map((f) => f.text).join(", ")} (−{option.penaltyPoints})
         </p>
       )}
       {option.unmet.length > 0 && <p className="tone-warning small-note">Şartına uymuyor: {option.unmet.join(", ")}</p>}
