@@ -267,72 +267,105 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
 
   return (
     <article className={`swipe-card opt fit-${fit}${place === 1 ? " first" : ""}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
-      <div className="opt-main">
-        {place != null && (
-          <span className="opt-rank" aria-label={`${place}. sırada`}>
-            {place}
-          </span>
-        )}
-        <FallbackImg
-          className="opt-img"
-          src={facts.image}
-          fallback={
-            <div className={`opt-img placeholder cat-${item.category}`}>
-              <CategoryIcon category={isRental(item) ? "car" : item.category} size={30} />
+      <div className={`opt-layout${facts.image ? "" : " no-photo"}`}>
+        {/* The picture large, as on the site: its place, its score and the way to its page on it. */}
+        <div className="opt-photo">
+          <FallbackImg
+            className="opt-img"
+            src={facts.image}
+            fallback={
+              <div className={`opt-img placeholder cat-${item.category}`}>
+                <CategoryIcon category={isRental(item) ? "car" : item.category} size={40} />
+              </div>
+            }
+          />
+          {place != null && (
+            <span className="opt-rank" aria-label={`${place}. sırada`}>
+              {place}
+            </span>
+          )}
+          {facts.score != null && (
+            <span className={`opt-score${place === 1 ? " best" : ""}`} title="Uyum puanı (100 üzerinden): önceliklerin, istediklerin ve okunan yorumlar">
+              <b>{facts.score}</b>
+              <small>puan</small>
+            </span>
+          )}
+          <SourceBadge source={facts.source} href={datedUrl} />
+        </div>
+        <div className="opt-body">
+          <div className="opt-text">
+            {ranked && ranked.badges.length > 0 && <div className="opt-label">{ranked.badges.join(" · ")}</div>}
+            <h3 className="opt-name sc-title">{facts.title}</h3>
+            {meta && <div className="opt-meta">{meta}</div>}
+            <div className="opt-price sc-price">
+              <Price price={facts.price} dated={Boolean(item.dates.start || item.flight?.departure)} />
             </div>
-          }
-        />
-        <div className="opt-text">
-          {ranked && ranked.badges.length > 0 && <div className="opt-label">{ranked.badges.join(" · ")}</div>}
-          <h3 className="opt-name sc-title">{facts.title}</h3>
-          {meta && <div className="opt-meta">{meta}</div>}
-          <div className="opt-price sc-price">
-            <Price price={facts.price} dated={Boolean(item.dates.start || item.flight?.departure)} />
+          </div>
+          {trade && ranked?.vsRank && (trade.money || trade.gains.length || trade.losses.length) && (
+            <p className="opt-trade" title={`${trade.vs} ile karşılaştırınca: ${tradeText(trade, currency)}`}>
+              <span className="opt-vs">{ranked.vsRank}.'ye göre</span>
+              {[
+                trade.money && (
+                  <b key="m" className={trade.diff != null && trade.diff < 0 ? "cheaper" : ""}>
+                    {moneyText(trade, currency)}
+                  </b>
+                ),
+                trade.gains.length > 0 && <span key="g">{trade.gains.join(", ")}</span>,
+                trade.losses.length > 0 && (
+                  <span key="l" className="opt-loss">
+                    eksiği: {trade.losses.join(", ")}
+                  </span>
+                ),
+              ]
+                .filter(Boolean)
+                .flatMap((node, i) => (i ? [<span key={`s${i}`} className="sep">{" · "}</span>, node] : [node]))}
+            </p>
+          )}
+          {facts.needs.length > 0 && (
+            <ul className="opt-checks sc-needs" aria-label="İstediklerin">
+              {facts.needs.slice(0, 5).map((n) => (
+                <li key={n.key} className={`need ${n.state}`} title={n.text}>
+                  <i aria-hidden>{NEED_MARK[n.state]}</i>
+                  <span>{n.label}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <ProsCons pros={facts.pros} cons={facts.cons} />
+          {fit !== "fit" && option && option.fitNotes.length > 0 && (
+            <p className={`opt-status ${fit}`}>
+              <b>{FIT_WORDS[fit]}:</b> {option.fitNotes.join(" · ")}
+            </p>
+          )}
+          <div className="sc-foot opt-foot">
+            <span className="opt-links">
+              <button className="link-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
+                {open ? "Kapat ▴" : "Detaylar ▾"}
+              </button>
+            </span>
+            {item.status === "booked" ? (
+              <span className="tone-success">✓ {bookedWord(item)}</span>
+            ) : item.status === "chosen" ? (
+              <button className="pill-btn soft" onClick={() => void setItemStatus(item, "saved")} title="Seçimi geri al">
+                Planda ✓
+              </button>
+            ) : item.status === "dismissed" ? (
+              <button className="pill-btn outline" onClick={() => void setItemStatus(item, "saved")} title="Seçeneklere geri al">
+                Geri al
+              </button>
+            ) : (
+              <span className="sc-actions">
+                <button className="link-btn quiet" onClick={() => void setItemStatus(item, "dismissed")} title="Seçeneklerden çıkar; Elenenler'de durur">
+                  Ele
+                </button>
+                <button className="pill-btn primary" onClick={() => void chooseItem(item, group)}>
+                  Seç
+                </button>
+              </span>
+            )}
           </div>
         </div>
-        {facts.score != null && (
-          <span className={`opt-score${place === 1 ? " best" : ""}`} title="Uyum puanı (100 üzerinden): önceliklerin, istediklerin ve okunan yorumlar">
-            <b>{facts.score}</b>
-            <small>puan</small>
-          </span>
-        )}
       </div>
-      {trade && ranked?.vsRank && (trade.money || trade.gains.length || trade.losses.length) && (
-        <p className="opt-trade" title={`${trade.vs} ile karşılaştırınca: ${tradeText(trade, currency)}`}>
-          <span className="opt-vs">{ranked.vsRank}.'ye göre</span>
-          {[
-            trade.money && (
-              <b key="m" className={trade.diff != null && trade.diff < 0 ? "cheaper" : ""}>
-                {moneyText(trade, currency)}
-              </b>
-            ),
-            trade.gains.length > 0 && <span key="g">{trade.gains.join(", ")}</span>,
-            trade.losses.length > 0 && (
-              <span key="l" className="opt-loss">
-                eksiği: {trade.losses.join(", ")}
-              </span>
-            ),
-          ]
-            .filter(Boolean)
-            .flatMap((node, i) => (i ? [<span key={`s${i}`} className="sep">{" · "}</span>, node] : [node]))}
-        </p>
-      )}
-      {facts.needs.length > 0 && (
-        <ul className="opt-checks sc-needs" aria-label="İstediklerin">
-          {facts.needs.slice(0, 5).map((n) => (
-            <li key={n.key} className={`need ${n.state}`} title={n.text}>
-              <i aria-hidden>{NEED_MARK[n.state]}</i>
-              <span>{n.label}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <ProsCons pros={facts.pros} cons={facts.cons} />
-      {fit !== "fit" && option && option.fitNotes.length > 0 && (
-        <p className={`opt-status ${fit}`}>
-          <b>{FIT_WORDS[fit]}:</b> {option.fitNotes.join(" · ")}
-        </p>
-      )}
       {open && (
         <div className="sc-details">
           <Details item={item} decision={decision} decisions={decisions} status={facts.status} />
@@ -345,34 +378,6 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
           <Links item={item} decision={decision} onOpen={onOpen} onCompare={onCompare} />
         </div>
       )}
-      <div className="sc-foot opt-foot">
-        <span className="opt-links">
-          <button className="link-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
-            {open ? "Kapat ▴" : "Detaylar ▾"}
-          </button>
-          <SourceBadge source={facts.source} href={datedUrl} />
-        </span>
-        {item.status === "booked" ? (
-          <span className="tone-success">✓ {bookedWord(item)}</span>
-        ) : item.status === "chosen" ? (
-          <button className="pill-btn soft" onClick={() => void setItemStatus(item, "saved")} title="Seçimi geri al">
-            Planda ✓
-          </button>
-        ) : item.status === "dismissed" ? (
-          <button className="pill-btn outline" onClick={() => void setItemStatus(item, "saved")} title="Seçeneklere geri al">
-            Geri al
-          </button>
-        ) : (
-          <span className="sc-actions">
-            <button className="link-btn quiet" onClick={() => void setItemStatus(item, "dismissed")} title="Seçeneklerden çıkar; Elenenler'de durur">
-              Ele
-            </button>
-            <button className="pill-btn primary" onClick={() => void chooseItem(item, group)}>
-              Seç
-            </button>
-          </span>
-        )}
-      </div>
     </article>
   );
 }

@@ -11,9 +11,11 @@ Bu panonun tek işi karar vermeyi kolaylaştırmak. Her yeni ekran ve bileşen b
 - Aynı şey iki yerde söylenmez. Öneri tek satırdır; uzun gerekçe Karşılaştır'da durur.
 - Sıralama kararın omurgası: seçenekler 1, 2, 3, 4… alt alta, bir satırda bir kart (ilk beşi açık). Üstte tek cümle:
   önerin ve nedeni, sonra bir önceliğe göre öne çıkan alternatifler sırasıyla.
-- Kart sade ama bilgili (Apple gibi): sıra numarası, küçük görsel, neyde en güçlü olduğu (küçük büyük harf etiket,
-  tek vurgu rengi), ad, tür ve puan tek gri satır, fiyat, sağda uyum puanı; sonra "1.'ye göre" satırı (fark,
-  kazanç, eksik), istek işaretleri (✓/✕/?) ve artı/eksiler. Kanıt ve kriter ayrıntısı Detaylar'da.
+- Fotoğraf büyük, sitedeki gibi: geniş kartta solda kartın ~%42'si boyunca, dar kartta üstte tam genişlik. Sıra
+  numarası (sol üst), uyum puanı (sağ üst) ve site bağlantısı (sol alt) fotoğrafın üstünde.
+- Yanında okunacak yer: neyde en güçlü olduğu (küçük büyük harf etiket, tek vurgu rengi), büyük ad, tür ve puan tek
+  gri satır, büyük fiyat; sonra "1.'ye göre" satırı (fark, kazanç, eksik), istek işaretleri (✓/✕/?) ve artı/eksiler.
+  Detaylar kartın altında tam genişlik açılır; fotoğraf uzamaz.
 - Durum tek satır ve renkli zeminle: Seçmeden kontrol et (amber), Kısmi (gri), Uygun değil (kırmızı, soluk kart).
 - Metni kısaltarak değil düzenle okunur yaparız: satırlar tam cümle, 14 px, rahat satır aralığı, kalın yalnız
   eleme sebebinde. Dar sütuna sıkıştırmak yok; artı/eksi yan yana yalnız kart genişse.

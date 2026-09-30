@@ -93,8 +93,9 @@ verir (arabayla gideceğini söylediysen sormaz). Tarihsiz yerler ve plana oturm
 (ilk beşi açık, gerisi "+N seçenek daha"). Üstte tek cümle: önerin ve nedeni, sonra bir önceliğe göre öne çıkan
 alternatifler sırasıyla ("Önerim Casa Ribeira: en iyi konum; €60 fazlasına mutfak var. Tasarruf ve sessizlik için
 2. Bonfim Loft (€60 daha ucuz)").
-- **Kartta:** sıra numarası ve uyum puanı (0–100), neyde en güçlü olduğu ("EN EKONOMİK · EN SESSİZ"), görsel, ad, tür
-  ve puan ("Otel odası · 8,9 Çok iyi · 1.204 yorum"), fiyat ("€285 · 3 gece toplam · €95 / gece").
+- **Kartta:** büyük fotoğraf (geniş ekranda solda, dar ekranda üstte), üstünde sıra numarası, uyum puanı (0–100) ve
+  site bağlantısı; yanında neyde en güçlü olduğu ("EN EKONOMİK · EN SESSİZ"), ad, tür ve puan ("Otel odası · 8,9
+  Çok iyi · 1.204 yorum"), fiyat ("€285 · 3 gece toplam · €95 / gece").
 - **Neden bu sırada:** 1.'ye göre (1. kartta 2.'ye göre) fark, kazancı ve eksiği: "1.'ye göre +€45 (gecelik +€15) ·
   yorumlar daha iyi · eksiği: hafta sonu gece gürültüsü · 3 yorum, iade yok".
 - **İstediklerin** için bir işaret (✓ Sessiz · ? Mutfak), sonra **artılar ve eksiler** tam cümleyle (en önemlisi

@@ -1010,3 +1010,54 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
   .opt-img { width: 64px; height: 64px; border-radius: 12px; }
   .opt-score { grid-column: 3; justify-self: start; width: auto; height: auto; flex-direction: row; gap: 4px; background: none; }
 }
+
+/* ---------- 0.27: the picture large, as on the site ----------
+   A card a row. Wide: the photo takes the left ~42% at full height, its place, score and site on it; the
+   name, price, why-here, marks and pros/cons beside it with room to read. Narrow: the photo on top. */
+.swipe-card.opt { padding: 0; gap: 0; overflow: hidden; border-radius: 22px; }
+.opt-layout { display: flex; flex-direction: column; }
+.opt-photo { position: relative; height: 220px; background: var(--soft); overflow: hidden; }
+.opt-photo .opt-img { width: 100%; height: 100%; border-radius: 0; object-fit: cover; display: block; }
+.opt-photo .opt-img.placeholder { display: grid; place-items: center; }
+.opt-layout.no-photo .opt-photo { height: 132px; }
+.opt-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 18px 20px 16px; }
+@container (min-width: 620px) {
+  .opt-layout { display: grid; grid-template-columns: minmax(250px, 42%) 1fr; }
+  .opt-layout.no-photo { grid-template-columns: 180px 1fr; }
+  .opt-photo, .opt-layout.no-photo .opt-photo { height: auto; min-height: 260px; }
+  .opt-layout.no-photo .opt-photo { min-height: 0; }
+}
+/* On the photo: the place (top left), the score (top right), the site (bottom left, one click to the page). */
+.opt-photo .opt-rank {
+  position: absolute; top: 14px; left: 14px; width: 38px; height: 38px; margin: 0; border-radius: 50%;
+  display: grid; place-items: center; background: rgba(255, 255, 255, .96); color: #1d1d1f;
+  font-size: 18px; font-weight: 800; box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+}
+.swipe-card.opt.first .opt-photo .opt-rank { background: var(--accent); color: #fff; }
+.opt-photo .opt-score {
+  position: absolute; top: 12px; right: 12px; width: 58px; height: 58px; background: rgba(255, 255, 255, .96);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+}
+.opt-photo .opt-score b { font-size: 20px; }
+.opt-photo .sc-source { position: absolute; left: 14px; bottom: 14px; max-width: calc(100% - 28px); }
+/* Beside it: room to read. */
+.opt-body .opt-text { gap: 3px; }
+.opt-body .opt-label { font-size: 12px; }
+.opt-body .opt-name { font-size: 21px; font-weight: 700; line-height: 1.25; -webkit-line-clamp: 3; }
+.opt-body .opt-meta { font-size: 14px; }
+.opt-body .opt-price { margin-top: 8px; }
+.opt-body .opt-price .price-main b { font-size: 24px; }
+.opt-body .opt-price .price-night { font-size: 14px; }
+.opt-body .opt-trade { font-size: 14.5px; }
+.opt-body .opt-checks .need { font-size: 14px; }
+.swipe-card.opt .opt-body .sc-pc { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; }
+.swipe-card.opt .opt-body .sc-col li { font-size: 14px; line-height: 1.45; }
+@container (min-width: 1000px) {
+  .swipe-card.opt .opt-body .sc-pc { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+}
+.opt-body .opt-foot { margin-top: auto; }
+.opt-body .sc-details { border-top: 1px solid #f2f2f4; padding-top: 10px; }
+/* The details open under the photo and the text, full width. */
+.swipe-card.opt > .sc-details { padding: 14px 20px 18px; border-top: 1px solid #f2f2f4; }
+/* The photo fills its column however tall the text beside it is. */
+.opt-photo > .opt-img { position: absolute; inset: 0; }
