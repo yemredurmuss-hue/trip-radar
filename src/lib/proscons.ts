@@ -18,7 +18,7 @@ import {
   type Part,
 } from "./decision";
 import { formatDateRange, formatPrice, listingKeyOf } from "./items";
-import { acceptKey, evidenceOf, isWeakFinding, monthLabel, saysSame, stillText } from "./listing";
+import { acceptKey, evidenceOf, isWeakFinding, monthLabel, saysSame, standing, stillText } from "./listing";
 import { cancellationText, locationText } from "./needs";
 import type { Finding, Item, Listing } from "./types";
 
@@ -64,6 +64,8 @@ export interface ProsCons {
 type Ctx = Pick<DecisionContext, "trip" | "today" | "currency" | "inferred" | "listings"> & { preferences?: string[] };
 
 const LEVEL_WEIGHT = [0, 0.5, 1, 2, 3];
+/** What only this place has among the ones compared weighs up to this much more (by how sure it is). */
+const UNIQUE_BOOST = 0.6;
 const SOURCE_TEXT: Record<Finding["source"], string> = {
   reviews: "yorumlarda",
   description: "açıklamada",
@@ -334,11 +336,12 @@ function findingLines(listing: Listing, item: Item, ctx: Ctx, penalties: Set<str
               : where;
     // What sets it apart comes first; what every place has doesn't help choose.
     const matches = theirs.map((list) => list.some((o) => saysSame(f, o)));
-    const unique = f.verified && theirs.length > 0 && !matches.some(Boolean);
+    // Only here, and as sure as it is: a faded or one-guest minus isn't made bigger for being the only one.
+    const unique = f.verified && !e.faded && theirs.length > 0 && !matches.some(Boolean);
     const common = theirs.length > 0 && matches.every(Boolean);
     const weak = isWeakFinding(f, listing, ctx.today);
     const weight =
-      findingWeight(f, listing, ctx.today) * relevance(f, item, ctx) * (f.verified ? 1 : 0.3) * (isAccepted ? 0.2 : 1) * (unique ? 1.6 : common ? 0.6 : 1) * (weak ? 0.5 : 1);
+      findingWeight(f, listing, ctx.today) * relevance(f, item, ctx) * (f.verified ? 1 : 0.3) * (isAccepted ? 0.2 : 1) * (unique ? 1 + UNIQUE_BOOST * standing(e) : common ? 0.6 : 1) * (weak ? 0.5 : 1);
     (f.polarity === "positive" ? pros : cons).push({
       key: `f:${f.id}`,
       text: f.text,

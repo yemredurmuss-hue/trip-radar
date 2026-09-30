@@ -1,9 +1,11 @@
 // The judge across listings: one passing problem two guests reported doesn't sink the best option, and
 // what the reviews say is weighed against the others, not alone.
 import { describe, expect, it } from "vitest";
+import { choiceOf } from "../src/lib/choice";
 import { decideGroup, makeContext } from "../src/lib/decision";
+import { differencesOf } from "../src/lib/differences";
 import { CONFIDENT, evidenceOf, FADED, holds, natureOf, questionFor, stillText, stillTrue } from "../src/lib/listing";
-import type { Trip } from "../src/lib/types";
+import type { Listing, Trip } from "../src/lib/types";
 import { finding, review, SCAFFOLDING, scaffoldingScene, TODAY } from "./fixtures/scaffolding";
 
 /** The scene decided, with trip settings that may name the scaffolding finding's key. */
@@ -130,5 +132,61 @@ describe("is it still so? (stillTrue)", () => {
     expect(strength(["r1", "r2"])).toBe(0.8); // same month
     expect(strength(["r1", "later1"])).toBe(1); // March and April
     expect(strength(["later1", "later3", "later5"])).toBe(1);
+  });
+});
+
+describe("the difference table: only what differs moves the ranking", () => {
+  it("clusters what the options say, marks what all have as neutral and a faded minus as not setting one apart", () => {
+    const s = scaffoldingScene();
+    const rows = differencesOf(s.items.map((i) => s.listings.get(`item:${i.id}`)), TODAY);
+    const clean = rows.find((r) => r.topic === "cleanliness" && r.polarity === "positive")!;
+    expect(clean).toMatchObject({ present: 3, read: 3, neutral: true, unique: false, text: "Tertemiz ve aydınlık" });
+    expect(clean.cells[`item:${s.b.id}`]).toMatchObject({ state: "present", count: 1, newest: "2026-08" });
+    const scaffolding = rows.find((r) => r.text === "Dışarıda iskele kuruldu")!;
+    // Said only for the Airbnb, but probably over: it doesn't set the place apart.
+    expect(scaffolding).toMatchObject({ present: 0, unique: false, neutral: false });
+    expect(scaffolding.cells[`item:${s.b.id}`].state).toBe("absent");
+    const breakfast = rows.find((r) => r.topic === "food")!;
+    expect(breakfast).toMatchObject({ present: 1, unique: true });
+    // Not read: unknown either way.
+    const unread = differencesOf([s.listings.get(`item:${s.a.id}`), { ...s.listings.get(`item:${s.b.id}`)!, readAt: null }], TODAY);
+    expect(unread.find((r) => r.topic === "cleanliness")!.cells[`item:${s.b.id}`].state).toBe("unread");
+  });
+
+  it("a serious problem every option shares costs none of them points; one only some have does", () => {
+    const s = scaffoldingScene();
+    const street = (reviewIds: string[]) =>
+      finding({ id: `noise:negative:street${reviewIds[0]}`, text: "Sokak gece çok gürültülü", polarity: "negative", topic: "noise", severity: "high", reviewIds });
+    const ids: Record<string, string[]> = { [s.a.id]: ["later1", "later2", "later3"], [s.b.id]: ["b1", "b2", "b3"], [s.c.id]: ["c1", "c2", "c3"] };
+    const withStreet = (who: string[]) =>
+      new Map([...s.listings].map(([k, l]) => [k, who.includes(k) ? { ...l, findings: [...l.findings, street(ids[k.slice(5)])] } : l]));
+    const penalties = (listings: Map<string, Listing>) =>
+      Object.fromEntries(decideGroup(s.items, makeContext(s.trip, s.items, { listings, today: TODAY })).options.map((o) => [o.item.name, o.penaltyPoints]));
+    const everyone = withStreet(s.items.map((i) => `item:${i.id}`));
+    expect(penalties(everyone)).toEqual({
+      "Casa Andaime": 0,
+      "Hotel Bravo": 0,
+      "Loft Central": 0,
+    });
+    const onlyBravo = withStreet([`item:${s.b.id}`]);
+    expect(penalties(onlyBravo)).toMatchObject({ "Hotel Bravo": 8, "Casa Andaime": 0 });
+  });
+
+  it("says against the first what its pages say that the first's don't, and what's unknown here but said there", () => {
+    const s = scaffoldingScene({ priorities: {} });
+    const ctx = makeContext(s.trip, s.items, { listings: s.listings, today: TODAY, preferences: ["sessiz bir yer istiyoruz"] });
+    const d = decideGroup(s.items, ctx);
+    const c = choiceOf(d, ctx);
+    const bravo = c.ranked.find((r) => r.option.item.id === s.b.id)!;
+    expect(bravo.vsRank).toBe(1);
+    expect(bravo.trade!.gains).toContain("kahvaltı çok iyi · 2 yorum");
+    expect(bravo.trade!.losses).toContain("oda küçük · 2 yorum");
+    // Quiet was asked for: the Loft's guests speak of noise, the Airbnb's and the hotel's don't.
+    expect(c.ranked.find((r) => r.option.item.id === s.a.id)!.unknown).toEqual(["sessizlik"]);
+    expect(bravo.unknown).toEqual(["sessizlik"]);
+    expect(c.ranked.find((r) => r.option.item.id === s.c.id)!.unknown).toEqual([]);
+    // Nothing asked: nothing flagged (it would only be noise).
+    const plain = makeContext(s.trip, s.items, { listings: s.listings, today: TODAY });
+    expect(choiceOf(decideGroup(s.items, plain), plain).ranked.every((r) => r.unknown.length === 0)).toBe(true);
   });
 });

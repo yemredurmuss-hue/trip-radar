@@ -958,6 +958,8 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .opt-trade b { font-weight: 650; }
 .opt-trade b.cheaper { color: var(--success); }
 .opt-trade .opt-loss, .opt-trade.quiet { color: #6e6e73; }
+/* A topic asked for that the others' guests speak of and this one's don't: unknown, worth a look (gray, like "?"). */
+.opt-unknown { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--muted); }
 .opt-checks { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; list-style: none; border: 0; }
 .opt-checks .need { padding: 0; background: none; font-size: 13.5px; font-weight: 500; color: #1d1d1f; gap: 6px; }
 .opt-checks .need.unknown { color: #6e6e73; }

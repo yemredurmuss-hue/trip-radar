@@ -178,7 +178,8 @@ describe("the choice", () => {
     const [casa, bonfim] = choice.ranked;
     // The first against the second; every other one against the first; shortfalls from its own side.
     expect([casa.vsRank, bonfim.vsRank]).toEqual([2, 1]);
-    expect(tradeText(casa.trade!, "EUR")).toBe("+€60 (gecelik +€20) · 15 dk daha yakın, mutfak var, yorumlar daha iyi (9/10 – 4,9/5) · eksiği: gece bar gürültüsü · 3 yorum");
+    // Two lines from the criteria, then the most telling thing its pages say that the other's don't.
+    expect(tradeText(casa.trade!, "EUR")).toBe("+€60 (gecelik +€20) · 15 dk daha yakın, mutfak var, balkondan nehir manzarası · 2 yorum · eksiği: gece bar gürültüsü · 3 yorum");
     expect(tradeText(bonfim.trade!, "EUR")).toBe("€60 daha ucuz (gecelik −€20) · sessiz sokak · 4 yorum · eksiği: 15 dk daha uzak, mutfak yazmıyor, yorumları daha zayıf (4,9/5 – 9/10)");
     expect(choice.headline).toBe(
       "Önerim Casa Ribeira: en iyi konum; €60 fazlasına mutfak var ve yorumlar daha iyi (9/10 – 4,9/5). Tasarruf ve sessizlik için 2. Bonfim Loft (€60 daha ucuz).",

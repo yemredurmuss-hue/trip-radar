@@ -321,6 +321,11 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
                 .flatMap((node, i) => (i ? [<span key={`s${i}`} className="sep">{" · "}</span>, node] : [node]))}
             </p>
           )}
+          {ranked && ranked.unknown.length > 0 && (
+            <p className="opt-unknown" title="İstediğin bir konuda diğer seçeneklerin yorumları konuşuyor, bununkiler hiç bahsetmiyor">
+              ? Bunda bilinmiyor, sayfada bak: {ranked.unknown.join(", ")}
+            </p>
+          )}
           {facts.needs.length > 0 && (
             <ul className="opt-checks sc-needs" aria-label="İstediklerin">
               {facts.needs.slice(0, 5).map((n) => (

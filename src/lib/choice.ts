@@ -3,10 +3,26 @@
 // does: against the first (for the first, against the second) what it costs or saves, what it gives and
 // what it gives up. Above them one sentence: the pick and why, and the alternatives for each priority.
 // Pure.
-import { amenityState, checksOnlyReading, CRITERION_LABELS, levelSource, saidOf, type DecisionContext, type GroupDecision, type OptionResult, type Part } from "./decision";
-import { formatPrice, nightsBetween } from "./items";
+import {
+  amenityState,
+  checksOnlyReading,
+  CRITERION_LABELS,
+  levelFor,
+  levelSource,
+  saidOf,
+  touchesTopic,
+  WISH_TOPIC,
+  WISHES,
+  type DecisionContext,
+  type GroupDecision,
+  type OptionResult,
+  type Part,
+} from "./decision";
+import { differencesOf, type DiffCell, type DiffRow } from "./differences";
+import { formatPrice, listingKeyOf, nightsBetween } from "./items";
+import { acceptKey, evidenceOf, FADED } from "./listing";
 import { rangeOfGroupKey } from "./plan";
-import type { Amenity, CriterionId } from "./types";
+import type { Amenity, CriterionId, FindingTopic, Listing } from "./types";
 
 type Ctx = Pick<DecisionContext, "trip" | "currency" | "inferred" | "listings" | "today" | "preferences"> & { said?: Set<string> };
 
@@ -38,6 +54,8 @@ export interface Ranked {
   trade: Trade | null;
   /** The place it's weighed against: 2 for the first, else 1. */
   vsRank: number | null;
+  /** What the traveller cares about that the others' pages speak of and this one's don't: "sessizlik". */
+  unknown: string[];
 }
 
 export interface Choice {
@@ -195,20 +213,99 @@ function edgeRows(a: OptionResult, b: OptionResult, ctx: Ctx): { criterion: Crit
   return rows.map(({ pa, pb }) => ({ criterion: pa.criterion, texts: gainText(pa.criterion, pa, pb, a, b, ctx) })).filter((r) => r.texts.length);
 }
 
-function tradeOf(a: OptionResult, b: OptionResult, ctx: Ctx, nights: number): Trade {
+const SEVERITY = { high: 3, medium: 2, low: 1 } as const;
+
+/**
+ * What `a`'s pages say that `b`'s, read, don't (from the difference table): "çatı terası · 4 yorum" for it,
+ * "yan binada inşaat · 3 yorum" against it. Only what tells them apart (not what every option has), is
+ * still so, and is backed (the page, or two guests or more); "sorun değil" ones aren't held against it.
+ */
+function findingEdges(a: OptionResult, b: OptionResult, rows: DiffRow[], ctx: Ctx): { gains: string[]; losses: string[] } {
+  const ka = listingKeyOf(a.item);
+  const kb = listingKeyOf(b.item);
+  if (ka === kb) return { gains: [], losses: [] };
+  const accepted = new Set(ctx.trip.acceptedFindings ?? []);
+  const said = rows
+    .filter((r) => !r.neutral && r.cells[ka]?.state === "present" && r.cells[kb]?.state === "absent")
+    .map((r) => r.cells[ka])
+    .filter((c) => {
+      const f = c.finding!;
+      return c.confidence >= FADED && (c.count >= 2 || f.source !== "reviews") && !(f.polarity === "negative" && accepted.has(acceptKey(ka, f)));
+    })
+    .sort((x, y) => SEVERITY[y.finding!.severity] * y.standing - SEVERITY[x.finding!.severity] * x.standing);
+  const words = (c: DiffCell) => `${lower(c.finding!.text)}${c.count ? ` · ${c.count} yorum` : ""}`;
+  return {
+    gains: said.filter((c) => c.finding!.polarity === "positive").map(words),
+    losses: said.filter((c) => c.finding!.polarity === "negative").map(words),
+  };
+}
+
+/** Two lines of what the criteria say, then the most telling thing read, then the rest; the same thing said once. */
+function merge(fromCriteria: string[], fromPages: string[]): string[] {
+  const out: string[] = [];
+  const add = (t: string) => {
+    const bare = t.split(" · ")[0];
+    if (!out.some((o) => o.includes(bare) || bare.includes(o.split(" · ")[0]))) out.push(t);
+  };
+  [...fromCriteria.slice(0, 2), ...fromPages.slice(0, 1), ...fromCriteria.slice(2), ...fromPages.slice(1)].forEach(add);
+  return out.slice(0, 3);
+}
+
+function tradeOf(a: OptionResult, b: OptionResult, ctx: Ctx, nights: number, rows: DiffRow[] = []): Trade {
   const pa = priceOf(a);
   const pb = priceOf(b);
   const diff = pa != null && pb != null ? pa - pb : null;
   const money =
     diff == null ? null : Math.abs(diff) < 1 ? "aynı fiyat" : diff > 0 ? `+${formatPrice(diff, ctx.currency)}` : `${formatPrice(-diff, ctx.currency)} daha ucuz`;
+  const read = findingEdges(a, b, rows, ctx);
   return {
     vs: b.item.name,
     diff,
     perNight: diff != null && nights > 1 ? diff / nights : null,
     money,
-    gains: edges(a, b, ctx),
-    losses: shortfalls(a, b, ctx),
+    gains: merge(edges(a, b, ctx), read.gains),
+    losses: merge(shortfalls(a, b, ctx), read.losses),
   };
+}
+
+/** A topic the traveller cares about, as a word for "bunda bilinmiyor": what the reviews may say or not. */
+const TOPIC_WORDS: Partial<Record<FindingTopic, string>> = {
+  noise: "sessizlik",
+  cleanliness: "temizlik",
+  view: "manzara",
+  space: "ferahlık",
+  bed: "yatak",
+  food: "kahvaltı",
+  access: "erişim",
+  safety: "güvenlik",
+};
+
+/**
+ * What the traveller cares about that this option's pages, read, don't mention while another option's do
+ * ("sessizlik": the others' guests speak of the quiet or the noise, here nobody does): unknown, not
+ * fine and not bad, worth a look. Only topics they asked for (a wish, a note, a must), so it stays short.
+ */
+function unknownsOf(o: OptionResult, others: OptionResult[], d: GroupDecision, ctx: Ctx): string[] {
+  const listing = ctx.listings.get(listingKeyOf(o.item));
+  if (!listing?.readAt) return [];
+  const said = saidOf(ctx);
+  const cared = (Object.keys(TOPIC_WORDS) as FindingTopic[]).filter(
+    (t) =>
+      said.has(t) ||
+      WISHES.some((w) => WISH_TOPIC[w] === t && levelFor(ctx.trip, d.category, w, ctx.inferred, said) > 0) ||
+      (ctx.trip.requirements ?? []).some((r) => r.kind === "avoid" && r.topic === t),
+  );
+  const mentions = (l: Listing, t: FindingTopic) => l.findings.some((f) => f.verified && touchesTopic(f, t) && !evidenceOf(f, l, ctx.today).faded);
+  return cared
+    .filter(
+      (t) =>
+        !mentions(listing, t) &&
+        others.some((x) => {
+          const theirs = ctx.listings.get(listingKeyOf(x.item));
+          return theirs?.readAt && theirs.key !== listing.key && mentions(theirs, t);
+        }),
+    )
+    .map((t) => TOPIC_WORDS[t]!);
 }
 
 /** The money side: "+€60 (gecelik +€20)", "€60 daha ucuz (gecelik −€20)". */
@@ -272,6 +369,11 @@ export function choiceOf(d: GroupDecision, ctx: Ctx): Choice {
 
   const inRace = d.options.filter((o) => !o.excluded);
   const [first, second] = inRace;
+  // What their pages say differently: the concrete things read that one has and another doesn't.
+  const rows = differencesOf(
+    inRace.map((o) => ctx.listings.get(listingKeyOf(o.item))),
+    ctx.today,
+  );
   const ranked: Ranked[] = d.options.map((o) => {
     const place = o.excluded ? null : inRace.indexOf(o) + 1;
     const mine = [...(wins.get(o.item.id) ?? [])].sort((a, b) => lensOrder(a) - lensOrder(b));
@@ -282,8 +384,9 @@ export function choiceOf(d: GroupDecision, ctx: Ctx): Choice {
       rank: place,
       badges: mine.map((c) => LENS[c]!.best),
       lenses: mine.map((c) => lensNoun(c, o, ctx)),
-      trade: vs ? tradeOf(o, vs, ctx, nights) : null,
+      trade: vs ? tradeOf(o, vs, ctx, nights, rows) : null,
       vsRank: vs ? (vs === first ? 1 : 2) : null,
+      unknown: place == null ? [] : unknownsOf(o, inRace.filter((x) => x !== o), d, ctx),
     };
   });
 

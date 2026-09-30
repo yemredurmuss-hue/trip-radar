@@ -92,7 +92,8 @@ describe("decision card facts", () => {
         [3, "Casa Azul", "En ekonomik", "check"],
       ],
     });
-    expect(choice("Jardim Stay").why[1]).toBe("+€45 (gecelik +€15) · yorumlar daha iyi (9,2/10 – 8,9/10) · eksiği: hafta sonu gece gürültüsü · 3 yorum, iade yok, konforu daha zayıf");
+    // What its pages say that the first's don't, concretely: the river view.
+    expect(choice("Jardim Stay").why[1]).toBe("+€45 (gecelik +€15) · yorumlar daha iyi (9,2/10 – 8,9/10), odadan nehir manzarası · 3 yorum · eksiği: hafta sonu gece gürültüsü · 3 yorum, iade yok, konforu daha zayıf");
     // Flights, nothing asked: the best one first, the cheaper one second with what the saving costs.
     expect(choice("Pegasus · direkt")).toMatchObject({
       headline: "Önerim Pegasus · direkt: €30 fazlasına bagaj dahil ve direkt. Tasarruf için 2. TAP · Lizbon aktarmalı (€30 daha ucuz).",
