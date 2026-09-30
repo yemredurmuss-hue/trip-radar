@@ -118,7 +118,9 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
     const facts = parseUrl(capture.url ?? "");
     const trips = await listTrips();
     const extraction = await deps.extract(capture, facts, trips);
-    const trip = await resolveTrip(extraction, trips, deps, facts);
+    // A capture from a shared trip goes into that trip, wherever its country or dates would send it.
+    const forced = capture.forTripId ? trips.find((t) => t.id === capture.forTripId) : undefined;
+    const trip = forced ?? (await resolveTrip(extraction, trips, deps, facts));
     let incoming = buildItem(extraction, capture, facts, trip.id);
     // Only a screenshot: the option's photo cut out of it (a car, a room), when the model found one.
     const box = !incoming.imageUrl && capture.screenshot ? photoBox(extraction.image_box) : null;
@@ -127,7 +129,8 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
       if (photo) incoming = { ...incoming, imageUrl: photo };
     }
 
-    const existing = await d.getAll("items");
+    // ...and only merges with that trip's options (the same hotel may sit in another, private trip).
+    const existing = (await d.getAll("items")).filter((i) => !forced || i.tripId === forced.id);
     const duplicate = findDuplicate(existing, incoming);
     const item = duplicate ? mergeItem(duplicate.item, incoming, duplicate.placeOnly) : incoming;
     await d.put("items", await withGeo(item, deps.geocode ?? geocode));
@@ -140,9 +143,11 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
         ? `✓ ${item.name} rezerve edildi${dates} (onaydan); plan buna göre güncellendi`
         : duplicate
           ? `↻ ${item.name} güncellendi`
-          : `✓ ${item.name} kaydedildi → ${where}`,
+          : `✓ ${item.name} kaydedildi → ${where}${capture.sharedBy ? ` (${capture.sharedBy} ekledi)` : ""}`,
     );
-    await d.put("trips", { ...trip, heroImage: trip.heroImage ?? item.imageUrl, updatedAt: Date.now() });
+    // The trip as stored now: it may have changed (shared, renamed) while the model was reading.
+    const current = (await d.get("trips", trip.id)) ?? trip;
+    await d.put("trips", { ...current, heroImage: current.heroImage ?? item.imageUrl, updatedAt: Date.now() });
     await d.put("captures", { ...capture, status: "done", error: null, itemId: item.id });
   } catch (error) {
     await d.put("captures", { ...capture, status: "error", error: describeError(error) });
