@@ -92,9 +92,9 @@ describe("pros and cons per option", () => {
     expect(pc.pros.map((p) => p.text)).toContain("En ucuz: ortalamadan €45 ucuz");
     expect(pc.pros.map((p) => p.text)).toContain("Yanında çok iyi bir İtalyan restoranı");
     expect(pc.pros.find((p) => p.text === "Geniş, rahat yatak")?.detail).toBe("açıklamada");
-    // A recent, repeated, serious complaint rules the place out for anyone (no AI review needed), and leads.
-    expect(pc.cons[0]).toMatchObject({ text: "Elendi: Yan binada inşaat gürültüsü (2 yorum)", decisive: true });
-    expect(pc.cons.find((c) => c.text === "Yan binada inşaat gürültüsü")).toMatchObject({ serious: true, detail: "2 yorum · en yenisi Eyl 2026 · puandan −8" });
+    // A recent, repeated, serious complaint costs points and leads; it rules nothing out by itself.
+    expect(pc.cons.some((c) => c.decisive)).toBe(false);
+    expect(pc.cons[0]).toMatchObject({ text: "Yan binada inşaat gürültüsü", serious: true, detail: "2 yorum · en yenisi Eyl 2026 · puandan −8" });
     expect(pc.cons.map((c) => c.text)).toContain("TV yok");
   });
 
@@ -115,13 +115,23 @@ describe("pros and cons per option", () => {
     expect(of(jardim).pros.every((p) => p.kind === "compare")).toBe(true);
   });
 
-  it("puts the reason an option is out on top", () => {
-    const out = scene(({ casa, construction }) => ({
-      eliminations: [{ itemId: casa.id, reason: "Yan binada inşaat; sessizlik istiyorsun", findingIds: [construction.id] }],
-    }));
+  it("puts the reason an option is out on top, when the traveller's must or word rules it out", () => {
+    const eliminations = ({ casa, construction }: Scene) => ({
+      eliminations: [{ itemId: casa.id, reason: "Yan binada inşaat; gürültü olmasın demiştin", findingIds: [construction.id] }],
+    });
+    // The assistant alone can't rule a place out on what it read: without a must, a thing to check.
+    const proposed = scene(eliminations);
+    expect(proposed.of(proposed.casa).cons.some((c) => c.decisive)).toBe(false);
+    expect(proposed.of(proposed.casa).cons.map((c) => c.text)).toContain("Kontrol gerekiyor: Yan binada inşaat; gürültü olmasın demiştin");
+    // Against a must they set ("gürültü olmasın"): out, and the reason leads.
+    const out = scene(eliminations, () => ({ requirements: [{ kind: "avoid", topic: "noise" }] }));
     const pc = out.of(out.casa);
-    expect(pc.cons[0]).toMatchObject({ text: "Elendi: Yan binada inşaat; sessizlik istiyorsun", decisive: true, detail: "2 yorum" });
+    expect(pc.cons[0]).toMatchObject({ text: "Elendi: Yan binada inşaat; gürültü olmasın demiştin", decisive: true, detail: "2 yorum" });
     expect(out.decision.options.at(-1)!.item.name).toBe("Casa Azul");
+    // "Önemli, kalsın" on the finding: out, with no AI review.
+    const confirmed = scene(undefined, ({ casa }) => ({ confirmedFindings: [`item:${casa.id}#condition:negative`] }));
+    expect(confirmed.of(confirmed.casa).cons[0]).toMatchObject({ text: "Elendi: Yan binada inşaat gürültüsü (2 yorum); önemli dedin", decisive: true });
+    expect(confirmed.of(confirmed.casa).cons.find((c) => c.text === "Yan binada inşaat gürültüsü")).toMatchObject({ confirmed: true, detail: "önemli dedin" });
     // "Sorun değil" on it: nothing rules the place out any more.
     const fine = scene(undefined, ({ casa }) => ({ acceptedFindings: [`item:${casa.id}#condition:negative`] }));
     expect(fine.of(fine.casa).cons.some((c) => c.decisive)).toBe(false);

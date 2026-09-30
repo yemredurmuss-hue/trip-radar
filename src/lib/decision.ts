@@ -526,8 +526,10 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
       const counted = listing.findings.filter((f) => f.verified);
       if (!counted.length) return null;
       const accepted = new Set(ctx.trip.acceptedFindings ?? []);
-      // What a wish measures ("sessiz bir yer": the noise findings) counts there, not here as well.
-      const wished = new Set(WISHES.filter((w) => levelFor(ctx.trip, item.category, w, ctx.inferred, saidOf(ctx)) > 0).map((w) => WISH_TOPIC[w] as string));
+      // What a wish measures ("sessiz bir yer": the noise findings) counts there, not here as well; a
+      // serious problem costs its points directly (see seriousIssues), not here as well.
+      const wished = wishedTopics(item.category, ctx);
+      const penalized = new Set(seriousIssues(item, ctx).map((f) => f.id));
       // A plus none of the others has (a river view, a roof terrace) can outweigh a missing nicety.
       const others = (ctx.groupListings ?? []).filter((l) => l.key !== listing.key && l.readAt && l.findings.length);
       const standsOut = (f: Finding) => f.polarity === "positive" && others.length > 0 && !others.some((l) => l.findings.some((o) => o.verified && saysSame(f, o)));
@@ -535,7 +537,7 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
       let minus = 0;
       for (const f of counted) {
         if (f.polarity === "negative" && accepted.has(acceptKey(listing.key, f))) continue;
-        if (touchesAny(f, wished)) continue;
+        if (touchesAny(f, wished) || penalized.has(f.id)) continue;
         const w = findingWeight(f, listing, ctx.today) * (standsOut(f) ? STANDOUT_WEIGHT : 1);
         if (f.polarity === "positive") plus += w;
         else minus += w;
@@ -661,13 +663,31 @@ export function amenityState(item: Item, amenity: Amenity, ctx: Pick<DecisionCon
 export const SERIOUS_PENALTY = 8;
 const MAX_SERIOUS = 2;
 
-/** Serious problems read on the place's pages: each costs SERIOUS_PENALTY points, whatever the weights. */
-export function seriousIssues(item: Item, ctx: Pick<DecisionContext, "listings" | "today" | "trip">): Finding[] {
+/** The finding topics of the wishes that weigh for this category ("sessiz bir yer": noise). */
+function wishedTopics(category: Category, ctx: Pick<DecisionContext, "trip" | "inferred" | "preferences"> & { said?: Set<string> }): Set<string> {
+  return new Set(WISHES.filter((w) => levelFor(ctx.trip, category, w, ctx.inferred, saidOf(ctx)) > 0).map((w) => WISH_TOPIC[w] as string));
+}
+
+/**
+ * Serious problems read on the place's pages: each costs SERIOUS_PENALTY points, whatever the weights,
+ * and only there (not in "Yorum ve detaylar" as well). One on a topic the traveller wished for (noise,
+ * for a quiet place) counts in that wish instead, with the weight they gave it: once either way.
+ */
+export function seriousIssues(item: Item, ctx: Pick<DecisionContext, "listings" | "today" | "trip" | "inferred" | "preferences"> & { said?: Set<string> }): Finding[] {
   const listing = ctx.listings.get(listingKeyOf(item));
   if (!listing?.readAt) return [];
   const accepted = new Set(ctx.trip.acceptedFindings ?? []);
+  const wished = wishedTopics(item.category, ctx);
   return listing.findings
-    .filter((f) => f.polarity === "negative" && f.severity === "high" && isDecisive(f, listing, ctx.today) && !accepted.has(acceptKey(listing.key, f)) && backed(f, listing, ctx.today))
+    .filter(
+      (f) =>
+        f.polarity === "negative" &&
+        f.severity === "high" &&
+        isDecisive(f, listing, ctx.today) &&
+        !accepted.has(acceptKey(listing.key, f)) &&
+        backed(f, listing, ctx.today) &&
+        !touchesAny(f, wished),
+    )
     .slice(0, MAX_SERIOUS);
 }
 
@@ -688,22 +708,39 @@ export function singleReports(item: Item, ctx: Pick<DecisionContext, "listings" 
 }
 
 /**
- * What rules a place out for anyone, not just this traveller: a serious problem (construction next door,
- * bugs, an unsafe street, a flat unlike its photos) that several guests report or the page itself says.
- * One angry review isn't enough; "sorun değil" brings the place back.
+ * What rules a place out: only the traveller does. A problem read on the page (construction next door,
+ * bugs, a flat unlike its photos) costs points, however serious the reader thought it; it rules the place
+ * out once the traveller says it matters to them ("Önemli, kalsın"). "Sorun değil" wins over it.
  */
 export function dealbreakersOf(item: Item, ctx: Pick<DecisionContext, "listings" | "today" | "trip">): Finding[] {
   const listing = ctx.listings.get(listingKeyOf(item));
   if (!listing?.readAt) return [];
   const accepted = new Set(ctx.trip.acceptedFindings ?? []);
+  const confirmed = new Set(ctx.trip.confirmedFindings ?? []);
   return listing.findings.filter(
-    (f) =>
-      f.polarity === "negative" &&
-      f.severity === "high" &&
-      isDecisive(f, listing, ctx.today) &&
-      !accepted.has(acceptKey(listing.key, f)) &&
-      backed(f, listing, ctx.today),
+    (f) => f.polarity === "negative" && f.verified && confirmed.has(acceptKey(listing.key, f)) && !accepted.has(acceptKey(listing.key, f)),
   );
+}
+
+/** Words that tie a finding to a must the traveller set: "iade yok" to "ücretsiz iptal". */
+const CANCEL_WORDS = /iptal|iade|refund|cancel/i;
+
+/** Whether a finding speaks against one of the traveller's own musts ("gürültü olmasın", "mutfak şart"). */
+export function againstRequirement(f: Finding, trip: Pick<Trip, "requirements">): boolean {
+  return (trip.requirements ?? []).some((r) => {
+    switch (r.kind) {
+      case "avoid":
+        return touchesTopic(f, r.topic);
+      case "amenity":
+        return AMENITY_WORDS[r.amenity].test(f.text) && ABSENT.test(f.text);
+      case "free_cancellation":
+        return CANCEL_WORDS.test(f.text);
+      case "max_walk":
+        return ["location", "transport", "nearby"].includes(f.topic);
+      case "direct_flight":
+        return false;
+    }
+  });
 }
 
 const SEVERITY_WEIGHT = { high: 3, medium: 2, low: 1 } as const;
@@ -973,7 +1010,12 @@ function eliminationsOf(record: Analysis | null, eligible: Item[], ctx: Decision
     const open = cited.filter((f) => !accepted.has(acceptKey(listing!.key, f)));
     // The traveller said every cited finding is fine: nothing left to say.
     if (cited.length && !open.length) continue;
-    const backing = open.filter((f) => isDecisive(f, listing!, ctx.today));
+    // The assistant can't rule a place out on what it read alone: only on a must the traveller set
+    // (or a finding they said matters). Anything else it proposes is a thing to check before booking.
+    const confirmed = new Set(ctx.trip.confirmedFindings ?? []);
+    const backing = open.filter(
+      (f) => isDecisive(f, listing!, ctx.today) && (againstRequirement(f, ctx.trip) || confirmed.has(acceptKey(listing!.key, f))),
+    );
     if (backing.length) byItem.set(item.id, { reason: e.reason, findings: backing });
     else checks.push({ itemId: item.id, reason: e.reason });
   }
@@ -1056,14 +1098,14 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
       : ctx.tripItems
           .filter((i) => !inGroup.has(i.id) && (i.status === "booked" || i.status === "chosen"))
           .reduce((sum, i) => sum + (totalPrice(i, { ...ctx, groupRange: null }) ?? 0), 0);
-  // Serious problems that are out for anyone rule a place out by themselves, with or without an AI review.
+  // A problem the traveller said matters to them ("Önemli, kalsın") rules the place out; nothing read does alone.
   for (const item of eligible) {
     if (eliminated.has(item.id)) continue;
     const found = dealbreakersOf(item, ctx);
     if (!found.length) continue;
     const listing = ctx.listings.get(listingKeyOf(item))!;
     const n = evidenceOf(found[0], listing, ctx.today).count;
-    eliminated.set(item.id, { reason: `${found[0].text}${n ? ` (${n} yorum)` : ""}`, findings: found });
+    eliminated.set(item.id, { reason: `${found[0].text}${n ? ` (${n} yorum)` : ""}; önemli dedin`, findings: found });
   }
   let options: OptionResult[] = eligible.map((item) => {
     const s = score(item.id);
@@ -1463,6 +1505,7 @@ function mostCommon<T>(values: T[]): T | null {
 const ANALYSIS_VERSION = 2;
 
 function hashInputs(category: Category, options: OptionResult[], ctx: DecisionContext): string {
+  const confirmed = (ctx.trip.confirmedFindings ?? []).filter((k) => options.some((o) => k.startsWith(`${listingKeyOf(o.item)}#`)));
   const input = JSON.stringify({
     v: ANALYSIS_VERSION,
     p: ctx.trip.priorities ?? {},
@@ -1485,6 +1528,8 @@ function hashInputs(category: Category, options: OptionResult[], ctx: DecisionCo
       f: ctx.listings.get(listingKeyOf(o.item))?.findings.map((f) => (f.verified ? f.id : `?${f.id}`)) ?? null,
     })),
     acc: (ctx.trip.acceptedFindings ?? []).filter((k) => options.some((o) => k.startsWith(`${listingKeyOf(o.item)}#`))),
+    // Only when there are some, so analyses made before "Önemli, kalsın" existed still match.
+    ...(confirmed.length ? { conf: confirmed } : {}),
   });
   let h = 5381;
   for (let i = 0; i < input.length; i++) h = ((h << 5) + h + input.charCodeAt(i)) | 0;

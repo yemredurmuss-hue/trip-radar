@@ -146,9 +146,9 @@ describe("eliminations", () => {
     source: "reviews" as const, severity: "high" as const, reviewIds: ["r1", "r2"], quotes: [], verified: true,
   };
 
-  async function setup(findings: Listing["findings"], acceptedFindings?: string[]) {
+  async function setup(findings: Listing["findings"], acceptedFindings?: string[], requirements?: Trip["requirements"]) {
     const d = await db();
-    const t: Trip = { ...trip, id: "te", acceptedFindings };
+    const t: Trip = { ...trip, id: "te", acceptedFindings, requirements };
     await d.put("trips", t);
     const a = { ...stay("ea", "Jardim Stay", 285, 8.6, "Konum iyi"), tripId: "te" };
     const b = { ...stay("eb", "Casa Azul", 240, 9.3, "Geniş"), tripId: "te" };
@@ -170,8 +170,8 @@ describe("eliminations", () => {
     return { t, items: [a, b] };
   }
 
-  it("rules an option out only with verified, recent findings, and never for what the traveller accepted", async () => {
-    const { t, items } = await setup([construction]);
+  it("rules an option out only on a must the traveller set, with verified, recent findings, never for what they accepted", async () => {
+    const { t, items } = await setup([construction], undefined, [{ kind: "avoid", topic: "noise" }]);
     const before = (await loadDecisions(t, items)).decisions.get(STAY)!;
     // Cheaper and better rated, but a serious, recent, verified problem costs it points outright.
     const casaBefore = before.options.find((o) => o.item.id === "eb")!;
@@ -198,7 +198,7 @@ describe("eliminations", () => {
     const casa = after.options.find((o) => o.item.id === "eb")!;
     expect(casa.eliminated?.reason).toBe("Yan binada inşaat; sessizlik istiyorsun");
     expect(after.winner?.item.name).toBe("Jardim Stay");
-    expect(after.summary).toContain("Casa Azul elendi");
+    expect(after.summary).toContain("Casa Azul şartına uymuyor (gürültü olmasın)");
 
     // New options change the inputs; the elimination still rests on the same findings, so it holds.
     const extra = { ...stay("ec", "Ribeira Rooms", 330, 9.0, ""), tripId: "te" };
@@ -211,6 +211,12 @@ describe("eliminations", () => {
     const fine = (await loadDecisions(accepted, items)).decisions.get(STAY)!;
     expect(fine.options.find((o) => o.item.id === "eb")!.eliminated).toBeNull();
     expect(fine.checks).toEqual([]);
+
+    // Without the must ("gürültü olmasın"), what the assistant read is a thing to check, not a verdict.
+    const wish = { ...t, requirements: [] };
+    const open = (await loadDecisions(wish, items)).decisions.get(STAY)!;
+    expect(open.options.find((o) => o.item.id === "eb")!.eliminated).toBeNull();
+    expect(open.checks).toEqual([{ itemId: "eb", reason: "Yan binada inşaat; sessizlik istiyorsun" }]);
   });
 
   it("shows an elimination the evidence doesn't back as something to check, not a verdict", async () => {

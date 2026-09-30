@@ -1,28 +1,13 @@
 import { useState } from "react";
 import { requestReading } from "../lib/browser";
-import { db, newId, notifyChanged } from "../lib/db";
 import type { GroupDecision } from "../lib/decision";
 import { listingKeyOf } from "../lib/items";
-import { acceptKey, monthLabel, readingLine } from "../lib/listing";
+import { monthLabel, readingLine } from "../lib/listing";
 import { prosConsFor, type ProCon } from "../lib/proscons";
 import { rereadListing } from "../lib/reader";
-import type { Finding, Item, Listing } from "../lib/types";
-import { updateTrip } from "./actions";
+import type { Item, Listing } from "../lib/types";
+import { setFindingVerdict } from "./findingVerdict";
 import type { Decisions } from "./useDecisions";
-
-/** "Sorun değil": the finding stops counting against places of this kind, and the assistant learns it. */
-async function setAccepted(item: Item, listing: Listing, f: Finding, on: boolean): Promise<void> {
-  const key = acceptKey(listing.key, f);
-  const note = `"${f.text}" benim için sorun değil`;
-  await updateTrip(item.tripId, (t) => ({
-    ...t,
-    acceptedFindings: on ? [...new Set([...(t.acceptedFindings ?? []), key])] : (t.acceptedFindings ?? []).filter((k) => k !== key),
-  }));
-  const d = await db();
-  if (on) await d.put("preferences", { id: newId(), tripId: item.tripId, text: note, createdAt: Date.now() });
-  else for (const p of await d.getAll("preferences")) if (p.tripId === item.tripId && p.text === note) await d.delete("preferences", p.id);
-  notifyChanged();
-}
 
 /** Everything read about the place, as pros (left) and cons (right), each with the text behind it. */
 export function Evidence({
@@ -102,11 +87,22 @@ function EvidenceLine({ line, sign, item, listing }: { line: ProCon; sign: strin
               {open ? "Kanıtı gizle" : "Kanıt"}
             </button>
           )}
-          {f && listing && f.polarity === "negative" && f.verified && (
-            <button className="link-btn" onClick={() => void setAccepted(item, listing, f, !line.accepted)}>
-              {line.accepted ? "Geri al" : "Sorun değil"}
+          {f && listing && f.polarity === "negative" && f.verified && (line.accepted || line.confirmed ? (
+            <button className="link-btn" onClick={() => void setFindingVerdict(item, listing, f, null)}>
+              Geri al
             </button>
-          )}
+          ) : (
+            <>
+              <button className="link-btn" onClick={() => void setFindingVerdict(item, listing, f, "fine")}>
+                Sorun değil
+              </button>
+              {f.severity !== "low" && (
+                <button className="link-btn" title="Bu seçeneği eler" onClick={() => void setFindingVerdict(item, listing, f, "matters")}>
+                  Önemli, kalsın
+                </button>
+              )}
+            </>
+          ))}
         </div>
         {open && f && (
           <div className="quotes">

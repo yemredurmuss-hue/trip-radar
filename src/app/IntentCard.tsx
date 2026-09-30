@@ -90,8 +90,29 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
       },
     });
   }
+  // "Önemli, kalsın": the place is out for it; removable the same way.
+  for (const key of trip.confirmedFindings ?? []) {
+    const [listingKey, kind] = key.split("#");
+    const listing = decisions?.ctx.listings.get(listingKey);
+    const finding = listing?.findings.find((f) => `${f.topic}:${f.polarity}` === kind);
+    if (!listing || !finding) continue;
+    const note = `"${finding.text}" benim için önemli`;
+    entries.push({
+      key: `must:${key}`,
+      short: `${finding.text.toLocaleLowerCase("tr")} önemli`,
+      text: `Önemli: ${finding.text}`,
+      detail: `söylediğin · ${listing.name} elendi`,
+      action: async () => {
+        await updateTrip(trip.id, (t) => ({ ...t, confirmedFindings: (t.confirmedFindings ?? []).filter((k) => k !== key) }));
+        const d = await db();
+        for (const p of await d.getAll("preferences")) if (p.tripId === trip.id && p.text === note) await d.delete("preferences", p.id);
+        notifyChanged();
+      },
+    });
+  }
   for (const p of decisions?.preferences ?? []) {
     if (/^".+" benim için sorun değil$/.test(p.text) && entries.some((e) => e.key.startsWith("ok:"))) continue;
+    if (/^".+" benim için önemli$/.test(p.text) && entries.some((e) => e.key.startsWith("must:"))) continue;
     // What the note asks for becomes its own criterion ("Sessizlik: önemli"), unless they set it otherwise.
     const topics = saidTopics([p.text]);
     const wishes = WISHES.filter((w) => topics.has(WISH_TOPIC[w]) && trip.priorities?.[w] === undefined).map((w) => CRITERION_LABELS[w]);

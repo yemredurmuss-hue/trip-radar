@@ -74,7 +74,7 @@ export const SCAFFOLDING = finding({
 
 /** A (the Airbnb) is the cheapest and best rated; B and C are fine but cost more. */
 export function scaffoldingScene(over: Partial<Trip> = {}) {
-  const a = stay("Casa Andaime", { provider: "Airbnb", price: price(240), rating: rating(4.95, 5, 180) });
+  const a = stay("Casa Andaime", { provider: "Airbnb", price: price(240), rating: rating(4.9, 5, 180) });
   const b = stay("Hotel Bravo", { price: price(300), rating: rating(8.6, 10, 900) });
   const c = stay("Loft Central", { price: price(320), rating: rating(8.7, 10, 400) });
   const listings = new Map<string, Listing>([

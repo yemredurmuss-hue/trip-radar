@@ -135,6 +135,11 @@ export interface Trip {
   confirmedSignals?: string[];
   /** Findings the traveller said are fine ("sorun değil"): `${listingKey}#${topic}:${polarity}`. */
   acceptedFindings?: string[];
+  /**
+   * Findings the traveller said matter to them ("Önemli, kalsın"), same keys: these rule a place out.
+   * Nothing read on a page rules a place out without this (or a requirement it breaks).
+   */
+  confirmedFindings?: string[];
   /** What the traveller decided for each transfer (see legs.ts), by leg key. */
   legs?: Record<string, LegChoice>;
   /**

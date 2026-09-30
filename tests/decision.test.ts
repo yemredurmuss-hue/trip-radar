@@ -371,7 +371,7 @@ describe("what the traveller asked for weighs in, and every card checks it", () 
   });
 });
 
-describe("sifting what was read: facts aren't minuses, one review isn't a verdict, dealbreakers are for anyone", () => {
+describe("sifting what was read: facts aren't minuses, one review isn't a verdict, only the traveller rules out", () => {
   it("keeps the usual check-in hour and 'no information' out; an odd hour or a complaint stays", async () => {
     const { isInfoFinding } = await import("../src/lib/listing");
     expect(isInfoFinding({ topic: "check_in", text: "Giriş saati 16" })).toBe(true);
@@ -382,7 +382,7 @@ describe("sifting what was read: facts aren't minuses, one review isn't a verdic
     expect(isInfoFinding({ topic: "noise", text: "Hafta sonu gürültü" })).toBe(false);
   });
 
-  it("rules a place out for a serious problem several guests report or the page says, not for one review", async () => {
+  it("never rules a place out on what was read alone; the traveller's 'Önemli, kalsın' does, 'sorun değil' wins", async () => {
     const { dealbreakersOf } = await import("../src/lib/decision");
     const { emptyListing } = await import("../src/lib/listing");
     const place = item("Loud Flat", { price: price(200) });
@@ -396,16 +396,26 @@ describe("sifting what was read: facts aren't minuses, one review isn't a verdic
       const l = listingWith(finding);
       return makeContext(trip(over), [place], { listings: new Map([[l.key, l]]), today: "2026-09-30" });
     };
-    expect(dealbreakersOf(place, ctxWith(f(["r1"])))).toHaveLength(0); // one angry review
-    expect(dealbreakersOf(place, ctxWith(f(["r1", "r2"])))).toHaveLength(1);
-    expect(dealbreakersOf(place, ctxWith(f([], "description")))).toHaveLength(1);
-    // "Sorun değil": back in.
     const key = `${listingWith(f(["r1", "r2"])).key}#condition:negative`;
-    expect(dealbreakersOf(place, ctxWith(f(["r1", "r2"]), { acceptedFindings: [key] }))).toHaveLength(0);
-    // And the decision ranks it last, with the reason, even with no AI review.
+    expect(dealbreakersOf(place, ctxWith(f(["r1"])))).toHaveLength(0); // one angry review
+    expect(dealbreakersOf(place, ctxWith(f(["r1", "r2"])))).toHaveLength(0); // two: points off, not out
+    expect(dealbreakersOf(place, ctxWith(f([], "description")))).toHaveLength(0);
+    expect(dealbreakersOf(place, ctxWith(f(["r1", "r2"]), { confirmedFindings: [key] }))).toHaveLength(1);
+    // "Sorun değil" wins.
+    expect(dealbreakersOf(place, ctxWith(f(["r1", "r2"]), { confirmedFindings: [key], acceptedFindings: [key] }))).toHaveLength(0);
+    // Unconfirmed, it costs points once (not in "Yorum ve detaylar" as well) and stays in the race.
     const other = item("Quiet Flat", { price: price(260) });
     const l = listingWith(f(["r1", "r2"]));
-    const d = decideGroup([place, other], makeContext(trip(), [place, other], { listings: new Map([[l.key, l]]), today: "2026-09-30" }));
-    expect(d.options.at(-1)).toMatchObject({ item: { name: "Loud Flat" }, eliminated: { reason: "Yan binada inşaat (2 yorum)" } });
+    const decide = (over: Partial<Trip> = {}) =>
+      decideGroup([place, other], makeContext(trip(over), [place, other], { listings: new Map([[l.key, l]]), today: "2026-09-30" }));
+    const loud = decide().options.find((o) => o.item.name === "Loud Flat")!;
+    expect(loud).toMatchObject({ eliminated: null, fit: "fit" });
+    expect(loud.penalties.map((p) => p.text)).toEqual(["Yan binada inşaat"]);
+    // Confirmed by the traveller: out, last, with the reason.
+    expect(decide({ confirmedFindings: [key] }).options.at(-1)).toMatchObject({
+      item: { name: "Loud Flat" },
+      fit: "unfit",
+      eliminated: { reason: "Yan binada inşaat (2 yorum); önemli dedin" },
+    });
   });
 });

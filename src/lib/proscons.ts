@@ -43,6 +43,8 @@ export interface ProCon {
   stale?: boolean;
   /** The traveller said it's fine. */
   accepted?: boolean;
+  /** The traveller said it matters to them ("Önemli, kalsın"): it rules the place out. */
+  confirmed?: boolean;
   /** Only this place has it among the ones compared ("yalnız bunda"): what sets it apart, for or against. */
   unique?: boolean;
   /** Every place compared has it: true, but it doesn't help choose. */
@@ -304,6 +306,7 @@ function relevance(f: Finding, item: Item, ctx: Ctx): number {
 
 function findingLines(listing: Listing, item: Item, ctx: Ctx, penalties: Set<string>, peers: Listing[] = []): { pros: ProCon[]; cons: ProCon[] } {
   const accepted = new Set(ctx.trip.acceptedFindings ?? []);
+  const confirmed = new Set(ctx.trip.confirmedFindings ?? []);
   const pros: ProCon[] = [];
   const cons: ProCon[] = [];
   // What the others' pages say (read ones only: an unread page says nothing either way).
@@ -311,17 +314,20 @@ function findingLines(listing: Listing, item: Item, ctx: Ctx, penalties: Set<str
   for (const f of listing.findings) {
     const e = evidenceOf(f, listing, ctx.today);
     const isAccepted = f.polarity === "negative" && accepted.has(acceptKey(listing.key, f));
+    const isConfirmed = !isAccepted && f.polarity === "negative" && confirmed.has(acceptKey(listing.key, f));
     const where = e.count ? `${e.count} yorum${e.newest ? ` · en yenisi ${monthLabel(e.newest)}` : ""}` : SOURCE_TEXT[f.source];
     const penalized = penalties.has(f.id);
     const detail = !f.verified
       ? "sayfada doğrulanamadı"
       : isAccepted
         ? "sorun değil dedin"
-        : e.stale
-          ? `eski: ${where}`
-          : penalized
-            ? `${where} · puandan −${SERIOUS_PENALTY}`
-            : where;
+        : isConfirmed
+          ? "önemli dedin"
+          : e.stale
+            ? `eski: ${where}`
+            : penalized
+              ? `${where} · puandan −${SERIOUS_PENALTY}`
+              : where;
     // What sets it apart comes first; what every place has doesn't help choose.
     const matches = theirs.map((list) => list.some((o) => saysSame(f, o)));
     const unique = f.verified && theirs.length > 0 && !matches.some(Boolean);
@@ -338,6 +344,7 @@ function findingLines(listing: Listing, item: Item, ctx: Ctx, penalties: Set<str
       ...(f.verified ? {} : { unverified: true }),
       ...(e.stale ? { stale: true } : {}),
       ...(isAccepted ? { accepted: true } : {}),
+      ...(isConfirmed ? { confirmed: true } : {}),
       ...(penalized ? { serious: true } : {}),
       ...(unique ? { unique: true } : {}),
       ...(common ? { common: true } : {}),

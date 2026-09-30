@@ -55,9 +55,10 @@ describe("decision card facts", () => {
 
     const casa = facts("Casa Azul");
     expect(casa.subtitle).toBe("Daire · 1 yatak odası");
-    expect(casa.out).toBe(true);
-    expect(casa.status).toEqual({ text: "Elendi", tone: "warning" });
-    expect(casa.cons[0]).toMatchObject({ text: "Elendi: Yan binada inşaat var; sessiz bir yer istiyorsun", strong: true, mine: true });
+    // The assistant proposed ruling it out for the construction noise, but quiet is a wish, not a must:
+    // that costs it points (it's last) and is a thing to check, never a verdict the traveller didn't give.
+    expect(casa.out).toBe(false);
+    expect(casa.status).toBeNull();
     // Far by the comparison and weak location in the reviews: one tag, not two, and it says how far.
     expect(casa.cons.filter((c) => /Uzak|Konum/.test(c.text)).map((c) => c.text)).toEqual(["Uzak · gezeceğin yerlere 43 dk"]);
     // Quiet, which they asked for: the construction noise answers it, whatever topic it was filed under.
@@ -81,13 +82,14 @@ describe("decision card facts", () => {
   });
   it("numbers each decision best first, with what each is strongest on and why it stands there", async () => {
     const { choice } = await demo();
-    // Porto: Jardim first (the cheapest that fits and the quietest), Ribeira second, Casa Azul out and last.
+    // Porto: Jardim first (the quietest), Ribeira second, Casa Azul last: the cheapest, but with construction
+    // noise next door, to check before choosing (not ruled out: quiet is a wish, not a must).
     expect(choice("Jardim Stay")).toMatchObject({
-      headline: "Önerim Jardim Stay: en ekonomik ve en sessiz; 5 Eki'ye kadar ücretsiz iptal ve daha konforlu.",
+      headline: "Önerim Jardim Stay: en sessiz; €45 daha ucuz, 5 Eki'ye kadar ücretsiz iptal ve daha konforlu. Tasarruf için 3. Casa Azul (€45 daha ucuz).",
       ranked: [
-        [1, "Jardim Stay", "En ekonomik · En sessiz", "fit"],
+        [1, "Jardim Stay", "En sessiz", "fit"],
         [2, "Ribeira Rooms", "", "fit"],
-        [3, "Casa Azul", "", "unfit"],
+        [3, "Casa Azul", "En ekonomik", "check"],
       ],
     });
     expect(choice("Jardim Stay").why[1]).toBe("+€45 (gecelik +€15) · yorumlar daha iyi (9,2/10 – 8,9/10) · eksiği: hafta sonu gece gürültüsü · 3 yorum, iade yok, konforu daha zayıf");
