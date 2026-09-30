@@ -25,6 +25,8 @@ export interface Signal {
   delta: 1 | -1;
   /** "Konum senin için önemli görünüyor". */
   text: string;
+  /** Asked before it counts: "Konum senin için daha mı önemli?". */
+  question: string;
   /** Why: "Jardim Stay'i seçtin (Casa Azul yerine): konumu daha iyi, €45 daha pahalı". */
   evidence: string;
 }
@@ -38,8 +40,8 @@ export function inferSignals(items: Item[], ctx: DecisionContext): Signal[] {
   return merge([...fromChoices(items, ctx), ...fromSaves(items, ctx)]);
 }
 
-/** The signals that currently change weights: not ignored, not overridden by an explicit setting. */
-export function activeSignals(signals: Signal[], trip: Trip): Signal[] {
+/** Signals still meaningful: not ignored, not overridden by something the traveller said. */
+function openSignals(signals: Signal[], trip: Trip): Signal[] {
   const ignored = new Set(trip.ignoredSignals ?? []);
   return signals.filter(
     (s) =>
@@ -47,6 +49,22 @@ export function activeSignals(signals: Signal[], trip: Trip): Signal[] {
       trip.categoryPriorities?.[s.category]?.[s.criterion] === undefined &&
       trip.priorities?.[s.criterion] === undefined,
   );
+}
+
+/**
+ * The signals that change weights: only the ones the traveller confirmed. One pricier pick doesn't
+ * prove price matters less (they may have liked the photos or trusted the host), so a guess is asked
+ * about first ("Konum senin için daha mı önemli?") and counts only after a yes.
+ */
+export function activeSignals(signals: Signal[], trip: Trip): Signal[] {
+  const confirmed = new Set(trip.confirmedSignals ?? []);
+  return openSignals(signals, trip).filter((s) => confirmed.has(s.id));
+}
+
+/** Guesses waiting for a yes or a no. */
+export function pendingSignals(signals: Signal[], trip: Trip): Signal[] {
+  const confirmed = new Set(trip.confirmedSignals ?? []);
+  return openSignals(signals, trip).filter((s) => !confirmed.has(s.id));
 }
 
 export function toInferred(signals: Signal[]): Inferred {
@@ -144,6 +162,7 @@ function signal(source: Signal["source"], category: Category, criterion: Criteri
     criterion,
     delta,
     text: delta > 0 ? `${label} senin için önemli görünüyor` : `${label} senin için birinci sırada değil gibi`,
+    question: delta > 0 ? `${label} senin için daha mı önemli?` : `${label} senin için ikinci planda mı?`,
     evidence,
   };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { advantageOver, decideGroup, levelFor, makeContext, resetPriorities, withPriorities } from "../src/lib/decision";
-import { activeSignals, inferSignals, toInferred } from "../src/lib/intent";
+import { activeSignals, inferSignals, toInferred, pendingSignals } from "../src/lib/intent";
 import { budgetState, rolesOf, valueCard } from "../src/lib/value";
 import { EMPTY_METRICS } from "../src/lib/items";
 import { distanceKm, walkingMinutes } from "../src/lib/geo";
@@ -275,9 +275,14 @@ describe("intent", () => {
     const choseJardim = [{ ...jardim, status: "chosen" as const }, casa, ...POIS];
     const signals = inferSignals(choseJardim, makeContext(t, choseJardim));
     expect(signals.map((s) => s.id).sort()).toEqual(["stay:location:up", "stay:price:down"]);
-    // ...but an explicit setting always wins: those signals don't apply.
-    expect(activeSignals(signals, t).map((s) => s.id)).toEqual(["stay:price:down"]);
-    expect(activeSignals(signals, { ...t, ignoredSignals: ["stay:price:down"] })).toEqual([]);
+    // A guess changes nothing until confirmed: it's a question first ("Fiyat senin için ikinci planda mı?").
+    expect(activeSignals(signals, t)).toEqual([]);
+    expect(pendingSignals(signals, t).map((s) => s.id)).toEqual(["stay:price:down"]);
+    expect(pendingSignals(signals, t)[0].question).toBe("Fiyat senin için ikinci planda mı?");
+    // Confirmed, it counts; but an explicit setting always wins (location was said), and "Hayır" drops it.
+    const confirmed = { ...t, confirmedSignals: ["stay:price:down", "stay:location:up"] };
+    expect(activeSignals(signals, confirmed).map((s) => s.id)).toEqual(["stay:price:down"]);
+    expect(activeSignals(signals, { ...confirmed, ignoredSignals: ["stay:price:down"] })).toEqual([]);
   });
 
   it("reads patterns in saved stays only with enough evidence", () => {

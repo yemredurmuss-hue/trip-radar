@@ -9,9 +9,12 @@ Bu panonun tek işi karar vermeyi kolaylaştırmak. Her yeni ekran ve bileşen b
   (kartın solunda artılar, sağında eksiler). Gerisi bir dokunuş ötededir: kartın "Detaylar"ı, sonra
   "Tüm detaylar".
 - Aynı şey iki yerde söylenmez. Öneri tek satırdır; uzun gerekçe Karşılaştır'da durur.
-- Seçenekler en iyiden en kötüye alt alta durur, kaydırılmaz; fazlası "+N seçenek daha" arkasındadır. Kart geniştir:
-  görsel solda, ad ve fiyat yanında; altında istediklerin, sonra artılar ve eksiler. Yer varsa iki kart yan yana,
-  aynı sıradakiler aynı boyda.
+- Bir karar tek sıralama değil: üstte tek cümle ("Konum için X (+€60); tasarruf ve sessizlik için Y"), altında
+  yalnız anlamlı kartlar (her önemli şeyde en güçlü seçenek, genel olarak en iyisi); kalanlar "+N seçenek daha".
+- Kart sade (Apple gibi): küçük görsel, neden gösterildiği (küçük büyük harf etiket, tek vurgu rengi), ad, tür ve
+  puan tek gri satır, fiyat; sonra takas satırı (şartları karşılayan en ekonomiğe göre fark, kazandırdığı,
+  vazgeçtirdiği) ve istek işaretleri (✓/✕/?). Puan, artı/eksi listeleri, kanıt Detaylar'da. Kutu içinde kutu yok.
+- Durum tek satır ve renkli zeminle: Seçmeden kontrol et (amber), Kısmi (gri), Uygun değil (kırmızı, soluk kart).
 - Metni kısaltarak değil düzenle okunur yaparız: satırlar tam cümle, 14 px, rahat satır aralığı, kalın yalnız
   eleme sebebinde. Dar sütuna sıkıştırmak yok; artı/eksi yan yana yalnız kart genişse.
 - Küçük işler (eSIM, taksi, transfer, sigorta) tek satırdır; büyük kart uçuşa, konaklamaya, etkinliğe, araca.

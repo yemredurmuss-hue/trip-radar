@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { db, notifyChanged } from "../lib/db";
 import { updateTrip } from "./actions";
-import { CRITERION_LABELS, LEVEL_LABELS, requirementLabel } from "../lib/decision";
-import { activeSignals } from "../lib/intent";
+import { CRITERION_LABELS, LEVEL_LABELS, requirementLabel, saidTopics, WISH_TOPIC, WISHES } from "../lib/decision";
+import { activeSignals, pendingSignals } from "../lib/intent";
 import { CATEGORY_LABELS } from "../lib/items";
 import type { Category, CriterionId, Trip } from "../lib/types";
 import type { Decisions } from "./useDecisions";
@@ -92,11 +92,14 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
   }
   for (const p of decisions?.preferences ?? []) {
     if (/^".+" benim için sorun değil$/.test(p.text) && entries.some((e) => e.key.startsWith("ok:"))) continue;
+    // What the note asks for becomes its own criterion ("Sessizlik: önemli"), unless they set it otherwise.
+    const topics = saidTopics([p.text]);
+    const wishes = WISHES.filter((w) => topics.has(WISH_TOPIC[w]) && trip.priorities?.[w] === undefined).map((w) => CRITERION_LABELS[w]);
     entries.push({
       key: `n:${p.id}`,
       short: p.text,
       text: p.text,
-      detail: p.tripId ? "not · bu gezi" : "not · tüm geziler",
+      detail: `${p.tripId ? "not · bu gezi" : "not · tüm geziler"}${wishes.length ? ` · ${wishes.join(", ")} önemli sayılıyor` : ""}`,
       action: async () => {
         await (await db()).delete("preferences", p.id);
         notifyChanged();
@@ -106,15 +109,36 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
   for (const s of activeSignals(decisions?.signals ?? [], trip)) {
     entries.push({
       key: `s:${s.id}`,
-      short: `${CRITERION_LABELS[s.criterion].toLocaleLowerCase("tr")} ${s.delta > 0 ? "önemli" : "ikinci planda"} (sezgi)`,
+      short: `${CRITERION_LABELS[s.criterion].toLocaleLowerCase("tr")} ${s.delta > 0 ? "önemli" : "ikinci planda"}`,
       text: s.text,
-      detail: `sezdiğim: ${s.evidence}`,
-      change: (t) => ({ ...t, ignoredSignals: [...new Set([...(t.ignoredSignals ?? []), s.id])] }),
+      detail: `onayladığın · ${s.evidence}`,
+      change: (t) => ({
+        ...t,
+        confirmedSignals: (t.confirmedSignals ?? []).filter((id) => id !== s.id),
+        ignoredSignals: [...new Set([...(t.ignoredSignals ?? []), s.id])],
+      }),
     });
   }
+  // A guess from their choices changes nothing until they say yes: asked, one at a time.
+  const guess = pendingSignals(decisions?.signals ?? [], trip)[0];
+  const question = guess && (
+    <div className="intent-question">
+      <span>
+        <b>{guess.question}</b> <span className="muted">{guess.evidence}</span>
+      </span>
+      <span className="intent-answers">
+        <button className="pill-btn outline small" onClick={() => void updateTrip(trip.id, (t) => ({ ...t, confirmedSignals: [...new Set([...(t.confirmedSignals ?? []), guess.id])] }))}>
+          Evet
+        </button>
+        <button className="link-btn quiet" onClick={() => void updateTrip(trip.id, (t) => ({ ...t, ignoredSignals: [...new Set([...(t.ignoredSignals ?? []), guess.id])] }))}>
+          Hayır
+        </button>
+      </span>
+    </div>
+  );
 
   if (!entries.length) {
-    return <div className="intent-card empty">Konuştukça ve seçtikçe seni tanıyacağım; anladıklarımı burada göreceksin.</div>;
+    return question ? <div className="intent-card">{question}</div> : <div className="intent-card empty">Konuştukça ve seçtikçe seni tanıyacağım; anladıklarımı burada göreceksin.</div>;
   }
   const preview = entries.slice(0, 3).map((e) => e.short).join(" · ");
   return (
@@ -127,6 +151,7 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
         </span>
         <span className="muted">{open ? "Gizle" : "Düzenle"}</span>
       </button>
+      {question}
       {open && (
         <ul className="intent-list">
           {entries.map((e) => (

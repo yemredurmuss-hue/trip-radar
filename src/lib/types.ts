@@ -26,7 +26,17 @@ export type CriterionId =
   | "data"
   | "validity"
   | "details"
-  | "ai";
+  | "ai"
+  // What the traveller asks of a place in their own words ("sessiz bir yer istiyoruz"): each its own
+  // criterion, weighed by how strongly it was said, measured from what the pages and guests say.
+  | "quiet"
+  | "clean"
+  | "view"
+  | "space"
+  | "bed"
+  | "breakfast"
+  | "access"
+  | "safety";
 
 /** 0 önemsiz · 1 az · 2 normal · 3 önemli · 4 çok önemli */
 export type PriorityLevel = 0 | 1 | 2 | 3 | 4;
@@ -55,7 +65,9 @@ export type Requirement =
   | { kind: "amenity"; amenity: Amenity }
   | { kind: "free_cancellation" }
   | { kind: "direct_flight" }
-  | { kind: "max_walk"; minutes: number };
+  | { kind: "max_walk"; minutes: number }
+  /** "Kesinlikle gürültü olmasın": a problem on this topic that the page or several guests report rules a place out. */
+  | { kind: "avoid"; topic: FindingTopic };
 
 export const REVIEW_ASPECTS = [
   "location",
@@ -104,7 +116,8 @@ export interface Trip {
   title: string;
   /** Dates the user confirmed. Without them the board shows the range derived from items as an estimate. */
   confirmedDates: { start: string; end: string } | null;
-  budget: { amount: number; currency: string } | null;
+  /** What they'd like to spend (`amount`), and what they won't go over (`ceiling`), when they said one. */
+  budget: { amount: number; currency: string; ceiling?: number | null } | null;
   heroImage: string | null;
   /** Sample data; never receives real captures. */
   demo?: boolean;
@@ -118,6 +131,8 @@ export interface Trip {
   requirements?: Requirement[];
   /** Inferred signals the user dismissed ("bunu yok say"), by signal id. */
   ignoredSignals?: string[];
+  /** Inferred signals the user confirmed ("evet, konum önemli"): only these change weights. */
+  confirmedSignals?: string[];
   /** Findings the traveller said are fine ("sorun değil"): `${listingKey}#${topic}:${polarity}`. */
   acceptedFindings?: string[];
   /** What the traveller decided for each transfer (see legs.ts), by leg key. */

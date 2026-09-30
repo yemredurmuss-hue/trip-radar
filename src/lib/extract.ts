@@ -111,6 +111,8 @@ export const ExtractionSchema = z.object({
     .boolean()
     .optional()
     .describe("Bu bir rezervasyon ya da bilet onayı mı (onay/rezervasyon numarası, 'onaylandı', 'confirmed', e-bilet, PNR)? Arama ya da ilan sayfasıysa false"),
+  booking_reference: z.string().nullable().optional().describe("Onaydaki rezervasyon/bilet/PNR numarası, birebir; yoksa null"),
+  booking_quote: z.string().nullable().optional().describe("Onayı söyleyen ifade, sayfadan ya da ekrandan birebir ('Rezervasyonunuz onaylandı', 'Booking confirmed'); yoksa null"),
 });
 
 export type Extraction = z.infer<typeof ExtractionSchema>;
@@ -131,7 +133,7 @@ Kurallar:
 - category: Kalacak her yer "stay"dir: otel, pansiyon, hostel ve Airbnb/Vrbo/Booking'deki ev, daire, apart, oda kiralamaları. Hangi siteden geldiği önemsizdir. (Airbnb "Deneyimler" gibi turlar "activity"dir.)
 - country ve country_code seçeneğin bulunduğu ülkedir (uçuşta varış ülkesi). Emin değilsen null.
 - Gezi ataması: existing_trips içinde destinasyon ve tarih olarak uyan gezi varsa onun id'sini ver. Yoksa new_trip_title ver (ör. "Portekiz"). Tarihsiz bir restoran/etkinlik, aynı şehri kapsayan geziye gider.
-- booked: Sayfa ya da ekran görüntüsü yapılmış bir rezervasyonun/biletin onayıysa true (onay veya rezervasyon numarası, "Rezervasyonunuz onaylandı", "Booking confirmed", "Your trip is booked", e-bilet, PNR, "Ödendi"). Bu durumda tarihleri, gece sayısını ve ödenen toplam fiyatı onaydan aynen al. Arama, ilan ya da ödeme öncesi sayfa ise false.
+- booked: Sayfa ya da ekran görüntüsü yapılmış bir rezervasyonun/biletin onayıysa true (onay veya rezervasyon numarası, "Rezervasyonunuz onaylandı", "Booking confirmed", "Your trip is booked", e-bilet, PNR, "Ödendi"). Bu durumda tarihleri, gece sayısını ve ödenen toplam fiyatı onaydan aynen al; numarayı booking_reference'a, onayı söyleyen ifadeyi booking_quote'a birebir yaz. Arama, ilan, sepet ya da ödeme öncesi sayfa ise false.
 - need_key: "<kategori>:<şehir>" küçük harf ASCII (ör. "stay:porto", "activity:lisbon"); uçuşlarda "flight:<nereden>-<nereye>" (ör. "flight:ist-opo"). Site adı need_key'e girmez.
 - city: semt ya da ilçe değil, şehir (ör. Ribeira/Bonfim → "Porto"; Funchal'daki bir ev → "Funchal"). Aynı şehirdeki seçenekler aynı şehir adını almalı. Sayfa hangi dilde olursa olsun şehrin Türkçedeki yaygın adını yaz (Lisbon/Lisboa → "Lizbon", Rome → "Roma", Athens → "Atina").`;
 

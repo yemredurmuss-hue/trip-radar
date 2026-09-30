@@ -34,7 +34,7 @@ import { KIND_LABEL, LegRow } from "./LegRow";
 import { Carousel } from "./Carousel";
 import { SettledCard, SwipeCard } from "./SwipeCard";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
-import { standingsOf, type Standing } from "../lib/standing";
+import { choiceOf, type Choice } from "../lib/choice";
 import type { ValueCard } from "../lib/value";
 import { decisionLabel, type Decisions } from "./useDecisions";
 
@@ -95,14 +95,14 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const hiddenLegs = legs.filter((l) => l.kind !== "move" && hidden.has(`leg:${l.key}`));
   const decisionOf = (item: Item) => [...(decisions?.byGroup.values() ?? [])].find((d) => d.options.some((o) => o.item.id === item.id));
   /** One undecided option as a decision card: swipe through them, open one for the reasons. */
-  const card: CardFor = (item, group, decision, standing, onCompareGroup) => (
+  const card: CardFor = (item, group, decision, candidate, onCompareGroup) => (
     <SwipeCard
       key={item.id}
       item={item}
       group={group}
       decision={decision ?? decisionOf(item)}
       decisions={decisions}
-      standing={standing}
+      candidate={candidate}
       onOpen={() => onOpenItem(item)}
       onCompare={onCompareGroup}
     />
@@ -352,8 +352,8 @@ function OptionGroupView({
   const live = !group.booked && decision;
   const comparable = live && decision.options.filter((o) => !o.excluded).length > 1;
   const single = live && decision.status === "single";
-  // The first three, best first, each with where it stands and why.
-  const standings = live && ctx ? standingsOf(decision, ctx) : new Map<string, Standing>();
+  // The strongest option for each thing that matters (the balanced one first), and the rest.
+  const choice = live && ctx && comparable ? choiceOf(decision, ctx) : null;
   const head =
     heading || subtitle ? (
       <span className="group-title">
@@ -374,25 +374,31 @@ function OptionGroupView({
       </div>
     );
   }
-  // Side by side, three at a time (the rest one tap away), best to worst as the engine ranks them (the
-  // one in the plan too: it has its own line above); eliminated and rule-breaking options go last.
-  // The recommendation is one line above them.
+  // The cards worth weighing (the strongest option for each thing that matters, the balanced one first),
+  // the rest one tap away, best first; without a comparison yet, best to worst as ranked.
   const byRank = [...group.items].sort((a, b) => (rank(a) ?? Infinity) - (rank(b) ?? Infinity) || (a.price.amount ?? Infinity) - (b.price.amount ?? Infinity));
-  const shown = showAll ? byRank : byRank.slice(0, SIDE_BY_SIDE);
+  const leadIds = new Set(choice?.candidates.length ? choice.candidates.map((c) => c.option.item.id) : byRank.slice(0, SIDE_BY_SIDE).map((i) => i.id));
+  // The group's own items (the decision's copies may be a render older), candidates in their order.
+  const lead = choice?.candidates.length
+    ? choice.candidates.flatMap((c) => group.items.filter((i) => i.id === c.option.item.id))
+    : byRank.filter((i) => leadIds.has(i.id));
+  const others = byRank.filter((i) => !leadIds.has(i.id));
+  const shown = showAll ? [...lead, ...others] : lead;
+  const candidateOf = (item: Item) => choice?.candidates.find((c) => c.option.item.id === item.id);
   return (
     <div className={nested ? "group nested" : "section"}>
       {decided && renderSettled(decided, decision, change, true)}
       {head && <div className={nested ? "group-head" : "section-head"}>{head}</div>}
-      {!decided && live && card && ctx && <Recommendation card={card} decision={decision} ctx={ctx} alternatives={group.items} onCompare={onCompare} />}
+      {!decided && choice?.headline && ctx && <Headline choice={choice} alternatives={group.items} onCompare={onCompare} />}
       <div className="option-grid">
-        {shown.map((item) => renderCard(item, group.items, decision, standings.get(item.id), comparable || single ? onCompare : undefined))}
+        {shown.map((item) => renderCard(item, group.items, decision, candidateOf(item), comparable || single ? onCompare : undefined))}
       </div>
-      {ranked.length > SIDE_BY_SIDE && (
+      {others.length > 0 && (
         <button className="link-btn more-options" aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>
-          {showAll ? "Daha az göster" : `+${ranked.length - SIDE_BY_SIDE} seçenek daha`}
+          {showAll ? "Daha az göster" : `+${others.length} seçenek daha`}
         </button>
       )}
-      {!decided && !(live && card) && (comparable || single) && (
+      {!decided && !choice?.headline && (comparable || single) && (
         <button className="verdict-line" onClick={onCompare}>
           <span className={single ? "muted" : ""}>{decision!.summary}</span>
           <span className="verdict-cta">{single ? "Kriterleri gör →" : "Karşılaştır →"}</span>
@@ -406,51 +412,39 @@ const SIDE_BY_SIDE = 3;
 const lowerFirst = (s: string) => s.charAt(0).toLocaleLowerCase("tr") + s.slice(1);
 
 /**
- * The answer in one line above the options: which one, and the few things that make it the one
- * ("€45 pahalı ama yakın, ücretsiz iptal ve sessiz odalar"), with the button to take it.
+ * The decision in a sentence above the cards: the strongest option for each thing that matters, with
+ * what it costs or saves ("Konum için Casa Ribeira (+€60, 15 dk daha yakın); tasarruf ve sessizlik
+ * için Bonfim Loft"), then what to check before choosing, and the button to take the first one.
  */
-function Recommendation({
-  card,
-  decision,
-  ctx,
-  alternatives,
-  onCompare,
-}: {
-  card: ValueCard;
-  decision: GroupDecision | undefined;
-  ctx: Decisions["ctx"];
-  alternatives: Item[];
-  onCompare: () => void;
-}) {
-  const pick = card.pick.item;
-  const facts = cardFacts(pick, decision, ctx);
-  // What the traveller asked for and it has comes first ("sessiz odalar, ücretsiz iptal"), then the rest.
-  const asked = facts.needs.filter((n) => n.state === "yes").map((n) => n.text.split(/,| · /)[0]);
-  const good = [...asked, ...facts.pros.map((p) => p.text)].filter((t) => !/ucuz|pahalı/i.test(t)).slice(0, 3).map(lowerFirst);
-  // Money against the option it's weighed against, named, so it never reads as the card's other number.
-  const diff = card.priceDiff;
-  const against = card.alt ? `${card.alt.item.name} karşısında ` : "";
-  const money =
-    diff != null && Math.abs(diff) >= 1
-      ? diff > 0
-        ? `${against}${formatPrice(diff, ctx.currency)} pahalı ama `
-        : `${against}${formatPrice(-diff, ctx.currency)} daha ucuz${good.length ? "; " : ""}`
-      : "";
-  const why = good.length || money ? `${money}${joinTr(good)}` : card.because;
-  const question = decision?.analysis?.question;
+function Headline({ choice, alternatives, onCompare }: { choice: Choice; alternatives: Item[]; onCompare: () => void }) {
+  const first = choice.candidates[0]?.option.item;
+  const pages = new Map(alternatives.map((i) => [i.id, i.url]));
   return (
-    <div className={`reco-line${card.tie ? " tie" : ""}`}>
-      <span className="reco-mark" aria-hidden>
-        ✓
-      </span>
-      <p>
-        <b>{card.tie ? `Başa baş, ${pick.name} biraz önde:` : `Önerim ${pick.name}:`}</b> {why}
-        {question && <span className="reco-question"> · ❓ {question}</span>}
-      </p>
+    <div className="reco-line headline">
+      <div className="reco-text">
+        <p>{choice.headline}</p>
+        {choice.verify.length > 0 && (
+          <ul className="reco-verify" aria-label="Seçmeden kontrol et">
+            {choice.verify.map((v) => (
+              <li key={`${v.itemId}:${v.what}`}>
+                <b>{v.name}:</b> {v.what}
+                {pages.get(v.itemId) && (
+                  <a href={pages.get(v.itemId)!} target="_blank" rel="noreferrer">
+                    {" "}
+                    Sayfada bak ↗
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <span className="reco-actions">
-        <button className="pill-btn dark" onClick={() => void chooseItem(pick, alternatives)}>
-          Seç
-        </button>
+        {first && (
+          <button className="pill-btn primary" onClick={() => void chooseItem(first, alternatives)}>
+            {choice.candidates.length > 1 ? `${first.name} seç` : "Seç"}
+          </button>
+        )}
         <button className="link-btn" onClick={onCompare}>
           Karşılaştır →
         </button>

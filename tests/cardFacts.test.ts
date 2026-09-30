@@ -6,7 +6,7 @@ import { loadDecisions } from "../src/lib/analysis";
 import { cardFacts, hostOf } from "../src/lib/cardFacts";
 import { db, listItems } from "../src/lib/db";
 import { loadDemoTrip } from "../src/lib/demo";
-import { standingsOf } from "../src/lib/standing";
+import { choiceOf, tradeText } from "../src/lib/choice";
 
 async function demo() {
   const id = await loadDemoTrip();
@@ -15,12 +15,11 @@ async function demo() {
   const result = await loadDecisions(trip, items);
   const decisionOf = (name: string) => [...result.decisions.values()].find((d) => d.options.some((o) => o.item.name === name))!;
   const facts = (name: string) => cardFacts(items.find((i) => i.name === name)!, decisionOf(name), result.ctx);
-  const standings = (name: string) => {
-    const d = decisionOf(name);
-    const byId = standingsOf(d, result.ctx);
-    return d.options.filter((o) => byId.has(o.item.id)).map((o) => ({ name: o.item.name, ...byId.get(o.item.id)! }));
+  const choice = (name: string) => {
+    const c = choiceOf(decisionOf(name), result.ctx);
+    return { headline: c.headline, cards: c.candidates.map((x) => [x.option.item.name, x.label, x.trade && tradeText(x.trade, result.ctx.currency)]), rest: c.rest.map((o) => [o.item.name, o.fit]) };
   };
-  return { facts, standings };
+  return { facts, choice };
 }
 
 describe("decision card facts", () => {
@@ -36,29 +35,23 @@ describe("decision card facts", () => {
       out: false,
     });
     expect(jardim.score).toBeGreaterThan(60);
-    // What the traveller asked for comes first, checked: "sessiz bir yer istiyoruz" (said) and free
-    // cancellation (read from their saves), each with what this place has for it.
-    expect(jardim.needs.map((n) => [n.label, n.state, n.text])).toEqual([
-      ["Sessiz", "yes", "Sessiz odalar, iyi uyku · 3 yorum"],
-      ["Ücretsiz iptal", "yes", "Ücretsiz iptal · son gün 5 Ekim"],
-    ]);
+    // What the traveller asked for comes first, checked: "sessiz bir yer istiyoruz" (said). Free
+    // cancellation, read from their saves, is only a question until they confirm it.
+    expect(jardim.needs.map((n) => [n.label, n.state, n.text])).toEqual([["Sessiz", "yes", "Sessiz odalar, iyi uyku · 3 yorum"]]);
     // Then what only this place has (the others' pages don't mention breakfast), then the rest with the
     // specifics ("6 dk", not "Yakın"); nothing a need already said.
     expect(jardim.pros.map((p) => [p.text, Boolean(p.unique)])).toEqual([
       ["Kahvaltı çok iyi", true],
       ["Gezeceğin yerlere 6 dk", false],
+      ["Ücretsiz iptal · son gün 5 Ekim", false],
       ["Yorum puanları yüksek", false],
     ]);
     // Jardim is the average price of the three: no price line either way.
     expect(jardim.cons.map((c) => c.text)).toEqual(["Odalar küçük", "TV yok"]);
     // The river view is Ribeira's alone.
     expect(facts("Ribeira Rooms").pros[0]).toMatchObject({ text: "Odadan nehir manzarası", unique: true });
-    for (const tag of [...jardim.pros, ...jardim.cons].map((l) => l.text)) expect(tag.split(" ").length).toBeLessThanOrEqual(5);
-    // A need the page answers the other way is said as plainly: the noise, no refund.
-    expect(facts("Ribeira Rooms").needs.map((n) => [n.state, n.text])).toEqual([
-      ["no", "Hafta sonu gece gürültüsü · 3 yorum"],
-      ["no", "İade yok"],
-    ]);
+    // A need the page answers the other way is said as plainly: the noise.
+    expect(facts("Ribeira Rooms").needs.map((n) => [n.state, n.text])).toEqual([["no", "Hafta sonu gece gürültüsü · 3 yorum"]]);
 
     const casa = facts("Casa Azul");
     expect(casa.subtitle).toBe("Daire · 1 yatak odası");
@@ -86,18 +79,27 @@ describe("decision card facts", () => {
     expect(hostOf("https://www.booking.com/hotel/pt/x.html?checkin=1")).toBe("booking.com");
     expect(hostOf("not a url")).toBeNull();
   });
-  it("ranks best to worst and says what each of the first three is best at, and why", async () => {
-    const { standings } = await demo();
-    // Porto: Casa Azul is out (construction), so two in play. The first answers what was asked; the
-    // second has what the first doesn't: the river view.
-    expect(standings("Jardim Stay")).toEqual([
-      { name: "Jardim Stay", rank: 1, label: "Senin için en iyi", why: "sessiz odalar, ücretsiz iptal, kahvaltı çok iyi" },
-      { name: "Ribeira Rooms", rank: 2, label: "Odadan nehir manzarası", why: "yalnız bunda" },
-    ]);
-    // Flights, nothing asked: the best one, and the cheaper one with how much it saves.
-    expect(standings("Pegasus · direkt")).toEqual([
-      { name: "Pegasus · direkt", rank: 1, label: "En iyi seçim", why: "en kısa · 4 sa 55 dk, direkt, bagaj dahil" },
-      { name: "TAP · Lizbon aktarmalı", rank: 2, label: "En ucuz", why: "€30 daha ucuz" },
-    ]);
+  it("frames each decision by what matters: the strongest option for each, and the trade against the cheapest fit one", async () => {
+    const { choice } = await demo();
+    // Porto: Casa Azul is out (construction, and they asked for quiet); of the ones that fit, Jardim is
+    // both the cheapest and the quietest: one card says it, the rest wait one tap away.
+    expect(choice("Jardim Stay")).toEqual({
+      headline: "Jardim Stay her açıdan önde: en ekonomik ve en sessiz.",
+      cards: [["Jardim Stay", "En ekonomik ve en sessiz", null]],
+      rest: [
+        ["Ribeira Rooms", "fit"],
+        ["Casa Azul", "unfit"],
+      ],
+    });
+    // Flights, nothing asked: the best overall, and the cheapest with what the saving costs.
+    expect(choice("Pegasus · direkt")).toMatchObject({
+      headline: "Genel olarak Pegasus · direkt (+€30, bagaj dahil); tasarruf için TAP · Lizbon aktarmalı (€30 daha ucuz).",
+      cards: [
+        ["Pegasus · direkt", "Genel olarak en iyi", "+€30 · bagaj dahil, direkt, saatleri daha uygun · vazgeçtiğin: ücret kesintisiyle iade"],
+        ["TAP · Lizbon aktarmalı", "En ekonomik", "€30 daha ucuz · ücret kesintisiyle iade · vazgeçtiğin: bagaj dahil, direkt, saatleri daha uygun"],
+      ],
+    });
+    // eSIMs: the cheapest, and the one with more data for €10 more.
+    expect(choice("Airalo Portekiz 5 GB").headline).toBe("Tasarruf için Airalo Portekiz 5 GB (€10 daha ucuz); veri için Holafly sınırsız (+€10, daha çok veri).");
   });
 });

@@ -89,14 +89,23 @@ geceleri, günleri ve kiralanan araç; şehirler arasındaki uçuş ya da tren b
 uçuş kendi gününe konur; kayıt sayfaları aynı "ihtiyaç" adını verse de dönüş uçuşu gidiş uçuşunu kapatmaz. Gidiş ya da dönüş için kayıt yoksa "Henüz eklenmedi" yazar ve o günün uçuş aramasına link
 verir (arabayla gideceğini söylediysen sormaz). Tarihsiz yerler ve plana oturmayan uçuşlar altta ayrı durur.
 
-**Seçilmemiş her ihtiyaç kartlarla karşılaştırılır.** Uçuş, konaklama, tren, eSIM... seçenekleri en iyiden en
-kötüye alt alta duran geniş kartlardır (arama sonuçları gibi); yer varsa ikişer yan yana. Kartta solda görsel (site
-adı, 0–100 uyum puanı, sırası), yanında ad, ne olduğu ("Otel odası", "07:10–10:05 · Direkt · 4 sa 55 dk") ve bu
-tarihler için fiyat ("€285 · 3 gece toplam · €95 / gece"); altında önce istediklerin (✓/✕/?), sonra artılar ve
-eksiler. Satırlar kısaltılmaz: sayfada okunan şey kendi cümlesiyle, tam yazar ("Hafta sonları gece geç saatlere
-kadar sokaktan gelen yoğun gürültü"); kart geniş olduğu için sıkışmaz, geniş ekranda artılar ve eksiler yan yana
-durur. Eleme sebebi eksilerin başında. Aynı şeyi söyleyen iki satır ("Uzak" ve "Konum zayıf") teke iner. Konaklama
-blokun yalnız bir kısmını kapsıyorsa fiyatın altında yazar ("5 gecelik konaklamanın yalnız 3 gecesi"). **Detaylar** kartın içinde kısa açılır: tek cümleyle neden önde/geride olduğu, karar veren
+**Seçilmemiş her ihtiyaç tek bir sıralamayla değil, önceliklerinle çözülür.** Üstte tek cümle: "Konum için Casa
+Ribeira (+€60, 15 dk daha yakın); tasarruf ve sessizlik için Bonfim Loft (€60 daha ucuz)." Altında yalnız anlamlı
+kartlar: her önemli şeyde (senin söylediklerin önce, sonra varsayılan önemliler) en güçlü seçenek ve genel olarak
+en iyisi. Bir seçenek her şeyde öndeyse tek kart: "Jardim Stay her açıdan önde: en ekonomik ve en sessiz." Kalanlar
+"+N seçenek daha" arkasında, sırasıyla ve durumuyla.
+- **Durum:** Her seçenek önce ayrılır: **Uygun** (kesin şartları karşılıyor), **Seçmeden kontrol et** (bir şart
+  sayfada yazmıyor, fiyat toplam mı gecelik mi belli değil, tek bir misafir ciddi bir şey bildirmiş), **Kısmi**
+  (gecelerin yalnız bir kısmı) ya da **Uygun değil** (şart karşılanmıyor, herkes için olmaz bir sorun, bütçe tavanı).
+- **Kart sade:** küçük görsel, neden gösterildiği ("EN İYİ KONUM", "EN EKONOMİK VE EN SESSİZ"), ad, tür ve puan
+  ("Otel odası · 8,9 Çok iyi · 1.204 yorum"), fiyat ("€285 · 3 gece toplam · €95 / gece"). Sonra takas satırı:
+  şartları karşılayan en ekonomik seçeneğe göre ne kadar fazla ya da az tuttuğu, karşılığında ne kazandırdığı ve
+  neyden vazgeçtirdiği ("+€60 (gecelik +€20) · 15 dk daha yakın, mutfak var · vazgeçtiğin: sessiz sokak · 4 yorum").
+  Sonra istediğin her şey için bir işaret (✓ Mutfak · ✕ Sessiz · ? İptal; sözleri üstüne gelince ve detayda).
+  Puan, artı/eksi listeleri ve kanıt **Detaylar**'da.
+- **Seçmeden doğrula:** Kararı değiştirebilecek eksik bilgi cümlenin altında yazar ("Bonfim Loft: mutfak yazmıyor
+  · Sayfada bak ↗").
+**Detaylar** kartın içinde kısa açılır: tek cümleyle neden önde/geride olduğu, karar veren
 bilgiler (tarih, yer, puan, iptal, giriş/çıkış saati; uçuşta kalkış, varış, süre, aktarma, bagaj), en fazla dört
 artı ve dört "Dikkat". Bütün bulgular kanıtıyla ("Kanıt", "Sorun değil") **Tüm detaylar**da. Duman dedektörü, saç
 kurutma makinesi gibi önemsiz ayrıntılar puana ve kartlara girmez. Kartlardaki her şey kayıttan ya da hesaptan
@@ -138,24 +147,14 @@ gün belli değil" kartı hemen açılır; günü söyleyince ya da bir kiralama
 Rezervasyon onayının ekran görüntüsünü atınca kayıt rezerve olur ve plan onun tarihlerine göre yeniden kurulur
 (4+3 gece iki yer ya da plandan farklı 7 gece tek yer).
 
-**Seçenekler sırayla.** Karşılaştırılan bir ihtiyaç satırın tamamını kullanır: seçenekler kaydırılmadan, en iyisi
-en üstte (üçten fazlası "+N seçenek daha" arkasında), üstünde tek satır öneri: "Önerim Jardim Stay: Ribeira Rooms
-karşısında €45 daha ucuz; sessiz odalar, ücretsiz iptal ve gezeceğin yerlere 6 dk" + Seç + Karşılaştır.
-
 **Kartta önce istediklerin.** "Seni böyle anladım"daki her şey (mutfak, ücretsiz iptal, "sessiz bir yer istiyoruz",
 önemli dediğin konum ya da fiyat) her kartın üstünde tek tek denetlenir: ✓ "Mutfak var", ✕ "İade yok",
 ✕ "Hafta sonu gece gürültüsü · 3 yorum", ? "Mutfak yazmıyor" (sayfa söylemiyorsa "yok" denmez). Bunlar puana
-da girer: istenen olanak (şart dediğin de) puanlanır, istediğin konudaki yorumlar (sessizlik gibi) 2,5 kat sayılır.
+da girer: istenen olanak puanlanır (yazmıyorsa yarım, "yok" diyorsa sıfır); notunda istediğin şey ("sessiz bir yer
+istiyoruz") kendi kriteri olur ("Sessizlik: Önemli") ve o konuda sayfanın ve misafirlerin söyledikleriyle ölçülür.
 Altındaki artı/eksiler somut yazar: "Gezeceğin yerlere 6 dk", "Uzak · merkeze 25 dk", "Puan 8,9/10", "Erken
 kalkış 05:40". Kartın üstündeki site adı (Booking.com ↗, Airbnb ↗) sayfayı yeni sekmede açar; pano yerinde kalır.
 Tarihsiz kaydedilen bir bilet ya da sayfa için sohbette "o bilet 12 Ekim'di" demen yeter, kart kendi gününe geçer.
-
-**En iyiden en kötüye, ilk üçü neden öne çıktığıyla.** Seçenekler puana göre sıralı durur (plandaki de sırasında);
-ilk üçü önde, kalanlar "+N seçenek daha" arkasında. Her birinin üstünde yeri ve neden öne çıktığı yazar:
-**1 · Senin için en iyi** (sessiz odalar, ücretsiz iptal, kahvaltı çok iyi); ikinci ve üçüncü, birincide olmayan
-bir isteğinle ("Mutfak var · 1. seçenekte yok"), yalnız kendinde olan bir özellikle ("Odadan nehir manzarası"), ya da
-en ucuz / fiyat-performans / en kaliteli / en pratik konum olmasıyla. Puanda istediklerin ağır basar ama katı değildir:
-diğerlerinde olmayan güçlü bir artı (1,5 kat sayılır) eksik bir isteği telafi edip seçeneği öne geçirebilir.
 
 **Kiralık araç kendi fotoğrafı ve araba simgesiyle.** Sayfadan kaydedince sayfadaki görünen fotoğraflardan seçeneğin
 kendi fotoğrafı seçilir; yalnız ekran görüntüsü atınca fotoğrafın yeri bulunup görüntüden kesilir.
@@ -267,7 +266,9 @@ aynı bilgiyle hep aynı sonucu verir ve her sayısı açıklanabilir:
 2. **Konum:** Otelden, gezide kaydettiğin yerlere (müze, restoran…) tipik yürüme süresi hesaplanır.
    Yer kaydetmediysen şehir merkezine uzaklık kullanılır. Adresler OpenStreetMap ile ücretsiz konuma çevrilir.
 3. **Adil puan:** Az yorumlu yüksek puan temkinli sayılır (96 yorumla 4,9 ≠ 1.200 yorumla 8,9). Airbnb'nin
-   5'lik puanları Booking ölçeğine göre ayarlanır (4,8 ≈ 8,5).
+   5'lik puanları Booking ölçeğine göre ayarlanır (4,8 ≈ 8,5); puan, kart ve istek kontrolü aynı ölçeği kullanır
+   ("Puan 4,3/5 (≈7,3/10)"). Fiyatı toplam mı gecelik mi belli olmayan konaklama, netleşene kadar fiyatta
+   kıyaslanmaz ve bütçeye girmez.
 4. **Ağırlık:** Her kriterin önemi senin elinde (Önemsiz → Çok önemli). Karşılaştır ekranından ya da
    sohbette ("merkezi olsun", "fiyat o kadar önemli değil") değiştirirsin, puanlar anında yeniden hesaplanır.
 5. **Sayfanın tamamı okunur (Okuyucu, 0.9):** Kaydettiğin her sayfa (hangi site olursa olsun) kayıttan
@@ -285,36 +286,34 @@ aynı bilgiyle hep aynı sonucu verir ve her sayısı açıklanabilir:
    içinde solda bütün artılar, sağda bütün eksiler açılır; her bulgunun "Kanıt"ı (yorum alıntısı ve tarihi)
    ve eksilerde "Sorun değil" vardır. "Sorun değil" dersen o bulgu bu yer için artık aleyhine sayılmaz ve
    asistan bunu öğrenir.
-   - **Ciddi sorun puandan düşer:** Doğrulanmış, güncel ve ciddi bir eksi (ör. yan binada inşaat) puandan
-     doğrudan 8 puan götürür (en fazla iki sorun). Satırında "puandan −8" yazar. Böylece böyle bir yer,
-     on kriterin ortalamasında kaybolup öbürlerine yakın puan almaz.
+   - **Ciddi sorun:** Sayfanın kendisi ya da en az iki misafir söylüyorsa (ör. yan binada inşaat) yer elenir.
+     Tek bir misafirin söylediği ciddi şey puan götürmez; "Seçmeden kontrol et: 1 misafir bildirmiş: …" olur.
 7. **AI değerlendirmesi ve eleme:** AI bulguları, sayıları ve tercihlerini okuyup kararı yazar. Bir
    bulgu senin için bir seçeneği anlamsız kılıyorsa (sessizlik istiyorsun + yan binada inşaat) eler.
    - Eleme hangi bulguya dayandığını söylemek zorunda. Kod, bulgunun sayfada doğrulandığını ve eski
      olmadığını kontrol eder; tutmayan eleme "Kontrol gerekiyor" olarak kalır, karar vermez.
    - Eleme, dayandığı bulgular durdukça geçerlidir; yeni bir seçenek eklenince kaybolmaz.
    - AI'ya ulaşılamazsa son iyi yorumu tarihiyle görünür kalır.
-8. **Başa baş durumda taraf tutar:** İki seçenek önceliklerine göre başa başsa (fark 2 puandan az) daha
-   ucuz olan "Fiyat/performans" diye önerilir: "Puanlar başa baş (77–76); The Gallery ₺3.077 daha ucuz,
-   fiyat/performans onda. Daha iyi konum senin için daha önemliyse Impar."
-9. **Eksik bilgi durdurmaz:** Fiyatı henüz bilinmeyen seçenek bilinenlerle geçici puan alır ve tam
-   bilgili seçeneklerin arkasında sıralanır ("fiyat eksik, gelince yeniden tartılır"). Fark 2 puandan
-   azsa "başa baş" denir. Farklı tarih için alınmış fiyat karşılaştırmaya girmez.
-
-10. **Karar kartı ("değer mi?"):** Her açık ihtiyacın altında "Senin için: X" kartı çıkar. Önerilen seçenek
-   en iyi daha ucuz alternatifle tartılır ve fark somut birimle yazılır ("€45 fazlasına her yolda ~37 dk
-   daha yakın; 3 gecede ~4 saat, saat başı ~€12"). Kartta ayrıca şunlar yer alır: hangi önceliğin bunu
-   değerli kıldığı, "Ama konum o kadar önemli değilse Casa Azul: €45 cebinde kalır" ve seçimle kalan bütçe.
+8. **Tek sıralama değil, öncelik başına en güçlü seçenek:** Puan, bir önceliğin içinde sıralamak ve genel olarak
+   en iyiyi bulmak için kullanılır; başlık değildir. Şartları karşılayan en ekonomik seçenek başlangıç noktasıdır:
+   diğer her kart ona göre "+€60 · karşılığında …" diye yazar. Aynı fiyatlılara "en ekonomik" denmez.
+9. **Eksik bilgi durdurmaz:** Fiyatı henüz belli olmayan seçenek "Seçmeden kontrol et" olur ve kararı
+   değiştirebileceği için cümlenin altında yazar. Farklı tarih için alınmış fiyat karşılaştırmaya girmez.
+10. **Kısmi konaklama:** Gecelerin yalnız bir kısmını kapsayan yer tamamını kapsayanlarla yarışmaz; "yalnız 2/5
+   gece; kalan 3 gece için ayrı yer gerekir" diye ayrı durur.
 11. **Seni böyle anladım:** Söylediklerin (önem, kesin şart, not) ve sezilenler burada kaynağıyla durur.
    Sezilenler iki kaynaktan gelir:
    - Kaydettiklerindeki kalıp: "5 konaklamadan 4'ü ücretsiz iptalli".
    - Motorun önerisinden farklı seçimlerin: "Seçimin Casa Azul, Jardim yerine: €45 daha ucuz".
 
-   Bir sezgi varsayılanı en fazla bir kademe kaydırır ve senin söylediğini asla ezmez. × ile kaldırılır ya
-   da yok sayılır.
-12. **Kesin şartlar:** "Mutfak şart", "iadesiz olmasın", "direkt uçuş", "merkeze en fazla 15 dk"
-   sohbetten kaydedilir. Şarta uymayan seçenek önerilmez. Sayfada görünmeyen bir olanak "yok" sayılmaz,
-   "kontrol et" diye yazılır.
+   Sezgi kendiliğinden hiçbir şeyi değiştirmez: önce sorulur ("İptal esnekliği senin için daha mı önemli?"
+   Evet / Hayır). "Evet" dersen varsayılanı bir kademe kaydırır; senin söylediğini asla ezmez.
+12. **Ne kadar kesin söylediğin:** "şart", "kesinlikle", "... olmasın" kesin şarttır ("Mutfak şart", "iadesiz
+   olmasın", "direkt uçuş", "merkeze en fazla 15 dk", "kesinlikle gürültü olmasın"): uymayan "Uygun değil".
+   Sayfa bir olanağın olmadığını açıkça söylüyorsa "yok", hiç söylemiyorsa "yazmıyor" (kontrol et) denir.
+   "istiyoruz/önemli" bir önceliktir, "olsa iyi olur" hafif bir öncelik.
+13. **Bütçe: hedef ve tavan:** "50 bin civarı" hedeftir; "en fazla 60 bin, kesinlikle aşmam" tavandır. Tavanı
+   aşacak seçenek "Uygun değil: bütçe tavanını ₺X aşar" olur; tavanı asistan kendiliğinden değiştirmez.
 
 Konaklamanın başında gece gece bir şerit durur (gün, hafta günü, şehir; rezerve / seçildi / açık / boş
 renkleriyle). Her gece aralığı kendi bloğunda, tarih başlığıyla gösterilir.

@@ -101,6 +101,13 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] 0.24: okunur kartlar — seçenekler en iyiden alt alta geniş kart (görsel solda, ad/fiyat yanında), satırlar tam
       cümle ve kısaltılmadan; eSIM/taksi/transfer/sigorta tek satır; hero sade (şehirler sırayla, sıfırlar yok,
       "1/2 konaklama"), maliyet çubuğu toplamı sağ ucunda gösterir
+- [x] 0.25: karar yardımı — doğruluk (kapsamı belirsiz fiyat kıyaslanmaz, olanak var/yok/yazmıyor, tek puan ölçeği,
+      tek misafirin ciddi şikâyeti "kontrol et", onay numarasız "rezerve" yok); Uygun / Kontrol et / Kısmi / Uygun
+      değil; notlar kendi kriteri (Sessizlik…), kesinlik derecesi (şart / önemli / az), "olmasın" şartı; bütçe hedef +
+      tavan; sezgiler önce sorulur; öncelik başına en güçlü aday + en ekonomik uyguna göre takas + seçmeden doğrula;
+      sade kart; asistan aynı çerçeveyle konuşur
+- [ ] Sonra: vibe (ışık, teras, yeşillik; fotoğraftan), kısmi konaklama kombinasyonları (2+3 gece = tam plan),
+      gerçek kayıtlarla altın set ölçümü
 - [ ] Sonra: "farka değer mi?" (pahalı seçenek neyi fazladan veriyor), gerçek kayıtlarla altın set ölçümü
 - [ ] Sonraki öneriler (onay bekliyor): 7 sade karşılaştırma, 8 zaman çizelgesinde tekrarların kalkması,
       9 sohbet ↔ pano bağlantısı, 10 sırayla karar ver modu

@@ -37,6 +37,8 @@ const confirmation = (over: Partial<Extraction>): Extraction => ({
   trip: { existing_trip_id: "t1", new_trip_title: null },
   need_key: "stay:porto",
   booked: true,
+  booking_reference: "HMX4K2P9",
+  booking_quote: "Rezervasyonunuz onaylandı",
   ...over,
 });
 

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { cardDetails, cardFacts, durationText, type CardFacts } from "../lib/cardFacts";
-import type { GroupDecision } from "../lib/decision";
+import { ratingOutOf10, type GroupDecision } from "../lib/decision";
 import { formatDateRange, listingKeyOf, metricsOf } from "../lib/items";
 import { readingLine } from "../lib/listing";
 import { NEED_MARK, type NeedCheck } from "../lib/needs";
-import type { Standing } from "../lib/standing";
+import { tradeText, type Candidate } from "../lib/choice";
 import { dateAlert } from "../lib/progress";
 import { rangeOfGroupKey, stayRange } from "../lib/plan";
 import { isRental, isSmall, isTrip } from "../lib/travelKinds";
@@ -239,109 +239,132 @@ interface CardProps {
   group: Item[];
   decision?: GroupDecision;
   decisions: Decisions | null;
-  /** Where it stands among the first three, and why ("Senin için en iyi · sessiz odalar, ücretsiz iptal"). */
-  standing?: Standing;
+  /** Why it's shown ("En iyi konum", "En ekonomik ve en sessiz") and what it costs or saves against the cheapest fit. */
+  candidate?: Candidate;
   onOpen: () => void;
   onCompare?: () => void;
 }
 
+const FIT_WORDS = { check: "Seçmeden kontrol et", partial: "Kısmi", unfit: "Uygun değil" } as const;
+
 /**
- * One undecided option as a decision card: where it's from, what it is, what it costs (in total and
- * per night), and the two things for and against it. "Detaylar" opens the reasons and every pro and
- * con with its evidence, inside the card; "Seç" puts it in the plan.
+ * One option, calm and clear: why it's here (the lens it's strongest on), its name and price, what it
+ * costs or saves against the cheapest one that meets the musts and what that buys, and a check mark
+ * for each thing asked for. The reasons, the pros and cons and the score are one tap away.
  */
-export function SwipeCard({ item, group, decision, decisions, standing, onOpen, onCompare }: CardProps) {
+export function SwipeCard({ item, group, decision, decisions, candidate, onOpen, onCompare }: CardProps) {
   const [open, setOpen] = useState(false);
   const facts = cardFacts(item, decision, decisions?.ctx);
+  const option = decision?.options.find((o) => o.item.id === item.id);
   const { nights, url: datedUrl } = datedLink(item, decision);
-  // Only what changes the decision is flagged on the picture: ruled out, provisional, the best pick.
-  const flag = facts.status && facts.status.tone === "warning" ? facts.status : null;
-  const place = !facts.out && !flag ? (standing ?? (facts.best ? { rank: 1, label: "En uygun", why: null } : null)) : null;
+  const fit = option?.fit ?? "fit";
+  const currency = decisions?.ctx.currency ?? "EUR";
+  const trade = candidate?.trade ?? null;
+  // Without a trade line, the one or two things it's best known for.
+  const highlights = !trade ? facts.pros.slice(0, 2).map((p) => p.text) : [];
+  const rating = ratingOf(item);
+  const meta = [facts.subtitle, rating ? `${rating.value} ${rating.word}${rating.count ? ` · ${rating.count}` : ""}` : null].filter(Boolean).join(" · ");
 
   return (
-    <article className={`swipe-card${facts.best ? " best" : ""}${facts.out ? " out" : ""}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
-      <div className="sc-top">
-      <div className="sc-media">
+    <article className={`swipe-card opt fit-${fit}${candidate?.rank === 1 ? " first" : ""}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
+      <div className="opt-main">
         <FallbackImg
-          className="sc-img"
+          className="opt-img"
           src={facts.image}
           fallback={
-            <div className={`sc-img placeholder cat-${item.category}`}>
-              <CategoryIcon category={isRental(item) ? "car" : item.category} size={40} />
+            <div className={`opt-img placeholder cat-${item.category}`}>
+              <CategoryIcon category={isRental(item) ? "car" : item.category} size={30} />
             </div>
           }
         />
-        <SourceBadge source={facts.source} href={datedUrl} />
-        {facts.score != null && (
-          <span className={`sc-score${facts.best ? " best" : ""}`} title="Sana uygunluk puanı (100 üzerinden): istediklerin, önceliklerin ve okunan yorumlar">
-            <b>{facts.score}</b>
-            <small>puan</small>
-          </span>
-        )}
-        {flag && <span className="sc-flag warning">{flag.text}</span>}
-        {place && (
-          <span className={`sc-flag rank-${place.rank}`}>
-            <b className="sc-rank" aria-label={`${place.rank}. sırada`}>
-              {place.rank}
-            </b>
-            {place.label}
-          </span>
-        )}
-      </div>
-        <div className="sc-head">
-          <h3 className="sc-title">{facts.title}</h3>
-          {facts.subtitle && <div className="sc-sub">{facts.subtitle}</div>}
-          {/* The first one's reasons are the checks and pluses right below; the others say what they have over it. */}
-          {place?.why && place.rank > 1 && (
-            <div className="sc-why">
-              <b>{place.label}:</b> {place.why}
-            </div>
-          )}
-          <div className="sc-price">
+        <div className="opt-text">
+          {candidate && <div className="opt-label">{candidate.label}</div>}
+          <h3 className="opt-name sc-title">{facts.title}</h3>
+          {meta && <div className="opt-meta">{meta}</div>}
+          <div className="opt-price sc-price">
             <Price price={facts.price} dated={Boolean(item.dates.start || item.flight?.departure)} />
           </div>
         </div>
       </div>
-      <div className="sc-body">
-        <Needs needs={facts.needs} />
-        <ProsCons pros={facts.pros} cons={facts.cons} />
-        {open && (
-          <div className="sc-details">
-            <Details item={item} decision={decision} decisions={decisions} status={flag ? null : facts.status} />
-            {nights && (
-              <p className="muted small-note">
-                Tarihsiz kaydedildi; {formatDateRange(nights.start, nights.end)} için geçici karşılaştırılıyor. Tarihlerle açıp tekrar kaydedersen
-                gerçek fiyat işlenir.
-              </p>
-            )}
-            <Links item={item} decision={decision} onOpen={onOpen} onCompare={onCompare} />
-          </div>
-        )}
-        <div className="sc-foot">
+      {trade && (trade.money || trade.gains.length || trade.losses.length) && (
+        <p className="opt-trade" title={`${trade.vs} ile karşılaştırınca: ${tradeText(trade, currency)}`}>
+          {[
+            trade.money && (
+              <b key="m" className={trade.diff != null && trade.diff < 0 ? "cheaper" : ""}>
+                {trade.money}
+              </b>
+            ),
+            trade.gains.length > 0 && <span key="g">{trade.gains.join(", ")}</span>,
+            trade.losses.length > 0 && (
+              <span key="l" className="opt-loss">
+                vazgeçtiğin: {trade.losses.join(", ")}
+              </span>
+            ),
+          ]
+            .filter(Boolean)
+            .flatMap((node, i) => (i ? [<span key={`s${i}`} className="sep">{" · "}</span>, node] : [node]))}
+        </p>
+      )}
+      {highlights.length > 0 && <p className="opt-trade quiet">{highlights.join(" · ")}</p>}
+      {facts.needs.length > 0 && (
+        <ul className="opt-checks sc-needs" aria-label="İstediklerin">
+          {facts.needs.slice(0, 5).map((n) => (
+            <li key={n.key} className={`need ${n.state}`} title={n.text}>
+              <i aria-hidden>{NEED_MARK[n.state]}</i>
+              <span>{n.label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {fit !== "fit" && option && option.fitNotes.length > 0 && (
+        <p className={`opt-status ${fit}`}>
+          <b>{FIT_WORDS[fit]}:</b> {option.fitNotes.join(" · ")}
+        </p>
+      )}
+      {open && (
+        <div className="sc-details">
+          {facts.score != null && (
+            <p className="opt-score">
+              Uyum puanı <b>{facts.score}</b>/100 <span className="muted">· önceliklerine göre</span>
+            </p>
+          )}
+          <Details item={item} decision={decision} decisions={decisions} status={facts.status} />
+          {nights && (
+            <p className="muted small-note">
+              Tarihsiz kaydedildi; {formatDateRange(nights.start, nights.end)} için geçici karşılaştırılıyor. Tarihlerle açıp tekrar kaydedersen
+              gerçek fiyat işlenir.
+            </p>
+          )}
+          <Links item={item} decision={decision} onOpen={onOpen} onCompare={onCompare} />
+        </div>
+      )}
+      <div className="sc-foot opt-foot">
+        <span className="opt-links">
           <button className="link-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
             {open ? "Kapat ▴" : "Detaylar ▾"}
           </button>
-          {item.status === "booked" ? (
-            <span className="tone-success">✓ {bookedWord(item)}</span>
-          ) : item.status === "chosen" ? (
-            <button className="pill-btn soft" onClick={() => void setItemStatus(item, "saved")} title="Seçimi geri al">
-              Planda ✓
+          <SourceBadge source={facts.source} href={datedUrl} />
+        </span>
+        {item.status === "booked" ? (
+          <span className="tone-success">✓ {bookedWord(item)}</span>
+        ) : item.status === "chosen" ? (
+          <button className="pill-btn soft" onClick={() => void setItemStatus(item, "saved")} title="Seçimi geri al">
+            Planda ✓
+          </button>
+        ) : item.status === "dismissed" ? (
+          <button className="pill-btn outline" onClick={() => void setItemStatus(item, "saved")} title="Seçeneklere geri al">
+            Geri al
+          </button>
+        ) : (
+          <span className="sc-actions">
+            <button className="link-btn quiet" onClick={() => void setItemStatus(item, "dismissed")} title="Seçeneklerden çıkar; Elenenler'de durur">
+              Ele
             </button>
-          ) : item.status === "dismissed" ? (
-            <button className="pill-btn outline" onClick={() => void setItemStatus(item, "saved")} title="Seçeneklere geri al">
-              Geri al
+            <button className="pill-btn primary" onClick={() => void chooseItem(item, group)}>
+              Seç
             </button>
-          ) : (
-            <span className="sc-actions">
-              <button className="link-btn quiet" onClick={() => void setItemStatus(item, "dismissed")} title="Seçeneklerden çıkar; Elenenler'de durur">
-                Ele
-              </button>
-              <button className="pill-btn dark" onClick={() => void chooseItem(item, group)}>
-                Seç
-              </button>
-            </span>
-          )}
-        </div>
+          </span>
+        )}
       </div>
     </article>
   );
@@ -357,8 +380,8 @@ const RATING_WORDS: [number, string][] = [
 /** "9,4 · Harika · 1.002 yorum" from the page's rating, on a 10-point scale. */
 function ratingOf(item: Item): { value: string; word: string; count: string | null } | null {
   const r = item.rating;
-  if (r.value == null || !r.scale) return null;
-  const ten = (r.value / r.scale) * 10;
+  const ten = ratingOutOf10(item)?.value;
+  if (r.value == null || ten == null) return null;
   return {
     value: r.value.toLocaleString("tr-TR", { maximumFractionDigits: 1 }),
     word: RATING_WORDS.find(([min]) => ten >= min)![1],

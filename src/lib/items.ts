@@ -97,6 +97,10 @@ export function pageGeo(capture: Capture): Item["geo"] {
 const finite = (n: number | null | undefined) => (typeof n === "number" && Number.isFinite(n) ? n : null);
 const httpUrl = (u: string | null | undefined) => (u && /^https?:\/\//i.test(u.trim()) ? u.trim() : null);
 
+/** A confirmation the extraction can show: its reference number, or the words that say it. */
+const confirmed = (x: Pick<Extraction, "booked" | "booking_reference" | "booking_quote">) =>
+  Boolean(x.booked && (x.booking_reference?.trim() || x.booking_quote?.trim()));
+
 export function buildItem(
   extraction: Extraction,
   capture: Capture,
@@ -193,9 +197,14 @@ export function buildItem(
     concerns: x.concerns.slice(0, 3),
     reviewSummary: x.review_summary,
     missing: x.missing,
-    // A booking confirmation (the page after paying, or its screenshot) is a booking, not an option.
-    status: x.booked ? "booked" : "saved",
-    statusNote: x.booked ? "Onay ekranından" : null,
+    // A booking confirmation (the page after paying, or its screenshot) is a booking, not an option; but
+    // only with its reference or its own words for it: a checkout page that looks like one stays chosen.
+    status: confirmed(x) ? "booked" : x.booked ? "chosen" : "saved",
+    statusNote: confirmed(x)
+      ? `Onay ekranından${x.booking_reference?.trim() ? ` · ${x.booking_reference.trim()}` : ""}`
+      : x.booked
+        ? "Onay gibi görünüyor ama rezervasyon numarası okunamadı; rezerve ettiysen işaretle"
+        : null,
     createdAt: now,
     updatedAt: now,
   };

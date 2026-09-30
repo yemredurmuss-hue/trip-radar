@@ -6,7 +6,11 @@ import {
   DEFAULT_LEVELS,
   LEVEL_LABELS,
   inferredKey,
+  isWish,
+  levelFor,
+  levelSource,
   resetPriorities,
+  saidOf,
   withPriorities,
   type GroupDecision,
   type Inferred,
@@ -42,8 +46,13 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
   const single = d.status === "single";
   const columns = d.options.filter((o) => !o.excluded).slice(0, MAX_COLUMNS);
   const excluded = d.options.filter((o) => o.excluded);
+  // A wish nobody asked for isn't "missing information" (the ones asked for, from a note or set here, are).
   const unmeasured = (Object.keys(DEFAULT_LEVELS[d.category]) as CriterionId[]).filter(
-    (c) => !d.criteria.includes(c) && c !== "ai" && (c !== "amenities" || trip.wantedAmenities?.length),
+    (c) =>
+      !d.criteria.includes(c) &&
+      c !== "ai" &&
+      (c !== "amenities" || trip.wantedAmenities?.length) &&
+      (!isWish(c) || levelFor(trip, d.category, c, inferred, ctx ? saidOf(ctx) : undefined) > 0),
   );
   const levelOf = (c: CriterionId) => columns[0]?.parts.find((p) => p.criterion === c)?.level ?? 0;
 
@@ -139,6 +148,9 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
                   <th className="crit-col">
                     <div>{CRITERION_LABELS[c]}</div>
                     <LevelPicker level={levelOf(c)} onChange={(level) => void setLevel(c, level)} />
+                    {ctx && levelSource(trip, d.category, c, inferred, saidOf(ctx)) === "said" && (
+                      <div className="muted level-note">notundan · seçersen senin ayarın olur</div>
+                    )}
                     {inferred?.has(inferredKey(d.category, c)) && (
                       <div className="muted level-note" title={inferred.get(inferredKey(d.category, c))!.evidence}>
                         sezgi · seçersen senin ayarın olur

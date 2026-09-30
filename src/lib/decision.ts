@@ -36,14 +36,38 @@ export const CRITERION_LABELS: Record<CriterionId, string> = {
   validity: "Geçerlilik",
   details: "Yorum ve detaylar",
   ai: "AI değerlendirmesi",
+  quiet: "Sessizlik",
+  clean: "Temizlik",
+  view: "Manzara",
+  space: "Ferahlık",
+  bed: "Yatak ve uyku",
+  breakfast: "Kahvaltı ve yemek",
+  access: "Erişim",
+  safety: "Güvenlik",
 };
+
+/** The finding topic each wish is measured on. */
+export const WISH_TOPIC = {
+  quiet: "noise",
+  clean: "cleanliness",
+  view: "view",
+  space: "space",
+  bed: "bed",
+  breakfast: "food",
+  access: "access",
+  safety: "safety",
+} as const satisfies Partial<Record<CriterionId, FindingTopic>>;
+export type WishId = keyof typeof WISH_TOPIC;
+export const WISHES = Object.keys(WISH_TOPIC) as WishId[];
+export const isWish = (c: CriterionId): c is WishId => c in WISH_TOPIC;
 
 export const LEVEL_LABELS = ["Önemsiz", "Az", "Normal", "Önemli", "Çok önemli"] as const;
 const LEVEL_WEIGHT = [0, 0.5, 1, 2, 3];
 
 /** Which criteria apply to a category, and how much they matter by default. */
 export const DEFAULT_LEVELS: Record<Category, Partial<Record<CriterionId, PriorityLevel>>> = {
-  stay: { price: 3, location: 3, rating: 2, comfort: 2, cancellation: 2, amenities: 2, details: 2, ai: 1 },
+  // Wishes weigh nothing until the traveller asks for them (a note, or "sessizlik önemli").
+  stay: { price: 3, location: 3, rating: 2, comfort: 2, cancellation: 2, amenities: 2, details: 2, ai: 1, quiet: 0, clean: 0, view: 0, space: 0, bed: 0, breakfast: 0, access: 0, safety: 0 },
   flight: { price: 3, duration: 2, stops: 2, schedule: 2, baggage: 2, cancellation: 1, ai: 1 },
   activity: { price: 2, rating: 3, location: 2, cancellation: 1, details: 2, ai: 1 },
   food: { rating: 3, location: 2, price: 1, details: 2, ai: 1 },
@@ -99,21 +123,43 @@ function explicitLevel(trip: Trip, category: Category, criterion: CriterionId): 
   return trip.categoryPriorities?.[category]?.[criterion] ?? trip.priorities?.[criterion];
 }
 
-/** What the traveller said (chat or comparison view) wins; else the default, nudged by signals. */
-export function levelFor(trip: Trip, category: Category, criterion: CriterionId, inferred?: Inferred): PriorityLevel {
+/** A note that asks for something ("sessiz bir yer istiyoruz", "merkezi olsun") makes it "Önemli". */
+const SAID_LEVEL: PriorityLevel = 3;
+/** Criteria a note can raise, by the topic the note speaks of. */
+const SAID_CRITERIA: Partial<Record<CriterionId, string>> = { ...WISH_TOPIC, location: "location", cancellation: "cancellation" };
+
+/** The level a note sets, if the traveller's notes speak of this criterion. */
+function saidLevel(criterion: CriterionId, said: Set<string> | undefined): PriorityLevel | undefined {
+  const topic = SAID_CRITERIA[criterion];
+  return topic && said?.has(topic) ? SAID_LEVEL : undefined;
+}
+
+/**
+ * What the traveller said wins (chat or comparison view); then what their notes ask for ("sessiz bir
+ * yer istiyoruz": Sessizlik "Önemli"); else the default, nudged by the signals they confirmed.
+ */
+export function levelFor(trip: Trip, category: Category, criterion: CriterionId, inferred?: Inferred, said?: Set<string>): PriorityLevel {
   const fallback = DEFAULT_LEVELS[category][criterion];
   if (fallback === undefined) return 0; // not applicable to this category
   if (criterion === "amenities" && !wantedAmenities(trip).length) return 0;
   const explicit = explicitLevel(trip, category, criterion);
   if (explicit !== undefined) return explicit;
+  const fromNote = saidLevel(criterion, said);
+  if (fromNote !== undefined) return Math.max(fallback, fromNote) as PriorityLevel;
   const delta = inferred?.get(inferredKey(category, criterion))?.delta ?? 0;
   return Math.min(4, Math.max(0, fallback + delta)) as PriorityLevel;
 }
 
-export function levelSource(trip: Trip, category: Category, criterion: CriterionId, inferred?: Inferred): "explicit" | "inferred" | "default" {
+export function levelSource(trip: Trip, category: Category, criterion: CriterionId, inferred?: Inferred, said?: Set<string>): "explicit" | "said" | "inferred" | "default" {
   if (explicitLevel(trip, category, criterion) !== undefined) return "explicit";
+  const fallback = DEFAULT_LEVELS[category][criterion];
+  const fromNote = saidLevel(criterion, said);
+  if (fallback !== undefined && fromNote !== undefined && fromNote > fallback) return "said";
   return inferred?.has(inferredKey(category, criterion)) ? "inferred" : "default";
 }
+
+/** The traveller's notes as topics, once per context. */
+export const saidOf = (ctx: Pick<DecisionContext, "preferences"> & { said?: Set<string> }): Set<string> => ctx.said ?? saidTopics(ctx.preferences ?? []);
 
 /** Applies priority changes to a trip: a category override, or (category null) every category. */
 export function withPriorities(
@@ -169,6 +215,8 @@ export interface DecisionContext {
   inferred: Inferred;
   /** What was read on each place's pages, by listing key (see listing.ts). */
   listings: Map<string, Listing>;
+  /** The topics the traveller's notes ask for (see saidTopics). */
+  said?: Set<string>;
   today: string;
   /** Stays: the nights their group is compared over; prices count per night for these (set per group). */
   groupRange?: { start: string; end: string } | null;
@@ -205,6 +253,7 @@ export function makeContext(
     cityCenters: extra.cityCenters ?? {},
     analyses: new Map((extra.analyses ?? []).map((a) => [a.needKey, a])),
     preferences: extra.preferences ?? [],
+    said: saidTopics(extra.preferences ?? []),
     inferred: extra.inferred ?? new Map(),
     // Trivia read on a page (no smoke alarm, no hair dryer) never weighs on a decision.
     listings: new Map([...(extra.listings ?? new Map<string, Listing>())].map(([k, l]) => [k, usefulListing(l)])),
@@ -245,6 +294,18 @@ function reviewFraction(score: number, scale: number, provider: string | null): 
   return { fraction: clamp01(score / scale), calibrated: false };
 }
 
+/**
+ * A review score out of 10, the same on every site (Airbnb's 5 points calibrated as above): the one
+ * scale the score, the card and the checks all use. Null without a score.
+ */
+export function ratingOutOf10(item: Pick<Item, "rating" | "provider">): { value: number; calibrated: boolean } | null {
+  const r = item.rating;
+  if (r.value == null) return null;
+  const scale = r.scale ?? (r.value <= 5 ? 5 : 10);
+  const { fraction, calibrated } = reviewFraction(r.value, scale, item.provider);
+  return { value: fraction * 10, calibrated };
+}
+
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
@@ -264,6 +325,9 @@ function comparablePrice(item: Item, ctx: DecisionContext): { amount: number; or
   const groupNights = item.category === "stay" && ctx.groupRange ? nightsBetween(ctx.groupRange.start, ctx.groupRange.end) : 0;
   const own = stayRange(item);
   const ownCount = own ? nightsBetween(own.start, own.end) : 0;
+  // A stay of several nights priced without saying for what: €95 may be a night or all of them. Not
+  // compared (nor counted in the budget) until it's clear.
+  if (p.scope === "unknown" && item.category === "stay" && Math.max(ownCount, groupNights) > 1) return null;
   if (p.scope === "per_night") {
     const nights = groupNights || ownCount || ctx.tripNights;
     if (!nights) return null;
@@ -391,15 +455,18 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
     case "amenities": {
       const wanted = wantedAmenities(ctx.trip);
       if (!wanted.length) return null;
-      const known = amenitiesOf(item, ctx);
-      const has = wanted.filter((a) => known.includes(a));
-      const lacking = wanted.filter((a) => !known.includes(a));
-      return {
-        value: has.length / wanted.length,
-        display: `${has.length}/${wanted.length}${lacking.length ? ` · yok/bilinmiyor: ${lacking.join(", ")}` : ""}`,
-        mode: "absolute",
-        absolute: has.length / wanted.length,
-      };
+      // Not said is not missing: an amenity the page doesn't mention counts half, one it says is missing none.
+      const states = wanted.map((a) => [a, amenityState(item, a, ctx)] as const);
+      const value = states.reduce((sum, [, st]) => sum + (st === "yes" ? 1 : st === "unknown" ? 0.5 : 0), 0) / wanted.length;
+      const list = (st: AmenityState) => states.filter(([, x]) => x === st).map(([a]) => a);
+      const display = [
+        list("yes").length ? `var: ${list("yes").join(", ")}` : null,
+        list("no").length ? `yok: ${list("no").join(", ")}` : null,
+        list("unknown").length ? `yazmıyor: ${list("unknown").join(", ")}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      return { value, display, mode: "absolute", absolute: value };
     }
     case "duration": {
       const minutes = m.durationMinutes;
@@ -459,8 +526,8 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
       const counted = listing.findings.filter((f) => f.verified);
       if (!counted.length) return null;
       const accepted = new Set(ctx.trip.acceptedFindings ?? []);
-      // What they asked for ("sessiz bir yer") weighs more: a quiet room, or a noisy street.
-      const said = saidTopics(ctx.preferences);
+      // What a wish measures ("sessiz bir yer": the noise findings) counts there, not here as well.
+      const wished = new Set(WISHES.filter((w) => levelFor(ctx.trip, item.category, w, ctx.inferred, saidOf(ctx)) > 0).map((w) => WISH_TOPIC[w] as string));
       // A plus none of the others has (a river view, a roof terrace) can outweigh a missing nicety.
       const others = (ctx.groupListings ?? []).filter((l) => l.key !== listing.key && l.readAt && l.findings.length);
       const standsOut = (f: Finding) => f.polarity === "positive" && others.length > 0 && !others.some((l) => l.findings.some((o) => o.verified && saysSame(f, o)));
@@ -468,7 +535,8 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
       let minus = 0;
       for (const f of counted) {
         if (f.polarity === "negative" && accepted.has(acceptKey(listing.key, f))) continue;
-        const w = findingWeight(f, listing, ctx.today) * (touchesAny(f, said) ? SAID_WEIGHT : 1) * (standsOut(f) ? STANDOUT_WEIGHT : 1);
+        if (touchesAny(f, wished)) continue;
+        const w = findingWeight(f, listing, ctx.today) * (standsOut(f) ? STANDOUT_WEIGHT : 1);
         if (f.polarity === "positive") plus += w;
         else minus += w;
       }
@@ -477,6 +545,15 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
       const cons = counted.length - pros;
       return { value, display: `${pros} artı · ${cons} eksi`, mode: "absolute", absolute: value };
     }
+    case "quiet":
+    case "clean":
+    case "view":
+    case "space":
+    case "bed":
+    case "breakfast":
+    case "access":
+    case "safety":
+      return wishMeasure(criterion, item, ctx);
     case "ai": {
       if (!analysis || analysis.error) return null;
       const judged = analysis?.aiScores.find((s) => s.itemId === item.id);
@@ -485,6 +562,42 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
       return { value, display: `${judged.score}/10 · ${judged.note}`, mode: "absolute", absolute: value };
     }
   }
+}
+
+/** Review sub-scores that speak to a wish when no finding does (Booking's "Temizlik 9,2"). */
+const WISH_ASPECT: Partial<Record<WishId, string>> = { clean: "cleanliness", quiet: "noise", breakfast: "food" };
+
+/**
+ * A wish measured on its topic: what the page and its guests say for it and against it, weighed by
+ * code (how serious, how many say it, how recent); the problem well backed outweighs a nice word.
+ * Nothing said on it: unknown (null), never "fine". The strongest line is what the card shows.
+ */
+function wishMeasure(wish: WishId, item: Item, ctx: DecisionContext): Measure | null {
+  const topic = WISH_TOPIC[wish];
+  const listing = ctx.listings.get(listingKeyOf(item));
+  const accepted = new Set(ctx.trip.acceptedFindings ?? []);
+  const found = listing?.readAt
+    ? listing.findings.filter(
+        (f) => f.verified && touchesTopic(f, topic) && !evidenceOf(f, listing, ctx.today).stale && !(f.polarity === "negative" && accepted.has(acceptKey(listing.key, f))),
+      )
+    : [];
+  if (found.length && listing) {
+    const weigh = (f: Finding) => findingWeight(f, listing, ctx.today);
+    const plus = found.filter((f) => f.polarity === "positive").reduce((n, f) => n + weigh(f), 0);
+    const minus = found.filter((f) => f.polarity === "negative").reduce((n, f) => n + weigh(f), 0);
+    const value = clamp01(0.5 + (plus - minus) / (2 * Math.max(4, plus + minus)));
+    // The line that says most, on the side that wins.
+    const side = found.filter((f) => (minus >= plus ? f.polarity === "negative" : f.polarity === "positive"));
+    const lead = [...side].sort((a, b) => weigh(b) - weigh(a))[0];
+    const n = evidenceOf(lead, listing, ctx.today).count;
+    return { value, display: `${lead.text}${n ? ` · ${n} yorum` : ""}`, mode: "absolute", absolute: value };
+  }
+  const aspect = WISH_ASPECT[wish] && metricsOf(item).reviewAspects.find((a) => a.aspect === WISH_ASPECT[wish] && a.score && a.scale);
+  if (aspect) {
+    const { fraction } = reviewFraction(aspect.score!, aspect.scale!, item.provider);
+    return { value: fraction, display: `${CRITERION_LABELS[wish]} puanı ${decimal(aspect.score!)}/${aspect.scale}`, mode: "absolute", absolute: qualityScore(fraction) };
+  }
+  return null;
 }
 
 /**
@@ -503,6 +616,47 @@ export function amenitiesOf(item: Item, ctx: Pick<DecisionContext, "listings" | 
   return [...new Set([...listed, ...extra])];
 }
 
+/** Words that name an amenity on a page or in a finding ("Mutfak yok", "No kitchen"). */
+const AMENITY_WORDS: Record<Amenity, RegExp> = {
+  mutfak: /mutfak|kitchen|cozinha|cocina/i,
+  klima: /klima|air ?con|a\/c\b|ar condicionado/i,
+  "ücretsiz wifi": /wi-?fi|internet/i,
+  "kahvaltı dahil": /kahvaltı|breakfast/i,
+  otopark: /otopark|park yeri|parking|estacionamento/i,
+  asansör: /asansör|elevator|\blift\b|elevador/i,
+  "çamaşır makinesi": /çamaşır|washing machine|washer|máquina de lavar/i,
+  havuz: /havuz|pool|piscina/i,
+  "balkon/teras": /balkon|teras|balcony|terrace|varanda/i,
+  manzara: /manzara|\bview\b|vista/i,
+  "iş alanı": /çalışma alanı|iş alanı|çalışma masası|desk|workspace/i,
+  "evcil hayvan kabul": /evcil|\bpets?\b/i,
+  "24 saat resepsiyon": /resepsiyon|reception|front desk/i,
+  "havalimanı servisi": /havalimanı servis|airport shuttle|shuttle/i,
+  "engelli erişimi": /engelli|tekerlekli|wheelchair|accessib/i,
+  sessiz: /sessiz|quiet/i,
+};
+/** What says a thing is absent: "yok", "dahil değil", "no ...". */
+const ABSENT = /\byok|yoktu|bulunmuyor|mevcut değil|dahil değil|olmadığı|\bno\b|not available|not included|without|\bsem\b/i;
+
+export type AmenityState = "yes" | "no" | "unknown";
+
+/**
+ * Whether a place has an amenity: listed (or read, like a praised quiet) is yes; the page or guests
+ * saying it's missing ("Mutfak yok", "Dahil değil: klima") is no; a list that doesn't mention it is
+ * unknown, never no. The same answer everywhere: the score, the requirement and the card.
+ */
+export function amenityState(item: Item, amenity: Amenity, ctx: Pick<DecisionContext, "listings" | "today">): AmenityState {
+  if (amenitiesOf(item, ctx).includes(amenity)) return "yes";
+  const listing = ctx.listings.get(listingKeyOf(item));
+  if (!listing?.readAt) return "unknown";
+  const said = listing.findings.filter((f) => f.verified && f.polarity === "negative" && !evidenceOf(f, listing, ctx.today).stale);
+  if (amenity === "sessiz") {
+    // Noise that several guests (or the page) report is a no; one guest's night is only a doubt.
+    return said.some((f) => touchesTopic(f, "noise") && (f.source !== "reviews" || evidenceOf(f, listing, ctx.today).count >= 2)) ? "no" : "unknown";
+  }
+  return said.some((f) => AMENITY_WORDS[amenity].test(f.text) && ABSENT.test(f.text)) ? "no" : "unknown";
+}
+
 /** Points taken off per serious problem (a verified, recent, high-severity con the traveller didn't accept). */
 export const SERIOUS_PENALTY = 8;
 const MAX_SERIOUS = 2;
@@ -513,8 +667,24 @@ export function seriousIssues(item: Item, ctx: Pick<DecisionContext, "listings" 
   if (!listing?.readAt) return [];
   const accepted = new Set(ctx.trip.acceptedFindings ?? []);
   return listing.findings
-    .filter((f) => f.polarity === "negative" && f.severity === "high" && isDecisive(f, listing, ctx.today) && !accepted.has(acceptKey(listing.key, f)))
+    .filter((f) => f.polarity === "negative" && f.severity === "high" && isDecisive(f, listing, ctx.today) && !accepted.has(acceptKey(listing.key, f)) && backed(f, listing, ctx.today))
     .slice(0, MAX_SERIOUS);
+}
+
+/** Said by the page itself or by at least two guests: enough to hold against a place. */
+const backed = (f: Finding, listing: Listing, today: string) => f.source !== "reviews" || evidenceOf(f, listing, today).count >= 2;
+
+/**
+ * A serious problem only one guest reports ("yatakta tahtakurusu", once): not held against the place,
+ * but worth checking before booking.
+ */
+export function singleReports(item: Item, ctx: Pick<DecisionContext, "listings" | "today" | "trip">): Finding[] {
+  const listing = ctx.listings.get(listingKeyOf(item));
+  if (!listing?.readAt) return [];
+  const accepted = new Set(ctx.trip.acceptedFindings ?? []);
+  return listing.findings.filter(
+    (f) => f.polarity === "negative" && f.severity === "high" && isDecisive(f, listing, ctx.today) && !accepted.has(acceptKey(listing.key, f)) && !backed(f, listing, ctx.today),
+  );
 }
 
 /**
@@ -532,7 +702,7 @@ export function dealbreakersOf(item: Item, ctx: Pick<DecisionContext, "listings"
       f.severity === "high" &&
       isDecisive(f, listing, ctx.today) &&
       !accepted.has(acceptKey(listing.key, f)) &&
-      (f.source !== "reviews" || evidenceOf(f, listing, ctx.today).count >= 2),
+      backed(f, listing, ctx.today),
   );
 }
 
@@ -597,6 +767,20 @@ const REQUIREMENT_APPLIES: Record<Requirement["kind"], Category[]> = {
   free_cancellation: ["stay", "flight", "transport", "activity"],
   direct_flight: ["flight"],
   max_walk: ["stay"],
+  avoid: ["stay"],
+};
+
+/** "gürültü olmasın": the thing to avoid, by topic. */
+const AVOID_WORDS: Partial<Record<FindingTopic, string>> = {
+  noise: "gürültü",
+  cleanliness: "temizlik sorunu",
+  safety: "güvenlik sorunu",
+  access: "merdiven/erişim sorunu",
+  condition: "yıpranmışlık",
+  bed: "kötü yatak",
+  space: "küçük oda",
+  location: "kötü konum",
+  nearby: "sorunlu çevre",
 };
 
 export function requirementLabel(r: Requirement): string {
@@ -609,16 +793,20 @@ export function requirementLabel(r: Requirement): string {
       return "direkt uçuş";
     case "max_walk":
       return `en fazla ${r.minutes} dk yürüme`;
+    case "avoid":
+      return `${AVOID_WORDS[r.topic] ?? r.topic} olmasın`;
   }
 }
 
-/** Unknown when the page didn't say: an amenity missing from a listing is never taken as absent. */
+/** Unknown when the page didn't say: an amenity missing from a listing is absent only when the page says so. */
 export function checkRequirement(r: Requirement, item: Item, ctx: DecisionContext): "pass" | "fail" | "unknown" | "n/a" {
   if (!REQUIREMENT_APPLIES[r.kind].includes(item.category)) return "n/a";
   const m = metricsOf(item);
   switch (r.kind) {
-    case "amenity":
-      return amenitiesOf(item, ctx).includes(r.amenity) ? "pass" : "unknown";
+    case "amenity": {
+      const state = amenityState(item, r.amenity, ctx);
+      return state === "yes" ? "pass" : state === "no" ? "fail" : "unknown";
+    }
     case "free_cancellation": {
       const type = cancellationType(item, m);
       if (type === "unknown") return "unknown";
@@ -633,6 +821,17 @@ export function checkRequirement(r: Requirement, item: Item, ctx: DecisionContex
       const location = measure("location", item, ctx, null);
       if (!location || location.unit !== "minutes") return "unknown";
       return location.value <= r.minutes ? "pass" : "fail";
+    }
+    case "avoid": {
+      // Backed (the page, or two guests or more): out. One guest: worth a check. Nobody: fine.
+      const listing = ctx.listings.get(listingKeyOf(item));
+      if (!listing?.readAt) return "unknown";
+      const accepted = new Set(ctx.trip.acceptedFindings ?? []);
+      const against = listing.findings.filter(
+        (f) => f.verified && f.polarity === "negative" && touchesTopic(f, r.topic) && !evidenceOf(f, listing, ctx.today).stale && !accepted.has(acceptKey(listing.key, f)),
+      );
+      if (against.some((f) => backed(f, listing, ctx.today))) return "fail";
+      return against.length ? "unknown" : "pass";
     }
   }
 }
@@ -671,7 +870,18 @@ export interface OptionResult {
   limited: string[];
   /** Serious problems taken off the score (SERIOUS_PENALTY points each). */
   penalties: Finding[];
+  /**
+   * Where it stands before any preference: meets the musts (fit), needs something checked first
+   * (check), covers only some of the nights (partial), or doesn't meet a must (unfit).
+   */
+  fit: Fit;
+  /** Why it needs a check, is partial or is out, a few words each ("mutfak yazmıyor", "1 misafir bildirmiş: …"). */
+  fitNotes: string[];
 }
+
+export type Fit = "fit" | "check" | "partial" | "unfit";
+/** Fit first: an option that needs a check comes after the ones that don't, one that's out last. */
+export const FIT_ORDER: Record<Fit, number> = { fit: 0, check: 1, partial: 2, unfit: 3 };
 
 export interface Reason {
   criterion: CriterionId;
@@ -822,7 +1032,7 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
     let weight = 0;
     let known = 0;
     const parts: Part[] = criteria.map((c) => {
-      const level = levels[c] ?? levelFor(ctx.trip, category, c, ctx.inferred);
+      const level = levels[c] ?? levelFor(ctx.trip, category, c, ctx.inferred, saidOf(ctx));
       const w = LEVEL_WEIGHT[level];
       const s = subScore(c, itemId);
       const m = measures.get(itemId)!.get(c);
@@ -837,6 +1047,15 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
 
   const required = REQUIRED[category] ?? [];
   const { byItem: eliminated, checks } = eliminationsOf(record, eligible, ctx);
+  // The ceiling they won't go over: what's already booked or chosen elsewhere on the trip, plus this.
+  const ceiling = ctx.trip.budget?.ceiling != null && ctx.trip.budget.currency === ctx.currency ? ctx.trip.budget.ceiling : null;
+  const inGroup = new Set(groupItems.map((i) => i.id));
+  const committed =
+    ceiling == null
+      ? 0
+      : ctx.tripItems
+          .filter((i) => !inGroup.has(i.id) && (i.status === "booked" || i.status === "chosen"))
+          .reduce((sum, i) => sum + (totalPrice(i, { ...ctx, groupRange: null }) ?? 0), 0);
   // Serious problems that are out for anyone rule a place out by themselves, with or without an AI review.
   for (const item of eligible) {
     if (eliminated.has(item.id)) continue;
@@ -854,7 +1073,13 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
     const lacking = required.filter((c) => !measures.get(item.id)!.get(c));
     for (const c of lacking) if (!missing.includes(CRITERION_LABELS[c].toLocaleLowerCase("tr"))) missing.unshift(CRITERION_LABELS[c].toLocaleLowerCase("tr"));
     // A price in another currency with no exchange rate is known, just not comparable yet.
-    const limited = lacking.map((c) => (c === "price" && item.price.amount != null ? "kur bilgisi" : CRITERION_LABELS[c].toLocaleLowerCase("tr")));
+    const limited = lacking.map((c) =>
+      c !== "price" || item.price.amount == null
+        ? CRITERION_LABELS[c].toLocaleLowerCase("tr")
+        : item.price.scope === "unknown" && item.category === "stay"
+          ? "fiyatın kapsamı (toplam mı, gecelik mi)"
+          : "kur bilgisi",
+    );
     // Saved without dates: its price isn't this stay's price yet (no fees, maybe a "from" rate).
     if (groupNights && !stayRange(item) && !lacking.includes("price")) limited.push("bu gecelerin fiyatı");
     const scorable = s.confidence >= MIN_CONFIDENCE && criteria.length > 0;
@@ -870,7 +1095,29 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
       groupNights && own && (own.start !== groupNights.start || own.end !== groupNights.end)
         ? { range: own, nights: nightsBetween(own.start, own.end), of: nightsBetween(groupNights.start, groupNights.end) }
         : null;
+    const elimination = eliminated.get(item.id) ?? null;
+    const price = measures.get(item.id)!.get("price")?.value ?? null;
+    const over = ceiling != null && price != null && committed + price > ceiling + 0.5 ? committed + price - ceiling : null;
+    const aiCheck = checks.filter((c) => c.itemId === item.id).map((c) => `kontrol: ${c.reason}`);
+    const doubts = [
+      ...unsure.map(unsureNote),
+      ...singleReports(item, ctx).map((f) => `1 misafir bildirmiş: ${f.text.charAt(0).toLocaleLowerCase("tr")}${f.text.slice(1)}`),
+      ...limited.map((l) => (l.startsWith("fiyatın kapsamı") ? "fiyat netleşmedi: toplam mı, gecelik mi?" : `${l} eksik`)),
+      ...aiCheck,
+    ];
+    const outNotes = [
+      ...unmet.map((u) => `şart karşılanmıyor: ${u}`),
+      ...(elimination ? [elimination.reason] : []),
+      ...(over != null ? [`bütçe tavanını ${formatPrice(over, ctx.currency)} aşar`] : []),
+    ];
+    const fit: Fit = outNotes.length ? "unfit" : coverage ? "partial" : doubts.length ? "check" : "fit";
+    const partialNote = coverage
+      ? `yalnız ${coverage.nights}/${coverage.of} gece; kalan ${coverage.of - coverage.nights} gece için ayrı yer gerekir`
+      : null;
+    const fitNotes = fit === "unfit" ? outNotes : [...(partialNote ? [partialNote] : []), ...doubts];
     return {
+      fit,
+      fitNotes,
       item,
       score: scorable ? Math.round(s.value) : null,
       confidence: s.confidence,
@@ -881,14 +1128,15 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
       dominatedBy: null,
       unmet,
       unsure,
-      eliminated: eliminated.get(item.id) ?? null,
+      eliminated: elimination,
       limited: scorable ? limited : [],
       penalties: serious.get(item.id)!,
     };
   });
-  // Complete, compliant options first; then provisional ones; then ones that fail a requirement or
-  // were ruled out for this traveller; unscorable last.
-  const tier = (o: OptionResult) => (o.score == null ? 3 : o.unmet.length || o.eliminated ? 2 : o.limited.length ? 1 : 0);
+  // Fit first; then the ones to check (a must the page doesn't answer, a price not clear yet, one guest's
+  // serious complaint); then stays covering only some of the nights; then the ones that are out;
+  // unscorable last.
+  const tier = (o: OptionResult) => (o.score == null ? 4 : FIT_ORDER[o.fit]);
   options.sort((a, b) => tier(a) - tier(b) || (b.score ?? -1) - (a.score ?? -1));
   markDominated(options.filter((o) => o.score != null));
   options = [
@@ -908,6 +1156,8 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
         eliminated: null,
         limited: [],
         penalties: [],
+        fit: "unfit",
+        fitNotes: [excluded.get(item.id)!],
       }),
     ),
   ];
@@ -944,8 +1194,8 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
 
   const [first, second] = scored;
   const { reasons, tradeoffs } = explain(first, second);
-  // Options failing a requirement or ruled out can't be crowned by a change of weights either.
-  const out = (o: OptionResult) => o.unmet.length > 0 || o.eliminated != null;
+  // Options that are out (a must, a ruling, the ceiling) can't be crowned by a change of weights either.
+  const out = (o: OptionResult) => o.fit === "unfit";
   const contenders = out(first) ? scored : scored.filter((o) => !out(o));
   const flips = sensitivity(first, contenders, criteria, score);
   const unless = whatIfNot(first, contenders, criteria, score);
@@ -989,6 +1239,15 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
     unless,
     summary: `${first.item.name} öne çıkıyor (${first.score} – ${second.score})${why ? `: ${why} farkı yaratıyor.` : "."}${cost}${failNote}`,
   };
+}
+
+/** A must the page doesn't answer, as a thing to check: "mutfak yazmıyor", "iptal koşulu yazmıyor". */
+function unsureNote(label: string): string {
+  if (label === "ücretsiz iptal") return "iptal koşulu yazmıyor";
+  if (label === "direkt uçuş") return "aktarma bilgisi yok";
+  if (label.startsWith("en fazla")) return "yürüme mesafesi belli değil";
+  if (label.endsWith("olmasın")) return `bir misafir bildirmiş: ${label.replace(/ olmasın$/, "")}`;
+  return `${label} yazmıyor`;
 }
 
 const SAME = 0.02; // sub-scores this close count as equal
@@ -1142,6 +1401,22 @@ function advantageText(p: Part, w: Part, currency: string): string | null {
       return "yorum ve detaylarda daha iyi";
     case "ai":
       return "AI değerlendirmesi daha olumlu";
+    case "quiet":
+      return "daha sessiz";
+    case "clean":
+      return "daha temiz";
+    case "view":
+      return "manzarası daha iyi";
+    case "space":
+      return "daha ferah";
+    case "bed":
+      return "yatağı daha iyi";
+    case "breakfast":
+      return "kahvaltısı daha iyi";
+    case "access":
+      return "erişimi daha kolay";
+    case "safety":
+      return "daha güvenli";
   }
 }
 

@@ -5,7 +5,7 @@ import { isRental, MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib
 import type { OptionGroup, Plan, StayBlock } from "../lib/plan";
 import { dayRows, daySummary, journeyTitle, rowsLeft, type DayRow } from "../lib/journey";
 import { entryDomId } from "../lib/progress";
-import type { Standing as Place } from "../lib/standing";
+import type { Candidate } from "../lib/choice";
 import { flightSearchUrl, nightsKey, type RentalEntry, type Timeline, type TimelineEntry, type TimelineSection } from "../lib/timeline";
 import type { Category, Item, LegMode, Listing } from "../lib/types";
 import { removeItem, setHidden, updateTrip } from "./actions";
@@ -14,7 +14,7 @@ import { CategoryIcon, type IconName } from "./Icons";
 import { StatusBar, type Standing } from "./Status";
 
 export type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => ReactNode;
-export type CardFor = (item: Item, group: Item[], decision?: GroupDecision, standing?: Place, onCompare?: () => void) => ReactNode;
+export type CardFor = (item: Item, group: Item[], decision?: GroupDecision, candidate?: Candidate, onCompare?: () => void) => ReactNode;
 export type SettledFor = (item: Item, decision?: GroupDecision, onChange?: () => void, changing?: boolean) => ReactNode;
 /** A transfer: its own row; `embedded`, only its body (under a line that is its head); `timed`, its time is beside it already. */
 export type LegFor = (l: Leg, opts?: { embedded?: boolean; timed?: boolean }) => ReactNode;

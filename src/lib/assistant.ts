@@ -16,11 +16,12 @@ import {
   type GroupDecision,
 } from "./decision";
 import { needsFor } from "./cardFacts";
+import { choiceOf, tradeText } from "./choice";
 import { currencyCode, isoDate, listingKeyOf, tripDateRange } from "./items";
 import { NEED_MARK } from "./needs";
 import { coverageText, searchText } from "./listing";
 import { prosConsFor } from "./proscons";
-import { activeSignals } from "./intent";
+import { activeSignals, pendingSignals } from "./intent";
 import { buildLegs, legTiming, withLegChoice } from "./legs";
 import { checkPlanned, fillPlanned, plannedInput, plannedItem, PLANNED_KINDS, samePlan } from "./planned";
 import { addDays, buildPlan, liveGroups, sameCity, stayRange, type Plan } from "./plan";
@@ -28,9 +29,11 @@ import { getProvider, type LlmProvider, type ProviderId } from "./llm";
 import type { ToolResult, ToolSpec } from "./llm/types";
 import {
   AMENITIES,
+  FINDING_TOPICS,
   ITEM_STATUSES,
   LEG_MODES,
   type Amenity,
+  type FindingTopic,
   type Category,
   type ChatMessage,
   type CriterionId,
@@ -57,12 +60,15 @@ Elindekiler (trip_state):
 Nasıl konuşursun:
 - Doğal, sıcak ve kısa: 2-4 cümle. Form ya da rapor gibi değil, bir arkadaş gibi.
 - Kullanıcının istedikleri (asked_for: ✓ var, ✕ yok, ? sayfada yazmıyor) her seçenekte hesaplı; karşılaştırırken önce bunları söyle ("üçünde de mutfak var; yalnız Jardim'de yorumlar sessiz diyor").
-- Öneriyi karar kartıyla söyle: "Senin için X, çünkü …; ama … o kadar önemli değilse Y." Sayıları card ve decisions'tan al; kendi puanını ya da fiyatını üretme.
+- Öneriyi decisions[].choice ile söyle, tek bir "kazanan" gibi değil: "Konum için X (+€60: mutfak var, 15 dk daha yakın); tasarruf ve sessizlik için Y." Takası (fark ve karşılığında ne kazanıp ne kaybettiği) söyle; puanı öne çıkarma. choice.verify'da bir şey varsa seçmeden önce doğrulanmasını öner (search_page ile sayfada arayabilirsin). Kullanıcı bugünkü önceliğini söylerse ("bütçe daha önemli", "sessizlik öncelik") önce set_priorities, sonra yeni choice ile net söyle: "O zaman Y: €60 tasarruf, karşılığında şundan vazgeçiyorsun." Sayıları decisions'tan al; kendi puanını ya da fiyatını üretme.
 - Soru sormadan önce düşün: cevap kararı değiştirir mi? Değiştirmiyorsa sorma. En fazla BİR soru; hızlı yanıtlanacaksa offer_choices ile 2 kısa seçenek sun.
-- Niyeti sohbetten sessizce yakala, kullanıcıya form doldurtma:
-  • neyin önemli olduğu ("merkezi olsun", "fiyat o kadar önemli değil") → set_priorities
-  • kesin şart ("mutfak şart", "iadesiz olmasın", "direkt uçuş", "merkeze en fazla 15 dk") → set_requirements
-  • kalıcı bağlam ("bebekle gidiyoruz", "balayı", "geç döneriz") → save_preference
+- Niyeti sohbetten sessizce yakala, kullanıcıya form doldurtma. Neyi istediği kadar NE KADAR KESİN söylediğini de oku:
+  • kesin ("şart", "kesinlikle", "asla", "olmazsa olmaz", "... olmasın") → set_requirements: "mutfak şart" → amenity; "iadesiz olmasın" → free_cancellation; "direkt uçuş" → direct_flight; "merkeze en fazla 15 dk" → max_walk; "kesinlikle gürültü olmasın" → avoid (topic noise). Şarta uymayan seçenek "Uygun değil" olur; sayfa söylemiyorsa "Kontrol gerekiyor".
+  • istek ("istiyoruz", "önemli", "olsun") → set_priorities: konum, fiyat gibi ölçütler ya da istek ölçütleri (quiet Sessizlik, clean Temizlik, view Manzara, space Ferahlık, bed Yatak, breakfast Kahvaltı, access Erişim, safety Güvenlik) "onemli"/"cok_onemli".
+  • hafif ("olsa iyi olur", "fark etmez ama") → set_priorities "az".
+  • kalıcı bağlam ("bebekle gidiyoruz", "balayı", "geç döneriz") → save_preference. Notta bir istek geçerse ("sessiz bir yer istiyoruz") o istek kendiliğinden "Önemli" sayılır.
+  • bütçe: "en fazla 60 bin", "kesinlikle aşmam" → update_trip budget_ceiling (tavan); "50 bin civarı", "mümkünse" → budget_amount (hedef). Tavanı kendin değiştirme; pahalı seçenekler varsa hedefi gözden geçirmeyi önerebilirsin.
+  • intent.to_confirm'deki sezgiler tahmindir: uygun bir anda tek soruyla sor ("Konum senin için daha mı önemli?"); onaylamadıkça gerçekmiş gibi konuşma.
   Kaydettiğini tek cümleyle söyle ("Not aldım: mutfak şart.") ve sonucun nasıl değiştiğini anlat.
 - Sezilen bir tercihi (intent.inferred) uygun bir anda doğal biçimde teyit edebilirsin; ısrar etme.
 - Kullanıcı bir karar verdiğinde (seçtim, ele, rezerve ettim) update_items; bütçe ya da tarih söylediğinde update_trip. Seçeneklerin durumunu yalnız kullanıcının son mesajı bunu istiyorsa değiştir; eski bir konuşmaya dayanarak değiştirme. Kullanıcı bir otelin (ya da uçuşun) adını söyleyip seçmedikçe kendin seçme; önerini söyle, seçimi ona bırak.
@@ -249,11 +255,15 @@ export const TOOLS: ToolSpec[] = [
           items: {
             type: "object",
             properties: {
-              kind: { type: "string", enum: ["amenity", "free_cancellation", "direct_flight", "max_walk"] },
+              kind: { type: "string", enum: ["amenity", "free_cancellation", "direct_flight", "max_walk", "avoid"] },
               amenity: { ...nullable({ type: "string", enum: [...AMENITIES] }), description: "Yalnız kind=amenity için" },
               minutes: { ...nullable({ type: "number" }), description: "Yalnız kind=max_walk için: en fazla yürüme dakikası" },
+              topic: {
+                ...nullable({ type: "string", enum: [...FINDING_TOPICS] }),
+                description: "Yalnız kind=avoid için: kesinlikle olmaması gereken sorunun konusu ('gürültü olmasın' → noise)",
+              },
             },
-            required: ["kind", "amenity", "minutes"],
+            required: ["kind", "amenity", "minutes", "topic"],
             additionalProperties: false,
           },
         },
@@ -277,17 +287,19 @@ export const TOOLS: ToolSpec[] = [
   },
   {
     name: "update_trip",
-    description: "Gezinin adını, kesin tarihlerini veya toplam bütçesini günceller. Değişmeyen alanlar için null ver.",
+    description:
+      "Gezinin adını, kesin tarihlerini ya da bütçesini günceller. budget_amount hedef (mümkünse harcamak istediği), budget_ceiling tavan (kesinlikle aşmayacağı; söylediyse). Değişmeyen alanlar için null ver.",
     schema: {
       type: "object",
       properties: {
         title: nullable({ type: "string" }),
         start: { ...nullable({ type: "string" }), description: "YYYY-MM-DD" },
         end: { ...nullable({ type: "string" }), description: "YYYY-MM-DD" },
-        budget_amount: nullable({ type: "number" }),
+        budget_amount: { ...nullable({ type: "number" }), description: "Hedef bütçe" },
         budget_currency: nullable({ type: "string" }),
+        budget_ceiling: { ...nullable({ type: "number" }), description: "Tavan: kesinlikle aşılmayacak toplam; 0 tavanı kaldırır" },
       },
-      required: ["title", "start", "end", "budget_amount", "budget_currency"],
+      required: ["title", "start", "end", "budget_amount", "budget_currency", "budget_ceiling"],
       additionalProperties: false,
     },
   },
@@ -371,6 +383,9 @@ export function decisionState(decisions: Map<string, GroupDecision>, ctx: Decisi
         ...(o.score == null && o.missing.length ? { missing: o.missing } : {}),
         ...(d.winner && o !== d.winner && o.score != null ? { advantage: advantageOver(o, d.winner, ctx.currency) } : {}),
         ...(o.dominatedBy ? { dominated_by: o.dominatedBy } : {}),
+        // Uygun / Kontrol gerekiyor / Kısmi / Uygun değil, and why.
+        fit: o.fit,
+        ...(o.fitNotes.length ? { fit_notes: o.fitNotes } : {}),
         ...(o.unmet.length ? { fails: o.unmet } : {}),
         ...(o.eliminated ? { ruled_out: o.eliminated.reason } : {}),
         ...(o.limited.length ? { provisional: `${o.limited.join(", ")} eksik` } : {}),
@@ -384,6 +399,18 @@ export function decisionState(decisions: Map<string, GroupDecision>, ctx: Decisi
       reasons: d.reasons.map((r) => r.text),
       tradeoffs: d.tradeoffs.map((r) => r.text),
       would_change_if: d.flips.map((f) => `${f.label} çok önemli olursa → ${f.winner}`),
+      // The decision as the board shows it: the strongest option per thing that matters, the trade
+      // against the cheapest fit one, what to check before choosing. Speak in these terms.
+      choice: (() => {
+        const c = choiceOf(d, ctx);
+        if (!c.candidates.length) return null;
+        return {
+          headline: c.headline,
+          candidates: c.candidates.map((x) => ({ name: x.option.item.name, label: x.label, for: x.lenses, trade: x.trade ? `${tradeText(x.trade, ctx.currency)} (${x.trade.vs} karşısında)` : null })),
+          anchor: c.anchor?.item.name ?? null,
+          verify: c.verify.map((v) => `${v.name}: ${v.what}`),
+        };
+      })(),
       card: (() => {
         const c = cards?.get(d.key);
         return c ? { pick: c.pick.item.name, because: c.because, unless: c.unless, budget: c.budget } : null;
@@ -407,7 +434,9 @@ export function intentState(trip: Trip, t: Pick<TripDecisions, "signals" | "pref
       wanted_amenities: trip.wantedAmenities ?? [],
       notes: t.preferences.map((p) => p.text),
     },
+    // Confirmed guesses count; the others are questions to ask when it fits, never facts.
     inferred: activeSignals(t.signals, trip).map((s) => ({ category: s.category, text: s.text, evidence: s.evidence })),
+    to_confirm: pendingSignals(t.signals, trip).map((s) => ({ id: s.id, category: s.category, question: s.question, evidence: s.evidence })),
   };
 }
 
@@ -554,11 +583,23 @@ export async function resetConversation(tripId: string, note = "— Yeni sohbet 
 class ToolError extends Error {}
 
 /** Model output → requirements, rejecting anything malformed instead of guessing. */
+/** The budget after update_trip: a new target and/or ceiling; a ceiling only with a target to go with. */
+function withBudget(budget: Trip["budget"], amount: number | null, currency: string | null, ceiling: unknown): Trip["budget"] {
+  if (ceiling != null && (typeof ceiling !== "number" || ceiling < 0)) throw new ToolError(`Geçersiz tavan: ${ceiling}`);
+  const target = amount ?? budget?.amount ?? (typeof ceiling === "number" && ceiling > 0 ? ceiling : null);
+  if (target == null) return budget;
+  const cap = ceiling === 0 ? null : typeof ceiling === "number" ? ceiling : (budget?.ceiling ?? null);
+  if (cap != null && cap < target) throw new ToolError(`Tavan (${cap}) hedeften (${target}) küçük olamaz.`);
+  return { amount: target, currency: currency ?? budget?.currency ?? "EUR", ...(cap != null ? { ceiling: cap } : {}) };
+}
+
 function parseRequirements(raw: unknown): Requirement[] {
   if (!Array.isArray(raw)) throw new ToolError("requirements bir liste olmalı.");
   const out: Requirement[] = [];
-  for (const r of raw as { kind?: string; amenity?: string | null; minutes?: number | null }[]) {
-    if (r.kind === "amenity" && r.amenity && (AMENITIES as readonly string[]).includes(r.amenity)) {
+  for (const r of raw as { kind?: string; amenity?: string | null; minutes?: number | null; topic?: string | null }[]) {
+    if (r.kind === "avoid" && r.topic && (FINDING_TOPICS as readonly string[]).includes(r.topic)) {
+      out.push({ kind: "avoid", topic: r.topic as FindingTopic });
+    } else if (r.kind === "amenity" && r.amenity && (AMENITIES as readonly string[]).includes(r.amenity)) {
       out.push({ kind: "amenity", amenity: r.amenity as Amenity });
     } else if (r.kind === "free_cancellation" || r.kind === "direct_flight") {
       out.push({ kind: r.kind });
@@ -698,7 +739,7 @@ async function runTool(tripId: string, name: string, input: any, choices: string
         ...trip,
         title: typeof input.title === "string" && input.title.trim() ? input.title.trim() : trip.title,
         confirmedDates: start && end ? { start, end } : trip.confirmedDates,
-        budget: amount != null ? { amount, currency: currencyCode(input.budget_currency) ?? trip.budget?.currency ?? "EUR" } : trip.budget,
+        budget: withBudget(trip.budget, amount, currencyCode(input.budget_currency), input.budget_ceiling),
         updatedAt: Date.now(),
       });
       return "ok";

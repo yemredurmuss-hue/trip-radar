@@ -10,6 +10,7 @@ import { EMPTY_METRICS, nightsBetween } from "../src/lib/items";
 import { buildLegs, type Leg } from "../src/lib/legs";
 import { buildPlan, liveGroups } from "../src/lib/plan";
 import { plannedItem, type PlannedKind } from "../src/lib/planned";
+import { choiceOf, tradeText } from "../src/lib/choice";
 import { budgetBar, decisionProgress } from "../src/lib/progress";
 import { prosConsFor } from "../src/lib/proscons";
 import { journeySteps } from "../src/lib/journey";
@@ -304,6 +305,17 @@ describe("any trip", () => {
           for (const o of d.options) if (o.score != null && (o.score < 0 || o.score > 100 || Number.isNaN(o.score))) note(seed, `score ${o.score}`);
           rolesOf(d);
           valueCard(d, ctx, budgetState(plan, items, ctx));
+          // The choice: sentences and trades without holes, each card once, the rest the others.
+          const choice = choiceOf(d, ctx);
+          // (Names are the fuzz's own, "Flight null-null": left out of the check.)
+          const said = d.options.reduce(
+            (text, o) => text.split(o.item.name).join("X"),
+            [choice.headline, ...choice.candidates.map((c) => `${c.label} ${c.trade ? tradeText(c.trade, ctx.currency) : ""}`), ...choice.verify.map((v) => v.what)].join(" | "),
+          );
+          if (/NaN|undefined|null|Infinity|\[object/.test(said)) note(seed, `choice ${g.key}: ${said}`);
+          if (choice.candidates.length + choice.rest.length !== d.options.length) note(seed, `choice ${g.key} loses options`);
+          if (new Set(choice.candidates.map((c) => c.option.item.id)).size !== choice.candidates.length) note(seed, `choice ${g.key} repeats a card`);
+          if (choice.candidates.some((c) => c.option.fit === "unfit" || c.option.fit === "partial")) note(seed, `choice ${g.key} shows an option that's out`);
           for (const i of g.items) {
             const f = cardFacts(i, d, ctx);
             const text = [f.title, f.subtitle, f.price?.text, f.price?.label, f.price?.perNight, f.status?.text, ...f.pros.map((p) => p.text), ...f.cons.map((c) => c.text)].filter((x) => x != null).join(" | ");

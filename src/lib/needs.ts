@@ -3,13 +3,14 @@
 // important, and the things their notes ask for), so a card answers first "is what I asked for here?".
 // Pure; nothing is guessed: a thing the page doesn't say is "yazmıyor", never "yok".
 import {
-  amenitiesOf,
+  amenityState,
   cancellationType,
   CRITERION_LABELS,
   findingWeight,
   levelFor,
   levelSource,
   measureFor,
+  ratingOutOf10,
   saidTopics,
   touchesTopic,
   wantedAmenities,
@@ -113,10 +114,12 @@ function criterionCheck(c: CriterionId, item: Item, option: OptionResult | undef
     }
     case "rating": {
       const r = item.rating;
-      if (r.value == null || !r.scale) return { state: "unknown", text: "Puanı yok", covers };
-      const ten = (r.value / r.scale) * 10;
-      const text = `Puan ${r.value.toLocaleString("tr-TR", { maximumFractionDigits: 1 })}/${r.scale}`;
-      return { state: ten >= 8.5 ? "yes" : "no", text, covers };
+      const ten = ratingOutOf10(item);
+      if (r.value == null || !ten) return { state: "unknown", text: "Puanı yok", covers };
+      const raw = `Puan ${r.value.toLocaleString("tr-TR", { maximumFractionDigits: 1 })}/${r.scale ?? (r.value <= 5 ? 5 : 10)}`;
+      // The site's own number, and what it is on the common scale when that differs (Airbnb's 4,3 ≈ 7,3/10).
+      const text = ten.calibrated ? `${raw} (≈${ten.value.toLocaleString("tr-TR", { maximumFractionDigits: 1 })}/10)` : raw;
+      return { state: ten.value >= 8.5 ? "yes" : "no", text, covers };
     }
     case "comfort": {
       if (part?.s == null) return { state: "unknown", text: "Yorum puanı yok", covers };
@@ -181,8 +184,9 @@ export function checkNeeds(item: Item, option: OptionResult | undefined, peers: 
 
   if (category === "stay") {
     for (const a of wantedAmenities(ctx.trip)) {
-      const has = amenitiesOf(item, ctx as DecisionContext).includes(a);
-      push(`a:${a}`, capital(a), { state: has ? "yes" : "unknown", text: has ? `${capital(a)} var` : `${capital(a)} yazmıyor`, covers: ["c:amenities"] });
+      const state = amenityState(item, a, ctx as DecisionContext);
+      const text = state === "yes" ? `${capital(a)} var` : state === "no" ? `${capital(a)} yok` : `${capital(a)} yazmıyor`;
+      push(`a:${a}`, capital(a), { state, text, covers: ["c:amenities"] });
     }
   }
   for (const r of ctx.trip.requirements ?? []) {
