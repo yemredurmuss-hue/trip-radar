@@ -109,8 +109,11 @@ try {
   // 4. Demo trip, a group expanded, and the detail drawer.
   await app.getByText("Örnek geziyi yükle →").click();
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
-  // The trip at a glance beside its picture.
-  assert.deepEqual(await app.locator(".hero-stats li").allInnerTexts(), ["7 gün", "2 şehir", "5 etkinlik", "1 konaklama", "1 ulaşım"]);
+  // The trip at a glance beside its picture: when and where in the order it goes, then what's settled of what's needed.
+  assert.match(await app.locator(".trip-sub").innerText(), /8–14 Ekim · 7 gün · Porto → Lizbon/);
+  assert.deepEqual(await app.locator(".hero-stats li").allInnerTexts(), ["2 şehir", "1/2 konaklama", "1 ulaşım", "1 etkinlik"]);
+  await app.locator(".trip-hero").scrollIntoViewIfNeeded();
+  await app.screenshot({ path: `${out}/2b-hero.png` });
   await app.getByText("Jardim Stay").first().waitFor();
   // A block per city (Porto, Lisbon) with its transfers, nights and days; the flights and the train between them.
   assert.equal(await app.locator(".day-strip").count(), 0, "no band of nights");
@@ -157,20 +160,30 @@ try {
   assert.deepEqual(await card("Ribeira Rooms").locator(".sc-needs .need.no > span").allInnerTexts(), ["Hafta sonu gece gürültüsü · 3 yorum", "İade yok"]);
   // Then for it on the left, against it on the right: what only this place has first ("yalnız bunda"), then
   // the rest with the specifics.
-  assert.deepEqual(await card("Jardim Stay").locator(".sc-col.pros li > span").allInnerTexts(), ["Kahvaltı çok iyiyalnız bunda", "Gezeceğin yerlere 6 dk", "Yorum puanları yüksek"]);
+  assert.deepEqual(await card("Jardim Stay").locator(".sc-col.pros li > span").allInnerTexts(), ["Kahvaltı çok iyi", "Gezeceğin yerlere 6 dk", "Yorum puanları yüksek"]);
+  await card("Jardim Stay").locator(".sc-col.pros li.unique", { hasText: "yalnız bunda" }).waitFor();
   await card("Ribeira Rooms").locator(".sc-col.pros li.unique", { hasText: "Odadan nehir manzarası" }).waitFor();
   assert.match(await card("Jardim Stay").locator(".sc-col.cons li > span").first().innerText(), /^Odalar küçük/);
-  // Closed cards side by side stand the same height.
-  const heights = await app.locator(".stay-block.open .option-grid .swipe-card").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
-  assert.equal(new Set(heights).size, 1, `card heights ${heights}`);
+  // Closed cards side by side stand the same height (one under another, each takes what it needs).
+  const rows = await app.locator(".stay-block.open .option-grid .swipe-card").evaluateAll((els) => {
+    const byTop = {};
+    for (const e of els) (byTop[Math.round(e.getBoundingClientRect().top)] ??= []).push(Math.round(e.getBoundingClientRect().height));
+    return Object.values(byTop);
+  });
+  for (const heights of rows) assert.equal(new Set(heights).size, 1, `card heights ${heights}`);
   // Casa Azul is out for this traveller (asked for somewhere quiet): the reason leads its cons, and it goes last.
   await card("Casa Azul").locator(".sc-col.cons li.strong", { hasText: "Elendi: Yan binada inşaat var" }).waitFor();
   await card("Casa Azul").locator(".sc-flag.warning", { hasText: "Elendi" }).waitFor();
-  // Side by side, no swiping: all three at once, best first, the one that's out last.
+  // No swiping: all three at once, best first, the one that's out last; one under another, each as wide
+  // as the plan, with the picture beside the name so no line is squeezed.
   const porto = app.locator(".stay-block.open .option-grid");
   assert.deepEqual(await porto.locator(".swipe-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Jardim Stay", "Ribeira Rooms", "Casa Azul"]);
-  const tops = await porto.locator(".swipe-card").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
-  assert.equal(new Set(tops).size, 1, "the options sit in one row");
+  const boxes = await porto.locator(".swipe-card").evaluateAll((els) => els.map((e) => e.getBoundingClientRect()).map((r) => ({ top: Math.round(r.top), width: r.width })));
+  assert.ok(boxes.every((b, i) => i === 0 || b.top > boxes[i - 1].top), "best first, top to bottom");
+  assert.ok(boxes.every((b) => b.width >= 420), `cards wide enough to read: ${boxes.map((b) => b.width)}`);
+  const media = await card("Jardim Stay").locator(".sc-media").boundingBox();
+  const title = await card("Jardim Stay").locator(".sc-title").boundingBox();
+  assert.ok(title.x > media.x + media.width - 1, "the picture sits beside the name");
   // The recommendation in one line above them, with what makes it the one.
   const stayCard = app.locator(".stay-block .reco-line");
   assert.match(await stayCard.innerText(), /Önerim Jardim Stay:\s*Ribeira Rooms karşısında €45 daha ucuz; sessiz odalar, ücretsiz iptal ve kahvaltı çok iyi/);
@@ -190,7 +203,7 @@ try {
   assert.equal(await todo.locator(".todo-list").count(), 0);
   // Cancellations running out show up there too (the sample trip is dated, so only when those dates are near).
   // And the money: booked, chosen and a guess for what's open, against the budget.
-  assert.match(await app.locator(".budget").innerText(), /\/ €1\.500 bütçe/);
+  assert.match(await app.locator(".budget").innerText(), /BÜTÇE[\s\S]*\/ €1\.500 · €481 kalıyor/i);
   // Decided already: the boat tour on the 9th and the flight home.
   const douro = app.locator(".tl-event .settled-card", { hasText: "Douro tekne turu" });
   await douro.locator(".status-bar").getByText("bilet alınmadı").waitFor();
@@ -685,7 +698,7 @@ try {
   await board.locator("#block-2026-10-08 .slot-note").waitFor();
   await board.locator('.settled-card[aria-label="Uçuş"]').waitFor();
   await board.getByText("Taksi · Otel → Havalimanı").first().waitFor();
-  const esim = board.locator('.settled-card[aria-label="eSIM"]');
+  const esim = board.locator('.settled-row[aria-label="eSIM"]'); // a small thing: one line, not a card
   await esim.waitFor();
   await esim.scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/9b-chat-plan.png` });

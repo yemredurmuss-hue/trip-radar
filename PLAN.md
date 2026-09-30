@@ -98,6 +98,9 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] 0.23: plan sohbetten şekillenir — bir şehrin söylenen geceleri tek blok ("Porto tek blok 7–12" eski sohbet
       konaklamalarını birleştirir, kısmi seçim bloğu bölmez, boşluğu yazar), seçenekler kendi şehrinin bloğunda;
       tarihli bilet şablonu (nereye sonra), taksi ve eSIM planları; sohbette eklenen planlar sağda "Kaldır" ile silinir
+- [x] 0.24: okunur kartlar — seçenekler en iyiden alt alta geniş kart (görsel solda, ad/fiyat yanında), satırlar tam
+      cümle ve kısaltılmadan; eSIM/taksi/transfer/sigorta tek satır; hero sade (şehirler sırayla, sıfırlar yok,
+      "1/2 konaklama"), maliyet çubuğu toplamı sağ ucunda gösterir
 - [ ] Sonra: "farka değer mi?" (pahalı seçenek neyi fazladan veriyor), gerçek kayıtlarla altın set ölçümü
 - [ ] Sonraki öneriler (onay bekliyor): 7 sade karşılaştırma, 8 zaman çizelgesinde tekrarların kalkması,
       9 sohbet ↔ pano bağlantısı, 10 sırayla karar ver modu

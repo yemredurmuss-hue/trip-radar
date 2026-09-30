@@ -840,3 +840,89 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .leg-option { display: inline-flex; gap: 8px; align-items: baseline; }
 .pill-btn.outline.quiet { color: var(--muted); border-color: var(--line); }
 .pill-btn.outline.quiet:hover { color: var(--danger, #b42318); border-color: currentColor; }
+
+/* ---------- 0.24: an option card that reads easily ----------
+   Options stand one under another, best first, each as wide as the plan: picture on the left, name and
+   price beside it, then what you asked for and what speaks for and against it in whole sentences. Two
+   side by side only when there's room for both to breathe. */
+.option-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 16px; }
+.swipe-card { container-type: inline-size; border-radius: 22px; }
+.sc-top { display: flex; flex-direction: column; }
+.sc-top .sc-head { min-height: 0; gap: 4px; padding: 14px 18px 0; }
+.sc-title { font-size: 18px; line-height: 1.3; }
+.sc-sub { font-size: 14px; }
+.sc-why { margin-top: 2px; font-size: 13.5px; line-height: 1.45; }
+.sc-price { margin-top: 8px; }
+.price-block { justify-content: flex-start; gap: 2px 12px; }
+.price-note { flex-basis: 100%; font-size: 13px; color: #8a5300; }
+.sc-body { gap: 0; padding: 12px 18px 16px; }
+.sc-needs { padding: 12px 0; border-top: 1px solid #f1ede7; }
+.need { font-size: 13px; padding: 4px 10px 4px 5px; }
+.sc-pc { display: flex; flex-direction: column; gap: 12px; min-height: 0; padding: 12px 0 4px; border-top: 1px solid #f1ede7; }
+.sc-col { gap: 8px; }
+.sc-col li, .sc-col li:first-child { flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 14px; font-weight: 400; line-height: 1.45; color: var(--text); }
+.sc-col.pros li:first-child, .sc-col.cons li:first-child { color: var(--text); }
+.sc-col li > span { flex: 0 1 auto; min-width: 0; overflow-wrap: break-word; }
+.sc-col li i { position: relative; top: 2px; width: 18px; height: 18px; margin-top: 0; font-size: 13px; }
+.sc-col li.strong, .sc-col li.strong:first-child { color: var(--danger); font-weight: 600; }
+.sc-col .only-here { flex: none; margin-left: 0; align-self: center; }
+.sc-foot { padding-top: 12px; }
+/* Wide enough: the picture beside the name and price, like a row of search results. */
+@container (min-width: 420px) {
+  .sc-top { display: grid; grid-template-columns: minmax(150px, 36%) 1fr; }
+  .sc-top .sc-media { height: auto; min-height: 150px; margin: 10px 0 0 10px; }
+  .sc-top .sc-head { padding: 16px 18px 0 16px; }
+}
+/* Wider still: for it and against it side by side. */
+@container (min-width: 640px) {
+  .sc-pc { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+}
+
+/* ---------- 0.24: small things (eSIM, taxi, transfer, insurance) as one line, like Layla's ---------- */
+.settled-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 8px; padding: 8px 14px 8px 8px;
+  border-radius: 16px; background: #fff; box-shadow: 0 1px 2px rgba(40, 30, 20, .05), 0 3px 10px rgba(40, 30, 20, .05);
+}
+.settled-row.st-booked { box-shadow: 0 0 0 1.5px #cfe9d9; }
+.sr-main { flex: 1 1 260px; display: flex; align-items: center; gap: 12px; min-width: 0; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; color: inherit; }
+.sr-icon { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; }
+.sr-icon.cat-esim { background: #eeeaff; color: #5a47c9; }
+.sr-icon.cat-transport { background: #e3f4ec; color: #2e7d5b; }
+.sr-icon.cat-other { background: #eef1f4; color: #5b6572; }
+.sr-text { display: flex; flex-direction: column; min-width: 0; flex: 1; line-height: 1.3; }
+.sr-text b { font-size: 15px; font-weight: 650; }
+.sr-text .muted { font-size: 13px; }
+.sr-price { flex: none; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sr-chip { flex: none; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; }
+.sr-chip.st-planned { background: #fff1d9; color: #8a5300; }
+.sr-chip.st-booked { background: #e3f4ea; color: #1b6b3e; }
+.sr-actions { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; }
+.pill-btn.small { padding: 5px 12px; font-size: 13px; }
+.settled-row .stc-details { flex-basis: 100%; padding: 6px 6px 4px 48px; }
+
+/* ---------- 0.24: the trip's head, tidy: picture, title, when and where, what's settled ---------- */
+.trip-hero { align-items: center; gap: 20px; margin: 4px 0 14px; }
+.hero-img { width: 112px; height: 112px; border-radius: 22px; box-shadow: 0 4px 14px rgba(40, 30, 20, .12); }
+.trip-title { font-size: 32px; line-height: 1.15; }
+.trip-sub { font-size: 15.5px; margin: 4px 0 10px; color: #5f5a63; }
+.hero-row { gap: 8px 16px; }
+.hero-stats { gap: 6px; margin: 0; font-size: 14px; }
+.hero-stats li { gap: 6px; padding: 4px 11px 4px 8px; border-radius: 999px; background: #fff; border: 1px solid #ece6dc; }
+.hero-stats svg { width: 18px; height: 18px; }
+.hero-link { font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; }
+.hero-link:hover { text-decoration: underline; }
+@media (max-width: 700px) {
+  .trip-hero { flex-direction: row; align-items: center; }
+  .hero-img { width: 72px; height: 72px; border-radius: 16px; }
+  .trip-title { font-size: 24px; }
+}
+/* The cost as one bar whose end is the total: the label on the left, the sum at the right end. */
+.budget { max-width: none; gap: 8px; margin: 0 0 14px; padding: 14px 16px 12px; border-radius: 18px; background: #fff; border: 1px solid #ece6dc; }
+.budget-top { align-items: baseline; font-size: 14px; }
+.budget-label { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.budget-sum b { font-size: 20px; letter-spacing: -.01em; }
+.budget-bar { height: 12px; }
+.budget-legend { gap: 6px 18px; font-size: 13px; color: #5f5a53; }
+.budget-legend b { color: var(--ink); font-weight: 700; }
+.budget-legend small { color: var(--muted); font-size: 12px; }
+.budget-missing { color: var(--muted); }

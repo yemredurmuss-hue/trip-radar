@@ -7,7 +7,7 @@ import { NEED_MARK, type NeedCheck } from "../lib/needs";
 import type { Standing } from "../lib/standing";
 import { dateAlert } from "../lib/progress";
 import { rangeOfGroupKey, stayRange } from "../lib/plan";
-import { isRental, isTrip } from "../lib/travelKinds";
+import { isRental, isSmall, isTrip } from "../lib/travelKinds";
 import { withDates } from "../lib/url";
 import type { Category, Item } from "../lib/types";
 import { chooseItem, removeItem, setItemStatus } from "./actions";
@@ -82,35 +82,36 @@ function datedLink(item: Item, decision: GroupDecision | undefined) {
 }
 
 /**
- * What speaks for it (left) and against it (right), a few words a line, one under another; the
- * biggest of each on top. The reason an option is out always leads on the right.
+ * What speaks for it and against it, a few words a line: the pluses, then what to mind, each list
+ * with its biggest on top (the reason an option is out always leads). A wide card puts them side by
+ * side; a narrow one one under the other, so no line is squeezed into a column two words wide.
  */
 function ProsCons({ pros, cons }: { pros: CardFacts["pros"]; cons: CardFacts["cons"] }) {
   if (!pros.length && !cons.length) return null;
   return (
     <div className="sc-pc">
-      <ul className="sc-col pros" aria-label="Artıları">
-        {pros.map((p) => (
-          <li key={p.text} className={p.unique ? "unique" : undefined}>
-            <i aria-hidden>+</i>
-            <span>
-              {p.text}
+      {pros.length > 0 && (
+        <ul className="sc-col pros" aria-label="Artıları">
+          {pros.slice(0, 3).map((p) => (
+            <li key={p.text} className={p.unique ? "unique" : undefined} title={p.text}>
+              <i aria-hidden>+</i>
+              <span>{p.text}</span>
               {p.unique && <em className="only-here">yalnız bunda</em>}
-            </span>
-          </li>
-        ))}
-      </ul>
-      <ul className="sc-col cons" aria-label="Eksileri">
-        {cons.map((c) => (
-          <li key={c.text} className={[c.strong ? "strong" : "", c.unique ? "unique" : ""].filter(Boolean).join(" ") || undefined}>
-            <i aria-hidden>−</i>
-            <span>
-              {c.text}
+            </li>
+          ))}
+        </ul>
+      )}
+      {cons.length > 0 && (
+        <ul className="sc-col cons" aria-label="Eksileri">
+          {cons.slice(0, 3).map((c) => (
+            <li key={c.text} className={[c.strong ? "strong" : "", c.unique ? "unique" : ""].filter(Boolean).join(" ") || undefined} title={c.text}>
+              <i aria-hidden>−</i>
+              <span>{c.text}</span>
               {c.unique && !c.strong && <em className="only-here">yalnız bunda</em>}
-            </span>
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -225,9 +226,9 @@ function Price({ price, compact = false, dated }: { price: CardFacts["price"]; c
         <b>{price.text}</b>
         {price.label && <span className="muted">{price.label}</span>}
         {price.provisional && <span className="tone-warning">· geçici</span>}
-        {price.note && <span className="muted">· {price.note}</span>}
       </span>
       {price.perNight && <span className="price-night">{price.perNight}</span>}
+      {price.note && <span className="price-note">{price.note}</span>}
     </span>
   );
 }
@@ -259,6 +260,7 @@ export function SwipeCard({ item, group, decision, decisions, standing, onOpen, 
 
   return (
     <article className={`swipe-card${facts.best ? " best" : ""}${facts.out ? " out" : ""}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
+      <div className="sc-top">
       <div className="sc-media">
         <FallbackImg
           className="sc-img"
@@ -286,19 +288,21 @@ export function SwipeCard({ item, group, decision, decisions, standing, onOpen, 
           </span>
         )}
       </div>
-      <div className="sc-body">
         <div className="sc-head">
           <h3 className="sc-title">{facts.title}</h3>
           {facts.subtitle && <div className="sc-sub">{facts.subtitle}</div>}
-          {place?.why && (
+          {/* The first one's reasons are the checks and pluses right below; the others say what they have over it. */}
+          {place?.why && place.rank > 1 && (
             <div className="sc-why">
               <b>{place.label}:</b> {place.why}
             </div>
           )}
+          <div className="sc-price">
+            <Price price={facts.price} dated={Boolean(item.dates.start || item.flight?.departure)} />
+          </div>
         </div>
-        <div className="sc-price">
-          <Price price={facts.price} dated={Boolean(item.dates.start || item.flight?.departure)} />
-        </div>
+      </div>
+      <div className="sc-body">
         <Needs needs={facts.needs} />
         <ProsCons pros={facts.pros} cons={facts.cons} />
         {open && (
@@ -469,6 +473,7 @@ export function SettledCard({
   // ⓘ opens the details. Without alternatives, a tap opens the details too.
   const alternatives = onChange && !booked ? Math.max(0, (decision?.options.length ?? 1) - 1) : 0;
   const tap = alternatives ? onChange! : toggle;
+  if (isSmall(item)) return <SettledRow item={item} decision={decision} decisions={decisions} onOpen={onOpen} alternatives={alternatives} onChange={onChange} changing={changing} />;
   return (
     <div className={`settled-card st-${booked ? "booked" : "planned"}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
       <StatusBar
@@ -535,6 +540,84 @@ export function SettledCard({
                   Seçimi geri al
                 </button>
               )
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A small thing of the trip (an eSIM, a taxi, insurance) as one line, the way Layla lists them: its
+ * icon, what it is and when, where it stands, the price and the one action it needs. A tap opens the details.
+ */
+function SettledRow({
+  item,
+  decision,
+  decisions,
+  onOpen,
+  alternatives,
+  onChange,
+  changing,
+}: {
+  item: Item;
+  decision?: GroupDecision;
+  decisions: Decisions | null;
+  onOpen: () => void;
+  alternatives: number;
+  onChange?: () => void;
+  changing: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const facts = cardFacts(item, decision, decisions?.ctx);
+  const booked = item.status === "booked";
+  const planned = item.origin === "chat";
+  const when = item.flight?.departure && /T\d{2}:\d{2}/.test(item.flight.departure) ? `${shortDay(item.flight.departure)} ${clock(item.flight.departure)}` : shortDay(item.dates.start);
+  const sub = [when, facts.source?.label, item.origin === "chat" ? "sohbette söyledin" : null].filter(Boolean).join(" · ");
+  return (
+    <div className={`settled-row st-${booked ? "booked" : "planned"}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
+      <button className="sr-main" aria-expanded={open} aria-label={`${item.name}: detaylar`} onClick={() => setOpen(!open)}>
+        <span className={`sr-icon cat-${item.category}`} aria-hidden>
+          <CategoryIcon category={item.category} size={18} />
+        </span>
+        <span className="sr-text">
+          <b>{item.name}</b>
+          {sub && <span className="muted">{sub}</span>}
+        </span>
+        {facts.price && <span className="sr-price">{facts.price.text}</span>}
+        <span className={`sr-chip st-${booked ? "booked" : "planned"}`}>{booked ? `${bookedWord(item)} ✓` : planned ? "Planlanıyor" : "Seçildi"}</span>
+      </button>
+      <span className="sr-actions">
+        {booked ? (
+          <button className="link-btn quiet" onClick={() => void setItemStatus(item, "chosen")} title="Rezerve edilmedi olarak geri al">
+            Geri al
+          </button>
+        ) : (
+          <button className="pill-btn outline small" onClick={() => void setItemStatus(item, "booked")}>
+            {ticketed(item) ? "Bileti aldım" : "Rezerve ettim"}
+          </button>
+        )}
+        {alternatives > 0 && (
+          <button className="link-btn" aria-expanded={changing} onClick={onChange}>
+            {changing ? "Kapat" : `Diğer ${alternatives}`}
+          </button>
+        )}
+        {planned && !booked && (
+          <button className="link-btn quiet" onClick={() => void removeItem(item)} aria-label={`${item.name}: kaldır`} title="Bu planı panodan kaldır">
+            Kaldır
+          </button>
+        )}
+      </span>
+      {open && (
+        <div className="stc-details">
+          <Details item={item} decision={decision} decisions={decisions} />
+          <div className="sc-links">
+            <Links item={item} decision={decision} onOpen={onOpen} />
+            {!planned && !booked && (
+              <button className="link-btn" onClick={() => void setItemStatus(item, "saved")}>
+                Seçimi geri al
+              </button>
             )}
           </div>
         </div>

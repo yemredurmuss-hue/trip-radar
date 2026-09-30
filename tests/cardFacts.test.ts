@@ -64,7 +64,7 @@ describe("decision card facts", () => {
     expect(casa.subtitle).toBe("Daire · 1 yatak odası");
     expect(casa.out).toBe(true);
     expect(casa.status).toEqual({ text: "Elendi", tone: "warning" });
-    expect(casa.cons[0]).toMatchObject({ text: "Elendi: Yan binada inşaat var", strong: true, mine: true });
+    expect(casa.cons[0]).toMatchObject({ text: "Elendi: Yan binada inşaat var; sessiz bir yer istiyorsun", strong: true, mine: true });
     // Far by the comparison and weak location in the reviews: one tag, not two, and it says how far.
     expect(casa.cons.filter((c) => /Uzak|Konum/.test(c.text)).map((c) => c.text)).toEqual(["Uzak · gezeceğin yerlere 43 dk"]);
     // Quiet, which they asked for: the construction noise answers it, whatever topic it was filed under.

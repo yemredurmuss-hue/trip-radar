@@ -204,6 +204,17 @@ export function needsFor(item: Item, decision: GroupDecision | undefined, ctx: C
   return checkNeeds(item, option, peers, ctx, listings?.get(listingKeyOf(item)));
 }
 
+/**
+ * A line as the card says it: what was read on the page in its own words, whole ("Temizlik standartları
+ * misafirler tarafından yüksek bulunuyor"), never cut, the card's layout gives it the room; a comparison
+ * in its card form ("€45 daha ucuz", "Gezeceğin yerlere 6 dk").
+ */
+const cardText = (l: ProCon, side: "pro" | "con") => {
+  if (!l.finding) return tagOf(l, side);
+  const t = l.text.trim();
+  return t.charAt(0).toLocaleUpperCase("tr") + t.slice(1);
+};
+
 export function cardFacts(
   item: Item,
   decision: GroupDecision | undefined,
@@ -227,12 +238,12 @@ export function cardFacts(
   // The reason an option is out already says what the finding behind it says.
   for (const l of lines.cons) if (l.kind === "elimination" && l.finding) said.add(`f:${l.finding.id}`);
   const pros = lines.pros
-    .map((l) => ({ l, text: tagOf(l, "pro") }))
+    .map((l) => ({ l, text: cardText(l, "pro") }))
     .filter((x) => once(x.l, x.text))
     .map((x) => ({ text: x.text, mine: mine(x.l), ...(x.l.unique ? { unique: true } : {}) }))
     .slice(0, 4);
   const cons: CardFacts["cons"] = lines.cons
-    .map((l) => ({ l, text: tagOf(l, "con") }))
+    .map((l) => ({ l, text: cardText(l, "con") }))
     .filter((x) => once(x.l, x.text))
     .map((x) => ({ text: x.text, strong: Boolean(x.l.decisive || x.l.serious), mine: mine(x.l), ...(x.l.unique ? { unique: true } : {}) }));
   const label = item.status === "saved" ? decisionLabel(item, decision, currency) : null;
@@ -253,7 +264,7 @@ export function cardFacts(
       // Only some of the nights: said with the price, as a fact, not as a minus.
       const p = priceOf(item, decision, currency);
       const c = option?.coverage;
-      return p && c ? { ...p, note: `yalnız ${c.nights}/${c.of} gece` } : p;
+      return p && c ? { ...p, note: `${c.of} gecelik konaklamanın yalnız ${c.nights} gecesi` } : p;
     })(),
     score: option && !option.excluded ? option.score : null,
     best: Boolean(label?.best),

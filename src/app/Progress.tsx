@@ -89,6 +89,10 @@ export function TodoStrip({ progress, onGo }: { progress: DecisionProgress; onGo
   );
 }
 
+/**
+ * What the trip costs, as one bar: the whole of it is the total (said at the bar's end, or the budget
+ * when there is one), filled green by what's booked and amber by what's chosen and still to book.
+ */
 export function BudgetBarView({ bar }: { bar: BudgetBar }) {
   const planned = bar.booked + bar.chosen;
   const sum = planned + bar.open;
@@ -97,16 +101,24 @@ export function BudgetBarView({ bar }: { bar: BudgetBar }) {
   const pct = (n: number) => `${(n / scale) * 100}%`;
   const money = (n: number) => formatPrice(n, bar.currency);
   const left = bar.total != null ? bar.total - sum : null;
+  const share = (n: number) => (sum ? ` · %${Math.round((n / sum) * 100)}` : "");
   return (
-    <div className="budget" aria-label="Bütçe">
+    <section className="budget" aria-label="Gezinin maliyeti">
       <div className="budget-top">
-        <span>
-          <b>{money(sum)}</b>
-          {bar.total != null ? <span className="muted"> / {money(bar.total)} bütçe</span> : <span className="muted"> tahmini toplam</span>}
+        <span className="budget-label">{bar.total != null ? "Bütçe" : "Tahmini toplam"}</span>
+        <span className="budget-sum">
+          {bar.total != null ? (
+            <>
+              <b>{money(sum)}</b>
+              <span className="muted"> / {money(bar.total)}</span>
+              <span className={left! < 0 ? "tone-danger" : "muted"}> · {left! >= 0 ? `${money(left!)} kalıyor` : `${money(-left!)} aşıyor`}</span>
+            </>
+          ) : (
+            <b>{money(sum)}</b>
+          )}
         </span>
-        {left != null && <span className={left < 0 ? "tone-danger" : "muted"}>{left >= 0 ? `${money(left)} kalıyor` : `${money(-left)} aşıyor`}</span>}
       </div>
-      <div className="budget-bar" role="img" aria-label={`Rezerve ${money(bar.booked)}, seçilen ${money(bar.chosen)}, açık ihtiyaçlar için tahmini ${money(bar.open)}`}>
+      <div className="budget-bar" role="img" aria-label={`Toplam ${money(sum)}: rezerve ${money(bar.booked)}, seçilen ${money(bar.chosen)}, açık ihtiyaçlar için tahmini ${money(bar.open)}`}>
         <span className="b-booked" style={{ width: pct(bar.booked) }} />
         <span className="b-chosen" style={{ width: pct(bar.chosen) }} />
         <span className="b-open" style={{ width: pct(bar.open) }} />
@@ -114,20 +126,21 @@ export function BudgetBarView({ bar }: { bar: BudgetBar }) {
       <div className="budget-legend">
         <span>
           <i className="b-booked" />
-          Rezerve {money(bar.booked)}
+          Rezerve edildi <b>{money(bar.booked)}</b>
+          <small>{share(bar.booked)}</small>
         </span>
         <span>
           <i className="b-chosen" />
-          Seçilen {money(bar.chosen)}
+          Seçildi, rezerve bekliyor <b>{money(bar.chosen)}</b>
         </span>
         {bar.open > 0 && (
           <span>
             <i className="b-open" />
-            Açık, tahmini {money(bar.open)}
+            Karar bekleyen, tahmini <b>{money(bar.open)}</b>
           </span>
         )}
-        {bar.uncounted > 0 && <span>{bar.uncounted} fiyat hesaba katılamadı</span>}
+        {bar.uncounted > 0 && <span className="budget-missing">{bar.uncounted} kalemin fiyatı yok, toplama girmedi</span>}
       </div>
-    </div>
+    </section>
   );
 }

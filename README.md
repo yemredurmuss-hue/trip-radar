@@ -66,6 +66,14 @@ Sonra o gün için bir uçuş (ya da konaklama) sayfası kaydedip seçince, plan
 kartından da işaretleyebilirsin (✈ Uçak, 🚆 Tren...): uçakla ise uçuş kartı gibi görünür, o günün uçuş araması
 ve iki uçtaki havalimanı transferleri açılır. "Bileti aldım"ı yanlışlıkla bastıysan **Geri al** ile dönersin.
 
+**Küçük işler tek satır.** eSIM, taksi, havalimanı transferi, seyahat sigortası gibi şeyler uçak ya da otel kadar yer
+kaplamaz: simgesi, adı ve günü, durumu ("Planlanıyor"), fiyatı ve tek eylemi ("Rezerve ettim", "Kaldır") tek satırda.
+
+**Üstte gezinin özeti.** Küçük görsel, ad, "7–18 Ekim · 12 gün · Porto → Funchal" (şehirler gidiş sırasıyla),
+yeri seçilen konaklama sayısı ("1/2 konaklama"), ulaşım ve etkinlik (sıfırsa yazmaz). Altında maliyet çubuğu: çubuğun
+tamamı tahmini toplamdır (sağ ucunda yazar; bütçe verdiysen bütçe), yeşili rezerve edilen, turuncusu seçilip
+rezerve bekleyen, taralısı karar bekleyenlerin tahmini; fiyatı olmayan kalemler ayrıca sayılır.
+
 **Planı sohbetten şekillendirirsin.** "Porto tek blok olsun, 7–12" dersen o şehrin o gecelerdeki eski sohbet
 konaklamaları tek bloğa birleşir (seçtiğin yer yalnız bir kısmını kapsıyorsa blok yine tek kalır, kapsanmayan
 geceler altında yazar). "12 Ekim'e uçak bileti" nereye gideceği belli olmadan da bir bilet şablonu açar; nereden
@@ -81,15 +89,14 @@ geceleri, günleri ve kiralanan araç; şehirler arasındaki uçuş ya da tren b
 uçuş kendi gününe konur; kayıt sayfaları aynı "ihtiyaç" adını verse de dönüş uçuşu gidiş uçuşunu kapatmaz. Gidiş ya da dönüş için kayıt yoksa "Henüz eklenmedi" yazar ve o günün uçuş aramasına link
 verir (arabayla gideceğini söylediysen sormaz). Tarihsiz yerler ve plana oturmayan uçuşlar altta ayrı durur.
 
-**Seçilmemiş her ihtiyaç kartlarla karşılaştırılır.** Uçuş, konaklama, tren, eSIM... seçenekleri yan yana
-kartlardır; parmakla, trackpad'le ya da ‹ › ile kaydırılır, en iyi puanlı önde, elenenler sonda ve soluk. Kartta:
-kaynak (site ya da şirket), görsel, 0–100 uyum puanı, ne olduğu ("Otel odası", "07:10–10:05 · Direkt ·
-4 sa 55 dk"), bu tarihler için fiyat ("€285 · 3 gece toplam"), durum ve rozetler. Artılar solda, eksiler sağda, alt alta ve
-birkaç kelimeyle ("Yakın", "Ücretsiz iptal", "Sessiz odalar" / "İade yok", "€45 pahalı", "Karşısında genelev var"):
-en büyüğü en üstte ve kalın; eleme sebebi sağda hep ilk sırada. Sayfada okunan somut bir şey kendi sözleriyle
-yazar; yalnız uzun bir cümle konusuna iner ("Gürültülü"). Aynı şeyi söyleyen iki satır ("Uzak" ve "Konum zayıf")
-teke iner. Kapalı kartlar yan yana aynı boydadır; fiyatlar ve artı/eksiler aynı hizadadır. Konaklamada toplamın yanında gecelik fiyat da yazar ("€285 · 3 gece toplam ·
-€95 / gece"). **Detaylar** kartın içinde kısa açılır: tek cümleyle neden önde/geride olduğu, karar veren
+**Seçilmemiş her ihtiyaç kartlarla karşılaştırılır.** Uçuş, konaklama, tren, eSIM... seçenekleri en iyiden en
+kötüye alt alta duran geniş kartlardır (arama sonuçları gibi); yer varsa ikişer yan yana. Kartta solda görsel (site
+adı, 0–100 uyum puanı, sırası), yanında ad, ne olduğu ("Otel odası", "07:10–10:05 · Direkt · 4 sa 55 dk") ve bu
+tarihler için fiyat ("€285 · 3 gece toplam · €95 / gece"); altında önce istediklerin (✓/✕/?), sonra artılar ve
+eksiler. Satırlar kısaltılmaz: sayfada okunan şey kendi cümlesiyle, tam yazar ("Hafta sonları gece geç saatlere
+kadar sokaktan gelen yoğun gürültü"); kart geniş olduğu için sıkışmaz, geniş ekranda artılar ve eksiler yan yana
+durur. Eleme sebebi eksilerin başında. Aynı şeyi söyleyen iki satır ("Uzak" ve "Konum zayıf") teke iner. Konaklama
+blokun yalnız bir kısmını kapsıyorsa fiyatın altında yazar ("5 gecelik konaklamanın yalnız 3 gecesi"). **Detaylar** kartın içinde kısa açılır: tek cümleyle neden önde/geride olduğu, karar veren
 bilgiler (tarih, yer, puan, iptal, giriş/çıkış saati; uçuşta kalkış, varış, süre, aktarma, bagaj), en fazla dört
 artı ve dört "Dikkat". Bütün bulgular kanıtıyla ("Kanıt", "Sorun değil") **Tüm detaylar**da. Duman dedektörü, saç
 kurutma makinesi gibi önemsiz ayrıntılar puana ve kartlara girmez. Kartlardaki her şey kayıttan ya da hesaptan
@@ -131,8 +138,8 @@ gün belli değil" kartı hemen açılır; günü söyleyince ya da bir kiralama
 Rezervasyon onayının ekran görüntüsünü atınca kayıt rezerve olur ve plan onun tarihlerine göre yeniden kurulur
 (4+3 gece iki yer ya da plandan farklı 7 gece tek yer).
 
-**Seçenekler yan yana.** Karşılaştırılan bir ihtiyaç satırın tamamını kullanır: seçenekler kaydırılmadan yan
-yana (üçten fazlası "+N seçenek daha" arkasında), üstünde tek satır öneri: "Önerim Jardim Stay: Ribeira Rooms
+**Seçenekler sırayla.** Karşılaştırılan bir ihtiyaç satırın tamamını kullanır: seçenekler kaydırılmadan, en iyisi
+en üstte (üçten fazlası "+N seçenek daha" arkasında), üstünde tek satır öneri: "Önerim Jardim Stay: Ribeira Rooms
 karşısında €45 daha ucuz; sessiz odalar, ücretsiz iptal ve gezeceğin yerlere 6 dk" + Seç + Karşılaştır.
 
 **Kartta önce istediklerin.** "Seni böyle anladım"daki her şey (mutfak, ücretsiz iptal, "sessiz bir yer istiyoruz",
@@ -144,7 +151,7 @@ kalkış 05:40". Kartın üstündeki site adı (Booking.com ↗, Airbnb ↗) say
 Tarihsiz kaydedilen bir bilet ya da sayfa için sohbette "o bilet 12 Ekim'di" demen yeter, kart kendi gününe geçer.
 
 **En iyiden en kötüye, ilk üçü neden öne çıktığıyla.** Seçenekler puana göre sıralı durur (plandaki de sırasında);
-ilk üçü yan yana, kalanlar "+N seçenek daha" arkasında. Her birinin üstünde yeri ve neden öne çıktığı yazar:
+ilk üçü önde, kalanlar "+N seçenek daha" arkasında. Her birinin üstünde yeri ve neden öne çıktığı yazar:
 **1 · Senin için en iyi** (sessiz odalar, ücretsiz iptal, kahvaltı çok iyi); ikinci ve üçüncü, birincide olmayan
 bir isteğinle ("Mutfak var · 1. seçenekte yok"), yalnız kendinde olan bir özellikle ("Odadan nehir manzarası"), ya da
 en ucuz / fiyat-performans / en kaliteli / en pratik konum olmasıyla. Puanda istediklerin ağır basar ama katı değildir:

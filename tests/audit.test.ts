@@ -249,7 +249,7 @@ describe("0.14: what decides, and what a card says when opened", () => {
     const ctx = makeContext(trip(), [place], { listings: new Map([[listing.key, listing]]) });
     const cons = cardFacts(place, undefined, ctx).cons.map((c) => c.text);
     expect(cons).toContain("Binanın hemen karşısında genelev var"); // not "Çevre sorunlu"
-    expect(cons).toContain("Hafta sonları gece geç saatlere…"); // its own words, cut short, never a vague "Gürültülü"
+    expect(cons).toContain("Hafta sonları gece geç saatlere kadar sokaktan gelen yoğun gürültü"); // its own words, whole, never a vague "Gürültülü"
     expect(cons).toHaveLength(2);
   });
 });

@@ -55,10 +55,10 @@ const SUMMARIZED: Category[] = ["activity", "food", "other"];
 export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, menu }: Props) {
   // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
-  const cities = [...new Set(items.filter((i) => i.status !== "dismissed" && i.category === "stay" && i.city).map((i) => i.city!))];
-  const subtitle = [range ? formatDateRange(range.start, range.end) : null, cities.length ? joinTr(cities) : null]
-    .filter(Boolean)
-    .join(" · ");
+  // The cities in the order they're visited (the nights' blocks), else as the saved stays name them.
+  const route = routeOf(plan, items);
+  const days = range ? nightsBetween(range.start, range.end) + 1 : 0;
+  const subtitle = [range ? formatDateRange(range.start, range.end) : null, days ? `${days} gün` : null, route].filter(Boolean).join(" · ");
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
   const [view, setView] = useState<TimelineMode>("plan");
   /** Opens a block of the plan (from the itinerary). */
@@ -82,7 +82,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       ...timeline.entries.flatMap((e) => (e.kind === "day" ? e.items.filter((i) => i.status === "saved" && SUMMARIZED.includes(i.category)) : [])),
     ]).filter((s) => SUMMARIZED.includes(s.category));
   const dismissed = items.filter((i) => i.status === "dismissed");
-  const route = routeUrl(items);
+  const mapUrl = routeUrl(items);
   const working = openCaptures.filter((c) => c.status === "pending" || c.status === "processing");
   const failed = openCaptures.filter((c) => c.status === "error");
   const listings = decisions?.ctx.listings;
@@ -150,13 +150,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           <div className="trip-sub">
             {subtitle || "Tarih ve şehir, kaydettikçe netleşir"}
             {range && !trip.confirmedDates && <span className="estimated">~tahmini</span>}
-            {trip.budget && <span className="estimated">· bütçe {formatPrice(trip.budget.amount, trip.budget.currency)}</span>}
           </div>
-          <TripSummary items={items} plan={plan} range={range} />
-          {decisions && <BudgetBarView bar={budgetBar(plan, items, decisions.ctx, decisions.byGroup)} />}
           <div className="hero-row">
-            {route && (
-              <a className="pill-btn outline" href={route} target="_blank" rel="noreferrer">
+            <TripSummary items={items} plan={plan} />
+            {mapUrl && (
+              <a className="hero-link" href={mapUrl} target="_blank" rel="noreferrer">
                 Rotayı gör ↗
               </a>
             )}
@@ -168,6 +166,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           </div>
         </div>
       </header>
+      {decisions && <BudgetBarView bar={budgetBar(plan, items, decisions.ctx, decisions.byGroup)} />}
       <TodoStrip progress={decisionProgress(timeline, items, plan, decisions?.byGroup, today)} onGo={reveal} />
 
       {failed.length > 0 && (
@@ -255,33 +254,46 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
  * The trip at a glance, beside its picture: how many days and cities, and what's in the plan so far
  * (experiences saved, stays and trips chosen or booked).
  */
-function TripSummary({ items, plan, range }: { items: Item[]; plan: Plan; range: { start: string; end: string } | null }) {
+function TripSummary({ items, plan }: { items: Item[]; plan: Plan }) {
   const live = items.filter((i) => i.status !== "dismissed" && !plan.closed.some((c) => c.item.id === i.id));
   const settled = (i: Item) => i.status === "chosen" || i.status === "booked";
-  const days = range ? nightsBetween(range.start, range.end) + 1 : 0;
   const cities = new Set(
     [...plan.stayBlocks.map((b) => b.city), ...live.filter((i) => i.category === "stay").map((i) => i.city)].map((c) => cityKeyOf(c)).filter(Boolean),
   ).size;
-  const experiences = live.filter((i) => i.category === "activity" || i.category === "food" || i.category === "other").length;
-  const stays = new Set(plan.stayBlocks.flatMap((b) => (b.kind === "open" ? [] : [b.item.id]))).size;
+  const experiences = live.filter((i) => (i.category === "activity" || i.category === "food") && settled(i)).length;
+  // Stays: how many of the plan's stretches of nights have a place, of how many there are.
+  const blocks = plan.stayBlocks.length;
+  const placed = plan.stayBlocks.filter((b) => b.kind !== "open").length;
   const trips = live.filter((i) => (i.category === "flight" || i.category === "transport") && settled(i)).length;
-  const stats: [ReactNode, string][] = [
-    [<SummaryIcon name="calendar" />, days ? `${days} gün` : "Tarih yok"],
-    [<SummaryIcon name="pin" />, `${cities} şehir`],
-    [<SummaryIcon name="star" />, `${experiences} etkinlik`],
-    [<CategoryIcon category="stay" size={22} />, `${stays} konaklama`],
-    [<CategoryIcon category="transport" size={22} />, `${trips} ulaşım`],
+  const stats: [ReactNode, string, string][] = [
+    [<SummaryIcon name="pin" />, `${cities} şehir`, "Gezideki şehirler"],
+    [<CategoryIcon category="stay" size={20} />, blocks ? `${placed}/${blocks} konaklama` : `${live.filter((i) => i.category === "stay" && settled(i)).length} konaklama`, "Yeri seçilen / gereken konaklama"],
+    [<CategoryIcon category="transport" size={20} />, `${trips} ulaşım`, "Seçilen ya da alınan ulaşım"],
+    [<SummaryIcon name="star" />, `${experiences} etkinlik`, "Plana alınan etkinlik"],
   ];
+  const shown = stats.filter(([, text]) => !/^0 /.test(text));
+  if (!shown.length) return null;
   return (
     <ul className="hero-stats" aria-label="Gezi özeti">
-      {stats.map(([icon, text]) => (
-        <li key={text}>
+      {shown.map(([icon, text, title]) => (
+        <li key={text} title={title}>
           {icon}
           <span>{text}</span>
         </li>
       ))}
     </ul>
   );
+}
+
+/** "Porto → Funchal": the cities in the order the nights go, each once in a row; else the saved stays' cities. */
+function routeOf(plan: Plan, items: Item[]): string | null {
+  const inOrder: string[] = [];
+  for (const b of plan.stayBlocks) {
+    if (b.city && (!inOrder.length || cityKeyOf(inOrder.at(-1)!) !== cityKeyOf(b.city))) inOrder.push(b.city);
+  }
+  if (inOrder.length) return inOrder.join(" → ");
+  const saved = [...new Set(items.filter((i) => i.status !== "dismissed" && i.category === "stay" && i.city).map((i) => i.city!))];
+  return saved.length ? joinTr(saved) : null;
 }
 
 /** Stays that don't fit the trip's nights (no dates, or outside them); every stay when there are no dates yet. */

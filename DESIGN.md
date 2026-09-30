@@ -9,8 +9,12 @@ Bu panonun tek işi karar vermeyi kolaylaştırmak. Her yeni ekran ve bileşen b
   (kartın solunda artılar, sağında eksiler). Gerisi bir dokunuş ötededir: kartın "Detaylar"ı, sonra
   "Tüm detaylar".
 - Aynı şey iki yerde söylenmez. Öneri tek satırdır; uzun gerekçe Karşılaştır'da durur.
-- 2–3 seçenek yan yana durur, kaydırılmaz; fazlası "+N seçenek daha" arkasındadır.
-- Kapalı kartlar aynı boydadır; ad, fiyat ve artı/eksiler aynı hizada okunur.
+- Seçenekler en iyiden en kötüye alt alta durur, kaydırılmaz; fazlası "+N seçenek daha" arkasındadır. Kart geniştir:
+  görsel solda, ad ve fiyat yanında; altında istediklerin, sonra artılar ve eksiler. Yer varsa iki kart yan yana,
+  aynı sıradakiler aynı boyda.
+- Metni kısaltarak değil düzenle okunur yaparız: satırlar tam cümle, 14 px, rahat satır aralığı, kalın yalnız
+  eleme sebebinde. Dar sütuna sıkıştırmak yok; artı/eksi yan yana yalnız kart genişse.
+- Küçük işler (eSIM, taksi, transfer, sigorta) tek satırdır; büyük kart uçuşa, konaklamaya, etkinliğe, araca.
 - Seçim yapılınca artı/eksi kalkar: karşılaştırma bitmiştir, kart sade durur.
 
 ## Renklerin tek anlamı var
@@ -67,7 +71,7 @@ büyük harfle etiket yazılmaz (İ/i sorun çıkarır); etiketler küçük ve g
 ## Okunurluk
 
 - Gri yazı `--muted` (`#6b665f`); daha açık gri bej zeminde okunmaz, kullanılmaz.
-- Kart satırları kesilmez ("…" yok), sarar; kartlar yan yana yine aynı boyda durur.
+- Kart satırları kesilmez ("…" yok), sarar.
 - Sayılar hizalı durur (`font-variant-numeric: tabular-nums`).
 
 ## Dil
