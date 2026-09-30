@@ -1366,7 +1366,8 @@ function markDominated(scored: OptionResult[]): void {
       // An option that breaks a requirement or was ruled out can't make another one redundant.
       const outA = a.unmet.length > 0 || a.eliminated != null;
       const outB = b.unmet.length > 0 || b.eliminated != null;
-      if (a === b || (outA && !outB)) continue;
+      // Nor can one that loses more points to a serious problem: "better on everything" leaves that out.
+      if (a === b || (outA && !outB) || a.penaltyPoints > b.penaltyPoints) continue;
       let common = 0;
       let better = false;
       let worse = false;

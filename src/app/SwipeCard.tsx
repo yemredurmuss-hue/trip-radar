@@ -12,6 +12,7 @@ import { withDates } from "../lib/url";
 import type { Category, Item } from "../lib/types";
 import { chooseItem, removeItem, setItemStatus } from "./actions";
 import { FallbackImg } from "./FallbackImg";
+import { PivotNote } from "./PivotNote";
 import { StatusBar } from "./Status";
 import { CategoryIcon } from "./Icons";
 import type { Decisions } from "./useDecisions";
@@ -323,7 +324,7 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
           )}
           {ranked && ranked.unknown.length > 0 && (
             <p className="opt-unknown" title="İstediğin bir konuda diğer seçeneklerin yorumları konuşuyor, bununkiler hiç bahsetmiyor">
-              ? Bunda bilinmiyor, sayfada bak: {ranked.unknown.join(", ")}
+              ? {ranked.unknown.join(", ")}: diğerlerinin yorumlarında geçiyor, bunda hiç geçmiyor; bilinmiyor, sayfada bak
             </p>
           )}
           {facts.needs.length > 0 && (
@@ -337,6 +338,7 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
             </ul>
           )}
           <ProsCons pros={facts.pros} cons={facts.cons} />
+          {ranked?.pivot && item.status === "saved" && <PivotNote item={item} pivot={ranked.pivot} />}
           {fit !== "fit" && option && option.fitNotes.length > 0 && (
             <p className={`opt-status ${fit}`}>
               <b>{FIT_WORDS[fit]}:</b> {option.fitNotes.join(" · ")}

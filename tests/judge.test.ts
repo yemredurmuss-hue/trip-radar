@@ -6,7 +6,8 @@ import { decideGroup, makeContext } from "../src/lib/decision";
 import { differencesOf } from "../src/lib/differences";
 import { CONFIDENT, evidenceOf, FADED, holds, natureOf, questionFor, stillText, stillTrue } from "../src/lib/listing";
 import type { Listing, Trip } from "../src/lib/types";
-import { finding, review, SCAFFOLDING, scaffoldingScene, TODAY } from "./fixtures/scaffolding";
+import { pivotalFindings } from "../src/lib/pivots";
+import { finding, LATER_REVIEWS, review, SCAFFOLDING, scaffoldingScene, TODAY } from "./fixtures/scaffolding";
 
 /** The scene decided, with trip settings that may name the scaffolding finding's key. */
 function decide(over: (key: string) => Partial<Trip> = () => ({})) {
@@ -132,6 +133,63 @@ describe("is it still so? (stillTrue)", () => {
     expect(strength(["r1", "r2"])).toBe(0.8); // same month
     expect(strength(["r1", "later1"])).toBe(1); // March and April
     expect(strength(["later1", "later3", "later5"])).toBe(1);
+  });
+});
+
+describe("the circuit breaker: a ranking that hangs on one thing says so", () => {
+  /** The Airbnb at €285, with the scaffolding fresh: three guests this month, nobody since. */
+  function freshScaffolding(over: (key: string) => Partial<Trip> = () => ({})) {
+    const s = scaffoldingScene();
+    const key = `item:${s.a.id}`;
+    const l = s.listings.get(key)!;
+    const listings = new Map(s.listings);
+    listings.set(key, {
+      ...l,
+      reviews: [
+        review("r1", "2026-09", "Scaffolding was put up outside, noisy in the morning."),
+        review("r2", "2026-09", "Scaffolding on the building."),
+        review("r3", "2026-09", "Scaffolding blocks the view."),
+        ...LATER_REVIEWS.map((r) => ({ ...r, date: "2026-08" })),
+      ],
+      findings: [{ ...SCAFFOLDING, reviewIds: ["r1", "r2", "r3"] }, ...l.findings.slice(1)],
+    });
+    const items = s.items.map((i) => (i.id === s.a.id ? { ...i, price: { ...i.price, amount: 285 } } : i));
+    const ctx = makeContext({ ...s.trip, ...over(`${key}#condition:negative`) }, items, { listings, today: TODAY });
+    return { ...s, items, ctx, d: decideGroup(items, ctx) };
+  }
+
+  it("flags the one thing that keeps an option from first, with a question ready for the host", () => {
+    const { a, d, ctx } = freshScaffolding();
+    expect(d.options.map((o) => o.item.name)).toEqual(["Hotel Bravo", "Casa Andaime", "Loft Central"]);
+    // Points only, no ruling: it's still in the race.
+    expect(d.options[1]).toMatchObject({ penaltyPoints: 8, eliminated: null, fit: "fit" });
+    // Better on every criterion, but not on the points the scaffolding costs: it doesn't make the first redundant.
+    expect(d.options[0].dominatedBy).toBeNull();
+    const [pivot] = pivotalFindings(d, ctx);
+    expect(pivot).toMatchObject({
+      itemId: a.id,
+      from: 2,
+      to: 1,
+      evidence: "3 yorum, Eyl 2026",
+      question: "İskele hâlâ duruyor mu?",
+      finding: { text: "Dışarıda iskele kuruldu" },
+    });
+    expect(pivot.hostMessage).toBe(
+      'Hi! We\'re considering your place for 8 Oct – 11 Oct. A review mentions: "Scaffolding was put up outside, noisy in the morning." Is the scaffolding still up? Thank you!',
+    );
+    expect(pivotalFindings(d, ctx, 1)).toHaveLength(1);
+  });
+
+  it("stops asking once the traveller answered, and never flags a doubt that costs nothing", () => {
+    const fine = freshScaffolding((key) => ({ acceptedFindings: [key] }));
+    expect(fine.d.options[0].item.name).toBe("Casa Andaime");
+    expect(pivotalFindings(fine.d, fine.ctx).some((p) => p.finding.text === "Dışarıda iskele kuruldu")).toBe(false);
+    const out = freshScaffolding((key) => ({ confirmedFindings: [key] }));
+    expect(out.d.options.at(-1)).toMatchObject({ item: { name: "Casa Andaime" }, fit: "unfit" });
+    expect(pivotalFindings(out.d, out.ctx).some((p) => p.finding.text === "Dışarıda iskele kuruldu")).toBe(false);
+    // The March scaffolding, faded: a question on the card, no points, so nothing hangs on it.
+    const { ctx, d } = decide();
+    expect(pivotalFindings(d, ctx)).toEqual([]);
   });
 });
 

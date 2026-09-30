@@ -960,6 +960,12 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .opt-trade .opt-loss, .opt-trade.quiet { color: #6e6e73; }
 /* A topic asked for that the others' guests speak of and this one's don't: unknown, worth a look (gray, like "?"). */
 .opt-unknown { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--muted); }
+/* The one thing an option's place hangs on: amber like "Seçmeden kontrol et", with the traveller's answers. */
+.opt-pivot { padding: 8px 12px; border-radius: 12px; background: #fff7e8; color: #8a5300; font-size: 13.5px; line-height: 1.45; }
+.opt-pivot p { margin: 0; }
+.opt-pivot b { color: inherit; }
+.opt-pivot-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; }
+.opt-pivot-actions .pill-btn { padding: 5px 12px; font-size: 13px; }
 .opt-checks { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; list-style: none; border: 0; }
 .opt-checks .need { padding: 0; background: none; font-size: 13.5px; font-weight: 500; color: #1d1d1f; gap: 6px; }
 .opt-checks .need.unknown { color: #6e6e73; }

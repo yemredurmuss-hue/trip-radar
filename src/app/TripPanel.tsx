@@ -35,6 +35,7 @@ import { Carousel } from "./Carousel";
 import { SettledCard, SwipeCard } from "./SwipeCard";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
 import { choiceOf, type Choice } from "../lib/choice";
+import { pivotalFindings } from "../lib/pivots";
 import type { ValueCard } from "../lib/value";
 import { decisionLabel, type Decisions } from "./useDecisions";
 
@@ -354,6 +355,8 @@ function OptionGroupView({
   const single = live && decision.status === "single";
   // The strongest option for each thing that matters (the balanced one first), and the rest.
   const choice = live && ctx && comparable ? choiceOf(decision, ctx) : null;
+  // Where an option's place hangs on one thing read on its page: said on its card, with the question.
+  const pivots = useMemo(() => (live && ctx && comparable && !group.items.some((i) => i.status === "chosen") ? pivotalFindings(decision, ctx) : []), [live, ctx, comparable, decision, group.items]);
   const head =
     heading || subtitle ? (
       <span className="group-title">
@@ -380,7 +383,10 @@ function OptionGroupView({
   const lead = byRank.slice(0, VISIBLE);
   const others = byRank.slice(VISIBLE);
   const shown = showAll ? byRank : lead;
-  const rankedOf = (item: Item) => choice?.ranked.find((r) => r.option.item.id === item.id);
+  const rankedOf = (item: Item) => {
+    const r = choice?.ranked.find((x) => x.option.item.id === item.id);
+    return r && { ...r, pivot: pivots.find((p) => p.itemId === item.id) ?? null };
+  };
   return (
     <div className={nested ? "group nested" : "section"}>
       {decided && renderSettled(decided, decision, change, true)}

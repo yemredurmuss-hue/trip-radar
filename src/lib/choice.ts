@@ -21,6 +21,7 @@ import {
 import { differencesOf, type DiffCell, type DiffRow } from "./differences";
 import { formatPrice, listingKeyOf, nightsBetween } from "./items";
 import { acceptKey, evidenceOf, FADED } from "./listing";
+import type { Pivot } from "./pivots";
 import { rangeOfGroupKey } from "./plan";
 import type { Amenity, CriterionId, FindingTopic, Listing } from "./types";
 
@@ -56,6 +57,8 @@ export interface Ranked {
   vsRank: number | null;
   /** What the traveller cares about that the others' pages speak of and this one's don't: "sessizlik". */
   unknown: string[];
+  /** The one thing read on its page its place hangs on (see pivots.ts); set by the board, not here. */
+  pivot?: Pivot | null;
 }
 
 export interface Choice {
