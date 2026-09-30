@@ -985,3 +985,28 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .reco-verify li { font-size: 13.5px; color: #8a5300; line-height: 1.45; }
 .reco-verify li::before { content: "!"; display: inline-grid; place-items: center; width: 16px; height: 16px; margin-right: 6px; border-radius: 50%; background: #f0a53a; color: #fff; font-size: 11px; font-weight: 800; vertical-align: 1px; }
 .reco-verify a { font-weight: 600; }
+
+/* ---------- 0.26: the ranking is the backbone: 1, 2, 3, 4… one under another ---------- */
+.option-grid { grid-template-columns: 1fr; gap: 12px; }
+.opt-main { grid-template-columns: auto 96px 1fr auto; }
+.opt-rank {
+  align-self: start; display: grid; place-items: center; width: 30px; height: 30px; margin-top: 2px; border-radius: 50%;
+  background: #f2f2f4; color: #1d1d1f; font-size: 15px; font-weight: 750; font-variant-numeric: tabular-nums;
+}
+.swipe-card.opt.first .opt-rank { background: var(--accent); color: #fff; }
+.opt-score {
+  align-self: start; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 52px; height: 52px;
+  border-radius: 50%; background: #f5f5f7; line-height: 1;
+}
+.opt-score b { font-size: 18px; font-weight: 750; color: #1d1d1f; font-variant-numeric: tabular-nums; }
+.opt-score small { margin-top: 2px; font-size: 10px; color: #6e6e73; }
+.opt-score.best { background: #eaf1ff; }
+.opt-score.best b { color: var(--accent); }
+.opt-trade .opt-vs { display: inline-block; margin-right: 8px; padding: 1px 8px; border-radius: 999px; background: #f2f2f4; color: #6e6e73; font-size: 12px; font-weight: 600; vertical-align: 1px; }
+.swipe-card.opt .sc-pc { padding-top: 10px; border-top: 1px solid #f2f2f4; }
+.swipe-card.opt .sc-col li { font-size: 13.5px; }
+@container (max-width: 420px) {
+  .opt-main { grid-template-columns: auto 64px 1fr; }
+  .opt-img { width: 64px; height: 64px; border-radius: 12px; }
+  .opt-score { grid-column: 3; justify-self: start; width: auto; height: auto; flex-direction: row; gap: 4px; background: none; }
+}
