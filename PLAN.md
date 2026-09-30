@@ -110,6 +110,18 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
       fark/kazanç/eksik satırı, artı/eksiler kartta; öneri cümlesi "Önerim X: neden; <öncelik> için 2. Y"
 - [x] 0.27: kartta büyük fotoğraf (geniş: solda ~%42 tam boy, dar: üstte), sıra/puan/site fotoğrafın üstünde,
       büyük ad ve fiyat; detaylar altta tam genişlik
+- [x] 0.28: hakem yeniden — tek bir sorun en iyi seçeneği dibe atmaz (iskele vakası, `tests/judge.test.ts`):
+      yalnız gezgin eler (kendi şartı ya da bulguya "Önemli, kalsın"; AI'ın şarta bağlı olmayan elemesi "kontrol
+      gerekiyor"), ciddi sorun puandan bir kez düşer; bulgu kalıcı / geçici olay / sayfanın sözü diye ayrılır,
+      "hâlâ öyle mi?" sonraki tarihli yorumlardan hesaplanır (iskeleden sonra 10 yorum sessizse büyük olasılıkla
+      geçmiş, yeniden anılırsa geri gelir, "kaldırılmış" diyen hızla düşürür; tarihsiz orta), kanıt gücü sürekli
+      (yorum sayısı, ay sayısı, oran); şüpheli ciddi sorun puan değil soru: "Seçmeden kontrol et: iskele hâlâ
+      duruyor mu? (son söz Mar 2026, sonraki 10 yorum bahsetmiyor)", seçeneği uygunların altına itmez; fark
+      tablosu (`differences.ts`): hepsinde olan sıralamayı oynatmaz, yalnız bunda olanın ağırlığı kesinliğiyle,
+      "1.'ye göre" satırında sayfanın somut farkı ("balkondan nehir manzarası · 2 yorum"), istenen bir konuda
+      diğerlerinin yorumları konuşup bununki susuyorsa "? sessizlik: … bilinmiyor, sayfada bak"; devre kesici
+      (`pivots.ts`): sıralama tek bir bulguya bağlıysa kartta "Sıralaman tek bir şeye bağlı: … Bu olmasa 1.
+      olurdu" + [Önemli, kalsın] [Sorun değil] [Ev sahibine sor]; cevaplanana kadar yalnız puan
 - [ ] Sonra: vibe (ışık, teras, yeşillik; fotoğraftan), kısmi konaklama kombinasyonları (2+3 gece = tam plan),
       gerçek kayıtlarla altın set ölçümü
 - [ ] Sonra: "farka değer mi?" (pahalı seçenek neyi fazladan veriyor), gerçek kayıtlarla altın set ölçümü
