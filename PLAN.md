@@ -122,6 +122,13 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
       diğerlerinin yorumları konuşup bununki susuyorsa "? sessizlik: … bilinmiyor, sayfada bak"; devre kesici
       (`pivots.ts`): sıralama tek bir bulguya bağlıysa kartta "Sıralaman tek bir şeye bağlı: … Bu olmasa 1.
       olurdu" + [Önemli, kalsın] [Sorun değil] [Ev sahibine sor]; cevaplanana kadar yalnız puan
+- [x] 0.28 paylaşım: bir geziyi birlikte gezdiğin kişiyle paylaşmak (Sabine) — ücretsiz Supabase projesi
+      (`supabase/schema.sql`: tablolara doğrudan erişim yok, her fonksiyon gezinin gizli kimliğini ister, boyut
+      sınırları); tek kod (`TR1:…` = sunucu + anahtar + gezi), Seyahatlerim'de "Paylaşılan geziye katıl";
+      kayıtlar iki yönlü (paylaşılan geziye zorla düşer, her taraf kendi AI'ı, kayıt kimliğiyle tekrar yok, çevrimdışı
+      kuyruk); 👍/👎 oylar ilan anahtarıyla (sıralamayı değiştirmez; ikisi de 👎 → soluk kart); gezi ayarları son
+      yazan kazanır; dakikada bir eşitleme ve "Paylaşılıyor · Sabine ile · son eşitleme" satırı (`src/lib/share/`).
+      Sonra: telefondan oy/link için küçük bir web sayfası aynı fonksiyonlarla (sunucu buna hazır).
 - [ ] Sonra: vibe (ışık, teras, yeşillik; fotoğraftan), kısmi konaklama kombinasyonları (2+3 gece = tam plan),
       gerçek kayıtlarla altın set ölçümü
 - [ ] Sonra: "farka değer mi?" (pahalı seçenek neyi fazladan veriyor), gerçek kayıtlarla altın set ölçümü
@@ -193,7 +200,7 @@ Kararlar:
 ## v2: Ürün
 - Giriş sistemi, API çağrılarının sunucuya taşınması (anahtar tarayıcıdan çıkar).
 - Chrome Web Store yayını, hukuki görüş (TTK 55, FSEK Ek 8, KVKK).
-- Ortak gezi / oylama, gün gün plan.
+- Ortak gezi / oylama (0.28'de iki kişilik hali var), gün gün plan.
 
 ## Açık sorular (gerçek kullanımda cevaplanacak)
 - Booking/Airbnb sayfalarında iptal koşulu ve oda fiyatı sayfa yazısında güvenilir geliyor mu?

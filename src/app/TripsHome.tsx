@@ -6,6 +6,7 @@ import { isDemoTrip } from "../lib/trips";
 import type { Capture, Item, Trip } from "../lib/types";
 import { addImages, addLinks } from "./capture";
 import { FallbackImg } from "./FallbackImg";
+import { JoinShared } from "./Share";
 import { joinTr } from "./TripPanel";
 
 interface Props {
@@ -89,6 +90,8 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
         </div>
       )}
 
+      <JoinShared onJoined={onOpen} />
+
       {trips.length === 0 ? (
         <div className="trips-empty">
           <h2>İlk seçeneğini kaydet</h2>
@@ -121,6 +124,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
                   <div className="trip-card-title">
                     {trip.title}
                     {isDemoTrip(trip) && <span className="badge">Örnek</span>}
+                    {trip.shareId && <span className="badge">Paylaşılan</span>}
                   </div>
                   <div className="muted">
                     {[range ? formatDateRange(range.start, range.end) : null, cities.length ? joinTr(cities) : null]

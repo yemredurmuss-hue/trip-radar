@@ -24,7 +24,8 @@
     "https://api.anthropic.com/*",
     "https://nominatim.openstreetmap.org/*",
     "https://api.frankfurter.dev/*",
-    "https://api.frankfurter.app/*"
+    "https://api.frankfurter.app/*",
+    "https://*.supabase.co/*"
   ],
   "commands": {
     "_execute_action": {

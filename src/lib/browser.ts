@@ -46,6 +46,13 @@ export function requestReading(force = false): void {
   });
 }
 
+/** Asks the worker to sync shared trips now (a vote given, a trip shared or joined, the board opened). */
+export function requestShareSync(): void {
+  chrome.runtime.sendMessage({ type: "share-sync" }).catch(() => {
+    // Worker is starting up; its alarm syncs within a minute.
+  });
+}
+
 /** Focuses an open board tab or opens a new one. */
 export async function openBoard(hash = ""): Promise<void> {
   const base = chrome.runtime.getURL("app.html");

@@ -147,6 +147,8 @@ export interface Trip {
    * (`nights:<start>_<end>`). Hidden from the board and the to-dos, never deleted; "Geri getir" restores it.
    */
   hidden?: string[];
+  /** Shared with someone (see share/): the secret id of the shared copy on the sharing server. */
+  shareId?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -186,6 +188,12 @@ export interface Capture {
   /** Times a busy/rate-limit failure was put back in the queue automatically. */
   autoRetries?: number;
   itemId: string | null;
+  /** Came from a shared trip: it goes into this trip, not wherever chooseTrip would put it. */
+  forTripId?: string;
+  /** Who saved it, when someone else did (a shared trip's other traveller). */
+  sharedBy?: string;
+  /** When it reached the sharing server (or arrived from it): never uploaded again. */
+  sharedAt?: number;
 }
 
 export interface Price {

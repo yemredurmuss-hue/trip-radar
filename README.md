@@ -5,7 +5,8 @@ kaydedersin. AI her kaydı okur, doğru geziye ve kategoriye koyar, seçenekleri
 Sohbetle birlikte karar verirsiniz.
 
 > Kişisel sürüm (v0): sunucu yok. Her şey Chrome eklentisinin içinde çalışır. Veriler yalnız bu
-> tarayıcıda (IndexedDB) durur.
+> tarayıcıda (IndexedDB) durur. İstersen bir geziyi birlikte gezdiğin kişiyle paylaşabilirsin; bunun için
+> ücretsiz bir Supabase projesi kurulur (aşağıda "Paylaşım").
 
 ## Kurulum: otomatik güncellenen (Mac, önerilen)
 
@@ -253,6 +254,54 @@ altta "→ Tayland · Aç" bildirimi çıkar. Örnek gezi kayıt almaz.
 - **Oda seçimi:** Birçok oda varsa istediğin odanın hizasına kaydırıp tıkla; AI ekranda gördüğünü öne alır.
 - **Yorumlar:** "Tüm yorumlar" penceresini açıp tıklarsan o yorumlar da okunur.
 - **Fiyat güncelleme:** Aynı sayfayı tekrar kaydedince kart güncellenir, fiyat geçmişi tutulur.
+
+## Paylaşım (Sabine ile)
+
+Bir geziyi birlikte gezdiğin kişiyle paylaşırsın: ikiniz de kendi Chrome'unuzdan sayfa kaydedersiniz, kayıtlar
+aynı geziye düşer ve her seçeneğe 👍 / 👎 verirsiniz. Gezinin adı, tarihleri, bütçesi ve öncelikleri ikinizde
+aynıdır; sohbet herkesin kendine kalır. Paylaşım kurulmadıkça hiçbir şey değişmez, hiçbir şey dışarı gitmez.
+
+**Bir kez: sunucu (Emre, ~5 dakika, ücretsiz)**
+
+1. [supabase.com](https://supabase.com) → hesap aç → **New project** (ad: `trip-radar-paylasim`, bölge: Frankfurt,
+   veritabanı şifresini bir yere kaydet). Ücretsiz plan yeter.
+2. Proje hazır olunca soldan **SQL Editor** → **New query** → bu repodaki `supabase/schema.sql` dosyasının
+   tamamını yapıştır → **Run**. "Success. No rows returned" görmelisin (tekrar çalıştırmak zararsızdır).
+3. **Project Settings → API Keys** (ya da üstteki **Connect**): **Project URL** (`https://xxxx.supabase.co`) ve
+   **publishable key** (`sb_publishable_…`; eski projelerde **anon** `eyJ…`) kopyala.
+   `secret` / `service_role` anahtarını asla yapıştırma.
+4. Trip Radar → **•••** → **Ayarlar** → **Paylaşım**: **Adın** (Emre), **Supabase adresi**, **Supabase anahtarı**.
+   **Bağlantıyı dene** → "✓ Sunucu hazır."
+
+**Paylaş (Emre)**
+
+5. Geziyi aç → **•••** → **Bu geziyi paylaş** → **Paylaş** → **Kodu kopyala** → Sabine'e mesajla gönder
+   (`TR1:…` ile başlayan tek satır; sunucu adresi ve anahtar da içinde). Gezinin mevcut kayıtları sunucuya gider.
+
+**Katıl (Sabine)**
+
+6. Trip Radar'ı kurar (yukarıdaki Mac kurulumu, `install.sh`) ve kendi ücretsiz Gemini anahtarını bağlar.
+7. **Seyahatlerim** → **Paylaşılan geziye katıl** → kodu yapıştır, adını yaz (Sabine) → **Katıl**. Gezi açılır;
+   Emre'nin kayıtları bir dakika içinde gelir ve Sabine'in kendi AI anahtarıyla işlenir.
+
+**Nasıl çalışır**
+
+- Dakikada bir, bir şey kaydedilince ve pano açılınca eşitlenir. Gezinin üstünde:
+  "Paylaşılıyor · Sabine ile · son eşitleme 1 dk önce" (sorun varsa kırmızı, Türkçe sebebiyle).
+- Paylaşılan geziye düşen her kayıt sunucuya gider; karşı tarafta ülkesi ya da tarihi farklı olsa da **aynı
+  geziye** düşer. Her taraf kendi AI anahtarıyla işler; bir kayıt iki kez işlenmez, geri gönderilmez.
+  Gönderilen: link, sayfanın yazısı, düzenli veri ve küçültülmüş ekran görüntüsü (≤150 KB).
+- **Oy:** kartta 👍 / 👎; aynı düğmeye tekrar basınca geri alınır. Oylar sıralamayı ve puanı değiştirmez; ikiniz de
+  👎 dediyseniz kart soluklaşır ("İkiniz de istemiyorsunuz"), biriniz fikrini değiştirince geri gelir. Oy,
+  seçeneğin sitesindeki ilana verilir (aynı otelin farklı tarihli kayıtları oyu paylaşır).
+- Gezi ayarlarında (ad, tarihler, bütçe, öncelikler, şartlar) son değiştiren kazanır. Seç / Ele / Rezerve ettim ve
+  sohbet herkesin kendi panosunda kalır.
+- İnternet yoksa bekler, gelince gönderir.
+- **Güvenlik:** kodu bilen geziyi görür ve ekleme yapabilir; kodu yalnız birlikte gezdiğin kişiye ver.
+  Sunucudaki tablolara doğrudan erişim yoktur, yalnız gezi kimliğini isteyen fonksiyonlar çağrılır; gezilerin
+  listesi alınamaz. API anahtarların ve sohbetin sunucuya gitmez.
+- **Durdurmak:** **•••** → **Paylaşım kodu** → **Paylaşımı durdur** (bu bilgisayarda; gezi olduğu gibi kalır).
+- Supabase ücretsiz projeleri bir hafta hiç kullanılmazsa uyur: supabase.com'da projeyi açıp **Restore** de.
 
 ## Karar zekası: puan nasıl çıkıyor?
 

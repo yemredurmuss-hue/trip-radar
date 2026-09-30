@@ -9,6 +9,7 @@ import {
   reverifyFacts,
 } from "./lib/process";
 import { isReading, readingsDue, readPending } from "./lib/reader";
+import { syncAll } from "./lib/share/sync";
 import { updateWaiting } from "./lib/update";
 
 let recovery: Promise<void> | null = null;
@@ -29,10 +30,20 @@ function run(): Promise<void> {
     recovery ??= recoverStuck().then(() => rehomeFromDemoTrips()).then(() => reverifyFacts());
     await recovery;
     await processPending();
+    // A shared trip's new captures go up (and the other traveller's come down) without waiting a minute.
+    void syncShared();
     // Then read each new page closely (reviews, description, rules) before judging the options.
     await readPending();
     // New options and new findings change the comparisons: refresh the AI review of affected groups.
     await analyzeStale();
+  });
+}
+
+/** Shared trips: settings, captures and votes both ways; what arrived goes through the pipeline. */
+function syncShared(): Promise<void> {
+  return keepingAlive(async () => {
+    const received = await syncAll().catch(() => 0);
+    if (received) void run();
   });
 }
 
@@ -50,6 +61,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       await readPending({ force: Boolean(message.force) });
       await analyzeStale();
     });
+    sendResponse({ ok: true });
+  }
+  if (message?.type === "share-sync") {
+    void syncShared();
     sendResponse({ ok: true });
   }
   if (message?.type === "apply-update") {
@@ -93,8 +108,11 @@ async function applyUpdateIfIdle(): Promise<void> {
 chrome.alarms.create("update-check", { periodInMinutes: 1 });
 // A busy model ("high demand") or a rate limit shouldn't need a click: try again later.
 chrome.alarms.create("retry-failed", { periodInMinutes: 10 });
+// Shared trips: the other traveller's captures and votes arrive within a minute.
+chrome.alarms.create("share-sync", { periodInMinutes: 1 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "update-check") void applyUpdateIfIdle();
+  if (alarm.name === "share-sync") void syncShared();
   if (alarm.name === "retry-failed") {
     // Only when something is actually waiting: re-queued captures, or readings whose retry time has come.
     // (A failed analysis is retried when the board asks, so a spent quota isn't hammered in the background.)

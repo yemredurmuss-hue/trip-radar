@@ -33,6 +33,7 @@ import { BudgetBarView, findTarget, show, TodoStrip } from "./Progress";
 import { KIND_LABEL, LegRow } from "./LegRow";
 import { Carousel } from "./Carousel";
 import { SettledCard, SwipeCard } from "./SwipeCard";
+import { ShareStatus, VoteTallyText } from "./Share";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
 import { choiceOf, type Choice } from "../lib/choice";
 import { pivotalFindings } from "../lib/pivots";
@@ -164,6 +165,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
               {reading > 0 && `${reading} sayfa okunuyor… `}
               {failed.length > 0 && <span className="err">{failed.length} kayıt işlenemedi</span>}
             </span>
+            <ShareStatus />
           </div>
         </div>
       </header>
@@ -598,6 +600,7 @@ function Row({
           {decided?.score != null && <span className={`score-pill${decided.best ? " best" : ""}`}>{decided.score}</span>}
           <span className={`tone-${label.tone}`}>{label.text}</span>
           {warning && <span className="tone-warning"> · {warning}</span>}
+          <VoteTallyText item={item} />
         </div>
       </span>
       <span className="row-price">
