@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trip Radar",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0sg1S44BuJncNopf48IO98u3H9u+8iCCX04Y4abnbtSueWeRrehy2jlmIbKHv8PV/tM6i9Vh9tRYPXG0EgK/hIFNLZtBpRDhRuRyjxB+/QkvgDivEkaefonxUa2wy5cxlD+/om9ag3HLiw5er1rTOk5Rr4C0iHebjJgaCvM88hNJpZJap50FjcEciDs2mci+6aE/fIDZj08PBIcTTWHq/XKK8TiopJxJoLooGp6iNilgLjasxydbJdXyipHY9mtUBJGEZYznxkHtu49WzNEXSZb//dFiyHBh3a/1ektd7f/jIB+Hrit/5HT7xe8GiAHgJAutfAHvj4RoNKPl4p7GKQIDAQAB",
   "description": "Seyahat seçeneklerini tek tıkla kaydet; AI anlamlandırsın, karşılaştırsın, plana koysun.",
   "action": {
