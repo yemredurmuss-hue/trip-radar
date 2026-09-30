@@ -91,6 +91,7 @@ end $$;
 create or replace function public.get_shared_trip(p_id uuid, p_author text default null)
 returns table (trip jsonb, members text[], updated_at timestamptz, updated_by text)
 language plpgsql security definer set search_path = public as $$
+#variable_conflict use_column
 begin
   perform _share_trip_exists(p_id);
   if p_author is not null and btrim(p_author) <> '' then
@@ -143,6 +144,7 @@ end $$;
 create or replace function public.captures_since(p_trip_id uuid, p_since bigint default 0, p_limit int default 10)
 returns table (seq bigint, id uuid, author text, created_at timestamptz, capture jsonb)
 language plpgsql security definer set search_path = public as $$
+#variable_conflict use_column
 begin
   perform _share_trip_exists(p_trip_id);
   return query
@@ -179,6 +181,7 @@ end $$;
 create or replace function public.votes_for(p_trip_id uuid)
 returns table (item_key text, author text, vote smallint, note text, updated_at timestamptz)
 language plpgsql security definer set search_path = public as $$
+#variable_conflict use_column
 begin
   perform _share_trip_exists(p_trip_id);
   return query select v.item_key, v.author, v.vote, v.note, v.updated_at from shared_votes v where v.trip_id = p_trip_id;
