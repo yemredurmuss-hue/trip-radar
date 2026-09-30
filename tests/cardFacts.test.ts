@@ -6,18 +6,21 @@ import { loadDecisions } from "../src/lib/analysis";
 import { cardFacts, hostOf } from "../src/lib/cardFacts";
 import { db, listItems } from "../src/lib/db";
 import { loadDemoTrip } from "../src/lib/demo";
+import { standingsOf } from "../src/lib/standing";
 
 async function demo() {
   const id = await loadDemoTrip();
   const trip = (await (await db()).get("trips", id))!;
   const items = await listItems(id);
   const result = await loadDecisions(trip, items);
-  const facts = (name: string) => {
-    const item = items.find((i) => i.name === name)!;
-    const decision = [...result.decisions.values()].find((d) => d.options.some((o) => o.item.id === item.id));
-    return cardFacts(item, decision, result.ctx);
+  const decisionOf = (name: string) => [...result.decisions.values()].find((d) => d.options.some((o) => o.item.name === name))!;
+  const facts = (name: string) => cardFacts(items.find((i) => i.name === name)!, decisionOf(name), result.ctx);
+  const standings = (name: string) => {
+    const d = decisionOf(name);
+    const byId = standingsOf(d, result.ctx);
+    return d.options.filter((o) => byId.has(o.item.id)).map((o) => ({ name: o.item.name, ...byId.get(o.item.id)! }));
   };
-  return { facts };
+  return { facts, standings };
 }
 
 describe("decision card facts", () => {
@@ -82,5 +85,19 @@ describe("decision card facts", () => {
   it("reads the site from the link when the provider isn't known", () => {
     expect(hostOf("https://www.booking.com/hotel/pt/x.html?checkin=1")).toBe("booking.com");
     expect(hostOf("not a url")).toBeNull();
+  });
+  it("ranks best to worst and says what each of the first three is best at, and why", async () => {
+    const { standings } = await demo();
+    // Porto: Casa Azul is out (construction), so two in play. The first answers what was asked; the
+    // second has what the first doesn't: the river view.
+    expect(standings("Jardim Stay")).toEqual([
+      { name: "Jardim Stay", rank: 1, label: "Senin için en iyi", why: "sessiz odalar, ücretsiz iptal, kahvaltı çok iyi" },
+      { name: "Ribeira Rooms", rank: 2, label: "Odadan nehir manzarası", why: "yalnız bunda" },
+    ]);
+    // Flights, nothing asked: the best one, and the cheaper one with how much it saves.
+    expect(standings("Pegasus · direkt")).toEqual([
+      { name: "Pegasus · direkt", rank: 1, label: "En iyi seçim", why: "en kısa · 4 sa 55 dk, direkt, bagaj dahil" },
+      { name: "TAP · Lizbon aktarmalı", rank: 2, label: "En ucuz", why: "€30 daha ucuz" },
+    ]);
   });
 });

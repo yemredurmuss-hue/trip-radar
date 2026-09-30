@@ -18,12 +18,50 @@ export interface Deps {
   heroImage: (place: string | null) => Promise<string | null>;
   /** Place name → coordinates (defaults to cached OpenStreetMap lookup). */
   geocode?: (query: string) => Promise<Geo | null>;
+  /** Cuts the option's photo out of a screenshot (defaults to an offscreen canvas where there is one). */
+  crop?: (dataUrl: string, box: Box) => Promise<string | null>;
 }
 
 const defaultDeps: Deps = {
   extract: async (capture, facts, trips) => (await getProvider()).extract(capture, facts, trips),
   heroImage: destinationImage,
+  crop: cropImage,
 };
+
+/** [ymin, xmin, ymax, xmax], 0–1000 of the image. */
+export type Box = [number, number, number, number];
+
+/**
+ * A box the model gave for the option's photo, if it's a plausible one: inside the image, a real
+ * photo's size (not a sliver, not the whole screenshot), not too long or tall.
+ */
+export function photoBox(box: number[] | null | undefined): Box | null {
+  if (!box || box.length !== 4 || box.some((v) => !Number.isFinite(v))) return null;
+  const [y0, x0, y1, x1] = box.map((v) => Math.max(0, Math.min(1000, v)));
+  const [h, w] = [y1 - y0, x1 - x0];
+  if (h < 60 || w < 60 || (h > 950 && w > 950)) return null;
+  if (w / h > 4 || h / w > 3) return null;
+  return [y0, x0, y1, x1];
+}
+
+/** The box cut out of a data URL image as a small JPEG data URL (at most 640 px wide). */
+export async function cropImage(dataUrl: string, box: Box): Promise<string | null> {
+  if (typeof OffscreenCanvas === "undefined" || typeof createImageBitmap === "undefined") return null;
+  const bitmap = await createImageBitmap(await (await fetch(dataUrl)).blob());
+  const [y0, x0, y1, x1] = box;
+  const sx = (x0 / 1000) * bitmap.width;
+  const sy = (y0 / 1000) * bitmap.height;
+  const sw = ((x1 - x0) / 1000) * bitmap.width;
+  const sh = ((y1 - y0) / 1000) * bitmap.height;
+  const scale = Math.min(1, 640 / sw);
+  const canvas = new OffscreenCanvas(Math.round(sw * scale), Math.round(sh * scale));
+  canvas.getContext("2d")!.drawImage(bitmap, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  const blob = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.82 });
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return `data:image/jpeg;base64,${btoa(binary)}`;
+}
 
 // --- creating captures ------------------------------------------------------------------------
 
@@ -81,7 +119,13 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
     const trips = await listTrips();
     const extraction = await deps.extract(capture, facts, trips);
     const trip = await resolveTrip(extraction, trips, deps, facts);
-    const incoming = buildItem(extraction, capture, facts, trip.id);
+    let incoming = buildItem(extraction, capture, facts, trip.id);
+    // Only a screenshot: the option's photo cut out of it (a car, a room), when the model found one.
+    const box = !incoming.imageUrl && capture.screenshot ? photoBox(extraction.image_box) : null;
+    if (box) {
+      const photo = await (deps.crop ?? cropImage)(capture.screenshot!, box).catch(() => null);
+      if (photo) incoming = { ...incoming, imageUrl: photo };
+    }
 
     const existing = await d.getAll("items");
     const duplicate = findDuplicate(existing, incoming);

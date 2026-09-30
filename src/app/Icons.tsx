@@ -1,6 +1,10 @@
 import type { Category } from "../lib/types";
 
-const paths: Record<Category, string> = {
+/** A category's icon, or a car for a rented car (a "transport" that isn't a trip). */
+export type IconName = Category | "car";
+
+const paths: Record<IconName, string> = {
+  car: "M5 17H3.8a.8.8 0 0 1-.8-.8V13l1.9-4.6A2 2 0 0 1 6.8 7h10.4a2 2 0 0 1 1.9 1.4L21 13v3.2a.8.8 0 0 1-.8.8H19M3 13h18M9 17h6M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
   flight: "M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z",
   stay: "M3 18v-6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v6M3 18h18M3 18v2m18-2v2M6 9V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3",
   transport: "M5 17h14M6 17l1-9h10l1 9M8 20h.01M16 20h.01M7 12h10",
@@ -10,7 +14,7 @@ const paths: Record<Category, string> = {
   other: "M12 21s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12zM12 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
 };
 
-export function CategoryIcon({ category, size = 26 }: { category: Category; size?: number }) {
+export function CategoryIcon({ category, size = 26 }: { category: IconName; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d={paths[category]} />

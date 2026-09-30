@@ -5,15 +5,16 @@ import { isRental, MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib
 import type { OptionGroup, Plan, StayBlock } from "../lib/plan";
 import { dayRows, daySummary, journeyTitle, rowsLeft, type DayRow } from "../lib/journey";
 import { entryDomId } from "../lib/progress";
+import type { Standing as Place } from "../lib/standing";
 import { flightSearchUrl, nightsKey, type RentalEntry, type Timeline, type TimelineEntry, type TimelineSection } from "../lib/timeline";
 import type { Category, Item, LegMode, Listing } from "../lib/types";
 import { removeItem, setHidden, updateTrip } from "./actions";
 import { Carousel } from "./Carousel";
-import { CategoryIcon } from "./Icons";
+import { CategoryIcon, type IconName } from "./Icons";
 import { StatusBar, type Standing } from "./Status";
 
 export type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => ReactNode;
-export type CardFor = (item: Item, group: Item[], decision?: GroupDecision, roles?: string[], onCompare?: () => void) => ReactNode;
+export type CardFor = (item: Item, group: Item[], decision?: GroupDecision, standing?: Place, onCompare?: () => void) => ReactNode;
 export type SettledFor = (item: Item, decision?: GroupDecision, onChange?: () => void, changing?: boolean) => ReactNode;
 /** A transfer: its own row; `embedded`, only its body (under a line that is its head); `timed`, its time is beside it already. */
 export type LegFor = (l: Leg, opts?: { embedded?: boolean; timed?: boolean }) => ReactNode;
@@ -233,12 +234,14 @@ function Label({ entry, today }: { entry: TimelineEntry; today: string }) {
   );
 }
 
-function iconOf(entry: TimelineEntry): Category {
+function iconOf(entry: TimelineEntry): IconName {
   switch (entry.kind) {
     case "stay":
       return "stay";
     case "plan":
-      return entry.items.every(isRental) ? "transport" : "activity";
+      return entry.items.every(isRental) ? "car" : "activity";
+    case "rental":
+      return "car";
     case "event":
       return entry.item.category;
     case "travel": {
@@ -333,7 +336,7 @@ function DayCard({
 
 // --- the itinerary: day by day, small blocks -----------------------------------------------------------
 
-const ROW_ICONS: Partial<Record<DayRow["kind"], Category>> = { leg: "transport", rental: "transport" };
+const ROW_ICONS: Partial<Record<DayRow["kind"], IconName>> = { leg: "transport", rental: "car" };
 
 /** Where a row's block lives on the plan's front (to open it there). */
 function planKey(row: DayRow): string | null {
@@ -344,8 +347,8 @@ function planKey(row: DayRow): string | null {
   return row.stayKey;
 }
 
-function rowIcon(row: DayRow): Category {
-  if (row.item) return row.item.category;
+function rowIcon(row: DayRow): IconName {
+  if (row.item) return isRental(row.item) ? "car" : row.item.category;
   if (row.entry?.kind === "travel") return iconOf(row.entry);
   return ROW_ICONS[row.kind] ?? "other";
 }

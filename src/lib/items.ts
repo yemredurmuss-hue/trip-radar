@@ -137,7 +137,8 @@ export function buildItem(
     summary: x.summary,
     optionDetail: x.option_detail,
     url: capture.url,
-    imageUrl: x.image_url ?? httpUrl(capture.meta["og:image"]),
+    // A web address only from a page (a screenshot alone has none to give; its photo is cut out, see process.ts).
+    imageUrl: capture.url ? (httpUrl(x.image_url) ?? httpUrl(capture.meta["og:image"])) : null,
     city: x.city,
     country: x.country,
     countryCode: countryCodeOf(x.country_code),

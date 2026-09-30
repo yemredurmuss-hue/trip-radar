@@ -158,6 +158,8 @@ export interface Capture {
   screenshot: string | null; // JPEG data URL
   /** Coordinates found in the page markup (JSON-LD geo, map links, data attributes). */
   coords?: { lat: number; lng: number; source: string }[];
+  /** Photos on the page, in view first (see pagecapture.ts). */
+  images?: { src: string; alt: string; inView: boolean }[];
   capturedAt: number;
   status: "pending" | "processing" | "done" | "error";
   error: string | null;

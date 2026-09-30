@@ -4,7 +4,7 @@
 import { convert, type Rates } from "./currency";
 import { distanceKm, formatDistance, walkingMinutes } from "./geo";
 import { formatPrice, listingKeyOf, metricsOf, nightsBetween, tripDateRange } from "./items";
-import { acceptKey, evidenceOf, isDecisive, usefulListing } from "./listing";
+import { acceptKey, evidenceOf, isDecisive, saysSame, usefulListing } from "./listing";
 import { buildPlan, groupKeyOf, liveGroups, rangeOfGroupKey, stayRange } from "./plan";
 import type {
   Amenity,
@@ -92,6 +92,8 @@ export function touchesTopic(f: Pick<Finding, "topic" | "text">, topic: string):
 const touchesAny = (f: Pick<Finding, "topic" | "text">, topics: Set<string>) => [...topics].some((t) => touchesTopic(f, t));
 /** A finding on something the traveller asked for counts this much more. */
 export const SAID_WEIGHT = 2.5;
+/** A plus only this place has among the ones compared counts this much more. */
+const STANDOUT_WEIGHT = 1.5;
 
 function explicitLevel(trip: Trip, category: Category, criterion: CriterionId): PriorityLevel | undefined {
   return trip.categoryPriorities?.[category]?.[criterion] ?? trip.priorities?.[criterion];
@@ -170,6 +172,8 @@ export interface DecisionContext {
   today: string;
   /** Stays: the nights their group is compared over; prices count per night for these (set per group). */
   groupRange?: { start: string; end: string } | null;
+  /** The pages read for the options compared together (set per group): what only one has stands out. */
+  groupListings?: Listing[];
 }
 
 export const cityKey = (city: string | null, country: string | null) =>
@@ -457,11 +461,14 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
       const accepted = new Set(ctx.trip.acceptedFindings ?? []);
       // What they asked for ("sessiz bir yer") weighs more: a quiet room, or a noisy street.
       const said = saidTopics(ctx.preferences);
+      // A plus none of the others has (a river view, a roof terrace) can outweigh a missing nicety.
+      const others = (ctx.groupListings ?? []).filter((l) => l.key !== listing.key && l.readAt && l.findings.length);
+      const standsOut = (f: Finding) => f.polarity === "positive" && others.length > 0 && !others.some((l) => l.findings.some((o) => o.verified && saysSame(f, o)));
       let plus = 0;
       let minus = 0;
       for (const f of counted) {
         if (f.polarity === "negative" && accepted.has(acceptKey(listing.key, f))) continue;
-        const w = findingWeight(f, listing, ctx.today) * (touchesAny(f, said) ? SAID_WEIGHT : 1);
+        const w = findingWeight(f, listing, ctx.today) * (touchesAny(f, said) ? SAID_WEIGHT : 1) * (standsOut(f) ? STANDOUT_WEIGHT : 1);
         if (f.polarity === "positive") plus += w;
         else minus += w;
       }
@@ -770,6 +777,8 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
   const groupNights = category === "stay" ? rangeOfGroupKey(key) : null;
   if (groupNights) ctx = { ...ctx, tripNights: nightsBetween(groupNights.start, groupNights.end), groupRange: groupNights };
   const active = groupItems.filter((i) => i.status !== "dismissed");
+  // What was read for each option compared here: a plus only one of them has stands out.
+  ctx = { ...ctx, groupListings: active.map((i) => ctx.listings.get(listingKeyOf(i))).filter((l): l is Listing => Boolean(l)) };
 
   // Stays for other nights aren't alternatives for the same need: keep them out of the ranking. A
   // group's nights are the span of stays that overlap (see plan.ts); any of those is in.

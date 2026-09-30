@@ -23,6 +23,7 @@ import { cardFacts } from "../lib/cardFacts";
 import { budgetBar, decisionProgress, entryDomId, type Todo } from "../lib/progress";
 import { cityKeyOf, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
+import { isRental } from "../lib/travelKinds";
 
 import type { Capture, Category, Item, Trip } from "../lib/types";
 import { chooseItem, setHidden } from "./actions";
@@ -33,7 +34,8 @@ import { KIND_LABEL, LegRow } from "./LegRow";
 import { Carousel } from "./Carousel";
 import { SettledCard, SwipeCard } from "./SwipeCard";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
-import { rolesOf, type ValueCard } from "../lib/value";
+import { standingsOf, type Standing } from "../lib/standing";
+import type { ValueCard } from "../lib/value";
 import { decisionLabel, type Decisions } from "./useDecisions";
 
 interface Props {
@@ -93,14 +95,14 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const hiddenLegs = legs.filter((l) => l.kind !== "move" && hidden.has(`leg:${l.key}`));
   const decisionOf = (item: Item) => [...(decisions?.byGroup.values() ?? [])].find((d) => d.options.some((o) => o.item.id === item.id));
   /** One undecided option as a decision card: swipe through them, open one for the reasons. */
-  const card: CardFor = (item, group, decision, roles, onCompareGroup) => (
+  const card: CardFor = (item, group, decision, standing, onCompareGroup) => (
     <SwipeCard
       key={item.id}
       item={item}
       group={group}
       decision={decision ?? decisionOf(item)}
       decisions={decisions}
-      roles={roles}
+      standing={standing}
       onOpen={() => onOpenItem(item)}
       onCompare={onCompareGroup}
     />
@@ -338,7 +340,8 @@ function OptionGroupView({
   const live = !group.booked && decision;
   const comparable = live && decision.options.filter((o) => !o.excluded).length > 1;
   const single = live && decision.status === "single";
-  const roles = live ? rolesOf(decision) : new Map<string, string[]>();
+  // The first three, best first, each with where it stands and why.
+  const standings = live && ctx ? standingsOf(decision, ctx) : new Map<string, Standing>();
   const head =
     heading || subtitle ? (
       <span className="group-title">
@@ -359,16 +362,18 @@ function OptionGroupView({
       </div>
     );
   }
-  // Side by side, three at a time (the rest one tap away); eliminated and rule-breaking options go last
-  // (the engine ranks them there already). The recommendation is one line above them.
-  const shown = showAll ? ranked : ranked.slice(0, SIDE_BY_SIDE);
+  // Side by side, three at a time (the rest one tap away), best to worst as the engine ranks them (the
+  // one in the plan too: it has its own line above); eliminated and rule-breaking options go last.
+  // The recommendation is one line above them.
+  const byRank = [...group.items].sort((a, b) => (rank(a) ?? Infinity) - (rank(b) ?? Infinity) || (a.price.amount ?? Infinity) - (b.price.amount ?? Infinity));
+  const shown = showAll ? byRank : byRank.slice(0, SIDE_BY_SIDE);
   return (
     <div className={nested ? "group nested" : "section"}>
       {decided && renderSettled(decided, decision, change, true)}
       {head && <div className={nested ? "group-head" : "section-head"}>{head}</div>}
       {!decided && live && card && ctx && <Recommendation card={card} decision={decision} ctx={ctx} alternatives={group.items} onCompare={onCompare} />}
       <div className="option-grid">
-        {shown.map((item) => renderCard(item, group.items, decision, roles.get(item.id), comparable || single ? onCompare : undefined))}
+        {shown.map((item) => renderCard(item, group.items, decision, standings.get(item.id), comparable || single ? onCompare : undefined))}
       </div>
       {ranked.length > SIDE_BY_SIDE && (
         <button className="link-btn more-options" aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>
@@ -574,7 +579,7 @@ function Row({
         src={item.category === "flight" ? null : image}
         fallback={
           <span className="thumb icon">
-            <CategoryIcon category={item.category} />
+            <CategoryIcon category={isRental(item) ? "car" : item.category} />
           </span>
         }
       />

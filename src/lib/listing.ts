@@ -318,3 +318,22 @@ export function searchText(text: string, words: string[], max = 8): string[] {
   }
   return found;
 }
+
+/** Topics wide enough that two findings on them can be about different things (a pool, a washer). */
+const BROAD_TOPICS = new Set<Finding["topic"]>(["amenities", "facilities", "other", "nearby", "location", "transport", "value", "condition", "access"]);
+const stems = (text: string) =>
+  new Set(
+    text
+      .toLocaleLowerCase("tr")
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((w) => w.length >= 4)
+      .map((w) => w.slice(0, 5)),
+  );
+
+/** Whether another place's page says the same kind of thing (a view, noise at night, a kitchen...). */
+export function saysSame(f: Finding, other: Finding): boolean {
+  if (f.polarity !== other.polarity || f.topic !== other.topic) return false;
+  if (!BROAD_TOPICS.has(f.topic)) return true;
+  const mine = stems(f.text);
+  return [...stems(other.text)].some((w) => mine.has(w));
+}

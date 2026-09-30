@@ -10,6 +10,8 @@ export interface PageSnapshot {
   jsonLd: string[];
   meta: Record<string, string>;
   coords: { lat: number; lng: number; source: string }[];
+  /** Photos on the page, the ones in view first: the option's own picture is usually among them. */
+  images?: { src: string; alt: string; inView: boolean }[];
 }
 
 export function collectPage(): PageSnapshot {
@@ -74,8 +76,21 @@ export function collectPage(): PageSnapshot {
     if (m) addCoord(Number(m[1]), Number(m[2]), "map-link");
   });
 
+  // Photos (not icons, logos or maps), largest in view first: the extractor picks the option's own.
+  const images: { src: string; alt: string; inView: boolean; area: number }[] = [];
+  document.querySelectorAll("img").forEach((img) => {
+    const src = img.currentSrc || img.src;
+    if (!/^https?:/.test(src) || /(logo|icon|sprite|avatar|map|pixel|badge)/i.test(src)) return;
+    const rect = img.getBoundingClientRect();
+    if (rect.width < 120 || rect.height < 80 || (img.naturalWidth && img.naturalWidth < 160)) return;
+    const inView = rect.bottom > 0 && rect.top < window.innerHeight;
+    if (!images.some((x) => x.src === src)) images.push({ src: src.slice(0, 600), alt: (img.alt || "").slice(0, 120), inView, area: rect.width * rect.height });
+  });
+  images.sort((a, b) => Number(b.inView) - Number(a.inView) || b.area - a.area);
+
   return {
     coords,
+    images: images.slice(0, 8).map(({ src, alt, inView }) => ({ src, alt, inView })),
     url: location.href,
     title: document.title,
     pageText: (document.body?.innerText ?? "").slice(0, 200000),

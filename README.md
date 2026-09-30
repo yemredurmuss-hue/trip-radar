@@ -136,6 +136,16 @@ Altındaki artı/eksiler somut yazar: "Gezeceğin yerlere 6 dk", "Uzak · merkez
 kalkış 05:40". Kartın üstündeki site adı (Booking.com ↗, Airbnb ↗) sayfayı yeni sekmede açar; pano yerinde kalır.
 Tarihsiz kaydedilen bir bilet ya da sayfa için sohbette "o bilet 12 Ekim'di" demen yeter, kart kendi gününe geçer.
 
+**En iyiden en kötüye, ilk üçü neden öne çıktığıyla.** Seçenekler puana göre sıralı durur (plandaki de sırasında);
+ilk üçü yan yana, kalanlar "+N seçenek daha" arkasında. Her birinin üstünde yeri ve neden öne çıktığı yazar:
+**1 · Senin için en iyi** (sessiz odalar, ücretsiz iptal, kahvaltı çok iyi); ikinci ve üçüncü, birincide olmayan
+bir isteğinle ("Mutfak var · 1. seçenekte yok"), yalnız kendinde olan bir özellikle ("Odadan nehir manzarası"), ya da
+en ucuz / fiyat-performans / en kaliteli / en pratik konum olmasıyla. Puanda istediklerin ağır basar ama katı değildir:
+diğerlerinde olmayan güçlü bir artı (1,5 kat sayılır) eksik bir isteği telafi edip seçeneği öne geçirebilir.
+
+**Kiralık araç kendi fotoğrafı ve araba simgesiyle.** Sayfadan kaydedince sayfadaki görünen fotoğraflardan seçeneğin
+kendi fotoğrafı seçilir; yalnız ekran görüntüsü atınca fotoğrafın yeri bulunup görüntüden kesilir.
+
 **Okunan her şey ayıklanır.** Kartta bir şey ancak önemliyse görünür:
 - **Yalnız bunda:** karşılaştırılan diğer yerlerin sayfalarında hiç geçmeyen artı ya da eksi en başta, "yalnız bunda"
   etiketiyle ("Odadan nehir manzarası", "Asansör yok, 3. kat").

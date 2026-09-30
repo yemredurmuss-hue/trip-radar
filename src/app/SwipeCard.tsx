@@ -4,9 +4,10 @@ import type { GroupDecision } from "../lib/decision";
 import { formatDateRange, listingKeyOf, metricsOf } from "../lib/items";
 import { readingLine } from "../lib/listing";
 import { NEED_MARK, type NeedCheck } from "../lib/needs";
+import type { Standing } from "../lib/standing";
 import { dateAlert } from "../lib/progress";
 import { rangeOfGroupKey, stayRange } from "../lib/plan";
-import { isTrip } from "../lib/travelKinds";
+import { isRental, isTrip } from "../lib/travelKinds";
 import { withDates } from "../lib/url";
 import type { Category, Item } from "../lib/types";
 import { chooseItem, removeItem, setItemStatus } from "./actions";
@@ -237,7 +238,8 @@ interface CardProps {
   group: Item[];
   decision?: GroupDecision;
   decisions: Decisions | null;
-  roles?: string[];
+  /** Where it stands among the first three, and why ("Senin için en iyi · sessiz odalar, ücretsiz iptal"). */
+  standing?: Standing;
   onOpen: () => void;
   onCompare?: () => void;
 }
@@ -247,13 +249,13 @@ interface CardProps {
  * per night), and the two things for and against it. "Detaylar" opens the reasons and every pro and
  * con with its evidence, inside the card; "Seç" puts it in the plan.
  */
-export function SwipeCard({ item, group, decision, decisions, roles = [], onOpen, onCompare }: CardProps) {
+export function SwipeCard({ item, group, decision, decisions, standing, onOpen, onCompare }: CardProps) {
   const [open, setOpen] = useState(false);
   const facts = cardFacts(item, decision, decisions?.ctx);
   const { nights, url: datedUrl } = datedLink(item, decision);
   // Only what changes the decision is flagged on the picture: ruled out, provisional, the best pick.
   const flag = facts.status && facts.status.tone === "warning" ? facts.status : null;
-  const tag = !facts.out && !flag ? (roles[0] ?? (facts.best ? "En uygun" : null)) : null;
+  const place = !facts.out && !flag ? (standing ?? (facts.best ? { rank: 1, label: "En uygun", why: null } : null)) : null;
 
   return (
     <article className={`swipe-card${facts.best ? " best" : ""}${facts.out ? " out" : ""}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
@@ -263,7 +265,7 @@ export function SwipeCard({ item, group, decision, decisions, roles = [], onOpen
           src={facts.image}
           fallback={
             <div className={`sc-img placeholder cat-${item.category}`}>
-              <CategoryIcon category={item.category} size={40} />
+              <CategoryIcon category={isRental(item) ? "car" : item.category} size={40} />
             </div>
           }
         />
@@ -275,12 +277,24 @@ export function SwipeCard({ item, group, decision, decisions, roles = [], onOpen
           </span>
         )}
         {flag && <span className="sc-flag warning">{flag.text}</span>}
-        {tag && <span className="sc-flag">{tag}</span>}
+        {place && (
+          <span className={`sc-flag rank-${place.rank}`}>
+            <b className="sc-rank" aria-label={`${place.rank}. sırada`}>
+              {place.rank}
+            </b>
+            {place.label}
+          </span>
+        )}
       </div>
       <div className="sc-body">
         <div className="sc-head">
           <h3 className="sc-title">{facts.title}</h3>
           {facts.subtitle && <div className="sc-sub">{facts.subtitle}</div>}
+          {place?.why && (
+            <div className="sc-why">
+              <b>{place.label}:</b> {place.why}
+            </div>
+          )}
         </div>
         <div className="sc-price">
           <Price price={facts.price} dated={Boolean(item.dates.start || item.flight?.departure)} />
@@ -396,7 +410,7 @@ function Media({ item, facts }: { item: Item; facts: CardFacts }) {
         src={item.imageUrl}
         fallback={
           <span className={`stc-img placeholder cat-${item.category}`}>
-            <CategoryIcon category={item.category} size={30} />
+            <CategoryIcon category={isRental(item) ? "car" : item.category} size={30} />
           </span>
         }
       />

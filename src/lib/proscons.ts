@@ -18,7 +18,7 @@ import {
   type Part,
 } from "./decision";
 import { formatDateRange, formatPrice, listingKeyOf } from "./items";
-import { acceptKey, evidenceOf, isWeakFinding, monthLabel } from "./listing";
+import { acceptKey, evidenceOf, isWeakFinding, monthLabel, saysSame } from "./listing";
 import { cancellationText, locationText } from "./needs";
 import type { Finding, Item, Listing } from "./types";
 
@@ -300,25 +300,6 @@ function relevance(f: Finding, item: Item, ctx: Ctx): number {
   const level = levelFor(ctx.trip, item.category, TOPIC_CRITERION[f.topic], ctx.inferred);
   // Criteria that don't apply to the category (level 0 by default) still count a little: a finding is a fact.
   return Math.max(0.3, (LEVEL_WEIGHT[level] + 0.5) / 1.5);
-}
-
-/** Topics wide enough that two findings on them can be about different things (a pool, a washer). */
-const BROAD_TOPICS = new Set<Finding["topic"]>(["amenities", "facilities", "other", "nearby", "location", "transport", "value", "condition", "access"]);
-const stems = (text: string) =>
-  new Set(
-    text
-      .toLocaleLowerCase("tr")
-      .split(/[^\p{L}\p{N}]+/u)
-      .filter((w) => w.length >= 4)
-      .map((w) => w.slice(0, 5)),
-  );
-
-/** Whether another place's page says the same kind of thing (a view, noise at night, a kitchen...). */
-function saysSame(f: Finding, other: Finding): boolean {
-  if (f.polarity !== other.polarity || f.topic !== other.topic) return false;
-  if (!BROAD_TOPICS.has(f.topic)) return true;
-  const mine = stems(f.text);
-  return [...stems(other.text)].some((w) => mine.has(w));
 }
 
 function findingLines(listing: Listing, item: Item, ctx: Ctx, penalties: Set<string>, peers: Listing[] = []): { pros: ProCon[]; cons: ProCon[] } {

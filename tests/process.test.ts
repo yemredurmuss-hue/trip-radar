@@ -120,4 +120,36 @@ describe("capture pipeline", () => {
     expect((await d.get("captures", "tired"))!).toMatchObject({ status: "pending", autoRetries: 0 });
     for (const id of ["busy", "badkey", "tired"]) await d.delete("captures", id);
   });
+  it("cuts the option's photo out of a screenshot (a rented car), and trusts a web address only from a page", async () => {
+    const d = await db();
+    for (const c of await d.getAll("captures")) await d.delete("captures", c.id);
+    const cropped: [string, number[]][] = [];
+    const extractor: Extractor = async (capture) =>
+      capture.kind === "image"
+        ? { ...base, category: "transport", name: "Hyundai Bayon", need_key: "transport:car-funchal", image_url: "https://made.up/car.jpg", image_box: [300, 50, 600, 400] }
+        : { ...base, name: "Casa Verde", image_url: "https://cdn.example/room.jpg" };
+    const deps: Deps = {
+      extract: extractor,
+      heroImage: async () => null,
+      geocode: async () => null,
+      crop: async (dataUrl, box) => (cropped.push([dataUrl, box]), "data:image/jpeg;base64,CAR"),
+    };
+    await saveImage("data:image/jpeg;base64,SHOT");
+    await saveSnapshot(snapshot("https://www.booking.com/hotel/pt/casa-verde.html", "Casa Verde"), null);
+    await processPending(deps);
+    const items = await d.getAll("items");
+    // A screenshot has no web address to give: the model's box is cut out of it instead.
+    expect(items.find((i) => i.name === "Hyundai Bayon")!.imageUrl).toBe("data:image/jpeg;base64,CAR");
+    expect(cropped).toEqual([["data:image/jpeg;base64,SHOT", [300, 50, 600, 400]]]);
+    expect(items.find((i) => i.name === "Casa Verde")!.imageUrl).toBe("https://cdn.example/room.jpg");
+  });
+
+  it("takes a box only when it could be a photo", async () => {
+    const { photoBox } = await import("../src/lib/process");
+    expect(photoBox([300, 50, 600, 400])).toEqual([300, 50, 600, 400]);
+    expect(photoBox([0, 0, 1000, 1000])).toBeNull(); // the whole screenshot
+    expect(photoBox([100, 100, 120, 500])).toBeNull(); // a sliver
+    expect(photoBox([100, 100, 200])).toBeNull();
+    expect(photoBox(null)).toBeNull();
+  });
 });

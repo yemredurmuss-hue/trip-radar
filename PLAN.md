@@ -92,6 +92,9 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
       düzeltme (set_details) ile tarihsiz bilet kendi gününe geçer
 - [x] 0.21: ayıklama — herkes için olmaz sorunlar (kanıtlı) kendiliğinden eler, bilgi eksi değil, tek yorum manşet
       olmaz, hepsinde olan tekrar edilmez, "yalnız bunda" öne çıkanlar; istek kontrolü bulgunun sözlerine de bakar
+- [x] 0.22: en iyiden kötüye sıra, ilk üç "neden öne çıktı" etiketiyle (istek → yalnız bunda → ucuz/kalite/pratik),
+      yalnız bir seçenekte olan artılar puanda 1,5 kat; kiralık araç fotoğrafı (sayfadan ya da ekran görüntüsünden
+      kesilerek) ve araba simgesi
 - [ ] Sonra: "farka değer mi?" (pahalı seçenek neyi fazladan veriyor), gerçek kayıtlarla altın set ölçümü
 - [ ] Sonraki öneriler (onay bekliyor): 7 sade karşılaştırma, 8 zaman çizelgesinde tekrarların kalkması,
       9 sohbet ↔ pano bağlantısı, 10 sırayla karar ver modu
