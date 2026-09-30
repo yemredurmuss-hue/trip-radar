@@ -1,5 +1,6 @@
 // Where sharing keeps its small state: chrome.storage.local, so the board and the service worker both
 // see it (and the board hears changes). Behind a tiny interface so tests can use a Map.
+import { normalizeServerUrl } from "./code";
 import type { Vote } from "./votes";
 
 export interface KV {
@@ -48,7 +49,8 @@ const CONFIG_KEYS = { url: "shareUrl", anonKey: "shareKey", name: "shareName" } 
 
 export async function getShareConfig(kv: KV = chromeKV): Promise<ShareConfig> {
   const [url, anonKey, name] = await Promise.all([kv.get<string>(CONFIG_KEYS.url), kv.get<string>(CONFIG_KEYS.anonKey), kv.get<string>(CONFIG_KEYS.name)]);
-  return { url: url ?? "", anonKey: anonKey ?? "", name: name ?? "" };
+  // The address as typed may have a slash or a path after it; the project's own address is used.
+  return { url: normalizeServerUrl(url ?? "") ?? url ?? "", anonKey: anonKey ?? "", name: name ?? "" };
 }
 
 export async function saveShareConfig(patch: Partial<ShareConfig>, kv: KV = chromeKV): Promise<void> {
@@ -58,7 +60,7 @@ export async function saveShareConfig(patch: Partial<ShareConfig>, kv: KV = chro
 }
 
 /** Server and name are all set: sharing can be used. */
-export const isConfigured = (c: ShareConfig) => Boolean(c.url && c.anonKey && c.name);
+export const isConfigured = (c: ShareConfig) => Boolean(normalizeServerUrl(c.url) && c.anonKey && c.name);
 
 // --- per shared trip ----------------------------------------------------------------------------
 

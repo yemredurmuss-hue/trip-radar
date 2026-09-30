@@ -3,11 +3,13 @@ import { resetConversation } from "../lib/assistant";
 import { db, notifyChanged } from "../lib/db";
 import { loadDemoTrip } from "../lib/demo";
 import { buildPlan, groupKeyOf, liveGroups } from "../lib/plan";
+import { isDemoTrip } from "../lib/trips";
 import type { Item } from "../lib/types";
 import { Chat } from "./Chat";
 import { CompareView } from "./CompareView";
 import { ItemDrawer } from "./ItemDrawer";
 import { Settings } from "./Settings";
+import { ShareDialog, ShareProvider } from "./Share";
 import { TripPanel } from "./TripPanel";
 import { TripsHome } from "./TripsHome";
 import { UpdateBanner } from "./UpdateBanner";
@@ -27,6 +29,7 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [seenArrival, setSeenArrival] = useState<string | null>(null);
   const [compareKey, setCompareKey] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const decisions = useDecisions(board.trip, board.items);
 
   useEffect(() => {
@@ -72,6 +75,7 @@ export function App() {
       {menuOpen && (
         <div className="menu" onClick={() => setMenuOpen(false)}>
           <button onClick={() => setSettingsOpen(true)}>Ayarlar</button>
+          {trip && !isDemoTrip(trip) && <button onClick={() => setShareOpen(true)}>{trip.shareId ? "Paylaşım kodu" : "Bu geziyi paylaş"}</button>}
           {trip && <button onClick={() => void resetConversation(trip.id)}>Bu gezide yeni sohbet başlat</button>}
           {!board.trips.some((t) => t.demo) && (
             <button onClick={() => void loadDemoTrip().then(board.selectTrip)}>Örnek geziyi yükle</button>
@@ -83,7 +87,7 @@ export function App() {
   );
 
   return (
-    <>
+    <ShareProvider trip={trip}>
       <UpdateBanner />
       {trip ? (
         <div className="board">
@@ -168,6 +172,16 @@ export function App() {
           }}
         />
       )}
-    </>
+      {trip && shareOpen && (
+        <ShareDialog
+          trip={trip}
+          onClose={() => setShareOpen(false)}
+          onSettings={() => {
+            setShareOpen(false);
+            setSettingsOpen(true);
+          }}
+        />
+      )}
+    </ShareProvider>
   );
 }

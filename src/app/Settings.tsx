@@ -5,6 +5,7 @@ import { describeError } from "../lib/llm";
 import { listGeminiModels } from "../lib/llm/gemini";
 import { retryAllFailed } from "../lib/process";
 import type { Settings as SettingsShape } from "../lib/types";
+import { ShareSettings } from "./Share";
 
 const CLAUDE_MODELS = [
   { id: DEFAULT_MODEL, label: "Claude Opus 5 — en iyi sonuç" },
@@ -164,6 +165,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
         )}
 
         <p className="muted small">Anahtarlar yalnız bu tarayıcıda saklanır.</p>
+        <ShareSettings />
         <p className="muted small">
           <button className="btn-link" style={{ fontSize: 13, padding: 0 }} onClick={() => void download("diagnostics")}>
             Tanı dosyası indir

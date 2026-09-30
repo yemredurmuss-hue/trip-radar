@@ -14,6 +14,7 @@ import { chooseItem, removeItem, setItemStatus } from "./actions";
 import { FallbackImg } from "./FallbackImg";
 import { StatusBar } from "./Status";
 import { CategoryIcon } from "./Icons";
+import { useShare, VoteBar } from "./Share";
 import type { Decisions } from "./useDecisions";
 
 /** The site it's from, with the site's own icon (the traveller has been there), else its first letter. */
@@ -255,6 +256,8 @@ const FIT_WORDS = { check: "Seçmeden kontrol et", partial: "Kısmi", unfit: "Uy
  */
 export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, onCompare }: CardProps) {
   const [open, setOpen] = useState(false);
+  // Shared trip: both travellers said 👎 → it steps back like "Ele" (a vote undoes it).
+  const allNo = useShare()?.tally(item).allNo ?? false;
   const facts = cardFacts(item, decision, decisions?.ctx);
   const option = decision?.options.find((o) => o.item.id === item.id);
   const { nights, url: datedUrl } = datedLink(item, decision);
@@ -266,7 +269,11 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
   const place = ranked?.rank ?? null;
 
   return (
-    <article className={`swipe-card opt fit-${fit}${place === 1 ? " first" : ""}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
+    <article
+      className={`swipe-card opt fit-${fit}${place === 1 ? " first" : ""}${open ? " open" : ""}${allNo ? " all-no" : ""}`}
+      aria-label={item.name}
+      data-item-id={item.id}
+    >
       <div className={`opt-layout${facts.image ? "" : " no-photo"}`}>
         {/* The picture large, as on the site: its place, its score and the way to its page on it. */}
         <div className="opt-photo">
@@ -332,6 +339,7 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
             </ul>
           )}
           <ProsCons pros={facts.pros} cons={facts.cons} />
+          <VoteBar item={item} />
           {fit !== "fit" && option && option.fitNotes.length > 0 && (
             <p className={`opt-status ${fit}`}>
               <b>{FIT_WORDS[fit]}:</b> {option.fitNotes.join(" · ")}

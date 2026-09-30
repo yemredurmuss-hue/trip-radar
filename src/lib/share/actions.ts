@@ -1,5 +1,6 @@
 // What the board does with sharing: share a trip (→ one code to send), join one with that code, vote.
 import { db, newId, notifyChanged } from "../db";
+import { isDemoTrip } from "../trips";
 import type { Item, Trip } from "../types";
 import { rpcClient, ShareError, type Rpc } from "./client";
 import { decodeShareCode, encodeShareCode, normalizeServerUrl } from "./code";
@@ -41,7 +42,7 @@ export async function shareTrip(tripId: string, deps: ActionDeps = {}): Promise<
   const d = await db();
   const trip = await d.get("trips", tripId);
   if (!trip) throw new Error("Gezi bulunamadı.");
-  if (trip.demo) throw new Error("Örnek gezi paylaşılamaz.");
+  if (isDemoTrip(trip)) throw new Error("Örnek gezi paylaşılamaz.");
   if (trip.shareId) return shareCodeOf(trip, config);
 
   const shareId = crypto.randomUUID();
