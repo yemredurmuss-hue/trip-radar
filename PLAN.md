@@ -95,6 +95,9 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] 0.22: en iyiden kötüye sıra, ilk üç "neden öne çıktı" etiketiyle (istek → yalnız bunda → ucuz/kalite/pratik),
       yalnız bir seçenekte olan artılar puanda 1,5 kat; kiralık araç fotoğrafı (sayfadan ya da ekran görüntüsünden
       kesilerek) ve araba simgesi
+- [x] 0.23: plan sohbetten şekillenir — bir şehrin söylenen geceleri tek blok ("Porto tek blok 7–12" eski sohbet
+      konaklamalarını birleştirir, kısmi seçim bloğu bölmez, boşluğu yazar), seçenekler kendi şehrinin bloğunda;
+      tarihli bilet şablonu (nereye sonra), taksi ve eSIM planları; sohbette eklenen planlar sağda "Kaldır" ile silinir
 - [ ] Sonra: "farka değer mi?" (pahalı seçenek neyi fazladan veriyor), gerçek kayıtlarla altın set ölçümü
 - [ ] Sonraki öneriler (onay bekliyor): 7 sade karşılaştırma, 8 zaman çizelgesinde tekrarların kalkması,
       9 sohbet ↔ pano bağlantısı, 10 sırayla karar ver modu

@@ -312,11 +312,12 @@ describe("plan: nights said apart in the chat", () => {
   it("a page chosen after the stay was said fills it, whatever its nights", () => {
     const funchal = said("2026-10-07", "2026-10-11", 10);
     expect(layout([funchal, chosen("Villa", "2026-10-07", "2026-10-11", 20)])).toEqual([["chosen", "2026-10-07", "2026-10-11", "Villa"]]);
-    // For some of the nights: the rest stay open, still that stay.
-    expect(layout([funchal, chosen("Villa", "2026-10-07", "2026-10-09", 5)])).toEqual([
-      ["chosen", "2026-10-07", "2026-10-09", "Villa"],
-      ["open", "2026-10-09", "2026-10-11", "Konaklama · Porto"],
+    // For some of the nights: still one stay (as said), the nights it leaves marked to fill.
+    const partly = buildPlan(dates, [funchal, chosen("Villa", "2026-10-07", "2026-10-09", 5)]);
+    expect(partly.stayBlocks.map((b) => [b.kind, b.range.start, b.range.end, b.kind === "chosen" ? [b.item.name, b.gap] : null])).toEqual([
+      ["chosen", "2026-10-07", "2026-10-11", ["Villa", [{ start: "2026-10-09", end: "2026-10-11" }]]],
     ]);
+    expect(partly.nights).toMatchObject({ chosen: 2, open: 2 });
   });
 
   it("the latest choice takes the nights two choices share", () => {

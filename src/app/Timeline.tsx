@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import type { GroupDecision } from "../lib/decision";
-import { formatDateRange } from "../lib/items";
+import { formatDateRange, nightsBetween } from "../lib/items";
 import { isRental, MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib/legs";
 import type { OptionGroup, Plan, StayBlock } from "../lib/plan";
 import { dayRows, daySummary, journeyTitle, rowsLeft, type DayRow } from "../lib/journey";
@@ -637,6 +637,12 @@ function Block({ block, skipped, tripId, renderGroup, settled }: { block: StayBl
           renderGroup(g, null, g.range && g.range.start === block.range.start && g.range.end === block.range.end ? null : g.title, true),
         )}
       {block.kind === "open" && block.slot && block.groups.length > 0 && <SlotNote slot={block.slot} />}
+      {block.kind === "chosen" && block.gap && block.gap.length > 0 && (
+        <p className="slot-note gap">
+          {block.gap.map((r) => `${formatDateRange(r.start, r.end)} (${nightsBetween(r.start, r.end)} gece)`).join(", ")} için yer seçilmedi: bu
+          konaklama tek blok, seçtiğin yer yalnız bir kısmını kapsıyor.
+        </p>
+      )}
       {block.kind === "open" && !block.groups.length && (
         <div className="settled-card st-open stay-open">
           <StatusBar standing="open" text="Planlanmadı" sub={block.slot ? "ayrı konaklama · otel seçilmedi" : "bu geceler için kayıtlı yer yok"} />

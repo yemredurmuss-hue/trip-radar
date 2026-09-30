@@ -170,6 +170,11 @@ function scenario(seed: number) {
   if (chance(0.2)) items.push(said("car_rental", { date: day(start, 1), end_date: day(start, 4), city: route.at(-1)!.name }));
   if (chance(0.2)) items.push(said("stay", { date: start, end_date: day(start, 2), city: route[0].name }));
   if (chance(0.2)) items.push(said("activity", { date: day(start, 1), city: route[0].name, title: "Fado" }));
+  // A second stay said for nights inside or across the first, a ticket for a day with nowhere yet, a taxi, an eSIM.
+  if (chance(0.15)) items.push(said("stay", { date: day(start, 1), end_date: day(start, pick([2, 3, 4])), city: pick([route[0].name, route.at(-1)!.name]) }));
+  if (chance(0.15)) items.push(said("flight", { date: day(start, pick([0, 3, length])) }));
+  if (chance(0.2)) items.push(said("taxi", { date: pick([start, day(start, 3), day(start, length)]), from: "Otel", to: "Havalimanı", city: pick([route[0].name, null]) }));
+  if (chance(0.15)) items.push(said("esim", { date: null, city: pick([null, route[0].name]) }));
   // What the traveller said about transfers.
   if (chance(0.3)) {
     const legs: Record<string, LegChoice> = {};
@@ -190,7 +195,8 @@ function shown(items: Item[], plan: ReturnType<typeof buildPlan>, timeline: Retu
       if (e.kind === "stay") {
         if (e.block.kind === "booked") [e.block.item, ...(e.block.clashes ?? [])].forEach((i) => add(i, "stay-booked"));
         else for (const g of e.block.groups) g.items.forEach((i) => add(i, `stay:${g.key}`));
-        if (e.block.kind === "open" && e.block.slot) add(e.block.slot, "stay-slot");
+        // A stay said for nights a booking cuts through marks the nights on both sides of it.
+        if (e.block.kind !== "booked" && e.block.slot && !seen.get(e.block.slot.id)?.includes("stay-slot")) add(e.block.slot, "stay-slot");
       } else if (e.kind === "travel") e.travel?.items.forEach((i) => add(i, `travel:${e.role}`));
       else if (e.kind === "plan") e.items.forEach((i) => add(i, "plan"));
       else if (e.kind === "rental") e.group.items.forEach((i) => add(i, "rental"));

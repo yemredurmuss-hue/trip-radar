@@ -507,7 +507,21 @@ try {
     }
     const text = JSON.stringify(body.contents);
     chatPrompts.push(text);
-    if (text.includes("functionResponse")) return route.fulfill(reply([{ text: "Fiyatı konaklamada çok önemli yaptım." }]));
+    const last = JSON.stringify(body.contents.at(-1));
+    if (last.includes("functionResponse")) return route.fulfill(reply([{ text: last.includes("plan_item") ? "Panoyu güncelledim." : "Fiyatı konaklamada çok önemli yaptım." }]));
+    // The plan shaped from the chat: nights said apart, then one block, a ticket, a taxi and an eSIM.
+    const plan = (id, args) => ({ functionCall: { id, name: "plan_item", args: { kind: "stay", date: null, end_date: null, time: null, from: null, to: null, city: null, title: null, booked: false, note: null, ...args } } });
+    if (last.includes("ayrı kalalım")) {
+      return route.fulfill(reply([plan("fc-2", { date: "2026-10-08", end_date: "2026-10-09", city: "Porto" }), plan("fc-3", { date: "2026-10-09", end_date: "2026-10-11", city: "Porto" })]));
+    }
+    if (last.includes("tek blok")) {
+      return route.fulfill(reply([
+        plan("fc-4", { date: "2026-10-08", end_date: "2026-10-11", city: "Porto" }),
+        plan("fc-5", { kind: "flight", date: "2026-10-11" }),
+        plan("fc-6", { kind: "taxi", date: "2026-10-11", from: "Otel", to: "Havalimanı", city: "Porto" }),
+        plan("fc-7", { kind: "esim" }),
+      ]));
+    }
     return route.fulfill(reply([
       { text: "Fiyatı öne alalım." },
       { functionCall: { id: "fc-1", name: "set_priorities", args: { changes: [{ criterion: "price", level: "cok_onemli", category: "stay" }], wanted_amenities: null } }, thoughtSignature: "c2ln" },
@@ -655,6 +669,29 @@ try {
   assert.ok(chatCalls[0].body.tools[0].functionDeclarations.some((f) => f.name === "update_items"));
   await board.screenshot({ path: `${out}/9-flow-chat.png` });
   console.log("✓ flow: chat → set_priorities → comparison reweighted; history replayed with signatures");
+
+  // The plan shaped from the chat: Porto said as two stays shows two blocks; "tek blok" makes it one,
+  // and a ticket, a taxi and an eSIM said in the same message are on the board, each removable there.
+  let nth = 0;
+  const say = async (text, done) => {
+    await board.getByPlaceholder("Bir link bırak, görsel yapıştır veya yaz…").fill(text);
+    await board.getByRole("button", { name: "Gönder" }).click();
+    await board.locator(".msg-assistant", { hasText: done }).nth(nth++).waitFor({ timeout: 20000 });
+  };
+  await say("Porto'da 8'i gecesi ayrı, 9-11 ayrı kalalım", "Panoyu güncelledim.");
+  await board.locator("#block-2026-10-09").waitFor({ timeout: 10000 });
+  await say("Porto tek blok olsun 8-11; 11 Ekim'e uçak bileti, otelden havalimanına taksi, eSIM de alalım", "Panoyu güncelledim.");
+  await board.locator("#block-2026-10-09").waitFor({ state: "detached", timeout: 10000 });
+  await board.locator("#block-2026-10-08 .slot-note").waitFor();
+  await board.locator('.settled-card[aria-label="Uçuş"]').waitFor();
+  await board.getByText("Taksi · Otel → Havalimanı").first().waitFor();
+  const esim = board.locator('.settled-card[aria-label="eSIM"]');
+  await esim.waitFor();
+  await esim.scrollIntoViewIfNeeded();
+  await board.screenshot({ path: `${out}/9b-chat-plan.png` });
+  await esim.getByRole("button", { name: "eSIM: kaldır" }).click();
+  await esim.waitFor({ state: "detached" });
+  console.log("✓ flow: chat shapes the plan — two Porto stays merge into one block; ticket, taxi and eSIM added; a plan removed from the board");
 
   // A Thailand hotel saved while the Portugal trip is open → its own trip, and a notice to go there.
   await board.evaluate(async () => {

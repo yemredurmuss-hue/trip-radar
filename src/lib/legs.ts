@@ -86,6 +86,7 @@ export { isLocalTransfer, isRental };
 
 function modeOf(i: Item): LegMode | null {
   if (i.category === "flight") return "flight";
+  if (i.plannedKind === "taxi") return "taxi";
   const t = text(i);
   if (/tren|train|comboio|rail|renfe|trenitalia|sncf|\bcp\b|alfa pendular|intercidades/i.test(t)) return "train";
   if (/feribot|ferry|ferri|vapur/i.test(t)) return "ferry";
@@ -220,7 +221,10 @@ function status(options: Item[], choice: LegChoice | null, mode: LegMode | null)
   const label = mode ? MODE_LABELS[mode] : null;
   if (options.some((i) => i.status === "booked")) return { status: "booked", statusText: "Rezerve ✓" };
   if (choice?.booked) return { status: "booked", statusText: label ? `${label} · ayarlandı ✓` : "Ayarlandı ✓" };
-  if (options.some((i) => i.status === "chosen")) return { status: "chosen", statusText: "Seçildi · rezerve edilmedi" };
+  const chosen = options.find((i) => i.status === "chosen");
+  // Said in the chat ("11'ine taksi"): planned, like any plan said there.
+  if (chosen?.origin === "chat") return { status: "planned", statusText: label ? `${label} · planlanıyor` : "Planlanıyor" };
+  if (chosen) return { status: "chosen", statusText: "Seçildi · rezerve edilmedi" };
   if (choice?.mode && label) {
     return { status: "planned", statusText: BOOKABLE.includes(choice.mode) ? `${label} · rezerve edilmedi` : `${label} · planlandı` };
   }

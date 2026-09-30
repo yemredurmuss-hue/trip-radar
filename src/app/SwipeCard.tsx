@@ -509,6 +509,12 @@ export function SettledCard({
               {changing ? "Kapat" : `Diğer ${alternatives} seçenek`}
             </button>
           )}
+          {/* A plan said in the chat (a taxi, a ticket to find) comes off the board in one tap. */}
+          {planned && !booked && (
+            <button className="pill-btn outline quiet" onClick={() => void removeItem(item)} title="Bu planı panodan kaldır" aria-label={`${item.name}: kaldır`}>
+              Kaldır
+            </button>
+          )}
         </span>
       </div>
       {open && (
@@ -517,9 +523,12 @@ export function SettledCard({
           <div className="sc-links">
             <Links item={item} decision={decision} onOpen={onOpen} />
             {planned ? (
-              <button className="link-btn" onClick={() => void removeItem(item)}>
-                Planı kaldır
-              </button>
+              // Not booked: "Kaldır" is on the card itself.
+              booked && (
+                <button className="link-btn" onClick={() => void removeItem(item)}>
+                  Planı kaldır
+                </button>
+              )
             ) : (
               !booked && (
                 <button className="link-btn" onClick={() => void setItemStatus(item, "saved")}>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { legItem, legShortTitle, legTiming, MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib/legs";
 import type { Item, LegMode } from "../lib/types";
-import { setHidden, updateTrip } from "./actions";
+import { removeItem, setHidden, updateTrip } from "./actions";
 
 const ICONS: Record<LegMode, string> = {
   flight: "✈",
@@ -78,10 +78,18 @@ export function LegRow({
           {leg.options.length > 0 && (
             <div className="leg-options">
               {leg.options.map((i) => (
-                <button key={i.id} className="link-btn" onClick={() => onOpenItem(i)}>
-                  {i.name}
-                  {i.status === "booked" ? " ✓" : i.status === "chosen" ? " (seçildi)" : ""}
-                </button>
+                <span key={i.id} className="leg-option">
+                  <button className="link-btn" onClick={() => onOpenItem(i)}>
+                    {i.name}
+                    {i.status === "booked" ? " ✓" : i.status === "chosen" ? (i.origin === "chat" ? " (planlanıyor)" : " (seçildi)") : ""}
+                  </button>
+                  {/* A plan said in the chat ("12 Ekim'e taksi") comes off in one tap. */}
+                  {i.origin === "chat" && i.status !== "booked" && (
+                    <button className="link-btn quiet" onClick={() => void removeItem(i)} aria-label={`${i.name}: kaldır`}>
+                      Kaldır
+                    </button>
+                  )}
+                </span>
               ))}
             </div>
           )}

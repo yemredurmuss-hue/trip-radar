@@ -48,6 +48,9 @@ bir konu adı ("Olanak eksik") yazılmaz.
 - Hiçbir şey silinmez, önden kalkar: **Ele** (Elenenler), **Gerek yok** (Gizlenenler / Geri al). Sayılar ve
   yapılacaklar yalnız öndekini sayar.
 - Seçili karta dokunmak diğer seçenekleri açar; ayrıntı ⓘ'dadır.
+- İstisna: sohbette söylenen bir plan (taksi, bilet şablonu, eSIM) kayıt değil, sözdür; **Kaldır** onu siler.
+  Kaldır sessiz ikincil butondur (gri çerçeve, üstüne gelince kırmızı), kartın alt satırında durur.
+- Bir şehrin söylenen geceleri tek bloktur; seçilen yer bir kısmını kapsıyorsa blok bölünmez, kalan geceler altında yazar.
 
 ## Butonlar
 

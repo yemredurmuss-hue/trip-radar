@@ -20,7 +20,7 @@ export const isRental = (i: Item) =>
 /** A transfer within a city (to or from the airport, a taxi...) rather than a trip between cities. */
 export const isLocalTransfer = (i: Item) =>
   i.category === "transport" &&
-  (i.plannedKind ? i.plannedKind === "transfer" : LOCAL.test(itemText(i)) && !RENTAL.test(itemText(i)));
+  (i.plannedKind ? i.plannedKind === "transfer" || i.plannedKind === "taxi" : LOCAL.test(itemText(i)) && !RENTAL.test(itemText(i)));
 
 /** A trip between places (a flight, a train...): what can get the traveller in, out or to the next city. */
 export const isTrip = (i: Item) => i.category === "flight" || (i.category === "transport" && !isRental(i) && !isLocalTransfer(i));

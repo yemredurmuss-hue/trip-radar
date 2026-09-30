@@ -6,7 +6,7 @@ import { EMPTY_METRICS, isoDate } from "./items";
 import { cityKeyOf } from "./plan";
 import type { Category, Item } from "./types";
 
-export const PLANNED_KINDS = ["flight", "train", "bus", "ferry", "transfer", "car_rental", "stay", "activity", "other"] as const;
+export const PLANNED_KINDS = ["flight", "train", "bus", "ferry", "transfer", "taxi", "car_rental", "stay", "activity", "esim", "other"] as const;
 export type PlannedKind = (typeof PLANNED_KINDS)[number];
 
 export interface PlannedInput {
@@ -30,13 +30,15 @@ const CATEGORY: Record<PlannedKind, Category> = {
   bus: "transport",
   ferry: "transport",
   transfer: "transport",
+  taxi: "transport",
   car_rental: "transport",
   stay: "stay",
   activity: "activity",
+  esim: "esim",
   other: "other",
 };
-const WORD: Partial<Record<PlannedKind, string>> = { flight: "Uçuş", train: "Tren", bus: "Otobüs", ferry: "Feribot", transfer: "Transfer" };
-const TRAVEL: PlannedKind[] = ["flight", "train", "bus", "ferry", "transfer"];
+const WORD: Partial<Record<PlannedKind, string>> = { flight: "Uçuş", train: "Tren", bus: "Otobüs", ferry: "Feribot", transfer: "Transfer", taxi: "Taksi" };
+const TRAVEL: PlannedKind[] = ["flight", "train", "bus", "ferry", "transfer", "taxi"];
 
 const slug = (s: string | null) =>
   (s ?? "")
@@ -75,7 +77,9 @@ export function checkPlanned(input: PlannedInput): string | null {
   if (input.end_date && !input.date) return "Bitiş varsa başlangıç tarihini de yaz.";
   if (input.kind === "stay" && input.date && input.end_date && input.end_date <= input.date) return "Konaklamanın çıkış günü girişten sonra olmalı.";
   if (input.time && !TIME.test(input.time)) return `Saat SS:DD olmalı: ${input.time}`;
-  if (TRAVEL.includes(input.kind) && !input.to && !input.city) return "Nereye gidildiğini (to) yaz.";
+  // A ticket for a day ("12 Ekim'e uçak bileti") is a plan already; where it goes can come later.
+  if (TRAVEL.includes(input.kind) && input.kind !== "taxi" && !input.to && !input.city && !input.date) return "Nereye gidildiğini (to) ya da gününü (date) yaz.";
+  if (input.kind === "taxi" && !input.date) return "Taksinin gününü (date) yaz.";
   if ((input.kind === "car_rental" || input.kind === "stay") && !input.city && !input.to) return "Hangi şehirde olduğunu (city) yaz.";
   return null;
 }
@@ -83,9 +87,11 @@ export function checkPlanned(input: PlannedInput): string | null {
 function nameOf(i: PlannedInput): string {
   if (i.title?.trim()) return i.title.trim().slice(0, 80);
   const where = i.city ?? i.to;
+  if (WORD[i.kind] && !i.from && !i.to && !i.city) return WORD[i.kind]!;
   if (WORD[i.kind]) return `${WORD[i.kind]} · ${i.from ? `${i.from} → ` : ""}${i.to ?? i.city ?? ""}`.trim();
   if (i.kind === "car_rental") return `Araç kiralama${where ? ` · ${where}` : ""}`;
   if (i.kind === "stay") return `Konaklama${where ? ` · ${where}` : ""}`;
+  if (i.kind === "esim") return `eSIM${where ? ` · ${where}` : ""}`;
   return where ? `Plan · ${where}` : "Plan";
 }
 
@@ -113,7 +119,8 @@ export function plannedItem(input: PlannedInput, tripId: string, id: string, now
     optionDetail: null,
     url: null,
     imageUrl: null,
-    city: travel ? (input.to ?? input.city) : (input.city ?? input.to),
+    // A taxi goes to "the airport" or "the hotel": its place is the city it's in, when said.
+    city: input.kind === "taxi" ? input.city : travel ? (input.to ?? input.city) : (input.city ?? input.to),
     country: null,
     countryCode: null,
     location: { address: null, area: null, approximate: false },
@@ -139,7 +146,7 @@ export function plannedItem(input: PlannedInput, tripId: string, id: string, now
   };
 }
 
-const GENERATED = /^(Uçuş|Tren|Otobüs|Feribot|Transfer|Araç kiralama|Konaklama|Plan)( ·|$)/;
+const GENERATED = /^(Uçuş|Tren|Otobüs|Feribot|Transfer|Taksi|Araç kiralama|Konaklama|eSIM|Plan)( ·|$)/;
 const where = (s: string | null | undefined) => (s ? cityKeyOf(s) : null);
 
 /**
@@ -156,7 +163,9 @@ export function samePlan(a: Item, b: Item): boolean {
     const fromA = where(a.flight?.from);
     const fromB = where(b.flight?.from);
     if (fromA && fromB && fromA !== fromB) return false;
-    return where(a.flight?.to ?? a.city) === where(b.flight?.to ?? b.city);
+    // Where it goes said only once ("12 Ekim'e uçak bileti", then "Porto'dan İstanbul'a"): the same trip.
+    const [toA, toB] = [where(a.flight?.to ?? a.city), where(b.flight?.to ?? b.city)];
+    return !toA || !toB || toA === toB;
   }
   if (a.category === "activity" || a.category === "other") return a.needKey === b.needKey && slug(a.name) === slug(b.name);
   return a.needKey === b.needKey;

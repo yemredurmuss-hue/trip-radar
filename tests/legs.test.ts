@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { EMPTY_METRICS } from "../src/lib/items";
 import { buildLegs, legTiming } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
+import { plannedItem } from "../src/lib/planned";
 import type { HouseRules, Item, ItemStatus, LegChoice, Listing, Trip } from "../src/lib/types";
 
 const trip = (over: Partial<Trip> = {}): Trip => ({
@@ -50,6 +51,15 @@ const listingWith = (key: string, house: Partial<HouseRules>): Listing => ({
 });
 
 describe("legs: every transfer the plan needs", () => {
+  it("puts a taxi said in the chat on that day's transfer, as a taxi", () => {
+    const taxi = plannedItem({ kind: "taxi", date: "2026-10-14", end_date: null, time: null, from: "Otel", to: "Havalimanı", city: null, title: null, booked: false, note: null }, "t", "taxi", 1);
+    const legs = legsOf([stay("Jardim Stay", "2026-10-07", "2026-10-14", "booked"), taxi]);
+    const out = legs.find((l) => l.kind === "departure")!;
+    expect(out.options.map((i) => i.id)).toEqual(["taxi"]);
+    expect(out.mode).toBe("taxi");
+    expect(legs.filter((l) => l.kind !== "departure").every((l) => !l.options.length)).toBe(true);
+  });
+
   it("opens the airport transfer, the move between cities (with both station transfers) and the way out", () => {
     const legs = legsOf([
       flight("Pegasus", "IST", "OPO", "2026-10-07T07:10", "2026-10-07T10:05", "booked"),

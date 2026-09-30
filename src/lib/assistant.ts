@@ -23,7 +23,7 @@ import { prosConsFor } from "./proscons";
 import { activeSignals } from "./intent";
 import { buildLegs, legTiming, withLegChoice } from "./legs";
 import { checkPlanned, fillPlanned, plannedInput, plannedItem, PLANNED_KINDS, samePlan } from "./planned";
-import { addDays, buildPlan, liveGroups, stayRange, type Plan } from "./plan";
+import { addDays, buildPlan, liveGroups, sameCity, stayRange, type Plan } from "./plan";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
 import type { ToolResult, ToolSpec } from "./llm/types";
 import {
@@ -71,7 +71,13 @@ Nasıl konuşursun:
 - Kayıtlı bir seçeneğin tarihi, saati ya da güzergâhı eksik/yanlışsa ve kullanıcı söylerse ("o bilet 12 Ekim'di", "attığım uçuş 12 Ekim", "kalkış 22:40") set_details ile o seçeneği düzelt; aynı şey için plan_item ile yeni plan ekleme. Tarihsiz kalan kayıtları (items[].dates.start null) konuşma uygun olduğunda tek soruyla sor.
 - Yalnız araçların yaptığını söyle: bir aracı çağırmadıysan ya da araç hata verdiyse "güncelledim/not ettim/böldüm" deme. Aracın döndürdüğü sonuçla (ör. plan_item'ın board alanı) panoda gerçekten ne olduğunu anlat.
 - Boş geceler varsa uygun bir anda bir kez hatırlat.
-- Planlar: kullanıcı bir planını söylediğinde, linki olmasa da (ör. "7 Ekim'de İstanbul'dan Porto'ya uçuyoruz", "11 Ekim'de Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız", "10-17 Ekim Funchal'da kalacağız", "9 Ekim akşamı fado") plan_item ile hemen panoya ekle; tarih ve nereden/nereye ya da şehir ver. Gün belli değilse beklemeden date null ile ekle (şehrin bloğunda "gün belli değil" diye durur); gün plandan açıksa (ör. Madeira'ya varış günü) o tarihi kullan; gün sonra söylenince aynı şeyi plan_item ile tarihle tekrar ver, kart o güne geçer. "gideriz/düşünüyoruz" → planlanıyor (booked false); "aldım/rezerve ettim" → booked true. Aynı şey items'ta zaten varsa plan_item yerine update_items kullan. Şehir değişimi için ulaşım söylenirse (Madeira'ya uçakla) kind flight ile ekle; şehir içi transferler (metro, taksi) için set_leg kullan.
+- Planlar: kullanıcı bir planını söylediğinde, linki olmasa da (ör. "7 Ekim'de İstanbul'dan Porto'ya uçuyoruz", "11 Ekim'de Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız", "10-17 Ekim Funchal'da kalacağız", "9 Ekim akşamı fado") plan_item ile hemen panoya ekle; tarih ve nereden/nereye ya da şehir ver. Gün belli değilse beklemeden date null ile ekle (şehrin bloğunda "gün belli değil" diye durur); gün plandan açıksa (ör. Madeira'ya varış günü) o tarihi kullan; gün sonra söylenince aynı şeyi plan_item ile tarihle tekrar ver, kart o güne geçer. "gideriz/düşünüyoruz" → planlanıyor (booked false); "aldım/rezerve ettim" → booked true. Aynı şey items'ta zaten varsa plan_item yerine update_items kullan. Şehir değişimi için ulaşım söylenirse (Madeira'ya uçakla) kind flight ile ekle.
+- Planı sohbetten şekillendirme (hemen, aynı mesajda, sormadan):
+  • "12 Ekim'e uçak bileti", "dönüş uçağı 12'si" → plan_item kind flight, o tarih; nereden/nereye plandan belliyse ver, değilse null bırak (bilet şablonu açılır). Sonra gelen bilgiyi aynı gün için plan_item ile tekrar ver (nereden/nereye, saat), fiyatı set_price ile yaz.
+  • "12 Ekim'e taksi koyalım", "havalimanına taksiyle" → plan_item kind taxi (date, söylendiyse time; from/to: "Otel", "Havalimanı" gibi; city o günün şehri). O günün transferinde görünür, yoksa kendi bloğu olur. Yalnız nasıl gideceğini söylüyorsa ("metroyla gideceğim") set_leg.
+  • "eSIM alalım" → plan_item kind esim (date null; ülke/şehir biliniyorsa city). eSIM bölümünde planlanıyor olarak durur.
+  • Konaklamayı birleştirme/uzatma/kısaltma ("Porto tek blok olsun 7-12", "Porto'yu 13'üne uzat") → plan_item kind stay, şehrin TÜM gecelerini tek aralıkla (date = giriş, end_date = çıkış). O şehirde bu aralığın içinde kalan eski sohbet konaklamaları birleşir (sonuçta merged); board alanıyla panoda ne göründüğünü anlat.
+  • "X'i kaldır/sil" (sohbette eklenmiş bir plan) → update_items status dismissed: plan panodan silinir. Kullanıcı sağdaki "Kaldır" ile de silebilir.
 - Gerek olmayanı sil: "transfere gerek yok", "orayı arabayla hallederiz, transfer yok" → set_leg mode "none" (transfer gizlenir, geri getirilebilir). "X'i ele / istemiyorum" → update_items status dismissed (Elenenler'de durur, silinmez).
 - Soruların kısa ve sade olsun, şehirlerle sor: "Porto → Madeira nasıl geçeceksiniz?" gibi; otel adlarıyla, uzun ya da karışık cümle kurma.
 - Transferler: kullanıcı nasıl gideceğini söylediğinde ("metroyla gideceğim", "trenle geçeriz", "transferi ayarladım", "otel servisiyle") set_leg ile ilgili transferi işaretle (tarih ve şehirden hangisi olduğunu bul); booked yalnız "ayarladım/aldım/rezerve ettim" derse true. Plan konuşurken boş (empty) bir transferi uygun anda, bir seferde bir tane, sor; notes'taki ince detayı ilgili olduğunda söyle. Nasıl gidilebileceğini genel bilginle önerebilirsin ("genelde havalimanından metro var") ama fiyat ya da sefer saati uydurma.
@@ -288,7 +294,7 @@ export const TOOLS: ToolSpec[] = [
   {
     name: "plan_item",
     description:
-      "Kullanıcının sohbette söylediği bir planı (linki, tarihi olmasa da) hemen panoya ekler: uçuş, tren, otobüs, feribot, transfer, araç kiralama, konaklama, etkinlik. Tarihliyse kendi gününde, tarihsizse şehrinin bloğunda görünür; booked false ise 'planlanıyor' yazar. Konaklama (kind stay, booked false) o geceler için ayrı, boş bir konaklama bloğu açar: otel seçilmez, o gecelere önceden seçilmiş bir yer varsa kalan gecelerde kalır. Aynı plan tekrar söylenirse (tarih sonradan gelse de) onu günceller. Sonuç panonun o gecelerde ne gösterdiğini döndürür.",
+      "Kullanıcının sohbette söylediği bir planı (linki, tarihi olmasa da) hemen panoya ekler: uçuş, tren, otobüs, feribot, transfer, taksi, araç kiralama, konaklama, etkinlik, eSIM. Uçuş gün verilince nereye gittiği bilinmeden de eklenir (bilet şablonu). Tarihliyse kendi gününde, tarihsizse şehrinin bloğunda görünür; booked false ise 'planlanıyor' yazar. Konaklama (kind stay, booked false) o geceler için ayrı, boş bir konaklama bloğu açar: otel seçilmez, o gecelere önceden seçilmiş bir yer varsa kalan gecelerde kalır. Aynı plan tekrar söylenirse (tarih sonradan gelse de) onu günceller. Konaklamada o şehirde bu gecelerin içinde kalan eski sohbet konaklamaları bununla birleşir (merged). Sonuç panonun o gecelerde ne gösterdiğini döndürür (board).",
     schema: {
       type: "object",
       properties: {
@@ -594,6 +600,12 @@ async function runTool(tripId: string, name: string, input: any, choices: string
             await d.put("items", demoted);
           }
         }
+        // A plan said in the chat and taken back ("taksiyi kaldır") has nothing to keep: it goes.
+        if (c.status === "dismissed" && item.origin === "chat") {
+          current.delete(item.id);
+          await d.delete("items", item.id);
+          continue;
+        }
         const note = typeof c.note === "string" && c.note.trim() ? c.note.trim() : item.statusNote;
         const updated = { ...item, status: c.status, statusNote: note, ...(c.status !== item.status ? { statusAt: Date.now() } : {}), updatedAt: Date.now() };
         current.set(item.id, updated);
@@ -706,9 +718,20 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       const result: Record<string, unknown> = { [same ? "updated" : "added"]: saved.name, item_id: saved.id, status: saved.status === "booked" ? "booked" : "planned" };
       // A stay: what the board now shows for those nights, so the reply says what's really there.
       const nights = saved.category === "stay" ? stayRange(saved) : null;
+      // "Porto tek blok olsun, 7–12": stays said before for nights inside the new one, in the same city,
+      // are part of it now (their blocks merge into one).
+      const merged = nights
+        ? items.filter((i) => {
+            const r = i.id !== saved.id && i.origin === "chat" && i.category === "stay" && i.status !== "booked" ? stayRange(i) : null;
+            return r && r.start >= nights.start && r.end <= nights.end && (!i.city || !saved.city || sameCity(i.city, saved.city));
+          })
+        : [];
+      for (const i of merged) await d.delete("items", i.id);
+      if (merged.length) result.merged = merged.map((i) => `${i.name} (${stayRange(i)!.start}..${stayRange(i)!.end})`);
       const trip = nights ? await d.get("trips", tripId) : undefined;
       if (nights && trip) {
-        const after = buildPlan(trip, [...items.filter((i) => i.id !== saved.id), saved]);
+        const gone = new Set(merged.map((i) => i.id));
+        const after = buildPlan(trip, [...items.filter((i) => i.id !== saved.id && !gone.has(i.id)), saved]);
         result.board = after.stayBlocks
           .filter((b) => b.range.start < nights.end && nights.start < b.range.end)
           .map((b) => ({ nights: `${b.range.start}..${b.range.end}`, status: b.kind, ...(b.kind === "open" ? { hotel: null } : { hotel: b.item.name }) }));

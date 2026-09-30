@@ -66,6 +66,13 @@ Sonra o gün için bir uçuş (ya da konaklama) sayfası kaydedip seçince, plan
 kartından da işaretleyebilirsin (✈ Uçak, 🚆 Tren...): uçakla ise uçuş kartı gibi görünür, o günün uçuş araması
 ve iki uçtaki havalimanı transferleri açılır. "Bileti aldım"ı yanlışlıkla bastıysan **Geri al** ile dönersin.
 
+**Planı sohbetten şekillendirirsin.** "Porto tek blok olsun, 7–12" dersen o şehrin o gecelerdeki eski sohbet
+konaklamaları tek bloğa birleşir (seçtiğin yer yalnız bir kısmını kapsıyorsa blok yine tek kalır, kapsanmayan
+geceler altında yazar). "12 Ekim'e uçak bileti" nereye gideceği belli olmadan da bir bilet şablonu açar; nereden
+nereye, saat ve fiyat söyledikçe aynı kartın üstüne yazılır. "11'ine taksi koyalım" o günün transferine taksi olarak
+oturur (transfer yoksa kendi bloğu olur), "eSIM alalım" eSIM bölümüne planlanıyor olarak gelir. Sohbette eklenen her
+plan sağda **Kaldır** ile tek dokunuşta silinir; sohbette "taksiyi kaldır" demek de yeter.
+
 **Pano, gezinin kendisi gibi sıralıdır.** Bir çizgi boyunca solda ne ve ne zaman (koyu yuvarlak simge, "Varış ·
 8 Ekim", "Konaklama · 1–4. gün · 8–11 Ekim · 3 gece"), sağda büyük yuvarlak kartlar: gidiş uçuşu, havalimanından
 otele transfer, konaklama, o günlere tarihli etkinlikler, şehir değişimi (iki uçtaki gar/havalimanı transferleriyle),

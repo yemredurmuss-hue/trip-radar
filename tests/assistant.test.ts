@@ -258,6 +258,63 @@ describe("assistant", () => {
     expect(saved.find((i) => i.id === "a")!.status).toBe("chosen");
     expect(saved.find((i) => i.id === "b")!.price).toMatchObject({ amount: 312, currency: "USD", scope: "total", source: "user" });
   });
+  it("shapes the plan from the chat: merges a city's stays, adds a ticket, a taxi and an eSIM, and takes a plan back", async () => {
+    await seed();
+    const d = await db();
+    for (const i of await listItems("t1")) if (i.origin === "chat") await d.delete("items", i.id);
+    const call = (id: string, input: Record<string, unknown>) => ({
+      type: "tool_use", id, name: "plan_item", caller: { type: "direct" },
+      input: { kind: "stay", date: null, end_date: null, time: null, from: null, to: null, city: null, title: null, booked: false, note: null, ...input },
+    });
+    const { client, calls } = fakeClient([
+      { stop_reason: "tool_use", content: [call("m1", { date: "2026-10-08", end_date: "2026-10-09", city: "Porto" }), call("m2", { date: "2026-10-09", end_date: "2026-10-11", city: "Porto" })] as Anthropic.ContentBlock[] },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "İki blok açtım.", citations: null }] as Anthropic.ContentBlock[] },
+      { stop_reason: "tool_use", content: [call("m3", { date: "2026-10-08", end_date: "2026-10-11", city: "Porto" })] as Anthropic.ContentBlock[] },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Porto tek blok: 8–11 Ekim.", citations: null }] as Anthropic.ContentBlock[] },
+      {
+        stop_reason: "tool_use",
+        content: [
+          call("f1", { kind: "flight", date: "2026-10-12" }),
+          call("x1", { kind: "taxi", date: "2026-10-11", from: "Otel", to: "Havalimanı" }),
+          call("e1", { kind: "esim" }),
+        ] as Anthropic.ContentBlock[],
+      },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Ekledim.", citations: null }] as Anthropic.ContentBlock[] },
+      { stop_reason: "tool_use", content: [call("f2", { kind: "flight", date: "2026-10-12", from: "Porto", to: "İstanbul", time: "18:30" })] as Anthropic.ContentBlock[] },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Uçuşu güncelledim.", citations: null }] as Anthropic.ContentBlock[] },
+    ]);
+    await sendMessage("t1", "8'i gecesi ayrı, 9-11 ayrı kalalım", anthropicProvider(client, "claude-opus-5"));
+    expect((await listItems("t1")).filter((i) => i.origin === "chat" && i.category === "stay")).toHaveLength(2);
+
+    await sendMessage("t1", "Porto'yu birleştir, tek blok olsun 8-11", anthropicProvider(client, "claude-opus-5"));
+    const [merge] = calls[3].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[];
+    const result = JSON.parse(String(merge.content));
+    expect(result.merged).toEqual(["Konaklama · Porto (2026-10-09..2026-10-11)"]);
+    expect(result.board).toEqual([{ nights: "2026-10-08..2026-10-11", status: "open", hotel: null }]);
+    const stays = (await listItems("t1")).filter((i) => i.origin === "chat" && i.category === "stay");
+    expect(stays.map((i) => [i.dates.start, i.dates.end])).toEqual([["2026-10-08", "2026-10-11"]]);
+
+    await sendMessage("t1", "12 Ekim'e uçak bileti, 11'ine taksi koyalım, eSIM de alalım", anthropicProvider(client, "claude-opus-5"));
+    const added = (calls[5].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[]).map((r) => JSON.parse(String(r.content)).added);
+    expect(added).toEqual(["Uçuş", "Taksi · Otel → Havalimanı", "eSIM"]);
+    await sendMessage("t1", "Porto'dan İstanbul'a 18:30", anthropicProvider(client, "claude-opus-5"));
+    const plans = (await listItems("t1")).filter((i) => i.origin === "chat" && i.category !== "stay").sort((a, b) => a.plannedKind!.localeCompare(b.plannedKind!));
+    // The ticket said again with where it goes is the same plan, filled in.
+    expect(plans.map((i) => [i.plannedKind, i.name, i.category, i.flight?.departure ?? null])).toEqual([
+      ["esim", "eSIM", "esim", null],
+      ["flight", "Uçuş · Porto → İstanbul", "flight", "2026-10-12T18:30"],
+      ["taxi", "Taksi · Otel → Havalimanı", "transport", null],
+    ]);
+
+    // "Taksiyi kaldır": a plan said in the chat comes off the board, not into the eliminated ones.
+    const taxi = plans.find((i) => i.plannedKind === "taxi")!;
+    const { client: c2 } = fakeClient([
+      { stop_reason: "tool_use", content: [{ type: "tool_use", id: "u1", name: "update_items", caller: { type: "direct" }, input: { changes: [{ item_id: taxi.id, status: "dismissed", note: null }] } }] as Anthropic.ContentBlock[] },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Taksiyi kaldırdım.", citations: null }] as Anthropic.ContentBlock[] },
+    ]);
+    await sendMessage("t1", "taksiyi kaldır", anthropicProvider(c2, "claude-opus-5"));
+    expect((await listItems("t1")).some((i) => i.id === taxi.id)).toBe(false);
+  });
   it("moves an undated ticket to its day when the traveller says the date, keeping the times read from it", async () => {
     const { items } = await seed();
     const ticket: Item = {

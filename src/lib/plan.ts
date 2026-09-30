@@ -42,7 +42,18 @@ export type StayBlock =
       /** Other bookings for some of the same nights (a clash, see notices): shown here so none goes missing. */
       clashes?: Item[];
     }
-  | { kind: "chosen"; range: DateRange; nights: number; city: string | null; item: Item; groups: OptionGroup[] }
+  | {
+      kind: "chosen";
+      range: DateRange;
+      nights: number;
+      city: string | null;
+      item: Item;
+      groups: OptionGroup[];
+      /** A stay said in the chat these nights are (one block, whatever was chosen for part of it). */
+      slot?: Item;
+      /** Nights of it the choice doesn't cover (Impar for 7–10 of a stay said for 7–12): still to fill. */
+      gap?: DateRange[];
+    }
   | {
       kind: "open";
       range: DateRange;
@@ -518,8 +529,9 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
   const stayBlocks: StayBlock[] = [];
   const looseStays: OptionGroup[] = [];
   if (range) {
-    type Run = { key: string; start: string; end: string; item: Item | null; booked: boolean; slot: Item | null };
+    type Run = { key: string; start: string; end: string; item: Item | null; booked: boolean; slot: Item | null; picks: (Item | null)[] };
     const runs: Run[] = [];
+    const covers = (a: DateRange, b: DateRange) => a.start <= b.start && a.end >= b.end;
     // The latest choice wins a night two choices share; a stay said in the chat keeps its nights to
     // itself (the latest said first), open until a page is chosen for it.
     const picks = chosenStays.filter((i) => i.origin !== "chat").sort((a, b) => chosenAt(b) - chosenAt(a) || byStart(a, b));
@@ -527,24 +539,44 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
     for (let night = range.start; night < range.end; night = addDays(night, 1)) {
       const booked = bookedStays.find((b) => holds(stayRange(b)!, night));
       const slot = booked ? undefined : slots.find((s) => holds(stayRange(s)!, night));
-      const chosen = booked ? undefined : picks.find((c) => holds(stayRange(c)!, night) && (!slot || fills(c, slot)));
-      const item = booked ?? chosen ?? null;
+      const holding = booked ? [] : picks.filter((c) => holds(stayRange(c)!, night) && (!slot || fills(c, slot)));
+      // In a said stay, a choice for all of it before one for part of it.
+      const chosen = (slot && holding.find((c) => covers(stayRange(c)!, stayRange(slot)!))) || holding[0];
+      // A stay said in the chat stays one block: a choice for only part of it is shown with the nights it leaves.
+      const whole = !chosen || !slot || covers(stayRange(chosen)!, stayRange(slot)!);
+      const item = booked ?? (whole ? chosen : undefined) ?? null;
       const key = item ? `${booked ? "b" : "c"}:${item.id}` : slot ? `s:${slot.id}` : "open";
       const last = runs.at(-1);
-      if (last && last.key === key) last.end = addDays(night, 1);
-      else runs.push({ key, start: night, end: addDays(night, 1), item, booked: Boolean(booked), slot: item ? null : (slot ?? null) });
+      if (last && last.key === key) {
+        last.end = addDays(night, 1);
+        last.picks.push(chosen ?? null);
+      } else runs.push({ key, start: night, end: addDays(night, 1), item, booked: Boolean(booked), slot: item ? null : (slot ?? null), picks: [chosen ?? null] });
     }
     for (const run of runs) {
       const r = { start: run.start, end: run.end };
       const nights = nightsBetween(r.start, r.end);
       if (run.item && run.booked) stayBlocks.push({ kind: "booked", range: r, nights, city: run.item.city, item: run.item });
       else if (run.item) stayBlocks.push({ kind: "chosen", range: r, nights, city: run.item.city, item: run.item, groups: [] });
-      else if (run.slot) stayBlocks.push({ kind: "open", range: r, nights, city: run.slot.city, groups: [], searchUrl: "", slot: run.slot });
+      else if (run.slot && run.picks.some(Boolean)) {
+        // Part of a said stay chosen: the block is the whole stay, its choice the one with the most nights.
+        const counts = new Map<Item, number>();
+        for (const p of run.picks) if (p) counts.set(p, (counts.get(p) ?? 0) + 1);
+        const main = [...counts].sort((a, b) => b[1] - a[1])[0][0];
+        const gap: DateRange[] = [];
+        run.picks.forEach((p, i) => {
+          if (p === main) return;
+          const night = addDays(run.start, i);
+          const last = gap.at(-1);
+          if (last && last.end === night) last.end = addDays(night, 1);
+          else gap.push({ start: night, end: addDays(night, 1) });
+        });
+        stayBlocks.push({ kind: "chosen", range: r, nights, city: run.slot.city ?? main.city, item: main, groups: [], slot: run.slot, gap });
+      } else if (run.slot) stayBlocks.push({ kind: "open", range: r, nights, city: run.slot.city, groups: [], searchUrl: "", slot: run.slot });
       else stayBlocks.push({ kind: "open", range: r, nights, city: null, groups: [], searchUrl: "" });
     }
     // A stay said in the chat whose nights were all taken (chosen pages for each of them): its job is done.
     for (const slot of slots) {
-      if (closed.some((c) => c.item.id === slot.id) || stayBlocks.some((b) => b.kind === "open" && b.slot === slot)) continue;
+      if (closed.some((c) => c.item.id === slot.id) || stayBlocks.some((b) => b.kind !== "booked" && b.slot === slot)) continue;
       const by = stayBlocks.filter((b) => b.kind !== "open" && overlaps(b.range, stayRange(slot)!)).map((b) => (b.kind === "open" ? "" : b.item.name));
       closed.push({ item: slot, reason: `Yerine ${[...new Set(by)].join(", ")} geldi` });
     }
@@ -564,7 +596,10 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
         continue;
       }
       const own = stayBlocks.find((b) => b.kind === "chosen" && group.items.includes(b.item));
-      const target = own ?? stayBlocks.find((b) => b.kind !== "booked" && overlaps(b.range, group.range!));
+      // Nights in its own city first (Funchal's options don't belong to Porto's stay for the same nights).
+      const place = mostCommon(group.items.map((i) => i.city));
+      const fits = stayBlocks.filter((b) => b.kind !== "booked" && overlaps(b.range, group.range!));
+      const target = own ?? fits.find((b) => !b.city || !place || sameCity(b.city, place)) ?? fits[0];
       if (target && target.kind !== "booked") target.groups.push(group);
       else looseStays.push(group);
     }
@@ -698,11 +733,13 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
       COMPARABLE.indexOf(a.category) - COMPARABLE.indexOf(b.category) || firstDay(a).localeCompare(firstDay(b)) || a.key.localeCompare(b.key),
   );
 
-  const count = (kind: StayBlock["kind"]) => stayBlocks.filter((b) => b.kind === kind).reduce((s, b) => s + b.nights, 0);
+  const gapNights = (b: StayBlock) => (b.kind === "chosen" ? (b.gap ?? []).reduce((n, r) => n + nightsBetween(r.start, r.end), 0) : 0);
+  const count = (kind: StayBlock["kind"]) => stayBlocks.filter((b) => b.kind === kind).reduce((s, b) => s + b.nights - gapNights(b), 0);
+  const gaps = stayBlocks.reduce((n, b) => n + gapNights(b), 0);
   notices.sort((a, b) => a.date.localeCompare(b.date));
   return {
     range,
-    nights: { total: range ? nightsBetween(range.start, range.end) : 0, booked: count("booked"), chosen: count("chosen"), open: count("open") },
+    nights: { total: range ? nightsBetween(range.start, range.end) : 0, booked: count("booked"), chosen: count("chosen"), open: count("open") + gaps },
     stayBlocks,
     notices,
     looseStays,

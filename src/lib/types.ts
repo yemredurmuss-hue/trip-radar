@@ -225,7 +225,7 @@ export interface Item {
   /** "chat": the traveller said it in the chat, no page behind it (a plan until a saved page replaces it). */
   origin?: "chat";
   /** What kind of plan was said in the chat (a car rental or a transfer can carry any title). */
-  plannedKind?: "flight" | "train" | "bus" | "ferry" | "transfer" | "car_rental" | "stay" | "activity" | "other";
+  plannedKind?: "flight" | "train" | "bus" | "ferry" | "transfer" | "taxi" | "car_rental" | "stay" | "activity" | "esim" | "other";
   createdAt: number;
   updatedAt: number;
 }
