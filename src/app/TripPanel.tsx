@@ -95,14 +95,14 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const hiddenLegs = legs.filter((l) => l.kind !== "move" && hidden.has(`leg:${l.key}`));
   const decisionOf = (item: Item) => [...(decisions?.byGroup.values() ?? [])].find((d) => d.options.some((o) => o.item.id === item.id));
   /** One undecided option as a decision card: swipe through them, open one for the reasons. */
-  const card: CardFor = (item, group, decision, candidate, onCompareGroup) => (
+  const card: CardFor = (item, group, decision, ranked, onCompareGroup) => (
     <SwipeCard
       key={item.id}
       item={item}
       group={group}
       decision={decision ?? decisionOf(item)}
       decisions={decisions}
-      candidate={candidate}
+      ranked={ranked}
       onOpen={() => onOpenItem(item)}
       onCompare={onCompareGroup}
     />
@@ -374,24 +374,20 @@ function OptionGroupView({
       </div>
     );
   }
-  // The cards worth weighing (the strongest option for each thing that matters, the balanced one first),
-  // the rest one tap away, best first; without a comparison yet, best to worst as ranked.
+  // Best first, numbered: the first few at once, the rest one tap away (the engine's order: fit, then
+  // to check, then partial, then out).
   const byRank = [...group.items].sort((a, b) => (rank(a) ?? Infinity) - (rank(b) ?? Infinity) || (a.price.amount ?? Infinity) - (b.price.amount ?? Infinity));
-  const leadIds = new Set(choice?.candidates.length ? choice.candidates.map((c) => c.option.item.id) : byRank.slice(0, SIDE_BY_SIDE).map((i) => i.id));
-  // The group's own items (the decision's copies may be a render older), candidates in their order.
-  const lead = choice?.candidates.length
-    ? choice.candidates.flatMap((c) => group.items.filter((i) => i.id === c.option.item.id))
-    : byRank.filter((i) => leadIds.has(i.id));
-  const others = byRank.filter((i) => !leadIds.has(i.id));
-  const shown = showAll ? [...lead, ...others] : lead;
-  const candidateOf = (item: Item) => choice?.candidates.find((c) => c.option.item.id === item.id);
+  const lead = byRank.slice(0, VISIBLE);
+  const others = byRank.slice(VISIBLE);
+  const shown = showAll ? byRank : lead;
+  const rankedOf = (item: Item) => choice?.ranked.find((r) => r.option.item.id === item.id);
   return (
     <div className={nested ? "group nested" : "section"}>
       {decided && renderSettled(decided, decision, change, true)}
       {head && <div className={nested ? "group-head" : "section-head"}>{head}</div>}
       {!decided && choice?.headline && ctx && <Headline choice={choice} alternatives={group.items} onCompare={onCompare} />}
       <div className="option-grid">
-        {shown.map((item) => renderCard(item, group.items, decision, candidateOf(item), comparable || single ? onCompare : undefined))}
+        {shown.map((item) => renderCard(item, group.items, decision, rankedOf(item), comparable || single ? onCompare : undefined))}
       </div>
       {others.length > 0 && (
         <button className="link-btn more-options" aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>
@@ -408,16 +404,17 @@ function OptionGroupView({
   );
 }
 
-const SIDE_BY_SIDE = 3;
+/** Options shown at once, best first; the rest behind "+N seçenek daha". */
+const VISIBLE = 5;
 const lowerFirst = (s: string) => s.charAt(0).toLocaleLowerCase("tr") + s.slice(1);
 
 /**
- * The decision in a sentence above the cards: the strongest option for each thing that matters, with
- * what it costs or saves ("Konum için Casa Ribeira (+€60, 15 dk daha yakın); tasarruf ve sessizlik
- * için Bonfim Loft"), then what to check before choosing, and the button to take the first one.
+ * The decision in a sentence above the cards: the pick and why, then the alternatives for each priority
+ * with their place ("Tasarruf ve sessizlik için 2. Bonfim Loft (€60 daha ucuz)"), what to check before
+ * choosing, and the button to take the pick.
  */
 function Headline({ choice, alternatives, onCompare }: { choice: Choice; alternatives: Item[]; onCompare: () => void }) {
-  const first = choice.candidates[0]?.option.item;
+  const first = choice.ranked.find((r) => r.rank === 1)?.option.item;
   const pages = new Map(alternatives.map((i) => [i.id, i.url]));
   return (
     <div className="reco-line headline">
@@ -442,7 +439,7 @@ function Headline({ choice, alternatives, onCompare }: { choice: Choice; alterna
       <span className="reco-actions">
         {first && (
           <button className="pill-btn primary" onClick={() => void chooseItem(first, alternatives)}>
-            {choice.candidates.length > 1 ? `${first.name} seç` : "Seç"}
+            {`${first.name} seç`}
           </button>
         )}
         <button className="link-btn" onClick={onCompare}>

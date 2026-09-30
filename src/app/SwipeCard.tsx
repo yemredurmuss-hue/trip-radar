@@ -4,7 +4,7 @@ import { ratingOutOf10, type GroupDecision } from "../lib/decision";
 import { formatDateRange, listingKeyOf, metricsOf } from "../lib/items";
 import { readingLine } from "../lib/listing";
 import { NEED_MARK, type NeedCheck } from "../lib/needs";
-import { tradeText, type Candidate } from "../lib/choice";
+import { moneyText, tradeText, type Ranked } from "../lib/choice";
 import { dateAlert } from "../lib/progress";
 import { rangeOfGroupKey, stayRange } from "../lib/plan";
 import { isRental, isSmall, isTrip } from "../lib/travelKinds";
@@ -239,8 +239,8 @@ interface CardProps {
   group: Item[];
   decision?: GroupDecision;
   decisions: Decisions | null;
-  /** Why it's shown ("En iyi konum", "En ekonomik ve en sessiz") and what it costs or saves against the cheapest fit. */
-  candidate?: Candidate;
+  /** Its place (1, 2, 3...), what it's strongest on, and why it stands there. */
+  ranked?: Ranked;
   onOpen: () => void;
   onCompare?: () => void;
 }
@@ -248,26 +248,31 @@ interface CardProps {
 const FIT_WORDS = { check: "Seçmeden kontrol et", partial: "Kısmi", unfit: "Uygun değil" } as const;
 
 /**
- * One option, calm and clear: why it's here (the lens it's strongest on), its name and price, what it
- * costs or saves against the cheapest one that meets the musts and what that buys, and a check mark
- * for each thing asked for. The reasons, the pros and cons and the score are one tap away.
+ * One option in its place: the number and the score, what it's strongest on ("EN EKONOMİK · EN
+ * SESSİZ"), its name and price; why it stands there (against the first, or for the first against the
+ * second: the money, what it gives, what it gives up); a mark for each thing asked for; and what speaks
+ * for it and against it. The reasons behind the score and the evidence are one tap away.
  */
-export function SwipeCard({ item, group, decision, decisions, candidate, onOpen, onCompare }: CardProps) {
+export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, onCompare }: CardProps) {
   const [open, setOpen] = useState(false);
   const facts = cardFacts(item, decision, decisions?.ctx);
   const option = decision?.options.find((o) => o.item.id === item.id);
   const { nights, url: datedUrl } = datedLink(item, decision);
   const fit = option?.fit ?? "fit";
   const currency = decisions?.ctx.currency ?? "EUR";
-  const trade = candidate?.trade ?? null;
-  // Without a trade line, the one or two things it's best known for.
-  const highlights = !trade ? facts.pros.slice(0, 2).map((p) => p.text) : [];
+  const trade = ranked?.trade ?? null;
   const rating = ratingOf(item);
   const meta = [facts.subtitle, rating ? `${rating.value} ${rating.word}${rating.count ? ` · ${rating.count}` : ""}` : null].filter(Boolean).join(" · ");
+  const place = ranked?.rank ?? null;
 
   return (
-    <article className={`swipe-card opt fit-${fit}${candidate?.rank === 1 ? " first" : ""}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
+    <article className={`swipe-card opt fit-${fit}${place === 1 ? " first" : ""}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
       <div className="opt-main">
+        {place != null && (
+          <span className="opt-rank" aria-label={`${place}. sırada`}>
+            {place}
+          </span>
+        )}
         <FallbackImg
           className="opt-img"
           src={facts.image}
@@ -278,26 +283,33 @@ export function SwipeCard({ item, group, decision, decisions, candidate, onOpen,
           }
         />
         <div className="opt-text">
-          {candidate && <div className="opt-label">{candidate.label}</div>}
+          {ranked && ranked.badges.length > 0 && <div className="opt-label">{ranked.badges.join(" · ")}</div>}
           <h3 className="opt-name sc-title">{facts.title}</h3>
           {meta && <div className="opt-meta">{meta}</div>}
           <div className="opt-price sc-price">
             <Price price={facts.price} dated={Boolean(item.dates.start || item.flight?.departure)} />
           </div>
         </div>
+        {facts.score != null && (
+          <span className={`opt-score${place === 1 ? " best" : ""}`} title="Uyum puanı (100 üzerinden): önceliklerin, istediklerin ve okunan yorumlar">
+            <b>{facts.score}</b>
+            <small>puan</small>
+          </span>
+        )}
       </div>
-      {trade && (trade.money || trade.gains.length || trade.losses.length) && (
+      {trade && ranked?.vsRank && (trade.money || trade.gains.length || trade.losses.length) && (
         <p className="opt-trade" title={`${trade.vs} ile karşılaştırınca: ${tradeText(trade, currency)}`}>
+          <span className="opt-vs">{ranked.vsRank}.'ye göre</span>
           {[
             trade.money && (
               <b key="m" className={trade.diff != null && trade.diff < 0 ? "cheaper" : ""}>
-                {trade.money}
+                {moneyText(trade, currency)}
               </b>
             ),
             trade.gains.length > 0 && <span key="g">{trade.gains.join(", ")}</span>,
             trade.losses.length > 0 && (
               <span key="l" className="opt-loss">
-                vazgeçtiğin: {trade.losses.join(", ")}
+                eksiği: {trade.losses.join(", ")}
               </span>
             ),
           ]
@@ -305,7 +317,6 @@ export function SwipeCard({ item, group, decision, decisions, candidate, onOpen,
             .flatMap((node, i) => (i ? [<span key={`s${i}`} className="sep">{" · "}</span>, node] : [node]))}
         </p>
       )}
-      {highlights.length > 0 && <p className="opt-trade quiet">{highlights.join(" · ")}</p>}
       {facts.needs.length > 0 && (
         <ul className="opt-checks sc-needs" aria-label="İstediklerin">
           {facts.needs.slice(0, 5).map((n) => (
@@ -316,6 +327,7 @@ export function SwipeCard({ item, group, decision, decisions, candidate, onOpen,
           ))}
         </ul>
       )}
+      <ProsCons pros={facts.pros} cons={facts.cons} />
       {fit !== "fit" && option && option.fitNotes.length > 0 && (
         <p className={`opt-status ${fit}`}>
           <b>{FIT_WORDS[fit]}:</b> {option.fitNotes.join(" · ")}
@@ -323,11 +335,6 @@ export function SwipeCard({ item, group, decision, decisions, candidate, onOpen,
       )}
       {open && (
         <div className="sc-details">
-          {facts.score != null && (
-            <p className="opt-score">
-              Uyum puanı <b>{facts.score}</b>/100 <span className="muted">· önceliklerine göre</span>
-            </p>
-          )}
           <Details item={item} decision={decision} decisions={decisions} status={facts.status} />
           {nights && (
             <p className="muted small-note">

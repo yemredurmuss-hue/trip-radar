@@ -103,9 +103,13 @@ describe("what's true before any preference", () => {
     expect(mine.penalties).toEqual([]);
     expect(mine.fit).toBe("check");
     expect(mine.fitNotes).toEqual(["1 misafir bildirmiş: yatakta tahtakurusu"]);
-    // It's the cheaper one: shown for saving, with what to check before choosing it.
+    // Second, marked as the cheaper one, with what to check before choosing it.
     const choice = choiceOf(d, ctxOf(trip(), [infante, carmo], pages));
-    expect(choice.candidates.map((c) => [c.option.item.name, c.label])).toEqual([["Hotel Carmo", "Genel olarak en iyi"], ["Hotel Infante", "En ekonomik"]]);
+    expect(choice.ranked.map((r) => [r.rank, r.option.item.name, r.badges])).toEqual([
+      [1, "Hotel Carmo", []],
+      [2, "Hotel Infante", ["En ekonomik"]],
+    ]);
+    expect(choice.headline).toBe("Önerim Hotel Carmo. Tasarruf için 2. Hotel Infante (€20 daha ucuz).");
     expect(choice.verify.map((v) => v.what)).toEqual(["1 misafir bildirmiş: yatakta tahtakurusu"]);
   });
 
@@ -161,30 +165,37 @@ describe("what they ask for, and how strongly", () => {
 });
 
 describe("the choice", () => {
-  it("shows the strongest option for each thing that matters, with the trade against the cheapest fit one", () => {
+  it("numbers every option best first, says what each is strongest on and why it stands where it does", () => {
     const { t, items, listings } = porto();
     const notes = ["Sessiz bir yer istiyoruz"];
     const d = decide(t, items, listings, notes);
     const choice = choiceOf(d, ctxOf(t, items, listings, notes));
-    expect(choice.candidates.map((c) => [c.option.item.name, c.label, c.lenses])).toEqual([
-      ["Casa Ribeira", "En iyi konum", ["konum"]],
-      ["Bonfim Loft", "En ekonomik ve en sessiz", ["tasarruf", "sessizlik"]],
+    expect(choice.ranked.map((r) => [r.rank, r.option.item.name, r.badges, r.lenses])).toEqual([
+      [1, "Casa Ribeira", ["En iyi konum"], ["konum"]],
+      [2, "Bonfim Loft", ["En ekonomik", "En sessiz"], ["tasarruf", "sessizlik"]],
     ]);
-    const [casa, bonfim] = choice.candidates;
-    expect(tradeText(casa.trade!, "EUR")).toBe("+€60 (gecelik +€20) · 15 dk daha yakın, mutfak var, yorumlar daha iyi (9/10 – 4,9/5) · vazgeçtiğin: sessiz sokak · 4 yorum");
-    expect(bonfim.trade).toMatchObject({ vs: "Casa Ribeira", money: "€60 daha ucuz", gains: ["sessiz sokak · 4 yorum"] });
-    expect(choice.headline).toBe("Konum için Casa Ribeira (+€60, 15 dk daha yakın); tasarruf ve sessizlik için Bonfim Loft (€60 daha ucuz).");
+    const [casa, bonfim] = choice.ranked;
+    // The first against the second; every other one against the first; shortfalls from its own side.
+    expect([casa.vsRank, bonfim.vsRank]).toEqual([2, 1]);
+    expect(tradeText(casa.trade!, "EUR")).toBe("+€60 (gecelik +€20) · 15 dk daha yakın, mutfak var, yorumlar daha iyi (9/10 – 4,9/5) · eksiği: gece bar gürültüsü · 3 yorum");
+    expect(tradeText(bonfim.trade!, "EUR")).toBe("€60 daha ucuz (gecelik −€20) · sessiz sokak · 4 yorum · eksiği: 15 dk daha uzak, mutfak yazmıyor, yorumları daha zayıf (4,9/5 – 9/10)");
+    expect(choice.headline).toBe(
+      "Önerim Casa Ribeira: en iyi konum; €60 fazlasına mutfak var ve yorumlar daha iyi (9/10 – 4,9/5). Tasarruf ve sessizlik için 2. Bonfim Loft (€60 daha ucuz).",
+    );
   });
 
-  it("says so when one option is strongest on everything, and doesn't call equal prices cheaper", () => {
+  it("puts the ones that fit first, then the ones to check, partial, out; and doesn't call equal prices cheaper", () => {
     const a = stay("Hotel A", 300, { rating: { value: 9, scale: 10, count: 500, source: "page" } });
     const b = stay("Hotel B", 300, { rating: { value: 8.2, scale: 10, count: 500, source: "page" } });
     const d = decide(trip(), [a, b]);
     const choice = choiceOf(d, ctxOf(trip(), [a, b]));
-    expect(choice.candidates.map((c) => c.label)).toEqual(["Genel olarak en iyi"]);
-    expect(choice.headline).toBe("Hotel A öne çıkıyor.");
+    expect(choice.ranked.map((r) => [r.rank, r.option.item.name, r.badges])).toEqual([
+      [1, "Hotel A", []],
+      [2, "Hotel B", []],
+    ]);
+    expect(choice.headline).toBe("Önerim Hotel A: yorumlar daha iyi (9/10 – 8,2/10).");
     const cheaper = stay("Hotel C", 250, { rating: { value: 9.2, scale: 10, count: 500, source: "page" } });
     const d2 = decide(trip(), [cheaper, b]);
-    expect(choiceOf(d2, ctxOf(trip(), [cheaper, b])).headline).toBe("Hotel C her açıdan önde: en ekonomik.");
+    expect(choiceOf(d2, ctxOf(trip(), [cheaper, b])).headline).toBe("Önerim Hotel C: en ekonomik; yorumlar daha iyi (9,2/10 – 8,2/10).");
   });
 });

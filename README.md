@@ -89,22 +89,20 @@ geceleri, günleri ve kiralanan araç; şehirler arasındaki uçuş ya da tren b
 uçuş kendi gününe konur; kayıt sayfaları aynı "ihtiyaç" adını verse de dönüş uçuşu gidiş uçuşunu kapatmaz. Gidiş ya da dönüş için kayıt yoksa "Henüz eklenmedi" yazar ve o günün uçuş aramasına link
 verir (arabayla gideceğini söylediysen sormaz). Tarihsiz yerler ve plana oturmayan uçuşlar altta ayrı durur.
 
-**Seçilmemiş her ihtiyaç tek bir sıralamayla değil, önceliklerinle çözülür.** Üstte tek cümle: "Konum için Casa
-Ribeira (+€60, 15 dk daha yakın); tasarruf ve sessizlik için Bonfim Loft (€60 daha ucuz)." Altında yalnız anlamlı
-kartlar: her önemli şeyde (senin söylediklerin önce, sonra varsayılan önemliler) en güçlü seçenek ve genel olarak
-en iyisi. Bir seçenek her şeyde öndeyse tek kart: "Jardim Stay her açıdan önde: en ekonomik ve en sessiz." Kalanlar
-"+N seçenek daha" arkasında, sırasıyla ve durumuyla.
-- **Durum:** Her seçenek önce ayrılır: **Uygun** (kesin şartları karşılıyor), **Seçmeden kontrol et** (bir şart
-  sayfada yazmıyor, fiyat toplam mı gecelik mi belli değil, tek bir misafir ciddi bir şey bildirmiş), **Kısmi**
-  (gecelerin yalnız bir kısmı) ya da **Uygun değil** (şart karşılanmıyor, herkes için olmaz bir sorun, bütçe tavanı).
-- **Kart sade:** küçük görsel, neden gösterildiği ("EN İYİ KONUM", "EN EKONOMİK VE EN SESSİZ"), ad, tür ve puan
-  ("Otel odası · 8,9 Çok iyi · 1.204 yorum"), fiyat ("€285 · 3 gece toplam · €95 / gece"). Sonra takas satırı:
-  şartları karşılayan en ekonomik seçeneğe göre ne kadar fazla ya da az tuttuğu, karşılığında ne kazandırdığı ve
-  neyden vazgeçtirdiği ("+€60 (gecelik +€20) · 15 dk daha yakın, mutfak var · vazgeçtiğin: sessiz sokak · 4 yorum").
-  Sonra istediğin her şey için bir işaret (✓ Mutfak · ✕ Sessiz · ? İptal; sözleri üstüne gelince ve detayda).
-  Puan, artı/eksi listeleri ve kanıt **Detaylar**'da.
-- **Seçmeden doğrula:** Kararı değiştirebilecek eksik bilgi cümlenin altında yazar ("Bonfim Loft: mutfak yazmıyor
-  · Sayfada bak ↗").
+**Seçilmemiş her ihtiyaç sıralanır: 1, 2, 3, 4…** Onlarca link atsan da seçenekler en iyiden en kötüye numaralı durur
+(ilk beşi açık, gerisi "+N seçenek daha"). Üstte tek cümle: önerin ve nedeni, sonra bir önceliğe göre öne çıkan
+alternatifler sırasıyla ("Önerim Casa Ribeira: en iyi konum; €60 fazlasına mutfak var. Tasarruf ve sessizlik için
+2. Bonfim Loft (€60 daha ucuz)").
+- **Kartta:** sıra numarası ve uyum puanı (0–100), neyde en güçlü olduğu ("EN EKONOMİK · EN SESSİZ"), görsel, ad, tür
+  ve puan ("Otel odası · 8,9 Çok iyi · 1.204 yorum"), fiyat ("€285 · 3 gece toplam · €95 / gece").
+- **Neden bu sırada:** 1.'ye göre (1. kartta 2.'ye göre) fark, kazancı ve eksiği: "1.'ye göre +€45 (gecelik +€15) ·
+  yorumlar daha iyi · eksiği: hafta sonu gece gürültüsü · 3 yorum, iade yok".
+- **İstediklerin** için bir işaret (✓ Sessiz · ? Mutfak), sonra **artılar ve eksiler** tam cümleyle (en önemlisi
+  üstte, "yalnız bunda" olanlar işaretli).
+- **Durum:** Uygun olanlar önce; sonra **Seçmeden kontrol et** (bir şart sayfada yazmıyor, fiyat toplam mı gecelik
+  mi belli değil, tek bir misafir ciddi bir şey bildirmiş), **Kısmi** (gecelerin bir kısmı), en sonda **Uygun
+  değil** (şart karşılanmıyor, herkes için olmaz bir sorun, bütçe tavanı). Kararı değiştirebilecek eksik bilgi
+  cümlenin altında yazar ("Bonfim Loft: mutfak yazmıyor · Sayfada bak ↗").
 **Detaylar** kartın içinde kısa açılır: tek cümleyle neden önde/geride olduğu, karar veren
 bilgiler (tarih, yer, puan, iptal, giriş/çıkış saati; uçuşta kalkış, varış, süre, aktarma, bagaj), en fazla dört
 artı ve dört "Dikkat". Bütün bulgular kanıtıyla ("Kanıt", "Sorun değil") **Tüm detaylar**da. Duman dedektörü, saç
@@ -294,9 +292,10 @@ aynı bilgiyle hep aynı sonucu verir ve her sayısı açıklanabilir:
      olmadığını kontrol eder; tutmayan eleme "Kontrol gerekiyor" olarak kalır, karar vermez.
    - Eleme, dayandığı bulgular durdukça geçerlidir; yeni bir seçenek eklenince kaybolmaz.
    - AI'ya ulaşılamazsa son iyi yorumu tarihiyle görünür kalır.
-8. **Tek sıralama değil, öncelik başına en güçlü seçenek:** Puan, bir önceliğin içinde sıralamak ve genel olarak
-   en iyiyi bulmak için kullanılır; başlık değildir. Şartları karşılayan en ekonomik seçenek başlangıç noktasıdır:
-   diğer her kart ona göre "+€60 · karşılığında …" diye yazar. Aynı fiyatlılara "en ekonomik" denmez.
+8. **Sıralama ve neden:** Seçenekler önce durumuna (uygun → kontrol et → kısmi → uygun değil), sonra puana göre
+   sıralanır. Her kart 1.'ye göre (1. kart 2.'ye göre) farkını, kazancını ve eksiğini yazar; uygun olanlar içinde
+   bir önemli şeyde açıkça en güçlü olan etiketlenir ("En ekonomik", "En sessiz"). Aynı fiyatlılara "en ekonomik"
+   denmez.
 9. **Eksik bilgi durdurmaz:** Fiyatı henüz belli olmayan seçenek "Seçmeden kontrol et" olur ve kararı
    değiştirebileceği için cümlenin altında yazar. Farklı tarih için alınmış fiyat karşılaştırmaya girmez.
 10. **Kısmi konaklama:** Gecelerin yalnız bir kısmını kapsayan yer tamamını kapsayanlarla yarışmaz; "yalnız 2/5

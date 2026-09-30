@@ -310,12 +310,14 @@ describe("any trip", () => {
           // (Names are the fuzz's own, "Flight null-null": left out of the check.)
           const said = d.options.reduce(
             (text, o) => text.split(o.item.name).join("X"),
-            [choice.headline, ...choice.candidates.map((c) => `${c.label} ${c.trade ? tradeText(c.trade, ctx.currency) : ""}`), ...choice.verify.map((v) => v.what)].join(" | "),
+            [choice.headline, ...choice.ranked.map((r) => `${r.badges.join(" ")} ${r.trade ? tradeText(r.trade, ctx.currency) : ""}`), ...choice.verify.map((v) => v.what)].join(" | "),
           );
           if (/NaN|undefined|null|Infinity|\[object/.test(said)) note(seed, `choice ${g.key}: ${said}`);
-          if (choice.candidates.length + choice.rest.length !== d.options.length) note(seed, `choice ${g.key} loses options`);
-          if (new Set(choice.candidates.map((c) => c.option.item.id)).size !== choice.candidates.length) note(seed, `choice ${g.key} repeats a card`);
-          if (choice.candidates.some((c) => c.option.fit === "unfit" || c.option.fit === "partial")) note(seed, `choice ${g.key} shows an option that's out`);
+          if (choice.ranked.length !== d.options.length) note(seed, `choice ${g.key} loses options`);
+          // Numbered 1, 2, 3... without gaps, in the engine's order; badges only on options that fit (or are to check).
+          const places = choice.ranked.map((r) => r.rank).filter((n) => n != null);
+          if (places.some((n, i) => n !== i + 1)) note(seed, `choice ${g.key} places ${places}`);
+          if (choice.ranked.some((r) => r.badges.length && (r.option.fit === "unfit" || r.option.fit === "partial"))) note(seed, `choice ${g.key} badges an option that's out`);
           for (const i of g.items) {
             const f = cardFacts(i, d, ctx);
             const text = [f.title, f.subtitle, f.price?.text, f.price?.label, f.price?.perNight, f.status?.text, ...f.pros.map((p) => p.text), ...f.cons.map((c) => c.text)].filter((x) => x != null).join(" | ");

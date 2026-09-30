@@ -145,14 +145,17 @@ try {
   await app.locator("li.tl-travel.flash").waitFor();
   // Where each plan stands is on top of its card: booked in green, planned in amber.
   await app.locator(".tl-stay.st-booked .status-bar.st-booked", { hasText: "Rezerve edildi" }).waitFor();
-  // Undecided needs are decision cards, calm and clear: why each one is shown (the thing it's strongest
-  // on), its price, what it costs against the cheapest one that fits, and a mark per thing asked for.
+  // Undecided needs are a numbered list, best first: each card with its place and score, what it's
+  // strongest on, why it stands there (against the first; the first against the second), a mark per
+  // thing asked for, and what speaks for and against it.
   const card = (name) => app.locator(`.swipe-card[aria-label="${name}"]`);
-  // Porto: Casa Azul is out (construction; they asked for quiet), and of the ones that fit Jardim is both
-  // the cheapest and the quietest: one card and one sentence say so; the rest wait one tap away.
-  await card("Jardim Stay").locator(".opt-label", { hasText: "En ekonomik ve en sessiz" }).waitFor();
   const stayCard = app.locator(".stay-block .reco-line.headline").first();
-  assert.equal(await stayCard.locator("p").innerText(), "Jardim Stay her açıdan önde: en ekonomik ve en sessiz.");
+  assert.equal(await stayCard.locator("p").innerText(), "Önerim Jardim Stay: en ekonomik ve en sessiz; 5 Eki'ye kadar ücretsiz iptal ve daha konforlu.");
+  const porto = app.locator(".stay-block.open .option-grid").first();
+  assert.deepEqual(await porto.locator(".swipe-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Jardim Stay", "Ribeira Rooms", "Casa Azul"]);
+  assert.deepEqual(await porto.locator(".opt-rank").allInnerTexts(), ["1", "2", "3"]);
+  assert.deepEqual(await porto.locator(".opt-score b").allInnerTexts(), ["83", "55", "45"]);
+  await card("Jardim Stay").locator(".opt-label", { hasText: "En ekonomik · En sessiz" }).waitFor();
   // The site's name is the way to the page: one click, a new tab, the board stays.
   const site = card("Jardim Stay").locator("a.sc-source");
   assert.match(await site.innerText(), /Booking\.com\s*↗$/);
@@ -160,31 +163,29 @@ try {
   assert.match(await site.getAttribute("href"), /^https:\/\/www\.booking\.com\//);
   assert.equal(await card("Jardim Stay").locator(".opt-meta").innerText(), "Otel odası · 8,9 Çok iyi · 1.204 yorum");
   assert.match(await card("Jardim Stay").locator(".sc-price").innerText(), /€285\s*3 gece toplam\s*€95 \/ gece/);
-  // A mark for each thing asked for (the words behind it on hover and in the details); no score, no lists.
+  // Why here: the first against the second, the second against the first.
+  assert.match(await card("Jardim Stay").locator(".opt-trade").innerText(), /^2\.'ye göre\s*€45 daha ucuz \(gecelik −€15\) · sessiz odalar, iyi uyku · 3 yorum, 5 Eki'ye kadar ücretsiz iptal, daha konforlu · eksiği: yorumları daha zayıf/);
+  assert.match(await card("Ribeira Rooms").locator(".opt-trade").innerText(), /^1\.'ye göre\s*\+€45 \(gecelik \+€15\) · yorumlar daha iyi \(9,2\/10 – 8,9\/10\) · eksiği: hafta sonu gece gürültüsü · 3 yorum/);
+  // A mark for each thing asked for (the words on hover and in the details), then the pros and cons in full.
   assert.deepEqual(await card("Jardim Stay").locator(".opt-checks .need.yes > span").allInnerTexts(), ["Sessiz"]);
   assert.equal(await card("Jardim Stay").locator(".opt-checks .need.yes").getAttribute("title"), "Sessiz odalar, iyi uyku · 3 yorum");
-  assert.equal(await card("Jardim Stay").locator(".sc-score, .sc-col").count(), 0);
-  assert.equal(await card("Jardim Stay").locator(".opt-trade.quiet").innerText(), "Kahvaltı çok iyi · Gezeceğin yerlere 6 dk");
-  // The picture sits beside the name, and nothing is squeezed.
+  assert.deepEqual(await card("Jardim Stay").locator(".sc-col.pros li > span").allInnerTexts(), ["Kahvaltı çok iyi", "Gezeceğin yerlere 6 dk", "Ücretsiz iptal · son gün 5 Ekim"]);
+  await card("Jardim Stay").locator(".sc-col.pros li.unique", { hasText: "yalnız bunda" }).waitFor();
+  await card("Ribeira Rooms").locator(".sc-col.pros li.unique", { hasText: "Odadan nehir manzarası" }).waitFor();
+  assert.match(await card("Jardim Stay").locator(".sc-col.cons li > span").first().innerText(), /^Odalar küçük/);
+  // Out and last, with why.
+  await card("Casa Azul").locator(".opt-status.unfit", { hasText: "Uygun değil: Yan binada inşaat var; sessiz bir yer istiyorsun" }).waitFor();
+  await card("Casa Azul").locator(".sc-col.cons li.strong", { hasText: "Elendi: Yan binada inşaat var" }).waitFor();
+  // The picture sits beside the name; one card a row, wide enough to read.
   const media = await card("Jardim Stay").locator(".opt-img").boundingBox();
   const title = await card("Jardim Stay").locator(".opt-name").boundingBox();
   assert.ok(title.x > media.x + media.width - 1, "the picture sits beside the name");
-  // The others, one tap away: best first, the one that's out last with why.
-  await app.locator(".stay-block.open .more-options", { hasText: "+2 seçenek daha" }).first().click();
-  const porto = app.locator(".stay-block.open .option-grid").first();
-  assert.deepEqual(await porto.locator(".swipe-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Jardim Stay", "Ribeira Rooms", "Casa Azul"]);
-  await card("Ribeira Rooms").locator(".opt-checks .need.no", { hasText: "Sessiz" }).waitFor();
-  await card("Casa Azul").locator(".opt-status.unfit", { hasText: "Uygun değil: Yan binada inşaat var; sessiz bir yer istiyorsun" }).waitFor();
-  // Cards on one row stand the same height.
-  const rows = await porto.locator(".swipe-card").evaluateAll((els) => {
-    const byTop = {};
-    for (const e of els) (byTop[Math.round(e.getBoundingClientRect().top)] ??= []).push(Math.round(e.getBoundingClientRect().height));
-    return Object.values(byTop);
-  });
-  for (const heights of rows) assert.equal(new Set(heights).size, 1, `card heights ${heights}`);
-  // Flights: the best overall and the cheapest, each with its trade.
-  await card("Pegasus · direkt").locator(".opt-label", { hasText: "Genel olarak en iyi" }).waitFor();
-  assert.equal(await card("Pegasus · direkt").locator(".opt-trade").innerText(), "+€30 · bagaj dahil, direkt, saatleri daha uygun · vazgeçtiğin: ücret kesintisiyle iade");
+  const boxes = await porto.locator(".swipe-card").evaluateAll((els) => els.map((e) => e.getBoundingClientRect()).map((r) => ({ top: Math.round(r.top), width: r.width })));
+  assert.ok(boxes.every((b, i) => i === 0 || b.top > boxes[i - 1].top), "best first, top to bottom");
+  assert.ok(boxes.every((b) => b.width >= 420), `cards wide enough to read: ${boxes.map((b) => b.width)}`);
+  // Flights: the best first, the cheaper second, each with why.
+  assert.equal(await card("Pegasus · direkt").locator(".opt-rank").innerText(), "1");
+  assert.equal(await card("Pegasus · direkt").locator(".opt-trade").innerText(), "2.'ye göre+€30 · bagaj dahil, direkt, saatleri daha uygun · eksiği: iade yok, ücretli değişiklik");
   assert.equal(await card("TAP · Lizbon aktarmalı").locator(".opt-label").innerText(), "EN EKONOMİK");
   // The slim strip under the summary: what to decide, book and plan, counted; a chip lists them, a tap goes there.
   const todo = app.locator(".todo-wrap");
@@ -609,9 +610,7 @@ try {
   // Each page is then read closely (any site): findings with the reviews behind them, counted by code.
   // Ruled out on that evidence by the analysis, which sees the findings with their counts.
   const casaCard = board.locator('.swipe-card[aria-label="Casa Azul"]');
-  // Out, so behind "+1 seçenek daha", with why.
-  await board.locator(".stay-block .opt-label").first().waitFor({ timeout: 40000 });
-  await board.locator(".stay-block .more-options", { hasText: "seçenek daha" }).first().click({ timeout: 40000 });
+  // Out, last in the list, with why.
   await casaCard.locator(".opt-status.unfit", { hasText: "Yan binada inşaat" }).waitFor({ timeout: 40000 });
   assert.ok(analysisPrompts.some((p) => p.includes("Yan binada inşaat gürültüsü") && p.includes('"count":2')), "analysis sees findings and counts");
   await casaCard.getByRole("button", { name: "Detaylar ▾" }).click();

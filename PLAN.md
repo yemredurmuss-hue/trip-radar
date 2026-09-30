@@ -106,6 +106,8 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
       değil; notlar kendi kriteri (Sessizlik…), kesinlik derecesi (şart / önemli / az), "olmasın" şartı; bütçe hedef +
       tavan; sezgiler önce sorulur; öncelik başına en güçlü aday + en ekonomik uyguna göre takas + seçmeden doğrula;
       sade kart; asistan aynı çerçeveyle konuşur
+- [x] 0.26: sıralama geri omurga — 1, 2, 3, 4… numaralı, puan görünür, neyde en güçlü olduğu etiket, "1.'ye göre"
+      fark/kazanç/eksik satırı, artı/eksiler kartta; öneri cümlesi "Önerim X: neden; <öncelik> için 2. Y"
 - [ ] Sonra: vibe (ışık, teras, yeşillik; fotoğraftan), kısmi konaklama kombinasyonları (2+3 gece = tam plan),
       gerçek kayıtlarla altın set ölçümü
 - [ ] Sonra: "farka değer mi?" (pahalı seçenek neyi fazladan veriyor), gerçek kayıtlarla altın set ölçümü

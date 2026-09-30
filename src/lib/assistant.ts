@@ -60,7 +60,7 @@ Elindekiler (trip_state):
 Nasıl konuşursun:
 - Doğal, sıcak ve kısa: 2-4 cümle. Form ya da rapor gibi değil, bir arkadaş gibi.
 - Kullanıcının istedikleri (asked_for: ✓ var, ✕ yok, ? sayfada yazmıyor) her seçenekte hesaplı; karşılaştırırken önce bunları söyle ("üçünde de mutfak var; yalnız Jardim'de yorumlar sessiz diyor").
-- Öneriyi decisions[].choice ile söyle, tek bir "kazanan" gibi değil: "Konum için X (+€60: mutfak var, 15 dk daha yakın); tasarruf ve sessizlik için Y." Takası (fark ve karşılığında ne kazanıp ne kaybettiği) söyle; puanı öne çıkarma. choice.verify'da bir şey varsa seçmeden önce doğrulanmasını öner (search_page ile sayfada arayabilirsin). Kullanıcı bugünkü önceliğini söylerse ("bütçe daha önemli", "sessizlik öncelik") önce set_priorities, sonra yeni choice ile net söyle: "O zaman Y: €60 tasarruf, karşılığında şundan vazgeçiyorsun." Sayıları decisions'tan al; kendi puanını ya da fiyatını üretme.
+- Öneriyi decisions[].choice ile söyle: sıralama panodaki gibi 1, 2, 3...; önce önerini ve nedenini ("Önerim X: en iyi konum; €60 fazlasına mutfak var"), sonra bir önceliğe göre öne çıkan alternatifleri sırasıyla ("tasarruf için 2. Y, €60 daha ucuz"). Her birinin neden o sırada olduğunu why_here'den söyle (1.'ye göre fark, kazanç, vazgeçilen). choice.verify'da bir şey varsa seçmeden önce doğrulanmasını öner (search_page ile sayfada arayabilirsin). Kullanıcı bugünkü önceliğini söylerse ("bütçe daha önemli", "sessizlik öncelik") önce set_priorities, sonra yeni choice ile net söyle: "O zaman Y: €60 tasarruf, karşılığında şundan vazgeçiyorsun." Sayıları decisions'tan al; kendi puanını ya da fiyatını üretme.
 - Soru sormadan önce düşün: cevap kararı değiştirir mi? Değiştirmiyorsa sorma. En fazla BİR soru; hızlı yanıtlanacaksa offer_choices ile 2 kısa seçenek sun.
 - Niyeti sohbetten sessizce yakala, kullanıcıya form doldurtma. Neyi istediği kadar NE KADAR KESİN söylediğini de oku:
   • kesin ("şart", "kesinlikle", "asla", "olmazsa olmaz", "... olmasın") → set_requirements: "mutfak şart" → amenity; "iadesiz olmasın" → free_cancellation; "direkt uçuş" → direct_flight; "merkeze en fazla 15 dk" → max_walk; "kesinlikle gürültü olmasın" → avoid (topic noise). Şarta uymayan seçenek "Uygun değil" olur; sayfa söylemiyorsa "Kontrol gerekiyor".
@@ -403,11 +403,21 @@ export function decisionState(decisions: Map<string, GroupDecision>, ctx: Decisi
       // against the cheapest fit one, what to check before choosing. Speak in these terms.
       choice: (() => {
         const c = choiceOf(d, ctx);
-        if (!c.candidates.length) return null;
+        if (!c.headline) return null;
         return {
           headline: c.headline,
-          candidates: c.candidates.map((x) => ({ name: x.option.item.name, label: x.label, for: x.lenses, trade: x.trade ? `${tradeText(x.trade, ctx.currency)} (${x.trade.vs} karşısında)` : null })),
-          anchor: c.anchor?.item.name ?? null,
+          // Best first, as the board numbers them: what each is strongest on, and why it's in its place.
+          ranked: c.ranked
+            .filter((x) => x.rank != null)
+            .slice(0, 6)
+            .map((x) => ({
+              rank: x.rank,
+              name: x.option.item.name,
+              score: x.option.score,
+              fit: x.option.fit,
+              strongest_on: x.badges,
+              why_here: x.trade ? `${x.vsRank}.'ye göre: ${tradeText(x.trade, ctx.currency)}` : null,
+            })),
           verify: c.verify.map((v) => `${v.name}: ${v.what}`),
         };
       })(),
