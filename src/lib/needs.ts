@@ -6,10 +6,12 @@ import {
   amenitiesOf,
   cancellationType,
   CRITERION_LABELS,
+  findingWeight,
   levelFor,
   levelSource,
   measureFor,
   saidTopics,
+  touchesTopic,
   wantedAmenities,
   type DecisionContext,
   type OptionResult,
@@ -144,7 +146,7 @@ function criterionCheck(c: CriterionId, item: Item, option: OptionResult | undef
 function topicCheck(topic: Finding["topic"], label: string, listing: Listing | undefined, ctx: Ctx): Omit<NeedCheck, "key" | "label"> {
   if (!listing?.readAt) return { state: "unknown", text: `${label}: sayfa okunmadı`, covers: [] };
   const accepted = new Set(ctx.trip.acceptedFindings ?? []);
-  const found = listing.findings.filter((f) => f.verified && f.topic === topic && !evidenceOf(f, listing, ctx.today).stale);
+  const found = listing.findings.filter((f) => f.verified && touchesTopic(f, topic) && !evidenceOf(f, listing, ctx.today).stale);
   const against = found.filter((f) => f.polarity === "negative" && !accepted.has(acceptKey(listing.key, f)));
   const pick = (list: Finding[]) => {
     const f = [...list].sort((a, b) => evidenceOf(b, listing, ctx.today).count - evidenceOf(a, listing, ctx.today).count)[0];
@@ -152,8 +154,10 @@ function topicCheck(topic: Finding["topic"], label: string, listing: Listing | u
     return `${capital(f.text)}${n ? ` · ${n} yorum` : ""}`;
   };
   const covers = found.map((f) => `f:${f.id}`);
-  if (against.length) return { state: "no", text: pick(against), covers };
   const for_ = found.filter((f) => f.polarity === "positive");
+  // Both said: the better backed side wins ("sessiz odalar" in five reviews, "bir gece gürültü" in one).
+  const weigh = (list: Finding[]) => list.reduce((sum, f) => sum + findingWeight(f, listing, ctx.today), 0);
+  if (against.length && weigh(against) >= weigh(for_)) return { state: "no", text: pick(against), covers };
   if (for_.length) return { state: "yes", text: pick(for_), covers };
   return { state: "unknown", text: `${label}: yorumlarda geçmiyor`, covers };
 }

@@ -83,6 +83,13 @@ export function saidTopics(preferences: string[]): Set<string> {
   for (const text of preferences) for (const [re, list] of SAID) if (re.test(text)) list.forEach((t) => topics.add(t));
   return topics;
 }
+
+/** A finding speaks to a topic by its own topic or by what it says ("inşaat gürültüsü" is about noise too). */
+export function touchesTopic(f: Pick<Finding, "topic" | "text">, topic: string): boolean {
+  if (f.topic === topic) return true;
+  return SAID.some(([re, list]) => list[0] === topic && re.test(f.text));
+}
+const touchesAny = (f: Pick<Finding, "topic" | "text">, topics: Set<string>) => [...topics].some((t) => touchesTopic(f, t));
 /** A finding on something the traveller asked for counts this much more. */
 export const SAID_WEIGHT = 2.5;
 
@@ -454,7 +461,7 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
       let minus = 0;
       for (const f of counted) {
         if (f.polarity === "negative" && accepted.has(acceptKey(listing.key, f))) continue;
-        const w = findingWeight(f, listing, ctx.today) * (said.has(f.topic) ? SAID_WEIGHT : 1);
+        const w = findingWeight(f, listing, ctx.today) * (touchesAny(f, said) ? SAID_WEIGHT : 1);
         if (f.polarity === "positive") plus += w;
         else minus += w;
       }
@@ -501,6 +508,25 @@ export function seriousIssues(item: Item, ctx: Pick<DecisionContext, "listings" 
   return listing.findings
     .filter((f) => f.polarity === "negative" && f.severity === "high" && isDecisive(f, listing, ctx.today) && !accepted.has(acceptKey(listing.key, f)))
     .slice(0, MAX_SERIOUS);
+}
+
+/**
+ * What rules a place out for anyone, not just this traveller: a serious problem (construction next door,
+ * bugs, an unsafe street, a flat unlike its photos) that several guests report or the page itself says.
+ * One angry review isn't enough; "sorun değil" brings the place back.
+ */
+export function dealbreakersOf(item: Item, ctx: Pick<DecisionContext, "listings" | "today" | "trip">): Finding[] {
+  const listing = ctx.listings.get(listingKeyOf(item));
+  if (!listing?.readAt) return [];
+  const accepted = new Set(ctx.trip.acceptedFindings ?? []);
+  return listing.findings.filter(
+    (f) =>
+      f.polarity === "negative" &&
+      f.severity === "high" &&
+      isDecisive(f, listing, ctx.today) &&
+      !accepted.has(acceptKey(listing.key, f)) &&
+      (f.source !== "reviews" || evidenceOf(f, listing, ctx.today).count >= 2),
+  );
 }
 
 const SEVERITY_WEIGHT = { high: 3, medium: 2, low: 1 } as const;
@@ -802,6 +828,15 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
 
   const required = REQUIRED[category] ?? [];
   const { byItem: eliminated, checks } = eliminationsOf(record, eligible, ctx);
+  // Serious problems that are out for anyone rule a place out by themselves, with or without an AI review.
+  for (const item of eligible) {
+    if (eliminated.has(item.id)) continue;
+    const found = dealbreakersOf(item, ctx);
+    if (!found.length) continue;
+    const listing = ctx.listings.get(listingKeyOf(item))!;
+    const n = evidenceOf(found[0], listing, ctx.today).count;
+    eliminated.set(item.id, { reason: `${found[0].text}${n ? ` (${n} yorum)` : ""}`, findings: found });
+  }
   let options: OptionResult[] = eligible.map((item) => {
     const s = score(item.id);
     const missing = s.parts.filter((p) => p.s == null).map((p) => p.label.toLocaleLowerCase("tr"));

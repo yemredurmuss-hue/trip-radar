@@ -39,10 +39,17 @@ describe("decision card facts", () => {
       ["Sessiz", "yes", "Sessiz odalar, iyi uyku · 3 yorum"],
       ["Ücretsiz iptal", "yes", "Ücretsiz iptal · son gün 5 Ekim"],
     ]);
-    // Then the rest, biggest first, with the specifics ("6 dk", not "Yakın"); nothing a need already said.
-    expect(jardim.pros.map((p) => p.text)).toEqual(["Gezeceğin yerlere 6 dk", "Kahvaltı çok iyi", "Yorum puanları yüksek"]);
+    // Then what only this place has (the others' pages don't mention breakfast), then the rest with the
+    // specifics ("6 dk", not "Yakın"); nothing a need already said.
+    expect(jardim.pros.map((p) => [p.text, Boolean(p.unique)])).toEqual([
+      ["Kahvaltı çok iyi", true],
+      ["Gezeceğin yerlere 6 dk", false],
+      ["Yorum puanları yüksek", false],
+    ]);
     // Jardim is the average price of the three: no price line either way.
     expect(jardim.cons.map((c) => c.text)).toEqual(["Odalar küçük", "TV yok"]);
+    // The river view is Ribeira's alone.
+    expect(facts("Ribeira Rooms").pros[0]).toMatchObject({ text: "Odadan nehir manzarası", unique: true });
     for (const tag of [...jardim.pros, ...jardim.cons].map((l) => l.text)) expect(tag.split(" ").length).toBeLessThanOrEqual(5);
     // A need the page answers the other way is said as plainly: the noise, no refund.
     expect(facts("Ribeira Rooms").needs.map((n) => [n.state, n.text])).toEqual([
@@ -57,8 +64,10 @@ describe("decision card facts", () => {
     expect(casa.cons[0]).toMatchObject({ text: "Elendi: Yan binada inşaat var", strong: true, mine: true });
     // Far by the comparison and weak location in the reviews: one tag, not two, and it says how far.
     expect(casa.cons.filter((c) => /Uzak|Konum/.test(c.text)).map((c) => c.text)).toEqual(["Uzak · gezeceğin yerlere 43 dk"]);
-    // What the reviews don't mention is said as not known, never as missing.
-    expect(casa.needs[0]).toMatchObject({ state: "unknown", text: "Sessiz: yorumlarda geçmiyor" });
+    // Quiet, which they asked for: the construction noise answers it, whatever topic it was filed under.
+    expect(casa.needs[0]).toMatchObject({ state: "no", text: "Yan binada inşaat gürültüsü · 3 yorum" });
+    // A short finding keeps all its words: the bed is big, not the flat.
+    expect(casa.pros.map((p) => p.text)).toContain("Geniş, rahat yatak");
   });
 
   it("flights, trains and eSIMs: times, stops and duration; bookings say so", async () => {

@@ -238,12 +238,18 @@ describe("0.14: what decides, and what a card says when opened", () => {
       readAt: 1,
       findings: [
         { id: "nearby:negative:x", text: "Binanın hemen karşısında genelev var", polarity: "negative", topic: "nearby", source: "reviews", severity: "high", reviewIds: [], quotes: ["x"], verified: true },
-        { id: "noise:negative:y", text: "Hafta sonları gece geç saatlere kadar sokaktan gelen yoğun gürültü", polarity: "negative", topic: "noise", source: "reviews", severity: "medium", reviewIds: [], quotes: ["y"], verified: true },
+        { id: "noise:negative:y", text: "Hafta sonları gece geç saatlere kadar sokaktan gelen yoğun gürültü", polarity: "negative", topic: "noise", source: "reviews", severity: "medium", reviewIds: [], quotes: ["y", "z"], verified: true },
+        // One guest found the check-in hard: in the details, not a headline.
+        { id: "check_in:negative:z", text: "Giriş zor", polarity: "negative", topic: "check_in", source: "reviews", severity: "low", reviewIds: [], quotes: ["z"], verified: true },
+        // Facts, not minuses: the usual check-in hour, and what the page doesn't say.
+        { id: "check_in:negative:h", text: "Giriş saati 16:00", polarity: "negative", topic: "check_in", source: "description", severity: "low", reviewIds: [], quotes: ["16:00"], verified: true },
+        { id: "access:negative:u", text: "Binada asansör bilgisi yok", polarity: "negative", topic: "access", source: "description", severity: "low", reviewIds: [], quotes: ["u"], verified: true },
       ],
     };
     const ctx = makeContext(trip(), [place], { listings: new Map([[listing.key, listing]]) });
     const cons = cardFacts(place, undefined, ctx).cons.map((c) => c.text);
     expect(cons).toContain("Binanın hemen karşısında genelev var"); // not "Çevre sorunlu"
-    expect(cons).toContain("Gürültülü"); // a long sentence becomes its topic
+    expect(cons).toContain("Hafta sonları gece geç saatlere…"); // its own words, cut short, never a vague "Gürültülü"
+    expect(cons).toHaveLength(2);
   });
 });

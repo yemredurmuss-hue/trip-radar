@@ -135,6 +135,17 @@ da girer: istenen olanak (şart dediğin de) puanlanır, istediğin konudaki yor
 Altındaki artı/eksiler somut yazar: "Gezeceğin yerlere 6 dk", "Uzak · merkeze 25 dk", "Puan 8,9/10", "Erken
 kalkış 05:40". Kartın üstündeki site adı (Booking.com ↗, Airbnb ↗) sayfayı yeni sekmede açar; pano yerinde kalır.
 Tarihsiz kaydedilen bir bilet ya da sayfa için sohbette "o bilet 12 Ekim'di" demen yeter, kart kendi gününe geçer.
+
+**Okunan her şey ayıklanır.** Kartta bir şey ancak önemliyse görünür:
+- **Yalnız bunda:** karşılaştırılan diğer yerlerin sayfalarında hiç geçmeyen artı ya da eksi en başta, "yalnız bunda"
+  etiketiyle ("Odadan nehir manzarası", "Asansör yok, 3. kat").
+- **Herkes için olmaz:** birkaç misafirin yazdığı ya da sayfanın kendisinin söylediği ciddi bir sorun (yan binada
+  inşaat, haşere, güvenlik, ilandan farklı yer) yeri kendiliğinden eler; "sorun değil" dersen geri gelir.
+- **Bilgi eksi değildir:** alışılmış giriş/çıkış saati (giriş 14–16, çıkış 10–12) ve "bilgisi yok" türü satırlar
+  karara ve karta girmez.
+- **Tek yorum manşet olmaz:** tek bir yorumda geçen küçük şikâyet ("giriş zor") detayda kalır; ciddi olan kalmaz.
+- **Hepsinde olan** şey karşılaştırmaya bir şey katmaz, kartta tekrar edilmez (istediğin bir şeyse "İstediklerin"de ✓).
+- İstediğin konudaki bulgu konusu ne olursa olsun sayılır ("inşaat gürültüsü" sessizlik isteğine ✕ yazar).
 Seçilen ya da rezerve edilen kartta zamanı yaklaşan şey yazar: "Ücretsiz iptal için 6 gün kaldı",
 "Bilet alınmadı · etkinliğe 10 gün · ücretsiz iptalli, şimdi ayırmak risksiz".
 

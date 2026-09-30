@@ -8,6 +8,7 @@ import {
   levelFor,
   SAID_WEIGHT,
   saidTopics,
+  touchesTopic,
   wantedAmenities,
   SERIOUS_PENALTY,
   TOPIC_CRITERION,
@@ -17,7 +18,7 @@ import {
   type Part,
 } from "./decision";
 import { formatDateRange, formatPrice, listingKeyOf } from "./items";
-import { acceptKey, evidenceOf, monthLabel } from "./listing";
+import { acceptKey, evidenceOf, isWeakFinding, monthLabel } from "./listing";
 import { cancellationText, locationText } from "./needs";
 import type { Finding, Item, Listing } from "./types";
 
@@ -42,6 +43,12 @@ export interface ProCon {
   stale?: boolean;
   /** The traveller said it's fine. */
   accepted?: boolean;
+  /** Only this place has it among the ones compared ("yalnız bunda"): what sets it apart, for or against. */
+  unique?: boolean;
+  /** Every place compared has it: true, but it doesn't help choose. */
+  common?: boolean;
+  /** A minor thing one review says: in the details, not on the card. */
+  weak?: boolean;
   finding?: Finding;
 }
 
@@ -131,6 +138,13 @@ function fewWords(text: string, max = 3): string | null {
   return words.length && words.length <= max ? capital(words.join(" ")) : null;
 }
 
+/** The first clause, cut to a few words: "Balkondan nehir ve köprü manzarası…". */
+function clip(text: string, max: number): string | null {
+  const words = text.split(/[,;(—–]| - /)[0].trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return null;
+  return capital(words.slice(0, max).join(" ")) + (words.length > max ? "…" : "");
+}
+
 /**
  * A line as a card line, a few words: what was read keeps its own words when they're short
  * ("Karşısında genelev var", "Odalar küçük"), so the specific thing is never lost to a general word;
@@ -139,7 +153,12 @@ function fewWords(text: string, max = 3): string | null {
 export function tagOf(line: ProCon, polarity: "pro" | "con"): string {
   if (line.tag) return line.tag;
   const side = polarity === "pro" ? 0 : 1;
-  if (line.finding) return fewWords(line.text, 5) ?? TOPIC_TAGS[line.finding.topic][side];
+  // A finding keeps its own words, shortened if it must be ("Olanak eksik" says nothing).
+  if (line.finding) {
+    // Short enough whole ("Geniş, rahat yatak"): as it is; the first clause alone could say something else ("Geniş").
+    if (line.text.trim().split(/\s+/).length <= 5) return capital(line.text.trim());
+    return fewWords(line.text, 5) ?? clip(line.text, 5) ?? TOPIC_TAGS[line.finding.topic][side];
+  }
   return fewWords(line.short ?? line.text, line.decisive ? 5 : 4) ?? fewWords(line.text, 4) ?? (line.short ?? line.text).split(/\s+/).slice(0, 4).join(" ");
 }
 
@@ -277,16 +296,37 @@ function comparisons(option: OptionResult, decision: GroupDecision, ctx: Ctx): {
 
 /** How much a finding's topic matters to this traveller, from the level of the criterion it speaks to. */
 function relevance(f: Finding, item: Item, ctx: Ctx): number {
-  if (saidTopics(ctx.preferences ?? []).has(f.topic)) return SAID_WEIGHT;
+  if ([...saidTopics(ctx.preferences ?? [])].some((t) => touchesTopic(f, t))) return SAID_WEIGHT;
   const level = levelFor(ctx.trip, item.category, TOPIC_CRITERION[f.topic], ctx.inferred);
   // Criteria that don't apply to the category (level 0 by default) still count a little: a finding is a fact.
   return Math.max(0.3, (LEVEL_WEIGHT[level] + 0.5) / 1.5);
 }
 
-function findingLines(listing: Listing, item: Item, ctx: Ctx, penalties: Set<string>): { pros: ProCon[]; cons: ProCon[] } {
+/** Topics wide enough that two findings on them can be about different things (a pool, a washer). */
+const BROAD_TOPICS = new Set<Finding["topic"]>(["amenities", "facilities", "other", "nearby", "location", "transport", "value", "condition", "access"]);
+const stems = (text: string) =>
+  new Set(
+    text
+      .toLocaleLowerCase("tr")
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((w) => w.length >= 4)
+      .map((w) => w.slice(0, 5)),
+  );
+
+/** Whether another place's page says the same kind of thing (a view, noise at night, a kitchen...). */
+function saysSame(f: Finding, other: Finding): boolean {
+  if (f.polarity !== other.polarity || f.topic !== other.topic) return false;
+  if (!BROAD_TOPICS.has(f.topic)) return true;
+  const mine = stems(f.text);
+  return [...stems(other.text)].some((w) => mine.has(w));
+}
+
+function findingLines(listing: Listing, item: Item, ctx: Ctx, penalties: Set<string>, peers: Listing[] = []): { pros: ProCon[]; cons: ProCon[] } {
   const accepted = new Set(ctx.trip.acceptedFindings ?? []);
   const pros: ProCon[] = [];
   const cons: ProCon[] = [];
+  // What the others' pages say (read ones only: an unread page says nothing either way).
+  const theirs = peers.map((p) => p.findings.filter((f) => f.verified && !evidenceOf(f, p, ctx.today).stale));
   for (const f of listing.findings) {
     const e = evidenceOf(f, listing, ctx.today);
     const isAccepted = f.polarity === "negative" && accepted.has(acceptKey(listing.key, f));
@@ -301,7 +341,13 @@ function findingLines(listing: Listing, item: Item, ctx: Ctx, penalties: Set<str
           : penalized
             ? `${where} · puandan −${SERIOUS_PENALTY}`
             : where;
-    const weight = findingWeight(f, listing, ctx.today) * relevance(f, item, ctx) * (f.verified ? 1 : 0.3) * (isAccepted ? 0.2 : 1);
+    // What sets it apart comes first; what every place has doesn't help choose.
+    const matches = theirs.map((list) => list.some((o) => saysSame(f, o)));
+    const unique = f.verified && theirs.length > 0 && !matches.some(Boolean);
+    const common = theirs.length > 0 && matches.every(Boolean);
+    const weak = isWeakFinding(f, listing, ctx.today);
+    const weight =
+      findingWeight(f, listing, ctx.today) * relevance(f, item, ctx) * (f.verified ? 1 : 0.3) * (isAccepted ? 0.2 : 1) * (unique ? 1.6 : common ? 0.6 : 1) * (weak ? 0.5 : 1);
     (f.polarity === "positive" ? pros : cons).push({
       key: `f:${f.id}`,
       text: f.text,
@@ -312,14 +358,17 @@ function findingLines(listing: Listing, item: Item, ctx: Ctx, penalties: Set<str
       ...(e.stale ? { stale: true } : {}),
       ...(isAccepted ? { accepted: true } : {}),
       ...(penalized ? { serious: true } : {}),
+      ...(unique ? { unique: true } : {}),
+      ...(common ? { common: true } : {}),
+      ...(weak ? { weak: true } : {}),
       finding: f,
     });
   }
   return { pros, cons };
 }
 
-export function prosCons(input: { item: Item; option?: OptionResult; decision?: GroupDecision; listing?: Listing; ctx: Ctx }): ProsCons {
-  const { item, option, decision, listing, ctx } = input;
+export function prosCons(input: { item: Item; option?: OptionResult; decision?: GroupDecision; listing?: Listing; peers?: Listing[]; ctx: Ctx }): ProsCons {
+  const { item, option, decision, listing, peers, ctx } = input;
   const pros: ProCon[] = [];
   const cons: ProCon[] = [];
 
@@ -375,7 +424,7 @@ export function prosCons(input: { item: Item; option?: OptionResult; decision?: 
   }
 
   if (listing?.readAt && listing.findings.length) {
-    const f = findingLines(listing, item, ctx, new Set(option?.penalties.map((p) => p.id) ?? []));
+    const f = findingLines(listing, item, ctx, new Set(option?.penalties.map((p) => p.id) ?? []), peers);
     pros.push(...f.pros);
     cons.push(...f.cons);
   } else {
@@ -384,7 +433,8 @@ export function prosCons(input: { item: Item; option?: OptionResult; decision?: 
     item.concerns.forEach((h, i) => cons.push({ key: `s:-${i}`, text: h, detail: "sayfa özeti", weight: 1.5, kind: "summary" }));
   }
 
-  const rank = (x: ProCon) => (x.decisive ? 2 : x.serious ? 1 : 0);
+  // The reason it's out, then serious problems, then what only this place has, then the rest.
+  const rank = (x: ProCon) => (x.decisive ? 3 : x.serious ? 2 : x.unique && !x.weak ? 1 : 0);
   const order = (a: ProCon, b: ProCon) => rank(b) - rank(a) || b.weight - a.weight;
   return { pros: pros.sort(order), cons: cons.sort(order) };
 }
@@ -398,7 +448,12 @@ export function prosConsFor(
 ): ProsCons | null {
   if (!ctx) return null;
   const option = decision?.options.find((o) => o.item.id === item.id);
-  return prosCons({ item, option, decision, listing: listings?.get(listingKeyOf(item)), ctx });
+  // The other places it's weighed against, as read: what only this one has stands out.
+  const peers = (decision?.options ?? [])
+    .filter((o) => o.item.id !== item.id && listingKeyOf(o.item) !== listingKeyOf(item))
+    .map((o) => listings?.get(listingKeyOf(o.item)))
+    .filter((l): l is Listing => Boolean(l?.readAt && l.findings.length));
+  return prosCons({ item, option, decision, listing: listings?.get(listingKeyOf(item)), peers, ctx });
 }
 
 /**
@@ -407,7 +462,9 @@ export function prosConsFor(
  */
 export function cardLines(pc: ProsCons | null, max = 2): { pros: ProCon[]; cons: ProCon[] } {
   if (!pc) return { pros: [], cons: [] };
-  const shown = (l: ProCon) => !l.unverified && !l.stale && !l.accepted && (l.kind !== "check" || l.key.startsWith("l:"));
+  // Minor one-review things and what every place has stay in the details.
+  const shown = (l: ProCon) =>
+    !l.unverified && !l.stale && !l.accepted && !l.weak && !(l.common && !l.serious) && l.key !== "v:coverage" && (l.kind !== "check" || l.key.startsWith("l:"));
   const decisive = pc.cons.filter((l) => l.decisive);
   return {
     pros: pc.pros.filter(shown).slice(0, max),

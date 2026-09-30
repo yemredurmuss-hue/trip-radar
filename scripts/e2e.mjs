@@ -155,9 +155,11 @@ try {
   // What the traveller asked for first, checked on each: quiet (they said so), free cancellation (their pattern).
   assert.deepEqual(await card("Jardim Stay").locator(".sc-needs .need.yes > span").allInnerTexts(), ["Sessiz odalar, iyi uyku · 3 yorum", "Ücretsiz iptal · son gün 5 Ekim"]);
   assert.deepEqual(await card("Ribeira Rooms").locator(".sc-needs .need.no > span").allInnerTexts(), ["Hafta sonu gece gürültüsü · 3 yorum", "İade yok"]);
-  // Then for it on the left, against it on the right, with the specifics, the biggest first.
-  assert.deepEqual(await card("Jardim Stay").locator(".sc-col.pros li > span").allInnerTexts(), ["Gezeceğin yerlere 6 dk", "Kahvaltı çok iyi", "Yorum puanları yüksek"]);
-  assert.equal(await card("Jardim Stay").locator(".sc-col.cons li > span").first().innerText(), "Odalar küçük");
+  // Then for it on the left, against it on the right: what only this place has first ("yalnız bunda"), then
+  // the rest with the specifics.
+  assert.deepEqual(await card("Jardim Stay").locator(".sc-col.pros li > span").allInnerTexts(), ["Kahvaltı çok iyiyalnız bunda", "Gezeceğin yerlere 6 dk", "Yorum puanları yüksek"]);
+  await card("Ribeira Rooms").locator(".sc-col.pros li.unique", { hasText: "Odadan nehir manzarası" }).waitFor();
+  assert.match(await card("Jardim Stay").locator(".sc-col.cons li > span").first().innerText(), /^Odalar küçük/);
   // Closed cards side by side stand the same height.
   const heights = await app.locator(".stay-block.open .option-grid .swipe-card").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
   assert.equal(new Set(heights).size, 1, `card heights ${heights}`);
@@ -171,7 +173,7 @@ try {
   assert.equal(new Set(tops).size, 1, "the options sit in one row");
   // The recommendation in one line above them, with what makes it the one.
   const stayCard = app.locator(".stay-block .reco-line");
-  assert.match(await stayCard.innerText(), /Önerim Jardim Stay:\s*Ribeira Rooms karşısında €45 daha ucuz; sessiz odalar, ücretsiz iptal ve gezeceğin yerlere 6 dk/);
+  assert.match(await stayCard.innerText(), /Önerim Jardim Stay:\s*Ribeira Rooms karşısında €45 daha ucuz; sessiz odalar, ücretsiz iptal ve kahvaltı çok iyi/);
   // The slim strip under the summary: what to decide, book and plan, counted; a chip lists them, a tap goes there.
   const todo = app.locator(".todo-wrap");
   const chip = (kind) => todo.locator(`.todo-chip.k-${kind}`);

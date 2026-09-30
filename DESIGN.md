@@ -27,6 +27,9 @@ Durum hiçbir yerde yalnız renkle anlatılmaz: yanında hep yazısı olur ("Bil
 Gezginin istedikleri kartın üstünde ayrı bir satırdır ("İstediklerin"): ✓ var (yeşil), ✕ yok (kırmızı),
 ? sayfa söylemiyor (gri). Varsayılanlar bu satıra girmez; yalnız söylediği, ayarladığı ya da sezilen öncelik.
 Kart satırları somut yazar (kaç dakika, kaç puan, hangi saat); "Yakın", "Zor saat" gibi tek kelime yetmez.
+Kartın önünde yalnız karar değiştiren şey durur: seçeneği diğerlerinden ayıran ("yalnız bunda") önce; tek yorumdaki
+küçük şey, hepsinde olan şey ve bilgi (giriş saati, "bilgi yok") detaya kalır. Bulgu kendi sözleriyle yazılır; genel
+bir konu adı ("Olanak eksik") yazılmaz.
 
 ## İki görünüm
 

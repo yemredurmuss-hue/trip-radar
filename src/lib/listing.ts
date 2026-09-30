@@ -217,10 +217,40 @@ const TRIVIAL =
 
 export const isTrivialFinding = (f: Pick<Finding, "text">) => TRIVIAL.test(f.text);
 
-/** The place as the decision sees it: what was read, without the trivia. */
+/** Not knowing isn't a minus: "asansör bilgisi yok", "belirtilmemiş". */
+const UNKNOWN = /(bilgi(si)?\s+(yok|verilmemiş)|belirtilmemiş|belirtilmiyor|yazmıyor|bilinmiyor|görünmüyor|belirsiz|not (stated|mentioned|specified)|no information)/i;
+/** A complaint about arriving, as opposed to just its hours. */
+const CHECK_IN_TROUBLE = /(zor|sorun|bekle|kimse|karışık|kötü|geç kal|ulaşıl|bulama|yok|hard|difficult|problem|wait|nobody|confus)/i;
+/** Check-in from 14–16, check-out by 10–12: what every place does, not a plus or a minus. */
+const HOUR = /(\d{1,2})(?:[:.](\d{2}))?/;
+
+/**
+ * Something read that's a fact, not a plus or a minus: when check-in opens (the transfers use the hours),
+ * or that the page doesn't say something. Kept in what was read, left out of the decision and the cards.
+ */
+export function isInfoFinding(f: Pick<Finding, "text" | "topic">): boolean {
+  if (UNKNOWN.test(f.text)) return true;
+  if (f.topic === "check_in" && HOUR.test(f.text) && !CHECK_IN_TROUBLE.test(f.text)) {
+    const hour = Number(f.text.match(HOUR)![1]);
+    // An hour out of the usual (check-in at 20:00, check-out at 8:00) is worth saying; the usual isn't.
+    return (hour >= 13 && hour <= 16) || (hour >= 10 && hour <= 12);
+  }
+  return false;
+}
+
+/** The place as the decision sees it: what was read, without the trivia and the plain facts. */
 export function usefulListing(listing: Listing): Listing {
-  const findings = listing.findings.filter((f) => !isTrivialFinding(f));
+  const findings = listing.findings.filter((f) => !isTrivialFinding(f) && !isInfoFinding(f));
   return findings.length === listing.findings.length ? listing : { ...listing, findings };
+}
+
+/**
+ * A minor thing one review mentions ("giriş zor" once): worth knowing in the details, not a headline.
+ * What the page itself says, anything serious, and what several guests say are never weak.
+ */
+export function isWeakFinding(f: Finding, listing: Listing, today: string): boolean {
+  // Mentions: the stored reviews behind it, or the quotes the reader gave when those didn't match.
+  return f.source === "reviews" && f.severity !== "high" && Math.max(evidenceOf(f, listing, today).count, f.quotes.length) <= 1;
 }
 
 export function evidenceOf(finding: Finding, listing: Listing, today: string): FindingEvidence {

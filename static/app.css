@@ -678,6 +678,9 @@ a.sc-source.link:focus-visible { outline: 2px solid var(--accent); outline-offse
 .sc-col.pros li:first-child { color: #16623a; }
 .sc-col.cons li:first-child { color: #97241d; }
 .sc-col li.strong { color: var(--danger); font-weight: 700; }
+/* What only this place has, for or against: the reason to look at it rather than the others. */
+.only-here { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: #eef1ff; color: #3b4bb8; font-size: 10.5px; font-style: normal; font-weight: 700; letter-spacing: .02em; vertical-align: 1px; white-space: nowrap; }
+.sc-col.cons .only-here { background: #fdecea; color: #97241d; }
 .sc-col.cons li.strong i { background: var(--danger); }
 /* Closed cards stand the same height side by side; an opened one grows on its own. */
 .carousel-track { align-items: stretch; }

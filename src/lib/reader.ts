@@ -62,6 +62,9 @@ findings: Bu yeri diğerlerinden ayıran somut artılar ve eksiler.
 - Somut ve kısa yaz: "Geniş, rahat yatak", "Yanında çok iyi bir İtalyan restoranı", "Yan binada inşaat gürültüsü", "Asansör yok, 3. kat", "TV yok", "Kahvaltı çok iyi", "Duvarlar ince, ses geçiyor".
 - Genel laf yazma: "iyi konum" yerine nedenini yaz ("Metroya 2 dk").
 - Yorumlarda tekrar eden konuları mutlaka yaz. Tek bir yorumda geçse de ciddi şikâyetleri (inşaat, haşere, güvenlik, pislik, ilandan farklı yer) yaz.
+- Bu yeri benzerlerinden ayıran şeyleri kaçırma, olumlu ya da olumsuz: çatı terası, jakuzi, büyük balkon, çok geniş (m² yaz), nehir/deniz manzarası, tarihi bina, bahçe, özel otopark; ya da rutubet kokusu, penceresiz oda, dik merdiven, ortak banyo. Sıradan otellerde her yerde olanı (Wi-Fi, klima, TV) ayrıca övme.
+- Standart olanı eksi yazma: giriş 14:00–16:00, çıkış 10:00–12:00 her yerde böyledir; saatleri findings'e değil house alanına yaz. Bir bilginin sayfada olmaması bulgu değildir ("asansör bilgisi yok" yazma).
+- Tek bir yorumda geçen küçük şikâyet (bir kez "giriş biraz karışıktı") severity low olur.
 - Bir şeyin olmadığını yalnız sayfa açıkça söylüyorsa yaz ("Dahil değil: TV", "asansör yok"). Listede görmemen yokluk demek değildir.
 - Karar için önemsiz standart ayrıntıları yazma: duman/karbonmonoksit dedektörü, yangın söndürücü, ilk yardım çantası, saç kurutma makinesi, ütü, askı, şampuan/sabun, temel malzemeler, nevresim, tabak-çatal. Gezgini gerçekten etkileyenleri yaz: konum, gürültü, temizlik, yatak, alan, merdiven/asansör, klima/ısıtma, mutfak, Wi-Fi, giriş, gizli masraf.
 - quotes: bulguyu söyleyen metinden birebir 1-5 alıntı; yorumdan geliyorsa o yorumların metninden.

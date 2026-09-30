@@ -365,3 +365,42 @@ describe("what the traveller asked for weighs in, and every card checks it", () 
     expect(needsFor(without, d, ctx).map((n) => [n.state, n.text])).toEqual([["unknown", "Mutfak yazmıyor"]]);
   });
 });
+
+describe("sifting what was read: facts aren't minuses, one review isn't a verdict, dealbreakers are for anyone", () => {
+  it("keeps the usual check-in hour and 'no information' out; an odd hour or a complaint stays", async () => {
+    const { isInfoFinding } = await import("../src/lib/listing");
+    expect(isInfoFinding({ topic: "check_in", text: "Giriş saati 16" })).toBe(true);
+    expect(isInfoFinding({ topic: "check_in", text: "Check-in 15:00'ten itibaren" })).toBe(true);
+    expect(isInfoFinding({ topic: "access", text: "Binalarda asansör bilgisi yok" })).toBe(true);
+    expect(isInfoFinding({ topic: "check_in", text: "En geç giriş 20:00" })).toBe(false); // a late arrival needs to know
+    expect(isInfoFinding({ topic: "check_in", text: "Giriş zor, kimse yoktu" })).toBe(false);
+    expect(isInfoFinding({ topic: "noise", text: "Hafta sonu gürültü" })).toBe(false);
+  });
+
+  it("rules a place out for a serious problem several guests report or the page says, not for one review", async () => {
+    const { dealbreakersOf } = await import("../src/lib/decision");
+    const { emptyListing } = await import("../src/lib/listing");
+    const place = item("Loud Flat", { price: price(200) });
+    const reviews = ["r1", "r2"].map((id) => ({ id, text: "construction", date: "2026-09", captureId: "c" }));
+    const f = (reviewIds: string[], source: "reviews" | "description" = "reviews") => ({
+      id: `condition:negative:${reviewIds.length}${source}`, text: "Yan binada inşaat", polarity: "negative" as const, topic: "condition" as const,
+      source, severity: "high" as const, reviewIds, quotes: source === "description" ? ["building works next door"] : [], verified: true,
+    });
+    const listingWith = (finding: ReturnType<typeof f>) => ({ ...emptyListing(place, 1), readAt: 1, reviews, findings: [finding] });
+    const ctxWith = (finding: ReturnType<typeof f>, over: Partial<Trip> = {}) => {
+      const l = listingWith(finding);
+      return makeContext(trip(over), [place], { listings: new Map([[l.key, l]]), today: "2026-09-30" });
+    };
+    expect(dealbreakersOf(place, ctxWith(f(["r1"])))).toHaveLength(0); // one angry review
+    expect(dealbreakersOf(place, ctxWith(f(["r1", "r2"])))).toHaveLength(1);
+    expect(dealbreakersOf(place, ctxWith(f([], "description")))).toHaveLength(1);
+    // "Sorun değil": back in.
+    const key = `${listingWith(f(["r1", "r2"])).key}#condition:negative`;
+    expect(dealbreakersOf(place, ctxWith(f(["r1", "r2"]), { acceptedFindings: [key] }))).toHaveLength(0);
+    // And the decision ranks it last, with the reason, even with no AI review.
+    const other = item("Quiet Flat", { price: price(260) });
+    const l = listingWith(f(["r1", "r2"]));
+    const d = decideGroup([place, other], makeContext(trip(), [place, other], { listings: new Map([[l.key, l]]), today: "2026-09-30" }));
+    expect(d.options.at(-1)).toMatchObject({ item: { name: "Loud Flat" }, eliminated: { reason: "Yan binada inşaat (2 yorum)" } });
+  });
+});

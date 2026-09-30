@@ -90,17 +90,23 @@ function ProsCons({ pros, cons }: { pros: CardFacts["pros"]; cons: CardFacts["co
     <div className="sc-pc">
       <ul className="sc-col pros" aria-label="Artıları">
         {pros.map((p) => (
-          <li key={p.text}>
+          <li key={p.text} className={p.unique ? "unique" : undefined}>
             <i aria-hidden>+</i>
-            <span>{p.text}</span>
+            <span>
+              {p.text}
+              {p.unique && <em className="only-here">yalnız bunda</em>}
+            </span>
           </li>
         ))}
       </ul>
       <ul className="sc-col cons" aria-label="Eksileri">
         {cons.map((c) => (
-          <li key={c.text} className={c.strong ? "strong" : undefined}>
+          <li key={c.text} className={[c.strong ? "strong" : "", c.unique ? "unique" : ""].filter(Boolean).join(" ") || undefined}>
             <i aria-hidden>−</i>
-            <span>{c.text}</span>
+            <span>
+              {c.text}
+              {c.unique && !c.strong && <em className="only-here">yalnız bunda</em>}
+            </span>
           </li>
         ))}
       </ul>
@@ -218,6 +224,7 @@ function Price({ price, compact = false, dated }: { price: CardFacts["price"]; c
         <b>{price.text}</b>
         {price.label && <span className="muted">{price.label}</span>}
         {price.provisional && <span className="tone-warning">· geçici</span>}
+        {price.note && <span className="muted">· {price.note}</span>}
       </span>
       {price.perNight && <span className="price-night">{price.perNight}</span>}
     </span>

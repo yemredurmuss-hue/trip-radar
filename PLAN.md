@@ -90,6 +90,9 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [x] 0.20: kartta önce istediklerin (✓ var / ✕ yok / ? yazmıyor), istenenler puana girer (şart olanak, söylenen
       konulardaki yorumlar 2,5 kat), somut kart satırları, site adı sayfayı yeni sekmede açar; sohbetten tarih/saat
       düzeltme (set_details) ile tarihsiz bilet kendi gününe geçer
+- [x] 0.21: ayıklama — herkes için olmaz sorunlar (kanıtlı) kendiliğinden eler, bilgi eksi değil, tek yorum manşet
+      olmaz, hepsinde olan tekrar edilmez, "yalnız bunda" öne çıkanlar; istek kontrolü bulgunun sözlerine de bakar
+- [ ] Sonra: "farka değer mi?" (pahalı seçenek neyi fazladan veriyor), gerçek kayıtlarla altın set ölçümü
 - [ ] Sonraki öneriler (onay bekliyor): 7 sade karşılaştırma, 8 zaman çizelgesinde tekrarların kalkması,
       9 sohbet ↔ pano bağlantısı, 10 sırayla karar ver modu
 - [ ] 0.17: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),

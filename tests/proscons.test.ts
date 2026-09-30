@@ -92,8 +92,9 @@ describe("pros and cons per option", () => {
     expect(pc.pros.map((p) => p.text)).toContain("En ucuz: ortalamadan €45 ucuz");
     expect(pc.pros.map((p) => p.text)).toContain("Yanında çok iyi bir İtalyan restoranı");
     expect(pc.pros.find((p) => p.text === "Geniş, rahat yatak")?.detail).toBe("açıklamada");
-    expect(pc.cons[0].text).toBe("Yan binada inşaat gürültüsü"); // a recent, repeated, serious complaint leads
-    expect(pc.cons[0]).toMatchObject({ serious: true, detail: "2 yorum · en yenisi Eyl 2026 · puandan −8" }); // costs points outright
+    // A recent, repeated, serious complaint rules the place out for anyone (no AI review needed), and leads.
+    expect(pc.cons[0]).toMatchObject({ text: "Elendi: Yan binada inşaat gürültüsü (2 yorum)", decisive: true });
+    expect(pc.cons.find((c) => c.text === "Yan binada inşaat gürültüsü")).toMatchObject({ serious: true, detail: "2 yorum · en yenisi Eyl 2026 · puandan −8" });
     expect(pc.cons.map((c) => c.text)).toContain("TV yok");
   });
 
@@ -121,8 +122,9 @@ describe("pros and cons per option", () => {
     const pc = out.of(out.casa);
     expect(pc.cons[0]).toMatchObject({ text: "Elendi: Yan binada inşaat; sessizlik istiyorsun", decisive: true, detail: "2 yorum" });
     expect(out.decision.options.at(-1)!.item.name).toBe("Casa Azul");
-    const plain = scene();
-    expect(plain.of(plain.casa).cons[0].decisive).toBeUndefined();
+    // "Sorun değil" on it: nothing rules the place out any more.
+    const fine = scene(undefined, ({ casa }) => ({ acceptedFindings: [`item:${casa.id}#condition:negative`] }));
+    expect(fine.of(fine.casa).cons.some((c) => c.decisive)).toBe(false);
   });
 
   it("keeps a finding the traveller accepted, quietly", () => {

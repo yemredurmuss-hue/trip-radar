@@ -16,7 +16,7 @@ export interface CardFacts {
   title: string;
   subtitle: string | null;
   /** The total (for a stay: its own nights) and, for stays, the price per night. */
-  price: { text: string; label: string | null; perNight: string | null; provisional: boolean } | null;
+  price: { text: string; label: string | null; perNight: string | null; provisional: boolean; note?: string } | null;
   score: number | null;
   best: boolean;
   /** Where it stands ("En uygun · konum", "Elendi", "Seçildi"); null when the pros and cons say it. */
@@ -26,9 +26,9 @@ export interface CardFacts {
   /** What the traveller asked for, checked on this one: "Mutfak var", "İade yok", "Sessiz odalar · 3 yorum". */
   needs: NeedCheck[];
   /** A few words each, the biggest first, beyond the needs: "Gezeceğin yerlere 6 dk"... `mine`: it touches a priority the traveller gave. */
-  pros: { text: string; mine: boolean }[];
+  pros: { text: string; mine: boolean; unique?: boolean }[];
   /** Against it, the biggest (or the reason it's out) first: "İade yok", "Uzak"... */
-  cons: { text: string; strong: boolean; mine: boolean }[];
+  cons: { text: string; strong: boolean; mine: boolean; unique?: boolean }[];
 }
 
 const STAY_KIND_LABELS: Record<StayKind, string> = {
@@ -229,12 +229,12 @@ export function cardFacts(
   const pros = lines.pros
     .map((l) => ({ l, text: tagOf(l, "pro") }))
     .filter((x) => once(x.l, x.text))
-    .map((x) => ({ text: x.text, mine: mine(x.l) }))
+    .map((x) => ({ text: x.text, mine: mine(x.l), ...(x.l.unique ? { unique: true } : {}) }))
     .slice(0, 4);
   const cons: CardFacts["cons"] = lines.cons
     .map((l) => ({ l, text: tagOf(l, "con") }))
     .filter((x) => once(x.l, x.text))
-    .map((x) => ({ text: x.text, strong: Boolean(x.l.decisive || x.l.serious), mine: mine(x.l) }));
+    .map((x) => ({ text: x.text, strong: Boolean(x.l.decisive || x.l.serious), mine: mine(x.l), ...(x.l.unique ? { unique: true } : {}) }));
   const label = item.status === "saved" ? decisionLabel(item, decision, currency) : null;
   const status: CardFacts["status"] =
     item.status === "booked"
@@ -249,7 +249,12 @@ export function cardFacts(
     image: item.category === "flight" ? null : item.imageUrl,
     title: item.name,
     subtitle: subtitleOf(item),
-    price: priceOf(item, decision, currency),
+    price: (() => {
+      // Only some of the nights: said with the price, as a fact, not as a minus.
+      const p = priceOf(item, decision, currency);
+      const c = option?.coverage;
+      return p && c ? { ...p, note: `yalnız ${c.nights}/${c.of} gece` } : p;
+    })(),
     score: option && !option.excluded ? option.score : null,
     best: Boolean(label?.best),
     status,
