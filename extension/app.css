@@ -926,3 +926,62 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .budget-legend b { color: var(--ink); font-weight: 700; }
 .budget-legend small { color: var(--muted); font-size: 12px; }
 .budget-missing { color: var(--muted); }
+/* A guess from their choices, asked: it counts only after a yes. */
+.intent-question { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 10px 14px; border-top: 1px solid var(--line); background: #fbf8ff; border-radius: 0 0 14px 14px; }
+.intent-card > .intent-question:first-child { border-top: 0; border-radius: 14px; }
+.intent-answers { display: inline-flex; align-items: center; gap: 12px; }
+
+/* ---------- 0.25: an option, calm and clear (Apple-like) ----------
+   Why it's here (a small label), its name and price, what it costs or saves against the cheapest one
+   that meets the musts, and a mark for each thing asked for. One accent colour, no boxes in boxes. */
+.option-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 14px; }
+.swipe-card.opt {
+  gap: 12px; padding: 16px; border-radius: 20px; background: #fff; overflow: visible;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 4px 18px rgba(0, 0, 0, .05);
+}
+.swipe-card.opt.first { box-shadow: 0 0 0 1.5px #cfe0ff, 0 4px 18px rgba(23, 104, 255, .08); }
+.swipe-card.opt.fit-unfit { opacity: .72; }
+.opt-main { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: start; }
+.opt-img { width: 96px; height: 96px; border-radius: 14px; object-fit: cover; display: block; background: var(--soft); }
+.opt-img.placeholder { display: grid; place-items: center; }
+.opt-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.opt-label { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-bottom: 2px; }
+.opt-name { margin: 0; font-size: 17px; font-weight: 650; line-height: 1.3; color: #1d1d1f; }
+.opt-meta { font-size: 13.5px; color: #6e6e73; line-height: 1.35; }
+.opt-price { margin-top: 6px; }
+.opt-price .price-block { gap: 0 10px; }
+.opt-price .price-main b { font-size: 20px; font-weight: 650; color: #1d1d1f; }
+.opt-price .price-night { font-size: 13px; font-weight: 500; color: #6e6e73; }
+.opt-price .price-note { font-size: 12.5px; }
+.opt-trade { margin: 0; font-size: 14px; line-height: 1.5; color: #1d1d1f; }
+.opt-trade .sep { color: #c7c7cc; }
+.opt-trade b { font-weight: 650; }
+.opt-trade b.cheaper { color: var(--success); }
+.opt-trade .opt-loss, .opt-trade.quiet { color: #6e6e73; }
+.opt-checks { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; list-style: none; border: 0; }
+.opt-checks .need { padding: 0; background: none; font-size: 13.5px; font-weight: 500; color: #1d1d1f; gap: 6px; }
+.opt-checks .need.unknown { color: #6e6e73; }
+.opt-checks .need i { width: 17px; height: 17px; font-size: 10.5px; }
+.opt-status { margin: 0; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; line-height: 1.45; }
+.opt-status.check { background: #fff7e8; color: #8a5300; }
+.opt-status.partial { background: #f5f5f7; color: #3a3a3c; }
+.opt-status.unfit { background: #fdeeec; color: #a1261d; }
+.opt-score { margin: 0 0 6px; font-size: 14px; color: #1d1d1f; }
+.opt-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 2px; padding-top: 12px; border-top: 1px solid #f2f2f4; }
+.opt-links { display: inline-flex; align-items: center; gap: 14px; min-width: 0; }
+.opt-foot .sc-source { padding: 0; background: none; box-shadow: none; font-weight: 500; color: #6e6e73; font-size: 13px; }
+.opt-foot .sc-source .sc-favicon { width: 16px; height: 16px; }
+.pill-btn.primary { background: var(--accent); color: #fff; padding: 8px 22px; }
+.pill-btn.primary:hover { background: #0f5ae6; }
+@container (max-width: 330px) {
+  .opt-main { grid-template-columns: 72px 1fr; gap: 12px; }
+  .opt-img { width: 72px; height: 72px; }
+}
+/* The decision in a sentence above the cards, and what to check first. */
+.reco-line.headline { align-items: flex-start; gap: 10px 16px; padding: 14px 16px; border: 0; border-radius: 18px; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 4px 18px rgba(0, 0, 0, .04); }
+.reco-text { flex: 1; min-width: 220px; }
+.reco-line.headline p { margin: 0; font-size: 15px; line-height: 1.5; color: #1d1d1f; }
+.reco-verify { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.reco-verify li { font-size: 13.5px; color: #8a5300; line-height: 1.45; }
+.reco-verify li::before { content: "!"; display: inline-grid; place-items: center; width: 16px; height: 16px; margin-right: 6px; border-radius: 50%; background: #f0a53a; color: #fff; font-size: 11px; font-weight: 800; vertical-align: 1px; }
+.reco-verify a { font-weight: 600; }
