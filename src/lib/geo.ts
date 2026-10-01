@@ -1,5 +1,6 @@
 // Distances and free geocoding (OpenStreetMap Nominatim, cached; at most ~1 request per second).
 import { db } from "./db";
+import { L, locale } from "./i18n";
 import type { Geo } from "./types";
 
 export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
@@ -16,7 +17,9 @@ export const walkingMinutes = (km: number) => Math.round(((km * 1.25) / 4.8) * 6
 
 export function formatDistance(km: number): string {
   const minutes = walkingMinutes(km);
-  return minutes <= 45 ? `${minutes} dk yürüme` : `${km.toLocaleString("tr-TR", { maximumFractionDigits: 1 })} km`;
+  return minutes <= 45
+    ? L(`${minutes} dk yürüme`, `${minutes} min walk`)
+    : `${km.toLocaleString(locale(), { maximumFractionDigits: 1 })} km`;
 }
 
 let lastRequest = 0;

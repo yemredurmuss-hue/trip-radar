@@ -1,4 +1,5 @@
 // Domain model. Kept storage-agnostic so the same shapes can move to a server DB later.
+import { L } from "./i18n";
 
 export type Category = "flight" | "stay" | "transport" | "activity" | "food" | "esim" | "other";
 
@@ -60,6 +61,29 @@ export const AMENITIES = [
   "sessiz",
 ] as const;
 export type Amenity = (typeof AMENITIES)[number];
+
+/** Amenities are stored by their Turkish id; this is how one reads in English. */
+export const AMENITY_EN: Record<Amenity, string> = {
+  mutfak: "kitchen",
+  klima: "air conditioning",
+  "ücretsiz wifi": "free Wi-Fi",
+  "kahvaltı dahil": "breakfast included",
+  otopark: "parking",
+  asansör: "lift",
+  "çamaşır makinesi": "washing machine",
+  havuz: "pool",
+  "balkon/teras": "balcony/terrace",
+  manzara: "view",
+  "iş alanı": "workspace",
+  "evcil hayvan kabul": "pets allowed",
+  "24 saat resepsiyon": "24-hour reception",
+  "havalimanı servisi": "airport shuttle",
+  "engelli erişimi": "accessible",
+  sessiz: "quiet",
+};
+
+/** An amenity as the traveller reads it: the Turkish id itself, or its English name. */
+export const amenityLabel = (a: Amenity): string => L(a, AMENITY_EN[a] ?? a);
 
 export type Requirement =
   | { kind: "amenity"; amenity: Amenity }
@@ -384,6 +408,8 @@ export interface Listing {
   autoRetries?: number;
   /** Check-in/out times and arrival rules the page states (checked against it, see listing.ts). */
   house?: HouseRules | null;
+  /** Language the findings were written in (older records: Turkish). */
+  lang?: "tr" | "en";
   updatedAt: number;
 }
 
@@ -428,4 +454,6 @@ export interface Analysis {
   errorAt?: number;
   /** Inputs the failed call was for (older records: inputHash). */
   errorHash?: string;
+  /** Language the verdict was written in (older records: Turkish); another language asks again. */
+  lang?: "tr" | "en";
 }

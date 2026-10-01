@@ -14,6 +14,7 @@ import {
 } from "./decision";
 import { formatPrice } from "./items";
 import { COMPARABLE, groupKeyOf } from "./plan";
+import { L, locale } from "./i18n";
 import type { Category, CriterionId, Item, Trip } from "./types";
 
 export interface Signal {
@@ -91,7 +92,10 @@ function fromChoices(items: Item[], ctx: DecisionContext): Signal[] {
     if (d.status !== "ok" || !engine || !mine || mine.score == null || engine.item.id === picked.id) continue;
 
     // Worded without suffixes on names ("Casa Azul'u/'i"): vowel harmony can't be guessed reliably.
-    const lead = `${picked.status === "booked" ? "Rezervasyonun" : "Seçimin"} ${picked.name}, ${engine.item.name} yerine`;
+    const lead =
+      picked.status === "booked"
+        ? L(`Rezervasyonun ${picked.name}, ${engine.item.name} yerine`, `You booked ${picked.name} over ${engine.item.name}`)
+        : L(`Seçimin ${picked.name}, ${engine.item.name} yerine`, `You chose ${picked.name} over ${engine.item.name}`);
     const myPrice = totalPrice(picked, base);
     const theirPrice = totalPrice(engine.item, base);
     const pricier = myPrice != null && theirPrice != null && myPrice > theirPrice * 1.05 ? myPrice - theirPrice : 0;
@@ -107,16 +111,18 @@ function fromChoices(items: Item[], ctx: DecisionContext): Signal[] {
     const losses = gaps(engine, mine);
     if (pricier && gains.length) {
       // Paid more for something: that something matters, the price less.
-      const evidence = `${lead}: ${gains.map((p) => `${p.label.toLocaleLowerCase("tr")} daha iyi`).join(", ")}, ${formatPrice(pricier, base.currency)} daha pahalı`;
+      const better = gains.map((p) => L(`${lower(p.label)} daha iyi`, `better ${lower(p.label)}`)).join(", ");
+      const evidence = `${lead}: ${better}, ${L(`${formatPrice(pricier, base.currency)} daha pahalı`, `${formatPrice(pricier, base.currency)} more`)}`;
       for (const p of gains) signals.push(signal("choice", d.category, p.criterion, 1, evidence));
       signals.push(signal("choice", d.category, "price", -1, evidence));
     } else if (cheaper) {
       // Saved money at a cost: the price matters, the main thing given up less.
-      const evidence = `${lead}: ${formatPrice(cheaper, base.currency)} daha ucuz${losses[0] ? `, ${losses[0].label.toLocaleLowerCase("tr")} daha zayıf` : ""}`;
+      const weaker = losses[0] ? `, ${L(`${lower(losses[0].label)} daha zayıf`, `weaker ${lower(losses[0].label)}`)}` : "";
+      const evidence = `${lead}: ${L(`${formatPrice(cheaper, base.currency)} daha ucuz`, `${formatPrice(cheaper, base.currency)} cheaper`)}${weaker}`;
       signals.push(signal("choice", d.category, "price", 1, evidence));
       if (losses[0]) signals.push(signal("choice", d.category, losses[0].criterion, -1, evidence));
     } else if (gains.length) {
-      const evidence = `${lead}: ${gains.map((p) => `${p.label.toLowerCase()} daha iyi`).join(", ")}`;
+      const evidence = `${lead}: ${gains.map((p) => L(`${lower(p.label)} daha iyi`, `better ${lower(p.label)}`)).join(", ")}`;
       for (const p of gains) signals.push(signal("choice", d.category, p.criterion, 1, evidence));
     }
   }
@@ -134,24 +140,36 @@ function fromSaves(items: Item[], ctx: DecisionContext): Signal[] {
   const minutes = stays.map((i) => measureFor("location", i, ctx)).filter((m) => m?.unit === "minutes").map((m) => m!.value);
   const near = minutes.filter((m) => m <= 15).length;
   if (share(near, minutes.length) >= 0.75) {
-    signals.push(signal("links", "stay", "location", 1, `Kaydettiğin ${minutes.length} konaklamadan ${near} tanesi 15 dk yürüme içinde`));
+    signals.push(signal("links", "stay", "location", 1, L(
+      `Kaydettiğin ${minutes.length} konaklamadan ${near} tanesi 15 dk yürüme içinde`,
+      `${near} of the ${minutes.length} stays you saved are within a 15 min walk`,
+    )));
   }
 
   const types = stays.map((i) => cancellationType(i)).filter((t) => t !== "unknown");
   const free = types.filter((t) => t === "free").length;
   if (share(free, types.length) >= 0.8) {
-    signals.push(signal("links", "stay", "cancellation", 1, `Kaydettiğin ${types.length} konaklamadan ${free} tanesi ücretsiz iptalli`));
+    signals.push(signal("links", "stay", "cancellation", 1, L(
+      `Kaydettiğin ${types.length} konaklamadan ${free} tanesi ücretsiz iptalli`,
+      `${free} of the ${types.length} stays you saved have free cancellation`,
+    )));
   }
 
   const ratings = stays.map((i) => measureFor("rating", i, ctx)).filter(Boolean).map((m) => m!.value);
   const high = ratings.filter((r) => r >= 0.87).length;
   if (share(high, ratings.length) >= 0.75) {
-    signals.push(signal("links", "stay", "rating", 1, `Kaydettiğin ${ratings.length} konaklamadan ${high} tanesi yüksek puanlı`));
+    signals.push(signal("links", "stay", "rating", 1, L(
+      `Kaydettiğin ${ratings.length} konaklamadan ${high} tanesi yüksek puanlı`,
+      `${high} of the ${ratings.length} stays you saved are highly rated`,
+    )));
   }
   return signals;
 }
 
 // --- helpers ------------------------------------------------------------------------------------------
+
+/** A criterion's label inside a sentence ("konum", "location"). */
+const lower = (label: string) => label.toLocaleLowerCase(locale());
 
 function signal(source: Signal["source"], category: Category, criterion: CriterionId, delta: 1 | -1, evidence: string): Signal {
   const label = CRITERION_LABELS[criterion];
@@ -161,8 +179,14 @@ function signal(source: Signal["source"], category: Category, criterion: Criteri
     category,
     criterion,
     delta,
-    text: delta > 0 ? `${label} senin için önemli görünüyor` : `${label} senin için birinci sırada değil gibi`,
-    question: delta > 0 ? `${label} senin için daha mı önemli?` : `${label} senin için ikinci planda mı?`,
+    text:
+      delta > 0
+        ? L(`${label} senin için önemli görünüyor`, `${label} seems to matter to you`)
+        : L(`${label} senin için birinci sırada değil gibi`, `${label} doesn't seem to come first for you`),
+    question:
+      delta > 0
+        ? L(`${label} senin için daha mı önemli?`, `Does ${lower(label)} matter more to you?`)
+        : L(`${label} senin için ikinci planda mı?`, `Is ${lower(label)} less important to you?`),
     evidence,
   };
 }
