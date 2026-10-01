@@ -256,7 +256,7 @@ describe("votes", () => {
 
   it("tallies: me first, and 'both don't want it' only when everyone who voted said 👎", () => {
     const v = (author: string, vote: -1 | 0 | 1, itemKey = "k1"): Vote => ({ itemKey, author, vote, note: null, updatedAt: "t" });
-    expect(tallyVotes([v("Sabine", -1), v("Emre", 1)], "k1", "Emre")).toEqual({ mine: 1, line: "Emre 👍 · Sabine 👎", allNo: false, allYes: false });
+    expect(tallyVotes([v("Sabine", -1), v("Emre", 1)], "k1", "Emre")).toEqual({ mine: 1, line: "Emre 👍 · Sabine 👎", allNo: false, allYes: false, voters: 2 });
     expect(tallyVotes([v("Sabine", -1), v("Emre", -1)], "k1", "Emre").allNo).toBe(true);
     expect(tallyVotes([v("Sabine", -1)], "k1", "Emre").allNo).toBe(false); // one person isn't "both"
     expect(tallyVotes([v("Sabine", -1), v("Emre", 0)], "k1", "Emre")).toMatchObject({ mine: 0, line: "Sabine 👎", allNo: false });

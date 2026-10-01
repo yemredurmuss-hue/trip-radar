@@ -1,5 +1,6 @@
 // A tiny client for the sharing server: plain fetch to Supabase's `/rest/v1/rpc/<fn>` (see
 // supabase/schema.sql). No SDK: the extension only ever calls these functions.
+import { L } from "../i18n";
 
 export type Rpc = <T>(fn: RpcName, args: Record<string, unknown>) => Promise<T>;
 
@@ -13,7 +14,7 @@ export type RpcName =
   | "set_vote"
   | "votes_for";
 
-/** A failure said in Turkish; `code` tells the sync what kind it was. */
+/** A failure said in the board's language; `code` tells the sync what kind it was. */
 export class ShareError extends Error {
   constructor(
     message: string,
@@ -41,7 +42,7 @@ export function rpcClient(server: ServerConfig, fetchImpl: typeof fetch = (...a)
     try {
       res = await fetchImpl(`${base}/rest/v1/rpc/${fn}`, { method: "POST", headers, body: JSON.stringify(args) });
     } catch {
-      throw new ShareError("Paylaşım sunucusuna bağlanılamadı (internet?)", "offline");
+      throw new ShareError(L("Paylaşım sunucusuna bağlanılamadı (internet?)", "Couldn't reach the sharing server (internet?)"), "offline");
     }
     const text = await res.text();
     if (!res.ok) throw errorOf(res.status, text);
@@ -59,13 +60,13 @@ function errorOf(status: number, body: string): ShareError {
   } catch {
     message = body.slice(0, 200);
   }
-  if (message.includes("not_found")) return new ShareError("Paylaşılan gezi sunucuda bulunamadı.", "not_found");
-  if (message.includes("too_large")) return new ShareError("Kayıt paylaşmak için çok büyük.", "too_large");
-  if (message.includes("trip_full")) return new ShareError("Paylaşılan gezi dolu (kayıt sınırı).", "too_large");
-  if (message.includes("bad_author")) return new ShareError("Ayarlar → Paylaşım'da adını yaz.", "setup");
+  if (message.includes("not_found")) return new ShareError(L("Paylaşılan gezi sunucuda bulunamadı.", "The shared trip wasn't found on the server."), "not_found");
+  if (message.includes("too_large")) return new ShareError(L("Kayıt paylaşmak için çok büyük.", "This save is too big to share."), "too_large");
+  if (message.includes("trip_full")) return new ShareError(L("Paylaşılan gezi dolu (kayıt sınırı).", "The shared trip is full (save limit)."), "too_large");
+  if (message.includes("bad_author")) return new ShareError(L("Ayarlar → Paylaşım'da adını yaz.", "Add your name in Settings → Sharing."), "setup");
   // PostgREST: function missing = the schema wasn't run on this project.
   if (status === 404 || code === "PGRST202" || code === "42883")
-    return new ShareError("Sunucu kurulumu eksik: supabase/schema.sql çalıştırılmamış.", "setup");
-  if (status === 401 || status === 403) return new ShareError("Supabase anahtarı geçersiz.", "auth");
-  return new ShareError(`Paylaşım sunucusu hata verdi (${status})${message ? `: ${message.slice(0, 120)}` : ""}`, "server");
+    return new ShareError(L("Sunucu kurulumu eksik: supabase/schema.sql çalıştırılmamış.", "Server setup is incomplete: supabase/schema.sql hasn't been run."), "setup");
+  if (status === 401 || status === 403) return new ShareError(L("Supabase anahtarı geçersiz.", "The Supabase key isn't valid."), "auth");
+  return new ShareError(L(`Paylaşım sunucusu hata verdi (${status})`, `The sharing server returned an error (${status})`) + (message ? `: ${message.slice(0, 120)}` : ""), "server");
 }

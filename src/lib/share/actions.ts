@@ -1,4 +1,5 @@
 // What the board does with sharing: share a trip (→ one code to send), join one with that code, vote.
+import { L } from "../i18n";
 import { db, newId, notifyChanged } from "../db";
 import { isDemoTrip } from "../trips";
 import type { Item, Trip } from "../types";
@@ -29,7 +30,7 @@ export interface ActionDeps {
 async function ready(deps: ActionDeps): Promise<{ config: ShareConfig; rpc: Rpc; kv: KV }> {
   const kv = deps.kv ?? chromeKV;
   const config = await getShareConfig(kv);
-  if (!isConfigured(config)) throw new ShareError("Önce Ayarlar → Paylaşım'da adını, Supabase adresini ve anahtarını yaz.", "setup");
+  if (!isConfigured(config)) throw new ShareError(L("Önce Ayarlar → Paylaşım'da adını, Supabase adresini ve anahtarını yaz.", "First add your name, the Supabase address and key in Settings → Sharing."), "setup");
   return { config, rpc: deps.rpc ?? rpcClient(config), kv };
 }
 
@@ -41,8 +42,8 @@ export async function shareTrip(tripId: string, deps: ActionDeps = {}): Promise<
   const { config, rpc, kv } = await ready(deps);
   const d = await db();
   const trip = await d.get("trips", tripId);
-  if (!trip) throw new Error("Gezi bulunamadı.");
-  if (isDemoTrip(trip)) throw new Error("Örnek gezi paylaşılamaz.");
+  if (!trip) throw new Error(L("Gezi bulunamadı.", "Trip not found."));
+  if (isDemoTrip(trip)) throw new Error(L("Örnek gezi paylaşılamaz.", "The sample trip can't be shared."));
   if (trip.shareId) return shareCodeOf(trip, config);
 
   const shareId = crypto.randomUUID();
@@ -56,7 +57,7 @@ export async function shareTrip(tripId: string, deps: ActionDeps = {}): Promise<
 }
 
 export function shareCodeOf(trip: Trip, config: Pick<ShareConfig, "url" | "anonKey">): string {
-  if (!trip.shareId) throw new Error("Bu gezi paylaşılmıyor.");
+  if (!trip.shareId) throw new Error(L("Bu gezi paylaşılmıyor.", "This trip isn't shared."));
   return encodeShareCode({ url: config.url, anonKey: config.anonKey, shareId: trip.shareId, title: trip.title });
 }
 
@@ -67,14 +68,14 @@ export function shareCodeOf(trip: Trip, config: Pick<ShareConfig, "url" | "anonK
  */
 export async function joinSharedTrip(pasted: string, name: string, deps: ActionDeps = {}): Promise<string> {
   const code = decodeShareCode(pasted);
-  if (!code) throw new ShareError("Bu bir paylaşım kodu değil. Kod TR1: ile başlar; tamamını yapıştır.", "setup");
+  if (!code) throw new ShareError(L("Bu bir paylaşım kodu değil. Kod TR1: ile başlar; tamamını yapıştır.", "That isn't a share code. It starts with TR1:, paste all of it."), "setup");
   const kv = deps.kv ?? chromeKV;
   const current = await getShareConfig(kv);
   const currentUrl = current.url ? normalizeServerUrl(current.url) : null;
   if (currentUrl && currentUrl !== code.url)
-    throw new ShareError("Bu kod başka bir paylaşım sunucusuna ait. Ayarlar → Paylaşım'daki adresi silip tekrar dene.", "setup");
+    throw new ShareError(L("Bu kod başka bir paylaşım sunucusuna ait. Ayarlar → Paylaşım'daki adresi silip tekrar dene.", "This code belongs to another sharing server. Clear the address in Settings → Sharing and try again."), "setup");
   const me = (name || current.name).trim();
-  if (!me) throw new ShareError("Adını yaz (diğer kişi seni bu adla görür).", "setup");
+  if (!me) throw new ShareError(L("Adını yaz (diğer kişi seni bu adla görür).", "Add your name (the others see you by it)."), "setup");
   await saveShareConfig({ url: code.url, anonKey: current.anonKey || code.anonKey, name: me }, kv);
 
   const d = await db();
@@ -83,11 +84,11 @@ export async function joinSharedTrip(pasted: string, name: string, deps: ActionD
 
   const rpc = deps.rpc ?? rpcClient({ url: code.url, anonKey: current.anonKey || code.anonKey });
   const [remote] = (await rpc<RemoteTrip[]>("get_shared_trip", { p_id: code.shareId, p_author: me })) ?? [];
-  if (!remote) throw new ShareError("Paylaşılan gezi sunucuda bulunamadı.", "not_found");
-  const settings = settingsFromServer(remote.trip) ?? settingsFromServer({ title: code.title ?? "Paylaşılan gezi" })!;
+  if (!remote) throw new ShareError(L("Paylaşılan gezi sunucuda bulunamadı.", "The shared trip wasn't found on the server."), "not_found");
+  const settings = settingsFromServer(remote.trip) ?? settingsFromServer({ title: code.title ?? L("Paylaşılan gezi", "Shared trip") })!;
   const now = Date.now();
   const trip = applySettings(
-    { id: newId(), title: settings.title ?? "Paylaşılan gezi", confirmedDates: null, budget: null, heroImage: null, shareId: code.shareId, createdAt: now, updatedAt: now },
+    { id: newId(), title: settings.title ?? L("Paylaşılan gezi", "Shared trip"), confirmedDates: null, budget: null, heroImage: null, shareId: code.shareId, createdAt: now, updatedAt: now },
     settings,
   );
   await d.put("trips", trip);
