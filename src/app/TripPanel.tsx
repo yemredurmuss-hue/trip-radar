@@ -24,7 +24,7 @@ import { budgetBar, decisionProgress, entryDomId, type Todo } from "../lib/progr
 import { cityKeyOf, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 import { isRental } from "../lib/travelKinds";
-import { L, locale } from "../lib/i18n";
+import { L } from "../lib/i18n";
 
 import type { Capture, Category, Item, Trip } from "../lib/types";
 import { chooseItem, setHidden } from "./actions";
@@ -423,7 +423,6 @@ function OptionGroupView({
 
 /** Options shown at once, best first; the rest behind "+N seçenek daha". */
 const VISIBLE = 5;
-const lowerFirst = (s: string) => s.charAt(0).toLocaleLowerCase(locale()) + s.slice(1);
 
 /**
  * The decision in a sentence above the cards: the pick and why, then the alternatives for each priority

@@ -78,7 +78,7 @@ export const AMENITY_EN: Record<Amenity, string> = {
   "evcil hayvan kabul": "pets allowed",
   "24 saat resepsiyon": "24-hour reception",
   "havalimanı servisi": "airport shuttle",
-  "engelli erişimi": "accessible",
+  "engelli erişimi": "wheelchair access",
   sessiz: "quiet",
 };
 

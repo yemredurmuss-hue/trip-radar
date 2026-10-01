@@ -1,7 +1,8 @@
 // What an option's row or card says about its place in the comparison. Pure.
 import { advantageOver, type GroupDecision } from "./decision";
 import type { Tone } from "./items";
-import { L, locale } from "./i18n";
+import { L } from "./i18n";
+import { lowerText } from "./i18nText";
 import type { Item } from "./types";
 
 export interface DecisionLabel {
@@ -27,7 +28,8 @@ export function decisionLabel(item: Item, decision: GroupDecision | undefined, c
   const topTwo = decision.options.slice(0, 2).map((o) => o.item.id);
   if (decision.status === "tie" && topTwo.includes(item.id)) return { text: L("Başa baş", "Neck and neck"), tone: "accent", score: option.score, best: true };
   if (decision.winner?.item.id === item.id) {
-    const why = decision.reasons[0]?.label.toLocaleLowerCase(locale());
+    const reason = decision.reasons[0]?.label;
+    const why = reason && lowerText(reason);
     return { text: why ? L(`En uygun · ${why}`, `Best fit · ${why}`) : L("En uygun", "Best fit"), tone: "accent", score: option.score, best: true };
   }
   if (option.limited.length) {

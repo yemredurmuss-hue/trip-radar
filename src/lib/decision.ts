@@ -23,6 +23,7 @@ import type {
   Requirement,
   Trip,
 } from "./types";
+import { amenityLabel } from "./types";
 
 /** Criterion names in the current language (read at the time: CRITERION_LABELS.price is "Fiyat" or "Price"). */
 export const CRITERION_LABELS: Readonly<Record<CriterionId, string>> = liveLabels({
@@ -50,28 +51,8 @@ export const CRITERION_LABELS: Readonly<Record<CriterionId, string>> = liveLabel
   safety: ["Güvenlik", "Safety"],
 });
 
-/** Amenity names as shown (the stored ones are Turkish keys: "mutfak"). */
-const AMENITY_LABELS: Readonly<Record<Amenity, string>> = liveLabels({
-  mutfak: ["mutfak", "kitchen"],
-  klima: ["klima", "air conditioning"],
-  "ücretsiz wifi": ["ücretsiz wifi", "free Wi-Fi"],
-  "kahvaltı dahil": ["kahvaltı dahil", "breakfast included"],
-  otopark: ["otopark", "parking"],
-  asansör: ["asansör", "lift"],
-  "çamaşır makinesi": ["çamaşır makinesi", "washing machine"],
-  havuz: ["havuz", "pool"],
-  "balkon/teras": ["balkon/teras", "balcony/terrace"],
-  manzara: ["manzara", "view"],
-  "iş alanı": ["iş alanı", "workspace"],
-  "evcil hayvan kabul": ["evcil hayvan kabul", "pets allowed"],
-  "24 saat resepsiyon": ["24 saat resepsiyon", "24-hour reception"],
-  "havalimanı servisi": ["havalimanı servisi", "airport shuttle"],
-  "engelli erişimi": ["engelli erişimi", "wheelchair access"],
-  sessiz: ["sessiz", "quiet"],
-});
-
-/** An amenity as the traveller reads it: "mutfak" / "kitchen". */
-export const amenityLabel = (a: Amenity): string => AMENITY_LABELS[a] ?? a;
+/** An amenity as the traveller reads it: "mutfak" / "kitchen" (the one table lives in types.ts). */
+export { amenityLabel };
 
 /** The finding topic each wish is measured on. */
 export const WISH_TOPIC = {

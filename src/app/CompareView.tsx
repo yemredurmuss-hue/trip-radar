@@ -18,13 +18,14 @@ import {
   type Part,
 } from "../lib/decision";
 import { L, locale } from "../lib/i18n";
+import { lowerFirst, lowerText } from "../lib/i18nText";
 import { CATEGORY_LABELS, formatPrice } from "../lib/items";
 import { prosConsFor } from "../lib/proscons";
 import type { DecisionContext } from "../lib/decision";
 import { ProsConsView } from "./ProsConsView";
 import type { ValueCard } from "../lib/value";
 import { updateTrip } from "./actions";
-import { AMENITIES, type Amenity, type CriterionId, type Item, type PriorityLevel, type Trip } from "../lib/types";
+import { AMENITIES, amenityLabel, type Amenity, type CriterionId, type Item, type PriorityLevel, type Trip } from "../lib/types";
 
 interface Props {
   trip: Trip;
@@ -95,7 +96,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
         <div className={`verdict-box status-${d.status}`}>
           <div className="verdict-main">{card && !card.tie ? `${card.kicker}: ${card.pick.item.name}` : d.summary}</div>
           {card && <div className="verdict-because">{card.because}</div>}
-          {card?.unless && <div className="verdict-because">{L("Ama", "But")} {card.unless.charAt(0).toLocaleLowerCase(locale()) + card.unless.slice(1)}</div>}
+          {card?.unless && <div className="verdict-because">{L("Ama", "But")} {lowerFirst(card.unless)}</div>}
           {card?.budget && <div className="verdict-because muted">{card.budget}</div>}
           <AiVerdict decision={d} />
         </div>
@@ -183,7 +184,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
         {unmeasured.length > 0 && (
           <p className="muted small-note">
             {L("Bilgi olmadığı için karşılaştırılamadı", "Couldn't compare, no info")}:{" "}
-            {unmeasured.map((c) => CRITERION_LABELS[c].toLowerCase()).join(", ")}.
+            {unmeasured.map((c) => lowerText(CRITERION_LABELS[c])).join(", ")}.
           </p>
         )}
         {excluded.map((o) => (
@@ -223,7 +224,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
               <ul>
                 {d.flips.map((f) => (
                   <li key={f.criterion}>
-                    {L(`${f.label} çok önemli olursa →`, `If ${f.label.toLocaleLowerCase(locale())} matters a lot →`)} <b>{f.winner}</b>{" "}
+                    {L(`${f.label} çok önemli olursa →`, `If ${lowerText(f.label)} matters a lot →`)} <b>{f.winner}</b>{" "}
                     <button className="link-btn" onClick={() => void setLevel(f.criterion, 4)}>
                       {L("dene", "try it")}
                     </button>
@@ -250,7 +251,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
             <div className="chips">
               {AMENITIES.map((a) => (
                 <button key={a} className={`chip${trip.wantedAmenities?.includes(a) ? " on" : ""}`} onClick={() => void toggleAmenity(a)}>
-                  {a}
+                  {amenityLabel(a)}
                 </button>
               ))}
             </div>

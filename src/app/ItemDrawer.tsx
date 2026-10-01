@@ -1,6 +1,7 @@
 import { addEvent, db, newId, notifyChanged } from "../lib/db";
 import { LEVEL_LABELS, type GroupDecision } from "../lib/decision";
 import { L, locale } from "../lib/i18n";
+import { lowerText } from "../lib/i18nText";
 import { CATEGORY_LABELS, formatDateRange, formatPrice } from "../lib/items";
 import type { FactSource, Item, ItemStatus, Trip } from "../lib/types";
 import { Evidence } from "./Evidence";
@@ -82,7 +83,7 @@ function DecisionBreakdown({ item, decision, onCompare }: { item: Item; decision
             <div key={p.criterion} className={`part${p.weight === 0 ? " off" : ""}`}>
               <span className="part-label">
                 {p.label}
-                <span className="muted"> · {LEVEL_LABELS[p.level].toLowerCase()}</span>
+                <span className="muted"> · {lowerText(LEVEL_LABELS[p.level])}</span>
               </span>
               <span className="part-value">{p.display ?? <span className="muted">{L("bilinmiyor", "unknown")}</span>}</span>
               <span className="bar">

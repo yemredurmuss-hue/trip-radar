@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { db, notifyChanged } from "../lib/db";
 import { updateTrip } from "./actions";
-import { L, locale } from "../lib/i18n";
+import { L } from "../lib/i18n";
+import { lowerText } from "../lib/i18nText";
 import { CRITERION_LABELS, LEVEL_LABELS, requirementLabel, saidTopics, WISH_TOPIC, WISHES } from "../lib/decision";
 import { activeSignals, pendingSignals } from "../lib/intent";
 import { CATEGORY_LABELS } from "../lib/items";
-import type { Category, CriterionId, Trip } from "../lib/types";
+import { amenityLabel, type Category, type CriterionId, type Trip } from "../lib/types";
 import type { Decisions } from "./useDecisions";
 
 interface Entry {
@@ -27,7 +28,7 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
   for (const [c, level] of Object.entries(trip.priorities ?? {}) as [CriterionId, number][]) {
     entries.push({
       key: `p:${c}`,
-      short: `${CRITERION_LABELS[c]}: ${LEVEL_LABELS[level].toLocaleLowerCase(locale())}`,
+      short: `${CRITERION_LABELS[c]}: ${lowerText(LEVEL_LABELS[level])}`,
       text: `${CRITERION_LABELS[c]}: ${LEVEL_LABELS[level]}`,
       detail: L("söylediğin · tüm gezi", "you said · whole trip"),
       change: (t) => {
@@ -41,7 +42,7 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
     for (const [c, level] of Object.entries(levels ?? {}) as [CriterionId, number][]) {
       entries.push({
         key: `cp:${cat}:${c}`,
-        short: `${CRITERION_LABELS[c]}: ${LEVEL_LABELS[level].toLocaleLowerCase(locale())}`,
+        short: `${CRITERION_LABELS[c]}: ${lowerText(LEVEL_LABELS[level])}`,
         text: `${CATEGORY_LABELS[cat]} · ${CRITERION_LABELS[c]}: ${LEVEL_LABELS[level]}`,
         detail: L("söylediğin", "you said"),
         change: (t) => {
@@ -65,8 +66,8 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
   for (const a of trip.wantedAmenities ?? []) {
     entries.push({
       key: `a:${a}`,
-      short: L(`${a} istiyorsun`, `you want ${a}`),
-      text: L(`İstenen: ${a}`, `Wanted: ${a}`),
+      short: L(`${a} istiyorsun`, `you want ${amenityLabel(a)}`),
+      text: L(`İstenen: ${a}`, `Wanted: ${amenityLabel(a)}`),
       detail: L("olanağı olan öne geçer", "places that have it rank higher"),
       change: (t) => ({ ...t, wantedAmenities: (t.wantedAmenities ?? []).filter((x) => x !== a) }),
     });
@@ -81,7 +82,7 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
     const notes = [`"${finding.text}" benim için sorun değil`, `"${finding.text}" is fine with me`];
     entries.push({
       key: `ok:${key}`,
-      short: L(`${finding.text.toLocaleLowerCase(locale())} sorun değil`, `${finding.text.toLocaleLowerCase(locale())} is fine`),
+      short: L(`${lowerText(finding.text)} sorun değil`, `${lowerText(finding.text)} is fine`),
       text: L(`Sorun değil: ${finding.text}`, `Fine by you: ${finding.text}`),
       detail: L(`söylediğin · ${listing.name}`, `you said · ${listing.name}`),
       action: async () => {
@@ -101,7 +102,7 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
     const notes = [`"${finding.text}" benim için önemli`, `"${finding.text}" matters to me`];
     entries.push({
       key: `must:${key}`,
-      short: L(`${finding.text.toLocaleLowerCase(locale())} önemli`, `${finding.text.toLocaleLowerCase(locale())} matters`),
+      short: L(`${lowerText(finding.text)} önemli`, `${lowerText(finding.text)} matters`),
       text: L(`Önemli: ${finding.text}`, `Matters: ${finding.text}`),
       detail: L(`söylediğin · ${listing.name} elendi`, `you said · ${listing.name} ruled out`),
       action: async () => {
@@ -136,8 +137,8 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
       key: `s:${s.id}`,
       short:
         s.delta > 0
-          ? L(`${CRITERION_LABELS[s.criterion].toLocaleLowerCase(locale())} önemli`, `${CRITERION_LABELS[s.criterion].toLocaleLowerCase(locale())} matters`)
-          : L(`${CRITERION_LABELS[s.criterion].toLocaleLowerCase(locale())} ikinci planda`, `${CRITERION_LABELS[s.criterion].toLocaleLowerCase(locale())} matters less`),
+          ? L(`${lowerText(CRITERION_LABELS[s.criterion])} önemli`, `${lowerText(CRITERION_LABELS[s.criterion])} matters`)
+          : L(`${lowerText(CRITERION_LABELS[s.criterion])} ikinci planda`, `${lowerText(CRITERION_LABELS[s.criterion])} matters less`),
       text: s.text,
       detail: L(`onayladığın · ${s.evidence}`, `you confirmed · ${s.evidence}`),
       change: (t) => ({

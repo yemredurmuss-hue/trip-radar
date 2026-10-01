@@ -14,7 +14,8 @@ import {
 } from "./decision";
 import { formatPrice } from "./items";
 import { COMPARABLE, groupKeyOf } from "./plan";
-import { L, locale } from "./i18n";
+import { L } from "./i18n";
+import { lowerText } from "./i18nText";
 import type { Category, CriterionId, Item, Trip } from "./types";
 
 export interface Signal {
@@ -169,7 +170,7 @@ function fromSaves(items: Item[], ctx: DecisionContext): Signal[] {
 // --- helpers ------------------------------------------------------------------------------------------
 
 /** A criterion's label inside a sentence ("konum", "location"). */
-const lower = (label: string) => label.toLocaleLowerCase(locale());
+const lower = (label: string) => lowerText(label);
 
 function signal(source: Signal["source"], category: Category, criterion: CriterionId, delta: 1 | -1, evidence: string): Signal {
   const label = CRITERION_LABELS[criterion];
