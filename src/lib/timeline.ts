@@ -2,6 +2,8 @@
 // between them, what's on each day, and getting home. Placement only, derived from the plan and its
 // legs on every render; nothing here is stored. Whatever can't be placed on a day (another flight,
 // an undated museum) is returned separately, so nothing saved goes missing from the board.
+import { L } from "./i18n";
+import { liveLabels, nNights } from "./i18nText";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
 import { endsOf, isRental, travelsOf, type Leg, type Travel } from "./legs";
 import { cityKeyOf, sameCity, type DateRange, type OptionGroup, type Plan, type StayBlock } from "./plan";
@@ -112,7 +114,17 @@ const DAY_CATEGORIES: Category[] = ["activity", "food", "other"];
 /** Things that belong to a day in a place: visits, meals, plans, and a car rented there. */
 const onADay = (i: Item) => DAY_CATEGORIES.includes(i.category) || isRental(i);
 const DAY_ORDER: Category[] = ["transport", ...DAY_CATEGORIES];
-const MODE_WORDS: Partial<Record<LegMode, string>> = { flight: "Uçuş", train: "Tren", bus: "Otobüs", ferry: "Feribot", car: "Araba" };
+const MODE_WORDS: Readonly<Partial<Record<LegMode, string>>> = liveLabels({
+  flight: ["Uçuş", "Flight"],
+  train: ["Tren", "Train"],
+  bus: ["Otobüs", "Bus"],
+  ferry: ["Feribot", "Ferry"],
+  car: ["Araba", "Car"],
+});
+/** "4. gün" / "Day 4". */
+const dayTitle = (n: number) => L(`${n}. gün`, `Day ${n}`);
+/** "1–5. gün" / "Days 1–5". */
+const daysText = (from: number, to: number) => L(`${from}–${to}. gün`, `Days ${from}–${to}`);
 const fmt = (date: string) => formatDateRange(date, null);
 
 function route(travel: Travel | null): string | null {
@@ -197,7 +209,7 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
     key: `travel:other:${t.group.key}:${t.day}`,
     role: "other",
     date: t.day,
-    title: `${fmt(t.day)} · ${(t.mode && MODE_WORDS[t.mode]) ?? "Ulaşım"}`,
+    title: `${fmt(t.day)} · ${(t.mode && MODE_WORDS[t.mode]) ?? L("Ulaşım", "Transport")}`,
     subtitle: route(t),
     travel: t,
     leg: null,
@@ -247,7 +259,7 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
     const isLast = index === blocks.length - 1;
     for (let d = block.range.start; isLast ? d <= lastDay : d < block.range.end; d = addDaysIso(d, 1)) {
       const dayNo = nightsBetween(start, d) + 1;
-      days.push({ kind: "day", key: `day:${d}`, date: d, dayNo, title: `${dayNo}. gün`, items: byDay.get(d) ?? [], legs: [] });
+      days.push({ kind: "day", key: `day:${d}`, date: d, dayNo, title: dayTitle(dayNo), items: byDay.get(d) ?? [], legs: [] });
     }
     return days;
   });
@@ -303,7 +315,7 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
         key: `travel:arrival:${date}`,
         role: "arrival",
         date,
-        title: `${fmt(date)} · ${(t?.mode && MODE_WORDS[t.mode]) ?? "Varış"}`,
+        title: `${fmt(date)} · ${(t?.mode && MODE_WORDS[t.mode]) ?? L("Varış", "Arrival")}`,
         subtitle: route(t) ?? (first.to.city ? `→ ${first.to.city}` : null),
         travel: t,
         leg: null,
@@ -326,7 +338,7 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
             key: `travel:move:${leg.key}`,
             role: "move",
             date: leg.date,
-            title: `${fmt(leg.date)} · Şehir değişimi`,
+            title: `${fmt(leg.date)} · ${L("Şehir değişimi", "Change of city")}`,
             subtitle: `${leg.from.city ?? leg.from.label} → ${leg.to.city ?? leg.to.label}`,
             travel: leg.travel,
             leg,
@@ -347,9 +359,9 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
       key: `stay:${block.range.start}`,
       date: block.range.start,
       block,
-      title: `${formatDateRange(block.range.start, block.range.end)} · Konaklama`,
-      subtitle: [block.city, `${nights} gece`].filter(Boolean).join(" · "),
-      days: `${nightsBetween(start, block.range.start) + 1}–${nightsBetween(start, block.range.end) + 1}. gün`,
+      title: `${formatDateRange(block.range.start, block.range.end)} · ${L("Konaklama", "Stay")}`,
+      subtitle: [block.city, nNights(nights)].filter(Boolean).join(" · "),
+      days: daysText(nightsBetween(start, block.range.start) + 1, nightsBetween(start, block.range.end) + 1),
       ...(block.kind === "open" && !block.groups.length && hidden.has(nightsKey(block.range)) ? { skipped: true } : {}),
     });
     if (cityPlans[index].length) {
@@ -374,7 +386,7 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
         key: `travel:departure:${date}`,
         role: "departure",
         date,
-        title: `${fmt(date)} · Dönüş`,
+        title: `${fmt(date)} · ${L("Dönüş", "Return")}`,
         subtitle: route(t) ?? (last.from.city ? `${last.from.city} →` : null),
         travel: t,
         leg: null,

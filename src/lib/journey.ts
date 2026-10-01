@@ -2,6 +2,8 @@
 // station, the flight or train (and any connection), the transfer on, check-in. Each step says when,
 // where it stands and what it is, in a few words; the full card opens under it. Times come from the
 // records or are worked out from them, and a worked-out or usual time is marked ("~15:00 genelde"). Pure.
+import { L } from "./i18n";
+import { count, hoursMinutes, liveLabels, nOptions } from "./i18nText";
 import { formatDateRange, formatPrice, metricsOf } from "./items";
 import { addMinutes, BOOKABLE, clockOf, laterOf, legShortTitle, minutesOf, MODE_LABELS, stayTimes, type Leg } from "./legs";
 import type { StayBlock } from "./plan";
@@ -34,20 +36,53 @@ export interface JourneyStep {
 type JourneySection = Extract<TimelineSection, { kind: "journey" }>;
 
 const TICKETED: LegMode[] = ["flight", "train", "bus", "ferry"];
-const MODE_WORD: Partial<Record<LegMode, string>> = { flight: "Uçuş", train: "Tren", bus: "Otobüs", ferry: "Feribot", car: "Araba", taxi: "Taksi", transfer: "Transfer" };
-const HUB_AT: Partial<Record<LegMode, string>> = { flight: "havalimanında", train: "garda", bus: "otogarda", ferry: "iskelede" };
+const MODE_WORD: Readonly<Partial<Record<LegMode, string>>> = liveLabels({
+  flight: ["Uçuş", "Flight"],
+  train: ["Tren", "Train"],
+  bus: ["Otobüs", "Bus"],
+  ferry: ["Feribot", "Ferry"],
+  car: ["Araba", "Car"],
+  taxi: ["Taksi", "Taxi"],
+  transfer: ["Transfer", "Transfer"],
+});
+const HUB_AT: Readonly<Partial<Record<LegMode, string>>> = liveLabels({
+  flight: ["havalimanında", "at the airport"],
+  train: ["garda", "at the station"],
+  bus: ["otogarda", "at the bus station"],
+  ferry: ["iskelede", "at the port"],
+});
 const TRANSFER_MIN = 60;
 
-const duration = (m: number | null) => (m ? `${Math.floor(m / 60) ? `${Math.floor(m / 60)} sa` : ""}${m % 60 ? ` ${m % 60} dk` : ""}`.trim() : null);
+const duration = (m: number | null) => (m ? hoursMinutes(m) : null);
+
+/** The words of a step's state, read in the current language. */
+const W = liveLabels({
+  booked: ["Rezerve", "Booked"],
+  notBooked: ["Rezerve edilmedi", "Not booked"],
+  decide: ["Karar ver", "Decide"],
+  notPlanned: ["Planlanmadı", "Not planned"],
+  ticketBought: ["Bilet alındı", "Ticket bought"],
+  noTicket: ["Bilet alınmadı", "No ticket yet"],
+  arranged: ["Ayarlandı", "Arranged"],
+  planned: ["Planlandı", "Planned"],
+  latest: ["en geç", "latest"],
+  usually: ["genelde", "usually"],
+  earliest: ["en erken", "earliest"],
+  afterLanding: ["varıştan sonra", "after landing"],
+  landing: ["iniş", "landing"],
+  arrival: ["varış", "arrival"],
+  noPlace: ["yer seçilmedi", "no place chosen"],
+  stay: ["Konaklama", "Stay"],
+});
 
 function stayItem(b: StayBlock): Item | null {
   return b.kind === "open" ? null : b.item;
 }
 
 function stayStanding(b: StayBlock): { standing: StepStanding; status: string } {
-  if (b.kind === "booked") return { standing: "booked", status: "Rezerve" };
-  if (b.kind === "chosen") return { standing: "planned", status: "Rezerve edilmedi" };
-  return { standing: "open", status: b.groups.length ? "Karar ver" : "Planlanmadı" };
+  if (b.kind === "booked") return { standing: "booked", status: W.booked };
+  if (b.kind === "chosen") return { standing: "planned", status: W.notBooked };
+  return { standing: "open", status: b.groups.length ? W.decide : W.notPlanned };
 }
 
 const stayKey = (b: StayBlock) => `stay:${b.range.start}`;
@@ -61,9 +96,9 @@ function checkout(j: Journey, b: StayBlock, listings: Map<string, Listing> | und
     otherDay: null,
     time: item ? t.checkOut : null,
     estimated: Boolean(item) && !t.stated.checkOut,
-    hint: item ? (t.stated.checkOut ? "en geç" : "genelde") : null,
+    hint: item ? (t.stated.checkOut ? W.latest : W.usually) : null,
     title: "Check-out",
-    sub: item?.name ?? `${b.city ?? "Konaklama"} · yer seçilmedi`,
+    sub: item?.name ?? `${b.city ?? W.stay} · ${W.noPlace}`,
     ...stayStanding(b),
     notes: [],
     entry: null,
@@ -84,9 +119,9 @@ function checkin(j: Journey, b: StayBlock, landing: string | null, listings: Map
     otherDay: null,
     time: !item ? null : later ? ready : t.checkIn,
     estimated: Boolean(item) && (Boolean(later) || !t.stated.checkIn),
-    hint: !item ? null : later ? "varıştan sonra" : t.stated.checkIn ? "en erken" : "genelde",
+    hint: !item ? null : later ? W.afterLanding : t.stated.checkIn ? W.earliest : W.usually,
     title: "Check-in",
-    sub: item?.name ?? `${b.city ?? "Konaklama"} · yer seçilmedi`,
+    sub: item?.name ?? `${b.city ?? W.stay} · ${W.noPlace}`,
     ...stayStanding(b),
     notes: [],
     entry: null,
@@ -99,7 +134,7 @@ function travelStep(j: Journey, e: Extract<TimelineEntry, { kind: "travel" }>): 
   const item = t?.settled ?? (t?.items.length === 1 ? t.items[0] : null);
   const f = item?.flight ?? null;
   const mode = t?.mode ?? e.leg?.choice?.mode ?? e.leg?.mode ?? null;
-  const word = (mode && MODE_WORD[mode]) ?? (e.role === "move" ? null : "Uçuş");
+  const word = (mode && MODE_WORD[mode]) ?? (e.role === "move" ? null : MODE_WORD.flight!);
   const route =
     e.role === "move" && e.leg
       ? `${e.leg.from.city ?? e.leg.from.label} → ${e.leg.to.city ?? e.leg.to.label}`
@@ -114,17 +149,17 @@ function travelStep(j: Journey, e: Extract<TimelineEntry, { kind: "travel" }>): 
   let status: string;
   if (t?.settled) {
     standing = t.settled.status === "booked" ? "booked" : "planned";
-    status = t.settled.status === "booked" ? (ticket ? "Bilet alındı" : "Rezerve") : ticket ? "Bilet alınmadı" : "Rezerve edilmedi";
+    status = t.settled.status === "booked" ? (ticket ? W.ticketBought : W.booked) : ticket ? W.noTicket : W.notBooked;
   } else if (t?.items.length) {
-    status = t.items.length === 1 ? "1 seçenek · seç" : `${t.items.length} seçenek · karar ver`;
+    status = t.items.length === 1 ? L("1 seçenek · seç", "1 option · pick it") : L(`${t.items.length} seçenek · karar ver`, `${nOptions(t.items.length)} · decide`);
   } else if (e.leg?.choice?.booked) {
     standing = "booked";
-    status = ticket ? "Bilet alındı" : "Ayarlandı";
+    status = ticket ? W.ticketBought : W.arranged;
   } else if (e.leg?.choice?.mode) {
     standing = "planned";
-    status = ticket ? "Bilet alınmadı" : "Planlandı";
+    status = ticket ? W.noTicket : W.planned;
   } else {
-    status = e.role === "move" ? "Planlanmadı · nasıl?" : "Uçuş yok";
+    status = e.role === "move" ? L("Planlanmadı · nasıl?", "Not planned · how?") : L("Uçuş yok", "No flight");
   }
   const day = f?.departure?.slice(0, 10) ?? e.date;
   return {
@@ -155,11 +190,11 @@ function legStep(j: Journey, e: Extract<TimelineEntry, { kind: "leg" }>): Journe
     otherDay: leg.date !== j.date ? leg.date : null,
     time: leaving ? leg.before : leg.after,
     estimated: false,
-    hint: leaving ? (leg.before ? `en geç ${at ?? "orada"}` : null) : leg.after ? "iniş" : null,
+    hint: leaving ? (leg.before ? L(`en geç ${at ?? "orada"}`, `${at ?? "there"} at the latest`) : null) : leg.after ? W.landing : null,
     title: legShortTitle(leg),
     sub: `${leg.from.label} → ${leg.to.label}`,
     standing,
-    status: leg.status === "empty" ? "Planlanmadı" : leg.status === "options" ? `${leg.options.length} seçenek` : leg.statusText,
+    status: leg.status === "empty" ? W.notPlanned : leg.status === "options" ? nOptions(leg.options.length) : leg.statusText,
     notes: leg.notes,
     entry: e,
     stayKey: null,
@@ -189,8 +224,8 @@ export function journeySteps(section: JourneySection, listings?: Map<string, Lis
 
 /** "4. gün · Cmt 10 Eki" or, off the trip's days, "Varış · 7 Ekim". */
 export function journeyTitle(j: Journey): string {
-  const word = j.role === "arrival" ? "Varış" : j.role === "departure" ? "Dönüş" : "Şehir değişimi";
-  return j.dayNo ? `${j.dayNo}. gün` : `${word} · ${formatDateRange(j.date, null)}`;
+  const word = j.role === "arrival" ? L("Varış", "Arrival") : j.role === "departure" ? L("Dönüş", "Return") : L("Şehir değişimi", "Change of city");
+  return j.dayNo ? L(`${j.dayNo}. gün`, `Day ${j.dayNo}`) : `${word} · ${formatDateRange(j.date, null)}`;
 }
 
 /** How many of the steps are done (booked), for "2/5 hazır". */
@@ -272,7 +307,19 @@ function fromStep(st: JourneyStep): DayRow {
   const e = st.entry as Extract<TimelineEntry, { kind: "travel" }>;
   const done = e.travel?.settled ?? null;
   const times = [clockOf(done?.flight?.departure), clockOf(done?.flight?.arrival)];
-  const line = done ? [done.name, times[0] && times[1] ? `${times[0]} → ${times[1]}` : null].filter(Boolean).join(" · ") : e.leg?.choice?.mode ? `${MODE_LABELS[e.leg.choice.mode]} · ${e.leg.choice.booked ? (TICKETED.includes(e.leg.choice.mode) ? "bilet alındı" : "ayarlandı") : "planlandı"}` : null;
+  const choice = e.leg?.choice;
+  const state = choice?.mode
+    ? choice.booked
+      ? TICKETED.includes(choice.mode)
+        ? L("bilet alındı", "ticket bought")
+        : L("ayarlandı", "arranged")
+      : L("planlandı", "planned")
+    : null;
+  const line = done
+    ? [done.name, times[0] && times[1] ? `${times[0]} → ${times[1]}` : null].filter(Boolean).join(" · ")
+    : choice?.mode
+      ? `${MODE_LABELS[choice.mode]} · ${state}`
+      : null;
   return row({ ...base, kind: "travel", state: travelState(e), entry: e, line });
 }
 
@@ -285,7 +332,7 @@ function legRow(leg: Leg): DayRow {
     key: `leg:${leg.key}`,
     kind: "leg",
     time: t,
-    hint: t ? (leg.kind === "departure" ? "en geç" : "varış") : null,
+    hint: t ? (leg.kind === "departure" ? W.latest : W.arrival) : null,
     title: legShortTitle(leg),
     sub: `${leg.from.label} → ${leg.to.label}`,
     state: legState(leg),
@@ -304,10 +351,10 @@ function itemRow(item: Item): DayRow {
     kind: "item",
     time,
     title: item.name,
-    sub: [price, item.status === "booked" ? "rezerve" : null].filter(Boolean).join(" · ") || null,
+    sub: [price, item.status === "booked" ? L("rezerve", "booked") : null].filter(Boolean).join(" · ") || null,
     state: item.status === "booked" ? "done" : "pending",
-    status: item.status === "booked" ? "Rezerve" : "Rezerve edilmedi",
-    line: [price, "rezerve"].filter(Boolean).join(" · "),
+    status: item.status === "booked" ? W.booked : W.notBooked,
+    line: [price, L("rezerve", "booked")].filter(Boolean).join(" · "),
     item,
   });
 }
@@ -319,14 +366,14 @@ function rentalRows(date: string, rentals: RentalEntry[]): { start: DayRow[]; en
   for (const r of rentals) {
     const items = r.group.items;
     const lead = items.find((i) => i.status === "booked") ?? items.find((i) => i.status === "chosen") ?? null;
-    const name = lead?.name ?? (items.length === 1 ? items[0].name : `${items.length} seçenek`);
+    const name = lead?.name ?? (items.length === 1 ? items[0].name : nOptions(items.length));
     if (r.date === date) {
       const state: RowState = lead?.status === "booked" ? "done" : lead ? "pending" : "decide";
-      const status = state === "done" ? "Rezerve" : state === "pending" ? "Rezerve edilmedi" : `${items.length} seçenek`;
-      start.push(row({ key: r.key, kind: "rental", state, status, title: "Araç kiralama", sub: name, time: clockOf(lead?.flight?.departure), rental: r }));
+      const status = state === "done" ? W.booked : state === "pending" ? W.notBooked : nOptions(items.length);
+      start.push(row({ key: r.key, kind: "rental", state, status, title: L("Araç kiralama", "Car rental"), sub: name, time: clockOf(lead?.flight?.departure), rental: r }));
     }
     if (r.end === date && r.end !== r.date) {
-      end.push(row({ key: `${r.key}:return`, kind: "info", state: "info", title: "Araç iade", sub: name, time: clockOf(lead?.flight?.arrival) }));
+      end.push(row({ key: `${r.key}:return`, kind: "info", state: "info", title: L("Araç iade", "Car return"), sub: name, time: clockOf(lead?.flight?.arrival) }));
     }
   }
   return { start, end };
@@ -360,7 +407,7 @@ export function dayRows(input: { journey?: JourneySection; day?: DayEntry | null
   }
   for (const item of day?.items ?? []) if (item.status === "chosen" || item.status === "booked") place(rows, itemRow(item));
   const ideas = (day?.items ?? []).filter((i) => i.status === "saved");
-  if (ideas.length) rows.push(row({ key: `ideas:${date}`, kind: "ideas", state: "info", title: ideas.length === 1 ? ideas[0].name : `${ideas.length} fikir`, items: ideas }));
+  if (ideas.length) rows.push(row({ key: `ideas:${date}`, kind: "ideas", state: "info", title: ideas.length === 1 ? ideas[0].name : count(ideas.length, "fikir", "idea"), items: ideas }));
   return rows;
 }
 
@@ -380,8 +427,8 @@ export function daySummary(rows: DayRow[]): string {
       : plans.length === 1
         ? [plans[0].title, plans[0].time].filter(Boolean).join(" · ")
         : left
-          ? `${plans.length} plan · ${left} iş kaldı`
-          : `${plans.length} plan · hepsi hazır`;
-  const more = ideas ? `${ideas.items.length} fikir` : "";
+          ? L(`${plans.length} plan · ${left} iş kaldı`, `${count(plans.length, "plan", "plan")} · ${left} to do`)
+          : L(`${plans.length} plan · hepsi hazır`, `${count(plans.length, "plan", "plan")} · all set`);
+  const more = ideas ? count(ideas.items.length, "fikir", "idea") : "";
   return [head, more].filter(Boolean).join(" · ");
 }

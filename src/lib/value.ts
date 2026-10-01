@@ -12,6 +12,8 @@ import {
   type OptionResult,
   type Part,
 } from "./decision";
+import { L } from "./i18n";
+import { capitalize, hoursMinutes, liveLabels, lowerText, MINUTES_SHOWN, nNights } from "./i18nText";
 import { formatPrice, nightsBetween } from "./items";
 import type { Plan } from "./plan";
 import type { CriterionId, Item } from "./types";
@@ -66,23 +68,19 @@ const partOf = (o: OptionResult, c: CriterionId): Part | undefined => o.parts.fi
 const priceOf = (o: OptionResult) => partOf(o, "price")?.value ?? null;
 const round = (n: number) => Math.round(n);
 
-function minutesText(m: number): string {
-  const h = Math.floor(m / 60);
-  const rest = Math.round(m % 60);
-  return h ? `${h} sa${rest ? ` ${rest} dk` : ""}` : `${rest} dk`;
-}
+const minutesText = hoursMinutes;
 
-const SHORT: Partial<Record<CriterionId, string>> = {
-  location: "daha iyi konum",
-  rating: "daha iyi yorumlar",
-  comfort: "daha iyi konfor ve temizlik",
-  amenities: "istediğin olanaklar",
-  duration: "daha kısa yolculuk",
-  schedule: "daha uygun saatler",
-  data: "daha çok veri",
-  validity: "daha uzun geçerlilik",
-  details: "yorumlarda ve detaylarda daha iyi",
-};
+const SHORT: Readonly<Partial<Record<CriterionId, string>>> = liveLabels({
+  location: ["daha iyi konum", "a better location"],
+  rating: ["daha iyi yorumlar", "better reviews"],
+  comfort: ["daha iyi konfor ve temizlik", "more comfort and cleanliness"],
+  amenities: ["istediğin olanaklar", "the amenities you want"],
+  duration: ["daha kısa yolculuk", "a shorter journey"],
+  schedule: ["daha uygun saatler", "better times"],
+  data: ["daha çok veri", "more data"],
+  validity: ["daha uzun geçerlilik", "longer validity"],
+  details: ["yorumlarda ve detaylarda daha iyi", "better on reviews and details"],
+});
 
 /**
  * Concrete things the pick gives over the alternative, most decisive first. `short` gives a bare
@@ -97,7 +95,9 @@ function gainsOver(
 ): { criterion: CriterionId; text: string }[] {
   const nights = nightsBetween(pick.item.dates.start, pick.item.dates.end) || ctx.tripNights || 1;
   const perHour = (hours: number) =>
-    priceDiff && priceDiff > 0 && hours >= 1 ? ` (saat başı ~${formatPrice(priceDiff / hours, ctx.currency)})` : "";
+    priceDiff && priceDiff > 0 && hours >= 1
+      ? L(` (saat başı ~${formatPrice(priceDiff / hours, ctx.currency)})`, ` (~${formatPrice(priceDiff / hours, ctx.currency)} an hour)`)
+      : "";
   const rows = pick.parts
     .map((p) => {
       const q = partOf(alt, p.criterion);
@@ -107,33 +107,37 @@ function gainsOver(
     .filter((r): r is { p: Part; q: Part; gain: number } => r != null)
     .sort((a, b) => b.gain - a.gain);
 
-  const lower = (t: string | null) => (t ?? "").toLocaleLowerCase("tr");
+  const lower = (t: string | null) => lowerText(t ?? "");
   return rows.map(({ p, q }) => {
     const c = p.criterion;
     if (short) return { criterion: c, text: SHORT[c] ?? lower(p.display) };
-    if (c === "location" && p.value != null && q.value != null && (p.display ?? "").includes("dk")) {
+    if (c === "location" && p.value != null && q.value != null && MINUTES_SHOWN.test(p.display ?? "")) {
       const saved = round(q.value - p.value);
       if (saved >= 3) {
         const hours = (saved * 2 * nights) / 60;
+        const total = round(hours) || 1;
         return {
           criterion: c,
-          text: `her yolda ~${saved} dk daha yakın; günde bir gidiş-dönüşle ${nights} gecede ~${round(hours) || 1} saat${perHour(hours)}`,
+          text: L(
+            `her yolda ~${saved} dk daha yakın; günde bir gidiş-dönüşle ${nights} gecede ~${total} saat${perHour(hours)}`,
+            `~${saved} min closer each way; with one round trip a day, ~${total} hour${total === 1 ? "" : "s"} over ${nNights(nights)}${perHour(hours)}`,
+          ),
         };
       }
     }
     if (c === "duration" && p.value != null && q.value != null && q.value - p.value >= 15) {
       const saved = q.value - p.value;
-      return { criterion: c, text: `${minutesText(saved)} daha kısa yolculuk${perHour(saved / 60)}` };
+      return { criterion: c, text: L(`${minutesText(saved)} daha kısa yolculuk${perHour(saved / 60)}`, `${minutesText(saved)} shorter journey${perHour(saved / 60)}`) };
     }
     switch (c) {
       case "stops":
       case "baggage":
       case "cancellation":
-        return { criterion: c, text: `${lower(p.display)} (diğerinde ${lower(q.display)})` };
+        return { criterion: c, text: L(`${lower(p.display)} (diğerinde ${lower(q.display)})`, `${lower(p.display)} (the other: ${lower(q.display)})`) };
       case "rating":
-        return { criterion: c, text: `daha iyi yorumlar: ${p.display} – ${q.display}` };
+        return { criterion: c, text: L(`daha iyi yorumlar: ${p.display} – ${q.display}`, `better reviews: ${p.display} – ${q.display}`) };
       case "location":
-        return { criterion: c, text: `daha iyi konum: ${p.display}` };
+        return { criterion: c, text: L(`daha iyi konum: ${p.display}`, `a better location: ${p.display}`) };
       case "schedule":
       case "data":
       case "validity":
@@ -148,9 +152,9 @@ function gainsOver(
 /** "Konum senin için "Çok önemli": " when the weight came from the traveller; nothing for defaults. */
 function intentPhrase(d: GroupDecision, ctx: DecisionContext, part: Part): string {
   const source = levelSource(ctx.trip, d.category, part.criterion, ctx.inferred);
-  if (source === "explicit") return `${part.label} senin için "${LEVEL_LABELS[part.level]}": `;
+  if (source === "explicit") return L(`${part.label} senin için "${LEVEL_LABELS[part.level]}": `, `${part.label} is "${LEVEL_LABELS[part.level]}" to you: `);
   if (source === "inferred" && (ctx.inferred.get(`${d.category}:${part.criterion}`)?.delta ?? 0) > 0) {
-    return `${part.label} senin için önemli görünüyor: `;
+    return L(`${part.label} senin için önemli görünüyor: `, `${part.label} seems to matter to you: `);
   }
   return "";
 }
@@ -184,58 +188,71 @@ export function valueCard(d: GroupDecision, ctx: DecisionContext, budget: Budget
 
   let because: string;
   if (!alt) {
-    because = `${pick.item.name} bu ihtiyaç için en iyi seçenek.`;
+    because = L(`${pick.item.name} bu ihtiyaç için en iyi seçenek.`, `${pick.item.name} is the best option for this.`);
   } else {
     const gains = gainsOver(pick, alt, ctx, priceDiff);
     const top = gains[0] ? partOf(pick, gains[0].criterion)! : null;
     const what = gains.slice(0, 2).map((g) => g.text).join("; ");
     if (valuePick) {
       const theirs = gainsOver(alt, pick, ctx, null, true)[0];
+      const scores = `${contenders[0].score}–${contenders[1].score}`;
       because = [
-        `Puanlar başa baş (${contenders[0].score}–${contenders[1].score}); ${pick.item.name} ${money(priceDiff!)} daha ucuz, fiyat/performans onda.`,
+        L(
+          `Puanlar başa baş (${scores}); ${pick.item.name} ${money(priceDiff!)} daha ucuz, fiyat/performans onda.`,
+          `Scores are level (${scores}); ${pick.item.name} is ${money(priceDiff!)} cheaper, so it's the better value.`,
+        ),
         theirs ? `${alt.item.name}: ${theirs.text}.` : null,
       ]
         .filter(Boolean)
         .join(" ");
     } else if (tie) {
       const theirs = gainsOver(alt, pick, ctx, null, true)[0];
-      const cheaperSide = priceDiff ? (priceDiff > 0 ? `${alt.item.name} ${money(priceDiff)} daha ucuz` : `${pick.item.name} ${money(priceDiff)} daha ucuz`) : null;
+      const cheaper = (name: string) => L(`${name} ${money(priceDiff!)} daha ucuz`, `${name} is ${money(priceDiff!)} cheaper`);
+      const cheaperSide = priceDiff ? (priceDiff > 0 ? cheaper(alt.item.name) : cheaper(pick.item.name)) : null;
       because = [
-        `${pick.item.name} ile ${alt.item.name} başa baş.`,
+        L(`${pick.item.name} ile ${alt.item.name} başa baş.`, `${pick.item.name} and ${alt.item.name} are level.`),
         top ? `${pick.item.name}: ${gains[0].text}.` : null,
         theirs ? `${alt.item.name}: ${theirs.text}.` : null,
         cheaperSide ? `${cheaperSide}.` : null,
-        "Hangisi senin için daha önemliyse o.",
+        L("Hangisi senin için daha önemliyse o.", "Go with what matters more to you."),
       ]
         .filter(Boolean)
         .join(" ");
     } else if (priceDiff != null && priceDiff > 0.5) {
       because = top
-        ? `${intentPhrase(d, ctx, top)}${money(priceDiff)} fazlasına ${what}.`
-        : `${money(priceDiff)} daha pahalı ama önceliklerine göre toplamda önde.`;
+        ? L(`${intentPhrase(d, ctx, top)}${money(priceDiff)} fazlasına ${what}.`, `${intentPhrase(d, ctx, top)}for ${money(priceDiff)} more, ${what}.`)
+        : L(`${money(priceDiff)} daha pahalı ama önceliklerine göre toplamda önde.`, `${money(priceDiff)} more, but ahead overall on your priorities.`);
     } else if (priceDiff != null && priceDiff < -0.5) {
       const theirs = gainsOver(alt, pick, ctx, null, true)[0];
       because = what
-        ? `Hem ${money(priceDiff)} daha ucuz hem ${what}.`
-        : `${money(priceDiff)} daha ucuz${theirs ? `; diğerinin artısı (${theirs.text}) önceliklerine göre bu farka değmez` : ""}.`;
+        ? L(`Hem ${money(priceDiff)} daha ucuz hem ${what}.`, `Both ${money(priceDiff)} cheaper and ${what}.`)
+        : L(
+            `${money(priceDiff)} daha ucuz${theirs ? `; diğerinin artısı (${theirs.text}) önceliklerine göre bu farka değmez` : ""}.`,
+            `${money(priceDiff)} cheaper${theirs ? `; the other's plus (${theirs.text}) isn't worth the difference on your priorities` : ""}.`,
+          );
     } else if (pickPrice == null || altPrice == null) {
       // A missing price is not a similar price: say what is known and what the verdict waits for.
       const waiting = (pickPrice == null ? pick : alt).item.name;
-      because = `${what ? `${what.charAt(0).toLocaleUpperCase("tr")}${what.slice(1)}.` : `${pick.item.name} bilinenlerde önde.`} ${waiting} için fiyat eksik; gelince yeniden tartarım.`;
+      const known = what ? `${capitalize(what)}.` : L(`${pick.item.name} bilinenlerde önde.`, `${pick.item.name} leads on what's known.`);
+      because = `${known} ${L(`${waiting} için fiyat eksik; gelince yeniden tartarım.`, `${waiting} has no price yet; I'll weigh it again when it comes.`)}`;
     } else {
-      because = what ? `Fiyat benzer; ${what}.` : `${pick.item.name} toplamda önde.`;
+      because = what ? L(`Fiyat benzer; ${what}.`, `Similar price; ${what}.`) : L(`${pick.item.name} toplamda önde.`, `${pick.item.name} is ahead overall.`);
     }
   }
 
   let unless: string | null = null;
   if (alt && valuePick) {
     const theirs = gainsOver(alt, pick, ctx, null, true)[0];
-    if (theirs) unless = `${theirs.text.charAt(0).toLocaleUpperCase("tr")}${theirs.text.slice(1)} senin için daha önemliyse ${alt.item.name}.`;
+    if (theirs) unless = L(`${capitalize(theirs.text)} senin için daha önemliyse ${alt.item.name}.`, `If ${theirs.text} matters more to you, ${alt.item.name}.`);
   } else if (alt && !tie) {
     const flip = d.unless.find((u) => u.winner === alt.item.name) ?? d.unless[0];
     if (flip) {
-      const keeps = flip.winner === alt.item.name && priceDiff != null && priceDiff > 0.5 ? `: ${money(priceDiff)} cebinde kalır` : "";
-      unless = `${CRITERION_LABELS[flip.criterion]} o kadar önemli değilse ${flip.winner}${keeps}.`;
+      const kept = flip.winner === alt.item.name && priceDiff != null && priceDiff > 0.5;
+      const keeps = kept ? L(`: ${money(priceDiff!)} cebinde kalır`, `: you keep ${money(priceDiff!)}`) : "";
+      unless = L(
+        `${CRITERION_LABELS[flip.criterion]} o kadar önemli değilse ${flip.winner}${keeps}.`,
+        `If ${lowerText(CRITERION_LABELS[flip.criterion])} doesn't matter that much, ${flip.winner}${keeps}.`,
+      );
     }
   }
 
@@ -245,39 +262,47 @@ export function valueCard(d: GroupDecision, ctx: DecisionContext, budget: Budget
   if (settledOther) {
     const edge = gainsOver(settledOther, pick, ctx, null, true)[0];
     const otherPrice = priceOf(settledOther);
-    const cheaperBy = pickPrice != null && otherPrice != null && otherPrice < pickPrice - 0.5 ? `${money(pickPrice - otherPrice)} daha ucuz` : null;
+    const cheaperBy =
+      pickPrice != null && otherPrice != null && otherPrice < pickPrice - 0.5 ? L(`${money(pickPrice - otherPrice)} daha ucuz`, `${money(pickPrice - otherPrice)} cheaper`) : null;
     const plus = [cheaperBy, edge?.text].filter(Boolean).join(", ");
-    chosenOther = `${settledOther.item.status === "booked" ? "Rezervasyonun" : "Seçimin"}: ${settledOther.item.name}${plus ? ` (${plus})` : ""}. Önceliklerine göre ${pick.item.name} ${
-      settledOther.score != null && pick.score != null ? `${pick.score - settledOther.score} puan önde` : "önde"
-    }; karar senin.`;
+    const booked = settledOther.item.status === "booked";
+    const yours = `${booked ? L("Rezervasyonun", "Your booking") : L("Seçimin", "Your choice")}: ${settledOther.item.name}${plus ? ` (${plus})` : ""}.`;
+    const lead = settledOther.score != null && pick.score != null ? pick.score - settledOther.score : null;
+    chosenOther = L(
+      `${yours} Önceliklerine göre ${pick.item.name} ${lead != null ? `${lead} puan önde` : "önde"}; karar senin.`,
+      `${yours} On your priorities ${pick.item.name} is ${lead != null ? `${lead} point${lead === 1 ? "" : "s"} ahead` : "ahead"}; your call.`,
+    );
   }
 
   let budgetLine: string | null = null;
   if (budget) {
-    const note = budget.uncounted ? " · bazı fiyatlar hesaba katılamadı" : "";
+    const note = budget.uncounted ? L(" · bazı fiyatlar hesaba katılamadı", " · some prices couldn't be counted") : "";
     // What's left if this need were settled with each option (the current choice for it is added back).
     const settledPrice = settledOther ? priceOf(settledOther) ?? 0 : isSettled(pick) ? pickPrice ?? 0 : 0;
     const free = budget.remaining + settledPrice;
+    const fp = (n: number) => formatPrice(n, budget.currency);
     if (isSettled(pick)) {
-      budgetLine = `Kalan bütçe ${formatPrice(budget.remaining, budget.currency)}${note}`;
+      budgetLine = `${L("Kalan bütçe", "Budget left")} ${fp(budget.remaining)}${note}`;
     } else if (pickPrice != null) {
       const after = free - pickPrice;
       const altAfter = altPrice != null ? free - altPrice : null;
+      const altLeft = altAfter == null ? "" : altAfter >= 0 ? fp(altAfter) : L(`${fp(-altAfter)} aşım`, `${fp(-altAfter)} over`);
       budgetLine =
-        (after >= 0 ? `Bununla kalan bütçe ${formatPrice(after, budget.currency)}` : `Bütçeyi ${formatPrice(-after, budget.currency)} aşar`) +
-        (alt && altAfter != null ? ` (${alt.item.name} ile ${altAfter >= 0 ? formatPrice(altAfter, budget.currency) : `${formatPrice(-altAfter, budget.currency)} aşım`})` : "") +
+        (after >= 0 ? L(`Bununla kalan bütçe ${fp(after)}`, `Budget left with this: ${fp(after)}`) : L(`Bütçeyi ${fp(-after)} aşar`, `${fp(-after)} over budget`)) +
+        (alt && altAfter != null ? L(` (${alt.item.name} ile ${altLeft})`, ` (with ${alt.item.name}: ${altLeft})`) : "") +
         note;
     }
   }
 
   const ruledOut = [
-    ...d.options
-      .filter((o) => o.eliminated)
-      .map((o) => `${o.item.name} elendi: ${o.eliminated!.reason}`),
-    ...d.checks.map((c) => `Kontrol gerekiyor: ${d.options.find((o) => o.item.id === c.itemId)?.item.name ?? ""} — ${c.reason} (sayfada doğrulanamadı)`),
+    ...d.options.filter((o) => o.eliminated).map((o) => L(`${o.item.name} elendi: ${o.eliminated!.reason}`, `${o.item.name} is out: ${o.eliminated!.reason}`)),
+    ...d.checks.map((c) => {
+      const name = d.options.find((o) => o.item.id === c.itemId)?.item.name ?? "";
+      return L(`Kontrol gerekiyor: ${name} — ${c.reason} (sayfada doğrulanamadı)`, `Needs a check: ${name}: ${c.reason} (couldn't be confirmed on the page)`);
+    }),
   ];
 
-  const kicker = valuePick ? "Fiyat/performans" : tie ? "Başa baş" : "Senin için";
+  const kicker = valuePick ? VALUE_ROLE() : tie ? L("Başa baş", "Level") : L("Senin için", "For you");
   return { pick, alt, tie: tie && !valuePick, kicker, priceDiff, because, unless, budget: budgetLine, chosenOther, ruledOut };
 }
 
@@ -296,8 +321,8 @@ export function rolesOf(d: GroupDecision): Map<string, string[]> {
   const priced = inPlay.filter((o) => priceOf(o) != null && !o.limited.length).sort((a, b) => priceOf(a)! - priceOf(b)!);
   const top = inPlay[0].score!;
   const value = priced.find((o) => o.score! >= top - VALUE_BAND);
-  if (value) add(value, "Fiyat/performans");
-  if (priced[0] && priced[0] !== value && priceOf(priced[0])! < priceOf(value ?? priced[0])! - 0.5) add(priced[0], "En ucuz");
+  if (value) add(value, VALUE_ROLE());
+  if (priced[0] && priced[0] !== value && priceOf(priced[0])! < priceOf(value ?? priced[0])! - 0.5) add(priced[0], L("En ucuz", "Cheapest"));
 
   const standout = (criterion: CriterionId, role: string) => {
     const ranked = inPlay
@@ -306,11 +331,14 @@ export function rolesOf(d: GroupDecision): Map<string, string[]> {
       .sort((a, b) => b.s! - a.s!);
     if (ranked.length >= 2 && ranked[0].s! - ranked[1].s! >= 0.05) add(ranked[0].o, role);
   };
-  standout("location", "En iyi konum");
-  standout("rating", "En iyi yorumlar");
-  standout("duration", "En kısa yolculuk");
+  standout("location", L("En iyi konum", "Best location"));
+  standout("rating", L("En iyi yorumlar", "Best reviews"));
+  standout("duration", L("En kısa yolculuk", "Shortest journey"));
   return roles;
 }
+
+/** The best value among the options level with the top. */
+const VALUE_ROLE = () => L("Fiyat/performans", "Best value");
 
 /** Options within this many points of the top count as level with it for "Fiyat/performans". */
 const VALUE_BAND = 5;

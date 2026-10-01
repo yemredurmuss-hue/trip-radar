@@ -3,6 +3,8 @@
 // backed and how recent it is. The model call that produces a reading lives in reader.ts.
 import { excerptOnPage, plainPage, plainText, samePlain, textId } from "./evidence";
 import { compact } from "./extract";
+import { L, lang, locale } from "./i18n";
+import { nReviews } from "./i18nText";
 import { corpusOf, listingKeyOf } from "./items";
 import type { ReaderOutput } from "./reader";
 import type { Capture, Category, Finding, FindingNature, HouseRules, Item, Listing, ReviewEvidence } from "./types";
@@ -195,8 +197,10 @@ export function failedReading(previous: Listing | undefined, item: Item, message
 // --- reading the evidence ---------------------------------------------------------------------------
 
 const MONTHS = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export const monthLabel = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`;
+/** "Eyl 2025" / "Sep 2025": a review month, in the current language. */
+export const monthLabel = (ym: string) => `${(lang() === "en" ? MONTHS_EN : MONTHS)[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`;
 
 export interface FindingEvidence {
   /** Stored reviews that say it (a sample of the site's reviews, not all guests). */
@@ -219,7 +223,7 @@ export interface FindingEvidence {
  * closed pool. For findings read before the reader said which kind they were.
  */
 const EVENT_WORDS =
-  /iskele|inşaat|şantiye|tadilat|renovasyon|onarım|scaffold|construction|building work|renovat|refurb|remodel|andaime|obras|bozu[kl]|arıza|çalışmıyor|kapalı|broken|out of order|not working|\bclosed\b/i;
+  /iskele|inşaat|şantiye|tadilat|renovasyon|onarım|scaffold|construction|building work|renovat|refurb|remodel|road ?works|repair|under maintenance|out of service|andaime|obras|bozu[kl]|arıza|çalışmıyor|kapalı|broken|out of order|not working|stopped working|\bclosed\b/i;
 
 /**
  * Lasting (thin walls, no lift, a noisy street), an event (scaffolding, a renovation, a pool closed
@@ -239,7 +243,7 @@ const EVENT_TERMS: RegExp[] = [
   /tadilat|renovasyon|renovat|refurb|remodel|\breforma/i,
 ];
 /** A later guest saying it's over: "iskele kaldırılmış", "the works are finished". */
-const ENDED = /bitmiş|bitti|kaldırıl|söküldü|artık yok|tamamlan|no longer|finished|completed|removed|taken down|gone now|já não|terminad|acabaram/i;
+const ENDED = /bitmiş|bitti|kaldırıl|söküldü|artık yok|tamamlan|no longer|finished|completed|removed|taken down|gone now|is gone|are gone|has ended|is over|are over|já não|terminad|acabaram/i;
 
 /** Confidence that it's still so, at or above which a problem is held against a place. */
 export const CONFIDENT = 0.7;
@@ -339,30 +343,37 @@ function strengthOf(f: Finding, count: number, still: StillTrue, reviewsRead: nu
 
 /** "son söz Mar 2026, sonraki 10 yorum bahsetmiyor": why a passing thing is doubted; null when it isn't. */
 export function stillText(still: StillTrue): string | null {
-  if (!still.dated) return "yorumlar tarihsiz";
+  if (!still.dated) return L("yorumlar tarihsiz", "reviews undated");
   if (!still.lastSaid || still.nature === "stated") return null;
-  const last = `son söz ${monthLabel(still.lastSaid)}`;
-  if (still.laterAgainst) return `${last}; sonraki ${still.laterAgainst} yorum geçtiğini söylüyor`;
-  if (still.laterSilent) return `${last}, sonraki ${still.laterSilent} yorum bahsetmiyor`;
+  const last = L(`son söz ${monthLabel(still.lastSaid)}`, `last said ${monthLabel(still.lastSaid)}`);
+  const n = still.laterAgainst;
+  if (n) return L(`${last}; sonraki ${n} yorum geçtiğini söylüyor`, `${last}; ${n === 1 ? "1 later review says" : `${n} later reviews say`} it's over`);
+  const m = still.laterSilent;
+  if (m) return L(`${last}, sonraki ${m} yorum bahsetmiyor`, `${last}, ${m === 1 ? "the 1 review since doesn't" : `the ${m} reviews since don't`} mention it`);
   return null;
 }
 
 /** The question to settle a doubt about a problem, by what it's about; its own words otherwise. */
-const QUESTIONS: [RegExp, string][] = [
-  [/iskele|scaffold/i, "İskele hâlâ duruyor mu?"],
-  [/inşaat|şantiye|construction|building work/i, "İnşaat hâlâ sürüyor mu?"],
-  [/tadilat|renovasyon|renovat/i, "Tadilat bitti mi?"],
-  [/tahtakurusu|pire|böcek|haşere|hamamböce|bed ?bugs?|cockroach/i, "Haşere sorunu giderildi mi, ilaçlama yapıldı mı?"],
-  [/havuz|pool/i, "Havuz açık mı?"],
-  [/klima|air ?con/i, "Klima çalışıyor mu?"],
-  [/asansör|elevator|\blift\b/i, "Asansör çalışıyor mu?"],
-  [/sıcak su|hot water/i, "Sıcak su sorunu giderildi mi?"],
-  [/wi-?fi|internet/i, "İnternet düzgün çalışıyor mu?"],
+const QUESTIONS: [RegExp, string, string][] = [
+  [/iskele|scaffold/i, "İskele hâlâ duruyor mu?", "Is the scaffolding still up?"],
+  [/inşaat|şantiye|construction|building work|road ?works/i, "İnşaat hâlâ sürüyor mu?", "Is the construction still going on?"],
+  [/tadilat|renovasyon|renovat|refurb/i, "Tadilat bitti mi?", "Is the renovation finished?"],
+  [
+    /tahtakurusu|pire|böcek|haşere|hamamböce|bed ?bugs?|cockroach|roach|\bfleas?\b|\bpests?\b|insects?|\bbugs\b/i,
+    "Haşere sorunu giderildi mi, ilaçlama yapıldı mı?",
+    "Has the pest problem been dealt with?",
+  ],
+  [/havuz|pool/i, "Havuz açık mı?", "Is the pool open?"],
+  [/klima|air ?con|\ba\/c\b/i, "Klima çalışıyor mu?", "Is the air conditioning working?"],
+  [/asansör|elevator|\blift\b/i, "Asansör çalışıyor mu?", "Is the lift working?"],
+  [/sıcak su|hot water/i, "Sıcak su sorunu giderildi mi?", "Is the hot water fixed?"],
+  [/wi-?fi|internet/i, "İnternet düzgün çalışıyor mu?", "Is the Wi-Fi working properly?"],
 ];
 
 /** "İskele hâlâ duruyor mu?": what to ask before booking to know whether a problem is still there. */
 export function questionFor(f: Pick<Finding, "text">): string {
-  return QUESTIONS.find(([re]) => re.test(f.text))?.[1] ?? `“${f.text}”: hâlâ böyle mi?`;
+  const q = QUESTIONS.find(([re]) => re.test(f.text));
+  return q ? L(q[1], q[2]) : L(`“${f.text}”: hâlâ böyle mi?`, `“${f.text}”: is this still so?`);
 }
 
 /** Held against a place: well backed (the page, or two guests or more) and still so. */
@@ -378,14 +389,16 @@ export const standing = (e: Pick<FindingEvidence, "strength" | "still">) => e.st
  * hair dryer, hangers... Kept in what was read, left out of the decision and the cards.
  */
 const TRIVIAL =
-  /(?<!\p{L})(duman|karbon ?monoksit|co alarm|smoke|carbon monoxide|yangın söndür|yangın alarm|fire extinguisher|fire alarm|ilk ?yardım|first ?aid|saç kurutma|hair ?dryer|ütü(?!\p{L})|iron(?!\p{L})|askı|hangers?(?!\p{L})|şampuan|shampoo|sabun|soap|duş jeli|body wash|temel (malzeme|ihtiyaç)|essentials|nevresim|bed linens?|tabak|çatal|bıçak|dishes|silverware|cutlery)/iu;
+  /(?<!\p{L})(duman|karbon ?monoksit|co alarm|smoke|carbon monoxide|yangın söndür|yangın alarm|fire extinguisher|fire alarm|ilk ?yardım|first ?aid|saç kurutma|hair ?dryer|ütü(?!\p{L})|iron(?!\p{L})|ironing|askı|hangers?(?!\p{L})|şampuan|shampoo|conditioner(?!\p{L})|sabun|soap|duş jeli|body wash|shower gel|temel (malzeme|ihtiyaç)|essentials|basic amenities|nevresim|bed ?linens?|bed ?sheets|tabak|çatal|bıçak|dishes|plates|silverware|cutlery|toilet paper|tuvalet kağıdı)/iu;
 
 export const isTrivialFinding = (f: Pick<Finding, "text">) => TRIVIAL.test(f.text);
 
 /** Not knowing isn't a minus: "asansör bilgisi yok", "belirtilmemiş". */
-const UNKNOWN = /(bilgi(si)?\s+(yok|verilmemiş)|belirtilmemiş|belirtilmiyor|yazmıyor|bilinmiyor|görünmüyor|belirsiz|not (stated|mentioned|specified)|no information)/i;
+const UNKNOWN =
+  /(bilgi(si)?\s+(yok|verilmemiş)|belirtilmemiş|belirtilmiyor|yazmıyor|bilinmiyor|görünmüyor|belirsiz|not (stated|mentioned|specified|listed|shown|given)|(isn't|is not|aren't|are not) (stated|mentioned|specified|listed)|(does not|doesn't|do not|don't) (say|mention|specify|state|list)|no (info|information|details?|mention) (on|about|of|given)|no information|unknown|unspecified|not clear (if|whether)|unclear (if|whether))/i;
 /** A complaint about arriving, as opposed to just its hours. */
-const CHECK_IN_TROUBLE = /(zor|sorun|bekle|kimse|karışık|kötü|geç kal|ulaşıl|bulama|yok|hard|difficult|problem|wait|nobody|confus)/i;
+const CHECK_IN_TROUBLE =
+  /(zor|sorun|bekle|kimse|karışık|kötü|geç kal|ulaşıl|bulama|yok|hard|difficult|problem|issue|trouble|wait|delay|slow|nobody|no one|confus|complicated|messy|chaotic|poor|bad|couldn't|could not|struggl|unreachable)/i;
 /** Check-in from 14–16, check-out by 10–12: what every place does, not a plus or a minus. */
 const HOUR = /(\d{1,2})(?:[:.](\d{2}))?/;
 
@@ -396,7 +409,9 @@ const HOUR = /(\d{1,2})(?:[:.](\d{2}))?/;
 export function isInfoFinding(f: Pick<Finding, "text" | "topic">): boolean {
   if (UNKNOWN.test(f.text)) return true;
   if (f.topic === "check_in" && HOUR.test(f.text) && !CHECK_IN_TROUBLE.test(f.text)) {
-    const hour = Number(f.text.match(HOUR)![1]);
+    // "15:00", or "3 PM" as English pages write it.
+    const clock = clockTimes(f.text)[0];
+    const hour = clock ? Number(clock.slice(0, 2)) : Number(f.text.match(HOUR)![1]);
     // An hour out of the usual (check-in at 20:00, check-out at 8:00) is worth saying; the usual isn't.
     return (hour >= 13 && hour <= 16) || (hour >= 10 && hour <= 12);
   }
@@ -446,8 +461,10 @@ export function coverageText(listing: Listing): string {
       ? monthLabel(dates[0])
       : `${monthLabel(dates[0])} – ${monthLabel(dates.at(-1)!)}`
     : null;
-  const total = listing.reviewTotal && listing.reviewTotal > n ? ` (sitede ${listing.reviewTotal.toLocaleString("tr-TR")})` : "";
-  return [n ? `${n} yorum incelendi${total}` : "Sayfada okunabilir yorum yoktu", range].filter(Boolean).join(" · ");
+  const site = listing.reviewTotal?.toLocaleString(locale());
+  const total = listing.reviewTotal && listing.reviewTotal > n ? L(` (sitede ${site})`, ` (${site} on the site)`) : "";
+  const read = n ? L(`${n} yorum incelendi${total}`, `${nReviews(n)} read${total}`) : L("Sayfada okunabilir yorum yoktu", "No readable reviews on the page");
+  return [read, range].filter(Boolean).join(" · ");
 }
 
 /** Key under which the traveller accepted a kind of finding for a place ("sorun değil"). */
@@ -457,9 +474,9 @@ export const acceptKey = (listingKey: string, f: Pick<Finding, "topic" | "polari
 export function readingLine(item: Item, listing: Listing | undefined, now = Date.now()): { text: string; tone: "muted" | "warning" } | null {
   if (!READ_CATEGORIES.includes(item.category)) return null;
   const pending = needsReading(item, listing, now);
-  if (listing?.error && !listing.readAt) return { text: `Sayfa okunamadı: ${listing.error}`, tone: "warning" };
-  if (listing?.readAt) return { text: `${coverageText(listing)}${pending ? " · yeni kayıt okunuyor…" : ""}`, tone: "muted" };
-  return pending ? { text: "Sayfa okunuyor…", tone: "muted" } : null;
+  if (listing?.error && !listing.readAt) return { text: L(`Sayfa okunamadı: ${listing.error}`, `Couldn't read the page: ${listing.error}`), tone: "warning" };
+  if (listing?.readAt) return { text: `${coverageText(listing)}${pending ? L(" · yeni kayıt okunuyor…", " · reading the new save…") : ""}`, tone: "muted" };
+  return pending ? { text: L("Sayfa okunuyor…", "Reading the page…"), tone: "muted" } : null;
 }
 
 /**
@@ -488,13 +505,20 @@ export function searchText(text: string, words: string[], max = 8): string[] {
 
 /** Topics wide enough that two findings on them can be about different things (a pool, a washer). */
 const BROAD_TOPICS = new Set<Finding["topic"]>(["amenities", "facilities", "other", "nearby", "location", "transport", "value", "condition", "access"]);
+/** English endings that don't change what a word is about ("noisy" and "noise", "views" and "view"). */
+const EN_ENDING = /(ing|ed|es|s|y|e)$/;
+const stem = (w: string) => {
+  // A plain-letter word may be English: its ending goes before the cut (Turkish words keep theirs).
+  const bare = /^[a-z]+$/.test(w) ? w.replace(EN_ENDING, "") : w;
+  return (bare.length >= 4 ? bare : w).slice(0, 5);
+};
 const stems = (text: string) =>
   new Set(
     text
       .toLocaleLowerCase("tr")
       .split(/[^\p{L}\p{N}]+/u)
       .filter((w) => w.length >= 4)
-      .map((w) => w.slice(0, 5)),
+      .map(stem),
   );
 
 /** Whether another place's page says the same kind of thing (a view, noise at night, a kitchen...). */

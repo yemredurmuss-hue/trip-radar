@@ -2,6 +2,8 @@
 // uçuyoruz", "11 Ekim'de Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız". Each becomes an item
 // on the board straight away, on its day and in its place, planned until they say it's booked. When a
 // saved page for the same need is chosen or booked, it takes the plan's place (see plan.ts). Pure.
+import { L } from "./i18n";
+import { liveLabels } from "./i18nText";
 import { EMPTY_METRICS, isoDate } from "./items";
 import { cityKeyOf } from "./plan";
 import type { Category, Item } from "./types";
@@ -37,7 +39,14 @@ const CATEGORY: Record<PlannedKind, Category> = {
   esim: "esim",
   other: "other",
 };
-const WORD: Partial<Record<PlannedKind, string>> = { flight: "Uçuş", train: "Tren", bus: "Otobüs", ferry: "Feribot", transfer: "Transfer", taxi: "Taksi" };
+const WORD: Readonly<Partial<Record<PlannedKind, string>>> = liveLabels({
+  flight: ["Uçuş", "Flight"],
+  train: ["Tren", "Train"],
+  bus: ["Otobüs", "Bus"],
+  ferry: ["Feribot", "Ferry"],
+  transfer: ["Transfer", "Transfer"],
+  taxi: ["Taksi", "Taxi"],
+});
 const TRAVEL: PlannedKind[] = ["flight", "train", "bus", "ferry", "transfer", "taxi"];
 
 const slug = (s: string | null) =>
@@ -71,27 +80,28 @@ export function plannedInput(raw: any): PlannedInput {
 
 /** Checks what the model passed; a wrong date is refused rather than guessed. */
 export function checkPlanned(input: PlannedInput): string | null {
-  if (!(PLANNED_KINDS as readonly string[]).includes(input.kind)) return `Bilinmeyen tür: ${input.kind}`;
-  if (input.date != null && !isoDate(input.date)) return `Tarih YYYY-AA-GG olmalı: ${input.date}`;
-  if (input.end_date && (!isoDate(input.end_date) || (input.date && input.end_date < input.date))) return `Bitiş tarihi geçersiz: ${input.end_date}`;
-  if (input.end_date && !input.date) return "Bitiş varsa başlangıç tarihini de yaz.";
-  if (input.kind === "stay" && input.date && input.end_date && input.end_date <= input.date) return "Konaklamanın çıkış günü girişten sonra olmalı.";
-  if (input.time && !TIME.test(input.time)) return `Saat SS:DD olmalı: ${input.time}`;
+  if (!(PLANNED_KINDS as readonly string[]).includes(input.kind)) return L(`Bilinmeyen tür: ${input.kind}`, `Unknown kind: ${input.kind}`);
+  if (input.date != null && !isoDate(input.date)) return L(`Tarih YYYY-AA-GG olmalı: ${input.date}`, `The date must be YYYY-MM-DD: ${input.date}`);
+  if (input.end_date && (!isoDate(input.end_date) || (input.date && input.end_date < input.date))) return L(`Bitiş tarihi geçersiz: ${input.end_date}`, `Invalid end date: ${input.end_date}`);
+  if (input.end_date && !input.date) return L("Bitiş varsa başlangıç tarihini de yaz.", "With an end date, give the start date too.");
+  if (input.kind === "stay" && input.date && input.end_date && input.end_date <= input.date) return L("Konaklamanın çıkış günü girişten sonra olmalı.", "A stay's check-out day must be after check-in.");
+  if (input.time && !TIME.test(input.time)) return L(`Saat SS:DD olmalı: ${input.time}`, `The time must be HH:MM: ${input.time}`);
   // A ticket for a day ("12 Ekim'e uçak bileti") is a plan already; where it goes can come later.
-  if (TRAVEL.includes(input.kind) && input.kind !== "taxi" && !input.to && !input.city && !input.date) return "Nereye gidildiğini (to) ya da gününü (date) yaz.";
-  if (input.kind === "taxi" && !input.date) return "Taksinin gününü (date) yaz.";
-  if ((input.kind === "car_rental" || input.kind === "stay") && !input.city && !input.to) return "Hangi şehirde olduğunu (city) yaz.";
+  if (TRAVEL.includes(input.kind) && input.kind !== "taxi" && !input.to && !input.city && !input.date) return L("Nereye gidildiğini (to) ya da gününü (date) yaz.", "Give where it goes (to) or its day (date).");
+  if (input.kind === "taxi" && !input.date) return L("Taksinin gününü (date) yaz.", "Give the taxi's day (date).");
+  if ((input.kind === "car_rental" || input.kind === "stay") && !input.city && !input.to) return L("Hangi şehirde olduğunu (city) yaz.", "Give the city it's in (city).");
   return null;
 }
 
 function nameOf(i: PlannedInput): string {
   if (i.title?.trim()) return i.title.trim().slice(0, 80);
   const where = i.city ?? i.to;
+  const at = where ? ` · ${where}` : "";
   if (WORD[i.kind] && !i.from && !i.to && !i.city) return WORD[i.kind]!;
   if (WORD[i.kind]) return `${WORD[i.kind]} · ${i.from ? `${i.from} → ` : ""}${i.to ?? i.city ?? ""}`.trim();
-  if (i.kind === "car_rental") return `Araç kiralama${where ? ` · ${where}` : ""}`;
-  if (i.kind === "stay") return `Konaklama${where ? ` · ${where}` : ""}`;
-  if (i.kind === "esim") return `eSIM${where ? ` · ${where}` : ""}`;
+  if (i.kind === "car_rental") return `${L("Araç kiralama", "Car rental")}${at}`;
+  if (i.kind === "stay") return `${L("Konaklama", "Stay")}${at}`;
+  if (i.kind === "esim") return `eSIM${at}`;
   return where ? `Plan · ${where}` : "Plan";
 }
 
@@ -146,7 +156,8 @@ export function plannedItem(input: PlannedInput, tripId: string, id: string, now
   };
 }
 
-const GENERATED = /^(Uçuş|Tren|Otobüs|Feribot|Transfer|Taksi|Araç kiralama|Konaklama|eSIM|Plan)( ·|$)/;
+/** A name nameOf made (in either language), not one the traveller gave. */
+const GENERATED = /^(Uçuş|Tren|Otobüs|Feribot|Transfer|Taksi|Araç kiralama|Konaklama|eSIM|Plan|Flight|Train|Bus|Ferry|Taxi|Car rental|Stay)( ·|$)/;
 const where = (s: string | null | undefined) => (s ? cityKeyOf(s) : null);
 
 /**
