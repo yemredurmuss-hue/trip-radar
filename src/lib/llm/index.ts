@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
 import { getSettings } from "../db";
+import { L } from "../i18n";
 import { anthropicProvider, describeAnthropicError } from "./anthropic";
 import { describeGeminiError, geminiProvider } from "./gemini";
 import { MissingKeyError, type LlmProvider } from "./types";
@@ -19,14 +20,14 @@ export async function getProvider(): Promise<LlmProvider> {
   return anthropicProvider(new Anthropic({ apiKey: s.apiKey, dangerouslyAllowBrowser: true }), s.model);
 }
 
-/** Turkish, user-facing message for any failure during a model call. */
+/** User-facing message (in the current language) for any failure during a model call. */
 export function describeError(error: unknown): string {
   if (error instanceof MissingKeyError) return error.message;
   return (
     describeGeminiError(error) ??
     describeAnthropicError(error) ??
     (error instanceof TypeError && /fetch/i.test(error.message)
-      ? "API'ye bağlanılamadı. İnternetini kontrol et."
+      ? L("API'ye bağlanılamadı. İnternetini kontrol et.", "Couldn't reach the API. Check your internet connection.")
       : error instanceof Error
         ? error.message
         : String(error))

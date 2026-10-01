@@ -2,7 +2,8 @@
 // prompts and responses to improve its products, including human review.
 import { ApiError, GoogleGenAI, type Content, type GenerateContentResponse, type Part } from "@google/genai";
 import { z } from "zod";
-import { buildPrompt, EXTRACTION_SYSTEM, ExtractionSchema, imagePart, today } from "../extract";
+import { buildPrompt, extractionSchema, extractionSystem, imagePart, today } from "../extract";
+import { L, lang } from "../i18n";
 import type { ChatMessage } from "../types";
 import type { ChatStep, LlmProvider, ToolResult, ToolSpec } from "./types";
 
@@ -12,7 +13,13 @@ function jsonSchemaFor(zodSchema: z.ZodType): Record<string, unknown> {
   return schema;
 }
 
-const extractionJsonSchema = jsonSchemaFor(ExtractionSchema);
+/** The extraction schema as JSON Schema, once per language. */
+const extractionJsonSchemas = new Map<string, Record<string, unknown>>();
+function extractionJsonSchema(): Record<string, unknown> {
+  const key = lang();
+  if (!extractionJsonSchemas.has(key)) extractionJsonSchemas.set(key, jsonSchemaFor(extractionSchema()));
+  return extractionJsonSchemas.get(key)!;
+}
 
 /** Minimal slice of the SDK client used here (lets tests pass a fake). */
 export interface GeminiClient {
@@ -37,7 +44,8 @@ async function withRetry<T>(call: () => Promise<T>, waitMs = RETRY_AFTER_MS): Pr
 function answerParts(response: GenerateContentResponse): Part[] {
   const parts = response.candidates?.[0]?.content?.parts ?? [];
   if (parts.length === 0 && response.promptFeedback?.blockReason) {
-    throw new Error(`Gemini bu içeriği işlemedi (${response.promptFeedback.blockReason}).`);
+    const reason = response.promptFeedback.blockReason;
+    throw new Error(L(`Gemini bu içeriği işlemedi (${reason}).`, `Gemini didn't process this content (${reason}).`));
   }
   return parts;
 }
@@ -82,23 +90,23 @@ export function geminiProvider(client: GeminiClient, model: string, retryWaitMs 
             model,
             contents: [{ role: "user", parts }],
             config: {
-              systemInstruction: EXTRACTION_SYSTEM,
+              systemInstruction: extractionSystem(),
               responseMimeType: "application/json",
-              responseJsonSchema: extractionJsonSchema,
+              responseJsonSchema: extractionJsonSchema(),
             },
           }),
         retryWaitMs,
       );
       const text = visibleText(answerParts(response));
-      if (!text) throw new Error("Gemini boş yanıt döndürdü.");
+      if (!text) throw new Error(L("Gemini boş yanıt döndürdü.", "Gemini returned an empty answer."));
       let json: unknown;
       try {
         json = JSON.parse(text);
       } catch {
-        throw new Error("Gemini geçerli JSON döndürmedi.");
+        throw new Error(L("Gemini geçerli JSON döndürmedi.", "Gemini didn't return valid JSON."));
       }
-      const parsed = ExtractionSchema.safeParse(json);
-      if (!parsed.success) throw new Error("Gemini yanıtı beklenen formatta değil.");
+      const parsed = extractionSchema().safeParse(json);
+      if (!parsed.success) throw new Error(L("Gemini yanıtı beklenen formatta değil.", "Gemini's answer isn't in the expected format."));
       return parsed.data;
     },
 
@@ -117,10 +125,10 @@ export function geminiProvider(client: GeminiClient, model: string, retryWaitMs 
       try {
         json = JSON.parse(text);
       } catch {
-        throw new Error("Gemini geçerli JSON döndürmedi.");
+        throw new Error(L("Gemini geçerli JSON döndürmedi.", "Gemini didn't return valid JSON."));
       }
       const parsed = schema.safeParse(json);
-      if (!parsed.success) throw new Error("Gemini analizi beklenen formatta değil.");
+      if (!parsed.success) throw new Error(L("Gemini analizi beklenen formatta değil.", "Gemini's analysis isn't in the expected format."));
       return parsed.data;
     },
 
@@ -196,11 +204,27 @@ export async function listGeminiModels(apiKey: string): Promise<string[]> {
 export function describeGeminiError(error: unknown): string | null {
   if (!(error instanceof ApiError)) return null;
   const message = error.message ?? "";
-  if (error.status === 400 && /api key/i.test(message)) return "Gemini API anahtarı geçersiz. Ayarlardan kontrol et.";
-  if (error.status === 403) return "Bu Gemini anahtarının bu modele erişimi yok.";
-  if (error.status === 404) return "Gemini modeli bulunamadı. Ayarlar'da 'Modelleri getir' ile güncel modeli seç.";
-  if (error.status === 429)
-    return "Gemini ücretsiz kotası doldu (dakikalık ya da günlük). Biraz bekleyip 'Tekrar dene'ye bas.";
-  if (error.status >= 500) return "Gemini şu an meşgul ya da geçici bir sorun var. Biraz sonra 'Tekrar dene'ye bas.";
-  return `Gemini hatası (${error.status}): ${message.slice(0, 200)}`;
+  if (error.status === 400 && /api key/i.test(message)) {
+    return L("Gemini API anahtarı geçersiz. Ayarlardan kontrol et.", "The Gemini API key isn't valid. Check it in Settings.");
+  }
+  if (error.status === 403) return L("Bu Gemini anahtarının bu modele erişimi yok.", "This Gemini key has no access to this model.");
+  if (error.status === 404) {
+    return L(
+      "Gemini modeli bulunamadı. Ayarlar'da 'Modelleri getir' ile güncel modeli seç.",
+      "Gemini model not found. In Settings, use 'Fetch models' to pick a current one.",
+    );
+  }
+  if (error.status === 429) {
+    return L(
+      "Gemini ücretsiz kotası doldu (dakikalık ya da günlük). Biraz bekleyip 'Tekrar dene'ye bas.",
+      "Gemini's free quota is used up (per minute or per day). Wait a little, then press 'Try again'.",
+    );
+  }
+  if (error.status >= 500) {
+    return L(
+      "Gemini şu an meşgul ya da geçici bir sorun var. Biraz sonra 'Tekrar dene'ye bas.",
+      "Gemini is busy or having a temporary problem. Press 'Try again' in a little while.",
+    );
+  }
+  return L(`Gemini hatası (${error.status}): ${message.slice(0, 200)}`, `Gemini error (${error.status}): ${message.slice(0, 200)}`);
 }
