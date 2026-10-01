@@ -1,6 +1,8 @@
 // Trip skeleton: which nights are booked, planned or still open, and which saved options are still
 // live. Pure and derived from the saved items on every render, so it can never go stale: un-booking
 // a stay brings its alternatives straight back, and nothing is ever deleted to "close" a need.
+import { L } from "./i18n";
+import { nNights } from "./i18nText";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
 import { isLocalTransfer, isRental, isTrip } from "./travelKinds";
 import type { Category, Item, Trip } from "./types";
@@ -239,7 +241,9 @@ function mostCommon(values: (string | null)[]): string | null {
   return best;
 }
 
-const rangeTitle = (r: DateRange) => `${formatDateRange(r.start, r.end)} · ${nightsBetween(r.start, r.end)} gece`;
+const rangeTitle = (r: DateRange) => `${formatDateRange(r.start, r.end)} · ${nNights(nightsBetween(r.start, r.end))}`;
+/** Why a saved option left the plan: something else took its place. */
+const replacedReason = (by: string) => L(`Yerine ${by} geldi`, `Replaced by ${by}`);
 
 function stayGroup(key: string, items: Item[], range: DateRange | null = stayRange(items[0])): OptionGroup {
   const city = mostCommon(items.map((i) => i.city));
@@ -374,7 +378,7 @@ Object.assign(
 
 /** Words around a place's name in a flight or station field ("Aeroporto do Porto", "Madeira Airport"). */
 const HUB_WORDS = new Set(
-  "international intl airport aeroporto aeropuerto aeroport flughafen havalimani terminal station estacao estacion gare bahnhof hbf gar gari otogar ferry iskele central centrale centro do da de di del the".split(" "),
+  "international intl airport aeroporto aeropuerto aeroport flughafen havalimani terminal station railway train bus coach port harbour harbor pier estacao estacion gare bahnhof hbf gar gari otogar ferry iskele central centrale centro do da de di del the".split(" "),
 );
 const KNOWN_PLACES = new Set([...Object.keys(CITY_ALIASES), ...Object.values(CITY_ALIASES)]);
 
@@ -483,7 +487,10 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
       notices.push({
         kind: "conflict",
         date: clash.start,
-        text: `${formatDateRange(clash.start, clash.end)} (${nightsBetween(clash.start, clash.end)} gece) için iki rezervasyon var: ${bookedStays[a].name} ve ${bookedStays[b].name}`,
+        text: L(
+          `${formatDateRange(clash.start, clash.end)} (${nightsBetween(clash.start, clash.end)} gece) için iki rezervasyon var: ${bookedStays[a].name} ve ${bookedStays[b].name}`,
+          `Two bookings for ${formatDateRange(clash.start, clash.end)} (${nNights(nightsBetween(clash.start, clash.end))}): ${bookedStays[a].name} and ${bookedStays[b].name}`,
+        ),
       });
     }
   }
@@ -491,14 +498,14 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
   for (const i of stays) {
     const replaced = replacedBy.get(i.id);
     if (replaced) {
-      closed.push({ item: i, reason: `Yerine ${replaced.name} geldi` });
+      closed.push({ item: i, reason: replacedReason(replaced.name) });
       continue;
     }
     const r = stayRange(i);
     if (i.status === "booked" && r) continue;
     // A stay said in the chat keeps the nights a booking leaves (it's closed below if none are left).
     const blocker = r && !isSlot(i) ? bookedStays.find((b) => overlaps(stayRange(b)!, r)) : undefined;
-    if (blocker) closed.push({ item: i, reason: `${blocker.name} rezervasyonu bu geceleri kapsıyor` });
+    if (blocker) closed.push({ item: i, reason: L(`${blocker.name} rezervasyonu bu geceleri kapsıyor`, `The ${blocker.name} booking covers these nights`) });
     else openStays.push(i);
   }
   const chosenStays = openStays.filter((i) => i.status === "chosen" && stayRange(i)).sort(byStart);
@@ -578,7 +585,7 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
     for (const slot of slots) {
       if (closed.some((c) => c.item.id === slot.id) || stayBlocks.some((b) => b.kind !== "booked" && b.slot === slot)) continue;
       const by = stayBlocks.filter((b) => b.kind !== "open" && overlaps(b.range, stayRange(slot)!)).map((b) => (b.kind === "open" ? "" : b.item.name));
-      closed.push({ item: slot, reason: `Yerine ${[...new Set(by)].join(", ")} geldi` });
+      closed.push({ item: slot, reason: replacedReason([...new Set(by)].join(", ")) });
     }
     // A booking wholly inside another one's nights got no stretch of its own: it sits with the one it clashes with.
     for (const b of bookedStays) {
@@ -709,12 +716,12 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
       // Once a saved page is chosen or booked, the plan said in the chat has done its job.
       const real = list.find((i) => i.origin !== "chat" && (i.status === "chosen" || i.status === "booked"));
       if (real) {
-        for (const i of list.filter((x) => x.origin === "chat")) closed.push({ item: i, reason: `Yerine ${real.name} geldi` });
+        for (const i of list.filter((x) => x.origin === "chat")) closed.push({ item: i, reason: replacedReason(real.name) });
         list = list.filter((x) => x.origin !== "chat");
       }
       const booked = list.filter((i) => i.status === "booked");
       if (booked.length) {
-        for (const i of list.filter((x) => x.status !== "booked")) closed.push({ item: i, reason: `${booked[0].name} rezerve edildi` });
+        for (const i of list.filter((x) => x.status !== "booked")) closed.push({ item: i, reason: L(`${booked[0].name} rezerve edildi`, `${booked[0].name} was booked`) });
       }
       const itemsInPlay = booked.length ? booked : list;
       groups.push({

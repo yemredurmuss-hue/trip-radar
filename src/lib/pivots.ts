@@ -4,6 +4,7 @@
 // places, it's pivotal. Until the traveller answers ("Önemli, kalsın" / "Sorun değil"), it costs points
 // only, never rules the place out; the card asks, with a question ready for the host.
 import { decideGroup, findingWeight, type DecisionContext, type GroupDecision } from "./decision";
+import { liveLabels, nReviews } from "./i18nText";
 import { listingKeyOf } from "./items";
 import { acceptKey, evidenceOf, monthLabel, questionFor } from "./listing";
 import type { Finding, Item } from "./types";
@@ -30,13 +31,13 @@ const MOVE = 2;
 /** Points the one thing must weigh on the option's score (options level within a point or two flip on anything). */
 const MIN_GAIN = 3;
 
-const SOURCE_WORDS: Record<Finding["source"], string> = {
-  reviews: "yorumlarda",
-  description: "açıklamada",
-  amenities: "olanaklarda",
-  policy: "kurallarda",
-  other: "sayfada",
-};
+const SOURCE_WORDS: Readonly<Record<Finding["source"], string>> = liveLabels({
+  reviews: ["yorumlarda", "in reviews"],
+  description: ["açıklamada", "in the description"],
+  amenities: ["olanaklarda", "in the amenities"],
+  policy: ["kurallarda", "in the rules"],
+  other: ["sayfada", "on the page"],
+});
 
 /**
  * The findings the ranking of this group hangs on, the biggest moves first, at most `max`. Recomputed
@@ -87,7 +88,7 @@ export function pivotalFindings(d: GroupDecision, ctx: DecisionContext, max = 2)
 function pivotOf(item: Item, listingKey: string, f: Finding, from: number, to: number, ctx: DecisionContext): Pivot {
   const listing = ctx.listings.get(listingKey)!;
   const e = evidenceOf(f, listing, ctx.today);
-  const evidence = e.count ? `${e.count} yorum${e.newest ? `, ${monthLabel(e.newest)}` : ""}` : SOURCE_WORDS[f.source];
+  const evidence = e.count ? `${nReviews(e.count)}${e.newest ? `, ${monthLabel(e.newest)}` : ""}` : SOURCE_WORDS[f.source];
   // The guests' own words (the newest), else the page's: what the host is asked about is on the page.
   const said = [...e.reviews].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))[0]?.text ?? f.quotes[0] ?? f.text;
   return { itemId: item.id, listingKey, finding: f, from, to, evidence, question: questionFor(f), hostMessage: hostMessage(item, f, said, e.count > 0) };
@@ -96,11 +97,11 @@ function pivotOf(item: Item, listingKey: string, f: Finding, from: number, to: n
 /** The question in English, for the host: what the Turkish question asks. */
 const HOST_QUESTIONS: [RegExp, string][] = [
   [/iskele|scaffold/i, "Is the scaffolding still up?"],
-  [/inşaat|şantiye|construction|building work/i, "Is the construction work still going on?"],
-  [/tadilat|renovasyon|renovat/i, "Is the renovation finished?"],
-  [/tahtakurusu|pire|böcek|haşere|hamamböce|bed ?bugs?|cockroach/i, "Has the pest problem been dealt with?"],
+  [/inşaat|şantiye|construction|building work|road ?works/i, "Is the construction work still going on?"],
+  [/tadilat|renovasyon|renovat|refurb/i, "Is the renovation finished?"],
+  [/tahtakurusu|pire|böcek|haşere|hamamböce|bed ?bugs?|cockroach|roach|\bfleas?\b|\bpests?\b|insects?|\bbugs\b/i, "Has the pest problem been dealt with?"],
   [/havuz|pool/i, "Is the pool open?"],
-  [/klima|air ?con/i, "Is the air conditioning working?"],
+  [/klima|air ?con|\ba\/c\b/i, "Is the air conditioning working?"],
   [/asansör|elevator|\blift\b/i, "Is the lift working?"],
   [/sıcak su|hot water/i, "Is the hot water working properly?"],
   [/wi-?fi|internet/i, "Is the Wi-Fi working well?"],

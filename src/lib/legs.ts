@@ -4,6 +4,8 @@
 // what the traveller decides for a transfer (how they'll go, that it's arranged, a note) is stored,
 // on the trip, by leg key; the key names the day and the cities, not the hotels, so a plan survives
 // switching hotels.
+import { L } from "./i18n";
+import { capitalize, liveLabels, nOptions } from "./i18nText";
 import { formatDateRange, listingKeyOf } from "./items";
 import { addDays, arrivalDay, cityKeyOf, departureDay, knownPlace, placeKeyOf, sameCity, type OptionGroup, type Plan, type StayBlock } from "./plan";
 import { isLocalTransfer, isRental, itemText, LOCAL, RENTAL } from "./travelKinds";
@@ -12,17 +14,17 @@ import type { HouseRules, Item, LegChoice, LegMode, Listing, Trip } from "./type
 export type LegKind = "arrival" | "move" | "change" | "departure";
 export type LegStatus = "booked" | "chosen" | "planned" | "options" | "empty";
 
-export const MODE_LABELS: Record<LegMode, string> = {
-  flight: "Uçak",
-  train: "Tren",
-  bus: "Otobüs",
-  ferry: "Feribot",
-  metro: "Metro",
-  taxi: "Taksi",
-  transfer: "Transfer",
-  car: "Araba",
-  walk: "Yürüyüş",
-};
+export const MODE_LABELS: Readonly<Record<LegMode, string>> = liveLabels({
+  flight: ["Uçak", "Flight"],
+  train: ["Tren", "Train"],
+  bus: ["Otobüs", "Bus"],
+  ferry: ["Feribot", "Ferry"],
+  metro: ["Metro", "Metro"],
+  taxi: ["Taksi", "Taxi"],
+  transfer: ["Transfer", "Transfer"],
+  car: ["Araba", "Car"],
+  walk: ["Yürüyüş", "Walk"],
+});
 
 /** Modes that leave from a station: a move by one of them needs a transfer at both ends. */
 const FROM_HUB: LegMode[] = ["flight", "train", "bus", "ferry"];
@@ -137,20 +139,25 @@ const hhmm = (m: number) => {
 const dayDiff = (a: string, b: string) => Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86_400_000);
 const fmtDay = (d: string) => formatDateRange(d, null);
 
-const HUB_NAMES: Record<string, string> = { flight: "havalimanı", train: "gar", bus: "otogar", ferry: "iskele" };
+const HUB_NAMES: Readonly<Partial<Record<string, string>>> = liveLabels({
+  flight: ["havalimanı", "airport"],
+  train: ["gar", "station"],
+  bus: ["otogar", "bus station"],
+  ferry: ["iskele", "ferry port"],
+});
 
 /** "OPO havalimanı", "Porto Campanhã", "Porto gar"... from where the saved trip departs or lands. */
 function hubLabel(t: Travel | null, end: "from" | "to", city: string | null, mode: LegMode | null): string {
   const item = t ? (t.settled ?? t.items[0]) : null;
   const place = item?.flight?.[end]?.trim() || null;
   const kind = mode && HUB_NAMES[mode];
-  if (!kind) return end === "to" ? "Varış" : "Dönüş";
+  if (!kind) return end === "to" ? L("Varış", "Arrival") : L("Dönüş", "Return");
   if (place) {
     if (/^[A-Z]{3}$/.test(place)) return `${place} ${kind}`; // an airport code
     if (mode !== "flight" || /havaliman|airport|aeroporto|aeropuerto|a[ée]roport|flughafen/i.test(place)) return place;
-    return `${place} havalimanı`;
+    return `${place} ${HUB_NAMES.flight}`;
   }
-  return city ? `${city} ${kind}` : kind[0].toLocaleUpperCase("tr") + kind.slice(1);
+  return city ? `${city} ${kind}` : capitalize(kind);
 }
 
 // --- stays and their house rules -------------------------------------------------------------------------
@@ -159,7 +166,7 @@ const stayOf = (b: StayBlock): Item | null => (b.kind === "open" ? null : b.item
 
 function pointOf(b: StayBlock): LegPoint {
   const item = stayOf(b);
-  return { label: item?.name ?? (b.city ? `${b.city} konaklaması` : "Konaklama"), city: b.city, item };
+  return { label: item?.name ?? (b.city ? L(`${b.city} konaklaması`, `${b.city} stay`) : L("Konaklama", "Stay")), city: b.city, item };
 }
 
 interface Times {
@@ -180,7 +187,11 @@ function timesOf(item: Item | null, listings: Map<string, Listing>): Times {
   };
 }
 
-const said = (stated: boolean) => (stated ? "sayfada yazıyor" : "genelde");
+const said = (stated: boolean) => (stated ? ON_PAGE() : L("genelde", "usually"));
+/** "(sayfada yazıyor)": a fact the stay's page states. */
+const ON_PAGE = () => L("sayfada yazıyor", "on the page");
+
+const SHUTTLE = () => L("Havalimanı servisi var (sayfada yazıyor); saatini ve ücretini sor.", "There's an airport shuttle (on the page); ask for its times and price.");
 
 /** A stay's check-in and check-out hours, and whether its page says them (otherwise the usual 15:00 / 11:00). */
 export function stayTimes(item: Item | null, listings: Map<string, Listing> | undefined) {
@@ -219,17 +230,17 @@ const legacyKey = (date: string, kind: LegKind, from: string | null, to: string 
 
 function status(options: Item[], choice: LegChoice | null, mode: LegMode | null): Pick<Leg, "status" | "statusText"> {
   const label = mode ? MODE_LABELS[mode] : null;
-  if (options.some((i) => i.status === "booked")) return { status: "booked", statusText: "Rezerve ✓" };
-  if (choice?.booked) return { status: "booked", statusText: label ? `${label} · ayarlandı ✓` : "Ayarlandı ✓" };
+  if (options.some((i) => i.status === "booked")) return { status: "booked", statusText: L("Rezerve ✓", "Booked ✓") };
+  if (choice?.booked) return { status: "booked", statusText: label ? `${label} · ${L("ayarlandı", "arranged")} ✓` : L("Ayarlandı ✓", "Arranged ✓") };
   const chosen = options.find((i) => i.status === "chosen");
   // Said in the chat ("11'ine taksi"): planned, like any plan said there.
-  if (chosen?.origin === "chat") return { status: "planned", statusText: label ? `${label} · planlanıyor` : "Planlanıyor" };
-  if (chosen) return { status: "chosen", statusText: "Seçildi · rezerve edilmedi" };
+  if (chosen?.origin === "chat") return { status: "planned", statusText: label ? `${label} · ${L("planlanıyor", "planning")}` : L("Planlanıyor", "Planning") };
+  if (chosen) return { status: "chosen", statusText: L("Seçildi · rezerve edilmedi", "Chosen · not booked") };
   if (choice?.mode && label) {
-    return { status: "planned", statusText: BOOKABLE.includes(choice.mode) ? `${label} · rezerve edilmedi` : `${label} · planlandı` };
+    return { status: "planned", statusText: `${label} · ${BOOKABLE.includes(choice.mode) ? L("rezerve edilmedi", "not booked") : L("planlandı", "planned")}` };
   }
-  if (options.length) return { status: "options", statusText: `${options.length} seçenek` };
-  return { status: "empty", statusText: "Boş" };
+  if (options.length) return { status: "options", statusText: nOptions(options.length) };
+  return { status: "empty", statusText: L("Boş", "Open") };
 }
 
 /** Where a trip leaves from and goes to, as city keys (its settled option's, else what its options mostly say). */
@@ -348,7 +359,10 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
     } else if (stayOf(a) && stayOf(b) && listingKeyOf(stayOf(a)!) !== listingKeyOf(stayOf(b)!)) {
       const [out, into] = [timesOf(stayOf(a), listings), timesOf(stayOf(b), listings)];
       const notes = [
-        `Çıkış ${out.checkOut} (${said(out.stated.checkOut)}), yeni yerde giriş ${into.checkIn} (${said(into.stated.checkIn)}): arada bavulları ilk yerde bırakabilir misin sor.`,
+        L(
+          `Çıkış ${out.checkOut} (${said(out.stated.checkOut)}), yeni yerde giriş ${into.checkIn} (${said(into.stated.checkIn)}): arada bavulları ilk yerde bırakabilir misin sor.`,
+          `Check-out ${out.checkOut} (${said(out.stated.checkOut)}), check-in at the new place ${into.checkIn} (${said(into.stated.checkIn)}): ask whether you can leave your bags at the first place in between.`,
+        ),
       ];
       here.push(local("change", date, i + 1, from, to, {}, notes));
     }
@@ -393,28 +407,53 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
     const t = timesOf(to.item, listings);
     const firstNight = addDays(date, -offset);
     if (settled && offset < 0) {
-      notes.push(`Varış ${fmtDay(date)} ama ilk gece ${fmtDay(firstNight)}: ${fmtDay(date)} gecesi için yer yok.`);
+      notes.push(
+        L(
+          `Varış ${fmtDay(date)} ama ilk gece ${fmtDay(firstNight)}: ${fmtDay(date)} gecesi için yer yok.`,
+          `You arrive ${fmtDay(date)} but the first night is ${fmtDay(firstNight)}: nowhere to stay the night of ${fmtDay(date)}.`,
+        ),
+      );
     } else if (settled && offset > 0) {
-      notes.push(`İlk gece ${fmtDay(firstNight)} ama varış ${fmtDay(date)}: ${fmtDay(firstNight)} gecesi ${to.item ? "boşa ödeniyor" : "gerekmiyor olabilir"}.`);
+      notes.push(
+        L(
+          `İlk gece ${fmtDay(firstNight)} ama varış ${fmtDay(date)}: ${fmtDay(firstNight)} gecesi ${to.item ? "boşa ödeniyor" : "gerekmiyor olabilir"}.`,
+          `The first night is ${fmtDay(firstNight)} but you arrive ${fmtDay(date)}: the night of ${fmtDay(firstNight)} ${to.item ? "is paid for nothing" : "may not be needed"}.`,
+        ),
+      );
     } else if (lands && minutes(lands) < 6 * 60) {
-      notes.push(`Varış gece ${lands}; ilk gece ${fmtDay(date)}. Varışla giriş arasında yerin yok: ${fmtDay(addDays(date, -1))} gecesini de ekle ya da gece girişini sor.`);
+      notes.push(
+        L(
+          `Varış gece ${lands}; ilk gece ${fmtDay(date)}. Varışla giriş arasında yerin yok: ${fmtDay(addDays(date, -1))} gecesini de ekle ya da gece girişini sor.`,
+          `You land at ${lands} at night; the first night is ${fmtDay(date)}. Nowhere to stay between landing and check-in: add the night of ${fmtDay(addDays(date, -1))} or ask about a night check-in.`,
+        ),
+      );
     }
     // Check-in times matter only when the room becomes theirs that same day.
     if (lands && minutes(lands) >= 6 * 60 && offset === 0) {
       const ready = minutes(lands) + TRANSFER_MIN;
       if (minutes(t.checkIn) - ready >= 120) {
-        notes.push(`Varış ${lands}, giriş en erken ${t.checkIn} (${said(t.stated.checkIn)}): bavulları erken bırakmayı ya da erken girişi sor.`);
+        notes.push(
+          L(
+            `Varış ${lands}, giriş en erken ${t.checkIn} (${said(t.stated.checkIn)}): bavulları erken bırakmayı ya da erken girişi sor.`,
+            `You land at ${lands}, check-in from ${t.checkIn} (${said(t.stated.checkIn)}): ask about dropping your bags early or an early check-in.`,
+          ),
+        );
       }
       const until = t.house?.checkInUntil ?? null;
       if (t.house?.selfCheckIn) {
-        if (ready >= 21 * 60) notes.push(`Geç varış (${lands}) sorun değil: kendi kendine giriş var (sayfada yazıyor).`);
+        if (ready >= 21 * 60) notes.push(L(`Geç varış (${lands}) sorun değil: kendi kendine giriş var (sayfada yazıyor).`, `Arriving late (${lands}) is fine: there's self check-in (on the page).`));
       } else if (until && ready > minutes(until)) {
-        notes.push(`Giriş en geç ${until} (sayfada yazıyor), varış ${lands}: geç girişi önceden ayarla.`);
+        notes.push(L(`Giriş en geç ${until} (sayfada yazıyor), varış ${lands}: geç girişi önceden ayarla.`, `Check-in until ${until} (on the page), you land at ${lands}: arrange a late check-in ahead.`));
       } else if (ready >= 22 * 60) {
-        notes.push(`Geç varış (${lands}): girişin nasıl olacağını önceden sor; bu saatte toplu taşıma seyrek olabilir.`);
+        notes.push(
+          L(
+            `Geç varış (${lands}): girişin nasıl olacağını önceden sor; bu saatte toplu taşıma seyrek olabilir.`,
+            `Late arrival (${lands}): ask ahead how check-in works; public transport may be sparse at that hour.`,
+          ),
+        );
       }
     }
-    if (mode === "flight" && t.house?.airportShuttle) notes.push("Havalimanı servisi var (sayfada yazıyor); saatini ve ücretini sor.");
+    if (mode === "flight" && t.house?.airportShuttle) notes.push(SHUTTLE());
     return local("arrival", date, slot, { label: hub, city: to.city, item: null }, to, { after: lands }, notes, mode, travel, keyDate);
   }
 
@@ -429,28 +468,59 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
     const t = timesOf(from.item, listings);
     const checkout = addDays(date, -offset);
     if (settled && offset > 0 && !(leaves && minutes(leaves) < 6 * 60)) {
-      notes.push(`Çıkış ${fmtDay(checkout)} ama gidiş ${fmtDay(date)}: ${fmtDay(checkout)} gecesi için yer yok.`);
+      notes.push(
+        L(
+          `Çıkış ${fmtDay(checkout)} ama gidiş ${fmtDay(date)}: ${fmtDay(checkout)} gecesi için yer yok.`,
+          `Check-out ${fmtDay(checkout)} but you leave ${fmtDay(date)}: nowhere to stay the night of ${fmtDay(checkout)}.`,
+        ),
+      );
     } else if (settled && offset > 0) {
-      notes.push(`Gidiş gece ${leaves} (${fmtDay(date)}): çıkıştan sonraki akşamı ve geceyi nerede geçireceğini planla, bavul emaneti sor.`);
+      notes.push(
+        L(
+          `Gidiş gece ${leaves} (${fmtDay(date)}): çıkıştan sonraki akşamı ve geceyi nerede geçireceğini planla, bavul emaneti sor.`,
+          `You leave at ${leaves} at night (${fmtDay(date)}): plan where to spend the evening and night after check-out, and ask about luggage storage.`,
+        ),
+      );
     } else if (settled && offset < 0) {
-      notes.push(`Gidiş ${fmtDay(date)} ama son gece ${fmtDay(date)}: o gece ${from.item ? "boşa ödeniyor" : "gerekmiyor"}.`);
+      notes.push(
+        L(
+          `Gidiş ${fmtDay(date)} ama son gece ${fmtDay(date)}: o gece ${from.item ? "boşa ödeniyor" : "gerekmiyor"}.`,
+          `You leave ${fmtDay(date)} but the last night is ${fmtDay(date)}: that night ${from.item ? "is paid for nothing" : "isn't needed"}.`,
+        ),
+      );
     } else if (settled && offset === 0 && leaves && minutes(leaves) < 6 * 60) {
-      notes.push(`Gidiş gece ${leaves}: ${fmtDay(addDays(date, -1))} gecesinin yalnız birkaç saati kullanılır; o akşam yola çıkmayı ya da havalimanına yakın kalmayı düşün.`);
+      notes.push(
+        L(
+          `Gidiş gece ${leaves}: ${fmtDay(addDays(date, -1))} gecesinin yalnız birkaç saati kullanılır; o akşam yola çıkmayı ya da havalimanına yakın kalmayı düşün.`,
+          `You leave at ${leaves} at night: only a few hours of the night of ${fmtDay(addDays(date, -1))} get used; think about setting off that evening or staying near the airport.`,
+        ),
+      );
     }
     if (leaves && by && buffer) {
       const byMin = minutes(leaves) - buffer;
       if (byMin < 7 * 60 && offset === 0) {
         notes.push(
-          `Gidiş ${leaves}: ${by} civarı ${mode === "flight" ? "havalimanında" : "istasyonda"} olmalısın; bu saatte metro ve otobüs çalışmıyor olabilir, taksi ya da transferi önceden ayarla.`,
+          L(
+            `Gidiş ${leaves}: ${by} civarı ${mode === "flight" ? "havalimanında" : "istasyonda"} olmalısın; bu saatte metro ve otobüs çalışmıyor olabilir, taksi ya da transferi önceden ayarla.`,
+            `Leaving ${leaves}: be at the ${mode === "flight" ? "airport" : "station"} around ${by}; the metro and buses may not run at that hour, so book a taxi or transfer ahead.`,
+          ),
         );
       }
       const gap = byMin - TRANSFER_MIN - minutes(t.checkOut);
       if (offset === 0 && gap >= 4 * 60) {
-        const storage = t.house?.luggageStorage ? "bavul emaneti var (sayfada yazıyor)" : "bavul emaneti ya da geç çıkış sor";
-        notes.push(`Çıkış ${t.checkOut} (${said(t.stated.checkOut)}), gidiş ${leaves}: arada ~${Math.round(gap / 60)} saat boşluk; ${storage}.`);
+        const storage = t.house?.luggageStorage
+          ? L("bavul emaneti var (sayfada yazıyor)", "there's luggage storage (on the page)")
+          : L("bavul emaneti ya da geç çıkış sor", "ask about luggage storage or a late check-out");
+        const hours = Math.round(gap / 60);
+        notes.push(
+          L(
+            `Çıkış ${t.checkOut} (${said(t.stated.checkOut)}), gidiş ${leaves}: arada ~${hours} saat boşluk; ${storage}.`,
+            `Check-out ${t.checkOut} (${said(t.stated.checkOut)}), leaving ${leaves}: ~${hours} hours in between; ${storage}.`,
+          ),
+        );
       }
     }
-    if (mode === "flight" && t.house?.airportShuttle) notes.push("Havalimanı servisi var (sayfada yazıyor); saatini ve ücretini sor.");
+    if (mode === "flight" && t.house?.airportShuttle) notes.push(SHUTTLE());
     return local("departure", date, slot, from, { label: hub, city: from.city, item: null }, { before: by }, notes, mode, travel, keyDate);
   }
 }
@@ -461,8 +531,13 @@ export function legTitle(leg: Leg): string {
 }
 
 /** The leg's timing in words ("10:05 inişten sonra", "05:10'a kadar havalimanında"). */
-const STAY_WORDS: Partial<Record<string, string>> = { apartment: "Daire", house: "Ev", hostel: "Hostel", guesthouse: "Pansiyon" };
-const stayWord = (p: LegPoint) => STAY_WORDS[p.item?.metrics?.stayKind ?? ""] ?? "Otel";
+const STAY_WORDS: Readonly<Partial<Record<string, string>>> = liveLabels({
+  apartment: ["Daire", "Apartment"],
+  house: ["Ev", "House"],
+  hostel: ["Hostel", "Hostel"],
+  guesthouse: ["Pansiyon", "Guesthouse"],
+});
+const stayWord = (p: LegPoint) => STAY_WORDS[p.item?.metrics?.stayKind ?? ""] ?? L("Otel", "Hotel");
 
 /**
  * A transfer in a few words, like a ticket: "Havalimanı → Otel", "Daire → Gar", "Otel değişimi". The
@@ -470,16 +545,19 @@ const stayWord = (p: LegPoint) => STAY_WORDS[p.item?.metrics?.stayKind ?? ""] ??
  */
 export function legShortTitle(leg: Leg): string {
   if (leg.kind === "move") return `${leg.from.city ?? leg.from.label} → ${leg.to.city ?? leg.to.label}`;
-  if (leg.kind === "change") return `${stayWord(leg.from)} değişimi`;
+  if (leg.kind === "change") return L(`${stayWord(leg.from)} değişimi`, `${stayWord(leg.from)} change`);
   const word = leg.via && HUB_NAMES[leg.via];
-  const hub = word ? word[0].toLocaleUpperCase("tr") + word.slice(1) : leg.kind === "arrival" ? leg.from.label : leg.to.label;
+  const hub = word ? capitalize(word) : leg.kind === "arrival" ? leg.from.label : leg.to.label;
   return leg.kind === "arrival" ? `${hub} → ${stayWord(leg.to)}` : `${stayWord(leg.from)} → ${hub}`;
 }
 
 export function legTiming(leg: Leg): string | null {
   if (leg.kind === "move") return leg.after && leg.before ? `${leg.after} → ${leg.before}` : null;
-  if (leg.after) return `Varış ${leg.after}`;
-  if (leg.before) return `En geç ${leg.before} ${leg.via === "flight" ? "havalimanında" : "istasyonda"}`;
+  if (leg.after) return `${L("Varış", "Arrives")} ${leg.after}`;
+  if (leg.before) {
+    const flight = leg.via === "flight";
+    return L(`En geç ${leg.before} ${flight ? "havalimanında" : "istasyonda"}`, `At the ${flight ? "airport" : "station"} by ${leg.before}`);
+  }
   return null;
 }
 
