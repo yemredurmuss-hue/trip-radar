@@ -17,6 +17,7 @@ import {
   type OptionResult,
   type Part,
 } from "../lib/decision";
+import { L, locale } from "../lib/i18n";
 import { CATEGORY_LABELS, formatPrice } from "../lib/items";
 import { prosConsFor } from "../lib/proscons";
 import type { DecisionContext } from "../lib/decision";
@@ -68,7 +69,11 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
   async function choose(option: OptionResult) {
     const chosen = option.item.status === "chosen";
     await (await db()).put("items", { ...option.item, status: chosen ? "saved" : "chosen", statusAt: Date.now(), updatedAt: Date.now() });
-    await addEvent(option.item.tripId, `${option.item.name} ${chosen ? "seçeneklere geri alındı" : "plana alındı"}`);
+    const name = option.item.name;
+    await addEvent(
+      option.item.tripId,
+      chosen ? L(`${name} seçeneklere geri alındı`, `${name} moved back to options`) : L(`${name} plana alındı`, `${name} added to the plan`),
+    );
     notifyChanged();
   }
 
@@ -79,18 +84,18 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
   }, [onClose]);
 
   return (
-    <div className="compare-modal" role="dialog" aria-label="Karşılaştırma" onClick={onClose}>
+    <div className="compare-modal" role="dialog" aria-label={L("Karşılaştırma", "Comparison")} onClick={onClose}>
       <div className="compare-card" onClick={(e) => e.stopPropagation()}>
-        <button className="close" onClick={onClose} aria-label="Kapat">
+        <button className="close" onClick={onClose} aria-label={L("Kapat", "Close")}>
           ×
         </button>
-        <div className="muted">Karşılaştırma</div>
+        <div className="muted">{L("Karşılaştırma", "Comparison")}</div>
         <h2>{[CATEGORY_LABELS[d.category], title].filter(Boolean).join(" · ")}</h2>
 
         <div className={`verdict-box status-${d.status}`}>
           <div className="verdict-main">{card && !card.tie ? `${card.kicker}: ${card.pick.item.name}` : d.summary}</div>
           {card && <div className="verdict-because">{card.because}</div>}
-          {card?.unless && <div className="verdict-because">Ama {card.unless.charAt(0).toLocaleLowerCase("tr") + card.unless.slice(1)}</div>}
+          {card?.unless && <div className="verdict-because">{L("Ama", "But")} {card.unless.charAt(0).toLocaleLowerCase(locale()) + card.unless.slice(1)}</div>}
           {card?.budget && <div className="verdict-because muted">{card.budget}</div>}
           <AiVerdict decision={d} />
         </div>
@@ -100,7 +105,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
             <thead>
               <tr>
                 <th className="crit-col">
-                  <span className="muted">Kriter · önemi</span>
+                  <span className="muted">{L("Kriter · önemi", "What counts · how much")}</span>
                 </th>
                 {columns.map((o) => (
                   <th key={o.item.id} className={o === d.winner ? "win" : ""}>
@@ -110,14 +115,14 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
                     <div className="muted opt-provider">{o.item.provider ?? ""}</div>
                     <div className="opt-score">
                       {single ? (
-                        <span className="muted">Puan, karşılaştırınca çıkar</span>
+                        <span className="muted">{L("Puan, karşılaştırınca çıkar", "Scored once there's something to compare")}</span>
                       ) : o.score != null ? (
                         <>
                           <span className={`score-big${o === d.winner ? " best" : ""}`}>{o.score}</span>
-                          {o.confidence < 0.85 && <span className="muted conf"> · bilgi %{Math.round(o.confidence * 100)}</span>}
+                          {o.confidence < 0.85 && <span className="muted conf">{L(` · bilgi %${Math.round(o.confidence * 100)}`, ` · info ${Math.round(o.confidence * 100)}%`)}</span>}
                         </>
                       ) : (
-                        <span className="tone-warning">Puan yok</span>
+                        <span className="tone-warning">{L("Puan yok", "No score")}</span>
                       )}
                     </div>
                     <button
@@ -125,7 +130,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
                       disabled={o.item.status === "booked"}
                       onClick={() => void choose(o)}
                     >
-                      {o.item.status === "booked" ? "Rezerve ✓" : o.item.status === "chosen" ? "Planda ✓" : "Plana al"}
+                      {o.item.status === "booked" ? L("Rezerve ✓", "Booked ✓") : o.item.status === "chosen" ? L("Planda ✓", "In plan ✓") : L("Plana al", "Add to plan")}
                     </button>
                   </th>
                 ))}
@@ -135,7 +140,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
               {ctx && (
                 <tr className="pc-row">
                   <th className="crit-col">
-                    <span className="muted">Artılar · eksiler</span>
+                    <span className="muted">{L("Artılar · eksiler", "Pros · cons")}</span>
                   </th>
                   {columns.map((o) => {
                     const pc = prosConsFor(o.item, d, ctx.listings, ctx);
@@ -149,11 +154,11 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
                     <div>{CRITERION_LABELS[c]}</div>
                     <LevelPicker level={levelOf(c)} onChange={(level) => void setLevel(c, level)} />
                     {ctx && levelSource(trip, d.category, c, inferred, saidOf(ctx)) === "said" && (
-                      <div className="muted level-note">notundan · seçersen senin ayarın olur</div>
+                      <div className="muted level-note">{L("notundan · seçersen senin ayarın olur", "from your note · pick one to make it yours")}</div>
                     )}
                     {inferred?.has(inferredKey(d.category, c)) && (
                       <div className="muted level-note" title={inferred.get(inferredKey(d.category, c))!.evidence}>
-                        sezgi · seçersen senin ayarın olur
+                        {L("sezgi · seçersen senin ayarın olur", "a guess · pick one to make it yours")}
                       </div>
                     )}
                   </th>
@@ -164,7 +169,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
               ))}
               {columns.some((o) => o.missing.length) && (
               <tr className="missing-row">
-                <th className="crit-col muted">Eksik bilgi</th>
+                <th className="crit-col muted">{L("Eksik bilgi", "Missing info")}</th>
                 {columns.map((o) => (
                   <td key={o.item.id} className="muted">
                     {o.missing.length ? o.missing.join(", ") : "—"}
@@ -177,19 +182,20 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
         </div>
         {unmeasured.length > 0 && (
           <p className="muted small-note">
-            Bilgi olmadığı için karşılaştırılamadı: {unmeasured.map((c) => CRITERION_LABELS[c].toLowerCase()).join(", ")}.
+            {L("Bilgi olmadığı için karşılaştırılamadı", "Couldn't compare, no info")}:{" "}
+            {unmeasured.map((c) => CRITERION_LABELS[c].toLowerCase()).join(", ")}.
           </p>
         )}
         {excluded.map((o) => (
           <p key={o.item.id} className="muted small-note">
-            {o.item.name} karşılaştırmaya alınmadı: {o.excluded}.
+            {L(`${o.item.name} karşılaştırmaya alınmadı: ${o.excluded}.`, `${o.item.name} left out of the comparison: ${o.excluded}.`)}
           </p>
         ))}
 
         <div className="why-grid">
           {d.reasons.length > 0 && (
             <section>
-              <h3>{d.winner ? `Neden ${d.winner.item.name}?` : "Öndekinin artıları"}</h3>
+              <h3>{d.winner ? L(`Neden ${d.winner.item.name}?`, `Why ${d.winner.item.name}?`) : L("Öndekinin artıları", "What the leader has going for it")}</h3>
               <ul>
                 {d.reasons.map((r) => (
                   <li key={r.key ?? r.criterion}>
@@ -201,7 +207,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
           )}
           {d.tradeoffs.length > 0 && (
             <section>
-              <h3>Karşılığında</h3>
+              <h3>{L("Karşılığında", "In return")}</h3>
               <ul>
                 {d.tradeoffs.map((r) => (
                   <li key={r.key ?? r.criterion}>
@@ -213,13 +219,13 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
           )}
           {d.flips.length > 0 && (
             <section>
-              <h3>Sonucu ne değiştirir?</h3>
+              <h3>{L("Sonucu ne değiştirir?", "What would change the result?")}</h3>
               <ul>
                 {d.flips.map((f) => (
                   <li key={f.criterion}>
-                    {f.label} çok önemli olursa → <b>{f.winner}</b>{" "}
+                    {L(`${f.label} çok önemli olursa →`, `If ${f.label.toLocaleLowerCase(locale())} matters a lot →`)} <b>{f.winner}</b>{" "}
                     <button className="link-btn" onClick={() => void setLevel(f.criterion, 4)}>
-                      dene
+                      {L("dene", "try it")}
                     </button>
                   </li>
                 ))}
@@ -228,7 +234,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
           )}
           {d.analysis && d.analysis.risks.length > 0 && (
             <section>
-              <h3>Rezervasyondan önce kontrol et</h3>
+              <h3>{L("Rezervasyondan önce kontrol et", "Check before you book")}</h3>
               <ul>
                 {d.analysis.risks.map((r) => (
                   <li key={r}>{r}</li>
@@ -240,7 +246,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
 
         {d.category === "stay" && (
           <div className="amenities">
-            <h3>İstediğin olanaklar</h3>
+            <h3>{L("İstediğin olanaklar", "Amenities you want")}</h3>
             <div className="chips">
               {AMENITIES.map((a) => (
                 <button key={a} className={`chip${trip.wantedAmenities?.includes(a) ? " on" : ""}`} onClick={() => void toggleAmenity(a)}>
@@ -253,14 +259,19 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
 
         <div className="compare-foot">
           <span className="muted">
-            Puanları kaydettiğin sayfalardaki bilgilerden kod hesaplar; önemlerini sen belirlersin. AI değerlendirmesi düşük ağırlıklı ayrı bir kriterdir. Son karar senin.
+            {L(
+              "Puanları kaydettiğin sayfalardaki bilgilerden kod hesaplar; önemlerini sen belirlersin. AI değerlendirmesi düşük ağırlıklı ayrı bir kriterdir. Son karar senin.",
+              "Scores are worked out from the pages you saved; you decide what matters. The AI review is a separate, low-weight criterion. The final call is yours.",
+            )}
           </span>
           <button className="link-btn" onClick={() => void updateTrip(trip.id, (t) => resetPriorities(t, d.category))}>
-            Önemleri varsayılana döndür
+            {L("Önemleri varsayılana döndür", "Reset to default weights")}
           </button>
         </div>
         {trip.budget && (
-          <p className="muted small-note">Gezi bütçesi: {formatPrice(trip.budget.amount, trip.budget.currency)}</p>
+          <p className="muted small-note">
+            {L("Gezi bütçesi", "Trip budget")}: {formatPrice(trip.budget.amount, trip.budget.currency)}
+          </p>
         )}
       </div>
     </div>
@@ -268,13 +279,13 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
 }
 
 function Cell({ part, bar }: { part: Part | undefined; bar: boolean }) {
-  if (!part || part.s == null) return <td className="muted">bilinmiyor</td>;
+  if (!part || part.s == null) return <td className="muted">{L("bilinmiyor", "unknown")}</td>;
   const pct = Math.round(part.s * 100);
   return (
     <td>
       <div className="cell-value">{part.display}</div>
       {bar && (
-        <div className="bar" aria-label={`%${pct}`}>
+        <div className="bar" aria-label={L(`%${pct}`, `${pct}%`)}>
           <span style={{ width: `${Math.max(4, pct)}%` }} className={pct >= 75 ? "good" : pct >= 45 ? "mid" : "low"} />
         </div>
       )}
@@ -308,11 +319,20 @@ function AiVerdict({ decision }: { decision: GroupDecision }) {
     // The last good review stays visible (dated) while a new one is pending or the model is busy.
     return (
       <div className="ai-verdict">
-        <span className="ai-tag">AI yorumu · {new Date(previous.createdAt).toLocaleDateString("tr-TR")}</span> {previous.verdict}
+        <span className="ai-tag">
+          {L("AI yorumu", "AI review")} · {new Date(previous.createdAt).toLocaleDateString(locale())}
+        </span>{" "}
+        {previous.verdict}
         <div className="muted small-note">
           {hasKey === false
-            ? "Yeni bilgiler geldi; güncellemek için Ayarlar'dan ücretsiz Gemini anahtarı ekle."
-            : `Yeni bilgiler geldi; yorum güncelleniyor${decision.analysisFailure ? ` (son deneme: ${decision.analysisFailure.error})` : ""}.`}
+            ? L(
+                "Yeni bilgiler geldi; güncellemek için Ayarlar'dan ücretsiz Gemini anahtarı ekle.",
+                "There's new info. To update the review, add a free Gemini key in Settings.",
+              )
+            : L(
+                `Yeni bilgiler geldi; yorum güncelleniyor${decision.analysisFailure ? ` (son deneme: ${decision.analysisFailure.error})` : ""}.`,
+                `There's new info; updating the review${decision.analysisFailure ? ` (last try: ${decision.analysisFailure.error})` : ""}.`,
+              )}
         </div>
       </div>
     );
@@ -320,7 +340,7 @@ function AiVerdict({ decision }: { decision: GroupDecision }) {
   if (a) {
     return (
       <div className="ai-verdict">
-        <span className="ai-tag">AI yorumu</span> {a.verdict}
+        <span className="ai-tag">{L("AI yorumu", "AI review")}</span> {a.verdict}
         {a.reasons.length > 0 && (
           <ul>
             {a.reasons.map((r) => (
@@ -333,17 +353,17 @@ function AiVerdict({ decision }: { decision: GroupDecision }) {
     );
   }
   if (hasKey === false) {
-    return <div className="ai-verdict muted">AI yorumu için Ayarlar'dan ücretsiz Gemini anahtarı ekle.</div>;
+    return <div className="ai-verdict muted">{L("AI yorumu için Ayarlar'dan ücretsiz Gemini anahtarı ekle.", "For an AI review, add a free Gemini key in Settings.")}</div>;
   }
   if (decision.analysisFailure) {
     return (
       <div className="ai-verdict muted">
-        AI yorumu alınamadı: {decision.analysisFailure.error}{" "}
+        {L("AI yorumu alınamadı", "Couldn't get the AI review")}: {decision.analysisFailure.error}{" "}
         <button className="link-btn" onClick={() => requestAnalysis(true)}>
-          Tekrar dene
+          {L("Tekrar dene", "Try again")}
         </button>
       </div>
     );
   }
-  return <div className="ai-verdict muted">AI yorumu hazırlanıyor…</div>;
+  return <div className="ai-verdict muted">{L("AI yorumu hazırlanıyor…", "Preparing the AI review…")}</div>;
 }

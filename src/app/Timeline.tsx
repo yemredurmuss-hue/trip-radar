@@ -12,6 +12,7 @@ import { removeItem, setHidden, updateTrip } from "./actions";
 import { Carousel } from "./Carousel";
 import { CategoryIcon, type IconName } from "./Icons";
 import { StatusBar, type Standing } from "./Status";
+import { L, locale } from "../lib/i18n";
 
 export type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => ReactNode;
 export type CardFor = (item: Item, group: Item[], decision?: GroupDecision, ranked?: Ranked, onCompare?: () => void) => ReactNode;
@@ -57,7 +58,7 @@ export function TimelineView({
 }) {
   const start = plan.range?.start ?? null;
   const n = plan.nights;
-  const parts = [n.booked && `${n.booked} rezerve`, n.chosen && `${n.chosen} seçildi`, n.open && `${n.open} açık`].filter(Boolean);
+  const parts = [n.booked && L(`${n.booked} rezerve`, `${n.booked} booked`), n.chosen && L(`${n.chosen} seçildi`, `${n.chosen} chosen`), n.open && L(`${n.open} açık`, `${n.open} open`)].filter(Boolean);
   const rentals = timeline.entries.filter((e): e is RentalEntry => e.kind === "rental");
   const render = { tripId, leg, renderGroup, card, settled, start, listings, today, rentals, onShow };
   return (
@@ -65,8 +66,8 @@ export function TimelineView({
       {mode === "plan" && (
         <>
           <div className="section-head">
-            <span>Gezi planı</span>
-            {n.total > 0 && <span className="muted">{[`${n.total} gece`, ...parts].join(" · ")}</span>}
+            <span>{L("Gezi planı", "Trip plan")}</span>
+            {n.total > 0 && <span className="muted">{[L(`${n.total} gece`, `${n.total} night${n.total === 1 ? "" : "s"}`), ...parts].join(" · ")}</span>}
           </div>
           {plan.notices.map((x) => (
             <div key={x.text} className="notice">
@@ -110,13 +111,13 @@ function Section({ section, ...render }: { section: TimelineSection } & RenderPr
   if (section.kind === "journey") return null; // the itinerary's; the plan's front has no days
   const range = section.range;
   return (
-    <section className="city-block" aria-label={section.city ?? "Konaklama"}>
+    <section className="city-block" aria-label={section.city ?? L("Konaklama", "Stay")}>
       <header className="city-head">
         <span className="city-no">{section.index}</span>
-        <b>{section.city ?? "Konaklama"}</b>
+        <b>{section.city ?? L("Konaklama", "Stay")}</b>
         {range && (
           <span className="muted">
-            {formatDateRange(range.start, range.end)} · {section.nights} gece
+            {formatDateRange(range.start, range.end)} · {L(`${section.nights} gece`, `${section.nights} night${section.nights === 1 ? "" : "s"}`)}
           </span>
         )}
       </header>
@@ -181,11 +182,11 @@ function Row({ entry, ...render }: { entry: TimelineEntry } & RenderProps) {
   );
 }
 
-const EVENT_LABELS: Partial<Record<Category, string>> = { activity: "Etkinlik", food: "Yemek", transport: "Ulaşım", other: "Plan" };
-const LEG_LABELS = { arrival: "Transfer", departure: "Transfer", change: "Otel değişimi", move: "Şehir değişimi" } as const;
-const TRAVEL_LABELS = { arrival: "Varış", move: "Şehir değişimi", departure: "Dönüş", other: "Ulaşım" } as const;
+const eventLabels = (): Partial<Record<Category, string>> => ({ activity: L("Etkinlik", "Activity"), food: L("Yemek", "Food"), transport: L("Ulaşım", "Transport"), other: L("Plan", "Plan") });
+const legLabels = () => ({ arrival: L("Transfer", "Transfer"), departure: L("Transfer", "Transfer"), change: L("Otel değişimi", "Hotel change"), move: L("Şehir değişimi", "City change") });
+const travelLabels = () => ({ arrival: L("Varış", "Arrival"), move: L("Şehir değişimi", "City change"), departure: L("Dönüş", "Return"), other: L("Ulaşım", "Transport") });
 
-const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("tr-TR", { weekday: "short", timeZone: "UTC" });
+const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(locale(), { weekday: "short", timeZone: "UTC" });
 
 /** What and when, beside the line: "Konaklama · 8–11 Ekim · 3 gece", "5. gün · 11 Ekim Cmt". */
 function Label({ entry, today }: { entry: TimelineEntry; today: string }) {
@@ -193,33 +194,33 @@ function Label({ entry, today }: { entry: TimelineEntry; today: string }) {
   let lines: (string | null)[];
   switch (entry.kind) {
     case "travel":
-      title = entry.role === "other" ? entry.title.split(" · ").at(-1)! : TRAVEL_LABELS[entry.role];
+      title = entry.role === "other" ? entry.title.split(" · ").at(-1)! : travelLabels()[entry.role];
       lines = [fmt(entry.date)];
       break;
     case "leg":
-      title = LEG_LABELS[entry.leg.kind];
+      title = legLabels()[entry.leg.kind];
       lines = [fmt(entry.date)];
       break;
     case "stay": {
       const b = entry.block;
-      title = "Konaklama";
-      lines = [entry.days ?? null, formatDateRange(b.range.start, b.range.end), `${b.nights} gece`];
+      title = L("Konaklama", "Stay");
+      lines = [entry.days ?? null, formatDateRange(b.range.start, b.range.end), L(`${b.nights} gece`, `${b.nights} night${b.nights === 1 ? "" : "s"}`)];
       break;
     }
     case "event":
-      title = EVENT_LABELS[entry.item.category] ?? "Plan";
-      lines = [fmt(entry.date), entry.dayNo ? `${entry.dayNo}. gün` : null];
+      title = eventLabels()[entry.item.category] ?? L("Plan", "Plan");
+      lines = [fmt(entry.date), entry.dayNo ? L(`${entry.dayNo}. gün`, `Day ${entry.dayNo}`) : null];
       break;
     case "day":
       title = entry.title;
       lines = [`${fmt(entry.date)} ${weekday(entry.date)}`];
       break;
     case "plan":
-      title = entry.items.every(isRental) ? "Araç kiralama" : "Planlar";
-      lines = ["gün belli değil"];
+      title = entry.items.every(isRental) ? L("Araç kiralama", "Car rental") : L("Planlar", "Plans");
+      lines = [L("gün belli değil", "no date yet")];
       break;
     case "rental":
-      title = "Araç kiralama";
+      title = L("Araç kiralama", "Car rental");
       lines = [formatDateRange(entry.date, entry.end)];
       break;
   }
@@ -229,7 +230,7 @@ function Label({ entry, today }: { entry: TimelineEntry; today: string }) {
       {lines.filter(Boolean).map((l) => (
         <span key={l}>{l}</span>
       ))}
-      {entry.kind === "day" && entry.date === today && <span className="today-chip">Bugün</span>}
+      {entry.kind === "day" && entry.date === today && <span className="today-chip">{L("Bugün", "Today")}</span>}
     </div>
   );
 }
@@ -274,12 +275,12 @@ function Entry({ entry, tripId, leg, renderGroup, card, settled }: { entry: Time
           ) : (
             <div className="empty-card">
               <span>
-                <b>{entry.subtitle ?? "Ulaşım"}</b>
-                <span className="muted">Henüz eklenmedi · sohbette "7 Ekim'de uçuşumuz var" demen yeter</span>
+                <b>{entry.subtitle ?? L("Ulaşım", "Transport")}</b>
+                <span className="muted">{L(`Henüz eklenmedi · sohbette "7 Ekim'de uçuşumuz var" demen yeter`, `Not added yet · just say "we fly on 7 October" in the chat`)}</span>
               </span>
               {entry.searchUrl && (
                 <a className="pill-btn outline" href={entry.searchUrl} target="_blank" rel="noreferrer">
-                  Uçuş ara ↗
+                  {L("Uçuş ara ↗", "Search flights ↗")}
                 </a>
               )}
             </div>
@@ -293,7 +294,7 @@ function Entry({ entry, tripId, leg, renderGroup, card, settled }: { entry: Time
     case "event":
       return <>{settled(entry.item)}</>;
     case "plan":
-      return <DayCard entry={{ ...entry, legs: [], title: "Planlar" }} leg={leg} card={card} settled={settled} />;
+      return <DayCard entry={{ ...entry, legs: [], title: L("Planlar", "Plans") }} leg={leg} card={card} settled={settled} />;
   }
 }
 
@@ -314,8 +315,8 @@ function DayCard({
   if (!entry.legs.length && !entry.items.length) {
     return (
       <div className="day-card empty">
-        <span>Boş gün</span>
-        <span className="muted">Bir plan kaydet ya da sohbette söyle</span>
+        <span>{L("Boş gün", "Free day")}</span>
+        <span className="muted">{L("Bir plan kaydet ya da sohbette söyle", "Save a plan or say it in the chat")}</span>
       </div>
     );
   }
@@ -355,8 +356,8 @@ function rowIcon(row: DayRow): IconName {
 
 /** What a small block says of where it stands, in a word or two. */
 function rowStatus(row: DayRow): string {
-  if (row.state === "decide") return row.status || "karar ver";
-  if (row.state === "open") return row.kind === "leg" ? "planlanmadı" : row.status || "planlanmadı";
+  if (row.state === "decide") return row.status || L("karar ver", "decide");
+  if (row.state === "open") return row.kind === "leg" ? L("planlanmadı", "not planned") : row.status || L("planlanmadı", "not planned");
   // Done says so in a word; what was booked is on the block itself.
   if (row.state === "done") return `✓ ${row.status.replace(/\s*✓$/, "")}`;
   return row.status;
@@ -379,14 +380,14 @@ function Itinerary({ sections, ...render }: { sections: TimelineSection[] } & Re
         }
         const stays = section.stays.map((st) => st.block);
         return (
-          <section key={section.key} className="it-city" aria-label={section.city ?? "Konaklama"}>
+          <section key={section.key} className="it-city" aria-label={section.city ?? L("Konaklama", "Stay")}>
             <header className="it-city-head">
-              <b>{section.city ?? "Konaklama"}</b>
+              <b>{section.city ?? L("Konaklama", "Stay")}</b>
               {section.range && <span className="muted num">{formatDateRange(section.range.start, section.range.end)}</span>}
               {stays.map((b) => (
                 <button key={b.range.start} className={`it-stay st-${b.kind}`} onClick={() => render.onShow(`stay:${b.range.start}`)}>
                   <CategoryIcon category="stay" size={15} />
-                  {b.kind === "open" ? (b.groups.length ? "konaklama · karar ver" : "konaklama · planlanmadı") : b.item.name}
+                  {b.kind === "open" ? (b.groups.length ? L("konaklama · karar ver", "stay · decide") : L("konaklama · planlanmadı", "stay · not planned")) : b.item.name}
                   {b.kind === "booked" && " ✓"}
                 </button>
               ))}
@@ -399,7 +400,7 @@ function Itinerary({ sections, ...render }: { sections: TimelineSection[] } & Re
               if (e.kind === "plan") {
                 return (
                   <p key={e.key} className="it-note">
-                    {e.items.map((i) => i.name).join(", ")} · gün belli değil
+                    {e.items.map((i) => i.name).join(", ")} · {L("gün belli değil", "no date yet")}
                   </p>
                 );
               }
@@ -421,7 +422,7 @@ function ItDay({ id, title, date, route, rows, ...render }: { id: string; title:
       <div className="it-day empty" id={id}>
         <b>{title}</b>
         <span className="muted num">{`${fmt(date)} ${weekday(date)}`}</span>
-        <span className="muted">boş gün</span>
+        <span className="muted">{L("boş gün", "free day")}</span>
       </div>
     );
   }
@@ -431,8 +432,8 @@ function ItDay({ id, title, date, route, rows, ...render }: { id: string; title:
         <b>{title}</b>
         <span className="muted num">{`${fmt(date)} ${weekday(date)}`}</span>
         {route && <span className="it-route">{route}</span>}
-        {date === render.today && <span className="today-chip">Bugün</span>}
-        {left > 0 && <span className="day-left">{left} iş</span>}
+        {date === render.today && <span className="today-chip">{L("Bugün", "Today")}</span>}
+        {left > 0 && <span className="day-left">{L(`${left} iş`, `${left} to do`)}</span>}
         <span className="day-chev" aria-hidden>
           {open ? "▴" : "▾"}
         </span>
@@ -463,7 +464,7 @@ function ItRow({ row, ...render }: { row: DayRow } & RenderProps) {
     const text =
       row.kind === "ideas" ? (
         <>
-          <b>Fikirler</b>
+          <b>{L("Fikirler", "Ideas")}</b>
           <span>{row.items.map((i) => i.name).join(", ")}</span>
         </>
       ) : row.kind === "leg" ? (
@@ -537,10 +538,10 @@ function MoveCard({ leg, tripId, startOpen = false }: { leg: Leg; tripId: string
   const search = mode === "flight" ? flightSearchUrl("from", from, leg.date, to) : null;
   const standing: Standing = booked ? "booked" : mode ? "planned" : "open";
   const state = booked
-    ? { text: mode && TICKETED.includes(mode) ? "Bilet alındı" : "Ayarlandı", sub: null }
+    ? { text: mode && TICKETED.includes(mode) ? L("Bilet alındı", "Ticket booked") : L("Ayarlandı", "Arranged"), sub: null }
     : mode
-      ? { text: "Planlanıyor", sub: TICKETED.includes(mode) ? "bilet alınmadı" : null }
-      : { text: "Planlanmadı", sub: "nasıl geçeceksiniz?" };
+      ? { text: L("Planlanıyor", "Planning"), sub: TICKETED.includes(mode) ? L("bilet alınmadı", "no ticket yet") : null }
+      : { text: L("Planlanmadı", "Not planned"), sub: L("nasıl geçeceksiniz?", "how will you get there?") };
   return (
     <div className={`settled-card move-card st-${standing}`} aria-label={`${from} → ${to}`}>
       <StatusBar standing={standing} text={state.text} sub={state.sub} />
@@ -556,7 +557,7 @@ function MoveCard({ leg, tripId, startOpen = false }: { leg: Leg; tripId: string
               <span className="route-bar">
                 <span className="route-mode">{mode ? MODE_ICONS[mode] : "?"}</span>
               </span>
-              <span className="muted">{leg.options.length ? `${leg.options.length} seçenek` : ""}</span>
+              <span className="muted">{leg.options.length ? L(`${leg.options.length} seçenek`, `${leg.options.length} option${leg.options.length === 1 ? "" : "s"}`) : ""}</span>
             </div>
             <div className="route-end right">
               <b className={to.length > 5 ? "long" : ""}>{to}</b>
@@ -569,26 +570,26 @@ function MoveCard({ leg, tripId, startOpen = false }: { leg: Leg; tripId: string
         <span className="stc-actions">
           {search && !booked && (
             <a className="pill-btn outline" href={search} target="_blank" rel="noreferrer">
-              Uçuş ara ↗
+              {L("Uçuş ara ↗", "Search flights ↗")}
             </a>
           )}
           {(mode || booked) && (
             <button className="pill-btn outline" onClick={() => save({ booked: !booked })}>
-              {booked ? "Geri al" : mode && TICKETED.includes(mode) ? "Bileti aldım" : "Ayarlandı"}
+              {booked ? L("Geri al", "Undo") : mode && TICKETED.includes(mode) ? L("Bileti aldım", "I got the ticket") : L("Ayarlandı", "Arranged")}
             </button>
           )}
         </span>
       </div>
       {open && (
         <div className="stc-details">
-          <div className="leg-modes" role="group" aria-label="Nasıl geçeceksiniz?">
+          <div className="leg-modes" role="group" aria-label={L("Nasıl geçeceksiniz?", "How will you get there?")}>
             {modesFor("move").map((m) => (
               <button key={m} className={`mode-chip${mode === m ? " on" : ""}`} aria-pressed={mode === m} onClick={() => save(mode === m ? { mode: null } : { mode: m })}>
                 {MODE_ICONS[m]} {MODE_LABELS[m]}
               </button>
             ))}
           </div>
-          <p className="muted small-note">Sohbette "11 Ekim'de Madeira'ya uçakla geçeceğiz" demen de yeter; o günün uçuş sayfasını kaydedince onun yerine geçer.</p>
+          <p className="muted small-note">{L(`Sohbette "11 Ekim'de Madeira'ya uçakla geçeceğiz" demen de yeter; o günün uçuş sayfasını kaydedince onun yerine geçer.`, `You can also say "we fly to Madeira on 11 October" in the chat. Saving that day's flight page replaces this.`)}</p>
         </div>
       )}
     </div>
@@ -597,14 +598,14 @@ function MoveCard({ leg, tripId, startOpen = false }: { leg: Leg; tripId: string
 
 /** A stay said apart in the chat goes back into the nights around it. */
 const SlotUndo = ({ slot }: { slot: Item }) => (
-  <button className="link-btn quiet" onClick={() => void removeItem(slot)} title="Bu geceler ayrı konaklama olmasın">
-    Ayrı olmasın
+  <button className="link-btn quiet" onClick={() => void removeItem(slot)} title={L("Bu geceler ayrı konaklama olmasın", "Don't keep these nights as a separate stay")}>
+    {L("Ayrı olmasın", "Merge back")}
   </button>
 );
 
 const SlotNote = ({ slot }: { slot: Item }) => (
   <p className="slot-note muted">
-    Bu geceler ayrı konaklama (sohbette söyledin) · <SlotUndo slot={slot} />
+    {L("Bu geceler ayrı konaklama (sohbette söyledin)", "These nights are a separate stay (you said so in the chat)")} · <SlotUndo slot={slot} />
   </p>
 );
 
@@ -612,17 +613,17 @@ const blockState = (block: StayBlock) => (block.kind === "open" && !block.groups
 
 function Block({ block, skipped, tripId, renderGroup, settled }: { block: StayBlock; skipped: boolean; tripId: string; renderGroup: RenderGroup; settled: SettledFor }) {
   const state = blockState(block);
-  const label = `${block.city ?? "Konaklama"} ${formatDateRange(block.range.start, block.range.end)}`;
+  const label = `${block.city ?? L("Konaklama", "Stay")} ${formatDateRange(block.range.start, block.range.end)}`;
   // "Gerek yok" (a night bus, friends' place): the nights stay on the line, quietly, and leave the to-dos.
   if (skipped && state === "empty") {
     return (
       <div className="stay-block skipped" id={`block-${block.range.start}`}>
         <div className="empty-card quiet">
           <span className="muted">
-            {formatDateRange(block.range.start, block.range.end)} · {block.nights} gece · konaklama gerekmiyor
+            {formatDateRange(block.range.start, block.range.end)} · {L(`${block.nights} gece · konaklama gerekmiyor`, `${block.nights} night${block.nights === 1 ? "" : "s"} · no stay needed`)}
           </span>
           <button className="link-btn" onClick={() => void setHidden(tripId, nightsKey(block.range), false, label)}>
-            Geri al
+            {L("Geri al", "Undo")}
           </button>
         </div>
       </div>
@@ -639,30 +640,37 @@ function Block({ block, skipped, tripId, renderGroup, settled }: { block: StayBl
       {block.kind === "open" && block.slot && block.groups.length > 0 && <SlotNote slot={block.slot} />}
       {block.kind === "chosen" && block.gap && block.gap.length > 0 && (
         <p className="slot-note gap">
-          {block.gap.map((r) => `${formatDateRange(r.start, r.end)} (${nightsBetween(r.start, r.end)} gece)`).join(", ")} için yer seçilmedi: bu
-          konaklama tek blok, seçtiğin yer yalnız bir kısmını kapsıyor.
+          {L(
+            `${block.gap.map((r) => `${formatDateRange(r.start, r.end)} (${nightsBetween(r.start, r.end)} gece)`).join(", ")} için yer seçilmedi: bu konaklama tek blok, seçtiğin yer yalnız bir kısmını kapsıyor.`,
+            `No place chosen for ${block.gap
+              .map((r) => {
+                const k = nightsBetween(r.start, r.end);
+                return `${formatDateRange(r.start, r.end)} (${k} night${k === 1 ? "" : "s"})`;
+              })
+              .join(", ")}: this stay is one block and the place you chose covers only part of it.`,
+          )}
         </p>
       )}
       {block.kind === "open" && !block.groups.length && (
         <div className="settled-card st-open stay-open">
-          <StatusBar standing="open" text="Planlanmadı" sub={block.slot ? "ayrı konaklama · otel seçilmedi" : "bu geceler için kayıtlı yer yok"} />
+          <StatusBar standing="open" text={L("Planlanmadı", "Not planned")} sub={block.slot ? L("ayrı konaklama · otel seçilmedi", "separate stay · no hotel chosen") : L("bu geceler için kayıtlı yer yok", "nothing saved for these nights")} />
           <div className="empty-card">
             <span>
-              <b>{block.city ?? "Konaklama"}</b>
+              <b>{block.city ?? L("Konaklama", "Stay")}</b>
               <span className="muted">
-                {formatDateRange(block.range.start, block.range.end)} · {block.nights} gece
+                {formatDateRange(block.range.start, block.range.end)} · {L(`${block.nights} gece`, `${block.nights} night${block.nights === 1 ? "" : "s"}`)}
               </span>
             </span>
             <span className="sc-actions">
               {block.slot ? (
                 <SlotUndo slot={block.slot} />
               ) : (
-                <button className="link-btn quiet" onClick={() => void setHidden(tripId, nightsKey(block.range), true, label)} title="Bu geceler için yer gerekmiyor">
-                  Gerek yok
+                <button className="link-btn quiet" onClick={() => void setHidden(tripId, nightsKey(block.range), true, label)} title={L("Bu geceler için yer gerekmiyor", "No place needed for these nights")}>
+                  {L("Gerek yok", "Not needed")}
                 </button>
               )}
               <a className="pill-btn outline" href={block.searchUrl} target="_blank" rel="noreferrer">
-                Booking'de ara ↗
+                {L("Booking'de ara ↗", "Search Booking ↗")}
               </a>
             </span>
           </div>

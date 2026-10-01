@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { resetConversation } from "../lib/assistant";
 import { db, notifyChanged } from "../lib/db";
 import { loadDemoTrip } from "../lib/demo";
+import { L } from "../lib/i18n";
 import { buildPlan, groupKeyOf, liveGroups } from "../lib/plan";
 import { isDemoTrip } from "../lib/trips";
 import type { Item } from "../lib/types";
@@ -58,7 +59,7 @@ export function App() {
   const showArrival = arrival && arrivalTrip && trip && arrival.tripId !== trip.id && arrival.id !== seenArrival;
 
   async function deleteTrip() {
-    if (!trip || !confirm(`"${trip.title}" ve içindeki her şey silinsin mi?`)) return;
+    if (!trip || !confirm(L(`"${trip.title}" ve içindeki her şey silinsin mi?`, `Delete "${trip.title}" and everything in it?`))) return;
     const d = await db();
     for (const i of board.items) await d.delete("items", i.id);
     for (const m of board.messages) await d.delete("messages", m.id);
@@ -69,18 +70,18 @@ export function App() {
 
   const menu = (
     <>
-      <button className="menu-btn" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menü">
+      <button className="menu-btn" onClick={() => setMenuOpen(!menuOpen)} aria-label={L("Menü", "Menu")}>
         •••
       </button>
       {menuOpen && (
         <div className="menu" onClick={() => setMenuOpen(false)}>
-          <button onClick={() => setSettingsOpen(true)}>Ayarlar</button>
-          {trip && !isDemoTrip(trip) && <button onClick={() => setShareOpen(true)}>{trip.shareId ? "Paylaşım kodu" : "Bu geziyi paylaş"}</button>}
-          {trip && <button onClick={() => void resetConversation(trip.id)}>Bu gezide yeni sohbet başlat</button>}
+          <button onClick={() => setSettingsOpen(true)}>{L("Ayarlar", "Settings")}</button>
+          {trip && !isDemoTrip(trip) && <button onClick={() => setShareOpen(true)}>{trip.shareId ? L("Paylaşım kodu", "Share code") : L("Bu geziyi paylaş", "Share this trip")}</button>}
+          {trip && <button onClick={() => void resetConversation(trip.id)}>{L("Bu gezide yeni sohbet başlat", "Start a new chat for this trip")}</button>}
           {!board.trips.some((t) => t.demo) && (
-            <button onClick={() => void loadDemoTrip().then(board.selectTrip)}>Örnek geziyi yükle</button>
+            <button onClick={() => void loadDemoTrip().then(board.selectTrip)}>{L("Örnek geziyi yükle", "Load the sample trip")}</button>
           )}
-          {trip && <button onClick={() => void deleteTrip()}>Bu geziyi sil</button>}
+          {trip && <button onClick={() => void deleteTrip()}>{L("Bu geziyi sil", "Delete this trip")}</button>}
         </div>
       )}
     </>
@@ -130,9 +131,9 @@ export function App() {
               board.selectTrip(arrivalTrip.id);
             }}
           >
-            Aç
+            {L("Aç", "Open")}
           </button>
-          <button className="toast-close" aria-label="Kapat" onClick={() => setSeenArrival(arrival.id)}>
+          <button className="toast-close" aria-label={L("Kapat", "Close")} onClick={() => setSeenArrival(arrival.id)}>
             ×
           </button>
         </div>

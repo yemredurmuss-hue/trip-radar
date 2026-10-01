@@ -24,13 +24,14 @@ import { budgetBar, decisionProgress, entryDomId, type Todo } from "../lib/progr
 import { cityKeyOf, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 import { isRental } from "../lib/travelKinds";
+import { L, locale } from "../lib/i18n";
 
 import type { Capture, Category, Item, Trip } from "../lib/types";
 import { chooseItem, setHidden } from "./actions";
 import { CategoryIcon, Chevron, SummaryIcon } from "./Icons";
 import { IntentCard } from "./IntentCard";
 import { BudgetBarView, findTarget, show, TodoStrip } from "./Progress";
-import { KIND_LABEL, LegRow } from "./LegRow";
+import { kindLabel, LegRow } from "./LegRow";
 import { Carousel } from "./Carousel";
 import { SettledCard, SwipeCard } from "./SwipeCard";
 import { ShareStatus, VoteTallyText } from "./Share";
@@ -60,7 +61,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // The cities in the order they're visited (the nights' blocks), else as the saved stays name them.
   const route = routeOf(plan, items);
   const days = range ? nightsBetween(range.start, range.end) + 1 : 0;
-  const subtitle = [range ? formatDateRange(range.start, range.end) : null, days ? `${days} gün` : null, route].filter(Boolean).join(" · ");
+  const subtitle = [range ? formatDateRange(range.start, range.end) : null, days ? L(`${days} gün`, `${days} day${days === 1 ? "" : "s"}`) : null, route].filter(Boolean).join(" · ");
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
   const [view, setView] = useState<TimelineMode>("plan");
   /** Opens a block of the plan (from the itinerary). */
@@ -148,22 +149,22 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         <FallbackImg className="hero-img" src={trip.heroImage} fallback={<div className="hero-img" />} />
         <div className="hero-main">
           <h1 className="trip-title">{trip.title}</h1>
-          {onDay && <div className="trip-now">Seyahat başladı · {onDay}. gün</div>}
+          {onDay && <div className="trip-now">{L(`Seyahat başladı · ${onDay}. gün`, `Trip underway · day ${onDay}`)}</div>}
           <div className="trip-sub">
-            {subtitle || "Tarih ve şehir, kaydettikçe netleşir"}
-            {range && !trip.confirmedDates && <span className="estimated">~tahmini</span>}
+            {subtitle || L("Tarih ve şehir, kaydettikçe netleşir", "Dates and cities fill in as you save")}
+            {range && !trip.confirmedDates && <span className="estimated">{L("~tahmini", "~estimated")}</span>}
           </div>
           <div className="hero-row">
             <TripSummary items={items} plan={plan} />
             {mapUrl && (
               <a className="hero-link" href={mapUrl} target="_blank" rel="noreferrer">
-                Rotayı gör ↗
+                {L("Rotayı gör ↗", "See route ↗")}
               </a>
             )}
             <span className="status-line">
-              {working.length > 0 && `${working.length} kayıt işleniyor… `}
-              {reading > 0 && `${reading} sayfa okunuyor… `}
-              {failed.length > 0 && <span className="err">{failed.length} kayıt işlenemedi</span>}
+              {working.length > 0 && L(`${working.length} kayıt işleniyor… `, `Processing ${working.length} item${working.length === 1 ? "" : "s"}… `)}
+              {reading > 0 && L(`${reading} sayfa okunuyor… `, `Reading ${reading} page${reading === 1 ? "" : "s"}… `)}
+              {failed.length > 0 && <span className="err">{L(`${failed.length} kayıt işlenemedi`, `Couldn't process ${failed.length} item${failed.length === 1 ? "" : "s"}`)}</span>}
             </span>
             <ShareStatus />
           </div>
@@ -177,8 +178,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           {failed.map((c) => (
             <div key={c.id}>
               <span className="error-text" title={c.error ?? ""}>
-                <span className="err">⚠ {c.title || c.url || "Ekran görüntüsü"}</span>
-                <span className="muted"> — {c.error}</span>
+                <span className="err">⚠ {c.title || c.url || L("Ekran görüntüsü", "Screenshot")}</span>
+                <span className="muted">
+                  {L(" — ", " · ")}
+                  {c.error}
+                </span>
               </span>
               <button
                 className="small-btn"
@@ -187,7 +191,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
                   requestProcessing();
                 }}
               >
-                Tekrar dene
+                {L("Tekrar dene", "Try again")}
               </button>
             </div>
           ))}
@@ -197,12 +201,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       <IntentCard trip={trip} decisions={decisions} />
 
       {timeline.entries.length > 0 && (
-        <div className="view-tabs" role="tablist" aria-label="Görünüm">
+        <div className="view-tabs" role="tablist" aria-label={L("Görünüm", "View")}>
           <button role="tab" aria-selected={view === "plan"} className={view === "plan" ? "on" : ""} onClick={() => setView("plan")}>
-            Plan
+            {L("Plan", "Plan")}
           </button>
           <button role="tab" aria-selected={view === "days"} className={view === "days" ? "on" : ""} onClick={() => setView("days")}>
-            Günlük akış
+            {L("Günlük akış", "Day by day")}
           </button>
         </div>
       )}
@@ -244,7 +248,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       {view === "plan" && dismissed.length > 0 && (
         <SummarySection
           category="other"
-          label={`Elenenler (${dismissed.length})`}
+          label={L(`Elenenler (${dismissed.length})`, `Ruled out (${dismissed.length})`)}
           groups={[{ key: "dismissed", category: "other", title: null, items: dismissed }]}
           onOpenItem={onOpenItem}
         />
@@ -267,17 +271,22 @@ function TripSummary({ items, plan }: { items: Item[]; plan: Plan }) {
   // Stays: how many of the plan's stretches of nights have a place, of how many there are.
   const blocks = plan.stayBlocks.length;
   const placed = plan.stayBlocks.filter((b) => b.kind !== "open").length;
+  const stays = live.filter((i) => i.category === "stay" && settled(i)).length;
   const trips = live.filter((i) => (i.category === "flight" || i.category === "transport") && settled(i)).length;
   const stats: [ReactNode, string, string][] = [
-    [<SummaryIcon name="pin" />, `${cities} şehir`, "Gezideki şehirler"],
-    [<CategoryIcon category="stay" size={20} />, blocks ? `${placed}/${blocks} konaklama` : `${live.filter((i) => i.category === "stay" && settled(i)).length} konaklama`, "Yeri seçilen / gereken konaklama"],
-    [<CategoryIcon category="transport" size={20} />, `${trips} ulaşım`, "Seçilen ya da alınan ulaşım"],
-    [<SummaryIcon name="star" />, `${experiences} etkinlik`, "Plana alınan etkinlik"],
+    [<SummaryIcon name="pin" />, L(`${cities} şehir`, `${cities} cit${cities === 1 ? "y" : "ies"}`), L("Gezideki şehirler", "Cities on the trip")],
+    [
+      <CategoryIcon category="stay" size={20} />,
+      blocks ? L(`${placed}/${blocks} konaklama`, `${placed}/${blocks} stay${blocks === 1 ? "" : "s"}`) : L(`${stays} konaklama`, `${stays} stay${stays === 1 ? "" : "s"}`),
+      L("Yeri seçilen / gereken konaklama", "Stays with a place / stays needed"),
+    ],
+    [<CategoryIcon category="transport" size={20} />, L(`${trips} ulaşım`, `${trips} journey${trips === 1 ? "" : "s"}`), L("Seçilen ya da alınan ulaşım", "Travel chosen or booked")],
+    [<SummaryIcon name="star" />, L(`${experiences} etkinlik`, `${experiences} activit${experiences === 1 ? "y" : "ies"}`), L("Plana alınan etkinlik", "Activities in the plan")],
   ];
   const shown = stats.filter(([, text]) => !/^0 /.test(text));
   if (!shown.length) return null;
   return (
-    <ul className="hero-stats" aria-label="Gezi özeti">
+    <ul className="hero-stats" aria-label={L("Gezi özeti", "Trip summary")}>
       {shown.map(([icon, text, title]) => (
         <li key={text} title={title}>
           {icon}
@@ -305,15 +314,15 @@ function LooseStays({ plan, renderGroup }: { plan: Plan; renderGroup: RenderGrou
   return (
     <div className="section">
       <div className="section-head">
-        <span>{plan.stayBlocks.length ? "Diğer konaklamalar" : CATEGORY_LABELS.stay}</span>
+        <span>{plan.stayBlocks.length ? L("Diğer konaklamalar", "Other stays") : CATEGORY_LABELS.stay}</span>
       </div>
       {plan.looseStays.map((g) =>
         renderGroup(
           g,
           null,
           plan.range
-            ? `${g.title ?? ""}${g.range ? " · gezi tarihleri dışında" : " · tarih seçilmemiş"}`
-            : `${g.title ?? ""}${g.range ? "" : " · tarih seçilmemiş"}`,
+            ? `${g.title ?? ""}${g.range ? L(" · gezi tarihleri dışında", " · outside the trip dates") : L(" · tarih seçilmemiş", " · no dates chosen")}`
+            : `${g.title ?? ""}${g.range ? "" : L(" · tarih seçilmemiş", " · no dates chosen")}`,
           true,
         ),
       )}
@@ -399,13 +408,13 @@ function OptionGroupView({
       </div>
       {others.length > 0 && (
         <button className="link-btn more-options" aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>
-          {showAll ? "Daha az göster" : `+${others.length} seçenek daha`}
+          {showAll ? L("Daha az göster", "Show less") : L(`+${others.length} seçenek daha`, `+${others.length} more option${others.length === 1 ? "" : "s"}`)}
         </button>
       )}
       {!decided && !choice?.headline && (comparable || single) && (
         <button className="verdict-line" onClick={onCompare}>
           <span className={single ? "muted" : ""}>{decision!.summary}</span>
-          <span className="verdict-cta">{single ? "Kriterleri gör →" : "Karşılaştır →"}</span>
+          <span className="verdict-cta">{single ? L("Kriterleri gör →", "See criteria →") : L("Karşılaştır →", "Compare →")}</span>
         </button>
       )}
     </div>
@@ -414,7 +423,7 @@ function OptionGroupView({
 
 /** Options shown at once, best first; the rest behind "+N seçenek daha". */
 const VISIBLE = 5;
-const lowerFirst = (s: string) => s.charAt(0).toLocaleLowerCase("tr") + s.slice(1);
+const lowerFirst = (s: string) => s.charAt(0).toLocaleLowerCase(locale()) + s.slice(1);
 
 /**
  * The decision in a sentence above the cards: the pick and why, then the alternatives for each priority
@@ -429,14 +438,14 @@ function Headline({ choice, alternatives, onCompare }: { choice: Choice; alterna
       <div className="reco-text">
         <p>{choice.headline}</p>
         {choice.verify.length > 0 && (
-          <ul className="reco-verify" aria-label="Seçmeden kontrol et">
+          <ul className="reco-verify" aria-label={L("Seçmeden kontrol et", "Check before choosing")}>
             {choice.verify.map((v) => (
               <li key={`${v.itemId}:${v.what}`}>
                 <b>{v.name}:</b> {v.what}
                 {pages.get(v.itemId) && (
                   <a href={pages.get(v.itemId)!} target="_blank" rel="noreferrer">
                     {" "}
-                    Sayfada bak ↗
+                    {L("Sayfada bak ↗", "See on page ↗")}
                   </a>
                 )}
               </li>
@@ -447,11 +456,11 @@ function Headline({ choice, alternatives, onCompare }: { choice: Choice; alterna
       <span className="reco-actions">
         {first && (
           <button className="pill-btn primary" onClick={() => void chooseItem(first, alternatives)}>
-            {`${first.name} seç`}
+            {L(`${first.name} seç`, `Choose ${first.name}`)}
           </button>
         )}
         <button className="link-btn" onClick={onCompare}>
-          Karşılaştır →
+          {L("Karşılaştır →", "Compare →")}
         </button>
       </span>
     </div>
@@ -468,8 +477,8 @@ function HiddenSection({ legs, tripId }: { legs: Leg[]; tripId: string }) {
           <CategoryIcon category="transport" />
         </span>
         <span>
-          <div className="row-name">Gizlenenler ({legs.length})</div>
-          <div className="row-label tone-muted">"Gerek yok" dediğin transferler; geri getirebilirsin</div>
+          <div className="row-name">{L(`Gizlenenler (${legs.length})`, `Hidden (${legs.length})`)}</div>
+          <div className="row-label tone-muted">{L(`"Gerek yok" dediğin transferler; geri getirebilirsin`, `Transfers you marked "Not needed". You can bring them back`)}</div>
         </span>
         <span className="chev" style={{ transform: open ? "rotate(90deg)" : undefined }}>
           <Chevron />
@@ -479,14 +488,14 @@ function HiddenSection({ legs, tripId }: { legs: Leg[]; tripId: string }) {
         legs.map((l) => (
           <div key={l.key} className="hidden-row">
             <span>
-              <b>{KIND_LABEL[l.kind]}</b>
+              <b>{kindLabel()[l.kind]}</b>
               <span className="muted">
                 {" "}
                 · {formatDateRange(l.date, null)} · {l.from.label} → {l.to.label}
               </span>
             </span>
-            <button className="link-btn" onClick={() => void setHidden(tripId, `leg:${l.key}`, false, KIND_LABEL[l.kind])}>
-              Geri getir
+            <button className="link-btn" onClick={() => void setHidden(tripId, `leg:${l.key}`, false, kindLabel()[l.kind])}>
+              {L("Geri getir", "Bring back")}
             </button>
           </div>
         ))}
@@ -504,8 +513,8 @@ function ClosedSection({ closed, onOpenItem }: { closed: Plan["closed"]; onOpenI
           <CategoryIcon category={closed[0].item.category} />
         </span>
         <span>
-          <div className="row-name">Kapanan seçenekler ({closed.length})</div>
-          <div className="row-label tone-muted">Rezervasyonla kapandı; rezervasyonu geri alırsan geri gelirler</div>
+          <div className="row-name">{L(`Kapanan seçenekler (${closed.length})`, `Closed options (${closed.length})`)}</div>
+          <div className="row-label tone-muted">{L("Rezervasyonla kapandı; rezervasyonu geri alırsan geri gelirler", "Closed by a booking. Undo the booking and they come back")}</div>
         </span>
         <span className="chev" style={{ transform: open ? "rotate(90deg)" : undefined }}>
           <Chevron />
@@ -536,7 +545,7 @@ function SummarySection({
   const [open, setOpen] = useState(false);
   const items = groups.flatMap((g) => g.items);
   const names = items.map((i) => i.name);
-  const summary = names.length <= 2 ? joinTr(names) : `${names.slice(0, 2).join(", ")} ve ${names.length - 2} yer daha`;
+  const summary = names.length <= 2 ? joinTr(names) : L(`${names.slice(0, 2).join(", ")} ve ${names.length - 2} yer daha`, `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`);
   return (
     <div className="section">
       <button className="row" onClick={() => setOpen(!open)} style={{ gridTemplateColumns: "72px 1fr 20px" }}>
@@ -605,7 +614,7 @@ function Row({
       </span>
       <span className="row-price">
         {item.price.amount != null ? formatPrice(item.price.amount, item.price.currency) : ""}
-        {item.price.scope === "per_night" && <span className="muted" style={{ fontSize: 13 }}>/gece</span>}
+        {item.price.scope === "per_night" && <span className="muted" style={{ fontSize: 13 }}>{L("/gece", "/night")}</span>}
       </span>
       <span className="chev">
         <Chevron />
@@ -614,6 +623,7 @@ function Row({
   );
 }
 
+/** "Porto, Lizbon ve Madeira" / "Porto, Lisbon and Madeira": names joined in the current language. */
 export function joinTr(names: string[]): string {
-  return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} ve ${names.at(-1)}`;
+  return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} ${L("ve", "and")} ${names.at(-1)}`;
 }

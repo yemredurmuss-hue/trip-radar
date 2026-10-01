@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { L } from "../lib/i18n";
 import { updateWaiting } from "../lib/update";
 
 const CHECK_MS = 15_000;
@@ -50,18 +51,18 @@ export function UpdateBanner() {
   if (automatic) {
     return (
       <div className="update-banner">
-        Yeni sürüm ({version}) yükleniyor…
+        {L(`Yeni sürüm (${version}) yükleniyor…`, `Installing new version (${version})…`)}
         <button className="small-btn" onClick={() => setSnoozed(version)}>
-          Şimdi değil
+          {L("Şimdi değil", "Not now")}
         </button>
       </div>
     );
   }
   return (
     <div className="update-banner">
-      Yeni sürüm hazır ({version}).
+      {L(`Yeni sürüm hazır (${version}).`, `New version ready (${version}).`)}
       <button className="small-btn" onClick={apply}>
-        Şimdi güncelle
+        {L("Şimdi güncelle", "Update now")}
       </button>
     </div>
   );

@@ -1,3 +1,4 @@
+import { L } from "../lib/i18n";
 import type { ProCon, ProsCons } from "../lib/proscons";
 
 /**
@@ -14,17 +15,20 @@ export function ProsConsView({ pc, limit, stacked = false }: { pc: ProsCons; lim
         {pros.map((line) => (
           <Line key={line.key} line={line} sign="+" compact={Boolean(limit)} />
         ))}
-        {limit && pc.pros.length > limit && <span className="pc-more">+{pc.pros.length - limit} artı daha</span>}
+        {limit && pc.pros.length > limit && <span className="pc-more">{moreLine(pc.pros.length - limit, "pro")}</span>}
       </span>
       <span className="pc-col cons">
         {cons.map((line) => (
           <Line key={line.key} line={line} sign="−" compact={Boolean(limit)} />
         ))}
-        {limit && pc.cons.length > limit && <span className="pc-more">+{pc.cons.length - limit} eksi daha</span>}
+        {limit && pc.cons.length > limit && <span className="pc-more">{moreLine(pc.cons.length - limit, "con")}</span>}
       </span>
     </span>
   );
 }
+
+const moreLine = (n: number, side: "pro" | "con") =>
+  side === "pro" ? L(`+${n} artı daha`, `+${n} more pro${n === 1 ? "" : "s"}`) : L(`+${n} eksi daha`, `+${n} more con${n === 1 ? "" : "s"}`);
 
 function Line({ line, sign, compact }: { line: ProCon; sign: string; compact: boolean }) {
   const classes = ["pc-line", line.decisive && "decisive", line.serious && "serious", line.unverified && "unverified", (line.stale || line.faded) && "stale", line.accepted && "accepted"]

@@ -1,4 +1,5 @@
 import { Children, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { L } from "../lib/i18n";
 
 /**
  * Cards side by side that swipe (touch, trackpad, or the ‹ › buttons and arrow keys). The next card
@@ -61,10 +62,10 @@ export function Carousel({ head, label, children }: { head?: ReactNode; label: s
               <span className="muted">
                 {at.index + 1} / {count}
               </span>
-              <button className="nav-btn" aria-label="Önceki" disabled={at.start} onClick={() => go(-1)}>
+              <button className="nav-btn" aria-label={L("Önceki", "Previous")} disabled={at.start} onClick={() => go(-1)}>
                 ‹
               </button>
-              <button className="nav-btn" aria-label="Sonraki" disabled={at.end} onClick={() => go(1)}>
+              <button className="nav-btn" aria-label={L("Sonraki", "Next")} disabled={at.end} onClick={() => go(1)}>
                 ›
               </button>
             </div>

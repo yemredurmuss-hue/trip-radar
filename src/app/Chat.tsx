@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { sendMessage } from "../lib/assistant";
+import { L } from "../lib/i18n";
 import { describeError } from "../lib/llm";
 import type { ChatMessage, Trip } from "../lib/types";
 import { addImages, addLinks } from "./capture";
@@ -67,17 +68,19 @@ export function Chat({ trip, messages, onBack }: Props) {
     <section className="chat" onDragOver={(e) => (e.preventDefault(), setDragging(true))} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
       <div className="chat-top">
         <button className="trip-switch" onClick={onBack}>
-          <Back /> Seyahatlerim
+          <Back /> {L("Seyahatlerim", "My trips")}
         </button>
-        <div className="chat-title">Asistan</div>
-        <div className="muted chat-sub">{trip.title} için</div>
+        <div className="chat-title">{L("Asistan", "Assistant")}</div>
+        <div className="muted chat-sub">{L(`${trip.title} için`, `For ${trip.title}`)}</div>
       </div>
 
       <div className="messages">
         {visible.length === 0 && (
           <div className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>
-            Seçeneklerini kaydettikçe burada birlikte karar veririz. Bütçeni, neyin önemli olduğunu ya da
-            "hangisi daha iyi?" diye sorabilirsin.
+            {L(
+              'Seçeneklerini kaydettikçe burada birlikte karar veririz. Bütçeni, neyin önemli olduğunu ya da "hangisi daha iyi?" diye sorabilirsin.',
+              'Save your options and we\'ll decide here together. Tell me your budget, what matters to you, or ask "which one is better?"',
+            )}
           </div>
         )}
         {visible.map((m) => (
@@ -94,13 +97,13 @@ export function Chat({ trip, messages, onBack }: Props) {
             ))}
           </div>
         )}
-        {busy && <div className="thinking">Düşünüyor…</div>}
+        {busy && <div className="thinking">{L("Düşünüyor…", "Thinking…")}</div>}
         {error && <div className="chat-error">{error}</div>}
         <div ref={bottom} />
       </div>
 
       <form className={`composer${dragging ? " drag" : ""}`} onSubmit={(e) => (e.preventDefault(), void submit())}>
-        <button type="button" className="icon-btn" title="Ekran görüntüsü ekle" onClick={() => fileInput.current?.click()}>
+        <button type="button" className="icon-btn" title={L("Ekran görüntüsü ekle", "Add a screenshot")} onClick={() => fileInput.current?.click()}>
           <Plus />
         </button>
         <input
@@ -116,12 +119,12 @@ export function Chat({ trip, messages, onBack }: Props) {
         />
         <input
           type="text"
-          placeholder="Bir link bırak, görsel yapıştır veya yaz…"
+          placeholder={L("Bir link bırak, görsel yapıştır veya yaz…", "Drop a link, paste an image or type…")}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onPaste={onPaste}
         />
-        <button type="submit" className="send-btn" disabled={!text.trim() || busy} aria-label="Gönder">
+        <button type="submit" className="send-btn" disabled={!text.trim() || busy} aria-label={L("Gönder", "Send")}>
           <ArrowUp />
         </button>
       </form>

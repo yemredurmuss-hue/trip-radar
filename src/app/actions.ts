@@ -1,19 +1,22 @@
 // Small write actions shared by the board's views.
 import { addEvent, db, notifyChanged } from "../lib/db";
+import { L } from "../lib/i18n";
 import type { Category, Item, ItemStatus, Trip } from "../lib/types";
 
-const EVENT: Record<ItemStatus, string> = {
-  chosen: "plana alındı",
-  booked: "rezerve edildi olarak işaretlendi",
-  dismissed: "elendi",
-  saved: "seçeneklere geri alındı",
-};
+/** The trip history line for a status change, written in the current language. */
+const statusEvent = (name: string, status: ItemStatus): string =>
+  ({
+    chosen: L(`${name} plana alındı`, `${name} added to the plan`),
+    booked: L(`${name} rezerve edildi olarak işaretlendi`, `${name} marked as booked`),
+    dismissed: L(`${name} elendi`, `${name} ruled out`),
+    saved: L(`${name} seçeneklere geri alındı`, `${name} moved back to options`),
+  })[status];
 
 export async function setItemStatus(item: Item, status: ItemStatus): Promise<void> {
   const d = await db();
   const fresh = (await d.get("items", item.id)) ?? item;
   await d.put("items", { ...fresh, status, statusAt: Date.now(), updatedAt: Date.now() });
-  await addEvent(item.tripId, `${item.name} ${EVENT[status]}`);
+  await addEvent(item.tripId, statusEvent(item.name, status));
   notifyChanged();
 }
 
@@ -50,7 +53,7 @@ export async function chooseItem(item: Item, alternatives: Item[]): Promise<void
 /** "Planı kaldır": a plan said in the chat has no page behind it, so it simply goes. */
 export async function removeItem(item: Item): Promise<void> {
   await (await db()).delete("items", item.id);
-  await addEvent(item.tripId, `${item.name} plandan kaldırıldı`);
+  await addEvent(item.tripId, L(`${item.name} plandan kaldırıldı`, `${item.name} removed from the plan`));
   notifyChanged();
 }
 
@@ -60,6 +63,9 @@ export async function setHidden(tripId: string, key: string, hide: boolean, labe
     const rest = (t.hidden ?? []).filter((k) => k !== key);
     return { ...t, hidden: hide ? [...rest, key] : rest };
   });
-  await addEvent(tripId, hide ? `${label}: gerek yok denildi, gizlendi` : `${label} geri getirildi`);
+  await addEvent(
+    tripId,
+    hide ? L(`${label}: gerek yok denildi, gizlendi`, `${label}: marked not needed, hidden`) : L(`${label} geri getirildi`, `${label} brought back`),
+  );
   notifyChanged();
 }
