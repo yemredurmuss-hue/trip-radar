@@ -1,7 +1,9 @@
 // What a decision card shows, from the saved record and the engine's result: where it's from, what it
 // is, what it costs for these dates, where it stands, and the two things for and against it that
 // matter most. Pure, and no model calls: everything on a card is read from a page or computed.
-import { advantageOver, levelFor, levelSource, saidTopics, TOPIC_CRITERION, type DecisionContext, type GroupDecision } from "./decision";
+import { advantageOver, amenityLabel, levelFor, levelSource, saidTopics, TOPIC_CRITERION, type DecisionContext, type GroupDecision } from "./decision";
+import { L } from "./i18n";
+import { capitalize, count, hoursMinutes, liveLabels, nDays, nNights, nReviews, nStops, num } from "./i18nText";
 import { formatDateRange, formatPrice, listingKeyOf, metricsOf, nightsBetween, type Tone } from "./items";
 import { decisionLabel } from "./labels";
 import { rangeOfGroupKey, stayRange } from "./plan";
@@ -31,14 +33,16 @@ export interface CardFacts {
   cons: { text: string; strong: boolean; mine: boolean; unique?: boolean }[];
 }
 
-const STAY_KIND_LABELS: Record<StayKind, string> = {
-  hotel_room: "Otel odası",
-  apartment: "Daire",
-  house: "Ev",
-  guesthouse: "Pansiyon",
-  hostel: "Hostel",
-  other: "Konaklama",
-};
+const STAY_KIND_LABELS: Readonly<Record<StayKind, string>> = liveLabels({
+  hotel_room: ["Otel odası", "Hotel room"],
+  apartment: ["Daire", "Apartment"],
+  house: ["Ev", "House"],
+  guesthouse: ["Pansiyon", "Guesthouse"],
+  hostel: ["Hostel", "Hostel"],
+  other: ["Konaklama", "Stay"],
+});
+
+const bedrooms = (n: number) => count(n, "yatak odası", "bedroom");
 
 const SITE_NAMES: [RegExp, string][] = [
   [/(^|\.)booking\.com$/, "Booking.com"],
@@ -73,10 +77,7 @@ function sourceOf(item: Item): CardFacts["source"] {
 const clock = (iso: string | null | undefined) => (iso && /T\d{2}:\d{2}/.test(iso) ? iso.slice(11, 16) : null);
 
 export function durationText(minutes: number): string {
-  const total = Math.max(0, Math.round(minutes));
-  const h = Math.floor(total / 60);
-  const m = total % 60;
-  return h ? `${h} sa${m ? ` ${m} dk` : ""}` : `${m} dk`;
+  return hoursMinutes(minutes);
 }
 
 /** "09:00–11:10", with "+1" when it lands the next day. */
@@ -94,20 +95,20 @@ function subtitleOf(item: Item): string | null {
   switch (item.category) {
     case "stay":
       // What it is, not the district's official name ("União de Freguesias do Centro"): that's in the details.
-      return join([m.stayKind && m.stayKind !== "other" ? STAY_KIND_LABELS[m.stayKind] : null, m.bedrooms ? `${m.bedrooms} yatak odası` : null]);
+      return join([m.stayKind && m.stayKind !== "other" ? STAY_KIND_LABELS[m.stayKind] : null, m.bedrooms ? bedrooms(m.bedrooms) : null]);
     case "flight":
     case "transport": {
       const stops = item.flight?.stops;
       return (
         join([
           timesText(item),
-          item.category === "flight" && stops != null ? (stops === 0 ? "Direkt" : `${stops} aktarma`) : null,
+          item.category === "flight" && stops != null ? (stops === 0 ? L("Direkt", "Direct") : nStops(stops)) : null,
           m.durationMinutes ? durationText(m.durationMinutes) : null,
         ]) ?? (item.summary || null)
       );
     }
     case "esim":
-      return join([m.unlimitedData ? "Sınırsız" : m.dataGb ? `${m.dataGb} GB` : null, m.validityDays ? `${m.validityDays} gün` : null]) ?? (item.summary || null);
+      return join([m.unlimitedData ? L("Sınırsız", "Unlimited") : m.dataGb ? `${m.dataGb} GB` : null, m.validityDays ? nDays(m.validityDays) : null]) ?? (item.summary || null);
     default: {
       const day = item.dates.start ? formatDateRange(item.dates.start, null) : null;
       return join([day, clock(item.flight?.departure), m.durationMinutes ? durationText(m.durationMinutes) : null]);
@@ -115,7 +116,12 @@ function subtitleOf(item: Item): string | null {
   }
 }
 
-const SCOPE_LABELS: Record<Item["price"]["scope"], string | null> = { total: "toplam", per_night: "/gece", per_person: "kişi başı", unknown: null };
+const SCOPE_LABELS: Readonly<Record<Exclude<Item["price"]["scope"], "unknown">, string>> = liveLabels({
+  total: ["toplam", "total"],
+  per_night: ["/gece", "/night"],
+  per_person: ["kişi başı", "per person"],
+});
+const scopeLabel = (scope: Item["price"]["scope"]) => (scope === "unknown" ? null : SCOPE_LABELS[scope]);
 
 /**
  * The price for these dates in the trip's currency when the engine compared it, else as the page gave
@@ -138,28 +144,29 @@ function priceOf(item: Item, decision: GroupDecision | undefined, currency: stri
       money = item.price.currency ?? currency;
       // A price per person is for everyone first (unknown how many: shown as the page gives it).
       const whole = item.price.scope === "per_person" ? (item.guests.adults ? item.price.amount * item.guests.adults : null) : item.price.amount;
-      if (whole == null) return { text: formatPrice(item.price.amount, money), label: "kişi başı", perNight: null, provisional };
+      if (whole == null) return { text: formatPrice(item.price.amount, money), label: SCOPE_LABELS.per_person, perNight: null, provisional };
       perNight = item.price.scope === "per_night" ? whole : ownNights ? whole / ownNights : null;
-      if (perNight == null) return { text: formatPrice(item.price.amount, money), label: "toplam", perNight: null, provisional };
+      if (perNight == null) return { text: formatPrice(item.price.amount, money), label: SCOPE_LABELS.total, perNight: null, provisional };
     }
     if (perNight == null) return null;
     const nights = ownNights || groupNights;
     return {
       text: formatPrice(perNight * (nights || 1), money),
-      label: nights ? `${nights} gece toplam` : "gecelik",
-      perNight: nights ? `${formatPrice(perNight, money)} / gece` : null,
+      label: nights ? L(`${nights} gece toplam`, `${nNights(nights)} total`) : L("gecelik", "per night"),
+      perNight: nights ? `${formatPrice(perNight, money)} / ${L("gece", "night")}` : null,
       provisional,
     };
   }
   if (compared != null) {
-    let label: string | null = "toplam";
+    let label: string | null = SCOPE_LABELS.total;
     if ((item.category === "flight" || item.category === "transport") && item.guests.adults) {
-      label = item.guests.adults === 1 ? "kişi başı" : `${item.guests.adults} kişi toplam`;
+      const n = item.guests.adults;
+      label = n === 1 ? SCOPE_LABELS.per_person : L(`${n} kişi toplam`, `${n} people total`);
     }
     return { text: formatPrice(compared, currency), label, perNight: null, provisional };
   }
   if (item.price.amount == null) return null;
-  return { text: formatPrice(item.price.amount, item.price.currency), label: SCOPE_LABELS[item.price.scope], perNight: null, provisional };
+  return { text: formatPrice(item.price.amount, item.price.currency), label: scopeLabel(item.price.scope), perNight: null, provisional };
 }
 
 /**
@@ -211,8 +218,7 @@ export function needsFor(item: Item, decision: GroupDecision | undefined, ctx: C
  */
 const cardText = (l: ProCon, side: "pro" | "con") => {
   if (!l.finding) return tagOf(l, side);
-  const t = l.text.trim();
-  return t.charAt(0).toLocaleUpperCase("tr") + t.slice(1);
+  return capitalize(l.text.trim());
 };
 
 export function cardFacts(
@@ -249,9 +255,9 @@ export function cardFacts(
   const label = item.status === "saved" ? decisionLabel(item, decision, currency) : null;
   const status: CardFacts["status"] =
     item.status === "booked"
-      ? { text: "Rezerve ✓", tone: "success" }
+      ? { text: L("Rezerve ✓", "Booked ✓"), tone: "success" }
       : item.status === "chosen"
-        ? { text: "Seçildi", tone: "accent" }
+        ? { text: L("Seçildi", "Chosen"), tone: "accent" }
         : label && label.tone !== "muted"
           ? { text: label.text, tone: label.tone }
           : null;
@@ -264,7 +270,7 @@ export function cardFacts(
       // Only some of the nights: said with the price, as a fact, not as a minus.
       const p = priceOf(item, decision, currency);
       const c = option?.coverage;
-      return p && c ? { ...p, note: `${c.of} gecelik konaklamanın yalnız ${c.nights} gecesi` } : p;
+      return p && c ? { ...p, note: L(`${c.of} gecelik konaklamanın yalnız ${c.nights} gecesi`, `only ${c.nights} of the ${c.of} nights`) } : p;
     })(),
     score: option && !option.excluded ? option.score : null,
     best: Boolean(label?.best),
@@ -290,10 +296,15 @@ export function whyLines(item: Item, decision: GroupDecision | undefined, curren
   } else if (winner && option.score != null && winner.score != null) {
     const gap = Math.round(winner.score - option.score);
     const better = advantageOver(option, winner, currency);
-    lines.push(`${winner.item.name} ${gap > 0 ? `${gap} puan önde` : "başa baş"}${better ? `; bunun artısı: ${better}` : ""}.`);
+    lines.push(
+      L(
+        `${winner.item.name} ${gap > 0 ? `${gap} puan önde` : "başa baş"}${better ? `; bunun artısı: ${better}` : ""}.`,
+        `${winner.item.name} ${gap > 0 ? `is ${gap} point${gap === 1 ? "" : "s"} ahead` : "is level"}${better ? `; this one's plus: ${better}` : ""}.`,
+      ),
+    );
   }
   const ai = (decision.analysis ?? decision.staleAnalysis)?.aiScores.find((s) => s.itemId === item.id);
-  if (ai?.note) lines.push(`AI incelemesi: ${ai.note}`);
+  if (ai?.note) lines.push(`${L("AI incelemesi", "AI review")}: ${ai.note}`);
   return lines;
 }
 
@@ -308,7 +319,8 @@ export interface CardDetails {
   cons: { text: string; detail: string | null; strong: boolean }[];
 }
 
-const CANCELLATION_WORDS = { free: "Ücretsiz iptal", partial: "Kısmi iade", non_refundable: "İade yok", unknown: null } as const;
+const CANCELLATION_WORDS = liveLabels({ free: ["Ücretsiz iptal", "Free cancellation"], partial: ["Kısmi iade", "Partial refund"], non_refundable: ["İade yok", "Non-refundable"] });
+const cancellationWord = (type: keyof typeof CANCELLATION_WORDS | "unknown") => (type === "unknown" ? null : CANCELLATION_WORDS[type]);
 
 const dayOf = (iso: string | null | undefined) => (iso ? formatDateRange(iso.slice(0, 10), null) : null);
 
@@ -316,9 +328,31 @@ const dayOf = (iso: string | null | undefined) => (iso ? formatDateRange(iso.sli
 function ratingText(item: Item): string | null {
   const r = item.rating;
   if (r.value == null || !r.scale) return null;
-  const value = r.value.toLocaleString("tr-TR", { maximumFractionDigits: 1 });
-  return [`${value} / ${r.scale}`, r.count ? `${r.count.toLocaleString("tr-TR")} yorum` : null].filter(Boolean).join(" · ");
+  return [`${num(r.value)} / ${r.scale}`, r.count ? nReviews(r.count) : null].filter(Boolean).join(" · ");
 }
+
+/** The facts' labels. */
+const F = liveLabels({
+  date: ["Tarih", "Dates"],
+  place: ["Yer", "Place"],
+  guests: ["Kişi", "Guests"],
+  rating: ["Puan", "Rating"],
+  cancellation: ["İptal", "Cancellation"],
+  checkInOut: ["Giriş / çıkış", "Check-in / out"],
+  centre: ["Merkeze", "To the centre"],
+  amenities: ["Olanaklar", "Amenities"],
+  departure: ["Kalkış", "Departs"],
+  arrival: ["Varış", "Arrives"],
+  duration: ["Süre", "Duration"],
+  stops: ["Aktarma", "Stops"],
+  baggage: ["Bagaj", "Baggage"],
+  fare: ["Tarife", "Fare"],
+  data: ["Veri", "Data"],
+  validity: ["Geçerlilik", "Validity"],
+  price: ["Fiyat", "Price"],
+});
+
+const adults = (n: number) => count(n, "yetişkin", "adult");
 
 function factsOf(item: Item, listing: Listing | null): CardDetails["facts"] {
   const m = metricsOf(item);
@@ -327,46 +361,47 @@ function factsOf(item: Item, listing: Listing | null): CardDetails["facts"] {
     if (value) facts.push({ label, value });
   };
   const join = (parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(" · ") || null;
-  const cancellation = item.cancellation.summary ?? CANCELLATION_WORDS[m.cancellationType];
+  const cancellation = item.cancellation.summary ?? cancellationWord(m.cancellationType);
   switch (item.category) {
     case "stay": {
       const r = stayRange(item);
-      add("Tarih", r ? `${formatDateRange(r.start, r.end)} · ${nightsBetween(r.start, r.end)} gece` : "Tarih seçilmeden kaydedildi");
-      add("Yer", join([m.stayKind && m.stayKind !== "other" ? STAY_KIND_LABELS[m.stayKind] : null, m.bedrooms ? `${m.bedrooms} yatak odası` : null, item.location.area ?? item.city]));
-      add("Kişi", item.guests.adults ? `${item.guests.adults} yetişkin${item.guests.children ? `, ${item.guests.children} çocuk` : ""}` : null);
-      add("Puan", ratingText(item));
-      add("İptal", cancellation);
+      add(F.date, r ? `${formatDateRange(r.start, r.end)} · ${nNights(nightsBetween(r.start, r.end))}` : L("Tarih seçilmeden kaydedildi", "Saved without dates"));
+      add(F.place, join([m.stayKind && m.stayKind !== "other" ? STAY_KIND_LABELS[m.stayKind] : null, m.bedrooms ? bedrooms(m.bedrooms) : null, item.location.area ?? item.city]));
+      const children = item.guests.children;
+      add(F.guests, item.guests.adults ? `${adults(item.guests.adults)}${children ? `, ${count(children, "çocuk", "child", "children")}` : ""}` : null);
+      add(F.rating, ratingText(item));
+      add(F.cancellation, cancellation);
       const h = listing?.house;
-      add("Giriş / çıkış", h && (h.checkInFrom || h.checkOutUntil) ? `${h.checkInFrom ?? "?"} / ${h.checkOutUntil ?? "?"}` : null);
-      add("Merkeze", m.distanceToCenterKm != null ? `${m.distanceToCenterKm.toLocaleString("tr-TR", { maximumFractionDigits: 1 })} km` : null);
-      add("Olanaklar", m.amenities.length ? m.amenities.slice(0, 6).join(", ") : null);
+      add(F.checkInOut, h && (h.checkInFrom || h.checkOutUntil) ? `${h.checkInFrom ?? "?"} / ${h.checkOutUntil ?? "?"}` : null);
+      add(F.centre, m.distanceToCenterKm != null ? `${num(m.distanceToCenterKm)} km` : null);
+      add(F.amenities, m.amenities.length ? m.amenities.slice(0, 6).map(amenityLabel).join(", ") : null);
       break;
     }
     case "flight":
     case "transport": {
       const f = item.flight;
-      add("Kalkış", join([clock(f?.departure), dayOf(f?.departure ?? item.dates.start), f?.from]));
-      add("Varış", join([clock(f?.arrival), f?.arrival ? dayOf(f.arrival) : null, f?.to]));
-      add("Süre", m.durationMinutes ? durationText(m.durationMinutes) : null);
-      add("Aktarma", item.category === "flight" && f?.stops != null ? (f.stops === 0 ? "Direkt" : `${f.stops} aktarma`) : null);
-      add("Bagaj", m.checkedBagIncluded == null ? null : m.checkedBagIncluded ? "Bavul dahil" : "Bavul dahil değil");
-      add("Tarife", item.optionDetail);
-      add("Kişi", item.guests.adults ? `${item.guests.adults} yetişkin` : null);
-      add("İptal", cancellation);
+      add(F.departure, join([clock(f?.departure), dayOf(f?.departure ?? item.dates.start), f?.from]));
+      add(F.arrival, join([clock(f?.arrival), f?.arrival ? dayOf(f.arrival) : null, f?.to]));
+      add(F.duration, m.durationMinutes ? durationText(m.durationMinutes) : null);
+      add(F.stops, item.category === "flight" && f?.stops != null ? (f.stops === 0 ? L("Direkt", "Direct") : nStops(f.stops)) : null);
+      add(F.baggage, m.checkedBagIncluded == null ? null : m.checkedBagIncluded ? L("Bavul dahil", "Checked bag included") : L("Bavul dahil değil", "No checked bag"));
+      add(F.fare, item.optionDetail);
+      add(F.guests, item.guests.adults ? adults(item.guests.adults) : null);
+      add(F.cancellation, cancellation);
       break;
     }
     case "esim":
-      add("Veri", m.unlimitedData ? "Sınırsız" : m.dataGb ? `${m.dataGb} GB` : null);
-      add("Geçerlilik", m.validityDays ? `${m.validityDays} gün` : null);
+      add(F.data, m.unlimitedData ? L("Sınırsız", "Unlimited") : m.dataGb ? `${m.dataGb} GB` : null);
+      add(F.validity, m.validityDays ? nDays(m.validityDays) : null);
       break;
     default:
-      add("Tarih", join([dayOf(item.dates.start), clock(item.flight?.departure)]));
-      add("Süre", m.durationMinutes ? durationText(m.durationMinutes) : null);
-      add("Yer", item.location.address ?? item.location.area ?? item.city);
-      add("Puan", ratingText(item));
-      add("İptal", cancellation);
+      add(F.date, join([dayOf(item.dates.start), clock(item.flight?.departure)]));
+      add(F.duration, m.durationMinutes ? durationText(m.durationMinutes) : null);
+      add(F.place, item.location.address ?? item.location.area ?? item.city);
+      add(F.rating, ratingText(item));
+      add(F.cancellation, cancellation);
   }
-  if (item.price.taxesIncluded === "no") add("Fiyat", "Vergiler dahil değil");
+  if (item.price.taxesIncluded === "no") add(F.price, L("Vergiler dahil değil", "Taxes not included"));
   return facts;
 }
 

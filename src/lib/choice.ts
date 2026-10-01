@@ -4,6 +4,7 @@
 // what it gives up. Above them one sentence: the pick and why, and the alternatives for each priority.
 // Pure.
 import {
+  amenityLabel,
   amenityState,
   checksOnlyReading,
   CRITERION_LABELS,
@@ -19,6 +20,8 @@ import {
   type Part,
 } from "./decision";
 import { differencesOf, type DiffCell, type DiffRow } from "./differences";
+import { L } from "./i18n";
+import { capitalize, joinAnd, liveLabels, lowerFirst, MINUTES_SHOWN, nReviews } from "./i18nText";
 import { formatPrice, listingKeyOf, nightsBetween } from "./items";
 import { acceptKey, evidenceOf, FADED } from "./listing";
 import type { Pivot } from "./pivots";
@@ -72,29 +75,44 @@ export interface Choice {
   verify: { itemId: string; name: string; what: string }[];
 }
 
-/** A lens: the criterion it looks at, the noun for the sentence, the superlative for the card. */
-const LENS: Partial<Record<CriterionId, { noun: string; best: string }>> = {
-  price: { noun: "tasarruf", best: "En ekonomik" },
-  location: { noun: "konum", best: "En iyi konum" },
-  quiet: { noun: "sessizlik", best: "En sessiz" },
-  clean: { noun: "temizlik", best: "En temiz" },
-  view: { noun: "manzara", best: "En iyi manzara" },
-  space: { noun: "ferahlık", best: "En ferah" },
-  bed: { noun: "uyku", best: "En iyi yatak" },
-  breakfast: { noun: "kahvaltı", best: "En iyi kahvaltı" },
-  access: { noun: "erişim", best: "En kolay erişim" },
-  safety: { noun: "güvenlik", best: "En güvenli" },
-  rating: { noun: "yorumlar", best: "En iyi yorumlar" },
-  comfort: { noun: "konfor", best: "En konforlu" },
-  cancellation: { noun: "esnek iptal", best: "En esnek iptal" },
-  amenities: { noun: "istediğin olanaklar", best: "İstediklerin onda" },
-  duration: { noun: "kısa yolculuk", best: "En kısa" },
-  stops: { noun: "az aktarma", best: "En az aktarma" },
-  schedule: { noun: "uygun saat", best: "En uygun saat" },
-  baggage: { noun: "bagaj", best: "Bagaj dahil" },
-  data: { noun: "veri", best: "En çok veri" },
-  validity: { noun: "geçerlilik", best: "En uzun geçerlilik" },
+/** A lens: the noun for the sentence and the superlative for the card, Turkish then English. */
+const LENS_WORDS: Partial<Record<CriterionId, readonly [noun: string, best: string, noun: string, best: string]>> = {
+  price: ["tasarruf", "En ekonomik", "saving", "Best value"],
+  location: ["konum", "En iyi konum", "location", "Best location"],
+  quiet: ["sessizlik", "En sessiz", "quiet", "Quietest"],
+  clean: ["temizlik", "En temiz", "cleanliness", "Cleanest"],
+  view: ["manzara", "En iyi manzara", "the view", "Best view"],
+  space: ["ferahlık", "En ferah", "space", "Most spacious"],
+  bed: ["uyku", "En iyi yatak", "sleep", "Best bed"],
+  breakfast: ["kahvaltı", "En iyi kahvaltı", "breakfast", "Best breakfast"],
+  access: ["erişim", "En kolay erişim", "access", "Easiest access"],
+  safety: ["güvenlik", "En güvenli", "safety", "Safest"],
+  rating: ["yorumlar", "En iyi yorumlar", "reviews", "Best reviews"],
+  comfort: ["konfor", "En konforlu", "comfort", "Most comfortable"],
+  cancellation: ["esnek iptal", "En esnek iptal", "flexible cancellation", "Most flexible cancellation"],
+  amenities: ["istediğin olanaklar", "İstediklerin onda", "the amenities you want", "Has what you want"],
+  duration: ["kısa yolculuk", "En kısa", "a short journey", "Shortest"],
+  stops: ["az aktarma", "En az aktarma", "fewer stops", "Fewest stops"],
+  schedule: ["uygun saat", "En uygun saat", "good times", "Best times"],
+  baggage: ["bagaj", "Bagaj dahil", "baggage", "Bag included"],
+  data: ["veri", "En çok veri", "data", "Most data"],
+  validity: ["geçerlilik", "En uzun geçerlilik", "validity", "Longest validity"],
 };
+
+/** A lens: the criterion it looks at, the noun for the sentence, the superlative for the card (in the current language). */
+const LENS: Partial<Record<CriterionId, { noun: string; best: string }>> = Object.fromEntries(
+  Object.entries(LENS_WORDS).map(([c, w]) => [
+    c,
+    {
+      get noun() {
+        return L(w[0], w[2]);
+      },
+      get best() {
+        return L(w[1], w[3]);
+      },
+    },
+  ]),
+);
 
 /** A lens worth showing: the criterion matters ("Önemli" or more) and one option clearly leads on it. */
 const LENS_LEVEL = 3;
@@ -104,19 +122,17 @@ const VERIFY_TOP = 3;
 
 const part = (o: OptionResult, c: CriterionId): Part | undefined => o.parts.find((p) => p.criterion === c);
 const priceOf = (o: OptionResult) => (o.limited.length ? null : (part(o, "price")?.value ?? null));
-const capital = (t: string) => t.charAt(0).toLocaleUpperCase("tr") + t.slice(1);
-const lower = (t: string) => t.charAt(0).toLocaleLowerCase("tr") + t.slice(1);
-
-function joinTr(words: string[]): string {
-  if (words.length <= 1) return words.join("");
-  return `${words.slice(0, -1).join(", ")} ve ${words.at(-1)}`;
-}
+const capital = capitalize;
+const lower = lowerFirst;
+const joinTr = joinAnd;
 
 /** The amenities asked for that this one has and the other doesn't know or lacks: "mutfak var". */
 function amenityGains(a: OptionResult, b: OptionResult, ctx: Ctx): string[] {
   const wanted = [...new Set([...(ctx.trip.wantedAmenities ?? []), ...(ctx.trip.requirements ?? []).flatMap((r) => (r.kind === "amenity" ? [r.amenity] : []))])] as Amenity[];
   const listings = ctx as DecisionContext;
-  return wanted.filter((x) => amenityState(a.item, x, listings) === "yes" && amenityState(b.item, x, listings) !== "yes").map((x) => `${x} var`);
+  return wanted
+    .filter((x) => amenityState(a.item, x, listings) === "yes" && amenityState(b.item, x, listings) !== "yes")
+    .map((x) => L(`${amenityLabel(x)} var`, `has ${amenityLabel(x)}`));
 }
 
 /** What `a` has over `b` on one criterion, in concrete words. */
@@ -126,7 +142,9 @@ function gainText(c: CriterionId, pa: Part, pb: Part, a: OptionResult, b: Option
     case "amenities":
       return amenityGains(a, b, ctx);
     case "location":
-      return diff != null && diff >= 2 && (pa.display ?? "").includes(" dk") ? [`${Math.round(diff)} dk daha yakın`] : ["konumu daha iyi"];
+      return diff != null && diff >= 2 && MINUTES_SHOWN.test(pa.display ?? "")
+        ? [L(`${Math.round(diff)} dk daha yakın`, `${Math.round(diff)} min closer`)]
+        : [L("konumu daha iyi", "better location")];
     case "quiet":
     case "clean":
     case "view":
@@ -136,24 +154,26 @@ function gainText(c: CriterionId, pa: Part, pb: Part, a: OptionResult, b: Option
     case "access":
     case "safety":
       // What the pages say for it, in their words ("sessiz sokak · 4 yorum").
-      return pa.display ? [lower(pa.display)] : [`${lower(CRITERION_LABELS[c])} daha iyi`];
-    case "rating":
-      return [`yorumlar daha iyi (${pa.display?.split(" · ")[0]} – ${pb.display?.split(" · ")[0]})`];
+      return pa.display ? [lower(pa.display)] : [L(`${lower(CRITERION_LABELS[c])} daha iyi`, `better ${lower(CRITERION_LABELS[c])}`)];
+    case "rating": {
+      const scores = `(${pa.display?.split(" · ")[0]} – ${pb.display?.split(" · ")[0]})`;
+      return [L(`yorumlar daha iyi ${scores}`, `better reviews ${scores}`)];
+    }
     case "cancellation":
-      return [lower(pa.display ?? "iptal daha esnek")];
+      return [lower(pa.display ?? L("iptal daha esnek", "more flexible cancellation"))];
     case "stops":
     case "baggage":
       return [lower(pa.display ?? CRITERION_LABELS[c])];
     case "duration":
-      return diff ? [`${Math.round(diff)} dk daha kısa`] : ["daha kısa"];
+      return diff ? [L(`${Math.round(diff)} dk daha kısa`, `${Math.round(diff)} min shorter`)] : [L("daha kısa", "shorter")];
     case "comfort":
-      return ["daha konforlu"];
+      return [L("daha konforlu", "more comfortable")];
     case "schedule":
-      return ["saatleri daha uygun"];
+      return [L("saatleri daha uygun", "better times")];
     case "data":
-      return ["daha çok veri"];
+      return [L("daha çok veri", "more data")];
     case "validity":
-      return ["daha uzun geçerli"];
+      return [L("daha uzun geçerli", "valid longer")];
     default:
       // "Yorum ve detaylar" as a whole says nothing concrete; its lines are on the card.
       return [];
@@ -171,29 +191,37 @@ function shortfalls(a: OptionResult, b: OptionResult, ctx: Ctx): string[] {
     const diff = own.value != null && other.value != null ? Math.abs(own.value - other.value) : null;
     switch (c) {
       case "location":
-        return diff != null && diff >= 2 && (own.display ?? "").includes(" dk") ? [`${Math.round(diff)} dk daha uzak`] : ["konumu daha zayıf"];
+        return diff != null && diff >= 2 && MINUTES_SHOWN.test(own.display ?? "")
+          ? [L(`${Math.round(diff)} dk daha uzak`, `${Math.round(diff)} min further`)]
+          : [L("konumu daha zayıf", "weaker location")];
       case "duration":
-        return diff ? [`${Math.round(diff)} dk daha uzun`] : ["daha uzun"];
-      case "rating":
-        return [`yorumları daha zayıf (${own.display?.split(" · ")[0]} – ${other.display?.split(" · ")[0]})`];
+        return diff ? [L(`${Math.round(diff)} dk daha uzun`, `${Math.round(diff)} min longer`)] : [L("daha uzun", "longer")];
+      case "rating": {
+        const scores = `(${own.display?.split(" · ")[0]} – ${other.display?.split(" · ")[0]})`;
+        return [L(`yorumları daha zayıf ${scores}`, `weaker reviews ${scores}`)];
+      }
       case "amenities": {
         const listings = ctx as DecisionContext;
         const wanted = [...new Set([...(ctx.trip.wantedAmenities ?? []), ...(ctx.trip.requirements ?? []).flatMap((r) => (r.kind === "amenity" ? [r.amenity] : []))])] as Amenity[];
         return wanted
           .filter((x) => amenityState(b.item, x, listings) === "yes" && amenityState(a.item, x, listings) !== "yes")
-          .map((x) => `${x} ${amenityState(a.item, x, listings) === "no" ? "yok" : "yazmıyor"}`);
+          .map((x) =>
+            amenityState(a.item, x, listings) === "no"
+              ? L(`${amenityLabel(x)} yok`, `no ${amenityLabel(x)}`)
+              : L(`${amenityLabel(x)} yazmıyor`, `${amenityLabel(x)} not stated`),
+          );
       }
       case "comfort":
-        return ["konforu daha zayıf"];
+        return [L("konforu daha zayıf", "less comfortable")];
       case "schedule":
-        return ["saatleri daha zor"];
+        return [L("saatleri daha zor", "harder times")];
       case "data":
-        return ["daha az veri"];
+        return [L("daha az veri", "less data")];
       case "validity":
-        return ["daha kısa geçerli"];
+        return [L("daha kısa geçerli", "valid for less")];
       default:
         // Its own words on it (a wish: "gece bar gürültüsü · 3 yorum"; "iade yok", "1 aktarma", "yalnız kabin").
-        return own.display ? [lower(own.display)] : [`${lower(CRITERION_LABELS[c])} daha zayıf`];
+        return own.display ? [lower(own.display)] : [L(`${lower(CRITERION_LABELS[c])} daha zayıf`, `weaker ${lower(CRITERION_LABELS[c])}`)];
     }
   });
   return [...new Set(texts)].slice(0, 3);
@@ -236,7 +264,7 @@ function findingEdges(a: OptionResult, b: OptionResult, rows: DiffRow[], ctx: Ct
       return c.confidence >= FADED && (c.count >= 2 || f.source !== "reviews") && !(f.polarity === "negative" && accepted.has(acceptKey(ka, f)));
     })
     .sort((x, y) => SEVERITY[y.finding!.severity] * y.standing - SEVERITY[x.finding!.severity] * x.standing);
-  const words = (c: DiffCell) => `${lower(c.finding!.text)}${c.count ? ` · ${c.count} yorum` : ""}`;
+  const words = (c: DiffCell) => `${lower(c.finding!.text)}${c.count ? ` · ${nReviews(c.count)}` : ""}`;
   return {
     gains: said.filter((c) => c.finding!.polarity === "positive").map(words),
     losses: said.filter((c) => c.finding!.polarity === "negative").map(words),
@@ -259,7 +287,13 @@ function tradeOf(a: OptionResult, b: OptionResult, ctx: Ctx, nights: number, row
   const pb = priceOf(b);
   const diff = pa != null && pb != null ? pa - pb : null;
   const money =
-    diff == null ? null : Math.abs(diff) < 1 ? "aynı fiyat" : diff > 0 ? `+${formatPrice(diff, ctx.currency)}` : `${formatPrice(-diff, ctx.currency)} daha ucuz`;
+    diff == null
+      ? null
+      : Math.abs(diff) < 1
+        ? SAME_PRICE()
+        : diff > 0
+          ? `+${formatPrice(diff, ctx.currency)}`
+          : L(`${formatPrice(-diff, ctx.currency)} daha ucuz`, `${formatPrice(-diff, ctx.currency)} cheaper`);
   const read = findingEdges(a, b, rows, ctx);
   return {
     vs: b.item.name,
@@ -272,16 +306,19 @@ function tradeOf(a: OptionResult, b: OptionResult, ctx: Ctx, nights: number, row
 }
 
 /** A topic the traveller cares about, as a word for "bunda bilinmiyor": what the reviews may say or not. */
-const TOPIC_WORDS: Partial<Record<FindingTopic, string>> = {
-  noise: "sessizlik",
-  cleanliness: "temizlik",
-  view: "manzara",
-  space: "ferahlık",
-  bed: "yatak",
-  food: "kahvaltı",
-  access: "erişim",
-  safety: "güvenlik",
-};
+const TOPIC_WORDS: Readonly<Partial<Record<FindingTopic, string>>> = liveLabels({
+  noise: ["sessizlik", "quiet"],
+  cleanliness: ["temizlik", "cleanliness"],
+  view: ["manzara", "view"],
+  space: ["ferahlık", "space"],
+  bed: ["yatak", "bed"],
+  food: ["kahvaltı", "breakfast"],
+  access: ["erişim", "access"],
+  safety: ["güvenlik", "safety"],
+});
+
+/** The money line when two cost the same. */
+const SAME_PRICE = () => L("aynı fiyat", "same price");
 
 /**
  * What the traveller cares about that this option's pages, read, don't mention while another option's do
@@ -314,7 +351,8 @@ function unknownsOf(o: OptionResult, others: OptionResult[], d: GroupDecision, c
 /** The money side: "+€60 (gecelik +€20)", "€60 daha ucuz (gecelik −€20)". */
 export function moneyText(t: Trade, currency: string): string | null {
   if (!t.money) return null;
-  const night = t.perNight != null && Math.abs(t.perNight) >= 1 ? ` (gecelik ${t.perNight > 0 ? "+" : "−"}${formatPrice(Math.abs(t.perNight), currency)})` : "";
+  const amount = t.perNight != null ? `${t.perNight > 0 ? "+" : "−"}${formatPrice(Math.abs(t.perNight), currency)}` : "";
+  const night = t.perNight != null && Math.abs(t.perNight) >= 1 ? L(` (gecelik ${amount})`, ` (${amount} a night)`) : "";
   return `${t.money}${night}`;
 }
 
@@ -323,7 +361,7 @@ export function tradeText(t: Trade, currency: string): string {
   return [
     moneyText(t, currency),
     t.gains.length ? t.gains.join(", ") : null,
-    t.losses.length ? `eksiği: ${t.losses.join(", ")}` : null,
+    t.losses.length ? `${L("eksiği", "downside")}: ${t.losses.join(", ")}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -409,7 +447,7 @@ export function choiceOf(d: GroupDecision, ctx: Ctx): Choice {
 function lensNoun(c: CriterionId, o: OptionResult, ctx: Ctx): string {
   if (c === "amenities") {
     const wanted = ctx.trip.wantedAmenities ?? [];
-    return wanted.length === 1 ? wanted[0] : LENS.amenities!.noun;
+    return wanted.length === 1 ? amenityLabel(wanted[0]) : LENS.amenities!.noun;
   }
   void o;
   return LENS[c]!.noun;
@@ -436,17 +474,18 @@ function headlineOf(ranked: Ranked[], ctx: Ctx, contenders: OptionResult[]): str
       .slice(0, 2);
     const diff = top.trade?.diff ?? null;
     const money = diff != null && Math.abs(diff) >= 1 ? formatPrice(Math.abs(diff), ctx.currency) : null;
-    if (money && diff! > 0 && gains.length) why.push(`${money} fazlasına ${joinTr(gains)}`);
-    else if (money && diff! < 0 && !own.has(LENS.price!.best)) why.push(joinTr([`${money} daha ucuz`, ...gains]));
+    if (money && diff! > 0 && gains.length) why.push(L(`${money} fazlasına ${joinTr(gains)}`, `for ${money} more, ${joinTr(gains)}`));
+    else if (money && diff! < 0 && !own.has(LENS.price!.best)) why.push(joinTr([L(`${money} daha ucuz`, `${money} cheaper`), ...gains]));
     else if (gains.length) why.push(joinTr(gains));
   }
-  let text = `Önerim ${name}${why.length ? `: ${why.join("; ")}` : ""}.`;
+  const reasons = why.length ? `: ${why.join("; ")}` : "";
+  let text = L(`Önerim ${name}${reasons}.`, `My pick: ${name}${reasons}.`);
   const alternatives = ranked
     .filter((r) => r !== top && r.lenses.length && contenders.includes(r.option))
     .slice(0, 2)
     .map((r) => {
-      const money = r.trade?.money && r.trade.money !== "aynı fiyat" ? ` (${r.trade.money})` : "";
-      return `${joinTr(r.lenses)} için ${r.rank}. ${r.option.item.name}${money}`;
+      const money = r.trade?.money && r.trade.money !== SAME_PRICE() ? ` (${r.trade.money})` : "";
+      return L(`${joinTr(r.lenses)} için ${r.rank}. ${r.option.item.name}${money}`, `for ${joinTr(r.lenses)}, #${r.rank} ${r.option.item.name}${money}`);
     });
   if (alternatives.length) text += ` ${capital(alternatives.join("; "))}.`;
   return text;
