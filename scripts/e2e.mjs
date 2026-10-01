@@ -12,12 +12,18 @@ const out = path.resolve("e2e-output");
 mkdirSync(out, { recursive: true });
 const extension = path.resolve("dist");
 const executablePath = process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+// The checks below read the Turkish texts: pin the browser to Turkish (an en-US Chromium would start the
+// board in English, see browserLang in src/lib/i18n.ts).
+const TURKISH = { locale: "tr-TR" };
+const LANG_ARG = "--lang=tr-TR";
 
 const context = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-")), {
   executablePath,
   headless: false,
   viewport: { width: 1440, height: 900 },
+  ...TURKISH,
   args: [
+    LANG_ARG,
     `--disable-extensions-except=${extension}`,
     `--load-extension=${extension}`,
     // e.g. --ignore-certificate-errors-spki-list=<hash> to trust a sandbox proxy's own CA
@@ -417,7 +423,8 @@ const flow = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir
   executablePath,
   headless: false,
   viewport: { width: 1440, height: 900 },
-  args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+  ...TURKISH,
+  args: [LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
 });
 try {
   const geminiBodies = [];
@@ -761,7 +768,8 @@ const updating = await chromium.launchPersistentContext(mkdtempSync(path.join(tm
   executablePath,
   headless: false,
   viewport: { width: 1200, height: 800 },
-  args: [`--disable-extensions-except=${installDir}`, `--load-extension=${installDir}`],
+  ...TURKISH,
+  args: [LANG_ARG, `--disable-extensions-except=${installDir}`, `--load-extension=${installDir}`],
 });
 try {
   const worker = updating.serviceWorkers()[0] ?? (await updating.waitForEvent("serviceworker"));
