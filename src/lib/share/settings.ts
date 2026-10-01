@@ -1,0 +1,84 @@
+// Which trip settings are shared, and who wins when both changed them: the later change (last writer
+// wins). Kept small on purpose: what the trip is (name, dates, budget) and what matters on it.
+// Chat, hidden transfers and each person's choices stay on their own computer.
+import type { Trip } from "../types";
+
+export const SYNCED_FIELDS = [
+  "title",
+  "confirmedDates",
+  "budget",
+  "priorities",
+  "categoryPriorities",
+  "wantedAmenities",
+  "requirements",
+] as const satisfies readonly (keyof Trip)[];
+
+export type SyncedSettings = { [K in (typeof SYNCED_FIELDS)[number]]: Trip[K] | null };
+
+export function settingsOf(trip: Trip): SyncedSettings {
+  return Object.fromEntries(SYNCED_FIELDS.map((f) => [f, trip[f] ?? null])) as SyncedSettings;
+}
+
+/** Settings from the server, only the known fields, with a usable title. */
+export function settingsFromServer(raw: unknown): SyncedSettings | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const out = Object.fromEntries(SYNCED_FIELDS.map((f) => [f, r[f] ?? null])) as SyncedSettings;
+  if (typeof out.title !== "string" || !out.title.trim()) return null;
+  return out;
+}
+
+/** Applies shared settings to the local trip (missing optional fields go back to their defaults). */
+export function applySettings(trip: Trip, s: SyncedSettings): Trip {
+  const next: Trip = { ...trip, title: s.title ?? trip.title, confirmedDates: s.confirmedDates ?? null, budget: s.budget ?? null };
+  for (const f of ["priorities", "categoryPriorities", "wantedAmenities", "requirements"] as const) {
+    if (s[f] == null) delete next[f];
+    else (next as unknown as Record<string, unknown>)[f] = s[f];
+  }
+  return next;
+}
+
+/** JSON with sorted keys: the same settings always give the same text. */
+export function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableJson(v)}`).join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+
+export interface SettingsSync {
+  /** Settings on this computer now. */
+  local: SyncedSettings;
+  /** When the local trip last changed (ms). */
+  localAt: number;
+  /** stableJson of the settings both sides last agreed on (null: never synced). */
+  base: string | null;
+  /** Settings on the server now, and when they were written (ISO). */
+  remote: SyncedSettings | null;
+  remoteAt: string | null;
+  /** The server's updated_at when we last synced. */
+  seenAt: string | null;
+}
+
+export type SettingsAction = "none" | "push" | "pull" | "adopt";
+
+/**
+ * - only here changed → push; only there changed → pull;
+ * - both changed to the same thing → adopt (just remember it);
+ * - both changed differently → the later change wins.
+ */
+export function resolveSettings(s: SettingsSync): SettingsAction {
+  const local = stableJson(s.local);
+  const localChanged = local !== s.base;
+  const remoteChanged = s.remote != null && s.remoteAt !== s.seenAt;
+  if (!remoteChanged) return localChanged ? "push" : "none";
+  const remote = stableJson(s.remote);
+  if (remote === local) return "adopt";
+  if (!localChanged) return "pull";
+  const remoteAt = s.remoteAt ? Date.parse(s.remoteAt) : 0;
+  return s.localAt > remoteAt ? "push" : "pull";
+}
