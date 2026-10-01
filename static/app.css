@@ -161,6 +161,9 @@ a { color: var(--accent); text-decoration: none; }
 .segmented { display: grid; grid-template-columns: 1fr 1fr; background: var(--soft); border-radius: 12px; padding: 4px; gap: 4px; }
 .segmented button { border: 0; background: none; border-radius: 9px; padding: 10px; font-size: 15px; color: #3a3a3c; }
 .segmented button.on { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.08); color: var(--text); font-weight: 600; }
+.lang-picker { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.lang-picker .segmented { min-width: 220px; }
+.lang-picker .segmented button { padding: 6px 10px; font-size: 14px; }
 .row-inline { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
 .row-inline select { margin-top: 0; flex: 1; }
 .small { font-size: 13px; margin-top: -6px; }

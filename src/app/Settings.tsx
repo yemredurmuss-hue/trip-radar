@@ -1,17 +1,42 @@
 import { useEffect, useState } from "react";
 import { requestProcessing } from "../lib/browser";
 import { DEFAULT_GEMINI_MODEL, DEFAULT_MODEL, exportAll, exportDiagnostics, getSettings, saveSettings } from "../lib/db";
+import { L, lang, saveLang, type Lang } from "../lib/i18n";
 import { describeError } from "../lib/llm";
 import { listGeminiModels } from "../lib/llm/gemini";
 import { retryAllFailed } from "../lib/process";
 import type { Settings as SettingsShape } from "../lib/types";
 import { ShareSettings } from "./Share";
 
-const CLAUDE_MODELS = [
-  { id: DEFAULT_MODEL, label: "Claude Opus 5 — en iyi sonuç" },
-  { id: "claude-sonnet-5", label: "Claude Sonnet 5 — daha ucuz" },
-  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5 — en ucuz" },
+const claudeModels = () => [
+  { id: DEFAULT_MODEL, label: L("Claude Opus 5 — en iyi sonuç", "Claude Opus 5 · best results") },
+  { id: "claude-sonnet-5", label: L("Claude Sonnet 5 — daha ucuz", "Claude Sonnet 5 · cheaper") },
+  { id: "claude-haiku-4-5", label: L("Claude Haiku 4.5 — en ucuz", "Claude Haiku 4.5 · cheapest") },
 ];
+
+/** "Dil / Language": both names written in their own language, so anyone finds theirs. Switching reloads the board. */
+export function LanguagePicker() {
+  const choose = async (next: Lang) => {
+    if (next === lang()) return;
+    await saveLang(next);
+    // Back to the same place (the setup / settings stays open after the reload).
+    if (location.hash !== "#settings") history.replaceState(null, "", `${location.pathname}#settings`);
+    location.reload();
+  };
+  return (
+    <div className="lang-picker">
+      <span className="muted small">Dil / Language</span>
+      <div className="segmented" role="radiogroup" aria-label="Dil / Language">
+        <button role="radio" aria-checked={lang() === "tr"} className={lang() === "tr" ? "on" : ""} onClick={() => void choose("tr")}>
+          Türkçe
+        </button>
+        <button role="radio" aria-checked={lang() === "en"} className={lang() === "en" ? "on" : ""} onClick={() => void choose("en")}>
+          English
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const GEMINI_KEY = /^AIza[0-9A-Za-z_-]{30,}$/;
 
@@ -29,18 +54,18 @@ export function Settings({ onClose }: { onClose: () => void }) {
 
   /** Pasting a key is all it takes: validate it, pick the best free model, save, close. */
   async function connectGemini(key: string) {
-    setModelStatus("Anahtar kontrol ediliyor…");
+    setModelStatus(L("Anahtar kontrol ediliyor…", "Checking the key…"));
     try {
       const ids = await listGeminiModels(key);
       if (!ids.length) {
-        setModelStatus("Bu anahtarla kullanılabilir model bulunamadı.");
+        setModelStatus(L("Bu anahtarla kullanılabilir model bulunamadı.", "No usable model found for this key."));
         return;
       }
       const geminiModel = ids.includes(s!.geminiModel) ? s!.geminiModel : ids[0];
       setGeminiModels(ids);
       update({ provider: "gemini", geminiKey: key, geminiModel });
       await persist({ ...s!, provider: "gemini", geminiKey: key, geminiModel });
-      setModelStatus(`✓ Bağlandı (${geminiModel}). Hazırsın.`);
+      setModelStatus(L(`✓ Bağlandı (${geminiModel}). Hazırsın.`, `✓ Connected (${geminiModel}). You're all set.`));
       setTimeout(onClose, 1200);
     } catch (error) {
       setModelStatus(describeError(error));
@@ -55,11 +80,11 @@ export function Settings({ onClose }: { onClose: () => void }) {
 
   async function fetchModels() {
     if (!s?.geminiKey.trim()) return;
-    setModelStatus("Modeller getiriliyor…");
+    setModelStatus(L("Modeller getiriliyor…", "Loading models…"));
     try {
       const ids = await listGeminiModels(s.geminiKey.trim());
       setGeminiModels(ids);
-      setModelStatus(ids.length ? null : "Bu anahtarla kullanılabilir model bulunamadı.");
+      setModelStatus(ids.length ? null : L("Bu anahtarla kullanılabilir model bulunamadı.", "No usable model found for this key."));
       if (ids.length && !ids.includes(s.geminiModel)) update({ geminiModel: ids[0] });
     } catch (error) {
       setModelStatus(describeError(error));
@@ -77,7 +102,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
     const blob = new Blob([json], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `trip-radar-${kind === "backup" ? "yedek" : "tani"}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `trip-radar-${kind === "backup" ? L("yedek", "backup") : L("tani", "diagnostics")}-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -87,14 +112,15 @@ export function Settings({ onClose }: { onClose: () => void }) {
   return (
     <div className="modal" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <h2>Ayarlar</h2>
+        <LanguagePicker />
+        <h2>{L("Ayarlar", "Settings")}</h2>
 
-        <div className="segmented" role="radiogroup" aria-label="AI sağlayıcı">
+        <div className="segmented" role="radiogroup" aria-label={L("AI sağlayıcı", "AI provider")}>
           <button role="radio" aria-checked={s.provider === "gemini"} className={s.provider === "gemini" ? "on" : ""} onClick={() => update({ provider: "gemini" })}>
-            Gemini · ücretsiz
+            {L("Gemini · ücretsiz", "Gemini · free")}
           </button>
           <button role="radio" aria-checked={s.provider === "anthropic"} className={s.provider === "anthropic" ? "on" : ""} onClick={() => update({ provider: "anthropic" })}>
-            Claude · ücretli
+            {L("Claude · ücretli", "Claude · paid")}
           </button>
         </div>
 
@@ -103,18 +129,22 @@ export function Settings({ onClose }: { onClose: () => void }) {
             <ol className="setup">
               <li>
                 <a className="btn-primary setup-btn" href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
-                  Google'dan ücretsiz anahtar al ↗
+                  {L("Google'dan ücretsiz anahtar al ↗", "Get a free key from Google ↗")}
                 </a>
               </li>
-              <li>Açılan sayfada <b>Create API key</b>'e bas, anahtarı kopyala. Kart istemez.</li>
-              <li>Bu sekmeye dön, aşağıya yapıştır. Gerisini eklenti halleder.</li>
+              <li>
+                {L("Açılan sayfada ", "On the page that opens, click ")}
+                <b>Create API key</b>
+                {L("'e bas, anahtarı kopyala. Kart istemez.", " and copy the key. No card needed.")}
+              </li>
+              <li>{L("Bu sekmeye dön, aşağıya yapıştır. Gerisini eklenti halleder.", "Come back to this tab and paste it below. The extension does the rest.")}</li>
             </ol>
             <label className="field">
-              Gemini API anahtarı
+              {L("Gemini API anahtarı", "Gemini API key")}
               <input
                 type="password"
                 value={s.geminiKey}
-                placeholder="AIza… (yapıştır)"
+                placeholder={L("AIza… (yapıştır)", "AIza… (paste)")}
                 onChange={(e) => {
                   update({ geminiKey: e.target.value });
                   if (GEMINI_KEY.test(e.target.value.trim())) void connectGemini(e.target.value.trim());
@@ -133,28 +163,29 @@ export function Settings({ onClose }: { onClose: () => void }) {
                   ))}
                 </select>
                 <button className="small-btn" onClick={() => void fetchModels()} disabled={!s.geminiKey.trim()}>
-                  Modelleri getir
+                  {L("Modelleri getir", "Load models")}
                 </button>
               </span>
             </label>
             {modelStatus && <p className="muted small">{modelStatus}</p>}
             <p className="note small">
-              Ücretsiz katmanda Google, gönderilen içeriği (kaydettiğin sayfalar, ekran görüntüleri, sohbet) ürünlerini
-              geliştirmek için kullanabilir ve insanlar okuyabilir. Günlük istek sınırı da var; dolunca kayıtlar
-              "Tekrar dene" ile sonra işlenir.
+              {L(
+                `Ücretsiz katmanda Google, gönderilen içeriği (kaydettiğin sayfalar, ekran görüntüleri, sohbet) ürünlerini geliştirmek için kullanabilir ve insanlar okuyabilir. Günlük istek sınırı da var; dolunca kayıtlar "Tekrar dene" ile sonra işlenir.`,
+                `On the free tier Google may use what is sent (your saved pages, screenshots, chat) to improve its products, and people may read it. There is also a daily request limit; when it runs out, saves are processed later with "Try again".`,
+              )}
             </p>
           </>
         ) : (
           <>
             <label className="field">
-              Claude API anahtarı
+              {L("Claude API anahtarı", "Claude API key")}
               <input type="password" value={s.apiKey} placeholder="sk-ant-…" onChange={(e) => update({ apiKey: e.target.value })} autoFocus />
             </label>
-            <p className="muted small">console.anthropic.com → API Keys. Kullandıkça ücretlendirilir.</p>
+            <p className="muted small">{L("console.anthropic.com → API Keys. Kullandıkça ücretlendirilir.", "console.anthropic.com → API Keys. Billed as you use it.")}</p>
             <label className="field">
               Model
               <select value={s.model} onChange={(e) => update({ model: e.target.value })}>
-                {CLAUDE_MODELS.map((m) => (
+                {claudeModels().map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.label}
                   </option>
@@ -164,20 +195,23 @@ export function Settings({ onClose }: { onClose: () => void }) {
           </>
         )}
 
-        <p className="muted small">Anahtarlar yalnız bu tarayıcıda saklanır.</p>
+        <p className="muted small">{L("Anahtarlar yalnız bu tarayıcıda saklanır.", "Keys are stored only in this browser.")}</p>
         <ShareSettings />
         <p className="muted small">
           <button className="btn-link" style={{ fontSize: 13, padding: 0 }} onClick={() => void download("diagnostics")}>
-            Tanı dosyası indir
+            {L("Tanı dosyası indir", "Download diagnostics file")}
           </button>{" "}
-          — kaydettiğin sayfaları ve okunanları içerir, anahtarlarını ve sohbetini içermez. Bir şey yanlış okunduysa bu dosyayı paylaşabilirsin.
+          {L(
+            "— kaydettiğin sayfaları ve okunanları içerir, anahtarlarını ve sohbetini içermez. Bir şey yanlış okunduysa bu dosyayı paylaşabilirsin.",
+            "· has your saved pages and what was read from them, not your keys or chat. If something was read wrong, you can share this file.",
+          )}
         </p>
         <div className="modal-actions">
           <button className="btn-link" style={{ fontSize: 14 }} onClick={() => void download("backup")}>
-            Verileri dışa aktar (JSON)
+            {L("Verileri dışa aktar (JSON)", "Export data (JSON)")}
           </button>
           <button className="btn-primary" onClick={() => void save()}>
-            Kaydet
+            {L("Kaydet", "Save")}
           </button>
         </div>
       </div>
