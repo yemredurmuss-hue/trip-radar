@@ -479,7 +479,7 @@ function headlineOf(ranked: Ranked[], ctx: Ctx, contenders: OptionResult[]): str
     else if (gains.length) why.push(joinTr(gains));
   }
   const reasons = why.length ? `: ${why.join("; ")}` : "";
-  let text = L(`Önerim ${name}${reasons}.`, `My pick: ${name}${reasons}.`);
+  let text = L(`Önerim ${name}${reasons}.`, `My pick is ${name}${reasons}.`);
   const alternatives = ranked
     .filter((r) => r !== top && r.lenses.length && contenders.includes(r.option))
     .slice(0, 2)
