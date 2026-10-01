@@ -163,7 +163,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
                   ))}
                 </select>
                 <button className="small-btn" onClick={() => void fetchModels()} disabled={!s.geminiKey.trim()}>
-                  {L("Modelleri getir", "Load models")}
+                  {L("Modelleri getir", "Fetch models")}
                 </button>
               </span>
             </label>

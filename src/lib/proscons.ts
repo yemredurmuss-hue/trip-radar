@@ -411,7 +411,7 @@ export function prosCons(input: { item: Item; option?: OptionResult; decision?: 
   if (option?.eliminated) {
     const e = option.eliminated.findings.map((f) => (listing ? evidenceOf(f, listing, ctx.today) : null));
     const count = e.reduce((n, x) => n + (x?.count ?? 0), 0);
-    const out = L("Elendi", "Out");
+    const out = L("Elendi", "Ruled out");
     cons.push({
       key: "x:eliminated",
       text: `${out}: ${option.eliminated.reason}`,
