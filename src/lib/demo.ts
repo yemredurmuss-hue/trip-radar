@@ -2,6 +2,7 @@
 import { loadDecisions } from "./analysis";
 import { db, newId, notifyChanged } from "./db";
 import { textId } from "./evidence";
+import { L, lang } from "./i18n";
 import { EMPTY_METRICS, listingKeyOf } from "./items";
 import type { Analysis, Category, ChatMessage, Finding, Item, ItemMetrics, Listing, Trip } from "./types";
 
@@ -23,7 +24,7 @@ export async function loadDemoTrip(): Promise<string> {
   const now = Date.now();
   const trip: Trip = {
     id: newId(),
-    title: "Portekiz (örnek)",
+    title: L("Portekiz (örnek)", "Portugal (sample)"),
     confirmedDates: { start: "2026-10-08", end: "2026-10-14" },
     budget: { amount: 1500, currency: "EUR" },
     heroImage: null,
@@ -55,14 +56,14 @@ export async function loadDemoTrip(): Promise<string> {
       url: null,
       imageUrl: null,
       city: "Porto",
-      country: "Portekiz",
+      country: L("Portekiz", "Portugal"),
       countryCode: "PT",
       location: { address: null, area: null, approximate: false },
       dates: { start: "2026-10-08", end: "2026-10-11", source: "url" },
       guests: { adults: 2, children: null, rooms: 1 },
       price: { amount, currency: "EUR", scope: "total", taxesIncluded: "yes", source: "page", observedAt: now },
       priceHistory: [],
-      cancellation: { summary: "5 Eki'ye kadar ücretsiz iptal", freeUntil: "2026-10-05", source: "page" },
+      cancellation: { summary: L("5 Eki'ye kadar ücretsiz iptal", "Free cancellation until 5 Oct"), freeUntil: "2026-10-05", source: "page" },
       rating: { value: null, scale: null, count: null, source: "none" },
       flight: null,
       metrics: { ...EMPTY_METRICS, ...metrics },
@@ -82,34 +83,37 @@ export async function loadDemoTrip(): Promise<string> {
   const geo = (lat: number, lng: number) => ({ lat, lng, source: "page" as const });
   const noDates = { start: null, end: null, source: "none" as const };
   const items: Item[] = [
-    item("flight", "flight:ist-opo", "Pegasus · direkt", 148, {
-      summary: "8 Ekim 07:10 · Direkt",
+    item("flight", "flight:ist-opo", L("Pegasus · direkt", "Pegasus · direct"), 148, {
+      summary: L("8 Ekim 07:10 · Direkt", "8 Oct 07:10 · Direct"),
       provider: "Pegasus",
-      optionDetail: "Avantajlı paket (20 kg bagaj)",
+      optionDetail: L("Avantajlı paket (20 kg bagaj)", "Advantage package (20 kg bag)"),
       dates: { start: "2026-10-08", end: null, source: "page" },
       flight: { from: "IST", to: "OPO", departure: "2026-10-08T07:10", arrival: "2026-10-08T10:05", carrier: "Pegasus", flightNumber: "PC 1201", stops: 0 },
-      cancellation: { summary: "İade yok, ücretli değişiklik", freeUntil: null, source: "page" },
+      cancellation: { summary: L("İade yok, ücretli değişiklik", "Non-refundable, changes for a fee"), freeUntil: null, source: "page" },
       metrics: { durationMinutes: 295, checkedBagIncluded: true, cancellationType: "non_refundable" },
     }),
-    item("flight", "flight:ist-opo", "TAP · Lizbon aktarmalı", 118, {
-      summary: "8 Ekim 05:40 · 1 aktarma",
+    item("flight", "flight:ist-opo", L("TAP · Lizbon aktarmalı", "TAP · via Lisbon"), 118, {
+      summary: L("8 Ekim 05:40 · 1 aktarma", "8 Oct 05:40 · 1 stop"),
       provider: "TAP Air Portugal",
-      optionDetail: "Discount (yalnız kabin bagajı)",
+      optionDetail: L("Discount (yalnız kabin bagajı)", "Discount (cabin bag only)"),
       dates: { start: "2026-10-08", end: null, source: "page" },
       flight: { from: "IST", to: "OPO", departure: "2026-10-08T05:40", arrival: "2026-10-08T12:50", carrier: "TAP", flightNumber: "TP 1761", stops: 1 },
-      cancellation: { summary: "Ücret kesintisiyle iade", freeUntil: null, source: "page" },
+      cancellation: { summary: L("Ücret kesintisiyle iade", "Refund minus a fee"), freeUntil: null, source: "page" },
       metrics: { durationMinutes: 490, checkedBagIncluded: false, cancellationType: "partial" },
     }),
     item("stay", "stay:porto", "Jardim Stay", 285, {
       provider: "Booking.com",
       url: "https://www.booking.com/hotel/pt/jardim-stay.html?checkin=2026-10-08&checkout=2026-10-11&group_adults=2",
-      summary: "Baixa, Ribeira'ya 8 dk",
+      summary: L("Baixa, Ribeira'ya 8 dk", "Baixa, 8 min to Ribeira"),
       location: { address: null, area: "Baixa", approximate: false },
       geo: geo(41.1455, -8.611),
       rating: { value: 8.9, scale: 10, count: 1204, source: "page" },
-      highlights: ["Merkezi konum", "Sessiz odalar", "Kahvaltı dahil"],
-      concerns: ["Odalar küçük"],
-      reviewSummary: "Konum ve temizlik çok övülüyor; odalar küçük ama sessiz, personel yardımsever.",
+      highlights: [L("Merkezi konum", "Central location"), L("Sessiz odalar", "Quiet rooms"), L("Kahvaltı dahil", "Breakfast included")],
+      concerns: [L("Odalar küçük", "Small rooms")],
+      reviewSummary: L(
+        "Konum ve temizlik çok övülüyor; odalar küçük ama sessiz, personel yardımsever.",
+        "Location and cleanliness get lots of praise; rooms are small but quiet, staff helpful.",
+      ),
       metrics: {
         cancellationType: "free",
         reviewAspects: [
@@ -125,13 +129,16 @@ export async function loadDemoTrip(): Promise<string> {
     item("stay", "stay:porto", "Casa Azul", 240, {
       provider: "Airbnb",
       url: "https://www.airbnb.com/rooms/48213377?check_in=2026-10-08&check_out=2026-10-11&adults=2",
-      summary: "Bonfim, mutfaklı daire",
+      summary: L("Bonfim, mutfaklı daire", "Bonfim, flat with a kitchen"),
       location: { address: null, area: "Bonfim", approximate: true },
       geo: geo(41.162, -8.589),
       rating: { value: 4.8, scale: 5, count: 96, source: "page" },
-      highlights: ["Geniş daire", "Mutfak", "İlgili ev sahibi"],
-      concerns: ["Merkeze yokuş yukarı 25 dk", "Konum rezervasyondan sonra netleşiyor"],
-      reviewSummary: "Ev sahibi çok ilgili, daire geniş ve temiz; merkeze dönüş yokuş yukarı ve uzun.",
+      highlights: [L("Geniş daire", "Spacious flat"), L("Mutfak", "Kitchen"), L("İlgili ev sahibi", "Attentive host")],
+      concerns: [L("Merkeze yokuş yukarı 25 dk", "25 min uphill to the centre"), L("Konum rezervasyondan sonra netleşiyor", "Exact location only after booking")],
+      reviewSummary: L(
+        "Ev sahibi çok ilgili, daire geniş ve temiz; merkeze dönüş yokuş yukarı ve uzun.",
+        "Very attentive host, spacious and clean flat; the way back from the centre is long and uphill.",
+      ),
       metrics: {
         cancellationType: "free",
         reviewAspects: [
@@ -147,14 +154,17 @@ export async function loadDemoTrip(): Promise<string> {
     item("stay", "stay:porto", "Ribeira Rooms", 330, {
       provider: "Booking.com",
       url: "https://www.booking.com/hotel/pt/ribeira-rooms.html?checkin=2026-10-08&checkout=2026-10-11&group_adults=2",
-      summary: "Nehir kıyısı, manzaralı",
+      summary: L("Nehir kıyısı, manzaralı", "Riverside, with a view"),
       location: { address: null, area: "Ribeira", approximate: false },
       geo: geo(41.141, -8.613),
       rating: { value: 9.2, scale: 10, count: 640, source: "page" },
-      cancellation: { summary: "İade yok", freeUntil: null, source: "page" },
-      highlights: ["Nehir manzarası", "Tarihi bina"],
-      concerns: ["Hafta sonu gece gürültüsü", "Asansör yok"],
-      reviewSummary: "Manzara ve konum harika; hafta sonları gece sokak gürültüsü şikâyeti tekrar ediyor.",
+      cancellation: { summary: L("İade yok", "Non-refundable"), freeUntil: null, source: "page" },
+      highlights: [L("Nehir manzarası", "River view"), L("Tarihi bina", "Historic building")],
+      concerns: [L("Hafta sonu gece gürültüsü", "Noise on weekend nights"), L("Asansör yok", "No lift")],
+      reviewSummary: L(
+        "Manzara ve konum harika; hafta sonları gece sokak gürültüsü şikâyeti tekrar ediyor.",
+        "Great view and location; complaints about street noise on weekend nights keep coming up.",
+      ),
       metrics: {
         cancellationType: "non_refundable",
         reviewAspects: [
@@ -167,18 +177,18 @@ export async function loadDemoTrip(): Promise<string> {
       },
     }),
     // Getting to Lisbon: a saved train (the move and the station transfers show up on their own), and home by air.
-    item("transport", "transport:porto-lizbon", "CP Alfa Pendular · Porto → Lizbon", 31, {
+    item("transport", "transport:porto-lizbon", L("CP Alfa Pendular · Porto → Lizbon", "CP Alfa Pendular · Porto → Lisbon"), 31, {
       provider: "CP",
-      summary: "11 Ekim 13:09 · 2 sa 55 dk",
+      summary: L("11 Ekim 13:09 · 2 sa 55 dk", "11 Oct 13:09 · 2 h 55 min"),
       dates: { start: "2026-10-11", end: null, source: "page" },
       flight: { from: "Porto Campanhã", to: "Lisboa Santa Apolónia", departure: "2026-10-11T13:09", arrival: "2026-10-11T16:04", carrier: "CP", flightNumber: null, stops: 0 },
-      cancellation: { summary: "Kalkıştan 15 dk öncesine kadar iade", freeUntil: null, source: "page" },
+      cancellation: { summary: L("Kalkıştan 15 dk öncesine kadar iade", "Refundable until 15 min before departure"), freeUntil: null, source: "page" },
     }),
-    item("flight", "flight:lis-ist", "TAP · Lizbon → İstanbul", 162, {
-      summary: "14 Ekim 19:40 · Direkt",
+    item("flight", "flight:lis-ist", L("TAP · Lizbon → İstanbul", "TAP · Lisbon → Istanbul"), 162, {
+      summary: L("14 Ekim 19:40 · Direkt", "14 Oct 19:40 · Direct"),
       provider: "TAP Air Portugal",
       status: "booked",
-      city: "İstanbul",
+      city: L("İstanbul", "Istanbul"),
       dates: { start: "2026-10-14", end: null, source: "page" },
       flight: { from: "LIS", to: "IST", departure: "2026-10-14T19:40", arrival: "2026-10-15T01:35", carrier: "TAP", flightNumber: "TP 1760", stops: 0 },
       metrics: { durationMinutes: 295, checkedBagIncluded: true },
@@ -186,8 +196,8 @@ export async function loadDemoTrip(): Promise<string> {
     // Lisbon is already booked: its nights are settled and the other Lisbon option is out of the way.
     item("stay", "stay:lizbon", "Lisboa Loft", 390, {
       provider: "Airbnb",
-      summary: "Alfama, rezerve edildi",
-      city: "Lizbon",
+      summary: L("Alfama, rezerve edildi", "Alfama, booked"),
+      city: L("Lizbon", "Lisbon"),
       status: "booked",
       dates: { start: "2026-10-11", end: "2026-10-14", source: "url" },
       location: { address: null, area: "Alfama", approximate: false },
@@ -197,13 +207,13 @@ export async function loadDemoTrip(): Promise<string> {
     item("stay", "stay:lizbon", "Alfama Suites", 420, {
       provider: "Booking.com",
       summary: "Alfama",
-      city: "Lizbon",
+      city: L("Lizbon", "Lisbon"),
       dates: { start: "2026-10-11", end: "2026-10-14", source: "url" },
       rating: { value: 9.0, scale: 10, count: 530, source: "page" },
     }),
-    item("activity", "activity:porto", "Tiyatro", 36, { dates: noDates, geo: geo(41.1437, -8.6076) }),
-    item("activity", "activity:porto", "Douro tekne turu", 25, {
-      summary: "Altı köprü turu",
+    item("activity", "activity:porto", L("Tiyatro", "Theatre"), 36, { dates: noDates, geo: geo(41.1437, -8.6076) }),
+    item("activity", "activity:porto", L("Douro tekne turu", "Douro boat tour"), 25, {
+      summary: L("Altı köprü turu", "Six bridges cruise"),
       status: "chosen",
       dates: { start: "2026-10-09", end: null, source: "page" },
       flight: { from: null, to: null, departure: "2026-10-09T16:00", arrival: null, carrier: null, flightNumber: null, stops: null },
@@ -211,16 +221,16 @@ export async function loadDemoTrip(): Promise<string> {
       geo: geo(41.1405, -8.612),
     }),
     item("activity", "activity:porto", "Livraria Lello", 10, { dates: noDates, geo: geo(41.1469, -8.6149) }),
-    item("activity", "activity:porto", "Serralves Müzesi", 22, { dates: noDates, geo: geo(41.1597, -8.6597) }),
+    item("activity", "activity:porto", L("Serralves Müzesi", "Serralves Museum"), 22, { dates: noDates, geo: geo(41.1597, -8.6597) }),
     item("food", "food:porto", "Majestic Café", null, { dates: noDates, geo: geo(41.1471, -8.6066) }),
-    item("esim", "esim:portugal", "Airalo Portekiz 5 GB", 9, {
+    item("esim", "esim:portugal", L("Airalo Portekiz 5 GB", "Airalo Portugal 5 GB"), 9, {
       dates: noDates,
-      summary: "5 GB · 7 gün",
+      summary: L("5 GB · 7 gün", "5 GB · 7 days"),
       metrics: { dataGb: 5, validityDays: 7 },
     }),
-    item("esim", "esim:portugal", "Holafly sınırsız", 19, {
+    item("esim", "esim:portugal", L("Holafly sınırsız", "Holafly unlimited"), 19, {
       dates: noDates,
-      summary: "Sınırsız · 7 gün",
+      summary: L("Sınırsız · 7 gün", "Unlimited · 7 days"),
       metrics: { unlimitedData: true, validityDays: 7 },
     }),
   ];
@@ -238,10 +248,10 @@ export async function loadDemoTrip(): Promise<string> {
         ["Room was small but spotless and quiet.", "2026-08"],
         ["Small room, barely space for two suitcases.", "2026-07"],
       ], [
-        finding("Sessiz odalar, iyi uyku", "positive", "noise", "reviews", "medium", [0, 1, 3]),
-        finding("Kahvaltı çok iyi", "positive", "food", "reviews", "medium", [1, 2]),
-        finding("Odalar küçük", "negative", "space", "reviews", "medium", [3, 4]),
-        finding("TV yok", "negative", "amenities", "amenities", "low", [], ["No TV in the rooms"]),
+        finding(L("Sessiz odalar, iyi uyku", "Quiet rooms, good sleep"), "positive", "noise", "reviews", "medium", [0, 1, 3]),
+        finding(L("Kahvaltı çok iyi", "Excellent breakfast"), "positive", "food", "reviews", "medium", [1, 2]),
+        finding(L("Odalar küçük", "Small rooms"), "negative", "space", "reviews", "medium", [3, 4]),
+        finding(L("TV yok", "No TV"), "negative", "amenities", "amenities", "low", [], ["No TV in the rooms"]),
       ]),
     ],
     [
@@ -253,10 +263,10 @@ export async function loadDemoTrip(): Promise<string> {
         ["Pizza place downstairs is amazing. Walk back from the river is steep uphill.", "2026-08"],
         ["Noise from the construction site next door, otherwise great.", "2026-07"],
       ], [
-        finding("Yan binada inşaat gürültüsü", "negative", "condition", "reviews", "high", [1, 2, 4]),
-        finding("Geniş, rahat yatak", "positive", "bed", "description", "medium", [], ["king-size bed"]),
-        finding("Yanında çok iyi bir İtalyan restoranı", "positive", "nearby", "reviews", "medium", [0, 3]),
-        finding("Merkezden dönüş dik yokuş", "negative", "location", "reviews", "medium", [3]),
+        finding(L("Yan binada inşaat gürültüsü", "Construction noise next door"), "negative", "condition", "reviews", "high", [1, 2, 4]),
+        finding(L("Geniş, rahat yatak", "Big, comfortable bed"), "positive", "bed", "description", "medium", [], ["king-size bed"]),
+        finding(L("Yanında çok iyi bir İtalyan restoranı", "Great Italian restaurant next door"), "positive", "nearby", "reviews", "medium", [0, 3]),
+        finding(L("Merkezden dönüş dik yokuş", "Steep climb back from the centre"), "negative", "location", "reviews", "medium", [3]),
       ]),
     ],
     [
@@ -268,10 +278,10 @@ export async function loadDemoTrip(): Promise<string> {
         ["River view, great location, but noisy at the weekend.", "2026-07"],
         ["Bathroom was not very clean when we arrived.", "2024-05"],
       ], [
-        finding("Odadan nehir manzarası", "positive", "view", "reviews", "medium", [0, 1, 3]),
-        finding("Hafta sonu gece gürültüsü", "negative", "noise", "reviews", "medium", [1, 2, 3]),
-        finding("Asansör yok, 3. kat", "negative", "access", "description", "medium", [], ["Third floor, no elevator"]),
-        finding("Banyo temizliği şikâyeti", "negative", "cleanliness", "reviews", "low", [4]),
+        finding(L("Odadan nehir manzarası", "River view from the room"), "positive", "view", "reviews", "medium", [0, 1, 3]),
+        finding(L("Hafta sonu gece gürültüsü", "Noise on weekend nights"), "negative", "noise", "reviews", "medium", [1, 2, 3]),
+        finding(L("Asansör yok, 3. kat", "No lift, 3rd floor"), "negative", "access", "description", "medium", [], ["Third floor, no elevator"]),
+        finding(L("Banyo temizliği şikâyeti", "Complaint about bathroom cleanliness"), "negative", "cleanliness", "reviews", "low", [4]),
       ]),
     ],
   ];
@@ -286,7 +296,7 @@ export async function loadDemoTrip(): Promise<string> {
     quotes: ["Check-in from 14:00 until 23:00 · Check-out until 11:00 · Luggage storage available"],
   };
   for (const [, l] of listings) await d.put("listings", l);
-  await d.put("preferences", { id: newId(), tripId: trip.id, text: "Sessiz bir yer istiyoruz", createdAt: now });
+  await d.put("preferences", { id: newId(), tripId: trip.id, text: L("Sessiz bir yer istiyoruz", "We want somewhere quiet"), createdAt: now });
 
   // The assistant's review of the Porto stays, made for exactly these inputs, ruling Casa Azul out
   // on the construction reviews (a sample; with a key, real reviews replace it when inputs change).
@@ -300,17 +310,24 @@ export async function loadDemoTrip(): Promise<string> {
       needKey: porto.key,
       inputHash: porto.inputHash,
       createdAt: now,
-      verdict: "Jardim Stay: kaydettiğin yerlere yakın ve odaları sessiz. Casa Azul daha ucuz ama yan binadaki inşaat sessiz bir yer isteğine ters.",
-      reasons: ["Kaydettiğin 5 yere 5-9 dk → akşam dönüşleri kolay", "3 yorum sessiz oda diyor → iyi uyku"],
-      tradeoffs: ["Odalar küçük"],
-      risks: ["Ribeira Rooms iadesiz ve hafta sonu geceleri gürültülü"],
+      lang: lang(),
+      verdict: L(
+        "Jardim Stay: kaydettiğin yerlere yakın ve odaları sessiz. Casa Azul daha ucuz ama yan binadaki inşaat sessiz bir yer isteğine ters.",
+        "Jardim Stay: close to the places you saved, with quiet rooms. Casa Azul is cheaper, but the construction next door goes against wanting somewhere quiet.",
+      ),
+      reasons: [
+        L("Kaydettiğin 5 yere 5-9 dk → akşam dönüşleri kolay", "5-9 min to the 5 places you saved → easy evenings back"),
+        L("3 yorum sessiz oda diyor → iyi uyku", "3 reviews say the rooms are quiet → good sleep"),
+      ],
+      tradeoffs: [L("Odalar küçük", "Small rooms")],
+      risks: [L("Ribeira Rooms iadesiz ve hafta sonu geceleri gürültülü", "Ribeira Rooms is non-refundable and noisy on weekend nights")],
       question: null,
       aiScores: [
-        { itemId: jardim.id, score: 8.5, note: "sessiz, kahvaltı iyi" },
-        { itemId: casa.id, score: 4, note: "inşaat gürültüsü" },
-        { itemId: ribeira.id, score: 6, note: "manzara ama gürültü" },
+        { itemId: jardim.id, score: 8.5, note: L("sessiz, kahvaltı iyi", "quiet, good breakfast") },
+        { itemId: casa.id, score: 4, note: L("inşaat gürültüsü", "construction noise") },
+        { itemId: ribeira.id, score: 6, note: L("manzara ama gürültü", "view, but noisy") },
       ],
-      eliminations: [{ itemId: casa.id, reason: "Yan binada inşaat var; sessiz bir yer istiyorsun", findingIds: [construction.id] }],
+      eliminations: [{ itemId: casa.id, reason: L("Yan binada inşaat var; sessiz bir yer istiyorsun", "Construction next door; you want somewhere quiet"), findingIds: [construction.id] }],
     };
     await d.put("analyses", analysis);
   }
@@ -328,6 +345,7 @@ export async function loadDemoTrip(): Promise<string> {
       dropped: 0,
       error: null,
       errorAt: null,
+      lang: lang(),
       updatedAt: now,
     };
   }
@@ -341,13 +359,16 @@ export async function loadDemoTrip(): Promise<string> {
     choices,
     createdAt: now + offset,
   });
-  await d.put("messages", message("user", "Merkezi olsun ama bütçeyi de aşmayalım.", [], 1));
+  await d.put("messages", message("user", L("Merkezi olsun ama bütçeyi de aşmayalım.", "Somewhere central, but let's stay within budget."), [], 1));
   await d.put(
     "messages",
     message(
       "assistant",
-      "Jardim Stay öne çıkıyor: kaydettiğin yerlere birkaç dakika yürüme ve ücretsiz iptal var.\nCasa Azul €45 daha ucuz ama merkeze yokuş yukarı 25 dk.\n\nKarşılaştır'dan önceliklerini değiştirip sonucu görebilirsin. Jardim'i planına alalım mı?",
-      ["Evet, ekleyelim", "Diğerlerini konuşalım"],
+      L(
+        "Jardim Stay öne çıkıyor: kaydettiğin yerlere birkaç dakika yürüme ve ücretsiz iptal var.\nCasa Azul €45 daha ucuz ama merkeze yokuş yukarı 25 dk.\n\nKarşılaştır'dan önceliklerini değiştirip sonucu görebilirsin. Jardim'i planına alalım mı?",
+        "Jardim Stay stands out: a few minutes' walk to the places you saved, and free cancellation.\nCasa Azul is €45 cheaper, but it's 25 min uphill to the centre.\n\nYou can change your priorities in Compare and see the result. Shall we add Jardim to your plan?",
+      ),
+      [L("Evet, ekleyelim", "Yes, add it"), L("Diğerlerini konuşalım", "Let's talk about the others")],
       2,
     ),
   );
