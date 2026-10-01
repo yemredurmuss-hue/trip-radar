@@ -1,5 +1,6 @@
 // Votes on a shared trip's options: each traveller 👍 / 👎 an option. They don't change the ranking;
 // only when everyone who voted said 👎 (and at least two did) the option steps back like "Ele".
+import { L } from "../i18n";
 import type { Item } from "../types";
 import { parseUrl } from "../url";
 
@@ -64,6 +65,8 @@ export interface VoteTally {
   allNo: boolean;
   /** At least two people voted and all of them said 👍. */
   allYes: boolean;
+  /** How many different people voted. */
+  voters: number;
 }
 
 export const VOTE_MARK: Record<Exclude<VoteValue, 0>, string> = { 1: "👍", [-1]: "👎" } as Record<Exclude<VoteValue, 0>, string>;
@@ -78,5 +81,24 @@ export function tallyVotes(votes: Vote[], itemKey: string | null, me: string): V
     line: ordered.length ? ordered.map((v) => `${v.author} ${VOTE_MARK[v.vote as 1 | -1]}`).join(" · ") : null,
     allNo: voters.size >= 2 && given.every((v) => v.vote === -1),
     allYes: voters.size >= 2 && given.every((v) => v.vote === 1),
+    voters: voters.size,
   };
+}
+
+/**
+ * Everyone who voted said 👎, said for how many there are: two people → "İkiniz de istemiyorsunuz",
+ * three or more who all voted → "Hiçbiriniz istemiyor", some of a bigger group → "Oy verenlerin hiçbiri istemiyor".
+ * `members` is how many people are on the trip (unknown → the voters).
+ */
+export function allNoText(voters: number, members = voters): string {
+  const group = Math.max(members, voters);
+  if (group <= 2) return L("İkiniz de istemiyorsunuz", "Neither of you wants it");
+  if (voters >= group) return L("Hiçbiriniz istemiyor", "None of you want it");
+  return L("Oy verenlerin hiçbiri istemiyor", "No one who voted wants it");
+}
+
+/** Names as a list: "Sabine", "Sabine ve Ali", "Sabine, Ali ve Mia" (English: "Sabine, Ali and Mia"). */
+export function joinNames(names: string[]): string {
+  if (names.length <= 1) return names.join("");
+  return `${names.slice(0, -1).join(", ")} ${L("ve", "and")} ${names.at(-1)}`;
 }

@@ -1,5 +1,6 @@
 // The share code: one string that carries everything the other traveller needs (which server, its
 // public key, which trip), so joining is a single paste. "TR1:" + base64url(JSON).
+import { L } from "../i18n";
 
 export interface ShareCode {
   /** Supabase project address, e.g. https://abcd.supabase.co */
@@ -43,7 +44,7 @@ function fromBase64Url(text: string): string {
 
 export function encodeShareCode(code: ShareCode): string {
   const url = normalizeServerUrl(code.url);
-  if (!url || !code.anonKey.trim() || !isShareId(code.shareId)) throw new Error("Paylaşım kodu oluşturulamadı: ayarlar eksik.");
+  if (!url || !code.anonKey.trim() || !isShareId(code.shareId)) throw new Error(L("Paylaşım kodu oluşturulamadı: ayarlar eksik.", "Couldn't make the share code: settings are missing."));
   return PREFIX + toBase64Url(JSON.stringify({ u: url, k: code.anonKey.trim(), t: code.shareId, n: code.title ?? undefined }));
 }
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { cardDetails, cardFacts, durationText, type CardFacts } from "../lib/cardFacts";
 import { ratingOutOf10, type GroupDecision } from "../lib/decision";
+import { L, locale } from "../lib/i18n";
 import { formatDateRange, listingKeyOf, metricsOf } from "../lib/items";
 import { readingLine } from "../lib/listing";
 import { NEED_MARK, type NeedCheck } from "../lib/needs";
@@ -28,7 +29,7 @@ export function SourceBadge({ source, href }: { source: CardFacts["source"]; hre
       <FallbackImg
         className="sc-favicon"
         src={source.host ? `https://${source.host}/favicon.ico` : null}
-        fallback={<span className="sc-favicon letter">{source.label.charAt(0).toLocaleUpperCase("tr")}</span>}
+        fallback={<span className="sc-favicon letter">{source.label.charAt(0).toLocaleUpperCase(locale())}</span>}
       />
       {source.label}
     </>
@@ -40,7 +41,7 @@ export function SourceBadge({ source, href }: { source: CardFacts["source"]; hre
       href={url}
       target="_blank"
       rel="noreferrer"
-      title={`${source.label} sayfasını yeni sekmede aç`}
+      title={L(`${source.label} sayfasını yeni sekmede aç`, `Open ${source.label} in a new tab`)}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
     >
@@ -58,8 +59,8 @@ export function Needs({ needs, max = 4 }: { needs: NeedCheck[]; max?: number }) 
   const shown = needs.slice(0, max);
   return (
     <div className="sc-needs">
-      <span className="sc-needs-head">İstediklerin</span>
-      <ul aria-label="İstediklerin">
+      <span className="sc-needs-head">{L("İstediklerin", "What you want")}</span>
+      <ul aria-label={L("İstediklerin", "What you want")}>
         {shown.map((n) => (
           <li key={n.key} className={`need ${n.state}`} title={`${n.label}: ${n.text}`}>
             <i aria-hidden>{NEED_MARK[n.state]}</i>
@@ -74,8 +75,9 @@ export function Needs({ needs, max = 4 }: { needs: NeedCheck[]; max?: number }) 
 
 /** A ticket is bought for a flight, a train or an activity; a stay, a rental car or a transfer is reserved. */
 const ticketed = (i: Item) => i.category === "flight" || i.category === "activity" || (i.category === "transport" && isTrip(i));
-const bookedWord = (i: Item) => (ticketed(i) ? "Bilet alındı" : "Rezerve edildi");
-const notBookedWord = (i: Item) => (ticketed(i) ? "bilet alınmadı" : "rezerve edilmedi");
+const bookedWord = (i: Item) => (ticketed(i) ? L("Bilet alındı", "Ticket booked") : L("Rezerve edildi", "Booked"));
+const notBookedWord = (i: Item) => (ticketed(i) ? L("bilet alınmadı", "no ticket yet") : L("rezerve edilmedi", "not booked"));
+const bookAction = (i: Item) => (ticketed(i) ? L("Bileti aldım", "I got the ticket") : L("Rezerve ettim", "I booked it"));
 
 /** Saved without dates but compared for a group's nights: the page reopened with those dates. */
 function datedLink(item: Item, decision: GroupDecision | undefined) {
@@ -93,23 +95,23 @@ function ProsCons({ pros, cons }: { pros: CardFacts["pros"]; cons: CardFacts["co
   return (
     <div className="sc-pc">
       {pros.length > 0 && (
-        <ul className="sc-col pros" aria-label="Artıları">
+        <ul className="sc-col pros" aria-label={L("Artıları", "Pros")}>
           {pros.slice(0, 3).map((p) => (
             <li key={p.text} className={p.unique ? "unique" : undefined} title={p.text}>
               <i aria-hidden>+</i>
               <span>{p.text}</span>
-              {p.unique && <em className="only-here">yalnız bunda</em>}
+              {p.unique && <em className="only-here">{L("yalnız bunda", "only this one")}</em>}
             </li>
           ))}
         </ul>
       )}
       {cons.length > 0 && (
-        <ul className="sc-col cons" aria-label="Eksileri">
+        <ul className="sc-col cons" aria-label={L("Eksileri", "Cons")}>
           {cons.slice(0, 3).map((c) => (
             <li key={c.text} className={[c.strong ? "strong" : "", c.unique ? "unique" : ""].filter(Boolean).join(" ") || undefined} title={c.text}>
               <i aria-hidden>−</i>
               <span>{c.text}</span>
-              {c.unique && !c.strong && <em className="only-here">yalnız bunda</em>}
+              {c.unique && !c.strong && <em className="only-here">{L("yalnız bunda", "only this one")}</em>}
             </li>
           ))}
         </ul>
@@ -151,7 +153,7 @@ function Details({
       )}
       {d.needs.length > 0 && (
         <div className="cd-list needs">
-          <h4>İstediklerin</h4>
+          <h4>{L("İstediklerin", "What you want")}</h4>
           <ul>
             {d.needs.map((n) => (
               <li key={n.key} className={`need ${n.state}`}>
@@ -163,7 +165,7 @@ function Details({
       )}
       {d.pros.length > 0 && (
         <div className="cd-list pros">
-          <h4>Artıları</h4>
+          <h4>{L("Artıları", "Pros")}</h4>
           <ul>
             {d.pros.map((p) => (
               <li key={p.text}>
@@ -176,7 +178,7 @@ function Details({
       )}
       {d.cons.length > 0 && (
         <div className="cd-list cons">
-          <h4>Dikkat</h4>
+          <h4>{L("Dikkat", "Watch out")}</h4>
           <ul>
             {d.cons.map((c) => (
               <li key={c.text} className={c.strong ? "strong" : undefined}>
@@ -198,20 +200,20 @@ function Links({ item, decision, onOpen, onCompare }: { item: Item; decision?: G
     <div className="sc-links">
       {onCompare && (
         <button className="link-btn" onClick={onCompare}>
-          Karşılaştır →
+          {L("Karşılaştır →", "Compare →")}
         </button>
       )}
       <button className="link-btn" onClick={onOpen}>
-        Tüm detaylar
+        {L("Tüm detaylar", "All details")}
       </button>
       {url ? (
         <a href={url} target="_blank" rel="noreferrer">
-          Tarihlerle aç ↗
+          {L("Tarihlerle aç ↗", "Open with dates ↗")}
         </a>
       ) : (
         item.url && (
           <a href={item.url} target="_blank" rel="noreferrer">
-            Sayfayı aç ↗
+            {L("Sayfayı aç ↗", "Open page ↗")}
           </a>
         )
       )}
@@ -221,13 +223,13 @@ function Links({ item, decision, onOpen, onCompare }: { item: Item; decision?: G
 
 function Price({ price, compact = false, dated }: { price: CardFacts["price"]; compact?: boolean; dated: boolean }) {
   // With its dates known, the price is simply missing: saying it in the chat is enough.
-  if (!price) return <span className="muted">{dated ? "Fiyat yok · sohbette yazabilirsin" : "Fiyat yok · tarih seçip tekrar kaydet"}</span>;
+  if (!price) return <span className="muted">{dated ? L("Fiyat yok · sohbette yazabilirsin", "No price · you can type it in the chat") : L("Fiyat yok · tarih seçip tekrar kaydet", "No price · pick dates and save again")}</span>;
   return (
     <span className={`price-block${compact ? " compact" : ""}`}>
       <span className="price-main">
         <b>{price.text}</b>
         {price.label && <span className="muted">{price.label}</span>}
-        {price.provisional && <span className="tone-warning">· geçici</span>}
+        {price.provisional && <span className="tone-warning">{L("· geçici", "· provisional")}</span>}
       </span>
       {price.perNight && <span className="price-night">{price.perNight}</span>}
       {price.note && <span className="price-note">{price.note}</span>}
@@ -247,7 +249,7 @@ interface CardProps {
   onCompare?: () => void;
 }
 
-const FIT_WORDS = { check: "Seçmeden kontrol et", partial: "Kısmi", unfit: "Uygun değil" } as const;
+const fitWords = () => ({ check: L("Seçmeden kontrol et", "Check before choosing"), partial: L("Kısmi", "Partial"), unfit: L("Uygun değil", "Doesn't fit") });
 
 /**
  * One option in its place: the number and the score, what it's strongest on ("EN EKONOMİK · EN
@@ -288,14 +290,17 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
             }
           />
           {place != null && (
-            <span className="opt-rank" aria-label={`${place}. sırada`}>
+            <span className="opt-rank" aria-label={L(`${place}. sırada`, `Ranked #${place}`)}>
               {place}
             </span>
           )}
           {facts.score != null && (
-            <span className={`opt-score${place === 1 ? " best" : ""}`} title="Uyum puanı (100 üzerinden): önceliklerin, istediklerin ve okunan yorumlar">
+            <span className={`opt-score${place === 1 ? " best" : ""}`} title={L(
+                "Uyum puanı (100 üzerinden): önceliklerin, istediklerin ve okunan yorumlar",
+                "Fit score (out of 100): your priorities, what you want and the reviews read",
+              )}>
               <b>{facts.score}</b>
-              <small>puan</small>
+              <small>{L("puan", "score")}</small>
             </span>
           )}
           <SourceBadge source={facts.source} href={datedUrl} />
@@ -310,8 +315,8 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
             </div>
           </div>
           {trade && ranked?.vsRank && (trade.money || trade.gains.length || trade.losses.length) && (
-            <p className="opt-trade" title={`${trade.vs} ile karşılaştırınca: ${tradeText(trade, currency)}`}>
-              <span className="opt-vs">{ranked.vsRank}.'ye göre</span>
+            <p className="opt-trade" title={L(`${trade.vs} ile karşılaştırınca: ${tradeText(trade, currency)}`, `Compared with ${trade.vs}: ${tradeText(trade, currency)}`)}>
+              <span className="opt-vs">{L(`${ranked.vsRank}.'ye göre`, `vs #${ranked.vsRank}`)}</span>
               {[
                 trade.money && (
                   <b key="m" className={trade.diff != null && trade.diff < 0 ? "cheaper" : ""}>
@@ -321,7 +326,7 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
                 trade.gains.length > 0 && <span key="g">{trade.gains.join(", ")}</span>,
                 trade.losses.length > 0 && (
                   <span key="l" className="opt-loss">
-                    eksiği: {trade.losses.join(", ")}
+                    {L("eksiği", "lacks")}: {trade.losses.join(", ")}
                   </span>
                 ),
               ]
@@ -330,12 +335,19 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
             </p>
           )}
           {ranked && ranked.unknown.length > 0 && (
-            <p className="opt-unknown" title="İstediğin bir konuda diğer seçeneklerin yorumları konuşuyor, bununkiler hiç bahsetmiyor">
-              ? {ranked.unknown.join(", ")}: diğerlerinin yorumlarında geçiyor, bunda hiç geçmiyor; bilinmiyor, sayfada bak
+            <p className="opt-unknown" title={L(
+                "İstediğin bir konuda diğer seçeneklerin yorumları konuşuyor, bununkiler hiç bahsetmiyor",
+                "Reviews of the other options talk about something you want; this one's never mention it",
+              )}>
+              ? {ranked.unknown.join(", ")}:{" "}
+              {L(
+                "diğerlerinin yorumlarında geçiyor, bunda hiç geçmiyor; bilinmiyor, sayfada bak",
+                "mentioned in the others' reviews, never in this one's; unknown, check the page",
+              )}
             </p>
           )}
           {facts.needs.length > 0 && (
-            <ul className="opt-checks sc-needs" aria-label="İstediklerin">
+            <ul className="opt-checks sc-needs" aria-label={L("İstediklerin", "What you want")}>
               {facts.needs.slice(0, 5).map((n) => (
                 <li key={n.key} className={`need ${n.state}`} title={n.text}>
                   <i aria-hidden>{NEED_MARK[n.state]}</i>
@@ -349,32 +361,32 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
           <VoteBar item={item} />
           {fit !== "fit" && option && option.fitNotes.length > 0 && (
             <p className={`opt-status ${fit}`}>
-              <b>{FIT_WORDS[fit]}:</b> {option.fitNotes.join(" · ")}
+              <b>{fitWords()[fit]}:</b> {option.fitNotes.join(" · ")}
             </p>
           )}
           <div className="sc-foot opt-foot">
             <span className="opt-links">
               <button className="link-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
-                {open ? "Kapat ▴" : "Detaylar ▾"}
+                {open ? L("Kapat ▴", "Close ▴") : L("Detaylar ▾", "Details ▾")}
               </button>
             </span>
             {item.status === "booked" ? (
               <span className="tone-success">✓ {bookedWord(item)}</span>
             ) : item.status === "chosen" ? (
-              <button className="pill-btn soft" onClick={() => void setItemStatus(item, "saved")} title="Seçimi geri al">
-                Planda ✓
+              <button className="pill-btn soft" onClick={() => void setItemStatus(item, "saved")} title={L("Seçimi geri al", "Undo choice")}>
+                {L("Planda ✓", "In plan ✓")}
               </button>
             ) : item.status === "dismissed" ? (
-              <button className="pill-btn outline" onClick={() => void setItemStatus(item, "saved")} title="Seçeneklere geri al">
-                Geri al
+              <button className="pill-btn outline" onClick={() => void setItemStatus(item, "saved")} title={L("Seçeneklere geri al", "Back to options")}>
+                {L("Geri al", "Undo")}
               </button>
             ) : (
               <span className="sc-actions">
-                <button className="link-btn quiet" onClick={() => void setItemStatus(item, "dismissed")} title="Seçeneklerden çıkar; Elenenler'de durur">
-                  Ele
+                <button className="link-btn quiet" onClick={() => void setItemStatus(item, "dismissed")} title={L("Seçeneklerden çıkar; Elenenler'de durur", "Take it out of the options; it stays under Ruled out")}>
+                  {L("Ele", "Rule out")}
                 </button>
                 <button className="pill-btn primary" onClick={() => void chooseItem(item, group)}>
-                  Seç
+                  {L("Seç", "Choose")}
                 </button>
               </span>
             )}
@@ -386,8 +398,10 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
           <Details item={item} decision={decision} decisions={decisions} status={facts.status} />
           {nights && (
             <p className="muted small-note">
-              Tarihsiz kaydedildi; {formatDateRange(nights.start, nights.end)} için geçici karşılaştırılıyor. Tarihlerle açıp tekrar kaydedersen
-              gerçek fiyat işlenir.
+              {L(
+                `Tarihsiz kaydedildi; ${formatDateRange(nights.start, nights.end)} için geçici karşılaştırılıyor. Tarihlerle açıp tekrar kaydedersen gerçek fiyat işlenir.`,
+                `Saved without dates; compared for ${formatDateRange(nights.start, nights.end)} for now. Open it with dates and save again to get the real price.`,
+              )}
             </p>
           )}
           <Links item={item} decision={decision} onOpen={onOpen} onCompare={onCompare} />
@@ -397,11 +411,11 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
   );
 }
 
-const RATING_WORDS: [number, string][] = [
-  [9, "Harika"],
-  [8, "Çok iyi"],
-  [7, "İyi"],
-  [0, "Fena değil"],
+const ratingWords = (): [number, string][] => [
+  [9, L("Harika", "Wonderful")],
+  [8, L("Çok iyi", "Very good")],
+  [7, L("İyi", "Good")],
+  [0, L("Fena değil", "Okay")],
 ];
 
 /** "9,4 · Harika · 1.002 yorum" from the page's rating, on a 10-point scale. */
@@ -410,9 +424,9 @@ function ratingOf(item: Item): { value: string; word: string; count: string | nu
   const ten = ratingOutOf10(item)?.value;
   if (r.value == null || ten == null) return null;
   return {
-    value: r.value.toLocaleString("tr-TR", { maximumFractionDigits: 1 }),
-    word: RATING_WORDS.find(([min]) => ten >= min)![1],
-    count: r.count ? `${r.count.toLocaleString("tr-TR")} yorum` : null,
+    value: r.value.toLocaleString(locale(), { maximumFractionDigits: 1 }),
+    word: ratingWords().find(([min]) => ten >= min)![1],
+    count: r.count ? L(`${r.count.toLocaleString(locale())} yorum`, `${r.count.toLocaleString(locale())} review${r.count === 1 ? "" : "s"}`) : null,
   };
 }
 
@@ -423,7 +437,7 @@ const shortDay = (iso: string | null | undefined) => (iso ? formatDateRange(iso.
 function Route({ item, facts }: { item: Item; facts: CardFacts }) {
   const f = item.flight!;
   const m = metricsOf(item);
-  const stops = item.category === "flight" && f.stops != null ? (f.stops === 0 ? "Direkt" : `${f.stops} aktarma`) : null;
+  const stops = item.category === "flight" && f.stops != null ? (f.stops === 0 ? L("Direkt", "Direct") : L(`${f.stops} aktarma`, `${f.stops} stop${f.stops === 1 ? "" : "s"}`)) : null;
   return (
     <div className="route">
       <div className="route-top">
@@ -454,7 +468,7 @@ function Route({ item, facts }: { item: Item; facts: CardFacts }) {
 /** A stay, a tour, a restaurant: picture, name, what it is, the rating and the price. */
 function Media({ item, facts }: { item: Item; facts: CardFacts }) {
   const rating = ratingOf(item);
-  const lines = [facts.subtitle, item.cancellation.summary, item.origin === "chat" ? "Sohbette söyledin" : null].filter(
+  const lines = [facts.subtitle, item.cancellation.summary, item.origin === "chat" ? L("Sohbette söyledin", "You said it in the chat") : null].filter(
     (l, i, all): l is string => Boolean(l) && all.indexOf(l) === i,
   );
   return (
@@ -528,11 +542,11 @@ export function SettledCard({
     <div className={`settled-card st-${booked ? "booked" : "planned"}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
       <StatusBar
         standing={booked ? "booked" : "planned"}
-        text={booked ? bookedWord(item) : planned ? "Planlanıyor" : "Seçildi"}
+        text={booked ? bookedWord(item) : planned ? L("Planlanıyor", "Planning") : L("Seçildi", "Chosen")}
         sub={booked ? null : notBookedWord(item)}
       />
       {alert && <div className={`card-alert ${alert.tone}`}>⏳ {alert.text}</div>}
-      <button className="info-btn" aria-label="Detaylar" aria-expanded={open} title="Detaylar" onClick={toggle}>
+      <button className="info-btn" aria-label={L("Detaylar", "Details")} aria-expanded={open} title={L("Detaylar", "Details")} onClick={toggle}>
         i
       </button>
       <div
@@ -540,7 +554,7 @@ export function SettledCard({
         role="button"
         tabIndex={0}
         aria-expanded={alternatives ? changing : open}
-        aria-label={alternatives ? `${item.name}: diğer seçenekleri göster` : `${item.name}: detaylar`}
+        aria-label={alternatives ? L(`${item.name}: diğer seçenekleri göster`, `${item.name}: show the other options`) : L(`${item.name}: detaylar`, `${item.name}: details`)}
         onClick={tap}
         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), tap())}
       >
@@ -551,23 +565,25 @@ export function SettledCard({
         <span className="stc-actions">
           {booked ? (
             // A misclick shouldn't stick: the booking can be taken back (the options it closed come back too).
-            <button className="pill-btn outline" onClick={() => void setItemStatus(item, "chosen")} title="Rezerve edilmedi olarak geri al">
-              Geri al
+            <button className="pill-btn outline" onClick={() => void setItemStatus(item, "chosen")} title={L("Rezerve edilmedi olarak geri al", "Mark as not booked")}>
+              {L("Geri al", "Undo")}
             </button>
           ) : (
             <button className="pill-btn outline" onClick={() => void setItemStatus(item, "booked")}>
-              {ticketed(item) ? "Bileti aldım" : "Rezerve ettim"}
+              {bookAction(item)}
             </button>
           )}
           {alternatives > 0 && (
             <button className="pill-btn outline" aria-expanded={changing} onClick={onChange}>
-              {changing ? "Kapat" : `Diğer ${alternatives} seçenek`}
+              {changing ? L("Kapat", "Close") : L(`Diğer ${alternatives} seçenek`, `${alternatives} other option${alternatives === 1 ? "" : "s"}`)}
             </button>
           )}
           {/* A plan said in the chat (a taxi, a ticket to find) comes off the board in one tap. */}
           {planned && !booked && (
-            <button className="pill-btn outline quiet" onClick={() => void removeItem(item)} title="Bu planı panodan kaldır" aria-label={`${item.name}: kaldır`}>
-              Kaldır
+            <button className="pill-btn outline quiet" onClick={() => void removeItem(item)} title={L("Bu planı panodan kaldır", "Remove this plan from the board")}
+              aria-label={L(`${item.name}: kaldır`, `${item.name}: remove`)}
+            >
+              {L("Kaldır", "Remove")}
             </button>
           )}
         </span>
@@ -581,13 +597,13 @@ export function SettledCard({
               // Not booked: "Kaldır" is on the card itself.
               booked && (
                 <button className="link-btn" onClick={() => void removeItem(item)}>
-                  Planı kaldır
+                  {L("Planı kaldır", "Remove plan")}
                 </button>
               )
             ) : (
               !booked && (
                 <button className="link-btn" onClick={() => void setItemStatus(item, "saved")}>
-                  Seçimi geri al
+                  {L("Seçimi geri al", "Undo choice")}
                 </button>
               )
             )}
@@ -624,10 +640,10 @@ function SettledRow({
   const booked = item.status === "booked";
   const planned = item.origin === "chat";
   const when = item.flight?.departure && /T\d{2}:\d{2}/.test(item.flight.departure) ? `${shortDay(item.flight.departure)} ${clock(item.flight.departure)}` : shortDay(item.dates.start);
-  const sub = [when, facts.source?.label, item.origin === "chat" ? "sohbette söyledin" : null].filter(Boolean).join(" · ");
+  const sub = [when, facts.source?.label, item.origin === "chat" ? L("sohbette söyledin", "said in the chat") : null].filter(Boolean).join(" · ");
   return (
     <div className={`settled-row st-${booked ? "booked" : "planned"}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
-      <button className="sr-main" aria-expanded={open} aria-label={`${item.name}: detaylar`} onClick={() => setOpen(!open)}>
+      <button className="sr-main" aria-expanded={open} aria-label={L(`${item.name}: detaylar`, `${item.name}: details`)} onClick={() => setOpen(!open)}>
         <span className={`sr-icon cat-${item.category}`} aria-hidden>
           <CategoryIcon category={item.category} size={18} />
         </span>
@@ -636,26 +652,28 @@ function SettledRow({
           {sub && <span className="muted">{sub}</span>}
         </span>
         {facts.price && <span className="sr-price">{facts.price.text}</span>}
-        <span className={`sr-chip st-${booked ? "booked" : "planned"}`}>{booked ? `${bookedWord(item)} ✓` : planned ? "Planlanıyor" : "Seçildi"}</span>
+        <span className={`sr-chip st-${booked ? "booked" : "planned"}`}>{booked ? `${bookedWord(item)} ✓` : planned ? L("Planlanıyor", "Planning") : L("Seçildi", "Chosen")}</span>
       </button>
       <span className="sr-actions">
         {booked ? (
-          <button className="link-btn quiet" onClick={() => void setItemStatus(item, "chosen")} title="Rezerve edilmedi olarak geri al">
-            Geri al
+          <button className="link-btn quiet" onClick={() => void setItemStatus(item, "chosen")} title={L("Rezerve edilmedi olarak geri al", "Mark as not booked")}>
+            {L("Geri al", "Undo")}
           </button>
         ) : (
           <button className="pill-btn outline small" onClick={() => void setItemStatus(item, "booked")}>
-            {ticketed(item) ? "Bileti aldım" : "Rezerve ettim"}
+            {bookAction(item)}
           </button>
         )}
         {alternatives > 0 && (
           <button className="link-btn" aria-expanded={changing} onClick={onChange}>
-            {changing ? "Kapat" : `Diğer ${alternatives}`}
+            {changing ? L("Kapat", "Close") : L(`Diğer ${alternatives}`, `${alternatives} other${alternatives === 1 ? "" : "s"}`)}
           </button>
         )}
         {planned && !booked && (
-          <button className="link-btn quiet" onClick={() => void removeItem(item)} aria-label={`${item.name}: kaldır`} title="Bu planı panodan kaldır">
-            Kaldır
+          <button className="link-btn quiet" onClick={() => void removeItem(item)} aria-label={L(`${item.name}: kaldır`, `${item.name}: remove`)}
+            title={L("Bu planı panodan kaldır", "Remove this plan from the board")}
+          >
+            {L("Kaldır", "Remove")}
           </button>
         )}
       </span>
@@ -666,7 +684,7 @@ function SettledRow({
             <Links item={item} decision={decision} onOpen={onOpen} />
             {!planned && !booked && (
               <button className="link-btn" onClick={() => void setItemStatus(item, "saved")}>
-                Seçimi geri al
+                {L("Seçimi geri al", "Undo choice")}
               </button>
             )}
           </div>

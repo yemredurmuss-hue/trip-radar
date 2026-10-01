@@ -2,6 +2,7 @@ import { useState } from "react";
 import { legItem, legShortTitle, legTiming, MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib/legs";
 import type { Item, LegMode } from "../lib/types";
 import { removeItem, setHidden, updateTrip } from "./actions";
+import { L } from "../lib/i18n";
 
 const ICONS: Record<LegMode, string> = {
   flight: "✈",
@@ -15,7 +16,13 @@ const ICONS: Record<LegMode, string> = {
   walk: "🚶",
 };
 
-export const KIND_LABEL = { arrival: "Varış transferi", move: "Şehir değişimi", change: "Otel değişimi", departure: "Gidiş transferi" } as const;
+/** A transfer's kind in a word or two, in the current language. */
+export const kindLabel = () => ({
+  arrival: L("Varış transferi", "Arrival transfer"),
+  move: L("Şehir değişimi", "City change"),
+  change: L("Otel değişimi", "Hotel change"),
+  departure: L("Gidiş transferi", "Departure transfer"),
+});
 
 /**
  * One transfer between the stays: where from and to, when, and where it stands (open, planned by
@@ -49,7 +56,7 @@ export function LegRow({
   return (
     <div className={`leg st-${leg.status}${open ? " open" : ""}${embedded ? " embedded" : ""}`} id={`leg-${leg.key}`}>
       {!embedded && (
-        <button className="leg-head" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`${KIND_LABEL[leg.kind]}: ${leg.from.label} → ${leg.to.label}`}>
+        <button className="leg-head" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`${kindLabel()[leg.kind]}: ${leg.from.label} → ${leg.to.label}`}>
           <span className="leg-icon" aria-hidden>
             {leg.mode ? ICONS[leg.mode] : "↓"}
           </span>
@@ -58,7 +65,7 @@ export function LegRow({
             <span className="leg-sub">
               {[timed ? null : timing, `${leg.from.label} → ${leg.to.label}`, settled?.name].filter(Boolean).join(" · ")}
               {!open && leg.notes.length > 0 && (
-                <span className="leg-hint" title={leg.notes.join("\n")} aria-label={`${leg.notes.length} not`}>
+                <span className="leg-hint" title={leg.notes.join("\n")} aria-label={L(`${leg.notes.length} not`, `${leg.notes.length} note${leg.notes.length === 1 ? "" : "s"}`)}>
                   {" "}
                   ⓘ
                 </span>
@@ -81,12 +88,12 @@ export function LegRow({
                 <span key={i.id} className="leg-option">
                   <button className="link-btn" onClick={() => onOpenItem(i)}>
                     {i.name}
-                    {i.status === "booked" ? " ✓" : i.status === "chosen" ? (i.origin === "chat" ? " (planlanıyor)" : " (seçildi)") : ""}
+                    {i.status === "booked" ? " ✓" : i.status === "chosen" ? (i.origin === "chat" ? L(" (planlanıyor)", " (planning)") : L(" (seçildi)", " (chosen)")) : ""}
                   </button>
                   {/* A plan said in the chat ("12 Ekim'e taksi") comes off in one tap. */}
                   {i.origin === "chat" && i.status !== "booked" && (
-                    <button className="link-btn quiet" onClick={() => void removeItem(i)} aria-label={`${i.name}: kaldır`}>
-                      Kaldır
+                    <button className="link-btn quiet" onClick={() => void removeItem(i)} aria-label={L(`${i.name}: kaldır`, `${i.name}: remove`)}>
+                      {L("Kaldır", "Remove")}
                     </button>
                   )}
                 </span>
@@ -95,7 +102,7 @@ export function LegRow({
           )}
           {!settledByItem && (
             <>
-              <div className="leg-modes" role="group" aria-label="Nasıl gideceksin?">
+              <div className="leg-modes" role="group" aria-label={L("Nasıl gideceksin?", "How will you go?")}>
                 {modesFor(leg.kind).map((m) => (
                   <button
                     key={m}
@@ -109,17 +116,24 @@ export function LegRow({
               </div>
               <label className="leg-booked">
                 <input type="checkbox" checked={Boolean(choice?.booked)} onChange={(e) => save({ booked: e.target.checked })} />
-                Ayarlandı / rezerve edildi
+                {L("Ayarlandı / rezerve edildi", "Arranged / booked")}
               </label>
             </>
           )}
-          {choice?.note && <p className="muted small-note">Not: {choice.note}</p>}
+          {choice?.note && (
+            <p className="muted small-note">
+              {L("Not:", "Note:")} {choice.note}
+            </p>
+          )}
           <p className="muted small-note">
-            Sohbette “metroyla gideceğim” ya da “transferi ayarladım” demen de yeter; seçenekleri birlikte konuşabiliriz.
+            {L(
+              "Sohbette “metroyla gideceğim” ya da “transferi ayarladım” demen de yeter; seçenekleri birlikte konuşabiliriz.",
+              "You can also say “I'll take the metro” or “I've booked the transfer” in the chat. We can talk the options through together.",
+            )}
           </p>
           {leg.kind !== "move" && (
-            <button className="link-btn quiet" onClick={() => void setHidden(tripId, `leg:${leg.key}`, true, KIND_LABEL[leg.kind])}>
-              Gerek yok · gizle
+            <button className="link-btn quiet" onClick={() => void setHidden(tripId, `leg:${leg.key}`, true, kindLabel()[leg.kind])}>
+              {L("Gerek yok · gizle", "Not needed · hide")}
             </button>
           )}
         </div>

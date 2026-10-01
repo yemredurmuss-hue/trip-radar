@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { db, notifyChanged } from "../lib/db";
 import { updateTrip } from "./actions";
+import { L, locale } from "../lib/i18n";
 import { CRITERION_LABELS, LEVEL_LABELS, requirementLabel, saidTopics, WISH_TOPIC, WISHES } from "../lib/decision";
 import { activeSignals, pendingSignals } from "../lib/intent";
 import { CATEGORY_LABELS } from "../lib/items";
@@ -26,9 +27,9 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
   for (const [c, level] of Object.entries(trip.priorities ?? {}) as [CriterionId, number][]) {
     entries.push({
       key: `p:${c}`,
-      short: `${CRITERION_LABELS[c]}: ${LEVEL_LABELS[level].toLocaleLowerCase("tr")}`,
+      short: `${CRITERION_LABELS[c]}: ${LEVEL_LABELS[level].toLocaleLowerCase(locale())}`,
       text: `${CRITERION_LABELS[c]}: ${LEVEL_LABELS[level]}`,
-      detail: "söylediğin · tüm gezi",
+      detail: L("söylediğin · tüm gezi", "you said · whole trip"),
       change: (t) => {
         const priorities = { ...t.priorities };
         delete priorities[c];
@@ -40,9 +41,9 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
     for (const [c, level] of Object.entries(levels ?? {}) as [CriterionId, number][]) {
       entries.push({
         key: `cp:${cat}:${c}`,
-        short: `${CRITERION_LABELS[c]}: ${LEVEL_LABELS[level].toLocaleLowerCase("tr")}`,
+        short: `${CRITERION_LABELS[c]}: ${LEVEL_LABELS[level].toLocaleLowerCase(locale())}`,
         text: `${CATEGORY_LABELS[cat]} · ${CRITERION_LABELS[c]}: ${LEVEL_LABELS[level]}`,
-        detail: "söylediğin",
+        detail: L("söylediğin", "you said"),
         change: (t) => {
           const categoryPriorities = { ...t.categoryPriorities, [cat]: { ...t.categoryPriorities?.[cat] } };
           delete categoryPriorities[cat]![c];
@@ -55,18 +56,18 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
     const label = requirementLabel(r);
     entries.push({
       key: `r:${label}`,
-      short: `${label} şart`,
-      text: `Şart: ${label}`,
-      detail: "uymayan seçenek önerilmez",
+      short: L(`${label} şart`, `${label} required`),
+      text: L(`Şart: ${label}`, `Required: ${label}`),
+      detail: L("uymayan seçenek önerilmez", "options that don't fit aren't suggested"),
       change: (t) => ({ ...t, requirements: (t.requirements ?? []).filter((x) => requirementLabel(x) !== label) }),
     });
   }
   for (const a of trip.wantedAmenities ?? []) {
     entries.push({
       key: `a:${a}`,
-      short: `${a} istiyorsun`,
-      text: `İstenen: ${a}`,
-      detail: "olanağı olan öne geçer",
+      short: L(`${a} istiyorsun`, `you want ${a}`),
+      text: L(`İstenen: ${a}`, `Wanted: ${a}`),
+      detail: L("olanağı olan öne geçer", "places that have it rank higher"),
       change: (t) => ({ ...t, wantedAmenities: (t.wantedAmenities ?? []).filter((x) => x !== a) }),
     });
   }
@@ -76,16 +77,17 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
     const listing = decisions?.ctx.listings.get(listingKey);
     const finding = listing?.findings.find((f) => `${f.topic}:${f.polarity}` === kind);
     if (!listing || !finding) continue;
-    const note = `"${finding.text}" benim için sorun değil`;
+    // The note may be in either language (it is written in the board's language).
+    const notes = [`"${finding.text}" benim için sorun değil`, `"${finding.text}" is fine with me`];
     entries.push({
       key: `ok:${key}`,
-      short: `${finding.text.toLocaleLowerCase("tr")} sorun değil`,
-      text: `Sorun değil: ${finding.text}`,
-      detail: `söylediğin · ${listing.name}`,
+      short: L(`${finding.text.toLocaleLowerCase(locale())} sorun değil`, `${finding.text.toLocaleLowerCase(locale())} is fine`),
+      text: L(`Sorun değil: ${finding.text}`, `Fine by you: ${finding.text}`),
+      detail: L(`söylediğin · ${listing.name}`, `you said · ${listing.name}`),
       action: async () => {
         await updateTrip(trip.id, (t) => ({ ...t, acceptedFindings: (t.acceptedFindings ?? []).filter((k) => k !== key) }));
         const d = await db();
-        for (const p of await d.getAll("preferences")) if (p.tripId === trip.id && p.text === note) await d.delete("preferences", p.id);
+        for (const p of await d.getAll("preferences")) if (p.tripId === trip.id && notes.includes(p.text)) await d.delete("preferences", p.id);
         notifyChanged();
       },
     });
@@ -96,23 +98,23 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
     const listing = decisions?.ctx.listings.get(listingKey);
     const finding = listing?.findings.find((f) => `${f.topic}:${f.polarity}` === kind);
     if (!listing || !finding) continue;
-    const note = `"${finding.text}" benim için önemli`;
+    const notes = [`"${finding.text}" benim için önemli`, `"${finding.text}" matters to me`];
     entries.push({
       key: `must:${key}`,
-      short: `${finding.text.toLocaleLowerCase("tr")} önemli`,
-      text: `Önemli: ${finding.text}`,
-      detail: `söylediğin · ${listing.name} elendi`,
+      short: L(`${finding.text.toLocaleLowerCase(locale())} önemli`, `${finding.text.toLocaleLowerCase(locale())} matters`),
+      text: L(`Önemli: ${finding.text}`, `Matters: ${finding.text}`),
+      detail: L(`söylediğin · ${listing.name} elendi`, `you said · ${listing.name} ruled out`),
       action: async () => {
         await updateTrip(trip.id, (t) => ({ ...t, confirmedFindings: (t.confirmedFindings ?? []).filter((k) => k !== key) }));
         const d = await db();
-        for (const p of await d.getAll("preferences")) if (p.tripId === trip.id && p.text === note) await d.delete("preferences", p.id);
+        for (const p of await d.getAll("preferences")) if (p.tripId === trip.id && notes.includes(p.text)) await d.delete("preferences", p.id);
         notifyChanged();
       },
     });
   }
   for (const p of decisions?.preferences ?? []) {
-    if (/^".+" benim için sorun değil$/.test(p.text) && entries.some((e) => e.key.startsWith("ok:"))) continue;
-    if (/^".+" benim için önemli$/.test(p.text) && entries.some((e) => e.key.startsWith("must:"))) continue;
+    if (/^".+" (benim için sorun değil|is fine with me)$/.test(p.text) && entries.some((e) => e.key.startsWith("ok:"))) continue;
+    if (/^".+" (benim için önemli|matters to me)$/.test(p.text) && entries.some((e) => e.key.startsWith("must:"))) continue;
     // What the note asks for becomes its own criterion ("Sessizlik: önemli"), unless they set it otherwise.
     const topics = saidTopics([p.text]);
     const wishes = WISHES.filter((w) => topics.has(WISH_TOPIC[w]) && trip.priorities?.[w] === undefined).map((w) => CRITERION_LABELS[w]);
@@ -120,7 +122,9 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
       key: `n:${p.id}`,
       short: p.text,
       text: p.text,
-      detail: `${p.tripId ? "not · bu gezi" : "not · tüm geziler"}${wishes.length ? ` · ${wishes.join(", ")} önemli sayılıyor` : ""}`,
+      detail: `${p.tripId ? L("not · bu gezi", "note · this trip") : L("not · tüm geziler", "note · all trips")}${
+        wishes.length ? L(` · ${wishes.join(", ")} önemli sayılıyor`, ` · ${wishes.join(", ")} counted as important`) : ""
+      }`,
       action: async () => {
         await (await db()).delete("preferences", p.id);
         notifyChanged();
@@ -130,9 +134,12 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
   for (const s of activeSignals(decisions?.signals ?? [], trip)) {
     entries.push({
       key: `s:${s.id}`,
-      short: `${CRITERION_LABELS[s.criterion].toLocaleLowerCase("tr")} ${s.delta > 0 ? "önemli" : "ikinci planda"}`,
+      short:
+        s.delta > 0
+          ? L(`${CRITERION_LABELS[s.criterion].toLocaleLowerCase(locale())} önemli`, `${CRITERION_LABELS[s.criterion].toLocaleLowerCase(locale())} matters`)
+          : L(`${CRITERION_LABELS[s.criterion].toLocaleLowerCase(locale())} ikinci planda`, `${CRITERION_LABELS[s.criterion].toLocaleLowerCase(locale())} matters less`),
       text: s.text,
-      detail: `onayladığın · ${s.evidence}`,
+      detail: L(`onayladığın · ${s.evidence}`, `you confirmed · ${s.evidence}`),
       change: (t) => ({
         ...t,
         confirmedSignals: (t.confirmedSignals ?? []).filter((id) => id !== s.id),
@@ -149,28 +156,28 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
       </span>
       <span className="intent-answers">
         <button className="pill-btn outline small" onClick={() => void updateTrip(trip.id, (t) => ({ ...t, confirmedSignals: [...new Set([...(t.confirmedSignals ?? []), guess.id])] }))}>
-          Evet
+          {L("Evet", "Yes")}
         </button>
         <button className="link-btn quiet" onClick={() => void updateTrip(trip.id, (t) => ({ ...t, ignoredSignals: [...new Set([...(t.ignoredSignals ?? []), guess.id])] }))}>
-          Hayır
+          {L("Hayır", "No")}
         </button>
       </span>
     </div>
   );
 
   if (!entries.length) {
-    return question ? <div className="intent-card">{question}</div> : <div className="intent-card empty">Konuştukça ve seçtikçe seni tanıyacağım; anladıklarımı burada göreceksin.</div>;
+    return question ? <div className="intent-card">{question}</div> : <div className="intent-card empty">{L("Konuştukça ve seçtikçe seni tanıyacağım; anladıklarımı burada göreceksin.", "As you chat and choose, I'll get to know you. What I understand shows up here.")}</div>;
   }
   const preview = entries.slice(0, 3).map((e) => e.short).join(" · ");
   return (
     <div className="intent-card">
       <button className="intent-head" onClick={() => setOpen(!open)} aria-expanded={open}>
-        <span className="intent-title">Seni böyle anladım</span>
+        <span className="intent-title">{L("Seni böyle anladım", "What I understood")}</span>
         <span className="intent-preview">
           {preview}
           {entries.length > 3 && ` · +${entries.length - 3}`}
         </span>
-        <span className="muted">{open ? "Gizle" : "Düzenle"}</span>
+        <span className="muted">{open ? L("Gizle", "Hide") : L("Düzenle", "Edit")}</span>
       </button>
       {question}
       {open && (
@@ -181,7 +188,7 @@ export function IntentCard({ trip, decisions }: { trip: Trip; decisions: Decisio
                 {e.text}
                 <span className="muted"> · {e.detail}</span>
               </span>
-              <button className="intent-remove" aria-label={`${e.text} kaldır`} title="Kaldır / yok say" onClick={() => void (e.change ? updateTrip(trip.id, e.change) : e.action?.())}>
+              <button className="intent-remove" aria-label={L(`${e.text} kaldır`, `Remove ${e.text}`)} title={L("Kaldır / yok say", "Remove / ignore")} onClick={() => void (e.change ? updateTrip(trip.id, e.change) : e.action?.())}>
                 ×
               </button>
             </li>

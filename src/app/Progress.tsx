@@ -3,6 +3,7 @@
 // money: booked, chosen, and a guess for what's still open, against the budget.
 import { useState } from "react";
 import { formatPrice } from "../lib/items";
+import { L } from "../lib/i18n";
 import { entryDomId, type BudgetBar, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
 
 /** Scrolls to an element and makes it glow for a moment. */
@@ -28,29 +29,30 @@ export function findTarget(target: Todo["target"]): Element | null {
   return card ?? leg ?? entry ?? inDays;
 }
 
-const KINDS: { kind: TodoKind; label: string }[] = [
-  { kind: "decide", label: "Karar ver" },
-  { kind: "book", label: "Rezerve et" },
-  { kind: "plan", label: "Planla" },
-  { kind: "deadline", label: "İptal süresi" },
+const kinds = (): { kind: TodoKind; label: string }[] => [
+  { kind: "decide", label: L("Karar ver", "Decide") },
+  { kind: "book", label: L("Rezerve et", "Book") },
+  { kind: "plan", label: L("Planla", "Plan") },
+  { kind: "deadline", label: L("İptal süresi", "Cancel by") },
 ];
 
-const when = (t: Todo) => (t.days == null ? null : t.days < 0 ? null : t.days === 0 ? "bugün" : `${t.days} gün`);
+const when = (t: Todo) =>
+  t.days == null ? null : t.days < 0 ? null : t.days === 0 ? L("bugün", "today") : L(`${t.days} gün`, `${t.days} day${t.days === 1 ? "" : "s"}`);
 
 export function TodoStrip({ progress, onGo }: { progress: DecisionProgress; onGo: (target: Todo["target"]) => void }) {
   const [open, setOpen] = useState<TodoKind | null>(null);
   const { todos, count } = progress;
-  const shown = KINDS.filter((k) => count[k.kind] > 0);
+  const shown = kinds().filter((k) => count[k.kind] > 0);
   if (!todos.length) {
     return (
-      <div className="todo-strip done" aria-label="Yapılacaklar">
-        <span className="todo-done">✓ Her şey karara bağlandı</span>
+      <div className="todo-strip done" aria-label={L("Yapılacaklar", "To do")}>
+        <span className="todo-done">{L("✓ Her şey karara bağlandı", "✓ Everything's decided")}</span>
       </div>
     );
   }
   const list = open ? todos.filter((t) => t.kind === open) : [];
   return (
-    <section className="todo-wrap" aria-label="Yapılacaklar">
+    <section className="todo-wrap" aria-label={L("Yapılacaklar", "To do")}>
       <div className="todo-strip" role="tablist">
         {shown.map(({ kind, label }) => {
           const soon = todos.some((t) => t.kind === kind && t.soon);
@@ -65,7 +67,7 @@ export function TodoStrip({ progress, onGo }: { progress: DecisionProgress; onGo
               {kind === "deadline" && <span aria-hidden>⏳</span>}
               {label}
               <b>{count[kind]}</b>
-              {soon && kind !== "deadline" && <i className="todo-soon" title="İki hafta içinde olanı var" />}
+              {soon && kind !== "deadline" && <i className="todo-soon" title={L("İki hafta içinde olanı var", "Some are within two weeks")} />}
             </button>
           );
         })}
@@ -101,24 +103,28 @@ export function BudgetBarView({ bar }: { bar: BudgetBar }) {
   const pct = (n: number) => `${(n / scale) * 100}%`;
   const money = (n: number) => formatPrice(n, bar.currency);
   const left = bar.total != null ? bar.total - sum : null;
-  const share = (n: number) => (sum ? ` · %${Math.round((n / sum) * 100)}` : "");
+  const share = (n: number) => (sum ? L(` · %${Math.round((n / sum) * 100)}`, ` · ${Math.round((n / sum) * 100)}%`) : "");
   return (
-    <section className="budget" aria-label="Gezinin maliyeti">
+    <section className="budget" aria-label={L("Gezinin maliyeti", "Trip cost")}>
       <div className="budget-top">
-        <span className="budget-label">{bar.total != null ? "Bütçe" : "Tahmini toplam"}</span>
+        <span className="budget-label">{bar.total != null ? L("Bütçe", "Budget") : L("Tahmini toplam", "Estimated total")}</span>
         <span className="budget-sum">
           {bar.total != null ? (
             <>
               <b>{money(sum)}</b>
               <span className="muted"> / {money(bar.total)}</span>
-              <span className={left! < 0 ? "tone-danger" : "muted"}> · {left! >= 0 ? `${money(left!)} kalıyor` : `${money(-left!)} aşıyor`}</span>
+              <span className={left! < 0 ? "tone-danger" : "muted"}> · {left! >= 0 ? L(`${money(left!)} kalıyor`, `${money(left!)} left`) : L(`${money(-left!)} aşıyor`, `${money(-left!)} over`)}</span>
             </>
           ) : (
             <b>{money(sum)}</b>
           )}
         </span>
       </div>
-      <div className="budget-bar" role="img" aria-label={`Toplam ${money(sum)}: rezerve ${money(bar.booked)}, seçilen ${money(bar.chosen)}, açık ihtiyaçlar için tahmini ${money(bar.open)}`}>
+      <div className="budget-bar" role="img" aria-label={L(
+          `Toplam ${money(sum)}: rezerve ${money(bar.booked)}, seçilen ${money(bar.chosen)}, açık ihtiyaçlar için tahmini ${money(bar.open)}`,
+          `Total ${money(sum)}: booked ${money(bar.booked)}, chosen ${money(bar.chosen)}, estimated ${money(bar.open)} for what's still open`,
+        )}
+      >
         <span className="b-booked" style={{ width: pct(bar.booked) }} />
         <span className="b-chosen" style={{ width: pct(bar.chosen) }} />
         <span className="b-open" style={{ width: pct(bar.open) }} />
@@ -126,20 +132,27 @@ export function BudgetBarView({ bar }: { bar: BudgetBar }) {
       <div className="budget-legend">
         <span>
           <i className="b-booked" />
-          Rezerve edildi <b>{money(bar.booked)}</b>
+          {L("Rezerve edildi", "Booked")} <b>{money(bar.booked)}</b>
           <small>{share(bar.booked)}</small>
         </span>
         <span>
           <i className="b-chosen" />
-          Seçildi, rezerve bekliyor <b>{money(bar.chosen)}</b>
+          {L("Seçildi, rezerve bekliyor", "Chosen, not booked yet")} <b>{money(bar.chosen)}</b>
         </span>
         {bar.open > 0 && (
           <span>
             <i className="b-open" />
-            Karar bekleyen, tahmini <b>{money(bar.open)}</b>
+            {L("Karar bekleyen, tahmini", "Still to decide, estimated")} <b>{money(bar.open)}</b>
           </span>
         )}
-        {bar.uncounted > 0 && <span className="budget-missing">{bar.uncounted} kalemin fiyatı yok, toplama girmedi</span>}
+        {bar.uncounted > 0 && (
+          <span className="budget-missing">
+            {L(
+              `${bar.uncounted} kalemin fiyatı yok, toplama girmedi`,
+              bar.uncounted === 1 ? "1 item has no price, not in the total" : `${bar.uncounted} items have no price, not in the total`,
+            )}
+          </span>
+        )}
       </div>
     </section>
   );

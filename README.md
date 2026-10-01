@@ -1,5 +1,35 @@
 # Trip Radar
 
+## For Sabine (English)
+
+Trip Radar is a Chrome extension for planning a trip together. Save any hotel, flight or activity page with one
+click; the AI reads it, compares the options and puts them in a shared plan you can vote on.
+
+**1. Install**
+
+- **Mac** (updates itself): paste this into Terminal once:
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/yemredurmuss-hue/trip-radar/release/install.sh | bash
+  ```
+  Then in Chrome open `chrome://extensions`, turn on **Developer mode** (top right), click **Load unpacked** and
+  pick the `TripRadar` folder in your home folder (`~/TripRadar`).
+- **Windows or anything else:** download
+  [the release zip](https://github.com/yemredurmuss-hue/trip-radar/archive/refs/heads/release.zip) and unzip it.
+  In Chrome open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and pick the
+  `extension` folder inside. This version doesn't update itself: repeat these steps to get a new one.
+
+**2. Get the free Gemini key.** A setup screen opens right after installing and walks you through it
+(**Get a free key from Google** → **Create API key** → paste it back). No card needed.
+
+**3. Choose English.** At the top of the setup screen (and later in **••• → Settings**) pick
+**Dil / Language → English**.
+
+**4. Join our trip.** Go to **My trips** → **Join a shared trip**, paste the code Emre sends you (it starts with
+`TR1:`), add your name and click **Join**. Pages anyone saves show up for everyone within a minute, and you can
+👍 / 👎 every option.
+
+---
+
 Kişisel seyahat karar panosu. Gezerken gördüğün otel, uçuş, etkinlik ve eSIM sayfalarını tek tıkla
 kaydedersin. AI her kaydı okur, doğru geziye ve kategoriye koyar, seçenekleri karşılaştırır.
 Sohbetle birlikte karar verirsiniz.
@@ -291,8 +321,10 @@ aynıdır; sohbet herkesin kendine kalır. Paylaşım kurulmadıkça hiçbir şe
 - Paylaşılan geziye düşen her kayıt sunucuya gider; karşı tarafta ülkesi ya da tarihi farklı olsa da **aynı
   geziye** düşer. Her taraf kendi AI anahtarıyla işler; bir kayıt iki kez işlenmez, geri gönderilmez.
   Gönderilen: link, sayfanın yazısı, düzenli veri ve küçültülmüş ekran görüntüsü (≤150 KB).
-- **Oy:** kartta 👍 / 👎; aynı düğmeye tekrar basınca geri alınır. Oylar sıralamayı ve puanı değiştirmez; ikiniz de
-  👎 dediyseniz kart soluklaşır ("İkiniz de istemiyorsunuz"), biriniz fikrini değiştirince geri gelir. Oy,
+- **Oy:** kartta 👍 / 👎; aynı düğmeye tekrar basınca geri alınır. Oylar sıralamayı ve puanı değiştirmez; oy veren
+  herkes 👎 dediyse kart soluklaşır (iki kişiyseniz "İkiniz de istemiyorsunuz", daha kalabalıksanız "Hiçbiriniz
+  istemiyor"), biri fikrini değiştirince geri gelir. Aynı kodla ikiden fazla kişi de katılabilir; gezinin üstünde
+  hepsinin adı yazar ("Sabine ve Ali ile"). Oy,
   seçeneğin sitesindeki ilana verilir (aynı otelin farklı tarihli kayıtları oyu paylaşır).
 - Gezi ayarlarında (ad, tarihler, bütçe, öncelikler, şartlar) son değiştiren kazanır. Seç / Ele / Rezerve ettim ve
   sohbet herkesin kendi panosunda kalır.

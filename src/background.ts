@@ -1,5 +1,6 @@
 // Service worker: runs the capture queue and the decision analyses so they continue after the popup closes.
 import { analyzeStale, isAnalyzing } from "./lib/analysis";
+import { loadLang, setLang } from "./lib/i18n";
 import {
   isProcessing,
   processPending,
@@ -14,10 +15,19 @@ import { updateWaiting } from "./lib/update";
 
 let recovery: Promise<void> | null = null;
 
+// Texts the worker writes (events, errors, sync status) follow the board's language. Listeners must be
+// registered synchronously below, so the work itself waits for this.
+const langReady = loadLang().catch(() => undefined);
+chrome.storage.onChanged.addListener((changes, area) => {
+  const next: unknown = area === "local" ? changes.lang?.newValue : undefined;
+  if (next === "tr" || next === "en") setLang(next);
+});
+
 /** Extension API calls reset the worker's idle timer while a model call is in flight. */
 async function keepingAlive(work: () => Promise<void>): Promise<void> {
   const keepAlive = setInterval(() => void chrome.runtime.getPlatformInfo(), 20_000);
   try {
+    await langReady;
     await work();
   } finally {
     clearInterval(keepAlive);

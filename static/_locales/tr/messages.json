@@ -1,0 +1,11 @@
+{
+  "extDescription": {
+    "message": "Seyahat seçeneklerini tek tıkla kaydet; AI anlamlandırsın, karşılaştırsın, plana koysun."
+  },
+  "actionTitle": {
+    "message": "Bu sayfayı geziye kaydet"
+  },
+  "commandSave": {
+    "message": "Bu sayfayı kaydet"
+  }
+}

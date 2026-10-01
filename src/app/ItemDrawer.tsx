@@ -1,33 +1,45 @@
 import { addEvent, db, newId, notifyChanged } from "../lib/db";
 import { LEVEL_LABELS, type GroupDecision } from "../lib/decision";
+import { L, locale } from "../lib/i18n";
 import { CATEGORY_LABELS, formatDateRange, formatPrice } from "../lib/items";
 import type { FactSource, Item, ItemStatus, Trip } from "../lib/types";
 import { Evidence } from "./Evidence";
 import type { Decisions } from "./useDecisions";
 
-const SOURCE_TEXT: Record<FactSource, string> = {
-  url: "URL'den",
-  page: "sayfada doğrulandı",
-  screenshot: "ekran görüntüsünden",
-  unverified: "doğrulanmadı",
-  user: "sen söyledin",
-  none: "bilinmiyor",
-};
+const sourceText = (): Record<FactSource, string> => ({
+  url: L("URL'den", "from the URL"),
+  page: L("sayfada doğrulandı", "checked on the page"),
+  screenshot: L("ekran görüntüsünden", "from a screenshot"),
+  unverified: L("doğrulanmadı", "not checked"),
+  user: L("sen söyledin", "you said so"),
+  none: L("bilinmiyor", "unknown"),
+});
 
-const STATUS_ACTIONS: { status: ItemStatus; label: string; event: string }[] = [
-  { status: "chosen", label: "Plana al", event: "plana alındı" },
-  { status: "booked", label: "Rezerve ettim", event: "rezerve edildi olarak işaretlendi" },
-  { status: "dismissed", label: "Ele", event: "elendi" },
-  { status: "saved", label: "Seçeneklere geri al", event: "seçeneklere geri alındı" },
+/** The drawer's status buttons; `event` is the line written to the trip's log, a whole sentence per language. */
+const statusActions = (): { status: ItemStatus; label: string; event: (name: string) => string }[] => [
+  { status: "chosen", label: L("Plana al", "Add to plan"), event: (name) => L(`${name} plana alındı`, `${name} added to the plan`) },
+  {
+    status: "booked",
+    label: L("Rezerve ettim", "I booked it"),
+    event: (name) => L(`${name} rezerve edildi olarak işaretlendi`, `${name} marked as booked`),
+  },
+  { status: "dismissed", label: L("Ele", "Rule out"), event: (name) => L(`${name} elendi`, `${name} ruled out`) },
+  {
+    status: "saved",
+    label: L("Seçeneklere geri al", "Back to options"),
+    event: (name) => L(`${name} seçeneklere geri alındı`, `${name} moved back to options`),
+  },
 ];
 
 function Source({ source }: { source: FactSource }) {
-  return <span className={`badge ${source}`}>{SOURCE_TEXT[source]}</span>;
+  return <span className={`badge ${source}`}>{sourceText()[source]}</span>;
 }
 
-function daysAgo(ms: number): string {
+/** When the price was seen, as a whole phrase ("3 gün önce görüldü"). */
+function seenAgo(ms: number): string {
   const days = Math.floor((Date.now() - ms) / (24 * 3600e3));
-  return days <= 0 ? "bugün" : `${days} gün önce`;
+  if (days <= 0) return L("bugün görüldü", "seen today");
+  return L(`${days} gün önce görüldü`, `seen ${days} day${days === 1 ? "" : "s"} ago`);
 }
 
 /** This option's score, rank and per-criterion breakdown within its need group. */
@@ -43,20 +55,25 @@ function DecisionBreakdown({ item, decision, onCompare }: { item: Item; decision
       <div className="breakdown-head">
         <span>
           {single ? (
-            <span className="muted">Tek seçenek · bir tane daha kaydedince puanlanır</span>
+            <span className="muted">{L("Tek seçenek · bir tane daha kaydedince puanlanır", "Only option · save one more to score it")}</span>
           ) : option.score != null ? (
             <>
               <span className={`score-big${option === decision.winner ? " best" : ""}`}>{option.score}</span>
-              <span className="muted"> / 100 · {rank}. sırada ({ranked.length} seçenek)</span>
+              <span className="muted">
+                {L(` / 100 · ${rank}. sırada (${ranked.length} seçenek)`, ` / 100 · #${rank} of ${ranked.length} option${ranked.length === 1 ? "" : "s"}`)}
+              </span>
             </>
           ) : option.excluded ? (
-            <span className="tone-warning">{option.excluded} — karşılaştırmaya alınmadı</span>
+            <span className="tone-warning">{L(`${option.excluded} — karşılaştırmaya alınmadı`, `${option.excluded}: left out of the comparison`)}</span>
           ) : (
-            <span className="tone-warning">Puan yok{option.missing.length ? ` · eksik: ${option.missing.join(", ")}` : ""}</span>
+            <span className="tone-warning">
+              {L("Puan yok", "No score")}
+              {option.missing.length ? L(` · eksik: ${option.missing.join(", ")}`, ` · missing: ${option.missing.join(", ")}`) : ""}
+            </span>
           )}
         </span>
         <button className="link-btn" onClick={onCompare}>
-          Karşılaştır →
+          {L("Karşılaştır →", "Compare →")}
         </button>
       </div>
       {option.parts.length > 0 && (
@@ -67,7 +84,7 @@ function DecisionBreakdown({ item, decision, onCompare }: { item: Item; decision
                 {p.label}
                 <span className="muted"> · {LEVEL_LABELS[p.level].toLowerCase()}</span>
               </span>
-              <span className="part-value">{p.display ?? <span className="muted">bilinmiyor</span>}</span>
+              <span className="part-value">{p.display ?? <span className="muted">{L("bilinmiyor", "unknown")}</span>}</span>
               <span className="bar">
                 {p.s != null && !single && (
                   <span style={{ width: `${Math.max(4, Math.round(p.s * 100))}%` }} className={p.s >= 0.75 ? "good" : p.s >= 0.45 ? "mid" : "low"} />
@@ -79,12 +96,16 @@ function DecisionBreakdown({ item, decision, onCompare }: { item: Item; decision
       )}
       {option.penalties.length > 0 && (
         <p className="tone-warning small-note">
-          Ciddi sorun, puandan düşüldü: {option.penalties.map((f) => f.text).join(", ")} (−{option.penaltyPoints})
+          {L("Ciddi sorun, puandan düşüldü", "Serious issue, taken off the score")}: {option.penalties.map((f) => f.text).join(", ")} (−{option.penaltyPoints})
         </p>
       )}
-      {option.unmet.length > 0 && <p className="tone-warning small-note">Şartına uymuyor: {option.unmet.join(", ")}</p>}
-      {option.unsure.length > 0 && <p className="muted small-note">Kontrol et: {option.unsure.join(", ")} sayfada görünmüyor</p>}
-      {aiNote && <p className="muted small-note">AI değerlendirmesi: {aiNote.score}/10 · {aiNote.note}</p>}
+      {option.unmet.length > 0 && <p className="tone-warning small-note">{L(`Şartına uymuyor: ${option.unmet.join(", ")}`, `Doesn't meet your must-have: ${option.unmet.join(", ")}`)}</p>}
+      {option.unsure.length > 0 && <p className="muted small-note">
+          {L(`Kontrol et: ${option.unsure.join(", ")} sayfada görünmüyor`, `Check: ${option.unsure.join(", ")} not shown on the page`)}
+        </p>}
+      {aiNote && <p className="muted small-note">
+          {L("AI değerlendirmesi", "AI review")}: {aiNote.score}/10 · {aiNote.note}
+        </p>}
     </div>
   );
 }
@@ -101,10 +122,10 @@ interface Props {
 }
 
 export function ItemDrawer({ item, group, trips, decision, decisions, onClose, onMoved, onCompare }: Props) {
-  async function setStatus(status: ItemStatus, event: string) {
+  async function setStatus(status: ItemStatus, event: (name: string) => string) {
     const d = await db();
     await d.put("items", { ...item, status, statusAt: Date.now(), updatedAt: Date.now() });
-    await addEvent(item.tripId, `${item.name} ${event}`);
+    await addEvent(item.tripId, event(item.name));
     notifyChanged();
   }
 
@@ -113,7 +134,7 @@ export function ItemDrawer({ item, group, trips, decision, decisions, onClose, o
     const d = await db();
     let target = trips.find((t) => t.id === value);
     if (value === "__new") {
-      const title = prompt("Yeni gezinin adı", item.country ?? item.city ?? "")?.trim();
+      const title = prompt(L("Yeni gezinin adı", "Name of the new trip"), item.country ?? item.city ?? "")?.trim();
       if (!title) return;
       const now = Date.now();
       target = { id: newId(), title, confirmedDates: null, budget: null, heroImage: item.imageUrl, createdAt: now, updatedAt: now };
@@ -121,34 +142,45 @@ export function ItemDrawer({ item, group, trips, decision, decisions, onClose, o
     }
     if (!target || target.id === item.tripId) return;
     await d.put("items", { ...item, tripId: target.id, status: "saved", updatedAt: Date.now() });
-    await addEvent(item.tripId, `${item.name} → ${target.title} gezisine taşındı`);
-    await addEvent(target.id, `${item.name} bu geziye taşındı`);
+    await addEvent(item.tripId, L(`${item.name} → ${target.title} gezisine taşındı`, `${item.name} moved to ${target.title}`));
+    await addEvent(target.id, L(`${item.name} bu geziye taşındı`, `${item.name} moved to this trip`));
     notifyChanged();
     onClose();
     onMoved(target.id);
   }
 
   async function remove() {
-    if (!confirm(`${item.name} tamamen silinsin mi?`)) return;
+    if (!confirm(L(`${item.name} tamamen silinsin mi?`, `Delete ${item.name} for good?`))) return;
     await (await db()).delete("items", item.id);
     notifyChanged();
     onClose();
   }
 
   const p = item.price;
-  const scope = { total: "toplam", per_night: "gecelik", per_person: "kişi başı", unknown: "kapsam belirsiz" }[p.scope];
-  const taxes = { yes: "vergiler dahil", no: "vergiler hariç", unknown: "vergi durumu belirsiz" }[p.taxesIncluded];
+  const scope = {
+    total: L("toplam", "total"),
+    per_night: L("gecelik", "per night"),
+    per_person: L("kişi başı", "per person"),
+    unknown: L("kapsam belirsiz", "unclear what it covers"),
+  }[p.scope];
+  const taxes = {
+    yes: L("vergiler dahil", "taxes included"),
+    no: L("vergiler hariç", "taxes not included"),
+    unknown: L("vergi durumu belirsiz", "taxes unclear"),
+  }[p.taxesIncluded];
+  const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const { adults, children, rooms } = item.guests;
   const guests = [
-    item.guests.adults != null && `${item.guests.adults} yetişkin`,
-    item.guests.children ? `${item.guests.children} çocuk` : null,
-    item.guests.rooms != null && `${item.guests.rooms} oda`,
+    adults != null && L(`${adults} yetişkin`, count(adults, "adult", "adults")),
+    children ? L(`${children} çocuk`, count(children, "child", "children")) : null,
+    rooms != null && L(`${rooms} oda`, count(rooms, "room", "rooms")),
   ].filter(Boolean);
 
   return (
     <>
       <div className="overlay" onClick={onClose} />
       <aside className="drawer" role="dialog" aria-label={item.name}>
-        <button className="close" onClick={onClose} aria-label="Kapat">
+        <button className="close" onClick={onClose} aria-label={L("Kapat", "Close")}>
           ×
         </button>
         {item.imageUrl && <img className="cover" src={item.imageUrl} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />}
@@ -157,19 +189,19 @@ export function ItemDrawer({ item, group, trips, decision, decisions, onClose, o
           {[CATEGORY_LABELS[item.category], item.provider, item.city].filter(Boolean).join(" · ")}
         </div>
         <label className="move">
-          Gezi:
+          {L("Gezi:", "Trip:")}
           <select value={item.tripId} onChange={(e) => void moveTo(e.target.value)}>
             {trips.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.title}
               </option>
             ))}
-            <option value="__new">+ Yeni gezi…</option>
+            <option value="__new">{L("+ Yeni gezi…", "+ New trip…")}</option>
           </select>
         </label>
 
         <div className="actions">
-          {STATUS_ACTIONS.filter((a) => a.status !== "saved" || item.status !== "saved").map((a) => (
+          {statusActions().filter((a) => a.status !== "saved" || item.status !== "saved").map((a) => (
             <button key={a.status} className={item.status === a.status ? "on" : ""} onClick={() => void setStatus(a.status, a.event)}>
               {a.label}
             </button>
@@ -181,67 +213,67 @@ export function ItemDrawer({ item, group, trips, decision, decisions, onClose, o
 
         <div className="facts">
           <div className="fact">
-            <span className="k">Fiyat</span>
+            <span className="k">{L("Fiyat", "Price")}</span>
             <span>
-              {p.amount != null ? `${formatPrice(p.amount, p.currency)} · ${scope} · ${taxes}` : "Görülmedi"}
+              {p.amount != null ? `${formatPrice(p.amount, p.currency)} · ${scope} · ${taxes}` : L("Görülmedi", "Not seen")}
               <Source source={p.source} />
-              {p.amount != null && <div className="muted">{daysAgo(p.observedAt)} görüldü</div>}
+              {p.amount != null && <div className="muted">{seenAgo(p.observedAt)}</div>}
             </span>
           </div>
           <div className="fact">
-            <span className="k">Tarih</span>
+            <span className="k">{L("Tarih", "Dates")}</span>
             <span>
-              {item.dates.start ? formatDateRange(item.dates.start, item.dates.end) : "Bilinmiyor"}
+              {item.dates.start ? formatDateRange(item.dates.start, item.dates.end) : L("Bilinmiyor", "Unknown")}
               <Source source={item.dates.source} />
             </span>
           </div>
           {guests.length > 0 && (
             <div className="fact">
-              <span className="k">Kişi / oda</span>
+              <span className="k">{L("Kişi / oda", "Guests / rooms")}</span>
               <span>{guests.join(", ")}</span>
             </div>
           )}
           {item.optionDetail && (
             <div className="fact">
-              <span className="k">Seçenek</span>
+              <span className="k">{L("Seçenek", "Option")}</span>
               <span>{item.optionDetail}</span>
             </div>
           )}
           {item.flight && (
             <div className="fact">
-              <span className="k">Uçuş</span>
+              <span className="k">{L("Uçuş", "Flight")}</span>
               <span>
                 {[item.flight.carrier, item.flight.flightNumber].filter(Boolean).join(" ")}{" "}
                 {item.flight.from} → {item.flight.to}
                 <div className="muted">
                   {[item.flight.departure?.replace("T", " "), item.flight.arrival?.replace("T", " ")].filter(Boolean).join(" → ")}
-                  {item.flight.stops != null && ` · ${item.flight.stops === 0 ? "direkt" : `${item.flight.stops} aktarma`}`}
+                  {item.flight.stops != null && ` · ${item.flight.stops === 0 ? L("direkt", "direct") : L(`${item.flight.stops} aktarma`, `${item.flight.stops} stop${item.flight.stops === 1 ? "" : "s"}`)}`}
                 </div>
               </span>
             </div>
           )}
           <div className="fact">
-            <span className="k">İptal</span>
+            <span className="k">{L("İptal", "Cancellation")}</span>
             <span>
-              {item.cancellation.summary ?? "Bilinmiyor"}
+              {item.cancellation.summary ?? L("Bilinmiyor", "Unknown")}
               <Source source={item.cancellation.source} />
             </span>
           </div>
           <div className="fact">
-            <span className="k">Puan</span>
+            <span className="k">{L("Puan", "Rating")}</span>
             <span>
               {item.rating.value != null
-                ? `${item.rating.value}${item.rating.scale ? ` / ${item.rating.scale}` : ""}${item.rating.count ? ` · ${item.rating.count} yorum` : ""}`
-                : "Bilinmiyor"}
+                ? `${item.rating.value}${item.rating.scale ? ` / ${item.rating.scale}` : ""}${item.rating.count ? L(` · ${item.rating.count} yorum`, ` · ${item.rating.count} reviews`) : ""}`
+                : L("Bilinmiyor", "Unknown")}
               <Source source={item.rating.source} />
             </span>
           </div>
           {(item.location.address || item.location.area) && (
             <div className="fact">
-              <span className="k">Konum</span>
+              <span className="k">{L("Konum", "Location")}</span>
               <span>
                 {[item.location.area, item.location.address].filter(Boolean).join(" · ")}
-                {item.location.approximate && <div className="muted">Yaklaşık konum</div>}
+                {item.location.approximate && <div className="muted">{L("Yaklaşık konum", "Approximate location")}</div>}
               </span>
             </div>
           )}
@@ -249,26 +281,30 @@ export function ItemDrawer({ item, group, trips, decision, decisions, onClose, o
 
         {item.reviewSummary && (
           <>
-            <h3>Yorumlardan</h3>
+            <h3>{L("Yorumlardan", "From reviews")}</h3>
             <p>{item.reviewSummary}</p>
           </>
         )}
         {item.missing.length > 0 && (
           <>
-            <h3>Eksik bilgi</h3>
+            <h3>{L("Eksik bilgi", "Missing info")}</h3>
             <p className="muted">
-              {item.missing.join(", ")}. Sayfayı açıp (tarih seçiliyken) eklentiyle tekrar kaydedersen tamamlanır.
+              {item.missing.join(", ")}.{" "}
+              {L(
+                "Sayfayı açıp (tarih seçiliyken) eklentiyle tekrar kaydedersen tamamlanır.",
+                "Open the page (with dates picked) and save it again with the extension to fill it in.",
+              )}
             </p>
           </>
         )}
 
         {item.priceHistory.length > 1 && (
           <>
-            <h3>Fiyat geçmişi</h3>
+            <h3>{L("Fiyat geçmişi", "Price history")}</h3>
             <ul>
               {item.priceHistory.map((h) => (
                 <li key={h.observedAt}>
-                  {formatPrice(h.amount, h.currency)} · {new Date(h.observedAt).toLocaleDateString("tr-TR")}
+                  {formatPrice(h.amount, h.currency)} · {new Date(h.observedAt).toLocaleDateString(locale())}
                 </li>
               ))}
             </ul>
@@ -278,16 +314,16 @@ export function ItemDrawer({ item, group, trips, decision, decisions, onClose, o
         {item.url && (
           <p>
             <a href={item.url} target="_blank" rel="noreferrer">
-              Orijinal sayfayı aç ↗
+              {L("Orijinal sayfayı aç ↗", "Open the original page ↗")}
             </a>
             <br />
             <span className="muted" style={{ fontSize: 13 }}>
-              Fiyatı güncellemek için sayfayı açıp eklentiye tekrar tıkla.
+              {L("Fiyatı güncellemek için sayfayı açıp eklentiye tekrar tıkla.", "To update the price, open the page and click the extension again.")}
             </span>
           </p>
         )}
         <button className="danger-link" onClick={() => void remove()}>
-          Bu kaydı sil
+          {L("Bu kaydı sil", "Delete this")}
         </button>
       </aside>
     </>

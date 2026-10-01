@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Pivot } from "../lib/pivots";
 import type { Item } from "../lib/types";
 import { setFindingVerdict } from "./findingVerdict";
+import { L } from "../lib/i18n";
 
 /**
  * "Sıralaman tek bir şeye bağlı": the one thing read on this option's page its place hangs on, and what
@@ -16,23 +17,24 @@ export function PivotNote({ item, pivot }: { item: Item; pivot: Pivot }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      window.prompt("Ev sahibine gönder:", pivot.hostMessage);
+      window.prompt(L("Ev sahibine gönder:", "Send to the host:"), pivot.hostMessage);
     }
   };
   return (
     <div className="opt-pivot" role="note">
       <p>
-        <b>Sıralaman tek bir şeye bağlı:</b> {pivot.finding.text} ({pivot.evidence}). Bu olmasa {pivot.to}. olurdu.
+        <b>{L("Sıralaman tek bir şeye bağlı:", "Your ranking hangs on one thing:")}</b> {pivot.finding.text} ({pivot.evidence}).{" "}
+        {L(`Bu olmasa ${pivot.to}. olurdu.`, `Without it, this would be #${pivot.to}.`)}
       </p>
       <div className="opt-pivot-actions">
-        <button className="pill-btn outline" title="Bu seçeneği eler" onClick={() => void setFindingVerdict(item, { key: pivot.listingKey }, pivot.finding, "matters")}>
-          Önemli, kalsın
+        <button className="pill-btn outline" title={L("Bu seçeneği eler", "Rules this option out")} onClick={() => void setFindingVerdict(item, { key: pivot.listingKey }, pivot.finding, "matters")}>
+          {L("Önemli, kalsın", "It matters")}
         </button>
         <button className="pill-btn outline" onClick={() => void setFindingVerdict(item, { key: pivot.listingKey }, pivot.finding, "fine")}>
-          Sorun değil
+          {L("Sorun değil", "That's fine")}
         </button>
         <button className="link-btn" title={`${pivot.question}\n\n${pivot.hostMessage}`} onClick={() => void copy()}>
-          {copied ? "Kopyalandı ✓" : "Ev sahibine sor"}
+          {copied ? L("Kopyalandı ✓", "Copied ✓") : L("Ev sahibine sor", "Ask the host")}
         </button>
       </div>
     </div>

@@ -5,6 +5,7 @@
 //     (each computer runs its own AI; a capture's id is the same on both, so nothing is done twice);
 //  4. votes go up and come down.
 // Runs in the service worker every minute and when the board opens.
+import { L } from "../i18n";
 import { addEvent, db, listTrips, notifyChanged } from "../db";
 import type { Capture, Trip } from "../types";
 import { rpcClient, ShareError, type Rpc } from "./client";
@@ -154,7 +155,7 @@ export async function syncTrip(tripId: string, deps: SyncDeps): Promise<TripSync
     state.lastSyncAt = now();
     state.error = null;
   } catch (error) {
-    state.error = error instanceof ShareError ? error.message : `Eşitlenemedi: ${error instanceof Error ? error.message : String(error)}`;
+    state.error = error instanceof ShareError ? error.message : L(`Eşitlenemedi: ${error instanceof Error ? error.message : String(error)}`, `Couldn't sync: ${error instanceof Error ? error.message : String(error)}`);
   }
   await setSyncState(tripId, state, kv);
   if (result.received || result.uploaded) notifyChanged();
@@ -163,7 +164,7 @@ export async function syncTrip(tripId: string, deps: SyncDeps): Promise<TripSync
 
 async function syncSettings(tripId: string, state: SyncState, { rpc, me }: SyncDeps): Promise<void> {
   const [remote] = (await rpc<RemoteTrip[]>("get_shared_trip", { p_id: state.shareId, p_author: me })) ?? [];
-  if (!remote) throw new ShareError("Paylaşılan gezi sunucuda bulunamadı.", "not_found");
+  if (!remote) throw new ShareError(L("Paylaşılan gezi sunucuda bulunamadı.", "The shared trip wasn't found on the server."), "not_found");
   state.members = (remote.members ?? []).filter((m) => typeof m === "string");
   const d = await db();
   const trip = await d.get("trips", tripId);
@@ -188,7 +189,7 @@ async function syncSettings(tripId: string, state: SyncState, { rpc, me }: SyncD
     state.settingsBase = stableJson(settingsOf(next));
     state.settingsAt = remote.updated_at;
     if (remote.updated_by && remote.updated_by.trim().toLowerCase() !== me.trim().toLowerCase()) {
-      await addEvent(tripId, `${remote.updated_by} gezinin ayarlarını güncelledi`);
+      await addEvent(tripId, L(`${remote.updated_by} gezinin ayarlarını güncelledi`, `${remote.updated_by} updated the trip settings`));
     }
     notifyChanged();
   } else if (action === "adopt") {

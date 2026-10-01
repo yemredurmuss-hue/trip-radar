@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { requestReading } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
+import { L } from "../lib/i18n";
 import { listingKeyOf } from "../lib/items";
 import { monthLabel, readingLine } from "../lib/listing";
 import { prosConsFor, type ProCon } from "../lib/proscons";
@@ -27,7 +28,7 @@ export function Evidence({
   if (!pc || (!pc.pros.length && !pc.cons.length && !reading)) return null;
   return (
     <div className="evidence">
-      {heading && <h3>Artılar ve eksiler</h3>}
+      {heading && <h3>{L("Artılar ve eksiler", "Pros and cons")}</h3>}
       {reading && (
         <div className={`reading tone-${reading.tone}`}>
           {reading.text}
@@ -39,7 +40,7 @@ export function Evidence({
                 requestReading(true);
               }}
             >
-              Tekrar oku
+              {L("Tekrar oku", "Read again")}
             </button>
           )}
         </div>
@@ -49,17 +50,22 @@ export function Evidence({
           {pc.pros.map((line) => (
             <EvidenceLine key={line.key} line={line} sign="+" item={item} listing={listing} />
           ))}
-          {!pc.pros.length && <span className="muted">Öne çıkan bir artı bulunmadı.</span>}
+          {!pc.pros.length && <span className="muted">{L("Öne çıkan bir artı bulunmadı.", "No standout pros found.")}</span>}
         </div>
         <div className="pc-col cons">
           {pc.cons.map((line) => (
             <EvidenceLine key={line.key} line={line} sign="−" item={item} listing={listing} />
           ))}
-          {!pc.cons.length && <span className="muted">Öne çıkan bir eksi bulunmadı.</span>}
+          {!pc.cons.length && <span className="muted">{L("Öne çıkan bir eksi bulunmadı.", "No standout cons found.")}</span>}
         </div>
       </div>
       {listing && listing.dropped > 0 && (
-        <p className="muted small-note">Sayfada bulunamayan {listing.dropped} alıntı gösterilmedi.</p>
+        <p className="muted small-note">
+          {L(
+            `Sayfada bulunamayan ${listing.dropped} alıntı gösterilmedi.`,
+            `${listing.dropped} quote${listing.dropped === 1 ? "" : "s"} not found on the page ${listing.dropped === 1 ? "was" : "were"} left out.`,
+          )}
+        </p>
       )}
     </div>
   );
@@ -84,21 +90,21 @@ function EvidenceLine({ line, sign, item, listing }: { line: ProCon; sign: strin
         <div className="pc-actions">
           {hasEvidence && (
             <button className="link-btn" onClick={() => setOpen(!open)}>
-              {open ? "Kanıtı gizle" : "Kanıt"}
+              {open ? L("Kanıtı gizle", "Hide evidence") : L("Kanıt", "Evidence")}
             </button>
           )}
           {f && listing && f.polarity === "negative" && f.verified && (line.accepted || line.confirmed ? (
             <button className="link-btn" onClick={() => void setFindingVerdict(item, listing, f, null)}>
-              Geri al
+              {L("Geri al", "Undo")}
             </button>
           ) : (
             <>
               <button className="link-btn" onClick={() => void setFindingVerdict(item, listing, f, "fine")}>
-                Sorun değil
+                {L("Sorun değil", "Not a problem")}
               </button>
               {f.severity !== "low" && (
-                <button className="link-btn" title="Bu seçeneği eler" onClick={() => void setFindingVerdict(item, listing, f, "matters")}>
-                  Önemli, kalsın
+                <button className="link-btn" title={L("Bu seçeneği eler", "Rules this option out")} onClick={() => void setFindingVerdict(item, listing, f, "matters")}>
+                  {L("Önemli, kalsın", "It matters")}
                 </button>
               )}
             </>
@@ -108,12 +114,15 @@ function EvidenceLine({ line, sign, item, listing }: { line: ProCon; sign: strin
           <div className="quotes">
             {reviews.map((r) => (
               <blockquote key={r.id}>
-                “{r.text}”{r.date && <span className="muted"> — {monthLabel(r.date)}</span>}
+                “{r.text}”{r.date && <span className="muted">{L(" — ", " · ")}{monthLabel(r.date)}</span>}
               </blockquote>
             ))}
             {f.quotes.map((q) => (
               <blockquote key={q}>
-                “{q}”<span className="muted"> — {f.source === "amenities" ? "olanaklar" : f.source === "policy" ? "kurallar" : "açıklama"}</span>
+                “{q}”<span className="muted">
+                  {L(" — ", " · ")}
+                  {f.source === "amenities" ? L("olanaklar", "amenities") : f.source === "policy" ? L("kurallar", "house rules") : L("açıklama", "description")}
+                </span>
               </blockquote>
             ))}
           </div>

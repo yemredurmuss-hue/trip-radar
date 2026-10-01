@@ -17,7 +17,8 @@ import {
   type ShareConfig,
   type SyncState,
 } from "../lib/share/store";
-import { tallyVotes, voteKeyOf, type Vote, type VoteTally, type VoteValue } from "../lib/share/votes";
+import { allNoText, joinNames, tallyVotes, voteKeyOf, type Vote, type VoteTally, type VoteValue } from "../lib/share/votes";
+import { L } from "../lib/i18n";
 import type { Item, Trip } from "../lib/types";
 
 // --- the board's view of sharing -----------------------------------------------------------------
@@ -28,6 +29,8 @@ interface ShareView {
   votes: Vote[];
   state: SyncState | null;
   tally: (item: Item) => VoteTally;
+  /** How many people are on the shared trip (me included). */
+  members: number;
   vote: (item: Item, value: VoteValue) => void;
 }
 
@@ -72,6 +75,7 @@ export function ShareProvider({ trip, children }: { trip: Trip | null; children:
       votes,
       state,
       tally: (item) => tallyVotes(votes, voteKeyOf(item), me),
+      members: memberCount(state?.members ?? [], me),
       vote: (item, value) => {
         void castVote(trip, item, value).then(requestShareSync);
       },
@@ -80,6 +84,16 @@ export function ShareProvider({ trip, children }: { trip: Trip | null; children:
 
   return <ShareContext.Provider value={view}>{children}</ShareContext.Provider>;
 }
+
+/** Everyone on the trip, me included (the server's list may not have me yet). */
+function memberCount(members: string[], me: string): number {
+  const names = new Set(members.map((m) => m.trim().toLowerCase()).filter(Boolean));
+  if (me.trim()) names.add(me.trim().toLowerCase());
+  return names.size;
+}
+
+/** "İkiniz de istemiyorsunuz" for two, "Hiçbiriniz istemiyor" for more. */
+const noText = (t: VoteTally, members: number) => allNoText(t.voters, members);
 
 // --- votes on a card -----------------------------------------------------------------------------
 
@@ -91,13 +105,13 @@ export function VoteBar({ item }: { item: Item }) {
   const press = (value: 1 | -1) => share.vote(item, t.mine === value ? 0 : value);
   return (
     <div className={`vote-bar${t.allNo ? " all-no" : ""}`}>
-      <button className={`vote-btn${t.mine === 1 ? " on" : ""}`} aria-pressed={t.mine === 1} title="Bunu istiyorum" onClick={() => press(1)}>
+      <button className={`vote-btn${t.mine === 1 ? " on" : ""}`} aria-pressed={t.mine === 1} title={L("Bunu istiyorum", "I want this")} onClick={() => press(1)}>
         👍
       </button>
-      <button className={`vote-btn${t.mine === -1 ? " on" : ""}`} aria-pressed={t.mine === -1} title="Bunu istemiyorum" onClick={() => press(-1)}>
+      <button className={`vote-btn${t.mine === -1 ? " on" : ""}`} aria-pressed={t.mine === -1} title={L("Bunu istemiyorum", "I don't want this")} onClick={() => press(-1)}>
         👎
       </button>
-      {t.allNo ? <span className="vote-line">İkiniz de istemiyorsunuz · {t.line}</span> : t.line && <span className="vote-line">{t.line}</span>}
+      {t.allNo ? <span className="vote-line">{noText(t, share.members)} · {t.line}</span> : t.line && <span className="vote-line">{t.line}</span>}
     </div>
   );
 }
@@ -107,22 +121,22 @@ export function VoteTallyText({ item }: { item: Item }) {
   const share = useShare();
   const t = share?.me ? share.tally(item) : null;
   if (!t?.line) return null;
-  return <span className="vote-line"> · {t.allNo ? "İkiniz de istemiyorsunuz" : t.line}</span>;
+  return <span className="vote-line"> · {t.allNo && share ? noText(t, share.members) : t.line}</span>;
 }
 
 // --- status on the trip --------------------------------------------------------------------------
 
-const joinTr = (names: string[]) => (names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} ve ${names.at(-1)}`);
-
 function ago(ms: number, now: number): string {
   const min = Math.floor((now - ms) / 60_000);
-  if (min < 1) return "az önce";
-  if (min < 60) return `${min} dk önce`;
+  if (min < 1) return L("az önce", "just now");
+  if (min < 60) return L(`${min} dk önce`, `${min} min ago`);
   const h = Math.floor(min / 60);
-  return h < 24 ? `${h} sa önce` : `${Math.floor(h / 24)} gün önce`;
+  if (h < 24) return L(`${h} sa önce`, `${h} h ago`);
+  const days = Math.floor(h / 24);
+  return L(`${days} gün önce`, `${days} day${days === 1 ? "" : "s"} ago`);
 }
 
-/** "Paylaşılıyor · Sabine ile · son eşitleme 1 dk önce", or what went wrong. */
+/** "Paylaşılıyor · Sabine ve Ali ile · son eşitleme 1 dk önce" ("Shared · with Sabine and Ali · synced 1 min ago"), or what went wrong. */
 export function ShareStatus() {
   const share = useShare();
   const [now, setNow] = useState(Date.now());
@@ -134,12 +148,12 @@ export function ShareStatus() {
   const others = (share.state?.members ?? []).filter((m) => m.trim().toLowerCase() !== share.me.trim().toLowerCase());
   const last = share.state?.lastSyncAt;
   const parts = [
-    "Paylaşılıyor",
-    others.length ? `${joinTr(others)} ile` : "henüz katılan yok",
-    last ? `son eşitleme ${ago(last, now)}` : "eşitleniyor…",
+    L("Paylaşılıyor", "Shared"),
+    others.length ? L(`${joinNames(others)} ile`, `with ${joinNames(others)}`) : L("henüz katılan yok", "no one has joined yet"),
+    last ? L(`son eşitleme ${ago(last, now)}`, `synced ${ago(last, now)}`) : L("eşitleniyor…", "syncing…"),
   ];
   return (
-    <span className="share-status" title="Kayıtlar, oylar ve gezi ayarları dakikada bir eşitlenir">
+    <span className="share-status" title={L("Kayıtlar, oylar ve gezi ayarları dakikada bir eşitlenir", "Saves, votes and trip settings sync every minute")}>
       {parts.join(" · ")}
       {share.state?.error && <span className="err"> · {share.state.error}</span>}
     </span>
@@ -176,7 +190,7 @@ export function ShareDialog({ trip, onClose, onSettings }: { trip: Trip; onClose
   async function copy() {
     if (!code) return;
     await navigator.clipboard.writeText(code).catch(() => {});
-    setStatus("✓ Kopyalandı. Şimdi mesajla gönder.");
+    setStatus(L("✓ Kopyalandı. Şimdi mesajla gönder.", "✓ Copied. Now send it in a message."));
   }
 
   if (!config) return null;
@@ -185,57 +199,63 @@ export function ShareDialog({ trip, onClose, onSettings }: { trip: Trip; onClose
   return (
     <div className="modal" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <h2>{trip.shareId ? "Paylaşım kodu" : "Bu geziyi paylaş"}</h2>
+        <h2>{trip.shareId ? L("Paylaşım kodu", "Share code") : L("Bu geziyi paylaş", "Share this trip")}</h2>
         {!ready ? (
           <>
-            <p>Paylaşmak için önce Ayarlar → Paylaşım'da adını, Supabase adresini ve anahtarını yaz (bir kez).</p>
+            <p>{L("Paylaşmak için önce Ayarlar → Paylaşım'da adını, Supabase adresini ve anahtarını yaz (bir kez).", "To share, first add your name, the Supabase address and key in Settings → Sharing (once).")}</p>
             <div className="modal-actions">
               <button className="btn-link" style={{ fontSize: 14 }} onClick={onClose}>
-                Vazgeç
+                {L("Vazgeç", "Cancel")}
               </button>
               <button className="btn-primary" onClick={onSettings}>
-                Ayarlara git
+                {L("Ayarlara git", "Go to Settings")}
               </button>
             </div>
           </>
         ) : code ? (
           <>
             <p className="muted small-note">
-              Bu kodu birlikte gezdiğin kişiye gönder. Trip Radar'ı kurup <b>Seyahatlerim → Paylaşılan geziye katıl</b>'a yapıştırsın.
-              Kaydettikleriniz, oylarınız ve gezinin adı, tarihleri, bütçesi, öncelikleri ikinizde aynı olur; sohbet herkesin kendine.
+              {L("Bu kodu birlikte gezdiğin kişilere gönder. Trip Radar'ı kurup ", "Send this code to the people you travel with. They install Trip Radar and paste it into ")}
+              <b>{L("Seyahatlerim → Paylaşılan geziye katıl", "My trips → Join a shared trip")}</b>
+              {L(
+                "'a yapıştırsınlar. Kaydettikleriniz, oylarınız ve gezinin adı, tarihleri, bütçesi, öncelikleri herkeste aynı olur; sohbet herkesin kendine.",
+                ". Your saves, votes and the trip's name, dates, budget and priorities are the same for everyone; each person keeps their own chat.",
+              )}
             </p>
             <textarea className="share-code" readOnly value={code} rows={4} onFocus={(e) => e.currentTarget.select()} />
-            <p className="note small">Kodu bilen bu geziyi görür ve ekleme yapabilir; yalnız birlikte gezdiğin kişiye ver.</p>
+            <p className="note small">{L("Kodu bilen bu geziyi görür ve ekleme yapabilir; yalnız birlikte gezdiğin kişilere ver.", "Anyone with the code can see this trip and add to it. Only give it to the people you travel with.")}</p>
             {status && <p className="muted small">{status}</p>}
             <div className="modal-actions">
               <button
                 className="link-btn quiet"
                 onClick={async () => {
-                  if (!confirm("Bu bilgisayarda paylaşım dursun mu? Gezi burada olduğu gibi kalır, bundan sonra eşitlenmez.")) return;
+                  if (!confirm(L("Bu bilgisayarda paylaşım dursun mu? Gezi burada olduğu gibi kalır, bundan sonra eşitlenmez.", "Stop sharing on this computer? The trip stays here as it is, it just won't sync anymore."))) return;
                   await stopSharing(trip.id);
                   onClose();
                 }}
               >
-                Paylaşımı durdur
+                {L("Paylaşımı durdur", "Stop sharing")}
               </button>
               <button className="btn-primary" onClick={() => void copy()}>
-                Kodu kopyala
+                {L("Kodu kopyala", "Copy code")}
               </button>
             </div>
           </>
         ) : (
           <>
             <p>
-              "{trip.title}" paylaşılsın mı? Kaydettiğin sayfalar (küçük ekran görüntüsüyle) paylaşım sunucuna gider; karşı taraf
-              bunları kendi AI anahtarıyla işler.
+              {L(
+                `"${trip.title}" paylaşılsın mı? Kaydettiğin sayfalar (küçük ekran görüntüsüyle) paylaşım sunucuna gider; katılanlar bunları kendi AI anahtarıyla işler.`,
+                `Share "${trip.title}"? The pages you saved (with a small screenshot) go to your sharing server; everyone who joins reads them with their own AI key.`,
+              )}
             </p>
             {status && <p className="err small-note">{status}</p>}
             <div className="modal-actions">
               <button className="btn-link" style={{ fontSize: 14 }} onClick={onClose}>
-                Vazgeç
+                {L("Vazgeç", "Cancel")}
               </button>
               <button className="btn-primary" disabled={busy} onClick={() => void share()}>
-                {busy ? "Paylaşılıyor…" : "Paylaş"}
+                {busy ? L("Paylaşılıyor…", "Sharing…") : L("Paylaş", "Share")}
               </button>
             </div>
           </>
@@ -261,7 +281,7 @@ export function JoinShared({ onJoined }: { onJoined: (tripId: string) => void })
 
   async function join() {
     setBusy(true);
-    setStatus("Katılınıyor…");
+    setStatus(L("Katılınıyor…", "Joining…"));
     try {
       const tripId = await joinSharedTrip(code, name);
       requestShareSync(); // bring its pages now
@@ -279,7 +299,7 @@ export function JoinShared({ onJoined }: { onJoined: (tripId: string) => void })
   if (!open)
     return (
       <button className="btn-link share-join-link" onClick={() => setOpen(true)}>
-        Paylaşılan geziye katıl →
+        {L("Paylaşılan geziye katıl →", "Join a shared trip →")}
       </button>
     );
   return (
@@ -291,22 +311,22 @@ export function JoinShared({ onJoined }: { onJoined: (tripId: string) => void })
       }}
     >
       <label className="field">
-        Paylaşım kodu
-        <textarea value={code} rows={3} placeholder="TR1:… (sana gönderilen kodun tamamını yapıştır)" onChange={(e) => setCode(e.target.value)} autoFocus />
+        {L("Paylaşım kodu", "Share code")}
+        <textarea value={code} rows={3} placeholder={L("TR1:… (sana gönderilen kodun tamamını yapıştır)", "TR1:… (paste the whole code you were sent)")} onChange={(e) => setCode(e.target.value)} autoFocus />
       </label>
       {needsName && (
         <label className="field">
-          Adın
-          <input type="text" value={name} placeholder="Diğer kişi seni bu adla görür (ör. Sabine)" maxLength={40} onChange={(e) => setName(e.target.value)} />
+          {L("Adın", "Your name")}
+          <input type="text" value={name} placeholder={L("Diğer kişiler seni bu adla görür (ör. Sabine)", "The others see you by this name (e.g. Sabine)")} maxLength={40} onChange={(e) => setName(e.target.value)} />
         </label>
       )}
       {status && <p className="muted small">{status}</p>}
       <div className="modal-actions">
         <button type="button" className="btn-link" style={{ fontSize: 14 }} onClick={() => setOpen(false)}>
-          Vazgeç
+          {L("Vazgeç", "Cancel")}
         </button>
         <button className="btn-primary" type="submit" disabled={busy || !code.trim() || (needsName && !name.trim())}>
-          Katıl
+          {L("Katıl", "Join")}
         </button>
       </div>
     </form>
@@ -333,11 +353,11 @@ export function ShareSettings() {
   async function test() {
     if (!c) return;
     const url = normalizeServerUrl(c.url);
-    if (!url) return setStatus("Adres https://….supabase.co biçiminde olmalı.");
-    setStatus("Bağlantı deneniyor…");
+    if (!url) return setStatus(L("Adres https://….supabase.co biçiminde olmalı.", "The address should look like https://….supabase.co"));
+    setStatus(L("Bağlantı deneniyor…", "Testing the connection…"));
     try {
       const reply = await rpcClient({ url, anonKey: c.anonKey })<string>("share_ping", {});
-      setStatus(reply === "trip-radar-share-1" ? "✓ Sunucu hazır." : "Sunucu cevap verdi ama kurulum farklı görünüyor.");
+      setStatus(reply === "trip-radar-share-1" ? L("✓ Sunucu hazır.", "✓ Server ready.") : L("Sunucu cevap verdi ama kurulum farklı görünüyor.", "The server answered, but its setup looks different."));
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     }
@@ -346,17 +366,19 @@ export function ShareSettings() {
   if (!c) return null;
   return (
     <details className="share-settings" open={Boolean(c.url || c.name)}>
-      <summary>Paylaşım</summary>
+      <summary>{L("Paylaşım", "Sharing")}</summary>
       <p className="muted small-note">
-        Bir geziyi birlikte gezdiğin kişiyle paylaşmak için (ikiniz de kaydedip oy verirsiniz). Kurulumu README'de "Paylaşım"
-        bölümünde. Katılan kişinin yalnız adını yazması yeter; adres ve anahtar koddan gelir.
+        {L(
+          `Bir geziyi birlikte gezdiğin kişilerle paylaşmak için (herkes kaydedip oy verir). Kurulumu README'de "Paylaşım" bölümünde. Katılan kişinin yalnız adını yazması yeter; adres ve anahtar koddan gelir.`,
+          `To share a trip with the people you travel with (everyone saves pages and votes). Setup is in the README under "Paylaşım". Someone joining only needs to add their name; the address and key come with the code.`,
+        )}
       </p>
       <label className="field">
-        Adın
-        <input type="text" value={c.name} maxLength={40} placeholder="ör. Emre" onChange={(e) => update({ name: e.target.value })} />
+        {L("Adın", "Your name")}
+        <input type="text" value={c.name} maxLength={40} placeholder={L("ör. Emre", "e.g. Emre")} onChange={(e) => update({ name: e.target.value })} />
       </label>
       <label className="field">
-        Supabase adresi
+        {L("Supabase adresi", "Supabase address")}
         <input
           type="text"
           value={c.url}
@@ -369,14 +391,14 @@ export function ShareSettings() {
         />
       </label>
       <label className="field">
-        Supabase anahtarı (publishable / anon)
-        <input type="password" value={c.anonKey} placeholder="sb_publishable_… ya da eyJ…" onChange={(e) => update({ anonKey: e.target.value })} />
+        {L("Supabase anahtarı (publishable / anon)", "Supabase key (publishable / anon)")}
+        <input type="password" value={c.anonKey} placeholder={L("sb_publishable_… ya da eyJ…", "sb_publishable_… or eyJ…")} onChange={(e) => update({ anonKey: e.target.value })} />
       </label>
       <p className="muted small">
         <button className="btn-link" style={{ fontSize: 13, padding: 0 }} disabled={!c.url || !c.anonKey} onClick={() => void test()}>
-          Bağlantıyı dene
+          {L("Bağlantıyı dene", "Test connection")}
         </button>
-        {status && ` — ${status}`}
+        {status && ` · ${status}`}
       </p>
     </details>
   );
