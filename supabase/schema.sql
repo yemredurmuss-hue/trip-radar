@@ -8,9 +8,15 @@
 -- iki kişilik bir gezi için yeterli; kodu yalnız birlikte gezdiğin kişiye ver. Gizli kimlik 122 bit
 -- rastgeledir, tahmin edilemez; gezilerin listesi hiçbir fonksiyonla alınamaz.
 
+-- Tablolar ve yardımcılar kendi `trip_radar` şemasında durur (API'ye açık değil); başka işler için kullanılan
+-- bir projede de çalışır ve onun tablolarına dokunmaz. Dışarıya yalnız aşağıdaki public fonksiyonlar açıktır.
+
+create schema if not exists trip_radar;
+revoke all on schema trip_radar from public, anon, authenticated;
+
 -- --- tablolar -------------------------------------------------------------------------------------
 
-create table if not exists public.shared_trips (
+create table if not exists trip_radar.shared_trips (
   id uuid primary key,                                   -- gizli paylaşım kimliği
   trip jsonb not null default '{}'::jsonb,              -- eşitlenen gezi ayarları (ad, tarihler, bütçe, öncelikler)
   members text[] not null default '{}',                  -- katılanların adları ("Emre", "Sabine")
@@ -19,18 +25,18 @@ create table if not exists public.shared_trips (
   updated_by text
 );
 
-create table if not exists public.shared_captures (
+create table if not exists trip_radar.shared_captures (
   seq bigint generated always as identity primary key,   -- sıra: "şundan sonrakiler" imleci (saat kaymasından bağımsız)
   id uuid not null unique,                               -- kaydın kendi kimliği (iki cihazda aynı: tekrar işlenmez)
-  trip_id uuid not null references public.shared_trips(id) on delete cascade,
+  trip_id uuid not null references trip_radar.shared_trips(id) on delete cascade,
   author text not null,
   created_at timestamptz not null default now(),
   capture jsonb not null                                 -- url, title, pageText, jsonLd, ... küçük ekran görüntüsü
 );
-create index if not exists shared_captures_trip_seq on public.shared_captures (trip_id, seq);
+create index if not exists shared_captures_trip_seq on trip_radar.shared_captures (trip_id, seq);
 
-create table if not exists public.shared_votes (
-  trip_id uuid not null references public.shared_trips(id) on delete cascade,
+create table if not exists trip_radar.shared_votes (
+  trip_id uuid not null references trip_radar.shared_trips(id) on delete cascade,
   item_key text not null,                                -- seçeneğin iki cihazda aynı anahtarı (ilan/link)
   author text not null,
   vote smallint not null check (vote between -1 and 1),
@@ -39,14 +45,14 @@ create table if not exists public.shared_votes (
   primary key (trip_id, item_key, author)
 );
 
-alter table public.shared_trips enable row level security;
-alter table public.shared_captures enable row level security;
-alter table public.shared_votes enable row level security;
-revoke all on public.shared_trips, public.shared_captures, public.shared_votes from anon, authenticated;
+alter table trip_radar.shared_trips enable row level security;
+alter table trip_radar.shared_captures enable row level security;
+alter table trip_radar.shared_votes enable row level security;
+revoke all on trip_radar.shared_trips, trip_radar.shared_captures, trip_radar.shared_votes from anon, authenticated;
 
 -- --- yardımcılar ---------------------------------------------------------------------------------
 
-create or replace function public._share_author(p_author text) returns text
+create or replace function trip_radar._share_author(p_author text) returns text
 language plpgsql immutable as $$
 declare a text := btrim(coalesce(p_author, ''));
 begin
@@ -56,8 +62,8 @@ begin
   return a;
 end $$;
 
-create or replace function public._share_trip_exists(p_id uuid) returns void
-language plpgsql stable security definer set search_path = public as $$
+create or replace function trip_radar._share_trip_exists(p_id uuid) returns void
+language plpgsql stable security definer set search_path = trip_radar, pg_temp as $$
 begin
   if not exists (select 1 from shared_trips where id = p_id) then
     raise exception 'not_found' using errcode = 'P0002';
@@ -73,7 +79,7 @@ language sql stable as $$ select 'trip-radar-share-1'::text $$;
 -- Yeni paylaşılan gezi. Kimliği eklenti üretir, böylece yarıda kalan bir deneme tekrarlanabilir.
 create or replace function public.create_shared_trip(p_id uuid, p_trip jsonb, p_author text)
 returns timestamptz
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = trip_radar, pg_temp as $$
 declare a text := _share_author(p_author); t timestamptz;
 begin
   if p_id is null then raise exception 'bad_id' using errcode = '22023'; end if;
@@ -90,7 +96,7 @@ end $$;
 -- Gezinin ayarları ve katılanlar. p_author verilirse katılanlara eklenir ("Sabine ile").
 create or replace function public.get_shared_trip(p_id uuid, p_author text default null)
 returns table (trip jsonb, members text[], updated_at timestamptz, updated_by text)
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = trip_radar, pg_temp as $$
 #variable_conflict use_column
 begin
   perform _share_trip_exists(p_id);
@@ -104,7 +110,7 @@ end $$;
 -- Ayarları yazar (son yazan kazanır; kimin yazdığını eklenti karşılaştırır).
 create or replace function public.put_trip_settings(p_id uuid, p_trip jsonb, p_author text)
 returns timestamptz
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = trip_radar, pg_temp as $$
 declare a text := _share_author(p_author); t timestamptz;
 begin
   perform _share_trip_exists(p_id);
@@ -120,7 +126,7 @@ end $$;
 -- Bir kaydı ekler. Aynı kimlik ikinci kez gelirse yeni satır açılmaz; sırası döner.
 create or replace function public.add_capture(p_trip_id uuid, p_id uuid, p_author text, p_capture jsonb)
 returns bigint
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = trip_radar, pg_temp as $$
 declare a text := _share_author(p_author); s bigint;
 begin
   perform _share_trip_exists(p_trip_id);
@@ -143,7 +149,7 @@ end $$;
 -- p_since sırasından sonraki kayıtlar, en fazla p_limit tane (büyük olabilirler: sayfa sayfa alınır).
 create or replace function public.captures_since(p_trip_id uuid, p_since bigint default 0, p_limit int default 10)
 returns table (seq bigint, id uuid, author text, created_at timestamptz, capture jsonb)
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = trip_radar, pg_temp as $$
 #variable_conflict use_column
 begin
   perform _share_trip_exists(p_trip_id);
@@ -158,7 +164,7 @@ end $$;
 -- Bir kişinin bir seçeneğe oyu: 1 👍, -1 👎, 0 oyu geri al.
 create or replace function public.set_vote(p_trip_id uuid, p_item_key text, p_author text, p_vote smallint, p_note text default null)
 returns timestamptz
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = trip_radar, pg_temp as $$
 declare a text := _share_author(p_author); t timestamptz;
 begin
   perform _share_trip_exists(p_trip_id);
@@ -180,7 +186,7 @@ end $$;
 
 create or replace function public.votes_for(p_trip_id uuid)
 returns table (item_key text, author text, vote smallint, note text, updated_at timestamptz)
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = trip_radar, pg_temp as $$
 #variable_conflict use_column
 begin
   perform _share_trip_exists(p_trip_id);
@@ -189,8 +195,8 @@ end $$;
 
 -- --- yetkiler: yalnız bu fonksiyonlar dışarıya açık ------------------------------------------------
 
-revoke all on function public._share_author(text) from public, anon, authenticated;
-revoke all on function public._share_trip_exists(uuid) from public, anon, authenticated;
+revoke all on function trip_radar._share_author(text) from public, anon, authenticated;
+revoke all on function trip_radar._share_trip_exists(uuid) from public, anon, authenticated;
 
 revoke all on function public.share_ping() from public;
 revoke all on function public.create_shared_trip(uuid, jsonb, text) from public;
