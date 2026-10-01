@@ -1,19 +1,26 @@
 // Pure logic: extraction -> Item, duplicate detection, merging, grouping and row labels.
 import { classify, normalize } from "./evidence";
 import type { Extraction } from "./extract";
+import { L, locale } from "./i18n";
 import type { Capture, Category, FactSource, Item, ItemMetrics } from "./types";
 import { countryCodeOf } from "./trips";
 import type { UrlFacts } from "./url";
 
-export const CATEGORY_LABELS: Record<Category, string> = {
-  flight: "Uçuş",
-  stay: "Konaklama",
-  transport: "Ulaşım",
-  activity: "Etkinlikler",
-  food: "Yeme-içme",
-  esim: "eSIM",
-  other: "Diğer",
+const CATEGORY_NAMES: Record<Category, [tr: string, en: string]> = {
+  flight: ["Uçuş", "Flights"],
+  stay: ["Konaklama", "Stays"],
+  transport: ["Ulaşım", "Transport"],
+  activity: ["Etkinlikler", "Activities"],
+  food: ["Yeme-içme", "Food & drink"],
+  esim: ["eSIM", "eSIM"],
+  other: ["Diğer", "Other"],
 };
+
+/** Category names in the current language (read at use time: each key is a getter). */
+export const CATEGORY_LABELS = {} as Record<Category, string>;
+for (const [key, [tr, en]] of Object.entries(CATEGORY_NAMES)) {
+  Object.defineProperty(CATEGORY_LABELS, key, { get: () => L(tr, en), enumerable: true });
+}
 
 export const CATEGORY_ORDER: Category[] = ["flight", "stay", "transport", "activity", "food", "esim", "other"];
 
@@ -112,7 +119,7 @@ export function buildItem(
   const raw = extraction;
   const x: Extraction = {
     ...raw,
-    name: raw.name.trim() || capture.title?.trim() || "Adsız kayıt",
+    name: raw.name.trim() || capture.title?.trim() || L("Adsız kayıt", "Untitled"),
     dates: { ...raw.dates, start: isoDate(raw.dates.start), end: isoDate(raw.dates.end) },
     price: { ...raw.price, amount: finite(raw.price.amount), currency: currencyCode(raw.price.currency) },
     cancellation: { ...raw.cancellation, free_until: isoDate(raw.cancellation.free_until) },
@@ -201,9 +208,12 @@ export function buildItem(
     // only with its reference or its own words for it: a checkout page that looks like one stays chosen.
     status: confirmed(x) ? "booked" : x.booked ? "chosen" : "saved",
     statusNote: confirmed(x)
-      ? `Onay ekranından${x.booking_reference?.trim() ? ` · ${x.booking_reference.trim()}` : ""}`
+      ? `${L("Onay ekranından", "From the confirmation")}${x.booking_reference?.trim() ? ` · ${x.booking_reference.trim()}` : ""}`
       : x.booked
-        ? "Onay gibi görünüyor ama rezervasyon numarası okunamadı; rezerve ettiysen işaretle"
+        ? L(
+            "Onay gibi görünüyor ama rezervasyon numarası okunamadı; rezerve ettiysen işaretle",
+            "Looks like a confirmation, but no booking number could be read; mark it if you booked it",
+          )
         : null,
     createdAt: now,
     updatedAt: now,
@@ -369,18 +379,19 @@ const STALE_MS: Partial<Record<Category, number>> = { flight: 24 * 3600e3 };
 const DEFAULT_STALE_MS = 3 * 24 * 3600e3;
 
 export function rowLabel(item: Item, group: Item[], now = Date.now()): RowLabel {
-  if (item.status === "booked") return { text: "Rezerve edildi", tone: "success" };
-  if (item.status === "chosen") return { text: "Seçildi", tone: "success" };
+  if (item.status === "booked") return { text: L("Rezerve edildi", "Booked"), tone: "success" };
+  if (item.status === "chosen") return { text: L("Seçildi", "Chosen"), tone: "success" };
 
   const majority = mostCommon(group.map((i) => `${i.dates.start}|${i.dates.end}`));
   if (item.dates.start && majority && `${item.dates.start}|${item.dates.end}` !== majority) {
-    return { text: "Farklı tarih", tone: "warning" };
+    return { text: L("Farklı tarih", "Different dates"), tone: "warning" };
   }
-  if (item.price.amount == null) return { text: "Fiyat yok", tone: "warning" };
-  if (item.price.source === "unverified") return { text: "Fiyat doğrulanmadı", tone: "warning" };
+  if (item.price.amount == null) return { text: L("Fiyat yok", "No price"), tone: "warning" };
+  if (item.price.source === "unverified") return { text: L("Fiyat doğrulanmadı", "Price not verified"), tone: "warning" };
   const age = now - item.price.observedAt;
   if (age > (STALE_MS[item.category] ?? DEFAULT_STALE_MS)) {
-    return { text: `Fiyat ${Math.floor(age / (24 * 3600e3))} gün önce`, tone: "warning" };
+    const days = Math.floor(age / (24 * 3600e3));
+    return { text: L(`Fiyat ${days} gün önce`, `Price from ${days} day${days === 1 ? "" : "s"} ago`), tone: "warning" };
   }
 
   const comparable = group.filter(
@@ -392,11 +403,11 @@ export function rowLabel(item: Item, group: Item[], now = Date.now()): RowLabel 
       i.dates.end === item.dates.end,
   );
   if (comparable.length >= 2 && Math.min(...comparable.map((i) => i.price.amount!)) === item.price.amount) {
-    return { text: "En ekonomik", tone: "muted" };
+    return { text: L("En ekonomik", "Cheapest"), tone: "muted" };
   }
   const rated = group.filter((i) => i.rating.value != null && i.rating.scale === item.rating.scale);
   if (rated.length >= 2 && Math.max(...rated.map((i) => i.rating.value!)) === item.rating.value) {
-    return { text: `En yüksek puan (${item.rating.value})`, tone: "muted" };
+    return { text: L(`En yüksek puan (${item.rating.value})`, `Top rated (${item.rating.value})`), tone: "muted" };
   }
   return { text: item.summary, tone: "muted" };
 }
@@ -416,21 +427,23 @@ export function nightsBetween(start: string | null, end: string | null): number 
   return Math.round((Date.parse(end) - Date.parse(start)) / (24 * 3600e3));
 }
 
-const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+const MONTHS_TR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+const MONTHS_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const month = (m: number) => L(MONTHS_TR[m - 1], MONTHS_EN[m - 1]);
 
 export function formatDateRange(start: string, end: string | null): string {
   if (!isoDate(start)) return start;
   if (end && !isoDate(end)) end = null;
   const [, sm, sd] = start.split("-").map(Number);
-  if (!end || end === start) return `${sd} ${MONTHS[sm - 1]}`;
+  if (!end || end === start) return `${sd} ${month(sm)}`;
   const [, em, ed] = end.split("-").map(Number);
-  return sm === em ? `${sd}–${ed} ${MONTHS[sm - 1]}` : `${sd} ${MONTHS[sm - 1]} – ${ed} ${MONTHS[em - 1]}`;
+  return sm === em ? `${sd}–${ed} ${month(sm)}` : `${sd} ${month(sm)} – ${ed} ${month(em)}`;
 }
 
 export function formatPrice(amount: number | null, currency: string | null): string {
   if (amount == null) return "—";
   try {
-    return new Intl.NumberFormat("tr-TR", {
+    return new Intl.NumberFormat(locale(), {
       style: "currency",
       currency: currency ?? "EUR",
       maximumFractionDigits: 0,

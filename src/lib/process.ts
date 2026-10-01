@@ -4,6 +4,7 @@ import type { Extraction } from "./extract";
 import { describeError, getProvider } from "./llm";
 import { valueOnPage } from "./evidence";
 import { geocode } from "./geo";
+import { L, lang } from "./i18n";
 import { buildItem, CATEGORY_LABELS, corpusOf, findDuplicate, formatDateRange, isoDate, mergeItem } from "./items";
 import { chooseTrip, isDemoTrip, profileTrips, uniqueTitle } from "./trips";
 import type { PageSnapshot } from "./pagecapture";
@@ -140,10 +141,16 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
     await addEvent(
       item.tripId,
       incoming.status === "booked"
-        ? `✓ ${item.name} rezerve edildi${dates} (onaydan); plan buna göre güncellendi`
+        ? L(
+            `✓ ${item.name} rezerve edildi${dates} (onaydan); plan buna göre güncellendi`,
+            `✓ ${item.name} booked${dates} (from the confirmation); the plan is updated`,
+          )
         : duplicate
-          ? `↻ ${item.name} güncellendi`
-          : `✓ ${item.name} kaydedildi → ${where}${capture.sharedBy ? ` (${capture.sharedBy} ekledi)` : ""}`,
+          ? L(`↻ ${item.name} güncellendi`, `↻ ${item.name} updated`)
+          : L(
+              `✓ ${item.name} kaydedildi → ${where}${capture.sharedBy ? ` (${capture.sharedBy} ekledi)` : ""}`,
+              `✓ ${item.name} saved → ${where}${capture.sharedBy ? ` (added by ${capture.sharedBy})` : ""}`,
+            ),
     );
     // The trip as stored now: it may have changed (shared, renamed) while the model was reading.
     const current = (await d.get("trips", trip.id)) ?? trip;
@@ -201,10 +208,10 @@ async function withGeo(item: Item, lookup: (q: string) => Promise<Geo | null>): 
 /** Scenic header image from Wikipedia's page summary; silently null when unavailable. */
 async function destinationImage(place: string | null): Promise<string | null> {
   if (!place) return null;
-  for (const lang of ["tr", "en"]) {
+  for (const wiki of lang() === "en" ? ["en", "tr"] : ["tr", "en"]) {
     try {
       const res = await fetch(
-        `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(place)}`,
+        `https://${wiki}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(place)}`,
       );
       if (!res.ok) continue;
       const body = (await res.json()) as { originalimage?: { source?: string }; thumbnail?: { source?: string } };
@@ -301,7 +308,7 @@ export async function rehomeFromDemoTrips(heroImage: Deps["heroImage"] = destina
       tripId = trip.id;
     }
     await d.put("items", { ...item, tripId, updatedAt: Date.now() });
-    await addEvent(tripId, `✓ ${item.name} örnek geziden buraya taşındı`);
+    await addEvent(tripId, L(`✓ ${item.name} örnek geziden buraya taşındı`, `✓ ${item.name} moved here from the sample trip`));
   }
   if (strays.length) notifyChanged();
 }

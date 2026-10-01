@@ -1,6 +1,7 @@
 // What the rest of the app needs from a model provider. Each provider stores chat turns in its own
 // native format (ChatMessage.content) so history replays exactly, thinking/thought signatures included.
 import type { ZodType } from "zod";
+import { L } from "../i18n";
 import type { Extraction } from "../extract";
 import type { Capture, ChatMessage, Trip } from "../types";
 import type { UrlFacts } from "../url";
@@ -49,6 +50,6 @@ export interface LlmProvider {
 
 export class MissingKeyError extends Error {
   constructor() {
-    super("API anahtarı yok. Panoda ••• → Ayarlar'dan ekle.");
+    super(L("API anahtarı yok. Panoda ••• → Ayarlar'dan ekle.", "No API key. Add one on the board under ••• → Settings."));
   }
 }

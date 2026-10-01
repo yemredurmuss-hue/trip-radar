@@ -1,6 +1,7 @@
 // Which trip does a new capture belong to? The model suggests one, but the decision is made here
 // from facts: a Thailand hotel never lands in the Portugal trip just because the model said so.
 import { normalize } from "./evidence";
+import { L, lang } from "./i18n";
 import type { Item, Trip } from "./types";
 
 export interface TripProfile {
@@ -62,18 +63,18 @@ const SAME_TRIP_DAYS = 7;
 /** A different country joins a trip only when its dates touch it (e.g. Portugal → Spain). */
 const SAME_JOURNEY_DAYS = 2;
 
-/** "PT" → "Portekiz" (used when the model gave a code but no name). */
+/** "PT" → "Portekiz" / "Portugal" (used when the model gave a code but no name). */
 export function countryName(code: string | null): string | null {
   if (!code) return null;
   try {
-    return new Intl.DisplayNames(["tr"], { type: "region" }).of(code) ?? null;
+    return new Intl.DisplayNames([lang()], { type: "region" }).of(code) ?? null;
   } catch {
     return null;
   }
 }
 
 /** Sample trips never receive real captures. */
-export const isDemoTrip = (trip: Trip) => Boolean(trip.demo) || trip.title.trim().endsWith("(örnek)");
+export const isDemoTrip = (trip: Trip) => Boolean(trip.demo) || /\((örnek|sample)\)$/.test(trip.title.trim());
 
 export function chooseTrip(signal: TripSignal, allProfiles: TripProfile[]): TripChoice {
   const profiles = allProfiles.filter((p) => !isDemoTrip(p.trip));
@@ -84,7 +85,7 @@ export function chooseTrip(signal: TripSignal, allProfiles: TripProfile[]): Trip
   const gap = (p: TripProfile) =>
     signal.start && p.range ? gapDays(p.range, signal.start, signal.end) : null; // null = can't tell
   const newTrip = (): TripChoice => ({
-    newTitle: signal.suggestedTitle?.trim() || signal.country?.trim() || countryName(code) || "Yeni gezi",
+    newTitle: signal.suggestedTitle?.trim() || signal.country?.trim() || countryName(code) || L("Yeni gezi", "New trip"),
   });
 
   if (code || country) {
@@ -114,7 +115,8 @@ export function chooseTrip(signal: TripSignal, allProfiles: TripProfile[]): Trip
   return newTrip();
 }
 
-const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+const MONTHS_TR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+const MONTHS_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 /** "Portekiz" is taken by another trip → "Portekiz · Haziran 2027" (or a number when undated). */
 export function uniqueTitle(title: string, start: string | null, trips: Trip[]): string {
@@ -122,7 +124,7 @@ export function uniqueTitle(title: string, start: string | null, trips: Trip[]):
   if (!taken.has(title.toLowerCase())) return title;
   if (start) {
     const [y, m] = start.split("-").map(Number);
-    const dated = `${title} · ${MONTHS[m - 1]} ${y}`;
+    const dated = `${title} · ${L(MONTHS_TR[m - 1], MONTHS_EN[m - 1])} ${y}`;
     if (!taken.has(dated.toLowerCase())) return dated;
   }
   for (let n = 2; ; n++) if (!taken.has(`${title} ${n}`.toLowerCase())) return `${title} ${n}`;

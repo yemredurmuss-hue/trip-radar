@@ -1,4 +1,5 @@
 // IndexedDB storage shared by the popup, the board page and the service worker (same extension origin).
+import { L } from "./i18n";
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { Analysis, Capture, ChatMessage, Item, Listing, Preference, Settings, Trip } from "./types";
 
@@ -164,7 +165,7 @@ export async function listListings(keys: string[]): Promise<Map<string, Listing>
  */
 export async function exportDiagnostics(): Promise<string> {
   const d = await db();
-  const captures = (await d.getAll("captures")).map((c) => ({ ...c, screenshot: c.screenshot ? "(ekran görüntüsü çıkarıldı)" : null }));
+  const captures = (await d.getAll("captures")).map((c) => ({ ...c, screenshot: c.screenshot ? L("(ekran görüntüsü çıkarıldı)", "(screenshot removed)") : null }));
   return JSON.stringify(
     {
       kind: "trip-radar-diagnostics",
