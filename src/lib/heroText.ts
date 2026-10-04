@@ -13,19 +13,18 @@ export function acceptMood(text: string): boolean {
 
 export const moodKey = (cities: string[]) => cities.map((c) => c.trim().toLowerCase()).join("|");
 
+/** One clause for what's most pressing: decisions and bookings first; the other to-dos only when there are none. */
 export function statusSentence(count: Record<TodoKind, number>, ctx: { flightsDone: boolean; waitingCity: string | null }): string {
-  const parts: string[] = [];
-  if (ctx.flightsDone) parts.push(L("Uçuşlar hazır", "Flights are set"));
-  if (count.decide > 0) {
-    parts.push(ctx.waitingCity && count.decide === 1
-      ? L(`${locative(ctx.waitingCity)} bir karar bekliyor`, `one decision waits in ${ctx.waitingCity}`)
-      : L(`${count.decide} karar bekliyor`, `${count.decide} decision${count.decide === 1 ? "" : "s"} waiting`));
-  }
-  if (count.book > 0) {
-    parts.push(L(`${count.book} rezervasyon bekliyor`, `${count.book} booking${count.book === 1 ? "" : "s"} waiting`));
-  }
+  const { decide, book } = count;
   const other = count.plan + count.deadline;
-  if (other > 0) parts.push(L(`${other} iş bekliyor`, `${other} thing${other === 1 ? "" : "s"} waiting`));
-  if (count.decide + count.book + other === 0) return L("Her şey hazır.", "Everything's set.");
-  return `${capitalize(parts.join(", "))}.`;
+  if (decide + book + other === 0) return L("Her şey hazır.", "Everything's set.");
+  const decisions = L(`${decide} karar`, `${decide} decision${decide === 1 ? "" : "s"}`);
+  const bookings = L(`${book} rezervasyon`, `${book} booking${book === 1 ? "" : "s"}`);
+  let waiting: string;
+  if (decide > 0 && book > 0) waiting = L(`${decisions} ve ${bookings} bekliyor`, `${decisions} and ${bookings} waiting`);
+  else if (decide === 1 && ctx.waitingCity) waiting = L(`${locative(ctx.waitingCity)} bir karar bekliyor`, `one decision waits in ${ctx.waitingCity}`);
+  else if (decide > 0) waiting = L(`${decisions} bekliyor`, `${decisions} waiting`);
+  else if (book > 0) waiting = L(`${bookings} bekliyor`, `${bookings} waiting`);
+  else waiting = L(`${other} iş bekliyor`, `${other} thing${other === 1 ? "" : "s"} waiting`);
+  return `${capitalize([ctx.flightsDone ? L("Uçuşlar hazır", "Flights are set") : null, waiting].filter(Boolean).join(", "))}.`;
 }

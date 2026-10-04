@@ -10,9 +10,15 @@ describe("status sentence", () => {
     expect(statusSentence({ decide: 0, book: 0, plan: 0, deadline: 0 }, { flightsDone: true, waitingCity: null }))
       .toBe("Her şey hazır.");
   });
-  it("names both decisions and bookings, and the other to-dos", () => {
-    expect(statusSentence({ decide: 2, book: 1, plan: 0, deadline: 0 }, { flightsDone: false, waitingCity: null }))
-      .toBe("2 karar bekliyor, 1 rezervasyon bekliyor.");
+  it("says only what's most pressing, in one clause", () => {
+    expect(statusSentence({ decide: 3, book: 1, plan: 4, deadline: 2 }, { flightsDone: false, waitingCity: "Porto" }))
+      .toBe("3 karar ve 1 rezervasyon bekliyor.");
+    expect(statusSentence({ decide: 3, book: 1, plan: 0, deadline: 0 }, { flightsDone: true, waitingCity: null }))
+      .toBe("Uçuşlar hazır, 3 karar ve 1 rezervasyon bekliyor.");
+    expect(statusSentence({ decide: 3, book: 0, plan: 4, deadline: 0 }, { flightsDone: false, waitingCity: "Porto" }))
+      .toBe("3 karar bekliyor.");
+    expect(statusSentence({ decide: 0, book: 1, plan: 4, deadline: 2 }, { flightsDone: false, waitingCity: null }))
+      .toBe("1 rezervasyon bekliyor.");
     expect(statusSentence({ decide: 0, book: 0, plan: 2, deadline: 1 }, { flightsDone: true, waitingCity: null }))
       .toBe("Uçuşlar hazır, 3 iş bekliyor.");
   });
