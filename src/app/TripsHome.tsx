@@ -46,7 +46,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
     <div className="home" onDragOver={(e) => (e.preventDefault(), setDragging(true))} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
       <div className="home-top">
         <h1>{L("Seyahatlerim", "My trips")}</h1>
-        <div className="panel-top">{menu}</div>
+        <div className="home-menu">{menu}</div>
       </div>
 
       <form

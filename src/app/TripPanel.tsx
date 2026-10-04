@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 import { FallbackImg } from "./FallbackImg";
 import { requestProcessing } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
@@ -9,7 +10,6 @@ import {
   formatPrice,
   groupItems,
   listingKeyOf,
-  nightsBetween,
   rankItems,
   routeUrl,
   rowLabel,
@@ -20,21 +20,28 @@ import { buildLegs, type Leg } from "../lib/legs";
 import { buildTimeline } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
 import { cardFacts } from "../lib/cardFacts";
-import { budgetBar, decisionProgress, entryDomId, type Todo } from "../lib/progress";
+import { budgetBar, decisionProgress, entryDomId, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
 import { cityKeyOf, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 import { isRental } from "../lib/travelKinds";
 import { L } from "../lib/i18n";
+import { imageProxy, pickCityImage } from "../lib/cityImages";
+import { acceptMood, moodKey, statusSentence } from "../lib/heroText";
+import { getProvider, MissingKeyError } from "../lib/llm";
+import { loadPassport } from "../lib/passport";
+import { tripFacts } from "../lib/tripFacts";
+import type { Timeline } from "../lib/timeline";
 
 import type { Capture, Category, Item, Trip } from "../lib/types";
-import { chooseItem, setHidden } from "./actions";
-import { CategoryIcon, Chevron, SummaryIcon } from "./Icons";
-import { IntentCard } from "./IntentCard";
-import { BudgetBarView, findTarget, show, TodoStrip } from "./Progress";
+import { chooseItem, setHidden, updateTrip } from "./actions";
+import { CategoryIcon, Chevron } from "./Icons";
+import { findTarget, show, TodoList } from "./Progress";
+import { TripFacts } from "./TripFacts";
+import { TripHero, type HeroCity, type HeroCounts } from "./TripHero";
 import { kindLabel, LegRow } from "./LegRow";
 import { Carousel } from "./Carousel";
 import { SettledCard, SwipeCard } from "./SwipeCard";
-import { ShareStatus, VoteTallyText } from "./Share";
+import { VoteTallyText } from "./Share";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
 import { choiceOf, type Choice } from "../lib/choice";
 import { pivotalFindings } from "../lib/pivots";
@@ -50,18 +57,18 @@ interface Props {
   onOpenItem: (item: Item) => void;
   onCompare: (groupKey: string) => void;
   menu: React.ReactNode;
+  /** Opens the share dialog (absent where the trip can't be shared). */
+  onShare?: () => void;
 }
 
 /** Categories shown as one summary row until expanded (like "Tiyatro, tekne turu ve 4 yer"). */
 const SUMMARIZED: Category[] = ["activity", "food", "other"];
 
-export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, menu }: Props) {
+export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, menu, onShare }: Props) {
   // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
   // The cities in the order they're visited (the nights' blocks), else as the saved stays name them.
   const route = routeOf(plan, items);
-  const days = range ? nightsBetween(range.start, range.end) + 1 : 0;
-  const subtitle = [range ? formatDateRange(range.start, range.end) : null, days ? L(`${days} gün`, `${days} day${days === 1 ? "" : "s"}`) : null, route].filter(Boolean).join(" · ");
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
   const [view, setView] = useState<TimelineMode>("plan");
   /** Opens a block of the plan (from the itinerary). */
@@ -76,8 +83,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     setView((v) => (v === "plan" ? "days" : "plan"));
     setTimeout(() => show(findTarget(target)), 60);
   };
-  // On the way: which day of the trip it is.
-  const onDay = plan.range && today >= plan.range.start && today <= plan.range.end ? nightsBetween(plan.range.start, today) + 1 : null;
   // Ideas for a day (saved, not chosen) aren't blocks of the plan's front: they wait with the undated ones.
   const places = () =>
     groupItems([
@@ -96,6 +101,105 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const hidden = useMemo(() => new Set(trip.hidden ?? []), [trip.hidden]);
   const timeline = useMemo(() => buildTimeline(plan, legs, items, hidden), [plan, legs, items, hidden]);
   const hiddenLegs = legs.filter((l) => l.kind !== "move" && hidden.has(`leg:${l.key}`));
+
+  // --- the hero: a photo per city, the paragraph, what's confirmed, the facts column ---
+  const cityNames = useMemo(() => citiesOf(plan, items), [plan, items]);
+  const cities = useMemo<HeroCity[]>(() => {
+    const list = cityNames.map((name) => ({ name, image: trip.cityImages?.[cityKeyOf(name)!] ?? null }));
+    // A trip from before the city photos: its one picture goes to the first city (or stands alone).
+    if (trip.heroImage && !list.some((c) => c.image)) return list.length ? [{ ...list[0], image: trip.heroImage }, ...list.slice(1)] : [{ name: "", image: trip.heroImage }];
+    return list;
+  }, [cityNames, trip.cityImages, trip.heroImage]);
+  // A city's photo is looked up once (a miss is stored as null, so it isn't asked again).
+  const askedImages = useRef(new Set<string>());
+  useEffect(() => {
+    const missing = cityNames.filter((name) => {
+      const key = cityKeyOf(name);
+      return key && trip.cityImages?.[key] === undefined && !askedImages.current.has(`${trip.id}:${key}`);
+    });
+    if (!missing.length) return;
+    for (const name of missing) askedImages.current.add(`${trip.id}:${cityKeyOf(name)}`);
+    void (async () => {
+      const proxy = await imageProxy();
+      for (const name of missing) {
+        const url = await pickCityImage(name, { proxy });
+        await updateTrip(trip.id, (t) => ({ ...t, cityImages: { ...t.cityImages, [cityKeyOf(name)!]: url } }));
+      }
+    })();
+  }, [trip.id, trip.cityImages, cityNames]);
+  // The mood sentence: written once per set of cities by the traveller's model; one with a number is dropped.
+  const moodFor = moodKey(cityNames);
+  const askedMood = useRef<string | null>(null);
+  useEffect(() => {
+    if (!cityNames.length || trip.mood?.key === moodFor || askedMood.current === `${trip.id}:${moodFor}`) return;
+    askedMood.current = `${trip.id}:${moodFor}`;
+    void (async () => {
+      try {
+        const llm = await getProvider();
+        const out = await llm.generateJson(
+          L(
+            "Gezinin ruhunu anlatan tek kısa cümle yaz. Rakam, tarih, fiyat yazma. En fazla 120 karakter.",
+            "Write one short sentence capturing the trip's mood. No numbers, dates or prices. At most 120 characters.",
+          ),
+          cityNames.join(" → "),
+          z.object({ text: z.string() }),
+        );
+        const text = acceptMood(out.text) ? out.text.trim() : "";
+        await updateTrip(trip.id, (t) => ({ ...t, mood: { key: moodFor, text } }));
+      } catch (error) {
+        if (!(error instanceof MissingKeyError)) console.warn("mood sentence", error); // the status sentence stands alone
+      }
+    })();
+  }, [trip.id, trip.mood?.key, moodFor, cityNames]);
+  const [passport, setPassport] = useState("TR");
+  useEffect(() => {
+    const read = () => void loadPassport().then(setPassport);
+    read();
+    // Changed in Settings (a dialog over this board).
+    const onChange = (changes: Record<string, unknown>) => "passport" in changes && read();
+    try {
+      chrome.storage.onChanged.addListener(onChange);
+      return () => chrome.storage.onChanged.removeListener(onChange);
+    } catch {
+      return undefined; // no extension storage (a plain page)
+    }
+  }, []);
+  const [todoOpen, setTodoOpen] = useState<TodoKind | null>(null);
+  const progress = decisionProgress(timeline, items, plan, decisions?.byGroup, today);
+  const bar = decisions ? budgetBar(plan, items, decisions.ctx, decisions.byGroup) : null;
+  const facts = useMemo(
+    () =>
+      tripFacts(items, {
+        passport,
+        homeCurrency: decisions?.ctx.currency ?? "EUR",
+        rates: decisions?.ctx.rates ?? null,
+        homeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        start: range?.start ?? null,
+      }),
+    [items, passport, decisions?.ctx.currency, decisions?.ctx.rates, range?.start],
+  );
+  const settledItem = (i: Item) => i.status === "chosen" || i.status === "booked";
+  const closedIds = new Set(plan.closed.map((c) => c.item.id));
+  const confirmed = items.filter((i) => settledItem(i) && !closedIds.has(i.id));
+  const transports = confirmed.filter((i) => i.category === "transport");
+  const counts: HeroCounts = {
+    flight: confirmed.filter((i) => i.category === "flight").length,
+    stay: confirmed.filter((i) => i.category === "stay").length,
+    transport: transports.length,
+    activity: confirmed.filter((i) => i.category === "activity" || i.category === "food").length,
+    carsOnly: transports.length > 0 && transports.every(isRental),
+  };
+  const flightGroups = plan.groups.filter((g) => g.category === "flight");
+  const flightsDone = flightGroups.length > 0 && flightGroups.every((g) => g.items.some(settledItem));
+  const mood = trip.mood?.key === moodFor && trip.mood.text ? trip.mood.text : null;
+  const lead = [
+    mood,
+    range
+      ? statusSentence(progress.count, { flightsDone, waitingCity: waitingCityOf(progress, timeline, items) })
+      : L("Tarih ve şehir, kaydettikçe netleşir.", "Dates and cities fill in as you save."),
+  ]
+    .filter(Boolean)
+    .join(" ");
   const decisionOf = (item: Item) => [...(decisions?.byGroup.values() ?? [])].find((d) => d.options.some((o) => o.item.id === item.id));
   /** One undecided option as a decision card: swipe through them, open one for the reasons. */
   const card: CardFor = (item, group, decision, ranked, onCompareGroup) => (
@@ -144,34 +248,34 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
 
   return (
     <>
-      <div className="panel-top">{menu}</div>
-      <header className="trip-hero">
-        <FallbackImg className="hero-img" src={trip.heroImage} fallback={<div className="hero-img" />} />
-        <div className="hero-main">
-          <h1 className="trip-title">{trip.title}</h1>
-          {onDay && <div className="trip-now">{L(`Seyahat başladı · ${onDay}. gün`, `Trip underway · day ${onDay}`)}</div>}
-          <div className="trip-sub">
-            {subtitle || L("Tarih ve şehir, kaydettikçe netleşir", "Dates and cities fill in as you save")}
-            {range && !trip.confirmedDates && <span className="estimated">{L("~tahmini", "~estimated")}</span>}
-          </div>
-          <div className="hero-row">
-            <TripSummary items={items} plan={plan} />
-            {mapUrl && (
-              <a className="hero-link" href={mapUrl} target="_blank" rel="noreferrer">
-                {L("Rotayı gör ↗", "See route ↗")}
-              </a>
-            )}
-            <span className="status-line">
-              {working.length > 0 && L(`${working.length} kayıt işleniyor… `, `Processing ${working.length} item${working.length === 1 ? "" : "s"}… `)}
-              {reading > 0 && L(`${reading} sayfa okunuyor… `, `Reading ${reading} page${reading === 1 ? "" : "s"}… `)}
-              {failed.length > 0 && <span className="err">{L(`${failed.length} kayıt işlenemedi`, `Couldn't process ${failed.length} item${failed.length === 1 ? "" : "s"}`)}</span>}
-            </span>
-            <ShareStatus />
-          </div>
-        </div>
-      </header>
-      {decisions && <BudgetBarView bar={budgetBar(plan, items, decisions.ctx, decisions.byGroup)} />}
-      <TodoStrip progress={decisionProgress(timeline, items, plan, decisions?.byGroup, today)} onGo={reveal} />
+      <section className="hx">
+        <TripHero
+          trip={trip}
+          decisions={decisions}
+          cities={cities}
+          range={range}
+          today={today}
+          routeText={route}
+          mapUrl={mapUrl}
+          lead={lead}
+          counts={counts}
+          working={working.length + reading}
+          menu={menu}
+        />
+        <TripFacts
+          range={range}
+          estimated={!!range && !trip.confirmedDates && !plan.range}
+          facts={facts}
+          passport={passport}
+          bar={bar}
+          progress={progress}
+          onGo={reveal}
+          onShare={onShare}
+          todoOpen={todoOpen}
+          onTodo={setTodoOpen}
+        />
+      </section>
+      {todoOpen && <TodoList progress={progress} open={todoOpen} onGo={reveal} />}
 
       {failed.length > 0 && (
         <div className="errors">
@@ -197,8 +301,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           ))}
         </div>
       )}
-
-      <IntentCard trip={trip} decisions={decisions} />
 
       {timeline.entries.length > 0 && (
         <div className="view-tabs" role="tablist" aria-label={L("Görünüm", "View")}>
@@ -257,44 +359,26 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   );
 }
 
-/**
- * The trip at a glance, beside its picture: how many days and cities, and what's in the plan so far
- * (experiences saved, stays and trips chosen or booked).
- */
-function TripSummary({ items, plan }: { items: Item[]; plan: Plan }) {
-  const live = items.filter((i) => i.status !== "dismissed" && !plan.closed.some((c) => c.item.id === i.id));
-  const settled = (i: Item) => i.status === "chosen" || i.status === "booked";
-  const cities = new Set(
-    [...plan.stayBlocks.map((b) => b.city), ...live.filter((i) => i.category === "stay").map((i) => i.city)].map((c) => cityKeyOf(c)).filter(Boolean),
-  ).size;
-  const experiences = live.filter((i) => (i.category === "activity" || i.category === "food") && settled(i)).length;
-  // Stays: how many of the plan's stretches of nights have a place, of how many there are.
-  const blocks = plan.stayBlocks.length;
-  const placed = plan.stayBlocks.filter((b) => b.kind !== "open").length;
-  const stays = live.filter((i) => i.category === "stay" && settled(i)).length;
-  const trips = live.filter((i) => (i.category === "flight" || i.category === "transport") && settled(i)).length;
-  const stats: [ReactNode, string, string][] = [
-    [<SummaryIcon name="pin" />, L(`${cities} şehir`, `${cities} cit${cities === 1 ? "y" : "ies"}`), L("Gezideki şehirler", "Cities on the trip")],
-    [
-      <CategoryIcon category="stay" size={20} />,
-      blocks ? L(`${placed}/${blocks} konaklama`, `${placed}/${blocks} stay${blocks === 1 ? "" : "s"}`) : L(`${stays} konaklama`, `${stays} stay${stays === 1 ? "" : "s"}`),
-      L("Yeri seçilen / gereken konaklama", "Stays with a place / stays needed"),
-    ],
-    [<CategoryIcon category="transport" size={20} />, L(`${trips} ulaşım`, `${trips} journey${trips === 1 ? "" : "s"}`), L("Seçilen ya da alınan ulaşım", "Travel chosen or booked")],
-    [<SummaryIcon name="star" />, L(`${experiences} etkinlik`, `${experiences} activit${experiences === 1 ? "y" : "ies"}`), L("Plana alınan etkinlik", "Activities in the plan")],
-  ];
-  const shown = stats.filter(([, text]) => !/^0 /.test(text));
-  if (!shown.length) return null;
-  return (
-    <ul className="hero-stats" aria-label={L("Gezi özeti", "Trip summary")}>
-      {shown.map(([icon, text, title]) => (
-        <li key={text} title={title}>
-          {icon}
-          <span>{text}</span>
-        </li>
-      ))}
-    </ul>
-  );
+/** The trip's cities for the hero's photos: in the order the nights go, each once; else the saved stays' cities. */
+function citiesOf(plan: Plan, items: Item[]): string[] {
+  const seen = new Map<string, string>();
+  const add = (city: string | null | undefined) => {
+    const key = cityKeyOf(city);
+    if (key && !seen.has(key)) seen.set(key, city!);
+  };
+  for (const b of plan.stayBlocks) add(b.city);
+  if (!seen.size) for (const i of items) if (i.status !== "dismissed" && i.category === "stay") add(i.city);
+  return [...seen.values()];
+}
+
+/** Where the first open decision is (a stay's city, a city's plans, an item's city), for "Madeira'da bir karar bekliyor". */
+function waitingCityOf(progress: DecisionProgress, timeline: Timeline, items: Item[]): string | null {
+  const todo = progress.todos.find((t) => t.kind === "decide");
+  if (!todo) return null;
+  const entry = todo.target.entry ? timeline.entries.find((e) => e.key === todo.target.entry) : undefined;
+  if (entry?.kind === "stay") return entry.block.city ?? null;
+  if (entry?.kind === "plan") return entry.city;
+  return (todo.target.item && items.find((i) => i.id === todo.target.item)?.city) || null;
 }
 
 /** "Porto → Funchal": the cities in the order the nights go, each once in a row; else the saved stays' cities. */

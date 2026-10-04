@@ -136,30 +136,6 @@ function ago(ms: number, now: number): string {
   return L(`${days} gün önce`, `${days} day${days === 1 ? "" : "s"} ago`);
 }
 
-/** "Paylaşılıyor · Sabine ve Ali ile · son eşitleme 1 dk önce" ("Shared · with Sabine and Ali · synced 1 min ago"), or what went wrong. */
-export function ShareStatus() {
-  const share = useShare();
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(t);
-  }, []);
-  if (!share) return null;
-  const others = (share.state?.members ?? []).filter((m) => m.trim().toLowerCase() !== share.me.trim().toLowerCase());
-  const last = share.state?.lastSyncAt;
-  const parts = [
-    L("Paylaşılıyor", "Shared"),
-    others.length ? L(`${joinNames(others)} ile`, `with ${joinNames(others)}`) : L("henüz katılan yok", "no one has joined yet"),
-    last ? L(`son eşitleme ${ago(last, now)}`, `synced ${ago(last, now)}`) : L("eşitleniyor…", "syncing…"),
-  ];
-  return (
-    <span className="share-status" title={L("Kayıtlar, oylar ve gezi ayarları dakikada bir eşitlenir", "Saves, votes and trip settings sync every minute")}>
-      {parts.join(" · ")}
-      {share.state?.error && <span className="err"> · {share.state.error}</span>}
-    </span>
-  );
-}
-
 /** The hero's travellers row, second line: "Sabine ile paylaşılıyor · 2 dk önce"; null when the trip isn't shared. */
 export function ShareLine() {
   const share = useShare();
