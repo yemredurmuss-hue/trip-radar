@@ -173,6 +173,10 @@ export interface Trip {
   hidden?: string[];
   /** Shared with someone (see share/): the secret id of the shared copy on the sharing server. */
   shareId?: string;
+  /** Hero photo per city (city key → URL, null when none was found); fetched once. */
+  cityImages?: Record<string, string | null>;
+  /** The AI's mood sentence for the hero and the cities it was written for (see heroText.ts). */
+  mood?: { key: string; text: string } | null;
   createdAt: number;
   updatedAt: number;
 }

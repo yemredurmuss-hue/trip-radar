@@ -4,7 +4,8 @@ import type { Extraction } from "./extract";
 import { describeError, getProvider } from "./llm";
 import { valueOnPage } from "./evidence";
 import { geocode } from "./geo";
-import { L, lang } from "./i18n";
+import { L } from "./i18n";
+import { imageProxy, pickCityImage } from "./cityImages";
 import { buildItem, CATEGORY_LABELS, corpusOf, findDuplicate, formatDateRange, isoDate, mergeItem } from "./items";
 import { chooseTrip, isDemoTrip, profileTrips, uniqueTitle } from "./trips";
 import type { PageSnapshot } from "./pagecapture";
@@ -205,23 +206,10 @@ async function withGeo(item: Item, lookup: (q: string) => Promise<Geo | null>): 
   return item;
 }
 
-/** Scenic header image from Wikipedia's page summary; silently null when unavailable. */
+/** Scenic header image (sharing-server proxy first, then Wikipedia); silently null when unavailable. */
 async function destinationImage(place: string | null): Promise<string | null> {
   if (!place) return null;
-  for (const wiki of lang() === "en" ? ["en", "tr"] : ["tr", "en"]) {
-    try {
-      const res = await fetch(
-        `https://${wiki}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(place)}`,
-      );
-      if (!res.ok) continue;
-      const body = (await res.json()) as { originalimage?: { source?: string }; thumbnail?: { source?: string } };
-      const src = body.originalimage?.source ?? body.thumbnail?.source;
-      if (src) return src;
-    } catch {
-      // offline or blocked: fall back to the item image
-    }
-  }
-  return null;
+  return pickCityImage(place, { proxy: await imageProxy() });
 }
 
 let running: Promise<void> | null = null;
