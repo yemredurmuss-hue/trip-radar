@@ -28,27 +28,41 @@ export function utcOffsetHours(zone: string, date: string): number {
   return m ? Number(m[1]) + (m[2] ? Math.sign(Number(m[1])) * Number(m[2]) / 60 : 0) : 0;
 }
 
-const symbol = (cur: string) => new Intl.NumberFormat(locale(), { style: "currency", currency: cur, maximumFractionDigits: 0 }).formatToParts(0).find((p) => p.type === "currency")?.value ?? cur;
+const money = (n: number, cur: string, d: number) =>
+  new Intl.NumberFormat(locale(), { style: "currency", currency: cur, currencyDisplay: "narrowSymbol", minimumFractionDigits: d, maximumFractionDigits: d }).format(n);
 
 export function tripFacts(
   items: Item[],
   opts: { passport: string; homeCurrency: string; rates: Rates | null; homeZone: string; start: string | null },
 ): TripFacts {
   const live = items.filter((i) => i.status !== "dismissed");
-  const flights = live.filter((i) => i.category === "flight" && i.flight?.from).sort((a, b) => (a.dates.start ?? "9").localeCompare(b.dates.start ?? "9"));
-  const settled = flights.filter((i) => i.status === "booked" || i.status === "chosen");
-  const origin = (settled[0] ?? flights[0])?.flight?.from ?? null;
+  // The earliest flight is the way out; a booked or chosen one only wins a tie on the same date.
+  const flights = live.filter((i) => i.category === "flight" && i.flight?.from).sort((a, b) => {
+    const byDate = (a.dates.start ?? "9").localeCompare(b.dates.start ?? "9");
+    if (byDate) return byDate;
+    const settled = (i: Item) => (i.status === "booked" || i.status === "chosen" ? 0 : 1);
+    return settled(a) - settled(b);
+  });
+  const origin = flights[0]?.flight?.from ?? null;
   const adults = mostCommon(live.map((i) => i.guests.adults).filter((n): n is number => typeof n === "number" && n > 0));
-  const country = mostCommon(live.filter((i) => i.category !== "flight").map((i) => i.countryCode).filter((c): c is string => !!c));
+  const country = mostCommon(live.filter((i) => i.category !== "flight").map((i) => i.countryCode?.toUpperCase() ?? null).filter((c): c is string => !!c));
   const info = countryInfo(country);
   let local: TripFacts["local"] = null;
   if (info) {
     const one = convert(1, info.currency, opts.homeCurrency, opts.rates);
-    const rateText = info.currency !== opts.homeCurrency && one != null
-      ? `${symbol(info.currency)}1 = ${symbol(opts.homeCurrency)}${one.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      : null;
+    let rateText: string | null = null;
+    if (info.currency !== opts.homeCurrency && one != null && one > 0) {
+      let unit = 1;
+      while (one * unit < 1 && unit < 1e6) unit *= 10;
+      rateText = `${money(unit, info.currency, 0)} = ${money(one * unit, opts.homeCurrency, 2)}`;
+    }
     const date = opts.start ?? new Date().toISOString().slice(0, 10);
-    const hours = utcOffsetHours(info.timeZone, date) - utcOffsetHours(opts.homeZone, date);
+    let hours: number | null = null;
+    try {
+      hours = utcOffsetHours(info.timeZone, date) - utcOffsetHours(opts.homeZone, date);
+    } catch {
+      hours = null; // an unknown zone name: leave the row out rather than guess
+    }
     local = { currency: info.currency, rateText, hours, info };
   }
   return { origin, adults, country, visa: country ? visaFor(opts.passport, country) : null, local };

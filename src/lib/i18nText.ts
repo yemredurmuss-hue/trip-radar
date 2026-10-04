@@ -70,3 +70,17 @@ export const lowerText = (t: string) => t.toLocaleLowerCase(caseLocale(t));
 
 /** A number for display: "8,9" / "8.9", "1.204" / "1,204". */
 export const num = (n: number, maxDigits = 1) => n.toLocaleString(locale(), { maximumFractionDigits: maxDigits });
+
+/**
+ * A Turkish proper name in the locative ("Madeira'da", "Paris'te"), by spelling: the last vowel picks
+ * front (de/te) or back (da/ta), a final f s t k ç ş h p picks the t form. Accents are kept as written.
+ */
+export function locative(name: string): string {
+  const n = name.trim();
+  if (!n) return n;
+  const lower = n.toLocaleLowerCase("tr-TR");
+  const last = [...lower].reverse().find((ch) => /[eiöüéèêíîaıouàáâóôúû]/.test(ch));
+  const front = last != null && /[eiöüéèêíî]/.test(last);
+  const hard = /[fstkçşhp]$/.test(lower);
+  return `${n}'${hard ? "t" : "d"}${front ? "e" : "a"}`;
+}

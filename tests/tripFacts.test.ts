@@ -37,6 +37,13 @@ describe("visa table (Turkish passport)", () => {
     expect(visaFor("DE", "PT")).toMatchObject({ kind: "unknown" });
     expect(visaFor("TR", "ZZ").link).toMatch(/^https:\/\//);
   });
+  it("Montenegro is no longer listed (its rule changes in Nov 2026)", () => {
+    expect(visaFor("TR", "ME")).toMatchObject({ kind: "unknown" });
+  });
+  it("reads the passport case-insensitively", () => {
+    expect(visaFor("tr", "PT")).toMatchObject({ kind: "visa" });
+    expect(visaFor("tr", "pt")).toMatchObject({ kind: "visa" });
+  });
   it("records when the rules were checked", () => {
     expect(VISA_CHECKED).toMatch(/^\d{4}-\d{2}$/);
   });
@@ -67,6 +74,29 @@ describe("trip facts", () => {
     expect(f.local?.currency).toBe("EUR");
     expect(f.local?.rateText).toBe("€1 = ₺38,20");
     expect(f.local?.hours).toBe(-2);
+  });
+  it("scales the rate unit so the right side is at least 1", () => {
+    const idr = { base: "EUR" as const, date: "2026-10-04", rates: { EUR: 1, TRY: 38.2, IDR: 17000 } };
+    const f = tripFacts([base({ country: "Indonesia", countryCode: "ID" })], { passport: "TR", homeCurrency: "TRY", rates: idr, homeZone: "Europe/Istanbul", start: "2026-10-07" });
+    // 1 IDR = 38.2 / 17000 TRY = 0.00225 -> unit 1000 gives 2.25
+    expect(f.local?.rateText).toMatch(/^Rp\s?1\.000 = ₺\s?2,25$/);
+  });
+  it("leaves the time difference out for an unknown home zone instead of throwing", () => {
+    const f = tripFacts([base({})], { passport: "TR", homeCurrency: "TRY", rates, homeZone: "Nowhere/Land", start: "2026-10-07" });
+    expect(f.local?.hours).toBeNull();
+  });
+  it("reads the country code case-insensitively", () => {
+    const f = tripFacts([base({ countryCode: "pt" })], { passport: "TR", homeCurrency: "TRY", rates, homeZone: "Europe/Istanbul", start: "2026-10-07" });
+    expect(f.country).toBe("PT");
+    expect(f.visa?.kind).toBe("visa");
+  });
+  it("takes the earliest flight as the way out, even when only the return is booked", () => {
+    const back = base({ category: "flight", status: "booked", dates: { start: "2026-10-18", end: null, source: "page" },
+      flight: { from: "Porto", to: "Istanbul", departure: "2026-10-18T10:00", arrival: null, carrier: null, flightNumber: null, stops: 0 } });
+    const out = base({ category: "flight", status: "saved" as Item["status"], dates: { start: "2026-10-07", end: null, source: "page" },
+      flight: { from: "Istanbul", to: "Porto", departure: "2026-10-07T07:10", arrival: null, carrier: null, flightNumber: null, stops: 0 } });
+    const f = tripFacts([back, out], { passport: "TR", homeCurrency: "TRY", rates, homeZone: "Europe/Istanbul", start: "2026-10-07" });
+    expect(f.origin).toBe("Istanbul");
   });
   it("hides what it doesn't know", () => {
     const f = tripFacts([base({ countryCode: null, guests: { adults: null, children: null, rooms: null } })], { passport: "TR", homeCurrency: "TRY", rates: null, homeZone: "Europe/Istanbul", start: null });

@@ -1,6 +1,7 @@
 // The hero's paragraph: an AI-written mood sentence (no numbers, cached per set of cities) followed
 // by a sentence the code builds from the to-do counts. Facts never come from the model.
 import { L } from "./i18n";
+import { capitalize, locative } from "./i18nText";
 import type { TodoKind } from "./progress";
 
 export const MOOD_MAX = 120;
@@ -17,12 +18,14 @@ export function statusSentence(count: Record<TodoKind, number>, ctx: { flightsDo
   if (ctx.flightsDone) parts.push(L("Uçuşlar hazır", "Flights are set"));
   if (count.decide > 0) {
     parts.push(ctx.waitingCity && count.decide === 1
-      ? L(`${ctx.waitingCity}'da bir karar bekliyor`, `one decision waits in ${ctx.waitingCity}`)
+      ? L(`${locative(ctx.waitingCity)} bir karar bekliyor`, `one decision waits in ${ctx.waitingCity}`)
       : L(`${count.decide} karar bekliyor`, `${count.decide} decision${count.decide === 1 ? "" : "s"} waiting`));
-  } else if (count.book > 0) {
+  }
+  if (count.book > 0) {
     parts.push(L(`${count.book} rezervasyon bekliyor`, `${count.book} booking${count.book === 1 ? "" : "s"} waiting`));
   }
-  if (!parts.length || (parts.length === 1 && ctx.flightsDone && !count.decide && !count.book)) return L("Her şey hazır.", "Everything's set.");
-  const s = parts.join(", ");
-  return `${s.charAt(0).toUpperCase()}${s.slice(1)}.`;
+  const other = count.plan + count.deadline;
+  if (other > 0) parts.push(L(`${other} iş bekliyor`, `${other} thing${other === 1 ? "" : "s"} waiting`));
+  if (count.decide + count.book + other === 0) return L("Her şey hazır.", "Everything's set.");
+  return `${capitalize(parts.join(", "))}.`;
 }

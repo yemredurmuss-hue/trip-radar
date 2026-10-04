@@ -16,6 +16,9 @@ describe("countdown", () => {
   it("says done after the last day", () => {
     expect(countdownText(countdown(R, "2026-10-19"))).toBe("Bitti");
   });
+  it("is null when the end is before the start", () => {
+    expect(countdown({ start: "2026-10-18", end: "2026-10-07" }, "2026-10-10")).toBeNull();
+  });
   it("is null without dates", () => {
     expect(countdown(null, "2026-10-04")).toBeNull();
     expect(countdownText(null)).toBeNull();

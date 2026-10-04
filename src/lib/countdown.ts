@@ -5,7 +5,7 @@ import { nightsBetween } from "./items";
 export type Countdown = { kind: "before"; days: number } | { kind: "during"; day: number; total: number } | { kind: "after" };
 
 export function countdown(range: { start: string; end: string } | null, today: string): Countdown | null {
-  if (!range) return null;
+  if (!range || range.end < range.start) return null;
   if (today < range.start) return { kind: "before", days: nightsBetween(today, range.start) };
   if (today > range.end) return { kind: "after" };
   return { kind: "during", day: nightsBetween(range.start, today) + 1, total: nightsBetween(range.start, range.end) + 1 };

@@ -10,6 +10,20 @@ describe("status sentence", () => {
     expect(statusSentence({ decide: 0, book: 0, plan: 0, deadline: 0 }, { flightsDone: true, waitingCity: null }))
       .toBe("Her şey hazır.");
   });
+  it("names both decisions and bookings, and the other to-dos", () => {
+    expect(statusSentence({ decide: 2, book: 1, plan: 0, deadline: 0 }, { flightsDone: false, waitingCity: null }))
+      .toBe("2 karar bekliyor, 1 rezervasyon bekliyor.");
+    expect(statusSentence({ decide: 0, book: 0, plan: 2, deadline: 1 }, { flightsDone: true, waitingCity: null }))
+      .toBe("Uçuşlar hazır, 3 iş bekliyor.");
+  });
+  it("only says everything's set when nothing is waiting", () => {
+    expect(statusSentence({ decide: 0, book: 0, plan: 2, deadline: 1 }, { flightsDone: false, waitingCity: null })).not.toBe("Her şey hazır.");
+    expect(statusSentence({ decide: 0, book: 0, plan: 0, deadline: 0 }, { flightsDone: false, waitingCity: null })).toBe("Her şey hazır.");
+  });
+  it("uses the right locative for the city", () => {
+    expect(statusSentence({ decide: 1, book: 0, plan: 0, deadline: 0 }, { flightsDone: false, waitingCity: "Paris" }))
+      .toBe("Paris'te bir karar bekliyor.");
+  });
 });
 
 describe("mood line", () => {
