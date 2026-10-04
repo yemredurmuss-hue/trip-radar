@@ -1255,7 +1255,7 @@ function decideWith(groupItems: Item[], ctx: DecisionContext, key: string, analy
     const elimination = eliminated.get(item.id) ?? null;
     const price = measures.get(item.id)!.get("price")?.value ?? null;
     const over = ceiling != null && price != null && committed + price > ceiling + 0.5 ? committed + price - ceiling : null;
-    const aiCheck = checks.filter((c) => c.itemId === item.id).map((c) => L(`kontrol: ${c.reason}`, `check: ${c.reason}`));
+    const aiCheck = checks.filter((c) => c.itemId === item.id).map((c) => c.reason);
     // What was read and is in doubt: to ask before booking, not points off and not a ruling.
     const readChecks = [...seriousDoubts(item, ctx).map((d) => d.note), ...aiCheck];
     const doubts = [

@@ -123,6 +123,8 @@ describe("pros and cons per option", () => {
     const proposed = scene(eliminations);
     expect(proposed.of(proposed.casa).cons.some((c) => c.decisive)).toBe(false);
     expect(proposed.of(proposed.casa).cons.map((c) => c.text)).toContain("Kontrol gerekiyor: Yan binada inşaat; gürültü olmasın demiştin");
+    // The fit note says it once ("Seçmeden kontrol et: …"), without its own "kontrol:" in front.
+    expect(proposed.decision.options.find((o) => o.item.id === proposed.casa.id)!.fitNotes).toContain("Yan binada inşaat; gürültü olmasın demiştin");
     // Against a must they set ("gürültü olmasın"): out, and the reason leads.
     const out = scene(eliminations, () => ({ requirements: [{ kind: "avoid", topic: "noise" }] }));
     const pc = out.of(out.casa);
