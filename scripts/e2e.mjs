@@ -2,8 +2,8 @@
 // Usage: npm run build && xvfb-run -a node scripts/e2e.mjs   (screenshots go to e2e-output/)
 import { build } from "esbuild";
 import assert from "node:assert/strict";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { chromium } from "playwright-core";
@@ -11,7 +11,21 @@ import { chromium } from "playwright-core";
 const out = path.resolve("e2e-output");
 mkdirSync(out, { recursive: true });
 const extension = path.resolve("dist");
-const executablePath = process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+// CHROMIUM_PATH wins. On a Mac, Playwright's "Chrome for Testing" (branded Chrome no longer loads
+// --load-extension); elsewhere the sandbox's Chromium.
+function macChromium() {
+  const cache = path.join(homedir(), "Library/Caches/ms-playwright");
+  if (!existsSync(cache)) return null;
+  for (const dir of readdirSync(cache).filter((d) => /^chromium-\d+$/.test(d)).sort((a, b) => Number(b.slice(9)) - Number(a.slice(9)))) {
+    for (const arch of ["chrome-mac-arm64", "chrome-mac", "chrome-mac-x64"]) {
+      const exe = path.join(cache, dir, arch, "Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing");
+      if (existsSync(exe)) return exe;
+    }
+  }
+  return null;
+}
+const executablePath =
+  process.env.CHROMIUM_PATH ?? (process.platform === "darwin" ? macChromium() : null) ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 // The checks below read the Turkish texts: pin the browser to Turkish (an en-US Chromium would start the
 // board in English, see browserLang in src/lib/i18n.ts).
 const TURKISH = { locale: "tr-TR" };
@@ -116,9 +130,18 @@ try {
   await app.getByText("Örnek geziyi yükle →").click();
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
   // The trip at a glance beside its picture: when and where in the order it goes, then what's settled of what's needed.
-  assert.match(await app.locator(".trip-sub").innerText(), /8–14 Ekim · 7 gün · Porto → Lizbon/);
-  assert.deepEqual(await app.locator(".hero-stats li").allInnerTexts(), ["2 şehir", "1/2 konaklama", "1 ulaşım", "1 etkinlik"]);
-  await app.locator(".trip-hero").scrollIntoViewIfNeeded();
+  // The hero: a photo per city with a switcher, the countdown and route, what's confirmed, and the facts column.
+  const hero = app.locator(".hx");
+  assert.deepEqual(await hero.locator(".hx-cities button").allInnerTexts(), ["Porto", "Lizbon"]);
+  assert.match(await hero.locator(".hx-tab").innerText(), /(gün kaldı|Yarın|\. gün \/ 7|Bitti)\s*·\s*Porto → Lizbon ↗/);
+  assert.deepEqual((await hero.locator(".hx-stats > div").allInnerTexts()).map((t) => t.replace(/\s+/g, " ")), ["1 uçuş", "1 konaklama", "1 etkinlik"]);
+  assert.equal(await hero.locator(".hx-lead").innerText(), "3 karar ve 1 rezervasyon bekliyor.");
+  const side = hero.locator(".hx-side");
+  assert.match(await side.locator(".hx-row", { hasText: "Tarihler" }).innerText(), /8–14 Ekim · 7 gün/);
+  assert.match(await side.locator(".hx-row", { hasText: "Vize" }).innerText(), /Schengen vizesi ↗/);
+  await hero.locator(".hx-intent-toggle", { hasText: "Seni böyle anladım" }).waitFor();
+  await hero.scrollIntoViewIfNeeded();
+  await app.waitForTimeout(1500); // the city photos come from Wikipedia
   await app.screenshot({ path: `${out}/2b-hero.png` });
   await app.getByText("Jardim Stay").first().waitFor();
   // A block per city (Porto, Lisbon) with its transfers, nights and days; the flights and the train between them.
@@ -156,12 +179,12 @@ try {
   // thing asked for, and what speaks for and against it.
   const card = (name) => app.locator(`.swipe-card[aria-label="${name}"]`);
   const stayCard = app.locator(".stay-block .reco-line.headline").first();
-  assert.equal(await stayCard.locator("p").innerText(), "Önerim Jardim Stay: en ekonomik ve en sessiz; 5 Eki'ye kadar ücretsiz iptal ve daha konforlu.");
+  assert.equal(await stayCard.locator("p").innerText(), "Önerim Jardim Stay: en sessiz; €45 daha ucuz, 5 Eki'ye kadar ücretsiz iptal ve daha konforlu. Tasarruf için 3. Casa Azul (€45 daha ucuz).");
   const porto = app.locator(".stay-block.open .option-grid").first();
   assert.deepEqual(await porto.locator(".swipe-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Jardim Stay", "Ribeira Rooms", "Casa Azul"]);
   assert.deepEqual(await porto.locator(".opt-rank").allInnerTexts(), ["1", "2", "3"]);
-  assert.deepEqual(await porto.locator(".opt-score b").allInnerTexts(), ["83", "55", "45"]);
-  await card("Jardim Stay").locator(".opt-label", { hasText: "En ekonomik · En sessiz" }).waitFor();
+  assert.deepEqual(await porto.locator(".opt-score b").allInnerTexts(), ["83", "55", "53"]);
+  await card("Jardim Stay").locator(".opt-label", { hasText: "En sessiz" }).waitFor();
   // The site's name is the way to the page: one click, a new tab, the board stays.
   const site = card("Jardim Stay").locator("a.sc-source");
   assert.match(await site.innerText(), /Booking\.com\s*↗$/);
@@ -171,7 +194,7 @@ try {
   assert.match(await card("Jardim Stay").locator(".sc-price").innerText(), /€285\s*3 gece toplam\s*€95 \/ gece/);
   // Why here: the first against the second, the second against the first.
   assert.match(await card("Jardim Stay").locator(".opt-trade").innerText(), /^2\.'ye göre\s*€45 daha ucuz \(gecelik −€15\) · sessiz odalar, iyi uyku · 3 yorum, 5 Eki'ye kadar ücretsiz iptal, daha konforlu · eksiği: yorumları daha zayıf/);
-  assert.match(await card("Ribeira Rooms").locator(".opt-trade").innerText(), /^1\.'ye göre\s*\+€45 \(gecelik \+€15\) · yorumlar daha iyi \(9,2\/10 – 8,9\/10\) · eksiği: hafta sonu gece gürültüsü · 3 yorum/);
+  assert.match(await card("Ribeira Rooms").locator(".opt-trade").innerText(), /^1\.'ye göre\s*\+€45 \(gecelik \+€15\) · yorumlar daha iyi \(9,2\/10 – 8,9\/10\), odadan nehir manzarası · 3 yorum · eksiği: hafta sonu gece gürültüsü · 3 yorum/);
   // A mark for each thing asked for (the words on hover and in the details), then the pros and cons in full.
   assert.deepEqual(await card("Jardim Stay").locator(".opt-checks .need.yes > span").allInnerTexts(), ["Sessiz"]);
   assert.equal(await card("Jardim Stay").locator(".opt-checks .need.yes").getAttribute("title"), "Sessiz odalar, iyi uyku · 3 yorum");
@@ -179,9 +202,10 @@ try {
   await card("Jardim Stay").locator(".sc-col.pros li.unique", { hasText: "yalnız bunda" }).waitFor();
   await card("Ribeira Rooms").locator(".sc-col.pros li.unique", { hasText: "Odadan nehir manzarası" }).waitFor();
   assert.match(await card("Jardim Stay").locator(".sc-col.cons li > span").first().innerText(), /^Odalar küçük/);
-  // Out and last, with why.
-  await card("Casa Azul").locator(".opt-status.unfit", { hasText: "Uygun değil: Yan binada inşaat var; sessiz bir yer istiyorsun" }).waitFor();
-  await card("Casa Azul").locator(".sc-col.cons li.strong", { hasText: "Elendi: Yan binada inşaat var" }).waitFor();
+  // The assistant can't rule a place out on what it read (only the traveller can, 0.28): the construction
+  // it would have ruled Casa Azul out on is a thing to check before choosing.
+  await card("Casa Azul").locator(".opt-status", { hasText: "Seçmeden kontrol et" }).filter({ hasText: "Yan binada inşaat var; sessiz bir yer istiyorsun" }).waitFor();
+  assert.equal(await card("Casa Azul").locator(".opt-status.unfit").count(), 0);
   // The picture sits beside the name; one card a row, wide enough to read.
   const media = await card("Jardim Stay").locator(".opt-img").boundingBox();
   const title = await card("Jardim Stay").locator(".opt-name").boundingBox();
@@ -193,23 +217,28 @@ try {
   assert.equal(await card("Pegasus · direkt").locator(".opt-rank").innerText(), "1");
   assert.equal(await card("Pegasus · direkt").locator(".opt-trade").innerText(), "2.'ye göre+€30 · bagaj dahil, direkt, saatleri daha uygun · eksiği: iade yok, ücretli değişiklik");
   assert.equal(await card("TAP · Lizbon aktarmalı").locator(".opt-label").innerText(), "EN EKONOMİK");
-  // The slim strip under the summary: what to decide, book and plan, counted; a chip lists them, a tap goes there.
-  const todo = app.locator(".todo-wrap");
-  const chip = (kind) => todo.locator(`.todo-chip.k-${kind}`);
-  assert.deepEqual(
-    await Promise.all(["decide", "book", "plan"].map((k) => chip(k).locator("b").innerText())),
-    ["3", "1", "4"],
-  );
-  await chip("decide").click();
-  await todo.locator(".todo-list button", { hasText: "Porto konaklama · 8–11 Ekim" }).click();
+  // The quiet line under the next step: what to decide, book and plan, counted; a count lists them under
+  // the hero, a tap goes there.
+  const todo = app.locator(".hx-todo");
+  const chip = (label) => todo.locator("button", { hasText: label });
+  const todoList = app.locator(".hx + .todo-list");
+  assert.deepEqual(await Promise.all(["Karar ver", "Rezerve et", "Planla"].map((k) => chip(k).locator("b").innerText())), ["3", "1", "4"]);
+  assert.match(await app.locator(".hx-next").innerText(), /Sıradaki adım\s*\S.*: /);
+  await chip("Karar ver").click();
+  await todoList.locator("button", { hasText: "Porto konaklama · 8–11 Ekim" }).click();
   await app.locator(".tl-stay.flash").waitFor();
-  await chip("plan").click();
-  assert.match(await todo.locator(".todo-list").innerText(), /Varış transferi · 8 Ekim[\s\S]*nasıl\?/);
-  await chip("plan").click();
-  assert.equal(await todo.locator(".todo-list").count(), 0);
+  await chip("Planla").click();
+  assert.match(await todoList.innerText(), /Varış transferi · 8 Ekim[\s\S]*nasıl\?/);
+  await chip("Planla").click();
+  assert.equal(await todoList.count(), 0);
   // Cancellations running out show up there too (the sample trip is dated, so only when those dates are near).
-  // And the money: booked, chosen and a guess for what's open, against the budget.
-  assert.match(await app.locator(".budget").innerText(), /BÜTÇE[\s\S]*\/ €1\.500 · €481 kalıyor/i);
+  // And the money: booked and chosen against the budget; a tap splits it and adds a guess for what's open.
+  const budget = app.locator(".hx-row.click", { hasText: "Bütçe" });
+  assert.match(await budget.innerText(), /€577 \/ €1\.500/);
+  await budget.click();
+  assert.match(await budget.locator(".hx-pop").innerText(), /Kalan\s*€923[\s\S]*yaklaşık €442 daha eklenir/);
+  await budget.click();
+  await budget.locator(".hx-pop").waitFor({ state: "detached" });
   // Decided already: the boat tour on the 9th and the flight home.
   const douro = app.locator(".tl-event .settled-card", { hasText: "Douro tekne turu" });
   await douro.locator(".status-bar").getByText("bilet alınmadı").waitFor();
@@ -242,9 +271,9 @@ try {
   await card("Ribeira Rooms").getByRole("button", { name: "Kapat ▴" }).click();
 
   // The evidence behind a finding is one tap deeper ("Tüm detaylar"), with "sorun değil": the
-  // construction then no longer rules Casa Azul out.
+  // construction then no longer needs checking.
   await card("Casa Azul").getByRole("button", { name: "Detaylar ▾" }).click();
-  await card("Casa Azul").locator(".card-details .cd-list.cons li.strong", { hasText: "sessiz bir yer istiyorsun" }).waitFor();
+  await card("Casa Azul").locator(".card-details .cd-list.cons li", { hasText: "Kontrol gerekiyor: Yan binada inşaat var; sessiz bir yer istiyorsun" }).waitFor();
   await card("Casa Azul").getByRole("button", { name: "Tüm detaylar" }).click();
   const casaDrawer = app.getByRole("dialog");
   const construction = casaDrawer.locator(".pc-line", { hasText: "Yan binada inşaat gürültüsü" });
@@ -255,17 +284,20 @@ try {
   await construction.getByRole("button", { name: "Sorun değil" }).click();
   await casaDrawer.locator(".pc-line.accepted", { hasText: "Yan binada inşaat gürültüsü" }).waitFor();
   await casaDrawer.getByRole("button", { name: "Kapat" }).click();
-  await card("Casa Azul").locator(".opt-status.unfit").waitFor({ state: "detached" });
+  await card("Casa Azul").locator(".opt-status", { hasText: "Seçmeden kontrol et" }).waitFor({ state: "detached" });
   await card("Casa Azul").getByRole("button", { name: "Kapat ▴" }).click();
   // How it understood the traveller so far: what they said (incl. "sorun değil"); a pattern in the saved
   // stays is asked about, and counts only after a yes.
-  const guess = app.locator(".intent-question", { hasText: "İptal esnekliği senin için daha mı önemli?" });
+  const intent = app.locator(".hx-intent");
+  await intent.locator(".hx-intent-toggle", { hasText: "1 soru" }).click();
+  const guess = intent.locator(".hx-intent-pop .ask", { hasText: "İptal esnekliği senin için daha mı önemli?" });
   await guess.waitFor();
   await guess.getByRole("button", { name: "Evet" }).click();
   await guess.waitFor({ state: "detached" });
-  await app.locator(".intent-card .intent-head").click();
-  await app.locator(".intent-list", { hasText: "ücretsiz iptalli" }).waitFor();
-  await app.locator(".intent-list", { hasText: "Sorun değil: Yan binada inşaat gürültüsü" }).waitFor();
+  await intent.locator(".hx-intent-pop li", { hasText: "ücretsiz iptalli" }).waitFor();
+  await intent.locator(".hx-intent-pop li", { hasText: "Sorun değil: Yan binada inşaat gürültüsü" }).waitFor();
+  await intent.locator(".hx-intent-toggle").click();
+  await intent.locator(".hx-intent-pop").waitFor({ state: "detached" });
   await app.screenshot({ path: `${out}/3b-card.png` });
 
   // Comparison: numbers side by side, the weights the user controls, and why.
@@ -475,18 +507,18 @@ try {
       { text: "The pool was freezing cold all week.", date_text: "July 2026", date: "2026-07" },
     ],
     findings: [
-      { text: "Yan binada inşaat gürültüsü", polarity: "negative", topic: "condition", source: "reviews", severity: "high", quotes: ["Construction next door starts at 8 every morning", "The building work next to the flat was loud all day"] },
-      { text: "Altında çok iyi bir İtalyan restoranı", polarity: "positive", topic: "nearby", source: "reviews", severity: "medium", quotes: ["Great Italian restaurant right downstairs"] },
-      { text: "Geniş, rahat yatak", polarity: "positive", topic: "bed", source: "description", severity: "medium", quotes: ["King-size bed"] },
-      { text: "Çatı havuzu", polarity: "positive", topic: "facilities", source: "description", severity: "low", quotes: ["Rooftop pool with a view"] },
+      { text: "Yan binada inşaat gürültüsü", polarity: "negative", topic: "condition", source: "reviews", severity: "high", nature: "event", quotes: ["Construction next door starts at 8 every morning", "The building work next to the flat was loud all day"] },
+      { text: "Altında çok iyi bir İtalyan restoranı", polarity: "positive", topic: "nearby", source: "reviews", severity: "medium", nature: "lasting", quotes: ["Great Italian restaurant right downstairs"] },
+      { text: "Geniş, rahat yatak", polarity: "positive", topic: "bed", source: "description", severity: "medium", nature: "stated", quotes: ["King-size bed"] },
+      { text: "Çatı havuzu", polarity: "positive", topic: "facilities", source: "description", severity: "low", nature: "stated", quotes: ["Rooftop pool with a view"] },
     ],
   };
   const jardimReading = {
     review_total: 1204,
     reviews: [],
     findings: [
-      { text: "Bahçe manzaralı oda", polarity: "positive", topic: "view", source: "description", severity: "low", quotes: ["Deluxe Double with Garden View"] },
-      { text: "Sessiz odalar", polarity: "positive", topic: "noise", source: "reviews", severity: "medium", quotes: ['Guest reviews: "Great location", "Quiet rooms"'] },
+      { text: "Bahçe manzaralı oda", polarity: "positive", topic: "view", source: "description", severity: "low", nature: "stated", quotes: ["Deluxe Double with Garden View"] },
+      { text: "Sessiz odalar", polarity: "positive", topic: "noise", source: "reviews", severity: "medium", nature: "lasting", quotes: ['Guest reviews: "Great location", "Quiet rooms"'] },
     ],
   };
   // Free geocoding and exchange rates, simulated (the worker calls them while processing).
@@ -615,10 +647,10 @@ try {
   console.log("✓ flow: capture → Gemini extraction (SDK request shape checked) → trip on the board");
 
   // Each page is then read closely (any site): findings with the reviews behind them, counted by code.
-  // Ruled out on that evidence by the analysis, which sees the findings with their counts.
+  // Weighed by the analysis, which sees the findings with their counts.
   const casaCard = board.locator('.swipe-card[aria-label="Casa Azul"]');
-  // Out, last in the list, with why.
-  await casaCard.locator(".opt-status.unfit", { hasText: "Yan binada inşaat" }).waitFor({ timeout: 40000 });
+  // The analysis would rule it out; only the traveller can (0.28), so it's a thing to check before choosing.
+  await casaCard.locator(".opt-status", { hasText: "Seçmeden kontrol et" }).filter({ hasText: "Yan binada inşaat" }).waitFor({ timeout: 40000 });
   assert.ok(analysisPrompts.some((p) => p.includes("Yan binada inşaat gürültüsü") && p.includes('"count":2')), "analysis sees findings and counts");
   await casaCard.getByRole("button", { name: "Detaylar ▾" }).click();
   const casaDetails = casaCard.locator(".card-details");
@@ -637,7 +669,7 @@ try {
   await board.screenshot({ path: `${out}/8a-flow-reading.png`, fullPage: true });
   await casaBody.getByRole("button", { name: "Kapat" }).click();
   await casaCard.getByRole("button", { name: "Kapat ▴" }).click();
-  console.log("✓ flow: pages read closely → verified findings with counts; invented quotes dropped; ruled out with evidence");
+  console.log("✓ flow: pages read closely → verified findings with counts; invented quotes dropped; flagged to check, with evidence");
 
   // An Airbnb page saved without dates joins the same Porto nights (whatever the site), provisionally,
   // and offers to reopen the page with those dates to get the real price.
@@ -684,7 +716,7 @@ try {
   await board.getByText("Fiyatı konaklamada çok önemli yaptım.").waitFor({ timeout: 20000 });
   assert.ok(chatPrompts[0].includes("decisions") && chatPrompts[0].includes("would_change_if"), "chat sees the engine's result");
   // Remembered as something the traveller said, and removable from "Seni böyle anladım".
-  await board.locator(".intent-card .intent-head", { hasText: "Fiyat: çok önemli" }).waitFor();
+  await board.locator(".hx-intent-toggle", { hasText: "Fiyat: çok önemli" }).waitFor();
   await board.locator(".reco-line").getByRole("button", { name: "Karşılaştır →" }).click();
   compare = board.getByRole("dialog", { name: "Karşılaştırma" });
   assert.equal(await compare.locator("tr", { hasText: "Fiyat" }).locator("select").inputValue(), "4");

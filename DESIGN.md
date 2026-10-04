@@ -5,7 +5,7 @@ Bu panonun tek işi karar vermeyi kolaylaştırmak. Her yeni ekran ve bileşen b
 
 ## Önce karar
 
-- Bir bakışta üç şey görünür: **ne kaldı** (yapılacaklar şeridi: Karar ver / Rezerve et / Planla / ⏳), **ne öneriliyor** (tek satır öneri), **neden**
+- Bir bakışta üç şey görünür: **ne kaldı** (hero'da sıradaki adım ve altındaki sessiz satır: Karar ver / Rezerve et / Planla / ⏳), **ne öneriliyor** (tek satır öneri), **neden**
   (kartın solunda artılar, sağında eksiler). Gerisi bir dokunuş ötededir: kartın "Detaylar"ı, sonra
   "Tüm detaylar".
 - Aynı şey iki yerde söylenmez. Öneri tek satırdır; uzun gerekçe Karşılaştır'da durur.
@@ -31,6 +31,7 @@ Bu panonun tek işi karar vermeyi kolaylaştırmak. Her yeni ekran ve bileşen b
 | Kırmızı `#d9534f` / `--danger` | Eksi, risk, elendi, süresi dolmak üzere | Eksi işareti, eleme sebebi, iptal uyarısı |
 | Mavi `--accent` | Yalnız öneri ve link | Öneri satırı, önerilen kartın çerçevesi, linkler |
 | Gri, kesikli çizgi | Henüz planlanmadı, boş | "Planlanmadı" kartı, boş gün |
+| Kategori renkleri (mor uçuş `#6a4fe0`, turkuaz konaklama `#23998b`, hardal ulaşım `#c58a2e`, bordo etkinlik `#a8336f`) | Yalnız hangi tür | Hero'daki onaylananlar ikonları ve bütçe çubuğu |
 
 Durum hiçbir yerde yalnız renkle anlatılmaz: yanında hep yazısı olur ("Bilet alındı", "Planlanıyor").
 Gezginin istedikleri kartın üstünde ayrı bir satırdır ("İstediklerin"): ✓ var (yeşil), ✕ yok (kırmızı),
@@ -39,6 +40,22 @@ Kart satırları somut yazar (kaç dakika, kaç puan, hangi saat); "Yakın", "Zo
 Kartın önünde yalnız karar değiştiren şey durur: seçeneği diğerlerinden ayıran ("yalnız bunda") önce; tek yorumdaki
 küçük şey, hepsinde olan şey ve bilgi (giriş saati, "bilgi yok") detaya kalır. Bulgu kendi sözleriyle yazılır; genel
 bir konu adı ("Olanak eksik") yazılmaz.
+
+## Hero
+
+Panonun üstü tek blok (onaylı görsel `docs/mockups/2026-10-05-hero-v8.html`): solda hikâye, sağda künye sütunu,
+ikisi aynı boyda; pano dar olunca tek sütun, künye hikâyenin altına iner.
+
+- **Fotoğraf** şehir başına bir tane, rota sırasıyla; üstte şehir seçici (6 sn'de bir kendiliğinden geçer), sağda
+  işleniyor hapı ve ••• menüsü. Altına binen etiket: geri sayım + rota linki. Tarih yoksa geri sayım yok.
+- **Açıklama** tek paragraf: AI'nin ton cümlesi (rakamsız) + koddan gelen durum cümlesi, yalnız en acil olan
+  ("3 karar ve 1 rezervasyon bekliyor."). Uydurma yok.
+- **Onaylananlar** gri tek kutu: seçilen ya da rezerve olan uçuş, konaklama, ulaşım, etkinlik sayısı; sıfır olan yazılmaz.
+- **Seni böyle anladım** tek satır; açılan pencere sayfayı itmez. Her giriş kapsamıyla (Tüm gezi / kategori / ilan) ve × ile.
+- **Künye**: Tarihler, Kalkış, Yolcu, Vize, Yerel, Bütçe. Bilinmeyen satır gösterilmez. Bütçe ince çok renkli çubuk;
+  tıklayınca kırılım, kalan ve karar bekleyenlerin tahmini. Aşınca yalnız orada kırmızı "aşıyor".
+- **Sıradaki adım** koyu buton, ne yapılacağını söyler ("Karar ver: Porto konaklama"); altında sessiz satır, sayıya
+  tıklamak listeyi hero'nun altında açar. İş kalmadıysa "Bu geziyi paylaş".
 
 ## İki görünüm
 
@@ -70,7 +87,8 @@ bir konu adı ("Olanak eksik") yazılmaz.
 
 ## Yazı
 
-Ölçek: 40 gezi adı · 22 şehir · 17 kart başlığı · 15 metin · 13–14 kart satırı · 12.5 not. Türkçe
+Ölçek: 40 gezi adı · 22 şehir · 17 kart başlığı · 15 metin · 13–14 kart satırı · 12.5 not. Hero: 40 başlık · 22 özet
+rakamı · 17 metin/değer · 15 küçük satır · 13 etiket. Türkçe
 büyük harfle etiket yazılmaz (İ/i sorun çıkarır); etiketler küçük ve gri olur.
 
 ## Okunurluk
