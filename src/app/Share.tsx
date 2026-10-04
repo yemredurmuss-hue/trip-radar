@@ -160,6 +160,29 @@ export function ShareStatus() {
   );
 }
 
+/** The hero's travellers row, second line: "Sabine ile paylaşılıyor · 2 dk önce"; null when the trip isn't shared. */
+export function ShareLine() {
+  const share = useShare();
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  if (!share) return null;
+  const others = (share.state?.members ?? []).filter((m) => m.trim().toLowerCase() !== share.me.trim().toLowerCase());
+  const last = share.state?.lastSyncAt;
+  const parts = [
+    others.length ? L(`${joinNames(others)} ile paylaşılıyor`, `Shared with ${joinNames(others)}`) : L("Paylaşılıyor, henüz katılan yok", "Shared, no one has joined yet"),
+    last ? ago(last, now) : L("eşitleniyor…", "syncing…"),
+  ];
+  return (
+    <span title={L("Kayıtlar, oylar ve gezi ayarları dakikada bir eşitlenir", "Saves, votes and trip settings sync every minute")}>
+      {parts.join(" · ")}
+      {share.state?.error && <span className="err"> · {share.state.error}</span>}
+    </span>
+  );
+}
+
 // --- the share code (from the trip's menu) --------------------------------------------------------
 
 export function ShareDialog({ trip, onClose, onSettings }: { trip: Trip; onClose: () => void; onSettings: () => void }) {
