@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPhoto, pickCityImage } from "../src/lib/cityImages";
+import { isPhoto, pickCityImage, sized } from "../src/lib/cityImages";
 
 describe("city images", () => {
   it("rejects flags, coats of arms, maps and svg", () => {
@@ -19,5 +19,27 @@ describe("city images", () => {
     };
     expect(await pickCityImage("Madeira", { fetchJson: fetcher, proxy: "https://proxy/x" })).toBe("https://u/Levada.jpg");
     expect(calls[0]).toContain("proxy");
+  });
+});
+
+describe("city image size", () => {
+  const thumb = (w: number) => `https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Porto.jpg/${w}px-Porto.jpg`;
+  it("asks Wikimedia thumbnails for 1280 px", () => {
+    expect(sized(thumb(330))).toBe(thumb(1280));
+    expect(sized(thumb(3840))).toBe(thumb(1280));
+    expect(sized("https://upload.wikimedia.org/wikipedia/commons/2/27/Porto.jpg")).toBe("https://upload.wikimedia.org/wikipedia/commons/2/27/Porto.jpg");
+    expect(sized("https://images.pexels.com/photos/1/p.jpeg?w=940")).toBe("https://images.pexels.com/photos/1/p.jpeg?w=940");
+  });
+  it("prefers the summary's thumbnail at 1280 over a full-size original", async () => {
+    const fetcher = async (url: string) =>
+      url.includes("/summary/") ? { originalimage: { source: "https://upload.wikimedia.org/wikipedia/commons/2/27/Porto.jpg" }, thumbnail: { source: thumb(330) } } : null;
+    expect(await pickCityImage("Porto", { fetchJson: fetcher })).toBe(thumb(1280));
+  });
+  it("resizes an original that is itself a thumbnail URL, and media-list picks", async () => {
+    const summary = async (url: string) => (url.includes("/summary/") ? { originalimage: { source: thumb(3840) }, thumbnail: { source: thumb(330) } } : null);
+    expect(await pickCityImage("Porto", { fetchJson: summary })).toBe(thumb(1280));
+    const media = async (url: string) =>
+      url.includes("/media-list/") ? { items: [{ type: "image", title: "File:Porto.jpg", srcset: [{ src: "//upload.wikimedia.org/wikipedia/commons/thumb/2/27/Porto.jpg/500px-Porto.jpg" }] }] } : null;
+    expect(await pickCityImage("Porto", { fetchJson: media })).toBe(thumb(1280));
   });
 });
