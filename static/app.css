@@ -1023,7 +1023,7 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
    confirmed and "what I understood". Right: the facts column, as tall as the story. Type: 40 title · 22 count ·
    17 text/value · 15 small line · 13 label. Colour: the photo and the category colours (icons, budget bar) only. */
 .hx {
-  --hx-ink: #1d1d1f; --hx-gray: #6e6e73; --hx-line: #e8e8ed; --hx-soft: #f5f5f7;
+  --hx-ink: #1d1d1f; --hx-gray: #6e6e73; --hx-line: #e2ded6; --hx-soft: #efede8;
   display: grid; grid-template-columns: 1fr 300px; gap: 24px; align-items: stretch; margin: 8px 0 22px; color: var(--hx-ink);
 }
 .hx-left { position: relative; min-width: 0; }
@@ -1124,7 +1124,7 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .hx-row .sub .err { color: #c62828; }
 .hx-row.click { cursor: pointer; border-radius: 12px; }
 .hx-over { color: #c62828; font-weight: 500; }
-.hx-meter { display: flex; gap: 2px; height: 6px; margin-top: 9px; border-radius: 999px; overflow: hidden; background: #e3e3e8; }
+.hx-meter { display: flex; gap: 2px; height: 6px; margin-top: 9px; border-radius: 999px; overflow: hidden; background: #e2ded6; }
 .hx-meter i { display: block; height: 100%; }
 .hx-pop {
   position: absolute; z-index: 6; right: 0; top: calc(100% + 6px); width: 300px; max-width: calc(100vw - 32px); padding: 16px 18px; border-radius: 16px; background: #fff; font-size: 15px; cursor: default;
