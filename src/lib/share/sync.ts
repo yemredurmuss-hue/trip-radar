@@ -183,9 +183,12 @@ async function syncSettings(tripId: string, state: SyncState, { rpc, me }: SyncD
     state.settingsAt = await rpc<string>("put_trip_settings", { p_id: state.shareId, p_trip: local, p_author: me });
     state.settingsBase = stableJson(local);
   } else if (action === "pull" && remoteSettings) {
-    const fresh = (await d.get("trips", tripId)) ?? trip;
+    // One transaction: merge into the trip as stored right now, so a concurrent cache write isn't overwritten.
+    const tx = d.transaction("trips", "readwrite");
+    const fresh = (await tx.store.get(tripId)) ?? trip;
     const next = applySettings(fresh, remoteSettings);
-    await d.put("trips", { ...next, updatedAt: Date.now() });
+    await tx.store.put({ ...next, updatedAt: Date.now() });
+    await tx.done;
     state.settingsBase = stableJson(settingsOf(next));
     state.settingsAt = remote.updated_at;
     if (remote.updated_by && remote.updated_by.trim().toLowerCase() !== me.trim().toLowerCase()) {

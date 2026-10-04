@@ -23,9 +23,15 @@ export async function setItemStatus(item: Item, status: ItemStatus): Promise<voi
 /** Applies a change to the trip as stored right now (not a possibly stale copy from the last render). */
 export async function updateTrip(tripId: string, change: (trip: Trip) => Trip): Promise<void> {
   const d = await db();
-  const current = await d.get("trips", tripId);
-  if (!current) return;
-  await d.put("trips", { ...change(current), updatedAt: Date.now() });
+  // Read and write in one transaction: a write from elsewhere (a share-sync pull) can't slip in between and be lost.
+  const tx = d.transaction("trips", "readwrite");
+  const current = await tx.store.get(tripId);
+  if (!current) {
+    await tx.done;
+    return;
+  }
+  await tx.store.put({ ...change(current), updatedAt: Date.now() });
+  await tx.done;
   notifyChanged();
 }
 
