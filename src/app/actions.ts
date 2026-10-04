@@ -20,8 +20,12 @@ export async function setItemStatus(item: Item, status: ItemStatus): Promise<voi
   notifyChanged();
 }
 
-/** Applies a change to the trip as stored right now (not a possibly stale copy from the last render). */
-export async function updateTrip(tripId: string, change: (trip: Trip) => Trip): Promise<void> {
+/**
+ * Applies a change to the trip as stored right now (not a possibly stale copy from the last render).
+ * `touch: false` keeps `updatedAt` as it was: for cache writes (hero photos, mood sentence) that aren't an edit
+ * by the traveller and mustn't win a settings-sync conflict.
+ */
+export async function updateTrip(tripId: string, change: (trip: Trip) => Trip, opts: { touch?: boolean } = {}): Promise<void> {
   const d = await db();
   // Read and write in one transaction: a write from elsewhere (a share-sync pull) can't slip in between and be lost.
   const tx = d.transaction("trips", "readwrite");
@@ -30,7 +34,8 @@ export async function updateTrip(tripId: string, change: (trip: Trip) => Trip): 
     await tx.done;
     return;
   }
-  await tx.store.put({ ...change(current), updatedAt: Date.now() });
+  const next = change(current);
+  await tx.store.put({ ...next, updatedAt: opts.touch === false ? current.updatedAt : Date.now() });
   await tx.done;
   notifyChanged();
 }

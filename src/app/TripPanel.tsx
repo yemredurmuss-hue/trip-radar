@@ -124,7 +124,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       for (const name of missing) {
         try {
           const url = await pickCityImage(name, { proxy });
-          await updateTrip(trip.id, (t) => ({ ...t, cityImages: { ...t.cityImages, [cityKeyOf(name)!]: url } }));
+          await updateTrip(trip.id, (t) => ({ ...t, cityImages: { ...t.cityImages, [cityKeyOf(name)!]: url } }), { touch: false });
         } catch (error) {
           // An outage is not "no photo": store nothing, so the next visit asks again.
           console.warn("city photo", name, error);
@@ -150,7 +150,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           z.object({ text: z.string() }),
         );
         const text = acceptMood(out.text) ? out.text.trim() : "";
-        await updateTrip(trip.id, (t) => ({ ...t, mood: { key: moodFor, text } }));
+        await updateTrip(trip.id, (t) => ({ ...t, mood: { key: moodFor, text } }), { touch: false });
       } catch (error) {
         if (!(error instanceof MissingKeyError)) console.warn("mood sentence", error); // the status sentence stands alone
       }
