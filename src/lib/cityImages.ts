@@ -3,7 +3,12 @@
 import { lang } from "./i18n";
 import { getShareConfig } from "./share/store";
 
-type FetchJson = (url: string) => Promise<any | null>;
+type FetchJson = (url: string, init?: RequestInit) => Promise<any | null>;
+/** The sharing server's city-image function address and the headers it needs. */
+export interface ImageProxy {
+  url: string;
+  headers: Record<string, string>;
+}
 const NOT_PHOTO = /flag|coat_of_arms|wappen|locator|map|logo|seal|\.svg/i;
 export const isPhoto = (url: string) => !NOT_PHOTO.test(decodeURIComponent(url));
 
@@ -19,29 +24,32 @@ function summaryImage(s: any): string | null {
   return src ? sized(src) : null;
 }
 
-const defaultFetch: FetchJson = async (url) => {
+const defaultFetch: FetchJson = async (url, init) => {
   try {
-    const r = await fetch(url);
+    const r = await fetch(url, init);
     return r.ok ? await r.json() : null;
   } catch {
     return null;
   }
 };
 
-/** The sharing server's city-image function (deployed without JWT verification, so no auth header); null when no server is set up. */
-export async function imageProxy(): Promise<string | null> {
+/** The sharing server's city-image function with the same auth as the rpc client (`apikey`; legacy JWT keys also as Bearer); null when no server or key is set up. */
+export async function imageProxy(): Promise<ImageProxy | null> {
   try {
-    const { url } = await getShareConfig();
-    return url ? `${url.replace(/\/+$/, "")}/functions/v1/city-image` : null;
+    const { url, anonKey } = await getShareConfig();
+    if (!url || !anonKey) return null;
+    const headers: Record<string, string> = { apikey: anonKey };
+    if (anonKey.startsWith("eyJ")) headers.Authorization = `Bearer ${anonKey}`;
+    return { url: `${url.replace(/\/+$/, "")}/functions/v1/city-image`, headers };
   } catch {
     return null;
   }
 }
 
-export async function pickCityImage(city: string, opts: { fetchJson?: FetchJson; proxy?: string | null } = {}): Promise<string | null> {
+export async function pickCityImage(city: string, opts: { fetchJson?: FetchJson; proxy?: ImageProxy | null } = {}): Promise<string | null> {
   const get = opts.fetchJson ?? defaultFetch;
   if (opts.proxy) {
-    const p = await get(`${opts.proxy}?q=${encodeURIComponent(city)}`);
+    const p = await get(`${opts.proxy.url}?q=${encodeURIComponent(city)}`, { headers: opts.proxy.headers });
     if (p?.url) return p.url as string;
   }
   for (const wiki of lang() === "en" ? ["en", "tr"] : ["tr", "en"]) {

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { isPhoto, pickCityImage, sized } from "../src/lib/cityImages";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { imageProxy, isPhoto, pickCityImage, sized } from "../src/lib/cityImages";
 
 describe("city images", () => {
   it("rejects flags, coats of arms, maps and svg", () => {
@@ -10,15 +10,38 @@ describe("city images", () => {
   });
   it("uses the proxy first, then Wikipedia's summary, then its media list", async () => {
     const calls: string[] = [];
-    const fetcher = async (url: string) => {
+    const inits: (RequestInit | undefined)[] = [];
+    const fetcher = async (url: string, init?: RequestInit) => {
       calls.push(url);
+      inits.push(init);
       if (url.includes("proxy")) return null;
       if (url.includes("/summary/")) return { originalimage: { source: "https://u/Flag_of_Madeira.svg.png" } };
       if (url.includes("/media-list/")) return { items: [{ type: "image", title: "File:Map.png", srcset: [{ src: "//u/Map.png" }] }, { type: "image", title: "File:Levada.jpg", srcset: [{ src: "//u/Levada.jpg" }] }] };
       return null;
     };
-    expect(await pickCityImage("Madeira", { fetchJson: fetcher, proxy: "https://proxy/x" })).toBe("https://u/Levada.jpg");
+    expect(await pickCityImage("Madeira", { fetchJson: fetcher, proxy: { url: "https://proxy/x", headers: { apikey: "k" } } })).toBe("https://u/Levada.jpg");
     expect(calls[0]).toContain("proxy");
+    expect(inits[0]).toEqual({ headers: { apikey: "k" } });
+    // The key goes to the sharing server only, never to Wikipedia.
+    expect(calls.length).toBeGreaterThan(1);
+    for (let i = 1; i < calls.length; i++) expect(inits[i]).toBeUndefined();
+  });
+});
+
+describe("image proxy", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const withConfig = (store: Record<string, string>) => vi.stubGlobal("chrome", { storage: { local: { get: async (k: string) => ({ [k]: store[k] }) } } });
+  it("is null without a server or a key", async () => {
+    withConfig({ shareUrl: "https://abc.supabase.co" });
+    expect(await imageProxy()).toBeNull();
+    withConfig({ shareKey: "sb_publishable_x" });
+    expect(await imageProxy()).toBeNull();
+  });
+  it("sends apikey; legacy JWT keys also as Bearer", async () => {
+    withConfig({ shareUrl: "https://abc.supabase.co", shareKey: "sb_publishable_x" });
+    expect(await imageProxy()).toEqual({ url: "https://abc.supabase.co/functions/v1/city-image", headers: { apikey: "sb_publishable_x" } });
+    withConfig({ shareUrl: "https://abc.supabase.co", shareKey: "eyJabc" });
+    expect((await imageProxy())?.headers).toEqual({ apikey: "eyJabc", Authorization: "Bearer eyJabc" });
   });
 });
 
