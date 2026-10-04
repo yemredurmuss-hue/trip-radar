@@ -1139,6 +1139,7 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .hx-next small { display: block; font-size: 13px; color: rgba(255,255,255,.65); }
 .hx-next span { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 16px; font-weight: 600; margin-top: 1px; }
 .hx-next svg { flex: none; }
+.hx-next em { min-width: 0; font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hx-todo { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 10px; font-size: 13px; color: var(--hx-gray); }
 .hx-todo button { padding: 0; border: 0; background: none; font-size: 13px; color: var(--hx-gray); }
 .hx-todo button b { color: var(--hx-ink); font-weight: 600; }

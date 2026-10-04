@@ -87,8 +87,11 @@ export function TripFacts(props: {
       {next ? (
         <button className="hx-next" onClick={() => props.onGo(next.target)}>
           <small>{L("Sıradaki adım", "Next step")}</small>
-          <span>
-            {next.title} <HeroIcon name="arrow" size={18} />
+          <span title={`${kinds().find((k) => k.kind === next.kind)?.label}: ${next.title}`}>
+            <em>
+              {kinds().find((k) => k.kind === next.kind)?.label}: {next.title}
+            </em>
+            <HeroIcon name="arrow" size={18} />
           </span>
         </button>
       ) : props.onShare ? (
