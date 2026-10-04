@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { imageProxy, isPhoto, pickCityImage, sized } from "../src/lib/cityImages";
+import { imageProxy, isPhoto, NetworkError, pickCityImage, sized } from "../src/lib/cityImages";
 
 describe("city images", () => {
   it("rejects flags, coats of arms, maps and svg", () => {
@@ -7,6 +7,10 @@ describe("city images", () => {
     expect(isPhoto("https://upload.wikimedia.org/x/Coat_of_arms_of_Porto.png")).toBe(false);
     expect(isPhoto("https://upload.wikimedia.org/x/Madeira_locator_map.png")).toBe(false);
     expect(isPhoto("https://upload.wikimedia.org/x/Funchal_(_Portugal_)13.jpg")).toBe(true);
+  });
+  it("does not throw on a malformed percent escape", () => {
+    expect(isPhoto("https://upload.wikimedia.org/x/100%_Funchal.jpg")).toBe(true);
+    expect(isPhoto("https://upload.wikimedia.org/x/100%_flag.jpg")).toBe(false);
   });
   it("uses the proxy first, then Wikipedia's summary, then its media list", async () => {
     const calls: string[] = [];
@@ -64,5 +68,33 @@ describe("city image size", () => {
     const media = async (url: string) =>
       url.includes("/media-list/") ? { items: [{ type: "image", title: "File:Porto.jpg", srcset: [{ src: "//upload.wikimedia.org/wikipedia/commons/thumb/2/27/Porto.jpg/500px-Porto.jpg" }] }] } : null;
     expect(await pickCityImage("Porto", { fetchJson: media })).toBe(thumb(1280));
+  });
+});
+
+describe("city image outages", () => {
+  it("throws NetworkError when a request got no answer and no photo was found", async () => {
+    const fetcher = async () => {
+      throw new NetworkError();
+    };
+    await expect(pickCityImage("Porto", { fetchJson: fetcher })).rejects.toBeInstanceOf(NetworkError);
+  });
+  it("still returns a photo found despite one failed request", async () => {
+    const fetcher = async (url: string) => {
+      if (url.includes("proxy")) throw new NetworkError();
+      return url.includes("/summary/") ? { originalimage: { source: "https://u/Porto.jpg" } } : null;
+    };
+    expect(await pickCityImage("Porto", { fetchJson: fetcher, proxy: { url: "https://proxy/x", headers: {} } })).toBe("https://u/Porto.jpg");
+  });
+  it("returns null (a real miss) when every request answered without a photo", async () => {
+    expect(await pickCityImage("Nowhere", { fetchJson: async () => null })).toBeNull();
+  });
+  it("the default fetch: a non-OK answer is a miss, a thrown fetch is an outage", async () => {
+    vi.stubGlobal("fetch", async () => ({ ok: false, json: async () => ({}) }));
+    expect(await pickCityImage("Nowhere")).toBeNull();
+    vi.stubGlobal("fetch", async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    await expect(pickCityImage("Nowhere")).rejects.toBeInstanceOf(NetworkError);
+    vi.unstubAllGlobals();
   });
 });

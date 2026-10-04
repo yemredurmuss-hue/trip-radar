@@ -122,8 +122,13 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     void (async () => {
       const proxy = await imageProxy();
       for (const name of missing) {
-        const url = await pickCityImage(name, { proxy });
-        await updateTrip(trip.id, (t) => ({ ...t, cityImages: { ...t.cityImages, [cityKeyOf(name)!]: url } }));
+        try {
+          const url = await pickCityImage(name, { proxy });
+          await updateTrip(trip.id, (t) => ({ ...t, cityImages: { ...t.cityImages, [cityKeyOf(name)!]: url } }));
+        } catch (error) {
+          // An outage is not "no photo": store nothing, so the next visit asks again.
+          console.warn("city photo", name, error);
+        }
       }
     })();
   }, [trip.id, trip.cityImages, cityNames]);

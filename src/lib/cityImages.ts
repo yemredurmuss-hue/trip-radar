@@ -3,6 +3,7 @@
 import { lang } from "./i18n";
 import { getShareConfig } from "./share/store";
 
+/** null: the server answered without a usable body. Throws (NetworkError): no answer at all. */
 type FetchJson = (url: string, init?: RequestInit) => Promise<any | null>;
 /** The sharing server's city-image function address and the headers it needs. */
 export interface ImageProxy {
@@ -10,7 +11,23 @@ export interface ImageProxy {
   headers: Record<string, string>;
 }
 const NOT_PHOTO = /flag|coat_of_arms|wappen|locator|map|logo|seal|\.svg/i;
-export const isPhoto = (url: string) => !NOT_PHOTO.test(decodeURIComponent(url));
+export const isPhoto = (url: string) => {
+  let text = url;
+  try {
+    text = decodeURIComponent(url);
+  } catch {
+    // A stray "%" in a file name: judge the raw string.
+  }
+  return !NOT_PHOTO.test(text);
+};
+
+/** A request that never got an answer (offline, DNS, timeout): the city may well have a photo, so it must not be stored as "none". */
+export class NetworkError extends Error {
+  constructor(message = "network error") {
+    super(message);
+    this.name = "NetworkError";
+  }
+}
 
 /** The hero is ~1000 px wide: Wikimedia thumbnails ("/thumb/…/330px-x.jpg") are asked for at 1280 px, neither a blur nor a 20 MB original. */
 const WIDTH = 1280;
@@ -25,9 +42,15 @@ function summaryImage(s: any): string | null {
 }
 
 const defaultFetch: FetchJson = async (url, init) => {
+  let r: Response;
   try {
-    const r = await fetch(url, init);
-    return r.ok ? await r.json() : null;
+    r = await fetch(url, init);
+  } catch (e) {
+    throw new NetworkError(e instanceof Error ? e.message : undefined);
+  }
+  if (!r.ok) return null;
+  try {
+    return await r.json();
   } catch {
     return null;
   }
@@ -46,8 +69,18 @@ export async function imageProxy(): Promise<ImageProxy | null> {
   }
 }
 
+/** The city's photo URL; null when it has none. Throws NetworkError when a request got no answer and nothing was found, so a miss isn't confused with an outage. */
 export async function pickCityImage(city: string, opts: { fetchJson?: FetchJson; proxy?: ImageProxy | null } = {}): Promise<string | null> {
-  const get = opts.fetchJson ?? defaultFetch;
+  const fetchJson = opts.fetchJson ?? defaultFetch;
+  let failed: unknown = null;
+  const get = async (url: string, init?: RequestInit) => {
+    try {
+      return await fetchJson(url, init);
+    } catch (e) {
+      failed ??= e;
+      return null;
+    }
+  };
   if (opts.proxy) {
     const p = await get(`${opts.proxy.url}?q=${encodeURIComponent(city)}`, { headers: opts.proxy.headers });
     if (p?.url) return p.url as string;
@@ -63,5 +96,6 @@ export async function pickCityImage(city: string, opts: { fetchJson?: FetchJson;
       return url.startsWith("//") ? `https:${url}` : url;
     }
   }
+  if (failed) throw failed instanceof NetworkError ? failed : new NetworkError(failed instanceof Error ? failed.message : undefined);
   return null;
 }
