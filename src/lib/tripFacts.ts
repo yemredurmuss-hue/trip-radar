@@ -1,6 +1,7 @@
 // The facts column beside the hero: where from, how many, entry rules, local money and time.
 // Only what the saved pages or fixed tables say; anything unknown is null and its row is hidden.
 import { countryInfo, type CountryInfo } from "./countries";
+import { cityOfAirport } from "./airports";
 import { convert, type Rates } from "./currency";
 import { locale } from "./i18n";
 import { visaFor, type Visa } from "./visa";
@@ -43,7 +44,8 @@ export function tripFacts(
     const settled = (i: Item) => (i.status === "booked" || i.status === "chosen" ? 0 : 1);
     return settled(a) - settled(b);
   });
-  const origin = flights[0]?.flight?.from ?? null;
+  const from = flights[0]?.flight?.from;
+  const origin = from ? cityOfAirport(from) : null;
   const adults = mostCommon(live.map((i) => i.guests.adults).filter((n): n is number => typeof n === "number" && n > 0));
   const country = mostCommon(live.filter((i) => i.category !== "flight").map((i) => i.countryCode?.toUpperCase() ?? null).filter((c): c is string => !!c));
   const info = countryInfo(country);

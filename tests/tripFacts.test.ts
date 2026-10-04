@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { cityOfAirport } from "../src/lib/airports";
+import { setLang } from "../src/lib/i18n";
 import { COUNTRIES, countryInfo } from "../src/lib/countries";
 import { visaFor, VISA_CHECKED } from "../src/lib/visa";
 import { tripFacts, utcOffsetHours } from "../src/lib/tripFacts";
@@ -60,6 +62,23 @@ const base = (over: Partial<Item>): Item => ({
   highlights: [], concerns: [], reviewSummary: null, missing: [], status: "chosen", statusNote: null, createdAt: 0, updatedAt: 0,
   ...over,
 } as Item);
+
+describe("origin from an airport code", () => {
+  afterEach(() => setLang("tr"));
+  it("maps exact uppercase codes to the city, in the board's language, and leaves other text alone", () => {
+    expect(cityOfAirport("IST")).toBe("İstanbul");
+    expect(cityOfAirport("LGW")).toBe("Londra");
+    expect(cityOfAirport("MUC")).toBe("Münih");
+    setLang("en");
+    expect(cityOfAirport("IST")).toBe("Istanbul");
+    expect(cityOfAirport("FCO")).toBe("Rome");
+    for (const text of ["Istanbul", "ist", "XYZ", "IST ", "Ist", ""]) expect(cityOfAirport(text)).toBe(text);
+  });
+  it("shows the city for a flight that stores a code", () => {
+    const f = tripFacts([base({ category: "flight", status: "booked", flight: { from: "SAW", to: "OPO", departure: null, arrival: null, carrier: null, flightNumber: null, stops: 0 } })], { passport: "TR", homeCurrency: "TRY", rates: null, homeZone: "Europe/Istanbul", start: null });
+    expect(f.origin).toBe("İstanbul");
+  });
+});
 
 describe("trip facts", () => {
   const flight = base({ category: "flight", status: "booked", city: "Porto", dates: { start: "2026-10-07", end: null, source: "page" },
