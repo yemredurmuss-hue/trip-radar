@@ -61,8 +61,9 @@ export function TripHero(props: {
   return (
     <div className="hx-left">
       <div className="hx-photo">
+        {/* Keyed by the photo too: a failed one is hidden in place, so a new address must mount a fresh <img>. */}
         {cities.map((c, n) =>
-          c.image ? <img key={c.name || n} src={c.image} alt={c.name} className={n === at ? "on" : ""} onError={(e) => (e.currentTarget.style.display = "none")} /> : null,
+          c.image ? <img key={`${c.name || n}|${c.image}`} src={c.image} alt={c.name} className={n === at ? "on" : ""} onError={(e) => (e.currentTarget.style.display = "none")} /> : null,
         )}
         {cities.length > 1 && (
           <div className="hx-cities">
