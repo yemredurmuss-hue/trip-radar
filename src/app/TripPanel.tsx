@@ -170,6 +170,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     }
   }, []);
   const [todoOpen, setTodoOpen] = useState<TodoKind | null>(null);
+  // Another trip's to-do list isn't the one that was open.
+  useEffect(() => {
+    setTodoOpen(null);
+  }, [trip.id]);
   const progress = decisionProgress(timeline, items, plan, decisions?.byGroup, today);
   const bar = decisions ? budgetBar(plan, items, decisions.ctx, decisions.byGroup) : null;
   const facts = useMemo(
@@ -255,6 +259,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     <>
       <section className="hx">
         <TripHero
+          key={trip.id}
           trip={trip}
           decisions={decisions}
           cities={cities}

@@ -172,6 +172,12 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
 export function IntentRow({ trip, decisions }: { trip: Trip; decisions: Decisions | null }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const { entries, guess } = intentEntries(trip, decisions);
+  const nothing = !entries.length && !guess;
+  // Answering the last question leaves nothing to show: close, so a later entry doesn't appear already open.
+  useEffect(() => {
+    if (nothing) setOpen(false);
+  }, [nothing]);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => {
@@ -180,8 +186,7 @@ export function IntentRow({ trip, decisions }: { trip: Trip; decisions: Decision
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [open]);
-  const { entries, guess } = intentEntries(trip, decisions);
-  if (!entries.length && !guess) {
+  if (nothing) {
     return <div className="hx-intent empty">{L("Konuştukça ve seçtikçe seni tanıyacağım; anladıklarımı burada göreceksin.", "As you chat and choose, I'll get to know you. What I understand shows up here.")}</div>;
   }
   const preview = entries.slice(0, 3).map((e) => e.short).join(", ");
