@@ -264,6 +264,11 @@ export function decisionProgress(
   return { todos, count };
 }
 
+export type BudgetSlice = "flight" | "stay" | "transport" | "activity" | "other";
+export const BUDGET_SLICES: BudgetSlice[] = ["flight", "stay", "transport", "activity", "other"];
+const sliceOf = (c: Item["category"]): BudgetSlice =>
+  c === "flight" || c === "stay" || c === "transport" ? c : c === "activity" || c === "food" ? "activity" : "other";
+
 export interface BudgetBar {
   currency: string;
   /** The trip's budget in that currency; null when none is set (the bar then shows the sums only). */
@@ -274,6 +279,8 @@ export interface BudgetBar {
   open: number;
   /** Prices that couldn't be counted (missing, or no exchange rate yet). */
   uncounted: number;
+  /** Booked + chosen, by kind (what the hero's bar shows). */
+  byCategory: Record<BudgetSlice, number>;
 }
 
 /** What the trip costs so far and what's likely still to come, in the trip's currency. */
@@ -283,12 +290,14 @@ export function budgetBar(plan: Plan, items: Item[], ctx: DecisionContext, decis
   let chosen = 0;
   let open = 0;
   let uncounted = 0;
+  const byCategory: Record<BudgetSlice, number> = { flight: 0, stay: 0, transport: 0, activity: 0, other: 0 };
   const add = (item: Item, to: "booked" | "chosen" | "open") => {
     const price = totalPrice(item, ctx);
     if (price == null) {
       uncounted++;
       return;
     }
+    if (to !== "open") byCategory[sliceOf(item.category)] += price;
     if (to === "booked") booked += price;
     else if (to === "chosen") chosen += price;
     else open += price;
@@ -304,5 +313,5 @@ export function budgetBar(plan: Plan, items: Item[], ctx: DecisionContext, decis
     if (lead) add(lead, "open");
   }
   const budget = ctx.trip.budget;
-  return { currency: ctx.currency, total: budget && budget.currency === ctx.currency ? budget.amount : null, booked, chosen, open, uncounted };
+  return { currency: ctx.currency, total: budget && budget.currency === ctx.currency ? budget.amount : null, booked, chosen, open, uncounted, byCategory };
 }

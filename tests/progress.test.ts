@@ -103,4 +103,11 @@ describe("budget bar", () => {
     const lead = (name: string) => items.find((i) => i.name === name)!;
     expect(bar.open).toBeGreaterThanOrEqual((lead("Jardim Stay").price.amount ?? 0) + (lead("Pegasus · direkt").price.amount ?? 0));
   });
+  it("splits what's known by category and adds up to the same total", async () => {
+    const { plan, items, ctx, decisions } = await demo();
+    const bar = budgetBar(plan, items, ctx, decisions);
+    const known = Object.values(bar.byCategory).reduce((a, b) => a + b, 0);
+    expect(Math.round(known)).toBe(Math.round(bar.booked + bar.chosen));
+    expect(bar.byCategory.stay).toBeGreaterThan(0);
+  });
 });
