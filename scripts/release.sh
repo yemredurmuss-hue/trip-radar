@@ -3,6 +3,12 @@
 # Bump the version in static/manifest.json first: updaters only act on a new version.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# The build is made from this folder's files: uncommitted work (another session's, half done) would ship.
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+  echo "uncommitted changes here: commit them, or release from a clean worktree" >&2
+  git status --short --untracked-files=no >&2
+  exit 1
+fi
 npm run build
 VERSION="$(grep -o '"version"[^,]*' dist/manifest.json | sed 's/.*"\([^"]*\)"$/\1/')"
 WORK="$(mktemp -d)"
