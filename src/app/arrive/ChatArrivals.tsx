@@ -84,7 +84,7 @@ export function useChatArrivals({ trip, messages, items, trips, openCaptures }: 
   const tripTitle = (id: string) => trips.find((t) => t.id === id)?.title ?? null;
 
   /** A capture's chip (a link, or a picture that went the screenshot way). */
-  const captureChip = (captureId: string, url: string | null, screenshot: boolean, label: string) => {
+  const captureChip = (captureId: string, url: string | null, screenshot: boolean, label: string | null) => {
     const c = capture(captureId);
     const item = c?.itemId ? items.find((i) => i.id === c.itemId) : undefined;
     const state = chipState(c, item ? { id: item.id, tripId: item.tripId, section: sectionOfItem(item) } : null, { tripId: trip.id, site: siteOf(url), tripTitle, screenshot });
@@ -99,9 +99,9 @@ export function useChatArrivals({ trip, messages, items, trips, openCaptures }: 
     );
   };
   const fileChipView = (e: FileIntake) => {
-    if (e.state === "screenshot" && e.captureId) return captureChip(e.captureId, null, true, e.name);
+    if (e.state === "screenshot" && e.captureId) return captureChip(e.captureId, null, true, null);
     const state = fileChip(e);
-    return <ArriveChip host={null} label={e.name} state={state} onShow={state.tone === "done" && state.itemId ? () => requestReveal(state.itemId!) : undefined} />;
+    return <ArriveChip host={null} label={null} state={state} onShow={state.tone === "done" && state.itemId ? () => requestReveal(state.itemId!) : undefined} />;
   };
 
   /** A link or a file handed to the chat, as the traveller's own bubble with its chip. */

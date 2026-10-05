@@ -2085,7 +2085,7 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .ar-drop { position: fixed; z-index: 70; padding: 12px; pointer-events: none; animation: ar-fade-plain .18s ease-out both; }
 .ar-drop-frame {
   height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center;
-  border: 2px dashed #b9b2f0; border-radius: 22px; background: rgba(248, 247, 255, .92); color: var(--hx-ink);
+  border: 2px dashed #b9b2f0; border-radius: 22px; background: rgba(248, 247, 255, .95); color: var(--hx-ink);
 }
 .ar-drop-frame b { font-size: 17px; font-weight: 600; }
 .ar-drop-frame > span:last-child { font-size: 13.5px; color: var(--hx-muted); }
@@ -2098,7 +2098,7 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .ar-sent-link { overflow-wrap: anywhere; color: #3a3a3c; }
 .ar-sent-thumb { display: block; max-width: 160px; max-height: 110px; margin-bottom: 6px; border-radius: 10px; }
 .ar-chip {
-  display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; max-width: 100%; padding: 5px 10px; border-radius: 999px;
+  display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; max-width: 100%; padding: 5px 10px; border-radius: 12px;
   background: #f6f5f2; font-size: 12.5px; color: #6e6e73; animation: ar-fade .2s ease-out both;
 }
 .ar-chip-site { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-weight: 500; color: #3a3a3c; }

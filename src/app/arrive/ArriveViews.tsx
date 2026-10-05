@@ -114,7 +114,8 @@ export function DropOverlay({ rect }: { rect: { top: number; left: number; width
 /** The chip under a link or a file sent in the chat: the site, then where it went (or that it couldn't). */
 export function ArriveChip({ host, label, state, onShow, onRetry }: {
   host: string | null;
-  label: string;
+  /** The site ("airbnb.com"); none for a file, whose bubble already says its name. */
+  label: string | null;
   state: ChipState;
   onShow?: () => void;
   onRetry?: () => void;
@@ -123,7 +124,7 @@ export function ArriveChip({ host, label, state, onShow, onRetry }: {
     <div className={`ar-chip ar-${state.tone}`} title={state.tone === "error" ? (state.detail ?? undefined) : undefined}>
       <span className="ar-chip-site">
         <SiteIcon host={host} kind={host ? "link" : "file"} size={14} />
-        <span>{label}</span>
+        {label && <span>{label}</span>}
       </span>
       {state.tone === "work" && <i className="ar-spin" aria-hidden />}
       <span className="ar-chip-text">{state.tone === "error" ? `⚠ ${state.text}` : state.text}</span>
