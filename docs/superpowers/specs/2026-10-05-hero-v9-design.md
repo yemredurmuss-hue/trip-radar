@@ -157,3 +157,63 @@ Gezilerim listesi, Plan/Günlük akış kartları, kişi fotoğrafları (yalnız
   sayaç hücresi bölümü açar, Tercihler penceresi açılır, × çalışır); boş gezide boş hâller (fotoğraf yeri, "Henüz kayıt yok",
   "Kimler gidiyor?", tarz boş hapı); TR geniş + dar ekran görüntüsü; dar ekranda yana kayma yok, satırlar kesilmez.
 - Mevcut testler yeşil.
+
+## Revizyon 1 (2026-10-05)
+
+Kaynak: Emre, gerçek gezisinde ("Porto & Madeira") hero'ya bakınca üç düzeltme istedi.
+
+### 1. Künye ilerleme kutusuyla aynı hizada biter; Tercihler anahtar kelime
+- "Künye aşağı taşmış çünkü tercihlerin detayları özet keyword gibi gözükmek yerine çok bilgi girmiş."
+- **Tercihler satırı tek satır anahtar kelimedir** (`preferenceRows`, `lib/preferences.ts`): solda en fazla ~3 kelime, sağda değer.
+  - Öncelikler aynı ("Fiyat + konum" → "Çok önemli").
+  - Not: kod konusunu tanıyorsa konusuyla (`decision.ts noteCriteria`, `saidTopics`/`WISH_TOPIC` ile aynı tablo):
+    "Sessiz bir yer istiyoruz" → "Sessizlik" · "Önemli" (notun o konuyu "Önemli" yaptığı düzey). Aynı ada çıkan iki not tek satır.
+  - Tanımıyorsa gezginin modeli 1–3 kelimelik etiket verir, panonun dilinde; bekleyen notlar tek istekte, not başına
+    bir kez (`trip.prefLabels`, anahtar = not id + metin özeti; not değişirse yeniden sorulur). Etiket değilse (uzun,
+    cümle) "" saklanır, yeniden sorulmaz. Anahtar yoksa ya da hata: sessiz.
+  - Etiket gelene kadar ya da hiç gelmezse: ilk üç kelime + "…" ("Odada mutlaka bir…") · "Not".
+  - Bulgu ("Sorun değil" / "Eler"): metni üç kelimeyse kendisi, değilse kısa etiketi ("Yan binada inşaat gürültüsü" → "Gürültülü").
+  - Tam metin pencerede ("Düzenle" / "+N tercih") değişmeden durur; satırın etiketi son çare olarak "…" ile kesilir, `title`'da tamamı.
+- **Hizalama:** hero ızgarasının satırı esner (`align-items: stretch`); kart dikey flex. Kart kendi başına sıkı
+  (çizginin iki yanında 14 px; bütçe, tercih ve hava aralıkları daraldı); artan yer her çizginin iki yanına eşit
+  dağılır (ortadaki bloklar iki kat büyür ve içeriğini ortalar, ilk blok üstte, son blok altta kalır). 1440×900'de
+  örnek gezi ve uzun bir notla kart hikâyeden uzun değildir; uç durumda (dört ülke) kart uzar, hiçbir şey kesilmez.
+- e2e: 1440'ta `|kart.alt − ilerleme.alt| ≤ 2 px` (önce uzun not eklenir) ve kart taşmaz; 1280'de de aynı hizada (ölçülüp yazılır).
+
+### 2. Dört plan hücresi
+- "Transport taksi vs olmasına rağmen 0 yazıyor. Experience iki satıra düşmüş tek olması gerekirken."
+- **Sayı = Plan bölümünün tuttuğu kayıt sayısı** (`sectionTally`, `lib/heroInfo.ts`; eski `heroTally` kalktı): uçuş = Uçuş,
+  konaklama = Konaklama, ulaşım = Ulaşım (taksi, transfer, tren, kiralık araç, yol), deneyim = Etkinlikler + Yapılacak
+  şeyler + Restoranlar. Bölüm başlığındaki "x/y"nin y'siyle aynı; gizlenen ve "Gerek yok" sayılmaz. Onay ayrı:
+  "x/y onaylandı" kutusu. Deneyim hücresi içi dolu ilk bölümü açar (Etkinlikler → Yapılacak şeyler → Restoranlar).
+- **Hücre her zaman tek satır:** yazısına göre genişler (`white-space: nowrap`), dördü `space-between` ile yayılır,
+  aradaki çizgiler kendi öğeleri (`.hx-sep`) olduğu için boşluğun ortasında durur. Eşik hikâye sütununun container
+  query'si, en geniş gerçekçi etiketlerden hesaplandı: İngilizce iki haneli ("12 flights", "12 stays", "12 transport",
+  "12 experiences": 17 px'te 335, 16 px'te 316 px yazı) + dört hücrenin ikon/boşluk/iç boşluğu (4 × 38) + üç çizgi
+  (3 × 13) → 17 px'te 526, 16 px'te 507. 540'tan itibaren 17 px, 520–539 arası 16 px, altında 2×2 (o da tek satır).
+  1440'ta hikâye ~526 px: TR ve EN dört hücre tek sırada, 16 px.
+- e2e: 1440'ta tek sıra, her hücre tek satır, satır taşmıyor; aynı ölçüm en geniş EN ("12 experiences") ve TR
+  ("12 konaklama") etiketleriyle de yapılır (hücre yazıları ölçüm için yerinde değiştirilip geri konur; e2e'nin
+  İngilizce geçişi yok).
+
+### 3. Ana destinasyonlar ve alt yerler
+- "Guala diye bi yer gelmiş destinasyona … Daha büyük lokasyonlar ana lokasyonlar olsun, alt lokasyonlar günlük planlarda yer alır."
+- **Saf eşleme** (`lib/destinations.ts`): `mainPlaces(cities, parents)` ilk görünme sırasını korur, `cityKeyOf` ile
+  büyük/küçük harf ve aksan farkını tekler. Ana yerin adı modelin verdiği addır (gezinin yerlerinden biriyse gezideki yazılışı).
+- **Ebeveynler gezginin modelinden**, konaklama şehirleri kümesi başına bir kez (anahtar = sıralı şehir anahtarları),
+  `trip.placeParents` içinde; iki şehirden azsa sorulmaz. İstem: sıradaki yerler (biliniyorsa ülkesiyle); daha büyük
+  bir destinasyonun içindeki küçük yer ya da bilinen bir ada/bölgedeki yer için o destinasyonun yaygın adı (Gaula →
+  Madeira, Funchal → Madeira, Câmara de Lobos → Madeira; Sintra → Lizbon yalnız Lizbon da konaklamaysa); ayrı
+  gecelenen iki gerçek şehir asla birleşmez (Porto ve Lizbon ayrı).
+- **Denetim** (`acceptParents`): yalnız gezinin yerleri; kendine eşleme, boş ya da 40 karakterden uzun ad atılır;
+  zincir (ebeveyni de başka yerin içinde olan) ve döngü atılır. Uygulamanın zaten aynı şehir saydığı başka ad
+  (Madeira ≡ Funchal, `CITY_ALIASES`) atılmaz: yeri taşımaz, ana yerin adını verir.
+- **Cevap gelmeden** (anahtar yok, hata): konaklamanın adresi ya da bölgesi gezinin başka bir yerini adlandırıyorsa
+  ona katlanır (`fallbackParents`), yoksa bugünkü gibi kendisi.
+- **Yalnız hero'da:** şehir seçici, fotoğraflar (ana yerin adıyla aranır, `trip.cityImages` ana yerin anahtarıyla),
+  hava (üyelerin gecelerini kapsayan aralık, `cityRanges`), ton ve tarz anahtarları, durum cümlesindeki şehir ana yerleri
+  kullanır. Fotoğraf, ton ve tarz istekleri ana yerler belli olana kadar bekler (Gaula için foto istenmez). Günlük akışın
+  gün kartı kendi şehrinin fotoğrafı yoksa ana yerinkini alır (TripPanel'deki `cityImageOf`; `days/*` değişmedi).
+  Plan (`CategoryPlan cities`) ve Günlük akış değişmez. Ülkeler zaten kayıtlardan okunuyor, değişmez.
+- Test: `mainPlaces`, denetim ve tahmin için birim testleri; e2e'de sahte modelle sohbetten Funchal ve Gaula
+  konaklamaları → hero "Porto | Madeira", Plan'da Gaula ve Funchal duruyor, her şehir kümesi bir kez soruluyor.

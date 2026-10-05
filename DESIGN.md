@@ -52,13 +52,21 @@ darsa tek sütun, kart hikâyenin altına iner. Renkler `--hx-` değişkenlerind
 mint, kart zemini, çizgi). Her bloğun boş hâli var; bilgi geldikçe blok yumuşakça belirir (`hx-appear`, azaltılmış
 hareket tercihinde yok). Uydurma yok.
 
-- **Fotoğraf** şehir başına bir tane, rota sırasıyla (~1,92:1, dar ekranda 220 px). Sol üstte şehir seçici (6 sn'de
+- **Ana yerler** (revizyon 1): hero'nun şehirleri gezginin gittiği ana destinasyonlardır (şehir, ada, bölge), gecelediği
+  her kasaba değil. Madeira'daki bir köy (Gaula) Madeira'nın içine katlanır: şehir seçici, fotoğraf, hava, ton cümlesi,
+  tarz ve durum cümlesindeki şehir "Porto | Madeira" der. Hangi yerin hangisinin içinde olduğunu gezginin modeli
+  söyler (şehir kümesi başına bir kez, gezide saklanır, kod denetler: kendine, zincir, boş/uzun ad yok); model yokken
+  yalnız adresi gezinin başka bir yerini adlandıran konaklama katlanır. Plan ve Günlük akış yerleri olduğu gibi gösterir.
+- **Fotoğraf** ana yer başına bir tane, rota sırasıyla (~1,92:1, dar ekranda 220 px). Sol üstte şehir seçici (6 sn'de
   bir geçer), sağ üstte geri sayım hapı ("3 gün kaldı") ve ••• menüsü; iş varken işleniyor hapı. Şehir yoksa lavanta
   zemin + "Şehir belli olunca fotoğrafı gelir".
 - **Başlık, tarih, cümle**: 40 px başlık; altında takvim · "8–14 Ekim · 7 gün" (tahminse "~"); tek mor-gri cümle:
   AI'nin ton cümlesi, yoksa koddan durum cümlesi ("3 karar ve 1 rezervasyon bekliyor."). İkisi birden yazılmaz.
-- **Plan dört hücrede**: uçuş · konaklama · ulaşım · deneyim, kategori renginde ikon + "2 uçuş"; her ihtiyaç bir kez,
-  deneyim = plandaki etkinlik ve restoranlar. Sıfır hücre kalır ama soluk. Hücreye basınca Plan'da o bölüm açılır.
+- **Plan dört hücrede**: uçuş · konaklama · ulaşım · deneyim, kategori renginde ikon + "2 uçuş". Sayı Plan bölümünün
+  tuttuğu kayıt sayısıdır, bölüm başlığındaki "x/y"nin y'si (revizyon 1): taksi ve transferler Ulaşım'da sayılır;
+  deneyim = Etkinlikler + Yapılacak şeyler + Restoranlar; gizlenen ve "Gerek yok" sayılmaz. Onay ayrı, ilerleme
+  kutusunda. Hücre her zaman tek satır, yazısına göre genişler; dördü bir sıraya sığmazsa 2×2. Sıfır hücre kalır
+  ama soluk. Hücreye basınca Plan'da o bölüm açılır (deneyim: içi dolu ilk bölüm).
 - **Rezervasyonların** (mint kutu): Plan bölüm başlıklarındaki "3/4"lerin toplamı ("2/11 onaylandı · %18") ve çubuk;
   sayıya basınca bütün yapılacaklar hero'nun altında açılır, "⏳ 2" yalnız iptal süresi yaklaşanları. Koyu düğme
   "Planı tamamla →" sıradaki işe gider; hepsi tamamsa "Paylaş →", hiç kayıt yoksa "İlk kaydı ekle →".
@@ -67,10 +75,16 @@ hareket tercihinde yok). Uydurma yok.
   fazla iki kelimesi, her biri kendi ikonu ve renginde; bütçenin kelimesi gri cüzdanlı hap; kişi başı günlük €70
   altı Ekonomik, €180'e kadar Orta bütçe, üstü Yüksek bütçe) · **Bütçe**: rakam (bütçe, yoksa bilinen toplam),
   altında Rezerve / Planlanan / Boşta ya da kırmızı Aşıyor satırları; basınca kategori kırılımı · **Tercihler**
-  ("Seni böyle anladım"): en fazla iki satır ("Fiyat + konum · Çok önemli"), "+7 tercih ›"; pencere kartın üstüne
-  açılır, sayfayı itmez, her giriş kapsamı ve × ile · **Ülke ve hava**: bayrak + ülke, şehir başına ikon + gündüz
+  ("Seni böyle anladım"): en fazla iki satır, her biri tek satır anahtar kelime, cümle değil ("Fiyat + konum ·
+  Çok önemli", "Sessiz bir yer istiyoruz" → "Sessizlik · Önemli"; kodun tanımadığı not modelin 1–3 kelimesiyle,
+  o gelene kadar ilk üç kelime + "…"; bulgu kısa etiketiyle, "Gürültülü · Sorun değil"); etiket yalnız son çare
+  olarak "…" ile biter, tam metin pencerede; "+7 tercih ›"; pencere kartın üstüne açılır, sayfayı itmez, her giriş
+  kapsamı ve × ile · **Ülke ve hava**: bayrak + ülke, şehir başına ikon + gündüz
   derecesi (10 gün kala tahmin, öncesinde son 5 yılın aynı günleri) · en altta sessiz sıra: para (kur üstüne
   gelince) · priz · saat farkı ("−2 saat", aynıysa "Aynı saat") · dil.
+- **Kart ilerleme kutusuyla aynı hizada biter** (revizyon 1): geniş ekranda kart hikâye sütunu kadar uzar, alt kenarı
+  "Rezervasyonların" kutusunun alt kenarıyla bir; kendi başına sıkı (çizginin iki yanında 14 px), artan yer her
+  çizginin iki yanına eşit dağılır. İçerik hikâyeden uzunsa (dört ülke) kart uzar, hiçbir şey kesilmez.
 - **Sekmeler** hero'nun altında, ortalı ve alt çizgili: Plan | Günlük akış | Belgeler; seçili olan ink, 3 px accent çizgi.
 
 ## Plan kartları
