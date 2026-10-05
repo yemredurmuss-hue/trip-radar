@@ -1,8 +1,7 @@
-// What's left to do, as a list under the hero: the quiet line in the hero's facts column says how
-// many of each kind (decide, book, plan, cancellations running out); a tap on one lists them here, a
-// tap on an entry takes you to it.
+// What's left to do, as a list under the hero: "3/6 onaylandı" in the hero's progress box lists them all,
+// its "⏳ 2" only the free cancellations running out; a tap on an entry takes you to it.
 import { L } from "../lib/i18n";
-import { entryDomId, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
+import { entryDomId, nextStepText, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
 
 /** Scrolls to an element and makes it glow for a moment. */
 export function show(el: Element | null) {
@@ -41,17 +40,18 @@ export const kinds = (): { kind: TodoKind; label: string }[] => [
 export const when = (t: Todo) =>
   t.days == null ? null : t.days < 0 ? null : t.days === 0 ? L("bugün", "today") : L(`${t.days} gün`, `${t.days} day${t.days === 1 ? "" : "s"}`);
 
-/** The to-dos of one kind (the one picked on the hero's quiet line). */
-export function TodoList({ progress, open, onGo }: { progress: DecisionProgress; open: TodoKind; onGo: (target: Todo["target"]) => void }) {
-  const list = progress.todos.filter((t) => t.kind === open);
+/** Every to-do ("all"), or the ones of one kind (the hero's "⏳": the cancellations running out). */
+export function TodoList({ progress, open, onGo }: { progress: DecisionProgress; open: TodoKind | "all"; onGo: (target: Todo["target"]) => void }) {
+  const list = open === "all" ? progress.todos : progress.todos.filter((t) => t.kind === open);
   if (!list.length) return null;
+  const label = open === "all" ? L("Yapılacaklar", "To do") : kinds().find((k) => k.kind === open)?.label;
   return (
-    <ul className="todo-list" aria-label={kinds().find((k) => k.kind === open)?.label}>
+    <ul className="todo-list" aria-label={label}>
       {list.map((t) => (
         <li key={t.key}>
           <button onClick={() => onGo(t.target)}>
             <span className="todo-text">
-              <b>{t.title}</b>
+              <b>{open === "all" ? nextStepText(t) : t.title}</b>
               <span className="muted">{t.note}</span>
             </span>
             {when(t) && <span className={`todo-when${t.soon ? " soon" : ""}`}>{when(t)}</span>}

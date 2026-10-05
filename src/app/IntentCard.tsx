@@ -2,20 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { db, notifyChanged } from "../lib/db";
 import { updateTrip } from "./actions";
 import { L } from "../lib/i18n";
-import { lowerText } from "../lib/i18nText";
 import { CRITERION_LABELS, LEVEL_LABELS, requirementLabel, saidTopics, WISH_TOPIC, WISHES } from "../lib/decision";
 import { activeSignals, pendingSignals } from "../lib/intent";
 import { CATEGORY_LABELS } from "../lib/items";
+import { preferenceRows, type Pref } from "../lib/preferences";
 import { amenityLabel, type Category, type CriterionId, type Trip } from "../lib/types";
 import { HeroIcon } from "./Icons";
+import { useAppear } from "./useAppear";
 import type { Decisions } from "./useDecisions";
 
 export interface Entry {
   key: string;
   /** What it applies to: "Tüm gezi", a category, or a place's name. */
   scope: string;
-  /** Short form for the collapsed line. */
-  short: string;
+  /** What the hero card's "Tercihler" rows make of it (lib/preferences.ts). */
+  pref: Pref;
   text: string;
   detail: string;
   /** Either a change to the stored trip, or a standalone action. */
@@ -33,7 +34,7 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
     entries.push({
       key: `p:${c}`,
       scope: L("Tüm gezi", "Whole trip"),
-      short: `${CRITERION_LABELS[c]}: ${lowerText(LEVEL_LABELS[level])}`,
+      pref: { kind: "priority", topic: CRITERION_LABELS[c], level },
       text: `${CRITERION_LABELS[c]}: ${LEVEL_LABELS[level]}`,
       detail: L("söylediğin", "you said"),
       change: (t) => {
@@ -48,7 +49,7 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
       entries.push({
         key: `cp:${cat}:${c}`,
         scope: CATEGORY_LABELS[cat],
-        short: `${CRITERION_LABELS[c]}: ${lowerText(LEVEL_LABELS[level])}`,
+        pref: { kind: "category", scope: CATEGORY_LABELS[cat], topic: CRITERION_LABELS[c], level },
         text: `${CRITERION_LABELS[c]}: ${LEVEL_LABELS[level]}`,
         detail: L("söylediğin", "you said"),
         change: (t) => {
@@ -64,7 +65,7 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
     entries.push({
       key: `r:${label}`,
       scope: CATEGORY_LABELS.stay,
-      short: L(`${label} şart`, `${label} required`),
+      pref: { kind: "requirement", topic: label },
       text: L(`Şart: ${label}`, `Required: ${label}`),
       detail: L("uymayan seçenek önerilmez", "options that don't fit aren't suggested"),
       change: (t) => ({ ...t, requirements: (t.requirements ?? []).filter((x) => requirementLabel(x) !== label) }),
@@ -74,7 +75,7 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
     entries.push({
       key: `a:${a}`,
       scope: CATEGORY_LABELS.stay,
-      short: L(`${a} istiyorsun`, `you want ${amenityLabel(a)}`),
+      pref: { kind: "amenity", topic: L(a, amenityLabel(a)) },
       text: L(`İstenen: ${a}`, `Wanted: ${amenityLabel(a)}`),
       detail: L("olanağı olan öne geçer", "places that have it rank higher"),
       change: (t) => ({ ...t, wantedAmenities: (t.wantedAmenities ?? []).filter((x) => x !== a) }),
@@ -91,7 +92,7 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
     entries.push({
       key: `ok:${key}`,
       scope: listing.name,
-      short: L(`${lowerText(finding.text)} sorun değil`, `${lowerText(finding.text)} is fine`),
+      pref: { kind: "fine", topic: finding.text },
       text: L(`Sorun değil: ${finding.text}`, `Fine by you: ${finding.text}`),
       detail: L("söylediğin", "you said"),
       action: async () => {
@@ -112,7 +113,7 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
     entries.push({
       key: `must:${key}`,
       scope: listing.name,
-      short: L(`${lowerText(finding.text)} önemli`, `${lowerText(finding.text)} matters`),
+      pref: { kind: "matters", topic: finding.text },
       text: L(`Önemli: ${finding.text}`, `Matters: ${finding.text}`),
       detail: L("söylediğin · elendi", "you said · ruled out"),
       action: async () => {
@@ -132,7 +133,7 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
     entries.push({
       key: `n:${p.id}`,
       scope: p.tripId ? L("Tüm gezi", "Whole trip") : L("Tüm geziler", "All trips"),
-      short: p.text,
+      pref: { kind: "note", topic: p.text },
       text: p.text,
       detail: `${L("not", "note")}${
         wishes.length ? L(` · ${wishes.join(", ")} önemli sayılıyor`, ` · ${wishes.join(", ")} counted as important`) : ""
@@ -147,10 +148,7 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
     entries.push({
       key: `s:${s.id}`,
       scope: L("Tüm gezi", "Whole trip"),
-      short:
-        s.delta > 0
-          ? L(`${lowerText(CRITERION_LABELS[s.criterion])} önemli`, `${lowerText(CRITERION_LABELS[s.criterion])} matters`)
-          : L(`${lowerText(CRITERION_LABELS[s.criterion])} ikinci planda`, `${lowerText(CRITERION_LABELS[s.criterion])} matters less`),
+      pref: { kind: "signal", topic: CRITERION_LABELS[s.criterion], up: s.delta > 0 },
       text: s.text,
       detail: L(`onayladığın · ${s.evidence}`, `you confirmed · ${s.evidence}`),
       change: (t) => ({
@@ -166,14 +164,16 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
 }
 
 /**
- * The hero's "Seni böyle anladım" line: the first topics and a waiting question, closed; open, a
- * window over the page (it doesn't push anything) with each entry, its scope and a ×.
+ * The hero card's "Tercihler" (v9; "Seni böyle anladım" before): at most two rows of what was understood
+ * (lib/preferences.ts) and "+7 tercih ›"; a tap opens the window over the card (it doesn't push anything)
+ * with each entry, its scope, where it came from and a ×, and the one waiting question.
  */
-export function IntentRow({ trip, decisions }: { trip: Trip; decisions: Decisions | null }) {
+export function Preferences({ trip, decisions }: { trip: Trip; decisions: Decisions | null }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const { entries, guess } = intentEntries(trip, decisions);
   const nothing = !entries.length && !guess;
+  const appear = useAppear(entries.length > 0);
   // Answering the last question leaves nothing to show: close, so a later entry doesn't appear already open.
   useEffect(() => {
     if (nothing) setOpen(false);
@@ -186,25 +186,54 @@ export function IntentRow({ trip, decisions }: { trip: Trip; decisions: Decision
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [open]);
-  if (nothing) {
-    return <div className="hx-intent empty">{L("Konuştukça ve seçtikçe seni tanıyacağım; anladıklarımı burada göreceksin.", "As you chat and choose, I'll get to know you. What I understand shows up here.")}</div>;
-  }
-  const preview = entries.slice(0, 3).map((e) => e.short).join(", ");
+  const { rows, rest } = preferenceRows(entries.map((e) => e.pref));
+  const toggle = () => setOpen(!open);
+  const question = guess && (
+    <span className="ask-mark">
+      <i aria-hidden />
+      {L("1 soru", "1 question")}
+    </span>
+  );
   return (
-    <div className={`hx-intent${open ? " open" : ""}`} ref={box}>
-      <button className="hx-intent-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <HeroIcon name="spark" size={18} className="spark" />
-        <span className="title">{L("Seni böyle anladım", "What I understood")}</span>
-        <span className="meta">
-          {preview && ` · ${preview}`}
-          {entries.length > 3 && ` · +${entries.length - 3}`}
-          {guess && L(" · 1 soru", " · 1 question")}
-        </span>
-        {guess && <span className="q" />}
-        <HeroIcon name="chevDown" size={18} className="chev" />
-      </button>
+    <div className={`hx-block hx-prefs${open ? " open" : ""}`} ref={box}>
+      {nothing ? (
+        <h3 className="hx-h">{L("Tercihler", "Preferences")}</h3>
+      ) : (
+        <button className="hx-h" aria-expanded={open} onClick={toggle}>
+          {L("Tercihler", "Preferences")}
+        </button>
+      )}
+      {entries.length > 0 ? (
+        <div key="full" className={`hx-prefs-body${appear}`}>
+          <dl className="hx-prefs-rows">
+            {rows.slice(0, 2).map((r, n) => (
+              <div key={n}>
+                <dt>{r.label}</dt>
+                <dd>{r.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <button className="hx-link hx-prefs-link" aria-expanded={open} onClick={toggle}>
+            <span>{rest > 0 ? L(`+${rest} tercih`, `+${rest} more`) : L("Düzenle", "Edit")}</span>
+            <HeroIcon name="chevRight" size={18} />
+            {question && <span className="sep">·</span>}
+            {question}
+          </button>
+        </div>
+      ) : (
+        <div key="empty" className="hx-prefs-body">
+          <p className="hx-empty">{L("Konuştukça ve seçtikçe seni tanıyacağım.", "As you chat and choose, I'll get to know you.")}</p>
+          {guess && (
+            <button className="hx-link hx-prefs-link" aria-expanded={open} onClick={toggle}>
+              {question}
+              <HeroIcon name="chevRight" size={18} />
+            </button>
+          )}
+        </div>
+      )}
       {open && (
-        <div className="hx-intent-pop">
+        <div className="hx-prefs-pop" role="dialog" aria-label={L("Seni böyle anladım", "What I understood")}>
+          <div className="pop-title">{L("Seni böyle anladım", "What I understood")}</div>
           {entries.length > 0 && (
             <ul>
               {entries.map((e) => (

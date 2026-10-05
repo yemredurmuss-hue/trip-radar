@@ -1,6 +1,7 @@
-// The trip's style under the hero's title: at most two words the model picks from a fixed list
+// The trip's style on the hero's card: at most two words the model picks from a fixed list
 // ("Romantik", "Dingin") for what it understood and the cities, and one for the money, worked out
 // from the budget set (per person per day). Nothing outside the list is shown; no budget, no money word.
+// Each word has its own icon and colours (hero v9); the money's is a neutral grey with a wallet.
 import { convert, type Rates } from "./currency";
 import { L } from "./i18n";
 
@@ -21,6 +22,35 @@ export const STYLES = {
 
 export type StyleId = keyof typeof STYLES;
 export const STYLE_MAX = 2;
+
+/** A chip's icon (drawn by the hero's icon set, app/Icons.tsx). */
+export type StyleIcon = "mountain" | "sparkle" | "heart" | "leaf" | "columns" | "tree" | "fork" | "wave" | "buildings" | "family" | "note" | "run" | "wallet";
+
+/** Each style's icon and colours (background / text), from the hero v9 spec. */
+export const STYLE_META: Record<StyleId, { icon: StyleIcon; bg: string; fg: string }> = {
+  adventure: { icon: "mountain", bg: "#e3f3ea", fg: "#1f7a4d" },
+  luxury: { icon: "sparkle", bg: "#ece8ff", fg: "#5b45e0" },
+  romantic: { icon: "heart", bg: "#fde8ee", fg: "#b4235a" },
+  calm: { icon: "leaf", bg: "#e6f2f1", fg: "#23786f" },
+  culture: { icon: "columns", bg: "#f3ebe0", fg: "#8a5a1c" },
+  nature: { icon: "tree", bg: "#e8f3e0", fg: "#3f7a1c" },
+  food: { icon: "fork", bg: "#fdeee3", fg: "#b4532a" },
+  beach: { icon: "wave", bg: "#e3f0fb", fg: "#1d63b8" },
+  city: { icon: "buildings", bg: "#eceef3", fg: "#3d4a63" },
+  family: { icon: "family", bg: "#fff3dc", fg: "#9a6400" },
+  nightlife: { icon: "note", bg: "#f3e6fb", fg: "#7b2fa8" },
+  active: { icon: "run", bg: "#e6f1fb", fg: "#2563c9" },
+};
+
+/** The money's chip: neutral, with a wallet. */
+const BUDGET_META = { icon: "wallet", bg: "#efede8", fg: "#3a3a3c" } as const;
+
+export interface StyleChip {
+  label: string;
+  icon: StyleIcon;
+  bg: string;
+  fg: string;
+}
 
 /** What the model answered, kept only where it's on the list: at most two, each once. */
 export function acceptStyle(ids: string[]): StyleId[] {
@@ -50,8 +80,11 @@ export function budgetLevel(budget: { amount: number; currency: string } | null 
 export const budgetLevelText = (level: BudgetLevel): string =>
   ({ low: L("Ekonomik", "Budget"), mid: L("Orta bütçe", "Mid-range"), high: L("Yüksek bütçe", "High budget") })[level];
 
-/** The chips under the title: the style words, then the money's. */
-export const styleChips = (ids: StyleId[], level: BudgetLevel | null): string[] => [...ids.map((id) => STYLES[id]()), ...(level ? [budgetLevelText(level)] : [])];
+/** The hero card's chips: the style words, then the money's. */
+export const styleChips = (ids: StyleId[], level: BudgetLevel | null): StyleChip[] => [
+  ...ids.map((id) => ({ label: STYLES[id](), ...STYLE_META[id] })),
+  ...(level ? [{ label: budgetLevelText(level), ...BUDGET_META }] : []),
+];
 
 /** The model's instructions: the list it may pick from, in the board's language. */
 export const stylePrompt = () =>

@@ -57,7 +57,7 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
         <div className="cat-more" aria-label={L("Başka bir şey ekle", "Add something else")}>
           <span>{L("Ekle:", "Add:")}</span>
           {empty.map((s) => (
-            <button key={s.id} type="button" className="cat-chip" style={{ "--c": SECTION_META[s.id].color } as React.CSSProperties} onClick={() => onAdd(s.id, null)}>
+            <button key={s.id} type="button" className="cat-chip" data-section-chip={s.id} style={{ "--c": SECTION_META[s.id].color } as React.CSSProperties} onClick={() => onAdd(s.id, null)}>
               <KindIcon kind={SECTION_META[s.id].icon} size={15} />
               {SECTION_META[s.id].short()}
             </button>

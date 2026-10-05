@@ -1,4 +1,7 @@
 :root {
+  /* The hero v9's colours (hero, its card, the view tabs). */
+  --hx-ink: #1c1a33; --hx-muted: #6b6790; --hx-accent: #5b45e0; --hx-lav: #ece8ff;
+  --hx-mint: #eaf7f2; --hx-mintbar: #2cc79a; --hx-card: #f7f5f1; --hx-line: #e7e4dd;
   --text: #111114;
   --muted: #6b665f;
   --line: #ececef;
@@ -655,9 +658,13 @@ a.sc-source.link:focus-visible { outline: 2px solid var(--accent); outline-offse
 /* ---------- the plan and the itinerary: two views of the trip ---------- */
 .today-chip { align-self: flex-start; padding: 1px 9px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 700; }
 
-.view-tabs { display: flex; gap: 4px; max-width: 480px; margin: 0 0 16px; padding: 4px; border-radius: 14px; background: #efebe4; }
-.view-tabs button { flex: 1; border: 0; border-radius: 10px; padding: 8px 14px; background: none; font-weight: 700; font-size: 14.5px; color: var(--muted); }
-.view-tabs button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(40, 30, 20, .1); }
+/* Underlined tabs, centred (hero v9): the one on in ink with a 3px accent line, a thin line between. */
+.view-tabs { display: flex; justify-content: center; flex-wrap: wrap; margin: 4px 0 20px; }
+.view-tabs button { position: relative; border: 0; padding: 10px 24px 14px; background: none; font-size: 17px; font-weight: 400; color: var(--hx-muted); }
+.view-tabs button + button::before { content: ""; position: absolute; left: 0; top: 13px; width: 1px; height: 20px; background: var(--hx-line); }
+.view-tabs button:hover { color: var(--hx-ink); }
+.view-tabs button.on { color: var(--hx-ink); font-weight: 600; }
+.view-tabs button.on::after { content: ""; position: absolute; left: 18px; right: 18px; bottom: 0; height: 3px; border-radius: 3px; background: var(--hx-accent); }
 .day-chev { font-size: 11px; color: var(--muted); font-weight: 400; }
 .day-left { padding: 1px 8px; border-radius: 999px; background: #fff1d9; color: #8a5300; font-size: 12.5px; font-weight: 700; }
 
@@ -918,172 +925,205 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .share-settings { margin: 18px 0 8px; border-top: 1px solid var(--line); padding-top: 12px; }
 .share-settings summary { cursor: pointer; font-weight: 600; font-size: 15px; }
 
-/* ---------- 0.30: the hero (approved mockup docs/mockups/2026-10-05-hero-v8.html) ----------
-   Left: one landscape photo per city, a tab with the dates and countdown, the title, one paragraph, the plan
-   in one line and "what I understood". Right: the facts column, as tall as the story. Type: 40 title · 22 count ·
-   17 text/value · 15 small line · 13 label. Colour: the photo and the category colours (icons, budget bar) only. */
+/* ---------- the hero v9 (0.35): docs/superpowers/specs/2026-10-05-hero-v9-design.md ----------
+   Left: the photo per city (switcher top left, countdown and ••• top right), the title, the dates, one muted
+   sentence, the plan in four cells and "Rezervasyonların". Right: one card, blocks with a hairline between.
+   Type: 40 title · 20 card headings and the budget · 17 text · 15–16 lines · 13–14 small. Colours: the --hx-
+   tokens (:root), the category colours on the plan line's icons, each style's own on its chip. */
 .hx {
-  --hx-ink: #1d1d1f; --hx-gray: #6e6e73; --hx-line: #e2ded6; --hx-soft: #efede8;
-  display: grid; grid-template-columns: 1fr 300px; gap: 24px; align-items: stretch; margin: 8px 0 22px; color: var(--hx-ink);
+  display: grid; grid-template-columns: minmax(0, 1.82fr) minmax(320px, 1fr); gap: 24px; align-items: start; margin: 8px 0 24px; color: var(--hx-ink);
 }
 .hx-left { position: relative; min-width: 0; }
+.hx button { font-family: inherit; }
 
-.hx-photo { position: relative; height: 300px; border-radius: 22px; overflow: hidden; background: #ececf0; }
+/* Fades in what arrived after the hero was drawn (an empty block filled). */
+@keyframes hx-appear { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.hx-appear { animation: hx-appear .3s ease-out; }
+@media (prefers-reduced-motion: reduce) { .hx-appear { animation: none; } }
+
+.hx-photo { position: relative; aspect-ratio: 1.92; border-radius: 22px; overflow: hidden; background: linear-gradient(135deg, #eeebf7 0%, #e7e4ee 55%, #efece6 100%); }
 .hx-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .5s; }
 .hx-photo img.on { opacity: 1; }
+.hx-ph { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 0 24px; color: #b3aec8; text-align: center; }
+.hx-ph span { font-size: 14px; color: var(--hx-muted); }
 .hx-cities {
-  position: absolute; top: 16px; left: 16px; display: flex; gap: 4px; padding: 4px; border-radius: 999px; max-width: calc(100% - 32px - 52px); overflow-x: auto;
-  background: rgba(255,255,255,.75); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  position: absolute; top: 16px; left: 16px; display: flex; gap: 2px; padding: 4px; border-radius: 999px; max-width: calc(100% - 32px - 200px); overflow-x: auto; scrollbar-width: none;
+  background: rgba(255,255,255,.82); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
 }
-.hx-cities button { flex: none; border: 0; background: transparent; padding: 6px 13px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--hx-gray); }
-.hx-cities button.on { background: #fff; color: var(--hx-ink); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-.hx-busy {
-  position: absolute; right: 60px; top: 16px; height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 10px;
-  background: rgba(255,255,255,.9); font-size: 13px; font-weight: 500;
-}
+.hx-cities button { flex: none; height: 40px; border: 0; background: transparent; padding: 0 22px; border-radius: 999px; font-size: 16px; font-weight: 500; color: var(--hx-muted); }
+.hx-cities button.on { background: #fff; color: var(--hx-ink); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.hx-badges { position: absolute; top: 16px; right: 70px; display: flex; align-items: center; gap: 8px; }
+.hx-count { height: 40px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 999px; background: var(--hx-lav); color: var(--hx-accent); font-size: 15px; font-weight: 500; white-space: nowrap; }
+.hx-busy { height: 32px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 999px; background: #fff; font-size: 13px; font-weight: 500; white-space: nowrap; }
 .hx-busy i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #d2d2d7; border-top-color: var(--hx-ink); animation: hx-spin 1s linear infinite; }
 @keyframes hx-spin { to { transform: rotate(360deg); } }
 .hx-menu { position: absolute; right: 16px; top: 16px; z-index: 6; }
-.hx-menu .menu-btn { color: var(--hx-ink); background: rgba(255,255,255,.9); }
+.hx-menu .menu-btn { width: 40px; height: 40px; border-radius: 50%; color: var(--hx-ink); background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
 
-.hx-tab {
-  position: relative; margin: -26px 0 0 24px; display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; max-width: calc(100% - 48px);
-  background: #fff; border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.08); font-size: 15px;
+.hx-story { margin-top: 20px; }
+.hx-story h1 { margin: 0; font-size: 40px; line-height: 1.12; font-weight: 700; letter-spacing: -.025em; color: var(--hx-ink); overflow-wrap: anywhere; }
+.hx-when { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 10px; font-size: 17px; color: var(--hx-ink); }
+.hx-when svg { flex: none; }
+.hx-when .dot { margin: 0 2px; }
+.hx-when.empty { color: var(--hx-muted); }
+.hx-lead { margin: 8px 0 0; font-size: 17px; line-height: 1.5; color: var(--hx-muted); }
+
+/* The plan in four cells (icon in its category's colour, "3 uçuş"); a zero stays, quiet. */
+.hx-tally { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 22px; }
+.hx-tally button {
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 6px 4px; border: 0; border-radius: 14px;
+  background: none; font-size: 17px; color: var(--hx-ink); font-variant-numeric: tabular-nums;
 }
-.hx-tab b { font-weight: 600; white-space: nowrap; }
-.hx-tab .sep { color: #c7c7cc; }
-.hx-tab svg { flex: none; color: var(--hx-gray); }
-.hx-tab a { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
-.hx-tab a:hover { text-decoration: underline; }
+.hx-tally button:hover { background: rgba(28,26,51,.04); }
+.hx-tally button + button::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 36px; margin-top: -18px; background: var(--hx-line); }
+.hx-tally svg { flex: none; }
+.hx-tally span { white-space: nowrap; }
+.hx-tally .c-flight svg { color: #6a4fe0; }
+.hx-tally .c-stay svg { color: #23998b; }
+.hx-tally .c-transport svg { color: #c58a2e; }
+.hx-tally .c-experience svg { color: #a8336f; }
+.hx-tally button.zero, .hx-tally button.zero svg { color: var(--hx-muted); opacity: .7; }
 
-.hx-story { margin-top: 22px; }
-.hx-story h1 { margin: 0; font-size: 40px; line-height: 1.1; font-weight: 700; letter-spacing: -.025em; }
-.hx-lead { margin: 12px 0 0; font-size: 17px; line-height: 1.55; color: #3a3a3c; max-width: 540px; }
+/* "Rezervasyonların": the sections' "3/4"s added up, a bar, the one dark button. */
+.hx-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 26px; margin-top: 16px; padding: 22px; border-radius: 20px; background: var(--hx-mint); }
+.hx-progress-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.hx-progress-head > b { font-size: 17px; font-weight: 700; color: var(--hx-ink); }
+.hx-progress-meta { display: inline-flex; align-items: baseline; gap: 10px; font-size: 15px; color: var(--hx-muted); }
+.hx-progress-count { padding: 0; border: 0; background: none; font-size: 15px; color: var(--hx-muted); font-variant-numeric: tabular-nums; }
+.hx-progress-count .dot { margin: 0 4px; }
+.hx-progress-count b { color: var(--hx-ink); font-weight: 600; }
+button.hx-progress-count:hover, button.hx-progress-count[aria-expanded="true"] { text-decoration: underline; text-underline-offset: 3px; }
+.hx-deadline { padding: 2px 10px; border: 0; border-radius: 999px; background: #fff1d9; color: #8a5300; font-size: 14px; font-weight: 600; }
+.hx-deadline[aria-expanded="true"] { background: #f6dfb3; }
+.hx-bar { height: 12px; margin-top: 14px; border-radius: 999px; overflow: hidden; background: #dfe4e8; }
+.hx-bar i { display: block; height: 100%; border-radius: 999px; background: var(--hx-mintbar); transition: width .4s; }
+.hx-go { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 52px; padding: 0 22px; border: 0; border-radius: 14px; background: var(--hx-ink); color: #fff; font-size: 17px; font-weight: 500; white-space: nowrap; }
+.hx-go:hover { background: #2c2950; }
+.hx-go svg { flex: none; }
+.hx + .todo-list { margin: -8px 0 24px; max-width: none; }
 
-/* The plan in one line (0.34.1): icon, number, name; a zero isn't shown. */
-.hx-stats { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 20px; font-size: 16px; color: var(--hx-ink); }
-.hx-stats > span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
-.hx-stats b { font-weight: 600; font-variant-numeric: tabular-nums; }
-.hx-stats svg { flex: none; }
+/* The card on the right: blocks one under the other, a hairline and 20px between. */
+.hx-side { min-width: 0; padding: 24px; border-radius: 22px; background: var(--hx-card); border: 1px solid #efebe3; box-shadow: 0 1px 2px rgba(40,30,20,.03), 0 8px 24px rgba(40,30,20,.05); }
+.hx-block { position: relative; }
+.hx-block + .hx-block { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--hx-line); }
+.hx-h { display: block; margin: 0; padding: 0; border: 0; background: none; font-size: 20px; font-weight: 700; letter-spacing: -.01em; color: var(--hx-ink); text-align: left; }
+button.hx-h:hover { color: var(--hx-accent); }
+.hx-empty { margin: 8px 0 0; font-size: 15px; line-height: 1.45; color: var(--hx-muted); }
+.hx-link { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; font-size: 16px; color: var(--hx-accent); }
+.hx-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
-/* Category colours: only here (the plan line's icons) and in the budget's window. */
-.hx-stats .c-flight svg { color: #6a4fe0; }
-.hx-stats .c-stay svg { color: #23998b; }
-.hx-stats .c-transport svg { color: #c58a2e; }
-.hx-stats .c-experience svg { color: #a8336f; }
-.hx-meter .c-flight, .hx-pop i.c-flight { background: #6a4fe0; }
-.hx-meter .c-stay, .hx-pop i.c-stay { background: #23998b; }
-.hx-meter .c-transport, .hx-pop i.c-transport { background: #c58a2e; }
-.hx-meter .c-activity, .hx-pop i.c-activity { background: #a8336f; }
-.hx-meter .c-other, .hx-pop i.c-other { background: #8e8e93; }
-
-/* "Seni böyle anladım": one line; the window opens over the page and pushes nothing. */
-.hx-intent { position: relative; margin-top: 18px; border-top: 1px solid var(--hx-line); }
-.hx-intent.empty { padding-top: 14px; font-size: 15px; color: var(--hx-gray); }
-.hx-intent-toggle { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 0 0; border: 0; background: none; text-align: left; font-size: 15px; color: var(--hx-ink); }
-.hx-intent-toggle .spark { flex: none; color: #6a4fe0; }
-.hx-intent-toggle .title { flex: none; }
-/* The topics wrap under each other rather than end in "…" (DESIGN.md: no text is cut). */
-.hx-intent-toggle .meta { min-width: 0; color: var(--hx-gray); overflow-wrap: anywhere; }
-.hx-intent-toggle .q { flex: none; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #6a4fe0; margin-left: -6px; }
-.hx-intent-toggle .chev { flex: none; margin-left: auto; color: #aeaeb2; transition: transform .2s; }
-.hx-intent.open .chev { transform: rotate(180deg); }
-.hx-intent-pop {
-  position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 10px); padding: 16px 18px; border-radius: 16px; background: #fff;
-  box-shadow: 0 12px 40px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.04); font-size: 15px; line-height: 1.5;
+/* Who goes: overlapping initials, the names, how many; then the style chips. */
+.hx-people { display: flex; align-items: center; gap: 16px; width: 100%; padding: 0; border: 0; background: none; text-align: left; color: inherit; }
+button.hx-people:hover b { color: var(--hx-accent); }
+.hx-avatars { flex: none; display: inline-flex; }
+.hx-avatars i {
+  width: 52px; height: 52px; margin-left: -12px; border-radius: 50%; border: 3px solid #fff; display: grid; place-items: center; font-style: normal; font-size: 18px; font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
 }
-.hx-intent-pop ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.hx-intent-pop li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.hx-intent-pop li small { font-size: 13px; color: var(--hx-gray); }
-.hx-intent-pop li .x { flex: none; border: 0; background: none; color: #aeaeb2; font-size: 17px; line-height: 1; padding: 0 2px; }
-.hx-intent-pop li .x:hover { color: #c62828; }
-.hx-intent-pop .ask { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hx-line); }
-.hx-intent-pop .ask.first { margin-top: 0; padding-top: 0; border-top: 0; }
-.hx-intent-pop .ask p { margin: 0 0 8px; }
-.hx-intent-pop .ask .muted { color: var(--hx-gray); }
-.hx-intent-pop .ask button { height: 32px; padding: 0 14px; border-radius: 999px; font-size: 14px; border: 1px solid #d2d2d7; background: #fff; color: var(--hx-ink); margin-right: 6px; }
-.hx-intent-pop .ask button.yes { background: var(--hx-ink); border-color: var(--hx-ink); color: #fff; }
-.hx-intent-pop .edit { margin-top: 10px; font-size: 13px; color: var(--hx-gray); }
-.hx-tag { display: inline-block; font-size: 12px; color: var(--hx-gray); background: var(--hx-soft); border-radius: 6px; padding: 1px 7px; margin-right: 6px; vertical-align: 1px; }
+.hx-avatars i:first-child { margin-left: 0; }
+.hx-avatars .p0 { background: #e7e2fb; color: #4b36b8; }
+.hx-avatars .p1 { background: #d8f0ea; color: #11695c; }
+.hx-avatars .p2 { background: #fbe3d4; color: #9a3f12; }
+.hx-avatars .p3 { background: #f8dfe9; color: #8b2554; }
+.hx-avatars .more { background: #fff; color: var(--hx-muted); font-size: 16px; }
+.hx-avatars .dashed { background: none; border: 2px dashed #cfcadc; color: #b3aec8; box-shadow: none; }
+.hx-who-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hx-who-text b { font-size: 17px; font-weight: 600; color: var(--hx-ink); overflow-wrap: anywhere; }
+.hx-who-text small { font-size: 15px; color: var(--hx-muted); }
+.hx-who-text small.accent { color: var(--hx-accent); }
+.hx-share { margin-top: 8px; font-size: 13px; color: var(--hx-muted); }
+.hx-share .err { color: var(--danger); }
+.hx-styles { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.hx-styles span { height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 0 18px 0 14px; border-radius: 999px; font-size: 16px; font-weight: 500; white-space: nowrap; }
+.hx-styles svg { flex: none; }
+.hx-styles .empty { padding: 0 16px; border: 1.5px dashed #d6d1e3; color: var(--hx-muted); font-weight: 400; font-size: 15px; white-space: normal; }
 
-/* The facts column (0.34.3): one type scale, one grid. Every line: an 18px grey icon, a 14px grey label, the
-   value right-aligned in 15px medium; what's secondary (the budget's split, the cities by the weather, the
-   small things at the bottom) is 13px grey. Lines are 44px high with a hairline between. */
-.hx-side { min-width: 0; background: var(--hx-soft); border-radius: 22px; padding: 8px 20px 20px; display: flex; flex-direction: column; }
-.hx-rows { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; margin-bottom: 12px; }
-.hx-fact, .hx-budget .top { display: grid; grid-template-columns: 18px auto minmax(0, 1fr); gap: 10px; align-items: center; }
-.hx-fact { min-height: 44px; padding: 4px 0; border-bottom: 1px solid var(--hx-line); }
-.hx-fact > svg, .hx-budget .top svg { color: var(--hx-gray); }
-.hx-fact small, .hx-budget .top small { font-size: 14px; color: var(--hx-gray); white-space: nowrap; }
-.hx-fact strong, .hx-budget .top strong { justify-self: end; text-align: right; font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
-.hx-fact a { color: inherit; text-decoration: none; }
-.hx-fact a:hover { text-decoration: underline; }
-.hx-share { margin: 0 0 0 28px; padding: 2px 0 8px; font-size: 13px; color: var(--hx-gray); border-bottom: 1px solid var(--hx-line); }
-.hx-share .err { color: #c62828; }
-.hx-people { display: inline-flex; vertical-align: middle; }
-.hx-people i { width: 26px; height: 26px; margin-left: -6px; border-radius: 50%; border: 2px solid var(--hx-soft); display: grid; place-items: center; font-style: normal; font-size: 11px; font-weight: 600; }
-.hx-people i:first-child { margin-left: 0; }
-.hx-people .p0 { background: #e7e2fb; color: #4b36b8; }
-.hx-people .p1 { background: #d8f0ea; color: #11695c; }
-.hx-people .p2 { background: #fbe3d4; color: #9a3f12; }
-.hx-people .p3 { background: #f8dfe9; color: #8b2554; }
-.hx-people .more { background: #fff; color: var(--hx-gray); }
-.hx-weather { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 2px 10px; }
-.hx-weather > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-.hx-weather small { font-size: 13px; color: var(--hx-gray); font-weight: 400; }
-.hx-weather .sky-sun { color: #d29a00; }
-.hx-weather .sky-partly { color: #b9891a; }
-.hx-weather .sky-cloud { color: #8e8e93; }
-.hx-weather .sky-rain { color: #2563c9; }
-.hx-budget { position: relative; padding: 10px 0 10px; border-bottom: 1px solid var(--hx-line); cursor: pointer; }
-.hx-budget .top { min-height: 24px; }
-.hx-budget .legend { display: flex; justify-content: space-between; gap: 6px; margin-top: 6px; font-size: 12.5px; color: var(--hx-gray); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.hx-budget .legend i { display: inline-block; width: 7px; height: 7px; border-radius: 2px; margin-right: 4px; background: #d6d1c7; vertical-align: 1px; }
-.hx-meter .booked, .hx-budget .legend i.booked { background: #1f8f4e; }
-.hx-meter .planned, .hx-budget .legend i.planned { background: #f0a53a; }
-.hx-over { color: #c62828; font-weight: 500; }
-.hx-meter { display: flex; gap: 2px; height: 6px; margin-top: 8px; border-radius: 999px; overflow: hidden; background: #dcd7cd; }
-.hx-meter i { display: block; height: 100%; }
-.hx-minis { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 8px; padding-top: 12px; font-size: 13px; color: var(--hx-gray); }
-.hx-minis span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-.hx-minis svg { flex: none; }
-
-/* The style under the title (0.34.3): quiet chips, the same size as the plan line's words are small. */
-.hx-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-.hx-chips span { height: 28px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 999px; background: var(--hx-soft); color: #3a3a3c; font-size: 14px; }
+/* The budget: the figure big, booked / planned / free (or over) a line each; a tap splits it. */
+.hx-budget-btn { display: block; width: 100%; padding: 0; border: 0; background: none; text-align: left; color: inherit; cursor: pointer; }
+.hx-budget-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.hx-budget-top strong { font-size: 20px; font-weight: 700; color: var(--hx-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hx-budget-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; font-size: 16px; color: var(--hx-muted); font-variant-numeric: tabular-nums; }
+.hx-budget-line > span { display: inline-flex; align-items: center; gap: 12px; }
+.hx-budget-line i { width: 10px; height: 10px; border-radius: 50%; background: #c9c5bc; }
+.hx-budget-line b { font-weight: 500; color: var(--hx-ink); white-space: nowrap; }
+.hx-budget-line.booked i { background: #22c08e; }
+.hx-budget-line.planned i { background: #f5a524; }
+.hx-budget-line.over i { background: #d93a3a; }
+.hx-budget-line.over, .hx-budget-line.over b { color: #c62828; }
+.hx-budget-btn:hover .hx-h { color: var(--hx-accent); }
 .hx-pop {
-  position: absolute; z-index: 6; right: 0; top: calc(100% + 6px); width: 300px; max-width: calc(100vw - 32px); padding: 16px 18px; border-radius: 16px; background: #fff; font-size: 15px; cursor: default;
+  position: absolute; z-index: 7; right: -8px; left: -8px; top: calc(100% + 8px); padding: 16px 18px; border-radius: 16px; background: #fff; font-size: 15px; cursor: default; color: var(--hx-ink);
   box-shadow: 0 12px 40px rgba(0,0,0,.16), 0 0 0 1px rgba(0,0,0,.04);
 }
 .hx-pop .line { display: flex; justify-content: space-between; padding: 5px 0; font-variant-numeric: tabular-nums; }
 .hx-pop .line i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 8px; }
 .hx-pop .sep { border-top: 1px solid var(--hx-line); margin: 10px 0; }
-.hx-pop .left { color: var(--hx-gray); font-size: 13px; margin-top: 8px; }
+.hx-pop .left { color: var(--hx-muted); font-size: 13px; margin-top: 8px; }
+.hx-pop i.c-flight { background: #6a4fe0; }
+.hx-pop i.c-stay { background: #23998b; }
+.hx-pop i.c-transport { background: #c58a2e; }
+.hx-pop i.c-activity { background: #a8336f; }
+.hx-pop i.c-other { background: #8e8e93; }
 
-.hx-next { display: block; width: 100%; padding: 12px 16px; border: 0; border-radius: 14px; background: var(--hx-ink); color: #fff; text-align: left; }
-.hx-next small { display: block; font-size: 13px; color: rgba(255,255,255,.65); }
-.hx-next span { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 16px; font-weight: 600; margin-top: 1px; }
-.hx-next svg { flex: none; }
-/* The next step is a whole sentence ("Lisboa Loft: ücretsiz iptal 6 gün içinde biter"): it wraps, never "…". */
-.hx-next em { min-width: 0; font-style: normal; }
-.hx-todo { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 10px; font-size: 13px; color: var(--hx-gray); }
-.hx-todo button { padding: 0; border: 0; background: none; font-size: 13px; color: var(--hx-gray); }
-.hx-todo button b { color: var(--hx-ink); font-weight: 600; }
-.hx-todo button:hover, .hx-todo button.on { color: var(--hx-ink); }
-.hx-todo button.on { text-decoration: underline; text-underline-offset: 3px; }
-.hx + .todo-list { margin: -10px 0 22px; max-width: none; }
+/* Tercihler ("Seni böyle anladım"): two rows, the link; the window opens over the card and pushes nothing. */
+.hx-prefs-rows { display: grid; gap: 12px; margin: 14px 0 0; }
+.hx-prefs-rows div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: 16px; color: var(--hx-muted); }
+.hx-prefs-rows dt { min-width: 0; overflow-wrap: anywhere; }
+.hx-prefs-rows dd { margin: 0; flex: none; text-align: right; }
+.hx-prefs-link { margin-top: 14px; flex-wrap: wrap; }
+.hx-prefs-link .sep { color: var(--hx-muted); }
+.hx-prefs-link .ask-mark { display: inline-flex; align-items: center; gap: 6px; }
+.hx-prefs-link .ask-mark i { width: 8px; height: 8px; border-radius: 50%; background: var(--hx-accent); }
+.hx-prefs-pop {
+  position: absolute; z-index: 7; left: -12px; right: -12px; top: calc(100% + 8px); padding: 16px 18px; border-radius: 16px; background: #fff; color: var(--hx-ink);
+  box-shadow: 0 12px 40px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.04); font-size: 15px; line-height: 1.5;
+}
+.hx-prefs-pop .pop-title { margin-bottom: 10px; font-weight: 700; }
+.hx-prefs-pop ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.hx-prefs-pop li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.hx-prefs-pop li small { font-size: 13px; color: var(--hx-muted); }
+.hx-prefs-pop li .x { flex: none; border: 0; background: none; color: #aeaeb2; font-size: 17px; line-height: 1; padding: 0 2px; }
+.hx-prefs-pop li .x:hover { color: #c62828; }
+.hx-prefs-pop .ask { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hx-line); }
+.hx-prefs-pop .ask.first { margin-top: 0; padding-top: 0; border-top: 0; }
+.hx-prefs-pop .ask p { margin: 0 0 8px; }
+.hx-prefs-pop .ask .muted { color: var(--hx-muted); }
+.hx-prefs-pop .ask button { height: 32px; padding: 0 14px; border-radius: 999px; font-size: 14px; border: 1px solid #d2d2d7; background: #fff; color: var(--hx-ink); margin-right: 6px; }
+.hx-prefs-pop .ask button.yes { background: var(--hx-ink); border-color: var(--hx-ink); color: #fff; }
+.hx-prefs-pop .edit { margin-top: 10px; font-size: 13px; color: var(--hx-muted); }
+.hx-tag { display: inline-block; font-size: 12px; color: var(--hx-muted); background: #f1efea; border-radius: 6px; padding: 1px 7px; margin-right: 6px; vertical-align: 1px; }
 
-/* Narrow: one column, the facts under the story; the window opens under its line. */
-@container panel (max-width: 720px) {
-  .hx { grid-template-columns: 1fr; }
-  .hx-photo { height: 200px; }
-  .hx-tab { margin-left: 12px; font-size: 14px; }
-  .hx-story h1 { font-size: 32px; }
-  .hx-intent-toggle .meta { display: none; }
+/* The country (flag, name) and each city's weather, a line between cities, two to a row. */
+.hx-countries { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 17px; color: var(--hx-ink); }
+.hx-countries > span { display: inline-flex; align-items: center; gap: 14px; }
+.hx-countries .flag { display: inline-grid; place-items: center; width: 34px; height: 26px; border-radius: 4px; overflow: hidden; font-style: normal; font-size: 30px; line-height: 1; }
+/* A line before every city; the one starting a row falls outside the box (margin -14px, overflow hidden), so
+   a city that wraps starts its row clean. The small things below wrap the same way. */
+.hx-weather { display: flex; flex-wrap: wrap; row-gap: 10px; margin: 16px 0 0 -14px; overflow: hidden; }
+.hx-weather > span { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; margin-left: -1px; padding: 0 14px; border-left: 1px solid var(--hx-line); font-size: 16px; color: var(--hx-ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hx-weather svg { flex: none; }
+.hx-weather .city { margin-right: 4px; }
+.hx-weather .sky-sun, .hx-weather .sky-partly { color: #f0a020; }
+.hx-weather .sky-cloud, .hx-weather .sky-rain { color: var(--hx-ink); }
+
+/* The small things: money, plug, time, language, a line between. */
+.hx-minis { display: flex; flex-wrap: wrap; align-items: center; row-gap: 10px; margin-left: -10px; overflow: hidden; font-size: 14px; color: var(--hx-muted); }
+.hx-minis span { display: inline-flex; align-items: center; gap: 7px; margin-left: -1px; padding: 0 10px; border-left: 1px solid var(--hx-line); white-space: nowrap; }
+.hx-minis svg { flex: none; color: var(--hx-ink); }
+
+/* Narrow: one column, the card under the story; the plan line 2×2, the button under the bar. */
+@container panel (max-width: 760px) {
+  .hx { grid-template-columns: minmax(0, 1fr); }
+  .hx-photo { aspect-ratio: auto; height: 220px; }
+  .hx-cities button { padding: 0 16px; }
   .hx-busy span { display: none; }
-  .hx-busy { padding: 0 11px; }
-  .hx-rows { justify-content: flex-start; }
-  .hx-intent-pop { position: static; margin-top: 12px; box-shadow: none; background: var(--hx-soft); }
+  .hx-busy { padding: 0 10px; }
+  .hx-story h1 { font-size: 32px; }
+  .hx-tally { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 4px; }
+  .hx-tally button:nth-child(3)::before { display: none; }
+  .hx-progress { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .hx-go { width: 100%; }
+  .hx-side { padding: 20px; }
 }
 
 /* ---------- plan cards (0.31): docs/mockups/2026-10-05-ulasim-v3.html + 2026-10-05-etkinlik-v4.html ---------- */

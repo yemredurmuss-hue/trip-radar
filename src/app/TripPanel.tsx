@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { requestProcessing } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
-import { listingKeyOf, nightsBetween, rankItems, routeUrl, tripDateRange } from "../lib/items";
+import { listingKeyOf, nightsBetween, rankItems, tripDateRange } from "../lib/items";
 import { buildLegs, type Leg } from "../lib/legs";
 import { buildTimeline } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
 import { cardFacts } from "../lib/cardFacts";
-import { budgetBar, decisionProgress, entryDomId, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
+import { budgetBar, decisionProgress, entryDomId, nextStepText, type DecisionProgress, type Todo } from "../lib/progress";
 import { cityKeyOf, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 import { L } from "../lib/i18n";
@@ -26,7 +26,7 @@ import { deleteItem, onRemoved } from "../lib/removal";
 import { undoSlot } from "../lib/undo";
 import { undoTrip, type Undoable } from "../lib/undoables";
 import { addQuick, templateLabel, TEMPLATES, type InsertAt, type Template, type TemplateId } from "../lib/templates";
-import { categorize, catDomKey, findInSections, sectionOfItem, type SectionId } from "../lib/categories";
+import { categorize, catDomKey, findInSections, planProgress, sectionOfItem, type SectionId } from "../lib/categories";
 import { firstField, type CardFocus } from "../lib/inlineEdit";
 import { newId } from "../lib/db";
 import { AddSheet } from "./cards/AddSheet";
@@ -38,10 +38,10 @@ import { UndoToast } from "./cards/UndoToast";
 import { isIdea } from "../lib/booking";
 import { findTarget, show, TodoList } from "./Progress";
 import { TripFacts } from "./TripFacts";
-import { cityRanges, countriesOf, heroTally } from "../lib/heroInfo";
+import { cityRanges, countryCodesOf, heroTally, type HeroTally } from "../lib/heroInfo";
 import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../lib/tripStyle";
 import { intentEntries } from "./IntentCard";
-import { TripHero, type HeroCity } from "./TripHero";
+import { TripHero, type HeroAction, type HeroCity } from "./TripHero";
 import { LegRow } from "./LegRow";
 import { DocsTab } from "./docs/DocsTab";
 import { CategoryPlan } from "./plan/CategoryPlan";
@@ -71,7 +71,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
   const [view, setView] = useState<TimelineMode | "docs">("plan");
-  const mapUrl = routeUrl(items);
   const working = openCaptures.filter((c) => c.status === "pending" || c.status === "processing");
   const failed = openCaptures.filter((c) => c.status === "error");
   const listings = decisions?.ctx.listings;
@@ -273,7 +272,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       return undefined; // no extension storage (a plain page)
     }
   }, []);
-  const [todoOpen, setTodoOpen] = useState<TodoKind | null>(null);
+  const [todoOpen, setTodoOpen] = useState<"all" | "deadline" | null>(null);
   // Another trip's to-do list isn't the one that was open.
   useEffect(() => {
     setTodoOpen(null);
@@ -300,19 +299,44 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   );
   /** A day card's photo: its city's (the hero's), else the trip's. */
   const cityImageOf = (city: string | null) => (city ? trip.cityImages?.[cityKeyOf(city)!] : null) ?? trip.heroImage ?? null;
-  const countries = useMemo(() => countriesOf(items), [items]);
+  const countries = useMemo(() => countryCodesOf(items), [items]);
   const places = useMemo(() => cityRanges(plan, cityNames, range), [plan, cityNames, range]);
   const flightGroups = plan.groups.filter((g) => g.category === "flight");
   const flightsDone = flightGroups.length > 0 && flightGroups.every((g) => g.items.some(settledItem));
   const mood = trip.mood?.key === moodFor && trip.mood.text ? trip.mood.text : null;
-  const lead = [
-    mood,
-    range
+  // One sentence: the mood, else what's waiting (the progress box shows the numbers, so never both).
+  const lead =
+    mood ??
+    (range
       ? statusSentence(progress.count, { flightsDone, waitingCity: waitingCityOf(progress, timeline, items) })
-      : L("Tarih ve şehir, kaydettikçe netleşir.", "Dates and cities fill in as you save."),
-  ]
-    .filter(Boolean)
-    .join(" ");
+      : L("Tarih ve şehir, kaydettikçe netleşir.", "Dates and cities fill in as you save."));
+  // "Rezervasyonların": the sections' "3/4"s added up, so the hero and the Plan's headers say the same thing.
+  const done = useMemo(() => planProgress(sections), [sections]);
+  /** A section of the Plan (a cell of the hero's plan line): opened and scrolled to (else its "Ekle" chip). */
+  const openSection = (id: SectionId) => {
+    const drawn = sections.some((s) => s.id === id && (s.entries.length || s.hidden.length));
+    setView("plan");
+    if (drawn) setOpened(id, true);
+    setTimeout(() => {
+      const el = document.querySelector(`[data-section="${id}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      else show(document.querySelector(`[data-section-chip="${id}"]`));
+    }, 60);
+  };
+  const first = progress.todos[0];
+  const unsettled = sections.find((s) => s.entries.length && s.settled < s.entries.length);
+  const action: HeroAction | null =
+    done.total === 0
+      ? { label: L("İlk kaydı ekle", "Add the first one"), run: () => addIn(null, null) }
+      : done.complete
+        ? onShare
+          ? { label: L("Paylaş", "Share"), title: L("Bu geziyi paylaş", "Share this trip"), run: onShare }
+          : null
+        : first
+          ? { label: L("Planı tamamla", "Finish the plan"), title: nextStepText(first), run: () => reveal(first.target) }
+          : unsettled
+            ? { label: L("Planı tamamla", "Finish the plan"), run: () => openSection(unsettled.id) }
+            : null;
   const decisionOf = (item: Item) => [...(decisions?.byGroup.values() ?? [])].find((d) => d.options.some((o) => o.item.id === item.id));
   /** A stay keeps its decision card; everything else is a plan card (cards/PlanCard.tsx). */
   const card: CardFor = (item, group, decision, ranked, onCompareGroup) =>
@@ -356,32 +380,34 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         <TripHero
           key={trip.id}
           trip={trip}
-          decisions={decisions}
           cities={cities}
           range={range}
+          estimated={!!range && !trip.confirmedDates && !plan.range}
           today={today}
           lead={lead}
-          chips={chips}
           tally={tally}
+          onTally={(kind) => openSection(TALLY_SECTION[kind])}
+          done={done}
+          progress={progress}
+          list={todoOpen}
+          onList={setTodoOpen}
+          action={action}
           working={working.length + reading}
           menu={menu}
         />
         <TripFacts
+          key={`facts:${trip.id}`}
+          trip={trip}
+          decisions={decisions}
           range={range}
-          estimated={!!range && !trip.confirmedDates && !plan.range}
           facts={facts}
           home={passport}
           countries={countries}
-          cities={cityNames}
           places={places}
-          mapUrl={mapUrl}
           today={today}
+          chips={chips}
           bar={bar}
-          progress={progress}
-          onGo={reveal}
           onShare={onShare}
-          todoOpen={todoOpen}
-          onTodo={setTodoOpen}
         />
       </section>
       {todoOpen && <TodoList progress={progress} open={todoOpen} onGo={reveal} />}
@@ -449,6 +475,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     </CardEnvContext.Provider>
   );
 }
+
+/** The hero's plan line cell → its section on the Plan ("deneyim" is Etkinlikler). */
+const TALLY_SECTION: Record<keyof HeroTally, SectionId> = { flight: "flight", stay: "stay", transport: "transport", experience: "activity" };
 
 /** The trip's cities for the hero's photos: in the order the nights go, each once; else the saved stays' cities. */
 function citiesOf(plan: Plan, items: Item[]): string[] {

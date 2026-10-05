@@ -1,155 +1,166 @@
-// The facts column beside the hero, one fact a line: how long, which country, the places, who goes, the
-// weather there, the budget (booked, planned, free), and the small things in one quiet row (money, plug,
-// time, language); then the next step and a quiet line of the rest. Unknown rows are left out.
-import { useEffect, useRef, useState, type ReactNode } from "react";
+// The hero's card on the right (hero v9, docs/superpowers/specs/2026-10-05-hero-v9-design.md), one block
+// under the other with a hairline between: who goes and the trip's style, the budget (booked, planned, free),
+// "Tercihler" (what was understood), the country and its weather, and the small things in one row (money,
+// plug, time, language). Every block has an empty state; what arrives later fades in.
+import { useEffect, useRef, useState } from "react";
 import { weatherTitle, type CityWeather } from "../lib/climate";
-import { currencyName, initials, offsetText, plugFit, plugFitText } from "../lib/heroInfo";
-import { formatPrice, nightsBetween } from "../lib/items";
+import { countryNames, currencyName, flagEmoji, initials, nPeople, offsetText, plugFit, plugFitText, travellersTitle } from "../lib/heroInfo";
+import { formatPrice } from "../lib/items";
 import { L, locale } from "../lib/i18n";
-import { nDays } from "../lib/i18nText";
-import { BUDGET_SLICES, nextStepText, type BudgetBar, type BudgetSlice, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
+import { BUDGET_SLICES, type BudgetBar, type BudgetSlice } from "../lib/progress";
 import type { TripFacts as Facts } from "../lib/tripFacts";
+import type { StyleChip } from "../lib/tripStyle";
+import type { Trip } from "../lib/types";
 import { HeroIcon, type HeroIconName } from "./Icons";
-import { kinds } from "./Progress";
+import { Preferences } from "./IntentCard";
 import { ShareLine, useShare } from "./Share";
+import { useAppear } from "./useAppear";
+import type { Decisions } from "./useDecisions";
 import { useWeather } from "./useWeather";
 
 export function TripFacts(props: {
+  trip: Trip;
+  decisions: Decisions | null;
   range: { start: string; end: string } | null;
-  estimated: boolean;
   facts: Facts;
   /** The traveller's own country (the passport in Settings): whether their plugs fit. */
   home: string;
+  /** The trip's country codes, in the order its places come. */
   countries: string[];
-  cities: string[];
   /** Each city's days, for its weather. */
   places: { city: string; start: string; end: string }[];
-  mapUrl: string | null;
   today: string;
+  chips: StyleChip[];
   bar: BudgetBar | null;
-  progress: DecisionProgress;
-  onGo: (t: Todo["target"]) => void;
-  /** Opens the share dialog when every to-do is done; absent where the trip can't be shared (the sample). */
+  /** Opens the share dialog; absent where the trip can't be shared (the sample). */
   onShare?: () => void;
-  /** Which kind's list is open under the hero. */
-  todoOpen: TodoKind | null;
-  onTodo: (kind: TodoKind | null) => void;
 }) {
-  const { range, facts, bar, progress } = props;
-  const share = useShare();
-  const days = range ? nightsBetween(range.start, range.end) + 1 : 0;
-  const next = progress.todos[0];
-  const weather = useWeather(props.places, props.countries.length === 1 ? props.countries[0] : null, props.today);
+  const { range, facts } = props;
+  const names = countryNames(props.countries);
+  const weather = useWeather(props.places, names.length === 1 ? names[0] : null, props.today);
   const month = range ? new Date(`${range.start}T12:00:00Z`).toLocaleDateString(locale(), { month: "long", timeZone: "UTC" }) : "";
-  // Who goes: the people on a shared trip by name, else as many plain circles as the saves say.
-  const names = share ? [...new Set([share.me, ...(share.state?.members ?? [])].map((n) => n.trim()).filter(Boolean))] : [];
-  const people = names.length ? names.length : (facts.adults ?? 0);
+  const chipsAppear = useAppear(props.chips.length > 0);
+  const placeAppear = useAppear(names.length > 0);
+  const weatherAppear = useAppear(weather.length > 0);
   return (
     <aside className="hx-side">
-      <div className="hx-rows">
-        {range && (
-          <Fact icon="hourglass" label={L("Süre", "Length")} title={props.estimated ? L("Tahmini · kayıtlardan", "Estimated · from saves") : undefined}>
-            {props.estimated ? "~" : ""}
-            {nDays(days)}
-          </Fact>
-        )}
-        {props.countries.length > 0 && (
-          <Fact icon="globe" label={props.countries.length > 1 ? L("Ülkeler", "Countries") : L("Ülke", "Country")}>
-            {props.countries.join(", ")}
-          </Fact>
-        )}
-        {props.cities.length > 0 && (
-          <Fact icon="pin" label={L("Lokasyonlar", "Places")}>
-            {props.mapUrl ? (
-              <a href={props.mapUrl} target="_blank" rel="noreferrer" title={L("Rotayı Google Haritalar'da gör", "See the route on Google Maps")}>
-                {props.cities.join(", ")}
-              </a>
-            ) : (
-              props.cities.join(", ")
-            )}
-          </Fact>
-        )}
-        {people > 0 && (
-          <Fact icon="users" label={L("Yolcular", "Travellers")} title={names.length ? names.join(", ") : L(`${people} yetişkin`, `${people} adult${people === 1 ? "" : "s"}`)}>
-            <span className="hx-people">
-              {Array.from({ length: Math.min(people, 4) }, (_, n) => (
-                <i key={n} className={`p${n % 4}`}>
-                  {names[n] ? initials(names[n]) : <HeroIcon name="user" size={14} />}
-                </i>
-              ))}
-              {people > 4 && <i className="more">+{people - 4}</i>}
-            </span>
-          </Fact>
-        )}
-        {share && (
-          <div className="hx-share">
-            <ShareLine />
+      <div className="hx-block hx-who">
+        <Travellers adults={facts.adults ?? 0} onShare={props.onShare} />
+        {props.chips.length > 0 ? (
+          <div key="chips" className={`hx-styles${chipsAppear}`} aria-label={L("Gezinin tarzı", "The trip's style")}>
+            {props.chips.map((c) => (
+              <span key={c.label} style={{ background: c.bg, color: c.fg }}>
+                <HeroIcon name={c.icon} size={20} />
+                {c.label}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <div key="none" className="hx-styles">
+            <span className="empty">{L("Tarzın konuştukça belirir", "Your style shows as we talk")}</span>
           </div>
         )}
-        {weather.length > 0 && (
-          <Fact icon="partly" label={L("Hava", "Weather")}>
-            <span className="hx-weather">
+      </div>
+      <Budget bar={props.bar} />
+      <Preferences trip={props.trip} decisions={props.decisions} />
+      {names.length > 0 ? (
+        <div key="place" className={`hx-block hx-place${placeAppear}`}>
+          <div className="hx-countries">
+            {props.countries.map((code, n) => (
+              <span key={code}>
+                {flagEmoji(code) && (
+                  <i className="flag" aria-hidden>
+                    {flagEmoji(code)}
+                  </i>
+                )}
+                {names[n]}
+              </span>
+            ))}
+          </div>
+          {weather.length > 0 && (
+            <div key="weather" className={`hx-weather${weatherAppear}`}>
               {weather.map((w) => (
                 <span key={w.city} title={weatherTitle(w, month)}>
-                  <HeroIcon name={skyIcon(w)} size={17} className={`sky-${w.sky}`} />
-                  <span>{w.high}°</span>
-                  {weather.length > 1 && <small>{w.city}</small>}
+                  <span className="city">{w.city}</span>
+                  <HeroIcon name={skyIcon(w)} size={22} className={`sky-${w.sky}`} />
+                  <span className="deg">{w.high}°</span>
                 </span>
               ))}
-            </span>
-          </Fact>
-        )}
-        {bar && <BudgetRow bar={bar} />}
-        <Minis facts={facts} home={props.home} />
-      </div>
-      {next ? (
-        <button className="hx-next" onClick={() => props.onGo(next.target)}>
-          <small>{L("Sıradaki adım", "Next step")}</small>
-          <span title={nextStepText(next)}>
-            <em>{nextStepText(next)}</em>
-            <HeroIcon name="arrow" size={18} />
-          </span>
-        </button>
-      ) : props.onShare ? (
-        <button className="hx-next" onClick={props.onShare}>
-          <small>{L("Her şey hazır", "All set")}</small>
-          <span>
-            {L("Bu geziyi paylaş", "Share this trip")} <HeroIcon name="arrow" size={18} />
-          </span>
-        </button>
+            </div>
+          )}
+        </div>
       ) : (
-        <div className="hx-next">
-          <small>{L("Her şey hazır", "All set")}</small>
-          <span>{L("Her şey karara bağlandı", "Everything's decided")}</span>
+        <div key="none" className="hx-block hx-place">
+          <p className="hx-empty">{L("Ülke ve hava, şehir belli olunca gelir", "The country and its weather come once the city is known")}</p>
         </div>
       )}
-      {progress.todos.length > 0 && (
-        <div className="hx-todo" aria-label={L("Yapılacaklar", "To do")}>
-          {kinds()
-            .filter((k) => progress.count[k.kind] > 0)
-            .map((k) => (
-              <button
-                key={k.kind}
-                className={props.todoOpen === k.kind ? "on" : ""}
-                aria-expanded={props.todoOpen === k.kind}
-                title={k.kind === "deadline" ? L(`Ücretsiz iptal süresi yaklaşan ${progress.count.deadline} rezervasyon`, `${progress.count.deadline} free cancellation(s) running out`) : undefined}
-                onClick={() => props.onTodo(props.todoOpen === k.kind ? null : k.kind)}
-              >
-                {k.kind === "deadline" ? "⏳" : k.label} <b>{progress.count[k.kind]}</b>
-              </button>
-            ))}
-        </div>
-      )}
+      <Minis facts={facts} home={props.home} />
     </aside>
   );
 }
 
+/** Who goes: the shared trip's people by name, else as many as the saves say; a tap opens sharing. */
+function Travellers({ adults, onShare }: { adults: number; onShare?: () => void }) {
+  const share = useShare();
+  const names = share ? [...new Set([share.me, ...(share.state?.members ?? [])].map((n) => n.trim()).filter(Boolean))] : [];
+  const count = names.length || adults;
+  const appear = useAppear(count > 0);
+  const title = travellersTitle(names, count);
+  const body =
+    count > 0 ? (
+      <>
+        <span className="hx-avatars" aria-hidden>
+          {Array.from({ length: Math.min(count, 4) }, (_, n) => (
+            <i key={n} className={`p${n % 4}`}>
+              {names[n] ? initials(names[n]) : <HeroIcon name="user" size={24} />}
+            </i>
+          ))}
+          {count > 4 && <i className="more">+{count - 4}</i>}
+        </span>
+        <span className="hx-who-text">
+          <b>{title}</b>
+          {names.length > 0 ? <small>{nPeople(count)}</small> : onShare && <small className="accent">{L("Birini davet et", "Invite someone")}</small>}
+        </span>
+      </>
+    ) : (
+      <>
+        <span className="hx-avatars" aria-hidden>
+          <i className="dashed">
+            <HeroIcon name="user" size={24} />
+          </i>
+        </span>
+        <span className="hx-who-text">
+          <b>{L("Kimler gidiyor?", "Who's going?")}</b>
+          <small>{L("Kişi sayısı kayıtlardan anlaşılır", "The saves tell how many")}</small>
+        </span>
+      </>
+    );
+  return (
+    <>
+      {onShare ? (
+        <button key={count > 0 ? "full" : "none"} className={`hx-people${appear}`} title={L("Paylaş", "Share")} onClick={onShare}>
+          {body}
+        </button>
+      ) : (
+        <div key={count > 0 ? "full" : "none"} className={`hx-people${appear}`}>
+          {body}
+        </div>
+      )}
+      {share && (
+        <div className="hx-share">
+          <ShareLine />
+        </div>
+      )}
+    </>
+  );
+}
+
 /**
- * The budget big (else what's known so far), a bar of what's booked (green), planned but not booked
- * (amber) and still free (grey), and the three sums small under it. A tap opens the split by kind,
- * what's left, and what the open decisions will likely add.
+ * The budget big (else what's known so far), then what's booked (green), planned but not booked (amber) and
+ * still free (grey) or over (red), a line each. A tap opens the split by kind, what's left, and what the open
+ * decisions will likely add.
  */
-function BudgetRow({ bar }: { bar: BudgetBar }) {
+function Budget({ bar }: { bar: BudgetBar | null }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -160,47 +171,51 @@ function BudgetRow({ bar }: { bar: BudgetBar }) {
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [open]);
-  const known = bar.booked + bar.chosen;
-  if (known <= 0 && bar.total == null) return null;
-  const scale = Math.max(bar.total ?? 0, known) || 1;
+  const known = bar ? bar.booked + bar.chosen : 0;
+  const filled = !!bar && (known > 0 || bar.total != null);
+  const appear = useAppear(filled);
+  if (!bar || !filled) {
+    return (
+      <div key="none" className="hx-block hx-budget">
+        <div className="hx-budget-top">
+          <h3 className="hx-h">{L("Bütçe", "Budget")}</h3>
+          <strong>—</strong>
+        </div>
+        <p className="hx-empty">{L("Fiyatlı kayıtlar geldikçe toplanır", "Adds up as priced saves come in")}</p>
+      </div>
+    );
+  }
   const money = (n: number) => formatPrice(n, bar.currency);
   const over = bar.total != null && known > bar.total ? known - bar.total : 0;
   const free = bar.total != null && !over ? bar.total - known : 0;
   const slices = BUDGET_SLICES.filter((s) => bar.byCategory[s] > 0);
+  const lines: [string, string, number][] = [
+    ["booked", L("Rezerve", "Booked"), bar.booked],
+    ["planned", L("Planlanan", "Planned"), bar.chosen],
+    ["free", L("Boşta", "Free"), free],
+    ["over", L("Aşıyor", "Over"), over],
+  ];
   return (
-    <div className="hx-budget click" ref={box} title={L("Ayrıntı için tıkla", "Click for details")} onClick={() => setOpen(!open)}>
-      <div className="top">
-        <HeroIcon name="wallet" size={18} />
-        <small>{bar.total != null ? L("Bütçe", "Budget") : L("Bilinen toplam", "Known total")}</small>
-        <strong>{money(bar.total ?? known)}</strong>
-      </div>
-      <div className="hx-meter" aria-label={L("Alınan, planlanan ve boşta kalan", "Booked, planned and free")}>
-        {bar.booked > 0 && <i className="booked" style={{ width: `${(bar.booked / scale) * 100}%` }} />}
-        {bar.chosen > 0 && <i className="planned" style={{ width: `${(bar.chosen / scale) * 100}%` }} />}
-      </div>
-      <div className="legend">
-        {bar.booked > 0 && (
-          <span>
-            <i className="booked" />
-            {L(`${money(bar.booked)} alındı`, `${money(bar.booked)} booked`)}
-          </span>
-        )}
-        {bar.chosen > 0 && (
-          <span>
-            <i className="planned" />
-            {L(`${money(bar.chosen)} planda`, `${money(bar.chosen)} planned`)}
-          </span>
-        )}
-        {free > 0 && (
-          <span>
-            <i />
-            {L(`${money(free)} boşta`, `${money(free)} free`)}
-          </span>
-        )}
-        {over > 0 && <span className="hx-over">{L(`${money(over)} aşıyor`, `${money(over)} over`)}</span>}
-      </div>
+    <div key="full" className={`hx-block hx-budget${appear}`} ref={box}>
+      <button className="hx-budget-btn" aria-expanded={open} title={L("Ayrıntı için tıkla", "Click for details")} onClick={() => setOpen(!open)}>
+        <span className="hx-budget-top">
+          <span className="hx-h">{L("Bütçe", "Budget")}</span>
+          <strong title={bar.total == null ? L("Bütçe belirlenmedi; bilinen toplam", "No budget set; the known total") : undefined}>{money(bar.total ?? known)}</strong>
+        </span>
+        {lines
+          .filter(([, , n]) => n > 0)
+          .map(([k, label, n]) => (
+            <span key={k} className={`hx-budget-line ${k}`}>
+              <span>
+                <i aria-hidden />
+                {label}
+              </span>
+              <b>{money(n)}</b>
+            </span>
+          ))}
+      </button>
       {open && (
-        <div className="hx-pop" onClick={(e) => e.stopPropagation()}>
+        <div className="hx-pop">
           {slices.map((s) => (
             <div key={s} className="line">
               <span>
@@ -229,45 +244,28 @@ function BudgetRow({ bar }: { bar: BudgetBar }) {
   );
 }
 
-/** One fact, one line: icon, label, the value on the right. */
-function Fact({ icon, label, title, children }: { icon: HeroIconName; label: string; title?: string; children: ReactNode }) {
-  return (
-    <div className="hx-fact" title={title}>
-      <HeroIcon name={icon} size={18} />
-      <small>{label}</small>
-      <strong>{children}</strong>
-    </div>
-  );
-}
-
 /** The small things in one row: the money (its rate on hover), the plug, the time difference, the language. */
 function Minis({ facts, home }: { facts: Facts; home: string }) {
   const local = facts.local;
   if (!local) return null;
   const fit = plugFit(home, facts.country);
   const offset = offsetText(local.hours);
+  const cells: [HeroIconName, string, string | undefined][] = [
+    ["coin", currencyName(local.currency), local.rateText ?? undefined],
+    ...(local.info.plugs.length ? [["plug", L(`${local.info.plugs.join("/")} priz`, `${local.info.plugs.join("/")} plug`), fit ? plugFitText(fit) : undefined] as [HeroIconName, string, string | undefined]] : []),
+    ...(offset ? [["clock", offset, L("Senin saatine göre", "Against your own time")] as [HeroIconName, string, string | undefined]] : []),
+    ["lang", L(local.info.language.tr, local.info.language.en), undefined],
+  ];
   return (
-    <div className="hx-minis">
-      <span title={local.rateText ?? undefined}>
-        <HeroIcon name="coin" size={16} />
-        {currencyName(local.currency)}
-      </span>
-      {local.info.plugs.length > 0 && (
-        <span title={fit ? plugFitText(fit) : undefined}>
-          <HeroIcon name="plug" size={16} />
-          {local.info.plugs.join("/")}
-        </span>
-      )}
-      {offset && (
-        <span title={L("Senin saatine göre", "Against your own time")}>
-          <HeroIcon name="clock" size={16} />
-          {offset}
-        </span>
-      )}
-      <span>
-        <HeroIcon name="lang" size={16} />
-        {L(local.info.language.tr, local.info.language.en)}
-      </span>
+    <div className="hx-block">
+      <div className="hx-minis">
+        {cells.map(([icon, text, title]) => (
+          <span key={icon} title={title}>
+            <HeroIcon name={icon} size={18} />
+            {text}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

@@ -172,6 +172,96 @@ const HERO_ICONS = {
       <circle cx="18.5" cy="12" r="1.8" />
     </g>
   ),
+  chevRight: <path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />,
+  /** The photo's place before a city (and its photo) is known. */
+  landscape: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4.5" width="18" height="15" rx="3" />
+      <path d="m3.5 16.5 5-5 4.5 4.5 2.5-2.5 5 4.5" />
+      <circle cx="15.5" cy="9" r="1.6" />
+    </g>
+  ),
+  // The style chips (hero v9): one line icon per style.
+  mountain: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2.5 19.5 9.5 6.5l4.3 7.6 2.2-3.4 5.5 8.8z" />
+      <path d="m7.4 10.5 2.1 1.6 1.8-1.4" />
+    </g>
+  ),
+  sparkle: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.5 5c.6 4.4 2.6 6.4 7 7-4.4.6-6.4 2.6-7 7-.6-4.4-2.6-6.4-7-7 4.4-.6 6.4-2.6 7-7z" />
+      <path d="M18.5 2.5v4M16.5 4.5h4" />
+    </g>
+  ),
+  heart: (
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.9}
+      strokeLinejoin="round"
+      d="M12 20s-8-4.7-8-10.4A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.6C20 15.3 12 20 12 20z"
+    />
+  ),
+  leaf: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 19.5C4.5 11 9.5 5 19.5 4.5 20 14 14.5 19.5 6.5 19.5z" />
+      <path d="m5 19.5 8.5-8.5" />
+    </g>
+  ),
+  columns: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3.5 20.5 8h-17zM4.5 11h15M6.5 11v6.5M10 11v6.5M14 11v6.5M17.5 11v6.5M4 17.5h16M3 20.5h18" />
+    </g>
+  ),
+  tree: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3 6.5 10.5h3l-4 6h13l-4-6h3z" />
+      <path d="M12 16.5v4.5" />
+    </g>
+  ),
+  fork: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 3v5.5a2.5 2.5 0 0 0 5 0V3M8.5 3v18" />
+      <path d="M17.5 21V3c-2.2 1.2-3.5 4.3-3.5 8.5h3.5" />
+    </g>
+  ),
+  wave: (
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.9}
+      strokeLinecap="round"
+      d="M2.5 8.5c2.4 0 2.4-2 4.75-2S9.6 8.5 12 8.5s2.4-2 4.75-2 2.35 2 4.75 2M2.5 13c2.4 0 2.4-2 4.75-2S9.6 13 12 13s2.4-2 4.75-2 2.35 2 4.75 2M2.5 17.5c2.4 0 2.4-2 4.75-2s2.35 2 4.75 2 2.4-2 4.75-2 2.35 2 4.75 2"
+    />
+  ),
+  buildings: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2.5 20.5h19M4 20.5V9l5.5-2.5v14M9.5 20.5V3.5h7v17M16.5 9.5h4v11" />
+      <path d="M12.2 7.5h1.6M12.2 11h1.6M12.2 14.5h1.6M6.2 11.5h1M6.2 15h1" />
+    </g>
+  ),
+  family: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="7.5" cy="6" r="2.4" />
+      <circle cx="16.5" cy="6" r="2.4" />
+      <circle cx="12" cy="13" r="1.8" />
+      <path d="M3 19.5c.2-4.6 1.9-7 4.5-7 1.2 0 2.2.5 2.9 1.4M21 19.5c-.2-4.6-1.9-7-4.5-7-1.2 0-2.2.5-2.9 1.4M9 20.5c.3-2.5 1.4-3.8 3-3.8s2.7 1.3 3 3.8" />
+    </g>
+  ),
+  note: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 18V5.5l11-2V16M9 9.5l11-2" />
+      <circle cx="6.5" cy="18" r="2.5" />
+      <circle cx="17.5" cy="16" r="2.5" />
+    </g>
+  ),
+  run: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="15" cy="4.5" r="1.9" />
+      <path d="m6 11 3.5-3h4.5l2 3.5 3 1M13.5 8l-3.5 7.5 3.5 2.5v3.5M10 15.5 7.5 20.5M4 15.5h3.5" />
+    </g>
+  ),
 } as const;
 
 export type HeroIconName = keyof typeof HERO_ICONS;
