@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { resetConversation } from "../lib/assistant";
-import { addEvent, notifyChanged } from "../lib/db";
 import { loadDemoTrip } from "../lib/demo";
 import { L } from "../lib/i18n";
 import { routeUrl } from "../lib/items";
@@ -11,7 +10,8 @@ import type { Item, TrashEntry } from "../lib/types";
 import { undoSlot } from "../lib/undo";
 import { HistoryDialog } from "./HistoryDialog";
 import { DeleteSharedTripDialog } from "./ShareSafety";
-import { addTripFiles } from "./capture";
+import { DropOverlay } from "./arrive/ArriveViews";
+import { useBoardIntake } from "./arrive/useBoardIntake";
 import { Chat } from "./Chat";
 import { CompareView } from "./CompareView";
 import { HeroIcon } from "./Icons";
@@ -46,6 +46,7 @@ export function App() {
   /** A word about deleting or bringing back a trip (a failure, a copy apart from the sharing), until closed. */
   const [safetyNote, setSafetyNote] = useState<string | null>(null);
   const decisions = useDecisions(board.trip, board.items);
+  const intake = useBoardIntake(board.trip?.id ?? null);
 
   // Çöp kutusu: what is older than 30 days goes when the board opens (and whenever the trash is read).
   useEffect(() => void purgeTrash().catch(() => 0), []);
@@ -176,21 +177,10 @@ export function App() {
       <UpdateBanner />
       {trip ? (
         <div className="board">
-          <Chat trip={trip} messages={board.messages} onBack={() => board.selectTrip(null)} />
-          <main
-            className="panel"
-            // A PDF or a picture dropped on the board goes to this trip's Belgeler and is read (0.34.6).
-            onDragOver={(e) => e.dataTransfer.types.includes("Files") && e.preventDefault()}
-            onDrop={(e) => {
-              if (!e.dataTransfer.files.length) return;
-              e.preventDefault();
-              const id = trip.id;
-              void addTripFiles(id, Array.from(e.dataTransfer.files)).then((problems) => {
-                const fresh = problems.filter((p) => !p.logged).map((p) => p.text);
-                return fresh.length ? addEvent(id, `⚠ ${fresh.join(" ")}`).then(notifyChanged) : undefined;
-              });
-            }}
-          >
+          <Chat trip={trip} messages={board.messages} onBack={() => board.selectTrip(null)} items={board.allItems} trips={board.trips} openCaptures={board.openCaptures} />
+          {/* Files and links dropped (or pasted) on the board: read and put in their place (arrive/useBoardIntake). */}
+          <main className="panel" {...intake.handlers}>
+            {intake.rect && <DropOverlay rect={intake.rect} />}
             <TripPanel
               trip={trip}
               items={board.items}

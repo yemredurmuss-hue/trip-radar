@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from "react";
+import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { sendMessage } from "../lib/assistant";
 import { L } from "../lib/i18n";
 import { describeError } from "../lib/llm";
 import { shownReply } from "../lib/replyText";
-import type { ChatMessage, Trip } from "../lib/types";
+import type { Capture, ChatMessage, Item, Trip } from "../lib/types";
 import { DOC_ACCEPT } from "../lib/docs";
+import { DropOverlay } from "./arrive/ArriveViews";
+import { useChatArrivals } from "./arrive/ChatArrivals";
+import { requestReveal } from "./arrive/intake";
+import { droppedLinks, useDropZone } from "./arrive/useDropZone";
 import { addLinks, addTripFiles, isTripFile } from "./capture";
 import { UiIcon } from "./cards/Silhouettes";
 import { ArrowUp, Back } from "./Icons";
@@ -13,33 +17,37 @@ interface Props {
   trip: Trip;
   messages: ChatMessage[];
   onBack: () => void;
+  /** Every trip's records, the trips and the captures being read: for the chips under links and files. */
+  items: Item[];
+  trips: Trip[];
+  openCaptures: Capture[];
 }
 
 /** The selected trip's own conversation; every trip has its own chat and context. */
-export function Chat({ trip, messages, onBack }: Props) {
+export function Chat({ trip, messages, onBack, items, trips, openCaptures }: Props) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [reading, setReading] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
 
   const visible = messages.filter((m) => m.text.trim() !== "");
   const last = visible.at(-1);
   const choices = last?.role === "assistant" && !busy ? last.choices : [];
+  // Links and files handed here this session, with their chips (arrive/ChatArrivals.tsx).
+  const arrivals = useChatArrivals({ trip, messages: visible, items, trips, openCaptures });
 
   // Block body on purpose: newer Chrome returns a Promise from scrollIntoView, and a value returned
   // from an effect is treated as its cleanup function (React then crashes calling it).
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" });
-  }, [visible.length, busy]);
+  }, [arrivals.rows.length, busy]);
 
   async function submit(value = text) {
     const input = value.trim();
     if (!input || busy) return;
     setError(null);
-    if (await addLinks(input)) {
+    if (await addLinks(input, { tripId: trip.id, source: "chat" })) {
       setText("");
       return;
     }
@@ -58,14 +66,13 @@ export function Chat({ trip, messages, onBack }: Props) {
   async function addFiles(files: File[]) {
     if (!files.length) return;
     setError(null);
-    setReading((n) => n + files.length);
     try {
-      const problems = await addTripFiles(trip.id, files);
-      if (problems.length) setError(problems.map((p) => p.text).join(" "));
+      // Each file shows as a bubble with its chip while it's read (arrive/intake).
+      const problems = await addTripFiles(trip.id, files, "chat");
+      const unshown = problems.filter((p) => !p.logged);
+      if (unshown.length) setError(unshown.map((p) => p.text).join(" "));
     } catch (e) {
       setError(describeError(e));
-    } finally {
-      setReading((n) => n - files.length);
     }
   }
 
@@ -77,15 +84,17 @@ export function Chat({ trip, messages, onBack }: Props) {
     }
   }
 
-  function onDrop(e: DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragging(false);
-    void addFiles(Array.from(e.dataTransfer.files));
-  }
+  // Files or links dragged over the chat: a calm overlay, then read like a paste or a pick.
+  const drop = useDropZone<HTMLElement>((dt) => {
+    if (dt.files.length) return void addFiles(Array.from(dt.files));
+    const links = droppedLinks(dt);
+    if (links) void addLinks(links, { tripId: trip.id, source: "chat" });
+  });
+  const dragging = drop.rect != null;
 
   return (
-    <section className="chat" onDragOver={(e) => (e.preventDefault(), setDragging(true))} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
+    <section className="chat" {...drop.handlers}>
+      {drop.rect && <DropOverlay rect={drop.rect} />}
       <div className="chat-top">
         <button className="trip-switch" onClick={onBack}>
           <Back /> {L("Seyahatlerim", "My trips")}
@@ -95,7 +104,7 @@ export function Chat({ trip, messages, onBack }: Props) {
       </div>
 
       <div className="messages">
-        {visible.length === 0 && (
+        {arrivals.rows.length === 0 && (
           <div className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>
             {L(
               'Seçeneklerini kaydettikçe burada birlikte karar veririz. Bütçeni, neyin önemli olduğunu ya da "hangisi daha iyi?" diye sorabilirsin.',
@@ -103,12 +112,33 @@ export function Chat({ trip, messages, onBack }: Props) {
             )}
           </div>
         )}
-        {visible.map((m) => (
-          <div key={m.id} className={`msg-${m.role}`}>
-            {/* A reply stored before the filter (the raw trip state as the answer) is cleaned here too. */}
-            <RichText text={m.role === "assistant" ? shownReply(m.text) : m.text} />
-          </div>
-        ))}
+        {arrivals.rows.map((row) => {
+          if (row.kind === "intake") return arrivals.bubble(row.e);
+          const m = row.m;
+          // An event line about a record goes to its card ("✓ Casa Azul kaydedildi → Konaklama").
+          const about = arrivals.eventItem(m);
+          if (about) {
+            return (
+              <button key={m.id} type="button" className="msg-event ar-ev" title={L("Panoda göster", "Show on the board")} onClick={() => requestReveal(about.id)}>
+                {m.text}
+              </button>
+            );
+          }
+          const line = (
+            <div key={m.id} className={`msg-${m.role}`}>
+              {/* A reply stored before the filter (the raw trip state as the answer) is cleaned here too. */}
+              <RichText text={m.role === "assistant" ? shownReply(m.text) : m.text} />
+            </div>
+          );
+          return row.file ? (
+            <div key={m.id} className="ar-sent">
+              {line}
+              {arrivals.fileChip(row.file)}
+            </div>
+          ) : (
+            line
+          );
+        })}
         {choices.length > 0 && (
           <div className="choices">
             {choices.map((c, i) => (
@@ -119,7 +149,6 @@ export function Chat({ trip, messages, onBack }: Props) {
           </div>
         )}
         {busy && <div className="thinking">{L("Düşünüyor…", "Thinking…")}</div>}
-        {reading > 0 && <div className="thinking">{L("Belge okunuyor…", "Reading the document…")}</div>}
         {error && <div className="chat-error">{error}</div>}
         <div ref={bottom} />
       </div>
