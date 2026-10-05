@@ -20,7 +20,7 @@ const s = (over: Partial<SyncedSettings> = {}): SyncedSettings => ({ ...settings
 const change = (id: number, author: string, when: number, prev: SyncedSettings, next: SyncedSettings, fields: SettingsChange["fields"]): SettingsChange => ({ id, author, prev, next, at: iso(when), fields });
 const event = (id: string, text: string, when: number): ChatMessage => ({ id, tripId: "t1", role: "event", content: null, text, choices: [], createdAt: when });
 
-const input = (over: Partial<HistoryInput>): HistoryInput => ({ me: "Emre", settings: null, notices: [], undone: [], events: [], trash: [], hidden: [], items: [], now: NOW, ...over });
+const input = (over: Partial<HistoryInput>): HistoryInput => ({ me: "Emre", settings: null, notices: [], undone: [], events: [], trash: [], hidden: [], items: [], current: null, now: NOW, ...over });
 
 const DATES_8 = { confirmedDates: { start: "2026-10-08", end: "2026-10-18" } };
 
@@ -28,7 +28,7 @@ describe("the history", () => {
   it("merges the server's settings, the trash, what's hidden and the history lines, newest first", () => {
     const lello = makeItem({ id: "lello", tripId: "t1", name: "Livraria Lello" });
     const bawhee = makeItem({ id: "bawhee", tripId: "t1", name: 'Renault Campervan "Bawhee"', status: "dismissed", dismissedFrom: "chosen", statusAt: at(5, 20, 12) });
-    const trash: TrashEntry = { id: "tr1", tripId: "t1", kind: "item", deletedAt: at(4, 9), label: "Casa do Rio", payload: { item: makeItem({ name: "Casa do Rio" }), docs: [] } };
+    const trash: TrashEntry = { id: "tr1", tripId: "t1", kind: "item", deletedAt: at(4, 9), label: "Casa do Rio", size: 1, count: 1 };
     const rows = buildHistory(
       input({
         settings: [
@@ -123,6 +123,67 @@ describe("the history", () => {
     ]);
   });
 
+  it("taking back one field of a change greys only that field's row", () => {
+    const when = at(5, 21, 40);
+    const both = change(9, "Sabine", when, s(), s({ ...DATES_8, budget: { amount: 80000, currency: "TRY" } }), ["confirmedDates", "budget"]);
+    const fromRow = buildHistory(input({ settings: [both], undone: [{ id: "h:9:budget", at: iso(when), by: "Emre", undoneAt: at(5, 21, 50), fields: ["budget"] }] }));
+    expect(fromRow.map((r) => [r.verb, Boolean(r.undone), r.action?.kind ?? null])).toEqual([
+      ["Tarihler", false, "undo-setting"],
+      ["Bütçe", true, null],
+    ]);
+    // A notice's mark matches by the change's time, but only for the fields it took back.
+    const fromNotice = buildHistory(input({ settings: [both], undone: [{ id: `${iso(when)}|sabine`, at: iso(when), by: "Emre", undoneAt: at(5, 21, 50), fields: ["confirmedDates"] }] }));
+    expect(fromNotice.map((r) => [r.verb, Boolean(r.undone)])).toEqual([
+      ["Tarihler", true],
+      ["Bütçe", false],
+    ]);
+  });
+
+  it("a change whose field changed again since has no 'Geri al' and says so", () => {
+    const rows = buildHistory(
+      input({
+        current: s({ confirmedDates: { start: "2026-10-09", end: "2026-10-20" } }),
+        settings: [
+          change(2, "Sabine", at(5, 21, 45), s(DATES_8), s({ confirmedDates: { start: "2026-10-09", end: "2026-10-20" } }), ["confirmedDates"]),
+          change(1, "Sabine", at(5, 21, 40), s(), s(DATES_8), ["confirmedDates"]),
+        ],
+      }),
+    );
+    expect(rows.map((r) => [r.action?.kind ?? null, r.how])).toEqual([
+      ["undo-setting", ["ortak ayar"]],
+      [null, ["ortak ayar", "sonra yine değişti"]],
+    ]);
+  });
+
+  it("without the server: a notice taken back stays as a grey 'geri alındı' row; one closed by a newer change has no Geri al", () => {
+    const base = { author: "Sabine", seenAt: 1, prev: s(), fields: ["budget" as const] };
+    const rows = buildHistory(
+      input({
+        notices: [
+          { ...base, id: "n2", at: iso(at(5, 21, 45)), next: s({ budget: { amount: 70000, currency: "TRY" } }) },
+          { ...base, id: "n1", at: iso(at(5, 21, 40)), next: s({ budget: { amount: 80000, currency: "TRY" } }), dismissed: true, closed: ["budget"] },
+          { ...base, id: "n0", at: iso(at(5, 21, 30)), next: s({ title: "X" }), fields: ["title"], dismissed: true, closed: ["title"], undone: { by: "Emre", at: at(5, 21, 35), fields: ["title"] } },
+        ],
+      }),
+    );
+    expect(rows.map((r) => [r.verb, r.action?.kind ?? null, r.undone?.by ?? null])).toEqual([
+      ["Bütçe", "undo-setting", null],
+      ["Bütçe", null, null],
+      ["Ad", null, "Emre"],
+    ]);
+    expect(rows[1].how).toContain("sonra yine değişti");
+  });
+
+  it("the history lines are cut after the filter; the trash never is", () => {
+    const events = Array.from({ length: 40 }, (_, i) => event(`e${i}`, `satır ${i}`, at(5, 12) - i * 60_000));
+    const trash: TrashEntry[] = Array.from({ length: 5 }, (_, i) => ({ id: `t${i}`, tripId: "t1", kind: "item", deletedAt: at(1, 9) - i, label: `Eski ${i}`, size: 1, count: 1 }));
+    const rows = buildHistory(input({ events, trash }));
+    const all = filterRows(rows, { kind: "all" }, 10);
+    expect(all.filter((r) => r.source === "event")).toHaveLength(10);
+    expect(all.filter((r) => r.trash)).toHaveLength(5);
+    expect(filterRows(rows, { kind: "trash" }, 10)).toHaveLength(5);
+  });
+
   it("a junk server row never breaks the list", () => {
     const rows = buildHistory(input({ settings: [change(1, "Sabine", at(5, 9), asSettings(null), asSettings({ title: 3 }), ["title"])] }));
     expect(rows).toEqual([]);
@@ -153,7 +214,7 @@ describe("days and segments", () => {
     const rows = buildHistory(
       input({
         settings: [change(1, "Sabine", at(5, 9), s(), s(DATES_8), ["confirmedDates"])],
-        trash: [{ id: "tr", tripId: "t1", kind: "item", deletedAt: at(5, 8), label: "Taksi", payload: { item: makeItem(), docs: [] } }],
+        trash: [{ id: "tr", tripId: "t1", kind: "item", deletedAt: at(5, 8), label: "Taksi", size: 1, count: 1 }],
         events: [event("e", "✓ X kaydedildi → Diğer · Porto (Ali ekledi)", at(5, 7))],
       }),
     );

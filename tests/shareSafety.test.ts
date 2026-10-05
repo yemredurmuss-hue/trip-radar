@@ -5,7 +5,19 @@ import { afterEach, describe, expect, it } from "vitest";
 import { db, listMessages } from "../src/lib/db";
 import { setLang } from "../src/lib/i18n";
 import { ShareError, type Rpc } from "../src/lib/share/client";
-import { addNotice, dismissNotice, getNotices, getUndone, MAX_NOTICES, undoNotice } from "../src/lib/share/notices";
+import {
+  addNotice,
+  changedSinceText,
+  dismissNotice,
+  getAllNotices,
+  getNotices,
+  getUndone,
+  MAX_NOTICES,
+  noticeId,
+  openFields,
+  undoNotice,
+  undoSettingsChange,
+} from "../src/lib/share/notices";
 import { applyFields, asSettings, changedFields, settingsOf, stableJson, type SyncedSettings } from "../src/lib/share/settings";
 import { changeHeadline, diffSettings, lineText } from "../src/lib/share/settingsDiff";
 import { fetchSettingsHistory, fromHistoryRows } from "../src/lib/share/settingsHistory";
@@ -97,16 +109,58 @@ describe("notices", () => {
     now: 1,
   });
 
-  it("one per server change, newest first, at most 20", async () => {
+  it("one per server change, newest first, at most 20; a newer change of a field closes it on the older ones", async () => {
     const kv = memoryKV();
     expect(await addNotice("t1", change("2026-10-05T10:00:00Z"), kv)).toBe(true);
     expect(await addNotice("t1", change("2026-10-05T10:00:00Z"), kv)).toBe(false); // the same change again
     for (let i = 1; i <= 25; i++) await addNotice("t1", change(`2026-10-05T11:${String(i).padStart(2, "0")}:00Z`), kv);
-    const notices = await getNotices("t1", kv);
-    expect(notices).toHaveLength(MAX_NOTICES);
-    expect(notices[0].at).toBe("2026-10-05T11:25:00Z");
-    expect(new Set(notices.map((n) => n.id)).size).toBe(MAX_NOTICES);
-    expect(notices[0]).toMatchObject({ author: "Sabine", fields: ["budget"] });
+    const all = await getAllNotices("t1", kv);
+    expect(all).toHaveLength(MAX_NOTICES);
+    expect(new Set(all.map((n) => n.id)).size).toBe(MAX_NOTICES);
+    expect(all[0]).toMatchObject({ at: "2026-10-05T11:25:00Z", author: "Sabine", fields: ["budget"] });
+    // Every older one was about the budget too: closed (its Geri al would undo the newer one), off the board.
+    expect(all.slice(1).every((n) => n.dismissed && n.closed?.includes("budget") && openFields(n).length === 0)).toBe(true);
+    expect((await getNotices("t1", kv)).map((n) => n.at)).toEqual(["2026-10-05T11:25:00Z"]);
+    // Another field stays open on the older notice.
+    await addNotice("t1", change("2026-10-05T12:00:00Z", { budget: { amount: 1, currency: "TRY" }, title: "X" }), kv);
+    await addNotice("t1", change("2026-10-05T12:01:00Z", { title: "Y" }), kv);
+    const [titleOnly, both] = await getNotices("t1", kv);
+    expect(titleOnly.fields).toEqual(["title"]);
+    expect(openFields(both)).toEqual(["budget"]);
+  });
+
+  it("writes one after another, and again when another page wrote in between", async () => {
+    const kv = memoryKV();
+    await Promise.all([
+      addNotice("t1", change("1", { title: "A" }), kv),
+      addNotice("t1", change("2", { budget: null }), kv),
+      addNotice("t1", change("3", { wantedAmenities: ["mutfak"] }), kv),
+      dismissNotice("t1", noticeId("1", "Sabine"), kv),
+    ]);
+    const all = await getAllNotices("t1", kv);
+    expect(all.map((n) => n.at)).toEqual(["3", "2", "1"]); // none lost
+    expect(all.find((n) => n.at === "1")?.dismissed).toBe(true);
+    // The service worker writes between this page's read and its write: the change is made again on top of it.
+    const raced = memoryKV();
+    await addNotice("t1", change("a", { title: "A" }), raced);
+    let reads = 0;
+    const racing: typeof raced = {
+      ...raced,
+      async get<T>(key: string) {
+        if (key === "shareNotices:t1" && ++reads === 2) {
+          const box = raced.data.get(key) as { notices: unknown[]; undone: unknown[]; v: number };
+          const other = { id: "worker", author: "Sabine", at: "w", seenAt: 1, prev: s(), next: s({ budget: null }), fields: ["budget"] };
+          raced.data.set(key, { ...box, notices: [other, ...box.notices], v: box.v + 1 });
+        }
+        return raced.get<T>(key);
+      },
+    };
+    await dismissNotice("t1", noticeId("a", "Sabine"), racing);
+    const after = await getAllNotices("t1", raced);
+    expect(after.map((n) => [n.id, Boolean(n.dismissed)])).toEqual([
+      ["worker", false],
+      [noticeId("a", "Sabine"), true],
+    ]);
   });
 
   it("none for my own change (my other computer), none without an author, none when nothing differs", async () => {
@@ -117,13 +171,14 @@ describe("notices", () => {
     expect(await getNotices("t1", kv)).toEqual([]);
   });
 
-  it("'Tamam' takes one away; the others stay", async () => {
+  it("'Tamam' takes one off the board (it stays in the history); the others stay", async () => {
     const kv = memoryKV();
     await addNotice("t1", change("1"), kv);
-    await addNotice("t1", change("2"), kv);
+    await addNotice("t1", change("2", { title: "Lizbon" }), kv);
     const [newest] = await getNotices("t1", kv);
     await dismissNotice("t1", newest.id, kv);
     expect((await getNotices("t1", kv)).map((n) => n.at)).toEqual(["1"]);
+    expect((await getAllNotices("t1", kv)).map((n) => n.at)).toEqual(["2", "1"]);
   });
 });
 
@@ -209,10 +264,11 @@ describe("the sync brings a notice", () => {
     expect(await getNotices("t1", kv)).toHaveLength(1);
 
     // Geri al: the dates back here, then pushed through the normal settings path (a new change on the server).
-    expect(await undoNotice("t1", notice, "Emre", kv)).toBe(true);
+    expect(await undoNotice("t1", notice, "Emre", kv)).toEqual({ restored: ["confirmedDates"], changedSince: [] });
     expect((await d.get("trips", "t1"))?.confirmedDates).toEqual({ start: "2026-10-07", end: "2026-10-18" });
     expect(await getNotices("t1", kv)).toEqual([]);
-    expect((await getUndone("t1", kv)).map((m) => m.id)).toEqual([notice.id]);
+    expect((await getAllNotices("t1", kv))[0]).toMatchObject({ dismissed: true, undone: { by: "Emre", fields: ["confirmedDates"] } });
+    expect((await getUndone("t1", kv)).map((m) => [m.id, m.fields])).toEqual([[notice.id, ["confirmedDates"]]]);
     await sync();
     expect(server.trips.get(SHARE_ID)).toMatchObject({ updated_by: "Emre", trip: { confirmedDates: { start: "2026-10-07", end: "2026-10-18" } } });
     expect(server.history.map((h) => h.author)).toEqual(["Sabine", "Emre"]);
@@ -220,6 +276,47 @@ describe("the sync brings a notice", () => {
     // My own change coming back from the server is no notice.
     await sync();
     expect(await getNotices("t1", kv)).toEqual([]);
+  });
+
+  it("'Geri al' never overwrites a field changed again since (7–18 → 8–18 → 9–20: undoing the first keeps 9–20)", async () => {
+    const server = fakeServer();
+    const { kv, sync } = await sharedTrip(server);
+    await server.sabine({ confirmedDates: { start: "2026-10-08", end: "2026-10-18" } });
+    await sync();
+    const [first] = await getNotices("t1", kv);
+    await server.sabine({ confirmedDates: { start: "2026-10-09", end: "2026-10-20" } });
+    await sync();
+    // The first notice is closed by the second: no Geri al on it, off the board.
+    const all = await getAllNotices("t1", kv);
+    expect(all.map((n) => openFields(n))).toEqual([["confirmedDates"], []]);
+    expect((await getNotices("t1", kv)).map((n) => n.id)).toEqual([all[0].id]);
+    // Even asked directly (an old banner, a history row): the dates stay 9–20, and it says why.
+    const result = await undoSettingsChange("t1", { prev: first.prev, next: first.next, fields: ["confirmedDates"], author: "Sabine", mark: { id: first.id, at: first.at } }, "Emre", kv);
+    expect(result).toEqual({ restored: [], changedSince: ["confirmedDates"] });
+    expect((await (await db()).get("trips", "t1"))?.confirmedDates).toEqual({ start: "2026-10-09", end: "2026-10-20" });
+    expect(changedSinceText(result.changedSince)).toBe("Tarihler o zamandan beri yine değişti; geri alınmadı.");
+    setLang("en");
+    expect(changedSinceText(["budget", "title"])).toBe("Budget and Name changed again since; not undone.");
+    setLang("tr");
+    expect(await getUndone("t1", kv)).toEqual([]);
+  });
+
+  it("'Geri al' from the history (a server row) closes the board's banner of the same change too", async () => {
+    const server = fakeServer();
+    const { kv, sync } = await sharedTrip(server);
+    await server.sabine({ budget: { amount: 80000, currency: "TRY" }, title: "Porto & Lizbon" });
+    await sync();
+    const [notice] = await getNotices("t1", kv);
+    const [row] = (await fetchSettingsHistory(server.rpc, SHARE_ID))!;
+    // Only the budget, from its history row: the banner keeps the name open.
+    await undoSettingsChange("t1", { prev: row.prev, next: row.next, fields: ["budget"], author: "Sabine", mark: { id: `h:${row.id}:budget`, at: row.at } }, "Emre", kv);
+    expect(openFields((await getNotices("t1", kv))[0])).toEqual(["title"]);
+    expect((await getUndone("t1", kv))[0]).toMatchObject({ id: `h:${row.id}:budget`, fields: ["budget"] });
+    // Then the name too: nothing left, the banner goes.
+    await undoSettingsChange("t1", { prev: row.prev, next: row.next, fields: ["title"], author: "Sabine", mark: { id: `h:${row.id}:title`, at: row.at } }, "Emre", kv);
+    expect(await getNotices("t1", kv)).toEqual([]);
+    expect((await getAllNotices("t1", kv))[0]).toMatchObject({ id: notice.id, dismissed: true, undone: { fields: ["budget", "title"] } });
+    expect(await (await db()).get("trips", "t1")).toMatchObject({ title: "Porto ve Madeira", budget: { amount: 100000, currency: "TRY" } });
   });
 
   it("'Geri al' on one change leaves a later change of another field as it is", async () => {

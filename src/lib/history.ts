@@ -17,7 +17,7 @@ import type { ChatMessage, Item, TrashEntry } from "./types";
 
 export type HistoryAction =
   /** Write these fields of `prev` back (a shared-settings change taken back). */
-  | { kind: "undo-setting"; prev: SyncedSettings; fields: SyncedField[]; mark: { id: string; at: string } }
+  | { kind: "undo-setting"; prev: SyncedSettings; next: SyncedSettings; fields: SyncedField[]; mark: { id: string; at: string } }
   | { kind: "restore-trash"; id: string }
   | { kind: "restore-dismissed"; item: Item }
   | { kind: "unhide"; key: string; label: string }
@@ -43,6 +43,8 @@ export interface HistoryRow {
   undone: { by: string; at: number | null } | null;
   /** In the trash (the "Çöp kutusu" segment). */
   trash: boolean;
+  /** Where it comes from: only the trip's history lines are ever cut (MAX_EVENT_ROWS). */
+  source: "setting" | "trash" | "hidden" | "event";
 }
 
 /** What is hidden on the trip, as the board names it; `names`: the labels its history line may start with. */
@@ -53,7 +55,7 @@ export interface HistoryInput {
   me: string;
   /** The server's history (newest first), or null when there is none (not shared, old server, offline). */
   settings: SettingsChange[] | null;
-  /** Notices waiting here (used for the settings rows when the server has no history). */
+  /** Every notice kept here, dismissed ones too (the settings rows when the server has no history). */
   notices: SettingsNotice[];
   undone: UndoneMark[];
   events: ChatMessage[];
@@ -61,10 +63,13 @@ export interface HistoryInput {
   hidden: HiddenInput[];
   /** The trip's cards now (for "Panoda göster"). */
   items: Item[];
+  /** The shared settings now: a change whose field has changed again since has no "Geri al". */
+  current: SyncedSettings | null;
   now: number;
 }
 
-export const MAX_ROWS = 300;
+/** The trip's history lines shown at most (after the segment's filter); every other row always shows. */
+export const MAX_EVENT_ROWS = 300;
 
 const same = (a: string | null | undefined, b: string | null | undefined) => (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
 const msOf = (iso: string | null | undefined): number | null => {
@@ -72,33 +77,49 @@ const msOf = (iso: string | null | undefined): number | null => {
   return Number.isFinite(t) ? t : null;
 };
 
-/** One row per changed field of a settings change ("Tarihler: 7–18 Ekim → 8–18 Ekim"). */
+type FieldState = { undone: { by: string; at: number | null } | null; closed: boolean };
+
+/**
+ * One row per changed field of a settings change ("Tarihler: 7–18 Ekim → 8–18 Ekim"). Taken back: grey, no
+ * action. Changed again since (or a newer change closed it): no "Geri al", said in the grey line.
+ */
 function settingRows(
   source: { key: string; author: string | null; at: string; prev: SyncedSettings; next: SyncedSettings; fields: SyncedField[] },
-  me: string,
+  input: HistoryInput,
   markId: (field: SyncedField) => string,
+  stateOf: (field: SyncedField) => FieldState,
 ): HistoryRow[] {
   const lines = diffSettings(source.prev, source.next);
   const author = source.author?.trim() || L("Biri", "Someone");
   return source.fields.flatMap((field) => {
     const parts = lines.filter((l) => l.field === field);
     if (!parts.length) return [];
+    const state = stateOf(field);
+    const since = !state.undone && (state.closed || (input.current != null && stableJson(input.current[field]) !== stableJson(source.next[field])));
     return [
       {
         key: `${source.key}:${field}`,
         at: msOf(source.at),
         who: author,
-        me: Boolean(me) && same(author, me),
+        me: Boolean(input.me) && same(author, input.me),
         verb: fieldLabel(field),
         parts: parts.map(({ subject, before, after }) => ({ subject, before, after })),
         text: "",
-        how: [L("ortak ayar", "shared setting")],
-        action: { kind: "undo-setting", prev: source.prev, fields: [field], mark: { id: markId(field), at: source.at } },
-        undone: null,
+        how: [L("ortak ayar", "shared setting"), ...(since ? [L("sonra yine değişti", "changed again since")] : [])],
+        action: state.undone || since ? null : { kind: "undo-setting", prev: source.prev, next: source.next, fields: [field], mark: { id: markId(field), at: source.at } },
+        undone: state.undone,
         trash: false,
+        source: "setting",
       } satisfies HistoryRow,
     ];
   });
+}
+
+/** A field taken back from here: by its history row's id, or (from a notice) by that change's server time. */
+function markFor(input: HistoryInput, rowId: string, at: number | null, field: SyncedField): UndoneMark | undefined {
+  return input.undone.find(
+    (m) => m.id === rowId || (!m.id.startsWith("h:") && at != null && msOf(m.at) === at && (!m.fields || m.fields.includes(field))),
+  );
 }
 
 /** (a) The server's changes; a later change that only put a field back marks the earlier one "geri alındı". */
@@ -124,17 +145,28 @@ function serverRows(changes: SettingsChange[], input: HistoryInput): HistoryRow[
       }
     }
   }
+  const at = (c: SettingsChange) => msOf(c.at);
   return changes.flatMap((c) =>
-    settingRows({ ...c, key: `h${c.id}` }, input.me, (f) => `h:${c.id}:${f}`)
-      .filter((row) => !takenBack.has(`${c.id}:${row.action?.kind === "undo-setting" ? row.action.fields[0] : ""}`))
-      .map((row) => {
-        const field = row.action?.kind === "undo-setting" ? row.action.fields[0] : null;
-        // Taken back from here: by the row's id, or (from a notice) by the change's server time.
-        const at = msOf(c.at);
-        const mark = input.undone.find((m) => m.id === `h:${c.id}:${field}` || (at != null && msOf(m.at) === at));
-        const undone = undoneBy.get(`${c.id}:${field}`) ?? (mark ? { by: mark.by, at: mark.undoneAt } : null);
-        return undone ? { ...row, undone, action: null } : row;
-      }),
+    settingRows(
+      { ...c, fields: c.fields.filter((f) => !takenBack.has(`${c.id}:${f}`)), key: `h${c.id}` },
+      input,
+      (f) => `h:${c.id}:${f}`,
+      (f) => {
+        const mark = markFor(input, `h:${c.id}:${f}`, at(c), f);
+        return { undone: undoneBy.get(`${c.id}:${f}`) ?? (mark ? { by: mark.by, at: mark.undoneAt } : null), closed: false };
+      },
+    ),
+  );
+}
+
+/** (a) without the server's history: the notices kept here, each field as it stands now. */
+function noticeRows(input: HistoryInput): HistoryRow[] {
+  return input.notices.flatMap((n) =>
+    settingRows({ ...n, key: `n:${n.id}` }, input, () => n.id, (f) => {
+      const undone = n.undone?.fields.includes(f) ? { by: n.undone.by, at: n.undone.at } : null;
+      const mark = undone ? undefined : markFor(input, n.id, msOf(n.at), f);
+      return { undone: undone ?? (mark ? { by: mark.by, at: mark.undoneAt } : null), closed: (n.closed ?? []).includes(f) };
+    }),
   );
 }
 
@@ -158,7 +190,7 @@ export function buildHistory(input: HistoryInput): HistoryRow[] {
   // (a) settings
   const settings = input.settings
     ? serverRows(input.settings, input)
-    : input.notices.flatMap((n) => settingRows({ ...n, key: `n:${n.id}` }, me, () => n.id));
+    : noticeRows(input);
   rows.push(...settings);
 
   // (c) trash
@@ -168,13 +200,14 @@ export function buildHistory(input: HistoryInput): HistoryRow[] {
       at: e.deletedAt,
       who: meName,
       me: true,
-      verb: e.kind === "trip" ? L("Gezi silindi", "Trip deleted") : L("Silindi", "Deleted"),
+      verb: e.kind === "trip" ? L("Gezi silindi", "Trip deleted") : e.kind === "doc" ? L("Belge silindi", "File deleted") : L("Silindi", "Deleted"),
       parts: null,
       text: e.label,
       how: [L(`Çöp kutusu'nda ${daysLeft(e, input.now)} gün daha`, `${daysLeft(e, input.now)} more days in the trash`)],
       action: { kind: "restore-trash", id: e.id },
       undone: null,
       trash: true,
+      source: "trash",
     });
     const line = events.find((m) => !used.has(m.id) && Math.abs(m.createdAt - e.deletedAt) < 10_000 && firstMatch(DELETED, m.text)?.[1] === e.label);
     if (line) used.add(line.id);
@@ -199,6 +232,7 @@ export function buildHistory(input: HistoryInput): HistoryRow[] {
         action: { kind: "restore-dismissed", item },
         undone: null,
         trash: false,
+        source: "hidden",
       });
     } else {
       const line = events.find((m) => !used.has(m.id) && HIDDEN_LINE.test(m.text) && h.names.some((n) => n && m.text.startsWith(`${n}:`)));
@@ -215,6 +249,7 @@ export function buildHistory(input: HistoryInput): HistoryRow[] {
         action: { kind: "unhide", key: h.key, label: h.label },
         undone: null,
         trash: false,
+        source: "hidden",
       });
     }
   }
@@ -244,12 +279,11 @@ export function buildHistory(input: HistoryInput): HistoryRow[] {
       action: item ? { kind: "show", itemId: item.id } : null,
       undone: null,
       trash: false,
+      source: "event",
     });
   }
 
-  return rows
-    .sort((a, b) => (b.at ?? -Infinity) - (a.at ?? -Infinity))
-    .slice(0, MAX_ROWS);
+  return rows.sort((a, b) => (b.at ?? -Infinity) - (a.at ?? -Infinity));
 }
 
 // --- days and segments -------------------------------------------------------------------------------
@@ -301,15 +335,23 @@ export function segmentsOf(rows: HistoryRow[], members: string[], me: string): {
   ];
 }
 
-export function filterRows(rows: HistoryRow[], segment: Segment): HistoryRow[] {
-  switch (segment.kind) {
-    case "all":
-      return rows;
-    case "person":
-      return rows.filter((r) => !r.me && same(r.who, segment.name));
-    case "me":
-      return rows.filter((r) => r.me);
-    case "trash":
-      return rows.filter((r) => r.trash);
-  }
+/**
+ * The segment's rows. Only the trip's history lines are cut (the newest MAX_EVENT_ROWS, after the filter): a
+ * row with a way back (trash, hidden, settings) is never left out.
+ */
+export function filterRows(rows: HistoryRow[], segment: Segment, maxEvents = MAX_EVENT_ROWS): HistoryRow[] {
+  const shown = (() => {
+    switch (segment.kind) {
+      case "all":
+        return rows;
+      case "person":
+        return rows.filter((r) => !r.me && same(r.who, segment.name));
+      case "me":
+        return rows.filter((r) => r.me);
+      case "trash":
+        return rows.filter((r) => r.trash);
+    }
+  })();
+  let events = 0;
+  return shown.filter((r) => r.source !== "event" || ++events <= maxEvents);
 }
