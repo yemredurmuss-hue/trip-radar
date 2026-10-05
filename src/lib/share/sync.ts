@@ -13,6 +13,7 @@ import { shrinkScreenshot } from "./image";
 import { applySettings, resolveSettings, settingsFromServer, settingsOf, stableJson } from "./settings";
 import { chromeKV, getShareConfig, getSyncState, getVotes, isConfigured, setSyncState, setVotes, type KV, type SyncState } from "./store";
 import { mergeVotes, type Vote, type VoteValue } from "./votes";
+import { addNotice } from "./notices";
 import { getPhoto, isPhoto } from "../profile";
 
 export interface SyncDeps {
@@ -149,7 +150,7 @@ export async function syncTrip(tripId: string, deps: SyncDeps): Promise<TripSync
   const state = saved?.shareId === trip.shareId ? saved : freshState(trip.shareId);
   const result: TripSyncResult = { received: 0, uploaded: 0 };
   try {
-    await syncSettings(trip.id, state, deps);
+    await syncSettings(trip.id, state, { ...deps, kv });
     result.uploaded = await uploadCaptures(trip.id, trip.shareId, deps);
     result.received = await pullCaptures(trip.id, state, deps, kv);
     await syncVotes(trip.shareId, { ...deps, kv });
@@ -164,7 +165,7 @@ export async function syncTrip(tripId: string, deps: SyncDeps): Promise<TripSync
   return result;
 }
 
-async function syncSettings(tripId: string, state: SyncState, { rpc, me }: SyncDeps): Promise<void> {
+async function syncSettings(tripId: string, state: SyncState, { rpc, me, kv = chromeKV, now }: SyncDeps): Promise<void> {
   const [remote] = (await rpc<RemoteTrip[]>("get_shared_trip", { p_id: state.shareId, p_author: me })) ?? [];
   if (!remote) throw new ShareError(L("Paylaşılan gezi sunucuda bulunamadı.", "The shared trip wasn't found on the server."), "not_found");
   state.members = (remote.members ?? []).filter((m) => typeof m === "string");
@@ -195,6 +196,13 @@ async function syncSettings(tripId: string, state: SyncState, { rpc, me }: SyncD
     state.settingsAt = remote.updated_at;
     if (remote.updated_by && remote.updated_by.trim().toLowerCase() !== me.trim().toLowerCase()) {
       await addEvent(tripId, L(`${remote.updated_by} gezinin ayarlarını güncelledi`, `${remote.updated_by} updated the trip settings`));
+      // Paylaşım güvenliği (0.37): what was here before stays on the board as a notice with "Geri al". A notice
+      // that can't be kept never stops the sync.
+      await addNotice(
+        tripId,
+        { author: remote.updated_by, at: remote.updated_at, prev: settingsOf(fresh), next: settingsOf(next), me, now: (now ?? Date.now)() },
+        kv,
+      ).catch(() => false);
     }
     notifyChanged();
   } else if (action === "adopt") {
