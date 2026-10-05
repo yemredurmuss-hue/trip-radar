@@ -2,7 +2,7 @@
 // History is append-only: the trip state rides along in a user turn only when it changed, and a
 // long conversation starts a fresh context instead of rewriting old turns.
 import { loadDecisions, type TripDecisions } from "./analysis";
-import { db, listItems, listMessages, listPreferences, newId, nextTime, notifyChanged } from "./db";
+import { addEvent, db, listItems, listMessages, listPreferences, newId, nextTime, notifyChanged } from "./db";
 import {
   advantageOver,
   CRITERION_LABELS,
@@ -23,14 +23,16 @@ import { NEED_MARK } from "./needs";
 import { coverageText, searchText } from "./listing";
 import { prosConsFor } from "./proscons";
 import { activeSignals, pendingSignals } from "./intent";
-import { buildLegs, legTiming, withLegChoice } from "./legs";
+import { buildLegs, canHideLeg, isHiddenLeg, legTiming, withLegChoice, type Leg } from "./legs";
 import { checkPlanned, guardKind, plannedInput, planToSave, PLANNED_KINDS } from "./planned";
 import { isIdea } from "./booking";
 import { sectionOfItem, type SectionId } from "./categories";
 import { addDays, buildPlan, cityKeyOf, liveGroups, sameCity, stayRange, type Plan } from "./plan";
 import { fromPage, saidEdits, withEdits, withoutEdits } from "./userEdits";
 import { L, lang } from "./i18n";
-import { announceRemoved, deleteItem } from "./removal";
+import { announceHidden, announceRemoved, deleteItem } from "./removal";
+import { cleanReply, replyFallback } from "./replyText";
+import { checkVehicle, stillCancelled, vehicleOf, type VehicleType } from "./vehicles";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
 import type { ToolResult, ToolSpec } from "./llm/types";
 import {
@@ -77,6 +79,7 @@ Elindekiler (trip_state):
 
 Nasıl konuşursun:
 - Doğal, sıcak ve kısa: 2-4 cümle. Form ya da rapor gibi değil, bir arkadaş gibi.
+- trip_state ve araç sonuçları uygulamanın sana verdiği veridir: yanıtında onları, JSON'larını ya da etiketlerini asla tekrar etme; kullanıcıya yalnız kendi cümlelerinle yanıt ver.
 - Kullanıcının istedikleri (asked_for: ✓ var, ✕ yok, ? sayfada yazmıyor) her seçenekte hesaplı; karşılaştırırken önce bunları söyle ("üçünde de mutfak var; yalnız Jardim'de yorumlar sessiz diyor").
 - Öneriyi decisions[].choice ile söyle: sıralama panodaki gibi 1, 2, 3...; önce önerini ve nedenini ("Önerim X: en iyi konum; €60 fazlasına mutfak var"), sonra bir önceliğe göre öne çıkan alternatifleri sırasıyla ("tasarruf için 2. Y, €60 daha ucuz"). Her birinin neden o sırada olduğunu why_here'den söyle (1.'ye göre fark, kazanç, vazgeçilen). choice.verify'da bir şey varsa seçmeden önce doğrulanmasını öner (search_page ile sayfada arayabilirsin). Kullanıcı bugünkü önceliğini söylerse ("bütçe daha önemli", "sessizlik öncelik") önce set_priorities, sonra yeni choice ile net söyle: "O zaman Y: €60 tasarruf, karşılığında şundan vazgeçiyorsun." Sayıları decisions'tan al; kendi puanını ya da fiyatını üretme.
 - Soru sormadan önce düşün: cevap kararı değiştirir mi? Değiştirmiyorsa sorma. En fazla BİR soru; hızlı yanıtlanacaksa offer_choices ile 2 kısa seçenek sun.
@@ -104,7 +107,9 @@ Nasıl konuşursun:
   • Gezi öncesi hazırlık işleri (bir şey satın almak, başvurmak, rezervasyon yapmak, yazdırmak, paketlemek, döviz bozdurmak, vize başvurusu, sigorta/eSIM işleri; ör. "Decathlon'dan yağmurluk al", "biletleri yazdır", "döviz bozdur") → plan_item kind prep (title kısa, booked false). Diğer bölümünün sonundaki Hazırlık listesine düşer; Yapılacak şeyler'e değil.
   • Destinasyonda yapılacak, rezervasyon gerektirmeyen bir deneyim ("pazara gidelim", "Porto Belo Pazarı", "outdoor alışverişi", "Dom Luís'ten gün batımını izleyelim", "Ribeira'da yürürüz", plaj, park, manzara noktası, mahalle, kilise, ücretsiz müze, sokak lezzeti) → plan_item kind todo (title kısa, city o şehir, date söylendiyse). Plan'da Yapılacak şeyler bölümüne düşer, rezervasyon sayılmaz. Kullanıcı "gideceğiz/yaptık/ekle" dese de booked false ver; booked yalnız bilet ya da rezervasyon alındıysa. kind activity yalnız bilet, rezervasyon, giriş ücreti, tur ya da gösteri/konser olan şey için; o zaman kullanıcının söylediğini note'a yaz ("bileti aldım", "rezervasyon 20:00", PNR/onay no, fiyat). Kanıtsız (fiyat, bilet sitesi, bilet/rezervasyon/tur sözü yok) bir activity panoda yine Yapılacak şeyler'e düşer; sonucun plan_section alanı nereye düştüğünü söyler, kullanıcıya onu anlat ("rezerve edildi" deme).
   • Konaklamayı birleştirme/uzatma/kısaltma ("Porto tek blok olsun 7-12", "Porto'yu 13'üne uzat") → plan_item kind stay, şehrin TÜM gecelerini tek aralıkla (date = giriş, end_date = çıkış). O şehirde bu aralığın içinde kalan eski sohbet konaklamaları birleşir (sonuçta merged); board alanıyla panoda ne göründüğünü anlat.
-  • "X'i kaldır/sil" (sohbette eklenmiş bir plan) → update_items status dismissed: plan panodan silinir. Kullanıcı sağdaki "Kaldır" ile de silebilir.
+  • "X'i kaldır/sil", "ulaşımda X var, onu kaldır" → remove_from_plan. target_id ya bir seçeneğin items[].id'si (kayıtlı seçenek elenir; sohbette eklenen plan silinir) ya da bir transferin plan.legs[].key'i (panoda "Gaula → Madeira" gibi görünen şehir değişimi ya da transfer; panodaki adı plan.legs[].cities; "Gerek yok" gibi gizlenir). Hepsi geri alınabilir; kullanıcı sağdaki "Kaldır" ile de silebilir. Araç hata verirse kaldırılmadı: nedenini söyle, "kaldırdım" deme.
+  • "X iptal, yerine Y" ("araç kiralama iptal, yerine karavan kiraladık") → aynı mesajda ikisini birden yap: Y'yi plan_item ile replaces = X'in id'si vererek ekle (Y kayıtlıysa update_items, X'i de remove_from_plan ile kaldır). X yalnız tek bir kayda uyuyorsa kaldır; birden fazla aday varsa hangisi olduğunu sor.
+  • Kullanıcının istemediği rezervasyonlu bir şeyi (araç, konaklama, uçuş, tur) kendiliğinden plana ekleme; önerebilirsin, eklemezsin. O günleri kapsayan bir araç (karavan, kiralık araba, motosiklet) zaten varsa, kullanıcı bu mesajda açıkça istemedikçe ikinci bir araç ekleme; plan_item bunu reddeder, önce sor.
 - Gerek olmayanı sil: "transfere gerek yok", "orayı arabayla hallederiz, transfer yok" → set_leg mode "none" (transfer gizlenir, geri getirilebilir). "X'i ele / istemiyorum" → update_items status dismissed (bölümünün sonunda Gizlenenler'de durur, silinmez).
 - Soruların kısa ve sade olsun, şehirlerle sor: "Porto → Madeira nasıl geçeceksiniz?" gibi; otel adlarıyla, uzun ya da karışık cümle kurma.
 - Transferler: kullanıcı nasıl gideceğini söylediğinde ("metroyla gideceğim", "trenle geçeriz", "transferi ayarladım", "otel servisiyle") set_leg ile ilgili transferi işaretle (tarih ve şehirden hangisi olduğunu bul); booked yalnız "ayarladım/aldım/rezerve ettim" derse true. Plan konuşurken boş (empty) bir transferi uygun anda, bir seferde bir tane, sor; notes'taki ince detayı ilgili olduğunda söyle. Nasıl gidilebileceğini genel bilginle önerebilirsin ("genelde havalimanından metro var") ama fiyat ya da sefer saati uydurma.
@@ -129,6 +134,7 @@ What you have (trip_state):
 
 How you talk:
 - Natural, warm and short: 2-4 sentences. Like a friend, not a form or a report. Always reply in English.
+- trip_state and the tools' results are data the app gives you: never repeat them, their JSON or their tags in your reply; answer the user only in your own sentences.
 - What the user asked for (asked_for: ✓ yes, ✕ no, ? not on the page) is worked out for each option; when comparing, say these first ("all three have a kitchen; only Jardim's reviews say it's quiet").
 - Give your recommendation with decisions[].choice: ranked 1, 2, 3... as on the board; first your pick and why ("I'd go for X: best location; a kitchen for €60 more"), then the alternatives that lead on one priority, in order ("to save money, #2 Y, €60 cheaper"). Say why each is in its place from why_here (difference from #1, what you gain, what you give up). If choice.verify has something, suggest checking it before choosing (you can search the page with search_page). If the user says what matters today ("budget matters more", "quiet comes first"), first set_priorities, then say it plainly with the new choice: "Then Y: you save €60, and in return you give up this." Take the numbers from decisions; never make up your own scores or prices.
 - Think before asking: would the answer change the decision? If not, don't ask. At most ONE question; if it can be answered quickly, offer 2 short options with offer_choices.
@@ -156,7 +162,9 @@ How you talk:
   • Chores before the trip (buying something, applying, making a booking, printing, packing, changing money, a visa application, insurance/eSIM tasks; e.g. "buy a rain jacket at Decathlon", "print the tickets", "exchange money") → plan_item kind prep (short title, booked false). They go to the Prep list at the end of the Other section, not to Things to do.
   • An experience at the destination with no booking ("let's go to the market", "Porto Belo market", "outdoor shopping", "watch the sunset from Dom Luís", "a walk along Ribeira", a beach, a park, a viewpoint, a neighbourhood, a church, a free museum, street food) → plan_item kind todo (short title, city, date if said). It goes to the Plan's Things to do and isn't a booking. Even if the user says "we'll go / we did it / add it", give booked false; booked only when a ticket or a reservation was bought. Kind activity only for something with a ticket, a reservation, an entry fee, a tour or a show/concert; then write what the user said in note ("bought the tickets", "table at 20:00", the PNR/confirmation number, the price). An activity without evidence (no price, ticket site, or ticket/reservation/tour words) still lands in Things to do; the result's plan_section says where it landed: tell the user that (don't say "booked").
   • Merging/extending/shortening a stay ("make Porto one block, 7-12", "extend Porto to the 13th") → plan_item kind stay with ALL the city's nights as one range (date = check-in, end_date = check-out). Earlier chat stays in that city inside this range merge (merged in the result); use the board field to say what the board shows.
-  • "remove/delete X" (a plan added in the chat) → update_items status dismissed: the plan is deleted from the board. The user can also delete it with the Remove button on the right.
+  • "remove/delete X", "there's X in transport, remove it" → remove_from_plan. target_id is either an option's items[].id (a saved option is ruled out; a plan added in the chat is deleted) or a transfer's plan.legs[].key (a change of city or a transfer the board shows like "Gaula → Madeira"; its name on the board is plan.legs[].cities; it's hidden like "Not needed"). All of it can be undone; the user can also delete with the Remove button on the right. If the tool returns an error, nothing was removed: say why, never "removed".
+  • "X is cancelled, Y instead" ("the car rental is cancelled, we rented a campervan instead") → do both in the same message: add Y with plan_item and replaces = X's id (if Y is saved, update_items, and remove X with remove_from_plan). Remove X only when it matches one record; if several could be meant, ask which.
+  • Never add something bookable the user didn't ask for (a vehicle, a stay, a flight, a tour) on your own; you can suggest it, not add it. If a vehicle (campervan, rental car, motorbike) already covers those days, don't add a second one unless the user explicitly asks in this message; plan_item refuses it, ask first.
 - Remove what isn't needed: "no transfer needed", "we'll drive there, no transfer" → set_leg mode "none" (the transfer is hidden and can be brought back). "rule out X / don't want it" → update_items status dismissed (it stays among the ruled-out ones, not deleted).
 - Keep questions short and simple, and ask with cities: like "How will you get from Porto to Madeira?"; not with hotel names, and not long or tangled sentences.
 - Transfers: when the user says how they'll go ("I'll take the metro", "we'll go by train", "I've arranged the transfer", "with the hotel shuttle"), mark that transfer with set_leg (work out which one from the date and city); booked is true only if they say "arranged/bought/booked". While planning, ask about an empty transfer at a good moment, one at a time; mention a detail from notes when relevant. You can suggest how to get there from general knowledge ("there's usually a metro from the airport") but never make up prices or timetables.
@@ -431,7 +439,7 @@ function buildTools(en: boolean): ToolSpec[] {
     {
       name: "plan_item",
       description:
-        t("Kullanıcının sohbette söylediği bir planı (linki, tarihi olmasa da) hemen panoya ekler: uçuş, tren, otobüs, feribot, transfer, taksi, araç kiralama, konaklama, etkinlik (activity: yalnız bilet, rezervasyon, giriş ücreti, tur ya da gösteri varsa), eSIM, seyahat sigortası (insurance; Diğer'e düşer), yapılacak (todo: destinasyonda rezervasyonsuz deneyim — pazar, alışveriş, yürüyüş, manzara, plaj; Plan'da Yapılacak şeyler'e düşer), hazırlık (prep: gezi öncesi iş — satın al, başvur, yazdır, paketle, döviz; Diğer'in Hazırlık listesine düşer). Uçuş gün verilince nereye gittiği bilinmeden de eklenir (bilet şablonu). Tarihliyse kendi gününde, tarihsizse şehrinin bloğunda görünür; booked false ise 'planlanıyor' yazar. Konaklama (kind stay, booked false) o geceler için ayrı, boş bir konaklama bloğu açar: otel seçilmez, o gecelere önceden seçilmiş bir yer varsa kalan gecelerde kalır. Aynı plan tekrar söylenirse (tarih sonradan gelse de) onu günceller. Konaklamada o şehirde bu gecelerin içinde kalan eski sohbet konaklamaları bununla birleşir (merged). Sonuç panonun o gecelerde ne gösterdiğini döndürür (board).", "Adds a plan the user mentioned in the chat to the board right away (even without a link or date): flight, train, bus, ferry, transfer, taxi, car hire, stay, activity (only with a ticket, a reservation, an entry fee, a tour or a show), eSIM, travel insurance (insurance; it goes to Other), to-do (todo: an experience at the destination with no booking — a market, shopping, a walk, a viewpoint, a beach; it goes to the Plan's Things to do), prep (a chore before the trip — buy, apply, print, pack, change money; it goes to Other's Prep list). A flight is added once its day is given, even before its destination is known (a ticket template). Dated, it shows on its day; undated, in its city's block; with booked false it says 'planned'. A stay (kind stay, booked false) opens a separate, empty stay block for those nights: no hotel is chosen, and a place chosen before for those nights stays for the remaining nights. Said again (even with the date coming later), the same plan is updated. For a stay, earlier chat stays in that city within these nights merge into it (merged). The result tells what the board shows for those nights (board)."),
+        t("Kullanıcının sohbette söylediği bir planı (linki, tarihi olmasa da) hemen panoya ekler: uçuş, tren, otobüs, feribot, transfer, taksi, araç kiralama, konaklama, etkinlik (activity: yalnız bilet, rezervasyon, giriş ücreti, tur ya da gösteri varsa), eSIM, seyahat sigortası (insurance; Diğer'e düşer), yapılacak (todo: destinasyonda rezervasyonsuz deneyim — pazar, alışveriş, yürüyüş, manzara, plaj; Plan'da Yapılacak şeyler'e düşer), hazırlık (prep: gezi öncesi iş — satın al, başvur, yazdır, paketle, döviz; Diğer'in Hazırlık listesine düşer). Uçuş gün verilince nereye gittiği bilinmeden de eklenir (bilet şablonu). Tarihliyse kendi gününde, tarihsizse şehrinin bloğunda görünür; booked false ise 'planlanıyor' yazar. Konaklama (kind stay, booked false) o geceler için ayrı, boş bir konaklama bloğu açar: otel seçilmez, o gecelere önceden seçilmiş bir yer varsa kalan gecelerde kalır. Aynı plan tekrar söylenirse (tarih sonradan gelse de) onu günceller. Konaklamada o şehirde bu gecelerin içinde kalan eski sohbet konaklamaları bununla birleşir (merged). Sonuç panonun o gecelerde ne gösterdiğini döndürür (board). O günleri kapsayan bir araç (karavan, kiralık araba, motosiklet) varken kullanıcı bu mesajda istemediyse ikinci bir aracı eklemez, reddeder: önce sor. replaces: kullanıcı bu planın yerine geçtiği kaydı söylediyse ('araç kiralama iptal, yerine karavan') onun id'si; o kayıt kaldırılır (geri alınabilir).", "Adds a plan the user mentioned in the chat to the board right away (even without a link or date): flight, train, bus, ferry, transfer, taxi, car hire, stay, activity (only with a ticket, a reservation, an entry fee, a tour or a show), eSIM, travel insurance (insurance; it goes to Other), to-do (todo: an experience at the destination with no booking — a market, shopping, a walk, a viewpoint, a beach; it goes to the Plan's Things to do), prep (a chore before the trip — buy, apply, print, pack, change money; it goes to Other's Prep list). A flight is added once its day is given, even before its destination is known (a ticket template). Dated, it shows on its day; undated, in its city's block; with booked false it says 'planned'. A stay (kind stay, booked false) opens a separate, empty stay block for those nights: no hotel is chosen, and a place chosen before for those nights stays for the remaining nights. Said again (even with the date coming later), the same plan is updated. For a stay, earlier chat stays in that city within these nights merge into it (merged). The result tells what the board shows for those nights (board). While a vehicle (campervan, rental car, motorbike) covers those days, it refuses to add a second one the user didn't ask for in this message: ask first. replaces: the id of the record this plan replaces, when the user said so ('the car rental is cancelled, a campervan instead'); that record is removed (it can be undone)."),
       schema: {
         type: "object",
         properties: {
@@ -445,15 +453,16 @@ function buildTools(en: boolean): ToolSpec[] {
           title: { ...nullable({ type: "string" }), description: t("Kısa ad; boşsa türden üretilir", "Short name, in English; made from the kind if empty") },
           booked: { type: "boolean", description: t("Kullanıcı bileti aldığını/rezerve ettiğini söylediyse true (gideceğiz, ekle, yaptık değil)", "true if the user said they bought the ticket/booked it (not 'we'll go', 'add it', 'we did it')") },
           note: { ...nullable({ type: "string" }), description: t("Kullanıcının söylediği kısa not; bilet/rezervasyon varsa onu yaz (\"bileti aldım\", \"masa 20:00\", PNR)", "A short note from what the user said; for a ticket/booking say so (\"bought the tickets\", \"table at 20:00\", the PNR)") },
+          replaces: { ...nullable({ type: "string" }), description: t("Bu planın yerine geçtiği kaydın items[].id'si (kullanıcı 'X iptal, yerine bu' dediyse); yoksa null", "The items[].id of the record this plan replaces (when the user said 'X is cancelled, this instead'); else null") },
         },
-        required: ["kind", "date", "end_date", "time", "from", "to", "city", "title", "booked", "note"],
+        required: ["kind", "date", "end_date", "time", "from", "to", "city", "title", "booked", "note", "replaces"],
         additionalProperties: false,
       },
     },
     {
       name: "set_leg",
       description:
-        t("Bir transferi (plan.legs) kullanıcının söylediğine göre işaretler. mode: nasıl gidecek ('metroyla gideceğim' → metro; 'unknown' planı siler; 'none' → 'transfere gerek yok' dediyse transferi panodan gizler, şehir değişiminde kullanılmaz); booked: ayarladı/aldı/rezerve etti mi; note: kısa not ('otel servisi 10:30'). Değiştirmediğin alanı null bırak.", "Marks a transfer (plan.legs) from what the user says. mode: how they'll go ('I'll take the metro' → metro; 'unknown' clears the plan; 'none' → hides the transfer from the board if they said 'no transfer needed', not for a change of city); booked: did they arrange/buy/book it; note: a short note ('hotel shuttle 10:30'). Leave fields you don't change null."),
+        t("Bir transferi (plan.legs) kullanıcının söylediğine göre işaretler. mode: nasıl gidecek ('metroyla gideceğim' → metro; 'unknown' planı siler; 'none' → 'transfere gerek yok' dediyse transferi panodan gizler; şehir değişiminde yalnız ona kayıtlı ya da söylenmiş bir şey yoksa); booked: ayarladı/aldı/rezerve etti mi; note: kısa not ('otel servisi 10:30'). Değiştirmediğin alanı null bırak.", "Marks a transfer (plan.legs) from what the user says. mode: how they'll go ('I'll take the metro' → metro; 'unknown' clears the plan; 'none' → hides the transfer from the board if they said 'no transfer needed'; a change of city only while nothing is saved or said for it); booked: did they arrange/buy/book it; note: a short note ('hotel shuttle 10:30'). Leave fields you don't change null."),
       schema: {
         type: "object",
         properties: {
@@ -463,6 +472,17 @@ function buildTools(en: boolean): ToolSpec[] {
           note: nullable({ type: "string" }),
         },
         required: ["leg_key", "mode", "booked", "note"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "remove_from_plan",
+      description:
+        t("Kullanıcının 'kaldır / sil / gerek yok' dediği bir şeyi panodan kaldırır. target_id bir seçeneğin items[].id'si (kayıtlı seçenek elenir ve Gizlenenler'de durur; sohbette eklenen plan silinir) ya da bir transferin plan.legs[].key'i (transfer ya da boş bir şehir değişimi 'Gerek yok' gibi gizlenir). Her biri geri alınabilir. Sonuç gerçekten ne olduğunu söyler; hata dönerse hiçbir şey kaldırılmadı.", "Removes something the user said to remove / delete / that isn't needed from the board. target_id is an option's items[].id (a saved option is ruled out and waits under Hidden; a plan added in the chat is deleted) or a transfer's plan.legs[].key (a transfer or an empty change of city is hidden like 'Not needed'). Each can be undone. The result says what really happened; on an error nothing was removed."),
+      schema: {
+        type: "object",
+        properties: { target_id: { type: "string", description: t("items[].id ya da plan.legs[].key", "items[].id or plan.legs[].key") } },
+        required: ["target_id"],
         additionalProperties: false,
       },
     },
@@ -607,6 +627,8 @@ function legsState(plan: Plan, trip: Trip, listings?: Map<string, Listing>) {
     date: l.date,
     from: l.from.label,
     to: l.to.label,
+    // As the board names it ("Gaula → Madeira"), so "ulaşımda Gaula Madeira var" finds its key.
+    cities: legCities(l),
     timing: legTiming(l),
     mode: l.mode,
     status: l.status,
@@ -614,9 +636,14 @@ function legsState(plan: Plan, trip: Trip, listings?: Map<string, Listing>) {
     options: l.options.map((i) => i.id),
     notes: l.notes,
     note: l.choice?.note ?? null,
-    hidden: trip.hidden?.includes(`leg:${l.key}`) ?? false,
+    hidden: isHiddenLeg(l, trip.hidden),
+    // remove_from_plan / set_leg "none" can hide it (a change of city only while nothing is saved or said for it).
+    can_hide: canHideLeg(l),
   }));
 }
+
+/** A transfer's ends as the board shows them: "Gaula → Madeira". */
+const legCities = (l: Leg) => `${l.from.city ?? l.from.label} → ${l.to.city ?? l.to.label}`;
 
 /** Current priority levels per category present on the trip, as words. */
 function priorityState(trip: Trip, items: Item[], inferred?: Inferred) {
@@ -760,13 +787,79 @@ function parseRequirements(raw: unknown): Requirement[] {
   return [...byLabel.values()];
 }
 
-async function runTool(tripId: string, name: string, input: any, choices: string[]): Promise<string> {
+/** One sendMessage: what the traveller said and what the tools did, for the guards and the check after the turn. */
+interface Turn {
+  userText: string;
+  /** The assistant's last reply before this message (an "evet" answers it). */
+  previousReply: string | null;
+  /** Records taken out and transfers hidden in this turn (ids and leg keys). */
+  removed: Set<string>;
+  removedVehicles: Set<VehicleType>;
+  /** Tool calls that worked. */
+  done: number;
+}
+const newTurn = (userText = "", previousReply: string | null = null): Turn => ({ userText, previousReply, removed: new Set(), removedVehicles: new Set(), done: 0 });
+
+/**
+ * A record off the plan, as update_items "dismissed" does: a plan said in the chat goes with its files (the board
+ * offers "Geri al"); a saved option is ruled out and waits under Gizlenenler ("Geri al").
+ */
+async function dismissItem(item: Item, note: string | null, turn: Turn): Promise<"deleted" | "dismissed"> {
+  turn.removed.add(item.id);
+  const vehicle = vehicleOf(item);
+  if (vehicle) turn.removedVehicles.add(vehicle);
+  if (item.origin === "chat") {
+    announceRemoved(await deleteItem(item));
+    return "deleted";
+  }
+  const d = await db();
+  const fresh = (await d.get("items", item.id)) ?? item;
+  const now = Date.now();
+  await d.put("items", { ...fresh, status: "dismissed", statusNote: note ?? fresh.statusNote, ...(fresh.status !== "dismissed" ? { statusAt: now } : {}), updatedAt: now });
+  return "dismissed";
+}
+
+/**
+ * A transfer off the board, as its "Gerek yok" does (trip.hidden's `leg:<key>`), with the board's "Geri al"; it
+ * waits under Gizlenenler with "Geri getir". A change of city with a flight or a way said for it can't go.
+ */
+async function hideLeg(tripId: string, trip: Trip, leg: Leg, turn: Turn): Promise<string> {
+  const label = legCities(leg);
+  if (!canHideLeg(leg)) {
+    const saved = [...leg.options, ...(leg.travel?.items ?? []).filter((i) => !leg.options.includes(i))];
+    const what = saved.map((i) => `${i.name} (id ${i.id})`).join(", ");
+    throw new ToolError(
+      L(
+        `${label} gizlenmedi: bu şehir değişimine kayıtlı ya da söylenmiş bir yol var${what ? ` (${what})` : ""}. O kaydı kaldırmak için remove_from_plan ile onun id'sini ver; söylenen yolu set_leg mode "unknown" temizler. Kullanıcıya böyle söyle.`,
+        `${label} wasn't hidden: a way is saved or said for this change of city${what ? ` (${what})` : ""}. To take that record off, give its id to remove_from_plan; set_leg mode "unknown" clears a way that was said. Tell the user so.`,
+      ),
+    );
+  }
+  const key = `leg:${leg.key}`;
+  if (!isHiddenLeg(leg, trip.hidden)) {
+    await (await db()).put("trips", { ...trip, hidden: [...(trip.hidden ?? []).filter((k) => k !== key), key], updatedAt: Date.now() });
+    await addEvent(tripId, L(`${label}: gerek yok denildi, gizlendi`, `${label}: marked not needed, hidden`));
+    announceHidden({ tripId, key, label });
+    notifyChanged();
+  }
+  turn.removed.add(leg.key);
+  return JSON.stringify({
+    hidden: leg.key,
+    shown_as: label,
+    note: L("Panodan gizlendi; 'Geri al' ya da Gizlenenler'deki 'Geri getir' ile geri gelir.", "Hidden from the board; 'Undo', or 'Bring back' under Hidden, brings it back."),
+  });
+}
+
+async function runTool(tripId: string, name: string, input: any, choices: string[], turn: Turn = newTurn()): Promise<string> {
   const d = await db();
   const items = await listItems(tripId);
   const byId = new Map(items.map((i) => [i.id, i]));
   switch (name) {
     case "update_items": {
-      const changes = (Array.isArray(input.changes) ? input.changes : []) as { item_id: string; status: ItemStatus; note?: string | null }[];
+      // An id taken out earlier in this turn (plan_item's replaces, remove_from_plan) is done already.
+      const changes = ((Array.isArray(input.changes) ? input.changes : []) as { item_id: string; status: ItemStatus; note?: string | null }[]).filter(
+        (c) => byId.has(c.item_id) || !(c.status === "dismissed" && turn.removed.has(c.item_id)),
+      );
       const unknown = changes.filter((c) => !byId.has(c.item_id)).map((c) => c.item_id);
       if (unknown.length) throw new ToolError(L(`Bu id'lerle seçenek yok: ${unknown.join(", ")}`, `No options with these ids: ${unknown.join(", ")}`));
       const badStatus = changes.filter((c) => !(ITEM_STATUSES as readonly string[]).includes(c.status));
@@ -791,8 +884,13 @@ async function runTool(tripId: string, name: string, input: any, choices: string
         // its files, as the card's Sil does, and the board offers "Geri al".
         if (c.status === "dismissed" && item.origin === "chat") {
           current.delete(item.id);
-          announceRemoved(await deleteItem(item));
+          await dismissItem(item, null, turn);
           continue;
+        }
+        if (c.status === "dismissed") {
+          turn.removed.add(item.id);
+          const vehicle = vehicleOf(item);
+          if (vehicle) turn.removedVehicles.add(vehicle);
         }
         const note = typeof c.note === "string" && c.note.trim() ? c.note.trim() : item.statusNote;
         const updated = { ...item, status: c.status, statusNote: note, ...(c.status !== item.status ? { statusAt: Date.now() } : {}), updatedAt: Date.now() };
@@ -920,7 +1018,28 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       const said = guardKind(plannedInput(input));
       const problem = checkPlanned(said);
       if (problem) throw new ToolError(problem);
+      // "Araç kiralama iptal, yerine karavan": the record this plan takes the place of.
+      const replacesId = text(input.replaces);
+      const replaced = replacesId ? byId.get(replacesId) : undefined;
+      if (replacesId && !replaced && !turn.removed.has(replacesId)) {
+        throw new ToolError(L(`replaces: bu id'le kayıt yok: ${replacesId}. Hiçbir şey eklenmedi.`, `replaces: no record with this id: ${replacesId}. Nothing was added.`));
+      }
       const { item: saved, same } = planToSave(said, items, tripId, newId(), Date.now());
+      // A vehicle for days one already covers is added only when asked for in this message (or in place of it).
+      const check = checkVehicle({
+        added: saved,
+        items: items.map(withEdits),
+        same,
+        replaces: replaced && replaced.id !== saved.id && replaced.status !== "dismissed" ? [withEdits(replaced)] : [],
+        userText: turn.userText,
+        previousReply: turn.previousReply,
+      });
+      if (check.refusal) throw new ToolError(check.refusal);
+      const gone: string[] = [];
+      for (const old of check.dismiss) {
+        await dismissItem(byId.get(old.id) ?? old, L(`Yerine: ${saved.name}`, `Replaced by ${saved.name}`), turn);
+        gone.push(old.name);
+      }
       await d.put("items", saved);
       // Where it landed on the Plan (booking.ts reads a thing to do from its evidence, not its kind): the reply
       // says "added to Things to do", never "booked", for a market said as an activity.
@@ -933,6 +1052,9 @@ async function runTool(tripId: string, name: string, input: any, choices: string
         status: todo ? (saved.status === "booked" ? "done" : "planned") : saved.status === "booked" ? "booked" : "planned",
         plan_section: prep ? "Diğer → Hazırlık / Other → Prep (a chore before the trip, ticked off when done)" : PLAN_SECTION_NAMES[section],
         ...(todo ? { booking: "none" } : {}),
+        ...(gone.length
+          ? { replaced: gone, replaced_note: L("Yerine geçtiği kayıt plandan çıktı; geri alınabilir.", "The record it replaces left the plan; it can be undone.") }
+          : {}),
       };
       // A stay: what the board now shows for those nights, so the reply says what's really there.
       const nights = saved.category === "stay" ? stayRange(saved) : null;
@@ -971,12 +1093,7 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       const mode = input.mode as LegMode | "unknown" | "none" | null;
       const leg = legs.find((l) => l.key === input.leg_key)!;
       const hiddenKey = `leg:${leg.key}`;
-      if (mode === "none") {
-        if (leg.kind === "move") throw new ToolError(L("Şehir değişimi gizlenemez; nasıl geçileceğini mode ile söyle.", "A change of city can't be hidden; say how they'll get there with mode."));
-        const hidden = [...(trip.hidden ?? []).filter((k) => k !== hiddenKey), hiddenKey];
-        await d.put("trips", { ...trip, hidden, updatedAt: Date.now() });
-        return JSON.stringify({ hidden: leg.key, note: L("Panodan gizlendi; 'Gizlenenler'den geri getirilebilir.", "Hidden from the board; it can be brought back from 'Hidden'.") });
-      }
+      if (mode === "none") return hideLeg(tripId, trip, leg, turn);
       if (mode != null && mode !== "unknown" && !(LEG_MODES as readonly string[]).includes(mode)) throw new ToolError(L(`Geçersiz ulaşım: ${mode}`, `Invalid transport: ${mode}`));
       const patch = {
         ...(mode != null ? { mode: mode === "unknown" ? null : mode } : {}),
@@ -988,6 +1105,37 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       const updated = withLegChoice(shown, input.leg_key, patch);
       await d.put("trips", { ...updated, updatedAt: Date.now() });
       return JSON.stringify(legsState(buildPlan(updated, items), updated, listings).find((l) => l.key === input.leg_key));
+    }
+    case "remove_from_plan": {
+      const id = text(input.target_id);
+      if (!id) throw new ToolError(L("target_id gerekli: items[].id ya da plan.legs[].key.", "target_id is required: items[].id or plan.legs[].key."));
+      const item = byId.get(id);
+      if (item) {
+        if (item.status === "dismissed") return JSON.stringify({ removed: item.name, already: true });
+        const how = await dismissItem(item, null, turn);
+        return JSON.stringify({
+          removed: item.name,
+          how,
+          note:
+            how === "deleted"
+              ? L("Sohbette eklenen plan silindi; panodaki 'Geri al' ile geri gelir.", "The plan added in the chat is deleted; 'Undo' on the board brings it back.")
+              : L("Elendi: bölümünün sonunda Gizlenenler'de durur, 'Geri al' ile geri gelir.", "Ruled out: it waits under Hidden at the end of its section; 'Undo' brings it back."),
+        });
+      }
+      if (turn.removed.has(id)) return JSON.stringify({ removed: id, already: true });
+      const trip = await d.get("trips", tripId);
+      if (!trip) throw new ToolError(L("Gezi bulunamadı.", "Trip not found."));
+      const listings = (await loadDecisions(trip, items)).ctx.listings;
+      const legs = buildLegs(buildPlan(trip, items), trip, listings);
+      const leg = legs.find((l) => l.key === id);
+      if (leg) return hideLeg(tripId, trip, leg, turn);
+      const known = legs.map((l) => `${l.key} = ${legCities(l)}`).join("; ");
+      throw new ToolError(
+        L(
+          `Bu id ya da anahtarla bir şey yok: ${id}. Hiçbir şey kaldırılmadı. Seçenekler items[].id'dir; transferler plan.legs[].key: ${known}.`,
+          `Nothing has this id or key: ${id}. Nothing was removed. Options are items[].id; transfers are plan.legs[].key: ${known}.`,
+        ),
+      );
     }
     case "search_page": {
       const item = byId.get(input.item_id);
@@ -1010,6 +1158,33 @@ async function runTool(tripId: string, name: string, input: any, choices: string
     default:
       throw new ToolError(L(`Bilinmeyen araç: ${name}`, `Unknown tool: ${name}`));
   }
+}
+
+/** Sent (unseen by the traveller) when a reply was only the trip state echoed back. */
+const echoNote = () =>
+  L(
+    "(Uygulama notu, kullanıcı görmez: son yanıtın yalnız trip_state verisini tekrar etti ve gösterilmedi. trip_state'i ya da JSON'u tekrar etmeden kullanıcının son mesajına kısa bir yanıt ver; bir araç çağırdıysan sonucunu söyle.)",
+    "(App note, not shown to the user: your last reply only repeated the trip_state data and wasn't shown. Without repeating trip_state or any JSON, answer the user's last message briefly; if you called a tool, say what it returned.)",
+  );
+
+/**
+ * The check after a turn (Bug: "araç kiralama iptal, yerine karavan kiraladık" left the car rental): a vehicle the
+ * traveller said was cancelled, still on the plan because nothing of its kind was taken out, is asked about, never
+ * removed on a guess.
+ */
+export function cancelledQuestion(userText: string, items: Item[], turn: Pick<Turn, "removed" | "removedVehicles">): { text: string; choices: string[] } | null {
+  const left = stillCancelled(userText, items, turn.removed, turn.removedVehicles);
+  if (!left.length) return null;
+  if (left.length === 1) {
+    return {
+      text: L(`${left[0].name} hâlâ planda. İptal olan bu muydu, kaldırayım mı?`, `${left[0].name} is still on the plan. Is that the one that was cancelled; shall I remove it?`),
+      choices: [L(`Evet, ${left[0].name} kaldır`, `Yes, remove ${left[0].name}`), L("Hayır, kalsın", "No, keep it")],
+    };
+  }
+  return {
+    text: L(`Planda hâlâ ${left.map((i) => i.name).join(", ")} var. Hangisi iptal oldu?`, `${left.map((i) => i.name).join(", ")} are still on the plan. Which one was cancelled?`),
+    choices: left.slice(0, 2).map((i) => L(`${i.name} iptal`, `${i.name} was cancelled`)),
+  };
 }
 
 const MAX_STEPS = 6;
@@ -1058,6 +1233,8 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
     provider: provider.id,
   });
 
+  const turn = newTurn(userText, session.findLast((m) => m.role === "assistant" && m.text.trim())?.text ?? null);
+  let askedAgain = false;
   for (let step = 0; step < MAX_STEPS; step++) {
     const history = currentSession(await listMessages(tripId), provider.id);
     const answer = await provider.chatStep(history, systemPrompt(), tools());
@@ -1067,22 +1244,53 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
     const results: ToolResult[] = [];
     for (const call of answer.calls) {
       try {
-        results.push({ call, content: await runTool(tripId, call.name, call.input, choices), isError: false });
+        results.push({ call, content: await runTool(tripId, call.name, call.input, choices, turn), isError: false });
+        turn.done++;
       } catch (error) {
         results.push({ call, content: error instanceof Error ? error.message : String(error), isError: true });
       }
     }
 
     const fallback = answer.refused ? L("Bu isteğe yanıt veremiyorum.", "I can't help with that request.") : "";
+    // Never the trip state (or tool scaffolding) on screen, whatever the model wrote.
+    const reply = cleanReply(answer.text);
+    let text = reply.text;
+    let content = answer.content;
+    const last = results.length === 0;
+    if (reply.leaked) {
+      console.warn("[assistant] the reply repeated the trip state or tool scaffolding; it was taken out", { provider: provider.id, step, raw: answer.text.length, kept: text.length });
+    }
+    if (last && reply.leaked && !text) {
+      if (!askedAgain) {
+        // The reply was only the echo: ask once more, out of sight, for the answer itself.
+        askedAgain = true;
+        await saveMessage({ tripId, role: "assistant", content, text: "", choices: [], provider: provider.id });
+        await saveMessage({ tripId, role: "user", content: provider.userContent([echoNote()]), text: "", choices: [], provider: provider.id });
+        continue;
+      }
+      text = turn.done
+        ? L("İsteğini işledim ama yanıtımı yazamadım; panodan kontrol eder misin?", "I handled your request but couldn't write my answer; could you check the board?")
+        : replyFallback();
+    }
+    if (last) {
+      // "Araç kiralama iptal, yerine karavan": what was said to be cancelled and is still on the plan is asked about.
+      const question = cancelledQuestion(userText, await listItems(tripId), turn);
+      if (question && !text.includes("?")) {
+        text = text ? `${text}\n\n${question.text}` : question.text;
+        choices.splice(0, choices.length, ...question.choices);
+        // The question is in the model's own turn, so "Evet, kaldır" next time answers it.
+        if (Array.isArray(content)) content = [...content, ...(provider.assistantContent(question.text) as unknown[])];
+      }
+    }
     await saveMessage({
       tripId,
       role: "assistant",
-      content: answer.content,
-      text: answer.text || fallback,
+      content,
+      text: text || fallback,
       choices,
       provider: provider.id,
     });
-    if (results.length === 0) return;
+    if (last) return;
     await saveMessage({
       tripId,
       role: "user",
