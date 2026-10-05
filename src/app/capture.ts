@@ -12,6 +12,8 @@ import type { Attachment } from "../lib/llm/types";
 import { saveImage, savePastedLink } from "../lib/process";
 import type { DocRecord } from "../lib/types";
 import { looksLikeUrl } from "../lib/url";
+import { sectionOfItem } from "../lib/categories";
+import { addIntake, intakeNow, updateIntake, type FileIntake, type IntakeSource, type LinkIntake } from "./arrive/intake";
 
 export async function addImages(files: Iterable<File>): Promise<number> {
   let count = 0;
@@ -24,11 +26,17 @@ export async function addImages(files: Iterable<File>): Promise<number> {
   return count;
 }
 
-/** Saves the text as links when it is only links; returns false for ordinary text. */
-export async function addLinks(text: string): Promise<boolean> {
+/**
+ * Saves the text as links when it is only links; returns false for ordinary text. `from`: where it was handed
+ * over (a trip's chat, its board), so the chat can show its chip and the board can follow it (arrive/intake).
+ */
+export async function addLinks(text: string, from?: { tripId: string | null; source: IntakeSource }): Promise<boolean> {
   const tokens = text.trim().split(/\s+/).filter(Boolean);
   if (!tokens.length || !tokens.every(looksLikeUrl)) return false;
-  for (const url of tokens) await savePastedLink(url);
+  for (const url of tokens) {
+    const capture = await savePastedLink(url);
+    if (from) addIntake<LinkIntake>({ kind: "link", tripId: from.tripId, source: from.source, url, captureId: capture.id });
+  }
   requestProcessing();
   return true;
 }
@@ -49,41 +57,58 @@ async function boardAttachment(doc: DocRecord): Promise<Attachment> {
  * document, or can't read, is saved as a screenshot like before. Returns what went wrong, in words
  * (`logged`: already a line in the chat).
  */
-export async function addTripFiles(tripId: string, files: Iterable<File>): Promise<{ text: string; logged: boolean }[]> {
+export async function addTripFiles(tripId: string, files: Iterable<File>, source: IntakeSource = "chat"): Promise<{ text: string; logged: boolean }[]> {
   const errors: { text: string; logged: boolean }[] = [];
   let screenshots = 0;
-  const asScreenshot = async (file: File, docId: string) => {
-    await deleteDoc(docId);
-    await saveImage(await downscale(await fileToDataUrl(file)));
+  // Each file's chip and waiting card (arrive/intake): reading, then where it went.
+  const all = Array.from(files);
+  const intakes = all.map((file) => addIntake<FileIntake>({ kind: "file", tripId, source, name: file.name, type: file.type, state: "reading" }));
+  const screenshot = async (file: File, at: FileIntake) => {
+    const shot = await downscale(await fileToDataUrl(file));
+    const capture = await saveImage(shot);
+    updateIntake(at.id, { state: "screenshot", captureId: capture.id, thumb: shot });
     screenshots++;
   };
-  for (const file of files) {
-    // A picture Belgeler can't keep (WebP, GIF, HEIC...) is a screenshot, as it always was.
-    if (file.type.startsWith("image/") && !docType(file)) {
-      await saveImage(await downscale(await fileToDataUrl(file)));
-      screenshots++;
-      continue;
-    }
-    const problem = checkDoc(file);
-    if (problem) {
-      errors.push({ text: problem, logged: false });
-      continue;
-    }
-    const doc = await addTripDoc(tripId, file);
-    const picture = doc.type !== "application/pdf";
-    try {
-      const out = await readDocument(tripId, doc.id, { attachment: boardAttachment });
-      if (out.kind === "not_document" && picture) await asScreenshot(file, doc.id);
-    } catch (error) {
-      if (picture) {
-        await asScreenshot(file, doc.id);
+  const asScreenshot = async (file: File, docId: string, at: FileIntake) => {
+    await deleteDoc(docId);
+    await screenshot(file, at);
+  };
+  try {
+    for (const [index, file] of all.entries()) {
+      const at = intakes[index];
+      // A picture Belgeler can't keep (WebP, GIF, HEIC...) is a screenshot, as it always was.
+      if (file.type.startsWith("image/") && !docType(file)) {
+        await screenshot(file, at);
         continue;
       }
-      const why = describeError(error);
-      errors.push({ text: why, logged: true });
-      await addEvent(tripId, L(`📎 ${doc.name} Belgeler'e kaydedildi; okunamadı: ${why}`, `📎 ${doc.name} is saved in Documents; couldn't read it: ${why}`));
-      notifyChanged();
+      const problem = checkDoc(file);
+      if (problem) {
+        errors.push({ text: problem, logged: false });
+        updateIntake(at.id, { state: "error", error: problem });
+        continue;
+      }
+      const doc = await addTripDoc(tripId, file);
+      const picture = doc.type !== "application/pdf";
+      try {
+        const out = await readDocument(tripId, doc.id, { attachment: boardAttachment });
+        if (out.kind === "not_document" && picture) await asScreenshot(file, doc.id, at);
+        else if (out.kind === "linked" || out.kind === "created") updateIntake(at.id, { state: "done", itemId: out.item.id, itemName: out.item.name, section: sectionOfItem(out.item) });
+        else updateIntake(at.id, { state: "done" });
+      } catch (error) {
+        if (picture) {
+          await asScreenshot(file, doc.id, at);
+          continue;
+        }
+        const why = describeError(error);
+        updateIntake(at.id, { state: "error", error: why });
+        errors.push({ text: why, logged: true });
+        await addEvent(tripId, L(`📎 ${doc.name} Belgeler'e kaydedildi; okunamadı: ${why}`, `📎 ${doc.name} is saved in Documents; couldn't read it: ${why}`));
+        notifyChanged();
+      }
     }
+  } finally {
+    // Something threw on the way (storage full...): no chip keeps spinning.
+    for (const at of intakes) if (intakeNow().find((e) => e.id === at.id && e.kind === "file" && e.state === "reading")) updateIntake(at.id, { state: "error" });
   }
   if (screenshots) requestProcessing();
   return errors;

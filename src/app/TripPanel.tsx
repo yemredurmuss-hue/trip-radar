@@ -52,6 +52,7 @@ import { DocsTab } from "./docs/DocsTab";
 import { CategoryPlan } from "./plan/CategoryPlan";
 import { SECTION_META, useSectionOpen } from "./plan/sectionMeta";
 import { SettledCard, SwipeCard } from "./SwipeCard";
+import { useArrivals } from "./arrive/useArrivals";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
 import { choiceOf, type Choice } from "../lib/choice";
 import { pivotalFindings } from "../lib/pivots";
@@ -146,6 +147,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     setView((v) => (v === "plan" ? "days" : "plan"));
     setTimeout(() => show(findTarget(target)), 60);
   };
+  // What's being read shows in its section; what lands slides in (arrive/useArrivals.tsx).
+  const arrivals = useArrivals({ tripId: trip.id, items, sections, openCaptures, view, isOpen, setOpened, reveal });
 
   // --- plan cards: the way chosen per transfer, files, delete with undo, the add sheet ---
   const legModes = useMemo(() => legModeByItem(legs), [legs]);
@@ -179,7 +182,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
    */
   const quickAdd = async (tpl: Template, at: InsertAt | null) => {
     setSheet(null);
-    const item = await addQuick(trip.id, tpl, at, newId());
+    const id = newId();
+    arrivals.quiet(id); // it has its own "eklendi · Geri al"
+    const item = await addQuick(trip.id, tpl, at, id);
     offer({ kind: "added", item, label: templateLabel(tpl.id) });
     if (view !== "plan") setView("plan");
     setOpened(sectionOfItem(item), true);
@@ -535,7 +540,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       </section>
       {todoOpen && <TodoList progress={progress} open={todoOpen} onGo={reveal} />}
 
-      {failed.length > 0 && (
+      {/* On the Plan a failed capture is its own card ("Okunamadı · Tekrar dene · Kaldır"); here on the other views. */}
+      {failed.length > 0 && view !== "plan" && (
         <div className="errors">
           {failed.map((c) => (
             <div key={c.id}>
@@ -582,8 +588,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         <CategoryPlan
           plan={plan}
           sections={sections}
-          isOpen={isOpen}
-          onOpen={setOpened}
+          isOpen={arrivals.isOpen}
+          onOpen={arrivals.onOpen}
+          pending={arrivals.pending}
           tripId={trip.id}
           cities={cityNames}
           cards={{ legCard, renderGroup, card, settled }}
@@ -601,6 +608,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       {historyOpen && onHistoryClose && (
         <HistoryDialog trip={trip} items={items} hidden={hiddenForHistory} onClose={onHistoryClose} onShow={(id) => setTimeout(() => reveal({ item: id }), 60)} />
       )}
+      {arrivals.toast}
     </CardEnvContext.Provider>
   );
 }

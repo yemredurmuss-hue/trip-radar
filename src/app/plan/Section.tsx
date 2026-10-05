@@ -39,7 +39,8 @@ export function Section({ section, open, onToggle, onAdd, children }: {
               {L("Ekle", "Add")}
             </button>
           )}
-          {ideas ? (
+          {/* Drawn only for something being read into it (arrive): nothing to count yet. */}
+          {!section.entries.length && !section.hidden.length ? null : ideas ? (
             <span className="cat-ideas">{ideaCount(section.id, ideas)}</span>
           ) : (
             <>

@@ -3,6 +3,7 @@
 // opens and closes (remembered per trip), with the approved cards in a timeline inside and what's out of the
 // way at its end. A section with nothing in it (and nothing hidden) isn't drawn; it's one chip in the "Ekle"
 // line at the bottom.
+import type { ReactNode } from "react";
 import { sectionOfItem, type CatSection, type SectionId } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import type { Plan } from "../../lib/plan";
@@ -14,7 +15,7 @@ import { Section } from "./Section";
 import { SECTION_META } from "./sectionMeta";
 import { SectionTimeline, type SectionCards } from "./SectionTimeline";
 
-export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items }: {
+export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending }: {
   plan: Plan;
   sections: CatSection[];
   /** Open now: the traveller's choice, else the first look (sectionMeta.useSectionOpen). */
@@ -27,12 +28,15 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
   onAdd: (section: SectionId | null, at: InsertAt | null) => void;
   today: string;
   items: Item[];
+  /** What's being read now (arrive/useArrivals): under the header when its place can't be guessed, else atop its section (drawn even while empty). */
+  pending?: { lead: ReactNode; bySection: Partial<Record<SectionId, ReactNode>> };
 }) {
   const n = plan.nights;
   const parts = [n.booked && L(`${n.booked} rezerve`, `${n.booked} booked`), n.chosen && L(`${n.chosen} seçildi`, `${n.chosen} chosen`), n.open && L(`${n.open} açık`, `${n.open} open`)].filter(Boolean);
-  const shown = sections.filter((s) => s.entries.length || s.hidden.length);
+  const waiting = (s: CatSection) => pending?.bySection[s.id] != null;
+  const shown = sections.filter((s) => s.entries.length || s.hidden.length || waiting(s));
   // İlham fills by sending links (a Reel, a pin), never by hand: no "Ekle" chip for it.
-  const empty = sections.filter((s) => !s.entries.length && !s.hidden.length && SECTION_META[s.id].templates.length > 0);
+  const empty = sections.filter((s) => !s.entries.length && !s.hidden.length && !waiting(s) && SECTION_META[s.id].templates.length > 0);
   return (
     <div className="section trip-plan cat-plan">
       <div className="section-head">
@@ -45,13 +49,15 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
           ⚠ {x.text}
         </div>
       ))}
+      {pending?.lead && <div className="ar-lead">{pending.lead}</div>}
       {shown.length > 0 && (
         <div className="cat-sheet">
           {shown.map((s) => {
             const opened = isOpen(s);
             return (
               <Section key={s.id} section={s} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)}>
-                <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(sectionOfItem(item), true)} today={today} items={items} />
+                {pending?.bySection[s.id]}
+                {(s.entries.length > 0 || s.hidden.length > 0) && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(sectionOfItem(item), true)} today={today} items={items} />}
               </Section>
             );
           })}

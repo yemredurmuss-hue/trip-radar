@@ -2016,3 +2016,104 @@ button.cat-hidden-name:hover { text-decoration: underline; }
   .hs-t { flex-basis: calc(100% - 44px); }
   .hs-ev > .hs-acts, .hs-ev > .hs-tag { margin-left: 44px; }
 }
+
+/* ---------- arrivals (ar-, src/app/arrive/*): content coming in, made visible, calmly ----------
+   A waiting card at the top of the section a link will most likely land in (or under the Plan's header),
+   its site's icon, a line that moves with the reading and one soft shimmer; the new card fades and slides
+   in 8px, then a ring in its section's colour fades over 1.5 s; the header's count pops once. 150–400 ms,
+   ease-out, no bounce; nothing moves under prefers-reduced-motion. */
+.ar-lead { margin: 0 0 12px; }
+.ar-lead .ar-pending { background: #fff; border-color: transparent; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 6px 24px rgba(0,0,0,.04); }
+.ar-pending {
+  display: flex; align-items: center; gap: 12px; margin: 0 0 12px; padding: 12px 14px; border-radius: 16px;
+  border: 1px solid #ece9e3; background: #fbfaf8; animation: ar-fade .24s ease-out both;
+}
+.ar-fav { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: #fff; border: 1px solid #ece9e3; color: #8e8e93; overflow: hidden; }
+.ar-fav.ar-has-thumb { width: 44px; border-radius: 8px; }
+.ar-favimg { width: 18px; height: 18px; display: block; }
+.ar-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ar-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ar-top { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 14px; color: #1d1d1f; }
+.ar-top b { flex: none; max-width: 60%; font-weight: 600; overflow-wrap: anywhere; }
+.ar-sub { min-width: 0; font-size: 13px; color: #8e8e93; overflow-wrap: anywhere; }
+.ar-stage { font-size: 13px; color: #6e6e73; }
+.ar-bar { position: relative; display: block; height: 3px; margin-top: 5px; border-radius: 999px; background: #efece7; overflow: hidden; }
+.ar-bar i {
+  position: absolute; inset: 0; width: 40%; border-radius: inherit;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--c, #5b45e0) 45%, transparent), transparent);
+  animation: ar-shimmer 1.6s ease-in-out infinite;
+}
+.ar-failed { background: #fff8f6; border-color: #f3dcd6; }
+.ar-err { color: var(--danger); font-weight: 500; }
+.ar-why { margin-left: 6px; color: #8e8e93; }
+.ar-why::before { content: "· "; }
+.ar-actions { flex: none; display: flex; gap: 6px; }
+.ar-btn { height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid #d9d5ce; background: #fff; font-size: 13px; font-weight: 500; color: #1d1d1f; }
+.ar-btn:hover { border-color: #a7a29a; }
+.ar-btn.quiet { border-color: transparent; background: none; color: #8e8e93; }
+.ar-btn.quiet:hover { color: var(--danger); }
+@container panel (max-width: 520px) {
+  .ar-pending { flex-wrap: wrap; }
+  .ar-actions { width: 100%; padding-left: 48px; }
+}
+
+/* the card that just came, and its section's count */
+.ar-new { animation: ar-in .32s ease-out both, ar-ring 1.5s ease-out .32s both; }
+.ar-pop { animation: ar-pop .36s ease-out; transform-origin: right center; }
+@keyframes ar-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes ar-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes ar-ring {
+  from { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c, #5b45e0) 38%, transparent); }
+  to { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c, #5b45e0) 0%, transparent); }
+}
+@keyframes ar-pop { 0% { transform: scale(1); } 45% { transform: scale(1.14); } 100% { transform: scale(1); } }
+@keyframes ar-shimmer { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+@keyframes ar-spin { to { transform: rotate(360deg); } }
+
+/* "Konaklama'ya eklendi: Casa Azul · Göster" */
+.ar-toast {
+  position: fixed; left: 50%; bottom: 24px; z-index: 55; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 12px;
+  max-width: min(640px, 92vw); padding: 10px 10px 10px 16px; border-radius: 14px; background: #1d1d1f; color: #fff; font-size: 14.5px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .2); animation: ar-toast .22s ease-out both;
+}
+.ar-toast > span { min-width: 0; overflow-wrap: anywhere; }
+.ar-toast button { flex: none; padding: 4px 6px; border: 0; background: none; font: inherit; font-weight: 600; color: #8fb8ff; cursor: pointer; }
+.ar-toast .ar-toast-x { display: grid; place-items: center; padding: 4px; color: #8e8e93; }
+@keyframes ar-toast { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* the drop overlay over the board or the chat */
+.ar-drop { position: fixed; z-index: 70; padding: 12px; pointer-events: none; animation: ar-fade-plain .18s ease-out both; }
+.ar-drop-frame {
+  height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center;
+  border: 2px dashed #b9b2f0; border-radius: 22px; background: rgba(248, 247, 255, .92); color: var(--hx-ink);
+}
+.ar-drop-frame b { font-size: 17px; font-weight: 600; }
+.ar-drop-frame > span:last-child { font-size: 13.5px; color: var(--hx-muted); }
+.ar-drop-icons { display: flex; gap: 10px; color: var(--hx-accent); opacity: .8; }
+@keyframes ar-fade-plain { from { opacity: 0; } to { opacity: 1; } }
+
+/* the chat: a link or a file handed over, its chip under it; an event line that goes to its card */
+.ar-sent { align-self: flex-end; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; max-width: 85%; }
+.ar-sent > .msg-user { max-width: 100%; }
+.ar-sent-link { overflow-wrap: anywhere; color: #3a3a3c; }
+.ar-sent-thumb { display: block; max-width: 160px; max-height: 110px; margin-bottom: 6px; border-radius: 10px; }
+.ar-chip {
+  display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; max-width: 100%; padding: 5px 10px; border-radius: 999px;
+  background: #f6f5f2; font-size: 12.5px; color: #6e6e73; animation: ar-fade .2s ease-out both;
+}
+.ar-chip-site { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-weight: 500; color: #3a3a3c; }
+.ar-chip-site > span { overflow-wrap: anywhere; }
+.ar-chip .ar-favimg { width: 14px; height: 14px; }
+.ar-chip.ar-done .ar-chip-text { color: var(--success); }
+.ar-chip.ar-error { background: #fff3f0; }
+.ar-chip.ar-error .ar-chip-text { color: var(--danger); }
+.ar-chip-btn { padding: 0; border: 0; background: none; font: inherit; font-weight: 500; color: var(--accent); cursor: pointer; }
+.ar-spin { width: 11px; height: 11px; border-radius: 50%; border: 2px solid #d2d2d7; border-top-color: #6e6e73; animation: ar-spin .9s linear infinite; }
+button.ar-ev { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
+button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-underline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ar-pending, .ar-new, .ar-pop, .ar-toast, .ar-drop, .ar-chip, .ar-bar i, .ar-spin { animation: none; }
+  .ar-new { outline: 2px solid color-mix(in srgb, var(--c, #5b45e0) 45%, transparent); outline-offset: 2px; }
+  .ar-bar i { width: 100%; opacity: .5; }
+}
