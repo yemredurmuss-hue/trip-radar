@@ -59,9 +59,9 @@ describe("what the review keeps", () => {
     expect(added).toEqual([]);
   });
   it("the prompt carries the plan and what's not wanted, as data", () => {
-    const p = reviewPrompt({ mains: ubud, nights: { ubud: 31 }, range, items: [stay], sectionOf: () => "stay", suggestions: [{ ...one(), key: "k", kind: "add", section: "todo", source: "ai", createdAt: 1, state: "dismissed" } as Suggestion] });
+    const p = reviewPrompt({ mains: ubud, nights: { ubud: 31 }, range, items: [stay], sectionOf: () => "stay", travellers: 2, suggestions: [{ ...one(), key: "k", kind: "add", section: "todo", source: "ai", createdAt: 1, state: "dismissed" } as Suggestion] });
     expect(p).toMatch(/^<suggest_review>/);
-    expect(JSON.parse(p.split("\n")[1])).toMatchObject({ places: [{ name: "Ubud", nights: 31 }], dates: range, not_needed: ["Tegallalang pirinç terasları"] });
+    expect(JSON.parse(p.split("\n")[1])).toMatchObject({ places: [{ name: "Ubud", nights: 31 }], dates: range, travellers: 2, not_needed: ["Tegallalang pirinç terasları"] });
   });
 });
 

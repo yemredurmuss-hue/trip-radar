@@ -413,15 +413,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       return undefined; // no extension storage (a plain page)
     }
   }, []);
-  // Öneriler: the rules' and the AI's/chat's suggestions atop their sections (never counted); the AI review when due.
-  const suggestions = useSuggestions({
-    trip, plan, items, timeline, legs, mains, home: passport, today, ready: placesSettled, offer, quiet: arrivals.quiet,
-    onAdded: (item) => {
-      if (view !== "plan") setView("plan");
-      setOpened(sectionOfItem(item), true);
-      setFocus({ id: item.id, field: null, scroll: true });
-    },
-  });
   const [todoOpen, setTodoOpen] = useState<"all" | "deadline" | null>(null);
   // Another trip's to-do list isn't the one that was open.
   useEffect(() => {
@@ -443,6 +434,17 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   );
   const settledItem = (i: Item) => i.status === "chosen" || i.status === "booked";
   const who = useWho(trip, facts.adults);
+  // Öneriler: the rules' and the AI's/chat's suggestions atop their sections (never counted); the AI review when due,
+  // told the hero's main places and who goes.
+  const suggestions = useSuggestions({
+    trip, plan, items, timeline, legs, mains, home: passport, today, ready: placesSettled, offer, quiet: arrivals.quiet,
+    travellers: who.count || null,
+    onAdded: (item) => {
+      if (view !== "plan") setView("plan");
+      setOpened(sectionOfItem(item), true);
+      setFocus({ id: item.id, field: null, scroll: true });
+    },
+  });
   // The plan line: what the Plan's sections hold (each header's "y"), so both always say the same thing.
   const tally = useMemo(() => sectionTally(sections), [sections]);
   const chips = styleChips(

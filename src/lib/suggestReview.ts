@@ -65,6 +65,8 @@ export function reviewPrompt(input: {
   items: Item[];
   sectionOf: (item: Item) => string;
   suggestions: Suggestion[];
+  /** How many go (the hero's count: names typed or said, else the saves' adults); null when nothing says. */
+  travellers?: number | null;
 }): string {
   const plan: Record<string, string[]> = {};
   for (const i of input.items) if (i.status !== "dismissed") (plan[input.sectionOf(i)] ??= []).push(`${i.name}${i.city ? ` (${i.city})` : ""}`);
@@ -72,6 +74,7 @@ export function reviewPrompt(input: {
   const data = {
     places: input.mains.map((m) => ({ name: m.name, nights: input.nights[cityKeyOf(m.name) ?? m.name] ?? null, towns: m.members })),
     dates: input.range,
+    travellers: input.travellers ?? null,
     plan,
     already_suggested: input.suggestions.filter((s) => s.state !== "dismissed").map((s) => s.title),
     not_needed: input.suggestions.filter((s) => s.state === "dismissed").map((s) => s.title),

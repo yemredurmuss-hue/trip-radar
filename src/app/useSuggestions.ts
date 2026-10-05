@@ -39,8 +39,10 @@ export function useSuggestions(args: {
   quiet: (itemId: string) => void;
   /** The record "Plana ekle" made, for the board to open its section and show it. */
   onAdded: (item: Item) => void;
+  /** How many go, as the hero counts them (tripSettings.whoGoes); null when nothing says. Told to the AI review only. */
+  travellers?: number | null;
 }): BoardSuggestions {
-  const { trip, plan, items, timeline, legs, mains, home, today, ready, offer, quiet, onAdded } = args;
+  const { trip, plan, items, timeline, legs, mains, home, today, ready, offer, quiet, onAdded, travellers = null } = args;
   const rules = useMemo(
     () => ruleSuggestions({ trip, plan, items, timeline, legs, mains, home, today }),
     [trip, plan, items, timeline, legs, mains, home, today],
@@ -86,7 +88,7 @@ export function useSuggestions(args: {
       const keys = new Set([m.name, ...m.members].map(cityKeyOf));
       nights[cityKeyOf(m.name) ?? m.name] = plan.stayBlocks.filter((b) => b.city && keys.has(cityKeyOf(b.city))).reduce((n, b) => n + b.nights, 0);
     }
-    const prompt = reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [] });
+    const prompt = reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers });
     void runReview({ key, prompt, save: (change) => updateTrip(trip.id, change, { touch: false }) });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- asked once per trip state (key)
   }, [trip.id, key, due]);
