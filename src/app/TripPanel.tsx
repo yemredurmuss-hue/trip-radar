@@ -38,7 +38,9 @@ import { UndoToast } from "./cards/UndoToast";
 import { isIdea } from "../lib/booking";
 import { findTarget, show, TodoList } from "./Progress";
 import { TripFacts } from "./TripFacts";
-import { cityRanges, countryCodesOf, heroTally, type HeroTally } from "../lib/heroInfo";
+import { cityRanges, countryCodesOf, countryNames, sectionTally, tallySection } from "../lib/heroInfo";
+import { acceptParents, fallbackParents, mainPlaceOf, mainPlaces, placesKey, placesPrompt, placesSystemPrompt } from "../lib/destinations";
+import { acceptNoteLabel, type Pref } from "../lib/preferences";
 import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../lib/tripStyle";
 import { intentEntries } from "./IntentCard";
 import { TripHero, type HeroAction, type HeroCity } from "./TripHero";
@@ -177,26 +179,64 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   };
 
   // --- the hero: a photo per city, the paragraph, what's confirmed, the facts column ---
+  // The Plan's cities (every place slept in), and the hero's: the main places they belong to (destinations.ts;
+  // a stay in Gaula is Madeira's). The model says which place is inside which, once per set of cities; until it
+  // answers (no key, an error), only a stay whose address names another of the trip's places is folded.
   const cityNames = useMemo(() => citiesOf(plan, items), [plan, items]);
+  const placesFor = placesKey(cityNames);
+  const parents = useMemo(
+    () => (trip.placeParents?.key === placesFor ? acceptParents(cityNames, trip.placeParents.parents) : fallbackParents(cityNames, items)),
+    [trip.placeParents, placesFor, cityNames, items],
+  );
+  const mains = useMemo(() => mainPlaces(cityNames, parents), [cityNames, parents]);
+  const mainNames = useMemo(() => mains.map((m) => m.name), [mains]);
+  const askedParents = useRef<string | null>(null);
+  const [parentsTried, setParentsTried] = useState<string | null>(null);
+  useEffect(() => {
+    if (cityNames.length < 2 || trip.placeParents?.key === placesFor || askedParents.current === `${trip.id}:${placesFor}`) return;
+    askedParents.current = `${trip.id}:${placesFor}`;
+    const countryOf = (city: string) => {
+      const code = items.find((i) => i.category === "stay" && i.status !== "dismissed" && cityKeyOf(i.city) === cityKeyOf(city) && i.countryCode)?.countryCode;
+      return code ? (countryNames([code])[0] ?? null) : null;
+    };
+    void (async () => {
+      try {
+        const llm = await getProvider();
+        const out = await llm.generateJson(
+          placesSystemPrompt(),
+          placesPrompt(cityNames, countryOf),
+          z.object({ places: z.array(z.object({ place: z.string(), parent: z.string().nullable() })) }),
+        );
+        await updateTrip(trip.id, (t) => ({ ...t, placeParents: { key: placesFor, parents: acceptParents(cityNames, out.places) } }), { touch: false });
+      } catch (error) {
+        if (!(error instanceof MissingKeyError)) console.warn("main places", error); // the guess from the addresses stands
+      } finally {
+        setParentsTried(`${trip.id}:${placesFor}`);
+      }
+    })();
+  }, [trip.id, trip.placeParents?.key, placesFor, cityNames, items]);
+  // What's asked of the model per place (photos, mood, style) waits for the main places, so Gaula isn't asked for.
+  const placesSettled = cityNames.length < 2 || trip.placeParents?.key === placesFor || parentsTried === `${trip.id}:${placesFor}`;
   const cities = useMemo<HeroCity[]>(() => {
-    const list = cityNames.map((name) => ({ name, image: trip.cityImages?.[cityKeyOf(name)!] ?? null }));
+    const list = mainNames.map((name) => ({ name, image: trip.cityImages?.[cityKeyOf(name)!] ?? null }));
     // A trip from before the city photos: its one picture goes to the first city (or stands alone).
     if (trip.heroImage && !list.some((c) => c.image)) return list.length ? [{ ...list[0], image: trip.heroImage }, ...list.slice(1)] : [{ name: "", image: trip.heroImage }];
     return list;
-  }, [cityNames, trip.cityImages, trip.heroImage]);
+  }, [mainNames, trip.cityImages, trip.heroImage]);
   // A city's photo is looked up once (a miss is stored as null, so it isn't asked again). Once the
   // sharing server's photo proxy is set up, a stored miss or Wikipedia picture is asked for again, once
   // per trip and city in a session; a miss then keeps the old picture. The first city's new photo also
   // becomes the trip card's (TripsHome).
   const askedImages = useRef(new Set<string>());
   useEffect(() => {
-    const unasked = cityNames.filter((name) => {
+    if (!placesSettled) return;
+    const unasked = mainNames.filter((name) => {
       const key = cityKeyOf(name);
       return key && !askedImages.current.has(`${trip.id}:${key}`) && wantsCityImage(trip.cityImages?.[key], true);
     });
     if (!unasked.length) return;
     for (const name of unasked) askedImages.current.add(`${trip.id}:${cityKeyOf(name)}`);
-    const firstKey = cityNames.length ? cityKeyOf(cityNames[0]) : null;
+    const firstKey = mainNames.length ? cityKeyOf(mainNames[0]) : null;
     void (async () => {
       const proxy = await imageProxy();
       for (const name of unasked) {
@@ -219,12 +259,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         }
       }
     })();
-  }, [trip.id, trip.cityImages, cityNames]);
-  // The mood sentence: written once per set of cities by the traveller's model; one with a number is dropped.
-  const moodFor = moodKey(cityNames);
+  }, [trip.id, trip.cityImages, mainNames, placesSettled]);
+  // The mood sentence: written once per set of main places by the traveller's model; one with a number is dropped.
+  const moodFor = moodKey(mainNames);
   const askedMood = useRef<string | null>(null);
   useEffect(() => {
-    if (!cityNames.length || trip.mood?.key === moodFor || askedMood.current === `${trip.id}:${moodFor}`) return;
+    if (!placesSettled || !mainNames.length || trip.mood?.key === moodFor || askedMood.current === `${trip.id}:${moodFor}`) return;
     askedMood.current = `${trip.id}:${moodFor}`;
     void (async () => {
       try {
@@ -234,7 +274,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             "Gezinin ruhunu anlatan tek kısa cümle yaz. Rakam, tarih, fiyat yazma. En fazla 120 karakter.",
             "Write one short sentence capturing the trip's mood. No numbers, dates or prices. At most 120 characters.",
           ),
-          cityNames.join(" → "),
+          mainNames.join(" → "),
           z.object({ text: z.string() }),
         );
         const text = acceptMood(out.text) ? out.text.trim() : "";
@@ -243,24 +283,54 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         if (!(error instanceof MissingKeyError)) console.warn("mood sentence", error); // the status sentence stands alone
       }
     })();
-  }, [trip.id, trip.mood?.key, moodFor, cityNames]);
-  // The style words: picked once per set of cities and what was understood, only from the fixed list.
-  const understood = useMemo(() => intentEntries(trip, decisions).entries.map((e) => e.text), [trip, decisions]);
-  const styleFor = styleKey(cityNames, understood);
+  }, [trip.id, trip.mood?.key, moodFor, mainNames, placesSettled]);
+  // The style words: picked once per set of main places and what was understood, only from the fixed list.
+  const intent = useMemo(() => intentEntries(trip, decisions).entries, [trip, decisions]);
+  const understood = useMemo(() => intent.map((e) => e.text), [intent]);
+  const styleFor = styleKey(mainNames, understood);
   const askedStyle = useRef<string | null>(null);
   useEffect(() => {
-    if (!cityNames.length || trip.style?.key === styleFor || askedStyle.current === `${trip.id}:${styleFor}`) return;
+    if (!placesSettled || !mainNames.length || trip.style?.key === styleFor || askedStyle.current === `${trip.id}:${styleFor}`) return;
     askedStyle.current = `${trip.id}:${styleFor}`;
     void (async () => {
       try {
         const llm = await getProvider();
-        const out = await llm.generateJson(stylePrompt(), [cityNames.join(" → "), ...understood].join("\n"), z.object({ ids: z.array(z.string()) }));
+        const out = await llm.generateJson(stylePrompt(), [mainNames.join(" → "), ...understood].join("\n"), z.object({ ids: z.array(z.string()) }));
         await updateTrip(trip.id, (t) => ({ ...t, style: { key: styleFor, ids: acceptStyle(out.ids) } }), { touch: false });
       } catch (error) {
         if (!(error instanceof MissingKeyError)) console.warn("trip style", error); // the budget's word stands alone
       }
     })();
-  }, [trip.id, trip.style?.key, styleFor, cityNames, understood]);
+  }, [trip.id, trip.style?.key, styleFor, mainNames, understood, placesSettled]);
+  // "Tercihler" names a note in a few words: one the code can't name (no topic it knows) is named by the model,
+  // once per note and wording, all waiting notes in one ask; an answer that isn't a label is kept as "" so the
+  // first words stand and it isn't asked again.
+  const unnamed = intent.flatMap((e) => (e.pref.kind === "note" && e.pref.level == null && e.pref.labelKey && trip.prefLabels?.[e.pref.labelKey] === undefined ? [e.pref] : []));
+  const unnamedFor = unnamed.map((p) => p.labelKey).join("|");
+  const askedLabels = useRef(new Set<string>());
+  useEffect(() => {
+    const notes = unnamed.filter((p): p is Extract<Pref, { kind: "note" }> => p.kind === "note" && !askedLabels.current.has(`${trip.id}:${p.labelKey}`));
+    if (!notes.length) return;
+    for (const p of notes) askedLabels.current.add(`${trip.id}:${p.labelKey}`);
+    void (async () => {
+      try {
+        const llm = await getProvider();
+        const out = await llm.generateJson(
+          L(
+            "Her not için 1–3 kelimelik kısa bir konu etiketi yaz (ör. \"Şarap tadımı\", \"Balkon\", \"Erken giriş\"). Cümle değil, etiket. Türkçe yaz. id'yi aynen geri yaz.",
+            "For each note write a short 1–3 word topic label (e.g. \"Wine tasting\", \"Balcony\", \"Early check-in\"). A label, not a sentence. Write in English. Return each id as given.",
+          ),
+          `<notes>\n${notes.map((p, n) => JSON.stringify({ id: String(n + 1), text: p.topic })).join("\n")}\n</notes>`,
+          z.object({ labels: z.array(z.object({ id: z.string(), label: z.string() })) }),
+        );
+        const named = Object.fromEntries(notes.map((p, n) => [p.labelKey!, acceptNoteLabel(out.labels.find((l) => l.id.trim() === String(n + 1))?.label)]));
+        await updateTrip(trip.id, (t) => ({ ...t, prefLabels: { ...t.prefLabels, ...named } }), { touch: false });
+      } catch (error) {
+        if (!(error instanceof MissingKeyError)) console.warn("preference labels", error); // the first words stand
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- asked by the set of unnamed notes
+  }, [trip.id, unnamedFor]);
   const [passport, setPassport] = useState("TR");
   useEffect(() => {
     const read = () => void loadPassport().then(setPassport);
@@ -294,15 +364,17 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     [items, passport, decisions?.ctx.currency, decisions?.ctx.rates, range?.start],
   );
   const settledItem = (i: Item) => i.status === "chosen" || i.status === "booked";
-  const tally = useMemo(() => heroTally(plan, items), [plan, items]);
+  // The plan line: what the Plan's sections hold (each header's "y"), so both always say the same thing.
+  const tally = useMemo(() => sectionTally(sections), [sections]);
   const chips = styleChips(
     trip.style?.key === styleFor ? acceptStyle(trip.style.ids) : [],
     budgetLevel(trip.budget, range ? nightsBetween(range.start, range.end) + 1 : 0, facts.adults, decisions?.ctx.rates ?? null),
   );
-  /** A day card's photo: its city's (the hero's), else the trip's. */
-  const cityImageOf = (city: string | null) => (city ? trip.cityImages?.[cityKeyOf(city)!] : null) ?? trip.heroImage ?? null;
+  /** A day card's photo: its city's, else its main place's (the hero's: Gaula's day shows Madeira), else the trip's. */
+  const cityImageOf = (city: string | null) =>
+    (city ? (trip.cityImages?.[cityKeyOf(city)!] ?? trip.cityImages?.[cityKeyOf(mainPlaceOf(mains, city))!]) : null) ?? trip.heroImage ?? null;
   const countries = useMemo(() => countryCodesOf(items), [items]);
-  const places = useMemo(() => cityRanges(plan, cityNames, range), [plan, cityNames, range]);
+  const places = useMemo(() => cityRanges(plan, mains, range), [plan, mains, range]);
   const flightGroups = plan.groups.filter((g) => g.category === "flight");
   const flightsDone = flightGroups.length > 0 && flightGroups.every((g) => g.items.some(settledItem));
   const mood = trip.mood?.key === moodFor && trip.mood.text ? trip.mood.text : null;
@@ -310,7 +382,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const lead =
     mood ??
     (range
-      ? statusSentence(progress.count, { flightsDone, waitingCity: waitingCityOf(progress, timeline, items) })
+      ? statusSentence(progress.count, { flightsDone, waitingCity: mainPlaceOf(mains, waitingCityOf(progress, timeline, items)) })
       : L("Tarih ve şehir, kaydettikçe netleşir.", "Dates and cities fill in as you save."));
   // "Rezervasyonların": the sections' "3/4"s added up, so the hero and the Plan's headers say the same thing.
   const done = useMemo(() => planProgress(sections), [sections]);
@@ -324,12 +396,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
       else show(document.querySelector(`[data-section-chip="${id}"]`));
     }, 60);
-  };
-  /** "deneyim" counts activities and restaurants: Etkinlikler, else Restoranlar when only those have something. */
-  const tallySection = (kind: keyof HeroTally): SectionId => {
-    if (kind !== "experience") return TALLY_SECTION[kind];
-    const has = (id: SectionId) => sections.some((s) => s.id === id && s.entries.length > 0);
-    return !has("activity") && has("food") ? "food" : "activity";
   };
   const first = progress.todos[0];
   // All set only when every section is settled and nothing is left to do (a cancellation running out is).
@@ -396,7 +462,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           today={today}
           lead={lead}
           tally={tally}
-          onTally={(kind) => openSection(tallySection(kind))}
+          onTally={(kind) => openSection(tallySection(kind, sections))}
           done={{ ...done, complete: allDone }}
           progress={progress}
           list={todoOpen}
@@ -485,9 +551,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     </CardEnvContext.Provider>
   );
 }
-
-/** The hero's plan line cell → its section on the Plan ("deneyim" is Etkinlikler). */
-const TALLY_SECTION: Record<keyof HeroTally, SectionId> = { flight: "flight", stay: "stay", transport: "transport", experience: "activity" };
 
 /** The trip's cities for the hero's photos: in the order the nights go, each once; else the saved stays' cities. */
 function citiesOf(plan: Plan, items: Item[]): string[] {

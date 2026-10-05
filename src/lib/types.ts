@@ -181,6 +181,16 @@ export interface Trip {
   mood?: { key: string; text: string } | null;
   /** The style words the model picked for the hero (tripStyle.ts) and what they were picked for. */
   style?: { key: string; ids: string[] } | null;
+  /**
+   * The hero card's "Tercihler": the model's 1–3 word name for a note the code can't name itself
+   * (preferences.ts noteLabelKey → "Şarap tadımı"); "" when its answer wasn't one (the first words stand).
+   */
+  prefLabels?: Record<string, string>;
+  /**
+   * The hero's main places (destinations.ts): for the stay cities `key` was asked for, each smaller place's
+   * bigger destination by city key ("gaula" → "Madeira"). The Plan and Günlük akış keep the places as they are.
+   */
+  placeParents?: { key: string; parents: Record<string, string> } | null;
   createdAt: number;
   updatedAt: number;
 }

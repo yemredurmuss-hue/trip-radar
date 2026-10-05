@@ -143,6 +143,17 @@ const TOPIC_TAGS: Record<Finding["topic"], Sides> = {
   other: [["Artısı var", "Dikkat"], ["A plus", "Watch out"]],
 };
 const topicTag = (topic: Finding["topic"], side: 0 | 1) => sides(TOPIC_TAGS[topic])![side];
+/**
+ * A finding in a word or two, for the hero card's "Tercihler" row: its own words when they're that short
+ * ("Dar merdiven"), else its topic and side ("Yan binada inşaat gürültüsü" → "Gürültülü"; what the words speak
+ * of first, the topic the reader filed it under after).
+ */
+export function findingTag(f: Pick<Finding, "topic" | "polarity" | "text">): string {
+  const text = f.text.trim();
+  if (text && text.split(/\s+/).length <= 3) return text;
+  const said = [...saidTopics([text])].find((t): t is Finding["topic"] => t in TOPIC_TAGS);
+  return topicTag(said ?? f.topic, f.polarity === "positive" ? 0 : 1);
+}
 
 /** Articles a card's few words do without: "çok iyi bir restoran" → "çok iyi restoran", "a great view" → "great view". */
 const ARTICLES = new Set(["bir", "a", "an"]);
