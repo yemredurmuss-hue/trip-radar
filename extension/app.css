@@ -1692,8 +1692,10 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .dl-head { position: relative; display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
 .dl-htext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .dl-head .ttl { font-size: 23px; font-weight: 750; letter-spacing: -.02em; line-height: 1.2; overflow-wrap: anywhere; }
+.dc .dl-tag { margin-left: 6px; font-style: normal; font-weight: 500; font-size: .72em; letter-spacing: 0; color: var(--dc-gray); white-space: nowrap; }
 .dl-date { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13.5px; color: var(--dc-gray); }
 .dl-date .today { color: #1556d6; font-weight: 600; }
+.dl-date > span:not(.dc-left):not(.dc-ideas-n) + span:not(.dc-left):not(.dc-ideas-n)::before { content: "·"; margin-right: 8px; }
 .dl-chev { flex: none; display: grid; place-items: center; width: 34px; height: 34px; margin: -4px -6px 0 0; padding: 0; border: 0; border-radius: 10px; background: none; color: var(--dc-ink); cursor: pointer; }
 .dl-chev:hover { background: rgba(0,0,0,.05); }
 .dl-chev svg { transition: transform .15s; }
