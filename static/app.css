@@ -978,9 +978,13 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 }
 .hx-tally button:hover { background: rgba(28,26,51,.04); }
 .hx-tally button:nth-child(2n)::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 36px; margin-top: -18px; background: var(--hx-line); }
-@container hxleft (min-width: 620px) {
+/* Four in a row as in the reference once the story has room (a 1440 screen beside the chat); a size smaller until 620. */
+@container hxleft (min-width: 500px) {
   .hx-tally { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 0; }
   .hx-tally button + button::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 36px; margin-top: -18px; background: var(--hx-line); }
+}
+@container hxleft (min-width: 500px) and (max-width: 619px) {
+  .hx-tally button { gap: 8px; padding: 6px 2px; font-size: 16px; }
 }
 .hx-tally svg { flex: none; }
 .hx-tally span { min-width: 0; text-align: left; overflow-wrap: break-word; }
@@ -1005,8 +1009,8 @@ button.hx-progress-count:hover, button.hx-progress-count[aria-expanded="true"] {
 .hx-bar i { display: block; height: 100%; border-radius: 999px; background: var(--hx-mintbar); transition: width .4s; }
 .hx-go { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 52px; padding: 0 22px; border: 0; border-radius: 14px; background: var(--hx-ink); color: #fff; font-size: 17px; font-weight: 500; white-space: nowrap; }
 .hx-go:hover { background: #2c2950; }
-/* The story narrower than four cells (a laptop beside the chat, or a narrow board): the button under the bar. */
-@container hxleft (max-width: 619px) {
+/* The story too narrow for four cells (a small laptop beside the chat, or a narrow board): the button under the bar. */
+@container hxleft (max-width: 499px) {
   .hx-progress { grid-template-columns: minmax(0, 1fr); gap: 18px; }
   .hx-go { width: 100%; }
 }
