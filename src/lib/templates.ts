@@ -1,12 +1,13 @@
 // "+ Ekle": what can be added by hand, the short form each one asks, and the plan item it makes. The item
 // is the one a plan said in the chat makes (plannedItem, origin "chat"), so a page saved for it later
-// takes its place and the chat can change it. Pure, except addFromTemplate and saveEdit, which write it.
+// takes its place and the chat can change it. Unlike the chat, a template never merges into a plan
+// already there. Pure, except addFromTemplate and saveEdit, which write it.
 import { cardKindLabel, type CardKind, type TransportMode } from "./cardKinds";
-import { addEvent, db, listItems, notifyChanged } from "./db";
+import { addEvent, db, notifyChanged } from "./db";
 import { L } from "./i18n";
 import { liveLabels } from "./i18nText";
 import { isoDate } from "./items";
-import { ALL_PLANNED_KINDS, checkPlanned, isGeneratedName, plannedItem, planToSave, type PlannedInput } from "./planned";
+import { ALL_PLANNED_KINDS, checkPlanned, isGeneratedName, plannedItem, type PlannedInput } from "./planned";
 import type { TimelineEntry } from "./timeline";
 import type { Item, PlannedKind } from "./types";
 
@@ -106,11 +107,14 @@ export function withPrice(item: Item, price: { amount: number; currency: string 
   };
 }
 
-/** The new plan item (or the plan it repeats, updated), or what's wrong with the form. */
-export function templateItem(tpl: Template, f: FormValues, items: Item[], tripId: string, id: string, now: number): Item | string {
+/**
+ * The new plan item, or what's wrong with the form. Always new: a second restaurant, hotel or flight
+ * on the same day is added next to the first (unlike a plan said again in the chat, see planToSave).
+ */
+export function templateItem(tpl: Template, f: FormValues, tripId: string, id: string, now: number): Item | string {
   const r = templateInput(tpl, f);
   if (typeof r === "string") return r;
-  const { item } = planToSave(r.input, items, tripId, id, now);
+  const item = plannedItem(r.input, tripId, id, now);
   return r.price ? withPrice(item, r.price, now) : item;
 }
 
@@ -170,7 +174,7 @@ export function insertAt(entry: TimelineEntry): InsertAt {
 }
 
 export async function addFromTemplate(tripId: string, tpl: Template, f: FormValues, id: string, now = Date.now()): Promise<Item | string> {
-  const made = templateItem(tpl, f, await listItems(tripId), tripId, id, now);
+  const made = templateItem(tpl, f, tripId, id, now);
   if (typeof made === "string") return made;
   await (await db()).put("items", made);
   await addEvent(tripId, L(`${made.name} plana eklendi`, `${made.name} added to the plan`));
