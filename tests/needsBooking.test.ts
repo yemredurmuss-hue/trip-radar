@@ -115,3 +115,21 @@ describe("a to-do as a plan", () => {
     expect([todo.booking, bookingOf(tour), bookingOf(market)]).toEqual(["none", "needed", "none"]);
   });
 });
+
+describe("an event is never an idea (Wipeout Open Air)", () => {
+  it("a festival, an open-air night, a DJ, a line-up: booked, however it was filed", () => {
+    const wipeout = { category: "activity" as const, name: "Wipeout Open Air: Camo & Krooked" };
+    expect(bookingOf(makeItem({ ...wipeout }))).toBe("needed");
+    expect(bookingOf(makeItem({ ...wipeout, booking: "none" }))).toBe("needed"); // a page or the model said "no"
+    expect(bookingOf(makeItem({ ...wipeout, origin: "chat", plannedKind: "todo", booking: "none" }))).toBe("needed"); // the chat filed it as a to-do
+    expect(isIdea(makeItem({ ...wipeout, origin: "chat", plannedKind: "todo" }))).toBe(false);
+    for (const name of ["Primavera Sound festival", "Boiler Room DJ set", "Rooftop party", "Lineup: Bicep b2b Ross From Friends", "Açık hava konseri"]) {
+      expect(needsBooking(makeItem({ category: "activity", name, origin: "chat", plannedKind: "todo" }))).toBe(true);
+    }
+  });
+  it("seeing, walking, trying stay ideas", () => {
+    for (const name of ["Kleopatra tepesini gör", "Foz'da sahil yürüyüşü", "Pastel de nata dene", "Bolhão pazarını gez", "Dom Luís köprüsünden gün batımı"]) {
+      expect(isIdea(makeItem({ category: "activity", name, origin: "chat", plannedKind: "todo", booking: "none" }))).toBe(true);
+    }
+  });
+});

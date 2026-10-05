@@ -13,7 +13,7 @@ import { entryDomId } from "../../lib/progress";
 import { insertAt, type InsertAt } from "../../lib/templates";
 import { InsertPoint } from "../cards/AddSheet";
 import { FoodCard } from "../ideas/FoodCard";
-import { IdeaRow } from "../ideas/IdeaRow";
+import { IdeaCard } from "../ideas/IdeaCard";
 import { QuickAdd } from "../ideas/QuickAdd";
 import type { CardFor, LegCardFor, RenderGroup, SettledFor } from "../Timeline";
 import { PlanEntry } from "./PlanEntry";
@@ -79,9 +79,15 @@ function DayCards({ section, day, plan, cards, onAdd }: { section: CatSection; d
   if (section.id === "todo") {
     return (
       <>
-        <ul className="fk-todo">
-          {day.entries.map((e) => (e.piece.kind === "item" ? <IdeaRow key={e.key} item={e.piece.item} plan={plan} domId={entryDomId(catDomKey(e))} /> : null))}
-        </ul>
+        <div className="cat-eats">
+          {day.entries.map((e) =>
+            e.piece.kind === "item" ? (
+              <div key={e.key} id={entryDomId(catDomKey(e))} className="cat-card cat-eat">
+                <IdeaCard item={e.piece.item} plan={plan} />
+              </div>
+            ) : null,
+          )}
+        </div>
         <InsertPoint at={dayAt} onAdd={onAdd} />
       </>
     );

@@ -1433,15 +1433,16 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .fk-quick { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 14px; border-radius: 14px; background: var(--fk-soft); color: var(--fk-ink); }
 .fk-quick input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; font: inherit; font-size: 15px; color: var(--fk-ink); outline: none; }
 .fk-quick input::placeholder { color: var(--fk-gray); }
-.fk-eat { position: relative; flex: none; width: 200px; }
+.fk-eat { position: relative; flex: none; width: 200px; display: flex; flex-direction: column; }
 .fk-ph { position: relative; width: 200px; height: 124px; border-radius: 14px; overflow: hidden; background: var(--fk-soft); }
 .fk-ph .fk-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .fk-ph-ic { position: absolute; inset: 0; display: grid; place-items: center; color: #b4532a; background: color-mix(in srgb, #b4532a 10%, #fff); }
 .fk-ph .pk-x { position: absolute; top: 6px; right: 6px; background: rgba(255, 255, 255, .9); }
 .fk-eat:hover .pk-x, .fk-eat:focus-within .pk-x, .fk-row:hover .pk-x, .fk-row:focus-within .pk-x { opacity: 1; }
-.fk-eat > b { display: block; margin-top: 8px; font-size: 15px; font-weight: 600; }
-.fk-eat > span { display: block; margin-top: 2px; font-size: 13px; color: var(--fk-gray); }
-.fk-act { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+/* Two lines at most: a long name never pushes its row out of line; the buttons sit at the card's foot (0.35.2). */
+.fk-eat > b { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin-top: 8px; font-size: 15px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.fk-eat > span { display: block; margin-top: 2px; font-size: 13px; color: var(--fk-gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fk-act { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 8px; }
 .fk-daywrap { position: relative; flex: none; }
 .fk-day { height: 28px; padding: 0 11px; border-radius: 999px; border: 1px solid #d2d2d7; background: #fff; font: inherit; font-size: 13px; color: var(--fk-ink); white-space: nowrap; cursor: pointer; }
 .fk-day.set { background: var(--fk-ink); border-color: var(--fk-ink); color: #fff; }
@@ -1462,7 +1463,7 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .fk-t b { display: block; font-size: 15px; font-weight: 500; }
 .fk-t > span { display: block; font-size: 13px; color: var(--fk-gray); }
 .fk-row.done .fk-t b { color: var(--fk-gray); text-decoration: line-through; }
-.fk-promote { padding: 0; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 600; color: #1556d6; cursor: pointer; }
+.fk-promote { align-self: flex-start; margin-top: 4px; padding: 0; border: 0; background: none; font: inherit; font-size: 12.5px; font-weight: 600; color: #1556d6; text-align: left; cursor: pointer; }
 .fk-picker { position: absolute; right: 0; top: 34px; z-index: 8; width: 220px; max-height: 320px; overflow-y: auto; padding: 8px; border-radius: 14px; background: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .14); }
 .fk-eat .fk-picker { left: 0; right: auto; }
 .fk-picker ul { list-style: none; margin: 0; padding: 0; }
@@ -1572,9 +1573,9 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .cat-sec .fk-todo { background: #fff; }
 /* Restoranlar: a day's restaurants side by side */
 .cat-eats { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
-.cat-eat { flex: none; }
+.cat-eat { flex: none; display: flex; }
 .fk-where { display: block; font-size: 13px; color: var(--fk-gray); }
-.fk-book { display: inline-block; margin-top: 6px; padding: 0; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 600; color: #85570a; cursor: pointer; }
+.fk-book { display: inline-block; align-self: flex-start; margin-top: 6px; padding: 0; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 600; color: #85570a; cursor: pointer; }
 .fk-book.done { color: #1d7442; }
 
 /* the empty sections: one chip each, at the bottom */

@@ -827,7 +827,7 @@ try {
   await tab("Plan").and(app.locator('[aria-selected="true"]')).waitFor();
   await box("Ad").fill("Bolhão pazarı");
   await box("Ad").press("Enter");
-  await sec("todo").locator('.fk-row[aria-label="Bolhão pazarı"]').waitFor();
+  await sec("todo").locator('.fk-idea[aria-label="Bolhão pazarı"]').waitFor();
   await tab("Günlük akış").click();
   await listMode();
   await dayCard(3).locator(".dc-step.idea", { hasText: "Bolhão pazarı" }).waitFor();
@@ -847,12 +847,12 @@ try {
     await app.locator(`.cat-plan [aria-label="${title}"]`).waitFor();
   }
   const food = sec("food");
-  // Restaurants as photo cards, undated by city in the trip's order; to-dos as rows, the dated one first.
+  // Restaurants and things to do as the same photo cards (0.35.2: ideas, no tick), undated by city in the trip's order, the dated one first.
   assert.deepEqual(await food.locator(".fk-eat > b").allInnerTexts(), ["Majestic Café", "Pastel de nata"]);
   assert.deepEqual((await food.locator(".cat-date").allInnerTexts()).map((t) => t.replace(/\s+/g, " ")), ["Tarihsiz Porto", "Tarihsiz Lizbon"]);
-  assert.deepEqual(await todos.locator(".fk-row .fk-t > b").allInnerTexts(), ["Bolhão pazarı", "Dom Luís köprüsünden gün batımı", "Livraria Lello, giriş bileti var"]);
-  assert.equal(await todos.locator('.fk-row[aria-label="Bolhão pazarı"] .fk-day.set').innerText(), "10 Eki");
-  assert.match(await todos.locator('.fk-row[aria-label="Dom Luís köprüsünden gün batımı"] .fk-t > span').innerText(), /^Porto/);
+  assert.deepEqual(await todos.locator(".fk-idea > b").allInnerTexts(), ["Bolhão pazarı", "Dom Luís köprüsünden gün batımı", "Livraria Lello, giriş bileti var"]);
+  assert.equal(await todos.locator('.fk-idea[aria-label="Bolhão pazarı"] .fk-day.set').innerText(), "10 Eki");
+  assert.match(await todos.locator('.fk-idea[aria-label="Dom Luís köprüsünden gün batımı"] .fk-sub').innerText(), /^Porto/);
   const majestic = food.locator('.fk-eat[aria-label="Majestic Café"]');
   assert.match(await majestic.locator(".fk-map").getAttribute("href"), /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=41\.1471%2C-8\.6066$/);
   const photo = await majestic.locator(".fk-ph").boundingBox();
@@ -874,12 +874,18 @@ try {
   await box("Ad").fill("Majestic Café");
   await box("Ad").press("Enter");
   await majestic.waitFor();
-  const market = todos.locator('.fk-row[aria-label="Bolhão pazarı"]');
-  await market.getByRole("checkbox", { name: "Bolhão pazarı: yapıldı" }).click();
-  await market.locator(".fk-t > span", { hasText: /Yapıldı · / }).waitFor();
-  assert.match(await market.getAttribute("class"), /done/);
-  const lello = todos.locator('.fk-row[aria-label="Livraria Lello, giriş bileti var"]');
-  await lello.locator(".fk-t > span", { hasText: "Giriş bileti gerekiyor" }).waitFor();
+  // An idea is never ticked off: its day, its map and its page (a web search when it has none).
+  const market = todos.locator('.fk-idea[aria-label="Bolhão pazarı"]');
+  assert.equal(await market.getByRole("checkbox").count(), 0, "an idea has no tick");
+  assert.match(await market.getByRole("link", { name: "Bolhão pazarı: haritada aç" }).getAttribute("href"), /google\.com\/maps\/search/);
+  assert.match(await market.getByRole("link", { name: "Bolhão pazarı: web'de ara" }).getAttribute("href"), /google\.com\/search\?q=Bolh%C3%A3o%20pazar%C4%B1%20Porto/);
+  // Long names stay two lines: in a row, every card is as tall as the others and their buttons line up.
+  const rows = await todos.locator(".cat-eats").evaluateAll((els) =>
+    els.map((row) => [...row.querySelectorAll(".fk-idea")].map((c) => [Math.round(c.getBoundingClientRect().height), Math.round(c.querySelector(".fk-act").getBoundingClientRect().top)])),
+  );
+  for (const r of rows) assert.equal(new Set(r.map((x) => x.join("/"))).size, 1, `idea cards line up in a row (${JSON.stringify(r)})`);
+  const lello = todos.locator('.fk-idea[aria-label="Livraria Lello, giriş bileti var"]');
+  await lello.getByRole("button", { name: /Etkinliklere taşı/ }).waitFor();
   await app.setViewportSize({ width: 1440, height: 1400 });
   await todos.evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/4g-todo-food.png` });
@@ -889,7 +895,7 @@ try {
   assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll in Yapılacak şeyler and Restoranlar");
   await app.setViewportSize({ width: 1440, height: 900 });
   // A to-do deleted with ×, then brought back.
-  const sunset = todos.locator(".fk-row", { hasText: "gün batımı" });
+  const sunset = todos.locator(".fk-idea", { hasText: "gün batımı" });
   await sunset.hover();
   await sunset.getByRole("button", { name: "Dom Luís köprüsünden gün batımı: sil" }).click();
   await sunset.waitFor({ state: "detached" });
@@ -1075,7 +1081,7 @@ try {
     await new Promise((resolve) => (tx.oncomplete = resolve));
     new BroadcastChannel("trip-radar").postMessage("changed");
   });
-  const todoRow = (name) => sec("todo").locator(`.fk-row[aria-label="${name}"]`);
+  const todoRow = (name) => sec("todo").locator(`.fk-idea[aria-label="${name}"]`);
   await todoRow("Porto Belo Pazarı").waitFor();
   await todoRow("Outdoor alışverişi").waitFor();
   // 0.34.6: Yapılacak şeyler is what's done there; a chore typed in the quick box goes to Diğer's Hazırlık.
@@ -1088,7 +1094,7 @@ try {
   if (await sec("other").evaluate((el) => el.classList.contains("closed"))) await sec("other").locator(".cat-title").click();
   const prepRow = sec("other").locator(`.prep-row[aria-label="Decathlon'dan yağmurluk al"]`);
   await prepRow.waitFor();
-  assert.equal(await app.locator(`.fk-row[aria-label="Decathlon'dan yağmurluk al"]`).count(), 0, "a chore is never a thing to do");
+  assert.equal(await app.locator(`.fk-idea[aria-label="Decathlon'dan yağmurluk al"]`).count(), 0, "a chore is never a thing to do");
   assert.equal(await sec("other").locator(`.prep-row[aria-label="Dom Luís'te gün batımı"]`).count(), 0, "an experience is never a chore");
   assert.match(await sec("other").locator(".cat-wait").innerText(), /1 hazırlık/);
   await app.locator(".pk-undo").waitFor({ state: "detached", timeout: 10000 }); // an earlier "Geri al" over the list
@@ -1118,14 +1124,16 @@ try {
   console.log("✓ 0.34.6: a chore typed in the quick box lands in Diğer's Hazırlık (ticked off there), an experience in Yapılacak şeyler");
   assert.equal(await sec("activity").locator('.pk-card[aria-label="Porto Belo Pazarı"]').count(), 0, "a market is never a booking");
   // Icons from the words (a bag for a market and shopping); the Maps pin shows its photo instead.
-  assert.equal(await todoRow("Porto Belo Pazarı").locator(".fk-ic:not(.fk-thumb) svg").count(), 1);
-  const pinPhoto = todoRow("Jardins do Palácio de Cristal").locator(".fk-thumb img.fk-thumb-img");
+  assert.equal(await todoRow("Porto Belo Pazarı").locator(".fk-ph .fk-ph-ic svg").count(), 1);
+  const pinPhoto = todoRow("Jardins do Palácio de Cristal").locator(".fk-ph img.fk-img");
   await pinPhoto.scrollIntoViewIfNeeded();
   assert.ok(await pinPhoto.evaluate(async (img) => (await img.decode(), img.naturalWidth > 0)), "the pin's photo loads");
-  // Its title lines up with the rows that have an icon.
-  const titleX = async (name) => (await todoRow(name).locator(".fk-t").boundingBox()).x;
-  assert.ok(Math.abs((await titleX("Jardins do Palácio de Cristal")) - (await titleX("Porto Belo Pazarı"))) < 1, "titles in one column");
-  assert.match(await todoRow("Jardins do Palácio de Cristal").locator(".fk-t > span").innerText(), /Porto · Maps/);
+  // Its title sits where the ones with an icon do (same card, the picture above).
+  const titleY = async (name) => (await todoRow(name).locator("> b").boundingBox()).y;
+  assert.ok(Math.abs((await titleY("Jardins do Palácio de Cristal")) - (await titleY("Porto Belo Pazarı"))) < 1, "titles in one line");
+  assert.match(await todoRow("Jardins do Palácio de Cristal").locator(".fk-sub").innerText(), /Porto · Maps/);
+  // A page it came from: its link, not a search.
+  await todoRow("Jardins do Palácio de Cristal").getByRole("link", { name: "Jardins do Palácio de Cristal: kaynağını aç" }).waitFor();
   await app.setViewportSize({ width: 1440, height: 1100 });
   await sec("todo").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5d-todo.png` });
@@ -1154,7 +1162,7 @@ try {
   assert.match(await turn(sec("food")), /^matrix\([^,]+, -1, 1,/);
   assert.equal(await sec("food").locator(".cat-chev").evaluate((el) => getComputedStyle(el).transform), "none");
   // Closed, a section is its header line alone, the same in every section: icon, name … bar, settled of all, the arrow.
-  assert.equal(await app.locator(".cat-sec.closed .cat-body, .cat-sec.closed .cat-card, .cat-sec.closed .fk-row, .cat-sec.closed li, .cat-sec.closed .cat-wait, .cat-sec.closed .cat-hidden").count(), 0, "nothing under a closed header");
+  assert.equal(await app.locator(".cat-sec.closed .cat-body, .cat-sec.closed .cat-card, .cat-sec.closed .fk-idea, .cat-sec.closed li, .cat-sec.closed .cat-wait, .cat-sec.closed .cat-hidden").count(), 0, "nothing under a closed header");
   const counts = [];
   for (const id of ["flight", "stay", "transport", "activity", "todo", "food", "other"]) {
     const head = await sec(id).boundingBox();

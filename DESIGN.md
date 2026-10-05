@@ -149,8 +149,16 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
   `lib/categories.ts` `hiddenThings` (her biri tam bir bölümde).
 - Açık bölüm bir zaman çizelgesi: solda tarih sütunu ("9 Eki", altında hafta günü ve şehir), ince çizgi ve nokta,
   sağda onaylı kartların kendisi (kart iç tasarımı değişmez). Tarihe göre, sonra saate göre; tarihsizler en sonda
-  "Tarihsiz", şehre göre. Panel ≤620 px: tarih kartın üstüne tek satır iner. Yapılacak şeyler: başta hızlı yazma
-  kutusu, tikli satırlar (alt satır şehir · kaynak); Restoranlar: 200×124 fotoğraflı kartlar, aynı gündekiler yan yana.
+  "Tarihsiz", şehre göre. Panel ≤620 px: tarih kartın üstüne tek satır iner.
+- **Yapılacak şeyler = fikir listesi** (0.35.2): orada görülecek, gezilecek, denenecek şeyler; rezervasyon değil,
+  **tik yok** (oraya gidip tik atılmaz). Başta hızlı yazma kutusu; her fikir Restoranlar'la aynı kart: 200×124 resim
+  (sayfanın fotoğrafı, yoksa türünün ikonu renkli karoda: manzara, gün batımı, yürüyüş, alışveriş, okuma, tat, diğer),
+  ad (en fazla 2 satır), şehir · kaynak, altta "+ Güne ekle", harita ve kaynağı (yoksa web'de arama). Bölüm ikonu
+  pusula. Bilet kelimesi geçen fikirde "Bilet gerekiyor · Etkinliklere taşı". Restoranlar aynı kart; aynı gündekiler
+  yan yana, kartlar bir sırada eşit boy, düğmeler aynı hizada; uzun ad şablonu bozmaz.
+- **Etkinlik asla fikir değildir** (0.35.2, `booking.ts` `showSays`): konser, gösteri, maç, festival, open air, DJ,
+  line-up, parti, canlı müzik geçen kayıt — sohbet ya da sayfa "yapılacak / rezervasyon yok" demiş olsa da —
+  Etkinlikler'e gider (bilet gerekir).
 - Plan'da check-in/check-out satırı, boş gün, planı olmayan transfer yok.
 - **Günlük akış** (0.34.8) tek anahtarla iki görünüm, günler tek tek açılıp kapanmaz. Üstte yapışkan çubuk:
   **Liste | Kartlar** (seçim bu tarayıcıda hatırlanır) ve gün şeridi (1 · 2 · 3 · 4 · 5–6 · 7; bugün mavi), şerit

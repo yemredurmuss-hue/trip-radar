@@ -21,20 +21,28 @@ const TICKET_WORDS =
 /** A show or a match: a ticket, even when nobody said the word. */
 const SHOW_WORDS =
   /konser|concert|gösteri|\bshow\b|\bopera\b|\bbale\b|ballet|tiyatro|theat(re|er)|müzikal|musical|\bfado\b|flamen(k|c)o|(^|\s)maç|\bmatch\b|stadyum turu|stadium tour/i;
+/** An event with a line-up, a festival, a night out: a ticket too (Wipeout Open Air: Camo & Krooked). */
+const EVENT_WORDS =
+  /festival|festivali|\bfest\b|open[ -]?air|açık ?hava (konser|sahne|etkinli)|\bdj\b|dj set|\bb2b\b|line-?up|\brave\b|club night|\bparty\b|\bparti\b|live (music|set|show)|canlı (müzik|performans)|\bgig\b|stand[- ]?up|tour dates?/i;
 /** A restaurant that wants a table booked. */
 const TABLE_WORDS = /rezervasyon(la| gerek| şart| önerilir| zorunlu)|reservation(s)? (required|recommended|only|essential)|book a table|booking (required|essential)|masa ayırt/i;
 
 const evidenceText = (item: Item): string => [itemText(item), item.statusNote].filter(Boolean).join(" ");
 
-/** Positive evidence of a ticket: a price, a ticket seller, or words that say ticket / reservation / tour / show. */
-export const ticketSays = (item: Item): boolean => {
-  if (item.price.amount != null || TICKET_SELLERS.test(`${item.url ?? ""} ${item.provider ?? ""}`)) return true;
+/** A show, a match, a festival, a night with a line-up: an event, so a ticket, whatever it was filed as. */
+export const showSays = (item: Item): boolean => {
   const text = evidenceText(item);
-  return TICKET_WORDS.test(text) || SHOW_WORDS.test(text);
+  return SHOW_WORDS.test(text) || EVENT_WORDS.test(text);
 };
 
-/** A note, a to-do or a chore is never a booking, chosen or not. */
-const neverBooked = (item: Item): boolean => item.plannedKind === "note" || item.plannedKind === "todo" || item.plannedKind === "prep";
+/** Positive evidence of a ticket: a price, a ticket seller, or words that say ticket / reservation / tour / show / event. */
+export const ticketSays = (item: Item): boolean => {
+  if (item.price.amount != null || TICKET_SELLERS.test(`${item.url ?? ""} ${item.provider ?? ""}`)) return true;
+  return TICKET_WORDS.test(evidenceText(item)) || showSays(item);
+};
+
+/** A note or a chore is never a booking; nor is a to-do, unless it is an event (the chat filed a concert as one). */
+const neverBooked = (item: Item): boolean => item.plannedKind === "note" || item.plannedKind === "prep" || (item.plannedKind === "todo" && !showSays(item));
 
 /** Something to do: not a stay, a way of getting there, a meal, insurance or internet. */
 const thingToDo = (item: Item): boolean =>
@@ -44,11 +52,14 @@ const thingToDo = (item: Item): boolean =>
 const unnamedTile = (item: Item): boolean => item.plannedKind === "activity" && /^(Etkinlik|Activity)$/.test(item.name.trim());
 
 /**
- * A thing to do. Said in the chat or added by hand (origin "chat"): its evidence, whatever kind or stored
- * "needed" it came with, and "booked" there means planned, not a reservation, unless its note says a ticket.
- * Set aside as none, it stays none. A page: booked on it, or what it said, else its evidence.
+ * A thing to do. An event (show, match, festival, line-up) is always booked. Said in the chat or added by hand
+ * (origin "chat"): its evidence, whatever kind or stored "needed" it came with, and "booked" there means planned,
+ * not a reservation, unless its note says a ticket. Set aside as none, it stays none. A page: booked on it, or
+ * what it said, else its evidence.
  */
 function toDoBooking(item: Item): Booking {
+  // An event is booked, whatever it was filed or said as: a festival is never an idea to tick off (Wipeout Open Air).
+  if (showSays(item)) return "needed";
   if (item.origin === "chat") {
     if (item.booking === "none") return "none";
     return ticketSays(item) || unnamedTile(item) ? "needed" : "none";
