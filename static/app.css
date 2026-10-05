@@ -1396,3 +1396,9 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .fk-unday { width: 100%; margin-top: 6px; padding: 7px 10px; border: 0; border-top: 1px solid var(--fk-line); background: none; font: inherit; font-size: 14px; color: #c62828; text-align: left; cursor: pointer; }
 /* An idea put on a day: a thin line of the itinerary. */
 .it-row.idea .it-line b { font-weight: 500; }
+
+/* ---------- 0.32: "Rezerve edilecekler · N · M alındı" (etkinlik-v4 .sec): one card under another ---------- */
+.pk-tobook .section-head { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 16px; }
+.pk-tobook .section-head > span:first-child { font-size: 17px; font-weight: 700; color: #1d1d1f; }
+.pk-tobook .section-head .muted { font-size: 13px; color: #6e6e73; }
+.pk-tobook-row { margin: 0 0 10px; }

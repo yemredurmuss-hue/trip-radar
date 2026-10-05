@@ -8,7 +8,6 @@ import {
   CATEGORY_ORDER,
   formatDateRange,
   formatPrice,
-  groupItems,
   listingKeyOf,
   rankItems,
   routeUrl,
@@ -17,7 +16,7 @@ import {
   type NeedGroup,
 } from "../lib/items";
 import { buildLegs, type Leg } from "../lib/legs";
-import { buildTimeline } from "../lib/timeline";
+import { buildTimeline, toBook } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
 import { cardFacts } from "../lib/cardFacts";
 import { budgetBar, decisionProgress, entryDomId, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
@@ -74,8 +73,8 @@ interface Props {
   onShare?: () => void;
 }
 
-/** Categories shown as one summary row until expanded (like "Tiyatro, tekne turu ve 4 yer"). */
-const SUMMARIZED: Category[] = ["activity", "food", "other"];
+/** Activities, restaurants and the rest: what needs booking is under "Rezerve edilecekler", the rest in Fikirler. */
+const DAY_THINGS: Category[] = ["activity", "food", "other"];
 
 export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, menu, onShare }: Props) {
   // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
@@ -96,12 +95,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     setView((v) => (v === "plan" ? "days" : "plan"));
     setTimeout(() => show(findTarget(target)), 60);
   };
-  // Ideas for a day (saved, not chosen) aren't blocks of the plan's front: they wait with the undated ones.
-  const places = () =>
-    groupItems([
-      ...timeline.undated,
-      ...timeline.entries.flatMap((e) => (e.kind === "day" ? e.items.filter((i) => i.status === "saved" && SUMMARIZED.includes(i.category)) : [])),
-    ]).filter((s) => SUMMARIZED.includes(s.category));
   const dismissed = items.filter((i) => i.status === "dismissed");
   const hasIdeas = items.some(isIdea);
   const mapUrl = routeUrl(items);
@@ -383,14 +376,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         />
       )}
 
+      {view === "plan" && <ToBook timeline={timeline} card={card} />}
       {view === "plan" && CATEGORY_ORDER.map((category) => {
         if (category === "stay") return <LooseStays key="stay" plan={plan} renderGroup={renderGroup} />;
-        if (SUMMARIZED.includes(category)) {
-          const section = places().find((s) => s.category === category);
-          return section ? (
-            <SummarySection key={category} category={category} groups={section.groups} card={card} onOpenItem={onOpenItem} />
-          ) : null;
-        }
+        if (DAY_THINGS.includes(category)) return null;
         // Flights and transport the timeline placed on their day are there; the rest (and eSIMs) here.
         const groups = category === "flight" || category === "transport" ? timeline.unplaced : plan.groups;
         return groups
@@ -451,6 +440,28 @@ function routeOf(plan: Plan, items: Item[]): string | null {
   if (inOrder.length) return inOrder.join(" → ");
   const saved = [...new Set(items.filter((i) => i.status !== "dismissed" && i.category === "stay" && i.city).map((i) => i.city!))];
   return saved.length ? joinTr(saved) : null;
+}
+
+/**
+ * "Rezerve edilecekler · 5 · 2 alındı" (etkinlik-v4): what needs booking and has no block of its own on the
+ * plan (no day, or saved for a day and not chosen), one card under another. What needs no booking is in Fikirler.
+ */
+function ToBook({ timeline, card }: { timeline: Timeline; card: CardFor }) {
+  const { items, booked } = toBook(timeline);
+  if (!items.length) return null;
+  return (
+    <div className="section pk-tobook">
+      <div className="section-head">
+        <span>{L("Rezerve edilecekler", "To book")}</span>
+        <span className="muted">{L(`${items.length} · ${booked} alındı`, `${items.length} · ${booked} booked`)}</span>
+      </div>
+      {items.map((i) => (
+        <div key={i.id} className="pk-tobook-row">
+          {card(i, items.filter((x) => x.needKey === i.needKey))}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 /** Stays that don't fit the trip's nights (no dates, or outside them); every stay when there are no dates yet. */
