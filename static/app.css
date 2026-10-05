@@ -1405,3 +1405,9 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .pk-tobook .section-head > span:first-child { font-size: 17px; font-weight: 700; color: #1d1d1f; }
 .pk-tobook .section-head .muted { font-size: 13px; color: #6e6e73; }
 .pk-tobook-row { margin: 0 0 10px; }
+
+/* ---------- 0.33: a block of nights' × (a stay said apart, empty nights): top right of its card; with options under it, at the end of its line ---------- */
+.stay-x { position: absolute; top: 6px; right: 10px; z-index: 3; }
+.stay-open:hover .pk-x, .stay-open:focus-within .pk-x, .slot-note:hover .pk-x, .slot-note:focus-within .pk-x { opacity: 1; }
+.stay-open .status-bar { padding-right: 44px; }
+.slot-note { display: flex; align-items: center; gap: 8px; }

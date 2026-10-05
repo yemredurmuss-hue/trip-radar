@@ -10,6 +10,7 @@ import type { Choice, Ranked } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
 import { L } from "../../lib/i18n";
 import { dateAlert } from "../../lib/progress";
+import type { DateRange } from "../../lib/plan";
 import type { InsertAt } from "../../lib/templates";
 import type { DocMeta, Item, LegMode } from "../../lib/types";
 import { chooseItem, setInstalled, setItemStatus } from "../actions";
@@ -35,6 +36,8 @@ export interface CardEnv {
   docsFor: (itemId: string) => DocMeta[];
   /** Deletes with an 8-second "Geri al". */
   remove: (item: Item) => void;
+  /** Empty nights' ×: "Gerek yok" for them, with an 8-second "Geri al". */
+  hideNights: (range: DateRange, label: string) => void;
   /** Opens the add sheet (null: from the plan's header). */
   add: (at: InsertAt | null) => void;
   /** Opens the add sheet's form for a plan ("Düzenle"). */

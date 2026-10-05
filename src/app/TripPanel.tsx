@@ -16,11 +16,11 @@ import {
   type NeedGroup,
 } from "../lib/items";
 import { buildLegs, type Leg } from "../lib/legs";
-import { buildTimeline, toBook } from "../lib/timeline";
+import { buildTimeline, hiddenNights, nightsKey, toBook } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
 import { cardFacts } from "../lib/cardFacts";
 import { budgetBar, decisionProgress, entryDomId, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
-import { cityKeyOf, type OptionGroup, type Plan } from "../lib/plan";
+import { cityKeyOf, type DateRange, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 import { isRental } from "../lib/travelKinds";
 import { L } from "../lib/i18n";
@@ -32,11 +32,12 @@ import { homeCurrencyOf, tripFacts } from "../lib/tripFacts";
 import type { Timeline } from "../lib/timeline";
 
 import type { Capture, Category, Item, Trip } from "../lib/types";
-import { chooseItem, setHidden, updateTrip } from "./actions";
+import { chooseItem, hideNights, setHidden, undo as takeBack, updateTrip } from "./actions";
 import { legEndsByItem, legModeByItem } from "../lib/cardKinds";
 import { inheritedDocs } from "../lib/docs";
-import { deleteItem, onRemoved, restoreItem, type Removed } from "../lib/removal";
+import { deleteItem, onRemoved } from "../lib/removal";
 import { undoSlot } from "../lib/undo";
+import { undoTrip, type Undoable } from "../lib/undoables";
 import type { InsertAt } from "../lib/templates";
 import { AddButton, AddSheet } from "./cards/AddSheet";
 import { useTripDocs } from "./cards/DocAccess";
@@ -108,19 +109,21 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const hidden = useMemo(() => new Set(trip.hidden ?? []), [trip.hidden]);
   const timeline = useMemo(() => buildTimeline(plan, legs, items, hidden), [plan, legs, items, hidden]);
   const hiddenLegs = legs.filter((l) => l.kind !== "move" && hidden.has(`leg:${l.key}`));
+  const hiddenStays = useMemo(() => hiddenNights(timeline), [timeline]);
 
   // --- plan cards: the way chosen per transfer, files, delete with undo, the add sheet ---
   const legModes = useMemo(() => legModeByItem(legs), [legs]);
   const legEnds = useMemo(() => legEndsByItem(legs), [legs]);
   const inherited = useMemo(() => inheritedDocs(plan.closed), [plan.closed]);
   const docsFor = useTripDocs(trip.id, inherited);
-  const undo = useMemo(() => undoSlot<Removed>(), []);
-  const [removed, setRemoved] = useState<Removed | null>(null);
-  useEffect(() => undo.subscribe(setRemoved), [undo]);
+  const undo = useMemo(() => undoSlot<Undoable>(), []);
+  const [undoable, setUndoable] = useState<Undoable | null>(null);
+  useEffect(() => undo.subscribe(setUndoable), [undo]);
   // Another trip on screen: the last deletion stays deleted.
   useEffect(() => () => void undo.take(), [trip.id, undo]);
   // A plan the chat took back ("taksiyi kaldır") gets the same "Geri al".
-  useEffect(() => onRemoved((r) => r.item.tripId === trip.id && undo.show(r)), [trip.id, undo]);
+  useEffect(() => onRemoved((removed) => removed.item.tripId === trip.id && undo.show({ kind: "removed", removed })), [trip.id, undo]);
+  const offer = (u: Undoable) => undoTrip(u) === trip.id && undo.show(u);
   const [sheet, setSheet] = useState<{ at: InsertAt | null; editing: Item | null } | null>(null);
   const env: CardEnv = {
     tripId: trip.id,
@@ -129,7 +132,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     legModes,
     legEnds,
     docsFor,
-    remove: (item) => void deleteItem(item).then((r) => undo.show(r)),
+    remove: (item) => void deleteItem(item).then((removed) => offer({ kind: "removed", removed })),
+    hideNights: (range, label) => void hideNights(trip.id, range, label).then(offer),
     add: (at) => setSheet({ at, editing: null }),
     edit: (item) => setSheet({ at: null, editing: item }),
     onOpenItem,
@@ -403,7 +407,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
 
       {view === "plan" && plan.closed.length > 0 && <ClosedSection closed={plan.closed} onOpenItem={onOpenItem} />}
 
-      {view === "plan" && hiddenLegs.length > 0 && <HiddenSection legs={hiddenLegs} tripId={trip.id} />}
+      {view === "plan" && (hiddenLegs.length > 0 || hiddenStays.length > 0) && <HiddenSection legs={hiddenLegs} nights={hiddenStays} tripId={trip.id} />}
 
       {view === "plan" && dismissed.length > 0 && (
         <SummarySection
@@ -418,7 +422,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           // A to-do or a restaurant added from the Plan needs no booking: show it where it went.
           onSaved={(item) => !needsBooking(item) && view === "plan" && setView("ideas")} />
       )}
-      <UndoToast removed={removed} onUndo={() => { const r = undo.take(); if (r) void restoreItem(r); }} />
+      <UndoToast undoable={undoable} onUndo={() => { const u = undo.take(); if (u) void takeBack(u); }} />
     </CardEnvContext.Provider>
   );
 }
@@ -643,8 +647,8 @@ function Headline({ choice, alternatives, onCompare }: { choice: Choice; alterna
   );
 }
 
-/** Transfers the traveller said aren't needed: out of the way, one tap from coming back. */
-function HiddenSection({ legs, tripId }: { legs: Leg[]; tripId: string }) {
+/** Transfers and nights the traveller said aren't needed: out of the way, one tap from coming back. */
+function HiddenSection({ legs, nights, tripId }: { legs: Leg[]; nights: { range: DateRange; city: string | null }[]; tripId: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="section">
@@ -653,8 +657,8 @@ function HiddenSection({ legs, tripId }: { legs: Leg[]; tripId: string }) {
           <CategoryIcon category="transport" />
         </span>
         <span>
-          <div className="row-name">{L(`Gizlenenler (${legs.length})`, `Hidden (${legs.length})`)}</div>
-          <div className="row-label tone-muted">{L(`"Gerek yok" dediğin transferler; geri getirebilirsin`, `Transfers you marked "Not needed". You can bring them back`)}</div>
+          <div className="row-name">{L(`Gizlenenler (${legs.length + nights.length})`, `Hidden (${legs.length + nights.length})`)}</div>
+          <div className="row-label tone-muted">{L(`"Gerek yok" dediğin transferler ve geceler; geri getirebilirsin`, `Transfers and nights you marked "Not needed". You can bring them back`)}</div>
         </span>
         <span className="chev" style={{ transform: open ? "rotate(90deg)" : undefined }}>
           <Chevron />
@@ -675,6 +679,21 @@ function HiddenSection({ legs, tripId }: { legs: Leg[]; tripId: string }) {
             </button>
           </div>
         ))}
+      {open &&
+        nights.map(({ range, city }) => {
+          const label = `${city ?? L("Konaklama", "Stay")} ${formatDateRange(range.start, range.end)}`;
+          return (
+            <div key={nightsKey(range)} className="hidden-row">
+              <span>
+                <b>{L("Geceler", "Nights")}</b>
+                <span className="muted"> · {label}</span>
+              </span>
+              <button className="link-btn" onClick={() => void setHidden(tripId, nightsKey(range), false, label)}>
+                {L("Geri getir", "Bring back")}
+              </button>
+            </div>
+          );
+        })}
     </div>
   );
 }

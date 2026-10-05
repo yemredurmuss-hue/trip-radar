@@ -52,10 +52,12 @@ export function CardMenu({ entries }: { entries: MenuEntry[] }) {
   );
 }
 
-/** The hover ×: deletes the card and its files at once, with the 8-second "Geri al" (no confirm). */
-export function DeleteX({ name, onDelete }: { name: string; onDelete: () => void }) {
+/** The hover ×: deletes the card and its files at once, with the 8-second "Geri al" (no confirm). Empty nights' × hides them (`hide`). */
+export function DeleteX({ name, onDelete, hide = false, className }: { name: string; onDelete: () => void; hide?: boolean; className?: string }) {
   return (
-    <button type="button" className="pk-x" aria-label={L(`${name}: sil`, `${name}: delete`)} title={L("Sil", "Delete")}
+    <button type="button" className={`pk-x${className ? ` ${className}` : ""}`}
+      aria-label={hide ? L(`${name}: gerek yok`, `${name}: not needed`) : L(`${name}: sil`, `${name}: delete`)}
+      title={hide ? L("Gerek yok", "Not needed") : L("Sil", "Delete")}
       onClick={(e) => { e.stopPropagation(); onDelete(); }}>
       <UiIcon name="x" size={12} />
     </button>

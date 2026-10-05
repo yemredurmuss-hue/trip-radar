@@ -8,7 +8,7 @@ import { entryDomId } from "../lib/progress";
 import type { Ranked } from "../lib/choice";
 import { nightsKey, type RentalEntry, type Timeline, type TimelineEntry, type TimelineSection } from "../lib/timeline";
 import type { Category, Item, Listing } from "../lib/types";
-import { removeItem, setHidden } from "./actions";
+import { setHidden } from "./actions";
 import { Carousel } from "./Carousel";
 import { CategoryIcon, type IconName } from "./Icons";
 import { StatusBar, type Standing } from "./Status";
@@ -16,6 +16,8 @@ import { L, locale } from "../lib/i18n";
 import type { InsertAt } from "../lib/templates";
 import { insertAt, insertAtCity, insertAtDay, insertAtStart } from "../lib/templates";
 import { AddButton, InsertPoint } from "./cards/AddSheet";
+import { DeleteX } from "./cards/CardShell";
+import { useCardEnv } from "./cards/PlanCard";
 
 export type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => ReactNode;
 export type CardFor = (item: Item, group: Item[], decision?: GroupDecision, ranked?: Ranked, onCompare?: () => void) => ReactNode;
@@ -562,22 +564,21 @@ function ItRow({ row, ...render }: { row: DayRow } & RenderProps) {
   );
 }
 
-/** A stay said apart in the chat goes back into the nights around it. */
-const SlotUndo = ({ slot }: { slot: Item }) => (
-  <button className="link-btn quiet" onClick={() => void removeItem(slot, L(`${slot.name} plandan kaldırıldı`, `${slot.name} removed from the plan`))} title={L("Bu geceler ayrı konaklama olmasın", "Don't keep these nights as a separate stay")}>
-    {L("Ayrı olmasın", "Merge back")}
-  </button>
-);
-
-const SlotNote = ({ slot }: { slot: Item }) => (
-  <p className="slot-note muted">
-    {L("Bu geceler ayrı konaklama (sohbette söyledin)", "These nights are a separate stay (you said so in the chat)")} · <SlotUndo slot={slot} />
-  </p>
-);
+/** A stay said apart (in the chat, or added with "+") with options under it: the line saying so, and its × (spec 0.33 §1). */
+function SlotNote({ slot }: { slot: Item }) {
+  const env = useCardEnv();
+  return (
+    <p className="slot-note muted">
+      <span>{L("Bu geceler ayrı konaklama (sohbette söyledin)", "These nights are a separate stay (you said so in the chat)")}</span>
+      <DeleteX name={slot.name} onDelete={() => env.remove(slot)} />
+    </p>
+  );
+}
 
 const blockState = (block: StayBlock) => (block.kind === "open" && !block.groups.length ? "empty" : block.kind);
 
 function Block({ block, skipped, tripId, renderGroup, settled }: { block: StayBlock; skipped: boolean; tripId: string; renderGroup: RenderGroup; settled: SettledFor }) {
+  const env = useCardEnv();
   const state = blockState(block);
   const label = `${block.city ?? L("Konaklama", "Stay")} ${formatDateRange(block.range.start, block.range.end)}`;
   // "Gerek yok" (a night bus, friends' place): the nights stay on the line, quietly, and leave the to-dos.
@@ -618,7 +619,13 @@ function Block({ block, skipped, tripId, renderGroup, settled }: { block: StayBl
         </p>
       )}
       {block.kind === "open" && !block.groups.length && (
-        <div className="settled-card st-open stay-open">
+        <div className="settled-card st-open stay-open" data-item-id={block.slot?.id}>
+          {/* ×: a stay said apart is deleted (its nights go back to the stay around them); empty nights are "Gerek yok". */}
+          {block.slot ? (
+            <DeleteX name={block.slot.name} className="stay-x" onDelete={() => env.remove(block.slot!)} />
+          ) : (
+            <DeleteX name={label} hide className="stay-x" onDelete={() => env.hideNights(block.range, label)} />
+          )}
           <StatusBar standing="open" text={L("Planlanmadı", "Not planned")} sub={block.slot ? L("ayrı konaklama · otel seçilmedi", "separate stay · no hotel chosen") : L("bu geceler için kayıtlı yer yok", "nothing saved for these nights")} />
           <div className="empty-card">
             <span>
@@ -628,10 +635,8 @@ function Block({ block, skipped, tripId, renderGroup, settled }: { block: StayBl
               </span>
             </span>
             <span className="sc-actions">
-              {block.slot ? (
-                <SlotUndo slot={block.slot} />
-              ) : (
-                <button className="link-btn quiet" onClick={() => void setHidden(tripId, nightsKey(block.range), true, label)} title={L("Bu geceler için yer gerekmiyor", "No place needed for these nights")}>
+              {!block.slot && (
+                <button className="link-btn quiet" onClick={() => env.hideNights(block.range, label)} title={L("Bu geceler için yer gerekmiyor", "No place needed for these nights")}>
                   {L("Gerek yok", "Not needed")}
                 </button>
               )}
