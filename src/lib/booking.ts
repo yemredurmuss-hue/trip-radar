@@ -20,9 +20,16 @@ const TABLE_WORDS = /rezervasyon(la| gerek| şart| önerilir| zorunlu)|reservati
 const ticketSays = (item: Item): boolean =>
   item.price.amount != null || TICKET_SELLERS.test(`${item.url ?? ""} ${item.provider ?? ""}`) || TICKET_WORDS.test(itemText(item));
 
-/** The heuristic for a record that doesn't say (also what "Rezerve edileceklere taşı" checks against). */
+/** A note or a to-do is never a booking, chosen or not. */
+const neverBooked = (item: Item): boolean => item.plannedKind === "note" || item.plannedKind === "todo";
+
+/**
+ * The heuristic for a record that doesn't say. One the traveller already chose or booked (an older record,
+ * a chat plan) was on the Plan before records said: it stays there, whatever its words.
+ */
 export function bookingByKind(item: Item): Booking {
-  if (item.plannedKind === "note" || item.plannedKind === "todo") return "none";
+  if (neverBooked(item)) return "none";
+  if (item.status === "chosen" || item.status === "booked") return "needed";
   const text = itemText(item);
   switch (item.category) {
     case "stay":
@@ -39,8 +46,9 @@ export function bookingByKind(item: Item): Booking {
   }
 }
 
-/** The record's own answer first, then its kind. */
-export const bookingOf = (item: Item): Booking => item.booking ?? bookingByKind(item);
+/** The record's own answer first, then its kind; a booking made is a booking, whatever the page said. */
+export const bookingOf = (item: Item): Booking =>
+  item.status === "booked" && !neverBooked(item) ? "needed" : (item.booking ?? bookingByKind(item));
 export const needsBooking = (item: Item): boolean => bookingOf(item) === "needed";
 
 /** An idea for Fikirler: something to eat or do that needs no booking (a page, a quick note, a to-do). */

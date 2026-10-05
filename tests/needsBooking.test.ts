@@ -51,6 +51,35 @@ describe("older records and pages that don't say: by kind", () => {
   });
 });
 
+describe("already chosen or booked never leaves the Plan", () => {
+  it("an older record the traveller chose or booked is a booking, whatever its words (a note or a to-do aside)", () => {
+    expect(bookingOf(makeItem({ category: "activity", name: "Fado gecesi", status: "chosen" }))).toBe("needed");
+    expect(bookingOf(makeItem({ category: "activity", name: "Ribeira yürüyüşü", status: "booked" }))).toBe("needed");
+    expect(bookingOf(makeItem({ category: "food", name: "Cantinho do Avillez", status: "chosen" }))).toBe("needed");
+    expect(bookingOf(makeItem({ category: "other", name: "Plan · Porto", plannedKind: "other", status: "chosen" }))).toBe("needed");
+    expect(isIdea(makeItem({ category: "activity", name: "Fado gecesi", status: "booked" }))).toBe(false);
+    expect(bookingOf(makeItem({ category: "other", name: "Not", plannedKind: "note", status: "chosen" }))).toBe("none");
+    expect(bookingOf(makeItem({ category: "other", name: "Pazar", plannedKind: "todo", status: "chosen" }))).toBe("none");
+    // Saved and not chosen: by its words, as before.
+    expect(bookingOf(makeItem({ category: "activity", name: "Fado gecesi" }))).toBe("none");
+  });
+  it("a booking confirmation is a booking even if the page said none", () => {
+    expect(bookingOf(makeItem({ category: "food", name: "Belcanto", status: "booked", booking: "none" }))).toBe("needed");
+    expect(bookingOf(makeItem({ category: "food", name: "Majestic Café", status: "chosen", booking: "none" }))).toBe("none");
+  });
+  it("the chat's activity is a booking even without a price; its restaurant and note are ideas", () => {
+    expect(bookingOf(plannedItem(said({ kind: "activity", title: "Fado gecesi", city: "Lizbon" }), "t1", "f", 1))).toBe("needed");
+    expect(plannedItem(said({ kind: "activity", title: "Fado gecesi", city: "Lizbon" }), "t1", "f", 1).booking).toBe("needed");
+    expect(plannedItem(said({ kind: "todo", title: "Pazar" }), "t1", "g", 1).booking).toBe("none");
+  });
+  it("the sheet's restaurant and note are ideas (none), not bookings by being chosen", () => {
+    const tpl = (id: string) => TEMPLATES.find((x) => x.id === id)!;
+    const food = templateItem(tpl("food"), { ...emptyForm(tpl("food"), null, "EUR"), name: "Cantinho" }, "t1", "c", 1) as Item;
+    const note = templateItem(tpl("note"), { ...emptyForm(tpl("note"), null, "EUR"), name: "Vize" }, "t1", "d", 1) as Item;
+    expect([food.booking, note.booking, bookingOf(food), bookingOf(note)]).toEqual(["none", "none", "none", "none"]);
+  });
+});
+
 describe("ideas for Fikirler", () => {
   it("food, activities and the rest that need no booking, not ruled out", () => {
     expect(isIdea(makeItem({ category: "food", name: "Majestic Café" }))).toBe(true);

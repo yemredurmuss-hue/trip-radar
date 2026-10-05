@@ -141,6 +141,9 @@ describe("whether it needs booking, as the page says", () => {
     expect(mergeItem(first, again).booking).toBe("needed");
     const unsaid = { ...first, booking: undefined };
     expect(mergeItem(unsaid, again).booking).toBe("none");
+    // An older record already chosen (on the Plan) isn't sent to Fikirler by a re-read.
+    expect(mergeItem({ ...unsaid, status: "chosen" }, again).booking).toBeUndefined();
+    expect(mergeItem({ ...unsaid, status: "chosen" }, { ...again, booking: "needed" }).booking).toBe("needed");
   });
 });
 

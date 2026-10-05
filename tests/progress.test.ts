@@ -78,7 +78,9 @@ describe("an idea is never a booking to make", () => {
     const idea = (id: string, over: Partial<Item>): Item => ({ ...douro, id, status: "chosen", price: { ...douro.price, amount: null }, cancellation: { summary: null, freeUntil: null, source: "none" }, ...over });
     const more = [
       ...items,
-      idea("cafe", { name: "Majestic Café", category: "food" }),
+      // A restaurant is an idea as every record now says (the sheet, the chat, a page); an older chosen one
+      // without the field stays a booking so it never leaves the Plan (needsBooking.test.ts).
+      idea("cafe", { name: "Majestic Café", category: "food", booking: "none" }),
       idea("market", { name: "Bolhão pazarı", category: "other", plannedKind: "todo" }),
       idea("table", { name: "Belcanto", category: "food", booking: "needed" }),
     ];

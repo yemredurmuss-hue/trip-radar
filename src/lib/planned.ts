@@ -178,6 +178,9 @@ export function plannedItem(input: PlannedInput, tripId: string, id: string, now
     statusNote: input.note?.trim() || null,
     origin: "chat",
     plannedKind: input.kind,
+    // Said as a thing to do with a ticket, it's a booking even without a price; a to-do, a restaurant or a
+    // note is an idea (Fikirler). The rest is read by kind (booking.ts).
+    ...(input.kind === "activity" ? { booking: "needed" as const } : input.kind === "todo" || input.kind === "food" || input.kind === "note" ? { booking: "none" as const } : {}),
     createdAt: now,
     updatedAt: now,
   };
