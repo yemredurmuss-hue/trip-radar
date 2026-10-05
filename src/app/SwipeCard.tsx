@@ -8,7 +8,7 @@ import type { Ranked } from "../lib/choice";
 import { dateAlert } from "../lib/progress";
 import { isRental, isTrip } from "../lib/travelKinds";
 import type { Category, Item } from "../lib/types";
-import { chooseItem, removeItem, setItemStatus } from "./actions";
+import { chooseItem, setItemStatus } from "./actions";
 import { FallbackImg } from "./FallbackImg";
 import { PivotNote } from "./PivotNote";
 import { StatusBar } from "./Status";
@@ -299,7 +299,7 @@ export function SettledCard({
           )}
           {/* A plan said in the chat (a taxi, a ticket to find) comes off the board in one tap. */}
           {planned && !booked && (
-            <button className="pill-btn outline quiet" onClick={() => void removeItem(item)} title={L("Bu planı panodan kaldır", "Remove this plan from the board")}
+            <button className="pill-btn outline quiet" onClick={() => env.remove(item)} title={L("Bu planı panodan kaldır", "Remove this plan from the board")}
               aria-label={L(`${item.name}: kaldır`, `${item.name}: remove`)}
             >
               {L("Kaldır", "Remove")}
@@ -315,7 +315,7 @@ export function SettledCard({
             {planned ? (
               // Not booked: "Kaldır" is on the card itself.
               booked && (
-                <button className="link-btn" onClick={() => void removeItem(item)}>
+                <button className="link-btn" onClick={() => env.remove(item)}>
                   {L("Planı kaldır", "Remove plan")}
                 </button>
               )

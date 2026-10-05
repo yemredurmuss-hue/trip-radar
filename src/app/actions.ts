@@ -1,7 +1,7 @@
 // Small write actions shared by the board's views.
 import { addEvent, db, notifyChanged } from "../lib/db";
 import { L } from "../lib/i18n";
-import { deleteItem } from "../lib/removal";
+import { announceRemoved, deleteItem, type Removed } from "../lib/removal";
 import type { Category, Item, ItemStatus, Trip } from "../lib/types";
 
 /** The trip history line for a status change, written in the current language. */
@@ -62,9 +62,14 @@ export async function chooseItem(item: Item, alternatives: Item[]): Promise<void
   await setItemStatus(item, "chosen");
 }
 
-/** "Planı kaldır": a plan said in the chat has no page behind it, so it simply goes (its files too). */
-export async function removeItem(item: Item): Promise<void> {
-  await deleteItem(item, L(`${item.name} plandan kaldırıldı`, `${item.name} removed from the plan`));
+/**
+ * Deletes a record and its files from anywhere outside a plan card (the drawer, "Ayrı olmasın"), with the
+ * same 8-second "Geri al" as a card's Sil: the board picks it up from announceRemoved. No confirm dialog.
+ */
+export async function removeItem(item: Item, event?: string): Promise<Removed> {
+  const removed = await deleteItem(item, event);
+  announceRemoved(removed);
+  return removed;
 }
 
 /** eSIM "Kurdum" (and "Kurulmadı" to take it back). */

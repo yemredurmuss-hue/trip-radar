@@ -535,7 +535,7 @@ function ItRow({ row, ...render }: { row: DayRow } & RenderProps) {
 
 /** A stay said apart in the chat goes back into the nights around it. */
 const SlotUndo = ({ slot }: { slot: Item }) => (
-  <button className="link-btn quiet" onClick={() => void removeItem(slot)} title={L("Bu geceler ayrı konaklama olmasın", "Don't keep these nights as a separate stay")}>
+  <button className="link-btn quiet" onClick={() => void removeItem(slot, L(`${slot.name} plandan kaldırıldı`, `${slot.name} removed from the plan`))} title={L("Bu geceler ayrı konaklama olmasın", "Don't keep these nights as a separate stay")}>
     {L("Ayrı olmasın", "Merge back")}
   </button>
 );

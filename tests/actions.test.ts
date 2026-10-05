@@ -1,7 +1,8 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
-import { setInstalled, updateTrip } from "../src/app/actions";
+import { removeItem, setInstalled, updateTrip } from "../src/app/actions";
 import { db } from "../src/lib/db";
+import { onRemoved, restoreItem, type Removed } from "../src/lib/removal";
 import type { Trip } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -39,5 +40,21 @@ describe("an eSIM installed", () => {
     expect((await d.get("items", esim.id))!.installedAt).toEqual(expect.any(Number));
     await setInstalled(esim, false);
     expect((await d.get("items", esim.id))!.installedAt).toBeUndefined();
+  });
+});
+
+describe("a delete from outside a card (the drawer, a stay's Kaldır)", () => {
+  it("asks nothing, and hands the board its Geri al; undoing brings it back", async () => {
+    const d = await db();
+    const stay = makeItem({ category: "stay", name: "Casa Azul", tripId: "t10" });
+    await d.put("items", stay);
+    const heard: Removed[] = [];
+    const stop = onRemoved((r) => heard.push(r));
+    const removed = await removeItem(stay);
+    stop();
+    expect(await d.get("items", stay.id)).toBeUndefined();
+    expect(heard.map((r) => r.item.name)).toEqual(["Casa Azul"]);
+    await restoreItem(removed);
+    expect((await d.get("items", stay.id))?.name).toBe("Casa Azul");
   });
 });
