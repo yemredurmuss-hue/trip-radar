@@ -10,7 +10,7 @@ import type { Item, LegMode, PlannedKind } from "./types";
 export const TRANSPORT_MODES = ["flight", "train", "bus", "minibus", "ferry", "taxi", "car", "moto", "rv", "bike"] as const;
 export type TransportMode = (typeof TRANSPORT_MODES)[number];
 /** "transport": a way of travel we couldn't tell (grey, a plain arrow, no picture). */
-export type CardKind = TransportMode | "transport" | "activity" | "esim" | "insurance" | "food" | "note" | "other" | "stay";
+export type CardKind = TransportMode | "transport" | "activity" | "esim" | "insurance" | "food" | "note" | "todo" | "other" | "stay";
 
 /** Rented for days in one place: the card's right side is how long, not where to. */
 export const RENTAL_MODES: readonly TransportMode[] = ["car", "moto", "rv", "bike"];
@@ -73,6 +73,7 @@ export function cardKind(item: Item, legMode: LegMode | null = null): CardKind {
     default:
       if (isInsurance(item)) return "insurance";
       if (item.plannedKind === "note") return "note";
+      if (item.plannedKind === "todo") return "todo";
       if (/\besim\b|e-sim|sim kart/i.test(itemText(item))) return "esim";
       return "other";
   }
@@ -81,13 +82,13 @@ export function cardKind(item: Item, legMode: LegMode | null = null): CardKind {
 const COLORS: Record<CardKind, string> = {
   flight: "#6a4fe0", train: "#2563c9", bus: "#d9480f", minibus: "#e8890c", ferry: "#0e8fb0", taxi: "#d29a00",
   car: "#475467", moto: "#c0256b", rv: "#8a6534", bike: "#5d8a1c", transport: "#6e6e73",
-  activity: "#a8336f", esim: "#3b6fd1", insurance: "#0f8a6a", food: "#b4532a", note: "#6e6e73", other: "#6e6e73", stay: "#23998b",
+  activity: "#a8336f", esim: "#3b6fd1", insurance: "#0f8a6a", food: "#b4532a", note: "#6e6e73", todo: "#1f8f4e", other: "#6e6e73", stay: "#23998b",
 };
 const LABELS = liveLabels({
   flight: ["Uçuş", "Flight"], train: ["Tren", "Train"], bus: ["Otobüs", "Bus"], minibus: ["Minibüs", "Minibus"], ferry: ["Vapur", "Ferry"],
   taxi: ["Taksi · transfer", "Taxi · transfer"], car: ["Araç kiralama", "Car rental"], moto: ["Motosiklet", "Motorbike"],
   rv: ["Karavan", "Camper van"], bike: ["Bisiklet", "Bike"], transport: ["Ulaşım", "Transport"], activity: ["Etkinlik", "Activity"],
-  esim: ["eSIM", "eSIM"], insurance: ["Sigorta", "Insurance"], food: ["Restoran", "Restaurant"], note: ["Not", "Note"],
+  esim: ["eSIM", "eSIM"], insurance: ["Sigorta", "Insurance"], food: ["Restoran", "Restaurant"], note: ["Not", "Note"], todo: ["Yapılacak", "To-do"],
   other: ["Diğer", "Other"], stay: ["Konaklama", "Stay"],
 });
 export const cardKindColor = (k: CardKind): string => COLORS[k];

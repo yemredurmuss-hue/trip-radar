@@ -12,7 +12,7 @@ import { cityOfAirport } from "./airports";
 import type { TimelineEntry, TimelineSection } from "./timeline";
 import type { Item, PlannedKind } from "./types";
 
-export type TemplateId = TransportMode | "hotel" | "home" | "activity" | "food" | "esim" | "insurance" | "note";
+export type TemplateId = TransportMode | "hotel" | "home" | "activity" | "todo" | "food" | "esim" | "insurance" | "note";
 /** trip: from, to, day, time · rental: place, start, end · stay: name, city, check-in, check-out · named: name, day. All with a price. */
 export type TemplateFormKind = "trip" | "rental" | "stay" | "named";
 export interface Template {
@@ -29,12 +29,12 @@ export const TEMPLATES: readonly Template[] = [
   tp("car", "car_rental", "move", "rental"), tp("moto", "moto_rental", "move", "rental"), tp("rv", "rv_rental", "move", "rental"),
   tp("bike", "bike_rental", "move", "rental"),
   tp("hotel", "stay", "stay", "stay"), tp("home", "stay", "stay", "stay"),
-  tp("activity", "activity", "other", "named"), tp("food", "food", "other", "named"), tp("esim", "esim", "other", "named"),
+  tp("activity", "activity", "other", "named"), tp("todo", "todo", "other", "named"), tp("food", "food", "other", "named"), tp("esim", "esim", "other", "named"),
   tp("insurance", "insurance", "other", "named"), tp("note", "note", "other", "named"),
 ];
 
 const OTHER_LABELS = liveLabels({
-  hotel: ["Otel", "Hotel"], home: ["Ev · daire", "Home · flat"], activity: ["Etkinlik · tur", "Activity · tour"],
+  hotel: ["Otel", "Hotel"], home: ["Ev · daire", "Home · flat"], activity: ["Etkinlik · tur", "Activity · tour"], todo: ["Yapılacak", "To-do"],
   food: ["Restoran", "Restaurant"], esim: ["eSIM", "eSIM"], insurance: ["Sigorta", "Insurance"], note: ["Not", "Note"],
 });
 export const templateLabel = (id: TemplateId): string =>
@@ -119,7 +119,9 @@ export function withPrice(item: Item, price: { amount: number; currency: string 
 export function templateItem(tpl: Template, f: FormValues, tripId: string, id: string, now: number): Item | string {
   const r = templateInput(tpl, f);
   if (typeof r === "string") return r;
-  const item = plannedItem(r.input, tripId, id, now);
+  const made = plannedItem(r.input, tripId, id, now);
+  // "Etkinlik · tur" is a booking even without a price yet; "Yapılacak" never is (booking.ts reads the rest).
+  const item: Item = tpl.id === "activity" ? { ...made, booking: "needed" } : tpl.id === "todo" ? { ...made, booking: "none" } : made;
   return r.price ? withPrice(item, r.price, now) : item;
 }
 

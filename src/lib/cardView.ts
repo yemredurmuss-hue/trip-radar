@@ -13,8 +13,8 @@ import { cardKindLabel, legTransportMode, RENTAL_MODES, TICKET_MODES, transportM
 import type { Item } from "./types";
 
 export type Ring = "open" | "half" | "done";
-/** Nothing to book: once planned it's done (a taxi from the rank, a note). */
-const NO_BOOKING: readonly CardKind[] = ["taxi", "note"];
+/** Nothing to book: once planned it's done (a taxi from the rank, a note, a to-do). */
+const NO_BOOKING: readonly CardKind[] = ["taxi", "note", "todo"];
 
 export function ringOf(item: Item, kind: CardKind): Ring {
   if (item.status === "booked") return "done";
@@ -192,7 +192,7 @@ export function mediaFace(item: Item, kind: CardKind, source: CardFacts["source"
     add(item.guests.adults ? people(item.guests.adults) : null);
     const [s, e] = [isoDate(item.dates.start), isoDate(item.dates.end)];
     add(s && e ? nDays(nightsBetween(s, e) + 1) : null);
-  } else if (kind === "note" || kind === "other") {
+  } else if (kind === "note" || kind === "todo" || kind === "other") {
     add(item.summary || item.statusNote);
   } else {
     add(item.location.area ?? item.location.address ?? item.city);

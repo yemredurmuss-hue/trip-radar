@@ -11,7 +11,7 @@ import type { Category, Item, PlannedKind } from "./types";
 
 export type { PlannedKind } from "./types";
 /** Kinds the chat's plan_item tool may use. */
-export const PLANNED_KINDS = ["flight", "train", "bus", "ferry", "transfer", "taxi", "car_rental", "stay", "activity", "esim", "other"] as const satisfies readonly PlannedKind[];
+export const PLANNED_KINDS = ["flight", "train", "bus", "ferry", "transfer", "taxi", "car_rental", "stay", "activity", "esim", "todo", "other"] as const satisfies readonly PlannedKind[];
 /** Kinds only the add sheet makes (the chat says them as one of the above). */
 export const TEMPLATE_ONLY_KINDS = ["minibus", "moto_rental", "rv_rental", "bike_rental", "food", "insurance", "note"] as const satisfies readonly PlannedKind[];
 export const ALL_PLANNED_KINDS: readonly PlannedKind[] = [...PLANNED_KINDS, ...TEMPLATE_ONLY_KINDS];
@@ -46,6 +46,7 @@ const CATEGORY: Record<PlannedKind, Category> = {
   food: "food",
   insurance: "other",
   note: "other",
+  todo: "other",
   stay: "stay",
   activity: "activity",
   esim: "esim",
@@ -122,6 +123,7 @@ function nameOf(i: PlannedInput): string {
   if (i.kind === "insurance") return L("Seyahat sigortası", "Travel insurance");
   if (i.kind === "food") return `${L("Restoran", "Restaurant")}${at}`;
   if (i.kind === "note") return L("Not", "Note");
+  if (i.kind === "todo") return `${L("Yapılacak", "To-do")}${at}`;
   if (i.kind === "stay") return `${L("Konaklama", "Stay")}${at}`;
   if (i.kind === "esim") return `eSIM${at}`;
   return where ? `Plan · ${where}` : "Plan";
@@ -133,6 +135,7 @@ function needKeyOf(i: PlannedInput): string {
   if (RENTAL_KINDS.includes(i.kind)) return `transport:${i.kind === "car_rental" ? "car" : i.kind.replace("_rental", "")}-${slug(i.city ?? i.to)}`;
   if (i.kind === "insurance") return `other:insurance-${slug(i.city ?? i.to)}`;
   if (i.kind === "note") return `other:note-${slug(i.title)}`;
+  if (i.kind === "todo") return `other:todo-${slug(i.title ?? i.city)}`;
   return `${CATEGORY[i.kind]}:${slug(i.city ?? i.to)}`;
 }
 
@@ -181,7 +184,7 @@ export function plannedItem(input: PlannedInput, tripId: string, id: string, now
 }
 
 const GENERATED =
-  /^(Uçuş|Tren|Otobüs|Minibüs|Feribot|Transfer|Taksi|Araç kiralama|Motosiklet kiralama|Karavan kiralama|Bisiklet kiralama|Konaklama|Restoran|Seyahat sigortası|Not|eSIM|Plan|Flight|Train|Bus|Minibus|Ferry|Taxi|Car rental|Motorbike rental|Camper van rental|Bike rental|Stay|Restaurant|Travel insurance|Note)( ·|$)/;
+  /^(Uçuş|Tren|Otobüs|Minibüs|Feribot|Transfer|Taksi|Araç kiralama|Motosiklet kiralama|Karavan kiralama|Bisiklet kiralama|Konaklama|Restoran|Seyahat sigortası|Not|Yapılacak|eSIM|Plan|Flight|Train|Bus|Minibus|Ferry|Taxi|Car rental|Motorbike rental|Camper van rental|Bike rental|Stay|Restaurant|Travel insurance|Note|To-do)( ·|$)/;
 /** A name nameOf made (in either language), not one the traveller gave. */
 export const isGeneratedName = (name: string) => GENERATED.test(name);
 const where = (s: string | null | undefined) => (s ? cityKeyOf(s) : null);

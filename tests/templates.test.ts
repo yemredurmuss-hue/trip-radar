@@ -16,12 +16,12 @@ const tpl = (id: TemplateId) => TEMPLATES.find((x) => x.id === id)!;
 const form = (id: TemplateId, over: Partial<FormValues>) => ({ ...emptyForm(tpl(id), null, "EUR"), ...over });
 
 describe("the add sheet's tiles", () => {
-  it("ten ways to travel, two places to stay, five others", () => {
+  it("ten ways to travel, two places to stay, six others", () => {
     expect(TEMPLATES.filter((x) => x.group === "move").map((x) => templateLabel(x.id))).toEqual([
       "Uçuş", "Tren", "Otobüs", "Minibüs", "Vapur", "Taksi · transfer", "Araç kiralama", "Motosiklet", "Karavan", "Bisiklet",
     ]);
     expect(TEMPLATES.filter((x) => x.group === "stay").map((x) => templateLabel(x.id))).toEqual(["Otel", "Ev · daire"]);
-    expect(TEMPLATES.filter((x) => x.group === "other").map((x) => templateLabel(x.id))).toEqual(["Etkinlik · tur", "Restoran", "eSIM", "Sigorta", "Not"]);
+    expect(TEMPLATES.filter((x) => x.group === "other").map((x) => templateLabel(x.id))).toEqual(["Etkinlik · tur", "Yapılacak", "Restoran", "eSIM", "Sigorta", "Not"]);
   });
   it("the form starts with the city and day of where it was opened", () => {
     const at = { city: "Porto", date: "2026-10-09" };

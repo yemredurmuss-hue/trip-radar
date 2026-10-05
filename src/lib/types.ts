@@ -237,7 +237,10 @@ export interface Price {
 export type PlannedKind =
   | "flight" | "train" | "bus" | "minibus" | "ferry" | "transfer" | "taxi"
   | "car_rental" | "moto_rental" | "rv_rental" | "bike_rental"
-  | "stay" | "activity" | "food" | "esim" | "insurance" | "note" | "other";
+  | "stay" | "activity" | "food" | "esim" | "insurance" | "note" | "todo" | "other";
+
+/** When a restaurant idea is put on a day: breakfast, lunch or dinner. */
+export type MealSlot = "breakfast" | "lunch" | "dinner";
 
 export interface Item {
   id: string;
@@ -290,6 +293,15 @@ export interface Item {
   plannedKind?: PlannedKind;
   /** eSIM: when the traveller said it's installed ("Kurdum"). */
   installedAt?: number;
+  /**
+   * Needs a booking (stays on the Plan, counts as "Rezerve et") or not (an idea in Fikirler). Missing on
+   * older records and pages that didn't say: read by kind (booking.ts bookingOf).
+   */
+  booking?: "needed" | "none";
+  /** A to-do or an idea ticked off in Fikirler ("Yapıldı · 12 Eki"). */
+  doneAt?: number;
+  /** A restaurant idea put on a day: which meal ("8 Eki akşam"). */
+  meal?: MealSlot;
   createdAt: number;
   updatedAt: number;
 }
