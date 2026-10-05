@@ -1269,6 +1269,58 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
   .pk-form { grid-template-columns: 1fr; }
 }
 
+/* Compact plan cards (0.34.5): the same card, about a fifth smaller. Padding 12, top line 22, cities 24 (long 20),
+   card titles 17, the media picture 132×96, the bottom strip 40, the action 32. Nothing moves, nothing goes. */
+.pk-card { padding: 12px 14px; border-radius: 18px; }
+.pk-art { top: 26px; height: 80px; }
+.pk-top { height: 22px; font-size: 12.5px; gap: 7px; }
+.pk-ring { width: 20px; height: 20px; }
+.pk-ib { height: 22px; }
+.pk-docpill { height: 22px; font-size: 12.5px; }
+.pk-mid { margin: 6px 0 20px; }
+.pk-stop b { font-size: 24px; }
+.pk-stop b.long { font-size: 20px; }
+.pk-stop > span { font-size: 13px; margin-top: 2px; }
+.pk-route { height: 60px; }
+.pk-route small { bottom: -22px; font-size: 12.5px; }
+.pk-title { margin: 10px 0 12px; font-size: 17px; }
+.pk-card:has(> .pk-art) .pk-title { min-height: 66px; }
+.pk-card:not(:has(> .pk-art)) .pk-mid { margin-bottom: 12px; }
+.pk-media { grid-template-columns: 132px 1fr; gap: 14px; margin: 10px 0 12px; }
+.pk-vis { width: 132px; height: 96px; border-radius: 12px; }
+.pk-vis svg.pk-sil { width: 88px; height: 72px; }
+.pk-score { font-size: 12px; padding: 1px 5px; }
+.pk-txt h3 { font-size: 17px; }
+.pk-txt p { font-size: 14px; margin-top: 3px; }
+.pk-meta { margin-top: 6px; font-size: 12.5px; }
+.pk-foot { min-height: 40px; border-radius: 12px; gap: 10px; }
+.pk-state { font-size: 12.5px; }
+.pk-nav { font-size: 12.5px; }
+.pk-nav button { width: 24px; height: 24px; }
+.pk-price b { font-size: 15px; }
+.pk-cta { height: 32px; padding: 0 14px; font-size: 14px; }
+.pk-detail { margin-top: 10px; padding: 12px 14px; }
+/* The stay's settled card, the same way: photo 132×100, name 16, tighter bars and strip. */
+.settled-card { border-radius: 22px; }
+.settled-card .status-bar { padding: 7px 16px; font-size: 13px; }
+.settled-card .card-alert { padding: 6px 16px; font-size: 13px; }
+.stc-main { padding: 12px; }
+.stc-media-row { grid-template-columns: 132px minmax(0, 1fr); gap: 14px; }
+.stc-img { width: 132px; height: 100px; border-radius: 14px; }
+.stc-info { gap: 3px; }
+.stc-name { font-size: 16px; }
+.stc-line { font-size: 13px; }
+.stc-foot { padding: 8px 16px 10px; gap: 8px 14px; }
+.stc-details { padding: 4px 16px 14px; }
+@container panel (max-width: 620px) {
+  .pk-stop b { font-size: 20px; }
+  .pk-art { top: 78px; height: 64px; }
+  .pk-card:has(> .pk-art) .pk-title { min-height: 104px; }
+  .pk-vis { width: 100%; height: 132px; }
+  .pk-vis svg.pk-sil { width: 112px; height: 92px; }
+  .pk-txt h3 { font-size: 16px; }
+}
+
 /* ---------- 0.32: the hover × on every record's card (left of •••) ---------- */
 .pk-x { flex: none; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: rgba(0, 0, 0, .06); color: #6e6e73; display: grid; place-items: center; cursor: pointer; opacity: 0; transition: opacity .15s, background .15s, color .15s; }
 .pk-card:hover .pk-x, .pk-card:focus-within .pk-x, .swipe-card:hover .pk-x, .swipe-card:focus-within .pk-x, .settled-card:hover .pk-x, .settled-card:focus-within .pk-x { opacity: 1; }
@@ -1464,81 +1516,81 @@ button.cat-hidden-name:hover { text-decoration: underline; }
   .cat-date { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 0 4px 8px; text-align: left; }
 }
 
-/* ---------- 0.34.1: Günlük akış as day cards (approved widget "günlük akış v4") ----------
-   Closed: the city's photo left (36%), the title, at most four lines (time · name · ✓ / what's left), the
-   ideas' count and "+ Bu güne ekle"; every card the same height. Open: its own page, the photo full height
-   on the left, each thing a small card (green booked · sand still to do · white needs nothing). */
-.dc { --dc-ink: #1d1d1f; --dc-gray: #6e6e73; --dc-line: #e8e8ed; color: var(--dc-ink); scroll-margin-top: 12px; }
-.dc-day { display: grid; grid-template-columns: 36% minmax(0, 1fr); height: 236px; margin-bottom: 14px; background: #fff; border-radius: 20px; overflow: hidden; cursor: pointer;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.06); transition: box-shadow .15s; }
-.dc-day:hover { box-shadow: 0 6px 22px rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.08); }
-.dc-day:focus-visible { outline: 2px solid #1556d6; outline-offset: 2px; }
-.dc-photo { position: relative; overflow: hidden; background: linear-gradient(135deg, #cfe2e8, #efe3c8); }
-.dc-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.dc-photo.full { position: sticky; top: 12px; align-self: start; height: 420px; border-radius: 20px; }
-.dc-no { position: absolute; top: 12px; left: 12px; padding: 5px 11px; border-radius: 999px; background: rgba(255,255,255,.94); font-size: 14px; font-weight: 700; }
-.dc-date { position: absolute; left: 12px; bottom: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.5); color: #fff; font-size: 13px; font-weight: 500; }
+/* ---------- 0.34.5: Günlük akış as day cards (after the reference "Günlük akış · 3 gün") ----------
+   A card a day: the day's photo left (38%), on the right the title and a timeline: time · a dot on a dotted
+   line · the Plan's icon in a soft tile of its colour (✓ booked, an amber dot still to do) · the name. Closed
+   every card is the same height; open, it grows in place. The day's kind is drawn faint behind, bottom right. */
+.dc { --dc-ink: #1d1d1f; --dc-gray: #6e6e73; --dc-line: #e8e8ed; color: var(--dc-ink); }
+.dc-day { position: relative; display: grid; grid-template-columns: 38% minmax(0, 1fr); min-height: 232px; margin-bottom: 16px; background: #fffdfa; border-radius: 22px; overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 0 0 1px rgba(0,0,0,.06); transition: box-shadow .15s; }
+.dc-day:not(.open) { height: 232px; }
+.dc-day:hover { box-shadow: 0 8px 26px rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.07); }
+.dc-photo { position: relative; display: block; padding: 0; border: 0; overflow: hidden; background: linear-gradient(135deg, #cfe2e8, #efe3c8); cursor: pointer; }
+.dc-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .4s; }
+.dc-day:hover .dc-photo img { transform: scale(1.02); }
+.dc-no { position: absolute; top: 14px; left: 14px; padding: 5px 13px; border-radius: 999px; background: rgba(255,255,255,.94); font-size: 15px; font-weight: 700; color: var(--dc-ink); }
+.dc-date { position: absolute; left: 14px; bottom: 14px; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.45); color: #fff; font-size: 13px; font-weight: 500; backdrop-filter: blur(6px); }
 .dc-date.today { background: #1556d6; }
-.dc-body { display: flex; flex-direction: column; min-width: 0; padding: 16px 18px 12px; }
-.dc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.dc-head h3 { flex: 1; min-width: 0; margin: 0; font-size: 20px; line-height: 1.2; letter-spacing: -.01em; }
-.dc-left { flex: none; padding: 2px 8px; border-radius: 8px; background: #fdf0d5; color: #8a5a00; font-size: 13px; font-weight: 600; }
-.dc-lines { list-style: none; margin: 0; padding: 0; }
-.dc-lines li { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 31px; font-size: 15px; }
-.dc-lines .t { text-align: right; color: var(--dc-gray); font-variant-numeric: tabular-nums; }
-.dc-lines .n { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.dc-lines li:not(.more):hover .n { text-decoration: underline; text-decoration-color: #c8c3bb; text-underline-offset: 3px; }
-.dc-lines .ok { color: #1f8f4e; font-weight: 700; }
-.dc-lines .todo { color: #8a5a00; font-size: 13px; font-weight: 600; white-space: nowrap; }
-.dc-lines .more .n { color: #1556d6; font-size: 14px; }
-.dc-free { margin: 4px 0 0; color: var(--dc-gray); font-size: 15px; }
-.dc-foot { display: flex; align-items: center; gap: 12px; margin-top: auto; padding-top: 6px; font-size: 13px; color: var(--dc-gray); }
-.dc-add { margin-left: auto; height: 30px; padding: 0 12px; border: 1.5px dashed #d5cfc5; border-radius: 10px; background: #fff; color: var(--dc-gray); font-size: 13px; opacity: .75; }
-.dc-day:hover .dc-add, .dc-add:hover, .dc-add:focus-visible { opacity: 1; }
-.dc-add:hover { border-color: var(--dc-ink); color: var(--dc-ink); }
 
-.dc-bar { display: flex; align-items: center; margin-bottom: 12px; }
-.dc-back { height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid #d2d2d7; background: #fff; font-size: 14px; font-weight: 500; color: var(--dc-ink); }
-.dc-bar .dc-add { opacity: 1; }
-.dc-grid { display: grid; grid-template-columns: 34% minmax(0, 1fr); gap: 20px; align-items: start; }
-.dc-flow h2 { margin: 2px 0 14px; font-size: 24px; letter-spacing: -.015em; }
-.dc-info { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; margin: 2px 0 10px; font-size: 14px; color: var(--dc-gray); }
-.dc-info .t, .dc-row > .t { text-align: right; font-variant-numeric: tabular-nums; }
-.dc-info b { color: var(--dc-ink); font-weight: 600; }
-.dc-row { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; margin-bottom: 10px; }
-.dc-row > .t { padding-top: 13px; font-size: 15px; font-weight: 600; }
-.dc-card { --kc: #6e6e73; border-radius: 16px; background: #fff; border: 1px solid var(--dc-line); overflow: hidden; }
-.dc-card.done { background: #eef8f1; border-color: #cfe8d7; }
-.dc-card.todo { background: #fbf6ea; border-color: #efe2c3; }
-.dc-card[data-kind="flight"] { --kc: #6a4fe0; }
-.dc-card[data-kind="transport"] { --kc: #c58a2e; }
-.dc-card[data-kind="car"] { --kc: #475467; }
-.dc-card[data-kind="activity"] { --kc: #a8336f; }
-.dc-card[data-kind="food"] { --kc: #c0562b; }
-.dc-card-face { display: block; width: 100%; padding: 11px 14px 12px; border: 0; background: none; text-align: left; color: inherit; cursor: pointer; }
-.dc-card-face .top { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--kc); }
-.dc-card-face .kind { font-weight: 600; }
-.dc-card-face .st { margin-left: auto; font-weight: 600; }
-.dc-card-face .st.ok { color: #1f8f4e; }
-.dc-card-face .st.todo { color: #8a5a00; }
-.dc-card-face .ends { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; margin-top: 6px; }
-.dc-card-face .ends b { font-size: 21px; line-height: 1.15; font-weight: 700; letter-spacing: -.01em; overflow-wrap: anywhere; }
-.dc-card-face .ends b:last-child { text-align: right; }
-.dc-card-face .ends i { display: grid; place-items: center; width: 44px; height: 28px; border-radius: 999px; background: var(--kc); color: #fff; }
-.dc-card-face .name { display: block; margin-top: 4px; font-size: 17px; font-weight: 600; }
-.dc-card-face .sub { display: block; margin-top: 3px; font-size: 13.5px; color: var(--dc-gray); }
-.dc-detail { margin: 0 10px 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.85); font-size: 14px; }
+.dc-body { position: relative; display: flex; flex-direction: column; min-width: 0; padding: 18px 22px 16px 26px; }
+.dc-body > :not(.dc-art) { position: relative; z-index: 1; }
+.dc-art { position: absolute; right: -10px; bottom: 6px; width: 62%; height: 120px; color: var(--mc); opacity: .14; pointer-events: none; z-index: 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 35%); mask-image: linear-gradient(90deg, transparent 0, #000 35%); }
+.dc-art svg { position: static; transform: none; width: 100%; height: 100%; opacity: 1; -webkit-mask-image: none; mask-image: none; }
+.dc-head { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0 0 10px; padding: 0; border: 0; background: none; text-align: left; color: inherit; cursor: pointer; }
+.dc-head h3 { flex: 1; min-width: 0; margin: 0; font-size: 22px; line-height: 1.2; font-weight: 700; letter-spacing: -.015em; }
+.dc-left { flex: none; padding: 2px 9px; border-radius: 8px; background: #fdf0d5; color: #8a5a00; font-size: 13px; font-weight: 600; }
+.dc-ideas-n { flex: none; padding: 2px 9px; border-radius: 8px; background: #f1efe9; color: var(--dc-gray); font-size: 13px; }
+.dc-chev { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: var(--dc-gray); transition: transform .2s, background .15s; }
+.dc-head:hover .dc-chev { background: #f1efe9; color: var(--dc-ink); }
+.dc-day.open .dc-chev { transform: rotate(180deg); }
+
+/* the timeline */
+.dc-tl { position: relative; list-style: none; margin: 0; padding: 0; }
+.dc-tl::before { content: ""; position: absolute; left: 60px; top: 18px; bottom: 18px; border-left: 1.5px dotted #cdc7bd; }
+.dc-step { position: relative; display: grid; grid-template-columns: 50px 20px minmax(0, 1fr); align-items: center; column-gap: 6px; min-height: 46px; }
+.dc-step .t { text-align: right; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dc-step .dot { justify-self: center; width: 6px; height: 6px; border-radius: 50%; background: #8e8e93; box-shadow: 0 0 0 3px #fffdfa; }
+.dc-line { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 4px 8px 4px 4px; border: 0; border-radius: 12px; background: none; text-align: left; color: inherit; cursor: pointer; }
+.dc-line:hover { background: rgba(0,0,0,.035); }
+.dc-tile { position: relative; flex: none; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; color: var(--k); background: color-mix(in srgb, var(--k) 13%, #fff); }
+.dc-tile svg { stroke: currentColor; }
+.dc-tile i { position: absolute; right: -4px; bottom: -4px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fffdfa; display: grid; place-items: center; font-style: normal; font-size: 9px; font-weight: 800; color: #fff; }
+.dc-tile i.done { background: #1f8f4e; }
+.dc-tile i.todo { background: #e0a43a; }
+.dc-line .name { min-width: 0; font-size: 15.5px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-day.open .dc-line .name { white-space: normal; }
+.dc-line .name small { display: block; margin-top: 2px; font-size: 13px; color: var(--dc-gray); }
+.dc-line .name em { font-style: normal; font-weight: 600; }
+.dc-line .name em.ok { color: #1f8f4e; }
+.dc-line .name em.todo { color: #8a5a00; }
+.dc-step.info { min-height: 30px; }
+.dc-step.info .t { font-size: 13.5px; font-weight: 500; color: var(--dc-gray); }
+.dc-step.info .dot { width: 5px; height: 5px; background: #c8c3bb; }
+.dc-step.info .txt { padding-left: 4px; font-size: 14px; color: var(--dc-gray); }
+.dc-step.info b { color: var(--dc-ink); font-weight: 600; }
+.dc-step.more { min-height: 26px; }
+.dc-step.more .dot { opacity: 0; }
+.dc-step.more .txt { padding-left: 4px; font-size: 14px; color: #1556d6; }
+.dc-step.sel .dc-line { background: rgba(0,0,0,.04); }
+.dc-detail { grid-column: 3; margin: 2px 0 10px; padding: 10px 12px; border-radius: 12px; background: #fff; box-shadow: 0 0 0 1px var(--dc-line); font-size: 14px; }
 .dc-detail p { margin: 0 0 6px; }
 .dc-detail .muted { color: var(--dc-gray); }
-.dc-detail .link-btn { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; }
-.dc-leg { margin: 6px 0 8px; }
-.dc-ideas { margin: 18px 0 0 64px; }
-.dc-ideas small { display: block; margin-bottom: 6px; font-size: 13px; color: var(--dc-gray); }
-.dc-ideas ul { margin: 0; padding-left: 18px; font-size: 15px; line-height: 1.7; }
+.dc-detail .link-btn { display: inline-flex; align-items: center; gap: 4px; }
+.dc-leg { margin: 4px 0 8px; }
+.dc-free { margin: 4px 0 0; color: var(--dc-gray); font-size: 15px; }
+.dc-other { margin: 14px 0 0 76px; }
+.dc-other small { display: block; margin-bottom: 4px; font-size: 13px; color: var(--dc-gray); }
+.dc-other ul { margin: 0; padding-left: 18px; font-size: 15px; line-height: 1.7; }
+.dc-other li span { color: var(--dc-gray); }
+.dc-add { align-self: flex-start; margin: 12px 0 0 76px; height: 32px; padding: 0 12px; border: 1.5px dashed #d5cfc5; border-radius: 10px; background: #fff; color: var(--dc-gray); font-size: 13.5px; }
+.dc-add:hover { border-color: var(--dc-ink); color: var(--dc-ink); }
+.dc-day:not(.open) .dc-add { margin-top: auto; margin-left: 0; }
 
 @container panel (max-width: 720px) {
-  .dc-day { grid-template-columns: 1fr; grid-template-rows: 120px minmax(0, 1fr); height: 340px; }
-  .dc-grid { grid-template-columns: 1fr; }
-  .dc-photo.full { position: relative; top: 0; height: 160px; }
-  .dc-ideas { margin-left: 0; }
+  .dc-day { grid-template-columns: 1fr; grid-template-rows: 130px auto; }
+  .dc-day:not(.open) { height: 360px; }
+  .dc-body { padding: 14px 14px 14px 10px; }
+  .dc-other, .dc-add { margin-left: 0; }
+}
 }
