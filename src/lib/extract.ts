@@ -115,6 +115,10 @@ function buildExtractionSchema(en: boolean) {
       .optional()
       .describe(t("Bu bir rezervasyon ya da bilet onayı mı (onay/rezervasyon numarası, 'onaylandı', 'confirmed', e-bilet, PNR)? Arama ya da ilan sayfasıysa false", "Is this a booking or ticket confirmation (confirmation/booking number, 'confirmed', e-ticket, PNR)? false for a search or listing page")),
     booking_reference: z.string().nullable().optional().describe(t("Onaydaki rezervasyon/bilet/PNR numarası, birebir; yoksa null", "The booking/ticket/PNR number on the confirmation, verbatim; else null")),
+    needs_booking: z
+      .enum(["yes", "no", "unknown"])
+      .optional()
+      .describe(t("Giriş bileti, rezervasyon ya da önceden kayıt gerekiyor mu? Konaklama, uçuş, ulaşım, eSIM: yes. Etkinlik/restoran: sayfa bilet, rezervasyon, giriş ücreti ya da tur satıyorsa yes; serbest girişse (sokak, pazar, manzara noktası, park) no; sayfa söylemiyorsa unknown", "Is an entry ticket, a reservation or signing up ahead needed? Stay, flight, transport, eSIM: yes. Activity/restaurant: yes if the page sells a ticket, a reservation, an entry fee or a tour; no if it's free to walk in (a street, a market, a viewpoint, a park); unknown if the page doesn't say")),
     booking_quote: z.string().nullable().optional().describe(t("Onayı söyleyen ifade, sayfadan ya da ekrandan birebir ('Rezervasyonunuz onaylandı', 'Booking confirmed'); yoksa null", "The words that say it is confirmed, verbatim from the page or screen ('Booking confirmed', 'Rezervasyonunuz onaylandı'); else null")),
   });
 }
@@ -145,6 +149,7 @@ Kurallar:
 - country ve country_code seçeneğin bulunduğu ülkedir (uçuşta varış ülkesi). Emin değilsen null.
 - Gezi ataması: existing_trips içinde destinasyon ve tarih olarak uyan gezi varsa onun id'sini ver. Yoksa new_trip_title ver (ör. "Portekiz"). Tarihsiz bir restoran/etkinlik, aynı şehri kapsayan geziye gider.
 - booked: Sayfa ya da ekran görüntüsü yapılmış bir rezervasyonun/biletin onayıysa true (onay veya rezervasyon numarası, "Rezervasyonunuz onaylandı", "Booking confirmed", "Your trip is booked", e-bilet, PNR, "Ödendi"). Bu durumda tarihleri, gece sayısını ve ödenen toplam fiyatı onaydan aynen al; numarayı booking_reference'a, onayı söyleyen ifadeyi booking_quote'a birebir yaz. Arama, ilan, sepet ya da ödeme öncesi sayfa ise false.
+- needs_booking: Bilet, rezervasyon, giriş ücreti ya da tur gerektiren her şey "yes" (konaklama, uçuş, ulaşım, eSIM hep "yes"). Bir restoran yalnız sayfası rezervasyon istiyorsa "yes"; serbest girilen yer (pazar, sokak, park, manzara noktası, kafe) "no". Sayfa söylemiyorsa "unknown".
 - need_key: "<kategori>:<şehir>" küçük harf ASCII (ör. "stay:porto", "activity:lisbon"); uçuşlarda "flight:<nereden>-<nereye>" (ör. "flight:ist-opo"). Site adı need_key'e girmez.
 - city: semt ya da ilçe değil, şehir (ör. Ribeira/Bonfim → "Porto"; Funchal'daki bir ev → "Funchal"). Aynı şehirdeki seçenekler aynı şehir adını almalı. Sayfa hangi dilde olursa olsun şehrin Türkçedeki yaygın adını yaz (Lisbon/Lisboa → "Lizbon", Rome → "Roma", Athens → "Atina").`;
 
@@ -165,6 +170,7 @@ Rules:
 - country and country_code are where the option is (for a flight, the arrival country). If unsure, null.
 - Trip assignment: if a trip in existing_trips matches by destination and dates, give its id. Otherwise give new_trip_title (e.g. "Portugal"). An undated restaurant/activity goes to the trip covering the same city.
 - booked: true if the page or screenshot confirms a booking/ticket already made (a confirmation or booking number, "Booking confirmed", "Your trip is booked", "Rezervasyonunuz onaylandı", e-ticket, PNR, "Paid"). Then take the dates, nights and total paid exactly from the confirmation; write the number in booking_reference and the words confirming it in booking_quote, verbatim. For a search, listing, basket or pre-payment page, false.
+- needs_booking: anything that needs a ticket, a reservation, an entry fee or a tour is "yes" (stays, flights, transport and eSIMs are always "yes"). A restaurant is "yes" only if its page asks for a reservation; a place you just walk into (a market, a street, a park, a viewpoint, a café) is "no". If the page doesn't say, "unknown".
 - need_key: "<category>:<city>" in lowercase ASCII (e.g. "stay:porto", "activity:lisbon"); for flights "flight:<from>-<to>" (e.g. "flight:ist-opo"). The site name never goes into need_key.
 - city: the city, not a neighbourhood or district (e.g. Ribeira/Bonfim → "Porto"; a house in Funchal → "Funchal"). Options in the same city must get the same city name. Whatever the page's language, write the city's common English name (Lisboa → "Lisbon", Roma → "Rome", Athína → "Athens").`;
 

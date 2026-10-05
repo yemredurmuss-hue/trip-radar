@@ -126,6 +126,24 @@ describe("buildItem", () => {
   });
 });
 
+describe("whether it needs booking, as the page says", () => {
+  it("yes → needed, no → none, unknown → left to its kind", () => {
+    const c = capture();
+    expect(buildItem(extraction({ category: "activity", needs_booking: "yes" }), c, parseUrl(c.url!), "t1").booking).toBe("needed");
+    expect(buildItem(extraction({ category: "activity", needs_booking: "no" }), c, parseUrl(c.url!), "t1").booking).toBe("none");
+    expect(buildItem(extraction({ category: "activity", needs_booking: "unknown" }), c, parseUrl(c.url!), "t1").booking).toBeUndefined();
+    expect(buildItem(extraction({ category: "activity" }), c, parseUrl(c.url!), "t1").booking).toBeUndefined();
+  });
+  it("a re-read keeps what was set before (the traveller may have moved it)", () => {
+    const c = capture();
+    const first = { ...buildItem(extraction({ category: "activity", needs_booking: "no" }), c, parseUrl(c.url!), "t1", 1000), booking: "needed" as const };
+    const again = buildItem(extraction({ category: "activity", needs_booking: "no" }), c, parseUrl(c.url!), "t1", 2000);
+    expect(mergeItem(first, again).booking).toBe("needed");
+    const unsaid = { ...first, booking: undefined };
+    expect(mergeItem(unsaid, again).booking).toBe("none");
+  });
+});
+
 describe("dedupe and merge", () => {
   it("merges a re-capture of the same listing and keeps the user's decision", () => {
     const c1 = capture();

@@ -6,6 +6,7 @@ import { db, listItems, listMessages, listPreferences } from "../src/lib/db";
 import { addDoc, listDocMeta } from "../src/lib/docs";
 import { onRemoved, restoreItem, type Removed } from "../src/lib/removal";
 import { anthropicProvider } from "../src/lib/llm/anthropic";
+import { bookingOf } from "../src/lib/booking";
 import type { Item, Trip } from "../src/lib/types";
 
 function fakeClient(responses: Partial<Anthropic.Message>[]) {
@@ -235,6 +236,24 @@ describe("assistant", () => {
     await sendMessage("t1", "Madeira uçağını aldık", anthropicProvider(client, "claude-opus-5"));
     flights = (await listItems("t1")).filter((i) => i.origin === "chat");
     expect(flights.map((i) => i.status)).toEqual(["booked"]); // the same plan, now booked; no second item
+  });
+  it("a to-do said in the chat ('pazara gidelim') is an idea, not a booking", async () => {
+    await seed();
+    const { client, calls } = fakeClient([
+      {
+        stop_reason: "tool_use",
+        content: [
+          { type: "tool_use", id: "d1", name: "plan_item", caller: { type: "direct" }, input: { kind: "todo", date: null, end_date: null, time: null, from: null, to: null, city: "Porto", title: "Bolhão pazarı", booked: false, note: null } },
+        ] as Anthropic.ContentBlock[],
+      },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Fikirlere ekledim.", citations: null }] as Anthropic.ContentBlock[] },
+    ]);
+    await sendMessage("t1", "Porto'da pazara gidelim", anthropicProvider(client, "claude-opus-5"));
+    const [added] = calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[];
+    expect(JSON.parse(String(added.content))).toMatchObject({ added: "Bolhão pazarı" });
+    const todo = (await listItems("t1")).find((i) => i.plannedKind === "todo")!;
+    expect(todo).toMatchObject({ category: "other", city: "Porto", origin: "chat" });
+    expect(bookingOf(todo)).toBe("none");
   });
   it("writes a price the traveller says, and opens a night said apart without picking a place", async () => {
     const { items } = await seed();

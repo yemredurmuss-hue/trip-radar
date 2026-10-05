@@ -207,6 +207,8 @@ export function buildItem(
     // A booking confirmation (the page after paying, or its screenshot) is a booking, not an option; but
     // only with its reference or its own words for it: a checkout page that looks like one stays chosen.
     status: confirmed(x) ? "booked" : x.booked ? "chosen" : "saved",
+    // What the page says about booking it; "unknown" leaves it to the kind (booking.ts).
+    ...(x.needs_booking === "yes" ? { booking: "needed" as const } : x.needs_booking === "no" ? { booking: "none" as const } : {}),
     statusNote: confirmed(x)
       ? `${L("Onay ekranından", "From the confirmation")}${x.booking_reference?.trim() ? ` · ${x.booking_reference.trim()}` : ""}`
       : x.booked
@@ -312,6 +314,8 @@ export function mergeItem(existing: Item, incoming: Item, placeOnly = false): It
     concerns: incoming.concerns.length ? incoming.concerns : existing.concerns,
     reviewSummary: pick(incoming.reviewSummary, existing.reviewSummary),
     missing: incoming.missing,
+    // Whether it needs booking: the traveller's move ("Rezerve edileceklere taşı") or the first reading stands.
+    booking: existing.booking ?? incoming.booking,
     // The traveller's decision stands, except that a booking confirmation books it.
     status: incoming.status === "booked" ? "booked" : existing.status,
     statusNote: incoming.status === "booked" ? incoming.statusNote : existing.statusNote,
