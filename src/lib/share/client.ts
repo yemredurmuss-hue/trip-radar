@@ -14,7 +14,9 @@ export type RpcName =
   | "set_vote"
   | "votes_for"
   | "put_profile"
-  | "profiles_for";
+  | "profiles_for"
+  // supabase/history.sql (0.37): the shared settings' history; a server without it answers "setup".
+  | "settings_history_for";
 
 /** A failure said in the board's language; `code` tells the sync what kind it was. */
 export class ShareError extends Error {
