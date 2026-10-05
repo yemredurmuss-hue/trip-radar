@@ -39,7 +39,9 @@ export function TripFacts(props: {
   const names = countryNames(props.countries);
   const weather = useWeather(props.places, names.length === 1 ? names[0] : null, props.today);
   const month = range ? new Date(`${range.start}T12:00:00Z`).toLocaleDateString(locale(), { month: "long", timeZone: "UTC" }) : "";
-  const chipsAppear = useAppear(props.chips.length > 0);
+  // The budget's word needs the exchange rates (decisions): until they're read, no "empty" style yet.
+  const ready = !!props.decisions;
+  const chipsAppear = useAppear(props.chips.length > 0, ready);
   const placeAppear = useAppear(names.length > 0);
   const weatherAppear = useAppear(weather.length > 0);
   return (
@@ -55,13 +57,17 @@ export function TripFacts(props: {
               </span>
             ))}
           </div>
+        ) : !ready ? (
+          <div key="loading" className="hx-styles" aria-hidden>
+            <span className="hx-wait">&nbsp;</span>
+          </div>
         ) : (
           <div key="none" className="hx-styles">
             <span className="empty">{L("Tarzın konuştukça belirir", "Your style shows as we talk")}</span>
           </div>
         )}
       </div>
-      <Budget bar={props.bar} />
+      <Budget bar={props.bar} ready={ready} />
       <Preferences trip={props.trip} decisions={props.decisions} />
       {names.length > 0 ? (
         <div key="place" className={`hx-block hx-place${placeAppear}`}>
@@ -102,7 +108,7 @@ export function TripFacts(props: {
 /** Who goes: the shared trip's people by name, else as many as the saves say; a tap opens sharing. */
 function Travellers({ adults, onShare }: { adults: number; onShare?: () => void }) {
   const share = useShare();
-  const names = share ? [...new Set([share.me, ...(share.state?.members ?? [])].map((n) => n.trim()).filter(Boolean))] : [];
+  const names = share ? uniqueNames([share.me, ...(share.state?.members ?? [])]) : [];
   const count = names.length || adults;
   const appear = useAppear(count > 0);
   const title = travellersTitle(names, count);
@@ -138,7 +144,13 @@ function Travellers({ adults, onShare }: { adults: number; onShare?: () => void 
   return (
     <>
       {onShare ? (
-        <button key={count > 0 ? "full" : "none"} className={`hx-people${appear}`} title={L("Paylaş", "Share")} onClick={onShare}>
+        <button
+          key={count > 0 ? "full" : "none"}
+          className={`hx-people${appear}`}
+          title={L("Paylaş", "Share")}
+          aria-label={`${count > 0 ? title : L("Kimler gidiyor?", "Who's going?")} · ${L("Paylaş", "Share")}`}
+          onClick={onShare}
+        >
           {body}
         </button>
       ) : (
@@ -160,7 +172,7 @@ function Travellers({ adults, onShare }: { adults: number; onShare?: () => void 
  * still free (grey) or over (red), a line each. A tap opens the split by kind, what's left, and what the open
  * decisions will likely add.
  */
-function Budget({ bar }: { bar: BudgetBar | null }) {
+function Budget({ bar, ready }: { bar: BudgetBar | null; ready: boolean }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -173,7 +185,20 @@ function Budget({ bar }: { bar: BudgetBar | null }) {
   }, [open]);
   const known = bar ? bar.booked + bar.chosen : 0;
   const filled = !!bar && (known > 0 || bar.total != null);
-  const appear = useAppear(filled);
+  const appear = useAppear(filled, ready);
+  // Still reading the prices (no decisions yet): the heading and the block's height, not "—".
+  if (!ready) {
+    return (
+      <div key="loading" className="hx-block hx-budget" aria-busy="true">
+        <div className="hx-budget-top">
+          <h3 className="hx-h">{L("Bütçe", "Budget")}</h3>
+        </div>
+        <p className="hx-empty hx-wait" aria-hidden>
+          &nbsp;
+        </p>
+      </div>
+    );
+  }
   if (!bar || !filled) {
     return (
       <div key="none" className="hx-block hx-budget">
@@ -271,6 +296,17 @@ function Minis({ facts, home }: { facts: Facts; home: string }) {
 }
 
 const skyIcon = (w: CityWeather): HeroIconName => w.sky;
+
+/** Each name once, whatever its case or spaces ("emre" and "Emre "), the first spelling kept: as the member count does. */
+function uniqueNames(names: string[]): string[] {
+  const seen = new Map<string, string>();
+  for (const n of names) {
+    const name = n.trim();
+    const key = name.toLocaleLowerCase(locale());
+    if (name && !seen.has(key)) seen.set(key, name);
+  }
+  return [...seen.values()];
+}
 
 const sliceLabel = (s: BudgetSlice) =>
   ({ flight: L("Uçuş", "Flights"), stay: L("Konaklama", "Stays"), transport: L("Ulaşım", "Transport"), activity: L("Deneyim", "Experiences"), other: L("Diğer", "Other") })[s];

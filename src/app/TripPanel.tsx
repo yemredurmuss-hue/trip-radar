@@ -323,12 +323,20 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       else show(document.querySelector(`[data-section-chip="${id}"]`));
     }, 60);
   };
+  /** "deneyim" counts activities and restaurants: Etkinlikler, else Restoranlar when only those have something. */
+  const tallySection = (kind: keyof HeroTally): SectionId => {
+    if (kind !== "experience") return TALLY_SECTION[kind];
+    const has = (id: SectionId) => sections.some((s) => s.id === id && s.entries.length > 0);
+    return !has("activity") && has("food") ? "food" : "activity";
+  };
   const first = progress.todos[0];
+  // All set only when every section is settled and nothing is left to do (a cancellation running out is).
+  const allDone = done.complete && progress.todos.length === 0;
   const unsettled = sections.find((s) => s.entries.length && s.settled < s.entries.length);
   const action: HeroAction | null =
     done.total === 0
       ? { label: L("İlk kaydı ekle", "Add the first one"), run: () => addIn(null, null) }
-      : done.complete
+      : allDone
         ? onShare
           ? { label: L("Paylaş", "Share"), title: L("Bu geziyi paylaş", "Share this trip"), run: onShare }
           : null
@@ -386,8 +394,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           today={today}
           lead={lead}
           tally={tally}
-          onTally={(kind) => openSection(TALLY_SECTION[kind])}
-          done={done}
+          onTally={(kind) => openSection(tallySection(kind))}
+          done={{ ...done, complete: allDone }}
           progress={progress}
           list={todoOpen}
           onList={setTodoOpen}

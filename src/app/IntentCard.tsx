@@ -173,7 +173,9 @@ export function Preferences({ trip, decisions }: { trip: Trip; decisions: Decisi
   const box = useRef<HTMLDivElement>(null);
   const { entries, guess } = intentEntries(trip, decisions);
   const nothing = !entries.length && !guess;
-  const appear = useAppear(entries.length > 0);
+  // Notes, findings and the question come with the decisions: until then, no "I'll get to know you" yet.
+  const loading = !decisions && nothing;
+  const appear = useAppear(entries.length > 0, !!decisions);
   // Answering the last question leaves nothing to show: close, so a later entry doesn't appear already open.
   useEffect(() => {
     if (nothing) setOpen(false);
@@ -218,6 +220,10 @@ export function Preferences({ trip, decisions }: { trip: Trip; decisions: Decisi
             <HeroIcon name="chevRight" size={18} />
             {question}
           </button>
+        </div>
+      ) : loading ? (
+        <div key="loading" className="hx-prefs-body" aria-hidden>
+          <p className="hx-empty hx-wait">&nbsp;</p>
         </div>
       ) : (
         <div key="empty" className="hx-prefs-body">

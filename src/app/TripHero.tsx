@@ -126,7 +126,7 @@ export function TripHero(props: {
           </div>
         )}
         {props.lead && <p className="hx-lead">{props.lead}</p>}
-        <div className="hx-tally" aria-label={L("Planda", "In the plan")}>
+        <div className="hx-tally" role="group" aria-label={L("Planda", "In the plan")}>
           {shown.map(([k, word, icon]) => (
             <button key={k} className={`c-${k}${tally[k] ? "" : " zero"}`} title={L("Plan'da göster", "Show on the Plan")} onClick={() => props.onTally(k)}>
               <HeroIcon name={icon} size={22} />
