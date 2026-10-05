@@ -134,14 +134,17 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
   "Tarihsiz", şehre göre. Panel ≤620 px: tarih kartın üstüne tek satır iner. Yapılacak şeyler: başta hızlı yazma
   kutusu, tikli satırlar (alt satır şehir · kaynak); Restoranlar: 200×124 fotoğraflı kartlar, aynı gündekiler yan yana.
 - Plan'da check-in/check-out satırı, boş gün, planı olmayan transfer yok.
-- **Günlük akış** (0.34.1, onaylı widget "günlük akış v4") gün başına bir kart: solda şehrin fotoğrafı (üstünde "2. gün",
-  altında tarih; bugünse mavi "Bugün"), sağda başlık (yer değiştiren günde rota "Porto → Lizbon", yoksa şehir), en fazla
-  dört satır (saat · ad · ✓ ya da "rezerve et / karar ver / planla"; fazlası "+N daha"), altta fikir sayısı ve
-  "+ Bu güne ekle". Satırda ikon yok. Her kart aynı boy; aynı şehirde peş peşe boş günler tek kart ("5–6. gün").
-- Karta dokununca gün kendi sayfasında açılır ("← Tüm günler"): solda fotoğraf tam boy, sağda saat sırasıyla her şey
-  küçük bir kart (yeşil alındı · bej yapılacak · beyaz gerekmez; yolculukta iki uç büyük, ortada türün hapı), bilgi
-  (check-in, check-out, metro) ince satır, saati olmayanlar altta "Diğer". Kapalı karttaki bir satıra dokunmak günü o
-  kart açık açar. Kart ayrıntısında notlar ve "Plan'daki kartına git"; planı olmayan transfer orada planlanır.
+- **Günlük akış** (0.34.5, referans "Günlük akış · 3 gün") gün başına bir kart: solda günün fotoğrafı (öne çıkan
+  kaydın kendi görseli; yoksa ona arama "Douro tekne turu Porto" fotoğraf proxy'sinden; yoksa şehrin), üstünde "2. gün",
+  altında tarih (bugünse mavi "Bugün"). Sağda başlık (yer değiştiren günde rota, yoksa şehir), "N iş" ve "N fikir"
+  hapları, ⌄; altında saat çizgisi: saat · noktalı çizgide nokta · Plan kartlarının tür ikonu kendi renginde yumuşak
+  karoda · ad. Durum ikonun köşesinde: yeşil ✓ alındı, amber nokta yapılacak; sağ kenara yazı gitmez. Kapalı kartta
+  en fazla dört satır (fazlası "+N daha"), hepsi aynı boy; sağ altta günün türünün soluk noktalı silueti (öne çıkan:
+  etkinlik, yoksa asıl yolculuk). Aynı şehirde peş peşe boş günler tek kart.
+- Karta (başlığa ya da fotoğrafa) dokununca gün **yerinde açılır**, ayrı sayfa yok; aynı anda tek gün açık. Açıkken
+  bilgi satırları (check-in, metro) da görünür, her satırın ikinci satırı ve durumu yazılır, satıra dokununca ayrıntı
+  altında açılır (notlar, planı olmayan transferin planı, "Plan'daki kartına git"); altta "Diğer · saati yok" ve
+  "+ Bu güne ekle". Kapalı karttaki bir satıra dokunmak günü o satırın ayrıntısı açık açar.
 - Saat solda: kayıttan gelen düz, alışılmış ya da hesaplanan "~"; bilinmeyen boş.
 
 ## Azaltmak

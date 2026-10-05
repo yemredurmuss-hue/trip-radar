@@ -2,6 +2,8 @@
 // the left and what happens as a short list; tapping it opens the day on its own page. Days with
 // nothing planned in a row (in the same city) are one card. Pure.
 import { cityOfAirport } from "./airports";
+import { cardKind, legTransportMode, type CardKind } from "./cardKinds";
+import type { LegMode } from "./types";
 import { formatDateRange } from "./items";
 import { L } from "./i18n";
 import { dayRows, type DayRow } from "./journey";
@@ -110,4 +112,36 @@ export function endsOf(title: string): [string, string] | null {
   if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
   const from = parts[0].replace(/^(Uçuş|Tren|Otobüs|Minibüs|Vapur|Feribot|Taksi|Transfer|Flight|Train|Bus|Minibus|Ferry|Taxi)\s+/i, "");
   return [from, parts[1]];
+}
+
+/** What a row is, as the Plan's cards say it (their icon and colour): a booking's own kind, a trip by its way. */
+export function rowKind(r: DayRow): CardKind {
+  if (r.item) return cardKind(r.item);
+  if (r.rental) return "car";
+  if (r.entry?.kind === "travel") {
+    const settled = r.entry.travel?.settled ?? null;
+    if (settled) return cardKind(settled);
+    const mode = (r.entry.travel?.mode ?? r.entry.leg?.mode ?? null) as LegMode | null;
+    return legTransportMode(mode) ?? (mode === "flight" ? "flight" : "transport");
+  }
+  if (r.leg) return legTransportMode(r.leg.choice?.mode ?? null) ?? "taxi";
+  if (r.kind === "ideas" || r.kind === "idea") return r.item ? cardKind(r.item) : "todo";
+  return r.stayKey ? "stay" : "other";
+}
+
+/** The day's highlight: its first thing to do there (a tour, a table), else its trip (the flight, not the taxi to it), else its first line. */
+export function highlightOf(card: DayCard): DayRow | null {
+  const plans = card.rows.filter(isPlanRow);
+  return plans.find((r) => r.item && (r.item.category === "activity" || r.item.category === "food")) ?? plans.find((r) => r.kind === "travel") ?? plans[0] ?? null;
+}
+
+/**
+ * The day's photo: the highlight's own picture when its page had one; else a search for it in its city
+ * ("Douro tekne turu Porto"); a day that only travels or has nothing, its city.
+ */
+export function dayPhoto(card: DayCard): { url: string } | { query: string } | null {
+  const h = highlightOf(card);
+  if (h?.item?.imageUrl) return { url: h.item.imageUrl };
+  if (h?.item && (h.item.category === "activity" || h.item.category === "food")) return { query: [h.item.name, h.item.city ?? card.city].filter(Boolean).join(" ") };
+  return card.city ? { query: card.city } : null;
 }

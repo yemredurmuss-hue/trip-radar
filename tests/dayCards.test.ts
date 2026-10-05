@@ -59,3 +59,18 @@ describe("a trip's ends", () => {
     expect(endsOf("Douro tekne turu")).toBeNull();
   });
 });
+
+describe("a day's look", () => {
+  it("each row has the Plan's kind; the photo comes from the day's highlight, else its city", async () => {
+    const { rowKind, highlightOf, dayPhoto } = await import("../src/lib/dayCards");
+    const cards = await demoCards();
+    const move = cards.find((c) => c.title === "Porto → Lizbon")!;
+    expect(move.rows.filter(isPlanRow).map(rowKind)).toEqual(["taxi", "train", "taxi"]);
+    expect(dayPhoto(move)).toEqual({ query: "Lizbon" });
+    expect(rowKind(highlightOf(move)!)).toBe("train"); // the train, not the taxi to the station
+    expect(rowKind(highlightOf(cards.at(-1)!)!)).toBe("flight");
+    const porto = cards.find((c) => c.dayNo === "2. gün")!;
+    expect(highlightOf(porto)?.title).toBe("Douro tekne turu");
+    expect(dayPhoto(porto)).toEqual({ query: "Douro tekne turu Porto" });
+  });
+});
