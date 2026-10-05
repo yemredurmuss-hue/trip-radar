@@ -5,9 +5,10 @@ import { transportMode } from "../src/lib/cardKinds";
 import { db, listItems, listMessages } from "../src/lib/db";
 import { plannedItem } from "../src/lib/planned";
 import {
-  addFromTemplate, editedItem, emptyForm, formOf, insertAt, insertAtCity, insertAtDay, insertAtStart, parseAmount, templateInput, templateItem, templateLabel, TEMPLATES,
+  addFromTemplate, addQuick, editedItem, emptyForm, formOf, insertAt, insertAtCity, insertAtDay, insertAtStart, parseAmount, quickItem, templateInput, templateItem, templateLabel, TEMPLATES,
   type FormValues, type TemplateId,
 } from "../src/lib/templates";
+import { bookingOf } from "../src/lib/booking";
 import type { TimelineEntry, TimelineSection } from "../src/lib/timeline";
 import { isInsurance, isRental } from "../src/lib/travelKinds";
 import { makeItem } from "./fixtures/makeItem";
@@ -112,7 +113,7 @@ describe("the + between two cards", () => {
     const event = { kind: "event", key: "e", date: "2026-10-09", dayNo: 2, item: makeItem({ city: "Porto" }) } as TimelineEntry;
     const leg = { kind: "leg", key: "l", date: "2026-10-11", leg: { to: { city: "Lizbon" }, from: { city: "Porto" } } } as unknown as TimelineEntry;
     expect([insertAt(stay), insertAt(event), insertAt(leg)]).toEqual([
-      { city: "Porto", date: null }, { city: "Porto", date: "2026-10-09" }, { city: "Lizbon", date: "2026-10-11" },
+      { city: "Porto", date: null, night: "2026-10-10" }, { city: "Porto", date: "2026-10-09" }, { city: "Lizbon", date: "2026-10-11" },
     ]);
   });
   it("a trip's city is never an airport code or a station: the leg's city, else the airport's", () => {
@@ -156,5 +157,70 @@ describe("saving", () => {
     expect(made).toMatchObject({ id: "f1", name: "Feribot · Funchal → Porto Santo" });
     expect(await (await db()).get("items", "f1")).toBeTruthy();
     expect((await listMessages("t5")).map((m) => m.text)).toEqual(["Feribot · Funchal → Porto Santo plana eklendi"]);
+  });
+});
+
+describe("one tap on a tile: the record at once, no form", () => {
+  const at = { city: "Porto", date: "2026-10-09" };
+  const quick = (id: TemplateId, where: Parameters<typeof quickItem>[1] = at) => quickItem(tpl(id), where, "t1", `q-${id}`, 5);
+  it("every tile makes a plan in progress (origin chat), no price, its kind", () => {
+    for (const t of TEMPLATES) {
+      const item = quick(t.id);
+      expect(item).toMatchObject({ id: `q-${t.id}`, tripId: "t1", origin: "chat", status: "chosen", plannedKind: t.kind, price: { amount: null } });
+      expect(item.name.length).toBeGreaterThan(0);
+    }
+  });
+  it("a way of travel leaves from where it was added and goes to '?'; its day comes along, no time", () => {
+    expect(quick("bus")).toMatchObject({ name: "Otobüs · Porto → ?", category: "transport", city: null, flight: { from: "Porto", to: null, departure: null }, dates: { start: "2026-10-09", end: null } });
+    expect(quick("flight")).toMatchObject({ name: "Uçuş · Porto → ?", category: "flight", flight: { from: "Porto", to: null } });
+    expect(quick("bus", null)).toMatchObject({ name: "Otobüs", flight: { from: null, to: null }, dates: { start: null } });
+    expect(quick("bus", { city: null, date: "2026-10-14" }).name).toBe("Otobüs");
+  });
+  it("a taxi stays in its city (its place, as a taxi said in the chat): nowhere to leave from yet", () => {
+    expect(quick("taxi")).toMatchObject({ name: "Taksi · Porto", city: "Porto", flight: { from: null, to: "Porto" }, dates: { start: "2026-10-09" } });
+  });
+  it("a rental is picked up where it was added, on that day", () => {
+    expect(quick("car")).toMatchObject({ name: "Araç kiralama · Porto", city: "Porto", dates: { start: "2026-10-09", end: null } });
+  });
+  it("a place to stay takes one night: the day pressed, else the last night of the stay it was added after", () => {
+    expect(quick("hotel")).toMatchObject({ name: "Otel", category: "stay", city: "Porto", dates: { start: "2026-10-09", end: "2026-10-10" } });
+    expect(quick("home", { city: "Porto", date: null, night: "2026-10-10" })).toMatchObject({ name: "Ev", dates: { start: "2026-10-10", end: "2026-10-11" } });
+    expect(quick("hotel", null)).toMatchObject({ name: "Otel", city: null, dates: { start: null, end: null } });
+  });
+  it("the rest is named by its kind alone (the card shows where); the city and day come along", () => {
+    expect([quick("activity"), quick("todo"), quick("food"), quick("esim"), quick("insurance"), quick("note")].map((i) => i.name)).toEqual([
+      "Etkinlik", "Yapılacak", "Restoran", "eSIM", "Seyahat sigortası", "Not",
+    ]);
+    expect(quick("todo")).toMatchObject({ city: "Porto", dates: { start: "2026-10-09" }, category: "other" });
+  });
+  it("a to-do, a restaurant and a note need no booking (Fikirler); a tour, a hotel, a bus, an eSIM do", () => {
+    expect(["todo", "food", "note"].map((id) => bookingOf(quick(id as TemplateId)))).toEqual(["none", "none", "none"]);
+    expect(["activity", "hotel", "bus", "esim", "insurance"].map((id) => bookingOf(quick(id as TemplateId)))).toEqual(["needed", "needed", "needed", "needed", "needed"]);
+  });
+  it("its form opens blank where the kind's word stands in for a name", () => {
+    expect(formOf(quick("todo"), "EUR").values).toMatchObject({ name: "", city: "Porto", date: "2026-10-09" });
+    expect(formOf(quick("hotel"), "EUR").values).toMatchObject({ name: "", date: "2026-10-09", end: "2026-10-10" });
+  });
+  it("an edit elsewhere keeps the kind's word; a name given replaces it", () => {
+    const todo = quick("todo");
+    const { template, values } = formOf(todo, "EUR");
+    expect(editedItem(todo, template, { ...values, city: "Lizbon" }, 9, { partial: true })).toMatchObject({ name: "Yapılacak", city: "Lizbon" });
+    expect(editedItem(todo, template, { ...values, name: "Bolhão pazarı" }, 9, { partial: true })).toMatchObject({ name: "Bolhão pazarı" });
+  });
+  it("saved at once, with a line in the trip's history", async () => {
+    const made = await addQuick("t9", tpl("food"), at, "fq", 7);
+    expect(made).toMatchObject({ id: "fq", name: "Restoran" });
+    expect(await (await db()).get("items", "fq")).toBeTruthy();
+    expect((await listMessages("t9")).map((m) => m.text)).toEqual(["Restoran plana eklendi"]);
+  });
+});
+
+describe("a restaurant's or an activity's time", () => {
+  it("is in the form (and an edit), though the sheet shows no box for it", () => {
+    const dinner = plannedItem({ kind: "food", date: "2026-10-09", end_date: null, time: "20:00", from: null, to: null, city: "Porto", title: "Cantinho", booked: false, note: null }, "t1", "d", 5);
+    const { template, values } = formOf(dinner, "EUR");
+    expect(values.time).toBe("20:00");
+    expect(editedItem(dinner, template, { ...values, time: "21:30" }, 9)).toMatchObject({ flight: { departure: "2026-10-09T21:30" } });
+    expect(editedItem(dinner, template, { ...values, time: "" }, 9)).toMatchObject({ flight: null });
   });
 });

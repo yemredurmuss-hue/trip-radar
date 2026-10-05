@@ -1,13 +1,15 @@
-// "+ Ekle": what can be added by hand, the short form each one asks, and the plan item it makes. The item
-// is the one a plan said in the chat makes (plannedItem, origin "chat"), so a page saved for it later
-// takes its place and the chat can change it. Unlike the chat, a template never merges into a plan
-// already there. Pure, except addFromTemplate and saveEdit, which write it.
+// "+ Ekle": what can be added by hand, the record one tap on a tile makes at once (quickItem), the short
+// form a plan's "Düzenle" opens, and an edit. The item is the one a plan said in the chat makes
+// (plannedItem, origin "chat"), so a page saved for it later takes its place and the chat can change it.
+// Unlike the chat, a template never merges into a plan already there. Pure, except addFromTemplate,
+// addQuick and saveEdit, which write it.
 import { cardKindLabel, type CardKind, type TransportMode } from "./cardKinds";
 import { addEvent, db, notifyChanged } from "./db";
 import { L } from "./i18n";
 import { liveLabels } from "./i18nText";
 import { isoDate } from "./items";
 import { ALL_PLANNED_KINDS, checkPlanned, isGeneratedName, plannedItem, type PlannedInput } from "./planned";
+import { addDays } from "./plan";
 import { cityOfAirport } from "./airports";
 import type { TimelineEntry, TimelineSection } from "./timeline";
 import type { Item, PlannedKind } from "./types";
@@ -39,6 +41,15 @@ const OTHER_LABELS = liveLabels({
 });
 export const templateLabel = (id: TemplateId): string =>
   id in OTHER_LABELS ? OTHER_LABELS[id as keyof typeof OTHER_LABELS] : cardKindLabel(id as TransportMode);
+/** A plan made by hand and not named yet goes by its kind alone ("Restoran", "Otel"): the card shows where. */
+const KIND_WORD = liveLabels({
+  hotel: ["Otel", "Hotel"], home: ["Ev", "Home"], activity: ["Etkinlik", "Activity"], todo: ["Yapılacak", "To-do"], food: ["Restoran", "Restaurant"],
+  esim: ["eSIM", "eSIM"], insurance: ["Seyahat sigortası", "Travel insurance"], note: ["Not", "Note"],
+});
+const KIND_WORDS = new Set(["Otel", "Hotel", "Ev", "Home", "Etkinlik", "Activity", "Yapılacak", "To-do", "Restoran", "Restaurant", "eSIM", "Seyahat sigortası", "Travel insurance", "Not", "Note"]);
+/** A name that is only the kind's word (in either language): the form shows it blank, an edit keeps it. */
+export const isKindWord = (name: string) => KIND_WORDS.has(name.trim());
+
 /** How a tile is drawn (its colour and icon); "home" has its own icon in the sheet. */
 export const templateCardKind = (id: TemplateId): CardKind => (id === "hotel" || id === "home" ? "stay" : id);
 
@@ -57,6 +68,8 @@ export interface FormValues {
 export interface InsertAt {
   city: string | null;
   date: string | null;
+  /** After a stay (no day): its last night, the one a place to stay added there takes. */
+  night?: string | null;
 }
 
 export function emptyForm(tpl: Template, at: InsertAt | null, currency: string): FormValues {
@@ -83,9 +96,10 @@ export interface TemplateResult {
 /**
  * The form as a plan (checked like a plan said in the chat), or what's wrong with it. `keep` is what an
  * edit carries over that the form doesn't ask: the plan's own kind when it opened in the nearest form
- * (a transfer as a taxi), and its time when the form has no time field.
+ * (a transfer as a taxi), and its time for a rental or a stay (no time there). `partial`: an edit on the
+ * card, where what's still missing (a name, where, which day) may stay missing.
  */
-export function templateInput(tpl: Template, f: FormValues, keep: { kind?: PlannedKind; time?: string | null } = {}): TemplateResult | string {
+export function templateInput(tpl: Template, f: FormValues, keep: { kind?: PlannedKind; time?: string | null; partial?: boolean } = {}): TemplateResult | string {
   const v = (s: string) => s.trim() || null;
   const amount = f.price.trim() ? parseAmount(f.price) : null;
   if (f.price.trim() && amount == null) return L("Fiyat bir sayı olmalı (örneğin 68 ya da 1.240).", "The price must be a number (e.g. 68 or 1,240).");
@@ -97,9 +111,10 @@ export function templateInput(tpl: Template, f: FormValues, keep: { kind?: Plann
         ? { ...base, end_date: v(f.end) }
         : tpl.form === "stay"
           ? { ...base, end_date: v(f.end), title: v(f.name) }
-          : { ...base, title: v(f.name) };
-  if (tpl.form === "named" && !input.title && input.kind !== "esim" && input.kind !== "insurance") return L("Adını yaz.", "Give it a name.");
-  const problem = checkPlanned(input, ALL_PLANNED_KINDS);
+          : // A restaurant's or an activity's hour: carried by formOf, changed on the card (the sheet has no box for it).
+            { ...base, title: v(f.name), time: v(f.time) };
+  if (tpl.form === "named" && !input.title && !keep.partial && input.kind !== "esim" && input.kind !== "insurance") return L("Adını yaz.", "Give it a name.");
+  const problem = checkPlanned(input, ALL_PLANNED_KINDS, { complete: !keep.partial });
   if (problem) return problem;
   return { input, price: amount != null ? { amount, currency: f.currency } : null };
 }
@@ -126,13 +141,15 @@ export function templateItem(tpl: Template, f: FormValues, tripId: string, id: s
 }
 
 /**
- * "Düzenle": the same record with what the form says now. Only what the form asks changes; the rest
- * (status, note, summary, files, a time the form has no field for, a transfer's kind) stays.
+ * "Düzenle" and an edit on the card: the same record with what the form says now. Only what the form asks
+ * changes; the rest (status, note, summary, files, a rental's or a stay's time, a transfer's kind) stays.
+ * Not named yet (the kind's word), it keeps that word. `partial`: an edit on the card (templateInput).
  */
-export function editedItem(before: Item, tpl: Template, f: FormValues, now: number): Item | string {
+export function editedItem(before: Item, tpl: Template, f: FormValues, now: number, opts: { partial?: boolean } = {}): Item | string {
   const ownKind = before.plannedKind && FOR_KIND.get(before.plannedKind) === tpl ? before.plannedKind : undefined;
   const time = before.flight?.departure?.slice(11, 16) ?? null;
-  const r = templateInput(tpl, f, { kind: ownKind, time: tpl.form !== "trip" && time && /^\d{2}:\d{2}$/.test(time) ? time : null });
+  const timeless = tpl.form === "rental" || tpl.form === "stay";
+  const r = templateInput(tpl, f, { kind: ownKind, time: timeless && time && /^\d{2}:\d{2}$/.test(time) ? time : null, partial: opts.partial });
   if (typeof r === "string") return r;
   const fresh = plannedItem(r.input, before.tripId, before.id, now);
   const was = before.flight;
@@ -147,7 +164,7 @@ export function editedItem(before: Item, tpl: Template, f: FormValues, now: numb
     ...before,
     category: fresh.category,
     needKey: fresh.needKey,
-    name: fresh.name,
+    name: !r.input.title && isKindWord(before.name) ? before.name : fresh.name,
     city: fresh.city,
     dates: fresh.dates,
     flight,
@@ -173,7 +190,7 @@ export function formOf(item: Item, currency: string): { template: Template; valu
       from: item.flight?.from ?? "",
       to: item.flight?.to ?? "",
       city: item.city ?? "",
-      name: isGeneratedName(item.name) ? "" : item.name,
+      name: isGeneratedName(item.name) || isKindWord(item.name) ? "" : item.name,
       date: isoDate(item.dates.start) ?? "",
       end: isoDate(item.dates.end) ?? "",
       time: /^\d{2}:\d{2}$/.test(time) ? time : "",
@@ -191,7 +208,7 @@ export function formOf(item: Item, currency: string): { template: Template; valu
 export function insertAt(entry: TimelineEntry): InsertAt {
   switch (entry.kind) {
     case "stay":
-      return { city: entry.block.city, date: null };
+      return { city: entry.block.city, date: null, night: addDays(entry.block.range.end, -1) };
     case "travel": {
       if (entry.role === "departure") return { city: null, date: entry.date };
       const f = (entry.travel?.settled ?? entry.travel?.items[0])?.flight;
@@ -225,6 +242,39 @@ function firstDate(sections: TimelineSection[]): string | null {
   if (s.kind === "travel") return s.entry.date;
   if (s.kind === "journey") return s.journey.date;
   return s.range?.start ?? s.entries[0]?.date ?? null;
+}
+
+/**
+ * One tap on a tile (spec 0.33 §2): the record at once, no form. Its kind; the city and day of where it
+ * was added; a way of travel leaves from that city to "?" (a taxi stays in it); a place to stay takes one
+ * night (the day pressed, else the stay's last night it was added after); the rest goes by its kind's
+ * word. No price; planned ("Planlanıyor"), like a plan said in the chat. The card then opens for editing.
+ */
+export function quickItem(tpl: Template, at: InsertAt | null, tripId: string, id: string, now: number): Item {
+  const city = at?.city ?? null;
+  const night = tpl.form === "stay" ? (at?.date ?? at?.night ?? null) : null;
+  const input: PlannedInput = {
+    kind: tpl.kind,
+    date: tpl.form === "stay" ? night : (at?.date ?? null),
+    end_date: night ? addDays(night, 1) : null,
+    time: null,
+    from: tpl.form === "trip" && tpl.kind !== "taxi" ? city : null,
+    to: null,
+    city: tpl.form === "trip" && tpl.kind !== "taxi" ? null : city,
+    title: null,
+    booked: false,
+    note: null,
+  };
+  const made = plannedItem(input, tripId, id, now);
+  return tpl.id in KIND_WORD ? { ...made, name: KIND_WORD[tpl.id as keyof typeof KIND_WORD] } : made;
+}
+
+export async function addQuick(tripId: string, tpl: Template, at: InsertAt | null, id: string, now = Date.now()): Promise<Item> {
+  const made = quickItem(tpl, at, tripId, id, now);
+  await (await db()).put("items", made);
+  await addEvent(tripId, L(`${made.name} plana eklendi`, `${made.name} added to the plan`));
+  notifyChanged();
+  return made;
 }
 
 export async function addFromTemplate(tripId: string, tpl: Template, f: FormValues, id: string, now = Date.now()): Promise<Item | string> {
