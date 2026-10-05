@@ -8,7 +8,7 @@ import { loadDemoTrip } from "../src/lib/demo";
 import { EMPTY_METRICS } from "../src/lib/items";
 import { buildLegs } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
-import { budgetBar, dateAlert, decisionProgress } from "../src/lib/progress";
+import { budgetBar, dateAlert, decisionProgress, nextStepText, type Todo } from "../src/lib/progress";
 import { buildTimeline } from "../src/lib/timeline";
 import type { Item } from "../src/lib/types";
 
@@ -68,6 +68,37 @@ describe("to-do strip", () => {
     const withCar = [...items, car];
     const q = decisionProgress(buildTimeline(buildPlan(trip, withCar), legs, withCar), withCar, buildPlan(trip, withCar), decisions, TODAY);
     expect(q.todos.find((t) => t.key === "book:car")).toMatchObject({ kind: "book", note: "rezerve edilmedi · gün belli değil", days: null, soon: false });
+  });
+});
+
+describe("an idea is never a booking to make", () => {
+  it("a chosen restaurant or to-do without a booking isn't on the 'Rezerve et' list; one that needs a table is", async () => {
+    const { trip, items, decisions, ctx } = await demo();
+    const douro = items.find((i) => i.name === "Douro tekne turu")!;
+    const idea = (id: string, over: Partial<Item>): Item => ({ ...douro, id, status: "chosen", price: { ...douro.price, amount: null }, cancellation: { summary: null, freeUntil: null, source: "none" }, ...over });
+    const more = [
+      ...items,
+      idea("cafe", { name: "Majestic Café", category: "food" }),
+      idea("market", { name: "Bolhão pazarı", category: "other", plannedKind: "todo" }),
+      idea("table", { name: "Belcanto", category: "food", booking: "needed" }),
+    ];
+    const plan = buildPlan(trip, more);
+    const p = decisionProgress(buildTimeline(plan, buildLegs(plan, trip, ctx.listings), more), more, plan, decisions, TODAY);
+    const books = p.todos.filter((t) => t.kind === "book").map((t) => t.title);
+    expect(books).toEqual(expect.arrayContaining(["Douro tekne turu", "Belcanto"]));
+    expect(books).not.toContain("Majestic Café");
+    expect(books).not.toContain("Bolhão pazarı");
+  });
+});
+
+describe("the next step, as a thing to do", () => {
+  const todo = (kind: Todo["kind"], title: string, days: number | null = 3): Todo => ({ key: "k", kind, target: {}, title, note: "", date: null, days, soon: true });
+  it("a verb first; a cancellation says when it ends", () => {
+    expect(nextStepText(todo("decide", "Porto konaklama · 8–11 Ekim"))).toBe("Karar ver: Porto konaklama · 8–11 Ekim");
+    expect(nextStepText(todo("book", "Douro tekne turu"))).toBe("Rezerve et: Douro tekne turu");
+    expect(nextStepText(todo("plan", "Varış transferi · 8 Ekim"))).toBe("Planla: Varış transferi · 8 Ekim");
+    expect(nextStepText(todo("deadline", "Lisboa Loft", 6))).toBe("Lisboa Loft: ücretsiz iptal 6 gün içinde biter");
+    expect(nextStepText(todo("deadline", "Lisboa Loft", 0))).toBe("Lisboa Loft: ücretsiz iptal bugün bitiyor");
   });
 });
 

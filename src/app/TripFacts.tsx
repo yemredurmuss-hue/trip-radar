@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { formatDateRange, formatPrice, nightsBetween } from "../lib/items";
 import { L, locale } from "../lib/i18n";
 import { nDays } from "../lib/i18nText";
-import { BUDGET_SLICES, type BudgetBar, type BudgetSlice, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
+import { BUDGET_SLICES, nextStepText, type BudgetBar, type BudgetSlice, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
 import type { TripFacts as Facts } from "../lib/tripFacts";
 import { VISA_CHECKED } from "../lib/visa";
 import { HeroIcon, type HeroIconName } from "./Icons";
@@ -87,10 +87,8 @@ export function TripFacts(props: {
       {next ? (
         <button className="hx-next" onClick={() => props.onGo(next.target)}>
           <small>{L("Sıradaki adım", "Next step")}</small>
-          <span title={`${kinds().find((k) => k.kind === next.kind)?.label}: ${next.title}`}>
-            <em>
-              {kinds().find((k) => k.kind === next.kind)?.label}: {next.title}
-            </em>
+          <span title={nextStepText(next)}>
+            <em>{nextStepText(next)}</em>
             <HeroIcon name="arrow" size={18} />
           </span>
         </button>

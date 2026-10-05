@@ -9,6 +9,7 @@ import { formatDateRange, nightsBetween } from "./items";
 import { BOOKABLE, MODE_LABELS, type Leg } from "./legs";
 import { departureDay, liveGroups, type Plan } from "./plan";
 import type { Timeline, TimelineEntry } from "./timeline";
+import { needsBooking } from "./booking";
 import { isTrip } from "./travelKinds";
 import type { Item } from "./types";
 
@@ -182,7 +183,6 @@ function entryOf(timeline: Timeline, id: string): string | undefined {
   })?.key;
 }
 
-const BOOK_CATEGORIES = ["stay", "flight", "transport", "activity"];
 
 export function decisionProgress(
   timeline: Timeline,
@@ -224,7 +224,8 @@ export function decisionProgress(
   // Chosen but not booked (a chat plan as much as a saved page), and free cancellations running out.
   const closed = new Set(plan.closed.map((c) => c.item.id));
   for (const item of items) {
-    if (closed.has(item.id) || !BOOK_CATEGORIES.includes(item.category)) continue;
+    // Only what needs booking (booking.ts): an idea or a to-do is never "Rezerve et".
+    if (closed.has(item.id) || !needsBooking(item)) continue;
     const start = departureDay(item);
     if (item.status === "chosen") {
       if (start && start < today) continue;
@@ -262,6 +263,25 @@ export function decisionProgress(
   const count: Record<TodoKind, number> = { decide: 0, book: 0, plan: 0, deadline: 0 };
   for (const t of todos) count[t.kind]++;
   return { todos, count };
+}
+
+/**
+ * The hero's next step as a thing to do: "Karar ver: Porto konaklama · 8–11 Ekim", "Rezerve et: Douro
+ * tekne turu", "Planla: Varış transferi · 8 Ekim", "Lisboa Loft: ücretsiz iptal 6 gün içinde biter".
+ */
+export function nextStepText(todo: Todo): string {
+  switch (todo.kind) {
+    case "decide":
+      return L(`Karar ver: ${todo.title}`, `Decide: ${todo.title}`);
+    case "book":
+      return L(`Rezerve et: ${todo.title}`, `Book: ${todo.title}`);
+    case "plan":
+      return L(`Planla: ${todo.title}`, `Plan: ${todo.title}`);
+    case "deadline":
+      return !todo.days
+        ? L(`${todo.title}: ücretsiz iptal bugün bitiyor`, `${todo.title}: free cancellation ends today`)
+        : L(`${todo.title}: ücretsiz iptal ${todo.days} gün içinde biter`, `${todo.title}: free cancellation ends in ${count(todo.days, "gün", "day")}`);
+  }
 }
 
 export type BudgetSlice = "flight" | "stay" | "transport" | "activity" | "other";
