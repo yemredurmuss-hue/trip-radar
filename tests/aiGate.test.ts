@@ -94,3 +94,30 @@ describe("the profile photo (0.36)", () => {
     expect(await getPhoto(kv)).toBeNull();
   });
 });
+
+describe("the owner's one tick (0.36.2)", () => {
+  it("claims with a secret it makes and keeps, then hands over the key once approved", async () => {
+    const { claimGate, giveGateKey, getAdminSecret } = await import("../src/lib/share/ai");
+    const kv = memoryKV();
+    await saveShareConfig({ url: "https://abcd.supabase.co" }, kv);
+    const sent: { action: string; secret: string; key?: string }[] = [];
+    let approved = false;
+    const fake = (async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body)) as { action: string; key?: string };
+      sent.push({ ...body, secret: (init.headers as Record<string, string>)["x-admin-secret"] });
+      const out = body.action === "status" ? { owned: approved, mine: approved, pending: !approved, hasKey: false } : { ok: true, pending: true };
+      return new Response(JSON.stringify(out), { status: 200 });
+    }) as unknown as typeof fetch;
+    const standing = await claimGate({ kv, fetch: fake, random: (b) => b.fill(7) });
+    expect(standing).toMatchObject({ pending: true, mine: false });
+    expect(await getAdminSecret(kv)).toBe("07".repeat(24));
+    expect(sent.map((s) => s.action)).toEqual(["claim", "status"]);
+    expect(sent[0].secret).toBe("07".repeat(24));
+    approved = true;
+    expect(await giveGateKey("  AIzaSyKEYKEYKEYKEYKEYKEYKEYKEYKEYKEY  ", { kv, fetch: fake })).toBe(true);
+    expect(sent.at(-1)).toMatchObject({ action: "set-key", key: "AIzaSyKEYKEYKEYKEYKEYKEYKEYKEYKEYKEY" });
+    // A second claim keeps the same secret.
+    await claimGate({ kv, fetch: fake, random: (b) => b.fill(9) });
+    expect(await getAdminSecret(kv)).toBe("07".repeat(24));
+  });
+});

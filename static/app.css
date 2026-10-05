@@ -1650,6 +1650,9 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .ai-gate { margin-top: 14px; padding-top: 12px; border-top: 1px solid #ece9e3; }
 .ai-gate-body { margin-top: 8px; }
 .ai-invited { color: #1d7442; }
+.ai-on { color: #1d7442; }
+.ai-tick { display: flex; align-items: flex-start; gap: 8px; margin: 2px 0 8px; font-size: 14px; cursor: pointer; }
+.ai-tick input { margin-top: 3px; }
 .ai-tickets { list-style: none; margin: 6px 0 0; padding: 0; font-size: 13.5px; }
 .ai-tickets li { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; border-top: 1px solid #f1efeb; }
 .ai-tickets li > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

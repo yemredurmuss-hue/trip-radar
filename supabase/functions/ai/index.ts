@@ -16,12 +16,14 @@ const reply = (status: number, body: unknown) => new Response(typeof body === "s
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "POST") return reply(405, googleError(405, "Trip Radar AI: yalnız POST.", "method"));
-  const key = (Deno.env.get("GEMINI_API_KEY") ?? "").match(/[A-Za-z0-9_-]{30,}/)?.[0] ?? "";
+  const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+  // The key: the function secret, else the one the owner's extension handed over (ai_config).
+  const stored = Deno.env.get("GEMINI_API_KEY") || ((await sb.rpc("ai_gate_key")).data as string | null) || "";
+  const key = stored.match(/[A-Za-z0-9_-]{30,}/)?.[0] ?? "";
   if (!key) return reply(503, googleError(503, "Trip Radar AI henüz kurulmadı (sunucuda anahtar yok).", "not-configured"));
   const limits = limitsFrom((k) => Deno.env.get(k));
   const token = (req.headers.get("x-goog-api-key") ?? "").trim();
   const target = targetOf(new URL(req.url).pathname);
-  const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 
   let status: GateStatus | null = null;
   if (/^trk_[0-9a-f]{48}$/.test(token)) {

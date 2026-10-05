@@ -70,3 +70,46 @@ export interface AiUsage {
 export const aiUsage = (deps: { kv?: KV; fetch?: Fetch } = {}) => admin<AiUsage>({ action: "usage" }, deps);
 /** Closes an invite's ticket (by its last six characters). */
 export const revokeTicket = (tail: string, deps: { kv?: KV; fetch?: Fetch } = {}) => admin<{ closed: number }>({ action: "revoke", tail }, deps);
+
+/** Where this computer stands with the gate: nobody owns it yet, its claim is waiting, it's the owner, or someone else is. */
+export interface GateStanding {
+  owned: boolean;
+  mine: boolean;
+  pending: boolean;
+  hasKey: boolean;
+}
+
+async function call<T>(body: Record<string, unknown>, secret: string, deps: { kv?: KV; fetch?: Fetch } = {}): Promise<T> {
+  const config = await getShareConfig(deps.kv ?? chromeKV);
+  const url = normalizeServerUrl(config.url);
+  if (!url) throw new Error("Önce paylaşım sunucusu gerekli (Ayarlar → Paylaşım).");
+  const res = await (deps.fetch ?? fetch)(`${url}/functions/v1/ai-admin`, { method: "POST", headers: { "Content-Type": "application/json", "x-admin-secret": secret }, body: JSON.stringify(body) });
+  return (await res.json()) as T;
+}
+
+/** Where the gate stands for this computer (no secret yet: as a stranger). */
+export async function gateStanding(deps: { kv?: KV; fetch?: Fetch } = {}): Promise<GateStanding> {
+  return call<GateStanding>({ action: "status" }, await getAdminSecret(deps.kv ?? chromeKV), deps);
+}
+
+/**
+ * "Davet ettiklerim de kullansın" (0.36.2): this computer asks to own the gate with a secret it makes and keeps
+ * (the server keeps only its hash); the claim is approved once on the server. Returns where it stands.
+ */
+export async function claimGate(deps: { kv?: KV; fetch?: Fetch; random?: (b: Uint8Array<ArrayBuffer>) => Uint8Array } = {}): Promise<GateStanding> {
+  const kv = deps.kv ?? chromeKV;
+  let secret = await getAdminSecret(kv);
+  if (secret.length < 24) {
+    const bytes: Uint8Array = (deps.random ?? ((b: Uint8Array<ArrayBuffer>) => crypto.getRandomValues(b)))(new Uint8Array(24));
+    secret = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+    await saveAdminSecret(secret, kv);
+  }
+  await call({ action: "claim" }, secret, deps);
+  return gateStanding(deps);
+}
+
+/** The owner hands the gate their Gemini key (it stays on the server; the extension of who's invited never sees it). */
+export async function giveGateKey(key: string, deps: { kv?: KV; fetch?: Fetch } = {}): Promise<boolean> {
+  const out = await call<{ ok?: boolean }>({ action: "set-key", key: key.trim() }, await getAdminSecret(deps.kv ?? chromeKV), deps);
+  return !!out.ok;
+}

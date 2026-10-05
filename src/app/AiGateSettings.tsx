@@ -2,9 +2,61 @@
 // the gate's owner pastes the admin secret once, then sees this month's use and can close an invite.
 import { useEffect, useState } from "react";
 import { L } from "../lib/i18n";
-import { aiGate, aiUsage, getAdminSecret, revokeTicket, saveAdminSecret, type AiUsage } from "../lib/share/ai";
+import { aiGate, aiUsage, claimGate, gateStanding, getAdminSecret, giveGateKey, revokeTicket, saveAdminSecret, type AiUsage, type GateStanding } from "../lib/share/ai";
 
-export function AiGateSettings({ ownKey }: { ownKey: boolean }) {
+/**
+ * One tick for the owner (0.36.2): "Davet ettiklerim de bu anahtarı kullansın" claims the gate for this computer,
+ * waits for the one-time approval on the server, then hands the gate this key. Nothing to do on a dashboard.
+ */
+function ShareKeyTick({ geminiKey, onReady }: { geminiKey: string; onReady: () => void }) {
+  const [standing, setStanding] = useState<GateStanding | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    // No server yet: the tick still shows, and says what's missing when ticked.
+    void gateStanding().then(setStanding).catch(() => setStanding({ owned: false, mine: false, pending: false, hasKey: false }));
+  }, []);
+  // Waiting for the approval: look again every few seconds; once it's ours, hand over the key.
+  useEffect(() => {
+    if (!standing?.pending) return;
+    const t = setInterval(() => void gateStanding().then(setStanding).catch(() => {}), 4000);
+    return () => clearInterval(t);
+  }, [standing?.pending]);
+  useEffect(() => {
+    if (!standing?.mine || standing.hasKey || !geminiKey) return;
+    void giveGateKey(geminiKey).then((ok) => {
+      if (ok) {
+        setStanding({ ...standing, hasKey: true });
+        onReady();
+      }
+    });
+  }, [standing, geminiKey, onReady]);
+  if (!standing) return null;
+  if (standing.owned && !standing.mine) return null;
+  if (standing.mine && standing.hasKey) return <p className="small ai-on">{L("✓ Davet ettiklerin AI'yı senin anahtarınla, sunucun üzerinden kullanıyor.", "✓ The people you invite use AI with your key, through your server.")}</p>;
+  if (standing.pending) return <p className="small muted">{L("Onay bekleniyor… (bir kerelik; birkaç dakika sürebilir)", "Waiting for approval… (once; it may take a few minutes)")}</p>;
+  return (
+    <>
+      <label className="check ai-tick">
+        <input type="checkbox" disabled={busy || !geminiKey} onChange={async (e) => {
+          if (!e.target.checked) return;
+          setBusy(true);
+          try {
+            setStanding(await claimGate());
+            setError(null);
+          } catch (err) {
+            setError((err as Error).message);
+          }
+          setBusy(false);
+        }} />
+        {L("Davet ettiklerim de bu anahtarı kullansın (kendi anahtarları gerekmez)", "Let the people I invite use this key too (they need no key of their own)")}
+      </label>
+      {error && <p className="err small">{error}</p>}
+    </>
+  );
+}
+
+export function AiGateSettings({ ownKey, geminiKey = "" }: { ownKey: boolean; geminiKey?: string }) {
   const [invited, setInvited] = useState(false);
   const [secret, setSecret] = useState("");
   const [usage, setUsage] = useState<AiUsage | null>(null);
@@ -35,11 +87,12 @@ export function AiGateSettings({ ownKey }: { ownKey: boolean }) {
   const requests = usage?.tickets.reduce((n, t) => n + Number(t.month_requests), 0) ?? 0;
   return (
     <div className="ai-gate">
+      {ownKey && <ShareKeyTick geminiKey={geminiKey} onReady={() => void getAdminSecret().then((sec) => { setSecret(sec); void load(); })} />}
       {invited && !ownKey && (
         <p className="note small ai-invited">{L("✓ Davetle geldin: AI, davet edenin sunucusundan çalışıyor. Kendi anahtarın gerekmez.", "✓ You came with an invite: AI runs on the inviter's server. You don't need a key of your own.")}</p>
       )}
       <button type="button" className="link-btn quiet" aria-expanded={open} onClick={() => setOpen(!open)}>
-        {L("AI kapısı (davet ettiklerin için)", "AI gate (for the people you invite)")} {open ? "▴" : "▾"}
+        {L("AI kapısı · kullanım ve ayrıntılar", "AI gate · usage and details")} {open ? "▴" : "▾"}
       </button>
       {open && (
         <div className="ai-gate-body">

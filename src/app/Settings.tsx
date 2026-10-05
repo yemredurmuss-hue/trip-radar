@@ -196,7 +196,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
                 `On the free tier Google may use what is sent (your saved pages, screenshots, chat) to improve its products, and people may read it. There is also a daily request limit; when it runs out, saves are processed later with "Try again".`,
               )}
             </p>
-            <AiGateSettings ownKey={!!s.geminiKey.trim()} />
+            <AiGateSettings ownKey={!!s.geminiKey.trim()} geminiKey={s.geminiKey.trim()} />
           </>
         ) : (
           <>

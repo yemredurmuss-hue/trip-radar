@@ -89,3 +89,53 @@ grant execute on function public.ai_gate_record(text, bigint, bigint, numeric) t
 grant execute on function public.ai_gate_add(text, text) to service_role;
 grant execute on function public.ai_gate_revoke(text) to service_role;
 grant execute on function public.ai_gate_usage() to service_role;
+
+-- --- 0.36.2: the owner and the key, set from the owner's extension (no dashboard work) ---------------------
+-- The owner's computer claims the gate with a secret it made (only its SHA-256 is kept); the claim is approved
+-- once (by hand: update trip_radar.ai_config set owner_approved = true); then that computer hands the gate its
+-- Gemini key. The GEMINI_API_KEY / TR_ADMIN_SECRET function secrets still work and come first.
+create table if not exists trip_radar.ai_config (
+  id integer primary key default 1 check (id = 1),
+  owner_hash text,
+  owner_approved boolean not null default false,
+  gemini_key text,
+  updated_at timestamptz not null default now()
+);
+alter table trip_radar.ai_config enable row level security;
+revoke all on trip_radar.ai_config from public, anon, authenticated;
+insert into trip_radar.ai_config (id) values (1) on conflict (id) do nothing;
+
+create or replace function public.ai_gate_config() returns jsonb
+language sql security definer set search_path = '' as $$
+  select jsonb_build_object('owner_hash', c.owner_hash, 'owner_approved', c.owner_approved, 'has_key', c.gemini_key is not null)
+  from trip_radar.ai_config c where c.id = 1;
+$$;
+
+create or replace function public.ai_gate_key() returns text
+language sql security definer set search_path = '' as $$
+  select c.gemini_key from trip_radar.ai_config c where c.id = 1;
+$$;
+
+create or replace function public.ai_gate_claim(p_hash text) returns boolean
+language sql security definer set search_path = '' as $$
+  with done as (
+    update trip_radar.ai_config set owner_hash = p_hash, updated_at = now()
+    where id = 1 and not owner_approved and p_hash ~ '^[0-9a-f]{64}$'
+    returning 1
+  )
+  select exists (select 1 from done);
+$$;
+
+create or replace function public.ai_gate_set_key(p_key text) returns void
+language sql security definer set search_path = '' as $$
+  update trip_radar.ai_config set gemini_key = nullif(trim(p_key), ''), updated_at = now() where id = 1;
+$$;
+
+revoke all on function public.ai_gate_config() from public, anon, authenticated;
+revoke all on function public.ai_gate_key() from public, anon, authenticated;
+revoke all on function public.ai_gate_claim(text) from public, anon, authenticated;
+revoke all on function public.ai_gate_set_key(text) from public, anon, authenticated;
+grant execute on function public.ai_gate_config() to service_role;
+grant execute on function public.ai_gate_key() to service_role;
+grant execute on function public.ai_gate_claim(text) to service_role;
+grant execute on function public.ai_gate_set_key(text) to service_role;
