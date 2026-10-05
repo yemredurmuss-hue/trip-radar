@@ -1,0 +1,110 @@
+// "Gezin şekilleniyor N/6": the interview's checklist (Layla's "Your trip is taking shape"). A row pressed asks
+// its question again. On a narrow screen it folds into a thin bar above the chat (spec item 9).
+import { useState } from "react";
+import { L } from "../../lib/i18n";
+import type { ChecklistRow, QuestionId } from "../../lib/startTrip";
+import { UiIcon } from "../cards/Silhouettes";
+
+/** "4'ü", "6'sı": the ending after a number read aloud (sıfır, bir, iki, üç, dört, beş, altı). */
+const ACCUSATIVE = ["ı", "i", "si", "ü", "ü", "i", "sı"];
+
+function Ring({ done, total }: { done: number; total: number }) {
+  const r = 26;
+  const c = 2 * Math.PI * r;
+  return (
+    <div className="st-ring" aria-hidden>
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r={r} className="st-ring-bg" />
+        <circle cx="32" cy="32" r={r} className="st-ring-fg" strokeDasharray={`${(c * done) / total} ${c}`} transform="rotate(-90 32 32)" />
+      </svg>
+      <span>
+        <b>{done}</b>/{total}
+      </span>
+    </div>
+  );
+}
+
+interface Props {
+  rows: ChecklistRow[];
+  onAsk: (q: QuestionId) => void;
+  disabled?: boolean;
+}
+
+export function Checklist({ rows, onAsk, disabled }: Props) {
+  const done = rows.filter((r) => r.done).length;
+  return (
+    <div className="st-list">
+      <div className="st-list-head">
+        <Ring done={done} total={rows.length} />
+        <div>
+          <div className="st-eyebrow">{L("GEZİ LİSTESİ", "TRIP CHECKLIST")}</div>
+          <div className="st-list-title">{L("Gezin şekilleniyor", "Your trip is taking shape")}</div>
+          <div className="st-list-sub">{L(`${rows.length} bilgiden ${done}'${ACCUSATIVE[done] ?? "i"} tamam`, `${done} of ${rows.length} captured`)}</div>
+        </div>
+      </div>
+      <ol className="st-rows">
+        {rows.map((r) => (
+          <li key={r.id}>
+            <button type="button" className={`st-row${r.done ? " done" : ""}`} disabled={disabled} onClick={() => onAsk(r.ask)} title={L("Bunu yeniden sor", "Ask this again")}>
+              <span className="st-check" aria-hidden>
+                {r.done && <UiIcon name="check" size={14} />}
+              </span>
+              <span className="st-row-text">
+                <span className="st-row-label">
+                  {r.label}
+                  {r.required && !r.done && <em>{L(" · gerekli", " · needed")}</em>}
+                </span>
+                <span className="st-row-value">{r.skipped && !r.done ? L("Atlandı · sonra sohbetten", "Skipped · later in the chat") : r.value}</span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/** The dark "Gezimi oluştur" card under the list. */
+export function GenerateCard({ ready, missing, onGenerate }: { ready: boolean; missing: string[]; onGenerate: () => void }) {
+  return (
+    <div className="st-gen-card">
+      <button type="button" className="st-gen-btn" disabled={!ready} onClick={onGenerate}>
+        <span aria-hidden>✨</span> {L("Gezimi oluştur", "Generate my trip")}
+      </button>
+      <p>
+        {ready
+          ? L("Şimdi oluşturur, eksikleri sonra sohbetten sorar; ya da konuşmaya devam et.", "It builds it now and asks what's missing later in the chat; or keep talking.")
+          : L(`Oluşturmak için ${missing.join(" ve ")} yeter.`, `All it needs is ${missing.join(" and ")}.`)}
+      </p>
+    </div>
+  );
+}
+
+/** Narrow screens: "4/6 · Gezin şekilleniyor ▾", the list opening under it. */
+export function ChecklistBar({ rows, onAsk, ready, onGenerate, disabled }: Props & { ready: boolean; onGenerate: () => void }) {
+  const [open, setOpen] = useState(false);
+  const done = rows.filter((r) => r.done).length;
+  return (
+    <div className={`st-bar${open ? " open" : ""}`}>
+      <div className="st-bar-row">
+        <button type="button" className="st-bar-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <span className="st-bar-track" aria-hidden>
+            <span style={{ width: `${(done / rows.length) * 100}%` }} />
+          </span>
+          <span>
+            <b>
+              {done}/{rows.length}
+            </b>{" "}
+            · {L("Gezin şekilleniyor", "Your trip is taking shape")} {open ? "▴" : "▾"}
+          </span>
+        </button>
+        {ready && (
+          <button type="button" className="st-bar-gen" onClick={onGenerate} disabled={disabled}>
+            ✨ {L("Oluştur", "Generate")}
+          </button>
+        )}
+      </div>
+      {open && <Checklist rows={rows} onAsk={(q) => (setOpen(false), onAsk(q))} disabled={disabled} />}
+    </div>
+  );
+}

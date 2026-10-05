@@ -19,7 +19,14 @@ import { ItemDrawer } from "./ItemDrawer";
 import { Settings } from "./Settings";
 import { ShareDialog, ShareProvider } from "./Share";
 import { TripPanel } from "./TripPanel";
-import { TripsHome } from "./TripsHome";
+import { TripsHome, type StartLaunch } from "./TripsHome";
+import { StartChat } from "./start/StartChat";
+import { addEvent, newId, notifyChanged } from "../lib/db";
+import { describeError } from "../lib/llm";
+import { loadPassport } from "../lib/passport";
+import { getShareConfig } from "../lib/share/store";
+import { sendMessage } from "../lib/assistant";
+import { guessOrigin, newStart, type StartCtx } from "../lib/startTrip";
 import { UpdateBanner } from "./UpdateBanner";
 import { readSelectedTrip, useBoard } from "./useBoard";
 import { useDecisions } from "./useDecisions";
@@ -47,6 +54,27 @@ export function App() {
   const [safetyNote, setSafetyNote] = useState<string | null>(null);
   const decisions = useDecisions(board.trip, board.items);
   const intake = useBoardIntake(board.trip?.id ?? null);
+  // The start chat (spec 2026-10-06 §2), over the overview while it's open; `key` starts a fresh one each time.
+  const [start, setStart] = useState<(StartLaunch & { key: string }) | null>(null);
+  const [myName, setMyName] = useState<string | null>(null);
+  const [passport, setPassport] = useState<string | null>(null);
+  useEffect(() => {
+    void getShareConfig().then((c) => setMyName(c.name?.trim() || null)).catch(() => undefined);
+    void loadPassport().then(setPassport);
+  }, []);
+  const startCtx: StartCtx = useMemo(
+    () => ({ myName, fromGuess: guessOrigin(board.trips, board.allItems, passport), today: new Date().toISOString().slice(0, 10) }),
+    [myName, passport, board.trips, board.allItems],
+  );
+
+  /** "Porto'da bir otel daha", said on the home for a trip there is: that trip opens, its chat gets the line. */
+  function addToTrip(tripId: string, text: string) {
+    board.selectTrip(tripId);
+    sendMessage(tripId, text).catch(async (error) => {
+      await addEvent(tripId, L(`"${text}" gönderilemedi: ${describeError(error)}`, `"${text}" couldn't be sent: ${describeError(error)}`));
+      notifyChanged();
+    });
+  }
 
   // Çöp kutusu: what is older than 30 days goes when the board opens (and whenever the trash is read).
   useEffect(() => void purgeTrash().catch(() => 0), []);
@@ -196,6 +224,19 @@ export function App() {
             />
           </main>
         </div>
+      ) : start ? (
+        <StartChat
+          key={start.key}
+          initial={start.draft ?? newStart(newId(), start.mode, Date.now())}
+          firstText={start.draft ? undefined : start.text}
+          firstLabel={start.draft ? undefined : start.label}
+          ctx={startCtx}
+          onClose={() => setStart(null)}
+          onCreated={(tripId) => {
+            setStart(null);
+            board.selectTrip(tripId);
+          }}
+        />
       ) : (
         board.loaded && (
           <TripsHome
@@ -205,6 +246,9 @@ export function App() {
             onOpen={board.selectTrip}
             onDemo={() => void loadDemoTrip().then(board.selectTrip)}
             onSettings={() => setSettingsOpen(true)}
+            onStart={(launch) => setStart({ ...launch, key: newId() })}
+            onAddToTrip={addToTrip}
+            ctx={startCtx}
             menu={menu}
           />
         )

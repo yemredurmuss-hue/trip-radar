@@ -283,8 +283,9 @@ export function ShareDialog({ trip, onClose, onSettings }: { trip: Trip; onClose
 
 // --- joining (from Seyahatlerim) ------------------------------------------------------------------
 
-export function JoinShared({ onJoined }: { onJoined: (tripId: string) => void }) {
-  const [open, setOpen] = useState(false);
+/** `startOpen`: opened by the home's "Paylaşılan geziye katıl" chip; `onCancel` then hides it again. */
+export function JoinShared({ onJoined, startOpen = false, onCancel }: { onJoined: (tripId: string) => void; startOpen?: boolean; onCancel?: () => void }) {
+  const [open, setOpen] = useState(startOpen);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [needsName, setNeedsName] = useState(false);
@@ -338,7 +339,7 @@ export function JoinShared({ onJoined }: { onJoined: (tripId: string) => void })
       )}
       {status && <p className="muted small">{status}</p>}
       <div className="modal-actions">
-        <button type="button" className="btn-link" style={{ fontSize: 14 }} onClick={() => setOpen(false)}>
+        <button type="button" className="btn-link" style={{ fontSize: 14 }} onClick={() => (setOpen(false), onCancel?.())}>
           {L("Vazgeç", "Cancel")}
         </button>
         <button className="btn-primary" type="submit" disabled={busy || !code.trim() || (needsName && !name.trim())}>

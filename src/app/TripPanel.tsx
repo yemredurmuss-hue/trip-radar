@@ -26,7 +26,7 @@ import { deleteItem, onHidden, onRemoved } from "../lib/removal";
 import { undoSlot } from "../lib/undo";
 import { undoTrip, type Undoable } from "../lib/undoables";
 import { addQuick, templateLabel, TEMPLATES, type InsertAt, type Template, type TemplateId } from "../lib/templates";
-import { categorize, catDomKey, findInSections, planProgress, sectionOfItem, type SectionId } from "../lib/categories";
+import { categorize, catDomKey, findInSections, planProgress, sectionOfItem, sectionProgress, SECTION_ORDER, type SectionId } from "../lib/categories";
 import { firstField, keepDraftFor, type CardFocus } from "../lib/inlineEdit";
 import { newId } from "../lib/db";
 import { AddSheet } from "./cards/AddSheet";
@@ -62,6 +62,7 @@ import type { Decisions } from "./useDecisions";
 import { useWho } from "./Travellers";
 import { onTripChange } from "../lib/tripUndo";
 import { takeLangUndo } from "./langSwitch";
+import { StartGuideCard } from "./start/StartGuideCard";
 
 interface Props {
   trip: Trip;
@@ -606,6 +607,22 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       )}
 
       <ChangeNotices tripId={trip.id} />
+      {/* A trip made by the start chat: its one-time start card above the plan (start/StartGuideCard.tsx). */}
+      {trip.startGuide && !trip.startGuide.closed && (
+        <StartGuideCard
+          trip={trip}
+          sections={sections.map((s) => ({ id: s.id, ...sectionProgress(s) }))}
+          onGo={(step) => {
+            if (step === "stays") return openSection("stay");
+            if (step === "flights") return openSection(trip.startGuide?.road ? "transport" : "flight");
+            // The suggestions sit in their sections (when there are any): the first such section, else the Plan.
+            const open = ((trip as { suggestions?: { section?: string; state?: string }[] }).suggestions ?? []).filter((x) => x.state === "open").map((x) => x.section);
+            const first = SECTION_ORDER.find((id) => open.includes(id));
+            if (first) openSection(first);
+            else setView("plan");
+          }}
+        />
+      )}
       {timeline.entries.length > 0 && (
         <div className="view-tabs" role="tablist" aria-label={L("Görünüm", "View")}>
           <button role="tab" aria-selected={view === "plan"} className={view === "plan" ? "on" : ""} onClick={() => setView("plan")}>
