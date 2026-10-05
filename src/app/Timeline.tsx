@@ -31,6 +31,7 @@ export function TimelineView({
   cityImage,
   cards,
   dayTimes,
+  dayOrder,
 }: {
   timeline: Timeline;
   tripId: string;
@@ -47,11 +48,13 @@ export function TimelineView({
   cards: DayPlanCards;
   /** The traveller's own times (trip.dayTimes). */
   dayTimes?: Record<string, string> | null;
+  /** The order the traveller gave each day's lines (trip.dayOrder). */
+  dayOrder?: Record<string, string[]> | null;
 }) {
   const rentals = timeline.entries.filter((e): e is RentalEntry => e.kind === "rental");
   return (
     <div className="section trip-plan">
-      <DayCards sections={timeline.sections} leg={leg} onAdd={onAdd} listings={listings} today={today} rentals={rentals} onShow={onShow} cityImage={cityImage} cards={cards} tripId={tripId} times={dayTimes ?? undefined} />
+      <DayCards sections={timeline.sections} leg={leg} onAdd={onAdd} listings={listings} today={today} rentals={rentals} onShow={onShow} cityImage={cityImage} cards={cards} tripId={tripId} times={dayTimes ?? undefined} order={dayOrder ?? undefined} />
     </div>
   );
 }

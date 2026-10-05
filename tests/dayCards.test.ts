@@ -4,7 +4,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { loadDecisions } from "../src/lib/analysis";
 import { db, listItems } from "../src/lib/db";
-import { dayCards, endsOf, foldRows, isPlanRow, rowMark } from "../src/lib/dayCards";
+import { orderRows, movedOrder, dayCards, endsOf, foldRows, isPlanRow, rowMark } from "../src/lib/dayCards";
 import { loadDemoTrip } from "../src/lib/demo";
 import type { DayRow } from "../src/lib/journey";
 import { buildLegs } from "../src/lib/legs";
@@ -100,5 +100,29 @@ describe("the trip as it goes", () => {
       "📍 Lizbon 5–6. gün",
       "✈ Lizbon → İstanbul",
     ]);
+  });
+});
+
+describe("a day's order (0.35.6)", () => {
+  const r = (key: string, time: string | null = null) => ({ key, kind: "item", state: "done", title: key, time, items: [] }) as unknown as DayRow;
+  const keys = (rows: DayRow[]) => rows.map((x) => x.key);
+  const day = [r("out", "11:00"), r("cafe"), r("tour", "16:00"), r("market")];
+
+  it("as the plan put it until moved; the timed by the clock", () => {
+    expect(keys(orderRows(day))).toEqual(["out", "cafe", "tour", "market"]);
+    expect(keys(orderRows([r("tour", "16:00"), r("cafe"), r("out", "11:00")]))).toEqual(["out", "tour", "cafe"]); // the café stays after the tour
+  });
+  it("a line without a time stays where it was put; a new one after its neighbour; a gone one is gone", () => {
+    const saved = movedOrder(day, "market", "out", false); // to the top
+    expect(saved).toEqual(["market", "out", "cafe", "tour"]);
+    expect(keys(orderRows(day, saved))).toEqual(["market", "out", "cafe", "tour"]);
+    expect(keys(orderRows([...day, r("museum")], saved))).toEqual(["market", "out", "cafe", "tour", "museum"]);
+    expect(keys(orderRows([r("new"), ...day], saved))).toEqual(["market", "new", "out", "cafe", "tour"]); // before "out", as in the plan
+    expect(keys(orderRows(day.filter((x) => x.key !== "cafe"), saved))).toEqual(["market", "out", "tour"]);
+    expect(keys(orderRows(day, movedOrder(day, "cafe", "tour", true)))).toEqual(["out", "tour", "cafe", "market"]);
+  });
+  it("given a time, a line moves to it; the lines without one keep their neighbour", () => {
+    const timed = day.map((x) => (x.key === "market" ? r("market", "09:00") : x));
+    expect(keys(orderRows(timed))).toEqual(["market", "out", "cafe", "tour"]);
   });
 });

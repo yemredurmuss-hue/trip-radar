@@ -169,6 +169,11 @@ export interface Trip {
   /** Günlük akış times the traveller set themselves, by row key ("HH:MM"); the rest of the day follows them (dayTimes.ts). */
   dayTimes?: Record<string, string> | null;
   /**
+   * Günlük akış order the traveller gave a day (0.35.6), by date: its lines' keys. Only the lines without a time
+   * keep the place they're given; the timed ones always go by the clock (dayCards.orderRows).
+   */
+  dayOrder?: Record<string, string[]> | null;
+  /**
    * What the traveller said isn't needed: a transfer (`leg:<key>`) or nights without a place to book
    * (`nights:<start>_<end>`). Hidden from the board and the to-dos, never deleted; "Geri getir" restores it.
    */
