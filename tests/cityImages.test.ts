@@ -35,11 +35,11 @@ describe("city images", () => {
 describe("image proxy", () => {
   afterEach(() => vi.unstubAllGlobals());
   const withConfig = (store: Record<string, string>) => vi.stubGlobal("chrome", { storage: { local: { get: async (k: string) => ({ [k]: store[k] }) } } });
-  it("is null without a server or a key", async () => {
+  it("is null with a server of one's own but no key; with none at all, Trip Radar's own server (0.36.3)", async () => {
     withConfig({ shareUrl: "https://abc.supabase.co" });
     expect(await imageProxy()).toBeNull();
     withConfig({ shareKey: "sb_publishable_x" });
-    expect(await imageProxy()).toBeNull();
+    expect(await imageProxy()).toEqual({ url: "https://zjkesdsbructiyflzqvq.supabase.co/functions/v1/city-image", headers: { apikey: "sb_publishable_HotkmMyo4PGggsarTsiVZQ_eOSUlhS0" } });
   });
   it("sends apikey; legacy JWT keys also as Bearer", async () => {
     withConfig({ shareUrl: "https://abc.supabase.co", shareKey: "sb_publishable_x" });

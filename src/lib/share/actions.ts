@@ -12,6 +12,7 @@ import {
   getShareConfig,
   getVotes,
   isConfigured,
+  ownServerUrl,
   saveShareConfig,
   setSyncState,
   setVotes,
@@ -72,12 +73,15 @@ export async function joinSharedTrip(pasted: string, name: string, deps: ActionD
   if (!code) throw new ShareError(L("Bu bir paylaşım kodu değil. Kod TR1: ile başlar; tamamını yapıştır.", "That isn't a share code. It starts with TR1:, paste all of it."), "setup");
   const kv = deps.kv ?? chromeKV;
   const current = await getShareConfig(kv);
-  const currentUrl = current.url ? normalizeServerUrl(current.url) : null;
+  // Only a server set by hand stands in the way; Trip Radar's own default gives way to the code's.
+  const own = await ownServerUrl(kv);
+  const currentUrl = own ? normalizeServerUrl(own) : null;
   if (currentUrl && currentUrl !== code.url)
     throw new ShareError(L("Bu kod başka bir paylaşım sunucusuna ait. Ayarlar → Paylaşım'daki adresi silip tekrar dene.", "This code belongs to another sharing server. Clear the address in Settings → Sharing and try again."), "setup");
   const me = (name || current.name).trim();
   if (!me) throw new ShareError(L("Adını yaz (diğer kişi seni bu adla görür).", "Add your name (the others see you by it)."), "setup");
-  await saveShareConfig({ url: code.url, anonKey: current.anonKey || code.anonKey, name: me }, kv);
+  const ownKey = currentUrl ? current.anonKey : "";
+  await saveShareConfig({ url: code.url, anonKey: ownKey || code.anonKey, name: me }, kv);
   // The invite's AI ticket: no key of your own needed (the inviter's gate; your own key still comes first).
   await saveAiTicket(code.aiTicket, kv);
 
@@ -85,7 +89,7 @@ export async function joinSharedTrip(pasted: string, name: string, deps: ActionD
   const existing = (await d.getAll("trips")).find((t) => t.shareId === code.shareId);
   if (existing) return existing.id;
 
-  const rpc = deps.rpc ?? rpcClient({ url: code.url, anonKey: current.anonKey || code.anonKey });
+  const rpc = deps.rpc ?? rpcClient({ url: code.url, anonKey: ownKey || code.anonKey });
   const [remote] = (await rpc<RemoteTrip[]>("get_shared_trip", { p_id: code.shareId, p_author: me })) ?? [];
   if (!remote) throw new ShareError(L("Paylaşılan gezi sunucuda bulunamadı.", "The shared trip wasn't found on the server."), "not_found");
   const settings = settingsFromServer(remote.trip) ?? settingsFromServer({ title: code.title ?? L("Paylaşılan gezi", "Shared trip") })!;

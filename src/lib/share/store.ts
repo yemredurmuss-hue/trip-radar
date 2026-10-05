@@ -47,10 +47,25 @@ export interface ShareConfig {
 
 const CONFIG_KEYS = { url: "shareUrl", anonKey: "shareKey", name: "shareName" } as const;
 
+/**
+ * Trip Radar's own server (0.36.3): sharing and the AI gate work with nothing set up. Its publishable key is
+ * public by design (it only lets the RPC functions be called, and every one asks for a trip's secret id); a
+ * server of one's own in Settings → Paylaşım still comes first.
+ */
+export const DEFAULT_SERVER = { url: "https://zjkesdsbructiyflzqvq.supabase.co", anonKey: "sb_publishable_HotkmMyo4PGggsarTsiVZQ_eOSUlhS0" };
+
 export async function getShareConfig(kv: KV = chromeKV): Promise<ShareConfig> {
   const [url, anonKey, name] = await Promise.all([kv.get<string>(CONFIG_KEYS.url), kv.get<string>(CONFIG_KEYS.anonKey), kv.get<string>(CONFIG_KEYS.name)]);
-  // The address as typed may have a slash or a path after it; the project's own address is used.
-  return { url: normalizeServerUrl(url ?? "") ?? url ?? "", anonKey: anonKey ?? "", name: name ?? "" };
+  // The address as typed may have a slash or a path after it; the project's own address is used. None set:
+  // Trip Radar's own server, with its key.
+  if (!url?.trim()) return { url: DEFAULT_SERVER.url, anonKey: DEFAULT_SERVER.anonKey, name: name ?? "" };
+  return { url: normalizeServerUrl(url) ?? url, anonKey: anonKey ?? "", name: name ?? "" };
+}
+
+/** The server address set in Settings → Paylaşım, if any (not Trip Radar's own default). */
+export async function ownServerUrl(kv: KV = chromeKV): Promise<string | null> {
+  const url = await kv.get<string>(CONFIG_KEYS.url);
+  return url?.trim() ? (normalizeServerUrl(url) ?? url) : null;
 }
 
 export async function saveShareConfig(patch: Partial<ShareConfig>, kv: KV = chromeKV): Promise<void> {

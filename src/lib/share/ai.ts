@@ -2,8 +2,11 @@
 // inviter's sharing server with the ticket that came in the invite, so they need no AI key of their own. The
 // inviter (who holds the gate's admin secret) makes one ticket per shared trip and it goes inside the share
 // code. Someone with their own key keeps using it: the gate is only the way when there's no key.
-import { chromeKV, getShareConfig, type KV } from "./store";
+import { chromeKV, DEFAULT_SERVER, getShareConfig, type KV } from "./store";
 import { normalizeServerUrl } from "./code";
+
+/** The gate's server: the sharing server (Trip Radar's own when none is set, see store.ts DEFAULT_SERVER). */
+const serverOf = (url: string) => normalizeServerUrl(url) ?? DEFAULT_SERVER.url;
 
 const TICKET_KEY = "aiTicket";
 const ADMIN_KEY = "aiAdminSecret";
@@ -13,8 +16,7 @@ export const isTicket = (v: unknown): v is string => typeof v === "string" && /^
 /** The gate to use (its address and this computer's ticket), or null when there's none. */
 export async function aiGate(kv: KV = chromeKV): Promise<{ baseUrl: string; ticket: string } | null> {
   const [ticket, config] = await Promise.all([kv.get<string>(TICKET_KEY), getShareConfig(kv)]);
-  const url = normalizeServerUrl(config.url);
-  return isTicket(ticket) && url ? { baseUrl: `${url}/functions/v1/ai`, ticket } : null;
+  return isTicket(ticket) ? { baseUrl: `${serverOf(config.url)}/functions/v1/ai`, ticket } : null;
 }
 
 /** The ticket that came with an invite; a later one replaces it (the newest invite is the one in use). */
@@ -34,9 +36,8 @@ type Fetch = typeof fetch;
 async function admin<T>(body: Record<string, unknown>, deps: { kv?: KV; fetch?: Fetch } = {}): Promise<T | null> {
   const kv = deps.kv ?? chromeKV;
   const [secret, config] = await Promise.all([getAdminSecret(kv), getShareConfig(kv)]);
-  const url = normalizeServerUrl(config.url);
-  if (!url || secret.length < 24) return null;
-  const res = await (deps.fetch ?? fetch)(`${url}/functions/v1/ai-admin`, { method: "POST", headers: { "Content-Type": "application/json", "x-admin-secret": secret }, body: JSON.stringify(body) });
+  if (secret.length < 24) return null;
+  const res = await (deps.fetch ?? fetch)(`${serverOf(config.url)}/functions/v1/ai-admin`, { method: "POST", headers: { "Content-Type": "application/json", "x-admin-secret": secret }, body: JSON.stringify(body) });
   if (!res.ok) throw new Error(res.status === 401 ? "AI kapısı: yönetici anahtarı tutmuyor." : `AI kapısı: ${res.status}`);
   return (await res.json()) as T;
 }
@@ -81,9 +82,7 @@ export interface GateStanding {
 
 async function call<T>(body: Record<string, unknown>, secret: string, deps: { kv?: KV; fetch?: Fetch } = {}): Promise<T> {
   const config = await getShareConfig(deps.kv ?? chromeKV);
-  const url = normalizeServerUrl(config.url);
-  if (!url) throw new Error("Önce paylaşım sunucusu gerekli (Ayarlar → Paylaşım).");
-  const res = await (deps.fetch ?? fetch)(`${url}/functions/v1/ai-admin`, { method: "POST", headers: { "Content-Type": "application/json", "x-admin-secret": secret }, body: JSON.stringify(body) });
+  const res = await (deps.fetch ?? fetch)(`${serverOf(config.url)}/functions/v1/ai-admin`, { method: "POST", headers: { "Content-Type": "application/json", "x-admin-secret": secret }, body: JSON.stringify(body) });
   return (await res.json()) as T;
 }
 
