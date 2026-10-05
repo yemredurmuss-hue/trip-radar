@@ -282,13 +282,10 @@ function tripTitle(row: DayRow): RowTitle {
     return { what: W.flight(), which, detail: join([airports, f && arrives(f), f?.flightNumber, status]) };
   }
   if (word) {
-    const stations = f?.from && f.to && !isCode(f.from) ? `${f.from} → ${f.to}` : null;
-    const operator = item ? simpleName(item.name) : null;
-    return {
-      what: word,
-      which,
-      detail: join([stations !== which ? stations : null, operator && !which.includes(operator) ? operator : null, f && arrives(f), duration(item), status]),
-    };
+    // The stations when they say more than the cities; else who runs it ("CP Alfa Pendular", "FlixBus").
+    const stations = f?.from && f.to && !isCode(f.from) && `${f.from} → ${f.to}` !== which ? `${f.from} → ${f.to}` : null;
+    const operator = !stations && item ? simpleName(item.name) : null;
+    return { what: word, which, detail: join([stations ?? (operator && !which.includes(operator) ? operator : null), f && arrives(f), duration(item), status]) };
   }
   // Between cities by car, taxi or a transfer: the transfer's word, the way in grey.
   const way = mode && mode in WAY ? WAY[mode as LegMode]() : null;

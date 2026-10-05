@@ -1,14 +1,16 @@
 // Günlük akış: the trip day by day, two views of the same lines in the same order. Liste (0.35.4, Emre's
 // reference docs/mockups/ref/2026-10-05-gunluk-akis-liste-referans.webp): a card per day, its photo on the left
-// with "1. gün" on it, its title, and what happens hour by hour — time · dot · the Plan's icon in its colour ·
-// one line — every line the same weight, a check-in like a taxi like a flight. Insurance and the eSIM aren't
-// hours of a day; they wait with the day's ideas (restaurants, things to do) under the opened day. Kartlar
-// (0.35.1, after Layla): a rail of stretches, each line as its own card on the Plan.
+// with "1. gün" on it, its title, and what happens hour by hour — time · the Plan's icon in its colour · the
+// line's title — every line the same weight, a check-in like a taxi like a flight. Each line is titled by the
+// code in one standard (satır standardı v2, dayRowTitle.ts): NE · HANGİSİ ("Uçuş · İstanbul → Kopenhag") and a
+// grey line; no dot, no dotted line. Insurance, the eSIM and a visa aren't part of a day: they stay in Plan →
+// Diğer. Kartlar (0.35.1, after Layla): a rail of stretches, each line as its own card on the Plan.
 import { useEffect, useState, type ReactNode } from "react";
 import { cardKindColor, cardKindLabel, RENTAL_MODES, TRANSPORT_MODES, type CardKind, type TransportMode } from "../../lib/cardKinds";
 import { imageProxy } from "../../lib/cityImages";
 import { dayCards, dayPhoto, daysLabel, flowRows, groupDays, highlightOf, ideaCount, isPlanRow, movedOrder, orderRows, rowKind, rowMark, type DayCard, type DayGroup } from "../../lib/dayCards";
 import { sectionOfItem } from "../../lib/categories";
+import { rowTitle, titleText, withLayovers, type RowTitle } from "../../lib/dayRowTitle";
 import { formatDateRange } from "../../lib/items";
 import { L, locale } from "../../lib/i18n";
 import type { DayRow } from "../../lib/journey";
@@ -198,7 +200,8 @@ function useDayPhoto(card: DayCard, cityImage: DayCardsProps["cityImage"]): stri
 
 function DayChips({ card }: { card: DayCard }) {
   const ideas = ideaCount(card.rows);
-  const left = card.rows.filter((r) => isPlanRow(r) && r.state !== "done" && r.state !== "info").length;
+  // Insurance and the eSIM aren't part of the day: not its to-dos either.
+  const left = card.rows.filter((r) => isPlanRow(r) && !isAside(r) && r.state !== "done" && r.state !== "info").length;
   return (
     <>
       {left > 0 && <span className="dc-left">{L(`${left} iş`, `${left} to do`)}</span>}
@@ -262,9 +265,9 @@ const spanDays = (cards: DayCard[]) => cards.reduce((n, c) => n + (c.end ? Math.
  */
 function DaySection({ card, mode, isToday, stays, onPick, ...props }: { card: DayCard; mode: Mode; isToday: boolean; stays: Map<string, StayEntry>; onPick: (row: string) => void } & DayCardsProps) {
   const photo = useDayPhoto(card, props.cityImage);
-  // Insurance and the eSIM aren't hours of the day: after the day's lines (0.35.4).
-  const { lines, asides } = dayLines(card, props);
-  const flow = [...lines, ...asides];
+  // The day's lines (insurance and the eSIM aren't among them), a layover between two connecting flights.
+  const lines = dayLines(card, props);
+  const flow = withLayovers(lines);
   const dnd = useReorder(lines, card.date, props.tripId);
   const experiences = flow.filter((r) => r.item && (r.item.category === "activity" || r.item.category === "food")).length;
   return (
@@ -292,7 +295,7 @@ function DaySection({ card, mode, isToday, stays, onPick, ...props }: { card: Da
             mode === "cards" ? (
               <Full key={r.key} row={r} stay={checkInStay(r, card, stays)} dnd={lines.includes(r) ? dnd(r) : undefined} {...props} />
             ) : (
-              <Line key={r.key} row={r} onTap={() => onPick(r.key)} tripId={props.tripId} />
+              <Line key={r.key} row={r} onTap={() => onPick(r.key)} tripId={props.tripId} dnd={lines.includes(r) ? dnd(r) : undefined} />
             ),
           )}
         </ol>
@@ -308,6 +311,8 @@ function DaySection({ card, mode, isToday, stays, onPick, ...props }: { card: Da
  */
 function TimeCell({ row, tripId }: { row: DayRow; tripId: string }) {
   const [edit, setEdit] = useState(false);
+  // A layover's time is its first flight's landing: nothing to set.
+  if (row.layover) return <span className="t">{row.time}</span>;
   const save = (value: string | null) =>
     void updateTrip(
       tripId,
@@ -327,7 +332,7 @@ function TimeCell({ row, tripId }: { row: DayRow; tripId: string }) {
           type="time"
           defaultValue={row.time ?? row.freed ?? ""}
           autoFocus
-          aria-label={L(`${row.title}: saat`, `${row.title}: time`)}
+          aria-label={L(`${titleText(rowTitle(row))}: saat`, `${titleText(rowTitle(row))}: time`)}
           onChange={(e) => e.target.value && save(e.target.value)}
           onBlur={() => setEdit(false)}
           onKeyDown={(e) => (e.key === "Escape" || e.key === "Enter") && setEdit(false)}
@@ -348,16 +353,18 @@ function TimeCell({ row, tripId }: { row: DayRow; tripId: string }) {
   );
 }
 
-/** Information (check-in, check-out, the metro planned): a thin line, closed or open. */
+/** Information in Kartlar (check-in, check-out, the metro planned, a layover): a thin line, its title in the standard. */
 function InfoLine({ row, tripId, dnd }: { row: DayRow; tripId: string; dnd?: Dnd }) {
+  const t = rowTitle(row);
   return (
-    <li className={`dc-step info${dnd?.cls ?? ""}`} id={`dc-${row.key}`} data-title={row.line ?? row.title} {...dnd?.li}>
+    <li className={`dc-step info${row.layover ? " quiet" : ""}${dnd?.cls ?? ""}`} id={`dc-${row.key}`} data-title={titleText(t)} {...dnd?.li}>
       {dnd?.grip}
       <TimeCell row={row} tripId={tripId} />
       <span className="dot" />
       <span className="txt">
-        <b>{row.line ?? row.title}</b>
-        {row.sub && ` · ${row.sub}`}
+        <b>{t.what}</b>
+        {t.which && ` · ${t.which}`}
+        {t.detail && <small> · {t.detail}</small>}
       </span>
     </li>
   );
@@ -365,30 +372,61 @@ function InfoLine({ row, tripId, dnd }: { row: DayRow; tripId: string; dnd?: Dnd
 
 const isLine = (r: DayRow) => !isPlanRow(r) && r.kind !== "idea";
 
+/** NE in bold · HANGİSİ, the grey line under them (satır standardı v2). */
+const RowName = ({ t }: { t: RowTitle }) => (
+  <span className="name">
+    <span className="dc-ttl">
+      <b className="dc-what">{t.what}</b>
+      {t.which && (
+        <>
+          {" "}
+          <i className="dc-sep">·</i>{" "}
+          <span className="dc-which">{t.which}</span>
+        </>
+      )}
+    </span>
+    {t.detail && <small>{t.detail}</small>}
+  </span>
+);
+
+const Clock = () => (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden>
+    <circle cx="12" cy="13" r="8" />
+    <path d="M12 9v4l2.5 2M10 2.5h4" />
+  </svg>
+);
+
 /**
- * A line of the list: time · dot · the Plan's icon (✓ booked / amber dot) · one line; a check-in, a planned
- * metro, a taxi, a flight all the same (0.35.4). A tap opens the cards at its card.
+ * A line of the list: time · the Plan's icon (✓ booked / amber dot) · NE · HANGİSİ and its grey line; a check-in,
+ * a planned metro, a taxi, a flight all the same. A tap opens the cards at its card. A layover is a quiet line.
  */
 function Line({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tripId: string; dnd?: Dnd }) {
   const info = isLine(row);
   const kind = rowKind(row);
   const mark = row.kind === "idea" || info ? null : rowMark(row);
-  const title = info ? (row.line ?? row.title) : row.title;
-  const sub = info || row.kind === "idea" ? row.sub : null;
+  const t = rowTitle(row);
+  if (row.layover)
+    return (
+      <li className="dc-step info quiet" data-title={titleText(t)}>
+        <TimeCell row={row} tripId={tripId} />
+        <span className="dc-line">
+          <span className="dc-tile">
+            <Clock />
+          </span>
+          <RowName t={t} />
+        </span>
+      </li>
+    );
   return (
-    <li className={`dc-step${row.kind === "idea" ? " idea" : info ? " info" : ""}${dnd?.cls ?? ""}`} data-title={title} {...dnd?.li}>
+    <li className={`dc-step${row.kind === "idea" ? " idea" : info ? " info" : ""}${dnd?.cls ?? ""}`} data-title={titleText(t)} {...dnd?.li}>
       {dnd?.grip}
       <TimeCell row={row} tripId={tripId} />
-      <span className="dot" />
       <button className="dc-line" onClick={onTap}>
         <span className="dc-tile" style={{ ["--k" as string]: cardKindColor(kind) }} title={cardKindLabel(kind)}>
           <KindIcon kind={kind} size={19} />
           {mark && <i className={mark.done ? "done" : "todo"}>{mark.done ? "✓" : ""}</i>}
         </span>
-        <span className="name">
-          {title}
-          {sub && <small> · {sub}</small>}
-        </span>
+        <RowName t={t} />
       </button>
       {row.warn && <p className="dc-warn">{row.warn}</p>}
     </li>
@@ -403,9 +441,11 @@ function checkInStay(row: DayRow, card: DayCard, stays: Map<string, StayEntry>):
 
 /** A line of the open day: its time and dot, then its own card as the Plan shows it (check-in: the stay's card). */
 function Full({ row, stay, cards, leg, tripId, dnd }: { row: DayRow; stay: StayEntry | null; dnd?: Dnd } & DayCardsProps) {
+  // The line's title in the standard names it (its card keeps its own header).
+  const title = titleText(rowTitle(row));
   if (stay)
     return (
-      <li className={`dc-full${dnd?.cls ?? ""}`} id={`dc-${row.key}`} data-title={row.line ?? row.title} {...dnd?.li}>
+      <li className={`dc-full${dnd?.cls ?? ""}`} id={`dc-${row.key}`} data-title={title} {...dnd?.li}>
         {dnd?.grip}
         <TimeCell row={row} tripId={tripId} />
         <span className="dot" />
@@ -422,13 +462,13 @@ function Full({ row, stay, cards, leg, tripId, dnd }: { row: DayRow; stay: StayE
   else if (row.item) body = cards.settled(row.item);
   else if (row.leg) body = leg(row.leg, { embedded: true });
   return (
-    <li className={`dc-full${dnd?.cls ?? ""}`} id={`dc-${row.key}`} data-title={row.title} {...dnd?.li}>
+    <li className={`dc-full${dnd?.cls ?? ""}`} id={`dc-${row.key}`} data-title={title} {...dnd?.li}>
       {dnd?.grip}
       <TimeCell row={row} tripId={tripId} />
       <span className="dot" />
       <div className="dc-slot">
         {row.warn && <p className="dc-warn">{row.warn}</p>}
-        {body ?? <span className="txt">{row.title}</span>}
+        {body ?? <span className="txt">{title}</span>}
       </div>
     </li>
   );
@@ -475,15 +515,14 @@ const MOTIFS: Record<Motif, ReactNode> = {
 };
 
 /**
- * A day of the list: the photo with "1. gün" on it, the title and the date, the arrow that opens it; its hours
- * one line each; opened, what has no hour (the day's restaurants and things to do, insurance and the eSIM) and
- * "+ Bu güne ekle". A line opens the cards at that line.
+ * A day of the list: the photo with "1. gün" on it, the title and the date, the arrow that opens it; its lines
+ * one each (a layover between two connecting flights); opened, "+ Bu güne ekle". A line opens the cards at that line.
  */
 function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card: DayCard; isToday: boolean; open: boolean; onToggle: () => void; onPick: (row: string) => void } & DayCardsProps) {
   const photo = useDayPhoto(card, props.cityImage);
-  // Every line of the day (0.35.6): with a time by the clock, without one where it was put (drag, or ↑ ↓);
-  // insurance and the eSIM wait under the opened day.
-  const { lines, asides } = dayLines(card, props);
+  // Every line of the day (0.35.6): with a time by the clock, without one where it was put (drag, or ↑ ↓).
+  const lines = dayLines(card, props);
+  const shown = withLayovers(lines);
   const dnd = useReorder(lines, card.date, props.tripId);
   const lead = highlightOf(card);
   const tint = lead ? cardKindColor(rowKind(lead)) : "#5b7fa6";
@@ -518,35 +557,15 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
         </header>
         {lines.length > 0 ? (
           <ol className="dc-tl">
-            {lines.map((r) => (
-              <Line key={r.key} row={r} onTap={() => onPick(r.key)} tripId={props.tripId} dnd={dnd(r)} />
+            {shown.map((r) => (
+              <Line key={r.key} row={r} onTap={() => onPick(r.key)} tripId={props.tripId} dnd={lines.includes(r) ? dnd(r) : undefined} />
             ))}
           </ol>
         ) : (
           <p className="dc-free">{L("Henüz plan yok.", "Nothing planned yet.")}</p>
         )}
         {/* A free day has nothing to open: its "+" is there. */}
-        {open || (!lines.length && !asides.length) ? (
-          <>
-            {asides.length > 0 && (
-              <>
-                <p className="dl-sub">{L("Gezi için · sigorta, internet", "For the trip · insurance, internet")}</p>
-                <ol className="dc-tl loose">
-                  {asides.map((r) => (
-                    <Line key={r.key} row={r} onTap={() => onPick(r.key)} tripId={props.tripId} />
-                  ))}
-                </ol>
-              </>
-            )}
-            <AddDay card={card} onAdd={props.onAdd} />
-          </>
-        ) : (
-          asides.length > 0 && (
-            <button type="button" className="dl-more" onClick={onToggle}>
-              {L(`+ ${asides.length} sigorta / internet`, `+ ${asides.length} insurance / internet`)}
-            </button>
-          )
-        )}
+        {(open || !lines.length) && <AddDay card={card} onAdd={props.onAdd} />}
       </div>
     </section>
   );
@@ -554,11 +573,14 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
 
 // --- the day's order (0.35.6) ------------------------------------------------------------------------
 
-/** The day's lines in their order (the timed by the clock, the rest where put), and its insurance and eSIM apart. */
-function dayLines(card: DayCard, props: Pick<DayCardsProps, "times" | "order" | "loose">): { lines: DayRow[]; asides: DayRow[] } {
+/**
+ * The day's lines in their order (the timed by the clock, the rest where put). Insurance, the eSIM and a visa
+ * aren't part of a day (satır standardı v2): they stay in Plan → Diğer.
+ */
+function dayLines(card: DayCard, props: Pick<DayCardsProps, "times" | "order" | "loose">): DayRow[] {
   // A line moved by hand off its time stays where it was put, its time hidden (a time given puts it back).
   const all = flowRows(card, props.times).map((r) => (r.time && props.loose?.includes(r.key) ? { ...r, freed: r.time, time: null, estimated: false } : r));
-  return { lines: orderRows(all.filter((r) => !isAside(r)), props.order?.[card.date]), asides: all.filter(isAside) };
+  return orderRows(all.filter((r) => !isAside(r)), props.order?.[card.date]);
 }
 
 /** What a line needs to be moved: its grip, its drop handlers, its class while dragged over. */
@@ -602,7 +624,7 @@ function useReorder(rows: DayRow[], date: string, tripId: string): (row: DayRow)
         type="button"
         className="dc-grip"
         draggable
-        aria-label={L(`${row.line ?? row.title}: sırasını değiştir`, `${row.line ?? row.title}: move`)}
+        aria-label={L(`${titleText(rowTitle(row))}: sırasını değiştir`, `${titleText(rowTitle(row))}: move`)}
         title={L("Sürükle ya da ↑ ↓ ile taşı", "Drag, or move with ↑ ↓")}
         onDragStart={(e) => {
           e.dataTransfer.effectAllowed = "move";

@@ -89,12 +89,14 @@ describe("a layover", () => {
 });
 
 describe("trains, buses, ferries and moves", () => {
-  it("a train between cities: the cities, its stations and operator in grey", () => {
+  it("a train between cities: the cities, its stations in grey (else who runs it)", () => {
     const train = makeItem({ category: "transport", name: "CP Alfa Pendular · Porto → Lizbon", status: "booked", flight: { from: "Porto Campanhã", to: "Lisboa Oriente", departure: "2026-10-11T13:09", arrival: "2026-10-11T15:59", carrier: null, flightNumber: null, stops: 0 } });
     const move = leg({ kind: "move", from: point("Porto", "Porto"), to: point("Lizbon", "Lizbon"), via: null, mode: "train" });
     const t = both(() => rowTitle(travelRow(train, "move", move, "train")));
-    expect(t.tr).toEqual({ what: "Tren", which: "Porto → Lizbon", detail: "Porto Campanhã → Lisboa Oriente · CP Alfa Pendular · varış 15:59" });
+    expect(t.tr).toEqual({ what: "Tren", which: "Porto → Lizbon", detail: "Porto Campanhã → Lisboa Oriente · varış 15:59" });
     expect((t.en as { what: string }).what).toBe("Train");
+    const noStations = makeItem({ category: "transport", name: "CP Alfa Pendular · Porto → Lizbon", status: "booked", flight: null });
+    expect(rowTitle(travelRow(noStations, "move", move, "train")).detail).toBe("CP Alfa Pendular");
   });
   it("a bus and a ferry", () => {
     const bus = makeItem({ category: "transport", name: "FlixBus", status: "booked", plannedKind: "bus" });
