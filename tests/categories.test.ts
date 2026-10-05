@@ -58,7 +58,9 @@ describe("the record's section", () => {
     for (const kind of ["train", "bus", "minibus", "ferry", "taxi", "transfer", "car_rental", "moto_rental", "rv_rental", "bike_rental"] as const) {
       expect(sectionOfItem(said({ kind, date: "2026-10-09" })), kind).toBe("transport");
     }
-    expect(sectionOfItem(said({ kind: "activity", date: null }, { booking: "needed" }))).toBe("activity");
+    expect(sectionOfItem(said({ kind: "activity", date: null, title: "Douro tekne turu" }))).toBe("activity");
+    // An activity by its kind alone is not a booking: a market said as one is a thing to do.
+    expect(sectionOfItem(said({ kind: "activity", date: null, title: "Porto Belo Pazarı" }, { booking: "needed" }))).toBe("todo");
     expect(sectionOfItem(said({ kind: "todo", date: null }))).toBe("todo");
     expect(sectionOfItem(said({ kind: "note", date: null }))).toBe("todo");
     expect(sectionOfItem(said({ kind: "food", date: null }))).toBe("food");
@@ -73,8 +75,10 @@ describe("the record's section", () => {
     expect(sectionOfItem(makeItem({ category: "transport", name: "Seyahat sigortası Allianz" }))).toBe("other");
     expect(sectionOfItem(makeItem({ category: "other", name: "Airalo eSIM Portekiz" }))).toBe("other");
     expect(sectionOfItem(makeItem({ category: "other", name: "Fado gecesi", price: { amount: 30, currency: "EUR", scope: "total", taxesIncluded: "yes", source: "page", observedAt: 1 } }))).toBe("activity");
-    // A chosen record from before records said: it stays a booking.
-    expect(sectionOfItem(makeItem({ category: "activity", name: "Serralves", status: "chosen" }))).toBe("activity");
+    // Chosen with no evidence (a Maps pin): a thing to do; booked on its page, or saying it needs one: a booking.
+    expect(sectionOfItem(makeItem({ category: "activity", name: "Serralves", status: "chosen" }))).toBe("todo");
+    expect(sectionOfItem(makeItem({ category: "activity", name: "Serralves", status: "booked" }))).toBe("activity");
+    expect(sectionOfItem(makeItem({ category: "activity", name: "Serralves", booking: "needed" }))).toBe("activity");
   });
 });
 
@@ -156,8 +160,8 @@ describe("sections from what's saved and said", () => {
     const items = [
       ...base,
       said({ kind: "activity", date: "2026-10-12", time: "18:00", city: "Lizbon", title: "Fado" }, { booking: "needed" }),
-      said({ kind: "activity", date: "2026-10-12", time: "10:00", city: "Lizbon", title: "Tramvay 28" }, { booking: "needed" }),
-      said({ kind: "activity", date: "2026-10-09", city: "Porto", title: "Douro" }, { booking: "needed" }),
+      said({ kind: "activity", date: "2026-10-12", time: "10:00", city: "Lizbon", title: "Tramvay 28", note: "bilet" }, { booking: "needed" }),
+      said({ kind: "activity", date: "2026-10-09", city: "Porto", title: "Douro", note: "tur" }, { booking: "needed" }),
       makeItem({ name: "Oceanário", category: "activity", city: "Lizbon", booking: "needed" }),
       makeItem({ name: "Serralves", category: "activity", city: "Porto", booking: "needed" }),
       makeItem({ name: "Bir yer", category: "activity", city: null, booking: "needed" }),

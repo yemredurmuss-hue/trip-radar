@@ -51,25 +51,28 @@ describe("older records and pages that don't say: by kind", () => {
   });
 });
 
-describe("already chosen or booked never leaves the Plan", () => {
-  it("an older record the traveller chose or booked is a booking, whatever its words (a note or a to-do aside)", () => {
+describe("chosen or booked: a thing to do by its evidence, the rest stays a booking", () => {
+  it("a page booked is a booking; a thing to do chosen is one only with evidence; a restaurant chosen stays one", () => {
     expect(bookingOf(makeItem({ category: "activity", name: "Fado gecesi", status: "chosen" }))).toBe("needed");
+    expect(bookingOf(makeItem({ category: "activity", name: "Ribeira yürüyüşü", status: "chosen" }))).toBe("none");
     expect(bookingOf(makeItem({ category: "activity", name: "Ribeira yürüyüşü", status: "booked" }))).toBe("needed");
     expect(bookingOf(makeItem({ category: "food", name: "Cantinho do Avillez", status: "chosen" }))).toBe("needed");
-    expect(bookingOf(makeItem({ category: "other", name: "Plan · Porto", plannedKind: "other", status: "chosen" }))).toBe("needed");
+    expect(bookingOf(makeItem({ category: "other", name: "Plan · Porto", plannedKind: "other", status: "chosen", origin: "chat" }))).toBe("none");
     expect(isIdea(makeItem({ category: "activity", name: "Fado gecesi", status: "booked" }))).toBe(false);
     expect(bookingOf(makeItem({ category: "other", name: "Not", plannedKind: "note", status: "chosen" }))).toBe("none");
     expect(bookingOf(makeItem({ category: "other", name: "Pazar", plannedKind: "todo", status: "chosen" }))).toBe("none");
-    // Saved and not chosen: by its words, as before.
-    expect(bookingOf(makeItem({ category: "activity", name: "Fado gecesi" }))).toBe("none");
+    // Saved and not chosen: by its words too (a fado night is a show).
+    expect(bookingOf(makeItem({ category: "activity", name: "Fado gecesi" }))).toBe("needed");
+    expect(bookingOf(makeItem({ category: "activity", name: "Pazar" }))).toBe("none");
   });
   it("a booking confirmation is a booking even if the page said none", () => {
     expect(bookingOf(makeItem({ category: "food", name: "Belcanto", status: "booked", booking: "none" }))).toBe("needed");
     expect(bookingOf(makeItem({ category: "food", name: "Majestic Café", status: "chosen", booking: "none" }))).toBe("none");
   });
-  it("the chat's activity is a booking even without a price; its restaurant and note are ideas", () => {
+  it("the chat's activity is a booking by its evidence, not its kind; its restaurant and note are ideas", () => {
     expect(bookingOf(plannedItem(said({ kind: "activity", title: "Fado gecesi", city: "Lizbon" }), "t1", "f", 1))).toBe("needed");
-    expect(plannedItem(said({ kind: "activity", title: "Fado gecesi", city: "Lizbon" }), "t1", "f", 1).booking).toBe("needed");
+    expect(bookingOf(plannedItem(said({ kind: "activity", title: "Porto Belo Pazarı", city: "Porto" }), "t1", "f", 1))).toBe("none");
+    expect(plannedItem(said({ kind: "activity", title: "Fado gecesi", city: "Lizbon" }), "t1", "f", 1).booking).toBeUndefined();
     expect(plannedItem(said({ kind: "todo", title: "Pazar" }), "t1", "g", 1).booking).toBe("none");
   });
   it("the sheet's restaurant and note are ideas (none), not bookings by being chosen", () => {
@@ -104,10 +107,11 @@ describe("a to-do as a plan", () => {
     expect(bookingOf(todo)).toBe("none");
     expect(plannedItem(said({ city: "Porto" }), "t1", "y", 1).name).toBe("Yapılacak · Porto");
   });
-  it("the sheet's 'Yapılacak' is none; its 'Etkinlik · tur' is a booking even without a price", () => {
+  it("the sheet's 'Yapılacak' is none; its 'Etkinlik · tur' is a booking by its evidence", () => {
     const tpl = (id: string) => TEMPLATES.find((x) => x.id === id)!;
     const todo = templateItem(tpl("todo"), { ...emptyForm(tpl("todo"), null, "EUR"), name: "Pazara git" }, "t1", "a", 1) as Item;
     const tour = templateItem(tpl("activity"), { ...emptyForm(tpl("activity"), null, "EUR"), name: "Fado" }, "t1", "b", 1) as Item;
-    expect([todo.booking, tour.booking]).toEqual(["none", "needed"]);
+    const market = templateItem(tpl("activity"), { ...emptyForm(tpl("activity"), null, "EUR"), name: "Porto Belo Pazarı" }, "t1", "c", 1) as Item;
+    expect([todo.booking, bookingOf(tour), bookingOf(market)]).toEqual(["none", "needed", "none"]);
   });
 });

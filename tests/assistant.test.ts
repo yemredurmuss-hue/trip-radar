@@ -255,6 +255,28 @@ describe("assistant", () => {
     expect(todo).toMatchObject({ category: "other", city: "Porto", origin: "chat" });
     expect(bookingOf(todo)).toBe("none");
   });
+  it("a market the model says as a booked activity lands in Things to do, and the result says so", async () => {
+    await seed();
+    const { client, calls } = fakeClient([
+      {
+        stop_reason: "tool_use",
+        content: [
+          { type: "tool_use", id: "m1", name: "plan_item", caller: { type: "direct" }, input: { kind: "activity", date: null, end_date: null, time: null, from: null, to: null, city: "Porto", title: "Porto Belo Pazarı", booked: true, note: null } },
+          { type: "tool_use", id: "m2", name: "plan_item", caller: { type: "direct" }, input: { kind: "activity", date: "2026-10-10", end_date: null, time: "21:00", from: null, to: null, city: "Porto", title: "Fado gecesi", booked: true, note: "Bileti aldım" } },
+        ] as Anthropic.ContentBlock[],
+      },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Ekledim.", citations: null }] as Anthropic.ContentBlock[] },
+    ]);
+    await sendMessage("t1", "Porto Belo Pazarı'na gittik, fado biletini de aldım", anthropicProvider(client, "claude-opus-5"));
+    const [market, fado] = (calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[]).map((r) => JSON.parse(String(r.content)));
+    expect(market).toMatchObject({ added: "Porto Belo Pazarı", status: "done", booking: "none" });
+    expect(market.plan_section).toContain("Yapılacak şeyler");
+    expect(fado).toMatchObject({ added: "Fado gecesi", status: "booked" });
+    expect(fado.plan_section).toContain("Etkinlikler");
+    const items = await listItems("t1");
+    expect(bookingOf(items.find((i) => i.name === "Porto Belo Pazarı")!)).toBe("none");
+    expect(bookingOf(items.find((i) => i.name === "Fado gecesi")!)).toBe("needed");
+  });
   it("writes a price the traveller says, and opens a night said apart without picking a place", async () => {
     const { items } = await seed();
     await (await db()).put("items", { ...items[0], status: "chosen", statusAt: 5 });

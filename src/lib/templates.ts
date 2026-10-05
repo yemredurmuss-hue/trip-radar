@@ -135,8 +135,9 @@ export function templateItem(tpl: Template, f: FormValues, tripId: string, id: s
   const r = templateInput(tpl, f);
   if (typeof r === "string") return r;
   const made = plannedItem(r.input, tripId, id, now);
-  // "Etkinlik · tur" is a booking even without a price yet; "Yapılacak" never is (booking.ts reads the rest).
-  const item: Item = tpl.id === "activity" ? { ...made, booking: "needed" } : tpl.id === "todo" ? { ...made, booking: "none" } : made;
+  // "Yapılacak" is never a booking; "Etkinlik · tur" is one by its evidence (a price, ticket words), like the
+  // rest (booking.ts): named "Porto Belo Pazarı" it's a to-do.
+  const item: Item = tpl.id === "todo" ? { ...made, booking: "none" } : made;
   return r.price ? withPrice(item, r.price, now) : item;
 }
 

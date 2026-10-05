@@ -184,9 +184,10 @@ export function plannedItem(input: PlannedInput, tripId: string, id: string, now
     statusNote: input.note?.trim() || null,
     origin: "chat",
     plannedKind: input.kind,
-    // Said as a thing to do with a ticket, it's a booking even without a price; a to-do, a restaurant or a
-    // note is an idea (Yapılacak şeyler). The rest is read by kind (booking.ts).
-    ...(input.kind === "activity" ? { booking: "needed" as const } : input.kind === "todo" || input.kind === "food" || input.kind === "note" ? { booking: "none" as const } : {}),
+    // A to-do, a restaurant or a note is an idea (Yapılacak şeyler, Restoranlar). An activity is not taken at
+    // its kind: a market said as one is still a to-do; booking.ts reads it from its evidence (a price, ticket
+    // words, the note "bileti aldım").
+    ...(input.kind === "todo" || input.kind === "food" || input.kind === "note" ? { booking: "none" as const } : {}),
     createdAt: now,
     updatedAt: now,
   };
