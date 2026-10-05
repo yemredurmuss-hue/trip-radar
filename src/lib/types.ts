@@ -225,8 +225,42 @@ export interface Trip {
    * bigger destination by city key ("gaula" → "Madeira"). The Plan and Günlük akış keep the places as they are.
    */
   placeParents?: { key: string; parents: Record<string, string> } | null;
+  /**
+   * Öneriler (suggestions.ts): what the AI review and the chat suggested, and what the traveller did with a rule's
+   * suggestion ("Plana ekle", "Gerek yok"). A rule's open suggestion isn't stored: it's worked out from the trip.
+   */
+  suggestions?: Suggestion[];
+  /** The last AI review of the trip for suggestions (suggestReview.ts): for which state, when, and whether it failed. */
+  suggestReview?: { key: string; at: number; failed?: boolean } | null;
   createdAt: number;
   updatedAt: number;
+}
+
+/** A section a suggestion can sit in (İlham is filled by sending links, never suggested). */
+export type SuggestionSection = "flight" | "stay" | "transport" | "activity" | "todo" | "food" | "other";
+/** "add": something to put on the plan ("Plana ekle"); "warning": something to check (a short layover). */
+export type SuggestionKind = "add" | "warning";
+export type SuggestionState = "open" | "added" | "dismissed";
+
+/**
+ * A suggestion card at the top of its section (spec 2026-10-06 §1): never part of the plan, never counted. `key`
+ * makes it unique ("rule:insurance", "chat:transport-moto-aylik-motor-kiralama"); "Gerek yok" on a key is for good.
+ */
+export interface Suggestion {
+  key: string;
+  section: SuggestionSection;
+  kind: SuggestionKind;
+  title: string;
+  /** One sentence: why, from facts only (no invented prices, times or percentages). */
+  why: string;
+  source: "rule" | "ai" | "chat";
+  /** The template "Plana ekle" adds with (templates.ts TemplateId); none for a warning. */
+  template?: string;
+  /** What the record is made with: its city, first and last day (YYYY-MM-DD), a time (rules only), a name. */
+  payload?: { city?: string | null; start?: string | null; end?: string | null; time?: string | null; title?: string | null };
+  createdAt: number;
+  state: SuggestionState;
+  stateAt?: number;
 }
 
 /** How a transfer is made. Flights, trains, buses and ferries go from a station, so they bring their own transfers. */
