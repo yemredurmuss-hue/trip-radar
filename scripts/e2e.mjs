@@ -679,6 +679,8 @@ try {
   await box("Nereye").waitFor();
   const portoBus = pk("Otobüs · Porto → ?");
   await portoBus.waitFor();
+  assert.ok(await box("Nereye").evaluate((el) => el === document.activeElement), "the first empty field has the cursor");
+  await app.screenshot({ path: `${out}/4m0-instant-add.png` });
   await box("Nereye").fill("Braga");
   await box("Nereye").press("Escape");
   await box("Nereye").waitFor({ state: "detached" });
