@@ -22,7 +22,7 @@ import type { Capture, Item, Trip } from "../lib/types";
 import { chooseItem, hideNights, undo as takeBack, updateTrip } from "./actions";
 import { legEndsByItem, legModeByItem } from "../lib/cardKinds";
 import { inheritedDocs } from "../lib/docs";
-import { deleteItem, onRemoved } from "../lib/removal";
+import { deleteItem, onHidden, onRemoved } from "../lib/removal";
 import { undoSlot } from "../lib/undo";
 import { undoTrip, type Undoable } from "../lib/undoables";
 import { addQuick, templateLabel, TEMPLATES, type InsertAt, type Template, type TemplateId } from "../lib/templates";
@@ -136,6 +136,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   useEffect(() => () => void undo.take(), [trip.id, undo]);
   // A plan the chat took back ("taksiyi kaldır") gets the same "Geri al".
   useEffect(() => onRemoved((removed) => removed.item.tripId === trip.id && undo.show({ kind: "removed", removed })), [trip.id, undo]);
+  // A transfer the chat hid ("Gaula → Madeira'yı kaldır") gets the "Geri al" of the board's "Gerek yok".
+  useEffect(() => onHidden((h) => h.tripId === trip.id && undo.show({ kind: "hidden", ...h })), [trip.id, undo]);
   const offer = (u: Undoable) => undoTrip(u) === trip.id && undo.show(u);
   const [sheet, setSheet] = useState<{ at: InsertAt | null; editing: Item | null; only?: readonly TemplateId[] } | null>(null);
   const [focus, setFocus] = useState<CardFocus | null>(null);

@@ -9,7 +9,7 @@ export type Undoable =
   | { kind: "removed"; removed: Removed }
   /** `label`: the tile's name ("Otobüs"). */
   | { kind: "added"; item: Item; label: string }
-  /** `key`: trip.hidden's key (`nights:<start>_<end>`); `label`: "Porto 14–15 Ekim". */
+  /** `key`: trip.hidden's key (`nights:<start>_<end>`, or `leg:<key>` for a transfer the chat hid); `label`: "Porto 14–15 Ekim". */
   | { kind: "hidden"; tripId: string; key: string; label: string }
   /** A file deleted from Belgeler: it comes back with its card and kind. */
   | { kind: "doc"; doc: DocRecord };

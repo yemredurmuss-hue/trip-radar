@@ -32,6 +32,20 @@ export function onRemoved(listener: (removed: Removed) => void): () => void {
 }
 export const announceRemoved = (removed: Removed) => removedListeners.forEach((l) => l(removed));
 
+/** A transfer the chat hid ("Gaula → Madeira'yı kaldır"): `key` is trip.hidden's `leg:<key>`, `label` the toast's name. */
+export interface HiddenByChat {
+  tripId: string;
+  key: string;
+  label: string;
+}
+// The same "Geri al" for it as the board's "Gerek yok" nights: the board puts it in its undo slot.
+const hiddenListeners = new Set<(hidden: HiddenByChat) => void>();
+export function onHidden(listener: (hidden: HiddenByChat) => void): () => void {
+  hiddenListeners.add(listener);
+  return () => void hiddenListeners.delete(listener);
+}
+export const announceHidden = (hidden: HiddenByChat) => hiddenListeners.forEach((l) => l(hidden));
+
 export async function restoreItem(removed: Removed): Promise<void> {
   await (await db()).put("items", removed.item);
   await putDocs(removed.docs);
