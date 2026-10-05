@@ -3,10 +3,10 @@
 // one grey line (where it came from or what it is; "9 Eki için konmuştu · havuza döndü" when its day went by),
 // then the day chip, the map, its page (or a web search for it), "Yaptım" (optional, one tap) and × on hover.
 // A restaurant that takes a reservation says where that stands; a to-do whose words say a ticket offers
-// "Etkinliklere taşı".
+// "Etkinliklere taşı"; one that's really a chore before the trip "Hazırlığa taşı" on hover (0.35.9).
 import { needsBooking } from "../../lib/booking";
 import { L } from "../../lib/i18n";
-import { foodLine, ideaIcon, ideaSource, isFoodIdea, moveToBookings, setDone, shortDay, todoLine, type IdeaIcon } from "../../lib/ideas";
+import { foodLine, ideaIcon, ideaSource, isFoodIdea, moveToBookings, setDone, setPrep, shortDay, todoLine, type IdeaIcon } from "../../lib/ideas";
 import { placeMapUrl } from "../../lib/items";
 import type { Plan } from "../../lib/plan";
 import type { Item } from "../../lib/types";
@@ -69,6 +69,13 @@ function IdeaLineFace({ item, plan, returned = null, showCity = false }: IdeaLin
         {sub && <span className="il-sub">{sub}</span>}
       </div>
       <div className="il-act">
+        {/* A chore before the trip after all ("yağmurluk al" to buy at home): one tap to Diğer's Hazırlık. */}
+        {!food && !done && (
+          <button type="button" className="il-prep" title={L("Yola çıkmadan yapılacak: Hazırlık'a taşı", "Before the trip: move to Prep")}
+            aria-label={L(`${item.name}: Hazırlık'a taşı`, `${item.name}: move to Prep`)} onClick={() => void setPrep(item, true)}>
+            {L("Hazırlığa taşı", "Move to Prep")}
+          </button>
+        )}
         {promote && (
           <button type="button" className="il-promote" onClick={() => void moveToBookings(item)} title={L("Giriş bileti gerekiyor", "Needs an entry ticket")}>
             {L("Etkinliklere taşı", "Move to activities")}

@@ -1194,6 +1194,17 @@ try {
   await prepRow.waitFor();
   assert.equal(await app.locator(`.il-row[aria-label="Decathlon'dan yağmurluk al"]`).count(), 0, "a chore is never a thing to do");
   assert.equal(await sec("other").locator(`.prep-row[aria-label="Dom Luís'te gün batımı"]`).count(), 0, "an experience is never a chore");
+  // Moved by hand both ways (0.35.9): "Hazırlığa taşı" on a thing to do, "Orada yapılacak" back from Hazırlık.
+  if (await sec("other").evaluate((el) => el.classList.contains("closed"))) await sec("other").locator(".cat-title").click();
+  await todoRow("Dom Luís'te gün batımı").hover();
+  await todoRow("Dom Luís'te gün batımı").getByRole("button", { name: "Dom Luís'te gün batımı: Hazırlık'a taşı" }).click();
+  const sunsetPrep = sec("other").locator(`.prep-row[aria-label="Dom Luís'te gün batımı"]`);
+  await sunsetPrep.waitFor();
+  await todoRow("Dom Luís'te gün batımı").waitFor({ state: "detached" });
+  await sunsetPrep.hover();
+  await sunsetPrep.getByRole("button", { name: "Dom Luís'te gün batımı: Yapılacak şeyler'e taşı" }).click();
+  await todoRow("Dom Luís'te gün batımı").waitFor();
+  await sunsetPrep.waitFor({ state: "detached" });
   assert.match(await sec("other").locator(".cat-wait").innerText(), /1 hazırlık/);
   await app.locator(".pk-undo").waitFor({ state: "detached", timeout: 10000 }); // an earlier "Geri al" over the list
   await app.setViewportSize({ width: 1440, height: 1500 });
