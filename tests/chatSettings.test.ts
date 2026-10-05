@@ -201,6 +201,30 @@ describe("the board's language", () => {
   });
 });
 
+describe("the language's Geri al across the reload", () => {
+  it("reloads only when the turn switched the language, and hands its undo to the board once", async () => {
+    const { reloadIfLangChanged, takeLangUndo } = await import("../src/app/langSwitch");
+    const session = new Map<string, string>();
+    const reload = vi.fn();
+    vi.stubGlobal("sessionStorage", {
+      getItem: (k: string) => session.get(k) ?? null,
+      setItem: (k: string, v: string) => void session.set(k, v),
+      removeItem: (k: string) => void session.delete(k),
+    });
+    vi.stubGlobal("location", { reload });
+    setLang("tr");
+    reloadIfLangChanged("t1", "tr");
+    expect(reload).not.toHaveBeenCalled();
+    setLang("en"); // the chat's set_settings switched it during the turn
+    reloadIfLangChanged("t1", "tr");
+    expect(reload).toHaveBeenCalledOnce();
+    expect(takeLangUndo("other")).toBeNull(); // another trip on screen: not its undo (and it's used up)
+    reloadIfLangChanged("t1", "tr");
+    expect(takeLangUndo("t1")).toEqual({ prev: "tr", label: "The board is now in English" });
+    expect(takeLangUndo("t1")).toBeNull(); // once
+  });
+});
+
 describe("honesty: a change claimed with no tool", () => {
   it("finds a claim of a change, not a question or a negation", () => {
     for (const yes of [
