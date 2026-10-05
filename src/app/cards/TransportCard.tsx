@@ -8,6 +8,10 @@ import type { End, TransportFace } from "../../lib/cardView";
 import type { FieldKey } from "../../lib/inlineEdit";
 import { Editable, useInlineEdit } from "./InlineEdit";
 
+// A long name, or one long word that can't wrap ("Booking.com", "Hostelworld"), goes down to 24 so it
+// isn't broken in the middle of the word.
+const isLong = (name: string): boolean => name.length > 12 || name.split(/\s+/).some((w) => w.length > 9);
+
 function Stop({ end, right, field, timed }: { end: End | null; right: boolean; field: FieldKey | null; timed: boolean }) {
   const api = useInlineEdit();
   const editable = Boolean(field && api?.fields.includes(field));
@@ -15,7 +19,7 @@ function Stop({ end, right, field, timed }: { end: End | null; right: boolean; f
   const time = timed && api?.fields.includes("time");
   return (
     <div className={`pk-stop${right ? " r" : ""}`}>
-      <b className={(end?.city.length ?? 0) > 12 ? "long" : undefined}>{field ? <Editable field={field}>{end?.city}</Editable> : end?.city}</b>
+      <b className={isLong(end?.city ?? "") ? "long" : undefined}>{field ? <Editable field={field}>{end?.city}</Editable> : end?.city}</b>
       <span>
         {end?.sub}
         {end?.sub && (end?.time || time) ? " · " : ""}
