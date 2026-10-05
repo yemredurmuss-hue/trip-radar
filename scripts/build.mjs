@@ -1,12 +1,15 @@
 // Bundles the extension into dist/. Usage: node scripts/build.mjs [--watch]
 import * as esbuild from "esbuild";
-import { cpSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 
 const watch = process.argv.includes("--watch");
 
 rmSync("dist", { recursive: true, force: true });
 mkdirSync("dist", { recursive: true });
 cpSync("static", "dist", { recursive: true });
+
+// The pages compare it with the loaded extension's version (src/lib/update.ts reloadIfStale).
+const version = JSON.parse(readFileSync("static/manifest.json", "utf8")).version;
 
 const options = {
   entryPoints: {
@@ -20,7 +23,7 @@ const options = {
   // ES2022 keeps functions injected with chrome.scripting self-contained (no esbuild helpers).
   target: "es2022",
   jsx: "automatic",
-  define: { "process.env.NODE_ENV": JSON.stringify(watch ? "development" : "production") },
+  define: { "process.env.NODE_ENV": JSON.stringify(watch ? "development" : "production"), __APP_VERSION__: JSON.stringify(version) },
   minify: !watch,
   sourcemap: watch ? "inline" : false,
   logLevel: "info",

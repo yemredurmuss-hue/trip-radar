@@ -7,6 +7,7 @@ import { L, lang, loadLang } from "./lib/i18n";
 import { CATEGORY_LABELS } from "./lib/items";
 import { collectPage } from "./lib/pagecapture";
 import { saveSnapshot } from "./lib/process";
+import { reloadIfStale } from "./lib/update";
 
 type State =
   | { step: "saving" }
@@ -106,8 +107,18 @@ function Popup() {
   );
 }
 
-// The language first, so the popup never flashes the wrong one.
-void loadLang().then(() => {
+// The language first, so the popup never flashes the wrong one. Files newer than the loaded extension
+// (the updater just swapped them) reload it instead of saving: the old version holds the database.
+void Promise.all([loadLang(), reloadIfStale(null)]).then(([, updating]) => {
   document.documentElement.lang = lang();
-  createRoot(document.getElementById("root")!).render(<Popup />);
+  createRoot(document.getElementById("root")!).render(
+    updating ? (
+      <div className="popup-card">
+        <div className="popup-title">Trip Radar</div>
+        <p>{L("Güncelleniyor… Birkaç saniye sonra tekrar dene.", "Updating… Try again in a few seconds.")}</p>
+      </div>
+    ) : (
+      <Popup />
+    ),
+  );
 });
