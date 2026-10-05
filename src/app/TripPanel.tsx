@@ -336,9 +336,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       }
     })();
   }, [trip.id, trip.mood?.key, moodFor, mainNames, placesSettled]);
-  // The style words: picked once per set of main places and what was understood, only from the fixed list.
+  // The style words: picked once per set of main places and what the traveller wrote about the trip (their
+  // notes: "balayı", "macera istiyoruz"), only from the fixed list. Priorities, findings and guesses change
+  // often and say nothing about the trip's character, so they don't ask again (asking again re-rolled the words).
   const intent = useMemo(() => intentEntries(trip, decisions).entries, [trip, decisions]);
-  const understood = useMemo(() => intent.map((e) => e.text), [intent]);
+  const understood = useMemo(() => intent.filter((e) => e.key.startsWith("n:")).map((e) => e.text), [intent]);
   const styleFor = styleKey(mainNames, understood);
   const askedStyle = useRef<string | null>(null);
   useEffect(() => {
@@ -347,7 +349,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     void (async () => {
       try {
         const llm = await getProvider();
-        const out = await llm.generateJson(stylePrompt(), [mainNames.join(" → "), ...understood].join("\n"), z.object({ ids: z.array(z.string()) }));
+        // The words shown now go along: kept unless what changed clearly calls for others.
+        const now = acceptStyle(trip.style?.ids ?? []);
+        const keep = now.length ? L(`Şu anki etiketler: ${now.join(", ")}. Yalnız açıkça uymuyorlarsa değiştir.`, `Current tags: ${now.join(", ")}. Change them only if they clearly no longer fit.`) : "";
+        const out = await llm.generateJson(stylePrompt(), [mainNames.join(" → "), ...understood, keep].filter(Boolean).join("\n"), z.object({ ids: z.array(z.string()) }));
         await updateTrip(trip.id, (t) => ({ ...t, style: { key: styleFor, ids: acceptStyle(out.ids) } }), { touch: false });
       } catch (error) {
         if (!(error instanceof MissingKeyError)) console.warn("trip style", error); // the budget's word stands alone
@@ -419,7 +424,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // The plan line: what the Plan's sections hold (each header's "y"), so both always say the same thing.
   const tally = useMemo(() => sectionTally(sections), [sections]);
   const chips = styleChips(
-    trip.style?.key === styleFor ? acceptStyle(trip.style.ids) : [],
+    // The last words stay on screen while new ones are asked for (no empty flash, no flicker).
+    acceptStyle(trip.style?.ids ?? []),
     budgetLevel(trip.budget, range ? nightsBetween(range.start, range.end) + 1 : 0, facts.adults, decisions?.ctx.rates ?? null),
   );
   /** A day card's photo: its city's, else its main place's (the hero's: Gaula's day shows Madeira), else the trip's. */
