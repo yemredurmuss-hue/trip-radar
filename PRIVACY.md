@@ -1,6 +1,6 @@
 # Trip Radar — Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-06 · Sürüm / Version: 0.36.8
+Son güncelleme / Last updated: 2026-10-06 · Sürüm / Version: 0.36.9
 
 ---
 
@@ -102,7 +102,7 @@ Anahtarının sunucudan silinmesini istersen info@emredurmus.net adresine yaz; s
 
 Bir geziyi paylaşırsan paylaşım sunucusuna (Supabase) şunlar gider:
 
-- gezinin ayarları,
+- gezinin ayarları (gezide kimlerin olduğunu söylediğin adlar, "Gidenler", dahil),
 - kaydettiğin sayfalar (küçük ekran görüntüsü dahil),
 - oylar ve tepkiler,
 - üyelerin adları ve (eklediyseler) küçük profil fotoğrafları (128 piksel JPEG).
@@ -111,7 +111,7 @@ Gezinin gizli kodunu ya da bağlantısını bilen herkes bu verilere erişebilir
 paylaş.
 
 Yanlış bir değişiklik geri alınabilsin diye, paylaşılan gezinin ortak ayarlarının (ad, tarihler, bütçe, öncelikler,
-olanaklar, şartlar) son 200 eski hâli, kimin ve ne zaman değiştirdiği bilgisiyle sunucuda tutulur.
+olanaklar, şartlar, gidenlerin adları) son 200 eski hâli, kimin ve ne zaman değiştirdiği bilgisiyle sunucuda tutulur.
 
 "Paylaşımı durdur" yalnız o bilgisayardaki eşitlemeyi durdurur. Sunucudaki paylaşılan gezi (kayıtları, oyları,
 profilleri ve geçmişiyle birlikte) senin isteğinle silinir: info@emredurmus.net adresine yazman yeterli.
@@ -307,7 +307,7 @@ To have your key deleted from the server, write to info@emredurmus.net; we delet
 
 When you share a trip, the following goes to the sharing server (Supabase):
 
-- the trip's settings,
+- the trip's settings (including the names of who's going that you entered, "Travellers"),
 - the pages you saved (including the small screenshot),
 - votes and reactions,
 - members' names and (if they added one) small profile photos (128-pixel JPEG).
@@ -315,7 +315,7 @@ When you share a trip, the following goes to the sharing server (Supabase):
 Anyone who holds the trip's secret code or link can access this data. Share the link only with people you trust.
 
 So that a wrong change can be undone, the last 200 earlier versions of a shared trip's common settings (name, dates,
-budget, priorities, amenities, requirements) are kept on the server with who changed them and when.
+budget, priorities, amenities, requirements, travellers' names) are kept on the server with who changed them and when.
 
 "Stop sharing" only stops syncing on that computer. The shared trip on the server (with its saves, votes, profiles
 and history) is deleted on request: write to info@emredurmus.net.
