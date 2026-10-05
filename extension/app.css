@@ -1103,13 +1103,12 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .hx-pop i.c-activity { background: #a8336f; }
 .hx-pop i.c-other { background: #8e8e93; }
 
-/* Tercihler ("Seni böyle anladım"): two rows, the link; the window opens over the card and pushes nothing. */
-/* A row is one line of keywords ("Fiyat + konum" · "Çok önemli", "Sessizlik" · "Önemli"); the label ends in "…"
-   only as a last resort (its full words on hover and in the window). */
-.hx-prefs-rows { display: grid; gap: 8px; margin: 10px 0 0; }
-.hx-prefs-rows div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: 16px; color: var(--hx-muted); }
-.hx-prefs-rows dt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hx-prefs-rows dd { margin: 0; flex: none; text-align: right; white-space: nowrap; }
+/* Tercihler ("Seni böyle anladım", 0.35.4): a few tags, the link; the window opens over the card and pushes
+   nothing. A tag is a topic in a word or two, never wider than the card ("…" as a last resort, its words and
+   level on hover and in the window); a must or "Çok önemli" in the accent. */
+.hx-ptags { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; margin: 10px 0 0; padding: 0; list-style: none; }
+.hx-ptag { max-width: 100%; height: 28px; padding: 0 11px; border-radius: 999px; background: #f0eef3; color: var(--hx-ink); font-size: 14px; line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hx-ptag.strong { background: color-mix(in srgb, var(--hx-accent) 13%, #fff); color: var(--hx-accent); font-weight: 600; }
 .hx-prefs-link { margin-top: 8px; flex-wrap: wrap; }
 .hx-prefs-link .sep { color: var(--hx-muted); }
 .hx-prefs-link .ask-mark { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; }
@@ -1679,6 +1678,53 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .dc-strip button:hover { border-color: var(--dc-ink); color: var(--dc-ink); }
 .dc-strip button.today { background: #1556d6; border-color: #1556d6; color: #fff; }
 .dc-cday { scroll-margin-top: 60px; }
+/* 0.35.4 Liste (Emre's reference): a card per day — the photo on the left with "1. gün" on it, the title, the
+   hours one line each (time · dot on a dotted line · the icon in its colour on a soft square · one line), all
+   the same weight; a faint drawing behind on the right; opened, what has no time under the hours. */
+.dl { display: flex; flex-direction: column; gap: 16px; }
+.dc-cday.dl-day { position: relative; display: grid; grid-template-columns: minmax(200px, 38%) minmax(0, 1fr); margin: 0; padding: 0; border-radius: 22px; overflow: hidden; background: #fffdfa; box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 4px 18px rgba(0,0,0,.04); scroll-margin-top: 60px; }
+.dc-cday.dl-day.today { box-shadow: 0 0 0 2px #1556d6, 0 4px 18px rgba(0,0,0,.05); }
+.dl-photo { position: relative; min-height: 220px; background: linear-gradient(135deg, #cfe2e8, #efe3c8); }
+.dl-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.dl-photo .dc-pill { position: absolute; top: 14px; left: 14px; z-index: 1; padding: 6px 13px; border-radius: 999px; background: rgba(255, 255, 255, .92); color: var(--dc-ink); font-size: 15px; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.dl-body { position: relative; min-width: 0; padding: 20px 22px 18px; }
+.dl-motif { position: absolute; right: 8px; bottom: 6px; width: 62%; max-width: 300px; height: auto; color: var(--m); opacity: .16; pointer-events: none; }
+.dl-head { position: relative; display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.dl-htext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.dl-head .ttl { font-size: 23px; font-weight: 750; letter-spacing: -.02em; line-height: 1.2; overflow-wrap: anywhere; }
+.dl-date { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13.5px; color: var(--dc-gray); }
+.dl-date .today { color: #1556d6; font-weight: 600; }
+.dl-chev { flex: none; display: grid; place-items: center; width: 34px; height: 34px; margin: -4px -6px 0 0; padding: 0; border: 0; border-radius: 10px; background: none; color: var(--dc-ink); cursor: pointer; }
+.dl-chev:hover { background: rgba(0,0,0,.05); }
+.dl-chev svg { transition: transform .15s; }
+.dl-day.open .dl-chev svg { transform: rotate(180deg); }
+.dl-day .dc-tl { position: relative; }
+.dl-day .dc-tl::before { left: 68px; top: 26px; bottom: 26px; border-left: 1.5px dotted #c9c3b8; }
+.dl-day .dc-step, .dl-day .dc-step.info { grid-template-columns: 52px 18px minmax(0, 1fr); column-gap: 8px; min-height: 56px; }
+.dl-day .dc-step .t, .dl-day .dc-step.info .t { font-size: 16px; font-weight: 600; color: var(--dc-ink); }
+.dl-day .dc-step .t.est { color: #3a3a3c; }
+.dl-day .dc-step .dot, .dl-day .dc-step.info .dot { width: 6px; height: 6px; background: #8e8e93; }
+.dl-day .dc-tile { width: 42px; height: 42px; border-radius: 13px; }
+.dl-day .dc-line { gap: 14px; }
+.dl-day .dc-line .name { font-size: 16px; }
+.dl-day .dc-line .name small { display: inline; margin: 0; font-size: 14px; color: var(--dc-gray); }
+.dl-day .dc-free { position: relative; margin: 4px 0 0; font-size: 15px; color: var(--dc-gray); }
+.dl-sub { position: relative; margin: 10px 0 2px 78px; font-size: 12.5px; font-weight: 600; letter-spacing: .02em; color: var(--dc-gray); }
+.dl-day .dc-tl.loose::before { display: none; }
+.dl-day .dc-tl.loose .dot { opacity: 0; }
+.dl-more { position: relative; margin: 6px 0 0 78px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 600; color: #1556d6; cursor: pointer; }
+.dl-day > .dl-body > .dc-add { position: relative; margin: 12px 0 0 78px; }
+@container panel (max-width: 620px) {
+  .dc-cday.dl-day { grid-template-columns: minmax(0, 1fr); }
+  .dl-photo { min-height: 150px; }
+  .dl-body { padding: 16px 14px 14px; }
+  .dl-head .ttl { font-size: 20px; }
+  .dl-day .dc-step, .dl-day .dc-step.info { grid-template-columns: 48px 14px minmax(0, 1fr); column-gap: 6px; }
+  .dl-day .dc-step .t, .dl-day .dc-step.info .t { font-size: 14px; }
+  .dl-day .dc-tl::before { left: 60px; }
+  .dl-sub, .dl-more, .dl-day > .dl-body > .dc-add { margin-left: 66px; }
+  .dl-motif { width: 70%; }
+}
 .dc-tl > li { scroll-margin-top: 120px; }
 
 /* Kartlar: the Plan, day by day; each day's header stays at the top while its cards scroll past. */
