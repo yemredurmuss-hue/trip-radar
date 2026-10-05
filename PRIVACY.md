@@ -1,6 +1,6 @@
 # Trip Radar — Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-06 · Sürüm / Version: 0.36.10
+Son güncelleme / Last updated: 2026-10-06 · Sürüm / Version: 0.36.11
 
 ---
 
@@ -63,8 +63,10 @@ Ne gönderilir:
 - kaydettiğin sayfanın metni ve küçük ekran görüntüsü,
 - sohbet mesajların (ve yanıt için gereken gezi bilgileri),
 - okutmak istediğin belgeler,
-- arka planda, sen ayrıca istemeden: gezinin özeti (şehirler, tarihler, kaydettiğin seçenekler ve türleri,
-  notların). Seçenekleri karşılaştırma yorumu ve gezinin tarz etiketleri bundan çıkar.
+- arka planda, sen ayrıca istemeden: gezinin özeti (şehirler, tarihler, kaç kişi gittiği, kaydettiğin seçenekler
+  ve türleri, notların). Seçenekleri karşılaştırma yorumu, gezinin tarz etiketleri ve öneriler bundan çıkar; öneri gözden
+  geçirmesi gezi başına günde en fazla bir kez ve yalnız gezide büyük bir değişiklik olduğunda yapılır. Öneriler
+  yalnız bu bilgisayarda tutulur, paylaşılmaz.
 
 Kime gönderilir:
 
@@ -271,8 +273,10 @@ What is sent:
 - the text and a small screenshot of a page you save,
 - your chat messages (and the trip details needed to answer),
 - documents you ask it to read,
-- in the background, without you asking each time: a summary of the trip (cities, dates, the options you saved and
-  their kinds, your notes). The comparison review and the trip's style words come from it.
+- in the background, without you asking each time: a summary of the trip (cities, dates, how many people go, the
+  options you saved and their kinds, your notes). The comparison review, the trip's style words and suggestions come from it; the
+  suggestions review runs at most once a day per trip and only after a big change. Suggestions are kept only on this
+  computer and are not shared.
 
 Who it goes to:
 
