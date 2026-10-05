@@ -10,6 +10,7 @@ import type { Choice, Ranked } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
 import { L } from "../../lib/i18n";
 import { dateAlert } from "../../lib/progress";
+import type { CardFocus } from "../../lib/inlineEdit";
 import type { DateRange } from "../../lib/plan";
 import type { InsertAt } from "../../lib/templates";
 import type { DocMeta, Item, LegMode } from "../../lib/types";
@@ -42,6 +43,9 @@ export interface CardEnv {
   add: (at: InsertAt | null) => void;
   /** Opens the add sheet's form for a plan ("Düzenle"). */
   edit: (item: Item) => void;
+  /** The card being edited in place and its open field (cards/InlineEdit.tsx). */
+  focus: CardFocus | null;
+  setFocus: (focus: CardFocus | null) => void;
   onOpenItem: (item: Item) => void;
   onCompare: (groupKey: string) => void;
 }

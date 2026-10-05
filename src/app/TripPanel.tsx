@@ -39,6 +39,7 @@ import { deleteItem, onRemoved } from "../lib/removal";
 import { undoSlot } from "../lib/undo";
 import { undoTrip, type Undoable } from "../lib/undoables";
 import type { InsertAt } from "../lib/templates";
+import type { CardFocus } from "../lib/inlineEdit";
 import { AddButton, AddSheet } from "./cards/AddSheet";
 import { useTripDocs } from "./cards/DocAccess";
 import { LegCard } from "./cards/LegCard";
@@ -125,6 +126,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   useEffect(() => onRemoved((removed) => removed.item.tripId === trip.id && undo.show({ kind: "removed", removed })), [trip.id, undo]);
   const offer = (u: Undoable) => undoTrip(u) === trip.id && undo.show(u);
   const [sheet, setSheet] = useState<{ at: InsertAt | null; editing: Item | null } | null>(null);
+  const [focus, setFocus] = useState<CardFocus | null>(null);
+  useEffect(() => setFocus(null), [trip.id]);
   const env: CardEnv = {
     tripId: trip.id,
     decisions,
@@ -136,6 +139,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     hideNights: (range, label) => void hideNights(trip.id, range, label).then(offer),
     add: (at) => setSheet({ at, editing: null }),
     edit: (item) => setSheet({ at: null, editing: item }),
+    focus,
+    setFocus,
     onOpenItem,
     onCompare,
   };

@@ -14,6 +14,13 @@ import { saveUserEdit } from "./userEdits";
 
 export type FieldKey = "name" | "from" | "to" | "city" | "date" | "end" | "time" | "price";
 
+/** The card being edited on the board: its open field (none: only follow it), and whether to scroll to it once drawn. */
+export interface CardFocus {
+  id: string;
+  field: FieldKey | null;
+  scroll: boolean;
+}
+
 type Form = "trip" | "rental" | "stay" | "named";
 /** A plan's form; a saved page's by what it is (a flight or a train is a trip, a car a rental...). */
 function formKind(item: Item): Form {
