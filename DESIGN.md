@@ -109,16 +109,26 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
 
 ## İki görünüm: Plan · Günlük akış
 
-- **Plan kategorilere göre** (`docs/mockups/2026-10-05-kategoriler-v2.html`, spec 0.34): yedi bölüm, bu sırayla —
+- **Plan kategorilere göre** (`docs/mockups/2026-10-05-kategoriler-v4.html`, spec 0.34): yedi bölüm, bu sırayla —
   Uçuş · Konaklama (gece blokları dahil) · Ulaşım (transferler, şehir değişimi, kiralama) · Etkinlikler (rezervasyonlu)
   · Yapılacak şeyler (rezervasyonsuz) · Restoranlar · Diğer (sigorta, eSIM). Her kayıt tam olarak bir bölümde; boş
-  bölüm çizilmez, en altta "Ekle:" satırında tek çip olur.
-- Bölüm kabuğu: kendi açık renk zemini (tür rengi %7, çizgi %16, köşe 22), başlıkta renkli ikon karesi · ad · sayı ·
-  durum hapı (amber "1 karar bekliyor", "1 bilet yok · 3 karar", "2 gece boş", "2 güne eklenmedi"; yeşil "✓ 3 alındı")
-  · "+ Ekle" · ok. Başlığa basmak açar/kapar; seçim gezi başına hatırlanır. İlk bakışta işi kalan açık, hepsi tamam
-  olan kapalı; bu ilk bakış ziyaret boyunca sabit (son bilet alınınca bölüm elinin altından kapanmaz).
-- Kapalı bölüm: her kayıt tek ince satır (çember · ad · şehir · tarih · saat · fiyat · durum); satıra basınca bölüm
-  açılır, karta kayar. Hiçbir kayıt gizlenmez.
+  bölüm (gizlisi de yoksa) çizilmez, en altta "Ekle:" satırında tek çip olur.
+- Bölüm kabuğu: bütün bölümler **tek beyaz yüzeyde** (köşe 22, yumuşak gölge), aralarında 1 px ince çizgi `#e9e6e1`.
+  Bölüme ait zemin rengi, renkli çerçeve, ikon karesi, durum hapı yok; renk yalnız ikonda ve çubukta.
+- Kapalı başlık her bölümde aynı: tür renginde çizgi ikon (22 px, karesiz) · ad (17 semibold) … sağda ince ilerleme
+  çubuğu 96×6 (tür rengi = tamam/hepsi; hepsi tamamsa yeşil `#1f8f4e`; boş iz `#efece7`) · sayı "3/4" (tamam koyu,
+  "/4" gri, tabular, sabit genişlik: sayılar alt alta hizalı) · ok (kapalı sağa, açık aşağı). Başka hiçbir şey yok.
+  Başlığa basmak açar/kapar; seçim gezi başına hatırlanır. İlk bakışta işi kalan açık, hepsi tamam olan kapalı; bu
+  ilk bakış ziyaret boyunca sabit (son bilet alınınca bölüm elinin altından kapanmaz). Kart bölüm değiştirirse yeni
+  bölümü açılır ve sayfa ona gider.
+- Açık bölüm: aynı başlık, çubuktan önce "+ Ekle"; başlığın altında, yalnız bekleyen bir şey varsa, tek amber satır
+  (`#9a6400`, 14 px: "1 bilet yok · 2 karar", "2 gece boş", "2 güne eklenmedi").
+- **Gizlenenler bölümün sonunda:** o bölüme ait elenen (Ele), "Gerek yok" denen (transfer, geceler) ve rezervasyonla
+  kapanan seçenekler yalnız sessiz bir bağlantının arkasında durur: "Gizlenenler · N göster" (13 px gri, noktalı alt
+  çizgi). Açılınca her biri kısa satır: elenen "Geri al" ile seçeneklere döner, transfer ve geceler "Geri getir" ile
+  gelir, kapanan seçenek onu kapatan rezervasyonu yazar (rezervasyon geri alınırsa döner; adına basınca ayrıntı açılır).
+  Sayfanın altında ayrı "Kapanan seçenekler / Elenenler / Gizlenenler" bloğu yok. Hangisinin hangi bölüme gittiği
+  `lib/categories.ts` `hiddenThings` (her biri tam bir bölümde).
 - Açık bölüm bir zaman çizelgesi: solda tarih sütunu ("9 Eki", altında hafta günü ve şehir), ince çizgi ve nokta,
   sağda onaylı kartların kendisi (kart iç tasarımı değişmez). Tarihe göre, sonra saate göre; tarihsizler en sonda
   "Tarihsiz", şehre göre. Panel ≤620 px: tarih kartın üstüne tek satır iner. Yapılacak şeyler: başta hızlı yazma
@@ -136,7 +146,8 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
 
 ## Azaltmak
 
-- Sayfadan gelen bir seçenek **Ele** ile önden kalkar (Elenenler); transfer **Gerek yok** ile (Gizlenenler / Geri al).
+- Sayfadan gelen bir seçenek **Ele** ile önden kalkar; transfer **Gerek yok** ile; ikisi de kendi bölümünün sonundaki
+  "Gizlenenler"de durur (Geri al / Geri getir).
   **Sil** her kayıt kartının ••• menüsündedir ve kalıcıdır: onay penceresi yok, 8 saniye "Geri al" durur; kayıt
   belgeleriyle birlikte geri gelir. Kart dışındaki silmeler (çekmece, konaklamanın "Kaldır"ı) da aynı 8 saniyelik
   "Geri al"dan geçer; hiçbir kayıt silmesi onay sormaz. Sayılar ve yapılacaklar yalnız öndekini sayar.
@@ -144,7 +155,7 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
   diğer seçenekler ayrıntıdaki 'Diğer N seçenek'te.
 - Sohbette söylenen ya da elle eklenen plan yerinde ya da ••• → Düzenle ile değişir, Sil ile gider.
 - Ayrı konaklama bloğunda ve boş gece bloğunda da sağ üstte × var: ayrı konaklama silinir (geceleri çevresindeki
-  konaklamaya döner), boş geceler "Gerek yok" olur ve Gizlenenler'e gider; ikisinde de 8 saniye "Geri al".
+  konaklamaya döner), boş geceler "Gerek yok" olur ve Konaklama'nın Gizlenenler'ine gider; ikisinde de 8 saniye "Geri al".
 - Bir şehrin söylenen geceleri tek bloktur; seçilen yer bir kısmını kapsıyorsa blok bölünmez, kalan geceler altında yazar.
 
 ## Butonlar
