@@ -176,11 +176,25 @@ try {
   assert.deepEqual(await app.locator(".cat-sec").evaluateAll((els) => els.map((e) => e.getAttribute("data-section"))), ["flight", "stay", "transport", "activity", "food", "other"]);
   assert.deepEqual(await app.locator(".cat-more .cat-chip").allInnerTexts(), ["Yapılacak"]);
   assert.deepEqual((await sec("stay").locator(".cat-date").allInnerTexts()).map((t) => t.replace(/\s+/g, " ")), ["8 Eki Per Porto", "11 Eki Paz Lizbon"]);
-  // The header counts what's settled of all ("0/4"), then the pill of what's left.
-  assert.match(await sec("activity").locator(".cat-head").innerText(), /Etkinlikler\s*0\/4\s*1 bilet yok · 3 karar/);
-  assert.match(await sec("flight").locator(".cat-head").innerText(), /Uçuş\s*1\/2\s*1 karar bekliyor/);
+  // kategoriler-v4: one white sheet, the sections divided by hairlines, no tint of their own. An open header:
+  // icon, name, "+ Ekle", the bar of settled of all, "0/4", the arrow; under it one amber line of what's waiting.
+  assert.equal(await app.locator(".cat-plan .cat-sheet").count(), 1);
+  assert.equal(await sec("activity").evaluate((el) => getComputedStyle(el).backgroundColor), "rgba(0, 0, 0, 0)", "no tinted section");
+  assert.equal(await app.locator(".cat-tile, .cat-state").count(), 0, "no icon tiles, no status pills");
+  assert.match(await sec("activity").locator(".cat-head").innerText(), /^Etkinlikler\s*Ekle\s*0\/4$/);
+  assert.equal(await sec("activity").locator(".cat-wait").innerText(), "1 bilet yok · 3 karar");
+  assert.match(await sec("flight").locator(".cat-head").innerText(), /^Uçuş\s*Ekle\s*1\/2$/);
+  assert.equal(await sec("flight").locator(".cat-wait").innerText(), "1 karar bekliyor");
+  assert.equal(await sec("flight").locator(".cat-bar > span").evaluate((el) => el.style.width), "50%");
+  // No page-bottom lists: what's out of the way waits at the end of its own section.
+  assert.equal(await app.locator(".row-name", { hasText: /Kapanan seçenekler|Elenenler|Gizlenenler/ }).count(), 0, "no page-bottom hidden blocks");
   await app.locator(".stay-block.booked", { hasText: "Lisboa Loft" }).waitFor();
-  await app.getByText("Kapanan seçenekler (1)").waitFor();
+  const hiddenLink = (id) => sec(id).locator(".cat-hidden-link button");
+  assert.equal(await sec("stay").locator(".cat-hidden-link").innerText(), "Gizlenenler · 1 göster");
+  await hiddenLink("stay").click();
+  assert.match(await sec("stay").locator(".cat-hidden-row.closed").innerText(), /Alfama Suites[\s\S]*Lisboa Loft rezervasyonu bu geceleri kapsıyor/);
+  await hiddenLink("stay").click();
+  await sec("stay").locator(".cat-hidden-rows").waitFor({ state: "detached" });
   assert.equal(await app.locator(".stay-block", { hasText: "Alfama Suites" }).count(), 0, "a booking closes its alternatives");
   // A block for each thing, in its section: the flights in and home, the stays, the train, the boat tour.
   const kinds = await app.locator(".cat-card").evaluateAll((els) => els.map((e) => `${e.closest(".cat-sec").dataset.section}:${[...e.classList].find((c) => c.startsWith("tl-")) ?? "item"}`));
@@ -437,10 +451,14 @@ try {
   await lisbonIn.getByRole("button", { name: "Gerek yok · gizle" }).click();
   await lisbonIn.waitFor({ state: "detached" });
   await tab("Plan").click();
-  const hiddenRow = app.locator(".section", { has: app.locator(".row-name", { hasText: "Gizlenenler (1)" }) });
-  await hiddenRow.locator(".row").click();
-  await hiddenRow.getByRole("button", { name: "Geri getir", exact: true }).click();
-  await hiddenRow.waitFor({ state: "detached" });
+  // It waits at the end of Ulaşım: "Gizlenenler · 1 göster" opens it there, "Geri getir" brings it back.
+  if (await sec("transport").locator(".cat-body").count() === 0) await sec("transport").locator(".cat-title").click();
+  assert.equal(await sec("transport").locator(".cat-hidden-link").innerText(), "Gizlenenler · 1 göster");
+  await sec("transport").locator(".cat-hidden-link button").click();
+  const hiddenLeg = sec("transport").locator(".cat-hidden-row.leg");
+  assert.match(await hiddenLeg.innerText(), /Varış transferi[\s\S]*→/);
+  await hiddenLeg.getByRole("button", { name: "Geri getir", exact: true }).click();
+  await sec("transport").locator(".cat-hidden").waitFor({ state: "detached" });
   await tab("Günlük akış").click();
   await openDay(4);
   await lisbonIn.waitFor();
@@ -457,11 +475,16 @@ try {
   await app.setViewportSize(wide);
   // Back on the plan, without the train Porto → Lizbon is a move to plan: by plane it reads as a flight, with its status on it.
   await tab("Plan").click();
-  // "Ele" in the card's menu: it leaves the options and waits under "Elenenler".
+  // "Ele" in the card's menu: it leaves the options and waits at the end of its section, under "Gizlenenler".
   const train = pk("CP Alfa Pendular · Porto → Lizbon");
   await train.getByRole("button", { name: "Kart menüsü" }).click();
   await train.getByRole("menuitem", { name: "Ele" }).click();
-  await app.locator(".row-name", { hasText: "Elenenler (1)" }).waitFor();
+  await sec("transport").locator(".cat-hidden-link", { hasText: "Gizlenenler · 1 göster" }).waitFor();
+  await sec("transport").locator(".cat-hidden-link button").click();
+  const ruledOut = sec("transport").locator(".cat-hidden-row.dismissed", { hasText: "CP Alfa Pendular" });
+  assert.match(await ruledOut.innerText(), /Elendi/);
+  await ruledOut.getByRole("button", { name: "Geri al", exact: true }).waitFor();
+  assert.equal(await app.locator(".row-name", { hasText: /Elenenler/ }).count(), 0);
   const move = app.locator('.pk-leg[aria-label="Porto → Lizbon"]');
   await sec("transport").locator('.pk-leg[aria-label="Porto → Lizbon"]').waitFor();
   await move.locator(".pk-ring.open").waitFor();
@@ -734,7 +757,8 @@ try {
   await app.screenshot({ path: `${out}/4j-plan-032.png` });
   await app.setViewportSize({ width: 1440, height: 900 });
   const ref032 = await context.newPage();
-  for (const name of ["2026-10-05-kategoriler-v2", "2026-10-05-fikirler-v1", "2026-10-05-ulasim-v3", "2026-10-05-etkinlik-v4"]) {
+  for (const name of ["2026-10-05-kategoriler-v2", "2026-10-05-kategoriler-v4", "2026-10-05-fikirler-v1", "2026-10-05-ulasim-v3", "2026-10-05-etkinlik-v4"]) {
+    if (!existsSync(path.resolve(`docs/mockups/${name}.html`))) continue;
     for (const width of [1440, 560]) {
       await ref032.setViewportSize({ width, height: 900 });
       await ref032.goto(pathToFileURL(path.resolve(`docs/mockups/${name}.html`)).href);
@@ -840,8 +864,12 @@ try {
   await extra.getByRole("button", { name: /: gerek yok$/ }).click();
   await app.locator(".pk-undo", { hasText: "gizlendi" }).waitFor();
   await app.locator("#block-2026-10-14").waitFor({ state: "detached" }); // hidden nights leave the plan
-  await app.getByRole("button", { name: /Gizlenenler/ }).click();
-  const nightsRow = app.locator(".hidden-row", { hasText: "Geceler" });
+  // They wait at the end of Konaklama, with the option the Lisboa Loft booking closed.
+  assert.equal(await sec("stay").locator(".cat-hidden-link").innerText(), "Gizlenenler · 2 göster");
+  await sec("stay").locator(".cat-hidden-link button").click();
+  const nightsRow = sec("stay").locator(".cat-hidden-row.nights", { hasText: "Geceler" });
+  await sec("stay").locator(".cat-hidden").evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await app.screenshot({ path: `${out}/4q-hidden-open.png` });
   assert.match(await nightsRow.innerText(), /14–15 Ekim/);
   await nightsRow.getByRole("button", { name: "Geri getir" }).click();
   await app.locator("#block-2026-10-14 .stay-open").waitFor();
@@ -920,27 +948,47 @@ try {
   const turn = (scope) => scope.locator(".cat-chev svg").evaluate((el) => getComputedStyle(el).transform);
   assert.match(await turn(sec("food")), /^matrix\([^,]+, -1, 1,/);
   assert.equal(await sec("food").locator(".cat-chev").evaluate((el) => getComputedStyle(el).transform), "none");
-  // Closed, a section is its header line alone: icon, name, settled of all, the pill, "+ Ekle", the arrow.
-  assert.equal(await app.locator(".cat-sec.closed .cat-body, .cat-sec.closed .cat-card, .cat-sec.closed .fk-row, .cat-sec.closed li").count(), 0, "nothing under a closed header");
+  // Closed, a section is its header line alone, the same in every section: icon, name … bar, settled of all, the arrow.
+  assert.equal(await app.locator(".cat-sec.closed .cat-body, .cat-sec.closed .cat-card, .cat-sec.closed .fk-row, .cat-sec.closed li, .cat-sec.closed .cat-wait, .cat-sec.closed .cat-hidden").count(), 0, "nothing under a closed header");
+  const counts = [];
   for (const id of ["flight", "stay", "transport", "activity", "todo", "food", "other"]) {
     const head = await sec(id).boundingBox();
     assert.ok(head.height < 80, `${id}: one compact line when closed (${head.height}px)`);
     assert.match(await sec(id).locator(".cat-count").innerText(), /^\d+\/\d+$/);
-    await sec(id).locator(".cat-add").waitFor();
+    assert.match(await sec(id).locator(".cat-head").innerText(), /^[^\d]+\s*\d+\/\d+$/, `${id}: the name and the count, no other words`);
+    assert.equal(await sec(id).locator(".cat-add").count(), 0, `${id}: no "+ Ekle" when closed`);
+    assert.deepEqual(
+      await sec(id).locator(".cat-head").evaluate((el) => [...el.querySelectorAll(".cat-title > *, .cat-end > *")].map((c) => c.className || c.tagName.toLowerCase())),
+      ["cat-ic", "b", "cat-bar" + ((await sec(id).locator(".cat-bar.done").count()) ? " done" : ""), "cat-count", "cat-chev"],
+      `${id}: icon · name … bar · count · arrow`,
+    );
+    // Complete: the bar full and green.
+    if (await sec(id).locator(".cat-bar.done").count()) {
+      assert.equal(await sec(id).locator(".cat-bar.done > span").evaluate((el) => [el.style.width, getComputedStyle(el).backgroundColor].join(" ")), "100% rgb(31, 143, 78)");
+    }
+    const box = await sec(id).locator(".cat-count").boundingBox();
+    counts.push(Math.round(box.x + box.width));
   }
+  assert.equal(new Set(counts).size, 1, `the counts line up on the right (${counts})`);
   assert.match(await sec("stay").locator(".cat-head").innerText(), /Konaklama\s*\d+\/\d+/);
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5c-collapsed.png` });
+  await app.setViewportSize({ width: 560, height: 1400 });
+  await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.screenshot({ path: `${out}/5c-collapsed-narrow.png` });
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with closed sections");
+  for (const id of ["flight", "other"]) assert.ok((await sec(id).locator(".cat-head").boundingBox()).height < 80, `${id}: one line when closed and narrow`);
+  await app.setViewportSize({ width: 1440, height: 1400 });
   // Remembered for the trip: closed after a reload.
   await app.reload();
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
   await sec("activity").waitFor();
   assert.equal(await app.locator(".cat-sec.closed").count(), 7);
   // The header opens it (its cards come back) and closes it again.
-  await sec("activity").locator(".cat-head").click({ position: { x: 600, y: 20 } });
+  await sec("activity").locator(".cat-head").click({ position: { x: 300, y: 20 } });
   await sec("activity").locator('.pk-card[aria-label="Tiyatro"]').waitFor();
   assert.doesNotMatch(await sec("activity").getAttribute("class"), /closed/);
-  await sec("activity").locator(".cat-head").click({ position: { x: 600, y: 20 } });
+  await sec("activity").locator(".cat-head").click({ position: { x: 300, y: 20 } });
   await sec("activity").and(app.locator(".closed")).waitFor();
   await sec("activity").locator(".cat-title").click();
   await sec("activity").locator(".cat-card").first().waitFor();
@@ -951,7 +999,12 @@ try {
   await app.locator(".hx + .todo-list button", { hasText: "Jardim Stay" }).click();
   await sec("stay").locator(".flash").waitFor();
   assert.doesNotMatch(await sec("stay").getAttribute("class"), /closed/);
-  console.log("✓ 0.34: seven sections in order, open while something's left, closed is the header alone with settled/all (remembered after a reload), the header opens it, a to-do opens its section");
+  // The ruled-out train: "Geri al" at the end of Ulaşım puts it back among the options; nothing hidden is left there.
+  if (await sec("transport").locator(".cat-body").count() === 0) await sec("transport").locator(".cat-title").click();
+  await sec("transport").locator(".cat-hidden-link button").click();
+  await sec("transport").locator(".cat-hidden-row.dismissed", { hasText: "CP Alfa Pendular" }).getByRole("button", { name: "Geri al", exact: true }).click();
+  await sec("transport").locator(".cat-hidden").waitFor({ state: "detached" });
+  console.log("✓ 0.34 (kategoriler-v4): seven sections on one sheet, open while something's left, closed is icon · name · bar · settled/all · arrow (remembered after a reload), the header opens it, a to-do opens its section, what's hidden waits at its section's end and comes back");
   console.log("✓ board: demo trip, decision labels, comparison with priorities, drawer, status change and chat event");
 
   // 5. Settings dialog.
