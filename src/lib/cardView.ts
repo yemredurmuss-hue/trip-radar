@@ -9,7 +9,8 @@ import { formatDateRange, isoDate, metricsOf, nightsBetween } from "./items";
 import { clockOf, legItem, legTiming, MODE_LABELS, type Leg } from "./legs";
 import { flightSearchUrl } from "./timeline";
 import { isTrip } from "./travelKinds";
-import { cardKindLabel, legTransportMode, RENTAL_MODES, TICKET_MODES, transportMode, type CardKind, type TransportMode } from "./cardKinds";
+import { cityOfAirport } from "./airports";
+import { cardKindLabel, legTransportMode, RENTAL_MODES, TICKET_MODES, transportMode, type CardKind, type LegEnds, type TransportMode } from "./cardKinds";
 import type { Item } from "./types";
 
 export type Ring = "open" | "half" | "done";
@@ -127,8 +128,20 @@ const dayOf = (iso: string | null | undefined) => {
   return d ? formatDateRange(d, null) : null;
 };
 
-/** A trip as two ends (ulasim-v3): from and to with the day and the hour; a rental as where it's picked up and for how long. */
-export function transportFace(item: Item, kind: TransportMode | "transport"): TransportFace {
+/** One end of a trip: the city big; the airport code or the station small, when it isn't the city itself. */
+function endOf(place: string, city: string | null | undefined, day: string | null, time: string | null): End {
+  const big = city ?? cityOfAirport(place);
+  const same = (x: string) => x.trim().toLocaleLowerCase("tr");
+  const code = same(place) === same(big) ? null : place;
+  return { city: big, sub: [code, day].filter(Boolean).join(" · ") || null, time };
+}
+
+/**
+ * A trip as two ends (ulasim-v3): the city big (the plan's, else the airport's), the code or station and
+ * the hour small ("LIS · **19:40**"); the day is on the top line, so an end shows one only when it lands
+ * another day. A rental: where it's picked up and for how long.
+ */
+export function transportFace(item: Item, kind: TransportMode | "transport", ends: LegEnds = {}): TransportFace {
   const m = metricsOf(item);
   if ((RENTAL_MODES as readonly string[]).includes(kind)) {
     const start = isoDate(item.dates.start);
@@ -143,10 +156,12 @@ export function transportFace(item: Item, kind: TransportMode | "transport"): Tr
   }
   const f = item.flight;
   const stops = kind === "flight" && f?.stops != null ? (f.stops === 0 ? L("direkt", "direct") : nStops(f.stops)) : null;
+  const leaves = isoDate(f?.departure?.slice(0, 10)) ?? isoDate(item.dates.start);
+  const lands = isoDate(f?.arrival?.slice(0, 10));
   return {
     rental: false,
-    from: f?.from ? { city: f.from, sub: dayOf(f.departure ?? item.dates.start), time: clockOf(f.departure) } : null,
-    to: f?.to ? { city: f.to, sub: dayOf(f.arrival ?? f.departure ?? item.dates.start), time: clockOf(f.arrival) } : null,
+    from: f?.from ? endOf(f.from, ends.from, null, clockOf(f.departure)) : null,
+    to: f?.to ? endOf(f.to, ends.to, lands && leaves && lands !== leaves ? dayOf(lands) : null, clockOf(f.arrival)) : null,
     middle: [m.durationMinutes ? durationText(m.durationMinutes) : null, stops].filter(Boolean).join(" · ") || null,
   };
 }

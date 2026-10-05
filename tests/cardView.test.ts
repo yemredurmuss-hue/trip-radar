@@ -80,17 +80,27 @@ describe("the ••• menu", () => {
 });
 
 describe("a trip's two ends", () => {
-  it("a flight: where from and to, the day and the hour, duration and stops in the middle", () => {
+  it("a flight: the cities big, the codes and hours small; the landing day only when it's another day", () => {
     const f = makeItem({
       category: "flight", name: "TAP · Lizbon → İstanbul", metrics: { ...EMPTY_METRICS, durationMinutes: 295 },
       flight: { from: "LIS", to: "IST", departure: "2026-10-14T19:40", arrival: "2026-10-15T01:35", carrier: "TAP", flightNumber: "TP 1760", stops: 0 },
     });
     expect(transportFace(f, "flight")).toEqual({
       rental: false,
-      from: { city: "LIS", sub: "14 Ekim", time: "19:40" },
-      to: { city: "IST", sub: "15 Ekim", time: "01:35" },
+      from: { city: "Lizbon", sub: "LIS", time: "19:40" },
+      to: { city: "İstanbul", sub: "IST · 15 Ekim", time: "01:35" },
       middle: "4 sa 55 dk · direkt",
     });
+  });
+  it("a train: the plan's cities big, the stations small", () => {
+    const t = train({ flight: { from: "Porto Campanhã", to: "Lisboa Santa Apolónia", departure: "2026-10-11T09:30", arrival: "2026-10-11T12:20", carrier: null, flightNumber: null, stops: null } });
+    expect(transportFace(t, "train", { from: "Porto", to: "Lizbon" })).toMatchObject({
+      from: { city: "Porto", sub: "Porto Campanhã", time: "09:30" },
+      to: { city: "Lizbon", sub: "Lisboa Santa Apolónia", time: "12:20" },
+    });
+    // Said by city names (a plan, a template): nothing small but the hour.
+    const bus = train({ flight: { from: "Lizbon", to: "Lagos", departure: "2026-10-13T10:00", arrival: null, carrier: null, flightNumber: null, stops: null } });
+    expect(transportFace(bus, "bus")).toMatchObject({ from: { city: "Lizbon", sub: null, time: "10:00" }, to: { city: "Lagos", sub: null, time: null } });
   });
   it("a rental: where it's picked up, then how many days and the return day", () => {
     const car = makeItem({ plannedKind: "car_rental", city: "Funchal", optionDetail: "Otomatik", location: { address: null, area: "Havalimanı", approximate: false }, dates: { start: "2026-10-12", end: "2026-10-15", source: "page" } });

@@ -4,7 +4,7 @@
 // from the board (decisions, files, delete with undo, the add sheet) without threading it through Timeline.
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { cardFacts } from "../../lib/cardFacts";
-import { cardKind, isTransportKind } from "../../lib/cardKinds";
+import { cardKind, isTransportKind, type LegEnds } from "../../lib/cardKinds";
 import { footOf, mediaFace, menuFor, ringOf, topDate, transportFace } from "../../lib/cardView";
 import type { Choice, Ranked } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
@@ -29,6 +29,8 @@ export interface CardEnv {
   today: string;
   /** The way chosen for each record's transfer (cardKinds.legModeByItem). */
   legModes: Map<string, LegMode>;
+  /** The cities each trip links on the plan (cardKinds.legEndsByItem), for the big text at its ends. */
+  legEnds: Map<string, LegEnds>;
   /** A card's files (its own and those of the plans it replaced). */
   docsFor: (itemId: string) => DocMeta[];
   /** Deletes with an 8-second "Geri al". */
@@ -122,7 +124,7 @@ export function PlanCard({ item, group, decision, ranked, nav, onChange, changin
       onToggle={() => setOpen(!open)}
       body={
         transport ? (
-          <TransportCardBody face={transportFace(item, kind)} title={item.name} />
+          <TransportCardBody face={transportFace(item, kind, env.legEnds.get(item.id))} title={item.name} />
         ) : (
           <MediaCardBody face={mediaFace(item, kind, facts.source)} kind={kind} score={facts.score} best={best} />
         )

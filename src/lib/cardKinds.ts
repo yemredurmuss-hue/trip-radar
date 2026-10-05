@@ -95,6 +95,26 @@ export const cardKindColor = (k: CardKind): string => COLORS[k];
 export const cardKindLabel = (k: CardKind): string => LABELS[k];
 export const isTransportKind = (k: CardKind): k is TransportMode | "transport" => k === "transport" || (TRANSPORT_MODES as readonly string[]).includes(k);
 
+/** A trip's ends as the plan names them (the cities of the stays it links), for the big text at each end. */
+export interface LegEnds {
+  from?: string | null;
+  to?: string | null;
+}
+
+/**
+ * The cities each trip links on the plan: a change of city both ends, the way in where it lands, the way
+ * home where it leaves. A station or an airport code then stays the small line under the city.
+ */
+export function legEndsByItem(legs: Leg[]): Map<string, LegEnds> {
+  const out = new Map<string, LegEnds>();
+  for (const leg of legs) {
+    const ends: LegEnds = leg.kind === "move" ? { from: leg.from.city, to: leg.to.city } : leg.kind === "arrival" ? { to: leg.to.city } : leg.kind === "departure" ? { from: leg.from.city } : {};
+    if (!ends.from && !ends.to) continue;
+    for (const i of leg.travel?.items ?? []) if (!out.has(i.id)) out.set(i.id, ends);
+  }
+  return out;
+}
+
 /**
  * The way the traveller chose for each transfer, for the records in it: its own options (the taxi saved
  * for it), and the trip only for a change of city (the move is that trip). An airport transfer's flight,

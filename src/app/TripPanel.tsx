@@ -34,7 +34,7 @@ import type { Timeline } from "../lib/timeline";
 
 import type { Capture, Category, Item, Trip } from "../lib/types";
 import { chooseItem, setHidden, updateTrip } from "./actions";
-import { legModeByItem } from "../lib/cardKinds";
+import { legEndsByItem, legModeByItem } from "../lib/cardKinds";
 import { inheritedDocs } from "../lib/docs";
 import { deleteItem, onRemoved, restoreItem, type Removed } from "../lib/removal";
 import { undoSlot } from "../lib/undo";
@@ -115,6 +115,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
 
   // --- plan cards: the way chosen per transfer, files, delete with undo, the add sheet ---
   const legModes = useMemo(() => legModeByItem(legs), [legs]);
+  const legEnds = useMemo(() => legEndsByItem(legs), [legs]);
   const inherited = useMemo(() => inheritedDocs(plan.closed), [plan.closed]);
   const docsFor = useTripDocs(trip.id, inherited);
   const undo = useMemo(() => undoSlot<Removed>(), []);
@@ -130,6 +131,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     decisions,
     today,
     legModes,
+    legEnds,
     docsFor,
     remove: (item) => void deleteItem(item).then((r) => undo.show(r)),
     add: (at) => setSheet({ at, editing: null }),

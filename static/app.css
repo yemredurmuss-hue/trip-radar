@@ -1172,11 +1172,13 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 /* transport body (ulasim-v3) */
 .pk-body { position: relative; outline: none; }
 .pk-body:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 12px; }
-.pk-mid { display: grid; grid-template-columns: 1fr 170px 1fr; align-items: center; gap: 10px; margin: 8px 0 26px; }
+/* The middle column is as wide as the drawing above it (.pk-art, 46%): an end never runs under the silhouette. */
+.pk-mid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, 46%) minmax(0, 1fr); align-items: center; gap: 10px; margin: 8px 0 26px; }
+.pk-stop { min-width: 0; }
 .pk-stop b { display: block; font-size: 30px; line-height: 1.1; font-weight: 700; letter-spacing: -.02em; overflow-wrap: anywhere; }
-.pk-stop b.long { font-size: 22px; }
-.pk-stop span { display: block; margin-top: 3px; font-size: 14px; color: var(--pk-gray); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pk-stop span strong { color: var(--pk-ink); font-weight: 600; }
+.pk-stop b.long { font-size: 24px; }
+.pk-stop span { display: block; margin-top: 3px; font-size: 14px; color: var(--pk-gray); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pk-stop span strong { color: var(--pk-ink); font-weight: 600; white-space: nowrap; }
 .pk-stop.r { text-align: right; }
 .pk-route { position: relative; height: 78px; }
 .pk-route small { position: absolute; left: -20px; right: -20px; bottom: -26px; text-align: center; font-size: 13px; color: #3a3a3c; white-space: nowrap; }

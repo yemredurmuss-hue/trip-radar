@@ -1,5 +1,5 @@
-// A transport card's body (ulasim-v3): the city it leaves from on the left (30, bold) with its day and
-// **hour**, where it goes on the right, aligned right; the way of travel drawn in the middle (.pk-art,
+// A transport card's body (ulasim-v3): the city it leaves from on the left (30, bold; a long name 24 and
+// wrapping in its column) with its code or station and **hour** under it, where it goes on the right; the way of travel drawn in the middle (.pk-art,
 // behind) with the duration under it. A rental: where it's picked up, then how many days.
 import type { End, TransportFace } from "../../lib/cardView";
 
@@ -7,7 +7,7 @@ function Stop({ end, right }: { end: End | null; right: boolean }) {
   if (!end) return <div className={`pk-stop${right ? " r" : ""}`} />;
   return (
     <div className={`pk-stop${right ? " r" : ""}`}>
-      <b className={end.city.length > 14 ? "long" : undefined}>{end.city}</b>
+      <b className={end.city.length > 12 ? "long" : undefined}>{end.city}</b>
       <span>
         {end.sub}
         {end.sub && end.time ? " · " : ""}

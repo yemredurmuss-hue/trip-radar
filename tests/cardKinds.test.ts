@@ -1,6 +1,6 @@
 // tests/cardKinds.test.ts
 import { describe, expect, it } from "vitest";
-import { cardKind, cardKindColor, cardKindLabel, legModeByItem, transportMode } from "../src/lib/cardKinds";
+import { cardKind, cardKindColor, cardKindLabel, legEndsByItem, legModeByItem, transportMode } from "../src/lib/cardKinds";
 import type { Leg } from "../src/lib/legs";
 import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
@@ -83,5 +83,19 @@ describe("the way chosen for a transfer, per record", () => {
     const modes = legModeByItem([departing, move]);
     expect(modes.has(train.id)).toBe(false);
     expect(cardKind(train, modes.get(train.id) ?? null)).toBe("train");
+  });
+});
+
+describe("the cities a trip links on the plan", () => {
+  it("a change of city both ends; the way in where it lands; the way home where it leaves", () => {
+    const [a, b, c] = [t("A"), t("B"), t("C")];
+    const p = (city: string) => ({ label: city, city, item: null });
+    const legs = [
+      { kind: "arrival", from: p("OPO"), to: p("Porto"), travel: { items: [a] } },
+      { kind: "move", from: p("Porto"), to: p("Lizbon"), travel: { items: [b] } },
+      { kind: "departure", from: p("Lizbon"), to: p("LIS"), travel: { items: [c] } },
+      { kind: "change", from: p("Porto"), to: p("Porto"), travel: null },
+    ] as unknown as Leg[];
+    expect([...legEndsByItem(legs)]).toEqual([[a.id, { to: "Porto" }], [b.id, { from: "Porto", to: "Lizbon" }], [c.id, { from: "Lizbon" }]]);
   });
 });
