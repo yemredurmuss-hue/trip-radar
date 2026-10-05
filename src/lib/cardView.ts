@@ -7,6 +7,7 @@ import { L } from "./i18n";
 import { count, nDays, nOptions, nReviews, nStops, num } from "./i18nText";
 import { formatDateRange, isoDate, metricsOf, nightsBetween } from "./items";
 import { clockOf, legItem, legTiming, MODE_LABELS, type Leg } from "./legs";
+import type { DateAlert } from "./progress";
 import { flightSearchUrl } from "./timeline";
 import { isTrip } from "./travelKinds";
 import { cityOfAirport } from "./airports";
@@ -29,13 +30,14 @@ export const groundOf = (ring: Ring): "sand" | "green" => (ring === "done" ? "gr
 export type FootAction = "choose" | "book" | "install" | "restore";
 export type FootLeft =
   | { kind: "nav" }
-  | { kind: "state"; tone: "wait" | "done" | "plain"; text: string; sub: string | null; alert: "red" | "amber" | null };
+  /** `when`: a date running out, in a word or two ("4 gün"); the sentence is in the details. */
+  | { kind: "state"; tone: "wait" | "done" | "plain"; text: string; sub: string | null; when: string | null; alert: "red" | "amber" | null };
 export interface FootView {
   left: FootLeft;
   action: { label: string; does: FootAction } | null;
 }
 
-const state = (tone: "wait" | "done" | "plain", text: string, sub: string | null = null): FootLeft => ({ kind: "state", tone, text, sub, alert: null });
+const state = (tone: "wait" | "done" | "plain", text: string, sub: string | null = null): FootLeft => ({ kind: "state", tone, text, sub, when: null, alert: null });
 
 type Words = { not: string; act: string; done: string };
 const ticketWords = (): Words => ({ not: L("bilet alınmadı", "no ticket yet"), act: L("Bileti aldım", "I got the ticket"), done: L("Alındı", "Booked") });
@@ -58,12 +60,12 @@ function bookedSub(item: Item): string | null {
 /**
  * The bottom strip (spec's action table): an option shows the navigator (or "Karar bekliyor" alone) and
  * "Plana seç"; chosen, what's missing and the one action; done, a ✓ and what was kept. A deadline from
- * progress.dateAlert takes the small line.
+ * progress.dateAlert adds its short form ("Seçildi · bilet alınmadı · 4 gün"); its sentence is in the details.
  */
-export function footOf(item: Item, kind: CardKind, opts: { options?: number; alert?: { tone: "red" | "amber"; text: string } | null } = {}): FootView {
+export function footOf(item: Item, kind: CardKind, opts: { options?: number; alert?: DateAlert | null } = {}): FootView {
   const w = words(item, kind);
   const alert = opts.alert ?? null;
-  const withAlert = (left: FootLeft): FootLeft => (alert && left.kind === "state" ? { ...left, sub: alert.text, alert: alert.tone } : left);
+  const withAlert = (left: FootLeft): FootLeft => (alert && left.kind === "state" ? { ...left, when: alert.short, alert: alert.tone } : left);
   switch (item.status) {
     case "dismissed":
       return { left: state("plain", L("Elendi", "Ruled out")), action: { label: L("Geri al", "Undo"), does: "restore" } };

@@ -8,6 +8,7 @@ import type { Choice, Ranked } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
 import { L } from "../../lib/i18n";
 import { formatDateRange } from "../../lib/items";
+import type { DateAlert } from "../../lib/progress";
 import type { DocMeta, Item } from "../../lib/types";
 import { PivotNote } from "../PivotNote";
 import { VoteBar } from "../Share";
@@ -26,7 +27,7 @@ export function CardDetail({ item, group, decision, decisions, ranked, headline,
   /** The group's recommendation, on its first option. */
   headline: Choice | null;
   facts: CardFacts;
-  alert: { tone: "red" | "amber"; text: string } | null;
+  alert: DateAlert | null;
   docs: DocMeta[];
   actions: ReactNode;
 }) {

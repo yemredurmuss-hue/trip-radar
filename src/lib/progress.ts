@@ -126,8 +126,15 @@ function legTodo(leg: Leg, entry?: string): Draft | null {
   }
 }
 
+/** A date running out: the sentence (the card's details, a stay's card) and its short form for a card's strip ("4 gün"). */
+export interface DateAlert {
+  tone: "red" | "amber";
+  text: string;
+  short: string;
+}
+
 /** "Rezerve edilmedi · girişe 9 gün" / "Ücretsiz iptal için 6 gün kaldı (5 Eki)": null when nothing's near. */
-export function dateAlert(item: Item, today: string): { tone: "red" | "amber"; text: string } | null {
+export function dateAlert(item: Item, today: string): DateAlert | null {
   if (item.status === "booked") {
     const until = item.cancellation.freeUntil;
     if (!until || until < today) return null;
@@ -139,6 +146,7 @@ export function dateAlert(item: Item, today: string): { tone: "red" | "amber"; t
         days === 0
           ? L("Ücretsiz iptal bugün bitiyor", "Free cancellation ends today")
           : L(`Ücretsiz iptal için ${days} gün kaldı (${fmt(until)})`, `${count(days, "gün", "day")} left to cancel for free (${fmt(until)})`),
+      short: days === 0 ? L("iptal bugün biter", "cancel by today") : L(`iptale ${days} gün`, `${count(days, "day", "day")} to cancel`),
     };
   }
   if (item.status !== "chosen") return null;
@@ -157,7 +165,11 @@ export function dateAlert(item: Item, today: string): { tone: "red" | "amber"; t
   const ticket = item.category === "flight" || item.category === "activity" || (item.category === "transport" && isTrip(item));
   const safe = item.cancellation.freeUntil && item.cancellation.freeUntil >= today ? L(" · ücretsiz iptalli, şimdi ayırmak risksiz", " · free cancellation, so booking now is risk-free") : "";
   const state = ticket ? L("Bilet alınmadı", "No ticket yet") : L("Rezerve edilmedi", "Not booked");
-  return { tone: "amber", text: L(`${state} · ${what} ${days} gün${safe}`, `${state} · ${count(days, "gün", "day")} to ${what}${safe}`) };
+  return {
+    tone: "amber",
+    text: L(`${state} · ${what} ${days} gün${safe}`, `${state} · ${count(days, "gün", "day")} to ${what}${safe}`),
+    short: days === 0 ? L("bugün", "today") : count(days, "gün", "day"),
+  };
 }
 
 /** The timeline entry an item sits in, so a to-do about it can take you there even when its card is folded. */

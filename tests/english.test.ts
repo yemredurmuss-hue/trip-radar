@@ -159,7 +159,7 @@ describe("words, numbers and dates in English", () => {
 
   it("says what's left to do in English", () => {
     const item = stay("Casa", { status: "chosen", dates: { start: "2026-10-09", end: "2026-10-11", source: "url" } });
-    expect(dateAlert(item, TODAY)).toEqual({ tone: "amber", text: "Not booked · 9 days to check-in" });
+    expect(dateAlert(item, TODAY)).toEqual({ tone: "amber", text: "Not booked · 9 days to check-in", short: "9 days" });
     const noFree = { ...item, cancellation: { summary: null, freeUntil: "2026-10-01", source: "page" as const } };
     expect(dateAlert(noFree, TODAY)?.text).toBe("Not booked · 9 days to check-in · free cancellation, so booking now is risk-free");
   });

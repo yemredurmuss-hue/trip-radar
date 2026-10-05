@@ -114,10 +114,10 @@ describe("date alerts", () => {
   });
 
   it("says when a free cancellation ends, and when a chosen stay still isn't booked", () => {
-    expect(dateAlert(base({ status: "booked", cancellation: { summary: null, freeUntil: "2026-10-01", source: "page" } }), TODAY)).toEqual({ tone: "red", text: "Ücretsiz iptal için 2 gün kaldı (1 Ekim)" });
+    expect(dateAlert(base({ status: "booked", cancellation: { summary: null, freeUntil: "2026-10-01", source: "page" } }), TODAY)).toEqual({ tone: "red", text: "Ücretsiz iptal için 2 gün kaldı (1 Ekim)", short: "iptale 2 gün" });
     expect(dateAlert(base({ status: "booked", cancellation: { summary: null, freeUntil: TODAY, source: "page" } }), TODAY)?.text).toBe("Ücretsiz iptal bugün bitiyor");
     expect(dateAlert(base({ status: "booked", cancellation: { summary: null, freeUntil: "2026-09-01", source: "page" } }), TODAY)).toBeNull(); // over
-    expect(dateAlert(base({}), TODAY)).toEqual({ tone: "amber", text: "Rezerve edilmedi · girişe 9 gün" });
+    expect(dateAlert(base({}), TODAY)).toEqual({ tone: "amber", text: "Rezerve edilmedi · girişe 9 gün", short: "9 gün" });
     expect(dateAlert(base({ dates: { start: "2027-03-01", end: "2027-03-04", source: "url" } }), TODAY)).toBeNull(); // far off
     expect(dateAlert(base({ status: "saved" }), TODAY)).toBeNull();
   });

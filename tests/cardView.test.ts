@@ -37,7 +37,7 @@ describe("the bottom strip, per the spec's action table", () => {
   });
   it("a taxi: planned, no booking, no button", () => {
     expect(footOf(train({ status: "chosen" }), "taxi")).toEqual({
-      left: { kind: "state", tone: "done", text: "Planlandı", sub: "rezervasyon gerekmez", alert: null },
+      left: { kind: "state", tone: "done", text: "Planlandı", sub: "rezervasyon gerekmez", when: null, alert: null },
       action: null,
     });
   });
@@ -55,9 +55,9 @@ describe("the bottom strip, per the spec's action table", () => {
   it("ruled out: it can come back", () => {
     expect(footOf(train({ status: "dismissed" }), "train")).toMatchObject({ left: { tone: "plain", text: "Elendi" }, action: { label: "Geri al", does: "restore" } });
   });
-  it("time running out replaces the small line", () => {
-    const f = footOf(train({ status: "chosen" }), "train", { alert: { tone: "red", text: "Ücretsiz iptal için 2 gün kaldı" } });
-    expect(f.left).toMatchObject({ sub: "Ücretsiz iptal için 2 gün kaldı", alert: "red" });
+  it("time running out adds a word or two, never the sentence (that's in the details)", () => {
+    const f = footOf(train({ status: "chosen" }), "train", { alert: { tone: "amber", text: "Bilet alınmadı · yolculuğa 4 gün · ücretsiz iptalli, şimdi ayırmak risksiz", short: "4 gün" } });
+    expect(f.left).toMatchObject({ text: "Seçildi", sub: "bilet alınmadı", when: "4 gün", alert: "amber" });
   });
 });
 

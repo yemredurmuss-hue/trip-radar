@@ -78,13 +78,11 @@ export function CardFoot({ view, nav, best = false, price, onAction }: { view: F
           {best && <span className="pk-best">{L("Önerim", "My pick")}</span>}
         </>
       ) : left.kind === "state" ? (
-        <span
-          className={`pk-state ${left.tone}${left.alert ? ` alert-${left.alert}` : ""}`}
-          title={left.sub ? `${left.text} · ${left.alert ? "⏳ " : ""}${left.sub}` : undefined}
-        >
+        <span className={`pk-state ${left.tone}${left.alert ? ` alert-${left.alert}` : ""}`}>
           {left.tone === "done" && <UiIcon name="check" size={13} />}
           {left.text}
-          {left.sub && <span className="pk-sub">· {left.alert ? "⏳ " : ""}{left.sub}</span>}
+          {left.sub && <span className="pk-sub">· {left.sub}</span>}
+          {left.when && <span className="pk-when">· ⏳ {left.when}</span>}
         </span>
       ) : null}
       {price && (
