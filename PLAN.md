@@ -206,6 +206,12 @@ Kararlar:
 - Kapsam dışı kaldı: Google Places fotoğrafları, Günlük akışın yeni görsel dile geçmesi, Fikirler'de yapay zekâ
   önerileri, mutfak ve fiyat düzeyi alanı.
 
+## 0.33: anında ekleme, kartın üstünde düzenleme, gece blokları (yapıldı)
+
+- Spec: [docs/superpowers/specs/2026-10-05-033-hizli-ekle-design.md](docs/superpowers/specs/2026-10-05-033-hizli-ekle-design.md) ·
+  plan: [docs/superpowers/plans/2026-10-05-033-hizli-ekle.md](docs/superpowers/plans/2026-10-05-033-hizli-ekle.md).
+- Kapsam dışı kaldı: Günlük akış satırlarında yerinde düzenleme; düzeltmelerin paylaşılan geziye gitmesi.
+
 ## v1: Telefon
 - Küçük bir sunucu (ör. Supabase) + senkron. Veri modeli buna hazır (`src/lib/types.ts`).
 - iPhone/Android'den ekran görüntüsü veya link gönderme: paylaş menüsü kısayolu ya da Telegram botu.

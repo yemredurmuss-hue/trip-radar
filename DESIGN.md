@@ -76,14 +76,24 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
 - **Ulaşım gövdesi:** solda nereden, sağda nereye: büyük yazı şehir (30 px; uzun ad sütununda sarar, 24 px), altında
   küçük satır kod ya da istasyon · **saat** (iniş başka günse o gün de); orta sütun siluetin genişliğinde, ad siluetin
   altına girmez. Kiralıkta sağ taraf gün sayısı ve iade günü. Ortada türün noktalı silueti, kenarları solar. Çizimi olmayan yolda (metro, yürüyüş) orta satır uçların arasında.
+  Transfer ve şehir değişimi kartında uç kısa ad, altında tam ad: konaklama "Airbnb" / "Booking.com" ya da
+  "Otel" / "Daire" (altında konaklamanın adı, sarar), havalimanı "Porto Havalimanı" (altında OPO), gar "Porto Garı"
+  (altında istasyonun adı).
 - **Medya gövdesi:** 176×128 görsel (yoksa türün noktalı silueti), puan köşede; yanında 20 px başlık, bilgi satırı, kaynak.
 - **Ayrıntı:** karta dokununca kartın içinde beyaz panel açılır; eski karttaki her bilgi orada (saatler, işletme,
   fiyat kırılımı, neden önerildi, istedikler, artı/eksi, bağlantılar, geri almalar).
 - **Belgeler:** yalnız bu bilgisayarda durur. Varsa hap ("bilet.pdf +1", dar ekranda ikon), yoksa soluk ataç.
 - **Eklemek:** Plan başlığındaki "+ Ekle" ve kesik çizgili "+" (hep soluk görünür, üstüne gelince tam; dar ekranda tam)
   şablon penceresini açar: planın en başında, her şehir bloğunun başında, her satırdan sonra; Günlük akışta her günde.
-  Şehir ve tarih bastığın yerden gelir (konaklamanın ardında yalnız şehir). "Diğer" grubunda "Yapılacak" karosu
-  rezervasyonsuz bir şey ekler (Fikirler'e düşer).
+  Şehir ve tarih bastığın yerden gelir (konaklamanın ardında yalnız şehir). Karoya basınca form açılmaz: kayıt
+  hemen oluşur ("Planlanıyor"), pencere kapanır, sayfa yeni karta kayar ve kart ilk boş alanı açık gelir; altta
+  "Otobüs eklendi · Geri al". Rezervasyonsuzlar (Yapılacak, Restoran, Not) Fikirler'e düşer, sekme değişmez:
+  "Fikirler'e eklendi · Göster · Geri al".
+- **Kartın üstünde düzenlemek:** her kayıt kartında ad, şehir, tarih, saat, uçlar ve fiyat durdukları yerde
+  değişir. Üstüne gelince ince alt çizgi ve kalem; tıklayınca aynı boyda kutu (tarih seçici, saat seçici, fiyatta
+  sayı + para birimi). Enter ya da dışarı tıklamak kaydeder, Esc bırakır, Tab sonrakine geçer; "Kaydet" düğmesi yok.
+  Boş alan soluk "Tarih ekle" / "Saat ekle" / "Fiyat ekle". Sayfadan kaydedilen kartta değişiklik düzeltme olarak
+  durur (sayfa yeniden kaydedilse de kalır); üstüne gelince "sayfadaki: X · geri al".
 
 ## Üç görünüm
 
@@ -111,7 +121,9 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
   "Geri al"dan geçer; hiçbir kayıt silmesi onay sormaz. Sayılar ve yapılacaklar yalnız öndekini sayar.
 - Konaklamada seçili karta dokunmak diğer seçenekleri açar (ayrıntı ⓘ'da); diğer kartlarda dokunmak ayrıntıyı açar,
   diğer seçenekler ayrıntıdaki 'Diğer N seçenek'te.
-- Sohbette söylenen ya da elle eklenen plan ••• → Düzenle ile değişir, Sil ile gider.
+- Sohbette söylenen ya da elle eklenen plan yerinde ya da ••• → Düzenle ile değişir, Sil ile gider.
+- Ayrı konaklama bloğunda ve boş gece bloğunda da sağ üstte × var: ayrı konaklama silinir (geceleri çevresindeki
+  konaklamaya döner), boş geceler "Gerek yok" olur ve Gizlenenler'e gider; ikisinde de 8 saniye "Geri al".
 - Bir şehrin söylenen geceleri tek bloktur; seçilen yer bir kısmını kapsıyorsa blok bölünmez, kalan geceler altında yazar.
 
 ## Butonlar

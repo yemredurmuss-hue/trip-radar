@@ -240,8 +240,8 @@ nehrin karşısındaki Gaia) aynı yer sayılır. Her konuda başka bir seçenek
 
 **Geceleri bölmek sohbetle.** "7 Ekim gecesi başka bir otel koy" dersen o gece kendi, boş konaklama bloğu olur
 ("ayrı konaklama · otel seçilmedi"; o gece için kaydettiğin yerler orada seçenek olarak durur). Önceden seçtiğin yer
-kalan gecelerde kalır; asistan senin yerine otel seçmez. Bir yeri o gece için seçince blok dolar; "Ayrı olmasın"
-geceleri birleştirir. İki seçim aynı geceyi isterse son seçilen alır. Söylediğin fiyat ("biletim 312 dolardı")
+kalan gecelerde kalır; asistan senin yerine otel seçmez. Bir yeri o gece için seçince blok dolar; bloğun sağ
+üstündeki × geceleri birleştirir (8 saniye "Geri al"). İki seçim aynı geceyi isterse son seçilen alır. Söylediğin fiyat ("biletim 312 dolardı")
 kartta "sen söyledin" diye yazar.
 
 **Transferler kendiliğinden açılır.** Geceler arasına, planın gerektirdiği her yol parçası boş olarak
@@ -300,8 +300,15 @@ altta "→ Tayland · Aç" bildirimi çıkar. Örnek gezi kayıt almaz.
   hapa tıklayınca yeni sekmede açılır.
 - **Eklemek:** Plan başlığındaki **+ Ekle** ya da planın başındaki, şehir başlarındaki ve kartların arasındaki **+**
   (hep soluk görünür) şablon penceresini açar: uçuştan bisiklet kiralamaya, otelden nota; Günlük akışta her günün
-  **+**'ı o güne ekler. Kısa formu doldurursun; şehir ve tarih eklediğin yerden gelir, kart "Planlanıyor" olarak
-  düşer. Sonra o şeyin sayfasını kaydedersen yerini alır.
+  **+**'ı o güne ekler. Karoya basınca kart hemen düşer ("Planlanıyor"; şehir ve tarih eklediğin yerden), sayfa
+  ona kayar ve ilk boş alanı açılır: yazıp Tab ile ilerle. Yanlışsa alttaki "Geri al". Restoran, yapılacak ve not
+  Fikirler'e gider ("Göster"). Sonra o şeyin sayfasını kaydedersen yerini alır.
+- **Kartın üstünde düzeltmek:** her kartta ad, şehir, tarih, saat, nereden/nereye ve fiyat tıklayınca yerinde
+  değişir (Enter kaydeder, Esc bırakır, Tab sonraki alan). Sayfadan kaydettiğin kartta düzeltmen sayfanın bilgisinin
+  önüne geçer, plan ve karşılaştırma da onu kullanır; sayfayı yeniden kaydetsen de kalır. Üstüne gelince
+  "sayfadaki: X · geri al" ile sayfanın değerine dönersin. Düzeltmeler bu bilgisayarda kalır.
+- **Gece blokları:** sohbette ayrı söylediğin (ya da + ile eklediğin) konaklama bloğunun ve boş gecelerin sağ
+  üstünde × var: ayrı konaklama silinir, boş geceler "Gerek yok" olup Gizlenenler'e gider ("Geri getir").
 
 ### Fikirler
 
@@ -482,7 +489,10 @@ Yapı:
 - `src/lib/cardKinds.ts`: plan kartının türü (on ulaşım yolu, medya türleri) ve rengi.
 - `src/lib/cardView.ts`: kartın söyledikleri: çember, zemin, alt şerit, üst satır tarihi, ulaşım uçları, medya satırları, menü.
 - `src/lib/docs.ts`: karta eklenen belgeler (yalnız bu bilgisayarda, IndexedDB `docs` deposu).
-- `src/lib/templates.ts`: "+ Ekle" şablonları, kısa formlar ve kartın nereye ekleneceği.
+- `src/lib/templates.ts`: "+ Ekle" şablonları, tek dokunuşta eklenen kayıt, ••• → Düzenle formu ve kartın nereye ekleneceği.
+- `src/lib/inlineEdit.ts`: kartın üstünde düzenleme: hangi alanlar, Tab sırası, yer tutucular, kaydetme.
+- `src/lib/userEdits.ts`: sayfadan kaydedilen kartın düzeltmeleri (`withEdits`, "sayfadaki: X · geri al").
+- `src/lib/undoables.ts`: alttaki "Geri al"ın geri alabildikleri (silme, ekleme, gizlenen geceler).
 - `src/lib/booking.ts`: kaydın rezervasyon isteyip istemediği (Plan mı, Fikirler mi).
 - `src/lib/ideas.ts`: Fikirler: şehir şehir gruplama, filtre, hızlı satır, ikon, gün ve öğün, yapıldı, taşımak.
 - `src/app/`: pano arayüzü. `src/app/cards/`: plan kartları (kabuk, ulaşım ve medya gövdeleri, transfer kartı,
