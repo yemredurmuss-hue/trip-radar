@@ -78,6 +78,22 @@ describe("Düzenle", () => {
     const edited = editedItem({ ...bus, status: "booked" }, back.template, { ...back.values, date: "2026-10-14" }, 9);
     expect(edited).toMatchObject({ id: "b1", status: "booked", createdAt: 5, dates: { start: "2026-10-14" } });
   });
+  it("an edit that changes only the name keeps the note, the time and the summary", () => {
+    const tour = plannedItem({ kind: "activity", date: "2026-10-12", end_date: null, time: "10:30", from: null, to: null, city: "Lizbon", title: "Tekne turu", booked: true, note: "PNR AB12 · iskele 3" }, "t1", "a1", 5);
+    const back = formOf(tour, "EUR");
+    const edited = editedItem(tour, back.template, { ...back.values, name: "Tejo tekne turu" }, 9);
+    expect(edited).toMatchObject({
+      id: "a1", name: "Tejo tekne turu", status: "booked", statusNote: "PNR AB12 · iskele 3", summary: "PNR AB12 · iskele 3",
+      plannedKind: "activity", flight: { departure: "2026-10-12T10:30" },
+    });
+  });
+  it("a transfer said without a day can be edited, and stays a transfer", () => {
+    const transfer = plannedItem({ kind: "transfer", date: null, end_date: null, time: null, from: "Havalimanı", to: "Otel", city: null, title: null, booked: false, note: null }, "t1", "x1", 5);
+    const back = formOf(transfer, "EUR");
+    expect(back.template.id).toBe("taxi");
+    const edited = editedItem(transfer, back.template, { ...back.values, to: "Alfama" }, 9);
+    expect(edited).toMatchObject({ id: "x1", plannedKind: "transfer", category: "transport", flight: { from: "Havalimanı", to: "Alfama" }, dates: { start: null } });
+  });
   it("a chat transfer or 'other' plan opens as a taxi or a note", () => {
     expect(formOf(makeItem({ origin: "chat", plannedKind: "transfer" }), "EUR").template.id).toBe("taxi");
     expect(formOf(makeItem({ origin: "chat", plannedKind: "other", category: "other" }), "EUR").template.id).toBe("note");

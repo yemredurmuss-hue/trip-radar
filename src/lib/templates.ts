@@ -79,12 +79,16 @@ export interface TemplateResult {
   price: { amount: number; currency: string } | null;
 }
 
-/** The form as a plan (checked like a plan said in the chat), or what's wrong with it. */
-export function templateInput(tpl: Template, f: FormValues): TemplateResult | string {
+/**
+ * The form as a plan (checked like a plan said in the chat), or what's wrong with it. `keep` is what an
+ * edit carries over that the form doesn't ask: the plan's own kind when it opened in the nearest form
+ * (a transfer as a taxi), and its time when the form has no time field.
+ */
+export function templateInput(tpl: Template, f: FormValues, keep: { kind?: PlannedKind; time?: string | null } = {}): TemplateResult | string {
   const v = (s: string) => s.trim() || null;
   const amount = f.price.trim() ? parseAmount(f.price) : null;
   if (f.price.trim() && amount == null) return L("Fiyat bir sayı olmalı (örneğin 68 ya da 1.240).", "The price must be a number (e.g. 68 or 1,240).");
-  const base: PlannedInput = { kind: tpl.kind, date: v(f.date), end_date: null, time: null, from: null, to: null, city: v(f.city), title: null, booked: false, note: null };
+  const base: PlannedInput = { kind: keep.kind ?? tpl.kind, date: v(f.date), end_date: null, time: keep.time ?? null, from: null, to: null, city: v(f.city), title: null, booked: false, note: null };
   const input: PlannedInput =
     tpl.form === "trip"
       ? { ...base, from: v(f.from), to: v(f.to), time: v(f.time) }
@@ -93,7 +97,7 @@ export function templateInput(tpl: Template, f: FormValues): TemplateResult | st
         : tpl.form === "stay"
           ? { ...base, end_date: v(f.end), title: v(f.name) }
           : { ...base, title: v(f.name) };
-  if (tpl.form === "named" && !input.title && tpl.kind !== "esim" && tpl.kind !== "insurance") return L("Adını yaz.", "Give it a name.");
+  if (tpl.form === "named" && !input.title && input.kind !== "esim" && input.kind !== "insurance") return L("Adını yaz.", "Give it a name.");
   const problem = checkPlanned(input, ALL_PLANNED_KINDS);
   if (problem) return problem;
   return { input, price: amount != null ? { amount, currency: f.currency } : null };
@@ -118,13 +122,38 @@ export function templateItem(tpl: Template, f: FormValues, tripId: string, id: s
   return r.price ? withPrice(item, r.price, now) : item;
 }
 
-/** "Düzenle": the same record (id, status, files) with what the form says now. */
+/**
+ * "Düzenle": the same record with what the form says now. Only what the form asks changes; the rest
+ * (status, note, summary, files, a time the form has no field for, a transfer's kind) stays.
+ */
 export function editedItem(before: Item, tpl: Template, f: FormValues, now: number): Item | string {
-  const r = templateInput(tpl, f);
+  const ownKind = before.plannedKind && FOR_KIND.get(before.plannedKind) === tpl ? before.plannedKind : undefined;
+  const time = before.flight?.departure?.slice(11, 16) ?? null;
+  const r = templateInput(tpl, f, { kind: ownKind, time: tpl.form !== "trip" && time && /^\d{2}:\d{2}$/.test(time) ? time : null });
   if (typeof r === "string") return r;
   const fresh = plannedItem(r.input, before.tripId, before.id, now);
-  const next: Item = { ...before, ...fresh, id: before.id, createdAt: before.createdAt, status: before.status, statusAt: before.statusAt, captureIds: before.captureIds };
-  return r.price ? withPrice(next, r.price, now) : next;
+  const was = before.flight;
+  const flight = fresh.flight && {
+    ...fresh.flight,
+    carrier: was?.carrier ?? null,
+    flightNumber: was?.flightNumber ?? null,
+    stops: was?.stops ?? null,
+    arrival: was && fresh.flight.departure === was.departure ? was.arrival : null,
+  };
+  const next: Item = {
+    ...before,
+    category: fresh.category,
+    needKey: fresh.needKey,
+    name: fresh.name,
+    city: fresh.city,
+    dates: fresh.dates,
+    flight,
+    plannedKind: fresh.plannedKind,
+    price: r.price ? before.price : fresh.price,
+    updatedAt: now,
+  };
+  const samePrice = r.price && before.price.amount === r.price.amount && before.price.currency === r.price.currency;
+  return r.price && !samePrice ? withPrice(next, r.price, now) : next;
 }
 
 const FOR_KIND = new Map<PlannedKind, Template>(TEMPLATES.filter((x) => x.id !== "home").map((x) => [x.kind, x]));
