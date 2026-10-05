@@ -4,17 +4,17 @@
 // plug, time, language). Every block has an empty state; what arrives later fades in.
 import { useEffect, useRef, useState } from "react";
 import { weatherTitle, type CityWeather } from "../lib/climate";
-import { countryNames, currencyName, flagEmoji, initials, nPeople, offsetText, plugFit, plugFitText, travellersTitle } from "../lib/heroInfo";
+import { countryNames, currencyName, flagEmoji, offsetText, plugFit, plugFitText } from "../lib/heroInfo";
 import { formatPrice } from "../lib/items";
 import { L, locale } from "../lib/i18n";
 import { BUDGET_SLICES, type BudgetBar, type BudgetSlice } from "../lib/progress";
 import type { TripFacts as Facts } from "../lib/tripFacts";
+import type { Who } from "../lib/tripSettings";
 import type { StyleChip } from "../lib/tripStyle";
 import type { Trip } from "../lib/types";
 import { HeroIcon, type HeroIconName } from "./Icons";
 import { Preferences } from "./IntentCard";
-import { useMyPhoto } from "./Profile";
-import { ShareLine, useShare } from "./Share";
+import { Travellers } from "./Travellers";
 import { useAppear } from "./useAppear";
 import type { Decisions } from "./useDecisions";
 import { useWeather } from "./useWeather";
@@ -33,6 +33,8 @@ export function TripFacts(props: {
   today: string;
   chips: StyleChip[];
   bar: BudgetBar | null;
+  /** Who goes (Travellers.useWho): the names and how many. */
+  who: Who;
   /** Opens the share dialog; absent where the trip can't be shared (the sample). */
   onShare?: () => void;
 }) {
@@ -48,7 +50,7 @@ export function TripFacts(props: {
   return (
     <aside className="hx-side">
       <div className="hx-block hx-who">
-        <Travellers adults={facts.adults ?? 0} onShare={props.onShare} />
+        <Travellers trip={props.trip} who={props.who} onShare={props.onShare} />
         {props.chips.length > 0 ? (
           <div key="chips" className={`hx-styles${chipsAppear}`} aria-label={L("Gezinin tarzı", "The trip's style")}>
             {props.chips.map((c) => (
@@ -103,71 +105,6 @@ export function TripFacts(props: {
       )}
       <Minis facts={facts} home={props.home} />
     </aside>
-  );
-}
-
-/** Who goes: the shared trip's people by name, else as many as the saves say; a tap opens sharing. */
-function Travellers({ adults, onShare }: { adults: number; onShare?: () => void }) {
-  const share = useShare();
-  // Profile photos (0.36): the shared trip's people's; on a trip of my own, mine in the first circle.
-  const myPhoto = useMyPhoto();
-  const photoOf = (n: number, name: string | undefined) => (name ? share?.photos[name] : n === 0 ? myPhoto : null) ?? null;
-  const names = share ? uniqueNames([share.me, ...(share.state?.members ?? [])]) : [];
-  const count = names.length || adults;
-  const appear = useAppear(count > 0);
-  const title = travellersTitle(names, count);
-  const body =
-    count > 0 ? (
-      <>
-        <span className="hx-avatars" aria-hidden>
-          {Array.from({ length: Math.min(count, 4) }, (_, n) => (
-            <i key={n} className={`p${n % 4}${photoOf(n, names[n]) ? " photo" : ""}`}>
-              {photoOf(n, names[n]) ? <img src={photoOf(n, names[n])!} alt="" /> : names[n] ? initials(names[n]) : <HeroIcon name="user" size={24} />}
-            </i>
-          ))}
-          {count > 4 && <i className="more">+{count - 4}</i>}
-        </span>
-        <span className="hx-who-text">
-          <b>{title}</b>
-          {names.length > 0 ? <small>{nPeople(count)}</small> : onShare && <small className="accent">{L("Birini davet et", "Invite someone")}</small>}
-        </span>
-      </>
-    ) : (
-      <>
-        <span className="hx-avatars" aria-hidden>
-          <i className="dashed">
-            <HeroIcon name="user" size={24} />
-          </i>
-        </span>
-        <span className="hx-who-text">
-          <b>{L("Kimler gidiyor?", "Who's going?")}</b>
-          <small>{L("Kişi sayısı kayıtlardan anlaşılır", "The saves tell how many")}</small>
-        </span>
-      </>
-    );
-  return (
-    <>
-      {onShare ? (
-        <button
-          key={count > 0 ? "full" : "none"}
-          className={`hx-people${appear}`}
-          title={L("Paylaş", "Share")}
-          aria-label={`${count > 0 ? title : L("Kimler gidiyor?", "Who's going?")} · ${L("Paylaş", "Share")}`}
-          onClick={onShare}
-        >
-          {body}
-        </button>
-      ) : (
-        <div key={count > 0 ? "full" : "none"} className={`hx-people${appear}`}>
-          {body}
-        </div>
-      )}
-      {share && (
-        <div className="hx-share">
-          <ShareLine />
-        </div>
-      )}
-    </>
   );
 }
 
@@ -300,17 +237,6 @@ function Minis({ facts, home }: { facts: Facts; home: string }) {
 }
 
 const skyIcon = (w: CityWeather): HeroIconName => w.sky;
-
-/** Each name once, whatever its case or spaces ("emre" and "Emre "), the first spelling kept: as the member count does. */
-function uniqueNames(names: string[]): string[] {
-  const seen = new Map<string, string>();
-  for (const n of names) {
-    const name = n.trim();
-    const key = name.toLocaleLowerCase(locale());
-    if (name && !seen.has(key)) seen.set(key, name);
-  }
-  return [...seen.values()];
-}
 
 const sliceLabel = (s: BudgetSlice) =>
   ({ flight: L("Uçuş", "Flights"), stay: L("Konaklama", "Stays"), transport: L("Ulaşım", "Transport"), activity: L("Deneyim", "Experiences"), other: L("Diğer", "Other") })[s];

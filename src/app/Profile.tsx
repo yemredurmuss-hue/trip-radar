@@ -19,6 +19,20 @@ export function useMyPhoto(): string | null {
   return photo;
 }
 
+/** My name (the profile's, the sharing name), kept fresh when it changes: "Ben (Emre)" in the hero's people box. */
+export function useMyName(): string {
+  const [name, setName] = useState("");
+  useEffect(() => {
+    const load = () => void getShareConfig().then((c) => setName(c.name), () => setName(""));
+    load();
+    if (typeof chrome === "undefined" || !chrome.storage?.onChanged) return;
+    const handler = (changes: Record<string, unknown>, area: string) => area === "local" && "shareName" in changes && load();
+    chrome.storage.onChanged.addListener(handler);
+    return () => chrome.storage.onChanged.removeListener(handler);
+  }, []);
+  return name;
+}
+
 export function ProfileSettings() {
   const photo = useMyPhoto();
   const [name, setName] = useState("");

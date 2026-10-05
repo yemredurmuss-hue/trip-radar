@@ -184,7 +184,9 @@ try {
   // Who goes: two adults read from the saves (the sample isn't shared: no names, no invite).
   assert.equal(await side.locator(".hx-avatars i").count(), 2);
   assert.equal(await side.locator(".hx-who-text b").innerText(), "2 kişi");
-  assert.equal(await side.locator("button.hx-people").count(), 0, "the sample trip can't be shared");
+  // A tap says who goes (0.37, part 5 below); the sample can't be shared, so no "Birini davet et" under it.
+  assert.equal(await side.locator("button.hx-people").count(), 1, "who goes opens its box");
+  assert.equal(await side.locator(".hx-who-text small").count(), 0, "the sample trip can't be shared");
   // The style: no model key here, so only the budget's word (€1.500 for 2 people, 7 days ≈ €107 a day each).
   assert.deepEqual(await side.locator(".hx-styles span").allInnerTexts(), ["Orta bütçe"]);
   assert.match(flat([await side.locator(".hx-countries").innerText()])[0], /^🇵🇹 ?Portekiz$/);
@@ -2376,4 +2378,68 @@ try {
   console.log("✓ delete: a shared trip asks first (only here, 30 days in the trash); Sil → overview with Geri al, which brings it all back");
 } finally {
   await safety.close();
+}
+
+// ---------------------------------------------------------------------------------------------
+// Part 5: who goes, without sharing (0.37; "Sabine'yi eklemek istiyorum, onunla paylaşmadan"). The hero's people
+// open a small box: "Ben (Emre)", "İsim ekle" Sabine + Enter → the hero says "Emre & Sabine · 2 kişi", nothing is
+// shared; × takes her off again; Esc closes it.
+// ---------------------------------------------------------------------------------------------
+const whoGoes = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-who-")), {
+  executablePath,
+  headless: false,
+  viewport: { width: 1440, height: 900 },
+  ...TURKISH,
+  args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+});
+try {
+  const worker = whoGoes.serviceWorkers()[0] ?? (await whoGoes.waitForEvent("serviceworker"));
+  const id = new URL(worker.url()).host;
+  const app = await whoGoes.newPage();
+  await app.goto(`chrome-extension://${id}/app.html`);
+  // My profile name (Ayarlar → Profilim): "Ben (Emre)" in the box, "Emre" in the hero.
+  await app.evaluate(() => chrome.storage.local.set({ shareName: "Emre" }));
+  await app.getByText("Örnek geziyi yükle →").click();
+  await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
+  const side = app.locator(".hx .hx-side");
+  const whoText = async () => (await side.locator(".hx-who-text").innerText()).replace(/\s+/g, " ").trim();
+  assert.equal(await whoText(), "2 kişi");
+  await side.locator("button.hx-people").click();
+  const box = side.getByRole("dialog", { name: "Kimler gidiyor?" });
+  await box.waitFor();
+  assert.deepEqual((await box.locator(".hx-who-list li").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim()), ["Ben (Emre)"]);
+  assert.equal(await box.getByRole("button", { name: /çıkar$/ }).count(), 0, "me: never removable");
+  const nameBox = box.getByRole("textbox", { name: "İsim ekle" });
+  await nameBox.fill("Sabine");
+  await nameBox.press("Enter");
+  await box.locator(".hx-who-list li", { hasText: "Sabine" }).waitFor();
+  await app.waitForFunction(() => document.querySelector(".hx .hx-side .hx-who-text")?.innerText.replace(/\s+/g, " ").trim() === "Emre & Sabine 2 kişi", null, { timeout: 10000 });
+  const said = `${await side.locator(".hx-who-text b").innerText()} · ${await side.locator(".hx-who-text small").innerText()}`;
+  assert.equal(said, "Emre & Sabine · 2 kişi");
+  assert.equal(await side.locator(".hx-avatars i").first().innerText(), "E");
+  assert.equal(await nameBox.inputValue(), "", "the box is ready for the next name");
+  assert.equal(await side.locator(".hx-share").count(), 0, "naming someone shares nothing");
+  assert.equal(await box.getByRole("button", { name: "Birini davet et (paylaş)" }).count(), 0, "the sample can't be shared");
+  const stored = await app.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const trips = await new Promise((resolve) => (database.transaction("trips").objectStore("trips").getAll().onsuccess = (e) => resolve(e.target.result)));
+    const trip = trips.find((t) => t.title === "Portekiz (örnek)");
+    return { shareId: trip.shareId ?? null, travellers: trip.travellers };
+  });
+  assert.deepEqual(stored, { shareId: null, travellers: { names: ["Sabine"] } });
+  await app.screenshot({ path: `${out}/18-travellers.png` });
+  // × takes her off; the hero is back to the saves' two.
+  await box.getByRole("button", { name: "Sabine çıkar" }).click();
+  await app.waitForFunction(() => document.querySelector(".hx .hx-side .hx-who-text")?.innerText.replace(/\s+/g, " ").trim() === "2 kişi", null, { timeout: 10000 });
+  assert.deepEqual((await box.locator(".hx-who-list li").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim()), ["Ben (Emre)"]);
+  await app.screenshot({ path: `${out}/18b-travellers-removed.png` });
+  await app.keyboard.press("Escape");
+  await box.waitFor({ state: "detached" });
+  console.log("✓ travellers: the hero's people box names Sabine without sharing (Emre & Sabine · 2 kişi), × takes her off, Esc closes it");
+} finally {
+  await whoGoes.close();
 }

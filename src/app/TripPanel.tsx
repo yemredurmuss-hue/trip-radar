@@ -58,6 +58,9 @@ import { choiceOf, type Choice } from "../lib/choice";
 import { pivotalFindings } from "../lib/pivots";
 import type { ValueCard } from "../lib/value";
 import type { Decisions } from "./useDecisions";
+import { useWho } from "./Travellers";
+import { onTripChange } from "../lib/tripUndo";
+import { takeLangUndo } from "./langSwitch";
 
 interface Props {
   trip: Trip;
@@ -164,6 +167,13 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   useEffect(() => onRemoved((removed) => removed.item.tripId === trip.id && undo.show({ kind: "removed", removed })), [trip.id, undo]);
   // A transfer the chat hid ("Gaula → Madeira'yı kaldır") gets the "Geri al" of the board's "Gerek yok".
   useEffect(() => onHidden((h) => h.tripId === trip.id && undo.show({ kind: "hidden", ...h })), [trip.id, undo]);
+  // A setting the chat changed ("bütçeyi euro göster", "Sabine de geliyor") gets the same "Geri al".
+  useEffect(() => onTripChange((change) => change.tripId === trip.id && undo.show({ kind: "trip", change })), [trip.id, undo]);
+  // The board's language the chat switched: the page reloaded into it, and its "Geri al" waits here once.
+  useEffect(() => {
+    const switched = takeLangUndo(trip.id);
+    if (switched) undo.show({ kind: "lang", tripId: trip.id, ...switched });
+  }, [trip.id, undo]);
   // A change of city hidden with "Gerek yok" that got a flight or a way since is back for good: its key goes, so
   // it can't hide again on its own if that flight is taken off later.
   useEffect(() => {
@@ -421,12 +431,14 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     [items, passport, decisions?.ctx.currency, decisions?.ctx.rates, range?.start],
   );
   const settledItem = (i: Item) => i.status === "chosen" || i.status === "booked";
+  const who = useWho(trip, facts.adults);
   // The plan line: what the Plan's sections hold (each header's "y"), so both always say the same thing.
   const tally = useMemo(() => sectionTally(sections), [sections]);
   const chips = styleChips(
     // The last words stay on screen while new ones are asked for (no empty flash, no flicker).
     acceptStyle(trip.style?.ids ?? []),
-    budgetLevel(trip.budget, range ? nightsBetween(range.start, range.end) + 1 : 0, facts.adults, decisions?.ctx.rates ?? null),
+    // Per person: the people named or counted (Travellers), else the saves' adults.
+    budgetLevel(trip.budget, range ? nightsBetween(range.start, range.end) + 1 : 0, who.count || facts.adults, decisions?.ctx.rates ?? null),
   );
   /** A day card's photo: its city's, else its main place's (the hero's: Gaula's day shows Madeira), else the trip's. */
   const cityImageOf = (city: string | null) =>
@@ -541,6 +553,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           today={today}
           chips={chips}
           bar={bar}
+          who={who}
           onShare={onShare}
         />
       </section>

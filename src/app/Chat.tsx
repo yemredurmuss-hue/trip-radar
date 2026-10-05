@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { sendMessage } from "../lib/assistant";
-import { L } from "../lib/i18n";
+import { L, lang } from "../lib/i18n";
+import { reloadIfLangChanged } from "./langSwitch";
 import { describeError } from "../lib/llm";
 import { shownReply } from "../lib/replyText";
 import type { Capture, ChatMessage, Item, Trip } from "../lib/types";
@@ -53,12 +54,15 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures }: Pro
     }
     setText("");
     setBusy(true);
+    const langBefore = lang();
     try {
       await sendMessage(trip.id, input);
     } catch (e) {
       setError(describeError(e));
     } finally {
       setBusy(false);
+      // "Türkçeye geç": the reply is saved; the board opens again in the new language, with its "Geri al".
+      reloadIfLangChanged(trip.id, langBefore);
     }
   }
 
