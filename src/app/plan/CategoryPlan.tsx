@@ -12,7 +12,7 @@ import type { Item } from "../../lib/types";
 import { AddButton } from "../cards/AddSheet";
 import { KindIcon } from "../cards/Silhouettes";
 import { Section } from "./Section";
-import { SECTION_META } from "./sectionMeta";
+import { provisionalSection, SECTION_META } from "./sectionMeta";
 import { SectionTimeline, type SectionCards } from "./SectionTimeline";
 import { SuggestionCards } from "./SuggestionCards";
 import type { BoardSuggestions } from "../useSuggestions";
@@ -59,10 +59,10 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
       {shown.length > 0 && (
         <div className="cat-sheet">
           {shown.map((s) => {
-            // A section drawn only for its suggestions opens at first look (its cards are all it has), so the first
-            // look kept for the visit isn't "closed" when the first real card lands there. A section with cards keeps its own.
+            // A section drawn only for its suggestions stays closed ("2 öneri" in its header) and keeps no first look,
+            // so the first real card there gives it its normal one.
             const onlySuggested = !s.entries.length && !s.hidden.length && !waiting(s) && suggested(s).length > 0;
-            const opened = isOpen(onlySuggested ? { ...s, open: true } : s);
+            const opened = isOpen(onlySuggested ? provisionalSection(s) : s);
             return (
               <Section key={s.id} section={s} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)} suggestions={suggested(s).length}>
                 {suggestions && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} />}

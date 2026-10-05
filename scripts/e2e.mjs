@@ -2240,6 +2240,7 @@ try {
   await sgSec("transport").locator(".sg-count", { hasText: "1 öneri" }).waitFor({ timeout: 10000 });
   // Only suggested: drawn for its card, with nothing to count (no bar, no "x/y").
   assert.equal(await sgSec("transport").locator(".cat-count, .cat-bar").count(), 0, "a suggestion is never counted");
+  assert.ok(await sgSec("transport").evaluate((el) => el.classList.contains("closed")), "a section with only suggestions stays closed");
   await openSec("transport");
   const rentalCard = sgSec("transport").locator(".sg-card", { hasText: "Aylık motor ya da araç kiralama" });
   await rentalCard.waitFor();
