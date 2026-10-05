@@ -7,6 +7,7 @@ import { cardKindColor, cardKindLabel, type CardKind } from "../../lib/cardKinds
 import { groundOf, type FootView, type Ring as RingState } from "../../lib/cardView";
 import { L } from "../../lib/i18n";
 import { nOptions } from "../../lib/i18nText";
+import { Editable, useInlineEdit } from "./InlineEdit";
 import { KindIcon, UiIcon } from "./Silhouettes";
 
 export function Ring({ state }: { state: RingState }) {
@@ -73,6 +74,8 @@ export interface Nav {
 /** The bottom strip: where it stands (or ‹ 1/2 ›) on the left, the price and the one action on the right. */
 export function CardFoot({ view, nav, best = false, price, onAction }: { view: FootView; nav?: Nav; best?: boolean; price: CardFacts["price"] | null; onAction?: () => void }) {
   const left = view.left;
+  // On an editable card a missing price is a faint "Fiyat ekle".
+  const pricing = Boolean(useInlineEdit()?.fields.includes("price"));
   return (
     <div className="pk-foot">
       {left.kind === "nav" && nav ? (
@@ -97,10 +100,16 @@ export function CardFoot({ view, nav, best = false, price, onAction }: { view: F
           {left.when && <span className="pk-when">· ⏳ {left.when}</span>}
         </span>
       ) : null}
-      {price && (
+      {(price || pricing) && (
         <span className="pk-price">
-          <b>{price.text}</b>
-          {price.label ? ` ${price.label}` : ""}
+          <Editable field="price">
+            {price && (
+              <>
+                <b>{price.text}</b>
+                {price.label ? ` ${price.label}` : ""}
+              </>
+            )}
+          </Editable>
         </span>
       )}
       {view.action && onAction && (
@@ -117,7 +126,8 @@ export function CardShell(props: {
   /** The top line's name when it isn't the kind's ("Metro", "Şehir değişimi"). */
   label?: string;
   ring: RingState;
-  date: string | null;
+  /** The top line's day (a string, or its editable pieces on a record's card). */
+  date: ReactNode;
   ariaLabel: string;
   itemId?: string;
   domId?: string;

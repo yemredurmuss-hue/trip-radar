@@ -5,7 +5,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { cardFacts } from "../../lib/cardFacts";
 import { cardKind, isTransportKind, type LegEnds } from "../../lib/cardKinds";
-import { footOf, mediaFace, menuFor, ringOf, topDate, transportFace } from "../../lib/cardView";
+import { footOf, mediaFace, menuFor, ringOf, transportFace } from "../../lib/cardView";
 import type { Choice, Ranked } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
 import { L } from "../../lib/i18n";
@@ -17,9 +17,11 @@ import type { DocMeta, Item, LegMode } from "../../lib/types";
 import { chooseItem, setInstalled, setItemStatus } from "../actions";
 import { useShare } from "../Share";
 import type { Decisions } from "../useDecisions";
+import { CardDate } from "./CardDate";
 import { CardDetail } from "./CardDetail";
 import { CardFoot, CardShell, type MenuEntry, type Nav } from "./CardShell";
 import { DocAccess, DocPickButton } from "./DocAccess";
+import { InlineEdit } from "./InlineEdit";
 import { MediaCardBody } from "./MediaCard";
 import { datedLink } from "./parts";
 import { TransportArt } from "./Silhouettes";
@@ -57,7 +59,16 @@ export function useCardEnv(): CardEnv {
   return env;
 }
 
-export function PlanCard({ item, group, decision, ranked, nav, onChange, changing = false, onCompare, headline = null }: {
+/** Every record's card is edited where it stands (spec 0.33 §3): its day, ends, title, city, price. */
+export function PlanCard(props: Parameters<typeof PlanCardFace>[0]) {
+  return (
+    <InlineEdit item={props.item}>
+      <PlanCardFace {...props} />
+    </InlineEdit>
+  );
+}
+
+function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing = false, onCompare, headline = null }: {
   item: Item;
   /** The options it's compared with (a choice replaces another chosen one among them). */
   group: Item[];
@@ -120,7 +131,7 @@ export function PlanCard({ item, group, decision, ranked, nav, onChange, changin
     <CardShell
       kind={kind}
       ring={ring}
-      date={topDate(item, kind)}
+      date={<CardDate item={item} kind={kind} />}
       ariaLabel={item.name}
       itemId={item.id}
       extraClass={allNo ? "pk-all-no" : undefined}
@@ -134,7 +145,7 @@ export function PlanCard({ item, group, decision, ranked, nav, onChange, changin
         transport ? (
           <TransportCardBody face={transportFace(item, kind, env.legEnds.get(item.id))} title={item.name} />
         ) : (
-          <MediaCardBody face={mediaFace(item, kind, facts.source)} kind={kind} score={facts.score} best={best} />
+          <MediaCardBody face={mediaFace(item, kind, facts.source)} kind={kind} score={facts.score} best={best} city={item.city} />
         )
       }
       foot={<CardFoot view={foot} nav={nav} best={best} price={facts.price} onAction={act} />}

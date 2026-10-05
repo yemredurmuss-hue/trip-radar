@@ -1180,8 +1180,8 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .pk-stop { min-width: 0; }
 .pk-stop b { display: block; font-size: 30px; line-height: 1.1; font-weight: 700; letter-spacing: -.02em; overflow-wrap: anywhere; }
 .pk-stop b.long { font-size: 24px; }
-.pk-stop span { display: block; margin-top: 3px; font-size: 14px; color: var(--pk-gray); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.pk-stop span strong { color: var(--pk-ink); font-weight: 600; white-space: nowrap; }
+.pk-stop > span { display: block; margin-top: 3px; font-size: 14px; color: var(--pk-gray); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pk-stop > span strong { color: var(--pk-ink); font-weight: 600; white-space: nowrap; }
 .pk-stop.r { text-align: right; }
 .pk-route { position: relative; height: 78px; }
 .pk-route small { position: absolute; left: -20px; right: -20px; bottom: -26px; text-align: center; font-size: 13px; color: #3a3a3c; white-space: nowrap; }

@@ -5,9 +5,14 @@ import type { CardKind } from "../../lib/cardKinds";
 import type { MediaFace } from "../../lib/cardView";
 import { L } from "../../lib/i18n";
 import { FallbackImg } from "../FallbackImg";
+import { Editable, useInlineEdit } from "./InlineEdit";
 import { KindIcon, MediaSilhouette } from "./Silhouettes";
 
-export function MediaCardBody({ face, kind, score, best }: { face: MediaFace; kind: CardKind; score: number | null; best: boolean }) {
+/** On a record's card the title and the city are editable where they stand (the day and hour are on the top line). */
+export function MediaCardBody({ face, kind, score, best, city = null }: { face: MediaFace; kind: CardKind; score: number | null; best: boolean; city?: string | null }) {
+  const placed = Boolean(useInlineEdit()?.fields.includes("city"));
+  // The city first, editable; the hour is on the top line then.
+  const info = placed ? face.info.filter((x) => x.text !== city && !x.strong) : face.info;
   // The kind's drawing (ticket, museum, eSIM, shield) or its icon: in place of a photo, and when a photo fails.
   const drawing = face.drawing ? <MediaSilhouette name={face.drawing} /> : <KindIcon kind={kind} size={56} className="pk-kindbig" />;
   return (
@@ -21,12 +26,15 @@ export function MediaCardBody({ face, kind, score, best }: { face: MediaFace; ki
         )}
       </div>
       <div className="pk-txt">
-        <h3>{face.title}</h3>
-        {face.info.length > 0 && (
+        <h3>
+          <Editable field="name">{face.title}</Editable>
+        </h3>
+        {(info.length > 0 || placed) && (
           <p>
-            {face.info.map((x, i) => (
+            {placed && <Editable field="city">{city}</Editable>}
+            {info.map((x, i) => (
               <Fragment key={`${i}:${x.text}`}>
-                {i > 0 && " · "}
+                {(i > 0 || placed) && " · "}
                 {x.strong ? <b>{x.text}</b> : x.text}
               </Fragment>
             ))}
