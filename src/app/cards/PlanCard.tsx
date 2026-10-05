@@ -159,6 +159,8 @@ export function NavGroup({ items, heading, nested, decision, choice, decided, on
   }, [changing]);
   const single = decided && !changing;
   const shown = single ? decided : items[Math.min(index, items.length - 1)];
+  // A group emptied under us (its last option deleted, the board not yet redrawn): nothing to show.
+  if (!shown) return null;
   const nav: Nav | undefined =
     !single && items.length > 1 ? { index: Math.min(index, items.length - 1), total: items.length, go: (step) => setIndex((i) => Math.min(items.length - 1, Math.max(0, i + step))) } : undefined;
   const ranked = rankedOf(shown);
