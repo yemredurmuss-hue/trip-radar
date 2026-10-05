@@ -22,7 +22,9 @@ durur, sonra kendiliğinden silinir; "Kalıcı sil" ya da "Çöp kutusunu boşal
   adın ile (eklediysen) küçük profil fotoğrafın, gezinin gizli kimliğini bilen kişilerin erişebildiği paylaşım
   sunucusuna (Supabase) gider. "Paylaşımı durdur" ile bu bilgisayardan eşitleme durur. Yanlış bir değişiklik geri
   alınabilsin diye paylaşılan gezinin ortak ayarlarının (ad, tarihler, bütçe, öncelikler, olanaklar, şartlar) son 200
-  eski hâli, kimin ve ne zaman değiştirdiği bilgisiyle paylaşım sunucusunda tutulur; paylaşım silinince onlar da silinir.
+  eski hâli, kimin ve ne zaman değiştirdiği bilgisiyle paylaşım sunucusunda tutulur. "Paylaşımı durdur" yalnız bu
+  bilgisayardaki eşitlemeyi durdurur; sunucudaki paylaşılan gezi (kayıtları, oyları, profilleri ve bu geçmişiyle
+  birlikte) senin isteğinle silinir: info@emredurmus.net adresine yazman yeterli.
 - **Harita ve kur:** Adresler konuma çevrilirken OpenStreetMap Nominatim'e, döviz kurları için Frankfurter'a
   yalnız ilgili adres ya da para birimi gönderilir. Şehir fotoğrafları için şehir adı Wikipedia'ya ya da (paylaşım
   sunucusu üzerinden) Pexels'a gönderilir.
@@ -51,7 +53,9 @@ computer's "Trash", then are deleted on their own; "Delete forever" or "Empty tr
   (if you added one) small profile photo go to the sharing server (Supabase), reachable only by people who know
   the trip's secret id. "Stop sharing" stops syncing from that computer. So that a wrong change can be undone, the
   last 200 earlier versions of a shared trip's common settings (name, dates, budget, priorities, amenities,
-  requirements) are kept on the sharing server with who changed them and when; they are deleted with the share.
+  requirements) are kept on the sharing server with who changed them and when. "Stop sharing" only stops syncing
+  on that computer; the shared trip on the server (with its saves, votes, profiles and this history) is deleted on
+  request: write to info@emredurmus.net.
 - **Maps and currency:** only the address is sent to OpenStreetMap Nominatim to place it on a map, and only the
   currency to Frankfurter for exchange rates. City names are sent to Wikipedia or (through the sharing server)
   Pexels for city photos.
