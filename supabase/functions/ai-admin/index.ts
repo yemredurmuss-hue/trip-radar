@@ -3,7 +3,14 @@
 // Ayarlar → AI kapısı). Deployed with verify_jwt off: the secret is the credential.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { limitsFrom, newTicket } from "../ai/policy.ts";
+
+// A fresh ticket ("trk_" + 192 random bits) and the limits the gate applies (the same defaults as ai/policy.ts;
+// kept here so the function deploys on its own).
+const newTicket = () => `trk_${[...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+const num = (key: string, fallback: number) => {
+  const v = Number(Deno.env.get(key));
+  return Number.isFinite(v) && v > 0 ? v : fallback;
+};
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -28,7 +35,7 @@ Deno.serve(async (req: Request) => {
   const body = (await req.json().catch(() => ({}))) as { action?: string; name?: string; tail?: string };
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
   if (body.action === "mint") {
-    const token = newTicket((b) => crypto.getRandomValues(b));
+    const token = newTicket();
     const { error } = await sb.rpc("ai_gate_add", { p_token: token, p_name: String(body.name ?? "").slice(0, 60) });
     return error ? reply(500, { error: "mint" }) : reply(200, { token });
   }
@@ -38,8 +45,7 @@ Deno.serve(async (req: Request) => {
   }
   if (body.action === "usage") {
     const { data, error } = await sb.rpc("ai_gate_usage");
-    const limits = limitsFrom((k) => Deno.env.get(k));
-    return error ? reply(500, { error: "usage" }) : reply(200, { tickets: data, capUsd: limits.monthlyCapUsd, dailyRequests: limits.dailyRequests, aiReady: !!Deno.env.get("GEMINI_API_KEY") });
+    return error ? reply(500, { error: "usage" }) : reply(200, { tickets: data, capUsd: num("AI_MONTHLY_CAP_USD", 20), dailyRequests: num("AI_DAILY_REQUESTS", 300), aiReady: !!Deno.env.get("GEMINI_API_KEY") });
   }
   return reply(400, { error: "action" });
 });
