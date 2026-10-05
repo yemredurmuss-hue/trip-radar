@@ -1269,6 +1269,58 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
   .pk-form { grid-template-columns: 1fr; }
 }
 
+/* Compact plan cards (0.34.5): the same card, about a fifth smaller. Padding 12, top line 22, cities 24 (long 20),
+   card titles 17, the media picture 132×96, the bottom strip 40, the action 32. Nothing moves, nothing goes. */
+.pk-card { padding: 12px 14px; border-radius: 18px; }
+.pk-art { top: 26px; height: 80px; }
+.pk-top { height: 22px; font-size: 12.5px; gap: 7px; }
+.pk-ring { width: 20px; height: 20px; }
+.pk-ib { height: 22px; }
+.pk-docpill { height: 22px; font-size: 12.5px; }
+.pk-mid { margin: 6px 0 20px; }
+.pk-stop b { font-size: 24px; }
+.pk-stop b.long { font-size: 20px; }
+.pk-stop > span { font-size: 13px; margin-top: 2px; }
+.pk-route { height: 60px; }
+.pk-route small { bottom: -22px; font-size: 12.5px; }
+.pk-title { margin: 10px 0 12px; font-size: 17px; }
+.pk-card:has(> .pk-art) .pk-title { min-height: 66px; }
+.pk-card:not(:has(> .pk-art)) .pk-mid { margin-bottom: 12px; }
+.pk-media { grid-template-columns: 132px 1fr; gap: 14px; margin: 10px 0 12px; }
+.pk-vis { width: 132px; height: 96px; border-radius: 12px; }
+.pk-vis svg.pk-sil { width: 88px; height: 72px; }
+.pk-score { font-size: 12px; padding: 1px 5px; }
+.pk-txt h3 { font-size: 17px; }
+.pk-txt p { font-size: 14px; margin-top: 3px; }
+.pk-meta { margin-top: 6px; font-size: 12.5px; }
+.pk-foot { min-height: 40px; border-radius: 12px; gap: 10px; }
+.pk-state { font-size: 12.5px; }
+.pk-nav { font-size: 12.5px; }
+.pk-nav button { width: 24px; height: 24px; }
+.pk-price b { font-size: 15px; }
+.pk-cta { height: 32px; padding: 0 14px; font-size: 14px; }
+.pk-detail { margin-top: 10px; padding: 12px 14px; }
+/* The stay's settled card, the same way: photo 132×100, name 16, tighter bars and strip. */
+.settled-card { border-radius: 22px; }
+.settled-card .status-bar { padding: 7px 16px; font-size: 13px; }
+.settled-card .card-alert { padding: 6px 16px; font-size: 13px; }
+.stc-main { padding: 12px; }
+.stc-media-row { grid-template-columns: 132px minmax(0, 1fr); gap: 14px; }
+.stc-img { width: 132px; height: 100px; border-radius: 14px; }
+.stc-info { gap: 3px; }
+.stc-name { font-size: 16px; }
+.stc-line { font-size: 13px; }
+.stc-foot { padding: 8px 16px 10px; gap: 8px 14px; }
+.stc-details { padding: 4px 16px 14px; }
+@container panel (max-width: 620px) {
+  .pk-stop b { font-size: 20px; }
+  .pk-art { top: 78px; height: 64px; }
+  .pk-card:has(> .pk-art) .pk-title { min-height: 104px; }
+  .pk-vis { width: 100%; height: 132px; }
+  .pk-vis svg.pk-sil { width: 112px; height: 92px; }
+  .pk-txt h3 { font-size: 16px; }
+}
+
 /* ---------- 0.32: the hover × on every record's card (left of •••) ---------- */
 .pk-x { flex: none; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: rgba(0, 0, 0, .06); color: #6e6e73; display: grid; place-items: center; cursor: pointer; opacity: 0; transition: opacity .15s, background .15s, color .15s; }
 .pk-card:hover .pk-x, .pk-card:focus-within .pk-x, .swipe-card:hover .pk-x, .swipe-card:focus-within .pk-x, .settled-card:hover .pk-x, .settled-card:focus-within .pk-x { opacity: 1; }
