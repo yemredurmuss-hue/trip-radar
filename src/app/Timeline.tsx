@@ -27,7 +27,8 @@ export type LegCardFor = (l: Leg) => ReactNode;
 
 const fmt = (d: string) => formatDateRange(d, null);
 
-export type TimelineMode = "plan" | "days";
+/** "ideas" is the Fikirler tab (ideas/IdeasView.tsx, drawn by TripPanel); this view draws the other two. */
+export type TimelineMode = "plan" | "days" | "ideas";
 
 /**
  * The trip, two ways. "plan" is its front: a block for each thing booked or to decide — flights,

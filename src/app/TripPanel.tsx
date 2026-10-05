@@ -45,6 +45,8 @@ import { LegCard } from "./cards/LegCard";
 import { CardEnvContext, NavGroup, PlanCard, type CardEnv } from "./cards/PlanCard";
 import { SilhouetteDefs } from "./cards/Silhouettes";
 import { UndoToast } from "./cards/UndoToast";
+import { IdeasView } from "./ideas/IdeasView";
+import { isIdea, needsBooking } from "../lib/booking";
 import { CategoryIcon, Chevron } from "./Icons";
 import { findTarget, show, TodoList } from "./Progress";
 import { TripFacts } from "./TripFacts";
@@ -101,6 +103,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       ...timeline.entries.flatMap((e) => (e.kind === "day" ? e.items.filter((i) => i.status === "saved" && SUMMARIZED.includes(i.category)) : [])),
     ]).filter((s) => SUMMARIZED.includes(s.category));
   const dismissed = items.filter((i) => i.status === "dismissed");
+  const hasIdeas = items.some(isIdea);
   const mapUrl = routeUrl(items);
   const working = openCaptures.filter((c) => c.status === "pending" || c.status === "processing");
   const failed = openCaptures.filter((c) => c.status === "error");
@@ -348,7 +351,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           <AddButton onClick={() => env.add(null)} />
         </div>
       )}
-      {timeline.entries.length > 0 && (
+      {(timeline.entries.length > 0 || hasIdeas) && (
         <div className="view-tabs" role="tablist" aria-label={L("Görünüm", "View")}>
           <button role="tab" aria-selected={view === "plan"} className={view === "plan" ? "on" : ""} onClick={() => setView("plan")}>
             {L("Plan", "Plan")}
@@ -356,9 +359,13 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           <button role="tab" aria-selected={view === "days"} className={view === "days" ? "on" : ""} onClick={() => setView("days")}>
             {L("Günlük akış", "Day by day")}
           </button>
+          <button role="tab" aria-selected={view === "ideas"} className={view === "ideas" ? "on" : ""} onClick={() => setView("ideas")}>
+            {L("Fikirler", "Ideas")}
+          </button>
         </div>
       )}
-      {timeline.entries.length > 0 && (
+      {view === "ideas" && <IdeasView tripId={trip.id} items={items} plan={plan} cities={cityNames} />}
+      {timeline.entries.length > 0 && view !== "ideas" && (
         <TimelineView
           mode={view}
           onShow={showOnPlan}
@@ -404,7 +411,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         />
       )}
       {sheet && (
-        <AddSheet tripId={trip.id} at={sheet.at} editing={sheet.editing} currency={decisions?.ctx.currency ?? trip.budget?.currency ?? "EUR"} onClose={() => setSheet(null)} />
+        <AddSheet tripId={trip.id} at={sheet.at} editing={sheet.editing} currency={decisions?.ctx.currency ?? trip.budget?.currency ?? "EUR"} onClose={() => setSheet(null)}
+          // A to-do or a restaurant added from the Plan needs no booking: show it where it went.
+          onSaved={(item) => !needsBooking(item) && view === "plan" && setView("ideas")} />
       )}
       <UndoToast removed={removed} onUndo={() => { const r = undo.take(); if (r) void restoreItem(r); }} />
     </CardEnvContext.Provider>

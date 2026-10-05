@@ -718,7 +718,7 @@ a.sc-source.link:focus-visible { outline: 2px solid var(--accent); outline-offse
 /* ---------- the plan and the itinerary: two views of the trip ---------- */
 .today-chip { align-self: flex-start; padding: 1px 9px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 700; }
 
-.view-tabs { display: flex; gap: 4px; max-width: 380px; margin: 0 0 16px; padding: 4px; border-radius: 14px; background: #efebe4; }
+.view-tabs { display: flex; gap: 4px; max-width: 480px; margin: 0 0 16px; padding: 4px; border-radius: 14px; background: #efebe4; }
 .view-tabs button { flex: 1; border: 0; border-radius: 10px; padding: 8px 14px; background: none; font-weight: 700; font-size: 14.5px; color: var(--muted); }
 .view-tabs button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(40, 30, 20, .1); }
 .day-chev { font-size: 11px; color: var(--muted); font-weight: 400; }
@@ -1338,3 +1338,61 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .it-day:not(.empty) .it-day-head { padding-right: 48px; }
 .it-day.empty .it-add { margin-left: auto; align-self: center; }
 @container panel (max-width: 620px) { .it-add { opacity: 1; } }
+
+/* ---------- 0.32: Fikirler (docs/mockups/2026-10-05-fikirler-v1.html): white, small cards, a list ---------- */
+.fk { --fk-ink: #1d1d1f; --fk-gray: #6e6e73; --fk-line: #e8e8ed; --fk-soft: #f5f5f7; margin: 0 0 24px; padding: 28px 16px 32px; border-radius: 22px; background: #fff; color: var(--fk-ink); }
+.fk > * { max-width: 860px; margin-left: auto; margin-right: auto; }
+.fk-sec { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+.fk-sec b { font-size: 17px; }
+.fk-sec span { font-size: 13px; color: var(--fk-gray); }
+.fk-sub { margin-top: 0; margin-bottom: 14px; font-size: 13px; color: var(--fk-gray); }
+.fk-quick { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 14px; border-radius: 14px; background: var(--fk-soft); color: var(--fk-ink); }
+.fk-quick input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; font: inherit; font-size: 15px; color: var(--fk-ink); outline: none; }
+.fk-quick input::placeholder { color: var(--fk-gray); }
+.fk-filters { display: flex; gap: 6px; margin-top: 14px; margin-bottom: 6px; }
+.fk-filters button { height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--fk-line); background: #fff; font: inherit; font-size: 13px; color: var(--fk-ink); cursor: pointer; }
+.fk-filters button.on { background: var(--fk-ink); color: #fff; border-color: var(--fk-ink); }
+.fk-empty { margin-top: 22px; font-size: 14px; color: var(--fk-gray); }
+.fk-city { display: flex; align-items: baseline; gap: 8px; margin: 22px 0 10px; }
+.fk-city b { font-size: 20px; letter-spacing: -.01em; }
+.fk-city span { font-size: 13px; color: var(--fk-gray); }
+.fk-label { margin: 0 0 8px; font-size: 13px; color: var(--fk-gray); }
+.fk-eats + .fk-label { margin-top: 16px; }
+.fk-eats { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+.fk-eat { position: relative; flex: none; width: 196px; }
+.fk-ph { position: relative; width: 196px; height: 120px; border-radius: 14px; overflow: hidden; background: var(--fk-soft); }
+.fk-ph .fk-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fk-ph-ic { position: absolute; inset: 0; display: grid; place-items: center; color: #b4532a; background: color-mix(in srgb, #b4532a 10%, #fff); }
+.fk-ph .pk-x { position: absolute; top: 6px; right: 6px; background: rgba(255, 255, 255, .9); }
+.fk-eat:hover .pk-x, .fk-eat:focus-within .pk-x, .fk-row:hover .pk-x, .fk-row:focus-within .pk-x { opacity: 1; }
+.fk-eat > b { display: block; margin-top: 8px; font-size: 15px; font-weight: 600; }
+.fk-eat > span { display: block; margin-top: 2px; font-size: 13px; color: var(--fk-gray); }
+.fk-act { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.fk-daywrap { position: relative; flex: none; }
+.fk-day { height: 28px; padding: 0 11px; border-radius: 999px; border: 1px solid #d2d2d7; background: #fff; font: inherit; font-size: 13px; color: var(--fk-ink); white-space: nowrap; cursor: pointer; }
+.fk-day.set { background: var(--fk-ink); border-color: var(--fk-ink); color: #fff; }
+.fk-map { width: 28px; height: 28px; border-radius: 999px; border: 1px solid var(--fk-line); background: #fff; display: grid; place-items: center; color: var(--fk-gray); }
+.fk-map:hover { color: var(--fk-ink); }
+.fk-todo { list-style: none; margin: 0; padding: 0; border-radius: 16px; background: var(--fk-soft); }
+.fk-row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; }
+.fk-row + .fk-row { border-top: 1px solid #e9e9ee; }
+.fk-check { flex: none; width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 1.6px solid #c7c7cc; background: #fff; display: grid; place-items: center; color: #fff; cursor: pointer; }
+.fk-row.done .fk-check { background: #1f8f4e; border-color: #1f8f4e; }
+.fk-ic { flex: none; width: 34px; height: 34px; border-radius: 10px; background: #fff; display: grid; place-items: center; color: var(--fk-ink); }
+.fk-t { min-width: 0; flex: 1; }
+.fk-t b { display: block; font-size: 15px; font-weight: 500; }
+.fk-t > span { display: block; font-size: 13px; color: var(--fk-gray); }
+.fk-row.done .fk-t b { color: var(--fk-gray); text-decoration: line-through; }
+.fk-promote { padding: 0; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 600; color: #1556d6; cursor: pointer; }
+.fk-picker { position: absolute; right: 0; top: 34px; z-index: 8; width: 220px; max-height: 320px; overflow-y: auto; padding: 8px; border-radius: 14px; background: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .14); }
+.fk-eat .fk-picker { left: 0; right: auto; }
+.fk-picker ul { list-style: none; margin: 0; padding: 0; }
+.fk-picker li button { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 8px; padding: 7px 10px; border: 0; border-radius: 8px; background: none; font: inherit; font-size: 14px; color: var(--fk-ink); text-align: left; cursor: pointer; }
+.fk-picker li button span { font-size: 12.5px; color: var(--fk-gray); }
+.fk-picker li button:hover, .fk-picker li button.on { background: var(--fk-soft); }
+.fk-meals { display: flex; gap: 4px; margin: 0 0 6px; }
+.fk-meals button { flex: 1; height: 28px; border-radius: 999px; border: 1px solid #d2d2d7; background: #fff; font: inherit; font-size: 13px; cursor: pointer; }
+.fk-meals button.on { background: var(--fk-ink); border-color: var(--fk-ink); color: #fff; }
+.fk-unday { width: 100%; margin-top: 6px; padding: 7px 10px; border: 0; border-top: 1px solid var(--fk-line); background: none; font: inherit; font-size: 14px; color: #c62828; text-align: left; cursor: pointer; }
+/* An idea put on a day: a thin line of the itinerary. */
+.it-row.idea .it-line b { font-weight: 500; }
