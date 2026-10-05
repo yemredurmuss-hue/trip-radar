@@ -33,6 +33,14 @@ describe("dates and lengths", () => {
     expect(nextDate(3, 1, TODAY)).toBe("2027-03-01");
     expect(nextDate(2, 30, TODAY)).toBeNull();
   });
+  it("days counted as the hero counts them: \"10 gün\" is 9 nights, \"10 gece\" 10, a week 7", () => {
+    expect(totalNights({ start: { date: "2026-12-10", approx: false }, duration: { unit: "day", n: 10 } })).toBe(9);
+    expect(whenText({ start: { date: "2026-12-10", approx: false }, duration: { unit: "day", n: 10 } })).toBe("10–19 Aralık · 10 gün");
+    expect(parseStartText("Porto'da 10 gece", TODAY).duration).toEqual({ unit: "night", n: 10 });
+    expect(totalNights({ start: { date: "2026-12-10", approx: false }, duration: { unit: "night", n: 10 } })).toBe(10);
+    expect(totalNights({ start: { date: "2026-12-10", approx: false }, duration: { unit: "week", n: 1 } })).toBe(7);
+    expect(totalNights({ start: null, duration: { unit: "day", n: 1 } })).toBe(1);
+  });
   it("months by name and abbreviation, never a word that only starts like one", () => {
     expect(monthOf("Aralık")).toBe(12);
     expect(monthOf("ara")).toBe(12);
@@ -122,7 +130,7 @@ describe("the interview", () => {
     const want = applyAnswer(from, { q: "want", styles: ["nature", "beach"], budget: "mid" }, 4);
     expect(nextQuestion(want)).toBe("route");
     expect(totalNights(want)).toBe(31);
-    expect(whenText(want)).toBe("10 Aralık – 10 Ocak · 31 gün");
+    expect(whenText(want)).toBe("10 Aralık – 10 Ocak · 32 gün");
   });
   it("the full order from nothing, names asked only for a named companion", () => {
     let s = fresh();
@@ -181,7 +189,7 @@ describe("the interview", () => {
   it("the reply says back what was understood, then asks the next question", () => {
     const before = fresh();
     const { state } = typed(before, "Sabine'yle 10 Aralık'tan 1 ay Bali");
-    expect(replyText(before, state, ctx)).toBe("Not aldım: Bali · Sabine ile · 2 kişi · 10 Aralık – 10 Ocak · 31 gün. Nereden yola çıkıyorsun?");
+    expect(replyText(before, state, ctx)).toBe("Not aldım: Bali · Sabine ile · 2 kişi · 10 Aralık – 10 Ocak · 32 gün. Nereden yola çıkıyorsun?");
     const where = applyAnswer(before, { q: "where", place: "Bali", country: null }, 2);
     expect(replyText(before, where, ctx)).toBe("Harika, Bali! Nereden yola çıkıyorsun?");
   });
@@ -271,7 +279,7 @@ describe("what gets made", () => {
     ]);
     expect(c.travel.map((x) => `${x.from}→${x.to}`)).toEqual(["İstanbul→Denpasar", "Denpasar→İstanbul"]);
     expect(c.people).toBe(2);
-    expect(c.note).toBe("Nereden: İstanbul · Kimle: Emre & Sabine · 2 kişi · Tarz: Doğa, Deniz · Bütçe: Orta bütçe");
+    expect(c.notes).toEqual(["Tarz: Doğa, Deniz · Bütçe: Orta bütçe", "Kimle: Emre & Sabine · 2 kişi · Nereden: İstanbul"]);
   });
   it("a road trip has a car for the whole trip instead of flights", () => {
     let s = applyAnswer(fresh("road"), { q: "where", place: "Toskana", country: "İtalya" }, 2);

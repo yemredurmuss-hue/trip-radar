@@ -21,7 +21,7 @@ export type QuestionId = "where" | "from" | "who" | "names" | "duration" | "star
 /** The checklist's six rows. */
 export type SlotId = "where" | "from" | "who" | "when" | "want" | "route";
 export type Companions = "solo" | "partner" | "friends" | "family";
-export type DurationUnit = "day" | "week" | "month" | "weekend";
+export type DurationUnit = "day" | "night" | "week" | "month" | "weekend";
 
 export interface Duration {
   unit: DurationUnit;
@@ -97,12 +97,17 @@ export function addMonths(date: string, n: number): string {
   return new Date(Date.UTC(year, month, Math.min(d, last))).toISOString().slice(0, 10);
 }
 
-/** Nights a length stands for when the start isn't known yet (a month is 30). */
+/**
+ * Nights a length stands for (a month, when the start isn't known yet, is 30). Days are counted the way the
+ * board's hero counts them, first and last day included: "10 gün" is 9 nights and the hero then says "10 gün";
+ * a week is 7 nights, "10 gece" 10 nights.
+ */
 export function roughNights(d: Duration): number {
   if (d.unit === "weekend") return 2;
   if (d.unit === "week") return 7 * d.n;
   if (d.unit === "month") return 30 * d.n;
-  return d.n;
+  if (d.unit === "night") return d.n;
+  return Math.max(1, d.n - 1);
 }
 
 /** The last day (check-out) for a start and a length: a month is a calendar month ("10 Ara – 10 Oca"). */
@@ -166,6 +171,7 @@ export function durationText(d: Duration): string {
   if (d.unit === "weekend") return L("Hafta sonu", "A weekend");
   if (d.unit === "week") return d.n === 1 ? L("1 hafta", "1 week") : L(`${d.n} hafta`, `${d.n} weeks`);
   if (d.unit === "month") return d.n === 1 ? L("1 ay", "1 month") : L(`${d.n} ay`, `${d.n} months`);
+  if (d.unit === "night") return L(`${d.n} gece`, d.n === 1 ? "1 night" : `${d.n} nights`);
   return L(`${d.n} gün`, d.n === 1 ? "1 day" : `${d.n} days`);
 }
 
@@ -361,10 +367,12 @@ export function parseStartText(text: string, today: string): Extracted {
         ? "month"
         : /^(hafta|haftalık|week|weeks)$/.test(unit)
           ? "week"
-          : /^(gün|gun|günlük|gece|day|days|night|nights)$/.test(unit)
-            ? "day"
-            : null;
-      if (u && n >= 1 && n <= (u === "day" ? 120 : u === "week" ? 16 : 4)) {
+          : /^(gece|gecelik|night|nights)$/.test(unit)
+            ? "night"
+            : /^(gün|gun|günlük|day|days)$/.test(unit)
+              ? "day"
+              : null;
+      if (u && n >= 1 && n <= (u === "day" || u === "night" ? 120 : u === "week" ? 16 : 4)) {
         out.duration = { unit: u, n };
         used.add(i).add(i + 1);
         continue;
@@ -456,13 +464,13 @@ export const extractionSystem = () =>
 destination: gidilecek yer (şehir, ada, bölge ya da ülke) yalnız adı, ek olmadan ("Bali'ye" → "Bali"). destination_country: biliniyorsa ülkesi.
 origin: yola çıkılan şehir ("İstanbul'dan" → "İstanbul"). companions: solo | partner | friends | family ya da "". names: birlikte gidilen kişilerin adları (kullanıcının kendisi değil).
 start_date: başlangıç günü YYYY-MM-DD (bugünden sonraki ilk uygun yıl). Yalnız ay söylendiyse start_date "" ve start_month 1-12.
-duration_days: gün/gece olarak süre; "1 ay" gibi ay söylendiyse duration_months. styles: yalnız bu id'lerden: ${Object.keys(STYLES).join(", ")}. budget: low | mid | high ya da "".
+duration_days: gün olarak süre (gece söylendiyse gece + 1); "1 ay" gibi ay söylendiyse duration_months. styles: yalnız bu id'lerden: ${Object.keys(STYLES).join(", ")}. budget: low | mid | high ya da "".
 Asistan az önce bir soru sorduysa, tek kelimelik bir yer adı o sorunun cevabıdır (ör. "Nereden?" sorusuna "İzmir" → origin).`,
     `From the user's message in a trip-planning chat, take only what is clearly said. Never invent; what isn't said stays empty ("" or 0 or []).
 destination: the place to go (a city, island, region or country), its name only. destination_country: its country when known.
 origin: the city they leave from. companions: solo | partner | friends | family or "". names: the people going with them (not the user).
 start_date: the first day, YYYY-MM-DD (the first fitting year from today). If only a month is said, start_date "" and start_month 1-12.
-duration_days: the length in days/nights; a length in months goes in duration_months. styles: only these ids: ${Object.keys(STYLES).join(", ")}. budget: low | mid | high or "".
+duration_days: the length in days (nights said: nights + 1); a length in months goes in duration_months. styles: only these ids: ${Object.keys(STYLES).join(", ")}. budget: low | mid | high or "".
 If the assistant just asked a question, a bare place name answers it (e.g. "Where from?" → "Izmir" → origin).`,
   );
 
@@ -805,7 +813,7 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
       const where = s.where?.place;
       const text = where ? L(`${where} için kaç gün?`, `How long for ${where}?`) : L("Kaç gün?", "How long?");
       const lengths: Duration[] = s.mode === "lastminute"
-        ? [{ unit: "weekend", n: 1 }, { unit: "day", n: 3 }, { unit: "day", n: 4 }, { unit: "week", n: 1 }]
+        ? [{ unit: "weekend", n: 1 }, { unit: "night", n: 3 }, { unit: "night", n: 4 }, { unit: "week", n: 1 }]
         : [{ unit: "weekend", n: 1 }, { unit: "week", n: 1 }, { unit: "day", n: 10 }, { unit: "week", n: 2 }, { unit: "week", n: 3 }, { unit: "month", n: 1 }];
       return { id: q, text, chips: lengths.map((duration) => ({ label: durationText(duration), answer: { q: "duration", duration } })) };
     }
@@ -917,13 +925,14 @@ export function peopleCount(who: StartState["who"]): number | null {
 export function whenText(s: Pick<StartState, "start" | "duration">): string {
   const dates = tripDates(s);
   const n = totalNights(s);
-  if (dates && s.start) {
-    const nights = L(`${n} gün`, `${n} days`);
+  if (dates && s.start && n != null) {
+    // Days as the board's hero counts them (first and last day included), so both say the same.
+    const days = L(`${n + 1} gün`, `${n + 1} days`);
     if (s.start.approx) {
       const m = Number(s.start.date.slice(5, 7));
-      return `${monthName(m)} · ${nights}`;
+      return `${monthName(m)} · ${days}`;
     }
-    return `${formatDateRange(dates.start, dates.end)} · ${nights}`;
+    return `${formatDateRange(dates.start, dates.end)} · ${days}`;
   }
   if (s.duration) return `${durationText(s.duration)} · ${L("başlangıç?", "start?")}`;
   if (s.start) return s.start.approx ? monthName(Number(s.start.date.slice(5, 7))) : formatDateRange(s.start.date, null);
@@ -1046,8 +1055,8 @@ export interface Creation {
   /** The flights in and out (or the car of a road trip), said the same way. */
   travel: PlannedInput[];
   people: number | null;
-  /** A note on the trip: where from, who, the style and the budget (shown in Tercihler, read by the chat). */
-  note: string | null;
+  /** Notes on the trip: the style and the budget; who goes from where (shown in Tercihler, read by the chat). */
+  notes: string[];
   road: boolean;
 }
 
@@ -1091,11 +1100,14 @@ export function creationOf(s: StartState, ctx: Pick<StartCtx, "myName">): Creati
         said0({ kind: "flight", date: dates.end, from: leave, to: s.from }),
       ];
   const people = peopleCount(s.who);
+  const line = (parts: string[]) => parts.filter(Boolean).join(" · ");
+  // Two notes: what the trip is for (its style), and who goes from where (the chat reads both).
   const notes = [
-    s.from ? L(`Nereden: ${s.from}`, `From: ${s.from}`) : "",
-    s.who ? L(`Kimle: ${whoText(s.who, ctx.myName)}`, `Who: ${whoText(s.who, ctx.myName)}`) : "",
-    s.styles.length ? L(`Tarz: ${s.styles.map((id) => STYLES[id]()).join(", ")}`, `Style: ${s.styles.map((id) => STYLES[id]()).join(", ")}`) : "",
-    s.budget ? L(`Bütçe: ${wantText({ styles: [], budget: s.budget })}`, `Budget: ${wantText({ styles: [], budget: s.budget })}`) : "",
+    line([
+      s.styles.length ? L(`Tarz: ${s.styles.map((id) => STYLES[id]()).join(", ")}`, `Style: ${s.styles.map((id) => STYLES[id]()).join(", ")}`) : "",
+      s.budget ? L(`Bütçe: ${wantText({ styles: [], budget: s.budget })}`, `Budget: ${wantText({ styles: [], budget: s.budget })}`) : "",
+    ]),
+    line([s.who ? L(`Kimle: ${whoText(s.who, ctx.myName)}`, `Who: ${whoText(s.who, ctx.myName)}`) : "", s.from ? L(`Nereden: ${s.from}`, `From: ${s.from}`) : ""]),
   ].filter(Boolean);
   return {
     title: L(`${s.where.place} Gezisi`, `${s.where.place} trip`),
@@ -1103,14 +1115,15 @@ export function creationOf(s: StartState, ctx: Pick<StartCtx, "myName">): Creati
     stays,
     travel,
     people,
-    note: notes.length ? notes.join(" · ") : null,
+    notes,
     road,
   };
 }
 
 /** The line under "Gezin hazır": "31 gün, 3 durak. Önce uçuşu bul, sonra Ubud konaklamasını seçelim." */
 export function readyText(c: Creation): string {
-  const days = nightsBetween(c.dates.start, c.dates.end);
+  // Days as the hero counts them (first and last included).
+  const days = nightsBetween(c.dates.start, c.dates.end) + 1;
   const stops = c.stays.length;
   const firstCity = c.stays[0]?.city ?? "";
   const head = L(`${c.title} hazır: ${days} gün, ${stops} durak.`, `${c.title} is ready: ${days} days, ${stops} stop${stops === 1 ? "" : "s"}.`);

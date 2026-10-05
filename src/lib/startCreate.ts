@@ -86,10 +86,8 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv): Promise<
   } else if (id === "travel") {
     await sayAll(tripId, c.travel, c.people, now);
   } else if (id === "people") {
-    if (c.note) {
-      const prefs = await d.getAll("preferences");
-      if (!prefs.some((p) => p.tripId === tripId && p.text === c.note)) await d.put("preferences", { id: newId(), tripId, text: c.note, createdAt: now() });
-    }
+    const prefs = (await d.getAll("preferences")).filter((p) => p.tripId === tripId);
+    for (const note of c.notes) if (!prefs.some((p) => p.text === note)) await d.put("preferences", { id: newId(), tripId, text: note, createdAt: now() });
     // The interview becomes the trip's chat, once (a retry finds it there).
     const messages = await listMessages(tripId);
     if (!messages.some((m) => m.role !== "event")) {

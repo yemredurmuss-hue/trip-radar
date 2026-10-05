@@ -59,11 +59,11 @@ describe("Gezimi oluştur", () => {
     // Two travel: on the plans, where the hero and the search links read it.
     expect(items.every((i) => i.guests.adults === 2)).toBe(true);
     const prefs = (await d.getAll("preferences")).filter((p) => p.tripId === trip.id);
-    expect(prefs.map((p) => p.text)).toEqual(["Nereden: İstanbul · Kimle: Emre & Sabine · 2 kişi · Tarz: Doğa · Bütçe: Orta bütçe"]);
+    expect(prefs.map((p) => p.text).sort()).toEqual(["Kimle: Emre & Sabine · 2 kişi · Nereden: İstanbul", "Tarz: Doğa · Bütçe: Orta bütçe"]);
     const chat = await listMessages(trip.id);
     expect(chat.map((m) => m.role)).toEqual(["user", "assistant", "user", "assistant"]);
     expect(chat[0].text).toBe("Sabine'yle 10 Aralık'tan 1 ay Bali");
-    expect(chat.at(-1)!.text).toMatch(/^Bali Gezisi hazır: 31 gün, 3 durak\./);
+    expect(chat.at(-1)!.text).toMatch(/^Bali Gezisi hazır: 32 gün, 3 durak\./);
     expect(chat.every((m) => m.provider === "gemini")).toBe(true);
   });
 
@@ -74,7 +74,7 @@ describe("Gezimi oluştur", () => {
     expect(plan.stayBlocks.map((b) => [b.city, b.nights])).toEqual([["Bali", 31]]);
   });
 
-  it("every step again (Tekrar dene) changes nothing: one trip, three stays, two flights, one note, one chat", async () => {
+  it("every step again (Tekrar dene) changes nothing: one trip, three stays, two flights, two notes, one chat", async () => {
     const s = await runAll(interview(true));
     const d = await db();
     const tripsBefore = (await d.getAll("trips")).length;
@@ -83,7 +83,7 @@ describe("Gezimi oluştur", () => {
     const items = await listItems(s.tripId!);
     expect(items.filter((i) => i.category === "stay")).toHaveLength(3);
     expect(items.filter((i) => i.category === "flight")).toHaveLength(2);
-    expect((await d.getAll("preferences")).filter((p) => p.tripId === s.tripId)).toHaveLength(1);
+    expect((await d.getAll("preferences")).filter((p) => p.tripId === s.tripId)).toHaveLength(2);
     expect((await listMessages(s.tripId!)).length).toBe(4);
   });
 
