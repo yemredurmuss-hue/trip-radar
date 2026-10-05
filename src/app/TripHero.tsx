@@ -23,6 +23,8 @@ export function TripHero(props: {
   range: { start: string; end: string } | null;
   today: string;
   lead: string;
+  /** The style words and the money's ("Romantik", "Dingin", "Orta bütçe"): tripStyle.ts. */
+  chips: string[];
   tally: HeroTally;
   working: number;
   menu: ReactNode;
@@ -80,6 +82,13 @@ export function TripHero(props: {
       )}
       <div className="hx-story">
         <h1>{trip.title}</h1>
+        {props.chips.length > 0 && (
+          <div className="hx-chips" aria-label={L("Gezinin tarzı", "The trip's style")}>
+            {props.chips.map((c) => (
+              <span key={c}>{c}</span>
+            ))}
+          </div>
+        )}
         {props.lead && <p className="hx-lead">{props.lead}</p>}
         {stats.length > 0 && (
           <div className="hx-stats" aria-label={L("Planda", "In the plan")}>

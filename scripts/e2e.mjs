@@ -144,6 +144,8 @@ try {
   const hero = app.locator(".hx");
   assert.deepEqual(await hero.locator(".hx-cities button").allInnerTexts(), ["Porto", "Lizbon"]);
   assert.match(await hero.locator(".hx-tab").innerText(), /8–14 Ekim\s*·\s*(.*gün kaldı|Yarın|\. gün \/ 7|Bitti)/);
+  // The style under the title: no model key here, so only the budget's word (€1.500 for 2 people, 7 days ≈ €107 a day each).
+  assert.deepEqual(await hero.locator(".hx-chips span").allInnerTexts(), ["Orta bütçe"]);
   // The plan in one line: icon, number, name.
   assert.deepEqual((await hero.locator(".hx-stats > span").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim()), ["2 uçuş", "2 konaklama", "1 ulaşım", "1 deneyim"]);
   assert.equal(await hero.locator(".hx-lead").innerText(), "3 karar ve 1 rezervasyon bekliyor.");

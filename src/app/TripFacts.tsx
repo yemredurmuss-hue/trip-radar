@@ -74,7 +74,7 @@ export function TripFacts(props: {
             <span className="hx-people">
               {Array.from({ length: Math.min(people, 4) }, (_, n) => (
                 <i key={n} className={`p${n % 4}`}>
-                  {names[n] ? initials(names[n]) : <HeroIcon name="user" size={16} />}
+                  {names[n] ? initials(names[n]) : <HeroIcon name="user" size={14} />}
                 </i>
               ))}
               {people > 4 && <i className="more">+{people - 4}</i>}
@@ -91,8 +91,8 @@ export function TripFacts(props: {
             <span className="hx-weather">
               {weather.map((w) => (
                 <span key={w.city} title={weatherTitle(w, month)}>
-                  <HeroIcon name={skyIcon(w)} size={18} className={`sky-${w.sky}`} />
-                  <b>{w.high}°</b>
+                  <HeroIcon name={skyIcon(w)} size={17} className={`sky-${w.sky}`} />
+                  <span>{w.high}°</span>
                   {weather.length > 1 && <small>{w.city}</small>}
                 </span>
               ))}
@@ -170,7 +170,7 @@ function BudgetRow({ bar }: { bar: BudgetBar }) {
   return (
     <div className="hx-budget click" ref={box} title={L("Ayrıntı için tıkla", "Click for details")} onClick={() => setOpen(!open)}>
       <div className="top">
-        <HeroIcon name="wallet" size={20} />
+        <HeroIcon name="wallet" size={18} />
         <small>{bar.total != null ? L("Bütçe", "Budget") : L("Bilinen toplam", "Known total")}</small>
         <strong>{money(bar.total ?? known)}</strong>
       </div>
@@ -233,7 +233,7 @@ function BudgetRow({ bar }: { bar: BudgetBar }) {
 function Fact({ icon, label, title, children }: { icon: HeroIconName; label: string; title?: string; children: ReactNode }) {
   return (
     <div className="hx-fact" title={title}>
-      <HeroIcon name={icon} size={20} />
+      <HeroIcon name={icon} size={18} />
       <small>{label}</small>
       <strong>{children}</strong>
     </div>
@@ -249,23 +249,23 @@ function Minis({ facts, home }: { facts: Facts; home: string }) {
   return (
     <div className="hx-minis">
       <span title={local.rateText ?? undefined}>
-        <HeroIcon name="coin" size={15} />
+        <HeroIcon name="coin" size={16} />
         {currencyName(local.currency)}
       </span>
       {local.info.plugs.length > 0 && (
         <span title={fit ? plugFitText(fit) : undefined}>
-          <HeroIcon name="plug" size={15} />
+          <HeroIcon name="plug" size={16} />
           {local.info.plugs.join("/")}
         </span>
       )}
       {offset && (
         <span title={L("Senin saatine göre", "Against your own time")}>
-          <HeroIcon name="clock" size={15} />
+          <HeroIcon name="clock" size={16} />
           {offset}
         </span>
       )}
       <span>
-        <HeroIcon name="lang" size={15} />
+        <HeroIcon name="lang" size={16} />
         {L(local.info.language.tr, local.info.language.en)}
       </span>
     </div>

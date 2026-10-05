@@ -8,6 +8,7 @@ import {
   formatDateRange,
   formatPrice,
   listingKeyOf,
+  nightsBetween,
   rankItems,
   routeUrl,
   rowLabel,
@@ -52,6 +53,8 @@ import { CategoryIcon, Chevron } from "./Icons";
 import { findTarget, show, TodoList } from "./Progress";
 import { TripFacts } from "./TripFacts";
 import { cityRanges, countriesOf, heroTally } from "../lib/heroInfo";
+import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../lib/tripStyle";
+import { intentEntries } from "./IntentCard";
 import { TripHero, type HeroCity } from "./TripHero";
 import { kindLabel, LegRow } from "./LegRow";
 import { Carousel } from "./Carousel";
@@ -258,6 +261,23 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       }
     })();
   }, [trip.id, trip.mood?.key, moodFor, cityNames]);
+  // The style words: picked once per set of cities and what was understood, only from the fixed list.
+  const understood = useMemo(() => intentEntries(trip, decisions).entries.map((e) => e.text), [trip, decisions]);
+  const styleFor = styleKey(cityNames, understood);
+  const askedStyle = useRef<string | null>(null);
+  useEffect(() => {
+    if (!cityNames.length || trip.style?.key === styleFor || askedStyle.current === `${trip.id}:${styleFor}`) return;
+    askedStyle.current = `${trip.id}:${styleFor}`;
+    void (async () => {
+      try {
+        const llm = await getProvider();
+        const out = await llm.generateJson(stylePrompt(), [cityNames.join(" → "), ...understood].join("\n"), z.object({ ids: z.array(z.string()) }));
+        await updateTrip(trip.id, (t) => ({ ...t, style: { key: styleFor, ids: acceptStyle(out.ids) } }), { touch: false });
+      } catch (error) {
+        if (!(error instanceof MissingKeyError)) console.warn("trip style", error); // the budget's word stands alone
+      }
+    })();
+  }, [trip.id, trip.style?.key, styleFor, cityNames, understood]);
   const [passport, setPassport] = useState("TR");
   useEffect(() => {
     const read = () => void loadPassport().then(setPassport);
@@ -292,6 +312,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   );
   const settledItem = (i: Item) => i.status === "chosen" || i.status === "booked";
   const tally = useMemo(() => heroTally(plan, items), [plan, items]);
+  const chips = styleChips(
+    trip.style?.key === styleFor ? acceptStyle(trip.style.ids) : [],
+    budgetLevel(trip.budget, range ? nightsBetween(range.start, range.end) + 1 : 0, facts.adults, decisions?.ctx.rates ?? null),
+  );
   /** A day card's photo: its city's (the hero's), else the trip's. */
   const cityImageOf = (city: string | null) => (city ? trip.cityImages?.[cityKeyOf(city)!] : null) ?? trip.heroImage ?? null;
   const countries = useMemo(() => countriesOf(items), [items]);
@@ -355,6 +379,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           range={range}
           today={today}
           lead={lead}
+          chips={chips}
           tally={tally}
           working={working.length + reading}
           menu={menu}

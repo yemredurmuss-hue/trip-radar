@@ -177,6 +177,8 @@ export interface Trip {
   cityImages?: Record<string, string | null>;
   /** The AI's mood sentence for the hero and the cities it was written for (see heroText.ts). */
   mood?: { key: string; text: string } | null;
+  /** The style words the model picked for the hero (tripStyle.ts) and what they were picked for. */
+  style?: { key: string; ids: string[] } | null;
   createdAt: number;
   updatedAt: number;
 }
