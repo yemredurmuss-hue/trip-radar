@@ -23,6 +23,8 @@ export type HistoryAction =
   | { kind: "unhide"; key: string; label: string }
   /** A trip setting changed on this computer (the money, who goes, the language): its line's undo (eventUndo.ts). */
   | { kind: "undo-event"; messageId: string }
+  /** A suggestion said not needed, open again. */
+  | { kind: "restore-suggestion"; key: string; label: string }
   | { kind: "show"; itemId: string };
 
 export interface HistoryRow {
@@ -50,7 +52,11 @@ export interface HistoryRow {
 }
 
 /** What is hidden on the trip, as the board names it; `names`: the labels its history line may start with. */
-export type HiddenInput = { kind: "dismissed"; item: Item } | { kind: "hidden"; key: string; label: string; names: string[] };
+export type HiddenInput =
+  | { kind: "dismissed"; item: Item }
+  | { kind: "hidden"; key: string; label: string; names: string[] }
+  /** A suggestion said not needed (trip.suggestions, state "dismissed"): `at` when. */
+  | { kind: "suggestion"; key: string; label: string; at: number | null };
 
 export interface HistoryInput {
   /** This traveller's name ("" when sharing isn't set up). */
@@ -232,6 +238,24 @@ export function buildHistory(input: HistoryInput): HistoryRow[] {
         text: item.name,
         how: chat ? [L("sohbetten", "in the chat"), L("Gizlenenler'de", "under Hidden")] : [L("Gizlenenler'de", "under Hidden")],
         action: { kind: "restore-dismissed", item },
+        undone: null,
+        trash: false,
+        source: "hidden",
+      });
+    } else if (h.kind === "suggestion") {
+      // A suggestion said not needed ("Gerek yok"): its line is written like a hidden transfer's.
+      const line = events.find((m) => !used.has(m.id) && HIDDEN_LINE.test(m.text) && m.text.startsWith(`${h.label}:`));
+      if (line) used.add(line.id);
+      rows.push({
+        key: `suggestion:${h.key}`,
+        at: h.at ?? line?.createdAt ?? null,
+        who: meName,
+        me: true,
+        verb: L("Gerek yok", "Not needed"),
+        parts: null,
+        text: h.label,
+        how: [L("öneri", "suggestion")],
+        action: { kind: "restore-suggestion", key: h.key, label: h.label },
         undone: null,
         trash: false,
         source: "hidden",

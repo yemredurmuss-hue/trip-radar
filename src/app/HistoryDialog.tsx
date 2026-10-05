@@ -13,7 +13,7 @@ import { fetchSettingsHistory, type SettingsChange } from "../lib/share/settings
 import { getShareConfig, isConfigured } from "../lib/share/store";
 import { dropTrash, emptyTrash, listTrash, purgeTrash, restoreTrash } from "../lib/trash";
 import type { ChatMessage, Item, TrashEntry, TrashKind, Trip } from "../lib/types";
-import { setHidden, setItemStatus } from "./actions";
+import { restoreSuggestion, setHidden, setItemStatus } from "./actions";
 import { undoEvent } from "../lib/eventUndo";
 import { useShare } from "./Share";
 import { Avatar, DiffParts } from "./ShareSafety";
@@ -155,6 +155,9 @@ export function HistoryDialog({ trip, items, hidden, onClose, onShow, onOpenTrip
           if (result.reload) location.reload(); // the language: the board's words need the page again
           return;
         }
+        case "restore-suggestion":
+          if (tripId) await restoreSuggestion(tripId, action.key, action.label);
+          return;
         case "show":
           onClose();
           onShow?.(action.itemId);

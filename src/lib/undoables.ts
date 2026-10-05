@@ -5,7 +5,7 @@
 import { L, type Lang } from "./i18n";
 import type { Removed } from "./removal";
 import type { TripChange } from "./tripUndo";
-import type { DocRecord, Item } from "./types";
+import type { DocRecord, Item, Suggestion } from "./types";
 
 export type Undoable =
   | { kind: "removed"; removed: Removed }
@@ -18,7 +18,9 @@ export type Undoable =
   /** A trip setting the chat changed (the money, who goes): its fields go back to what they were. */
   | { kind: "trip"; change: TripChange }
   /** The board's language the chat switched (the board reloaded since): `prev` comes back. */
-  | { kind: "lang"; tripId: string; prev: Lang; label: string };
+  | { kind: "lang"; tripId: string; prev: Lang; label: string }
+  /** A suggestion taken ("Plana ekle": `item` is the record it made, which goes again) or said not needed ("Gerek yok"): it opens again. */
+  | { kind: "suggestion"; tripId: string; suggestion: Suggestion; state: "added" | "dismissed"; item: Item | null };
 
 /** "Douro tekne turu silindi", "Otobüs eklendi", "Porto 14–15 Ekim gizlendi", "Para birimi: EUR". */
 export function undoText(u: Undoable): string {
@@ -35,6 +37,10 @@ export function undoText(u: Undoable): string {
       return u.change.label;
     case "lang":
       return u.label;
+    case "suggestion":
+      return u.state === "added"
+        ? L(`${u.item?.name ?? u.suggestion.title} plana eklendi`, `${u.item?.name ?? u.suggestion.title} added to the plan`)
+        : L(`${u.suggestion.title}: gerek yok`, `${u.suggestion.title}: not needed`);
   }
 }
 

@@ -1,14 +1,15 @@
 // Small write actions shared by the board's views.
-import { addEvent, db, notifyChanged } from "../lib/db";
+import { addEvent, db, newId, notifyChanged } from "../lib/db";
 import { restoreDoc } from "../lib/docs";
 import { L, saveLang } from "../lib/i18n";
 import { announceRemoved, deleteItem, restoreItem, type Removed } from "../lib/removal";
 import { restoreFields, withTravellers, type TravellersChange } from "../lib/tripSettings";
 import { latestLangLine, undoEvent } from "../lib/eventUndo";
 import { stableJson } from "../lib/share/settings";
+import { suggestedItem, withState } from "../lib/suggestions";
 import { nightsKey } from "../lib/timeline";
 import type { DateRange } from "../lib/plan";
-import type { Category, Item, ItemStatus, Trip } from "../lib/types";
+import type { Category, Item, ItemStatus, Suggestion, SuggestionState, Trip } from "../lib/types";
 import type { Undoable } from "../lib/undoables";
 
 /** The trip history line for a status change, written in the current language. */
@@ -113,10 +114,51 @@ export async function hideNights(tripId: string, range: DateRange, label: string
   return { kind: "hidden", tripId, key, label };
 }
 
+// --- Öneriler (lib/suggestions.ts): "Plana ekle", "Gerek yok", and their way back ---------------------------
+
+/** A suggestion's state on the trip as stored right now (a rule's put back to open leaves the list again). */
+async function setSuggestion(tripId: string, s: Suggestion, state: SuggestionState): Promise<void> {
+  await updateTrip(tripId, (t) => ({ ...t, suggestions: withState(t.suggestions, t.suggestions?.find((x) => x.key === s.key) ?? s, state, Date.now()) }));
+}
+
+/**
+ * "Plana ekle": the real record through the template the suggestion names (planned, like a tile from "+ Ekle"),
+ * then the suggestion is done. Handed back for the 8-second "Geri al"; null for a warning (nothing to add).
+ */
+export async function addSuggested(tripId: string, s: Suggestion, id = newId()): Promise<Undoable | null> {
+  const item = suggestedItem(s, tripId, id, Date.now());
+  if (!item) return null;
+  await (await db()).put("items", item);
+  await addEvent(tripId, L(`${item.name} plana eklendi`, `${item.name} added to the plan`));
+  await setSuggestion(tripId, s, "added");
+  return { kind: "suggestion", tripId, suggestion: s, state: "added", item };
+}
+
+/** "Gerek yok": the suggestion is gone for good (Geçmiş's "Geri getir" brings it back), with the 8-second "Geri al". */
+export async function dismissSuggestion(tripId: string, s: Suggestion): Promise<Undoable> {
+  await setSuggestion(tripId, s, "dismissed");
+  await addEvent(tripId, L(`${s.title}: gerek yok denildi, gizlendi`, `${s.title}: marked not needed, hidden`));
+  return { kind: "suggestion", tripId, suggestion: s, state: "dismissed", item: null };
+}
+
+/** Geçmiş's "Geri getir" on a suggestion said not needed: it's open again (a rule's shows while the rule holds). */
+export async function restoreSuggestion(tripId: string, key: string, label: string): Promise<void> {
+  const d = await db();
+  const s = (await d.get("trips", tripId))?.suggestions?.find((x) => x.key === key);
+  if (!s) return;
+  await setSuggestion(tripId, s, "open");
+  await addEvent(tripId, L(`${label} geri getirildi`, `${label} brought back`));
+}
+
 /** "Geri al": a deletion restored, a one-tap add taken away again, hidden nights brought back. */
 export async function undo(u: Undoable): Promise<void> {
   if (u.kind === "removed") return restoreItem(u.removed);
   if (u.kind === "doc") return restoreDoc(u.doc);
+  if (u.kind === "suggestion") {
+    // The record "Plana ekle" made goes again (nothing of the traveller's: no trash entry), and the card is back.
+    if (u.item) await deleteItem(u.item, L(`${u.item.name} eklenmedi (geri alındı)`, `${u.item.name} not added (undone)`), { trash: false });
+    return setSuggestion(u.tripId, u.suggestion, "open");
+  }
   if (u.kind === "added") {
     // Taking back a one-tap add loses nothing of the traveller's: no trash entry for it.
     await deleteItem(u.item, L(`${u.item.name} eklenmedi (geri alındı)`, `${u.item.name} not added (undone)`), { trash: false });
