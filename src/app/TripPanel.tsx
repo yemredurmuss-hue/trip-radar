@@ -297,6 +297,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   );
   const settledItem = (i: Item) => i.status === "chosen" || i.status === "booked";
   const tally = useMemo(() => heroTally(plan, items), [plan, items]);
+  /** A day card's photo: its city's (the hero's), else the trip's. */
+  const cityImageOf = (city: string | null) => (city ? trip.cityImages?.[cityKeyOf(city)!] : null) ?? trip.heroImage ?? null;
   const countries = useMemo(() => countriesOf(items), [items]);
   const places = useMemo(() => cityRanges(plan, cityNames, range), [plan, cityNames, range]);
   const flightGroups = plan.groups.filter((g) => g.category === "flight");
@@ -418,7 +420,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         </div>
       )}
       {view === "days" && timeline.entries.length > 0 ? (
-        <TimelineView onShow={showOnPlan} timeline={timeline} tripId={trip.id} leg={leg} onAdd={env.add} listings={listings} today={today} />
+        <TimelineView onShow={showOnPlan} timeline={timeline} tripId={trip.id} leg={leg} onAdd={env.add} listings={listings} today={today} cityImage={cityImageOf} />
       ) : (
         <CategoryPlan
           plan={plan}

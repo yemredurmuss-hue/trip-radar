@@ -12,6 +12,7 @@ import { CategoryIcon, type IconName } from "./Icons";
 import { L, locale } from "../lib/i18n";
 import type { InsertAt } from "../lib/templates";
 import { insertAtDay } from "../lib/templates";
+import { DayCards } from "./days/DayCards";
 
 export type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => ReactNode;
 export type CardFor = (item: Item, group: Item[], decision?: GroupDecision, ranked?: Ranked, onCompare?: () => void) => ReactNode;
@@ -38,6 +39,7 @@ export function TimelineView({
   listings,
   today,
   onShow,
+  cityImage,
 }: {
   timeline: Timeline;
   tripId: string;
@@ -48,11 +50,14 @@ export function TimelineView({
   today: string;
   /** Shows a block of the plan (from the itinerary). */
   onShow: (entryKey: string) => void;
+  /** The city's photo for its day cards. */
+  cityImage?: (city: string | null) => string | null;
 }) {
   const rentals = timeline.entries.filter((e): e is RentalEntry => e.kind === "rental");
+  // 0.34.1: the days as cards (days/DayCards.tsx); the list below (Itinerary) is no longer shown.
   return (
     <div className="section trip-plan">
-      <Itinerary sections={timeline.sections} tripId={tripId} leg={leg} onAdd={onAdd} listings={listings} today={today} rentals={rentals} onShow={onShow} />
+      <DayCards sections={timeline.sections} leg={leg} onAdd={onAdd} listings={listings} today={today} rentals={rentals} onShow={onShow} cityImage={cityImage} />
     </div>
   );
 }
