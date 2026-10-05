@@ -6,12 +6,12 @@
 // section. Pure: derived on every render, nothing stored but which sections the traveller opened.
 import { cityOfAirport } from "./airports";
 import { isIdea, needsBooking } from "./booking";
-import { TICKET_MODES, transportMode } from "./cardKinds";
+import { legTransportMode, TICKET_MODES, transportMode } from "./cardKinds";
 import { L } from "./i18n";
 import { nNights } from "./i18nText";
 import { shortDay } from "./ideas";
 import { formatDateRange, isoDate } from "./items";
-import { legShortTitle, type Leg } from "./legs";
+import { legItem, legShortTitle, type Leg } from "./legs";
 import { cityKeyOf, departureDay, sameCity, type OptionGroup, type Plan } from "./plan";
 import { toBook, type Timeline, type TimelineEntry } from "./timeline";
 import { isInsurance, itemText } from "./travelKinds";
@@ -112,14 +112,13 @@ export function sectionOfItem(item: Item): SectionId {
   }
 }
 
-/** A block of the plan's front: a flight under Uçuş (a missing one too); a transfer, a change of city, a train, a car under Ulaşım. */
+/** A block of the plan's front: every flight under Uçuş (a missing one, a change of city by plane); transfers, trains, cars under Ulaşım. */
 function sectionOfEntry(entry: TimelineEntry): SectionId {
   switch (entry.kind) {
     case "travel": {
       if (entry.travel) return entry.travel.group.category === "flight" ? "flight" : "transport";
-      // A change of city with no ticket saved yet is its transfer card, whatever way was picked (picking
-      // the plane doesn't move it away under the hand); a flight saved for it is a flight.
-      if (entry.leg) return "transport";
+      // A change of city with no ticket saved yet: Uçuş when it goes by plane (its card says "Uçuş"), else Ulaşım.
+      if (entry.leg) return legByPlane(entry.leg) ? "flight" : "transport";
       return "flight";
     }
     case "stay":
@@ -127,11 +126,20 @@ function sectionOfEntry(entry: TimelineEntry): SectionId {
     case "event":
       return sectionOfItem(entry.item);
     case "leg":
+      return legByPlane(entry.leg) ? "flight" : "transport";
     case "rental":
     case "day":
     case "plan":
       return "transport";
   }
+}
+
+/** Its card's kind is "Uçuş" (cardView.legCardView): the way picked, else what's settled for it. All flights are under Uçuş. */
+function legByPlane(leg: Leg): boolean {
+  const mode = legTransportMode(leg.choice?.mode ?? leg.mode);
+  if (mode) return mode === "flight";
+  const settled = legItem(leg);
+  return Boolean(settled && transportMode(settled) === "flight");
 }
 
 /** As its card says it (cardView.legCardView): arranged is done; a change of city by ticket still to buy; planned is done. */

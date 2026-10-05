@@ -431,12 +431,19 @@ try {
   await train.getByRole("menuitem", { name: "Ele" }).click();
   await app.locator(".row-name", { hasText: "Elenenler (1)" }).waitFor();
   const move = app.locator('.pk-leg[aria-label="Porto → Lizbon"]');
+  await sec("transport").locator('.pk-leg[aria-label="Porto → Lizbon"]').waitFor();
   await move.locator(".pk-ring.open").waitFor();
   await move.locator(".pk-foot", { hasText: "Planlanmadı" }).waitFor();
   assert.match(await move.locator(".pk-mid").innerText(), /Porto[\s\S]*Lizbon/);
   await move.locator(".pk-body").click();
   await move.getByRole("button", { name: "✈ Uçak" }).click();
+  // By plane it's a flight: it leaves Ulaşım for Uçuş, and the page follows it there with a flash.
+  await sec("flight").locator(".cat-card.flash", { has: app.locator('.pk-leg[aria-label="Porto → Lizbon"]') }).waitFor();
+  assert.equal(await sec("transport").locator('.pk-leg[aria-label="Porto → Lizbon"]').count(), 0, "a flight never sits in Ulaşım");
+  assert.equal(await move.locator(".pk-kind").innerText(), "Uçuş");
   await move.locator(".pk-ring.half").waitFor();
+  // Its details open again in its new place.
+  if (!(await move.getByRole("link", { name: "Uçuş ara ↗" }).count())) await move.locator(".pk-body").click();
   await move.locator(".pk-foot").getByText("bilet alınmadı").waitFor();
   assert.equal(
     decodeURIComponent(await move.getByRole("link", { name: "Uçuş ara ↗" }).getAttribute("href")),
@@ -830,6 +837,10 @@ try {
   const openTitles = app.locator(".cat-sec:not(.closed) .cat-title");
   while (await openTitles.count()) await openTitles.first().click();
   assert.equal(await app.locator(".cat-sec.closed").count(), 7);
+  // One arrow, pointing right when closed and down when open, turned on the arrow itself (never mid-turn).
+  const turn = (scope) => scope.locator(".cat-chev svg").evaluate((el) => getComputedStyle(el).transform);
+  assert.match(await turn(sec("food")), /^matrix\([^,]+, -1, 1,/);
+  assert.equal(await sec("food").locator(".cat-chev").evaluate((el) => getComputedStyle(el).transform), "none");
   // Closed, every record is one line (a block of options counts once, as on its card).
   assert.equal(await app.locator(".cat-row").count(), recordsOpen);
   assert.deepEqual(await sec("activity").locator(".cat-row b").allInnerTexts(), ["Douro tekne turu", "Livraria Lello", "Serralves Müzesi", "Tiyatro", "Livraria Lello, giriş bileti var"]);
@@ -850,6 +861,7 @@ try {
   await sec("activity").and(app.locator(".closed")).waitFor();
   await sec("activity").locator(".cat-title").click();
   await sec("activity").locator(".cat-card").first().waitFor();
+  assert.match(await turn(sec("activity")), /^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
   // A to-do in a closed section: the hero's list opens it there.
   assert.match(await sec("stay").getAttribute("class"), /closed/);
   await app.locator(".hx-todo button", { hasText: "Rezerve et" }).click();

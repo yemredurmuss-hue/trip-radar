@@ -295,6 +295,24 @@ describe("sections from what's saved and said", () => {
     expect(bought.find((s) => s.id === "transport")!.entries.map((e) => e.row.status)).toEqual(["Ayarlandı", "Alındı"]);
   });
 
+  it("a change of city by plane is a flight, under Uçuş, with or without a ticket saved", () => {
+    const items = [...base, flight("TP 1234", "IST", "OPO", "2026-10-08", "booked")];
+    const move = sectionsOf(items).legs.find((l) => l.kind === "move")!;
+    const byPlane = (booked: boolean) => sectionsOf(items, { ...trip, legs: { [move.key]: { mode: "flight", booked, note: null, updatedAt: 1 } } }).sections;
+    const planned = byPlane(false);
+    expect(planned.find((s) => s.id === "transport")?.entries.map((e) => e.row.name) ?? []).not.toContain("Porto → Lizbon");
+    const flights = planned.find((s) => s.id === "flight")!;
+    expect(flights.entries.map((e) => [e.row.name, e.state, e.row.status])).toEqual([
+      ["İstanbul → Porto", "done", "Alındı"],
+      ["Porto → Lizbon", "book", "Bilet yok"],
+      ["Dönüş uçuşu", "empty", "Eklenmedi"],
+    ]);
+    expect(byPlane(true).find((s) => s.id === "flight")!.entries.map((e) => e.row.status)).toEqual(["Alındı", "Alındı", "Eklenmedi"]);
+    // The same block, by train: Ulaşım.
+    const byTrain = sectionsOf(items, { ...trip, legs: { [move.key]: { mode: "train", booked: false, note: null, updatedAt: 1 } } }).sections;
+    expect(byTrain.find((s) => s.id === "transport")!.entries.map((e) => e.row.name)).toContain("Porto → Lizbon");
+  });
+
   it("finds a to-do's place: by record, transfer or block", () => {
     const items = [...base, flight("TP 1234", "IST", "OPO", "2026-10-08", "chosen"), makeItem({ name: "Serralves", category: "activity", city: "Porto", booking: "needed" })];
     const { sections } = sectionsOf(items);

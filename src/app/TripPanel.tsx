@@ -38,7 +38,7 @@ import { deleteItem, onRemoved } from "../lib/removal";
 import { undoSlot } from "../lib/undo";
 import { undoTrip, type Undoable } from "../lib/undoables";
 import { addQuick, templateLabel, TEMPLATES, type InsertAt, type Template, type TemplateId } from "../lib/templates";
-import { categorize, findInSections, sectionOfItem, type CatEntry, type SectionId } from "../lib/categories";
+import { categorize, catDomKey, findInSections, sectionOfItem, type CatEntry, type SectionId } from "../lib/categories";
 import { firstField, type CardFocus } from "../lib/inlineEdit";
 import { newId } from "../lib/db";
 import { AddSheet } from "./cards/AddSheet";
@@ -108,6 +108,19 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     if (hit) setOpened(hit.section, true);
     setTimeout(() => show(document.getElementById(entryDomId(key)) ?? (hit && document.getElementById(entryDomId(hit.dom)))), 60);
   };
+  // A card that changes section (a change of city now by plane: Ulaşım → Uçuş; a to-do moved to Etkinlikler)
+  // isn't lost from under the hand: its new section opens and the page goes to it, with a flash.
+  const placed = useRef<{ tripId: string; at: Map<string, SectionId> } | null>(null);
+  useEffect(() => {
+    const now = new Map(sections.flatMap((s) => s.entries.map((e) => [e.key, s.id] as const)));
+    const before = placed.current?.tripId === trip.id ? placed.current.at : null;
+    placed.current = { tripId: trip.id, at: now };
+    if (!before || view !== "plan") return;
+    const moved = sections.flatMap((s) => s.entries).find((e) => before.has(e.key) && before.get(e.key) !== e.section);
+    if (!moved) return;
+    setOpened(moved.section, true);
+    setTimeout(() => show(document.getElementById(entryDomId(catDomKey(moved)))), 60);
+  }, [sections, trip.id, view, setOpened]);
   /** A closed section's line: the section opens, the card comes into view. */
   const goTo = (entry: CatEntry, dom: string) => {
     setOpened(entry.section, true);
