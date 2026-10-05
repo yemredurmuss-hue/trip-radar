@@ -4,13 +4,13 @@
 // section's count gives a tiny pop, and a card that landed out of sight gets a toast with "Göster".
 // Kept to one hook for TripPanel (a few lines there), the drawing in ArriveViews.tsx.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { arrivedText, diffArrivals, predictSection, siteOf, hostOf, type Seen } from "../../lib/arrive";
+import { arrivedText, diffArrivals, pendingSlot, predictSection, siteOf, hostOf, type Seen } from "../../lib/arrive";
 import { findInSections, sectionOfItem, type CatSection, type SectionId } from "../../lib/categories";
 import type { Todo } from "../../lib/progress";
 import type { Capture, Item } from "../../lib/types";
 import { findTarget } from "../Progress";
 import { ArriveToast, PendingCard, type Pending } from "./ArriveViews";
-import { captureById, onRevealRequest, useIntake } from "./intake";
+import { captureById, endIntake, intakeNow, onRevealRequest, useIntake } from "./intake";
 
 /** How long the ring stays on a card that just came (the CSS animation is a little shorter). */
 const RING_MS = 1900;
@@ -79,42 +79,46 @@ export function useArrivals({ tripId, items, sections, openCaptures, view, isOpe
         thumb: image ? c.screenshot : null,
         error: c.error,
         captureId: c.id,
+        capturedAt: c.capturedAt,
+        since: null,
       });
     }
     for (const e of intake) {
       if (e.kind !== "file" || e.tripId !== tripId || e.state !== "reading") continue;
-      out.push({ key: e.id, kind: "file", status: "processing", section: null, host: null, site: null, title: e.name, thumb: null, error: null, captureId: null });
+      out.push({ key: e.id, kind: "file", status: "processing", section: null, host: null, site: null, title: e.name, thumb: null, error: null, captureId: null, capturedAt: e.at, since: e.at });
     }
     return out;
   }, [openCaptures, intake, tripId]);
-  // When each started being read (a queued one waits on its first line).
+  // When each started being read (a queued one waits on its first line). The card keeps its own small timer.
   const now = Date.now();
-  for (const p of pending) if (p.status === "processing" && !since.current.has(p.key)) since.current.set(p.key, now);
-  const working = pending.some((p) => p.status !== "error");
-  const [, tick] = useState(0);
-  useEffect(() => {
-    if (!working) return;
-    const t = setInterval(() => tick((n) => n + 1), 1000);
-    return () => clearInterval(t);
-  }, [working]);
+  for (const p of pending) if (p.status === "processing" && !since.current.has(p.key)) since.current.set(p.key, p.since ?? now);
 
-  // A section with a waiting card opens while it waits, unless the traveller closes it again.
-  const [released, setReleased] = useState<ReadonlySet<SectionId>>(() => new Set());
-  const waitingIn = useMemo(() => new Set(pending.filter((p) => p.section && p.status !== "error").map((p) => p.section!)), [pending]);
+  // A section with a waiting card opens while it waits, on screen only (never remembered), and stays open
+  // for the card that lands in it until the traveller closes it or leaves the trip.
+  const waitingIn = useMemo(() => new Set(pending.filter((p) => pendingSlot(p) !== "lead").map((p) => p.section!)), [pending]);
+  const [shown, setShown] = useState<{ tripId: string; open: ReadonlySet<SectionId>; closed: ReadonlySet<SectionId> }>({ tripId, open: new Set(), closed: new Set() });
+  const own = shown.tripId === tripId ? shown : { tripId, open: new Set<SectionId>(), closed: new Set<SectionId>() };
   useEffect(() => {
-    if ([...released].some((s) => !waitingIn.has(s))) setReleased(new Set([...released].filter((s) => waitingIn.has(s))));
-  }, [waitingIn, released]);
-  const openNow = useCallback((s: CatSection) => (waitingIn.has(s.id) && !released.has(s.id)) || isOpen(s), [waitingIn, released, isOpen]);
-  // The sections open only for a waiting card, as of the last render (read by `land` before it's updated below).
-  const held = useRef<ReadonlySet<SectionId>>(new Set());
-  const heldNow = new Set(sections.filter((s) => waitingIn.has(s.id) && !released.has(s.id) && !isOpen(s)).map((s) => s.id));
-  const onOpen = useCallback(
-    (id: SectionId, open: boolean) => {
-      if (!open && waitingIn.has(id)) setReleased((r) => new Set(r).add(id));
-      setOpened(id, open);
-    },
-    [waitingIn, setOpened],
-  );
+    const add = [...waitingIn].filter((s) => !own.open.has(s) && !own.closed.has(s));
+    const done = [...own.closed].filter((s) => !waitingIn.has(s)); // a closed one may open for the next arrival
+    if (add.length || done.length || shown.tripId !== tripId) {
+      setShown({ tripId, open: new Set([...own.open, ...add]), closed: new Set([...own.closed].filter((s) => waitingIn.has(s))) });
+    }
+  }, [waitingIn, tripId, own, shown.tripId]);
+  const forced = (id: SectionId) => (own.open.has(id) || waitingIn.has(id)) && !own.closed.has(id);
+  const openNow = (s: CatSection) => forced(s.id) || isOpen(s);
+  const onOpen = (id: SectionId, open: boolean) => {
+    const section = sections.find((s) => s.id === id);
+    if (forced(id)) {
+      // The traveller's own tap ends the arrival's hold on it.
+      const nextOpen = new Set(own.open);
+      nextOpen.delete(id);
+      setShown({ tripId, open: nextOpen, closed: open ? own.closed : new Set(own.closed).add(id) });
+      // Opened only for an arrival and closed again: back as it was, nothing remembered.
+      if (!open && section && !isOpen(section)) return;
+    }
+    setOpened(id, open);
+  };
 
   // --- the moment a card arrives ---
   const [toast, setToast] = useState<{ text: string; itemId: string; at: number } | null>(null);
@@ -126,16 +130,15 @@ export function useArrivals({ tripId, items, sections, openCaptures, view, isOpe
   useEffect(() => setToast(null), [tripId]);
   const quietIds = useRef(new Set<string>());
   const land = useCallback((ids: string[], opts: { toast: boolean }) => {
-    const { items, sections, setOpened } = live.current;
+    const { items, sections } = live.current;
     const placed = ids.flatMap((id) => {
       const item = items.find((i) => i.id === id);
       if (!item || item.status === "dismissed") return [];
       return [{ id, name: item.name, section: findInSections(sections, { item: id })?.section ?? sectionOfItem(item) }];
     });
     if (!placed.length) return;
-    // A section held open for its waiting card stays open for the card (else it would fold right under it).
-    // One closed on its own (İlham, one the traveller closed) stays closed: the count pops, the toast says where.
-    for (const sec of new Set(placed.map((p) => p.section))) if (held.current.has(sec)) setOpened(sec, true);
+    // A section opened for its waiting card stays open for the card (on screen only, see `shown`). One closed
+    // on its own (İlham, one the traveller closed) stays closed: the count pops and the toast says where.
     setTimeout(() => {
       const els = placed.map((p) => findTarget({ item: p.id }));
       els.forEach((el) => pulse(el, "ar-new", RING_MS));
@@ -153,10 +156,6 @@ export function useArrivals({ tripId, items, sections, openCaptures, view, isOpe
     const arrived = fresh.filter((id) => !quietIds.current.delete(id));
     if (arrived.length) land(arrived, { toast: true });
   }, [tripId, items, land]);
-  // After the arrivals above: this render's held sections are the next one's "last render".
-  useEffect(() => {
-    held.current = heldNow;
-  });
 
   // A link that updated a card already there ("↻ … güncellendi"): no new id, so its capture says which card.
   const waitedOn = useRef<{ tripId: string; ids: Set<string> }>({ tripId, ids: new Set() });
@@ -168,6 +167,9 @@ export function useArrivals({ tripId, items, sections, openCaptures, view, isOpe
     for (const id of gone) since.current.delete(id);
     if (!gone.length) return;
     void Promise.all(gone.map(captureById)).then((rows) => {
+      // Landed (or removed): what the page kept of its handing-over starts its keeping clock (intake.ts).
+      const ended = new Set(gone.filter((_, i) => rows[i] == null || rows[i]!.status === "done"));
+      for (const e of intakeNow()) if ((e.kind === "link" || e.state === "screenshot") && e.captureId && ended.has(e.captureId)) endIntake(e.id);
       const ids = rows.flatMap((c) => (c?.status === "done" && c.itemId ? [c.itemId] : []));
       const old = ids.filter((id) => live.current.items.some((i) => i.id === id && i.tripId === tripId));
       // A new card's own arrival does the ring; an updated one only gets the ring.
@@ -194,13 +196,16 @@ export function useArrivals({ tripId, items, sections, openCaptures, view, isOpe
   useEffect(() => onRevealRequest((id) => live.current.reveal({ item: id })), []);
 
   const cards = (list: Pending[]) =>
-    list.length ? list.map((p) => <PendingCard key={p.key} p={p} elapsed={p.status === "processing" ? now - (since.current.get(p.key) ?? now) : 0} />) : null;
-  const shownSections = new Set(sections.map((s) => s.id));
+    list.length ? list.map((p) => <PendingCard key={p.key} p={{ ...p, since: since.current.get(p.key) ?? null }} />) : null;
+  // A failed one always under the Plan's header (pendingSlot): never inside a section that may be closed.
+  const known = new Set(sections.map((s) => s.id));
+  const slotOf = (p: Pending) => {
+    const slot = pendingSlot(p);
+    return slot !== "lead" && known.has(slot) ? slot : "lead";
+  };
   const bySection: Partial<Record<SectionId, ReactNode>> = {};
-  for (const s of new Set(pending.map((p) => p.section))) {
-    if (s && shownSections.has(s)) bySection[s] = cards(pending.filter((p) => p.section === s));
-  }
-  const lead = cards(pending.filter((p) => !p.section || !shownSections.has(p.section)));
+  for (const s of new Set(pending.map(slotOf))) if (s !== "lead") bySection[s] = cards(pending.filter((p) => slotOf(p) === s));
+  const lead = cards(pending.filter((p) => slotOf(p) === "lead"));
 
   return {
     pending: { lead, bySection },

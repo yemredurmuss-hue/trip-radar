@@ -28,6 +28,8 @@ export function useBoardIntake(tripId: string | null) {
     if (!tripId) return;
     const onPaste = (e: ClipboardEvent) => {
       if (typing(e.target) || typing(document.activeElement) || !e.clipboardData) return;
+      // A dialog or sheet is open (Settings, a card's drawer, the add sheet, a comparison, history): not the board's paste.
+      if (document.querySelector('[role="dialog"], [aria-modal="true"], .modal, .overlay, .drawer, .pk-sheet, .compare-modal')) return;
       // Only on the board's side (the chat has its own box).
       if (!(e.target instanceof Element) || e.target.closest(".chat")) return;
       const files = Array.from(e.clipboardData.files);

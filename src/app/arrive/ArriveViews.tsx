@@ -1,8 +1,9 @@
 // The arrival's small pieces: the waiting card in a section, the "Konaklama'ya eklendi · Göster" toast, the
 // drop overlay, and the chat's chip under a link or a file. Calm on purpose: one shimmer, short fades, a
 // ring that fades; nothing moves under prefers-reduced-motion (the ar- block in app.css).
+import { useEffect, useState } from "react";
 import { requestProcessing } from "../../lib/browser";
-import { stageText, type ChipState } from "../../lib/arrive";
+import { waitingLine, type ChipState } from "../../lib/arrive";
 import type { SectionId } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import { retryCapture } from "../../lib/process";
@@ -22,9 +23,13 @@ export interface Pending {
   thumb: string | null;
   error: string | null;
   captureId: string | null;
+  /** When it was handed over, and when its reading began (null: still queued). */
+  capturedAt: number;
+  since: number | null;
 }
 
-export const faviconOf = (host: string) => `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
+/** The site's own icon, asked of the site itself as the cards do (cards/parts.tsx): no third party in between. */
+export const faviconOf = (host: string) => `https://${host}/favicon.ico`;
 
 /** The site's little icon, else a generic one (a document, a link). */
 export function SiteIcon({ host, kind, size = 16 }: { host: string | null; kind?: Pending["kind"]; size?: number }) {
@@ -32,13 +37,21 @@ export function SiteIcon({ host, kind, size = 16 }: { host: string | null; kind?
   return host ? <FallbackImg src={faviconOf(host)} className="ar-favimg" fallback={generic} /> : generic;
 }
 
-export function PendingCard({ p, elapsed }: { p: Pending; elapsed: number }) {
+export function PendingCard({ p }: { p: Pending }) {
   const failed = p.status === "error";
   const name = p.host ?? (p.kind === "image" ? L("Ekran görüntüsü", "Screenshot") : p.title ?? L("Belge", "Document"));
   const sub = p.host ? p.title : null;
-  const stage = stageText({ status: p.status, kind: p.kind === "link" || p.kind === "page" ? "paste-link" : p.kind }, p.site, p.section, elapsed);
+  // Its own clock: re-rendered only when its line changes (a stage, "Bekliyor…"), never the whole board.
+  const [now, setNow] = useState(Date.now);
+  const line = waitingLine({ status: p.status, kind: p.kind === "link" || p.kind === "page" ? "paste-link" : p.kind, capturedAt: p.capturedAt, since: p.since }, p.site, p.section, now);
+  useEffect(() => {
+    if (line.next == null || !Number.isFinite(line.next)) return;
+    const t = setTimeout(() => setNow(Date.now()), Math.max(50, line.next - Date.now() + 20));
+    return () => clearTimeout(t);
+  }, [line.next]);
+  const stage = line.text;
   return (
-    <div className={`ar-pending${failed ? " ar-failed" : ""}`} data-arrive={p.key} title={failed ? (p.error ?? undefined) : undefined} role={failed ? undefined : "status"}>
+    <div className={`ar-pending${failed ? " ar-failed" : ""}${line.stale ? " ar-stale" : ""}`} data-arrive={p.key} title={failed ? (p.error ?? undefined) : undefined} role={failed ? undefined : "status"}>
       <span className={`ar-fav${p.thumb ? " ar-has-thumb" : ""}`} aria-hidden>
         {p.thumb ? <img className="ar-thumb" src={p.thumb} alt="" /> : <SiteIcon host={p.host} kind={p.kind} size={18} />}
       </span>
@@ -57,7 +70,7 @@ export function PendingCard({ p, elapsed }: { p: Pending; elapsed: number }) {
             stage
           )}
         </span>
-        {!failed && (
+        {!failed && !line.stale && (
           <span className="ar-bar" aria-hidden>
             <i />
           </span>
@@ -121,7 +134,7 @@ export function ArriveChip({ host, label, state, onShow, onRetry }: {
   onRetry?: () => void;
 }) {
   return (
-    <div className={`ar-chip ar-${state.tone}`} title={state.tone === "error" ? (state.detail ?? undefined) : undefined}>
+    <div className={`ar-chip ar-${state.tone}`} role="status" aria-live="polite" title={state.tone === "error" ? (state.detail ?? undefined) : undefined}>
       <span className="ar-chip-site">
         <SiteIcon host={host} kind={host ? "link" : "file"} size={14} />
         {label && <span>{label}</span>}

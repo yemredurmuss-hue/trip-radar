@@ -2044,6 +2044,7 @@ button.cat-hidden-name:hover { text-decoration: underline; }
   animation: ar-shimmer 1.6s ease-in-out infinite;
 }
 .ar-failed { background: #fff8f6; border-color: #f3dcd6; }
+.ar-stale .ar-stage { color: #8e8e93; }
 .ar-err { color: var(--danger); font-weight: 500; }
 .ar-why { margin-left: 6px; color: #8e8e93; }
 .ar-why::before { content: "· "; }

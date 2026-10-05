@@ -11,7 +11,7 @@ import { retryCapture } from "../../lib/process";
 import type { Capture, ChatMessage, Item, Trip } from "../../lib/types";
 import { SECTION_META } from "../plan/sectionMeta";
 import { ArriveChip } from "./ArriveViews";
-import { captureById, requestReveal, useIntake, type FileIntake, type Intake } from "./intake";
+import { captureById, endIntake, requestReveal, useIntake, type FileIntake, type Intake } from "./intake";
 
 /** A capture as it stands: the open ones from the board, a finished one read back once. Undefined: not known yet. */
 function useCaptures(ids: readonly string[], open: Capture[]): (id: string) => Capture | null | undefined {
@@ -42,7 +42,8 @@ type Row = { kind: "msg"; at: number; m: ChatMessage; file?: FileIntake } | { ki
  * "📎 name" line its reading wrote; until that line exists the file is its own bubble.
  */
 export function chatRows(messages: ChatMessage[], intake: readonly Intake[], tripId: string): Row[] {
-  const mine = intake.filter((e) => e.source === "chat" && e.tripId === tripId);
+  // A file that failed is said once, by the chat's own line ("📎 … okunamadı", or the error under the box): no chip too.
+  const mine = intake.filter((e) => e.source === "chat" && e.tripId === tripId && !(e.kind === "file" && e.state === "error"));
   const attached = new Map<string, FileIntake>();
   const used = new Set<string>();
   for (const e of mine) {

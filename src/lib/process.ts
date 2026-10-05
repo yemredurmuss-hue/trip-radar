@@ -94,15 +94,16 @@ export async function saveSnapshot(snapshot: PageSnapshot, screenshot: string | 
   return capture;
 }
 
-export async function savePastedLink(url: string): Promise<Capture> {
-  const capture: Capture = { ...baseCapture("paste-link"), url };
+/** `forTripId`: handed to one trip's board, it goes into that trip (as a shared trip's capture does). */
+export async function savePastedLink(url: string, forTripId?: string): Promise<Capture> {
+  const capture: Capture = { ...baseCapture("paste-link"), url, ...(forTripId ? { forTripId } : {}) };
   await (await db()).put("captures", capture);
   notifyChanged();
   return capture;
 }
 
-export async function saveImage(dataUrl: string): Promise<Capture> {
-  const capture: Capture = { ...baseCapture("image"), screenshot: dataUrl };
+export async function saveImage(dataUrl: string, forTripId?: string): Promise<Capture> {
+  const capture: Capture = { ...baseCapture("image"), screenshot: dataUrl, ...(forTripId ? { forTripId } : {}) };
   await (await db()).put("captures", capture);
   notifyChanged();
   return capture;

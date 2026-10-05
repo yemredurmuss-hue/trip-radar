@@ -196,6 +196,32 @@ export function stageText(c: { status: "pending" | "processing" | "done" | "erro
   return L("Plana yerleşiyor…", "Finding its place in the plan…");
 }
 
+/** Waiting longer than this (the worker stopped, the browser slept): the card stops moving and says "Bekliyor…". */
+export const STALE_MS = 10 * 60_000;
+
+/**
+ * The waiting card's line at a moment: the stage while it's being read (by `since`, when reading began), the
+ * first line while queued, "Bekliyor…" once it has waited past STALE_MS since it was handed over. `next`:
+ * when the line will change next (null: never on its own), so the card re-renders only then.
+ */
+export function waitingLine(
+  c: { status: "pending" | "processing" | "error"; kind: "extension" | "paste-link" | "image" | "file"; capturedAt: number; since: number | null },
+  site: string | null,
+  section: SectionId | null,
+  now: number,
+): { text: string; stale: boolean; next: number | null } {
+  if (c.status === "error") return { text: stageText(c, site, section, 0), stale: false, next: null };
+  if (now - c.capturedAt >= STALE_MS) return { text: L("Bekliyor…", "Waiting…"), stale: true, next: null };
+  const elapsed = c.status === "processing" && c.since != null ? now - c.since : 0;
+  const stageEnd = c.status === "processing" && c.since != null ? STAGE_MS.map((ms) => c.since! + ms).find((t) => t > now) : undefined;
+  return { text: stageText(c, site, section, elapsed), stale: false, next: Math.min(stageEnd ?? Infinity, c.capturedAt + STALE_MS) };
+}
+
+/** Where a waiting card goes: its guessed section, or under the Plan's header when unsure or when it failed (a closed section would hide it). */
+export function pendingSlot(p: { section: SectionId | null; status: "pending" | "processing" | "error" }): SectionId | "lead" {
+  return p.status === "error" || !p.section ? "lead" : p.section;
+}
+
 /** The ids seen on one trip so far: what's in it now and was never seen is new. */
 export interface Seen {
   tripId: string;

@@ -3,7 +3,7 @@
 // chip says where the file went.
 import { afterEach, describe, expect, it } from "vitest";
 import { chatRows, fileChip } from "../src/app/arrive/ChatArrivals";
-import { addIntake, intakeNow, resetIntake, updateIntake, type FileIntake, type LinkIntake } from "../src/app/arrive/intake";
+import { addIntake, intakeNow, KEEP_MS, MAX, pruneIntake, resetIntake, updateIntake, type FileIntake, type Intake, type LinkIntake } from "../src/app/arrive/intake";
 import { setLang } from "../src/lib/i18n";
 import type { ChatMessage } from "../src/lib/types";
 
@@ -47,6 +47,37 @@ describe("chatRows", () => {
     // An older line with the same name isn't this file's.
     const older = chatRows([msg("old", "user", "📎 policy.pdf", 10)], [{ ...read, at: 60_000 }], "t1");
     expect(older.map((r) => r.kind)).toEqual(["msg", "intake"]);
+  });
+});
+
+describe("chat rows for a failed file", () => {
+  it("says it once: the chat's own line, no chip beside it", () => {
+    expect(chatRows([], [file({ state: "error", error: "Çok büyük", logged: true })], "t1")).toEqual([]);
+    expect(chatRows([], [file({ state: "error", error: "Çok büyük" })], "t1")).toEqual([]);
+  });
+});
+
+describe("pruneIntake", () => {
+  const link = (id: string, endedAt?: number): Intake => ({ id, kind: "link", tripId: "t1", source: "chat", at: 0, url: "https://x.com", captureId: id, endedAt });
+  it("drops a file 2 minutes after it ended, a screenshot's picture, never a link sent in the chat", () => {
+    const now = 10 * KEEP_MS;
+    const entries: Intake[] = [
+      { ...file({ id: "done-old", state: "done" }), endedAt: now - KEEP_MS },
+      { ...file({ id: "done-new", state: "done" }), endedAt: now - 1000 },
+      { ...file({ id: "reading" }) },
+      { ...file({ id: "shot", state: "screenshot", thumb: "data:image/jpeg;base64,AAAA", captureId: "c" }), endedAt: now - KEEP_MS },
+      link("l-old", now - 5 * KEEP_MS),
+    ];
+    const out = pruneIntake(entries, now);
+    expect(out.map((e) => e.id)).toEqual(["done-new", "reading", "shot", "l-old"]);
+    expect((out[2] as FileIntake).thumb).toBeUndefined();
+    expect(pruneIntake(out, now)).toBe(out); // nothing more to do: the same list
+  });
+  it("keeps at most MAX entries, the newest", () => {
+    const many = Array.from({ length: MAX + 5 }, (_, i) => link(`l${i}`));
+    const out = pruneIntake(many, 0);
+    expect(out).toHaveLength(MAX);
+    expect(out[0].id).toBe("l5");
   });
 });
 

@@ -2094,6 +2094,31 @@ try {
   await board.locator(".hx").scrollIntoViewIfNeeded();
   await arriveChip.getByRole("button", { name: "göster" }).click();
   await board.locator('[data-item-id].flash, [data-option-ids].flash').first().waitFor({ state: "attached", timeout: 5000 });
+  // A link that couldn't be read: its card stays in sight under the Plan's header, even though its guessed
+  // section (Konaklama) is closed, with "Tekrar dene" and "Kaldır"; Kaldır takes it away.
+  const staySec = board.locator('.cat-sec[data-section="stay"]');
+  if (!(await staySec.evaluate((el) => el.classList.contains("closed")))) await staySec.locator(".cat-title").click();
+  await board.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+    const tx = database.transaction("captures", "readwrite");
+    tx.objectStore("captures").put({
+      id: "e2e-arrive-fail", kind: "paste-link", url: "https://www.airbnb.com/rooms/5150", title: null, pageText: "", viewportText: "", selection: "",
+      jsonLd: [], meta: {}, screenshot: null, capturedAt: Date.now(), status: "error", error: "Sayfa açılamadı (e2e)", itemId: null,
+    });
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  const failedCard = board.locator(".ar-lead .ar-failed", { hasText: "airbnb.com" });
+  await failedCard.waitFor();
+  assert.ok(await staySec.evaluate((el) => el.classList.contains("closed")), "its guessed section stays closed");
+  assert.match(await failedCard.innerText(), /Okunamadı[\s\S]*Sayfa açılamadı \(e2e\)/);
+  await failedCard.getByRole("button", { name: "Tekrar dene" }).waitFor();
+  await failedCard.scrollIntoViewIfNeeded();
+  await board.screenshot({ path: `${out}/15e-arrive-failed.png` });
+  await failedCard.getByRole("button", { name: "Kaldır" }).click();
+  await failedCard.waitFor({ state: "detached" });
+
   // A file dragged over the board: a calm overlay over the panel, gone when it leaves.
   const dragged = await board.evaluateHandle(() => {
     const dt = new DataTransfer();

@@ -1,7 +1,7 @@
 // Content arriving (arrive.ts): the guessed section for a waiting card, its moving line, which records are
 // new since the last look, and what a chat chip says.
 import { afterEach, describe, expect, it } from "vitest";
-import { arrivedText, chipState, diffArrivals, eventItemName, hostOf, predictSection, siteOf, stageText, STAGE_MS } from "../src/lib/arrive";
+import { arrivedText, chipState, diffArrivals, eventItemName, hostOf, pendingSlot, predictSection, siteOf, stageText, STAGE_MS, STALE_MS, waitingLine } from "../src/lib/arrive";
 import { setLang } from "../src/lib/i18n";
 
 afterEach(() => setLang("tr"));
@@ -101,6 +101,24 @@ describe("stageText", () => {
     expect(stageText({ status: "error", kind: "paste-link" }, "Airbnb", "stay", 0)).toBe("Okunamadı");
     setLang("en");
     expect(stageText(link, "Airbnb", "stay", 0)).toBe("Reading Airbnb…");
+  });
+});
+
+describe("waitingLine and pendingSlot", () => {
+  const t0 = 1_000_000;
+  it("moves only while read, says when it changes next, and stops at 'Bekliyor…'", () => {
+    const queued = waitingLine({ status: "pending", kind: "paste-link", capturedAt: t0, since: null }, "Airbnb", "stay", t0 + 5000);
+    expect(queued).toEqual({ text: "Airbnb okunuyor…", stale: false, next: t0 + STALE_MS });
+    const reading = waitingLine({ status: "processing", kind: "paste-link", capturedAt: t0, since: t0 + 1000 }, "Airbnb", "stay", t0 + 2000);
+    expect(reading).toEqual({ text: "Airbnb okunuyor…", stale: false, next: t0 + 1000 + STAGE_MS[0] });
+    expect(waitingLine({ status: "processing", kind: "paste-link", capturedAt: t0, since: t0 }, "Airbnb", "stay", t0 + STAGE_MS[1] + 1).next).toBe(t0 + STALE_MS);
+    expect(waitingLine({ status: "processing", kind: "paste-link", capturedAt: t0, since: t0 }, "Airbnb", "stay", t0 + STALE_MS)).toEqual({ text: "Bekliyor…", stale: true, next: null });
+    expect(waitingLine({ status: "error", kind: "paste-link", capturedAt: t0, since: null }, null, null, t0).next).toBeNull();
+  });
+  it("puts a failed one under the Plan's header whatever its guess (a closed section would hide it)", () => {
+    expect(pendingSlot({ section: "stay", status: "processing" })).toBe("stay");
+    expect(pendingSlot({ section: null, status: "pending" })).toBe("lead");
+    expect(pendingSlot({ section: "stay", status: "error" })).toBe("lead");
   });
 });
 
