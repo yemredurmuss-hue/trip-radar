@@ -259,7 +259,8 @@ try {
   await home.locator(".pk-foot").getByText("bilet alınmadı").waitFor();
   await home.getByRole("button", { name: "Bileti aldım" }).click();
   await home.locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
-  assert.match(await home.locator(".pk-mid").innerText(), /LIS[\s\S]*14 Ekim · 19:40[\s\S]*4 sa 55 dk · direkt[\s\S]*IST[\s\S]*15 Ekim · 01:35/);
+  // The cities big, the airport codes and hours small; the landing day only because it's the next day.
+  assert.match(await home.locator(".pk-mid").innerText(), /Lizbon\s*LIS · 19:40[\s\S]*4 sa 55 dk · direkt[\s\S]*İstanbul\s*IST · 15 Ekim · 01:35/);
   await home.locator(".pk-body").click();
   // Opening a card shows its details on the card.
   await douro.locator(".pk-body").click();
@@ -430,9 +431,12 @@ try {
   await itRow(4, "Otel → Havalimanı").waitFor();
   await day(4).locator(".it-block.st-done", { hasText: "Uçuş Porto → Lizbon" }).waitFor();
   await tab("Plan").click();
-  // Places without a day stay together, as cards to browse.
-  await app.getByText("Etkinlikler").click();
-  await pk("Tiyatro").waitFor();
+  // What still needs booking without a day: "Rezerve edilecekler", one card under another (Majestic Café,
+  // a café with no booking, is in Fikirler instead).
+  const toBook = app.locator(".pk-tobook");
+  assert.match(await toBook.locator(".section-head").innerText(), /Rezerve edilecekler\s*3 · 0 alındı/);
+  assert.deepEqual((await toBook.locator(".pk-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")))).sort(), ["Livraria Lello", "Serralves Müzesi", "Tiyatro"]);
+  assert.equal(await app.locator(".pk-card", { hasText: "Majestic Café" }).count(), 0);
   assert.equal(await app.locator(".crash").count(), 0, "board crashed after chat updates");
   await app.screenshot({ path: `${out}/5-chosen.png` });
   // 4b. Plan cards: a file on a card, delete + undo (the file comes back), add from a template, narrow.
@@ -481,6 +485,138 @@ try {
   }
   await ref.close();
   console.log("✓ plan cards: a file opens in a tab, delete + undo brings the card and its file back, a bus added from the template, narrow board");
+
+  // 4e. 0.32: a flight stays a flight once its airport transfer is a taxi; × on hover (a card, a stay) with
+  // "Geri al"; "+" at the top, at a city's head, after a stay and on a day, each with its city and day; Fikirler.
+  const arrivalLeg = app.locator('.pk-leg[aria-label="OPO havalimanı → Jardim Stay"]');
+  await arrivalLeg.locator(".pk-body").click();
+  await arrivalLeg.getByRole("button", { name: "🚕 Taksi" }).click();
+  await arrivalLeg.locator(".pk-kind", { hasText: "Taksi · transfer" }).waitFor();
+  const inbound = app.locator(".tl-travel.role-arrival .pk-card").first();
+  assert.equal(await inbound.locator(".pk-kind").innerText(), "Uçuş");
+  assert.match(await inbound.locator(".pk-mid").innerText(), /İstanbul\s*IST · 07:10[\s\S]*Porto\s*OPO · 10:05/);
+  await app.screenshot({ path: `${out}/4e-flight-after-taxi.png` });
+  // × on hover: a plan card, then a stay; each comes back with "Geri al".
+  // Read after the .15s fade.
+  const opacity = (loc) => loc.evaluate((el) => new Promise((done) => setTimeout(() => done(getComputedStyle(el).opacity), 300)));
+  await douroCard().evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await douroCard().hover();
+  assert.equal(await opacity(douroCard().locator(".pk-x")), "1");
+  await app.screenshot({ path: `${out}/4f-hover-x.png` });
+  await douroCard().getByRole("button", { name: "Douro tekne turu: sil" }).click();
+  await douroCard().waitFor({ state: "detached" });
+  await app.locator(".pk-undo", { hasText: "Douro tekne turu silindi" }).getByRole("button", { name: "Geri al" }).click();
+  await douroCard().waitFor();
+  const jardim = app.locator(".stay-block.chosen .settled-card", { hasText: "Jardim Stay" });
+  await jardim.getByRole("button", { name: "Kart menüsü" }).click();
+  assert.deepEqual(await jardim.getByRole("menuitem").allInnerTexts(), ["Sil"]);
+  await jardim.getByRole("button", { name: "Kart menüsü" }).click();
+  await jardim.hover();
+  await jardim.getByRole("button", { name: "Jardim Stay: sil" }).click();
+  await jardim.waitFor({ state: "detached" });
+  await app.locator(".pk-undo", { hasText: "Jardim Stay silindi" }).getByRole("button", { name: "Geri al" }).click();
+  await jardim.waitFor();
+  // "+": always there (faint), each with the right city and day.
+  const sheetWhere = async (button) => {
+    await button.click();
+    const where = await app.getByRole("dialog", { name: "Ne eklemek istersin?" }).locator("header span").innerText();
+    await app.getByRole("dialog", { name: "Ne eklemek istersin?" }).getByRole("button", { name: "Kapat" }).click();
+    return where;
+  };
+  const plus = (scope) => scope.locator(".pk-insert button").first();
+  await app.mouse.move(0, 0);
+  assert.equal(await opacity(plus(app.locator(".tl-head-insert"))), "0.35", "the + shows without a hover");
+  assert.equal(await sheetWhere(plus(app.locator(".tl-head-insert"))), "8 Ekim");
+  assert.equal(await sheetWhere(plus(app.locator("li.tl-entry.tl-travel").first())), "Porto · 8 Ekim");
+  assert.equal(await sheetWhere(plus(app.locator('.city-block[aria-label="Porto"] .tl-insert'))), "Porto · 8 Ekim");
+  assert.equal(await sheetWhere(plus(app.locator('.city-block[aria-label="Porto"] li.tl-stay'))), "Porto");
+  assert.equal(await sheetWhere(plus(app.locator('.city-block[aria-label="Lizbon"] .tl-insert'))), "Lizbon · 11 Ekim");
+  assert.equal(await sheetWhere(plus(app.locator("li.tl-entry.tl-travel").last())), "14 Ekim");
+  // On a day of the itinerary: that day and its city. A to-do added there is a thin line of the day.
+  await tab("Günlük akış").click();
+  // Day 3 is empty ("boş gün"): its "+" is on that line.
+  await app.locator(".it-day.empty").getByRole("button", { name: "10 Ekim: bu güne ekle" }).click();
+  const addSheet = app.getByRole("dialog", { name: "Ne eklemek istersin?" });
+  assert.equal(await addSheet.locator("header span").innerText(), "Porto · 10 Ekim");
+  await addSheet.getByRole("button", { name: "Yapılacak", exact: true }).click();
+  assert.equal(await addSheet.getByLabel("Şehir (isteğe bağlı)").inputValue(), "Porto");
+  await addSheet.getByLabel("Ad").fill("Bolhão pazarı");
+  await addSheet.getByRole("button", { name: "Kaydet" }).click();
+  await addSheet.waitFor({ state: "detached" });
+  await day(3).locator(".it-row.idea", { hasText: "Bolhão pazarı" }).waitFor();
+  // Fikirler: the quick line, the filters, a day for a restaurant (with its meal), done, moved to bookings.
+  await tab("Fikirler").click();
+  const ideas = app.locator(".fk");
+  assert.match(await ideas.locator(".fk-sec").innerText(), /Fikirler ve yapılacaklar\s*rezervasyon gerekmez/);
+  const quick = ideas.getByRole("textbox", { name: "Bir fikir yaz" });
+  for (const line of ["Lizbon'da pastel de nata", "Porto'da Dom Luís köprüsünden gün batımı", "Porto'da Livraria Lello, giriş bileti var"]) {
+    await quick.fill(line);
+    await quick.press("Enter");
+    await ideas.locator(`[aria-label="${line}"]`).waitFor();
+  }
+  const cityBlock = (name) => ideas.locator(".fk-city-block", { has: app.locator(".fk-city b", { hasText: name }) });
+  await cityBlock("Lizbon").locator('.fk-eat[aria-label="Lizbon\'da pastel de nata"]').waitFor();
+  assert.deepEqual(await cityBlock("Porto").locator(".fk-eat > b").allInnerTexts(), ["Majestic Café"]);
+  assert.deepEqual(await cityBlock("Porto").locator(".fk-row .fk-t > b").allInnerTexts(), ["Bolhão pazarı", "Porto'da Dom Luís köprüsünden gün batımı", "Porto'da Livraria Lello, giriş bileti var"]);
+  assert.equal(await cityBlock("Porto").locator('.fk-row[aria-label="Bolhão pazarı"] .fk-day.set').innerText(), "10 Eki");
+  await ideas.getByRole("button", { name: "Yeme-içme" }).click();
+  assert.equal(await ideas.locator(".fk-row").count(), 0);
+  await ideas.getByRole("button", { name: "Hepsi" }).click();
+  const majestic = cityBlock("Porto").locator('.fk-eat[aria-label="Majestic Café"]');
+  assert.match(await majestic.locator(".fk-map").getAttribute("href"), /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=41\.1471%2C-8\.6066$/);
+  await majestic.getByRole("button", { name: "+ Güne ekle" }).click();
+  await majestic.getByRole("radio", { name: "öğle" }).click();
+  await majestic.getByRole("dialog", { name: "Hangi gün?" }).getByRole("button", { name: /^9 Eki/ }).click();
+  await majestic.locator(".fk-day.set", { hasText: "9 Eki öğle" }).waitFor();
+  const market = cityBlock("Porto").locator('.fk-row[aria-label="Bolhão pazarı"]');
+  await market.getByRole("checkbox", { name: "Bolhão pazarı: yapıldı" }).click();
+  await market.locator(".fk-t > span", { hasText: /^Yapıldı · / }).waitFor();
+  assert.match(await market.getAttribute("class"), /done/);
+  const lello = cityBlock("Porto").locator('.fk-row[aria-label="Porto\'da Livraria Lello, giriş bileti var"]');
+  await lello.locator(".fk-t > span", { hasText: "Giriş bileti gerekiyor" }).waitFor();
+  await app.setViewportSize({ width: 1440, height: 1400 });
+  await ideas.evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.screenshot({ path: `${out}/4g-ideas.png` });
+  await app.setViewportSize({ width: 560, height: 1400 });
+  await ideas.evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.screenshot({ path: `${out}/4h-ideas-narrow.png` });
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll in Fikirler");
+  await app.setViewportSize({ width: 1440, height: 900 });
+  // An idea deleted with ×, then brought back.
+  const sunset = cityBlock("Porto").locator(".fk-row", { hasText: "gün batımı" });
+  await sunset.hover();
+  await sunset.getByRole("button", { name: "Porto'da Dom Luís köprüsünden gün batımı: sil" }).click();
+  await sunset.waitFor({ state: "detached" });
+  await app.locator(".pk-undo").getByRole("button", { name: "Geri al" }).click();
+  await sunset.waitFor();
+  await lello.getByRole("button", { name: "Rezerve edileceklere taşı" }).click();
+  await lello.waitFor({ state: "detached" });
+  // The restaurant on its day is a thin line of the itinerary; the moved one is a booking on the Plan.
+  await tab("Günlük akış").click();
+  await day(2).locator(".it-row.idea", { hasText: "Majestic Café" }).locator(".it-line", { hasText: "öğle" }).waitFor();
+  await tab("Plan").click();
+  assert.match(await app.locator(".pk-tobook .section-head").innerText(), /Rezerve edilecekler\s*4 · 0 alındı/);
+  await app.locator('.pk-tobook .pk-card[aria-label="Porto\'da Livraria Lello, giriş bileti var"]').waitFor();
+  // Narrow: the + and × are there without a hover.
+  await app.setViewportSize({ width: 560, height: 2600 });
+  await app.locator(".trip-line").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.mouse.move(0, 0);
+  assert.equal(await opacity(douroCard().locator(".pk-x")), "0.55");
+  await app.screenshot({ path: `${out}/4i-plan-narrow-032.png` });
+  await app.setViewportSize({ width: 1440, height: 2600 });
+  await app.locator(".trip-line").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.screenshot({ path: `${out}/4j-plan-032.png` });
+  await app.setViewportSize({ width: 1440, height: 900 });
+  const ref032 = await context.newPage();
+  for (const name of ["2026-10-05-fikirler-v1", "2026-10-05-ulasim-v3", "2026-10-05-etkinlik-v4"]) {
+    for (const width of [1440, 560]) {
+      await ref032.setViewportSize({ width, height: 900 });
+      await ref032.goto(pathToFileURL(path.resolve(`docs/mockups/${name}.html`)).href);
+      await ref032.screenshot({ path: `${out}/ref-${name}-${width}.png`, fullPage: true });
+    }
+  }
+  await ref032.close();
+  console.log("✓ 0.32: flight stays a flight after a taxi transfer; × + undo on a card and a stay; + with the right city and day everywhere; Fikirler: quick line, filter, day + meal, done, moved to bookings, thin line in the day");
   console.log("✓ board: demo trip, decision labels, comparison with priorities, drawer, status change and chat event");
 
   // 5. Settings dialog.
