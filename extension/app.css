@@ -486,55 +486,10 @@ a.sc-source.link:focus-visible { outline: 2px solid var(--accent); outline-offse
 }
 .empty-card > span { display: flex; flex-direction: column; gap: 2px; }
 
-/* ---------- the trip: a block per city, travel between them ---------- */
-.trip-line { position: relative; margin-top: 14px; }
-.trip-line::before { content: ""; position: absolute; left: 21px; top: 20px; bottom: 20px; width: 2px; background: #dcd7cf; }
-/* The block's tint reaches past the column so what's inside lines up with what's outside: one rail, one card edge. */
-.city-block { position: relative; margin: 0 -16px 22px; padding: 16px 16px 4px; border-radius: 32px; background: #efebe4; }
-.city-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 16px; padding-left: 7px; }
-.city-head b { font-size: 22px; letter-spacing: -.01em; color: var(--ink); }
-.city-head .muted { font-size: 14.5px; }
-.city-no { align-self: center; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 1.5px solid #d6cfc4; font-size: 14px; font-weight: 700; }
-.city-block .timeline::before { left: 21px; }
 .slot-note { margin: 6px 4px 0; font-size: 13px; }
 .slot-note.gap { color: #8a5a00; }
-.timeline.between { margin: 0 0 22px; }
-.timeline.between::before { display: none; }
 .state-chip.empty { background: #fff3e0; color: var(--warning); }
-
-/* ---------- the trip, in order ---------- */
-.timeline { position: relative; margin: 0; padding: 0; list-style: none; }
-.timeline::before { content: ""; position: absolute; left: 21px; top: 22px; bottom: 22px; width: 2px; background: #dcd7cf; }
-/* The plan's front, like a trip app: the icon on the trip's line, what it is and when beside it, the
-   block itself on the right. */
-.tl-entry { position: relative; display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 18px; margin: 0 0 24px; }
-.tl-side { display: flex; align-items: flex-start; gap: 12px; }
-.tl-icon { position: relative; z-index: 1; flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: #fff; }
-.tl-label { display: flex; flex-direction: column; gap: 2px; padding-top: 1px; font-size: 14px; color: #4a4540; font-variant-numeric: tabular-nums; }
-.tl-label b { font-size: 17px; color: var(--ink); letter-spacing: -.01em; }
-.tl-content { min-width: 0; }
-.tl-entry.tl-wide { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-.tl-entry.tl-wide .tl-side { align-items: center; }
-.tl-entry.tl-wide .tl-label { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding-top: 0; }
-.tl-content { min-width: 0; }
-.tl-entry.tl-leg { margin-bottom: 16px; }
-.tl-entry.tl-leg .tl-icon { width: 36px; height: 36px; background: #fff; color: var(--ink); border: 1.5px solid #dcd7cf; }
-.tl-pill { position: relative; z-index: 1; display: flex; justify-content: center; margin: 0 0 14px 200px; }
-.tl-pill span { display: inline-flex; align-items: center; gap: 10px; padding: 8px 18px 8px 8px; border-radius: 999px; background: #fff; font-size: 17px; font-weight: 600; box-shadow: 0 2px 10px rgba(40, 30, 20, .08); }
-.tl-pill b { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid #dcd7cf; font-size: 14px; }
-.timeline .leg { margin: 0; padding: 4px 6px; border: 0; border-radius: 22px; background: #fff; box-shadow: 0 1px 2px rgba(40, 30, 20, .05), 0 4px 14px rgba(40, 30, 20, .05); }
-.timeline .leg-head:hover { background: transparent; }
-.timeline .stay-block { margin: 0; padding: 0; border: 0; background: none; }
-.timeline .group.nested { border: 0; }
-.timeline .group-head { padding: 0 4px 6px; }
-.timeline .tl-travel .leg { margin-bottom: 10px; }
 @media (max-width: 700px) {
-  .tl-entry { grid-template-columns: 1fr; gap: 10px; }
-  .tl-side { align-items: center; }
-  .tl-label { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
-  .timeline::before, .trip-line::before { display: none; }
-  .city-block { margin: 0 0 22px; padding: 14px 12px 4px; border-radius: 24px; }
-  .tl-pill { margin-left: 0; }
   .stc-media-row { grid-template-columns: 110px minmax(0, 1fr); gap: 12px; }
   .stc-img { width: 110px; height: 96px; }
 }
@@ -582,26 +537,6 @@ a.sc-source.link:focus-visible { outline: 2px solid var(--accent); outline-offse
 .stay-open .empty-card { border: 0; background: none; }
 .empty-card.quiet { padding: 8px 12px; border-style: dashed; background: none; }
 .empty-card.quiet > span { flex-direction: row; font-size: 13.5px; }
-.tl-badge {
-  position: absolute; right: -4px; bottom: -4px; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
-  background: #1f8f4e; color: #fff; font-size: 11px; font-weight: 800; border: 2px solid #efebe4;
-}
-.tl-entry.st-booked > .tl-side .tl-icon { background: #1f8f4e; }
-.tl-entry.st-planned > .tl-side .tl-icon { background: #fff; color: #b86e00; border: 2px solid #f0a53a; }
-.tl-entry.st-open > .tl-side .tl-icon { background: #fff; color: #8a847c; border: 2px dashed #c9c2b8; }
-.tl-entry.tl-leg.st-booked .tl-icon { background: #1f8f4e; color: #fff; border: 0; }
-
-/* ---------- a card for each day ---------- */
-.tl-entry.tl-day { margin-bottom: 14px; }
-.tl-entry.tl-day .tl-icon { width: 36px; height: 36px; background: #fff; color: var(--ink); border: 1.5px solid #cfc8bd; }
-.tl-day-no { font-size: 15px; }
-.day-card { display: flex; flex-direction: column; gap: 8px; }
-.day-card.empty {
-  flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 12px 18px; border-radius: 18px;
-  border: 1.5px dashed #d6cfc4; font-size: 14px; color: #6e6a64;
-}
-.day-card.empty .muted { font-size: 13px; }
-
 /* ---------- an opened card: where it stands, the facts, what matters ---------- */
 .card-details { display: flex; flex-direction: column; gap: 12px; margin: 4px 0 8px; font-size: 14px; line-height: 1.45; }
 .cd-verdict { margin: 0; padding: 10px 12px; border-radius: 12px; background: #f5f1fb; color: var(--ink); font-weight: 600; }
@@ -1328,11 +1263,8 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .settled-card .st-tools { top: 6px; }
 
 /* ---------- 0.32: "+" everywhere (top of the plan, each city's head, each day of the itinerary) ---------- */
-.tl-entry.tl-insert { margin: -14px 0 6px; }
-.tl-head-insert { margin: 0; }
 @container panel (max-width: 620px) {
   .pk-insert button, .pk-insert::before { opacity: 1; }
-  .tl-entry.tl-insert .tl-side { display: none; }
 }
 .it-day { position: relative; }
 .it-add { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 1px solid #d2d2d7; background: #fff; color: #1d1d1f; font-size: 17px; line-height: 1; cursor: pointer; opacity: .35; transition: opacity .15s; }
@@ -1343,27 +1275,11 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 @container panel (max-width: 620px) { .it-add { opacity: 1; } }
 
 /* ---------- 0.32: Fikirler (docs/mockups/2026-10-05-fikirler-v1.html): white, small cards, a list ---------- */
-.fk { --fk-ink: #1d1d1f; --fk-gray: #6e6e73; --fk-line: #e8e8ed; --fk-soft: #f5f5f7; margin: 0 0 24px; padding: 28px 16px 32px; border-radius: 22px; background: #fff; color: var(--fk-ink); }
-.fk > * { max-width: 860px; margin-left: auto; margin-right: auto; }
-.fk-sec { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
-.fk-sec b { font-size: 17px; }
-.fk-sec span { font-size: 13px; color: var(--fk-gray); }
-.fk-sub { margin-top: 0; margin-bottom: 14px; font-size: 13px; color: var(--fk-gray); }
 .fk-quick { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 14px; border-radius: 14px; background: var(--fk-soft); color: var(--fk-ink); }
 .fk-quick input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; font: inherit; font-size: 15px; color: var(--fk-ink); outline: none; }
 .fk-quick input::placeholder { color: var(--fk-gray); }
-.fk-filters { display: flex; gap: 6px; margin-top: 14px; margin-bottom: 6px; }
-.fk-filters button { height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--fk-line); background: #fff; font: inherit; font-size: 13px; color: var(--fk-ink); cursor: pointer; }
-.fk-filters button.on { background: var(--fk-ink); color: #fff; border-color: var(--fk-ink); }
-.fk-empty { margin-top: 22px; font-size: 14px; color: var(--fk-gray); }
-.fk-city { display: flex; align-items: baseline; gap: 8px; margin: 22px 0 10px; }
-.fk-city b { font-size: 20px; letter-spacing: -.01em; }
-.fk-city span { font-size: 13px; color: var(--fk-gray); }
-.fk-label { margin: 0 0 8px; font-size: 13px; color: var(--fk-gray); }
-.fk-eats + .fk-label { margin-top: 16px; }
-.fk-eats { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
-.fk-eat { position: relative; flex: none; width: 196px; }
-.fk-ph { position: relative; width: 196px; height: 120px; border-radius: 14px; overflow: hidden; background: var(--fk-soft); }
+.fk-eat { position: relative; flex: none; width: 200px; }
+.fk-ph { position: relative; width: 200px; height: 124px; border-radius: 14px; overflow: hidden; background: var(--fk-soft); }
 .fk-ph .fk-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .fk-ph-ic { position: absolute; inset: 0; display: grid; place-items: center; color: #b4532a; background: color-mix(in srgb, #b4532a 10%, #fff); }
 .fk-ph .pk-x { position: absolute; top: 6px; right: 6px; background: rgba(255, 255, 255, .9); }
@@ -1400,12 +1316,6 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 /* An idea put on a day: a thin line of the itinerary. */
 .it-row.idea .it-line b { font-weight: 500; }
 
-/* ---------- 0.32: "Rezerve edilecekler · N · M alındı" (etkinlik-v4 .sec): one card under another ---------- */
-.pk-tobook .section-head { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 16px; }
-.pk-tobook .section-head > span:first-child { font-size: 17px; font-weight: 700; color: #1d1d1f; }
-.pk-tobook .section-head .muted { font-size: 13px; color: #6e6e73; }
-.pk-tobook-row { margin: 0 0 10px; }
-
 /* ---------- 0.33: a block of nights' × (a stay said apart, empty nights): top right of its card; with options under it, at the end of its line ---------- */
 .stay-x { position: absolute; top: 6px; right: 10px; z-index: 3; }
 .stay-open:hover .pk-x, .stay-open:focus-within .pk-x, .slot-note:hover .pk-x, .slot-note:focus-within .pk-x { opacity: 1; }
@@ -1432,3 +1342,85 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .st-edit { color: var(--muted); }
 .opt-where { margin-top: 2px; font-size: 14px; line-height: 1.35; }
 .empty-card .pk-ed-hint { white-space: normal; }
+
+/* ---------- 0.34: the Plan by category (docs/mockups/2026-10-05-kategoriler-v2.html): a tinted section per kind,
+   a timeline of the approved cards inside, one thin line per record when closed ---------- */
+.cat-plan { --fk-ink: #1d1d1f; --fk-gray: #6e6e73; --fk-line: #e8e8ed; --fk-soft: #f5f5f7; }
+.cat-plan > .section-head { margin-bottom: 14px; }
+.cat-sec { --c: #6e6e73; margin: 0 0 12px; border-radius: 22px; background: color-mix(in srgb, var(--c) 7%, #fff); border: 1px solid color-mix(in srgb, var(--c) 16%, #fff); scroll-margin-top: 12px; }
+.cat-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; user-select: none; }
+.cat-title { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 0; border: 0; background: none; color: #1d1d1f; text-align: left; cursor: pointer; }
+.cat-title:focus-visible { outline: 2px solid var(--c); outline-offset: 4px; border-radius: 10px; }
+.cat-tile { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--c); color: #fff; }
+.cat-title b { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-count { font-size: 13px; color: #6e6e73; font-variant-numeric: tabular-nums; }
+.cat-state { padding: 3px 9px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.cat-state.wait { background: #fbe7bf; color: #85570a; }
+.cat-state.done { background: #d4efdc; color: #1d7442; }
+.cat-add { flex: none; display: inline-flex; align-items: center; gap: 4px; margin-left: auto; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--c) 30%, #fff); background: #fff; font: inherit; font-size: 13px; font-weight: 500; color: #1d1d1f; cursor: pointer; }
+.cat-add:hover { border-color: var(--c); }
+/* One arrow: pointing down when open, right when closed; turned on the svg itself, centred in its own box. */
+.cat-chev { flex: none; display: grid; place-items: center; width: 24px; height: 24px; color: #6e6e73; }
+.cat-chev svg { display: block; transform: rotate(0deg); }
+.cat-sec.closed .cat-chev svg { transform: rotate(-90deg); }
+.cat-body { padding: 0 16px 16px; }
+
+/* closed: one thin line per record, none hidden */
+.cat-rows { list-style: none; margin: 0; padding: 0 16px 12px; }
+.cat-rows li + li .cat-row { border-top: 1px solid color-mix(in srgb, var(--c) 10%, #fff); }
+.cat-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto auto auto; gap: 12px; align-items: center; width: 100%; padding: 8px 10px; border: 0; border-radius: 10px; background: none; font: inherit; font-size: 14px; color: #1d1d1f; text-align: left; cursor: pointer; }
+.cat-row:hover, .cat-row:focus-visible { background: rgba(255, 255, 255, .7); outline: none; }
+.cat-row b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-ring { width: 18px; height: 18px; border-radius: 50%; border: 2px dashed #cdb07a; }
+.cat-ring.half { border: 2px solid #e0a43a; }
+.cat-ring.yes { display: grid; place-items: center; border: 0; background: #1f8f4e; color: #fff; font-size: 11px; font-weight: 700; }
+.cat-meta { font-size: 13px; color: #6e6e73; white-space: nowrap; }
+.cat-price { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cat-st { font-size: 12px; font-weight: 600; color: #85570a; white-space: nowrap; }
+.cat-st.ok { color: #1d7442; }
+
+/* open: a timeline — the day on the left, a line and a dot, the cards on the right */
+.cat-line { list-style: none; margin: 0; padding: 0; }
+.cat-day { position: relative; display: grid; grid-template-columns: 76px 14px minmax(0, 1fr); gap: 0 14px; padding-bottom: 10px; }
+.cat-day::before { content: ""; position: absolute; left: 96px; top: 14px; bottom: -14px; width: 2px; background: color-mix(in srgb, var(--c) 22%, #fff); }
+.cat-day:last-child::before { display: none; }
+.cat-date { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; padding-top: 4px; text-align: right; font-variant-numeric: tabular-nums; }
+.cat-date b { font-size: 15px; font-weight: 700; color: #1d1d1f; white-space: nowrap; }
+.cat-date span { font-size: 12.5px; color: #6e6e73; }
+.cat-date-city { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-dot { position: relative; z-index: 1; justify-self: center; width: 12px; height: 12px; margin-top: 8px; border-radius: 50%; background: #fff; border: 2.5px solid var(--c); }
+.cat-day.undated .cat-dot { border-style: dashed; }
+.cat-cards { min-width: 0; }
+.cat-card { scroll-margin-top: 12px; }
+.cat-card .stay-block { margin: 0; padding: 0; border: 0; background: none; }
+.cat-card .group.nested { border: 0; }
+.cat-card .group-head { padding: 0 4px 6px; }
+.cat-sec .fk-quick { margin: 0 0 14px; background: #fff; }
+.cat-sec .fk-todo { background: #fff; }
+/* Restoranlar: a day's restaurants side by side */
+.cat-eats { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
+.cat-eat { flex: none; }
+.fk-where { display: block; font-size: 13px; color: var(--fk-gray); }
+.fk-book { display: inline-block; margin-top: 6px; padding: 0; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 600; color: #85570a; cursor: pointer; }
+.fk-book.done { color: #1d7442; }
+
+/* the empty sections: one chip each, at the bottom */
+.cat-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 4px 0; font-size: 13px; color: #6e6e73; }
+.cat-chip { --c: #6e6e73; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--c) 30%, #fff); background: #fff; font: inherit; font-size: 13px; font-weight: 500; color: #1d1d1f; cursor: pointer; }
+.cat-chip svg { color: var(--c); }
+.cat-chip:hover { border-color: var(--c); }
+
+/* a narrow board (≤620 px): the day goes above its cards on one line; a closed line wraps under its name */
+@container panel (max-width: 620px) {
+  .cat-head { flex-wrap: wrap; gap: 10px; padding: 12px 12px; }
+  .cat-title { flex: 1 1 auto; flex-wrap: wrap; row-gap: 6px; }
+  .cat-body { padding: 0 10px 12px; }
+  .cat-rows { padding: 0 8px 10px; }
+  .cat-day { grid-template-columns: minmax(0, 1fr); padding-bottom: 14px; }
+  .cat-day::before, .cat-dot { display: none; }
+  .cat-date { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 0 4px 8px; text-align: left; }
+  .cat-row { grid-template-columns: 22px minmax(0, 1fr) auto; row-gap: 2px; }
+  .cat-row .cat-meta { grid-column: 2; grid-row: 2; white-space: normal; }
+  .cat-row .cat-price { grid-column: 3; grid-row: 1; }
+  .cat-row .cat-st { grid-column: 3; grid-row: 2; }
+}
