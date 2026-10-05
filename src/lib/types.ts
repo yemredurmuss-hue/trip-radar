@@ -242,6 +242,20 @@ export type PlannedKind =
 /** When a restaurant idea is put on a day: breakfast, lunch or dinner. */
 export type MealSlot = "breakfast" | "lunch" | "dinner";
 
+/** A correction per field of a saved page's card; a date is YYYY-MM-DD, a time HH:MM. */
+export interface UserEdits {
+  name?: string;
+  city?: string;
+  start?: string;
+  end?: string;
+  time?: string;
+  price?: number;
+  currency?: string;
+  from?: string;
+  to?: string;
+}
+export type PageValues = { [K in keyof UserEdits]?: UserEdits[K] | null };
+
 export interface Item {
   id: string;
   tripId: string;
@@ -302,6 +316,14 @@ export interface Item {
   doneAt?: number;
   /** A restaurant idea put on a day: which meal ("8 Eki akşam"). */
   meal?: MealSlot;
+  /**
+   * The traveller's corrections to a saved page's card (spec 0.33 §3): shown, planned and compared in place
+   * of what the page said (userEdits.ts withEdits); a page saved again keeps them. A plan made by hand or
+   * said in the chat is edited itself instead. Local: records aren't shared.
+   */
+  userEdits?: UserEdits;
+  /** Set by withEdits on the board's copy, never stored: what the page says under each correction. */
+  pageValues?: PageValues;
   createdAt: number;
   updatedAt: number;
 }
