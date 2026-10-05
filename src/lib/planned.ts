@@ -98,14 +98,19 @@ export function plannedInput(raw: any): PlannedInput {
   };
 }
 
-/** Checks what the model passed; a wrong date is refused rather than guessed. */
-export function checkPlanned(input: PlannedInput, kinds: readonly string[] = PLANNED_KINDS): string | null {
+/**
+ * Checks what the model passed; a wrong date is refused rather than guessed. `complete: false` (an edit on
+ * the card, a plan added in one tap): what's still missing (where, which day) may stay missing; a wrong
+ * value is refused all the same.
+ */
+export function checkPlanned(input: PlannedInput, kinds: readonly string[] = PLANNED_KINDS, opts: { complete?: boolean } = {}): string | null {
   if (!kinds.includes(input.kind)) return L(`Bilinmeyen tür: ${input.kind}`, `Unknown kind: ${input.kind}`);
   if (input.date != null && !isoDate(input.date)) return L(`Tarih YYYY-AA-GG olmalı: ${input.date}`, `The date must be YYYY-MM-DD: ${input.date}`);
   if (input.end_date && (!isoDate(input.end_date) || (input.date && input.end_date < input.date))) return L(`Bitiş tarihi geçersiz: ${input.end_date}`, `Invalid end date: ${input.end_date}`);
   if (input.end_date && !input.date) return L("Bitiş varsa başlangıç tarihini de yaz.", "With an end date, give the start date too.");
   if (input.kind === "stay" && input.date && input.end_date && input.end_date <= input.date) return L("Konaklamanın çıkış günü girişten sonra olmalı.", "A stay's check-out day must be after check-in.");
   if (input.time && !TIME.test(input.time)) return L(`Saat SS:DD olmalı: ${input.time}`, `The time must be HH:MM: ${input.time}`);
+  if (opts.complete === false) return null;
   // A ticket for a day ("12 Ekim'e uçak bileti") is a plan already; where it goes can come later.
   if (TRAVEL.includes(input.kind) && input.kind !== "taxi" && !input.to && !input.city && !input.date) return L("Nereye gidildiğini (to) ya da gününü (date) yaz.", "Give where it goes (to) or its day (date).");
   if (input.kind === "taxi" && !input.date) return L("Taksinin gününü (date) yaz.", "Give the taxi's day (date).");
@@ -118,7 +123,8 @@ function nameOf(i: PlannedInput): string {
   const where = i.city ?? i.to;
   const at = where ? ` · ${where}` : "";
   if (WORD[i.kind] && !i.from && !i.to && !i.city) return WORD[i.kind]!;
-  if (WORD[i.kind]) return `${WORD[i.kind]} · ${i.from ? `${i.from} → ` : ""}${i.to ?? i.city ?? ""}`.trim();
+  // Only where it leaves from (a bus added from the "+" after Porto): "Otobüs · Porto → ?".
+  if (WORD[i.kind]) return `${WORD[i.kind]} · ${i.from ? `${i.from} → ` : ""}${i.to ?? i.city ?? "?"}`;
   if (RENTAL_WORD[i.kind]) return `${RENTAL_WORD[i.kind]}${at}`;
   if (i.kind === "insurance") return L("Seyahat sigortası", "Travel insurance");
   if (i.kind === "food") return `${L("Restoran", "Restaurant")}${at}`;

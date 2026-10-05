@@ -36,6 +36,24 @@ describe("kinds made by the add sheet", () => {
   });
 });
 
+describe("a plan made by hand, still unfinished", () => {
+  it("a trip with only where it leaves from reads 'Porto → ?', not a dangling arrow", () => {
+    expect(plannedItem(said({ kind: "bus", from: "Porto" }), "t1", "b", 1).name).toBe("Otobüs · Porto → ?");
+    expect(plannedItem(said({ kind: "bus", from: "Porto", to: "Lagos" }), "t1", "b", 1).name).toBe("Otobüs · Porto → Lagos");
+    expect(plannedItem(said({ kind: "bus" }), "t1", "b", 1).name).toBe("Otobüs");
+  });
+  it("an edit on the card may leave out what the chat must say (where, which day); a wrong value is still refused", () => {
+    const partial = { complete: false };
+    expect(checkPlanned(said({ kind: "car_rental" }), ALL_PLANNED_KINDS, partial)).toBeNull();
+    expect(checkPlanned(said({ kind: "bus" }), ALL_PLANNED_KINDS, partial)).toBeNull();
+    expect(checkPlanned(said({ kind: "taxi" }), ALL_PLANNED_KINDS, partial)).toBeNull();
+    expect(checkPlanned(said({ kind: "stay" }), ALL_PLANNED_KINDS, partial)).toBeNull();
+    expect(checkPlanned(said({ kind: "bus", date: "13.10.2026" }), ALL_PLANNED_KINDS, partial)).toMatch(/YYYY-AA-GG/);
+    expect(checkPlanned(said({ kind: "stay", date: "2026-10-10", end_date: "2026-10-09" }), ALL_PLANNED_KINDS, partial)).toMatch(/Bitiş tarihi geçersiz/);
+    expect(checkPlanned(said({ kind: "bus", time: "25:00" }), ALL_PLANNED_KINDS, partial)).toMatch(/SS:DD/);
+  });
+});
+
 describe("insurance from the words on a saved page", () => {
   it("knows a policy, not a lounge pass", () => {
     expect(isInsurance(makeItem({ category: "other", name: "Allianz seyahat sağlık sigortası" }))).toBe(true);
