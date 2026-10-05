@@ -218,6 +218,11 @@ export const setDone = (item: Item, done: boolean, now = Date.now()) =>
     done ? L(`${item.name} yapıldı`, `${item.name} done`) : L(`${item.name} yapılmadı olarak geri alındı`, `${item.name} marked as not done`),
   );
 
-/** "Rezerve edileceklere taşı": it needs a ticket after all; it goes to the Plan and counts as a booking. */
+/**
+ * "Rezerve edileceklere taşı": it needs a ticket after all; it goes to the Plan and counts as a booking.
+ * A to-do becomes a thing to do with a ticket (an activity), so the Plan doesn't call it "Yapılacak".
+ */
+export const asBooking = (item: Item): Item =>
+  item.plannedKind === "todo" ? { ...item, plannedKind: "activity", category: "activity", booking: "needed" } : { ...item, booking: "needed" };
 export const moveToBookings = (item: Item) =>
-  change(item, (fresh) => ({ ...fresh, booking: "needed" }), L(`${item.name} rezerve edileceklere taşındı`, `${item.name} moved to bookings`));
+  change(item, asBooking, L(`${item.name} rezerve edileceklere taşındı`, `${item.name} moved to bookings`));

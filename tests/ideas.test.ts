@@ -4,7 +4,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { db, listMessages } from "../src/lib/db";
 import {
-  addIdea, cityInText, dayChip, dayChoices, doneText, foodLine, groupIdeas, ideaIcon, moveToBookings, onDay, quickIdea, quickKind,
+  addIdea, asBooking, cityInText, dayChip, dayChoices, doneText, foodLine, groupIdeas, ideaIcon, moveToBookings, onDay, quickIdea, quickKind,
   setDone, setIdeaDay, todoLine,
 } from "../src/lib/ideas";
 import { placeMapUrl } from "../src/lib/items";
@@ -105,6 +105,15 @@ describe("a day, a meal, done", () => {
   });
 });
 
+describe("moved to the bookings", () => {
+  it("a to-do becomes an activity that needs booking; a restaurant stays a restaurant", () => {
+    const todo = idea("Livraria Lello", { city: "Porto" });
+    expect(asBooking(todo)).toMatchObject({ plannedKind: "activity", category: "activity", booking: "needed", name: "Livraria Lello", city: "Porto" });
+    const food = makeItem({ category: "food", plannedKind: "food", booking: "none", name: "Cantinho" });
+    expect(asBooking(food)).toMatchObject({ plannedKind: "food", category: "food", booking: "needed" });
+  });
+});
+
 describe("writes", () => {
   it("adds from the quick box, puts on a day, ticks off, moves to the bookings; each with a line in the history", async () => {
     const made = (await addIdea("t20", "Bolhão pazarı", ["Porto"], "w1", 1))!;
@@ -116,7 +125,7 @@ describe("writes", () => {
     await setDone(made, false);
     expect((await (await db()).get("items", "w1"))!.doneAt).toBeUndefined();
     await moveToBookings(made);
-    expect((await (await db()).get("items", "w1"))!.booking).toBe("needed");
+    expect((await (await db()).get("items", "w1"))!).toMatchObject({ booking: "needed", plannedKind: "activity", category: "activity" });
     expect((await listMessages("t20")).map((m) => m.text)).toEqual([
       "Bolhão pazarı fikirlere eklendi",
       "Bolhão pazarı 9 Eki gününe eklendi",
