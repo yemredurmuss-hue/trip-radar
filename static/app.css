@@ -2001,9 +2001,18 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .hs-empty { margin: 24px 0; color: #6e6e73; font-size: 14px; text-align: center; }
 .hs-note { margin: 6px 0; padding: 8px 12px; border-radius: 10px; background: #fff8ec; font-size: 13px; }
 .hs-foot { margin: 10px 0 4px; font-size: 12.5px; color: #6e6e73; }
+.hs-foot-row { display: flex; align-items: center; gap: 12px; }
+.hs-foot-row .hs-foot { flex: 1; }
+.hs-acts { flex: none; display: inline-flex; gap: 6px; align-items: center; }
+.hs-btn.quiet { border-color: transparent; background: none; color: #6e6e73; }
+.hs-btn.quiet:hover { color: #c0392b; border-color: #f0d6d2; }
+.hs-btn.danger { color: #c0392b; border-color: #f0d6d2; }
+.hs-note.err, .hs-warn { color: #b42318; }
+.hs-notice p small.hs-warn { color: #b42318; }
+.toast.hs-toast { bottom: 84px; }
 @media (max-width: 560px) {
   .hs-hist { padding: 16px 14px 10px; }
   .hs-ev { flex-wrap: wrap; }
   .hs-t { flex-basis: calc(100% - 44px); }
-  .hs-ev > .hs-btn, .hs-ev > .hs-tag { margin-left: 44px; }
+  .hs-ev > .hs-acts, .hs-ev > .hs-tag { margin-left: 44px; }
 }

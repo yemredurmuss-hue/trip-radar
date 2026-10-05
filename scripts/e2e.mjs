@@ -2167,7 +2167,7 @@ try {
   const history = app.getByRole("dialog", { name: "Geçmiş" });
   const deleted = history.locator(".hs-ev", { hasText: "Douro tekne turu" }).filter({ hasText: "Silindi:" });
   await deleted.waitFor();
-  assert.match((await deleted.innerText()).replace(/\s+/g, " "), /Silindi: Douro tekne turu Ben · \d\d:\d\d · Çöp kutusu'nda 30 gün daha Geri getir/);
+  assert.match((await deleted.innerText()).replace(/\s+/g, " "), /Silindi: Douro tekne turu Ben · \d\d:\d\d · Çöp kutusu'nda 30 gün daha Kalıcı sil Geri getir/);
   assert.deepEqual(await history.locator(".hs-seg button").allInnerTexts(), ["Hepsi", "Sabine", "Ben", "Çöp kutusu · 1"]);
   assert.equal(await history.locator(".hs-day").first().innerText(), "BUGÜN");
   await app.screenshot({ path: `${out}/16-history.png` });

@@ -44,12 +44,24 @@ silme hiç korunmuyor.
   ezilmesin.
 - Pano: sekmelerin üstünde sarı şerit (mockup panel 1). "Geri al" yalnız o bildirimin değiştirdiği alanları önceki
   hâline yazar (gezi `updatedAt` ilerler → sonraki eşitleme normal yoldan yukarı iter, sunucuda yeni bir değişiklik
-  olur). "Tamam" kapatır.
+  olur). "Tamam" panodan kaldırır; bildirim Geçmiş için saklı kalır.
+- **O zamandan beri yine değişen alan geri alınmaz.** Alan yalnız şu anki değeri o değişikliğin bıraktığı değere
+  eşitse geri yazılır; değilse "Tarihler o zamandan beri yine değişti; geri alınmadı." Aynı alanı değiştiren daha
+  yeni bir bildirim gelince eskisinde o alan kapanır (Geri al yok).
+- Geçmiş'ten yapılan "Geri al" panodaki şeridi de kapatır. Yazmalar tek kuyruktan ve sürüm kontrolüyle yapılır
+  (pano ile service worker aynı anahtara yazar).
 
 ### 3. Yerel çöp kutusu, 30 gün
 
-- IndexedDB'de yeni `trash` deposu (DB sürüm 4 → 5). Kayıt: id, tripId, kind (`item` | `trip`), deletedAt, label,
-  payload.
+- IndexedDB'de iki yeni depo (DB sürüm 4 → 5): `trash` hafif satırlar (id, tripId, kind `item` | `trip` | `doc`,
+  deletedAt, label, size, count; listeler yalnız bunu okur) ve `trashData` (aynı id, payload; yalnız geri getirirken
+  okunur).
+- **Belge silme** (Belgeler ve kartın belge listesi) de çöpe gider (`doc`); 8 saniyelik "Geri al" çöpteki kaydı da
+  kaldırır.
+- Her çöp satırında "Kalıcı sil" (onaylı), altta "Çöp kutusunu boşalt" (onaylı). Yedek (`exportAll`) çöpü de içerir
+  (dosya içerikleri ve ekran görüntüleri hariç).
+- Paylaşılan bir gezi geri gelirken aynı paylaşıma bağlı başka bir gezi varsa (yeniden katılınmışsa) `shareId`'siz
+  döner: "Paylaşımdan ayrı bir kopya olarak geri geldi".
 - **Kart silme** (`removal.deleteItem`): kart + belgeleri tek işlemde çöpe taşınır ve silinir. İmza ve 8 saniyelik
   "Geri al" aynen; "Geri al" çöpteki kaydı da kaldırır.
 - **Gezi silme**: gezi + kayıtları + belgeleri + yalnız bu geziye ait capture'lar + sohbet/olaylar + analizler +

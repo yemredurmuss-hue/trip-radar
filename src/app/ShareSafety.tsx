@@ -7,7 +7,7 @@ import { requestShareSync } from "../lib/browser";
 import { L } from "../lib/i18n";
 import { locative } from "../lib/i18nText";
 import { timeText } from "../lib/history";
-import { dismissNotice, undoNotice, type SettingsNotice } from "../lib/share/notices";
+import { changedSinceText, dismissNotice, openFields, undoNotice, type SettingsNotice } from "../lib/share/notices";
 import { changeHeadline, diffSettings, type DiffLine } from "../lib/share/settingsDiff";
 import { joinNames } from "../lib/share/votes";
 import type { Trip } from "../lib/types";
@@ -46,11 +46,16 @@ const msOf = (iso: string) => {
 
 function NoticeRow({ tripId, notice, me, photo }: { tripId: string; notice: SettingsNotice; me: string; photo?: string }) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const lines = diffSettings(notice.prev, notice.next);
   if (!lines.length) return null;
+  const open = openFields(notice);
   const run = (work: () => Promise<unknown>) => {
     setBusy(true);
-    void work().finally(() => setBusy(false));
+    setError(null);
+    void work()
+      .catch((e: unknown) => setError(L(`Olmadı: ${e instanceof Error ? e.message : String(e)}`, `That didn't work: ${e instanceof Error ? e.message : String(e)}`)))
+      .finally(() => setBusy(false));
   };
   return (
     <div className="hs-notice" role="status" data-notice={notice.id}>
@@ -60,10 +65,19 @@ function NoticeRow({ tripId, notice, me, photo }: { tripId: string; notice: Sett
         <small>
           {timeText(msOf(notice.at) ?? notice.seenAt)} · {L("senin panona da geldi", "it's on your board too")}
         </small>
+        {notice.stale?.length ? <small className="hs-warn">{changedSinceText(notice.stale)}</small> : null}
+        {!open.length && !notice.stale?.length && <small>{L("Daha yeni bir değişiklik geldi; bunu Geçmiş'ten görebilirsin.", "A newer change came; this one is in the History.")}</small>}
+        {error && (
+          <small className="hs-warn" role="alert">
+            {error}
+          </small>
+        )}
       </p>
-      <button type="button" className="hs-btn dark" disabled={busy} onClick={() => run(() => undoNotice(tripId, notice, me).then(requestShareSync))}>
-        {L("Geri al", "Undo")}
-      </button>
+      {open.length > 0 && (
+        <button type="button" className="hs-btn dark" disabled={busy} onClick={() => run(() => undoNotice(tripId, notice, me).then(requestShareSync))}>
+          {L("Geri al", "Undo")}
+        </button>
+      )}
       <button type="button" className="hs-btn" disabled={busy} onClick={() => run(() => dismissNotice(tripId, notice.id))}>
         {L("Tamam", "OK")}
       </button>

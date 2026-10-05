@@ -43,6 +43,8 @@ export function App() {
   const tripUndo = useMemo(() => undoSlot<TrashEntry>(), []);
   const [deletedTrip, setDeletedTrip] = useState<TrashEntry | null>(null);
   useEffect(() => tripUndo.subscribe(setDeletedTrip), [tripUndo]);
+  /** A word about deleting or bringing back a trip (a failure, a copy apart from the sharing), until closed. */
+  const [safetyNote, setSafetyNote] = useState<string | null>(null);
   const decisions = useDecisions(board.trip, board.items);
 
   // Çöp kutusu: what is older than 30 days goes when the board opens (and whenever the trash is read).
@@ -95,16 +97,27 @@ export function App() {
     await moveTripToTrash(trip.id);
   }
 
+  const why = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
   async function moveTripToTrash(tripId: string) {
     setDeleteAsk(false);
-    const entry = await trashTrip(tripId);
-    board.selectTrip(null);
-    if (entry) tripUndo.show(entry);
+    try {
+      const entry = await trashTrip(tripId);
+      board.selectTrip(null);
+      if (entry) tripUndo.show(entry);
+    } catch (error) {
+      setSafetyNote(L(`Gezi silinemedi, hiçbir şey değişmedi: ${why(error)}`, `The trip couldn't be deleted; nothing changed: ${why(error)}`));
+    }
   }
 
   async function restoreTrip(entry: TrashEntry) {
-    const result = await restoreTrash(entry.id);
-    if (result.entry) board.selectTrip(result.entry.tripId);
+    try {
+      const result = await restoreTrash(entry.id);
+      if (result.entry) board.selectTrip(result.entry.tripId);
+      if (result.detached) setSafetyNote(L("Paylaşımdan ayrı bir kopya olarak geri geldi (aynı paylaşım bu bilgisayarda yine açık).", "It came back as a copy apart from the sharing (the same share is open on this computer again)."));
+    } catch (error) {
+      setSafetyNote(L(`Geri getirilemedi; gezi Çöp kutusu'nda duruyor: ${why(error)}`, `Couldn't bring it back; the trip is still in the trash: ${why(error)}`));
+    }
   }
 
   const mapUrl = trip ? routeUrl(board.items) : null;
@@ -274,6 +287,14 @@ export function App() {
             board.selectTrip(id);
           }}
         />
+      )}
+      {safetyNote && (
+        <div className="toast hs-toast" role="alert">
+          <span>{safetyNote}</span>
+          <button className="toast-close" aria-label={L("Kapat", "Close")} onClick={() => setSafetyNote(null)}>
+            ×
+          </button>
+        </div>
       )}
       {!trip && deletedTrip && (
         <div className="pk-undo" role="status" aria-live="polite">
