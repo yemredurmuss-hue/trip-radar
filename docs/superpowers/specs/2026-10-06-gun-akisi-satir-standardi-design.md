@@ -64,6 +64,10 @@ Saf bir yardımcı (`simpleName`), kayıtlı ad hiç değişmez:
 `src/lib/airports.ts` içindeki `cityOfAirport` (tablo CPH, ve uygulamanın gördüğü diğer kodlarla genişler);
 gri satırdaki havalimanı adı için `airportName`. Bilinmeyen kod: kayıtta şehir ya da ad varsa o, yoksa kod.
 
+Rotalardaki şehirler hero'nun ana yerleriyle söylenir (`destinations.ts` `mainPlaceOf`, yalnız gösterim):
+Funchal ve Gaula Madeira'ya bağlıysa "Porto → Madeira"; gri satırdaki havalimanı adı aynen kalır. Minibüs kendi
+kelimesiyle ("Minibüs" / "Minibus"). Saati olmayan satırın saat hücresi boş kalır ("–" yok).
+
 ## Yerleşim (Liste)
 
 - Satır: saat · ikon · başlık + gri satır. **Nokta ve kesikli dikey çizgi yok.**
