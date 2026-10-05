@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { resetConversation } from "../lib/assistant";
-import { db, notifyChanged } from "../lib/db";
+import { addEvent, db, notifyChanged } from "../lib/db";
 import { loadDemoTrip } from "../lib/demo";
 import { deleteTripDocs } from "../lib/docs";
 import { L } from "../lib/i18n";
@@ -8,6 +8,7 @@ import { routeUrl } from "../lib/items";
 import { buildPlan, groupKeyOf, liveGroups } from "../lib/plan";
 import { isDemoTrip } from "../lib/trips";
 import type { Item } from "../lib/types";
+import { addTripFiles } from "./capture";
 import { Chat } from "./Chat";
 import { CompareView } from "./CompareView";
 import { HeroIcon } from "./Icons";
@@ -135,7 +136,20 @@ export function App() {
       {trip ? (
         <div className="board">
           <Chat trip={trip} messages={board.messages} onBack={() => board.selectTrip(null)} />
-          <main className="panel">
+          <main
+            className="panel"
+            // A PDF or a picture dropped on the board goes to this trip's Belgeler and is read (0.34.6).
+            onDragOver={(e) => e.dataTransfer.types.includes("Files") && e.preventDefault()}
+            onDrop={(e) => {
+              if (!e.dataTransfer.files.length) return;
+              e.preventDefault();
+              const id = trip.id;
+              void addTripFiles(id, Array.from(e.dataTransfer.files)).then((problems) => {
+                const fresh = problems.filter((p) => !p.logged).map((p) => p.text);
+                return fresh.length ? addEvent(id, `⚠ ${fresh.join(" ")}`).then(notifyChanged) : undefined;
+              });
+            }}
+          >
             <TripPanel
               trip={trip}
               items={board.items}
