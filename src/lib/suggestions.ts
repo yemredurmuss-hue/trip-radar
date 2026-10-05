@@ -71,7 +71,8 @@ export interface RuleInput {
   mains: MainPlace[];
   /**
    * The traveller's own country (passport, ISO alpha-2), only when they set it in Settings: a trip elsewhere is
-   * abroad. Null (never set): nothing is said about insurance or an eSIM, rather than guess from a default.
+   * abroad. Null (never set): the country the first flight leaves from (homeFromFlights); with no such flight,
+   * nothing is said about insurance or an eSIM, rather than guess from a default.
    */
   home: string | null;
   today: string;
@@ -117,6 +118,17 @@ function isTransit(f: Item, flights: Item[]): boolean {
     const leaves = msOf(g.flight?.departure);
     return Number.isFinite(leaves) && leaves >= lands && leaves - lands <= 24 * 60 * 60_000;
   });
+}
+
+/**
+ * Home when no passport was set: the country of the airport the trip's first flight leaves from (SAW, IST → TR).
+ * Null when there's no flight with a known airport: nothing is said about going abroad then.
+ */
+export function homeFromFlights(items: Item[]): string | null {
+  const first = items
+    .filter((i) => live(i) && i.category === "flight" && i.flight?.from)
+    .sort((a, b) => (a.flight?.departure ?? a.dates.start ?? "9").localeCompare(b.flight?.departure ?? b.dates.start ?? "9"))[0];
+  return countryOfAirport(first?.flight?.from) ?? null;
 }
 
 /** The trip's countries other than home: its places' (stays, plans) and where its flights land (connections aside). */
@@ -238,7 +250,8 @@ export function ruleSuggestions({ trip, plan, items, timeline, legs, mains, home
   }
 
   // Diğer: abroad without travel health insurance, or without an eSIM.
-  const abroad = home ? foreignCountries(items, home) : [];
+  const own = home ?? homeFromFlights(items);
+  const abroad = own ? foreignCountries(items, own) : [];
   if (abroad.length) {
     const names = countryNames(abroad);
     if (!items.some((i) => live(i) && isInsurance(i))) {

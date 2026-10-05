@@ -9,7 +9,7 @@ export async function loadPassport(): Promise<string> {
 }
 /**
  * The passport only when the traveller set it in Settings; null while it's the default. What's said about going
- * abroad (insurance, an eSIM: suggestions.ts) waits for it rather than guess.
+ * abroad (insurance, an eSIM: suggestions.ts) then reads home from the first flight's airport, never the default.
  */
 export async function loadHome(): Promise<string | null> {
   try {

@@ -9,6 +9,7 @@ import {
   checkSuggestionInput,
   coveringItems,
   foreignCountries,
+  homeFromFlights,
   suggestedAdd,
   mergeIncoming,
   ruleSuggestions,
@@ -314,6 +315,18 @@ describe("review fixes", () => {
     expect(k).not.toContain("rule:insurance");
     expect(k).not.toContain("rule:esim");
     expect(keys(rulesFor(ubud, { home: "TR" }))).toContain("rule:insurance");
+  });
+
+  it("with no passport set, home is where the first flight leaves from (SAW → TR)", () => {
+    const out = flight("SAW", "LIS", "2026-12-10T08:00", "2026-12-10T11:00");
+    const back = flight("LIS", "SAW", "2026-12-20T12:00", "2026-12-20T18:00");
+    expect(homeFromFlights([back, out])).toBe("TR");
+    const k = keys(rulesFor([back, out], { home: null }));
+    expect(k).toContain("rule:insurance");
+    expect(k).toContain("rule:esim");
+    // A trip at home by that measure: nothing said.
+    expect(keys(rulesFor([flight("SAW", "ADB", "2026-12-10T08:00", "2026-12-10T09:00")], { home: null }))).not.toContain("rule:insurance");
+    expect(homeFromFlights(ubud)).toBeNull();
   });
 
   it("a connection airport isn't a country visited", () => {
