@@ -107,7 +107,8 @@ a { color: var(--accent); text-decoration: none; }
 .trips-empty ol { padding-left: 20px; color: #3a3a3c; }
 .errors { margin: 8px 4px; font-size: 13.5px; }
 .errors div { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin: 4px 0; }
-.error-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* An error is read in full (DESIGN.md: no text is cut): it wraps, the button stays on the right. */
+.error-text { min-width: 0; overflow-wrap: anywhere; }
 .small-btn { flex: none; }
 .errors .err { color: var(--danger); }
 .small-btn { background: var(--soft); border: 0; border-radius: 8px; padding: 4px 10px; font-size: 13px; }
@@ -202,7 +203,6 @@ body.popup { width: 320px; }
 .trip-card-title { font-size: 20px; font-weight: 700; letter-spacing: -.01em; margin-bottom: 4px; }
 .trip-card-meta { margin-top: 8px; font-size: 13.5px; color: #3a3a3c; }
 .chat-sub { margin: -6px 0 6px; font-size: 14px; }
-.error-text:hover { white-space: normal; }
 .toast {
   position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 45; background: #111; color: #fff;
   border-radius: 14px; padding: 12px 12px 12px 18px; display: flex; gap: 12px; align-items: center; font-size: 14px;
@@ -702,7 +702,9 @@ a.sc-source.link:focus-visible { outline: 2px solid var(--accent); outline-offse
 .tone-danger { color: var(--danger); }
 
 /* ---------- time running out, on the card ---------- */
-.card-alert { padding: 7px 18px; font-size: 13.5px; font-weight: 600; }
+.card-alert { padding: 7px 18px; font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; }
+/* The ⓘ sits on the strip's right end: the text wraps before it, never under it. */
+.settled-card .card-alert { padding-right: 50px; }
 .card-alert.red { background: #fcebea; color: #9c2a22; }
 .card-alert.amber { background: #fff7e8; color: #7a4a00; border-top: 1px solid #f6e2bd; }
 
@@ -1049,7 +1051,8 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .hx-intent-toggle { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 0 0; border: 0; background: none; text-align: left; font-size: 15px; color: var(--hx-ink); }
 .hx-intent-toggle .spark { flex: none; color: #6a4fe0; }
 .hx-intent-toggle .title { flex: none; }
-.hx-intent-toggle .meta { min-width: 0; color: var(--hx-gray); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The topics wrap under each other rather than end in "…" (DESIGN.md: no text is cut). */
+.hx-intent-toggle .meta { min-width: 0; color: var(--hx-gray); overflow-wrap: anywhere; }
 .hx-intent-toggle .q { flex: none; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #6a4fe0; margin-left: -6px; }
 .hx-intent-toggle .chev { flex: none; margin-left: auto; color: #aeaeb2; transition: transform .2s; }
 .hx-intent.open .chev { transform: rotate(180deg); }
