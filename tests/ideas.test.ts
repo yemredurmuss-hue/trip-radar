@@ -4,7 +4,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { db, listMessages } from "../src/lib/db";
 import {
-  addIdea, asBooking, cityInText, ideaTitle, dayChip, dayChoices, doneText, foodLine, groupIdeas, ideaIcon, moveToBookings, onDay, quickIdea, quickKind,
+  addIdea, asBooking, cityInText, ideaSource, ideaTitle, dayChip, dayChoices, doneText, foodLine, groupIdeas, ideaIcon, moveToBookings, onDay, quickIdea, quickKind,
   setDone, setIdeaDay, todoLine,
 } from "../src/lib/ideas";
 import { placeMapUrl } from "../src/lib/items";
@@ -117,6 +117,23 @@ describe("a day, a meal, done", () => {
     expect(doneText(idea("x", { doneAt: Date.parse("2026-10-12T10:00:00Z") }))).toBe("Yapıldı · 12 Eki");
     expect(todoLine(makeItem({ category: "activity", name: "Livraria Lello", summary: "Giriş bileti gerekiyor", booking: "none" }))).toEqual({ text: "Giriş bileti gerekiyor", promote: true });
     expect(todoLine(idea("Yürüyüş", { summary: "~6 km · düz" }))).toEqual({ text: "~6 km · düz", promote: false });
+  });
+  it("a restaurant's review count goes with its rating, only when known", () => {
+    expect(foodLine(makeItem({ category: "food", optionDetail: "Francesinha", rating: { value: 4.5, scale: 5, count: 1204, source: "page" } }))).toBe("Francesinha · ★ 4,5 (1.204)");
+    expect(foodLine(makeItem({ category: "food", optionDetail: null, summary: "", rating: { value: null, scale: null, count: 80, source: "page" } }))).toBeNull();
+  });
+  it("where an idea came from: Maps, Instagram or Reels, Pinterest, a blog, the site, a note", () => {
+    expect(ideaSource({ url: "https://www.google.com/maps/place/Majestic+Caf%C3%A9" })).toBe("Maps");
+    expect(ideaSource({ url: "https://maps.app.goo.gl/abc" })).toBe("Maps");
+    expect(ideaSource({ url: "https://www.instagram.com/reel/C1/" })).toBe("Reels");
+    expect(ideaSource({ url: "https://www.instagram.com/p/C1/" })).toBe("Instagram");
+    expect(ideaSource({ url: "https://tr.pinterest.com/pin/1/" })).toBe("Pinterest");
+    expect(ideaSource({ url: "https://gezgin.blogspot.com/2024/porto" })).toBe("blog");
+    expect(ideaSource({ url: "https://example.com/blog/porto-gezisi" })).toBe("blog");
+    expect(ideaSource({ url: "https://www.timeout.com/porto" })).toBe("timeout.com");
+    expect(ideaSource({ url: null, plannedKind: "note" })).toBe("not");
+    expect(ideaSource({ url: null, plannedKind: "todo" })).toBeNull();
+    expect(ideaSource({ url: "not a url" })).toBeNull();
   });
   it("the map: coordinates when known, else name and city", () => {
     expect(placeMapUrl({ name: "Café Santiago", city: "Porto", geo: { lat: 41.1, lng: -8.6, source: "page" } })).toBe("https://www.google.com/maps/search/?api=1&query=41.1%2C-8.6");

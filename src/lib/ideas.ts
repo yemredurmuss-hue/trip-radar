@@ -200,11 +200,36 @@ export function dayChip(item: Item): string | null {
 export const doneText = (item: Item): string | null =>
   item.doneAt ? L(`Yapıldı · ${shortDay(new Date(item.doneAt).toISOString().slice(0, 10))}`, `Done · ${shortDay(new Date(item.doneAt).toISOString().slice(0, 10))}`) : null;
 
-/** A restaurant card's grey line: what it is (as much as the page said) and its rating ("Francesinha · ★ 4,5"). */
+/** A restaurant card's grey line: what it is and its rating, as much as the page said ("Francesinha · ★ 4,5 (1.204)"); nothing made up. */
 export function foodLine(item: Item): string | null {
   const what = item.optionDetail ?? (item.summary && item.summary.length <= 40 ? item.summary : null);
-  const star = item.rating.value != null ? `★ ${num(item.rating.value)}` : null;
+  const reviews = item.rating.count != null && item.rating.count > 0 ? ` (${item.rating.count.toLocaleString(locale())})` : "";
+  const star = item.rating.value != null ? `★ ${num(item.rating.value)}${reviews}` : null;
   return [what, star].filter(Boolean).join(" · ") || null;
+}
+
+/**
+ * Where an idea came from, for its grey line (kategoriler spec): Maps, Instagram (Reels), Pinterest, TikTok,
+ * YouTube, a blog, else the site's name; a note typed by hand says "not". Nothing when it can't tell.
+ */
+export function ideaSource(item: Pick<Item, "url" | "plannedKind">): string | null {
+  if (!item.url) return item.plannedKind === "note" ? L("not", "note") : null;
+  let url: URL;
+  try {
+    url = new URL(item.url);
+  } catch {
+    return null;
+  }
+  const host = url.hostname.replace(/^www\./, "").toLowerCase();
+  const path = url.pathname.toLowerCase();
+  if (/(^|\.)google\.[a-z.]+$/.test(host) && path.startsWith("/maps")) return "Maps";
+  if (host === "maps.app.goo.gl" || host.startsWith("maps.google.") || (host === "goo.gl" && path.startsWith("/maps"))) return "Maps";
+  if (host === "instagram.com" || host.endsWith(".instagram.com")) return path.startsWith("/reel") ? "Reels" : "Instagram";
+  if (/(^|\.)pinterest\.[a-z.]+$/.test(host) || host === "pin.it") return "Pinterest";
+  if (host === "tiktok.com" || host.endsWith(".tiktok.com")) return "TikTok";
+  if (host === "youtube.com" || host === "youtu.be" || host.endsWith(".youtube.com")) return "YouTube";
+  if (/blogspot\.|wordpress\.|medium\.com|substack\.com/.test(host) || /(^|\/)blog(\/|$)/.test(path) || host.startsWith("blog.")) return "blog";
+  return host || null;
 }
 
 /** A to-do's grey line: done, a ticket it turns out to need, else what was said about it. */
