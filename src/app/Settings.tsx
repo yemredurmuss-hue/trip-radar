@@ -1,3 +1,5 @@
+import { AiGateSettings } from "./AiGateSettings";
+import { ProfileSettings } from "./Profile";
 import { useEffect, useState } from "react";
 import { requestProcessing } from "../lib/browser";
 import { DEFAULT_GEMINI_MODEL, DEFAULT_MODEL, exportAll, exportDiagnostics, getSettings, saveSettings } from "../lib/db";
@@ -117,6 +119,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <LanguagePicker />
         <h2>{L("Ayarlar", "Settings")}</h2>
+        <ProfileSettings />
         <label className="field">
           {L("Pasaport", "Passport")}
           <select
@@ -193,6 +196,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
                 `On the free tier Google may use what is sent (your saved pages, screenshots, chat) to improve its products, and people may read it. There is also a daily request limit; when it runs out, saves are processed later with "Try again".`,
               )}
             </p>
+            <AiGateSettings ownKey={!!s.geminiKey.trim()} />
           </>
         ) : (
           <>

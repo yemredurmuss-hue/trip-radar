@@ -2,6 +2,9 @@
 // Everything here is inert until sharing is set up in Ayarlar → Paylaşım.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { requestProcessing, requestShareSync } from "../lib/browser";
+import { db } from "../lib/db";
+import { getPhoto } from "../lib/profile";
+import { inviteTicket } from "../lib/share/ai";
 import { castVote, joinSharedTrip, shareCodeOf, shareTrip, stopSharing } from "../lib/share/actions";
 import { rpcClient } from "../lib/share/client";
 import { normalizeServerUrl } from "../lib/share/code";
@@ -31,6 +34,8 @@ interface ShareView {
   tally: (item: Item) => VoteTally;
   /** How many people are on the shared trip (me included). */
   members: number;
+  /** Profile photos by name (0.36), mine included. */
+  photos: Record<string, string>;
   vote: (item: Item, value: VoteValue) => void;
 }
 
@@ -54,17 +59,19 @@ export function ShareProvider({ trip, children }: { trip: Trip | null; children:
   const [me, setMe] = useState("");
   const [votes, setVotesState] = useState<Vote[]>([]);
   const [state, setState] = useState<SyncState | null>(null);
+  const [myPhoto, setMyPhoto] = useState<string | null>(null);
 
   useEffect(() => {
     if (!shareId || !tripId) return;
     const load = () => {
       void getShareConfig().then((c) => setMe(c.name));
+      void getPhoto().then(setMyPhoto);
       void getVotes(shareId).then(setVotesState);
       void getSyncState(tripId).then((s) => setState(s ?? null));
     };
     load();
     requestShareSync(); // the board opened: bring what the other traveller did meanwhile
-    return onStorage([votesKey(shareId), stateKey(tripId), "shareName"], load);
+    return onStorage([votesKey(shareId), stateKey(tripId), "shareName", "sharePhoto"], load);
   }, [shareId, tripId]);
 
   const view = useMemo<ShareView | null>(() => {
@@ -76,11 +83,12 @@ export function ShareProvider({ trip, children }: { trip: Trip | null; children:
       state,
       tally: (item) => tallyVotes(votes, voteKeyOf(item), me),
       members: memberCount(state?.members ?? [], me),
+      photos: { ...(state?.photos ?? {}), ...(me && myPhoto ? { [me]: myPhoto } : {}) },
       vote: (item, value) => {
         void castVote(trip, item, value).then(requestShareSync);
       },
     };
-  }, [trip, me, votes, state]);
+  }, [trip, me, votes, state, myPhoto]);
 
   return <ShareContext.Provider value={view}>{children}</ShareContext.Provider>;
 }
@@ -168,9 +176,10 @@ export function ShareDialog({ trip, onClose, onSettings }: { trip: Trip; onClose
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    void getShareConfig().then((c) => {
+    void getShareConfig().then(async (c) => {
       setConfig(c);
-      if (trip.shareId && isConfigured(c)) setCode(shareCodeOf(trip, c));
+      // With the AI gate's admin secret on this computer, the code carries an AI ticket (0.36).
+      if (trip.shareId && isConfigured(c)) setCode(shareCodeOf(trip, c, await inviteTicket(trip.id, trip.title)));
     });
   }, [trip]);
 
@@ -178,7 +187,9 @@ export function ShareDialog({ trip, onClose, onSettings }: { trip: Trip; onClose
     setBusy(true);
     setStatus(null);
     try {
-      setCode(await shareTrip(trip.id));
+      await shareTrip(trip.id);
+      const [fresh, c] = await Promise.all([db().then((d) => d.get("trips", trip.id)), getShareConfig()]);
+      if (fresh) setCode(shareCodeOf(fresh, c, await inviteTicket(trip.id, trip.title)));
       requestShareSync(); // the trip's pages go up now
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));

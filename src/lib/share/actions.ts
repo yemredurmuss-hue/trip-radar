@@ -1,4 +1,5 @@
 // What the board does with sharing: share a trip (→ one code to send), join one with that code, vote.
+import { saveAiTicket } from "./ai";
 import { L } from "../i18n";
 import { db, newId, notifyChanged } from "../db";
 import { isDemoTrip } from "../trips";
@@ -56,9 +57,9 @@ export async function shareTrip(tripId: string, deps: ActionDeps = {}): Promise<
   return shareCodeOf({ ...fresh, shareId }, config);
 }
 
-export function shareCodeOf(trip: Trip, config: Pick<ShareConfig, "url" | "anonKey">): string {
+export function shareCodeOf(trip: Trip, config: Pick<ShareConfig, "url" | "anonKey">, aiTicket: string | null = null): string {
   if (!trip.shareId) throw new Error(L("Bu gezi paylaşılmıyor.", "This trip isn't shared."));
-  return encodeShareCode({ url: config.url, anonKey: config.anonKey, shareId: trip.shareId, title: trip.title });
+  return encodeShareCode({ url: config.url, anonKey: config.anonKey, shareId: trip.shareId, title: trip.title, aiTicket });
 }
 
 /**
@@ -77,6 +78,8 @@ export async function joinSharedTrip(pasted: string, name: string, deps: ActionD
   const me = (name || current.name).trim();
   if (!me) throw new ShareError(L("Adını yaz (diğer kişi seni bu adla görür).", "Add your name (the others see you by it)."), "setup");
   await saveShareConfig({ url: code.url, anonKey: current.anonKey || code.anonKey, name: me }, kv);
+  // The invite's AI ticket: no key of your own needed (the inviter's gate; your own key still comes first).
+  await saveAiTicket(code.aiTicket, kv);
 
   const d = await db();
   const existing = (await d.getAll("trips")).find((t) => t.shareId === code.shareId);

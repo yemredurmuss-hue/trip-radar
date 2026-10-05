@@ -122,9 +122,13 @@ export async function getSettings(): Promise<Settings> {
   };
 }
 
+/** A way to the model: your own key, or (Gemini) the AI gate an invite gave you. */
 export async function hasActiveKey(): Promise<boolean> {
   const s = await getSettings();
-  return Boolean(s.provider === "gemini" ? s.geminiKey : s.apiKey);
+  if (s.provider === "anthropic") return Boolean(s.apiKey);
+  if (s.geminiKey) return true;
+  const { aiGate } = await import("./share/ai");
+  return (await aiGate()) != null;
 }
 
 export async function saveSettings(settings: Partial<Settings>): Promise<void> {

@@ -1520,7 +1520,19 @@ try {
   // 5. Settings dialog.
   await app.goto(`chrome-extension://${id}/app.html#settings`);
   await app.getByText("Gemini API anahtarı").waitFor(); // free Gemini is the default provider
+  // 0.36 Profilim: a name and a photo (made a small square JPEG here), no account.
+  const profile = app.locator(".profile-set");
+  await profile.getByRole("textbox").fill("Emre");
+  await profile.getByRole("textbox").blur();
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAM0lEQVR4nG3CoREAIQADwSssRbxGo9Gv0WhqurJoIDuLX2ocqXGmxpUa/9S4U+NJjTf1A3y1XcEwJbHpAAAAAElFTkSuQmCC", "base64");
+  await profile.locator('input[type="file"]').setInputFiles({ name: "me.png", mimeType: "image/png", buffer: png });
+  await profile.locator(".profile-photo img").waitFor();
+  assert.match(await profile.locator(".profile-photo img").getAttribute("src"), /^data:image\/jpeg;base64,/);
+  // The AI gate's place for its owner, folded.
+  await app.locator(".ai-gate").getByRole("button", { name: /AI kapısı/ }).waitFor();
   await app.screenshot({ path: `${out}/6-settings.png` });
+  await profile.getByRole("button", { name: "Fotoğrafı kaldır" }).click();
+  await profile.locator(".profile-photo img").waitFor({ state: "detached" });
   await app.getByRole("radio", { name: /Claude/ }).click();
   await app.getByText("Claude API anahtarı").waitFor();
   await app.getByRole("radio", { name: /Gemini/ }).click();

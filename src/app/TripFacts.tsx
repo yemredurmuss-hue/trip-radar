@@ -13,6 +13,7 @@ import type { StyleChip } from "../lib/tripStyle";
 import type { Trip } from "../lib/types";
 import { HeroIcon, type HeroIconName } from "./Icons";
 import { Preferences } from "./IntentCard";
+import { useMyPhoto } from "./Profile";
 import { ShareLine, useShare } from "./Share";
 import { useAppear } from "./useAppear";
 import type { Decisions } from "./useDecisions";
@@ -108,6 +109,9 @@ export function TripFacts(props: {
 /** Who goes: the shared trip's people by name, else as many as the saves say; a tap opens sharing. */
 function Travellers({ adults, onShare }: { adults: number; onShare?: () => void }) {
   const share = useShare();
+  // Profile photos (0.36): the shared trip's people's; on a trip of my own, mine in the first circle.
+  const myPhoto = useMyPhoto();
+  const photoOf = (n: number, name: string | undefined) => (name ? share?.photos[name] : n === 0 ? myPhoto : null) ?? null;
   const names = share ? uniqueNames([share.me, ...(share.state?.members ?? [])]) : [];
   const count = names.length || adults;
   const appear = useAppear(count > 0);
@@ -117,8 +121,8 @@ function Travellers({ adults, onShare }: { adults: number; onShare?: () => void 
       <>
         <span className="hx-avatars" aria-hidden>
           {Array.from({ length: Math.min(count, 4) }, (_, n) => (
-            <i key={n} className={`p${n % 4}`}>
-              {names[n] ? initials(names[n]) : <HeroIcon name="user" size={24} />}
+            <i key={n} className={`p${n % 4}${photoOf(n, names[n]) ? " photo" : ""}`}>
+              {photoOf(n, names[n]) ? <img src={photoOf(n, names[n])!} alt="" /> : names[n] ? initials(names[n]) : <HeroIcon name="user" size={24} />}
             </i>
           ))}
           {count > 4 && <i className="more">+{count - 4}</i>}

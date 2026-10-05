@@ -11,7 +11,14 @@ export interface ShareCode {
   shareId: string;
   /** Trip title when the code was made (shown before joining). */
   title: string | null;
+  /**
+   * The invite's AI ticket (0.36): the one who joins uses the inviter's AI gate with it, no key of their own.
+   * Absent in older codes and when the inviter has no gate.
+   */
+  aiTicket?: string | null;
 }
+
+const TICKET = /^trk_[0-9a-f]{48}$/;
 
 const PREFIX = "TR1:";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -45,7 +52,7 @@ function fromBase64Url(text: string): string {
 export function encodeShareCode(code: ShareCode): string {
   const url = normalizeServerUrl(code.url);
   if (!url || !code.anonKey.trim() || !isShareId(code.shareId)) throw new Error(L("Paylaşım kodu oluşturulamadı: ayarlar eksik.", "Couldn't make the share code: settings are missing."));
-  return PREFIX + toBase64Url(JSON.stringify({ u: url, k: code.anonKey.trim(), t: code.shareId, n: code.title ?? undefined }));
+  return PREFIX + toBase64Url(JSON.stringify({ u: url, k: code.anonKey.trim(), t: code.shareId, n: code.title ?? undefined, a: code.aiTicket && TICKET.test(code.aiTicket) ? code.aiTicket : undefined }));
 }
 
 /** The code as pasted (surrounding text from a chat message is fine), or null. */
@@ -53,11 +60,17 @@ export function decodeShareCode(pasted: string): ShareCode | null {
   const match = pasted.match(/TR1:\s*([A-Za-z0-9_-]+)/);
   if (!match) return null;
   try {
-    const raw = JSON.parse(fromBase64Url(match[1])) as { u?: unknown; k?: unknown; t?: unknown; n?: unknown };
+    const raw = JSON.parse(fromBase64Url(match[1])) as { u?: unknown; k?: unknown; t?: unknown; n?: unknown; a?: unknown };
     const url = typeof raw.u === "string" ? normalizeServerUrl(raw.u) : null;
     const anonKey = typeof raw.k === "string" ? raw.k.trim() : "";
     if (!url || !anonKey || anonKey.length > 1000 || !isShareId(raw.t)) return null;
-    return { url, anonKey, shareId: raw.t.toLowerCase(), title: typeof raw.n === "string" ? raw.n.slice(0, 120) : null };
+    return {
+      url,
+      anonKey,
+      shareId: raw.t.toLowerCase(),
+      title: typeof raw.n === "string" ? raw.n.slice(0, 120) : null,
+      aiTicket: typeof raw.a === "string" && TICKET.test(raw.a) ? raw.a : null,
+    };
   } catch {
     return null;
   }

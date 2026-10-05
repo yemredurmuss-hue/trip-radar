@@ -154,7 +154,7 @@ describe("share code", () => {
     const code = encodeShareCode({ url: "https://AbCd1234.supabase.co/", anonKey: "sb_publishable_x", shareId: SHARE_ID, title: "Portekiz · Ekim ğüşıöç" });
     expect(code.startsWith("TR1:")).toBe(true);
     expect(code).toMatch(/^TR1:[A-Za-z0-9_-]+$/);
-    expect(decodeShareCode(code)).toEqual({ url: "https://abcd1234.supabase.co", anonKey: "sb_publishable_x", shareId: SHARE_ID, title: "Portekiz · Ekim ğüşıöç" });
+    expect(decodeShareCode(code)).toEqual({ url: "https://abcd1234.supabase.co", anonKey: "sb_publishable_x", shareId: SHARE_ID, title: "Portekiz · Ekim ğüşıöç", aiTicket: null });
     // Pasted inside a message.
     expect(decodeShareCode(`Selam! Kod: ${code}\nGörüşürüz`)?.shareId).toBe(SHARE_ID);
   });

@@ -12,7 +12,9 @@ export type RpcName =
   | "add_capture"
   | "captures_since"
   | "set_vote"
-  | "votes_for";
+  | "votes_for"
+  | "put_profile"
+  | "profiles_for";
 
 /** A failure said in the board's language; `code` tells the sync what kind it was. */
 export class ShareError extends Error {

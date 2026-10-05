@@ -74,6 +74,10 @@ export interface SyncState {
   settingsAt: string | null;
   /** Everyone who opened the shared trip ("Emre", "Sabine"). */
   members: string[];
+  /** Their profile photos by name (0.36), and when they were last fetched; the photo this computer last sent. */
+  photos?: Record<string, string>;
+  photosAt?: number | null;
+  photoSent?: string | null;
   /** Last sync that went through (ms), and the last failure since, in Turkish. */
   lastSyncAt: number | null;
   error: string | null;

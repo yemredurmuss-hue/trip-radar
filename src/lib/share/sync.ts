@@ -13,6 +13,7 @@ import { shrinkScreenshot } from "./image";
 import { applySettings, resolveSettings, settingsFromServer, settingsOf, stableJson } from "./settings";
 import { chromeKV, getShareConfig, getSyncState, getVotes, isConfigured, setSyncState, setVotes, type KV, type SyncState } from "./store";
 import { mergeVotes, type Vote, type VoteValue } from "./votes";
+import { getPhoto, isPhoto } from "../profile";
 
 export interface SyncDeps {
   rpc: Rpc;
@@ -152,6 +153,7 @@ export async function syncTrip(tripId: string, deps: SyncDeps): Promise<TripSync
     result.uploaded = await uploadCaptures(trip.id, trip.shareId, deps);
     result.received = await pullCaptures(trip.id, state, deps, kv);
     await syncVotes(trip.shareId, { ...deps, kv });
+    await syncProfiles(state, deps, kv, now());
     state.lastSyncAt = now();
     state.error = null;
   } catch (error) {
@@ -308,4 +310,29 @@ export function syncAll(overrides: Partial<SyncDeps> = {}): Promise<number> {
     return received;
   })();
   return running;
+}
+
+/** How often the others' photos are fetched again (a new member brings them sooner). */
+const PHOTOS_EVERY_MS = 30 * 60_000;
+
+/**
+ * Profiles (0.36): my photo goes up when it changed; the others' come down every half hour or when someone
+ * new joined. A server without the profiles functions (profiles.sql not run yet) is no error: no photos.
+ */
+async function syncProfiles(state: SyncState, { rpc, me }: SyncDeps, kv: KV, at: number): Promise<void> {
+  try {
+    const mine = await getPhoto(kv);
+    if ((mine ?? null) !== (state.photoSent ?? null) && me) {
+      await rpc("put_profile", { p_id: state.shareId, p_author: me, p_photo: mine });
+      state.photoSent = mine;
+    }
+    const known = Object.keys(state.photos ?? {});
+    const someoneNew = state.members.some((m) => !known.includes(m));
+    if (state.photosAt && at - state.photosAt < PHOTOS_EVERY_MS && !someoneNew && mine === state.photoSent) return;
+    const rows = (await rpc<{ author: string; photo: string }[]>("profiles_for", { p_id: state.shareId })) ?? [];
+    state.photos = Object.fromEntries(rows.filter((r) => typeof r.author === "string" && isPhoto(r.photo)).map((r) => [r.author, r.photo]));
+    state.photosAt = at;
+  } catch {
+    // profiles are a nicety: the trip syncs without them
+  }
 }
