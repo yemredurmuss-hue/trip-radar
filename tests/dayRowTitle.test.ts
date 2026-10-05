@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cityOfAirport } from "../src/lib/airports";
 import { fromTime, placeName, rowTitle, simpleName, titleText, toTime, withLayovers, withoutWord } from "../src/lib/dayRowTitle";
+import { mainPlaceOf, mainPlaces } from "../src/lib/destinations";
 import { setLang } from "../src/lib/i18n";
 import type { DayRow } from "../src/lib/journey";
 import type { Leg, Travel } from "../src/lib/legs";
@@ -63,6 +64,19 @@ describe("flights", () => {
   it("no flight saved yet: the way in, what's left", () => {
     expect(rowTitle(travelRow(null))).toEqual({ what: "Uçuş", which: "→ Porto", detail: "uçuş yok" });
   });
+  it("a city folded into a main place reads as it (Funchal, Gaula → Madeira), routes and layovers alike", () => {
+    const madeira = mainPlaces(["Porto", "Funchal", "Gaula"], { funchal: "Madeira", gaula: "Madeira" });
+    const place = (c: string) => mainPlaceOf(madeira, c) ?? c;
+    const f = flight("OPO", "FNC", "2026-10-11T14:00", "2026-10-11T15:45");
+    expect(rowTitle(travelRow(f), place).which).toBe("Porto → Madeira");
+    expect(rowTitle(travelRow(f)).which).toBe("Porto → Funchal");
+    // The grey line keeps the airports.
+    expect(rowTitle(travelRow(f), place).detail).toBe("Francisco Sá Carneiro → Funchal · varış 15:45");
+    const move = leg({ kind: "move", from: point("Porto", "Porto"), to: point("Gaula", "Gaula"), via: null, mode: "flight" });
+    expect(rowTitle(travelRow(f, "move", move), place).which).toBe("Porto → Madeira");
+    const lay = withLayovers([travelRow(flight("LIS", "FNC", "2026-10-11T08:00", "2026-10-11T09:40")), travelRow(flight("FNC", "PXO", "2026-10-11T11:00", "2026-10-11T11:20"))]);
+    expect(rowTitle(lay[1], place).which).toBe("Madeira · 1 sa 20 dk");
+  });
   it("the airports the app sees read as cities", () => {
     expect(["SAW", "IST", "CPH", "OPO", "LIS", "FNC"].map(cityOfAirport)).toEqual(["İstanbul", "İstanbul", "Kopenhag", "Porto", "Lizbon", "Funchal"]);
   });
@@ -103,6 +117,8 @@ describe("trains, buses, ferries and moves", () => {
     const ferry = makeItem({ category: "transport", name: "Vapur Kadıköy", status: "booked", plannedKind: "ferry" });
     expect(both(() => rowTitle(row({ kind: "item", item: bus, state: "done" })).what)).toEqual({ tr: "Otobüs", en: "Bus" });
     expect(both(() => rowTitle(row({ kind: "item", item: ferry, state: "done" })).what)).toEqual({ tr: "Vapur", en: "Ferry" });
+    const minibus = makeItem({ category: "transport", name: "Dolmuş", status: "booked", plannedKind: "minibus" });
+    expect(both(() => rowTitle(row({ kind: "item", item: minibus, state: "done" })).what)).toEqual({ tr: "Minibüs", en: "Minibus" });
   });
   it("a change of city by car: a transfer, the cities as which, the way in grey", () => {
     const move = leg({ kind: "move", from: point("Porto", "Porto"), to: point("Lizbon", "Lizbon"), via: null, mode: "car", choice: { mode: "car", booked: false, note: null, updatedAt: 1 } });

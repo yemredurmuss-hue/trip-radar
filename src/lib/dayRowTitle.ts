@@ -61,13 +61,23 @@ export function placeName(text: string | null | undefined, fallback: string | nu
   return t;
 }
 
+/**
+ * A city as the trip's main place it belongs to ("Funchal", "Gaula" → "Madeira", destinations.ts mainPlaceOf), for
+ * showing only; by default the city as it is.
+ */
+export type Place = (city: string) => string;
+const same: Place = (c) => c;
+
 /** "IST → OPO" (or "→ Porto") with each end as its city. */
-const routeOf = (text: string | null | undefined): string =>
+const routeOf = (text: string | null | undefined, place: Place): string =>
   (text ?? "")
     .split(" → ")
-    .map((p) => (p ? (placeName(p) ?? p) : p))
+    .map((p) => (p ? place(placeName(p) ?? p) : p))
     .join(" → ")
     .trim();
+
+/** "Porto → Madeira": a route's two ends, each as its main place. */
+const route = (from: string, to: string, place: Place) => `${place(from)} → ${place(to)}`;
 
 // --- Turkish times with their suffix ("15:00'ten itibaren", "11:00'e kadar") -------------------------
 
@@ -105,6 +115,7 @@ const W = {
   transfer: () => L("Transfer", "Transfer"),
   train: () => L("Tren", "Train"),
   bus: () => L("Otobüs", "Bus"),
+  minibus: () => L("Minibüs", "Minibus"),
   ferry: () => L("Vapur", "Ferry"),
   carPickUp: () => L("Araç teslim alma", "Car pick-up"),
   carReturn: () => L("Araç iadesi", "Car return"),
@@ -243,7 +254,7 @@ function arrives(f: Flight): string | null {
   return L(`varış ${at}`, `arrives ${at}`) + (nextDay ? " (+1)" : "");
 }
 
-/** The trip's word by its way: Uçuş, Tren, Otobüs, Vapur; anything else (a taxi, a car) between cities is a transfer. */
+/** The trip's word by its way: Uçuş, Tren, Otobüs, Minibüs, Vapur; anything else (a taxi, a car) between cities is a transfer. */
 function tripWord(mode: LegMode | "minibus" | null): string | null {
   switch (mode) {
     case "flight":
@@ -251,8 +262,9 @@ function tripWord(mode: LegMode | "minibus" | null): string | null {
     case "train":
       return W.train();
     case "bus":
-    case "minibus":
       return W.bus();
+    case "minibus":
+      return W.minibus();
     case "ferry":
       return W.ferry();
     default:
@@ -261,7 +273,7 @@ function tripWord(mode: LegMode | "minibus" | null): string | null {
 }
 
 /** A flight, a train, a bus or a ferry between two places (or a change of city by car or taxi). */
-function tripTitle(row: DayRow): RowTitle {
+function tripTitle(row: DayRow, place: Place): RowTitle {
   const e = row.entry?.kind === "travel" ? row.entry : null;
   const t = e?.travel ?? null;
   const item = t?.settled ?? (t?.items.length === 1 ? t.items[0] : null) ?? (row.item && (row.item.category === "flight" || row.item.category === "transport") ? row.item : null);
@@ -269,13 +281,14 @@ function tripTitle(row: DayRow): RowTitle {
   const said = item ? transportMode(item) : null;
   const mode = (item?.category === "flight" ? "flight" : null) ?? (said === "minibus" ? "minibus" : null) ?? t?.mode ?? e?.leg?.choice?.mode ?? e?.leg?.mode ?? (said && said in WAY ? (said as LegMode) : null) ?? (e && e.role !== "move" ? "flight" : null);
   const word = tripWord(mode);
-  // A change of city by its two cities (the trip's own words: "Porto → Madeira"); else the airports' cities.
+  // A change of city by its two cities (the trip's own words); else the airports' cities; each as its main place
+  // ("Porto → Madeira", not "Porto → Funchal").
   const which =
     e?.role === "move" && e.leg
-      ? `${e.leg.from.city ?? e.leg.from.label} → ${e.leg.to.city ?? e.leg.to.label}`
+      ? route(e.leg.from.city ?? e.leg.from.label, e.leg.to.city ?? e.leg.to.label, place)
       : f?.from && f.to
-        ? `${placeName(f.from)} → ${placeName(f.to, item?.city ?? null)}`
-        : routeOf(e?.subtitle) || (item ? simpleName(item.name) : "");
+        ? route(placeName(f.from)!, placeName(f.to, item?.city ?? null)!, place)
+        : routeOf(e?.subtitle, place) || (item ? simpleName(item.name) : "");
   const status = left(row);
   if (mode === "flight") {
     const airports = f?.from && f.to ? `${airportName(f.from)} → ${airportName(f.to)}` : null;
@@ -293,7 +306,7 @@ function tripTitle(row: DayRow): RowTitle {
 }
 
 /** A transfer within a city: to or from the airport (Havalimanı transferi), else Transfer; its way as HANGİSİ. */
-function legTitle(row: DayRow, leg: Leg): RowTitle {
+function legTitle(leg: Leg, place: Place): RowTitle {
   const item = legItem(leg);
   const said = item ? transportMode(item) : null;
   const mode: LegMode | null = leg.mode ?? leg.choice?.mode ?? (said === "taxi" ? "taxi" : said && said in WAY ? (said as LegMode) : null);
@@ -305,7 +318,7 @@ function legTitle(row: DayRow, leg: Leg): RowTitle {
   return {
     what: airport ? W.airportTransfer() : W.transfer(),
     which: mode ? WAY[mode]() : "",
-    detail: join([leg.kind === "move" ? `${leg.from.city ?? leg.from.label} → ${leg.to.city ?? leg.to.label}` : ends, duration(item), legLeft(leg)]),
+    detail: join([leg.kind === "move" ? route(leg.from.city ?? leg.from.label, leg.to.city ?? leg.to.label, place) : ends, duration(item), legLeft(leg)]),
   };
 }
 
@@ -356,10 +369,10 @@ function rating(item: Item): string | null {
   return `★ ${value.toLocaleString(L("tr-TR", "en-GB"), { maximumFractionDigits: 1 })}`;
 }
 
-function itemTitle(row: DayRow, item: Item): RowTitle {
+function itemTitle(row: DayRow, item: Item, place: Place): RowTitle {
   const time = row.time ?? row.freed ?? null;
   const done = item.doneAt ? L("yapıldı", "done") : null;
-  if (item.category === "flight" || (item.category === "transport" && tripWord(transportMode(item) as LegMode | "minibus" | null))) return tripTitle(row);
+  if (item.category === "flight" || (item.category === "transport" && tripWord(transportMode(item) as LegMode | "minibus" | null))) return tripTitle(row, place);
   if (item.category === "stay") return { what: "Check-in", which: simpleName(item.name), detail: join([area(item), left(row)]) };
   if (item.category === "food") {
     return { what: mealWord(item, time), which: simpleName(item.name), detail: join([area(item), rating(item), done, left(row)]) };
@@ -386,19 +399,20 @@ function itemTitle(row: DayRow, item: Item): RowTitle {
 
 /**
  * A line's title in the standard: NE (fixed word) · HANGİSİ (only what's particular) and its grey line. Every
- * kind of line in Liste and Kartlar is titled here; what isn't known is "Etkinlik" with its own name.
+ * kind of line in Liste and Kartlar is titled here; what isn't known is "Etkinlik" with its own name. `place`
+ * names a route's cities as the trip's main places (the hero's: "Porto → Madeira"), only for showing.
  */
-export function rowTitle(row: DayRow): RowTitle {
+export function rowTitle(row: DayRow, place: Place = same): RowTitle {
   if (row.layover) {
-    const where = placeName(row.layover.airport, row.layover.city) ?? row.layover.airport;
+    const where = place(placeName(row.layover.airport, row.layover.city) ?? row.layover.airport);
     return { what: W.layover(), which: `${where} · ${hoursMinutes(row.layover.minutes)}`, detail: "" };
   }
   if (row.key.endsWith(":checkin")) return stayTitle(row, true);
   if (row.key.endsWith(":checkout")) return stayTitle(row, false);
   if (row.rental) return rentalTitle(row, row.key.endsWith(":return"));
-  if (row.kind === "travel") return tripTitle(row);
-  if (row.leg) return legTitle(row, row.leg);
-  if (row.item) return itemTitle(row, row.item);
+  if (row.kind === "travel") return tripTitle(row, place);
+  if (row.leg) return legTitle(row.leg, place);
+  if (row.item) return itemTitle(row, row.item, place);
   if (row.kind === "ideas") return { what: W.event(), which: row.title, detail: L("fikir", "idea") };
   return { what: W.event(), which: row.title.replace(/^✓\s*/, ""), detail: row.sub ?? "" };
 }

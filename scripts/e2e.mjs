@@ -468,7 +468,8 @@ try {
   await flight7.hover();
   await flight7.locator(".dc-grip").dragTo(dayCard(7).locator('.dc-tl > li[data-title="Check-out · Lisboa Loft"]'), { targetPosition: { x: 200, y: 4 } });
   await flight7.locator("button.t.freed").waitFor();
-  assert.deepEqual(await day7(), ["– Uçuş · Lizbon → İstanbul", "~11:00 Check-out · Lisboa Loft", "~15:40 Havalimanı transferi"]);
+  // Untimed, the cell is blank.
+  assert.deepEqual(await day7(), [" Uçuş · Lizbon → İstanbul", "~11:00 Check-out · Lisboa Loft", "~15:40 Havalimanı transferi"]);
   assert.match(await flight7.locator("button.t").getAttribute("title"), /Elle taşındı \(saati 19:40\)/);
   await flight7.locator("button.t").click();
   assert.equal(await flight7.locator('input[type="time"]').inputValue(), "19:40");
@@ -2061,6 +2062,13 @@ try {
   assert.equal(notePrompts.filter((p) => p.includes("şarap tadımına")).length, 1, "a note is named once");
   await board.locator(".hx").scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/14-hero-main-places.png` });
+  // Günlük akış says the routes the hero's way (display only): "Porto → Madeira", never "→ Funchal" or "→ Gaula".
+  await board.getByRole("tab", { name: "Günlük akış", exact: true }).click();
+  await board.locator(".dc-seg").getByRole("tab", { name: "Liste", exact: true }).click();
+  await board.locator(".dl-date", { hasText: "Porto → Madeira" }).first().waitFor();
+  const routes = await board.locator(".dl-date, .dc-ttl").allInnerTexts();
+  assert.ok(!routes.some((t) => /→ (Funchal|Gaula)/.test(t)), `routes by main place (${routes.filter((t) => t.includes("→"))})`);
+  await board.getByRole("tab", { name: "Plan", exact: true }).click();
   console.log('✓ revizyon 1: stays in Funchal and Gaula → the hero says "Porto | Madeira" (asked once), the Plan keeps Gaula; a note named by the model once');
 
   // 15. Content arriving (src/app/arrive): an Airbnb link sent in the chat waits as a quiet card at the top of

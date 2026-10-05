@@ -1944,6 +1944,8 @@ button.cat-hidden-name:hover { text-decoration: underline; }
    room is said in red under its line. */
 .dc-tl button.t { justify-self: end; padding: 2px 5px; border: 0; border-radius: 7px; background: none; font: inherit; font-weight: 600; color: var(--dc-ink); cursor: pointer; font-variant-numeric: tabular-nums; }
 .dc-tl button.t:hover { background: rgba(0,0,0,.05); }
+/* No time: a blank cell, still there to tap (a time given). */
+.dc-tl button.t:empty { min-width: 44px; min-height: 26px; }
 .dc-tl button.t.est { color: var(--dc-gray); font-weight: 500; }
 .dc-tl button.t.own { text-decoration: underline dotted #b9b2a6; text-underline-offset: 3px; }
 .dc-step.info button.t { font-size: 13.5px; }

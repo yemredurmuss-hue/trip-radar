@@ -5,12 +5,13 @@
 // code in one standard (satır standardı v2, dayRowTitle.ts): NE · HANGİSİ ("Uçuş · İstanbul → Kopenhag") and a
 // grey line; no dot, no dotted line. Insurance, the eSIM and a visa aren't part of a day: they stay in Plan →
 // Diğer. Kartlar (0.35.1, after Layla): a rail of stretches, each line as its own card on the Plan.
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { cardKindColor, cardKindLabel, RENTAL_MODES, TRANSPORT_MODES, type CardKind, type TransportMode } from "../../lib/cardKinds";
 import { imageProxy } from "../../lib/cityImages";
 import { dayCards, dayPhoto, daysLabel, flowRows, groupDays, highlightOf, ideaCount, isPlanRow, movedOrder, orderRows, rowKind, rowMark, type DayCard, type DayGroup } from "../../lib/dayCards";
 import { sectionOfItem } from "../../lib/categories";
-import { rowTitle, titleText, withLayovers, type RowTitle } from "../../lib/dayRowTitle";
+import { rowTitle, titleText, withLayovers, type Place, type RowTitle } from "../../lib/dayRowTitle";
+import { mainPlaceOf, type MainPlace } from "../../lib/destinations";
 import { formatDateRange } from "../../lib/items";
 import { L, locale } from "../../lib/i18n";
 import type { DayRow } from "../../lib/journey";
@@ -48,7 +49,15 @@ export interface DayCardsProps {
   order?: Record<string, string[]>;
   /** Lines with a time moved by hand, off the clock (trip.dayLoose). */
   loose?: string[];
+  /** The hero's main places (destinations.ts): a route reads "Porto → Madeira", not "Porto → Funchal". */
+  mainPlaces?: MainPlace[];
 }
+
+/** A city as its main place, for the lines' routes (display only; the plan keeps its places). */
+const PlaceCtx = createContext<Place>((c) => c);
+const usePlace = () => useContext(PlaceCtx);
+/** "Porto → Funchal" as "Porto → Madeira". */
+const routeText = (text: string, place: Place) => text.split(" → ").map((p) => (p ? place(p) : p)).join(" → ");
 
 const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(locale(), { weekday: "short", timeZone: "UTC" });
 const dateText = (c: DayCard) => (c.end ? formatDateRange(c.date, c.end) : `${formatDateRange(c.date, null)} ${weekday(c.date)}`);
@@ -76,6 +85,8 @@ export function DayCards(props: DayCardsProps) {
   const stays = new Map<string, StayEntry>(props.sections.flatMap((s) => (s.kind === "city" ? s.stays.map((st) => [st.key, st] as [string, StayEntry]) : [])));
   const [mode, setModeState] = useState<Mode>(readMode);
   const [target, setTarget] = useState<{ id: string; flash: boolean } | null>(null);
+  const mains = props.mainPlaces;
+  const place = useMemo<Place>(() => (c) => (mains?.length ? (mainPlaceOf(mains, c) ?? c) : c), [mains]);
   const setMode = (m: Mode, at: { id: string; flash: boolean } | null = null) => {
     setModeState(m);
     setTarget(at);
@@ -100,6 +111,7 @@ export function DayCards(props: DayCardsProps) {
   const [flipped, setFlipped] = useState<Set<string>>(() => new Set());
   const flip = (key: string) => setFlipped((s) => (s.has(key) ? new Set([...s].filter((k) => k !== key)) : new Set([...s, key])));
   return (
+    <PlaceCtx.Provider value={place}>
     <div className="dc">
       <div className="dc-bar">
         <div className="dc-seg" role="tablist" aria-label={L("Görünüm", "View")}>
@@ -141,6 +153,7 @@ export function DayCards(props: DayCardsProps) {
         />
       ))}
     </div>
+    </PlaceCtx.Provider>
   );
 }
 
@@ -311,6 +324,7 @@ function DaySection({ card, mode, isToday, stays, onPick, ...props }: { card: Da
  */
 function TimeCell({ row, tripId }: { row: DayRow; tripId: string }) {
   const [edit, setEdit] = useState(false);
+  const place = usePlace();
   // A layover's time is its first flight's landing: nothing to set.
   if (row.layover) return <span className="t">{row.time}</span>;
   const save = (value: string | null) =>
@@ -332,7 +346,7 @@ function TimeCell({ row, tripId }: { row: DayRow; tripId: string }) {
           type="time"
           defaultValue={row.time ?? row.freed ?? ""}
           autoFocus
-          aria-label={L(`${titleText(rowTitle(row))}: saat`, `${titleText(rowTitle(row))}: time`)}
+          aria-label={L(`${titleText(rowTitle(row, place))}: saat`, `${titleText(rowTitle(row, place))}: time`)}
           onChange={(e) => e.target.value && save(e.target.value)}
           onBlur={() => setEdit(false)}
           onKeyDown={(e) => (e.key === "Escape" || e.key === "Enter") && setEdit(false)}
@@ -347,15 +361,18 @@ function TimeCell({ row, tripId }: { row: DayRow; tripId: string }) {
   return (
     <button type="button" className={`t${row.estimated ? " est" : ""}${row.user ? " own" : ""}${row.freed ? " freed" : ""}`}
       title={row.freed ? L(`Elle taşındı (saati ${row.freed}). Dokun: saat ver ya da × ile saatine geri koy`, `Moved by hand (its time ${row.freed}). Tap: set a time, or × to put it back on its time`) : (row.why ?? L("Saat ver", "Set a time"))}
+      aria-label={time(row) ? undefined : L(`${titleText(rowTitle(row, place))}: saat ver`, `${titleText(rowTitle(row, place))}: set a time`)}
       onClick={() => setEdit(true)}>
-      {time(row) || "–"}
+      {/* No time: the cell stays blank (a tap still gives one). */}
+      {time(row) || null}
     </button>
   );
 }
 
 /** Information in Kartlar (check-in, check-out, the metro planned, a layover): a thin line, its title in the standard. */
 function InfoLine({ row, tripId, dnd }: { row: DayRow; tripId: string; dnd?: Dnd }) {
-  const t = rowTitle(row);
+  const place = usePlace();
+  const t = rowTitle(row, place);
   return (
     <li className={`dc-step info${row.layover ? " quiet" : ""}${dnd?.cls ?? ""}`} id={`dc-${row.key}`} data-title={titleText(t)} {...dnd?.li}>
       {dnd?.grip}
@@ -404,7 +421,8 @@ function Line({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tri
   const info = isLine(row);
   const kind = rowKind(row);
   const mark = row.kind === "idea" || info ? null : rowMark(row);
-  const t = rowTitle(row);
+  const place = usePlace();
+  const t = rowTitle(row, place);
   if (row.layover)
     return (
       <li className="dc-step info quiet" data-title={titleText(t)}>
@@ -442,7 +460,8 @@ function checkInStay(row: DayRow, card: DayCard, stays: Map<string, StayEntry>):
 /** A line of the open day: its time and dot, then its own card as the Plan shows it (check-in: the stay's card). */
 function Full({ row, stay, cards, leg, tripId, dnd }: { row: DayRow; stay: StayEntry | null; dnd?: Dnd } & DayCardsProps) {
   // The line's title in the standard names it (its card keeps its own header).
-  const title = titleText(rowTitle(row));
+  const place = usePlace();
+  const title = titleText(rowTitle(row, place));
   if (stay)
     return (
       <li className={`dc-full${dnd?.cls ?? ""}`} id={`dc-${row.key}`} data-title={title} {...dnd?.li}>
@@ -520,6 +539,7 @@ const MOTIFS: Record<Motif, ReactNode> = {
  */
 function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card: DayCard; isToday: boolean; open: boolean; onToggle: () => void; onPick: (row: string) => void } & DayCardsProps) {
   const photo = useDayPhoto(card, props.cityImage);
+  const place = usePlace();
   // Every line of the day (0.35.6): with a time by the clock, without one where it was put (drag, or ↑ ↓).
   const lines = dayLines(card, props);
   const shown = withLayovers(lines);
@@ -545,7 +565,7 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
             </span>
             <span className="dl-date">
               {card.dayNo && <span className={isToday ? "today" : ""}>{isToday ? L("Bugün", "Today") : dateText(card)}</span>}
-              {card.route && <span>{card.route}</span>}
+              {card.route && <span>{routeText(card.route, place)}</span>}
               <DayChips card={card} />
             </span>
           </span>
@@ -599,6 +619,7 @@ interface Dnd {
 function useReorder(rows: DayRow[], date: string, tripId: string): (row: DayRow) => Dnd {
   const [drag, setDrag] = useState<string | null>(null);
   const [over, setOver] = useState<{ key: string; after: boolean } | null>(null);
+  const place = usePlace();
   const move = (key: string, target: string, after: boolean) =>
     void updateTrip(
       tripId,
@@ -624,7 +645,7 @@ function useReorder(rows: DayRow[], date: string, tripId: string): (row: DayRow)
         type="button"
         className="dc-grip"
         draggable
-        aria-label={L(`${titleText(rowTitle(row))}: sırasını değiştir`, `${titleText(rowTitle(row))}: move`)}
+        aria-label={L(`${titleText(rowTitle(row, place))}: sırasını değiştir`, `${titleText(rowTitle(row, place))}: move`)}
         title={L("Sürükle ya da ↑ ↓ ile taşı", "Drag, or move with ↑ ↓")}
         onDragStart={(e) => {
           e.dataTransfer.effectAllowed = "move";

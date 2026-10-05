@@ -589,7 +589,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       {view === "docs" ? (
         <DocsTab tripId={trip.id} items={items} onGo={(id) => reveal({ item: id })} offer={offer} />
       ) : view === "days" && timeline.entries.length > 0 ? (
-        <TimelineView onShow={showOnPlan} timeline={timeline} tripId={trip.id} leg={leg} onAdd={env.add} listings={listings} today={today} cityImage={cityImageOf} cards={{ legCard, renderGroup, settled }} dayTimes={trip.dayTimes} dayOrder={trip.dayOrder} dayLoose={trip.dayLoose} />
+        <TimelineView onShow={showOnPlan} timeline={timeline} tripId={trip.id} leg={leg} onAdd={env.add} listings={listings} today={today} cityImage={cityImageOf} cards={{ legCard, renderGroup, settled }} dayTimes={trip.dayTimes} dayOrder={trip.dayOrder} dayLoose={trip.dayLoose} mainPlaces={mains} />
       ) : (
         <CategoryPlan
           plan={plan}
