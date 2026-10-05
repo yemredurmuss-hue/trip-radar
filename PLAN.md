@@ -192,6 +192,12 @@ Kararlar:
   verdiği bir not olmadığını belli eder.
 - Kartta gösterilen her şey kayıttan ya da kod hesabından gelir; kart metni üretmek için ek AI çağrısı yok.
 
+## 0.31: plan kartları (yapıldı)
+
+- Spec: [docs/superpowers/specs/2026-10-05-plan-kartlari-design.md](docs/superpowers/specs/2026-10-05-plan-kartlari-design.md) ·
+  plan: [docs/superpowers/plans/2026-10-05-plan-kartlari.md](docs/superpowers/plans/2026-10-05-plan-kartlari.md).
+- Kapsam dışı kaldı: Fikirler sekmesi, Günlük akışın yeni dile geçmesi, Google Places fotoğrafları, sohbete PDF sürükleme.
+
 ## v1: Telefon
 - Küçük bir sunucu (ör. Supabase) + senkron. Veri modeli buna hazır (`src/lib/types.ts`).
 - iPhone/Android'den ekran görüntüsü veya link gönderme: paylaş menüsü kısayolu ya da Telegram botu.

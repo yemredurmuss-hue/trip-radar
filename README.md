@@ -285,6 +285,22 @@ altta "→ Tayland · Aç" bildirimi çıkar. Örnek gezi kayıt almaz.
 - **Yorumlar:** "Tüm yorumlar" penceresini açıp tıklarsan o yorumlar da okunur.
 - **Fiyat güncelleme:** Aynı sayfayı tekrar kaydedince kart güncellenir, fiyat geçmişi tutulur.
 
+### Plan kartları
+
+- **Zemin ve çember durumu söyler:** sarı-bej zemin henüz alınmadı, yeşil alındı ya da planlandı. Sol üstteki çember
+  kesikliyse karar bekliyor, amberse seçildi ama alınmadı, yeşil ✓ ise tamam. Ne yapılacağı alt şeritte yazar
+  ("Seçildi · bilet alınmadı" + "Bileti aldım").
+- **Karta dokun, ayrıntı açılır:** saatler, işletme, fiyat kırılımı, neden önerildiği, istediklerin, artı/eksi ve
+  bağlantılar kartın içinde. Bir ihtiyacın birden çok seçeneği varsa alt şeritteki `‹ 1/2 ›` ile gezersin.
+- **••• menüsü:** **Düzenle** (sohbette söylediğin ya da elle eklediğin plan), **Ele** (sayfadan gelen seçenek,
+  Elenenler'e gider), **Sil**. Silince onay sorulmaz; altta 8 saniye "Geri al" durur, kart belgeleriyle geri gelir.
+- **Belge eklemek:** karttaki ataca tıklayıp PDF ya da görsel (PNG, JPG, HEIC; en çok 15 MB) seç. Belge yalnız bu
+  bilgisayarda durur: paylaşılan geziye gitmez, dışa aktarmaya dosyanın kendisi değil yalnız adı girer. Karttaki
+  hapa tıklayınca yeni sekmede açılır.
+- **Eklemek:** Plan başlığındaki **+ Ekle** ya da iki kartın arasındaki **+** (üstüne gelince çıkar) şablon
+  penceresini açar: uçuştan bisiklet kiralamaya, otelden nota. Kısa formu doldurursun; şehir ve tarih eklediğin
+  yerden gelir, kart "Planlanıyor" olarak düşer. Sonra o şeyin sayfasını kaydedersen yerini alır.
+
 ## Paylaşım (Sabine ile)
 
 Bir geziyi birlikte gezdiğin kişiyle paylaşırsın: ikiniz de kendi Chrome'unuzdan sayfa kaydedersiniz, kayıtlar
@@ -451,6 +467,11 @@ Yapı:
 - `src/lib/trips.ts`: kaydın hangi geziye gideceği (ülke kodu + tarih; AI önerisi yalnız ipucu).
 - `src/lib/process.ts`: kayıt kuyruğu (arka planda çalışır).
 - `src/lib/assistant.ts`: sohbet ve plan güncelleyen araçlar.
-- `src/app/`: pano arayüzü. `src/popup.tsx`: eklenti açılır penceresi.
+- `src/lib/cardKinds.ts`: plan kartının türü (on ulaşım yolu, medya türleri) ve rengi.
+- `src/lib/cardView.ts`: kartın söyledikleri: çember, zemin, alt şerit, üst satır tarihi, ulaşım uçları, medya satırları, menü.
+- `src/lib/docs.ts`: karta eklenen belgeler (yalnız bu bilgisayarda, IndexedDB `docs` deposu).
+- `src/lib/templates.ts`: "+ Ekle" şablonları, kısa formlar ve kartın nereye ekleneceği.
+- `src/app/`: pano arayüzü. `src/app/cards/`: plan kartları (kabuk, ulaşım ve medya gövdeleri, transfer kartı,
+  ekleme penceresi, geri al bildirimi). `src/popup.tsx`: eklenti açılır penceresi.
 
 Plan ve sonraki adımlar: [PLAN.md](PLAN.md)

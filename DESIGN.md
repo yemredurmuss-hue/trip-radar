@@ -19,7 +19,8 @@ Bu panonun tek işi karar vermeyi kolaylaştırmak. Her yeni ekran ve bileşen b
 - Durum tek satır ve renkli zeminle: Seçmeden kontrol et (amber), Kısmi (gri), Uygun değil (kırmızı, soluk kart).
 - Metni kısaltarak değil düzenle okunur yaparız: satırlar tam cümle, 14 px, rahat satır aralığı, kalın yalnız
   eleme sebebinde. Dar sütuna sıkıştırmak yok; artı/eksi yan yana yalnız kart genişse.
-- Küçük işler (eSIM, taksi, transfer, sigorta) tek satırdır; büyük kart uçuşa, konaklamaya, etkinliğe, araca.
+- Plan'da her şey kendi kartı: ulaşım kartı (uçuş, tren, otobüs, minibüs, vapur, taksi·transfer, araç/motosiklet/karavan/bisiklet
+  kiralama) ve medya kartı (etkinlik, eSIM, sigorta, restoran, not). Konaklama kendi karar kartını korur.
 - Seçim yapılınca artı/eksi kalkar: karşılaştırma bitmiştir, kart sade durur.
 
 ## Renklerin tek anlamı var
@@ -32,6 +33,8 @@ Bu panonun tek işi karar vermeyi kolaylaştırmak. Her yeni ekran ve bileşen b
 | Mavi `--accent` | Yalnız öneri ve link | Öneri satırı, önerilen kartın çerçevesi, linkler |
 | Gri, kesikli çizgi | Henüz planlanmadı, boş | "Planlanmadı" kartı, boş gün |
 | Kategori renkleri (mor uçuş `#6a4fe0`, turkuaz konaklama `#23998b`, hardal ulaşım `#c58a2e`, bordo etkinlik `#a8336f`) | Yalnız hangi tür | Hero'daki onaylananlar ikonları ve bütçe çubuğu |
+| Tür renkleri (uçuş `#6a4fe0`, tren `#2563c9`, otobüs `#d9480f`, minibüs `#e8890c`, vapur `#0e8fb0`, taksi `#d29a00`, araç `#475467`, motosiklet `#c0256b`, karavan `#8a6534`, bisiklet `#5d8a1c`, etkinlik `#a8336f`, eSIM `#3b6fd1`, sigorta `#0f8a6a`) | Yalnız hangi tür | Plan kartının üst satırındaki ikon ve ad, siluet çizgisi, ekleme penceresinin kutuları |
+| Sarı-bej `#fbf6ea` / yeşil `#eef8f1` zemin | Alınmadı / alındı-planlandı | Plan kartlarının zemini (çember ve alt şerit yazısıyla birlikte) |
 
 Durum hiçbir yerde yalnız renkle anlatılmaz: yanında hep yazısı olur ("Bilet alındı", "Planlanıyor").
 Gezginin istedikleri kartın üstünde ayrı bir satırdır ("İstediklerin"): ✓ var (yeşil), ✕ yok (kırmızı),
@@ -57,6 +60,26 @@ ikisi aynı boyda; pano dar olunca tek sütun, künye hikâyenin altına iner.
 - **Sıradaki adım** koyu buton, ne yapılacağını söyler ("Karar ver: Porto konaklama"); altında sessiz satır, sayıya
   tıklamak listeyi hero'nun altında açar. İş kalmadıysa "Bu geziyi paylaş".
 
+## Plan kartları
+
+Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabuğu paylaşır (onaylı görseller
+`docs/mockups/2026-10-05-ulasim-v3.html` ve `docs/mockups/2026-10-05-etkinlik-v4.html`).
+
+- **Kabuk:** zemin durumu söyler (sarı-bej alınmadı, yeşil alındı ya da planlandı). Üst satır 24 px: çember (kesikli
+  karar bekliyor · amber seçildi · yeşil ✓ alındı) · renkli tür ikonu ve adı · tarih [· saat] | belge · •••.
+  Altta 48 px şerit: solda durum ya da seçenek gezgini, sağda fiyat ve tek koyu eylem. Durum yazısı yalnız altta;
+  sağ üstte durum hapı yok.
+- **Seçenek gezgini:** bir ihtiyacın seçenekleri yan yana kart değil, tek kart + alt şeritte `‹ 1/2 ›`; önerilen
+  seçenekte "Önerim". Neden önerildiği, "2.'ye göre" satırı ve rozetler ayrıntıdadır.
+- **Ulaşım gövdesi:** solda nereden, sağda nereye (şehir 30 px, saat kalın); ortada türün noktalı silueti, kenarları
+  solar. Kiralıkta sağ taraf gün sayısı ve iade günü. Çizimi olmayan yolda (metro, yürüyüş) orta satır uçların arasında.
+- **Medya gövdesi:** 176×128 görsel (yoksa türün noktalı silueti), puan köşede; yanında 20 px başlık, bilgi satırı, kaynak.
+- **Ayrıntı:** karta dokununca kartın içinde beyaz panel açılır; eski karttaki her bilgi orada (saatler, işletme,
+  fiyat kırılımı, neden önerildi, istedikler, artı/eksi, bağlantılar, geri almalar).
+- **Belgeler:** yalnız bu bilgisayarda durur. Varsa hap ("bilet.pdf +1", dar ekranda ikon), yoksa soluk ataç.
+- **Eklemek:** Plan başlığındaki "+ Ekle" ve kartların arasındaki "+" (üstüne gelince çıkar) şablon penceresini açar;
+  oraya eklenir, şehir ve tarih önceden dolu gelir.
+
 ## İki görünüm
 
 - **Plan** kararların ön yüzü: yalnız kararı ya da rezervasyonu olan şeyler, her biri kendi büyük kartı (uçuş, otel,
@@ -71,11 +94,12 @@ ikisi aynı boyda; pano dar olunca tek sütun, künye hikâyenin altına iner.
 
 ## Azaltmak
 
-- Hiçbir şey silinmez, önden kalkar: **Ele** (Elenenler), **Gerek yok** (Gizlenenler / Geri al). Sayılar ve
-  yapılacaklar yalnız öndekini sayar.
-- Seçili karta dokunmak diğer seçenekleri açar; ayrıntı ⓘ'dadır.
-- İstisna: sohbette söylenen bir plan (taksi, bilet şablonu, eSIM) kayıt değil, sözdür; **Kaldır** onu siler.
-  Kaldır sessiz ikincil butondur (gri çerçeve, üstüne gelince kırmızı), kartın alt satırında durur.
+- Sayfadan gelen bir seçenek **Ele** ile önden kalkar (Elenenler); transfer **Gerek yok** ile (Gizlenenler / Geri al).
+  **Sil** her kayıt kartının ••• menüsündedir ve kalıcıdır: onay penceresi yok, 8 saniye "Geri al" durur; kayıt
+  belgeleriyle birlikte geri gelir. Sayılar ve yapılacaklar yalnız öndekini sayar.
+- Konaklamada seçili karta dokunmak diğer seçenekleri açar (ayrıntı ⓘ'da); diğer kartlarda dokunmak ayrıntıyı açar,
+  diğer seçenekler ayrıntıdaki 'Diğer N seçenek'te.
+- Sohbette söylenen ya da elle eklenen plan ••• → Düzenle ile değişir, Sil ile gider.
 - Bir şehrin söylenen geceleri tek bloktur; seçilen yer bir kısmını kapsıyorsa blok bölünmez, kalan geceler altında yazar.
 
 ## Butonlar
@@ -88,7 +112,8 @@ ikisi aynı boyda; pano dar olunca tek sütun, künye hikâyenin altına iner.
 ## Yazı
 
 Ölçek: 40 gezi adı · 22 şehir · 17 kart başlığı · 15 metin · 13–14 kart satırı · 12.5 not. Hero: 40 başlık · 22 özet
-rakamı · 17 metin/değer · 15 küçük satır · 13 etiket. Türkçe
+rakamı · 17 metin/değer · 15 küçük satır · 13 etiket. Plan kartları: 30 şehir (ulaşım) · 20 başlık (medya) · 15 metin ·
+13 ikincil · 17 fiyat. Türkçe
 büyük harfle etiket yazılmaz (İ/i sorun çıkarır); etiketler küçük ve gri olur.
 
 ## Okunurluk
