@@ -30,6 +30,8 @@ const executablePath =
 // board in English, see browserLang in src/lib/i18n.ts).
 const TURKISH = { locale: "tr-TR" };
 const LANG_ARG = "--lang=tr-TR";
+// No window on the owner's screen: Chromium's new headless mode (extensions load in it). E2E_HEADED=1 shows the browser.
+const HEADLESS_ARGS = process.env.E2E_HEADED ? [] : ["--headless=new"];
 
 const context = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-")), {
   executablePath,
@@ -37,6 +39,7 @@ const context = await chromium.launchPersistentContext(mkdtempSync(path.join(tmp
   viewport: { width: 1440, height: 900 },
   ...TURKISH,
   args: [
+    ...HEADLESS_ARGS,
     LANG_ARG,
     `--disable-extensions-except=${extension}`,
     `--load-extension=${extension}`,
@@ -692,7 +695,7 @@ const flow = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir
   headless: false,
   viewport: { width: 1440, height: 900 },
   ...TURKISH,
-  args: [LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+  args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
 });
 try {
   const geminiBodies = [];
@@ -1043,7 +1046,7 @@ const updating = await chromium.launchPersistentContext(mkdtempSync(path.join(tm
   headless: false,
   viewport: { width: 1200, height: 800 },
   ...TURKISH,
-  args: [LANG_ARG, `--disable-extensions-except=${installDir}`, `--load-extension=${installDir}`],
+  args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${installDir}`, `--load-extension=${installDir}`],
 });
 try {
   const worker = updating.serviceWorkers()[0] ?? (await updating.waitForEvent("serviceworker"));
