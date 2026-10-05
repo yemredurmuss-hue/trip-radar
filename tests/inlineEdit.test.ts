@@ -2,7 +2,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { db, listMessages } from "../src/lib/db";
-import { editableFields, editField, fieldInput, fieldPlaceholder, fieldValue, nextField, saveField } from "../src/lib/inlineEdit";
+import { editableFields, editField, fieldInput, fieldPlaceholder, fieldValue, nextField, saveCardField, saveField } from "../src/lib/inlineEdit";
 import { plannedItem, type PlannedInput } from "../src/lib/planned";
 import { quickItem, TEMPLATES, type TemplateId } from "../src/lib/templates";
 import { makeItem } from "./fixtures/makeItem";
@@ -26,9 +26,14 @@ describe("which fields a card offers, in Tab order", () => {
     expect(editableFields(quick("todo"))).toEqual(["name", "city", "date", "price"]);
     expect(editableFields(quick("esim"))).toEqual(["name", "city", "date", "price"]);
   });
-  it("a plan said in the chat too; a saved page never", () => {
+  it("a plan said in the chat, and a saved page by what it is", () => {
     expect(editableFields(said({ title: "Tekne turu" }))).toEqual(["name", "city", "date", "time", "price"]);
-    expect(editableFields(makeItem({ category: "activity", name: "Douro tekne turu" }))).toEqual([]);
+    expect(editableFields(makeItem({ category: "activity", name: "Douro tekne turu" }))).toEqual(["name", "city", "date", "time", "price"]);
+    expect(editableFields(makeItem({ category: "stay", name: "Jardim Stay" }))).toEqual(["name", "city", "date", "end", "price"]);
+    const flight = { from: "IST", to: "OPO", departure: "2026-10-08T07:10", arrival: null, carrier: null, flightNumber: null, stops: 0 };
+    expect(editableFields(makeItem({ category: "flight", flight }))).toEqual(["from", "to", "date", "time", "price"]);
+    expect(editableFields(makeItem({ category: "transport", name: "Europcar · Funchal", city: "Funchal", dates: { start: "2026-10-12", end: "2026-10-15", source: "page" } }))).toEqual(["city", "date", "end", "price"]);
+    expect(editableFields(makeItem({ category: "esim", name: "Airalo Portekiz" }))).toEqual(["name", "city", "date", "price"]);
   });
   it("Tab goes on, Shift+Tab back, and stops at the ends", () => {
     const f = editableFields(quick("hotel"));
@@ -84,6 +89,12 @@ describe("a change made on the card", () => {
 });
 
 describe("saving a field", () => {
+  it("a saved page's card keeps it as a correction; the page's value stays under it", async () => {
+    const page = makeItem({ id: "pg1", tripId: "t-inline2", category: "activity", name: "Douro tekne turu", city: "Porto" });
+    await (await db()).put("items", page);
+    expect(await saveCardField(page, { name: "Douro gün batımı turu" }, "EUR")).toMatchObject({ name: "Douro gün batımı turu" });
+    expect(await (await db()).get("items", "pg1")).toMatchObject({ name: "Douro tekne turu", userEdits: { name: "Douro gün batımı turu" } });
+  });
   it("writes the record and a line in the history; an error writes nothing", async () => {
     const todo = quickItem(TEMPLATES.find((t) => t.id === "todo")!, { city: "Porto", date: null }, "t-inline", "td", 5);
     await (await db()).put("items", todo);

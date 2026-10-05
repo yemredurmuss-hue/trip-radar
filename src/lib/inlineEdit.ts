@@ -1,22 +1,34 @@
-// Editing a plan on its card (spec 0.33 §3): the fields a card offers, in the order Tab goes through
-// them, what an empty one says, the box each opens, and the record a change makes. A change goes through
-// editedItem, so the note, the PNR, a rental's or a stay's time and the plan's own kind stay. Only plans
-// made by hand or said in the chat (origin "chat"); a saved page is updated by saving the page again.
-// Pure, except saveField, which writes it.
+// Editing a card where it stands (spec 0.33 §3): the fields a card offers, in the order Tab goes through
+// them, what an empty one says, the box each opens, and what a change does. A plan made by hand or said in
+// the chat (origin "chat") is edited itself, through editedItem, so the note, the PNR, a rental's or a
+// stay's time and the plan's own kind stay; a saved page's card keeps the change as a correction beside
+// the page's value (userEdits.ts). Pure, except saveField and saveCardField, which write it.
 import { addEvent, db, notifyChanged } from "./db";
 import { L } from "./i18n";
 import { nightsBetween } from "./items";
 import { addDays } from "./plan";
 import { editedItem, formOf, type FormValues } from "./templates";
+import { isRental, isTrip } from "./travelKinds";
 import type { Item } from "./types";
+import { saveUserEdit } from "./userEdits";
 
 export type FieldKey = "name" | "from" | "to" | "city" | "date" | "end" | "time" | "price";
 
-/** The card's fields in Tab order (none for a saved page). */
+type Form = "trip" | "rental" | "stay" | "named";
+/** A plan's form; a saved page's by what it is (a flight or a train is a trip, a car a rental...). */
+function formKind(item: Item): Form {
+  if (item.origin === "chat") return formOf(item, "EUR").template.form;
+  if (item.category === "stay") return "stay";
+  if (isRental(item)) return "rental";
+  if (item.category === "flight" || (item.category === "transport" && isTrip(item))) return "trip";
+  return "named";
+}
+const timed = (item: Item) =>
+  item.origin === "chat" ? ["activity", "food"].includes(formOf(item, "EUR").template.kind) : item.category === "activity" || item.category === "food";
+
+/** The card's fields in Tab order: every record card (spec 0.33 §3). */
 export function editableFields(item: Item): FieldKey[] {
-  if (item.origin !== "chat") return [];
-  const { template } = formOf(item, "EUR");
-  switch (template.form) {
+  switch (formKind(item)) {
     case "trip":
       return ["from", "to", "date", "time", "price"];
     case "rental":
@@ -24,7 +36,7 @@ export function editableFields(item: Item): FieldKey[] {
     case "stay":
       return ["name", "city", "date", "end", "price"];
     case "named":
-      return template.kind === "activity" || template.kind === "food" ? ["name", "city", "date", "time", "price"] : ["name", "city", "date", "price"];
+      return timed(item) ? ["name", "city", "date", "time", "price"] : ["name", "city", "date", "price"];
   }
 }
 
@@ -34,9 +46,6 @@ export function nextField(fields: FieldKey[], key: FieldKey, back = false): Fiel
   if (i < 0) return null;
   return fields[back ? i - 1 : i + 1] ?? null;
 }
-
-type Form = "trip" | "rental" | "stay" | "named";
-const formKind = (item: Item): Form => formOf(item, "EUR").template.form;
 
 /** What the field is called (its box's label). */
 export function fieldLabel(key: FieldKey, item: Item): string {
@@ -102,3 +111,7 @@ export async function saveField(item: Item, change: Partial<FormValues>, currenc
   notifyChanged();
   return next;
 }
+
+/** A change made on any card: a plan is edited itself; a saved page keeps it as a correction. */
+export const saveCardField = (item: Item, change: Partial<FormValues>, currency: string): Promise<Item | string | null> =>
+  item.origin === "chat" ? saveField(item, change, currency) : saveUserEdit(item, change);
