@@ -124,6 +124,31 @@ export function isCountryName(name: string): boolean {
   return countryNames.has(plain(name));
 }
 
+/**
+ * The trip place an answer's `place` names. The prompt lists a place with its country ("Gaula (Portekiz)") and
+ * asks for the place "as written in the list": a model that copies the line back answers "Gaula (Portekiz)",
+ * which isn't a place of the trip's by itself (0.35.3: the answer was dropped and the empty result kept). The
+ * country in brackets, or after a comma, is left out.
+ */
+function answeredKey(place: string, keys: Set<string | null>): string | null {
+  const whole = cityKeyOf(place);
+  if (whole && keys.has(whole)) return whole;
+  for (const bare of [place.replace(/\s*\([^)]*\)\s*$/, ""), place.split(",")[0]]) {
+    const key = cityKeyOf(bare);
+    if (key && keys.has(key)) return key;
+  }
+  return whole;
+}
+
+/** Whether an answer named any of the trip's places at all (one that named none is asked again, not kept). */
+export function answersAny(cities: string[], answer: { place: string }[]): boolean {
+  const keys = new Set(cities.map(cityKeyOf).filter(Boolean));
+  return answer.some((a) => {
+    const key = answeredKey(a.place, keys);
+    return key != null && keys.has(key);
+  });
+}
+
 /** How many steps a chain of "inside" may take (Oia → Fira → Santorini is two). */
 const MAX_DEPTH = 3;
 
@@ -143,7 +168,7 @@ export function acceptParents(cities: string[], answer: { place: string; parent:
   const pairs = Array.isArray(answer) ? answer.map((a) => [a.place, a.parent] as const) : Object.entries(answer);
   const raw: Record<string, string> = {};
   for (const [place, parent] of pairs) {
-    const key = cityKeyOf(place);
+    const key = answeredKey(place, keys);
     const name = parent?.trim().replace(/\s+/g, " ") ?? "";
     if (!key || !keys.has(key) || !name || name.length > PARENT_MAX || /[\n\r]/.test(name)) continue;
     if (plain(name) === plain(place) || plain(name) === key) continue; // itself
@@ -211,6 +236,175 @@ export function fallbackParents(cities: string[], items: Item[]): Record<string,
   return acceptParents(cities, found);
 }
 
+// --- islands and regions the app knows without the model ---------------------------------------------------
+//
+// Gaula's stay folded into Porto | Gaula when the model had no key or its answer didn't count: Madeira isn't one
+// of the trip's places, so fallbackParents had nothing to fold into. A short table of destinations we're sure of
+// does it without the model. Only small localities are members: a real city stays its own stop (Palermo and
+// Catania, Heraklion and Chania, Cagliari, Faro). An island's capital is named by its island (Palma → Mallorca,
+// as Funchal → Madeira). Porto Santo is its own island, not Madeira's. A generic name (Santa Cruz, São Vicente)
+// only counts in its country.
+
+interface Region {
+  tr: string;
+  en: string;
+  /** ISO 3166-1 alpha-2: a member's name elsewhere ("Santa Cruz", Bolivia) isn't this one. */
+  country: string;
+  /** The island's capital is named by the island (only on an island with one main town). */
+  capital?: string[];
+  /** Other names for the destination itself. */
+  aliases?: string[];
+  members: string[];
+}
+
+const REGIONS: Region[] = [
+  {
+    tr: "Madeira", en: "Madeira", country: "PT", capital: ["Funchal"],
+    aliases: ["Madeira Island", "Ilha da Madeira", "Região Autónoma da Madeira", "Madeira Adası"],
+    members: ["Gaula", "Santa Cruz", "Machico", "Câmara de Lobos", "Estreito de Câmara de Lobos", "Calheta", "Arco da Calheta", "Porto Moniz", "Santana", "Caniço", "Caniço de Baixo", "Caniçal", "Ribeira Brava", "Ponta do Sol", "São Vicente", "Seixal", "Jardim do Mar", "Paul do Mar", "Prazeres", "Curral das Freiras", "Camacha", "Santo da Serra", "Madalena do Mar"],
+  },
+  { tr: "Porto Santo", en: "Porto Santo", country: "PT", capital: ["Vila Baleira"], aliases: ["Ilha do Porto Santo"], members: [] },
+  {
+    tr: "São Miguel", en: "São Miguel", country: "PT", capital: ["Ponta Delgada"], aliases: ["São Miguel Island", "Ilha de São Miguel"],
+    members: ["Furnas", "Ribeira Grande", "Sete Cidades", "Vila Franca do Campo", "Nordeste", "Povoação", "Capelas", "Mosteiros", "Rabo de Peixe"],
+  },
+  {
+    tr: "Algarve", en: "Algarve", country: "PT",
+    members: ["Lagos", "Albufeira", "Portimão", "Praia da Rocha", "Alvor", "Tavira", "Vilamoura", "Quarteira", "Carvoeiro", "Sagres", "Vila do Bispo", "Olhão", "Armação de Pêra", "Praia da Luz", "Loulé", "Silves", "Monte Gordo", "Cabanas de Tavira", "Almancil", "Aljezur", "Ferragudo", "Burgau", "Salema", "Galé", "Vale do Lobo", "Quinta do Lago"],
+  },
+  {
+    tr: "Mallorca", en: "Mallorca", country: "ES", capital: ["Palma", "Palma de Mallorca"], aliases: ["Majorca", "Mayorka"],
+    members: ["Sóller", "Port de Sóller", "Deià", "Deya", "Valldemossa", "Pollença", "Port de Pollença", "Alcúdia", "Port d'Alcúdia", "Cala d'Or", "Santanyí", "Cala Millor", "Cala Ratjada", "Can Picafort", "Magaluf", "Port d'Andratx", "Andratx", "Portals Nous", "Colònia de Sant Jordi", "Cala Figuera", "Porto Cristo", "Felanitx", "Inca", "Manacor", "Llucmajor", "Sa Pobla", "Banyalbufar", "Fornalutx", "Santa Ponsa", "Peguera", "El Arenal", "Playa de Palma"],
+  },
+  {
+    tr: "İbiza", en: "Ibiza", country: "ES", capital: ["Ibiza Town", "Eivissa", "Ibiza Ciudad", "Ibiza Stadt"], aliases: ["Eivissa island"],
+    members: ["Sant Antoni de Portmany", "San Antonio", "Sant Antoni", "Santa Eulària des Riu", "Santa Eulalia del Río", "Santa Eulària", "Sant Josep de sa Talaia", "San José", "Portinatx", "Es Canar", "Playa d'en Bossa", "Cala Llonga", "Sant Joan de Labritja", "Sant Miquel de Balansat", "Cala Comte", "Talamanca"],
+  },
+  {
+    tr: "Menorca", en: "Menorca", country: "ES", capital: ["Mahón", "Maó", "Maó-Mahón"], aliases: ["Minorca", "Minorka"],
+    members: ["Ciutadella", "Ciutadella de Menorca", "Fornells", "Binibeca", "Es Mercadal", "Cala Galdana", "Alaior", "Es Castell", "Sant Lluís", "Cala en Porter", "Son Bou", "Ferreries", "Punta Prima", "Cala en Bosc"],
+  },
+  {
+    tr: "Tenerife", en: "Tenerife", country: "ES", capital: ["Santa Cruz de Tenerife"],
+    members: ["Puerto de la Cruz", "Los Cristianos", "Costa Adeje", "Adeje", "Playa de las Américas", "La Laguna", "San Cristóbal de La Laguna", "Los Gigantes", "Acantilado de los Gigantes", "El Médano", "Garachico", "Icod de los Vinos", "La Orotava", "Arona", "Callao Salvaje", "Golf del Sur", "Puerto de Santiago"],
+  },
+  {
+    tr: "Gran Canaria", en: "Gran Canaria", country: "ES", capital: ["Las Palmas", "Las Palmas de Gran Canaria"],
+    members: ["Maspalomas", "Playa del Inglés", "Puerto de Mogán", "Mogán", "Agaete", "San Agustín", "Meloneras", "Arguineguín", "Telde", "Teror", "Agüimes", "Gáldar", "Arucas", "Patalavaca", "Amadores"],
+  },
+  {
+    tr: "Lanzarote", en: "Lanzarote", country: "ES", capital: ["Arrecife"],
+    members: ["Playa Blanca", "Puerto del Carmen", "Costa Teguise", "Teguise", "Yaiza", "Haría", "Puerto Calero", "Famara", "Caleta de Famara", "Órzola", "Tinajo", "San Bartolomé", "Tías"],
+  },
+  {
+    tr: "Fuerteventura", en: "Fuerteventura", country: "ES", capital: ["Puerto del Rosario"],
+    members: ["Corralejo", "Morro Jable", "Costa Calma", "El Cotillo", "Caleta de Fuste", "Jandía", "La Oliva", "Lajares", "Pájara", "Tarajalejo", "Las Playitas", "Gran Tarajal"],
+  },
+  {
+    tr: "Santorini", en: "Santorini", country: "GR", capital: ["Fira", "Thira"], aliases: ["Thera", "Santorin"],
+    members: ["Oia", "Imerovigli", "Firostefani", "Kamari", "Perissa", "Perivolos", "Pyrgos", "Akrotiri", "Megalochori", "Karterados", "Messaria", "Vothonas", "Emporio", "Finikia", "Vlychada"],
+  },
+  {
+    tr: "Mikonos", en: "Mykonos", country: "GR", capital: ["Mykonos Town", "Mykonos Chora"], aliases: ["Mykonos Island"],
+    members: ["Ornos", "Platis Gialos", "Platys Gialos", "Ano Mera", "Psarou", "Kalafatis", "Agios Ioannis", "Paraga", "Tourlos", "Agios Sostis", "Kalo Livadi", "Paradise Beach", "Super Paradise"],
+  },
+  {
+    tr: "Girit", en: "Crete", country: "GR", aliases: ["Kriti", "Crete Island", "Girit Adası"],
+    members: ["Elounda", "Agios Nikolaos", "Hersonissos", "Chersonissos", "Malia", "Rethymno", "Rethymnon", "Plakias", "Kissamos", "Sitia", "Matala", "Platanias", "Georgioupoli", "Agia Pelagia", "Stalis", "Ierapetra", "Paleochora", "Kalyves", "Almyrida", "Agia Marina", "Kolymbari", "Analipsi", "Makrygialos"],
+  },
+  {
+    tr: "Sicilya", en: "Sicily", country: "IT", aliases: ["Sicilia"],
+    members: ["Taormina", "Cefalù", "Noto", "Ragusa", "Ragusa Ibla", "Modica", "Agrigento", "Trapani", "Marsala", "Giardini Naxos", "Scicli", "Ortigia", "San Vito Lo Capo", "Erice", "Castellammare del Golfo", "Scopello", "Mondello", "Marzamemi", "Letojanni", "Castelmola", "Sciacca", "Piazza Armerina", "Avola"],
+  },
+  {
+    tr: "Sardinya", en: "Sardinia", country: "IT", aliases: ["Sardegna"],
+    members: ["Alghero", "Porto Cervo", "Villasimius", "Cala Gonone", "Stintino", "San Teodoro", "Bosa", "Chia", "Costa Rei", "Santa Teresa Gallura", "Porto Rotondo", "Baja Sardinia", "Cannigione", "La Maddalena", "Orosei", "Dorgali", "Budoni", "Arzachena", "Castelsardo", "Muravera", "Teulada", "Carloforte"],
+  },
+  {
+    tr: "Bali", en: "Bali", country: "ID", capital: ["Denpasar"],
+    members: ["Ubud", "Seminyak", "Canggu", "Kuta", "Legian", "Uluwatu", "Sanur", "Nusa Dua", "Jimbaran", "Amed", "Lovina", "Munduk", "Pecatu", "Kerobokan", "Tanjung Benoa", "Pererenan", "Sidemen", "Tabanan", "Candidasa", "Padangbai", "Tegallalang", "Bingin", "Ungasan", "Kintamani"],
+  },
+];
+
+/** Plain name → its region, and whether it is the region itself, its capital or a member. */
+let regionIndex: Map<string, { region: Region; as: "region" | "capital" | "member" }> | null = null;
+function regionNamed(name: string | null | undefined): { region: Region; as: "region" | "capital" | "member" } | null {
+  if (!regionIndex) {
+    regionIndex = new Map();
+    for (const region of REGIONS) {
+      for (const n of [region.tr, region.en, ...(region.aliases ?? [])]) regionIndex.set(plain(n), { region, as: "region" });
+      for (const n of region.capital ?? []) regionIndex.set(plain(n), { region, as: "capital" });
+      for (const n of region.members) regionIndex.set(plain(n), { region, as: "member" });
+    }
+  }
+  if (!name) return null;
+  // "9100-123 Gaula" or "Madeira 9000": the postcode isn't part of the name.
+  const key = plain(name.replace(/\b\d[\d-]*\b/g, " "));
+  return key ? (regionIndex.get(key) ?? null) : null;
+}
+
+const regionName = (r: Region) => L(r.tr, r.en);
+
+/** A destination's name as the table writes it ("Crete" from the model is "Girit" on a Turkish board), else as given. */
+export function regionNameOf(name: string): string {
+  const found = regionNamed(name);
+  return found?.as === "region" ? regionName(found.region) : name;
+}
+
+/** A campervan, a motorhome: its "city" is only where it's picked up; the island or region it names is where it goes. */
+const MOBILE = /\b(camper ?vans?|campers?|motor ?homes?|karavan|kamp ?arac|rv|indie campers|van ?life|campervan rental)\b/i;
+export const isMobileStay = (item: Item): boolean =>
+  item.plannedKind === "rv_rental" || MOBILE.test(`${item.name} ${item.provider ?? ""} ${item.optionDetail ?? ""}`);
+
+/** Region names that occur as words in a text ("Campervan hire in Madeira"): only the destinations, never a member. */
+function regionsInText(text: string): Region[] {
+  const words = ` ${plain(text)} `;
+  return REGIONS.filter((r) => [r.tr, r.en, ...(r.aliases ?? [])].some((n) => words.includes(` ${plain(n)} `)));
+}
+
+/**
+ * The islands and regions the table knows: a place that is one of a region's localities, or whose saved stays name
+ * one (or the region) in their address or area, is inside it; a campervan's page naming an island takes it there.
+ * Checked like the model's answer (acceptParents), except that an island's capital may be named by its island.
+ */
+export function tableParents(cities: string[], items: Item[]): Record<string, string> {
+  const named = new Map<string, string>();
+  for (const c of cities) {
+    const key = cityKeyOf(c);
+    if (key && !named.has(key)) named.set(key, c.trim());
+  }
+  const found: Record<string, string> = {};
+  const capitals = new Set<string>();
+  for (const [key, city] of named) {
+    const stays = items.filter((i) => i.category === "stay" && i.status !== "dismissed" && cityKeyOf(i.city) === key);
+    const inCountry = (r: Region) => stays.every((s) => !s.countryCode || s.countryCode.toUpperCase() === r.country);
+    const parts = stays.flatMap((i) => [i.location?.area ?? "", ...(i.location?.address ?? "").split(/[,·|]/)]);
+    const hit =
+      [city, ...parts].map(regionNamed).find((h) => h && inCountry(h.region)) ??
+      stays.filter(isMobileStay).flatMap((i) => regionsInText(`${i.name} ${i.summary} ${i.optionDetail ?? ""}`)).filter(inCountry).map((region) => ({ region, as: "region" as const }))[0] ??
+      null;
+    if (!hit) continue;
+    found[key] = regionName(hit.region);
+    if (hit.as === "capital" && regionNamed(city)?.as === "capital") capitals.add(key);
+  }
+  const accepted = acceptParents(cities, found);
+  // Palma is a city the app knows (its airport), but on Mallorca the island is the destination, as Funchal is Madeira.
+  for (const key of capitals) accepted[key] ??= found[key];
+  return accepted;
+}
+
+/**
+ * The hero's parents: the model's answer when there is one (checked), else the guess from the addresses; the
+ * table fills in what neither folded. Every name the table knows is written its way, so "Crete" and "Girit" are
+ * one destination.
+ */
+export function resolveParents(cities: string[], items: Item[], known: Record<string, string> | null): Record<string, string> {
+  const given = known ? acceptParents(cities, known) : fallbackParents(cities, items);
+  const out: Record<string, string> = { ...tableParents(cities, items), ...given };
+  for (const key of Object.keys(out)) out[key] = regionNameOf(out[key]);
+  return out;
+}
+
 /** The model's instructions: which of the trip's places is a smaller locality inside a bigger destination. */
 export const placesSystemPrompt = (): string =>
   L(
@@ -222,7 +416,7 @@ export const placesSystemPrompt = (): string =>
       "Örnekler: Gaula → Madeira, Funchal → Madeira, Câmara de Lobos → Madeira.",
       "Sintra → Lizbon yalnızca Lizbon da listedeyse; yoksa Sintra için parent null.",
       "Gezginin ayrı ayrı kaldığı iki gerçek şehri asla birleştirme: Porto ve Lizbon ayrı kalır.",
-      "Adları Türkçede yaygın yazılışıyla yaz; place alanına yeri listede yazıldığı gibi yaz.",
+      "Adları Türkçede yaygın yazılışıyla yaz; place alanına yeri listede yazıldığı gibi, parantezdeki ülkesi olmadan yaz (Gaula (Portekiz) → Gaula).",
     ].join(" "),
     [
       "Here are the places a trip sleeps in, in order (with their country when known).",
@@ -232,7 +426,7 @@ export const placesSystemPrompt = (): string =>
       "Examples: Gaula → Madeira, Funchal → Madeira, Câmara de Lobos → Madeira.",
       "Sintra → Lisbon only if Lisbon is in the list too; otherwise Sintra's parent is null.",
       "Never merge two real cities the traveller stays in separately: Porto and Lisbon stay apart.",
-      "Write names as commonly written in English; write place exactly as it is in the list.",
+      "Write names as commonly written in English; write place exactly as it is in the list, without the country in brackets (Gaula (Portugal) → Gaula).",
     ].join(" "),
   );
 

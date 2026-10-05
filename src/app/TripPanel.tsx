@@ -39,7 +39,7 @@ import { isIdea } from "../lib/booking";
 import { findTarget, show, TodoList } from "./Progress";
 import { TripFacts } from "./TripFacts";
 import { cityRanges, countryCodesOf, countryNames, sectionTally, tallySection } from "../lib/heroInfo";
-import { acceptParents, fallbackParents, mainPlaceOf, mainPlaces, placesKey, placesPrompt, placesSystemPrompt } from "../lib/destinations";
+import { acceptParents, answersAny, mainPlaceOf, mainPlaces, placesKey, placesPrompt, placesSystemPrompt, resolveParents } from "../lib/destinations";
 import { acceptNoteLabel, type Pref } from "../lib/preferences";
 import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../lib/tripStyle";
 import { intentEntries } from "./IntentCard";
@@ -192,7 +192,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const [answered, setAnswered] = useState<{ at: string; parents: Record<string, string> } | null>(null);
   const [unanswered, setUnanswered] = useState<ReadonlySet<string>>(() => new Set());
   const known = trip.placeParents?.key === placesFor ? trip.placeParents.parents : answered?.at === here ? answered.parents : null;
-  const parents = useMemo(() => (known ? acceptParents(cityNames, known) : fallbackParents(cityNames, items)), [known, cityNames, items]);
+  // The model's answer (checked) or the guess from the addresses; the table of islands and regions fills in the rest,
+  // so Gaula is Madeira's with no key too.
+  const parents = useMemo(() => resolveParents(cityNames, items, known), [known, cityNames, items]);
   const mains = useMemo(() => mainPlaces(cityNames, parents), [cityNames, parents]);
   const mainNames = useMemo(() => mains.map((m) => m.name), [mains]);
   const askedParents = useRef(new Set<string>());
@@ -215,6 +217,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         const accepted = acceptParents(cityNames, out.places);
         // The places changed while it answered: not written over; asked again if this set comes back.
         if (placesNow.current !== asked) return void askedParents.current.delete(asked);
+        // An answer about none of the trip's places isn't one: not kept, so it's asked again next time.
+        if (!answersAny(cityNames, out.places)) throw new Error("the answer names none of the places");
         setAnswered({ at: asked, parents: accepted });
         await updateTrip(trip.id, (t) => ({ ...t, placeParents: { key: placesFor, parents: accepted } }), { touch: false });
       } catch (error) {
