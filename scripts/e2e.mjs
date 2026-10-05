@@ -2035,6 +2035,75 @@ try {
   await board.locator(".hx").scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/14-hero-main-places.png` });
   console.log('✓ revizyon 1: stays in Funchal and Gaula → the hero says "Porto | Madeira" (asked once), the Plan keeps Gaula; a note named by the model once');
+
+  // 15. Content arriving (src/app/arrive): an Airbnb link sent in the chat waits as a quiet card at the top of
+  // Konaklama (the section guessed from the address) while it's read, then its card slides in with a ring and
+  // the chat's chip under the link says where it went ("göster" goes to it). The model answers a little late
+  // here, so the waiting card can be seen.
+  const arriveExtraction = {
+    ...casaExtraction, name: "Casa Verde", summary: "Funchal, okyanus manzaralı daire", city: "Funchal",
+    location: { address: null, area: "Sé", approximate: true }, dates: { start: "2026-10-11", end: "2026-10-13", source: "page" },
+    price: { ...casaExtraction.price, amount: 210, evidence: "€ 210 total" }, need_key: "stay:funchal",
+  };
+  await flow.route("https://generativelanguage.googleapis.com/**", async (route) => {
+    const request = route.request();
+    const body = request.method() === "POST" ? request.postDataJSON() : null;
+    const prompt = JSON.stringify(body?.contents ?? "");
+    const extracting = body?.generationConfig?.responseJsonSchema && prompt.includes("e2e-arrive") && !/<place>|<engine_result>|<places>|<notes>/.test(prompt);
+    if (!extracting) return route.fallback();
+    await new Promise((resolve) => setTimeout(resolve, 3500));
+    return route.fulfill(reply([{ text: JSON.stringify(arriveExtraction) }]));
+  });
+  await board.locator(".hx").scrollIntoViewIfNeeded();
+  // The stays the chat just added had their own toast ("2 kayıt plana eklendi"); it goes by itself.
+  await board.locator(".ar-toast").waitFor({ state: "detached", timeout: 8000 });
+  const itemNames = () => board.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+    return new Promise((resolve) => (database.transaction("items").objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result.map((i) => `${i.id}:${i.name}`))));
+  });
+  const namesBefore = await itemNames();
+  await board.getByPlaceholder("Bir link bırak, görsel yapıştır veya yaz…").fill("https://www.airbnb.com/rooms/777?e2e-arrive");
+  await board.getByRole("button", { name: "Gönder" }).click();
+  const waitingStay = board.locator('.cat-sec[data-section="stay"] .ar-pending', { hasText: "airbnb.com" });
+  await waitingStay.waitFor({ timeout: 8000 });
+  assert.match(await waitingStay.innerText(), /Airbnb okunuyor…|Fiyat ve tarihler bulunuyor…|Plana yerleşiyor…/);
+  assert.equal(await board.locator(".ar-lead .ar-pending", { hasText: "airbnb.com" }).count(), 0, "a link from Airbnb waits in Konaklama, not under the header");
+  // The chat shows the link as sent, its chip working.
+  const arriveChip = board.locator(".ar-sent", { hasText: "e2e-arrive" }).locator(".ar-chip");
+  await arriveChip.locator(".ar-spin").waitFor();
+  await waitingStay.scrollIntoViewIfNeeded();
+  await board.screenshot({ path: `${out}/15a-arrive-pending.png` });
+  // It lands: the waiting card gives way, the new card comes in with the arrival class.
+  const landed = board.locator(".ar-new", { hasText: "Casa Verde" });
+  await landed.first().waitFor({ state: "attached", timeout: 25000 });
+  assert.equal(await waitingStay.count(), 0, "the waiting card gives way to the card");
+  await landed.first().scrollIntoViewIfNeeded();
+  await board.screenshot({ path: `${out}/15b-arrive-landed.png` });
+  // The chip says where it went, and goes there.
+  await arriveChip.locator(".ar-chip-text", { hasText: "✓ Konaklama'ya eklendi" }).waitFor({ timeout: 5000 });
+  const toast = board.locator(".ar-toast");
+  if (await toast.count()) {
+    const added = (await itemNames()).filter((n) => !namesBefore.includes(n));
+    assert.match(await toast.innerText(), /Konaklama'ya eklendi: Casa Verde/, `new records: ${added.join(", ")}`);
+  }
+  await board.locator(".chat").screenshot({ path: `${out}/15c-chat-chip.png` });
+  await board.locator(".hx").scrollIntoViewIfNeeded();
+  await arriveChip.getByRole("button", { name: "göster" }).click();
+  await board.locator('[data-item-id].flash, [data-option-ids].flash').first().waitFor({ state: "attached", timeout: 5000 });
+  // A file dragged over the board: a calm overlay over the panel, gone when it leaves.
+  const dragged = await board.evaluateHandle(() => {
+    const dt = new DataTransfer();
+    dt.items.add(new File(["%PDF-1.4"], "bilet.pdf", { type: "application/pdf" }));
+    return dt;
+  });
+  await board.dispatchEvent(".panel", "dragenter", { dataTransfer: dragged });
+  await board.locator(".ar-drop", { hasText: "Bırak, okuyup doğru yere koyayım" }).waitFor();
+  await board.waitForTimeout(300); // its fade-in
+  await board.screenshot({ path: `${out}/15d-drop-overlay.png` });
+  await board.dispatchEvent(".panel", "dragleave", { dataTransfer: dragged });
+  await board.locator(".ar-drop").waitFor({ state: "detached" });
+  console.log("✓ arrivals: an Airbnb link waits in Konaklama while read, lands with a ring; the chat's chip says where and goes there; a drop overlay over the board");
   console.log(`screenshots: ${out}`);
 } finally {
   await flow.close();
