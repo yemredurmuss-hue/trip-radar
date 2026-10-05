@@ -20,7 +20,7 @@ describe("which way of travel a card is", () => {
     ["Bisiklet kiralama Porto", "bike"],
   ])("%s → %s (from its words)", (name, mode) => expect(transportMode(t(name))).toBe(mode));
 
-  it("the planned kind comes first, then the transfer's chosen way, then the flight category", () => {
+  it("a flight first, then the planned kind, then the transfer's chosen way", () => {
     expect(transportMode(t("Herhangi bir şey", { plannedKind: "ferry" }), "train")).toBe("ferry");
     expect(transportMode(t("Plan"), "train")).toBe("train");
     expect(transportMode(t("Plan"), "transfer")).toBe("taxi");
@@ -58,11 +58,30 @@ describe("card kinds beyond travel", () => {
 });
 
 describe("the way chosen for a transfer, per record", () => {
-  it("reaches the transfer's options and its trip", () => {
+  const choice = (mode: string) => ({ mode, booked: false, note: null, updatedAt: 1 });
+  it("a change of city reaches its options and its trip", () => {
     const a = t("A");
     const b = t("B");
-    const leg = { choice: { mode: "train", booked: false, note: null, updatedAt: 1 }, options: [a], travel: { items: [b] } } as unknown as Leg;
-    const none = { choice: null, options: [t("C")], travel: null } as unknown as Leg;
+    const leg = { kind: "move", choice: choice("train"), options: [a], travel: { items: [b] } } as unknown as Leg;
+    const none = { kind: "move", choice: null, options: [t("C")], travel: null } as unknown as Leg;
     expect([...legModeByItem([leg, none])]).toEqual([[a.id, "train"], [b.id, "train"]]);
+  });
+  it("a taxi to the hotel after landing: the taxi is a taxi, the flight stays a flight", () => {
+    const flight = makeItem({ category: "flight", name: "Pegasus · direkt", flight: { from: "IST", to: "OPO", departure: "2026-10-08T07:10", arrival: "2026-10-08T10:05", carrier: null, flightNumber: null, stops: 0 } });
+    const taxi = t("Havalimanı transferi");
+    const arrival = { kind: "arrival", choice: choice("taxi"), options: [taxi], travel: { items: [flight] } } as unknown as Leg;
+    const modes = legModeByItem([arrival]);
+    expect([...modes]).toEqual([[taxi.id, "taxi"]]);
+    expect(cardKind(flight, modes.get(flight.id) ?? null)).toBe("flight");
+    // Even handed the transfer's way by mistake, a flight is a flight.
+    expect(transportMode(flight, "taxi")).toBe("flight");
+  });
+  it("'Otel → Gar' by taxi: the train between the cities stays a train", () => {
+    const train = t("CP Alfa Pendular · Porto → Lizbon", { flight: { from: "Porto Campanhã", to: "Lisboa Santa Apolónia", departure: "2026-10-11T09:30", arrival: null, carrier: null, flightNumber: null, stops: null } });
+    const departing = { kind: "departure", choice: choice("taxi"), options: [], travel: { items: [train] } } as unknown as Leg;
+    const move = { kind: "move", choice: null, options: [train], travel: { items: [train] } } as unknown as Leg;
+    const modes = legModeByItem([departing, move]);
+    expect(modes.has(train.id)).toBe(false);
+    expect(cardKind(train, modes.get(train.id) ?? null)).toBe("train");
   });
 });

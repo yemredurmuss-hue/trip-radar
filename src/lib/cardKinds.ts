@@ -38,13 +38,16 @@ const BY_TEXT: [RegExp, TransportMode][] = [
 
 export const legTransportMode = (mode: LegMode | null | undefined): TransportMode | null => (mode ? (FROM_LEG[mode] ?? null) : null);
 
-/** The way of travel: planned kind → the transfer's chosen way → a flight → its words → a rental/transfer by shape → unknown. */
+/**
+ * The way of travel: a flight is a flight → planned kind → the transfer's chosen way → its words → a
+ * rental/transfer by shape → unknown. A flight first: a taxi chosen for its airport transfer never makes it a taxi.
+ */
 export function transportMode(item: Item, legMode: LegMode | null = null): TransportMode | null {
+  if (item.category === "flight") return "flight";
   const planned = item.plannedKind ? FROM_PLANNED[item.plannedKind] : undefined;
   if (planned) return planned;
   const fromLeg = legTransportMode(legMode);
   if (fromLeg) return fromLeg;
-  if (item.category === "flight") return "flight";
   const text = itemText(item);
   const said = BY_TEXT.find(([re]) => re.test(text));
   if (said) return said[1];
@@ -91,13 +94,18 @@ export const cardKindColor = (k: CardKind): string => COLORS[k];
 export const cardKindLabel = (k: CardKind): string => LABELS[k];
 export const isTransportKind = (k: CardKind): k is TransportMode | "transport" => k === "transport" || (TRANSPORT_MODES as readonly string[]).includes(k);
 
-/** The way the traveller chose for each transfer, for the records in it (its options and the trip it meets). */
+/**
+ * The way the traveller chose for each transfer, for the records in it: its own options (the taxi saved
+ * for it), and the trip only for a change of city (the move is that trip). An airport transfer's flight,
+ * or the train a station transfer meets, keeps its own way.
+ */
 export function legModeByItem(legs: Leg[]): Map<string, LegMode> {
   const out = new Map<string, LegMode>();
   for (const leg of legs) {
     const mode = leg.choice?.mode;
     if (!mode) continue;
-    for (const i of [...leg.options, ...(leg.travel?.items ?? [])]) if (!out.has(i.id)) out.set(i.id, mode);
+    const trip = leg.kind === "move" ? (leg.travel?.items ?? []) : [];
+    for (const i of [...leg.options, ...trip]) if (!out.has(i.id)) out.set(i.id, mode);
   }
   return out;
 }
