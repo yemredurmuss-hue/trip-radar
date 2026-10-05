@@ -428,6 +428,19 @@ export function tableParents(cities: string[], items: Item[]): Record<string, st
   return accepted;
 }
 
+/** Whether a place's own stays name this region in their address or area (one comma part: "…, Madeira, Portugal"). */
+function addressNames(key: string, items: Item[], parent: string): boolean {
+  const region = regionNamed(parent)?.region;
+  if (!region) return false;
+  return items
+    .filter((i) => i.category === "stay" && i.status !== "dismissed" && cityKeyOf(i.city) === key)
+    .flatMap((i) => [i.location?.area ?? "", ...(i.location?.address ?? "").split(/[,·|]/)])
+    .some((part) => {
+      const h = regionNamed(part);
+      return h?.as === "region" && h.region === region;
+    });
+}
+
 /**
  * The model's answer as it is kept on the trip: the parents it gave (checked), and "" for a place it answered
  * with null on purpose ("not inside anything"), so the table can't fold what the model chose to keep.
@@ -451,7 +464,10 @@ export function resolveParents(cities: string[], items: Item[], known: Record<st
   const given = known ? acceptParents(cities, known) : fallbackParents(cities, items);
   const kept = new Set(Object.entries(known ?? {}).flatMap(([k, v]) => (v.trim() ? [] : [k])));
   const out: Record<string, string> = { ...given };
-  for (const [key, parent] of Object.entries(tableParents(cities, items))) if (!kept.has(key) && !(key in out)) out[key] = parent;
+  // A place the model kept (null) still folds on hard evidence: its own stay's address or area names the region
+  // ("Gaula, Madeira, Portugal"); the weaker evidence (a save in the country, a capital) doesn't beat the model.
+  for (const [key, parent] of Object.entries(tableParents(cities, items)))
+    if (!(key in out) && (!kept.has(key) || addressNames(key, items, parent))) out[key] = parent;
   for (const key of Object.keys(out)) out[key] = regionNameOf(out[key]);
   return out;
 }

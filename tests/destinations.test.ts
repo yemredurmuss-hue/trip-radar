@@ -219,7 +219,11 @@ describe("islands and regions the app knows (no model)", () => {
     // The model said null for Gaula: kept as "", the table doesn't override it; a capital it kept isn't renamed either.
     const kept = answerParents(["Porto", "Gaula"], [{ place: "Porto", parent: null }, { place: "Gaula (Portugal)", parent: null }]);
     expect(kept).toEqual({ porto: "", gaula: "" });
-    expect(resolveParents(["Porto", "Gaula"], items, kept)).toEqual({});
+    // Hard evidence beats the model's null: Gaula's own address names Madeira.
+    expect(resolveParents(["Porto", "Gaula"], items, kept)).toEqual({ gaula: "Madeira" });
+    // Only the weaker evidence (saves in Portugal): the model's null stands.
+    expect(resolveParents(["Porto", "Gaula"], inCountry("PT", "Porto", "Gaula"), kept)).toEqual({});
+    expect(tableParents(["Porto", "Gaula"], inCountry("PT", "Porto", "Gaula"))).toEqual({ gaula: "Madeira" });
     expect(resolveParents(["Palma", "Sóller"], inCountry("ES", "Sóller"), { palma: "" })).toEqual({ soller: "Mallorca" });
     // A place the model didn't answer for is the table's.
     expect(resolveParents(["Palma", "Sóller"], inCountry("ES", "Sóller"), { soller: "Mallorca" })).toEqual({ soller: "Mallorca", palma: "Mallorca" });
