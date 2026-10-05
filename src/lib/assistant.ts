@@ -26,7 +26,7 @@ import { activeSignals, pendingSignals } from "./intent";
 import { buildLegs, legTiming, withLegChoice } from "./legs";
 import { checkPlanned, plannedInput, planToSave, PLANNED_KINDS } from "./planned";
 import { addDays, buildPlan, liveGroups, sameCity, stayRange, type Plan } from "./plan";
-import { withEdits } from "./userEdits";
+import { withEdits, withoutEdits } from "./userEdits";
 import { L, lang } from "./i18n";
 import { announceRemoved, deleteItem } from "./removal";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
@@ -741,12 +741,13 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       if (!currency) throw new ToolError(L(`Para birimi ISO kodu olmalı (USD, EUR, TRY...): ${input.currency}`, `Currency must be an ISO code (USD, EUR, TRY...): ${input.currency}`));
       const scope = ["total", "per_night", "per_person"].includes(input.scope) ? (input.scope as "total" | "per_night" | "per_person") : "total";
       const now = Date.now();
-      const updated: Item = {
+      // A price corrected on the card before gives way to the one said now (the card shows this one).
+      const updated: Item = withoutEdits({
         ...item,
         price: { amount, currency, scope, taxesIncluded: "unknown", source: "user", observedAt: now },
         priceHistory: [...item.priceHistory, { amount, currency, observedAt: now }],
         updatedAt: now,
-      };
+      }, ["price", "currency"]);
       await d.put("items", updated);
       return JSON.stringify({ item: item.name, price: `${amount} ${currency}`, scope, shown: L("Kartta bu fiyat yazıyor.", "The card shows this price.") });
     }
@@ -758,7 +759,11 @@ async function runTool(tripId: string, name: string, input: any, choices: string
         arrival_time: text(input.arrival_time), arrival_date: text(input.arrival_date), from: text(input.from), to: text(input.to),
       });
       if (typeof updated === "string") throw new ToolError(updated);
-      await d.put("items", { ...updated, updatedAt: Date.now() });
+      // What the chat set now stands over a correction made on the card for the same field.
+      const said = ([["date", "start"], ["end_date", "end"], ["departure_time", "time"], ["from", "from"], ["to", "to"]] as const)
+        .filter(([k]) => text(input[k]) != null)
+        .map(([, key]) => key);
+      await d.put("items", { ...withoutEdits(updated, [...said]), updatedAt: Date.now() });
       return JSON.stringify({ item: updated.name, dates: updated.dates, flight: updated.flight, shown: L("Kart bu tarihle kendi gününe geçti.", "The card moved to its day with this date.") });
     }
     case "set_priorities": {
