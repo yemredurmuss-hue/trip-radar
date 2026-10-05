@@ -118,13 +118,15 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
   "Tarihsiz", şehre göre. Panel ≤620 px: tarih kartın üstüne tek satır iner. Yapılacak şeyler: başta hızlı yazma
   kutusu, tikli satırlar (alt satır şehir · kaynak); Restoranlar: 200×124 fotoğraflı kartlar, aynı gündekiler yan yana.
 - Plan'da check-in/check-out satırı, boş gün, planı olmayan transfer yok.
-- **Günlük akış** gün gün, saat saat: rezervasyon gerektiren her şey (uçuş, tren, taksi/transfer, etkinlik,
-  restoran, araç kiralama) küçük bir blok, bilgi (check-in, check-out, metro/yürüyüş, araç iadesi) ince satır.
-- Blok Plan'daki kartına götürür; bir şey iki görünümde de büyük yazılmaz.
+- **Günlük akış** (0.34.1, onaylı widget "günlük akış v4") gün başına bir kart: solda şehrin fotoğrafı (üstünde "2. gün",
+  altında tarih; bugünse mavi "Bugün"), sağda başlık (yer değiştiren günde rota "Porto → Lizbon", yoksa şehir), en fazla
+  dört satır (saat · ad · ✓ ya da "rezerve et / karar ver / planla"; fazlası "+N daha"), altta fikir sayısı ve
+  "+ Bu güne ekle". Satırda ikon yok. Her kart aynı boy; aynı şehirde peş peşe boş günler tek kart ("5–6. gün").
+- Karta dokununca gün kendi sayfasında açılır ("← Tüm günler"): solda fotoğraf tam boy, sağda saat sırasıyla her şey
+  küçük bir kart (yeşil alındı · bej yapılacak · beyaz gerekmez; yolculukta iki uç büyük, ortada türün hapı), bilgi
+  (check-in, check-out, metro) ince satır, saati olmayanlar altta "Diğer". Kapalı karttaki bir satıra dokunmak günü o
+  kart açık açar. Kart ayrıntısında notlar ve "Plan'daki kartına git"; planı olmayan transfer orada planlanır.
 - Saat solda: kayıttan gelen düz, alışılmış ya da hesaplanan "~"; bilinmeyen boş.
-- Günler açılır, kapanır: işi kalan açık gelir ("3 iş"), hepsi hazır olan tek satıra katlanır.
-- Rezervasyonsuzlar (Yapılacak şeyler, rezervasyonsuz Restoranlar) bir güne eklenince Günlük akışta ince satırdır,
-  büyük blok değil.
 
 ## Azaltmak
 

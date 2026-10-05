@@ -192,7 +192,8 @@ try {
   const dayPage = app.locator(".dc-page");
   const openDay = async (n) => {
     if (await dayPage.count()) await app.locator(".dc-back").click();
-    await dayCard(n).click();
+    // On the photo: a tap on one of its lines opens the day with that card already open.
+    await dayCard(n).locator(".dc-photo").click();
     await dayPage.waitFor();
   };
   const dayTitles = () => dayPage.locator("[data-title]").evaluateAll((els) => els.map((e) => e.getAttribute("data-title")));

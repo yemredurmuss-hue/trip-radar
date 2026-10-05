@@ -66,7 +66,7 @@ export function DayCards(props: DayCardsProps) {
   const top = useRef<HTMLDivElement>(null);
   const day = open ? cards.find((c) => c.key === open.key) : null;
   useEffect(() => {
-    if (open) top.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    if (open) top.current?.scrollIntoView({ block: "start" }); // at once: a tap right after lands where it aims
   }, [open?.key]);
   return (
     <div className="dc" ref={top}>
