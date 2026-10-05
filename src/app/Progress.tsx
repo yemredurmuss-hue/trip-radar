@@ -16,7 +16,11 @@ export function show(el: Element | null) {
 
 /** The card itself when it's on screen, else its transfer, else its place on the plan or in the itinerary. */
 export function findTarget(target: Todo["target"]): Element | null {
-  const card = target.item ? document.querySelector(`[data-item-id="${CSS.escape(target.item)}"]`) : null;
+  const card = target.item
+    ? (document.querySelector(`[data-item-id="${CSS.escape(target.item)}"]`) ??
+      // An option behind a card's ‹ 1/2 ›: its group's card.
+      document.querySelector(`[data-option-ids~="${CSS.escape(target.item)}"]`))
+    : null;
   const leg = target.leg ? document.getElementById(`leg-${target.leg}`) : null;
   const entry = target.entry ? document.getElementById(entryDomId(target.entry)) : null;
   const inDays = target.leg

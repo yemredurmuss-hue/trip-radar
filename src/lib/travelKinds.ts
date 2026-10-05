@@ -29,18 +29,9 @@ export const isLocalTransfer = (i: Item) =>
 export const isTrip = (i: Item) => i.category === "flight" || (i.category === "transport" && !isRental(i) && !isLocalTransfer(i));
 
 const INSURANCE = /sigorta|insurance|seguro/i;
-/** A visa, a lounge pass, an eSIM: a small thing to arrange, not a place or a trip. */
-const ERRAND = /vize|visa\b|e-?visa|lounge|fast ?track|esim|e-sim|sim kart/i;
 
 /** Travel insurance: added from the template, or a saved page that says so (no category of its own). */
 export const isInsurance = (i: Item) =>
   i.plannedKind === "insurance" || (!i.plannedKind && (i.category === "other" || i.category === "transport") && INSURANCE.test(itemText(i)));
-
-/**
- * A small thing of the trip (an eSIM, a taxi, an airport transfer, insurance): it gets a line of the
- * plan, not a card the size of a flight's.
- */
-export const isSmall = (i: Item) =>
-  i.category === "esim" || isLocalTransfer(i) || ((i.category === "other" || i.category === "transport") && !isRental(i) && (ERRAND.test(itemText(i)) || isInsurance(i)));
 
 export { LOCAL };

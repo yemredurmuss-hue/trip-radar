@@ -33,7 +33,18 @@ import { tripFacts } from "../lib/tripFacts";
 import type { Timeline } from "../lib/timeline";
 
 import type { Capture, Category, Item, Trip } from "../lib/types";
-import { chooseItem, removeItem, setHidden, updateTrip } from "./actions";
+import { chooseItem, setHidden, updateTrip } from "./actions";
+import { legModeByItem } from "../lib/cardKinds";
+import { inheritedDocs } from "../lib/docs";
+import { deleteItem, restoreItem, type Removed } from "../lib/removal";
+import { undoSlot } from "../lib/undo";
+import type { InsertAt } from "../lib/templates";
+import { AddButton, AddSheet } from "./cards/AddSheet";
+import { useTripDocs } from "./cards/DocAccess";
+import { LegCard } from "./cards/LegCard";
+import { CardEnvContext, NavGroup, PlanCard, type CardEnv } from "./cards/PlanCard";
+import { SilhouetteDefs } from "./cards/Silhouettes";
+import { UndoToast } from "./cards/UndoToast";
 import { CategoryIcon, Chevron } from "./Icons";
 import { findTarget, show, TodoList } from "./Progress";
 import { TripFacts } from "./TripFacts";
@@ -101,6 +112,29 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const hidden = useMemo(() => new Set(trip.hidden ?? []), [trip.hidden]);
   const timeline = useMemo(() => buildTimeline(plan, legs, items, hidden), [plan, legs, items, hidden]);
   const hiddenLegs = legs.filter((l) => l.kind !== "move" && hidden.has(`leg:${l.key}`));
+
+  // --- plan cards: the way chosen per transfer, files, delete with undo, the add sheet ---
+  const legModes = useMemo(() => legModeByItem(legs), [legs]);
+  const inherited = useMemo(() => inheritedDocs(plan.closed), [plan.closed]);
+  const docsFor = useTripDocs(trip.id, inherited);
+  const undo = useMemo(() => undoSlot<Removed>(), []);
+  const [removed, setRemoved] = useState<Removed | null>(null);
+  useEffect(() => undo.subscribe(setRemoved), [undo]);
+  // Another trip on screen: the last deletion stays deleted.
+  useEffect(() => () => void undo.take(), [trip.id, undo]);
+  const [sheet, setSheet] = useState<{ at: InsertAt | null; editing: Item | null } | null>(null);
+  const env: CardEnv = {
+    tripId: trip.id,
+    decisions,
+    today,
+    legModes,
+    docsFor,
+    remove: (item) => void deleteItem(item).then((r) => undo.show(r)),
+    add: (at) => setSheet({ at, editing: null }),
+    edit: (item) => setSheet({ at: null, editing: item }),
+    onOpenItem,
+    onCompare,
+  };
 
   // --- the hero: a photo per city, the paragraph, what's confirmed, the facts column ---
   const cityNames = useMemo(() => citiesOf(plan, items), [plan, items]);
@@ -210,34 +244,24 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     .filter(Boolean)
     .join(" ");
   const decisionOf = (item: Item) => [...(decisions?.byGroup.values() ?? [])].find((d) => d.options.some((o) => o.item.id === item.id));
-  /** One undecided option as a decision card: swipe through them, open one for the reasons. */
-  const card: CardFor = (item, group, decision, ranked, onCompareGroup) => (
-    <SwipeCard
-      key={item.id}
-      item={item}
-      group={group}
-      decision={decision ?? decisionOf(item)}
-      decisions={decisions}
-      ranked={ranked}
-      onOpen={() => onOpenItem(item)}
-      onCompare={onCompareGroup}
-    />
-  );
-  /** A decided need in one line ("Seçildi · bilet alınmadı"). */
-  const settled: SettledFor = (item, decision, onChange, changing) => (
-    <SettledCard
-      key={item.id}
-      item={item}
-      decision={decision ?? decisionOf(item)}
-      decisions={decisions}
-      onOpen={() => onOpenItem(item)}
-      onChange={onChange}
-      changing={changing}
-    />
-  );
+  /** A stay keeps its decision card; everything else is a plan card (cards/PlanCard.tsx). */
+  const card: CardFor = (item, group, decision, ranked, onCompareGroup) =>
+    item.category === "stay" ? (
+      <SwipeCard key={item.id} item={item} group={group} decision={decision ?? decisionOf(item)} decisions={decisions} ranked={ranked} onOpen={() => onOpenItem(item)} onCompare={onCompareGroup} />
+    ) : (
+      <PlanCard key={item.id} item={item} group={group} decision={decision ?? decisionOf(item)} ranked={ranked} onCompare={onCompareGroup} />
+    );
+  /** A decided need: a stay's settled card, else the plan card. */
+  const settled: SettledFor = (item, decision, onChange, changing) =>
+    item.category === "stay" ? (
+      <SettledCard key={item.id} item={item} decision={decision ?? decisionOf(item)} decisions={decisions} onOpen={() => onOpenItem(item)} onChange={onChange} changing={changing} />
+    ) : (
+      <PlanCard key={item.id} item={item} group={[item]} decision={decision ?? decisionOf(item)} onChange={onChange} changing={changing} />
+    );
   const leg = (l: Leg, opts: { embedded?: boolean; timed?: boolean } = {}) => (
-    <LegRow key={l.key} leg={l} tripId={trip.id} onOpenItem={onOpenItem} onRemove={(i) => void removeItem(i)} embedded={opts.embedded} timed={opts.timed} />
+    <LegRow key={l.key} leg={l} tripId={trip.id} onOpenItem={onOpenItem} onRemove={env.remove} embedded={opts.embedded} timed={opts.timed} />
   );
+  const legCard = (l: Leg) => <LegCard key={l.key} leg={l} />;
 
   const renderGroup: RenderGroup = (group, heading, groupSubtitle, nested = false) => (
     <OptionGroupView
@@ -256,7 +280,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   );
 
   return (
-    <>
+    <CardEnvContext.Provider value={env}>
+      <SilhouetteDefs />
       <section className="hx">
         <TripHero
           key={trip.id}
@@ -312,6 +337,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         </div>
       )}
 
+      {timeline.entries.length === 0 && (
+        <div className="section-head pk-plan-head">
+          <span>{L("Gezi planı", "Trip plan")}</span>
+          <AddButton onClick={() => env.add(null)} />
+        </div>
+      )}
       {timeline.entries.length > 0 && (
         <div className="view-tabs" role="tablist" aria-label={L("Görünüm", "View")}>
           <button role="tab" aria-selected={view === "plan"} className={view === "plan" ? "on" : ""} onClick={() => setView("plan")}>
@@ -330,6 +361,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           timeline={timeline}
           tripId={trip.id}
           leg={leg}
+          legCard={legCard}
+          onAdd={env.add}
           renderGroup={renderGroup}
           card={card}
           settled={settled}
@@ -365,7 +398,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           onOpenItem={onOpenItem}
         />
       )}
-    </>
+      {sheet && (
+        <AddSheet tripId={trip.id} at={sheet.at} editing={sheet.editing} currency={decisions?.ctx.currency ?? trip.budget?.currency ?? "EUR"} onClose={() => setSheet(null)} />
+      )}
+      <UndoToast removed={removed} onUndo={() => { const r = undo.take(); if (r) void restoreItem(r); }} />
+    </CardEnvContext.Provider>
   );
 }
 
@@ -474,6 +511,20 @@ function OptionGroupView({
   // A new pick (or a booking) closes the cards again.
   const decidedId = decided?.id;
   useEffect(() => setChanging(false), [decidedId]);
+  // Best first, numbered: the first few at once, the rest one tap away (the engine's order: fit, then
+  // to check, then partial, then out).
+  const byRank = [...group.items].sort((a, b) => (rank(a) ?? Infinity) - (rank(b) ?? Infinity) || (a.price.amount ?? Infinity) - (b.price.amount ?? Infinity));
+  const rankedOf = (item: Item) => {
+    const r = choice?.ranked.find((x) => x.option.item.id === item.id);
+    return r && { ...r, pivot: pivots.find((p) => p.itemId === item.id) ?? null };
+  };
+  // Not a stay: the options as one card with ‹ 1/2 ›, the pick and the reasons in its details (cards/PlanCard.tsx).
+  if (group.category !== "stay") {
+    return (
+      <NavGroup items={byRank} heading={head} nested={nested} decision={decision} choice={choice} decided={decided ?? null}
+        onChange={change} changing={changing} rankedOf={rankedOf} onCompare={comparable || single ? onCompare : undefined} />
+    );
+  }
   if (decided && !(changing && change)) {
     return (
       <div className={nested ? "group nested" : "section"}>
@@ -482,16 +533,9 @@ function OptionGroupView({
       </div>
     );
   }
-  // Best first, numbered: the first few at once, the rest one tap away (the engine's order: fit, then
-  // to check, then partial, then out).
-  const byRank = [...group.items].sort((a, b) => (rank(a) ?? Infinity) - (rank(b) ?? Infinity) || (a.price.amount ?? Infinity) - (b.price.amount ?? Infinity));
   const lead = byRank.slice(0, VISIBLE);
   const others = byRank.slice(VISIBLE);
   const shown = showAll ? byRank : lead;
-  const rankedOf = (item: Item) => {
-    const r = choice?.ranked.find((x) => x.option.item.id === item.id);
-    return r && { ...r, pivot: pivots.find((p) => p.itemId === item.id) ?? null };
-  };
   return (
     <div className={nested ? "group nested" : "section"}>
       {decided && renderSettled(decided, decision, change, true)}

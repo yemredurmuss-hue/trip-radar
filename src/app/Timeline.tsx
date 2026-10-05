@@ -1,24 +1,29 @@
 import { useState, type ReactNode } from "react";
 import type { GroupDecision } from "../lib/decision";
 import { formatDateRange, nightsBetween } from "../lib/items";
-import { isRental, MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib/legs";
+import { isRental, type Leg } from "../lib/legs";
 import type { OptionGroup, Plan, StayBlock } from "../lib/plan";
 import { dayRows, daySummary, journeyTitle, rowsLeft, type DayRow } from "../lib/journey";
 import { entryDomId } from "../lib/progress";
 import type { Ranked } from "../lib/choice";
-import { flightSearchUrl, nightsKey, type RentalEntry, type Timeline, type TimelineEntry, type TimelineSection } from "../lib/timeline";
-import type { Category, Item, LegMode, Listing } from "../lib/types";
-import { removeItem, setHidden, updateTrip } from "./actions";
+import { nightsKey, type RentalEntry, type Timeline, type TimelineEntry, type TimelineSection } from "../lib/timeline";
+import type { Category, Item, Listing } from "../lib/types";
+import { removeItem, setHidden } from "./actions";
 import { Carousel } from "./Carousel";
 import { CategoryIcon, type IconName } from "./Icons";
 import { StatusBar, type Standing } from "./Status";
 import { L, locale } from "../lib/i18n";
+import type { InsertAt } from "../lib/templates";
+import { insertAt } from "../lib/templates";
+import { AddButton, InsertPoint } from "./cards/AddSheet";
 
 export type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => ReactNode;
 export type CardFor = (item: Item, group: Item[], decision?: GroupDecision, ranked?: Ranked, onCompare?: () => void) => ReactNode;
 export type SettledFor = (item: Item, decision?: GroupDecision, onChange?: () => void, changing?: boolean) => ReactNode;
 /** A transfer: its own row; `embedded`, only its body (under a line that is its head); `timed`, its time is beside it already. */
 export type LegFor = (l: Leg, opts?: { embedded?: boolean; timed?: boolean }) => ReactNode;
+/** A transfer or a change of city as a card on the plan (cards/LegCard.tsx). */
+export type LegCardFor = (l: Leg) => ReactNode;
 
 const fmt = (d: string) => formatDateRange(d, null);
 
@@ -35,6 +40,8 @@ export function TimelineView({
   timeline,
   tripId,
   leg,
+  legCard,
+  onAdd,
   renderGroup,
   card,
   settled,
@@ -47,6 +54,9 @@ export function TimelineView({
   timeline: Timeline;
   tripId: string;
   leg: LegFor;
+  legCard: LegCardFor;
+  /** Opens the add sheet: at a place on the plan, or (null) from the heading. */
+  onAdd: (at: InsertAt | null) => void;
   renderGroup: RenderGroup;
   card: CardFor;
   settled: SettledFor;
@@ -60,7 +70,7 @@ export function TimelineView({
   const n = plan.nights;
   const parts = [n.booked && L(`${n.booked} rezerve`, `${n.booked} booked`), n.chosen && L(`${n.chosen} seçildi`, `${n.chosen} chosen`), n.open && L(`${n.open} açık`, `${n.open} open`)].filter(Boolean);
   const rentals = timeline.entries.filter((e): e is RentalEntry => e.kind === "rental");
-  const render = { tripId, leg, renderGroup, card, settled, start, listings, today, rentals, onShow };
+  const render = { tripId, leg, legCard, onAdd, renderGroup, card, settled, start, listings, today, rentals, onShow };
   return (
     <div className="section trip-plan">
       {mode === "plan" && (
@@ -68,6 +78,7 @@ export function TimelineView({
           <div className="section-head">
             <span>{L("Gezi planı", "Trip plan")}</span>
             {n.total > 0 && <span className="muted">{[L(`${n.total} gece`, `${n.total} night${n.total === 1 ? "" : "s"}`), ...parts].join(" · ")}</span>}
+            <AddButton onClick={() => onAdd(null)} />
           </div>
           {plan.notices.map((x) => (
             <div key={x.text} className="notice">
@@ -90,6 +101,8 @@ interface RenderProps {
   tripId: string;
   start: string | null;
   leg: LegFor;
+  legCard: LegCardFor;
+  onAdd: (at: InsertAt | null) => void;
   renderGroup: RenderGroup;
   card: CardFor;
   settled: SettledFor;
@@ -177,6 +190,7 @@ function Row({ entry, ...render }: { entry: TimelineEntry } & RenderProps) {
       </div>
       <div className="tl-content">
         <Entry entry={entry} {...render} />
+        <InsertPoint at={insertAt(entry)} onAdd={render.onAdd} />
       </div>
     </li>
   );
@@ -254,10 +268,10 @@ function iconOf(entry: TimelineEntry): IconName {
   }
 }
 
-function Entry({ entry, tripId, leg, renderGroup, card, settled }: { entry: TimelineEntry } & RenderProps) {
+function Entry({ entry, tripId, leg, legCard, renderGroup, card, settled }: { entry: TimelineEntry } & RenderProps) {
   switch (entry.kind) {
     case "leg":
-      return <>{leg(entry.leg)}</>;
+      return <>{legCard(entry.leg)}</>;
     case "stay":
       return <Block block={entry.block} skipped={Boolean(entry.skipped)} tripId={tripId} renderGroup={renderGroup} settled={settled} />;
     case "travel":
@@ -271,7 +285,7 @@ function Entry({ entry, tripId, leg, renderGroup, card, settled }: { entry: Time
       return (
         <div className={`tl-travel role-${entry.role}`}>
           {entry.role === "move" && entry.leg ? (
-            <MoveCard leg={entry.leg} tripId={tripId} />
+            legCard(entry.leg)
           ) : (
             <div className="empty-card">
               <span>
@@ -516,83 +530,6 @@ function ItRow({ row, ...render }: { row: DayRow } & RenderProps) {
         {planHere && open && <div className="it-more">{render.leg(row.leg!, { embedded: true })}</div>}
       </div>
     </li>
-  );
-}
-
-const MODE_ICONS: Record<LegMode, string> = { flight: "✈", train: "🚆", bus: "🚌", ferry: "⛴", metro: "🚇", taxi: "🚕", transfer: "🚐", car: "🚗", walk: "🚶" };
-const TICKETED: LegMode[] = ["flight", "train", "bus", "ferry"];
-
-/**
- * Getting from one city to the next when nothing's saved for it yet: "Porto → Madeira", and how the
- * traveller said they'll go. By plane it reads as a flight; its status is on it ("Planlanıyor · bilet
- * alınmadı"). A tap picks the way; saving a flight page for that day takes its place.
- */
-function MoveCard({ leg, tripId, startOpen = false }: { leg: Leg; tripId: string; startOpen?: boolean }) {
-  const [open, setOpen] = useState(startOpen);
-  const mode = leg.choice?.mode ?? leg.mode;
-  const booked = Boolean(leg.choice?.booked);
-  const from = leg.from.city ?? leg.from.label;
-  const to = leg.to.city ?? leg.to.label;
-  const save = (patch: Parameters<typeof withLegChoice>[2]) => void updateTrip(tripId, (t) => withLegChoice(t, leg.key, patch));
-  // "Flights from Porto to Madeira on …": the search's "home" end is simply where this move goes.
-  const search = mode === "flight" ? flightSearchUrl("from", from, leg.date, to) : null;
-  const standing: Standing = booked ? "booked" : mode ? "planned" : "open";
-  const state = booked
-    ? { text: mode && TICKETED.includes(mode) ? L("Bilet alındı", "Ticket booked") : L("Ayarlandı", "Arranged"), sub: null }
-    : mode
-      ? { text: L("Planlanıyor", "Planning"), sub: TICKETED.includes(mode) ? L("bilet alınmadı", "no ticket yet") : null }
-      : { text: L("Planlanmadı", "Not planned"), sub: L("nasıl geçeceksiniz?", "how will you get there?") };
-  return (
-    <div className={`settled-card move-card st-${standing}`} aria-label={`${from} → ${to}`}>
-      <StatusBar standing={standing} text={state.text} sub={state.sub} />
-      <div className="stc-main" role="button" tabIndex={0} aria-expanded={open} onClick={() => setOpen(!open)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setOpen(!open))}>
-        <div className="route">
-          <div className="route-line">
-            <div className="route-end">
-              <b className={from.length > 5 ? "long" : ""}>{from}</b>
-              <span className="muted">{fmt(leg.date)}</span>
-            </div>
-            <div className="route-mid">
-              <span>{mode ? MODE_LABELS[mode] : ""}</span>
-              <span className="route-bar">
-                <span className="route-mode">{mode ? MODE_ICONS[mode] : "?"}</span>
-              </span>
-              <span className="muted">{leg.options.length ? L(`${leg.options.length} seçenek`, `${leg.options.length} option${leg.options.length === 1 ? "" : "s"}`) : ""}</span>
-            </div>
-            <div className="route-end right">
-              <b className={to.length > 5 ? "long" : ""}>{to}</b>
-              <span className="muted">{fmt(leg.date)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="stc-foot">
-        <span className="stc-actions">
-          {search && !booked && (
-            <a className="pill-btn outline" href={search} target="_blank" rel="noreferrer">
-              {L("Uçuş ara ↗", "Search flights ↗")}
-            </a>
-          )}
-          {(mode || booked) && (
-            <button className="pill-btn outline" onClick={() => save({ booked: !booked })}>
-              {booked ? L("Geri al", "Undo") : mode && TICKETED.includes(mode) ? L("Bileti aldım", "I got the ticket") : L("Ayarlandı", "Arranged")}
-            </button>
-          )}
-        </span>
-      </div>
-      {open && (
-        <div className="stc-details">
-          <div className="leg-modes" role="group" aria-label={L("Nasıl geçeceksiniz?", "How will you get there?")}>
-            {modesFor("move").map((m) => (
-              <button key={m} className={`mode-chip${mode === m ? " on" : ""}`} aria-pressed={mode === m} onClick={() => save(mode === m ? { mode: null } : { mode: m })}>
-                {MODE_ICONS[m]} {MODE_LABELS[m]}
-              </button>
-            ))}
-          </div>
-          <p className="muted small-note">{L(`Sohbette "11 Ekim'de Madeira'ya uçakla geçeceğiz" demen de yeter; o günün uçuş sayfasını kaydedince onun yerine geçer.`, `You can also say "we fly to Madeira on 11 October" in the chat. Saving that day's flight page replaces this.`)}</p>
-        </div>
-      )}
-    </div>
   );
 }
 

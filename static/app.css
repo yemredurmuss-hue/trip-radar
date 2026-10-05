@@ -472,20 +472,6 @@ a.sc-source.link:focus-visible { outline: 2px solid var(--accent); outline-offse
 .rating-badge b { display: grid; place-items: center; min-width: 44px; height: 44px; padding: 0 6px; border-radius: 14px; background: #efe7fb; color: var(--ink); font-size: 16px; }
 .rating-badge span { display: flex; flex-direction: column; font-size: 15px; font-weight: 600; line-height: 1.2; }
 .rating-badge small { font-size: 13px; font-weight: 400; color: #6e6a66; }
-.route { padding: 4px 10px 2px; }
-.route-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-.fare-badge { padding: 5px 12px; border-radius: 12px; background: #efe7fb; color: #5b3b9b; font-size: 13px; font-weight: 600; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.route-line { display: grid; grid-template-columns: auto minmax(80px, 1fr) auto; gap: 16px; align-items: center; }
-.route-end { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.route-end.right { align-items: flex-end; text-align: right; }
-.route-end b { font-size: 26px; letter-spacing: -.01em; line-height: 1.1; }
-.route-end b.long { font-size: 17px; }
-.route-end span { font-size: 14px; }
-.route-mid { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; min-width: 0; }
-.route-mid .muted { font-weight: 400; }
-.route-bar { position: relative; width: 100%; height: 24px; display: grid; place-items: center; color: var(--ink); }
-.route-bar::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 6px; margin-top: -3px; border-radius: 3px; background: #e9e0f7; }
-.route-bar svg { position: relative; background: #fff; border-radius: 50%; padding: 1px; }
 .stc-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 10px 18px 14px; border-top: 1px solid #f0ece6; }
 .stc-state { display: flex; align-items: center; gap: 8px; margin-right: auto; }
 .stc-actions { display: flex; gap: 8px; }
@@ -513,9 +499,7 @@ a.sc-source.link:focus-visible { outline: 2px solid var(--accent); outline-offse
 .slot-note.gap { color: #8a5a00; }
 .timeline.between { margin: 0 0 22px; }
 .timeline.between::before { display: none; }
-.route-mode { position: relative; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #fff; font-size: 14px; line-height: 1; }
 .state-chip.empty { background: #fff3e0; color: var(--warning); }
-.move-card .route { padding-top: 10px; }
 
 /* ---------- the trip, in order ---------- */
 .timeline { position: relative; margin: 0; padding: 0; list-style: none; }
@@ -728,7 +712,6 @@ a.sc-source.link:focus-visible { outline: 2px solid var(--accent); outline-offse
   border-radius: 50%; border: 1.5px solid #d6cfc4; background: #fff; color: var(--ink); font: italic 700 14px/1 Georgia, "Times New Roman", serif;
 }
 .info-btn[aria-expanded="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
-.move-card .info-btn { display: none; }
 .hidden-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; font-size: 14px; border-top: 1px solid var(--line, #ece7df); }
 
 /* ---------- the plan and the itinerary: two views of the trip ---------- */
@@ -837,27 +820,6 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
   .sc-pc { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 }
 
-/* ---------- 0.24: small things (eSIM, taxi, transfer, insurance) as one line, like Layla's ---------- */
-.settled-row {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 8px; padding: 8px 14px 8px 8px;
-  border-radius: 16px; background: #fff; box-shadow: 0 1px 2px rgba(40, 30, 20, .05), 0 3px 10px rgba(40, 30, 20, .05);
-}
-.settled-row.st-booked { box-shadow: 0 0 0 1.5px #cfe9d9; }
-.sr-main { flex: 1 1 260px; display: flex; align-items: center; gap: 12px; min-width: 0; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; color: inherit; }
-.sr-icon { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; }
-.sr-icon.cat-esim { background: #eeeaff; color: #5a47c9; }
-.sr-icon.cat-transport { background: #e3f4ec; color: #2e7d5b; }
-.sr-icon.cat-other { background: #eef1f4; color: #5b6572; }
-.sr-text { display: flex; flex-direction: column; min-width: 0; flex: 1; line-height: 1.3; }
-.sr-text b { font-size: 15px; font-weight: 650; }
-.sr-text .muted { font-size: 13px; }
-.sr-price { flex: none; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.sr-chip { flex: none; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; }
-.sr-chip.st-planned { background: #fff1d9; color: #8a5300; }
-.sr-chip.st-booked { background: #e3f4ea; color: #1b6b3e; }
-.sr-actions { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; }
-.pill-btn.small { padding: 5px 12px; font-size: 13px; }
-.settled-row .stc-details { flex-basis: 100%; padding: 6px 6px 4px 48px; }
 
 /* ---------- 0.25: an option, calm and clear (Apple-like) ----------
    Why it's here (a small label), its name and price, what it costs or saves against the cheapest one
