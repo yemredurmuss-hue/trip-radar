@@ -557,6 +557,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           cards={{ legCard, renderGroup, card, settled }}
           onAdd={addIn}
           today={today}
+          items={items}
         />
       )}
 

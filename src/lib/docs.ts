@@ -3,8 +3,15 @@
 import { db, newId, notifyChanged } from "./db";
 import { L } from "./i18n";
 import { num } from "./i18nText";
+import { isIdea } from "./booking";
 import { cardKind, isTransportKind } from "./cardKinds";
 import type { DocKind, DocMeta, DocRecord, Item } from "./types";
+
+/**
+ * A booking that should have its ticket or confirmation with it (0.35.11, Emre: "book edildi dediklerimiz için
+ * belge eksik"): booked, and not an idea or a table (a restaurant's booking rarely comes as a file).
+ */
+export const needsDoc = (item: Item): boolean => item.status === "booked" && item.category !== "food" && !isIdea(item);
 
 export const DOC_MAX_BYTES = 15 * 1024 * 1024;
 // No HEIC: Chrome can't show it, so a kept HEIC would be a file that never opens.

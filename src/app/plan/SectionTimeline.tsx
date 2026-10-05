@@ -11,6 +11,7 @@ import type { Plan } from "../../lib/plan";
 import type { Item } from "../../lib/types";
 import { entryDomId } from "../../lib/progress";
 import { insertAt, type InsertAt } from "../../lib/templates";
+import { activitySearches, returnFlightSearch } from "../../lib/searchLinks";
 import { InsertPoint } from "../cards/AddSheet";
 import { IdeaList, InspoGrid } from "../ideas/IdeaList";
 import { QuickAdd } from "../ideas/QuickAdd";
@@ -31,7 +32,7 @@ const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(loc
 /** The "+" after a card: a block's own place (a stay: its city, its last night), else the card's day and city. */
 const atOf = (e: CatEntry, day: DayGroup): InsertAt => (e.piece.kind === "entry" ? insertAt(e.piece.entry) : { city: e.city ?? day.city, date: e.date });
 
-export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, onIdea, today }: {
+export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, onIdea, today, items }: {
   section: CatSection;
   plan: Pick<Plan, "range" | "stayBlocks">;
   tripId: string;
@@ -42,6 +43,8 @@ export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, o
   onIdea: (item: Item) => void;
   /** YYYY-MM-DD: "Bugün" during the trip, and a day gone by sends an idea back to its pool. */
   today: string;
+  /** The trip's records (a one-way flight's "Dönüş bileti ara"). */
+  items: Item[];
 }) {
   if (section.id === "inspo") return <InspoGrid section={section} plan={plan} />;
   if (section.id === "todo" || section.id === "food") {
@@ -79,6 +82,7 @@ export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, o
       </ol>
       )}
       {section.prep.length > 0 && <PrepList entries={section.prep} />}
+      <SearchLinks section={section} plan={plan} items={items} />
     </>
   );
 }
@@ -107,4 +111,28 @@ function Piece({ entry, cards }: { entry: CatEntry; cards: SectionCards }): Reac
     case "item":
       return p.settled ? cards.settled(p.item) : cards.card(p.item, p.siblings);
   }
+}
+
+/**
+ * Where to look next (0.35.11, lib/searchLinks): Uçuş with a one-way flight, "Dönüş bileti ara"; Etkinlikler,
+ * a GetYourGuide search per city. Links that open a search; nothing is saved.
+ */
+function SearchLinks({ section, plan, items }: { section: CatSection; plan: Pick<Plan, "range" | "stayBlocks">; items: Item[] }) {
+  const links =
+    section.id === "flight"
+      ? [returnFlightSearch(items, plan)].filter((x): x is { label: string; url: string } => x != null)
+      : section.id === "activity"
+        ? activitySearches(plan)
+        : [];
+  if (!links.length) return null;
+  return (
+    <div className={`cat-search${section.id === "activity" ? " gyg" : ""}`}>
+      {section.id === "activity" && <span>GetYourGuide:</span>}
+      {links.map((l) => (
+        <a key={l.url} className="cat-search-link" href={l.url} target="_blank" rel="noreferrer">
+          {l.label} ↗
+        </a>
+      ))}
+    </div>
+  );
 }

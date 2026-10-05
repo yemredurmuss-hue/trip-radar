@@ -1027,6 +1027,12 @@ try {
   await app.setViewportSize({ width: 1440, height: 1400 });
   await sec("activity").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/4l-activities.png` });
+  // 0.35.11: a GetYourGuide search per city under Etkinlikler; a booking with no file says "Belge eksik" (and picks one).
+  assert.deepEqual(await sec("activity").locator(".cat-search-link").evaluateAll((els) => els.map((a) => [a.textContent, a.getAttribute("href")])), [
+    ["Porto etkinliklerini ara ↗", "https://www.getyourguide.com/s/?q=Porto"],
+    ["Lizbon etkinliklerini ara ↗", "https://www.getyourguide.com/s/?q=Lizbon"],
+  ]);
+  assert.ok((await app.locator(".cat-plan .pk-docmiss", { hasText: "Belge eksik" }).count()) > 0, "a booking without its ticket says so");
   await app.setViewportSize({ width: 1440, height: 900 });
   // Narrow: the + and × are there without a hover.
   await app.setViewportSize({ width: 560, height: 2600 });

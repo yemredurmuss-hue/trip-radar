@@ -163,6 +163,12 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
 - **İlham** (0.35.3): Plan'ın en altında, kapalı başlayan bölüm. Reels, Pinterest, TikTok, YouTube ve blog linkleri
   (`inspo.ts`): resim, platform rozeti, başlık, şehir. Restoran nerede bulunursa bulunsun restorandır; Maps linki
   yerdir, ilham değil. Bir güne konunca Yapılacak şeyler'e geçer. Belgeler'le karışmaz (pasaport, bilet orada).
+- **Nereye bakılır** (0.35.11, `searchLinks.ts`): Uçuş'ta gidiş var, eve dönen uçuş yoksa "Dönüş bileti ara · Porto →
+  İstanbul ↗" (Google Flights, gezinin son şehrinden, son gününde). Etkinlikler'in altında şehir başına
+  "GetYourGuide: Porto etkinliklerini ara ↗". Yalnız arama linki; hiçbir şey kaydedilmez, affiliate kodu yok.
+- **Belge eksik** (0.35.11, `docs.ts` `needsDoc`): rezerve edilmiş (yemek ve fikir dışında) ama dosyası olmayan
+  kartta ataç yerine küçük amber "Belge eksik"; tıklayınca dosya seçer. Asistan da bilir (trip_state
+  `document: "missing"`), o kayıt konuşulurken bir kez hatırlatır.
 - **Etkinlik asla fikir değildir** (0.35.3, `booking.ts` `showSays`): konser, gösteri, maç, festival, open air, DJ,
   line-up, parti, canlı müzik geçen kayıt — sohbet ya da sayfa "yapılacak / rezervasyon yok" demiş olsa da —
   Etkinlikler'e gider (bilet gerekir).

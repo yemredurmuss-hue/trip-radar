@@ -3,7 +3,7 @@
 // single file can be deleted). Files stay on this computer (see lib/docs.ts).
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { onChanged } from "../../lib/db";
-import { addDoc, deleteDoc, DOC_ACCEPT, docPill, getDoc, listDocMeta, sizeText } from "../../lib/docs";
+import { addDoc, deleteDoc, DOC_ACCEPT, docPill, getDoc, listDocMeta, needsDoc, sizeText } from "../../lib/docs";
 import { L } from "../../lib/i18n";
 import { revokeTracked, trackObjectUrl } from "../../lib/objectUrls";
 import type { DocMeta, Item } from "../../lib/types";
@@ -60,7 +60,11 @@ export function DocList({ docs }: { docs: DocMeta[] }) {
   );
 }
 
-export function DocAccess({ item, docs }: { item: Pick<Item, "id" | "tripId">; docs: DocMeta[] }) {
+/**
+ * No file yet: a faint paper clip; on a booking with no ticket or confirmation (0.35.11) a small amber
+ * "Belge eksik" instead, which picks the file just the same.
+ */
+export function DocAccess({ item, docs }: { item: Item; docs: DocMeta[] }) {
   const [list, setList] = useState(false);
   useEffect(() => {
     if (!list) return;
@@ -69,6 +73,14 @@ export function DocAccess({ item, docs }: { item: Pick<Item, "id" | "tripId">; d
     return () => document.removeEventListener("click", close);
   }, [list]);
   const pill = docPill(docs);
+  if (!pill && needsDoc(item)) {
+    return (
+      <DocPickButton item={item} className="pk-docmiss" title={L("Rezerve edildi ama bileti ya da onayı yok: ekle (PDF, görsel)", "Booked, but no ticket or confirmation: add it (PDF, image)")}>
+        <UiIcon name="clip" size={14} />
+        {L("Belge eksik", "No document")}
+      </DocPickButton>
+    );
+  }
   if (!pill) {
     return (
       <DocPickButton item={item} className="pk-ib pk-clip" title={L("Belge ekle (PDF, görsel)", "Add a document (PDF, image)")}>

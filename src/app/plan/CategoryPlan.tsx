@@ -7,13 +7,14 @@ import { sectionOfItem, type CatSection, type SectionId } from "../../lib/catego
 import { L } from "../../lib/i18n";
 import type { Plan } from "../../lib/plan";
 import type { InsertAt } from "../../lib/templates";
+import type { Item } from "../../lib/types";
 import { AddButton } from "../cards/AddSheet";
 import { KindIcon } from "../cards/Silhouettes";
 import { Section } from "./Section";
 import { SECTION_META } from "./sectionMeta";
 import { SectionTimeline, type SectionCards } from "./SectionTimeline";
 
-export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today }: {
+export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items }: {
   plan: Plan;
   sections: CatSection[];
   /** Open now: the traveller's choice, else the first look (sectionMeta.useSectionOpen). */
@@ -25,6 +26,7 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
   /** Adds in a section (its kind; at a day and city when given), or (null) anything from the plan's head. */
   onAdd: (section: SectionId | null, at: InsertAt | null) => void;
   today: string;
+  items: Item[];
 }) {
   const n = plan.nights;
   const parts = [n.booked && L(`${n.booked} rezerve`, `${n.booked} booked`), n.chosen && L(`${n.chosen} seçildi`, `${n.chosen} chosen`), n.open && L(`${n.open} açık`, `${n.open} open`)].filter(Boolean);
@@ -49,7 +51,7 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
             const opened = isOpen(s);
             return (
               <Section key={s.id} section={s} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)}>
-                <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(sectionOfItem(item), true)} today={today} />
+                <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(sectionOfItem(item), true)} today={today} items={items} />
               </Section>
             );
           })}

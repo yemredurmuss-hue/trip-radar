@@ -16,7 +16,7 @@ import {
   type GroupDecision,
 } from "./decision";
 import { needsFor } from "./cardFacts";
-import { moveDocs } from "./docs";
+import { listDocMeta, moveDocs, needsDoc } from "./docs";
 import { choiceOf, tradeText } from "./choice";
 import { currencyCode, isoDate, listingKeyOf, tripDateRange } from "./items";
 import { NEED_MARK } from "./needs";
@@ -111,6 +111,7 @@ Nasıl konuşursun:
 - Kullanıcı bir seçeneğin trip_state'te olmayan bir detayını sorarsa (TV, havuz, check-in saati, otopark...) search_page ile kayıtlı sayfasında ara. Bulduğunu alıntıyla söyle; bulamazsan "kaydettiğin sayfada göremedim" de, tahmin etme.
 
 Doğruluk:
+- items[].document "missing": rezerve edildi ama bileti ya da onayı Belgeler'de yok. O kayıt konuşulurken bir kez kısaca hatırlat ("Belgeler'e bileti ekleyebilirsin"); her cevapta tekrarlama.
 - Yalnız en son trip_state'e dayan. source "unverified" ya da "screenshot" olanları "kontrol edilmeli" diye belirt; "none" bilinmiyor demektir.
 - Puanı olmayan (score null) ya da şartına uymayan (fails) seçeneği önerme; neyin eksik olduğunu söyle.
 - Farklı tarih ya da kişi sayısı için fiyatları doğrudan kıyaslama.
@@ -162,6 +163,7 @@ How you talk:
 - If the user asks about a detail of an option that isn't in trip_state (TV, pool, check-in time, parking...), search its saved page with search_page. Say what you found with the quote; if nothing, say "I couldn't see it on the page you saved"; don't guess.
 
 Accuracy:
+- items[].document "missing": booked, but its ticket or confirmation isn't in Documents. Mention it once, briefly, when that booking comes up ("you can add the ticket in Documents"); don't repeat it every reply.
 - Rely only on the latest trip_state. Flag sources "unverified" or "screenshot" as "should be checked"; "none" means unknown.
 - Don't recommend an option without a score (score null) or one that fails a must-have (fails); say what's missing.
 - Don't compare prices for different dates or numbers of guests directly.
@@ -655,6 +657,8 @@ export function tripState(
   intent: ReturnType<typeof intentState> | null = null,
   inferred?: Inferred,
   reading?: Pick<TripDecisions, "ctx" | "decisions">,
+  /** The cards that have a file (a ticket, a confirmation): a booking without one says `document: "missing"`. */
+  withDocs?: Set<string>,
 ): string {
   const range = tripDateRange(items);
   return JSON.stringify({
@@ -691,6 +695,7 @@ export function tripState(
       flight: i.flight,
       ...readState(i, reading),
       missing: i.missing,
+      ...(withDocs && needsDoc(i) && !withDocs.has(i.id) ? { document: "missing" } : {}),
       ...(i.origin === "chat" ? { said_in_chat: true } : {}),
     })),
   });
@@ -1038,6 +1043,7 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
     intentState(trip, result),
     result.ctx.inferred,
     result,
+    new Set((await listDocMeta(tripId)).map((d) => d.itemId)),
   );
   const stateHash = hash(state);
   const lastStateHash = session.findLast((m) => m.stateHash)?.stateHash;
