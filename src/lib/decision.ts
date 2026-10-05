@@ -138,9 +138,23 @@ function explicitLevel(trip: Trip, category: Category, criterion: CriterionId): 
 }
 
 /** A note that asks for something ("sessiz bir yer istiyoruz", "merkezi olsun") makes it "Önemli". */
-const SAID_LEVEL: PriorityLevel = 3;
+export const SAID_LEVEL: PriorityLevel = 3;
 /** Criteria a note can raise, by the topic the note speaks of. */
 const SAID_CRITERIA: Partial<Record<CriterionId, string>> = { ...WISH_TOPIC, location: "location", cancellation: "cancellation" };
+
+/**
+ * The criteria one note speaks of, in the order the topics are listed above ("Sessiz ve merkezi olsun" →
+ * quiet, location): what the hero card's "Tercihler" calls the note ("Sessizlik + konum").
+ */
+export function noteCriteria(text: string): CriterionId[] {
+  const out: CriterionId[] = [];
+  for (const [re, list] of SAID) {
+    if (!re.test(text)) continue;
+    const criterion = (Object.keys(SAID_CRITERIA) as CriterionId[]).find((c) => SAID_CRITERIA[c] === list[0]);
+    if (criterion && !out.includes(criterion)) out.push(criterion);
+  }
+  return out;
+}
 
 /** The level a note sets, if the traveller's notes speak of this criterion. */
 function saidLevel(criterion: CriterionId, said: Set<string> | undefined): PriorityLevel | undefined {

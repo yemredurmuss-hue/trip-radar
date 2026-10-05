@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { db, notifyChanged } from "../lib/db";
 import { updateTrip } from "./actions";
 import { L } from "../lib/i18n";
-import { CRITERION_LABELS, LEVEL_LABELS, requirementLabel, saidTopics, WISH_TOPIC, WISHES } from "../lib/decision";
+import { lowerText } from "../lib/i18nText";
+import { CRITERION_LABELS, LEVEL_LABELS, noteCriteria, requirementLabel, SAID_LEVEL, saidTopics, WISH_TOPIC, WISHES } from "../lib/decision";
 import { activeSignals, pendingSignals } from "../lib/intent";
 import { CATEGORY_LABELS } from "../lib/items";
-import { preferenceRows, type Pref } from "../lib/preferences";
+import { noteLabelKey, preferenceRows, type Pref } from "../lib/preferences";
+import { findingTag } from "../lib/proscons";
 import { amenityLabel, type Category, type CriterionId, type Trip } from "../lib/types";
 import { HeroIcon } from "./Icons";
 import { useAppear } from "./useAppear";
@@ -92,7 +94,7 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
     entries.push({
       key: `ok:${key}`,
       scope: listing.name,
-      pref: { kind: "fine", topic: finding.text },
+      pref: { kind: "fine", topic: findingTag(finding) },
       text: L(`Sorun değil: ${finding.text}`, `Fine by you: ${finding.text}`),
       detail: L("söylediğin", "you said"),
       action: async () => {
@@ -113,7 +115,7 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
     entries.push({
       key: `must:${key}`,
       scope: listing.name,
-      pref: { kind: "matters", topic: finding.text },
+      pref: { kind: "matters", topic: findingTag(finding) },
       text: L(`Önemli: ${finding.text}`, `Matters: ${finding.text}`),
       detail: L("söylediğin · elendi", "you said · ruled out"),
       action: async () => {
@@ -130,10 +132,20 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
     // What the note asks for becomes its own criterion ("Sessizlik: önemli"), unless they set it otherwise.
     const topics = saidTopics([p.text]);
     const wishes = WISHES.filter((w) => topics.has(WISH_TOPIC[w]) && trip.priorities?.[w] === undefined).map((w) => CRITERION_LABELS[w]);
+    // In the card's rows the note goes by a few words: the topics read in it ("Sessizlik" · "Önemli"), else the
+    // model's label for it (TripPanel asks once), else its first words.
+    const criteria = noteCriteria(p.text);
+    const labelKey = noteLabelKey(p.id, p.text);
+    const label = criteria.length
+      ? criteria
+          .slice(0, 2)
+          .map((c, i) => (i ? lowerText(CRITERION_LABELS[c]) : CRITERION_LABELS[c]))
+          .join(" + ")
+      : trip.prefLabels?.[labelKey] || null;
     entries.push({
       key: `n:${p.id}`,
       scope: p.tripId ? L("Tüm gezi", "Whole trip") : L("Tüm geziler", "All trips"),
-      pref: { kind: "note", topic: p.text },
+      pref: { kind: "note", topic: p.text, label, level: criteria.length ? SAID_LEVEL : null, labelKey },
       text: p.text,
       detail: `${L("not", "note")}${
         wishes.length ? L(` · ${wishes.join(", ")} önemli sayılıyor`, ` · ${wishes.join(", ")} counted as important`) : ""
@@ -210,7 +222,7 @@ export function Preferences({ trip, decisions }: { trip: Trip; decisions: Decisi
           <dl className="hx-prefs-rows">
             {rows.slice(0, 2).map((r, n) => (
               <div key={n}>
-                <dt>{r.label}</dt>
+                <dt title={r.label}>{r.label}</dt>
                 <dd>{r.value}</dd>
               </div>
             ))}
