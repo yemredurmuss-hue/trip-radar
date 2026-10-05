@@ -1316,6 +1316,11 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .fk-check { flex: none; width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 1.6px solid #c7c7cc; background: #fff; display: grid; place-items: center; color: #fff; cursor: pointer; }
 .fk-row.done .fk-check { background: #1f8f4e; border-color: #1f8f4e; }
 .fk-ic { flex: none; width: 34px; height: 34px; border-radius: 10px; background: #fff; display: grid; place-items: center; color: var(--fk-ink); }
+/* a to-do from a page (Maps, a blog): a small photo of it in place of the icon */
+/* a touch larger than an icon, drawn into its slot (−3px each side) so the titles stay in one column */
+.fk-thumb { width: 40px; height: 40px; margin: -3px; overflow: hidden; background: var(--fk-soft); }
+.fk-thumb-img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.fk-row.done .fk-thumb-img { opacity: .55; }
 .fk-t { min-width: 0; flex: 1; }
 .fk-t b { display: block; font-size: 15px; font-weight: 500; }
 .fk-t > span { display: block; font-size: 13px; color: var(--fk-gray); }
@@ -1362,7 +1367,7 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .empty-card .pk-ed-hint { white-space: normal; }
 
 /* ---------- 0.34: the Plan by category (docs/mockups/2026-10-05-kategoriler-v2.html): a tinted section per kind,
-   a timeline of the approved cards inside, one thin line per record when closed ---------- */
+   a timeline of the approved cards inside; closed, the header line alone ("Uçuş 3/4 · 1 bilet yok") ---------- */
 .cat-plan { --fk-ink: #1d1d1f; --fk-gray: #6e6e73; --fk-line: #e8e8ed; --fk-soft: #f5f5f7; }
 .cat-plan > .section-head { margin-bottom: 14px; }
 .cat-sec { --c: #6e6e73; margin: 0 0 12px; border-radius: 22px; background: color-mix(in srgb, var(--c) 7%, #fff); border: 1px solid color-mix(in srgb, var(--c) 16%, #fff); scroll-margin-top: 12px; }
@@ -1383,19 +1388,8 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .cat-sec.closed .cat-chev svg { transform: rotate(-90deg); }
 .cat-body { padding: 0 16px 16px; }
 
-/* closed: one thin line per record, none hidden */
-.cat-rows { list-style: none; margin: 0; padding: 0 16px 12px; }
-.cat-rows li + li .cat-row { border-top: 1px solid color-mix(in srgb, var(--c) 10%, #fff); }
-.cat-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto auto auto; gap: 12px; align-items: center; width: 100%; padding: 8px 10px; border: 0; border-radius: 10px; background: none; font: inherit; font-size: 14px; color: #1d1d1f; text-align: left; cursor: pointer; }
-.cat-row:hover, .cat-row:focus-visible { background: rgba(255, 255, 255, .7); outline: none; }
-.cat-row b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cat-ring { width: 18px; height: 18px; border-radius: 50%; border: 2px dashed #cdb07a; }
-.cat-ring.half { border: 2px solid #e0a43a; }
-.cat-ring.yes { display: grid; place-items: center; border: 0; background: #1f8f4e; color: #fff; font-size: 11px; font-weight: 700; }
-.cat-meta { font-size: 13px; color: #6e6e73; white-space: nowrap; }
-.cat-price { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.cat-st { font-size: 12px; font-weight: 600; color: #85570a; white-space: nowrap; }
-.cat-st.ok { color: #1d7442; }
+/* closed: the header alone, one compact line */
+.cat-sec.closed .cat-head { padding-top: 10px; padding-bottom: 10px; }
 
 /* open: a timeline — the day on the left, a line and a dot, the cards on the right */
 .cat-line { list-style: none; margin: 0; padding: 0; }
@@ -1428,19 +1422,14 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .cat-chip svg { color: var(--c); }
 .cat-chip:hover { border-color: var(--c); }
 
-/* a narrow board (≤620 px): the day goes above its cards on one line; a closed line wraps under its name */
+/* a narrow board (≤620 px): the day goes above its cards on one line; the header wraps under its name */
 @container panel (max-width: 620px) {
   .cat-head { flex-wrap: wrap; gap: 10px; padding: 12px 12px; }
   .cat-title { flex: 1 1 auto; flex-wrap: wrap; row-gap: 6px; }
   .cat-body { padding: 0 10px 12px; }
-  .cat-rows { padding: 0 8px 10px; }
   .cat-day { grid-template-columns: minmax(0, 1fr); padding-bottom: 14px; }
   .cat-day::before, .cat-dot { display: none; }
   .cat-date { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 0 4px 8px; text-align: left; }
-  .cat-row { grid-template-columns: 22px minmax(0, 1fr) auto; row-gap: 2px; }
-  .cat-row .cat-meta { grid-column: 2; grid-row: 2; white-space: normal; }
-  .cat-row .cat-price { grid-column: 3; grid-row: 1; }
-  .cat-row .cat-st { grid-column: 3; grid-row: 2; }
 }
 
 /* ---------- 0.34.1: Günlük akış as day cards (approved widget "günlük akış v4") ----------
