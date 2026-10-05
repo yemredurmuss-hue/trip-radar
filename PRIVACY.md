@@ -1,6 +1,6 @@
 # Trip Radar — Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-06 · Sürüm / Version: 0.36.11
+Son güncelleme / Last updated: 2026-10-06 · Sürüm / Version: 0.36.12
 
 ---
 
@@ -36,6 +36,9 @@ Anthropic'in ve aşağıda adı geçen diğer hizmetlerin kendi gizlilik politik
 - notların ve yapay zekâ ile sohbet geçmişin,
 - eklediğin belgeler (bilet PDF'leri, görseller),
 - tercihlerin, profil adın ve (eklediysen) profil fotoğrafın,
+- "Kimler gidiyor?"a yazdığın kişilere eklediğin fotoğraflar (yalnız bu bilgisayarda; kimseye, o kişiye de
+  gönderilmez),
+- yeni gezi başlatırken yarım bıraktığın taslaklar (en fazla 8; dışa aktarıma girmez),
 - kendi yapay zekâ anahtarını girdiysen o anahtar.
 
 Bu verileri biz görmeyiz, bize gönderilmez. Bunlar üzerindeki denetim tamamen sende: görebilir, düzeltebilir,
@@ -61,7 +64,8 @@ okunur ve yapay zekâya gönderilir. Kişisel bilgi gösteren bir sayfayı kayde
 Ne gönderilir:
 
 - kaydettiğin sayfanın metni ve küçük ekran görüntüsü,
-- sohbet mesajların (ve yanıt için gereken gezi bilgileri),
+- sohbet mesajların (ve yanıt için gereken gezi bilgileri); yeni bir geziyi sohbetle başlatırken yazdıkların ve
+  rota önerisi isteği de buna dahil,
 - okutmak istediğin belgeler,
 - arka planda, sen ayrıca istemeden: gezinin özeti (şehirler, tarihler, kaç kişi gittiği, kaydettiğin seçenekler
   ve türleri, notların). Seçenekleri karşılaştırma yorumu, gezinin tarz etiketleri ve öneriler bundan çıkar; öneri gözden
@@ -247,6 +251,9 @@ The following is kept only in this browser's local storage (IndexedDB and `chrom
 - your notes and your chat history with the AI,
 - documents you attach (ticket PDFs, images),
 - your preferences, your profile name and (if you added one) your profile photo,
+- photos you give the people you name in "Who's going?" (only on this computer; sent to no one, not to that person
+  either),
+- drafts of a new trip you left unfinished (at most 8; not in the export),
 - your own AI key, if you entered one.
 
 We do not see this data and it is not sent to us. You control it fully: you can view, correct and delete it.
@@ -271,7 +278,8 @@ and sent to the AI. If you do not want a page showing personal details to be pro
 What is sent:
 
 - the text and a small screenshot of a page you save,
-- your chat messages (and the trip details needed to answer),
+- your chat messages (and the trip details needed to answer), including what you write when starting a new trip
+  by chat and the request for a suggested route,
 - documents you ask it to read,
 - in the background, without you asking each time: a summary of the trip (cities, dates, how many people go, the
   options you saved and their kinds, your notes). The comparison review, the trip's style words and suggestions come from it; the
