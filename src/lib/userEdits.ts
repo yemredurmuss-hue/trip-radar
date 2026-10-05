@@ -67,9 +67,12 @@ export function withEdits(item: Item): Item {
     f || e.from !== undefined || e.to !== undefined || (e.time !== undefined && start)
       ? { from: e.from ?? f?.from ?? null, to: e.to ?? f?.to ?? null, departure, arrival, carrier: f?.carrier ?? null, flightNumber: f?.flightNumber ?? null, stops: f?.stops ?? null }
       : null;
+  // The box opens with the page's amount as the page gives it (per night, per person...): the corrected
+  // amount is in that same unit, so it keeps the page's scope (a flight per person stays per person).
+  const scope = item.price.amount != null ? item.price.scope : ("total" as const);
   const price =
     e.price != null
-      ? { amount: e.price, currency: e.currency ?? item.price.currency, scope: "total" as const, taxesIncluded: "unknown" as const, source: "user" as const, observedAt: item.price.observedAt }
+      ? { amount: e.price, currency: e.currency ?? item.price.currency, scope, taxesIncluded: "unknown" as const, source: "user" as const, observedAt: item.price.observedAt }
       : item.price;
   return {
     ...item,
@@ -80,6 +83,18 @@ export function withEdits(item: Item): Item {
     price,
     pageValues,
   };
+}
+
+/**
+ * A stored record whose fields the chat just set (set_price, set_details): the corrections over those
+ * fields go, so the card shows what was said in the chat rather than an older correction on top of it.
+ */
+export function withoutEdits(item: Item, keys: EditKey[]): Item {
+  if (!item.userEdits || !keys.some((k) => k in item.userEdits!)) return item;
+  const rest: UserEdits = { ...item.userEdits };
+  for (const k of keys) delete rest[k];
+  const { userEdits: _was, ...bare } = item;
+  return Object.keys(rest).length ? { ...bare, userEdits: rest } : bare;
 }
 
 /** The page's value under a corrected field, in words, for "sayfadaki: X · geri al"; null when not corrected. */

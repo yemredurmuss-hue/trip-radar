@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { db, listMessages } from "../src/lib/db";
 import { mergeItem } from "../src/lib/items";
 import { buildPlan } from "../src/lib/plan";
-import { clearUserEdit, correctionOf, editsAfter, saveUserEdit, withEdits } from "../src/lib/userEdits";
+import { clearUserEdit, correctionOf, editsAfter, saveUserEdit, withEdits, withoutEdits } from "../src/lib/userEdits";
 import type { Item, Trip } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -94,5 +94,28 @@ describe("saving and taking back", () => {
     expect(back.userEdits).toBeUndefined();
     expect(withEdits(back).name).toBe("Jardim Stay");
     expect((await listMessages("t-ue")).map((m) => m.text)).toEqual(["Jardim bahçe düzeltildi", "Jardim Stay: sayfadaki değere dönüldü"]);
+  });
+});
+
+describe("a corrected price keeps the page's unit", () => {
+  it("a flight priced per person stays per person; a stay per night stays per night", () => {
+    const perPerson = flight({ price: { amount: 80, currency: "EUR", scope: "per_person", taxesIncluded: "yes", source: "page", observedAt: 1 }, userEdits: { price: 85 } });
+    expect(withEdits(perPerson).price).toMatchObject({ amount: 85, scope: "per_person", source: "user" });
+    const perNight = hotel({ price: { amount: 100, currency: "EUR", scope: "per_night", taxesIncluded: "yes", source: "page", observedAt: 1 }, userEdits: { price: 110 } });
+    expect(withEdits(perNight).price).toMatchObject({ amount: 110, scope: "per_night" });
+  });
+  it("a page with no price: the amount typed is the total", () => {
+    const none = hotel({ price: { amount: null, currency: null, scope: "unknown", taxesIncluded: "unknown", source: "page", observedAt: 1 }, userEdits: { price: 300, currency: "EUR" } });
+    expect(withEdits(none).price).toMatchObject({ amount: 300, currency: "EUR", scope: "total" });
+  });
+});
+
+describe("the chat setting a field the card corrected", () => {
+  it("takes those corrections away and keeps the others", () => {
+    const h = hotel({ userEdits: { name: "Jardim bahçe", price: 400, currency: "TRY", start: "2026-10-09" } });
+    expect(withoutEdits(h, ["price", "currency"]).userEdits).toEqual({ name: "Jardim bahçe", start: "2026-10-09" });
+    expect("userEdits" in withoutEdits(hotel({ userEdits: { price: 400 } }), ["price", "currency"])).toBe(false);
+    const plain = hotel();
+    expect(withoutEdits(plain, ["price"])).toBe(plain);
   });
 });
