@@ -3,7 +3,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { loadDecisions } from "../src/lib/analysis";
-import { categorize, catDomKey, findInSections, sectionOfItem, sectionStatus, SECTION_ORDER, type CatSection } from "../src/lib/categories";
+import { categorize, catDomKey, findInSections, sectionOfItem, sectionProgress, sectionStatus, SECTION_ORDER, type CatSection } from "../src/lib/categories";
 import { db, listItems } from "../src/lib/db";
 import { loadDemoTrip } from "../src/lib/demo";
 import { buildLegs } from "../src/lib/legs";
@@ -425,5 +425,16 @@ describe("what's hidden, section by section (kategoriler-v4: \"Gizlenenler · N 
     const sections = categorize({ plan, timeline: buildTimeline(plan, legs, items), items, legs });
     expect(hiddenOf(sections)).toEqual({ stay: plan.closed.map((c) => `closed:${c.item.name}`) });
     expectHiddenOnce(sections, [...plan.closed.map((c) => `item:${c.item.id}`), ...items.filter((i) => i.status === "dismissed").map((i) => `item:${i.id}`)]);
+  });
+});
+
+describe("the header's bar", () => {
+  it("fills settled of all, whole numbers; complete (green) only when everything is settled", () => {
+    const of = (settled: number, total: number) => sectionProgress({ settled, entries: Array.from({ length: total }) as CatSection["entries"] });
+    expect(of(3, 4)).toEqual({ settled: 3, total: 4, pct: 75, complete: false });
+    expect(of(1, 3)).toEqual({ settled: 1, total: 3, pct: 33, complete: false });
+    expect(of(2, 2)).toEqual({ settled: 2, total: 2, pct: 100, complete: true });
+    // Only hidden things: nothing to fill, never "complete".
+    expect(of(0, 0)).toEqual({ settled: 0, total: 0, pct: 0, complete: false });
   });
 });

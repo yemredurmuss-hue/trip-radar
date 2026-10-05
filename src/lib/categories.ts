@@ -678,6 +678,12 @@ function sectionOf(id: SectionId, list: CatEntry[], plan: Plan, hidden: HiddenTh
   return { id, entries, days: daysOf(entries, plan), status, settled: entries.filter((e) => e.state === "done").length, open: status?.tone === "wait", hidden };
 }
 
+/** The header's bar and "3/4" (kategoriler-v4): settled of all, the fill in whole percent, green once all is settled. */
+export function sectionProgress(section: Pick<CatSection, "settled" | "entries">): { settled: number; total: number; pct: number; complete: boolean } {
+  const total = section.entries.length;
+  return { settled: section.settled, total, pct: total ? Math.round((section.settled / total) * 100) : 0, complete: total > 0 && section.settled === total };
+}
+
 /** The section and entry that hold a to-do's target (a record, a transfer, a block), tried in that order; `dom`: its card's key. */
 export function findInSections(
   sections: CatSection[],
