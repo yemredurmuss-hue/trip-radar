@@ -4,6 +4,7 @@ import { L, locale } from "../lib/i18n";
 import { lowerText } from "../lib/i18nText";
 import { CATEGORY_LABELS, formatDateRange, formatPrice } from "../lib/items";
 import type { FactSource, Item, ItemStatus, Trip } from "../lib/types";
+import { deleteItem } from "../lib/removal";
 import { Evidence } from "./Evidence";
 import type { Decisions } from "./useDecisions";
 
@@ -152,8 +153,7 @@ export function ItemDrawer({ item, group, trips, decision, decisions, onClose, o
 
   async function remove() {
     if (!confirm(L(`${item.name} tamamen silinsin mi?`, `Delete ${item.name} for good?`))) return;
-    await (await db()).delete("items", item.id);
-    notifyChanged();
+    await deleteItem(item);
     onClose();
   }
 

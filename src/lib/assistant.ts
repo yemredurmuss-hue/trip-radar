@@ -16,6 +16,7 @@ import {
   type GroupDecision,
 } from "./decision";
 import { needsFor } from "./cardFacts";
+import { moveDocs, takeDocsOf } from "./docs";
 import { choiceOf, tradeText } from "./choice";
 import { currencyCode, isoDate, listingKeyOf, tripDateRange } from "./items";
 import { NEED_MARK } from "./needs";
@@ -716,6 +717,7 @@ async function runTool(tripId: string, name: string, input: any, choices: string
         // A plan said in the chat and taken back ("taksiyi kaldır") has nothing to keep: it goes.
         if (c.status === "dismissed" && item.origin === "chat") {
           current.delete(item.id);
+          await takeDocsOf(item.id);
           await d.delete("items", item.id);
           continue;
         }
@@ -839,7 +841,10 @@ async function runTool(tripId: string, name: string, input: any, choices: string
             return r && r.start >= nights.start && r.end <= nights.end && (!i.city || !saved.city || sameCity(i.city, saved.city));
           })
         : [];
-      for (const i of merged) await d.delete("items", i.id);
+      for (const i of merged) {
+        await moveDocs(i.id, saved.id);
+        await d.delete("items", i.id);
+      }
       if (merged.length) result.merged = merged.map((i) => `${i.name} (${stayRange(i)!.start}..${stayRange(i)!.end})`);
       const trip = nights ? await d.get("trips", tripId) : undefined;
       if (nights && trip) {

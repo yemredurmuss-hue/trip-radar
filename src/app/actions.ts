@@ -1,6 +1,7 @@
 // Small write actions shared by the board's views.
 import { addEvent, db, notifyChanged } from "../lib/db";
 import { L } from "../lib/i18n";
+import { deleteItem } from "../lib/removal";
 import type { Category, Item, ItemStatus, Trip } from "../lib/types";
 
 /** The trip history line for a status change, written in the current language. */
@@ -61,10 +62,18 @@ export async function chooseItem(item: Item, alternatives: Item[]): Promise<void
   await setItemStatus(item, "chosen");
 }
 
-/** "Planı kaldır": a plan said in the chat has no page behind it, so it simply goes. */
+/** "Planı kaldır": a plan said in the chat has no page behind it, so it simply goes (its files too). */
 export async function removeItem(item: Item): Promise<void> {
-  await (await db()).delete("items", item.id);
-  await addEvent(item.tripId, L(`${item.name} plandan kaldırıldı`, `${item.name} removed from the plan`));
+  await deleteItem(item, L(`${item.name} plandan kaldırıldı`, `${item.name} removed from the plan`));
+}
+
+/** eSIM "Kurdum" (and "Kurulmadı" to take it back). */
+export async function setInstalled(item: Item, installed: boolean): Promise<void> {
+  const d = await db();
+  const fresh = (await d.get("items", item.id)) ?? item;
+  const { installedAt: _was, ...rest } = fresh;
+  await d.put("items", installed ? { ...fresh, installedAt: Date.now(), updatedAt: Date.now() } : { ...rest, updatedAt: Date.now() });
+  await addEvent(item.tripId, installed ? L(`${item.name} kuruldu`, `${item.name} installed`) : L(`${item.name} kurulmadı olarak geri alındı`, `${item.name} marked as not installed`));
   notifyChanged();
 }
 

@@ -1,8 +1,9 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
-import { updateTrip } from "../src/app/actions";
+import { setInstalled, updateTrip } from "../src/app/actions";
 import { db } from "../src/lib/db";
 import type { Trip } from "../src/lib/types";
+import { makeItem } from "./fixtures/makeItem";
 
 const trip = (id: string): Trip => ({ id, title: id, confirmedDates: null, budget: null, heroImage: null, createdAt: 1, updatedAt: 5 });
 
@@ -26,5 +27,17 @@ describe("updateTrip", () => {
   it("does nothing for a trip that is gone", async () => {
     await expect(updateTrip("nope", (t) => t)).resolves.toBeUndefined();
     expect(await (await db()).get("trips", "nope")).toBeUndefined();
+  });
+});
+
+describe("an eSIM installed", () => {
+  it("is marked and can be taken back", async () => {
+    const d = await db();
+    const esim = makeItem({ category: "esim", status: "booked", tripId: "t9" });
+    await d.put("items", esim);
+    await setInstalled(esim, true);
+    expect((await d.get("items", esim.id))!.installedAt).toEqual(expect.any(Number));
+    await setInstalled(esim, false);
+    expect((await d.get("items", esim.id))!.installedAt).toBeUndefined();
   });
 });

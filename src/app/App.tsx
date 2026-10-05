@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { resetConversation } from "../lib/assistant";
 import { db, notifyChanged } from "../lib/db";
 import { loadDemoTrip } from "../lib/demo";
+import { deleteTripDocs } from "../lib/docs";
 import { L } from "../lib/i18n";
 import { routeUrl } from "../lib/items";
 import { buildPlan, groupKeyOf, liveGroups } from "../lib/plan";
@@ -73,6 +74,7 @@ export function App() {
     const d = await db();
     for (const i of board.items) await d.delete("items", i.id);
     for (const m of board.messages) await d.delete("messages", m.id);
+    await deleteTripDocs(trip.id);
     await d.delete("trips", trip.id);
     board.selectTrip(null);
     notifyChanged();
