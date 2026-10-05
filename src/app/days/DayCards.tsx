@@ -272,7 +272,10 @@ function DaySection({ card, mode, isToday, stays, onPick, ...props }: { card: Da
             {card.dayNo && <span className={isToday ? "today" : ""}>{isToday ? L("Bugün", "Today") : dateText(card)}</span>}
             {experiences > 0 && <span>{L(`${experiences} deneyim`, `${experiences} experience${experiences === 1 ? "" : "s"}`)}</span>}
           </span>
-          <span className="ttl">{card.title}</span>
+          <span className="ttl">
+            {card.title}
+            {card.tag && <> <em className="dl-tag">{card.tag}</em></>}
+          </span>
         </span>
         <DayChips card={card} />
       </header>
@@ -480,9 +483,13 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
         </svg>
         <header className="dl-head">
           <span className="dl-htext">
-            <span className="ttl">{card.title}</span>
+            <span className="ttl">
+              {card.title}
+              {card.tag && <> <em className="dl-tag">{card.tag}</em></>}
+            </span>
             <span className="dl-date">
               {card.dayNo && <span className={isToday ? "today" : ""}>{isToday ? L("Bugün", "Today") : dateText(card)}</span>}
+              {card.route && <span>{card.route}</span>}
               <DayChips card={card} />
             </span>
           </span>

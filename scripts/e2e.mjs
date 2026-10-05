@@ -383,7 +383,9 @@ try {
   assert.deepEqual(await app.locator(".dc-strip button").allInnerTexts(), ["1", "2", "3", "4", "5–6", "7"]);
   // Liste as Emre's reference: a card a day, its photo on the left with "N. gün" on it, the title, the hours.
   assert.equal(await app.locator(".dc-raillab").count(), 0, "no rail in the list");
-  assert.equal(await dayCard(4).locator(".dl-head .ttl").innerText(), "Porto → Lizbon");
+  // Standard titles by the code (0.35.5): "Porto 1. Gün" and the kind of day beside it; the route under it.
+  assert.deepEqual(flat(await app.locator(".dl-head .ttl").allInnerTexts()), ["Porto 1. Gün Varış", "Porto 2. Gün", "Porto 3. Gün Boş gün", "Lizbon 4. Gün Yolculuk", "Lizbon 5–6. Gün Boş günler", "Lizbon 7. Gün Dönüş"]);
+  await dayCard(4).locator(".dl-date", { hasText: "Porto → Lizbon" }).waitFor();
   const photoBox = await dayCard(4).locator(".dl-photo").boundingBox();
   const bodyBox = await dayCard(4).locator(".dl-body").boundingBox();
   assert.ok(photoBox.x < bodyBox.x && Math.abs(photoBox.height - bodyBox.height) < 1, "the photo on the left, as tall as the day");

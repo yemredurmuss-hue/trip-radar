@@ -24,15 +24,19 @@ async function demoCards() {
 describe("day cards", () => {
   it("one card a day of the sample trip, in order, free days merged", async () => {
     const cards = await demoCards();
-    const line = cards.map((c) => `${c.dayNo} ${c.date}${c.end ? `–${c.end}` : ""} ${c.title}`);
-    expect(line[0]).toBe("1. gün 2026-10-08 İstanbul → Porto");
-    expect(line).toContain("4. gün 2026-10-11 Porto → Lizbon");
-    expect(line.at(-1)).toMatch(/^7\. gün 2026-10-14 Lizbon →/);
+    // Standard titles, by the code (0.35.5): the city and the day, the kind of day beside it.
+    const line = cards.map((c) => `${c.dayNo} ${c.date}${c.end ? `–${c.end}` : ""} ${c.title}${c.tag ? ` [${c.tag}]` : ""}`);
+    expect(line[0]).toBe("1. gün 2026-10-08 Porto 1. Gün [Varış]");
+    expect(line[1]).toBe("2. gün 2026-10-09 Porto 2. Gün");
+    expect(line).toContain("3. gün 2026-10-10 Porto 3. Gün [Boş gün]");
+    expect(line).toContain("4. gün 2026-10-11 Lizbon 4. Gün [Yolculuk]");
+    expect(line.at(-1)).toBe("7. gün 2026-10-14 Lizbon 7. Gün [Dönüş]");
+    expect(cards.find((c) => c.tag === "Yolculuk")?.route).toBe("Porto → Lizbon");
     // Every date of the trip is on exactly one card.
     const covered = cards.flatMap((c) => (c.end ? [c.date, c.end] : [c.date]));
     expect(new Set(covered).size).toBe(covered.length);
     // Lisbon's two free days are one card.
-    expect(cards.find((c) => c.end)?.title).toBe("Lizbon · boş günler");
+    expect(cards.find((c) => c.end)).toMatchObject({ title: "Lizbon 5–6. Gün", tag: "Boş günler" });
   });
   it("folds a long day to three lines and the rest", () => {
     const r = (key: string, kind: DayRow["kind"] = "item", state: DayRow["state"] = "done") => ({ key, kind, state }) as DayRow;
@@ -64,7 +68,7 @@ describe("a day's look", () => {
   it("each row has the Plan's kind; the photo comes from the day's highlight, else its city", async () => {
     const { rowKind, highlightOf, dayPhoto } = await import("../src/lib/dayCards");
     const cards = await demoCards();
-    const move = cards.find((c) => c.title === "Porto → Lizbon")!;
+    const move = cards.find((c) => c.route === "Porto → Lizbon")!;
     expect(move.rows.filter(isPlanRow).map(rowKind)).toEqual(["taxi", "train", "taxi"]);
     expect(dayPhoto(move)).toEqual({ query: "Lizbon" });
     expect(rowKind(highlightOf(move)!)).toBe("train"); // the train, not the taxi to the station
@@ -89,7 +93,7 @@ describe("the trip as it goes", () => {
     const { groupDays, daysLabel } = await import("../src/lib/dayCards");
     const cards = await demoCards();
     const groups = groupDays(cards);
-    expect(groups.map((g) => (g.kind === "travel" ? `✈ ${g.card.title}` : `📍 ${g.city} ${daysLabel(g.cards)}`))).toEqual([
+    expect(groups.map((g) => (g.kind === "travel" ? `✈ ${g.card.route}` : `📍 ${g.city} ${daysLabel(g.cards)}`))).toEqual([
       "✈ İstanbul → Porto",
       "📍 Porto 2–3. gün",
       "✈ Porto → Lizbon",

@@ -21,7 +21,10 @@ export interface DayCard {
   city: string | null;
   /** A day that moves: "Porto → Lizbon". */
   route: string | null;
+  /** The standard title (0.35.5, worked out by the code): the city and the day, "Porto 2. Gün". */
   title: string;
+  /** What kind of day, beside the title: "Varış", "Yolculuk", "Dönüş", "Boş gün"; null for a day in a city. */
+  tag: string | null;
   rows: DayRow[];
 }
 
@@ -30,7 +33,17 @@ export const isPlanRow = (r: DayRow) => r.kind !== "info" && r.kind !== "ideas" 
 /** Ideas saved for the day (to pick from, or to do without booking). */
 export const ideaCount = (rows: DayRow[]) => rows.reduce((n, r) => n + (r.kind === "ideas" ? r.items.length : r.kind === "idea" ? 1 : 0), 0);
 
-/** The days in order: a city day titled by its city, a day that moves by its route. */
+/**
+ * A day's standard title (0.35.5, Emre: "Porto 1. Gün Varış", "Porto 2. Gün"): the city it's about and the trip's
+ * day, the same words every time; the kind of day goes beside it as `tag`. With no city or no day number, the
+ * given words (a route, "Boş gün").
+ */
+export function dayTitle(city: string | null, dayNo: string | null, otherwise: string): string {
+  if (!city || !dayNo) return otherwise;
+  return L(`${city} ${dayNo.replace(/gün$/, "Gün")}`, `${city} · ${dayNo}`);
+}
+
+/** The days in order, each titled "Porto 2. Gün" (and "Varış", "Yolculuk", "Dönüş", "Boş gün" beside it). */
 export function dayCards(sections: TimelineSection[], opts: { rentals?: RentalEntry[]; listings?: Map<string, Listing>; times?: DayTimeOverrides } = {}): DayCard[] {
   const out: DayCard[] = [];
   for (const section of sections) {
@@ -41,21 +54,25 @@ export function dayCards(sections: TimelineSection[], opts: { rentals?: RentalEn
       const from = place(j.from);
       const to = place(j.to);
       const route = from && to ? `${from} → ${to}` : to ? `→ ${to}` : from ? `${from} →` : null;
-      const word = j.role === "arrival" ? L("Varış", "Arrival") : j.role === "departure" ? L("Dönüş", "Return") : L("Şehir değişimi", "Change of city");
+      const word = j.role === "arrival" ? L("Varış", "Arrival") : j.role === "departure" ? L("Dönüş", "Return") : L("Yolculuk", "On the move");
+      const dayNo = j.dayNo ? L(`${j.dayNo}. gün`, `Day ${j.dayNo}`) : null;
+      // Arriving and moving on, the day is the new city's; going home, the city left.
+      const city = j.role === "departure" ? from : to;
       out.push({
         key: section.key,
         date: j.date,
         end: null,
-        dayNo: j.dayNo ? L(`${j.dayNo}. gün`, `Day ${j.dayNo}`) : null,
-        city: j.role === "departure" ? from : to,
+        dayNo,
+        city,
         route,
-        title: route ?? word,
+        title: dayTitle(city, dayNo, route ?? word),
+        tag: word,
         rows: applyDayTimes(dayRows({ journey: section, rentals: opts.rentals, listings: opts.listings }), opts.times),
       });
     } else if (section.kind === "travel") {
       const e = section.entry;
       const rows = dayRows({ journey: { kind: "journey", key: section.key, journey: { key: section.key, role: "move", date: e.date, dayNo: null, from: null, to: null, out: null, in: null }, entries: [e] } });
-      out.push({ key: section.key, date: e.date, end: null, dayNo: null, city: null, route: null, title: rows.find(isPlanRow)?.title ?? formatDateRange(e.date, null), rows });
+      out.push({ key: section.key, date: e.date, end: null, dayNo: null, city: null, route: null, title: rows.find(isPlanRow)?.title ?? formatDateRange(e.date, null), tag: null, rows });
     } else {
       for (const e of section.entries) {
         if (e.kind !== "day") continue;
@@ -65,7 +82,8 @@ export function dayCards(sections: TimelineSection[], opts: { rentals?: RentalEn
         if (!rows.length && prev && !prev.rows.length && prev.city === section.city && prev.dayNo) {
           prev.end = e.date;
           prev.dayNo = prev.dayNo.replace(/^(\d+)(?:–\d+)?/, `$1–${e.dayNo}`).replace(/^Day (\d+)(?:–\d+)?/, `Days $1–${e.dayNo}`);
-          prev.title = section.city ? L(`${section.city} · boş günler`, `${section.city} · free days`) : L("Boş günler", "Free days");
+          prev.title = dayTitle(section.city, prev.dayNo, L("Boş günler", "Free days"));
+          prev.tag = L("Boş günler", "Free days");
           continue;
         }
         out.push({
@@ -75,7 +93,8 @@ export function dayCards(sections: TimelineSection[], opts: { rentals?: RentalEn
           dayNo: L(`${e.dayNo}. gün`, `Day ${e.dayNo}`),
           city: section.city,
           route: null,
-          title: rows.length ? (section.city ?? e.title) : section.city ? L(`${section.city} · boş gün`, `${section.city} · free day`) : L("Boş gün", "Free day"),
+          title: dayTitle(section.city, L(`${e.dayNo}. gün`, `Day ${e.dayNo}`), rows.length ? (section.city ?? e.title) : L("Boş gün", "Free day")),
+          tag: rows.length ? null : L("Boş gün", "Free day"),
           rows,
         });
       }

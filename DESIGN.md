@@ -175,6 +175,9 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
   birlikte altta durur: "Gün içinde · saatsiz" (o güne konan restoranlar, yapılacak şeyler). Kapalıyken "+ N
   saatsiz". Boş günde "+ Bu güne ekle" açmadan görünür. Satıra dokunmak Kartlar'da o kartı açar. Liste'de ray yok;
   ray ve şehir grupları Kartlar'da.
+- **Gün başlıkları kodla, standart** (0.35.5, Emre: "Porto 1. Gün Varış", "Porto 2. Gün"): şehir + gezinin günü;
+  yanında soluk günün türü: Varış, Yolculuk (yeni şehrin adıyla), Dönüş (ayrılınan şehir), Boş gün / Boş günler.
+  Rota ("Porto → Lizbon") tarih satırında. AI başlık yok.
 - **Günlük akış** (0.34.8) tek anahtarla iki görünüm, günler tek tek açılıp kapanmaz. Üstte yapışkan çubuk:
   **Liste | Kartlar** (seçim bu tarayıcıda hatırlanır) ve gün şeridi (1 · 2 · 3 · 4 · 5–6 · 7; bugün mavi), şerit
   o güne kaydırır. İkisinde de aynı satırlar, aynı sıra.
