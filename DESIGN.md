@@ -143,10 +143,13 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
   çizgisi olarak: saat · nokta · Plan kartlarının tür ikonu kendi renginde (köşede yeşil ✓ alındı, amber nokta
   yapılacak) · ad; check-in, check-out, metro ince satır; güne eklenen fikirler tek tek. Katlanma yok, kart günü kadar
   uzar; kısa günde sağ altta türün soluk silueti. Bir satıra dokunmak Kartlar'a geçip o kartı gösterir (kısa vurgu).
-- **Kartlar**: Plan'ın kendisi, gün gün. Her günün başlığı (küçük fotoğraf · "4. gün" · başlık · tarih · haplar)
-  kaydırırken çubuğun altında kalır; altında satırlar saatleriyle, her biri Plan'daki kartıyla (giriş günündeki
-  check-in konaklamanın kartı, uçuşa giden transfer "nasıl gideceksin"iyle); diğer bilgi satırları ince. Plan'dan
-  tek farkı sıralama: kategori değil gün. Her günün altında "+ Bu güne ekle".
+- **Kartlar** (0.35.1, Layla'dan ilham, bizim farkımız gün gün): yolculuk sırasıyla gruplar, solda ray: yuvarlak
+  koyu ikon + etiket + tarih. Yol günü kendi başına (✈/🚆 "Varış" · "Yolculuk" · "Dönüş"), aradaki şehir günleri
+  birlikte (📍 "2–3. gün", büyük şehir adı ve "N gün"). Her gün: başlığı (küçük fotoğraf · "4. gün" hapı · tarih ya da
+  mavi "Bugün" · "N deneyim" / ikinci satırda başlık · haplar) kaydırırken çubuğun altında kalır; altında satırlar
+  saatleriyle, her biri Plan'daki kartıyla (giriş günündeki check-in konaklamanın kartı, uçuşa giden transfer
+  "nasıl gideceksin"iyle); diğer bilgi satırları ince. Her günün altında "+ Bu güne ekle". Şeritte günler şehir
+  adlarıyla gruplu ("Porto 1 2 3 · Lizbon 4 5–6 7").
 - Saat solda: kayıttan gelen düz, alışılmış ya da hesaplanan "~"; bilinmeyen boş.
 
 ## Azaltmak

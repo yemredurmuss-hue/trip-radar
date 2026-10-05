@@ -83,3 +83,18 @@ describe("the whole day", () => {
     expect(flowRows(card).map((x) => `${x.kind}:${x.title}`)).toEqual(["info:out", "leg:taxi", "idea:Casa Guedes", "idea:Jardim do Morro"]);
   });
 });
+
+describe("the trip as it goes", () => {
+  it("travel days alone, a city's days together, in order", async () => {
+    const { groupDays, daysLabel } = await import("../src/lib/dayCards");
+    const cards = await demoCards();
+    const groups = groupDays(cards);
+    expect(groups.map((g) => (g.kind === "travel" ? `✈ ${g.card.title}` : `📍 ${g.city} ${daysLabel(g.cards)}`))).toEqual([
+      "✈ İstanbul → Porto",
+      "📍 Porto 2–3. gün",
+      "✈ Porto → Lizbon",
+      "📍 Lizbon 5–6. gün",
+      "✈ Lizbon → İstanbul",
+    ]);
+  });
+});

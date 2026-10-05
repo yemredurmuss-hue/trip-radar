@@ -155,3 +155,32 @@ export function flowRows(card: DayCard): DayRow[] {
     r.kind === "ideas" ? r.items.map((i) => ({ ...r, key: `idea:${i.id}`, kind: "idea" as const, title: i.name, sub: null, item: i, items: [] })) : [r],
   );
 }
+
+export type DayGroup =
+  | { kind: "travel"; key: string; card: DayCard }
+  | { kind: "city"; key: string; city: string | null; cards: DayCard[] };
+
+/**
+ * The days as the trip goes: a day that travels (arrival, a change of city, home) on its own; the days in
+ * a city between them together, in order. Layla's rail, day by day.
+ */
+export function groupDays(cards: DayCard[]): DayGroup[] {
+  const out: DayGroup[] = [];
+  for (const c of cards) {
+    const travels = !!c.route || !c.dayNo;
+    const last = out.at(-1);
+    if (travels) out.push({ kind: "travel", key: `t:${c.key}`, card: c });
+    else if (last?.kind === "city" && last.city === c.city) last.cards.push(c);
+    else out.push({ kind: "city", key: `c:${c.key}`, city: c.city, cards: [c] });
+  }
+  return out;
+}
+
+/** "2–3. gün", "5–6. gün", "2. gün": the city's days by number. */
+export function daysLabel(cards: DayCard[]): string {
+  const nums = cards.flatMap((c) => (c.dayNo?.match(/\d+/g) ?? []).map(Number));
+  if (!nums.length) return "";
+  const lo = Math.min(...nums);
+  const hi = Math.max(...nums);
+  return lo === hi ? L(`${lo}. gün`, `Day ${lo}`) : L(`${lo}–${hi}. gün`, `Days ${lo}–${hi}`);
+}

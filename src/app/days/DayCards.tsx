@@ -5,7 +5,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { cardKindColor, cardKindLabel, RENTAL_MODES, TRANSPORT_MODES, type CardKind, type TransportMode } from "../../lib/cardKinds";
 import { imageProxy } from "../../lib/cityImages";
-import { dayCards, dayPhoto, flowRows, highlightOf, ideaCount, isPlanRow, rowKind, rowMark, type DayCard } from "../../lib/dayCards";
+import { dayCards, dayPhoto, daysLabel, flowRows, groupDays, highlightOf, ideaCount, isPlanRow, rowKind, rowMark, type DayCard, type DayGroup } from "../../lib/dayCards";
 import { formatDateRange } from "../../lib/items";
 import { L, locale } from "../../lib/i18n";
 import type { DayRow } from "../../lib/journey";
@@ -95,16 +95,21 @@ export function DayCards(props: DayCardsProps) {
           </button>
         </div>
         <nav className="dc-strip" aria-label={L("Günler", "Days")}>
-          {cards.map((c) => (
-            <button key={c.key} className={isToday(c) ? "today" : ""} title={c.title} onClick={() => setTarget({ id: `dcd-${mode}-${c.key}`, flash: false })}>
-              {(c.dayNo ?? formatDateRange(c.date, null)).replace(/\.? ?gün$|^Days? /, "")}
-            </button>
+          {cards.map((c, n) => (
+            <span key={c.key} className="dc-strip-item">
+              {c.city && c.city !== cards[n - 1]?.city && <small>{c.city}</small>}
+              <button className={isToday(c) ? "today" : ""} title={c.title} onClick={() => setTarget({ id: `dcd-${mode}-${c.key}`, flash: false })}>
+                {(c.dayNo ?? formatDateRange(c.date, null)).replace(/\.? ?gün$|^Days? /, "")}
+              </button>
+            </span>
           ))}
         </nav>
       </div>
       {mode === "list"
         ? cards.map((c) => <ListDay key={c.key} card={c} isToday={isToday(c)} onPick={(row) => setMode("cards", row ? { id: `dc-${row}`, flash: true } : { id: `dcd-cards-${c.key}`, flash: false })} {...props} />)
-        : cards.map((c) => <CardsDay key={c.key} card={c} isToday={isToday(c)} stays={stays} {...props} />)}
+        : groupDays(cards).map((g, n, all) => (
+            <Group key={g.key} group={g} at={n === 0 ? "first" : n === all.length - 1 ? "last" : "middle"} isToday={isToday} stays={stays} {...props} />
+          ))}
     </div>
   );
 }
@@ -230,17 +235,65 @@ function ListDay({ card, isToday, onPick, ...props }: { card: DayCard; isToday: 
   );
 }
 
+/**
+ * Kartlar, as the trip goes (after Layla): a rail on the left with a round icon per stretch, a day that travels
+ * (✈ "Varış · 8 Eki") on its own, a city's days together under the city's name (📍 "2–3. gün"); day by day inside.
+ */
+function Group({ group, at, isToday, stays, ...props }: { group: DayGroup; at: "first" | "middle" | "last"; isToday: (c: DayCard) => boolean; stays: Map<string, StayEntry> } & DayCardsProps) {
+  const first = group.kind === "travel" ? group.card : group.cards[0];
+  const last = group.kind === "travel" ? group.card : group.cards.at(-1)!;
+  const lead = group.kind === "travel" ? highlightOf(group.card) : null;
+  const kind = lead ? rowKind(lead) : null;
+  const travelWord = at === "first" ? L("Varış", "Arrival") : at === "last" ? L("Dönüş", "Return") : L("Yolculuk", "On the move");
+  const label = group.kind === "travel" ? travelWord : daysLabel(group.cards);
+  const end = last.end ?? last.date;
+  const dates = first.date === end ? formatDateRange(first.date, null) : formatDateRange(first.date, end);
+  return (
+    <section className={`dc-grp ${group.kind}`}>
+      <aside className="dc-rail">
+        <span className="dc-railic" aria-hidden>
+          {group.kind === "city" ? <KindIcon kind="other" size={20} /> : <KindIcon kind={kind && isTransport(kind) ? kind : "transport"} size={20} />}
+        </span>
+        <span className="dc-raillab">
+          <b>{label}</b>
+          <small>{dates}</small>
+        </span>
+      </aside>
+      <div className="dc-grp-body">
+        {group.kind === "city" && (
+          <header className="dc-city">
+            <h2>{group.city ?? L("Konaklama", "Stay")}</h2>
+            <span>{L(`${spanDays(group.cards)} gün`, `${spanDays(group.cards)} days`)}</span>
+          </header>
+        )}
+        {(group.kind === "travel" ? [group.card] : group.cards).map((c) => (
+          <CardsDay key={c.key} card={c} isToday={isToday(c)} stays={stays} {...props} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** How many days the cards cover (a merged "5–6. gün" counts two). */
+const spanDays = (cards: DayCard[]) => cards.reduce((n, c) => n + (c.end ? Math.round((Date.parse(c.end) - Date.parse(c.date)) / 86_400_000) + 1 : 1), 0);
+
 /** Kartlar: the day's header (held at the top while its cards scroll past), then each line as its Plan card. */
 function CardsDay({ card, isToday, stays, ...props }: { card: DayCard; isToday: boolean; stays: Map<string, StayEntry> } & DayCardsProps) {
   const photo = useDayPhoto(card, props.cityImage);
   const flow = flowRows(card);
+  const experiences = flow.filter((r) => r.item && (r.item.category === "activity" || r.item.category === "food")).length;
   return (
     <section className="dc-cday" id={`dcd-cards-${card.key}`} aria-label={`${card.dayNo ?? ""} ${card.title}`}>
       <header className="dc-dhead">
         <span className="dc-thumb">{photo && <img src={photo} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />}</span>
-        <b>{card.dayNo ?? dateText(card)}</b>
-        <span className="ttl">{card.title}</span>
-        <span className={`dc-ddate${isToday ? " today" : ""}`}>{isToday ? L("Bugün", "Today") : dateText(card)}</span>
+        <span className="dc-dtext">
+          <span className="dc-dmeta">
+            <b className="dc-pill">{card.dayNo ?? dateText(card)}</b>
+            {card.dayNo && <span className={isToday ? "today" : ""}>{isToday ? L("Bugün", "Today") : dateText(card)}</span>}
+            {experiences > 0 && <span>{L(`${experiences} deneyim`, `${experiences} experience${experiences === 1 ? "" : "s"}`)}</span>}
+          </span>
+          <span className="ttl">{card.title}</span>
+        </span>
         <DayChips card={card} />
       </header>
       {flow.length === 0 ? (
