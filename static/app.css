@@ -1180,8 +1180,10 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .pk-route small { position: absolute; left: -20px; right: -20px; bottom: -26px; text-align: center; font-size: 13px; color: #3a3a3c; white-space: nowrap; }
 .pk-title { margin: 12px 0 16px; font-size: 20px; line-height: 1.25; font-weight: 700; }
 /* No drawing (metro, walking, an unknown way): no empty band for it. */
-.pk-card:not(:has(> .pk-art)) .pk-route { height: 28px; }
-.pk-card:not(:has(> .pk-art)) .pk-mid { margin-bottom: 20px; }
+/* Its middle line (the arrival time, the length) sits in the flow, between the ends, never on the strip. */
+.pk-card:not(:has(> .pk-art)) .pk-route { height: auto; align-self: end; }
+.pk-card:not(:has(> .pk-art)) .pk-route small { position: static; display: block; margin: 0 -20px; white-space: normal; }
+.pk-card:not(:has(> .pk-art)) .pk-mid { margin-bottom: 16px; }
 
 /* media body (etkinlik-v4) */
 .pk-media { display: grid; grid-template-columns: 176px 1fr; gap: 16px; align-items: center; margin: 12px 0 16px; }
