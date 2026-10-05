@@ -2280,6 +2280,101 @@ try {
   await sgSec("other").scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/19b-suggestions-after.png` });
   console.log("✓ öneriler: 25 nights in Ubud and no vehicle → monthly rental card atop Ulaşım (not counted); Plana ekle adds the rental; Gerek yok on the eSIM holds after a reload; the AI review asked once");
+
+  // 20. Starting a trip by chat (spec 2026-10-06 §2): one message on the home fills who, when and where; the
+  // chips finish it (Nereden İstanbul, a style, the route "Bu olsun"); Gezimi oluştur → the board shows the
+  // nights by stop and the flights to plan, the start card above the plan, the interview as the trip's chat.
+  const startPrompts = [];
+  await flow.route("https://generativelanguage.googleapis.com/**", async (route) => {
+    const request = route.request();
+    const body = request.method() === "POST" ? request.postDataJSON() : null;
+    const prompt = JSON.stringify(body?.contents ?? "");
+    if (prompt.includes("<start_message>")) {
+      startPrompts.push(prompt);
+      const first = prompt.includes("Sabine");
+      return route.fulfill(reply([{ text: JSON.stringify({
+        destination: first ? "Bali" : "", destination_country: first ? "Endonezya" : "", origin: "", companions: "", names: first ? ["Sabine"] : [],
+        start_date: first ? "2026-12-10" : "", start_month: 0, duration_days: 0, duration_months: first ? 1 : 0, styles: [], budget: "",
+      }) }]));
+    }
+    if (prompt.includes("<route_request>")) {
+      startPrompts.push(prompt);
+      return route.fulfill(reply([{ text: JSON.stringify({
+        stops: [{ city: "Ubud", nights: 12 }, { city: "Canggu", nights: 10 }, { city: "Uluwatu", nights: 9 }], arrival_airport_city: "Denpasar", departure_airport_city: "Denpasar",
+      }) }]));
+    }
+    return route.fallback();
+  });
+  await board.getByRole("button", { name: /Seyahatlerim/ }).first().click();
+  await board.locator(".st-hello").waitFor();
+  await board.screenshot({ path: `${out}/20a-start-home.png` });
+  await board.getByLabel("Gezi kutusu").fill("Sabine'yle 10 Aralık'tan 1 ay Bali");
+  await board.getByRole("button", { name: /Planlamaya başla/ }).click();
+  const answers = board.locator(".st-answers");
+  await board.locator(".st-msg-bot", { hasText: "Nereden yola çıkıyorsun?" }).waitFor();
+  // Only what the first message left out is asked (item 2).
+  const side = board.locator(".st-side");
+  await side.getByText("Bali · Endonezya").waitFor();
+  await side.getByText("10 Aralık – 10 Ocak · 32 gün").waitFor();
+  await side.getByText("Sabine ile · 2 kişi").waitFor();
+  assert.equal(await answers.locator(".st-chip").first().innerText(), "İstanbul", "the origin's guess comes first");
+  await answers.getByRole("button", { name: "İstanbul", exact: true }).click();
+  await board.locator(".st-msg-bot", { hasText: "Bu gezide en çok ne istiyorsun?" }).waitFor();
+  await answers.getByRole("button", { name: /Doğa/ }).click();
+  await answers.getByRole("button", { name: /Deniz/ }).click();
+  await answers.getByRole("button", { name: /Orta/ }).click();
+  await answers.getByRole("button", { name: "Tamam" }).click();
+  await board.locator(".st-msg-bot", { hasText: "Rota önerim: Ubud 12 · Canggu 10 · Uluwatu 9 gece. Bu olsun mu?" }).waitFor();
+  assert.equal(startPrompts.length, 2, "the model read the one typed line and was asked for the route once (the chips need no model)");
+  await board.screenshot({ path: `${out}/20b-start-interview.png` });
+  // Narrow (item 9): the list folds into a bar above the chat.
+  await board.setViewportSize({ width: 560, height: 900 });
+  await board.locator(".st-bar", { hasText: "Gezin şekilleniyor" }).waitFor();
+  assert.equal(await side.isVisible(), false, "no side list on a narrow screen");
+  await board.screenshot({ path: `${out}/20b2-start-narrow.png` });
+  await board.setViewportSize({ width: 1440, height: 900 });
+  await answers.getByRole("button", { name: "Bu olsun" }).click();
+  await board.locator(".st-msg-bot", { hasText: "Hazırım" }).waitFor();
+  await side.getByRole("button", { name: /Gezimi oluştur/ }).click();
+  await board.locator(".st-gen", { hasText: "Bali Gezisi planlanıyor" }).waitFor();
+  await board.locator(".st-step.done", { hasText: "Gezi açıldı: Bali Gezisi" }).waitFor();
+  await board.screenshot({ path: `${out}/20c-start-generating.png` });
+  await board.locator(".st-step.done", { hasText: "Rota çizildi: Ubud 12 gece → Canggu 10 gece → Uluwatu 9 gece" }).waitFor();
+  await board.locator(".st-step.done", { hasText: "Uçuşlar için yer açıldı: İstanbul ⇄ Denpasar" }).waitFor();
+  // The board: the trip, its nights by stop and its flights to plan, the start card, the same conversation.
+  await board.getByRole("heading", { name: "Bali Gezisi" }).waitFor({ timeout: 15000 });
+  const guide = board.locator(".st-guide");
+  await guide.getByText("Uçuşları bul").waitFor();
+  await guide.getByText("Konaklamaları seç").waitFor();
+  const made = await board.evaluate(async () => {
+    const database = await new Promise((resolve) => { const q = indexedDB.open("trip-radar"); q.onsuccess = () => resolve(q.result); });
+    const all = (store) => new Promise((resolve) => { const q = database.transaction(store).objectStore(store).getAll(); q.onsuccess = () => resolve(q.result); });
+    const trip = (await all("trips")).find((t) => t.title === "Bali Gezisi");
+    const items = (await all("items")).filter((i) => i.tripId === trip.id);
+    return {
+      dates: trip.confirmedDates,
+      stays: items.filter((i) => i.category === "stay").map((i) => `${i.city} ${i.dates.start}..${i.dates.end}`).sort(),
+      flights: items.filter((i) => i.category === "flight").map((i) => `${i.dates.start} ${i.flight.from}→${i.flight.to}`).sort(),
+      people: [...new Set(items.map((i) => i.guests.adults))],
+    };
+  });
+  assert.deepEqual(made, {
+    dates: { start: "2026-12-10", end: "2027-01-10" },
+    stays: ["Canggu 2026-12-22..2027-01-01", "Ubud 2026-12-10..2026-12-22", "Uluwatu 2027-01-01..2027-01-10"],
+    flights: ["2026-12-10 İstanbul→Denpasar", "2027-01-10 Denpasar→İstanbul"],
+    people: [2],
+  });
+  const panel = board.locator(".panel");
+  for (const city of ["Ubud", "Canggu", "Uluwatu"]) await panel.locator("[data-section='stay']").getByText(city, { exact: false }).first().waitFor();
+  await panel.locator("[data-section='flight']").getByText("Denpasar", { exact: false }).first().waitFor();
+  await board.locator(".chat .msg-user", { hasText: "Sabine'yle 10 Aralık'tan 1 ay Bali" }).waitFor();
+  await board.locator(".chat .msg-assistant", { hasText: "Bali Gezisi hazır: 32 gün, 3 durak." }).waitFor();
+  await guide.scrollIntoViewIfNeeded();
+  await board.screenshot({ path: `${out}/20d-start-board.png` });
+  // × closes the start card for good.
+  await guide.getByRole("button", { name: "Başlangıç kartını kapat" }).click();
+  await guide.waitFor({ state: "detached" });
+  console.log("✓ start by chat: one line fills who/when/where, chips finish it, the route agreed → Bali Gezisi with Ubud 12 · Canggu 10 · Uluwatu 9 nights, İstanbul ⇄ Denpasar flights, 2 people, the start card and the same conversation");
   console.log(`screenshots: ${out}`);
 } finally {
   await flow.close();

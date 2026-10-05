@@ -45,11 +45,12 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
 
   model.current ??= modelAvailable();
 
-  /** The state as it is now (async answers read this, never a stale render's). */
+  const saving = useRef<Promise<void>>(Promise.resolve());
+  /** The state as it is now (async answers read this, never a stale render's); saved one after another, the last wins. */
   function commit(next: StartState) {
     live.current = next;
     setState(next);
-    void saveDraft(next).catch(() => undefined);
+    saving.current = saving.current.then(() => saveDraft(next)).catch(() => undefined);
   }
   const say = (s: StartState, role: "user" | "assistant", line: string): StartState => ({ ...s, messages: [...s.messages, { role, text: line, at: Date.now() }], updatedAt: Date.now() });
 
@@ -73,7 +74,8 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
   useEffect(() => {
     if (opened.current) return;
     opened.current = true;
-    if (initial.messages.length) return;
+    // A draft left right after the traveller's line (before the answer came): its question is asked again.
+    if (initial.messages.length) return void (initial.messages.at(-1)?.role === "user" && reply(initial, initial));
     if (firstText?.trim()) void send(firstText);
     else {
       const start = say(initial, "user", firstLabel ?? L("Yeni gezi planla", "Plan a new trip"));
@@ -115,11 +117,11 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
     const asked = say(before, "user", line);
     commit(asked);
     // The stops typed after "Değiştir": "Ubud 12, Canggu 19".
-    if (q === "route" && (before.editingRoute || !before.route)) {
-      const total = totalNights(before) ?? 0;
-      const parsed = parseRouteText(line, total);
-      if ("error" in parsed) return commit(say(asked, "assistant", parsed.error));
-      return reply(before, { ...asked, route: parsed.route, editingRoute: false, asking: null });
+    // (Typed over a proposal too; anything else typed then goes on as an ordinary message.)
+    if (q === "route") {
+      const parsed = parseRouteText(line, totalNights(before) ?? 0);
+      if (!("error" in parsed)) return reply(before, { ...asked, route: parsed.route, editingRoute: false, asking: null });
+      if (before.editingRoute || !before.route) return commit(say(asked, "assistant", parsed.error));
     }
     setThinking(true);
     const code = parseStartText(line, today());
@@ -143,8 +145,14 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
     setPhase("generating");
   }
 
+  /** The draft goes (after any save still on its way, so none brings it back). */
+  function forget() {
+    const id = live.current.id;
+    saving.current = saving.current.then(() => removeDraft(id)).then(() => undefined, () => undefined);
+  }
+
   function close() {
-    if (!worthKeeping(live.current)) void removeDraft(live.current.id).catch(() => undefined);
+    if (!worthKeeping(live.current)) forget();
     onClose();
   }
 
@@ -260,7 +268,7 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
             myName={ctx.myName}
             onTripId={(tripId) => commit({ ...live.current, tripId })}
             onFinished={(tripId) => {
-              void removeDraft(live.current.id).catch(() => undefined);
+              forget();
               onCreated(tripId);
             }}
             onBack={() => setPhase("chat")}
