@@ -43,6 +43,7 @@ import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../
 import { intentEntries } from "./IntentCard";
 import { TripHero, type HeroCity } from "./TripHero";
 import { LegRow } from "./LegRow";
+import { DocsTab } from "./docs/DocsTab";
 import { CategoryPlan } from "./plan/CategoryPlan";
 import { SECTION_META, useSectionOpen } from "./plan/sectionMeta";
 import { SettledCard, SwipeCard } from "./SwipeCard";
@@ -69,7 +70,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
-  const [view, setView] = useState<TimelineMode>("plan");
+  const [view, setView] = useState<TimelineMode | "docs">("plan");
   const mapUrl = routeUrl(items);
   const working = openCaptures.filter((c) => c.status === "pending" || c.status === "processing");
   const failed = openCaptures.filter((c) => c.status === "error");
@@ -418,9 +419,14 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           <button role="tab" aria-selected={view === "days"} className={view === "days" ? "on" : ""} onClick={() => setView("days")}>
             {L("Günlük akış", "Day by day")}
           </button>
+          <button role="tab" aria-selected={view === "docs"} className={view === "docs" ? "on" : ""} onClick={() => setView("docs")}>
+            {L("Belgeler", "Documents")}
+          </button>
         </div>
       )}
-      {view === "days" && timeline.entries.length > 0 ? (
+      {view === "docs" ? (
+        <DocsTab tripId={trip.id} items={items} onGo={(id) => reveal({ item: id })} offer={offer} />
+      ) : view === "days" && timeline.entries.length > 0 ? (
         <TimelineView onShow={showOnPlan} timeline={timeline} tripId={trip.id} leg={leg} onAdd={env.add} listings={listings} today={today} cityImage={cityImageOf} />
       ) : (
         <CategoryPlan
