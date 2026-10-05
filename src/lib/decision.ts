@@ -148,13 +148,41 @@ const SAID_CRITERIA: Partial<Record<CriterionId, string>> = { ...WISH_TOPIC, loc
  */
 export function noteCriteria(text: string): CriterionId[] {
   const out: CriterionId[] = [];
-  for (const [re, list] of SAID) {
+  for (const [re, topic] of LABEL_SAID) {
     if (!re.test(text)) continue;
-    const criterion = (Object.keys(SAID_CRITERIA) as CriterionId[]).find((c) => SAID_CRITERIA[c] === list[0]);
+    const criterion = (Object.keys(SAID_CRITERIA) as CriterionId[]).find((c) => SAID_CRITERIA[c] === topic);
     if (criterion && !out.includes(criterion)) out.push(criterion);
   }
   return out;
 }
+
+/**
+ * The same topics as SAID, read strictly enough to name a note by them (a wrong name is worse than its first
+ * words): a word starts where a word starts ("kalan" isn't "alan", "review" isn't "view"), and the short English
+ * words are whole words ("bedava" isn't "bed", "unsafe" isn't "safe"). SAID itself stays as the engine reads it.
+ */
+const starts = (words: string) => new RegExp(`(?<![\\p{L}\\p{N}])(?:${words})`, "iu");
+const whole = (words: string) => new RegExp(`(?<![\\p{L}\\p{N}])(?:${words})(?![\\p{L}\\p{N}])`, "iu");
+const LABEL_SAID: [RegExp, string][] = [
+  [starts("sessiz|gürültü|quiet|nois"), "noise"],
+  [whole("loud"), "noise"],
+  [starts("merkez|yürü|yakın|konum|central|centre|center|location|close to"), "location"],
+  [whole("walk|walking|near|nearby"), "location"],
+  [starts("temiz|hijyen|clean|hygien|dirty"), "cleanliness"],
+  [starts("iptal|iade|esnek|cancel|refund"), "cancellation"],
+  [starts("kahvaltı|yemek|breakfast"), "food"],
+  [whole("food|meals?"), "food"],
+  [starts("geniş|ferah|spacious|roomy|cramped"), "space"],
+  [whole("alan|alanı|alanlı|space"), "space"],
+  [starts("manzara"), "view"],
+  [whole("views?"), "view"],
+  [starts("yatak|uyku|mattress|sleep"), "bed"],
+  [whole("beds?"), "bed"],
+  [starts("asansör|merdiven|bebek|engelli|tekerlekli|stairs|elevator|wheelchair|stroller|pushchair|accessib"), "access"],
+  [whole("lift"), "access"],
+  [starts("güven"), "safety"],
+  [whole("safe|safety"), "safety"],
+];
 
 /** The level a note sets, if the traveller's notes speak of this criterion. */
 function saidLevel(criterion: CriterionId, said: Set<string> | undefined): PriorityLevel | undefined {

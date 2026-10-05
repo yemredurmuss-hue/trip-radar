@@ -7,7 +7,7 @@
 // the trip as `placeParents`), validated here. Until it answers (no key, an error), a cheap guess: a stay whose
 // own address names another of the trip's places folds into it. Pure.
 import { L } from "./i18n";
-import { cityKeyOf } from "./plan";
+import { cityKeyOf, knownPlace } from "./plan";
 import type { Item } from "./types";
 
 /** A destination as the hero shows it, and the trip's places (the Plan's cities) inside it, in order. */
@@ -60,7 +60,30 @@ export function mainPlaces(cities: string[], parents: Record<string, string>): M
       if (parent && !place.given) Object.assign(place, { name, given: true });
     }
   }
-  return [...out.values()].map(({ name, members }) => ({ name, members }));
+  return [...out.values()].map(({ name, members }) => ({ name: boardName(name), members }));
+}
+
+/**
+ * A known city in the board's language (the alias table in plan.ts knows it under every name): "Lisbon" on a
+ * Turkish board is "Lizbon", "Lizbon" on an English one "Lisbon". Madeira stays Madeira (the table reads the
+ * island as its capital Funchal, but the island is the destination), so Funchal isn't here.
+ */
+const BOARD_NAMES: Record<string, [tr: string, en: string]> = {
+  lizbon: ["Lizbon", "Lisbon"], porto: ["Porto", "Porto"], roma: ["Roma", "Rome"], atina: ["Atina", "Athens"],
+  munih: ["Münih", "Munich"], viyana: ["Viyana", "Vienna"], prag: ["Prag", "Prague"], floransa: ["Floransa", "Florence"],
+  venedik: ["Venedik", "Venice"], napoli: ["Napoli", "Naples"], milano: ["Milano", "Milan"], sevilla: ["Sevilla", "Seville"],
+  bruksel: ["Brüksel", "Brussels"], kopenhag: ["Kopenhag", "Copenhagen"], varsova: ["Varşova", "Warsaw"],
+  moskova: ["Moskova", "Moscow"], cenevre: ["Cenevre", "Geneva"], koln: ["Köln", "Cologne"], londra: ["Londra", "London"],
+  barselona: ["Barselona", "Barcelona"], nis: ["Nice", "Nice"], marsilya: ["Marsilya", "Marseille"],
+  budapeste: ["Budapeşte", "Budapest"], bukres: ["Bükreş", "Bucharest"], belgrad: ["Belgrad", "Belgrade"],
+  selanik: ["Selanik", "Thessaloniki"], lefkosa: ["Lefkoşa", "Nicosia"], kahire: ["Kahire", "Cairo"],
+  edinburg: ["Edinburg", "Edinburgh"], lahey: ["Lahey", "The Hague"], anvers: ["Anvers", "Antwerp"], zurih: ["Zürih", "Zurich"],
+  kudus: ["Kudüs", "Jerusalem"], tiflis: ["Tiflis", "Tbilisi"], istanbul: ["İstanbul", "Istanbul"],
+};
+export function boardName(name: string): string {
+  const key = cityKeyOf(name);
+  const names = key ? BOARD_NAMES[key] : undefined;
+  return names ? L(names[0], names[1]) : name.trim();
 }
 
 /** The destination a place belongs to (itself when it's one), for a sentence that names it. */
@@ -70,11 +93,50 @@ export function mainPlaceOf(places: MainPlace[], city: string | null | undefined
   return places.find((p) => cityKeyOf(p.name) === key || p.members.some((m) => cityKeyOf(m) === key))?.name ?? city!.trim();
 }
 
+/** A few names a country also goes by that aren't ISO regions of their own. */
+const MORE_COUNTRIES = ["england", "ingiltere", "scotland", "iskocya", "wales", "galler", "holland", "hollanda", "usa", "abd", "uk"];
+let countryNames: Set<string> | null = null;
+/** "Portekiz", "Portugal", "İspanya"…: every region name in both board languages (Intl), compared plain. */
+export function isCountryName(name: string): boolean {
+  if (!countryNames) {
+    const found = new Set(MORE_COUNTRIES);
+    for (const lang of ["tr", "en"]) {
+      let names: Intl.DisplayNames;
+      try {
+        names = new Intl.DisplayNames([lang], { type: "region" });
+      } catch {
+        continue;
+      }
+      for (let i = 0; i < 26; i++)
+        for (let j = 0; j < 26; j++) {
+          const code = String.fromCharCode(65 + i, 65 + j);
+          let n: string | undefined;
+          try {
+            n = names.of(code);
+          } catch {
+            n = undefined;
+          }
+          if (n && n !== code) found.add(plain(n));
+        }
+    }
+    countryNames = found;
+  }
+  return countryNames.has(plain(name));
+}
+
+/** How many steps a chain of "inside" may take (Oia → Fira → Santorini is two). */
+const MAX_DEPTH = 3;
+
 /**
- * A place → bigger destination answer, checked: only the trip's own places, a non-empty name of at most 40
- * characters, never a place inside itself, and no chains (a place whose destination is itself inside another
- * is dropped, and a loop goes with it). A place the app already treats as its destination under another
- * name (Funchal → Madeira: one city key) is kept: it names the destination, it doesn't move the place.
+ * A place → bigger destination answer, checked so that two real stops never merge:
+ * - only the trip's own places; a non-empty name of at most 40 characters; never a place inside itself;
+ * - a chain is followed to its end (Oia → Fira → Santorini ⇒ Santorini), at most three steps; a loop is dropped;
+ * - never into a country (Porto → Portekiz);
+ * - a city the app knows (the alias table in plan.ts: Porto, Lizbon, Faro…) never moves into another place;
+ *   another name for it is kept (Funchal → Madeira, one city key: it names the destination, it doesn't move);
+ * - into another of the trip's stay cities only when that one is a destination the app knows and the place
+ *   isn't (Gaula → Madeira, a stay too); never into a stay town the app doesn't know (Burgau → Lagos).
+ *   Otherwise only into a name that isn't one of the stay cities: an island or a region (Lagos → Algarve).
  */
 export function acceptParents(cities: string[], answer: { place: string; parent: string | null }[] | Record<string, string | null>): Record<string, string> {
   const keys = new Set(cities.map(cityKeyOf).filter(Boolean));
@@ -87,10 +149,38 @@ export function acceptParents(cities: string[], answer: { place: string; parent:
     if (plain(name) === plain(place) || plain(name) === key) continue; // itself
     raw[key] ??= name;
   }
-  /** Inside another place (not just its other name). */
-  const moves = (key: string) => raw[key] !== undefined && cityKeyOf(raw[key]) !== key;
   const out: Record<string, string> = {};
-  for (const [key, name] of Object.entries(raw)) if (cityKeyOf(name) === key || !moves(cityKeyOf(name)!)) out[key] = name;
+  for (const [key, first] of Object.entries(raw)) {
+    // Follow the chain: the parent's own parent, until one isn't inside anything (or only goes by another name).
+    let at = key;
+    let name = first;
+    let ok = true;
+    const seen = new Set([key]);
+    for (let step = 1; ; step++) {
+      const next = cityKeyOf(name)!;
+      if (next === at || raw[next] === undefined) break;
+      if (cityKeyOf(raw[next]) === next) {
+        name = raw[next]; // the parent goes by another name (Funchal → Madeira)
+        break;
+      }
+      if (seen.has(next) || step >= MAX_DEPTH) {
+        ok = false; // a loop, or too long to be sure
+        break;
+      }
+      seen.add(next);
+      at = next;
+      name = raw[next];
+    }
+    if (!ok || isCountryName(name)) continue;
+    const target = cityKeyOf(name)!;
+    if (target === key) {
+      out[key] = name; // another name for the same place
+      continue;
+    }
+    if (knownPlace(key)) continue; // a real city stays its own stop
+    if (keys.has(target) && !knownPlace(target)) continue; // two stay towns: not ours to merge
+    out[key] = name;
+  }
   return out;
 }
 

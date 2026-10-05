@@ -55,8 +55,11 @@ hareket tercihinde yok). Uydurma yok.
 - **Ana yerler** (revizyon 1): hero'nun şehirleri gezginin gittiği ana destinasyonlardır (şehir, ada, bölge), gecelediği
   her kasaba değil. Madeira'daki bir köy (Gaula) Madeira'nın içine katlanır: şehir seçici, fotoğraf, hava, ton cümlesi,
   tarz ve durum cümlesindeki şehir "Porto | Madeira" der. Hangi yerin hangisinin içinde olduğunu gezginin modeli
-  söyler (şehir kümesi başına bir kez, gezide saklanır, kod denetler: kendine, zincir, boş/uzun ad yok); model yokken
-  yalnız adresi gezinin başka bir yerini adlandıran konaklama katlanır. Plan ve Günlük akış yerleri olduğu gibi gösterir.
+  söyler (şehir kümesi başına bir kez, gezide saklanır). Kod iki gerçek durağı asla birleştirmez: ülke ebeveyn olamaz,
+  bilinen şehir (Porto, Lizbon, Faro) taşınmaz (yalnız başka adı: Madeira ≡ Funchal), bilinmeyen iki konaklama
+  kasabası birbirine katlanmaz; zincir sonuna kadar izlenir (en çok 3 adım), döngü atılır. Ana yerin adı panonun
+  dilinde ("Lizbon"). Model yokken yalnız adresi gezinin başka bir yerini adlandıran konaklama katlanır. Plan ve
+  Günlük akış yerleri olduğu gibi gösterir.
 - **Fotoğraf** ana yer başına bir tane, rota sırasıyla (~1,92:1, dar ekranda 220 px). Sol üstte şehir seçici (6 sn'de
   bir geçer), sağ üstte geri sayım hapı ("3 gün kaldı") ve ••• menüsü; iş varken işleniyor hapı. Şehir yoksa lavanta
   zemin + "Şehir belli olunca fotoğrafı gelir".

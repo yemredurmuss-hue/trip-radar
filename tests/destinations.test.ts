@@ -30,6 +30,17 @@ describe("main places", () => {
     expect(mainPlaces([], {})).toEqual([]);
   });
 
+  it("calls a known city by its name in the board's language", () => {
+    expect(mainPlaces(["Porto", "Lisbon"], {})).toEqual([
+      { name: "Porto", members: ["Porto"] },
+      { name: "Lizbon", members: ["Lisbon"] },
+    ]);
+    expect(mainPlaces(["Sintra", "Lisboa"], { sintra: "Lisbon" }).map((p) => p.name)).toEqual(["Lizbon"]);
+    setLang("en");
+    expect(mainPlaces(["Lizbon"], {}).map((p) => p.name)).toEqual(["Lisbon"]);
+    expect(mainPlaces(["Funchal", "Gaula"], { gaula: "Madeira" }).map((p) => p.name)).toEqual(["Madeira"]);
+  });
+
   it("names the destination a place belongs to", () => {
     const places = mainPlaces(["Porto", "Gaula"], { gaula: "Madeira" });
     expect(mainPlaceOf(places, "Gaula")).toBe("Madeira");
@@ -69,15 +80,28 @@ describe("the model's answer, checked", () => {
       ]),
     ).toEqual({});
   });
-  it("drops chains longer than one, and loops", () => {
-    // Matosinhos → Gaia while Gaia → Porto: Matosinhos's is a chain, dropped; Gaia's stays.
-    expect(acceptParents(["Porto", "Gaia", "Matosinhos"], { matosinhos: "Gaia", gaia: "Porto" })).toEqual({ gaia: "Porto" });
-    expect(acceptParents(cities, { porto: "Lizbon", lizbon: "Porto" })).toEqual({});
+  it("follows a chain to its end (at most three steps) and drops a loop", () => {
+    expect(acceptParents(["Oia", "Fira"], { oia: "Fira", fira: "Santorini" })).toEqual({ oia: "Santorini", fira: "Santorini" });
+    expect(mainPlaces(["Oia", "Fira"], acceptParents(["Oia", "Fira"], { oia: "Fira", fira: "Santorini" }))).toEqual([{ name: "Santorini", members: ["Oia", "Fira"] }]);
+    expect(acceptParents(["Porto", "Gaia", "Matosinhos"], { matosinhos: "Gaia", gaia: "Porto" })).toEqual({ matosinhos: "Porto", gaia: "Porto" });
+    expect(acceptParents(["A köy", "B köy", "C köy"], { "a koy": "B köy", "b koy": "C köy", "c koy": "A köy" })).toEqual({});
+    expect(acceptParents(["A", "B", "C", "D"], { a: "B", b: "C", c: "D", d: "Bölge" })).toEqual({ b: "Bölge", c: "Bölge", d: "Bölge" }); // A: four steps
+  });
+  it("never merges two real stops: a known city doesn't move, a country isn't a destination, two stay towns stay apart", () => {
+    expect(acceptParents(["Porto", "Lizbon"], { lizbon: "Porto" })).toEqual({});
+    expect(acceptParents(["Porto", "Lizbon"], { porto: "Lizbon", lizbon: "Porto" })).toEqual({});
+    expect(acceptParents(["Porto", "Lizbon"], [{ place: "Porto", parent: "Portugal" }, { place: "Lizbon", parent: "Portekiz" }])).toEqual({});
+    expect(acceptParents(["Gaula", "Porto"], { gaula: "Portekiz" })).toEqual({});
+    // Faro is a city the app knows (its airport): it stays; Lagos isn't: it goes into the region.
+    expect(acceptParents(["Lagos", "Faro"], { lagos: "Algarve", faro: "Algarve" })).toEqual({ lagos: "Algarve" });
+    // Two stay towns the app doesn't know: never one inside the other; a known destination may hold a town.
+    expect(acceptParents(["Lagos", "Burgau"], { burgau: "Lagos" })).toEqual({});
+    expect(acceptParents(["Sintra", "Lizbon"], { sintra: "Lizbon" })).toEqual({ sintra: "Lizbon" });
   });
   it("keeps another name for the same place (the app reads Madeira as Funchal): it names the destination", () => {
-    // Funchal → Madeira is one city key here, so it isn't a chain for Gaula → Funchal.
+    // Funchal → Madeira is one city key here: Gaula → Funchal ends at Madeira.
     const parents = acceptParents(cities, { gaula: "Funchal", funchal: "Madeira" });
-    expect(parents).toEqual({ gaula: "Funchal", funchal: "Madeira" });
+    expect(parents).toEqual({ gaula: "Madeira", funchal: "Madeira" });
     expect(mainPlaces(cities, parents)).toEqual([
       { name: "Porto", members: ["Porto"] },
       { name: "Madeira", members: ["Funchal", "Gaula"] },
