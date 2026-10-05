@@ -232,6 +232,8 @@ export interface Trip {
   suggestions?: Suggestion[];
   /** The last AI review of the trip for suggestions (suggestReview.ts): for which state, when, and whether it failed. */
   suggestReview?: { key: string; at: number; failed?: boolean; state?: "running" | "done" | "failed" } | null;
+  /** Made by the start chat (spec 2026-10-06 §2): its one-time start card above the plan (startTrip.ts guideSteps). */
+  startGuide?: StartGuide | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -261,6 +263,14 @@ export interface Suggestion {
   createdAt: number;
   state: SuggestionState;
   stateAt?: number;
+}
+
+/** The new trip's start card: closed with ×, the suggestions looked at, a road trip (a car instead of flights). */
+export interface StartGuide {
+  createdAt: number;
+  closed?: boolean;
+  looked?: boolean;
+  road?: boolean;
 }
 
 /** How a transfer is made. Flights, trains, buses and ferries go from a station, so they bring their own transfers. */
