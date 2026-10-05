@@ -2,7 +2,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { db, listMessages } from "../src/lib/db";
-import { editableFields, editField, fieldInput, firstField, fieldPlaceholder, fieldValue, nextField, saveCardField, saveField } from "../src/lib/inlineEdit";
+import { editableFields, editField, fieldInput, firstField, fieldPlaceholder, fieldValue, dropDraft, keepDraftFor, nextField, resumeDraft, saveCardField, saveField } from "../src/lib/inlineEdit";
 import { plannedItem, type PlannedInput } from "../src/lib/planned";
 import { quickItem, TEMPLATES, type TemplateId } from "../src/lib/templates";
 import { makeItem } from "./fixtures/makeItem";
@@ -106,5 +106,45 @@ describe("saving a field", () => {
     expect((await (await db()).get("items", "td"))?.name).toBe("Bolhão pazarı");
     expect(await saveField(todo, { date: "12.10" }, "EUR", 10)).toMatch(/YYYY-AA-GG/);
     expect((await listMessages("t-inline")).map((m) => m.text)).toEqual(["Bolhão pazarı güncellendi"]);
+  });
+});
+
+describe("what's typed in the open box", () => {
+  const empty = { value: "", cur: "EUR" };
+  it("goes on when the card is drawn again (the last save moved it to a new day) before Tab or Enter", () => {
+    keepDraftFor(null);
+    const box = resumeDraft("bus", "price", empty);
+    box.value = "18";
+    // The board reads the date just saved back: the card is in its new day, with a new box for the same field.
+    const again = resumeDraft("bus", "price", empty);
+    expect(again.value).toBe("18");
+    expect(again.opened).toEqual(empty); // so Enter sees a change and saves it
+    keepDraftFor({ id: "bus", field: "price" });
+    expect(resumeDraft("bus", "price", empty).value).toBe("18");
+  });
+  it("is let go once saved or left, and never carried to another field or card", () => {
+    keepDraftFor(null);
+    resumeDraft("bus", "to", empty).value = "Lagos";
+    expect(resumeDraft("bus", "date", empty).value).toBe("");
+    expect(resumeDraft("bus", "to", empty).value).toBe("");
+    resumeDraft("bus", "to", empty).value = "Lagos";
+    expect(resumeDraft("taxi", "to", empty).value).toBe("");
+    resumeDraft("bus", "to", empty).value = "Lagos";
+    keepDraftFor({ id: "bus", field: "date" });
+    expect(resumeDraft("bus", "to", empty).value).toBe("");
+    resumeDraft("bus", "to", empty).value = "Lagos";
+    keepDraftFor(null);
+    expect(resumeDraft("bus", "to", { value: "Faro", cur: "EUR" })).toMatchObject({ value: "Faro", opened: { value: "Faro" } });
+  });
+  it("a save that lands after another box opened leaves that box's draft alone", () => {
+    keepDraftFor(null);
+    const to = resumeDraft("bus", "to", empty);
+    to.value = "Lagos";
+    dropDraft(to);
+    expect(resumeDraft("bus", "to", empty).value).toBe("");
+    const late = resumeDraft("bus", "to", empty); // blurred, its save still on the way
+    resumeDraft("taxi", "price", empty).value = "12"; // another card's price opened meanwhile
+    dropDraft(late);
+    expect(resumeDraft("taxi", "price", empty).value).toBe("12");
   });
 });

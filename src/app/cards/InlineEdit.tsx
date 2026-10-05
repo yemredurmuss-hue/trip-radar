@@ -5,9 +5,9 @@
 // the next field (Shift+Tab back). A saved page's corrected field shows "sayfadaki: X · geri al" on hover.
 // Which card and field are open lives on the board (CardEnv.focus), so a card that moves to its new day
 // keeps its open field and is scrolled to.
-import { createContext, useContext, useEffect, useRef, useState, type FocusEvent, type KeyboardEvent, type ReactNode, type SyntheticEvent } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent, type ReactNode, type SyntheticEvent } from "react";
 import { L } from "../../lib/i18n";
-import { editableFields, fieldInput, fieldLabel, fieldPlaceholder, fieldValue, nextField, saveCardField, type FieldKey } from "../../lib/inlineEdit";
+import { dropDraft, editableFields, fieldInput, fieldLabel, fieldPlaceholder, fieldValue, nextField, resumeDraft, saveCardField, type FieldKey } from "../../lib/inlineEdit";
 import type { Item } from "../../lib/types";
 import { clearUserEdit, correctionOf } from "../../lib/userEdits";
 import { useCardEnv } from "./PlanCard";
@@ -81,23 +81,33 @@ const CURRENCIES = ["EUR", "TRY", "USD", "GBP"];
 function InlineField({ api, field }: { api: EditApi; field: FieldKey }) {
   const env = useCardEnv();
   const currency = env.decisions?.ctx.currency ?? "EUR";
-  const [value, setValue] = useState(() => fieldValue(api.item, field, currency));
-  const [cur, setCur] = useState(api.item.price.currency ?? currency);
+  // The card moved by the last save is drawn again with a new box: it goes on with what was typed (inlineEdit.ts).
+  const [draft] = useState(() => resumeDraft(api.item.id, field, { value: fieldValue(api.item, field, currency), cur: api.item.price.currency ?? currency }));
+  const [value, setValue] = useState(draft.value);
+  const [cur, setCur] = useState(draft.cur);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const settled = useRef(false);
   // What the box opened with: untouched, nothing is written (the card may not have caught up with the last save yet).
-  const opened = useRef({ value, cur });
-  useEffect(() => {
-    input.current?.focus({ preventScroll: true });
-    if (fieldInput(field) === "text") input.current?.select();
-  }, [field]);
+  const opened = draft.opened;
+  // In the same commit that takes the old box away: a key pressed in between would go to the page instead.
+  useLayoutEffect(() => {
+    const box = input.current;
+    box?.focus({ preventScroll: true });
+    if (!box || fieldInput(field) !== "text") return;
+    // A new box selects its text to type over; one drawn again mid-typing keeps the caret at the end.
+    if (box.value === opened.value) box.select();
+    else box.setSelectionRange(box.value.length, box.value.length);
+  }, [field, opened]);
   const label = fieldLabel(field, api.item);
   /** Saves, then opens `then` (or closes); a new day may move the card, so it's followed. */
   async function commit(then: FieldKey | null) {
     if (settled.current) return;
     settled.current = true;
-    if (value === opened.current.value && (field !== "price" || cur === opened.current.cur)) return api.go(then);
+    if (value === opened.value && (field !== "price" || cur === opened.cur)) {
+      dropDraft(draft);
+      return api.go(then);
+    }
     const out = await saveCardField(api.item, field === "price" ? { price: value, currency: cur } : { [field]: value }, currency);
     if (typeof out === "string") {
       settled.current = false;
@@ -105,6 +115,7 @@ function InlineField({ api, field }: { api: EditApi; field: FieldKey }) {
       input.current?.focus({ preventScroll: true });
       return;
     }
+    dropDraft(draft);
     api.go(then, out != null && (field === "date" || field === "end"));
   }
   const keys = (e: KeyboardEvent) => {
@@ -115,6 +126,7 @@ function InlineField({ api, field }: { api: EditApi; field: FieldKey }) {
     } else if (e.key === "Escape") {
       e.preventDefault();
       settled.current = true;
+      dropDraft(draft);
       api.go(null);
     } else if (e.key === "Tab") {
       e.preventDefault();
@@ -140,12 +152,12 @@ function InlineField({ api, field }: { api: EditApi; field: FieldKey }) {
         min={type === "number" ? 0 : undefined}
         step={type === "number" ? "any" : undefined}
         onChange={(e) => {
-          setValue(e.target.value);
+          setValue((draft.value = e.target.value));
           setError(null);
         }}
       />
       {field === "price" && (
-        <select className="pk-ed-cur" value={cur} aria-label={L("Para birimi", "Currency")} onChange={(e) => setCur(e.target.value)}>
+        <select className="pk-ed-cur" value={cur} aria-label={L("Para birimi", "Currency")} onChange={(e) => setCur((draft.cur = e.target.value))}>
           {[...new Set([cur, currency, ...CURRENCIES])].map((c) => <option key={c}>{c}</option>)}
         </select>
       )}

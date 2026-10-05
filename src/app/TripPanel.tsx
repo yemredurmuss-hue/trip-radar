@@ -27,7 +27,7 @@ import { undoSlot } from "../lib/undo";
 import { undoTrip, type Undoable } from "../lib/undoables";
 import { addQuick, templateLabel, TEMPLATES, type InsertAt, type Template, type TemplateId } from "../lib/templates";
 import { categorize, catDomKey, findInSections, planProgress, sectionOfItem, type SectionId } from "../lib/categories";
-import { firstField, type CardFocus } from "../lib/inlineEdit";
+import { firstField, keepDraftFor, type CardFocus } from "../lib/inlineEdit";
 import { newId } from "../lib/db";
 import { AddSheet } from "./cards/AddSheet";
 import { useTripDocs } from "./cards/DocAccess";
@@ -138,6 +138,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const [sheet, setSheet] = useState<{ at: InsertAt | null; editing: Item | null; only?: readonly TemplateId[] } | null>(null);
   const [focus, setFocus] = useState<CardFocus | null>(null);
   useEffect(() => setFocus(null), [trip.id]);
+  // A box that went away without Enter, Tab or Esc (another card opened): what was typed in it doesn't come back.
+  useEffect(() => keepDraftFor(focus), [focus]);
   /**
    * A tile picked (spec 0.33 §2): the record at once, "X eklendi · Geri al", open on the Plan for editing in
    * its section (opened, scrolled to, first field open; an idea's title, the one field its row has).

@@ -2,7 +2,8 @@
 // them, what an empty one says, the box each opens, and what a change does. A plan made by hand or said in
 // the chat (origin "chat") is edited itself, through editedItem, so the note, the PNR, a rental's or a
 // stay's time and the plan's own kind stay; a saved page's card keeps the change as a correction beside
-// the page's value (userEdits.ts). Pure, except saveField and saveCardField, which write it.
+// the page's value (userEdits.ts). Pure, except saveField and saveCardField, which write it, and the open
+// box's draft, kept here so it outlives the card being drawn again.
 import { addEvent, db, notifyChanged } from "./db";
 import { L } from "./i18n";
 import { nightsBetween } from "./items";
@@ -51,6 +52,38 @@ export function editableFields(item: Item): FieldKey[] {
 export function firstField(item: Item, currency = "EUR"): FieldKey | null {
   const fields = editableFields(item);
   return fields.find((k) => k !== "price" && !fieldValue(item, k, currency)) ?? fields[0] ?? null;
+}
+
+/**
+ * What's typed in the open box. A save the board reads back can move the card (a new city or day puts it
+ * in another group), and React draws it again with a new box: kept in the box, the text typed meanwhile
+ * was lost, and Tab or Enter then saved nothing (the price of a bus added from the sheet, in the e2e).
+ * One box is open at a time (CardFocus), so one draft; `opened` is what the box first showed.
+ */
+export interface Draft {
+  id: string;
+  field: FieldKey;
+  value: string;
+  cur: string;
+  readonly opened: { value: string; cur: string };
+}
+let draft: Draft | null = null;
+
+/** The box for this card's field as it's drawn: its draft when it was open already, else one from `start`. */
+export function resumeDraft(id: string, field: FieldKey, start: { value: string; cur: string }): Draft {
+  if (draft?.id === id && draft.field === field) return draft;
+  draft = { id, field, value: start.value, cur: start.cur, opened: start };
+  return draft;
+}
+
+/** Saved or left with Esc: this box's draft is let go (a later save doesn't touch another box's). */
+export function dropDraft(mine: Draft): void {
+  if (draft === mine) draft = null;
+}
+
+/** Another field open (null: none): a draft not for `focus` is let go. */
+export function keepDraftFor(focus: Pick<CardFocus, "id" | "field"> | null): void {
+  if (draft && (draft.id !== focus?.id || draft.field !== focus.field)) draft = null;
 }
 
 /** The field after (or, `back`, before) this one; null past the ends. */
