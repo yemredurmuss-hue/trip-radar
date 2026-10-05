@@ -1369,30 +1369,54 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .opt-where { margin-top: 2px; font-size: 14px; line-height: 1.35; }
 .empty-card .pk-ed-hint { white-space: normal; }
 
-/* ---------- 0.34: the Plan by category (docs/mockups/2026-10-05-kategoriler-v2.html): a tinted section per kind,
-   a timeline of the approved cards inside; closed, the header line alone ("Uçuş 3/4 · 1 bilet yok") ---------- */
+/* ---------- 0.34: the Plan by category (docs/mockups/2026-10-05-kategoriler-v4.html): one white sheet, a
+   section per kind divided by hairlines; colour only in the line icon and the bar. Closed, every header is the
+   same line: icon · name … bar · "3/4" · arrow. Open, "+ Ekle" joins it and one amber line says what's waiting ---------- */
 .cat-plan { --fk-ink: #1d1d1f; --fk-gray: #6e6e73; --fk-line: #e8e8ed; --fk-soft: #f5f5f7; }
-.cat-plan > .section-head { margin-bottom: 14px; }
-.cat-sec { --c: #6e6e73; margin: 0 0 12px; border-radius: 22px; background: color-mix(in srgb, var(--c) 7%, #fff); border: 1px solid color-mix(in srgb, var(--c) 16%, #fff); scroll-margin-top: 12px; }
-.cat-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; user-select: none; }
+.cat-plan > .section-head { align-items: baseline; margin-bottom: 8px; padding: 0 4px 6px; border-bottom: 0; }
+.cat-plan > .section-head > span:first-child { font-size: 22px; font-weight: 700; letter-spacing: -.01em; color: #1d1d1f; }
+.cat-plan > .section-head > .muted { font-size: 14px; }
+/* no overflow: hidden — a card's menu may reach past the sheet; the rounded corners are the heads' own */
+.cat-sheet { background: #fff; border-radius: 22px; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 6px 24px rgba(0,0,0,.04); }
+.cat-sec { --c: #6e6e73; scroll-margin-top: 12px; }
+.cat-sec + .cat-sec { border-top: 1px solid #e9e6e1; }
+.cat-head { display: flex; align-items: center; gap: 12px; padding: 16px 20px; cursor: pointer; user-select: none; }
+.cat-head:hover { background: #fbfaf8; }
+.cat-sec:first-child > .cat-head { border-radius: 22px 22px 0 0; }
+.cat-sec.closed:last-child > .cat-head { border-radius: 0 0 22px 22px; }
+.cat-sec.closed:only-child > .cat-head { border-radius: 22px; }
 .cat-title { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 0; border: 0; background: none; color: #1d1d1f; text-align: left; cursor: pointer; }
 .cat-title:focus-visible { outline: 2px solid var(--c); outline-offset: 4px; border-radius: 10px; }
-.cat-tile { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--c); color: #fff; }
-.cat-title b { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cat-count { font-size: 13px; color: #6e6e73; font-variant-numeric: tabular-nums; }
-.cat-state { padding: 3px 9px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
-.cat-state.wait { background: #fbe7bf; color: #85570a; }
-.cat-state.done { background: #d4efdc; color: #1d7442; }
-.cat-add { flex: none; display: inline-flex; align-items: center; gap: 4px; margin-left: auto; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--c) 30%, #fff); background: #fff; font: inherit; font-size: 13px; font-weight: 500; color: #1d1d1f; cursor: pointer; }
+.cat-ic { flex: none; display: grid; place-items: center; width: 28px; height: 28px; color: var(--c); }
+.cat-title b { font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the right-hand group: ["+ Ekle"] · bar · count · arrow, the count a fixed width so the numbers line up */
+.cat-end { flex: none; display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.cat-add { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid #d9d5ce; background: #fff; font: inherit; font-size: 13px; font-weight: 500; color: #1d1d1f; cursor: pointer; }
 .cat-add:hover { border-color: var(--c); }
+.cat-bar { flex: none; width: 96px; height: 6px; border-radius: 999px; background: #efece7; overflow: hidden; }
+.cat-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--c); }
+.cat-bar.done > span { background: #1f8f4e; }
+.cat-count { flex: none; width: 44px; text-align: right; font-size: 15px; font-weight: 600; color: #1d1d1f; font-variant-numeric: tabular-nums; }
+.cat-count i { font-style: normal; font-weight: 400; color: #8e8e93; }
 /* One arrow: pointing down when open, right when closed; turned on the svg itself, centred in its own box. */
-.cat-chev { flex: none; display: grid; place-items: center; width: 24px; height: 24px; color: #6e6e73; }
+.cat-chev { flex: none; display: grid; place-items: center; width: 20px; height: 20px; color: #aeaeb2; }
 .cat-chev svg { display: block; transform: rotate(0deg); }
 .cat-sec.closed .cat-chev svg { transform: rotate(-90deg); }
-.cat-body { padding: 0 16px 16px; }
-
-/* closed: the header alone, one compact line */
-.cat-sec.closed .cat-head { padding-top: 10px; padding-bottom: 10px; }
+/* open: what's waiting, one amber line under the name */
+.cat-wait { margin: -8px 0 0; padding: 0 20px 12px 60px; font-size: 14px; color: #9a6400; }
+.cat-body { padding: 0 20px 18px 60px; }
+/* the section's end: "Gizlenenler · 2 göster", quiet; opened, a compact row each with its way back */
+.cat-hidden { margin: 14px 0 0 118px; }
+.cat-hidden-link { margin: 0; font-size: 13px; color: #8e8e93; }
+.cat-hidden-link button { padding: 0; border: 0; border-bottom: 1px dotted #c7c7cc; background: none; font: inherit; color: #8e8e93; cursor: pointer; }
+.cat-hidden-link button:hover { color: #6e6e73; }
+.cat-hidden-rows { list-style: none; margin: 8px 0 0; padding: 0; }
+.cat-hidden-row { display: flex; align-items: baseline; gap: 8px; padding: 8px 0; border-top: 1px solid #f0ede8; font-size: 14px; color: #1d1d1f; }
+.cat-hidden-name { flex: none; max-width: 45%; padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: #1d1d1f; text-align: left; overflow-wrap: anywhere; }
+button.cat-hidden-name { cursor: pointer; }
+button.cat-hidden-name:hover { text-decoration: underline; }
+.cat-hidden-meta { flex: 1; min-width: 0; color: #6e6e73; overflow-wrap: anywhere; }
+.cat-hidden-row .link-btn { flex: none; margin-left: auto; }
 
 /* open: a timeline — the day on the left, a line and a dot, the cards on the right */
 .cat-line { list-style: none; margin: 0; padding: 0; }
@@ -1427,9 +1451,14 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 
 /* a narrow board (≤620 px): the day goes above its cards on one line; the header wraps under its name */
 @container panel (max-width: 620px) {
-  .cat-head { flex-wrap: wrap; gap: 10px; padding: 12px 12px; }
-  .cat-title { flex: 1 1 auto; flex-wrap: wrap; row-gap: 6px; }
+  .cat-head { gap: 10px; padding: 14px 14px; }
+  .cat-title { gap: 10px; }
+  .cat-end { gap: 8px; }
+  .cat-bar { width: 56px; }
+  .cat-count { width: 40px; }
+  .cat-wait { padding: 0 14px 10px 52px; }
   .cat-body { padding: 0 10px 12px; }
+  .cat-hidden { margin: 12px 4px 0; }
   .cat-day { grid-template-columns: minmax(0, 1fr); padding-bottom: 14px; }
   .cat-day::before, .cat-dot { display: none; }
   .cat-date { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 0 4px 8px; text-align: left; }
