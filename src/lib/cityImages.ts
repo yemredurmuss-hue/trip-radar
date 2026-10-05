@@ -99,3 +99,33 @@ export async function pickCityImage(city: string, opts: { fetchJson?: FetchJson;
   if (failed) throw failed instanceof NetworkError ? failed : new NetworkError(failed instanceof Error ? failed.message : undefined);
   return null;
 }
+
+/** A picture from Wikipedia / Wikimedia (what was stored before the proxy answered). */
+export function isWikiImage(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    return /(^|\.)(wikimedia|wikipedia)\.org$/i.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Whether to ask for a city's photo: never asked yet; or, once the proxy is set up, a stored miss or a
+ * Wikipedia picture (trips from before the proxy kept those and would never ask again).
+ */
+export const wantsCityImage = (cached: string | null | undefined, proxy: boolean): boolean =>
+  cached === undefined || (proxy && (cached === null || isWikiImage(cached)));
+
+/** What to store after asking: the new photo; a miss keeps the picture there was (a first miss is none). */
+export const nextCityImage = (cached: string | null | undefined, found: string | null): string | null => found ?? cached ?? null;
+
+/**
+ * The trip card's picture after the first city's photo is asked for: the new photo when there was none, or
+ * a proxy photo in place of a Wikipedia one; anything else (a page's photo, a proxy photo) stays.
+ */
+export function nextHeroImage(hero: string | null, found: string | null): string | null {
+  if (!found) return hero;
+  if (!hero) return found;
+  return isWikiImage(hero) && !isWikiImage(found) ? found : hero;
+}

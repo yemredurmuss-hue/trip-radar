@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { imageProxy, isPhoto, NetworkError, pickCityImage, sized } from "../src/lib/cityImages";
+import { imageProxy, isPhoto, isWikiImage, NetworkError, nextCityImage, nextHeroImage, pickCityImage, sized, wantsCityImage } from "../src/lib/cityImages";
 
 describe("city images", () => {
   it("rejects flags, coats of arms, maps and svg", () => {
@@ -96,5 +96,40 @@ describe("city image outages", () => {
     });
     await expect(pickCityImage("Nowhere")).rejects.toBeInstanceOf(NetworkError);
     vi.unstubAllGlobals();
+  });
+});
+
+describe("city photos asked again once the proxy works", () => {
+  const wiki = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/b/Porto.jpg/1280px-Porto.jpg";
+  const pexels = "https://images.pexels.com/photos/1/porto.jpeg";
+  it("knows a Wikipedia picture by its host", () => {
+    expect(isWikiImage(wiki)).toBe(true);
+    expect(isWikiImage("https://tr.wikipedia.org/x.jpg")).toBe(true);
+    expect(isWikiImage(pexels)).toBe(false);
+    expect(isWikiImage("not a url")).toBe(false);
+    expect(isWikiImage(null)).toBe(false);
+  });
+  it("never asked: always; a miss or a Wikipedia picture: only with the proxy; a proxy photo: never", () => {
+    expect(wantsCityImage(undefined, false)).toBe(true);
+    expect(wantsCityImage(null, false)).toBe(false);
+    expect(wantsCityImage(wiki, false)).toBe(false);
+    expect(wantsCityImage(null, true)).toBe(true);
+    expect(wantsCityImage(wiki, true)).toBe(true);
+    expect(wantsCityImage(pexels, true)).toBe(false);
+  });
+  it("a miss keeps the old picture; a first miss is stored as none", () => {
+    expect(nextCityImage(wiki, pexels)).toBe(pexels);
+    expect(nextCityImage(wiki, null)).toBe(wiki);
+    expect(nextCityImage(undefined, null)).toBeNull();
+    expect(nextCityImage(null, null)).toBeNull();
+  });
+  it("the trip card's picture follows the first city's new photo, never a page photo or a better one", () => {
+    expect(nextHeroImage(wiki, pexels)).toBe(pexels);
+    expect(nextHeroImage(null, pexels)).toBe(pexels);
+    expect(nextHeroImage(null, wiki)).toBe(wiki);
+    expect(nextHeroImage(wiki, null)).toBe(wiki);
+    expect(nextHeroImage(pexels, "https://images.pexels.com/photos/2/other.jpeg")).toBe(pexels);
+    expect(nextHeroImage("https://hotel.example/room.jpg", pexels)).toBe("https://hotel.example/room.jpg");
+    expect(nextHeroImage(wiki, "https://upload.wikimedia.org/other.jpg")).toBe(wiki);
   });
 });

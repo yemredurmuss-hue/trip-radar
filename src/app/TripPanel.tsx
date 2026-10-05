@@ -24,7 +24,7 @@ import { cityKeyOf, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 import { isRental } from "../lib/travelKinds";
 import { L } from "../lib/i18n";
-import { imageProxy, pickCityImage } from "../lib/cityImages";
+import { imageProxy, nextCityImage, nextHeroImage, pickCityImage, wantsCityImage } from "../lib/cityImages";
 import { acceptMood, moodKey, statusSentence } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
 import { loadPassport } from "../lib/passport";
@@ -144,21 +144,35 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     if (trip.heroImage && !list.some((c) => c.image)) return list.length ? [{ ...list[0], image: trip.heroImage }, ...list.slice(1)] : [{ name: "", image: trip.heroImage }];
     return list;
   }, [cityNames, trip.cityImages, trip.heroImage]);
-  // A city's photo is looked up once (a miss is stored as null, so it isn't asked again).
+  // A city's photo is looked up once (a miss is stored as null, so it isn't asked again). Once the
+  // sharing server's photo proxy is set up, a stored miss or Wikipedia picture is asked for again, once
+  // per trip and city in a session; a miss then keeps the old picture. The first city's new photo also
+  // becomes the trip card's (TripsHome).
   const askedImages = useRef(new Set<string>());
   useEffect(() => {
-    const missing = cityNames.filter((name) => {
+    const unasked = cityNames.filter((name) => {
       const key = cityKeyOf(name);
-      return key && trip.cityImages?.[key] === undefined && !askedImages.current.has(`${trip.id}:${key}`);
+      return key && !askedImages.current.has(`${trip.id}:${key}`) && wantsCityImage(trip.cityImages?.[key], true);
     });
-    if (!missing.length) return;
-    for (const name of missing) askedImages.current.add(`${trip.id}:${cityKeyOf(name)}`);
+    if (!unasked.length) return;
+    for (const name of unasked) askedImages.current.add(`${trip.id}:${cityKeyOf(name)}`);
+    const firstKey = cityNames.length ? cityKeyOf(cityNames[0]) : null;
     void (async () => {
       const proxy = await imageProxy();
-      for (const name of missing) {
+      for (const name of unasked) {
+        const key = cityKeyOf(name)!;
+        if (!wantsCityImage(trip.cityImages?.[key], Boolean(proxy))) continue;
         try {
           const url = await pickCityImage(name, { proxy });
-          await updateTrip(trip.id, (t) => ({ ...t, cityImages: { ...t.cityImages, [cityKeyOf(name)!]: url } }), { touch: false });
+          await updateTrip(
+            trip.id,
+            (t) => ({
+              ...t,
+              cityImages: { ...t.cityImages, [key]: nextCityImage(t.cityImages?.[key], url) },
+              ...(key === firstKey ? { heroImage: nextHeroImage(t.heroImage, url) } : {}),
+            }),
+            { touch: false },
+          );
         } catch (error) {
           // An outage is not "no photo": store nothing, so the next visit asks again.
           console.warn("city photo", name, error);
