@@ -167,6 +167,14 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
   line-up, parti, canlı müzik geçen kayıt — sohbet ya da sayfa "yapılacak / rezervasyon yok" demiş olsa da —
   Etkinlikler'e gider (bilet gerekir).
 - Plan'da check-in/check-out satırı, boş gün, planı olmayan transfer yok.
+- **Günlük akış · Liste** (0.35.4, referans `docs/mockups/ref/2026-10-05-gunluk-akis-liste-referans.webp`): her gün
+  bir kart; solda günün büyük fotoğrafı, üstünde "1. gün" hapı; sağda kalın başlık, tarih, aç/kapa oku; altında
+  saat saat akış: saat · noktalı çizgide nokta · renkli yumuşak karede ikon · tek satır. **Hepsi aynı hiyerarşide:**
+  check-in, taksi, uçuş, tur aynı boy ve ağırlık (ince bilgi satırı yok). Kartın sağ arkasında günün konusuna göre
+  soluk çizim (deniz, tepeler, şehir). **Sigorta ve eSIM akışta yok** (Plan'da Diğer'de); gün açılınca saatsizlerle
+  birlikte altta durur: "Gün içinde · saatsiz" (o güne konan restoranlar, yapılacak şeyler). Kapalıyken "+ N
+  saatsiz". Boş günde "+ Bu güne ekle" açmadan görünür. Satıra dokunmak Kartlar'da o kartı açar. Liste'de ray yok;
+  ray ve şehir grupları Kartlar'da.
 - **Günlük akış** (0.34.8) tek anahtarla iki görünüm, günler tek tek açılıp kapanmaz. Üstte yapışkan çubuk:
   **Liste | Kartlar** (seçim bu tarayıcıda hatırlanır) ve gün şeridi (1 · 2 · 3 · 4 · 5–6 · 7; bugün mavi), şerit
   o güne kaydırır. İkisinde de aynı satırlar, aynı sıra.

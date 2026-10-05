@@ -1,11 +1,14 @@
-// Günlük akış (0.35.1): the trip as it goes, day by day (after Layla). A rail of stretches (arrival, a city's
-// days, home); each day a section with its header held at the top. Two views of the same lines in the same
-// order: Liste, one short line each (time · the Plan's icon in its colour, ✓ booked or an amber dot · name);
-// Kartlar, each as its own card on the Plan (the flight, the taxi to it with its "how", the tour).
+// Günlük akış: the trip day by day, two views of the same lines in the same order. Liste (0.35.4, Emre's
+// reference docs/mockups/ref/2026-10-05-gunluk-akis-liste-referans.webp): a card per day, its photo on the left
+// with "1. gün" on it, its title, and what happens hour by hour — time · dot · the Plan's icon in its colour ·
+// one line — every line the same weight, a check-in like a taxi like a flight. Insurance and the eSIM aren't
+// hours of a day; they wait with the day's ideas (restaurants, things to do) under the opened day. Kartlar
+// (0.35.1, after Layla): a rail of stretches, each line as its own card on the Plan.
 import { useEffect, useState, type ReactNode } from "react";
 import { cardKindColor, cardKindLabel, RENTAL_MODES, TRANSPORT_MODES, type CardKind, type TransportMode } from "../../lib/cardKinds";
 import { imageProxy } from "../../lib/cityImages";
 import { dayCards, dayPhoto, daysLabel, flowRows, groupDays, highlightOf, ideaCount, isPlanRow, rowKind, rowMark, type DayCard, type DayGroup } from "../../lib/dayCards";
+import { sectionOfItem } from "../../lib/categories";
 import { formatDateRange } from "../../lib/items";
 import { L, locale } from "../../lib/i18n";
 import type { DayRow } from "../../lib/journey";
@@ -87,6 +90,9 @@ export function DayCards(props: DayCardsProps) {
     return () => clearTimeout(t);
   }, [target, mode]);
   const isToday = (c: DayCard) => c.date === props.today || (!!c.end && c.date <= props.today && props.today <= c.end);
+  // A day opened or closed in the list (today starts open): its loose ends under its hours.
+  const [flipped, setFlipped] = useState<Set<string>>(() => new Set());
+  const flip = (key: string) => setFlipped((s) => (s.has(key) ? new Set([...s].filter((k) => k !== key)) : new Set([...s, key])));
   return (
     <div className="dc">
       <div className="dc-bar">
@@ -109,7 +115,14 @@ export function DayCards(props: DayCardsProps) {
           ))}
         </nav>
       </div>
-      {groupDays(cards).map((g, n, all) => (
+      {mode === "list" && (
+        <div className="dl">
+          {cards.map((c) => (
+            <DayListCard key={c.key} card={c} isToday={isToday(c)} open={isToday(c) !== flipped.has(c.key)} onToggle={() => flip(c.key)} onPick={(row) => setMode("cards", { id: `dc-${row}`, flash: true })} {...props} />
+          ))}
+        </div>
+      )}
+      {mode === "cards" && groupDays(cards).map((g, n, all) => (
         <Group
           key={g.key}
           group={g}
@@ -245,7 +258,9 @@ const spanDays = (cards: DayCard[]) => cards.reduce((n, c) => n + (c.end ? Math.
  */
 function DaySection({ card, mode, isToday, stays, onPick, ...props }: { card: DayCard; mode: Mode; isToday: boolean; stays: Map<string, StayEntry>; onPick: (row: string) => void } & DayCardsProps) {
   const photo = useDayPhoto(card, props.cityImage);
-  const flow = flowRows(card);
+  // Insurance and the eSIM aren't hours of the day: after the day's lines (0.35.4).
+  const rows = flowRows(card);
+  const flow = [...rows.filter((r) => !isAside(r)), ...rows.filter(isAside)];
   const experiences = flow.filter((r) => r.item && (r.item.category === "activity" || r.item.category === "food")).length;
   return (
     <section className={`dc-cday ${mode}`} id={`dcd-${mode}-${card.key}`} aria-label={`${card.dayNo ?? ""} ${card.title}`}>
@@ -321,7 +336,7 @@ function TimeCell({ row, tripId }: { row: DayRow; tripId: string }) {
 /** Information (check-in, check-out, the metro planned): a thin line, closed or open. */
 function InfoLine({ row, tripId }: { row: DayRow; tripId: string }) {
   return (
-    <li className="dc-step info" data-title={row.line ?? row.title}>
+    <li className="dc-step info" id={`dc-${row.key}`} data-title={row.line ?? row.title}>
       <TimeCell row={row} tripId={tripId} />
       <span className="dot" />
       <span className="txt">
@@ -334,23 +349,28 @@ function InfoLine({ row, tripId }: { row: DayRow; tripId: string }) {
 
 const isLine = (r: DayRow) => !isPlanRow(r) && r.kind !== "idea";
 
-/** A line of the closed day: time · dot · the Plan's icon (✓ / amber dot) · name; a tap opens the day at its card. */
+/**
+ * A line of the list: time · dot · the Plan's icon (✓ booked / amber dot) · one line; a check-in, a planned
+ * metro, a taxi, a flight all the same (0.35.4). A tap opens the cards at its card.
+ */
 function Line({ row, onTap, tripId }: { row: DayRow; onTap: () => void; tripId: string }) {
-  if (isLine(row)) return <InfoLine row={row} tripId={tripId} />;
+  const info = isLine(row);
   const kind = rowKind(row);
-  const mark = row.kind === "idea" ? null : rowMark(row);
+  const mark = row.kind === "idea" || info ? null : rowMark(row);
+  const title = info ? (row.line ?? row.title) : row.title;
+  const sub = info || row.kind === "idea" ? row.sub : null;
   return (
-    <li className={`dc-step${row.kind === "idea" ? " idea" : ""}`} data-title={row.title}>
+    <li className={`dc-step${row.kind === "idea" ? " idea" : info ? " info" : ""}`} data-title={title}>
       <TimeCell row={row} tripId={tripId} />
       <span className="dot" />
       <button className="dc-line" onClick={onTap}>
         <span className="dc-tile" style={{ ["--k" as string]: cardKindColor(kind) }} title={cardKindLabel(kind)}>
-          <KindIcon kind={kind} size={18} />
+          <KindIcon kind={kind} size={19} />
           {mark && <i className={mark.done ? "done" : "todo"}>{mark.done ? "✓" : ""}</i>}
         </span>
         <span className="name">
-          {row.title}
-          {row.kind === "idea" && row.sub && <small> · {row.sub}</small>}
+          {title}
+          {sub && <small> · {sub}</small>}
         </span>
       </button>
       {row.warn && <p className="dc-warn">{row.warn}</p>}
@@ -392,5 +412,118 @@ function Full({ row, stay, cards, leg, tripId }: { row: DayRow; stay: StayEntry 
         {body ?? <span className="txt">{row.title}</span>}
       </div>
     </li>
+  );
+}
+
+// --- Liste (0.35.4) ---------------------------------------------------------------------------------
+
+/** Not an hour of the day: insurance, the eSIM, a visa, a chore (the Plan's Diğer). */
+const isAside = (r: DayRow) => !!r.item && sectionOfItem(r.item) === "other";
+
+/** The card's faint drawing on the right, from what the day is about: the sea, hills, or the town. */
+type Motif = "sea" | "hills" | "town";
+function motifOf(card: DayCard): Motif {
+  const text = card.rows.map((r) => `${r.title} ${r.item?.name ?? ""} ${r.item?.summary ?? ""}`).join(" ");
+  if (/tekne|boat|feribot|ferry|vapur|plaj|beach|sahil|deniz|\bsea\b|cruise|okyanus|ocean|kıyı|coast/i.test(text) || card.rows.some((r) => rowKind(r) === "ferry")) return "sea";
+  if (/yürüyüş|hike|hiking|levada|dağ|mountain|orman|forest|park|bahçe|garden|seyir|viewpoint|miradouro|vadi|valley|şelale|waterfall/i.test(text)) return "hills";
+  return "town";
+}
+
+const MOTIFS: Record<Motif, ReactNode> = {
+  sea: (
+    <>
+      <path d="M8 118c22-10 40-10 62 0s40 10 62 0 40-10 62 0 40 10 62 0" />
+      <path d="M30 138c22-10 40-10 62 0s40 10 62 0 40-10 62 0" />
+      <path d="M150 104V40l40 58zM146 104h56l-8 10h-42z" />
+      <path d="M40 70c30-30 60-34 96-22M210 60c14-10 30-12 46-6" />
+    </>
+  ),
+  hills: (
+    <>
+      <path d="M0 132l58-70 34 40 46-62 52 66 30-30 40 56" />
+      <path d="M40 132l30-30 26 30M176 132l26-26 22 26" />
+      <path d="M226 132v-30M218 112l8-14 8 14M214 124l12-20 12 20" />
+      <path d="M30 40c10-6 22-6 32 0M100 22c8-5 18-5 26 0" />
+    </>
+  ),
+  town: (
+    <>
+      <path d="M10 132V92l22-16 22 16v40M54 132V70h34v62M88 132V98l18-14 18 14v34M124 132V56l14-16 14 16v76M152 132V86h36v46M188 132v-30l20-14 20 14v30" />
+      <path d="M64 84h6M76 84h6M64 100h6M76 100h6M132 70h12M132 88h12M160 98h6M174 98h6" />
+      <path d="M0 132h250" />
+    </>
+  ),
+};
+
+/**
+ * A day of the list: the photo with "1. gün" on it, the title and the date, the arrow that opens it; its hours
+ * one line each; opened, what has no hour (the day's restaurants and things to do, insurance and the eSIM) and
+ * "+ Bu güne ekle". A line opens the cards at that line.
+ */
+function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card: DayCard; isToday: boolean; open: boolean; onToggle: () => void; onPick: (row: string) => void } & DayCardsProps) {
+  const photo = useDayPhoto(card, props.cityImage);
+  const all = flowRows(card);
+  const hours = all.filter((r) => r.kind !== "idea" && !isAside(r));
+  const loose = [...all.filter((r) => r.kind === "idea" && !isAside(r)), ...all.filter(isAside)];
+  const lead = highlightOf(card);
+  const tint = lead ? cardKindColor(rowKind(lead)) : "#5b7fa6";
+  const label = L(`${card.dayNo ?? dateText(card)}: ${open ? "kapat" : "aç"}`, `${card.dayNo ?? dateText(card)}: ${open ? "close" : "open"}`);
+  return (
+    <section className={`dc-cday list dl-day${open ? " open" : ""}${isToday ? " today" : ""}`} id={`dcd-list-${card.key}`} aria-label={`${card.dayNo ?? ""} ${card.title}`}>
+      <div className="dl-photo">
+        {photo && <img src={photo} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />}
+        <b className="dc-pill">{card.dayNo ?? dateText(card)}</b>
+      </div>
+      <div className="dl-body" style={{ ["--m" as string]: tint }}>
+        <svg className="dl-motif" viewBox="0 0 260 140" aria-hidden fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+          {MOTIFS[motifOf(card)]}
+        </svg>
+        <header className="dl-head">
+          <span className="dl-htext">
+            <span className="ttl">{card.title}</span>
+            <span className="dl-date">
+              {card.dayNo && <span className={isToday ? "today" : ""}>{isToday ? L("Bugün", "Today") : dateText(card)}</span>}
+              <DayChips card={card} />
+            </span>
+          </span>
+          <button type="button" className="dl-chev" aria-expanded={open} aria-label={label} title={label} onClick={onToggle}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+        </header>
+        {hours.length > 0 ? (
+          <ol className="dc-tl">
+            {hours.map((r) => (
+              <Line key={r.key} row={r} onTap={() => onPick(r.key)} tripId={props.tripId} />
+            ))}
+          </ol>
+        ) : (
+          <p className="dc-free">{L("Henüz saatli bir plan yok.", "Nothing with a time yet.")}</p>
+        )}
+        {/* A free day has nothing to open: its "+" is there. */}
+        {open || (!hours.length && !loose.length) ? (
+          <>
+            {loose.length > 0 && (
+              <>
+                <p className="dl-sub">{L("Gün içinde · saatsiz", "During the day · no time")}</p>
+                <ol className="dc-tl loose">
+                  {loose.map((r) => (
+                    <Line key={r.key} row={r} onTap={() => onPick(r.key)} tripId={props.tripId} />
+                  ))}
+                </ol>
+              </>
+            )}
+            <AddDay card={card} onAdd={props.onAdd} />
+          </>
+        ) : (
+          loose.length > 0 && (
+            <button type="button" className="dl-more" onClick={onToggle}>
+              {L(`+ ${loose.length} saatsiz`, `+ ${loose.length} without a time`)}
+            </button>
+          )
+        )}
+      </div>
+    </section>
   );
 }
