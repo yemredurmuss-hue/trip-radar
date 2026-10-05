@@ -314,8 +314,8 @@ export function mergeItem(existing: Item, incoming: Item, placeOnly = false): It
     concerns: incoming.concerns.length ? incoming.concerns : existing.concerns,
     reviewSummary: pick(incoming.reviewSummary, existing.reviewSummary),
     missing: incoming.missing,
-    // Whether it needs booking: the traveller's move ("Rezerve edileceklere taşı") or the first reading stands.
-    // An older record already chosen or booked (on the Plan) isn't sent to Fikirler by a re-read.
+    // Whether it needs booking: the traveller's move ("Etkinliklere taşı") or the first reading stands.
+    // An older record already chosen or booked isn't sent to the ideas (Yapılacak şeyler) by a re-read.
     booking: existing.booking ?? (incoming.booking === "none" && (existing.status === "chosen" || existing.status === "booked") ? undefined : incoming.booking),
     // The traveller's decision stands, except that a booking confirmation books it.
     status: incoming.status === "booked" ? "booked" : existing.status,

@@ -361,7 +361,7 @@ function itemRow(item: Item): DayRow {
   });
 }
 
-/** Something to do or eat with no booking, put on this day in Fikirler: a thin line (its meal; ✓ once done). */
+/** Something to do or eat with no booking, put on this day: a thin line (its meal; ✓ once done). */
 function ideaRow(item: Item): DayRow {
   return row({
     key: `idea:${item.id}`,

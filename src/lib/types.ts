@@ -308,11 +308,11 @@ export interface Item {
   /** eSIM: when the traveller said it's installed ("Kurdum"). */
   installedAt?: number;
   /**
-   * Needs a booking (stays on the Plan, counts as "Rezerve et") or not (an idea in Fikirler). Missing on
+   * Needs a booking (counts as "Rezerve et") or not (an idea: Yapılacak şeyler, Restoranlar). Missing on
    * older records and pages that didn't say: read by kind (booking.ts bookingOf).
    */
   booking?: "needed" | "none";
-  /** A to-do or an idea ticked off in Fikirler ("Yapıldı · 12 Eki"). */
+  /** A to-do or an idea ticked off ("Yapıldı · 12 Eki"). */
   doneAt?: number;
   /** A restaurant idea put on a day: which meal ("8 Eki akşam"). */
   meal?: MealSlot;

@@ -5,7 +5,6 @@ import { requestProcessing } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
 import {
   CATEGORY_LABELS,
-  CATEGORY_ORDER,
   formatDateRange,
   formatPrice,
   listingKeyOf,
@@ -16,7 +15,7 @@ import {
   type NeedGroup,
 } from "../lib/items";
 import { buildLegs, type Leg } from "../lib/legs";
-import { buildTimeline, hiddenNights, nightsKey, toBook } from "../lib/timeline";
+import { buildTimeline, hiddenNights, nightsKey } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
 import { cardFacts } from "../lib/cardFacts";
 import { budgetBar, decisionProgress, entryDomId, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
@@ -38,16 +37,16 @@ import { inheritedDocs } from "../lib/docs";
 import { deleteItem, onRemoved } from "../lib/removal";
 import { undoSlot } from "../lib/undo";
 import { undoTrip, type Undoable } from "../lib/undoables";
-import { addQuick, templateLabel, type InsertAt, type Template } from "../lib/templates";
+import { addQuick, templateLabel, TEMPLATES, type InsertAt, type Template, type TemplateId } from "../lib/templates";
+import { categorize, findInSections, sectionOfItem, type CatEntry, type SectionId } from "../lib/categories";
 import { firstField, type CardFocus } from "../lib/inlineEdit";
 import { newId } from "../lib/db";
-import { AddButton, AddSheet } from "./cards/AddSheet";
+import { AddSheet } from "./cards/AddSheet";
 import { useTripDocs } from "./cards/DocAccess";
 import { LegCard } from "./cards/LegCard";
 import { CardEnvContext, NavGroup, PlanCard, type CardEnv } from "./cards/PlanCard";
 import { SilhouetteDefs } from "./cards/Silhouettes";
 import { UndoToast } from "./cards/UndoToast";
-import { IdeasView } from "./ideas/IdeasView";
 import { isIdea } from "../lib/booking";
 import { CategoryIcon, Chevron } from "./Icons";
 import { findTarget, show, TodoList } from "./Progress";
@@ -55,6 +54,8 @@ import { TripFacts } from "./TripFacts";
 import { TripHero, type HeroCity, type HeroCounts } from "./TripHero";
 import { kindLabel, LegRow } from "./LegRow";
 import { Carousel } from "./Carousel";
+import { CategoryPlan } from "./plan/CategoryPlan";
+import { SECTION_META, useSectionOpen } from "./plan/sectionMeta";
 import { SettledCard, SwipeCard } from "./SwipeCard";
 import { VoteTallyText } from "./Share";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
@@ -76,9 +77,6 @@ interface Props {
   onShare?: () => void;
 }
 
-/** Activities, restaurants and the rest: what needs booking is under "Rezerve edilecekler", the rest in Fikirler. */
-const DAY_THINGS: Category[] = ["activity", "food", "other"];
-
 export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, menu, onShare }: Props) {
   // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
@@ -86,20 +84,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const route = routeOf(plan, items);
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
   const [view, setView] = useState<TimelineMode>("plan");
-  /** Opens a block of the plan (from the itinerary). */
-  const showOnPlan = (key: string) => {
-    setView("plan");
-    setTimeout(() => show(document.getElementById(entryDomId(key))), 60);
-  };
-  /** A to-do's place: on this view if it's there, else on the other (an empty transfer is only in the itinerary). */
-  const reveal = (target: Todo["target"]) => {
-    const here = findTarget(target);
-    if (here) return show(here);
-    setView((v) => (v === "plan" ? "days" : "plan"));
-    setTimeout(() => show(findTarget(target)), 60);
-  };
   const dismissed = items.filter((i) => i.status === "dismissed");
-  const hasIdeas = items.some(isIdea);
   const mapUrl = routeUrl(items);
   const working = openCaptures.filter((c) => c.status === "pending" || c.status === "processing");
   const failed = openCaptures.filter((c) => c.status === "error");
@@ -112,6 +97,39 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const timeline = useMemo(() => buildTimeline(plan, legs, items, hidden), [plan, legs, items, hidden]);
   const hiddenLegs = legs.filter((l) => l.kind !== "move" && hidden.has(`leg:${l.key}`));
   const hiddenStays = useMemo(() => hiddenNights(timeline), [timeline]);
+  // The Plan by category (spec 0.34): every block and record in one of seven sections; which are open, per trip.
+  const rank = useMemo(() => new Map([...(decisions?.byGroup.values() ?? [])].flatMap((d) => d.options.map((o, i) => [o.item.id, i] as const))), [decisions?.byGroup]);
+  const sections = useMemo(() => categorize({ plan, timeline, items, legs, hidden, rank }), [plan, timeline, items, legs, hidden, rank]);
+  const [opened, setOpened] = useSectionOpen(trip.id);
+  /** Opens a block of the plan (from the itinerary): its section opens, the card comes into view. */
+  const showOnPlan = (key: string) => {
+    const hit = findInSections(sections, { entry: key });
+    setView("plan");
+    if (hit) setOpened(hit.section, true);
+    setTimeout(() => show(document.getElementById(entryDomId(key)) ?? (hit && document.getElementById(entryDomId(hit.dom)))), 60);
+  };
+  /** A closed section's line: the section opens, the card comes into view. */
+  const goTo = (entry: CatEntry, dom: string) => {
+    setOpened(entry.section, true);
+    setTimeout(() => show(document.getElementById(entryDomId(dom))), 60);
+  };
+  /**
+   * A to-do's place: on this view if it's there; else on the Plan (its section opened); else on the other view
+   * (an empty transfer is only in the itinerary).
+   */
+  const reveal = (target: Todo["target"]) => {
+    const here = findTarget(target);
+    if (here) return show(here);
+    const hit = findInSections(sections, target);
+    if (hit) {
+      setView("plan");
+      setOpened(hit.section, true);
+      setTimeout(() => show(findTarget(target) ?? document.getElementById(entryDomId(hit.dom))), 60);
+      return;
+    }
+    setView((v) => (v === "plan" ? "days" : "plan"));
+    setTimeout(() => show(findTarget(target)), 60);
+  };
 
   // --- plan cards: the way chosen per transfer, files, delete with undo, the add sheet ---
   const legModes = useMemo(() => legModeByItem(legs), [legs]);
@@ -126,27 +144,27 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // A plan the chat took back ("taksiyi kaldır") gets the same "Geri al".
   useEffect(() => onRemoved((removed) => removed.item.tripId === trip.id && undo.show({ kind: "removed", removed })), [trip.id, undo]);
   const offer = (u: Undoable) => undoTrip(u) === trip.id && undo.show(u);
-  const [sheet, setSheet] = useState<{ at: InsertAt | null; editing: Item | null } | null>(null);
+  const [sheet, setSheet] = useState<{ at: InsertAt | null; editing: Item | null; only?: readonly TemplateId[] } | null>(null);
   const [focus, setFocus] = useState<CardFocus | null>(null);
   useEffect(() => setFocus(null), [trip.id]);
   /**
-   * A tile picked (spec 0.33 §2): the record at once, "X eklendi · Geri al". A booking opens on the Plan for
-   * editing (scrolled to, first field open); an idea goes to Fikirler without switching ("· Göster").
+   * A tile picked (spec 0.33 §2): the record at once, "X eklendi · Geri al", open on the Plan for editing in
+   * its section (opened, scrolled to, first field open; an idea's title, the one field its row has).
    */
   const quickAdd = async (tpl: Template, at: InsertAt | null) => {
     setSheet(null);
     const item = await addQuick(trip.id, tpl, at, newId());
-    const ideas = isIdea(item);
-    offer({ kind: "added", item, label: templateLabel(tpl.id), ideas });
-    if (ideas) return;
+    offer({ kind: "added", item, label: templateLabel(tpl.id) });
     if (view !== "plan") setView("plan");
-    setFocus({ id: item.id, field: firstField(item, decisions?.ctx.currency ?? "EUR"), scroll: true });
+    setOpened(sectionOfItem(item), true);
+    setFocus({ id: item.id, field: isIdea(item) ? "name" : firstField(item, decisions?.ctx.currency ?? "EUR"), scroll: true });
   };
-  /** "Göster" on "… Fikirler'e eklendi": Fikirler, the new one's title open. */
-  const showIdea = (u: Undoable) => {
-    if (u.kind !== "added") return;
-    setView("ideas");
-    setFocus({ id: u.item.id, field: "name", scroll: true });
+  /** "+ Ekle" of a section and its "+": its one kind at once (Etkinlik, Restoran), or the sheet with only its tiles. */
+  const addIn = (section: SectionId | null, at: InsertAt | null) => {
+    if (!section) return setSheet({ at, editing: null });
+    const ids = SECTION_META[section].templates;
+    if (ids.length === 1) return void quickAdd(TEMPLATES.find((t) => t.id === ids[0])!, at);
+    setSheet({ at, editing: null, only: ids });
   };
   const env: CardEnv = {
     tripId: trip.id,
@@ -381,13 +399,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         </div>
       )}
 
-      {timeline.entries.length === 0 && (
-        <div className="section-head pk-plan-head">
-          <span>{L("Gezi planı", "Trip plan")}</span>
-          <AddButton onClick={() => env.add(null)} />
-        </div>
-      )}
-      {(timeline.entries.length > 0 || hasIdeas) && (
+      {timeline.entries.length > 0 && (
         <div className="view-tabs" role="tablist" aria-label={L("Görünüm", "View")}>
           <button role="tab" aria-selected={view === "plan"} className={view === "plan" ? "on" : ""} onClick={() => setView("plan")}>
             {L("Plan", "Plan")}
@@ -395,40 +407,23 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           <button role="tab" aria-selected={view === "days"} className={view === "days" ? "on" : ""} onClick={() => setView("days")}>
             {L("Günlük akış", "Day by day")}
           </button>
-          <button role="tab" aria-selected={view === "ideas"} className={view === "ideas" ? "on" : ""} onClick={() => setView("ideas")}>
-            {L("Fikirler", "Ideas")}
-          </button>
         </div>
       )}
-      {view === "ideas" && <IdeasView tripId={trip.id} items={items} plan={plan} cities={cityNames} />}
-      {timeline.entries.length > 0 && view !== "ideas" && (
-        <TimelineView
-          mode={view}
-          onShow={showOnPlan}
+      {view === "days" && timeline.entries.length > 0 ? (
+        <TimelineView onShow={showOnPlan} timeline={timeline} tripId={trip.id} leg={leg} onAdd={env.add} listings={listings} today={today} />
+      ) : (
+        <CategoryPlan
           plan={plan}
-          timeline={timeline}
+          sections={sections}
+          open={opened}
+          onOpen={setOpened}
           tripId={trip.id}
-          leg={leg}
-          legCard={legCard}
-          onAdd={env.add}
-          renderGroup={renderGroup}
-          card={card}
-          settled={settled}
-          listings={listings}
-          today={today}
+          cities={cityNames}
+          cards={{ legCard, renderGroup, card, settled }}
+          onAdd={addIn}
+          onGo={goTo}
         />
       )}
-
-      {view === "plan" && <ToBook timeline={timeline} card={card} />}
-      {view === "plan" && CATEGORY_ORDER.map((category) => {
-        if (category === "stay") return <LooseStays key="stay" plan={plan} renderGroup={renderGroup} />;
-        if (DAY_THINGS.includes(category)) return null;
-        // Flights and transport the timeline placed on their day are there; the rest (and eSIMs) here.
-        const groups = category === "flight" || category === "transport" ? timeline.unplaced : plan.groups;
-        return groups
-          .filter((g) => g.category === category)
-          .map((g, index) => renderGroup(g, index === 0 ? CATEGORY_LABELS[category] : null, g.title));
-      })}
 
       {view === "plan" && plan.closed.length > 0 && <ClosedSection closed={plan.closed} onOpenItem={onOpenItem} />}
 
@@ -443,10 +438,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         />
       )}
       {sheet && (
-        <AddSheet at={sheet.at} editing={sheet.editing} currency={decisions?.ctx.currency ?? trip.budget?.currency ?? "EUR"} onClose={() => setSheet(null)}
+        <AddSheet at={sheet.at} editing={sheet.editing} only={sheet.only} currency={decisions?.ctx.currency ?? trip.budget?.currency ?? "EUR"} onClose={() => setSheet(null)}
           onPick={(tpl) => void quickAdd(tpl, sheet.at)} />
       )}
-      <UndoToast undoable={undoable} onShow={showIdea} onUndo={() => { const u = undo.take(); if (u) void takeBack(u); }} />
+      <UndoToast undoable={undoable} onUndo={() => { const u = undo.take(); if (u) void takeBack(u); }} />
     </CardEnvContext.Provider>
   );
 }
@@ -482,50 +477,6 @@ function routeOf(plan: Plan, items: Item[]): string | null {
   if (inOrder.length) return inOrder.join(" → ");
   const saved = [...new Set(items.filter((i) => i.status !== "dismissed" && i.category === "stay" && i.city).map((i) => i.city!))];
   return saved.length ? joinTr(saved) : null;
-}
-
-/**
- * "Rezerve edilecekler · 5 · 2 alındı" (etkinlik-v4): what needs booking and has no block of its own on the
- * plan (no day, or saved for a day and not chosen), one card under another. What needs no booking is in Fikirler.
- */
-function ToBook({ timeline, card }: { timeline: Timeline; card: CardFor }) {
-  const { items, booked } = toBook(timeline);
-  if (!items.length) return null;
-  return (
-    <div className="section pk-tobook">
-      <div className="section-head">
-        <span>{L("Rezerve edilecekler", "To book")}</span>
-        <span className="muted">{L(`${items.length} · ${booked} alındı`, `${items.length} · ${booked} booked`)}</span>
-      </div>
-      {items.map((i) => (
-        <div key={i.id} className="pk-tobook-row">
-          {card(i, items.filter((x) => x.needKey === i.needKey))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** Stays that don't fit the trip's nights (no dates, or outside them); every stay when there are no dates yet. */
-function LooseStays({ plan, renderGroup }: { plan: Plan; renderGroup: RenderGroup }) {
-  if (!plan.looseStays.length) return null;
-  return (
-    <div className="section">
-      <div className="section-head">
-        <span>{plan.stayBlocks.length ? L("Diğer konaklamalar", "Other stays") : CATEGORY_LABELS.stay}</span>
-      </div>
-      {plan.looseStays.map((g) =>
-        renderGroup(
-          g,
-          null,
-          plan.range
-            ? `${g.title ?? ""}${g.range ? L(" · gezi tarihleri dışında", " · outside the trip dates") : L(" · tarih seçilmemiş", " · no dates chosen")}`
-            : `${g.title ?? ""}${g.range ? "" : L(" · tarih seçilmemiş", " · no dates chosen")}`,
-          true,
-        ),
-      )}
-    </div>
-  );
 }
 
 function OptionGroupView({

@@ -11,7 +11,7 @@ import { L } from "./i18n";
 import { nNights } from "./i18nText";
 import { shortDay } from "./ideas";
 import { formatDateRange, isoDate } from "./items";
-import { BOOKABLE, isRental, legShortTitle, type Leg } from "./legs";
+import { BOOKABLE, legShortTitle, type Leg } from "./legs";
 import { cityKeyOf, departureDay, sameCity, type OptionGroup, type Plan } from "./plan";
 import { toBook, type Timeline, type TimelineEntry } from "./timeline";
 import { isInsurance, itemText } from "./travelKinds";
@@ -212,10 +212,15 @@ function itemsOfEntry(entry: TimelineEntry): Item[] {
 const best = (items: Item[]): Item | null => items.find((i) => i.status === "booked") ?? items.find((i) => i.status === "chosen") ?? null;
 const cheapest = (items: Item[]): Item | null =>
   [...items].filter((i) => i.price.amount != null).sort((a, b) => a.price.amount! - b.price.amount!)[0] ?? null;
-/** The one that stands for a block's options in its row: the chosen, else the cheapest, else the first. */
-const lead = (items: Item[]): Item | null => best(items) ?? cheapest(items) ?? items[0] ?? null;
-const priceOf = (items: Item[]) => {
-  const i = best(items) ?? cheapest(items);
+/** The one that stands for a block's options in its row: the chosen, else the one its card shows first (best ranked, else cheapest). */
+/** Each option's place in its decision, best first (the order its card shows them in). */
+export type Ranking = ReadonlyMap<string, number>;
+const lead = (items: Item[], rank: Ranking): Item | null =>
+  best(items) ??
+  [...items].sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity) || (a.price.amount ?? Infinity) - (b.price.amount ?? Infinity))[0] ??
+  null;
+const priceOf = (items: Item[], rank: Ranking) => {
+  const i = lead(items, rank);
   return i && i.price.amount != null ? { amount: i.price.amount, currency: i.price.currency } : null;
 };
 /** "İstanbul → Porto" from a flight's ends (airport codes read as their city). */
@@ -243,10 +248,10 @@ interface Where {
   end?: string | null;
 }
 
-function whereOfEntry(entry: TimelineEntry): Where {
+function whereOfEntry(entry: TimelineEntry, rank: Ranking): Where {
   switch (entry.kind) {
     case "travel": {
-      const i = entry.travel ? (entry.travel.settled ?? lead(entry.travel.items)) : null;
+      const i = entry.travel ? (entry.travel.settled ?? lead(entry.travel.items, rank)) : null;
       const f = i?.flight;
       const city =
         entry.role === "departure"
@@ -269,25 +274,26 @@ function whereOfEntry(entry: TimelineEntry): Where {
 
 const whereOfItem = (item: Item): Where => ({ date: departureDay(item), time: time(item.flight?.departure), city: item.city });
 
-function whereOfGroup(group: OptionGroup): Where {
+function whereOfGroup(group: OptionGroup, rank: Ranking): Where {
   const days = group.items.map(departureDay).filter((d): d is string => Boolean(d)).sort();
-  const first = lead(group.items);
+  const first = lead(group.items, rank);
   const f = first?.flight;
   const city = group.category === "flight" ? (f?.to ? cityOfAirport(f.to) : null) : mostCommon(group.items.map((i) => i.city));
   if (group.category === "stay") return { date: group.range?.start ?? null, time: null, city, end: group.range?.end ?? null };
-  return { date: group.category === "esim" ? null : (days[0] ?? null), time: time(f?.departure), city };
+  if (group.category === "esim") return { date: null, time: null, city: null };
+  return { date: days[0] ?? null, time: time(f?.departure), city };
 }
 
-function nameOf(piece: CatPiece): string {
+function nameOf(piece: CatPiece, rank: Ranking): string {
   if (piece.kind === "item") return piece.item.name;
   if (piece.kind === "group") {
-    const i = lead(piece.group.items);
+    const i = lead(piece.group.items, rank);
     return (piece.group.category === "flight" ? routeOf(i) : null) ?? i?.name ?? L("Seçenekler", "Options");
   }
   const e = piece.entry;
   switch (e.kind) {
     case "travel": {
-      const i = e.travel ? (e.travel.settled ?? lead(e.travel.items)) : null;
+      const i = e.travel ? (e.travel.settled ?? lead(e.travel.items, rank)) : null;
       // A change of city by its cities ("Porto → Lizbon"), not its stations; a flight by its airports' cities.
       if (e.leg) return legShortTitle(e.leg);
       if (i) return routeOf(i) ?? i.name;
@@ -303,7 +309,7 @@ function nameOf(piece: CatPiece): string {
     case "event":
       return e.item.name;
     case "rental":
-      return lead(e.group.items)?.name ?? L("Araç kiralama", "Car rental");
+      return lead(e.group.items, rank)?.name ?? L("Araç kiralama", "Car rental");
     default:
       return e.items.map((i) => i.name).join(", ");
   }
@@ -368,7 +374,7 @@ interface Draft {
   nights: number;
 }
 
-function finish(d: Draft, seq: number): CatEntry {
+function finish(d: Draft, seq: number, rank: Ranking): CatEntry {
   const options = new Set(d.items.map((i) => i.id)).size;
   const leg = d.piece.kind === "entry" ? (d.piece.entry.kind === "leg" ? d.piece.entry.leg : d.piece.entry.kind === "travel" ? d.piece.entry.leg : null) : null;
   const ticket = ticketOf(d.section, d.items, leg);
@@ -387,7 +393,7 @@ function finish(d: Draft, seq: number): CatEntry {
     state: d.state,
     nights: d.nights,
     ticket,
-    row: { ring: RING[d.state], name: nameOf(d.piece), meta: metaOf(d.section, d.where, d.piece), price: priceOf(d.items), status, ok },
+    row: { ring: RING[d.state], name: nameOf(d.piece, rank), meta: metaOf(d.section, d.where, d.piece), price: priceOf(d.items, rank), status, ok },
     seq,
     created: Math.min(...d.items.map((i) => i.createdAt), Number.MAX_SAFE_INTEGER),
   };
@@ -412,6 +418,8 @@ export interface CategorizeInput {
   /** The trip's transfers and what the traveller hid: a hidden transfer's options wait with it under Gizlenenler. */
   legs?: Leg[];
   hidden?: Set<string>;
+  /** Each option's place in its decision (useDecisions), so a row names the option its card shows first. */
+  rank?: Ranking;
 }
 
 /**
@@ -419,7 +427,7 @@ export interface CategorizeInput {
  * then what has no block: options with no day (another flight, a stay outside the dates, an eSIM), what
  * needs booking without a block of its own, and the ideas. A record already drawn is never drawn twice.
  */
-export function categorize({ plan, timeline, items, legs = [], hidden = new Set() }: CategorizeInput): CatSection[] {
+export function categorize({ plan, timeline, items, legs = [], hidden = new Set(), rank = new Map() }: CategorizeInput): CatSection[] {
   const drafts: Draft[] = [];
   const drawn = new Set<string>();
   const closed = new Set(plan.closed.map((c) => c.item.id));
@@ -456,7 +464,7 @@ export function categorize({ plan, timeline, items, legs = [], hidden = new Set(
       key: entry.key,
       section: sectionOfEntry(entry),
       piece: { kind: "entry", entry },
-      where: whereOfEntry(entry),
+      where: whereOfEntry(entry, rank),
       domKey: entry.key,
       entryKeys: [entry.key],
       legKeys: entry.kind === "leg" ? [entry.leg.key] : entry.kind === "travel" && entry.leg ? [entry.leg.key] : [],
@@ -485,7 +493,7 @@ export function categorize({ plan, timeline, items, legs = [], hidden = new Set(
       key: `group:${group.key}`,
       section,
       piece: { kind: "group", group: g, subtitle },
-      where: whereOfGroup(g),
+      where: whereOfGroup(g, rank),
       domKey: null,
       entryKeys: [],
       legKeys: [],
@@ -518,7 +526,7 @@ export function categorize({ plan, timeline, items, legs = [], hidden = new Set(
     drawn.add(item.id);
   }
 
-  const entries = drafts.map(finish);
+  const entries = drafts.map((d, i) => finish(d, i, rank));
   return SECTION_ORDER.map((id) => sectionOf(id, entries.filter((e) => e.section === id), plan));
 }
 
@@ -559,7 +567,8 @@ function sortEntries(entries: CatEntry[], plan: Plan): CatEntry[] {
     if (a.date || b.date) return a.date ? -1 : 1;
     const [ra, ka] = cityRank(a.city);
     const [rb, kb] = cityRank(b.city);
-    return ra - rb || ka.localeCompare(kb) || a.created - b.created || a.row.name.localeCompare(b.row.name, "tr") || a.seq - b.seq;
+    // A to-do ticked off goes to the bottom of its city.
+    return ra - rb || ka.localeCompare(kb) || Number(a.state === "done") - Number(b.state === "done") || a.created - b.created || a.row.name.localeCompare(b.row.name, "tr") || a.seq - b.seq;
   });
 }
 
@@ -620,14 +629,17 @@ function sectionOf(id: SectionId, list: CatEntry[], plan: Plan): CatSection {
   return { id, entries, days: daysOf(entries, plan), status, open: status?.tone === "wait" };
 }
 
-/** The section and entry that hold a to-do's target (a record, a transfer, a block), tried in that order. */
-export function findInSections(sections: CatSection[], target: { item?: string; leg?: string; entry?: string }): { section: SectionId; key: string } | null {
+/** The section and entry that hold a to-do's target (a record, a transfer, a block), tried in that order; `dom`: its card's key. */
+export function findInSections(
+  sections: CatSection[],
+  target: { item?: string; leg?: string; entry?: string },
+): { section: SectionId; key: string; dom: string } | null {
   const all = sections.flatMap((s) => s.entries);
   const hit =
     (target.item && all.find((e) => e.itemIds.includes(target.item!))) ||
     (target.leg && all.find((e) => e.legKeys.includes(target.leg!))) ||
     (target.entry && (all.find((e) => e.entryKeys.includes(target.entry!)) ?? (target.entry.startsWith("event:") ? all.find((e) => e.itemIds.includes(target.entry!.slice(6))) : undefined)));
-  return hit ? { section: hit.section, key: hit.key } : null;
+  return hit ? { section: hit.section, key: hit.key, dom: catDomKey(hit) } : null;
 }
 
 /** The DOM id of an entry's card wrapper: its block's (the itinerary and the to-dos look for it), else its own. */

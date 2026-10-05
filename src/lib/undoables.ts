@@ -7,18 +7,18 @@ import type { Item } from "./types";
 
 export type Undoable =
   | { kind: "removed"; removed: Removed }
-  /** `label`: the tile's name ("Otobüs"); `ideas`: it went to Fikirler (the toast offers "Göster"). */
-  | { kind: "added"; item: Item; label: string; ideas: boolean }
+  /** `label`: the tile's name ("Otobüs"). */
+  | { kind: "added"; item: Item; label: string }
   /** `key`: trip.hidden's key (`nights:<start>_<end>`); `label`: "Porto 14–15 Ekim". */
   | { kind: "hidden"; tripId: string; key: string; label: string };
 
-/** "Douro tekne turu silindi", "Otobüs eklendi", "Yapılacak Fikirler'e eklendi", "Porto 14–15 Ekim gizlendi". */
+/** "Douro tekne turu silindi", "Otobüs eklendi", "Porto 14–15 Ekim gizlendi". */
 export function undoText(u: Undoable): string {
   switch (u.kind) {
     case "removed":
       return L(`${u.removed.item.name} silindi`, `${u.removed.item.name} deleted`);
     case "added":
-      return u.ideas ? L(`${u.label} Fikirler'e eklendi`, `${u.label} added to Ideas`) : L(`${u.label} eklendi`, `${u.label} added`);
+      return L(`${u.label} eklendi`, `${u.label} added`);
     case "hidden":
       return L(`${u.label} gizlendi`, `${u.label} hidden`);
   }

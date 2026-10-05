@@ -24,7 +24,7 @@ const EditContext = createContext<EditApi | null>(null);
 /** The card's editing, when it's inside <InlineEdit> (null elsewhere: the pieces show their value only). */
 export const useInlineEdit = () => useContext(EditContext);
 
-/** `only`: the fields this face shows (a Fikirler row: its title), so Tab never opens one that isn't drawn. */
+/** `only`: the fields this face shows (an idea's row: its title), so Tab never opens one that isn't drawn. */
 export function InlineEdit({ item, only, children }: { item: Item; only?: FieldKey[]; children: ReactNode }) {
   const env = useCardEnv();
   const fields = editableFields(item).filter((k) => !only || only.includes(k));

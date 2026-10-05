@@ -24,14 +24,14 @@ const blocks = (t: Trip, items: Item[], hidden = new Set<string>()) => {
 
 describe("the toast's words", () => {
   const bus = quickItem(TEMPLATES.find((x) => x.id === "bus")!, { city: "Porto", date: "2026-10-09" }, "t1", "b", 1);
-  it("deleted, added, added to Fikirler, hidden", () => {
+  it("deleted, added (a to-do too: it's on the Plan now), hidden", () => {
     const all: Undoable[] = [
       { kind: "removed", removed: { item: makeItem({ name: "Douro tekne turu" }), docs: [] } },
-      { kind: "added", item: bus, label: "Otobüs", ideas: false },
-      { kind: "added", item: bus, label: "Yapılacak", ideas: true },
+      { kind: "added", item: bus, label: "Otobüs" },
+      { kind: "added", item: bus, label: "Yapılacak" },
       { kind: "hidden", tripId: "t1", key: "nights:2026-10-10_2026-10-12", label: "Porto 10–12 Ekim" },
     ];
-    expect(all.map(undoText)).toEqual(["Douro tekne turu silindi", "Otobüs eklendi", "Yapılacak Fikirler'e eklendi", "Porto 10–12 Ekim gizlendi"]);
+    expect(all.map(undoText)).toEqual(["Douro tekne turu silindi", "Otobüs eklendi", "Yapılacak eklendi", "Porto 10–12 Ekim gizlendi"]);
     expect(all.map(undoTrip)).toEqual(["t1", "t1", "t1", "t1"]);
   });
 });
@@ -80,7 +80,7 @@ describe("a one-tap add taken back", () => {
   it("the record goes again", async () => {
     const made = quickItem(TEMPLATES.find((x) => x.id === "bus")!, { city: "Porto", date: "2026-10-09" }, "tn3", "qb", 1);
     await (await db()).put("items", made);
-    await undo({ kind: "added", item: made, label: "Otobüs", ideas: false });
+    await undo({ kind: "added", item: made, label: "Otobüs" });
     expect(await (await db()).get("items", "qb")).toBeUndefined();
   });
 });

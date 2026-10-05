@@ -274,7 +274,7 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
   // block; places only saved as ideas stay in the lists below.
   const cityPlans = blocks.map(() => [] as Item[]);
   for (const i of dayItems) {
-    // An idea (no booking needed) lives in Fikirler, never on the plan's front.
+    // An idea (no booking needed) is a row of Yapılacak şeyler or Restoranlar, never a block of the front.
     if (placedDays.has(i.id) || !i.city || isoDate(i.dates.start) || isIdea(i) || (i.status === "saved" && !isRental(i))) continue;
     const index = blocks.findIndex((b) => sameCity(b.city, i.city));
     if (index < 0) continue;

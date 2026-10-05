@@ -1,12 +1,12 @@
 // "Ne eklemek istersin?" (ulasim-v3 .sheet): the template tiles in three groups. A tile adds its record at
 // once, no form (spec 0.33 §2): the board makes it with the city and the day of where the sheet was opened
 // and opens the card for editing. "Düzenle" on a plan still opens its short form here. Also the header's
-// "+ Ekle" and the "+" between two cards.
+// "+ Ekle" and the "+" between two cards; opened from a section of the Plan, only that section's tiles.
 import { useEffect, useState, type FormEvent } from "react";
 import { cardKindColor } from "../../lib/cardKinds";
 import { L } from "../../lib/i18n";
 import { formatDateRange } from "../../lib/items";
-import { formOf, saveEdit, templateCardKind, templateLabel, TEMPLATES, type FormValues, type InsertAt, type Template } from "../../lib/templates";
+import { formOf, saveEdit, templateCardKind, templateLabel, TEMPLATES, type FormValues, type InsertAt, type Template, type TemplateId } from "../../lib/templates";
 import type { Item } from "../../lib/types";
 import { KindIcon, UiIcon } from "./Silhouettes";
 
@@ -37,9 +37,11 @@ export function InsertPoint({ at, onAdd }: { at: InsertAt; onAdd: (at: InsertAt)
   );
 }
 
-export function AddSheet({ at, editing, currency, onClose, onPick }: {
+export function AddSheet({ at, editing, only, currency, onClose, onPick }: {
   at: InsertAt | null;
   editing: Item | null;
+  /** A section's own tiles (Ulaşım: the ways of travel); all of them otherwise. */
+  only?: readonly TemplateId[];
   currency: string;
   onClose: () => void;
   /** A tile picked: the board adds it at once (TripPanel quickAdd). */
@@ -87,11 +89,14 @@ export function AddSheet({ at, editing, currency, onClose, onPick }: {
           <button type="button" className="pk-ib" aria-label={L("Kapat", "Close")} onClick={onClose}>×</button>
         </header>
         {!tpl || !form ? (
-          groups().map((g) => (
+          groups().map((g) => {
+            const tiles = TEMPLATES.filter((t) => t.group === g.key && (!only || only.includes(t.id)));
+            if (!tiles.length) return null;
+            return (
             <section key={g.key}>
               <h4>{g.title}</h4>
               <div className="pk-tiles">
-                {TEMPLATES.filter((t) => t.group === g.key).map((t) => (
+                {tiles.map((t) => (
                   <button key={t.id} type="button" className="pk-tile" onClick={() => pick(t)}>
                     <i style={{ background: cardKindColor(templateCardKind(t.id)) }}>
                       <KindIcon kind={t.id === "home" ? "home" : templateCardKind(t.id)} size={24} />
@@ -101,7 +106,8 @@ export function AddSheet({ at, editing, currency, onClose, onPick }: {
                 ))}
               </div>
             </section>
-          ))
+            );
+          })
         ) : (
           <form className="pk-form" onSubmit={save}>
             {tpl.form === "trip" && <>{field("from", L("Nereden", "From"))}{field("to", L("Nereye", "To"))}{field("date", L("Tarih", "Date"), "date")}{field("time", L("Saat", "Time"), "time")}</>}

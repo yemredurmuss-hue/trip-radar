@@ -1,18 +1,18 @@
-// Fikirler (docs/mockups/2026-10-05-fikirler-v1.html): what needs no booking — a restaurant, a walk, a
-// market, a sunset — city by city. A line typed in the quick box becomes one (a restaurant when its words
-// say food), it can be put on a day (a restaurant on a meal too) and then shows as a thin line in the
-// day-by-day view, ticked off once done, or moved to the bookings when it turns out to need a ticket.
+// Ideas (docs/mockups/2026-10-05-fikirler-v1.html): what needs no booking — a restaurant, a walk, a market, a
+// sunset — on the Plan's Yapılacak şeyler and Restoranlar (spec 0.34). A line typed in the quick box becomes
+// one (a restaurant when its words say food), it can be put on a day (a restaurant on a meal too) and then
+// shows as a thin line in the day-by-day view, ticked off once done, or moved to Etkinlikler when it turns
+// out to need a ticket.
 // Pure, except the writes at the end. No model call anywhere here.
-import { isIdea, looksBookable } from "./booking";
+import { looksBookable } from "./booking";
 import { addEvent, db, notifyChanged } from "./db";
 import { L, locale } from "./i18n";
 import { capitalize, liveLabels, num } from "./i18nText";
 import { isoDate } from "./items";
-import { cityKeyOf, sameCity, type DateRange, type Plan } from "./plan";
+import type { Plan } from "./plan";
 import { plannedItem } from "./planned";
 import type { Item, MealSlot } from "./types";
 
-export type IdeaFilter = "all" | "food" | "todo";
 /** A to-do's icon (fikirler-v1 symbols), chosen from its words; "star" for anything else. */
 export type IdeaIcon = "camera" | "sun" | "route" | "bag" | "book" | "star";
 
@@ -21,48 +21,6 @@ const MEALS = liveLabels({ breakfast: ["sabah", "breakfast"], lunch: ["öğle", 
 export const mealLabel = (m: MealSlot): string => MEALS[m];
 
 export const isFoodIdea = (i: Item): boolean => i.category === "food";
-
-export interface IdeaGroup {
-  key: string;
-  /** null: "Şehri belli değil" (always last). */
-  city: string | null;
-  /** The nights spent there ("Porto 8–11 Ekim"); null for a city the plan doesn't stay in. */
-  range: DateRange | null;
-  food: Item[];
-  todos: Item[];
-}
-
-const minDate = (a: string, b: string) => (a < b ? a : b);
-const maxDate = (a: string, b: string) => (a > b ? a : b);
-
-/**
- * The ideas by city, in the order the trip goes (the stays' cities), then cities the plan doesn't stay
- * in, then those with no city. Restaurants and to-dos apart; a to-do done goes to the bottom of its list.
- */
-export function groupIdeas(items: Item[], plan: Pick<Plan, "stayBlocks">, filter: IdeaFilter = "all"): IdeaGroup[] {
-  const groups: IdeaGroup[] = [];
-  const find = (city: string) => groups.find((g) => g.city && sameCity(g.city, city));
-  for (const b of plan.stayBlocks) {
-    if (!b.city) continue;
-    const g = find(b.city);
-    if (g?.range) g.range = { start: minDate(g.range.start, b.range.start), end: maxDate(g.range.end, b.range.end) };
-    else groups.push({ key: `city:${cityKeyOf(b.city)}`, city: b.city, range: { ...b.range }, food: [], todos: [] });
-  }
-  const nowhere: IdeaGroup = { key: "city:none", city: null, range: null, food: [], todos: [] };
-  for (const i of items.filter(isIdea).sort((a, b) => a.createdAt - b.createdAt)) {
-    let g = i.city ? find(i.city) : nowhere;
-    if (!g) {
-      g = { key: `city:${cityKeyOf(i.city)}`, city: i.city, range: null, food: [], todos: [] };
-      groups.push(g);
-    }
-    (isFoodIdea(i) ? g.food : g.todos).push(i);
-  }
-  groups.push(nowhere);
-  for (const g of groups) g.todos.sort((a, b) => Number(Boolean(a.doneAt)) - Number(Boolean(b.doneAt)));
-  return groups
-    .map((g) => ({ ...g, food: filter === "todo" ? [] : g.food, todos: filter === "food" ? [] : g.todos }))
-    .filter((g) => g.food.length || g.todos.length);
-}
 
 const FOOD =
   /restoran|restaurant|lokanta|kafe|cafe|café|kahve|coffee|meyhane|taverna|tasca|bistro|brasserie|yemek|kahvaltı|brunch|pastane|pastelaria|patisserie|fırın|bakery|dondurma|gelato|francesinha|pastel de nata|pizza|sushi|burger|tapas|şarap barı|wine bar|(^|\s)bar(\s|$)/i;
@@ -295,10 +253,10 @@ export const setDone = (item: Item, done: boolean, now = Date.now()) =>
   );
 
 /**
- * "Rezerve edileceklere taşı": it needs a ticket after all; it goes to the Plan and counts as a booking.
+ * "Etkinliklere taşı": it needs a ticket after all; it goes to Etkinlikler and counts as a booking.
  * A to-do becomes a thing to do with a ticket (an activity), so the Plan doesn't call it "Yapılacak".
  */
 export const asBooking = (item: Item): Item =>
   item.plannedKind === "todo" ? { ...item, plannedKind: "activity", category: "activity", booking: "needed" } : { ...item, booking: "needed" };
 export const moveToBookings = (item: Item) =>
-  change(item, asBooking, L(`${item.name} rezerve edileceklere taşındı`, `${item.name} moved to bookings`));
+  change(item, asBooking, L(`${item.name} etkinliklere taşındı`, `${item.name} moved to activities`));

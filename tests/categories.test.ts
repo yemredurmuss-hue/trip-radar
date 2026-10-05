@@ -185,6 +185,13 @@ describe("sections from what's saved and said", () => {
     expect(names(sections).todo).toEqual(["Pazar", "Gün batımı"]);
     expect(names(sections).food).toEqual(["Belcanto", "Majestic Café"]);
     const todo = sections.find((s) => s.id === "todo")!;
+    // Ruled-out ones aren't there; one ticked off goes to the bottom of its city.
+    const more = sectionsOf([
+      ...items,
+      said({ kind: "todo", date: null, city: "Porto", title: "Yapıldı bile" }, { status: "saved", booking: "none", doneAt: 9, createdAt: 0 }),
+      said({ kind: "todo", date: null, city: "Porto", title: "Elendi" }, { status: "dismissed", booking: "none" }),
+    ]).sections;
+    expect(names(more).todo).toEqual(["Pazar", "Gün batımı", "Yapıldı bile"]);
     expect(todo.status).toEqual({ text: "1 güne eklenmedi", tone: "wait" });
     expect(todo.entries.map((e) => e.row.status)).toEqual(["Güne eklendi", "Güne eklenmedi"]);
     const food = sections.find((s) => s.id === "food")!;
@@ -192,13 +199,13 @@ describe("sections from what's saved and said", () => {
     expectEachOnce(sections, items);
   });
 
-  it("eSIM and insurance are Diğer, for the whole trip; installed is done", () => {
+  it("eSIM and insurance are Diğer, for the whole trip; installed is done (and goes after what's left)", () => {
     const items = [...base, said({ kind: "esim", date: null }, { status: "chosen", installedAt: 5 }), said({ kind: "insurance", date: null }, { status: "chosen" })];
     const { sections } = sectionsOf(items);
     const other = sections.find((s) => s.id === "other")!;
     expect(other.entries.map((e) => [e.row.name, e.row.meta, e.row.status])).toEqual([
-      ["eSIM", "Tüm gezi", "Kuruldu"],
       ["Seyahat sigortası", "Tüm gezi", "Satın alınmadı"],
+      ["eSIM", "Tüm gezi", "Kuruldu"],
     ]);
     expect(other.status).toEqual({ text: "1 satın alınmadı", tone: "wait" });
     expectEachOnce(sections, items);
@@ -220,6 +227,13 @@ describe("sections from what's saved and said", () => {
     ]);
     const stays = sections.find((s) => s.id === "stay")!;
     expect(stays.status).toEqual({ text: "1 rezerve edilmedi", tone: "wait" });
+    // The row names the option its card shows first: the best ranked.
+    const plan = buildPlan(trip, items);
+    const legs = buildLegs(plan, trip);
+    const timeline = buildTimeline(plan, legs, items);
+    const byRank = (first: Item) => categorize({ plan, timeline, items, legs, rank: new Map([[first.id, 0]]) }).find((s) => s.id === "flight")!.entries[0].row.meta;
+    expect(byRank(items[3])).toBe("Porto · 8 Eki · 07:00");
+    expect(byRank(items[2])).toBe("Porto · 8 Eki · 09:00");
     expect(sectionStatus("activity", [])).toBeNull();
   });
 
@@ -264,7 +278,7 @@ describe("sections from what's saved and said", () => {
     const items = [...base, flight("TP 1234", "IST", "OPO", "2026-10-08", "chosen"), makeItem({ name: "Serralves", category: "activity", city: "Porto", booking: "needed" })];
     const { sections } = sectionsOf(items);
     const serralves = items.at(-1)!;
-    expect(findInSections(sections, { item: serralves.id })).toEqual({ section: "activity", key: `item:${serralves.id}` });
+    expect(findInSections(sections, { item: serralves.id })).toEqual({ section: "activity", key: `item:${serralves.id}`, dom: `cat:item:${serralves.id}` });
     expect(findInSections(sections, { entry: `event:${serralves.id}` })?.section).toBe("activity");
     expect(findInSections(sections, { entry: "stay:2026-10-11" })?.section).toBe("stay");
     expect(findInSections(sections, { item: "nope" })).toBeNull();

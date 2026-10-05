@@ -4,7 +4,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { db, listMessages } from "../src/lib/db";
 import {
-  addIdea, asBooking, cityInText, ideaSource, ideaTitle, dayChip, dayChoices, doneText, foodLine, groupIdeas, ideaIcon, moveToBookings, onDay, quickIdea, quickKind,
+  addIdea, asBooking, cityInText, ideaSource, ideaTitle, dayChip, dayChoices, doneText, foodLine, ideaIcon, moveToBookings, onDay, quickIdea, quickKind,
   setDone, setIdeaDay, todoLine,
 } from "../src/lib/ideas";
 import { placeMapUrl } from "../src/lib/items";
@@ -15,32 +15,6 @@ import { makeItem } from "./fixtures/makeItem";
 const block = (city: string | null, start: string, end: string) => ({ kind: "open", city, range: { start, end }, nights: 1, groups: [] }) as unknown as Plan["stayBlocks"][number];
 const plan = { range: { start: "2026-10-07", end: "2026-10-18" }, stayBlocks: [block("Porto", "2026-10-07", "2026-10-10"), block("Lizbon", "2026-10-10", "2026-10-12"), block("Madeira", "2026-10-12", "2026-10-18")] };
 const idea = (name: string, over: Partial<Item> = {}) => makeItem({ category: "other", plannedKind: "todo", booking: "none", name, ...over });
-
-describe("grouped by city", () => {
-  it("in the order the trip goes, restaurants apart, no city last; bookings and ruled-out ones aren't ideas", () => {
-    const items = [
-      idea("Mercado dos Lavradores", { city: "Madeira", createdAt: 1 }),
-      makeItem({ category: "food", name: "Café Santiago", city: "Porto", createdAt: 2 }),
-      idea("Dom Luís'ten gün batımı", { city: "porto", createdAt: 3 }),
-      idea("Bir şey", { city: null, createdAt: 4 }),
-      idea("Sintra", { city: "Sintra", createdAt: 5 }),
-      makeItem({ category: "activity", name: "Douro tekne turu", city: "Porto", price: { amount: 25, currency: "EUR", scope: "total", taxesIncluded: "unknown", source: "page", observedAt: 1 } }),
-      makeItem({ category: "food", name: "Elendi", city: "Porto", status: "dismissed" }),
-    ];
-    const groups = groupIdeas(items, plan);
-    expect(groups.map((g) => [g.city, g.range, g.food.map((i) => i.name), g.todos.map((i) => i.name)])).toEqual([
-      ["Porto", { start: "2026-10-07", end: "2026-10-10" }, ["Café Santiago"], ["Dom Luís'ten gün batımı"]],
-      ["Madeira", { start: "2026-10-12", end: "2026-10-18" }, [], ["Mercado dos Lavradores"]],
-      ["Sintra", null, [], ["Sintra"]],
-      [null, null, [], ["Bir şey"]],
-    ]);
-  });
-  it("filters: Yeme-içme only restaurants, Yapılacaklar only the rest; a done one goes last", () => {
-    const items = [idea("A", { city: "Porto", doneAt: 5, createdAt: 1 }), idea("B", { city: "Porto", createdAt: 2 }), makeItem({ category: "food", name: "C", city: "Porto" })];
-    expect(groupIdeas(items, plan, "food").map((g) => [g.food.length, g.todos.length])).toEqual([[1, 0]]);
-    expect(groupIdeas(items, plan, "todo")[0].todos.map((i) => i.name)).toEqual(["B", "A"]);
-  });
-});
 
 describe("the quick line", () => {
   it("a restaurant when it speaks of food, else a to-do", () => {
@@ -167,7 +141,7 @@ describe("writes", () => {
       "Bolhão pazarı 9 Eki gününe eklendi",
       "Bolhão pazarı yapıldı",
       "Bolhão pazarı yapılmadı olarak geri alındı",
-      "Bolhão pazarı rezerve edileceklere taşındı",
+      "Bolhão pazarı etkinliklere taşındı",
     ]);
   });
 });

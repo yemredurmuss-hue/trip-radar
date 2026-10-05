@@ -2,8 +2,8 @@
 // says so (`booking`) is taken at its word; older records and pages that don't say are read by kind:
 // getting there and sleeping are bookings; an activity is one when it has a price, comes from a ticket
 // seller or its words say ticket / reservation / tour; a restaurant only when its page asks for a
-// reservation; a note or a to-do never. "needed" stays on the Plan and counts as "Rezerve et"; "none"
-// lives in Fikirler. Pure.
+// reservation; a note or a to-do never. "needed" counts as "Rezerve et" (Etkinlikler, or its own section);
+// "none" is an idea (Yapılacak şeyler, Restoranlar). Pure.
 import { itemText, isInsurance } from "./travelKinds";
 import type { Item } from "./types";
 
@@ -51,12 +51,12 @@ export const bookingOf = (item: Item): Booking =>
   item.status === "booked" && !neverBooked(item) ? "needed" : (item.booking ?? bookingByKind(item));
 export const needsBooking = (item: Item): boolean => bookingOf(item) === "needed";
 
-/** An idea for Fikirler: something to eat or do that needs no booking (a page, a quick note, a to-do). */
+/** An idea (Yapılacak şeyler, Restoranlar): something to eat or do that needs no booking (a page, a quick note, a to-do). */
 export const isIdea = (item: Item): boolean =>
   item.status !== "dismissed" && (item.category === "food" || item.category === "activity" || item.category === "other") && bookingOf(item) === "none";
 
 /**
  * Set aside as needing nothing (a quick line, a page that said no), though its price or words say a
- * ticket ("Livraria Lello, giriş bileti var"): Fikirler offers "Rezerve edileceklere taşı".
+ * ticket ("Livraria Lello, giriş bileti var"): its row offers "Etkinliklere taşı".
  */
 export const looksBookable = (item: Item): boolean => item.booking === "none" && ticketSays(item);
