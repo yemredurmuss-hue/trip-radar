@@ -4,7 +4,9 @@
 // what the traveller decides for a transfer (how they'll go, that it's arranged, a note) is stored,
 // on the trip, by leg key; the key names the day and the cities, not the hotels, so a plan survives
 // switching hotels.
+import { countryOfAirport } from "./airports";
 import { L } from "./i18n";
+import { SCHENGEN } from "./visa";
 import { capitalize, liveLabels, nOptions } from "./i18nText";
 import { formatDateRange, listingKeyOf } from "./items";
 import { addDays, arrivalDay, cityKeyOf, departureDay, knownPlace, placeKeyOf, sameCity, type OptionGroup, type Plan, type StayBlock } from "./plan";
@@ -33,6 +35,18 @@ const FROM_HUB: LegMode[] = ["flight", "train", "bus", "ferry"];
 export const BOOKABLE: LegMode[] = ["flight", "train", "ferry", "transfer", "taxi"];
 /** How early to be at the station: check-in and security for a flight, finding the platform for a train. */
 const HUB_BUFFER: Record<string, number> = { flight: 120, train: 20, bus: 20, ferry: 30 };
+/** A flight leaving Schengen (or to or from an airport we can't place) wants an hour more at the airport. */
+const OUTSIDE_SCHENGEN_EXTRA = 60;
+
+/** How early to be at the airport or station: 2 h for a flight within Schengen, 3 h otherwise; the rest by mode. */
+export function hubBuffer(mode: LegMode, settled: Item | null): number | undefined {
+  const base = HUB_BUFFER[mode];
+  if (mode !== "flight" || base === undefined) return base;
+  const a = countryOfAirport(settled?.flight?.from);
+  const b = countryOfAirport(settled?.flight?.to);
+  const inside = (c: string | null) => !!c && SCHENGEN.includes(c);
+  return a && b && (a === b || (inside(a) && inside(b))) ? base : base + OUTSIDE_SCHENGEN_EXTRA;
+}
 /** Roughly how long getting between a stay and the airport or station takes, for timing notes only. */
 const TRANSFER_MIN = 60;
 
@@ -462,7 +476,7 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
   function departing(from: LegPoint, date: string, slot: number, travel: Travel | null, mode: LegMode | null, offset: number, keyDate: string): Leg {
     const settled = travel?.settled ?? null;
     const leaves = clock(settled?.flight?.departure);
-    const buffer = mode ? HUB_BUFFER[mode] : undefined;
+    const buffer = mode ? hubBuffer(mode, settled) : undefined;
     const by = leaves && buffer !== undefined ? hhmm(minutes(leaves) - buffer) : null;
     const hub = hubLabel(travel, "from", from.city, mode);
     const notes: string[] = [];

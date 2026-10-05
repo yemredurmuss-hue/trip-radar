@@ -148,6 +148,10 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
   saatleriyle, her biri Plan'daki kartıyla (giriş günündeki check-in konaklamanın kartı, uçuşa giden transfer
   "nasıl gideceksin"iyle); diğer bilgi satırları ince. Her günün altında "+ Bu güne ekle". Şeritte günler şehir
   adlarıyla gruplu ("Porto 1 2 3 · Lizbon 4 5–6 7").
+- **Saatler** (0.35.1, spec `2026-10-05-akilli-saat-design.md`): kesin olan (bilet, rezervasyon, senin verdiğin) düz;
+  hesaplanan "~" ve gri, üstüne gelince nedeni ("En geç 16:40 havalimanında olmalısın; transfer ~1 sa"). Yola çıkış =
+  havalimanında olma − 1 sa (uçuşta Schengen içi 2 sa, dışı 3 sa önce orada); check-out ondan önce; inişten +45 dk
+  çıkış, +1 sa check-in. Saate dokunup kendi saatini verirsin, günün geri kalanı ona uyar; sığmazsa kırmızı tek satır.
 - Saat solda: kayıttan gelen düz, alışılmış ya da hesaplanan "~"; bilinmeyen boş.
 
 ## Azaltmak

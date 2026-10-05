@@ -30,6 +30,7 @@ export function TimelineView({
   onShow,
   cityImage,
   cards,
+  dayTimes,
 }: {
   timeline: Timeline;
   tripId: string;
@@ -44,12 +45,13 @@ export function TimelineView({
   cityImage?: (city: string | null) => string | null;
   /** The Plan's own cards: an open day shows each of its things as it is on the Plan. */
   cards: DayPlanCards;
+  /** The traveller's own times (trip.dayTimes). */
+  dayTimes?: Record<string, string> | null;
 }) {
   const rentals = timeline.entries.filter((e): e is RentalEntry => e.kind === "rental");
-  void tripId; // the cards carry the trip (CardEnvContext)
   return (
     <div className="section trip-plan">
-      <DayCards sections={timeline.sections} leg={leg} onAdd={onAdd} listings={listings} today={today} rentals={rentals} onShow={onShow} cityImage={cityImage} cards={cards} />
+      <DayCards sections={timeline.sections} leg={leg} onAdd={onAdd} listings={listings} today={today} rentals={rentals} onShow={onShow} cityImage={cityImage} cards={cards} tripId={tripId} times={dayTimes ?? undefined} />
     </div>
   );
 }

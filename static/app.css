@@ -1756,3 +1756,18 @@ button.cat-hidden-name:hover { text-decoration: underline; }
   .doc-go { text-align: left; }
   .doc-row .doc-x { opacity: .55; }
 }
+
+/* Times in Günlük akış (0.35.1, dayTimes.ts): worked out "~" in grey (why on hover), fixed or the traveller's
+   own in ink; a tap sets one's own (the rest of the day follows), "×" gives it back. A time that doesn't leave
+   room is said in red under its line. */
+.dc-tl button.t { justify-self: end; padding: 2px 5px; border: 0; border-radius: 7px; background: none; font: inherit; font-weight: 600; color: var(--dc-ink); cursor: pointer; font-variant-numeric: tabular-nums; }
+.dc-tl button.t:hover { background: rgba(0,0,0,.05); }
+.dc-tl button.t.est { color: var(--dc-gray); font-weight: 500; }
+.dc-tl button.t.own { text-decoration: underline dotted #b9b2a6; text-underline-offset: 3px; }
+.dc-step.info button.t { font-size: 13.5px; }
+.dc-tl .t.edit { display: inline-flex; align-items: center; gap: 2px; justify-self: end; }
+.dc-tl .t.edit input { width: 86px; height: 28px; padding: 0 4px; border: 1px solid #d2cdc4; border-radius: 7px; font: inherit; font-size: 13.5px; }
+.dc-tl .t-reset { width: 22px; height: 22px; border: 0; border-radius: 50%; background: #f1efe9; color: var(--dc-gray); cursor: pointer; }
+.dc-warn { grid-column: 3; margin: -2px 0 6px; font-size: 13px; color: #b42318; font-weight: 500; }
+.dc-slot > .dc-warn { margin: 6px 0 6px; }
+.dc-full > button.t, .dc-full > .t.edit { margin-top: 12px; align-self: start; }

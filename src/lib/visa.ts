@@ -5,7 +5,7 @@ import { L } from "./i18n";
 export const VISA_CHECKED = "2026-10";
 const OFFICIAL_TR = "https://www.konsolosluk.gov.tr/Visa";
 
-const SCHENGEN = ["AT", "BE", "BG", "HR", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IS", "IT", "LV", "LI", "LT", "LU", "MT", "NL", "NO", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "CH"];
+export const SCHENGEN = ["AT", "BE", "BG", "HR", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IS", "IT", "LV", "LI", "LT", "LU", "MT", "NL", "NO", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "CH"];
 const NEEDS_VISA: Record<string, () => string> = { GB: () => L("Birleşik Krallık vizesi", "UK visa"), US: () => L("ABD vizesi", "US visa"), CA: () => L("Kanada vizesi", "Canada visa"), IE: () => L("İrlanda vizesi", "Ireland visa") };
 const VISA_FREE: Record<string, number> = { GE: 365, JP: 90, RS: 90, BA: 90, MK: 90, AL: 90 };
 

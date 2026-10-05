@@ -133,7 +133,7 @@ describe("a day on the move", () => {
     // Home: the page says nothing about check-out, so it's the usual hour, marked.
     expect(journeySteps(journeys[2], ctx.listings).map(row)).toEqual([
       "~11:00 (genelde) | Check-out · Lisboa Loft | Rezerve",
-      "17:40 (en geç havalimanında) | Otel → Havalimanı · Lisboa Loft → LIS havalimanı | Planlanmadı",
+      "16:40 (en geç havalimanında) | Otel → Havalimanı · Lisboa Loft → LIS havalimanı | Planlanmadı",
       "19:40 | Uçuş LIS → IST · TAP · Lizbon → İstanbul · 19:40 → 01:35 · 4 sa 55 dk | Bilet alındı",
     ]);
   });

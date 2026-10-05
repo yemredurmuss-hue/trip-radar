@@ -78,7 +78,7 @@ describe("legs: every transfer the plan needs", () => {
     ]);
     expect(legs.map((l) => l.slot)).toEqual([0, 1, 1, 1, 2]);
     expect(legTiming(legs[0])).toBe("Varış 10:05");
-    expect(legTiming(legs[4])).toBe("En geç 17:40 havalimanında");
+    expect(legTiming(legs[4])).toBe("En geç 16:40 havalimanında");
     expect(legs[0].key).toBe("2026-10-07:arrival:porto");
     expect(legs[2].key).toBe("2026-10-10:move:porto>lizbon");
   });
@@ -141,14 +141,14 @@ describe("legs: every transfer the plan needs", () => {
     const early = legsOf([flight("Pegasus", "IST", "OPO", "2026-10-07T07:10", "2026-10-07T10:05", "booked"), jardim, flight("TAP", "OPO", "IST", "2026-10-14T06:30", "2026-10-14T11:00", "booked")]);
     expect(early[0].notes).toEqual(["Varış 10:05, giriş en erken 15:00 (genelde): bavulları erken bırakmayı ya da erken girişi sor."]);
     expect(early[1].notes).toEqual([
-      "Gidiş 06:30: 04:30 civarı havalimanında olmalısın; bu saatte metro ve otobüs çalışmıyor olabilir, taksi ya da transferi önceden ayarla.",
+      "Gidiş 06:30: 03:30 civarı havalimanında olmalısın; bu saatte metro ve otobüs çalışmıyor olabilir, taksi ya da transferi önceden ayarla.",
     ]);
 
     // Read on the page: check-in until 22:00, luggage storage.
     const house = new Map([["test:Jardim Stay", listingWith("test:Jardim Stay", { checkInFrom: "14:00", checkInUntil: "22:00", checkOutUntil: "10:00", luggageStorage: true })]]);
     const late = legsOf([flight("Pegasus", "IST", "OPO", "2026-10-07T20:10", "2026-10-07T23:05", "booked"), jardim, flight("TAP", "OPO", "IST", "2026-10-14T20:30", "2026-10-15T01:00", "booked")], {}, house);
     expect(late[0].notes).toEqual(["Giriş en geç 22:00 (sayfada yazıyor), varış 23:05: geç girişi önceden ayarla."]);
-    expect(late[1].notes).toEqual(["Çıkış 10:00 (sayfada yazıyor), gidiş 20:30: arada ~8 saat boşluk; bavul emaneti var (sayfada yazıyor)."]);
+    expect(late[1].notes).toEqual(["Çıkış 10:00 (sayfada yazıyor), gidiş 20:30: arada ~7 saat boşluk; bavul emaneti var (sayfada yazıyor)."]);
 
     // Self check-in makes a late arrival fine.
     const self = new Map([["test:Jardim Stay", listingWith("test:Jardim Stay", { selfCheckIn: true })]]);

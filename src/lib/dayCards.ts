@@ -6,6 +6,7 @@ import { cardKind, legTransportMode, type CardKind } from "./cardKinds";
 import type { LegMode } from "./types";
 import { formatDateRange } from "./items";
 import { L } from "./i18n";
+import { applyDayTimes, type DayTimeOverrides } from "./dayTimes";
 import { dayRows, type DayRow } from "./journey";
 import type { RentalEntry, TimelineSection } from "./timeline";
 import type { Listing } from "./types";
@@ -30,7 +31,7 @@ export const isPlanRow = (r: DayRow) => r.kind !== "info" && r.kind !== "ideas" 
 export const ideaCount = (rows: DayRow[]) => rows.reduce((n, r) => n + (r.kind === "ideas" ? r.items.length : r.kind === "idea" ? 1 : 0), 0);
 
 /** The days in order: a city day titled by its city, a day that moves by its route. */
-export function dayCards(sections: TimelineSection[], opts: { rentals?: RentalEntry[]; listings?: Map<string, Listing> } = {}): DayCard[] {
+export function dayCards(sections: TimelineSection[], opts: { rentals?: RentalEntry[]; listings?: Map<string, Listing>; times?: DayTimeOverrides } = {}): DayCard[] {
   const out: DayCard[] = [];
   for (const section of sections) {
     if (section.kind === "journey") {
@@ -49,7 +50,7 @@ export function dayCards(sections: TimelineSection[], opts: { rentals?: RentalEn
         city: j.role === "departure" ? from : to,
         route,
         title: route ?? word,
-        rows: dayRows({ journey: section, rentals: opts.rentals, listings: opts.listings }),
+        rows: applyDayTimes(dayRows({ journey: section, rentals: opts.rentals, listings: opts.listings }), opts.times),
       });
     } else if (section.kind === "travel") {
       const e = section.entry;
@@ -58,7 +59,7 @@ export function dayCards(sections: TimelineSection[], opts: { rentals?: RentalEn
     } else {
       for (const e of section.entries) {
         if (e.kind !== "day") continue;
-        const rows = dayRows({ day: e, rentals: opts.rentals, listings: opts.listings });
+        const rows = applyDayTimes(dayRows({ day: e, rentals: opts.rentals, listings: opts.listings }), opts.times);
         const prev = out.at(-1);
         // A free day after a free day in the same city: one card for both.
         if (!rows.length && prev && !prev.rows.length && prev.city === section.city && prev.dayNo) {

@@ -249,6 +249,12 @@ export interface DayRow {
   key: string;
   kind: "info" | "travel" | "leg" | "item" | "rental" | "ideas" | "idea";
   time: string | null;
+  /** Why this time (dayTimes.ts): "Uçuş 19:40 · en geç 16:40 havalimanında; transfer ~1 sa". */
+  why?: string | null;
+  /** The traveller set this time themselves; the rest of the day follows it. */
+  user?: boolean;
+  /** Their time doesn't leave room ("bu saatle geç kalabilirsin"). */
+  warn?: string | null;
   estimated: boolean;
   hint: string | null;
   otherDay: string | null;

@@ -1,6 +1,6 @@
 # Akıllı saat motoru (Günlük akış) — tasarım
 
-Durum: öneri, Emre onayı bekliyor (2026-10-05).
+Durum: onaylandı (2026-10-05: AB içi 2 sa / dışı 3 sa, transfer 1 sa, iniş sonrası 45 dk); ilk bölüm 0.35.1.
 
 ## Amaç
 
@@ -56,3 +56,17 @@ transfer, check-out, check-in, araç alış/iade) bunlardan geriye ve ileriye do
 1. Uçuş tamponu: AB/Schengen içi 2 sa, dışı 3 sa.
 2. Transfer süresi bilinmiyorsa 45 dk (+10 dk pay).
 3. İniş sonrası çıkış: 45 dk (kabin bagajı biliniyorsa 25).
+
+## Uygulanan (0.35.1)
+
+- Uçuş tamponu Schengen'e göre (`legs.ts` `hubBuffer`; havalimanı ülkesi `airports.ts`, bilinmeyen = 3 sa).
+- `src/lib/dayTimes.ts` `applyDayTimes`: yola çıkış = en geç − 1 sa; check-out yola çıkıştan 15 dk önceye çekilir;
+  inişten çıkış +45 dk; check-in = transfer + 1 sa (otelin saatinden önce değil); gece yarısını geçen saat boş kalır.
+- Senin saatin: satırın saatine dokun → saat ver (trip.dayTimes, satır anahtarıyla); günün geri kalanı ona göre;
+  sığmıyorsa kırmızı uyarı; "×" otomatiğe döner. Hesaplanan saatler kaydedilmez; üstüne gelince nedeni yazar.
+- Testler: `tests/dayTimes.test.ts` (Emre'nin örnekleri, gece, senin saatin, değişmez kurallar), e2e adımı.
+
+## Sıradaki (henüz yok)
+
+Araç alış/iade saatleri · gece yarısı sonrası inişte konaklama uyarısı · resepsiyon kapanışı · saatli etkinlik
+çakışması · transfer süresinin mesafeden/şekilden hesaplanması (şimdilik hep 1 sa, istersen değiştirirsin).

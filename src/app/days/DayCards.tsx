@@ -10,6 +10,7 @@ import { formatDateRange } from "../../lib/items";
 import { L, locale } from "../../lib/i18n";
 import type { DayRow } from "../../lib/journey";
 import { insertAtDay, type InsertAt } from "../../lib/templates";
+import { updateTrip } from "../actions";
 import type { RentalEntry, StayEntry, TimelineSection } from "../../lib/timeline";
 import type { Listing } from "../../lib/types";
 import { KindIcon } from "../cards/Silhouettes";
@@ -35,6 +36,9 @@ export interface DayCardsProps {
   /** The city's photo (the hero's), null when there's none yet. */
   cityImage?: (city: string | null) => string | null;
   cards: DayPlanCards;
+  tripId: string;
+  /** The traveller's own times, by row key. */
+  times?: Record<string, string>;
 }
 
 const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(locale(), { weekday: "short", timeZone: "UTC" });
@@ -58,7 +62,7 @@ const readMode = (): Mode => {
  * in the list switches to the cards at that line; the strip of days jumps to a day in either.
  */
 export function DayCards(props: DayCardsProps) {
-  const cards = dayCards(props.sections, { rentals: props.rentals, listings: props.listings });
+  const cards = dayCards(props.sections, { rentals: props.rentals, listings: props.listings, times: props.times });
   // The stays by their nights' first day: on that day the check-in line opens to the stay's own card.
   const stays = new Map<string, StayEntry>(props.sections.flatMap((s) => (s.kind === "city" ? s.stays.map((st) => [st.key, st] as [string, StayEntry]) : [])));
   const [mode, setModeState] = useState<Mode>(readMode);
@@ -262,7 +266,7 @@ function DaySection({ card, mode, isToday, stays, onPick, ...props }: { card: Da
       ) : (
         <ol className={`dc-tl${mode === "cards" ? " full" : ""}`}>
           {flow.map((r) =>
-            mode === "cards" ? <Full key={r.key} row={r} stay={checkInStay(r, card, stays)} {...props} /> : <Line key={r.key} row={r} onTap={() => onPick(r.key)} />,
+            mode === "cards" ? <Full key={r.key} row={r} stay={checkInStay(r, card, stays)} {...props} /> : <Line key={r.key} row={r} onTap={() => onPick(r.key)} tripId={props.tripId} />,
           )}
         </ol>
       )}
@@ -271,11 +275,54 @@ function DaySection({ card, mode, isToday, stays, onPick, ...props }: { card: Da
   );
 }
 
+/**
+ * A line's time: "~" when worked out (why on hover), plain when fixed or set by the traveller. A tap lets them
+ * set their own (the rest of the day follows it); "×" gives it back to the plan.
+ */
+function TimeCell({ row, tripId }: { row: DayRow; tripId: string }) {
+  const [edit, setEdit] = useState(false);
+  const save = (value: string | null) =>
+    void updateTrip(
+      tripId,
+      (t) => {
+        const own = { ...(t.dayTimes ?? {}) };
+        if (value) own[row.key] = value;
+        else delete own[row.key];
+        return { ...t, dayTimes: own };
+      },
+      { touch: false },
+    );
+  if (edit)
+    return (
+      <span className="t edit">
+        <input
+          type="time"
+          defaultValue={row.time ?? ""}
+          autoFocus
+          aria-label={L(`${row.title}: saat`, `${row.title}: time`)}
+          onChange={(e) => e.target.value && save(e.target.value)}
+          onBlur={() => setEdit(false)}
+          onKeyDown={(e) => (e.key === "Escape" || e.key === "Enter") && setEdit(false)}
+        />
+        {row.user && (
+          <button type="button" className="t-reset" title={L("Otomatik saate dön", "Back to the worked-out time")} onMouseDown={(e) => e.preventDefault()} onClick={() => (save(null), setEdit(false))}>
+            ×
+          </button>
+        )}
+      </span>
+    );
+  return (
+    <button type="button" className={`t${row.estimated ? " est" : ""}${row.user ? " own" : ""}`} title={row.why ?? L("Saat ver", "Set a time")} onClick={() => setEdit(true)}>
+      {time(row) || "–"}
+    </button>
+  );
+}
+
 /** Information (check-in, check-out, the metro planned): a thin line, closed or open. */
-function InfoLine({ row }: { row: DayRow }) {
+function InfoLine({ row, tripId }: { row: DayRow; tripId: string }) {
   return (
     <li className="dc-step info" data-title={row.line ?? row.title}>
-      <span className="t">{time(row)}</span>
+      <TimeCell row={row} tripId={tripId} />
       <span className="dot" />
       <span className="txt">
         <b>{row.line ?? row.title}</b>
@@ -288,13 +335,13 @@ function InfoLine({ row }: { row: DayRow }) {
 const isLine = (r: DayRow) => !isPlanRow(r) && r.kind !== "idea";
 
 /** A line of the closed day: time · dot · the Plan's icon (✓ / amber dot) · name; a tap opens the day at its card. */
-function Line({ row, onTap }: { row: DayRow; onTap: () => void }) {
-  if (isLine(row)) return <InfoLine row={row} />;
+function Line({ row, onTap, tripId }: { row: DayRow; onTap: () => void; tripId: string }) {
+  if (isLine(row)) return <InfoLine row={row} tripId={tripId} />;
   const kind = rowKind(row);
   const mark = row.kind === "idea" ? null : rowMark(row);
   return (
     <li className={`dc-step${row.kind === "idea" ? " idea" : ""}`} data-title={row.title}>
-      <span className="t">{time(row)}</span>
+      <TimeCell row={row} tripId={tripId} />
       <span className="dot" />
       <button className="dc-line" onClick={onTap}>
         <span className="dc-tile" style={{ ["--k" as string]: cardKindColor(kind) }} title={cardKindLabel(kind)}>
@@ -306,6 +353,7 @@ function Line({ row, onTap }: { row: DayRow; onTap: () => void }) {
           {row.kind === "idea" && row.sub && <small> · {row.sub}</small>}
         </span>
       </button>
+      {row.warn && <p className="dc-warn">{row.warn}</p>}
     </li>
   );
 }
@@ -317,18 +365,18 @@ function checkInStay(row: DayRow, card: DayCard, stays: Map<string, StayEntry>):
 }
 
 /** A line of the open day: its time and dot, then its own card as the Plan shows it (check-in: the stay's card). */
-function Full({ row, stay, cards, leg }: { row: DayRow; stay: StayEntry | null } & DayCardsProps) {
+function Full({ row, stay, cards, leg, tripId }: { row: DayRow; stay: StayEntry | null } & DayCardsProps) {
   if (stay)
     return (
       <li className="dc-full" id={`dc-${row.key}`} data-title={row.line ?? row.title}>
-        <span className="t">{time(row)}</span>
+        <TimeCell row={row} tripId={tripId} />
         <span className="dot" />
         <div className="dc-slot">
           <PlanEntry entry={stay} legCard={cards.legCard} renderGroup={cards.renderGroup} settled={cards.settled} />
         </div>
       </li>
     );
-  if (isLine(row)) return <InfoLine row={row} />;
+  if (isLine(row)) return <InfoLine row={row} tripId={tripId} />;
   let body: ReactNode = null;
   if (row.entry) body = <PlanEntry entry={row.entry} legCard={cards.legCard} renderGroup={cards.renderGroup} settled={cards.settled} />;
   else if (row.leg) body = cards.legCard(row.leg);
@@ -337,9 +385,12 @@ function Full({ row, stay, cards, leg }: { row: DayRow; stay: StayEntry | null }
   else if (row.leg) body = leg(row.leg, { embedded: true });
   return (
     <li className="dc-full" id={`dc-${row.key}`} data-title={row.title}>
-      <span className="t">{time(row)}</span>
+      <TimeCell row={row} tripId={tripId} />
       <span className="dot" />
-      <div className="dc-slot">{body ?? <span className="txt">{row.title}</span>}</div>
+      <div className="dc-slot">
+        {row.warn && <p className="dc-warn">{row.warn}</p>}
+        {body ?? <span className="txt">{row.title}</span>}
+      </div>
     </li>
   );
 }

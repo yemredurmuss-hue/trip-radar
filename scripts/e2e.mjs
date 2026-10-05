@@ -285,8 +285,17 @@ try {
   await openDay(4);
   assert.deepEqual(await dayTitles(), ["Check-out", "Otel → Gar", "Tren Porto → Lizbon", "Gar → Otel", "Check-in"]);
   await openDay(7);
-  assert.deepEqual(await dayTimes(), ["~11:00", "17:40", "19:40"]);
+  assert.deepEqual(await dayTimes(), ["~11:00", "~15:40", "19:40"]); // at the airport by 16:40 (leaving Schengen: 3 h), the transfer an hour before
   await flowCard("Uçuş LIS → IST").locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
+  // A time of one's own (dayTimes.ts): kept, a late one warned about in red; "×" gives the worked-out one back.
+  const going = flowCard("Otel → Havalimanı");
+  assert.match(await going.locator("> button.t").getAttribute("title"), /En geç 16:40 havalimanında olmalısın; transfer ~1 sa/);
+  await going.locator("> button.t").click();
+  await going.locator('input[type="time"]').fill("17:00");
+  await going.locator(".dc-warn", { hasText: "16:40'da havalimanında olmalısın" }).waitFor();
+  await going.getByRole("button", { name: "×" }).click();
+  await going.locator(".dc-warn").waitFor({ state: "detached" });
+  assert.equal(await going.locator("> button.t").innerText(), "~15:40");
   await app.screenshot({ path: `${out}/3f-day-page.png` });
   // A line in the list takes you to its card in Kartlar.
   await listMode();
@@ -494,7 +503,7 @@ try {
   // Landing 10:05: the transfer then, check-in from 14:00 as the page says.
   await openDay(1);
   const arrive = flowCard("Havalimanı → Otel");
-  assert.equal(await flowTime("Havalimanı → Otel").innerText(), "10:05");
+  assert.equal(await flowTime("Havalimanı → Otel").innerText(), "~10:50"); // landing 10:05 + 45 min out of the airport
   assert.match(await arrive.innerText(), /Planlanmadı/);
   // Check-in opens to the stay's own card, as on the Plan.
   assert.equal(await flowTime("Check-in").innerText(), "14:00");
@@ -509,7 +518,7 @@ try {
   assert.match(await flowCard("Otel → Gar").innerText(), /Porto Campanhã/);
   await openDay(7);
   await openCard("Otel → Havalimanı");
-  await flowCard("Otel → Havalimanı").locator(".leg-note", { hasText: "arada ~6 saat boşluk" }).waitFor();
+  await flowCard("Otel → Havalimanı").locator(".leg-note", { hasText: "arada ~5 saat boşluk" }).waitFor();
   // "Gerek yok": a transfer they don't need leaves the day (and the to-dos), and comes back from "Gizlenenler".
   await openDay(4);
   const lisbonIn = flowCard("Gar → Otel");
