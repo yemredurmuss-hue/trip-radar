@@ -53,13 +53,19 @@ ikisi aynı boyda; pano dar olunca tek sütun, künye hikâyenin altına iner.
   işleniyor hapı ve ••• menüsü. Altına binen etiket: tarihler + geri sayım ("8–14 Ekim · 3 gün kaldı"). Tarih yoksa ikisi de yok.
 - **Açıklama** tek paragraf: AI'nin ton cümlesi (rakamsız) + koddan gelen durum cümlesi, yalnız en acil olan
   ("3 karar ve 1 rezervasyon bekliyor."). Uydurma yok.
+- **Tarz çipleri** (0.34.3) başlığın altında: modelin sabit listeden seçtiği en fazla iki kelime (Romantik, Dingin,
+  Macera, Lüks, Kültür, Doğa, Gastronomi, Deniz, Şehir, Aile, Eğlence, Aktif; şehirlere ve "Seni böyle anladım"a göre,
+  bunlar değişince yeniden) ve bütçenin kelimesi (kişi başı günlük: €70 altı Ekonomik, €180'e kadar Orta bütçe, üstü
+  Yüksek bütçe; bütçe yoksa yok). Listede olmayan kelime gösterilmez.
+- **Künyede tek ölçek** (0.34.3): her satır 18 px gri ikon · 14 px gri etiket · sağa yaslı 15 px orta kalın değer
+  (bütçe dahil); ikincil yazı (bütçenin üç tutarı, havadaki şehir, en alttaki sıra) 13 px gri. Satırlar 44 px.
 - **Plan tek satırda** (0.34.1): ikon · sayı · ad ("2 uçuş · 2 konaklama · 1 ulaşım · 1 deneyim"); her ihtiyaç bir kez
   (üç seçenekli uçuş bir uçuş), deneyim = plandaki etkinlik ve restoranlar. Sıfır olan yazılmaz. "Etkinlik" değil "deneyim".
 - **Seni böyle anladım** tek satır; açılan pencere sayfayı itmez. Her giriş kapsamıyla (Tüm gezi / kategori / ilan) ve × ile.
 - **Künye** (0.34.1): her bilgi tek satır, solda etiket sağda değer, iç içe alt satır yok. Süre ("7 gün") · Ülke ·
   Lokasyonlar (rota linki) · Yolcular (paylaşımlıysa baş harfli yuvarlaklar, değilse kişi sayısı kadar boş yuvarlak) ·
   Hava (şehir başına ikon + gündüz derecesi; 10 gün kala Open-Meteo tahmini, öncesinde son 5 yılın aynı günleri;
-  üstüne gelince hangisi olduğu yazar; veri yoksa satır yok) · Bütçe: büyük tek rakam (bütçe, yoksa bilinen toplam),
+  üstüne gelince hangisi olduğu yazar; veri yoksa satır yok) · Bütçe: tek rakam (bütçe, yoksa bilinen toplam),
   altında çubuk yeşil alındı / amber planda / gri boşta ve üç küçük tutar; aşınca kırmızı "aşıyor"; tıklayınca
   kategori kırılımı. En altta sessiz tek sıra: para birimi (kur üstüne gelince) · priz (adaptör gerekir mi üstüne
   gelince) · saat farkı ("−2 sa", aynıysa yok) · dil. Vize ve kalkış künyede yok. Bilinmeyen satır gösterilmez.

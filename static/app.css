@@ -1037,8 +1037,8 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .hx-weather .sky-rain { color: #2563c9; }
 .hx-budget { position: relative; padding: 10px 0 10px; border-bottom: 1px solid var(--hx-line); cursor: pointer; }
 .hx-budget .top { min-height: 24px; }
-.hx-budget .legend { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; margin-top: 6px; font-size: 13px; color: var(--hx-gray); font-variant-numeric: tabular-nums; }
-.hx-budget .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; background: #d6d1c7; }
+.hx-budget .legend { display: flex; justify-content: space-between; gap: 6px; margin-top: 6px; font-size: 12.5px; color: var(--hx-gray); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hx-budget .legend i { display: inline-block; width: 7px; height: 7px; border-radius: 2px; margin-right: 4px; background: #d6d1c7; vertical-align: 1px; }
 .hx-meter .booked, .hx-budget .legend i.booked { background: #1f8f4e; }
 .hx-meter .planned, .hx-budget .legend i.planned { background: #f0a53a; }
 .hx-over { color: #c62828; font-weight: 500; }
