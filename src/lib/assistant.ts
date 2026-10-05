@@ -18,7 +18,7 @@ import {
 import { needsFor } from "./cardFacts";
 import { moveDocs } from "./docs";
 import { choiceOf, tradeText } from "./choice";
-import { currencyCode, isoDate, listingKeyOf, tripDateRange } from "./items";
+import { currencyCode, isoDate, listingKeyOf, nightsBetween, tripDateRange } from "./items";
 import { NEED_MARK } from "./needs";
 import { coverageText, searchText } from "./listing";
 import { prosConsFor } from "./proscons";
@@ -28,7 +28,7 @@ import { checkPlanned, guardKind, plannedInput, planToSave, PLANNED_KINDS } from
 import { isIdea } from "./booking";
 import { sectionOfItem, type SectionId } from "./categories";
 import { addDays, buildPlan, liveGroups, sameCity, stayRange, type Plan } from "./plan";
-import { withEdits, withoutEdits } from "./userEdits";
+import { fromPage, saidEdits, withEdits, withoutEdits } from "./userEdits";
 import { L, lang } from "./i18n";
 import { announceRemoved, deleteItem } from "./removal";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
@@ -92,7 +92,7 @@ Nasıl konuşursun:
 - Kullanıcı bir karar verdiğinde (seçtim, ele, rezerve ettim) update_items; bütçe ya da tarih söylediğinde update_trip. Seçeneklerin durumunu yalnız kullanıcının son mesajı bunu istiyorsa değiştir; eski bir konuşmaya dayanarak değiştirme. Kullanıcı bir otelin (ya da uçuşun) adını söyleyip seçmedikçe kendin seçme; önerini söyle, seçimi ona bırak.
 - Konaklamayı bölmek: "7 Ekim gecesi başka bir otel koy", "ilk gece havalimanına yakın kalalım", "son iki gece başka yerde" → plan_item kind stay (o gecelerin tarihi, şehir, booked false). O geceler için ayrı, boş bir konaklama bloğu açılır; önceden seçilen yer kalan gecelerde kalır. Otel seçme; kullanıcı kaydettiği yerlerden seçer.
 - Fiyat: kullanıcı bir fiyat söylerse ("biletim 312 dolardı", "oteli 90 euroya aldım") set_price ile ilgili seçeneğe yaz.
-- Kayıtlı bir seçeneğin tarihi, saati ya da güzergâhı eksik/yanlışsa ve kullanıcı söylerse ("o bilet 12 Ekim'di", "attığım uçuş 12 Ekim", "kalkış 22:40") set_details ile o seçeneği düzelt; aynı şey için plan_item ile yeni plan ekleme. Tarihsiz kalan kayıtları (items[].dates.start null) konuşma uygun olduğunda tek soruyla sor.
+- Kayıtlı bir seçeneğin tarihi, saati ya da güzergâhı eksik/yanlışsa ve kullanıcı söylerse ("o bilet 12 Ekim'di", "attığım uçuş 12 Ekim", "kalkış 22:40") set_details ile o seçeneği düzelt; aynı şey için plan_item ile yeni plan ekleme. Kayıtlı bir seçeneğin yeri yanlışsa ("karavan Gaula değil Madeira", "otel Porto'da değil Gaia'da") set_details city ile düzelt; aynı yer için plan_item ile yeni konaklama açma, kayıtlı seçeneği silme. Sohbette düzeltilen değer kalıcıdır: sayfa yeniden kaydedilse de kartta o kalır. Tarihsiz kalan kayıtları (items[].dates.start null) konuşma uygun olduğunda tek soruyla sor.
 - Yalnız araçların yaptığını söyle: bir aracı çağırmadıysan ya da araç hata verdiyse "güncelledim/not ettim/böldüm" deme. Aracın döndürdüğü sonuçla (ör. plan_item'ın board alanı) panoda gerçekten ne olduğunu anlat.
 - Boş geceler varsa uygun bir anda bir kez hatırlat.
 - Planlar: kullanıcı bir planını söylediğinde, linki olmasa da (ör. "7 Ekim'de İstanbul'dan Porto'ya uçuyoruz", "11 Ekim'de Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız", "10-17 Ekim Funchal'da kalacağız", "9 Ekim akşamı fado") plan_item ile hemen panoya ekle; tarih ve nereden/nereye ya da şehir ver. Gün belli değilse beklemeden date null ile ekle (şehrin bloğunda "gün belli değil" diye durur); gün plandan açıksa (ör. Madeira'ya varış günü) o tarihi kullan; gün sonra söylenince aynı şeyi plan_item ile tarihle tekrar ver, kart o güne geçer. "gideriz/düşünüyoruz" → planlanıyor (booked false); "aldım/rezerve ettim" → booked true. Aynı şey items'ta zaten varsa plan_item yerine update_items kullan. Şehir değişimi için ulaşım söylenirse (Madeira'ya uçakla) kind flight ile ekle.
@@ -143,7 +143,7 @@ How you talk:
 - When the user makes a decision (chose, ruled out, booked) → update_items; when they give a budget or dates → update_trip. Change an option's status only if the user's latest message asks for it; never based on an old conversation. Don't choose a hotel (or flight) yourself unless the user names it and picks it; give your recommendation and leave the choice to them.
 - Splitting a stay: "put another hotel on the night of 7 October", "let's stay near the airport the first night", "somewhere else for the last two nights" → plan_item kind stay (those nights' dates, city, booked false). A separate, empty stay block opens for those nights; the place chosen before stays for the remaining nights. Don't choose a hotel; the user picks from the places they saved.
 - Price: if the user says a price ("my ticket was 312 dollars", "I got the hotel for 90 euros"), write it to the option with set_price.
-- If a saved option's date, time or route is missing or wrong and the user says so ("that ticket was for 12 October", "the flight I sent is on 12 October", "departure 22:40"), fix that option with set_details; don't add a new plan for the same thing with plan_item. Ask about undated saves (items[].dates.start null) with a single question when the conversation allows.
+- If a saved option's date, time or route is missing or wrong and the user says so ("that ticket was for 12 October", "the flight I sent is on 12 October", "departure 22:40"), fix that option with set_details; don't add a new plan for the same thing with plan_item. If a saved option's place is wrong ("the campervan isn't Gaula, it's Madeira", "the hotel is in Gaia, not Porto"), fix it with set_details city; never open a new stay for it with plan_item, and never delete the saved option. What the chat corrects stays: the card keeps it even when the page is saved again. Ask about undated saves (items[].dates.start null) with a single question when the conversation allows.
 - Only say what the tools did: if you didn't call a tool, or it returned an error, don't say "updated/noted/split". Use the tool's result (e.g. plan_item's board field) to say what really happened on the board.
 - If there are empty nights, mention it once at a good moment.
 - Plans: when the user mentions a plan, even without a link (e.g. "we fly Istanbul to Porto on 7 October", "we'll fly over to Madeira on 11 October", "we'll hire a car in Madeira", "we'll stay in Funchal 10-17 October", "fado on the evening of 9 October"), add it to the board right away with plan_item; give the date and from/to or the city. If the day isn't known, add it straight away with date null (it waits in the city's block as "day not set"); if the day is clear from the plan (e.g. the day they arrive in Madeira), use that date; when the day is given later, send the same thing again with plan_item and the date, and the card moves to that day. "we'll go/we're thinking" → planned (booked false); "bought it/booked it" → booked true. If the same thing is already in items, use update_items instead of plan_item. If transport for a change of city is mentioned (to Madeira by plane), add it with kind flight.
@@ -221,6 +221,42 @@ export function withDetails(item: Item, d: Details): Item | string {
   return next;
 }
 
+/**
+ * set_details on a plan said in the chat (or made by hand): no page behind it, so the record itself changes; a
+ * correction made on the card for a field said now gives way to it.
+ */
+export function detailsOnRecord(item: Item, details: Details, city: string | null): Item | string {
+  const updated = withDetails(item, details);
+  if (typeof updated === "string") return updated;
+  const said = ([["date", "start"], ["end_date", "end"], ["departure_time", "time"], ["from", "from"], ["to", "to"]] as const)
+    .filter(([k]) => details[k] != null)
+    .map(([, key]) => key);
+  return withoutEdits(city ? { ...updated, city } : updated, city ? [...said, "city"] : [...said]);
+}
+
+/**
+ * set_details on an option saved from a page: what was said becomes the card's correction (userEdits), the same
+ * as one made on the card, so the page saved again (mergeItem keeps the corrections) can't bring the page's city,
+ * day or route back. The arrival has no correction of its own: it's kept on the record, as many days from the
+ * page's day as the corrected departure is.
+ */
+export function detailsOverPage(item: Item, details: Details, city: string | null): Item | string {
+  const view = withEdits(item);
+  const checked = withDetails(view, details);
+  if (typeof checked === "string") return checked;
+  const edits = saidEdits(item, { start: details.date, end: details.end_date, time: details.departure_time, from: details.from, to: details.to, city });
+  const { userEdits: _was, pageValues: _view, ...bare } = item;
+  let record: Item = Object.keys(edits).length ? { ...bare, userEdits: edits } : bare;
+  const arrival = checked.flight?.arrival ?? null;
+  if (record.flight && arrival && arrival !== view.flight?.arrival) {
+    const pageStart = isoDate(item.flight?.departure?.slice(0, 10)) ?? isoDate(item.dates.start);
+    const shift = edits.start && pageStart ? nightsBetween(pageStart, edits.start) : 0;
+    const day = isoDate(arrival.slice(0, 10));
+    record = { ...record, flight: { ...record.flight, arrival: day && shift ? `${addDays(day, -shift)}${arrival.slice(10)}` : arrival } };
+  }
+  return record;
+}
+
 /** Level names the model uses; ASCII so every provider's schema subset accepts them. */
 const LEVEL_NAMES: Record<string, PriorityLevel> = { onemsiz: 0, az: 1, normal: 2, onemli: 3, cok_onemli: 4 };
 
@@ -271,7 +307,7 @@ function buildTools(en: boolean): ToolSpec[] {
     {
       name: "set_details",
       description:
-        t("Kayıtlı bir seçeneğin (sayfa ya da ekran görüntüsünden gelen) eksik ya da yanlış tarihini, saatini ve güzergâhını kullanıcının söylediğine göre düzeltir ('o bilet 12 Ekim'di', 'kalkış 22:40'). Tarihsiz kart böylece kendi gününe geçer. Yeni plan eklemez; değişmeyen alanlar null.", "Fixes a saved option's (from a page or screenshot) missing or wrong date, time and route from what the user says ('that ticket was for 12 October', 'departure 22:40'). An undated card moves to its own day. Adds no new plan; unchanged fields null."),
+        t("Kayıtlı bir seçeneğin (sayfa ya da ekran görüntüsünden gelen) eksik ya da yanlış tarihini, saatini ve güzergâhını kullanıcının söylediğine göre düzeltir ('o bilet 12 Ekim'di', 'kalkış 22:40') ve yerini ('karavan Gaula değil Madeira': city). Tarihsiz kart böylece kendi gününe geçer. Yeni plan eklemez; değişmeyen alanlar null. Söylenen değer sayfanınkinin önüne geçer; sayfa yeniden kaydedilse de kalır.", "Fixes a saved option's (from a page or screenshot) missing or wrong date, time and route from what the user says ('that ticket was for 12 October', 'departure 22:40'), and its place ('the campervan is Madeira, not Gaula': city). An undated card moves to its own day. Adds no new plan; unchanged fields null. What's said stands over the page's value, even when the page is saved again."),
       schema: {
         type: "object",
         properties: {
@@ -283,8 +319,10 @@ function buildTools(en: boolean): ToolSpec[] {
           arrival_date: { ...nullable({ type: "string" }), description: t("YYYY-MM-DD varış günü, kalkıştan farklıysa", "YYYY-MM-DD arrival day, if different from departure") },
           from: { ...nullable({ type: "string" }), description: t("Nereden (şehir ya da havalimanı kodu)", "From (city or airport code)") },
           to: { ...nullable({ type: "string" }), description: t("Nereye", "To") },
+          // A plain string, not a nullable one: one more union would push a tool out of strict decoding (audit.test).
+          city: { type: "string", description: t("Seçeneğin şehri, adası ya da bölgesi (kullanıcı yerini düzelttiyse); değişmiyorsa boş metin \"\"", "The option's city, island or region (when the user corrects where it is); an empty string \"\" if unchanged") },
         },
-        required: ["item_id", "date", "end_date", "departure_time", "arrival_time", "arrival_date", "from", "to"],
+        required: ["item_id", "date", "end_date", "departure_time", "arrival_time", "arrival_date", "from", "to", "city"],
         additionalProperties: false,
       },
     },
@@ -759,6 +797,21 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       if (!currency) throw new ToolError(L(`Para birimi ISO kodu olmalı (USD, EUR, TRY...): ${input.currency}`, `Currency must be an ISO code (USD, EUR, TRY...): ${input.currency}`));
       const scope = ["total", "per_night", "per_person"].includes(input.scope) ? (input.scope as "total" | "per_night" | "per_person") : "total";
       const now = Date.now();
+      // A saved page's option: the price said is a correction over the page's, so the page saved again can't
+      // put its own back (in the page's unit: a price said per night where the page gives a total is written
+      // on the record, as before).
+      const pageScope = item.price.amount != null ? item.price.scope : "total";
+      if (fromPage(item) && scope === pageScope) {
+        const edits = saidEdits(item, { price: amount, currency });
+        const { userEdits: _was, ...bare } = item;
+        await d.put("items", {
+          ...bare,
+          ...(Object.keys(edits).length ? { userEdits: edits } : {}),
+          priceHistory: [...item.priceHistory, { amount, currency, observedAt: now }],
+          updatedAt: now,
+        });
+        return JSON.stringify({ item: item.name, price: `${amount} ${currency}`, scope, shown: L("Kartta bu fiyat yazıyor; sayfa yeniden kaydedilse de kalır.", "The card shows this price; it stays even if the page is saved again.") });
+      }
       // A price corrected on the card before gives way to the one said now (the card shows this one).
       const updated: Item = withoutEdits({
         ...item,
@@ -772,17 +825,21 @@ async function runTool(tripId: string, name: string, input: any, choices: string
     case "set_details": {
       const item = byId.get(input.item_id);
       if (!item) throw new ToolError(L(`Bu id'le seçenek yok: ${input.item_id}`, `No option with this id: ${input.item_id}`));
-      const updated = withDetails(item, {
+      const details: Details = {
         date: text(input.date), end_date: text(input.end_date), departure_time: text(input.departure_time),
         arrival_time: text(input.arrival_time), arrival_date: text(input.arrival_date), from: text(input.from), to: text(input.to),
-      });
-      if (typeof updated === "string") throw new ToolError(updated);
-      // What the chat set now stands over a correction made on the card for the same field.
-      const said = ([["date", "start"], ["end_date", "end"], ["departure_time", "time"], ["from", "from"], ["to", "to"]] as const)
-        .filter(([k]) => text(input[k]) != null)
-        .map(([, key]) => key);
-      await d.put("items", { ...withoutEdits(updated, [...said]), updatedAt: Date.now() });
-      return JSON.stringify({ item: updated.name, dates: updated.dates, flight: updated.flight, shown: L("Kart bu tarihle kendi gününe geçti.", "The card moved to its day with this date.") });
+      };
+      const city = text(input.city);
+      const saved = fromPage(item) ? detailsOverPage(item, details, city) : detailsOnRecord(item, details, city);
+      if (typeof saved === "string") throw new ToolError(saved);
+      await d.put("items", { ...saved, updatedAt: Date.now() });
+      const shown = withEdits(saved);
+      const said = [
+        ...(details.date || details.end_date ? [L("Kart bu tarihle kendi gününe geçti.", "The card moved to its day with this date.")] : []),
+        ...(city ? [L(`Kartın yeri artık ${shown.city}.`, `The card's place is now ${shown.city}.`)] : []),
+        ...(fromPage(item) ? [L("Sayfa yeniden kaydedilse de söylenen kalır.", "What was said stays even if the page is saved again.")] : []),
+      ];
+      return JSON.stringify({ item: shown.name, city: shown.city, dates: shown.dates, flight: shown.flight, shown: said.join(" ") || L("Kart güncellendi.", "The card is updated.") });
     }
     case "set_priorities": {
       const trip = await d.get("trips", tripId);

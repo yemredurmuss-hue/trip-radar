@@ -97,6 +97,40 @@ export function withoutEdits(item: Item, keys: EditKey[]): Item {
   return Object.keys(rest).length ? { ...bare, userEdits: rest } : bare;
 }
 
+/** A record saved from a page (its fields are the page's, read again when the page is saved again). */
+export const fromPage = (item: Item): boolean => item.origin !== "chat" && item.captureIds.length > 0;
+
+/** What the chat said about an option, field by field (null: not said). */
+export type Said = Partial<Record<"start" | "end" | "time" | "from" | "to" | "city" | "price" | "currency", string | number | null>>;
+
+/**
+ * The corrections after the chat said something about a saved page's option ("karavan Gaula değil Madeira",
+ * "o bilet 12 Ekim'di", "oteli 90 euroya aldım"). Kept beside the page's values like a correction made on the
+ * card, so a page saved again (mergeItem) can't put the page's value back over what was said; the one said
+ * now replaces a correction made before. A value the same as the page's needs no correction.
+ */
+export function saidEdits(item: Item, said: Said): UserEdits {
+  const next: UserEdits = { ...item.userEdits };
+  for (const [key, value] of Object.entries(said) as [EditKey, string | number | null | undefined][]) {
+    if (value == null || value === "" || key === "currency" || key === "price") continue;
+    if (value === pageValue(item, key)) delete next[key];
+    else (next as Record<string, unknown>)[key] = value;
+  }
+  if (said.price != null) {
+    const pageCurrency = pageValue(item, "currency") as string | null;
+    const currency = (said.currency as string | null | undefined) || pageCurrency;
+    if (said.price === pageValue(item, "price") && currency === pageCurrency) {
+      delete next.price;
+      delete next.currency;
+    } else {
+      next.price = Number(said.price);
+      if (currency && currency !== pageCurrency) next.currency = currency;
+      else delete next.currency;
+    }
+  }
+  return next;
+}
+
 /** The page's value under a corrected field, in words, for "sayfadaki: X · geri al"; null when not corrected. */
 export function correctionOf(item: Item, field: FieldKey): string | null {
   const key = EDIT_KEY[field];
