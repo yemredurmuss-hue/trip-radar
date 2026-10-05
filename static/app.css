@@ -933,7 +933,7 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .hx {
   display: grid; grid-template-columns: minmax(0, 1.82fr) minmax(320px, 1fr); gap: 24px; align-items: start; margin: 8px 0 24px; color: var(--hx-ink);
 }
-.hx-left { position: relative; min-width: 0; }
+.hx-left { position: relative; min-width: 0; container: hxleft / inline-size; }
 .hx button { font-family: inherit; }
 
 /* Fades in what arrived after the hero was drawn (an empty block filled). */
@@ -968,16 +968,22 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .hx-when.empty { color: var(--hx-muted); }
 .hx-lead { margin: 8px 0 0; font-size: 17px; line-height: 1.5; color: var(--hx-muted); }
 
-/* The plan in four cells (icon in its category's colour, "3 uçuş"); a zero stays, quiet. */
-.hx-tally { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 22px; }
+/* The plan in four cells (icon in its category's colour, "3 uçuş"); a zero stays, quiet. Two by two until
+   the story is wide enough for four (~150px a cell: "12 konaklama", "3 experiences"); a label wraps rather than
+   run over the line between cells. */
+.hx-tally { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 4px; margin-top: 22px; }
 .hx-tally button {
   position: relative; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 6px 4px; border: 0; border-radius: 14px;
   background: none; font-size: 17px; color: var(--hx-ink); font-variant-numeric: tabular-nums;
 }
 .hx-tally button:hover { background: rgba(28,26,51,.04); }
-.hx-tally button + button::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 36px; margin-top: -18px; background: var(--hx-line); }
+.hx-tally button:nth-child(2n)::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 36px; margin-top: -18px; background: var(--hx-line); }
+@container hxleft (min-width: 620px) {
+  .hx-tally { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 0; }
+  .hx-tally button + button::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 36px; margin-top: -18px; background: var(--hx-line); }
+}
 .hx-tally svg { flex: none; }
-.hx-tally span { white-space: nowrap; }
+.hx-tally span { min-width: 0; text-align: left; overflow-wrap: break-word; }
 .hx-tally .c-flight svg { color: #6a4fe0; }
 .hx-tally .c-stay svg { color: #23998b; }
 .hx-tally .c-transport svg { color: #c58a2e; }
@@ -988,17 +994,22 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .hx-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 26px; margin-top: 16px; padding: 22px; border-radius: 20px; background: var(--hx-mint); }
 .hx-progress-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
 .hx-progress-head > b { font-size: 17px; font-weight: 700; color: var(--hx-ink); }
-.hx-progress-meta { display: inline-flex; align-items: baseline; gap: 10px; font-size: 15px; color: var(--hx-muted); }
-.hx-progress-count { padding: 0; border: 0; background: none; font-size: 15px; color: var(--hx-muted); font-variant-numeric: tabular-nums; }
+.hx-progress-meta { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 15px; color: var(--hx-muted); }
+.hx-progress-count { white-space: nowrap; padding: 0; border: 0; background: none; font-size: 15px; color: var(--hx-muted); font-variant-numeric: tabular-nums; }
 .hx-progress-count .dot { margin: 0 4px; }
 .hx-progress-count b { color: var(--hx-ink); font-weight: 600; }
 button.hx-progress-count:hover, button.hx-progress-count[aria-expanded="true"] { text-decoration: underline; text-underline-offset: 3px; }
-.hx-deadline { padding: 2px 10px; border: 0; border-radius: 999px; background: #fff1d9; color: #8a5300; font-size: 14px; font-weight: 600; }
+.hx-deadline { white-space: nowrap; padding: 2px 10px; border: 0; border-radius: 999px; background: #fff1d9; color: #8a5300; font-size: 14px; font-weight: 600; }
 .hx-deadline[aria-expanded="true"] { background: #f6dfb3; }
 .hx-bar { height: 12px; margin-top: 14px; border-radius: 999px; overflow: hidden; background: #dfe4e8; }
 .hx-bar i { display: block; height: 100%; border-radius: 999px; background: var(--hx-mintbar); transition: width .4s; }
 .hx-go { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 52px; padding: 0 22px; border: 0; border-radius: 14px; background: var(--hx-ink); color: #fff; font-size: 17px; font-weight: 500; white-space: nowrap; }
 .hx-go:hover { background: #2c2950; }
+/* The story narrower than four cells (a laptop beside the chat, or a narrow board): the button under the bar. */
+@container hxleft (max-width: 619px) {
+  .hx-progress { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .hx-go { width: 100%; }
+}
 .hx-go svg { flex: none; }
 .hx + .todo-list { margin: -8px 0 24px; max-width: none; }
 
@@ -1009,6 +1020,9 @@ button.hx-progress-count:hover, button.hx-progress-count[aria-expanded="true"] {
 .hx-h { display: block; margin: 0; padding: 0; border: 0; background: none; font-size: 20px; font-weight: 700; letter-spacing: -.01em; color: var(--hx-ink); text-align: left; }
 button.hx-h:hover { color: var(--hx-accent); }
 .hx-empty { margin: 8px 0 0; font-size: 15px; line-height: 1.45; color: var(--hx-muted); }
+/* Still loading (no decisions yet): the block keeps its height, says nothing; a style chip is a faint pill. */
+.hx-wait { visibility: hidden; }
+.hx-styles .hx-wait { visibility: visible; width: 128px; padding: 0; background: rgba(28,26,51,.04); }
 .hx-link { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; font-size: 16px; color: var(--hx-accent); }
 .hx-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
@@ -1108,10 +1122,12 @@ button.hx-people:hover b { color: var(--hx-accent); }
 
 /* The small things: money, plug, time, language, a line between. */
 /* Beside the story the card is narrow: two by two, a line between the pair; under it (narrow board), one row. */
-.hx-minis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 10px; margin-left: -10px; overflow: hidden; font-size: 14px; color: var(--hx-muted); }
-.hx-minis span { display: inline-flex; align-items: center; gap: 7px; margin-left: -1px; padding: 0 10px; border-left: 1px solid var(--hx-line); white-space: nowrap; }
+/* A long name ("Almanca, Fransızca, İtalyanca", "Birleşik Arap Emirlikleri Dirhemi") wraps inside its cell,
+   the icon staying at its first line; nothing is cut. */
+.hx-minis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 10px; margin-left: -10px; overflow: hidden; font-size: 14px; line-height: 1.35; color: var(--hx-muted); }
+.hx-minis span { display: flex; align-items: flex-start; gap: 7px; min-width: 0; margin-left: -1px; padding: 0 10px; border-left: 1px solid var(--hx-line); white-space: normal; overflow-wrap: break-word; }
 .hx-minis span:nth-child(odd) { border-left-color: transparent; }
-.hx-minis svg { flex: none; color: var(--hx-ink); }
+.hx-minis svg { flex: none; margin-top: 0; color: var(--hx-ink); }
 
 /* Narrow: one column, the card under the story; the plan line 2×2, the button under the bar. */
 @container panel (max-width: 760px) {
@@ -1121,10 +1137,6 @@ button.hx-people:hover b { color: var(--hx-accent); }
   .hx-busy span { display: none; }
   .hx-busy { padding: 0 10px; }
   .hx-story h1 { font-size: 32px; }
-  .hx-tally { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 4px; }
-  .hx-tally button:nth-child(3)::before { display: none; }
-  .hx-progress { grid-template-columns: minmax(0, 1fr); gap: 18px; }
-  .hx-go { width: 100%; }
   .hx-side { padding: 20px; }
   .hx-minis { display: flex; flex-wrap: wrap; align-items: center; }
   .hx-minis span:nth-child(odd) { border-left-color: var(--hx-line); }
