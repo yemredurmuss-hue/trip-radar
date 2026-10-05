@@ -4,7 +4,7 @@ import { L } from "../lib/i18n";
 import { formatDateRange, tripDateRange } from "../lib/items";
 import { retryCapture } from "../lib/process";
 import { listDrafts, onDraftsChanged, removeDraft, saveDraft } from "../lib/startDrafts";
-import { checklist, dative, progressOf, tripNamedIn, type StartCtx, type StartMode, type StartState } from "../lib/startTrip";
+import { checklist, dative, progressOf, splitLinks, tripNamedIn, type StartCtx, type StartMode, type StartState } from "../lib/startTrip";
 import { isDemoTrip } from "../lib/trips";
 import type { Capture, Item, Trip } from "../lib/types";
 import { UiIcon } from "./cards/Silhouettes";
@@ -18,6 +18,8 @@ export interface StartLaunch {
   mode: StartMode;
   text?: string;
   label?: string;
+  /** Said first by the assistant (links typed with the words were saved). */
+  note?: string;
   draft?: StartState;
 }
 
@@ -88,14 +90,20 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
   }
 
   async function submit(mode: StartMode = "plan", label?: string) {
-    const said = text.trim();
-    // Links: read and sorted into their trips, as always.
-    if (said && (await addLinks(said))) return setText("");
+    const typed = text.trim();
+    // Links: read and sorted into their trips, as always; words typed with them go on to the conversation.
+    const { links, words } = splitLinks(typed);
+    if (links.length && (await addLinks(links.join(" ")))) {
+      setText("");
+      if (!words) return;
+    }
+    const said = links.length ? words : typed;
+    const note = links.length ? L("Linki kaydettim; geri kalanını konuşalım.", "I've saved the link; let's talk about the rest.") : undefined;
     if (!said) return onStart({ mode, label });
     const named = mode === "plan" ? tripNamedIn(said, trips, items) : null;
     if (named) return setAsk({ trip: named.trip, text: said });
     setText("");
-    onStart({ mode, text: said, label });
+    onStart({ mode, text: said, label, note });
   }
 
   const hello = ctx.myName ? L(`Merhaba ${ctx.myName}, sıradaki gezi nereye?`, `Hey ${ctx.myName}, where are we going next?`) : L("Sıradaki gezi nereye?", "Where are we going next?");
@@ -128,7 +136,8 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
             }}
             onPaste={onPaste}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              // Enter sends; never while an input method is still composing (Japanese, Chinese, Korean…).
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 void submit();
               }

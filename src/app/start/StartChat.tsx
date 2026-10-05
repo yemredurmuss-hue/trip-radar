@@ -24,6 +24,8 @@ interface Props {
   firstText?: string;
   /** The home chip pressed ("Yeni gezi planla"): said as the traveller's first line. */
   firstLabel?: string;
+  /** Said first by the assistant (links typed with the words were saved: "Linki kaydettim; geri kalanını konuşalım."). */
+  firstNote?: string;
   ctx: StartCtx;
   onClose: () => void;
   onCreated: (tripId: string) => void;
@@ -31,13 +33,23 @@ interface Props {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCreated }: Props) {
+export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onClose, onCreated }: Props) {
   const [state, setState] = useState(initial);
   const live = useRef(initial);
   const [thinking, setThinking] = useState(false);
   const [text, setText] = useState("");
   const [placeholder, setPlaceholder] = useState<string | null>(null);
-  const [phase, setPhase] = useState<"chat" | "generating">("chat");
+  const [phase, setPhaseState] = useState<"chat" | "generating">("chat");
+  // Read after every wait: an answer that comes back after "Gezimi oluştur", or after the screen was left, is dropped.
+  const phaseNow = useRef<"chat" | "generating">("chat");
+  const setPhase = (p: "chat" | "generating") => {
+    phaseNow.current = p;
+    setPhaseState(p);
+  };
+  const left = useRef(false);
+  const busy = useRef(false);
+  const stale = () => left.current || phaseNow.current !== "chat";
+  const [dayPick, setDayPick] = useState("");
   const [picking, setPicking] = useState<{ styles: StyleId[]; budget: BudgetLevel | null }>({ styles: initial.styles, budget: initial.budget });
   const [dateOpen, setDateOpen] = useState(false);
   const model = useRef<Promise<boolean> | null>(null);
@@ -50,26 +62,38 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
   const saving = useRef<Promise<void>>(Promise.resolve());
   /** The state as it is now (async answers read this, never a stale render's); saved one after another, the last wins. */
   function commit(next: StartState) {
+    // Nothing is written once the screen was left or the draft went (no draft comes back as a ghost).
+    if (left.current) return;
     live.current = next;
     setState(next);
     saving.current = saving.current.then(() => saveDraft(next)).catch(() => undefined);
   }
   const say = (s: StartState, role: "user" | "assistant", line: string): StartState => ({ ...s, messages: [...s.messages, { role, text: line, at: Date.now() }], updatedAt: Date.now() });
 
+  const think = (on: boolean) => {
+    busy.current = on;
+    setThinking(on);
+  };
+
   /** After an answer: a route proposed when it's time for one, then the next line. */
   async function reply(before: StartState, after: StartState) {
-    let next = after;
-    if (nextQuestion(next) === "route" && !next.route) {
-      setThinking(true);
-      const route = await proposeRoute(next, await model.current!);
-      setThinking(false);
-      // Nothing else is answered while it thinks (the chips and the send button wait).
-      next = { ...after, route };
+    if (stale()) return;
+    // The answer is kept at once (a draft left while the route is thought about has it).
+    if (after !== live.current) commit(after);
+    if (nextQuestion(after) === "route" && !after.route) {
+      think(true);
+      const route = await proposeRoute(after, await model.current!);
+      think(false);
+      if (stale()) return;
+      // The state as it is now, not the one it started from.
+      if (!live.current.route) commit({ ...live.current, route });
     }
+    const next = live.current;
     commit(say(next, "assistant", replyText(before, next, ctx)));
     setPicking({ styles: next.styles, budget: next.budget });
     setPlaceholder(null);
     setDateOpen(false);
+    setDayPick("");
   }
 
   // The first lines: the home's message or chip, then the first question.
@@ -78,9 +102,10 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
     opened.current = true;
     // A draft left right after the traveller's line (before the answer came): its question is asked again.
     if (initial.messages.length) return void (initial.messages.at(-1)?.role === "user" && reply(initial, initial));
+    if (firstNote) commit(say(initial, "assistant", firstNote));
     if (firstText?.trim()) void send(firstText);
     else {
-      const start = say(initial, "user", firstLabel ?? L("Yeni gezi planla", "Plan a new trip"));
+      const start = say(live.current, "user", firstLabel ?? L("Yeni gezi planla", "Plan a new trip"));
       commit(start);
       void reply(start, start);
     }
@@ -90,8 +115,17 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
     bottom.current?.scrollIntoView({ block: "end" });
   }, [state.messages.length, thinking]);
 
+  // The typing box ready on open; the screen left (unmounted): every answer still on its way is dropped.
+  useEffect(() => {
+    left.current = false;
+    input.current?.focus();
+    return () => {
+      left.current = true;
+    };
+  }, []);
+
   async function answer(a: Answer, label: string) {
-    if (thinking) return;
+    if (busy.current || stale()) return;
     const before = live.current;
     const asked = say(before, "user", label);
     commit(asked);
@@ -104,7 +138,7 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
   }
 
   async function onSkip(q: QuestionId) {
-    if (thinking) return;
+    if (busy.current || stale()) return;
     const before = live.current;
     const asked = say(before, "user", L("Atla", "Skip"));
     await reply(before, skip(asked, q, Date.now()));
@@ -112,7 +146,7 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
 
   async function send(raw = text) {
     const line = raw.trim();
-    if (!line || thinking) return;
+    if (!line || busy.current || stale()) return;
     setText("");
     const before = live.current;
     const q = nextQuestion(before);
@@ -125,10 +159,11 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
       if (!("error" in parsed)) return reply(before, { ...asked, route: parsed.route, editingRoute: false, asking: null });
       if (before.editingRoute || !before.route) return commit(say(asked, "assistant", parsed.error));
     }
-    setThinking(true);
+    think(true);
     const code = parseStartText(line, today());
     const read = (await model.current!) ? await readMessage(line, today(), q ? questionOf(before, q, ctx).text : null) : null;
-    setThinking(false);
+    think(false);
+    if (stale()) return;
     const { state: after, understood } = applyText(live.current, line, mergeExtracted(code, read), Date.now());
     if (!understood) return commit(say(live.current, "assistant", NOT_UNDERSTOOD()));
     await reply(before, after);
@@ -142,7 +177,8 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
   }
 
   function generate() {
-    if (!canGenerate(live.current)) return;
+    // Once, and never while an answer is on its way (its reply would land on the trip being made).
+    if (busy.current || stale() || !canGenerate(live.current)) return;
     commit(say(live.current, "user", L("Gezimi oluştur", "Generate my trip")));
     setPhase("generating");
   }
@@ -150,11 +186,13 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
   /** The draft goes (after any save still on its way, so none brings it back). */
   function forget() {
     const id = live.current.id;
+    left.current = true;
     saving.current = saving.current.then(() => removeDraft(id)).then(() => undefined, () => undefined);
   }
 
   function close() {
     if (!worthKeeping(live.current)) forget();
+    left.current = true;
     onClose();
   }
 
@@ -176,7 +214,7 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
           <div className="st-top-title">{state.where ? L(`${state.where.place} · yeni gezi`, `${state.where.place} · new trip`) : L("Yeni gezi", "New trip")}</div>
         </div>
         {!generating && <ChecklistBar rows={rows} onAsk={ask} ready={ready} onGenerate={generate} disabled={thinking} />}
-        <div className="st-msgs">
+        <div className="st-msgs" role="log" aria-live="polite" aria-label={L("Sohbet", "Conversation")}>
           {state.messages.map((m, i) => (
             <div key={i} className={m.role === "user" ? "st-msg-user" : "st-msg-bot"}>
               {m.text}
@@ -230,7 +268,20 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
                       {L("Başka…", "Other…")}
                     </button>
                   )}
-                  {question.date &&
+                  {question.id === "day" && (
+                    <span className="st-day">
+                      <input type="date" className="st-date" aria-label={L("Başlangıç günü", "Start day")} min={today()}
+                        value={dayPick || (state.start?.date ?? "")} onChange={(e) => setDayPick(e.target.value)} />
+                      <button type="button" className="st-primary" disabled={!(dayPick || state.start?.date)}
+                        onClick={() => {
+                          const date = dayPick || state.start!.date;
+                          void answer({ q: "day", date, part: null }, date.split("-").reverse().join("."));
+                        }}>
+                        {L("Bu gün", "This day")}
+                      </button>
+                    </span>
+                  )}
+                  {question.date && question.id !== "day" &&
                     (dateOpen ? (
                       <input type="date" className="st-date" min={today()} autoFocus aria-label={L("Başlangıç günü", "Start day")}
                         onChange={(e) => e.target.value && void answer({ q: "start", date: e.target.value, approx: false }, e.target.value.split("-").reverse().join("."))} />
@@ -268,8 +319,10 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
           <Generating
             state={state}
             onTripId={(tripId) => commit({ ...live.current, tripId })}
-            onFinished={(tripId) => {
-              forget();
+            onFinished={(tripId, keep) => {
+              // "Yine de aç" before the conversation reached the trip keeps the draft (nothing said is lost).
+              if (keep) left.current = true;
+              else forget();
               onCreated(tripId);
             }}
             onBack={() => setPhase("chat")}
@@ -277,7 +330,7 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
         ) : (
           <div className="st-side-inner">
             <Checklist rows={rows} onAsk={ask} disabled={thinking} />
-            <GenerateCard ready={ready} missing={missingForGenerate(state)} onGenerate={generate} />
+            <GenerateCard ready={ready} busy={thinking} missing={missingForGenerate(state)} onGenerate={generate} />
           </div>
         )}
       </aside>

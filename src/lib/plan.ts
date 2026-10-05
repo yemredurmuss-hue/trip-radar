@@ -336,6 +336,10 @@ const CITY_ALIASES: Record<string, string> = Object.fromEntries(
     "ponta delgada": ["pdl"],
     "porto santo": ["pxo"],
     "new york": ["jfk", "ewr", "lga", "nyc"],
+    // Where the start chat's flights land for an island or a region (startTrip.ts KNOWN_PLACES airport).
+    denpasar: ["dps", "ngurah rai", "bali denpasar"],
+    kayseri: ["asr"],
+    male: ["mle", "velana"],
     dubai: ["dxb"],
   }).flatMap(([name, others]) => others.map((o) => [o, name])),
 );

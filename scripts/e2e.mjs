@@ -2319,7 +2319,7 @@ try {
   // Only what the first message left out is asked (item 2).
   const side = board.locator(".st-side");
   await side.getByText("Bali · Endonezya").waitFor();
-  await side.getByText("10 Aralık – 10 Ocak · 32 gün").waitFor();
+  await side.getByText("10 Aralık – 10 Ocak · 31 gece").waitFor();
   await side.getByText("Sabine ile · 2 kişi").waitFor();
   assert.equal(await answers.locator(".st-chip").first().innerText(), "İstanbul", "the origin's guess comes first");
   await answers.getByRole("button", { name: "İstanbul", exact: true }).click();
@@ -2382,6 +2382,9 @@ try {
   // who goes and the country are there at once.
   const hero = board.locator(".hx");
   await hero.getByText("2 uçuş ve 31 gece seni bekliyor.").waitFor();
+  // The review ran once, in the generating step; the board, opening on the same main places and key, didn't ask again.
+  await board.waitForTimeout(1500);
+  assert.equal(reviewPrompts.filter((p) => p.includes("Uluwatu")).length, 1, "the start's review is the board's: asked once");
   assert.equal(await hero.getByText("Uçuşlar hazır", { exact: false }).count(), 0, "placeholders are not chosen flights");
   await hero.getByText("Doğa", { exact: true }).first().waitFor();
   await hero.getByText("Deniz", { exact: true }).first().waitFor();
@@ -2392,13 +2395,38 @@ try {
   for (const city of ["Ubud", "Canggu", "Uluwatu"]) await panel.locator("[data-section='stay']").getByText(city, { exact: false }).first().waitFor();
   await panel.locator("[data-section='flight']").getByText("Denpasar", { exact: false }).first().waitFor();
   await board.locator(".chat .msg-user", { hasText: "Sabine'yle 10 Aralık'tan 1 ay Bali" }).waitFor();
-  await board.locator(".chat .msg-assistant", { hasText: "Bali Gezisi hazır: 32 gün, 3 durak." }).waitFor();
+  await board.locator(".chat .msg-assistant", { hasText: "Bali Gezisi hazır: 31 gece, 3 durak." }).waitFor();
   await guide.scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/20d-start-board.png` });
   // × closes the start card for good.
   await guide.getByRole("button", { name: "Başlangıç kartını kapat" }).click();
   await guide.waitFor({ state: "detached" });
   console.log("✓ start by chat: one line fills who/when/where, chips finish it, the route agreed → Bali Gezisi with Ubud 12 · Canggu 10 · Uluwatu 9 nights, İstanbul ⇄ Denpasar flights to fill (not chosen), Emre & Sabine, Doğa · Deniz, Indonesia, the suggestions' review, the start card and the same conversation");
+
+  // 20e. Words with a link on the home: the link is saved, the words go on ("Linki kaydettim; geri kalanını konuşalım").
+  // A month only is never a day made up: the day is asked next; "Ortası" is said back and marked roughly.
+  await board.getByRole("button", { name: /Seyahatlerim/ }).first().click();
+  await board.getByLabel("Gezi kutusu").fill("Lizbon https://www.booking.com/hotel/pt/e2e-lizbon.html");
+  await board.getByRole("button", { name: /Planlamaya başla/ }).click();
+  await board.locator(".st-msg-bot", { hasText: "Linki kaydettim; geri kalanını konuşalım." }).waitFor();
+  await board.locator(".st-msg-bot", { hasText: "Harika, Lizbon!" }).waitFor();
+  const skipQ = () => answers.getByRole("button", { name: "Atla" }).click();
+  await skipQ(); // where from
+  await board.locator(".st-msg-bot", { hasText: "Kimle gidiyorsun?" }).waitFor();
+  await skipQ(); // who
+  await answers.getByRole("button", { name: "1 hafta", exact: true }).click();
+  await answers.getByRole("button", { name: "Aralık", exact: true }).click();
+  await board.locator(".st-msg-bot", { hasText: "Aralık ayının hangi günü başlıyor?" }).waitFor();
+  assert.deepEqual(await answers.locator(".st-chip").allInnerTexts(), ["Ayın başı", "Ortası", "Sonu"]);
+  await answers.locator("input[type=date]").waitFor();
+  await board.screenshot({ path: `${out}/20e-start-day.png` });
+  await answers.getByRole("button", { name: "Ortası" }).click();
+  await board.locator(".st-msg-bot", { hasText: "15 Aralık'ı başlangıç aldım, değiştirebilirsin." }).waitFor();
+  await side.getByText("15–22 Aralık · 7 gece (yaklaşık)").waitFor();
+  // Left halfway: a draft on the home.
+  await board.getByRole("button", { name: /Seyahatlerim/ }).first().click();
+  await board.locator(".st-draft", { hasText: "Lizbon" }).waitFor();
+  console.log("✓ start by chat: a link typed with words is saved and the words go on; a month only asks the day (Ortası → \"15 Aralık'ı başlangıç aldım\", roughly); left halfway, a draft");
   console.log(`screenshots: ${out}`);
 } finally {
   await flow.close();

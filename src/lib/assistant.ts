@@ -1530,7 +1530,28 @@ const MAX_STEPS = 6;
 const SESSION_CHAR_LIMIT = 400_000; // ~100k tokens; beyond this a fresh context starts
 
 /** Sends one user message and runs the tool loop until the assistant answers. */
+/** Trips whose chat is answering now (this page): a second message waits for the first (the chat's own busy state does too). */
+const answering = new Set<string>();
+
+/** Thrown when a message is sent while the trip's chat is still answering the one before. */
+export class ChatBusyError extends Error {
+  constructor() {
+    super(L("Bir önceki mesaj hâlâ yanıtlanıyor; bitince tekrar gönder.", "The message before is still being answered; send it again when it's done."));
+  }
+}
+
 export async function sendMessage(tripId: string, userText: string, llm?: LlmProvider): Promise<void> {
+  // A safety net under the chat's busy state: two turns at once would interleave their history.
+  if (answering.has(tripId)) throw new ChatBusyError();
+  answering.add(tripId);
+  try {
+    await sendMessageNow(tripId, userText, llm);
+  } finally {
+    answering.delete(tripId);
+  }
+}
+
+async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvider): Promise<void> {
   const d = await db();
   const trip = await d.get("trips", tripId);
   if (!trip) throw new Error(L("Gezi bulunamadı.", "Trip not found."));

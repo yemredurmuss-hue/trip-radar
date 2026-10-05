@@ -426,7 +426,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   useEffect(() => {
     setTodoOpen(null);
   }, [trip.id]);
-  const progress = decisionProgress(timeline, items, plan, decisions?.byGroup, today);
+  const progress = decisionProgress(timeline, items, plan, decisions?.byGroup, today, (i) => isPlaceholder(trip, i));
   const bar = decisions ? budgetBar(plan, items, decisions.ctx, decisions.byGroup) : null;
   const facts = useMemo(
     () =>

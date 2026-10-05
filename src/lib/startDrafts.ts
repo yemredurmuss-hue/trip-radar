@@ -5,7 +5,7 @@
 // shared, searched by the chat and the share sync, and would need a migration. A draft here is read only by
 // the home and the start screen; removing the key removes every draft and nothing else.
 import { chromeKV, type KV } from "./share/store";
-import type { StartState } from "./startTrip";
+import { knownStyles, type StartState } from "./startTrip";
 
 const KEY = "startDrafts";
 /** The newest few are kept. */
@@ -14,14 +14,35 @@ export const MAX_DRAFTS = 8;
 const isDraft = (v: unknown): v is StartState =>
   !!v && typeof v === "object" && typeof (v as StartState).id === "string" && Array.isArray((v as StartState).messages) && typeof (v as StartState).mode === "string";
 
-export async function listDrafts(kv: KV = chromeKV): Promise<StartState[]> {
+/** A stored draft as the screens can use it: styles only from the list, the lists always lists. */
+const clean = (d: StartState): StartState => ({
+  ...d,
+  styles: knownStyles(d.styles),
+  skipped: Array.isArray(d.skipped) ? d.skipped : [],
+  who: d.who ? { kind: d.who.kind ?? null, names: Array.isArray(d.who.names) ? d.who.names.filter((n) => typeof n === "string") : [] } : null,
+  route: d.route && Array.isArray(d.route.stops) ? d.route : null,
+  messages: d.messages.filter((m) => m && typeof m.text === "string" && (m.role === "user" || m.role === "assistant")),
+});
+
+async function read(kv: KV): Promise<StartState[]> {
   try {
     const rows = await kv.get<unknown[]>(KEY);
-    return (Array.isArray(rows) ? rows.filter(isDraft) : []).sort((a, b) => b.updatedAt - a.updatedAt);
+    return (Array.isArray(rows) ? rows.filter(isDraft).map(clean) : []).sort((a, b) => b.updatedAt - a.updatedAt);
   } catch {
     return [];
   }
 }
+
+// Every change is a read-modify-write of one key: they run one after another (two screens saving at once can't
+// lose either change).
+let queue: Promise<unknown> = Promise.resolve();
+function serial<T>(work: () => Promise<T>): Promise<T> {
+  const run = queue.then(work, work);
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+export const listDrafts = (kv: KV = chromeKV): Promise<StartState[]> => serial(() => read(kv));
 
 export async function getDraft(id: string, kv: KV = chromeKV): Promise<StartState | null> {
   return (await listDrafts(kv)).find((d) => d.id === id) ?? null;
@@ -30,17 +51,21 @@ export async function getDraft(id: string, kv: KV = chromeKV): Promise<StartStat
 /** Only an interview with something in it is worth keeping (a chip pressed and left is not). */
 export const worthKeeping = (s: StartState) => Boolean(s.where || s.from || s.who || s.start || s.duration || s.styles.length || s.budget || s.tripId);
 
-export async function saveDraft(s: StartState, kv: KV = chromeKV): Promise<void> {
-  const others = (await listDrafts(kv)).filter((d) => d.id !== s.id);
-  const rows = worthKeeping(s) ? [s, ...others] : others;
-  await kv.set(KEY, rows.slice(0, MAX_DRAFTS));
+export function saveDraft(s: StartState, kv: KV = chromeKV): Promise<void> {
+  return serial(async () => {
+    const others = (await read(kv)).filter((d) => d.id !== s.id);
+    const rows = worthKeeping(s) ? [s, ...others] : others;
+    await kv.set(KEY, rows.slice(0, MAX_DRAFTS));
+  });
 }
 
-export async function removeDraft(id: string, kv: KV = chromeKV): Promise<StartState | null> {
-  const all = await listDrafts(kv);
-  const gone = all.find((d) => d.id === id) ?? null;
-  if (gone) await kv.set(KEY, all.filter((d) => d.id !== id));
-  return gone;
+export function removeDraft(id: string, kv: KV = chromeKV): Promise<StartState | null> {
+  return serial(async () => {
+    const all = await read(kv);
+    const gone = all.find((d) => d.id === id) ?? null;
+    if (gone) await kv.set(KEY, all.filter((d) => d.id !== id));
+    return gone;
+  });
 }
 
 /** Calls back whenever the drafts change (another tab, the start screen). */

@@ -10,6 +10,7 @@ import { L, lang } from "./i18n";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
 import { placesKey } from "./destinations";
 import { addDays, cityKeyOf } from "./plan";
+import { looksLikeUrl } from "./url";
 import type { PlannedInput } from "./planned";
 import { STYLES, type BudgetLevel, type StyleId } from "./tripStyle";
 import type { ChatMessage, Item, Trip } from "./types";
@@ -18,7 +19,16 @@ import type { ChatMessage, Item, Trip } from "./types";
 
 /** How the interview was started (the home's chips): the order and the quick answers follow it. */
 export type StartMode = "plan" | "inspire" | "road" | "lastminute";
-export type QuestionId = "where" | "from" | "who" | "names" | "duration" | "start" | "want" | "route";
+export type QuestionId = "where" | "from" | "who" | "names" | "duration" | "start" | "day" | "want" | "route";
+/** Which part of a month a start chip took: never a day made up without saying so. */
+export type MonthPart = "begin" | "mid" | "end";
+export interface StartDay {
+  date: string;
+  /** Not a day the traveller gave: a month only (asked next), or a part of it (said back in the chat). */
+  approx: boolean;
+  /** The part of the month a chip took ("Ortası" → the 15th). */
+  part?: MonthPart | null;
+}
 /** The checklist's six rows. */
 export type SlotId = "where" | "from" | "who" | "when" | "want" | "route";
 export type Companions = "solo" | "partner" | "friends" | "family";
@@ -62,7 +72,7 @@ export interface StartState {
   from: string | null;
   who: { kind: Companions | null; names: string[] } | null;
   duration: Duration | null;
-  start: { date: string; approx: boolean } | null;
+  start: StartDay | null;
   styles: StyleId[];
   budget: BudgetLevel | null;
   /** "Ne istiyorsun" answered (styles and budget may still be empty: "Tamam" with nothing picked). */
@@ -194,14 +204,16 @@ interface KnownPlace {
   /** A city stays one stop; a country, an island or a region can be a route. */
   city: boolean;
   also?: string[];
+  /** Where flights land for it, when that isn't its own name (Bali → Denpasar). */
+  airport?: string;
 }
-const P = (tr: string, en: string, countryTr: string | null, countryEn: string | null, city: boolean, also: string[] = []): KnownPlace => ({ tr, en, countryTr, countryEn, city, also });
+const P = (tr: string, en: string, countryTr: string | null, countryEn: string | null, city: boolean, also: string[] = [], airport?: string): KnownPlace => ({ tr, en, countryTr, countryEn, city, also, ...(airport ? { airport } : {}) });
 /** A few places the code knows without the model (the no-key path): popular cities, islands and countries. */
 export const KNOWN_PLACES: KnownPlace[] = [
-  P("Bali", "Bali", "Endonezya", "Indonesia", false),
+  P("Bali", "Bali", "Endonezya", "Indonesia", false, [], "Denpasar"),
   P("Porto", "Porto", "Portekiz", "Portugal", true),
   P("Lizbon", "Lisbon", "Portekiz", "Portugal", true, ["lisboa"]),
-  P("Madeira", "Madeira", "Portekiz", "Portugal", false),
+  P("Madeira", "Madeira", "Portekiz", "Portugal", false, [], "Funchal"),
   P("Roma", "Rome", "İtalya", "Italy", true),
   P("Paris", "Paris", "Fransa", "France", true),
   P("Londra", "London", "Birleşik Krallık", "United Kingdom", true),
@@ -226,8 +238,8 @@ export const KNOWN_PLACES: KnownPlace[] = [
   P("İzmir", "Izmir", "Türkiye", "Türkiye", true),
   P("Antalya", "Antalya", "Türkiye", "Türkiye", true),
   P("Bodrum", "Bodrum", "Türkiye", "Türkiye", true),
-  P("Kapadokya", "Cappadocia", "Türkiye", "Türkiye", false),
-  P("Maldivler", "Maldives", null, null, false),
+  P("Kapadokya", "Cappadocia", "Türkiye", "Türkiye", false, [], "Kayseri"),
+  P("Maldivler", "Maldives", null, null, false, [], "Malé"),
   P("İzlanda", "Iceland", null, null, false),
   P("Tayland", "Thailand", null, null, false),
   P("Japonya", "Japan", null, null, false),
@@ -322,7 +334,7 @@ export interface Extracted {
   where: Place | null;
   from: string | null;
   who: { kind: Companions | null; names: string[] } | null;
-  start: { date: string; approx: boolean } | null;
+  start: StartDay | null;
   duration: Duration | null;
   styles: StyleId[];
   budget: BudgetLevel | null;
@@ -547,7 +559,7 @@ export function acceptExtraction(raw: RawExtraction, today: string): Extracted {
   else if (Number.isInteger(raw.duration_days) && raw.duration_days >= 1 && raw.duration_days <= 120) out.duration = { unit: "day", n: raw.duration_days };
   for (const id of raw.styles ?? []) {
     const s = id.trim().toLowerCase();
-    if (s in STYLES && !out.styles.includes(s as StyleId)) out.styles.push(s as StyleId);
+    if (Object.hasOwn(STYLES, s) && !out.styles.includes(s as StyleId)) out.styles.push(s as StyleId);
   }
   out.budget = (BUDGETS as readonly string[]).includes(raw.budget) ? (raw.budget as BudgetLevel) : null;
   return out;
@@ -574,10 +586,10 @@ const said = (e: Extracted) => Boolean(e.where || e.from || e.who || e.start || 
 // --- the interview ----------------------------------------------------------------------------------------
 
 const ORDER: Record<StartMode, QuestionId[]> = {
-  plan: ["where", "from", "who", "names", "duration", "start", "want", "route"],
-  road: ["where", "from", "who", "names", "duration", "start", "want", "route"],
-  lastminute: ["where", "from", "who", "names", "duration", "start", "want", "route"],
-  inspire: ["want", "where", "from", "who", "names", "duration", "start", "route"],
+  plan: ["where", "from", "who", "names", "duration", "start", "day", "want", "route"],
+  road: ["where", "from", "who", "names", "duration", "start", "day", "want", "route"],
+  lastminute: ["where", "from", "who", "names", "duration", "start", "day", "want", "route"],
+  inspire: ["want", "where", "from", "who", "names", "duration", "start", "day", "route"],
 };
 
 const NAMED_COMPANY: Companions[] = ["partner", "friends", "family"];
@@ -597,6 +609,9 @@ function open(s: StartState, q: QuestionId): boolean {
       return !s.duration;
     case "start":
       return !s.start;
+    case "day":
+      // A month only: which day of it (never one made up silently).
+      return Boolean(s.start?.approx && !s.start.part);
     case "want":
       return !s.wantDone;
     case "route":
@@ -611,17 +626,26 @@ export function nextQuestion(s: StartState): QuestionId | null {
 }
 
 /** "Gezimi oluştur" works once where and when (the start and the length) are known. */
-export const canGenerate = (s: StartState): boolean => Boolean(s.where && tripDates(s));
+/** A start that is a month only: its day is still to be said (or a part of the month picked). */
+const monthOnly = (s: Pick<StartState, "start">) => Boolean(s.start?.approx && !s.start.part);
+
+export const canGenerate = (s: StartState): boolean => Boolean(s.where && tripDates(s) && !monthOnly(s));
 
 /** What's still needed to generate, in words ("Nereye", "Ne zaman"). */
 export function missingForGenerate(s: StartState): string[] {
   const out: string[] = [];
   if (!s.where) out.push(L("nereye", "where"));
   if (!s.start || !s.duration) out.push(L("ne zaman", "when"));
+  else if (monthOnly(s)) out.push(L("başlangıç günü", "the start day"));
   return out;
 }
 
 export function skip(s: StartState, q: QuestionId, now: number): StartState {
+  // The day skipped: the month's beginning, said back as a guess (never a day made up silently).
+  if (q === "day" && s.start && monthOnly(s)) {
+    // (The month's own start as the month chip took it: its 1st, or a week from today for this month.)
+    return { ...s, start: { date: s.start.date, approx: true, part: "begin" }, skipped: [...new Set([...s.skipped, q])], asking: null, updatedAt: now };
+  }
   return { ...s, skipped: [...new Set([...s.skipped, q])], asking: null, editingRoute: q === "route" ? false : s.editingRoute, updatedAt: now };
 }
 
@@ -649,6 +673,7 @@ export type Answer =
   | { q: "names"; names: string[] }
   | { q: "duration"; duration: Duration }
   | { q: "start"; date: string; approx: boolean }
+  | { q: "day"; date: string; part: MonthPart | null }
   | { q: "want"; styles: StyleId[]; budget: BudgetLevel | null }
   | { q: "route"; action: "accept" | "change" | "single" };
 
@@ -673,6 +698,10 @@ export function applyAnswer(s: StartState, a: Answer, now: number): StartState {
       break;
     case "start":
       next.start = { date: a.date, approx: a.approx };
+      break;
+    case "day":
+      // A part of the month is still a guess (kept as such: the hero says "tarih yaklaşık"); a day picked is the day.
+      next.start = a.part ? { date: a.date, approx: true, part: a.part } : { date: a.date, approx: false };
       break;
     case "want":
       next = { ...next, styles: a.styles, budget: a.budget, wantDone: true };
@@ -798,6 +827,22 @@ export function inspirations(styles: StyleId[]): string[] {
   return [...new Set(picks)].slice(0, 5).map((p) => placeOf(p).place);
 }
 
+/** A month's beginning (the 1st), middle (the 15th) and end (a week before its last day), from today on. */
+export function monthParts(anyDay: string, today: string): { part: MonthPart; date: string }[] {
+  const [y, m] = anyDay.split("-").map(Number);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const out: { part: MonthPart; date: string }[] = [
+    { part: "begin", date: `${y}-${pad(m)}-01` },
+    { part: "mid", date: `${y}-${pad(m)}-15` },
+    { part: "end", date: `${y}-${pad(m)}-${pad(last - 6)}` },
+  ];
+  return out.filter((d) => d.date > today);
+}
+
+/** "15 Aralık" for a day. */
+export const dayText = (date: string) => formatDateRange(date, null);
+
 /** Months to start in: this one while it's not half gone, then the next five. */
 function monthChips(today: string): Chip[] {
   const [, m, d] = today.split("-").map(Number);
@@ -875,6 +920,18 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
         : monthChips(ctx.today);
       return { id: q, text: L("Ne zaman başlıyor?", "When does it start?"), hint: L("Bir ay seç ya da günü işaretle.", "Pick a month or mark the day."), chips, date: true };
     }
+    case "day": {
+      const month = Number((s.start?.date ?? ctx.today).slice(5, 7));
+      const days = monthParts(s.start?.date ?? ctx.today, ctx.today);
+      const labels: Record<MonthPart, string> = { begin: L("Ayın başı", "Early in the month"), mid: L("Ortası", "Mid-month"), end: L("Sonu", "Late in the month") };
+      return {
+        id: q,
+        text: L(`${monthName(month)} ayının hangi günü başlıyor?`, `Which day in ${monthName(month)} does it start?`),
+        hint: L("Günü seç; bilmiyorsan ayın başı, ortası ya da sonu.", "Pick the day; if you don't know yet, early, mid or late in the month."),
+        chips: days.map(({ part, date }) => ({ label: labels[part], answer: { q: "day" as const, date, part } })),
+        date: true,
+      };
+    }
     case "want":
       return {
         id: q, text: L("Bu gezide en çok ne istiyorsun? (birden çok seçebilirsin)", "What are you after on this trip? (pick as many as you like)"),
@@ -913,12 +970,24 @@ export function ackText(before: StartState, after: StartState, ctx: StartCtx): s
   }
   const datesBefore = whenText(before);
   const datesAfter = whenText(after);
-  if (datesAfter && datesAfter !== datesBefore) parts.push(datesAfter);
+  // Only dates worth saying back (a length with no start yet is asked next, not said).
+  if (datesAfter && datesAfter !== datesBefore && after.start && !after.start.part) parts.push(datesAfter);
   if (after.from && after.from !== before.from && parts.length) parts.push(L(`${after.from}${fromSuffix(after.from)}`, `from ${after.from}`));
   if (after.route?.confirmed && !before.route?.confirmed) return L("Tamam, rota bu.", "Great, that's the route.");
+  // A part of the month taken as the start: said, so it can be changed.
+  if (after.start?.part && (after.start.date !== before.start?.date || !before.start?.part)) {
+    const d = dayText(after.start.date);
+    return L(`${d}'${dayAccusative(after.start.date)} başlangıç aldım, değiştirebilirsin.`, `I've taken ${d} as the start; you can change it.`);
+  }
   if (!parts.length) return "";
   if (parts.length === 1 && after.where && after.where.place !== before.where?.place) return L(`Harika, ${after.where.place}!`, `Great, ${after.where.place}!`);
   return L(`Not aldım: ${parts.join(" · ")}.`, `Got it: ${parts.join(" · ")}.`);
+}
+
+/** "15 Aralık'ı", "1 Ocak'ı", "25 Eylül'ü": the month's own ending. */
+function dayAccusative(date: string): string {
+  const m = Number(date.slice(5, 7));
+  return ["ı", "ı", "ı", "ı", "ı", "ı", "u", "u", "ü", "i", "ı", "ı"][m - 1];
 }
 
 /** "'dan" / "'den" / "'tan" / "'ten" after a place. */
@@ -975,22 +1044,23 @@ export function whenText(s: Pick<StartState, "start" | "duration">): string {
   const dates = tripDates(s);
   const n = totalNights(s);
   if (dates && s.start && n != null) {
-    // Days as the board's hero counts them (first and last day included), so both say the same.
-    const days = L(`${n + 1} gün`, `${n + 1} days`);
-    if (s.start.approx) {
-      const m = Number(s.start.date.slice(5, 7));
-      return `${monthName(m)} · ${days}`;
-    }
-    return `${formatDateRange(dates.start, dates.end)} · ${days}`;
+    const nights = L(`${n} gece`, `${n} night${n === 1 ? "" : "s"}`);
+    // A month only: no day yet (asked next). A part of the month: the dates, said to be a guess.
+    if (s.start.approx && !s.start.part) return `${monthName(Number(s.start.date.slice(5, 7)))} · ${nights}`;
+    return `${formatDateRange(dates.start, dates.end)} · ${nights}${s.start.approx ? L(" (yaklaşık)", " (roughly)") : ""}`;
   }
   if (s.duration) return `${durationText(s.duration)} · ${L("başlangıç?", "start?")}`;
   if (s.start) return s.start.approx ? monthName(Number(s.start.date.slice(5, 7))) : formatDateRange(s.start.date, null);
   return "";
 }
 
+/** Only the ids on the list (a draft or an answer with another word can't break the screen). */
+export const knownStyles = (ids: readonly string[] | undefined): StyleId[] => (Array.isArray(ids) ? ids.filter((id): id is StyleId => typeof id === "string" && Object.hasOwn(STYLES, id)) : []);
+
 export function wantText(s: Pick<StartState, "styles" | "budget">): string {
-  const budget = s.budget ? { low: L("Ekonomik", "Budget"), mid: L("Orta bütçe", "Mid-range"), high: L("Lüks bütçe", "Luxury budget") }[s.budget] : "";
-  return [s.styles.map((id) => STYLES[id]()).join(", "), budget].filter(Boolean).join(" · ");
+  const words: Record<string, string> = { low: L("Ekonomik", "Budget"), mid: L("Orta bütçe", "Mid-range"), high: L("Lüks bütçe", "Luxury budget") };
+  const budget = s.budget && Object.hasOwn(words, s.budget) ? words[s.budget] : "";
+  return [knownStyles(s.styles).map((id) => STYLES[id]()).join(", "), budget].filter(Boolean).join(" · ");
 }
 
 export interface ChecklistRow {
@@ -1012,13 +1082,13 @@ export function checklist(s: StartState, ctx: StartCtx): ChecklistRow[] {
     { id: "from", label: L("NEREDEN", "WHERE FROM"), value: s.from ?? L("Nereden yola çıkıyorsun?", "Where are you leaving from?"), done: !!s.from, ask: "from", required: false, skipped: s.skipped.includes("from") },
     { id: "who", label: L("KİMLE", "WHO'S COMING"), value: whoText(s.who, ctx.myName) || L("Kimle gidiyorsun?", "Who's coming?"), done: !!s.who, ask: "who", required: false, skipped: s.skipped.includes("who") },
     {
-      id: "when", label: L("NE ZAMAN", "WHEN"), value: whenText(s) || L("Ne zaman, kaç gün?", "When, and for how long?"), done: !!tripDates(s),
+      id: "when", label: L("NE ZAMAN", "WHEN"), value: whenText(s) || L("Ne zaman, kaç gün?", "When, and for how long?"), done: !!tripDates(s) && !monthOnly(s),
       ask: !s.duration ? "duration" : "start", required: true, skipped: s.skipped.includes("duration") || s.skipped.includes("start"),
     },
     { id: "want", label: L("NE İSTİYORSUN", "WHAT YOU'RE AFTER"), value: wantText(s) || L("Sence ne yapsın bu gezi?", "What should this trip be about?"), done: s.wantDone && Boolean(s.styles.length || s.budget), ask: "want", required: false, skipped: s.skipped.includes("want") },
     {
       id: "route", label: L("ROTA", "ROUTE"),
-      value: s.route?.confirmed ? routeText(s.route) : s.route ? L(`Öneri: ${routeText(s.route)}`, `Suggested: ${routeText(s.route)}`) : s.where && total ? L("Rota hazırlanıyor", "Working out a route") : L("Nereye ve süre belli olunca önereceğim", "I'll suggest one once where and how long are known"),
+      value: s.route?.confirmed ? routeText(s.route) : s.route ? L(`Öneri: ${routeText(s.route)}`, `Suggested: ${routeText(s.route)}`) : s.where && total ? L("Sırası gelince önereceğim", "I'll suggest one when we get there") : L("Nereye ve süre belli olunca önereceğim", "I'll suggest one once where and how long are known"),
       done: !!s.route?.confirmed, ask: "route", required: false, skipped: s.skipped.includes("route"),
     },
   ];
@@ -1094,7 +1164,18 @@ export function parseRouteText(text: string, total: number): { route: StartRoute
   if (stops.length > 4) return { error: L("En fazla 4 durak olabilir.", "At most 4 stops.") };
   const sum = stops.reduce((a, b) => a + b.nights, 0);
   if (sum !== total) return { error: L(`Geceler toplamı ${total} olmalı (yazdığın: ${sum}).`, `The nights must add up to ${total} (you wrote ${sum}).`) };
-  return { route: { stops: stops.map((x) => ({ city: capitalizeWords(x.city), nights: x.nights })), arrive: null, leave: null, confirmed: true, source: "user" } };
+  return {
+    route: {
+      stops: stops.map((x) => {
+        const code = knownPlaceOf(x.city) ? placeOf(x.city).code : null;
+        return { city: capitalizeWords(x.city), nights: x.nights, ...(code ? { code } : {}) };
+      }),
+      arrive: null,
+      leave: null,
+      confirmed: true,
+      source: "user",
+    },
+  };
 }
 
 // --- what gets made ------------------------------------------------------------------------------------------
@@ -1115,6 +1196,8 @@ export interface Creation {
   /** The stops inside the destination ("Ubud" → "Bali"): the hero's main place without asking the model. */
   parents: { key: string; parents: Record<string, string> } | null;
   road: boolean;
+  /** The start was a guess (a part of the month, or a month only): the hero says "tarih yaklaşık" until confirmed. */
+  approxStart: string | null;
 }
 
 const said0 = (p: Partial<PlannedInput> & Pick<PlannedInput, "kind">): PlannedInput => ({
@@ -1149,8 +1232,10 @@ export function creationOf(s: StartState): Creation | null {
   const road = s.mode === "road";
   const first = fitted[0]?.city ?? where.place;
   const last = fitted.at(-1)?.city ?? where.place;
-  const arrive = (s.route?.confirmed && s.route.arrive) || first;
-  const leave = (s.route?.confirmed && s.route.leave) || last;
+  // Where the flights land: the route's airport, else the place's own (Bali → Denpasar), else the stop itself.
+  const airportOf = (city: string) => knownPlaceOf(city)?.airport ?? (city === first || city === last ? knownPlaceOf(where.place)?.airport : undefined) ?? city;
+  const arrive = (s.route?.confirmed && s.route.arrive) || airportOf(first);
+  const leave = (s.route?.confirmed && s.route.leave) || airportOf(last);
   const travel: PlannedInput[] = road
     ? [said0({ kind: "car_rental", date: dates.start, end_date: dates.end, city: first })]
     : [
@@ -1176,10 +1261,11 @@ export function creationOf(s: StartState): Creation | null {
     stays,
     travel,
     travellers: count || names.length ? { names, count } : null,
-    styles: s.styles,
+    styles: knownStyles(s.styles),
     countries,
     parents,
     road,
+    approxStart: s.start?.approx ? dates.start : null,
   };
 }
 
@@ -1203,7 +1289,11 @@ export function isPlaceholder(trip: Pick<Trip, "startGuide">, item: Item): boole
  * The hero's sentence while the start's places are still to fill: "2 uçuş ve 31 gece seni bekliyor." (only the
  * placeholders still on the plan, and the nights with no place yet). Null when none is left: the usual sentence then.
  */
-export function startLead(trip: Pick<Trip, "startGuide">, items: Item[], openNights: number, closed: ReadonlySet<string> = new Set()): string | null {
+/** The start's dates are still the guess made from a month (not confirmed, not changed since). */
+export const approxDates = (trip: Pick<Trip, "startGuide" | "confirmedDates">): boolean =>
+  Boolean(trip.startGuide?.approxStart && trip.confirmedDates?.start === trip.startGuide.approxStart);
+
+export function startLead(trip: Pick<Trip, "startGuide" | "confirmedDates">, items: Item[], openNights: number, closed: ReadonlySet<string> = new Set()): string | null {
   const live = items.filter((i) => !closed.has(i.id) && i.status !== "dismissed" && isPlaceholder(trip, i));
   if (!live.length) return null;
   const flights = live.filter((i) => i.category === "flight").length;
@@ -1215,21 +1305,22 @@ export function startLead(trip: Pick<Trip, "startGuide">, items: Item[], openNig
   ].filter(Boolean);
   if (!parts.length) return null;
   const joined = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} ${L("ve", "and")} ${parts.at(-1)}` : parts[0];
-  const text = L(`${joined} seni bekliyor.`, `${joined} ${parts.length === 1 && /^1 /.test(joined) ? "is" : "are"} waiting for you.`);
+  const approx = approxDates(trip) ? L(" · tarih yaklaşık", " · dates are rough") : "";
+  const text = L(`${joined} seni bekliyor${approx}.`, `${joined} ${parts.length === 1 && /^1 /.test(joined) ? "is" : "are"} waiting for you${approx}.`);
   return text.charAt(0).toLocaleUpperCase("tr") + text.slice(1);
 }
 
 /** The line under "Gezin hazır": "31 gün, 3 durak. Önce uçuşu bul, sonra Ubud konaklamasını seçelim." */
 export function readyText(c: Creation): string {
-  // Days as the hero counts them (first and last included).
-  const days = nightsBetween(c.dates.start, c.dates.end) + 1;
+  const nights = nightsBetween(c.dates.start, c.dates.end);
   const stops = c.stays.length;
   const firstCity = c.stays[0]?.city ?? "";
-  const head = L(`${c.title} hazır: ${days} gün, ${stops} durak.`, `${c.title} is ready: ${days} days, ${stops} stop${stops === 1 ? "" : "s"}.`);
+  const head = L(`${c.title} hazır: ${nights} gece, ${stops} durak.`, `${c.title} is ready: ${nights} night${nights === 1 ? "" : "s"}, ${stops} stop${stops === 1 ? "" : "s"}.`);
+  const rough = c.approxStart ? L(` Başlangıç ${dayText(c.approxStart)} olarak yaklaşık; kesinleşince söyle.`, ` The start, ${dayText(c.approxStart)}, is a rough guess; tell me when it's set.`) : "";
   const next = c.road
     ? L(`Önce aracı seç, sonra ${firstCity} konaklamasını bulalım.`, `First pick the car, then let's find a place in ${firstCity}.`)
     : L(`Önce uçuşu bul, sonra ${firstCity} konaklamasını seçelim. Her adımda buradayım.`, `First find the flight, then let's pick a place in ${firstCity}. I'm here at every step.`);
-  return `${head} ${next}`;
+  return `${head} ${next}${rough}`;
 }
 
 // --- the conversation as the trip's chat --------------------------------------------------------------------------
@@ -1260,6 +1351,13 @@ export function historyRows(messages: StartMsg[], closing: string, provider: "ge
     provider,
     createdAt: (at = Math.max(at + 1, t.at)),
   }));
+}
+
+/** The links in what was typed on the home, and the words around them ("Bali'ye 3 hafta https://…" → both). */
+export function splitLinks(text: string): { links: string[]; words: string } {
+  const tokens = text.trim().split(/\s+/).filter(Boolean);
+  const links = tokens.filter(looksLikeUrl);
+  return { links, words: tokens.filter((t) => !looksLikeUrl(t)).join(" ") };
 }
 
 // --- "Porto'da bir otel daha": a place of a trip there is ---------------------------------------------------------

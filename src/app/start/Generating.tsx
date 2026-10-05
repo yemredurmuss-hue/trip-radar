@@ -20,7 +20,8 @@ interface Props {
   state: StartState;
   /** The trip record is made: kept on the draft, so a retry continues it. */
   onTripId: (tripId: string) => void;
-  onFinished: (tripId: string) => void;
+  /** Made (or opened anyway): `keepDraft` when the conversation couldn't move to the trip (the draft keeps it). */
+  onFinished: (tripId: string, keepDraft?: boolean) => void;
   /** Back to the conversation (nothing made yet, or made and left as it is). */
   onBack: () => void;
 }
@@ -77,6 +78,24 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
     await keepPhotos(tripId);
     await wait(700);
     onFinished(tripId);
+  }
+
+  /**
+   * "Yine de aç": what's made so far opens. Who goes, the style and the conversation are written first when that
+   * step hadn't run (best effort); if they still can't be, the draft keeps the conversation.
+   */
+  async function openAnyway() {
+    const tripId = current.current.tripId;
+    if (!tripId) return;
+    let keep = false;
+    if (status.people !== "done") {
+      try {
+        await runStep("people", current.current);
+      } catch {
+        keep = true;
+      }
+    }
+    onFinished(tripId, keep);
   }
 
   /** The photos found are the hero's too (asked once, not again when the board opens). */
@@ -142,7 +161,7 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
               {L("Tekrar dene", "Try again")}
             </button>
             {current.current.tripId ? (
-              <button type="button" className="st-primary" onClick={() => onFinished(current.current.tripId!)}>
+              <button type="button" className="st-primary" onClick={() => void openAnyway()}>
                 {L("Yine de aç", "Open it anyway")}
               </button>
             ) : (

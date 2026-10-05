@@ -33,9 +33,9 @@ describe("dates and lengths", () => {
     expect(nextDate(3, 1, TODAY)).toBe("2027-03-01");
     expect(nextDate(2, 30, TODAY)).toBeNull();
   });
-  it("days counted as the hero counts them: \"10 gün\" is 9 nights, \"10 gece\" 10, a week 7", () => {
+  it("\"10 gün\" is 9 nights, \"10 gece\" 10, a week 7; the checklist says nights", () => {
     expect(totalNights({ start: { date: "2026-12-10", approx: false }, duration: { unit: "day", n: 10 } })).toBe(9);
-    expect(whenText({ start: { date: "2026-12-10", approx: false }, duration: { unit: "day", n: 10 } })).toBe("10–19 Aralık · 10 gün");
+    expect(whenText({ start: { date: "2026-12-10", approx: false }, duration: { unit: "day", n: 10 } })).toBe("10–19 Aralık · 9 gece");
     expect(parseStartText("Porto'da 10 gece", TODAY).duration).toEqual({ unit: "night", n: 10 });
     expect(totalNights({ start: { date: "2026-12-10", approx: false }, duration: { unit: "night", n: 10 } })).toBe(10);
     expect(totalNights({ start: { date: "2026-12-10", approx: false }, duration: { unit: "week", n: 1 } })).toBe(7);
@@ -130,7 +130,7 @@ describe("the interview", () => {
     const want = applyAnswer(from, { q: "want", styles: ["nature", "beach"], budget: "mid" }, 4);
     expect(nextQuestion(want)).toBe("route");
     expect(totalNights(want)).toBe(31);
-    expect(whenText(want)).toBe("10 Aralık – 10 Ocak · 32 gün");
+    expect(whenText(want)).toBe("10 Aralık – 10 Ocak · 31 gece");
   });
   it("the full order from nothing, names asked only for a named companion", () => {
     let s = fresh();
@@ -146,6 +146,19 @@ describe("the interview", () => {
     s = applyAnswer(s, { q: "duration", duration: { unit: "week", n: 1 } }, 2);
     expect(nextQuestion(s)).toBe("start");
     s = applyAnswer(s, { q: "start", date: "2026-11-01", approx: true }, 2);
+    // A month only: never a day made up; the day is asked next (item 3, the review's decision).
+    expect(nextQuestion(s)).toBe("day");
+    const day = questionOf(s, "day", ctx);
+    expect(day.text).toBe("Kasım ayının hangi günü başlıyor?");
+    expect(day.chips.map((c) => [c.label, (c.answer as { date: string }).date])).toEqual([["Ayın başı", "2026-11-01"], ["Ortası", "2026-11-15"], ["Sonu", "2026-11-24"]]);
+    const mid = applyAnswer(s, day.chips[1].answer, 3);
+    expect(mid.start).toEqual({ date: "2026-11-15", approx: true, part: "mid" });
+    expect(replyText(s, mid, ctx)).toBe("15 Kasım'ı başlangıç aldım, değiştirebilirsin. Bu gezide en çok ne istiyorsun? (birden çok seçebilirsin)");
+    expect(whenText(mid)).toBe("15–22 Kasım · 7 gece (yaklaşık)");
+    const picked = applyAnswer(s, { q: "day", date: "2026-11-09", part: null }, 3);
+    expect(picked.start).toEqual({ date: "2026-11-09", approx: false });
+    expect(whenText(picked)).toBe("9–16 Kasım · 7 gece");
+    s = mid;
     expect(nextQuestion(s)).toBe("want");
     // Solo: no names asked.
     expect(nextQuestion(applyAnswer(fresh(), { q: "who", kind: "solo" }, 2))).toBe("where");
@@ -189,7 +202,7 @@ describe("the interview", () => {
   it("the reply says back what was understood, then asks the next question", () => {
     const before = fresh();
     const { state } = typed(before, "Sabine'yle 10 Aralık'tan 1 ay Bali");
-    expect(replyText(before, state, ctx)).toBe("Not aldım: Bali · Sabine ile · 2 kişi · 10 Aralık – 10 Ocak · 32 gün. Nereden yola çıkıyorsun?");
+    expect(replyText(before, state, ctx)).toBe("Not aldım: Bali · Sabine ile · 2 kişi · 10 Aralık – 10 Ocak · 31 gece. Nereden yola çıkıyorsun?");
     const where = applyAnswer(before, { q: "where", place: "Bali", country: null }, 2);
     expect(replyText(before, where, ctx)).toBe("Harika, Bali! Nereden yola çıkıyorsun?");
   });
@@ -263,8 +276,8 @@ describe("what gets made", () => {
     const c = creationOf({ ...base(), route })!;
     expect(c.stays.map((x) => [x.city, x.date, x.end_date])).toEqual([["Bali", "2026-12-10", "2027-01-10"]]);
     expect(c.travel.map((x) => [x.kind, x.date, x.from, x.to])).toEqual([
-      ["flight", "2026-12-10", "İstanbul", "Bali"],
-      ["flight", "2027-01-10", "Bali", "İstanbul"],
+      ["flight", "2026-12-10", "İstanbul", "Denpasar"],
+      ["flight", "2027-01-10", "Denpasar", "İstanbul"],
     ]);
   });
   it("a confirmed route: the nights split in order; the flights land where the route says", () => {

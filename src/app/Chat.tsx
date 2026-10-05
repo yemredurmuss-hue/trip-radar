@@ -23,10 +23,13 @@ interface Props {
   items: Item[];
   trips: Trip[];
   openCaptures: Capture[];
+  /** A line handed over from the home ("Porto'da bir otel daha" for this trip): sent as if typed here, once. */
+  pending?: { id: string; text: string } | null;
+  onPendingTaken?: (id: string) => void;
 }
 
 /** The selected trip's own conversation; every trip has its own chat and context. */
-export function Chat({ trip, messages, onBack, items, trips, openCaptures }: Props) {
+export function Chat({ trip, messages, onBack, items, trips, openCaptures, pending, onPendingTaken }: Props) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +72,15 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures }: Pro
       if (!failed) reloadIfLangChanged(trip.id, langBefore);
     }
   }
+
+  // A line handed over from the home goes through submit() like a typed one (busy, "Düşünüyor…", the language reload).
+  const taken = useRef<string | null>(null);
+  useEffect(() => {
+    if (!pending || busy || taken.current === pending.id) return;
+    taken.current = pending.id;
+    onPendingTaken?.(pending.id);
+    void submit(pending.text);
+  });
 
   /** PDFs and pictures (0.34.6): kept in Belgeler and read; a page's screenshot goes the old way. */
   async function addFiles(files: File[]) {

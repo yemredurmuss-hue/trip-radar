@@ -2,7 +2,7 @@
 // bak, each ticked by itself from the board's own state; gone when all are done or with ×. The lasting
 // guidance stays the hero's "Planı tamamla".
 import { L } from "../../lib/i18n";
-import { guideSteps, guideVisible, type GuideInput, type GuideStep } from "../../lib/startTrip";
+import { approxDates, dayText, guideSteps, guideVisible, type GuideInput, type GuideStep } from "../../lib/startTrip";
 import type { Trip } from "../../lib/types";
 import { updateTrip } from "../actions";
 import { UiIcon } from "../cards/Silhouettes";
@@ -29,6 +29,15 @@ export function StartGuideCard({ trip, onGo, ...board }: Props) {
           ×
         </button>
       </div>
+      {approxDates(trip) && trip.startGuide?.approxStart && (
+        <p className="st-guide-approx">
+          {L(`Başlangıç yaklaşık: ${dayText(trip.startGuide.approxStart)}.`, `The start is a rough guess: ${dayText(trip.startGuide.approxStart)}.`)}{" "}
+          <button type="button" className="btn-link" onClick={() => change({ approxStart: null })}>
+            {L("Bu tarih doğru", "That's the date")}
+          </button>{" "}
+          <span className="muted">{L("ya da sohbette yeni tarihi söyle.", "or tell the chat the new one.")}</span>
+        </p>
+      )}
       <ol className="st-guide-steps">
         {steps.map((s, i) => (
           <li key={s.id}>

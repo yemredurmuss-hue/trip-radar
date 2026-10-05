@@ -57,7 +57,7 @@ export function acceptStyle(ids: string[]): StyleId[] {
   const out: StyleId[] = [];
   for (const raw of ids) {
     const id = raw.trim().toLowerCase();
-    if (id in STYLES && !out.includes(id as StyleId)) out.push(id as StyleId);
+    if (Object.hasOwn(STYLES, id) && !out.includes(id as StyleId)) out.push(id as StyleId);
     if (out.length === STYLE_MAX) break;
   }
   return out;

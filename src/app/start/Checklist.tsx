@@ -65,10 +65,10 @@ export function Checklist({ rows, onAsk, disabled }: Props) {
 }
 
 /** The dark "Gezimi oluştur" card under the list. */
-export function GenerateCard({ ready, missing, onGenerate }: { ready: boolean; missing: string[]; onGenerate: () => void }) {
+export function GenerateCard({ ready, busy = false, missing, onGenerate }: { ready: boolean; busy?: boolean; missing: string[]; onGenerate: () => void }) {
   return (
     <div className="st-gen-card">
-      <button type="button" className="st-gen-btn" disabled={!ready} onClick={onGenerate}>
+      <button type="button" className="st-gen-btn" disabled={!ready || busy} onClick={onGenerate}>
         <span aria-hidden>✨</span> {L("Gezimi oluştur", "Generate my trip")}
       </button>
       <p>

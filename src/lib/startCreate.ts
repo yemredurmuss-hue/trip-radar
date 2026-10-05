@@ -11,7 +11,7 @@ import { checkPlanned, guardKind, planToSave } from "./planned";
 import { cityKeyOf } from "./plan";
 import { styleKeyFor } from "./startBoard";
 import { suggestionsReview } from "./startHooks";
-import { creationOf, historyRows, placeholderPrint, readyText, routeText, stopsOf, whoText, wantText, type Creation, type StartState } from "./startTrip";
+import { creationOf, historyRows, isPlaceholder, placeholderPrint, readyText, routeText, stopsOf, whoText, wantText, type Creation, type StartState } from "./startTrip";
 import { withTravellers } from "./tripSettings";
 import { uniqueTitle } from "./trips";
 import type { Item, Trip } from "./types";
@@ -72,7 +72,7 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
       await d.put("trips", {
         ...existing,
         confirmedDates: c.dates,
-        startGuide: existing.startGuide ?? { createdAt: now(), ...(c.road ? { road: true } : {}) },
+        startGuide: { ...(existing.startGuide ?? { createdAt: now() }), road: c.road || undefined, approxStart: c.approxStart },
         ...(c.parents && !existing.placeParents ? { placeParents: c.parents } : {}),
         updatedAt: now(),
       });
@@ -86,7 +86,7 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
       confirmedDates: c.dates,
       budget: null,
       heroImage: null,
-      startGuide: { createdAt: now(), ...(c.road ? { road: true } : {}) },
+      startGuide: { createdAt: now(), ...(c.road ? { road: true } : {}), ...(c.approxStart ? { approxStart: c.approxStart } : {}) },
       // Ubud, Canggu and Uluwatu are Bali's: the hero says Bali without asking the model.
       ...(c.parents ? { placeParents: c.parents } : {}),
       createdAt: now(),
@@ -100,8 +100,11 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
   if (!tripId || !(await d.get("trips", tripId))) throw new Error(L("Gezi kaydı bulunamadı.", "The trip record wasn't found."));
   let done: string | undefined;
   if (id === "route") {
+    // Made again (another route after "Sohbete dön"): the stays made before and never touched go first.
+    await dropPlaceholders(tripId, (i) => i.category === "stay");
     await sayAll(tripId, c.stays, c, now);
   } else if (id === "travel") {
+    await dropPlaceholders(tripId, (i) => i.category === "flight" || i.category === "transport");
     await sayAll(tripId, c.travel, c, now);
   } else if (id === "people") {
     const items = await listItems(tripId);
@@ -143,6 +146,20 @@ async function change(tripId: string, fn: (t: Trip) => Trip): Promise<void> {
   await tx.done;
 }
 
+/** The places the start made before and the traveller never touched (isPlaceholder), of this kind: removed. */
+async function dropPlaceholders(tripId: string, kind: (i: Item) => boolean): Promise<void> {
+  const d = await db();
+  const trip = await d.get("trips", tripId);
+  if (!trip?.startGuide?.placeholders) return;
+  const gone = (await listItems(tripId)).filter((i) => kind(i) && isPlaceholder(trip, i));
+  if (!gone.length) return;
+  for (const i of gone) await d.delete("items", i.id);
+  await change(tripId, (t) => ({
+    ...t,
+    startGuide: { createdAt: t.startGuide?.createdAt ?? Date.now(), ...t.startGuide, placeholders: Object.fromEntries(Object.entries(t.startGuide?.placeholders ?? {}).filter(([id]) => !gone.some((g) => g.id === id))) },
+  }));
+}
+
 /**
  * Plans said for the trip, each the way the chat's plan_item saves it (checked first; a wrong one stops the step),
  * with the stop's country and how many go; each kept as a place to fill (not a choice) on the trip.
@@ -167,14 +184,11 @@ async function sayAll(tripId: string, said: Creation["stays"], c: Creation, now:
     };
     await d.put("items", placed);
     saved.push(placed);
+    // Kept as a place to fill as soon as it's saved (a later one failing leaves none of these looking chosen).
+    await change(tripId, (t) => ({
+      ...t,
+      startGuide: { createdAt: t.startGuide?.createdAt ?? now(), ...t.startGuide, placeholders: { ...t.startGuide?.placeholders, [placed.id]: placeholderPrint(placed) } },
+    }));
   }
-  await change(tripId, (t) => ({
-    ...t,
-    startGuide: {
-      createdAt: t.startGuide?.createdAt ?? now(),
-      ...t.startGuide,
-      placeholders: { ...t.startGuide?.placeholders, ...Object.fromEntries(saved.map((i) => [i.id, placeholderPrint(i)])) },
-    },
-  }));
   return saved;
 }

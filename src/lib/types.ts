@@ -276,6 +276,8 @@ export interface StartGuide {
    * not the traveller's choices, until one is changed (startTrip.ts isPlaceholder).
    */
   placeholders?: Record<string, string>;
+  /** The start day was a guess from a month ("Ortası" → the 15th): the hero says "tarih yaklaşık" while the trip starts on it; null once confirmed. */
+  approxStart?: string | null;
 }
 
 /** How a transfer is made. Flights, trains, buses and ferries go from a station, so they bring their own transfers. */

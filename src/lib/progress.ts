@@ -202,6 +202,8 @@ export function decisionProgress(
   plan: Plan,
   decisions: Map<string, GroupDecision> | undefined,
   today: string,
+  /** A flight, stay or car the start chat only made room for (startTrip.ts isPlaceholder): nothing to buy yet. */
+  placeholder: (item: Item) => boolean = () => false,
 ): DecisionProgress {
   const drafts: Draft[] = [];
   for (const e of timeline.entries) {
@@ -239,7 +241,19 @@ export function decisionProgress(
     // Only what needs booking (booking.ts): an idea or a to-do is never "Rezerve et".
     if (closed.has(item.id) || !needsBooking(item)) continue;
     const start = departureDay(item);
-    if (item.status === "chosen") {
+    if (item.status === "chosen" && placeholder(item)) {
+      // Room made, nothing picked: "Uçuş bul", never "bilet alınmadı". Its nights are the open stay's own to-do.
+      if ((start && start < today) || item.category === "stay") continue;
+      const flight = item.category === "flight";
+      drafts.push({
+        key: `find:${item.id}`,
+        kind: "plan",
+        target: { item: item.id, entry: entryOf(timeline, item.id) },
+        title: item.name,
+        note: `${flight ? L("uçuş bul", "find a flight") : L("araç bul", "find a car")} · ${start ? fmt(start) : L("gün belli değil", "no date yet")}`,
+        date: start,
+      });
+    } else if (item.status === "chosen") {
       if (start && start < today) continue;
       const ticket = item.category === "flight" || item.category === "activity" || (item.category === "transport" && isTrip(item));
       const free = item.cancellation.freeUntil && item.cancellation.freeUntil >= today ? L(" · ücretsiz iptalli", " · free cancellation") : "";

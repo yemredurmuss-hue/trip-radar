@@ -2440,3 +2440,6 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-guide-step.next .st-guide-n { background: rgba(255, 255, 255, .18); color: #fff; }
 .st-guide-step.done .st-guide-n { background: var(--hx-mintbar); color: #fff; }
 @container panel (max-width: 560px) { .st-guide-steps { grid-template-columns: 1fr; } }
+.st-guide-approx { margin: 10px 0 0; font-size: 14px; color: var(--hx-ink); }
+.st-guide-approx .btn-link { font-size: 14px; font-weight: 650; color: var(--hx-accent); }
+.st-day { display: inline-flex; align-items: center; gap: 8px; }

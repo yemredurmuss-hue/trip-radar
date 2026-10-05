@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { resetConversation } from "../lib/assistant";
 import { loadDemoTrip } from "../lib/demo";
 import { L } from "../lib/i18n";
@@ -21,11 +21,9 @@ import { ShareDialog, ShareProvider } from "./Share";
 import { TripPanel } from "./TripPanel";
 import { TripsHome, type StartLaunch } from "./TripsHome";
 import { StartChat } from "./start/StartChat";
-import { addEvent, newId, notifyChanged } from "../lib/db";
-import { describeError } from "../lib/llm";
+import { newId } from "../lib/db";
 import { loadPassport } from "../lib/passport";
 import { useMyName } from "./Profile";
-import { sendMessage } from "../lib/assistant";
 import { guessOrigin, newStart, type StartCtx } from "../lib/startTrip";
 import { UpdateBanner } from "./UpdateBanner";
 import { readSelectedTrip, useBoard } from "./useBoard";
@@ -56,6 +54,8 @@ export function App() {
   const intake = useBoardIntake(board.trip?.id ?? null);
   // The start chat (spec 2026-10-06 §2), over the overview while it's open; `key` starts a fresh one each time.
   const [start, setStart] = useState<(StartLaunch & { key: string }) | null>(null);
+  const startKey = useRef<string | null>(null);
+  startKey.current = board.trip ? null : (start?.key ?? null);
   // The profile's name (the sharing name): "Merhaba Emre", and "Emre & Sabine" in the checklist.
   const myName = useMyName().trim() || null;
   const [passport, setPassport] = useState<string | null>(null);
@@ -67,14 +67,19 @@ export function App() {
     [myName, passport, board.trips, board.allItems],
   );
 
-  /** "Porto'da bir otel daha", said on the home for a trip there is: that trip opens, its chat gets the line. */
+  /**
+   * "Porto'da bir otel daha", said on the home for a trip there is: that trip opens and its chat sends the line as if
+   * typed there (busy, "Düşünüyor…", an error on screen, the language reload): never a send outside the chat.
+   */
+  const [pendingChat, setPendingChat] = useState<{ id: string; tripId: string; text: string } | null>(null);
   function addToTrip(tripId: string, text: string) {
+    setPendingChat({ id: newId(), tripId, text });
     board.selectTrip(tripId);
-    sendMessage(tripId, text).catch(async (error) => {
-      await addEvent(tripId, L(`"${text}" gönderilemedi: ${describeError(error)}`, `"${text}" couldn't be sent: ${describeError(error)}`));
-      notifyChanged();
-    });
   }
+  // A trip on screen (a link, the arrival toast, the history): the start screen gives way; its draft stays.
+  useEffect(() => {
+    if (board.trip) setStart(null);
+  }, [board.trip?.id]);
 
   // Çöp kutusu: what is older than 30 days goes when the board opens (and whenever the trash is read).
   useEffect(() => void purgeTrash().catch(() => 0), []);
@@ -88,7 +93,10 @@ export function App() {
     const onHash = () => {
       if (location.hash === "#settings") setSettingsOpen(true);
       const tripId = tripFromHash();
-      if (tripId) board.selectTrip(tripId);
+      if (tripId) {
+        setStart(null);
+        board.selectTrip(tripId);
+      }
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
@@ -205,7 +213,16 @@ export function App() {
       <UpdateBanner />
       {trip ? (
         <div className="board">
-          <Chat trip={trip} messages={board.messages} onBack={() => board.selectTrip(null)} items={board.allItems} trips={board.trips} openCaptures={board.openCaptures} />
+          <Chat
+            trip={trip}
+            messages={board.messages}
+            onBack={() => board.selectTrip(null)}
+            items={board.allItems}
+            trips={board.trips}
+            openCaptures={board.openCaptures}
+            pending={pendingChat?.tripId === trip.id ? pendingChat : null}
+            onPendingTaken={(id) => setPendingChat((p) => (p?.id === id ? null : p))}
+          />
           {/* Files and links dropped (or pasted) on the board: read and put in their place (arrive/useBoardIntake). */}
           <main className="panel" {...intake.handlers}>
             {intake.rect && <DropOverlay rect={intake.rect} />}
@@ -230,9 +247,12 @@ export function App() {
           initial={start.draft ?? newStart(newId(), start.mode, Date.now())}
           firstText={start.draft ? undefined : start.text}
           firstLabel={start.draft ? undefined : start.label}
+          firstNote={start.draft ? undefined : start.note}
           ctx={startCtx}
           onClose={() => setStart(null)}
           onCreated={(tripId) => {
+            // A generation left behind (the screen was left, another start opened) doesn't take the board over.
+            if (startKey.current !== start.key) return;
             setStart(null);
             board.selectTrip(tripId);
           }}
