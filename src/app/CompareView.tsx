@@ -53,6 +53,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
   const single = d.status === "single";
   const [view, setView] = useState<"cards" | "table">(() => (d.category === "stay" && d.options.filter((o) => !o.excluded).length >= 2 ? "cards" : "table"));
   const [only, setOnly] = useState<string[] | null>(null);
+  const [why, setWhy] = useState(false);
   const columns = d.options.filter((o) => !o.excluded && (!only || only.includes(o.item.id))).slice(0, MAX_COLUMNS);
   const excluded = d.options.filter((o) => o.excluded);
   // A wish nobody asked for isn't "missing information" (the ones asked for, from a note or set here, are).
@@ -103,12 +104,23 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
         <div className="muted">{L("Karşılaştırma", "Comparison")}</div>
         <h2>{[CATEGORY_LABELS[d.category], title].filter(Boolean).join(" · ")}</h2>
 
-        <div className={`verdict-box status-${d.status}`}>
-          <div className="verdict-main">{card && !card.tie ? `${card.kicker}: ${card.pick.item.name}` : d.summary}</div>
-          {card && <div className="verdict-because">{card.because}</div>}
-          {card?.unless && <div className="verdict-because">{L("Ama", "But")} {lowerFirst(card.unless)}</div>}
-          {card?.budget && <div className="verdict-because muted">{card.budget}</div>}
-          <AiVerdict decision={d} />
+        {/* One line (0.37): the pick and why, in the AI's words when it gave some; the rest under "Neden?". */}
+        <div className={`verdict-box cmp-verdict status-${d.status}`}>
+          <div className="cmp-verdict-row">
+            <span className="verdict-main">{card && !card.tie ? `${card.kicker}: ${card.pick.item.name}` : d.summary}</span>
+            {shortWhy(d, card?.because) && <span className="cmp-verdict-why">{shortWhy(d, card?.because)}</span>}
+            <button type="button" className="link-btn cmp-verdict-more" aria-expanded={why} onClick={() => setWhy(!why)}>
+              {why ? L("Gizle", "Hide") : L("Neden?", "Why?")}
+            </button>
+          </div>
+          {why && (
+            <div className="cmp-verdict-detail">
+              {card && <div className="verdict-because">{card.because}</div>}
+              {card?.unless && <div className="verdict-because">{L("Ama", "But")} {lowerFirst(card.unless)}</div>}
+              {card?.budget && <div className="verdict-because muted">{card.budget}</div>}
+              <AiVerdict decision={d} />
+            </div>
+          )}
         </div>
 
         <div className="cmp-views" role="tablist" aria-label={L("Görünüm", "View")}>
@@ -350,6 +362,13 @@ function LevelPicker({ level, onChange }: { level: PriorityLevel; onChange: (lev
       ))}
     </select>
   );
+}
+
+/** The line's "why": the AI's first sentence when it has one ("AI: …"), else the engine's own reason. */
+function shortWhy(d: GroupDecision, because: string | undefined): string | null {
+  const ai = d.analysis?.verdict ?? d.staleAnalysis?.verdict;
+  if (ai) return `AI: ${ai.split(/(?<=[.!?])\s/)[0]}`;
+  return because ?? null;
 }
 
 function AiVerdict({ decision }: { decision: GroupDecision }) {

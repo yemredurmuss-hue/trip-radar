@@ -36,3 +36,28 @@ export async function photoFromFile(file: Blob): Promise<string> {
   }
   throw new Error("Bu fotoğraf kullanılamadı.");
 }
+
+// --- the photos of the people I travel with (0.37): set by me, kept only here --------------------------
+
+const PEOPLE_KEY = "peoplePhotos";
+/**
+ * A person's key: their name, case and spaces aside ("Sabine" = "SABINE " = "sabine"). Not the Turkish
+ * lowercase: it'd make "SABINE" "sabıne"; the dot "İ" leaves behind goes too ("İPEK" = "ipek").
+ */
+export const personKey = (name: string): string => name.trim().toLowerCase().normalize("NFD").replace(/\u0307/g, "").normalize("NFC");
+
+/** The photos I gave the people I travel with, by `personKey`. Never sent anywhere. */
+export async function getPeoplePhotos(kv: KV = chromeKV): Promise<Record<string, string>> {
+  const all = (await kv.get<Record<string, string>>(PEOPLE_KEY)) ?? {};
+  return Object.fromEntries(Object.entries(all).filter(([, v]) => isPhoto(v)));
+}
+
+/** Gives (or with null, takes away) a person's photo; their own profile photo, when they share one, still comes first. */
+export async function setPersonPhoto(name: string, photo: string | null, kv: KV = chromeKV): Promise<void> {
+  if (!name.trim()) return;
+  if (photo != null && !isPhoto(photo)) throw new Error("Bu fotoğraf kullanılamadı.");
+  const all = { ...((await kv.get<Record<string, string>>(PEOPLE_KEY)) ?? {}) };
+  if (photo == null) delete all[personKey(name)];
+  else all[personKey(name)] = photo;
+  await kv.set(PEOPLE_KEY, all);
+}

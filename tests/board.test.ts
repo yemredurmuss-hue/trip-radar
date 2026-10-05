@@ -1,6 +1,6 @@
 // The options board (0.37): order, filters and the one badge each card may carry.
 import { describe, expect, it } from "vitest";
-import { boardBadges, boardOptions } from "../src/lib/board";
+import { boardBadges, boardOptions, otherDates } from "../src/lib/board";
 import type { GroupDecision, OptionResult } from "../src/lib/decision";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -59,5 +59,22 @@ describe("the badges", () => {
     expect(boardBadges(decision([a], a)).size).toBe(0);
     const twin = opt("Twin", { score: 60, price: 240, rating: 8.0 });
     expect(Object.fromEntries(boardBadges(decision([b, twin])))).toEqual({});
+  });
+});
+describe("otherDates: a stay on other dates is still an option", () => {
+  const stay = (name: string, start: string, end: string) =>
+    ({ item: makeItem({ name, category: "stay", dates: { start, end, source: "page" } }), parts: [] }) as unknown as OptionResult;
+  const a = stay("A", "2026-10-07", "2026-10-11");
+  const b = stay("B", "2026-10-07", "2026-10-11");
+  it("says nothing for the usual dates", () => {
+    expect(otherDates(a, decision([a, b, stay("C", "2026-10-08", "2026-10-12")]))).toBeNull();
+  });
+  it("tells a moved stay apart: the whole stay a day late", () => {
+    const c = stay("C", "2026-10-08", "2026-10-12");
+    expect(otherDates(c, decision([a, b, c]))?.text).toMatch(/8–12 Ekim · 4 gece · 1 gün geç/);
+  });
+  it("and one end only: check-in a day early, out 5 days late", () => {
+    const c = stay("C", "2026-10-06", "2026-10-16");
+    expect(otherDates(c, decision([a, b, c]))?.text).toMatch(/giriş 1 gün erken, çıkış 5 gün geç/);
   });
 });

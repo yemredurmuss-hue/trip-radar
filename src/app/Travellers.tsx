@@ -1,7 +1,7 @@
 // Who goes, in the hero's card (0.37): the people by name (the names typed here or said in the chat, the shared
 // trip's people, me), else as many as the saves say. A tap opens a small box under it: the names with ×, "İsim
 // ekle" (Enter), how many go, and, apart, "Birini davet et (paylaş)" for the share dialog. Naming someone shares
-// nothing. Closes on a click outside or Esc.
+// nothing. Each name's circle takes a photo (0.37, kept only on this computer). Closes on a click outside or Esc.
 import { useEffect, useId, useRef, useState } from "react";
 import { initials, nPeople, travellersTitle } from "../lib/heroInfo";
 import { L } from "../lib/i18n";
@@ -9,7 +9,7 @@ import { sameName, whoGoes, type Who } from "../lib/tripSettings";
 import type { Trip } from "../lib/types";
 import { changeTravellers } from "./actions";
 import { HeroIcon } from "./Icons";
-import { useMyName, useMyPhoto } from "./Profile";
+import { PersonPhoto, useMyName, useMyPhoto, usePeoplePhotos } from "./Profile";
 import { ShareLine, useShare } from "./Share";
 import { useAppear } from "./useAppear";
 
@@ -31,10 +31,11 @@ export function Travellers({ trip, who, onShare }: { trip: Trip; who: Who; onSha
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  // Profile photos (0.36): the shared trip's people's; mine in the first circle.
+  // Profile photos (0.36): the shared trip's people's own, else the one I gave them (0.37); mine in the first circle.
   const myPhoto = useMyPhoto();
+  const peoplePhoto = usePeoplePhotos();
   const { names, count } = who;
-  const photoOf = (n: number, name: string | undefined) => (name && share?.photos[name]) || (n === 0 ? myPhoto : null) || null;
+  const photoOf = (n: number, name: string | undefined) => (name && share?.photos[name]) || (n === 0 ? myPhoto : peoplePhoto(name)) || null;
   const appear = useAppear(count > 0);
   const title = travellersTitle(names, count);
 
@@ -107,6 +108,7 @@ export function Travellers({ trip, who, onShare }: { trip: Trip; who: Who; onSha
           who={who}
           isShared={Boolean(share)}
           shared={share ? (share.state?.members ?? []) : []}
+          ownPhotos={share?.photos ?? {}}
           onInvite={
             onShare
               ? () => {
@@ -126,7 +128,9 @@ export function Travellers({ trip, who, onShare }: { trip: Trip; who: Who; onSha
   );
 }
 
-function WhoPopover({ trip, who, isShared, shared, onInvite }: { trip: Trip; who: Who; isShared: boolean; shared: string[]; onInvite?: () => void }) {
+function WhoPopover({ trip, who, isShared, shared, ownPhotos, onInvite }: { trip: Trip; who: Who; isShared: boolean; shared: string[]; ownPhotos: Record<string, string>; onInvite?: () => void }) {
+  const myPhoto = useMyPhoto();
+  const peoplePhoto = usePeoplePhotos();
   const [name, setName] = useState("");
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.focus(), []);
@@ -159,16 +163,19 @@ function WhoPopover({ trip, who, isShared, shared, onInvite }: { trip: Trip; who
       <h4 id={titleId}>{L("Kimler gidiyor?", "Who's going?")}</h4>
       <ul className="hx-who-list">
         <li>
+          <PersonPhoto name={meName || L("Ben", "Me")} photo={myPhoto} me />
           <span className="who-name">{meName ? L(`Ben (${meName})`, `Me (${meName})`) : L("Ben", "Me")}</span>
         </li>
         {fromShare.map((m) => (
           <li key={`s:${m}`}>
+            <PersonPhoto name={m} photo={peoplePhoto(m)} own={ownPhotos[m] ?? null} />
             <span className="who-name">{m}</span>
             <small>{L("paylaşımda", "on the share")}</small>
           </li>
         ))}
         {others.map((n) => (
           <li key={n}>
+            <PersonPhoto name={n} photo={peoplePhoto(n)} />
             <span className="who-name">{n}</span>
             <button type="button" className="who-x" aria-label={L(`${n} çıkar`, `Remove ${n}`)} title={L("Çıkar", "Remove")} onClick={() => remove(n)}>
               ×

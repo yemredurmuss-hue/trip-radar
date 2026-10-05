@@ -5,7 +5,7 @@
 // Süper, on a shared trip) and Seç / Ele. Sort and filter above; tick two or three to see them side by side in
 // the table; "+ Seçenek ekle" points to the chat box and the Save button.
 import { useState } from "react";
-import { boardBadges, boardOptions, type BoardBadge, type BoardSort } from "../../lib/board";
+import { boardBadges, boardOptions, otherDates, type BoardBadge, type BoardSort } from "../../lib/board";
 import { cardFacts } from "../../lib/cardFacts";
 import type { DecisionContext, GroupDecision, OptionResult } from "../../lib/decision";
 import { L } from "../../lib/i18n";
@@ -114,6 +114,7 @@ function OptionCard({ option, decision, ctx, badge, ticked, onTick, onOpen, onCh
 }) {
   const item = option.item;
   const facts = cardFacts(item, decision, ctx);
+  const dates = otherDates(option, decision);
   const rating = ratingOf(item);
   const out = !!option.excluded || !!option.eliminated;
   const chosen = item.status === "chosen";
@@ -147,9 +148,6 @@ function OptionCard({ option, decision, ctx, badge, ticked, onTick, onOpen, onCh
       </div>
       <div className="bd-body">
         <div className="bd-row1">
-          <button type="button" className="bd-name" onClick={onOpen} title={L("Tüm detaylar", "All details")}>
-            {item.name}
-          </button>
           {facts.price && (
             <span className="bd-price">
               <b>{facts.price.perNight ?? facts.price.text}</b>
@@ -157,6 +155,15 @@ function OptionCard({ option, decision, ctx, badge, ticked, onTick, onOpen, onCh
             </span>
           )}
         </div>
+        {/* The name on its own line, under the score and the price: beside them it was squeezed to "Büy ük…". */}
+        <button type="button" className="bd-name" onClick={onOpen} title={L("Tüm detaylar", "All details")}>
+          {item.name}
+        </button>
+        {dates && (
+          <div className="bd-dates" title={dates.title}>
+            📅 {dates.text}
+          </div>
+        )}
         <div className="bd-meta">
           {facts.source && <span className="bd-src">{facts.source.label}</span>}
           {rating && (

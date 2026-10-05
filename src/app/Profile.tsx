@@ -2,7 +2,7 @@
 // account. The photo is made small here (lib/profile) and goes only to the shared trips you're on.
 import { useEffect, useRef, useState } from "react";
 import { L } from "../lib/i18n";
-import { getPhoto, photoFromFile, savePhoto } from "../lib/profile";
+import { getPeoplePhotos, getPhoto, personKey, photoFromFile, savePhoto, setPersonPhoto } from "../lib/profile";
 import { getShareConfig, saveShareConfig } from "../lib/share/store";
 
 /** My photo, kept fresh when it changes (the hero's first circle on a trip of my own). */
@@ -76,5 +76,59 @@ export function ProfileSettings() {
       </p>
       {error && <p className="err small">{error}</p>}
     </section>
+  );
+}
+
+/** The photos I gave the people I travel with (by name), kept fresh. */
+export function usePeoplePhotos(): (name: string | undefined) => string | null {
+  const [photos, setPhotos] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const load = () => void getPeoplePhotos().then(setPhotos);
+    load();
+    if (typeof chrome === "undefined" || !chrome.storage?.onChanged) return;
+    const handler = (changes: Record<string, unknown>, area: string) => area === "local" && "peoplePhotos" in changes && load();
+    chrome.storage.onChanged.addListener(handler);
+    return () => chrome.storage.onChanged.removeListener(handler);
+  }, []);
+  return (name) => (name ? (photos[personKey(name)] ?? null) : null);
+}
+
+/**
+ * A person's circle in "Kimler gidiyor?" (0.37): their photo (or initial); a tap picks a photo for them, kept
+ * only on this computer. `own`: the photo they share themselves (it shows, and isn't replaced); `me`: my own
+ * profile photo is the one picked.
+ */
+export function PersonPhoto({ name, photo, own = null, me = false }: { name: string; photo: string | null; own?: string | null; me?: boolean }) {
+  const input = useRef<HTMLInputElement>(null);
+  const shown = own ?? photo;
+  const pick = async (file: File) => {
+    try {
+      const made = await photoFromFile(file);
+      await (me ? savePhoto(made) : setPersonPhoto(name, made));
+    } catch {
+      // a picture that can't be read: the circle stays as it was
+    }
+  };
+  return (
+    <span className="who-photo">
+      <button type="button" className={`who-av${shown ? " has" : ""}`} disabled={!!own}
+        title={own ? L(`${name} kendi fotoğrafını paylaşıyor`, `${name} shares their own photo`) : L("Fotoğraf seç", "Pick a photo")}
+        aria-label={L(`${name}: fotoğraf seç`, `${name}: pick a photo`)} onClick={() => input.current?.click()}
+        data-initial={(name.trim()[0] ?? "?").toLocaleUpperCase("tr")}>
+        {shown && <img src={shown} alt="" />}
+      </button>
+      {photo && !own && (
+        <button type="button" className="who-av-x" title={L("Fotoğrafı kaldır", "Remove the photo")} aria-label={L(`${name}: fotoğrafı kaldır`, `${name}: remove the photo`)}
+          onClick={() => void (me ? savePhoto(null) : setPersonPhoto(name, null))}>
+          ×
+        </button>
+      )}
+      <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) void pick(file);
+        }} />
+    </span>
   );
 }

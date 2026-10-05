@@ -679,6 +679,9 @@ try {
     console.log("pros/cons row:", await compare.locator(".pc-row").innerText());
     throw e;
   });
+  // The verdict is one line; the rest under "Neden?".
+  assert.equal(await compare.locator(".cmp-verdict-detail").count(), 0, "the verdict starts as one line");
+  await compare.locator(".cmp-verdict-more").click();
   await compare.getByText("güncellemek için Ayarlar'dan ücretsiz Gemini anahtarı ekle", { exact: false }).waitFor(); // no key yet
   await app.screenshot({ path: `${out}/3c-compare.png`, fullPage: true });
   // Quiet, which they asked for, is its own row now ("Sessizlik: Önemli" from their note). Location and quiet
@@ -2423,6 +2426,16 @@ try {
   assert.equal(said, "Emre & Sabine · 2 kişi");
   assert.equal(await side.locator(".hx-avatars i").first().innerText(), "E");
   assert.equal(await nameBox.inputValue(), "", "the box is ready for the next name");
+  // 0.37: a photo for Sabine, from her line in the box: kept on this computer, shown in the hero's circles.
+  const sabinePng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAM0lEQVR4nG3CoREAIQADwSssRbxGo9Gv0WhqurJoIDuLX2ocqXGmxpUa/9S4U+NJjTf1A3y1XcEwJbHpAAAAAElFTkSuQmCC", "base64");
+  await box.locator(".hx-who-list li", { hasText: "Sabine" }).locator('input[type="file"]').setInputFiles({ name: "sabine.png", mimeType: "image/png", buffer: sabinePng });
+  await box.locator(".hx-who-list li", { hasText: "Sabine" }).locator(".who-av img").waitFor();
+  await side.locator(".hx-avatars img").first().waitFor();
+  assert.match(await side.locator(".hx-avatars img").first().getAttribute("src"), /^data:image\/jpeg;base64,/);
+  assert.equal(await side.locator(".hx-avatars img").count(), 1, "only Sabine's circle has a photo");
+  await app.screenshot({ path: `${out}/18a-traveller-photo.png` });
+  await box.getByRole("button", { name: "Sabine: fotoğrafı kaldır" }).click();
+  await side.locator(".hx-avatars img").waitFor({ state: "detached" });
   assert.equal(await side.locator(".hx-share").count(), 0, "naming someone shares nothing");
   assert.equal(await box.getByRole("button", { name: "Birini davet et (paylaş)" }).count(), 0, "the sample can't be shared");
   const stored = await app.evaluate(async () => {
