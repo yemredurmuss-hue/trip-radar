@@ -125,7 +125,7 @@ async function setSuggestion(tripId: string, s: Suggestion, state: SuggestionSta
  * "Plana ekle": the real record through the template the suggestion names (planned, like a tile from "+ Ekle"),
  * then the suggestion is done. Handed back for the 8-second "Geri al"; null for a warning (nothing to add).
  */
-export async function addSuggested(tripId: string, s: Suggestion, id = newId()): Promise<Undoable | null> {
+export async function addSuggested(tripId: string, s: Suggestion, id: string = newId()): Promise<Undoable | null> {
   const item = suggestedItem(s, tripId, id, Date.now());
   if (!item) return null;
   await (await db()).put("items", item);
