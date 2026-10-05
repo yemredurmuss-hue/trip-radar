@@ -6,11 +6,21 @@ import { ideaIcon, moveToBookings, setDone, todoLine } from "../../lib/ideas";
 import type { Plan } from "../../lib/plan";
 import type { Item } from "../../lib/types";
 import { DeleteX } from "../cards/CardShell";
+import { Editable, InlineEdit } from "../cards/InlineEdit";
 import { useCardEnv } from "../cards/PlanCard";
 import { DayButton } from "./DayPicker";
 import { IdeaGlyph } from "./IdeaIcons";
 
-export function IdeaRow({ item, plan }: { item: Item; plan: Pick<Plan, "range" | "stayBlocks"> }) {
+/** Its title is edited where it stands (spec 0.33 §3); its day is the chip. */
+export function IdeaRow(props: { item: Item; plan: Pick<Plan, "range" | "stayBlocks"> }) {
+  return (
+    <InlineEdit item={props.item} only={["name"]}>
+      <IdeaRowFace {...props} />
+    </InlineEdit>
+  );
+}
+
+function IdeaRowFace({ item, plan }: { item: Item; plan: Pick<Plan, "range" | "stayBlocks"> }) {
   const env = useCardEnv();
   const done = Boolean(item.doneAt);
   const line = todoLine(item);
@@ -25,7 +35,9 @@ export function IdeaRow({ item, plan }: { item: Item; plan: Pick<Plan, "range" |
         <IdeaGlyph name={ideaIcon(item)} />
       </span>
       <span className="fk-t">
-        <b>{item.name}</b>
+        <b>
+          <Editable field="name">{item.name}</Editable>
+        </b>
         {line.text && (
           <span>
             {line.text}

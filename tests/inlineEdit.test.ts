@@ -2,7 +2,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { db, listMessages } from "../src/lib/db";
-import { editableFields, editField, fieldInput, fieldPlaceholder, fieldValue, nextField, saveCardField, saveField } from "../src/lib/inlineEdit";
+import { editableFields, editField, fieldInput, firstField, fieldPlaceholder, fieldValue, nextField, saveCardField, saveField } from "../src/lib/inlineEdit";
 import { plannedItem, type PlannedInput } from "../src/lib/planned";
 import { quickItem, TEMPLATES, type TemplateId } from "../src/lib/templates";
 import { makeItem } from "./fixtures/makeItem";
@@ -34,6 +34,10 @@ describe("which fields a card offers, in Tab order", () => {
     expect(editableFields(makeItem({ category: "flight", flight }))).toEqual(["from", "to", "date", "time", "price"]);
     expect(editableFields(makeItem({ category: "transport", name: "Europcar · Funchal", city: "Funchal", dates: { start: "2026-10-12", end: "2026-10-15", source: "page" } }))).toEqual(["city", "date", "end", "price"]);
     expect(editableFields(makeItem({ category: "esim", name: "Airalo Portekiz" }))).toEqual(["name", "city", "date", "price"]);
+  });
+  it("a card just added opens at its title, or where a trip goes", () => {
+    expect([firstField(quick("todo")), firstField(quick("hotel")), firstField(quick("bus")), firstField(quick("car"))]).toEqual(["name", "name", "to", "end"]);
+    expect(firstField(quick("bus", { city: null, date: null } as never))).toBe("from");
   });
   it("Tab goes on, Shift+Tab back, and stops at the ends", () => {
     const f = editableFields(quick("hotel"));

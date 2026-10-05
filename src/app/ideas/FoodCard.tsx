@@ -8,12 +8,22 @@ import type { Plan } from "../../lib/plan";
 import type { Item } from "../../lib/types";
 import { FallbackImg } from "../FallbackImg";
 import { DeleteX } from "../cards/CardShell";
+import { Editable, InlineEdit } from "../cards/InlineEdit";
 import { useCardEnv } from "../cards/PlanCard";
 import { KindIcon } from "../cards/Silhouettes";
 import { DayButton } from "./DayPicker";
 import { IdeaGlyph } from "./IdeaIcons";
 
-export function FoodCard({ item, plan }: { item: Item; plan: Pick<Plan, "range" | "stayBlocks"> }) {
+/** Its name is edited where it stands (spec 0.33 §3); its day is the chip. */
+export function FoodCard(props: { item: Item; plan: Pick<Plan, "range" | "stayBlocks"> }) {
+  return (
+    <InlineEdit item={props.item} only={["name"]}>
+      <FoodCardFace {...props} />
+    </InlineEdit>
+  );
+}
+
+function FoodCardFace({ item, plan }: { item: Item; plan: Pick<Plan, "range" | "stayBlocks"> }) {
   const env = useCardEnv();
   const line = foodLine(item);
   return (
@@ -22,7 +32,9 @@ export function FoodCard({ item, plan }: { item: Item; plan: Pick<Plan, "range" 
         <FallbackImg className="fk-img" src={item.imageUrl} fallback={<span className="fk-ph-ic"><KindIcon kind="food" size={34} /></span>} />
         <DeleteX name={item.name} onDelete={() => env.remove(item)} />
       </div>
-      <b>{item.name}</b>
+      <b>
+        <Editable field="name">{item.name}</Editable>
+      </b>
       {line && <span>{line}</span>}
       <div className="fk-act">
         <DayButton item={item} plan={plan} />

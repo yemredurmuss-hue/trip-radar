@@ -47,6 +47,12 @@ export function editableFields(item: Item): FieldKey[] {
   }
 }
 
+/** Where a card just added opens: its first empty field (a bus from Porto: where it goes), else its first. */
+export function firstField(item: Item, currency = "EUR"): FieldKey | null {
+  const fields = editableFields(item);
+  return fields.find((k) => k !== "price" && !fieldValue(item, k, currency)) ?? fields[0] ?? null;
+}
+
 /** The field after (or, `back`, before) this one; null past the ends. */
 export function nextField(fields: FieldKey[], key: FieldKey, back = false): FieldKey | null {
   const i = fields.indexOf(key);

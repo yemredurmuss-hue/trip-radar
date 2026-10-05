@@ -1,13 +1,12 @@
-// "Ne eklemek istersin?" (ulasim-v3 .sheet): the template tiles in three groups, then the short form for
-// the one picked, filled with the city and the day of where it was opened. Saving makes a plan item
-// ("Planlanıyor"); "Düzenle" opens the same form for a plan. Also the header's "+ Ekle" and the "+"
-// between two cards.
+// "Ne eklemek istersin?" (ulasim-v3 .sheet): the template tiles in three groups. A tile adds its record at
+// once, no form (spec 0.33 §2): the board makes it with the city and the day of where the sheet was opened
+// and opens the card for editing. "Düzenle" on a plan still opens its short form here. Also the header's
+// "+ Ekle" and the "+" between two cards.
 import { useEffect, useState, type FormEvent } from "react";
 import { cardKindColor } from "../../lib/cardKinds";
-import { newId } from "../../lib/db";
 import { L } from "../../lib/i18n";
 import { formatDateRange } from "../../lib/items";
-import { addFromTemplate, emptyForm, formOf, saveEdit, templateCardKind, templateLabel, TEMPLATES, type FormValues, type InsertAt, type Template } from "../../lib/templates";
+import { formOf, saveEdit, templateCardKind, templateLabel, TEMPLATES, type FormValues, type InsertAt, type Template } from "../../lib/templates";
 import type { Item } from "../../lib/types";
 import { KindIcon, UiIcon } from "./Silhouettes";
 
@@ -38,14 +37,13 @@ export function InsertPoint({ at, onAdd }: { at: InsertAt; onAdd: (at: InsertAt)
   );
 }
 
-export function AddSheet({ tripId, at, editing, currency, onClose, onSaved }: {
-  tripId: string;
+export function AddSheet({ at, editing, currency, onClose, onPick }: {
   at: InsertAt | null;
   editing: Item | null;
   currency: string;
   onClose: () => void;
-  /** After a new one is saved (the board shows Fikirler when it needs no booking). */
-  onSaved?: (item: Item) => void;
+  /** A tile picked: the board adds it at once (TripPanel quickAdd). */
+  onPick: (tpl: Template) => void;
 }) {
   const initial = editing ? formOf(editing, currency) : null;
   const [tpl, setTpl] = useState<Template | null>(initial?.template ?? null);
@@ -58,20 +56,15 @@ export function AddSheet({ tripId, at, editing, currency, onClose, onSaved }: {
     return () => document.removeEventListener("keydown", esc);
   }, [onClose]);
   const where = [at?.city, at?.date ? formatDateRange(at.date, null) : null].filter(Boolean).join(" · ");
-  const pick = (t: Template) => {
-    setTpl(t);
-    setForm(emptyForm(t, at, currency));
-    setError(null);
-  };
+  const pick = (t: Template) => onPick(t);
   const set = (k: keyof FormValues) => (e: { target: { value: string } }) => setForm((f) => (f ? { ...f, [k]: e.target.value } : f));
   async function save(e: FormEvent) {
     e.preventDefault();
-    if (!tpl || !form || saving) return;
+    if (!tpl || !form || !editing || saving) return;
     setSaving(true);
     try {
-      const out = editing ? await saveEdit(editing, tpl, form) : await addFromTemplate(tripId, tpl, form, newId());
+      const out = await saveEdit(editing, tpl, form);
       if (typeof out === "string") return setError(out);
-      if (!editing) onSaved?.(out);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -126,7 +119,6 @@ export function AddSheet({ tripId, at, editing, currency, onClose, onSaved }: {
             </div>
             {error && <p className="pk-form-error" role="alert">{error}</p>}
             <div className="pk-form-acts">
-              {!editing && <button type="button" className="link-btn" onClick={() => setTpl(null)}>{L("‹ Geri", "‹ Back")}</button>}
               <button type="submit" className="pk-cta" disabled={saving}>{L("Kaydet", "Save")}</button>
             </div>
           </form>

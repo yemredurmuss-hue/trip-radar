@@ -38,8 +38,9 @@ import { inheritedDocs } from "../lib/docs";
 import { deleteItem, onRemoved } from "../lib/removal";
 import { undoSlot } from "../lib/undo";
 import { undoTrip, type Undoable } from "../lib/undoables";
-import type { InsertAt } from "../lib/templates";
-import type { CardFocus } from "../lib/inlineEdit";
+import { addQuick, templateLabel, type InsertAt, type Template } from "../lib/templates";
+import { firstField, type CardFocus } from "../lib/inlineEdit";
+import { newId } from "../lib/db";
 import { AddButton, AddSheet } from "./cards/AddSheet";
 import { useTripDocs } from "./cards/DocAccess";
 import { LegCard } from "./cards/LegCard";
@@ -47,7 +48,7 @@ import { CardEnvContext, NavGroup, PlanCard, type CardEnv } from "./cards/PlanCa
 import { SilhouetteDefs } from "./cards/Silhouettes";
 import { UndoToast } from "./cards/UndoToast";
 import { IdeasView } from "./ideas/IdeasView";
-import { isIdea, needsBooking } from "../lib/booking";
+import { isIdea } from "../lib/booking";
 import { CategoryIcon, Chevron } from "./Icons";
 import { findTarget, show, TodoList } from "./Progress";
 import { TripFacts } from "./TripFacts";
@@ -128,6 +129,25 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const [sheet, setSheet] = useState<{ at: InsertAt | null; editing: Item | null } | null>(null);
   const [focus, setFocus] = useState<CardFocus | null>(null);
   useEffect(() => setFocus(null), [trip.id]);
+  /**
+   * A tile picked (spec 0.33 §2): the record at once, "X eklendi · Geri al". A booking opens on the Plan for
+   * editing (scrolled to, first field open); an idea goes to Fikirler without switching ("· Göster").
+   */
+  const quickAdd = async (tpl: Template, at: InsertAt | null) => {
+    setSheet(null);
+    const item = await addQuick(trip.id, tpl, at, newId());
+    const ideas = isIdea(item);
+    offer({ kind: "added", item, label: templateLabel(tpl.id), ideas });
+    if (ideas) return;
+    if (view !== "plan") setView("plan");
+    setFocus({ id: item.id, field: firstField(item, decisions?.ctx.currency ?? "EUR"), scroll: true });
+  };
+  /** "Göster" on "… Fikirler'e eklendi": Fikirler, the new one's title open. */
+  const showIdea = (u: Undoable) => {
+    if (u.kind !== "added") return;
+    setView("ideas");
+    setFocus({ id: u.item.id, field: "name", scroll: true });
+  };
   const env: CardEnv = {
     tripId: trip.id,
     decisions,
@@ -423,11 +443,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         />
       )}
       {sheet && (
-        <AddSheet tripId={trip.id} at={sheet.at} editing={sheet.editing} currency={decisions?.ctx.currency ?? trip.budget?.currency ?? "EUR"} onClose={() => setSheet(null)}
-          // A to-do or a restaurant added from the Plan needs no booking: show it where it went.
-          onSaved={(item) => !needsBooking(item) && view === "plan" && setView("ideas")} />
+        <AddSheet at={sheet.at} editing={sheet.editing} currency={decisions?.ctx.currency ?? trip.budget?.currency ?? "EUR"} onClose={() => setSheet(null)}
+          onPick={(tpl) => void quickAdd(tpl, sheet.at)} />
       )}
-      <UndoToast undoable={undoable} onUndo={() => { const u = undo.take(); if (u) void takeBack(u); }} />
+      <UndoToast undoable={undoable} onShow={showIdea} onUndo={() => { const u = undo.take(); if (u) void takeBack(u); }} />
     </CardEnvContext.Provider>
   );
 }
