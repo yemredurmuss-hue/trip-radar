@@ -207,6 +207,35 @@ describe("sections from what's saved and said", () => {
     expectEachOnce(sections, items);
   });
 
+  it("the header counts what's settled of all (\"3/4\"), section by section", () => {
+    const priced = { amount: 25, currency: "EUR", scope: "total" as const, taxesIncluded: "yes" as const, source: "page" as const, observedAt: 1 };
+    const items = [
+      ...base, // Jardim booked, Lisboa Loft chosen (not booked yet)
+      flight("TP 1234", "IST", "OPO", "2026-10-08", "saved"),
+      flight("PC 99", "IST", "OPO", "2026-10-08", "saved", "07:00"),
+      flight("TP 99", "LIS", "IST", "2026-10-14", "booked"),
+      said({ kind: "taxi", date: "2026-10-08", city: "Porto", from: "Havalimanı", to: "Otel" }),
+      makeItem({ name: "Douro tekne turu", category: "activity", city: "Porto", dates: { start: "2026-10-09", end: null, source: "user" }, status: "chosen", price: priced }),
+      makeItem({ name: "Livraria Lello", category: "activity", city: "Porto", dates: { start: "2026-10-10", end: null, source: "user" }, status: "booked", price: priced }),
+      said({ kind: "todo", date: null, city: "Porto", title: "Gün batımı" }, { status: "saved", booking: "none" }),
+      said({ kind: "todo", date: "2026-10-12", city: "Lizbon", title: "Pazar" }, { status: "saved", booking: "none" }),
+      said({ kind: "todo", date: null, city: "Porto", title: "Yapıldı bile" }, { status: "saved", booking: "none", doneAt: 9 }),
+      said({ kind: "food", date: null, city: "Porto", title: "Majestic Café" }, { status: "saved", booking: "none" }),
+      said({ kind: "food", date: "2026-10-09", city: "Porto", title: "Taberna" }, { status: "saved", booking: "none" }),
+      makeItem({ name: "Belcanto", category: "food", city: "Lizbon", dates: { start: "2026-10-12", end: null, source: "user" }, status: "chosen", booking: "needed" }),
+      makeItem({ name: "Cantinho", category: "food", city: "Lizbon", dates: { start: "2026-10-13", end: null, source: "user" }, status: "booked", booking: "needed" }),
+      said({ kind: "esim", date: null }, { status: "chosen", installedAt: 5 }),
+      said({ kind: "insurance", date: null }, { status: "chosen" }),
+    ];
+    const { sections } = sectionsOf(items);
+    const count = Object.fromEntries(sections.filter((s) => s.entries.length).map((s) => [s.id, `${s.settled}/${s.entries.length}`]));
+    // Ulaşım: the taxi planned (nothing to book) of it and the change of city not planned yet.
+    expect(count).toEqual({ flight: "1/2", stay: "1/2", transport: "1/2", activity: "1/2", todo: "2/3", food: "2/4", other: "1/2" });
+    // All settled: the count is full and the pill green.
+    const done = sectionsOf([stay("Jardim Stay", "2026-10-08", "2026-10-14", "Porto")]).sections.find((s) => s.id === "stay")!;
+    expect([done.settled, done.entries.length, done.status?.tone]).toEqual([1, 1, "done"]);
+  });
+
   it("eSIM and insurance are Diğer, for the whole trip; installed is done (and goes after what's left)", () => {
     const items = [...base, said({ kind: "esim", date: null }, { status: "chosen", installedAt: 5 }), said({ kind: "insurance", date: null }, { status: "chosen" })];
     const { sections } = sectionsOf(items);

@@ -1,21 +1,18 @@
 // A section of the Plan (kategoriler-v2 .sec): its own light tint, a header — the coloured icon tile, the
-// name, how many, the pill of where it stands, "+ Ekle" and the arrow — that opens and closes it. Open, its
-// timeline of cards; closed, one thin line per record.
+// name, how many are settled of all ("3/4"), the pill of where it stands, "+ Ekle" and the arrow — that opens
+// and closes it. Open, its timeline of cards; closed, the header alone.
 import type { ReactNode } from "react";
-import type { CatEntry, CatSection } from "../../lib/categories";
+import type { CatSection } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import { KindIcon, UiIcon } from "../cards/Silhouettes";
-import { CollapsedRow } from "./CollapsedRow";
 import { SECTION_META } from "./sectionMeta";
 
-export function Section({ section, open, onToggle, onAdd, onGo, children }: {
+export function Section({ section, open, onToggle, onAdd, children }: {
   section: CatSection;
   open: boolean;
   onToggle: () => void;
   /** "+ Ekle" in the header: this section's kind, no day. */
   onAdd: () => void;
-  /** A closed line pressed: open the section, go to the card. */
-  onGo: (entry: CatEntry) => void;
   children: ReactNode;
 }) {
   const meta = SECTION_META[section.id];
@@ -28,7 +25,9 @@ export function Section({ section, open, onToggle, onAdd, onGo, children }: {
             <KindIcon kind={meta.icon} size={19} />
           </span>
           <b>{label}</b>
-          <span className="cat-count">{section.entries.length}</span>
+          <span className="cat-count" aria-label={L(`${section.settled} / ${section.entries.length} tamam`, `${section.settled} of ${section.entries.length} settled`)}>
+            {section.settled}/{section.entries.length}
+          </span>
           {section.status && <span className={`cat-state ${section.status.tone}`}>{section.status.text}</span>}
         </button>
         <button type="button" className="cat-add" onClick={(e) => { e.stopPropagation(); onAdd(); }} aria-label={L(`${label}: ekle`, `${label}: add`)}>
@@ -41,15 +40,7 @@ export function Section({ section, open, onToggle, onAdd, onGo, children }: {
           </svg>
         </span>
       </div>
-      {open ? (
-        <div className="cat-body">{children}</div>
-      ) : (
-        <ul className="cat-rows">
-          {section.entries.map((e) => (
-            <CollapsedRow key={e.key} entry={e} onGo={onGo} />
-          ))}
-        </ul>
-      )}
+      {open && <div className="cat-body">{children}</div>}
     </section>
   );
 }

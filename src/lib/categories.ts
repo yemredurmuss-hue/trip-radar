@@ -2,8 +2,8 @@
 // block and record of the trip goes in exactly one of seven sections — Uçuş, Konaklama, Ulaşım, Etkinlikler,
 // Yapılacak şeyler, Restoranlar, Diğer — and inside a section in date order (then time), the undated last by
 // city. The blocks themselves are the ones the plan's front always had (timeline.ts board): this only sorts
-// them into sections and says where each stands, for the header's pill and the one-line row of a closed
-// section. Pure: derived on every render, nothing stored but which sections the traveller opened.
+// them into sections and says where each stands, for the header's pill and its "3/4" (settled of all). Pure:
+// derived on every render, nothing stored but which sections the traveller opened.
 import { cityOfAirport } from "./airports";
 import { isIdea, needsBooking } from "./booking";
 import { legTransportMode, TICKET_MODES, transportMode } from "./cardKinds";
@@ -30,7 +30,7 @@ export type CatPiece =
   /** `siblings`: the options it's compared with; `settled`: drawn as decided (chosen or booked). */
   | { kind: "item"; item: Item; siblings: Item[]; settled: boolean };
 
-/** A closed section's one line (kategoriler-v2 .row): ring · name · city · date · time · price · status. */
+/** An entry in one line (kategoriler-v2 .row): ring · name · city · date · time · price · status: the entry summed up in one line. */
 export interface CollapsedRow {
   ring: "open" | "half" | "yes";
   name: string;
@@ -80,6 +80,11 @@ export interface CatSection {
   days: DayGroup[];
   /** The header's pill: amber while something's left ("1 karar bekliyor"), green once all is done ("✓ 3 alındı"). */
   status: { text: string; tone: "wait" | "done" } | null;
+  /**
+   * How many of its entries are settled, for the header's "3/4": booked, bought, arranged, installed, or
+   * planned where nothing needs booking (a taxi); a to-do done or on a day; a restaurant on a day or booked.
+   */
+  settled: number;
   /** First look: open while something's left, closed once all is done. */
   open: boolean;
 }
@@ -631,7 +636,7 @@ export function sectionStatus(id: SectionId, entries: CatEntry[]): CatSection["s
 function sectionOf(id: SectionId, list: CatEntry[], plan: Plan): CatSection {
   const entries = sortEntries(list, plan);
   const status = sectionStatus(id, entries);
-  return { id, entries, days: daysOf(entries, plan), status, open: status?.tone === "wait" };
+  return { id, entries, days: daysOf(entries, plan), status, settled: entries.filter((e) => e.state === "done").length, open: status?.tone === "wait" };
 }
 
 /** The section and entry that hold a to-do's target (a record, a transfer, a block), tried in that order; `dom`: its card's key. */

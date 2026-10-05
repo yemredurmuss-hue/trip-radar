@@ -38,7 +38,7 @@ import { deleteItem, onRemoved } from "../lib/removal";
 import { undoSlot } from "../lib/undo";
 import { undoTrip, type Undoable } from "../lib/undoables";
 import { addQuick, templateLabel, TEMPLATES, type InsertAt, type Template, type TemplateId } from "../lib/templates";
-import { categorize, catDomKey, findInSections, sectionOfItem, type CatEntry, type SectionId } from "../lib/categories";
+import { categorize, catDomKey, findInSections, sectionOfItem, type SectionId } from "../lib/categories";
 import { firstField, type CardFocus } from "../lib/inlineEdit";
 import { newId } from "../lib/db";
 import { AddSheet } from "./cards/AddSheet";
@@ -120,11 +120,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     setOpened(moved.section, true);
     setTimeout(() => show(document.getElementById(entryDomId(catDomKey(moved)))), 60);
   }, [sections, trip.id, view, setOpened]);
-  /** A closed section's line: the section opens, the card comes into view. */
-  const goTo = (entry: CatEntry, dom: string) => {
-    setOpened(entry.section, true);
-    setTimeout(() => show(document.getElementById(entryDomId(dom))), 60);
-  };
   /**
    * A to-do's place: on this view if it's there; else on the Plan (its section opened); else on the other view
    * (an empty transfer is only in the itinerary).
@@ -431,7 +426,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           cities={cityNames}
           cards={{ legCard, renderGroup, card, settled }}
           onAdd={addIn}
-          onGo={goTo}
         />
       )}
 

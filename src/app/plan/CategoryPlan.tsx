@@ -2,7 +2,7 @@
 // Konaklama, Ulaşım, Etkinlikler, Yapılacak şeyler, Restoranlar, Diğer — each a section that opens and closes
 // (remembered per trip), with the approved cards in a timeline inside. A section with nothing in it isn't
 // drawn; it's one chip in the "Ekle" line at the bottom.
-import { catDomKey, sectionOfItem, type CatEntry, type CatSection, type SectionId } from "../../lib/categories";
+import { sectionOfItem, type CatSection, type SectionId } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import type { Plan } from "../../lib/plan";
 import type { InsertAt } from "../../lib/templates";
@@ -12,7 +12,7 @@ import { Section } from "./Section";
 import { SECTION_META } from "./sectionMeta";
 import { SectionTimeline, type SectionCards } from "./SectionTimeline";
 
-export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, onGo }: {
+export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd }: {
   plan: Plan;
   sections: CatSection[];
   /** Open now: the traveller's choice, else the first look (sectionMeta.useSectionOpen). */
@@ -23,8 +23,6 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
   cards: SectionCards;
   /** Adds in a section (its kind; at a day and city when given), or (null) anything from the plan's head. */
   onAdd: (section: SectionId | null, at: InsertAt | null) => void;
-  /** A closed line pressed: the section opens and the card comes into view. */
-  onGo: (entry: CatEntry, domKey: string) => void;
 }) {
   const n = plan.nights;
   const parts = [n.booked && L(`${n.booked} rezerve`, `${n.booked} booked`), n.chosen && L(`${n.chosen} seçildi`, `${n.chosen} chosen`), n.open && L(`${n.open} açık`, `${n.open} open`)].filter(Boolean);
@@ -45,7 +43,7 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
       {shown.map((s) => {
         const opened = isOpen(s);
         return (
-          <Section key={s.id} section={s} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)} onGo={(e) => onGo(e, catDomKey(e))}>
+          <Section key={s.id} section={s} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)}>
             <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(sectionOfItem(item), true)} />
           </Section>
         );

@@ -174,8 +174,9 @@ try {
   assert.deepEqual(await app.locator(".cat-sec").evaluateAll((els) => els.map((e) => e.getAttribute("data-section"))), ["flight", "stay", "transport", "activity", "food", "other"]);
   assert.deepEqual(await app.locator(".cat-more .cat-chip").allInnerTexts(), ["Yapılacak"]);
   assert.deepEqual((await sec("stay").locator(".cat-date").allInnerTexts()).map((t) => t.replace(/\s+/g, " ")), ["8 Eki Per Porto", "11 Eki Paz Lizbon"]);
-  assert.match(await sec("activity").locator(".cat-head").innerText(), /Etkinlikler\s*4\s*1 bilet yok · 3 karar/);
-  assert.match(await sec("flight").locator(".cat-head").innerText(), /Uçuş\s*2\s*1 karar bekliyor/);
+  // The header counts what's settled of all ("0/4"), then the pill of what's left.
+  assert.match(await sec("activity").locator(".cat-head").innerText(), /Etkinlikler\s*0\/4\s*1 bilet yok · 3 karar/);
+  assert.match(await sec("flight").locator(".cat-head").innerText(), /Uçuş\s*1\/2\s*1 karar bekliyor/);
   await app.locator(".stay-block.booked", { hasText: "Lisboa Loft" }).waitFor();
   await app.getByText("Kapanan seçenekler (1)").waitFor();
   assert.equal(await app.locator(".stay-block", { hasText: "Alfama Suites" }).count(), 0, "a booking closes its alternatives");
@@ -710,7 +711,7 @@ try {
   await dayPage.locator(".dc-ideas li", { hasText: "Majestic Café" }).getByText("· öğle").waitFor();
   await app.screenshot({ path: `${out}/4k-itinerary-032.png` });
   await tab("Plan").click();
-  assert.equal(await sec("activity").locator(".cat-count").innerText(), "5");
+  assert.match(await sec("activity").locator(".cat-count").innerText(), /^\d+\/5$/);
   // A to-do moved to Etkinlikler is a thing to do with a ticket there, not a "Yapılacak".
   const lelloCard = sec("activity").locator('.pk-card[aria-label="Livraria Lello, giriş bileti var"]');
   await lelloCard.waitFor();
@@ -847,9 +848,55 @@ try {
   await app.setViewportSize({ width: 1440, height: 900 });
   console.log("✓ 0.33: a tile adds at once and opens for editing (Tab, Enter, Esc, Geri al); a stay apart edited, moved and deleted with ×; a saved page corrected and taken back; short transfer ends; empty nights hidden and brought back");
 
-  // 4q. 0.34: the Plan by category — every section open while something's left; closed, a line per record
-  // (none hidden); the choice remembered for the trip; a line opens its section and goes to the card.
+  // 4q. 0.34: the Plan by category — every section open while something's left; closed, the header line
+  // alone ("Etkinlikler 1/5 · 1 bilet yok"); the choice remembered for the trip; the header opens it again.
   await tab("Plan").click();
+  // A market the chat said as an activity it "marked as booked" (stored by older versions as a booking),
+  // a walk said as one, and a Maps pin with its photo: all three are things to do, the pin shows its photo.
+  await app.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tx = database.transaction(["trips", "items"], "readwrite");
+    const trips = await new Promise((resolve) => (tx.objectStore("trips").getAll().onsuccess = (e) => resolve(e.target.result)));
+    const tripId = trips.find((t) => t.title === "Portekiz (örnek)").id;
+    const now = Date.now();
+    const base = (over) => ({
+      tripId, captureIds: [], key: null, provider: null, summary: "", optionDetail: null, url: null, imageUrl: null, country: null, countryCode: null,
+      location: { address: null, area: null, approximate: false }, dates: { start: null, end: null, source: "unverified" }, guests: { adults: null, children: null, rooms: null },
+      price: { amount: null, currency: null, scope: "unknown", taxesIncluded: "unknown", source: "none", observedAt: now }, priceHistory: [],
+      cancellation: { summary: null, freeUntil: null, source: "none" }, rating: { value: null, scale: null, count: null, source: "none" }, flight: null, geo: null,
+      highlights: [], concerns: [], reviewSummary: null, missing: [], statusNote: null, createdAt: now, updatedAt: now, ...over,
+    });
+    const photo = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><defs><linearGradient id="g" x2="1" y2="1"><stop offset="0" stop-color="#e9b872"/><stop offset="1" stop-color="#3f6e8c"/></linearGradient></defs><rect width="80" height="80" fill="url(#g)"/><circle cx="58" cy="22" r="9" fill="#fff6d8"/></svg>')}`;
+    const items = tx.objectStore("items");
+    items.put(base({ id: "e2e-market", category: "activity", needKey: "activity:porto", name: "Porto Belo Pazarı", city: "Porto", status: "booked", origin: "chat", plannedKind: "activity", booking: "needed" }));
+    items.put(base({ id: "e2e-walk", category: "activity", needKey: "activity:porto", name: "Outdoor alışverişi", city: "Porto", status: "chosen", origin: "chat", plannedKind: "activity", booking: "needed" }));
+    items.put(base({ id: "e2e-pin", category: "activity", needKey: "activity:porto", name: "Jardins do Palácio de Cristal", city: "Porto", status: "saved", url: "https://maps.app.goo.gl/e2e", imageUrl: photo, booking: "none" }));
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  const todoRow = (name) => sec("todo").locator(`.fk-row[aria-label="${name}"]`);
+  await todoRow("Porto Belo Pazarı").waitFor();
+  await todoRow("Outdoor alışverişi").waitFor();
+  assert.equal(await sec("activity").locator('.pk-card[aria-label="Porto Belo Pazarı"]').count(), 0, "a market is never a booking");
+  // Icons from the words (a bag for a market and shopping); the Maps pin shows its photo instead.
+  assert.equal(await todoRow("Porto Belo Pazarı").locator(".fk-ic:not(.fk-thumb) svg").count(), 1);
+  const pinPhoto = todoRow("Jardins do Palácio de Cristal").locator(".fk-thumb img.fk-thumb-img");
+  await pinPhoto.scrollIntoViewIfNeeded();
+  assert.ok(await pinPhoto.evaluate(async (img) => (await img.decode(), img.naturalWidth > 0)), "the pin's photo loads");
+  // Its title lines up with the rows that have an icon.
+  const titleX = async (name) => (await todoRow(name).locator(".fk-t").boundingBox()).x;
+  assert.ok(Math.abs((await titleX("Jardins do Palácio de Cristal")) - (await titleX("Porto Belo Pazarı"))) < 1, "titles in one column");
+  assert.match(await todoRow("Jardins do Palácio de Cristal").locator(".fk-t > span").innerText(), /Porto · Maps/);
+  await app.setViewportSize({ width: 1440, height: 1100 });
+  await sec("todo").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.screenshot({ path: `${out}/5d-todo.png` });
+  await app.setViewportSize({ width: 560, height: 1100 });
+  await sec("todo").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.screenshot({ path: `${out}/5e-todo-narrow.png` });
   assert.deepEqual(await app.locator(".cat-sec").evaluateAll((els) => els.map((e) => e.getAttribute("data-section"))), ["flight", "stay", "transport", "activity", "todo", "food", "other"]);
   assert.equal(await app.locator(".cat-more").count(), 0, "no empty section left to offer");
   await app.setViewportSize({ width: 1440, height: 3600 });
@@ -864,7 +911,6 @@ try {
   const firstCard = await sec("stay").locator(".cat-day").first().locator(".cat-card").first().boundingBox();
   assert.ok(dayBox.y + dayBox.height <= firstCard.y + 1, "the day sits above its cards when narrow");
   await app.setViewportSize({ width: 1440, height: 1400 });
-  const recordsOpen = await app.locator(".cat-card, .fk-row").count();
   const openTitles = app.locator(".cat-sec:not(.closed) .cat-title");
   while (await openTitles.count()) await openTitles.first().click();
   assert.equal(await app.locator(".cat-sec.closed").count(), 7);
@@ -872,11 +918,15 @@ try {
   const turn = (scope) => scope.locator(".cat-chev svg").evaluate((el) => getComputedStyle(el).transform);
   assert.match(await turn(sec("food")), /^matrix\([^,]+, -1, 1,/);
   assert.equal(await sec("food").locator(".cat-chev").evaluate((el) => getComputedStyle(el).transform), "none");
-  // Closed, every record is one line (a block of options counts once, as on its card).
-  assert.equal(await app.locator(".cat-row").count(), recordsOpen);
-  assert.deepEqual(await sec("activity").locator(".cat-row b").allInnerTexts(), ["Douro tekne turu", "Livraria Lello", "Serralves Müzesi", "Tiyatro", "Livraria Lello, giriş bileti var"]);
-  assert.match(await sec("activity").locator(".cat-row").first().innerText(), /Douro tekne turu\s*Porto · 9 Eki · 16:00\s*€25\s*Bilet yok/);
-  assert.match(await sec("stay").locator(".cat-row").last().innerText(), /Lisboa Loft\s*Lizbon · 11–14 Ekim · 3 gece\s*€390\s*Rezerve/);
+  // Closed, a section is its header line alone: icon, name, settled of all, the pill, "+ Ekle", the arrow.
+  assert.equal(await app.locator(".cat-sec.closed .cat-body, .cat-sec.closed .cat-card, .cat-sec.closed .fk-row, .cat-sec.closed li").count(), 0, "nothing under a closed header");
+  for (const id of ["flight", "stay", "transport", "activity", "todo", "food", "other"]) {
+    const head = await sec(id).boundingBox();
+    assert.ok(head.height < 80, `${id}: one compact line when closed (${head.height}px)`);
+    assert.match(await sec(id).locator(".cat-count").innerText(), /^\d+\/\d+$/);
+    await sec(id).locator(".cat-add").waitFor();
+  }
+  assert.match(await sec("stay").locator(".cat-head").innerText(), /Konaklama\s*\d+\/\d+/);
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5c-collapsed.png` });
   // Remembered for the trip: closed after a reload.
@@ -884,9 +934,9 @@ try {
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
   await sec("activity").waitFor();
   assert.equal(await app.locator(".cat-sec.closed").count(), 7);
-  // A line opens its section and takes you to the card; the header opens and closes it again.
-  await sec("activity").locator(".cat-row", { hasText: "Tiyatro" }).click();
-  await sec("activity").locator(".cat-card.flash", { has: app.locator('.pk-card[aria-label="Tiyatro"]') }).waitFor();
+  // The header opens it (its cards come back) and closes it again.
+  await sec("activity").locator(".cat-head").click({ position: { x: 600, y: 20 } });
+  await sec("activity").locator('.pk-card[aria-label="Tiyatro"]').waitFor();
   assert.doesNotMatch(await sec("activity").getAttribute("class"), /closed/);
   await sec("activity").locator(".cat-head").click({ position: { x: 600, y: 20 } });
   await sec("activity").and(app.locator(".closed")).waitFor();
@@ -899,7 +949,7 @@ try {
   await app.locator(".hx + .todo-list button", { hasText: "Jardim Stay" }).click();
   await sec("stay").locator(".flash").waitFor();
   assert.doesNotMatch(await sec("stay").getAttribute("class"), /closed/);
-  console.log("✓ 0.34: seven sections in order, open while something's left, a line per record when closed (remembered after a reload), a line opens its card, a to-do opens its section");
+  console.log("✓ 0.34: seven sections in order, open while something's left, closed is the header alone with settled/all (remembered after a reload), the header opens it, a to-do opens its section");
   console.log("✓ board: demo trip, decision labels, comparison with priorities, drawer, status change and chat event");
 
   // 5. Settings dialog.
@@ -1225,9 +1275,10 @@ try {
   await board.locator("#block-2026-10-09").waitFor({ state: "detached", timeout: 10000 });
   await board.locator("#block-2026-10-08 .slot-note").waitFor();
   await board.locator('.pk-card[aria-label="Uçuş"]').waitFor();
-  // Nothing left to do in Ulaşım (the taxi is planned): the section is closed, the taxi a line; the line opens its card.
-  const taxiLine = board.locator('.cat-sec[data-section="transport"].closed .cat-row', { hasText: "Otel → Havalimanı" });
-  await taxiLine.click();
+  // Nothing left to do in Ulaşım (the taxi is planned): the section is closed, its header all settled; the header opens it.
+  const transportSec = board.locator('.cat-sec[data-section="transport"].closed');
+  assert.match(await transportSec.locator(".cat-count").innerText(), /^(\d+)\/\1$/);
+  await transportSec.locator(".cat-title").click();
   await board.getByText("Taksi · Otel → Havalimanı").first().waitFor();
   const esim = board.locator('.pk-card[aria-label="eSIM"]');
   await esim.waitFor();
