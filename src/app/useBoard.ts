@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { listAllItems, listArrivals, listMessages, listOpenCaptures, listTrips, onChanged } from "../lib/db";
 import type { Capture, ChatMessage, Item, Trip } from "../lib/types";
+import { withEdits } from "../lib/userEdits";
 
 export interface BoardData {
   trips: Trip[];
@@ -43,7 +44,8 @@ export function useBoard(initialTripId: string | null) {
   const load = useCallback(async () => {
     const [trips, allItems, openCaptures, arrivals] = await Promise.all([
       listTrips(),
-      listAllItems(),
+      // A saved page's corrections stand in for what it said, everywhere the board reads it (userEdits.ts).
+      listAllItems().then((items) => items.map(withEdits)),
       listOpenCaptures(),
       listArrivals(openedAt),
     ]);

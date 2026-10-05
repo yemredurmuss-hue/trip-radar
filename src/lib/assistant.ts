@@ -26,6 +26,7 @@ import { activeSignals, pendingSignals } from "./intent";
 import { buildLegs, legTiming, withLegChoice } from "./legs";
 import { checkPlanned, plannedInput, planToSave, PLANNED_KINDS } from "./planned";
 import { addDays, buildPlan, liveGroups, sameCity, stayRange, type Plan } from "./plan";
+import { withEdits } from "./userEdits";
 import { L, lang } from "./i18n";
 import { announceRemoved, deleteItem } from "./removal";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
@@ -926,7 +927,8 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
   }
 
   const prefs = (await listPreferences(tripId)).map((p) => p.text);
-  const items = await listItems(tripId);
+  // The trip as the board shows it (a saved page's corrections in place); the tools write the stored records.
+  const items = (await listItems(tripId)).map(withEdits);
   const result = await loadDecisions(trip, items);
   const state = tripState(
     trip,

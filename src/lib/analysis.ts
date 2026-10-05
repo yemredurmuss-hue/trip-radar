@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { getRates } from "./currency";
 import { db, listAnalyses, listItems, listListings, listPreferences, listTrips, notifyChanged } from "./db";
+import { withEdits } from "./userEdits";
 import {
   cityKey,
   decideTrip,
@@ -340,7 +341,8 @@ export const isAnalyzing = () => running !== null;
 async function analyzePass(force: boolean, provider: () => Promise<LlmProvider>): Promise<void> {
   let llm: LlmProvider | null = null;
   for (const trip of await listTrips()) {
-    const items = await listItems(trip.id);
+    // As the board shows them: a saved page's corrections stand in for what it said.
+    const items = (await listItems(trip.id)).map(withEdits);
     const { ctx, decisions, cards } = await loadDecisions(trip, items);
     for (const decision of decisions.values()) {
       if (!needsAnalysis(decision, Date.now(), force)) continue;

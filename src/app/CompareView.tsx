@@ -69,7 +69,10 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
 
   async function choose(option: OptionResult) {
     const chosen = option.item.status === "chosen";
-    await (await db()).put("items", { ...option.item, status: chosen ? "saved" : "chosen", statusAt: Date.now(), updatedAt: Date.now() });
+    // The stored record, not the board's corrected copy (its corrections stay beside the page's values).
+    const d = await db();
+    const fresh = (await d.get("items", option.item.id)) ?? option.item;
+    await d.put("items", { ...fresh, status: chosen ? "saved" : "chosen", statusAt: Date.now(), updatedAt: Date.now() });
     const name = option.item.name;
     await addEvent(
       option.item.tripId,

@@ -65,6 +65,19 @@ async function seed() {
 }
 
 describe("analysis", () => {
+  it("compares a saved page as the traveller corrected it", async () => {
+    const d = await db();
+    await d.put("trips", { ...trip, id: "tu" });
+    await d.put("items", { ...stay("ua", "Jardim Stay U", 285, 9.1, "Sessiz."), tripId: "tu", userEdits: { name: "Jardim bahçe odası", price: 260 } });
+    await d.put("items", { ...stay("ub", "Casa Azul U", 240, 8.8, "Sakin."), tripId: "tu" });
+    const { provider, prompts } = fakeProvider(() => output({ ai_scores: [] }));
+    await analyzeStale({ provider: async () => provider });
+    const mine = prompts.filter((p) => p.includes("Casa Azul U"));
+    expect(mine).toHaveLength(1);
+    expect(mine[0]).toContain("Jardim bahçe odası");
+    expect(mine[0]).not.toContain("Jardim Stay U");
+  });
+
   it("analyses stale groups once, and the fresh analysis feeds the AI criterion", async () => {
     await seed();
     const { provider, prompts } = fakeProvider(() => output());

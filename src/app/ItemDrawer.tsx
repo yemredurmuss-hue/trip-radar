@@ -127,7 +127,9 @@ interface Props {
 export function ItemDrawer({ item, group, trips, decision, decisions, onClose, onMoved, onCompare }: Props) {
   async function setStatus(status: ItemStatus, event: (name: string) => string) {
     const d = await db();
-    await d.put("items", { ...item, status, statusAt: Date.now(), updatedAt: Date.now() });
+    // The stored record, not the board's corrected copy (its corrections stay beside the page's values).
+    const fresh = (await d.get("items", item.id)) ?? item;
+    await d.put("items", { ...fresh, status, statusAt: Date.now(), updatedAt: Date.now() });
     await addEvent(item.tripId, event(item.name));
     notifyChanged();
   }
@@ -144,7 +146,8 @@ export function ItemDrawer({ item, group, trips, decision, decisions, onClose, o
       await d.put("trips", target);
     }
     if (!target || target.id === item.tripId) return;
-    await d.put("items", { ...item, tripId: target.id, status: "saved", updatedAt: Date.now() });
+    const fresh = (await d.get("items", item.id)) ?? item;
+    await d.put("items", { ...fresh, tripId: target.id, status: "saved", updatedAt: Date.now() });
     await moveDocsToTrip(item.id, target.id);
     await addEvent(item.tripId, L(`${item.name} → ${target.title} gezisine taşındı`, `${item.name} moved to ${target.title}`));
     await addEvent(target.id, L(`${item.name} bu geziye taşındı`, `${item.name} moved to this trip`));
