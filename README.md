@@ -18,15 +18,12 @@ click; the AI reads it, compares the options and puts them in a shared plan you 
   In Chrome open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and pick the
   `extension` folder inside. This version doesn't update itself: repeat these steps to get a new one.
 
-**2. Get the free Gemini key.** A setup screen opens right after installing and walks you through it
-(**Get a free key from Google** → **Create API key** → paste it back). No card needed.
+**2. Choose English.** A setup screen opens right after installing. At its top pick **Dil / Language → English**.
+You don't need an AI key: Emre's invite brings the AI with it, so skip the key and close the screen.
 
-**3. Choose English.** At the top of the setup screen (and later in **••• → Settings**) pick
-**Dil / Language → English**.
-
-**4. Join our trip.** Go to **My trips** → **Join a shared trip**, paste the code Emre sends you (it starts with
+**3. Join our trip.** Go to **My trips** → **Join a shared trip**, paste the code Emre sends you (it starts with
 `TR1:`), add your name and click **Join**. Pages anyone saves show up for everyone within a minute, and you can
-👍 / 👎 every option.
+👍 / 👎 every option. In **••• → Settings → My profile** you can add a photo.
 
 ---
 
