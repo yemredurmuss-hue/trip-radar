@@ -37,7 +37,14 @@ async function keepingAlive(work: () => Promise<void>): Promise<void> {
 function run(): Promise<void> {
   return keepingAlive(async () => {
     // Once per worker lifetime, before anything is processed.
-    recovery ??= recoverStuck().then(() => rehomeFromDemoTrips()).then(() => reverifyFacts());
+    // Failed (the database held by an older version during an update): tried again on the next run.
+    recovery ??= recoverStuck()
+      .then(() => rehomeFromDemoTrips())
+      .then(() => reverifyFacts())
+      .catch((error: unknown) => {
+        recovery = null;
+        throw error;
+      });
     await recovery;
     await processPending();
     // A shared trip's new captures go up (and the other traveller's come down) without waiting a minute.

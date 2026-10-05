@@ -15,10 +15,14 @@ interface TripRadarDB extends DBSchema {
   docs: { key: string; value: DocRecord; indexes: { itemId: string; tripId: string } };
 }
 
-let dbPromise: Promise<IDBPDatabase<TripRadarDB>> | null = null;
+type TripRadarDb = IDBPDatabase<TripRadarDB>;
+let dbPromise: Promise<TripRadarDb> | null = null;
 
-export function db(): Promise<IDBPDatabase<TripRadarDB>> {
-  dbPromise ??= openDB<TripRadarDB>("trip-radar", 4, {
+export function db(): Promise<TripRadarDb> {
+  if (dbPromise) return dbPromise;
+  let onBlocked: (error: Error) => void = () => undefined;
+  const blocked = new Promise<never>((_, reject) => (onBlocked = reject));
+  const opening = openDB<TripRadarDB>("trip-radar", 4, {
     upgrade(d, oldVersion) {
       if (oldVersion < 1) {
         d.createObjectStore("trips", { keyPath: "id" });
@@ -42,13 +46,36 @@ export function db(): Promise<IDBPDatabase<TripRadarDB>> {
         docs.createIndex("tripId", "tripId");
       }
     },
-    // A newer version (an update) wants the database: let it go, the next call opens it again.
-    blocking() {
-      void dbPromise?.then((open) => open.close());
-      dbPromise = null;
+    // An older version (before 0.31 it never lets go: a tab or the worker from before an update) holds
+    // the database open: say so instead of waiting forever. The next call tries again.
+    blocked() {
+      onBlocked(
+        new Error(
+          L(
+            "Trip Radar'ın eski bir sürümü hâlâ açık. Diğer Trip Radar sekmelerini kapatıp sayfayı yenile.",
+            "An older version of Trip Radar is still open. Close the other Trip Radar tabs and reload this page.",
+          ),
+        ),
+      );
+    },
+    // A newer version (an update) wants the database: this connection lets go right away (the one the
+    // event came to, whatever dbPromise holds now); the next call opens it again.
+    blocking(_current, _wanted, event) {
+      (event.target as IDBDatabase).close();
+      if (dbPromise === mine) dbPromise = null;
     },
   });
-  return dbPromise;
+  const mine = Promise.race([opening, blocked]);
+  dbPromise = mine;
+  // Gave up (blocked) or failed: the next call starts over. Opened after giving up: not kept open.
+  mine.catch(() => {
+    if (dbPromise === mine) dbPromise = null;
+  });
+  opening.then(
+    (open) => dbPromise !== mine && open.close(),
+    () => undefined,
+  );
+  return mine;
 }
 
 export const newId = () => crypto.randomUUID();
