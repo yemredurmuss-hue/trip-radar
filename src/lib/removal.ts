@@ -1,9 +1,10 @@
 // "Sil" on a card: the record and its files go at once (one transaction) into the trash (0.37, trash.ts), where
 // they wait 30 days; "Geri al" puts both back exactly as they were, from the copy kept in memory until then,
 // and takes the trash entry out again.
-import { addEvent, db, newId, notifyChanged } from "./db";
+import { addEvent, db, notifyChanged } from "./db";
 import { L } from "./i18n";
-import type { DocRecord, Item, TrashEntry } from "./types";
+import { newTrashEntry } from "./trash";
+import type { DocRecord, Item } from "./types";
 
 export interface Removed {
   item: Item;
@@ -18,14 +19,15 @@ export interface Removed {
  */
 export async function deleteItem(item: Item, event?: string, opts: { trash?: boolean } = {}): Promise<Removed> {
   const d = await db();
-  const tx = d.transaction(["items", "docs", "trash"], "readwrite");
+  const tx = d.transaction(["items", "docs", "trash", "trashData"], "readwrite");
   const stored = await tx.objectStore("items").get(item.id);
   const fresh = stored ?? item;
   const docs = await tx.objectStore("docs").index("itemId").getAll(item.id);
   let trashId: string | undefined;
   if (opts.trash !== false && (stored || docs.length)) {
-    const entry: TrashEntry = { id: newId(), tripId: fresh.tripId, kind: "item", deletedAt: Date.now(), label: fresh.name, payload: { item: fresh, docs } };
+    const { entry, data } = newTrashEntry(fresh.tripId, fresh.name, { kind: "item", item: fresh, docs });
     await tx.objectStore("trash").put(entry);
+    await tx.objectStore("trashData").put(data);
     trashId = entry.id;
   }
   for (const doc of docs) await tx.objectStore("docs").delete(doc.id);
@@ -60,10 +62,13 @@ export function onHidden(listener: (hidden: HiddenByChat) => void): () => void {
 export const announceHidden = (hidden: HiddenByChat) => hiddenListeners.forEach((l) => l(hidden));
 
 export async function restoreItem(removed: Removed): Promise<void> {
-  const tx = (await db()).transaction(["items", "docs", "trash"], "readwrite");
+  const tx = (await db()).transaction(["items", "docs", "trash", "trashData"], "readwrite");
   await tx.objectStore("items").put(removed.item);
   for (const doc of removed.docs) await tx.objectStore("docs").put(doc);
-  if (removed.trashId) await tx.objectStore("trash").delete(removed.trashId);
+  if (removed.trashId) {
+    await tx.objectStore("trash").delete(removed.trashId);
+    await tx.objectStore("trashData").delete(removed.trashId);
+  }
   await tx.done;
   await addEvent(removed.item.tripId, L(`${removed.item.name} geri getirildi`, `${removed.item.name} restored`));
   notifyChanged();

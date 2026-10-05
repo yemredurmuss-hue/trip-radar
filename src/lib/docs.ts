@@ -5,6 +5,7 @@ import { L } from "./i18n";
 import { num } from "./i18nText";
 import { isIdea } from "./booking";
 import { cardKind, isTransportKind } from "./cardKinds";
+import { dropTrash, trashDoc } from "./trash";
 import type { DocKind, DocMeta, DocRecord, Item } from "./types";
 
 /**
@@ -61,18 +62,29 @@ export async function linkDoc(id: string, itemId: string, kind?: DocKind): Promi
   return next;
 }
 
-/** A file deleted from Belgeler, handed back for the 8-second "Geri al". */
+/**
+ * A file deleted by the traveller (Belgeler, a card's file list): to the trash for 30 days (0.37), handed back
+ * for the 8-second "Geri al".
+ */
 export async function takeDoc(id: string): Promise<DocRecord | null> {
-  const doc = await getDoc(id);
-  if (!doc) return null;
-  await deleteDoc(id);
-  return doc;
+  return (await trashDoc(id))?.doc ?? null;
 }
 
-/** "Geri al": the file is back as it was (its card, its kind). */
+/** "Geri al": the file is back as it was (its card, its kind), and out of the trash. */
 export async function restoreDoc(doc: DocRecord): Promise<void> {
   await putDocs([doc]);
+  await dropDocTrash(doc);
   notifyChanged();
+}
+
+/** The trash entry a file went to when it was deleted, gone (the file is back without it). */
+async function dropDocTrash(doc: DocRecord): Promise<void> {
+  const d = await db();
+  for (const entry of await d.getAllFromIndex("trash", "tripId", doc.tripId)) {
+    if (entry.kind !== "doc" || entry.label !== doc.name) continue;
+    const data = await d.get("trashData", entry.id);
+    if (data?.payload.kind === "doc" && data.payload.doc.id === doc.id) await dropTrash(entry.id);
+  }
 }
 
 /** Belgeler's groups, in their order: Uçuş · Konaklama · Ulaşım · Etkinlik · Sigorta · İnternet · Diğer. */
@@ -111,18 +123,24 @@ export async function getDoc(id: string): Promise<DocRecord | undefined> {
   return (await db()).get("docs", id);
 }
 
+/**
+ * Removes a file outright, without the trash: only for the extension's own housekeeping (a dropped picture
+ * kept as a screenshot instead). What the traveller deletes goes through takeDoc.
+ */
 export async function deleteDoc(id: string): Promise<void> {
   await (await db()).delete("docs", id);
   notifyChanged();
 }
 
-/** Removes a card's files and hands them back (kept in memory for "Geri al"). */
+/** Removes a card's files and hands them back (kept in memory for "Geri al"); each waits in the trash too (0.37). */
 export async function takeDocsOf(itemId: string): Promise<DocRecord[]> {
-  const tx = (await db()).transaction("docs", "readwrite");
-  const docs = await tx.store.index("itemId").getAll(itemId);
-  for (const d of docs) await tx.store.delete(d.id);
-  await tx.done;
-  return docs;
+  const ids = await (await db()).getAllKeysFromIndex("docs", "itemId", itemId);
+  const taken: DocRecord[] = [];
+  for (const id of ids) {
+    const doc = await takeDoc(id);
+    if (doc) taken.push(doc);
+  }
+  return taken;
 }
 
 export async function putDocs(docs: DocRecord[]): Promise<void> {

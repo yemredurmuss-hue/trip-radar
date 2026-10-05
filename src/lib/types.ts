@@ -577,10 +577,32 @@ export interface TrashedTrip {
   preferences: Preference[];
 }
 
+/** A deleted file (Belgeler, a card's file list). */
+export interface TrashedDoc {
+  doc: DocRecord;
+}
+
+export type TrashKind = "item" | "trip" | "doc";
+
 /**
- * Çöp kutusu (0.37, trash.ts): a deleted card or trip, kept on this computer for 30 days and brought back in
- * one tap with its own ids.
+ * Çöp kutusu (0.37, trash.ts): a deleted card, file or trip, kept on this computer for 30 days and brought back
+ * in one tap with its own ids. This is the light row the lists read; what it took is in `trashData`.
  */
-export type TrashEntry =
-  | { id: string; tripId: string; kind: "item"; deletedAt: number; label: string; payload: TrashedItem }
-  | { id: string; tripId: string; kind: "trip"; deletedAt: number; label: string; payload: TrashedTrip };
+export interface TrashEntry {
+  id: string;
+  tripId: string;
+  kind: TrashKind;
+  deletedAt: number;
+  label: string;
+  /** About how many bytes it holds (files and records), and how many records. */
+  size: number;
+  count: number;
+}
+
+/** What a trash entry took with it, read only to restore it (or for a backup). */
+export type TrashPayload = ({ kind: "item" } & TrashedItem) | ({ kind: "trip" } & TrashedTrip) | ({ kind: "doc" } & TrashedDoc);
+
+export interface TrashData {
+  id: string;
+  payload: TrashPayload;
+}

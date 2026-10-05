@@ -1,7 +1,7 @@
 // IndexedDB storage shared by the popup, the board page and the service worker (same extension origin).
 import { L } from "./i18n";
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { Analysis, Capture, ChatMessage, DocRecord, Item, Listing, Preference, Settings, TrashEntry, Trip } from "./types";
+import type { Analysis, Capture, ChatMessage, DocRecord, Item, Listing, Preference, Settings, TrashData, TrashEntry, Trip } from "./types";
 
 interface TripRadarDB extends DBSchema {
   trips: { key: string; value: Trip };
@@ -13,8 +13,10 @@ interface TripRadarDB extends DBSchema {
   geocache: { key: string; value: { query: string; lat: number | null; lng: number | null; at: number } };
   listings: { key: string; value: Listing };
   docs: { key: string; value: DocRecord; indexes: { itemId: string; tripId: string } };
-  /** Deleted records, kept 30 days (0.37, trash.ts): a card with its files, or a whole trip. */
+  /** Deleted records, kept 30 days (0.37, trash.ts): a card with its files, a file, or a whole trip. Light rows… */
   trash: { key: string; value: TrashEntry; indexes: { tripId: string; deletedAt: number } };
+  /** …and what each took with it, by the same id (read only to restore it). */
+  trashData: { key: string; value: TrashData };
 }
 
 /** The database's version: 5 added the trash (0.37). */
@@ -54,6 +56,7 @@ export function db(): Promise<TripRadarDb> {
         const trash = d.createObjectStore("trash", { keyPath: "id" });
         trash.createIndex("tripId", "tripId");
         trash.createIndex("deletedAt", "deletedAt");
+        d.createObjectStore("trashData", { keyPath: "id" });
       }
     },
     // An older version (before 0.31 it never lets go: a tab or the worker from before an update) holds
@@ -248,8 +251,21 @@ export async function exportAll(): Promise<string> {
       listings: await d.getAll("listings"),
       docs: (await d.getAll("docs")).map(({ blob: _blob, ...meta }) => meta),
       captures,
+      // Çöp kutusu (0.37): what is in it, with what it holds (files by name, no screenshots).
+      trash: await Promise.all(
+        (await d.getAll("trash")).map(async (entry) => ({ ...entry, payload: backupOf((await d.get("trashData", entry.id))?.payload) })),
+      ),
     },
     null,
     2,
   );
+}
+
+/** A trash entry's contents for the backup: files without their contents, captures without screenshots. */
+function backupOf(payload: TrashData["payload"] | undefined): unknown {
+  if (!payload) return null;
+  const noBlob = ({ blob: _blob, ...meta }: DocRecord) => meta;
+  if (payload.kind === "doc") return { ...payload, doc: noBlob(payload.doc) };
+  if (payload.kind === "item") return { ...payload, docs: payload.docs.map(noBlob) };
+  return { ...payload, docs: payload.docs.map(noBlob), captures: payload.captures.map((c) => ({ ...c, screenshot: null })) };
 }

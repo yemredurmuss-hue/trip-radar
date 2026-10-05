@@ -3,7 +3,7 @@
 // single file can be deleted). Files stay on this computer (see lib/docs.ts).
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { onChanged } from "../../lib/db";
-import { addDoc, deleteDoc, DOC_ACCEPT, docPill, getDoc, listDocMeta, needsDoc, sizeText } from "../../lib/docs";
+import { addDoc, DOC_ACCEPT, docPill, getDoc, listDocMeta, needsDoc, sizeText, takeDoc } from "../../lib/docs";
 import { L } from "../../lib/i18n";
 import { revokeTracked, trackObjectUrl } from "../../lib/objectUrls";
 import type { DocMeta, Item } from "../../lib/types";
@@ -53,7 +53,7 @@ export function DocList({ docs }: { docs: DocMeta[] }) {
           <span className="name">{d.name}</span>
           <span className="size">{sizeText(d.size)}</span>
           <button type="button" onClick={() => void openDoc(d.id)}>{L("Aç", "Open")}</button>
-          <button type="button" className="danger" onClick={() => void deleteDoc(d.id)}>{L("Sil", "Delete")}</button>
+          <button type="button" className="danger" title={L("Çöp kutusuna gider, 30 gün geri getirilebilir", "Goes to the trash; it can be brought back for 30 days")} onClick={() => void takeDoc(d.id)}>{L("Sil", "Delete")}</button>
         </li>
       ))}
     </ul>
