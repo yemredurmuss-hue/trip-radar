@@ -21,6 +21,7 @@ export function Section({ section, open, onToggle, onAdd, children }: {
   const meta = SECTION_META[section.id];
   const label = meta.label();
   const { total, pct, complete } = sectionProgress(section);
+  const ideas = section.ideas;
   const waiting = section.status?.tone === "wait" ? section.status.text : null;
   return (
     <section className={`cat-sec${open ? "" : " closed"}`} style={{ "--c": meta.color } as React.CSSProperties} aria-label={label} data-section={section.id}>
@@ -32,19 +33,25 @@ export function Section({ section, open, onToggle, onAdd, children }: {
           <b>{label}</b>
         </button>
         <span className="cat-end">
-          {open && (
+          {open && meta.templates.length > 0 && (
             <button type="button" className="cat-add" onClick={(e) => { e.stopPropagation(); onAdd(); }} aria-label={L(`${label}: ekle`, `${label}: add`)}>
               <UiIcon name="plus" size={14} />
               {L("Ekle", "Add")}
             </button>
           )}
-          <span className={`cat-bar${complete ? " done" : ""}`} aria-hidden>
-            <span style={{ width: `${pct}%` }} />
-          </span>
-          <span className="cat-count" aria-label={L(`${section.settled} / ${total} tamam`, `${section.settled} of ${total} settled`)}>
-            {section.settled}
-            <i>/{total}</i>
-          </span>
+          {ideas ? (
+            <span className="cat-ideas">{ideaCount(section.id, ideas)}</span>
+          ) : (
+            <>
+              <span className={`cat-bar${complete ? " done" : ""}`} aria-hidden>
+                <span style={{ width: `${pct}%` }} />
+              </span>
+              <span className="cat-count" aria-label={L(`${section.settled} / ${total} tamam`, `${section.settled} of ${total} settled`)}>
+                {section.settled}
+                <i>/{total}</i>
+              </span>
+            </>
+          )}
           <span className="cat-chev" aria-hidden>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
               <path d="M6 9l6 6 6-6" />
@@ -61,4 +68,16 @@ export function Section({ section, open, onToggle, onAdd, children }: {
       )}
     </section>
   );
+}
+
+/**
+ * An idea section's neutral count (0.35.3), never a "3/4": "5 fikir · 2 tanesi bir güne kondu", İlham "4 kayıt".
+ * Done ones join it quietly ("· 1 yapıldı").
+ */
+export function ideaCount(id: CatSection["id"], { total, onDay, done }: NonNullable<CatSection["ideas"]>): string {
+  if (id === "inspo") return L(`${total} kayıt`, `${total} saved`);
+  const parts = [L(`${total} fikir`, `${total} idea${total === 1 ? "" : "s"}`)];
+  if (onDay) parts.push(L(`${onDay} tanesi bir güne kondu`, `${onDay} on a day`));
+  if (done) parts.push(id === "food" ? L(`${done} gidildi`, `${done} visited`) : L(`${done} yapıldı`, `${done} done`));
+  return parts.join(" · ");
 }

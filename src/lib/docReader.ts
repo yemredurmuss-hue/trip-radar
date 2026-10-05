@@ -309,6 +309,7 @@ const SECTION_TO: Record<SectionId, [string, string]> = {
   todo: ["Yapılacak şeyler'e", "Things to do"],
   food: ["Restoranlar'a", "Restaurants"],
   other: ["Diğer'e", "Other"],
+  inspo: ["İlham'a", "Inspiration"],
 };
 
 function whatOf(facts: DocFacts): string {

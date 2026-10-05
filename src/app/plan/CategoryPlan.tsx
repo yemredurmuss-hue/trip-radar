@@ -1,5 +1,5 @@
 // The Plan tab (spec 0.34, docs/mockups/2026-10-05-kategoriler-v4.html): the trip by category — Uçuş,
-// Konaklama, Ulaşım, Etkinlikler, Yapılacak şeyler, Restoranlar, Diğer — each a band of one white sheet that
+// Konaklama, Ulaşım, Etkinlikler, Yapılacak şeyler, Restoranlar, Diğer, İlham (closed, last) — each a band of one white sheet that
 // opens and closes (remembered per trip), with the approved cards in a timeline inside and what's out of the
 // way at its end. A section with nothing in it (and nothing hidden) isn't drawn; it's one chip in the "Ekle"
 // line at the bottom.
@@ -13,7 +13,7 @@ import { Section } from "./Section";
 import { SECTION_META } from "./sectionMeta";
 import { SectionTimeline, type SectionCards } from "./SectionTimeline";
 
-export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd }: {
+export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today }: {
   plan: Plan;
   sections: CatSection[];
   /** Open now: the traveller's choice, else the first look (sectionMeta.useSectionOpen). */
@@ -24,11 +24,13 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
   cards: SectionCards;
   /** Adds in a section (its kind; at a day and city when given), or (null) anything from the plan's head. */
   onAdd: (section: SectionId | null, at: InsertAt | null) => void;
+  today: string;
 }) {
   const n = plan.nights;
   const parts = [n.booked && L(`${n.booked} rezerve`, `${n.booked} booked`), n.chosen && L(`${n.chosen} seçildi`, `${n.chosen} chosen`), n.open && L(`${n.open} açık`, `${n.open} open`)].filter(Boolean);
   const shown = sections.filter((s) => s.entries.length || s.hidden.length);
-  const empty = sections.filter((s) => !s.entries.length && !s.hidden.length);
+  // İlham fills by sending links (a Reel, a pin), never by hand: no "Ekle" chip for it.
+  const empty = sections.filter((s) => !s.entries.length && !s.hidden.length && SECTION_META[s.id].templates.length > 0);
   return (
     <div className="section trip-plan cat-plan">
       <div className="section-head">
@@ -47,7 +49,7 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
             const opened = isOpen(s);
             return (
               <Section key={s.id} section={s} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)}>
-                <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(sectionOfItem(item), true)} />
+                <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(sectionOfItem(item), true)} today={today} />
               </Section>
             );
           })}

@@ -8,9 +8,10 @@ import { isoDate } from "../../lib/items";
 import type { Plan } from "../../lib/plan";
 import type { Item, MealSlot } from "../../lib/types";
 
-export function DayButton({ item, plan }: { item: Item; plan: Pick<Plan, "range" | "stayBlocks"> }) {
+/** `pooled`: its day has gone by without "Yaptım" (back in the pool): "+ Güne ekle" again, not the old day. */
+export function DayButton({ item, plan, pooled = false }: { item: Item; plan: Pick<Plan, "range" | "stayBlocks">; pooled?: boolean }) {
   const [open, setOpen] = useState(false);
-  const chip = dayChip(item);
+  const chip = pooled ? null : dayChip(item);
   const days = dayChoices(plan);
   useEffect(() => {
     if (!open) return;

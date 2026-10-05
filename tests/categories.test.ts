@@ -3,9 +3,10 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { loadDecisions } from "../src/lib/analysis";
-import { categorize, catDomKey, findInSections, planProgress, sectionOfItem, sectionProgress, sectionStatus, SECTION_ORDER, type CatSection } from "../src/lib/categories";
+import { categorize, catDomKey, findInSections, isIdeaSection, planProgress, sectionOfItem, sectionProgress, sectionStatus, SECTION_ORDER, type CatSection } from "../src/lib/categories";
 import { db, listItems } from "../src/lib/db";
 import { loadDemoTrip } from "../src/lib/demo";
+import { ideaGroups } from "../src/lib/ideaList";
 import { buildLegs } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
 import { plannedItem, type PlannedInput } from "../src/lib/planned";
@@ -25,12 +26,13 @@ const stay = (name: string, start: string, end: string, city: string, status: It
 const flight = (name: string, from: string, to: string, day: string, status: Item["status"], at = "09:00") =>
   makeItem({ name, category: "flight", needKey: `flight:${from}-${to}`.toLowerCase(), city: to, dates: { start: day, end: null, source: "page" }, status, flight: { from, to, departure: `${day}T${at}`, arrival: `${day}T12:00`, carrier: null, flightNumber: null, stops: 0 } });
 
-function sectionsOf(items: Item[], t: Trip = trip): { sections: CatSection[]; legs: ReturnType<typeof buildLegs> } {
+/** `today`: before the trip unless a test says otherwise, so a day never goes by on its own. */
+function sectionsOf(items: Item[], t: Trip = trip, today = "2026-10-01"): { sections: CatSection[]; legs: ReturnType<typeof buildLegs>; plan: ReturnType<typeof buildPlan> } {
   const plan = buildPlan(t, items);
   const legs = buildLegs(plan, t);
   const hidden = new Set(t.hidden ?? []);
   const timeline = buildTimeline(plan, legs, items, hidden);
-  return { sections: categorize({ plan, timeline, items, legs, hidden }), legs };
+  return { sections: categorize({ plan, timeline, items, legs, hidden, today }), legs, plan };
 }
 const names = (sections: CatSection[]) =>
   Object.fromEntries(sections.filter((s) => s.entries.length).map((s) => [s.id, s.entries.map((e) => e.row.name)]));
@@ -200,10 +202,15 @@ describe("sections from what's saved and said", () => {
       said({ kind: "todo", date: null, city: "Porto", title: "Elendi" }, { status: "dismissed", booking: "none" }),
     ]).sections;
     expect(names(more).todo).toEqual(["Pazar", "Gün batımı", "Yapıldı bile"]);
-    expect(todo.status).toEqual({ text: "1 güne eklenmedi", tone: "wait" });
-    expect(todo.entries.map((e) => e.row.status)).toEqual(["Güne eklendi", "Güne eklenmedi"]);
+    // An idea without a day isn't waiting for anything: no amber line, a neutral count instead (0.35.3).
+    expect(todo.status).toBeNull();
+    expect(todo.ideas).toEqual({ total: 2, onDay: 1, done: 0 });
+    expect(todo.open).toBe(true);
+    expect(todo.entries.map((e) => e.row.status)).toEqual(["Güne eklendi", "Fikir"]);
     const food = sections.find((s) => s.id === "food")!;
-    expect(food.status).toEqual({ text: "1 rezerve edilmedi · 1 güne eklenmedi", tone: "wait" });
+    // A table picked and not booked is still waiting; a restaurant with no day isn't.
+    expect(food.status).toEqual({ text: "1 rezerve edilmedi", tone: "wait" });
+    expect(food.ideas).toEqual({ total: 2, onDay: 1, done: 0 });
     expectEachOnce(sections, items);
   });
 
@@ -441,13 +448,69 @@ describe("the header's bar", () => {
     const id = await loadDemoTrip();
     const t = (await (await db()).get("trips", id))!;
     const { sections } = sectionsOf(await listItems(id), t);
-    const sum = sections.reduce((a, s) => ({ settled: a.settled + sectionProgress(s).settled, total: a.total + sectionProgress(s).total }), { settled: 0, total: 0 });
+    const sum = sections.filter((s) => !isIdeaSection(s.id)).reduce((a, s) => ({ settled: a.settled + sectionProgress(s).settled, total: a.total + sectionProgress(s).total }), { settled: 0, total: 0 });
     const all = planProgress(sections);
     expect(all).toMatchObject(sum);
     expect(all.total).toBeGreaterThan(0);
     expect(all.pct).toBe(Math.round((sum.settled / sum.total) * 100));
     expect(planProgress([])).toEqual({ settled: 0, total: 0, pct: 0, complete: false });
-    const of = (settled: number, total: number) => ({ settled, entries: Array.from({ length: total }) as CatSection["entries"] });
+    const of = (settled: number, total: number, id: CatSection["id"] = "stay") => ({ id, settled, entries: Array.from({ length: total }) as CatSection["entries"] });
     expect(planProgress([of(1, 1), of(2, 2)])).toEqual({ settled: 3, total: 3, pct: 100, complete: true });
+    // The ideas aren't work waiting: things to do, restaurants and İlham stay out of "x/y onaylandı".
+    expect(planProgress([of(1, 2), of(0, 5, "todo"), of(1, 4, "food"), of(0, 3, "inspo")])).toEqual({ settled: 1, total: 2, pct: 50, complete: false });
+  });
+});
+
+describe("the ideas as a list by city (0.35.3)", () => {
+  const base = [stay("Jardim Stay", "2026-10-08", "2026-10-11", "Porto"), stay("Lisboa Loft", "2026-10-11", "2026-10-14", "Lizbon", "chosen")];
+  const todo = (title: string, city: string, date: string | null, over: Partial<Item> = {}) => said({ kind: "todo", date, city, title }, { status: "saved", booking: "none", ...over });
+  const listOf = (items: Item[], today: string) => {
+    const { sections, plan } = sectionsOf(items, trip, today);
+    const section = sections.find((s) => s.id === "todo")!;
+    return { section, groups: ideaGroups(section.entries, plan, today) };
+  };
+  const shape = (groups: ReturnType<typeof ideaGroups>) => groups.map((g) => [g.kind === "city" ? g.city : g.kind, g.rows.map((r) => r.item?.name)]);
+
+  it("before the trip: the trip's cities in order, what's on a day first in each", () => {
+    const items = [...base, todo("Lizbon tramvay", "Lizbon", null), todo("Gün batımı", "Porto", null), todo("Pazar", "Porto", "2026-10-09")];
+    expect(shape(listOf(items, "2026-10-01").groups)).toEqual([["Porto", ["Pazar", "Gün batımı"]], ["Lizbon", ["Lizbon tramvay"]]]);
+  });
+
+  it("a day gone by without Yaptım: back in its city's pool, saying which day (the record keeps its day)", () => {
+    const pazar = todo("Pazar", "Porto", "2026-10-09");
+    const { section, groups } = listOf([...base, pazar, todo("Gün batımı", "Porto", null)], "2026-10-10");
+    const row = groups.flatMap((g) => g.rows).find((r) => r.item?.name === "Pazar")!;
+    expect(row).toMatchObject({ day: null, returned: "2026-10-09" });
+    expect(row.item!.dates.start).toBe("2026-10-09");
+    expect(section.ideas).toEqual({ total: 2, onDay: 0, done: 0 });
+    // Done: it goes to "Yapılanlar" at the end instead, and never back to the pool.
+    const done = listOf([...base, { ...pazar, doneAt: 5 }, todo("Gün batımı", "Porto", null)], "2026-10-10");
+    expect(shape(done.groups)).toEqual([["Porto", ["Gün batımı"]], ["done", ["Pazar"]]]);
+    expect(done.section.ideas).toEqual({ total: 2, onDay: 0, done: 1 });
+  });
+
+  it("during the trip: Bugün first, then where you sleep tonight, then the others", () => {
+    const items = [...base, todo("Gün batımı", "Porto", null), todo("Tramvay 28", "Lizbon", null), todo("Alfama", "Lizbon", "2026-10-12"), todo("Belém", "Lizbon", "2026-10-13")];
+    const { groups } = listOf(items, "2026-10-12");
+    expect(shape(groups)).toEqual([["today", ["Alfama"]], ["Lizbon", ["Belém", "Tramvay 28"]], ["Porto", ["Gün batımı"]]]);
+    expect(groups[1].here).toBe(true);
+  });
+
+  it("a Reel, a pin, a video or a blog of a thing to do is İlham, until it's put on a day; a restaurant stays a restaurant", () => {
+    const reel = todo("Ribeira gün batımı", "Porto", null, { url: "https://www.instagram.com/reel/abc/", category: "activity" });
+    expect(sectionOfItem(reel)).toBe("inspo");
+    expect(sectionOfItem({ ...reel, url: "https://pin.it/x1" })).toBe("inspo");
+    expect(sectionOfItem({ ...reel, url: "https://youtu.be/x1" })).toBe("inspo");
+    expect(sectionOfItem({ ...reel, url: "https://seyahat.example.com/blog/porto-rehberi" })).toBe("inspo");
+    expect(sectionOfItem({ ...reel, url: "https://maps.app.goo.gl/x1" })).toBe("todo");
+    expect(sectionOfItem({ ...reel, dates: { start: "2026-10-09", end: null, source: "user" } })).toBe("todo");
+    expect(sectionOfItem(said({ kind: "food", date: null, city: "Porto", title: "Cafe Santiago" }, { url: "https://www.instagram.com/reel/def/" }))).toBe("food");
+    // Closed at first, counted as saved, never in the hero's "x/y".
+    const { sections } = sectionsOf([...base, reel]);
+    const inspo = sections.find((s) => s.id === "inspo")!;
+    expect(inspo.entries.map((e) => e.row.name)).toEqual(["Ribeira gün batımı"]);
+    expect(inspo.open).toBe(false);
+    expect(inspo.status).toBeNull();
+    expect(planProgress(sections).total).toBe(planProgress(sections.filter((s) => s.id !== "inspo")).total);
   });
 });

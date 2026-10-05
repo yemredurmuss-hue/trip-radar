@@ -162,6 +162,17 @@ export function dayChip(item: Item): string | null {
   return item.meal ? `${shortDay(d)} ${mealLabel(item.meal)}` : shortDay(d);
 }
 
+/**
+ * Where an idea stands today (0.35.3): its day while that's still ahead (or it's done, or a table is booked);
+ * a day gone by without "Yaptım" puts it back in its city's pool — `returned` says which day it was on. Shown,
+ * never written: the record keeps its day.
+ */
+export function ideaDay(item: Item, today: string): { day: string | null; returned: string | null } {
+  const day = isoDate(item.dates.start);
+  if (!day || item.doneAt || item.status === "booked" || day >= today) return { day, returned: null };
+  return { day: null, returned: day };
+}
+
 /** "Yapıldı · 12 Eki" */
 export const doneText = (item: Item): string | null =>
   item.doneAt ? L(`Yapıldı · ${shortDay(new Date(item.doneAt).toISOString().slice(0, 10))}`, `Done · ${shortDay(new Date(item.doneAt).toISOString().slice(0, 10))}`) : null;

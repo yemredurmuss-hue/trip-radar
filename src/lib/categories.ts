@@ -10,7 +10,8 @@ import { isIdea, needsBooking } from "./booking";
 import { legTransportMode, TICKET_MODES, transportMode } from "./cardKinds";
 import { L } from "./i18n";
 import { nNights } from "./i18nText";
-import { shortDay } from "./ideas";
+import { ideaDay, shortDay } from "./ideas";
+import { isInspiration } from "./inspo";
 import { formatDateRange, isoDate } from "./items";
 import { legItem, legShortTitle, type Leg } from "./legs";
 import { cityKeyOf, departureDay, sameCity, type DateRange, type OptionGroup, type Plan } from "./plan";
@@ -19,8 +20,14 @@ import { isPrep } from "./prep";
 import { isInsurance, isPaperwork, itemText } from "./travelKinds";
 import type { Item } from "./types";
 
-export type SectionId = "flight" | "stay" | "transport" | "activity" | "todo" | "food" | "other";
-export const SECTION_ORDER: readonly SectionId[] = ["flight", "stay", "transport", "activity", "todo", "food", "other"];
+export type SectionId = "flight" | "stay" | "transport" | "activity" | "todo" | "food" | "other" | "inspo";
+export const SECTION_ORDER: readonly SectionId[] = ["flight", "stay", "transport", "activity", "todo", "food", "other", "inspo"];
+/**
+ * The ideas (0.35.3): things to do, restaurants, İlham. A list to pick from, not work waiting: no "3/4", no
+ * "güne eklenmedi", and never in the hero's "x/y onaylandı".
+ */
+export const IDEA_SECTIONS: readonly SectionId[] = ["todo", "food", "inspo"];
+export const isIdeaSection = (id: SectionId): boolean => IDEA_SECTIONS.includes(id);
 
 /** Where a block stands: settled, chosen but not bought, options to pick from, nothing yet, an idea with no day. */
 export type EntryState = "done" | "book" | "decide" | "empty" | "unscheduled";
@@ -96,6 +103,11 @@ export interface CatSection {
    * They are in `entries` (counted, found) but not in `days`. Empty in every other section.
    */
   prep: CatEntry[];
+  /**
+   * An idea section's header (todo, food, İlham): "5 fikir · 2 tanesi bir güne kondu" — how many, how many on
+   * a day still ahead (a day gone by without "Yaptım" doesn't count), how many done. Null elsewhere.
+   */
+  ideas: { total: number; onDay: number; done: number } | null;
 }
 
 /**
@@ -130,9 +142,11 @@ export function sectionOfItem(item: Item): SectionId {
       return "food";
     case "activity":
       if (isPaperwork(item)) return "other";
+      if (isInspiration(item)) return "inspo";
       return needsBooking(item) ? "activity" : isPrep(item) ? "other" : "todo";
     default:
       if (isPaperwork(item) || isInsurance(item) || /\besim\b|e-sim|sim kart/i.test(itemText(item))) return "other";
+      if (isInspiration(item)) return "inspo";
       // A chore before the trip goes to Diğer's Hazırlık list, never to the things to do there (0.34.6 §3).
       return needsBooking(item) ? "activity" : isPrep(item) ? "other" : "todo";
   }
@@ -376,7 +390,8 @@ function rowStatus(section: SectionId, state: EntryState, items: Item[], options
     case "empty":
       return { status: section === "stay" ? L("Boş", "Empty") : section === "flight" ? L("Eklenmedi", "Not added") : L("Planlanmadı", "Not planned"), ok: false };
     case "unscheduled":
-      return { status: L("Güne eklenmedi", "No day yet"), ok: false };
+      // An idea without a day is just an idea (0.35.3), nothing missing.
+      return { status: L("Fikir", "Idea"), ok: true };
   }
 }
 
@@ -453,6 +468,8 @@ export interface CategorizeInput {
   hidden?: Set<string>;
   /** Each option's place in its decision (useDecisions), so a row names the option its card shows first. */
   rank?: Ranking;
+  /** Today (YYYY-MM-DD): an idea whose day has gone by without "Yaptım" is back in its city's pool. */
+  today?: string;
 }
 
 /**
@@ -460,7 +477,7 @@ export interface CategorizeInput {
  * then what has no block: options with no day (another flight, a stay outside the dates, an eSIM), what
  * needs booking without a block of its own, and the ideas. A record already drawn is never drawn twice.
  */
-export function categorize({ plan, timeline, items, legs = [], hidden = new Set(), rank = new Map() }: CategorizeInput): CatSection[] {
+export function categorize({ plan, timeline, items, legs = [], hidden = new Set(), rank = new Map(), today = new Date().toISOString().slice(0, 10) }: CategorizeInput): CatSection[] {
   const drafts: Draft[] = [];
   const drawn = new Set<string>();
   const closed = new Set(plan.closed.map((c) => c.item.id));
@@ -561,7 +578,7 @@ export function categorize({ plan, timeline, items, legs = [], hidden = new Set(
 
   const entries = drafts.map((d, i) => finish(d, i, rank));
   const out = hiddenThings({ plan, timeline, items, legs, hidden });
-  return SECTION_ORDER.map((id) => sectionOf(id, entries.filter((e) => e.section === id), plan, out.filter((h) => h.section === id)));
+  return SECTION_ORDER.map((id) => sectionOf(id, entries.filter((e) => e.section === id), plan, out.filter((h) => h.section === id), today));
 }
 
 /**
@@ -670,11 +687,14 @@ export function sectionStatus(id: SectionId, entries: CatEntry[]): CatSection["s
     if (tickets) parts.push(L(`${tickets} bilet yok`, `${tickets} without a ticket`));
     if (rest) parts.push(id === "other" ? L(`${rest} satın alınmadı`, `${rest} not bought`) : L(`${rest} rezerve edilmedi`, `${rest} not booked`));
   }
-  const decide = n("decide");
+  // A restaurant not picked yet is an idea like the rest; one picked and not booked is still waiting.
+  const decide = isIdeaSection(id) ? 0 : n("decide");
   const later = n("unscheduled");
   if (decide) parts.push(parts.length || later ? L(`${decide} karar`, `${decide} to decide`) : L(`${decide} karar bekliyor`, `${decide} to decide`));
-  if (later) parts.push(L(`${later} güne eklenmedi`, `${later} without a day`));
+  // An idea without a day isn't waiting for anything (0.35.3): never "güne eklenmedi".
+  if (later && !isIdeaSection(id)) parts.push(L(`${later} güne eklenmedi`, `${later} without a day`));
   if (parts.length) return { text: parts.join(" · "), tone: "wait" };
+  if (isIdeaSection(id)) return null; // the header says "5 fikir · 2 tanesi bir güne kondu" instead
   const done = entries.length;
   return {
     text: id === "todo" || id === "food" ? L(`✓ ${done} planlandı`, `✓ ${done} planned`) : L(`✓ ${done} alındı`, `✓ ${done} booked`),
@@ -682,20 +702,35 @@ export function sectionStatus(id: SectionId, entries: CatEntry[]): CatSection["s
   };
 }
 
-/** The record an entry stands for, when it is one record (a chore is). */
-const recordOf = (e: CatEntry): Item | null => (e.piece.kind === "item" ? e.piece.item : e.piece.kind === "entry" && e.piece.entry.kind === "event" ? e.piece.entry.item : null);
+/** The record an entry stands for, when it is one record (a chore, an idea, a restaurant with a time). */
+export const recordOf = (e: CatEntry): Item | null => (e.piece.kind === "item" ? e.piece.item : e.piece.kind === "entry" && e.piece.entry.kind === "event" ? e.piece.entry.item : null);
 /** One of Diğer's chores: a record there that needs no booking (insurance, a visa, an eSIM are bought). */
 const isPrepEntry = (e: CatEntry): boolean => {
   const item = recordOf(e);
   return e.section === "other" && item != null && isIdea(item);
 };
 
-function sectionOf(id: SectionId, list: CatEntry[], plan: Plan, hidden: HiddenThing[]): CatSection {
+function sectionOf(id: SectionId, list: CatEntry[], plan: Plan, hidden: HiddenThing[], today: string): CatSection {
   const entries = sortEntries(list, plan);
   const prep = entries.filter(isPrepEntry);
   const rest = prep.length ? entries.filter((e) => !prep.includes(e)) : entries;
   const status = withPrep(sectionStatus(id, rest), prep);
-  return { id, entries, days: daysOf(rest, plan), status, settled: entries.filter((e) => e.state === "done").length, open: status?.tone === "wait", hidden, prep };
+  const ideas = isIdeaSection(id) ? ideaTally(entries, today) : null;
+  // Things to do and restaurants open while there are any (a list to use, on the road too); İlham waits closed.
+  const open = id === "inspo" ? false : ideas ? entries.length > 0 : status?.tone === "wait";
+  return { id, entries, days: daysOf(rest, plan), status, settled: entries.filter((e) => e.state === "done").length, open, hidden, prep, ideas };
+}
+
+/** "5 fikir · 2 tanesi bir güne kondu · 1 yapıldı": on a day means a day still ahead (or a booked table). */
+function ideaTally(entries: CatEntry[], today: string): CatSection["ideas"] {
+  let onDay = 0;
+  let done = 0;
+  for (const e of entries) {
+    const item = recordOf(e);
+    if (item?.doneAt) done++;
+    else if (item ? ideaDay(item, today).day : e.date) onDay++;
+  }
+  return { total: entries.length, onDay, done };
 }
 
 /** "1 satın alınmadı · 2 hazırlık": the chores not ticked yet join the line; all ticked, they add to "✓ N alındı" silently. */
@@ -715,12 +750,14 @@ export function sectionProgress(section: Pick<CatSection, "settled" | "entries">
 
 /**
  * The whole plan's progress for the hero (v9 "Rezervasyonların"): the sections' "3/4"s added up, so the hero
- * and the section headers always say the same thing.
+ * and the section headers always say the same thing. The ideas (things to do, restaurants, İlham) have no
+ * "3/4" and aren't in it: only what gets booked or arranged is.
  */
-export function planProgress(sections: Pick<CatSection, "settled" | "entries">[]): { settled: number; total: number; pct: number; complete: boolean } {
+export function planProgress(sections: Pick<CatSection, "id" | "settled" | "entries">[]): { settled: number; total: number; pct: number; complete: boolean } {
+  const work = sections.filter((s) => !isIdeaSection(s.id));
   return sectionProgress({
-    settled: sections.reduce((n, s) => n + s.settled, 0),
-    entries: sections.flatMap((s) => s.entries),
+    settled: work.reduce((n, s) => n + s.settled, 0),
+    entries: work.flatMap((s) => s.entries),
   });
 }
 

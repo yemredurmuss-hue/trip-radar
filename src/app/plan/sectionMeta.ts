@@ -1,4 +1,4 @@
-// The seven sections' look and what "+ Ekle" adds in each (spec 0.34 §Bölüm kabuğu): colour, icon, name, and
+// The eight sections' look and what "+ Ekle" adds in each (spec 0.34 §Bölüm kabuğu): colour, icon, name, and
 // the template tiles of that kind. One tile adds at once (instant add, 0.33); more open the sheet with only those.
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CardKind } from "../../lib/cardKinds";
@@ -8,7 +8,7 @@ import type { TemplateId } from "../../lib/templates";
 
 export interface SectionMeta {
   color: string;
-  icon: CardKind;
+  icon: CardKind | "inspo";
   label: () => string;
   /** The empty section's chip at the bottom ("+ Restoran"). */
   short: () => string;
@@ -29,6 +29,8 @@ export const SECTION_META: Record<SectionId, SectionMeta> = {
   todo: { color: "#5d8a1c", icon: "todo", label: () => L("Yapılacak şeyler", "Things to do"), short: () => L("Yapılacak", "To-do"), templates: ["todo"] },
   food: { color: "#b4532a", icon: "food", label: () => L("Restoranlar", "Restaurants"), short: () => L("Restoran", "Restaurant"), templates: ["food"] },
   other: { color: "#3b6fd1", icon: "insurance", label: () => L("Diğer · sigorta ve internet", "Other · insurance and internet"), short: () => L("Sigorta · eSIM", "Insurance · eSIM"), templates: ["esim", "insurance"] },
+  // Saved by sending a link (a Reel, a pin, a video, a blog), never added by hand: no template, no "Ekle" chip.
+  inspo: { color: "#8a5cc7", icon: "inspo", label: () => L("İlham", "Inspiration"), short: () => L("İlham", "Inspiration"), templates: [] },
 };
 
 const storeKey = (tripId: string) => `trip-radar:plan-sections:${tripId}`;

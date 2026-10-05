@@ -63,6 +63,7 @@ const PLAN_SECTION_NAMES: Record<SectionId, string> = {
   todo: "Yapılacak şeyler / Things to do (no booking)",
   food: "Restoranlar / Restaurants",
   other: "Diğer / Other (insurance, visa, eSIM; chores in its Hazırlık / Prep list)",
+  inspo: "İlham / Inspiration (a Reel, pin, video or blog saved to look at; put on a day it becomes a thing to do)",
 };
 
 const SYSTEM = `Sen kullanıcının seyahat arkadaşı ve karar asistanısın. Kullanıcı seçeneklerini (otel, uçuş, etkinlik, restoran, eSIM) kendisi kaydeder; sen arama yapmazsın, kaydedilenler üzerinden karar vermesine yardım edersin. Son kararı her zaman kullanıcı verir.
