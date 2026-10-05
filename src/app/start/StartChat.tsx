@@ -14,6 +14,8 @@ import { ArrowUp, Back, HeroIcon } from "../Icons";
 import { Checklist, ChecklistBar, GenerateCard } from "./Checklist";
 import { Generating } from "./Generating";
 import { modelAvailable, proposeRoute, readMessage } from "./model";
+// The suggestions' review as the generating screen's last step (registered through startHooks).
+import "./registerReview";
 
 interface Props {
   /** The interview to go on with (a new one, or a draft's). */
@@ -265,7 +267,6 @@ export function StartChat({ initial, firstText, firstLabel, ctx, onClose, onCrea
         {generating ? (
           <Generating
             state={state}
-            myName={ctx.myName}
             onTripId={(tripId) => commit({ ...live.current, tripId })}
             onFinished={(tripId) => {
               forget();

@@ -3,12 +3,12 @@
 import { describe, expect, it } from "vitest";
 import { setLang } from "../src/lib/i18n";
 import {
-  acceptExtraction, acceptRoute, addMonths, applyAnswer, applyText, askAgain, canGenerate, checklist, creationOf, dative, endOf,
+  acceptExtraction, acceptRoute, countryCodeOfName, isPlaceholder, placeholderPrint, placeOf, startLead, addMonths, applyAnswer, applyText, askAgain, canGenerate, checklist, creationOf, dative, endOf,
   EMPTY_EXTRACTED, guessOrigin, guideSteps, guideVisible, historyRows, mergeExtracted, monthOf, newStart, nextDate, nextQuestion,
   parseRouteText, parseStartText, peopleCount, progressOf, questionOf, replyText, singleRoute, skip, totalNights, tripNamedIn,
   wantsRouteAdvice, weekendStart, whenText, type RawExtraction, type StartCtx, type StartState,
 } from "../src/lib/startTrip";
-import type { Trip } from "../src/lib/types";
+import type { Item, Trip } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
 setLang("tr");
@@ -20,7 +20,7 @@ const typed = (s: StartState, text: string, model: RawExtraction | null = null) 
 
 const rawModel = (over: Partial<RawExtraction> = {}): RawExtraction => ({
   destination: "", destination_country: "", origin: "", companions: "", names: [], start_date: "", start_month: 0,
-  duration_days: 0, duration_months: 0, styles: [], budget: "", ...over,
+  duration_days: 0, duration_months: 0, styles: [], budget: "", destination_country_code: "", ...over,
 });
 
 describe("dates and lengths", () => {
@@ -59,7 +59,7 @@ describe("dates and lengths", () => {
 describe("reading a message without the model (the no-key path, item 6)", () => {
   it("\"Sabine'yle 10 Aralık'tan 1 ay Bali\": who, start, length and where in one go", () => {
     const e = parseStartText("Sabine'yle 10 Aralık'tan 1 ay Bali", TODAY);
-    expect(e.where).toEqual({ place: "Bali", country: "Endonezya" });
+    expect(e.where).toEqual({ place: "Bali", country: "Endonezya", code: "ID" });
     expect(e.who).toEqual({ kind: null, names: ["Sabine"] });
     expect(e.start).toEqual({ date: "2026-12-10", approx: false });
     expect(e.duration).toEqual({ unit: "month", n: 1 });
@@ -115,7 +115,7 @@ describe("reading a message with the model (strict shape, checked)", () => {
     const merged = mergeExtracted(code, model);
     expect(merged.start?.date).toBe("2026-12-10");
     expect(merged.duration).toEqual({ unit: "month", n: 1 });
-    expect(merged.where).toEqual({ place: "Ubud", country: "Endonezya" });
+    expect(merged.where).toEqual({ place: "Ubud", country: "Endonezya", code: "ID" });
     expect(merged.who?.names).toEqual(["Sabine"]);
   });
 });
@@ -219,13 +219,13 @@ describe("the route (item 1)", () => {
     return applyAnswer(s, { q: "want", styles: [], budget: null }, 2);
   };
   it("the model's route is kept only when it holds", () => {
-    expect(acceptRoute({ stops: [{ city: "Ubud", nights: 12 }, { city: "Canggu", nights: 10 }, { city: "Uluwatu", nights: 9 }], arrival_airport_city: "Denpasar", departure_airport_city: "Denpasar" }, 31))
+    expect(acceptRoute({ stops: [{ city: "Ubud", nights: 12, country_code: "" }, { city: "Canggu", nights: 10, country_code: "" }, { city: "Uluwatu", nights: 9, country_code: "" }], arrival_airport_city: "Denpasar", departure_airport_city: "Denpasar" }, 31))
       .toEqual({ stops: [{ city: "Ubud", nights: 12 }, { city: "Canggu", nights: 10 }, { city: "Uluwatu", nights: 9 }], arrive: "Denpasar", leave: "Denpasar", confirmed: false, source: "ai" });
-    expect(acceptRoute({ stops: [{ city: "Ubud", nights: 12 }, { city: "Canggu", nights: 10 }], arrival_airport_city: "", departure_airport_city: "" }, 31)).toBeNull(); // 22 ≠ 31
-    expect(acceptRoute({ stops: [{ city: "Ubud", nights: 31.5 }], arrival_airport_city: "", departure_airport_city: "" }, 31)).toBeNull();
-    expect(acceptRoute({ stops: [{ city: "Ubud", nights: 20 }, { city: "ubud", nights: 11 }], arrival_airport_city: "", departure_airport_city: "" }, 31)).toBeNull();
-    expect(acceptRoute({ stops: [{ city: "1) Ubud!!", nights: 31 }], arrival_airport_city: "", departure_airport_city: "" }, 31)).toBeNull();
-    expect(acceptRoute({ stops: Array.from({ length: 5 }, (_, i) => ({ city: `Yer${"abcde"[i]}`, nights: i === 0 ? 27 : 1 })), arrival_airport_city: "", departure_airport_city: "" }, 31)).toBeNull();
+    expect(acceptRoute({ stops: [{ city: "Ubud", nights: 12, country_code: "" }, { city: "Canggu", nights: 10, country_code: "" }], arrival_airport_city: "", departure_airport_city: "" }, 31)).toBeNull(); // 22 ≠ 31
+    expect(acceptRoute({ stops: [{ city: "Ubud", nights: 31.5, country_code: "" }], arrival_airport_city: "", departure_airport_city: "" }, 31)).toBeNull();
+    expect(acceptRoute({ stops: [{ city: "Ubud", nights: 20, country_code: "" }, { city: "ubud", nights: 11, country_code: "" }], arrival_airport_city: "", departure_airport_city: "" }, 31)).toBeNull();
+    expect(acceptRoute({ stops: [{ city: "1) Ubud!!", nights: 31, country_code: "" }], arrival_airport_city: "", departure_airport_city: "" }, 31)).toBeNull();
+    expect(acceptRoute({ stops: Array.from({ length: 5 }, (_, i) => ({ city: `Yer${"abcde"[i]}`, nights: i === 0 ? 27 : 1, country_code: "" })), arrival_airport_city: "", departure_airport_city: "" }, 31)).toBeNull();
   });
   it("short trips and single cities are one stop; a long trip to an island asks the model", () => {
     expect(wantsRouteAdvice(ready())).toBe(true);
@@ -236,7 +236,7 @@ describe("the route (item 1)", () => {
     expect(singleRoute(short)?.stops).toEqual([{ city: "Bali", nights: 2 }]);
   });
   it("Bu olsun confirms it; Değiştir takes the stops in words; a new length drops a route made for another", () => {
-    const route = acceptRoute({ stops: [{ city: "Ubud", nights: 12 }, { city: "Canggu", nights: 19 }], arrival_airport_city: "Denpasar", departure_airport_city: "" }, 31)!;
+    const route = acceptRoute({ stops: [{ city: "Ubud", nights: 12, country_code: "" }, { city: "Canggu", nights: 19, country_code: "" }], arrival_airport_city: "Denpasar", departure_airport_city: "" }, 31)!;
     const s = { ...ready(), route };
     expect(questionOf(s, "route", ctx).text).toBe("Rota önerim: Ubud 12 · Canggu 19 gece. Bu olsun mu?");
     const ok = applyAnswer(s, { q: "route", action: "accept" }, 3);
@@ -259,8 +259,8 @@ describe("what gets made", () => {
     return applyAnswer(s, { q: "want", styles: ["nature", "beach"], budget: "mid" }, 2);
   };
   it("an unconfirmed route is built as one stop for all the nights", () => {
-    const route = acceptRoute({ stops: [{ city: "Ubud", nights: 12 }, { city: "Canggu", nights: 19 }], arrival_airport_city: "Denpasar", departure_airport_city: "Denpasar" }, 31)!;
-    const c = creationOf({ ...base(), route }, { myName: null })!;
+    const route = acceptRoute({ stops: [{ city: "Ubud", nights: 12, country_code: "" }, { city: "Canggu", nights: 19, country_code: "" }], arrival_airport_city: "Denpasar", departure_airport_city: "Denpasar" }, 31)!;
+    const c = creationOf({ ...base(), route })!;
     expect(c.stays.map((x) => [x.city, x.date, x.end_date])).toEqual([["Bali", "2026-12-10", "2027-01-10"]]);
     expect(c.travel.map((x) => [x.kind, x.date, x.from, x.to])).toEqual([
       ["flight", "2026-12-10", "İstanbul", "Bali"],
@@ -268,8 +268,8 @@ describe("what gets made", () => {
     ]);
   });
   it("a confirmed route: the nights split in order; the flights land where the route says", () => {
-    const route = acceptRoute({ stops: [{ city: "Ubud", nights: 12 }, { city: "Canggu", nights: 10 }, { city: "Uluwatu", nights: 9 }], arrival_airport_city: "Denpasar", departure_airport_city: "Denpasar" }, 31)!;
-    const c = creationOf({ ...base(), route: { ...route, confirmed: true } }, { myName: "Emre" })!;
+    const route = acceptRoute({ stops: [{ city: "Ubud", nights: 12, country_code: "" }, { city: "Canggu", nights: 10, country_code: "" }, { city: "Uluwatu", nights: 9, country_code: "" }], arrival_airport_city: "Denpasar", departure_airport_city: "Denpasar" }, 31)!;
+    const c = creationOf({ ...base(), route: { ...route, confirmed: true } })!;
     expect(c.title).toBe("Bali Gezisi");
     expect(c.dates).toEqual({ start: "2026-12-10", end: "2027-01-10" });
     expect(c.stays.map((x) => [x.city, x.date, x.end_date])).toEqual([
@@ -278,19 +278,29 @@ describe("what gets made", () => {
       ["Uluwatu", "2027-01-01", "2027-01-10"],
     ]);
     expect(c.travel.map((x) => `${x.from}→${x.to}`)).toEqual(["İstanbul→Denpasar", "Denpasar→İstanbul"]);
-    expect(c.people).toBe(2);
-    expect(c.notes).toEqual(["Tarz: Doğa, Deniz · Bütçe: Orta bütçe", "Kimle: Emre & Sabine · 2 kişi · Nereden: İstanbul"]);
+    expect(c.travellers).toEqual({ names: ["Sabine"], count: 2 });
+    expect(c.styles).toEqual(["nature", "beach"]);
+    // Each stop is in Indonesia; the stops are Bali's (the hero's main place without asking the model).
+    expect(c.countries).toEqual({ ubud: { code: "ID", name: "Endonezya" }, canggu: { code: "ID", name: "Endonezya" }, uluwatu: { code: "ID", name: "Endonezya" } });
+    expect(c.parents?.parents).toEqual({ ubud: "Bali", canggu: "Bali", uluwatu: "Bali" });
+  });
+  it("a route across two countries keeps each stop's own; a country's cities stay the main places", () => {
+    let s = typed(fresh(), "10 Aralık'tan 2 hafta Portekiz").state;
+    s = { ...s, route: { stops: [{ city: "Lizbon", nights: 7, code: "PT" }, { city: "Sevilla", nights: 7, code: "ES" }], arrive: null, leave: null, confirmed: true, source: "ai" } };
+    const c = creationOf(s)!;
+    expect(c.countries).toEqual({ lizbon: { code: "PT", name: "Portekiz" }, sevilla: { code: "ES", name: null } });
+    expect(c.parents).toBeNull();
   });
   it("a road trip has a car for the whole trip instead of flights", () => {
     let s = applyAnswer(fresh("road"), { q: "where", place: "Toskana", country: "İtalya" }, 2);
     s = applyAnswer(s, { q: "duration", duration: { unit: "week", n: 1 } }, 2);
     s = applyAnswer(s, { q: "start", date: "2027-05-01", approx: false }, 2);
-    const c = creationOf(s, { myName: null })!;
+    const c = creationOf(s)!;
     expect(c.road).toBe(true);
     expect(c.travel.map((x) => [x.kind, x.city, x.date, x.end_date])).toEqual([["car_rental", "Toskana", "2027-05-01", "2027-05-08"]]);
   });
   it("nothing without where and when", () => {
-    expect(creationOf(applyAnswer(fresh(), { q: "where", place: "Bali", country: null }, 2), { myName: null })).toBeNull();
+    expect(creationOf(applyAnswer(fresh(), { q: "where", place: "Bali", country: null }, 2))).toBeNull();
   });
   it("people: one alone, two with a partner, everyone named and the traveller", () => {
     expect(peopleCount({ kind: "solo", names: [] })).toBe(1);
@@ -357,24 +367,61 @@ describe("where they leave from", () => {
   });
 });
 
-describe("the start card (item 7)", () => {
+describe("the start card (item 7) and the places the start made", () => {
   const trip = (over: Partial<Trip> = {}): Trip => ({ id: "t1", title: "Bali Gezisi", confirmedDates: null, budget: null, heroImage: null, createdAt: 1, updatedAt: 1, startGuide: { createdAt: 1 }, ...over });
-  it("ticks each step from the board's own counts, and hides when all are done or closed", () => {
-    const open = [{ id: "flight", settled: 0, total: 2 }, { id: "stay", settled: 1, total: 3 }];
-    const steps = guideSteps(trip(), open);
+  const flight = (id: string, over: Partial<Item> = {}) =>
+    makeItem({ id, category: "flight", origin: "chat", status: "chosen", dates: { start: "2026-12-10", end: null, source: "unverified" }, flight: { from: "İstanbul", to: "Denpasar", departure: null, arrival: null, carrier: null, flightNumber: null, stops: null }, ...over });
+  const made = (...items: Item[]) => trip({ startGuide: { createdAt: 1, placeholders: Object.fromEntries(items.map((i) => [i.id, placeholderPrint(i)])) } });
+  const plan = (open: number, blocks = 1, closed: string[] = []) => ({ nights: { open }, stayBlocks: Array.from({ length: blocks }), closed: closed.map((id) => ({ item: { id } })) });
+
+  it("a flight the start made is a place to fill, not a choice, until the traveller changes it", () => {
+    const f = flight("f1");
+    const t = made(f);
+    expect(isPlaceholder(t, f)).toBe(true);
+    expect(isPlaceholder(t, { ...f, status: "booked" })).toBe(false);
+    expect(isPlaceholder(t, { ...f, flight: { ...f.flight!, departure: "2026-12-10T09:40" } })).toBe(false);
+    // Coordinates arriving later (or any field the traveller doesn't see) change nothing.
+    expect(isPlaceholder(t, { ...f, geo: { lat: 1, lng: 2, source: "geocoded" }, updatedAt: 99 })).toBe(true);
+    expect(isPlaceholder(trip(), f)).toBe(false);
+  });
+  it("the hero says what's waiting: \"2 uçuş ve 31 gece seni bekliyor.\"; nothing once they're filled", () => {
+    const [a, b] = [flight("f1"), flight("f2", { dates: { start: "2027-01-10", end: null, source: "unverified" } })];
+    const t = made(a, b);
+    expect(startLead(t, [a, b], 31)).toBe("2 uçuş ve 31 gece seni bekliyor.");
+    expect(startLead(t, [a, b], 0)).toBe("2 uçuş seni bekliyor.");
+    expect(startLead(t, [a, { ...b, status: "booked" }], 0)).toBe("1 uçuş seni bekliyor.");
+    expect(startLead(t, [a, b], 0, new Set(["f1", "f2"]))).toBeNull();
+    expect(startLead(trip(), [a, b], 31)).toBeNull();
+  });
+  it("ticks each step from the board's own state, and hides when all are done or closed", () => {
+    const [a, b] = [flight("f1"), flight("f2")];
+    const steps = guideSteps(made(a, b), { items: [a, b], plan: plan(31, 3), openSuggestions: 2 });
     expect(steps.map((s) => [s.label, s.done])).toEqual([["Uçuşları bul", false], ["Konaklamaları seç", false], ["Önerilere bak", false]]);
-    expect(guideVisible(trip(), steps)).toBe(true);
-    const settled = [{ id: "flight", settled: 2, total: 2 }, { id: "stay", settled: 3, total: 3 }];
-    const done = guideSteps(trip({ startGuide: { createdAt: 1, looked: true } }), settled);
+    expect(guideVisible(made(a, b), steps)).toBe(true);
+    // A saved flight took one's place (the plan set it aside), the other was booked; every night has a place; none open.
+    const done = guideSteps(made(a, b), { items: [a, { ...b, status: "booked" }], plan: plan(0, 3, ["f1"]), openSuggestions: 0 });
     expect(done.every((s) => s.done)).toBe(true);
-    expect(guideVisible(trip({ startGuide: { createdAt: 1, looked: true } }), done)).toBe(false);
+    expect(guideVisible(made(a, b), done)).toBe(false);
     expect(guideVisible(trip({ startGuide: { createdAt: 1, closed: true } }), steps)).toBe(false);
     expect(guideVisible(trip({ startGuide: undefined }), steps)).toBe(false);
+    // Looked at: the suggestions step is done even with some still open.
+    expect(guideSteps(trip({ startGuide: { createdAt: 1, looked: true } }), { items: [], plan: plan(0), openSuggestions: 3 })[2].done).toBe(true);
   });
-  it("a road trip's first step is the car; suggestions all answered count as looked at", () => {
-    const steps = guideSteps(trip({ startGuide: { createdAt: 1, road: true } }), [{ id: "transport", settled: 1, total: 1 }]);
-    expect(steps[0]).toEqual({ id: "flights", label: "Aracı seç", done: true });
-    const withSuggestions = { ...trip(), suggestions: [{ state: "added" }, { state: "dismissed" }] } as Trip;
-    expect(guideSteps(withSuggestions, [])[2].done).toBe(true);
+  it("a road trip's first step is the car", () => {
+    const car = makeItem({ id: "c1", category: "transport", origin: "chat", status: "chosen" });
+    const t = trip({ startGuide: { createdAt: 1, road: true, placeholders: { c1: placeholderPrint(car) } } });
+    expect(guideSteps(t, { items: [car], plan: plan(0), openSuggestions: 0 })[0]).toEqual({ id: "flights", label: "Aracı seç", done: false });
+    expect(startLead(t, [car], 7)).toBe("1 araç ve 7 gece seni bekliyor.");
+  });
+});
+
+describe("countries", () => {
+  it("a country's name in either language gives its code; a known place carries its country's", () => {
+    expect(countryCodeOfName("Endonezya")).toBe("ID");
+    expect(countryCodeOfName("Portugal")).toBe("PT");
+    expect(countryCodeOfName("Narnia")).toBeNull();
+    expect(placeOf("Bali")).toEqual({ place: "Bali", country: "Endonezya", code: "ID" });
+    expect(placeOf("Ubud", "Endonezya")).toEqual({ place: "Ubud", country: "Endonezya", code: "ID" });
+    expect(placeOf("Hoi An", null, "vn")).toEqual({ place: "Hoi An", country: null, code: "VN" });
   });
 });

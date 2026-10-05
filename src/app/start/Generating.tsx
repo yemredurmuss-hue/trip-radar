@@ -18,7 +18,6 @@ type StepState = "wait" | "run" | "done" | "error";
 
 interface Props {
   state: StartState;
-  myName: string | null;
   /** The trip record is made: kept on the draft, so a retry continues it. */
   onTripId: (tripId: string) => void;
   onFinished: (tripId: string) => void;
@@ -26,12 +25,13 @@ interface Props {
   onBack: () => void;
 }
 
-export function Generating({ state, myName, onTripId, onFinished, onBack }: Props) {
+export function Generating({ state, onTripId, onFinished, onBack }: Props) {
   // Made once from the interview as it was when "Gezimi oluştur" was pressed.
-  const [creation] = useState(() => creationOf(state, { myName }));
+  const [creation] = useState(() => creationOf(state));
   const [steps] = useState(() => (creation ? stepsFor(state, creation) : []));
   const [status, setStatus] = useState<Record<string, StepState>>({});
   const [failed, setFailed] = useState<{ id: StepId; text: string } | null>(null);
+  const [lines, setLines] = useState<Record<string, string>>({});
   const [photos, setPhotos] = useState<{ place: string; url: string }[]>([]);
   const current = useRef(state);
   const started = useRef(false);
@@ -57,11 +57,13 @@ export function Generating({ state, myName, onTripId, onFinished, onBack }: Prop
       setStatus((s) => ({ ...s, [step.id]: "run" }));
       const began = Date.now();
       try {
-        const id = await runStep(step.id, current.current, { myName });
-        if (step.id === "trip" && id) {
-          current.current = { ...current.current, tripId: id };
-          onTripId(id);
+        const out = await runStep(step.id, current.current);
+        if (step.id === "trip") {
+          current.current = { ...current.current, tripId: out.tripId };
+          onTripId(out.tripId);
         }
+        // A step with its own words now ("3 öneri bölümlerinde").
+        if (out.done) setLines((l) => ({ ...l, [step.id]: out.done! }));
       } catch (error) {
         setStatus((s) => ({ ...s, [step.id]: "error" }));
         setFailed({ id: step.id, text: error instanceof Error ? error.message : String(error) });
@@ -124,7 +126,7 @@ export function Generating({ state, myName, onTripId, onFinished, onBack }: Prop
               <span className="st-step-mark" aria-hidden>
                 {st === "done" ? "✓" : st === "error" ? "!" : ""}
               </span>
-              <span>{st === "done" ? s.done : s.running}</span>
+              <span>{st === "done" ? (lines[s.id] ?? s.done) : s.running}</span>
             </li>
           );
         })}

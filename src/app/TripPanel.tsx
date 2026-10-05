@@ -26,7 +26,7 @@ import { deleteItem, onHidden, onRemoved } from "../lib/removal";
 import { undoSlot } from "../lib/undo";
 import { undoTrip, type Undoable } from "../lib/undoables";
 import { addQuick, templateLabel, TEMPLATES, type InsertAt, type Template, type TemplateId } from "../lib/templates";
-import { categorize, catDomKey, findInSections, planProgress, sectionOfItem, sectionProgress, SECTION_ORDER, type SectionId } from "../lib/categories";
+import { categorize, catDomKey, findInSections, planProgress, sectionOfItem, SECTION_ORDER, type SectionId } from "../lib/categories";
 import { firstField, keepDraftFor, type CardFocus } from "../lib/inlineEdit";
 import { newId } from "../lib/db";
 import { AddSheet } from "./cards/AddSheet";
@@ -63,6 +63,7 @@ import { useWho } from "./Travellers";
 import { onTripChange } from "../lib/tripUndo";
 import { takeLangUndo } from "./langSwitch";
 import { StartGuideCard } from "./start/StartGuideCard";
+import { isPlaceholder, startLead } from "../lib/startTrip";
 
 interface Props {
   trip: Trip;
@@ -467,10 +468,14 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const countries = useMemo(() => countryCodesOf(items), [items]);
   const places = useMemo(() => cityRanges(plan, mains, range), [plan, mains, range]);
   const flightGroups = plan.groups.filter((g) => g.category === "flight");
-  const flightsDone = flightGroups.length > 0 && flightGroups.every((g) => g.items.some(settledItem));
+  // A flight the start chat only made room for isn't one chosen (startTrip.ts isPlaceholder).
+  const flightsDone = flightGroups.length > 0 && flightGroups.every((g) => g.items.some((i) => settledItem(i) && !isPlaceholder(trip, i)));
   const mood = trip.mood?.key === moodFor && trip.mood.text ? trip.mood.text : null;
+  // A trip the start chat made, while its places are still to fill: "2 uçuş ve 31 gece seni bekliyor."
+  const startWaiting = trip.startGuide ? startLead(trip, items, plan.nights.open, new Set(plan.closed.map((c) => c.item.id))) : null;
   // One sentence: the mood, else what's waiting (the progress box shows the numbers, so never both).
   const lead =
+    startWaiting ??
     mood ??
     (range
       ? statusSentence(progress.count, { flightsDone, waitingCity: mainPlaceOf(mains, waitingCityOf(progress, timeline, items)) })
@@ -611,13 +616,14 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       {trip.startGuide && !trip.startGuide.closed && (
         <StartGuideCard
           trip={trip}
-          sections={sections.map((s) => ({ id: s.id, ...sectionProgress(s) }))}
+          items={items}
+          plan={plan}
+          openSuggestions={SECTION_ORDER.reduce((n, id) => n + (suggestions.bySection[id]?.length ?? 0), 0)}
           onGo={(step) => {
             if (step === "stays") return openSection("stay");
             if (step === "flights") return openSection(trip.startGuide?.road ? "transport" : "flight");
-            // The suggestions sit in their sections (when there are any): the first such section, else the Plan.
-            const open = ((trip as { suggestions?: { section?: string; state?: string }[] }).suggestions ?? []).filter((x) => x.state === "open").map((x) => x.section);
-            const first = SECTION_ORDER.find((id) => open.includes(id));
+            // The suggestions sit atop their sections: the first section with one, else the Plan.
+            const first = SECTION_ORDER.find((id) => (suggestions.bySection[id]?.length ?? 0) > 0);
             if (first) openSection(first);
             else setView("plan");
           }}

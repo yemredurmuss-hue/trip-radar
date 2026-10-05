@@ -1,20 +1,19 @@
 // The one-time start card above a new trip's plan (spec item 7): Uçuşları bul · Konaklamaları seç · Önerilere
-// bak, each ticked by itself from the board's own counts; gone when all are done or with ×. The lasting
+// bak, each ticked by itself from the board's own state; gone when all are done or with ×. The lasting
 // guidance stays the hero's "Planı tamamla".
 import { L } from "../../lib/i18n";
-import { guideSteps, guideVisible, type GuideStep, type SectionCount } from "../../lib/startTrip";
+import { guideSteps, guideVisible, type GuideInput, type GuideStep } from "../../lib/startTrip";
 import type { Trip } from "../../lib/types";
 import { updateTrip } from "../actions";
 import { UiIcon } from "../cards/Silhouettes";
 
-interface Props {
+interface Props extends GuideInput {
   trip: Trip;
-  sections: SectionCount[];
   onGo: (step: GuideStep["id"]) => void;
 }
 
-export function StartGuideCard({ trip, sections, onGo }: Props) {
-  const steps = guideSteps(trip, sections);
+export function StartGuideCard({ trip, onGo, ...board }: Props) {
+  const steps = guideSteps(trip, board);
   if (!guideVisible(trip, steps)) return null;
   const next = steps.find((s) => !s.done);
   const change = (patch: Partial<NonNullable<Trip["startGuide"]>>) =>

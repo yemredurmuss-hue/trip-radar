@@ -24,7 +24,7 @@ import { StartChat } from "./start/StartChat";
 import { addEvent, newId, notifyChanged } from "../lib/db";
 import { describeError } from "../lib/llm";
 import { loadPassport } from "../lib/passport";
-import { getShareConfig } from "../lib/share/store";
+import { useMyName } from "./Profile";
 import { sendMessage } from "../lib/assistant";
 import { guessOrigin, newStart, type StartCtx } from "../lib/startTrip";
 import { UpdateBanner } from "./UpdateBanner";
@@ -56,10 +56,10 @@ export function App() {
   const intake = useBoardIntake(board.trip?.id ?? null);
   // The start chat (spec 2026-10-06 §2), over the overview while it's open; `key` starts a fresh one each time.
   const [start, setStart] = useState<(StartLaunch & { key: string }) | null>(null);
-  const [myName, setMyName] = useState<string | null>(null);
+  // The profile's name (the sharing name): "Merhaba Emre", and "Emre & Sabine" in the checklist.
+  const myName = useMyName().trim() || null;
   const [passport, setPassport] = useState<string | null>(null);
   useEffect(() => {
-    void getShareConfig().then((c) => setMyName(c.name?.trim() || null)).catch(() => undefined);
     void loadPassport().then(setPassport);
   }, []);
   const startCtx: StartCtx = useMemo(

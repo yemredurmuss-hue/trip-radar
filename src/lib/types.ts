@@ -271,6 +271,11 @@ export interface StartGuide {
   closed?: boolean;
   looked?: boolean;
   road?: boolean;
+  /**
+   * The flights, stays and car the start made, by item id with what they said then (startTrip.ts placeholderPrint): places to fill,
+   * not the traveller's choices, until one is changed (startTrip.ts isPlaceholder).
+   */
+  placeholders?: Record<string, string>;
 }
 
 /** How a transfer is made. Flights, trains, buses and ferries go from a station, so they bring their own transfers. */

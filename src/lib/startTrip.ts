@@ -8,6 +8,7 @@
 import { z } from "zod";
 import { L, lang } from "./i18n";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
+import { placesKey } from "./destinations";
 import { addDays, cityKeyOf } from "./plan";
 import type { PlannedInput } from "./planned";
 import { STYLES, type BudgetLevel, type StyleId } from "./tripStyle";
@@ -30,6 +31,14 @@ export interface Duration {
 export interface RouteStop {
   city: string;
   nights: number;
+  /** The stop's country (ISO 3166-1 alpha-2) when the route says it; else the destination's. */
+  code?: string | null;
+}
+/** A place said: its name, its country's name and code (ISO 3166-1 alpha-2), when known. */
+export interface Place {
+  place: string;
+  country: string | null;
+  code?: string | null;
 }
 export interface StartRoute {
   stops: RouteStop[];
@@ -49,7 +58,7 @@ export interface StartMsg {
 export interface StartState {
   id: string;
   mode: StartMode;
-  where: { place: string; country: string | null } | null;
+  where: Place | null;
   from: string | null;
   who: { kind: Companions | null; names: string[] } | null;
   duration: Duration | null;
@@ -244,18 +253,57 @@ const PLACE_INDEX = new Map<string, KnownPlace>();
 for (const p of KNOWN_PLACES) for (const n of [p.tr, p.en, ...(p.also ?? [])]) PLACE_INDEX.set(plain(n), p);
 
 const placeName = (p: KnownPlace) => L(p.tr, p.en);
-const countryNameOf = (p: KnownPlace) => (p.countryTr ? L(p.countryTr, p.countryEn ?? p.countryTr) : null);
+/** Its country in the board's language; a country stands for itself. */
+const countryNameOf = (p: KnownPlace) => (p.countryTr ? L(p.countryTr, p.countryEn ?? p.countryTr) : placeName(p));
 
 export function knownPlaceOf(name: string | null | undefined): KnownPlace | null {
   return name ? (PLACE_INDEX.get(plain(name)) ?? null) : null;
 }
 
 /** "Bali" → { Bali, Endonezya }: a known place in the board's language, else as written (capitalised). */
-export function placeOf(name: string, country: string | null = null): { place: string; country: string | null } {
+export function placeOf(name: string, country: string | null = null, code: string | null = null): Place {
   const known = knownPlaceOf(name);
-  if (known) return { place: placeName(known), country: countryNameOf(known) };
-  return { place: capitalizeWords(name.trim()), country: country?.trim() || null };
+  if (known) return { place: placeName(known), country: countryNameOf(known), code: knownCode(known) };
+  const c = country?.trim() || null;
+  return { place: capitalizeWords(name.trim()), country: c, code: isoCode(code) ?? countryCodeOfName(c) ?? countryCodeOfName(name) };
 }
+
+const isoCode = (v: string | null | undefined) => (v && /^[A-Za-z]{2}$/.test(v.trim()) ? v.trim().toUpperCase() : null);
+
+let countryIndex: Map<string, string> | null = null;
+/** "Endonezya", "Indonesia" → "ID": a country's name in Turkish or English (Intl), compared plain; null for anything else. */
+export function countryCodeOfName(name: string | null | undefined): string | null {
+  if (!name) return null;
+  if (!countryIndex) {
+    countryIndex = new Map();
+    for (const l of ["tr", "en"]) {
+      let names: Intl.DisplayNames;
+      try {
+        names = new Intl.DisplayNames([l], { type: "region" });
+      } catch {
+        continue;
+      }
+      for (let i = 0; i < 26; i++)
+        for (let j = 0; j < 26; j++) {
+          const code = String.fromCharCode(65 + i, 65 + j);
+          let n: string | undefined;
+          try {
+            n = names.of(code);
+          } catch {
+            n = undefined;
+          }
+          if (n && n !== code && !countryIndex.has(plain(n))) countryIndex.set(plain(n), code);
+        }
+    }
+    for (const [n, code] of Object.entries(MORE_CODES)) countryIndex.set(plain(n), code);
+  }
+  return countryIndex.get(plain(name)) ?? null;
+}
+/** Names Intl doesn't give (short forms). */
+const MORE_CODES: Record<string, string> = { ABD: "US", USA: "US", "Birleşik Krallık": "GB", İngiltere: "GB", England: "GB", Türkiye: "TR", Turkey: "TR", Hollanda: "NL", Çekya: "CZ" };
+
+/** A known place's country code: its country's, or its own when it is a country. */
+const knownCode = (p: KnownPlace): string | null => countryCodeOfName(p.countryEn ?? p.en) ?? countryCodeOfName(p.countryTr ?? p.tr);
 
 const capitalizeWords = (s: string) => s.replace(/(^|[\s-])(\p{L})/gu, (_m, a: string, b: string) => a + b.toLocaleUpperCase("tr"));
 
@@ -271,7 +319,7 @@ export const bareName = (text: string) => text.trim().replace(/[.!?]+$/, "").spl
 // --- reading a message without the model ---------------------------------------------------------------------
 
 export interface Extracted {
-  where: { place: string; country: string | null } | null;
+  where: Place | null;
   from: string | null;
   who: { kind: Companions | null; names: string[] } | null;
   start: { date: string; approx: boolean } | null;
@@ -411,7 +459,7 @@ export function parseStartText(text: string, today: string): Extracted {
       const suffix = low[i + len] ?? "";
       const isFrom = FROM_SUFFIX.has(suffix) || low[i - 1] === "from";
       if (isFrom && !out.from) out.from = placeName(known);
-      else if (!isFrom && !out.where) out.where = { place: placeName(known), country: countryNameOf(known) };
+      else if (!isFrom && !out.where) out.where = { place: placeName(known), country: countryNameOf(known), code: knownCode(known) };
       i += len - 1;
       break;
     }
@@ -446,6 +494,7 @@ export function parseStartText(text: string, today: string): Extracted {
 export const extractionSchema = z.object({
   destination: z.string(),
   destination_country: z.string(),
+  destination_country_code: z.string(),
   origin: z.string(),
   companions: z.string(),
   names: z.array(z.string()),
@@ -461,13 +510,13 @@ export type RawExtraction = z.infer<typeof extractionSchema>;
 export const extractionSystem = () =>
   L(
     `Bir gezi planlama sohbetinde kullanıcının mesajından yalnız açıkça söylenenleri çıkar. Uydurma; söylenmeyen alan boş kalır ("" ya da 0 ya da []).
-destination: gidilecek yer (şehir, ada, bölge ya da ülke) yalnız adı, ek olmadan ("Bali'ye" → "Bali"). destination_country: biliniyorsa ülkesi.
+destination: gidilecek yer (şehir, ada, bölge ya da ülke) yalnız adı, ek olmadan ("Bali'ye" → "Bali"). destination_country: biliniyorsa ülkesi; destination_country_code: o ülkenin ISO 3166-1 alpha-2 kodu ("ID").
 origin: yola çıkılan şehir ("İstanbul'dan" → "İstanbul"). companions: solo | partner | friends | family ya da "". names: birlikte gidilen kişilerin adları (kullanıcının kendisi değil).
 start_date: başlangıç günü YYYY-MM-DD (bugünden sonraki ilk uygun yıl). Yalnız ay söylendiyse start_date "" ve start_month 1-12.
 duration_days: gün olarak süre (gece söylendiyse gece + 1); "1 ay" gibi ay söylendiyse duration_months. styles: yalnız bu id'lerden: ${Object.keys(STYLES).join(", ")}. budget: low | mid | high ya da "".
 Asistan az önce bir soru sorduysa, tek kelimelik bir yer adı o sorunun cevabıdır (ör. "Nereden?" sorusuna "İzmir" → origin).`,
     `From the user's message in a trip-planning chat, take only what is clearly said. Never invent; what isn't said stays empty ("" or 0 or []).
-destination: the place to go (a city, island, region or country), its name only. destination_country: its country when known.
+destination: the place to go (a city, island, region or country), its name only. destination_country: its country when known; destination_country_code: that country's ISO 3166-1 alpha-2 code ("ID").
 origin: the city they leave from. companions: solo | partner | friends | family or "". names: the people going with them (not the user).
 start_date: the first day, YYYY-MM-DD (the first fitting year from today). If only a month is said, start_date "" and start_month 1-12.
 duration_days: the length in days (nights said: nights + 1); a length in months goes in duration_months. styles: only these ids: ${Object.keys(STYLES).join(", ")}. budget: low | mid | high or "".
@@ -484,7 +533,7 @@ const BUDGETS: readonly BudgetLevel[] = ["low", "mid", "high"];
 export function acceptExtraction(raw: RawExtraction, today: string): Extracted {
   const out: Extracted = { ...EMPTY_EXTRACTED, styles: [] };
   const dest = bareName(raw.destination ?? "");
-  if (dest && looksLikePlace(dest)) out.where = placeOf(dest, raw.destination_country || null);
+  if (dest && looksLikePlace(dest)) out.where = placeOf(dest, raw.destination_country || null, raw.destination_country_code || null);
   const origin = bareName(raw.origin ?? "");
   if (origin && looksLikePlace(origin)) out.from = placeOf(origin).place;
   const kind = (COMPANIONS as readonly string[]).includes(raw.companions) ? (raw.companions as Companions) : null;
@@ -594,7 +643,7 @@ function keepRoute(before: StartState, after: StartState): StartState {
 }
 
 export type Answer =
-  | { q: "where"; place: string; country: string | null }
+  | ({ q: "where" } & Place)
   | { q: "from"; city: string }
   | { q: "who"; kind: Companions }
   | { q: "names"; names: string[] }
@@ -608,7 +657,7 @@ export function applyAnswer(s: StartState, a: Answer, now: number): StartState {
   let next: StartState = { ...s, asking: null, updatedAt: now };
   switch (a.q) {
     case "where":
-      next.where = { place: a.place, country: a.country };
+      next.where = { place: a.place, country: a.country, code: a.code ?? null };
       break;
     case "from":
       next.from = a.city;
@@ -959,7 +1008,7 @@ export interface ChecklistRow {
 export function checklist(s: StartState, ctx: StartCtx): ChecklistRow[] {
   const total = totalNights(s);
   const rows: ChecklistRow[] = [
-    { id: "where", label: L("NEREYE", "WHERE TO"), value: s.where ? [s.where.place, s.where.country].filter(Boolean).join(" · ") : L("Nereye gidiyoruz?", "Where are we going?"), done: !!s.where, ask: "where", required: true, skipped: s.skipped.includes("where") },
+    { id: "where", label: L("NEREYE", "WHERE TO"), value: s.where ? [...new Set([s.where.place, s.where.country])].filter(Boolean).join(" · ") : L("Nereye gidiyoruz?", "Where are we going?"), done: !!s.where, ask: "where", required: true, skipped: s.skipped.includes("where") },
     { id: "from", label: L("NEREDEN", "WHERE FROM"), value: s.from ?? L("Nereden yola çıkıyorsun?", "Where are you leaving from?"), done: !!s.from, ask: "from", required: false, skipped: s.skipped.includes("from") },
     { id: "who", label: L("KİMLE", "WHO'S COMING"), value: whoText(s.who, ctx.myName) || L("Kimle gidiyorsun?", "Who's coming?"), done: !!s.who, ask: "who", required: false, skipped: s.skipped.includes("who") },
     {
@@ -996,7 +1045,7 @@ export function wantsRouteAdvice(s: Pick<StartState, "where" | "duration" | "sta
 }
 
 export const routeSchema = z.object({
-  stops: z.array(z.object({ city: z.string(), nights: z.number() })),
+  stops: z.array(z.object({ city: z.string(), nights: z.number(), country_code: z.string() })),
   arrival_airport_city: z.string(),
   departure_airport_city: z.string(),
 });
@@ -1004,8 +1053,8 @@ export type RawRoute = z.infer<typeof routeSchema>;
 
 export const routeSystem = () =>
   L(
-    "Bir gezi için 1 ile 4 durak arasında gerçekçi bir rota öner. Her durak gerçek bir şehir ya da kasaba adı; gece sayıları tam sayı ve toplamı tam olarak verilen geceye eşit. Az durak tercih et (uzun kalış için 2-3). arrival_airport_city: ilk uçuşun indiği şehir (havalimanı olan); departure_airport_city: dönüş uçuşunun kalktığı şehir. Bilmiyorsan \"\" yaz.",
-    "Suggest a realistic route of 1 to 4 stops for a trip. Each stop is a real city or town; the nights are whole numbers adding up to exactly the given total. Prefer few stops (2-3 for a long stay). arrival_airport_city: the city the first flight lands in (with an airport); departure_airport_city: where the flight home leaves from. Write \"\" if unsure.",
+    "Bir gezi için 1 ile 4 durak arasında gerçekçi bir rota öner. Her durak gerçek bir şehir ya da kasaba adı; gece sayıları tam sayı ve toplamı tam olarak verilen geceye eşit. Az durak tercih et (uzun kalış için 2-3). country_code: durağın ülkesinin ISO 3166-1 alpha-2 kodu (ör. ID). arrival_airport_city: ilk uçuşun indiği şehir (havalimanı olan); departure_airport_city: dönüş uçuşunun kalktığı şehir. Bilmiyorsan \"\" yaz.",
+    "Suggest a realistic route of 1 to 4 stops for a trip. Each stop is a real city or town; the nights are whole numbers adding up to exactly the given total. Prefer few stops (2-3 for a long stay). country_code: the stop's country, ISO 3166-1 alpha-2 (e.g. ID). arrival_airport_city: the city the first flight lands in (with an airport); departure_airport_city: where the flight home leaves from. Write \"\" if unsure.",
   );
 
 export function routePrompt(s: StartState): string {
@@ -1025,7 +1074,10 @@ const STOP_NAME = /^[\p{L}][\p{L} .'’-]{1,40}$/u;
 
 /** The model's route, kept only when it holds: 1–4 distinct real-looking names, whole nights adding up to the total. */
 export function acceptRoute(raw: RawRoute, total: number): StartRoute | null {
-  const stops = (raw.stops ?? []).map((x) => ({ city: (x.city ?? "").trim(), nights: x.nights }));
+  const stops: RouteStop[] = (raw.stops ?? []).map((x) => {
+    const code = isoCode(x.country_code);
+    return { city: (x.city ?? "").trim(), nights: x.nights, ...(code ? { code } : {}) };
+  });
   if (stops.length < 1 || stops.length > 4) return null;
   if (stops.some((x) => !STOP_NAME.test(x.city) || !Number.isInteger(x.nights) || x.nights < 1)) return null;
   if (new Set(stops.map((x) => cityKeyOf(x.city))).size !== stops.length) return null;
@@ -1054,9 +1106,14 @@ export interface Creation {
   stays: PlannedInput[];
   /** The flights in and out (or the car of a road trip), said the same way. */
   travel: PlannedInput[];
-  people: number | null;
-  /** Notes on the trip: the style and the budget; who goes from where (shown in Tercihler, read by the chat). */
-  notes: string[];
+  /** Who goes (trip.travellers): the names said, and how many when it's known. */
+  travellers: { names: string[]; count: number | null } | null;
+  /** The style words picked (trip.style). */
+  styles: StyleId[];
+  /** Each stop's country by its city key (the stays and the car carry it: the flag, the weather, the visa). */
+  countries: Record<string, { code: string; name: string | null }>;
+  /** The stops inside the destination ("Ubud" → "Bali"): the hero's main place without asking the model. */
+  parents: { key: string; parents: Record<string, string> } | null;
   road: boolean;
 }
 
@@ -1071,9 +1128,10 @@ export function stopsOf(s: StartState): RouteStop[] {
   return single ? single.stops : [];
 }
 
-export function creationOf(s: StartState, ctx: Pick<StartCtx, "myName">): Creation | null {
+export function creationOf(s: StartState): Creation | null {
   const dates = tripDates(s);
   if (!s.where || !dates) return null;
+  const where = s.where;
   const total = nightsBetween(dates.start, dates.end);
   const stops = stopsOf(s);
   // The stops' nights follow the dates (a route made for a rough length is fitted: the last stop takes the rest).
@@ -1089,8 +1147,8 @@ export function creationOf(s: StartState, ctx: Pick<StartCtx, "myName">): Creati
     day = end;
   }
   const road = s.mode === "road";
-  const first = fitted[0]?.city ?? s.where.place;
-  const last = fitted.at(-1)?.city ?? s.where.place;
+  const first = fitted[0]?.city ?? where.place;
+  const last = fitted.at(-1)?.city ?? where.place;
   const arrive = (s.route?.confirmed && s.route.arrive) || first;
   const leave = (s.route?.confirmed && s.route.leave) || last;
   const travel: PlannedInput[] = road
@@ -1099,25 +1157,66 @@ export function creationOf(s: StartState, ctx: Pick<StartCtx, "myName">): Creati
         said0({ kind: "flight", date: dates.start, from: s.from, to: arrive }),
         said0({ kind: "flight", date: dates.end, from: leave, to: s.from }),
       ];
-  const people = peopleCount(s.who);
-  const line = (parts: string[]) => parts.filter(Boolean).join(" · ");
-  // Two notes: what the trip is for (its style), and who goes from where (the chat reads both).
-  const notes = [
-    line([
-      s.styles.length ? L(`Tarz: ${s.styles.map((id) => STYLES[id]()).join(", ")}`, `Style: ${s.styles.map((id) => STYLES[id]()).join(", ")}`) : "",
-      s.budget ? L(`Bütçe: ${wantText({ styles: [], budget: s.budget })}`, `Budget: ${wantText({ styles: [], budget: s.budget })}`) : "",
-    ]),
-    line([s.who ? L(`Kimle: ${whoText(s.who, ctx.myName)}`, `Who: ${whoText(s.who, ctx.myName)}`) : "", s.from ? L(`Nereden: ${s.from}`, `From: ${s.from}`) : ""]),
-  ].filter(Boolean);
+  const count = peopleCount(s.who);
+  const names = s.who?.kind === "solo" ? [] : (s.who?.names ?? []);
+  // The country of each stop: the route's own (a trip across two countries), else the destination's.
+  const whereCode = where.code ?? countryCodeOfName(where.country) ?? null;
+  const countries: Creation["countries"] = {};
+  for (const stop of fitted) {
+    const code = stop.code ?? whereCode;
+    const key = cityKeyOf(stop.city);
+    if (key && code) countries[key] = { code, name: code === whereCode ? where.country : null };
+  }
+  // A route through a region (Ubud, Canggu in Bali): the hero shows Bali. A country's cities stay the main places.
+  const region = fitted.length > 1 && !fitted.some((x) => cityKeyOf(x.city) === cityKeyOf(where.place)) && !countryCodeOfName(where.place);
+  const parents = region ? { key: placesKey(fitted.map((x) => x.city)), parents: Object.fromEntries(fitted.map((x) => [cityKeyOf(x.city)!, where.place])) } : null;
   return {
-    title: L(`${s.where.place} Gezisi`, `${s.where.place} trip`),
+    title: L(`${where.place} Gezisi`, `${where.place} trip`),
     dates,
     stays,
     travel,
-    people,
-    notes,
+    travellers: count || names.length ? { names, count } : null,
+    styles: s.styles,
+    countries,
+    parents,
     road,
   };
+}
+
+// --- placeholders: what the start made, not what the traveller chose -------------------------------------------
+
+/** What a made record says that the traveller would change: its status, days, where from and to, its city, its name. */
+export const placeholderPrint = (i: Item): string =>
+  [i.status, i.dates.start, i.dates.end, i.flight?.from, i.flight?.to, i.flight?.departure, i.city, i.name].map((v) => v ?? "").join("|");
+
+/**
+ * The flights and stays the start made are places to fill, not choices: until the traveller changes one (a choice,
+ * a booking, the chat saying it again with a time or another day), it isn't "chosen" for the hero. Kept on the trip
+ * by id with what the record said when made (a place's coordinates arriving later change nothing).
+ */
+export function isPlaceholder(trip: Pick<Trip, "startGuide">, item: Item): boolean {
+  const print = trip.startGuide?.placeholders?.[item.id];
+  return print != null && print === placeholderPrint(item) && item.status === "chosen" && item.origin === "chat";
+}
+
+/**
+ * The hero's sentence while the start's places are still to fill: "2 uçuş ve 31 gece seni bekliyor." (only the
+ * placeholders still on the plan, and the nights with no place yet). Null when none is left: the usual sentence then.
+ */
+export function startLead(trip: Pick<Trip, "startGuide">, items: Item[], openNights: number, closed: ReadonlySet<string> = new Set()): string | null {
+  const live = items.filter((i) => !closed.has(i.id) && i.status !== "dismissed" && isPlaceholder(trip, i));
+  if (!live.length) return null;
+  const flights = live.filter((i) => i.category === "flight").length;
+  const cars = live.filter((i) => i.category === "transport").length;
+  const parts = [
+    flights ? L(`${flights} uçuş`, `${flights} flight${flights === 1 ? "" : "s"}`) : "",
+    cars ? L(`${cars} araç`, `${cars} car${cars === 1 ? "" : "s"}`) : "",
+    openNights ? L(`${openNights} gece`, `${openNights} night${openNights === 1 ? "" : "s"}`) : "",
+  ].filter(Boolean);
+  if (!parts.length) return null;
+  const joined = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} ${L("ve", "and")} ${parts.at(-1)}` : parts[0];
+  const text = L(`${joined} seni bekliyor.`, `${joined} ${parts.length === 1 && /^1 /.test(joined) ? "is" : "are"} waiting for you.`);
+  return text.charAt(0).toLocaleUpperCase("tr") + text.slice(1);
 }
 
 /** The line under "Gezin hazır": "31 gün, 3 durak. Önce uçuşu bul, sonra Ubud konaklamasını seçelim." */
@@ -1205,29 +1304,29 @@ export interface GuideStep {
   done: boolean;
 }
 
-/** A section's settled/total as the board counts them (categories.ts sectionProgress). */
-export interface SectionCount {
-  id: string;
-  settled: number;
-  total: number;
+/** What the start card reads from the board: its plan (nights, what was set aside) and the suggestions shown now. */
+export interface GuideInput {
+  items: Item[];
+  plan: { nights: { open: number }; stayBlocks: unknown[]; closed: { item: { id: string } }[] };
+  /** Suggestions shown on the board now (the rules' and the stored ones, open). */
+  openSuggestions: number;
 }
 
 /**
- * The one-time start card's three steps (item 7), each ticked from the board's own state: every flight
- * settled (a car for a road trip), every night settled, the suggestions looked at (or none left open).
+ * The one-time start card's three steps (item 7), each ticked from the board's own state: no flight (a car on a
+ * road trip) is a place the start made any more (one picked or booked, or a saved page in its place); no night
+ * without a place; the suggestions looked at, or none left open.
  */
-export function guideSteps(trip: Trip, sections: SectionCount[]): GuideStep[] {
-  const g = trip.startGuide;
-  const done = (id: string) => {
-    const s = sections.find((x) => x.id === id);
-    return Boolean(s && s.total > 0 && s.settled >= s.total);
-  };
-  const suggestions = (trip as Trip & { suggestions?: { state?: string }[] }).suggestions;
-  const suggestionsDone = Boolean(g?.looked) || (Array.isArray(suggestions) && suggestions.length > 0 && !suggestions.some((x) => x.state === "open"));
+export function guideSteps(trip: Trip, g: GuideInput): GuideStep[] {
+  const guide = trip.startGuide;
+  const closed = new Set(g.plan.closed.map((c) => c.item.id));
+  const kind = guide?.road ? "transport" : "flight";
+  const live = g.items.filter((i) => i.category === kind && i.status !== "dismissed" && !closed.has(i.id));
+  const travelDone = live.length > 0 && !live.some((i) => isPlaceholder(trip, i));
   return [
-    g?.road ? { id: "flights", label: L("Aracı seç", "Pick the car"), done: done("transport") } : { id: "flights", label: L("Uçuşları bul", "Find the flights"), done: done("flight") },
-    { id: "stays", label: L("Konaklamaları seç", "Choose the stays"), done: done("stay") },
-    { id: "suggestions", label: L("Önerilere bak", "Look at the suggestions"), done: suggestionsDone },
+    guide?.road ? { id: "flights", label: L("Aracı seç", "Pick the car"), done: travelDone } : { id: "flights", label: L("Uçuşları bul", "Find the flights"), done: travelDone },
+    { id: "stays", label: L("Konaklamaları seç", "Choose the stays"), done: g.plan.stayBlocks.length > 0 && g.plan.nights.open === 0 },
+    { id: "suggestions", label: L("Önerilere bak", "Look at the suggestions"), done: Boolean(guide?.looked) || g.openSuggestions === 0 },
   ];
 }
 

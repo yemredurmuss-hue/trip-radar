@@ -1,0 +1,42 @@
+// The suggestions' review as the start chat's last step ("Öneriler"), registered through startHooks so the start
+// code never depends on the suggestions code directly: the only file that knows both. It runs the same AI review
+// the board runs (suggestReview.ts, for the same key, so the board doesn't ask again when it opens) and says how
+// many suggestions the board will show (the rules' and the stored ones).
+import { db, listItems } from "../../lib/db";
+import { sectionOfItem } from "../../lib/categories";
+import { buildLegs } from "../../lib/legs";
+import { loadPassport } from "../../lib/passport";
+import { cityKeyOf } from "../../lib/plan";
+import { boardMains } from "../../lib/startBoard";
+import { setSuggestionsReview } from "../../lib/startHooks";
+import { reviewKey, reviewPrompt, runReview } from "../../lib/suggestReview";
+import { ruleSuggestions, shownSuggestions } from "../../lib/suggestions";
+import { buildTimeline } from "../../lib/timeline";
+import { whoGoes } from "../../lib/tripSettings";
+import { updateTrip } from "../actions";
+
+export async function reviewNewTrip(tripId: string): Promise<number> {
+  const d = await db();
+  const trip = await d.get("trips", tripId);
+  if (!trip) return 0;
+  const items = await listItems(tripId);
+  const { plan, mains } = boardMains(trip, items);
+  const range = plan.range ?? trip.confirmedDates ?? null;
+  const key = reviewKey(mains, range, items);
+  const nights: Record<string, number> = {};
+  for (const m of mains) {
+    const keys = new Set([m.name, ...m.members].map(cityKeyOf));
+    nights[cityKeyOf(m.name) ?? m.name] = plan.stayBlocks.filter((b) => b.city && keys.has(cityKeyOf(b.city))).reduce((n, b) => n + b.nights, 0);
+  }
+  const travellers = whoGoes({ travellers: trip.travellers, adults: null }).count || null;
+  const prompt = reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers });
+  await runReview({ key, prompt, save: (change) => updateTrip(tripId, change, { touch: false }) });
+  const after = (await d.get("trips", tripId)) ?? trip;
+  const legs = buildLegs(plan, after);
+  const timeline = buildTimeline(plan, legs, items, new Set(after.hidden ?? []));
+  const today = new Date().toISOString().slice(0, 10);
+  const rules = ruleSuggestions({ trip: after, plan, items, timeline, legs, mains, home: await loadPassport(), today });
+  return shownSuggestions(after.suggestions, rules).length;
+}
+
+setSuggestionsReview(reviewNewTrip);

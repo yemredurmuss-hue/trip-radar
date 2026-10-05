@@ -9,7 +9,9 @@ import { memoryKV } from "../src/lib/share/store";
 import { runStep, stepsFor, type StepId } from "../src/lib/startCreate";
 import { getDraft, listDrafts, MAX_DRAFTS, removeDraft, saveDraft } from "../src/lib/startDrafts";
 import { setSuggestionsReview } from "../src/lib/startHooks";
-import { acceptRoute, applyAnswer, applyText, creationOf, mergeExtracted, newStart, parseStartText, type StartState } from "../src/lib/startTrip";
+import { acceptRoute, applyAnswer, applyText, creationOf, isPlaceholder, mergeExtracted, newStart, parseStartText, startLead, type StartState } from "../src/lib/startTrip";
+import { styleKeyFor } from "../src/lib/startBoard";
+import { styleKey } from "../src/lib/tripStyle";
 
 setLang("tr");
 const TODAY = "2026-10-06";
@@ -22,15 +24,15 @@ function interview(confirmRoute: boolean): StartState {
   s = { ...s, messages: [...s.messages, { role: "assistant", text: "Nereden yola çıkıyorsun?", at: 2 }, { role: "user", text: "İstanbul", at: 3 }] };
   s = applyAnswer(s, { q: "from", city: "İstanbul" }, 3);
   s = applyAnswer(s, { q: "want", styles: ["nature"], budget: "mid" }, 4);
-  const route = acceptRoute({ stops: [{ city: "Ubud", nights: 12 }, { city: "Canggu", nights: 10 }, { city: "Uluwatu", nights: 9 }], arrival_airport_city: "Denpasar", departure_airport_city: "Denpasar" }, 31)!;
+  const route = acceptRoute({ stops: [{ city: "Ubud", nights: 12, country_code: "" }, { city: "Canggu", nights: 10, country_code: "" }, { city: "Uluwatu", nights: 9, country_code: "" }], arrival_airport_city: "Denpasar", departure_airport_city: "Denpasar" }, 31)!;
   return { ...s, route: { ...route, confirmed: confirmRoute } };
 }
 
 async function runAll(s: StartState): Promise<StartState> {
   let state = s;
-  for (const step of stepsFor(state, creationOf(state, { myName: "Emre" })!)) {
-    const id = await runStep(step.id, state, { myName: "Emre", provider: "gemini" });
-    if (step.id === "trip") state = { ...state, tripId: id };
+  for (const step of stepsFor(state, creationOf(state)!)) {
+    const { tripId } = await runStep(step.id, state, { provider: "gemini" });
+    if (step.id === "trip") state = { ...state, tripId };
   }
   return state;
 }
@@ -58,8 +60,19 @@ describe("Gezimi oluştur", () => {
     ]);
     // Two travel: on the plans, where the hero and the search links read it.
     expect(items.every((i) => i.guests.adults === 2)).toBe(true);
-    const prefs = (await d.getAll("preferences")).filter((p) => p.tripId === trip.id);
-    expect(prefs.map((p) => p.text).sort()).toEqual(["Kimle: Emre & Sabine · 2 kişi · Nereden: İstanbul", "Tarz: Doğa · Bütçe: Orta bütçe"]);
+    // Who goes and the style on the trip itself; no notes (the origin is in the flights).
+    const after = (await d.get("trips", trip.id))!;
+    expect(after.travellers).toEqual({ names: ["Sabine"], count: 2 });
+    expect(after.style).toEqual({ key: styleKeyFor(after, items, []), ids: ["nature"] });
+    expect(after.style?.key).toBe(styleKey(["Bali"], []));
+    expect(after.placeParents?.parents).toEqual({ ubud: "Bali", canggu: "Bali", uluwatu: "Bali" });
+    expect((await d.getAll("preferences")).filter((p) => p.tripId === trip.id)).toEqual([]);
+    // Each stay is in Indonesia (the flag, the weather); the flights leave home and keep none.
+    expect(items.filter((i) => i.category === "stay").map((i) => i.countryCode)).toEqual(["ID", "ID", "ID"]);
+    expect(flights.map((f) => f.countryCode)).toEqual([null, null]);
+    // The flights and stays made are places to fill, not choices (the hero says "2 uçuş ve 31 gece seni bekliyor").
+    expect(items.every((i) => isPlaceholder(after, i))).toBe(true);
+    expect(startLead(after, items, plan.nights.open, new Set(plan.closed.map((c) => c.item.id)))).toBe("2 uçuş ve 31 gece seni bekliyor.");
     const chat = await listMessages(trip.id);
     expect(chat.map((m) => m.role)).toEqual(["user", "assistant", "user", "assistant"]);
     expect(chat[0].text).toBe("Sabine'yle 10 Aralık'tan 1 ay Bali");
@@ -78,17 +91,17 @@ describe("Gezimi oluştur", () => {
     const s = await runAll(interview(true));
     const d = await db();
     const tripsBefore = (await d.getAll("trips")).length;
-    for (const id of ["trip", "route", "travel", "people"] as StepId[]) await runStep(id, s, { myName: "Emre", provider: "gemini" });
+    for (const id of ["trip", "route", "travel", "people"] as StepId[]) await runStep(id, s, { provider: "gemini" });
     expect((await d.getAll("trips")).length).toBe(tripsBefore);
     const items = await listItems(s.tripId!);
     expect(items.filter((i) => i.category === "stay")).toHaveLength(3);
     expect(items.filter((i) => i.category === "flight")).toHaveLength(2);
-    expect((await d.getAll("preferences")).filter((p) => p.tripId === s.tripId)).toHaveLength(2);
+    expect((await d.getAll("preferences")).filter((p) => p.tripId === s.tripId)).toHaveLength(0);
     expect((await listMessages(s.tripId!)).length).toBe(4);
   });
 
   it("a step before the trip exists stops with a reason; a second trip with the same name gets its own", async () => {
-    await expect(runStep("route", interview(true), { myName: null, provider: "gemini" })).rejects.toThrow("Gezi kaydı bulunamadı.");
+    await expect(runStep("route", interview(true), { provider: "gemini" })).rejects.toThrow("Gezi kaydı bulunamadı.");
     const again = await runAll(interview(false));
     const trip = (await (await db()).get("trips", again.tripId!))!;
     expect(trip.title).toMatch(/^Bali Gezisi( · Aralık 2026| \d+)$/);
@@ -98,7 +111,7 @@ describe("Gezimi oluştur", () => {
 
   it("the suggestions step shows only when their review is there, and runs it", async () => {
     const s = interview(true);
-    const c = creationOf(s, { myName: null })!;
+    const c = creationOf(s)!;
     expect(stepsFor(s, c).map((x) => x.id)).toEqual(["trip", "route", "travel", "people"]);
     const reviewed: string[] = [];
     setSuggestionsReview(async (tripId) => (reviewed.push(tripId), 2));
@@ -110,7 +123,7 @@ describe("Gezimi oluştur", () => {
 
   it("the step lines say what really happened", () => {
     const s = interview(true);
-    const lines = stepsFor(s, creationOf(s, { myName: null })!).map((x) => x.done);
+    const lines = stepsFor(s, creationOf(s)!).map((x) => x.done);
     expect(lines).toEqual([
       "Gezi açıldı: Bali Gezisi",
       "Rota çizildi: Ubud 12 gece → Canggu 10 gece → Uluwatu 9 gece",
