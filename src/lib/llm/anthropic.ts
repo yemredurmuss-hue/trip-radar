@@ -28,8 +28,16 @@ export function anthropicProvider(client: Anthropic, model: string): LlmProvider
       return structured(client, model, extractionSystem(), content, extractionSchema(), "low", L("Model bu sayfayı işlemeyi reddetti.", "The model declined to process this page."));
     },
 
-    async generateJson(system, prompt, schema) {
-      return structured(client, model, system, [{ type: "text", text: prompt }], schema, "medium", L("Model bu analizi yapmayı reddetti.", "The model declined to do this analysis."));
+    async generateJson(system, prompt, schema, files = []) {
+      const content: Anthropic.ContentBlockParam[] = [
+        ...files.map((f): Anthropic.ContentBlockParam =>
+          f.mimeType === "application/pdf"
+            ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: f.data } }
+            : { type: "image", source: { type: "base64", media_type: f.mimeType, data: f.data } },
+        ),
+        { type: "text", text: prompt },
+      ];
+      return structured(client, model, system, content, schema, "medium", L("Model bu analizi yapmayı reddetti.", "The model declined to do this analysis."));
     },
 
     async chatStep(history: ChatMessage[], system: string, tools: ToolSpec[]): Promise<ChatStep | null> {
@@ -66,6 +74,8 @@ export function anthropicProvider(client: Anthropic, model: string): LlmProvider
     },
 
     userContent: (texts) => texts.map((text) => ({ type: "text", text })),
+
+    assistantContent: (text) => [{ type: "text", text }],
 
     toolResultContent: (results: ToolResult[]) =>
       results.map(

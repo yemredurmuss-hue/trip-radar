@@ -506,9 +506,18 @@ export interface Analysis {
   lang?: "tr" | "en";
 }
 
-/** A file attached to a card (a ticket PDF, a QR screenshot). Kept on this computer only: never shared, never exported. */
+/** What a document is, as the assistant read it (spec 0.34.6 §2); "other" when it couldn't tell. */
+export const DOC_KINDS = ["insurance", "flight", "stay", "train", "bus", "ferry", "event", "esim", "car_rental", "visa", "other"] as const;
+export type DocKind = (typeof DOC_KINDS)[number];
+
+/**
+ * A file of the trip (a ticket PDF, a QR screenshot, a policy): attached to a card, or dropped in the chat and
+ * not linked to one yet (`itemId` ""; Belgeler offers "Bir karta bağla"). Kept on this computer only: never
+ * shared, never exported.
+ */
 export interface DocRecord {
   id: string;
+  /** The card it belongs to; "" while it belongs to none. */
   itemId: string;
   tripId: string;
   name: string;
@@ -517,5 +526,7 @@ export interface DocRecord {
   size: number;
   blob: Blob;
   addedAt: number;
+  /** What the assistant read it as (older files and unread ones don't say). */
+  kind?: DocKind;
 }
 export type DocMeta = Omit<DocRecord, "blob">;

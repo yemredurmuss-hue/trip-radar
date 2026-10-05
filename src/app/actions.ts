@@ -1,5 +1,6 @@
 // Small write actions shared by the board's views.
 import { addEvent, db, notifyChanged } from "../lib/db";
+import { restoreDoc } from "../lib/docs";
 import { L } from "../lib/i18n";
 import { announceRemoved, deleteItem, restoreItem, type Removed } from "../lib/removal";
 import { nightsKey } from "../lib/timeline";
@@ -108,6 +109,7 @@ export async function hideNights(tripId: string, range: DateRange, label: string
 /** "Geri al": a deletion restored, a one-tap add taken away again, hidden nights brought back. */
 export async function undo(u: Undoable): Promise<void> {
   if (u.kind === "removed") return restoreItem(u.removed);
+  if (u.kind === "doc") return restoreDoc(u.doc);
   if (u.kind === "added") {
     await deleteItem(u.item, L(`${u.item.name} eklenmedi (geri alındı)`, `${u.item.name} not added (undone)`));
     return;

@@ -3,7 +3,8 @@
 import { db, newId, notifyChanged } from "./db";
 import { L } from "./i18n";
 import { num } from "./i18nText";
-import type { DocMeta, DocRecord, Item } from "./types";
+import { cardKind, isTransportKind } from "./cardKinds";
+import type { DocKind, DocMeta, DocRecord, Item } from "./types";
 
 export const DOC_MAX_BYTES = 15 * 1024 * 1024;
 // No HEIC: Chrome can't show it, so a kept HEIC would be a file that never opens.
@@ -32,6 +33,63 @@ export async function addDoc(item: Pick<Item, "id" | "tripId">, file: Blob & { n
   await (await db()).put("docs", doc);
   notifyChanged();
   return doc;
+}
+
+/**
+ * A file dropped in the chat or on the board (spec 0.34.6 §1): kept with the trip, linked to no card yet
+ * (the assistant reads it and links it, or Belgeler's "Bir karta bağla" does).
+ */
+export async function addTripDoc(tripId: string, file: Blob & { name: string }, now = Date.now()): Promise<DocRecord> {
+  return addDoc({ id: "", tripId }, file, now);
+}
+
+/** Links a file to a card (or "" to none), saying what it is when known. */
+export async function linkDoc(id: string, itemId: string, kind?: DocKind): Promise<DocRecord | null> {
+  const d = await db();
+  const doc = await d.get("docs", id);
+  if (!doc) return null;
+  const next: DocRecord = { ...doc, itemId, ...(kind ? { kind } : {}) };
+  await d.put("docs", next);
+  notifyChanged();
+  return next;
+}
+
+/** A file deleted from Belgeler, handed back for the 8-second "Geri al". */
+export async function takeDoc(id: string): Promise<DocRecord | null> {
+  const doc = await getDoc(id);
+  if (!doc) return null;
+  await deleteDoc(id);
+  return doc;
+}
+
+/** "Geri al": the file is back as it was (its card, its kind). */
+export async function restoreDoc(doc: DocRecord): Promise<void> {
+  await putDocs([doc]);
+  notifyChanged();
+}
+
+/** Belgeler's groups, in their order: Uçuş · Konaklama · Ulaşım · Etkinlik · Sigorta · İnternet · Diğer. */
+export const DOC_GROUPS = ["flight", "stay", "transport", "event", "insurance", "internet", "other"] as const;
+export type DocGroup = (typeof DOC_GROUPS)[number];
+
+const GROUP_OF_KIND: Record<DocKind, DocGroup> = {
+  flight: "flight", stay: "stay", train: "transport", bus: "transport", ferry: "transport", car_rental: "transport",
+  event: "event", insurance: "insurance", esim: "internet", visa: "other", other: "other",
+};
+
+/** A file's group: what its card is (a flight, a stay...), else what the assistant read it as, else Diğer. */
+export function docGroupOf(doc: Pick<DocMeta, "kind">, item: Item | null | undefined): DocGroup {
+  if (item) {
+    const kind = cardKind(item);
+    if (kind === "flight") return "flight";
+    if (kind === "stay") return "stay";
+    if (isTransportKind(kind)) return "transport";
+    if (kind === "activity" || kind === "todo") return "event";
+    if (kind === "insurance") return "insurance";
+    if (kind === "esim") return "internet";
+    return "other";
+  }
+  return doc.kind ? GROUP_OF_KIND[doc.kind] : "other";
 }
 
 const metaOf = ({ blob: _blob, ...meta }: DocRecord): DocMeta => meta;

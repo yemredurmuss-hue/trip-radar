@@ -110,12 +110,13 @@ export function geminiProvider(client: GeminiClient, model: string, retryWaitMs 
       return parsed.data;
     },
 
-    async generateJson(system, prompt, schema) {
+    async generateJson(system, prompt, schema, files = []) {
+      const parts: Part[] = [...files.map((f): Part => ({ inlineData: { mimeType: f.mimeType, data: f.data } })), { text: prompt }];
       const response = await withRetry(
         () =>
           client.models.generateContent({
             model,
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            contents: [{ role: "user", parts }],
             config: { systemInstruction: system, responseMimeType: "application/json", responseJsonSchema: jsonSchemaFor(schema) },
           }),
         retryWaitMs,
@@ -171,6 +172,8 @@ export function geminiProvider(client: GeminiClient, model: string, retryWaitMs 
     },
 
     userContent: (texts) => texts.map((text): Part => ({ text })),
+
+    assistantContent: (text) => [{ text } satisfies Part],
 
     toolResultContent: (results: ToolResult[]) =>
       results.map(

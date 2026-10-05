@@ -120,6 +120,7 @@ describe("English model calls", () => {
           : { content: [], text: "Done.", calls: [], refused: true };
       },
       userContent: (texts) => texts,
+      assistantContent: (text) => [text],
       toolResultContent: (results) => results.map((r) => r.content),
     };
     await sendMessage("en1", "Somewhere quiet please", llm);

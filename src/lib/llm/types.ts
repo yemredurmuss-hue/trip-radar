@@ -35,15 +35,26 @@ export interface ChatStep {
   refused: boolean;
 }
 
+/** A file sent along with a prompt (a PDF or a picture), its bytes in base64. */
+export interface Attachment {
+  mimeType: "application/pdf" | "image/png" | "image/jpeg";
+  data: string;
+}
+
 export interface LlmProvider {
   id: ProviderId;
   extract(capture: Capture, facts: UrlFacts, trips: Trip[]): Promise<Extraction>;
-  /** One structured-output call validated against the schema (used by the decision analysis). */
-  generateJson<T>(system: string, prompt: string, schema: ZodType<T>): Promise<T>;
+  /**
+   * One structured-output call validated against the schema (the decision analysis; with `files`, a document
+   * read: Gemini inline data, Claude a document or image block). Files go only to the traveller's own provider.
+   */
+  generateJson<T>(system: string, prompt: string, schema: ZodType<T>, files?: Attachment[]): Promise<T>;
   /** One model call over the stored session. Null when the model returned nothing to store. */
   chatStep(history: ChatMessage[], system: string, tools: ToolSpec[]): Promise<ChatStep | null>;
   /** Native content for a user turn made of text blocks. */
   userContent(texts: string[]): unknown;
+  /** Native content for an assistant turn written by code (a document read: "…Belgeler'de duruyor."). */
+  assistantContent(text: string): unknown;
   /** Native content for the user turn that returns tool results. */
   toolResultContent(results: ToolResult[]): unknown;
 }

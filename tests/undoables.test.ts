@@ -84,3 +84,18 @@ describe("a one-tap add taken back", () => {
     expect(await (await db()).get("items", "qb")).toBeUndefined();
   });
 });
+
+describe("a file deleted from Belgeler (0.34.6)", () => {
+  it("says its name, belongs to its trip, and comes back with its card", async () => {
+    const { addTripDoc, getDoc, linkDoc, takeDoc } = await import("../src/lib/docs");
+    const doc = await addTripDoc("t-doc", new File(["%PDF"], "police.pdf", { type: "application/pdf" }), 3);
+    await linkDoc(doc.id, "card-9", "insurance");
+    const taken = (await takeDoc(doc.id))!;
+    const u: Undoable = { kind: "doc", doc: taken };
+    expect(undoText(u)).toBe("police.pdf silindi");
+    expect(undoTrip(u)).toBe("t-doc");
+    expect(await getDoc(doc.id)).toBeUndefined();
+    await undo(u);
+    expect(await getDoc(doc.id)).toMatchObject({ itemId: "card-9", kind: "insurance", name: "police.pdf" });
+  });
+});
