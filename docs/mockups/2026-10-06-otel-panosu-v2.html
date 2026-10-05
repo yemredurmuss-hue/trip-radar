@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Otel panosu v1</title>
+<style>
+  :root { --ink:#1d1d1f; --gray:#6e6e73; --soft:#f5f3ef; --line:#ece9e3; --accent:#5b3fd6; --stay:#23998b; --amber:#9a6400; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #ece9e4; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); }
+  .cap { max-width: 1320px; margin: 28px auto 6px; padding: 0 24px; font-size: 15px; color: var(--gray); }
+  .cap b { color: var(--ink); }
+  .stage { max-width: 1320px; margin: 0 auto 36px; padding: 0 24px; }
+
+  /* 1. the entry: the Plan's stay card */
+  .entry { display: grid; grid-template-columns: 76px 14px minmax(0, 1fr); gap: 0 14px; background: #fff; border-radius: 22px; padding: 22px 26px; max-width: 860px; box-shadow: 0 0 0 1px rgba(0,0,0,.05); }
+  .entry .d { text-align: right; } .entry .d b { display:block; font-size:15px } .entry .d span { font-size: 12.5px; color: var(--gray) }
+  .entry .dot { width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--stay); margin-top: 6px; }
+  .stay { border-radius: 18px; border: 1.5px solid #f2c97a; background: #fffaf0; overflow: hidden; }
+  .stay .top { display:flex; gap:8px; align-items:center; padding: 10px 14px; font-size: 13px; font-weight: 700; color: var(--amber); }
+  .stay .top i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #e0a43a; }
+  .stay .body { display: flex; gap: 14px; padding: 4px 14px 12px; }
+  .stay .ph { width: 110px; height: 78px; border-radius: 12px; background: linear-gradient(135deg,#d9c3a5,#a7c3c9); overflow:hidden }
+  .stay .ph img { width:100%; height:100%; object-fit:cover; display:block }
+  .stay h4 { margin: 2px 0 2px; font-size: 16px } .stay p { margin: 0; font-size: 13px; color: var(--gray) }
+  .stay .foot { display:flex; align-items:center; gap:10px; padding: 10px 14px; border-top: 1px solid #f1e6cf; background: #fff; }
+  .stay .price b { font-size: 18px } .stay .price span { font-size: 12.5px; color: var(--gray) }
+  .btn { height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid #d9d5ce; background: #fff; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink); display:inline-flex; align-items:center; gap:6px }
+  .btn.dark { background: var(--ink); color: #fff; border-color: var(--ink) }
+  .btn.new { margin-left: auto; border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent) }
+  .note { position: relative; margin-left: auto; font-size: 12.5px; color: var(--accent); font-weight: 600 }
+
+  /* 2. the board */
+  .board { background: #fbfaf8; border-radius: 26px; box-shadow: 0 20px 60px rgba(0,0,0,.12), 0 0 0 1px rgba(0,0,0,.05); overflow: hidden; }
+  .bhead { display: flex; align-items: center; gap: 14px; padding: 20px 26px 14px; background: #fff; border-bottom: 1px solid var(--line); }
+  .bhead .ic { width: 40px; height: 40px; border-radius: 12px; display:grid; place-items:center; color: var(--stay); background: color-mix(in srgb, var(--stay) 12%, #fff) }
+  .bhead h2 { margin: 0; font-size: 21px; letter-spacing: -.01em }
+  .bhead small { display: block; margin-top: 2px; font-size: 13.5px; color: var(--gray); font-weight: 500 }
+  .bhead .close { margin-left: auto; width: 36px; height: 36px; border-radius: 50%; border:0; background: var(--soft); font-size: 18px; color: var(--gray) }
+  .tools { display:flex; flex-wrap: wrap; align-items:center; gap: 8px; padding: 14px 26px; }
+  .chip { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #e3dfd8; background: #fff; font-size: 13px; display:inline-flex; align-items:center; gap:6px; color:#3a3a3c }
+  .chip.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); font-weight: 600; color: var(--ink) }
+  .chip.f { border-style: dashed }
+  .tools .sep { width:1px; height:22px; background: var(--line); margin: 0 4px }
+  .tools .count { margin-left:auto; font-size: 13.5px; color: var(--gray) }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; padding: 4px 26px 26px; }
+  .card { position: relative; background: #fff; border-radius: 18px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 4px 14px rgba(0,0,0,.04); }
+  .card.chosen { box-shadow: 0 0 0 2px var(--stay), 0 6px 20px rgba(35,153,139,.18) }
+  .card.out { opacity: .45 }
+  .pic { position: relative; height: 150px; background: linear-gradient(135deg,#cfd9e0,#e9dcc6); }
+  .pic img { width:100%; height:100%; object-fit:cover; display:block }
+  .badge { position: absolute; left: 10px; top: 10px; padding: 4px 9px; border-radius: 8px; font-size: 11.5px; font-weight: 700; color: #fff }
+  .b-ai { background: var(--accent) } .b-cheap { background: #1f8f4e } .b-top { background: #d0592b } .b-fav { background: #c0256b } .b-pick { background: var(--stay) }
+  .x { position: absolute; right: 10px; top: 10px; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,.92); display:grid; place-items:center; font-size: 13px; color: var(--gray) }
+  .sel { position: absolute; right: 44px; top: 10px; width: 28px; height: 28px; border-radius: 8px; background: rgba(255,255,255,.92); display:grid; place-items:center; font-size: 13px; }
+  .sel.on { background: var(--ink); color:#fff }
+  .fit { position: absolute; left: 10px; bottom: 10px; display:flex; align-items:center; gap:6px; padding: 4px 9px 4px 5px; border-radius: 999px; background: rgba(255,255,255,.95); font-size: 12.5px; font-weight: 700 }
+  .fit i { width: 22px; height: 22px; border-radius: 50%; display:grid; place-items:center; font-style: normal; font-size: 10.5px; color:#fff; background: conic-gradient(var(--accent) calc(var(--p)*1%), #e7e3f7 0) ; }
+  .fit i::after { content:""; }
+  .cbody { padding: 12px 14px 10px; }
+  .row1 { display:flex; align-items:flex-start; gap: 10px }
+  .row1 h3 { margin: 0; font-size: 15.5px; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+  .price { text-align: right; flex: none } .price b { display:block; font-size: 18px; letter-spacing: -.01em } .price span { font-size: 11.5px; color: var(--gray) }
+  .meta { display:flex; align-items:center; gap:7px; margin-top: 4px; font-size: 12.5px; color: var(--gray) }
+  .src { padding: 2px 7px; border-radius: 6px; font-weight: 700; font-size: 11px }
+  .s-bk { background:#e8efff; color:#1d4ed8 } .s-ab { background:#ffecef; color:#e0485f }
+  .star { color: #e0a43a } .meta b { color: var(--ink) }
+  .why { margin: 8px 0 0; font-size: 12.5px; color: #3a3a3c; line-height: 1.4 }
+  .why .ok { color: #1d7442 } .why .no { color: #b3261e }
+  .react { display:flex; align-items:center; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1efeb }
+  .r { display:flex; flex-direction: column; align-items:center; gap: 1px; width: 52px; padding: 5px 0 4px; border-radius: 10px; border: 1px solid #ece8e1; background: #fdfcfa; font-size: 10.5px; color: var(--gray) }
+  .r em { font-style: normal; font-size: 16px; line-height: 1 }
+  .r.me { border-color: #e9b54a; background: #fff6e2; color: #8a5a00; font-weight: 700 }
+  .who { display:flex; margin-left: 4px }
+  .who img, .who span { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; margin-left: -6px; object-fit: cover; font-size: 10px; display:grid; place-items:center; color:#fff; font-weight:700 }
+  .who span { background: #c58a2e }
+  .act { margin-left: auto }
+  .pick { height: 30px; padding: 0 12px; border-radius: 999px; border:0; background: var(--ink); color:#fff; font: inherit; font-size: 12.5px; font-weight: 700 }
+  .pick.done { background: color-mix(in srgb, var(--stay) 14%, #fff); color: #13756a }
+  .add { display:grid; place-items:center; text-align:center; border: 2px dashed #d8d2c8; background: transparent; box-shadow: none; min-height: 312px; color: var(--gray); font-size: 14px }
+  .add b { display:block; font-size: 30px; color: #b9b2a6; font-weight: 400 }
+  .add small { display:block; margin-top: 6px; font-size: 12.5px }
+  .bar { display:flex; align-items:center; gap: 12px; margin: 0 26px 22px; padding: 12px 16px; border-radius: 16px; background: var(--ink); color: #fff; font-size: 14px }
+  .bar .btn { margin-left: auto; background: #fff; color: var(--ink); border-color: #fff }
+  .legend { display:grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 1320px; margin: 0 auto 40px; padding: 0 24px; font-size: 13.5px; color: #3a3a3c; line-height: 1.5 }
+  .legend div { background:#fff; border-radius: 16px; padding: 14px 16px }
+  .legend b { color: var(--ink) }
+
+  /* narrow */
+  .narrow { width: 400px; }
+  .narrow .grid { grid-template-columns: 1fr; padding: 4px 14px 14px }
+  .narrow .bhead, .narrow .tools { padding-left: 14px; padding-right: 14px }
+  .narrow .tools .count { display:none }
+  .two { display:flex; gap: 28px; align-items:flex-start; max-width: 1320px; margin: 0 auto; padding: 0 24px }
+</style>
+</head>
+<style>
+  .summary { margin: 16px 26px 4px; padding: 14px 18px; border-radius: 16px; background: #eef1ff; font-size: 14px; line-height: 1.5 }
+  .summary b { font-size: 15.5px } .summary .ai { display:inline-block; margin-right:6px; padding: 1px 7px; border-radius: 6px; background:#e6defd; color: var(--accent); font-size: 11.5px; font-weight: 700 }
+  .summary .mut { color: var(--gray) }
+  .seg { display:inline-flex; padding: 3px; border-radius: 10px; background: #ece9e3; margin-right: 6px }
+  .seg span { height: 28px; padding: 0 12px; border-radius: 8px; font-size: 13px; display:inline-flex; align-items:center; color: var(--gray) }
+  .seg span.on { background:#fff; color: var(--ink); font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.08) }
+  .score { position:absolute; left: 10px; bottom: 10px; width: 52px; height: 52px; border-radius: 50%; background: #fff; display:grid; place-items:center; text-align:center; line-height: 1; box-shadow: 0 2px 8px rgba(0,0,0,.12) }
+  .score b { font-size: 19px; color: #1556d6 } .score small { display:block; font-size: 9.5px; color: var(--gray); margin-top: 2px }
+  .score.mid b { color: #3a3a3c } .score.low b { color: #8e8e93 }
+  .pc { list-style:none; margin: 8px 0 0; padding: 0; font-size: 12.5px; line-height: 1.45 }
+  .pc li { display:flex; gap: 6px } .pc .p { color: #1f8f4e; font-weight: 800 } .pc .m { color: #c62828; font-weight: 800 }
+  .pc .only { margin-left: 4px; padding: 0 5px; border-radius: 5px; font-size: 10.5px; font-weight: 700; background: #e8edff; color: #3b4fd6 }
+  .pc .only.m { background: #ffe9e9; color: #c62828 }
+  .pc .more { color: #1556d6; font-weight: 600 }
+  .ele { height: 30px; padding: 0 10px; border:0; background: none; font: inherit; font-size: 12.5px; color: var(--gray) }
+  .old { text-decoration: line-through; color: #8e8e93 }
+  .tag { display:inline-block; padding: 1px 6px; border-radius: 6px; font-size: 11px; font-weight: 700; background: #fff2d6; color: #8a5a00; margin-left: 6px }
+</style>
+<body>
+<p class="cap"><b>v2 · Mevcut Karşılaştırma penceresinin büyümüş hâli</b> — aynı veri (puan, artı-eksiler, "Senin için" özeti, kriter tablosu), üstüne fotoğraflı kartlar, rozetler, tepkiler ve sıralama. Yeni ekran değil.</p>
+<p class="cap"><b>1 · Giriş</b> — Plan'daki konaklama kartında (rezerve edilmemişse) "Diğer 2 seçenek" yerine <b>"Seçenekleri karşılaştır (4)"</b>; sohbetteki "Karşılaştır →" de aynı yere açılır.</p>
+<div class="stage">
+  <div class="entry">
+    <div class="d"><b>8 Eki</b><span>Per · Porto</span></div>
+    <div class="dot"></div>
+    <div class="stay">
+      <div class="top"><i></i>Seçildi · rezerve edilmedi</div>
+      <div class="body">
+        <div class="ph"><img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&q=70" alt=""></div>
+        <div><h4>Jardim Stay</h4><p>Porto · 8–11 Ekim · Otel odası</p><p>5 Eki'ye kadar ücretsiz iptal</p></div>
+      </div>
+      <div class="foot">
+        <span class="price"><b>€285</b> <span>3 gece · €95/gece</span></span>
+        <button class="btn">Rezerve ettim</button>
+        <button class="btn new">▦ Seçenekleri karşılaştır (4)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="cap"><b>2 · Karşılaştırma · Kartlar</b> (yeni varsayılan) — üstte bugünkü "Senin için" özeti; her kartta bugünkü puan ve öne çıkan artı-eksiler.</p>
+<div class="stage">
+  <div class="board">
+    <div class="bhead">
+      <span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 18v-6.5A2.5 2.5 0 0 1 5.5 9h13a2.5 2.5 0 0 1 2.5 2.5V18M3 15h18M3 18v2M21 18v2M5 9V6.5A1.5 1.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5V9"/></svg></span>
+      <div><small style="margin:0 0 2px">Karşılaştırma</small><h2>Konaklama · Porto · 8–11 Ekim · 3 gece</h2></div>
+      <button class="close">×</button>
+    </div>
+    <div class="summary">
+      <b>Senin için: Jardim Stay</b><br>
+      €45 fazlasına her yolda ~37 dk daha yakın; daha iyi yorumlar (8,9/10 · 1.204 yorum). <span class="mut">Bununla kalan bütçe €638.</span><br>
+      <span class="ai">AI yorumu</span>Kaydettiğin yerlere yakın ve odaları sessiz. Casa Azul daha ucuz ama yan binadaki inşaat sessiz bir yer isteğine ters.
+    </div>
+    <div class="tools">
+      <span class="seg"><span class="on">▦ Kartlar</span><span>☰ Tablo</span></span>
+      <span class="chip on">Önerim</span><span class="chip">Fiyat ↑</span><span class="chip">Puan</span><span class="chip">Konum</span>
+      <span class="sep"></span>
+      <span class="chip f">Ücretsiz iptal</span><span class="chip f">Bütçe altı</span><span class="chip f">Elenenler (1)</span>
+      <span class="count">4 seçenek · Sabine oy verdi</span>
+    </div>
+    <div class="grid">
+
+      <div class="card chosen">
+        <div class="pic"><img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=700&q=70" alt="">
+          <span class="badge b-ai">✦ Önerim</span><span class="sel on">✓</span>
+          <span class="score"><span><b>85</b><small>puan</small></span></span></div>
+        <div class="cbody">
+          <div class="row1"><h3>Jardim Stay</h3><div class="price"><b>€95</b><span>/gece · €285</span></div></div>
+          <div class="meta"><span class="src s-bk">Booking.com</span><span class="star">★</span><b>8,9</b> (1.204) · Baixa <span class="tag">✓ Planında</span></div>
+          <ul class="pc">
+            <li><span class="p">+</span>Sessiz odalar, iyi uyku <span class="only">yalnız bunda</span></li>
+            <li><span class="p">+</span>Kaydettiğin yerlere 6 dk</li>
+            <li><span class="m">−</span>Odalar küçük <span class="only m">yalnız bunda</span></li>
+            <li><span class="more">+3 artı · 1 eksi daha</span></li>
+          </ul>
+          <div class="react"><span class="r"><em>😕</em>Olmaz</span><span class="r"><em>🙂</em>Olur</span><span class="r me"><em>🤩</em>Süper</span>
+            <span class="who"><img src="https://i.pravatar.cc/60?img=12" alt=""><span>S</span></span>
+            <span class="act"><button class="pick done">✓ Seçili</button></span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="pic"><img src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=700&q=70" alt="">
+          <span class="badge b-cheap">€ En ucuz</span><span class="sel on">✓</span>
+          <span class="score mid"><span><b>67</b><small>puan</small></span></span></div>
+        <div class="cbody">
+          <div class="row1"><h3>Casa Azul</h3><div class="price"><b>€80</b><span>/gece · €240</span></div></div>
+          <div class="meta"><span class="src s-ab">Airbnb</span><span class="star">★</span><b>4,8</b> (96) · Bonfim</div>
+          <ul class="pc">
+            <li><span class="p">+</span>Yanında çok iyi bir İtalyan restoranı</li>
+            <li><span class="p">+</span>Ücretsiz iptal · 5 Eki'ye kadar</li>
+            <li><span class="m">−</span>Kaydettiğin yerlere 43 dk · dik yokuş</li>
+            <li><span class="old">− Yan binada inşaat</span> <span class="more" style="color:#8e8e93">sorun değil dedin</span></li>
+          </ul>
+          <div class="react"><span class="r"><em>😕</em>Olmaz</span><span class="r me"><em>🙂</em>Olur</span><span class="r"><em>🤩</em>Süper</span>
+            <span class="who"><span>S</span></span>
+            <span class="act"><button class="ele">Ele</button><button class="pick">Seç</button></span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="pic"><img src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=700&q=70" alt="">
+          <span class="badge b-top">★ En yüksek puan</span><span class="sel">+</span>
+          <span class="score low"><span><b>50</b><small>puan</small></span></span></div>
+        <div class="cbody">
+          <div class="row1"><h3>Ribeira Rooms</h3><div class="price"><b>€110</b><span>/gece · €330</span></div></div>
+          <div class="meta"><span class="src s-bk">Booking.com</span><span class="star">★</span><b>9,2</b> (640) · Ribeira</div>
+          <ul class="pc">
+            <li><span class="p">+</span>Odadan nehir manzarası <span class="only">yalnız bunda</span></li>
+            <li><span class="m">−</span>Hafta sonu gece gürültüsü · 3 yorum</li>
+            <li><span class="m">−</span>Asansör yok, 3. kat</li>
+            <li><span class="more">+1 artı · 2 eksi daha</span></li>
+          </ul>
+          <div class="react"><span class="r me"><em>😕</em>Olmaz</span><span class="r"><em>🙂</em>Olur</span><span class="r"><em>🤩</em>Süper</span>
+            <span class="who"><img src="https://i.pravatar.cc/60?img=12" alt=""></span>
+            <span class="act"><button class="ele">Ele</button><button class="pick">Seç</button></span></div>
+        </div>
+      </div>
+
+      <div class="card add"><div><b>+</b>Seçenek ekle<small>Linki yapıştır ya da sayfada<br>Trip Radar'a "Kaydet"e bas</small></div></div>
+
+    </div>
+    <div class="bar">2 seçenek işaretli: Jardim Stay, Casa Azul <button class="btn">Tabloda yan yana gör →</button></div>
+  </div>
+</div>
+
+<div class="legend">
+  <div><b>Kalan (bugünden):</b> "Senin için" özeti ve AI yorumu, 85/67/50 puanı, artı-eksiler ("yalnız bunda", "sorun değil dedin"), kriter tablosu ve öncelik seçimleri (☰ Tablo), Seç / Ele.</div>
+  <div><b>Eklenen (yeni fikirden):</b> fotoğraflı kart ızgarası, rozetler (Önerim · En ucuz · En yüksek puan · Favori), Olmaz · Olur · Süper tepkileri ve kim ne dedi, sıralama ve süzgeçler, "+ Seçenek ekle".</div>
+  <div><b>Giriş:</b> Plan'daki konaklama kartından "Seçenekleri karşılaştır (N)" ve sohbetteki "Karşılaştır →" aynı pencereyi açar. Tek tek gezilen seçenek kartı ("Diğer N seçenek") bunun yerine geçer.</div>
+</div>
+<div style="height:30px"></div>
+</body>
+</html>
