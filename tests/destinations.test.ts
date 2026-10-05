@@ -1,7 +1,7 @@
 // The hero's main places (revizyon 1): a town inside a destination folds into it (Gaula → Madeira); the
 // Plan keeps every place. The model's answer is checked; before it, a guess from the stays' addresses.
 import { afterEach, describe, expect, it } from "vitest";
-import { acceptParents, answersAny, fallbackParents, isMobileStay, mainPlaceOf, mainPlaces, placesKey, placesPrompt, placesSystemPrompt, resolveParents, tableParents } from "../src/lib/destinations";
+import { acceptParents, answerParents, answersAny, fallbackParents, isMobileStay, mainPlaceOf, mainPlaces, placesKey, placesPrompt, placesSystemPrompt, resolveParents, tableParents } from "../src/lib/destinations";
 import { setLang } from "../src/lib/i18n";
 import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
@@ -142,38 +142,66 @@ describe("the model's answer, as a model writes it", () => {
 });
 
 describe("islands and regions the app knows (no model)", () => {
+  // Stays saved from pages in a country (the evidence a member needs).
+  const inCountry = (code: string, ...cities: string[]) => cities.map((c) => stay(c, null, null, { countryCode: code }));
   it("folds a Madeira parish into Madeira when Madeira isn't one of the trip's places", () => {
-    const items = [stay("Porto", "Rua do Almada 10, Porto"), stay("Gaula", "Gaula, Madeira, Portugal", null, { countryCode: "PT" })];
+    const items = [stay("Porto", "Rua do Almada 10, Porto", null, { countryCode: "PT" }), stay("Gaula", "Gaula, Portugal", null, { countryCode: "PT" })];
     expect(tableParents(["Porto", "Gaula"], items)).toEqual({ gaula: "Madeira" });
     expect(mainPlaces(["Porto", "Gaula"], resolveParents(["Porto", "Gaula"], items, null)).map((p) => p.name)).toEqual(["Porto", "Madeira"]);
-    // The name alone is enough (a parish of the table), and every one listed goes to the island.
-    expect(tableParents(["Câmara de Lobos", "Machico", "Funchal"], [])).toEqual({ "camara de lobos": "Madeira", machico: "Madeira", funchal: "Madeira" });
+    // Every parish listed goes to the island once the trip is in Portugal; Funchal (a city the app knows) always.
+    expect(tableParents(["Câmara de Lobos", "Machico", "Funchal"], inCountry("PT", "Câmara de Lobos", "Machico"))).toEqual({ "camara de lobos": "Madeira", machico: "Madeira", funchal: "Madeira" });
+    expect(tableParents(["Funchal"], [])).toEqual({ funchal: "Madeira" });
+  });
+  it("folds Gaula from its address alone: no country code, no model (the campervan on Emre's board)", () => {
+    const van = stay("Gaula", "Gaula, Madeira, Portugal", null, { name: "Renault Campervan 'Bawhee'" });
+    expect(tableParents(["Porto", "Gaula"], [stay("Porto"), van])).toEqual({ gaula: "Madeira" });
+    expect(mainPlaces(["Porto", "Gaula"], resolveParents(["Porto", "Gaula"], [stay("Porto"), van], null)).map((p) => p.name)).toEqual(["Porto", "Madeira"]);
+    // With nothing to go on (a plan said in the chat: no country, no address), a member isn't folded.
+    expect(tableParents(["Porto", "Gaula"], [stay("Porto"), stay("Gaula")])).toEqual({});
   });
   it("keeps Porto Santo its own island, and real cities their own stops", () => {
     expect(tableParents(["Funchal", "Porto Santo"], [])).toEqual({ funchal: "Madeira" });
     expect(mainPlaces(["Funchal", "Porto Santo"], tableParents(["Funchal", "Porto Santo"], [])).map((p) => p.name)).toEqual(["Madeira", "Porto Santo"]);
-    expect(tableParents(["Porto", "Lizbon", "Faro"], [])).toEqual({});
-    expect(tableParents(["Palermo", "Catania", "Taormina"], [])).toEqual({ taormina: "Sicilya" });
-    expect(tableParents(["Heraklion", "Chania", "Elounda"], [])).toEqual({ elounda: "Girit" });
+    expect(tableParents(["Porto", "Lizbon", "Faro"], inCountry("PT", "Porto", "Lizbon", "Faro"))).toEqual({});
+    expect(tableParents(["Palermo", "Catania", "Taormina"], inCountry("IT", "Palermo", "Catania", "Taormina"))).toEqual({ taormina: "Sicilya" });
+    expect(tableParents(["Heraklion", "Chania", "Elounda"], inCountry("GR", "Heraklion", "Chania", "Elounda"))).toEqual({ elounda: "Girit" });
   });
   it("knows the islands and regions asked for, in the board's language", () => {
-    expect(tableParents(["Lagos", "Albufeira", "Faro"], [])).toEqual({ lagos: "Algarve", albufeira: "Algarve" });
-    expect(tableParents(["Ponta Delgada", "Furnas"], [])).toEqual({ "ponta delgada": "São Miguel", furnas: "São Miguel" });
-    expect(tableParents(["Palma", "Sóller"], [])).toEqual({ palma: "Mallorca", soller: "Mallorca" });
-    expect(tableParents(["Sant Antoni de Portmany", "Ciutadella"], [])).toEqual({ "sant antoni de portmany": "İbiza", ciutadella: "Menorca" });
-    expect(tableParents(["Costa Adeje", "Maspalomas", "Playa Blanca", "Corralejo"], [])).toEqual({ "costa adeje": "Tenerife", maspalomas: "Gran Canaria", "playa blanca": "Lanzarote", corralejo: "Fuerteventura" });
-    expect(tableParents(["Oia", "Ornos"], [])).toEqual({ oia: "Santorini", ornos: "Mikonos" });
-    expect(tableParents(["Alghero", "Ubud"], [])).toEqual({ alghero: "Sardinya", ubud: "Bali" });
+    expect(tableParents(["Albufeira", "Faro"], inCountry("PT", "Albufeira", "Faro"))).toEqual({ albufeira: "Algarve" });
+    expect(tableParents(["Ponta Delgada", "Furnas"], inCountry("PT", "Furnas"))).toEqual({ "ponta delgada": "São Miguel", furnas: "São Miguel" });
+    expect(tableParents(["Palma", "Sóller"], inCountry("ES", "Sóller"))).toEqual({ palma: "Mallorca", soller: "Mallorca" });
+    expect(tableParents(["Sant Antoni de Portmany", "Ciutadella"], inCountry("ES", "Sant Antoni de Portmany", "Ciutadella"))).toEqual({ "sant antoni de portmany": "İbiza", ciutadella: "Menorca" });
+    const canaries = ["Costa Adeje", "Maspalomas", "Playa Blanca", "Corralejo"];
+    expect(tableParents(canaries, inCountry("ES", ...canaries))).toEqual({ "costa adeje": "Tenerife", maspalomas: "Gran Canaria", "playa blanca": "Lanzarote", corralejo: "Fuerteventura" });
+    expect(tableParents(["Oia", "Ornos"], inCountry("GR", "Oia", "Ornos"))).toEqual({ oia: "Santorini", ornos: "Mikonos" });
+    expect(tableParents(["Alghero", "Ubud"], [...inCountry("IT", "Alghero"), ...inCountry("ID", "Ubud")])).toEqual({ alghero: "Sardinya", ubud: "Bali" });
     setLang("en");
-    expect(tableParents(["Elounda", "Taormina", "Alghero", "Ornos"], [])).toEqual({ elounda: "Crete", taormina: "Sicily", alghero: "Sardinia", ornos: "Mykonos" });
+    const four = ["Elounda", "Taormina", "Alghero", "Ornos"];
+    expect(tableParents(four, [...inCountry("GR", "Elounda", "Ornos"), ...inCountry("IT", "Taormina", "Alghero")])).toEqual({ elounda: "Crete", taormina: "Sicily", alghero: "Sardinia", ornos: "Mykonos" });
   });
-  it("reads a stay's address or area, and a generic name only in its country", () => {
-    expect(tableParents(["Porto", "Gaula"], [stay("Porto"), stay("Gaula", "Gaula, Portugal")])).toEqual({ gaula: "Madeira" });
-    expect(tableParents(["Quinta X"], [stay("Quinta X", "Estrada 12, 9100-123 Santa Cruz, Portugal", null, { countryCode: "PT" })])).toEqual({ "quinta x": "Madeira" });
+  it("never folds a name that is also a town elsewhere, unless the region is named (review probes)", () => {
+    // Santa Cruz and Puerto de la Cruz on a Tenerife trip: Santa Cruz isn't Madeira's.
+    expect(tableParents(["Santa Cruz", "Puerto de la Cruz"], inCountry("ES", "Santa Cruz", "Puerto de la Cruz"))).toEqual({ "puerto de la cruz": "Tenerife" });
+    expect(tableParents(["Santa Cruz", "Puerto de la Cruz"], [stay("Santa Cruz"), stay("Puerto de la Cruz")])).toEqual({});
+    // San Antonio (Texas), San José (Costa Rica): not Ibiza's, with or without their country.
+    expect(tableParents(["San Antonio", "San José"], [...inCountry("US", "San Antonio"), ...inCountry("CR", "San José")])).toEqual({});
+    expect(tableParents(["San Antonio", "San José"], [stay("San Antonio"), stay("San José")])).toEqual({});
+    // Lagos (Nigeria): not the Algarve's; the Algarve's Lagos when its address says so.
+    expect(tableParents(["Lagos"], inCountry("NG", "Lagos"))).toEqual({});
+    expect(tableParents(["Lagos"], [stay("Lagos")])).toEqual({});
+    expect(tableParents(["Lagos", "Faro"], [stay("Lagos", "Rua X, 8600 Lagos, Algarve, Portugal", null, { countryCode: "PT" })])).toEqual({ lagos: "Algarve" });
+    // Santa Cruz on the mainland (Torres Vedras): Portugal, but not Madeira; Madeira's when the address says so.
+    expect(tableParents(["Santa Cruz"], [stay("Santa Cruz", "Av. do Atlântico, 2560 Santa Cruz, Torres Vedras, Portugal", null, { countryCode: "PT" })])).toEqual({});
+    expect(tableParents(["Santa Cruz"], [stay("Santa Cruz", "Estrada 12, 9100-123 Santa Cruz, Madeira", null, { countryCode: "PT" })])).toEqual({ "santa cruz": "Madeira" });
+    // Kuta on Lombok: Indonesia, but not Bali.
+    expect(tableParents(["Kuta"], inCountry("ID", "Kuta"))).toEqual({});
+    expect(tableParents(["Kuta"], [stay("Kuta", "Jl. Pantai Kuta, Kuta, Bali", null, { countryCode: "ID" })])).toEqual({ kuta: "Bali" });
+  });
+  it("reads a stay's address or area; a street named after the island isn't the island", () => {
     expect(tableParents(["Hotelito"], [stay("Hotelito", null, "Madeira")])).toEqual({ hotelito: "Madeira" });
-    // Santa Cruz in Bolivia isn't Madeira's; a street named after the island isn't the island.
-    expect(tableParents(["Santa Cruz"], [stay("Santa Cruz", null, null, { countryCode: "BO" })])).toEqual({});
-    expect(tableParents(["Porto"], [stay("Porto", "Rua da Madeira 4, Porto")])).toEqual({});
+    expect(tableParents(["Porto"], [stay("Porto", "Rua da Madeira 4, Porto", null, { countryCode: "PT" })])).toEqual({});
+    // A stay of the place in another country never folds, even into a region it names.
+    expect(tableParents(["Hotelito"], [stay("Hotelito", null, "Madeira", { countryCode: "ES" })])).toEqual({});
   });
   it("takes a campervan where its page says it goes: its city is only the pickup", () => {
     const van = stay("Caniçal Depot", null, null, { name: "Renault Campervan 'Bawhee'", summary: "A campervan to explore Madeira at your own pace", countryCode: "PT" });
@@ -183,12 +211,25 @@ describe("islands and regions the app knows (no model)", () => {
     // A hotel's summary naming the island isn't where the hotel is.
     expect(tableParents(["Porto"], [stay("Porto", null, null, { summary: "Day trips to Madeira" })])).toEqual({});
   });
-  it("lets a valid model answer win, fills in what it didn't fold, and names one destination one way", () => {
+  it("lets a valid model answer win, keeps what it kept on purpose, and fills in only what it didn't answer", () => {
     const items = [stay("Porto"), stay("Gaula", "Gaula, Madeira, Portugal")];
-    // The answer the 0.35.3 board had stored: nothing folded.
+    // The answer the 0.35.3 board had stored: nothing folded, nothing kept on purpose.
     expect(resolveParents(["Porto", "Gaula"], items, {})).toEqual({ gaula: "Madeira" });
     expect(resolveParents(["Porto", "Gaula"], items, { gaula: "Ilha da Madeira" })).toEqual({ gaula: "Madeira" });
-    expect(resolveParents(["Lagos", "Burgau"], [], { lagos: "Western Algarve" })).toEqual({ lagos: "Western Algarve", burgau: "Algarve" });
-    expect(mainPlaces(["Elounda", "Malia"], resolveParents(["Elounda", "Malia"], [], { elounda: "Crete" })).map((p) => p.name)).toEqual(["Girit"]);
+    // The model said null for Gaula: kept as "", the table doesn't override it; a capital it kept isn't renamed either.
+    const kept = answerParents(["Porto", "Gaula"], [{ place: "Porto", parent: null }, { place: "Gaula (Portugal)", parent: null }]);
+    expect(kept).toEqual({ porto: "", gaula: "" });
+    // Hard evidence beats the model's null: Gaula's own address names Madeira.
+    expect(resolveParents(["Porto", "Gaula"], items, kept)).toEqual({ gaula: "Madeira" });
+    // Only the weaker evidence (saves in Portugal): the model's null stands.
+    expect(resolveParents(["Porto", "Gaula"], inCountry("PT", "Porto", "Gaula"), kept)).toEqual({});
+    expect(tableParents(["Porto", "Gaula"], inCountry("PT", "Porto", "Gaula"))).toEqual({ gaula: "Madeira" });
+    expect(resolveParents(["Palma", "Sóller"], inCountry("ES", "Sóller"), { palma: "" })).toEqual({ soller: "Mallorca" });
+    // A place the model didn't answer for is the table's.
+    expect(resolveParents(["Palma", "Sóller"], inCountry("ES", "Sóller"), { soller: "Mallorca" })).toEqual({ soller: "Mallorca", palma: "Mallorca" });
+    expect(resolveParents(["Lagos", "Burgau"], inCountry("PT", "Burgau"), { lagos: "Western Algarve" })).toEqual({ lagos: "Western Algarve", burgau: "Algarve" });
+    expect(mainPlaces(["Elounda", "Malia"], resolveParents(["Elounda", "Malia"], inCountry("GR", "Malia"), { elounda: "Crete" })).map((p) => p.name)).toEqual(["Girit"]);
+    // An empty answer list folds nothing and keeps nothing (it's cached as {}).
+    expect(answerParents(["Porto", "Gaula"], [])).toEqual({});
   });
 });

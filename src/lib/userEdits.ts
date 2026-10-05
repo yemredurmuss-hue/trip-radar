@@ -16,7 +16,8 @@ type EditKey = keyof UserEdits;
 /** The card's field → the correction it writes. */
 export const EDIT_KEY: Record<FieldKey, EditKey> = { name: "name", city: "city", from: "from", to: "to", date: "start", end: "end", time: "time", price: "price" };
 
-const clock = (iso: string | null | undefined) => iso?.match(/T(\d{2}:\d{2})/)?.[1] ?? null;
+// "2026-10-12T22:40", or a bare "22:40" (a ticket read without its day): its departure time either way.
+const clock = (iso: string | null | undefined) => iso?.match(/(?:T|^)(\d{2}:\d{2})/)?.[1] ?? null;
 const startOf = (item: Item) => isoDate(item.flight?.departure?.slice(0, 10)) ?? isoDate(item.dates.start);
 
 /** What the record itself says for a field (the page's value when the record is stored, not corrected). */
@@ -40,6 +41,8 @@ function ownValue(item: Item, key: EditKey): string | number | null {
       return item.flight?.from ?? null;
     case "to":
       return item.flight?.to ?? null;
+    case "arrival":
+      return item.flight?.arrival ?? null;
   }
 }
 
@@ -60,11 +63,12 @@ export function withEdits(item: Item): Item {
   const time = e.time ?? clock(f?.departure);
   const timed = e.start !== undefined || e.time !== undefined;
   const departure = timed ? (start && time ? `${start}T${time}` : start && f?.departure ? `${start}${f.departure.slice(10)}` : (f?.departure ?? null)) : (f?.departure ?? null);
-  // A trip moved to another day lands as many days later.
+  // A trip moved to another day lands as many days later (an arrival said in the chat is its own).
   const shift = e.start && startWas ? nightsBetween(startWas, e.start) : 0;
-  const arrival = f?.arrival && shift ? `${addDays(f.arrival.slice(0, 10), shift)}${f.arrival.slice(10)}` : (f?.arrival ?? null);
+  const landsOn = isoDate(f?.arrival?.slice(0, 10));
+  const arrival = e.arrival ?? (f?.arrival && landsOn && shift ? `${addDays(landsOn, shift)}${f.arrival.slice(10)}` : (f?.arrival ?? null));
   const flight =
-    f || e.from !== undefined || e.to !== undefined || (e.time !== undefined && start)
+    f || e.from !== undefined || e.to !== undefined || e.arrival !== undefined || (e.time !== undefined && start)
       ? { from: e.from ?? f?.from ?? null, to: e.to ?? f?.to ?? null, departure, arrival, carrier: f?.carrier ?? null, flightNumber: f?.flightNumber ?? null, stops: f?.stops ?? null }
       : null;
   // The box opens with the page's amount as the page gives it (per night, per person...): the corrected
@@ -101,7 +105,7 @@ export function withoutEdits(item: Item, keys: EditKey[]): Item {
 export const fromPage = (item: Item): boolean => item.origin !== "chat" && item.captureIds.length > 0;
 
 /** What the chat said about an option, field by field (null: not said). */
-export type Said = Partial<Record<"start" | "end" | "time" | "from" | "to" | "city" | "price" | "currency", string | number | null>>;
+export type Said = Partial<Record<"start" | "end" | "time" | "from" | "to" | "arrival" | "city" | "price" | "currency", string | number | null>>;
 
 /**
  * The corrections after the chat said something about a saved page's option ("karavan Gaula değil Madeira",

@@ -18,7 +18,7 @@ import {
 import { needsFor } from "./cardFacts";
 import { moveDocs } from "./docs";
 import { choiceOf, tradeText } from "./choice";
-import { currencyCode, isoDate, listingKeyOf, nightsBetween, tripDateRange } from "./items";
+import { currencyCode, isoDate, listingKeyOf, tripDateRange } from "./items";
 import { NEED_MARK } from "./needs";
 import { coverageText, searchText } from "./listing";
 import { prosConsFor } from "./proscons";
@@ -27,7 +27,7 @@ import { buildLegs, legTiming, withLegChoice } from "./legs";
 import { checkPlanned, guardKind, plannedInput, planToSave, PLANNED_KINDS } from "./planned";
 import { isIdea } from "./booking";
 import { sectionOfItem, type SectionId } from "./categories";
-import { addDays, buildPlan, liveGroups, sameCity, stayRange, type Plan } from "./plan";
+import { addDays, buildPlan, cityKeyOf, liveGroups, sameCity, stayRange, type Plan } from "./plan";
 import { fromPage, saidEdits, withEdits, withoutEdits } from "./userEdits";
 import { L, lang } from "./i18n";
 import { announceRemoved, deleteItem } from "./removal";
@@ -203,7 +203,7 @@ export function withDetails(item: Item, d: Details): Item | string {
   const end = d.end_date ?? item.dates.end;
   if (item.category === "stay" && start && end && end <= start) return L("Çıkış girişten sonra olmalı.", "Check-out must be after check-in.");
   const next: Item = { ...item, dates: { ...item.dates, start, end, source: d.date || d.end_date ? "user" : item.dates.source } };
-  if (item.flight || d.departure_time || d.from || d.to) {
+  if (item.flight || d.departure_time || d.arrival_time || d.from || d.to) {
     const f = item.flight ?? { from: null, to: null, departure: null, arrival: null, carrier: null, flightNumber: null, stops: null };
     const leaves = d.departure_time ?? clockOf(f.departure);
     const lands = d.arrival_time ?? clockOf(f.arrival);
@@ -222,6 +222,16 @@ export function withDetails(item: Item, d: Details): Item | string {
 }
 
 /**
+ * The place set_details was given, or null when nothing changes: a required field echoed back ("null", "none",
+ * "-") or the place the card already shows.
+ */
+export function saidCity(raw: unknown, current: string | null): string | null {
+  const city = text(raw);
+  if (!city || /^(null|none|nil|n\/a|na|-+|—|–|undefined|unknown|yok|bilinmiyor|aynı|same)$/i.test(city)) return null;
+  return cityKeyOf(city) === cityKeyOf(current) ? null : city;
+}
+
+/**
  * set_details on a plan said in the chat (or made by hand): no page behind it, so the record itself changes; a
  * correction made on the card for a field said now gives way to it.
  */
@@ -237,24 +247,22 @@ export function detailsOnRecord(item: Item, details: Details, city: string | nul
 /**
  * set_details on an option saved from a page: what was said becomes the card's correction (userEdits), the same
  * as one made on the card, so the page saved again (mergeItem keeps the corrections) can't bring the page's city,
- * day or route back. The arrival has no correction of its own: it's kept on the record, as many days from the
- * page's day as the corrected departure is.
+ * day, route or arrival back. The arrival is a correction when it was said, or when the page's had no day ("00:45")
+ * and the day said now gives it one; otherwise the page's arrival moves with the corrected day (withEdits).
  */
 export function detailsOverPage(item: Item, details: Details, city: string | null): Item | string {
   const view = withEdits(item);
   const checked = withDetails(view, details);
   if (typeof checked === "string") return checked;
-  const edits = saidEdits(item, { start: details.date, end: details.end_date, time: details.departure_time, from: details.from, to: details.to, city });
-  const { userEdits: _was, pageValues: _view, ...bare } = item;
-  let record: Item = Object.keys(edits).length ? { ...bare, userEdits: edits } : bare;
   const arrival = checked.flight?.arrival ?? null;
-  if (record.flight && arrival && arrival !== view.flight?.arrival) {
-    const pageStart = isoDate(item.flight?.departure?.slice(0, 10)) ?? isoDate(item.dates.start);
-    const shift = edits.start && pageStart ? nightsBetween(pageStart, edits.start) : 0;
-    const day = isoDate(arrival.slice(0, 10));
-    record = { ...record, flight: { ...record.flight, arrival: day && shift ? `${addDays(day, -shift)}${arrival.slice(10)}` : arrival } };
-  }
-  return record;
+  const bareArrival = Boolean(view.flight?.arrival && !isoDate(view.flight.arrival.slice(0, 10)));
+  const arrivalSaid = Boolean(arrival && arrival !== view.flight?.arrival && (details.arrival_time || details.arrival_date || bareArrival));
+  const edits = saidEdits(item, {
+    start: details.date, end: details.end_date, time: details.departure_time, from: details.from, to: details.to, city,
+    ...(arrivalSaid ? { arrival } : {}),
+  });
+  const { userEdits: _was, pageValues: _view, ...bare } = item;
+  return Object.keys(edits).length ? { ...bare, userEdits: edits } : bare;
 }
 
 /** Level names the model uses; ASCII so every provider's schema subset accepts them. */
@@ -829,7 +837,7 @@ async function runTool(tripId: string, name: string, input: any, choices: string
         date: text(input.date), end_date: text(input.end_date), departure_time: text(input.departure_time),
         arrival_time: text(input.arrival_time), arrival_date: text(input.arrival_date), from: text(input.from), to: text(input.to),
       };
-      const city = text(input.city);
+      const city = saidCity(input.city, withEdits(item).city);
       const saved = fromPage(item) ? detailsOverPage(item, details, city) : detailsOnRecord(item, details, city);
       if (typeof saved === "string") throw new ToolError(saved);
       await d.put("items", { ...saved, updatedAt: Date.now() });

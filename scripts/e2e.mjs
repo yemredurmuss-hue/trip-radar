@@ -1957,7 +1957,8 @@ try {
     const t = trips.find((x) => x.title === "Portekiz");
     return t.placeParents && t.prefLabels && Object.values(t.prefLabels).includes("Şarap tadımı") ? { parents: t.placeParents.parents, labels: t.prefLabels } : null;
   }, null, { timeout: 15000 });
-  assert.deepEqual((await labels.jsonValue()).parents, { funchal: "Madeira", gaula: "Madeira" });
+  // Porto answered null is kept as "" (0.35.6 review): the region table never folds a place the model kept.
+  assert.deepEqual((await labels.jsonValue()).parents, { funchal: "Madeira", gaula: "Madeira", porto: "" });
   assert.equal(notePrompts.filter((p) => p.includes("şarap tadımına")).length, 1, "a note is named once");
   await board.locator(".hx").scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/14-hero-main-places.png` });

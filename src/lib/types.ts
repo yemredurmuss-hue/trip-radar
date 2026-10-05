@@ -267,6 +267,8 @@ export interface UserEdits {
   currency?: string;
   from?: string;
   to?: string;
+  /** A trip's arrival, YYYY-MM-DDTHH:MM (said in the chat: it can land the next day). */
+  arrival?: string;
 }
 export type PageValues = { [K in keyof UserEdits]?: UserEdits[K] | null };
 
