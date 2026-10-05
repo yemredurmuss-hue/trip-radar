@@ -356,3 +356,74 @@ describe("sections from what's saved and said", () => {
     expect(findInSections(sections, { item: "nope" })).toBeNull();
   });
 });
+
+describe("what's hidden, section by section (kategoriler-v4: \"Gizlenenler · N göster\" at a section's end)", () => {
+  const hiddenOf = (sections: CatSection[]) =>
+    Object.fromEntries(sections.filter((s) => s.hidden.length).map((s) => [s.id, s.hidden.map((h) => `${h.kind}:${h.kind === "leg" ? h.leg.kind : h.kind === "nights" ? `${h.range.start}_${h.range.end}` : h.item.name}`)]));
+  /** Every dismissed or closed record, every hidden transfer and stretch of nights: in exactly one section's list. */
+  function expectHiddenOnce(sections: CatSection[], ids: string[]) {
+    const seen = new Map<string, string[]>();
+    for (const s of sections) for (const h of s.hidden) seen.set(h.key, [...(seen.get(h.key) ?? []), s.id]);
+    for (const id of ids) expect(seen.get(id), id).toHaveLength(1);
+    expect([...seen.values()].every((v) => v.length === 1)).toBe(true);
+  }
+
+  it("a ruled-out record waits in its own section: a flight under Uçuş, a restaurant under Restoranlar, a tour under Etkinlikler", () => {
+    const items = [
+      stay("Jardim Stay", "2026-10-08", "2026-10-11", "Porto"),
+      flight("TK 1755", "IST", "OPO", "2026-10-08", "dismissed"),
+      makeItem({ name: "Cantinho do Avillez", category: "food", city: "Porto", status: "dismissed" }),
+      makeItem({ name: "Douro tekne turu", category: "activity", city: "Porto", booking: "needed", status: "dismissed" }),
+      makeItem({ name: "Airalo eSIM", category: "esim", status: "dismissed" }),
+    ];
+    const { sections } = sectionsOf(items);
+    expect(hiddenOf(sections)).toEqual({
+      flight: ["dismissed:TK 1755"],
+      activity: ["dismissed:Douro tekne turu"],
+      food: ["dismissed:Cantinho do Avillez"],
+      other: ["dismissed:Airalo eSIM"],
+    });
+    expectHiddenOnce(sections, items.filter((i) => i.status === "dismissed").map((i) => `item:${i.id}`));
+    // Ruled out is never on the plan itself.
+    expect(drawn(sections).has(items[1].id)).toBe(false);
+  });
+
+  it("an option a booking closed waits under its section, with the reason", () => {
+    const other = stay("Alfama Suites", "2026-10-08", "2026-10-11", "Porto", "saved");
+    const items = [stay("Jardim Stay", "2026-10-08", "2026-10-11", "Porto"), other];
+    const { sections } = sectionsOf(items);
+    const stays = sections.find((s) => s.id === "stay")!;
+    expect(stays.hidden).toHaveLength(1);
+    const h = stays.hidden[0];
+    expect(h.kind === "closed" && [h.item.name, h.reason]).toEqual(["Alfama Suites", "Jardim Stay rezervasyonu bu geceleri kapsıyor"]);
+    expectHiddenOnce(sections, [`item:${other.id}`]);
+  });
+
+  it("a transfer said not needed waits under Ulaşım, nights said not needed under Konaklama", () => {
+    const items = [stay("Jardim Stay", "2026-10-08", "2026-10-10", "Porto"), flight("TP 1234", "IST", "OPO", "2026-10-08", "booked")];
+    const arrival = sectionsOf(items).legs.find((l) => l.kind === "arrival")!;
+    const nights = nightsKey({ start: "2026-10-10", end: "2026-10-14" });
+    const { sections } = sectionsOf(items, { ...trip, hidden: [nights, `leg:${arrival.key}`] });
+    expect(hiddenOf(sections)).toEqual({ stay: ["nights:2026-10-10_2026-10-14"], transport: ["leg:arrival"] });
+    const leg = sections.find((s) => s.id === "transport")!.hidden[0];
+    expect(leg.key).toBe(`leg:${arrival.key}`);
+    expect(sections.find((s) => s.id === "stay")!.hidden[0].key).toBe(nights);
+    expectHiddenOnce(sections, [nights, `leg:${arrival.key}`]);
+  });
+
+  it("nothing hidden, nothing listed", () => {
+    const { sections } = sectionsOf([stay("Jardim Stay", "2026-10-08", "2026-10-14", "Porto")]);
+    expect(sections.every((s) => s.hidden.length === 0)).toBe(true);
+  });
+
+  it("the sample trip: the stay a booking closed is under Konaklama", async () => {
+    const id = await loadDemoTrip();
+    const t = (await (await db()).get("trips", id))!;
+    const items = [...(await listItems(id))];
+    const plan = buildPlan(t, items);
+    const legs = buildLegs(plan, t);
+    const sections = categorize({ plan, timeline: buildTimeline(plan, legs, items), items, legs });
+    expect(hiddenOf(sections)).toEqual({ stay: plan.closed.map((c) => `closed:${c.item.name}`) });
+    expectHiddenOnce(sections, [...plan.closed.map((c) => `item:${c.item.id}`), ...items.filter((i) => i.status === "dismissed").map((i) => `item:${i.id}`)]);
+  });
+});

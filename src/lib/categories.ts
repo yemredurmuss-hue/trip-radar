@@ -2,7 +2,8 @@
 // block and record of the trip goes in exactly one of seven sections — Uçuş, Konaklama, Ulaşım, Etkinlikler,
 // Yapılacak şeyler, Restoranlar, Diğer — and inside a section in date order (then time), the undated last by
 // city. The blocks themselves are the ones the plan's front always had (timeline.ts board): this only sorts
-// them into sections and says where each stands, for the header's pill and its "3/4" (settled of all). Pure:
+// them into sections and says where each stands, for the header's bar and its "3/4" (settled of all), and lists
+// what's out of the way (ruled out, closed by a booking, "Gerek yok") at the end of its own section. Pure:
 // derived on every render, nothing stored but which sections the traveller opened.
 import { cityOfAirport } from "./airports";
 import { isIdea, needsBooking } from "./booking";
@@ -12,8 +13,8 @@ import { nNights } from "./i18nText";
 import { shortDay } from "./ideas";
 import { formatDateRange, isoDate } from "./items";
 import { legItem, legShortTitle, type Leg } from "./legs";
-import { cityKeyOf, departureDay, sameCity, type OptionGroup, type Plan } from "./plan";
-import { toBook, type Timeline, type TimelineEntry } from "./timeline";
+import { cityKeyOf, departureDay, sameCity, type DateRange, type OptionGroup, type Plan } from "./plan";
+import { hiddenNights, nightsKey, toBook, type Timeline, type TimelineEntry } from "./timeline";
 import { isInsurance, itemText } from "./travelKinds";
 import type { Item } from "./types";
 
@@ -87,7 +88,19 @@ export interface CatSection {
   settled: number;
   /** First look: open while something's left, closed once all is done. */
   open: boolean;
+  /** What belongs here but is out of the way (kategoriler-v4): behind "Gizlenenler · N göster" at the section's end. */
+  hidden: HiddenThing[];
 }
+
+/**
+ * Out of the plan, one tap from coming back: a record ruled out ("Ele"), an option a booking closed, a
+ * transfer or nights said not needed ("Gerek yok"). `key` is unique across the plan.
+ */
+export type HiddenThing =
+  | { kind: "dismissed"; key: string; section: SectionId; item: Item }
+  | { kind: "closed"; key: string; section: SectionId; item: Item; reason: string }
+  | { kind: "leg"; key: string; section: SectionId; leg: Leg }
+  | { kind: "nights"; key: string; section: SectionId; range: DateRange; city: string | null };
 
 const time = (iso: string | null | undefined): string | null => {
   const t = iso?.slice(11, 16) ?? null;
@@ -537,7 +550,33 @@ export function categorize({ plan, timeline, items, legs = [], hidden = new Set(
   }
 
   const entries = drafts.map((d, i) => finish(d, i, rank));
-  return SECTION_ORDER.map((id) => sectionOf(id, entries.filter((e) => e.section === id), plan));
+  const out = hiddenThings({ plan, timeline, items, legs, hidden });
+  return SECTION_ORDER.map((id) => sectionOf(id, entries.filter((e) => e.section === id), plan, out.filter((h) => h.section === id)));
+}
+
+/**
+ * Everything out of the way, each once, in the section it belongs to: closed options and ruled-out records
+ * by what they are, a hidden transfer where its card would be (Ulaşım; Uçuş if by plane), nights under Konaklama.
+ */
+export function hiddenThings({ plan, timeline, items, legs = [], hidden = new Set() }: Pick<CategorizeInput, "plan" | "timeline" | "items" | "legs" | "hidden">): HiddenThing[] {
+  const out: HiddenThing[] = [];
+  const listed = new Set<string>();
+  for (const { item, reason } of plan.closed) {
+    if (listed.has(item.id)) continue;
+    listed.add(item.id);
+    out.push({ kind: "closed", key: `item:${item.id}`, section: sectionOfItem(item), item, reason });
+  }
+  for (const item of items) {
+    if (item.status !== "dismissed" || listed.has(item.id)) continue;
+    listed.add(item.id);
+    out.push({ kind: "dismissed", key: `item:${item.id}`, section: sectionOfItem(item), item });
+  }
+  for (const leg of legs) {
+    if (leg.kind === "move" || !hidden.has(`leg:${leg.key}`)) continue;
+    out.push({ kind: "leg", key: `leg:${leg.key}`, section: legByPlane(leg) ? "flight" : "transport", leg });
+  }
+  for (const { range, city } of hiddenNights(timeline)) out.push({ kind: "nights", key: nightsKey(range), section: "stay", range, city });
+  return out;
 }
 
 /** A record in its own right: an idea, a booking with no block. */
@@ -633,10 +672,10 @@ export function sectionStatus(id: SectionId, entries: CatEntry[]): CatSection["s
   };
 }
 
-function sectionOf(id: SectionId, list: CatEntry[], plan: Plan): CatSection {
+function sectionOf(id: SectionId, list: CatEntry[], plan: Plan, hidden: HiddenThing[]): CatSection {
   const entries = sortEntries(list, plan);
   const status = sectionStatus(id, entries);
-  return { id, entries, days: daysOf(entries, plan), status, settled: entries.filter((e) => e.state === "done").length, open: status?.tone === "wait" };
+  return { id, entries, days: daysOf(entries, plan), status, settled: entries.filter((e) => e.state === "done").length, open: status?.tone === "wait", hidden };
 }
 
 /** The section and entry that hold a to-do's target (a record, a transfer, a block), tried in that order; `dom`: its card's key. */
