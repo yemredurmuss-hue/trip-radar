@@ -74,3 +74,12 @@ describe("a day's look", () => {
     expect(dayPhoto(porto)).toEqual({ query: "Douro tekne turu Porto" });
   });
 });
+
+describe("the whole day", () => {
+  it("lists every line, ideas one by one, nothing folded", async () => {
+    const { flowRows } = await import("../src/lib/dayCards");
+    const r = (key: string, kind: DayRow["kind"], extra: Partial<DayRow> = {}) => ({ key, kind, state: "info", title: key, items: [], ...extra }) as DayRow;
+    const card = { rows: [r("out", "info"), r("taxi", "leg", { state: "open" }), r("ideas", "ideas", { items: [{ id: "1", name: "Casa Guedes" }, { id: "2", name: "Jardim do Morro" }] as never })] } as never;
+    expect(flowRows(card).map((x) => `${x.kind}:${x.title}`)).toEqual(["info:out", "leg:taxi", "idea:Casa Guedes", "idea:Jardim do Morro"]);
+  });
+});

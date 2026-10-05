@@ -1516,14 +1516,14 @@ button.cat-hidden-name:hover { text-decoration: underline; }
   .cat-date { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 0 4px 8px; text-align: left; }
 }
 
-/* ---------- 0.34.5: Günlük akış as day cards (after the reference "Günlük akış · 3 gün") ----------
-   A card a day: the day's photo left (38%), on the right the title and a timeline: time · a dot on a dotted
-   line · the Plan's icon in a soft tile of its colour (✓ booked, an amber dot still to do) · the name. Closed
-   every card is the same height; open, it grows in place. The day's kind is drawn faint behind, bottom right. */
+/* ---------- 0.34.7: Günlük akış as day cards ----------
+   Closed: the day's photo left (38%), on the right the title and the whole day as a timeline, nothing folded:
+   time · a dot on a dotted line · the Plan's icon in a soft tile of its colour (✓ booked, an amber dot still to
+   do) · the name; check-in, check-out, the metro are thin lines. The card is as tall as its day. Open: the photo
+   becomes a band on top and every line is its own Plan card, in order, under its time. */
 .dc { --dc-ink: #1d1d1f; --dc-gray: #6e6e73; --dc-line: #e8e8ed; color: var(--dc-ink); }
-.dc-day { position: relative; display: grid; grid-template-columns: 38% minmax(0, 1fr); min-height: 232px; margin-bottom: 16px; background: #fffdfa; border-radius: 22px; overflow: hidden;
+.dc-day { position: relative; display: grid; grid-template-columns: 38% minmax(0, 1fr); min-height: 220px; margin-bottom: 16px; background: #fffdfa; border-radius: 22px; overflow: hidden;
   box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 0 0 1px rgba(0,0,0,.06); transition: box-shadow .15s; }
-.dc-day:not(.open) { height: 232px; }
 .dc-day:hover { box-shadow: 0 8px 26px rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.07); }
 .dc-photo { position: relative; display: block; padding: 0; border: 0; overflow: hidden; background: linear-gradient(135deg, #cfe2e8, #efe3c8); cursor: pointer; }
 .dc-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .4s; }
@@ -1587,9 +1587,21 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .dc-add:hover { border-color: var(--dc-ink); color: var(--dc-ink); }
 .dc-day:not(.open) .dc-add { margin-top: auto; margin-left: 0; }
 
+/* open: the Plan, day by day */
+.dc-day.open { grid-template-columns: 1fr; grid-template-rows: 150px auto; }
+.dc-day.open .dc-body { padding: 16px 18px 18px; }
+.dc-tl.full::before { left: 60px; top: 22px; bottom: 22px; }
+.dc-full { position: relative; display: grid; grid-template-columns: 50px 20px minmax(0, 1fr); column-gap: 6px; align-items: start; margin-bottom: 4px; }
+.dc-full > .t { padding-top: 16px; text-align: right; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dc-full > .dot { justify-self: center; margin-top: 22px; width: 7px; height: 7px; border-radius: 50%; background: #8e8e93; box-shadow: 0 0 0 3px #fffdfa; }
+.dc-slot { min-width: 0; }
+.dc-slot > * { margin-bottom: 6px; }
+.dc-tl.full .dc-step.info { margin: 2px 0 8px; }
+.dc-step.idea .name { color: #3a3a3c; }
+.dc-step.idea .name small { display: inline; color: var(--dc-gray); }
+
 @container panel (max-width: 720px) {
   .dc-day { grid-template-columns: 1fr; grid-template-rows: 130px auto; }
-  .dc-day:not(.open) { height: 360px; }
   .dc-body { padding: 14px 14px 14px 10px; }
   .dc-other, .dc-add { margin-left: 0; }
 }

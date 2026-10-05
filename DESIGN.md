@@ -134,17 +134,16 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
   "Tarihsiz", şehre göre. Panel ≤620 px: tarih kartın üstüne tek satır iner. Yapılacak şeyler: başta hızlı yazma
   kutusu, tikli satırlar (alt satır şehir · kaynak); Restoranlar: 200×124 fotoğraflı kartlar, aynı gündekiler yan yana.
 - Plan'da check-in/check-out satırı, boş gün, planı olmayan transfer yok.
-- **Günlük akış** (0.34.5, referans "Günlük akış · 3 gün") gün başına bir kart: solda günün fotoğrafı (öne çıkan
-  kaydın kendi görseli; yoksa ona arama "Douro tekne turu Porto" fotoğraf proxy'sinden; yoksa şehrin), üstünde "2. gün",
-  altında tarih (bugünse mavi "Bugün"). Sağda başlık (yer değiştiren günde rota, yoksa şehir), "N iş" ve "N fikir"
-  hapları, ⌄; altında saat çizgisi: saat · noktalı çizgide nokta · Plan kartlarının tür ikonu kendi renginde yumuşak
-  karoda · ad. Durum ikonun köşesinde: yeşil ✓ alındı, amber nokta yapılacak; sağ kenara yazı gitmez. Kapalı kartta
-  en fazla dört satır (fazlası "+N daha"), hepsi aynı boy; sağ altta günün türünün soluk noktalı silueti (öne çıkan:
-  etkinlik, yoksa asıl yolculuk). Aynı şehirde peş peşe boş günler tek kart.
-- Karta (başlığa ya da fotoğrafa) dokununca gün **yerinde açılır**, ayrı sayfa yok; aynı anda tek gün açık. Açıkken
-  bilgi satırları (check-in, metro) da görünür, her satırın ikinci satırı ve durumu yazılır, satıra dokununca ayrıntı
-  altında açılır (notlar, planı olmayan transferin planı, "Plan'daki kartına git"); altta "Diğer · saati yok" ve
-  "+ Bu güne ekle". Kapalı karttaki bir satıra dokunmak günü o satırın ayrıntısı açık açar.
+- **Günlük akış** (0.34.7) gün başına bir kart; kapalı ve açık hali **aynı satırlar**, biri diğerinin ayrıntılısı.
+  Kapalı: solda günün fotoğrafı (öne çıkan kaydın görseli → ona arama, fotoğraf proxy'sinden → şehrin), sağda başlık
+  (yer değiştiren günde rota, yoksa şehir), "N iş" / "N fikir" hapları, ⌄ ve günün **tamamı** saat çizgisi olarak:
+  saat · nokta · Plan kartlarının tür ikonu kendi renginde yumuşak karoda (köşede yeşil ✓ alındı, amber nokta
+  yapılacak) · ad. Check-in, check-out, metro gibi bilgiler ince satır; bir güne eklenen fikirler tek tek satır.
+  Hiçbir şey katlanmaz ("+N daha" yok), kart günü kadar uzar. Kısa günde sağ altta türün soluk silueti.
+- Açınca (başlığa, fotoğrafa ya da bir satıra dokunarak) kart **yerinde** büyür: fotoğraf üstte şerit olur, aynı
+  satırlar aynı sırayla her biri **Plan'daki kartıyla** görünür (uçuş, uçuşa giden transfer ve "nasıl gideceksin",
+  tur, restoran, fikir); bilgi satırları ince kalır. Plan'dan farkı kategoriye göre değil gün gün dizilmesi.
+  Kapalı karttaki bir satıra dokunmak günü o kartı görünür halde açar. Aynı anda tek gün açık; altta "+ Bu güne ekle".
 - Saat solda: kayıttan gelen düz, alışılmış ya da hesaplanan "~"; bilinmeyen boş.
 
 ## Azaltmak

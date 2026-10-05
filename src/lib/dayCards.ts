@@ -145,3 +145,13 @@ export function dayPhoto(card: DayCard): { url: string } | { query: string } | n
   if (h?.item && (h.item.category === "activity" || h.item.category === "food")) return { query: [h.item.name, h.item.city ?? card.city].filter(Boolean).join(" ") };
   return card.city ? { query: card.city } : null;
 }
+
+/**
+ * The whole day, in order, nothing folded: every line (check-in, the transfer, the flight, the tour) and
+ * each idea saved for it on its own line. A closed card lists these; an open one shows each as its card.
+ */
+export function flowRows(card: DayCard): DayRow[] {
+  return card.rows.flatMap((r) =>
+    r.kind === "ideas" ? r.items.map((i) => ({ ...r, key: `idea:${i.id}`, kind: "idea" as const, title: i.name, sub: null, item: i, items: [] })) : [r],
+  );
+}
