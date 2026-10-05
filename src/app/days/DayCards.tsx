@@ -7,7 +7,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { cardKindColor, cardKindLabel, RENTAL_MODES, TRANSPORT_MODES, type CardKind, type TransportMode } from "../../lib/cardKinds";
 import { imageProxy } from "../../lib/cityImages";
-import { dayCards, dayPhoto, daysLabel, flowRows, groupDays, highlightOf, ideaCount, isPlanRow, rowKind, rowMark, type DayCard, type DayGroup } from "../../lib/dayCards";
+import { dayCards, dayPhoto, daysLabel, flowRows, groupDays, highlightOf, ideaCount, isPlanRow, movedOrder, orderRows, rowKind, rowMark, type DayCard, type DayGroup } from "../../lib/dayCards";
 import { sectionOfItem } from "../../lib/categories";
 import { formatDateRange } from "../../lib/items";
 import { L, locale } from "../../lib/i18n";
@@ -42,6 +42,8 @@ export interface DayCardsProps {
   tripId: string;
   /** The traveller's own times, by row key. */
   times?: Record<string, string>;
+  /** The order the traveller gave each day's lines, by date (trip.dayOrder). */
+  order?: Record<string, string[]>;
 }
 
 const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(locale(), { weekday: "short", timeZone: "UTC" });
@@ -259,8 +261,9 @@ const spanDays = (cards: DayCard[]) => cards.reduce((n, c) => n + (c.end ? Math.
 function DaySection({ card, mode, isToday, stays, onPick, ...props }: { card: DayCard; mode: Mode; isToday: boolean; stays: Map<string, StayEntry>; onPick: (row: string) => void } & DayCardsProps) {
   const photo = useDayPhoto(card, props.cityImage);
   // Insurance and the eSIM aren't hours of the day: after the day's lines (0.35.4).
-  const rows = flowRows(card);
-  const flow = [...rows.filter((r) => !isAside(r)), ...rows.filter(isAside)];
+  const { lines, asides } = dayLines(card, props);
+  const flow = [...lines, ...asides];
+  const dnd = useReorder(lines, card.date, props.tripId);
   const experiences = flow.filter((r) => r.item && (r.item.category === "activity" || r.item.category === "food")).length;
   return (
     <section className={`dc-cday ${mode}`} id={`dcd-${mode}-${card.key}`} aria-label={`${card.dayNo ?? ""} ${card.title}`}>
@@ -284,7 +287,11 @@ function DaySection({ card, mode, isToday, stays, onPick, ...props }: { card: Da
       ) : (
         <ol className={`dc-tl${mode === "cards" ? " full" : ""}`}>
           {flow.map((r) =>
-            mode === "cards" ? <Full key={r.key} row={r} stay={checkInStay(r, card, stays)} {...props} /> : <Line key={r.key} row={r} onTap={() => onPick(r.key)} tripId={props.tripId} />,
+            mode === "cards" ? (
+              <Full key={r.key} row={r} stay={checkInStay(r, card, stays)} dnd={lines.includes(r) ? dnd(r) : undefined} {...props} />
+            ) : (
+              <Line key={r.key} row={r} onTap={() => onPick(r.key)} tripId={props.tripId} />
+            ),
           )}
         </ol>
       )}
@@ -337,9 +344,10 @@ function TimeCell({ row, tripId }: { row: DayRow; tripId: string }) {
 }
 
 /** Information (check-in, check-out, the metro planned): a thin line, closed or open. */
-function InfoLine({ row, tripId }: { row: DayRow; tripId: string }) {
+function InfoLine({ row, tripId, dnd }: { row: DayRow; tripId: string; dnd?: Dnd }) {
   return (
-    <li className="dc-step info" id={`dc-${row.key}`} data-title={row.line ?? row.title}>
+    <li className={`dc-step info${dnd?.cls ?? ""}`} id={`dc-${row.key}`} data-title={row.line ?? row.title} {...dnd?.li}>
+      {dnd?.grip}
       <TimeCell row={row} tripId={tripId} />
       <span className="dot" />
       <span className="txt">
@@ -356,14 +364,15 @@ const isLine = (r: DayRow) => !isPlanRow(r) && r.kind !== "idea";
  * A line of the list: time · dot · the Plan's icon (✓ booked / amber dot) · one line; a check-in, a planned
  * metro, a taxi, a flight all the same (0.35.4). A tap opens the cards at its card.
  */
-function Line({ row, onTap, tripId }: { row: DayRow; onTap: () => void; tripId: string }) {
+function Line({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tripId: string; dnd?: Dnd }) {
   const info = isLine(row);
   const kind = rowKind(row);
   const mark = row.kind === "idea" || info ? null : rowMark(row);
   const title = info ? (row.line ?? row.title) : row.title;
   const sub = info || row.kind === "idea" ? row.sub : null;
   return (
-    <li className={`dc-step${row.kind === "idea" ? " idea" : info ? " info" : ""}`} data-title={title}>
+    <li className={`dc-step${row.kind === "idea" ? " idea" : info ? " info" : ""}${dnd?.cls ?? ""}`} data-title={title} {...dnd?.li}>
+      {dnd?.grip}
       <TimeCell row={row} tripId={tripId} />
       <span className="dot" />
       <button className="dc-line" onClick={onTap}>
@@ -388,10 +397,11 @@ function checkInStay(row: DayRow, card: DayCard, stays: Map<string, StayEntry>):
 }
 
 /** A line of the open day: its time and dot, then its own card as the Plan shows it (check-in: the stay's card). */
-function Full({ row, stay, cards, leg, tripId }: { row: DayRow; stay: StayEntry | null } & DayCardsProps) {
+function Full({ row, stay, cards, leg, tripId, dnd }: { row: DayRow; stay: StayEntry | null; dnd?: Dnd } & DayCardsProps) {
   if (stay)
     return (
-      <li className="dc-full" id={`dc-${row.key}`} data-title={row.line ?? row.title}>
+      <li className={`dc-full${dnd?.cls ?? ""}`} id={`dc-${row.key}`} data-title={row.line ?? row.title} {...dnd?.li}>
+        {dnd?.grip}
         <TimeCell row={row} tripId={tripId} />
         <span className="dot" />
         <div className="dc-slot">
@@ -399,7 +409,7 @@ function Full({ row, stay, cards, leg, tripId }: { row: DayRow; stay: StayEntry 
         </div>
       </li>
     );
-  if (isLine(row)) return <InfoLine row={row} tripId={tripId} />;
+  if (isLine(row)) return <InfoLine row={row} tripId={tripId} dnd={dnd} />;
   let body: ReactNode = null;
   if (row.entry) body = <PlanEntry entry={row.entry} legCard={cards.legCard} renderGroup={cards.renderGroup} settled={cards.settled} />;
   else if (row.leg) body = cards.legCard(row.leg);
@@ -407,7 +417,8 @@ function Full({ row, stay, cards, leg, tripId }: { row: DayRow; stay: StayEntry 
   else if (row.item) body = cards.settled(row.item);
   else if (row.leg) body = leg(row.leg, { embedded: true });
   return (
-    <li className="dc-full" id={`dc-${row.key}`} data-title={row.title}>
+    <li className={`dc-full${dnd?.cls ?? ""}`} id={`dc-${row.key}`} data-title={row.title} {...dnd?.li}>
+      {dnd?.grip}
       <TimeCell row={row} tripId={tripId} />
       <span className="dot" />
       <div className="dc-slot">
@@ -465,9 +476,10 @@ const MOTIFS: Record<Motif, ReactNode> = {
  */
 function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card: DayCard; isToday: boolean; open: boolean; onToggle: () => void; onPick: (row: string) => void } & DayCardsProps) {
   const photo = useDayPhoto(card, props.cityImage);
-  const all = flowRows(card);
-  const hours = all.filter((r) => r.kind !== "idea" && !isAside(r));
-  const loose = [...all.filter((r) => r.kind === "idea" && !isAside(r)), ...all.filter(isAside)];
+  // Every line of the day (0.35.6): with a time by the clock, without one where it was put (drag, or ↑ ↓);
+  // insurance and the eSIM wait under the opened day.
+  const { lines, asides } = dayLines(card, props);
+  const dnd = useReorder(lines, card.date, props.tripId);
   const lead = highlightOf(card);
   const tint = lead ? cardKindColor(rowKind(lead)) : "#5b7fa6";
   const label = L(`${card.dayNo ?? dateText(card)}: ${open ? "kapat" : "aç"}`, `${card.dayNo ?? dateText(card)}: ${open ? "close" : "open"}`);
@@ -499,23 +511,23 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
             </svg>
           </button>
         </header>
-        {hours.length > 0 ? (
+        {lines.length > 0 ? (
           <ol className="dc-tl">
-            {hours.map((r) => (
-              <Line key={r.key} row={r} onTap={() => onPick(r.key)} tripId={props.tripId} />
+            {lines.map((r) => (
+              <Line key={r.key} row={r} onTap={() => onPick(r.key)} tripId={props.tripId} dnd={dnd(r)} />
             ))}
           </ol>
         ) : (
-          <p className="dc-free">{L("Henüz saatli bir plan yok.", "Nothing with a time yet.")}</p>
+          <p className="dc-free">{L("Henüz plan yok.", "Nothing planned yet.")}</p>
         )}
         {/* A free day has nothing to open: its "+" is there. */}
-        {open || (!hours.length && !loose.length) ? (
+        {open || (!lines.length && !asides.length) ? (
           <>
-            {loose.length > 0 && (
+            {asides.length > 0 && (
               <>
-                <p className="dl-sub">{L("Gün içinde · saatsiz", "During the day · no time")}</p>
+                <p className="dl-sub">{L("Gezi için · sigorta, internet", "For the trip · insurance, internet")}</p>
                 <ol className="dc-tl loose">
-                  {loose.map((r) => (
+                  {asides.map((r) => (
                     <Line key={r.key} row={r} onTap={() => onPick(r.key)} tripId={props.tripId} />
                   ))}
                 </ol>
@@ -524,13 +536,89 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
             <AddDay card={card} onAdd={props.onAdd} />
           </>
         ) : (
-          loose.length > 0 && (
+          asides.length > 0 && (
             <button type="button" className="dl-more" onClick={onToggle}>
-              {L(`+ ${loose.length} saatsiz`, `+ ${loose.length} without a time`)}
+              {L(`+ ${asides.length} sigorta / internet`, `+ ${asides.length} insurance / internet`)}
             </button>
           )
         )}
       </div>
     </section>
   );
+}
+
+// --- the day's order (0.35.6) ------------------------------------------------------------------------
+
+/** The day's lines in their order (the timed by the clock, the rest where put), and its insurance and eSIM apart. */
+function dayLines(card: DayCard, props: Pick<DayCardsProps, "times" | "order">): { lines: DayRow[]; asides: DayRow[] } {
+  const all = flowRows(card, props.times);
+  return { lines: orderRows(all.filter((r) => !isAside(r)), props.order?.[card.date]), asides: all.filter(isAside) };
+}
+
+/** What a line needs to be moved: its grip (only without a time), its drop handlers, its class while dragged over. */
+interface Dnd {
+  grip: ReactNode;
+  li: { onDragOver: (e: React.DragEvent<HTMLLIElement>) => void; onDrop: (e: React.DragEvent<HTMLLIElement>) => void };
+  cls: string;
+}
+
+/**
+ * Moving a day's lines: a line without a time has a grip to drag it up or down (or ↑ ↓ on it); dropped, the
+ * day's order is kept on the trip (trip.dayOrder, by date). A line with a time goes by the clock: to move it,
+ * change its time.
+ */
+function useReorder(rows: DayRow[], date: string, tripId: string): (row: DayRow) => Dnd {
+  const [drag, setDrag] = useState<string | null>(null);
+  const [over, setOver] = useState<{ key: string; after: boolean } | null>(null);
+  const move = (key: string, target: string, after: boolean) =>
+    void updateTrip(tripId, (t) => ({ ...t, dayOrder: { ...(t.dayOrder ?? {}), [date]: movedOrder(rows, key, target, after) } }), { touch: false });
+  const end = () => {
+    setDrag(null);
+    setOver(null);
+  };
+  return (row) => ({
+    grip: row.time ? null : (
+      <button
+        type="button"
+        className="dc-grip"
+        draggable
+        aria-label={L(`${row.line ?? row.title}: sırasını değiştir`, `${row.line ?? row.title}: move`)}
+        title={L("Sürükle ya da ↑ ↓ ile taşı", "Drag, or move with ↑ ↓")}
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", row.key);
+          const li = e.currentTarget.closest("li");
+          if (li) e.dataTransfer.setDragImage(li, 24, 20);
+          setDrag(row.key);
+        }}
+        onDragEnd={end}
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+          e.preventDefault();
+          const i = rows.indexOf(row) + (e.key === "ArrowUp" ? -1 : 1);
+          if (i >= 0 && i < rows.length) move(row.key, rows[i].key, e.key === "ArrowDown");
+        }}
+      >
+        <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor" aria-hidden>
+          <circle cx="3.5" cy="3" r="1.4" /><circle cx="8.5" cy="3" r="1.4" /><circle cx="3.5" cy="8" r="1.4" /><circle cx="8.5" cy="8" r="1.4" /><circle cx="3.5" cy="13" r="1.4" /><circle cx="8.5" cy="13" r="1.4" />
+        </svg>
+      </button>
+    ),
+    li: {
+      onDragOver: (e) => {
+        if (!drag || drag === row.key) return;
+        e.preventDefault();
+        const box = e.currentTarget.getBoundingClientRect();
+        const after = e.clientY > box.top + box.height / 2;
+        if (over?.key !== row.key || over.after !== after) setOver({ key: row.key, after });
+      },
+      onDrop: (e) => {
+        if (!drag) return;
+        e.preventDefault();
+        if (over && over.key !== drag) move(drag, over.key, over.after);
+        end();
+      },
+    },
+    cls: drag === row.key ? " dragging" : over?.key === row.key ? (over.after ? " drop-after" : " drop-before") : "",
+  });
 }

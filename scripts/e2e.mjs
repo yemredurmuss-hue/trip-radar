@@ -407,11 +407,6 @@ try {
   const dayTitles = () => dayPage.locator(".dc-tl > [data-title]").evaluateAll((els) => els.map((e) => e.getAttribute("data-title")));
   const dayTimes = () => dayPage.locator(".dc-tl > li").evaluateAll((els) => els.map((e) => e.querySelector(".t")?.textContent ?? ""));
   const flowCard = (title) => dayPage.locator(`.dc-tl > li[data-title="${title}"]`);
-  // Liste (0.35.4): a day's arrow opens what has no time under its hours.
-  const openListDay = async (n) => {
-    if (!(await dayCard(n).evaluate((el) => el.classList.contains("open")))) await dayCard(n).locator(".dl-chev").click();
-    await dayCard(n).locator(".dc-tl.loose, .dc-add").first().waitFor();
-  };
   const flowTime = (title) => flowCard(title).locator("> .t");
   // Open, a line is its Plan card: a tap on its body opens its details there.
   const openCard = (title) => flowCard(title).locator(".pk-body").first().click();
@@ -434,6 +429,27 @@ try {
   await dayCard(7).locator(".dc-step", { hasText: "Uçuş LIS → IST" }).locator(".dc-tile i.done").waitFor();
   // Closed, nothing is folded: check-out, the transfer to the airport, the flight.
   assert.deepEqual(await dayCard(7).locator(".dc-tl > [data-title]").evaluateAll((els) => els.map((e) => e.getAttribute("data-title"))), ["Check-out", "Otel → Havalimanı", "Uçuş LIS → IST"]);
+  // 0.35.6: a line without a time is moved by its grip (drag, or ↑ ↓); the day keeps that order, in both views.
+  const day1 = () => dayCard(1).locator(".dc-tl > li").evaluateAll((els) => els.map((e) => e.dataset.title));
+  assert.deepEqual(await day1(), ["Uçuş IST → OPO", "Havalimanı → Otel", "Check-in"]);
+  const checkIn = dayCard(1).locator('.dc-tl > li[data-title="Check-in"]');
+  await checkIn.hover();
+  await checkIn.locator(".dc-grip").dragTo(dayCard(1).locator('.dc-tl > li[data-title="Uçuş IST → OPO"]'), { targetPosition: { x: 200, y: 4 } });
+  await app.waitForFunction(() => document.querySelector(".dc-cday.list .dc-tl > li")?.getAttribute("data-title") === "Check-in");
+  assert.deepEqual(await day1(), ["Check-in", "Uçuş IST → OPO", "Havalimanı → Otel"]);
+  await dcMode("Kartlar").click();
+  assert.deepEqual(await cardsDay(1).locator(".dc-tl > li").evaluateAll((els) => els.map((e) => e.dataset.title)), ["Check-in", "Uçuş IST → OPO", "Havalimanı → Otel"]);
+  await listMode();
+  // Back down with the keyboard, one step at a time.
+  await checkIn.locator(".dc-grip").focus();
+  await app.keyboard.press("ArrowDown");
+  await app.waitForFunction(() => document.querySelector(".dc-cday.list .dc-tl > li")?.getAttribute("data-title") === "Uçuş IST → OPO");
+  await checkIn.locator(".dc-grip").focus();
+  await app.keyboard.press("ArrowDown");
+  await app.waitForFunction(() => [...document.querySelectorAll(".dc-cday.list")][0].querySelector(".dc-tl > li:last-child")?.getAttribute("data-title") === "Check-in");
+  assert.deepEqual(await day1(), ["Uçuş IST → OPO", "Havalimanı → Otel", "Check-in"]);
+  // A line with a time goes by the clock: no grip.
+  assert.equal(await dayCard(7).locator('.dc-tl > li[data-title="Uçuş LIS → IST"] .dc-grip').count(), 0);
   await app.screenshot({ path: `${out}/3e-itinerary.png` });
   await app.setViewportSize({ width: 560, height: 1400 });
   await dayCard(4).scrollIntoViewIfNeeded();
@@ -899,11 +915,8 @@ try {
   await sec("todo").locator('.il-row[aria-label="Bolhão pazarı"]').waitFor();
   await tab("Günlük akış").click();
   await listMode();
-  // An idea has no hour: it waits under the opened day ("+ 1 saatsiz" closed).
-  await dayCard(3).locator(".dl-more", { hasText: /saatsiz/ }).waitFor();
-  assert.equal(await dayCard(3).locator(".dc-step.idea").count(), 0);
-  await openListDay(3);
-  await dayCard(3).locator(".dc-tl.loose .dc-step.idea", { hasText: "Bolhão pazarı" }).waitFor();
+  // An idea without an hour is a line of the day like the rest (0.35.6), never hidden.
+  await dayCard(3).locator(".dc-tl > .dc-step.idea", { hasText: "Bolhão pazarı" }).waitFor();
   // Yapılacak şeyler and Restoranlar (0.34, where Fikirler was): the quick line at the top, a day for a
   // restaurant (with its meal), done, moved to Etkinlikler.
   await tab("Plan").click();
@@ -990,7 +1003,6 @@ try {
   // The restaurant on its day is a thin line of the itinerary; the moved one is a booking in Etkinlikler.
   await tab("Günlük akış").click();
   await listMode();
-  await openListDay(2);
   await dayCard(2).locator(".dc-step.idea", { hasText: "Majestic Café" }).getByText("· öğle").waitFor();
   await app.screenshot({ path: `${out}/4k-itinerary-032.png` });
   await tab("Plan").click();

@@ -170,10 +170,59 @@ export function dayPhoto(card: DayCard): { url: string } | { query: string } | n
  * The whole day, in order, nothing folded: every line (check-in, the transfer, the flight, the tour) and
  * each idea saved for it on its own line. A closed card lists these; an open one shows each as its card.
  */
-export function flowRows(card: DayCard): DayRow[] {
+export function flowRows(card: DayCard, times?: DayTimeOverrides): DayRow[] {
   return card.rows.flatMap((r) =>
-    r.kind === "ideas" ? r.items.map((i) => ({ ...r, key: `idea:${i.id}`, kind: "idea" as const, title: i.name, sub: null, item: i, items: [] })) : [r],
+    r.kind === "ideas"
+      ? r.items.map((i) => {
+          // An option saved for the day is its own line, with the time the traveller gave it.
+          const own = times?.[`idea:${i.id}`];
+          return { ...r, key: `idea:${i.id}`, kind: "idea" as const, title: i.name, sub: null, item: i, items: [], time: own ?? null, user: !!own };
+        })
+      : [r],
   );
+}
+
+const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+
+/**
+ * A day's lines in the order shown (0.35.6, Emre: "saati olanlar saatine göre, olmayanlar da normal
+ * listelenebilir… sırasını da değiştirebilmek isterim"). The order the traveller gave (`saved`, line keys) else
+ * the plan's; a line new since goes before the line after it in the plan's order (last when it's the last). Then the lines with a time
+ * go by the clock, and each line without one stays right after the line it was put after (first if it was put
+ * first): a timed line always follows its time (giving a line a time moves it there). Pure.
+ */
+export function orderRows(rows: DayRow[], saved?: readonly string[] | null): DayRow[] {
+  let seq = rows;
+  if (saved?.length) {
+    const byKey = new Map(rows.map((r) => [r.key, r]));
+    const placed = [...new Set(saved)].filter((k) => byKey.has(k)).map((k) => byKey.get(k)!);
+    // Newest last: walked from the end, each goes before the line after it in the plan's order (else last).
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (placed.includes(rows[i])) continue;
+      const next = i + 1 < rows.length ? placed.indexOf(rows[i + 1]) : -1;
+      placed.splice(next >= 0 ? next : placed.length, 0, rows[i]);
+    }
+    seq = placed;
+  }
+  const out = seq
+    .filter((r) => r.time)
+    .map((r, n) => ({ r, n }))
+    .sort((a, b) => minutes(a.r.time!) - minutes(b.r.time!) || a.n - b.n)
+    .map((x) => x.r);
+  seq.forEach((r, i) => {
+    if (r.time) return;
+    out.splice(i > 0 ? out.indexOf(seq[i - 1]) + 1 : 0, 0, r);
+  });
+  return out;
+}
+
+/** The day's order after moving a line before or after another (by key): what `trip.dayOrder` keeps. */
+export function movedOrder(rows: DayRow[], key: string, target: string, after: boolean): string[] {
+  const keys = rows.map((r) => r.key).filter((k) => k !== key);
+  const at = keys.indexOf(target);
+  if (at < 0 || key === target) return rows.map((r) => r.key);
+  keys.splice(after ? at + 1 : at, 0, key);
+  return keys;
 }
 
 export type DayGroup =
