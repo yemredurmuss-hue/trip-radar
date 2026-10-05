@@ -1,7 +1,7 @@
 // IndexedDB storage shared by the popup, the board page and the service worker (same extension origin).
 import { L } from "./i18n";
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { Analysis, Capture, ChatMessage, Item, Listing, Preference, Settings, Trip } from "./types";
+import type { Analysis, Capture, ChatMessage, DocRecord, Item, Listing, Preference, Settings, Trip } from "./types";
 
 interface TripRadarDB extends DBSchema {
   trips: { key: string; value: Trip };
@@ -12,12 +12,13 @@ interface TripRadarDB extends DBSchema {
   analyses: { key: string; value: Analysis; indexes: { tripId: string } };
   geocache: { key: string; value: { query: string; lat: number | null; lng: number | null; at: number } };
   listings: { key: string; value: Listing };
+  docs: { key: string; value: DocRecord; indexes: { itemId: string; tripId: string } };
 }
 
 let dbPromise: Promise<IDBPDatabase<TripRadarDB>> | null = null;
 
 export function db(): Promise<IDBPDatabase<TripRadarDB>> {
-  dbPromise ??= openDB<TripRadarDB>("trip-radar", 3, {
+  dbPromise ??= openDB<TripRadarDB>("trip-radar", 4, {
     upgrade(d, oldVersion) {
       if (oldVersion < 1) {
         d.createObjectStore("trips", { keyPath: "id" });
@@ -35,6 +36,16 @@ export function db(): Promise<IDBPDatabase<TripRadarDB>> {
       if (oldVersion < 3) {
         d.createObjectStore("listings", { keyPath: "key" });
       }
+      if (oldVersion < 4) {
+        const docs = d.createObjectStore("docs", { keyPath: "id" });
+        docs.createIndex("itemId", "itemId");
+        docs.createIndex("tripId", "tripId");
+      }
+    },
+    // A newer version (an update) wants the database: let it go, the next call opens it again.
+    blocking() {
+      void dbPromise?.then((open) => open.close());
+      dbPromise = null;
     },
   });
   return dbPromise;
@@ -182,7 +193,7 @@ export async function exportDiagnostics(): Promise<string> {
   );
 }
 
-/** Full JSON backup of everything except screenshots. */
+/** Full JSON backup of everything except screenshots and the contents of attached files (their names are listed). */
 export async function exportAll(): Promise<string> {
   const d = await db();
   const captures = (await d.getAll("captures")).map((c) => ({ ...c, screenshot: null }));
@@ -194,6 +205,7 @@ export async function exportAll(): Promise<string> {
       preferences: await d.getAll("preferences"),
       messages: await d.getAll("messages"),
       listings: await d.getAll("listings"),
+      docs: (await d.getAll("docs")).map(({ blob: _blob, ...meta }) => meta),
       captures,
     },
     null,

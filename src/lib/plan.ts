@@ -86,7 +86,7 @@ export interface Plan {
   /** Flights, transport and eSIM needs in date order. */
   groups: OptionGroup[];
   /** Options a booking made irrelevant; kept (and restored if the booking is undone). */
-  closed: { item: Item; reason: string }[];
+  closed: { item: Item; reason: string; /** The record that took its place or whose booking closed it. */ by?: string }[];
 }
 
 // --- dates ------------------------------------------------------------------------------------------
@@ -498,14 +498,14 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
   for (const i of stays) {
     const replaced = replacedBy.get(i.id);
     if (replaced) {
-      closed.push({ item: i, reason: replacedReason(replaced.name) });
+      closed.push({ item: i, reason: replacedReason(replaced.name), by: replaced.id });
       continue;
     }
     const r = stayRange(i);
     if (i.status === "booked" && r) continue;
     // A stay said in the chat keeps the nights a booking leaves (it's closed below if none are left).
     const blocker = r && !isSlot(i) ? bookedStays.find((b) => overlaps(stayRange(b)!, r)) : undefined;
-    if (blocker) closed.push({ item: i, reason: L(`${blocker.name} rezervasyonu bu geceleri kapsıyor`, `The ${blocker.name} booking covers these nights`) });
+    if (blocker) closed.push({ item: i, reason: L(`${blocker.name} rezervasyonu bu geceleri kapsıyor`, `The ${blocker.name} booking covers these nights`), by: blocker.id });
     else openStays.push(i);
   }
   const chosenStays = openStays.filter((i) => i.status === "chosen" && stayRange(i)).sort(byStart);
@@ -585,7 +585,8 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
     for (const slot of slots) {
       if (closed.some((c) => c.item.id === slot.id) || stayBlocks.some((b) => b.kind !== "booked" && b.slot === slot)) continue;
       const by = stayBlocks.filter((b) => b.kind !== "open" && overlaps(b.range, stayRange(slot)!)).map((b) => (b.kind === "open" ? "" : b.item.name));
-      closed.push({ item: slot, reason: replacedReason([...new Set(by)].join(", ")) });
+      const byId = stayBlocks.find((b) => b.kind !== "open" && overlaps(b.range, stayRange(slot)!));
+      closed.push({ item: slot, reason: replacedReason([...new Set(by)].join(", ")), by: byId && byId.kind !== "open" ? byId.item.id : undefined });
     }
     // A booking wholly inside another one's nights got no stretch of its own: it sits with the one it clashes with.
     for (const b of bookedStays) {
@@ -716,12 +717,12 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
       // Once a saved page is chosen or booked, the plan said in the chat has done its job.
       const real = list.find((i) => i.origin !== "chat" && (i.status === "chosen" || i.status === "booked"));
       if (real) {
-        for (const i of list.filter((x) => x.origin === "chat")) closed.push({ item: i, reason: replacedReason(real.name) });
+        for (const i of list.filter((x) => x.origin === "chat")) closed.push({ item: i, reason: replacedReason(real.name), by: real.id });
         list = list.filter((x) => x.origin !== "chat");
       }
       const booked = list.filter((i) => i.status === "booked");
       if (booked.length) {
-        for (const i of list.filter((x) => x.status !== "booked")) closed.push({ item: i, reason: L(`${booked[0].name} rezerve edildi`, `${booked[0].name} was booked`) });
+        for (const i of list.filter((x) => x.status !== "booked")) closed.push({ item: i, reason: L(`${booked[0].name} rezerve edildi`, `${booked[0].name} was booked`), by: booked[0].id });
       }
       const itemsInPlay = booked.length ? booked : list;
       groups.push({
