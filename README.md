@@ -294,12 +294,24 @@ altta "→ Tayland · Aç" bildirimi çıkar. Örnek gezi kayıt almaz.
   bağlantılar kartın içinde. Bir ihtiyacın birden çok seçeneği varsa alt şeritteki `‹ 1/2 ›` ile gezersin.
 - **••• menüsü:** **Düzenle** (sohbette söylediğin ya da elle eklediğin plan), **Ele** (sayfadan gelen seçenek,
   Elenenler'e gider), **Sil**. Silince onay sorulmaz; altta 8 saniye "Geri al" durur, kart belgeleriyle geri gelir.
+  Kartın üstüne gelince sağ üstte × da çıkar, aynı silme.
 - **Belge eklemek:** karttaki ataca tıklayıp PDF ya da görsel (PNG ya da JPG; en çok 15 MB) seç. Belge yalnız bu
   bilgisayarda durur: paylaşılan geziye gitmez, dışa aktarmaya dosyanın kendisi değil yalnız adı girer. Karttaki
   hapa tıklayınca yeni sekmede açılır.
-- **Eklemek:** Plan başlığındaki **+ Ekle** ya da iki kartın arasındaki **+** (üstüne gelince çıkar) şablon
-  penceresini açar: uçuştan bisiklet kiralamaya, otelden nota. Kısa formu doldurursun; şehir ve tarih eklediğin
-  yerden gelir, kart "Planlanıyor" olarak düşer. Sonra o şeyin sayfasını kaydedersen yerini alır.
+- **Eklemek:** Plan başlığındaki **+ Ekle** ya da planın başındaki, şehir başlarındaki ve kartların arasındaki **+**
+  (hep soluk görünür) şablon penceresini açar: uçuştan bisiklet kiralamaya, otelden nota; Günlük akışta her günün
+  **+**'ı o güne ekler. Kısa formu doldurursun; şehir ve tarih eklediğin yerden gelir, kart "Planlanıyor" olarak
+  düşer. Sonra o şeyin sayfasını kaydedersen yerini alır.
+
+### Fikirler
+
+- Rezervasyon gerekmeyenler burada durur: restoran, yürüyüş, pazar, not. Plan'ı kalabalıklaştırmazlar.
+- **Hızlı yazma:** kutuya yazıp Enter. Yemek kelimesi geçerse restoran olur; metinde geçen gezi şehrine düşer.
+- **+ Güne ekle:** bir gün seçersin (restoranda sabah / öğle / akşam da); Günlük akışta o günün ince satırı olur.
+- **Tik:** yapınca işaretle, "Yapıldı" yazar.
+- **Rezerve edileceklere taşı:** bilet ya da rezervasyon gerektiği anlaşılırsa satırda çıkar; Plan'daki
+  "Rezerve edilecekler" listesine geçer.
+- **Harita düğmesi** yeri Google Haritalar'da açar (anahtar gerekmez).
 
 ## Paylaşım (Sabine ile)
 
@@ -471,7 +483,10 @@ Yapı:
 - `src/lib/cardView.ts`: kartın söyledikleri: çember, zemin, alt şerit, üst satır tarihi, ulaşım uçları, medya satırları, menü.
 - `src/lib/docs.ts`: karta eklenen belgeler (yalnız bu bilgisayarda, IndexedDB `docs` deposu).
 - `src/lib/templates.ts`: "+ Ekle" şablonları, kısa formlar ve kartın nereye ekleneceği.
+- `src/lib/booking.ts`: kaydın rezervasyon isteyip istemediği (Plan mı, Fikirler mi).
+- `src/lib/ideas.ts`: Fikirler: şehir şehir gruplama, filtre, hızlı satır, ikon, gün ve öğün, yapıldı, taşımak.
 - `src/app/`: pano arayüzü. `src/app/cards/`: plan kartları (kabuk, ulaşım ve medya gövdeleri, transfer kartı,
-  ekleme penceresi, geri al bildirimi). `src/popup.tsx`: eklenti açılır penceresi.
+  ekleme penceresi, geri al bildirimi). `src/app/ideas/`: Fikirler sekmesi (hızlı kutu, restoran kartı, yapılacak
+  satırı, gün seçici). `src/popup.tsx`: eklenti açılır penceresi.
 
 Plan ve sonraki adımlar: [PLAN.md](PLAN.md)

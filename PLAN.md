@@ -198,6 +198,14 @@ Kararlar:
   plan: [docs/superpowers/plans/2026-10-05-plan-kartlari.md](docs/superpowers/plans/2026-10-05-plan-kartlari.md).
 - Kapsam dışı kaldı: Fikirler sekmesi, Günlük akışın yeni dile geçmesi, Google Places fotoğrafları, sohbete PDF sürükleme.
 
+## 0.32: eksikler, hover ×, yapılacaklar ve Fikirler (yapıldı)
+
+- Spec: [docs/superpowers/specs/2026-10-05-032-eksikler-design.md](docs/superpowers/specs/2026-10-05-032-eksikler-design.md) ·
+  denetim: [docs/superpowers/audits/2026-10-05-031-gaps.md](docs/superpowers/audits/2026-10-05-031-gaps.md) ·
+  plan: [docs/superpowers/plans/2026-10-05-032-eksikler.md](docs/superpowers/plans/2026-10-05-032-eksikler.md).
+- Kapsam dışı kaldı: Google Places fotoğrafları, Günlük akışın yeni görsel dile geçmesi, Fikirler'de yapay zekâ
+  önerileri, mutfak ve fiyat düzeyi alanı.
+
 ## v1: Telefon
 - Küçük bir sunucu (ör. Supabase) + senkron. Veri modeli buna hazır (`src/lib/types.ts`).
 - iPhone/Android'den ekran görüntüsü veya link gönderme: paylaş menüsü kısayolu ya da Telegram botu.

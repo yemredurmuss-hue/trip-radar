@@ -33,7 +33,7 @@ Bu panonun tek işi karar vermeyi kolaylaştırmak. Her yeni ekran ve bileşen b
 | Mavi `--accent` | Yalnız öneri ve link | Öneri satırı, önerilen kartın çerçevesi, linkler |
 | Gri, kesikli çizgi | Henüz planlanmadı, boş | "Planlanmadı" kartı, boş gün |
 | Kategori renkleri (mor uçuş `#6a4fe0`, turkuaz konaklama `#23998b`, hardal ulaşım `#c58a2e`, bordo etkinlik `#a8336f`) | Yalnız hangi tür | Hero'daki onaylananlar ikonları ve bütçe çubuğu |
-| Tür renkleri (uçuş `#6a4fe0`, tren `#2563c9`, otobüs `#d9480f`, minibüs `#e8890c`, vapur `#0e8fb0`, taksi `#d29a00`, araç `#475467`, motosiklet `#c0256b`, karavan `#8a6534`, bisiklet `#5d8a1c`, etkinlik `#a8336f`, eSIM `#3b6fd1`, sigorta `#0f8a6a`) | Yalnız hangi tür | Plan kartının üst satırındaki ikon ve ad, siluet çizgisi, ekleme penceresinin kutuları |
+| Tür renkleri (uçuş `#6a4fe0`, tren `#2563c9`, otobüs `#d9480f`, minibüs `#e8890c`, vapur `#0e8fb0`, taksi `#d29a00`, araç `#475467`, motosiklet `#c0256b`, karavan `#8a6534`, bisiklet `#5d8a1c`, etkinlik `#a8336f`, eSIM `#3b6fd1`, sigorta `#0f8a6a`, yapılacak `#1f8f4e`) | Yalnız hangi tür | Plan kartının üst satırındaki ikon ve ad, siluet çizgisi, ekleme penceresinin kutuları |
 | Sarı-bej `#fbf6ea` / yeşil `#eef8f1` zemin | Alınmadı / alındı-planlandı | Plan kartlarının zemini (çember ve alt şerit yazısıyla birlikte) |
 
 Durum hiçbir yerde yalnız renkle anlatılmaz: yanında hep yazısı olur ("Bilet alındı", "Planlanıyor").
@@ -68,35 +68,47 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
 - **Kabuk:** zemin durumu söyler (sarı-bej alınmadı, yeşil alındı ya da planlandı). Üst satır 24 px: çember (kesikli
   karar bekliyor · amber seçildi · yeşil ✓ alındı) · renkli tür ikonu ve adı · tarih [· saat] | belge · •••.
   Altta 48 px şerit: solda durum ya da seçenek gezgini, sağda fiyat ve tek koyu eylem. Durum yazısı yalnız altta;
-  sağ üstte durum hapı yok.
+  sağ üstte durum hapı yok. Alt şerit kısa kalır ("Seçildi · bilet alınmadı · ⏳ 4 gün"), "…" ile kesilmez; uzun tarih
+  uyarısı ayrıntıda. Her kayıt kartında •••'nin solunda yuvarlak × (24 px, gri, üstüne gelince kırmızı): fare kartın
+  üstündeyken ya da kart odaktayken görünür, dar ekranda (≤620 px) ve dokunmatikte hep soluk.
 - **Seçenek gezgini:** bir ihtiyacın seçenekleri yan yana kart değil, tek kart + alt şeritte `‹ 1/2 ›`; önerilen
   seçenekte "Önerim". Neden önerildiği, "2.'ye göre" satırı ve rozetler ayrıntıdadır.
-- **Ulaşım gövdesi:** solda nereden, sağda nereye (şehir 30 px, saat kalın); ortada türün noktalı silueti, kenarları
-  solar. Kiralıkta sağ taraf gün sayısı ve iade günü. Çizimi olmayan yolda (metro, yürüyüş) orta satır uçların arasında.
+- **Ulaşım gövdesi:** solda nereden, sağda nereye: büyük yazı şehir (30 px; uzun ad sütununda sarar, 24 px), altında
+  küçük satır kod ya da istasyon · **saat** (iniş başka günse o gün de); orta sütun siluetin genişliğinde, ad siluetin
+  altına girmez. Kiralıkta sağ taraf gün sayısı ve iade günü. Ortada türün noktalı silueti, kenarları solar. Çizimi olmayan yolda (metro, yürüyüş) orta satır uçların arasında.
 - **Medya gövdesi:** 176×128 görsel (yoksa türün noktalı silueti), puan köşede; yanında 20 px başlık, bilgi satırı, kaynak.
 - **Ayrıntı:** karta dokununca kartın içinde beyaz panel açılır; eski karttaki her bilgi orada (saatler, işletme,
   fiyat kırılımı, neden önerildi, istedikler, artı/eksi, bağlantılar, geri almalar).
 - **Belgeler:** yalnız bu bilgisayarda durur. Varsa hap ("bilet.pdf +1", dar ekranda ikon), yoksa soluk ataç.
-- **Eklemek:** Plan başlığındaki "+ Ekle" ve kartların arasındaki "+" (üstüne gelince çıkar) şablon penceresini açar;
-  oraya eklenir, şehir ve tarih önceden dolu gelir.
+- **Eklemek:** Plan başlığındaki "+ Ekle" ve kesik çizgili "+" (hep soluk görünür, üstüne gelince tam; dar ekranda tam)
+  şablon penceresini açar: planın en başında, her şehir bloğunun başında, her satırdan sonra; Günlük akışta her günde.
+  Şehir ve tarih bastığın yerden gelir (konaklamanın ardında yalnız şehir). "Diğer" grubunda "Yapılacak" karosu
+  rezervasyonsuz bir şey ekler (Fikirler'e düşer).
 
-## İki görünüm
+## Üç görünüm
 
 - **Plan** kararların ön yüzü: yalnız kararı ya da rezervasyonu olan şeyler, her biri kendi büyük kartı (uçuş, otel,
   şehir değişimi, seçilen etkinlik, kiralık araç, planı olan transfer). Solda simge ve etiket sütunu (ne, ne zaman,
-  kaçıncı gün), sağda kart; şehir bloğunun içindekiler dışındakilerle aynı hizada.
+  kaçıncı gün), sağda kart; şehir bloğunun içindekiler dışındakilerle aynı hizada. Yalnız rezervasyon isteyenler
+  (konaklama, ulaşım, uçuş, eSIM, sigorta, bileti/rezervasyonu olan etkinlik ve restoran); tarihsiz olanlar altta
+  "Rezerve edilecekler · N · M alındı" listesinde alt alta.
 - Plan'da check-in/check-out satırı, boş gün, planı olmayan transfer yok.
 - **Günlük akış** gün gün, saat saat: rezervasyon gerektiren her şey (uçuş, tren, taksi/transfer, etkinlik,
   restoran, araç kiralama) küçük bir blok, bilgi (check-in, check-out, metro/yürüyüş, araç iadesi) ince satır.
 - Blok Plan'daki kartına götürür; bir şey iki görünümde de büyük yazılmaz.
 - Saat solda: kayıttan gelen düz, alışılmış ya da hesaplanan "~"; bilinmeyen boş.
 - Günler açılır, kapanır: işi kalan açık gelir ("3 iş"), hepsi hazır olan tek satıra katlanır.
+- **Fikirler** rezervasyon gerektirmeyenler (restoran, serbest etkinlik, yapılacak, not), şehir şehir
+  (`docs/mockups/2026-10-05-fikirler-v1.html`): hızlı yazma kutusu, Hepsi · Yeme-içme · Yapılacaklar, restoranlar küçük
+  fotoğraf kartları (fotoğraf kaydedilen sayfadan, yoksa yemek ikonu), yapılacaklar tikli liste. Bir güne eklenen Günlük
+  akışta ince satırdır, büyük blok değil.
 
 ## Azaltmak
 
 - Sayfadan gelen bir seçenek **Ele** ile önden kalkar (Elenenler); transfer **Gerek yok** ile (Gizlenenler / Geri al).
   **Sil** her kayıt kartının ••• menüsündedir ve kalıcıdır: onay penceresi yok, 8 saniye "Geri al" durur; kayıt
-  belgeleriyle birlikte geri gelir. Sayılar ve yapılacaklar yalnız öndekini sayar.
+  belgeleriyle birlikte geri gelir. Kart dışındaki silmeler (çekmece, konaklamanın "Kaldır"ı) da aynı 8 saniyelik
+  "Geri al"dan geçer; hiçbir kayıt silmesi onay sormaz. Sayılar ve yapılacaklar yalnız öndekini sayar.
 - Konaklamada seçili karta dokunmak diğer seçenekleri açar (ayrıntı ⓘ'da); diğer kartlarda dokunmak ayrıntıyı açar,
   diğer seçenekler ayrıntıdaki 'Diğer N seçenek'te.
 - Sohbette söylenen ya da elle eklenen plan ••• → Düzenle ile değişir, Sil ile gider.
