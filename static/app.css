@@ -1205,20 +1205,22 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 
 /* bottom strip */
 .pk-foot { position: relative; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 6px 0 12px; border-radius: 14px; background: rgba(255, 255, 255, .75); }
-.pk-state { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; }
+/* One line: a long note ("⏳ … şimdi ayırmak risksiz") ends in "…" (full text in its title); price and button keep their size. */
+.pk-state { display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.pk-state > svg { vertical-align: -2px; margin-right: 6px; }
 .pk-state.wait { color: #8a5a00; }
 .pk-state.done { color: #1d7442; }
 .pk-state.plain { color: var(--pk-gray); }
-.pk-sub { font-weight: 400; color: var(--pk-gray); white-space: normal; }
+.pk-sub { margin-left: 6px; font-weight: 400; color: var(--pk-gray); }
 .pk-state.alert-red .pk-sub { color: #c62828; }
 .pk-state.alert-amber .pk-sub { color: #8a5a00; }
-.pk-nav { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--pk-gray); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pk-nav { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--pk-gray); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .pk-nav button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #e3dccb; background: #fff; display: grid; place-items: center; color: var(--pk-ink); cursor: pointer; }
 .pk-nav button:disabled { opacity: .4; cursor: default; }
 .pk-best { font-size: 13px; color: var(--pk-link); font-weight: 600; }
-.pk-price { margin-left: auto; font-size: 13px; color: var(--pk-gray); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pk-price { flex: none; margin-left: auto; font-size: 13px; color: var(--pk-gray); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .pk-price b { font-size: 17px; color: var(--pk-ink); margin-right: 2px; }
-.pk-cta { height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--pk-ink, #1d1d1f); color: #fff; font: inherit; font-size: 15px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.pk-cta { flex: none; height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--pk-ink, #1d1d1f); color: #fff; font: inherit; font-size: 15px; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .pk-cta:disabled { opacity: .5; }
 /* No price (a transfer, a move): the one action still sits at the right end. */
 .pk-foot > .pk-cta { margin-left: auto; }
