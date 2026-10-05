@@ -324,6 +324,8 @@ export interface Item {
   statusNote: string | null;
   /** When the status last changed (a choice made after a stay was said in the chat fills its nights). */
   statusAt?: number;
+  /** The status it had when the chat took it off the plan (dismissed): Gizlenenler's "Geri al" puts that back. */
+  dismissedFrom?: ItemStatus;
   /** "chat": the traveller said it in the chat, no page behind it (a plan until a saved page replaces it). */
   origin?: "chat";
   /** What kind of plan was said in the chat, or added from a template (a car rental or a transfer can carry any title). */

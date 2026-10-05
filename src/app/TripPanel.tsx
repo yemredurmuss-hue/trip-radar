@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requestProcessing } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
 import { listingKeyOf, nightsBetween, rankItems, tripDateRange } from "../lib/items";
-import { buildLegs, type Leg } from "../lib/legs";
+import { buildLegs, staleHiddenMoves, type Leg } from "../lib/legs";
 import { buildTimeline } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
 import { cardFacts } from "../lib/cardFacts";
@@ -138,6 +138,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   useEffect(() => onRemoved((removed) => removed.item.tripId === trip.id && undo.show({ kind: "removed", removed })), [trip.id, undo]);
   // A transfer the chat hid ("Gaula → Madeira'yı kaldır") gets the "Geri al" of the board's "Gerek yok".
   useEffect(() => onHidden((h) => h.tripId === trip.id && undo.show({ kind: "hidden", ...h })), [trip.id, undo]);
+  // A change of city hidden with "Gerek yok" that got a flight or a way since is back for good: its key goes, so
+  // it can't hide again on its own if that flight is taken off later.
+  useEffect(() => {
+    const stale = staleHiddenMoves(legs, trip.hidden);
+    if (stale.length) void updateTrip(trip.id, (t) => ({ ...t, hidden: (t.hidden ?? []).filter((k) => !stale.includes(k)) }), { touch: false });
+  }, [legs, trip.id, trip.hidden]);
   const offer = (u: Undoable) => undoTrip(u) === trip.id && undo.show(u);
   const [sheet, setSheet] = useState<{ at: InsertAt | null; editing: Item | null; only?: readonly TemplateId[] } | null>(null);
   const [focus, setFocus] = useState<CardFocus | null>(null);

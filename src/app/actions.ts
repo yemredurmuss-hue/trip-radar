@@ -19,9 +19,13 @@ const statusEvent = (name: string, status: ItemStatus): string =>
 
 export async function setItemStatus(item: Item, status: ItemStatus): Promise<void> {
   const d = await db();
-  const fresh = (await d.get("items", item.id)) ?? item;
-  await d.put("items", { ...fresh, status, statusAt: Date.now(), updatedAt: Date.now() });
-  await addEvent(item.tripId, statusEvent(item.name, status));
+  const found = (await d.get("items", item.id)) ?? item;
+  // Taken off by the chat ("kaldır"): "Geri al" puts back what it was (a plan said in the chat is planned again,
+  // a booking booked), not "an option".
+  const back = status === "saved" && found.status === "dismissed" && found.dismissedFrom ? found.dismissedFrom : status;
+  const { dismissedFrom: _from, ...fresh } = found;
+  await d.put("items", { ...fresh, status: back, statusAt: Date.now(), updatedAt: Date.now() });
+  await addEvent(item.tripId, statusEvent(item.name, back));
   notifyChanged();
 }
 

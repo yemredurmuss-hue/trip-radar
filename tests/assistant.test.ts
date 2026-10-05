@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 import { currentSession, resetConversation, sendMessage, withDetails } from "../src/lib/assistant";
 import { db, listItems, listMessages, listPreferences } from "../src/lib/db";
 import { addDoc, listDocMeta } from "../src/lib/docs";
-import { onRemoved, restoreItem, type Removed } from "../src/lib/removal";
+import { onRemoved, type Removed } from "../src/lib/removal";
+import { setItemStatus } from "../src/app/actions";
 import { anthropicProvider } from "../src/lib/llm/anthropic";
 import { bookingOf } from "../src/lib/booking";
 import type { Item, Trip } from "../src/lib/types";
@@ -370,7 +371,8 @@ describe("assistant", () => {
       ["taxi", "Taksi · Otel → Havalimanı", "transport", null],
     ]);
 
-    // "Taksiyi kaldır": a plan said in the chat comes off the board, not into the eliminated ones.
+    // "Taksiyi kaldır": a plan said in the chat comes off the board, never deleted by the chat (0.35.13): it waits
+    // under Gizlenenler with its file, and "Geri al" there makes it planned again.
     const taxi = plans.find((i) => i.plannedKind === "taxi")!;
     const { client: c2 } = fakeClient([
       { stop_reason: "tool_use", content: [{ type: "tool_use", id: "u1", name: "update_items", caller: { type: "direct" }, input: { changes: [{ item_id: taxi.id, status: "dismissed", note: null }] } }] as Anthropic.ContentBlock[] },
@@ -381,11 +383,14 @@ describe("assistant", () => {
     const stop = onRemoved((r) => removed.push(r));
     await sendMessage("t1", "taksiyi kaldır", anthropicProvider(c2, "claude-opus-5"));
     stop();
-    expect((await listItems("t1")).some((i) => i.id === taxi.id)).toBe(false);
-    // The same "Geri al" as the card's Sil: the board offers it, and it brings the plan back with its file.
-    expect(removed.map((r) => [r.item.id, r.docs.map((x) => x.name)])).toEqual([[taxi.id, ["taksi.pdf"]]]);
-    await restoreItem(removed[0]);
-    expect((await listItems("t1")).some((i) => i.id === taxi.id)).toBe(true);
+    expect(removed).toEqual([]);
+    const gone = (await listItems("t1")).find((i) => i.id === taxi.id)!;
+    expect([gone.status, gone.dismissedFrom]).toEqual(["dismissed", "chosen"]);
+    expect((await listDocMeta("t1")).map((x) => x.name)).toContain("taksi.pdf");
+    // Gizlenenler's "Geri al" (setItemStatus saved) puts back what it was: planned, not "an option".
+    await setItemStatus(gone, "saved");
+    const back = (await listItems("t1")).find((i) => i.id === taxi.id)!;
+    expect([back.status, back.dismissedFrom]).toEqual(["chosen", undefined]);
     expect((await listDocMeta("t1")).map((x) => x.name)).toContain("taksi.pdf");
   });
   it("moves an undated ticket to its day when the traveller says the date, keeping the times read from it", async () => {

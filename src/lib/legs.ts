@@ -292,6 +292,16 @@ export const legItem = (leg: Leg): Item | null => settledOf(leg.options);
 export const canHideLeg = (leg: Leg): boolean =>
   leg.kind !== "move" || (!leg.travel && leg.options.length === 0 && !leg.choice?.mode && !leg.choice?.booked);
 
+/**
+ * trip.hidden's `leg:` keys of changes of city that can't be hidden any more (a flight or a way was saved for them
+ * after "Gerek yok"): they come back on the board, and the key goes so the move can't hide again on its own later.
+ */
+export const staleHiddenMoves = (legs: Leg[], hidden: readonly string[] | undefined): string[] => {
+  if (!hidden?.length) return [];
+  const keys = new Set(hidden);
+  return legs.filter((l) => l.kind === "move" && keys.has(`leg:${l.key}`) && !canHideLeg(l)).map((l) => `leg:${l.key}`);
+};
+
 /** A transfer the traveller said isn't needed (trip.hidden's `leg:<key>`) and that can be hidden. */
 export const isHiddenLeg = (leg: Leg, hidden: ReadonlySet<string> | readonly string[] | undefined): boolean => {
   const key = `leg:${leg.key}`;

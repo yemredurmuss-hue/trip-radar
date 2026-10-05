@@ -12,7 +12,8 @@ import { buildLegs } from "../src/lib/legs";
 import { anthropicProvider } from "../src/lib/llm/anthropic";
 import { geminiProvider, type GeminiClient } from "../src/lib/llm/gemini";
 import { buildPlan } from "../src/lib/plan";
-import { onHidden, onRemoved, restoreItem, type HiddenByChat, type Removed } from "../src/lib/removal";
+import { onHidden, onRemoved, type HiddenByChat, type Removed } from "../src/lib/removal";
+import { addDoc, listDocMeta } from "../src/lib/docs";
 import { cleanReply, replyFallback, shownReply } from "../src/lib/replyText";
 import { buildTimeline } from "../src/lib/timeline";
 import type { Item, Trip } from "../src/lib/types";
@@ -181,7 +182,10 @@ describe("Bug 1b: 'Gaula → Madeira' in Ulaşım can be removed", () => {
     const [result] = resultsOf(calls, 1);
     expect(result.is_error).toBe(true);
     expect(String(result.content)).toContain("gizlenmedi");
-    expect(String(result.content)).toContain("TAP OPO → FNC");
+    // It never suggests taking the flight off: it says the move has a way and asks the user.
+    expect(String(result.content)).not.toContain("remove_from_plan");
+    expect(String(result.content)).toContain("sor");
+    expect((await stored()).get("fl")!.status).toBe("booked");
     expect((await (await db()).get("trips", T))!.hidden ?? []).toEqual([]);
   });
 
@@ -195,27 +199,33 @@ describe("Bug 1b: 'Gaula → Madeira' in Ulaşım can be removed", () => {
     expect((await stored()).size).toBe(3);
   });
 
-  it("a saved transport record is ruled out (Gizlenenler, 'Geri al'); one said in the chat is deleted with 'Geri al'", async () => {
+  it("a saved transport record and one said in the chat are both ruled out, never deleted; 'Geri al' in Gizlenenler puts back what they were", async () => {
     const page = makeItem({ tripId: T, id: "tr", category: "transport", needKey: "transport:gaula-madeira", name: "Gaula → Madeira transfer", city: "Madeira", status: "chosen", captureIds: ["c3"], dates: { start: "2026-10-14", end: null, source: "page" } });
     const said = makeItem({ tripId: T, id: "taxi", category: "transport", needKey: "transport:x-madeira", name: "Taksi · Madeira", city: "Madeira", status: "chosen", origin: "chat", plannedKind: "taxi", dates: { start: "2026-10-14", end: null, source: "unverified" } });
     await put([opo(), van(), hotel(), page, said]);
+    await addDoc(said, new File(["%PDF-1.4"], "taksi.pdf", { type: "application/pdf" }));
     const removed: Removed[] = [];
     const stop = onRemoved((r) => removed.push(r));
     const { llm, calls } = fake([use({ name: "remove_from_plan", input: { target_id: "tr" } }, { name: "remove_from_plan", input: { target_id: "taxi" } }), say("İkisini de kaldırdım.")]);
     await sendMessage(T, "ulaşımdaki gaula madeira transferini ve taksiyi kaldır", llm);
     stop();
+    expect(removed).toEqual([]);
     const results = resultsOf(calls, 1);
     expect(results.map((r) => r.is_error ?? false)).toEqual([false, false]);
-    expect(results.map((r) => JSON.parse(String(r.content)).how)).toEqual(["dismissed", "deleted"]);
+    expect(results.map((r) => JSON.parse(String(r.content)).how)).toEqual(["dismissed", "dismissed"]);
+    expect(String(results[1].content)).toContain("Gizlenenler");
     let items = await stored();
-    expect(items.get("tr")!.status).toBe("dismissed");
-    expect(items.has("taxi")).toBe(false);
-    // Undo both: the ruled-out one back to the options, the deleted one restored.
+    expect([items.get("tr")!.status, items.get("taxi")!.status]).toEqual(["dismissed", "dismissed"]);
+    expect((await listDocMeta(T)).map((x) => x.name)).toEqual(["taksi.pdf"]);
+    // Both wait under Gizlenenler, and its "Geri al" puts back what they were.
+    const items0 = [...items.values()];
+    const plan = buildPlan(trip, items0);
+    const legs = buildLegs(plan, trip);
+    expect(hiddenThings({ plan, timeline: buildTimeline(plan, legs, items0), items: items0, legs }).map((h) => h.key)).toEqual(expect.arrayContaining(["item:tr", "item:taxi"]));
     await setItemStatus(items.get("tr")!, "saved");
-    await restoreItem(removed[0]);
+    await setItemStatus(items.get("taxi")!, "saved");
     items = await stored();
-    expect(items.get("tr")!.status).toBe("saved");
-    expect(items.get("taxi")!.status).toBe("chosen");
+    expect([items.get("tr")!.status, items.get("taxi")!.status]).toEqual(["chosen", "chosen"]);
   });
 
   it("the tool fits the strict schema budget and is in both languages' tool lists", () => {
@@ -296,7 +306,7 @@ describe("Bug 2: 'X iptal, yerine Y' takes X out in the same turn", () => {
     });
   }
 
-  it("replaces given by the model removes that record (and a chat plan is deleted with 'Geri al')", async () => {
+  it("replaces given by the model takes that record off (a chat plan too: ruled out, not deleted)", async () => {
     const said = sixt({ id: "car", name: "Araç kiralama · Madeira", origin: "chat", plannedKind: "car_rental", provider: null, captureIds: [], status: "chosen", dates: { start: "2026-10-11", end: "2026-10-16", source: "unverified" } });
     await put([opo(), hotel(), said]);
     const removed: Removed[] = [];
@@ -305,10 +315,11 @@ describe("Bug 2: 'X iptal, yerine Y' takes X out in the same turn", () => {
     await sendMessage(T, "arabadan vazgeçtik, karavan aldık", llm);
     stop();
     expect(resultsOf(calls, 1)[0].is_error).toBeFalsy();
-    expect((await stored()).has("car")).toBe(false);
-    expect(removed.map((r) => r.item.id)).toEqual(["car"]);
-    await restoreItem(removed[0]);
-    expect((await stored()).has("car")).toBe(true);
+    expect(removed).toEqual([]);
+    const car = (await stored()).get("car")!;
+    expect([car.status, car.dismissedFrom]).toEqual(["dismissed", "chosen"]);
+    await setItemStatus(car, "saved");
+    expect((await stored()).get("car")!.status).toBe("chosen");
   });
 
   it("two car rentals for those days: nothing changes and the model is told to ask which", async () => {
