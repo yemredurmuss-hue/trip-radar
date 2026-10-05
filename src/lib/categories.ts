@@ -11,7 +11,7 @@ import { L } from "./i18n";
 import { nNights } from "./i18nText";
 import { shortDay } from "./ideas";
 import { formatDateRange, isoDate } from "./items";
-import { BOOKABLE, legShortTitle, type Leg } from "./legs";
+import { legShortTitle, type Leg } from "./legs";
 import { cityKeyOf, departureDay, sameCity, type OptionGroup, type Plan } from "./plan";
 import { toBook, type Timeline, type TimelineEntry } from "./timeline";
 import { isInsurance, itemText } from "./travelKinds";
@@ -112,12 +112,14 @@ export function sectionOfItem(item: Item): SectionId {
   }
 }
 
-/** A block of the plan's front: a flight (or a move by plane) under Uçuş; a transfer, a train, a car under Ulaşım. */
+/** A block of the plan's front: a flight under Uçuş (a missing one too); a transfer, a change of city, a train, a car under Ulaşım. */
 function sectionOfEntry(entry: TimelineEntry): SectionId {
   switch (entry.kind) {
     case "travel": {
       if (entry.travel) return entry.travel.group.category === "flight" ? "flight" : "transport";
-      if (entry.leg) return entry.leg.choice?.mode === "flight" ? "flight" : "transport";
+      // A change of city with no ticket saved yet is its transfer card, whatever way was picked (picking
+      // the plane doesn't move it away under the hand); a flight saved for it is a flight.
+      if (entry.leg) return "transport";
       return "flight";
     }
     case "stay":
@@ -132,22 +134,16 @@ function sectionOfEntry(entry: TimelineEntry): SectionId {
   }
 }
 
+/** As its card says it (cardView.legCardView): arranged is done; a change of city by ticket still to buy; planned is done. */
+const LEG_TICKETS: readonly string[] = ["flight", "train", "bus", "ferry"];
+const legBooked = (leg: Leg) => leg.status === "booked" || Boolean(leg.choice?.booked);
 function legState(leg: Leg): EntryState {
-  if (leg.choice?.booked) return "done";
-  switch (leg.status) {
-    case "booked":
-      return "done";
-    case "chosen": {
-      const own = leg.options.find(decided);
-      return own && own.status !== "booked" && needsBooking(own) ? "book" : "done";
-    }
-    case "planned":
-      return leg.choice?.mode && BOOKABLE.includes(leg.choice.mode) ? "book" : "done";
-    case "options":
-      return "decide";
-    default:
-      return "empty";
-  }
+  if (legBooked(leg)) return "done";
+  if (leg.status === "options") return "decide";
+  const mode = leg.choice?.mode ?? leg.mode;
+  const planned = mode != null || leg.status === "chosen" || leg.status === "planned";
+  if (!planned) return "empty";
+  return leg.kind === "move" && mode != null && LEG_TICKETS.includes(mode) ? "book" : "done";
 }
 
 /** Booked (or an eSIM chosen and put in: "Kurdum") is done; chosen is still to buy; else options to pick from. */
@@ -326,9 +322,10 @@ function ticketOf(section: SectionId, items: Item[], leg: Leg | null): boolean {
 const bookWord = (section: SectionId, ticket: boolean): string =>
   ticket ? L("Bilet yok", "No ticket") : section === "other" ? L("Satın alınmadı", "Not bought") : L("Rezerve edilmedi", "Not booked");
 
-function rowStatus(section: SectionId, state: EntryState, items: Item[], options: number, ticket: boolean): { status: string; ok: boolean } {
+function rowStatus(section: SectionId, state: EntryState, items: Item[], options: number, ticket: boolean, leg: Leg | null): { status: string; ok: boolean } {
   switch (state) {
     case "done": {
+      if (leg && legBooked(leg) && !items.some((i) => i.status === "booked")) return { status: ticket ? L("Alındı", "Booked") : L("Ayarlandı", "Arranged"), ok: true };
       if (section === "todo" || (section === "food" && items.every(isIdea))) {
         return { status: items.some((i) => i.doneAt) ? L("Yapıldı", "Done") : L("Güne eklendi", "On a day"), ok: true };
       }
@@ -378,7 +375,7 @@ function finish(d: Draft, seq: number, rank: Ranking): CatEntry {
   const options = new Set(d.items.map((i) => i.id)).size;
   const leg = d.piece.kind === "entry" ? (d.piece.entry.kind === "leg" ? d.piece.entry.leg : d.piece.entry.kind === "travel" ? d.piece.entry.leg : null) : null;
   const ticket = ticketOf(d.section, d.items, leg);
-  const { status, ok } = rowStatus(d.section, d.state, d.items, options, ticket);
+  const { status, ok } = rowStatus(d.section, d.state, d.items, options, ticket, leg);
   return {
     key: d.key,
     section: d.section,
@@ -647,4 +644,3 @@ export const catDomKey = (e: CatEntry): string => e.domKey ?? `cat:${e.key}`;
 
 /** What the traveller opened or closed, per trip ({"food": false}); the rest follow the first look. */
 export type OpenState = Partial<Record<SectionId, boolean>>;
-export const isOpen = (section: CatSection, state: OpenState): boolean => state[section.id] ?? section.open;

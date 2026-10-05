@@ -274,6 +274,23 @@ describe("sections from what's saved and said", () => {
     expect(pieces.filter((e) => e.domKey).length).toBe(1);
   });
 
+  it("a transfer stands as its card says: a taxi planned is done, a change of city by train is a ticket to buy, then bought", () => {
+    const items = [...base, flight("TP 1234", "IST", "OPO", "2026-10-08", "booked")];
+    const legs = sectionsOf(items).legs;
+    const arrival = legs.find((l) => l.kind === "arrival")!;
+    const move = legs.find((l) => l.kind === "move")!;
+    const choice = (mode: "taxi" | "train", booked = false) => ({ mode, booked, note: null, updatedAt: 1 });
+    const planned = sectionsOf(items, { ...trip, legs: { [arrival.key]: choice("taxi"), [move.key]: choice("train") } }).sections;
+    const transport = planned.find((s) => s.id === "transport")!;
+    expect(transport.entries.map((e) => [e.row.name, e.state, e.row.status])).toEqual([
+      ["Havalimanı → Otel", "done", "Planlandı"],
+      ["Porto → Lizbon", "book", "Bilet yok"],
+    ]);
+    expect(transport.status).toEqual({ text: "1 bilet yok", tone: "wait" });
+    const bought = sectionsOf(items, { ...trip, legs: { [arrival.key]: choice("taxi", true), [move.key]: choice("train", true) } }).sections;
+    expect(bought.find((s) => s.id === "transport")!.entries.map((e) => e.row.status)).toEqual(["Ayarlandı", "Alındı"]);
+  });
+
   it("finds a to-do's place: by record, transfer or block", () => {
     const items = [...base, flight("TP 1234", "IST", "OPO", "2026-10-08", "chosen"), makeItem({ name: "Serralves", category: "activity", city: "Porto", booking: "needed" })];
     const { sections } = sectionsOf(items);

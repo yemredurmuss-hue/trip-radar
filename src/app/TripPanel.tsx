@@ -100,7 +100,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // The Plan by category (spec 0.34): every block and record in one of seven sections; which are open, per trip.
   const rank = useMemo(() => new Map([...(decisions?.byGroup.values() ?? [])].flatMap((d) => d.options.map((o, i) => [o.item.id, i] as const))), [decisions?.byGroup]);
   const sections = useMemo(() => categorize({ plan, timeline, items, legs, hidden, rank }), [plan, timeline, items, legs, hidden, rank]);
-  const [opened, setOpened] = useSectionOpen(trip.id);
+  const [isOpen, setOpened] = useSectionOpen(trip.id);
   /** Opens a block of the plan (from the itinerary): its section opens, the card comes into view. */
   const showOnPlan = (key: string) => {
     const hit = findInSections(sections, { entry: key });
@@ -415,7 +415,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         <CategoryPlan
           plan={plan}
           sections={sections}
-          open={opened}
+          isOpen={isOpen}
           onOpen={setOpened}
           tripId={trip.id}
           cities={cityNames}

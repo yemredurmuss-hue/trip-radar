@@ -1,8 +1,8 @@
 // The seven sections' look and what "+ Ekle" adds in each (spec 0.34 §Bölüm kabuğu): colour, icon, name, and
 // the template tiles of that kind. One tile adds at once (instant add, 0.33); more open the sheet with only those.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CardKind } from "../../lib/cardKinds";
-import type { OpenState, SectionId } from "../../lib/categories";
+import type { CatSection, OpenState, SectionId } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import type { TemplateId } from "../../lib/templates";
 
@@ -52,9 +52,14 @@ function write(tripId: string, state: OpenState) {
   }
 }
 
-/** Which sections the traveller opened or closed on this trip, remembered on this computer. */
-export function useSectionOpen(tripId: string): [OpenState, (id: SectionId, open: boolean) => void] {
+/**
+ * Which sections are open on this trip: the traveller's own choice, remembered on this computer; else the
+ * first look — open while something's left, closed once all is done — taken once per visit, so a section
+ * doesn't fold away under the hand that just booked its last ticket.
+ */
+export function useSectionOpen(tripId: string): [(section: CatSection) => boolean, (id: SectionId, open: boolean) => void] {
   const [state, setState] = useState<{ tripId: string; open: OpenState }>(() => ({ tripId, open: read(tripId) }));
+  const firstLook = useRef<{ tripId: string; open: Map<SectionId, boolean> }>({ tripId, open: new Map() });
   useEffect(() => {
     if (state.tripId !== tripId) setState({ tripId, open: read(tripId) });
   }, [tripId, state.tripId]);
@@ -67,5 +72,14 @@ export function useSectionOpen(tripId: string): [OpenState, (id: SectionId, open
       }),
     [tripId],
   );
-  return [state.tripId === tripId ? state.open : read(tripId), set];
+  const chosen = state.tripId === tripId ? state.open : read(tripId);
+  if (firstLook.current.tripId !== tripId) firstLook.current = { tripId, open: new Map() };
+  const looks = firstLook.current.open;
+  const isOpen = (section: CatSection): boolean => {
+    const own = chosen[section.id];
+    if (own != null) return own;
+    if (!looks.has(section.id)) looks.set(section.id, section.open);
+    return looks.get(section.id)!;
+  };
+  return [isOpen, set];
 }

@@ -2,7 +2,7 @@
 // Konaklama, Ulaşım, Etkinlikler, Yapılacak şeyler, Restoranlar, Diğer — each a section that opens and closes
 // (remembered per trip), with the approved cards in a timeline inside. A section with nothing in it isn't
 // drawn; it's one chip in the "Ekle" line at the bottom.
-import { catDomKey, isOpen, type CatEntry, type CatSection, type OpenState, type SectionId } from "../../lib/categories";
+import { catDomKey, type CatEntry, type CatSection, type SectionId } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import type { Plan } from "../../lib/plan";
 import type { InsertAt } from "../../lib/templates";
@@ -12,10 +12,11 @@ import { Section } from "./Section";
 import { SECTION_META } from "./sectionMeta";
 import { SectionTimeline, type SectionCards } from "./SectionTimeline";
 
-export function CategoryPlan({ plan, sections, open, onOpen, tripId, cities, cards, onAdd, onGo }: {
+export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, onGo }: {
   plan: Plan;
   sections: CatSection[];
-  open: OpenState;
+  /** Open now: the traveller's choice, else the first look (sectionMeta.useSectionOpen). */
+  isOpen: (section: CatSection) => boolean;
   onOpen: (id: SectionId, open: boolean) => void;
   tripId: string;
   cities: string[];
@@ -42,7 +43,7 @@ export function CategoryPlan({ plan, sections, open, onOpen, tripId, cities, car
         </div>
       ))}
       {shown.map((s) => {
-        const opened = isOpen(s, open);
+        const opened = isOpen(s);
         return (
           <Section key={s.id} section={s} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)} onGo={(e) => onGo(e, catDomKey(e))}>
             <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} />
