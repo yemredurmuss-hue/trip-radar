@@ -5,21 +5,49 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cityWeather, skyOf, summarize, weatherQuery, weatherTitle, type Daily } from "../src/lib/climate";
 import { db, listItems } from "../src/lib/db";
 import { loadDemoTrip } from "../src/lib/demo";
-import { countryNames, currencyName, flagEmoji, heroTally, initials, offsetText, plugFit, travellersTitle } from "../src/lib/heroInfo";
+import { loadDecisions } from "../src/lib/analysis";
+import { categorize, sectionProgress, type CatEntry, type CatSection } from "../src/lib/categories";
+import { countryNames, currencyName, flagEmoji, initials, offsetText, plugFit, sectionTally, tallySection, travellersTitle } from "../src/lib/heroInfo";
 import { setLang } from "../src/lib/i18n";
+import { buildLegs } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
+import { buildTimeline } from "../src/lib/timeline";
 
 afterEach(() => setLang("tr"));
 
 describe("hero tally", () => {
-  it("counts each need once on the sample trip", async () => {
+  it("counts what the Plan's sections hold, as their headers' totals do", async () => {
     const id = await loadDemoTrip();
     const trip = (await (await db()).get("trips", id))!;
     const items = await listItems(id);
-    const tally = heroTally(buildPlan(trip, items), items);
-    expect(tally.flight).toBeGreaterThanOrEqual(1);
+    const { ctx } = await loadDecisions(trip, items);
+    const plan = buildPlan(trip, items);
+    const legs = buildLegs(plan, trip, ctx.listings);
+    const sections = categorize({ plan, timeline: buildTimeline(plan, legs, items), items, legs });
+    const total = (...ids: string[]) => sections.filter((s) => ids.includes(s.id)).reduce((n, s) => n + sectionProgress(s).total, 0);
+    const tally = sectionTally(sections);
+    expect(tally).toEqual({ flight: total("flight"), stay: total("stay"), transport: total("transport"), experience: total("activity", "todo", "food") });
     expect(tally.stay).toBe(2); // Porto and Lisbon
-    expect(tally.experience).toBeGreaterThanOrEqual(1); // the Douro boat tour is on the plan
+    expect(tally.transport).toBeGreaterThanOrEqual(1); // Porto → Lizbon, whatever is chosen for it
+  });
+  it("counts a taxi and a transfer in Ulaşım, the to-dos and restaurants as experiences, nothing hidden", () => {
+    const entries = (n: number) => Array.from({ length: n }, () => ({}) as CatEntry);
+    const sections = [
+      { id: "flight", entries: entries(3) },
+      { id: "stay", entries: entries(2) },
+      { id: "transport", entries: entries(1) },
+      { id: "activity", entries: entries(0) },
+      { id: "todo", entries: entries(2) },
+      { id: "food", entries: entries(3) },
+      { id: "other", entries: entries(4) },
+    ] as Pick<CatSection, "id" | "entries">[];
+    expect(sectionTally(sections)).toEqual({ flight: 3, stay: 2, transport: 1, experience: 5 });
+    // A tap on "deneyim" opens the first of Etkinlikler, Yapılacak şeyler, Restoranlar with something in it.
+    expect(tallySection("experience", sections)).toBe("todo");
+    expect(tallySection("experience", sections.filter((s) => s.id !== "todo"))).toBe("food");
+    expect(tallySection("experience", [])).toBe("activity");
+    expect(tallySection("transport", sections)).toBe("transport");
+    expect(sectionTally([])).toEqual({ flight: 0, stay: 0, transport: 0, experience: 0 });
   });
 });
 
@@ -132,6 +160,10 @@ describe("hero places", () => {
     expect(cityRanges(plan, ["Porto", "Lizbon"], plan.range)).toEqual([
       { city: "Porto", start: "2026-10-08", end: "2026-10-11" },
       { city: "Lizbon", start: "2026-10-11", end: "2026-10-14" },
+    ]);
+    // A main place spans its members' nights (destinations.ts): here one "destination" of both cities.
+    expect(cityRanges(plan, [{ name: "Portekiz kıyısı", members: ["Porto", "Lizbon"] }], plan.range)).toEqual([
+      { city: "Portekiz kıyısı", start: "2026-10-08", end: "2026-10-14" },
     ]);
   });
 });

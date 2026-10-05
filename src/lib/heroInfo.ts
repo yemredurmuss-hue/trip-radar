@@ -1,32 +1,47 @@
 // What the hero's one-line tally and its facts column say beyond tripFacts: how many flights, stays,
 // transport and experiences the plan holds, the countries by name, whether a plug fits, and the time
 // difference in short. Pure.
+import type { CatSection, SectionId } from "./categories";
 import { countryInfo } from "./countries";
+import { cityKeyOf, type Plan } from "./plan";
 import { L, locale } from "./i18n";
-import type { Plan } from "./plan";
 import type { Item } from "./types";
 
 export interface HeroTally {
   flight: number;
   stay: number;
   transport: number;
-  /** Activities and restaurants on the plan (chosen or booked): "deneyim". */
+  /** Etkinlikler, Yapılacak şeyler and Restoranlar together: "deneyim". */
   experience: number;
 }
 
+/** The Plan's sections each cell of the hero's plan line counts, in the order a tap looks for one with something in it. */
+export const TALLY_SECTIONS: Record<keyof HeroTally, readonly SectionId[]> = {
+  flight: ["flight"],
+  stay: ["stay"],
+  transport: ["transport"],
+  experience: ["activity", "todo", "food"],
+};
+
 /**
- * Each need counts once: a flight or a transfer with three options is one flight; a stay is one block of
- * nights with something saved for it. Experiences are the chosen or booked activities and restaurants.
+ * What the Plan's sections hold (revizyon 1, 2026-10-05): each cell counts its sections' entries, the
+ * same number as each header's "x/y" ("y"), so the hero and the Plan always agree. A taxi or a transfer
+ * counts in Ulaşım as the section shows it; what's hidden or "Gerek yok" doesn't, as in the section.
  */
-export function heroTally(plan: Plan, items: Item[]): HeroTally {
-  const closed = new Set(plan.closed.map((c) => c.item.id));
-  const groups = (category: string) => plan.groups.filter((g) => g.category === category && g.items.length > 0).length;
-  const stays =
-    plan.stayBlocks.filter((b) => b.kind !== "open" || b.groups.length > 0).length + plan.looseStays.filter((g) => g.items.length > 0).length;
-  const experience = items.filter(
-    (i) => (i.category === "activity" || i.category === "food") && (i.status === "chosen" || i.status === "booked") && !closed.has(i.id),
-  ).length;
-  return { flight: groups("flight"), stay: stays, transport: groups("transport"), experience };
+export function sectionTally(sections: Pick<CatSection, "id" | "entries">[]): HeroTally {
+  const count = (ids: readonly SectionId[]) => sections.filter((s) => ids.includes(s.id)).reduce((n, s) => n + s.entries.length, 0);
+  return {
+    flight: count(TALLY_SECTIONS.flight),
+    stay: count(TALLY_SECTIONS.stay),
+    transport: count(TALLY_SECTIONS.transport),
+    experience: count(TALLY_SECTIONS.experience),
+  };
+}
+
+/** The section a cell opens: the first of its sections with something in it, else its first ("deneyim": Etkinlikler). */
+export function tallySection(kind: keyof HeroTally, sections: Pick<CatSection, "id" | "entries">[]): SectionId {
+  const ids = TALLY_SECTIONS[kind];
+  return ids.find((id) => sections.some((s) => s.id === id && s.entries.length > 0)) ?? ids[0];
 }
 
 /** Country names in the order the cities come, each once ("Portekiz", "Portekiz, İspanya"). */
@@ -126,11 +141,20 @@ export function travellersTitle(names: string[], count: number): string {
 /** "2 kişi" / "2 people". */
 export const nPeople = (n: number): string => L(`${n} kişi`, n === 1 ? "1 person" : `${n} people`);
 
-/** Each city's own days (from its nights), else the whole trip's: what its weather is read for. */
-export function cityRanges(plan: Plan, cities: string[], range: { start: string; end: string } | null): { city: string; start: string; end: string }[] {
+/**
+ * Each city's own days (from its nights), else the whole trip's: what its weather is read for. A main place
+ * (destinations.ts) spans its members' nights: Madeira from Funchal's first night to Gaula's last.
+ */
+export function cityRanges(
+  plan: Plan,
+  cities: (string | { name: string; members: string[] })[],
+  range: { start: string; end: string } | null,
+): { city: string; start: string; end: string }[] {
   const out: { city: string; start: string; end: string }[] = [];
-  for (const city of cities) {
-    const blocks = plan.stayBlocks.filter((b) => b.city?.trim().toLowerCase() === city.trim().toLowerCase());
+  for (const place of cities) {
+    const city = typeof place === "string" ? place : place.name;
+    const keys = new Set((typeof place === "string" ? [place] : [place.name, ...place.members]).map(cityKeyOf));
+    const blocks = plan.stayBlocks.filter((b) => b.city && keys.has(cityKeyOf(b.city)));
     const start = blocks.map((b) => b.range.start).sort()[0] ?? range?.start;
     const end = blocks.map((b) => b.range.end).sort().at(-1) ?? range?.end;
     if (start && end) out.push({ city, start, end });

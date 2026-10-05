@@ -2,7 +2,7 @@
 // per city (switcher top left, countdown and ••• top right), the title, the dates, one muted sentence, the plan
 // in four cells (a tap opens that section of the Plan) and "Rezervasyonların": the sections' "3/4"s added up,
 // a bar and the one dark button. Every block has an empty state; what arrives later fades in.
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { countdown, countdownText } from "../lib/countdown";
 import type { HeroTally } from "../lib/heroInfo";
 import { formatDateRange, nightsBetween } from "../lib/items";
@@ -127,13 +127,17 @@ export function TripHero(props: {
         )}
         {props.lead && <p className="hx-lead">{props.lead}</p>}
         <div className="hx-tally" role="group" aria-label={L("Planda", "In the plan")}>
-          {shown.map(([k, word, icon]) => (
-            <button key={k} className={`c-${k}${tally[k] ? "" : " zero"}`} title={L("Plan'da göster", "Show on the Plan")} onClick={() => props.onTally(k)}>
-              <HeroIcon name={icon} size={22} />
-              <span>
-                {tally[k]} {word}
-              </span>
-            </button>
+          {/* One line each, sized to its words; the lines between are their own items so they sit mid-gap. */}
+          {shown.map(([k, word, icon], n) => (
+            <Fragment key={k}>
+              {n > 0 && <i className="hx-sep" aria-hidden />}
+              <button className={`c-${k}${tally[k] ? "" : " zero"}`} title={L("Plan'da göster", "Show on the Plan")} onClick={() => props.onTally(k)}>
+                <HeroIcon name={icon} size={22} />
+                <span>
+                  {tally[k]} {word}
+                </span>
+              </button>
+            </Fragment>
           ))}
         </div>
         <div className={`hx-progress${done.total ? "" : " empty"}`}>

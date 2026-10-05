@@ -146,8 +146,26 @@ try {
   assert.deepEqual(await hero.locator(".hx-cities button").allInnerTexts(), ["Porto", "Lizbon"]);
   assert.match(await hero.locator(".hx-count").innerText(), /^(\d+ gün kaldı|Yarın|\d+\. gün \/ 7|Bitti)$/);
   assert.equal(flat([await hero.locator(".hx-when").innerText()])[0], "8–14 Ekim · 7 gün");
-  // The plan in four cells: icon, number, name; each a button to its section.
-  assert.deepEqual(flat(await hero.locator(".hx-tally button").allInnerTexts()), ["2 uçuş", "2 konaklama", "1 ulaşım", "1 deneyim"]);
+  // The plan in four cells: icon, number, name; each a button to its section. The numbers are what the Plan's
+  // sections hold (each header's "x/y": y), so they always agree: deneyim is Etkinlikler + Yapılacak + Restoranlar.
+  const sectionTotal = async (...ids) => {
+    let n = 0;
+    for (const id of ids) {
+      const count = app.locator(`.cat-sec[data-section="${id}"] .cat-count`);
+      if (await count.count()) n += Number((await count.innerText()).replace(/\s/g, "").split("/")[1]);
+    }
+    return n;
+  };
+  await app.locator(".cat-sec .cat-count").first().waitFor();
+  const tallyWant = [
+    `${await sectionTotal("flight")} uçuş`,
+    `${await sectionTotal("stay")} konaklama`,
+    `${await sectionTotal("transport")} ulaşım`,
+    `${await sectionTotal("activity", "todo", "food")} deneyim`,
+  ];
+  assert.deepEqual(flat(await hero.locator(".hx-tally button").allInnerTexts()), tallyWant);
+  assert.deepEqual(tallyWant.slice(0, 2), ["2 uçuş", "2 konaklama"]);
+  assert.ok(Number(tallyWant[3].split(" ")[0]) >= 4, "every activity and restaurant on the Plan counts, chosen or not");
   assert.equal(await hero.locator(".hx-lead").innerText(), "3 karar ve 1 rezervasyon bekliyor.");
   // "Rezervasyonların": the Plan's section headers' "3/4"s added up, so both always say the same thing.
   const [settled, total] = (await app.locator(".cat-sec .cat-count").allInnerTexts())
@@ -169,9 +187,78 @@ try {
   assert.equal(flat([await side.locator(".hx-minis").innerText()])[0], "Euro C/F priz −2 saat Portekizce");
   assert.match(await side.locator(".hx-minis span", { hasText: "Euro" }).getAttribute("title"), /^€1 = ₺/);
   await side.locator(".hx-prefs .hx-h", { hasText: "Tercihler" }).waitFor();
+  // Revizyon 1: Tercihler rows are keywords, never sentences. The sample's note "Sessiz bir yer istiyoruz" goes by
+  // its topic; a long note the code can't name (no model key here) by its first three words.
+  const putNote = (text) =>
+    app.evaluate(async (t) => {
+      const request = indexedDB.open("trip-radar");
+      const database = await new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const trips = await new Promise((resolve) => (database.transaction("trips").objectStore("trips").getAll().onsuccess = (e) => resolve(e.target.result)));
+      const tripId = trips.find((x) => x.title === "Portekiz (örnek)").id;
+      const tx = database.transaction("preferences", "readwrite");
+      if (t) tx.objectStore("preferences").put({ id: "e2e-long-note", tripId, text: t, createdAt: Date.now() });
+      else tx.objectStore("preferences").delete("e2e-long-note");
+      await new Promise((resolve) => (tx.oncomplete = resolve));
+      new BroadcastChannel("trip-radar").postMessage("changed");
+    }, text);
+  await putNote("Odada mutlaka bir çalışma masası olsun çünkü ikimiz de gezinin birkaç gününde uzaktan çalışacağız ve iyi internet şart");
+  const prefRows = side.locator(".hx-prefs-rows > div");
+  await prefRows.filter({ hasText: "Odada mutlaka bir…" }).waitFor();
+  assert.deepEqual(flat(await prefRows.allInnerTexts()).sort(), ["Odada mutlaka bir… Not", "Sessizlik Önemli"]);
+  await side.locator(".hx-prefs-link").click();
+  await side.locator(".hx-prefs-pop li", { hasText: "uzaktan çalışacağız ve iyi internet şart" }).waitFor(); // the full text stays in the window
+  await app.mouse.click(5, 5);
+  await side.locator(".hx-prefs-pop").waitFor({ state: "detached" });
   await hero.scrollIntoViewIfNeeded();
   await app.waitForTimeout(1500); // the city photos come from Wikipedia
   await app.mouse.move(0, 0); // no hover left on a cell from the clicks before
+  // The card ends level with "Rezervasyonların" (the grid row stretches it; its blocks spread), and nothing in it
+  // is clipped: its content is no taller than the story.
+  const heroBox = () =>
+    app.evaluate(() => {
+      const box = (sel) => document.querySelector(sel).getBoundingClientRect();
+      const card = document.querySelector(".hx-side");
+      const content = [...card.children].reduce((n, c) => n + c.getBoundingClientRect().height, 0);
+      return { card: box(".hx-side").bottom, progress: box(".hx-progress").bottom, overflow: card.scrollHeight - card.clientHeight, content, inner: card.clientHeight };
+    });
+  const aligned = await heroBox();
+  assert.ok(Math.abs(aligned.card - aligned.progress) <= 2, `1440: the card ends level with the progress box (${JSON.stringify(aligned)})`);
+  assert.ok(aligned.overflow <= 0, "nothing in the card is clipped");
+  // The plan line: one row of four at 1440, each cell one line, in Turkish and with the widest English labels.
+  const tallyRow = () =>
+    app.evaluate(() => {
+      const cells = [...document.querySelectorAll(".hx-tally button")];
+      const tops = new Set(cells.map((c) => Math.round(c.getBoundingClientRect().top)));
+      const lines = cells.map((c) => {
+        const span = c.querySelector("span");
+        return span.getBoundingClientRect().height / parseFloat(getComputedStyle(span).lineHeight === "normal" ? `${parseFloat(getComputedStyle(span).fontSize) * 1.25}` : getComputedStyle(span).lineHeight);
+      });
+      const row = document.querySelector(".hx-tally");
+      return { rows: tops.size, lines, spill: row.scrollWidth - row.clientWidth };
+    });
+  const trRow = await tallyRow();
+  assert.equal(trRow.rows, 1, "1440 TR: the four cells in one row");
+  assert.ok(trRow.lines.every((n) => n < 1.5), `1440 TR: every cell on one line (${trRow.lines})`);
+  assert.ok(trRow.spill <= 0, "1440 TR: the row fits");
+  const withLabels = (labels) =>
+    app.evaluate((ls) => {
+      const spans = [...document.querySelectorAll(".hx-tally button span")];
+      const before = spans.map((s) => s.textContent);
+      spans.forEach((s, n) => (s.textContent = ls[n]));
+      return before;
+    }, labels);
+  // English, the widest realistic: two-digit counts (the board's own EN words, TripHero.tsx).
+  const trLabels = await withLabels(["12 flights", "12 stays", "12 transport", "12 experiences"]);
+  const enRow = await tallyRow();
+  await withLabels(["12 uçuş", "12 konaklama", "12 ulaşım", "12 deneyim"]);
+  const trWide = await tallyRow();
+  await withLabels(trLabels);
+  assert.equal(enRow.rows, 1, "1440 EN (12 experiences): one row");
+  assert.ok(enRow.lines.every((n) => n < 1.5) && enRow.spill <= 0, `1440 EN: every cell on one line, the row fits (${JSON.stringify(enRow)})`);
+  assert.ok(trWide.rows === 1 && trWide.lines.every((n) => n < 1.5) && trWide.spill <= 0, `1440 TR (12 konaklama): one row, one line each (${JSON.stringify(trWide)})`);
   await app.screenshot({ path: `${out}/2b-hero.png` });
   await app.setViewportSize({ width: 560, height: 1400 });
   await hero.scrollIntoViewIfNeeded();
@@ -213,8 +300,12 @@ try {
   await hero.scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/2h-hero-1280.png` });
   assert.deepEqual(await spilled(), [], "1280 px: every hero cell's text stays inside it");
+  const at1280 = await heroBox();
+  console.log(`  1280: card bottom ${at1280.card.toFixed(1)}, progress bottom ${at1280.progress.toFixed(1)}`);
   await app.setViewportSize({ width: 1440, height: 900 });
   assert.deepEqual(await spilled(), [], "1440 px: every hero cell's text stays inside it");
+  await putNote(null);
+  await prefRows.filter({ hasText: "Odada mutlaka bir…" }).waitFor({ state: "detached" });
   await app.getByText("Jardim Stay").first().waitFor();
   // 0.34: the Plan by category — a section per kind in this order (the empty ones are chips at the bottom),
   // each a timeline of its blocks: the day on the left, the cards on the right.
@@ -1263,6 +1354,9 @@ try {
   };
   const chatPrompts = [];
   const analysisPrompts = [];
+  // Revizyon 1: what the hero asks the model (the main places, a note's few words), one ask each.
+  const placePrompts = [];
+  const notePrompts = [];
   const policyReading = {
     doc_type: "insurance", provider: "Allianz", title: "Seyahat sağlık sigortası", travellers: ["Emre Durmuş", "Ayşe Durmuş"],
     start_date: "2026-10-07", end_date: "2026-10-21", time: null, from: null, to: null, city: null, booking_ref: "AZ-998877",
@@ -1336,6 +1430,18 @@ try {
           eliminations: construction ? [{ item_id: casaOption.id, reason: "Yan binada inşaat; sessizlik istiyorsun", finding_ids: [construction.ref] }] : [],
         }) }]));
       }
+      if (prompt.includes("<places>")) {
+        // The hero's main places: a town on Madeira (and Funchal, its capital) belong to Madeira.
+        placePrompts.push(prompt);
+        const places = prompt.split("\n").slice(1, -1).map((l) => l.replace(/ \(.*\)$/, ""));
+        return route.fulfill(reply([{ text: JSON.stringify({ places: places.map((place) => ({ place, parent: /^(gaula|funchal)$/i.test(place) ? "Madeira" : null })) }) }]));
+      }
+      if (prompt.includes("<notes>")) {
+        // A note the code can't name, in a few words.
+        notePrompts.push(prompt);
+        const notes = prompt.split("\n").slice(1, -1).map((l) => JSON.parse(l));
+        return route.fulfill(reply([{ text: JSON.stringify({ labels: notes.map((n) => ({ id: n.id, label: /şarap/i.test(n.text) ? "Şarap tadımı" : "Bir not" })) }) }]));
+      }
       if (prompt.includes("<place>")) {
         // The Reader: a close reading of one saved page.
         return route.fulfill(reply([{ text: JSON.stringify(prompt.includes('"name":"Casa Azul"') ? casaReading : jardimReading) }]));
@@ -1353,6 +1459,9 @@ try {
     const plan = (id, args) => ({ functionCall: { id, name: "plan_item", args: { kind: "stay", date: null, end_date: null, time: null, from: null, to: null, city: null, title: null, booked: false, note: null, ...args } } });
     if (last.includes("ayrı kalalım")) {
       return route.fulfill(reply([plan("fc-2", { date: "2026-10-08", end_date: "2026-10-09", city: "Porto" }), plan("fc-3", { date: "2026-10-09", end_date: "2026-10-11", city: "Porto" })]));
+    }
+    if (last.includes("Madeira'ya geçelim")) {
+      return route.fulfill(reply([plan("fc-8", { date: "2026-10-11", end_date: "2026-10-13", city: "Funchal" }), plan("fc-9", { date: "2026-10-13", end_date: "2026-10-15", city: "Gaula" })]));
     }
     if (last.includes("tek blok")) {
       return route.fulfill(reply([
@@ -1630,6 +1739,54 @@ try {
   assert.equal(await board.locator(".trip-card").count(), 2);
   await board.screenshot({ path: `${out}/12-trips.png` });
   console.log("✓ flow: Thailand capture → separate trip + notice; overview lists both trips, each with its own board");
+
+  // Revizyon 1: the hero's destinations are the main places. Stays said in Funchal and in Gaula (a parish on
+  // Madeira) make the hero say "Porto | Madeira" once the model has said which is inside which; the Plan keeps Gaula.
+  // A note the code can't name gets a few words from the model, asked once, kept on the trip.
+  await board.locator(".trip-card", { hasText: "Portekiz" }).click();
+  await board.getByRole("heading", { name: "Portekiz" }).waitFor();
+  await board.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const trips = await new Promise((resolve) => (database.transaction("trips").objectStore("trips").getAll().onsuccess = (e) => resolve(e.target.result)));
+    const tripId = trips.find((x) => x.title === "Portekiz").id;
+    const tx = database.transaction("preferences", "readwrite");
+    tx.objectStore("preferences").put({ id: "e2e-wine", tripId, text: "Akşamları şarap tadımına gitmek istiyoruz", createdAt: Date.now() });
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  const updated = board.locator(".msg-assistant", { hasText: "Panoyu güncelledim." });
+  const before = await updated.count();
+  await board.getByPlaceholder("Bir link bırak, görsel yapıştır veya yaz…").fill("Porto'dan sonra Madeira'ya geçelim: 11-13 Funchal, 13-15 Gaula");
+  await board.getByRole("button", { name: "Gönder" }).click();
+  await updated.nth(before).waitFor({ timeout: 20000 });
+  await board.waitForFunction(
+    () => JSON.stringify([...document.querySelectorAll(".hx-cities button")].map((b) => b.textContent)) === JSON.stringify(["Porto", "Madeira"]),
+    null,
+    { timeout: 15000 },
+  );
+  const stays = board.locator('.cat-sec[data-section="stay"]');
+  if ((await stays.locator(".cat-body").count()) === 0) await stays.locator(".cat-title").click();
+  await stays.locator(".cat-date", { hasText: "Gaula" }).waitFor();
+  await stays.locator(".cat-date", { hasText: "Funchal" }).waitFor();
+  assert.equal(await board.locator(".hx-cities button", { hasText: "Gaula" }).count(), 0, "a town on Madeira isn't a destination of its own");
+  assert.equal(new Set(placePrompts).size, placePrompts.length, "the main places are asked once per set of cities");
+  assert.match(placePrompts.at(-1), /Porto[\s\S]*Funchal[\s\S]*Gaula/);
+  const labels = await board.waitForFunction(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+    const trips = await new Promise((resolve) => (database.transaction("trips").objectStore("trips").getAll().onsuccess = (e) => resolve(e.target.result)));
+    const t = trips.find((x) => x.title === "Portekiz");
+    return t.placeParents && t.prefLabels && Object.values(t.prefLabels).includes("Şarap tadımı") ? { parents: t.placeParents.parents, labels: t.prefLabels } : null;
+  }, null, { timeout: 15000 });
+  assert.deepEqual((await labels.jsonValue()).parents, { funchal: "Madeira", gaula: "Madeira" });
+  assert.equal(notePrompts.filter((p) => p.includes("şarap tadımına")).length, 1, "a note is named once");
+  await board.locator(".hx").scrollIntoViewIfNeeded();
+  await board.screenshot({ path: `${out}/14-hero-main-places.png` });
+  console.log('✓ revizyon 1: stays in Funchal and Gaula → the hero says "Porto | Madeira" (asked once), the Plan keeps Gaula; a note named by the model once');
   console.log(`screenshots: ${out}`);
 } finally {
   await flow.close();
