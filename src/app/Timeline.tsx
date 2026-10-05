@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import type { GroupDecision } from "../lib/decision";
-import { formatDateRange, nightsBetween } from "../lib/items";
+import { formatDateRange, formatPrice, nightsBetween } from "../lib/items";
 import { isRental, type Leg } from "../lib/legs";
 import type { OptionGroup, Plan, StayBlock } from "../lib/plan";
 import { dayRows, daySummary, journeyTitle, rowsLeft, type DayRow } from "../lib/journey";
@@ -17,6 +17,8 @@ import type { InsertAt } from "../lib/templates";
 import { insertAt, insertAtCity, insertAtDay, insertAtStart } from "../lib/templates";
 import { AddButton, InsertPoint } from "./cards/AddSheet";
 import { DeleteX } from "./cards/CardShell";
+import { Editable, InlineEdit } from "./cards/InlineEdit";
+import { StayLine } from "./cards/StayLine";
 import { useCardEnv } from "./cards/PlanCard";
 
 export type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => ReactNode;
@@ -628,12 +630,27 @@ function Block({ block, skipped, tripId, renderGroup, settled }: { block: StayBl
           )}
           <StatusBar standing="open" text={L("Planlanmadı", "Not planned")} sub={block.slot ? L("ayrı konaklama · otel seçilmedi", "separate stay · no hotel chosen") : L("bu geceler için kayıtlı yer yok", "nothing saved for these nights")} />
           <div className="empty-card">
-            <span>
-              <b>{block.city ?? L("Konaklama", "Stay")}</b>
-              <span className="muted">
-                {formatDateRange(block.range.start, block.range.end)} · {L(`${block.nights} gece`, `${block.nights} night${block.nights === 1 ? "" : "s"}`)}
+            {block.slot ? (
+              // A stay said apart or added with "+": its name, city, nights and price are edited right here (spec 0.33 §3).
+              <InlineEdit item={block.slot}>
+                <span>
+                  <b>
+                    <Editable field="name">{block.slot.name}</Editable>
+                  </b>
+                  <span className="muted">
+                    <StayLine item={block.slot} /> · {L(`${block.nights} gece`, `${block.nights} night${block.nights === 1 ? "" : "s"}`)} ·{" "}
+                    <Editable field="price">{block.slot.price.amount != null ? formatPrice(block.slot.price.amount, block.slot.price.currency) : null}</Editable>
+                  </span>
+                </span>
+              </InlineEdit>
+            ) : (
+              <span>
+                <b>{block.city ?? L("Konaklama", "Stay")}</b>
+                <span className="muted">
+                  {formatDateRange(block.range.start, block.range.end)} · {L(`${block.nights} gece`, `${block.nights} night${block.nights === 1 ? "" : "s"}`)}
+                </span>
               </span>
-            </span>
+            )}
             <span className="sc-actions">
               {!block.slot && (
                 <button className="link-btn quiet" onClick={() => env.hideNights(block.range, label)} title={L("Bu geceler için yer gerekmiyor", "No place needed for these nights")}>

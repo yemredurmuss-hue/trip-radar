@@ -15,6 +15,8 @@ import { StatusBar } from "./Status";
 import { CategoryIcon } from "./Icons";
 import { datedLink, Details, Links, Price, ProsCons, ratingOf, SourceBadge, TradeLine } from "./cards/parts";
 import { DocAccess } from "./cards/DocAccess";
+import { Editable, InlineEdit } from "./cards/InlineEdit";
+import { StayLine } from "./cards/StayLine";
 import { CardMenu, DeleteX, Ring, type MenuEntry } from "./cards/CardShell";
 import { menuFor } from "../lib/cardView";
 import { useCardEnv } from "./cards/PlanCard";
@@ -65,7 +67,16 @@ const fitWords = () => ({ check: L("Seçmeden kontrol et", "Check before choosin
  * second: the money, what it gives, what it gives up); a mark for each thing asked for; and what speaks
  * for it and against it. The reasons behind the score and the evidence are one tap away.
  */
-export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, onCompare }: CardProps) {
+/** Its name, city, nights and price are edited where they stand (spec 0.33 §3). */
+export function SwipeCard(props: CardProps) {
+  return (
+    <InlineEdit item={props.item}>
+      <SwipeCardFace {...props} />
+    </InlineEdit>
+  );
+}
+
+function SwipeCardFace({ item, group, decision, decisions, ranked, onOpen, onCompare }: CardProps) {
   const env = useCardEnv();
   const [open, setOpen] = useState(false);
   // Shared trip: both travellers said 👎 → it steps back like "Ele" (a vote undoes it).
@@ -117,10 +128,15 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
         <div className="opt-body">
           <div className="opt-text">
             {ranked && ranked.badges.length > 0 && <div className="opt-label">{ranked.badges.join(" · ")}</div>}
-            <h3 className="opt-name sc-title">{facts.title}</h3>
+            <h3 className="opt-name sc-title">
+              <Editable field="name">{facts.title}</Editable>
+            </h3>
+            <div className="opt-where st-edit">
+              <StayLine item={item} />
+            </div>
             {meta && <div className="opt-meta">{meta}</div>}
             <div className="opt-price sc-price">
-              <Price price={facts.price} dated={Boolean(item.dates.start || item.flight?.departure)} />
+              <Editable field="price">{facts.price && <Price price={facts.price} dated={Boolean(item.dates.start || item.flight?.departure)} />}</Editable>
             </div>
           </div>
           {ranked && <TradeLine ranked={ranked} currency={currency} className="opt-trade" />}
@@ -222,7 +238,14 @@ function Media({ item, facts }: { item: Item; facts: CardFacts }) {
       />
       <div className="stc-info">
         <SourceBadge source={facts.source} />
-        <div className="stc-name">{item.name}</div>
+        <div className="stc-name">
+          <Editable field="name">{item.name}</Editable>
+        </div>
+        {item.category === "stay" && (
+          <div className="stc-line st-edit">
+            <StayLine item={item} />
+          </div>
+        )}
         {lines.map((l) => (
           <div key={l} className="stc-line">
             {l}
@@ -247,7 +270,15 @@ function Media({ item, facts }: { item: Item; facts: CardFacts }) {
  * stands ("Seçildi · rezerve edilmedi", "Bilet alındı ✓") and the price. A tap opens the details;
  * "Değiştir" brings the other options back as cards.
  */
-export function SettledCard({
+export function SettledCard(props: Parameters<typeof SettledCardFace>[0]) {
+  return (
+    <InlineEdit item={props.item}>
+      <SettledCardFace {...props} />
+    </InlineEdit>
+  );
+}
+
+function SettledCardFace({
   item,
   decision,
   decisions,
@@ -300,7 +331,7 @@ export function SettledCard({
         <Media item={item} facts={facts} />
       </div>
       <div className="stc-foot">
-        {(facts.price || !planned) && <Price price={facts.price} compact dated={Boolean(item.dates.start || item.flight?.departure) || booked} />}
+        <Editable field="price">{facts.price && <Price price={facts.price} compact dated={Boolean(item.dates.start || item.flight?.departure) || booked} />}</Editable>
         <span className="stc-actions">
           <DocAccess item={item} docs={env.docsFor(item.id)} />
           {booked ? (

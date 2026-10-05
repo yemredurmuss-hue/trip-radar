@@ -1429,3 +1429,6 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .pk-ed-hint button { border: 0; padding: 0; background: none; color: #8fb8ff; font: inherit; cursor: pointer; }
 .pk-ed-wrap.fixed:hover .pk-ed-hint, .pk-ed-wrap.fixed:focus-within .pk-ed-hint { display: block; }
 .pk-ed-wrap.fixed > .pk-ed { border-bottom: 1px dotted currentColor; }
+.st-edit { color: var(--muted); }
+.opt-where { margin-top: 2px; font-size: 14px; line-height: 1.35; }
+.empty-card .pk-ed-hint { white-space: normal; }
