@@ -2,7 +2,7 @@
 // Konaklama, Ulaşım, Etkinlikler, Yapılacak şeyler, Restoranlar, Diğer — each a section that opens and closes
 // (remembered per trip), with the approved cards in a timeline inside. A section with nothing in it isn't
 // drawn; it's one chip in the "Ekle" line at the bottom.
-import { catDomKey, type CatEntry, type CatSection, type SectionId } from "../../lib/categories";
+import { catDomKey, sectionOfItem, type CatEntry, type CatSection, type SectionId } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import type { Plan } from "../../lib/plan";
 import type { InsertAt } from "../../lib/templates";
@@ -46,7 +46,7 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
         const opened = isOpen(s);
         return (
           <Section key={s.id} section={s} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)} onGo={(e) => onGo(e, catDomKey(e))}>
-            <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} />
+            <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(sectionOfItem(item), true)} />
           </Section>
         );
       })}

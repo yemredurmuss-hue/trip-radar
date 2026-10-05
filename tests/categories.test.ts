@@ -43,6 +43,8 @@ function drawn(sections: CatSection[]): Map<string, string[]> {
 /** Nothing live is lost, and nothing is in two sections. */
 function expectEachOnce(sections: CatSection[], items: Item[], closed: string[] = []) {
   const seen = drawn(sections);
+  // And on the plan's own terms: nothing fell through to the last-resort list.
+  expect(sections.flatMap((s) => s.entries).filter((e) => e.key.startsWith("loose:")).map((e) => e.row.name)).toEqual([]);
   for (const i of items) {
     if (i.status === "dismissed" || closed.includes(i.id)) continue;
     expect(seen.get(i.id), i.name).toHaveLength(1);
@@ -96,6 +98,8 @@ describe("the sample trip by category", () => {
       other: ["Airalo Portekiz 5 GB"],
     });
     expectEachOnce(sections, items, plan.closed.map((c) => c.item.id));
+    // Everything found its place on the plan's own terms: nothing fell through to the last-resort list.
+    expect(sections.flatMap((s) => s.entries).filter((e) => e.key.startsWith("loose:"))).toEqual([]);
     const flights = sections.find((s) => s.id === "flight")!;
     expect(flights.days.map((d) => [d.date, d.city])).toEqual([
       ["2026-10-08", "Porto"],

@@ -519,7 +519,7 @@ export function categorize({ plan, timeline, items, legs = [], hidden = new Set(
   // Anything else still live (a booking the line couldn't place anywhere): never lost, on its own.
   for (const item of items) {
     if (drawn.has(item.id) || closed.has(item.id) || item.status === "dismissed" || withHiddenLeg.has(item.id)) continue;
-    drafts.push(itemDraft(item, [item]));
+    drafts.push({ ...itemDraft(item, [item]), key: `loose:${item.id}` });
     drawn.add(item.id);
   }
 

@@ -8,6 +8,7 @@ import { catDomKey, type CatEntry, type CatSection, type DayGroup } from "../../
 import { L, locale } from "../../lib/i18n";
 import { shortDay } from "../../lib/ideas";
 import type { Plan } from "../../lib/plan";
+import type { Item } from "../../lib/types";
 import { entryDomId } from "../../lib/progress";
 import { insertAt, type InsertAt } from "../../lib/templates";
 import { InsertPoint } from "../cards/AddSheet";
@@ -30,17 +31,19 @@ const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(loc
 /** The "+" after a card: a block's own place (a stay: its city, its last night), else the card's day and city. */
 const atOf = (e: CatEntry, day: DayGroup): InsertAt => (e.piece.kind === "entry" ? insertAt(e.piece.entry) : { city: e.city ?? day.city, date: e.date });
 
-export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd }: {
+export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, onIdea }: {
   section: CatSection;
   plan: Pick<Plan, "range" | "stayBlocks">;
   tripId: string;
   cities: string[];
   cards: SectionCards;
   onAdd: (at: InsertAt) => void;
+  /** A line typed in the quick box is saved (its section opens). */
+  onIdea: (item: Item) => void;
 }) {
   return (
     <>
-      {section.id === "todo" && <QuickAdd tripId={tripId} cities={cities} />}
+      {section.id === "todo" && <QuickAdd tripId={tripId} cities={cities} onAdded={onIdea} />}
       <ol className={`cat-line cat-in-${section.id}`}>
         {section.days.map((day) => (
           <li key={day.key} className={`cat-day${day.date ? "" : " undated"}`}>

@@ -4,9 +4,11 @@ import { useState, type FormEvent } from "react";
 import { newId } from "../../lib/db";
 import { L } from "../../lib/i18n";
 import { addIdea } from "../../lib/ideas";
+import type { Item } from "../../lib/types";
 import { IdeaGlyph } from "./IdeaIcons";
 
-export function QuickAdd({ tripId, cities }: { tripId: string; cities: string[] }) {
+/** `onAdded`: the line is saved (a restaurant goes to Restoranlar: the board opens it). */
+export function QuickAdd({ tripId, cities, onAdded }: { tripId: string; cities: string[]; onAdded?: (item: Item) => void }) {
   const [text, setText] = useState("");
   // The box empties at once, so the next line can be typed while this one is saved; a failure puts it back.
   async function submit(e: FormEvent) {
@@ -15,7 +17,8 @@ export function QuickAdd({ tripId, cities }: { tripId: string; cities: string[] 
     if (!line.trim()) return;
     setText("");
     try {
-      await addIdea(tripId, line, cities, newId());
+      const item = await addIdea(tripId, line, cities, newId());
+      if (item) onAdded?.(item);
     } catch (error) {
       setText(line);
       console.warn("idea", error);
