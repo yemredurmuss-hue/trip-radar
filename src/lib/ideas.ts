@@ -6,7 +6,7 @@
 import { isIdea, looksBookable } from "./booking";
 import { addEvent, db, notifyChanged } from "./db";
 import { L, locale } from "./i18n";
-import { liveLabels, num } from "./i18nText";
+import { capitalize, liveLabels, num } from "./i18nText";
 import { isoDate } from "./items";
 import { cityKeyOf, sameCity, type DateRange, type Plan } from "./plan";
 import { plannedItem } from "./planned";
@@ -99,11 +99,62 @@ export function cityInText(text: string, cities: string[]): string | null {
   return sorted.find((c) => said.includes(` ${words(c).trim()}`)) ?? null;
 }
 
+/** The text folded like `words` (case, accents, ı), one entry per folded character with where it began. */
+function folded(text: string): { text: string; at: number[] } {
+  let out = "";
+  const at: number[] = [];
+  let i = 0;
+  for (const ch of text) {
+    const f = ch.toLocaleLowerCase("tr").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ı/g, "i");
+    for (const c of f) {
+      out += c;
+      at.push(i);
+    }
+    i += ch.length;
+  }
+  at.push(i);
+  return { text: out, at };
+}
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * The quick line's title without the city it names, which the card already says: "Porto'da Dom Luís
+ * köprüsünden gün batımı" → "Dom Luís köprüsünden gün batımı". The city goes with its 'da/'de/'ta/'te,
+ * 'dan/'den/'tan/'ten (da/de/dan/den without the apostrophe) and a comma after it; said bare, only when a
+ * comma or the end follows ("Porto, Ribeira"), never another form ("Porto'nun", "Porto şarabı"). As typed
+ * when no trip city is named or nothing would be left.
+ */
+export function ideaTitle(text: string, cities: string[]): string {
+  const title = text.replace(/\s+/g, " ").trim();
+  const city = cityInText(title, cities);
+  if (!city) return title;
+  const f = folded(title);
+  const name = escapeRe(folded(city).text.trim());
+  const re = new RegExp(`(^|[^\\p{L}\\p{N}])(${name}(?:['’][dt][ae]n?|d[ae]n?)?)(?=$|[^\\p{L}\\p{N}'’])`, "gu");
+  for (const m of f.text.matchAll(re)) {
+    const start = m.index! + m[1].length;
+    let end = start + m[2].length;
+    const suffixed = m[2].length > folded(city).text.trim().length;
+    const after = f.text.slice(end);
+    const comma = /^\s*,/.test(after);
+    if (!suffixed && !comma && after.trim() !== "") continue;
+    end += (after.match(/^\s*,?\s*/)?.[0].length ?? 0);
+    const rest = (title.slice(0, f.at[start]) + " " + title.slice(f.at[end]))
+      .replace(/\s+/g, " ")
+      .replace(/\s+([,.;:!?])/g, "$1")
+      .replace(/^[\s,;:–-]+|[\s,;:–-]+$/g, "");
+    return rest ? capitalize(rest) : title;
+  }
+  return title;
+}
+
 /** The record a quick line makes: a saved idea (no booking), in the city it names, no day yet. */
 export function quickIdea(text: string, cities: string[], tripId: string, id: string, now: number): Item | null {
-  const title = text.replace(/\s+/g, " ").trim();
-  if (!title) return null;
-  const city = cityInText(title, cities);
+  const said = text.replace(/\s+/g, " ").trim();
+  if (!said) return null;
+  const city = cityInText(said, cities);
+  const title = ideaTitle(said, cities);
   const made = plannedItem(
     { kind: quickKind(title) === "food" ? "food" : "todo", date: null, end_date: null, time: null, from: null, to: null, city, title, booked: false, note: null },
     tripId,

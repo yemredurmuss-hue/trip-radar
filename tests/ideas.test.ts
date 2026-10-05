@@ -4,7 +4,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { db, listMessages } from "../src/lib/db";
 import {
-  addIdea, asBooking, cityInText, dayChip, dayChoices, doneText, foodLine, groupIdeas, ideaIcon, moveToBookings, onDay, quickIdea, quickKind,
+  addIdea, asBooking, cityInText, ideaTitle, dayChip, dayChoices, doneText, foodLine, groupIdeas, ideaIcon, moveToBookings, onDay, quickIdea, quickKind,
   setDone, setIdeaDay, todoLine,
 } from "../src/lib/ideas";
 import { placeMapUrl } from "../src/lib/items";
@@ -52,9 +52,28 @@ describe("the quick line", () => {
     expect(cityInText("Porto'nun en iyi kahvaltısı", ["Porto", "Lizbon"])).toBe("Porto");
     expect(cityInText("Gün batımı", ["Porto", "Lizbon"])).toBeNull();
   });
+  it("the city it names leaves the title (with 'da/'dan and a comma), the rest starts with a capital", () => {
+    const cities = ["Porto", "Lizbon", "Funchal", "İzmir", "Málaga"];
+    expect(ideaTitle("Porto'da Dom Luís köprüsünden gün batımı", cities)).toBe("Dom Luís köprüsünden gün batımı");
+    expect(ideaTitle("lizbon'dan sintra'ya tren", cities)).toBe("Sintra'ya tren");
+    expect(ideaTitle("Funchal’de levada yürüyüşü", cities)).toBe("Levada yürüyüşü");
+    expect(ideaTitle("Lizbonda fado", cities)).toBe("Fado");
+    expect(ideaTitle("Porto'ta deneme", cities)).toBe("Deneme");
+    expect(ideaTitle("Porto, Ribeira yürüyüşü", cities)).toBe("Ribeira yürüyüşü");
+    expect(ideaTitle("İzmir'de kumru", cities)).toBe("Kumru");
+    expect(ideaTitle("Malaga'da tapas", cities)).toBe("Tapas");
+    expect(ideaTitle("Gün batımı Porto'da", cities)).toBe("Gün batımı");
+    expect(ideaTitle("Gün batımı, Porto", cities)).toBe("Gün batımı");
+    // No city, a city said another way (of, a word with it), or nothing left: as typed.
+    expect(ideaTitle("pazara git", cities)).toBe("pazara git");
+    expect(ideaTitle("Porto'nun en iyi kahvaltısı", cities)).toBe("Porto'nun en iyi kahvaltısı");
+    expect(ideaTitle("Porto şarabı tadımı", cities)).toBe("Porto şarabı tadımı");
+    expect(ideaTitle("Portekiz'de bir gün", cities)).toBe("Portekiz'de bir gün");
+    expect(ideaTitle("Porto'da", cities)).toBe("Porto'da");
+  });
   it("makes a saved idea, no booking, no day", () => {
     const made = quickIdea("  Lizbon'da   pastel de nata ", ["Porto", "Lizbon"], "t1", "q1", 7)!;
-    expect(made).toMatchObject({ id: "q1", category: "food", plannedKind: "food", name: "Lizbon'da pastel de nata", city: "Lizbon", status: "saved", booking: "none", dates: { start: null } });
+    expect(made).toMatchObject({ id: "q1", category: "food", plannedKind: "food", name: "Pastel de nata", city: "Lizbon", status: "saved", booking: "none", dates: { start: null } });
     expect(quickIdea("Pazara git", [], "t1", "q2", 7)).toMatchObject({ category: "other", plannedKind: "todo", city: null });
     expect(quickIdea("   ", [], "t1", "q3", 7)).toBeNull();
   });
