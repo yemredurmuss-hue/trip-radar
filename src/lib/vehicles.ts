@@ -16,13 +16,33 @@ const words = (src: string) => new RegExp(`(?<![\\p{L}\\d])(?:${src})`, "iu");
 const CAMPER = words("camper ?vans?|campervan\\p{L}*|campers?(?!\\p{L})|motor ?homes?|motorhome\\p{L}*|karavan\\p{L}*|kamp ?ara[cç]\\p{L}*|rv(?!\\p{L})|indie campers|wohnmobil");
 const MOTO = words("motosiklet\\p{L}*|motorsiklet\\p{L}*|motorbikes?(?!\\p{L})|motorcycles?(?!\\p{L})|scooter\\p{L}*|sk[uü]ter\\p{L}*|moped\\p{L}*|vespa");
 const BIKE = words("bisiklet\\p{L}*|bikes?(?!\\p{L})|bicycles?|e-?bikes?");
-const CAR = words("araba\\p{L}*|ara[cç]\\p{L}*|otomobil\\p{L}*|cars?(?!\\p{L})|rent ?a ?car|car hire|car rental|kiral[ıi]k ara[cç]\\p{L}*");
+// "araç" and its endings, never "aracılığıyla" (by means of) or "aracı kurum".
+const CAR = words("araba\\p{L}*|ara[cç](?!ıl)\\p{L}*|otomobil\\p{L}*|cars?(?!\\p{L})|rent ?a ?car|car hire|car rental|kiral[ıi]k ara[cç]\\p{L}*");
+/** A vehicle someone rents out: the operator or rental words, on a stay saved from a campervan page. */
+const RENTED_OUT = words("kirala\\p{L}*|kiral[ıi]k|rental\\p{L}*|rent(?!\\p{L})|hire(?!\\p{L})|vermiet\\p{L}*|indie campers|mcrent|roadsurfer|camperdays|motorhome republic|bawhee");
+/** A place to park one, not one: "Madeira Motorhome Park", "Camping Karavan Parkı", "Funchal RV Resort". */
+const SITE = words("park\\p{L}*|camping\\p{L}*|campsite\\p{L}*|kamp ?alan\\p{L}*|kamp ?yeri\\p{L}*|resort\\p{L}*|stellplatz|wohnmobilstellplatz|area de servi[cç]o|parque de campismo|glamping");
 
 const CANCEL = words("iptal\\p{L}*|vazge[cç]\\p{L}*|cancel\\p{L}*|called off|dropp?ed");
 const INSTEAD = words("yerine|instead");
+/** "iptal etmedik", "iptal edilmedi", "iptal değil", "vazgeçmedik", "didn't cancel", "not cancelled". */
+const NOT_CANCELLED = /(?:iptal\s+(?:et|edil|ol)m[ae]|iptal\s+de[gğ]il|vazge[cç]me|n['’]t\s+(?:been\s+|be\s+|get\s+)?(?:cancel|call)|(?<![\p{L}])(?:not|never)\s+(?:been\s+|be\s+)?(?:cancel|call))/iu;
+/** "iptal olursa", "vazgeçersek", "eğer", "if / unless / in case", "might be cancelled". */
+const CONDITIONAL = /(?:(?:iptal\s+\p{L}*|vazge[cç]\p{L}*)(?:rsa|rse)\p{L}*|(?<![\p{L}])(?:e[gğ]er|şayet|if|unless|in case|might|may|could|would|should)(?![\p{L}]))/iu;
+const QUESTION = /\?|(?<![\p{L}])m[ıiuü](?:s[ıiuü]n|y[ıiuü]z|d[ıiuü]r)?(?![\p{L}])/iu;
 const NEGATION = words("istemiyor\\p{L}*|istemeyiz|gerek yok|gerekmez|gerek kalmad\\p{L}*|kiralamay\\p{L}*|kiralam[ıi]yor\\p{L}*|almay[ıa]l[ıi]m|alm[ıi]yor\\p{L}*|no need|don'?t|do not|won'?t|not (?:rent|hire|need|book|get|want)");
-const QUESTION = /\?|(?<![\p{L}])m[ıiuü](?:s[ıiuü]n|y[ıiuü]z)?(?![\p{L}])/iu;
+/** Getting one: rent, book, add ("bir de araba kirala", "rent a car as well"); "araba ile gideceğiz" says none of these. */
+const GET = words("kirala\\p{L}*|kiral[ıi]k|ekle\\p{L}*|koy(?:alım|un|sana|ar m[ıi]s[ıi]n)?(?!\\p{L})|ayarla\\p{L}*|rezerv\\p{L}*|tutal[ıi]m|tuttuk|alal[ıi]m|ald[ıi]k|rent\\p{L}*|hire\\p{L}*|book\\p{L}*|reserv\\p{L}*|add(?!\\p{L})|get(?!\\p{L})|got(?!\\p{L})");
+/** "bir de", "another", "a second", "as well": one more of the same kind. */
+const ANOTHER = words("bir de|ayrıca|ikinci|başka bir|bir tane daha|another|a second|one more|as well|also|too(?!\\p{L})");
 const AFFIRM = /^\s*(evet|olur|tamam|ekle\p{L}*|kirala\p{L}*|koy|yes|yep|yeah|sure|ok(?:ay)?|go ahead|please do|do it)(?![\p{L}])/iu;
+
+/** Sentences, each with its own end mark (a question stays a question). */
+const sentences = (text: string) => text.split(/(?<=[.!?;\n])/u).map((s) => s.trim()).filter(Boolean);
+/** A sentence's parts around what comes in place ("yerine", "instead", "so", "and got", "çünkü"...). */
+const PARTS = /,|(?<![\p{L}])(?:onun yerine|bunun yerine|yerine|instead of|instead|so|and then|and (?:we )?(?:got|rented|booked|took|hired)|then|but|because|ama|fakat|çünkü|ve)(?![\p{L}])/iu;
+/** A part that really says something was cancelled: not "iptal etmedik", "iptal olursa" or a question. */
+const cancels = (part: string) => CANCEL.test(part) && !NOT_CANCELLED.test(part) && !CONDITIONAL.test(part);
 
 /** The vehicle types a text names ("araç kiralama" → car, "karavan" → camper). */
 export function vehicleTypesIn(text: string): Set<VehicleType> {
@@ -39,14 +59,17 @@ export function vehicleTypesIn(text: string): Set<VehicleType> {
  */
 export function vehicleOf(item: Item): VehicleType | null {
   const text = itemText(item);
-  if (item.category === "stay") return CAMPER.test(text) ? "camper" : null;
+  // A stay counts only as a campervan rented out (a rental's page, "Indie Campers"), never by the word alone:
+  // "Madeira Motorhome Park" or "Camping Karavan Parkı" is a place to stay.
+  if (item.category === "stay") return CAMPER.test(text) && RENTED_OUT.test(text) && !SITE.test(item.name) ? "camper" : null;
   if (item.category !== "transport") return null;
   const kind = item.plannedKind;
   if (kind === "rv_rental") return "camper";
   if (kind === "moto_rental") return "moto";
   if (kind === "bike_rental") return null;
   if (kind && kind !== "car_rental") return null;
-  if (!kind && !isRental(item) && !CAMPER.test(text)) return null;
+  if (!kind && !isRental(item) && !(CAMPER.test(text) && RENTED_OUT.test(text))) return null;
+  if (!kind && SITE.test(item.name)) return null;
   if (CAMPER.test(text)) return "camper";
   if (MOTO.test(text)) return "moto";
   if (!kind && BIKE.test(text) && !CAR.test(text)) return null;
@@ -74,24 +97,38 @@ export const overlaps = (a: Period | null, b: Period | null): boolean => !a || !
  * message says "yerine" / "instead".
  */
 export function replacedVehicles(text: string): VehicleType[] {
-  if (!INSTEAD.test(text)) return [];
   const out = new Set<VehicleType>();
   const add = (s: string) => vehicleTypesIn(s).forEach((t) => out.add(t));
-  // The clause that says what's cancelled: "araç kiralama iptal", "we cancelled the car".
-  for (const clause of text.split(/[,.;!?\n]|\s(?:ama|fakat|but|and|ve)\s/iu)) if (CANCEL.test(clause)) add(clause);
-  // "araba yerine karavan": the words just before "yerine" ("onun yerine" points back, it names nothing).
-  for (const m of text.matchAll(/((?:[\p{L}'’]+\s+){0,2}[\p{L}'’]+)\s+yerine/giu)) {
-    if (!/(?:^|\s)(onun|bunun|şunun|onların|bunların)$/iu.test(m[1])) add(m[1]);
+  for (const sentence of sentences(text)) {
+    // A question ("araba yerine karavan mı alsak?") or a maybe ("iptal olursa...") replaces nothing.
+    if (!INSTEAD.test(sentence) || QUESTION.test(sentence) || CONDITIONAL.test(sentence)) continue;
+    // Only the part that says what's cancelled, up to what comes in its place: "araç kiralamayı iptal ettik"
+    // in "araç kiralamayı iptal ettik yerine karavan kiraladık", never the campervan after it.
+    for (const part of sentence.split(PARTS)) if (part && cancels(part)) add(part);
+    // "araba yerine karavan": the words just before "yerine" ("onun yerine" points back, it names nothing).
+    for (const m of sentence.matchAll(/((?:[\p{L}'’]+\s+){0,2}[\p{L}'’]+)\s+yerine/giu)) {
+      if (!/(?:^|\s)(onun|bunun|şunun|onların|bunların)$/iu.test(m[1]) && !CANCEL.test(m[1])) add(m[1]);
+    }
+    // "instead of the car".
+    for (const m of sentence.matchAll(/instead of\s+((?:[\p{L}'’-]+\s*){1,4})/giu)) add(m[1].split(PARTS)[0]);
   }
-  // "instead of the car".
-  for (const m of text.matchAll(/instead of\s+((?:[\p{L}'’-]+\s*){1,4})/giu)) add(m[1]);
   return [...out];
 }
 
-/** The traveller asks for a vehicle of this type in this message ("bir de araba kirala", "Madeira'da araba kiralarız"). */
+/**
+ * The traveller asks for a vehicle of this type in this message: its name with a word for getting one ("bir de
+ * araba kirala", "Madeira'da araba kiralarız", "rent a car as well"), not in a question, a no or a cancel.
+ * "Araba ile gideceğiz" asks for nothing.
+ */
 export function asksForVehicle(text: string, type: VehicleType): boolean {
-  return vehicleTypesIn(text).has(type) && !NEGATION.test(text) && !CANCEL.test(text) && !QUESTION.test(text);
+  return sentences(text).some((sentence) => {
+    if (QUESTION.test(sentence) || CONDITIONAL.test(sentence)) return false;
+    return sentence.split(PARTS).some((part) => vehicleTypesIn(part).has(type) && GET.test(part) && !NEGATION.test(part) && !CANCEL.test(part));
+  });
 }
+
+/** "Bir de", "another", "as well": one more of a kind already there, said outright. */
+const asksForAnother = (text: string, type: VehicleType) => asksForVehicle(text, type) && ANOTHER.test(text);
 
 /** "Evet" / "ekle" to the assistant's own question about a vehicle ("Karavan zaten var, yine de araba ekleyeyim mi?"). */
 export function confirmsVehicle(text: string, previousReply: string | null, type: VehicleType): boolean {
@@ -132,7 +169,8 @@ export function checkVehicle(args: {
   let rest = items.filter(
     (i) => i.id !== added.id && i.id !== same?.id && !taken.has(i.id) && i.status !== "dismissed" && vehicleOf(i) && overlaps(period, periodOf(i)),
   );
-  const cancelled = replacedVehicles(userText);
+  // What was cancelled is never the kind being added now ("karavan iptal, yerine karavan" is a correction, not this).
+  const cancelled = replacedVehicles(userText).filter((t) => t !== type);
   if (cancelled.length && rest.length) {
     const named = rest.filter((i) => cancelled.includes(vehicleOf(i)!));
     if (named.length > 1) {
@@ -149,7 +187,20 @@ export function checkVehicle(args: {
       rest = rest.filter((i) => i.id !== named[0].id);
     }
   }
-  if (!rest.length || asksForVehicle(userText, type) || confirmsVehicle(userText, previousReply, type)) return { dismiss, refusal: null };
+  // Asked for in this message: allowed next to a vehicle of another kind; next to one of the same kind (a campervan
+  // page saved before, then "karavan kiraladık") only with "bir de / another", else it is most likely that one.
+  const asked = asksForVehicle(userText, type) || confirmsVehicle(userText, previousReply, type);
+  const sameKind = rest.filter((i) => vehicleOf(i) === type);
+  if (!rest.length || (asked && (!sameKind.length || asksForAnother(userText, type)))) return { dismiss, refusal: null };
+  if (asked && sameKind.length) {
+    return {
+      dismiss: [],
+      refusal: L(
+        `Bu günler için kayıtlı aynı türde bir araç var: ${listed(sameKind)}. Kullanıcı büyük ihtimalle onu kastediyor; hiçbir şey eklenmedi. O kaydı update_items ile güncelle (ör. booked); ikinci bir tane istediğinden emin değilsen sor.`,
+        `A vehicle of the same kind is saved for these days: ${listed(sameKind)}. The user most likely means that one; nothing was added. Update that record with update_items (e.g. booked); if you're not sure they want a second one, ask.`,
+      ),
+    };
+  }
   return {
     dismiss: [],
     refusal: L(
@@ -163,8 +214,17 @@ export function checkVehicle(args: {
  * After the turn: the vehicles the traveller said were cancelled ("araç kiralama iptal, yerine ...") that are
  * still on the plan because nothing of that type was taken out. The chat asks about them instead of guessing.
  */
-export function stillCancelled(userText: string, items: Item[], removedThisTurn: ReadonlySet<string>, removedTypes: ReadonlySet<VehicleType>): Item[] {
+export function stillCancelled(
+  userText: string,
+  items: Item[],
+  removedThisTurn: ReadonlySet<string>,
+  removedTypes: ReadonlySet<VehicleType>,
+  /** Records added, booked or chosen in this turn (the campervan just added is never the one cancelled). */
+  touchedThisTurn: ReadonlySet<string> = new Set(),
+): Item[] {
   const cancelled = replacedVehicles(userText).filter((t) => !removedTypes.has(t));
   if (!cancelled.length) return [];
-  return items.filter((i) => !removedThisTurn.has(i.id) && i.status !== "dismissed" && cancelled.includes(vehicleOf(i) as VehicleType));
+  return items.filter(
+    (i) => !removedThisTurn.has(i.id) && !touchedThisTurn.has(i.id) && i.status !== "dismissed" && cancelled.includes(vehicleOf(i) as VehicleType),
+  );
 }
