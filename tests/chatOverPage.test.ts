@@ -4,7 +4,8 @@
 import "fake-indexeddb/auto";
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
-import { detailsOverPage, sendMessage } from "../src/lib/assistant";
+import { detailsOverPage, saidCity, sendMessage } from "../src/lib/assistant";
+import { mergeItem } from "../src/lib/items";
 import { db, listItems, listTrips } from "../src/lib/db";
 import type { Extraction } from "../src/lib/extract";
 import { anthropicProvider } from "../src/lib/llm/anthropic";
@@ -113,12 +114,43 @@ describe("saidEdits and detailsOverPage", () => {
       flight: { from: "OPO", to: "FNC", departure: null, arrival: "00:45", carrier: "Ryanair", flightNumber: null, stops: 0 },
     });
     const moved = detailsOverPage(ticket, { date: "2026-10-12", end_date: null, departure_time: "22:40", arrival_time: null, arrival_date: null, from: null, to: null }, null) as Item;
-    expect(moved.userEdits).toEqual({ start: "2026-10-12", time: "22:40" });
+    // The page's arrival had no day: the day said gives it one, kept as the arrival's correction.
+    expect(moved.userEdits).toEqual({ start: "2026-10-12", time: "22:40", arrival: "2026-10-13T00:45" });
     expect(withEdits(moved).flight).toMatchObject({ departure: "2026-10-12T22:40", arrival: "2026-10-13T00:45" });
     // A dated ticket moved two days: the arrival said lands on the new day, not two days later.
     const dated = page({ category: "flight", dates: { start: "2026-10-10", end: null, source: "page" }, flight: { from: "OPO", to: "FNC", departure: "2026-10-10T08:00", arrival: "2026-10-10T09:50", carrier: null, flightNumber: null, stops: 0 } });
     const later = detailsOverPage(dated, { date: "2026-10-12", end_date: null, departure_time: null, arrival_time: "10:30", arrival_date: null, from: null, to: null }, null) as Item;
     expect(withEdits(later).flight).toMatchObject({ departure: "2026-10-12T08:00", arrival: "2026-10-12T10:30" });
+    // Only the day said: the page's arrival moves with it, no arrival correction.
+    const moved2 = detailsOverPage(dated, { date: "2026-10-12", end_date: null, departure_time: null, arrival_time: null, arrival_date: null, from: null, to: null }, null) as Item;
+    expect(moved2.userEdits).toEqual({ start: "2026-10-12" });
+    expect(withEdits(moved2).flight).toMatchObject({ departure: "2026-10-12T08:00", arrival: "2026-10-12T09:50" });
     expect(detailsOverPage(dated, { date: "12 Ekim", end_date: null, departure_time: null, arrival_time: null, arrival_date: null, from: null, to: null }, null)).toContain("YYYY");
+  });
+  it("keeps a bare page departure time when only the day is said (review fix 2)", () => {
+    const ticket = page({ category: "flight", dates: { start: null, end: null, source: "none" }, flight: { from: "OPO", to: "FNC", departure: "22:40", arrival: null, carrier: null, flightNumber: null, stops: 0 } });
+    const moved = detailsOverPage(ticket, { date: "2026-10-12", end_date: null, departure_time: null, arrival_time: null, arrival_date: null, from: null, to: null }, null) as Item;
+    expect(moved.userEdits).toEqual({ start: "2026-10-12" });
+    expect(withEdits(moved).flight?.departure).toBe("2026-10-12T22:40");
+  });
+  it("gives a page's transport with no route its arrival said in the chat (review fix 3)", () => {
+    const bus = page({ category: "transport", dates: { start: "2026-10-12", end: null, source: "page" }, flight: null });
+    const said = detailsOverPage(bus, { date: null, end_date: null, departure_time: null, arrival_time: "14:20", arrival_date: null, from: null, to: null }, null) as Item;
+    expect(said.userEdits).toEqual({ arrival: "2026-10-12T14:20" });
+    expect(withEdits(said).flight).toMatchObject({ arrival: "2026-10-12T14:20", departure: null });
+  });
+  it("keeps an arrival said in the chat when the page is saved again (review fix 4)", () => {
+    const flight = { from: "OPO", to: "FNC", departure: "2026-10-10T08:00", arrival: "2026-10-10T09:50", carrier: null, flightNumber: null, stops: 0 };
+    const dated = page({ category: "flight", dates: { start: "2026-10-10", end: null, source: "page" }, flight });
+    const said = detailsOverPage(dated, { date: null, end_date: null, departure_time: null, arrival_time: "10:30", arrival_date: null, from: null, to: null }, null) as Item;
+    const again = mergeItem(said, { ...dated, flight: { ...flight }, updatedAt: 9 });
+    expect(withEdits(again).flight?.arrival).toBe("2026-10-10T10:30");
+    expect(again.flight?.arrival).toBe("2026-10-10T09:50"); // the page's value stays under it
+  });
+  it("ignores a city echoed back or the same as the card's (review fix 5)", () => {
+    for (const echo of [null, "", "null", "None", "-", "—", "n/a", "unknown"]) expect(saidCity(echo, "Gaula")).toBeNull();
+    expect(saidCity("gaula", "Gaula")).toBeNull();
+    expect(saidCity("Madeira", "Gaula")).toBe("Madeira");
+    expect(saidCity("Lisbon", "Lizbon")).toBeNull(); // another name for the same city
   });
 });
