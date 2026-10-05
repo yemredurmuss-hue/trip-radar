@@ -59,7 +59,10 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
       {shown.length > 0 && (
         <div className="cat-sheet">
           {shown.map((s) => {
-            const opened = isOpen(s);
+            // A section drawn only for its suggestions opens at first look (its cards are all it has), so the first
+            // look kept for the visit isn't "closed" when the first real card lands there. A section with cards keeps its own.
+            const onlySuggested = !s.entries.length && !s.hidden.length && !waiting(s) && suggested(s).length > 0;
+            const opened = isOpen(onlySuggested ? { ...s, open: true } : s);
             return (
               <Section key={s.id} section={s} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)} suggestions={suggested(s).length}>
                 {suggestions && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} />}

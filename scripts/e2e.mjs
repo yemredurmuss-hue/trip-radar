@@ -1391,19 +1391,22 @@ try {
   for (const id of ["flight", "stay", "transport", "activity", "todo", "food", "other"]) {
     const head = await sec(id).boundingBox();
     assert.ok(head.height < 80, `${id}: one compact line when closed (${head.height}px)`);
+    // Öneriler (2026-10-06): a section's suggestions say "1 öneri" before its count, never inside it.
+    const sg = (await sec(id).locator(".sg-count").count()) ? ["sg-count"] : [];
+    if (sg.length) assert.match(await sec(id).locator(".sg-count").innerText(), /^\d+ öneri$/);
     if (id === "todo" || id === "food") {
-      assert.match(await sec(id).locator(".cat-head").innerText(), /^[^\d]+\s*\d+ fikir( · .+)?$/, `${id}: the name and how many ideas`);
-      assert.deepEqual(await sec(id).locator(".cat-head").evaluate((el) => [...el.querySelectorAll(".cat-title > *, .cat-end > *")].map((c) => c.className || c.tagName.toLowerCase())), ["cat-ic", "b", "cat-ideas", "cat-chev"]);
+      assert.match(await sec(id).locator(".cat-head").innerText(), /^[^\d]+\s*(\d+ öneri\s*)?\d+ fikir( · .+)?$/, `${id}: the name and how many ideas`);
+      assert.deepEqual(await sec(id).locator(".cat-head").evaluate((el) => [...el.querySelectorAll(".cat-title > *, .cat-end > *")].map((c) => c.className || c.tagName.toLowerCase())), ["cat-ic", "b", ...sg, "cat-ideas", "cat-chev"]);
       const box = await sec(id).locator(".cat-ideas").boundingBox();
       counts.push(Math.round(box.x + box.width));
       continue;
     }
     assert.match(await sec(id).locator(".cat-count").innerText(), /^\d+\/\d+$/);
-    assert.match(await sec(id).locator(".cat-head").innerText(), /^[^\d]+\s*\d+\/\d+$/, `${id}: the name and the count, no other words`);
+    assert.match(await sec(id).locator(".cat-head").innerText(), /^[^\d]+\s*(\d+ öneri\s*)?\d+\/\d+$/, `${id}: the name and the count, no other words`);
     assert.equal(await sec(id).locator(".cat-add").count(), 0, `${id}: no "+ Ekle" when closed`);
     assert.deepEqual(
       await sec(id).locator(".cat-head").evaluate((el) => [...el.querySelectorAll(".cat-title > *, .cat-end > *")].map((c) => c.className || c.tagName.toLowerCase())),
-      ["cat-ic", "b", "cat-bar" + ((await sec(id).locator(".cat-bar.done").count()) ? " done" : ""), "cat-count", "cat-chev"],
+      ["cat-ic", "b", ...sg, "cat-bar" + ((await sec(id).locator(".cat-bar.done").count()) ? " done" : ""), "cat-count", "cat-chev"],
       `${id}: icon · name … bar · count · arrow`,
     );
     // Complete: the bar full and green.
@@ -1650,6 +1653,8 @@ try {
   // Revizyon 1: what the hero asks the model (the main places, a note's few words), one ask each.
   const placePrompts = [];
   const notePrompts = [];
+  // Öneriler: the AI reviews asked (one per trip state, at most once a day).
+  const reviewPrompts = [];
   const policyReading = {
     doc_type: "insurance", provider: "Allianz", title: "Seyahat sağlık sigortası", travellers: ["Emre Durmuş", "Ayşe Durmuş"],
     start_date: "2026-10-07", end_date: "2026-10-21", time: null, from: null, to: null, city: null, booking_ref: "AZ-998877",
@@ -1708,6 +1713,11 @@ try {
         return route.fulfill(reply([{ text: JSON.stringify(content.includes("e2e-policy") ? policyReading : { ...policyReading, doc_type: "other", provider: null, title: null, travellers: [], start_date: null, end_date: null, booking_ref: null, amount: null, currency: null }) }]));
       }
       const prompt = body.contents[0].parts.map((p) => p.text ?? "").join("");
+      if (prompt.includes("<suggest_review>")) {
+        // Öneriler: the AI review of a trip. Nothing to add here: the rules' cards are what step 19 checks.
+        reviewPrompts.push(prompt);
+        return route.fulfill(reply([{ text: JSON.stringify({ suggestions: [] }) }]));
+      }
       if (prompt.includes("<engine_result>")) {
         // Decision analysis: a verdict in words, a 0–10 fit score per option, and, once the pages
         // have been read, Casa Azul ruled out on the construction finding (cited by id).
@@ -2198,6 +2208,75 @@ try {
   await board.dispatchEvent(".panel", "dragleave", { dataTransfer: dragged });
   await board.locator(".ar-drop").waitFor({ state: "detached" });
   console.log("✓ arrivals: an Airbnb link waits in Konaklama while read, lands with a ring; the chat's chip says where and goes there; a drop overlay over the board");
+
+  // 19. Öneriler (spec 2026-10-06 §1): a trip with 25 nights in one city and no vehicle shows the monthly rental as
+  // a card atop Ulaşım ("1 öneri" in its header, never in a count); "Plana ekle" adds a rental card; another
+  // suggestion's "Gerek yok" takes it away, and it doesn't come back after a reload.
+  await board.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+    const tx = database.transaction(["trips", "items"], "readwrite");
+    const now = Date.now();
+    tx.objectStore("trips").put({ id: "e2e-bali", title: "Bali", confirmedDates: { start: "2026-12-10", end: "2027-01-04" }, budget: null, heroImage: null, createdAt: now, updatedAt: now });
+    tx.objectStore("items").put({
+      id: "e2e-ubud", tripId: "e2e-bali", captureIds: [], key: null, category: "stay", needKey: "stay:ubud", name: "Ubud Villa", provider: null, summary: "",
+      optionDetail: null, url: null, imageUrl: null, city: "Ubud", country: "Endonezya", countryCode: "ID",
+      location: { address: null, area: null, approximate: false }, dates: { start: "2026-12-10", end: "2027-01-04", source: "page" },
+      guests: { adults: 2, children: null, rooms: 1 },
+      price: { amount: 1500, currency: "EUR", scope: "total", taxesIncluded: "yes", source: "page", observedAt: now }, priceHistory: [],
+      cancellation: { summary: null, freeUntil: null, source: "none" }, rating: { value: null, scale: null, count: null, source: "none" }, flight: null,
+      highlights: [], concerns: [], reviewSummary: null, missing: [], status: "booked", statusNote: null, createdAt: now, updatedAt: now,
+    });
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  await board.getByRole("button", { name: /Seyahatlerim/ }).click();
+  await board.locator(".trip-card", { hasText: "Bali" }).click();
+  await board.getByRole("heading", { name: "Bali" }).waitFor();
+  const sgSec = (id) => board.locator(`.cat-sec[data-section="${id}"]`);
+  const openSec = async (id) => {
+    if (await sgSec(id).evaluate((el) => el.classList.contains("closed"))) await sgSec(id).locator(".cat-title").click();
+  };
+  await sgSec("transport").locator(".sg-count", { hasText: "1 öneri" }).waitFor({ timeout: 10000 });
+  // Only suggested: drawn for its card, with nothing to count (no bar, no "x/y").
+  assert.equal(await sgSec("transport").locator(".cat-count, .cat-bar").count(), 0, "a suggestion is never counted");
+  await openSec("transport");
+  const rentalCard = sgSec("transport").locator(".sg-card", { hasText: "Aylık motor ya da araç kiralama" });
+  await rentalCard.waitFor();
+  // Ubud is Bali's (the hero's main place, from the table of regions): the nights are counted for Bali.
+  assert.match(await rentalCard.innerText(), /25 gece Bali'de kalıyorsun/);
+  assert.doesNotMatch(await rentalCard.innerText(), /%/, "no invented percentage");
+  await sgSec("other").locator(".sg-count", { hasText: "2 öneri" }).waitFor();
+  await openSec("other");
+  const esimCard = sgSec("other").locator(".sg-card", { hasText: "eSIM" });
+  await esimCard.waitFor();
+  await sgSec("transport").scrollIntoViewIfNeeded();
+  await board.screenshot({ path: `${out}/19-suggestions.png` });
+  // Plana ekle: the rental is a real card in Ulaşım now; the suggestion is done.
+  await rentalCard.getByRole("button", { name: "Plana ekle" }).click();
+  await rentalCard.waitFor({ state: "detached" });
+  // The rental's card (kind "Motosiklet", the place's days), planned and not booked: a real "0/1" now.
+  await sgSec("transport").getByText("Motosiklet", { exact: true }).first().waitFor();
+  assert.match(await sgSec("transport").locator(".cat-count").innerText(), /^0\/1$/);
+  await sgSec("transport").locator(".cat-count").waitFor();
+  assert.equal(await sgSec("transport").locator(".sg-count").count(), 0);
+  // Gerek yok: the eSIM suggestion goes, the insurance one stays.
+  await esimCard.getByRole("button", { name: /gerek yok/i }).click();
+  await esimCard.waitFor({ state: "detached" });
+  await sgSec("other").locator(".sg-count", { hasText: "1 öneri" }).waitFor();
+  await board.waitForTimeout(300); // the trip write lands
+  await board.reload();
+  await board.getByRole("heading", { name: "Bali" }).waitFor();
+  await sgSec("other").locator(".sg-count", { hasText: "1 öneri" }).waitFor({ timeout: 10000 });
+  await openSec("other");
+  await sgSec("other").locator(".sg-card", { hasText: "Seyahat sağlık sigortası" }).waitFor();
+  assert.equal(await sgSec("other").locator(".sg-card", { hasText: "eSIM" }).count(), 0, "Gerek yok is for good");
+  assert.equal(await sgSec("transport").locator(".sg-card").count(), 0, "the added suggestion doesn't come back");
+  await sgSec("transport").getByText("Motosiklet", { exact: true }).first().waitFor();
+  assert.equal(reviewPrompts.filter((p) => p.includes("Ubud")).length, 1, "the AI review is asked once for the trip");
+  await sgSec("other").scrollIntoViewIfNeeded();
+  await board.screenshot({ path: `${out}/19b-suggestions-after.png` });
+  console.log("✓ öneriler: 25 nights in Ubud and no vehicle → monthly rental card atop Ulaşım (not counted); Plana ekle adds the rental; Gerek yok on the eSIM holds after a reload; the AI review asked once");
   console.log(`screenshots: ${out}`);
 } finally {
   await flow.close();
