@@ -24,7 +24,7 @@ import { coverageText, searchText } from "./listing";
 import { prosConsFor } from "./proscons";
 import { activeSignals, pendingSignals } from "./intent";
 import { buildLegs, legTiming, withLegChoice } from "./legs";
-import { checkPlanned, fillPlanned, plannedInput, plannedItem, PLANNED_KINDS, samePlan } from "./planned";
+import { checkPlanned, plannedInput, planToSave, PLANNED_KINDS } from "./planned";
 import { addDays, buildPlan, liveGroups, sameCity, stayRange, type Plan } from "./plan";
 import { L, lang } from "./i18n";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
@@ -822,13 +822,7 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       const said = plannedInput(input);
       const problem = checkPlanned(said);
       if (problem) throw new ToolError(problem);
-      const probe = plannedItem(said, tripId, "", 0);
-      const same = items.find((i) => samePlan(i, probe));
-      const plan = same ? fillPlanned(said, same) : said;
-      const fresh = plannedItem(plan, tripId, newId(), Date.now());
-      // Said again: it stays planned (a plan removed earlier comes back) unless it's now booked.
-      const status = plan.booked || same?.status === "booked" ? ("booked" as const) : ("chosen" as const);
-      const saved = same ? { ...same, ...fresh, id: same.id, createdAt: same.createdAt, status } : fresh;
+      const { item: saved, same } = planToSave(said, items, tripId, newId(), Date.now());
       await d.put("items", saved);
       const result: Record<string, unknown> = { [same ? "updated" : "added"]: saved.name, item_id: saved.id, status: saved.status === "booked" ? "booked" : "planned" };
       // A stay: what the board now shows for those nights, so the reply says what's really there.

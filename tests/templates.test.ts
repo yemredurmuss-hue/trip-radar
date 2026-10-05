@@ -1,0 +1,106 @@
+// tests/templates.test.ts
+import "fake-indexeddb/auto";
+import { describe, expect, it } from "vitest";
+import { transportMode } from "../src/lib/cardKinds";
+import { db, listMessages } from "../src/lib/db";
+import { plannedItem } from "../src/lib/planned";
+import {
+  addFromTemplate, editedItem, emptyForm, formOf, insertAt, parseAmount, templateInput, templateItem, templateLabel, TEMPLATES,
+  type FormValues, type TemplateId,
+} from "../src/lib/templates";
+import type { TimelineEntry } from "../src/lib/timeline";
+import { isInsurance, isRental } from "../src/lib/travelKinds";
+import { makeItem } from "./fixtures/makeItem";
+
+const tpl = (id: TemplateId) => TEMPLATES.find((x) => x.id === id)!;
+const form = (id: TemplateId, over: Partial<FormValues>) => ({ ...emptyForm(tpl(id), null, "EUR"), ...over });
+
+describe("the add sheet's tiles", () => {
+  it("ten ways to travel, two places to stay, five others", () => {
+    expect(TEMPLATES.filter((x) => x.group === "move").map((x) => templateLabel(x.id))).toEqual([
+      "Uçuş", "Tren", "Otobüs", "Minibüs", "Vapur", "Taksi · transfer", "Araç kiralama", "Motosiklet", "Karavan", "Bisiklet",
+    ]);
+    expect(TEMPLATES.filter((x) => x.group === "stay").map((x) => templateLabel(x.id))).toEqual(["Otel", "Ev · daire"]);
+    expect(TEMPLATES.filter((x) => x.group === "other").map((x) => templateLabel(x.id))).toEqual(["Etkinlik · tur", "Restoran", "eSIM", "Sigorta", "Not"]);
+  });
+  it("the form starts with the city and day of where it was opened", () => {
+    const at = { city: "Porto", date: "2026-10-09" };
+    expect(emptyForm(tpl("train"), at, "EUR")).toMatchObject({ from: "Porto", city: "Porto", date: "2026-10-09", to: "" });
+    expect(emptyForm(tpl("car"), at, "EUR")).toMatchObject({ from: "", city: "Porto", date: "2026-10-09" });
+  });
+});
+
+describe("what a template makes", () => {
+  it("a bus: a plan between two places, planned, with its price", () => {
+    const item = templateItem(tpl("bus"), form("bus", { from: "Lizbon", to: "Lagos", date: "2026-10-13", time: "10:00", price: "18" }), [], "t1", "b1", 5);
+    expect(item).toMatchObject({
+      id: "b1", name: "Otobüs · Lizbon → Lagos", category: "transport", plannedKind: "bus", status: "chosen", origin: "chat", city: "Lagos",
+      flight: { from: "Lizbon", to: "Lagos", departure: "2026-10-13T10:00" },
+      price: { amount: 18, currency: "EUR", scope: "total", source: "user" },
+    });
+  });
+  it("a motorbike rental: in its city for its days", () => {
+    const item = templateItem(tpl("moto"), form("moto", { city: "Funchal", date: "2026-10-12", end: "2026-10-15" }), [], "t1", "m1", 5);
+    expect(typeof item).toBe("object");
+    if (typeof item === "string") return;
+    expect(item.name).toBe("Motosiklet kiralama · Funchal");
+    expect(isRental(item)).toBe(true);
+    expect(transportMode(item)).toBe("moto");
+  });
+  it("named things need a name; insurance and an eSIM can go without", () => {
+    expect(templateItem(tpl("activity"), form("activity", { date: "2026-10-09" }), [], "t1", "a", 5)).toBe("Adını yaz.");
+    const ins = templateItem(tpl("insurance"), form("insurance", { date: "2026-10-07" }), [], "t1", "s", 5);
+    expect(ins).toMatchObject({ name: "Seyahat sigortası", category: "other" });
+    expect(isInsurance(ins as never)).toBe(true);
+  });
+  it("a hotel: its name, city and nights", () => {
+    expect(templateItem(tpl("hotel"), form("hotel", { name: "Hotel Ribeira", city: "Porto", date: "2026-10-09", end: "2026-10-11" }), [], "t1", "h", 5)).toMatchObject({
+      category: "stay", name: "Hotel Ribeira", dates: { start: "2026-10-09", end: "2026-10-11" },
+    });
+  });
+  it("prices as people type them; anything else is refused", () => {
+    expect([parseAmount("68"), parseAmount("1.240"), parseAmount("68,50"), parseAmount("€ 1.240,50"), parseAmount("abc")]).toEqual([68, 1240, 68.5, 1240.5, null]);
+    expect(templateInput(tpl("bus"), form("bus", { to: "Lagos", date: "2026-10-13", price: "abc" }))).toMatch(/Fiyat bir sayı olmalı/);
+  });
+  it("the same plan said before is updated, not doubled", () => {
+    const before = plannedItem({ kind: "flight", date: "2026-10-11", end_date: null, time: null, from: null, to: "Madeira", city: null, title: null, booked: false, note: null }, "t1", "old", 1);
+    const item = templateItem(tpl("flight"), form("flight", { to: "Madeira", date: "2026-10-11", time: "09:30" }), [before], "t1", "new", 5);
+    expect(item).toMatchObject({ id: "old", flight: { departure: "2026-10-11T09:30" } });
+  });
+});
+
+describe("Düzenle", () => {
+  it("a plan's form comes back as it was saved, and an edit keeps the record", () => {
+    const bus = templateItem(tpl("bus"), form("bus", { from: "Lizbon", to: "Lagos", date: "2026-10-13", time: "10:00", price: "18" }), [], "t1", "b1", 5);
+    if (typeof bus === "string") throw new Error(bus);
+    const back = formOf(bus, "EUR");
+    expect(back.template.id).toBe("bus");
+    expect(back.values).toMatchObject({ from: "Lizbon", to: "Lagos", date: "2026-10-13", time: "10:00", price: "18", name: "" });
+    const edited = editedItem({ ...bus, status: "booked" }, back.template, { ...back.values, date: "2026-10-14" }, 9);
+    expect(edited).toMatchObject({ id: "b1", status: "booked", createdAt: 5, dates: { start: "2026-10-14" } });
+  });
+  it("a chat transfer or 'other' plan opens as a taxi or a note", () => {
+    expect(formOf(makeItem({ origin: "chat", plannedKind: "transfer" }), "EUR").template.id).toBe("taxi");
+    expect(formOf(makeItem({ origin: "chat", plannedKind: "other", category: "other" }), "EUR").template.id).toBe("note");
+  });
+});
+
+describe("the + between two cards", () => {
+  it("brings the city and the day of the card above it", () => {
+    const stay = { kind: "stay", key: "s", date: "2026-10-08", block: { kind: "open", range: { start: "2026-10-08", end: "2026-10-11" }, nights: 3, city: "Porto", groups: [], searchUrl: "" }, title: "", subtitle: "" } as TimelineEntry;
+    const event = { kind: "event", key: "e", date: "2026-10-09", dayNo: 2, item: makeItem({ city: "Porto" }) } as TimelineEntry;
+    const leg = { kind: "leg", key: "l", date: "2026-10-11", leg: { to: { city: "Lizbon" }, from: { city: "Porto" } } } as unknown as TimelineEntry;
+    expect([insertAt(stay), insertAt(event), insertAt(leg)]).toEqual([
+      { city: "Porto", date: "2026-10-08" }, { city: "Porto", date: "2026-10-09" }, { city: "Lizbon", date: "2026-10-11" },
+    ]);
+  });
+});
+
+describe("saving", () => {
+  it("writes the plan and a line in the trip's history", async () => {
+    const made = await addFromTemplate("t5", tpl("ferry"), form("ferry", { from: "Funchal", to: "Porto Santo", date: "2026-10-16" }), "f1", 7);
+    expect(made).toMatchObject({ id: "f1", name: "Feribot · Funchal → Porto Santo" });
+    expect(await (await db()).get("items", "f1")).toBeTruthy();
+    expect((await listMessages("t5")).map((m) => m.text)).toEqual(["Feribot · Funchal → Porto Santo plana eklendi"]);
+  });
+});

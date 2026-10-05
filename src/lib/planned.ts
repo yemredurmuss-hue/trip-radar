@@ -223,3 +223,16 @@ export function fillPlanned(input: PlannedInput, before: Item): PlannedInput {
     note: input.note ?? before.statusNote,
   };
 }
+
+/**
+ * What a plan becomes when saved: said again (samePlan), it updates the plan it repeats, keeping its id
+ * and what was said before; else a new item. Planned until it's said to be booked.
+ */
+export function planToSave(said: PlannedInput, items: Item[], tripId: string, id: string, now: number): { item: Item; same: Item | null } {
+  const probe = plannedItem(said, tripId, "", 0);
+  const same = items.find((i) => samePlan(i, probe)) ?? null;
+  const plan = same ? fillPlanned(said, same) : said;
+  const fresh = plannedItem(plan, tripId, id, now);
+  const status = plan.booked || same?.status === "booked" ? ("booked" as const) : ("chosen" as const);
+  return { item: same ? { ...same, ...fresh, id: same.id, createdAt: same.createdAt, status } : { ...fresh, status }, same };
+}
