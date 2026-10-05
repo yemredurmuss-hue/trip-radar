@@ -1071,8 +1071,10 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .hx-who-text small.accent { color: var(--hx-accent); }
 .hx-share { margin-top: 8px; font-size: 13px; color: var(--hx-muted); }
 .hx-share .err { color: var(--danger); }
-.hx-styles { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
-.hx-styles span { height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 0 18px 0 14px; border-radius: 999px; font-size: 16px; font-weight: 500; white-space: nowrap; }
+/* The style words: two styles sit on one line in the wide card (14px, 16px icons, 34px high); the budget's word
+   wraps under them when the three don't fit. A chip never shrinks or cuts its word. */
+.hx-styles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.hx-styles span { flex: none; height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 999px; font-size: 14px; font-weight: 500; white-space: nowrap; }
 .hx-styles svg { flex: none; }
 .hx-styles .empty { padding: 0 16px; border: 1.5px dashed #d6d1e3; color: var(--hx-muted); font-weight: 400; font-size: 15px; white-space: normal; }
 

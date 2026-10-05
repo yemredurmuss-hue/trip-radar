@@ -52,7 +52,7 @@ export function TripFacts(props: {
           <div key="chips" className={`hx-styles${chipsAppear}`} aria-label={L("Gezinin tarzı", "The trip's style")}>
             {props.chips.map((c) => (
               <span key={c.label} style={{ background: c.bg, color: c.fg }}>
-                <HeroIcon name={c.icon} size={20} />
+                <HeroIcon name={c.icon} size={16} />
                 {c.label}
               </span>
             ))}

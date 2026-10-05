@@ -268,6 +268,41 @@ try {
   assert.equal(enRow.rows, 1, "1440 EN (12 experiences): one row");
   assert.ok(enRow.lines.every((n) => n < 1.5) && enRow.spill <= 0, `1440 EN: every cell on one line, the row fits (${JSON.stringify(enRow)})`);
   assert.ok(trWide.rows === 1 && trWide.lines.every((n) => n < 1.5) && trWide.spill <= 0, `1440 TR (12 konaklama): one row, one line each (${JSON.stringify(trWide)})`);
+  // The style words (hero fix 2): the two longest styles share one line in the card, the budget's word may go under
+  // them, and no chip is cut. Measured on a copy of the row with the longest Turkish and English words, at the card's
+  // own width and at 272 px (the card beside the open chat on Emre's ~1455 px window, where "Romantic" and
+  // "Adventure" broke into two lines in 0.35.3).
+  const styleRow = (labels, width) =>
+    app.evaluate(({ ls, w }) => {
+      const row = document.querySelector(".hx-side .hx-styles");
+      const copy = row.cloneNode(true);
+      const template = row.querySelector("span");
+      copy.replaceChildren(
+        ...ls.map((l) => {
+          const chip = template.cloneNode(true);
+          chip.lastChild.nodeValue = l;
+          return chip;
+        }),
+      );
+      if (w) copy.style.width = `${w}px`;
+      row.after(copy);
+      const box = copy.getBoundingClientRect();
+      const chips = [...copy.children].map((c) => ({ top: Math.round(c.getBoundingClientRect().top), right: c.getBoundingClientRect().right, cut: c.scrollWidth > c.clientWidth + 1, h: c.getBoundingClientRect().height, font: getComputedStyle(c).fontSize }));
+      copy.remove();
+      return { width: Math.round(box.width), chips, right: box.right };
+    }, { ls: labels, w: width });
+  const checkStyles = async (where) => {
+    for (const labels of [["Gastronomi", "Romantik", "Yüksek bütçe"], ["Eğlence", "Gastronomi", "Orta bütçe"], ["Nightlife", "Adventure", "High budget"], ["Adventure", "Romantic", "Mid-range"]]) {
+      for (const width of [null, 272]) {
+        const r = await styleRow(labels, width);
+        const at = `${where}${width ? ` (${width} px card)` : ` (${r.width} px card)`} ${labels.join(" + ")}`;
+        assert.equal(r.chips[0].top, r.chips[1].top, `${at}: the two styles on one line (${JSON.stringify(r)})`);
+        assert.ok(r.chips.every((c) => !c.cut && c.right <= r.right + 1), `${at}: no chip cut or out of the card`);
+        assert.ok(r.chips.every((c) => c.font === "14px" && Math.round(c.h) === 34), `${at}: 14 px words, 34 px chips`);
+      }
+    }
+  };
+  await checkStyles("1440");
   await app.screenshot({ path: `${out}/2b-hero.png` });
   await app.setViewportSize({ width: 560, height: 1400 });
   await hero.scrollIntoViewIfNeeded();
@@ -309,6 +344,7 @@ try {
   await hero.scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/2h-hero-1280.png` });
   assert.deepEqual(await spilled(), [], "1280 px: every hero cell's text stays inside it");
+  await checkStyles("1280");
   const at1280 = await heroBox();
   console.log(`  1280: card bottom ${at1280.card.toFixed(1)}, progress bottom ${at1280.progress.toFixed(1)}`);
   await app.setViewportSize({ width: 1440, height: 900 });
@@ -1378,6 +1414,48 @@ try {
   await prefs.locator(".hx-prefs-pop").waitFor({ state: "detached" });
   assert.deepEqual(flat(await prefs.locator(".hx-ptag.strong").allInnerTexts()), ["Fiyat"]);
   console.log('✓ hero v9: four cells open their Plan sections, "x/y onaylandı" is the headers added up and lists the to-dos, "Planı tamamla" goes to the next, Tercihler (tags, window, ×), a new trip\'s empty blocks fill as information arrives');
+
+  // Hero fix 2: a stay in Gaula, a parish on Madeira, is Madeira's on the hero with no model to ask (no key here):
+  // a Porto stay and a campervan picked up in Gaula show "Porto | Madeira", never "Porto | Gaula".
+  const madeiraItems = (trip) =>
+    app.evaluate(async ({ t, put }) => {
+      const request = indexedDB.open("trip-radar");
+      const database = await new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const tx = database.transaction(["trips", "items"], "readwrite");
+      const now = Date.now();
+      const stay = (over) => ({
+        tripId: t.id, captureIds: ["e2e-cap"], key: null, category: "stay", provider: null, summary: "", optionDetail: null, url: null, imageUrl: null,
+        country: "Portekiz", countryCode: "PT", guests: { adults: 1, children: null, rooms: null },
+        price: { amount: null, currency: null, scope: "unknown", taxesIncluded: "unknown", source: "none", observedAt: now }, priceHistory: [],
+        cancellation: { summary: null, freeUntil: null, source: "none" }, rating: { value: null, scale: null, count: null, source: "none" }, flight: null, geo: null,
+        highlights: [], concerns: [], reviewSummary: null, missing: [], status: "booked", statusNote: null, createdAt: now, updatedAt: now, ...over,
+      });
+      if (put) {
+        tx.objectStore("trips").put(t);
+        tx.objectStore("items").put(stay({ id: "e2e-opo", needKey: "stay:porto", name: "OPO Vale Formoso I", city: "Porto", location: { address: "Rua de Vale Formoso, Porto, Portugal", area: null, approximate: false }, dates: { start: "2026-10-07", end: "2026-10-11", source: "page" } }));
+        tx.objectStore("items").put(stay({ id: "e2e-van", needKey: "stay:gaula", name: "Renault Campervan 'Bawhee'", provider: "Indie Campers", city: "Gaula", location: { address: "Gaula, Madeira, Portugal", area: null, approximate: false }, dates: { start: "2026-10-11", end: "2026-10-18", source: "page" } }));
+      } else {
+        tx.objectStore("trips").delete(t.id);
+        for (const i of ["e2e-opo", "e2e-van"]) tx.objectStore("items").delete(i);
+      }
+      await new Promise((resolve) => (tx.oncomplete = resolve));
+      new BroadcastChannel("trip-radar").postMessage("changed");
+    }, { t: trip, put: trip.put });
+  const madeira = { id: "e2e-madeira", title: "Porto ve Madeira Gezisi", confirmedDates: { start: "2026-10-07", end: "2026-10-18" }, budget: null, heroImage: null, createdAt: Date.now(), updatedAt: Date.now() };
+  await madeiraItems({ ...madeira, put: true });
+  await app.locator(".trip-switch").click();
+  await app.locator(".trip-card", { hasText: "Porto ve Madeira Gezisi" }).click();
+  await app.getByRole("heading", { name: "Porto ve Madeira Gezisi" }).waitFor();
+  await app.locator(".hx .hx-cities button", { hasText: "Madeira" }).waitFor();
+  assert.deepEqual(await app.locator(".hx .hx-cities button").allInnerTexts(), ["Porto", "Madeira"], "Gaula is Madeira's on the hero, with no model");
+  await app.locator(".hx .hx-cities button", { hasText: "Madeira" }).click();
+  await app.waitForTimeout(1200); // the island's photo, when the network has one
+  await app.locator(".hx").screenshot({ path: `${out}/2i-hero-madeira.png` });
+  await madeiraItems({ ...madeira, put: false });
+  console.log('✓ hero fix 2: Porto + a campervan picked up in Gaula is "Porto | Madeira" with no model; two style chips fit one line at 1280/1440 and in a 272 px card');
 
   // 5. Settings dialog.
   await app.goto(`chrome-extension://${id}/app.html#settings`);
