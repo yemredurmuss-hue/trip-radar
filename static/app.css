@@ -1629,6 +1629,26 @@ button.hx-people:hover b { color: var(--hx-accent); }
 /* open: what's waiting, one amber line under the name */
 .cat-wait { margin: -8px 0 0; padding: 0 20px 12px 60px; font-size: 14px; color: #9a6400; }
 .cat-body { padding: 0 20px 18px 60px; }
+/* Öneriler (spec 2026-10-06 §1): a soft card atop its section's body and "1 öneri" in its header; never counted. */
+.sg-count { flex: none; font-size: 13px; font-weight: 600; color: #6a4fe0; white-space: nowrap; }
+.sg-list { display: grid; gap: 8px; margin: 0 0 14px; }
+.sg-card { display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px; border-radius: 14px; background: #f6f3ff; border: 1px dashed #d7cdfb; }
+.sg-card.warn { background: #fff8ec; border-color: #f0d9a8; }
+.sg-mark { flex: none; font-size: 15px; line-height: 1.4; }
+.sg-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.sg-text b { font-size: 14.5px; font-weight: 600; color: #1d1d1f; }
+.sg-why { font-size: 13px; line-height: 1.4; color: #6e6e73; }
+.sg-actions { flex: none; display: flex; align-items: center; gap: 6px; }
+.sg-add, .sg-no { height: 30px; border-radius: 999px; font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.sg-add { padding: 0 12px; border: 0; background: #6a4fe0; color: #fff; font-weight: 600; }
+.sg-add:hover { background: #5a3fd0; }
+.sg-no { padding: 0 10px; border: 1px solid #d9d5ce; background: #fff; color: #3a3a3c; }
+.sg-no:hover { border-color: #b9b3aa; }
+.sg-add:focus-visible, .sg-no:focus-visible { outline: 2px solid #6a4fe0; outline-offset: 2px; }
+@media (max-width: 560px) {
+  .sg-card { flex-wrap: wrap; }
+  .sg-actions { width: 100%; justify-content: flex-end; }
+}
 /* the section's end: "Gizlenenler · 2 göster", quiet; opened, a compact row each with its way back */
 .cat-hidden { margin: 14px 0 0 118px; }
 .cat-hidden-link { margin: 0; font-size: 13px; color: #8e8e93; }

@@ -53,6 +53,7 @@ import { CategoryPlan } from "./plan/CategoryPlan";
 import { SECTION_META, useSectionOpen } from "./plan/sectionMeta";
 import { SettledCard, SwipeCard } from "./SwipeCard";
 import { useArrivals } from "./arrive/useArrivals";
+import { useSuggestions } from "./useSuggestions";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
 import { choiceOf, type Choice } from "../lib/choice";
 import { pivotalFindings } from "../lib/pivots";
@@ -412,6 +413,15 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       return undefined; // no extension storage (a plain page)
     }
   }, []);
+  // Öneriler: the rules' and the AI's/chat's suggestions atop their sections (never counted); the AI review when due.
+  const suggestions = useSuggestions({
+    trip, plan, items, timeline, legs, mains, home: passport, today, ready: placesSettled, offer, quiet: arrivals.quiet,
+    onAdded: (item) => {
+      if (view !== "plan") setView("plan");
+      setOpened(sectionOfItem(item), true);
+      setFocus({ id: item.id, field: null, scroll: true });
+    },
+  });
   const [todoOpen, setTodoOpen] = useState<"all" | "deadline" | null>(null);
   // Another trip's to-do list isn't the one that was open.
   useEffect(() => {
@@ -617,6 +627,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           onAdd={addIn}
           today={today}
           items={items}
+          suggestions={suggestions}
         />
       )}
 
@@ -638,7 +649,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         }}
       />
       {historyOpen && onHistoryClose && (
-        <HistoryDialog trip={trip} items={items} hidden={hiddenForHistory} onClose={onHistoryClose} onShow={(id) => setTimeout(() => reveal({ item: id }), 60)} />
+        <HistoryDialog trip={trip} items={items} hidden={[...hiddenForHistory, ...suggestions.dismissed]} onClose={onHistoryClose} onShow={(id) => setTimeout(() => reveal({ item: id }), 60)} />
       )}
       {arrivals.toast}
     </CardEnvContext.Provider>

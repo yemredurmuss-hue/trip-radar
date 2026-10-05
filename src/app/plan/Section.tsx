@@ -6,16 +6,19 @@
 import type { ReactNode } from "react";
 import { sectionProgress, type CatSection } from "../../lib/categories";
 import { L } from "../../lib/i18n";
+import { suggestionCount } from "../../lib/suggestions";
 import { KindIcon, UiIcon } from "../cards/Silhouettes";
 import { HiddenList } from "./HiddenList";
 import { SECTION_META } from "./sectionMeta";
 
-export function Section({ section, open, onToggle, onAdd, children }: {
+export function Section({ section, open, onToggle, onAdd, suggestions = 0, children }: {
   section: CatSection;
   open: boolean;
   onToggle: () => void;
   /** "+ Ekle" in the open header: this section's kind, no day. */
   onAdd: () => void;
+  /** Its open suggestions: "1 öneri" in the header (never part of its "3/4"), shown open or closed. */
+  suggestions?: number;
   children: ReactNode;
 }) {
   const meta = SECTION_META[section.id];
@@ -39,7 +42,8 @@ export function Section({ section, open, onToggle, onAdd, children }: {
               {L("Ekle", "Add")}
             </button>
           )}
-          {/* Drawn only for something being read into it (arrive): nothing to count yet. */}
+          {suggestions > 0 && <span className="sg-count">{suggestionCount(suggestions)}</span>}
+          {/* Drawn only for something being read into it (arrive) or suggested: nothing to count yet. */}
           {!section.entries.length && !section.hidden.length ? null : ideas ? (
             <span className="cat-ideas">{ideaCount(section.id, ideas)}</span>
           ) : (
