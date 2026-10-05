@@ -2,11 +2,13 @@
 // What a plan card says, from the record: the ring (to decide / chosen / done), the colour of its ground,
 // the bottom strip (where it stands or which option, and its one action), the date on its top line, the
 // ••• menu, the two ends of a trip, a media card's lines, and a transfer as a card. Pure.
+import { durationText, type CardFacts } from "./cardFacts";
 import { L } from "./i18n";
-import { formatDateRange, isoDate } from "./items";
+import { count, nDays, nReviews, nStops, num } from "./i18nText";
+import { formatDateRange, isoDate, metricsOf, nightsBetween } from "./items";
 import { clockOf } from "./legs";
 import { isTrip } from "./travelKinds";
-import { RENTAL_MODES, TICKET_MODES, type CardKind } from "./cardKinds";
+import { RENTAL_MODES, TICKET_MODES, type CardKind, type TransportMode } from "./cardKinds";
 import type { Item } from "./types";
 
 export type Ring = "open" | "half" | "done";
@@ -103,4 +105,97 @@ export function menuFor(item: Item): MenuAction[] {
   if (item.status === "saved" && item.origin !== "chat") out.push("dismiss");
   out.push("delete");
   return out;
+}
+
+export interface End {
+  city: string;
+  sub: string | null;
+  /** Shown bold after the sub line. */
+  time: string | null;
+}
+export interface TransportFace {
+  from: End | null;
+  to: End | null;
+  /** Under the drawing: duration and stops, or what's rented ("Otomatik"). */
+  middle: string | null;
+  rental: boolean;
+}
+
+const dayOf = (iso: string | null | undefined) => {
+  const d = isoDate(iso?.slice(0, 10));
+  return d ? formatDateRange(d, null) : null;
+};
+
+/** A trip as two ends (ulasim-v3): from and to with the day and the hour; a rental as where it's picked up and for how long. */
+export function transportFace(item: Item, kind: TransportMode | "transport"): TransportFace {
+  const m = metricsOf(item);
+  if ((RENTAL_MODES as readonly string[]).includes(kind)) {
+    const start = isoDate(item.dates.start);
+    const end = isoDate(item.dates.end);
+    const days = start && end ? nightsBetween(start, end) : 0;
+    return {
+      rental: true,
+      from: item.city ? { city: item.city, sub: item.location.area ?? item.location.address ?? item.provider, time: dayOf(start) } : null,
+      to: days > 0 ? { city: nDays(days), sub: end ? L(`iade ${dayOf(end)}`, `return ${dayOf(end)}`) : null, time: null } : null,
+      middle: item.optionDetail,
+    };
+  }
+  const f = item.flight;
+  const stops = kind === "flight" && f?.stops != null ? (f.stops === 0 ? L("direkt", "direct") : nStops(f.stops)) : null;
+  return {
+    rental: false,
+    from: f?.from ? { city: f.from, sub: dayOf(f.departure ?? item.dates.start), time: clockOf(f.departure) } : null,
+    to: f?.to ? { city: f.to, sub: dayOf(f.arrival ?? f.departure ?? item.dates.start), time: clockOf(f.arrival) } : null,
+    middle: [m.durationMinutes ? durationText(m.durationMinutes) : null, stops].filter(Boolean).join(" · ") || null,
+  };
+}
+
+export interface MediaFace {
+  title: string;
+  /** The info line (place · **hour** · duration · people), joined with " · ". */
+  info: { text: string; strong?: boolean }[];
+  /** The source line: ★ rating, reviews, the shop, the site ↗. */
+  meta: { text: string; kind: "star" | "plain" | "link"; href?: string }[];
+  image: string | null;
+  silhouette: "museum" | "esim" | "shield" | null;
+}
+
+const people = (n: number) => count(n, "kişi", "person", "people");
+
+/** A media card's text (etkinlik-v4): title, info line, source line, and its picture (a photo or a dotted drawing). */
+export function mediaFace(item: Item, kind: CardKind, source: CardFacts["source"]): MediaFace {
+  const m = metricsOf(item);
+  const info: MediaFace["info"] = [];
+  const add = (text: string | null | undefined, strong = false) => {
+    if (text) info.push(strong ? { text, strong } : { text });
+  };
+  let title = item.name;
+  if (kind === "esim") {
+    const data = m.unlimitedData ? L("Sınırsız", "Unlimited") : m.dataGb ? `${num(m.dataGb)} GB` : null;
+    const where = item.country ?? item.city;
+    if (data) title = where ? `${data} · ${where}` : data;
+    add(m.validityDays ? nDays(m.validityDays) : null);
+    if (item.status === "booked" && !item.installedAt) add(L("yola çıkmadan kur", "install before you leave"));
+  } else if (kind === "insurance") {
+    add(item.guests.adults ? people(item.guests.adults) : null);
+    const [s, e] = [isoDate(item.dates.start), isoDate(item.dates.end)];
+    add(s && e ? nDays(nightsBetween(s, e) + 1) : null);
+  } else if (kind === "note" || kind === "other") {
+    add(item.summary || item.statusNote);
+  } else {
+    add(item.location.area ?? item.location.address ?? item.city);
+    add(clockOf(item.flight?.departure), true);
+    add(m.durationMinutes ? durationText(m.durationMinutes) : null);
+    add(item.guests.adults ? people(item.guests.adults) : null);
+  }
+  const meta: MediaFace["meta"] = [];
+  const shop = kind === "esim" || kind === "insurance" ? item.provider : null;
+  if (shop) meta.push({ text: shop, kind: "plain" });
+  if (item.rating.value != null) meta.push({ text: `★ ${num(item.rating.value)}`, kind: "star" });
+  if (item.rating.count) meta.push({ text: nReviews(item.rating.count), kind: "plain" });
+  if (source?.url) meta.push({ text: `${shop ? (source.host ?? source.label) : source.label} ↗`, kind: "link", href: source.url });
+  else if (source && source.label !== shop) meta.push({ text: source.label, kind: "plain" });
+  const image = kind === "esim" || kind === "insurance" ? null : item.imageUrl;
+  const silhouette = kind === "esim" ? "esim" : kind === "insurance" ? "shield" : kind === "activity" && !image ? "museum" : null;
+  return { title, info, meta, image, silhouette };
 }
