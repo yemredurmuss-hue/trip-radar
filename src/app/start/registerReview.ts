@@ -5,7 +5,7 @@
 import { db, listItems } from "../../lib/db";
 import { sectionOfItem } from "../../lib/categories";
 import { buildLegs } from "../../lib/legs";
-import { loadPassport } from "../../lib/passport";
+import { loadHome } from "../../lib/passport";
 import { cityKeyOf } from "../../lib/plan";
 import { boardMains } from "../../lib/startBoard";
 import { setSuggestionsReview } from "../../lib/startHooks";
@@ -30,12 +30,14 @@ export async function reviewNewTrip(tripId: string): Promise<number> {
   }
   const travellers = whoGoes({ travellers: trip.travellers, adults: null }).count || null;
   const prompt = reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers });
+  // Claims the review for this key first ({ key, at, state: "running" }), so the board opening meanwhile waits
+  // instead of asking too; "skipped" when it was claimed already, "no-key" without a model: the rules still show.
   await runReview({ key, prompt, save: (change) => updateTrip(tripId, change, { touch: false }) });
   const after = (await d.get("trips", tripId)) ?? trip;
   const legs = buildLegs(plan, after);
   const timeline = buildTimeline(plan, legs, items, new Set(after.hidden ?? []));
   const today = new Date().toISOString().slice(0, 10);
-  const rules = ruleSuggestions({ trip: after, plan, items, timeline, legs, mains, home: await loadPassport(), today });
+  const rules = ruleSuggestions({ trip: after, plan, items, timeline, legs, mains, home: await loadHome(), today });
   return shownSuggestions(after.suggestions, rules).length;
 }
 
