@@ -8,7 +8,8 @@ import { L } from "./i18n";
 import { liveLabels } from "./i18nText";
 import { isoDate } from "./items";
 import { ALL_PLANNED_KINDS, checkPlanned, isGeneratedName, plannedItem, type PlannedInput } from "./planned";
-import type { TimelineEntry } from "./timeline";
+import { cityOfAirport } from "./airports";
+import type { TimelineEntry, TimelineSection } from "./timeline";
 import type { Item, PlannedKind } from "./types";
 
 export type TemplateId = TransportMode | "hotel" | "home" | "activity" | "food" | "esim" | "insurance" | "note";
@@ -180,14 +181,19 @@ export function formOf(item: Item, currency: string): { template: Template; valu
   };
 }
 
-/** The "+" under a card of the plan: its city and day. */
+/**
+ * The "+" under a card of the plan: its city and day. A trip's city is the leg's (a station or an airport
+ * code never is one), else the city of its airport; after the flight home there's no city. After a stay,
+ * its city and no day: which night is picked in the form.
+ */
 export function insertAt(entry: TimelineEntry): InsertAt {
   switch (entry.kind) {
     case "stay":
-      return { city: entry.block.city, date: entry.block.range.start };
+      return { city: entry.block.city, date: null };
     case "travel": {
+      if (entry.role === "departure") return { city: null, date: entry.date };
       const f = (entry.travel?.settled ?? entry.travel?.items[0])?.flight;
-      return { city: f?.to ?? entry.leg?.to.city ?? null, date: entry.date };
+      return { city: entry.leg?.to.city ?? (f?.to ? cityOfAirport(f.to) : null), date: entry.date };
     }
     case "leg":
       return { city: entry.leg.to.city ?? entry.leg.from.city, date: entry.date };
@@ -200,6 +206,23 @@ export function insertAt(entry: TimelineEntry): InsertAt {
     case "rental":
       return { city: entry.group.items[0]?.city ?? null, date: entry.date };
   }
+}
+
+/** The "+" at the very top of the plan (before the way in): the first day, no city (the way to the airport is at home). */
+export const insertAtStart = (sections: TimelineSection[]): InsertAt => ({ city: null, date: firstDate(sections) });
+
+/** The "+" at the head of a city's block: that city, its first day. */
+export const insertAtCity = (section: Extract<TimelineSection, { kind: "city" }>): InsertAt => ({ city: section.city, date: section.range?.start ?? null });
+
+/** The "+" on a day of the itinerary (its head, or an empty day): that day and its city. */
+export const insertAtDay = (date: string, city: string | null): InsertAt => ({ city, date });
+
+function firstDate(sections: TimelineSection[]): string | null {
+  const s = sections[0];
+  if (!s) return null;
+  if (s.kind === "travel") return s.entry.date;
+  if (s.kind === "journey") return s.journey.date;
+  return s.range?.start ?? s.entries[0]?.date ?? null;
 }
 
 export async function addFromTemplate(tripId: string, tpl: Template, f: FormValues, id: string, now = Date.now()): Promise<Item | string> {

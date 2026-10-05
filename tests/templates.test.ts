@@ -5,10 +5,10 @@ import { transportMode } from "../src/lib/cardKinds";
 import { db, listItems, listMessages } from "../src/lib/db";
 import { plannedItem } from "../src/lib/planned";
 import {
-  addFromTemplate, editedItem, emptyForm, formOf, insertAt, parseAmount, templateInput, templateItem, templateLabel, TEMPLATES,
+  addFromTemplate, editedItem, emptyForm, formOf, insertAt, insertAtCity, insertAtDay, insertAtStart, parseAmount, templateInput, templateItem, templateLabel, TEMPLATES,
   type FormValues, type TemplateId,
 } from "../src/lib/templates";
-import type { TimelineEntry } from "../src/lib/timeline";
+import type { TimelineEntry, TimelineSection } from "../src/lib/timeline";
 import { isInsurance, isRental } from "../src/lib/travelKinds";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -101,13 +101,35 @@ describe("Düzenle", () => {
 });
 
 describe("the + between two cards", () => {
-  it("brings the city and the day of the card above it", () => {
+  const trip = (role: string, from: string, to: string, date: string, legTo: string | null = null) =>
+    ({
+      kind: "travel", key: `t:${role}`, role, date, title: "", subtitle: null, searchUrl: null,
+      travel: { items: [makeItem({ flight: { from, to, departure: `${date}T09:00`, arrival: null, carrier: null, flightNumber: null, stops: null } })], settled: null },
+      leg: legTo ? { to: { city: legTo }, from: { city: null } } : null,
+    }) as unknown as TimelineEntry;
+  it("brings the city and the day of the card above it; after a stay, its city and no day", () => {
     const stay = { kind: "stay", key: "s", date: "2026-10-08", block: { kind: "open", range: { start: "2026-10-08", end: "2026-10-11" }, nights: 3, city: "Porto", groups: [], searchUrl: "" }, title: "", subtitle: "" } as TimelineEntry;
     const event = { kind: "event", key: "e", date: "2026-10-09", dayNo: 2, item: makeItem({ city: "Porto" }) } as TimelineEntry;
     const leg = { kind: "leg", key: "l", date: "2026-10-11", leg: { to: { city: "Lizbon" }, from: { city: "Porto" } } } as unknown as TimelineEntry;
     expect([insertAt(stay), insertAt(event), insertAt(leg)]).toEqual([
-      { city: "Porto", date: "2026-10-08" }, { city: "Porto", date: "2026-10-09" }, { city: "Lizbon", date: "2026-10-11" },
+      { city: "Porto", date: null }, { city: "Porto", date: "2026-10-09" }, { city: "Lizbon", date: "2026-10-11" },
     ]);
+  });
+  it("a trip's city is never an airport code or a station: the leg's city, else the airport's", () => {
+    expect(insertAt(trip("arrival", "IST", "OPO", "2026-10-08"))).toEqual({ city: "Porto", date: "2026-10-08" });
+    expect(insertAt(trip("move", "Porto Campanhã", "Lisboa Santa Apolónia", "2026-10-11", "Lizbon"))).toEqual({ city: "Lizbon", date: "2026-10-11" });
+    expect(insertAt(trip("other", "LIS", "FNC", "2026-10-12"))).toEqual({ city: "Funchal", date: "2026-10-12" });
+  });
+  it("after the flight home: the day, no city", () => {
+    expect(insertAt(trip("departure", "LIS", "IST", "2026-10-14"))).toEqual({ city: null, date: "2026-10-14" });
+  });
+  it("the top of the plan, a city's head, a day of the itinerary", () => {
+    const arrival = trip("arrival", "IST", "OPO", "2026-10-08");
+    const city = { kind: "city", key: "c", index: 1, city: "Porto", range: { start: "2026-10-08", end: "2026-10-11" }, nights: 3, stays: [], entries: [] } as Extract<TimelineSection, { kind: "city" }>;
+    expect(insertAtStart([{ kind: "travel", key: "x", entry: arrival } as TimelineSection, city])).toEqual({ city: null, date: "2026-10-08" });
+    expect(insertAtStart([])).toEqual({ city: null, date: null });
+    expect(insertAtCity(city)).toEqual({ city: "Porto", date: "2026-10-08" });
+    expect(insertAtDay("2026-10-10", "Porto")).toEqual({ city: "Porto", date: "2026-10-10" });
   });
 });
 
