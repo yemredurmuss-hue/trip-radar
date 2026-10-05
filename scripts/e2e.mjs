@@ -171,6 +171,7 @@ try {
   await side.locator(".hx-prefs .hx-h", { hasText: "Tercihler" }).waitFor();
   await hero.scrollIntoViewIfNeeded();
   await app.waitForTimeout(1500); // the city photos come from Wikipedia
+  await app.mouse.move(0, 0); // no hover left on a cell from the clicks before
   await app.screenshot({ path: `${out}/2b-hero.png` });
   await app.setViewportSize({ width: 560, height: 1400 });
   await hero.scrollIntoViewIfNeeded();
@@ -178,7 +179,42 @@ try {
   const heroLines = ".hx-tally span, .hx-progress-head, .hx-when, .hx-who-text b, .hx-styles span, .hx-budget-line, .hx-prefs-rows dt, .hx-minis span, .hx-weather > span, .card-alert";
   assert.deepEqual(await uncut(heroLines), [], "the hero's lines and a card's warning wrap, never cut");
   assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll on a narrow hero");
+  // Nothing runs out of its cell: a plan cell's label (two by two until there's room for four), and the small
+  // things with the longest real names (Switzerland's languages, the UAE's money), wrapped inside their cell.
+  const spilled = () =>
+    app.evaluate(() => {
+      const out = [];
+      const outside = (el, box) => {
+        const r = box.getBoundingClientRect();
+        return [...el.querySelectorAll("*")].some((c) => {
+          const k = c.getBoundingClientRect();
+          return k.width > 0 && (k.left < r.left - 1 || k.right > r.right + 1);
+        });
+      };
+      for (const b of document.querySelectorAll(".hx-tally button")) if (b.scrollWidth > b.clientWidth + 1 || outside(b, b)) out.push(b.textContent);
+      const minis = document.querySelector(".hx-minis");
+      const texts = [...minis.querySelectorAll(":scope > span")].map((s) => s.lastChild);
+      const before = texts.map((t) => t.nodeValue);
+      texts[0].nodeValue = "Birleşik Arap Emirlikleri Dirhemi";
+      texts.at(-1).nodeValue = "Almanca, Fransızca, İtalyanca";
+      // The text itself, measured (a row's first divider sits outside the card on purpose, hidden).
+      const box = minis.parentElement.getBoundingClientRect();
+      for (const t of texts) {
+        const range = document.createRange();
+        range.selectNodeContents(t);
+        const r = range.getBoundingClientRect();
+        if (t.parentElement.scrollWidth > t.parentElement.clientWidth + 1 || r.left < box.left - 1 || r.right > box.right + 1) out.push(t.nodeValue);
+      }
+      texts.forEach((t, n) => (t.nodeValue = before[n]));
+      return out;
+    });
+  assert.deepEqual(await spilled(), [], "narrow: every hero cell's text stays inside it");
+  await app.setViewportSize({ width: 1280, height: 800 });
+  await hero.scrollIntoViewIfNeeded();
+  await app.screenshot({ path: `${out}/2h-hero-1280.png` });
+  assert.deepEqual(await spilled(), [], "1280 px: every hero cell's text stays inside it");
   await app.setViewportSize({ width: 1440, height: 900 });
+  assert.deepEqual(await spilled(), [], "1440 px: every hero cell's text stays inside it");
   await app.getByText("Jardim Stay").first().waitFor();
   // 0.34: the Plan by category — a section per kind in this order (the empty ones are chips at the bottom),
   // each a timeline of its blocks: the day on the left, the cards on the right.
