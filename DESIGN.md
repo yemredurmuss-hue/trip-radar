@@ -178,6 +178,15 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
   günlük istek sınırı ve aylık tavan (tahmini 20 $). Kendi anahtarı olan onu kullanmaya devam eder. Sahibi Ayarlar →
   "AI kapısı"nda yönetici anahtarıyla kullanımı görür ve bir daveti kapatır. Profilim: ad + isteğe bağlı fotoğraf
   (128 px JPEG), yalnız paylaşılan gezinin üyelerine gider; hero'daki yolcu yuvarlaklarında görünür.
+- **Seçenek panosu** (0.36.7, `docs/mockups/2026-10-06-otel-panosu-v2.html`, `board.ts`, `app/board/OptionBoard.tsx`):
+  Karşılaştırma penceresinin iki görünümü: **Kartlar** (konaklamada 2+ seçenek varsa varsayılan) ve **Tablo** (bugünkü
+  kriter tablosu, öncelik seçimleri, "Neden…", olanaklar). Üstte her ikisinde "Senin için" özeti ve AI yorumu. Kart:
+  fotoğraf (yoksa simge), tek rozet (Önerim · Favori · En ucuz · En yüksek puan; yenecek bir şey yoksa rozet yok),
+  motorun puanı, ad, gecelik ve toplam fiyat, kaynak + puan (tek ölçekte) + semt, istediklerin (✓/✕), en büyük
+  artı-eksiler ("yalnız bunda"), paylaşılan gezide **Olmaz · Olur · Süper** (oy -1/1/2; eski 👍=Olur) ve kim ne
+  dedi, Seç / Ele. Sıralama: Önerim (kazanan önde), Fiyat, Puan, Konum; süzgeç: Ücretsiz iptal, Elenenler. 2–3 kart
+  işaretlenince "Tabloda yan yana gör". Plan'daki seçili konaklama kartında "Diğer N seçenek" yerine "Seçenekleri
+  karşılaştır (N)" (karta dokunmak hâlâ seçenekleri yerinde açar).
 - **Nereye bakılır** (0.35.11, `searchLinks.ts`): Uçuş'ta gidiş var, eve dönen uçuş yoksa "Dönüş bileti ara · Porto →
   İstanbul ↗" (Google Flights, gezinin son şehrinden, son gününde). Etkinlikler'in altında şehir başına
   "GetYourGuide: Porto etkinliklerini ara ↗". Yalnız arama linki; hiçbir şey kaydedilmez, affiliate kodu yok.

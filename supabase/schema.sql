@@ -39,7 +39,7 @@ create table if not exists trip_radar.shared_votes (
   trip_id uuid not null references trip_radar.shared_trips(id) on delete cascade,
   item_key text not null,                                -- seçeneğin iki cihazda aynı anahtarı (ilan/link)
   author text not null,
-  vote smallint not null check (vote between -1 and 1),
+  vote smallint not null check (vote between -1 and 2),
   note text,
   updated_at timestamptz not null default now(),
   primary key (trip_id, item_key, author)
@@ -161,7 +161,7 @@ begin
     limit least(greatest(coalesce(p_limit, 10), 1), 25);
 end $$;
 
--- Bir kişinin bir seçeneğe oyu: 1 👍, -1 👎, 0 oyu geri al.
+-- Bir kişinin bir seçeneğe oyu: 1 👍 (Olur), 2 🤩 (Süper, 0.37), -1 👎 (Olmaz), 0 oyu geri al.
 create or replace function public.set_vote(p_trip_id uuid, p_item_key text, p_author text, p_vote smallint, p_note text default null)
 returns timestamptz
 language plpgsql security definer set search_path = trip_radar, pg_temp as $$
@@ -171,7 +171,7 @@ begin
   if p_item_key is null or char_length(p_item_key) = 0 or char_length(p_item_key) > 300 then
     raise exception 'bad_item_key' using errcode = '22023';
   end if;
-  if p_vote is null or p_vote not between -1 and 1 then raise exception 'bad_vote' using errcode = '22023'; end if;
+  if p_vote is null or p_vote not between -1 and 2 then raise exception 'bad_vote' using errcode = '22023'; end if;
   if p_note is not null and char_length(p_note) > 500 then raise exception 'too_large' using errcode = '22023'; end if;
   if (select count(*) from shared_votes v where v.trip_id = p_trip_id) >= 5000 then
     raise exception 'trip_full' using errcode = '22023';

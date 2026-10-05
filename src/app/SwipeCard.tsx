@@ -344,9 +344,15 @@ function SettledCardFace({
               {bookAction(item)}
             </button>
           )}
-          {alternatives > 0 && (
-            <button className="pill-btn outline" aria-expanded={changing} onClick={onChange}>
-              {changing ? L("Kapat", "Close") : L(`Diğer ${alternatives} seçenek`, `${alternatives} other option${alternatives === 1 ? "" : "s"}`)}
+          {/* The options side by side (0.37): the Comparison window's board; a tap on the card still unfolds them here. */}
+          {alternatives > 0 && decision && (
+            <button className="pill-btn outline board-btn" onClick={() => env.onCompare(decision.key)}>
+              ▦ {L(`Seçenekleri karşılaştır (${alternatives + 1})`, `Compare the options (${alternatives + 1})`)}
+            </button>
+          )}
+          {changing && (
+            <button className="pill-btn outline" aria-expanded onClick={onChange}>
+              {L("Kapat", "Close")}
             </button>
           )}
           {/* A plan said in the chat (a taxi, a ticket to find) comes off the board in one tap. */}

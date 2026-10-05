@@ -1,10 +1,11 @@
-// Votes on a shared trip's options: each traveller 👍 / 👎 an option. They don't change the ranking;
-// only when everyone who voted said 👎 (and at least two did) the option steps back like "Ele".
+// Votes on a shared trip's options: each traveller 👍 / 👎 an option, or on the options board (0.37) one of
+// three: Olmaz (-1, 👎), Olur (1, 👍), Süper (2, 🤩). They don't change the ranking; only when everyone who
+// voted said 👎 (and at least two did) the option steps back like "Ele". The most "Süper" is the Favori.
 import { L } from "../i18n";
 import type { Item } from "../types";
 import { parseUrl } from "../url";
 
-export type VoteValue = -1 | 0 | 1;
+export type VoteValue = -1 | 0 | 1 | 2;
 
 export interface Vote {
   itemKey: string;
@@ -67,9 +68,11 @@ export interface VoteTally {
   allYes: boolean;
   /** How many different people voted. */
   voters: number;
+  /** How many said "Süper" (the board's Favori). */
+  loves: number;
 }
 
-export const VOTE_MARK: Record<Exclude<VoteValue, 0>, string> = { 1: "👍", [-1]: "👎" } as Record<Exclude<VoteValue, 0>, string>;
+export const VOTE_MARK: Record<Exclude<VoteValue, 0>, string> = { 1: "👍", 2: "🤩", [-1]: "👎" } as Record<Exclude<VoteValue, 0>, string>;
 
 export function tallyVotes(votes: Vote[], itemKey: string | null, me: string): VoteTally {
   const given = itemKey ? votes.filter((v) => v.itemKey === itemKey && v.vote !== 0) : [];
@@ -78,10 +81,11 @@ export function tallyVotes(votes: Vote[], itemKey: string | null, me: string): V
   const voters = new Set(given.map((v) => v.author.trim().toLocaleLowerCase("tr")));
   return {
     mine: mineRow?.vote ?? 0,
-    line: ordered.length ? ordered.map((v) => `${v.author} ${VOTE_MARK[v.vote as 1 | -1]}`).join(" · ") : null,
+    line: ordered.length ? ordered.map((v) => `${v.author} ${VOTE_MARK[v.vote as 1 | 2 | -1]}`).join(" · ") : null,
     allNo: voters.size >= 2 && given.every((v) => v.vote === -1),
-    allYes: voters.size >= 2 && given.every((v) => v.vote === 1),
+    allYes: voters.size >= 2 && given.every((v) => v.vote >= 1),
     voters: voters.size,
+    loves: given.filter((v) => v.vote === 2).length,
   };
 }
 

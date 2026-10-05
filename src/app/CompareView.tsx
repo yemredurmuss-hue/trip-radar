@@ -23,6 +23,7 @@ import { CATEGORY_LABELS, formatPrice } from "../lib/items";
 import { prosConsFor } from "../lib/proscons";
 import type { DecisionContext } from "../lib/decision";
 import { ProsConsView } from "./ProsConsView";
+import { OptionBoard } from "./board/OptionBoard";
 import type { ValueCard } from "../lib/value";
 import { updateTrip } from "./actions";
 import { AMENITIES, amenityLabel, type Amenity, type CriterionId, type Item, type PriorityLevel, type Trip } from "../lib/types";
@@ -42,11 +43,17 @@ interface Props {
 
 const MAX_COLUMNS = 5;
 
-/** Side-by-side comparison of one need: the numbers, the weights the user controls, and why. */
+/**
+ * Side-by-side comparison of one need: the numbers, the weights the user controls, and why. Two views of it
+ * (0.37): Kartlar, the options as a board of photo cards (stays with something to compare start there), and
+ * Tablo, the criteria side by side; cards ticked on the board open the table with just those.
+ */
 export function CompareView({ trip, decision, card, inferred, ctx, title, onClose, onOpenItem }: Props) {
   const d = decision;
   const single = d.status === "single";
-  const columns = d.options.filter((o) => !o.excluded).slice(0, MAX_COLUMNS);
+  const [view, setView] = useState<"cards" | "table">(() => (d.category === "stay" && d.options.filter((o) => !o.excluded).length >= 2 ? "cards" : "table"));
+  const [only, setOnly] = useState<string[] | null>(null);
+  const columns = d.options.filter((o) => !o.excluded && (!only || only.includes(o.item.id))).slice(0, MAX_COLUMNS);
   const excluded = d.options.filter((o) => o.excluded);
   // A wish nobody asked for isn't "missing information" (the ones asked for, from a note or set here, are).
   const unmeasured = (Object.keys(DEFAULT_LEVELS[d.category]) as CriterionId[]).filter(
@@ -104,6 +111,38 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
           <AiVerdict decision={d} />
         </div>
 
+        <div className="cmp-views" role="tablist" aria-label={L("Görünüm", "View")}>
+          <button type="button" role="tab" aria-selected={view === "cards"} className={view === "cards" ? "on" : ""} onClick={() => setView("cards")}>
+            ▦ {L("Kartlar", "Cards")}
+          </button>
+          <button type="button" role="tab" aria-selected={view === "table"} className={view === "table" ? "on" : ""} onClick={() => { setOnly(null); setView("table"); }}>
+            ☰ {L("Tablo", "Table")}
+          </button>
+          {view === "table" && only && (
+            <button type="button" className="link-btn" onClick={() => setOnly(null)}>
+              {L("Hepsini göster", "Show all")}
+            </button>
+          )}
+        </div>
+
+        {view === "cards" ? (
+          <OptionBoard
+            decision={d}
+            ctx={ctx}
+            onOpenItem={onOpenItem}
+            onChoose={(o) => void choose(o)}
+            onSideBySide={(ids) => {
+              setOnly(ids);
+              setView("table");
+            }}
+            onAdd={() => {
+              onClose();
+              // The chat box takes a link; on the page itself, Trip Radar's Save does.
+              setTimeout(() => (document.querySelector<HTMLTextAreaElement>(".chat-input textarea, textarea[placeholder^='Bir link'], textarea[placeholder^='Drop a link']") ?? document.querySelector<HTMLTextAreaElement>("textarea"))?.focus(), 50);
+            }}
+          />
+        ) : (
+        <>
         <div className="matrix-wrap">
           <table className="matrix">
             <thead>
@@ -248,7 +287,10 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
           )}
         </div>
 
-        {d.category === "stay" && (
+        </>
+        )}
+
+        {view === "table" && d.category === "stay" && (
           <div className="amenities">
             <h3>{L("İstediğin olanaklar", "Amenities you want")}</h3>
             <div className="chips">

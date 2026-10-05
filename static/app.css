@@ -233,6 +233,76 @@ body.popup { width: 320px; }
 .compare-modal { position: fixed; inset: 0; z-index: 12; background: rgba(0,0,0,.25); display: grid; place-items: start center; overflow-y: auto; padding: 4vh 16px; }
 .compare-card { position: relative; background: #fff; border-radius: 20px; width: min(1040px, 100%); padding: 24px 28px 28px; box-shadow: 0 24px 70px rgba(0,0,0,.2); }
 .compare-card h2 { font-size: 28px; margin: 2px 0 14px; letter-spacing: -.02em; }
+/* 0.37 the Comparison window's two views (Kartlar | Tablo) and the options board (otel panosu v2) */
+.compare-card:has(.bd) { width: min(1180px, 100%); }
+.cmp-views { display: flex; align-items: center; gap: 4px; margin: 16px 0 12px; }
+.cmp-views [role="tab"] { height: 32px; padding: 0 14px; border: 0; border-radius: 9px; background: #f1efeb; font: inherit; font-size: 13.5px; color: #6e6e73; cursor: pointer; }
+.cmp-views [role="tab"].on { background: #1d1d1f; color: #fff; font-weight: 600; }
+.cmp-views .link-btn { margin-left: 8px; }
+.bd-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; }
+.bd-chip { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #e3dfd8; background: #fff; font: inherit; font-size: 13px; color: #3a3a3c; cursor: pointer; }
+.bd-chip.f { border-style: dashed; }
+.bd-chip.on { border-style: solid; border-color: #1d1d1f; box-shadow: inset 0 0 0 1px #1d1d1f; color: #1d1d1f; font-weight: 600; }
+.bd-sep { width: 1px; height: 22px; background: #ece9e3; margin: 0 4px; }
+.bd-count { margin-left: auto; font-size: 13px; color: #6e6e73; }
+.bd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+.bd-card { position: relative; display: flex; flex-direction: column; min-width: 0; border-radius: 18px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.07), 0 4px 14px rgba(0,0,0,.04); }
+.bd-card.chosen { box-shadow: 0 0 0 2px #23998b, 0 6px 20px rgba(35,153,139,.16); }
+.bd-card.out { opacity: .55; }
+.bd-pic { position: relative; height: 150px; background: linear-gradient(135deg, #e9e0d2, #d7e3e6); }
+.bd-img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.bd-ph-ic { position: absolute; inset: 0; display: grid; place-items: center; color: #8b7f6c; }
+.bd-badge { position: absolute; left: 10px; top: 10px; padding: 4px 9px; border-radius: 8px; font-size: 11.5px; font-weight: 700; color: #fff; }
+.bd-b-pick { background: #5b3fd6; } .bd-b-fav { background: #c0256b; } .bd-b-cheap { background: #1f8f4e; } .bd-b-top { background: #d0592b; }
+.bd-tick { position: absolute; right: 10px; top: 10px; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 9px; background: rgba(255,255,255,.92); font: inherit; font-size: 15px; font-weight: 700; color: #1d1d1f; cursor: pointer; }
+.bd-tick.on { background: #1d1d1f; color: #fff; }
+.bd-score { position: absolute; left: 10px; bottom: -22px; width: 50px; height: 50px; border-radius: 50%; background: #fff; display: grid; place-items: center; align-content: center; line-height: 1; box-shadow: 0 2px 10px rgba(0,0,0,.14); }
+.bd-score b { font-size: 18px; color: #3a3a3c; } .bd-score.best b { color: #1556d6; } .bd-score.low b { color: #8e8e93; }
+.bd-score small { display: block; margin-top: 2px; font-size: 9.5px; color: #8e8e93; }
+.bd-body { display: flex; flex-direction: column; flex: 1; padding: 12px 14px 12px; }
+.bd-pic + .bd-body { padding-top: 14px; }
+.bd-row1 { display: flex; align-items: flex-start; gap: 10px; padding-left: 52px; min-height: 30px; }
+.bd-name { flex: 1; min-width: 0; padding: 0; border: 0; background: none; font: inherit; font-size: 15.5px; font-weight: 700; line-height: 1.25; color: #1d1d1f; text-align: left; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; cursor: pointer; }
+.bd-name:hover { text-decoration: underline; }
+.bd-price { flex: none; text-align: right; line-height: 1.15; } .bd-price b { display: block; font-size: 17px; } .bd-price small { font-size: 11.5px; color: #6e6e73; }
+.bd-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 6px; font-size: 12.5px; color: #6e6e73; }
+.bd-src { padding: 2px 7px; border-radius: 6px; background: #eef2ff; color: #2b4fc7; font-weight: 700; font-size: 11px; }
+.bd-star { color: #e0a43a; } .bd-meta b { color: #1d1d1f; }
+.bd-in { color: #13756a; font-weight: 700; }
+.bd-needs { margin: 10px 0 0; }
+.bd-pc { list-style: none; margin: 10px 0 0; padding: 0; font-size: 13px; line-height: 1.4; }
+.bd-pc li { display: flex; gap: 6px; margin-top: 3px; }
+.bd-pc .p { color: #1f8f4e; font-weight: 800; } .bd-pc .m { color: #c62828; font-weight: 800; }
+.bd-only { margin-left: 6px; padding: 0 5px; border-radius: 5px; background: #e8edff; color: #3b4fd6; font-style: normal; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+.bd-only.m { background: #ffe9e9; color: #c62828; }
+.bd-more { padding: 0; border: 0; background: none; font: inherit; font-size: 12.5px; font-weight: 600; color: #1556d6; cursor: pointer; }
+.bd-out { margin: 10px 0 0; font-size: 13px; color: #8a5a00; }
+.bd-foot { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 12px; }
+.bd-pc + .bd-foot, .bd-out + .bd-foot { margin-top: 12px; border-top: 1px solid #f1efeb; }
+.bd-react { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.bd-r { display: flex; flex-direction: column; align-items: center; gap: 1px; width: 48px; padding: 4px 0 3px; border-radius: 10px; border: 1px solid #ece8e1; background: #fdfcfa; font: inherit; font-size: 10.5px; color: #6e6e73; cursor: pointer; }
+.bd-r em { font-style: normal; font-size: 16px; line-height: 1; }
+.bd-r.me { border-color: #e9b54a; background: #fff6e2; color: #8a5a00; font-weight: 700; }
+.bd-who { display: flex; margin-left: 6px; }
+.bd-av { position: relative; width: 24px; height: 24px; margin-left: -6px; border-radius: 50%; border: 2px solid #fff; background: #c58a2e; color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 700; overflow: visible; }
+.bd-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.bd-av i { position: absolute; right: -6px; bottom: -6px; font-style: normal; font-size: 11px; }
+.bd-act { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.bd-ele { height: 30px; padding: 0 8px; border: 0; background: none; font: inherit; font-size: 12.5px; color: #6e6e73; cursor: pointer; }
+.bd-ele:hover { color: #c62828; }
+.bd-pick { height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: #1d1d1f; color: #fff; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; }
+.bd-pick.done { background: color-mix(in srgb, #23998b 14%, #fff); color: #13756a; }
+.bd-add { align-items: center; justify-content: center; gap: 4px; min-height: 280px; padding: 20px; border: 2px dashed #d8d2c8; background: transparent; box-shadow: none; font: inherit; font-size: 14px; color: #6e6e73; cursor: pointer; text-align: center; }
+.bd-add b { font-size: 30px; font-weight: 400; color: #b9b2a6; }
+.bd-add small { font-size: 12.5px; max-width: 220px; }
+.bd-add:hover { border-color: #b9b2a6; color: #1d1d1f; }
+.bd-bar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 12px 16px; border-radius: 16px; background: #1d1d1f; color: #fff; font-size: 14px; }
+.bd-bar button { margin-left: auto; height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: #fff; color: #1d1d1f; font: inherit; font-weight: 700; cursor: pointer; }
+.board-btn { color: #5b3fd6; border-color: color-mix(in srgb, #5b3fd6 45%, #fff) !important; }
+@media (max-width: 620px) {
+  .bd-grid { grid-template-columns: 1fr; }
+  .bd-count { width: 100%; margin-left: 0; }
+}
 .compare-card h3 { font-size: 15px; color: #3a3a3c; margin: 0 0 6px; }
 .compare-card .close { position: absolute; top: 18px; right: 18px; background: var(--soft); border: 0; border-radius: 50%; width: 36px; height: 36px; font-size: 18px; }
 .verdict-box { background: var(--accent-soft); border-radius: 14px; padding: 14px 16px; line-height: 1.5; }

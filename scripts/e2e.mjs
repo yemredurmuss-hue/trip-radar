@@ -636,6 +636,23 @@ try {
   // Comparison: numbers side by side, the weights the user controls, and why.
   await stayCard.getByRole("button", { name: "Karşılaştır →" }).click();
   const compare = app.getByRole("dialog", { name: "Karşılaştırma" });
+  // 0.37: stays open on the board (Kartlar): a card per option, its badge, score, price and biggest pros/cons.
+  await compare.locator(".cmp-views [role=tab].on", { hasText: "Kartlar" }).waitFor();
+  const boardCard = (name) => compare.locator(`.bd-card[aria-label="${name}"]`);
+  await boardCard("Jardim Stay").locator(".bd-badge", { hasText: "Önerim" }).waitFor();
+  assert.match(await boardCard("Jardim Stay").locator(".bd-score").innerText(), /^\d+\s*puan$/);
+  await boardCard("Jardim Stay").locator(".bd-needs .need.yes", { hasText: "Sessiz" }).waitFor(); // what they asked for, checked
+  assert.ok((await boardCard("Jardim Stay").locator(".bd-pc li").count()) >= 2, "its biggest pros and cons");
+  assert.ok((await compare.locator(".bd-card:not(.bd-add)").count()) >= 2, "every option a card");
+  await app.setViewportSize({ width: 1440, height: 1100 });
+  await app.screenshot({ path: `${out}/3c-board.png` });
+  await app.setViewportSize({ width: 1440, height: 900 });
+  // Two ticked → side by side in the table, just those; "Hepsini göster" brings the rest back.
+  await boardCard("Jardim Stay").locator(".bd-tick").click();
+  await boardCard("Casa Azul").locator(".bd-tick").click();
+  await compare.getByRole("button", { name: "Tabloda yan yana gör →" }).click();
+  assert.deepEqual(await compare.locator("thead .opt-name").allInnerTexts(), ["Jardim Stay", "Casa Azul"]);
+  await compare.getByRole("button", { name: "Hepsini göster" }).click();
   const winner = compare.locator("thead th.win .opt-name");
   assert.equal(await winner.innerText(), "Jardim Stay");
   await compare.getByText("Neden Jardim Stay?").waitFor();
@@ -673,7 +690,12 @@ try {
   const jardimRow = app.locator(".stay-block.chosen .settled-card", { hasText: "Jardim Stay" });
   await jardimRow.locator(".status-bar").getByText("rezerve edilmedi").waitFor();
   assert.equal(await app.locator(".stay-block.chosen .swipe-card").count(), 0);
-  await jardimRow.getByRole("button", { name: "Diğer 2 seçenek" }).waitFor();
+  // 0.37: the chosen stay's options open on the board ("Seçenekleri karşılaştır"); a tap on the card still unfolds them.
+  await jardimRow.getByRole("button", { name: "Seçenekleri karşılaştır (3)" }).click();
+  const fromPlan = app.getByRole("dialog", { name: "Karşılaştırma" });
+  await fromPlan.locator('.bd-card.chosen[aria-label="Jardim Stay"]').getByRole("button", { name: "✓ Seçili" }).waitFor();
+  await fromPlan.getByRole("button", { name: "Kapat" }).click();
+  await fromPlan.waitFor({ state: "detached" });
   await jardimRow.locator(".stc-main").click();
   await app.locator(".stay-block.chosen .swipe-card").first().waitFor();
   await card("Jardim Stay").getByRole("button", { name: "Planda ✓" }).waitFor();
@@ -1838,6 +1860,7 @@ try {
   // Two stays → the engine ranks them and the worker asks Gemini for the written analysis.
   await board.locator(".reco-line").getByRole("button", { name: "Karşılaştır →" }).click({ timeout: 20000 });
   let compare = board.getByRole("dialog", { name: "Karşılaştırma" });
+  await compare.getByRole("tab", { name: /Tablo/ }).click();
   await compare.getByText("Jardim Stay merkezde ve yorumları tutarlı", { exact: false }).waitFor({ timeout: 20000 });
   await compare.locator("tr", { hasText: "AI değerlendirmesi" }).waitFor(); // fresh analysis → counts, labelled
   await compare.locator(".cell-value", { hasText: "merkeze 5 dk yürüme" }).waitFor(); // geocoded, measured from the city centre
@@ -1854,6 +1877,7 @@ try {
   await board.locator('.hx-ptag.strong[title="Fiyat · Çok önemli"]').waitFor();
   await board.locator(".reco-line").getByRole("button", { name: "Karşılaştır →" }).click();
   compare = board.getByRole("dialog", { name: "Karşılaştırma" });
+  await compare.getByRole("tab", { name: /Tablo/ }).click();
   assert.equal(await compare.locator("tr", { hasText: "Fiyat" }).locator("select").inputValue(), "4");
   await compare.getByRole("button", { name: "Kapat" }).click();
   const chatCalls = geminiBodies.filter((b) => !b.body.generationConfig?.responseJsonSchema);
