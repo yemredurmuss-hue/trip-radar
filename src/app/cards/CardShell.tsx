@@ -52,6 +52,16 @@ export function CardMenu({ entries }: { entries: MenuEntry[] }) {
   );
 }
 
+/** The hover ×: deletes the card and its files at once, with the 8-second "Geri al" (no confirm). */
+export function DeleteX({ name, onDelete }: { name: string; onDelete: () => void }) {
+  return (
+    <button type="button" className="pk-x" aria-label={L(`${name}: sil`, `${name}: delete`)} title={L("Sil", "Delete")}
+      onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+      <UiIcon name="x" size={12} />
+    </button>
+  );
+}
+
 export interface Nav {
   index: number;
   total: number;
@@ -112,6 +122,8 @@ export function CardShell(props: {
   extraClass?: string;
   art?: ReactNode;
   docs?: ReactNode;
+  /** A record's card: the hover × left of •••. A transfer has none (nothing to delete). */
+  onDelete?: () => void;
   menu: MenuEntry[];
   open: boolean;
   onToggle: () => void;
@@ -144,6 +156,7 @@ export function CardShell(props: {
         {props.date && <span className="pk-date">· {props.date}</span>}
         <span className="pk-end">
           {props.docs}
+          {props.onDelete && <DeleteX name={props.ariaLabel} onDelete={props.onDelete} />}
           <CardMenu entries={props.menu} />
         </span>
       </div>

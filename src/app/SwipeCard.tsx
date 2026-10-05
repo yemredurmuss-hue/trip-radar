@@ -15,10 +15,29 @@ import { StatusBar } from "./Status";
 import { CategoryIcon } from "./Icons";
 import { datedLink, Details, Links, Price, ProsCons, ratingOf, SourceBadge, TradeLine } from "./cards/parts";
 import { DocAccess } from "./cards/DocAccess";
-import { Ring } from "./cards/CardShell";
+import { CardMenu, DeleteX, Ring, type MenuEntry } from "./cards/CardShell";
+import { menuFor } from "../lib/cardView";
 import { useCardEnv } from "./cards/PlanCard";
 import { useShare, VoteBar } from "./Share";
 import type { Decisions } from "./useDecisions";
+
+/** A stay's ••• (Düzenle for a plan, Ele for a saved option, Sil) and the hover × left of it, top right. */
+function StayTools({ item }: { item: Item }) {
+  const env = useCardEnv();
+  const menu: MenuEntry[] = menuFor(item).map((a) =>
+    a === "edit"
+      ? { label: L("Düzenle", "Edit"), run: () => env.edit(item) }
+      : a === "dismiss"
+        ? { label: L("Ele", "Rule out"), run: () => void setItemStatus(item, "dismissed") }
+        : { label: L("Sil", "Delete"), run: () => env.remove(item), danger: true },
+  );
+  return (
+    <span className="st-tools">
+      <DeleteX name={item.name} onDelete={() => env.remove(item)} />
+      <CardMenu entries={menu} />
+    </span>
+  );
+}
 
 /** A ticket is bought for a flight, a train or an activity; a stay, a rental car or a transfer is reserved. */
 const ticketed = (i: Item) => i.category === "flight" || i.category === "activity" || (i.category === "transport" && isTrip(i));
@@ -66,6 +85,7 @@ export function SwipeCard({ item, group, decision, decisions, ranked, onOpen, on
       aria-label={item.name}
       data-item-id={item.id}
     >
+      <StayTools item={item} />
       <div className={`opt-layout${facts.image ? "" : " no-photo"}`}>
         {/* The picture large, as on the site: its place, its score and the way to its page on it. */}
         <div className="opt-photo">
@@ -257,6 +277,7 @@ export function SettledCard({
   const tap = alternatives ? onChange! : toggle;
   return (
     <div className={`settled-card st-${booked ? "booked" : "planned"}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
+      <StayTools item={item} />
       <StatusBar
         standing={booked ? "booked" : "planned"}
         text={booked ? bookedWord(item) : planned ? L("Planlanıyor", "Planning") : L("Seçildi", "Chosen")}

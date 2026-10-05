@@ -1309,3 +1309,17 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
   .pk-foot { gap: 8px; }
   .pk-form { grid-template-columns: 1fr; }
 }
+
+/* ---------- 0.32: the hover × on every record's card (left of •••) ---------- */
+.pk-x { flex: none; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: rgba(0, 0, 0, .06); color: #6e6e73; display: grid; place-items: center; cursor: pointer; opacity: 0; transition: opacity .15s, background .15s, color .15s; }
+.pk-card:hover .pk-x, .pk-card:focus-within .pk-x, .swipe-card:hover .pk-x, .swipe-card:focus-within .pk-x, .settled-card:hover .pk-x, .settled-card:focus-within .pk-x { opacity: 1; }
+.pk-x:hover, .pk-x:focus-visible { background: #fdecea; color: #c62828; }
+/* Touch, or a narrow board: always there, faint. */
+@media (hover: none) { .pk-x { opacity: .55; } }
+@container panel (max-width: 620px) { .pk-x { opacity: .55; } }
+/* A stay's × and ••• in its top right corner. */
+.st-tools { --pk-ink: #1d1d1f; --pk-gray: #6e6e73; position: absolute; top: 10px; right: 10px; z-index: 3; display: flex; align-items: center; gap: 4px; }
+.st-tools .pk-ib { background: rgba(255, 255, 255, .85); }
+.swipe-card { position: relative; }
+.swipe-card .opt-text { padding-right: 64px; }
+.settled-card .st-tools { top: 6px; }

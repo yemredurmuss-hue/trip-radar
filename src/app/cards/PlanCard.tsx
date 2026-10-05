@@ -119,6 +119,7 @@ export function PlanCard({ item, group, decision, ranked, nav, onChange, changin
       extraClass={allNo ? "pk-all-no" : undefined}
       art={transport && kind !== "transport" ? <TransportArt mode={kind} /> : null}
       docs={<DocAccess item={item} docs={docs} />}
+      onDelete={() => env.remove(item)}
       menu={menu}
       open={open}
       onToggle={() => setOpen(!open)}

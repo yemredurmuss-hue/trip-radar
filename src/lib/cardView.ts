@@ -111,6 +111,20 @@ export function menuFor(item: Item): MenuAction[] {
   return out;
 }
 
+export type LegMenuAction = "hide" | "clear" | "delete";
+/**
+ * A transfer card's •••: "Gerek yok" (not for a change of city), "Planı temizle" once a way is said, and
+ * "Sil" for the transfer's own record (a taxi planned or booked for it). No hover ×: the card itself is
+ * derived from the stays, there's nothing to delete.
+ */
+export function legMenuFor(leg: Leg): LegMenuAction[] {
+  const out: LegMenuAction[] = [];
+  if (leg.kind !== "move") out.push("hide");
+  if (leg.choice) out.push("clear");
+  if (legItem(leg)) out.push("delete");
+  return out;
+}
+
 export interface End {
   city: string;
   sub: string | null;

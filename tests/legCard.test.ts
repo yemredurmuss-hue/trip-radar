@@ -1,6 +1,6 @@
 // tests/legCard.test.ts
 import { describe, expect, it } from "vitest";
-import { legCardView } from "../src/lib/cardView";
+import { legCardView, legMenuFor } from "../src/lib/cardView";
 import type { Leg } from "../src/lib/legs";
 import { plannedItem } from "../src/lib/planned";
 
@@ -44,5 +44,15 @@ describe("a transfer or a change of city as a card", () => {
   });
   it("saved options, nothing chosen: pick one in the details", () => {
     expect(state(legCardView(leg({ kind: "arrival", status: "options", options: [plannedItem({ kind: "transfer", date: "2026-10-08", end_date: null, time: null, from: null, to: "Otel", city: "Porto", title: null, booked: false, note: null }, "t1", "x2", 1)].map((i) => ({ ...i, status: "saved" as const })) })))).toEqual(["wait", "1 seçenek", "birini seç"]);
+  });
+});
+
+describe("a transfer card's menu", () => {
+  it("Gerek yok (not for a change of city), Planı temizle once said, Sil for its own record", () => {
+    expect(legMenuFor(leg())).toEqual([]);
+    expect(legMenuFor(leg({ choice: choice("flight") }))).toEqual(["clear"]);
+    const taxi = plannedItem({ kind: "taxi", date: "2026-10-08", end_date: null, time: null, from: "Havalimanı", to: "Otel", city: "Porto", title: null, booked: false, note: null }, "t1", "x9", 1);
+    expect(legMenuFor(leg({ kind: "arrival", options: [taxi], choice: choice("taxi") }))).toEqual(["hide", "clear", "delete"]);
+    expect(legMenuFor(leg({ kind: "arrival" }))).toEqual(["hide"]);
   });
 });

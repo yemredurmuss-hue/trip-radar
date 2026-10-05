@@ -71,6 +71,7 @@ const UI_ICONS = {
     </g>
   ),
   plus: g(<path d="M12 5v14M5 12h14" />, 2.3),
+  x: g(<path d="M7 7l10 10M17 7 7 17" />, 2.4),
 } as const;
 
 export function UiIcon({ name, size = 16 }: { name: keyof typeof UI_ICONS; size?: number }) {

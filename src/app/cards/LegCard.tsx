@@ -2,13 +2,14 @@
 // of travel drawn, the two ends, where it stands. Opened, the transfer's own body (LegRow's): notes,
 // saved options, how to go, "Ayarlandı", and a flight search when going by plane.
 import { useState } from "react";
-import { legCardView } from "../../lib/cardView";
+import { legCardView, legMenuFor } from "../../lib/cardView";
 import { L } from "../../lib/i18n";
 import { formatDateRange } from "../../lib/items";
-import { withLegChoice, type Leg } from "../../lib/legs";
+import { legItem, withLegChoice, type Leg } from "../../lib/legs";
 import { setHidden, updateTrip } from "../actions";
 import { kindLabel, LegBody } from "../LegRow";
 import { CardFoot, CardShell, type MenuEntry } from "./CardShell";
+import { DocAccess } from "./DocAccess";
 import { useCardEnv } from "./PlanCard";
 import { TransportArt } from "./Silhouettes";
 import { TransportCardBody } from "./TransportCard";
@@ -18,10 +19,15 @@ export function LegCard({ leg }: { leg: Leg }) {
   const [open, setOpen] = useState(false);
   const v = legCardView(leg);
   const book = () => void updateTrip(env.tripId, (t) => withLegChoice(t, leg.key, { booked: true }));
-  const menu: MenuEntry[] = [
-    ...(leg.kind !== "move" ? [{ label: L("Gerek yok", "Not needed"), run: () => void setHidden(env.tripId, `leg:${leg.key}`, true, kindLabel()[leg.kind]) }] : []),
-    ...(leg.choice ? [{ label: L("Planı temizle", "Clear the plan"), run: () => void updateTrip(env.tripId, (t) => withLegChoice(t, leg.key, null)) }] : []),
-  ];
+  // The transfer's own record (a taxi planned or booked for it): its files and its Sil are here.
+  const own = legItem(leg);
+  const menu: MenuEntry[] = legMenuFor(leg).map((a) =>
+    a === "hide"
+      ? { label: L("Gerek yok", "Not needed"), run: () => void setHidden(env.tripId, `leg:${leg.key}`, true, kindLabel()[leg.kind]) }
+      : a === "clear"
+        ? { label: L("Planı temizle", "Clear the plan"), run: () => void updateTrip(env.tripId, (t) => withLegChoice(t, leg.key, null)) }
+        : { label: L("Sil", "Delete"), run: () => own && env.remove(own), danger: true },
+  );
   return (
     <CardShell
       kind={v.kind}
@@ -32,6 +38,7 @@ export function LegCard({ leg }: { leg: Leg }) {
       domId={`leg-${leg.key}`}
       extraClass="pk-leg"
       art={v.kind !== "transport" ? <TransportArt mode={v.kind} /> : null}
+      docs={own ? <DocAccess item={own} docs={env.docsFor(own.id)} /> : undefined}
       menu={menu}
       open={open}
       onToggle={() => setOpen(!open)}
