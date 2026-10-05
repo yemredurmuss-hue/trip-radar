@@ -33,6 +33,19 @@ export interface JourneyStep {
   /** What opens under it: the travel or transfer entry; for a stay, its place in the city block. */
   entry: TimelineEntry | null;
   stayKey: string | null;
+  /** A check-in or check-out: the stay's name, its nights and its own rule (the day's line names it). */
+  stay?: StayFacts | null;
+}
+
+/** What a check-in or check-out line says of its stay. */
+export interface StayFacts {
+  /** The stay's name as saved, or "Porto konaklaması" while none is chosen. */
+  name: string;
+  /** False while no place is chosen for these nights. */
+  placed: boolean;
+  nights: number;
+  /** The time its page states (check-in from, check-out until); null when only the usual one is known. */
+  rule: string | null;
 }
 
 type JourneySection = Extract<TimelineSection, { kind: "journey" }>;
@@ -89,6 +102,11 @@ function stayStanding(b: StayBlock): { standing: StepStanding; status: string } 
 
 const stayKey = (b: StayBlock) => `stay:${b.range.start}`;
 
+function stayFacts(b: StayBlock, rule: string | null): StayFacts {
+  const item = stayItem(b);
+  return { name: item?.name ?? (b.city ? L(`${b.city} konaklaması`, `${b.city} stay`) : W.stay), placed: !!item, nights: b.nights, rule: item ? rule : null };
+}
+
 function checkout(j: Journey, b: StayBlock, listings: Map<string, Listing> | undefined): JourneyStep {
   const item = stayItem(b);
   const t = stayTimes(item, listings);
@@ -105,6 +123,7 @@ function checkout(j: Journey, b: StayBlock, listings: Map<string, Listing> | und
     notes: [],
     entry: null,
     stayKey: stayKey(b),
+    stay: stayFacts(b, t.stated.checkOut ? t.checkOut : null),
   };
 }
 
@@ -128,6 +147,7 @@ function checkin(j: Journey, b: StayBlock, landing: string | null, listings: Map
     notes: [],
     entry: null,
     stayKey: stayKey(b),
+    stay: stayFacts(b, t.stated.checkIn ? t.checkIn : null),
   };
 }
 
@@ -279,6 +299,10 @@ export interface DayRow {
   /** A car rented from this day: its card. */
   rental: RentalEntry | null;
   stayKey: string | null;
+  /** A check-in or check-out: its stay (name, nights, rule). */
+  stay?: StayFacts | null;
+  /** A connection between two flights, shown between them (dayRowTitle.ts withLayovers): where and how long. */
+  layover?: { airport: string; city: string | null; minutes: number } | null;
 }
 
 type DayEntry = Extract<TimelineEntry, { kind: "day" }>;
@@ -315,7 +339,7 @@ function travelState(e: Extract<TimelineEntry, { kind: "travel" }>): RowState {
 
 function fromStep(st: JourneyStep): DayRow {
   const base = { key: st.key, time: st.time, estimated: st.estimated, hint: st.hint, otherDay: st.otherDay, title: st.title, sub: st.sub, status: st.status, notes: st.notes };
-  if (st.kind === "checkout" || st.kind === "checkin") return row({ ...base, kind: "info", state: "info", stayKey: st.stayKey });
+  if (st.kind === "checkout" || st.kind === "checkin") return row({ ...base, kind: "info", state: "info", stayKey: st.stayKey, stay: st.stay ?? null });
   if (st.entry?.kind === "leg") return row({ ...base, kind: "leg", state: legState(st.entry.leg), entry: st.entry, leg: st.entry.leg, line: legLine(st.entry.leg) });
   const e = st.entry as Extract<TimelineEntry, { kind: "travel" }>;
   const done = e.travel?.settled ?? null;
@@ -400,7 +424,7 @@ function rentalRows(date: string, rentals: RentalEntry[]): { start: DayRow[]; en
       start.push(row({ key: r.key, kind: "rental", state, status, title: L("Araç kiralama", "Car rental"), sub: name, time: clockOf(lead?.flight?.departure), rental: r }));
     }
     if (r.end === date && r.end !== r.date) {
-      end.push(row({ key: `${r.key}:return`, kind: "info", state: "info", title: L("Araç iade", "Car return"), sub: name, time: clockOf(lead?.flight?.arrival) }));
+      end.push(row({ key: `${r.key}:return`, kind: "info", state: "info", title: L("Araç iade", "Car return"), sub: name, time: clockOf(lead?.flight?.arrival), rental: r }));
     }
   }
   return { start, end };
