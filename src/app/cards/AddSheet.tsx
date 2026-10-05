@@ -60,10 +60,15 @@ export function AddSheet({ tripId, at, editing, currency, onClose }: { tripId: s
     e.preventDefault();
     if (!tpl || !form || saving) return;
     setSaving(true);
-    const out = editing ? await saveEdit(editing, tpl, form) : await addFromTemplate(tripId, tpl, form, newId());
-    setSaving(false);
-    if (typeof out === "string") return setError(out);
-    onClose();
+    try {
+      const out = editing ? await saveEdit(editing, tpl, form) : await addFromTemplate(tripId, tpl, form, newId());
+      if (typeof out === "string") return setError(out);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
   }
   const field = (k: keyof FormValues, label: string, type = "text") => (
     <label className="pk-field">
