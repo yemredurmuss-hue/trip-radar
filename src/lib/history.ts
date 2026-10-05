@@ -21,6 +21,8 @@ export type HistoryAction =
   | { kind: "restore-trash"; id: string }
   | { kind: "restore-dismissed"; item: Item }
   | { kind: "unhide"; key: string; label: string }
+  /** A trip setting changed on this computer (the money, who goes, the language): its line's undo (eventUndo.ts). */
+  | { kind: "undo-event"; messageId: string }
   | { kind: "show"; itemId: string };
 
 export interface HistoryRow {
@@ -276,8 +278,8 @@ export function buildHistory(input: HistoryInput): HistoryRow[] {
       parts: null,
       text: added ? added[1] : deleted ? deleted[1] : (hidden ?? m.text.replace(/^[✓↻]\s*/, "")),
       how: added ? [sharer ? L("paylaşılan kayıt", "shared save") : (added[2] ?? "")].filter(Boolean) : [],
-      action: item ? { kind: "show", itemId: item.id } : null,
-      undone: null,
+      action: m.undo && !m.undoneAt ? { kind: "undo-event", messageId: m.id } : item ? { kind: "show", itemId: item.id } : null,
+      undone: m.undoneAt ? { by: meName, at: m.undoneAt } : null,
       trash: false,
       source: "event",
     });

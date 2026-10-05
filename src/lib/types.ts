@@ -135,13 +135,40 @@ export interface Geo {
   source: "page" | "geocoded";
 }
 
+export interface Travellers {
+  /** Names as typed, each once (case aside). */
+  names: string[];
+  /** How many go, when it's more than the names (null: as many as the names, or the saves say). */
+  count?: number | null;
+}
+
 export interface Trip {
   id: string;
   title: string;
   /** Dates the user confirmed. Without them the board shows the range derived from items as an estimate. */
   confirmedDates: { start: string; end: string } | null;
   /** What they'd like to spend (`amount`), and what they won't go over (`ceiling`), when they said one. */
-  budget: { amount: number; currency: string; ceiling?: number | null } | null;
+  budget: {
+    amount: number;
+    currency: string;
+    ceiling?: number | null;
+    /**
+     * The budget as the traveller said it, when the board shows it converted into another money (0.37,
+     * tripSettings.withCurrency): every later conversion starts from this, so switching back and forth never
+     * drifts. Gone when a new amount is said.
+     */
+    source?: { amount: number; currency: string; ceiling?: number | null };
+  } | null;
+  /**
+   * The money the board shows the trip in, when the traveller picked one ("bütçeyi euro göster") and there's no
+   * budget to carry it: a budget's own currency wins (they're kept the same when it's changed). This computer only.
+   */
+  currency?: string | null;
+  /**
+   * Who goes, said without sharing (0.37): the names typed in the hero ("Sabine") or said in the chat, never "me"
+   * (that's the profile or sharing name), and how many when more go than are named. Shared with the trip's settings.
+   */
+  travellers?: Travellers;
   heroImage: string | null;
   /** Sample data; never receives real captures. */
   demo?: boolean;
@@ -380,7 +407,21 @@ export interface ChatMessage {
   /** Provider whose native format `content` is in. Missing on rows written before Gemini support = Claude. */
   provider?: "gemini" | "anthropic";
   createdAt: number;
+  /** A history line for a trip setting changed on this computer (0.37): what Geçmiş's "Geri al" puts back. */
+  undo?: EventUndo;
+  /** Taken back (from Geçmiş or the board's "Geri al"): when. Geçmiş shows it "geri alındı". */
+  undoneAt?: number;
+  /** An assistant reply saying something changed while no tool changed anything (claims.ts): a note shows under it. */
+  unbacked?: boolean;
 }
+
+/**
+ * How a history line is taken back: these trip fields to their values before (only while they still hold the
+ * values after), or the board's language to the one before.
+ */
+export type EventUndo =
+  | { kind: "fields"; fields: (keyof Trip)[]; before: Partial<Trip>; after: Partial<Trip> }
+  | { kind: "lang"; prev: "tr" | "en" };
 
 export interface Settings {
   provider: "gemini" | "anthropic";

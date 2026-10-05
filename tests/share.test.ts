@@ -210,6 +210,7 @@ describe("trip settings: last writer wins", () => {
     categoryPriorities: null,
     wantedAmenities: null,
     requirements: null,
+    travellers: null,
   });
   const at = (iso: string) => Date.parse(iso);
 

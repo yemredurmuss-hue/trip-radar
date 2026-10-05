@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { sendMessage } from "../lib/assistant";
-import { L } from "../lib/i18n";
+import { L, lang } from "../lib/i18n";
+import { reloadIfLangChanged } from "./langSwitch";
+import { noChangeNote } from "../lib/claims";
 import { describeError } from "../lib/llm";
 import { shownReply } from "../lib/replyText";
 import type { Capture, ChatMessage, Item, Trip } from "../lib/types";
@@ -53,12 +55,18 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures }: Pro
     }
     setText("");
     setBusy(true);
+    const langBefore = lang();
+    let failed = false;
     try {
       await sendMessage(trip.id, input);
     } catch (e) {
+      failed = true;
       setError(describeError(e));
     } finally {
       setBusy(false);
+      // "Türkçeye geç": the reply is saved; the board opens again in the new language, with its "Geri al". Not after
+      // an error: the error stays on screen (the language switched is there on the next load all the same).
+      if (!failed) reloadIfLangChanged(trip.id, langBefore);
     }
   }
 
@@ -128,6 +136,8 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures }: Pro
             <div key={m.id} className={`msg-${m.role}`}>
               {/* A reply stored before the filter (the raw trip state as the answer) is cleaned here too. */}
               <RichText text={m.role === "assistant" ? shownReply(m.text) : m.text} />
+              {/* A change said with no tool that made it (claims.ts): on screen only, never in the model's history. */}
+              {m.role === "assistant" && m.unbacked && <p className="msg-note">{noChangeNote()}</p>}
             </div>
           );
           return row.file ? (
