@@ -278,10 +278,10 @@ try {
   // The cities big, the airport codes and hours small; the landing day only because it's the next day.
   assert.match(await home.locator(".pk-mid").innerText(), /Lizbon\s*LIS · 19:40[\s\S]*4 sa 55 dk · direkt[\s\S]*İstanbul\s*IST · 15 Ekim · 01:35/);
   await home.locator(".pk-body").click();
-  // Opening a card shows its details on the card.
-  await douro.locator(".pk-body").click();
+  // Opening a card shows its details on the card (0.33: a tap on its picture; its title is edited where it stands).
+  await douro.locator(".pk-vis").click();
   await douro.locator(".pk-detail").getByRole("button", { name: "Tüm detaylar" }).waitFor();
-  await douro.locator(".pk-body").click();
+  await douro.locator(".pk-vis").click();
   await app.locator(".trip-line").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/3-board.png` });
 
@@ -472,15 +472,20 @@ try {
   const sheet = app.getByRole("dialog", { name: "Ne eklemek istersin?" });
   await sheet.getByRole("button", { name: "Otobüs", exact: true }).waitFor();
   await app.screenshot({ path: `${out}/4d-add-sheet.png` });
+  // 0.33: a tile adds at once, no form; the card opens with its first empty field ready, Tab goes on.
   await sheet.getByRole("button", { name: "Otobüs", exact: true }).click();
-  await sheet.getByLabel("Nereden").fill("Lizbon");
-  await sheet.getByLabel("Nereye").fill("Lagos");
-  await sheet.getByLabel("Tarih").fill("2026-10-13");
-  await sheet.getByLabel("Saat").fill("10:00");
-  await sheet.getByLabel("Fiyat").fill("18");
-  await sheet.getByRole("button", { name: "Kaydet" }).click();
   await sheet.waitFor({ state: "detached" });
+  await app.locator(".pk-undo", { hasText: "Otobüs eklendi" }).waitFor();
+  const box = (label) => app.locator(`.pk-ed-input[aria-label="${label}"]`);
+  for (const [label, value] of [["Nereden", "Lizbon"], ["Nereye", "Lagos"], ["Tarih", "2026-10-13"], ["Saat", "10:00"]]) {
+    await box(label).fill(value);
+    await box(label).press("Tab");
+  }
+  await box("Fiyat").fill("18");
+  await box("Fiyat").press("Enter");
+  await box("Fiyat").waitFor({ state: "detached" });
   const bus = pk("Otobüs · Lizbon → Lagos");
+  await bus.locator(".pk-price", { hasText: "18" }).waitFor();
   await bus.locator(".pk-kind", { hasText: "Otobüs" }).waitFor();
   await bus.locator(".pk-foot", { hasText: "Planlanıyor" }).waitFor();
   // The panel scrolls inside the page, so a tall window shows the whole plan in one picture.
@@ -566,11 +571,15 @@ try {
   await app.locator(".it-day.empty").getByRole("button", { name: "10 Ekim: bu güne ekle" }).click();
   const addSheet = app.getByRole("dialog", { name: "Ne eklemek istersin?" });
   assert.equal(await addSheet.locator("header span").innerText(), "Porto · 10 Ekim");
+  // 0.33: added at once; it needs no booking, so it goes to Fikirler and the tab stays: "Göster" opens it there, its title ready.
   await addSheet.getByRole("button", { name: "Yapılacak", exact: true }).click();
-  assert.equal(await addSheet.getByLabel("Şehir (isteğe bağlı)").inputValue(), "Porto");
-  await addSheet.getByLabel("Ad").fill("Bolhão pazarı");
-  await addSheet.getByRole("button", { name: "Kaydet" }).click();
   await addSheet.waitFor({ state: "detached" });
+  await tab("Günlük akış").and(app.locator('[aria-selected="true"]')).waitFor();
+  await app.locator(".pk-undo", { hasText: "Yapılacak Fikirler'e eklendi" }).getByRole("button", { name: "Göster" }).click();
+  await box("Ad").fill("Bolhão pazarı");
+  await box("Ad").press("Enter");
+  await app.locator('.fk .fk-city-block', { hasText: "Porto" }).locator('.fk-row[aria-label="Bolhão pazarı"]').waitFor();
+  await tab("Günlük akış").click();
   await day(3).locator(".it-row.idea", { hasText: "Bolhão pazarı" }).waitFor();
   // Fikirler: the quick line, the filters, a day for a restaurant (with its meal), done, moved to bookings.
   await tab("Fikirler").click();
@@ -660,6 +669,107 @@ try {
   }
   await ref032.close();
   console.log("✓ 0.32: flight stays a flight after a taxi transfer; × + undo on a card and a stay; + with the right city and day everywhere; Fikirler: quick line, filter, day + meal, done, moved to bookings, thin line in the day");
+
+  // 4m. 0.33: a tile adds at once and the card opens for editing; Enter saves, Esc leaves it, Geri al takes it away;
+  // a saved page's card corrected where it stands ("sayfadaki: … · geri al"); a transfer's ends short; × on night blocks.
+  await tab("Plan").click();
+  // "+" after the flight in → Otobüs: "Porto → ?", where it goes ready; Esc leaves it as it is; "Geri al" takes it away.
+  await plus(app.locator("li.tl-entry.tl-travel").first()).click();
+  await app.getByRole("dialog", { name: "Ne eklemek istersin?" }).getByRole("button", { name: "Otobüs", exact: true }).click();
+  await box("Nereye").waitFor();
+  const portoBus = pk("Otobüs · Porto → ?");
+  await portoBus.waitFor();
+  await box("Nereye").fill("Braga");
+  await box("Nereye").press("Escape");
+  await box("Nereye").waitFor({ state: "detached" });
+  assert.match(await portoBus.locator(".pk-mid").innerText(), /Porto[\s\S]*Saat ekle[\s\S]*Nereye/);
+  assert.match(await portoBus.locator(".pk-foot").innerText(), /Fiyat ekle/);
+  await app.locator(".pk-undo", { hasText: "Otobüs eklendi" }).getByRole("button", { name: "Geri al" }).click();
+  await portoBus.waitFor({ state: "detached" });
+  // "+" at Porto's head → Otel: one night of its own (a stay apart), its name ready; the check-in moved keeps one night.
+  await plus(app.locator('.city-block[aria-label="Porto"] .tl-insert')).click();
+  await app.getByRole("dialog", { name: "Ne eklemek istersin?" }).getByRole("button", { name: "Otel", exact: true }).click();
+  await box("Ad").fill("Casa do Rio");
+  await box("Ad").press("Enter");
+  const apart = app.locator(".stay-open", { hasText: "Casa do Rio" });
+  await apart.waitFor();
+  assert.equal(await apart.evaluate((el) => el.closest(".stay-block").id), "block-2026-10-08");
+  await app.setViewportSize({ width: 1440, height: 1400 });
+  await apart.getByRole("button", { name: "Fiyat: düzenle" }).click();
+  await box("Fiyat").fill("95");
+  await app.screenshot({ path: `${out}/4m-inline-edit.png` });
+  await box("Fiyat").press("Enter");
+  await apart.getByText("€95").waitFor();
+  await apart.getByRole("button", { name: "Giriş: düzenle" }).click();
+  await box("Giriş").fill("2026-10-09");
+  await box("Giriş").press("Enter");
+  await app.locator("#block-2026-10-09 .stay-open", { hasText: "Casa do Rio" }).waitFor();
+  assert.match(await apart.innerText(), /9 Ekim – 10 Ekim · 1 gece/);
+  // × on the stay apart: gone (its night goes back to Jardim Stay), then back with "Geri al", then gone for good.
+  await apart.hover();
+  await apart.getByRole("button", { name: "Casa do Rio: sil" }).click();
+  await apart.waitFor({ state: "detached" });
+  await app.locator(".pk-undo", { hasText: "Casa do Rio silindi" }).getByRole("button", { name: "Geri al" }).click();
+  await apart.waitFor();
+  await apart.hover();
+  await apart.getByRole("button", { name: "Casa do Rio: sil" }).click();
+  await apart.waitFor({ state: "detached" });
+  // A saved page corrected where it stands: the title, then the page's value back from the hint.
+  const douroId = await douroCard().getAttribute("data-item-id");
+  const douroPage = app.locator(`.pk-card[data-item-id="${douroId}"]`);
+  await douroPage.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await douroPage.locator("h3").getByRole("button", { name: "Ad: düzenle" }).click();
+  await box("Ad").fill("Douro gün batımı turu");
+  await box("Ad").press("Enter");
+  await douroPage.locator("h3", { hasText: "Douro gün batımı turu" }).waitFor();
+  await douroPage.locator("h3 .pk-ed").hover();
+  const hint = douroPage.locator("h3 .pk-ed-hint");
+  assert.match(await hint.innerText(), /sayfadaki: Douro tekne turu · geri al/);
+  await app.screenshot({ path: `${out}/4n-page-correction.png` });
+  await hint.getByRole("button", { name: "geri al" }).click();
+  await douroPage.locator("h3", { hasText: "Douro tekne turu" }).waitFor();
+  // A transfer's ends, short: "Porto Havalimanı" over OPO, "Booking.com" over the stay's name.
+  assert.match(await arrivalLeg.locator(".pk-mid").innerText(), /Porto Havalimanı\s*OPO[\s\S]*Booking\.com\s*Jardim Stay/);
+  // Empty nights (the trip a night longer): × hides them ("Gerek yok"), Gizlenenler brings them back.
+  const setEnd = (end) =>
+    app.evaluate(async (end) => {
+      const request = indexedDB.open("trip-radar");
+      const database = await new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const tx = database.transaction("trips", "readwrite");
+      const store = tx.objectStore("trips");
+      const all = await new Promise((resolve) => (store.getAll().onsuccess = (e) => resolve(e.target.result)));
+      const trip = all.find((t) => t.title === "Portekiz (örnek)");
+      store.put({ ...trip, confirmedDates: { ...trip.confirmedDates, end } });
+      await new Promise((resolve) => (tx.oncomplete = resolve));
+      new BroadcastChannel("trip-radar").postMessage("changed");
+    }, end);
+  await setEnd("2026-10-15");
+  const extra = app.locator("#block-2026-10-14 .stay-open");
+  await extra.waitFor();
+  await extra.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await app.screenshot({ path: `${out}/4o-empty-nights.png` });
+  await app.setViewportSize({ width: 560, height: 1400 });
+  await extra.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await app.mouse.move(0, 0);
+  assert.equal(await opacity(extra.locator(".stay-x")), "0.55");
+  await app.screenshot({ path: `${out}/4p-empty-nights-narrow.png` });
+  await app.setViewportSize({ width: 1440, height: 1400 });
+  await extra.hover();
+  await extra.getByRole("button", { name: /: gerek yok$/ }).click();
+  await app.locator(".pk-undo", { hasText: "gizlendi" }).waitFor();
+  await app.locator("#block-2026-10-14.skipped").waitFor();
+  await app.getByRole("button", { name: /Gizlenenler/ }).click();
+  const nightsRow = app.locator(".hidden-row", { hasText: "Geceler" });
+  assert.match(await nightsRow.innerText(), /14–15 Ekim/);
+  await nightsRow.getByRole("button", { name: "Geri getir" }).click();
+  await app.locator("#block-2026-10-14 .stay-open").waitFor();
+  await setEnd("2026-10-14");
+  await app.locator("#block-2026-10-14").waitFor({ state: "detached" });
+  await app.setViewportSize({ width: 1440, height: 900 });
+  console.log("✓ 0.33: a tile adds at once and opens for editing (Tab, Enter, Esc, Geri al); a stay apart edited, moved and deleted with ×; a saved page corrected and taken back; short transfer ends; empty nights hidden and brought back");
   console.log("✓ board: demo trip, decision labels, comparison with priorities, drawer, status change and chat event");
 
   // 5. Settings dialog.
