@@ -39,7 +39,7 @@ import { isIdea } from "../lib/booking";
 import { findTarget, show, TodoList } from "./Progress";
 import { TripFacts } from "./TripFacts";
 import { cityRanges, countryCodesOf, countryNames, sectionTally, tallySection } from "../lib/heroInfo";
-import { acceptParents, answersAny, mainPlaceOf, mainPlaces, placesKey, placesPrompt, placesSystemPrompt, resolveParents } from "../lib/destinations";
+import { answerParents, answersAny, mainPlaceOf, mainPlaces, placesKey, placesPrompt, placesSystemPrompt, resolveParents } from "../lib/destinations";
 import { acceptNoteLabel, type Pref } from "../lib/preferences";
 import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../lib/tripStyle";
 import { intentEntries } from "./IntentCard";
@@ -214,11 +214,13 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           placesPrompt(cityNames, countryOf),
           z.object({ places: z.array(z.object({ place: z.string(), parent: z.string().nullable() })) }),
         );
-        const accepted = acceptParents(cityNames, out.places);
+        // What it folded, and "" for a place it kept on purpose (null), so the table can't fold that one.
+        const accepted = answerParents(cityNames, out.places);
         // The places changed while it answered: not written over; asked again if this set comes back.
         if (placesNow.current !== asked) return void askedParents.current.delete(asked);
-        // An answer about none of the trip's places isn't one: not kept, so it's asked again next time.
-        if (!answersAny(cityNames, out.places)) throw new Error("the answer names none of the places");
+        // An empty list is an answer (nothing to fold) and is kept; a list about none of the trip's places is a
+        // misread one ("Gaula (Portekiz)" before 0.35.6): not kept, so it's asked again the next time the board opens.
+        if (out.places.length && !answersAny(cityNames, out.places)) throw new Error("the answer names none of the places");
         setAnswered({ at: asked, parents: accepted });
         await updateTrip(trip.id, (t) => ({ ...t, placeParents: { key: placesFor, parents: accepted } }), { touch: false });
       } catch (error) {

@@ -242,8 +242,13 @@ export function fallbackParents(cities: string[], items: Item[]): Record<string,
 // of the trip's places, so fallbackParents had nothing to fold into. A short table of destinations we're sure of
 // does it without the model. Only small localities are members: a real city stays its own stop (Palermo and
 // Catania, Heraklion and Chania, Cagliari, Faro). An island's capital is named by its island (Palma → Mallorca,
-// as Funchal → Madeira). Porto Santo is its own island, not Madeira's. A generic name (Santa Cruz, São Vicente)
-// only counts in its country.
+// as Funchal → Madeira). Porto Santo is its own island, not Madeira's.
+//
+// A table can't tell two places of one name apart, so a member needs evidence (review of 0.35.5): a stay that
+// names the region itself in its address or area ("Gaula, Madeira, Portugal"), or, for a name found nowhere
+// else, a save of the trip in the region's country. A name that is also a town elsewhere in that country or
+// abroad (Santa Cruz, Calheta, Lagos, San Antonio, Kuta…: AMBIGUOUS) needs the region named. A stay whose own
+// country is another never folds. A plan said in the chat has no country: alone, it isn't evidence.
 
 interface Region {
   tr: string;
@@ -326,6 +331,21 @@ const REGIONS: Region[] = [
   },
 ];
 
+/** Members that are also towns elsewhere (in the region's own country or abroad): only with the region named. */
+const AMBIGUOUS = new Set(
+  [
+    "Santa Cruz", "Calheta", "Santana", "São Vicente", "Camacha", "Seixal", "Prazeres", "Ponta do Sol",
+    "Nordeste", "Capelas", "Mosteiros",
+    "Lagos", "Monte Gordo", "Galé",
+    "San Antonio", "Sant Antoni", "San José", "Talamanca", "Inca", "El Arenal", "Punta Prima", "Son Bou",
+    "La Laguna", "Arona", "San Agustín", "San Bartolomé", "La Oliva",
+    "Pyrgos", "Akrotiri", "Emporio", "Kamari", "Messaria", "Finikia", "Agios Ioannis", "Agios Sostis", "Paradise Beach", "Super Paradise",
+    "Agios Nikolaos", "Agia Marina", "Agia Pelagia", "Platanias", "Analipsi", "Kalyves",
+    "Chia", "Bosa", "Teulada", "San Teodoro",
+    "Kuta", "Amed", "Sidemen",
+  ].map((n) => plain(n)),
+);
+
 /** Plain name → its region, and whether it is the region itself, its capital or a member. */
 let regionIndex: Map<string, { region: Region; as: "region" | "capital" | "member" }> | null = null;
 function regionNamed(name: string | null | undefined): { region: Region; as: "region" | "capital" | "member" } | null {
@@ -373,15 +393,30 @@ export function tableParents(cities: string[], items: Item[]): Record<string, st
     const key = cityKeyOf(c);
     if (key && !named.has(key)) named.set(key, c.trim());
   }
+  // The countries the trip's saves are in (a chat plan has none).
+  const tripCountries = new Set(items.filter((i) => i.status !== "dismissed" && i.countryCode).map((i) => i.countryCode!.toUpperCase()));
   const found: Record<string, string> = {};
   const capitals = new Set<string>();
   for (const [key, city] of named) {
     const stays = items.filter((i) => i.category === "stay" && i.status !== "dismissed" && cityKeyOf(i.city) === key);
-    const inCountry = (r: Region) => stays.every((s) => !s.countryCode || s.countryCode.toUpperCase() === r.country);
+    // A stay of this place in another country: never in this region.
+    const elsewhere = (r: Region) => stays.some((s) => s.countryCode && s.countryCode.toUpperCase() !== r.country);
     const parts = stays.flatMap((i) => [i.location?.area ?? "", ...(i.location?.address ?? "").split(/[,·|]/)]);
+    // The region itself, written in an address or an area ("Gaula, Madeira, Portugal"), or on a campervan's page.
+    const regionsNamed = new Set<Region>([
+      ...[city, ...parts].map(regionNamed).flatMap((h) => (h?.as === "region" ? [h.region] : [])),
+      ...stays.filter(isMobileStay).flatMap((i) => regionsInText(`${i.name} ${i.summary} ${i.optionDetail ?? ""}`)),
+    ]);
+    const counts = (h: { region: Region; as: "region" | "capital" | "member" }, name: string) => {
+      const r = h.region;
+      if (elsewhere(r)) return false;
+      if (h.as === "region" || regionsNamed.has(r)) return true;
+      if (h.as === "capital") return knownPlace(cityKeyOf(name)) || tripCountries.has(r.country);
+      return !AMBIGUOUS.has(plain(name.replace(/\b\d[\d-]*\b/g, " "))) && tripCountries.has(r.country);
+    };
     const hit =
-      [city, ...parts].map(regionNamed).find((h) => h && inCountry(h.region)) ??
-      stays.filter(isMobileStay).flatMap((i) => regionsInText(`${i.name} ${i.summary} ${i.optionDetail ?? ""}`)).filter(inCountry).map((region) => ({ region, as: "region" as const }))[0] ??
+      [city, ...parts].map((name) => ({ name, h: regionNamed(name) })).find(({ name, h }) => h && counts(h, name))?.h ??
+      [...regionsNamed].filter((r) => !elsewhere(r)).map((region) => ({ region, as: "region" as const }))[0] ??
       null;
     if (!hit) continue;
     found[key] = regionName(hit.region);
@@ -394,13 +429,29 @@ export function tableParents(cities: string[], items: Item[]): Record<string, st
 }
 
 /**
+ * The model's answer as it is kept on the trip: the parents it gave (checked), and "" for a place it answered
+ * with null on purpose ("not inside anything"), so the table can't fold what the model chose to keep.
+ */
+export function answerParents(cities: string[], answer: { place: string; parent: string | null }[]): Record<string, string> {
+  const keys = new Set(cities.map(cityKeyOf).filter(Boolean));
+  const out = acceptParents(cities, answer);
+  for (const a of answer) {
+    const key = answeredKey(a.place, keys);
+    if (key && keys.has(key) && !a.parent?.trim() && !(key in out)) out[key] = "";
+  }
+  return out;
+}
+
+/**
  * The hero's parents: the model's answer when there is one (checked), else the guess from the addresses; the
- * table fills in what neither folded. Every name the table knows is written its way, so "Crete" and "Girit" are
- * one destination.
+ * table fills in what neither folded, never a place the model kept on purpose (""). Every name the table knows is
+ * written its way, so "Crete" and "Girit" are one destination.
  */
 export function resolveParents(cities: string[], items: Item[], known: Record<string, string> | null): Record<string, string> {
   const given = known ? acceptParents(cities, known) : fallbackParents(cities, items);
-  const out: Record<string, string> = { ...tableParents(cities, items), ...given };
+  const kept = new Set(Object.entries(known ?? {}).flatMap(([k, v]) => (v.trim() ? [] : [k])));
+  const out: Record<string, string> = { ...given };
+  for (const [key, parent] of Object.entries(tableParents(cities, items))) if (!kept.has(key) && !(key in out)) out[key] = parent;
   for (const key of Object.keys(out)) out[key] = regionNameOf(out[key]);
   return out;
 }
