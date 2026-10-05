@@ -9,7 +9,8 @@ import { EMPTY_METRICS } from "../src/lib/items";
 import { buildLegs } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
 import { plannedItem, type PlannedInput } from "../src/lib/planned";
-import { buildTimeline, flightSearchUrl } from "../src/lib/timeline";
+import { dayRows } from "../src/lib/journey";
+import { buildTimeline, flightSearchUrl, toBook } from "../src/lib/timeline";
 import type { Item, Trip } from "../src/lib/types";
 
 const titles = (t: ReturnType<typeof buildTimeline>) =>
@@ -69,7 +70,10 @@ describe("timeline", () => {
     const train = timeline.entries.find((e) => e.kind === "travel" && e.role === "move")!;
     expect(train.kind === "travel" && train.travel?.items.map((i) => i.name)).toEqual(["CP Alfa Pendular · Porto → Lizbon"]);
     expect(timeline.unplaced).toEqual([]);
-    expect(timeline.undated.map((i) => i.name).sort()).toEqual(["Livraria Lello", "Majestic Café", "Serralves Müzesi", "Tiyatro"]);
+    // Majestic Café needs no booking: it's an idea for Fikirler, not on the plan's lists.
+    expect(timeline.undated.map((i) => i.name).sort()).toEqual(["Livraria Lello", "Serralves Müzesi", "Tiyatro"]);
+    expect(toBook(timeline)).toMatchObject({ booked: 0 });
+    expect(toBook(timeline).items.map((i) => i.name).sort()).toEqual(["Livraria Lello", "Serralves Müzesi", "Tiyatro"]);
     // The plan's front: blocks only — the flights, each stay (with its days), the boat tour chosen for the
     // 9th; no days, no check-in lines, no transfers without a plan.
     const board = timeline.board.map((x) =>
@@ -256,6 +260,21 @@ describe("timeline from what's said and saved", () => {
     // Without the flight said in the chat, the car rented there still says where those nights are.
     const quiet = build(items.slice(0, 4), t);
     expect(quiet.timeline.sections.filter((x) => x.kind === "city").map((x) => x.kind === "city" && x.city)).toEqual(["Porto", "Madeira"]);
+  });
+
+  it("an idea is never a block of the plan: on its day it's a line of the itinerary; a booking stays a block", () => {
+    const stays = [stay("Jardim Stay", "2026-10-07", "2026-10-11", "Porto")];
+    const on9 = { start: "2026-10-09", end: null, source: "user" as const };
+    const cafe = { ...plannedItem({ kind: "food", date: "2026-10-09", end_date: null, time: null, from: null, to: null, city: "Porto", title: "Café Santiago", booked: false, note: null }, "t", "cafe", 1), dates: on9, meal: "dinner" as const };
+    const market = { ...plannedItem({ kind: "todo", date: null, end_date: null, time: null, from: null, to: null, city: "Porto", title: "Bolhão pazarı", booked: false, note: null }, "t", "market", 1) };
+    const tour = { ...plannedItem({ kind: "activity", date: "2026-10-09", end_date: null, time: "16:00", from: null, to: null, city: "Porto", title: "Douro tekne turu", booked: false, note: null }, "t", "tour", 1), booking: "needed" as const };
+    const { timeline } = build([...stays, cafe, market, tour]);
+    const porto = timeline.board.find((x) => x.kind === "city")!;
+    expect(porto.kind === "city" && porto.entries.map((e) => (e.kind === "event" ? e.item.name : e.kind))).toEqual(["Douro tekne turu"]);
+    expect(timeline.entries.some((e) => e.kind === "plan")).toBe(false); // the undated to-do isn't a city plan either
+    expect(timeline.undated.map((i) => i.name)).toEqual([]);
+    const day = timeline.entries.find((e) => e.kind === "day" && e.date === "2026-10-09")!;
+    expect(dayRows({ day: day as never }).map((r) => `${r.kind} ${r.title}${r.sub ? ` · ${r.sub}` : ""}`)).toEqual(["item Douro tekne turu", "idea Café Santiago · akşam"]);
   });
 
   it("puts a car said in the chat without a day in its city's block at once, then on its day", () => {

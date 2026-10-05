@@ -99,7 +99,7 @@ describe("a day on the move", () => {
       "09:00 rental/pending Araç kiralama · FAA Rentals",
       "10:00 item/pending Levada yürüyüşü · €90",
       "15:30 item/done Balina turu · €90 · rezerve",
-      "- ideas/info Armazém do Sal",
+      "- idea/info Armazém do Sal",
     ]);
     expect(show("2026-10-13")).toEqual(["- info/info Araç iade · FAA Rentals"]);
     // Open while something is left to book; folded, a day says itself in a line.

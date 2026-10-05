@@ -2,6 +2,7 @@
 // cards → assistant state), checking what must hold for any trip: nothing crashes, every saved item
 // shows exactly once somewhere on the board, keys are unique, nights add up, the order is the order of
 // the trip, and no card says "NaN" or "undefined". Seeded, so a failure names a trip that reproduces.
+import { isIdea, needsBooking } from "../src/lib/booking";
 import { describe, expect, it } from "vitest";
 import { planState, tripState } from "../src/lib/assistant";
 import { cardFacts, whyLines } from "../src/lib/cardFacts";
@@ -213,6 +214,8 @@ function shown(items: Item[], plan: ReturnType<typeof buildPlan>, timeline: Retu
   timeline.undated.forEach((i) => add(i, "undated"));
   plan.groups.filter((g) => g.category === "esim").forEach((g) => g.items.forEach((i) => add(i, "esim")));
   plan.closed.forEach(({ item }) => add(item, "closed"));
+  // An idea (no booking) with no day of its own is in the Fikirler tab.
+  items.filter((i) => isIdea(i) && !seen.has(i.id)).forEach((i) => add(i, "ideas"));
   return seen;
 }
 
@@ -347,7 +350,8 @@ describe("any trip", () => {
         // The plan's front has no days: each decided thing of a day is a block of its own, once.
         if (timeline.board.some((x) => x.kind === "journey")) note(seed, "a day on the move on the plan's front");
         const events = timeline.board.flatMap((x) => (x.kind === "city" ? x.entries.filter((e) => e.kind === "event") : []));
-        const decidedOnDays = timeline.entries.flatMap((e) => (e.kind === "day" ? e.items.filter((i) => i.status === "chosen" || i.status === "booked") : []));
+        // An idea on a day is a line of the itinerary, not a block of the front.
+        const decidedOnDays = timeline.entries.flatMap((e) => (e.kind === "day" ? e.items.filter((i) => (i.status === "chosen" || i.status === "booked") && needsBooking(i)) : []));
         if (events.length !== decidedOnDays.length) note(seed, `events ${events.length} ≠ ${decidedOnDays.length}`);
         const kinds = Object.values(progress.count).reduce((a, b) => a + b, 0);
         if (kinds !== progress.todos.length) note(seed, `todo counts ${kinds} ≠ ${progress.todos.length}`);

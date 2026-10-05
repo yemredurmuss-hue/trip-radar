@@ -8,6 +8,8 @@ import { formatDateRange, formatPrice, metricsOf } from "./items";
 import { addMinutes, BOOKABLE, clockOf, laterOf, legShortTitle, minutesOf, MODE_LABELS, stayTimes, type Leg } from "./legs";
 import type { StayBlock } from "./plan";
 import type { Journey, RentalEntry, TimelineEntry, TimelineSection } from "./timeline";
+import { isIdea } from "./booking";
+import { mealLabel } from "./ideas";
 import type { Item, LegMode, Listing } from "./types";
 
 export type StepStanding = "booked" | "planned" | "open";
@@ -245,7 +247,7 @@ export type RowState = "done" | "pending" | "decide" | "open" | "info";
 
 export interface DayRow {
   key: string;
-  kind: "info" | "travel" | "leg" | "item" | "rental" | "ideas";
+  kind: "info" | "travel" | "leg" | "item" | "rental" | "ideas" | "idea";
   time: string | null;
   estimated: boolean;
   hint: string | null;
@@ -359,6 +361,20 @@ function itemRow(item: Item): DayRow {
   });
 }
 
+/** Something to do or eat with no booking, put on this day in Fikirler: a thin line (its meal; ✓ once done). */
+function ideaRow(item: Item): DayRow {
+  return row({
+    key: `idea:${item.id}`,
+    kind: "idea",
+    state: "info",
+    time: clockOf(item.flight?.departure),
+    title: item.doneAt ? `✓ ${item.name}` : item.name,
+    sub: item.meal ? mealLabel(item.meal) : null,
+    status: item.doneAt ? L("yapıldı", "done") : "",
+    item,
+  });
+}
+
 /** A car rented from this day is a card there (at its pick-up time); on the day it ends, "Araç iade" is a line. */
 function rentalRows(date: string, rentals: RentalEntry[]): { start: DayRow[]; end: DayRow[] } {
   const start: DayRow[] = [];
@@ -405,8 +421,12 @@ export function dayRows(input: { journey?: JourneySection; day?: DayEntry | null
     for (const r of cars.start) (r.time || input.journey ? place(rows, r) : rows.unshift(r));
     for (const r of cars.end) place(rows, r);
   }
-  for (const item of day?.items ?? []) if (item.status === "chosen" || item.status === "booked") place(rows, itemRow(item));
-  const ideas = (day?.items ?? []).filter((i) => i.status === "saved");
+  for (const item of day?.items ?? []) {
+    if (isIdea(item)) place(rows, ideaRow(item));
+    else if (item.status === "chosen" || item.status === "booked") place(rows, itemRow(item));
+  }
+  // Options saved for the day that need booking and aren't picked yet: one grey line.
+  const ideas = (day?.items ?? []).filter((i) => i.status === "saved" && !isIdea(i));
   if (ideas.length) rows.push(row({ key: `ideas:${date}`, kind: "ideas", state: "info", title: ideas.length === 1 ? ideas[0].name : count(ideas.length, "fikir", "idea"), items: ideas }));
   return rows;
 }
@@ -417,9 +437,9 @@ export const rowsLeft = (rows: DayRow[]) => rows.filter((r) => r.state === "pend
 /** A folded day in a few words: "Douro tekne turu · 16:00", "3 plan, hepsi hazır". */
 export function daySummary(rows: DayRow[]): string {
   // Bookings are what the day is about; information lines only speak when there's nothing else.
-  const plans = rows.filter((r) => r.kind !== "ideas" && r.kind !== "info");
+  const plans = rows.filter((r) => r.kind !== "ideas" && r.kind !== "idea" && r.kind !== "info");
   const info = rows.filter((r) => r.kind === "info");
-  const ideas = rows.find((r) => r.kind === "ideas");
+  const ideas = (rows.find((r) => r.kind === "ideas")?.items.length ?? 0) + rows.filter((r) => r.kind === "idea").length;
   const left = rowsLeft(rows);
   const head =
     plans.length === 0
@@ -429,6 +449,6 @@ export function daySummary(rows: DayRow[]): string {
         : left
           ? L(`${plans.length} plan · ${left} iş kaldı`, `${count(plans.length, "plan", "plan")} · ${left} to do`)
           : L(`${plans.length} plan · hepsi hazır`, `${count(plans.length, "plan", "plan")} · all set`);
-  const more = ideas ? count(ideas.items.length, "fikir", "idea") : "";
+  const more = ideas ? count(ideas, "fikir", "idea") : "";
   return [head, more].filter(Boolean).join(" · ");
 }

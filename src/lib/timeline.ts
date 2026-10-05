@@ -7,6 +7,7 @@ import { liveLabels, nNights } from "./i18nText";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
 import { endsOf, isRental, travelsOf, type Leg, type Travel } from "./legs";
 import { cityKeyOf, sameCity, type DateRange, type OptionGroup, type Plan, type StayBlock } from "./plan";
+import { isIdea, needsBooking } from "./booking";
 import type { Category, Item, LegMode } from "./types";
 
 /** In, between cities, out; "other" is any other trip on its day (a day trip, a flight the plan can't pair). */
@@ -165,7 +166,7 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
       sections: [],
       board: [],
       unplaced: plan.groups.filter((g) => g.category === "flight" || g.category === "transport"),
-      undated: dayItems.filter((i) => i.category !== "transport"),
+      undated: dayItems.filter((i) => i.category !== "transport" && !isIdea(i)),
     };
   }
   const start = plan.range.start;
@@ -268,7 +269,8 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
   // block; places only saved as ideas stay in the lists below.
   const cityPlans = blocks.map(() => [] as Item[]);
   for (const i of dayItems) {
-    if (placedDays.has(i.id) || !i.city || isoDate(i.dates.start) || (i.status === "saved" && !isRental(i))) continue;
+    // An idea (no booking needed) lives in Fikirler, never on the plan's front.
+    if (placedDays.has(i.id) || !i.city || isoDate(i.dates.start) || isIdea(i) || (i.status === "saved" && !isRental(i))) continue;
     const index = blocks.findIndex((b) => sameCity(b.city, i.city));
     if (index < 0) continue;
     cityPlans[index].push(i);
@@ -419,7 +421,8 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
     if (e.kind === "day") {
       for (const l of e.legs) if (l.status !== "empty") board.push(legRow(l));
       for (const i of e.items) {
-        if (i.status === "chosen" || i.status === "booked") board.push({ kind: "event", key: `event:${i.id}`, date: e.date, dayNo: e.dayNo, item: i });
+        // Only what needs booking is a block of the plan; an idea put on this day is a line of the itinerary.
+        if ((i.status === "chosen" || i.status === "booked") && needsBooking(i)) board.push({ kind: "event", key: `event:${i.id}`, date: e.date, dayNo: e.dayNo, item: i });
       }
     } else if (!(e.kind === "leg" && e.leg.status === "empty")) {
       board.push(e);
@@ -430,8 +433,18 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
     sections: sectionsOf(entries, journeyOf),
     board: sectionsOf(board, new Map()),
     unplaced,
-    undated: dayItems.filter((i) => !placedDays.has(i.id) && i.category !== "transport"),
+    undated: dayItems.filter((i) => !placedDays.has(i.id) && i.category !== "transport" && !isIdea(i)),
   };
+}
+
+/**
+ * "Rezerve edilecekler · N · M alındı" under the plan: what needs booking and has no block of its own on
+ * the front (no day, or saved for a day and not chosen yet), with how many of them are booked.
+ */
+export function toBook(timeline: Timeline): { items: Item[]; booked: number } {
+  const onDays = timeline.entries.flatMap((e) => (e.kind === "day" ? e.items.filter((i) => i.status === "saved" && needsBooking(i) && !isRental(i)) : []));
+  const items = [...timeline.undated.filter(needsBooking), ...onDays];
+  return { items, booked: items.filter((i) => i.status === "booked").length };
 }
 
 const addDaysIso = (date: string, days: number) => new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);

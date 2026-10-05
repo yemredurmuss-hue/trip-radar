@@ -474,7 +474,7 @@ function ItRow({ row, ...render }: { row: DayRow } & RenderProps) {
   const time = row.time ? `${row.estimated ? "~" : ""}${row.time}` : "";
   const key = planKey(row);
   const itKey = row.leg ? `leg:${row.leg.key}` : key;
-  if (row.kind === "info" || row.kind === "ideas" || (row.kind === "leg" && row.state === "info")) {
+  if (row.kind === "info" || row.kind === "ideas" || row.kind === "idea" || (row.kind === "leg" && row.state === "info")) {
     const text =
       row.kind === "ideas" ? (
         <>
@@ -493,7 +493,7 @@ function ItRow({ row, ...render }: { row: DayRow } & RenderProps) {
         </>
       );
     return (
-      <li className="it-row info" data-it-key={itKey ?? undefined}>
+      <li className={`it-row info${row.kind === "idea" ? " idea" : ""}`} data-it-key={itKey ?? undefined}>
         <span className="it-time num">{time}</span>
         <span className="it-dot" aria-hidden />
         {row.stayKey ? (
