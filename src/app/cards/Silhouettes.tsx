@@ -181,6 +181,19 @@ const MEDIA = {
       <path d="M24 44h12v42H24zM48 44h12v42H48zM72 44h12v42H72zM84 44h12v42H84z" />
     </g>
   ),
+  // A ticket stub: notched sides, the tear line, a star on the stub (any activity that isn't a museum).
+  ticket: (
+    <>
+      <path
+        d="M20 24H100Q106 24 106 30V42A8 8 0 0 0 106 58V70Q106 76 100 76H20Q14 76 14 70V58A8 8 0 0 0 14 42V30Q14 24 20 24Z"
+        fill="url(#pk-ht)" stroke="currentColor" strokeWidth={2} strokeLinejoin="round"
+      />
+      <path d="M82 28v44" stroke="#fff" strokeWidth={6} />
+      <path d="M82 29v42" stroke="currentColor" strokeWidth={2} strokeDasharray="3 4" strokeLinecap="round" />
+      <circle cx="47" cy="50" r="13" fill="#fff" stroke="currentColor" strokeWidth={1.8} />
+      <path d="M47 43L48.8 47.6L53.7 47.8L49.9 50.9L51.1 55.7L47 53L42.9 55.7L44.1 50.9L40.3 47.8L45.2 47.6Z" fill="currentColor" />
+    </>
+  ),
   esim: (
     <>
       <rect x="38" y="8" width="44" height="84" rx="9" fill="url(#pk-ht)" stroke="currentColor" strokeWidth={2} />

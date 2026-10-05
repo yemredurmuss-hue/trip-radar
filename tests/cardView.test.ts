@@ -1,6 +1,6 @@
 // tests/cardView.test.ts
 import { describe, expect, it } from "vitest";
-import { footOf, groundOf, mediaFace, menuFor, ringOf, topDate, transportFace } from "../src/lib/cardView";
+import { activityDrawing, footOf, groundOf, mediaFace, menuFor, ringOf, topDate, transportFace } from "../src/lib/cardView";
 import { EMPTY_METRICS } from "../src/lib/items";
 import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
@@ -120,10 +120,17 @@ describe("a media card's lines", () => {
       meta: [{ text: "★ 4,8", kind: "star" }, { text: "2.140 yorum", kind: "plain" }, { text: "GetYourGuide ↗", kind: "link", href: "https://www.getyourguide.com/t" }],
       image: "https://img/x.jpg",
       silhouette: null,
+      drawing: "ticket",
     });
   });
-  it("an activity without a photo gets the museum drawing", () => {
-    expect(mediaFace(makeItem({ category: "activity", name: "Serralves" }), "activity", null).silhouette).toBe("museum");
+  it("an activity without a photo: the museum drawing for a museum, a palace, a church; else a ticket", () => {
+    expect(mediaFace(makeItem({ category: "activity", name: "Serralves Müzesi" }), "activity", null).silhouette).toBe("museum");
+    expect(mediaFace(makeItem({ category: "activity", name: "Douro tekne turu" }), "activity", null).silhouette).toBe("ticket");
+    const named = (name: string, summary?: string) => activityDrawing(makeItem({ category: "activity", name, summary }));
+    expect(["Pena Sarayı", "Museu Nacional do Azulejo", "Sé Katedrali", "Igreja do Carmo church", "Galeri Mira", "Gulbenkian", "Sergi gezisi"].map((n) =>
+      named(n, n === "Gulbenkian" ? "Sanat müzesi ve bahçe" : undefined),
+    )).toEqual(["museum", "museum", "museum", "museum", "museum", "museum", "museum"]);
+    expect(["Fado gecesi", "Tiyatro", "Douro tekne turu", "Sintra yürüyüşü"].map((n) => named(n))).toEqual(["ticket", "ticket", "ticket", "ticket"]);
   });
   it("an eSIM: data and country, days, the shop and its site", () => {
     const esim = makeItem({ category: "esim", name: "Airalo Portekiz", country: "Portekiz", provider: "Airalo", status: "booked", metrics: { ...EMPTY_METRICS, dataGb: 10, validityDays: 15 } });
@@ -133,6 +140,7 @@ describe("a media card's lines", () => {
       meta: [{ text: "Airalo", kind: "plain" }, { text: "airalo.com ↗", kind: "link", href: "https://www.airalo.com/portugal" }],
       image: null,
       silhouette: "esim",
+      drawing: "esim",
     });
   });
   it("insurance: people and days, the company, its rating and site; no cover listed", () => {

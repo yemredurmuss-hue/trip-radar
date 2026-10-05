@@ -158,8 +158,19 @@ export interface MediaFace {
   /** The source line: ★ rating, reviews, the shop, the site ↗. */
   meta: { text: string; kind: "star" | "plain" | "link"; href?: string }[];
   image: string | null;
-  silhouette: "museum" | "esim" | "shield" | null;
+  /** The dotted drawing shown in place of a photo (none when there's a photo). */
+  silhouette: MediaDrawing | null;
+  /** The kind's drawing, also the fallback when the photo fails to load (null: the kind's icon). */
+  drawing: MediaDrawing | null;
 }
+
+export type MediaDrawing = "museum" | "ticket" | "esim" | "shield";
+
+const MUSEUM = /müze|museum|museu|galeri|gallery|sergi|exhibition|saray|palace|kilise|church|katedral|cathedral/i;
+
+/** An activity's drawing: the museum front for a museum, gallery, palace or church; a ticket for anything else. */
+export const activityDrawing = (item: Pick<Item, "name" | "summary">): "museum" | "ticket" =>
+  MUSEUM.test([item.name, item.summary].filter(Boolean).join(" ")) ? "museum" : "ticket";
 
 const people = (n: number) => count(n, "kişi", "person", "people");
 
@@ -197,8 +208,8 @@ export function mediaFace(item: Item, kind: CardKind, source: CardFacts["source"
   if (source?.url) meta.push({ text: `${shop ? (source.host ?? source.label) : source.label} ↗`, kind: "link", href: source.url });
   else if (source && source.label !== shop) meta.push({ text: source.label, kind: "plain" });
   const image = kind === "esim" || kind === "insurance" ? null : item.imageUrl;
-  const silhouette = kind === "esim" ? "esim" : kind === "insurance" ? "shield" : kind === "activity" && !image ? "museum" : null;
-  return { title, info, meta, image, silhouette };
+  const drawing: MediaDrawing | null = kind === "esim" ? "esim" : kind === "insurance" ? "shield" : kind === "activity" ? activityDrawing(item) : null;
+  return { title, info, meta, image, silhouette: image ? null : drawing, drawing };
 }
 
 export interface LegCardView {

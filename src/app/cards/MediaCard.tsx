@@ -8,11 +8,12 @@ import { FallbackImg } from "../FallbackImg";
 import { KindIcon, MediaSilhouette } from "./Silhouettes";
 
 export function MediaCardBody({ face, kind, score, best }: { face: MediaFace; kind: CardKind; score: number | null; best: boolean }) {
-  const drawing = face.silhouette ? <MediaSilhouette name={face.silhouette} /> : <KindIcon kind={kind} size={56} className="pk-kindbig" />;
+  // The kind's drawing (ticket, museum, eSIM, shield) or its icon: in place of a photo, and when a photo fails.
+  const drawing = face.drawing ? <MediaSilhouette name={face.drawing} /> : <KindIcon kind={kind} size={56} className="pk-kindbig" />;
   return (
     <div className="pk-media">
       <div className="pk-vis">
-        {face.image ? <FallbackImg className="pk-img" src={face.image} fallback={kind === "activity" ? <MediaSilhouette name="museum" /> : drawing} /> : drawing}
+        {face.image ? <FallbackImg className="pk-img" src={face.image} fallback={drawing} /> : drawing}
         {score != null && (
           <span className={`pk-score${best ? " best" : ""}`} title={L("Uyum puanı (100 üzerinden)", "Fit score (out of 100)")}>
             {score}
