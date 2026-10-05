@@ -38,7 +38,7 @@ import { stableJson } from "./share/settings";
 import { adultsOf } from "./tripFacts";
 import { currencyOf, fieldsBefore, whoGoes, withCurrency, withTravellers, type CurrencyChange, type TripFieldsBefore } from "./tripSettings";
 import { announceTripChange } from "./tripUndo";
-import { claimsChange, noChangeNote } from "./claims";
+import { claimsChange } from "./claims";
 import { cleanContent, cleanReply, replyFallback } from "./replyText";
 import { checkVehicle, stillCancelled, vehicleOf, type VehicleType } from "./vehicles";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
@@ -805,6 +805,8 @@ class ToolError extends Error {}
 /** The budget after update_trip: a new target and/or ceiling; a ceiling only with a target to go with. */
 function withBudget(budget: Trip["budget"], amount: number | null, currency: string | null, ceiling: unknown, shown = "EUR"): Trip["budget"] {
   if (ceiling != null && (typeof ceiling !== "number" || ceiling < 0)) throw new ToolError(L(`Geçersiz tavan: ${ceiling}`, `Invalid ceiling: ${ceiling}`));
+  // Nothing said about the budget: as it is (a converted one keeps the amount it was said in, budget.source).
+  if (amount == null && ceiling == null && (currency == null || currency === budget?.currency)) return budget;
   const target = amount ?? budget?.amount ?? (typeof ceiling === "number" && ceiling > 0 ? ceiling : null);
   if (target == null) return budget;
   const cap = ceiling === 0 ? null : typeof ceiling === "number" ? ceiling : (budget?.ceiling ?? null);
@@ -1225,8 +1227,19 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       const parts: Record<string, unknown>[] = [];
       // The money first: if it's refused, nothing changes (the language isn't switched on its own).
       if (currency) parts.push(await changeCurrency(tripId, currency, items.map(withEdits)));
-      if (language) parts.push(await changeLanguage(tripId, language));
-      const result = Object.assign({}, ...parts.map(({ unchanged: _u, ...p }) => p));
+      if (language) {
+        try {
+          parts.push(await changeLanguage(tripId, language));
+        } catch (error) {
+          // The money changed already: that stays (and counts as a change); the language's failure is said beside it.
+          if (!parts.length || parts[0].unchanged) throw error;
+          parts.push({ language_error: error instanceof Error ? error.message : String(error) });
+        }
+      }
+      const result = Object.assign({}, ...parts.map(({ unchanged: _u, shown: _s, note: _n, ...p }) => p));
+      // Each part's own words, all of them (not the last one's only).
+      const words = parts.flatMap((p) => [p.shown, p.note].filter((w): w is string => typeof w === "string"));
+      if (words.length) result.shown = words.join(" ");
       return JSON.stringify(parts.every((p) => p.unchanged) ? { unchanged: true, ...result } : result);
     }
     case "set_travellers":
@@ -1514,14 +1527,10 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
       }
       text = turn.done ? L("İsteğini işledim ama yanıtımı yazamadım; panodan kontrol eder misin?", "I handled your request but couldn't write my answer; could you check the board?") : replyFallback();
     }
-    if (last && text && turn.changed === 0 && claimsChange(text)) {
-      // "Done! I've updated your budget currency" with no tool that changed anything: said so under it, and in the
-      // model's own turn, so the next reply doesn't build on a change that never happened.
-      const note = noChangeNote();
-      console.warn("[assistant] the reply said something changed, but no tool changed anything this turn", { provider: provider.id });
-      text = `${text}\n\n${note}`;
-      if (Array.isArray(content)) content = [...content, ...(provider.assistantContent(note) as unknown[])];
-    }
+    // "Done! I've updated your budget currency" with no tool that changed anything: the chat shows a note under it
+    // (Chat.tsx, on screen only; the model's history stays its own words).
+    const unbacked = last && Boolean(text) && turn.changed === 0 && claimsChange(text);
+    if (unbacked) console.warn("[assistant] the reply said something changed, but no tool changed anything this turn", { provider: provider.id });
     if (last) {
       // "Araç kiralama iptal, yerine karavan": what was said to be cancelled and is still on the plan is asked about.
       const question = cancelledQuestion(userText, await listItems(tripId), turn);
@@ -1539,6 +1548,7 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
       text: text || fallback,
       choices,
       provider: provider.id,
+      ...(unbacked ? { unbacked: true } : {}),
     });
     if (last) return;
     await saveMessage({

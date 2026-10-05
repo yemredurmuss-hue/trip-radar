@@ -21,9 +21,11 @@ export function takeLangUndo(tripId: string): { prev: Lang; label: string } | nu
   try {
     const raw = sessionStorage.getItem(KEY);
     if (!raw) return null;
-    sessionStorage.removeItem(KEY);
     const saved = JSON.parse(raw) as { tripId?: string; prev?: string; at?: number };
-    if (saved.tripId !== tripId || (saved.prev !== "tr" && saved.prev !== "en") || saved.prev === lang()) return null;
+    // Another trip on screen first (the overview, a second board): the undo waits for its own trip.
+    if (saved.tripId !== tripId) return null;
+    sessionStorage.removeItem(KEY);
+    if ((saved.prev !== "tr" && saved.prev !== "en") || saved.prev === lang()) return null;
     if (typeof saved.at !== "number" || Date.now() - saved.at > FRESH_MS) return null;
     return { prev: saved.prev, label: L("Panonun dili Türkçe oldu", "The board is now in English") };
   } catch {

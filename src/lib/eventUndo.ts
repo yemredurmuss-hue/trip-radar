@@ -3,7 +3,7 @@
 // trip as stored now, and only while they still hold what that change wrote (a later change is never undone by
 // an older line). The line is marked taken back, so Geçmiş shows it "geri alındı" and offers it no more.
 import { db, notifyChanged } from "./db";
-import { L, saveLang } from "./i18n";
+import { L, lang, saveLang } from "./i18n";
 import { stableJson } from "./share/settings";
 import { restoreFields } from "./tripSettings";
 import type { ChatMessage, EventUndo, Trip } from "./types";
@@ -35,6 +35,10 @@ export async function undoEvent(messageId: string): Promise<{ reload: boolean }>
       throw new ChangedSince(L("Bu ayar sonra yine değişti; eski haline döndürülmedi.", "This setting changed again since; it wasn't put back."));
     }
     await tx.objectStore("trips").put({ ...restoreFields(trip, line.undo), updatedAt: Date.now() });
+  } else if (lang() === line.undo.prev) {
+    // Switched back since (in Settings, or the chat again): nothing to put back, no reload.
+    await tx.done;
+    throw new ChangedSince(L("Bu ayar sonra yine değişti; pano zaten Türkçe.", "This setting changed again since; the board is already in English."));
   }
   await tx.objectStore("messages").put({ ...line, undoneAt: Date.now() });
   await tx.done;

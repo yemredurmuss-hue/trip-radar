@@ -148,7 +148,17 @@ export interface Trip {
   /** Dates the user confirmed. Without them the board shows the range derived from items as an estimate. */
   confirmedDates: { start: string; end: string } | null;
   /** What they'd like to spend (`amount`), and what they won't go over (`ceiling`), when they said one. */
-  budget: { amount: number; currency: string; ceiling?: number | null } | null;
+  budget: {
+    amount: number;
+    currency: string;
+    ceiling?: number | null;
+    /**
+     * The budget as the traveller said it, when the board shows it converted into another money (0.37,
+     * tripSettings.withCurrency): every later conversion starts from this, so switching back and forth never
+     * drifts. Gone when a new amount is said.
+     */
+    source?: { amount: number; currency: string; ceiling?: number | null };
+  } | null;
   /**
    * The money the board shows the trip in, when the traveller picked one ("bütçeyi euro göster") and there's no
    * budget to carry it: a budget's own currency wins (they're kept the same when it's changed). This computer only.
@@ -401,6 +411,8 @@ export interface ChatMessage {
   undo?: EventUndo;
   /** Taken back (from Geçmiş or the board's "Geri al"): when. Geçmiş shows it "geri alındı". */
   undoneAt?: number;
+  /** An assistant reply saying something changed while no tool changed anything (claims.ts): a note shows under it. */
+  unbacked?: boolean;
 }
 
 /**

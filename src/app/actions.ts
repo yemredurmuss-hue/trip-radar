@@ -4,7 +4,7 @@ import { restoreDoc } from "../lib/docs";
 import { L, saveLang } from "../lib/i18n";
 import { announceRemoved, deleteItem, restoreItem, type Removed } from "../lib/removal";
 import { restoreFields, withTravellers, type TravellersChange } from "../lib/tripSettings";
-import { ChangedSince, latestLangLine, undoEvent } from "../lib/eventUndo";
+import { latestLangLine, undoEvent } from "../lib/eventUndo";
 import { stableJson } from "../lib/share/settings";
 import { nightsKey } from "../lib/timeline";
 import type { DateRange } from "../lib/plan";
@@ -124,10 +124,9 @@ export async function undo(u: Undoable): Promise<void> {
   }
   if (u.kind === "trip") {
     // Through its Geçmiş line when it has one, so the line says "geri alındı" too.
+    // Changed again within the toast's seconds: ChangedSince ("Bu ayar sonra yine değişti") goes to the toast.
     if (u.change.eventId) {
-      await undoEvent(u.change.eventId).catch((error) => {
-        if (!(error instanceof ChangedSince)) throw error; // changed again within the toast's seconds: left as it is
-      });
+      await undoEvent(u.change.eventId);
       return;
     }
     await updateTrip(u.change.tripId, (t) => restoreFields(t, u.change));
@@ -160,7 +159,7 @@ export async function changeTravellers(tripId: string, change: TravellersChange,
   }
   await tx.store.put({ ...trip, travellers: next.travellers, updatedAt: Date.now() });
   await tx.done;
-  await addEvent(tripId, event, { undo: { kind: "fields", fields: ["travellers"], before: { travellers: trip.travellers }, after: { travellers: next.travellers } } });
+  await addEvent(tripId, event, { undo: { kind: "fields", fields: ["travellers"], before: { travellers: trip.travellers ?? { names: [] } }, after: { travellers: next.travellers } } });
   notifyChanged();
   return true;
 }

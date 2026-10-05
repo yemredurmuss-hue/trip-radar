@@ -10,7 +10,7 @@ import { anthropicProvider } from "../src/lib/llm/anthropic";
 import { applyFields, applySettings, settingsOf } from "../src/lib/share/settings";
 import { diffSettings, lineText } from "../src/lib/share/settingsDiff";
 import { budgetLevel } from "../src/lib/tripStyle";
-import { whoGoes, withTravellers } from "../src/lib/tripSettings";
+import { fieldsBefore, restoreFields, whoGoes, withTravellers } from "../src/lib/tripSettings";
 import { onTripChange, type TripChange } from "../src/lib/tripUndo";
 import { changeTravellers, undo } from "../src/app/actions";
 import { undoEvent } from "../src/lib/eventUndo";
@@ -68,6 +68,17 @@ describe("who goes travels with the shared settings", () => {
     // Geçmiş / the notice's "Geri al" to a time before anyone was named: nobody named.
     expect(applyFields(mine, { ...settingsOf(mine), travellers: null }, ["travellers"]).travellers).toEqual({ names: [] });
     expect(diffSettings(settingsOf(trip()), settingsOf(mine)).map(lineText)).toEqual(["Gidenler: yok → Sabine"]);
+    // Undoing "Sabine eklendi" on a shared trip (review, 0.37): sent as nobody named, so the other computer follows
+    // (a missing field would be null, which a board keeps its names over).
+    const added = withTravellers(undefined, { add: ["Sabine"] });
+    if (typeof added === "string") throw new Error(added);
+    const before = fieldsBefore(trip(), ["travellers"]);
+    expect(before.before).toEqual({ travellers: { names: [] } });
+    const undone = restoreFields(trip({ travellers: added.travellers }), before);
+    const peer = trip({ id: "peer", travellers: { names: ["Sabine"] } });
+    expect(applySettings(peer, settingsOf(undone)).travellers).toEqual({ names: [] });
+    // Even a line kept before this fix (no value before): nobody named, not a missing field.
+    expect(restoreFields(trip({ travellers: added.travellers }), { fields: ["travellers"], before: {} }).travellers).toEqual({ names: [] });
     expect(diffSettings(settingsOf(mine), settingsOf(trip({ travellers: { names: ["Sabine"], count: 3 } }))).map(lineText)).toEqual(["Gidenler: Sabine → Sabine · 3 kişi"]);
   });
 });
@@ -114,7 +125,7 @@ describe("set_travellers in the chat", () => {
     expect((await listMessages("w2")).filter((m) => m.role === "assistant").at(-1)!.text).not.toMatch(/Not:/);
     expect(changes).toHaveLength(1);
     await undo({ kind: "trip", change: changes[0] });
-    expect("travellers" in (await d.get("trips", "w2"))!).toBe(false);
+    expect((await d.get("trips", "w2"))!.travellers).toEqual({ names: [] }); // nobody named, never a missing field
   });
 
   it("'2 kişiyiz' sets the count; the same again changes nothing and says so", async () => {
@@ -153,6 +164,6 @@ describe("set_travellers in the chat", () => {
     await undoEvent(lines[1].id);
     expect((await d.get("trips", "w4"))!.travellers).toEqual({ names: ["Sabine"] });
     await undoEvent(lines[0].id); // "eklendi" taken back now: nobody named, as before it
-    expect("travellers" in (await d.get("trips", "w4"))!).toBe(false);
+    expect((await d.get("trips", "w4"))!.travellers).toEqual({ names: [] });
   });
 });

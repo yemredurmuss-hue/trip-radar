@@ -160,6 +160,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const docsFor = useTripDocs(trip.id, inherited);
   const undo = useMemo(() => undoSlot<Undoable>(), []);
   const [undoable, setUndoable] = useState<Undoable | null>(null);
+  const [undoError, setUndoError] = useState<string | null>(null);
   useEffect(() => undo.subscribe(setUndoable), [undo]);
   // Another trip on screen: the last deletion stays deleted.
   useEffect(() => () => void undo.take(), [trip.id, undo]);
@@ -623,7 +624,19 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         <AddSheet at={sheet.at} editing={sheet.editing} only={sheet.only} currency={decisions?.ctx.currency ?? trip.budget?.currency ?? "EUR"} onClose={() => setSheet(null)}
           onPick={(tpl) => void quickAdd(tpl, sheet.at)} />
       )}
-      <UndoToast undoable={undoable} onUndo={() => { const u = undo.take(); if (u) void takeBack(u); }} />
+      <UndoToast
+        undoable={undoable}
+        error={undoError}
+        onUndo={() => {
+          const u = undo.take();
+          if (!u) return;
+          // An undo that can't be done (a setting changed again since) says why where the toast was.
+          takeBack(u).catch((error) => {
+            setUndoError(error instanceof Error ? error.message : String(error));
+            setTimeout(() => setUndoError(null), 6000);
+          });
+        }}
+      />
       {historyOpen && onHistoryClose && (
         <HistoryDialog trip={trip} items={items} hidden={hiddenForHistory} onClose={onHistoryClose} onShow={(id) => setTimeout(() => reveal({ item: id }), 60)} />
       )}

@@ -2410,6 +2410,11 @@ try {
   assert.deepEqual((await box.locator(".hx-who-list li").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim()), ["Ben (Emre)"]);
   assert.equal(await box.getByRole("button", { name: /çıkar$/ }).count(), 0, "me: never removable");
   const nameBox = box.getByRole("textbox", { name: "İsim ekle" });
+  // My own name typed is just "Ben": not added a second time.
+  await nameBox.fill("emre");
+  await nameBox.press("Enter");
+  await box.getByText('emre sensin: zaten "Ben" olarak sayılıyorsun.').waitFor();
+  assert.equal(await box.locator(".hx-who-list li").count(), 1);
   await nameBox.fill("Sabine");
   await nameBox.press("Enter");
   await box.locator(".hx-who-list li", { hasText: "Sabine" }).waitFor();
@@ -2439,6 +2444,7 @@ try {
   await app.screenshot({ path: `${out}/18b-travellers-removed.png` });
   await app.keyboard.press("Escape");
   await box.waitFor({ state: "detached" });
+  assert.ok(await side.locator("button.hx-people").evaluate((el) => el === document.activeElement), "Esc gives the focus back to the people");
   // Geçmiş (the trip isn't shared): "Gidenler: Sabine çıkarıldı" has its own Geri al; Sabine comes back, the line
   // says "geri alındı".
   await app.getByRole("button", { name: "Gezi menüsü" }).first().click();

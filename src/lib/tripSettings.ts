@@ -27,12 +27,20 @@ export interface TripFieldsBefore {
   before: Partial<Trip>;
 }
 
-/** The trip with these fields as they were (a field that wasn't there goes again). */
+/**
+ * Who goes as "nobody named": `{ names: [] }`, never a missing field. A shared trip sends a missing field as
+ * null, which a board keeps its names over (the older-board guard in share/settings.applySettings), so taking
+ * Sabine back out would bring her back on the other computer.
+ */
+const NOBODY = { names: [] as string[] };
+
+/** The trip with these fields as they were (a field that wasn't there goes again; who goes: nobody named). */
 export function restoreFields(trip: Trip, { fields, before }: TripFieldsBefore): Trip {
   const next = { ...trip } as Record<string, unknown>;
   for (const f of fields) {
     const value = (before as Record<string, unknown>)[f];
-    if (value === undefined) delete next[f];
+    if (f === "travellers") next[f] = value ?? NOBODY;
+    else if (value === undefined) delete next[f];
     else next[f] = value;
   }
   return next as unknown as Trip;
@@ -40,7 +48,7 @@ export function restoreFields(trip: Trip, { fields, before }: TripFieldsBefore):
 
 export const fieldsBefore = (trip: Trip, fields: (keyof Trip)[]): TripFieldsBefore => ({
   fields,
-  before: Object.fromEntries(fields.map((f) => [f, trip[f]])) as Partial<Trip>,
+  before: Object.fromEntries(fields.map((f) => [f, f === "travellers" ? (trip.travellers ?? NOBODY) : trip[f]])) as Partial<Trip>,
 });
 
 export interface CurrencyChange {
@@ -69,12 +77,19 @@ export function withCurrency(trip: Trip, rawTo: unknown, from: string, rates: Ra
   let nextBudget = budget;
   let words: CurrencyChange["budget"] = null;
   if (budget) {
-    const amount = convert(budget.amount, budget.currency, to, rates);
-    const ceiling = budget.ceiling != null ? convert(budget.ceiling, budget.currency, to, rates) : null;
-    if (amount == null || (budget.ceiling != null && ceiling == null)) {
-      return L(`${budget.currency} → ${to} kuru yok; bütçeyi yanlış bir tutarla yazmamak için hiçbir şey değişmedi.`, `No ${budget.currency} → ${to} rate; nothing changed rather than writing the budget with a wrong amount.`);
+    // Always from the budget as the traveller said it (its first money): TRY → EUR → TRY gives the same lira back,
+    // never a figure rounded twice. Back in that money, the budget is exactly what was said.
+    const said = budget.source ?? { amount: budget.amount, currency: budget.currency, ...(budget.ceiling != null ? { ceiling: budget.ceiling } : {}) };
+    if (said.currency === to) {
+      nextBudget = { amount: said.amount, currency: to, ...(said.ceiling != null ? { ceiling: said.ceiling } : {}) };
+    } else {
+      const amount = convert(said.amount, said.currency, to, rates);
+      const ceiling = said.ceiling != null ? convert(said.ceiling, said.currency, to, rates) : null;
+      if (amount == null || (said.ceiling != null && ceiling == null)) {
+        return L(`${said.currency} → ${to} kuru yok; bütçeyi yanlış bir tutarla yazmamak için hiçbir şey değişmedi.`, `No ${said.currency} → ${to} rate; nothing changed rather than writing the budget with a wrong amount.`);
+      }
+      nextBudget = { amount: Math.round(amount), currency: to, ...(ceiling != null ? { ceiling: Math.round(ceiling) } : {}), source: said };
     }
-    nextBudget = { amount: Math.round(amount), currency: to, ...(ceiling != null ? { ceiling: Math.round(ceiling) } : {}) };
     words = { before: formatPrice(budget.amount, budget.currency), after: formatPrice(nextBudget.amount, to) };
   }
   return { trip: { ...trip, currency: to, budget: nextBudget }, from, to, budget: words };

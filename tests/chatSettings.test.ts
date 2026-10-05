@@ -109,7 +109,17 @@ describe("the trip's money", () => {
   it("converts the budget and its ceiling, keeps the same money as no change, and never writes a guessed amount", () => {
     const trip: Trip = { id: "x", title: "x", confirmedDates: null, budget: { amount: 95000, currency: "TRY", ceiling: 100000 }, heroImage: null, createdAt: 1, updatedAt: 1 };
     const done = withCurrency(trip, "euro", "TRY", RATES);
-    expect(done && typeof done === "object" && done.trip.budget).toEqual({ amount: 2000, currency: "EUR", ceiling: 2105 });
+    expect(done && typeof done === "object" && done.trip.budget).toEqual({ amount: 2000, currency: "EUR", ceiling: 2105, source: { amount: 95000, currency: "TRY", ceiling: 100000 } });
+    // Back and forth never drifts: every conversion starts from the budget as said; back in its money, exactly it.
+    let t: Trip = trip;
+    let shown = "TRY";
+    for (const to of ["EUR", "USD", "GBP", "EUR", "USD", "TRY"]) {
+      const step = withCurrency(t, to, shown, RATES);
+      if (!step || typeof step !== "object") throw new Error(String(step));
+      t = step.trip;
+      shown = to;
+    }
+    expect(t.budget).toEqual({ amount: 95000, currency: "TRY", ceiling: 100000 });
     expect(done && typeof done === "object" && done.trip.currency).toBe("EUR");
     expect(withCurrency(trip, "TRY", "TRY", RATES)).toBeNull();
     expect(withCurrency(trip, "EUR", "TRY", null)).toMatch(/Kur bilgisi yok/);
@@ -131,7 +141,7 @@ describe("the trip's money", () => {
     ]);
     await sendMessage(trip.id, "bütçeyi euro yap", anthropicProvider(client, "claude-opus-5"));
     const after = await stored(trip.id);
-    expect(after.budget).toEqual({ amount: 1721, currency: "EUR" });
+    expect(after.budget).toEqual({ amount: 1721, currency: "EUR", source: { amount: 81755, currency: "TRY" } });
     expect(after.currency).toBe("EUR");
     expect(makeContext(after, items).currency).toBe("EUR");
     const result = JSON.parse(toolResults(calls[1])[0].content as string);
@@ -183,6 +193,37 @@ describe("the trip's money", () => {
     await undo({ kind: "trip", change });
     expect((await stored(t2.trip.id)).budget).toEqual({ amount: 47500, currency: "TRY" });
     expect((await listMessages(t2.trip.id)).find((m) => m.id === change.eventId)!.undoneAt).toBeTypeOf("number");
+  });
+
+  it("the board's toast says why when the setting changed again since", async () => {
+    stubChrome(true);
+    const { trip } = await seed({ amount: 47500, currency: "TRY" });
+    await sendMessage(trip.id, "euro", anthropicProvider(fakeClient([toolCall("s1", "set_settings", { currency: "EUR", language: "" }), reply("Tamam.")]).client, "claude-opus-5"));
+    const change = changes.find((c) => c.tripId === trip.id)!;
+    await (await db()).put("trips", { ...(await stored(trip.id)), budget: { amount: 900, currency: "EUR" } });
+    await expect(undo({ kind: "trip", change })).rejects.toThrow(/Bu ayar sonra yine değişti/);
+    expect((await stored(trip.id)).budget).toEqual({ amount: 900, currency: "EUR" });
+  });
+
+  it("set_settings: the money changed and the language failed → the money stays, counts as a change, both said", async () => {
+    stubChrome(true);
+    const { trip } = await seed({ amount: 47500, currency: "TRY" });
+    // The language can't be saved (extension storage refuses the write).
+    vi.stubGlobal("chrome", {
+      storage: { local: { get: async (key: string) => ({ [key]: store[key] }), set: async () => { throw new Error("quota"); } } },
+    });
+    const { client, calls } = fakeClient([toolCall("s1", "set_settings", { currency: "EUR", language: "en" }), reply("I've updated the currency to EUR.")]);
+    await sendMessage(trip.id, "euro ve ingilizce", anthropicProvider(client, "claude-opus-5"));
+    const [result] = toolResults(calls[1]);
+    expect(result.is_error).toBeFalsy();
+    const body = JSON.parse(result.content as string);
+    expect(body.currency).toMatchObject({ from: "TRY", to: "EUR" });
+    expect(body.language_error).toMatch(/Dil kaydedilemedi/);
+    expect(body.shown).toMatch(/EUR ile gösteriliyor/);
+    expect(lang()).toBe("tr");
+    expect((await stored(trip.id)).budget?.currency).toBe("EUR");
+    // A tool changed something: no note.
+    expect((await listMessages(trip.id)).filter((m) => m.role === "assistant").at(-1)!.unbacked).toBeUndefined();
   });
 
   it("update_trip with only a currency and no budget (the 0.36.6 'ok' that changed nothing) now changes the money shown", async () => {
@@ -241,6 +282,13 @@ describe("the board's language", () => {
     await expect(undoEvent(line.id)).resolves.toEqual({ reload: true });
     expect(lang()).toBe("en");
     expect(store.lang).toBe("en");
+    // Already back (switched in Settings since): refused, no reload, the line stays offered.
+    const fresh = fakeClient([toolCall("l3", "set_settings", { currency: "", language: "tr" }), reply("Tamam.")]);
+    await sendMessage(trip.id, "Türkçe", anthropicProvider(fresh.client, "claude-opus-5"));
+    const newest = (await listMessages(trip.id)).filter((m) => m.undo?.kind === "lang" && !m.undoneAt).at(-1)!;
+    setLang("en");
+    await expect(undoEvent(newest.id)).rejects.toBeInstanceOf(ChangedSince);
+    expect((await listMessages(trip.id)).find((m) => m.id === newest.id)!.undoneAt).toBeUndefined();
   });
 });
 
@@ -261,8 +309,7 @@ describe("the language's Geri al across the reload", () => {
     setLang("en"); // the chat's set_settings switched it during the turn
     reloadIfLangChanged("t1", "tr");
     expect(reload).toHaveBeenCalledOnce();
-    expect(takeLangUndo("other")).toBeNull(); // another trip on screen: not its undo (and it's used up)
-    reloadIfLangChanged("t1", "tr");
+    expect(takeLangUndo("other")).toBeNull(); // another trip on screen first: not its undo, and it waits
     expect(takeLangUndo("t1")).toEqual({ prev: "tr", label: "The board is now in English" });
     expect(takeLangUndo("t1")).toBeNull(); // once
   });
@@ -272,13 +319,12 @@ describe("honesty: a change claimed with no tool", () => {
   it("finds a claim of a change, not a question or a negation", () => {
     for (const yes of [
       "Done! I've updated your budget currency to Euro.",
-      "I updated the budget.",
-      "I've switched the board to Turkish.",
-      "Bütçeyi euroya çevirdim.",
+      "I have changed the dates.",
+      "I've just switched the board to Turkish.",
+      "I’ve set the currency to EUR.",
       "Tamam, para birimini güncelledim.",
       "Sabine'yi ekledim, artık iki kişisiniz.",
       "Hallettim.",
-      "The currency is now set to EUR.",
     ]) expect(claimsChange(yes), yes).toBe(true);
     for (const no of [
       "Bütçeyi euroya çevireyim mi?",
@@ -291,22 +337,38 @@ describe("honesty: a change claimed with no tool", () => {
       "Well done! Porto in October is lovely.",
       "Have you updated the dates?",
       "Önerim Jardim Stay: en iyi konum.",
+      // Arithmetic, a list, something done earlier (review, 0.37): not a change now.
+      "I converted 300 USD to euros: about €277.",
+      "300 doları euroya çevirdim: yaklaşık €277.",
+      "I set out three options below.",
+      "I've set out three options below.",
+      "I added Sabine earlier, so you're two.",
+      "I've added Sabine before, so you're two.",
+      "Sabine'i daha önce ekledim, iki kişisiniz.",
+      "Az önce güncelledim, tarihler doğru.",
+      "I updated the budget.",
     ]) expect(claimsChange(no), no).toBe(false);
   });
 
-  it("adds the note under a reply that claims a change no tool made, and not under a question", async () => {
+  it("marks a reply that claims a change no tool made (a note on screen only), not a question", async () => {
     const { trip } = await seed(null);
-    const { client } = fakeClient([reply("Done! I've updated your budget currency to Euro. Everything on the board will now be shown in EUR.")]);
+    const said = "Done! I've updated your budget currency to Euro. Everything on the board will now be shown in EUR.";
+    const { client, calls } = fakeClient([reply(said), reply("Tamam.")]);
     await sendMessage(trip.id, "bütçeyi euro olarak göster hero da", anthropicProvider(client, "claude-opus-5"));
-    expect(await lastReply(trip.id)).toMatch(/Everything on the board will now be shown in EUR\.\n\nNot: bunu panoda değiştiremedim; Ayarlar'dan yapabilirsin\.$/);
+    const flagged = (await listMessages(trip.id)).filter((m) => m.role === "assistant").at(-1)!;
+    expect(flagged).toMatchObject({ text: said, unbacked: true });
+    // The model's history stays its own words: no note in what it reads next turn.
+    expect(JSON.stringify(flagged.content)).not.toMatch(/değiştiremedim|couldn't change/);
+    await sendMessage(trip.id, "peki", anthropicProvider(client, "claude-opus-5"));
+    expect(JSON.stringify(calls[1].messages)).not.toMatch(/değiştiremedim|couldn't change/);
 
     const asked = fakeClient([reply("Bütçeyi euroya çevireyim mi?")]);
     await sendMessage(trip.id, "bütçe euro mu olsun?", anthropicProvider(asked.client, "claude-opus-5"));
-    expect(await lastReply(trip.id)).toBe("Bütçeyi euroya çevireyim mi?");
+    expect((await listMessages(trip.id)).filter((m) => m.role === "assistant").at(-1)!.unbacked).toBeUndefined();
 
-    // A tool that read the page doesn't make "I updated" true.
+    // A tool that only shows buttons doesn't make "güncelledim" true.
     const looked = fakeClient([toolCall("o1", "offer_choices", { options: ["Evet", "Hayır"] }), reply("Para birimini güncelledim.")]);
     await sendMessage(trip.id, "euro yap", anthropicProvider(looked.client, "claude-opus-5"));
-    expect(await lastReply(trip.id)).toMatch(/Not: bunu panoda değiştiremedim/);
+    expect((await listMessages(trip.id)).filter((m) => m.role === "assistant").at(-1)!.unbacked).toBe(true);
   });
 });

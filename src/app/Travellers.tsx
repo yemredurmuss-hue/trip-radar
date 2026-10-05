@@ -2,7 +2,7 @@
 // trip's people, me), else as many as the saves say. A tap opens a small box under it: the names with ×, "İsim
 // ekle" (Enter), how many go, and, apart, "Birini davet et (paylaş)" for the share dialog. Naming someone shares
 // nothing. Closes on a click outside or Esc.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { initials, nPeople, travellersTitle } from "../lib/heroInfo";
 import { L } from "../lib/i18n";
 import { sameName, whoGoes, type Who } from "../lib/tripSettings";
@@ -30,6 +30,7 @@ export function Travellers({ trip, who, onShare }: { trip: Trip; who: Who; onSha
   const share = useShare();
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   // Profile photos (0.36): the shared trip's people's; mine in the first circle.
   const myPhoto = useMyPhoto();
   const { names, count } = who;
@@ -43,7 +44,9 @@ export function Travellers({ trip, who, onShare }: { trip: Trip; who: Who; onSha
       if (!box.current?.contains(e.target as Node)) setOpen(false);
     };
     const esc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      trigger.current?.focus(); // back where the keyboard was
     };
     document.addEventListener("mousedown", outside);
     document.addEventListener("keydown", esc);
@@ -87,6 +90,7 @@ export function Travellers({ trip, who, onShare }: { trip: Trip; who: Who; onSha
     <div className="hx-who-box" ref={box}>
       <button
         key={count > 0 ? "full" : "none"}
+        ref={trigger}
         type="button"
         className={`hx-people${appear}`}
         title={L("Kimler gidiyor?", "Who's going?")}
@@ -133,10 +137,15 @@ function WhoPopover({ trip, who, isShared, shared, onInvite }: { trip: Trip; who
   const fromShare = shared.filter((m) => !sameName(m, meName));
   const named = Math.max(1, who.names.length);
   const count = trip.travellers?.count ?? null;
+  const titleId = useId();
+  const [note, setNote] = useState<string | null>(null);
   const add = () => {
     const value = name.trim();
     if (!value) return;
     setName("");
+    // My own name typed: that's "Ben", already counted (never a second me).
+    if (sameName(value, meName)) return setNote(L(`${value} sensin: zaten "Ben" olarak sayılıyorsun.`, `${value} is you: you're already counted as "Me".`));
+    setNote(null);
     void changeTravellers(trip.id, { add: [value] }, L(`Gidenler: ${value} eklendi`, `Who's going: ${value} added`));
   };
   const remove = (n: string) => void changeTravellers(trip.id, { remove: [n] }, L(`Gidenler: ${n} çıkarıldı`, `Who's going: ${n} taken off`));
@@ -146,8 +155,8 @@ function WhoPopover({ trip, who, isShared, shared, onInvite }: { trip: Trip; who
     void changeTravellers(trip.id, { count: n }, L(`Gidenler: ${nPeople(n)}`, `Who's going: ${nPeople(n)}`));
   };
   return (
-    <div className="hx-pop hx-who-pop" role="dialog" aria-label={L("Kimler gidiyor?", "Who's going?")}>
-      <h4>{L("Kimler gidiyor?", "Who's going?")}</h4>
+    <div className="hx-pop hx-who-pop" role="dialog" aria-modal="false" aria-labelledby={titleId}>
+      <h4 id={titleId}>{L("Kimler gidiyor?", "Who's going?")}</h4>
       <ul className="hx-who-list">
         <li>
           <span className="who-name">{meName ? L(`Ben (${meName})`, `Me (${meName})`) : L("Ben", "Me")}</span>
@@ -187,6 +196,11 @@ function WhoPopover({ trip, who, isShared, shared, onInvite }: { trip: Trip; who
           {L("Ekle", "Add")}
         </button>
       </div>
+      {note && (
+        <p className="hx-who-note" role="status">
+          {note}
+        </p>
+      )}
       <div className="hx-who-count">
         <span>{L("Kişi sayısı", "Number of people")}</span>
         <span className="stepper">
