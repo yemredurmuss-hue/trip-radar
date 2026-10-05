@@ -4,11 +4,12 @@
 // ••• menu, the two ends of a trip, a media card's lines, and a transfer as a card. Pure.
 import { durationText, type CardFacts } from "./cardFacts";
 import { L } from "./i18n";
-import { count, nDays, nReviews, nStops, num } from "./i18nText";
+import { count, nDays, nOptions, nReviews, nStops, num } from "./i18nText";
 import { formatDateRange, isoDate, metricsOf, nightsBetween } from "./items";
-import { clockOf } from "./legs";
+import { clockOf, legItem, legTiming, MODE_LABELS, type Leg } from "./legs";
+import { flightSearchUrl } from "./timeline";
 import { isTrip } from "./travelKinds";
-import { RENTAL_MODES, TICKET_MODES, type CardKind, type TransportMode } from "./cardKinds";
+import { cardKindLabel, legTransportMode, RENTAL_MODES, TICKET_MODES, transportMode, type CardKind, type TransportMode } from "./cardKinds";
 import type { Item } from "./types";
 
 export type Ring = "open" | "half" | "done";
@@ -198,4 +199,53 @@ export function mediaFace(item: Item, kind: CardKind, source: CardFacts["source"
   const image = kind === "esim" || kind === "insurance" ? null : item.imageUrl;
   const silhouette = kind === "esim" ? "esim" : kind === "insurance" ? "shield" : kind === "activity" && !image ? "museum" : null;
   return { title, info, meta, image, silhouette };
+}
+
+export interface LegCardView {
+  kind: TransportMode | "transport";
+  /** The top line's name: the way of travel, or "Metro", "Yürüyüş", "Şehir değişimi", "Transfer". */
+  label: string;
+  ring: Ring;
+  from: End;
+  to: End;
+  middle: string | null;
+  foot: FootView;
+  ariaLabel: string;
+  /** A move by plane not booked yet: a flight search for the day. */
+  searchUrl: string | null;
+}
+
+/** Ways between cities that need a ticket; everything else (taxi, transfer, metro, a city bus) is planned once said. */
+const LEG_TICKETS = ["flight", "train", "bus", "ferry"];
+
+/** A transfer (airport ↔ hotel, hotel change) or a change of city, as a transport card. */
+export function legCardView(leg: Leg): LegCardView {
+  const mode = leg.choice?.mode ?? leg.mode;
+  const settled = legItem(leg);
+  const kind = legTransportMode(mode) ?? (settled ? transportMode(settled) : null) ?? "transport";
+  const move = leg.kind === "move";
+  const label = kind !== "transport" ? cardKindLabel(kind) : mode ? MODE_LABELS[mode] : move ? L("Şehir değişimi", "City change") : L("Transfer", "Transfer");
+  const ticketed = move && mode != null && LEG_TICKETS.includes(mode);
+  const booked = leg.status === "booked" || Boolean(leg.choice?.booked);
+  const planned = !booked && (mode != null || leg.status === "chosen" || leg.status === "planned");
+  const from = move ? (leg.from.city ?? leg.from.label) : leg.from.label;
+  const to = move ? (leg.to.city ?? leg.to.label) : leg.to.label;
+  const date = move ? formatDateRange(leg.date, null) : null;
+  let foot: FootView;
+  if (booked) foot = { left: state("done", ticketed ? L("Alındı", "Booked") : L("Ayarlandı", "Arranged"), settled?.name ?? null), action: null };
+  else if (planned && ticketed) foot = { left: state("wait", L("Planlanıyor", "Planning"), L("bilet alınmadı", "no ticket yet")), action: { label: L("Bileti aldım", "I got the ticket"), does: "book" } };
+  else if (planned) foot = { left: state("done", L("Planlandı", "Planned"), settled?.name ?? L("rezervasyon gerekmez", "no booking needed")), action: null };
+  else if (leg.status === "options") foot = { left: state("wait", nOptions(leg.options.length), L("birini seç", "pick one")), action: null };
+  else foot = { left: state("plain", L("Planlanmadı", "Not planned"), move ? L("nasıl geçeceksiniz?", "how will you get there?") : L("nasıl gideceksin?", "how will you go?")), action: null };
+  return {
+    kind,
+    label,
+    ring: booked ? "done" : planned ? (ticketed ? "half" : "done") : "open",
+    from: { city: from, sub: date, time: null },
+    to: { city: to, sub: date, time: null },
+    middle: legTiming(leg),
+    foot,
+    ariaLabel: `${from} → ${to}`,
+    searchUrl: move && mode === "flight" && !booked ? flightSearchUrl("from", from, leg.date, to) : null,
+  };
 }
