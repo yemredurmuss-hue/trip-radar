@@ -143,12 +143,19 @@ try {
   // The hero: a photo per city with a switcher, the countdown and route, what's confirmed, and the facts column.
   const hero = app.locator(".hx");
   assert.deepEqual(await hero.locator(".hx-cities button").allInnerTexts(), ["Porto", "Lizbon"]);
-  assert.match(await hero.locator(".hx-tab").innerText(), /(gün kaldı|Yarın|\. gün \/ 7|Bitti)\s*·\s*Porto → Lizbon ↗/);
-  assert.deepEqual((await hero.locator(".hx-stats > div").allInnerTexts()).map((t) => t.replace(/\s+/g, " ")), ["1 uçuş", "1 konaklama", "1 etkinlik"]);
+  assert.match(await hero.locator(".hx-tab").innerText(), /8–14 Ekim\s*·\s*(.*gün kaldı|Yarın|\. gün \/ 7|Bitti)/);
+  // The plan in one line: icon, number, name.
+  assert.deepEqual((await hero.locator(".hx-stats > span").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim()), ["2 uçuş", "2 konaklama", "1 ulaşım", "1 deneyim"]);
   assert.equal(await hero.locator(".hx-lead").innerText(), "3 karar ve 1 rezervasyon bekliyor.");
   const side = hero.locator(".hx-side");
-  assert.match(await side.locator(".hx-row", { hasText: "Tarihler" }).innerText(), /8–14 Ekim · 7 gün/);
-  assert.match(await side.locator(".hx-row", { hasText: "Vize" }).innerText(), /Schengen vizesi ↗/);
+  // One fact a line; the small things (money, plug, time, language) in one row under the budget.
+  const fact = (label) => side.locator(".hx-fact", { hasText: label }).locator("strong").innerText();
+  assert.equal(await fact("Süre"), "7 gün");
+  assert.equal(await fact("Ülke"), "Portekiz");
+  assert.equal(await fact("Lokasyonlar"), "Porto, Lizbon");
+  assert.equal(await side.locator(".hx-people i").count(), 2);
+  assert.match((await side.locator(".hx-minis").innerText()).replace(/\s+/g, " "), /Euro C\/F −2 sa Portekizce/);
+  assert.match(await side.locator(".hx-minis span", { hasText: "Euro" }).getAttribute("title"), /^€1 = ₺/);
   await hero.locator(".hx-intent-toggle", { hasText: "Seni böyle anladım" }).waitFor();
   await hero.scrollIntoViewIfNeeded();
   await app.waitForTimeout(1500); // the city photos come from Wikipedia
@@ -262,8 +269,8 @@ try {
   assert.equal(await todoList.count(), 0);
   // Cancellations running out show up there too (the sample trip is dated, so only when those dates are near).
   // And the money: booked and chosen against the budget; a tap splits it and adds a guess for what's open.
-  const budget = app.locator(".hx-row.click", { hasText: "Bütçe" });
-  assert.match(await budget.innerText(), /€577 \/ €1\.500/);
+  const budget = app.locator(".hx-budget");
+  assert.match((await budget.innerText()).replace(/\s+/g, " "), /Bütçe €1\.500 .*€\d[\d.]* (alındı|planda).*€923 boşta/);
   await budget.click();
   assert.match(await budget.locator(".hx-pop").innerText(), /Kalan\s*€923[\s\S]*yaklaşık €442 daha eklenir/);
   await budget.click();

@@ -113,6 +113,55 @@ const HERO_ICONS = {
       <path d="M12 7v5l3 2" />
     </g>
   ),
+  hourglass: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.5 3h11M6.5 21h11M7.5 3v3.5L12 12l4.5-5.5V3M7.5 21v-3.5L12 12l4.5 5.5V21" />
+    </g>
+  ),
+  star: <path fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" d="m12 3.2 2.7 5.5 6 .9-4.35 4.25 1 6L12 17l-5.35 2.85 1-6L3.3 9.6l6-.9z" />,
+  user: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round">
+      <circle cx="12" cy="9" r="3.6" />
+      <path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6" />
+    </g>
+  ),
+  plug: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 3v5M15 3v5M6.5 8h11v3.5a5.5 5.5 0 0 1-11 0zM12 17v4" />
+    </g>
+  ),
+  coin: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M15.2 8.6a4 4 0 1 0 0 6.8M7.5 11h6M7.5 13.2h6" />
+    </g>
+  ),
+  lang: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 5.5h16v10H11l-4.5 4v-4H4z" />
+      <path d="M8.5 9.5h7M8.5 12h4.5" />
+    </g>
+  ),
+  sun: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" />
+    </g>
+  ),
+  partly: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8.5 3v1.5M3.8 5l1 1M2.5 9.5H4M13.2 5l-1 1" />
+      <path d="M5.7 12.3A3.8 3.8 0 1 1 12.4 9" />
+      <path d="M8.5 20h9a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.6 1.2A2.9 2.9 0 0 0 8.5 20z" />
+    </g>
+  ),
+  cloud: <path fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinejoin="round" d="M7 19h10.5a4 4 0 0 0 .5-8 6 6 0 0 0-11.6 1.6A3.3 3.3 0 0 0 7 19z" />,
+  rain: (
+    <g fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 15.5h10.5a4 4 0 0 0 .5-8 6 6 0 0 0-11.6 1.6A3.3 3.3 0 0 0 7 15.5z" />
+      <path d="M8.5 18.5 7.5 21M12.5 18.5l-1 2.5M16.5 18.5l-1 2.5" />
+    </g>
+  ),
   spark: <path fill="currentColor" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5zM19 15c.25 2 1.1 2.75 3 3-1.9.25-2.75 1-3 3-.25-2-1.1-2.75-3-3 1.9-.25 2.75-1 3-3z" />,
   chevDown: <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />,
   arrow: <path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />,

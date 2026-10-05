@@ -919,8 +919,8 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .share-settings summary { cursor: pointer; font-weight: 600; font-size: 15px; }
 
 /* ---------- 0.30: the hero (approved mockup docs/mockups/2026-10-05-hero-v8.html) ----------
-   Left: one landscape photo per city, a tab with the countdown and route, the title, one paragraph, what's
-   confirmed and "what I understood". Right: the facts column, as tall as the story. Type: 40 title · 22 count ·
+   Left: one landscape photo per city, a tab with the dates and countdown, the title, one paragraph, the plan
+   in one line and "what I understood". Right: the facts column, as tall as the story. Type: 40 title · 22 count ·
    17 text/value · 15 small line · 13 label. Colour: the photo and the category colours (icons, budget bar) only. */
 .hx {
   --hx-ink: #1d1d1f; --hx-gray: #6e6e73; --hx-line: #e2ded6; --hx-soft: #efede8;
@@ -960,20 +960,17 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .hx-story h1 { margin: 0; font-size: 40px; line-height: 1.1; font-weight: 700; letter-spacing: -.025em; }
 .hx-lead { margin: 12px 0 0; font-size: 17px; line-height: 1.55; color: #3a3a3c; max-width: 540px; }
 
-/* What's confirmed: one grey box, four equal parts, a hairline between. */
-/* As many equal parts as there are kinds confirmed (a zero isn't shown). */
-.hx-stats { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; margin-top: 22px; background: var(--hx-soft); border-radius: 18px; }
-.hx-stats > div { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; padding: 14px 16px; }
-.hx-stats > div + div { border-left: 1px solid var(--hx-line); }
-.hx-stats svg { grid-row: span 2; }
-.hx-stats b { font-size: 22px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.hx-stats span { font-size: 13px; color: var(--hx-gray); }
+/* The plan in one line (0.34.1): icon, number, name; a zero isn't shown. */
+.hx-stats { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 20px; font-size: 16px; color: var(--hx-ink); }
+.hx-stats > span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.hx-stats b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.hx-stats svg { flex: none; }
 
-/* Category colours: only here (the confirmed icons) and in the budget bar and its window. */
+/* Category colours: only here (the plan line's icons) and in the budget's window. */
 .hx-stats .c-flight svg { color: #6a4fe0; }
 .hx-stats .c-stay svg { color: #23998b; }
 .hx-stats .c-transport svg { color: #c58a2e; }
-.hx-stats .c-activity svg { color: #a8336f; }
+.hx-stats .c-experience svg { color: #a8336f; }
 .hx-meter .c-flight, .hx-pop i.c-flight { background: #6a4fe0; }
 .hx-meter .c-stay, .hx-pop i.c-stay { background: #23998b; }
 .hx-meter .c-transport, .hx-pop i.c-transport { background: #c58a2e; }
@@ -1009,24 +1006,48 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .hx-intent-pop .edit { margin-top: 10px; font-size: 13px; color: var(--hx-gray); }
 .hx-tag { display: inline-block; font-size: 12px; color: var(--hx-gray); background: var(--hx-soft); border-radius: 6px; padding: 1px 7px; margin-right: 6px; vertical-align: 1px; }
 
-/* The facts column: rows spread over its height; the next step at the bottom. */
+/* The facts column (0.34.1): one fact a line, label left, value right; the budget big; the small things
+   (money, plug, time, language) in one quiet row; the next step at the bottom. */
 .hx-side { min-width: 0; background: var(--hx-soft); border-radius: 22px; padding: 8px 20px 20px; display: flex; flex-direction: column; }
 .hx-rows { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; margin-bottom: 12px; }
-.hx-row { position: relative; display: grid; grid-template-columns: 30px 1fr; gap: 14px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--hx-line); }
-.hx-row:last-child { border-bottom: 0; }
-.hx-row > svg { color: var(--hx-ink); justify-self: center; }
-.hx-row > div { min-width: 0; }
-.hx-row small { display: block; font-size: 13px; color: var(--hx-gray); }
-.hx-row strong { display: block; font-size: 17px; font-weight: 500; margin-top: 2px; font-variant-numeric: tabular-nums; }
-.hx-row strong .of { color: var(--hx-gray); font-weight: 400; }
-.hx-row a { color: inherit; text-decoration: none; }
-.hx-row a:hover { text-decoration: underline; }
-.hx-row .sub { display: block; font-size: 13px; color: var(--hx-gray); margin-top: 2px; }
-.hx-row .sub .err { color: #c62828; }
-.hx-row.click { cursor: pointer; border-radius: 12px; }
+.hx-fact { display: grid; grid-template-columns: 22px auto 1fr; gap: 10px; align-items: center; min-height: 46px; padding: 6px 0; border-bottom: 1px solid var(--hx-line); }
+.hx-fact > svg { color: var(--hx-gray); }
+.hx-fact small { font-size: 14px; color: var(--hx-gray); white-space: nowrap; }
+.hx-fact strong { justify-self: end; text-align: right; font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
+.hx-fact a { color: inherit; text-decoration: none; }
+.hx-fact a:hover { text-decoration: underline; }
+.hx-share { margin: -2px 0 0 32px; padding-bottom: 6px; font-size: 13px; color: var(--hx-gray); border-bottom: 1px solid var(--hx-line); }
+.hx-share .err { color: #c62828; }
+.hx-people { display: inline-flex; }
+.hx-people i { width: 30px; height: 30px; margin-left: -7px; border-radius: 50%; border: 2px solid var(--hx-soft); display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 600; }
+.hx-people i:first-child { margin-left: 0; }
+.hx-people .p0 { background: #e7e2fb; color: #4b36b8; }
+.hx-people .p1 { background: #d8f0ea; color: #11695c; }
+.hx-people .p2 { background: #fbe3d4; color: #9a3f12; }
+.hx-people .p3 { background: #f8dfe9; color: #8b2554; }
+.hx-people .more { background: #fff; color: var(--hx-gray); }
+.hx-weather { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 10px; }
+.hx-weather > span { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.hx-weather small { font-size: 12.5px; color: var(--hx-gray); font-weight: 400; }
+.hx-weather .sky-sun { color: #d29a00; }
+.hx-weather .sky-partly { color: #b9891a; }
+.hx-weather .sky-cloud { color: #8e8e93; }
+.hx-weather .sky-rain { color: #2563c9; }
+.hx-budget { position: relative; padding: 12px 0 10px; border-bottom: 1px solid var(--hx-line); cursor: pointer; }
+.hx-budget .top { display: grid; grid-template-columns: 22px auto 1fr; gap: 10px; align-items: center; }
+.hx-budget .top svg { color: var(--hx-gray); }
+.hx-budget .top small { font-size: 14px; color: var(--hx-gray); }
+.hx-budget .top strong { justify-self: end; font-size: 24px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.hx-budget .legend { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; margin-top: 7px; font-size: 12.5px; color: var(--hx-gray); font-variant-numeric: tabular-nums; }
+.hx-budget .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; background: #d6d1c7; }
+.hx-meter .booked, .hx-budget .legend i.booked { background: #1f8f4e; }
+.hx-meter .planned, .hx-budget .legend i.planned { background: #f0a53a; }
 .hx-over { color: #c62828; font-weight: 500; }
-.hx-meter { display: flex; gap: 2px; height: 6px; margin-top: 9px; border-radius: 999px; overflow: hidden; background: #e2ded6; }
+.hx-meter { display: flex; gap: 2px; height: 8px; margin-top: 10px; border-radius: 999px; overflow: hidden; background: #dcd7cd; }
 .hx-meter i { display: block; height: 100%; }
+.hx-minis { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 8px; padding-top: 12px; font-size: 13px; color: var(--hx-gray); }
+.hx-minis span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.hx-minis svg { flex: none; }
 .hx-pop {
   position: absolute; z-index: 6; right: 0; top: calc(100% + 6px); width: 300px; max-width: calc(100vw - 32px); padding: 16px 18px; border-radius: 16px; background: #fff; font-size: 15px; cursor: default;
   box-shadow: 0 12px 40px rgba(0,0,0,.16), 0 0 0 1px rgba(0,0,0,.04);
@@ -1055,9 +1076,6 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
   .hx-photo { height: 200px; }
   .hx-tab { margin-left: 12px; font-size: 14px; }
   .hx-story h1 { font-size: 32px; }
-  .hx-stats { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
-  .hx-stats > div:nth-child(3) { border-left: 0; }
-  .hx-stats > div:nth-child(n+3) { border-top: 1px solid var(--hx-line); }
   .hx-intent-toggle .meta { display: none; }
   .hx-busy span { display: none; }
   .hx-busy { padding: 0 11px; }

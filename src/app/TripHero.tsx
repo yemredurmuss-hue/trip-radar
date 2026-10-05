@@ -1,7 +1,10 @@
-// The trip at a glance, left column: a photo per city (switcher + slow auto-advance), the countdown
-// and route label, the title, one paragraph (mood + status), what's confirmed, and "what I understood".
+// The trip at a glance, left column: a photo per city (switcher + slow auto-advance), the dates and the
+// countdown on it, the title, one paragraph (mood + status), the plan in one line (icon, number, name:
+// flights, stays, transport, experiences), and "what I understood".
 import { useEffect, useState, type ReactNode } from "react";
 import { countdown, countdownText } from "../lib/countdown";
+import type { HeroTally } from "../lib/heroInfo";
+import { formatDateRange } from "../lib/items";
 import { L } from "../lib/i18n";
 import type { Trip } from "../lib/types";
 import { HeroIcon, type HeroIconName } from "./Icons";
@@ -13,29 +16,18 @@ export interface HeroCity {
   image: string | null;
 }
 
-/** Chosen or booked, still in the plan. `carsOnly`: every counted transport is a rented car ("araç"). */
-export interface HeroCounts {
-  flight: number;
-  stay: number;
-  transport: number;
-  activity: number;
-  carsOnly: boolean;
-}
-
 export function TripHero(props: {
   trip: Trip;
   decisions: Decisions | null;
   cities: HeroCity[];
   range: { start: string; end: string } | null;
   today: string;
-  routeText: string | null;
-  mapUrl: string | null;
   lead: string;
-  counts: HeroCounts;
+  tally: HeroTally;
   working: number;
   menu: ReactNode;
 }) {
-  const { trip, cities, range, today, counts } = props;
+  const { trip, cities, range, today, tally } = props;
   const [i, setI] = useState(0);
   // Every 6 s to the next city; a tap on one restarts the wait.
   useEffect(() => {
@@ -45,18 +37,13 @@ export function TripHero(props: {
   }, [cities.length, i]);
   const at = cities.length ? i % cities.length : 0;
   const label = countdownText(countdown(range, today));
-  const shown: [keyof Omit<HeroCounts, "carsOnly">, string, HeroIconName, string][] = [
-    ["flight", L("uçuş", "flights"), "plane", L("Alınan ya da seçilen uçuş", "Flights booked or chosen")],
-    ["stay", L("konaklama", "stays"), "bed", L("Seçilen ya da rezerve konaklama", "Stays chosen or booked")],
-    [
-      "transport",
-      counts.carsOnly ? L("araç", "cars") : L("ulaşım", "transport"),
-      "car",
-      counts.carsOnly ? L("Kiralanan araç", "Cars rented") : L("Seçilen ya da alınan ulaşım", "Transport chosen or booked"),
-    ],
-    ["activity", L("etkinlik", "activities"), "ticket", L("Plana alınan etkinlik", "Activities in the plan")],
+  const shown: [keyof HeroTally, number, string, HeroIconName][] = [
+    ["flight", tally.flight, L("uçuş", tally.flight === 1 ? "flight" : "flights"), "plane"],
+    ["stay", tally.stay, L("konaklama", tally.stay === 1 ? "stay" : "stays"), "bed"],
+    ["transport", tally.transport, L("ulaşım", "transport"), "car"],
+    ["experience", tally.experience, L("deneyim", tally.experience === 1 ? "experience" : "experiences"), "star"],
   ];
-  const stats = shown.filter(([k]) => counts[k] > 0);
+  const stats = shown.filter(([, n]) => n > 0);
   const busy = L(`${props.working} kayıt işleniyor`, `Processing ${props.working}`);
   return (
     <div className="hx-left">
@@ -83,36 +70,24 @@ export function TripHero(props: {
       </div>
       {/* Outside the photo (which clips): the menu opens over the page. */}
       <div className="hx-menu">{props.menu}</div>
-      {(label || props.routeText) && (
+      {(range || label) && (
         <div className="hx-tab">
-          {label && (
-            <>
-              <HeroIcon name="clock" size={18} />
-              <b>{label}</b>
-            </>
-          )}
-          {label && props.routeText && <span className="sep">·</span>}
-          {props.routeText &&
-            (props.mapUrl ? (
-              <a href={props.mapUrl} target="_blank" rel="noreferrer" title={L("Rotayı Google Haritalar'da gör", "See the route on Google Maps")}>
-                {props.routeText} ↗
-              </a>
-            ) : (
-              <span>{props.routeText}</span>
-            ))}
+          <HeroIcon name="cal" size={18} />
+          {range && <b>{formatDateRange(range.start, range.end)}</b>}
+          {range && label && <span className="sep">·</span>}
+          {label && <span>{label}</span>}
         </div>
       )}
       <div className="hx-story">
         <h1>{trip.title}</h1>
         {props.lead && <p className="hx-lead">{props.lead}</p>}
         {stats.length > 0 && (
-          <div className="hx-stats" aria-label={L("Onaylananlar", "Confirmed")}>
-            {stats.map(([k, word, icon, title]) => (
-              <div key={k} className={`c-${k}`} title={title}>
+          <div className="hx-stats" aria-label={L("Planda", "In the plan")}>
+            {stats.map(([k, n, word, icon]) => (
+              <span key={k} className={`c-${k}`}>
                 <HeroIcon name={icon} size={20} />
-                <b>{counts[k]}</b>
-                <span>{word}</span>
-              </div>
+                <b>{n}</b> {word}
+              </span>
             ))}
           </div>
         )}

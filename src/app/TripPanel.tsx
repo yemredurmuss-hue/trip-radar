@@ -51,7 +51,8 @@ import { isIdea } from "../lib/booking";
 import { CategoryIcon, Chevron } from "./Icons";
 import { findTarget, show, TodoList } from "./Progress";
 import { TripFacts } from "./TripFacts";
-import { TripHero, type HeroCity, type HeroCounts } from "./TripHero";
+import { cityRanges, countriesOf, heroTally } from "../lib/heroInfo";
+import { TripHero, type HeroCity } from "./TripHero";
 import { kindLabel, LegRow } from "./LegRow";
 import { Carousel } from "./Carousel";
 import { CategoryPlan } from "./plan/CategoryPlan";
@@ -80,8 +81,6 @@ interface Props {
 export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, menu, onShare }: Props) {
   // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
-  // The cities in the order they're visited (the nights' blocks), else as the saved stays name them.
-  const route = routeOf(plan, items);
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
   const [view, setView] = useState<TimelineMode>("plan");
   const dismissed = items.filter((i) => i.status === "dismissed");
@@ -297,16 +296,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     [items, passport, decisions?.ctx.currency, decisions?.ctx.rates, range?.start],
   );
   const settledItem = (i: Item) => i.status === "chosen" || i.status === "booked";
-  const closedIds = new Set(plan.closed.map((c) => c.item.id));
-  const confirmed = items.filter((i) => settledItem(i) && !closedIds.has(i.id));
-  const transports = confirmed.filter((i) => i.category === "transport");
-  const counts: HeroCounts = {
-    flight: confirmed.filter((i) => i.category === "flight").length,
-    stay: confirmed.filter((i) => i.category === "stay").length,
-    transport: transports.length,
-    activity: confirmed.filter((i) => i.category === "activity" || i.category === "food").length,
-    carsOnly: transports.length > 0 && transports.every(isRental),
-  };
+  const tally = useMemo(() => heroTally(plan, items), [plan, items]);
+  const countries = useMemo(() => countriesOf(items), [items]);
+  const places = useMemo(() => cityRanges(plan, cityNames, range), [plan, cityNames, range]);
   const flightGroups = plan.groups.filter((g) => g.category === "flight");
   const flightsDone = flightGroups.length > 0 && flightGroups.every((g) => g.items.some(settledItem));
   const mood = trip.mood?.key === moodFor && trip.mood.text ? trip.mood.text : null;
@@ -365,10 +357,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           cities={cities}
           range={range}
           today={today}
-          routeText={route}
-          mapUrl={mapUrl}
           lead={lead}
-          counts={counts}
+          tally={tally}
           working={working.length + reading}
           menu={menu}
         />
@@ -376,7 +366,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           range={range}
           estimated={!!range && !trip.confirmedDates && !plan.range}
           facts={facts}
-          passport={passport}
+          home={passport}
+          countries={countries}
+          cities={cityNames}
+          places={places}
+          mapUrl={mapUrl}
+          today={today}
           bar={bar}
           progress={progress}
           onGo={reveal}
@@ -479,17 +474,6 @@ function waitingCityOf(progress: DecisionProgress, timeline: Timeline, items: It
   if (entry?.kind === "stay") return entry.block.city ?? null;
   if (entry?.kind === "plan") return entry.city;
   return (todo.target.item && items.find((i) => i.id === todo.target.item)?.city) || null;
-}
-
-/** "Porto → Funchal": the cities in the order the nights go, each once in a row; else the saved stays' cities. */
-function routeOf(plan: Plan, items: Item[]): string | null {
-  const inOrder: string[] = [];
-  for (const b of plan.stayBlocks) {
-    if (b.city && (!inOrder.length || cityKeyOf(inOrder.at(-1)!) !== cityKeyOf(b.city))) inOrder.push(b.city);
-  }
-  if (inOrder.length) return inOrder.join(" → ");
-  const saved = [...new Set(items.filter((i) => i.status !== "dismissed" && i.category === "stay" && i.city).map((i) => i.city!))];
-  return saved.length ? joinTr(saved) : null;
 }
 
 function OptionGroupView({

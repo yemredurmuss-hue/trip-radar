@@ -50,13 +50,19 @@ Panonun üstü tek blok (onaylı görsel `docs/mockups/2026-10-05-hero-v8.html`)
 ikisi aynı boyda; pano dar olunca tek sütun, künye hikâyenin altına iner.
 
 - **Fotoğraf** şehir başına bir tane, rota sırasıyla; üstte şehir seçici (6 sn'de bir kendiliğinden geçer), sağda
-  işleniyor hapı ve ••• menüsü. Altına binen etiket: geri sayım + rota linki. Tarih yoksa geri sayım yok.
+  işleniyor hapı ve ••• menüsü. Altına binen etiket: tarihler + geri sayım ("8–14 Ekim · 3 gün kaldı"). Tarih yoksa ikisi de yok.
 - **Açıklama** tek paragraf: AI'nin ton cümlesi (rakamsız) + koddan gelen durum cümlesi, yalnız en acil olan
   ("3 karar ve 1 rezervasyon bekliyor."). Uydurma yok.
-- **Onaylananlar** gri tek kutu: seçilen ya da rezerve olan uçuş, konaklama, ulaşım, etkinlik sayısı; sıfır olan yazılmaz.
+- **Plan tek satırda** (0.34.1): ikon · sayı · ad ("2 uçuş · 2 konaklama · 1 ulaşım · 1 deneyim"); her ihtiyaç bir kez
+  (üç seçenekli uçuş bir uçuş), deneyim = plandaki etkinlik ve restoranlar. Sıfır olan yazılmaz. "Etkinlik" değil "deneyim".
 - **Seni böyle anladım** tek satır; açılan pencere sayfayı itmez. Her giriş kapsamıyla (Tüm gezi / kategori / ilan) ve × ile.
-- **Künye**: Tarihler, Kalkış, Yolcu, Vize, Yerel, Bütçe. Bilinmeyen satır gösterilmez. Bütçe ince çok renkli çubuk;
-  tıklayınca kırılım, kalan ve karar bekleyenlerin tahmini. Aşınca yalnız orada kırmızı "aşıyor".
+- **Künye** (0.34.1): her bilgi tek satır, solda etiket sağda değer, iç içe alt satır yok. Süre ("7 gün") · Ülke ·
+  Lokasyonlar (rota linki) · Yolcular (paylaşımlıysa baş harfli yuvarlaklar, değilse kişi sayısı kadar boş yuvarlak) ·
+  Hava (şehir başına ikon + gündüz derecesi; 10 gün kala Open-Meteo tahmini, öncesinde son 5 yılın aynı günleri;
+  üstüne gelince hangisi olduğu yazar; veri yoksa satır yok) · Bütçe: büyük tek rakam (bütçe, yoksa bilinen toplam),
+  altında çubuk yeşil alındı / amber planda / gri boşta ve üç küçük tutar; aşınca kırmızı "aşıyor"; tıklayınca
+  kategori kırılımı. En altta sessiz tek sıra: para birimi (kur üstüne gelince) · priz (adaptör gerekir mi üstüne
+  gelince) · saat farkı ("−2 sa", aynıysa yok) · dil. Vize ve kalkış künyede yok. Bilinmeyen satır gösterilmez.
 - **Sıradaki adım** koyu buton, ne yapılacağını söyler ("Karar ver: Porto konaklama"); altında sessiz satır, sayıya
   tıklamak listeyi hero'nun altında açar. İş kalmadıysa "Bu geziyi paylaş".
 

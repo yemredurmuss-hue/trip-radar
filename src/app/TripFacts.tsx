@@ -1,21 +1,31 @@
-// The facts column beside the hero: dates, origin, travellers, visa, local money and time, budget;
-// at the bottom the next step (the first to-do) and a quiet line of the rest. Unknown rows are left out.
+// The facts column beside the hero, one fact a line: how long, which country, the places, who goes, the
+// weather there, the budget (booked, planned, free), and the small things in one quiet row (money, plug,
+// time, language); then the next step and a quiet line of the rest. Unknown rows are left out.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { formatDateRange, formatPrice, nightsBetween } from "../lib/items";
+import { weatherTitle, type CityWeather } from "../lib/climate";
+import { currencyName, initials, offsetText, plugFit, plugFitText } from "../lib/heroInfo";
+import { formatPrice, nightsBetween } from "../lib/items";
 import { L, locale } from "../lib/i18n";
 import { nDays } from "../lib/i18nText";
 import { BUDGET_SLICES, nextStepText, type BudgetBar, type BudgetSlice, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
 import type { TripFacts as Facts } from "../lib/tripFacts";
-import { VISA_CHECKED } from "../lib/visa";
 import { HeroIcon, type HeroIconName } from "./Icons";
 import { kinds } from "./Progress";
 import { ShareLine, useShare } from "./Share";
+import { useWeather } from "./useWeather";
 
 export function TripFacts(props: {
   range: { start: string; end: string } | null;
   estimated: boolean;
   facts: Facts;
-  passport: string;
+  /** The traveller's own country (the passport in Settings): whether their plugs fit. */
+  home: string;
+  countries: string[];
+  cities: string[];
+  /** Each city's days, for its weather. */
+  places: { city: string; start: string; end: string }[];
+  mapUrl: string | null;
+  today: string;
   bar: BudgetBar | null;
   progress: DecisionProgress;
   onGo: (t: Todo["target"]) => void;
@@ -26,63 +36,71 @@ export function TripFacts(props: {
   onTodo: (kind: TodoKind | null) => void;
 }) {
   const { range, facts, bar, progress } = props;
-  const shared = !!useShare();
+  const share = useShare();
   const days = range ? nightsBetween(range.start, range.end) + 1 : 0;
   const next = progress.todos[0];
-  const local = facts.local && (facts.local.rateText || facts.local.hours) ? facts.local : null;
+  const weather = useWeather(props.places, props.countries.length === 1 ? props.countries[0] : null, props.today);
+  const month = range ? new Date(`${range.start}T12:00:00Z`).toLocaleDateString(locale(), { month: "long", timeZone: "UTC" }) : "";
+  // Who goes: the people on a shared trip by name, else as many plain circles as the saves say.
+  const names = share ? [...new Set([share.me, ...(share.state?.members ?? [])].map((n) => n.trim()).filter(Boolean))] : [];
+  const people = names.length ? names.length : (facts.adults ?? 0);
   return (
     <aside className="hx-side">
       <div className="hx-rows">
         {range && (
-          <Row
-            icon="cal"
-            label={L("Tarihler", "Dates")}
-            value={
-              <>
-                {formatDateRange(range.start, range.end)} <span className="of">· {nDays(days)}</span>
-              </>
-            }
-            sub={props.estimated ? L("~tahmini · kayıtlardan", "~estimated · from saves") : null}
-          />
+          <Fact icon="hourglass" label={L("Süre", "Length")} title={props.estimated ? L("Tahmini · kayıtlardan", "Estimated · from saves") : undefined}>
+            {props.estimated ? "~" : ""}
+            {nDays(days)}
+          </Fact>
         )}
-        {facts.origin && <Row icon="pin" label={L("Kalkış", "From")} value={facts.origin} />}
-        {facts.adults ? (
-          <Row icon="users" label={L("Yolcu", "Travellers")} value={L(`${facts.adults} yetişkin`, `${facts.adults} adult${facts.adults === 1 ? "" : "s"}`)} sub={shared ? <ShareLine /> : null} />
-        ) : (
-          // Shared but the saves don't say how many: the sharing still has its line.
-          shared && <Row icon="users" label={L("Paylaşım", "Sharing")} value={<ShareLine />} />
+        {props.countries.length > 0 && (
+          <Fact icon="globe" label={props.countries.length > 1 ? L("Ülkeler", "Countries") : L("Ülke", "Country")}>
+            {props.countries.join(", ")}
+          </Fact>
         )}
-        {facts.visa && (
-          <Row
-            icon="passport"
-            label={/^[A-Z]{2}$/.test(props.passport) && props.passport !== "XX" ? L(`Vize · ${props.passport} pasaportu`, `Visa · ${props.passport} passport`) : L("Vize", "Visa")}
-            value={
-              <a href={facts.visa.link} target="_blank" rel="noreferrer" title={L(`${hostOf(facts.visa.link)} · kontrol: ${checked()}`, `${hostOf(facts.visa.link)} · checked: ${checked()}`)}>
-                {facts.visa.label} ↗
+        {props.cities.length > 0 && (
+          <Fact icon="pin" label={L("Lokasyonlar", "Places")}>
+            {props.mapUrl ? (
+              <a href={props.mapUrl} target="_blank" rel="noreferrer" title={L("Rotayı Google Haritalar'da gör", "See the route on Google Maps")}>
+                {props.cities.join(", ")}
               </a>
-            }
-          />
+            ) : (
+              props.cities.join(", ")
+            )}
+          </Fact>
         )}
-        {local && (
-          <Row
-            icon="globe"
-            label={L("Yerel", "Local")}
-            title={`${L(local.info.language.tr, local.info.language.en)} · ${L(`${local.info.plugs.join("/")} tipi priz`, `plug type ${local.info.plugs.join("/")}`)}`}
-            value={
-              <>
-                {local.rateText}
-                {local.hours ? (
-                  <span className="of">
-                    {local.rateText ? " · " : ""}
-                    {local.hours > 0 ? "+" : "−"}
-                    {Math.abs(local.hours).toLocaleString(locale())} {L("saat", "h")}
-                  </span>
-                ) : null}
-              </>
-            }
-          />
+        {people > 0 && (
+          <Fact icon="users" label={L("Yolcular", "Travellers")} title={names.length ? names.join(", ") : L(`${people} yetişkin`, `${people} adult${people === 1 ? "" : "s"}`)}>
+            <span className="hx-people">
+              {Array.from({ length: Math.min(people, 4) }, (_, n) => (
+                <i key={n} className={`p${n % 4}`}>
+                  {names[n] ? initials(names[n]) : <HeroIcon name="user" size={16} />}
+                </i>
+              ))}
+              {people > 4 && <i className="more">+{people - 4}</i>}
+            </span>
+          </Fact>
+        )}
+        {share && (
+          <div className="hx-share">
+            <ShareLine />
+          </div>
+        )}
+        {weather.length > 0 && (
+          <Fact icon="partly" label={L("Hava", "Weather")}>
+            <span className="hx-weather">
+              {weather.map((w) => (
+                <span key={w.city} title={weatherTitle(w, month)}>
+                  <HeroIcon name={skyIcon(w)} size={18} className={`sky-${w.sky}`} />
+                  <b>{w.high}°</b>
+                  {weather.length > 1 && <small>{w.city}</small>}
+                </span>
+              ))}
+            </span>
+          </Fact>
         )}
         {bar && <BudgetRow bar={bar} />}
+        <Minis facts={facts} home={props.home} />
       </div>
       {next ? (
         <button className="hx-next" onClick={() => props.onGo(next.target)}>
@@ -127,8 +145,9 @@ export function TripFacts(props: {
 }
 
 /**
- * Booked + chosen against the budget, as a thin bar in the categories' colours (the rest a grey track);
- * a tap opens the split, what's left, and what the open decisions will likely add.
+ * The budget big (else what's known so far), a bar of what's booked (green), planned but not booked
+ * (amber) and still free (grey), and the three sums small under it. A tap opens the split by kind,
+ * what's left, and what the open decisions will likely add.
  */
 function BudgetRow({ bar }: { bar: BudgetBar }) {
   const [open, setOpen] = useState(false);
@@ -146,22 +165,39 @@ function BudgetRow({ bar }: { bar: BudgetBar }) {
   const scale = Math.max(bar.total ?? 0, known) || 1;
   const money = (n: number) => formatPrice(n, bar.currency);
   const over = bar.total != null && known > bar.total ? known - bar.total : 0;
+  const free = bar.total != null && !over ? bar.total - known : 0;
   const slices = BUDGET_SLICES.filter((s) => bar.byCategory[s] > 0);
   return (
-    <div className="hx-row click" ref={box} title={L("Ayrıntı için tıkla", "Click for details")} onClick={() => setOpen(!open)}>
-      <HeroIcon name="wallet" />
-      <div>
+    <div className="hx-budget click" ref={box} title={L("Ayrıntı için tıkla", "Click for details")} onClick={() => setOpen(!open)}>
+      <div className="top">
+        <HeroIcon name="wallet" size={20} />
         <small>{bar.total != null ? L("Bütçe", "Budget") : L("Bilinen toplam", "Known total")}</small>
-        <strong>
-          {money(known)}
-          {bar.total != null && <span className="of"> / {money(bar.total)}</span>}
-          {over > 0 && <span className="hx-over"> · {L(`${money(over)} aşıyor`, `${money(over)} over`)}</span>}
-        </strong>
-        <div className="hx-meter" aria-label={L("Kategoriye göre harcama", "Spending by category")}>
-          {slices.map((s) => (
-            <i key={s} className={`c-${s}`} style={{ width: `${(bar.byCategory[s] / scale) * 100}%` }} title={`${sliceLabel(s)} ${money(bar.byCategory[s])}`} />
-          ))}
-        </div>
+        <strong>{money(bar.total ?? known)}</strong>
+      </div>
+      <div className="hx-meter" aria-label={L("Alınan, planlanan ve boşta kalan", "Booked, planned and free")}>
+        {bar.booked > 0 && <i className="booked" style={{ width: `${(bar.booked / scale) * 100}%` }} />}
+        {bar.chosen > 0 && <i className="planned" style={{ width: `${(bar.chosen / scale) * 100}%` }} />}
+      </div>
+      <div className="legend">
+        {bar.booked > 0 && (
+          <span>
+            <i className="booked" />
+            {L(`${money(bar.booked)} alındı`, `${money(bar.booked)} booked`)}
+          </span>
+        )}
+        {bar.chosen > 0 && (
+          <span>
+            <i className="planned" />
+            {L(`${money(bar.chosen)} planda`, `${money(bar.chosen)} planned`)}
+          </span>
+        )}
+        {free > 0 && (
+          <span>
+            <i />
+            {L(`${money(free)} boşta`, `${money(free)} free`)}
+          </span>
+        )}
+        {over > 0 && <span className="hx-over">{L(`${money(over)} aşıyor`, `${money(over)} over`)}</span>}
       </div>
       {open && (
         <div className="hx-pop" onClick={(e) => e.stopPropagation()}>
@@ -193,29 +229,50 @@ function BudgetRow({ bar }: { bar: BudgetBar }) {
   );
 }
 
-function Row({ icon, label, value, sub, title }: { icon: HeroIconName; label: string; value: ReactNode; sub?: ReactNode; title?: string }) {
+/** One fact, one line: icon, label, the value on the right. */
+function Fact({ icon, label, title, children }: { icon: HeroIconName; label: string; title?: string; children: ReactNode }) {
   return (
-    <div className="hx-row">
-      <HeroIcon name={icon} />
-      <div>
-        <small>{label}</small>
-        <strong title={title}>{value}</strong>
-        {sub ? <span className="sub">{sub}</span> : null}
-      </div>
+    <div className="hx-fact" title={title}>
+      <HeroIcon name={icon} size={20} />
+      <small>{label}</small>
+      <strong>{children}</strong>
     </div>
   );
 }
 
+/** The small things in one row: the money (its rate on hover), the plug, the time difference, the language. */
+function Minis({ facts, home }: { facts: Facts; home: string }) {
+  const local = facts.local;
+  if (!local) return null;
+  const fit = plugFit(home, facts.country);
+  const offset = offsetText(local.hours);
+  return (
+    <div className="hx-minis">
+      <span title={local.rateText ?? undefined}>
+        <HeroIcon name="coin" size={15} />
+        {currencyName(local.currency)}
+      </span>
+      {local.info.plugs.length > 0 && (
+        <span title={fit ? plugFitText(fit) : undefined}>
+          <HeroIcon name="plug" size={15} />
+          {local.info.plugs.join("/")}
+        </span>
+      )}
+      {offset && (
+        <span title={L("Senin saatine göre", "Against your own time")}>
+          <HeroIcon name="clock" size={15} />
+          {offset}
+        </span>
+      )}
+      <span>
+        <HeroIcon name="lang" size={15} />
+        {L(local.info.language.tr, local.info.language.en)}
+      </span>
+    </div>
+  );
+}
+
+const skyIcon = (w: CityWeather): HeroIconName => w.sky;
+
 const sliceLabel = (s: BudgetSlice) =>
-  ({ flight: L("Uçuş", "Flights"), stay: L("Konaklama", "Stays"), transport: L("Ulaşım", "Transport"), activity: L("Etkinlik", "Activities"), other: L("Diğer", "Other") })[s];
-
-const hostOf = (url: string) => {
-  try {
-    return new URL(url).host.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-};
-
-/** "Ekim 2026": when the visa table was last checked. */
-const checked = () => new Date(`${VISA_CHECKED}-01T12:00:00Z`).toLocaleDateString(locale(), { month: "long", year: "numeric" });
+  ({ flight: L("Uçuş", "Flights"), stay: L("Konaklama", "Stays"), transport: L("Ulaşım", "Transport"), activity: L("Deneyim", "Experiences"), other: L("Diğer", "Other") })[s];
