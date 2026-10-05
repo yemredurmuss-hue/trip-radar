@@ -1359,8 +1359,10 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .cat-state.done { background: #d4efdc; color: #1d7442; }
 .cat-add { flex: none; display: inline-flex; align-items: center; gap: 4px; margin-left: auto; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--c) 30%, #fff); background: #fff; font: inherit; font-size: 13px; font-weight: 500; color: #1d1d1f; cursor: pointer; }
 .cat-add:hover { border-color: var(--c); }
-.cat-chev { flex: none; display: grid; place-items: center; width: 20px; height: 20px; color: #6e6e73; transform: rotate(90deg); transition: transform .2s; }
-.cat-sec.closed .cat-chev { transform: none; }
+/* One arrow: pointing down when open, right when closed; turned on the svg itself, centred in its own box. */
+.cat-chev { flex: none; display: grid; place-items: center; width: 24px; height: 24px; color: #6e6e73; }
+.cat-chev svg { display: block; transform: rotate(0deg); }
+.cat-sec.closed .cat-chev svg { transform: rotate(-90deg); }
 .cat-body { padding: 0 16px 16px; }
 
 /* closed: one thin line per record, none hidden */
