@@ -2094,3 +2094,128 @@ try {
 } finally {
   await updating.close();
 }
+
+// ---------------------------------------------------------------------------------------------
+// Part 4: paylaşım güvenliği (0.37, docs/mockups/2026-10-05-paylasim-guvenligi-v1.png). No sharing server here:
+// the shared state a sync would leave (the trip's shareId, the members, the other traveller's change kept as a
+// notice) is written straight into storage, and sharing stays unset, so nothing goes to a server.
+//  - the notice above the tabs; "Geri al" puts the dates back;
+//  - a deleted card waits in Geçmiş → Çöp kutusu and "Geri getir" brings it back on the board;
+//  - deleting a shared trip asks first; "Sil" puts it in the trash, "Geri al" brings it back.
+// ---------------------------------------------------------------------------------------------
+const safety = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-safe-")), {
+  executablePath,
+  headless: false,
+  viewport: { width: 1440, height: 900 },
+  ...TURKISH,
+  args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+});
+try {
+  const worker = safety.serviceWorkers()[0] ?? (await safety.waitForEvent("serviceworker"));
+  const id = new URL(worker.url()).host;
+  const app = await safety.newPage();
+  await app.goto(`chrome-extension://${id}/app.html`);
+  await app.getByText("Örnek geziyi yükle →").click();
+  await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
+  const when = app.locator(".hx .hx-when");
+  const datesBefore = (await when.innerText()).replace(/\s+/g, " ").trim();
+
+  // Shared with Sabine, and her change of the dates already pulled (the board shows hers, the notice keeps mine).
+  await app.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const trips = await new Promise((resolve) => (database.transaction("trips").objectStore("trips").getAll().onsuccess = (e) => resolve(e.target.result)));
+    const trip = trips.find((t) => t.title === "Portekiz (örnek)");
+    const fields = ["title", "confirmedDates", "budget", "priorities", "categoryPriorities", "wantedAmenities", "requirements"];
+    const settings = (t) => Object.fromEntries(fields.map((f) => [f, t[f] ?? null]));
+    const prev = settings(trip);
+    const start = new Date(`${prev.confirmedDates.start}T00:00:00Z`);
+    start.setUTCDate(start.getUTCDate() + 1);
+    const next = { ...prev, confirmedDates: { ...prev.confirmedDates, start: start.toISOString().slice(0, 10) } };
+    const shareId = "3f1c2b8e-9a4d-4e7f-8b21-5c6d7e8f9a0b";
+    const tx = database.transaction("trips", "readwrite");
+    tx.objectStore("trips").put({ ...trip, ...next, shareId, updatedAt: Date.now() });
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    const at = new Date(Date.now() - 2 * 60_000).toISOString();
+    await chrome.storage.local.set({
+      [`shareSync:${trip.id}`]: { shareId, cursor: 0, settingsBase: null, settingsAt: at, members: ["Sabine"], lastSyncAt: Date.now(), error: null },
+      [`shareNotices:${trip.id}`]: { notices: [{ id: `${at}|sabine`, author: "Sabine", at, seenAt: Date.now(), prev, next, fields: ["confirmedDates"] }], undone: [] },
+    });
+  });
+  await app.reload();
+  await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
+  const notice = app.locator(".hs-notice");
+  await notice.waitFor();
+  assert.match((await notice.innerText()).replace(/\s+/g, " "), /^S Sabine tarihleri değiştirdi: \d+–\d+ Ekim → \d+–\d+ Ekim \d\d:\d\d · senin panona da geldi/);
+  assert.notEqual((await when.innerText()).replace(/\s+/g, " ").trim(), datesBefore, "the board shows Sabine's dates");
+  // Above the tabs.
+  assert.ok((await notice.boundingBox()).y < (await app.locator(".view-tabs").boundingBox()).y, "the notice sits above the tabs");
+  await notice.scrollIntoViewIfNeeded();
+  await app.screenshot({ path: `${out}/15-share-notice.png` });
+
+  // A card deleted → Geçmiş shows it → Çöp kutusu → "Geri getir" → it's on the board again.
+  const douro = app.locator(".tl-event .pk-card", { hasText: "Douro tekne turu" });
+  await douro.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await douro.getByRole("button", { name: "Kart menüsü" }).click();
+  await douro.getByRole("menuitem", { name: "Sil" }).click();
+  await douro.waitFor({ state: "detached" });
+  await app.getByRole("button", { name: "Gezi menüsü" }).first().click();
+  await app.locator(".menu").getByRole("button", { name: "Geçmiş ve çöp kutusu" }).click();
+  const history = app.getByRole("dialog", { name: "Geçmiş" });
+  const deleted = history.locator(".hs-ev", { hasText: "Douro tekne turu" }).filter({ hasText: "Silindi:" });
+  await deleted.waitFor();
+  assert.match((await deleted.innerText()).replace(/\s+/g, " "), /Silindi: Douro tekne turu Ben · \d\d:\d\d · Çöp kutusu'nda 30 gün daha Geri getir/);
+  assert.deepEqual(await history.locator(".hs-seg button").allInnerTexts(), ["Hepsi", "Sabine", "Ben", "Çöp kutusu · 1"]);
+  assert.equal(await history.locator(".hs-day").first().innerText(), "BUGÜN");
+  await app.screenshot({ path: `${out}/16-history.png` });
+  await history.getByRole("tab", { name: "Çöp kutusu · 1" }).click();
+  assert.equal(await history.locator(".hs-ev").count(), 1);
+  await app.screenshot({ path: `${out}/16b-history-trash.png` });
+  await history.locator(".hs-ev", { hasText: "Douro tekne turu" }).getByRole("button", { name: "Geri getir" }).click();
+  await history.getByText("Çöp kutusu boş.").waitFor();
+  await history.getByRole("button", { name: "Kapat" }).click();
+  await history.waitFor({ state: "detached" });
+  await douro.waitFor();
+  console.log("✓ trash: a deleted card is in Geçmiş → Çöp kutusu, and Geri getir puts it back on the board");
+
+  // The notice's "Geri al": my dates are back, the notice goes.
+  await notice.getByRole("button", { name: "Geri al" }).click();
+  await notice.waitFor({ state: "detached" });
+  await app.waitForFunction((want) => document.querySelector(".hx .hx-when")?.innerText.replace(/\s+/g, " ").trim() === want, datesBefore, { timeout: 10000 });
+  console.log("✓ notice: Sabine's change of the dates shows above the tabs; Geri al puts mine back");
+
+  // Deleting the shared trip asks first (only this computer, 30 days in the trash); Vazgeç keeps it.
+  const deleteTrip = async () => {
+    await app.getByRole("button", { name: "Gezi menüsü" }).first().click();
+    await app.locator(".menu").getByRole("button", { name: "Bu geziyi sil" }).click();
+  };
+  await deleteTrip();
+  const ask = app.getByRole("alertdialog");
+  await ask.getByText('"Portekiz (örnek)" silinsin mi?').waitFor();
+  const askText = (await ask.innerText()).replace(/\s+/g, " ");
+  assert.match(askText, /Sabine ile paylaşılıyor/);
+  assert.match(askText, /Yalnız senin bilgisayarından silinir\. Sabine'deki kopya ve ortak kayıtlar sunucuda kalır\./);
+  assert.match(askText, /30 gün Çöp kutusu'nda durur, tek tıkla geri gelir\./);
+  assert.match(askText, /Paylaşım senin tarafında durur; istersen kodla yeniden katılırsın\./);
+  assert.equal(await ask.getByRole("button", { name: "Sil" }).evaluate((el) => getComputedStyle(el).backgroundColor), "rgb(192, 57, 43)", "Sil is red");
+  await app.screenshot({ path: `${out}/17-delete-shared.png` });
+  await ask.getByRole("button", { name: "Vazgeç" }).click();
+  await ask.waitFor({ state: "detached" });
+  await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
+  // Sil: to the overview, the trip in the trash with "Geri al" for a few seconds.
+  await deleteTrip();
+  await ask.getByRole("button", { name: "Sil" }).click();
+  const gone = app.locator(".pk-undo", { hasText: "Portekiz (örnek) silindi" });
+  await gone.waitFor();
+  assert.equal(await app.locator(".trip-card", { hasText: "Portekiz (örnek)" }).count(), 0);
+  await app.screenshot({ path: `${out}/17b-trip-deleted.png` });
+  await gone.getByRole("button", { name: "Geri al" }).click();
+  await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
+  await douro.waitFor();
+  console.log("✓ delete: a shared trip asks first (only here, 30 days in the trash); Sil → overview with Geri al, which brings it all back");
+} finally {
+  await safety.close();
+}
