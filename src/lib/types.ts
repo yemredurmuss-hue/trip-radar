@@ -476,7 +476,7 @@ export interface DocRecord {
   itemId: string;
   tripId: string;
   name: string;
-  /** MIME type (HEIC files often come without one; see docs.docType). */
+  /** MIME type (from the extension when the file came without one; see docs.docType). */
   type: string;
   size: number;
   blob: Blob;

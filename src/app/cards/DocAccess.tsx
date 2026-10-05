@@ -5,16 +5,18 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { onChanged } from "../../lib/db";
 import { addDoc, deleteDoc, DOC_ACCEPT, docPill, getDoc, listDocMeta, sizeText } from "../../lib/docs";
 import { L } from "../../lib/i18n";
+import { revokeTracked, trackObjectUrl } from "../../lib/objectUrls";
 import type { DocMeta, Item } from "../../lib/types";
 import { UiIcon } from "./Silhouettes";
+
+// The opened files' URLs live as long as the board (see lib/objectUrls).
+if (typeof window !== "undefined") window.addEventListener("pagehide", () => void revokeTracked());
 
 /** Opens a stored file in a new tab (the browser shows PDFs and pictures itself). */
 export async function openDoc(id: string): Promise<void> {
   const doc = await getDoc(id);
   if (!doc) return;
-  const url = URL.createObjectURL(doc.blob);
-  window.open(url, "_blank", "noopener");
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  window.open(trackObjectUrl(URL.createObjectURL(doc.blob)), "_blank", "noopener");
 }
 
 export function DocPickButton({ item, className, title, children }: { item: Pick<Item, "id" | "tripId">; className?: string; title?: string; children: ReactNode }) {

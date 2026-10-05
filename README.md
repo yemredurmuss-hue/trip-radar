@@ -294,7 +294,7 @@ altta "→ Tayland · Aç" bildirimi çıkar. Örnek gezi kayıt almaz.
   bağlantılar kartın içinde. Bir ihtiyacın birden çok seçeneği varsa alt şeritteki `‹ 1/2 ›` ile gezersin.
 - **••• menüsü:** **Düzenle** (sohbette söylediğin ya da elle eklediğin plan), **Ele** (sayfadan gelen seçenek,
   Elenenler'e gider), **Sil**. Silince onay sorulmaz; altta 8 saniye "Geri al" durur, kart belgeleriyle geri gelir.
-- **Belge eklemek:** karttaki ataca tıklayıp PDF ya da görsel (PNG, JPG, HEIC; en çok 15 MB) seç. Belge yalnız bu
+- **Belge eklemek:** karttaki ataca tıklayıp PDF ya da görsel (PNG ya da JPG; en çok 15 MB) seç. Belge yalnız bu
   bilgisayarda durur: paylaşılan geziye gitmez, dışa aktarmaya dosyanın kendisi değil yalnız adı girer. Karttaki
   hapa tıklayınca yeni sekmede açılır.
 - **Eklemek:** Plan başlığındaki **+ Ekle** ya da iki kartın arasındaki **+** (üstüne gelince çıkar) şablon

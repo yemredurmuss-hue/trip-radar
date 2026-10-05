@@ -38,10 +38,10 @@ describe("the docs store", () => {
   it("adds, lists (names only), opens and deletes", async () => {
     const item = makeItem({ tripId: "t1" });
     const a = await addDoc(item, pdf(), 10);
-    const b = await addDoc(item, new File(["x"], "QR.HEIC", { type: "" }), 20);
-    expect(b.type).toBe("image/heic");
+    const b = await addDoc(item, new File(["x"], "QR.JPG", { type: "" }), 20);
+    expect(b.type).toBe("image/jpeg");
     const meta = await listDocMeta("t1");
-    expect(meta.map((m) => m.name)).toEqual(["bilet.pdf", "QR.HEIC"]);
+    expect(meta.map((m) => m.name)).toEqual(["bilet.pdf", "QR.JPG"]);
     expect("blob" in meta[0]).toBe(false);
     expect(await (await getDoc(a.id))!.blob.text()).toBe("%PDF-1.4");
     await deleteDoc(a.id);
@@ -49,7 +49,10 @@ describe("the docs store", () => {
   });
 
   it("refuses other types and files over 15 MB", () => {
-    expect(checkDoc({ name: "notlar.docx", type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", size: 10 })).toMatch(/yalnız PDF, PNG, JPG ya da HEIC/);
+    expect(checkDoc({ name: "notlar.docx", type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", size: 10 })).toMatch(/yalnız PDF, PNG ya da JPG/);
+    // Chrome can't show a HEIC photo: refused, with or without its MIME type.
+    expect(checkDoc({ name: "QR.HEIC", type: "", size: 10 })).toMatch(/yalnız PDF, PNG ya da JPG/);
+    expect(checkDoc({ name: "IMG_1.heic", type: "image/heic", size: 10 })).toMatch(/yalnız PDF, PNG ya da JPG/);
     expect(checkDoc({ name: "foto.jpg", type: "image/jpeg", size: 16 * 1024 * 1024 })).toMatch(/15 MB/);
     expect(checkDoc({ name: "foto.png", type: "image/png", size: 1000 })).toBeNull();
   });

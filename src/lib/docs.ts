@@ -6,18 +6,19 @@ import { num } from "./i18nText";
 import type { DocMeta, DocRecord, Item } from "./types";
 
 export const DOC_MAX_BYTES = 15 * 1024 * 1024;
-export const DOC_ACCEPT = ".pdf,.png,.jpg,.jpeg,.heic,.heif,application/pdf,image/png,image/jpeg,image/heic,image/heif";
-const BY_EXTENSION: Record<string, string> = { pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", heic: "image/heic", heif: "image/heif" };
+// No HEIC: Chrome can't show it, so a kept HEIC would be a file that never opens.
+export const DOC_ACCEPT = ".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg";
+const BY_EXTENSION: Record<string, string> = { pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg" };
 const KEPT = new Set(Object.values(BY_EXTENSION));
 
-/** The file's type: its MIME type, or (HEIC often comes without one) its extension; null when it isn't one we keep. */
+/** The file's type: its MIME type, or (when it comes without one) its extension; null when it isn't one we keep. */
 export function docType(file: { name: string; type: string }): string | null {
   if (KEPT.has(file.type)) return file.type;
   return BY_EXTENSION[file.name.split(".").pop()?.toLowerCase() ?? ""] ?? null;
 }
 
 export function checkDoc(file: { name: string; type: string; size: number }): string | null {
-  if (!docType(file)) return L(`${file.name}: yalnız PDF, PNG, JPG ya da HEIC eklenebilir.`, `${file.name}: only PDF, PNG, JPG or HEIC files can be added.`);
+  if (!docType(file)) return L(`${file.name}: yalnız PDF, PNG ya da JPG eklenebilir.`, `${file.name}: only PDF, PNG or JPG files can be added.`);
   if (file.size > DOC_MAX_BYTES) return L(`${file.name} 15 MB'tan büyük.`, `${file.name} is larger than 15 MB.`);
   if (file.size === 0) return L(`${file.name} boş.`, `${file.name} is empty.`);
   return null;
