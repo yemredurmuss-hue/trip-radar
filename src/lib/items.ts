@@ -457,6 +457,12 @@ export function formatPrice(amount: number | null, currency: string | null): str
   }
 }
 
+/** One place on Google Maps (no key): its coordinates when the page gave them, else "name, city". */
+export function placeMapUrl(item: Pick<Item, "name" | "city" | "geo">): string {
+  const query = item.geo ? `${item.geo.lat},${item.geo.lng}` : [item.name, item.city].filter(Boolean).join(", ");
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
 /** Google Maps directions through the places the user chose (no API key needed; max 9 waypoints). */
 export function routeUrl(items: Item[]): string | null {
   const chosen = items.filter((i) => i.status === "chosen" || i.status === "booked");
