@@ -979,14 +979,32 @@ try {
   const market = todos.locator('.il-row[aria-label="Bolhão pazarı"]');
   assert.equal(await market.getByRole("checkbox").count(), 0, "an idea has no tick");
   assert.match(await market.getByRole("link", { name: "Bolhão pazarı: haritada aç" }).getAttribute("href"), /google\.com\/maps\/search/);
-  assert.match(await market.getByRole("link", { name: "Bolhão pazarı: web'de ara" }).getAttribute("href"), /google\.com\/search\?q=Bolh%C3%A3o%20pazar%C4%B1%20Porto/);
-  // Yaptım: folded under "Yapılanlar" at the end; undone, back on its day.
+  // Fikir havuzu v1: one map link (the name and "Harita" go to the same place), no web search, no second pin.
+  assert.equal(await market.locator(".il-name a").getAttribute("href"), await market.getByRole("link", { name: "Bolhão pazarı: haritada aç" }).getAttribute("href"));
+  assert.equal(await market.getByRole("link", { name: /web'de ara/ }).count(), 0);
+  // The tabs filter by where an idea stands, with their counts; the chips by kind, read from its words.
+  assert.deepEqual(flat(await todos.locator(".il-tabs button").allInnerTexts()), ["Hepsi 3", "Havuzda 2", "Günü var 1", "Yapıldı 0"]);
+  await todos.getByRole("tab", { name: "Günü var 1" }).click();
+  assert.deepEqual(await names(todos), ["Bolhão pazarı"]);
+  await todos.getByRole("tab", { name: "Hepsi 3" }).click();
+  assert.equal(await market.locator(".il-kind").innerText(), "Pazar & alışveriş");
+  assert.deepEqual(flat(await todos.locator(".il-chips button").allInnerTexts()), ["Hepsi", "Manzara 1", "Kültür 1", "Pazar & alışveriş 1"]);
+  await todos.locator(".il-chips button", { hasText: "Manzara" }).click();
+  assert.deepEqual(await names(todos), ["Dom Luís köprüsünden gün batımı"]);
+  await todos.locator(".il-chips button", { hasText: "Hepsi" }).click();
+  // The kind is changed from the row ("Otomatik" gives the words' one back).
+  await market.locator(".il-kind").click();
+  await market.getByRole("menuitemradio", { name: "Gezinti" }).click();
+  await market.locator(".il-kind", { hasText: "Gezinti" }).waitFor();
+  await market.locator(".il-kind").click();
+  await market.getByRole("menuitem", { name: "Otomatik" }).click();
+  await market.locator(".il-kind", { hasText: "Pazar & alışveriş" }).waitFor();
+  // Yaptım: under "Yapıldı" at the end; undone, back on its day.
   await market.getByRole("button", { name: "Bolhão pazarı: yaptım" }).click();
-  const doneGroup = todos.locator(".il-donegroup");
+  const doneGroup = todos.locator(".il-group.done");
   await doneGroup.waitFor();
-  assert.match(await doneGroup.locator("summary").innerText(), /Yapılanlar\s*1/);
+  assert.match(await doneGroup.locator(".il-head").innerText(), /Yapıldı\s*1/);
   assert.equal(await todos.locator(".cat-ideas").innerText(), "3 fikir · 1 yapıldı");
-  await doneGroup.locator("summary").click();
   await doneGroup.getByRole("button", { name: "Bolhão pazarı: geri al" }).click();
   await doneGroup.waitFor({ state: "detached" });
   assert.equal(await todos.locator('.il-row[aria-label="Bolhão pazarı"] .fk-day.set').innerText(), "10 Eki");
@@ -1258,9 +1276,10 @@ try {
   // Its name starts where the ones with an icon do (the picture the same size).
   const titleX = async (name) => (await todoRow(name).locator(".il-main b").boundingBox()).x;
   assert.ok(Math.abs((await titleX("Jardins do Palácio de Cristal")) - (await titleX("Porto Belo Pazarı"))) < 1, "names in one column");
-  assert.equal(await todoRow("Jardins do Palácio de Cristal").locator(".il-sub").innerText(), "Maps");
-  // A page it came from: its link, not a search.
-  await todoRow("Jardins do Palácio de Cristal").getByRole("link", { name: "Jardins do Palácio de Cristal: kaynağını aç" }).waitFor();
+  await todoRow("Jardins do Palácio de Cristal").locator(".il-sub", { hasText: "Maps'ten" }).waitFor();
+  assert.equal(await todoRow("Jardins do Palácio de Cristal").locator(".il-kind").innerText(), "Doğa");
+  // Saved from Maps: the map link is its own Maps page.
+  assert.equal(await todoRow("Jardins do Palácio de Cristal").getByRole("link", { name: "Jardins do Palácio de Cristal: haritada aç" }).getAttribute("href"), "https://maps.app.goo.gl/e2e");
   await app.setViewportSize({ width: 1440, height: 1100 });
   await sec("todo").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5d-todo.png` });

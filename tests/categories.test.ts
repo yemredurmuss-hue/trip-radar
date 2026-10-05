@@ -6,7 +6,7 @@ import { loadDecisions } from "../src/lib/analysis";
 import { categorize, catDomKey, findInSections, isIdeaSection, planProgress, sectionOfItem, sectionProgress, sectionStatus, SECTION_ORDER, type CatSection } from "../src/lib/categories";
 import { db, listItems } from "../src/lib/db";
 import { loadDemoTrip } from "../src/lib/demo";
-import { ideaGroups } from "../src/lib/ideaList";
+import { ideaGroups, ideaRows, ideaTabs } from "../src/lib/ideaList";
 import { buildLegs } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
 import { plannedItem, type PlannedInput } from "../src/lib/planned";
@@ -494,6 +494,19 @@ describe("the ideas as a list by city (0.35.3)", () => {
     const { groups } = listOf(items, "2026-10-12");
     expect(shape(groups)).toEqual([["today", ["Alfama"]], ["Lizbon", ["Belém", "Tramvay 28"]], ["Porto", ["Gün batımı"]]]);
     expect(groups[1].here).toBe(true);
+  });
+
+  it("fikir havuzu: during the trip a missed one waits apart (Kaçtı); the tabs count each standing; a filter keeps its groups", () => {
+    const items = [...base, todo("Gün batımı", "Porto", null), todo("Pazar", "Porto", "2026-10-09"), todo("Alfama", "Lizbon", "2026-10-12"), todo("Belém", "Lizbon", "2026-10-13"), todo("Sé", "Lizbon", null, { doneAt: 5 })];
+    const { sections, plan } = sectionsOf(items, trip, "2026-10-12");
+    const entries = sections.find((s) => s.id === "todo")!.entries;
+    const groups = ideaGroups(entries, plan, "2026-10-12");
+    expect(shape(groups)).toEqual([["today", ["Alfama"]], ["missed", ["Pazar"]], ["Lizbon", ["Belém"]], ["Porto", ["Gün batımı"]], ["done", ["Sé"]]]);
+    const rows = ideaRows(entries, "2026-10-12");
+    expect(ideaTabs(rows, plan, "2026-10-12").map((t) => `${t.tab} ${t.count}`)).toEqual(["all 5", "pool 1", "day 2", "missed 1", "done 1"]);
+    expect(shape(ideaGroups(entries, plan, "2026-10-12", { tab: "day" }))).toEqual([["today", ["Alfama"]], ["Lizbon", ["Belém"]]]);
+    // Before the trip nothing is missed: no Kaçtı tab.
+    expect(ideaTabs(ideaRows(entries, "2026-10-01"), plan, "2026-10-01").map((t) => t.tab)).toEqual(["all", "pool", "day", "done"]);
   });
 
   it("a Reel, a pin, a video or a blog of a thing to do is İlham, until it's put on a day; a restaurant stays a restaurant", () => {

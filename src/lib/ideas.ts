@@ -8,7 +8,7 @@ import { looksBookable } from "./booking";
 import { addEvent, db, notifyChanged } from "./db";
 import { L, locale } from "./i18n";
 import { capitalize, liveLabels, num } from "./i18nText";
-import { isoDate } from "./items";
+import { isoDate, placeMapUrl } from "./items";
 import type { Plan } from "./plan";
 import { plannedItem } from "./planned";
 import { isPrep } from "./prep";
@@ -209,6 +209,14 @@ export function ideaSource(item: Pick<Item, "url" | "plannedKind">): string | nu
   return host || null;
 }
 
+/**
+ * The idea's one map link (fikir havuzu v1): its own Google Maps page when it was saved from Maps, else a Maps
+ * search for the place (its coordinates, else its name and city).
+ */
+export function ideaMapUrl(item: Pick<Item, "url" | "plannedKind" | "name" | "city" | "geo">): string {
+  return item.url && ideaSource(item) === "Maps" ? item.url : placeMapUrl(item);
+}
+
 /** A to-do's grey line: done, a ticket it turns out to need, else what was said about it. */
 export function todoLine(item: Item): { text: string | null; promote: boolean } {
   const done = doneText(item);
@@ -262,6 +270,10 @@ export const setIdeaDay = (item: Item, date: string | null, meal: MealSlot | nul
     (fresh) => onDay(fresh, date, meal),
     date ? L(`${item.name} ${shortDay(date)} gününe eklendi`, `${item.name} put on ${shortDay(date)}`) : L(`${item.name} günden çıkarıldı`, `${item.name} taken off its day`),
   );
+
+/** The kind picked from the row (fikir havuzu v1); null goes back to the one read from its words. */
+export const setIdeaKind = (item: Item, kind: string | null) =>
+  change(item, (fresh) => ({ ...fresh, ideaKind: kind }), L(`${item.name}: türü değişti`, `${item.name}: kind changed`));
 
 /** Moved by hand between Hazırlık (a chore before the trip) and Yapılacak şeyler (something to do there). */
 export const setPrep = (item: Item, prep: boolean) =>

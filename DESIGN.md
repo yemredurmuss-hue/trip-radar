@@ -160,6 +160,15 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
   "Yaptım" denmemiş fikir kendi şehrinin havuzuna döner ("9 Eki için konmuştu · havuza döndü"); bu yalnız gösterimde
   hesaplanır, kayda yazılmaz. Yapılanlar en altta kapalı "Yapılanlar (n)" grubunda. Hero'nun "x/y onaylandı"sına
   fikirler girmez (`planProgress` todo/food/inspo'yu saymaz).
+- **Fikir havuzu v1** (0.35.12, `docs/mockups/2026-10-05-fikir-havuzu-v1.html`, `ideaList.ts`, `ideaKinds.ts`): Yapılacak
+  şeyler ve Restoranlar'da üstte durum sekmeleri sayılarıyla (Hepsi · Havuzda · Günü var · Kaçtı, yalnız gezi
+  sırasında, amber nokta · Yapıldı), altında yalnız olan türlerin çipleri (Manzara, Kültür, Doğa, Pazar &
+  alışveriş, Gezinti, Eğlence; Kahvaltı & kahve, Öğle, Akşam, Tatlı, Bar & şarap); ikisi de filtre. Tür kayıttan
+  (kelimeler, restoranda öğün) çıkar, satırdaki türe dokunup değiştirilir ("Otomatik" geri verir). Satır: tür ikonu ·
+  ad (haritaya link; kalemle yeniden adlandırılır) · gri satır (tür · semt · puan · kaynak küçük link / "Maps'ten") ·
+  gün hapı ("Bugün" mor, "+ Gün") · tek "Harita" (Maps'ten kaydedildiyse o sayfa, değilse yer araması) · ✓. Gezi
+  sırasında gruplar: Bugün → Kaçtı ("Bugüne al") → şehirler (bu gecekinden başlayarak) → Yapıldı. Web arama düğmesi
+  ve ikinci konum kalktı.
 - **İlham** (0.35.3): Plan'ın en altında, kapalı başlayan bölüm. Reels, Pinterest, TikTok, YouTube ve blog linkleri
   (`inspo.ts`): resim, platform rozeti, başlık, şehir. Restoran nerede bulunursa bulunsun restorandır; Maps linki
   yerdir, ilham değil. Bir güne konunca Yapılacak şeyler'e geçer. Belgeler'le karışmaz (pasaport, bilet orada).

@@ -339,6 +339,8 @@ export interface Item {
   doneAt?: number;
   /** Moved by the traveller between Hazırlık (true) and Yapılacak şeyler (false); wins over its words. */
   prep?: boolean;
+  /** The idea's kind the traveller picked (fikir havuzu, ideaKinds.ts); wins over its words. */
+  ideaKind?: string | null;
   /** A restaurant idea put on a day: which meal ("8 Eki akşam"). */
   meal?: MealSlot;
   /**

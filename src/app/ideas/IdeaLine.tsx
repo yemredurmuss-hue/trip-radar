@@ -1,36 +1,45 @@
-// One idea in the Plan's list (0.35.3): a thing to do or a restaurant in a row, not a card. A small picture
-// (the saved page's photo, else the idea's icon on a soft tile), its name (edited where it stands, one line),
-// one grey line (where it came from or what it is; "9 Eki için konmuştu · havuza döndü" when its day went by),
-// then the day chip, the map, its page (or a web search for it), "Yaptım" (optional, one tap) and × on hover.
-// A restaurant that takes a reservation says where that stands; a to-do whose words say a ticket offers
-// "Etkinliklere taşı"; one that's really a chore before the trip "Hazırlığa taşı" on hover (0.35.9).
+// One idea in the Plan's pool (fikir havuzu v1, docs/mockups/2026-10-05-fikir-havuzu-v1.html): a thing to do or
+// a restaurant in a row. Its kind's icon on a soft square (the saved page's photo when it had one), its name —
+// a link to the place on the map, renamed with the pencil beside it — and one grey line: its kind (a tap
+// changes it), the neighbourhood, a restaurant's rating, where it came from (a small link to the Reel or the
+// blog; "Maps'ten" when the map is its page). Then its day ("10 Eki", "Bugün", "+ Gün"; a missed one "Bugüne
+// al"), one "Harita", and the circle that ticks it done. × on hover deletes it with "Geri al". A restaurant that
+// takes a reservation says where that stands; a to-do whose words say a ticket offers "Etkinliklere taşı", one
+// that's really a chore before the trip "Hazırlığa taşı" on hover.
+import { useEffect, useState } from "react";
 import { needsBooking } from "../../lib/booking";
-import { L } from "../../lib/i18n";
-import { foodLine, ideaIcon, ideaSource, isFoodIdea, moveToBookings, setDone, setPrep, shortDay, todoLine, type IdeaIcon } from "../../lib/ideas";
-import { placeMapUrl } from "../../lib/items";
+import { L, locale } from "../../lib/i18n";
+import { num } from "../../lib/i18nText";
+import { ideaKindOf, KIND_TINT, kindLabel, kindsFor, type IdeaKind } from "../../lib/ideaKinds";
+import type { IdeaStatus } from "../../lib/ideaList";
+import { ideaMapUrl, ideaSource, isFoodIdea, moveToBookings, setDone, setIdeaDay, setIdeaKind, setPrep, shortDay, todoLine } from "../../lib/ideas";
+import { isoDate } from "../../lib/items";
 import type { Plan } from "../../lib/plan";
 import type { Item } from "../../lib/types";
 import { setItemStatus } from "../actions";
 import { FallbackImg } from "../FallbackImg";
 import { DeleteX } from "../cards/CardShell";
-import { Editable, InlineEdit } from "../cards/InlineEdit";
+import { Editable, InlineEdit, useInlineEdit } from "../cards/InlineEdit";
 import { useCardEnv } from "../cards/PlanCard";
 import { DayButton } from "./DayPicker";
 import { IdeaGlyph } from "./IdeaIcons";
 
-/** The idea's colour by what it is (its icon): a sight, a view, a walk, shopping, a read, a taste, anything else. */
-const TINT: Record<IdeaIcon, string> = { camera: "#3b6fd1", sun: "#d29a00", route: "#23998b", bag: "#c0256b", book: "#6a4fe0", food: "#b4532a", star: "#5d8a1c" };
-
-/** A web search for it, in its city: where to find its own page. */
-const searchUrl = (item: Item) => `https://www.google.com/search?q=${encodeURIComponent([item.name, item.city].filter(Boolean).join(" "))}`;
+/** The kind's icon (a museum, a tree, a cup…); a thing to do with no kind, a star. */
+const GLYPH: Record<IdeaKind, Parameters<typeof IdeaGlyph>[0]["name"]> = {
+  view: "sun", culture: "museum", nature: "tree", shop: "bag", walk: "walker", fun: "ticket",
+  coffee: "cup", lunch: "food", dinner: "food", sweet: "cupcake", bar: "wine",
+};
 
 export interface IdeaLineProps {
   item: Item;
   plan: Pick<Plan, "range" | "stayBlocks">;
-  /** The day it was on, gone by without "Yaptım" (it's back in the pool). */
+  status: IdeaStatus;
+  /** The day it was on, gone by without "Yaptım". */
   returned?: string | null;
-  /** Its city is the group's title, so it isn't repeated (the "Bugün" group says it). */
-  showCity?: boolean;
+  /** Today (YYYY-MM-DD): its day is "Bugün", a missed one "Bugüne al". */
+  today: string;
+  /** During the trip: a missed one offers "Bugüne al". */
+  during: boolean;
 }
 
 export function IdeaLine(props: IdeaLineProps) {
@@ -41,32 +50,68 @@ export function IdeaLine(props: IdeaLineProps) {
   );
 }
 
-function IdeaLineFace({ item, plan, returned = null, showCity = false }: IdeaLineProps) {
+function IdeaLineFace({ item, plan, status, returned = null, today, during }: IdeaLineProps) {
   const env = useCardEnv();
+  const edit = useInlineEdit();
   const food = isFoodIdea(item);
-  const icon = food ? "food" : ideaIcon(item);
+  const kind = ideaKindOf(item);
+  const tint = kind ? KIND_TINT[kind] : "#5d8a1c";
   const tile = (
-    <span className="il-ic" style={{ color: TINT[icon], background: `color-mix(in srgb, ${TINT[icon]} 12%, #fff)` }}>
-      <IdeaGlyph name={icon} size={17} />
+    <span className="il-ic" style={{ color: tint, background: `color-mix(in srgb, ${tint} 12%, #fff)` }}>
+      <IdeaGlyph name={kind ? GLYPH[kind] : "star"} size={17} />
     </span>
   );
-  const done = !!item.doneAt;
-  const said = food ? foodLine(item) : todoLine(item).text;
+  const done = status === "done";
+  const missed = status === "missed";
+  const mapUrl = ideaMapUrl(item);
   const from = ideaSource(item);
-  const sub = returned
-    ? L(`${shortDay(returned)} için konmuştu · havuza döndü`, `Was on ${shortDay(returned)} · back in the pool`)
-    : [showCity ? item.city : null, said && !done ? said : null, from].filter(Boolean).join(" · ");
+  const day = isoDate(item.dates.start);
   const promote = !food && !done && todoLine(item).promote;
   const booking = food && needsBooking(item);
   const booked = item.status === "booked";
+  const rating =
+    food && item.rating.value != null
+      ? `★ ${num(item.rating.value)}${item.rating.count ? ` (${item.rating.count >= 1000 ? `${num(item.rating.count / 1000)} B` : item.rating.count.toLocaleString(locale())})` : ""}`
+      : null;
+  const doneDay = item.doneAt ? shortDay(new Date(item.doneAt).toISOString().slice(0, 10)) : null;
   return (
     <div className={`il-row${done ? " done" : ""}${returned ? " back" : ""}`} aria-label={item.name} data-item-id={item.id} title={item.summary ?? undefined}>
       {item.imageUrl ? <FallbackImg className="il-img" src={item.imageUrl} fallback={tile} /> : tile}
       <div className="il-main">
-        <b title={item.name}>
-          <Editable field="name">{item.name}</Editable>
-        </b>
-        {sub && <span className="il-sub">{sub}</span>}
+        {edit?.open === "name" ? (
+          <b>
+            <Editable field="name">{item.name}</Editable>
+          </b>
+        ) : (
+          <b className="il-name">
+            <a href={mapUrl} target="_blank" rel="noreferrer" title={L("Haritada aç", "Open on the map")}>
+              {item.name}
+            </a>
+            <button type="button" className="il-pen" aria-label={L("Ad: düzenle", "Name: edit")} title={L("Adı düzenle", "Rename")} onClick={() => edit?.go("name")}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" />
+              </svg>
+            </button>
+          </b>
+        )}
+        <span className={`il-sub${missed ? " missed" : ""}`}>
+          {returned ? (
+            L(`${shortDay(returned)} için konmuştu · havuza döndü`, `Was on ${shortDay(returned)} · back in the pool`)
+          ) : (
+            <>
+              <KindPicker item={item} kind={kind} food={food} />
+              {item.location.area && <span>{item.location.area}</span>}
+              {rating && <span>{rating}</span>}
+              {done && doneDay && <span>{L(`${doneDay} yapıldı`, `done ${doneDay}`)}</span>}
+              {from && item.url && from !== "Maps" && (
+                <a className="il-src" href={item.url} target="_blank" rel="noreferrer" title={L("Kaynağını aç", "Open its page")}>
+                  {from} ↗
+                </a>
+              )}
+              {from === "Maps" && <span>{L("Maps'ten", "from Maps")}</span>}
+            </>
+          )}
+        </span>
       </div>
       <div className="il-act">
         {/* A chore before the trip after all ("yağmurluk al" to buy at home): one tap to Diğer's Hazırlık. */}
@@ -88,19 +133,17 @@ function IdeaLineFace({ item, plan, returned = null, showCity = false }: IdeaLin
             {booked ? L("✓ Rezerve", "✓ Booked") : L("Rezerve et", "Book a table")}
           </button>
         )}
-        {!done && <DayButton item={item} plan={plan} pooled={!!returned} />}
-        <a className="il-btn" href={placeMapUrl(item)} target="_blank" rel="noreferrer" title={L("Haritada aç", "Open in Maps")} aria-label={L(`${item.name}: haritada aç`, `${item.name}: open in Maps`)}>
-          <IdeaGlyph name="pin" size={14} />
-        </a>
-        {item.url ? (
-          <a className="il-btn" href={item.url} target="_blank" rel="noreferrer" title={L("Kaynağını aç", "Open its page")} aria-label={L(`${item.name}: kaynağını aç`, `${item.name}: open its page`)}>
-            <IdeaGlyph name="link" size={14} />
-          </a>
+        {missed && during ? (
+          <button type="button" className="il-today" onClick={() => void setIdeaDay(item, today, food ? (item.meal ?? null) : null)}>
+            {L("Bugüne al", "Today")}
+          </button>
         ) : (
-          <a className="il-btn" href={searchUrl(item)} target="_blank" rel="noreferrer" title={L("Web'de ara: kendi sayfasını bul", "Search the web for its page")} aria-label={L(`${item.name}: web'de ara`, `${item.name}: search the web`)}>
-            <IdeaGlyph name="search" size={14} />
-          </a>
+          !done && <DayButton item={item} plan={plan} pooled={!!returned} today={during && day === today} />
         )}
+        <a className="il-map" href={mapUrl} target="_blank" rel="noreferrer" aria-label={L(`${item.name}: haritada aç`, `${item.name}: open on the map`)}>
+          <IdeaGlyph name="pin" size={13} />
+          {L("Harita", "Map")}
+        </a>
         <button type="button" className={`il-done${done ? " on" : ""}`} aria-pressed={done}
           title={done ? L("Yapılmadı olarak geri al", "Mark as not done") : food ? L("Gittim", "Been there") : L("Yaptım", "Done it")}
           aria-label={done ? L(`${item.name}: geri al`, `${item.name}: undo`) : L(`${item.name}: yaptım`, `${item.name}: done`)}
@@ -112,5 +155,42 @@ function IdeaLineFace({ item, plan, returned = null, showCity = false }: IdeaLin
       </div>
       <DeleteX name={item.name} onDelete={() => env.remove(item)} className="il-x" />
     </div>
+  );
+}
+
+/** The kind in the grey line; a tap lists the kinds to pick from ("Otomatik" goes back to the words'). */
+function KindPicker({ item, kind, food }: { item: Item; kind: IdeaKind | null; food: boolean }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [open]);
+  const pick = (k: string | null) => {
+    setOpen(false);
+    void setIdeaKind(item, k);
+  };
+  return (
+    <span className="il-kindwrap">
+      <button type="button" className="il-kind" aria-haspopup="menu" aria-expanded={open} aria-label={L(`${item.name}: tür (${kind ? kindLabel(kind) : "yok"})`, `${item.name}: kind`)}
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
+        {kind ? kindLabel(kind) : L("Tür seç", "Pick a kind")}
+      </button>
+      {open && (
+        <span className="il-kinds" role="menu" onClick={(e) => e.stopPropagation()}>
+          {kindsFor(food).map((k) => (
+            <button key={k} type="button" role="menuitemradio" aria-checked={k === kind} className={k === kind ? "on" : undefined} onClick={() => pick(k)}>
+              {kindLabel(k)}
+            </button>
+          ))}
+          {item.ideaKind && (
+            <button type="button" role="menuitem" className="auto" onClick={() => pick(null)}>
+              {L("Otomatik", "Automatic")}
+            </button>
+          )}
+        </span>
+      )}
+    </span>
   );
 }

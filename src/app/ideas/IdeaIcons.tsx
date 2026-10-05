@@ -10,7 +10,15 @@ const stroke = (children: ReactNode, width = 1.9, cap: "round" | undefined = und
   </g>
 );
 
-const ICONS: Record<IdeaIcon | "check" | "plus" | "pin" | "link" | "search", ReactNode> = {
+const ICONS: Record<IdeaIcon | "check" | "plus" | "pin" | "link" | "search" | "museum" | "tree" | "walker" | "cup" | "cupcake" | "wine" | "ticket", ReactNode> = {
+  // The kinds of fikir havuzu v1: culture, nature, a walk, coffee, something sweet, a glass of wine, fun.
+  museum: stroke(<path d="M3.5 9 12 4l8.5 5M5 9.5v8M9.5 9.5v8M14.5 9.5v8M19 9.5v8M3.5 20h17M3 17.5h18" />, 1.9, "round"),
+  tree: stroke(<path d="M12 21v-6M12 3 6 11h3l-4 5h14l-4-5h3z" />, 1.9, "round"),
+  walker: stroke(<><circle cx="13" cy="4.5" r="1.8" /><path d="m10 21 2.2-6.2L15 17v4M9 11.5l3-3.5 2.5 2.5L17 12M12 8l-1 6.5" /></>, 1.9, "round"),
+  cup: stroke(<path d="M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10.5h1.5a2.5 2.5 0 0 1 0 5H16M8 3.5c.8.8.8 2.2 0 3M11.5 3.5c.8.8.8 2.2 0 3" />, 1.9, "round"),
+  cupcake: stroke(<path d="M6 12h12l-1.5 8h-9zM6 12a6 6 0 0 1 12 0M12 4.5V6M9.5 14.5l.5 3.5M14.5 14.5l-.5 3.5" />, 1.9, "round"),
+  wine: stroke(<path d="M7.5 3h9l-.6 5.5a4 4 0 0 1-7.8 0zM12 12.5V20M8.5 20.5h7" />, 1.9, "round"),
+  ticket: stroke(<path d="M4 7.5h16v3a1.8 1.8 0 0 0 0 3.6v3H4v-3a1.8 1.8 0 0 0 0-3.6zM14 7.5v10" strokeDasharray="0" />, 1.9, "round"),
   camera: stroke(<><path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" /><circle cx="12" cy="13" r="3.5" /></>),
   route: stroke(<><circle cx="6" cy="18" r="2" /><circle cx="18" cy="6" r="2" /><path d="M8 18h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7" /></>, 1.9, "round"),
   sun: stroke(<path d="M7 17a5 5 0 0 1 10 0M3 17h18M12 7V4M5.6 10.6 3.5 8.5M18.4 10.6l2.1-2.1M4 21h16" />, 1.9, "round"),

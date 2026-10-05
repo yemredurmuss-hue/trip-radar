@@ -8,8 +8,11 @@ import { isoDate } from "../../lib/items";
 import type { Plan } from "../../lib/plan";
 import type { Item, MealSlot } from "../../lib/types";
 
-/** `pooled`: its day has gone by without "Yaptım" (back in the pool): "+ Güne ekle" again, not the old day. */
-export function DayButton({ item, plan, pooled = false }: { item: Item; plan: Pick<Plan, "range" | "stayBlocks">; pooled?: boolean }) {
+/**
+ * `pooled`: its day has gone by without "Yaptım" (back in the pool): "+ Gün" again, not the old day. `today`:
+ * its day is today ("Bugün", fikir havuzu v1).
+ */
+export function DayButton({ item, plan, pooled = false, today = false }: { item: Item; plan: Pick<Plan, "range" | "stayBlocks">; pooled?: boolean; today?: boolean }) {
   const [open, setOpen] = useState(false);
   const chip = pooled ? null : dayChip(item);
   const days = dayChoices(plan);
@@ -28,9 +31,10 @@ export function DayButton({ item, plan, pooled = false }: { item: Item; plan: Pi
   if (!days.length && !chip) return null;
   return (
     <span className="fk-daywrap">
-      <button type="button" className={`fk-day${chip ? " set" : ""}`} aria-haspopup="dialog" aria-expanded={open}
+      <button type="button" className={`fk-day${chip ? " set" : ""}${chip && today ? " today" : ""}`} aria-haspopup="dialog" aria-expanded={open}
+        aria-label={chip ? undefined : L("+ Güne ekle", "+ Add to a day")}
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
-        {chip ?? L("+ Güne ekle", "+ Add to a day")}
+        {chip ? (today ? L("Bugün", "Today") : chip) : L("+ Gün", "+ Day")}
       </button>
       {open && <DayPicker item={item} days={days} onDone={() => setOpen(false)} />}
     </span>
