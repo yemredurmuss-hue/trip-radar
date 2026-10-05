@@ -2063,7 +2063,7 @@ try {
     return new Promise((resolve) => (database.transaction("items").objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result.map((i) => `${i.id}:${i.name}`))));
   });
   const namesBefore = await itemNames();
-  await board.getByPlaceholder("Bir link bırak, görsel yapıştır veya yaz…").fill("https://www.airbnb.com/rooms/777?e2e-arrive");
+  await board.getByPlaceholder("Bir link bırak, görsel yapıştır veya yaz…").fill("https://www.airbnb.com/rooms/4242?e2e-arrive");
   await board.getByRole("button", { name: "Gönder" }).click();
   const waitingStay = board.locator('.cat-sec[data-section="stay"] .ar-pending', { hasText: "airbnb.com" });
   await waitingStay.waitFor({ timeout: 8000 });
@@ -2082,6 +2082,9 @@ try {
   await board.screenshot({ path: `${out}/15b-arrive-landed.png` });
   // The chip says where it went, and goes there.
   await arriveChip.locator(".ar-chip-text", { hasText: "✓ Konaklama'ya eklendi" }).waitFor({ timeout: 5000 });
+  // Saved once, as a new record (a listing id of its own: not merged into an earlier save of the same page).
+  await board.locator(".chat .msg-event", { hasText: "✓ Casa Verde kaydedildi" }).waitFor({ timeout: 5000 });
+  assert.equal(await board.locator(".chat .msg-event", { hasText: "Casa Verde güncellendi" }).count(), 0, "no second pass over the same link");
   const toast = board.locator(".ar-toast");
   if (await toast.count()) {
     const added = (await itemNames()).filter((n) => !namesBefore.includes(n));

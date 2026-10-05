@@ -153,3 +153,25 @@ describe("capture pipeline", () => {
     expect(photoBox(null)).toBeNull();
   });
 });
+
+describe("the queue under repeated triggers", () => {
+  it("reads each capture once when processing is asked for twice at the same time", async () => {
+    const calls: string[] = [];
+    const deps: Deps = {
+      extract: async (capture) => {
+        calls.push(capture.id);
+        await new Promise((resolve) => setTimeout(resolve, 20)); // a slow model: the second trigger lands mid-read
+        return { ...base, name: `Once ${capture.id}` };
+      },
+      heroImage: async () => null,
+      geocode: async () => null,
+    };
+    const a = await savePastedLink("https://www.airbnb.com/rooms/9001");
+    const b = await savePastedLink("https://www.airbnb.com/rooms/9002");
+    await Promise.all([processPending(deps), processPending(deps), processPending(deps)]);
+    expect(calls).toEqual([a.id, b.id]);
+    const events = (await (await db()).getAll("messages")).map((m) => m.text).filter((t) => t.includes("Once "));
+    expect(events.filter((t) => t.startsWith("✓"))).toHaveLength(2);
+    expect(events.filter((t) => t.startsWith("↻"))).toEqual([]);
+  });
+});
