@@ -89,6 +89,7 @@ export { isLocalTransfer, isRental };
 function modeOf(i: Item): LegMode | null {
   if (i.category === "flight") return "flight";
   if (i.plannedKind === "taxi") return "taxi";
+  if (i.plannedKind === "minibus") return "bus";
   const t = text(i);
   if (/tren|train|comboio|rail|renfe|trenitalia|sncf|\bcp\b|alfa pendular|intercidades/i.test(t)) return "train";
   if (/feribot|ferry|ferri|vapur/i.test(t)) return "ferry";

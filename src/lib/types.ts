@@ -233,6 +233,12 @@ export interface Price {
   observedAt: number;
 }
 
+/** What a plan said in the chat, or added from a template, is (a car rental or a transfer can carry any title). */
+export type PlannedKind =
+  | "flight" | "train" | "bus" | "minibus" | "ferry" | "transfer" | "taxi"
+  | "car_rental" | "moto_rental" | "rv_rental" | "bike_rental"
+  | "stay" | "activity" | "food" | "esim" | "insurance" | "note" | "other";
+
 export interface Item {
   id: string;
   tripId: string;
@@ -280,8 +286,10 @@ export interface Item {
   statusAt?: number;
   /** "chat": the traveller said it in the chat, no page behind it (a plan until a saved page replaces it). */
   origin?: "chat";
-  /** What kind of plan was said in the chat (a car rental or a transfer can carry any title). */
-  plannedKind?: "flight" | "train" | "bus" | "ferry" | "transfer" | "taxi" | "car_rental" | "stay" | "activity" | "esim" | "other";
+  /** What kind of plan was said in the chat, or added from a template (a car rental or a transfer can carry any title). */
+  plannedKind?: PlannedKind;
+  /** eSIM: when the traveller said it's installed ("Kurdum"). */
+  installedAt?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -461,3 +469,17 @@ export interface Analysis {
   /** Language the verdict was written in (older records: Turkish); another language asks again. */
   lang?: "tr" | "en";
 }
+
+/** A file attached to a card (a ticket PDF, a QR screenshot). Kept on this computer only: never shared, never exported. */
+export interface DocRecord {
+  id: string;
+  itemId: string;
+  tripId: string;
+  name: string;
+  /** MIME type (HEIC files often come without one; see docs.docType). */
+  type: string;
+  size: number;
+  blob: Blob;
+  addedAt: number;
+}
+export type DocMeta = Omit<DocRecord, "blob">;

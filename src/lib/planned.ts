@@ -6,10 +6,15 @@ import { L } from "./i18n";
 import { liveLabels } from "./i18nText";
 import { EMPTY_METRICS, isoDate } from "./items";
 import { cityKeyOf } from "./plan";
-import type { Category, Item } from "./types";
+import { RENTAL_KINDS } from "./travelKinds";
+import type { Category, Item, PlannedKind } from "./types";
 
-export const PLANNED_KINDS = ["flight", "train", "bus", "ferry", "transfer", "taxi", "car_rental", "stay", "activity", "esim", "other"] as const;
-export type PlannedKind = (typeof PLANNED_KINDS)[number];
+export type { PlannedKind } from "./types";
+/** Kinds the chat's plan_item tool may use. */
+export const PLANNED_KINDS = ["flight", "train", "bus", "ferry", "transfer", "taxi", "car_rental", "stay", "activity", "esim", "other"] as const satisfies readonly PlannedKind[];
+/** Kinds only the add sheet makes (the chat says them as one of the above). */
+export const TEMPLATE_ONLY_KINDS = ["minibus", "moto_rental", "rv_rental", "bike_rental", "food", "insurance", "note"] as const satisfies readonly PlannedKind[];
+export const ALL_PLANNED_KINDS: readonly PlannedKind[] = [...PLANNED_KINDS, ...TEMPLATE_ONLY_KINDS];
 
 export interface PlannedInput {
   kind: PlannedKind;
@@ -34,6 +39,13 @@ const CATEGORY: Record<PlannedKind, Category> = {
   transfer: "transport",
   taxi: "transport",
   car_rental: "transport",
+  minibus: "transport",
+  moto_rental: "transport",
+  rv_rental: "transport",
+  bike_rental: "transport",
+  food: "food",
+  insurance: "other",
+  note: "other",
   stay: "stay",
   activity: "activity",
   esim: "esim",
@@ -43,11 +55,18 @@ const WORD: Readonly<Partial<Record<PlannedKind, string>>> = liveLabels({
   flight: ["Uçuş", "Flight"],
   train: ["Tren", "Train"],
   bus: ["Otobüs", "Bus"],
+  minibus: ["Minibüs", "Minibus"],
   ferry: ["Feribot", "Ferry"],
   transfer: ["Transfer", "Transfer"],
   taxi: ["Taksi", "Taxi"],
 });
-const TRAVEL: PlannedKind[] = ["flight", "train", "bus", "ferry", "transfer", "taxi"];
+const RENTAL_WORD: Readonly<Partial<Record<PlannedKind, string>>> = liveLabels({
+  car_rental: ["Araç kiralama", "Car rental"],
+  moto_rental: ["Motosiklet kiralama", "Motorbike rental"],
+  rv_rental: ["Karavan kiralama", "Camper van rental"],
+  bike_rental: ["Bisiklet kiralama", "Bike rental"],
+});
+const TRAVEL: PlannedKind[] = ["flight", "train", "bus", "minibus", "ferry", "transfer", "taxi"];
 
 const slug = (s: string | null) =>
   (s ?? "")
@@ -79,8 +98,8 @@ export function plannedInput(raw: any): PlannedInput {
 }
 
 /** Checks what the model passed; a wrong date is refused rather than guessed. */
-export function checkPlanned(input: PlannedInput): string | null {
-  if (!(PLANNED_KINDS as readonly string[]).includes(input.kind)) return L(`Bilinmeyen tür: ${input.kind}`, `Unknown kind: ${input.kind}`);
+export function checkPlanned(input: PlannedInput, kinds: readonly string[] = PLANNED_KINDS): string | null {
+  if (!kinds.includes(input.kind)) return L(`Bilinmeyen tür: ${input.kind}`, `Unknown kind: ${input.kind}`);
   if (input.date != null && !isoDate(input.date)) return L(`Tarih YYYY-AA-GG olmalı: ${input.date}`, `The date must be YYYY-MM-DD: ${input.date}`);
   if (input.end_date && (!isoDate(input.end_date) || (input.date && input.end_date < input.date))) return L(`Bitiş tarihi geçersiz: ${input.end_date}`, `Invalid end date: ${input.end_date}`);
   if (input.end_date && !input.date) return L("Bitiş varsa başlangıç tarihini de yaz.", "With an end date, give the start date too.");
@@ -89,7 +108,7 @@ export function checkPlanned(input: PlannedInput): string | null {
   // A ticket for a day ("12 Ekim'e uçak bileti") is a plan already; where it goes can come later.
   if (TRAVEL.includes(input.kind) && input.kind !== "taxi" && !input.to && !input.city && !input.date) return L("Nereye gidildiğini (to) ya da gününü (date) yaz.", "Give where it goes (to) or its day (date).");
   if (input.kind === "taxi" && !input.date) return L("Taksinin gününü (date) yaz.", "Give the taxi's day (date).");
-  if ((input.kind === "car_rental" || input.kind === "stay") && !input.city && !input.to) return L("Hangi şehirde olduğunu (city) yaz.", "Give the city it's in (city).");
+  if ((RENTAL_KINDS.includes(input.kind) || input.kind === "stay") && !input.city && !input.to) return L("Hangi şehirde olduğunu (city) yaz.", "Give the city it's in (city).");
   return null;
 }
 
@@ -99,7 +118,10 @@ function nameOf(i: PlannedInput): string {
   const at = where ? ` · ${where}` : "";
   if (WORD[i.kind] && !i.from && !i.to && !i.city) return WORD[i.kind]!;
   if (WORD[i.kind]) return `${WORD[i.kind]} · ${i.from ? `${i.from} → ` : ""}${i.to ?? i.city ?? ""}`.trim();
-  if (i.kind === "car_rental") return `${L("Araç kiralama", "Car rental")}${at}`;
+  if (RENTAL_WORD[i.kind]) return `${RENTAL_WORD[i.kind]}${at}`;
+  if (i.kind === "insurance") return L("Seyahat sigortası", "Travel insurance");
+  if (i.kind === "food") return `${L("Restoran", "Restaurant")}${at}`;
+  if (i.kind === "note") return L("Not", "Note");
   if (i.kind === "stay") return `${L("Konaklama", "Stay")}${at}`;
   if (i.kind === "esim") return `eSIM${at}`;
   return where ? `Plan · ${where}` : "Plan";
@@ -108,7 +130,9 @@ function nameOf(i: PlannedInput): string {
 function needKeyOf(i: PlannedInput): string {
   if (i.kind === "flight") return `flight:${slug(i.from)}-${slug(i.to)}`;
   if (TRAVEL.includes(i.kind)) return `transport:${slug(i.from)}-${slug(i.to ?? i.city)}`;
-  if (i.kind === "car_rental") return `transport:car-${slug(i.city ?? i.to)}`;
+  if (RENTAL_KINDS.includes(i.kind)) return `transport:${i.kind === "car_rental" ? "car" : i.kind.replace("_rental", "")}-${slug(i.city ?? i.to)}`;
+  if (i.kind === "insurance") return `other:insurance-${slug(i.city ?? i.to)}`;
+  if (i.kind === "note") return `other:note-${slug(i.title)}`;
   return `${CATEGORY[i.kind]}:${slug(i.city ?? i.to)}`;
 }
 
@@ -156,8 +180,10 @@ export function plannedItem(input: PlannedInput, tripId: string, id: string, now
   };
 }
 
+const GENERATED =
+  /^(Uçuş|Tren|Otobüs|Minibüs|Feribot|Transfer|Taksi|Araç kiralama|Motosiklet kiralama|Karavan kiralama|Bisiklet kiralama|Konaklama|Restoran|Seyahat sigortası|Not|eSIM|Plan|Flight|Train|Bus|Minibus|Ferry|Taxi|Car rental|Motorbike rental|Camper van rental|Bike rental|Stay|Restaurant|Travel insurance|Note)( ·|$)/;
 /** A name nameOf made (in either language), not one the traveller gave. */
-const GENERATED = /^(Uçuş|Tren|Otobüs|Feribot|Transfer|Taksi|Araç kiralama|Konaklama|eSIM|Plan|Flight|Train|Bus|Ferry|Taxi|Car rental|Stay)( ·|$)/;
+export const isGeneratedName = (name: string) => GENERATED.test(name);
 const where = (s: string | null | undefined) => (s ? cityKeyOf(s) : null);
 
 /**
