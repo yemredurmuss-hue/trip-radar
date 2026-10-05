@@ -1,8 +1,9 @@
 // Small write actions shared by the board's views.
 import { addEvent, db, notifyChanged } from "../lib/db";
 import { restoreDoc } from "../lib/docs";
-import { L } from "../lib/i18n";
+import { L, saveLang } from "../lib/i18n";
 import { announceRemoved, deleteItem, restoreItem, type Removed } from "../lib/removal";
+import { restoreFields, withTravellers, type TravellersChange } from "../lib/tripSettings";
 import { nightsKey } from "../lib/timeline";
 import type { DateRange } from "../lib/plan";
 import type { Category, Item, ItemStatus, Trip } from "../lib/types";
@@ -119,5 +120,32 @@ export async function undo(u: Undoable): Promise<void> {
     await deleteItem(u.item, L(`${u.item.name} eklenmedi (geri alındı)`, `${u.item.name} not added (undone)`), { trash: false });
     return;
   }
+  if (u.kind === "trip") {
+    await updateTrip(u.change.tripId, (t) => restoreFields(t, u.change));
+    await addEvent(u.change.tripId, L(`Geri alındı: ${u.change.label}`, `Undone: ${u.change.label}`));
+    notifyChanged();
+    return;
+  }
+  if (u.kind === "lang") {
+    await saveLang(u.prev);
+    // The board's words are read once per load (main.tsx): the other language needs the page again.
+    if (typeof location !== "undefined") location.reload();
+    return;
+  }
   return setHidden(u.tripId, u.key, false, u.label);
+}
+
+/** Who goes, changed in the hero's popover ("İsim ekle", ×, the count): written at once, with a line in Geçmiş. */
+export async function changeTravellers(tripId: string, change: TravellersChange, event: string): Promise<void> {
+  let changed = false;
+  await updateTrip(tripId, (t) => {
+    const next = withTravellers(t.travellers, change);
+    if (typeof next === "string") return t;
+    changed = JSON.stringify(next.travellers) !== JSON.stringify(t.travellers ?? { names: [] });
+    return changed ? { ...t, travellers: next.travellers } : t;
+  });
+  if (changed) {
+    await addEvent(tripId, event);
+    notifyChanged();
+  }
 }

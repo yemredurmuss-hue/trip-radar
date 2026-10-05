@@ -11,6 +11,9 @@ export const SYNCED_FIELDS = [
   "categoryPriorities",
   "wantedAmenities",
   "requirements",
+  // Who goes (0.37): the names typed or said and the count, a fact about the trip like its dates. Never me (the
+  // profile name) nor the shared trip's people: those come from sharing itself.
+  "travellers",
 ] as const satisfies readonly (keyof Trip)[];
 
 export type SyncedSettings = { [K in (typeof SYNCED_FIELDS)[number]]: Trip[K] | null };
@@ -35,8 +38,14 @@ export function applySettings(trip: Trip, s: SyncedSettings): Trip {
     if (s[f] == null) delete next[f];
     else (next as unknown as Record<string, unknown>)[f] = s[f];
   }
+  // Who goes: missing from the server's settings means a board that doesn't know the field yet (an older version
+  // on the other computer), never "nobody": the names here stay. Taking every name out is sent as `{ names: [] }`.
+  if (isTravellers(s.travellers)) next.travellers = s.travellers;
   return next;
 }
+
+const isTravellers = (v: unknown): v is NonNullable<Trip["travellers"]> =>
+  Boolean(v && typeof v === "object" && Array.isArray((v as { names?: unknown }).names) && (v as { names: unknown[] }).names.every((n) => typeof n === "string"));
 
 export type SyncedField = (typeof SYNCED_FIELDS)[number];
 
@@ -55,7 +64,10 @@ export function changedFields(a: unknown, b: unknown): SyncedField[] {
 
 /** Only these fields set back from `from` (a missing optional field goes back to its default), the rest as it is. */
 export function applyFields(trip: Trip, from: SyncedSettings, fields: readonly SyncedField[]): Trip {
-  const merged = applySettings(trip, { ...settingsOf(trip), ...Object.fromEntries(fields.map((f) => [f, from[f] ?? null])) } as SyncedSettings);
+  const back = Object.fromEntries(fields.map((f) => [f, from[f] ?? null]));
+  // Putting back a time before anyone was named: nobody named (sent as such, so the other side follows).
+  if (fields.includes("travellers") && back.travellers == null) back.travellers = { names: [] };
+  const merged = applySettings(trip, { ...settingsOf(trip), ...back } as SyncedSettings);
   // A title is never emptied: an old row without one keeps the current name.
   return fields.includes("title") && !(typeof from.title === "string" && from.title.trim()) ? { ...merged, title: trip.title } : merged;
 }

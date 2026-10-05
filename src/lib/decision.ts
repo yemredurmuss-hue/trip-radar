@@ -305,7 +305,7 @@ export function makeContext(
     trip,
     tripItems,
     rates: extra.rates ?? null,
-    currency: trip.budget?.currency ?? common ?? "EUR",
+    currency: trip.budget?.currency ?? trip.currency ?? common ?? "EUR",
     tripStart: range?.start ?? null,
     tripNights: range ? Math.max(1, nightsBetween(range.start, range.end)) : 0,
     cityCenters: extra.cityCenters ?? {},

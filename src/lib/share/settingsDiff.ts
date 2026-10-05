@@ -36,6 +36,8 @@ export function fieldLabel(field: SyncedField): string {
       return L("İstenen olanaklar", "Wanted amenities");
     case "requirements":
       return L("Şartlar", "Requirements");
+    case "travellers":
+      return L("Gidenler", "Who's going");
   }
 }
 
@@ -55,6 +57,8 @@ function fieldObject(field: SyncedField): string {
       return L("istenen olanakları", "the wanted amenities");
     case "requirements":
       return L("şartları", "the requirements");
+    case "travellers":
+      return L("gidenleri", "who's going");
   }
 }
 
@@ -116,6 +120,16 @@ const requirementsText = (v: unknown): string =>
       }),
   );
 
+/** "Sabine, Ali · 3 kişi", "yok". */
+const travellersText = (v: unknown): string => {
+  const t = record(v);
+  const names = (Array.isArray(t.names) ? t.names : []).filter((n): n is string => typeof n === "string" && n.trim() !== "");
+  const count = typeof t.count === "number" && t.count > 0 ? t.count : null;
+  if (!names.length && !count) return none();
+  const people = count ? L(`${count} kişi`, count === 1 ? "1 person" : `${count} people`) : null;
+  return [names.join(", "), people].filter(Boolean).join(" · ");
+};
+
 /** What one field changed from and to, as lines (priorities: one per criterion). */
 function fieldLines(field: SyncedField, a: unknown, b: unknown): DiffLine[] {
   const line = (before: string, after: string): DiffLine[] => (before === after ? [] : [{ field, label: fieldLabel(field), subject: null, before, after }]);
@@ -139,6 +153,8 @@ function fieldLines(field: SyncedField, a: unknown, b: unknown): DiffLine[] {
       return line(amenitiesText(a), amenitiesText(b));
     case "requirements":
       return line(requirementsText(a), requirementsText(b));
+    case "travellers":
+      return line(travellersText(a), travellersText(b));
   }
 }
 

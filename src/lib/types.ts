@@ -135,6 +135,13 @@ export interface Geo {
   source: "page" | "geocoded";
 }
 
+export interface Travellers {
+  /** Names as typed, each once (case aside). */
+  names: string[];
+  /** How many go, when it's more than the names (null: as many as the names, or the saves say). */
+  count?: number | null;
+}
+
 export interface Trip {
   id: string;
   title: string;
@@ -142,6 +149,16 @@ export interface Trip {
   confirmedDates: { start: string; end: string } | null;
   /** What they'd like to spend (`amount`), and what they won't go over (`ceiling`), when they said one. */
   budget: { amount: number; currency: string; ceiling?: number | null } | null;
+  /**
+   * The money the board shows the trip in, when the traveller picked one ("bütçeyi euro göster") and there's no
+   * budget to carry it: a budget's own currency wins (they're kept the same when it's changed). This computer only.
+   */
+  currency?: string | null;
+  /**
+   * Who goes, said without sharing (0.37): the names typed in the hero ("Sabine") or said in the chat, never "me"
+   * (that's the profile or sharing name), and how many when more go than are named. Shared with the trip's settings.
+   */
+  travellers?: Travellers;
   heroImage: string | null;
   /** Sample data; never receives real captures. */
   demo?: boolean;

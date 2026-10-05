@@ -26,6 +26,10 @@ const mostCommon = <T,>(xs: T[]): T | null => {
   return [...n.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 };
 
+/** How many adults the saves say (the most common count on the records not ruled out), or null. */
+export const adultsOf = (items: Item[]): number | null =>
+  mostCommon(items.filter((i) => i.status !== "dismissed").map((i) => i.guests.adults).filter((n): n is number => typeof n === "number" && n > 0));
+
 /** Hours a zone is ahead of UTC on a date (noon UTC, so DST switches don't matter). */
 export function utcOffsetHours(zone: string, date: string): number {
   const at = new Date(`${date}T12:00:00Z`);
@@ -51,7 +55,7 @@ export function tripFacts(
   });
   const from = flights[0]?.flight?.from;
   const origin = from ? cityOfAirport(from) : null;
-  const adults = mostCommon(live.map((i) => i.guests.adults).filter((n): n is number => typeof n === "number" && n > 0));
+  const adults = adultsOf(live);
   const country = mostCommon(live.filter((i) => i.category !== "flight").map((i) => i.countryCode?.toUpperCase() ?? null).filter((c): c is string => !!c));
   const info = countryInfo(country);
   let local: TripFacts["local"] = null;
