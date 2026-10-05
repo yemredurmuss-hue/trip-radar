@@ -24,6 +24,7 @@ git -C "$WORK" rm -rq . 2>/dev/null || true
 mkdir -p "$WORK/extension"
 cp -R dist/. "$WORK/extension/"
 cp scripts/mac/install.sh scripts/mac/update.sh scripts/mac/uninstall.sh "$WORK/"
+cp PRIVACY.md "$WORK/"   # the Chrome Web Store's privacy policy link points here
 printf '# Trip Radar release\n\nBuilt extension (`extension/`) and the macOS updater. Source is on `main`.\n' > "$WORK/README.md"
 git -C "$WORK" add -A
 git -C "$WORK" commit -q -m "Release $VERSION" || { echo "nothing to release"; exit 0; }
