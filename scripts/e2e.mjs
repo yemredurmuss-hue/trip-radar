@@ -732,6 +732,8 @@ try {
   await douroPage.locator("h3", { hasText: "Douro tekne turu" }).waitFor();
   // A transfer's ends, short: "Porto Havalimanı" over OPO, "Booking.com" over the stay's name.
   assert.match(await arrivalLeg.locator(".pk-mid").innerText(), /Porto Havalimanı\s*OPO[\s\S]*Booking\.com\s*Jardim Stay/);
+  // One word isn't broken in the middle ("Booking.co / m"): the end stays on one line.
+  assert.ok(await arrivalLeg.locator(".pk-stop.r b").evaluate((el) => el.getClientRects().length <= 1 && el.offsetHeight < 1.6 * parseFloat(getComputedStyle(el).fontSize)), "Booking.com on one line");
   // Empty nights (the trip a night longer): × hides them ("Gerek yok"), Gizlenenler brings them back.
   const setEnd = (end) =>
     app.evaluate(async (end) => {
@@ -758,6 +760,7 @@ try {
   await app.mouse.move(0, 0);
   assert.equal(await opacity(extra.locator(".stay-x")), "0.55");
   await app.screenshot({ path: `${out}/4p-empty-nights-narrow.png` });
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with night blocks");
   await app.setViewportSize({ width: 1440, height: 1400 });
   await extra.hover();
   await extra.getByRole("button", { name: /: gerek yok$/ }).click();
