@@ -172,6 +172,12 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
 - **İlham** (0.35.3): Plan'ın en altında, kapalı başlayan bölüm. Reels, Pinterest, TikTok, YouTube ve blog linkleri
   (`inspo.ts`): resim, platform rozeti, başlık, şehir. Restoran nerede bulunursa bulunsun restorandır; Maps linki
   yerdir, ilham değil. Bir güne konunca Yapılacak şeyler'e geçer. Belgeler'le karışmaz (pasaport, bilet orada).
+- **AI kapısı ve profil** (0.36, `docs/superpowers/specs/2026-10-05-davet-paylasim-design.md`): davet edilen kişi kendi
+  anahtarı olmadan AI kullanır; eklenti Gemini'yi doğrudan değil, davet edenin sunucusundaki `ai` Edge Function'ı
+  üzerinden çağırır (anahtar yalnız sunucuda, `GEMINI_API_KEY`). Her paylaşım kodu bir AI bileti taşır; kişi başı
+  günlük istek sınırı ve aylık tavan (tahmini 20 $). Kendi anahtarı olan onu kullanmaya devam eder. Sahibi Ayarlar →
+  "AI kapısı"nda yönetici anahtarıyla kullanımı görür ve bir daveti kapatır. Profilim: ad + isteğe bağlı fotoğraf
+  (128 px JPEG), yalnız paylaşılan gezinin üyelerine gider; hero'daki yolcu yuvarlaklarında görünür.
 - **Nereye bakılır** (0.35.11, `searchLinks.ts`): Uçuş'ta gidiş var, eve dönen uçuş yoksa "Dönüş bileti ara · Porto →
   İstanbul ↗" (Google Flights, gezinin son şehrinden, son gününde). Etkinlikler'in altında şehir başına
   "GetYourGuide: Porto etkinliklerini ara ↗". Yalnız arama linki; hiçbir şey kaydedilmez, affiliate kodu yok.
