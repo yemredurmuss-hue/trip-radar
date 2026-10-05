@@ -713,6 +713,17 @@ export function sectionProgress(section: Pick<CatSection, "settled" | "entries">
   return { settled: section.settled, total, pct: total ? Math.round((section.settled / total) * 100) : 0, complete: total > 0 && section.settled === total };
 }
 
+/**
+ * The whole plan's progress for the hero (v9 "Rezervasyonların"): the sections' "3/4"s added up, so the hero
+ * and the section headers always say the same thing.
+ */
+export function planProgress(sections: Pick<CatSection, "settled" | "entries">[]): { settled: number; total: number; pct: number; complete: boolean } {
+  return sectionProgress({
+    settled: sections.reduce((n, s) => n + s.settled, 0),
+    entries: sections.flatMap((s) => s.entries),
+  });
+}
+
 /** The section and entry that hold a to-do's target (a record, a transfer, a block), tried in that order; `dom`: its card's key. */
 export function findInSections(
   sections: CatSection[],

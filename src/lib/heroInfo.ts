@@ -66,11 +66,12 @@ export const plugFitText = (fit: PlugFit): string =>
     adapter: L("Adaptör gerekir", "Adapter needed"),
   })[fit];
 
-/** "−2 sa", "+5,5 sa"; null when the same time. */
+/** "−2 saat", "+5,5 saat" ("−2 h"); "Aynı saat" when the same time; null when it isn't known. */
 export function offsetText(hours: number | null): string | null {
-  if (!hours) return null;
+  if (hours == null) return null;
+  if (!hours) return L("Aynı saat", "Same time");
   const n = Math.abs(hours).toLocaleString(locale(), { maximumFractionDigits: 1 });
-  return `${hours > 0 ? "+" : "−"}${n} ${L("sa", "h")}`;
+  return `${hours > 0 ? "+" : "−"}${n} ${L("saat", "h")}`;
 }
 
 /** "Euro", "İngiliz Sterlini": the money's name in the board's language. */
@@ -92,13 +93,38 @@ export function initials(name: string): string {
     .join("");
 }
 
-/** The trip's countries in the order its places come (by date), flights left out: they start at home. */
-export function countriesOf(items: Item[]): string[] {
+/** The trip's country codes in the order its places come (by date), each once; flights left out: they start at home. */
+export function countryCodesOf(items: Item[]): string[] {
   const placed = items
     .filter((i) => i.status !== "dismissed" && i.category !== "flight" && i.countryCode)
     .sort((a, b) => (a.dates.start ?? "9").localeCompare(b.dates.start ?? "9"));
-  return countryNames(placed.map((i) => i.countryCode));
+  return [...new Set(placed.map((i) => i.countryCode!.toUpperCase()).filter((c) => /^[A-Z]{2}$/.test(c)))];
 }
+
+/** The same countries by name, in the board's language. */
+export const countriesOf = (items: Item[]): string[] => countryNames(countryCodesOf(items));
+
+/** A country's flag as an emoji, from the two regional-indicator letters of its code ("PT" → 🇵🇹); "" for anything else. */
+export function flagEmoji(code: string | null | undefined): string {
+  const c = code?.trim().toUpperCase() ?? "";
+  if (!/^[A-Z]{2}$/.test(c)) return "";
+  return String.fromCodePoint(...[...c].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
+}
+
+/**
+ * The travellers' card title: the names when the shared trip has them ("Emre & Sabine", "Emre, Sabine +1"),
+ * else how many the saves say ("2 kişi"), else nothing.
+ */
+export function travellersTitle(names: string[], count: number): string {
+  const n = names.map((x) => x.trim()).filter(Boolean);
+  if (n.length === 1) return n[0];
+  if (n.length === 2) return `${n[0]} & ${n[1]}`;
+  if (n.length > 2) return `${n[0]}, ${n[1]} +${n.length - 2}`;
+  return count > 0 ? nPeople(count) : "";
+}
+
+/** "2 kişi" / "2 people". */
+export const nPeople = (n: number): string => L(`${n} kişi`, n === 1 ? "1 person" : `${n} people`);
 
 /** Each city's own days (from its nights), else the whole trip's: what its weather is read for. */
 export function cityRanges(plan: Plan, cities: string[], range: { start: string; end: string } | null): { city: string; start: string; end: string }[] {

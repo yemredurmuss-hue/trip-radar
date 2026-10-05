@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cityWeather, skyOf, summarize, weatherQuery, weatherTitle, type Daily } from "../src/lib/climate";
 import { db, listItems } from "../src/lib/db";
 import { loadDemoTrip } from "../src/lib/demo";
-import { countryNames, currencyName, heroTally, initials, offsetText, plugFit } from "../src/lib/heroInfo";
+import { countryNames, currencyName, flagEmoji, heroTally, initials, offsetText, plugFit, travellersTitle } from "../src/lib/heroInfo";
 import { setLang } from "../src/lib/i18n";
 import { buildPlan } from "../src/lib/plan";
 
@@ -35,11 +35,31 @@ describe("hero facts", () => {
     expect(plugFit("TR", "CH")).toBe("some"); // a two-pin plug goes in, a Schuko doesn't
     expect(plugFit("TR", "ZZ")).toBeNull();
   });
-  it("writes the time difference short, and nothing when it's the same", () => {
-    expect(offsetText(-2)).toBe("−2 sa");
-    expect(offsetText(5.5)).toBe("+5,5 sa");
-    expect(offsetText(0)).toBeNull();
+  it("writes the time difference in hours, \"Aynı saat\" when it's the same", () => {
+    expect(offsetText(-2)).toBe("−2 saat");
+    expect(offsetText(5.5)).toBe("+5,5 saat");
+    expect(offsetText(0)).toBe("Aynı saat");
     expect(offsetText(null)).toBeNull();
+    setLang("en");
+    expect(offsetText(-2)).toBe("−2 h");
+    expect(offsetText(0)).toBe("Same time");
+  });
+  it("draws a country's flag from its code", () => {
+    expect(flagEmoji("PT")).toBe("🇵🇹");
+    expect(flagEmoji("es")).toBe("🇪🇸");
+    expect(flagEmoji("XYZ")).toBe("");
+    expect(flagEmoji("1")).toBe("");
+    expect(flagEmoji(null)).toBe("");
+  });
+  it("titles the travellers by name, else by count, else nothing", () => {
+    expect(travellersTitle(["Emre", "Sabine"], 0)).toBe("Emre & Sabine");
+    expect(travellersTitle(["Emre", "Sabine", "Ali"], 2)).toBe("Emre, Sabine +1");
+    expect(travellersTitle(["Emre", "Sabine", "Ali", "Ece"], 2)).toBe("Emre, Sabine +2");
+    expect(travellersTitle([" Emre "], 2)).toBe("Emre");
+    expect(travellersTitle([], 2)).toBe("2 kişi");
+    expect(travellersTitle(["", " "], 0)).toBe("");
+    setLang("en");
+    expect(travellersTitle([], 3)).toBe("3 people");
   });
   it("names the money", () => {
     expect(currencyName("EUR")).toBe("Euro");

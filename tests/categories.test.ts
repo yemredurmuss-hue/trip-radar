@@ -3,7 +3,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { loadDecisions } from "../src/lib/analysis";
-import { categorize, catDomKey, findInSections, sectionOfItem, sectionProgress, sectionStatus, SECTION_ORDER, type CatSection } from "../src/lib/categories";
+import { categorize, catDomKey, findInSections, planProgress, sectionOfItem, sectionProgress, sectionStatus, SECTION_ORDER, type CatSection } from "../src/lib/categories";
 import { db, listItems } from "../src/lib/db";
 import { loadDemoTrip } from "../src/lib/demo";
 import { buildLegs } from "../src/lib/legs";
@@ -436,5 +436,18 @@ describe("the header's bar", () => {
     expect(of(2, 2)).toEqual({ settled: 2, total: 2, pct: 100, complete: true });
     // Only hidden things: nothing to fill, never "complete".
     expect(of(0, 0)).toEqual({ settled: 0, total: 0, pct: 0, complete: false });
+  });
+  it("the hero's \"Rezervasyonların\" is the headers' \"3/4\"s added up", async () => {
+    const id = await loadDemoTrip();
+    const t = (await (await db()).get("trips", id))!;
+    const { sections } = sectionsOf(await listItems(id), t);
+    const sum = sections.reduce((a, s) => ({ settled: a.settled + sectionProgress(s).settled, total: a.total + sectionProgress(s).total }), { settled: 0, total: 0 });
+    const all = planProgress(sections);
+    expect(all).toMatchObject(sum);
+    expect(all.total).toBeGreaterThan(0);
+    expect(all.pct).toBe(Math.round((sum.settled / sum.total) * 100));
+    expect(planProgress([])).toEqual({ settled: 0, total: 0, pct: 0, complete: false });
+    const of = (settled: number, total: number) => ({ settled, entries: Array.from({ length: total }) as CatSection["entries"] });
+    expect(planProgress([of(1, 1), of(2, 2)])).toEqual({ settled: 3, total: 3, pct: 100, complete: true });
   });
 });
