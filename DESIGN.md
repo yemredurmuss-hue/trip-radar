@@ -83,35 +83,42 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
 - **Ayrıntı:** karta dokununca kartın içinde beyaz panel açılır; eski karttaki her bilgi orada (saatler, işletme,
   fiyat kırılımı, neden önerildi, istedikler, artı/eksi, bağlantılar, geri almalar).
 - **Belgeler:** yalnız bu bilgisayarda durur. Varsa hap ("bilet.pdf +1", dar ekranda ikon), yoksa soluk ataç.
-- **Eklemek:** Plan başlığındaki "+ Ekle" ve kesik çizgili "+" (hep soluk görünür, üstüne gelince tam; dar ekranda tam)
-  şablon penceresini açar: planın en başında, her şehir bloğunun başında, her satırdan sonra; Günlük akışta her günde.
-  Şehir ve tarih bastığın yerden gelir (konaklamanın ardında yalnız şehir). Karoya basınca form açılmaz: kayıt
-  hemen oluşur ("Planlanıyor"), pencere kapanır, sayfa yeni karta kayar ve kart ilk boş alanı açık gelir; altta
-  "Otobüs eklendi · Geri al". Rezervasyonsuzlar (Yapılacak, Restoran, Not) Fikirler'e düşer, sekme değişmez:
-  "Fikirler'e eklendi · Göster · Geri al".
+- **Eklemek:** Plan başlığındaki "+ Ekle" bütün şablonları açar; bir bölümün "+ Ekle"si ve bölüm içindeki kesik
+  çizgili "+" (hep soluk görünür, üstüne gelince tam; dar ekranda tam) yalnız o bölümün türünü ekler: tek türü olan
+  (Uçuş, Etkinlik, Yapılacak, Restoran) anında, birkaç türü olan (Konaklama, Ulaşım, Diğer) yalnız kendi karolarıyla.
+  Günlük akışta her günde "+". Şehir ve tarih bastığın yerden gelir (konaklamanın ardında yalnız şehir). Karoya
+  basınca form açılmaz: kayıt hemen oluşur ("Planlanıyor"), bölümü açılır, sayfa yeni karta kayar ve kart ilk boş
+  alanı açık gelir (fikirde adı); altta "Otobüs eklendi · Geri al".
 - **Kartın üstünde düzenlemek:** her kayıt kartında ad, şehir, tarih, saat, uçlar ve fiyat durdukları yerde
   değişir. Üstüne gelince ince alt çizgi ve kalem; tıklayınca aynı boyda kutu (tarih seçici, saat seçici, fiyatta
   sayı + para birimi). Enter ya da dışarı tıklamak kaydeder, Esc bırakır, Tab sonrakine geçer; "Kaydet" düğmesi yok.
   Boş alan soluk "Tarih ekle" / "Saat ekle" / "Fiyat ekle". Sayfadan kaydedilen kartta değişiklik düzeltme olarak
   durur (sayfa yeniden kaydedilse de kalır); üstüne gelince "sayfadaki: X · geri al".
 
-## Üç görünüm
+## İki görünüm: Plan · Günlük akış
 
-- **Plan** kararların ön yüzü: yalnız kararı ya da rezervasyonu olan şeyler, her biri kendi büyük kartı (uçuş, otel,
-  şehir değişimi, seçilen etkinlik, kiralık araç, planı olan transfer). Solda simge ve etiket sütunu (ne, ne zaman,
-  kaçıncı gün), sağda kart; şehir bloğunun içindekiler dışındakilerle aynı hizada. Yalnız rezervasyon isteyenler
-  (konaklama, ulaşım, uçuş, eSIM, sigorta, bileti/rezervasyonu olan etkinlik ve restoran); tarihsiz olanlar altta
-  "Rezerve edilecekler · N · M alındı" listesinde alt alta.
+- **Plan kategorilere göre** (`docs/mockups/2026-10-05-kategoriler-v2.html`, spec 0.34): yedi bölüm, bu sırayla —
+  Uçuş · Konaklama (gece blokları dahil) · Ulaşım (transferler, şehir değişimi, kiralama) · Etkinlikler (rezervasyonlu)
+  · Yapılacak şeyler (rezervasyonsuz) · Restoranlar · Diğer (sigorta, eSIM). Her kayıt tam olarak bir bölümde; boş
+  bölüm çizilmez, en altta "Ekle:" satırında tek çip olur.
+- Bölüm kabuğu: kendi açık renk zemini (tür rengi %7, çizgi %16, köşe 22), başlıkta renkli ikon karesi · ad · sayı ·
+  durum hapı (amber "1 karar bekliyor", "1 bilet yok · 3 karar", "2 gece boş", "2 güne eklenmedi"; yeşil "✓ 3 alındı")
+  · "+ Ekle" · ok. Başlığa basmak açar/kapar; seçim gezi başına hatırlanır. İlk bakışta işi kalan açık, hepsi tamam
+  olan kapalı; bu ilk bakış ziyaret boyunca sabit (son bilet alınınca bölüm elinin altından kapanmaz).
+- Kapalı bölüm: her kayıt tek ince satır (çember · ad · şehir · tarih · saat · fiyat · durum); satıra basınca bölüm
+  açılır, karta kayar. Hiçbir kayıt gizlenmez.
+- Açık bölüm bir zaman çizelgesi: solda tarih sütunu ("9 Eki", altında hafta günü ve şehir), ince çizgi ve nokta,
+  sağda onaylı kartların kendisi (kart iç tasarımı değişmez). Tarihe göre, sonra saate göre; tarihsizler en sonda
+  "Tarihsiz", şehre göre. Panel ≤620 px: tarih kartın üstüne tek satır iner. Yapılacak şeyler: başta hızlı yazma
+  kutusu, tikli satırlar (alt satır şehir · kaynak); Restoranlar: 200×124 fotoğraflı kartlar, aynı gündekiler yan yana.
 - Plan'da check-in/check-out satırı, boş gün, planı olmayan transfer yok.
 - **Günlük akış** gün gün, saat saat: rezervasyon gerektiren her şey (uçuş, tren, taksi/transfer, etkinlik,
   restoran, araç kiralama) küçük bir blok, bilgi (check-in, check-out, metro/yürüyüş, araç iadesi) ince satır.
 - Blok Plan'daki kartına götürür; bir şey iki görünümde de büyük yazılmaz.
 - Saat solda: kayıttan gelen düz, alışılmış ya da hesaplanan "~"; bilinmeyen boş.
 - Günler açılır, kapanır: işi kalan açık gelir ("3 iş"), hepsi hazır olan tek satıra katlanır.
-- **Fikirler** rezervasyon gerektirmeyenler (restoran, serbest etkinlik, yapılacak, not), şehir şehir
-  (`docs/mockups/2026-10-05-fikirler-v1.html`): hızlı yazma kutusu, Hepsi · Yeme-içme · Yapılacaklar, restoranlar küçük
-  fotoğraf kartları (fotoğraf kaydedilen sayfadan, yoksa yemek ikonu), yapılacaklar tikli liste. Bir güne eklenen Günlük
-  akışta ince satırdır, büyük blok değil.
+- Rezervasyonsuzlar (Yapılacak şeyler, rezervasyonsuz Restoranlar) bir güne eklenince Günlük akışta ince satırdır,
+  büyük blok değil.
 
 ## Azaltmak
 
