@@ -65,14 +65,15 @@ const LOOSE_KINDS: readonly (PlannedKind | undefined)[] = [undefined, "activity"
  */
 export const isInsurance = (i: Item): boolean => {
   if (i.plannedKind === "insurance") return true;
-  if (!LOOSE_KINDS.includes(i.plannedKind) || choreText(i.name)) return false;
+  // A saved page is what it is ("Get travel insurance · World Nomads" is a policy to compare, not a chore).
   if (!i.plannedKind && (i.category === "other" || i.category === "transport")) return INSURANCE.test(itemText(i));
+  if (!LOOSE_KINDS.includes(i.plannedKind) || choreText(i.name)) return false;
   return (i.category === "other" || i.category === "activity") && INSURANCE.test(i.name);
 };
 
 /** A visa (or an ETIAS) by its name, said as a thing to do: its own record in Diğer, not a chore. */
 export const isVisa = (i: Item): boolean =>
-  LOOSE_KINDS.includes(i.plannedKind) && (i.category === "other" || i.category === "activity") && VISA.test(i.name) && !choreText(i.name);
+  LOOSE_KINDS.includes(i.plannedKind) && (i.category === "other" || i.category === "activity") && VISA.test(i.name) && (!i.plannedKind || !choreText(i.name));
 
 /**
  * The papers of a trip (spec 0.34.6 §2): a policy, a visa, an eSIM said as a thing to do. Always in Diğer
@@ -82,6 +83,6 @@ export const isVisa = (i: Item): boolean =>
 export const isPaperwork = (i: Item): boolean =>
   isInsurance(i) ||
   isVisa(i) ||
-  (LOOSE_KINDS.includes(i.plannedKind) && (i.category === "other" || i.category === "activity") && ESIM_WORDS.test(i.name) && !choreText(i.name));
+  (LOOSE_KINDS.includes(i.plannedKind) && (i.category === "other" || i.category === "activity") && ESIM_WORDS.test(i.name) && (!i.plannedKind || !choreText(i.name)));
 
 export { LOCAL };

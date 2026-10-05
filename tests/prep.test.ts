@@ -143,3 +143,13 @@ describe("the chat's kind, guarded in code", () => {
     expect(guardKind(said({ kind: "activity", title: "Porto Belo Pazarı" })).kind).toBe("activity");
   });
 });
+
+describe("saved pages are what they are", () => {
+  it("a page is never a chore; an insurance page named with a verb is still a policy to compare", () => {
+    const page = makeItem({ category: "activity", name: "Buy tickets · Livraria Lello", url: "https://maps.app.goo.gl/x" });
+    expect(isPrep(page)).toBe(false);
+    const policyPage = makeItem({ category: "other", name: "Get travel insurance · World Nomads", url: "https://worldnomads.com" });
+    expect(isInsurance(policyPage)).toBe(true);
+    expect(sectionOfItem(policyPage)).toBe("other");
+  });
+});

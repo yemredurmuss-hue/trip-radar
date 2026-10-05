@@ -12,5 +12,7 @@ export function isPrep(item: Item): boolean {
   if (item.plannedKind === "prep") return true;
   if (item.plannedKind === "note" || item.plannedKind === "insurance") return false;
   if (item.category !== "other" && item.category !== "activity") return false;
+  // A saved page is a place or an offer, never a chore; only what the traveller said or typed is read for one.
+  if (!item.plannedKind) return false;
   return !isPaperwork(item) && choreText(item.name);
 }
