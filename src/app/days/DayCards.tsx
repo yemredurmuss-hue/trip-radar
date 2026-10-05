@@ -44,6 +44,8 @@ export interface DayCardsProps {
   times?: Record<string, string>;
   /** The order the traveller gave each day's lines, by date (trip.dayOrder). */
   order?: Record<string, string[]>;
+  /** Lines with a time moved by hand, off the clock (trip.dayLoose). */
+  loose?: string[];
 }
 
 const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(locale(), { weekday: "short", timeZone: "UTC" });
@@ -313,7 +315,8 @@ function TimeCell({ row, tripId }: { row: DayRow; tripId: string }) {
         const own = { ...(t.dayTimes ?? {}) };
         if (value) own[row.key] = value;
         else delete own[row.key];
-        return { ...t, dayTimes: own };
+        // A time given (or the plan's taken back) puts a line moved by hand back on the clock.
+        return { ...t, dayTimes: own, dayLoose: (t.dayLoose ?? []).filter((k) => k !== row.key) };
       },
       { touch: false },
     );
@@ -322,22 +325,24 @@ function TimeCell({ row, tripId }: { row: DayRow; tripId: string }) {
       <span className="t edit">
         <input
           type="time"
-          defaultValue={row.time ?? ""}
+          defaultValue={row.time ?? row.freed ?? ""}
           autoFocus
           aria-label={L(`${row.title}: saat`, `${row.title}: time`)}
           onChange={(e) => e.target.value && save(e.target.value)}
           onBlur={() => setEdit(false)}
           onKeyDown={(e) => (e.key === "Escape" || e.key === "Enter") && setEdit(false)}
         />
-        {row.user && (
-          <button type="button" className="t-reset" title={L("Otomatik saate dön", "Back to the worked-out time")} onMouseDown={(e) => e.preventDefault()} onClick={() => (save(null), setEdit(false))}>
+        {(row.user || row.freed) && (
+          <button type="button" className="t-reset" title={row.freed ? L(`Saatine geri koy (${row.freed})`, `Back on its time (${row.freed})`) : L("Otomatik saate dön", "Back to the worked-out time")} onMouseDown={(e) => e.preventDefault()} onClick={() => (save(null), setEdit(false))}>
             ×
           </button>
         )}
       </span>
     );
   return (
-    <button type="button" className={`t${row.estimated ? " est" : ""}${row.user ? " own" : ""}`} title={row.why ?? L("Saat ver", "Set a time")} onClick={() => setEdit(true)}>
+    <button type="button" className={`t${row.estimated ? " est" : ""}${row.user ? " own" : ""}${row.freed ? " freed" : ""}`}
+      title={row.freed ? L(`Elle taşındı (saati ${row.freed}). Dokun: saat ver ya da × ile saatine geri koy`, `Moved by hand (its time ${row.freed}). Tap: set a time, or × to put it back on its time`) : (row.why ?? L("Saat ver", "Set a time"))}
+      onClick={() => setEdit(true)}>
       {time(row) || "–"}
     </button>
   );
@@ -550,12 +555,13 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
 // --- the day's order (0.35.6) ------------------------------------------------------------------------
 
 /** The day's lines in their order (the timed by the clock, the rest where put), and its insurance and eSIM apart. */
-function dayLines(card: DayCard, props: Pick<DayCardsProps, "times" | "order">): { lines: DayRow[]; asides: DayRow[] } {
-  const all = flowRows(card, props.times);
+function dayLines(card: DayCard, props: Pick<DayCardsProps, "times" | "order" | "loose">): { lines: DayRow[]; asides: DayRow[] } {
+  // A line moved by hand off its time stays where it was put, its time hidden (a time given puts it back).
+  const all = flowRows(card, props.times).map((r) => (r.time && props.loose?.includes(r.key) ? { ...r, freed: r.time, time: null, estimated: false } : r));
   return { lines: orderRows(all.filter((r) => !isAside(r)), props.order?.[card.date]), asides: all.filter(isAside) };
 }
 
-/** What a line needs to be moved: its grip (only without a time), its drop handlers, its class while dragged over. */
+/** What a line needs to be moved: its grip, its drop handlers, its class while dragged over. */
 interface Dnd {
   grip: ReactNode;
   li: { onDragOver: (e: React.DragEvent<HTMLLIElement>) => void; onDrop: (e: React.DragEvent<HTMLLIElement>) => void };
@@ -563,21 +569,35 @@ interface Dnd {
 }
 
 /**
- * Moving a day's lines: a line without a time has a grip to drag it up or down (or ↑ ↓ on it); dropped, the
- * day's order is kept on the trip (trip.dayOrder, by date). A line with a time goes by the clock: to move it,
- * change its time.
+ * Moving a day's lines: each has a grip to drag it up or down (or ↑ ↓ on it); dropped, the day's order is kept
+ * on the trip (trip.dayOrder, by date). A line with a time moved by hand comes off the clock (0.35.10, Emre:
+ * "evet"): it stays where it was put, its time hidden (trip.dayLoose) and its own time forgotten; a time given,
+ * or "×" on it, puts it back by the clock.
  */
 function useReorder(rows: DayRow[], date: string, tripId: string): (row: DayRow) => Dnd {
   const [drag, setDrag] = useState<string | null>(null);
   const [over, setOver] = useState<{ key: string; after: boolean } | null>(null);
   const move = (key: string, target: string, after: boolean) =>
-    void updateTrip(tripId, (t) => ({ ...t, dayOrder: { ...(t.dayOrder ?? {}), [date]: movedOrder(rows, key, target, after) } }), { touch: false });
+    void updateTrip(
+      tripId,
+      (t) => {
+        const timed = rows.find((r) => r.key === key)?.time;
+        const own = { ...(t.dayTimes ?? {}) };
+        if (timed) delete own[key];
+        return {
+          ...t,
+          dayOrder: { ...(t.dayOrder ?? {}), [date]: movedOrder(rows, key, target, after) },
+          ...(timed ? { dayLoose: [...new Set([...(t.dayLoose ?? []), key])], dayTimes: own } : {}),
+        };
+      },
+      { touch: false },
+    );
   const end = () => {
     setDrag(null);
     setOver(null);
   };
   return (row) => ({
-    grip: row.time ? null : (
+    grip: (
       <button
         type="button"
         className="dc-grip"

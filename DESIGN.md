@@ -181,8 +181,10 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
 - **Günün sırası** (0.35.6, `dayCards.ts` `orderRows`): saati olan satırlar her zaman saate göre; saati olmayanlar
   (fikirler, saatsiz uçuş/check-in) gizlenmez, akışta durur ve **tutamaçtan sürüklenerek** (ya da tutamaçta ↑ ↓)
   istenen yere taşınır; Liste ve Kartlar aynı sırayı gösterir (`trip.dayOrder`, tarihe göre). Saatsiz satır,
-  konduğu satırın hemen ardında kalır; saat verilince (saate dokun) saatine göre yerine geçer. Saatli satırın
-  tutamacı yok: yerini saati belirler. Yeni gelen satır plandaki sırasına göre yerleşir. Sigorta ve eSIM akışta
+  konduğu satırın hemen ardında kalır; saat verilince (saate dokun) saatine göre yerine geçer. **Saatli satır da
+  sürüklenir** (0.35.10): bırakıldığı yerde kalır, saati akışta gizlenir ("–", `trip.dayLoose`), senin verdiğin
+  saat unutulur; saate dokunup saat vermek ya da "×" onu saatine geri koyar (bilet saati silinmez, yalnız
+  gizlenir). Yeni gelen satır plandaki sırasına göre yerleşir. Sigorta ve eSIM akışta
   değil: gün açılınca "Gezi için · sigorta, internet".
 - **Günlük akış** (0.34.8) tek anahtarla iki görünüm, günler tek tek açılıp kapanmaz. Üstte yapışkan çubuk:
   **Liste | Kartlar** (seçim bu tarayıcıda hatırlanır) ve gün şeridi (1 · 2 · 3 · 4 · 5–6 · 7; bugün mavi), şerit

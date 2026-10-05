@@ -173,6 +173,8 @@ export interface Trip {
    * keep the place they're given; the timed ones always go by the clock (dayCards.orderRows).
    */
   dayOrder?: Record<string, string[]> | null;
+  /** Günlük akış lines with a time the traveller moved by hand (0.35.10): off the clock, shown without their time, by row key. */
+  dayLoose?: string[] | null;
   /**
    * What the traveller said isn't needed: a transfer (`leg:<key>`) or nights without a place to book
    * (`nights:<start>_<end>`). Hidden from the board and the to-dos, never deleted; "Geri getir" restores it.

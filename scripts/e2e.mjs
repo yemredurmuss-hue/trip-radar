@@ -448,8 +448,20 @@ try {
   await app.keyboard.press("ArrowDown");
   await app.waitForFunction(() => [...document.querySelectorAll(".dc-cday.list")][0].querySelector(".dc-tl > li:last-child")?.getAttribute("data-title") === "Check-in");
   assert.deepEqual(await day1(), ["Uçuş IST → OPO", "Havalimanı → Otel", "Check-in"]);
-  // A line with a time goes by the clock: no grip.
-  assert.equal(await dayCard(7).locator('.dc-tl > li[data-title="Uçuş LIS → IST"] .dc-grip').count(), 0);
+  // A line with a time moves too (0.35.10): it stays where it's dropped, its time hidden; "×" puts it back on its time.
+  const day7 = () => dayCard(7).locator(".dc-tl > li").evaluateAll((els) => els.map((e) => `${e.querySelector(".t")?.textContent} ${e.dataset.title}`));
+  assert.deepEqual(await day7(), ["~11:00 Check-out", "~15:40 Otel → Havalimanı", "19:40 Uçuş LIS → IST"]);
+  const flight7 = dayCard(7).locator('.dc-tl > li[data-title="Uçuş LIS → IST"]');
+  await flight7.hover();
+  await flight7.locator(".dc-grip").dragTo(dayCard(7).locator('.dc-tl > li[data-title="Check-out"]'), { targetPosition: { x: 200, y: 4 } });
+  await flight7.locator("button.t.freed").waitFor();
+  assert.deepEqual(await day7(), ["– Uçuş LIS → IST", "~11:00 Check-out", "~15:40 Otel → Havalimanı"]);
+  assert.match(await flight7.locator("button.t").getAttribute("title"), /Elle taşındı \(saati 19:40\)/);
+  await flight7.locator("button.t").click();
+  assert.equal(await flight7.locator('input[type="time"]').inputValue(), "19:40");
+  await flight7.getByRole("button", { name: "×" }).click();
+  await flight7.locator("button.t.freed").waitFor({ state: "detached" });
+  assert.deepEqual(await day7(), ["~11:00 Check-out", "~15:40 Otel → Havalimanı", "19:40 Uçuş LIS → IST"]);
   await app.screenshot({ path: `${out}/3e-itinerary.png` });
   await app.setViewportSize({ width: 560, height: 1400 });
   await dayCard(4).scrollIntoViewIfNeeded();

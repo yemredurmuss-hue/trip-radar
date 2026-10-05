@@ -252,6 +252,11 @@ export interface DayRow {
   /** Why this time (dayTimes.ts): "Uçuş 19:40 · en geç 16:40 havalimanında; transfer ~1 sa". */
   why?: string | null;
   /** The traveller set this time themselves; the rest of the day follows it. */
+  /**
+   * Moved by hand off its time (0.35.10): the time it had, hidden in the flow while the line stays where it
+   * was put; a time given (or "×") puts it back on the clock.
+   */
+  freed?: string | null;
   user?: boolean;
   /** Their time doesn't leave room ("bu saatle geç kalabilirsin"). */
   warn?: string | null;
