@@ -1072,7 +1072,7 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .hx-prefs-rows dd { margin: 0; flex: none; text-align: right; }
 .hx-prefs-link { margin-top: 14px; flex-wrap: wrap; }
 .hx-prefs-link .sep { color: var(--hx-muted); }
-.hx-prefs-link .ask-mark { display: inline-flex; align-items: center; gap: 6px; }
+.hx-prefs-link .ask-mark { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; }
 .hx-prefs-link .ask-mark i { width: 8px; height: 8px; border-radius: 50%; background: var(--hx-accent); }
 .hx-prefs-pop {
   position: absolute; z-index: 7; left: -12px; right: -12px; top: calc(100% + 8px); padding: 16px 18px; border-radius: 16px; background: #fff; color: var(--hx-ink);
@@ -1107,8 +1107,10 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .hx-weather .sky-cloud, .hx-weather .sky-rain { color: var(--hx-ink); }
 
 /* The small things: money, plug, time, language, a line between. */
-.hx-minis { display: flex; flex-wrap: wrap; align-items: center; row-gap: 10px; margin-left: -10px; overflow: hidden; font-size: 14px; color: var(--hx-muted); }
+/* Beside the story the card is narrow: two by two, a line between the pair; under it (narrow board), one row. */
+.hx-minis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 10px; margin-left: -10px; overflow: hidden; font-size: 14px; color: var(--hx-muted); }
 .hx-minis span { display: inline-flex; align-items: center; gap: 7px; margin-left: -1px; padding: 0 10px; border-left: 1px solid var(--hx-line); white-space: nowrap; }
+.hx-minis span:nth-child(odd) { border-left-color: transparent; }
 .hx-minis svg { flex: none; color: var(--hx-ink); }
 
 /* Narrow: one column, the card under the story; the plan line 2×2, the button under the bar. */
@@ -1124,6 +1126,8 @@ button.hx-people:hover b { color: var(--hx-accent); }
   .hx-progress { grid-template-columns: minmax(0, 1fr); gap: 18px; }
   .hx-go { width: 100%; }
   .hx-side { padding: 20px; }
+  .hx-minis { display: flex; flex-wrap: wrap; align-items: center; }
+  .hx-minis span:nth-child(odd) { border-left-color: var(--hx-line); }
 }
 
 /* ---------- plan cards (0.31): docs/mockups/2026-10-05-ulasim-v3.html + 2026-10-05-etkinlik-v4.html ---------- */

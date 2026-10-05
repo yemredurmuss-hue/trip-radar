@@ -216,7 +216,6 @@ export function Preferences({ trip, decisions }: { trip: Trip; decisions: Decisi
           <button className="hx-link hx-prefs-link" aria-expanded={open} onClick={toggle}>
             <span>{rest > 0 ? L(`+${rest} tercih`, `+${rest} more`) : L("Düzenle", "Edit")}</span>
             <HeroIcon name="chevRight" size={18} />
-            {question && <span className="sep">·</span>}
             {question}
           </button>
         </div>
