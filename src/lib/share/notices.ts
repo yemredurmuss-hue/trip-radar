@@ -114,13 +114,32 @@ export async function restoreSettings(tripId: string, prev: SyncedSettings, fiel
   return true;
 }
 
-/** "Geri al" on a notice: its fields back as they were here, the notice gone, the change marked as taken back. */
-export async function undoNotice(tripId: string, notice: SettingsNotice, me: string, kv: KV = chromeKV): Promise<boolean> {
-  const done = await restoreSettings(tripId, notice.prev, notice.fields);
-  await dismissNotice(tripId, notice.id, kv);
-  if (!done) return false;
-  await markUndone(tripId, { id: notice.id, at: notice.at, by: me, undoneAt: Date.now() }, kv);
-  await addEvent(tripId, L(`Ortak ayar geri alındı (${notice.author} değiştirmişti)`, `Shared setting undone (${notice.author} had changed it)`));
+/**
+ * "Geri al" on a shared-settings change (a notice or a row of the history): its fields back as they were, the
+ * change marked as taken back, one history line. The next sync pushes it.
+ */
+export async function undoSettingsChange(
+  tripId: string,
+  change: { prev: SyncedSettings; fields: readonly SyncedField[]; author: string | null; mark: { id: string; at: string | null } },
+  me: string,
+  kv: KV = chromeKV,
+): Promise<boolean> {
+  if (!(await restoreSettings(tripId, change.prev, change.fields))) return false;
+  await markUndone(tripId, { id: change.mark.id, at: change.mark.at, by: me || L("Ben", "Me"), undoneAt: Date.now() }, kv);
+  const who = change.author?.trim();
+  await addEvent(
+    tripId,
+    who && !sameName(who, me)
+      ? L(`Ortak ayar geri alındı (${who} değiştirmişti)`, `Shared setting undone (${who} had changed it)`)
+      : L("Ortak ayar geri alındı", "Shared setting undone"),
+  );
   notifyChanged();
   return true;
+}
+
+/** "Geri al" on a notice: its fields back as they were here, the notice gone, the change marked as taken back. */
+export async function undoNotice(tripId: string, notice: SettingsNotice, me: string, kv: KV = chromeKV): Promise<boolean> {
+  const done = await undoSettingsChange(tripId, { prev: notice.prev, fields: notice.fields, author: notice.author, mark: { id: notice.id, at: notice.at } }, me, kv);
+  await dismissNotice(tripId, notice.id, kv);
+  return done;
 }

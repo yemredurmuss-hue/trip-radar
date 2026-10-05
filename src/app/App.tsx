@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { resetConversation } from "../lib/assistant";
-import { addEvent, db, notifyChanged } from "../lib/db";
+import { addEvent, notifyChanged } from "../lib/db";
 import { loadDemoTrip } from "../lib/demo";
-import { deleteTripDocs } from "../lib/docs";
 import { L } from "../lib/i18n";
 import { routeUrl } from "../lib/items";
 import { buildPlan, groupKeyOf, liveGroups } from "../lib/plan";
+import { purgeTrash, restoreTrash, trashTrip } from "../lib/trash";
 import { isDemoTrip } from "../lib/trips";
-import type { Item } from "../lib/types";
+import type { Item, TrashEntry } from "../lib/types";
+import { undoSlot } from "../lib/undo";
+import { HistoryDialog } from "./HistoryDialog";
+import { DeleteSharedTripDialog } from "./ShareSafety";
 import { addTripFiles } from "./capture";
 import { Chat } from "./Chat";
 import { CompareView } from "./CompareView";
@@ -35,7 +38,20 @@ export function App() {
   const [seenArrival, setSeenArrival] = useState<string | null>(null);
   const [compareKey, setCompareKey] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [deleteAsk, setDeleteAsk] = useState(false);
+  const tripUndo = useMemo(() => undoSlot<TrashEntry>(), []);
+  const [deletedTrip, setDeletedTrip] = useState<TrashEntry | null>(null);
+  useEffect(() => tripUndo.subscribe(setDeletedTrip), [tripUndo]);
   const decisions = useDecisions(board.trip, board.items);
+
+  // Çöp kutusu: what is older than 30 days goes when the board opens (and whenever the trash is read).
+  useEffect(() => void purgeTrash().catch(() => 0), []);
+  // Another trip on screen: the dialogs of the one before close.
+  useEffect(() => {
+    setHistoryOpen(false);
+    setDeleteAsk(false);
+  }, [board.trip?.id]);
 
   useEffect(() => {
     const onHash = () => {
@@ -70,15 +86,25 @@ export function App() {
   const arrivalTrip = arrival ? board.trips.find((t) => t.id === arrival.tripId) : undefined;
   const showArrival = arrival && arrivalTrip && trip && arrival.tripId !== trip.id && arrival.id !== seenArrival;
 
+  // "Bu geziyi sil" (0.37): the trip and everything only its own go to the trash for 30 days. A shared trip asks
+  // first in its own dialog (only this computer, the others' copy stays); "Geri al" for 8 seconds on the overview.
   async function deleteTrip() {
-    if (!trip || !confirm(L(`"${trip.title}" ve içindeki her şey silinsin mi?`, `Delete "${trip.title}" and everything in it?`))) return;
-    const d = await db();
-    for (const i of board.items) await d.delete("items", i.id);
-    for (const m of board.messages) await d.delete("messages", m.id);
-    await deleteTripDocs(trip.id);
-    await d.delete("trips", trip.id);
+    if (!trip) return;
+    if (trip.shareId) return setDeleteAsk(true);
+    if (!confirm(L(`"${trip.title}" ve içindeki her şey silinsin mi? 30 gün Çöp kutusu'nda durur.`, `Delete "${trip.title}" and everything in it? It stays in the trash for 30 days.`))) return;
+    await moveTripToTrash(trip.id);
+  }
+
+  async function moveTripToTrash(tripId: string) {
+    setDeleteAsk(false);
+    const entry = await trashTrip(tripId);
     board.selectTrip(null);
-    notifyChanged();
+    if (entry) tripUndo.show(entry);
+  }
+
+  async function restoreTrip(entry: TrashEntry) {
+    const result = await restoreTrash(entry.id);
+    if (result.entry) board.selectTrip(result.entry.tripId);
   }
 
   const mapUrl = trip ? routeUrl(board.items) : null;
@@ -111,8 +137,10 @@ export function App() {
               )}
               <hr />
               <button onClick={() => void resetConversation(trip.id)}>{L("Bu gezide yeni sohbet başlat", "Start a new chat for this trip")}</button>
+              <button onClick={() => setHistoryOpen(true)}>{L("Geçmiş ve çöp kutusu", "History and trash")}</button>
             </>
           )}
+          {!trip && <button onClick={() => setHistoryOpen(true)}>{L("Çöp kutusu", "Trash")}</button>}
           <button onClick={() => setSettingsOpen(true)}>{L("Ayarlar", "Settings")}</button>
           {!board.trips.some((t) => t.demo) && (
             <button onClick={() => void loadDemoTrip().then(board.selectTrip)}>{L("Örnek geziyi yükle", "Load the sample trip")}</button>
@@ -160,6 +188,8 @@ export function App() {
               onCompare={setCompareKey}
               menu={menu}
               onShare={sharable ? () => setShareOpen(true) : undefined}
+              historyOpen={historyOpen}
+              onHistoryClose={() => setHistoryOpen(false)}
             />
           </main>
         </div>
@@ -229,6 +259,35 @@ export function App() {
             if (location.hash) history.replaceState(null, "", location.pathname);
           }}
         />
+      )}
+      {trip && deleteAsk && trip.shareId && (
+        <DeleteSharedTripDialog trip={trip} onCancel={() => setDeleteAsk(false)} onDelete={() => void moveTripToTrash(trip.id)} />
+      )}
+      {!trip && historyOpen && (
+        <HistoryDialog
+          trip={null}
+          items={[]}
+          hidden={[]}
+          onClose={() => setHistoryOpen(false)}
+          onOpenTrip={(id) => {
+            setHistoryOpen(false);
+            board.selectTrip(id);
+          }}
+        />
+      )}
+      {!trip && deletedTrip && (
+        <div className="pk-undo" role="status" aria-live="polite">
+          <span>{L(`${deletedTrip.label} silindi`, `${deletedTrip.label} deleted`)}</span>
+          <button
+            type="button"
+            onClick={() => {
+              const entry = tripUndo.take();
+              if (entry) void restoreTrip(entry);
+            }}
+          >
+            {L("Geri al", "Undo")}
+          </button>
+        </div>
       )}
       {trip && shareOpen && (
         <ShareDialog

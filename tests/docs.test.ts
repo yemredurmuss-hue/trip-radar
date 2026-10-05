@@ -2,7 +2,7 @@
 import "fake-indexeddb/auto";
 import { openDB } from "idb";
 import { describe, expect, it } from "vitest";
-import { db } from "../src/lib/db";
+import { db, DB_VERSION } from "../src/lib/db";
 import { addDoc, checkDoc, deleteDoc, deleteTripDocs, docPill, getDoc, inheritedDocs, listDocMeta, moveDocs, moveDocsToTrip, putDocs, sizeText, takeDocsOf } from "../src/lib/docs";
 import { buildPlan } from "../src/lib/plan";
 import { plannedItem } from "../src/lib/planned";
@@ -30,8 +30,9 @@ describe("the docs store", () => {
     await old.put("trips", { id: "t-old", title: "Porto" });
     old.close();
     const d = await db();
-    expect(d.version).toBe(4);
+    expect(d.version).toBe(DB_VERSION); // 3 → 4 (docs) → 5 (trash, 0.37) in one go
     expect([...d.objectStoreNames]).toContain("docs");
+    expect([...d.objectStoreNames]).toContain("trash");
     expect(await d.get("trips", "t-old")).toMatchObject({ title: "Porto" });
   });
 

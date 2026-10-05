@@ -143,7 +143,7 @@ const ADDED = [/^✓ (.+?) kaydedildi(?: → (.*?))?(?: \((.+) ekledi\))?$/, /^�
 const DELETED = [/^(.+) silindi$/, /^(.+) deleted$/];
 const HIDDEN_LINE = /: (gerek yok denildi, gizlendi|marked not needed, hidden)$/;
 const SETTINGS_LINE = [/^(.+) gezinin ayarlarını güncelledi$/, /^(.+) updated the trip settings$/];
-const UNDONE_LINE = /^(Ortak ayar geri alındı|Shared setting undone) /;
+const UNDONE_LINE = /^(Ortak ayar geri alındı|Shared setting undone)( |$)/;
 const CHAT_REMOVED = [/ sohbetten kaldırıldı \(Gizlenenler'de\)$/, / removed in the chat \(under Hidden\)$/];
 
 const firstMatch = (res: RegExp[], text: string) => res.map((r) => text.match(r)).find(Boolean) ?? null;

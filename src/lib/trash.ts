@@ -4,7 +4,7 @@
 // tap with the same ids. Local only: the trash never leaves this computer.
 import { addEvent, db, newId, notifyChanged } from "./db";
 import { L } from "./i18n";
-import type { Capture, DocRecord, TrashEntry, TrashedTrip } from "./types";
+import type { Capture, TrashEntry, TrashedTrip } from "./types";
 
 export const TRASH_DAYS = 30;
 const DAY_MS = 24 * 3600e3;
@@ -146,6 +146,3 @@ export async function restoreTrash(id: string): Promise<RestoreResult> {
 export async function dropTrash(id: string): Promise<void> {
   await (await db()).delete("trash", id);
 }
-
-/** The files a trashed card carries (for counts in the trash list). */
-export const trashedDocs = (entry: TrashEntry): DocRecord[] => entry.payload.docs;

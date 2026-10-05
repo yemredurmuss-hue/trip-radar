@@ -21,6 +21,7 @@ import {
   type SyncState,
 } from "../lib/share/store";
 import { allNoText, joinNames, tallyVotes, voteKeyOf, type Vote, type VoteTally, type VoteValue } from "../lib/share/votes";
+import { getNotices, noticesKey, type SettingsNotice } from "../lib/share/notices";
 import { L } from "../lib/i18n";
 import type { Item, Trip } from "../lib/types";
 
@@ -36,6 +37,8 @@ interface ShareView {
   members: number;
   /** Profile photos by name (0.36), mine included. */
   photos: Record<string, string>;
+  /** The other traveller's changes of the shared settings waiting on the board (0.37), newest first. */
+  notices: SettingsNotice[];
   vote: (item: Item, value: VoteValue) => void;
 }
 
@@ -60,6 +63,7 @@ export function ShareProvider({ trip, children }: { trip: Trip | null; children:
   const [votes, setVotesState] = useState<Vote[]>([]);
   const [state, setState] = useState<SyncState | null>(null);
   const [myPhoto, setMyPhoto] = useState<string | null>(null);
+  const [notices, setNotices] = useState<SettingsNotice[]>([]);
 
   useEffect(() => {
     if (!shareId || !tripId) return;
@@ -68,10 +72,11 @@ export function ShareProvider({ trip, children }: { trip: Trip | null; children:
       void getPhoto().then(setMyPhoto);
       void getVotes(shareId).then(setVotesState);
       void getSyncState(tripId).then((s) => setState(s ?? null));
+      void getNotices(tripId).then(setNotices, () => setNotices([]));
     };
     load();
     requestShareSync(); // the board opened: bring what the other traveller did meanwhile
-    return onStorage([votesKey(shareId), stateKey(tripId), "shareName", "sharePhoto"], load);
+    return onStorage([votesKey(shareId), stateKey(tripId), noticesKey(tripId), "shareName", "sharePhoto"], load);
   }, [shareId, tripId]);
 
   const view = useMemo<ShareView | null>(() => {
@@ -84,11 +89,12 @@ export function ShareProvider({ trip, children }: { trip: Trip | null; children:
       tally: (item) => tallyVotes(votes, voteKeyOf(item), me),
       members: memberCount(state?.members ?? [], me),
       photos: { ...(state?.photos ?? {}), ...(me && myPhoto ? { [me]: myPhoto } : {}) },
+      notices,
       vote: (item, value) => {
         void castVote(trip, item, value).then(requestShareSync);
       },
     };
-  }, [trip, me, votes, state, myPhoto]);
+  }, [trip, me, votes, state, myPhoto, notices]);
 
   return <ShareContext.Provider value={view}>{children}</ShareContext.Provider>;
 }
