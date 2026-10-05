@@ -913,6 +913,44 @@ try {
   const todoRow = (name) => sec("todo").locator(`.fk-row[aria-label="${name}"]`);
   await todoRow("Porto Belo Pazarı").waitFor();
   await todoRow("Outdoor alışverişi").waitFor();
+  // 0.34.6: Yapılacak şeyler is what's done there; a chore typed in the quick box goes to Diğer's Hazırlık.
+  const quickBox = sec("todo").locator(".fk-quick input");
+  await quickBox.fill("Decathlon'dan yağmurluk al");
+  await quickBox.press("Enter");
+  await quickBox.fill("Dom Luís'te gün batımı");
+  await quickBox.press("Enter");
+  await todoRow("Dom Luís'te gün batımı").waitFor();
+  if (await sec("other").evaluate((el) => el.classList.contains("closed"))) await sec("other").locator(".cat-title").click();
+  const prepRow = sec("other").locator(`.prep-row[aria-label="Decathlon'dan yağmurluk al"]`);
+  await prepRow.waitFor();
+  assert.equal(await app.locator(`.fk-row[aria-label="Decathlon'dan yağmurluk al"]`).count(), 0, "a chore is never a thing to do");
+  assert.equal(await sec("other").locator(`.prep-row[aria-label="Dom Luís'te gün batımı"]`).count(), 0, "an experience is never a chore");
+  assert.match(await sec("other").locator(".cat-wait").innerText(), /1 hazırlık/);
+  await app.locator(".pk-undo").waitFor({ state: "detached", timeout: 10000 }); // an earlier "Geri al" over the list
+  await app.setViewportSize({ width: 1440, height: 1500 });
+  await sec("other").screenshot({ path: `${out}/5f-diger-hazirlik.png` });
+  await app.setViewportSize({ width: 560, height: 1500 });
+  await sec("other").screenshot({ path: `${out}/5g-diger-hazirlik-narrow.png` });
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with Hazırlık");
+  await app.setViewportSize({ width: 1440, height: 900 });
+  // Ticked: done, struck through; then both lines go again, so the rest of the run sees the sample as it was.
+  await prepRow.locator(".prep-check").click();
+  await sec("other").locator(".prep-row.done").waitFor();
+  await app.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tx = database.transaction("items", "readwrite");
+    const all = await new Promise((resolve) => (tx.objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result)));
+    for (const i of all) if (["Decathlon'dan yağmurluk al", "Dom Luís'te gün batımı"].includes(i.name)) tx.objectStore("items").delete(i.id);
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  await prepRow.waitFor({ state: "detached" });
+  await todoRow("Dom Luís'te gün batımı").waitFor({ state: "detached" });
+  console.log("✓ 0.34.6: a chore typed in the quick box lands in Diğer's Hazırlık (ticked off there), an experience in Yapılacak şeyler");
   assert.equal(await sec("activity").locator('.pk-card[aria-label="Porto Belo Pazarı"]').count(), 0, "a market is never a booking");
   // Icons from the words (a bag for a market and shopping); the Maps pin shows its photo instead.
   assert.equal(await todoRow("Porto Belo Pazarı").locator(".fk-ic:not(.fk-thumb) svg").count(), 1);
@@ -1081,6 +1119,11 @@ try {
   };
   const chatPrompts = [];
   const analysisPrompts = [];
+  const policyReading = {
+    doc_type: "insurance", provider: "Allianz", title: "Seyahat sağlık sigortası", travellers: ["Emre Durmuş", "Ayşe Durmuş"],
+    start_date: "2026-10-07", end_date: "2026-10-21", time: null, from: null, to: null, city: null, booking_ref: "AZ-998877",
+    flight_number: null, amount: 48.5, currency: "EUR",
+  };
   const reply = (parts) => ({ json: { candidates: [{ content: { role: "model", parts }, finishReason: "STOP" }] } });
   // The Reader's answer for the Casa Azul page: real excerpts, plus a review and a quote that aren't
   // on the page (code must drop both).
@@ -1127,6 +1170,12 @@ try {
     const body = request.postDataJSON();
     geminiBodies.push({ url: request.url(), body });
     if (body.generationConfig?.responseJsonSchema) {
+      // 0.34.6: a document read (the file inline): a policy, or something it can't place.
+      const file = body.contents[0].parts.map((p) => p.inlineData ?? p.inline_data).find(Boolean);
+      if (file) {
+        const content = Buffer.from(file.data, "base64").toString();
+        return route.fulfill(reply([{ text: JSON.stringify(content.includes("e2e-policy") ? policyReading : { ...policyReading, doc_type: "other", provider: null, title: null, travellers: [], start_date: null, end_date: null, booking_ref: null, amount: null, currency: null }) }]));
+      }
       const prompt = body.contents[0].parts.map((p) => p.text ?? "").join("");
       if (prompt.includes("<engine_result>")) {
         // Decision analysis: a verdict in words, a 0–10 fit score per option, and, once the pages
@@ -1350,6 +1399,62 @@ try {
   await esim.getByRole("menuitem", { name: "Sil" }).click();
   await esim.waitFor({ state: "detached" });
   console.log("✓ flow: chat shapes the plan — two Porto stays merge into one block; ticket, taxi and eSIM added; a plan deleted, undone, deleted");
+
+  // 0.34.6: a policy PDF dropped in the chat is read by the (simulated) model: booked insurance in Diğer with
+  // its file, one sentence in the chat; Belgeler lists it and goes to its card; a file it can't place is
+  // linked by hand; deleted and taken back.
+  const dropFile = (name, body) =>
+    board.locator("section.chat").evaluate((el, [n, b]) => {
+      const dt = new DataTransfer();
+      dt.items.add(new File([b], n, { type: "application/pdf" }));
+      el.dispatchEvent(new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }));
+    }, [name, body]);
+  await dropFile("allianz-police.pdf", "%PDF-1.4 e2e-policy");
+  await board.locator(".msg-assistant", { hasText: "Allianz seyahat sağlık sigortası poliçeni Diğer'e ekledim, 7–21 Ekim, 2 kişi. Belgeler'de duruyor." }).waitFor({ timeout: 20000 });
+  await board.locator(".msg-user", { hasText: "📎 allianz-police.pdf" }).waitFor();
+  assert.ok(geminiBodies.some((b) => JSON.stringify(b.body.contents).includes("application/pdf")), "the PDF went to the model inline");
+  const otherSec = board.locator('.cat-sec[data-section="other"]');
+  await otherSec.waitFor();
+  if (await otherSec.evaluate((el) => el.classList.contains("closed"))) await otherSec.locator(".cat-title").click();
+  const policyCard = otherSec.locator('.pk-card[aria-label="Seyahat sağlık sigortası · Allianz"]');
+  await policyCard.locator(".pk-ring.done").waitFor();
+  await policyCard.locator(".pk-docpill", { hasText: "allianz-police.pdf" }).waitFor();
+  assert.equal(await board.locator('.cat-sec[data-section="todo"] [aria-label="Seyahat sağlık sigortası · Allianz"]').count(), 0, "a policy is never a thing to do");
+  await otherSec.scrollIntoViewIfNeeded();
+  await board.screenshot({ path: `${out}/13a-policy-card.png` });
+
+  await board.getByRole("tab", { name: "Belgeler", exact: true }).click();
+  const docRow = (name) => board.locator(`.doc-row[aria-label="${name}"]`);
+  await board.locator('.doc-group[data-group="insurance"]').locator(`.doc-row[aria-label="allianz-police.pdf"]`).waitFor();
+  assert.equal(await docRow("allianz-police.pdf").locator(".doc-go").innerText(), "Seyahat sağlık sigortası · Allianz →");
+  await dropFile("rezervasyon-notu.pdf", "%PDF-1.4 e2e-other");
+  await board.locator(".msg-assistant", { hasText: "rezervasyon-notu.pdf Belgeler'e kaydedildi" }).waitFor({ timeout: 20000 });
+  await board.locator('.doc-group[data-group="other"]').locator('.doc-row[aria-label="rezervasyon-notu.pdf"] select.doc-link').waitFor();
+  await board.locator(".pk-undo").waitFor({ state: "detached", timeout: 10000 }); // the eSIM's "Geri al" from before
+  await board.locator(".doc-tab").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await board.screenshot({ path: `${out}/13-belgeler.png` });
+  await board.setViewportSize({ width: 560, height: 1000 });
+  await board.locator(".doc-tab").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await board.screenshot({ path: `${out}/13b-belgeler-narrow.png` });
+  assert.ok(await board.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll in Belgeler");
+  await board.setViewportSize({ width: 1440, height: 900 });
+  // Linked by hand: it moves to its card's group and names it.
+  const jardimLabel = await docRow("rezervasyon-notu.pdf").locator("select.doc-link option", { hasText: "Jardim Stay" }).first().innerText();
+  await docRow("rezervasyon-notu.pdf").locator("select.doc-link").selectOption({ label: jardimLabel });
+  await board.locator('.doc-group[data-group="stay"]').locator('.doc-row[aria-label="rezervasyon-notu.pdf"] .doc-go', { hasText: "Jardim Stay" }).waitFor();
+  // Deleted, then taken back with "Geri al": back with its card.
+  await docRow("rezervasyon-notu.pdf").hover();
+  await docRow("rezervasyon-notu.pdf").locator(".doc-x").click();
+  await docRow("rezervasyon-notu.pdf").waitFor({ state: "detached" });
+  await board.locator(".pk-undo", { hasText: "rezervasyon-notu.pdf silindi" }).getByRole("button", { name: "Geri al" }).click();
+  await docRow("rezervasyon-notu.pdf").locator(".doc-go", { hasText: "Jardim Stay" }).waitFor();
+  await board.locator(".doc-tab").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await board.screenshot({ path: `${out}/13c-belgeler-linked.png` });
+  // From Belgeler to the card: the Plan, its section open, the card in view with a flash.
+  await docRow("allianz-police.pdf").locator(".doc-go").click();
+  await board.locator('[role="tab"][aria-selected="true"]', { hasText: "Plan" }).waitFor();
+  await policyCard.and(board.locator(".flash")).waitFor({ timeout: 5000 });
+  console.log("✓ 0.34.6: a policy PDF dropped in the chat → booked insurance in Diğer with its file; Belgeler groups it, goes to its card; an unplaced file linked by hand; deleted and taken back");
 
   // A Thailand hotel saved while the Portugal trip is open → its own trip, and a notice to go there.
   await board.evaluate(async () => {

@@ -11,6 +11,7 @@ import { capitalize, liveLabels, num } from "./i18nText";
 import { isoDate } from "./items";
 import type { Plan } from "./plan";
 import { plannedItem } from "./planned";
+import { isPrep } from "./prep";
 import type { Item, MealSlot } from "./types";
 
 /** A to-do's icon (fikirler-v1 symbols, and a fork and knife for food), chosen from its words; "star" for anything else. */
@@ -222,7 +223,10 @@ export async function addIdea(tripId: string, text: string, cities: string[], id
   const made = quickIdea(text, cities, tripId, id, now);
   if (!made) return null;
   await (await db()).put("items", made);
-  await addEvent(tripId, L(`${made.name} fikirlere eklendi`, `${made.name} added to ideas`));
+  await addEvent(
+    tripId,
+    isPrep(made) ? L(`${made.name} Hazırlık'a eklendi`, `${made.name} added to Prep`) : L(`${made.name} fikirlere eklendi`, `${made.name} added to ideas`),
+  );
   notifyChanged();
   return made;
 }
