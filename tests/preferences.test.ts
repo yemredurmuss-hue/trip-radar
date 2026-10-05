@@ -6,7 +6,7 @@ import type { Decisions } from "../src/app/useDecisions";
 import type { Trip } from "../src/lib/types";
 import { setLang } from "../src/lib/i18n";
 import { noteCriteria, SAID_LEVEL } from "../src/lib/decision";
-import { acceptNoteLabel, firstWords, noteLabelKey, preferenceRows, type Pref } from "../src/lib/preferences";
+import { acceptNoteLabel, firstWords, noteLabelKey, preferenceRows, preferenceTags, type Pref } from "../src/lib/preferences";
 import { findingTag } from "../src/lib/proscons";
 
 afterEach(() => setLang("tr"));
@@ -143,5 +143,29 @@ describe("preference rows", () => {
       { kind: "requirement", topic: "Kitchen" },
     ]);
     expect(rows.map((r) => r.value)).toEqual(["Very important", "Must"]);
+  });
+});
+
+describe("the hero's tags (0.35.4)", () => {
+  it("each topic once, a must and 'Çok önemli' first and strong; what's fine or rules out stays in the window", () => {
+    const prefs: Pref[] = [
+      { kind: "category", scope: "Konaklama", topic: "temizlik", level: 3 },
+      { kind: "priority", topic: "fiyat", level: 4 },
+      { kind: "category", scope: "Konaklama", topic: "fiyat", level: 4 },
+      { kind: "requirement", topic: "Wi-Fi" },
+      { kind: "priority", topic: "manzara", level: 1 },
+      { kind: "fine", topic: "Gürültü" },
+      { kind: "note", topic: "Sessiz bir yer istiyoruz", label: "Sessizlik", level: 3 },
+    ];
+    const { tags, rest } = preferenceTags(prefs);
+    expect(tags.map((t) => [t.label, t.strong, t.title])).toEqual([
+      ["Wi-Fi", true, "Şart"],
+      ["Fiyat", true, "Çok önemli"],
+      ["Temizlik", false, "Önemli"],
+      ["Sessizlik", false, "Önemli"],
+    ]);
+    expect(rest).toBe(2); // "manzara" (a little) and what's fine: in the window
+    expect(preferenceTags(prefs, 2)).toMatchObject({ rest: 4 });
+    expect(preferenceTags([])).toEqual({ tags: [], rest: 0 });
   });
 });

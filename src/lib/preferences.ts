@@ -123,3 +123,62 @@ export function preferenceRows(prefs: Pref[], max = 2): { rows: PreferenceRow[];
   const shown = rows.slice(0, max).reduce((n, r) => n + r.count, 0);
   return { rows, rest: prefs.length - shown };
 }
+
+/** A tag on the hero's card (0.35.4): one topic in a word or two; `strong` for a must or "Çok önemli". */
+export interface PreferenceTag {
+  label: string;
+  strong: boolean;
+  /** Its level in words, on hover ("Çok önemli", "Şart"); the details are in the window. */
+  title: string;
+  /** How many understood things it stands for (the same topic said twice, or for two categories). */
+  count: number;
+}
+
+/**
+ * The hero's Tercihler as a few tags (0.35.4, "etiketle gözükebilir bir kaç tercih ama detaylar farklı
+ * durabilir"): each topic once, the strongest first — a must, "Çok önemli", then the rest of what they want
+ * (important, wanted, their notes by their few words, guesses they confirmed). A category's scope stays in the
+ * window ("Konaklama · konum" is a "Konum" tag). What doesn't matter, what's fine and what rules a place out
+ * are only in the window. `rest`: the understood things not on a tag shown, for "+N".
+ */
+export function preferenceTags(prefs: Pref[], max = 5): { tags: PreferenceTag[]; rest: number } {
+  const all = new Map<string, PreferenceTag & { rank: number; seen: number }>();
+  const add = (label: string, rank: number, title: string) => {
+    const key = lowerText(label);
+    const had = all.get(key);
+    if (had) {
+      had.count++;
+      if (rank < had.rank) Object.assign(had, { rank, title, strong: rank <= 1 });
+      return;
+    }
+    all.set(key, { label: capitalize(label), strong: rank <= 1, title, count: 1, rank, seen: all.size });
+  };
+  const level = (n: number) => LEVEL_LABELS[n] ?? "";
+  for (const p of prefs) {
+    switch (p.kind) {
+      case "requirement":
+        add(p.topic, 0, L("Şart", "Must"));
+        break;
+      case "priority":
+      case "category":
+        if (p.level >= 3) add(p.topic, p.level >= 4 ? 1 : 2, level(p.level));
+        break;
+      case "amenity":
+        add(p.topic, 3, L("İstiyorsun", "Wanted"));
+        break;
+      case "signal":
+        if (p.up) add(p.topic, 3, L("Önemli", "Important"));
+        break;
+      case "note": {
+        const label = p.label?.trim() ? p.label.trim() : firstWords(p.topic);
+        add(label, p.level != null && p.level >= 4 ? 1 : 3, p.level != null ? level(p.level) : L("Not", "Note"));
+        break;
+      }
+      default:
+        break; // fine, rules out: the window
+    }
+  }
+  const sorted = [...all.values()].sort((a, b) => a.rank - b.rank || a.seen - b.seen);
+  const tags = sorted.slice(0, max).map(({ label, strong, title, count }) => ({ label, strong, title, count }));
+  return { tags, rest: prefs.length - tags.reduce((n, t) => n + t.count, 0) };
+}

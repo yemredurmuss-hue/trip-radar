@@ -1103,13 +1103,12 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .hx-pop i.c-activity { background: #a8336f; }
 .hx-pop i.c-other { background: #8e8e93; }
 
-/* Tercihler ("Seni böyle anladım"): two rows, the link; the window opens over the card and pushes nothing. */
-/* A row is one line of keywords ("Fiyat + konum" · "Çok önemli", "Sessizlik" · "Önemli"); the label ends in "…"
-   only as a last resort (its full words on hover and in the window). */
-.hx-prefs-rows { display: grid; gap: 8px; margin: 10px 0 0; }
-.hx-prefs-rows div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: 16px; color: var(--hx-muted); }
-.hx-prefs-rows dt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hx-prefs-rows dd { margin: 0; flex: none; text-align: right; white-space: nowrap; }
+/* Tercihler ("Seni böyle anladım", 0.35.4): a few tags, the link; the window opens over the card and pushes
+   nothing. A tag is a topic in a word or two, never wider than the card ("…" as a last resort, its words and
+   level on hover and in the window); a must or "Çok önemli" in the accent. */
+.hx-ptags { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; margin: 10px 0 0; padding: 0; list-style: none; }
+.hx-ptag { max-width: 100%; height: 28px; padding: 0 11px; border-radius: 999px; background: #f0eef3; color: var(--hx-ink); font-size: 14px; line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hx-ptag.strong { background: color-mix(in srgb, var(--hx-accent) 13%, #fff); color: var(--hx-accent); font-weight: 600; }
 .hx-prefs-link { margin-top: 8px; flex-wrap: wrap; }
 .hx-prefs-link .sep { color: var(--hx-muted); }
 .hx-prefs-link .ask-mark { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; }

@@ -210,9 +210,13 @@ try {
       new BroadcastChannel("trip-radar").postMessage("changed");
     }, text);
   await putNote("Odada mutlaka bir çalışma masası olsun çünkü ikimiz de gezinin birkaç gününde uzaktan çalışacağız ve iyi internet şart");
-  const prefRows = side.locator(".hx-prefs-rows > div");
-  await prefRows.filter({ hasText: "Odada mutlaka bir…" }).waitFor();
-  assert.deepEqual(flat(await prefRows.allInnerTexts()).sort(), ["Odada mutlaka bir… Not", "Sessizlik Önemli"]);
+  // 0.35.4: a few tags, one topic each, never wider than the card; the level on hover, the details in the window.
+  const prefTags = side.locator(".hx-ptag");
+  await prefTags.filter({ hasText: "Odada mutlaka bir…" }).waitFor();
+  assert.deepEqual(flat(await prefTags.allInnerTexts()).sort(), ["Odada mutlaka bir…", "Sessizlik"]);
+  assert.equal(await prefTags.filter({ hasText: "Sessizlik" }).getAttribute("title"), "Sessizlik · Önemli");
+  const sideBox = await side.boundingBox();
+  for (const b of await prefTags.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right))) assert.ok(b <= sideBox.x + sideBox.width, "a tag stays inside the card");
   await side.locator(".hx-prefs-link").click();
   await side.locator(".hx-prefs-pop li", { hasText: "uzaktan çalışacağız ve iyi internet şart" }).waitFor(); // the full text stays in the window
   await app.mouse.click(5, 5);
@@ -268,7 +272,7 @@ try {
   await app.setViewportSize({ width: 560, height: 1400 });
   await hero.scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/2d-hero-narrow.png` });
-  const heroLines = ".hx-tally span, .hx-progress-head, .hx-when, .hx-who-text b, .hx-styles span, .hx-budget-line, .hx-prefs-rows dt, .hx-minis span, .hx-weather > span, .card-alert";
+  const heroLines = ".hx-tally span, .hx-progress-head, .hx-when, .hx-who-text b, .hx-styles span, .hx-budget-line, .hx-ptag, .hx-minis span, .hx-weather > span, .card-alert";
   assert.deepEqual(await uncut(heroLines), [], "the hero's lines and a card's warning wrap, never cut");
   assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll on a narrow hero");
   // Nothing runs out of its cell: a plan cell's label (two by two until there's room for four), and the small
@@ -540,7 +544,7 @@ try {
   await intent.locator(".hx-prefs-pop li", { hasText: "Sorun değil: Yan binada inşaat gürültüsü" }).waitFor();
   await intent.locator(".hx-prefs-link").click();
   await intent.locator(".hx-prefs-pop").waitFor({ state: "detached" });
-  assert.ok((await intent.locator(".hx-prefs-rows > div").count()) >= 1, "what was understood, in short rows");
+  assert.ok((await intent.locator(".hx-ptag").count()) >= 1, "what was understood, in short tags");
   await app.screenshot({ path: `${out}/3b-card.png` });
 
   // Comparison: numbers side by side, the weights the user controls, and why.
@@ -1338,15 +1342,15 @@ try {
   await putTrip({ ...blank, priorities: { price: 4, location: 4 }, updatedAt: Date.now() });
   const prefs = bareSide.locator(".hx-prefs");
   await prefs.locator(".hx-prefs-body.hx-appear").waitFor();
-  assert.deepEqual(flat(await prefs.locator(".hx-prefs-rows > div").allInnerTexts()), ["Fiyat + konum Çok önemli"]);
+  assert.deepEqual(flat(await prefs.locator(".hx-ptag.strong").allInnerTexts()), ["Fiyat", "Konum"]);
   await prefs.locator(".hx-prefs-link", { hasText: "Düzenle" }).click();
   await app.screenshot({ path: `${out}/2g-hero-prefs.png` });
   await prefs.locator(".hx-prefs-pop").getByRole("button", { name: "Konum: Çok önemli kaldır" }).click();
   await prefs.locator(".hx-prefs-pop li", { hasText: "Konum" }).waitFor({ state: "detached" });
   await app.mouse.click(5, 5); // outside: the window closes
   await prefs.locator(".hx-prefs-pop").waitFor({ state: "detached" });
-  assert.deepEqual(flat(await prefs.locator(".hx-prefs-rows > div").allInnerTexts()), ["Fiyat Çok önemli"]);
-  console.log('✓ hero v9: four cells open their Plan sections, "x/y onaylandı" is the headers added up and lists the to-dos, "Planı tamamla" goes to the next, Tercihler (rows, window, ×), a new trip\'s empty blocks fill as information arrives');
+  assert.deepEqual(flat(await prefs.locator(".hx-ptag.strong").allInnerTexts()), ["Fiyat"]);
+  console.log('✓ hero v9: four cells open their Plan sections, "x/y onaylandı" is the headers added up and lists the to-dos, "Planı tamamla" goes to the next, Tercihler (tags, window, ×), a new trip\'s empty blocks fill as information arrives');
 
   // 5. Settings dialog.
   await app.goto(`chrome-extension://${id}/app.html#settings`);
@@ -1669,8 +1673,8 @@ try {
   await board.getByRole("button", { name: "Gönder" }).click();
   await board.getByText("Fiyatı konaklamada çok önemli yaptım.").waitFor({ timeout: 20000 });
   assert.ok(chatPrompts[0].includes("decisions") && chatPrompts[0].includes("would_change_if"), "chat sees the engine's result");
-  // Remembered as something the traveller said: a row of the hero's "Tercihler" (removable in its window).
-  await board.locator(".hx-prefs-rows > div", { hasText: "Konaklama · fiyat" }).filter({ hasText: "Çok önemli" }).waitFor();
+  // Remembered as something the traveller said: a tag of the hero's "Tercihler" (scope and level in its window, removable there).
+  await board.locator('.hx-ptag.strong[title="Fiyat · Çok önemli"]').waitFor();
   await board.locator(".reco-line").getByRole("button", { name: "Karşılaştır →" }).click();
   compare = board.getByRole("dialog", { name: "Karşılaştırma" });
   assert.equal(await compare.locator("tr", { hasText: "Fiyat" }).locator("select").inputValue(), "4");

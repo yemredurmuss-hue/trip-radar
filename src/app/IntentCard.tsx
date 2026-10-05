@@ -6,7 +6,7 @@ import { lowerText } from "../lib/i18nText";
 import { CRITERION_LABELS, LEVEL_LABELS, levelFor, noteCriteria, requirementLabel, saidTopics, WISH_TOPIC, WISHES } from "../lib/decision";
 import { activeSignals, pendingSignals } from "../lib/intent";
 import { CATEGORY_LABELS } from "../lib/items";
-import { noteLabelKey, preferenceRows, type Pref } from "../lib/preferences";
+import { noteLabelKey, preferenceTags, type Pref } from "../lib/preferences";
 import { findingTag } from "../lib/proscons";
 import { amenityLabel, type Category, type CriterionId, type Trip } from "../lib/types";
 import { HeroIcon } from "./Icons";
@@ -180,9 +180,10 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
 }
 
 /**
- * The hero card's "Tercihler" (v9; "Seni böyle anladım" before): at most two rows of what was understood
- * (lib/preferences.ts) and "+7 tercih ›"; a tap opens the window over the card (it doesn't push anything)
- * with each entry, its scope, where it came from and a ×, and the one waiting question.
+ * The hero card's "Tercihler" (v9; "Seni böyle anladım" before): a few tags of what was understood (0.35.4,
+ * lib/preferences.ts preferenceTags; a must or "Çok önemli" stronger) and "+7 tercih ›"; a tap opens the window
+ * over the card (it doesn't push anything) with each entry, its scope, its level, where it came from and a ×,
+ * and the one waiting question.
  */
 export function Preferences({ trip, decisions }: { trip: Trip; decisions: Decisions | null }) {
   const [open, setOpen] = useState(false);
@@ -204,7 +205,7 @@ export function Preferences({ trip, decisions }: { trip: Trip; decisions: Decisi
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [open]);
-  const { rows, rest } = preferenceRows(entries.map((e) => e.pref));
+  const { tags, rest } = preferenceTags(entries.map((e) => e.pref));
   const toggle = () => setOpen(!open);
   const question = guess && (
     <span className="ask-mark">
@@ -223,14 +224,13 @@ export function Preferences({ trip, decisions }: { trip: Trip; decisions: Decisi
       )}
       {entries.length > 0 ? (
         <div key="full" className={`hx-prefs-body${appear}`}>
-          <dl className="hx-prefs-rows">
-            {rows.slice(0, 2).map((r, n) => (
-              <div key={n}>
-                <dt title={r.label}>{r.label}</dt>
-                <dd>{r.value}</dd>
-              </div>
+          <ul className="hx-ptags" aria-label={L("Tercihler", "Preferences")}>
+            {tags.map((t) => (
+              <li key={t.label} className={`hx-ptag${t.strong ? " strong" : ""}`} title={`${t.label} · ${t.title}`}>
+                {t.label}
+              </li>
             ))}
-          </dl>
+          </ul>
           <button className="hx-link hx-prefs-link" aria-expanded={open} onClick={toggle}>
             <span>{rest > 0 ? L(`+${rest} tercih`, `+${rest} more`) : L("Düzenle", "Edit")}</span>
             <HeroIcon name="chevRight" size={18} />
