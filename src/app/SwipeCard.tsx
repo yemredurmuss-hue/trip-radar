@@ -190,7 +190,7 @@ function SwipeCardFace({ item, group, decision, decisions, ranked, onOpen, onCom
               </button>
             ) : (
               <span className="sc-actions">
-                <button className="link-btn quiet" onClick={() => void setItemStatus(item, "dismissed")} title={L("Seçeneklerden çıkar; Elenenler'de durur", "Take it out of the options; it stays under Ruled out")}>
+                <button className="link-btn quiet" onClick={() => void setItemStatus(item, "dismissed")} title={L("Seçeneklerden çıkar; bölümün Gizlenenler'inde durur", "Take it out of the options; it waits under the section's Hidden")}>
                   {L("Ele", "Rule out")}
                 </button>
                 <button className="pill-btn primary" onClick={() => void chooseItem(item, group)}>

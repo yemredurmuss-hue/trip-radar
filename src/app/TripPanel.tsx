@@ -1,28 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
-import { FallbackImg } from "./FallbackImg";
 import { requestProcessing } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
-import {
-  CATEGORY_LABELS,
-  formatDateRange,
-  formatPrice,
-  listingKeyOf,
-  nightsBetween,
-  rankItems,
-  routeUrl,
-  rowLabel,
-  tripDateRange,
-  type NeedGroup,
-} from "../lib/items";
+import { listingKeyOf, nightsBetween, rankItems, routeUrl, tripDateRange } from "../lib/items";
 import { buildLegs, type Leg } from "../lib/legs";
-import { buildTimeline, hiddenNights, nightsKey } from "../lib/timeline";
+import { buildTimeline } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
 import { cardFacts } from "../lib/cardFacts";
 import { budgetBar, decisionProgress, entryDomId, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
-import { cityKeyOf, type DateRange, type OptionGroup, type Plan } from "../lib/plan";
+import { cityKeyOf, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
-import { isRental } from "../lib/travelKinds";
 import { L } from "../lib/i18n";
 import { imageProxy, nextCityImage, nextHeroImage, pickCityImage, wantsCityImage } from "../lib/cityImages";
 import { acceptMood, moodKey, statusSentence } from "../lib/heroText";
@@ -31,8 +18,8 @@ import { loadPassport } from "../lib/passport";
 import { homeCurrencyOf, tripFacts } from "../lib/tripFacts";
 import type { Timeline } from "../lib/timeline";
 
-import type { Capture, Category, Item, Trip } from "../lib/types";
-import { chooseItem, hideNights, setHidden, undo as takeBack, updateTrip } from "./actions";
+import type { Capture, Item, Trip } from "../lib/types";
+import { chooseItem, hideNights, undo as takeBack, updateTrip } from "./actions";
 import { legEndsByItem, legModeByItem } from "../lib/cardKinds";
 import { inheritedDocs } from "../lib/docs";
 import { deleteItem, onRemoved } from "../lib/removal";
@@ -49,24 +36,21 @@ import { CardEnvContext, NavGroup, PlanCard, type CardEnv } from "./cards/PlanCa
 import { SilhouetteDefs } from "./cards/Silhouettes";
 import { UndoToast } from "./cards/UndoToast";
 import { isIdea } from "../lib/booking";
-import { CategoryIcon, Chevron } from "./Icons";
 import { findTarget, show, TodoList } from "./Progress";
 import { TripFacts } from "./TripFacts";
 import { cityRanges, countriesOf, heroTally } from "../lib/heroInfo";
 import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../lib/tripStyle";
 import { intentEntries } from "./IntentCard";
 import { TripHero, type HeroCity } from "./TripHero";
-import { kindLabel, LegRow } from "./LegRow";
-import { Carousel } from "./Carousel";
+import { LegRow } from "./LegRow";
 import { CategoryPlan } from "./plan/CategoryPlan";
 import { SECTION_META, useSectionOpen } from "./plan/sectionMeta";
 import { SettledCard, SwipeCard } from "./SwipeCard";
-import { VoteTallyText } from "./Share";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
 import { choiceOf, type Choice } from "../lib/choice";
 import { pivotalFindings } from "../lib/pivots";
 import type { ValueCard } from "../lib/value";
-import { decisionLabel, type Decisions } from "./useDecisions";
+import type { Decisions } from "./useDecisions";
 
 interface Props {
   trip: Trip;
@@ -86,7 +70,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
   const [view, setView] = useState<TimelineMode>("plan");
-  const dismissed = items.filter((i) => i.status === "dismissed");
   const mapUrl = routeUrl(items);
   const working = openCaptures.filter((c) => c.status === "pending" || c.status === "processing");
   const failed = openCaptures.filter((c) => c.status === "error");
@@ -97,8 +80,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     : 0;
   const hidden = useMemo(() => new Set(trip.hidden ?? []), [trip.hidden]);
   const timeline = useMemo(() => buildTimeline(plan, legs, items, hidden), [plan, legs, items, hidden]);
-  const hiddenLegs = legs.filter((l) => l.kind !== "move" && hidden.has(`leg:${l.key}`));
-  const hiddenStays = useMemo(() => hiddenNights(timeline), [timeline]);
   // The Plan by category (spec 0.34): every block and record in one of seven sections; which are open, per trip.
   const rank = useMemo(() => new Map([...(decisions?.byGroup.values() ?? [])].flatMap((d) => d.options.map((o, i) => [o.item.id, i] as const))), [decisions?.byGroup]);
   const sections = useMemo(() => categorize({ plan, timeline, items, legs, hidden, rank }), [plan, timeline, items, legs, hidden, rank]);
@@ -454,18 +435,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         />
       )}
 
-      {view === "plan" && plan.closed.length > 0 && <ClosedSection closed={plan.closed} onOpenItem={onOpenItem} />}
-
-      {view === "plan" && (hiddenLegs.length > 0 || hiddenStays.length > 0) && <HiddenSection legs={hiddenLegs} nights={hiddenStays} tripId={trip.id} />}
-
-      {view === "plan" && dismissed.length > 0 && (
-        <SummarySection
-          category="other"
-          label={L(`Elenenler (${dismissed.length})`, `Ruled out (${dismissed.length})`)}
-          groups={[{ key: "dismissed", category: "other", title: null, items: dismissed }]}
-          onOpenItem={onOpenItem}
-        />
-      )}
       {sheet && (
         <AddSheet at={sheet.at} editing={sheet.editing} only={sheet.only} currency={decisions?.ctx.currency ?? trip.budget?.currency ?? "EUR"} onClose={() => setSheet(null)}
           onPick={(tpl) => void quickAdd(tpl, sheet.at)} />
@@ -637,177 +606,6 @@ function Headline({ choice, alternatives, onCompare }: { choice: Choice; alterna
         </button>
       </span>
     </div>
-  );
-}
-
-/** Transfers and nights the traveller said aren't needed: out of the way, one tap from coming back. */
-function HiddenSection({ legs, nights, tripId }: { legs: Leg[]; nights: { range: DateRange; city: string | null }[]; tripId: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="section">
-      <button className="row" onClick={() => setOpen(!open)} style={{ gridTemplateColumns: "72px 1fr 20px" }}>
-        <span className="thumb icon">
-          <CategoryIcon category="transport" />
-        </span>
-        <span>
-          <div className="row-name">{L(`Gizlenenler (${legs.length + nights.length})`, `Hidden (${legs.length + nights.length})`)}</div>
-          <div className="row-label tone-muted">{L(`"Gerek yok" dediğin transferler ve geceler; geri getirebilirsin`, `Transfers and nights you marked "Not needed". You can bring them back`)}</div>
-        </span>
-        <span className="chev" style={{ transform: open ? "rotate(90deg)" : undefined }}>
-          <Chevron />
-        </span>
-      </button>
-      {open &&
-        legs.map((l) => (
-          <div key={l.key} className="hidden-row">
-            <span>
-              <b>{kindLabel()[l.kind]}</b>
-              <span className="muted">
-                {" "}
-                · {formatDateRange(l.date, null)} · {l.from.label} → {l.to.label}
-              </span>
-            </span>
-            <button className="link-btn" onClick={() => void setHidden(tripId, `leg:${l.key}`, false, kindLabel()[l.kind])}>
-              {L("Geri getir", "Bring back")}
-            </button>
-          </div>
-        ))}
-      {open &&
-        nights.map(({ range, city }) => {
-          const label = `${city ?? L("Konaklama", "Stay")} ${formatDateRange(range.start, range.end)}`;
-          return (
-            <div key={nightsKey(range)} className="hidden-row">
-              <span>
-                <b>{L("Geceler", "Nights")}</b>
-                <span className="muted"> · {label}</span>
-              </span>
-              <button className="link-btn" onClick={() => void setHidden(tripId, nightsKey(range), false, label)}>
-                {L("Geri getir", "Bring back")}
-              </button>
-            </div>
-          );
-        })}
-    </div>
-  );
-}
-
-/** Options a booking made irrelevant: out of the way, never deleted. */
-function ClosedSection({ closed, onOpenItem }: { closed: Plan["closed"]; onOpenItem: (i: Item) => void }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="section">
-      <button className="row" onClick={() => setOpen(!open)} style={{ gridTemplateColumns: "72px 1fr 20px" }}>
-        <span className="thumb icon">
-          <CategoryIcon category={closed[0].item.category} />
-        </span>
-        <span>
-          <div className="row-name">{L(`Kapanan seçenekler (${closed.length})`, `Closed options (${closed.length})`)}</div>
-          <div className="row-label tone-muted">{L("Rezervasyonla kapandı; rezervasyonu geri alırsan geri gelirler", "Closed by a booking. Undo the booking and they come back")}</div>
-        </span>
-        <span className="chev" style={{ transform: open ? "rotate(90deg)" : undefined }}>
-          <Chevron />
-        </span>
-      </button>
-      {open &&
-        closed.map(({ item, reason }) => (
-          <Row key={item.id} item={item} group={[item]} closedReason={reason} onOpen={() => onOpenItem(item)} />
-        ))}
-    </div>
-  );
-}
-
-function SummarySection({
-  category,
-  groups,
-  card,
-  onOpenItem,
-  label,
-}: {
-  category: Category;
-  groups: NeedGroup[];
-  /** Cards that open in place; without it, plain rows (e.g. the dismissed list). */
-  card?: CardFor;
-  onOpenItem: (i: Item) => void;
-  label?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const items = groups.flatMap((g) => g.items);
-  const names = items.map((i) => i.name);
-  const summary = names.length <= 2 ? joinTr(names) : L(`${names.slice(0, 2).join(", ")} ve ${names.length - 2} yer daha`, `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`);
-  return (
-    <div className="section">
-      <button className="row" onClick={() => setOpen(!open)} style={{ gridTemplateColumns: "72px 1fr 20px" }}>
-        <span className="thumb icon">
-          <CategoryIcon category={category} />
-        </span>
-        <span>
-          <div className="row-name">{label ?? CATEGORY_LABELS[category]}</div>
-          <div className="row-label tone-muted">{summary}</div>
-        </span>
-        <span className="chev" style={{ transform: open ? "rotate(90deg)" : undefined }}>
-          <Chevron />
-        </span>
-      </button>
-      {open &&
-        (card ? (
-          <Carousel label={label ?? CATEGORY_LABELS[category]}>{items.map((item) => card(item, items))}</Carousel>
-        ) : (
-          items.map((item) => <Row key={item.id} item={item} group={items} onOpen={() => onOpenItem(item)} />)
-        ))}
-    </div>
-  );
-}
-
-function Row({
-  item,
-  group,
-  decision,
-  currency,
-  closedReason,
-  onOpen,
-}: {
-  item: Item;
-  group: Item[];
-  decision?: GroupDecision;
-  currency?: string;
-  closedReason?: string;
-  onOpen: () => void;
-}) {
-  const base = closedReason ? { text: closedReason, tone: "muted" as const } : rowLabel(item, group);
-  const decided = item.status === "saved" && !closedReason ? decisionLabel(item, decision, currency ?? "EUR") : null;
-  // A stale or unverified price stays visible next to the decision label.
-  const warning = decided && base.tone === "warning" && decided.tone !== "warning" ? base.text : null;
-  const label = decided ?? base;
-  const image = item.imageUrl;
-  const highlight = !closedReason && (decided?.best || item.status === "chosen" || item.status === "booked");
-  return (
-    <button className={`row${highlight ? " highlight" : ""}${closedReason ? " closed" : ""}`} onClick={onOpen}>
-      <FallbackImg
-        className="thumb"
-        src={item.category === "flight" ? null : image}
-        fallback={
-          <span className="thumb icon">
-            <CategoryIcon category={isRental(item) ? "car" : item.category} />
-          </span>
-        }
-      />
-      <span style={{ minWidth: 0 }}>
-        <div className="row-name">{item.name}</div>
-        <div className="row-label">
-          {decided?.score != null && <span className={`score-pill${decided.best ? " best" : ""}`}>{decided.score}</span>}
-          <span className={`tone-${label.tone}`}>{label.text}</span>
-          {warning && <span className="tone-warning"> · {warning}</span>}
-          <VoteTallyText item={item} />
-        </div>
-      </span>
-      <span className="row-price">
-        {item.price.amount != null ? formatPrice(item.price.amount, item.price.currency) : ""}
-        {item.price.scope === "per_night" && <span className="muted" style={{ fontSize: 13 }}>{L("/gece", "/night")}</span>}
-      </span>
-      <span className="chev">
-        <Chevron />
-      </span>
-    </button>
   );
 }
 

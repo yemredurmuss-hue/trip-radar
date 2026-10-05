@@ -1,7 +1,8 @@
-// The Plan tab (spec 0.34, docs/mockups/2026-10-05-kategoriler-v2.html): the trip by category — Uçuş,
-// Konaklama, Ulaşım, Etkinlikler, Yapılacak şeyler, Restoranlar, Diğer — each a section that opens and closes
-// (remembered per trip), with the approved cards in a timeline inside. A section with nothing in it isn't
-// drawn; it's one chip in the "Ekle" line at the bottom.
+// The Plan tab (spec 0.34, docs/mockups/2026-10-05-kategoriler-v4.html): the trip by category — Uçuş,
+// Konaklama, Ulaşım, Etkinlikler, Yapılacak şeyler, Restoranlar, Diğer — each a band of one white sheet that
+// opens and closes (remembered per trip), with the approved cards in a timeline inside and what's out of the
+// way at its end. A section with nothing in it (and nothing hidden) isn't drawn; it's one chip in the "Ekle"
+// line at the bottom.
 import { sectionOfItem, type CatSection, type SectionId } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import type { Plan } from "../../lib/plan";
@@ -26,8 +27,8 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
 }) {
   const n = plan.nights;
   const parts = [n.booked && L(`${n.booked} rezerve`, `${n.booked} booked`), n.chosen && L(`${n.chosen} seçildi`, `${n.chosen} chosen`), n.open && L(`${n.open} açık`, `${n.open} open`)].filter(Boolean);
-  const shown = sections.filter((s) => s.entries.length);
-  const empty = sections.filter((s) => !s.entries.length);
+  const shown = sections.filter((s) => s.entries.length || s.hidden.length);
+  const empty = sections.filter((s) => !s.entries.length && !s.hidden.length);
   return (
     <div className="section trip-plan cat-plan">
       <div className="section-head">
@@ -40,14 +41,18 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
           ⚠ {x.text}
         </div>
       ))}
-      {shown.map((s) => {
-        const opened = isOpen(s);
-        return (
-          <Section key={s.id} section={s} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)}>
-            <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(sectionOfItem(item), true)} />
-          </Section>
-        );
-      })}
+      {shown.length > 0 && (
+        <div className="cat-sheet">
+          {shown.map((s) => {
+            const opened = isOpen(s);
+            return (
+              <Section key={s.id} section={s} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)}>
+                <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(sectionOfItem(item), true)} />
+              </Section>
+            );
+          })}
+        </div>
+      )}
       {empty.length > 0 && (
         <div className="cat-more" aria-label={L("Başka bir şey ekle", "Add something else")}>
           <span>{L("Ekle:", "Add:")}</span>

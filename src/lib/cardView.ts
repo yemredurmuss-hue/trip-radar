@@ -102,7 +102,7 @@ export function topDate(item: Item, kind: CardKind): string | null {
 }
 
 export type MenuAction = "edit" | "dismiss" | "delete";
-/** The ••• menu: change a plan made by hand or in the chat, rule out a saved option (it waits under Elenenler), delete. */
+/** The ••• menu: change a plan made by hand or in the chat, rule out a saved option (it waits under its section's Gizlenenler), delete. */
 export function menuFor(item: Item): MenuAction[] {
   const out: MenuAction[] = [];
   if (item.origin === "chat") out.push("edit");
