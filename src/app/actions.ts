@@ -115,7 +115,8 @@ export async function undo(u: Undoable): Promise<void> {
   if (u.kind === "removed") return restoreItem(u.removed);
   if (u.kind === "doc") return restoreDoc(u.doc);
   if (u.kind === "added") {
-    await deleteItem(u.item, L(`${u.item.name} eklenmedi (geri alındı)`, `${u.item.name} not added (undone)`));
+    // Taking back a one-tap add loses nothing of the traveller's: no trash entry for it.
+    await deleteItem(u.item, L(`${u.item.name} eklenmedi (geri alındı)`, `${u.item.name} not added (undone)`), { trash: false });
     return;
   }
   return setHidden(u.tripId, u.key, false, u.label);

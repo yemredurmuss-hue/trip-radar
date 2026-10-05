@@ -557,3 +557,52 @@ export interface DocRecord {
   kind?: DocKind;
 }
 export type DocMeta = Omit<DocRecord, "blob">;
+
+/** What a deleted card took with it: the record and its files. */
+export interface TrashedItem {
+  item: Item;
+  docs: DocRecord[];
+}
+
+/** What a deleted trip took with it: everything on this computer that was only the trip's. */
+export interface TrashedTrip {
+  trip: Trip;
+  items: Item[];
+  docs: DocRecord[];
+  captures: Capture[];
+  /** The chat and the trip's history lines. */
+  messages: ChatMessage[];
+  analyses: Analysis[];
+  /** The notes said for this trip only (the ones for every trip stay). */
+  preferences: Preference[];
+}
+
+/** A deleted file (Belgeler, a card's file list). */
+export interface TrashedDoc {
+  doc: DocRecord;
+}
+
+export type TrashKind = "item" | "trip" | "doc";
+
+/**
+ * Çöp kutusu (0.37, trash.ts): a deleted card, file or trip, kept on this computer for 30 days and brought back
+ * in one tap with its own ids. This is the light row the lists read; what it took is in `trashData`.
+ */
+export interface TrashEntry {
+  id: string;
+  tripId: string;
+  kind: TrashKind;
+  deletedAt: number;
+  label: string;
+  /** About how many bytes it holds (files and records), and how many records. */
+  size: number;
+  count: number;
+}
+
+/** What a trash entry took with it, read only to restore it (or for a backup). */
+export type TrashPayload = ({ kind: "item" } & TrashedItem) | ({ kind: "trip" } & TrashedTrip) | ({ kind: "doc" } & TrashedDoc);
+
+export interface TrashData {
+  id: string;
+  payload: TrashPayload;
+}

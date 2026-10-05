@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { requestProcessing } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
-import { listingKeyOf, nightsBetween, rankItems, tripDateRange } from "../lib/items";
+import { formatDateRange, listingKeyOf, nightsBetween, rankItems, tripDateRange } from "../lib/items";
 import { buildLegs, staleHiddenMoves, type Leg } from "../lib/legs";
 import { buildTimeline } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
@@ -44,7 +44,10 @@ import { acceptNoteLabel, type Pref } from "../lib/preferences";
 import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../lib/tripStyle";
 import { intentEntries } from "./IntentCard";
 import { TripHero, type HeroAction, type HeroCity } from "./TripHero";
-import { LegRow } from "./LegRow";
+import { kindLabel, LegRow } from "./LegRow";
+import { HistoryDialog } from "./HistoryDialog";
+import { ChangeNotices } from "./ShareSafety";
+import type { HiddenInput } from "../lib/history";
 import { DocsTab } from "./docs/DocsTab";
 import { CategoryPlan } from "./plan/CategoryPlan";
 import { SECTION_META, useSectionOpen } from "./plan/sectionMeta";
@@ -66,9 +69,12 @@ interface Props {
   menu: React.ReactNode;
   /** Opens the share dialog (absent where the trip can't be shared). */
   onShare?: () => void;
+  /** Geçmiş ve çöp kutusu is open (the ••• menu, 0.37); closing it. */
+  historyOpen?: boolean;
+  onHistoryClose?: () => void;
 }
 
-export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, menu, onShare }: Props) {
+export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, menu, onShare, historyOpen = false, onHistoryClose }: Props) {
   // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
@@ -85,6 +91,23 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // The Plan by category (spec 0.34): every block and record in one of seven sections; which are open, per trip.
   const rank = useMemo(() => new Map([...(decisions?.byGroup.values() ?? [])].flatMap((d) => d.options.map((o, i) => [o.item.id, i] as const))), [decisions?.byGroup]);
   const sections = useMemo(() => categorize({ plan, timeline, items, legs, hidden, rank, today }), [plan, timeline, items, legs, hidden, rank, today]);
+  // What Gizlenenler holds, for the history's "Geri getir" (0.37): ruled-out records, transfers and nights not needed.
+  const hiddenForHistory = useMemo<HiddenInput[]>(
+    () =>
+      sections.flatMap((s) => s.hidden).flatMap((h): HiddenInput[] => {
+        if (h.kind === "dismissed") return [{ kind: "dismissed", item: h.item }];
+        if (h.kind === "leg") {
+          const cities = `${h.leg.from.city ?? h.leg.from.label} → ${h.leg.to.city ?? h.leg.to.label}`;
+          return [{ kind: "hidden", key: h.key, label: cities, names: [cities, kindLabel()[h.leg.kind]] }];
+        }
+        if (h.kind === "nights") {
+          const label = `${h.city ?? L("Konaklama", "Stay")} ${formatDateRange(h.range.start, h.range.end)}`;
+          return [{ kind: "hidden", key: h.key, label, names: [label, h.city ?? ""] }];
+        }
+        return [];
+      }),
+    [sections],
+  );
   const [isOpen, setOpened] = useSectionOpen(trip.id);
   /** Opens a block of the plan (from the itinerary): its section opens, the card comes into view. */
   const showOnPlan = (key: string) => {
@@ -537,6 +560,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         </div>
       )}
 
+      <ChangeNotices tripId={trip.id} />
       {timeline.entries.length > 0 && (
         <div className="view-tabs" role="tablist" aria-label={L("Görünüm", "View")}>
           <button role="tab" aria-selected={view === "plan"} className={view === "plan" ? "on" : ""} onClick={() => setView("plan")}>
@@ -574,6 +598,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           onPick={(tpl) => void quickAdd(tpl, sheet.at)} />
       )}
       <UndoToast undoable={undoable} onUndo={() => { const u = undo.take(); if (u) void takeBack(u); }} />
+      {historyOpen && onHistoryClose && (
+        <HistoryDialog trip={trip} items={items} hidden={hiddenForHistory} onClose={onHistoryClose} onShow={(id) => setTimeout(() => reveal({ item: id }), 60)} />
+      )}
     </CardEnvContext.Provider>
   );
 }

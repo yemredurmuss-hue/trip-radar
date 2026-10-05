@@ -38,6 +38,28 @@ export function applySettings(trip: Trip, s: SyncedSettings): Trip {
   return next;
 }
 
+export type SyncedField = (typeof SYNCED_FIELDS)[number];
+
+/** Any settings json (an old server row too) as the known fields, missing ones null; never throws. */
+export function asSettings(raw: unknown): SyncedSettings {
+  const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return Object.fromEntries(SYNCED_FIELDS.map((f) => [f, r[f] ?? null])) as SyncedSettings;
+}
+
+/** The fields that differ between two settings, in SYNCED_FIELDS order (key order inside a field doesn't count). */
+export function changedFields(a: unknown, b: unknown): SyncedField[] {
+  const x = asSettings(a);
+  const y = asSettings(b);
+  return SYNCED_FIELDS.filter((f) => stableJson(x[f]) !== stableJson(y[f]));
+}
+
+/** Only these fields set back from `from` (a missing optional field goes back to its default), the rest as it is. */
+export function applyFields(trip: Trip, from: SyncedSettings, fields: readonly SyncedField[]): Trip {
+  const merged = applySettings(trip, { ...settingsOf(trip), ...Object.fromEntries(fields.map((f) => [f, from[f] ?? null])) } as SyncedSettings);
+  // A title is never emptied: an old row without one keeps the current name.
+  return fields.includes("title") && !(typeof from.title === "string" && from.title.trim()) ? { ...merged, title: trip.title } : merged;
+}
+
 /** JSON with sorted keys: the same settings always give the same text. */
 export function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
