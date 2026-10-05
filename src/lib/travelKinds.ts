@@ -29,9 +29,59 @@ export const isLocalTransfer = (i: Item) =>
 export const isTrip = (i: Item) => i.category === "flight" || (i.category === "transport" && !isRental(i) && !isLocalTransfer(i));
 
 const INSURANCE = /sigorta|insurance|seguro/i;
+const VISA = /(^|[^\p{L}])(vize\p{L}*|visas?|e-?visa|etias)(?![\p{L}])/iu;
+export const ESIM_WORDS = /\besim\b|e-sim|sim kart/i;
 
-/** Travel insurance: added from the template, or a saved page that says so (no category of its own). */
-export const isInsurance = (i: Item) =>
-  i.plannedKind === "insurance" || (!i.plannedKind && (i.category === "other" || i.category === "transport") && INSURANCE.test(itemText(i)));
+// A chore before the trip (spec 0.34.6 §3): buy, apply, book, print, pack, change money... Turkish puts the
+// verb last ("Decathlon'dan yağmurluk al", "vize başvurusu yap"), English first ("Buy a rain jacket"); a few
+// nouns are chores on their own (döviz, bavul, pasaport). An experience ("Dom Luís'te gün batımı", "Fado
+// dinle", "Porto Belo Pazarı") never matches.
+const TR_STEMS = [
+  "satın al", "al", "başvur", "yazdır", "paketle", "hazırla", "bozdur", "yaptır", "yenile", "indir", "doldur", "öde", "onayla",
+  "sipariş ver", "sipariş et", "iptal et", "kontrol et", "rezerve et", "rezerve ed", "rezervasyon yap", "rezervasyonu yap", "rezervasyonunu yap",
+  "başvuru yap", "başvurusu yap", "başvurusunu yap", "check-in yap", "checkin yap", "ödeme yap", "kayıt ol", "randevu al",
+];
+const TR_SUFFIXES = ["", "ın", "in", "un", "ün", "mak", "mek", "malı", "meli", "alım", "elim", "yalım", "yelim", "yın", "yin", "acağız", "eceğiz", "yacağız", "yeceğiz", "dık", "dik", "duk", "dük", "tık", "tik", "dım", "dim", "ılacak", "ilecek", "ınacak", "inecek", "ındı", "indi"];
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const TR_CHORE = new RegExp(`(?<![\\p{L}\\p{N}])(${TR_STEMS.map(esc).join("|")})(${TR_SUFFIXES.filter(Boolean).join("|")})?$`, "u");
+const EN_CHORE =
+  /^(to\s+)?(buy|purchase|order|apply|renew|book|reserve|print|pack|exchange|withdraw|download|install|activate|confirm|cancel|pay|fill (in|out)|charge|arrange|sort out|check in online|do (the )?online check-?in|get (a |an |the |our |my )?(travel |health )*(visas?|insurance|e-?sims?|sim( card)?|adapters?|cash|euros?|currency|tickets?|passports?))\b/i;
+const CHORE_NOUNS = /döviz|bavul|valiz|pasaport|online check-?in|adaptör|currency exchange|money exchange|passport|packing list|suitcase|travel adapter|power adapter|visa application|vize (başvuru|randevu)/i;
+
+/** The line names a chore to do before the trip (TR or EN), not something to see or do there. */
+export function choreText(text: string | null | undefined): boolean {
+  const t = (text ?? "").replace(/[\s.!?…]+$/u, "").replace(/\s+/g, " ").trim().toLocaleLowerCase("tr");
+  if (!t) return false;
+  return TR_CHORE.test(t) || EN_CHORE.test(t) || CHORE_NOUNS.test(t);
+}
+
+/** Said in the chat or added by hand as a thing to do (a record kind that may be read from its words). */
+const LOOSE_KINDS: readonly (PlannedKind | undefined)[] = [undefined, "activity", "todo", "other"];
+
+/**
+ * Travel insurance: added from the template, said as one in the chat, or a record whose words say so
+ * (a page's text for a page in Diğer or Ulaşım; only the name of a thing to do — a tour's page that
+ * "includes insurance" stays a tour). Never a chore that names it ("Seyahat sigortası al").
+ */
+export const isInsurance = (i: Item): boolean => {
+  if (i.plannedKind === "insurance") return true;
+  if (!LOOSE_KINDS.includes(i.plannedKind) || choreText(i.name)) return false;
+  if (!i.plannedKind && (i.category === "other" || i.category === "transport")) return INSURANCE.test(itemText(i));
+  return (i.category === "other" || i.category === "activity") && INSURANCE.test(i.name);
+};
+
+/** A visa (or an ETIAS) by its name, said as a thing to do: its own record in Diğer, not a chore. */
+export const isVisa = (i: Item): boolean =>
+  LOOSE_KINDS.includes(i.plannedKind) && (i.category === "other" || i.category === "activity") && VISA.test(i.name) && !choreText(i.name);
+
+/**
+ * The papers of a trip (spec 0.34.6 §2): a policy, a visa, an eSIM said as a thing to do. Always in Diğer
+ * and always something to buy or get, whatever kind the chat gave it; a chore that names one ("vize
+ * başvurusu yap") is a chore instead.
+ */
+export const isPaperwork = (i: Item): boolean =>
+  isInsurance(i) ||
+  isVisa(i) ||
+  (LOOSE_KINDS.includes(i.plannedKind) && (i.category === "other" || i.category === "activity") && ESIM_WORDS.test(i.name) && !choreText(i.name));
 
 export { LOCAL };

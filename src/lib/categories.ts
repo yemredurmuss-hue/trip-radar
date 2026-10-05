@@ -15,7 +15,8 @@ import { formatDateRange, isoDate } from "./items";
 import { legItem, legShortTitle, type Leg } from "./legs";
 import { cityKeyOf, departureDay, sameCity, type DateRange, type OptionGroup, type Plan } from "./plan";
 import { hiddenNights, nightsKey, toBook, type Timeline, type TimelineEntry } from "./timeline";
-import { isInsurance, itemText } from "./travelKinds";
+import { isPrep } from "./prep";
+import { isInsurance, isPaperwork, itemText } from "./travelKinds";
 import type { Item } from "./types";
 
 export type SectionId = "flight" | "stay" | "transport" | "activity" | "todo" | "food" | "other";
@@ -90,6 +91,11 @@ export interface CatSection {
   open: boolean;
   /** What belongs here but is out of the way (kategoriler-v4): behind "Gizlenenler · N göster" at the section's end. */
   hidden: HiddenThing[];
+  /**
+   * Diğer's quiet "Hazırlık" list (0.34.6 §3): the chores before the trip, ticked off, at the section's end.
+   * They are in `entries` (counted, found) but not in `days`. Empty in every other section.
+   */
+  prep: CatEntry[];
 }
 
 /**
@@ -123,10 +129,12 @@ export function sectionOfItem(item: Item): SectionId {
     case "food":
       return "food";
     case "activity":
-      return needsBooking(item) ? "activity" : "todo";
+      if (isPaperwork(item)) return "other";
+      return needsBooking(item) ? "activity" : isPrep(item) ? "other" : "todo";
     default:
-      if (isInsurance(item) || /\besim\b|e-sim|sim kart/i.test(itemText(item))) return "other";
-      return needsBooking(item) ? "activity" : "todo";
+      if (isPaperwork(item) || isInsurance(item) || /\besim\b|e-sim|sim kart/i.test(itemText(item))) return "other";
+      // A chore before the trip goes to Diğer's Hazırlık list, never to the things to do there (0.34.6 §3).
+      return needsBooking(item) ? "activity" : isPrep(item) ? "other" : "todo";
   }
 }
 
@@ -178,6 +186,8 @@ const settledState = (items: Item[]): EntryState =>
 
 /** The eSIM put in ("Kurdum") is done like a booking. */
 const itemState = (item: Item): EntryState => {
+  // A chore is settled once ticked, a day alone doesn't do it.
+  if (isIdea(item) && isPrep(item)) return item.doneAt ? "done" : "unscheduled";
   if (isIdea(item)) return item.doneAt || isoDate(item.dates.start) ? "done" : "unscheduled";
   if (item.status === "booked" || (item.installedAt && decided(item))) return "done";
   if (item.status === "chosen") return needsBooking(item) ? "book" : "done";
@@ -672,10 +682,29 @@ export function sectionStatus(id: SectionId, entries: CatEntry[]): CatSection["s
   };
 }
 
+/** The record an entry stands for, when it is one record (a chore is). */
+const recordOf = (e: CatEntry): Item | null => (e.piece.kind === "item" ? e.piece.item : e.piece.kind === "entry" && e.piece.entry.kind === "event" ? e.piece.entry.item : null);
+/** One of Diğer's chores: a record there that needs no booking (insurance, a visa, an eSIM are bought). */
+const isPrepEntry = (e: CatEntry): boolean => {
+  const item = recordOf(e);
+  return e.section === "other" && item != null && isIdea(item);
+};
+
 function sectionOf(id: SectionId, list: CatEntry[], plan: Plan, hidden: HiddenThing[]): CatSection {
   const entries = sortEntries(list, plan);
-  const status = sectionStatus(id, entries);
-  return { id, entries, days: daysOf(entries, plan), status, settled: entries.filter((e) => e.state === "done").length, open: status?.tone === "wait", hidden };
+  const prep = entries.filter(isPrepEntry);
+  const rest = prep.length ? entries.filter((e) => !prep.includes(e)) : entries;
+  const status = withPrep(sectionStatus(id, rest), prep);
+  return { id, entries, days: daysOf(rest, plan), status, settled: entries.filter((e) => e.state === "done").length, open: status?.tone === "wait", hidden, prep };
+}
+
+/** "1 satın alınmadı · 2 hazırlık": the chores not ticked yet join the line; all ticked, they add to "✓ N alındı" silently. */
+function withPrep(status: CatSection["status"], prep: CatEntry[]): CatSection["status"] {
+  const open = prep.filter((e) => e.state !== "done").length;
+  if (!prep.length) return status;
+  if (!open) return status ?? { text: L(`✓ ${prep.length} hazırlık`, `✓ ${prep.length} prep`), tone: "done" };
+  const part = L(`${open} hazırlık`, `${open} prep`);
+  return { text: status?.tone === "wait" ? `${status.text} · ${part}` : part, tone: "wait" };
 }
 
 /** The header's bar and "3/4" (kategoriler-v4): settled of all, the fill in whole percent, green once all is settled. */

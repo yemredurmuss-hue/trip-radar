@@ -4,7 +4,7 @@
 // new field: the planned kind, the way chosen for its transfer, the category, then the words on it. Pure.
 import { liveLabels } from "./i18nText";
 import type { Leg } from "./legs";
-import { isInsurance, isLocalTransfer, isRental, itemText, LOCAL, RENTAL } from "./travelKinds";
+import { ESIM_WORDS, isInsurance, isLocalTransfer, isPaperwork, isRental, itemText, LOCAL, RENTAL } from "./travelKinds";
 import type { Item, LegMode, PlannedKind } from "./types";
 
 export const TRANSPORT_MODES = ["flight", "train", "bus", "minibus", "ferry", "taxi", "car", "moto", "rv", "bike"] as const;
@@ -61,6 +61,8 @@ export function cardKind(item: Item, legMode: LegMode | null = null): CardKind {
     case "stay":
       return "stay";
     case "activity":
+      // A policy or an eSIM the chat said as an activity is drawn as what it is (0.34.6 §2).
+      if (isPaperwork(item)) return isInsurance(item) ? "insurance" : ESIM_WORDS.test(item.name) ? "esim" : "other";
       return "activity";
     case "food":
       return "food";

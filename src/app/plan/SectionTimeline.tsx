@@ -17,6 +17,7 @@ import { IdeaRow } from "../ideas/IdeaRow";
 import { QuickAdd } from "../ideas/QuickAdd";
 import type { CardFor, LegCardFor, RenderGroup, SettledFor } from "../Timeline";
 import { PlanEntry } from "./PlanEntry";
+import { PrepList } from "./PrepList";
 
 /** How the board draws its cards (TripPanel): the same functions the plan always used. */
 export interface SectionCards {
@@ -44,6 +45,8 @@ export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, o
   return (
     <>
       {section.id === "todo" && <QuickAdd tripId={tripId} cities={cities} onAdded={onIdea} />}
+      {section.id === "todo" && <p className="prep-sub">{L("Orada görülecek, gezilecek, denenecek şeyler", "What to see, visit and try there")}</p>}
+      {section.days.length > 0 && (
       <ol className={`cat-line cat-in-${section.id}`}>
         {section.days.map((day) => (
           <li key={day.key} className={`cat-day${day.date ? "" : " undated"}`}>
@@ -65,6 +68,8 @@ export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, o
           </li>
         ))}
       </ol>
+      )}
+      {section.prep.length > 0 && <PrepList entries={section.prep} />}
     </>
   );
 }

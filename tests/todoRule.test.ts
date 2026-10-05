@@ -25,7 +25,6 @@ describe("the chat's plan_item: kind activity without evidence is a to-do", () =
     ["Porto Belo Pazarı", { title: "Porto Belo Pazarı" }],
     ["Porto Belo Pazarı, marked as booked", { title: "Porto Belo Pazarı", booked: true }],
     ["outdoor alışveriş", { title: "Outdoor alışverişi" }],
-    ["Decathlon'dan yağmurluk al", { title: "Decathlon'dan yağmurluk al" }],
     ["Dom Luís'te gün batımı", { title: "Dom Luís'te gün batımı", date: "2026-10-09" }],
     ["Ribeira walk", { title: "Walk along Ribeira" }],
     ["Bolhão market", { title: "Bolhão market", booked: true }],
@@ -52,6 +51,13 @@ describe("the chat's plan_item: kind activity without evidence is a to-do", () =
     const item = chat(over);
     expect(bookingOf(item)).toBe("needed");
     expect(sectionOfItem(item)).toBe("activity");
+  });
+
+  it("a chore said as an activity is a to-do no more: Diğer's Hazırlık (0.34.6, see prep.test.ts)", () => {
+    const item = chat({ title: "Decathlon'dan yağmurluk al" });
+    expect(bookingOf(item)).toBe("none");
+    expect(isIdea(item)).toBe(true);
+    expect(sectionOfItem(item)).toBe("other");
   });
 
   it("the kind 'other' chosen in the chat is read the same way, not as a booking by being chosen", () => {

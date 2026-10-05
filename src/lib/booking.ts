@@ -7,7 +7,7 @@
 // is read from its evidence instead (a migration on read: nothing stored is rewritten). A page keeps what it
 // said. A restaurant is one only when its page asks for a reservation, or once it's booked. "needed" counts
 // as "Rezerve et" (Etkinlikler, or its own section); "none" is an idea (Yapılacak şeyler, Restoranlar). Pure.
-import { itemText, isInsurance } from "./travelKinds";
+import { ESIM_WORDS, isInsurance, isPaperwork, itemText } from "./travelKinds";
 import type { Item } from "./types";
 
 export type Booking = "needed" | "none";
@@ -23,7 +23,6 @@ const SHOW_WORDS =
   /konser|concert|gösteri|\bshow\b|\bopera\b|\bbale\b|ballet|tiyatro|theat(re|er)|müzikal|musical|\bfado\b|flamen(k|c)o|(^|\s)maç|\bmatch\b|stadyum turu|stadium tour/i;
 /** A restaurant that wants a table booked. */
 const TABLE_WORDS = /rezervasyon(la| gerek| şart| önerilir| zorunlu)|reservation(s)? (required|recommended|only|essential)|book a table|booking (required|essential)|masa ayırt/i;
-const ESIM_WORDS = /\besim\b|e-sim|sim kart/i;
 
 const evidenceText = (item: Item): string => [itemText(item), item.statusNote].filter(Boolean).join(" ");
 
@@ -34,12 +33,12 @@ export const ticketSays = (item: Item): boolean => {
   return TICKET_WORDS.test(text) || SHOW_WORDS.test(text);
 };
 
-/** A note or a to-do is never a booking, chosen or not. */
-const neverBooked = (item: Item): boolean => item.plannedKind === "note" || item.plannedKind === "todo";
+/** A note, a to-do or a chore is never a booking, chosen or not. */
+const neverBooked = (item: Item): boolean => item.plannedKind === "note" || item.plannedKind === "todo" || item.plannedKind === "prep";
 
 /** Something to do: not a stay, a way of getting there, a meal, insurance or internet. */
 const thingToDo = (item: Item): boolean =>
-  item.category === "activity" || (item.category === "other" && !isInsurance(item) && !ESIM_WORDS.test(itemText(item)));
+  (item.category === "activity" && !isPaperwork(item)) || (item.category === "other" && !isPaperwork(item) && !isInsurance(item) && !ESIM_WORDS.test(itemText(item)));
 
 /** A tile pressed in Etkinlikler and not named yet ("Etkinlik"): it stays where it was added until it's named. */
 const unnamedTile = (item: Item): boolean => item.plannedKind === "activity" && /^(Etkinlik|Activity)$/.test(item.name.trim());
@@ -64,6 +63,8 @@ function toDoBooking(item: Item): Booking {
  * or booked it (it was on the Plan before records said).
  */
 export function bookingByKind(item: Item): Booking {
+  // A policy, a visa, an eSIM is bought or got, whatever kind the chat or a quick line gave it (spec 0.34.6).
+  if (isPaperwork(item)) return "needed";
   if (neverBooked(item)) return "none";
   if (thingToDo(item)) return ticketSays(item) ? "needed" : "none";
   if (item.status === "chosen" || item.status === "booked") return "needed";
@@ -83,6 +84,7 @@ export function bookingByKind(item: Item): Booking {
 
 /** A thing to do by its evidence; the rest: a booking made is a booking, then the record's own answer, then its kind. */
 export function bookingOf(item: Item): Booking {
+  if (isPaperwork(item)) return "needed";
   if (neverBooked(item)) return "none";
   if (thingToDo(item)) return toDoBooking(item);
   if (item.status === "booked") return "needed";

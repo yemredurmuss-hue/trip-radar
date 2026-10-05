@@ -6,14 +6,14 @@ import { L } from "./i18n";
 import { liveLabels } from "./i18nText";
 import { EMPTY_METRICS, isoDate } from "./items";
 import { cityKeyOf } from "./plan";
-import { RENTAL_KINDS } from "./travelKinds";
+import { choreText, ESIM_WORDS, RENTAL_KINDS } from "./travelKinds";
 import type { Category, Item, PlannedKind } from "./types";
 
 export type { PlannedKind } from "./types";
 /** Kinds the chat's plan_item tool may use. */
-export const PLANNED_KINDS = ["flight", "train", "bus", "ferry", "transfer", "taxi", "car_rental", "stay", "activity", "esim", "todo", "other"] as const satisfies readonly PlannedKind[];
+export const PLANNED_KINDS = ["flight", "train", "bus", "ferry", "transfer", "taxi", "car_rental", "stay", "activity", "esim", "insurance", "todo", "prep", "other"] as const satisfies readonly PlannedKind[];
 /** Kinds only the add sheet makes (the chat says them as one of the above). */
-export const TEMPLATE_ONLY_KINDS = ["minibus", "moto_rental", "rv_rental", "bike_rental", "food", "insurance", "note"] as const satisfies readonly PlannedKind[];
+export const TEMPLATE_ONLY_KINDS = ["minibus", "moto_rental", "rv_rental", "bike_rental", "food", "note"] as const satisfies readonly PlannedKind[];
 export const ALL_PLANNED_KINDS: readonly PlannedKind[] = [...PLANNED_KINDS, ...TEMPLATE_ONLY_KINDS];
 
 export interface PlannedInput {
@@ -47,6 +47,7 @@ const CATEGORY: Record<PlannedKind, Category> = {
   insurance: "other",
   note: "other",
   todo: "other",
+  prep: "other",
   stay: "stay",
   activity: "activity",
   esim: "esim",
@@ -98,6 +99,23 @@ export function plannedInput(raw: any): PlannedInput {
   };
 }
 
+const POLICY = /sigorta|insurance|seguro|poliçe|policy/i;
+
+/**
+ * The code's guard on the chat's kind (spec 0.34.6 §2): a policy or an eSIM said as an activity, a to-do or
+ * "other" is that record, whatever kind the model picked; a chore that names one ("vize başvurusu yap",
+ * "sigorta al") stays a chore. A visa keeps "other" (read as one in Diğer by its words).
+ */
+export function guardKind(input: PlannedInput): PlannedInput {
+  if (input.kind !== "activity" && input.kind !== "todo" && input.kind !== "other") return input;
+  const title = input.title ?? "";
+  if (choreText(title)) return input;
+  const text = `${title} ${input.note ?? ""}`;
+  if (POLICY.test(text)) return { ...input, kind: "insurance" };
+  if (ESIM_WORDS.test(title)) return { ...input, kind: "esim" };
+  return input;
+}
+
 /**
  * Checks what the model passed; a wrong date is refused rather than guessed. `complete: false` (an edit on
  * the card, a plan added in one tap): what's still missing (where, which day) may stay missing; a wrong
@@ -130,6 +148,7 @@ function nameOf(i: PlannedInput): string {
   if (i.kind === "food") return `${L("Restoran", "Restaurant")}${at}`;
   if (i.kind === "note") return L("Not", "Note");
   if (i.kind === "todo") return `${L("Yapılacak", "To-do")}${at}`;
+  if (i.kind === "prep") return L("Hazırlık", "Prep");
   if (i.kind === "stay") return `${L("Konaklama", "Stay")}${at}`;
   if (i.kind === "esim") return `eSIM${at}`;
   return where ? `Plan · ${where}` : "Plan";
@@ -142,6 +161,7 @@ function needKeyOf(i: PlannedInput): string {
   if (i.kind === "insurance") return `other:insurance-${slug(i.city ?? i.to)}`;
   if (i.kind === "note") return `other:note-${slug(i.title)}`;
   if (i.kind === "todo") return `other:todo-${slug(i.title ?? i.city)}`;
+  if (i.kind === "prep") return `other:prep-${slug(i.title)}`;
   return `${CATEGORY[i.kind]}:${slug(i.city ?? i.to)}`;
 }
 
@@ -187,14 +207,14 @@ export function plannedItem(input: PlannedInput, tripId: string, id: string, now
     // A to-do, a restaurant or a note is an idea (Yapılacak şeyler, Restoranlar). An activity is not taken at
     // its kind: a market said as one is still a to-do; booking.ts reads it from its evidence (a price, ticket
     // words, the note "bileti aldım").
-    ...(input.kind === "todo" || input.kind === "food" || input.kind === "note" ? { booking: "none" as const } : {}),
+    ...(input.kind === "todo" || input.kind === "prep" || input.kind === "food" || input.kind === "note" ? { booking: "none" as const } : {}),
     createdAt: now,
     updatedAt: now,
   };
 }
 
 const GENERATED =
-  /^(Uçuş|Tren|Otobüs|Minibüs|Feribot|Transfer|Taksi|Araç kiralama|Motosiklet kiralama|Karavan kiralama|Bisiklet kiralama|Konaklama|Restoran|Seyahat sigortası|Not|Yapılacak|eSIM|Plan|Flight|Train|Bus|Minibus|Ferry|Taxi|Car rental|Motorbike rental|Camper van rental|Bike rental|Stay|Restaurant|Travel insurance|Note|To-do)( ·|$)/;
+  /^(Uçuş|Tren|Otobüs|Minibüs|Feribot|Transfer|Taksi|Araç kiralama|Motosiklet kiralama|Karavan kiralama|Bisiklet kiralama|Konaklama|Restoran|Seyahat sigortası|Not|Yapılacak|Hazırlık|eSIM|Plan|Flight|Train|Bus|Minibus|Ferry|Taxi|Car rental|Motorbike rental|Camper van rental|Bike rental|Stay|Restaurant|Travel insurance|Note|To-do|Prep)( ·|$)/;
 /** A name nameOf made (in either language), not one the traveller gave. */
 export const isGeneratedName = (name: string) => GENERATED.test(name);
 const where = (s: string | null | undefined) => (s ? cityKeyOf(s) : null);

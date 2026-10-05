@@ -277,6 +277,27 @@ describe("assistant", () => {
     expect(bookingOf(items.find((i) => i.name === "Porto Belo Pazarı")!)).toBe("none");
     expect(bookingOf(items.find((i) => i.name === "Fado gecesi")!)).toBe("needed");
   });
+  it("a policy the model says as an activity is booked insurance in Diğer; a chore lands in Hazırlık (0.34.6)", async () => {
+    await seed();
+    const { client, calls } = fakeClient([
+      {
+        stop_reason: "tool_use",
+        content: [
+          { type: "tool_use", id: "p1", name: "plan_item", caller: { type: "direct" }, input: { kind: "activity", date: "2026-10-07", end_date: "2026-10-21", time: null, from: null, to: null, city: null, title: "Travel Health Insurance", booked: true, note: "Allianz poliçe" } },
+          { type: "tool_use", id: "p2", name: "plan_item", caller: { type: "direct" }, input: { kind: "prep", date: null, end_date: null, time: null, from: null, to: null, city: "Porto", title: "Decathlon'dan yağmurluk al", booked: false, note: null } },
+        ] as Anthropic.ContentBlock[],
+      },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Ekledim.", citations: null }] as Anthropic.ContentBlock[] },
+    ]);
+    await sendMessage("t1", "Sigorta poliçemi attım; bir de yağmurluk alalım", anthropicProvider(client, "claude-opus-5"));
+    const [policy, chore] = (calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[]).map((r) => JSON.parse(String(r.content)));
+    expect(policy).toMatchObject({ added: "Travel Health Insurance", status: "booked" });
+    expect(policy.plan_section).toContain("Diğer");
+    expect(chore).toMatchObject({ added: "Decathlon'dan yağmurluk al", status: "planned", booking: "none" });
+    expect(chore.plan_section).toContain("Hazırlık");
+    const items = await listItems("t1");
+    expect(items.find((i) => i.name === "Travel Health Insurance")).toMatchObject({ plannedKind: "insurance", category: "other", status: "booked" });
+  });
   it("writes a price the traveller says, and opens a night said apart without picking a place", async () => {
     const { items } = await seed();
     await (await db()).put("items", { ...items[0], status: "chosen", statusAt: 5 });

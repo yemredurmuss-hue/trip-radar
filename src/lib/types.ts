@@ -239,7 +239,7 @@ export interface Price {
 export type PlannedKind =
   | "flight" | "train" | "bus" | "minibus" | "ferry" | "transfer" | "taxi"
   | "car_rental" | "moto_rental" | "rv_rental" | "bike_rental"
-  | "stay" | "activity" | "food" | "esim" | "insurance" | "note" | "todo" | "other";
+  | "stay" | "activity" | "food" | "esim" | "insurance" | "note" | "todo" | "prep" | "other";
 
 /** When a restaurant idea is put on a day: breakfast, lunch or dinner. */
 export type MealSlot = "breakfast" | "lunch" | "dinner";
