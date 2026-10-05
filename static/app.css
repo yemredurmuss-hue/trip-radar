@@ -1823,8 +1823,8 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .dc-strip button.today { background: #1556d6; border-color: #1556d6; color: #fff; }
 .dc-cday { scroll-margin-top: 60px; }
 /* 0.35.4 Liste (Emre's reference): a card per day — the photo on the left with "1. gün" on it, the title, the
-   hours one line each (time · dot on a dotted line · the icon in its colour on a soft square · one line), all
-   the same weight; a faint drawing behind on the right; opened, what has no time under the hours. */
+   hours one line each (time · the icon in its colour on a soft square · its title), all the same weight; a faint
+   drawing behind on the right; opened, "+ Bu güne ekle". */
 .dl { display: flex; flex-direction: column; gap: 16px; }
 .dc-cday.dl-day { position: relative; display: grid; grid-template-columns: minmax(200px, 38%) minmax(0, 1fr); margin: 0; padding: 0; border-radius: 22px; overflow: hidden; background: #fffdfa; box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 4px 18px rgba(0,0,0,.04); scroll-margin-top: 60px; }
 .dc-cday.dl-day.today { box-shadow: 0 0 0 2px #1556d6, 0 4px 18px rgba(0,0,0,.05); }
@@ -1844,24 +1844,34 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .dl-chev:hover { background: rgba(0,0,0,.05); }
 .dl-chev svg { transition: transform .15s; }
 .dl-day.open .dl-chev svg { transform: rotate(180deg); }
-.dl-day .dc-tl { position: relative; }
-.dl-day .dc-tl::before { left: 68px; top: 26px; bottom: 26px; border-left: 1.5px dotted #c9c3b8; }
-.dl-day .dc-step, .dl-day .dc-step.info { grid-template-columns: 52px 18px minmax(0, 1fr); column-gap: 8px; min-height: 56px; }
-.dl-day .dc-step .t, .dl-day .dc-step.info .t { font-size: 16px; font-weight: 600; color: var(--dc-ink); }
-.dl-day .dc-step .t.est { color: #3a3a3c; }
-.dl-day .dc-step .dot, .dl-day .dc-step.info .dot { width: 6px; height: 6px; background: #8e8e93; }
-.dl-day .dc-tile { width: 42px; height: 42px; border-radius: 13px; }
-.dl-day .dc-line { gap: 14px; }
-.dl-day .dc-line .name { font-size: 16px; }
-.dl-day .dc-line .name small { display: inline; margin: 0; font-size: 14px; color: var(--dc-gray); }
+/* Satır standardı v2 (docs/mockups/2026-10-06-gun-akisi-standart-v2.html): time · icon · NE · HANGİSİ over a grey
+   line, every kind the same size and weight; no dot, no dotted line. A layover is the one quiet line. */
+.dc-cday.dl-day .dc-tl { position: relative; }
+.dc-cday.dl-day .dc-tl::before { display: none; }
+.dc-cday.dl-day .dc-step { grid-template-columns: 58px minmax(0, 1fr); column-gap: 8px; min-height: 56px; }
+.dc-cday.dl-day .dc-step .t { font-size: 16.5px; font-weight: 600; color: var(--dc-ink); }
+.dc-cday.dl-day .dc-step .t.est { color: var(--dc-gray); font-weight: 500; }
+.dc-cday.dl-day .dc-tile { width: 40px; height: 40px; border-radius: 12px; }
+.dc-cday.dl-day .dc-line { width: 100%; gap: 14px; }
+.dc-cday.dl-day .dc-step .dc-line .name { flex: 1; font-size: 16.5px; line-height: 1.3; color: var(--dc-ink); }
+.dc-line .name .dc-ttl { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-line .name .dc-what { font-weight: 700; }
+.dc-line .name .dc-sep { margin: 0 2px; font-style: normal; color: #c7c4d6; }
+.dc-line .name .dc-which { font-weight: 450; color: #3a3850; }
+.dc-cday.dl-day .dc-step .dc-line .name small { display: block; margin: 1px 0 0; font-size: 13.5px; color: var(--dc-gray); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-cday.dl-day .dc-step.quiet .t { color: var(--dc-gray); font-weight: 500; }
+.dc-cday.dl-day .dc-step.quiet .dc-line { cursor: default; }
+.dc-cday.dl-day .dc-step.quiet .dc-line:hover { background: none; }
+.dc-cday.dl-day .dc-step.quiet .dc-tile { background: none; color: #8e8e93; }
+.dc-cday.dl-day .dc-step.quiet .dc-line .name { font-size: 15px; }
+.dc-cday.dl-day .dc-step.quiet .dc-what, .dc-cday.dl-day .dc-step.quiet .dc-which { font-weight: 500; color: var(--dc-gray); }
 .dl-day .dc-free { position: relative; margin: 4px 0 0; font-size: 15px; color: var(--dc-gray); }
-.dl-sub { position: relative; margin: 10px 0 2px 78px; font-size: 12.5px; font-weight: 600; letter-spacing: .02em; color: var(--dc-gray); }
-.dl-day .dc-tl.loose::before { display: none; }
+.dc-cday.dl-day .dc-tl > li.drop-before::after, .dc-cday.dl-day .dc-tl > li.drop-after::after { left: 66px; }
 /* 0.35.6 a line without a time moves: its grip on the left (on hover; always on touch), a line where it drops */
 .dc-tl > li { position: relative; }
 .dc-grip { position: absolute; left: -20px; top: 50%; z-index: 2; width: 18px; height: 26px; margin-top: -13px; padding: 0; border: 0; border-radius: 6px; background: none; color: #aeaeb2; display: grid; place-items: center; cursor: grab; opacity: 0; transition: opacity .12s; }
 .dc-full > .dc-grip { top: 26px; }
-.dc-tl > li:hover > .dc-grip, .dc-grip:focus-visible { opacity: 1; }
+.dc-tl > li:hover > .dc-grip, .dc-grip:focus, .dc-grip:focus-visible { opacity: 1; }
 .dc-grip:hover { color: var(--dc-ink); background: rgba(0,0,0,.05); }
 .dc-grip:active { cursor: grabbing; }
 @media (hover: none) { .dc-grip { opacity: .6; } }
@@ -1869,18 +1879,17 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .dc-tl > li.drop-before::after, .dc-tl > li.drop-after::after { content: ""; position: absolute; left: 60px; right: 0; height: 2px; border-radius: 2px; background: #1556d6; pointer-events: none; }
 .dc-tl > li.drop-before::after { top: -1px; }
 .dc-tl > li.drop-after::after { bottom: -1px; }
-.dl-day .dc-tl.loose .dot { opacity: 0; }
-.dl-more { position: relative; margin: 6px 0 0 78px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 600; color: #1556d6; cursor: pointer; }
-.dl-day > .dl-body > .dc-add { position: relative; margin: 12px 0 0 78px; }
+.dl-day > .dl-body > .dc-add { position: relative; margin: 12px 0 0 70px; }
 @container panel (max-width: 620px) {
   .dc-cday.dl-day { grid-template-columns: minmax(0, 1fr); }
   .dl-photo { min-height: 150px; }
   .dl-body { padding: 16px 14px 14px; }
   .dl-head .ttl { font-size: 20px; }
-  .dl-day .dc-step, .dl-day .dc-step.info { grid-template-columns: 48px 14px minmax(0, 1fr); column-gap: 6px; }
-  .dl-day .dc-step .t, .dl-day .dc-step.info .t { font-size: 14px; }
-  .dl-day .dc-tl::before { left: 60px; }
-  .dl-sub, .dl-more, .dl-day > .dl-body > .dc-add { margin-left: 66px; }
+  .dc-cday.dl-day .dc-step { grid-template-columns: 48px minmax(0, 1fr); column-gap: 4px; }
+  .dc-cday.dl-day .dc-step .t { font-size: 14.5px; }
+  .dc-cday.dl-day .dc-step .dc-line .name { font-size: 15.5px; }
+  .dc-cday.dl-day .dc-tl > li.drop-before::after, .dc-cday.dl-day .dc-tl > li.drop-after::after { left: 52px; }
+  .dl-day > .dl-body > .dc-add { margin-left: 56px; }
   .dl-motif { width: 70%; }
 }
 .dc-tl > li { scroll-margin-top: 120px; }
@@ -1915,9 +1924,6 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 /* Each day its own panel: the header on top (held under the bar while the day scrolls past), its lines below. */
 .dc-cday { margin-bottom: 12px; padding: 6px 12px 10px; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 2px 10px rgba(0,0,0,.03); }
 .dc-cday .dc-dhead { margin: 0 -6px 6px; box-shadow: none; border-bottom: 1px solid #efece6; border-radius: 14px 14px 0 0; background: rgba(255, 255, 255, .97); }
-.dc-cday.list .dc-step { min-height: 38px; }
-.dc-cday.list .dc-tile { width: 32px; height: 32px; border-radius: 9px; }
-.dc-cday.list .dc-tl::before { left: 60px; }
 .dc-cday > .dc-add { margin: 8px 0 0 76px; }
 .dc-strip-item { display: inline-flex; align-items: center; gap: 6px; flex: none; }
 .dc-strip-item small { margin-left: 4px; font-size: 12px; font-weight: 600; color: var(--dc-gray); }
@@ -2008,6 +2014,8 @@ button.cat-hidden-name:hover { text-decoration: underline; }
    room is said in red under its line. */
 .dc-tl button.t { justify-self: end; padding: 2px 5px; border: 0; border-radius: 7px; background: none; font: inherit; font-weight: 600; color: var(--dc-ink); cursor: pointer; font-variant-numeric: tabular-nums; }
 .dc-tl button.t:hover { background: rgba(0,0,0,.05); }
+/* No time: a blank cell, still there to tap (a time given). */
+.dc-tl button.t:empty { min-width: 44px; min-height: 26px; }
 .dc-tl button.t.est { color: var(--dc-gray); font-weight: 500; }
 .dc-tl button.t.own { text-decoration: underline dotted #b9b2a6; text-underline-offset: 3px; }
 .dc-step.info button.t { font-size: 13.5px; }

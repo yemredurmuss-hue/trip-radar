@@ -6,6 +6,7 @@ import type { OptionGroup } from "../lib/plan";
 import type { InsertAt } from "../lib/templates";
 import type { RentalEntry, Timeline } from "../lib/timeline";
 import type { Item, Listing } from "../lib/types";
+import type { MainPlace } from "../lib/destinations";
 import { DayCards, type DayPlanCards } from "./days/DayCards";
 
 export type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => ReactNode;
@@ -33,6 +34,7 @@ export function TimelineView({
   dayTimes,
   dayOrder,
   dayLoose,
+  mainPlaces,
 }: {
   timeline: Timeline;
   tripId: string;
@@ -53,11 +55,13 @@ export function TimelineView({
   dayOrder?: Record<string, string[]> | null;
   /** Lines with a time moved by hand (trip.dayLoose). */
   dayLoose?: string[] | null;
+  /** The hero's main places, so a route reads "Porto → Madeira" (destinations.ts). */
+  mainPlaces?: MainPlace[];
 }) {
   const rentals = timeline.entries.filter((e): e is RentalEntry => e.kind === "rental");
   return (
     <div className="section trip-plan">
-      <DayCards sections={timeline.sections} leg={leg} onAdd={onAdd} listings={listings} today={today} rentals={rentals} onShow={onShow} cityImage={cityImage} cards={cards} tripId={tripId} times={dayTimes ?? undefined} order={dayOrder ?? undefined} loose={dayLoose ?? undefined} />
+      <DayCards sections={timeline.sections} leg={leg} onAdd={onAdd} listings={listings} today={today} rentals={rentals} onShow={onShow} cityImage={cityImage} cards={cards} tripId={tripId} times={dayTimes ?? undefined} order={dayOrder ?? undefined} loose={dayLoose ?? undefined} mainPlaces={mainPlaces} />
     </div>
   );
 }

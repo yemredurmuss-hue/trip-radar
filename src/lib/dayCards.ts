@@ -3,6 +3,7 @@
 // nothing planned in a row (in the same city) are one card. Pure.
 import { cityOfAirport } from "./airports";
 import { cardKind, legTransportMode, type CardKind } from "./cardKinds";
+import { sectionOfItem } from "./categories";
 import type { LegMode } from "./types";
 import { formatDateRange } from "./items";
 import { L } from "./i18n";
@@ -30,6 +31,11 @@ export interface DayCard {
 
 /** What isn't only information or an idea: what the day is about. */
 export const isPlanRow = (r: DayRow) => r.kind !== "info" && r.kind !== "ideas" && r.kind !== "idea" && !(r.kind === "leg" && r.state === "info");
+/**
+ * Not part of a day (satır standardı v2): insurance, the eSIM, a visa, a chore (the Plan's Diğer). Günlük akış
+ * shows no line of it, and nothing of the day (its title, photo, colour, to-dos) comes from it.
+ */
+export const isAsideRow = (r: DayRow) => !!r.item && sectionOfItem(r.item) === "other";
 /** Ideas saved for the day (to pick from, or to do without booking). */
 export const ideaCount = (rows: DayRow[]) => rows.reduce((n, r) => n + (r.kind === "ideas" ? r.items.length : r.kind === "idea" ? 1 : 0), 0);
 
@@ -72,7 +78,7 @@ export function dayCards(sections: TimelineSection[], opts: { rentals?: RentalEn
     } else if (section.kind === "travel") {
       const e = section.entry;
       const rows = dayRows({ journey: { kind: "journey", key: section.key, journey: { key: section.key, role: "move", date: e.date, dayNo: null, from: null, to: null, out: null, in: null }, entries: [e] } });
-      out.push({ key: section.key, date: e.date, end: null, dayNo: null, city: null, route: null, title: rows.find(isPlanRow)?.title ?? formatDateRange(e.date, null), tag: null, rows });
+      out.push({ key: section.key, date: e.date, end: null, dayNo: null, city: null, route: null, title: rows.find((r) => isPlanRow(r) && !isAsideRow(r))?.title ?? formatDateRange(e.date, null), tag: null, rows });
     } else {
       for (const e of section.entries) {
         if (e.kind !== "day") continue;
@@ -151,7 +157,7 @@ export function rowKind(r: DayRow): CardKind {
 
 /** The day's highlight: its first thing to do there (a tour, a table), else its trip (the flight, not the taxi to it), else its first line. */
 export function highlightOf(card: DayCard): DayRow | null {
-  const plans = card.rows.filter(isPlanRow);
+  const plans = card.rows.filter((r) => isPlanRow(r) && !isAsideRow(r));
   return plans.find((r) => r.item && (r.item.category === "activity" || r.item.category === "food")) ?? plans.find((r) => r.kind === "travel") ?? plans[0] ?? null;
 }
 
