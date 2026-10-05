@@ -3,10 +3,11 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { loadDecisions } from "../src/lib/analysis";
-import { cardFacts, hostOf } from "../src/lib/cardFacts";
+import { cardDetails, cardFacts, hostOf } from "../src/lib/cardFacts";
 import { db, listItems } from "../src/lib/db";
 import { loadDemoTrip } from "../src/lib/demo";
 import { choiceOf, tradeText } from "../src/lib/choice";
+import { makeItem } from "./fixtures/makeItem";
 
 async function demo() {
   const id = await loadDemoTrip();
@@ -103,5 +104,14 @@ describe("decision card facts", () => {
       ],
       why: ["+€30 · bagaj dahil, direkt, saatleri daha uygun · eksiği: iade yok, ücretli değişiklik", "€30 daha ucuz · ücret kesintisiyle iade · eksiği: yalnız kabin, 1 aktarma, saatleri daha zor"],
     });
+  });
+});
+
+describe("a trip's operator in the details", () => {
+  it("carrier and flight number, else the provider", () => {
+    const f = makeItem({ category: "flight", flight: { from: "IST", to: "OPO", departure: "2026-10-08T07:10", arrival: null, carrier: "Pegasus", flightNumber: "PC 1201", stops: 0 } });
+    expect(cardDetails(f, undefined, undefined).facts.find((x) => x.label === "İşletme")?.value).toBe("Pegasus · PC 1201");
+    const bus = makeItem({ provider: "FlixBus", flight: { from: "Lizbon", to: "Lagos", departure: null, arrival: null, carrier: null, flightNumber: null, stops: null } });
+    expect(cardDetails(bus, undefined, undefined).facts.find((x) => x.label === "İşletme")?.value).toBe("FlixBus");
   });
 });

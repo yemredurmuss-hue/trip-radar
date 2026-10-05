@@ -345,6 +345,7 @@ const F = liveLabels({
   arrival: ["Varış", "Arrives"],
   duration: ["Süre", "Duration"],
   stops: ["Aktarma", "Stops"],
+  operator: ["İşletme", "Operator"],
   baggage: ["Bagaj", "Baggage"],
   fare: ["Tarife", "Fare"],
   data: ["Veri", "Data"],
@@ -384,6 +385,7 @@ function factsOf(item: Item, listing: Listing | null): CardDetails["facts"] {
       add(F.arrival, join([clock(f?.arrival), f?.arrival ? dayOf(f.arrival) : null, f?.to]));
       add(F.duration, m.durationMinutes ? durationText(m.durationMinutes) : null);
       add(F.stops, item.category === "flight" && f?.stops != null ? (f.stops === 0 ? L("Direkt", "Direct") : nStops(f.stops)) : null);
+      add(F.operator, join([f?.carrier ?? item.provider, f?.flightNumber]));
       add(F.baggage, m.checkedBagIncluded == null ? null : m.checkedBagIncluded ? L("Bavul dahil", "Checked bag included") : L("Bavul dahil değil", "No checked bag"));
       add(F.fare, item.optionDetail);
       add(F.guests, item.guests.adults ? adults(item.guests.adults) : null);
