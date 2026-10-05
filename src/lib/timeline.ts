@@ -153,6 +153,11 @@ export function flightSearchUrl(direction: "to" | "from", city: string | null, d
 /** The key under which a stretch of nights is hidden ("no place needed"). */
 export const nightsKey = (range: DateRange) => `nights:${range.start}_${range.end}`;
 
+/** Nights marked "Gerek yok" that the plan still has: listed under Gizlenenler with "Geri getir". */
+export function hiddenNights(timeline: Timeline): { range: DateRange; city: string | null }[] {
+  return timeline.entries.filter((e): e is StayEntry => e.kind === "stay" && Boolean(e.skipped)).map((e) => ({ range: e.block.range, city: e.block.city }));
+}
+
 export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden: Set<string> = new Set()): Timeline {
   // A transfer the traveller said isn't needed stays out (a change of city never does: it's the way on).
   const legs = allLegs.filter((l) => l.kind === "move" || !hidden.has(`leg:${l.key}`));

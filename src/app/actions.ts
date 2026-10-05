@@ -1,8 +1,11 @@
 // Small write actions shared by the board's views.
 import { addEvent, db, notifyChanged } from "../lib/db";
 import { L } from "../lib/i18n";
-import { announceRemoved, deleteItem, type Removed } from "../lib/removal";
+import { announceRemoved, deleteItem, restoreItem, type Removed } from "../lib/removal";
+import { nightsKey } from "../lib/timeline";
+import type { DateRange } from "../lib/plan";
 import type { Category, Item, ItemStatus, Trip } from "../lib/types";
+import type { Undoable } from "../lib/undoables";
 
 /** The trip history line for a status change, written in the current language. */
 const statusEvent = (name: string, status: ItemStatus): string =>
@@ -93,4 +96,21 @@ export async function setHidden(tripId: string, key: string, hide: boolean, labe
     hide ? L(`${label}: gerek yok denildi, gizlendi`, `${label}: marked not needed, hidden`) : L(`${label} geri getirildi`, `${label} brought back`),
   );
   notifyChanged();
+}
+
+/** A block of empty nights' ×: "Gerek yok" for those nights, handed back for the 8-second "Geri al". */
+export async function hideNights(tripId: string, range: DateRange, label: string): Promise<Undoable> {
+  const key = nightsKey(range);
+  await setHidden(tripId, key, true, label);
+  return { kind: "hidden", tripId, key, label };
+}
+
+/** "Geri al": a deletion restored, a one-tap add taken away again, hidden nights brought back. */
+export async function undo(u: Undoable): Promise<void> {
+  if (u.kind === "removed") return restoreItem(u.removed);
+  if (u.kind === "added") {
+    await deleteItem(u.item, L(`${u.item.name} eklenmedi (geri alındı)`, `${u.item.name} not added (undone)`));
+    return;
+  }
+  return setHidden(u.tripId, u.key, false, u.label);
 }
