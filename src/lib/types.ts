@@ -557,3 +557,30 @@ export interface DocRecord {
   kind?: DocKind;
 }
 export type DocMeta = Omit<DocRecord, "blob">;
+
+/** What a deleted card took with it: the record and its files. */
+export interface TrashedItem {
+  item: Item;
+  docs: DocRecord[];
+}
+
+/** What a deleted trip took with it: everything on this computer that was only the trip's. */
+export interface TrashedTrip {
+  trip: Trip;
+  items: Item[];
+  docs: DocRecord[];
+  captures: Capture[];
+  /** The chat and the trip's history lines. */
+  messages: ChatMessage[];
+  analyses: Analysis[];
+  /** The notes said for this trip only (the ones for every trip stay). */
+  preferences: Preference[];
+}
+
+/**
+ * Çöp kutusu (0.37, trash.ts): a deleted card or trip, kept on this computer for 30 days and brought back in
+ * one tap with its own ids.
+ */
+export type TrashEntry =
+  | { id: string; tripId: string; kind: "item"; deletedAt: number; label: string; payload: TrashedItem }
+  | { id: string; tripId: string; kind: "trip"; deletedAt: number; label: string; payload: TrashedTrip };

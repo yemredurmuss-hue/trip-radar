@@ -1,26 +1,39 @@
-// "Sil" on a card: the record and its files go at once (one transaction); "Geri al" puts both back
-// exactly as they were, from the copy kept in memory until then.
-import { addEvent, db, notifyChanged } from "./db";
-import { putDocs } from "./docs";
+// "Sil" on a card: the record and its files go at once (one transaction) into the trash (0.37, trash.ts), where
+// they wait 30 days; "Geri al" puts both back exactly as they were, from the copy kept in memory until then,
+// and takes the trash entry out again.
+import { addEvent, db, newId, notifyChanged } from "./db";
 import { L } from "./i18n";
-import type { DocRecord, Item } from "./types";
+import type { DocRecord, Item, TrashEntry } from "./types";
 
 export interface Removed {
   item: Item;
   docs: DocRecord[];
+  /** Its entry in the trash (absent when it went without one: a one-tap add taken back). */
+  trashId?: string;
 }
 
-export async function deleteItem(item: Item, event?: string): Promise<Removed> {
+/**
+ * Deletes a card and its files. They go to the trash for 30 days unless `trash: false` (a card just added in
+ * one tap and taken back: nothing of the traveller's is lost).
+ */
+export async function deleteItem(item: Item, event?: string, opts: { trash?: boolean } = {}): Promise<Removed> {
   const d = await db();
-  const tx = d.transaction(["items", "docs"], "readwrite");
-  const fresh = (await tx.objectStore("items").get(item.id)) ?? item;
+  const tx = d.transaction(["items", "docs", "trash"], "readwrite");
+  const stored = await tx.objectStore("items").get(item.id);
+  const fresh = stored ?? item;
   const docs = await tx.objectStore("docs").index("itemId").getAll(item.id);
+  let trashId: string | undefined;
+  if (opts.trash !== false && (stored || docs.length)) {
+    const entry: TrashEntry = { id: newId(), tripId: fresh.tripId, kind: "item", deletedAt: Date.now(), label: fresh.name, payload: { item: fresh, docs } };
+    await tx.objectStore("trash").put(entry);
+    trashId = entry.id;
+  }
   for (const doc of docs) await tx.objectStore("docs").delete(doc.id);
   await tx.objectStore("items").delete(item.id);
   await tx.done;
   await addEvent(item.tripId, event ?? L(`${fresh.name} silindi`, `${fresh.name} deleted`));
   notifyChanged();
-  return { item: fresh, docs };
+  return trashId ? { item: fresh, docs, trashId } : { item: fresh, docs };
 }
 
 // A plan the chat took back ("taksiyi kaldır") gets the same "Geri al" as the card's Sil: the board
@@ -47,8 +60,11 @@ export function onHidden(listener: (hidden: HiddenByChat) => void): () => void {
 export const announceHidden = (hidden: HiddenByChat) => hiddenListeners.forEach((l) => l(hidden));
 
 export async function restoreItem(removed: Removed): Promise<void> {
-  await (await db()).put("items", removed.item);
-  await putDocs(removed.docs);
+  const tx = (await db()).transaction(["items", "docs", "trash"], "readwrite");
+  await tx.objectStore("items").put(removed.item);
+  for (const doc of removed.docs) await tx.objectStore("docs").put(doc);
+  if (removed.trashId) await tx.objectStore("trash").delete(removed.trashId);
+  await tx.done;
   await addEvent(removed.item.tripId, L(`${removed.item.name} geri getirildi`, `${removed.item.name} restored`));
   notifyChanged();
 }

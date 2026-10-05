@@ -1,7 +1,7 @@
 // IndexedDB storage shared by the popup, the board page and the service worker (same extension origin).
 import { L } from "./i18n";
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { Analysis, Capture, ChatMessage, DocRecord, Item, Listing, Preference, Settings, Trip } from "./types";
+import type { Analysis, Capture, ChatMessage, DocRecord, Item, Listing, Preference, Settings, TrashEntry, Trip } from "./types";
 
 interface TripRadarDB extends DBSchema {
   trips: { key: string; value: Trip };
@@ -13,7 +13,12 @@ interface TripRadarDB extends DBSchema {
   geocache: { key: string; value: { query: string; lat: number | null; lng: number | null; at: number } };
   listings: { key: string; value: Listing };
   docs: { key: string; value: DocRecord; indexes: { itemId: string; tripId: string } };
+  /** Deleted records, kept 30 days (0.37, trash.ts): a card with its files, or a whole trip. */
+  trash: { key: string; value: TrashEntry; indexes: { tripId: string; deletedAt: number } };
 }
+
+/** The database's version: 5 added the trash (0.37). */
+export const DB_VERSION = 5;
 
 type TripRadarDb = IDBPDatabase<TripRadarDB>;
 let dbPromise: Promise<TripRadarDb> | null = null;
@@ -22,7 +27,7 @@ export function db(): Promise<TripRadarDb> {
   if (dbPromise) return dbPromise;
   let onBlocked: (error: Error) => void = () => undefined;
   const blocked = new Promise<never>((_, reject) => (onBlocked = reject));
-  const opening = openDB<TripRadarDB>("trip-radar", 4, {
+  const opening = openDB<TripRadarDB>("trip-radar", DB_VERSION, {
     upgrade(d, oldVersion) {
       if (oldVersion < 1) {
         d.createObjectStore("trips", { keyPath: "id" });
@@ -44,6 +49,11 @@ export function db(): Promise<TripRadarDb> {
         const docs = d.createObjectStore("docs", { keyPath: "id" });
         docs.createIndex("itemId", "itemId");
         docs.createIndex("tripId", "tripId");
+      }
+      if (oldVersion < 5) {
+        const trash = d.createObjectStore("trash", { keyPath: "id" });
+        trash.createIndex("tripId", "tripId");
+        trash.createIndex("deletedAt", "deletedAt");
       }
     },
     // An older version (before 0.31 it never lets go: a tab or the worker from before an update) holds
