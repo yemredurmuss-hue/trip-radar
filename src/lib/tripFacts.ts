@@ -15,6 +15,11 @@ export interface TripFacts {
   local: { currency: string; rateText: string | null; hours: number | null; info: CountryInfo } | null;
 }
 
+/** Passports whose own money we know; any other traveller is shown the trip's budget currency. */
+const HOME_CURRENCY: Record<string, string> = { TR: "TRY", DE: "EUR", GB: "GBP", US: "USD" };
+/** The traveller's own money for the "Yerel" row (€1 = ₺38,20): from the passport set in Settings, else `fallback`. */
+export const homeCurrencyOf = (passport: string, fallback: string): string => HOME_CURRENCY[passport.toUpperCase()] ?? fallback;
+
 const mostCommon = <T,>(xs: T[]): T | null => {
   const n = new Map<T, number>();
   for (const x of xs) n.set(x, (n.get(x) ?? 0) + 1);

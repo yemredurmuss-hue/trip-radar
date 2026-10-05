@@ -3,7 +3,7 @@ import { cityOfAirport } from "../src/lib/airports";
 import { setLang } from "../src/lib/i18n";
 import { COUNTRIES, countryInfo } from "../src/lib/countries";
 import { visaFor, VISA_CHECKED } from "../src/lib/visa";
-import { tripFacts, utcOffsetHours } from "../src/lib/tripFacts";
+import { homeCurrencyOf, tripFacts, utcOffsetHours } from "../src/lib/tripFacts";
 import { EMPTY_METRICS } from "../src/lib/items";
 import type { Item } from "../src/lib/types";
 
@@ -126,5 +126,12 @@ describe("trip facts", () => {
   it("offset follows summer time on the trip's date", () => {
     expect(utcOffsetHours("Europe/Lisbon", "2026-07-01")).toBe(1);
     expect(utcOffsetHours("Europe/Lisbon", "2026-12-01")).toBe(0);
+  });
+});
+
+describe("the traveller's own money", () => {
+  it("comes from the passport; another passport gets the budget's currency", () => {
+    expect([homeCurrencyOf("TR", "EUR"), homeCurrencyOf("de", "TRY"), homeCurrencyOf("GB", "EUR"), homeCurrencyOf("US", "EUR")]).toEqual(["TRY", "EUR", "GBP", "USD"]);
+    expect(homeCurrencyOf("JP", "EUR")).toBe("EUR");
   });
 });

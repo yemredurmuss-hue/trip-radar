@@ -29,7 +29,7 @@ import { imageProxy, pickCityImage } from "../lib/cityImages";
 import { acceptMood, moodKey, statusSentence } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
 import { loadPassport } from "../lib/passport";
-import { tripFacts } from "../lib/tripFacts";
+import { homeCurrencyOf, tripFacts } from "../lib/tripFacts";
 import type { Timeline } from "../lib/timeline";
 
 import type { Capture, Category, Item, Trip } from "../lib/types";
@@ -216,7 +216,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     () =>
       tripFacts(items, {
         passport,
-        homeCurrency: decisions?.ctx.currency ?? "EUR",
+        // The traveller's own money (a TR passport: TRY), not the budget's: "€1 = ₺38,20".
+        homeCurrency: homeCurrencyOf(passport, decisions?.ctx.currency ?? "EUR"),
         rates: decisions?.ctx.rates ?? null,
         homeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         start: range?.start ?? null,
