@@ -1,5 +1,6 @@
 // Capture pipeline: URL facts -> model extraction -> trip assignment -> merge or insert item.
 import { addEvent, db, listTrips, newId, nextTime, notifyChanged } from "./db";
+import { moveDocsToTrip } from "./docs";
 import type { Extraction } from "./extract";
 import { describeError, getProvider } from "./llm";
 import { valueOnPage } from "./evidence";
@@ -296,6 +297,7 @@ export async function rehomeFromDemoTrips(heroImage: Deps["heroImage"] = destina
       tripId = trip.id;
     }
     await d.put("items", { ...item, tripId, updatedAt: Date.now() });
+    await moveDocsToTrip(item.id, tripId);
     await addEvent(tripId, L(`✓ ${item.name} örnek geziden buraya taşındı`, `✓ ${item.name} moved here from the sample trip`));
   }
   if (strays.length) notifyChanged();

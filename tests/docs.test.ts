@@ -3,7 +3,7 @@ import "fake-indexeddb/auto";
 import { openDB } from "idb";
 import { describe, expect, it } from "vitest";
 import { db } from "../src/lib/db";
-import { addDoc, checkDoc, deleteDoc, deleteTripDocs, docPill, getDoc, inheritedDocs, listDocMeta, moveDocs, putDocs, sizeText, takeDocsOf } from "../src/lib/docs";
+import { addDoc, checkDoc, deleteDoc, deleteTripDocs, docPill, getDoc, inheritedDocs, listDocMeta, moveDocs, moveDocsToTrip, putDocs, sizeText, takeDocsOf } from "../src/lib/docs";
 import { buildPlan } from "../src/lib/plan";
 import { plannedItem } from "../src/lib/planned";
 import type { Trip } from "../src/lib/types";
@@ -68,6 +68,17 @@ describe("the docs store", () => {
     expect((await listDocMeta("t2")).every((d) => d.itemId === other.id)).toBe(true);
     await deleteTripDocs("t2");
     expect(await listDocMeta("t2")).toEqual([]);
+  });
+
+  it("a card moved to another trip takes its files: deleting the old trip leaves them", async () => {
+    const card = makeItem({ tripId: "t3" });
+    const stays = makeItem({ tripId: "t3" });
+    await addDoc(card, pdf("bilet.pdf"));
+    await addDoc(stays, pdf("kalan.pdf"));
+    await moveDocsToTrip(card.id, "t4");
+    await deleteTripDocs("t3");
+    expect((await listDocMeta("t4")).map((d) => [d.name, d.itemId])).toEqual([["bilet.pdf", card.id]]);
+    expect(await listDocMeta("t3")).toEqual([]);
   });
 
   it("the pill and sizes", () => {

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { listItems, listTrips } from "../src/lib/db";
 import type { Extraction } from "../src/lib/extract";
 import { db } from "../src/lib/db";
+import { addDoc, listDocMeta } from "../src/lib/docs";
 import { processPending, rehomeFromDemoTrips, saveSnapshot, type Deps } from "../src/lib/process";
 import { chooseTrip, profileTrips, uniqueTitle, type TripProfile } from "../src/lib/trips";
 import type { Item, Trip } from "../src/lib/types";
@@ -134,6 +135,7 @@ describe("sample trips", () => {
     const real = { ...item("demo-x", "PT", "Portekiz", "2027-03-01", "2027-03-05"), id: "r1", name: "FAA Rentals", city: "Funchal", captureIds: ["c1"], imageUrl: null } as Item;
     await d.put("items", sample);
     await d.put("items", real);
+    await addDoc(real, new File(["%PDF-1.4"], "voucher.pdf", { type: "application/pdf" }));
 
     await rehomeFromDemoTrips(async () => null);
 
@@ -141,5 +143,6 @@ describe("sample trips", () => {
     const moved = (await d.get("items", "r1"))!;
     expect(moved.tripId).not.toBe("demo-x");
     expect((await d.get("trips", moved.tripId))!.title).toMatch(/^Portekiz/);
+    expect((await listDocMeta(moved.tripId)).map((x) => x.name)).toEqual(["voucher.pdf"]);
   });
 });

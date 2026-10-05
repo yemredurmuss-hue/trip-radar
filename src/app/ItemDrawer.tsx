@@ -1,4 +1,5 @@
 import { addEvent, db, newId, notifyChanged } from "../lib/db";
+import { moveDocsToTrip } from "../lib/docs";
 import { LEVEL_LABELS, type GroupDecision } from "../lib/decision";
 import { L, locale } from "../lib/i18n";
 import { lowerText } from "../lib/i18nText";
@@ -144,6 +145,7 @@ export function ItemDrawer({ item, group, trips, decision, decisions, onClose, o
     }
     if (!target || target.id === item.tripId) return;
     await d.put("items", { ...item, tripId: target.id, status: "saved", updatedAt: Date.now() });
+    await moveDocsToTrip(item.id, target.id);
     await addEvent(item.tripId, L(`${item.name} → ${target.title} gezisine taşındı`, `${item.name} moved to ${target.title}`));
     await addEvent(target.id, L(`${item.name} bu geziye taşındı`, `${item.name} moved to this trip`));
     notifyChanged();

@@ -73,6 +73,13 @@ export async function moveDocs(fromItemId: string, toItemId: string): Promise<vo
   await tx.done;
 }
 
+/** A card moved to another trip takes its files along (else deleting the old trip would delete them). */
+export async function moveDocsToTrip(itemId: string, tripId: string): Promise<void> {
+  const tx = (await db()).transaction("docs", "readwrite");
+  for (const d of await tx.store.index("itemId").getAll(itemId)) if (d.tripId !== tripId) await tx.store.put({ ...d, tripId });
+  await tx.done;
+}
+
 export async function deleteTripDocs(tripId: string): Promise<void> {
   const tx = (await db()).transaction("docs", "readwrite");
   for (const key of await tx.store.index("tripId").getAllKeys(tripId)) await tx.store.delete(key);
