@@ -182,6 +182,7 @@ function noticeRows(input: HistoryInput): HistoryRow[] {
 const ADDED = [/^✓ (.+?) kaydedildi(?: → (.*?))?(?: \((.+) ekledi\))?$/, /^✓ (.+?) saved(?: → (.*?))?(?: \(added by (.+)\))?$/];
 const DELETED = [/^(.+) silindi$/, /^(.+) deleted$/];
 const HIDDEN_LINE = /: (gerek yok denildi, gizlendi|marked not needed, hidden)$/;
+const BROUGHT_BACK = [/^(.+) geri getirildi$/, /^(.+) brought back$/];
 const SETTINGS_LINE = [/^(.+) gezinin ayarlarını güncelledi$/, /^(.+) updated the trip settings$/];
 const UNDONE_LINE = /^(Ortak ayar geri alındı|Shared setting undone)( |$)/;
 const CHAT_REMOVED = [/ sohbetten kaldırıldı \(Gizlenenler'de\)$/, / removed in the chat \(under Hidden\)$/];
@@ -282,6 +283,19 @@ export function buildHistory(input: HistoryInput): HistoryRow[] {
 
   // (b) the trip's history lines that aren't one of the rows above
   const settingsTimes = settings.map((r) => r.at).filter((t): t is number => t != null);
+  // A "gerek yok … gizlendi" line brought back since ("… geri getirildi": the toast's Geri al, Geri getir) is
+  // shown taken back, its "geri getirildi" line folded into it: no orphan "Gizlendi" row with nothing to do.
+  const broughtBack = new Map<string, number>();
+  const oldest = [...events].reverse();
+  for (const [n, m] of oldest.entries()) {
+    if (used.has(m.id) || !HIDDEN_LINE.test(m.text)) continue;
+    const label = m.text.replace(HIDDEN_LINE, "");
+    const back = oldest.slice(n + 1).find((e) => !used.has(e.id) && BROUGHT_BACK.some((r) => r.exec(e.text)?.[1] === label));
+    if (back) {
+      used.add(back.id);
+      broughtBack.set(m.id, back.createdAt);
+    }
+  }
   for (const m of events) {
     if (used.has(m.id) || m.text.startsWith("⚠") || UNDONE_LINE.test(m.text)) continue;
     const settingsLine = firstMatch(SETTINGS_LINE, m.text);
@@ -303,7 +317,7 @@ export function buildHistory(input: HistoryInput): HistoryRow[] {
       text: added ? added[1] : deleted ? deleted[1] : (hidden ?? m.text.replace(/^[✓↻]\s*/, "")),
       how: added ? [sharer ? L("paylaşılan kayıt", "shared save") : (added[2] ?? "")].filter(Boolean) : [],
       action: m.undo && !m.undoneAt ? { kind: "undo-event", messageId: m.id } : item ? { kind: "show", itemId: item.id } : null,
-      undone: m.undoneAt ? { by: meName, at: m.undoneAt } : null,
+      undone: m.undoneAt ? { by: meName, at: m.undoneAt } : broughtBack.has(m.id) ? { by: meName, at: broughtBack.get(m.id)! } : null,
       trash: false,
       source: "event",
     });

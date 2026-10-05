@@ -231,7 +231,7 @@ export interface Trip {
    */
   suggestions?: Suggestion[];
   /** The last AI review of the trip for suggestions (suggestReview.ts): for which state, when, and whether it failed. */
-  suggestReview?: { key: string; at: number; failed?: boolean } | null;
+  suggestReview?: { key: string; at: number; failed?: boolean; state?: "running" | "done" | "failed" } | null;
   createdAt: number;
   updatedAt: number;
 }

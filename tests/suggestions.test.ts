@@ -7,6 +7,9 @@ import { buildLegs } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
 import {
   checkSuggestionInput,
+  coveringItems,
+  foreignCountries,
+  suggestedAdd,
   mergeIncoming,
   ruleSuggestions,
   SECTION_TEMPLATES,
@@ -149,17 +152,26 @@ describe("rule: landing at night with no transfer → a taxi in Ulaşım", () =>
 });
 
 describe("rule: a short connection between separate tickets → a warning in Uçuş", () => {
-  const leg1 = flight("IST", "DOH", "2026-12-10T02:00", "2026-12-10T06:00", { id: "f1" });
-  it("fires under 60 minutes", () => {
-    const s = rulesFor([leg1, flight("DOH", "DPS", "2026-12-10T06:40", "2026-12-10T20:00", { id: "f2" })]).find((x) => x.section === "flight")!;
+  const leg1 = flight("IST", "DOH", "2026-12-10T02:00", "2026-12-10T06:00", { id: "f1", url: "https://www.turkishairlines.com/x" });
+  const leg2 = (over: Partial<Item> = {}) => flight("DOH", "DPS", "2026-12-10T06:40", "2026-12-10T20:00", { id: "f2", url: "https://www.airasia.com/y", ...over });
+  it("fires under 60 minutes for two flights that look booked apart, worded as an if", () => {
+    const s = rulesFor([leg1, leg2()]).find((x) => x.section === "flight")!;
     expect(s).toMatchObject({ key: "rule:short-layover:f1:f2", kind: "warning" });
     expect(s.template).toBeUndefined();
     expect(s.title).toContain("40 dk");
+    expect(s.why).toContain("ayrı biletlerse");
+    // Different providers or captures say apart too.
+    const plain = { url: null, captureIds: [] as string[] };
+    expect(rulesFor([{ ...leg1, ...plain, provider: "Turkish" }, leg2({ ...plain, provider: "AirAsia" })]).some((x) => x.section === "flight")).toBe(true);
+    expect(rulesFor([{ ...leg1, ...plain, captureIds: ["c1"] }, leg2({ ...plain, captureIds: ["c2"] })]).some((x) => x.section === "flight")).toBe(true);
   });
-  it("doesn't fire for 90 minutes, another airport, or an option not taken", () => {
-    expect(rulesFor([leg1, flight("DOH", "DPS", "2026-12-10T07:30", "2026-12-10T20:00")]).some((s) => s.section === "flight")).toBe(false);
-    expect(rulesFor([leg1, flight("DXB", "DPS", "2026-12-10T06:40", "2026-12-10T20:00")]).some((s) => s.section === "flight")).toBe(false);
-    expect(rulesFor([leg1, flight("DOH", "DPS", "2026-12-10T06:40", "2026-12-10T20:00", { status: "saved" })]).some((s) => s.section === "flight")).toBe(false);
+  it("doesn't fire for 90 minutes, another airport, an option not taken, or flights that can't be told apart", () => {
+    expect(rulesFor([leg1, leg2({ flight: { from: "DOH", to: "DPS", departure: "2026-12-10T07:30", arrival: "2026-12-10T20:00", carrier: null, flightNumber: null, stops: 0 } })]).some((s) => s.section === "flight")).toBe(false);
+    expect(rulesFor([leg1, leg2({ flight: { from: "DXB", to: "DPS", departure: "2026-12-10T06:40", arrival: "2026-12-10T20:00", carrier: null, flightNumber: null, stops: 0 } })]).some((s) => s.section === "flight")).toBe(false);
+    expect(rulesFor([leg1, leg2({ status: "saved" })]).some((s) => s.section === "flight")).toBe(false);
+    // Two plans said in the chat (no page, no provider), or one page holding both legs: likely one ticket.
+    expect(rulesFor([{ ...leg1, url: null }, leg2({ url: null })]).some((s) => s.section === "flight")).toBe(false);
+    expect(rulesFor([leg1, leg2({ url: leg1.url })]).some((s) => s.section === "flight")).toBe(false);
   });
 });
 
@@ -223,9 +235,21 @@ describe("shown suggestions: dedupe, Gerek yok for good, rule beats a repeat", (
 describe("a suggestion from the model, checked", () => {
   const input = { section: "transport", kind: "add", title: "Aylık motor kiralama", why: "Ubud'da bir ay kalıyorsun; aylık kiralama günlükten genellikle çok daha ucuzdur.", template: "moto", city: "Ubud", start: "", end: "" };
 
-  it("passes a good one, keyed by source, section, template and title", () => {
+  it("passes a good one, keyed by source, section and topic (not the wording)", () => {
     const s = checkSuggestionInput(input, "chat", 9) as Suggestion;
-    expect(s).toMatchObject({ key: "chat:transport:moto:aylik-motor-kiralama", section: "transport", template: "moto", source: "chat", state: "open", createdAt: 9, payload: { city: "Ubud", start: null, end: null } });
+    expect(s).toMatchObject({ key: "chat:transport:vehicle", section: "transport", template: "moto", source: "chat", state: "open", createdAt: 9, payload: { city: "Ubud", start: null, end: null } });
+    // Another wording of the same vehicle, or of the same idea, keeps one key.
+    expect((checkSuggestionInput({ ...input, title: "Scooter kirala", template: "car" }, "chat", 9) as Suggestion).key).toBe("chat:transport:vehicle");
+    const idea = (title: string) => (checkSuggestionInput({ ...input, section: "todo", template: "todo", title }, "ai", 1) as Suggestion).key;
+    expect(idea("Tegallalang pirinç terasları")).toBe(idea("Pirinç terasları ve Tegallalang"));
+    expect(idea("Tegallalang pirinç terasları")).not.toBe(idea("Campuhan sırtı"));
+  });
+
+  it("refuses a number next to any currency, in many currencies", () => {
+    for (const why of ["Aylık Rp 500.000 civarı.", "Ayda 2 juta tutar.", "Günde 80 kr.", "Haftalık 50 CHF.", "Günde 150000 ₫.", "100 VND.", "RM 40 günlük.", "Günde 500 rupee.", "1000 yen.", "300 baht."]) {
+      expect(typeof checkSuggestionInput({ ...input, why }, "ai", 1), why).toBe("string");
+    }
+    expect(typeof checkSuggestionInput({ ...input, why: "31 gece kalıyorsun; aylık kiralama genellikle daha ucuzdur." }, "ai", 1)).toBe("object");
   });
 
   it("refuses prices, times, percentages, two sentences", () => {
@@ -275,5 +299,65 @@ describe("suggestions never count", () => {
 
   it("each section's templates are its own '+ Ekle' tiles", () => {
     for (const [id, templates] of Object.entries(SECTION_TEMPLATES)) expect(templates).toEqual(SECTION_META[id as keyof typeof SECTION_META].templates);
+  });
+});
+
+describe("review fixes", () => {
+  const ubud = [stay("Ubud", "2026-12-10", "2027-01-10")];
+  const chatVehicle = (over: Partial<Suggestion> = {}): Suggestion => ({
+    key: "chat:transport:vehicle", section: "transport", kind: "add", title: "Aylık araba", why: "x", source: "chat", template: "car",
+    payload: { city: "Ubud", start: "2026-12-10", end: "2027-01-10" }, createdAt: 2, state: "open", ...over,
+  });
+
+  it("insurance and eSIM wait for a passport set in Settings (never from the default)", () => {
+    const k = keys(rulesFor(ubud, { home: null }));
+    expect(k).not.toContain("rule:insurance");
+    expect(k).not.toContain("rule:esim");
+    expect(keys(rulesFor(ubud, { home: "TR" }))).toContain("rule:insurance");
+  });
+
+  it("a connection airport isn't a country visited", () => {
+    const out = flight("IST", "DXB", "2026-12-10T02:00", "2026-12-10T08:00");
+    const on = flight("DXB", "LIS", "2026-12-10T12:00", "2026-12-10T18:00");
+    expect(foreignCountries([out, on], "TR")).toEqual(["PT"]);
+    // A stop of days in Dubai is a visit.
+    const later = flight("DXB", "LIS", "2026-12-14T12:00", "2026-12-14T18:00");
+    expect(foreignCountries([out, later], "TR").sort()).toEqual(["AE", "PT"]);
+  });
+
+  it("no night taxi when a rental is picked up that day, or a shuttle is noted", () => {
+    const arriving = [flight("IST", "DPS", "2026-12-10T08:00", "2026-12-10T23:30"), ...ubud];
+    const car = makeItem({ category: "transport", plannedKind: "car_rental", name: "Araba", dates: { start: "2026-12-10", end: "2026-12-20", source: "page" }, status: "chosen" });
+    expect(keys(rulesFor([...arriving, car])).some((k) => k.startsWith("rule:night-arrival"))).toBe(false);
+    const t = trip();
+    const arrival = buildLegs(buildPlan(t, arriving), t).find((l) => l.kind === "arrival")!;
+    const noted = trip({ legs: { [arrival.key]: { mode: null, booked: false, note: "Havalimanı servisi var", updatedAt: 1 } } });
+    expect(keys(rulesFor(arriving, { trip: noted })).some((k) => k.startsWith("rule:night-arrival"))).toBe(false);
+  });
+
+  it("a dismissed vehicle stays gone when the places regroup (topic-level, rules too)", () => {
+    const gone = withState([], { ...rulesFor(ubud).find((s) => s.key === "rule:monthly-vehicle:ubud")! }, "dismissed", 3);
+    const regrouped = rulesFor(ubud, { mains: [{ name: "Bali", members: ["Ubud"] }] });
+    expect(keys(regrouped)).toContain("rule:monthly-vehicle:bali");
+    expect(keys(shownSuggestions(gone, regrouped)).some((k) => k.startsWith("rule:monthly-vehicle"))).toBe(false);
+  });
+
+  it("an AI or chat vehicle suggestion hides while a live vehicle covers its days", () => {
+    const car = makeItem({ category: "transport", plannedKind: "car_rental", name: "Araba", dates: { start: "2026-12-12", end: "2026-12-20", source: "page" }, status: "chosen" });
+    expect(shownSuggestions([chatVehicle()], [], [car])).toEqual([]);
+    expect(coveringItems(chatVehicle(), [car]).map((i) => i.name)).toEqual(["Araba"]);
+    // Another month: shown.
+    expect(keys(shownSuggestions([chatVehicle({ payload: { city: "Ubud", start: "2027-02-01", end: "2027-02-28" } })], [], [car]))).toEqual(["chat:transport:vehicle"]);
+  });
+
+  it("Plana ekle makes a whole record or opens the sheet: never a flight 'Lombok → ?' or a stay without nights", () => {
+    const flightTo = checkSuggestionInput({ section: "flight", kind: "add", title: "Lombok'a uçuş", why: "Gili adaları yakın.", template: "flight", city: "Lombok", start: "2026-12-20", end: "" }, "ai", 1) as Suggestion;
+    expect(suggestedAdd(flightTo, "t1", "x", 1)).toEqual({ kind: "sheet", template: "flight", at: { city: "Lombok", date: "2026-12-20" } });
+    const hotel = checkSuggestionInput({ section: "stay", kind: "add", title: "Canggu'da otel", why: "Sahil için.", template: "hotel", city: "Canggu", start: "", end: "" }, "ai", 1) as Suggestion;
+    expect(suggestedAdd(hotel, "t1", "x", 1)).toMatchObject({ kind: "sheet", template: "hotel" });
+    const rental = suggestedAdd(rulesFor(ubud).find((s) => s.key === "rule:monthly-vehicle:ubud")!, "t1", "x", 1);
+    expect(rental).toMatchObject({ kind: "item", item: { plannedKind: "moto_rental" } });
+    const taxi = suggestedAdd(rulesFor([flight("IST", "DPS", "2026-12-10T08:00", "2026-12-10T23:30"), ...ubud]).find((s) => s.template === "taxi")!, "t1", "x", 1);
+    expect(taxi).toMatchObject({ kind: "item", item: { plannedKind: "taxi" } });
   });
 });

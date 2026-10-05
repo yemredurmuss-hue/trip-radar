@@ -24,11 +24,12 @@ function fakeClient(responses: Partial<Anthropic.Message>[]) {
   return { client, calls };
 }
 
-async function seed(id: string): Promise<void> {
+/** A trip in Ubud: 18 nights by default (under the rules' 21: no rental card of their own). */
+async function seed(id: string, end = "2026-12-28"): Promise<void> {
   const d = await db();
-  const trip: Trip = { id, title: "Bali", confirmedDates: { start: "2026-12-10", end: "2027-01-10" }, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 };
+  const trip: Trip = { id, title: "Bali", confirmedDates: { start: "2026-12-10", end }, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 };
   await d.put("trips", trip);
-  await d.put("items", makeItem({ id: `${id}-stay`, tripId: id, category: "stay", name: "Ubud Villa", city: "Ubud", countryCode: "ID", needKey: "stay:ubud", status: "chosen", dates: { start: "2026-12-10", end: "2027-01-10", source: "page" } }));
+  await d.put("items", makeItem({ id: `${id}-stay`, tripId: id, category: "stay", name: "Ubud Villa", city: "Ubud", countryCode: "ID", needKey: "stay:ubud", status: "chosen", dates: { start: "2026-12-10", end, source: "page" } }));
 }
 
 const suggestCall = (id: string, input: Record<string, string>): Partial<Anthropic.Message> => ({
@@ -38,7 +39,7 @@ const suggestCall = (id: string, input: Record<string, string>): Partial<Anthrop
 const done = (text: string): Partial<Anthropic.Message> => ({ stop_reason: "end_turn", content: [{ type: "text", text, citations: null }] as Anthropic.ContentBlock[] });
 const monthly = {
   section: "transport", kind: "add", title: "Aylık motor kiralama", why: "Ubud'da bir ay kalıyorsunuz; aylık kiralama günlükten genellikle çok daha ucuzdur.",
-  template: "moto", city: "Ubud", start: "2026-12-10", end: "2027-01-10",
+  template: "moto", city: "Ubud", start: "2026-12-10", end: "2026-12-28",
 };
 const resultOf = (call: Anthropic.MessageCreateParams) => (call.messages.at(-1)!.content as Anthropic.ToolResultBlockParam[])[0];
 
@@ -80,9 +81,40 @@ describe("assistant: suggest", () => {
     await d.put("trips", { ...t, suggestions: [{ key: "rule:monthly-vehicle:ubud", section: "transport", kind: "add", title: "Aylık motor ya da araç kiralama", why: "x", source: "rule", template: "moto", createdAt: 0, state: "dismissed", stateAt: 1 }] });
     const { client, calls } = fakeClient([suggestCall("tu3", monthly), done("Tamam.")]);
     await sendMessage("sg3", "ne önerirsin", anthropicProvider(client, "claude-opus-5"));
-    expect(JSON.parse(String(resultOf(calls[1]).content))).toMatchObject({ result: "dismissed_before", added_to_plan: false });
+    const content = String(resultOf(calls[1]).content);
+    // Nothing new on the board: said as unchanged (the turn doesn't count it as a change).
+    expect(content.startsWith('{"unchanged"')).toBe(true);
+    expect(JSON.parse(content)).toMatchObject({ result: "dismissed_before", added_to_plan: false });
     expect((await d.get("trips", "sg3"))!.suggestions).toHaveLength(1);
     // The model sees what was said not needed.
     expect(JSON.stringify(calls[0].messages)).toContain("not_needed");
+  });
+
+  it("says when the board already shows it (a rule's card), and the model sees the rules' cards", async () => {
+    await seed("sg4", "2027-01-10"); // 31 nights: the rules' monthly rental card is on the board
+    const { client, calls } = fakeClient([suggestCall("tu4", monthly), done("Panoda zaten var.")]);
+    await sendMessage("sg4", "uzun dönem kalıyoruz, ne önerirsin", anthropicProvider(client, "claude-opus-5"));
+    // Ubud is Bali's (the table of regions): the card is the main place's.
+    expect(JSON.stringify(calls[0].messages)).toContain("rule:monthly-vehicle:bali");
+    const content = String(resultOf(calls[1]).content);
+    expect(content.startsWith('{"unchanged"')).toBe(true);
+    expect(JSON.parse(content)).toMatchObject({ result: "covered_by_rule", added_to_plan: false });
+    expect((await (await db()).get("trips", "sg4"))!.suggestions).toBeUndefined();
+  });
+
+  it("says when the plan already has it (a vehicle for those days), and when it was added already", async () => {
+    await seed("sg5");
+    const d = await db();
+    await d.put("items", makeItem({ id: "sg5-car", tripId: "sg5", category: "transport", plannedKind: "car_rental", name: "Araba", dates: { start: "2026-12-12", end: "2026-12-20", source: "page" }, status: "chosen" }));
+    let mock = fakeClient([suggestCall("tu5", monthly), done("Tamam.")]);
+    await sendMessage("sg5", "ne önerirsin", anthropicProvider(mock.client, "claude-opus-5"));
+    expect(JSON.parse(String(resultOf(mock.calls[1]).content))).toMatchObject({ unchanged: true, result: "already_on_plan" });
+
+    await seed("sg6");
+    const t = (await d.get("trips", "sg6"))!;
+    await d.put("trips", { ...t, suggestions: [{ key: "chat:transport:vehicle", section: "transport", kind: "add", title: "Aylık motor kiralama", why: "x", source: "chat", template: "moto", createdAt: 0, state: "added", stateAt: 1 }] });
+    mock = fakeClient([suggestCall("tu6", monthly), done("Tamam.")]);
+    await sendMessage("sg6", "ne önerirsin", anthropicProvider(mock.client, "claude-opus-5"));
+    expect(JSON.parse(String(resultOf(mock.calls[1]).content))).toMatchObject({ unchanged: true, result: "already_added" });
   });
 });

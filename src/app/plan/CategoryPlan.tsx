@@ -33,7 +33,7 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
   /** What's being read now (arrive/useArrivals): under the header when its place can't be guessed, else atop its section (drawn even while empty). */
   pending?: { lead: ReactNode; bySection: Partial<Record<SectionId, ReactNode>> };
   /** Öneriler (useSuggestions): cards atop their section, "Plana ekle" and "Gerek yok". */
-  suggestions?: Pick<BoardSuggestions, "bySection" | "add" | "dismiss">;
+  suggestions?: Pick<BoardSuggestions, "bySection" | "add" | "dismiss" | "notes">;
 }) {
   const n = plan.nights;
   const parts = [n.booked && L(`${n.booked} rezerve`, `${n.booked} booked`), n.chosen && L(`${n.chosen} seçildi`, `${n.chosen} chosen`), n.open && L(`${n.open} açık`, `${n.open} open`)].filter(Boolean);
@@ -65,7 +65,7 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
             const opened = isOpen(onlySuggested ? provisionalSection(s) : s);
             return (
               <Section key={s.id} section={s} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)} suggestions={suggested(s).length}>
-                {suggestions && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} />}
+                {suggestions && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
                 {pending?.bySection[s.id]}
                 {(s.entries.length > 0 || s.hidden.length > 0) && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(sectionOfItem(item), true)} today={today} items={items} />}
               </Section>

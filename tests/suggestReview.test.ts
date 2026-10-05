@@ -1,7 +1,7 @@
 // The AI review for suggestions: when it's due, what it keeps, and that a missing key or an error never sticks.
 import { describe, expect, it, vi } from "vitest";
 import { MissingKeyError, type LlmProvider } from "../src/lib/llm";
-import { acceptReview, REVIEW_EVERY_MS, reviewDue, reviewKey, reviewPrompt, runReview, type ReviewAnswer } from "../src/lib/suggestReview";
+import { acceptReview, REVIEW_EVERY_MS, REVIEW_STALE_MS, reviewDue, reviewKey, reviewPrompt, runReview, type ReviewAnswer } from "../src/lib/suggestReview";
 import type { Suggestion, Trip } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -25,6 +25,10 @@ describe("when the review is asked", () => {
   it("a failure isn't done: asked again, but not before a day", () => {
     expect(reviewDue({ key, at: 0, failed: true }, key, DAY / 2)).toBe(false);
     expect(reviewDue({ key, at: 0, failed: true }, key, DAY + 1)).toBe(true);
+  });
+  it("one running (another tab, a remount) isn't asked again, unless it's been stuck for 10 minutes", () => {
+    expect(reviewDue({ key: "other", at: 0, state: "running" }, key, 5 * 60_000)).toBe(false);
+    expect(reviewDue({ key: "other", at: 0, state: "running" }, key, REVIEW_STALE_MS + 1)).toBe(true);
   });
   it("a new main place, other dates or a new stay is a big change; nothing else is", () => {
     expect(reviewKey(ubud, range, [stay])).toBe(key);
@@ -76,7 +80,27 @@ describe("one review", () => {
     const s = store();
     expect(await runReview({ key: "k1", prompt: "p", save: s.save, now: 50, provider: provider(async () => ({ suggestions: [one()] })) })).toBe("done");
     expect(s.get().suggestions).toMatchObject([{ source: "ai", section: "todo", title: "Tegallalang pirinç terasları" }]);
-    expect(s.get().suggestReview).toEqual({ key: "k1", at: 50 });
+    expect(s.get().suggestReview).toEqual({ key: "k1", at: 50, state: "done" });
+  });
+
+  it("marks itself running before asking the model; a second ask meanwhile is skipped", async () => {
+    const s = store();
+    let seen: Trip["suggestReview"] = null;
+    let release!: () => void;
+    const first = runReview({
+      key: "k1", prompt: "p", save: s.save, now: 10,
+      provider: provider(async () => {
+        seen = s.get().suggestReview;
+        await new Promise<void>((r) => (release = r));
+        return { suggestions: [] };
+      }),
+    });
+    await vi.waitFor(() => expect(seen).toEqual({ key: "k1", at: 10, state: "running" }));
+    const ask = vi.fn(async () => ({ suggestions: [] }));
+    expect(await runReview({ key: "k1", prompt: "p", save: s.save, now: 11, provider: async () => ({ generateJson: ask }) as unknown as LlmProvider })).toBe("skipped");
+    expect(ask).not.toHaveBeenCalled();
+    release();
+    expect(await first).toBe("done");
   });
 
   it("no key: silent, nothing stored", async () => {
@@ -90,7 +114,7 @@ describe("one review", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(await runReview({ key: "k1", prompt: "p", save: s.save, now: 7, provider: provider(async () => { throw new Error("503"); }) })).toBe("failed");
     warn.mockRestore();
-    expect(s.get().suggestReview).toEqual({ key: "k1", at: 7, failed: true });
+    expect(s.get().suggestReview).toEqual({ key: "k1", at: 7, failed: true, state: "failed" });
     expect(s.get().suggestions).toBeUndefined();
   });
 });

@@ -6,7 +6,10 @@ import { announceRemoved, deleteItem, restoreItem, type Removed } from "../lib/r
 import { restoreFields, withTravellers, type TravellersChange } from "../lib/tripSettings";
 import { latestLangLine, undoEvent } from "../lib/eventUndo";
 import { stableJson } from "../lib/share/settings";
-import { suggestedItem, withState } from "../lib/suggestions";
+import { suggestedAdd, withState } from "../lib/suggestions";
+import type { InsertAt, TemplateId } from "../lib/templates";
+import { withEdits } from "../lib/userEdits";
+import { checkVehicle, overlaps, periodOf, vehicleOf } from "../lib/vehicles";
 import { nightsKey } from "../lib/timeline";
 import type { DateRange } from "../lib/plan";
 import type { Category, Item, ItemStatus, Suggestion, SuggestionState, Trip } from "../lib/types";
@@ -121,17 +124,64 @@ async function setSuggestion(tripId: string, s: Suggestion, state: SuggestionSta
   await updateTrip(tripId, (t) => ({ ...t, suggestions: withState(t.suggestions, t.suggestions?.find((x) => x.key === s.key) ?? s, state, Date.now()) }));
 }
 
+/** What "Plana ekle" did. */
+export type SuggestedOutcome =
+  /** The record is on the plan; the toast's "Geri al" takes it and the mark back. */
+  | { kind: "added"; undo: Undoable }
+  /** Not whole from the suggestion alone (a flight needs both ends): the template's add sheet, opened where it belongs. */
+  | { kind: "sheet"; template: TemplateId; at: InsertAt }
+  /** Refused, said on the card (a vehicle already covers those days). */
+  | { kind: "refused"; text: string }
+  /** Added already (a second tap, another tab): nothing more. */
+  | { kind: "already" }
+  /** A warning: nothing to add. */
+  | null;
+
 /**
- * "Plana ekle": the real record through the template the suggestion names (planned, like a tile from "+ Ekle"),
- * then the suggestion is done. Handed back for the 8-second "Geri al"; null for a warning (nothing to add).
+ * "Plana ekle": the real record through the template the suggestion names (planned, like a tile from "+ Ekle"). The
+ * suggestion is marked added and the record put in the same transaction, after checking it isn't added already, so
+ * a double tap or a second tab never adds it twice. A vehicle for days one already covers is refused (vehicles.ts,
+ * the chat's guard), and a record the payload can't make whole opens the add sheet instead.
  */
-export async function addSuggested(tripId: string, s: Suggestion, id: string = newId()): Promise<Undoable | null> {
-  const item = suggestedItem(s, tripId, id, Date.now());
-  if (!item) return null;
-  await (await db()).put("items", item);
+export async function addSuggested(tripId: string, s: Suggestion, id: string = newId()): Promise<SuggestedOutcome> {
+  const now = Date.now();
+  const made = suggestedAdd(s, tripId, id, now);
+  if (!made) return null;
+  if (made.kind === "sheet") return made;
+  const item = made.item;
+  const d = await db();
+  // One transaction: is it added already (by a double tap, another tab), does a vehicle cover those days, then the
+  // mark and the record together. Nothing else can slip in between.
+  const tx = d.transaction(["trips", "items"], "readwrite");
+  const trip = await tx.objectStore("trips").get(tripId);
+  if (!trip || trip.suggestions?.some((x) => x.key === s.key && x.state === "added")) {
+    await tx.done;
+    return { kind: "already" };
+  }
+  if (vehicleOf(item)) {
+    const items = (await tx.objectStore("items").index("tripId").getAll(tripId)).map(withEdits);
+    const check = checkVehicle({ added: item, items, same: null, replaces: [], userText: "", previousReply: null });
+    if (check.refusal) {
+      await tx.done;
+      const there = items.filter((i) => i.status !== "dismissed" && vehicleOf(i) && overlaps(periodOf(i), periodOf(item))).map((i) => i.name);
+      return {
+        kind: "refused",
+        text: L(`Bu günler için zaten bir araç var (${there.join(", ")}); ikincisi eklenmedi.`, `A vehicle already covers these days (${there.join(", ")}); a second one wasn't added.`),
+      };
+    }
+  }
+  const was = trip.suggestions?.find((x) => x.key === s.key) ?? s;
+  await tx.objectStore("trips").put({ ...trip, suggestions: withState(trip.suggestions, was, "added", now), updatedAt: now });
+  await tx.objectStore("items").put(item);
+  await tx.done;
   await addEvent(tripId, L(`${item.name} plana eklendi`, `${item.name} added to the plan`));
+  notifyChanged();
+  return { kind: "added", undo: { kind: "suggestion", tripId, suggestion: s, state: "added", item } };
+}
+
+/** The add sheet opened for a suggestion got its record (a tile picked): the suggestion is done. */
+export async function markSuggestionAdded(tripId: string, s: Suggestion): Promise<void> {
   await setSuggestion(tripId, s, "added");
-  return { kind: "suggestion", tripId, suggestion: s, state: "added", item };
 }
 
 /** "Gerek yok": the suggestion is gone for good (Geçmiş's "Geri getir" brings it back), with the 8-second "Geri al". */
@@ -157,7 +207,10 @@ export async function undo(u: Undoable): Promise<void> {
   if (u.kind === "suggestion") {
     // The record "Plana ekle" made goes again (nothing of the traveller's: no trash entry), and the card is back.
     if (u.item) await deleteItem(u.item, L(`${u.item.name} eklenmedi (geri alındı)`, `${u.item.name} not added (undone)`), { trash: false });
-    return setSuggestion(u.tripId, u.suggestion, "open");
+    await setSuggestion(u.tripId, u.suggestion, "open");
+    // Its "gerek yok" line in Geçmiş is closed by this one (history.ts marks it "geri alındı").
+    if (u.state === "dismissed") await addEvent(u.tripId, L(`${u.suggestion.title} geri getirildi`, `${u.suggestion.title} brought back`));
+    return;
   }
   if (u.kind === "added") {
     // Taking back a one-tap add loses nothing of the traveller's: no trash entry for it.

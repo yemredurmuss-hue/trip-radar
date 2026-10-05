@@ -2211,7 +2211,9 @@ try {
 
   // 19. Öneriler (spec 2026-10-06 §1): a trip with 25 nights in one city and no vehicle shows the monthly rental as
   // a card atop Ulaşım ("1 öneri" in its header, never in a count); "Plana ekle" adds a rental card; another
-  // suggestion's "Gerek yok" takes it away, and it doesn't come back after a reload.
+  // suggestion's "Gerek yok" takes it away, and it doesn't come back after a reload. The passport is set (as in
+  // Settings): insurance and eSIM are suggested only for a home country the traveller chose, never the default.
+  await board.evaluate(() => chrome.storage.local.set({ passport: "TR" }));
   await board.evaluate(async () => {
     const request = indexedDB.open("trip-radar");
     const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));

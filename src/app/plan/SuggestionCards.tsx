@@ -4,7 +4,13 @@
 import type { Suggestion } from "../../lib/types";
 import { L } from "../../lib/i18n";
 
-export function SuggestionCards({ list, onAdd, onDismiss }: { list: Suggestion[]; onAdd: (s: Suggestion) => void; onDismiss: (s: Suggestion) => void }) {
+export function SuggestionCards({ list, onAdd, onDismiss, notes = {} }: {
+  list: Suggestion[];
+  onAdd: (s: Suggestion) => void;
+  onDismiss: (s: Suggestion) => void;
+  /** Why "Plana ekle" didn't add it (a vehicle already covers those days), by key: said under the card. */
+  notes?: Record<string, string>;
+}) {
   if (!list.length) return null;
   return (
     <div className="sg-list" aria-label={L("Öneriler", "Suggestions")}>
@@ -16,6 +22,11 @@ export function SuggestionCards({ list, onAdd, onDismiss }: { list: Suggestion[]
           <span className="sg-text">
             <b>{s.title}</b>
             <span className="sg-why">{s.why}</span>
+            {notes[s.key] && (
+              <span className="sg-note" role="status">
+                {notes[s.key]}
+              </span>
+            )}
           </span>
           <span className="sg-actions">
             {s.kind === "add" && (

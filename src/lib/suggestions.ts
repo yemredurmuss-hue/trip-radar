@@ -6,23 +6,23 @@
 //  1. rules (here, pure): worked out from the trip on every render, gone by themselves once resolved; only what the
 //     traveller did with one ("Plana ekle", "Gerek yok") is stored;
 //  2. the AI review (suggestReview.ts) and 3. the chat's `suggest` tool: stored on the trip as they come.
-// "Gerek yok" is for good: a dismissed key never comes back from any source (and a dismissed vehicle, insurance
-// or eSIM suggestion keeps the same topic from coming back under another key). Pure, except nothing: the writes
-// are app/actions.ts.
+// "Gerek yok" is for good: a dismissed key never comes back from any source, and a dismissed vehicle, insurance or
+// eSIM suggestion keeps its whole topic away, a rule's included (the monthly rental keyed by another main place
+// after the places regroup stays gone). Pure: the writes are app/actions.ts.
 import { countryOfAirport } from "./airports";
 import type { SectionId } from "./categories";
-import type { MainPlace } from "./destinations";
+import { mainPlaces, placesKey, resolveParents, type MainPlace } from "./destinations";
 import { countryCodesOf, countryNames } from "./heroInfo";
 import { L } from "./i18n";
 import { locative } from "./i18nText";
 import { formatDateRange, isoDate } from "./items";
-import { isHiddenLeg, type Leg } from "./legs";
-import { cityKeyOf, type Plan } from "./plan";
-import { plannedItem, type PlannedInput } from "./planned";
+import { buildLegs, isHiddenLeg, type Leg } from "./legs";
+import { buildPlan, cityKeyOf, type Plan } from "./plan";
+import { ALL_PLANNED_KINDS, checkPlanned, plannedItem, type PlannedInput } from "./planned";
 import { TEMPLATES, type TemplateId } from "./templates";
-import { nightsKey, type Timeline } from "./timeline";
+import { buildTimeline, nightsKey, type Timeline } from "./timeline";
 import { ESIM_WORDS, isInsurance } from "./travelKinds";
-import type { Item, Suggestion, SuggestionKind, SuggestionSection, SuggestionState, Trip } from "./types";
+import type { Item, Listing, Suggestion, SuggestionKind, SuggestionSection, SuggestionState, Trip } from "./types";
 import { overlaps, periodOf, vehicleOf } from "./vehicles";
 
 export type { Suggestion, SuggestionKind, SuggestionSection, SuggestionState };
@@ -69,8 +69,11 @@ export interface RuleInput {
   legs: Leg[];
   /** The hero's main places (destinations.ts); the stay cities stand for themselves when empty. */
   mains: MainPlace[];
-  /** The traveller's own country (passport, ISO alpha-2): a trip elsewhere is abroad. */
-  home: string;
+  /**
+   * The traveller's own country (passport, ISO alpha-2), only when they set it in Settings: a trip elsewhere is
+   * abroad. Null (never set): nothing is said about insurance or an eSIM, rather than guess from a default.
+   */
+  home: string | null;
   today: string;
 }
 
@@ -83,6 +86,8 @@ const SCOOTER_COUNTRIES = new Set(["ID", "TH", "VN", "KH", "LA", "MY", "PH", "LK
 
 const live = (i: Item) => i.status !== "dismissed";
 const minutesOf = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+/** A transfer note that says a shuttle is there (legs.ts SHUTTLE, or the traveller's own note). */
+const SHUTTLE_NOTE = /havaliman[ıi] servisi|airport shuttle|shuttle|servis var/i;
 /** 22:00 to 04:59: a landing at night. */
 const atNight = (hhmm: string | null) => !!hhmm && /^\d{2}:\d{2}$/.test(hhmm) && (minutesOf(hhmm) >= 22 * 60 || minutesOf(hhmm) < 5 * 60);
 
@@ -90,10 +95,35 @@ function rule(key: string, section: SuggestionSection, kind: SuggestionKind, tit
   return { key, section, kind, title, why, source: "rule", ...(template ? { template } : {}), ...(payload ? { payload } : {}), createdAt: 0, state: "open" };
 }
 
-/** The trip's countries other than home: its places' (stays, plans) and where its flights land. */
+/**
+ * Two flights that look booked apart: saved from different pages, or different captures, or sold by different
+ * providers. Two plans said in the chat (no page, no provider) can't be told apart: not a warning then.
+ */
+function separatelyBooked(a: Item, b: Item): boolean {
+  if (a.url && b.url && a.url !== b.url) return true;
+  if (a.captureIds.length && b.captureIds.length && !a.captureIds.some((c) => b.captureIds.includes(c))) return true;
+  return Boolean(a.provider && b.provider && a.provider.trim().toLowerCase() !== b.provider.trim().toLowerCase());
+}
+
+const msOf = (iso: string | null | undefined) => (iso && iso.length >= 16 ? Date.parse(`${iso.slice(0, 16)}:00Z`) : NaN);
+
+/** A flight landing where another flight leaves within 24 h: that airport is a connection, not a place visited. */
+function isTransit(f: Item, flights: Item[]): boolean {
+  const at = f.flight?.to?.trim().toUpperCase();
+  const lands = msOf(f.flight?.arrival);
+  if (!at || !Number.isFinite(lands)) return false;
+  return flights.some((g) => {
+    if (g.id === f.id || g.flight?.from?.trim().toUpperCase() !== at) return false;
+    const leaves = msOf(g.flight?.departure);
+    return Number.isFinite(leaves) && leaves >= lands && leaves - lands <= 24 * 60 * 60_000;
+  });
+}
+
+/** The trip's countries other than home: its places' (stays, plans) and where its flights land (connections aside). */
 export function foreignCountries(items: Item[], home: string): string[] {
   const own = home.trim().toUpperCase();
-  const landed = items.filter((i) => live(i) && i.category === "flight").map((i) => countryOfAirport(i.flight?.to));
+  const flights = items.filter((i) => live(i) && i.category === "flight");
+  const landed = flights.filter((f) => !isTransit(f, flights)).map((i) => countryOfAirport(i.flight?.to));
   const codes = [...countryCodesOf(items), ...landed.filter((c): c is string => !!c).map((c) => c.toUpperCase())];
   return [...new Set(codes)].filter((c) => /^[A-Z]{2}$/.test(c) && c !== own);
 }
@@ -112,7 +142,7 @@ export function ruleSuggestions({ trip, plan, items, timeline, legs, mains, home
   for (const a of flights) {
     for (const b of flights) {
       const at = a.flight!.to?.trim().toUpperCase();
-      if (a.id === b.id || !at || at !== b.flight!.from?.trim().toUpperCase()) continue;
+      if (a.id === b.id || !at || at !== b.flight!.from?.trim().toUpperCase() || !separatelyBooked(a, b)) continue;
       const lands = a.flight!.arrival;
       const leaves = b.flight!.departure;
       if (!lands || !leaves || lands.length < 16 || leaves.length < 16) continue;
@@ -125,8 +155,8 @@ export function ruleSuggestions({ trip, plan, items, timeline, legs, mains, home
           "warning",
           L(`Kısa aktarma: ${gap} dk (${at})`, `Short layover: ${gap} min (${at})`),
           L(
-            `${a.name} ile ${b.name} ayrı biletler; ilki gecikirse bağlantı garanti değil.`,
-            `${a.name} and ${b.name} are separate tickets; if the first is late, the connection isn't protected.`,
+            `${a.name} ile ${b.name} ayrı biletlerse ilki gecikince bağlantı korunmaz; tek biletse havayolu yeniden yerleştirir.`,
+            `If ${a.name} and ${b.name} are separate tickets, a late first flight doesn't protect the connection; on one ticket the airline rebooks you.`,
           ),
         ),
       );
@@ -156,6 +186,9 @@ export function ruleSuggestions({ trip, plan, items, timeline, legs, mains, home
   // Ulaşım: a landing at night with no transfer planned for it.
   for (const leg of legs) {
     if (leg.kind !== "arrival" || leg.status !== "empty" || !atNight(leg.after) || leg.date < today || isHiddenLeg(leg, trip.hidden)) continue;
+    // A rental picked up that day (the car is the way from the airport), or a shuttle the stay's page offers.
+    if (items.some((i) => live(i) && vehicleOf(i) && periodOf(i)?.start === leg.date)) continue;
+    if (leg.notes.some((n) => SHUTTLE_NOTE.test(n)) || (leg.choice?.note && SHUTTLE_NOTE.test(leg.choice.note))) continue;
     const byAir = (leg.via ?? leg.travel?.mode ?? null) === "flight";
     out.push(
       rule(
@@ -205,7 +238,7 @@ export function ruleSuggestions({ trip, plan, items, timeline, legs, mains, home
   }
 
   // Diğer: abroad without travel health insurance, or without an eSIM.
-  const abroad = foreignCountries(items, home);
+  const abroad = home ? foreignCountries(items, home) : [];
   if (abroad.length) {
     const names = countryNames(abroad);
     if (!items.some((i) => live(i) && isInsurance(i))) {
@@ -241,28 +274,65 @@ export function ruleSuggestions({ trip, plan, items, timeline, legs, mains, home
   return sortSuggestions(out);
 }
 
+/**
+ * The rules for a trip as the board works them out, from the stored trip alone (for the chat, which has no board):
+ * the plan, its transfers and front, and the hero's main places (the model's answer kept on the trip when it's for
+ * these places, else the guess from addresses and the table of regions).
+ */
+export function boardRules(trip: Trip, items: Item[], home: string | null, today: string, listings?: Map<string, Listing>): Suggestion[] {
+  const plan = buildPlan(trip, items);
+  const legs = buildLegs(plan, trip, listings);
+  const timeline = buildTimeline(plan, legs, items, new Set(trip.hidden ?? []));
+  const seen = new Map<string, string>();
+  for (const b of plan.stayBlocks) if (b.city && !seen.has(cityKeyOf(b.city)!)) seen.set(cityKeyOf(b.city)!, b.city);
+  if (!seen.size) for (const i of items) if (live(i) && i.category === "stay" && i.city && !seen.has(cityKeyOf(i.city)!)) seen.set(cityKeyOf(i.city)!, i.city);
+  const cities = [...seen.values()];
+  const known = trip.placeParents?.key === placesKey(cities) ? trip.placeParents.parents : null;
+  const mains = mainPlaces(cities, resolveParents(cities, items, known));
+  return ruleSuggestions({ trip, plan, items, timeline, legs, mains, home, today });
+}
+
 // --- what's shown, and what the traveller did ---------------------------------------------------------
 
 const ORDER = new Map<string, number>(SUGGESTION_SECTIONS.map((s, i) => [s, i]));
 const sortSuggestions = (list: Suggestion[]): Suggestion[] =>
   [...list].sort((a, b) => (ORDER.get(a.section) ?? 99) - (ORDER.get(b.section) ?? 99) || a.createdAt - b.createdAt);
 
+/** The days a suggestion's record would cover (its payload), or null when it says none (it can't be ruled out). */
+const payloadPeriod = (s: Suggestion) => periodOf({ dates: { start: s.payload?.start ?? null, end: s.payload?.end ?? null, source: "none" } });
+
 /**
- * The open suggestions on the board: the rules' (unless the traveller already added or dismissed that key) and the
- * stored ones from the AI and the chat (unless a rule covers the same topic, or that topic was dismissed).
+ * What's already on the plan for a suggestion's topic: a live vehicle for its days (a car, a scooter, a campervan:
+ * vehicles.ts, the same guard the chat's plan_item has), a policy, an eSIM. Empty when none (or no topic).
  */
-export function shownSuggestions(stored: readonly Suggestion[] | undefined, rules: readonly Suggestion[]): Suggestion[] {
+export function coveringItems(s: Suggestion, items: readonly Item[]): Item[] {
+  const topic = topicOf(s);
+  if (topic === "vehicle") {
+    const days = payloadPeriod(s);
+    return items.filter((i) => live(i) && vehicleOf(i) && overlaps(periodOf(i), days));
+  }
+  if (topic === "insurance") return items.filter((i) => live(i) && isInsurance(i));
+  if (topic === "esim") return items.filter((i) => live(i) && (i.category === "esim" || i.plannedKind === "esim" || ESIM_WORDS.test(i.name)));
+  return [];
+}
+
+/**
+ * The open suggestions on the board: the rules' (unless the traveller already added or dismissed that key, or
+ * dismissed its topic) and the stored ones from the AI and the chat (unless a rule covers the same topic, that topic
+ * was dismissed, or the plan already has it: a vehicle for those days, a policy, an eSIM).
+ */
+export function shownSuggestions(stored: readonly Suggestion[] | undefined, rules: readonly Suggestion[], items: readonly Item[] = []): Suggestion[] {
   const list = stored ?? [];
   const acted = new Map(list.map((s) => [s.key, s]));
-  const fromRules = rules.filter((r) => (acted.get(r.key)?.state ?? "open") === "open");
-  const ruleTopics = new Set([...fromRules, ...list.filter((s) => s.source === "rule")].map(topicOf).filter(Boolean));
   const dismissedTopics = new Set(list.filter((s) => s.state === "dismissed").map(topicOf).filter(Boolean));
+  const fromRules = rules.filter((r) => (acted.get(r.key)?.state ?? "open") === "open" && !dismissedTopics.has(topicOf(r)));
+  const ruleTopics = new Set([...fromRules, ...list.filter((s) => s.source === "rule")].map(topicOf).filter(Boolean));
   const seen = new Set(fromRules.map((r) => r.key));
   const others = list.filter((s) => {
     if (s.source === "rule" || s.state !== "open" || seen.has(s.key)) return false;
     seen.add(s.key);
     const topic = topicOf(s);
-    return !(topic && (ruleTopics.has(topic) || dismissedTopics.has(topic)));
+    return !(topic && (ruleTopics.has(topic) || dismissedTopics.has(topic) || coveringItems(s, items).length));
   });
   return sortSuggestions([...fromRules, ...others]);
 }
@@ -326,7 +396,15 @@ export interface SuggestionInput {
 }
 
 const CLOCK = /(?<!\d)\d{1,2}[:.]\d{2}(?!\d)/;
-const MONEY = /[€$£₺¥฿₹]|(?<![\p{L}])(?:eur|usd|gbp|try|tl|idr|thb|euro|euros|dolar|dollars?|lira|rupiah|baht)(?![\p{L}])/iu;
+/** A currency sign anywhere is a price. */
+const MONEY_SIGN = /[€$£₺¥฿₹₫₩₱₦₴₽]/u;
+/** Words and codes for money: next to a number they're a price ("Rp 500.000", "2 juta", "80 kr", "50 CHF"). */
+const MONEY_WORD =
+  "eur|euros?|usd|gbp|try|tl|lira(?:s[ıi])?|dolar|dollars?|idr|rp|rupiah|juta|ribu|vnd|dong|đồng|rm|myr|ringgit|inr|rupees?|rs|kr|sek|nok|dkk|chf|frank|francs?|yen|jpy|baht|thb|php|peso|pesos|won|krw|aud|cad|sgd|zar|aed|dirham";
+const MONEY_NEAR = new RegExp(`\\d[\\d.,]*\\s*(?:${MONEY_WORD})(?![\\p{L}])|(?<![\\p{L}])(?:${MONEY_WORD})\\s*\\d`, "iu");
+/** These read as money even with no number ("birkaç euro", "a few dollars"). */
+const MONEY_ALONE = /(?<![\p{L}])(?:euro|euros|dolar|dollars?|lira|rupiah|baht|juta|rupees?|yen)(?![\p{L}])/iu;
+const isMoney = (text: string) => MONEY_SIGN.test(text) || MONEY_NEAR.test(text) || MONEY_ALONE.test(text);
 const PERCENT = /%|(?<![\p{L}])(?:yüzde|percent)(?![\p{L}])/iu;
 /** Two sentences: an end mark followed by more text. */
 const TWO_SENTENCES = /[.!?]\s+\S/;
@@ -338,8 +416,22 @@ const slug = (s: string) =>
     .replace(/[̀-ͯ]/g, "")
     .replace(/ı/g, "i")
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48);
+    .replace(/^-+|-+$/g, "");
+
+/** Filler words a model varies between two wordings of the same thing. */
+const FILLER = new Set(["ve", "ile", "icin", "bir", "the", "and", "for", "with", "of", "to", "in", "at", "a", "an", "de", "da", "gezisi", "turu", "tour", "trip", "visit", "ziyaret", "ziyareti", "yap", "git", "gidin", "go"]);
+
+/**
+ * A suggestion's key: its section and topic (a vehicle, insurance, an eSIM: one per trip, whatever the wording), else
+ * its template and the title's words, filler aside and sorted ("Tegallalang pirinç terasları" = "Pirinç terasları,
+ * Tegallalang"). Not the title as written: the same thing said twice keeps one key, so "Gerek yok" holds.
+ */
+export function suggestionKey(source: Suggestion["source"], section: SuggestionSection, kind: SuggestionKind, template: string, title: string): string {
+  const topic = topicOf({ template });
+  if (topic) return `${source}:${section}:${topic}`;
+  const words = [...new Set(slug(title).split("-").filter((w) => w.length > 1 && !FILLER.has(w)))].sort();
+  return `${source}:${section}:${template || kind}:${words.join("-") || slug(title)}`;
+}
 
 /**
  * A suggestion from the model, checked: an allowed section and kind, a template of that section (one is picked when
@@ -358,7 +450,7 @@ export function checkSuggestionInput(raw: Partial<Record<keyof SuggestionInput, 
   if (!why || why.length > 200) return L("why tek kısa cümle olmalı (1–200 karakter).", "why must be one short sentence (1–200 characters).");
   if (TWO_SENTENCES.test(why)) return L("why tek cümle olmalı.", "why must be a single sentence.");
   const text = `${title} ${why}`;
-  if (CLOCK.test(text) || MONEY.test(text) || PERCENT.test(text)) {
+  if (CLOCK.test(text) || isMoney(text) || PERCENT.test(text)) {
     return L("Öneride fiyat, saat ya da yüzde olmaz (uydurma olabilir); yalnız olguları yaz.", "No prices, times or percentages in a suggestion (they could be made up); state facts only.");
   }
   let template = str(raw.template);
@@ -381,7 +473,7 @@ export function checkSuggestionInput(raw: Partial<Record<keyof SuggestionInput, 
   if (start && end && end < start) return L("end, start'tan önce olamaz.", "end can't be before start.");
   const city = str(raw.city).slice(0, 60);
   return {
-    key: `${source}:${section}:${template || kind}:${slug(title)}`,
+    key: suggestionKey(source, section, kind, template, title),
     section,
     kind,
     title,
@@ -400,18 +492,43 @@ export function checkSuggestionInput(raw: Partial<Record<keyof SuggestionInput, 
 const NAMED_BY_TITLE: readonly TemplateId[] = ["activity", "todo", "food", "esim", "insurance"];
 
 /**
- * The record "Plana ekle" makes: the suggestion's template, filled from its payload (city, days, a time for a taxi),
- * planned ("Planlanıyor") like a tile picked from "+ Ekle". Null for a warning (nothing to add).
+ * What "Plana ekle" does: the record itself when the payload makes a whole one, else the template's add sheet opened
+ * where it belongs (a flight or a train needs both ends: never "Lombok → ?"; a stay needs its nights). Null for a
+ * warning (nothing to add).
+ */
+export type SuggestedAdd = { kind: "item"; item: Item } | { kind: "sheet"; template: TemplateId; at: { city: string | null; date: string | null } };
+
+export function suggestedAdd(s: Suggestion, tripId: string, id: string, now: number): SuggestedAdd | null {
+  const tpl = s.kind === "add" ? TEMPLATES.find((t) => t.id === s.template) : undefined;
+  if (!tpl) return null;
+  const item = suggestedItem(s, tripId, id, now)!;
+  const input = inputOf(s, tpl);
+  const ends = tpl.form !== "trip" || tpl.kind === "taxi" || Boolean(input.from && input.to);
+  const nights = tpl.form !== "stay" || Boolean(input.date && input.end_date);
+  if (checkPlanned(input, ALL_PLANNED_KINDS, { complete: true }) || !ends || !nights) {
+    return { kind: "sheet", template: tpl.id, at: { city: s.payload?.city?.trim() || null, date: isoDate(s.payload?.start ?? null) } };
+  }
+  return { kind: "item", item };
+}
+
+/**
+ * The record a suggestion makes: its template, filled from its payload (city, days, a time for a taxi), planned
+ * ("Planlanıyor") like a tile picked from "+ Ekle". Null for a warning. suggestedAdd says whether it's whole.
  */
 export function suggestedItem(s: Suggestion, tripId: string, id: string, now: number): Item | null {
   const tpl = s.kind === "add" ? TEMPLATES.find((t) => t.id === s.template) : undefined;
   if (!tpl) return null;
+  const made = plannedItem(inputOf(s, tpl), tripId, id, now);
+  return tpl.id === "todo" ? { ...made, booking: "none" } : made;
+}
+
+function inputOf(s: Suggestion, tpl: (typeof TEMPLATES)[number]): PlannedInput {
   const p = s.payload ?? {};
   const city = p.city?.trim() || null;
   const start = isoDate(p.start ?? null);
   const end = isoDate(p.end ?? null);
   const trip = tpl.form === "trip";
-  const input: PlannedInput = {
+  return {
     kind: tpl.kind,
     date: start,
     end_date: tpl.form === "rental" || tpl.form === "stay" || tpl.id === "insurance" ? (end && start && end > start ? end : null) : null,
@@ -423,6 +540,4 @@ export function suggestedItem(s: Suggestion, tripId: string, id: string, now: nu
     booked: false,
     note: null,
   };
-  const made = plannedItem(input, tripId, id, now);
-  return tpl.id === "todo" ? { ...made, booking: "none" } : made;
 }

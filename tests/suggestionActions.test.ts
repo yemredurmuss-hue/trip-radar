@@ -7,6 +7,7 @@ import { buildHistory, type HistoryInput } from "../src/lib/history";
 import { shownSuggestions } from "../src/lib/suggestions";
 import type { Suggestion, Trip } from "../src/lib/types";
 import { undoText, undoTrip } from "../src/lib/undoables";
+import { makeItem } from "./fixtures/makeItem";
 
 const trip = (id: string): Trip => ({ id, title: "Bali", confirmedDates: { start: "2026-12-10", end: "2027-01-10" }, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 });
 const monthly = (): Suggestion => ({
@@ -19,7 +20,9 @@ const stored = async (id: string) => (await (await db()).get("trips", id))!;
 describe("Plana ekle", () => {
   it("adds the real record through its template, marks the suggestion added, and Geri al takes both back", async () => {
     await (await db()).put("trips", trip("sa1"));
-    const u = (await addSuggested("sa1", monthly(), "rental-1"))!;
+    const out = await addSuggested("sa1", monthly(), "rental-1");
+    if (out?.kind !== "added") throw new Error(`not added: ${JSON.stringify(out)}`);
+    const u = out.undo;
     expect(undoTrip(u)).toBe("sa1");
     expect(undoText(u)).toMatch(/plana eklendi$/);
     const items = await listItems("sa1");
@@ -34,6 +37,33 @@ describe("Plana ekle", () => {
     expect(shownSuggestions((await stored("sa1")).suggestions, [monthly()]).map((s) => s.key)).toEqual(["rule:monthly-vehicle:ubud"]);
     // Nothing of the traveller's went to the trash.
     expect(await (await db()).getAll("trash")).toEqual([]);
+  });
+
+  it("a double tap or a second tab adds it once (marked added in the same transaction as the record)", async () => {
+    await (await db()).put("trips", trip("sa5"));
+    const [a, b] = await Promise.all([addSuggested("sa5", monthly(), "r-a"), addSuggested("sa5", monthly(), "r-b")]);
+    expect([a?.kind, b?.kind].sort()).toEqual(["added", "already"]);
+    expect(await listItems("sa5")).toHaveLength(1);
+    expect((await addSuggested("sa5", monthly(), "r-c"))?.kind).toBe("already");
+    expect(await listItems("sa5")).toHaveLength(1);
+  });
+
+  it("refuses a second vehicle for the same days, with words for the card", async () => {
+    await (await db()).put("trips", trip("sa6"));
+    const car = makeItem({ id: "car-1", tripId: "sa6", category: "transport", plannedKind: "car_rental", name: "Araba · Ubud", dates: { start: "2026-12-12", end: "2026-12-20", source: "page" }, status: "chosen" });
+    await (await db()).put("items", car);
+    const out = await addSuggested("sa6", monthly(), "r-x");
+    expect(out).toMatchObject({ kind: "refused" });
+    expect(out?.kind === "refused" && out.text).toContain("Araba · Ubud");
+    expect((await listItems("sa6")).map((i) => i.id)).toEqual(["car-1"]);
+    expect((await stored("sa6")).suggestions).toBeUndefined();
+  });
+
+  it("opens the add sheet for what the suggestion can't make whole (a flight with one end)", async () => {
+    await (await db()).put("trips", trip("sa7"));
+    const toLombok: Suggestion = { key: "ai:flight:flight:lombok", section: "flight", kind: "add", title: "Lombok'a uçuş", why: "x", source: "ai", template: "flight", payload: { city: "Lombok", start: "2026-12-20" }, createdAt: 1, state: "open" };
+    expect(await addSuggested("sa7", toLombok)).toEqual({ kind: "sheet", template: "flight", at: { city: "Lombok", date: "2026-12-20" } });
+    expect(await listItems("sa7")).toEqual([]);
   });
 
   it("has nothing to add for a warning", async () => {
@@ -72,6 +102,12 @@ describe("Gerek yok", () => {
     const again = await dismissSuggestion("sa3", esim());
     await undo(again);
     expect((await stored("sa3")).suggestions).toEqual([]);
+    // No orphan "Gizlendi" rows in Geçmiş: each "gerek yok" line shows taken back, its "geri getirildi" folded in.
+    const after = buildHistory({ ...input, events: await listMessages("sa3"), hidden: [] });
+    const lines = after.filter((r) => r.text === "eSIM (Endonezya)");
+    expect(lines).toHaveLength(2);
+    expect(lines.every((r) => r.undone !== null && r.verb === "Gizlendi")).toBe(true);
+    expect(after.some((r) => /geri getirildi/.test(r.text))).toBe(false);
   });
 
   it("keeps a chat suggestion's record when it opens again", async () => {

@@ -14,12 +14,12 @@ import { L } from "../lib/i18n";
 import { imageProxy, nextCityImage, nextHeroImage, pickCityImage, wantsCityImage } from "../lib/cityImages";
 import { acceptMood, moodKey, statusSentence } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
-import { loadPassport } from "../lib/passport";
+import { loadHome, loadPassport } from "../lib/passport";
 import { homeCurrencyOf, tripFacts } from "../lib/tripFacts";
 import type { Timeline } from "../lib/timeline";
 
-import type { Capture, Item, Trip } from "../lib/types";
-import { chooseItem, hideNights, undo as takeBack, updateTrip } from "./actions";
+import type { Capture, Item, Suggestion, Trip } from "../lib/types";
+import { chooseItem, hideNights, markSuggestionAdded, undo as takeBack, updateTrip } from "./actions";
 import { legEndsByItem, legModeByItem } from "../lib/cardKinds";
 import { inheritedDocs } from "../lib/docs";
 import { deleteItem, onHidden, onRemoved } from "../lib/removal";
@@ -183,7 +183,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     if (stale.length) void updateTrip(trip.id, (t) => ({ ...t, hidden: (t.hidden ?? []).filter((k) => !stale.includes(k)) }), { touch: false });
   }, [legs, trip.id, trip.hidden]);
   const offer = (u: Undoable) => undoTrip(u) === trip.id && undo.show(u);
-  const [sheet, setSheet] = useState<{ at: InsertAt | null; editing: Item | null; only?: readonly TemplateId[] } | null>(null);
+  /** `suggestion`: opened by a suggestion's "Plana ekle" it couldn't make whole; a tile picked marks it added. */
+  const [sheet, setSheet] = useState<{ at: InsertAt | null; editing: Item | null; only?: readonly TemplateId[]; suggestion?: Suggestion } | null>(null);
   const [focus, setFocus] = useState<CardFocus | null>(null);
   useEffect(() => setFocus(null), [trip.id]);
   // A box that went away without Enter, Tab or Esc (another card opened): what was typed in it doesn't come back.
@@ -401,8 +402,13 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     // eslint-disable-next-line react-hooks/exhaustive-deps -- asked by the set of unnamed notes
   }, [trip.id, unnamedFor]);
   const [passport, setPassport] = useState("TR");
+  // The passport as set in Settings (null while it's the default): the suggestions about going abroad wait for it.
+  const [home, setHome] = useState<string | null>(null);
   useEffect(() => {
-    const read = () => void loadPassport().then(setPassport);
+    const read = () => {
+      void loadPassport().then(setPassport);
+      void loadHome().then(setHome);
+    };
     read();
     // Changed in Settings (a dialog over this board).
     const onChange = (changes: Record<string, unknown>) => "passport" in changes && read();
@@ -437,8 +443,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // Öneriler: the rules' and the AI's/chat's suggestions atop their sections (never counted); the AI review when due,
   // told the hero's main places and who goes.
   const suggestions = useSuggestions({
-    trip, plan, items, timeline, legs, mains, home: passport, today, ready: placesSettled, offer, quiet: arrivals.quiet,
+    trip, plan, items, timeline, legs, mains, home, today, ready: placesSettled, offer, quiet: arrivals.quiet,
     travellers: who.count || null,
+    openSheet: (s, template, at) => setSheet({ at, editing: null, only: [template], suggestion: s }),
     onAdded: (item) => {
       if (view !== "plan") setView("plan");
       setOpened(sectionOfItem(item), true);
@@ -635,7 +642,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
 
       {sheet && (
         <AddSheet at={sheet.at} editing={sheet.editing} only={sheet.only} currency={decisions?.ctx.currency ?? trip.budget?.currency ?? "EUR"} onClose={() => setSheet(null)}
-          onPick={(tpl) => void quickAdd(tpl, sheet.at)} />
+          onPick={(tpl) => {
+            const s = sheet.suggestion;
+            void quickAdd(tpl, sheet.at).then(() => s && markSuggestionAdded(trip.id, s));
+          }} />
       )}
       <UndoToast
         undoable={undoable}

@@ -12,6 +12,8 @@ import { checkSuggestionInput, mergeIncoming, SECTION_TEMPLATES, SUGGESTION_SECT
 import type { Item, Suggestion, Trip } from "./types";
 
 export const REVIEW_EVERY_MS = 24 * 60 * 60 * 1000;
+/** A review marked running this long ago never came back (a closed tab): it may be asked again. */
+export const REVIEW_STALE_MS = 10 * 60 * 1000;
 /** New suggestions taken from one answer at most. */
 export const REVIEW_MAX = 3;
 
@@ -35,6 +37,8 @@ export function reviewKey(mains: Pick<MainPlace, "name">[], range: DateRange | n
 /** Whether to ask now: never asked; else at most once a day, and only for another trip state (or after a failure). */
 export function reviewDue(last: Trip["suggestReview"], key: string, now: number): boolean {
   if (!last) return true;
+  // Asked by another tab or an earlier mount and not back yet: not again, unless it's been stuck for 10 minutes.
+  if (last.state === "running") return now - last.at > REVIEW_STALE_MS;
   if (now - last.at < REVIEW_EVERY_MS) return false;
   return last.key !== key || Boolean(last.failed);
 }
@@ -110,17 +114,36 @@ export async function runReview(args: {
   save: (change: (trip: Trip) => Trip) => Promise<void>;
   now?: number;
   provider?: () => Promise<LlmProvider>;
-}): Promise<"done" | "no-key" | "failed"> {
+}): Promise<"done" | "no-key" | "failed" | "skipped"> {
   const now = args.now ?? Date.now();
+  let llm: LlmProvider;
   try {
-    const llm = await (args.provider ?? getProvider)();
+    llm = await (args.provider ?? getProvider)();
+  } catch (error) {
+    if (error instanceof MissingKeyError) return "no-key"; // nothing stored: asked once a key is there
+    console.warn("suggestion review", error);
+    return "failed";
+  }
+  // Claimed first, on the trip as stored now: another tab (or this board mounted again) sees it running and waits.
+  let claimed = false;
+  await args.save((t) => {
+    if (!reviewDue(t.suggestReview, args.key, now)) return t;
+    claimed = true;
+    return { ...t, suggestReview: { key: args.key, at: now, state: "running" } };
+  });
+  if (!claimed) return "skipped";
+  try {
     const answer = await llm.generateJson(reviewSystem(), args.prompt, ReviewSchema);
-    await args.save((t) => ({ ...t, suggestions: acceptReview(answer, t.suggestions, now).list, suggestReview: { key: args.key, at: now } }));
+    await args.save((t) => ({ ...t, suggestions: acceptReview(answer, t.suggestions, now).list, suggestReview: { key: args.key, at: now, state: "done" } }));
     return "done";
   } catch (error) {
-    if (error instanceof MissingKeyError) return "no-key";
+    if (error instanceof MissingKeyError) {
+      // The key went away meanwhile: the claim goes, nothing is remembered.
+      await args.save((t) => ({ ...t, suggestReview: null })).catch(() => undefined);
+      return "no-key";
+    }
     console.warn("suggestion review", error);
-    await args.save((t) => ({ ...t, suggestReview: { key: args.key, at: now, failed: true } })).catch(() => undefined);
+    await args.save((t) => ({ ...t, suggestReview: { key: args.key, at: now, failed: true, state: "failed" } })).catch(() => undefined);
     return "failed";
   }
 }

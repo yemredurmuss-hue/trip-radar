@@ -41,7 +41,23 @@ import { announceTripChange } from "./tripUndo";
 import { claimsChange } from "./claims";
 import { cleanContent, cleanReply, replyFallback } from "./replyText";
 import { checkVehicle, stillCancelled, vehicleOf, type VehicleType } from "./vehicles";
-import { checkSuggestionInput, mergeIncoming, SUGGESTION_KINDS, SUGGESTION_SECTIONS, SUGGESTION_TEMPLATES, type MergeOutcome } from "./suggestions";
+import {
+  boardRules,
+  checkSuggestionInput,
+  coveringItems,
+  mergeIncoming,
+  shownSuggestions,
+  SUGGESTION_KINDS,
+  SUGGESTION_SECTIONS,
+  SUGGESTION_TEMPLATES,
+  topicOf,
+  type MergeOutcome,
+  type Suggestion,
+} from "./suggestions";
+import { loadHome } from "./passport";
+
+/** What became of the chat's suggestion, as its result says it. */
+type SuggestOutcome = MergeOutcome | "already_added" | "covered_by_rule" | "already_on_plan";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
 import type { ToolResult, ToolSpec } from "./llm/types";
 import {
@@ -120,7 +136,7 @@ Nasıl konuşursun:
   • Konaklamayı birleştirme/uzatma/kısaltma ("Porto tek blok olsun 7-12", "Porto'yu 13'üne uzat") → plan_item kind stay, şehrin TÜM gecelerini tek aralıkla (date = giriş, end_date = çıkış). O şehirde bu aralığın içinde kalan eski sohbet konaklamaları birleşir (sonuçta merged); board alanıyla panoda ne göründüğünü anlat.
   • "X'i kaldır/sil", "ulaşımda X var, onu kaldır" → remove_from_plan. target_id ya bir seçeneğin items[].id'si (plandan çıkar, silinmez: Gizlenenler'de durur, oradan geri getirilebilir) ya da bir transferin plan.legs[].key'i (panoda "Gaula → Madeira" gibi görünen şehir değişimi ya da transfer; panodaki adı plan.legs[].cities; "Gerek yok" gibi gizlenir). Hiçbiri silinmez; Gizlenenler'den geri getirilebilir. Araç hata verirse kaldırılmadı: nedenini söyle, "kaldırdım" deme.
   • "X iptal, yerine Y" ("araç kiralama iptal, yerine karavan kiraladık") → aynı mesajda ikisini birden yap: Y'yi plan_item ile replaces = X'in id'si vererek ekle (Y kayıtlıysa update_items, X'i de remove_from_plan ile kaldır). X yalnız tek bir kayda uyuyorsa kaldır; birden fazla aday varsa hangisi olduğunu sor.
-  • Kullanıcının istemediği rezervasyonlu bir şeyi (araç, konaklama, uçuş, tur) kendiliğinden plana ekleme. Önerdiğin şeyi suggest ile doğru bölüme bırak (ör. aylık motor kiralama → Ulaşım); kullanıcı açıkça eklemeni isterse plan_item. Sigorta ve eSIM önerisi Diğer'e gider. Bir öneriyi asla todo, prep ya da activity olarak plan_item ile ekleme; Yapılacak şeyler yalnız kullanıcının söylediği deneyimler içindir. suggest'te fiyat, saat ya da yüzde uydurma; gerekçe tek cümle, plandaki olgulara dayansın. O günleri kapsayan bir araç (karavan, kiralık araba, motosiklet) zaten varsa, kullanıcı bu mesajda açıkça istemedikçe ikinci bir araç ekleme; plan_item bunu reddeder, önce sor.
+  • Kullanıcının istemediği rezervasyonlu bir şeyi (araç, konaklama, uçuş, tur) kendiliğinden plana ekleme. Önerdiğin şeyi suggest ile doğru bölüme bırak (ör. aylık motor kiralama → Ulaşım); kullanıcı açıkça eklemeni isterse plan_item. Sigorta ve eSIM önerisi Diğer'e gider. suggest yalnız plana girecek somut bir şey içindir (araç, konaklama, sigorta, eSIM, tur ya da bilet); genel ipuçları ("erken çık", "nakit taşı") kart değildir, yanıtında söyle. trip_state.suggestions.on_board'daki kartları tekrar önerme. Bir öneriyi asla todo, prep ya da activity olarak plan_item ile ekleme; Yapılacak şeyler yalnız kullanıcının söylediği deneyimler içindir. suggest'te fiyat, saat ya da yüzde uydurma; gerekçe tek cümle, plandaki olgulara dayansın. O günleri kapsayan bir araç (karavan, kiralık araba, motosiklet) zaten varsa, kullanıcı bu mesajda açıkça istemedikçe ikinci bir araç ekleme; plan_item bunu reddeder, önce sor.
 - Gerek olmayanı sil: "transfere gerek yok", "orayı arabayla hallederiz, transfer yok" → set_leg mode "none" (transfer gizlenir, geri getirilebilir). "X'i ele / istemiyorum" → update_items status dismissed (bölümünün sonunda Gizlenenler'de durur, silinmez).
 - Soruların kısa ve sade olsun, şehirlerle sor: "Porto → Madeira nasıl geçeceksiniz?" gibi; otel adlarıyla, uzun ya da karışık cümle kurma.
 - Transferler: kullanıcı nasıl gideceğini söylediğinde ("metroyla gideceğim", "trenle geçeriz", "transferi ayarladım", "otel servisiyle") set_leg ile ilgili transferi işaretle (tarih ve şehirden hangisi olduğunu bul); booked yalnız "ayarladım/aldım/rezerve ettim" derse true. Plan konuşurken boş (empty) bir transferi uygun anda, bir seferde bir tane, sor; notes'taki ince detayı ilgili olduğunda söyle. Nasıl gidilebileceğini genel bilginle önerebilirsin ("genelde havalimanından metro var") ama fiyat ya da sefer saati uydurma.
@@ -177,7 +193,7 @@ How you talk:
   • Merging/extending/shortening a stay ("make Porto one block, 7-12", "extend Porto to the 13th") → plan_item kind stay with ALL the city's nights as one range (date = check-in, end_date = check-out). Earlier chat stays in that city inside this range merge (merged in the result); use the board field to say what the board shows.
   • "remove/delete X", "there's X in transport, remove it" → remove_from_plan. target_id is either an option's items[].id (it leaves the plan, not deleted: it waits under Hidden and can be brought back from there) or a transfer's plan.legs[].key (a change of city or a transfer the board shows like "Gaula → Madeira"; its name on the board is plan.legs[].cities; it's hidden like "Not needed"). Nothing is deleted; it can be brought back from Hidden. If the tool returns an error, nothing was removed: say why, never "removed".
   • "X is cancelled, Y instead" ("the car rental is cancelled, we rented a campervan instead") → do both in the same message: add Y with plan_item and replaces = X's id (if Y is saved, update_items, and remove X with remove_from_plan). Remove X only when it matches one record; if several could be meant, ask which.
-  • Never add something bookable the user didn't ask for (a vehicle, a stay, a flight, a tour) on your own. Leave what you suggest in the right section with suggest (e.g. a monthly scooter rental → Getting around); if the user explicitly asks you to add it, plan_item. Insurance and eSIM suggestions go to Other. Never add a suggestion with plan_item as a todo, prep or activity; Things to do is only for experiences the user said. In suggest, don't make up prices, times or percentages; the why is one sentence resting on facts in the plan. If a vehicle (campervan, rental car, motorbike) already covers those days, don't add a second one unless the user explicitly asks in this message; plan_item refuses it, ask first.
+  • Never add something bookable the user didn't ask for (a vehicle, a stay, a flight, a tour) on your own. Leave what you suggest in the right section with suggest (e.g. a monthly scooter rental → Getting around); if the user explicitly asks you to add it, plan_item. Insurance and eSIM suggestions go to Other. suggest is only for something concrete that would go on the plan (a vehicle, a stay, insurance, an eSIM, a tour or a ticket); general tips ("leave early", "carry cash") are not cards, say them in your reply. Don't suggest again the cards in trip_state.suggestions.on_board. Never add a suggestion with plan_item as a todo, prep or activity; Things to do is only for experiences the user said. In suggest, don't make up prices, times or percentages; the why is one sentence resting on facts in the plan. If a vehicle (campervan, rental car, motorbike) already covers those days, don't add a second one unless the user explicitly asks in this message; plan_item refuses it, ask first.
 - Remove what isn't needed: "no transfer needed", "we'll drive there, no transfer" → set_leg mode "none" (the transfer is hidden and can be brought back). "rule out X / don't want it" → update_items status dismissed (it stays among the ruled-out ones, not deleted).
 - Keep questions short and simple, and ask with cities: like "How will you get from Porto to Madeira?"; not with hotel names, and not long or tangled sentences.
 - Transfers: when the user says how they'll go ("I'll take the metro", "we'll go by train", "I've arranged the transfer", "with the hotel shuttle"), mark that transfer with set_leg (work out which one from the date and city); booked is true only if they say "arranged/bought/booked". While planning, ask about an empty transfer at a good moment, one at a time; mention a detail from notes when relevant. You can suggest how to get there from general knowledge ("there's usually a metro from the airport") but never make up prices or timetables.
@@ -504,8 +520,8 @@ function buildTools(en: boolean): ToolSpec[] {
     {
       name: "suggest",
       description: t(
-        "Kullanıcının istemediği ama işine yarayacak bir şeyi plana EKLEMEDEN, ait olduğu bölümün başına öneri kartı olarak bırakır (✨ başlık · tek cümle neden · Plana ekle / Gerek yok). Plana girmez, sayılmaz; kullanıcı 'Plana ekle'ye basarsa kayıt kurulur. Kullanıcı açıkça eklemeni isterse bunun yerine plan_item. section: flight, stay, transport (araç/motor kiralama, taksi, tren...), activity, todo, food, other (sigorta, eSIM). kind: add (eklenecek bir şey) ya da warning (kontrol edilecek bir şey; template \"\"). template: bölümün şablonu (transport: train/bus/minibus/ferry/taxi/car/moto/rv/bike; stay: hotel/home; other: esim/insurance; flight/activity/todo/food: kendi adı) ya da \"\". title kısa; why tek cümle, plandaki olgulara dayanır; fiyat, saat ya da yüzde yazma. city, start, end (YYYY-MM-DD) bilinmiyorsa \"\". Kullanıcının daha önce 'Gerek yok' dediği bir öneri tekrar bırakılmaz; sonuç ne olduğunu söyler.",
-        "Leaves something the user didn't ask for but would help them as a suggestion card at the top of its section, WITHOUT adding it to the plan (✨ title · one-sentence why · Add to plan / Not needed). It isn't part of the plan or counted; the record is made only if the user taps 'Add to plan'. If the user explicitly asks you to add it, use plan_item instead. section: flight, stay, transport (car/scooter rental, taxi, train...), activity, todo, food, other (insurance, eSIM). kind: add (something to add) or warning (something to check; template \"\"). template: the section's template (transport: train/bus/minibus/ferry/taxi/car/moto/rv/bike; stay: hotel/home; other: esim/insurance; flight/activity/todo/food: its own name) or \"\". title short, in English; why one sentence resting on facts in the plan; no prices, times or percentages. city, start, end (YYYY-MM-DD) \"\" when not known. A suggestion the user already said 'Not needed' to isn't left again; the result says what happened.",
+        "Kullanıcının istemediği ama işine yarayacak bir şeyi plana EKLEMEDEN, ait olduğu bölümün başına öneri kartı olarak bırakır (✨ başlık · tek cümle neden · Plana ekle / Gerek yok). Plana girmez, sayılmaz; kullanıcı 'Plana ekle'ye basarsa kayıt kurulur. Kullanıcı açıkça eklemeni isterse bunun yerine plan_item. Yalnız plana girecek somut bir şey için (araç, konaklama, sigorta, eSIM, tur, bilet); genel ipucu için değil. section: flight, stay, transport (araç/motor kiralama, taksi, tren...), activity, todo, food, other (sigorta, eSIM). kind: add (eklenecek bir şey) ya da warning (kontrol edilecek bir şey; template \"\"). template: bölümün şablonu (transport: train/bus/minibus/ferry/taxi/car/moto/rv/bike; stay: hotel/home; other: esim/insurance; flight/activity/todo/food: kendi adı) ya da \"\". title kısa; why tek cümle, plandaki olgulara dayanır; fiyat, saat ya da yüzde yazma. city, start, end (YYYY-MM-DD) bilinmiyorsa \"\". Kullanıcının daha önce 'Gerek yok' dediği bir öneri tekrar bırakılmaz; sonuç ne olduğunu söyler.",
+        "Leaves something the user didn't ask for but would help them as a suggestion card at the top of its section, WITHOUT adding it to the plan (✨ title · one-sentence why · Add to plan / Not needed). It isn't part of the plan or counted; the record is made only if the user taps 'Add to plan'. If the user explicitly asks you to add it, use plan_item instead. Only for something concrete that would go on the plan (a vehicle, a stay, insurance, an eSIM, a tour, a ticket); never for a general tip. section: flight, stay, transport (car/scooter rental, taxi, train...), activity, todo, food, other (insurance, eSIM). kind: add (something to add) or warning (something to check; template \"\"). template: the section's template (transport: train/bus/minibus/ferry/taxi/car/moto/rv/bike; stay: hotel/home; other: esim/insurance; flight/activity/todo/food: its own name) or \"\". title short, in English; why one sentence resting on facts in the plan; no prices, times or percentages. city, start, end (YYYY-MM-DD) \"\" when not known. A suggestion the user already said 'Not needed' to isn't left again; the result says what happened.",
       ),
       schema: {
         type: "object",
@@ -751,6 +767,8 @@ export function tripState(
   reading?: Pick<TripDecisions, "ctx" | "decisions">,
   /** The cards that have a file (a ticket, a confirmation): a booking without one says `document: "missing"`. */
   withDocs?: Set<string>,
+  /** The rules' suggestion cards the board shows now (worked out, not stored): so the model doesn't suggest them twice. */
+  onBoard: Suggestion[] = [],
 ): string {
   const range = tripDateRange(items);
   return JSON.stringify({
@@ -796,11 +814,12 @@ export function tripState(
       ...(i.origin === "chat" ? { said_in_chat: true } : {}),
     })),
     // Suggestion cards left before (not part of the plan) and the ones the user said "Gerek yok" to: never again.
-    ...(trip.suggestions?.length
+    ...(trip.suggestions?.length || onBoard.length
       ? {
           suggestions: {
-            open: trip.suggestions.filter((s) => s.state === "open").map((s) => ({ section: s.section, title: s.title })),
-            not_needed: trip.suggestions.filter((s) => s.state === "dismissed").map((s) => s.title),
+            on_board: onBoard.map((s) => ({ key: s.key, section: s.section, title: s.title })),
+            open: (trip.suggestions ?? []).filter((s) => s.state === "open").map((s) => ({ section: s.section, title: s.title })),
+            not_needed: (trip.suggestions ?? []).filter((s) => s.state === "dismissed").map((s) => s.title),
           },
         }
       : {}),
@@ -1350,26 +1369,43 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       // A card atop its section, never a record: the plan, its counts and the day flow stay as they are.
       const checked = checkSuggestionInput(input ?? {}, "chat", Date.now());
       if (typeof checked === "string") throw new ToolError(`${checked} ${L("Hiçbir öneri bırakılmadı.", "No suggestion was left.")}`);
-      let outcome: MergeOutcome = "added";
+      // What the board would really show: the rules' cards as it works them out, and the plan as it stands.
+      const current = await d.get("trips", tripId);
+      if (!current) throw new ToolError(L("Gezi bulunamadı.", "Trip not found."));
+      const shownItems = items.map(withEdits);
+      const rules = boardRules(current, shownItems, await loadHome(), new Date().toISOString().slice(0, 10));
+      let outcome: SuggestOutcome = "added";
       const after = await changeTrip(tripId, (t) => {
         const merged = mergeIncoming(t.suggestions, [checked]);
-        outcome = merged.outcomes[0];
+        const there = t.suggestions?.find((x) => x.key === checked.key);
+        if (merged.outcomes[0] !== "added") outcome = there?.state === "added" ? "already_added" : merged.outcomes[0];
+        else if (!shownSuggestions(merged.list, rules, shownItems).some((s) => s.key === checked.key)) {
+          outcome = rules.some((r) => topicOf(r) && topicOf(r) === topicOf(checked)) ? "covered_by_rule" : coveringItems(checked, shownItems).length ? "already_on_plan" : "covered_by_rule";
+        }
         return outcome === "added" ? { ...t, suggestions: merged.list } : t;
       });
       if (!after) throw new ToolError(L("Gezi bulunamadı.", "Trip not found."));
       const where = PLAN_SECTION_NAMES[checked.section];
-      const said: Record<MergeOutcome, string> = {
+      const said: Record<SuggestOutcome, string> = {
         added: L(
           `Öneri kartı ${where} bölümünün başında duruyor; plana eklenmedi ve sayılmaz. Kullanıcı 'Plana ekle'ye basarsa kayıt kurulur.`,
           `The suggestion card sits at the top of ${where}; it wasn't added to the plan and isn't counted. The record is made if the user taps 'Add to plan'.`,
         ),
         already_there: L("Bu öneri zaten panoda; ikinci kez bırakılmadı.", "This suggestion is already on the board; it wasn't left twice."),
+        already_added: L("Kullanıcı bu öneriyi zaten plana ekledi; tekrar bırakılmadı.", "The user already added this suggestion to the plan; it wasn't left again."),
+        covered_by_rule: L(
+          "Panoda aynı konuda bir öneri kartı zaten var (suggestions.on_board); ikincisi bırakılmadı. Ona yönlendir.",
+          "The board already shows a suggestion on this (suggestions.on_board); a second one wasn't left. Point the user to it.",
+        ),
+        already_on_plan: L("Planda bu zaten var (o günler için bir araç, bir poliçe ya da eSIM); öneri bırakılmadı.", "The plan already has this (a vehicle for those days, a policy or an eSIM); no suggestion was left."),
         dismissed_before: L(
           "Kullanıcı bu öneriye daha önce 'Gerek yok' dedi; tekrar bırakılmadı. Yeniden önerme.",
           "The user already said 'Not needed' to this suggestion; it wasn't left again. Don't suggest it again.",
         ),
       };
-      return JSON.stringify({ suggestion: checked.title, section: where, result: outcome, added_to_plan: false, note: said[outcome] });
+      // Nothing new on the board: said as unchanged, so the turn doesn't count it as a change.
+      const result = { suggestion: checked.title, section: where, result: outcome, added_to_plan: false, note: said[outcome] };
+      return JSON.stringify(outcome === "added" ? result : { unchanged: true, ...result });
     }
     case "set_leg": {
       const trip = await d.get("trips", tripId);
@@ -1522,6 +1558,7 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
     result.ctx.inferred,
     result,
     new Set((await listDocMeta(tripId)).map((d) => d.itemId)),
+    shownSuggestions(trip.suggestions, boardRules(trip, items, await loadHome(), result.ctx.today, result.ctx.listings), items).filter((s) => s.source === "rule"),
   );
   const stateHash = hash(state);
   const lastStateHash = session.findLast((m) => m.stateHash)?.stateHash;
