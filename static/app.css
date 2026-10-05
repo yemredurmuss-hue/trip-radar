@@ -1220,10 +1220,15 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .pk-price b { font-size: 17px; color: var(--pk-ink); margin-right: 2px; }
 .pk-cta { height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--pk-ink, #1d1d1f); color: #fff; font: inherit; font-size: 15px; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .pk-cta:disabled { opacity: .5; }
+/* No price (a transfer, a move): the one action still sits at the right end. */
+.pk-foot > .pk-cta { margin-left: auto; }
+.pk-foot > .pk-price ~ .pk-cta { margin-left: 0; }
 
 /* opened (ulasim-v3 .detail) */
 .pk-detail { position: relative; margin: 12px 0 0; padding: 14px 16px; border-radius: 14px; background: #fff; font-size: 14px; cursor: auto; }
 .pk-detail .card-details { padding: 0; }
+/* A transfer's details: the day-by-day row's body, without that row's rail indent. */
+.pk-detail .leg-body { padding: 0; }
 .pk-dl { display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; margin: 0 0 8px; }
 .pk-dl dt { color: var(--pk-gray); }
 .pk-dl dd { margin: 0; }
