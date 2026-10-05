@@ -29,8 +29,16 @@ import { isIdea } from "./booking";
 import { sectionOfItem, type SectionId } from "./categories";
 import { addDays, buildPlan, cityKeyOf, liveGroups, sameCity, stayRange, type Plan } from "./plan";
 import { fromPage, saidEdits, withEdits, withoutEdits } from "./userEdits";
-import { L, lang } from "./i18n";
+import { L, lang, saveLang, setLang, type Lang } from "./i18n";
 import { announceHidden } from "./removal";
+import { getRates } from "./currency";
+import { makeContext } from "./decision";
+import { nPeople, travellersTitle } from "./heroInfo";
+import { stableJson } from "./share/settings";
+import { adultsOf } from "./tripFacts";
+import { currencyOf, fieldsBefore, whoGoes, withCurrency, withTravellers, type CurrencyChange, type TripFieldsBefore } from "./tripSettings";
+import { announceTripChange } from "./tripUndo";
+import { claimsChange, noChangeNote } from "./claims";
 import { cleanContent, cleanReply, replyFallback } from "./replyText";
 import { checkVehicle, stillCancelled, vehicleOf, type VehicleType } from "./vehicles";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
@@ -97,6 +105,8 @@ Nasıl konuşursun:
 - Fiyat: kullanıcı bir fiyat söylerse ("biletim 312 dolardı", "oteli 90 euroya aldım") set_price ile ilgili seçeneğe yaz.
 - Kayıtlı bir seçeneğin tarihi, saati ya da güzergâhı eksik/yanlışsa ve kullanıcı söylerse ("o bilet 12 Ekim'di", "attığım uçuş 12 Ekim", "kalkış 22:40") set_details ile o seçeneği düzelt; aynı şey için plan_item ile yeni plan ekleme. Kayıtlı bir seçeneğin yeri yanlışsa ("karavan Gaula değil Madeira", "otel Porto'da değil Gaia'da") set_details city ile düzelt; aynı yer için plan_item ile yeni konaklama açma, kayıtlı seçeneği silme. Sohbette düzeltilen değer kalıcıdır: sayfa yeniden kaydedilse de kartta o kalır. Tarihsiz kalan kayıtları (items[].dates.start null) konuşma uygun olduğunda tek soruyla sor.
 - Yalnız araçların yaptığını söyle: bir aracı çağırmadıysan ya da araç hata verdiyse "güncelledim/not ettim/böldüm" deme. Aracın döndürdüğü sonuçla (ör. plan_item'ın board alanı) panoda gerçekten ne olduğunu anlat.
+- Bir şeyin değiştiğini ("güncelledim", "değiştirdim", "ekledim", "tamam, yaptım") ancak BU mesajda çağırdığın bir araç başarılı olduysa söyle; sonuçta "unchanged" varsa hiçbir şey değişmemiştir, öyle söyle. İsteneni yapan bir araç yoksa bunu açıkça söyle ve nerede yapılabileceğini göster ("Bunu buradan değiştiremiyorum; Ayarlar'dan yapabilirsin").
+- Pano ayarları: "bütçeyi euro göster", "her şey TL olsun" → set_settings currency (bütçe günün kuruyla çevrilir; kur yoksa araç reddeder: "kur bilgisi yok, sonra dene" de, tutar uydurma). "Türkçeye geç", "İngilizce olsun" → set_settings language; ondan sonra o dilde yanıt ver. Kimler gidiyor: "Sabine de geliyor", "Ali gelmiyor", "2 kişiyiz" → set_travellers (paylaşmadan kaydeder; davet etmek isterse kahramandaki kişiler kutusundan "Birini davet et (paylaş)").
 - Boş geceler varsa uygun bir anda bir kez hatırlat.
 - Planlar: kullanıcı bir planını söylediğinde, linki olmasa da (ör. "7 Ekim'de İstanbul'dan Porto'ya uçuyoruz", "11 Ekim'de Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız", "10-17 Ekim Funchal'da kalacağız", "9 Ekim akşamı fado") plan_item ile hemen panoya ekle; tarih ve nereden/nereye ya da şehir ver. Gün belli değilse beklemeden date null ile ekle (şehrin bloğunda "gün belli değil" diye durur); gün plandan açıksa (ör. Madeira'ya varış günü) o tarihi kullan; gün sonra söylenince aynı şeyi plan_item ile tarihle tekrar ver, kart o güne geçer. "gideriz/düşünüyoruz" → planlanıyor (booked false); "aldım/rezerve ettim" → booked true. Aynı şey items'ta zaten varsa plan_item yerine update_items kullan. Şehir değişimi için ulaşım söylenirse (Madeira'ya uçakla) kind flight ile ekle.
 - Planı sohbetten şekillendirme (hemen, aynı mesajda, sormadan):
@@ -152,6 +162,8 @@ How you talk:
 - Price: if the user says a price ("my ticket was 312 dollars", "I got the hotel for 90 euros"), write it to the option with set_price.
 - If a saved option's date, time or route is missing or wrong and the user says so ("that ticket was for 12 October", "the flight I sent is on 12 October", "departure 22:40"), fix that option with set_details; don't add a new plan for the same thing with plan_item. If a saved option's place is wrong ("the campervan isn't Gaula, it's Madeira", "the hotel is in Gaia, not Porto"), fix it with set_details city; never open a new stay for it with plan_item, and never delete the saved option. What the chat corrects stays: the card keeps it even when the page is saved again. Ask about undated saves (items[].dates.start null) with a single question when the conversation allows.
 - Only say what the tools did: if you didn't call a tool, or it returned an error, don't say "updated/noted/split". Use the tool's result (e.g. plan_item's board field) to say what really happened on the board.
+- Say something changed ("updated", "changed", "added", "done!") only when a tool you called in THIS message succeeded; a result with "unchanged" means nothing changed, so say that. If no tool does what was asked, say so plainly and point to where it can be done ("I can't change that from here; you can do it in Settings").
+- Board settings: "show the budget in euros", "everything in TRY" → set_settings currency (the budget is converted at the day's rate; without a rate the tool refuses: say "no exchange rate right now, try later", never make up an amount). "switch to Turkish", "in English please" → set_settings language; answer in that language from then on. If the user writes in Turkish, you may offer once to switch the board to Turkish. Who's going: "Sabine is coming too", "Ali isn't coming", "we're 2" → set_travellers (saved without sharing; to invite someone, point to "Invite someone (share)" in the hero's people box).
 - If there are empty nights, mention it once at a good moment.
 - Plans: when the user mentions a plan, even without a link (e.g. "we fly Istanbul to Porto on 7 October", "we'll fly over to Madeira on 11 October", "we'll hire a car in Madeira", "we'll stay in Funchal 10-17 October", "fado on the evening of 9 October"), add it to the board right away with plan_item; give the date and from/to or the city. If the day isn't known, add it straight away with date null (it waits in the city's block as "day not set"); if the day is clear from the plan (e.g. the day they arrive in Madeira), use that date; when the day is given later, send the same thing again with plan_item and the date, and the card moves to that day. "we'll go/we're thinking" → planned (booked false); "bought it/booked it" → booked true. If the same thing is already in items, use update_items instead of plan_item. If transport for a change of city is mentioned (to Madeira by plane), add it with kind flight.
 - Shaping the plan from the chat (right away, in the same message, without asking):
@@ -437,6 +449,35 @@ function buildTools(en: boolean): ToolSpec[] {
       },
     },
     {
+      name: "set_settings",
+      description:
+        t("Panonun ayarlarını değiştirir. currency: gezinin parası ('bütçeyi euro göster', 'her şey TL olsun'); bütçe ve tüm fiyatlar o parayla gösterilip karşılaştırılır, bütçe günün kuruyla çevrilir (kur yoksa reddeder, hiçbir şey değişmez). language: panonun dili ('Türkçeye geç' → tr, 'switch to English' → en); pano o dilde yeniden açılır, sen de o dilde yanıt verirsin. Değişmeyen alan için boş metin \"\". Sonuç gerçekten neyin değiştiğini söyler.", "Changes the board's settings. currency: the trip's money ('show the budget in euros', 'everything in TRY'); the budget and every price are shown and compared in it, the budget converted at the day's rate (without a rate it refuses and nothing changes). language: the board's language ('switch to Turkish' → tr, 'switch to English' → en); the board opens again in it, and you answer in it. An empty string \"\" for a field that doesn't change. The result says what really changed."),
+      schema: {
+        type: "object",
+        properties: {
+          currency: { type: "string", description: t("ISO kodu (EUR, TRY, USD, GBP...) ya da değişmiyorsa \"\"", "ISO code (EUR, TRY, USD, GBP...) or \"\" if unchanged") },
+          language: { type: "string", enum: ["tr", "en", ""], description: t("tr, en ya da değişmiyorsa \"\"", "tr, en or \"\" if unchanged") },
+        },
+        required: ["currency", "language"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "set_travellers",
+      description:
+        t("Gezide kimlerin olduğunu paylaşmadan kaydeder ('Sabine de geliyor', 'Ali gelmiyor', '3 kişiyiz'). add: eklenecek isimler; remove: çıkarılacak isimler; count: kaç kişi gidiyor (isimlerden fazlaysa; değişmiyorsa 0). Kullanıcının kendisi zaten sayılır, onu ekleme. Kişi sayısı bütçe seviyesini (kişi başı) değiştirir. Paylaşmak (davet) ayrı bir iştir: kullanıcı isterse kahramandaki 'Birini davet et'i söyle.", "Saves who's on the trip without sharing it ('Sabine is coming too', 'Ali isn't coming', 'we're 3'). add: names to add; remove: names to take out; count: how many go (when more than the names; 0 if unchanged). The user already counts; don't add them. The number of people changes the budget level (per person). Sharing (an invite) is separate: if they want it, point to 'Invite someone' in the hero."),
+      schema: {
+        type: "object",
+        properties: {
+          add: { type: "array", items: { type: "string" } },
+          remove: { type: "array", items: { type: "string" } },
+          count: { type: "number", description: t("Toplam kişi sayısı (kullanıcı dahil); değişmiyorsa 0", "Total number of people (the user included); 0 if unchanged") },
+        },
+        required: ["add", "remove", "count"],
+        additionalProperties: false,
+      },
+    },
+    {
       name: "plan_item",
       description:
         t("Kullanıcının sohbette söylediği bir planı (linki, tarihi olmasa da) hemen panoya ekler: uçuş, tren, otobüs, feribot, transfer, taksi, araç kiralama, konaklama, etkinlik (activity: yalnız bilet, rezervasyon, giriş ücreti, tur ya da gösteri varsa), eSIM, seyahat sigortası (insurance; Diğer'e düşer), yapılacak (todo: destinasyonda rezervasyonsuz deneyim — pazar, alışveriş, yürüyüş, manzara, plaj; Plan'da Yapılacak şeyler'e düşer), hazırlık (prep: gezi öncesi iş — satın al, başvur, yazdır, paketle, döviz; Diğer'in Hazırlık listesine düşer). Uçuş gün verilince nereye gittiği bilinmeden de eklenir (bilet şablonu). Tarihliyse kendi gününde, tarihsizse şehrinin bloğunda görünür; booked false ise 'planlanıyor' yazar. Konaklama (kind stay, booked false) o geceler için ayrı, boş bir konaklama bloğu açar: otel seçilmez, o gecelere önceden seçilmiş bir yer varsa kalan gecelerde kalır. Aynı plan tekrar söylenirse (tarih sonradan gelse de) onu günceller. Konaklamada o şehirde bu gecelerin içinde kalan eski sohbet konaklamaları bununla birleşir (merged). Sonuç panonun o gecelerde ne gösterdiğini döndürür (board). O günleri kapsayan bir araç (karavan, kiralık araba, motosiklet) varken kullanıcı bu mesajda istemediyse ikinci bir aracı eklemez, reddeder: önce sor. replaces: kullanıcı bu planın yerine geçtiği kaydı söylediyse ('araç kiralama iptal, yerine karavan') onun id'si; o kayıt plandan çıkar (Gizlenenler'den geri getirilebilir).", "Adds a plan the user mentioned in the chat to the board right away (even without a link or date): flight, train, bus, ferry, transfer, taxi, car hire, stay, activity (only with a ticket, a reservation, an entry fee, a tour or a show), eSIM, travel insurance (insurance; it goes to Other), to-do (todo: an experience at the destination with no booking — a market, shopping, a walk, a viewpoint, a beach; it goes to the Plan's Things to do), prep (a chore before the trip — buy, apply, print, pack, change money; it goes to Other's Prep list). A flight is added once its day is given, even before its destination is known (a ticket template). Dated, it shows on its day; undated, in its city's block; with booked false it says 'planned'. A stay (kind stay, booked false) opens a separate, empty stay block for those nights: no hotel is chosen, and a place chosen before for those nights stays for the remaining nights. Said again (even with the date coming later), the same plan is updated. For a stay, earlier chat stays in that city within these nights merge into it (merged). The result tells what the board shows for those nights (board). While a vehicle (campervan, rental car, motorbike) covers those days, it refuses to add a second one the user didn't ask for in this message: ask first. replaces: the id of the record this plan replaces, when the user said so ('the car rental is cancelled, a campervan instead'); that record leaves the plan (it can be brought back from Hidden)."),
@@ -693,6 +734,11 @@ export function tripState(
       title: trip.title,
       dates: trip.confirmedDates ?? (range ? { ...range, estimated: true } : null),
       budget: trip.budget,
+      // The money every price and the budget show in (set_settings changes it), and the board's language.
+      currency: reading?.ctx.currency ?? makeContext(trip, items).currency,
+      board_language: lang(),
+      // Who goes, said without sharing (set_travellers); the user themself isn't in the names.
+      ...(trip.travellers ? { travellers: { names: trip.travellers.names, count: trip.travellers.count ?? null } } : {}),
     },
     preferences,
     intent,
@@ -757,13 +803,13 @@ class ToolError extends Error {}
 
 /** Model output → requirements, rejecting anything malformed instead of guessing. */
 /** The budget after update_trip: a new target and/or ceiling; a ceiling only with a target to go with. */
-function withBudget(budget: Trip["budget"], amount: number | null, currency: string | null, ceiling: unknown): Trip["budget"] {
+function withBudget(budget: Trip["budget"], amount: number | null, currency: string | null, ceiling: unknown, shown = "EUR"): Trip["budget"] {
   if (ceiling != null && (typeof ceiling !== "number" || ceiling < 0)) throw new ToolError(L(`Geçersiz tavan: ${ceiling}`, `Invalid ceiling: ${ceiling}`));
   const target = amount ?? budget?.amount ?? (typeof ceiling === "number" && ceiling > 0 ? ceiling : null);
   if (target == null) return budget;
   const cap = ceiling === 0 ? null : typeof ceiling === "number" ? ceiling : (budget?.ceiling ?? null);
   if (cap != null && cap < target) throw new ToolError(L(`Tavan (${cap}) hedeften (${target}) küçük olamaz.`, `The ceiling (${cap}) can't be below the target (${target}).`));
-  return { amount: target, currency: currency ?? budget?.currency ?? "EUR", ...(cap != null ? { ceiling: cap } : {}) };
+  return { amount: target, currency: currency ?? budget?.currency ?? shown, ...(cap != null ? { ceiling: cap } : {}) };
 }
 
 function parseRequirements(raw: unknown): Requirement[] {
@@ -799,23 +845,34 @@ interface Turn {
   touched: Set<string>;
   /** Tool calls that worked. */
   done: number;
+  /** Of those, the ones that change something (not search_page, offer_choices): a reply saying "changed" needs one. */
+  changed: number;
 }
 const newTurn = (userText = "", previousReply: string | null = null): Turn => ({
-  userText, previousReply, removed: new Set(), removedVehicles: new Set(), touched: new Set(), done: 0,
+  userText, previousReply, removed: new Set(), removedVehicles: new Set(), touched: new Set(), done: 0, changed: 0,
 });
+
+/** Tools that only read or show something: they never make "I changed it" true. */
+const READ_ONLY_TOOLS = new Set(["search_page", "offer_choices"]);
 
 /**
  * The trip as stored right now, changed in one transaction (never a copy read before an await): a write from
- * elsewhere (the board, a share-sync pull) can't be lost. Null when the trip is gone.
+ * elsewhere (the board, a share-sync pull) can't be lost. Null when the trip is gone; a change that returns null
+ * writes nothing (the trip as it is comes back).
  */
-async function changeTrip(tripId: string, change: (trip: Trip) => Trip): Promise<Trip | null> {
+async function changeTrip(tripId: string, change: (trip: Trip) => Trip | null): Promise<Trip | null> {
   const tx = (await db()).transaction("trips", "readwrite");
   const current = await tx.store.get(tripId);
   if (!current) {
     await tx.done;
     return null;
   }
-  const next = { ...change(current), updatedAt: Date.now() };
+  const changed = change(current);
+  if (!changed) {
+    await tx.done;
+    return current;
+  }
+  const next = { ...changed, updatedAt: Date.now() };
   await tx.store.put(next);
   await tx.done;
   notifyChanged();
@@ -873,6 +930,98 @@ async function hideLeg(tripId: string, leg: Leg, turn: Turn): Promise<string> {
     shown_as: label,
     note: L("Panodan gizlendi; 'Geri al' ya da Gizlenenler'deki 'Geri getir' ile geri gelir.", "Hidden from the board; 'Undo', or 'Bring back' under Hidden, brings it back."),
   });
+}
+
+/** A tool's result that changed nothing starts with this: a reply saying "changed" after it gets the note. */
+const UNCHANGED = '{"unchanged"';
+
+/**
+ * "Bütçeyi euro göster": the trip's money, the budget converted at the day's rate (never a guessed amount: no rate,
+ * no change). Undoable from the board's "Geri al"; the line in Geçmiş says what it was.
+ */
+async function changeCurrency(tripId: string, raw: string, items: Item[]): Promise<Record<string, unknown>> {
+  const rates = await getRates();
+  let result: CurrencyChange | null | string = null;
+  let before: TripFieldsBefore | null = null;
+  const after = await changeTrip(tripId, (t) => {
+    result = withCurrency(t, raw, makeContext(t, items).currency, rates);
+    if (!result || typeof result === "string") return null;
+    before = fieldsBefore(t, ["currency", "budget"]);
+    return result.trip;
+  });
+  if (!after) throw new ToolError(L("Gezi bulunamadı.", "Trip not found."));
+  const done = result as CurrencyChange | null | string;
+  if (typeof done === "string") throw new ToolError(done);
+  if (!done || !before) {
+    const shown = makeContext(after, items).currency;
+    return { unchanged: true, currency: shown, note: L(`Pano zaten ${shown} gösteriyor; hiçbir şey değişmedi.`, `The board already shows ${shown}; nothing changed.`) };
+  }
+  const budget = done.budget ? L(` (bütçe ${done.budget.before} → ${done.budget.after})`, ` (budget ${done.budget.before} → ${done.budget.after})`) : "";
+  await addEvent(tripId, L(`Para birimi ${done.from} → ${done.to}${budget}`, `Currency ${done.from} → ${done.to}${budget}`));
+  announceTripChange({ tripId, ...(before as TripFieldsBefore), label: L(`Para birimi: ${done.to}`, `Currency: ${done.to}`) });
+  notifyChanged();
+  return {
+    currency: { from: done.from, to: done.to, budget: done.budget ? `${done.budget.before} → ${done.budget.after}` : null },
+    shown: L(
+      `Bütçe ve tüm fiyatlar artık ${done.to} ile gösteriliyor${done.budget ? ", bütçe günün kuruyla çevrildi" : ""}. Panodaki 'Geri al' eski haline döndürür.`,
+      `The budget and every price now show in ${done.to}${done.budget ? ", the budget converted at today's rate" : ""}. The board's 'Undo' puts it back.`,
+    ),
+  };
+}
+
+/** "Türkçeye geç": the board's language, kept as Settings keeps it; the rest of this turn already speaks it. */
+async function changeLanguage(tripId: string, next: Lang): Promise<Record<string, unknown>> {
+  const prev = lang();
+  if (prev === next) return { unchanged: true, language: next, note: L("Pano zaten Türkçe.", "The board is already in English.") };
+  try {
+    await saveLang(next);
+  } catch {
+    setLang(prev);
+    throw new ToolError(L("Dil kaydedilemedi; hiçbir şey değişmedi. Ayarlar'dan değiştirebilir.", "The language couldn't be saved; nothing changed. It can be changed in Settings."));
+  }
+  await addEvent(tripId, L("Panonun dili Türkçe oldu (sohbetten)", "The board's language is now English (from the chat)"));
+  return {
+    language: next,
+    shown: L(
+      "Pano Türkçe açılacak (sayfa kendini yeniler; 'Geri al' önceki dile döndürür). Bundan sonra Türkçe yanıt ver.",
+      "The board reopens in English (the page reloads itself; 'Undo' brings the language back). Answer in English from now on.",
+    ),
+  };
+}
+
+/** "Sabine de geliyor", "3 kişiyiz": who goes, without sharing; undoable like the money. */
+async function changeTravellers(tripId: string, input: any, items: Item[]): Promise<Record<string, unknown>> {
+  const list = (v: unknown) => (Array.isArray(v) ? v : []);
+  const count = typeof input.count === "number" && Number.isFinite(input.count) ? input.count : 0;
+  let result: ReturnType<typeof withTravellers> | null = null;
+  let before: TripFieldsBefore | null = null;
+  const after = await changeTrip(tripId, (t) => {
+    result = withTravellers(t.travellers, { add: list(input.add), remove: list(input.remove), count });
+    if (typeof result === "string") return null;
+    if (stableJson(result.travellers) === stableJson(t.travellers ?? { names: [] })) return null;
+    before = fieldsBefore(t, ["travellers"]);
+    return { ...t, travellers: result.travellers };
+  });
+  if (!after) throw new ToolError(L("Gezi bulunamadı.", "Trip not found."));
+  const done = result as ReturnType<typeof withTravellers> | null;
+  if (typeof done === "string") throw new ToolError(done);
+  const who = whoGoes({ travellers: after.travellers, adults: adultsOf(items.map(withEdits)) });
+  const hero = who.names.length ? `${travellersTitle(who.names, who.count)} · ${nPeople(who.count)}` : nPeople(who.count);
+  const missing = done?.missing.length ? { not_found: done.missing } : {};
+  if (!before) return { unchanged: true, named: after.travellers?.names ?? [], people: who.count, ...missing, note: L("Hiçbir şey değişmedi.", "Nothing changed.") };
+  const names = after.travellers?.names ?? [];
+  await addEvent(tripId, L(`Gidenler: ${names.length ? names.join(", ") : "isim yok"}${after.travellers?.count ? ` · ${after.travellers.count} kişi` : ""} (sohbetten)`, `Who's going: ${names.length ? names.join(", ") : "no names"}${after.travellers?.count ? ` · ${nPeople(after.travellers.count)}` : ""} (from the chat)`));
+  announceTripChange({ tripId, ...(before as TripFieldsBefore), label: L(`Gidenler: ${hero}`, `Who's going: ${hero}`) });
+  notifyChanged();
+  return {
+    named: names,
+    people: who.count,
+    ...missing,
+    shown: L(
+      `Kahramanda: ${hero} ("Ben" kullanıcının kendisi). Paylaşılmadı; davet ayrı. Panodaki 'Geri al' eski haline döndürür.`,
+      `The hero shows: ${hero} ("Me" is the user). Nothing was shared; an invite is separate. The board's 'Undo' puts it back.`,
+    ),
+  };
 }
 
 async function runTool(tripId: string, name: string, input: any, choices: string[], turn: Turn = newTurn()): Promise<string> {
@@ -1026,15 +1175,54 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       if (start && end && end <= start) throw new ToolError(L(`Bitiş (${end}) başlangıçtan (${start}) sonra olmalı.`, `The end (${end}) must be after the start (${start}).`));
       const amount = typeof input.budget_amount === "number" && input.budget_amount > 0 ? input.budget_amount : null;
       if (input.budget_amount != null && amount == null) throw new ToolError(L(`Geçersiz bütçe: ${input.budget_amount}`, `Invalid budget: ${input.budget_amount}`));
-      await d.put("trips", {
+      const shown = makeContext(trip, items.map(withEdits)).currency;
+      const said = currencyOf(input.budget_currency);
+      // Only a money given ("bütçeyi euro göster"): the trip's money changes and the budget is converted, never the
+      // same number put in another currency (nor a silent "ok" when there's no budget to carry it: the 0.36.6 bug).
+      const onlyCurrency = said && amount == null && input.budget_ceiling == null && said !== (trip.budget?.currency ?? shown);
+      const rest = text(input.title) || input.start != null || input.end != null;
+      if (onlyCurrency && !rest) return JSON.stringify(await changeCurrency(tripId, said, items.map(withEdits)));
+      if (!onlyCurrency && said && amount == null && trip.budget && said !== trip.budget.currency) {
+        throw new ToolError(
+          L(
+            `Bütçe ${trip.budget.currency} ile tutuluyor; ${said} ile bir tavan, hedefi de söylenmeden yazılamaz. Önce set_settings ile parayı değiştir ya da hedefi de ver. Hiçbir şey değişmedi.`,
+            `The budget is kept in ${trip.budget.currency}; a ceiling in ${said} can't be written without the target too. Change the money with set_settings first, or give the target as well. Nothing changed.`,
+          ),
+        );
+      }
+      // A new target with no money said is in the money the board shows (not euros by default).
+      const budget = withBudget(trip.budget, amount, onlyCurrency ? null : said, input.budget_ceiling, shown);
+      const next = {
         ...trip,
         title: typeof input.title === "string" && input.title.trim() ? input.title.trim() : trip.title,
         confirmedDates: start && end ? { start, end } : trip.confirmedDates,
-        budget: withBudget(trip.budget, amount, currencyCode(input.budget_currency), input.budget_ceiling),
-        updatedAt: Date.now(),
-      });
-      return "ok";
+        budget,
+      };
+      const changes = (["title", "confirmedDates", "budget"] as const).filter((f) => stableJson(next[f]) !== stableJson(trip[f]));
+      if (!changes.length && !onlyCurrency) return JSON.stringify({ unchanged: true, note: L("Hiçbir şey değişmedi.", "Nothing changed.") });
+      if (changes.length) await d.put("trips", { ...next, updatedAt: Date.now() });
+      const out: Record<string, unknown> = {
+        changed: changes,
+        title: next.title,
+        dates: next.confirmedDates,
+        budget: next.budget ? { amount: next.budget.amount, currency: next.budget.currency, ceiling: next.budget.ceiling ?? null } : null,
+      };
+      if (onlyCurrency) out.currency = await changeCurrency(tripId, said, items.map(withEdits));
+      return JSON.stringify(out);
     }
+    case "set_settings": {
+      const currency = text(input.currency);
+      const language = input.language === "tr" || input.language === "en" ? (input.language as Lang) : null;
+      if (!currency && !language) throw new ToolError(L("Değişecek bir ayar verilmedi; hiçbir şey değişmedi.", "No setting to change was given; nothing changed."));
+      const parts: Record<string, unknown>[] = [];
+      // The money first: if it's refused, nothing changes (the language isn't switched on its own).
+      if (currency) parts.push(await changeCurrency(tripId, currency, items.map(withEdits)));
+      if (language) parts.push(await changeLanguage(tripId, language));
+      const result = Object.assign({}, ...parts.map(({ unchanged: _u, ...p }) => p));
+      return JSON.stringify(parts.every((p) => p.unchanged) ? { unchanged: true, ...result } : result);
+    }
+    case "set_travellers":
+      return JSON.stringify(await changeTravellers(tripId, input, items));
     case "plan_item": {
       // A policy or an eSIM said as an activity or a to-do is that record (0.34.6 §2), whatever kind came.
       const said = guardKind(plannedInput(input));
@@ -1280,8 +1468,10 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
     const results: ToolResult[] = [];
     for (const call of answer.calls) {
       try {
-        results.push({ call, content: await runTool(tripId, call.name, call.input, choices, turn), isError: false });
+        const content = await runTool(tripId, call.name, call.input, choices, turn);
+        results.push({ call, content, isError: false });
         turn.done++;
+        if (!READ_ONLY_TOOLS.has(call.name) && !content.startsWith(UNCHANGED)) turn.changed++;
       } catch (error) {
         results.push({ call, content: error instanceof Error ? error.message : String(error), isError: true });
       }
@@ -1315,6 +1505,14 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
         continue;
       }
       text = turn.done ? L("İsteğini işledim ama yanıtımı yazamadım; panodan kontrol eder misin?", "I handled your request but couldn't write my answer; could you check the board?") : replyFallback();
+    }
+    if (last && text && turn.changed === 0 && claimsChange(text)) {
+      // "Done! I've updated your budget currency" with no tool that changed anything: said so under it, and in the
+      // model's own turn, so the next reply doesn't build on a change that never happened.
+      const note = noChangeNote();
+      console.warn("[assistant] the reply said something changed, but no tool changed anything this turn", { provider: provider.id });
+      text = `${text}\n\n${note}`;
+      if (Array.isArray(content)) content = [...content, ...(provider.assistantContent(note) as unknown[])];
     }
     if (last) {
       // "Araç kiralama iptal, yerine karavan": what was said to be cancelled and is still on the plan is asked about.

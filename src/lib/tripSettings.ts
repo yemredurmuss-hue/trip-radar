@@ -3,7 +3,7 @@
 // and the hero's travellers popover write through these; the undo keeps the fields' values from before.
 import { convert, type Rates } from "./currency";
 import { currencyCode, formatPrice } from "./items";
-import { L, locale } from "./i18n";
+import { L } from "./i18n";
 import type { Travellers, Trip } from "./types";
 
 /** "euro", "avro", "dolar", "TL" said in words, else an ISO code ("eur", "€" via currencyCode). */
@@ -84,7 +84,8 @@ export function withCurrency(trip: Trip, rawTo: unknown, from: string, rates: Ra
 
 const MAX_NAMES = 20;
 const MAX_COUNT = 50;
-const keyOf = (name: string) => name.trim().toLocaleLowerCase(locale());
+// Case aside in any language: a Turkish lower case would make "SABINE" "sabıne"; I, İ, ı and i are one letter here.
+const keyOf = (name: string) => name.trim().toLowerCase().replace(/̇/g, "").replace(/ı/g, "i");
 const clean = (name: unknown) => (typeof name === "string" ? name.replace(/\s+/g, " ").trim().slice(0, 40) : "");
 
 /** Each name once, whatever its case or spaces ("emre" and "Emre "), the first spelling kept. */
