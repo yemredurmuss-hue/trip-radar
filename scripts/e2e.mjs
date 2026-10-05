@@ -495,7 +495,11 @@ try {
   const inbound = app.locator(".tl-travel.role-arrival .pk-card").first();
   assert.equal(await inbound.locator(".pk-kind").innerText(), "Uçuş");
   assert.match(await inbound.locator(".pk-mid").innerText(), /İstanbul\s*IST · 07:10[\s\S]*Porto\s*OPO · 10:05/);
+  // The flight and, under the stay, the taxi transfer in one picture.
+  await app.setViewportSize({ width: 1440, height: 1400 });
+  await inbound.evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/4e-flight-after-taxi.png` });
+  await app.setViewportSize({ width: 1440, height: 900 });
   // × on hover: a plan card, then a stay; each comes back with "Geri al".
   // Read after the .15s fade.
   const opacity = (loc) => loc.evaluate((el) => new Promise((done) => setTimeout(() => done(getComputedStyle(el).opacity), 300)));
@@ -507,6 +511,14 @@ try {
   await douroCard().waitFor({ state: "detached" });
   await app.locator(".pk-undo", { hasText: "Douro tekne turu silindi" }).getByRole("button", { name: "Geri al" }).click();
   await douroCard().waitFor();
+  // A transport card has the same × and undo.
+  await bus.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await bus.hover();
+  assert.equal(await opacity(bus.locator(".pk-x")), "1");
+  await bus.getByRole("button", { name: "Otobüs · Lizbon → Lagos: sil" }).click();
+  await bus.waitFor({ state: "detached" });
+  await app.locator(".pk-undo", { hasText: "Lagos" }).getByRole("button", { name: "Geri al" }).click();
+  await bus.waitFor();
   const jardim = app.locator(".stay-block.chosen .settled-card", { hasText: "Jardim Stay" });
   await jardim.getByRole("button", { name: "Kart menüsü" }).click();
   assert.deepEqual(await jardim.getByRole("menuitem").allInnerTexts(), ["Sil"]);
@@ -594,9 +606,16 @@ try {
   // The restaurant on its day is a thin line of the itinerary; the moved one is a booking on the Plan.
   await tab("Günlük akış").click();
   await day(2).locator(".it-row.idea", { hasText: "Majestic Café" }).locator(".it-line", { hasText: "öğle" }).waitFor();
+  await day(2).evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.screenshot({ path: `${out}/4k-itinerary-032.png` });
   await tab("Plan").click();
   assert.match(await app.locator(".pk-tobook .section-head").innerText(), /Rezerve edilecekler\s*4 · 0 alındı/);
   await app.locator('.pk-tobook .pk-card[aria-label="Porto\'da Livraria Lello, giriş bileti var"]').waitFor();
+  // The panel scrolls inside the page: scroll the list to the top, then take the window.
+  await app.setViewportSize({ width: 1440, height: 1400 });
+  await app.locator(".pk-tobook").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.screenshot({ path: `${out}/4l-tobook.png` });
+  await app.setViewportSize({ width: 1440, height: 900 });
   // Narrow: the + and × are there without a hover.
   await app.setViewportSize({ width: 560, height: 2600 });
   await app.locator(".trip-line").evaluate((el) => el.scrollIntoView({ block: "start" }));
