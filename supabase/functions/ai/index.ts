@@ -19,7 +19,7 @@ Deno.serve(async (req: Request) => {
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
   // The key: the function secret, else the one the owner's extension handed over (ai_config).
   const stored = Deno.env.get("GEMINI_API_KEY") || ((await sb.rpc("ai_gate_key")).data as string | null) || "";
-  const key = stored.match(/[A-Za-z0-9_-]{30,}/)?.[0] ?? "";
+  const key = stored.match(/[A-Za-z0-9._-]{30,}/)?.[0] ?? "";
   if (!key) return reply(503, googleError(503, "Trip Radar AI henüz kurulmadı (sunucuda anahtar yok).", "not-configured"));
   const limits = limitsFrom((k) => Deno.env.get(k));
   const token = (req.headers.get("x-goog-api-key") ?? "").trim();

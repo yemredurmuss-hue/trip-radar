@@ -41,7 +41,8 @@ export function LanguagePicker() {
   );
 }
 
-const GEMINI_KEY = /^AIza[0-9A-Za-z_-]{30,}$/;
+/** A Gemini key as pasted: "AIza…" or Google's newer formats; checked against Google before it's kept. */
+const GEMINI_KEY = /^[A-Za-z0-9._-]{30,200}$/;
 
 export function Settings({ onClose }: { onClose: () => void }) {
   const [s, setS] = useState<SettingsShape | null>(null);

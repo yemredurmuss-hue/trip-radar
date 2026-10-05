@@ -56,7 +56,8 @@ Deno.serve(async (req: Request) => {
   if (!owner) return reply(401, { error: "unauthorized" });
   if (body.action === "set-key") {
     const key = String(body.key ?? "").trim();
-    if (!/^[A-Za-z0-9_-]{30,}$/.test(key)) return reply(400, { error: "key" });
+    // Google's keys: "AIza…" and the newer formats (letters, digits, "_", "-", ".").
+    if (!/^[A-Za-z0-9._-]{30,200}$/.test(key)) return reply(400, { error: "key" });
     const { error } = await sb.rpc("ai_gate_set_key", { p_key: key });
     return error ? reply(500, { error: "set-key" }) : reply(200, { ok: true });
   }

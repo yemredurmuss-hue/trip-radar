@@ -22,19 +22,25 @@ function ShareKeyTick({ geminiKey, onReady }: { geminiKey: string; onReady: () =
     const t = setInterval(() => void gateStanding().then(setStanding).catch(() => {}), 4000);
     return () => clearInterval(t);
   }, [standing?.pending]);
+  // Ours: hand over the key once (again when the key changes); a refusal says so instead of failing silently.
+  const [sentKey, setSentKey] = useState<string | null>(null);
   useEffect(() => {
-    if (!standing?.mine || standing.hasKey || !geminiKey) return;
-    void giveGateKey(geminiKey).then((ok) => {
-      if (ok) {
+    if (!standing?.mine || standing.hasKey || !geminiKey || sentKey === geminiKey) return;
+    setSentKey(geminiKey);
+    void giveGateKey(geminiKey)
+      .then((ok) => {
+        if (!ok) return setError(L("Anahtar sunucuya geçmedi. Anahtarı yeniden yapıştırıp tekrar dene.", "The key didn't reach the server. Paste it again and retry."));
         setStanding({ ...standing, hasKey: true });
+        setError(null);
         onReady();
-      }
-    });
-  }, [standing, geminiKey, onReady]);
+      })
+      .catch((err: Error) => setError(err.message));
+  }, [standing, geminiKey, onReady, sentKey]);
   if (!standing) return null;
   if (standing.owned && !standing.mine) return null;
   if (standing.mine && standing.hasKey) return <p className="small ai-on">{L("✓ Davet ettiklerin AI'yı senin anahtarınla, sunucun üzerinden kullanıyor.", "✓ The people you invite use AI with your key, through your server.")}</p>;
   if (standing.pending) return <p className="small muted">{L("Onay bekleniyor… (bir kerelik; birkaç dakika sürebilir)", "Waiting for approval… (once; it may take a few minutes)")}</p>;
+  if (standing.mine) return error ? <p className="err small">{error}</p> : <p className="small muted">{L("Anahtar sunucuya geçiyor…", "Handing the key to the server…")}</p>;
   return (
     <>
       <label className="check ai-tick">
