@@ -931,7 +931,7 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
    Type: 40 title · 20 card headings and the budget · 17 text · 15–16 lines · 13–14 small. Colours: the --hx-
    tokens (:root), the category colours on the plan line's icons, each style's own on its chip. */
 .hx {
-  display: grid; grid-template-columns: minmax(0, 1.82fr) minmax(320px, 1fr); gap: 24px; align-items: start; margin: 8px 0 24px; color: var(--hx-ink);
+  display: grid; grid-template-columns: minmax(0, 1.82fr) minmax(320px, 1fr); gap: 24px; align-items: stretch; margin: 8px 0 24px; color: var(--hx-ink);
 }
 .hx-left { position: relative; min-width: 0; container: hxleft / inline-size; }
 .hx button { font-family: inherit; }
@@ -968,26 +968,37 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .hx-when.empty { color: var(--hx-muted); }
 .hx-lead { margin: 8px 0 0; font-size: 17px; line-height: 1.5; color: var(--hx-muted); }
 
-/* The plan in four cells (icon in its category's colour, "3 uçuş"); a zero stays, quiet. Two by two until
-   the story is wide enough for four (~150px a cell: "12 konaklama", "3 experiences"); a label wraps rather than
-   run over the line between cells. */
+/* The plan in four cells (icon in its category's colour, "3 uçuş"); a zero stays, quiet. A cell is always one
+   line (revizyon 1): sized to its words, the four spread across with a line mid-gap (.hx-sep). Two by two only
+   when four don't fit. The widest realistic row is English with two-digit counts ("12 flights", "12 stays",
+   "12 transport", "12 experiences": 335 px of text at 17 px, 316 at 16) plus four cells' icon, gap and padding
+   (4 × 38) and three lines with their room (3 × 13): 526 px at 17, 507 at 16. So: 17 px from 540, 16 px from
+   520 (a 1440 screen beside the chat is ~526), two by two below. */
 .hx-tally { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 4px; margin-top: 22px; }
+.hx-tally .hx-sep { display: none; }
 .hx-tally button {
   position: relative; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 6px 4px; border: 0; border-radius: 14px;
-  background: none; font-size: 17px; color: var(--hx-ink); font-variant-numeric: tabular-nums;
+  background: none; font-size: 17px; color: var(--hx-ink); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .hx-tally button:hover { background: rgba(28,26,51,.04); }
-.hx-tally button:nth-child(2n)::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 36px; margin-top: -18px; background: var(--hx-line); }
-/* Four in a row as in the reference once the story has room (a 1440 screen beside the chat); a size smaller until 620. */
-@container hxleft (min-width: 500px) {
-  .hx-tally { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 0; }
-  .hx-tally button + button::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 36px; margin-top: -18px; background: var(--hx-line); }
+.hx-tally button:nth-of-type(2n)::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 36px; margin-top: -18px; background: var(--hx-line); }
+@container hxleft (min-width: 520px) {
+  .hx-tally { display: flex; align-items: center; justify-content: space-between; row-gap: 0; }
+  .hx-tally button { flex: none; justify-content: flex-start; gap: 8px; padding: 6px 4px; font-size: 16px; }
+  .hx-tally button:nth-of-type(2n)::before { content: none; }
+  .hx-tally .hx-sep { display: block; flex: none; width: 1px; height: 36px; margin: 0 6px; background: var(--hx-line); }
 }
-@container hxleft (min-width: 500px) and (max-width: 619px) {
-  .hx-tally button { gap: 8px; padding: 6px 2px; font-size: 16px; }
+@container hxleft (min-width: 540px) {
+  .hx-tally button { font-size: 17px; }
+}
+/* Two by two in a very narrow story (half of it under ~150px: "12 experiences" with its icon doesn't fit):
+   a label may wrap again rather than run over the line between cells. */
+@container hxleft (max-width: 299px) {
+  .hx-tally button { white-space: normal; }
+  .hx-tally span { overflow-wrap: break-word; }
 }
 .hx-tally svg { flex: none; }
-.hx-tally span { min-width: 0; text-align: left; overflow-wrap: break-word; }
+.hx-tally span { min-width: 0; text-align: left; }
 .hx-tally .c-flight svg { color: #6a4fe0; }
 .hx-tally .c-stay svg { color: #23998b; }
 .hx-tally .c-transport svg { color: #c58a2e; }
@@ -1017,10 +1028,19 @@ button.hx-progress-count:hover, button.hx-progress-count[aria-expanded="true"] {
 .hx-go svg { flex: none; }
 .hx + .todo-list { margin: -8px 0 24px; max-width: none; }
 
-/* The card on the right: blocks one under the other, a hairline and 20px between. */
-.hx-side { min-width: 0; padding: 24px; border-radius: 22px; background: var(--hx-card); border: 1px solid #efebe3; box-shadow: 0 1px 2px rgba(40,30,20,.03), 0 8px 24px rgba(40,30,20,.05); }
+/* The card on the right: blocks one under the other, a hairline between. Beside the story it is as tall as the
+   story (the grid's row stretches it) and ends level with "Rezervasyonların" (revizyon 1): compact by itself
+   (14px either side of a hairline), the blocks spread over what's left. Content taller than the story (four
+   countries) makes the card grow; nothing is clipped. */
+.hx-side { display: flex; flex-direction: column; min-width: 0; padding: 20px 24px; border-radius: 22px; background: var(--hx-card); border: 1px solid #efebe3; box-shadow: 0 1px 2px rgba(40,30,20,.03), 0 8px 24px rgba(40,30,20,.05); }
 .hx-block { position: relative; }
-.hx-block + .hx-block { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--hx-line); }
+.hx-block + .hx-block { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hx-line); }
+/* The room left over goes evenly to both sides of every hairline: a middle block grows twice as much and centres
+   what it holds, the first keeps it at the top, the last at the bottom. */
+.hx-side > .hx-block { flex: 2 1 auto; display: flex; flex-direction: column; justify-content: center; }
+.hx-side > .hx-block:first-child { flex-grow: 1; justify-content: flex-start; }
+.hx-side > .hx-block:last-child { flex-grow: 1; justify-content: flex-end; }
+.hx-side > .hx-block > button.hx-h { align-self: flex-start; }
 .hx-h { display: block; margin: 0; padding: 0; border: 0; background: none; font-size: 20px; font-weight: 700; letter-spacing: -.01em; color: var(--hx-ink); text-align: left; }
 button.hx-h:hover { color: var(--hx-accent); }
 .hx-empty { margin: 8px 0 0; font-size: 15px; line-height: 1.45; color: var(--hx-muted); }
@@ -1051,7 +1071,7 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .hx-who-text small.accent { color: var(--hx-accent); }
 .hx-share { margin-top: 8px; font-size: 13px; color: var(--hx-muted); }
 .hx-share .err { color: var(--danger); }
-.hx-styles { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.hx-styles { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
 .hx-styles span { height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 0 18px 0 14px; border-radius: 999px; font-size: 16px; font-weight: 500; white-space: nowrap; }
 .hx-styles svg { flex: none; }
 .hx-styles .empty { padding: 0 16px; border: 1.5px dashed #d6d1e3; color: var(--hx-muted); font-weight: 400; font-size: 15px; white-space: normal; }
@@ -1060,7 +1080,7 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .hx-budget-btn { display: block; width: 100%; padding: 0; border: 0; background: none; text-align: left; color: inherit; cursor: pointer; }
 .hx-budget-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .hx-budget-top strong { font-size: 20px; font-weight: 700; color: var(--hx-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.hx-budget-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; font-size: 16px; color: var(--hx-muted); font-variant-numeric: tabular-nums; }
+.hx-budget-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; font-size: 16px; color: var(--hx-muted); font-variant-numeric: tabular-nums; }
 .hx-budget-line > span { display: inline-flex; align-items: center; gap: 12px; }
 .hx-budget-line i { width: 10px; height: 10px; border-radius: 50%; background: #c9c5bc; }
 .hx-budget-line b { font-weight: 500; color: var(--hx-ink); white-space: nowrap; }
@@ -1084,11 +1104,13 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .hx-pop i.c-other { background: #8e8e93; }
 
 /* Tercihler ("Seni böyle anladım"): two rows, the link; the window opens over the card and pushes nothing. */
-.hx-prefs-rows { display: grid; gap: 12px; margin: 14px 0 0; }
+/* A row is one line of keywords ("Fiyat + konum" · "Çok önemli", "Sessizlik" · "Önemli"); the label ends in "…"
+   only as a last resort (its full words on hover and in the window). */
+.hx-prefs-rows { display: grid; gap: 8px; margin: 10px 0 0; }
 .hx-prefs-rows div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: 16px; color: var(--hx-muted); }
-.hx-prefs-rows dt { min-width: 0; overflow-wrap: anywhere; }
-.hx-prefs-rows dd { margin: 0; flex: none; text-align: right; }
-.hx-prefs-link { margin-top: 14px; flex-wrap: wrap; }
+.hx-prefs-rows dt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hx-prefs-rows dd { margin: 0; flex: none; text-align: right; white-space: nowrap; }
+.hx-prefs-link { margin-top: 8px; flex-wrap: wrap; }
 .hx-prefs-link .sep { color: var(--hx-muted); }
 .hx-prefs-link .ask-mark { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; }
 .hx-prefs-link .ask-mark i { width: 8px; height: 8px; border-radius: 50%; background: var(--hx-accent); }
@@ -1117,7 +1139,7 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .hx-countries .flag { display: inline-grid; place-items: center; width: 34px; height: 26px; border-radius: 4px; overflow: hidden; font-style: normal; font-size: 30px; line-height: 1; }
 /* A line before every city; the one starting a row falls outside the box (margin -14px, overflow hidden), so
    a city that wraps starts its row clean. The small things below wrap the same way. */
-.hx-weather { display: flex; flex-wrap: wrap; row-gap: 10px; margin: 16px 0 0 -14px; overflow: hidden; }
+.hx-weather { display: flex; flex-wrap: wrap; row-gap: 8px; margin: 10px 0 0 -14px; overflow: hidden; }
 .hx-weather > span { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; margin-left: -1px; padding: 0 14px; border-left: 1px solid var(--hx-line); font-size: 16px; color: var(--hx-ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .hx-weather svg { flex: none; }
 .hx-weather .city { margin-right: 4px; }
@@ -1128,7 +1150,7 @@ button.hx-people:hover b { color: var(--hx-accent); }
 /* Beside the story the card is narrow: two by two, a line between the pair; under it (narrow board), one row. */
 /* A long name ("Almanca, Fransızca, İtalyanca", "Birleşik Arap Emirlikleri Dirhemi") wraps inside its cell,
    the icon staying at its first line; nothing is cut. */
-.hx-minis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 10px; margin-left: -10px; overflow: hidden; font-size: 14px; line-height: 1.35; color: var(--hx-muted); }
+.hx-minis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 6px; margin-left: -10px; overflow: hidden; font-size: 14px; line-height: 1.35; color: var(--hx-muted); }
 .hx-minis span { display: flex; align-items: flex-start; gap: 7px; min-width: 0; margin-left: -1px; padding: 0 10px; border-left: 1px solid var(--hx-line); white-space: normal; overflow-wrap: break-word; }
 .hx-minis span:nth-child(odd) { border-left-color: transparent; }
 .hx-minis svg { flex: none; margin-top: 0; color: var(--hx-ink); }
