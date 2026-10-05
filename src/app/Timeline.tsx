@@ -14,7 +14,7 @@ import { CategoryIcon, type IconName } from "./Icons";
 import { StatusBar, type Standing } from "./Status";
 import { L, locale } from "../lib/i18n";
 import type { InsertAt } from "../lib/templates";
-import { insertAt } from "../lib/templates";
+import { insertAt, insertAtCity, insertAtDay, insertAtStart } from "../lib/templates";
 import { AddButton, InsertPoint } from "./cards/AddSheet";
 
 export type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => ReactNode;
@@ -86,6 +86,10 @@ export function TimelineView({
             </div>
           ))}
           <div className="trip-line">
+            {/* Before the way in: a taxi to the airport, a night near it. */}
+            <ol className="timeline between tl-head-insert">
+              <HeadInsert at={insertAtStart(timeline.board)} onAdd={onAdd} />
+            </ol>
             {timeline.board.map((section) => (
               <Section key={section.key} section={section} {...render} />
             ))}
@@ -113,6 +117,18 @@ interface RenderProps {
   onShow: (entryKey: string) => void;
 }
 
+/** A "+" on its own row, in the cards' column: at the top of the plan and of each city's block. */
+function HeadInsert({ at, onAdd }: { at: InsertAt; onAdd: (at: InsertAt) => void }) {
+  return (
+    <li className="tl-entry tl-insert">
+      <div className="tl-side" aria-hidden />
+      <div className="tl-content">
+        <InsertPoint at={at} onAdd={onAdd} />
+      </div>
+    </li>
+  );
+}
+
 function Section({ section, ...render }: { section: TimelineSection } & RenderProps) {
   if (section.kind === "travel") {
     return (
@@ -135,6 +151,7 @@ function Section({ section, ...render }: { section: TimelineSection } & RenderPr
         )}
       </header>
       <ol className="timeline">
+        <HeadInsert at={insertAtCity(section)} onAdd={render.onAdd} />
         {section.stays.map((entry) => (
           <Row key={entry.key} entry={entry} {...render} />
         ))}
@@ -385,12 +402,12 @@ function Itinerary({ sections, ...render }: { sections: TimelineSection[] } & Re
           const j = section.journey;
           const route = j.from && j.to ? `${j.from} → ${j.to}` : j.to ? `→ ${j.to}` : j.from ? `${j.from} →` : null;
           const rows = dayRows({ journey: section, rentals: render.rentals, listings: render.listings });
-          return <ItDay key={section.key} id={entryDomId(`it:${j.key}`)} title={journeyTitle(j)} date={j.date} route={route} rows={rows} {...render} />;
+          return <ItDay key={section.key} id={entryDomId(`it:${j.key}`)} title={journeyTitle(j)} date={j.date} city={j.role === "departure" ? j.from : j.to} route={route} rows={rows} {...render} />;
         }
         if (section.kind === "travel") {
           // A trip on the line outside a day (a connection the day before).
           const rows = dayRows({ journey: { kind: "journey", key: section.key, journey: { key: section.key, role: "move", date: section.entry.date, dayNo: null, from: null, to: null, out: null, in: null }, entries: [section.entry] } });
-          return <ItDay key={section.key} id={entryDomId(`it:${section.key}`)} title={fmt(section.entry.date)} date={section.entry.date} route={null} rows={rows} {...render} />;
+          return <ItDay key={section.key} id={entryDomId(`it:${section.key}`)} title={fmt(section.entry.date)} date={section.entry.date} city={null} route={null} rows={rows} {...render} />;
         }
         const stays = section.stays.map((st) => st.block);
         return (
@@ -409,7 +426,7 @@ function Itinerary({ sections, ...render }: { sections: TimelineSection[] } & Re
             {section.entries.map((e) => {
               if (e.kind === "day") {
                 const rows = dayRows({ day: e, rentals: render.rentals, listings: render.listings });
-                return <ItDay key={e.key} id={entryDomId(`it:${e.key}`)} title={e.title} date={e.date} route={null} rows={rows} {...render} />;
+                return <ItDay key={e.key} id={entryDomId(`it:${e.key}`)} title={e.title} date={e.date} city={section.city} route={null} rows={rows} {...render} />;
               }
               if (e.kind === "plan") {
                 return (
@@ -427,8 +444,17 @@ function Itinerary({ sections, ...render }: { sections: TimelineSection[] } & Re
   );
 }
 
-/** A day of the itinerary: its number, date and route, then what happens, hour by hour. */
-function ItDay({ id, title, date, route, rows, ...render }: { id: string; title: string; date: string; route: string | null; rows: DayRow[] } & RenderProps) {
+/** "+" on a day of the itinerary: adds on that day, in its city. */
+function DayAdd({ date, city, onAdd }: { date: string; city: string | null; onAdd: (at: InsertAt) => void }) {
+  return (
+    <button type="button" className="it-add" title={L("Bu güne ekle", "Add to this day")} aria-label={L(`${fmt(date)}: bu güne ekle`, `${fmt(date)}: add to this day`)} onClick={() => onAdd(insertAtDay(date, city))}>
+      +
+    </button>
+  );
+}
+
+/** A day of the itinerary: its number, date and route, then what happens, hour by hour; "+" adds to it. */
+function ItDay({ id, title, date, city, route, rows, ...render }: { id: string; title: string; date: string; city: string | null; route: string | null; rows: DayRow[] } & RenderProps) {
   const left = rowsLeft(rows);
   const [open, setOpen] = useState(true);
   if (!rows.length) {
@@ -437,11 +463,13 @@ function ItDay({ id, title, date, route, rows, ...render }: { id: string; title:
         <b>{title}</b>
         <span className="muted num">{`${fmt(date)} ${weekday(date)}`}</span>
         <span className="muted">{L("boş gün", "free day")}</span>
+        <DayAdd date={date} city={city} onAdd={render.onAdd} />
       </div>
     );
   }
   return (
     <article className="it-day" id={id}>
+      <DayAdd date={date} city={city} onAdd={render.onAdd} />
       <button className="it-day-head" aria-expanded={open} onClick={() => setOpen(!open)}>
         <b>{title}</b>
         <span className="muted num">{`${fmt(date)} ${weekday(date)}`}</span>

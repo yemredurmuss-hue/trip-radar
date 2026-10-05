@@ -27,7 +27,7 @@ export function AddButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-/** The "+" between two cards of the plan: shows on hover, adds there. */
+/** The "+" between two cards of the plan (and at the top of the plan and of each city): always there, faint until hovered. */
 export function InsertPoint({ at, onAdd }: { at: InsertAt; onAdd: (at: InsertAt) => void }) {
   return (
     <div className="pk-insert">
@@ -38,7 +38,15 @@ export function InsertPoint({ at, onAdd }: { at: InsertAt; onAdd: (at: InsertAt)
   );
 }
 
-export function AddSheet({ tripId, at, editing, currency, onClose }: { tripId: string; at: InsertAt | null; editing: Item | null; currency: string; onClose: () => void }) {
+export function AddSheet({ tripId, at, editing, currency, onClose, onSaved }: {
+  tripId: string;
+  at: InsertAt | null;
+  editing: Item | null;
+  currency: string;
+  onClose: () => void;
+  /** After a new one is saved (the board shows Fikirler when it needs no booking). */
+  onSaved?: (item: Item) => void;
+}) {
   const initial = editing ? formOf(editing, currency) : null;
   const [tpl, setTpl] = useState<Template | null>(initial?.template ?? null);
   const [form, setForm] = useState<FormValues | null>(initial?.values ?? null);
@@ -63,6 +71,7 @@ export function AddSheet({ tripId, at, editing, currency, onClose }: { tripId: s
     try {
       const out = editing ? await saveEdit(editing, tpl, form) : await addFromTemplate(tripId, tpl, form, newId());
       if (typeof out === "string") return setError(out);
+      if (!editing) onSaved?.(out);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -105,7 +114,7 @@ export function AddSheet({ tripId, at, editing, currency, onClose }: { tripId: s
             {tpl.form === "trip" && <>{field("from", L("Nereden", "From"))}{field("to", L("Nereye", "To"))}{field("date", L("Tarih", "Date"), "date")}{field("time", L("Saat", "Time"), "time")}</>}
             {tpl.form === "rental" && <>{field("city", L("Yer", "Place"))}{field("date", L("Başlangıç", "Start"), "date")}{field("end", L("Bitiş", "End"), "date")}</>}
             {tpl.form === "stay" && <>{field("name", L("Ad", "Name"))}{field("city", L("Şehir", "City"))}{field("date", L("Giriş", "Check-in"), "date")}{field("end", L("Çıkış", "Check-out"), "date")}</>}
-            {tpl.form === "named" && <>{field("name", L("Ad", "Name"))}{field("date", L("Tarih", "Date"), "date")}</>}
+            {tpl.form === "named" && <>{field("name", L("Ad", "Name"))}{field("date", L("Tarih", "Date"), "date")}{field("city", L("Şehir (isteğe bağlı)", "City (optional)"))}</>}
             <div className="pk-price-field">
               {field("price", L("Fiyat (isteğe bağlı)", "Price (optional)"))}
               <label className="pk-field">
