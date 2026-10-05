@@ -23,6 +23,15 @@ export async function deleteItem(item: Item, event?: string): Promise<Removed> {
   return { item: fresh, docs };
 }
 
+// A plan the chat took back ("taksiyi kaldır") gets the same "Geri al" as the card's Sil: the board
+// listens here (the chat runs in the board's page) and puts it in its undo slot.
+const removedListeners = new Set<(removed: Removed) => void>();
+export function onRemoved(listener: (removed: Removed) => void): () => void {
+  removedListeners.add(listener);
+  return () => void removedListeners.delete(listener);
+}
+export const announceRemoved = (removed: Removed) => removedListeners.forEach((l) => l(removed));
+
 export async function restoreItem(removed: Removed): Promise<void> {
   await (await db()).put("items", removed.item);
   await putDocs(removed.docs);

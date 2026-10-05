@@ -16,7 +16,7 @@ import {
   type GroupDecision,
 } from "./decision";
 import { needsFor } from "./cardFacts";
-import { moveDocs, takeDocsOf } from "./docs";
+import { moveDocs } from "./docs";
 import { choiceOf, tradeText } from "./choice";
 import { currencyCode, isoDate, listingKeyOf, tripDateRange } from "./items";
 import { NEED_MARK } from "./needs";
@@ -27,6 +27,7 @@ import { buildLegs, legTiming, withLegChoice } from "./legs";
 import { checkPlanned, plannedInput, planToSave, PLANNED_KINDS } from "./planned";
 import { addDays, buildPlan, liveGroups, sameCity, stayRange, type Plan } from "./plan";
 import { L, lang } from "./i18n";
+import { announceRemoved, deleteItem } from "./removal";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
 import type { ToolResult, ToolSpec } from "./llm/types";
 import {
@@ -714,11 +715,11 @@ async function runTool(tripId: string, name: string, input: any, choices: string
             await d.put("items", demoted);
           }
         }
-        // A plan said in the chat and taken back ("taksiyi kaldır") has nothing to keep: it goes.
+        // A plan said in the chat and taken back ("taksiyi kaldır") has nothing to keep: it goes, with
+        // its files, as the card's Sil does, and the board offers "Geri al".
         if (c.status === "dismissed" && item.origin === "chat") {
           current.delete(item.id);
-          await takeDocsOf(item.id);
-          await d.delete("items", item.id);
+          announceRemoved(await deleteItem(item));
           continue;
         }
         const note = typeof c.note === "string" && c.note.trim() ? c.note.trim() : item.statusNote;

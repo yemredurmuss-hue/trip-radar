@@ -36,7 +36,7 @@ import type { Capture, Category, Item, Trip } from "../lib/types";
 import { chooseItem, setHidden, updateTrip } from "./actions";
 import { legModeByItem } from "../lib/cardKinds";
 import { inheritedDocs } from "../lib/docs";
-import { deleteItem, restoreItem, type Removed } from "../lib/removal";
+import { deleteItem, onRemoved, restoreItem, type Removed } from "../lib/removal";
 import { undoSlot } from "../lib/undo";
 import type { InsertAt } from "../lib/templates";
 import { AddButton, AddSheet } from "./cards/AddSheet";
@@ -122,6 +122,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   useEffect(() => undo.subscribe(setRemoved), [undo]);
   // Another trip on screen: the last deletion stays deleted.
   useEffect(() => () => void undo.take(), [trip.id, undo]);
+  // A plan the chat took back ("taksiyi kaldır") gets the same "Geri al".
+  useEffect(() => onRemoved((r) => r.item.tripId === trip.id && undo.show(r)), [trip.id, undo]);
   const [sheet, setSheet] = useState<{ at: InsertAt | null; editing: Item | null } | null>(null);
   const env: CardEnv = {
     tripId: trip.id,

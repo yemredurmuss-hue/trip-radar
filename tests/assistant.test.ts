@@ -3,6 +3,8 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
 import { currentSession, resetConversation, sendMessage, withDetails } from "../src/lib/assistant";
 import { db, listItems, listMessages, listPreferences } from "../src/lib/db";
+import { addDoc, listDocMeta } from "../src/lib/docs";
+import { onRemoved, restoreItem, type Removed } from "../src/lib/removal";
 import { anthropicProvider } from "../src/lib/llm/anthropic";
 import type { Item, Trip } from "../src/lib/types";
 
@@ -312,8 +314,17 @@ describe("assistant", () => {
       { stop_reason: "tool_use", content: [{ type: "tool_use", id: "u1", name: "update_items", caller: { type: "direct" }, input: { changes: [{ item_id: taxi.id, status: "dismissed", note: null }] } }] as Anthropic.ContentBlock[] },
       { stop_reason: "end_turn", content: [{ type: "text", text: "Taksiyi kaldırdım.", citations: null }] as Anthropic.ContentBlock[] },
     ]);
+    await addDoc(taxi, new File(["%PDF-1.4"], "taksi.pdf", { type: "application/pdf" }));
+    const removed: Removed[] = [];
+    const stop = onRemoved((r) => removed.push(r));
     await sendMessage("t1", "taksiyi kaldır", anthropicProvider(c2, "claude-opus-5"));
+    stop();
     expect((await listItems("t1")).some((i) => i.id === taxi.id)).toBe(false);
+    // The same "Geri al" as the card's Sil: the board offers it, and it brings the plan back with its file.
+    expect(removed.map((r) => [r.item.id, r.docs.map((x) => x.name)])).toEqual([[taxi.id, ["taksi.pdf"]]]);
+    await restoreItem(removed[0]);
+    expect((await listItems("t1")).some((i) => i.id === taxi.id)).toBe(true);
+    expect((await listDocMeta("t1")).map((x) => x.name)).toContain("taksi.pdf");
   });
   it("moves an undated ticket to its day when the traveller says the date, keeping the times read from it", async () => {
     const { items } = await seed();
