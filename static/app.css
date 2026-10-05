@@ -1517,10 +1517,10 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 }
 
 /* ---------- 0.34.7: Günlük akış as day cards ----------
-   Closed: the day's photo left (38%), on the right the title and the whole day as a timeline, nothing folded:
+   Liste: the day's photo left (38%), on the right the title and the whole day as a timeline, nothing folded:
    time · a dot on a dotted line · the Plan's icon in a soft tile of its colour (✓ booked, an amber dot still to
-   do) · the name; check-in, check-out, the metro are thin lines. The card is as tall as its day. Open: the photo
-   becomes a band on top and every line is its own Plan card, in order, under its time. */
+   do) · the name; check-in, check-out, the metro are thin lines. The card is as tall as its day. Kartlar: every
+   line is its own Plan card, in order, under its time, the day's header held at the top. */
 .dc { --dc-ink: #1d1d1f; --dc-gray: #6e6e73; --dc-line: #e8e8ed; color: var(--dc-ink); }
 .dc-day { position: relative; display: grid; grid-template-columns: 38% minmax(0, 1fr); min-height: 220px; margin-bottom: 16px; background: #fffdfa; border-radius: 22px; overflow: hidden;
   box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 0 0 1px rgba(0,0,0,.06); transition: box-shadow .15s; }
@@ -1537,13 +1537,10 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .dc-art { position: absolute; right: -10px; bottom: 6px; width: 62%; height: 120px; color: var(--mc); opacity: .14; pointer-events: none; z-index: 0;
   -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 35%); mask-image: linear-gradient(90deg, transparent 0, #000 35%); }
 .dc-art svg { position: static; transform: none; width: 100%; height: 100%; opacity: 1; -webkit-mask-image: none; mask-image: none; }
-.dc-head { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0 0 10px; padding: 0; border: 0; background: none; text-align: left; color: inherit; cursor: pointer; }
+.dc-head { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0 0 10px; }
 .dc-head h3 { flex: 1; min-width: 0; margin: 0; font-size: 22px; line-height: 1.2; font-weight: 700; letter-spacing: -.015em; }
 .dc-left { flex: none; padding: 2px 9px; border-radius: 8px; background: #fdf0d5; color: #8a5a00; font-size: 13px; font-weight: 600; }
 .dc-ideas-n { flex: none; padding: 2px 9px; border-radius: 8px; background: #f1efe9; color: var(--dc-gray); font-size: 13px; }
-.dc-chev { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: var(--dc-gray); transition: transform .2s, background .15s; }
-.dc-head:hover .dc-chev { background: #f1efe9; color: var(--dc-ink); }
-.dc-day.open .dc-chev { transform: rotate(180deg); }
 
 /* the timeline */
 .dc-tl { position: relative; list-style: none; margin: 0; padding: 0; }
@@ -1559,7 +1556,6 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .dc-tile i.done { background: #1f8f4e; }
 .dc-tile i.todo { background: #e0a43a; }
 .dc-line .name { min-width: 0; font-size: 15.5px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dc-day.open .dc-line .name { white-space: normal; }
 .dc-line .name small { display: block; margin-top: 2px; font-size: 13px; color: var(--dc-gray); }
 .dc-line .name em { font-style: normal; font-weight: 600; }
 .dc-line .name em.ok { color: #1f8f4e; }
@@ -1587,9 +1583,32 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .dc-add:hover { border-color: var(--dc-ink); color: var(--dc-ink); }
 .dc-day:not(.open) .dc-add { margin-top: auto; margin-left: 0; }
 
-/* open: the Plan, day by day */
-.dc-day.open { grid-template-columns: 1fr; grid-template-rows: 150px auto; }
-.dc-day.open .dc-body { padding: 16px 18px 18px; }
+/* 0.34.8: one switch for the view, no day opens or closes. Liste | Kartlar on the left, the days on the right;
+   the bar stays at the top, in Kartlar each day's header stays under it. */
+.dc-bar { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 12px; margin: 0 -8px 14px; padding: 8px; background: rgba(248, 247, 244, .94); backdrop-filter: blur(8px); }
+.dc-seg { flex: none; display: inline-flex; padding: 3px; border-radius: 11px; background: #ece9e3; }
+.dc-seg button { border: 0; background: transparent; height: 30px; padding: 0 14px; border-radius: 8px; font-size: 14px; font-weight: 500; color: var(--dc-gray); cursor: pointer; }
+.dc-seg button.on { background: #fff; color: var(--dc-ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.dc-strip { display: flex; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.dc-strip::-webkit-scrollbar { display: none; }
+.dc-strip button { flex: none; min-width: 34px; height: 30px; padding: 0 9px; border: 1px solid #e3ded5; border-radius: 9px; background: #fff; font-size: 13px; font-weight: 600; color: #3a3a3c; font-variant-numeric: tabular-nums; cursor: pointer; }
+.dc-strip button:hover { border-color: var(--dc-ink); color: var(--dc-ink); }
+.dc-strip button.today { background: #1556d6; border-color: #1556d6; color: #fff; }
+.dc-day, .dc-cday { scroll-margin-top: 60px; }
+.dc-tl > li { scroll-margin-top: 120px; }
+
+/* Kartlar: the Plan, day by day; each day's header stays at the top while its cards scroll past. */
+.dc-cday { margin-bottom: 18px; }
+.dc-dhead { position: sticky; top: 52px; z-index: 4; display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 8px 12px 8px 8px; border-radius: 14px; background: rgba(255, 253, 250, .96); box-shadow: 0 0 0 1px rgba(0,0,0,.07), 0 4px 14px rgba(0,0,0,.04); backdrop-filter: blur(8px); }
+.dc-thumb { flex: none; width: 44px; height: 34px; border-radius: 8px; overflow: hidden; background: linear-gradient(135deg, #cfe2e8, #efe3c8); }
+.dc-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dc-dhead b { flex: none; font-size: 14px; }
+.dc-dhead .ttl { min-width: 0; flex: 1; font-size: 16px; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dc-ddate { flex: none; font-size: 13px; color: var(--dc-gray); }
+.dc-ddate.today { padding: 2px 8px; border-radius: 999px; background: #1556d6; color: #fff; font-weight: 600; }
+.dc-cday > .dc-free, .dc-cday > .dc-add { margin-left: 76px; }
+.dc-flash { animation: dc-flash 1.6s ease-out; border-radius: 16px; }
+@keyframes dc-flash { 0%, 40% { box-shadow: 0 0 0 3px rgba(21, 86, 214, .45); } 100% { box-shadow: 0 0 0 3px rgba(21, 86, 214, 0); } }
 .dc-tl.full::before { left: 60px; top: 22px; bottom: 22px; }
 .dc-full { position: relative; display: grid; grid-template-columns: 50px 20px minmax(0, 1fr); column-gap: 6px; align-items: start; margin-bottom: 4px; }
 .dc-full > .t { padding-top: 16px; text-align: right; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }

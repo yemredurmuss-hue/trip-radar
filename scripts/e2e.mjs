@@ -202,17 +202,21 @@ try {
   // No days, no check-in lines, no transfers without a plan.
   assert.equal(await app.locator(".cat-plan .tl-day, .cat-plan .leg, .cat-plan .pk-leg").count(), 0);
   // The itinerary, a tab away (0.34.7): a card a day (its photo, its title, the whole day as a timeline, check-in
-  // and transfers too; free days in a row are one card); a tap opens it in place, each line as its Plan card.
+  // and transfers too; free days in a row are one card). One switch, Liste | Kartlar (0.34.8): Kartlar shows
+  // every day as the Plan's cards under a header that stays on top; no day opens or closes on its own.
   const tab = (name) => app.getByRole("tab", { name, exact: true });
   await tab("Günlük akış").click();
+  const dcMode = (name) => app.locator(".dc-seg").getByRole("tab", { name, exact: true });
+  const listMode = () => dcMode("Liste").click();
   const dayCard = (n) => app.locator(".dc-day", { has: app.locator(".dc-no", { hasText: new RegExp(`^${n}\\. gün$`) }) });
-  const dayPage = app.locator(".dc-day.open");
+  const cardsDay = (n) => app.locator(".dc-cday", { has: app.locator(".dc-dhead b", { hasText: new RegExp(`^${n}\\. gün$`) }) });
+  let dayPage = cardsDay(1);
+  // A day as cards: Kartlar, then that day's section (the strip jumps there).
   const openDay = async (n) => {
-    if (!(await dayCard(n).evaluate((el) => el.classList.contains("open")))) {
-      // On its title: a tap on one of its lines opens the day with that line's details already open.
-      await dayCard(n).locator(".dc-head").click();
-    }
-    await dayCard(n).and(dayPage).waitFor();
+    await dcMode("Kartlar").click();
+    dayPage = cardsDay(n);
+    await app.locator(".dc-strip").getByRole("button", { name: String(n), exact: true }).click();
+    await dayPage.waitFor();
   };
   const dayTitles = () => dayPage.locator(".dc-tl > [data-title]").evaluateAll((els) => els.map((e) => e.getAttribute("data-title")));
   const dayTimes = () => dayPage.locator(".dc-tl > li").evaluateAll((els) => els.map((e) => e.querySelector(".t")?.textContent ?? ""));
@@ -221,6 +225,7 @@ try {
   // Open, a line is its Plan card: a tap on its body opens its details there.
   const openCard = (title) => flowCard(title).locator(".pk-body").first().click();
   assert.deepEqual(await app.locator(".dc-no").allInnerTexts(), ["1. gün", "2. gün", "3. gün", "4. gün", "5–6. gün", "7. gün"]);
+  assert.deepEqual(await app.locator(".dc-strip button").allInnerTexts(), ["1", "2", "3", "4", "5–6", "7"]);
   assert.equal(await dayCard(4).locator(".dc-head h3").innerText(), "Porto → Lizbon");
   assert.equal(await app.locator(".dc-day .dc-free").count(), 2);
   await dayCard(7).locator(".dc-step", { hasText: "Uçuş LIS → IST" }).locator(".dc-tile i.done").waitFor();
@@ -233,6 +238,11 @@ try {
   assert.deepEqual(await dayTimes(), ["~11:00", "17:40", "19:40"]);
   await flowCard("Uçuş LIS → IST").locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
   await app.screenshot({ path: `${out}/3f-day-page.png` });
+  // A line in the list takes you to its card in Kartlar.
+  await listMode();
+  await dayCard(4).locator(".dc-line", { hasText: "Tren Porto → Lizbon" }).click();
+  await cardsDay(4).locator('.dc-tl > li[data-title="Tren Porto → Lizbon"]').waitFor();
+  assert.equal(await dcMode("Kartlar").getAttribute("aria-selected"), "true");
   await tab("Plan").click();
   // Where each plan stands is on top of its card: booked in green, planned in amber.
   await app.locator(".cat-card.tl-stay .status-bar.st-booked", { hasText: "Rezerve edildi" }).waitFor();
@@ -654,6 +664,7 @@ try {
   // On a day of the itinerary: that day and its city. A to-do added there is a thin line of the day.
   await tab("Günlük akış").click();
   // Day 3 is empty ("boş gün"): its card has the "+".
+  await listMode();
   await dayCard(3).getByRole("button", { name: "10 Ekim: bu güne ekle" }).click();
   const addSheet = app.getByRole("dialog", { name: "Ne eklemek istersin?" });
   assert.equal(await addSheet.locator("header span").innerText(), "Porto · 10 Ekim");
@@ -666,6 +677,7 @@ try {
   await box("Ad").press("Enter");
   await sec("todo").locator('.fk-row[aria-label="Bolhão pazarı"]').waitFor();
   await tab("Günlük akış").click();
+  await listMode();
   await dayCard(3).locator(".dc-step.idea", { hasText: "Bolhão pazarı" }).waitFor();
   // Yapılacak şeyler and Restoranlar (0.34, where Fikirler was): the quick line at the top, a day for a
   // restaurant (with its meal), done, moved to Etkinlikler.
@@ -735,6 +747,7 @@ try {
   await lello.waitFor({ state: "detached" });
   // The restaurant on its day is a thin line of the itinerary; the moved one is a booking in Etkinlikler.
   await tab("Günlük akış").click();
+  await listMode();
   await dayCard(2).locator(".dc-step.idea", { hasText: "Majestic Café" }).getByText("· öğle").waitFor();
   await app.screenshot({ path: `${out}/4k-itinerary-032.png` });
   await tab("Plan").click();

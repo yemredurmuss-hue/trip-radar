@@ -13,7 +13,6 @@ import { insertAtDay, type InsertAt } from "../../lib/templates";
 import type { RentalEntry, StayEntry, TimelineSection } from "../../lib/timeline";
 import type { Listing } from "../../lib/types";
 import { KindIcon, MediaSilhouette, TransportArt } from "../cards/Silhouettes";
-import { HeroIcon } from "../Icons";
 import { PlanEntry } from "../plan/PlanEntry";
 import type { LegCardFor, LegFor, RenderGroup, SettledFor } from "../Timeline";
 
@@ -43,24 +42,69 @@ const dateText = (c: DayCard) => (c.end ? formatDateRange(c.date, c.end) : `${fo
 const time = (r: DayRow) => (r.time ? `${r.estimated ? "~" : ""}${r.time}` : "");
 const isTransport = (k: CardKind): k is TransportMode => (TRANSPORT_MODES as readonly string[]).includes(k) && !RENTAL_MODES.includes(k as TransportMode);
 
+type Mode = "list" | "cards";
+const MODE_KEY = "trip-radar:days-mode";
+const readMode = (): Mode => {
+  try {
+    return localStorage.getItem(MODE_KEY) === "cards" ? "cards" : "list";
+  } catch {
+    return "list";
+  }
+};
+
+/**
+ * One switch for the whole view, no day opens or closes on its own: Liste (each day's photo beside its whole
+ * day) or Kartlar (every day as the Plan's cards, its header held at the top while it scrolls past). A line
+ * in the list switches to the cards at that line; the strip of days jumps to a day in either.
+ */
 export function DayCards(props: DayCardsProps) {
   const cards = dayCards(props.sections, { rentals: props.rentals, listings: props.listings });
   // The stays by their nights' first day: on that day the check-in line opens to the stay's own card.
   const stays = new Map<string, StayEntry>(props.sections.flatMap((s) => (s.kind === "city" ? s.stays.map((st) => [st.key, st] as [string, StayEntry]) : [])));
-  const [open, setOpen] = useState<{ key: string; row: string | null } | null>(null);
+  const [mode, setModeState] = useState<Mode>(readMode);
+  const [target, setTarget] = useState<{ id: string; flash: boolean } | null>(null);
+  const setMode = (m: Mode, at: { id: string; flash: boolean } | null = null) => {
+    setModeState(m);
+    setTarget(at);
+    try {
+      localStorage.setItem(MODE_KEY, m);
+    } catch {
+      // a per-viewer convenience: without storage it starts on the list
+    }
+  };
+  // After a switch or a jump: the line or the day asked for, in view (and the line marked a moment).
+  useEffect(() => {
+    if (!target) return;
+    const el = document.getElementById(target.id);
+    el?.scrollIntoView({ block: target.flash ? "center" : "start" });
+    if (!target.flash || !el) return;
+    el.classList.add("dc-flash");
+    const t = setTimeout(() => el.classList.remove("dc-flash"), 1600);
+    return () => clearTimeout(t);
+  }, [target, mode]);
+  const isToday = (c: DayCard) => c.date === props.today || (!!c.end && c.date <= props.today && props.today <= c.end);
   return (
     <div className="dc">
-      {cards.map((c) => (
-        <Day
-          key={c.key}
-          card={c}
-          open={open?.key === c.key}
-          focus={open?.key === c.key ? open.row : null}
-          stays={stays}
-          onToggle={(row) => setOpen(open?.key === c.key && !row ? null : { key: c.key, row })}
-          {...props}
-        />
-      ))}
+      <div className="dc-bar">
+        <div className="dc-seg" role="tablist" aria-label={L("Görünüm", "View")}>
+          <button role="tab" aria-selected={mode === "list"} className={mode === "list" ? "on" : ""} onClick={() => setMode("list")}>
+            {L("Liste", "List")}
+          </button>
+          <button role="tab" aria-selected={mode === "cards"} className={mode === "cards" ? "on" : ""} onClick={() => setMode("cards")}>
+            {L("Kartlar", "Cards")}
+          </button>
+        </div>
+        <nav className="dc-strip" aria-label={L("Günler", "Days")}>
+          {cards.map((c) => (
+            <button key={c.key} className={isToday(c) ? "today" : ""} title={c.title} onClick={() => setTarget({ id: `dcd-${mode}-${c.key}`, flash: false })}>
+              {(c.dayNo ?? formatDateRange(c.date, null)).replace(/\.? ?gün$|^Days? /, "")}
+            </button>
+          ))}
+        </nav>
+      </div>
+      {mode === "list"
+        ? cards.map((c) => <ListDay key={c.key} card={c} isToday={isToday(c)} onPick={(row) => setMode("cards", row ? { id: `dc-${row}`, flash: true } : { id: `dcd-cards-${c.key}`, flash: false })} {...props} />)
+        : cards.map((c) => <CardsDay key={c.key} card={c} isToday={isToday(c)} stays={stays} {...props} />)}
     </div>
   );
 }
@@ -117,66 +161,99 @@ function useDayPhoto(card: DayCard, cityImage: DayCardsProps["cityImage"]): stri
   return found ?? city;
 }
 
-// --- a day ----------------------------------------------------------------------------------------
+// --- a day ---------------------------------------------------------------------------------------
 
-function Day({ card, open, focus, onToggle, stays, ...props }: { card: DayCard; open: boolean; focus: string | null; onToggle: (row: string | null) => void; stays: Map<string, StayEntry> } & DayCardsProps) {
-  const photo = useDayPhoto(card, props.cityImage);
-  const flow = flowRows(card);
+/** The day's photo with its number and date on it. */
+function DayPhoto({ card, today, photo }: { card: DayCard; today: boolean; photo: string | null }) {
+  return (
+    <>
+      {photo && <img src={photo} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />}
+      {card.dayNo && <span className="dc-no">{card.dayNo}</span>}
+      <span className={`dc-date${today ? " today" : ""}`}>
+        {today ? `${L("Bugün", "Today")} · ` : ""}
+        {dateText(card)}
+      </span>
+    </>
+  );
+}
+
+function DayChips({ card }: { card: DayCard }) {
   const ideas = ideaCount(card.rows);
   const left = card.rows.filter((r) => isPlanRow(r) && r.state !== "done" && r.state !== "info").length;
-  const isToday = card.date === props.today || (!!card.end && card.date <= props.today && props.today <= card.end);
+  return (
+    <>
+      {left > 0 && <span className="dc-left">{L(`${left} iş`, `${left} to do`)}</span>}
+      {ideas > 0 && <span className="dc-ideas-n">{L(`${ideas} fikir`, `${ideas} idea${ideas === 1 ? "" : "s"}`)}</span>}
+    </>
+  );
+}
+
+const AddDay = ({ card, onAdd }: { card: DayCard; onAdd: DayCardsProps["onAdd"] }) => (
+  <button className="dc-add" aria-label={L(`${formatDateRange(card.date, null)}: bu güne ekle`, `${formatDateRange(card.date, null)}: add to this day`)} onClick={() => onAdd(insertAtDay(card.date, card.city))}>
+    + {L("Bu güne ekle", "Add to this day")}
+  </button>
+);
+
+/** Liste: the day's photo beside the whole day; a line (or the day) takes you to its cards. */
+function ListDay({ card, isToday, onPick, ...props }: { card: DayCard; isToday: boolean; onPick: (row: string | null) => void } & DayCardsProps) {
+  const photo = useDayPhoto(card, props.cityImage);
+  const flow = flowRows(card);
   const lead = highlightOf(card);
   const leadKind = lead ? rowKind(lead) : null;
-  // Opened from one of its lines: that line's card in view.
-  useEffect(() => {
-    if (open && focus) document.getElementById(`dc-${focus}`)?.scrollIntoView({ block: "center" });
-  }, [open, focus]);
   return (
-    <article className={`dc-day${open ? " open" : ""}`}>
-      <button className="dc-photo" onClick={() => onToggle(null)} aria-label={`${card.dayNo ?? ""} ${card.title}`}>
-        {photo && <img src={photo} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />}
-        {card.dayNo && <span className="dc-no">{card.dayNo}</span>}
-        <span className={`dc-date${isToday ? " today" : ""}`}>
-          {isToday ? `${L("Bugün", "Today")} · ` : ""}
-          {dateText(card)}
-        </span>
+    <article className="dc-day" id={`dcd-list-${card.key}`}>
+      <button className="dc-photo" onClick={() => onPick(null)} aria-label={L(`${card.dayNo ?? ""} ${card.title}: kartlarda göster`, `${card.dayNo ?? ""} ${card.title}: show as cards`)}>
+        <DayPhoto card={card} today={isToday} photo={photo} />
       </button>
       <div className="dc-body">
-        {leadKind && !open && flow.length <= 3 && (
+        {leadKind && flow.length <= 3 && (
           <div className="dc-art" style={{ ["--mc" as string]: cardKindColor(leadKind) }} aria-hidden>
             {isTransport(leadKind) ? <TransportArt mode={leadKind} /> : leadKind === "activity" ? <MediaSilhouette name="ticket" /> : null}
           </div>
         )}
-        <button className="dc-head" aria-expanded={open} onClick={() => onToggle(null)}>
+        <div className="dc-head">
           <h3>{card.title}</h3>
-          {left > 0 && <span className="dc-left">{L(`${left} iş`, `${left} to do`)}</span>}
-          {ideas > 0 && <span className="dc-ideas-n">{L(`${ideas} fikir`, `${ideas} idea${ideas === 1 ? "" : "s"}`)}</span>}
-          <span className="dc-chev" aria-hidden>
-            <HeroIcon name="chevDown" size={18} />
-          </span>
-        </button>
+          <DayChips card={card} />
+        </div>
         {flow.length === 0 ? (
           <p className="dc-free">{L("Henüz plan yok.", "Nothing planned yet.")}</p>
-        ) : open ? (
-          <ol className="dc-tl full">
-            {flow.map((r) => (
-              <Full key={r.key} row={r} stay={checkInStay(r, card, stays)} {...props} />
-            ))}
-          </ol>
         ) : (
           <ol className="dc-tl">
             {flow.map((r) => (
-              <Line key={r.key} row={r} onTap={() => onToggle(r.key)} />
+              <Line key={r.key} row={r} onTap={() => onPick(r.key)} />
             ))}
           </ol>
         )}
-        {(open || flow.length === 0) && (
-          <button className="dc-add" aria-label={L(`${formatDateRange(card.date, null)}: bu güne ekle`, `${formatDateRange(card.date, null)}: add to this day`)} onClick={() => props.onAdd(insertAtDay(card.date, card.city))}>
-            + {L("Bu güne ekle", "Add to this day")}
-          </button>
-        )}
+        {flow.length === 0 && <AddDay card={card} onAdd={props.onAdd} />}
       </div>
     </article>
+  );
+}
+
+/** Kartlar: the day's header (held at the top while its cards scroll past), then each line as its Plan card. */
+function CardsDay({ card, isToday, stays, ...props }: { card: DayCard; isToday: boolean; stays: Map<string, StayEntry> } & DayCardsProps) {
+  const photo = useDayPhoto(card, props.cityImage);
+  const flow = flowRows(card);
+  return (
+    <section className="dc-cday" id={`dcd-cards-${card.key}`} aria-label={`${card.dayNo ?? ""} ${card.title}`}>
+      <header className="dc-dhead">
+        <span className="dc-thumb">{photo && <img src={photo} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />}</span>
+        <b>{card.dayNo ?? dateText(card)}</b>
+        <span className="ttl">{card.title}</span>
+        <span className={`dc-ddate${isToday ? " today" : ""}`}>{isToday ? L("Bugün", "Today") : dateText(card)}</span>
+        <DayChips card={card} />
+      </header>
+      {flow.length === 0 ? (
+        <p className="dc-free">{L("Henüz plan yok.", "Nothing planned yet.")}</p>
+      ) : (
+        <ol className="dc-tl full">
+          {flow.map((r) => (
+            <Full key={r.key} row={r} stay={checkInStay(r, card, stays)} {...props} />
+          ))}
+        </ol>
+      )}
+      <AddDay card={card} onAdd={props.onAdd} />
+    </section>
   );
 }
 
