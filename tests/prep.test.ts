@@ -9,7 +9,7 @@ import { categorize, sectionOfItem, type SectionId } from "../src/lib/categories
 import { quickIdea } from "../src/lib/ideas";
 import { buildPlan } from "../src/lib/plan";
 import { planToSave, type PlannedInput } from "../src/lib/planned";
-import { choreText, isPaperwork, isPrep } from "../src/lib/prep";
+import { choreText, isPaperwork, isPrep, shoppingThere } from "../src/lib/prep";
 import { buildTimeline } from "../src/lib/timeline";
 import { isInsurance } from "../src/lib/travelKinds";
 import type { Item, Trip } from "../src/lib/types";
@@ -151,5 +151,49 @@ describe("saved pages are what they are", () => {
     const policyPage = makeItem({ category: "other", name: "Get travel insurance · World Nomads", url: "https://worldnomads.com" });
     expect(isInsurance(policyPage)).toBe(true);
     expect(sectionOfItem(policyPage)).toBe("other");
+  });
+});
+
+// Emre, 2026-10-05: shopping before the trip is Hazırlık, shopping there is Yapılacak şeyler; a line that says
+// neither stays a chore and is moved by hand ("Orada yapılacak") when it's meant for there.
+describe("shopping: before the trip or there", () => {
+  it.each([
+    "Porto şarabı al",
+    "Hediyelik eşya al",
+    "Bolhão pazarından peynir al",
+    "Azulejo magnet satın al",
+    "Madeira'dan poncha alalım",
+    "Buy souvenirs",
+    "Buy port wine in Gaia",
+    "Pick up local ceramics",
+  ])("%s → bought there: a thing to do, not a chore", (line) => {
+    expect(shoppingThere(line)).toBe(true);
+    expect(choreText(line)).toBe(false);
+    expect(sectionOfItem(chat({ title: line }))).toBe("todo");
+  });
+
+  it.each([
+    "Decathlon'dan yağmurluk al",
+    "Şemsiye al",
+    "Yola çıkmadan hediyelik çanta al",
+    "Buy a travel adapter",
+    "Buy wine glasses online",
+  ])("%s → bought before: a chore in Hazırlık", (line) => {
+    expect(shoppingThere(line)).toBe(false);
+    expect(choreText(line)).toBe(true);
+    expect(isPrep(chat({ title: line }))).toBe(true);
+  });
+
+  it("the traveller's move stands over the words", () => {
+    const umbrella = { ...chat({ title: "Şemsiye al" }), prep: false };
+    expect(isPrep(umbrella)).toBe(false);
+    expect(sectionOfItem(umbrella)).toBe("todo");
+    const wine = { ...chat({ title: "Porto şarabı al" }), prep: true };
+    expect(isPrep(wine)).toBe(true);
+    expect(sectionOfItem(wine)).toBe("other");
+  });
+
+  it("a policy is never moved into Hazırlık", () => {
+    expect(isPrep({ ...chat({ kind: "insurance", title: "Allianz" }), prep: true })).toBe(false);
   });
 });

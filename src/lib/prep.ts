@@ -5,10 +5,12 @@
 import { choreText, isPaperwork } from "./travelKinds";
 import type { Item } from "./types";
 
-export { choreText, isPaperwork } from "./travelKinds";
+export { choreText, isPaperwork, shoppingThere } from "./travelKinds";
 
 /** A chore before the trip: said as one in the chat (`prep`), or a thing to do whose name is one. */
 export function isPrep(item: Item): boolean {
+  // Moved by hand ("Orada yapılacak" / "Hazırlığa taşı"): that stands over the words and the chat's kind.
+  if (typeof item.prep === "boolean") return item.prep && item.plannedKind !== "insurance";
   if (item.plannedKind === "prep") return true;
   if (item.plannedKind === "note" || item.plannedKind === "insurance") return false;
   if (item.category !== "other" && item.category !== "activity") return false;

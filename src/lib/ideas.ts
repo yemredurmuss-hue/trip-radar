@@ -263,6 +263,14 @@ export const setIdeaDay = (item: Item, date: string | null, meal: MealSlot | nul
     date ? L(`${item.name} ${shortDay(date)} gününe eklendi`, `${item.name} put on ${shortDay(date)}`) : L(`${item.name} günden çıkarıldı`, `${item.name} taken off its day`),
   );
 
+/** Moved by hand between Hazırlık (a chore before the trip) and Yapılacak şeyler (something to do there). */
+export const setPrep = (item: Item, prep: boolean) =>
+  change(
+    item,
+    (fresh) => ({ ...fresh, prep }),
+    prep ? L(`${item.name} Hazırlık'a taşındı`, `${item.name} moved to Prep`) : L(`${item.name} Yapılacak şeyler'e taşındı`, `${item.name} moved to Things to do`),
+  );
+
 /** The tick: done ("Yapıldı · 12 Eki") or not. */
 export const setDone = (item: Item, done: boolean, now = Date.now()) =>
   change(

@@ -3,7 +3,7 @@
 // 12 Eki" once done, × on hover (deleted with "Geri al"). No day chip: a chore is done or not.
 import { catDomKey, type CatEntry } from "../../lib/categories";
 import { L } from "../../lib/i18n";
-import { doneText, setDone } from "../../lib/ideas";
+import { doneText, setDone, setPrep } from "../../lib/ideas";
 import { entryDomId } from "../../lib/progress";
 import type { Item } from "../../lib/types";
 import { DeleteX } from "../cards/CardShell";
@@ -49,6 +49,11 @@ function PrepRow({ item, domId }: { item: Item; domId: string }) {
         <Editable field="name">{item.name}</Editable>
       </span>
       {done && <span className="prep-done">{doneText(item)}</span>}
+      {/* Not a chore after all ("şemsiye al" to buy there): one tap moves it to Yapılacak şeyler. */}
+      <button type="button" className="prep-move" title={L("Gidilen yerde yapılacak: Yapılacak şeyler'e taşı", "Done there: move to Things to do")}
+        aria-label={L(`${item.name}: Yapılacak şeyler'e taşı`, `${item.name}: move to Things to do`)} onClick={() => void setPrep(item, false)}>
+        {L("Orada yapılacak", "Done there")}
+      </button>
       <DeleteX name={item.name} onDelete={() => env.remove(item)} />
     </li>
   );

@@ -335,6 +335,8 @@ export interface Item {
   booking?: "needed" | "none";
   /** A to-do or an idea ticked off ("Yapıldı · 12 Eki"). */
   doneAt?: number;
+  /** Moved by the traveller between Hazırlık (true) and Yapılacak şeyler (false); wins over its words. */
+  prep?: boolean;
   /** A restaurant idea put on a day: which meal ("8 Eki akşam"). */
   meal?: MealSlot;
   /**

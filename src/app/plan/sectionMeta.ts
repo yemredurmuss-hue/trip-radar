@@ -28,7 +28,7 @@ export const SECTION_META: Record<SectionId, SectionMeta> = {
   activity: { color: "#a8336f", icon: "activity", label: () => L("Etkinlikler", "Activities"), short: () => L("Etkinlik", "Activity"), templates: ["activity"] },
   todo: { color: "#5d8a1c", icon: "todo", label: () => L("Yapılacak şeyler", "Things to do"), short: () => L("Yapılacak", "To-do"), templates: ["todo"] },
   food: { color: "#b4532a", icon: "food", label: () => L("Restoranlar", "Restaurants"), short: () => L("Restoran", "Restaurant"), templates: ["food"] },
-  other: { color: "#3b6fd1", icon: "insurance", label: () => L("Diğer · sigorta ve internet", "Other · insurance and internet"), short: () => L("Sigorta · eSIM", "Insurance · eSIM"), templates: ["esim", "insurance"] },
+  other: { color: "#3b6fd1", icon: "insurance", label: () => L("Diğer (Sigorta, eSIM)", "Other (Insurance, eSIM)"), short: () => L("Sigorta · eSIM", "Insurance · eSIM"), templates: ["esim", "insurance"] },
   // Saved by sending a link (a Reel, a pin, a video, a blog), never added by hand: no template, no "Ekle" chip.
   inspo: { color: "#8a5cc7", icon: "inspo", label: () => L("İlham", "Inspiration"), short: () => L("İlham", "Inspiration"), templates: [] },
 };

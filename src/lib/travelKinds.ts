@@ -48,10 +48,26 @@ const EN_CHORE =
   /^(to\s+)?(buy|purchase|order|apply|renew|book|reserve|print|pack|exchange|withdraw|download|install|activate|confirm|cancel|pay|fill (in|out)|charge|arrange|sort out|check in online|do (the )?online check-?in|get (a |an |the |our |my )?(travel |health )*(visas?|insurance|e-?sims?|sim( card)?|adapters?|cash|euros?|currency|tickets?|passports?))\b/i;
 const CHORE_NOUNS = /döviz|bavul|valiz|pasaport|online check-?in|adaptör|currency exchange|money exchange|passport|packing list|suitcase|travel adapter|power adapter|visa application|vize (başvuru|randevu)/i;
 
+// Shopping is a chore before the trip ("Decathlon'dan yağmurluk al") but an experience there ("Porto şarabı al",
+// "hediyelik eşya al", "Bolhão pazarından peynir al"): a buy line that names something bought there, and no sign
+// it's bought at home first, goes to Yapılacak şeyler. A line that says neither ("şemsiye al") stays a chore.
+const TR_BUY = new RegExp(`(?<![\\p{L}\\p{N}])(satın al|al)(${TR_SUFFIXES.filter(Boolean).join("|")})?$`, "u");
+const EN_BUY = /^(to\s+)?(buy|purchase|get|pick up|grab|try)\b/i;
+const BOUGHT_THERE =
+  /hediyelik|hediye|souvenir|magnet|mıknatıs|yerel|yöresel|local|el yapımı|handmade|azulejo|çini|seramik|ceramic|şarap|şarab|wine|likör|liqueur|poncha|ginja|sardalya|sardine|mantar|cork|pazar|mercado|market(?!ten)|çarşı|bazaar/i;
+const BOUGHT_BEFORE = /decathlon|amazon|trendyol|hepsiburada|internetten|online|yola çıkmadan|gitmeden|evden|before (the )?trip|before we go|duty ?free/i;
+
+/** A buy line about shopping at the destination (TR or EN): a thing to do there, not a chore. */
+export function shoppingThere(text: string | null | undefined): boolean {
+  const t = (text ?? "").replace(/[\s.!?…]+$/u, "").replace(/\s+/g, " ").trim().toLocaleLowerCase("tr");
+  if (!t || !(TR_BUY.test(t) || EN_BUY.test(t))) return false;
+  return BOUGHT_THERE.test(t) && !BOUGHT_BEFORE.test(t);
+}
+
 /** The line names a chore to do before the trip (TR or EN), not something to see or do there. */
 export function choreText(text: string | null | undefined): boolean {
   const t = (text ?? "").replace(/[\s.!?…]+$/u, "").replace(/\s+/g, " ").trim().toLocaleLowerCase("tr");
-  if (!t) return false;
+  if (!t || shoppingThere(t)) return false;
   return TR_CHORE.test(t) || EN_CHORE.test(t) || CHORE_NOUNS.test(t);
 }
 
