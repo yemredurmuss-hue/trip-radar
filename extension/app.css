@@ -947,7 +947,7 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .hx-ph { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 0 24px; color: #b3aec8; text-align: center; }
 .hx-ph span { font-size: 14px; color: var(--hx-muted); }
 .hx-cities {
-  position: absolute; top: 16px; left: 16px; display: flex; gap: 2px; padding: 4px; border-radius: 999px; max-width: calc(100% - 32px - 200px); overflow-x: auto; scrollbar-width: none;
+  position: absolute; top: 16px; left: 16px; display: flex; gap: 2px; padding: 4px; border-radius: 999px; max-width: calc(100% - 32px - 250px); overflow-x: auto; scrollbar-width: none;
   background: rgba(255,255,255,.82); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
 }
 .hx-cities button { flex: none; height: 40px; border: 0; background: transparent; padding: 0 22px; border-radius: 999px; font-size: 16px; font-weight: 500; color: var(--hx-muted); }
@@ -957,6 +957,11 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .hx-busy { height: 32px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 999px; background: #fff; font-size: 13px; font-weight: 500; white-space: nowrap; }
 .hx-busy i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #d2d2d7; border-top-color: var(--hx-ink); animation: hx-spin 1s linear infinite; }
 @keyframes hx-spin { to { transform: rotate(360deg); } }
+/* A photo under 700 px: "2 kayıt işleniyor" shrinks to its spinner (the words stay in the title), so it never rides over the city switcher. */
+@container hxleft (max-width: 699px) {
+  .hx-busy span { display: none; }
+  .hx-busy { padding: 0 10px; }
+}
 .hx-menu { position: absolute; right: 16px; top: 16px; z-index: 6; }
 .hx-menu .menu-btn { width: 40px; height: 40px; border-radius: 50%; color: var(--hx-ink); background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
 
@@ -1071,8 +1076,10 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .hx-who-text small.accent { color: var(--hx-accent); }
 .hx-share { margin-top: 8px; font-size: 13px; color: var(--hx-muted); }
 .hx-share .err { color: var(--danger); }
-.hx-styles { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
-.hx-styles span { height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 0 18px 0 14px; border-radius: 999px; font-size: 16px; font-weight: 500; white-space: nowrap; }
+/* The style words: two styles sit on one line in the wide card (14px, 16px icons, 34px high); the budget's word
+   wraps under them when the three don't fit. A chip never shrinks or cuts its word. */
+.hx-styles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.hx-styles span { flex: none; height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 999px; font-size: 14px; font-weight: 500; white-space: nowrap; }
 .hx-styles svg { flex: none; }
 .hx-styles .empty { padding: 0 16px; border: 1.5px dashed #d6d1e3; color: var(--hx-muted); font-weight: 400; font-size: 15px; white-space: normal; }
 
