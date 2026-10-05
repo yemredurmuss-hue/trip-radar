@@ -538,7 +538,9 @@ const STAY_WORDS: Readonly<Partial<Record<string, string>>> = liveLabels({
   hostel: ["Hostel", "Hostel"],
   guesthouse: ["Pansiyon", "Guesthouse"],
 });
-const stayWord = (p: LegPoint) => STAY_WORDS[p.item?.metrics?.stayKind ?? ""] ?? L("Otel", "Hotel");
+/** A stay in one word by what it is: "Daire", "Ev", "Hostel", "Pansiyon", else "Otel". */
+export const stayWordOf = (item: Item | null) => STAY_WORDS[item?.metrics?.stayKind ?? ""] ?? L("Otel", "Hotel");
+const stayWord = (p: LegPoint) => stayWordOf(p.item);
 
 /**
  * A transfer in a few words, like a ticket: "Havalimanı → Otel", "Daire → Gar", "Otel değişimi". The

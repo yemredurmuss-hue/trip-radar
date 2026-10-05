@@ -6,7 +6,7 @@ import { durationText, type CardFacts } from "./cardFacts";
 import { L } from "./i18n";
 import { count, nDays, nOptions, nReviews, nStops, num } from "./i18nText";
 import { formatDateRange, isoDate, metricsOf, nightsBetween } from "./items";
-import { clockOf, legItem, legTiming, MODE_LABELS, type Leg } from "./legs";
+import { clockOf, legItem, legTiming, MODE_LABELS, stayWordOf, type Leg } from "./legs";
 import type { DateAlert } from "./progress";
 import { flightSearchUrl } from "./timeline";
 import { isTrip } from "./travelKinds";
@@ -260,6 +260,54 @@ export interface LegCardView {
 /** Ways between cities that need a ticket; everything else (taxi, transfer, metro, a city bus) is planned once said. */
 const LEG_TICKETS = ["flight", "train", "bus", "ferry"];
 
+const PLATFORMS: [RegExp, string][] = [
+  [/airbnb/i, "Airbnb"], [/booking\.com|\bbooking\b/i, "Booking.com"], [/hotels\.com/i, "Hotels.com"], [/expedia/i, "Expedia"],
+  [/vrbo|homeaway/i, "Vrbo"], [/agoda/i, "Agoda"], [/hostelworld/i, "Hostelworld"],
+];
+const hostOf = (url: string | null) => {
+  try {
+    return url ? new URL(url).hostname : "";
+  } catch {
+    return "";
+  }
+};
+/** Where a stay was booked (Airbnb, Booking.com…), from its shop or its page's address; null for a hotel's own site. */
+export function stayPlatform(item: Item): string | null {
+  const text = `${item.provider ?? ""} ${hostOf(item.url)}`;
+  return PLATFORMS.find(([re]) => re.test(text))?.[1] ?? null;
+}
+
+const HUB_WORDS = () =>
+  ({
+    flight: [L("Havalimanı", "Airport"), (c: string) => L(`${c} Havalimanı`, `${c} Airport`)],
+    train: [L("Gar", "Station"), (c: string) => L(`${c} Garı`, `${c} Station`)],
+    bus: [L("Otogar", "Bus station"), (c: string) => L(`${c} Otogarı`, `${c} Bus Station`)],
+    ferry: [L("İskele", "Ferry port"), (c: string) => L(`${c} İskelesi`, `${c} Ferry Port`)],
+  }) as Record<string, [string, (city: string) => string]>;
+
+/**
+ * One end of a transfer (spec 0.33 §4), short and big with the full name small under it: a stay by where
+ * it was booked (Airbnb, Booking.com…) or what it is (Otel, Daire…), its name below; an airport as
+ * "Porto Havalimanı" with its code below; a station as "Porto Garı" with the station's name below.
+ */
+export function legEnd(leg: Leg, side: "from" | "to"): End {
+  const point = leg[side];
+  const hub = (leg.kind === "arrival" && side === "from") || (leg.kind === "departure" && side === "to");
+  if (!hub) {
+    if (point.item) return { city: stayPlatform(point.item) ?? stayWordOf(point.item), sub: point.item.name, time: null };
+    return { city: L("Konaklama", "Stay"), sub: point.city, time: null };
+  }
+  const words = leg.via ? HUB_WORDS()[leg.via] : undefined;
+  if (!words) return { city: point.label, sub: null, time: null };
+  const trip = leg.travel ? (leg.travel.settled ?? leg.travel.items[0]) : null;
+  const place = trip?.flight?.[side === "from" ? "to" : "from"]?.trim() || null;
+  const code = place && /^[A-Z]{3}$/.test(place) ? place : null;
+  const known = code ? cityOfAirport(code) : null;
+  const city = known && known !== code ? known : point.city;
+  const same = (a: string | null, b: string | null) => (a ?? "").trim().toLocaleLowerCase("tr") === (b ?? "").trim().toLocaleLowerCase("tr");
+  return { city: city ? words[1](city) : words[0], sub: code ?? (place && !same(place, city) ? place : null), time: null };
+}
+
 /** A transfer (airport ↔ hotel, hotel change) or a change of city, as a transport card. */
 export function legCardView(leg: Leg): LegCardView {
   const mode = leg.choice?.mode ?? leg.mode;
@@ -283,8 +331,8 @@ export function legCardView(leg: Leg): LegCardView {
     kind,
     label,
     ring: booked ? "done" : planned ? (ticketed ? "half" : "done") : "open",
-    from: { city: from, sub: date, time: null },
-    to: { city: to, sub: date, time: null },
+    from: move ? { city: from, sub: date, time: null } : legEnd(leg, "from"),
+    to: move ? { city: to, sub: date, time: null } : legEnd(leg, "to"),
     middle: legTiming(leg),
     foot,
     ariaLabel: `${from} → ${to}`,
