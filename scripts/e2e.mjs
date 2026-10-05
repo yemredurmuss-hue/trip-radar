@@ -156,7 +156,7 @@ try {
   const heads = await app.locator(".trip-line .tl-label b").allInnerTexts();
   assert.deepEqual(heads, ["Varış", "Konaklama", "Etkinlik", "Şehir değişimi", "Konaklama", "Dönüş"]);
   // No days, no check-in lines, no transfers without a plan on the front.
-  assert.equal(await app.locator(".trip-line .tl-day, .trip-line .leg").count(), 0);
+  assert.equal(await app.locator(".trip-line .tl-day, .trip-line .leg, .trip-line .pk-leg").count(), 0);
   // The itinerary, a tab away: day by day, hour by hour; each booking a small block, information a line.
   const tab = (name) => app.getByRole("tab", { name, exact: true });
   await tab("Günlük akış").click();
@@ -213,10 +213,19 @@ try {
   const boxes = await porto.locator(".swipe-card").evaluateAll((els) => els.map((e) => e.getBoundingClientRect()).map((r) => ({ top: Math.round(r.top), width: r.width })));
   assert.ok(boxes.every((b, i) => i === 0 || b.top > boxes[i - 1].top), "best first, top to bottom");
   assert.ok(boxes.every((b) => b.width >= 420), `cards wide enough to read: ${boxes.map((b) => b.width)}`);
-  // Flights: the best first, the cheaper second, each with why.
-  assert.equal(await card("Pegasus · direkt").locator(".opt-rank").innerText(), "1");
-  assert.equal(await card("Pegasus · direkt").locator(".opt-trade").innerText(), "2.'ye göre+€30 · bagaj dahil, direkt, saatleri daha uygun · eksiği: iade yok, ücretli değişiklik");
-  assert.equal(await card("TAP · Lizbon aktarmalı").locator(".opt-label").innerText(), "EN EKONOMİK");
+  // Flights: one card with ‹ 1/2 ›, the pick and its reasons in the details.
+  const pk = (name) => app.locator(`.pk-card[aria-label="${name}"]`);
+  const pegasus = pk("Pegasus · direkt");
+  assert.match(await pegasus.locator(".pk-foot").innerText(), /2 seçenek[\s\S]*1\/2[\s\S]*Önerim[\s\S]*€\d+[\s\S]*Plana seç/);
+  await pegasus.locator(".pk-body").click();
+  assert.equal(await pegasus.locator(".pk-why.trade").innerText(), "2.'ye göre+€30 · bagaj dahil, direkt, saatleri daha uygun · eksiği: iade yok, ücretli değişiklik");
+  await pegasus.locator(".pk-body").click();
+  await pegasus.getByRole("button", { name: "Sonraki seçenek" }).click();
+  const tap = pk("TAP · Lizbon aktarmalı");
+  await tap.locator(".pk-body").click();
+  assert.equal(await tap.locator(".pk-badges").innerText(), "En ekonomik");
+  await tap.locator(".pk-body").click();
+  await tap.getByRole("button", { name: "Önceki seçenek" }).click();
   // The quiet line under the next step: what to decide, book and plan, counted; a count lists them under
   // the hero, a tap goes there.
   const todo = app.locator(".hx-todo");
@@ -240,20 +249,22 @@ try {
   await budget.click();
   await budget.locator(".hx-pop").waitFor({ state: "detached" });
   // Decided already: the boat tour on the 9th and the flight home.
-  const douro = app.locator(".tl-event .settled-card", { hasText: "Douro tekne turu" });
-  await douro.locator(".status-bar").getByText("bilet alınmadı").waitFor();
-  const home = app.locator(".tl-travel.role-departure .settled-card");
-  await home.locator(".status-bar.st-booked", { hasText: "Bilet alındı" }).waitFor();
-  // A misclick on "Bileti aldım" can be taken back, and redone.
-  await home.getByRole("button", { name: "Geri al" }).click();
-  await home.locator(".status-bar").getByText("bilet alınmadı").waitFor();
+  const douro = app.locator(".tl-event .pk-card", { hasText: "Douro tekne turu" });
+  await douro.locator(".pk-foot").getByText("bilet alınmadı").waitFor();
+  const home = app.locator(".tl-travel.role-departure .pk-card");
+  await home.locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
+  // A misclick on "Bileti aldım" can be taken back (in the details), and redone.
+  await home.locator(".pk-body").click();
+  await home.getByRole("button", { name: "Rezervasyonu geri al" }).click();
+  await home.locator(".pk-foot").getByText("bilet alınmadı").waitFor();
   await home.getByRole("button", { name: "Bileti aldım" }).click();
-  await home.locator(".status-bar.st-booked", { hasText: "Bilet alındı" }).waitFor();
-  assert.match(await home.locator(".route").innerText(), /LIS[\s\S]*19:40 · 14 Ekim[\s\S]*4 sa 55 dk[\s\S]*Direkt[\s\S]*IST[\s\S]*01:35 · 15 Ekim/);
-  // A decided card opens on a tap, with its details.
-  await douro.locator(".stc-main").click();
-  await douro.locator(".stc-details").getByRole("button", { name: "Tüm detaylar" }).waitFor();
-  await douro.locator(".stc-main").click();
+  await home.locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
+  assert.match(await home.locator(".pk-mid").innerText(), /LIS[\s\S]*14 Ekim · 19:40[\s\S]*4 sa 55 dk · direkt[\s\S]*IST[\s\S]*15 Ekim · 01:35/);
+  await home.locator(".pk-body").click();
+  // Opening a card shows its details on the card.
+  await douro.locator(".pk-body").click();
+  await douro.locator(".pk-detail").getByRole("button", { name: "Tüm detaylar" }).waitFor();
+  await douro.locator(".pk-body").click();
   await app.locator(".trip-line").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/3-board.png` });
 
@@ -350,8 +361,8 @@ try {
   await jardimRow.locator(".stc-details .card-details").waitFor();
   await jardimRow.getByRole("button", { name: "Detaylar", exact: true }).click();
   // "Seç" on a flight card: the flight folds into a line, and its landing time reaches the transfer to the hotel.
-  await card("Pegasus · direkt").getByRole("button", { name: "Seç" }).click();
-  await app.locator(".tl-travel.role-arrival .settled-card", { hasText: "IST" }).locator(".status-bar").getByText("bilet alınmadı").waitFor();
+  await pk("Pegasus · direkt").getByRole("button", { name: "Plana seç" }).click();
+  await app.locator(".tl-travel.role-arrival .pk-card", { hasText: "IST" }).locator(".pk-foot").getByText("bilet alınmadı").waitFor();
   // Porto chosen, Lisbon booked: in the itinerary the transfers lay themselves out (the saved train is
   // the move, with a station transfer on each side), and the way home says what's easy to miss.
   await tab("Günlük akış").click();
@@ -393,16 +404,19 @@ try {
   await app.setViewportSize(wide);
   // Back on the plan, without the train Porto → Lizbon is a move to plan: by plane it reads as a flight, with its status on it.
   await tab("Plan").click();
-  // "Ele" right on the card: it leaves the options and waits under "Elenenler".
-  await card("CP Alfa Pendular · Porto → Lizbon").getByRole("button", { name: "Ele", exact: true }).click();
+  // "Ele" in the card's menu: it leaves the options and waits under "Elenenler".
+  const train = pk("CP Alfa Pendular · Porto → Lizbon");
+  await train.getByRole("button", { name: "Kart menüsü" }).click();
+  await train.getByRole("menuitem", { name: "Ele" }).click();
   await app.locator(".row-name", { hasText: "Elenenler (1)" }).waitFor();
-  const move = app.locator(".move-card");
-  await move.locator(".status-bar.st-open", { hasText: "Planlanmadı" }).waitFor();
-  assert.match(await move.locator(".route").innerText(), /Porto[\s\S]*Lizbon/);
-  await move.locator(".stc-main").click();
+  const move = app.locator('.pk-leg[aria-label="Porto → Lizbon"]');
+  await move.locator(".pk-ring.open").waitFor();
+  await move.locator(".pk-foot", { hasText: "Planlanmadı" }).waitFor();
+  assert.match(await move.locator(".pk-mid").innerText(), /Porto[\s\S]*Lizbon/);
+  await move.locator(".pk-body").click();
   await move.getByRole("button", { name: "✈ Uçak" }).click();
-  await move.locator(".status-bar.st-planned", { hasText: "Planlanıyor" }).waitFor();
-  await move.locator(".status-bar").getByText("bilet alınmadı").waitFor();
+  await move.locator(".pk-ring.half").waitFor();
+  await move.locator(".pk-foot").getByText("bilet alınmadı").waitFor();
   assert.equal(
     decodeURIComponent(await move.getByRole("link", { name: "Uçuş ara ↗" }).getAttribute("href")),
     "https://www.google.com/travel/flights?q=Flights from Porto to Lizbon on 2026-10-11",
@@ -410,7 +424,7 @@ try {
   await move.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await app.screenshot({ path: `${out}/5d-move.png` });
   await move.getByRole("button", { name: "Bileti aldım" }).click();
-  await move.locator(".status-bar.st-booked", { hasText: "Bilet alındı" }).waitFor();
+  await move.locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
   // By plane there's an airport at each end: the itinerary's day 4 now has them, around the flight.
   await tab("Günlük akış").click();
   await itRow(4, "Otel → Havalimanı").waitFor();
@@ -418,9 +432,55 @@ try {
   await tab("Plan").click();
   // Places without a day stay together, as cards to browse.
   await app.getByText("Etkinlikler").click();
-  await card("Tiyatro").waitFor();
+  await pk("Tiyatro").waitFor();
   assert.equal(await app.locator(".crash").count(), 0, "board crashed after chat updates");
   await app.screenshot({ path: `${out}/5-chosen.png` });
+  // 4b. Plan cards: a file on a card, delete + undo (the file comes back), add from a template, narrow.
+  const douroCard = () => app.locator(".tl-event .pk-card", { hasText: "Douro tekne turu" });
+  await douroCard().locator("input.pk-file").first().setInputFiles({ name: "bilet.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n%e2e\n") });
+  const pill = douroCard().locator(".pk-docpill", { hasText: "bilet.pdf" });
+  await pill.waitFor();
+  const [docTab] = await Promise.all([context.waitForEvent("page"), pill.click()]);
+  assert.match(docTab.url(), /^blob:chrome-extension:\/\//);
+  await docTab.close();
+  await douroCard().getByRole("button", { name: "Kart menüsü" }).click();
+  await douroCard().getByRole("menuitem", { name: "Sil" }).click();
+  await douroCard().waitFor({ state: "detached" });
+  await app.locator(".pk-undo", { hasText: "Douro tekne turu silindi" }).getByRole("button", { name: "Geri al" }).click();
+  await douroCard().locator(".pk-docpill", { hasText: "bilet.pdf" }).waitFor();
+  await app.getByRole("button", { name: "Ekle", exact: true }).first().click();
+  const sheet = app.getByRole("dialog", { name: "Ne eklemek istersin?" });
+  await sheet.getByRole("button", { name: "Otobüs", exact: true }).waitFor();
+  await app.screenshot({ path: `${out}/4d-add-sheet.png` });
+  await sheet.getByRole("button", { name: "Otobüs", exact: true }).click();
+  await sheet.getByLabel("Nereden").fill("Lizbon");
+  await sheet.getByLabel("Nereye").fill("Lagos");
+  await sheet.getByLabel("Tarih").fill("2026-10-13");
+  await sheet.getByLabel("Saat").fill("10:00");
+  await sheet.getByLabel("Fiyat").fill("18");
+  await sheet.getByRole("button", { name: "Kaydet" }).click();
+  await sheet.waitFor({ state: "detached" });
+  const bus = pk("Otobüs · Lizbon → Lagos");
+  await bus.locator(".pk-kind", { hasText: "Otobüs" }).waitFor();
+  await bus.locator(".pk-foot", { hasText: "Planlanıyor" }).waitFor();
+  // The panel scrolls inside the page, so a tall window shows the whole plan in one picture.
+  await app.setViewportSize({ width: 1440, height: 2600 });
+  await app.locator(".trip-line").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.screenshot({ path: `${out}/4b-plan-cards.png` });
+  // Below 860 px the board is one column; at 560 px the panel is under 620 px and the narrow card layout applies.
+  await app.setViewportSize({ width: 560, height: 2600 });
+  await app.locator(".trip-line").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.screenshot({ path: `${out}/4c-plan-cards-narrow.png` });
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll on a narrow board");
+  await app.setViewportSize({ width: 1440, height: 900 });
+  // The approved mockups beside the screenshots, for a side-by-side look.
+  const ref = await context.newPage();
+  for (const name of ["2026-10-05-ulasim-v3", "2026-10-05-etkinlik-v4"]) {
+    await ref.goto(pathToFileURL(path.resolve(`docs/mockups/${name}.html`)).href);
+    await ref.screenshot({ path: `${out}/ref-${name}.png`, fullPage: true });
+  }
+  await ref.close();
+  console.log("✓ plan cards: a file opens in a tab, delete + undo brings the card and its file back, a bus added from the template, narrow board");
   console.log("✓ board: demo trip, decision labels, comparison with priorities, drawer, status change and chat event");
 
   // 5. Settings dialog.
@@ -745,15 +805,21 @@ try {
   await say("Porto tek blok olsun 8-11; 11 Ekim'e uçak bileti, otelden havalimanına taksi, eSIM de alalım", "Panoyu güncelledim.");
   await board.locator("#block-2026-10-09").waitFor({ state: "detached", timeout: 10000 });
   await board.locator("#block-2026-10-08 .slot-note").waitFor();
-  await board.locator('.settled-card[aria-label="Uçuş"]').waitFor();
+  await board.locator('.pk-card[aria-label="Uçuş"]').waitFor();
   await board.getByText("Taksi · Otel → Havalimanı").first().waitFor();
-  const esim = board.locator('.settled-row[aria-label="eSIM"]'); // a small thing: one line, not a card
+  const esim = board.locator('.pk-card[aria-label="eSIM"]');
   await esim.waitFor();
   await esim.scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/9b-chat-plan.png` });
-  await esim.getByRole("button", { name: "eSIM: kaldır" }).click();
+  await esim.getByRole("button", { name: "Kart menüsü" }).click();
+  await esim.getByRole("menuitem", { name: "Sil" }).click();
   await esim.waitFor({ state: "detached" });
-  console.log("✓ flow: chat shapes the plan — two Porto stays merge into one block; ticket, taxi and eSIM added; a plan removed from the board");
+  await board.locator(".pk-undo", { hasText: "eSIM silindi" }).getByRole("button", { name: "Geri al" }).click();
+  await esim.waitFor();
+  await esim.getByRole("button", { name: "Kart menüsü" }).click();
+  await esim.getByRole("menuitem", { name: "Sil" }).click();
+  await esim.waitFor({ state: "detached" });
+  console.log("✓ flow: chat shapes the plan — two Porto stays merge into one block; ticket, taxi and eSIM added; a plan deleted, undone, deleted");
 
   // A Thailand hotel saved while the Portugal trip is open → its own trip, and a notice to go there.
   await board.evaluate(async () => {
