@@ -139,33 +139,44 @@ try {
   // 4. Demo trip, a group expanded, and the detail drawer.
   await app.getByText("Örnek geziyi yükle →").click();
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
-  // The trip at a glance beside its picture: when and where in the order it goes, then what's settled of what's needed.
-  // The hero: a photo per city with a switcher, the countdown and route, what's confirmed, and the facts column.
+  // The hero (v9, docs/superpowers/specs/2026-10-05-hero-v9-design.md): a photo per city with a switcher and the
+  // countdown on it, the title, the dates, one sentence, the plan in four cells, "Rezervasyonların", and the card.
   const hero = app.locator(".hx");
+  const flat = (texts) => texts.map((t) => t.replace(/\s+/g, " ").trim());
   assert.deepEqual(await hero.locator(".hx-cities button").allInnerTexts(), ["Porto", "Lizbon"]);
-  assert.match(await hero.locator(".hx-tab").innerText(), /8–14 Ekim\s*·\s*(.*gün kaldı|Yarın|\. gün \/ 7|Bitti)/);
-  // The style under the title: no model key here, so only the budget's word (€1.500 for 2 people, 7 days ≈ €107 a day each).
-  assert.deepEqual(await hero.locator(".hx-chips span").allInnerTexts(), ["Orta bütçe"]);
-  // The plan in one line: icon, number, name.
-  assert.deepEqual((await hero.locator(".hx-stats > span").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim()), ["2 uçuş", "2 konaklama", "1 ulaşım", "1 deneyim"]);
+  assert.match(await hero.locator(".hx-count").innerText(), /^(\d+ gün kaldı|Yarın|\d+\. gün \/ 7|Bitti)$/);
+  assert.equal(flat([await hero.locator(".hx-when").innerText()])[0], "8–14 Ekim · 7 gün");
+  // The plan in four cells: icon, number, name; each a button to its section.
+  assert.deepEqual(flat(await hero.locator(".hx-tally button").allInnerTexts()), ["2 uçuş", "2 konaklama", "1 ulaşım", "1 deneyim"]);
   assert.equal(await hero.locator(".hx-lead").innerText(), "3 karar ve 1 rezervasyon bekliyor.");
+  // "Rezervasyonların": the Plan's section headers' "3/4"s added up, so both always say the same thing.
+  const [settled, total] = (await app.locator(".cat-sec .cat-count").allInnerTexts())
+    .map((t) => t.replace(/\s/g, "").split("/").map(Number))
+    .reduce(([a, b], [c, d]) => [a + c, b + d], [0, 0]);
+  assert.ok(total > 0);
+  assert.equal(flat([await hero.locator(".hx-progress-count").innerText()])[0], `${settled}/${total} onaylandı · %${Math.round((settled / total) * 100)}`);
+  assert.equal(flat([await hero.locator(".hx-go").innerText()])[0], "Planı tamamla");
+  assert.match(await hero.locator(".hx-go").getAttribute("title"), /^\S.*: \S/); // the next step in words ("Karar ver: …", "Lisboa Loft: ücretsiz iptal …")
   const side = hero.locator(".hx-side");
-  // One fact a line; the small things (money, plug, time, language) in one row under the budget.
-  const fact = (label) => side.locator(".hx-fact", { hasText: label }).locator("strong").innerText();
-  assert.equal(await fact("Süre"), "7 gün");
-  assert.equal(await fact("Ülke"), "Portekiz");
-  assert.equal(await fact("Lokasyonlar"), "Porto, Lizbon");
-  assert.equal(await side.locator(".hx-people i").count(), 2);
-  assert.match((await side.locator(".hx-minis").innerText()).replace(/\s+/g, " "), /Euro C\/F −2 sa Portekizce/);
+  // Who goes: two adults read from the saves (the sample isn't shared: no names, no invite).
+  assert.equal(await side.locator(".hx-avatars i").count(), 2);
+  assert.equal(await side.locator(".hx-who-text b").innerText(), "2 kişi");
+  assert.equal(await side.locator("button.hx-people").count(), 0, "the sample trip can't be shared");
+  // The style: no model key here, so only the budget's word (€1.500 for 2 people, 7 days ≈ €107 a day each).
+  assert.deepEqual(await side.locator(".hx-styles span").allInnerTexts(), ["Orta bütçe"]);
+  assert.match(flat([await side.locator(".hx-countries").innerText()])[0], /^🇵🇹 ?Portekiz$/);
+  // The small things in one row: money (its rate on hover), plug, time, language.
+  assert.equal(flat([await side.locator(".hx-minis").innerText()])[0], "Euro C/F priz −2 saat Portekizce");
   assert.match(await side.locator(".hx-minis span", { hasText: "Euro" }).getAttribute("title"), /^€1 = ₺/);
-  await hero.locator(".hx-intent-toggle", { hasText: "Seni böyle anladım" }).waitFor();
+  await side.locator(".hx-prefs .hx-h", { hasText: "Tercihler" }).waitFor();
   await hero.scrollIntoViewIfNeeded();
   await app.waitForTimeout(1500); // the city photos come from Wikipedia
   await app.screenshot({ path: `${out}/2b-hero.png` });
   await app.setViewportSize({ width: 560, height: 1400 });
   await hero.scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/2d-hero-narrow.png` });
-  assert.deepEqual(await uncut(".hx-intent-toggle, .hx-intent-toggle > *, .card-alert"), [], "the hero's lines and a card's warning wrap, never cut");
+  const heroLines = ".hx-tally span, .hx-progress-head, .hx-when, .hx-who-text b, .hx-styles span, .hx-budget-line, .hx-prefs-rows dt, .hx-minis span, .hx-weather > span, .card-alert";
+  assert.deepEqual(await uncut(heroLines), [], "the hero's lines and a card's warning wrap, never cut");
   assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll on a narrow hero");
   await app.setViewportSize({ width: 1440, height: 900 });
   await app.getByText("Jardim Stay").first().waitFor();
@@ -298,24 +309,24 @@ try {
   assert.equal(await tap.locator(".pk-badges").innerText(), "En ekonomik");
   await tap.locator(".pk-body").click();
   await tap.getByRole("button", { name: "Önceki seçenek" }).click();
-  // The quiet line under the next step: what to decide, book and plan, counted; a count lists them under
-  // the hero, a tap goes there.
-  const todo = app.locator(".hx-todo");
-  const chip = (label) => todo.locator("button", { hasText: label });
+  // "Planı tamamla" goes to the next step; "x/y onaylandı" lists every to-do under the hero (what to decide,
+  // book and plan), a tap goes there; tapped again, the list closes.
+  const todoCount = app.locator(".hx-progress-count");
   const todoList = app.locator(".hx + .todo-list");
-  assert.deepEqual(await Promise.all(["Karar ver", "Rezerve et", "Planla"].map((k) => chip(k).locator("b").innerText())), ["3", "1", "4"]);
-  assert.match(await app.locator(".hx-next").innerText(), /Sıradaki adım\s*\S.*: /);
-  await chip("Karar ver").click();
+  await app.locator(".hx-go").click();
+  await app.locator(".flash").first().waitFor();
+  await todoCount.click();
+  const listed = await todoList.innerText();
+  assert.deepEqual(["Karar ver: ", "Rezerve et: ", "Planla: "].map((k) => listed.split(k).length - 1), [3, 1, 4]);
   await todoList.locator("button", { hasText: "Porto konaklama · 8–11 Ekim" }).click();
   await app.locator(".tl-stay.flash").waitFor();
-  await chip("Planla").click();
   assert.match(await todoList.innerText(), /Varış transferi · 8 Ekim[\s\S]*nasıl\?/);
-  await chip("Planla").click();
+  await todoCount.click();
   assert.equal(await todoList.count(), 0);
-  // Cancellations running out show up there too (the sample trip is dated, so only when those dates are near).
-  // And the money: booked and chosen against the budget; a tap splits it and adds a guess for what's open.
+  // Cancellations running out get their own "⏳ N" there (the sample trip is dated, so only when those dates are near).
+  // And the money: booked, planned and free a line each against the budget; a tap splits it and adds a guess for what's open.
   const budget = app.locator(".hx-budget");
-  assert.match((await budget.innerText()).replace(/\s+/g, " "), /Bütçe €1\.500 .*€\d[\d.]* (alındı|planda).*€923 boşta/);
+  assert.match((await budget.innerText()).replace(/\s+/g, " "), /^Bütçe €1\.500 (Rezerve|Planlanan) €\d[\d.]*.* Boşta €923$/);
   await budget.click();
   assert.match(await budget.locator(".hx-pop").innerText(), /Kalan\s*€923[\s\S]*yaklaşık €442 daha eklenir/);
   await budget.click();
@@ -372,16 +383,18 @@ try {
   await card("Casa Azul").getByRole("button", { name: "Kapat ▴" }).click();
   // How it understood the traveller so far: what they said (incl. "sorun değil"); a pattern in the saved
   // stays is asked about, and counts only after a yes.
-  const intent = app.locator(".hx-intent");
-  await intent.locator(".hx-intent-toggle", { hasText: "1 soru" }).click();
-  const guess = intent.locator(".hx-intent-pop .ask", { hasText: "İptal esnekliği senin için daha mı önemli?" });
+  // On the hero's card it's "Tercihler": two rows, "+N tercih ›" (· 1 soru) opens the window over the card.
+  const intent = app.locator(".hx-prefs");
+  await intent.locator(".hx-prefs-link", { hasText: "1 soru" }).click();
+  const guess = intent.locator(".hx-prefs-pop .ask", { hasText: "İptal esnekliği senin için daha mı önemli?" });
   await guess.waitFor();
   await guess.getByRole("button", { name: "Evet" }).click();
   await guess.waitFor({ state: "detached" });
-  await intent.locator(".hx-intent-pop li", { hasText: "ücretsiz iptalli" }).waitFor();
-  await intent.locator(".hx-intent-pop li", { hasText: "Sorun değil: Yan binada inşaat gürültüsü" }).waitFor();
-  await intent.locator(".hx-intent-toggle").click();
-  await intent.locator(".hx-intent-pop").waitFor({ state: "detached" });
+  await intent.locator(".hx-prefs-pop li", { hasText: "ücretsiz iptalli" }).waitFor();
+  await intent.locator(".hx-prefs-pop li", { hasText: "Sorun değil: Yan binada inşaat gürültüsü" }).waitFor();
+  await intent.locator(".hx-prefs-link").click();
+  await intent.locator(".hx-prefs-pop").waitFor({ state: "detached" });
+  assert.ok((await intent.locator(".hx-prefs-rows > div").count()) >= 1, "what was understood, in short rows");
   await app.screenshot({ path: `${out}/3b-card.png` });
 
   // Comparison: numbers side by side, the weights the user controls, and why.
@@ -1048,17 +1061,87 @@ try {
   assert.match(await turn(sec("activity")), /^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
   // A to-do in a closed section: the hero's list opens it there.
   assert.match(await sec("stay").getAttribute("class"), /closed/);
-  await app.locator(".hx-todo button", { hasText: "Rezerve et" }).click();
-  await app.locator(".hx + .todo-list button", { hasText: "Jardim Stay" }).click();
+  await app.locator(".hx-progress-count").click();
+  await app.locator(".hx + .todo-list button", { hasText: "Rezerve et: Jardim Stay" }).click();
   await sec("stay").locator(".flash").waitFor();
   assert.doesNotMatch(await sec("stay").getAttribute("class"), /closed/);
+  await app.locator(".hx-progress-count").click();
   // The ruled-out train: "Geri al" at the end of Ulaşım puts it back among the options; nothing hidden is left there.
   if (await sec("transport").locator(".cat-body").count() === 0) await sec("transport").locator(".cat-title").click();
   await sec("transport").locator(".cat-hidden-link button").click();
   await sec("transport").locator(".cat-hidden-row.dismissed", { hasText: "CP Alfa Pendular" }).getByRole("button", { name: "Geri al", exact: true }).click();
   await sec("transport").locator(".cat-hidden").waitFor({ state: "detached" });
+  // A cell of the hero's plan line: the Plan, that section opened and brought into view.
+  if (!/closed/.test(await sec("flight").getAttribute("class"))) await sec("flight").locator(".cat-title").click();
+  await sec("flight").and(app.locator(".closed")).waitFor();
+  await app.locator(".hx").scrollIntoViewIfNeeded();
+  await app.locator(".hx-tally button", { hasText: "uçuş" }).click();
+  await sec("flight").locator(".cat-body").waitFor();
+  await app.waitForFunction(() => {
+    const top = document.querySelector('.cat-sec[data-section="flight"]')?.getBoundingClientRect().top ?? -1;
+    return top >= 0 && top < window.innerHeight / 2;
+  });
   console.log("✓ 0.34 (kategoriler-v4): seven sections on one sheet, open while something's left, closed is icon · name · bar · settled/all · arrow (remembered after a reload), the header opens it, a to-do opens its section, what's hidden waits at its section's end and comes back");
   console.log("✓ board: demo trip, decision labels, comparison with priorities, drawer, status change and chat event");
+
+  // A trip with nothing in it yet (hero v9): every block says what will come; nothing is made up. Then what
+  // was understood arrives (it fades in) and × takes one back.
+  const putTrip = (trip) =>
+    app.evaluate(async (t) => {
+      const request = indexedDB.open("trip-radar");
+      const database = await new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const tx = database.transaction("trips", "readwrite");
+      tx.objectStore("trips").put(t);
+      await new Promise((resolve) => (tx.oncomplete = resolve));
+      new BroadcastChannel("trip-radar").postMessage("changed");
+    }, trip);
+  const blank = { id: "e2e-empty", title: "Yeni gezi", confirmedDates: null, budget: null, heroImage: null, createdAt: Date.now(), updatedAt: Date.now() };
+  await putTrip(blank);
+  await app.locator(".trip-switch").click();
+  await app.locator(".trip-card", { hasText: "Yeni gezi" }).click();
+  await app.getByRole("heading", { name: "Yeni gezi" }).waitFor();
+  const bare = app.locator(".hx");
+  await bare.locator(".hx-ph", { hasText: "Şehir belli olunca fotoğrafı gelir" }).waitFor();
+  assert.equal(await bare.locator(".hx-count, .hx-cities").count(), 0, "no dates, no countdown; no cities, no switcher");
+  assert.equal(await bare.locator(".hx-when").innerText(), "Tarihler kaydettikçe netleşir");
+  assert.equal(await bare.locator(".hx-lead").innerText(), "Tarih ve şehir, kaydettikçe netleşir.");
+  assert.deepEqual(flat(await bare.locator(".hx-tally button.zero").allInnerTexts()), ["0 uçuş", "0 konaklama", "0 ulaşım", "0 deneyim"]);
+  assert.equal(flat([await bare.locator(".hx-progress-head").innerText()])[0], "Rezervasyonların Henüz kayıt yok");
+  assert.equal(flat([await bare.locator(".hx-go").innerText()])[0], "İlk kaydı ekle");
+  const bareSide = bare.locator(".hx-side");
+  assert.equal(flat([await bareSide.locator(".hx-who-text").innerText()])[0], "Kimler gidiyor? Kişi sayısı kayıtlardan anlaşılır");
+  assert.equal(await bareSide.locator(".hx-styles .empty").innerText(), "Tarzın konuştukça belirir");
+  assert.equal(flat([await bareSide.locator(".hx-budget").innerText()])[0], "Bütçe — Fiyatlı kayıtlar geldikçe toplanır");
+  assert.equal(await bareSide.locator(".hx-prefs .hx-empty").innerText(), "Konuştukça ve seçtikçe seni tanıyacağım.");
+  assert.equal(await bareSide.locator(".hx-place .hx-empty").innerText(), "Ülke ve hava, şehir belli olunca gelir");
+  assert.equal(await bareSide.locator(".hx-minis").count(), 0);
+  await app.screenshot({ path: `${out}/2e-hero-empty.png` });
+  await app.setViewportSize({ width: 560, height: 1400 });
+  await bare.screenshot({ path: `${out}/2f-hero-empty-narrow.png` });
+  assert.deepEqual(await uncut(heroLines), [], "the empty hero's lines wrap, never cut");
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll on a narrow empty hero");
+  await app.setViewportSize({ width: 1440, height: 900 });
+  // "İlk kaydı ekle" opens the Plan's own "+ Ekle" sheet.
+  await bare.locator(".hx-go").click();
+  const firstSheet = app.getByRole("dialog", { name: "Ne eklemek istersin?" });
+  await firstSheet.waitFor();
+  await firstSheet.getByRole("button", { name: "Kapat" }).click();
+  await firstSheet.waitFor({ state: "detached" });
+  await putTrip({ ...blank, priorities: { price: 4, location: 4 }, updatedAt: Date.now() });
+  const prefs = bareSide.locator(".hx-prefs");
+  await prefs.locator(".hx-prefs-body.hx-appear").waitFor();
+  assert.deepEqual(flat(await prefs.locator(".hx-prefs-rows > div").allInnerTexts()), ["Fiyat + konum Çok önemli"]);
+  await prefs.locator(".hx-prefs-link", { hasText: "Düzenle" }).click();
+  await app.screenshot({ path: `${out}/2g-hero-prefs.png` });
+  await prefs.locator(".hx-prefs-pop").getByRole("button", { name: "Konum: Çok önemli kaldır" }).click();
+  await prefs.locator(".hx-prefs-pop li", { hasText: "Konum" }).waitFor({ state: "detached" });
+  await app.mouse.click(5, 5); // outside: the window closes
+  await prefs.locator(".hx-prefs-pop").waitFor({ state: "detached" });
+  assert.deepEqual(flat(await prefs.locator(".hx-prefs-rows > div").allInnerTexts()), ["Fiyat Çok önemli"]);
+  console.log('✓ hero v9: four cells open their Plan sections, "x/y onaylandı" is the headers added up and lists the to-dos, "Planı tamamla" goes to the next, Tercihler (rows, window, ×), a new trip\'s empty blocks fill as information arrives');
 
   // 5. Settings dialog.
   await app.goto(`chrome-extension://${id}/app.html#settings`);
@@ -1363,8 +1446,8 @@ try {
   await board.getByRole("button", { name: "Gönder" }).click();
   await board.getByText("Fiyatı konaklamada çok önemli yaptım.").waitFor({ timeout: 20000 });
   assert.ok(chatPrompts[0].includes("decisions") && chatPrompts[0].includes("would_change_if"), "chat sees the engine's result");
-  // Remembered as something the traveller said, and removable from "Seni böyle anladım".
-  await board.locator(".hx-intent-toggle", { hasText: "Fiyat: çok önemli" }).waitFor();
+  // Remembered as something the traveller said: a row of the hero's "Tercihler" (removable in its window).
+  await board.locator(".hx-prefs-rows > div", { hasText: "Konaklama · fiyat" }).filter({ hasText: "Çok önemli" }).waitFor();
   await board.locator(".reco-line").getByRole("button", { name: "Karşılaştır →" }).click();
   compare = board.getByRole("dialog", { name: "Karşılaştırma" });
   assert.equal(await compare.locator("tr", { hasText: "Fiyat" }).locator("select").inputValue(), "4");

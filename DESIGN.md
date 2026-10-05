@@ -46,31 +46,32 @@ bir konu adı ("Olanak eksik") yazılmaz.
 
 ## Hero
 
-Panonun üstü tek blok (onaylı görsel `docs/mockups/2026-10-05-hero-v8.html`): solda hikâye, sağda künye sütunu,
-ikisi aynı boyda; pano dar olunca tek sütun, künye hikâyenin altına iner.
+Panonun üstü tek blok (v9, referans görsel `docs/mockups/ref/2026-10-05-hero-v9-referans.webp`, öğe öğe
+`docs/superpowers/specs/2026-10-05-hero-v9-design.md`): solda hikâye (~%62), sağda kart (~%34); pano 760 px'ten
+darsa tek sütun, kart hikâyenin altına iner. Renkler `--hx-` değişkenlerinde (ink, mor-gri muted, accent, lavanta,
+mint, kart zemini, çizgi). Her bloğun boş hâli var; bilgi geldikçe blok yumuşakça belirir (`hx-appear`, azaltılmış
+hareket tercihinde yok). Uydurma yok.
 
-- **Fotoğraf** şehir başına bir tane, rota sırasıyla; üstte şehir seçici (6 sn'de bir kendiliğinden geçer), sağda
-  işleniyor hapı ve ••• menüsü. Altına binen etiket: tarihler + geri sayım ("8–14 Ekim · 3 gün kaldı"). Tarih yoksa ikisi de yok.
-- **Açıklama** tek paragraf: AI'nin ton cümlesi (rakamsız) + koddan gelen durum cümlesi, yalnız en acil olan
-  ("3 karar ve 1 rezervasyon bekliyor."). Uydurma yok.
-- **Tarz çipleri** (0.34.3) başlığın altında: modelin sabit listeden seçtiği en fazla iki kelime (Romantik, Dingin,
-  Macera, Lüks, Kültür, Doğa, Gastronomi, Deniz, Şehir, Aile, Eğlence, Aktif; şehirlere ve "Seni böyle anladım"a göre,
-  bunlar değişince yeniden) ve bütçenin kelimesi (kişi başı günlük: €70 altı Ekonomik, €180'e kadar Orta bütçe, üstü
-  Yüksek bütçe; bütçe yoksa yok). Listede olmayan kelime gösterilmez.
-- **Künyede tek ölçek** (0.34.3): her satır 18 px gri ikon · 14 px gri etiket · sağa yaslı 15 px orta kalın değer
-  (bütçe dahil); ikincil yazı (bütçenin üç tutarı, havadaki şehir, en alttaki sıra) 13 px gri. Satırlar 44 px.
-- **Plan tek satırda** (0.34.1): ikon · sayı · ad ("2 uçuş · 2 konaklama · 1 ulaşım · 1 deneyim"); her ihtiyaç bir kez
-  (üç seçenekli uçuş bir uçuş), deneyim = plandaki etkinlik ve restoranlar. Sıfır olan yazılmaz. "Etkinlik" değil "deneyim".
-- **Seni böyle anladım** tek satır; açılan pencere sayfayı itmez. Her giriş kapsamıyla (Tüm gezi / kategori / ilan) ve × ile.
-- **Künye** (0.34.1): her bilgi tek satır, solda etiket sağda değer, iç içe alt satır yok. Süre ("7 gün") · Ülke ·
-  Lokasyonlar (rota linki) · Yolcular (paylaşımlıysa baş harfli yuvarlaklar, değilse kişi sayısı kadar boş yuvarlak) ·
-  Hava (şehir başına ikon + gündüz derecesi; 10 gün kala Open-Meteo tahmini, öncesinde son 5 yılın aynı günleri;
-  üstüne gelince hangisi olduğu yazar; veri yoksa satır yok) · Bütçe: tek rakam (bütçe, yoksa bilinen toplam),
-  altında çubuk yeşil alındı / amber planda / gri boşta ve üç küçük tutar; aşınca kırmızı "aşıyor"; tıklayınca
-  kategori kırılımı. En altta sessiz tek sıra: para birimi (kur üstüne gelince) · priz (adaptör gerekir mi üstüne
-  gelince) · saat farkı ("−2 sa", aynıysa yok) · dil. Vize ve kalkış künyede yok. Bilinmeyen satır gösterilmez.
-- **Sıradaki adım** koyu buton, ne yapılacağını söyler ("Karar ver: Porto konaklama"); altında sessiz satır, sayıya
-  tıklamak listeyi hero'nun altında açar. İş kalmadıysa "Bu geziyi paylaş".
+- **Fotoğraf** şehir başına bir tane, rota sırasıyla (~1,92:1, dar ekranda 220 px). Sol üstte şehir seçici (6 sn'de
+  bir geçer), sağ üstte geri sayım hapı ("3 gün kaldı") ve ••• menüsü; iş varken işleniyor hapı. Şehir yoksa lavanta
+  zemin + "Şehir belli olunca fotoğrafı gelir".
+- **Başlık, tarih, cümle**: 40 px başlık; altında takvim · "8–14 Ekim · 7 gün" (tahminse "~"); tek mor-gri cümle:
+  AI'nin ton cümlesi, yoksa koddan durum cümlesi ("3 karar ve 1 rezervasyon bekliyor."). İkisi birden yazılmaz.
+- **Plan dört hücrede**: uçuş · konaklama · ulaşım · deneyim, kategori renginde ikon + "2 uçuş"; her ihtiyaç bir kez,
+  deneyim = plandaki etkinlik ve restoranlar. Sıfır hücre kalır ama soluk. Hücreye basınca Plan'da o bölüm açılır.
+- **Rezervasyonların** (mint kutu): Plan bölüm başlıklarındaki "3/4"lerin toplamı ("2/11 onaylandı · %18") ve çubuk;
+  sayıya basınca bütün yapılacaklar hero'nun altında açılır, "⏳ 2" yalnız iptal süresi yaklaşanları. Koyu düğme
+  "Planı tamamla →" sıradaki işe gider; hepsi tamamsa "Paylaş →", hiç kayıt yoksa "İlk kaydı ekle →".
+- **Sağ kart**, bloklar arasında ince çizgi: **Yolcular** (baş harfli üst üste yuvarlaklar, "Emre & Sabine" ·
+  "2 kişi"; ad yoksa kayıtlardaki kişi sayısı; basınca paylaşım) ve **tarz çipleri** (modelin sabit listeden en
+  fazla iki kelimesi, her biri kendi ikonu ve renginde; bütçenin kelimesi gri cüzdanlı hap; kişi başı günlük €70
+  altı Ekonomik, €180'e kadar Orta bütçe, üstü Yüksek bütçe) · **Bütçe**: rakam (bütçe, yoksa bilinen toplam),
+  altında Rezerve / Planlanan / Boşta ya da kırmızı Aşıyor satırları; basınca kategori kırılımı · **Tercihler**
+  ("Seni böyle anladım"): en fazla iki satır ("Fiyat + konum · Çok önemli"), "+7 tercih ›"; pencere kartın üstüne
+  açılır, sayfayı itmez, her giriş kapsamı ve × ile · **Ülke ve hava**: bayrak + ülke, şehir başına ikon + gündüz
+  derecesi (10 gün kala tahmin, öncesinde son 5 yılın aynı günleri) · en altta sessiz sıra: para (kur üstüne
+  gelince) · priz · saat farkı ("−2 saat", aynıysa "Aynı saat") · dil.
+- **Sekmeler** hero'nun altında, ortalı ve alt çizgili: Plan | Günlük akış | Belgeler; seçili olan ink, 3 px accent çizgi.
 
 ## Plan kartları
 
