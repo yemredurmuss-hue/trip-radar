@@ -33,7 +33,7 @@ import { tripFacts } from "../lib/tripFacts";
 import type { Timeline } from "../lib/timeline";
 
 import type { Capture, Category, Item, Trip } from "../lib/types";
-import { chooseItem, setHidden, updateTrip } from "./actions";
+import { chooseItem, removeItem, setHidden, updateTrip } from "./actions";
 import { CategoryIcon, Chevron } from "./Icons";
 import { findTarget, show, TodoList } from "./Progress";
 import { TripFacts } from "./TripFacts";
@@ -236,7 +236,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     />
   );
   const leg = (l: Leg, opts: { embedded?: boolean; timed?: boolean } = {}) => (
-    <LegRow key={l.key} leg={l} tripId={trip.id} onOpenItem={onOpenItem} embedded={opts.embedded} timed={opts.timed} />
+    <LegRow key={l.key} leg={l} tripId={trip.id} onOpenItem={onOpenItem} onRemove={(i) => void removeItem(i)} embedded={opts.embedded} timed={opts.timed} />
   );
 
   const renderGroup: RenderGroup = (group, heading, groupSubtitle, nested = false) => (

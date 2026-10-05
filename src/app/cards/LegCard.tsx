@@ -1,0 +1,52 @@
+// A transfer (airport ↔ hotel, hotel change) or a change of city as a transport card on the plan: its way
+// of travel drawn, the two ends, where it stands. Opened, the transfer's own body (LegRow's): notes,
+// saved options, how to go, "Ayarlandı", and a flight search when going by plane.
+import { useState } from "react";
+import { legCardView } from "../../lib/cardView";
+import { L } from "../../lib/i18n";
+import { formatDateRange } from "../../lib/items";
+import { withLegChoice, type Leg } from "../../lib/legs";
+import { setHidden, updateTrip } from "../actions";
+import { kindLabel, LegBody } from "../LegRow";
+import { CardFoot, CardShell, type MenuEntry } from "./CardShell";
+import { useCardEnv } from "./PlanCard";
+import { TransportArt } from "./Silhouettes";
+import { TransportCardBody } from "./TransportCard";
+
+export function LegCard({ leg }: { leg: Leg }) {
+  const env = useCardEnv();
+  const [open, setOpen] = useState(false);
+  const v = legCardView(leg);
+  const book = () => void updateTrip(env.tripId, (t) => withLegChoice(t, leg.key, { booked: true }));
+  const menu: MenuEntry[] = [
+    ...(leg.kind !== "move" ? [{ label: L("Gerek yok", "Not needed"), run: () => void setHidden(env.tripId, `leg:${leg.key}`, true, kindLabel()[leg.kind]) }] : []),
+    ...(leg.choice ? [{ label: L("Planı temizle", "Clear the plan"), run: () => void updateTrip(env.tripId, (t) => withLegChoice(t, leg.key, null)) }] : []),
+  ];
+  return (
+    <CardShell
+      kind={v.kind}
+      label={v.label}
+      ring={v.ring}
+      date={formatDateRange(leg.date, null)}
+      ariaLabel={v.ariaLabel}
+      domId={`leg-${leg.key}`}
+      extraClass="pk-leg"
+      art={v.kind !== "transport" ? <TransportArt mode={v.kind} /> : null}
+      menu={menu}
+      open={open}
+      onToggle={() => setOpen(!open)}
+      body={<TransportCardBody face={{ from: v.from, to: v.to, middle: v.middle, rental: false }} title={v.ariaLabel} />}
+      foot={<CardFoot view={v.foot} price={null} onAction={book} />}
+      detail={
+        <div className="pk-detail">
+          <LegBody leg={leg} tripId={env.tripId} onOpenItem={env.onOpenItem} onRemove={env.remove} />
+          {v.searchUrl && (
+            <div className="pk-acts">
+              <a href={v.searchUrl} target="_blank" rel="noreferrer">{L("Uçuş ara ↗", "Search flights ↗")}</a>
+            </div>
+          )}
+        </div>
+      }
+    />
+  );
+}
