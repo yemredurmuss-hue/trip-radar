@@ -1,7 +1,7 @@
-// Günlük akış as cards (0.34.7): a card a day. Closed, the day's photo beside the whole day as a list, nothing
-// folded: time · dot · the Plan's icon in its colour (✓ booked, an amber dot still to do) · name; check-in,
-// check-out and the transfers the plan works out are lines of it. Open, the same lines in the same order, each
-// as its own card on the Plan (the flight, the taxi to it with its "how", the tour): the Plan, day by day.
+// Günlük akış (0.35.1): the trip as it goes, day by day (after Layla). A rail of stretches (arrival, a city's
+// days, home); each day a section with its header held at the top. Two views of the same lines in the same
+// order: Liste, one short line each (time · the Plan's icon in its colour, ✓ booked or an amber dot · name);
+// Kartlar, each as its own card on the Plan (the flight, the taxi to it with its "how", the tour).
 import { useEffect, useState, type ReactNode } from "react";
 import { cardKindColor, cardKindLabel, RENTAL_MODES, TRANSPORT_MODES, type CardKind, type TransportMode } from "../../lib/cardKinds";
 import { imageProxy } from "../../lib/cityImages";
@@ -12,7 +12,7 @@ import type { DayRow } from "../../lib/journey";
 import { insertAtDay, type InsertAt } from "../../lib/templates";
 import type { RentalEntry, StayEntry, TimelineSection } from "../../lib/timeline";
 import type { Listing } from "../../lib/types";
-import { KindIcon, MediaSilhouette, TransportArt } from "../cards/Silhouettes";
+import { KindIcon } from "../cards/Silhouettes";
 import { PlanEntry } from "../plan/PlanEntry";
 import type { LegCardFor, LegFor, RenderGroup, SettledFor } from "../Timeline";
 
@@ -105,11 +105,18 @@ export function DayCards(props: DayCardsProps) {
           ))}
         </nav>
       </div>
-      {mode === "list"
-        ? cards.map((c) => <ListDay key={c.key} card={c} isToday={isToday(c)} onPick={(row) => setMode("cards", row ? { id: `dc-${row}`, flash: true } : { id: `dcd-cards-${c.key}`, flash: false })} {...props} />)
-        : groupDays(cards).map((g, n, all) => (
-            <Group key={g.key} group={g} at={n === 0 ? "first" : n === all.length - 1 ? "last" : "middle"} isToday={isToday} stays={stays} {...props} />
-          ))}
+      {groupDays(cards).map((g, n, all) => (
+        <Group
+          key={g.key}
+          group={g}
+          mode={mode}
+          at={n === 0 ? "first" : n === all.length - 1 ? "last" : "middle"}
+          isToday={isToday}
+          stays={stays}
+          onPick={(row) => setMode("cards", { id: `dc-${row}`, flash: true })}
+          {...props}
+        />
+      ))}
     </div>
   );
 }
@@ -168,20 +175,6 @@ function useDayPhoto(card: DayCard, cityImage: DayCardsProps["cityImage"]): stri
 
 // --- a day ---------------------------------------------------------------------------------------
 
-/** The day's photo with its number and date on it. */
-function DayPhoto({ card, today, photo }: { card: DayCard; today: boolean; photo: string | null }) {
-  return (
-    <>
-      {photo && <img src={photo} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />}
-      {card.dayNo && <span className="dc-no">{card.dayNo}</span>}
-      <span className={`dc-date${today ? " today" : ""}`}>
-        {today ? `${L("Bugün", "Today")} · ` : ""}
-        {dateText(card)}
-      </span>
-    </>
-  );
-}
-
 function DayChips({ card }: { card: DayCard }) {
   const ideas = ideaCount(card.rows);
   const left = card.rows.filter((r) => isPlanRow(r) && r.state !== "done" && r.state !== "info").length;
@@ -199,47 +192,11 @@ const AddDay = ({ card, onAdd }: { card: DayCard; onAdd: DayCardsProps["onAdd"] 
   </button>
 );
 
-/** Liste: the day's photo beside the whole day; a line (or the day) takes you to its cards. */
-function ListDay({ card, isToday, onPick, ...props }: { card: DayCard; isToday: boolean; onPick: (row: string | null) => void } & DayCardsProps) {
-  const photo = useDayPhoto(card, props.cityImage);
-  const flow = flowRows(card);
-  const lead = highlightOf(card);
-  const leadKind = lead ? rowKind(lead) : null;
-  return (
-    <article className="dc-day" id={`dcd-list-${card.key}`}>
-      <button className="dc-photo" onClick={() => onPick(null)} aria-label={L(`${card.dayNo ?? ""} ${card.title}: kartlarda göster`, `${card.dayNo ?? ""} ${card.title}: show as cards`)}>
-        <DayPhoto card={card} today={isToday} photo={photo} />
-      </button>
-      <div className="dc-body">
-        {leadKind && flow.length <= 3 && (
-          <div className="dc-art" style={{ ["--mc" as string]: cardKindColor(leadKind) }} aria-hidden>
-            {isTransport(leadKind) ? <TransportArt mode={leadKind} /> : leadKind === "activity" ? <MediaSilhouette name="ticket" /> : null}
-          </div>
-        )}
-        <div className="dc-head">
-          <h3>{card.title}</h3>
-          <DayChips card={card} />
-        </div>
-        {flow.length === 0 ? (
-          <p className="dc-free">{L("Henüz plan yok.", "Nothing planned yet.")}</p>
-        ) : (
-          <ol className="dc-tl">
-            {flow.map((r) => (
-              <Line key={r.key} row={r} onTap={() => onPick(r.key)} />
-            ))}
-          </ol>
-        )}
-        {flow.length === 0 && <AddDay card={card} onAdd={props.onAdd} />}
-      </div>
-    </article>
-  );
-}
-
 /**
  * Kartlar, as the trip goes (after Layla): a rail on the left with a round icon per stretch, a day that travels
  * (✈ "Varış · 8 Eki") on its own, a city's days together under the city's name (📍 "2–3. gün"); day by day inside.
  */
-function Group({ group, at, isToday, stays, ...props }: { group: DayGroup; at: "first" | "middle" | "last"; isToday: (c: DayCard) => boolean; stays: Map<string, StayEntry> } & DayCardsProps) {
+function Group({ group, mode, at, isToday, stays, onPick, ...props }: { group: DayGroup; mode: Mode; at: "first" | "middle" | "last"; isToday: (c: DayCard) => boolean; stays: Map<string, StayEntry>; onPick: (row: string) => void } & DayCardsProps) {
   const first = group.kind === "travel" ? group.card : group.cards[0];
   const last = group.kind === "travel" ? group.card : group.cards.at(-1)!;
   const lead = group.kind === "travel" ? highlightOf(group.card) : null;
@@ -267,7 +224,7 @@ function Group({ group, at, isToday, stays, ...props }: { group: DayGroup; at: "
           </header>
         )}
         {(group.kind === "travel" ? [group.card] : group.cards).map((c) => (
-          <CardsDay key={c.key} card={c} isToday={isToday(c)} stays={stays} {...props} />
+          <DaySection key={c.key} card={c} mode={mode} isToday={isToday(c)} stays={stays} onPick={onPick} {...props} />
         ))}
       </div>
     </section>
@@ -277,13 +234,17 @@ function Group({ group, at, isToday, stays, ...props }: { group: DayGroup; at: "
 /** How many days the cards cover (a merged "5–6. gün" counts two). */
 const spanDays = (cards: DayCard[]) => cards.reduce((n, c) => n + (c.end ? Math.round((Date.parse(c.end) - Date.parse(c.date)) / 86_400_000) + 1 : 1), 0);
 
-/** Kartlar: the day's header (held at the top while its cards scroll past), then each line as its Plan card. */
-function CardsDay({ card, isToday, stays, ...props }: { card: DayCard; isToday: boolean; stays: Map<string, StayEntry> } & DayCardsProps) {
+/**
+ * A day, the same in both views: its header (held at the top while the day scrolls past), then its lines in
+ * order: Liste one short line each (time · icon · name · ✓ or what's left; a tap shows it in Kartlar), Kartlar
+ * each as its Plan card.
+ */
+function DaySection({ card, mode, isToday, stays, onPick, ...props }: { card: DayCard; mode: Mode; isToday: boolean; stays: Map<string, StayEntry>; onPick: (row: string) => void } & DayCardsProps) {
   const photo = useDayPhoto(card, props.cityImage);
   const flow = flowRows(card);
   const experiences = flow.filter((r) => r.item && (r.item.category === "activity" || r.item.category === "food")).length;
   return (
-    <section className="dc-cday" id={`dcd-cards-${card.key}`} aria-label={`${card.dayNo ?? ""} ${card.title}`}>
+    <section className={`dc-cday ${mode}`} id={`dcd-${mode}-${card.key}`} aria-label={`${card.dayNo ?? ""} ${card.title}`}>
       <header className="dc-dhead">
         <span className="dc-thumb">{photo && <img src={photo} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />}</span>
         <span className="dc-dtext">
@@ -299,10 +260,10 @@ function CardsDay({ card, isToday, stays, ...props }: { card: DayCard; isToday: 
       {flow.length === 0 ? (
         <p className="dc-free">{L("Henüz plan yok.", "Nothing planned yet.")}</p>
       ) : (
-        <ol className="dc-tl full">
-          {flow.map((r) => (
-            <Full key={r.key} row={r} stay={checkInStay(r, card, stays)} {...props} />
-          ))}
+        <ol className={`dc-tl${mode === "cards" ? " full" : ""}`}>
+          {flow.map((r) =>
+            mode === "cards" ? <Full key={r.key} row={r} stay={checkInStay(r, card, stays)} {...props} /> : <Line key={r.key} row={r} onTap={() => onPick(r.key)} />,
+          )}
         </ol>
       )}
       <AddDay card={card} onAdd={props.onAdd} />

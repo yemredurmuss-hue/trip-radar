@@ -138,15 +138,13 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
 - **Günlük akış** (0.34.8) tek anahtarla iki görünüm, günler tek tek açılıp kapanmaz. Üstte yapışkan çubuk:
   **Liste | Kartlar** (seçim bu tarayıcıda hatırlanır) ve gün şeridi (1 · 2 · 3 · 4 · 5–6 · 7; bugün mavi), şerit
   o güne kaydırır. İkisinde de aynı satırlar, aynı sıra.
-- **Liste**: gün başına kart, solda günün fotoğrafı (öne çıkan kaydın görseli → ona arama, fotoğraf proxy'sinden →
-  şehrin), sağda başlık (yer değiştiren günde rota, yoksa şehir), "N iş" / "N fikir" ve günün **tamamı** saat
-  çizgisi olarak: saat · nokta · Plan kartlarının tür ikonu kendi renginde (köşede yeşil ✓ alındı, amber nokta
-  yapılacak) · ad; check-in, check-out, metro ince satır; güne eklenen fikirler tek tek. Katlanma yok, kart günü kadar
-  uzar; kısa günde sağ altta türün soluk silueti. Bir satıra dokunmak Kartlar'a geçip o kartı gösterir (kısa vurgu).
-- **Kartlar** (0.35.1, Layla'dan ilham, bizim farkımız gün gün): yolculuk sırasıyla gruplar, solda ray: yuvarlak
+- **Liste** ve **Kartlar** aynı hiyerarşi (0.35.1): ray + şehir grupları + gün panelleri (aşağıda). Liste'de her satır
+  tek satır: saat · tür ikonu kendi renginde (✓ / amber nokta) · ad; check-in, check-out, metro ince; güne eklenen
+  fikirler tek tek. Bir satıra dokunmak Kartlar'a geçip o kartı gösterir (kısa vurgu).
+- **Ray** (0.35.1, Layla'dan ilham, bizim farkımız gün gün): yolculuk sırasıyla gruplar, solda ray: yuvarlak
   koyu ikon + etiket + tarih. Yol günü kendi başına (✈/🚆 "Varış" · "Yolculuk" · "Dönüş"), aradaki şehir günleri
-  birlikte (📍 "2–3. gün", büyük şehir adı ve "N gün"). Her gün: başlığı (küçük fotoğraf · "4. gün" hapı · tarih ya da
-  mavi "Bugün" · "N deneyim" / ikinci satırda başlık · haplar) kaydırırken çubuğun altında kalır; altında satırlar
+  birlikte (📍 "2–3. gün", büyük şehir adı ve "N gün"). Her gün kendi beyaz panelinde; başlığı (küçük fotoğraf · "4. gün" hapı · tarih ya da
+  mavi "Bugün" · "N deneyim" / ikinci satırda başlık · haplar) kaydırırken çubuğun altında kalır; Kartlar'da satırlar
   saatleriyle, her biri Plan'daki kartıyla (giriş günündeki check-in konaklamanın kartı, uçuşa giden transfer
   "nasıl gideceksin"iyle); diğer bilgi satırları ince. Her günün altında "+ Bu güne ekle". Şeritte günler şehir
   adlarıyla gruplu ("Porto 1 2 3 · Lizbon 4 5–6 7").

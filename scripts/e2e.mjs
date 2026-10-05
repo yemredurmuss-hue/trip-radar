@@ -255,8 +255,9 @@ try {
   await tab("Günlük akış").click();
   const dcMode = (name) => app.locator(".dc-seg").getByRole("tab", { name, exact: true });
   const listMode = () => dcMode("Liste").click();
-  const dayCard = (n) => app.locator(".dc-day", { has: app.locator(".dc-no", { hasText: new RegExp(`^${n}\\. gün$`) }) });
-  const cardsDay = (n) => app.locator(".dc-cday", { has: app.locator(".dc-dhead b", { hasText: new RegExp(`^${n}\\. gün$`) }) });
+  // A day is the same section in both views (its header, then its lines): .list in Liste, .cards in Kartlar.
+  const dayCard = (n) => app.locator(".dc-cday.list", { has: app.locator(".dc-pill", { hasText: new RegExp(`^${n}\\. gün$`) }) });
+  const cardsDay = (n) => app.locator(".dc-cday.cards", { has: app.locator(".dc-pill", { hasText: new RegExp(`^${n}\\. gün$`) }) });
   let dayPage = cardsDay(1);
   // A day as cards: Kartlar, then that day's section (the strip jumps there).
   const openDay = async (n) => {
@@ -271,10 +272,12 @@ try {
   const flowTime = (title) => flowCard(title).locator("> .t");
   // Open, a line is its Plan card: a tap on its body opens its details there.
   const openCard = (title) => flowCard(title).locator(".pk-body").first().click();
-  assert.deepEqual(await app.locator(".dc-no").allInnerTexts(), ["1. gün", "2. gün", "3. gün", "4. gün", "5–6. gün", "7. gün"]);
+  assert.deepEqual(await app.locator(".dc-pill").allInnerTexts(), ["1. gün", "2. gün", "3. gün", "4. gün", "5–6. gün", "7. gün"]);
+  // As the trip goes: arrival, Porto's days, the move, Lisbon's days, home.
+  assert.deepEqual((await app.locator(".dc-raillab b").allInnerTexts()), ["Varış", "2–3. gün", "Yolculuk", "5–6. gün", "Dönüş"]);
   assert.deepEqual(await app.locator(".dc-strip button").allInnerTexts(), ["1", "2", "3", "4", "5–6", "7"]);
-  assert.equal(await dayCard(4).locator(".dc-head h3").innerText(), "Porto → Lizbon");
-  assert.equal(await app.locator(".dc-day .dc-free").count(), 2);
+  assert.equal(await dayCard(4).locator(".dc-dhead .ttl").innerText(), "Porto → Lizbon");
+  assert.equal(await app.locator(".dc-cday .dc-free").count(), 2);
   await dayCard(7).locator(".dc-step", { hasText: "Uçuş LIS → IST" }).locator(".dc-tile i.done").waitFor();
   // Closed, nothing is folded: check-out, the transfer to the airport, the flight.
   assert.deepEqual(await dayCard(7).locator(".dc-tl > [data-title]").evaluateAll((els) => els.map((e) => e.getAttribute("data-title"))), ["Check-out", "Otel → Havalimanı", "Uçuş LIS → IST"]);
