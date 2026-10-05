@@ -8,9 +8,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { cardKindColor, cardKindLabel, RENTAL_MODES, TRANSPORT_MODES, type CardKind, type TransportMode } from "../../lib/cardKinds";
 import { imageProxy } from "../../lib/cityImages";
-import { dayCards, dayPhoto, daysLabel, flowRows, groupDays, highlightOf, ideaCount, isPlanRow, movedOrder, orderRows, rowKind, rowMark, type DayCard, type DayGroup } from "../../lib/dayCards";
-import { sectionOfItem } from "../../lib/categories";
-import { rowTitle, titleText, withLayovers, type Place, type RowTitle } from "../../lib/dayRowTitle";
+import { dayCards, dayPhoto, daysLabel, flowRows, groupDays, highlightOf, ideaCount, isAsideRow, isPlanRow, movedOrder, orderRows, rowKind, rowMark, type DayCard, type DayGroup } from "../../lib/dayCards";
+import { placeRoute, rowTitle, titleText, withLayovers, type Place, type RowTitle } from "../../lib/dayRowTitle";
 import { mainPlaceOf, type MainPlace } from "../../lib/destinations";
 import { formatDateRange } from "../../lib/items";
 import { L, locale } from "../../lib/i18n";
@@ -56,8 +55,6 @@ export interface DayCardsProps {
 /** A city as its main place, for the lines' routes (display only; the plan keeps its places). */
 const PlaceCtx = createContext<Place>((c) => c);
 const usePlace = () => useContext(PlaceCtx);
-/** "Porto → Funchal" as "Porto → Madeira". */
-const routeText = (text: string, place: Place) => text.split(" → ").map((p) => (p ? place(p) : p)).join(" → ");
 
 const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(locale(), { weekday: "short", timeZone: "UTC" });
 const dateText = (c: DayCard) => (c.end ? formatDateRange(c.date, c.end) : `${formatDateRange(c.date, null)} ${weekday(c.date)}`);
@@ -214,7 +211,7 @@ function useDayPhoto(card: DayCard, cityImage: DayCardsProps["cityImage"]): stri
 function DayChips({ card }: { card: DayCard }) {
   const ideas = ideaCount(card.rows);
   // Insurance and the eSIM aren't part of the day: not its to-dos either.
-  const left = card.rows.filter((r) => isPlanRow(r) && !isAside(r) && r.state !== "done" && r.state !== "info").length;
+  const left = card.rows.filter((r) => isPlanRow(r) && !isAsideRow(r) && r.state !== "done" && r.state !== "info").length;
   return (
     <>
       {left > 0 && <span className="dc-left">{L(`${left} iş`, `${left} to do`)}</span>}
@@ -495,13 +492,11 @@ function Full({ row, stay, cards, leg, tripId, dnd }: { row: DayRow; stay: StayE
 
 // --- Liste (0.35.4) ---------------------------------------------------------------------------------
 
-/** Not an hour of the day: insurance, the eSIM, a visa, a chore (the Plan's Diğer). */
-const isAside = (r: DayRow) => !!r.item && sectionOfItem(r.item) === "other";
 
 /** The card's faint drawing on the right, from what the day is about: the sea, hills, or the town. */
 type Motif = "sea" | "hills" | "town";
 function motifOf(card: DayCard): Motif {
-  const text = card.rows.map((r) => `${r.title} ${r.item?.name ?? ""} ${r.item?.summary ?? ""}`).join(" ");
+  const text = card.rows.filter((r) => !isAsideRow(r)).map((r) => `${r.title} ${r.item?.name ?? ""} ${r.item?.summary ?? ""}`).join(" ");
   if (/tekne|boat|feribot|ferry|vapur|plaj|beach|sahil|deniz|\bsea\b|cruise|okyanus|ocean|kıyı|coast/i.test(text) || card.rows.some((r) => rowKind(r) === "ferry")) return "sea";
   if (/yürüyüş|hike|hiking|levada|dağ|mountain|orman|forest|park|bahçe|garden|seyir|viewpoint|miradouro|vadi|valley|şelale|waterfall/i.test(text)) return "hills";
   return "town";
@@ -565,7 +560,7 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
             </span>
             <span className="dl-date">
               {card.dayNo && <span className={isToday ? "today" : ""}>{isToday ? L("Bugün", "Today") : dateText(card)}</span>}
-              {card.route && <span>{routeText(card.route, place)}</span>}
+              {card.route && <span>{placeRoute(card.route, place)}</span>}
               <DayChips card={card} />
             </span>
           </span>
@@ -600,7 +595,7 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
 function dayLines(card: DayCard, props: Pick<DayCardsProps, "times" | "order" | "loose">): DayRow[] {
   // A line moved by hand off its time stays where it was put, its time hidden (a time given puts it back).
   const all = flowRows(card, props.times).map((r) => (r.time && props.loose?.includes(r.key) ? { ...r, freed: r.time, time: null, estimated: false } : r));
-  return orderRows(all.filter((r) => !isAside(r)), props.order?.[card.date]);
+  return orderRows(all.filter((r) => !isAsideRow(r)), props.order?.[card.date]);
 }
 
 /** What a line needs to be moved: its grip, its drop handlers, its class while dragged over. */

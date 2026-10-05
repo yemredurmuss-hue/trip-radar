@@ -2,7 +2,7 @@
 // in Turkish and English.
 import { afterEach, describe, expect, it } from "vitest";
 import { cityOfAirport } from "../src/lib/airports";
-import { fromTime, placeName, rowTitle, simpleName, titleText, toTime, withLayovers, withoutWord } from "../src/lib/dayRowTitle";
+import { fromTime, placeName, placeRoute, rowTitle, simpleName, titleText, toTime, withLayovers, withoutWord } from "../src/lib/dayRowTitle";
 import { mainPlaceOf, mainPlaces } from "../src/lib/destinations";
 import { setLang } from "../src/lib/i18n";
 import type { DayRow } from "../src/lib/journey";
@@ -54,15 +54,24 @@ describe("flights", () => {
     const f = flight("LIS", "IST", "2026-10-14T19:40", "2026-10-15T01:35");
     expect(rowTitle(travelRow(f, "departure")).detail).toBe("Humberto Delgado → İstanbul Havalimanı · varış 01:35 (+1)");
   });
-  it("an unknown code: the record's city, else the code", () => {
+  it("an unknown code stays the code, never a guess from the record's city", () => {
     const f = flight("XQZ", "QQY", "2026-10-07T09:40", "2026-10-07T12:35", { city: "Gaula" });
-    expect(rowTitle(travelRow(f)).which).toBe("XQZ → Gaula");
-    expect(placeName("XQZ", "Gaula")).toBe("Gaula");
+    expect(rowTitle(travelRow(f)).which).toBe("XQZ → QQY");
     expect(placeName("XQZ")).toBe("XQZ");
     expect(placeName("Porto Campanhã")).toBe("Porto Campanhã");
+    expect(placeName("cph")).toBe("Kopenhag");
+    expect(placeName("Rio")).toBe("Rio");
   });
-  it("no flight saved yet: the way in, what's left", () => {
-    expect(rowTitle(travelRow(null))).toEqual({ what: "Uçuş", which: "→ Porto", detail: "uçuş yok" });
+  it("the grey line doesn't repeat the cities: names written as cities, lowercase codes, airports named as their city", () => {
+    expect(rowTitle(travelRow(flight("Lisbon", "Porto", "2026-10-07T09:40", "2026-10-07T10:35")))).toMatchObject({ which: "Lisbon → Porto", detail: "varış 10:35" });
+    expect(rowTitle(travelRow(flight("saw", "cph", "2026-10-07T09:40", "2026-10-07T12:35")))).toMatchObject({ which: "İstanbul → Kopenhag", detail: "Sabiha Gökçen → Kastrup · varış 12:35" });
+    expect(rowTitle(travelRow(flight("FRA", "NCE", "2026-10-07T09:40", "2026-10-07T11:00"))).detail).toBe("varış 11:00");
+  });
+  it("nothing saved and no way said: a journey, not assumed a flight", () => {
+    expect(both(() => rowTitle(travelRow(null)))).toEqual({
+      tr: { what: "Yolculuk", which: "→ Porto", detail: "uçuş yok" },
+      en: { what: "Travel", which: "→ Porto", detail: "uçuş yok" },
+    });
   });
   it("a city folded into a main place reads as it (Funchal, Gaula → Madeira), routes and layovers alike", () => {
     const madeira = mainPlaces(["Porto", "Funchal", "Gaula"], { funchal: "Madeira", gaula: "Madeira" });
@@ -76,6 +85,12 @@ describe("flights", () => {
     expect(rowTitle(travelRow(f, "move", move), place).which).toBe("Porto → Madeira");
     const lay = withLayovers([travelRow(flight("LIS", "FNC", "2026-10-11T08:00", "2026-10-11T09:40")), travelRow(flight("FNC", "PXO", "2026-10-11T11:00", "2026-10-11T11:20"))]);
     expect(rowTitle(lay[1], place).which).toBe("Madeira · 1 sa 20 dk");
+    // Both ends in one main place: the places themselves, never "Madeira → Madeira".
+    const island = leg({ kind: "move", from: point("Funchal", "Funchal"), to: point("Gaula", "Gaula"), via: null, mode: "car" });
+    expect(rowTitle(travelRow(null, "move", island, "car"), place).which).toBe("Funchal → Gaula");
+    expect(placeRoute("Funchal → Gaula", place)).toBe("Funchal → Gaula");
+    expect(placeRoute("OPO → FNC", place)).toBe("Porto → Madeira");
+    expect(rowTitle(row({ kind: "leg", leg: island }), place).detail).toMatch(/^Funchal → Gaula/);
   });
   it("the airports the app sees read as cities", () => {
     expect(["SAW", "IST", "CPH", "OPO", "LIS", "FNC"].map(cityOfAirport)).toEqual(["İstanbul", "İstanbul", "Kopenhag", "Porto", "Lizbon", "Funchal"]);
@@ -99,6 +114,20 @@ describe("a layover", () => {
     expect(withLayovers([travelRow(first), row({ key: "x" }), travelRow(second)])).toHaveLength(3);
     // Leaving before landing (a wrong record) isn't a layover.
     expect(withLayovers([travelRow(second), travelRow(first)])).toHaveLength(2);
+  });
+  it("not a day there and back, nor a wait over 8 hours", () => {
+    const out = flight("OPO", "LIS", "2026-10-07T09:00", "2026-10-07T10:00");
+    const back = flight("LIS", "OPO", "2026-10-07T20:00", "2026-10-07T21:00");
+    expect(withLayovers([travelRow(out), travelRow(back)])).toHaveLength(2);
+    const late = flight("CPH", "OPO", "2026-10-07T20:36", "2026-10-07T23:10");
+    expect(withLayovers([travelRow(first), travelRow(late)])).toHaveLength(2); // 8 h 1 min
+    const eight = flight("CPH", "OPO", "2026-10-07T20:35", "2026-10-07T23:10");
+    expect(withLayovers([travelRow(first), travelRow(eight)])).toHaveLength(3);
+  });
+  it("at an airport we can't name: its code, never the record's city", () => {
+    const a = flight("SAW", "XQZ", "2026-10-07T09:40", "2026-10-07T12:35", { city: "Gaula" });
+    const b = flight("XQZ", "OPO", "2026-10-07T14:00", "2026-10-07T16:00");
+    expect(rowTitle(withLayovers([travelRow(a), travelRow(b)])[1]).which).toBe("XQZ · 1 sa 25 dk");
   });
 });
 
@@ -193,6 +222,23 @@ describe("experiences", () => {
     expect(titleText(rowTitle(activity("Graham's şarap mahzeni")))).toBe("Tur · Graham's şarap mahzeni");
     expect(both(() => titleText(rowTitle(activity("Douro River Boat Tour"))))).toEqual({ tr: "Tekne turu · Douro River", en: "Boat tour · Douro River" });
   });
+  it("reads whole words only (Kültürü isn't a tour, Cooperativa isn't an opera, a showroom isn't a show)", () => {
+    expect(rowTitle(activity("Kültürü Keşfet")).what).toBe("Etkinlik");
+    expect(rowTitle(activity("Adega Cooperativa wine tasting")).what).toBe("Tur");
+    expect(rowTitle(activity("Tesla Showroom")).what).toBe("Etkinlik");
+    expect(rowTitle(activity("Opera Night")).what).toBe("Gösteri");
+    expect(rowTitle(activity("Douro boats")).what).toBe("Tekne turu");
+  });
+  it("by its name and option first; its summary only when they say nothing", () => {
+    expect(rowTitle(activity("Livraria Lello", { summary: "Kitapçı; tekne turundan sonra uğranır" })).what).toBe("Etkinlik");
+    expect(rowTitle(activity("Serralves", { summary: "Çağdaş sanat müzesi" })).what).toBe("Müze");
+    expect(rowTitle(activity("Tiyatro gecesi", { summary: "Tekne ile gidilir" })).what).toBe("Gösteri");
+  });
+  it("an experience's name keeps its commas and hyphens", () => {
+    expect(titleText(rowTitle(activity("Casa - Museu Guerra Junqueiro")))).toBe("Müze · Casa - Museu Guerra Junqueiro");
+    expect(titleText(rowTitle(activity("Fado, Food & Wine")))).toBe("Gösteri · Fado, Food & Wine");
+    expect(titleText(rowTitle(activity("Douro nehri tekne turu | Yeni")))).toBe("Tekne turu · Douro nehri");
+  });
   it("an unknown kind is an Etkinlik", () => {
     expect(both(() => titleText(rowTitle(activity("Pastel de nata atölyesi"))))).toEqual({ tr: "Etkinlik · Pastel de nata atölyesi", en: "Event · Pastel de nata atölyesi" });
   });
@@ -213,12 +259,23 @@ describe("experiences", () => {
 
 describe("meals", () => {
   const food = (over: Partial<Item> = {}, time: string | null = null) => row({ kind: "idea", time, item: makeItem({ category: "food", name: "Majestic Café", booking: "none", ...over }) });
-  it("by its meal, else its hour, else Yemek", () => {
+  it("by its meal, else a clear hour, else what the place is, else Yemek", () => {
     expect(both(() => titleText(rowTitle(food({ meal: "lunch" }))))).toEqual({ tr: "Öğle yemeği · Majestic Café", en: "Lunch · Majestic Café" });
-    expect(rowTitle(food({}, "08:30")).what).toBe("Kahvaltı");
+    expect(rowTitle(food({ name: "Cervejaria Ramos" }, "08:30")).what).toBe("Kahvaltı");
+    expect(rowTitle(food({ name: "Cervejaria Ramos" }, "13:00")).what).toBe("Öğle yemeği");
+    expect(rowTitle(food({ name: "Cervejaria Ramos" }, "20:00")).what).toBe("Akşam yemeği");
+    // An afternoon hour says nothing: "Kahve" is only ever a café.
+    expect(rowTitle(food({ name: "Cervejaria Ramos" }, "16:00")).what).toBe("Yemek");
     expect(rowTitle(food({}, "16:00")).what).toBe("Kahve");
-    expect(rowTitle(food({}, "20:00")).what).toBe("Akşam yemeği");
+    expect(rowTitle(food({ name: "Pastelaria Alcôa" })).what).toBe("Tatlı");
+    expect(rowTitle(food({ name: "Café Santiago, kahvaltı" })).what).toBe("Kahvaltı");
     expect(both(() => rowTitle(food({ name: "Cervejaria Ramos" })).what)).toEqual({ tr: "Yemek", en: "Meal" });
+  });
+  it("never from a worked-out (~) time", () => {
+    expect(rowTitle({ ...food({ name: "Cervejaria Ramos" }, "13:00"), estimated: true }).what).toBe("Yemek");
+  });
+  it("a restaurant's name keeps its commas", () => {
+    expect(rowTitle(food({ name: "Dinner, Drinks & Fado" })).which).toBe("Dinner, Drinks & Fado");
   });
   it("its area and rating in grey", () => {
     expect(rowTitle(food({ meal: "lunch", location: { address: null, area: "Bolhão", approximate: false }, rating: { value: 4.4, scale: 5, count: 10, source: "page" } })).detail).toBe("Bolhão · ★ 4,4");

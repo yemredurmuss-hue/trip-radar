@@ -4,7 +4,8 @@ import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { loadDecisions } from "../src/lib/analysis";
 import { db, listItems } from "../src/lib/db";
-import { orderRows, movedOrder, dayCards, endsOf, foldRows, isPlanRow, rowMark } from "../src/lib/dayCards";
+import { orderRows, movedOrder, dayCards, endsOf, foldRows, highlightOf, isAsideRow, isPlanRow, rowMark, type DayCard } from "../src/lib/dayCards";
+import { makeItem } from "./fixtures/makeItem";
 import { loadDemoTrip } from "../src/lib/demo";
 import type { DayRow } from "../src/lib/journey";
 import { buildLegs } from "../src/lib/legs";
@@ -124,5 +125,16 @@ describe("a day's order (0.35.6)", () => {
   it("given a time, a line moves to it; the lines without one keep their neighbour", () => {
     const timed = day.map((x) => (x.key === "market" ? r("market", "09:00") : x));
     expect(keys(orderRows(timed))).toEqual(["market", "out", "cafe", "tour"]);
+  });
+});
+
+describe("what isn't part of a day", () => {
+  const insurance = { key: "item:ins", kind: "item", state: "pending", title: "Seyahat sağlık sigortası", item: makeItem({ category: "other", name: "Seyahat sağlık sigortası", plannedKind: "insurance", status: "chosen" }) } as DayRow;
+  const taxi = { key: "leg:x", kind: "leg", state: "open", title: "Havalimanı → Otel", item: null } as DayRow;
+  it("insurance is an aside: never the day's highlight (its colour, its photo)", () => {
+    expect(isAsideRow(insurance)).toBe(true);
+    expect(isAsideRow(taxi)).toBe(false);
+    expect(highlightOf({ rows: [insurance, taxi] } as DayCard)?.key).toBe("leg:x");
+    expect(highlightOf({ rows: [insurance] } as DayCard)).toBeNull();
   });
 });

@@ -31,15 +31,18 @@ const join = (parts: (string | null | undefined | false)[]) => parts.filter((p):
 // --- names -----------------------------------------------------------------------------------------
 
 const CUTS = [" – ", " — ", " - ", " | ", " · ", ", "];
+/** An experience's or a restaurant's name keeps its commas and hyphens ("Casa - Museu Guerra Junqueiro", "Fado, Food & Wine"). */
+const PLACE_CUTS = [" – ", " — ", " | ", " · "];
 
 /**
- * A stay's or a place's name without its tail: cut at the first " – ", " - ", " | ", " · " or ", " that has at
- * least 3 characters before it ("Casa Verde – Yeni Tasarlanmış, havuzlu" → "Casa Verde"). Only for showing.
+ * A stay's name (and an operator's) without its tail: cut at the first " – ", " - ", " | ", " · " or ", " that has
+ * at least 3 characters before it ("Casa Verde – Yeni Tasarlanmış, havuzlu" → "Casa Verde"). An experience or a
+ * restaurant (`"place"`) is cut only at " – ", " | ", " · ". Only for showing.
  */
-export function simpleName(name: string): string {
+export function simpleName(name: string, kind: "stay" | "place" = "stay"): string {
   const text = name.trim();
   let at = -1;
-  for (const sep of CUTS) {
+  for (const sep of kind === "place" ? PLACE_CUTS : CUTS) {
     for (let i = text.indexOf(sep); i >= 0; i = text.indexOf(sep, i + 1)) {
       if (text.slice(0, i).trim().length >= 3) {
         if (at < 0 || i < at) at = i;
@@ -51,13 +54,19 @@ export function simpleName(name: string): string {
 }
 
 const isCode = (text: string) => /^[A-Z]{3}$/.test(text);
+/** An airport code as written ("cph" read as "CPH" when it's one we know); null when the text isn't a code. */
+const codeOf = (text: string): string | null => {
+  const t = text.trim();
+  if (isCode(t)) return t;
+  return /^[a-z]{3}$/i.test(t) && knownAirport(t.toUpperCase()) ? t.toUpperCase() : null;
+};
 
-/** A place as a traveller says it: an airport code we know as its city; an unknown code as the record's own city, else the code. */
+/** A place as a traveller says it: an airport code we know as its city; an unknown code stays the code; a name as it is. */
 export function placeName(text: string | null | undefined, fallback: string | null = null): string | null {
   const t = text?.trim();
   if (!t) return fallback;
-  if (knownAirport(t)) return cityOfAirport(t);
-  if (isCode(t)) return fallback ?? t;
+  const code = codeOf(t);
+  if (code) return knownAirport(code) ? cityOfAirport(code) : code;
   return t;
 }
 
@@ -68,16 +77,21 @@ export function placeName(text: string | null | undefined, fallback: string | nu
 export type Place = (city: string) => string;
 const same: Place = (c) => c;
 
-/** "IST → OPO" (or "→ Porto") with each end as its city. */
-const routeOf = (text: string | null | undefined, place: Place): string =>
-  (text ?? "")
-    .split(" → ")
-    .map((p) => (p ? place(placeName(p) ?? p) : p))
-    .join(" → ")
-    .trim();
+/**
+ * "Porto → Madeira": a route's two ends, each as its main place; when both ends are the same main place, the
+ * places themselves ("Funchal → Gaula", never "Madeira → Madeira").
+ */
+const route = (from: string, to: string, place: Place) => {
+  const [a, b] = [place(from), place(to)];
+  return a && b && a.toLocaleLowerCase("tr") === b.toLocaleLowerCase("tr") ? `${from} → ${to}` : `${a} → ${b}`;
+};
 
-/** "Porto → Madeira": a route's two ends, each as its main place. */
-const route = (from: string, to: string, place: Place) => `${place(from)} → ${place(to)}`;
+/** A route written "Porto → Funchal" (or "IST → OPO", "→ Porto"), its ends as cities and main places (route above). */
+export function placeRoute(text: string | null | undefined, place: Place = same): string {
+  const parts = (text ?? "").split(" → ").map((p) => (p ? (placeName(p) ?? p) : p));
+  if (parts.length === 2 && parts[0] && parts[1]) return route(parts[0], parts[1], place);
+  return parts.map((p) => (p ? place(p) : p)).join(" → ").trim();
+}
 
 // --- Turkish times with their suffix ("15:00'ten itibaren", "11:00'e kadar") -------------------------
 
@@ -110,6 +124,7 @@ export function toTime(time: string): string {
 
 const W = {
   flight: () => L("Uçuş", "Flight"),
+  journey: () => L("Yolculuk", "Travel"),
   layover: () => L("Aktarma", "Layover"),
   airportTransfer: () => L("Havalimanı transferi", "Airport transfer"),
   transfer: () => L("Transfer", "Transfer"),
@@ -168,11 +183,12 @@ const fold = (s: string) => s.toLocaleLowerCase("tr").normalize("NFD").replace(/
 
 type Experience = "boat" | "show" | "museum" | "tour" | "event";
 // First match wins: a boat tour is a boat tour before it's a tour.
+// Whole words of the folded text ("Kültürü" isn't a "turu", "Cooperativa" isn't an opera, a showroom isn't a show).
 const EXPERIENCE_WORDS: [Experience, RegExp][] = [
-  ["boat", /tekne|\bboat|cruise|cruzeiro|\byat\b|yacht|yelken|\bsail|gulet|rabelo|catamaran|katamaran/],
-  ["show", /gosteri|\bshow|konser|concert|tiyatro|theat|\bfado|opera|\bbale\b|ballet|performans|performance|musical|muzikal|flamenko|flamenco/],
-  ["museum", /muze|museum|museu|museo|musee|galeri|gallery|galeria/],
-  ["tour", /\btur\b|turu|\btour|rehberli|guided|mahzen|cellar|tadim|tasting|excursion|gezisi|safari/],
+  ["boat", /\b(tekne\w*|boats?|cruises?|cruzeiro|yat|yachts?|yelken\w*|sail|sailing|gulet|rabelo|catamaran|katamaran)\b/],
+  ["show", /\b(gosteri\w*|shows?|konser\w*|concerts?|tiyatro\w*|theatre|theater|fado|opera|bale|ballet|performans\w*|performances?|musical|muzikal|flamenko|flamenco)\b/],
+  ["museum", /\b(muze\w*|museums?|museu|museo|musee|galeri\w*|gallery|galleries|galeria)\b/],
+  ["tour", /\b(tur|turu|turlari|tours?|rehberli|guided|mahzen\w*|cellars?|tadim\w*|tasting|excursions?|gezisi|safari)\b/],
 ];
 /** The words of each kind that the name needn't repeat, longest first. */
 const LABEL_WORDS: Record<Experience, string[]> = {
@@ -184,9 +200,14 @@ const LABEL_WORDS: Record<Experience, string[]> = {
 };
 const EXPERIENCE_LABEL: Record<Experience, () => string> = { boat: W.boat, show: W.show, museum: W.museum, tour: W.tour, event: W.event };
 
-function experienceOf(item: Pick<Item, "name" | "optionDetail" | "summary">): Experience {
-  const text = fold([item.name, item.optionDetail, item.summary].filter(Boolean).join(" "));
-  return EXPERIENCE_WORDS.find(([, re]) => re.test(text))?.[0] ?? "event";
+/** By its name and option first; its summary only when they say nothing (a bookshop whose summary mentions a boat stays a bookshop). */
+function experienceOf(item: Item): Experience {
+  const by = (text: string) => EXPERIENCE_WORDS.find(([, re]) => re.test(fold(text)))?.[0] ?? null;
+  const own = by([item.name, item.optionDetail].filter(Boolean).join(" "));
+  if (own) return own;
+  // A name that already says what it is ("Livraria Lello": culture) isn't read from its summary.
+  if (ideaKindOf({ ...item, summary: "", ideaKind: null })) return "event";
+  return (item.summary ? by(item.summary) : null) ?? "event";
 }
 
 /**
@@ -279,19 +300,25 @@ function tripTitle(row: DayRow, place: Place): RowTitle {
   const item = t?.settled ?? (t?.items.length === 1 ? t.items[0] : null) ?? (row.item && (row.item.category === "flight" || row.item.category === "transport") ? row.item : null);
   const f = item?.flight ?? null;
   const said = item ? transportMode(item) : null;
-  const mode = (item?.category === "flight" ? "flight" : null) ?? (said === "minibus" ? "minibus" : null) ?? t?.mode ?? e?.leg?.choice?.mode ?? e?.leg?.mode ?? (said && said in WAY ? (said as LegMode) : null) ?? (e && e.role !== "move" ? "flight" : null);
+  const mode = (item?.category === "flight" ? "flight" : null) ?? (said === "minibus" ? "minibus" : null) ?? t?.mode ?? e?.leg?.choice?.mode ?? e?.leg?.mode ?? (said && said in WAY ? (said as LegMode) : null);
   const word = tripWord(mode);
-  // A change of city by its two cities (the trip's own words); else the airports' cities; each as its main place
-  // ("Porto → Madeira", not "Porto → Funchal").
+  // A change of city by its two cities (the trip's own words); else the airports' cities (an unknown code stays
+  // the code); each as its main place ("Porto → Madeira", not "Porto → Funchal").
+  const cities = f?.from && f.to ? `${placeName(f.from)} → ${placeName(f.to)}` : null;
   const which =
     e?.role === "move" && e.leg
       ? route(e.leg.from.city ?? e.leg.from.label, e.leg.to.city ?? e.leg.to.label, place)
-      : f?.from && f.to
-        ? route(placeName(f.from)!, placeName(f.to, item?.city ?? null)!, place)
-        : routeOf(e?.subtitle, place) || (item ? simpleName(item.name) : "");
+      : cities
+        ? placeRoute(cities, place)
+        : placeRoute(e?.subtitle, place) || (item ? simpleName(item.name) : "");
   const status = left(row);
+  // Nothing saved and no way said: a journey, not assumed a flight.
+  if (!mode && !item) return { what: W.journey(), which, detail: join([status]) };
   if (mode === "flight") {
-    const airports = f?.from && f.to ? `${airportName(f.from)} → ${airportName(f.to)}` : null;
+    // The airports' own names, when the record has codes and they say more than the cities.
+    const [from, to] = [f?.from ? codeOf(f.from) : null, f?.to ? codeOf(f.to) : null];
+    const names = from && to ? `${airportName(from)} → ${airportName(to)}` : null;
+    const airports = names && names !== cities ? names : null;
     return { what: W.flight(), which, detail: join([airports, f && arrives(f), f?.flightNumber, status]) };
   }
   if (word) {
@@ -350,16 +377,24 @@ function rentalTitle(row: DayRow, returning: boolean): RowTitle {
   };
 }
 
-/** A meal by its slot, else by its hour, else by the kind the traveller gave it, else "Yemek". */
+const BREAKFAST_WORDS = /\b(kahvalti\w*|breakfast|brunch)\b/;
+
+/**
+ * A meal by its slot, else by a clear hour (a time given or read, never a worked-out "~" one: before 11 breakfast,
+ * 11:00–15:30 lunch, from 18:00 dinner), else by what the place is (a café, sweets, a bar: its idea kind or its
+ * words), else "Yemek". "Kahve" only ever for a café.
+ */
 function mealWord(item: Item, time: string | null): string {
   if (item.meal && MEALS[item.meal]) return MEALS[item.meal]();
   if (time) {
     const m = Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
-    return (m < 11 * 60 ? MEALS.breakfast : m < 15 * 60 ? MEALS.lunch : m < 17 * 60 + 30 ? MEALS.coffee : MEALS.dinner)();
+    const by = m < 11 * 60 ? MEALS.breakfast : m <= 15 * 60 + 30 ? MEALS.lunch : m >= 18 * 60 ? MEALS.dinner : null;
+    if (by) return by();
   }
-  // A kind read from its words (a café, a bar, sweets); "dinner" with no words is only the default.
+  // "dinner" with no words is only ideaKindOf's default; a café that serves breakfast is "Kahvaltı".
   const kind = ideaKindOf(item);
-  if (kind && MEALS[kind] && (kind !== "dinner" || item.ideaKind === "dinner")) return MEALS[kind]();
+  if (kind === "coffee") return (BREAKFAST_WORDS.test(fold([item.name, item.optionDetail, item.summary].filter(Boolean).join(" "))) ? MEALS.breakfast : MEALS.coffee)();
+  if (kind === "sweet" || kind === "bar" || (kind && item.ideaKind === kind && MEALS[kind])) return MEALS[kind]();
   return W.meal();
 }
 
@@ -370,12 +405,13 @@ function rating(item: Item): string | null {
 }
 
 function itemTitle(row: DayRow, item: Item, place: Place): RowTitle {
-  const time = row.time ?? row.freed ?? null;
+  // A clear time only: one worked out ("~") says nothing of the meal.
+  const time = row.estimated ? null : (row.time ?? row.freed ?? null);
   const done = item.doneAt ? L("yapıldı", "done") : null;
   if (item.category === "flight" || (item.category === "transport" && tripWord(transportMode(item) as LegMode | "minibus" | null))) return tripTitle(row, place);
   if (item.category === "stay") return { what: "Check-in", which: simpleName(item.name), detail: join([area(item), left(row)]) };
   if (item.category === "food") {
-    return { what: mealWord(item, time), which: simpleName(item.name), detail: join([area(item), rating(item), done, left(row)]) };
+    return { what: mealWord(item, time), which: simpleName(item.name, "place"), detail: join([area(item), rating(item), done, left(row)]) };
   }
   if (item.category === "transport") {
     const said = transportMode(item);
@@ -385,14 +421,14 @@ function itemTitle(row: DayRow, item: Item, place: Place): RowTitle {
   // An idea (nothing to book): its kind from the idea pool.
   if (isIdea(item)) {
     const kind = ideaKindOf(item);
-    return { what: kind ? IDEA_WORDS[kind]() : W.event(), which: simpleName(item.name), detail: join([area(item), done ?? L("fikir", "idea")]) };
+    return { what: kind ? IDEA_WORDS[kind]() : W.event(), which: simpleName(item.name, "place"), detail: join([area(item), done ?? L("fikir", "idea")]) };
   }
   const kind = experienceOf(item);
   const guests = item.guests.adults ? count(item.guests.adults + (item.guests.children ?? 0), "kişi", "person", "people") : null;
   const ticket = row.state === "pending" ? L("bilet alınmadı", "no ticket yet") : left(row);
   return {
     what: EXPERIENCE_LABEL[kind](),
-    which: withoutWord(simpleName(item.name), LABEL_WORDS[kind]),
+    which: withoutWord(simpleName(item.name, "place"), LABEL_WORDS[kind]),
     detail: join([area(item), duration(item), guests, done ?? ticket]),
   };
 }
@@ -404,7 +440,8 @@ function itemTitle(row: DayRow, item: Item, place: Place): RowTitle {
  */
 export function rowTitle(row: DayRow, place: Place = same): RowTitle {
   if (row.layover) {
-    const where = place(placeName(row.layover.airport, row.layover.city) ?? row.layover.airport);
+    // An airport we can't name stays its code (never a guess from the record's city).
+    const where = place(placeName(row.layover.airport) ?? row.layover.airport);
     return { what: W.layover(), which: `${where} · ${hoursMinutes(row.layover.minutes)}`, detail: "" };
   }
   if (row.key.endsWith(":checkin")) return stayTitle(row, true);
@@ -427,9 +464,14 @@ function flightOf(row: DayRow): { flight: Flight; item: Item } | null {
 
 const instant = (iso: string) => Date.parse(`${iso.slice(0, 16)}Z`);
 
+/** A connection is at most this long; longer is a stay of its own, not a layover. */
+const LAYOVER_MAX = 8 * 60;
+const sameAirport = (a: string | null | undefined, b: string | null | undefined) => !!a && !!b && a.trim().toUpperCase() === b.trim().toUpperCase();
+
 /**
- * The day's lines with a quiet "Aktarma" line between two flights that connect: the first lands where the
- * second leaves from, and the second leaves within a day; how long between is worked out from the two.
+ * The day's lines with a quiet "Aktarma" line between two flights next to each other that connect: the second
+ * leaves from where the first lands, within 8 hours, and doesn't fly back where the first came from (a day trip
+ * there and back isn't a layover); how long between is worked out from the two.
  */
 export function withLayovers(rows: DayRow[]): DayRow[] {
   const out: DayRow[] = [];
@@ -438,9 +480,9 @@ export function withLayovers(rows: DayRow[]): DayRow[] {
     const a = flightOf(r);
     const b = rows[i + 1] ? flightOf(rows[i + 1]) : null;
     if (!a || !b || !a.flight.to || !a.flight.arrival || !b.flight.departure) return;
-    if (a.flight.to.toUpperCase() !== b.flight.from?.toUpperCase()) return;
+    if (!sameAirport(a.flight.to, b.flight.from) || sameAirport(b.flight.to, a.flight.from)) return;
     const minutes = Math.round((instant(b.flight.departure) - instant(a.flight.arrival)) / 60_000);
-    if (!(minutes > 0 && minutes < 24 * 60)) return;
+    if (!(minutes > 0 && minutes <= LAYOVER_MAX)) return;
     out.push({
       key: `layover:${r.key}`,
       kind: "info",
@@ -460,7 +502,7 @@ export function withLayovers(rows: DayRow[]): DayRow[] {
       items: [],
       rental: null,
       stayKey: null,
-      layover: { airport: a.flight.to, city: a.item.city, minutes },
+      layover: { airport: a.flight.to, minutes },
     });
   });
   return out;

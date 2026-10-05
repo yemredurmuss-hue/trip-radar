@@ -302,7 +302,7 @@ export interface DayRow {
   /** A check-in or check-out: its stay (name, nights, rule). */
   stay?: StayFacts | null;
   /** A connection between two flights, shown between them (dayRowTitle.ts withLayovers): where and how long. */
-  layover?: { airport: string; city: string | null; minutes: number } | null;
+  layover?: { airport: string; minutes: number } | null;
 }
 
 type DayEntry = Extract<TimelineEntry, { kind: "day" }>;

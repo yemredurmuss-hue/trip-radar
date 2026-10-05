@@ -2062,12 +2062,14 @@ try {
   assert.equal(notePrompts.filter((p) => p.includes("şarap tadımına")).length, 1, "a note is named once");
   await board.locator(".hx").scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/14-hero-main-places.png` });
-  // Günlük akış says the routes the hero's way (display only): "Porto → Madeira", never "→ Funchal" or "→ Gaula".
+  // Günlük akış says the routes the hero's way (display only): "Porto → Madeira", never "Porto → Funchal"; within
+  // one main place the places themselves ("Funchal → Gaula", never "Madeira → Madeira"); nothing saved, a "Yolculuk".
   await board.getByRole("tab", { name: "Günlük akış", exact: true }).click();
   await board.locator(".dc-seg").getByRole("tab", { name: "Liste", exact: true }).click();
   await board.locator(".dl-date", { hasText: "Porto → Madeira" }).first().waitFor();
   const routes = await board.locator(".dl-date, .dc-ttl").allInnerTexts();
-  assert.ok(!routes.some((t) => /→ (Funchal|Gaula)/.test(t)), `routes by main place (${routes.filter((t) => t.includes("→"))})`);
+  assert.ok(!routes.some((t) => /Porto → (Funchal|Gaula)|Madeira → Madeira/.test(t)), `routes by main place (${routes.filter((t) => t.includes("→"))})`);
+  assert.ok(routes.includes("Uçuş · Porto → Madeira") && routes.includes("Yolculuk · Funchal → Gaula"), `routes (${routes.filter((t) => t.includes("→"))})`);
   await board.getByRole("tab", { name: "Plan", exact: true }).click();
   console.log('✓ revizyon 1: stays in Funchal and Gaula → the hero says "Porto | Madeira" (asked once), the Plan keeps Gaula; a note named by the model once');
 
