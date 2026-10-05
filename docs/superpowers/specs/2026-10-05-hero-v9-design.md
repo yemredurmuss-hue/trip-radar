@@ -166,10 +166,13 @@ Kaynak: Emre, gerçek gezisinde ("Porto & Madeira") hero'ya bakınca üç düzel
 - "Künye aşağı taşmış çünkü tercihlerin detayları özet keyword gibi gözükmek yerine çok bilgi girmiş."
 - **Tercihler satırı tek satır anahtar kelimedir** (`preferenceRows`, `lib/preferences.ts`): solda en fazla ~3 kelime, sağda değer.
   - Öncelikler aynı ("Fiyat + konum" → "Çok önemli").
-  - Not: kod konusunu tanıyorsa konusuyla (`decision.ts noteCriteria`, `saidTopics`/`WISH_TOPIC` ile aynı tablo):
-    "Sessiz bir yer istiyoruz" → "Sessizlik" · "Önemli" (notun o konuyu "Önemli" yaptığı düzey). Aynı ada çıkan iki not tek satır.
+  - Not: kod konusunu tanıyorsa konusuyla (`decision.ts noteCriteria`): "Sessiz bir yer istiyoruz" → "Sessizlik" ·
+    "Önemli" (o konunun şimdiki etkin düzeyi, `levelFor`). Ad için motorun `SAID` tablosundan sıkı bir eşleyici
+    kullanılır: kelime kelime başında başlar ("kalan" alan değil, "review" view değil), kısa İngilizce kelimeler
+    tam kelime ("bedava" bed değil). Gezgin o konunun düzeyini kendisi verdiyse (trip.priorities / categoryPriorities)
+    not o konuyla adlandırılmaz: o öncelik zaten kendi satırı. Aynı ada çıkan iki not tek satır.
   - Tanımıyorsa gezginin modeli 1–3 kelimelik etiket verir, panonun dilinde; bekleyen notlar tek istekte, not başına
-    bir kez (`trip.prefLabels`, anahtar = not id + metin özeti; not değişirse yeniden sorulur). Etiket değilse (uzun,
+    bir kez (`trip.prefLabels`, anahtar = panonun dili + not id + metin özeti; not ya da dil değişirse bir kez yeniden sorulur). Etiket değilse (uzun,
     cümle) "" saklanır, yeniden sorulmaz. Anahtar yoksa ya da hata: sessiz.
   - Etiket gelene kadar ya da hiç gelmezse: ilk üç kelime + "…" ("Odada mutlaka bir…") · "Not".
   - Bulgu ("Sorun değil" / "Eler"): metni üç kelimeyse kendisi, değilse kısa etiketi ("Yan binada inşaat gürültüsü" → "Gürültülü").
@@ -190,7 +193,7 @@ Kaynak: Emre, gerçek gezisinde ("Porto & Madeira") hero'ya bakınca üç düzel
   aradaki çizgiler kendi öğeleri (`.hx-sep`) olduğu için boşluğun ortasında durur. Eşik hikâye sütununun container
   query'si, en geniş gerçekçi etiketlerden hesaplandı: İngilizce iki haneli ("12 flights", "12 stays", "12 transport",
   "12 experiences": 17 px'te 335, 16 px'te 316 px yazı) + dört hücrenin ikon/boşluk/iç boşluğu (4 × 38) + üç çizgi
-  (3 × 13) → 17 px'te 526, 16 px'te 507. 540'tan itibaren 17 px, 520–539 arası 16 px, altında 2×2 (o da tek satır).
+  (3 × 13) → 17 px'te 526, 16 px'te 507. 540'tan itibaren 17 px, 520–539 arası 16 px, altında 2×2 (o da tek satır; hikâye 300 px'ten darsa etiket yeniden sarılabilir).
   1440'ta hikâye ~526 px: TR ve EN dört hücre tek sırada, 16 px.
 - e2e: 1440'ta tek sıra, her hücre tek satır, satır taşmıyor; aynı ölçüm en geniş EN ("12 experiences") ve TR
   ("12 konaklama") etiketleriyle de yapılır (hücre yazıları ölçüm için yerinde değiştirilip geri konur; e2e'nin
@@ -205,9 +208,21 @@ Kaynak: Emre, gerçek gezisinde ("Porto & Madeira") hero'ya bakınca üç düzel
   bir destinasyonun içindeki küçük yer ya da bilinen bir ada/bölgedeki yer için o destinasyonun yaygın adı (Gaula →
   Madeira, Funchal → Madeira, Câmara de Lobos → Madeira; Sintra → Lizbon yalnız Lizbon da konaklamaysa); ayrı
   gecelenen iki gerçek şehir asla birleşmez (Porto ve Lizbon ayrı).
-- **Denetim** (`acceptParents`): yalnız gezinin yerleri; kendine eşleme, boş ya da 40 karakterden uzun ad atılır;
-  zincir (ebeveyni de başka yerin içinde olan) ve döngü atılır. Uygulamanın zaten aynı şehir saydığı başka ad
-  (Madeira ≡ Funchal, `CITY_ALIASES`) atılmaz: yeri taşımaz, ana yerin adını verir.
+- **Denetim** (`acceptParents`; inceleme sonrası sıkılaştı): iki gerçek durak kodda da asla birleşmez.
+  - Yalnız gezinin yerleri; kendine eşleme, boş ya da 40 karakterden uzun ad atılır.
+  - Zincir sonuna kadar izlenir (Oia → Fira → Santorini ⇒ Santorini), en çok 3 adım; döngü atılır.
+  - Ülke adı ebeveyn olamaz (Porto → Portekiz; Intl bölge adları, iki dilde).
+  - Uygulamanın bildiği şehir (`CITY_ALIASES`/`KNOWN_PLACES`: Porto, Lizbon, Faro…) başka bir yere taşınmaz.
+    Aynı anahtarlı başka ad kalır (Madeira ≡ Funchal): yeri taşımaz, ana yerin adını verir.
+  - Gezinin başka bir konaklama şehrine yalnız o şehir uygulamanın bildiği bir destinasyonsa ve yer bilinmiyorsa
+    katlanır (Gaula → Madeira, Madeira da konaklama olsa bile; Sintra → Lizbon). Bilinmeyen iki konaklama kasabası
+    birbirine katlanmaz (Burgau → Lagos yok). Bunun dışında yalnız konaklama şehri olmayan bir ada/bölgeye
+    (Lagos → Algarve; Faro bilindiği için Faro → Algarve yok).
+  - Ana yerin adı panonun dilinde, tablo biliyorsa ("Lisbon" TR'de "Lizbon"); Madeira, Madeira kalır.
+- **Model cevabı** hemen kullanılır (yerel durum), sonra gezide saklanır; istek sırasında şehir kümesi değiştiyse
+  yazılmaz, o küme dönerse yeniden sorulur. "Denendi" işareti yalnız hata/anahtar yok durumunda konur; böylece ton,
+  tarz ve fotoğraf önce tahmin adlarıyla istenmez.
+- **Hero fotoğrafı:** ana yerin fotoğrafı yoksa (henüz ya da bulunamadı) üyelerinden fotoğrafı olan ilkinin.
 - **Cevap gelmeden** (anahtar yok, hata): konaklamanın adresi ya da bölgesi gezinin başka bir yerini adlandırıyorsa
   ona katlanır (`fallbackParents`), yoksa bugünkü gibi kendisi.
 - **Yalnız hero'da:** şehir seçici, fotoğraflar (ana yerin adıyla aranır, `trip.cityImages` ana yerin anahtarıyla),

@@ -10,7 +10,7 @@
 // model gave it (asked once, kept on the trip as `prefLabels`), else by its first three words and "…"; a
 // finding by its short tag ("Gürültülü"). The full text stays in the window. Pure.
 import { textId } from "./evidence";
-import { L } from "./i18n";
+import { L, lang } from "./i18n";
 import { capitalize, lowerText } from "./i18nText";
 import { LEVEL_LABELS } from "./decision";
 
@@ -51,8 +51,8 @@ export function firstWords(text: string, n = 3): string {
   return `${capitalize(words.slice(0, n).join(" ").replace(/[.!?,;:]+$/, ""))}…`;
 }
 
-/** Where a note's model label is kept: the note's id and its text's hash (an edited note is asked again). */
-export const noteLabelKey = (id: string, text: string): string => `${id}:${textId(text)}`;
+/** Where a note's model label is kept: the board's language, the note's id and its text's hash (an edited note, or the board in the other language, is asked again). */
+export const noteLabelKey = (id: string, text: string): string => `${lang()}:${id}:${textId(text)}`;
 
 /** Longest label the model may give a note (a few words, not a sentence). */
 const LABEL_MAX = 32;

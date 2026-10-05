@@ -3,7 +3,7 @@ import { db, notifyChanged } from "../lib/db";
 import { updateTrip } from "./actions";
 import { L } from "../lib/i18n";
 import { lowerText } from "../lib/i18nText";
-import { CRITERION_LABELS, LEVEL_LABELS, noteCriteria, requirementLabel, SAID_LEVEL, saidTopics, WISH_TOPIC, WISHES } from "../lib/decision";
+import { CRITERION_LABELS, LEVEL_LABELS, levelFor, noteCriteria, requirementLabel, saidTopics, WISH_TOPIC, WISHES } from "../lib/decision";
 import { activeSignals, pendingSignals } from "../lib/intent";
 import { CATEGORY_LABELS } from "../lib/items";
 import { noteLabelKey, preferenceRows, type Pref } from "../lib/preferences";
@@ -132,9 +132,12 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
     // What the note asks for becomes its own criterion ("Sessizlik: önemli"), unless they set it otherwise.
     const topics = saidTopics([p.text]);
     const wishes = WISHES.filter((w) => topics.has(WISH_TOPIC[w]) && trip.priorities?.[w] === undefined).map((w) => CRITERION_LABELS[w]);
-    // In the card's rows the note goes by a few words: the topics read in it ("Sessizlik" · "Önemli"), else the
-    // model's label for it (TripPanel asks once), else its first words.
-    const criteria = noteCriteria(p.text);
+    // In the card's rows the note goes by a few words: the topics read in it ("Sessizlik" · "Önemli", at the
+    // level they now have), else the model's label for it (TripPanel asks once), else its first words. A topic the
+    // traveller set a level for themselves is that priority's row already: the note isn't named by it.
+    const explicit = (c: CriterionId) =>
+      trip.priorities?.[c] !== undefined || Object.values(trip.categoryPriorities ?? {}).some((levels) => levels?.[c] !== undefined);
+    const criteria = noteCriteria(p.text).filter((c) => !explicit(c));
     const labelKey = noteLabelKey(p.id, p.text);
     const label = criteria.length
       ? criteria
@@ -142,10 +145,11 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
           .map((c, i) => (i ? lowerText(CRITERION_LABELS[c]) : CRITERION_LABELS[c]))
           .join(" + ")
       : trip.prefLabels?.[labelKey] || null;
+    const level = criteria.length ? Math.max(...criteria.slice(0, 2).map((c) => levelFor(trip, "stay", c, decisions?.ctx.inferred, topics))) : null;
     entries.push({
       key: `n:${p.id}`,
       scope: p.tripId ? L("Tüm gezi", "Whole trip") : L("Tüm geziler", "All trips"),
-      pref: { kind: "note", topic: p.text, label, level: criteria.length ? SAID_LEVEL : null, labelKey },
+      pref: { kind: "note", topic: p.text, label, level, labelKey },
       text: p.text,
       detail: `${L("not", "note")}${
         wishes.length ? L(` · ${wishes.join(", ")} önemli sayılıyor`, ` · ${wishes.join(", ")} counted as important`) : ""

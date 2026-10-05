@@ -1,5 +1,9 @@
 // The hero card's "Tercihler": what was understood, in at most two rows (label · word), the rest counted.
+import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it } from "vitest";
+import { intentEntries } from "../src/app/IntentCard";
+import type { Decisions } from "../src/app/useDecisions";
+import type { Trip } from "../src/lib/types";
 import { setLang } from "../src/lib/i18n";
 import { noteCriteria, SAID_LEVEL } from "../src/lib/decision";
 import { acceptNoteLabel, firstWords, noteLabelKey, preferenceRows, type Pref } from "../src/lib/preferences";
@@ -75,6 +79,32 @@ describe("preference rows", () => {
     expect(noteCriteria("Sessiz bir yer istiyoruz")).toEqual(["quiet"]);
     expect(noteCriteria("Merkezi ve sessiz olsun")).toEqual(["quiet", "location"]);
     expect(noteCriteria("Akşamları şarap tadımına gitmek istiyoruz")).toEqual([]);
+    expect(noteCriteria("Geniş bir oturma alanı olsun")).toEqual(["space"]);
+    expect(noteCriteria("A safe area with a nice view")).toEqual(["view", "safety"]);
+  });
+
+  it("doesn't name a note by a topic it only seems to speak of: a word starts where a word starts", () => {
+    expect(noteCriteria("Son gün kalan saatlerde müze")).toEqual([]); // "kalan" isn't "alan"
+    expect(noteCriteria("Otopark bedava olsun")).toEqual([]); // "bedava" isn't "bed"
+    expect(noteCriteria("Booking review")).toEqual([]); // "review" isn't "view"
+    expect(noteCriteria("unsafe after dark")).toEqual([]);
+  });
+
+  it("names a note by its topic only when the traveller hasn't set that topic's level, at the level it has now", () => {
+    const decisions = (texts: string[]) =>
+      ({ preferences: texts.map((text, n) => ({ id: `n${n}`, tripId: "t1", text, createdAt: n })), signals: [], ctx: { listings: new Map(), inferred: new Map() } }) as unknown as Decisions;
+    const trip: Trip = { id: "t1", title: "x", confirmedDates: null, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 };
+    const notes = (t: Trip, texts: string[]) => intentEntries(t, decisions(texts)).entries.flatMap((e) => (e.pref.kind === "note" ? [e.pref] : []));
+    expect(notes(trip, ["Sessiz bir yer istiyoruz"])).toMatchObject([{ label: "Sessizlik", level: 3 }]);
+    // They said quiet matters a lot themselves: that's its own row; the note falls back to its words.
+    expect(notes({ ...trip, priorities: { quiet: 4 } }, ["Sessiz bir yer istiyoruz"])).toMatchObject([{ label: null, level: null }]);
+    expect(notes({ ...trip, categoryPriorities: { stay: { quiet: 1 } } }, ["Sessiz bir yer istiyoruz"])).toMatchObject([{ label: null, level: null }]);
+    // Misread words fall through to the model's label, else the first words.
+    const [museum] = notes(trip, ["Son gün kalan saatlerde müze"]);
+    expect(museum).toMatchObject({ label: null, level: null });
+    expect(preferenceRows([museum]).rows[0]).toMatchObject({ label: "Son gün kalan…", value: "Not" });
+    const labelled = notes({ ...trip, prefLabels: { [museum.labelKey!]: "Son gün müze" } }, ["Son gün kalan saatlerde müze"]);
+    expect(labelled).toMatchObject([{ label: "Son gün müze", level: null }]);
   });
 
   it("keeps the model's label only when it is one: a few words, no sentence", () => {
@@ -88,6 +118,10 @@ describe("preference rows", () => {
     // Keyed by the note and its words: an edited note is named again.
     expect(noteLabelKey("n1", "Balkon olsun")).not.toBe(noteLabelKey("n1", "Balkon olmasın"));
     expect(noteLabelKey("n1", "Balkon olsun")).toBe(noteLabelKey("n1", "Balkon olsun"));
+    // …and in the board's language: switching asks once more.
+    const tr = noteLabelKey("n1", "Balkon olsun");
+    setLang("en");
+    expect(noteLabelKey("n1", "Balkon olsun")).not.toBe(tr);
   });
 
   it("names a finding by its short tag", () => {

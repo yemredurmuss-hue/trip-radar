@@ -991,6 +991,12 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 @container hxleft (min-width: 540px) {
   .hx-tally button { font-size: 17px; }
 }
+/* Two by two in a very narrow story (half of it under ~150px: "12 experiences" with its icon doesn't fit):
+   a label may wrap again rather than run over the line between cells. */
+@container hxleft (max-width: 299px) {
+  .hx-tally button { white-space: normal; }
+  .hx-tally span { overflow-wrap: break-word; }
+}
 .hx-tally svg { flex: none; }
 .hx-tally span { min-width: 0; text-align: left; }
 .hx-tally .c-flight svg { color: #6a4fe0; }

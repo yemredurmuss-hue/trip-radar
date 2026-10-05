@@ -184,17 +184,22 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // answers (no key, an error), only a stay whose address names another of the trip's places is folded.
   const cityNames = useMemo(() => citiesOf(plan, items), [plan, items]);
   const placesFor = placesKey(cityNames);
-  const parents = useMemo(
-    () => (trip.placeParents?.key === placesFor ? acceptParents(cityNames, trip.placeParents.parents) : fallbackParents(cityNames, items)),
-    [trip.placeParents, placesFor, cityNames, items],
-  );
+  const here = `${trip.id}:${placesFor}`;
+  // Which set of places is on screen now, for an answer that comes back after it changed.
+  const placesNow = useRef(here);
+  placesNow.current = here;
+  // The model's answer, used at once (the stored copy follows through IndexedDB); the sets it couldn't answer.
+  const [answered, setAnswered] = useState<{ at: string; parents: Record<string, string> } | null>(null);
+  const [unanswered, setUnanswered] = useState<ReadonlySet<string>>(() => new Set());
+  const known = trip.placeParents?.key === placesFor ? trip.placeParents.parents : answered?.at === here ? answered.parents : null;
+  const parents = useMemo(() => (known ? acceptParents(cityNames, known) : fallbackParents(cityNames, items)), [known, cityNames, items]);
   const mains = useMemo(() => mainPlaces(cityNames, parents), [cityNames, parents]);
   const mainNames = useMemo(() => mains.map((m) => m.name), [mains]);
-  const askedParents = useRef<string | null>(null);
-  const [parentsTried, setParentsTried] = useState<string | null>(null);
+  const askedParents = useRef(new Set<string>());
   useEffect(() => {
-    if (cityNames.length < 2 || trip.placeParents?.key === placesFor || askedParents.current === `${trip.id}:${placesFor}`) return;
-    askedParents.current = `${trip.id}:${placesFor}`;
+    if (cityNames.length < 2 || trip.placeParents?.key === placesFor || askedParents.current.has(here)) return;
+    const asked = here;
+    askedParents.current.add(asked);
     const countryOf = (city: string) => {
       const code = items.find((i) => i.category === "stay" && i.status !== "dismissed" && cityKeyOf(i.city) === cityKeyOf(city) && i.countryCode)?.countryCode;
       return code ? (countryNames([code])[0] ?? null) : null;
@@ -207,22 +212,27 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           placesPrompt(cityNames, countryOf),
           z.object({ places: z.array(z.object({ place: z.string(), parent: z.string().nullable() })) }),
         );
-        await updateTrip(trip.id, (t) => ({ ...t, placeParents: { key: placesFor, parents: acceptParents(cityNames, out.places) } }), { touch: false });
+        const accepted = acceptParents(cityNames, out.places);
+        // The places changed while it answered: not written over; asked again if this set comes back.
+        if (placesNow.current !== asked) return void askedParents.current.delete(asked);
+        setAnswered({ at: asked, parents: accepted });
+        await updateTrip(trip.id, (t) => ({ ...t, placeParents: { key: placesFor, parents: accepted } }), { touch: false });
       } catch (error) {
         if (!(error instanceof MissingKeyError)) console.warn("main places", error); // the guess from the addresses stands
-      } finally {
-        setParentsTried(`${trip.id}:${placesFor}`);
+        setUnanswered((s) => new Set(s).add(asked));
       }
     })();
-  }, [trip.id, trip.placeParents?.key, placesFor, cityNames, items]);
+  }, [trip.id, trip.placeParents?.key, placesFor, here, cityNames, items]);
   // What's asked of the model per place (photos, mood, style) waits for the main places, so Gaula isn't asked for.
-  const placesSettled = cityNames.length < 2 || trip.placeParents?.key === placesFor || parentsTried === `${trip.id}:${placesFor}`;
+  const placesSettled = cityNames.length < 2 || known !== null || unanswered.has(here);
   const cities = useMemo<HeroCity[]>(() => {
-    const list = mainNames.map((name) => ({ name, image: trip.cityImages?.[cityKeyOf(name)!] ?? null }));
+    // A main place's photo, else (none yet, or none found) the first of its places that has one: Funchal's for Madeira.
+    const photo = (key: string | null) => (key ? trip.cityImages?.[key] : null) || null;
+    const list = mains.map((m) => ({ name: m.name, image: photo(cityKeyOf(m.name)) ?? m.members.map((c) => photo(cityKeyOf(c))).find(Boolean) ?? null }));
     // A trip from before the city photos: its one picture goes to the first city (or stands alone).
     if (trip.heroImage && !list.some((c) => c.image)) return list.length ? [{ ...list[0], image: trip.heroImage }, ...list.slice(1)] : [{ name: "", image: trip.heroImage }];
     return list;
-  }, [mainNames, trip.cityImages, trip.heroImage]);
+  }, [mains, trip.cityImages, trip.heroImage]);
   // A city's photo is looked up once (a miss is stored as null, so it isn't asked again). Once the
   // sharing server's photo proxy is set up, a stored miss or Wikipedia picture is asked for again, once
   // per trip and city in a session; a miss then keeps the old picture. The first city's new photo also
