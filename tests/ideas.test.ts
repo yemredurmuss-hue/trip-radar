@@ -4,7 +4,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { db, listMessages } from "../src/lib/db";
 import {
-  addIdea, asBooking, cityInText, ideaSource, ideaTitle, dayChip, dayChoices, doneText, foodLine, ideaIcon, moveToBookings, onDay, quickIdea, quickKind,
+  addIdea, asBooking, cityInText, ideaSource, ideaThumb, ideaTitle, dayChip, dayChoices, doneText, foodLine, ideaIcon, moveToBookings, onDay, quickIdea, quickKind,
   setDone, setIdeaDay, todoLine,
 } from "../src/lib/ideas";
 import { placeMapUrl } from "../src/lib/items";
@@ -62,7 +62,28 @@ describe("icons from the words", () => {
     ["Mercado dos Lavradores", "bag"],
     ["Livraria Lello", "book"],
     ["Fado gecesi", "star"],
+    ["Porto Belo Pazarı", "bag"],
+    ["Outdoor alışverişi", "bag"],
+    ["Decathlon'dan yağmurluk al", "bag"],
+    ["Dom Luís'te gün batımı", "sun"],
+    ["Miradouro da Vitória", "sun"],
+    ["Serralves Müzesi", "book"],
+    ["Bolhão'da francesinha", "food"],
+    ["Street food at Time Out Market", "bag"],
+    ["Sokak lezzetleri turu", "food"],
+    ["Sé Katedrali", "star"],
   ])("%s → %s", (name, icon) => expect(ideaIcon({ name, summary: "" })).toBe(icon));
+});
+
+describe("a page's photo instead of the icon", () => {
+  it("a record from a Maps (or any page) link with its page's image shows it; the rest keep their icon", () => {
+    const img = "https://lh5.googleusercontent.com/p/abc=w400";
+    expect(ideaThumb(makeItem({ category: "activity", url: "https://maps.app.goo.gl/x", imageUrl: img }))).toBe(img);
+    expect(ideaThumb(makeItem({ category: "activity", url: "https://www.timeout.com/porto/x", imageUrl: img }))).toBe(img);
+    expect(ideaThumb(makeItem({ category: "activity", url: "https://maps.app.goo.gl/x", imageUrl: null }))).toBeNull();
+    expect(ideaThumb(makeItem({ category: "other", plannedKind: "todo", origin: "chat", url: null, imageUrl: null }))).toBeNull();
+    expect(ideaThumb(makeItem({ category: "activity", url: null, imageUrl: img }))).toBeNull();
+  });
 });
 
 describe("a day, a meal, done", () => {

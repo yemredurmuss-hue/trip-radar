@@ -13,8 +13,8 @@ import type { Plan } from "./plan";
 import { plannedItem } from "./planned";
 import type { Item, MealSlot } from "./types";
 
-/** A to-do's icon (fikirler-v1 symbols), chosen from its words; "star" for anything else. */
-export type IdeaIcon = "camera" | "sun" | "route" | "bag" | "book" | "star";
+/** A to-do's icon (fikirler-v1 symbols, and a fork and knife for food), chosen from its words; "star" for anything else. */
+export type IdeaIcon = "camera" | "sun" | "route" | "bag" | "book" | "food" | "star";
 
 export const MEAL_SLOTS: readonly MealSlot[] = ["breakfast", "lunch", "dinner"];
 const MEALS = liveLabels({ breakfast: ["sabah", "breakfast"], lunch: ["öğle", "lunch"], dinner: ["akşam", "dinner"] });
@@ -32,14 +32,21 @@ const ICONS: [RegExp, IdeaIcon][] = [
   [/fotoğraf|foto\b|photo|kamera|camera/i, "camera"],
   [/gün batımı|gün doğumu|sunset|sunrise|manzara|seyir|viewpoint|miradouro/i, "sun"],
   [/yürüyüş|yürü|hike|hiking|trek|levada|patika|rota|walk|\d+\s?km/i, "route"],
-  [/pazar|market|mercado|alışveriş|shopping|çarşı|mağaza|dükkan/i, "bag"],
+  [/pazar|market|mercado|alışveriş|shopping|çarşı|mağaza|dükkan|outlet|satın al|\bbuy\b|(^|\s)al(alım|ın)?$/i, "bag"],
   [/müze|museum|museu|kitap|book|kütüphane|library|livraria|galeri|gallery/i, "book"],
+  [new RegExp(`${FOOD.source}|lezzet|street food|tadım|tasting|yiyecek`, "i"), "food"],
 ];
-/** The to-do's icon from its words: a photo, a sunrise or sunset, a walk, a market, a museum or books, else a star. */
+/** The to-do's icon from its words: a photo, a sunrise or sunset, a walk, a market, a museum or books, food, else a star. */
 export function ideaIcon(item: Pick<Item, "name" | "summary">): IdeaIcon {
   const text = [item.name, item.summary].filter(Boolean).join(" ");
   return ICONS.find(([re]) => re.test(text))?.[1] ?? "star";
 }
+
+/**
+ * A to-do from a Maps (or any page) link shows its page's photo instead of the icon (Yapılacak şeyler); a
+ * line typed or said in the chat keeps its icon.
+ */
+export const ideaThumb = (item: Pick<Item, "url" | "imageUrl">): string | null => (item.url && item.imageUrl ? item.imageUrl : null);
 
 const words = (s: string) =>
   ` ${s
