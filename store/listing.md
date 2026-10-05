@@ -11,8 +11,8 @@ TR: Seyahat seçeneklerini tek tıkla kaydet; AI anlamlandırsın, karşılaşt�
 ### Ayrıntılı açıklama (TR)
 Trip Radar, gezini planlarken bulduğun her şeyi tek yerde toplar.
 
-• Gezerken kaydet: Booking'deki otel, uçuş, bir Instagram Reel'i, bir blog önerisi… "Kaydet"e bas, gerisini Trip
-  Radar okur: fiyat, tarih, konum, puan.
+• Gezerken kaydet: bir otel sayfası, bir uçuş, bir video, bir blog önerisi… "Kaydet"e bas, gerisini Trip Radar
+  okur: fiyat, tarih, konum, puan.
 • Karar ver: Seçenekleri senin önceliklerine göre karşılaştırır, artısını eksisini söyler.
 • Gün gün plan: Uçuş, konaklama, ulaşım, etkinlikler ve fikirlerin gün gün akışa yerleşir; saatleri akıllıca
   hesaplar (havalimanına ne zaman çıkmalı, check-out ne zaman).
@@ -25,8 +25,8 @@ Hesap yok, reklam yok. Verilerin bilgisayarında kalır; yalnız AI'ya ve (payla
 ### Detailed description (EN)
 Trip Radar collects everything you find while planning a trip in one place.
 
-• Save as you browse: a hotel on Booking, a flight, an Instagram Reel, a blog tip… press "Save" and Trip Radar
-  reads it: price, dates, place, rating.
+• Save as you browse: a hotel page, a flight, a video, a blog tip… press "Save" and Trip Radar reads it: price,
+  dates, place, rating.
 • Decide: it compares your options by what matters to you and says the pros and cons.
 • Day by day: flights, stays, getting around, activities and ideas fall into a daily plan, with smart times
   (when to leave for the airport, when to check out).
