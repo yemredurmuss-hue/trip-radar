@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from
 import { sendMessage } from "../lib/assistant";
 import { L } from "../lib/i18n";
 import { describeError } from "../lib/llm";
+import { shownReply } from "../lib/replyText";
 import type { ChatMessage, Trip } from "../lib/types";
 import { DOC_ACCEPT } from "../lib/docs";
 import { addLinks, addTripFiles, isTripFile } from "./capture";
@@ -104,7 +105,8 @@ export function Chat({ trip, messages, onBack }: Props) {
         )}
         {visible.map((m) => (
           <div key={m.id} className={`msg-${m.role}`}>
-            <RichText text={m.text} />
+            {/* A reply stored before the filter (the raw trip state as the answer) is cleaned here too. */}
+            <RichText text={m.role === "assistant" ? shownReply(m.text) : m.text} />
           </div>
         ))}
         {choices.length > 0 && (
