@@ -13,7 +13,7 @@ import { nNights } from "./i18nText";
 import { ideaDay, shortDay } from "./ideas";
 import { isInspiration } from "./inspo";
 import { formatDateRange, isoDate } from "./items";
-import { legItem, legShortTitle, type Leg } from "./legs";
+import { isHiddenLeg, legItem, legShortTitle, type Leg } from "./legs";
 import { cityKeyOf, departureDay, sameCity, type DateRange, type OptionGroup, type Plan } from "./plan";
 import { hiddenNights, nightsKey, toBook, type Timeline, type TimelineEntry } from "./timeline";
 import { isPrep } from "./prep";
@@ -481,7 +481,7 @@ export function categorize({ plan, timeline, items, legs = [], hidden = new Set(
   const drafts: Draft[] = [];
   const drawn = new Set<string>();
   const closed = new Set(plan.closed.map((c) => c.item.id));
-  const withHiddenLeg = new Set(legs.filter((l) => l.kind !== "move" && hidden.has(`leg:${l.key}`)).flatMap((l) => l.options.map((i) => i.id)));
+  const withHiddenLeg = new Set(legs.filter((l) => isHiddenLeg(l, hidden)).flatMap((l) => l.options.map((i) => i.id)));
   const mark = (list: Item[]) => list.forEach((i) => drawn.add(i.id));
 
   for (const entry of boardEntries(timeline)) {
@@ -599,7 +599,7 @@ export function hiddenThings({ plan, timeline, items, legs = [], hidden = new Se
     out.push({ kind: "dismissed", key: `item:${item.id}`, section: sectionOfItem(item), item });
   }
   for (const leg of legs) {
-    if (leg.kind === "move" || !hidden.has(`leg:${leg.key}`)) continue;
+    if (!isHiddenLeg(leg, hidden)) continue;
     out.push({ kind: "leg", key: `leg:${leg.key}`, section: legByPlane(leg) ? "flight" : "transport", leg });
   }
   for (const { range, city } of hiddenNights(timeline)) out.push({ kind: "nights", key: nightsKey(range), section: "stay", range, city });

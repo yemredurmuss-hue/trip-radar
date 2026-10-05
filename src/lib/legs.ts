@@ -285,6 +285,21 @@ function directionScore(t: Travel, from: string | null, to: string | null): numb
 export const legItem = (leg: Leg): Item | null => settledOf(leg.options);
 
 /**
+ * Whether "Gerek yok" can take a transfer off the board. Any transfer within a city can; a change of city
+ * only while nothing is said or saved for it (no flight, no way, not arranged): an empty "Gaula → Madeira"
+ * between two places on one island goes, while a move with a flight on it never hides its flight.
+ */
+export const canHideLeg = (leg: Leg): boolean =>
+  leg.kind !== "move" || (!leg.travel && leg.options.length === 0 && !leg.choice?.mode && !leg.choice?.booked);
+
+/** A transfer the traveller said isn't needed (trip.hidden's `leg:<key>`) and that can be hidden. */
+export const isHiddenLeg = (leg: Leg, hidden: ReadonlySet<string> | readonly string[] | undefined): boolean => {
+  const key = `leg:${leg.key}`;
+  const has = hidden ? ("has" in hidden ? hidden.has(key) : hidden.includes(key)) : false;
+  return has && canHideLeg(leg);
+};
+
+/**
  * Every transfer the plan needs, in order: arriving (from the airport or station to the first stay),
  * each day the city changes (and, when that's by plane, train, bus or ferry, getting to and from the
  * station on both sides), each change of stay within a city, and leaving at the end. What's saved

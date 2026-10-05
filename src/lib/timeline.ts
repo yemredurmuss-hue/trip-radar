@@ -5,7 +5,7 @@
 import { L } from "./i18n";
 import { liveLabels, nNights } from "./i18nText";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
-import { endsOf, isRental, travelsOf, type Leg, type Travel } from "./legs";
+import { endsOf, isHiddenLeg, isRental, travelsOf, type Leg, type Travel } from "./legs";
 import { cityKeyOf, sameCity, type DateRange, type OptionGroup, type Plan, type StayBlock } from "./plan";
 import { isIdea, needsBooking } from "./booking";
 import type { Category, Item, LegMode } from "./types";
@@ -159,8 +159,9 @@ export function hiddenNights(timeline: Timeline): { range: DateRange; city: stri
 }
 
 export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden: Set<string> = new Set()): Timeline {
-  // A transfer the traveller said isn't needed stays out (a change of city never does: it's the way on).
-  const legs = allLegs.filter((l) => l.kind === "move" || !hidden.has(`leg:${l.key}`));
+  // A transfer the traveller said isn't needed stays out (a change of city only while nothing is saved or said
+  // for it: one with a flight is the way on, see canHideLeg).
+  const legs = allLegs.filter((l) => !isHiddenLeg(l, hidden));
   const blocks = plan.stayBlocks;
   // A rental set aside by the plan (another booked, or a page chosen instead of the one said in the chat) isn't on its day.
   const closed = new Set(plan.closed.map((c) => c.item.id));

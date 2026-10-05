@@ -8,7 +8,7 @@ import { planState, tripState } from "../src/lib/assistant";
 import { cardFacts, whyLines } from "../src/lib/cardFacts";
 import { decideTrip, makeContext } from "../src/lib/decision";
 import { EMPTY_METRICS, nightsBetween } from "../src/lib/items";
-import { buildLegs, type Leg } from "../src/lib/legs";
+import { buildLegs, canHideLeg, isHiddenLeg, type Leg } from "../src/lib/legs";
 import { buildPlan, liveGroups } from "../src/lib/plan";
 import { plannedItem, type PlannedKind } from "../src/lib/planned";
 import { choiceOf, tradeText } from "../src/lib/choice";
@@ -248,10 +248,12 @@ describe("any trip", () => {
           ...plan.stayBlocks.filter((b) => b.kind === "open" && hr() < 0.3).map((b) => nightsKey(b.range)),
         ]);
         const timeline = buildTimeline(plan, legs, items, hidden);
-        const hiddenLegs = legs.filter((l) => l.kind !== "move" && hidden.has(`leg:${l.key}`));
+        const hiddenLegs = legs.filter((l) => isHiddenLeg(l, hidden));
         const onLine = new Set(timeline.entries.flatMap((e) => (e.kind === "leg" ? [e.leg.key] : e.kind === "day" ? e.legs.map((l) => l.key) : e.kind === "travel" && e.leg ? [e.leg.key] : [])));
         for (const l of hiddenLegs) if (onLine.has(l.key)) note(seed, `hidden transfer ${l.key} still on the line`);
-        for (const l of legs.filter((l) => l.kind === "move")) if (!onLine.has(l.key)) note(seed, `move ${l.key} missing from the line`);
+        // A change of city leaves the line only when said not needed while nothing is saved or said for it.
+        for (const l of legs.filter((l) => l.kind === "move" && !isHiddenLeg(l, hidden))) if (!onLine.has(l.key)) note(seed, `move ${l.key} missing from the line`);
+        for (const l of legs.filter((l) => l.kind === "move" && hidden.has(`leg:${l.key}`) && !canHideLeg(l))) if (!onLine.has(l.key)) note(seed, `move ${l.key} with a way saved was hidden`);
 
         // Nights add up and the stretches cover the trip without gaps.
         const n = plan.nights;
