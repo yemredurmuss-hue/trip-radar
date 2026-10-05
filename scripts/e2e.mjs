@@ -765,7 +765,7 @@ try {
   await extra.hover();
   await extra.getByRole("button", { name: /: gerek yok$/ }).click();
   await app.locator(".pk-undo", { hasText: "gizlendi" }).waitFor();
-  await app.locator("#block-2026-10-14.skipped").waitFor();
+  await app.locator("#block-2026-10-14").waitFor({ state: "detached" }); // hidden nights leave the plan
   await app.getByRole("button", { name: /Gizlenenler/ }).click();
   const nightsRow = app.locator(".hidden-row", { hasText: "Geceler" });
   assert.match(await nightsRow.innerText(), /14–15 Ekim/);

@@ -157,16 +157,19 @@ function Section({ section, ...render }: { section: TimelineSection } & RenderPr
       </header>
       <ol className="timeline">
         <HeadInsert at={insertAtCity(section)} onAdd={render.onAdd} />
-        {section.stays.map((entry) => (
+        {section.stays.filter(onFront).map((entry) => (
           <Row key={entry.key} entry={entry} {...render} />
         ))}
-        {section.entries.map((entry) => (
+        {section.entries.filter(onFront).map((entry) => (
           <Row key={entry.key} entry={entry} {...render} />
         ))}
       </ol>
     </section>
   );
 }
+
+/** Nights marked "Gerek yok" leave the plan entirely; they wait under Gizlenenler with "Geri getir". */
+const onFront = (entry: TimelineEntry) => !(entry.kind === "stay" && entry.skipped);
 
 /** Where a row stands, for the dot on the line: booked, planned (chosen, not bought) or open. */
 function standingOf(entry: TimelineEntry): Standing | null {
