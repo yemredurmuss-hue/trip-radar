@@ -150,13 +150,20 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
 - Açık bölüm bir zaman çizelgesi: solda tarih sütunu ("9 Eki", altında hafta günü ve şehir), ince çizgi ve nokta,
   sağda onaylı kartların kendisi (kart iç tasarımı değişmez). Tarihe göre, sonra saate göre; tarihsizler en sonda
   "Tarihsiz", şehre göre. Panel ≤620 px: tarih kartın üstüne tek satır iner.
-- **Yapılacak şeyler = fikir listesi** (0.35.2): orada görülecek, gezilecek, denenecek şeyler; rezervasyon değil,
-  **tik yok** (oraya gidip tik atılmaz). Başta hızlı yazma kutusu; her fikir Restoranlar'la aynı kart: 200×124 resim
-  (sayfanın fotoğrafı, yoksa türünün ikonu renkli karoda: manzara, gün batımı, yürüyüş, alışveriş, okuma, tat, diğer),
-  ad (en fazla 2 satır), şehir · kaynak, altta "+ Güne ekle", harita ve kaynağı (yoksa web'de arama). Bölüm ikonu
-  pusula. Bilet kelimesi geçen fikirde "Bilet gerekiyor · Etkinliklere taşı". Restoranlar aynı kart; aynı gündekiler
-  yan yana, kartlar bir sırada eşit boy, düğmeler aynı hizada; uzun ad şablonu bozmaz.
-- **Etkinlik asla fikir değildir** (0.35.2, `booking.ts` `showSays`): konser, gösteri, maç, festival, open air, DJ,
+- **Yapılacak şeyler ve Restoranlar = şehre göre fikir listesi** (0.35.3): kart değil, satır. Satır: küçük ikon
+  (sayfanın fotoğrafı varsa minik foto), ad (tek satır), tek gri satır (kaynak ya da not), sağda gün çipi, harita,
+  kaynağı (yoksa web'de arama), isteğe bağlı tek dokunuş "Yaptım" (✓), üstüne gelince ×. Restoranda rezervasyon
+  gerekiyorsa "Rezerve et"; bilet kelimesi geçen fikirde "Etkinliklere taşı". **Tik kutusu yok, ilerleme çubuğu yok,
+  "güne eklenmedi" uyarısı yok:** günü olmayan fikir eksik plan değildir. Başlıkta nötr sayı: "5 fikir · 2 tanesi bir
+  güne kondu". Sıra: şehirler gezinin sırasıyla, şehir içinde güne konanlar önce. **Gezi sırasında** önce
+  "Bugün · 9 Eki", sonra o gece kalınan şehir ("buradasın"), sonra diğerleri. **Havuz → gün → havuz:** günü geçip
+  "Yaptım" denmemiş fikir kendi şehrinin havuzuna döner ("9 Eki için konmuştu · havuza döndü"); bu yalnız gösterimde
+  hesaplanır, kayda yazılmaz. Yapılanlar en altta kapalı "Yapılanlar (n)" grubunda. Hero'nun "x/y onaylandı"sına
+  fikirler girmez (`planProgress` todo/food/inspo'yu saymaz).
+- **İlham** (0.35.3): Plan'ın en altında, kapalı başlayan bölüm. Reels, Pinterest, TikTok, YouTube ve blog linkleri
+  (`inspo.ts`): resim, platform rozeti, başlık, şehir. Restoran nerede bulunursa bulunsun restorandır; Maps linki
+  yerdir, ilham değil. Bir güne konunca Yapılacak şeyler'e geçer. Belgeler'le karışmaz (pasaport, bilet orada).
+- **Etkinlik asla fikir değildir** (0.35.3, `booking.ts` `showSays`): konser, gösteri, maç, festival, open air, DJ,
   line-up, parti, canlı müzik geçen kayıt — sohbet ya da sayfa "yapılacak / rezervasyon yok" demiş olsa da —
   Etkinlikler'e gider (bilet gerekir).
 - Plan'da check-in/check-out satırı, boş gün, planı olmayan transfer yok.
