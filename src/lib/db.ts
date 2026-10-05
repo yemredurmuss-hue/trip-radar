@@ -190,7 +190,8 @@ export async function listArrivals(since: number): Promise<ChatMessage[]> {
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
-export async function addEvent(tripId: string, text: string): Promise<void> {
+/** A line in the trip's history; with `undo`, Geçmiş can put that change back (0.37). Returns its id. */
+export async function addEvent(tripId: string, text: string, extra: Pick<ChatMessage, "undo"> = {}): Promise<string> {
   const message: ChatMessage = {
     id: newId(),
     tripId,
@@ -199,8 +200,10 @@ export async function addEvent(tripId: string, text: string): Promise<void> {
     text,
     choices: [],
     createdAt: nextTime(),
+    ...(extra.undo ? { undo: extra.undo } : {}),
   };
   await (await db()).put("messages", message);
+  return message.id;
 }
 
 export async function listAnalyses(tripId: string): Promise<Analysis[]> {

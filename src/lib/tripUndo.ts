@@ -7,6 +7,8 @@ export interface TripChange extends TripFieldsBefore {
   tripId: string;
   /** The toast's words: "Para birimi: EUR", "Gidenler: Emre & Sabine". */
   label: string;
+  /** Its line in Geçmiş: taken back from the toast, the line says "geri alındı" too. */
+  eventId?: string;
 }
 
 const listeners = new Set<(change: TripChange) => void>();

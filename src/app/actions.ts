@@ -4,6 +4,8 @@ import { restoreDoc } from "../lib/docs";
 import { L, saveLang } from "../lib/i18n";
 import { announceRemoved, deleteItem, restoreItem, type Removed } from "../lib/removal";
 import { restoreFields, withTravellers, type TravellersChange } from "../lib/tripSettings";
+import { ChangedSince, latestLangLine, undoEvent } from "../lib/eventUndo";
+import { stableJson } from "../lib/share/settings";
 import { nightsKey } from "../lib/timeline";
 import type { DateRange } from "../lib/plan";
 import type { Category, Item, ItemStatus, Trip } from "../lib/types";
@@ -121,13 +123,22 @@ export async function undo(u: Undoable): Promise<void> {
     return;
   }
   if (u.kind === "trip") {
+    // Through its Geçmiş line when it has one, so the line says "geri alındı" too.
+    if (u.change.eventId) {
+      await undoEvent(u.change.eventId).catch((error) => {
+        if (!(error instanceof ChangedSince)) throw error; // changed again within the toast's seconds: left as it is
+      });
+      return;
+    }
     await updateTrip(u.change.tripId, (t) => restoreFields(t, u.change));
     await addEvent(u.change.tripId, L(`Geri alındı: ${u.change.label}`, `Undone: ${u.change.label}`));
     notifyChanged();
     return;
   }
   if (u.kind === "lang") {
-    await saveLang(u.prev);
+    const line = await latestLangLine(u.tripId);
+    if (line) await undoEvent(line);
+    else await saveLang(u.prev);
     // The board's words are read once per load (main.tsx): the other language needs the page again.
     if (typeof location !== "undefined") location.reload();
     return;
@@ -135,17 +146,21 @@ export async function undo(u: Undoable): Promise<void> {
   return setHidden(u.tripId, u.key, false, u.label);
 }
 
-/** Who goes, changed in the hero's popover ("İsim ekle", ×, the count): written at once, with a line in Geçmiş. */
-export async function changeTravellers(tripId: string, change: TravellersChange, event: string): Promise<void> {
-  let changed = false;
-  await updateTrip(tripId, (t) => {
-    const next = withTravellers(t.travellers, change);
-    if (typeof next === "string") return t;
-    changed = JSON.stringify(next.travellers) !== JSON.stringify(t.travellers ?? { names: [] });
-    return changed ? { ...t, travellers: next.travellers } : t;
-  });
-  if (changed) {
-    await addEvent(tripId, event);
-    notifyChanged();
+/**
+ * Who goes, changed in the hero's popover ("İsim ekle", ×, the count): written at once with a line in Geçmiş that
+ * can take it back. A change that changes nothing (a name already there) writes nothing, not even the time.
+ */
+export async function changeTravellers(tripId: string, change: TravellersChange, event: string): Promise<boolean> {
+  const tx = (await db()).transaction("trips", "readwrite");
+  const trip = await tx.store.get(tripId);
+  const next = trip ? withTravellers(trip.travellers, change) : null;
+  if (!trip || !next || typeof next === "string" || stableJson(next.travellers) === stableJson(trip.travellers ?? { names: [] })) {
+    await tx.done;
+    return false;
   }
+  await tx.store.put({ ...trip, travellers: next.travellers, updatedAt: Date.now() });
+  await tx.done;
+  await addEvent(tripId, event, { undo: { kind: "fields", fields: ["travellers"], before: { travellers: trip.travellers }, after: { travellers: next.travellers } } });
+  notifyChanged();
+  return true;
 }

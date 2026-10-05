@@ -957,8 +957,11 @@ async function changeCurrency(tripId: string, raw: string, items: Item[]): Promi
     return { unchanged: true, currency: shown, note: L(`Pano zaten ${shown} gösteriyor; hiçbir şey değişmedi.`, `The board already shows ${shown}; nothing changed.`) };
   }
   const budget = done.budget ? L(` (bütçe ${done.budget.before} → ${done.budget.after})`, ` (budget ${done.budget.before} → ${done.budget.after})`) : "";
-  await addEvent(tripId, L(`Para birimi ${done.from} → ${done.to}${budget}`, `Currency ${done.from} → ${done.to}${budget}`));
-  announceTripChange({ tripId, ...(before as TripFieldsBefore), label: L(`Para birimi: ${done.to}`, `Currency: ${done.to}`) });
+  const undoable = before as TripFieldsBefore;
+  const eventId = await addEvent(tripId, L(`Para birimi ${done.from} → ${done.to}${budget}`, `Currency ${done.from} → ${done.to}${budget}`), {
+    undo: { kind: "fields", ...undoable, after: fieldsBefore(after, undoable.fields).before },
+  });
+  announceTripChange({ tripId, ...undoable, eventId, label: L(`Para birimi: ${done.to}`, `Currency: ${done.to}`) });
   notifyChanged();
   return {
     currency: { from: done.from, to: done.to, budget: done.budget ? `${done.budget.before} → ${done.budget.after}` : null },
@@ -979,7 +982,7 @@ async function changeLanguage(tripId: string, next: Lang): Promise<Record<string
     setLang(prev);
     throw new ToolError(L("Dil kaydedilemedi; hiçbir şey değişmedi. Ayarlar'dan değiştirebilir.", "The language couldn't be saved; nothing changed. It can be changed in Settings."));
   }
-  await addEvent(tripId, L("Panonun dili Türkçe oldu (sohbetten)", "The board's language is now English (from the chat)"));
+  await addEvent(tripId, L("Panonun dili Türkçe oldu (sohbetten)", "The board's language is now English (from the chat)"), { undo: { kind: "lang", prev } });
   return {
     language: next,
     shown: L(
@@ -1010,8 +1013,13 @@ async function changeTravellers(tripId: string, input: any, items: Item[]): Prom
   const missing = done?.missing.length ? { not_found: done.missing } : {};
   if (!before) return { unchanged: true, named: after.travellers?.names ?? [], people: who.count, ...missing, note: L("Hiçbir şey değişmedi.", "Nothing changed.") };
   const names = after.travellers?.names ?? [];
-  await addEvent(tripId, L(`Gidenler: ${names.length ? names.join(", ") : "isim yok"}${after.travellers?.count ? ` · ${after.travellers.count} kişi` : ""} (sohbetten)`, `Who's going: ${names.length ? names.join(", ") : "no names"}${after.travellers?.count ? ` · ${nPeople(after.travellers.count)}` : ""} (from the chat)`));
-  announceTripChange({ tripId, ...(before as TripFieldsBefore), label: L(`Gidenler: ${hero}`, `Who's going: ${hero}`) });
+  const undoable = before as TripFieldsBefore;
+  const eventId = await addEvent(
+    tripId,
+    L(`Gidenler: ${names.length ? names.join(", ") : "isim yok"}${after.travellers?.count ? ` · ${after.travellers.count} kişi` : ""} (sohbetten)`, `Who's going: ${names.length ? names.join(", ") : "no names"}${after.travellers?.count ? ` · ${nPeople(after.travellers.count)}` : ""} (from the chat)`),
+    { undo: { kind: "fields", ...undoable, after: { travellers: after.travellers } } },
+  );
+  announceTripChange({ tripId, ...undoable, eventId, label: L(`Gidenler: ${hero}`, `Who's going: ${hero}`) });
   notifyChanged();
   return {
     named: names,

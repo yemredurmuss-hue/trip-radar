@@ -13,6 +13,7 @@ import { budgetLevel } from "../src/lib/tripStyle";
 import { whoGoes, withTravellers } from "../src/lib/tripSettings";
 import { onTripChange, type TripChange } from "../src/lib/tripUndo";
 import { changeTravellers, undo } from "../src/app/actions";
+import { undoEvent } from "../src/lib/eventUndo";
 import type { Trip } from "../src/lib/types";
 
 const trip = (over: Partial<Trip> = {}): Trip => ({ id: "w1", title: "Porto", confirmedDates: null, budget: null, heroImage: null, createdAt: 1, updatedAt: 1, ...over });
@@ -137,11 +138,21 @@ describe("set_travellers in the chat", () => {
   it("the hero's popover writes the same way, with a line in Geçmiş", async () => {
     const d = await db();
     await d.put("trips", trip({ id: "w4" }));
-    await changeTravellers("w4", { add: ["Sabine"] }, "Gidenler: Sabine eklendi");
-    await changeTravellers("w4", { add: ["sabine"] }, "tekrar"); // the same name again: nothing, no line
+    expect(await changeTravellers("w4", { add: ["Sabine"] }, "Gidenler: Sabine eklendi")).toBe(true);
+    const written = (await d.get("trips", "w4"))!.updatedAt;
+    await new Promise((r) => setTimeout(r, 5));
+    // The same name again: nothing written, not even the time (it mustn't win a settings sync), no line.
+    expect(await changeTravellers("w4", { add: ["sabine"] }, "tekrar")).toBe(false);
+    expect((await d.get("trips", "w4"))!.updatedAt).toBe(written);
     expect((await d.get("trips", "w4"))!.travellers).toEqual({ names: ["Sabine"] });
     await changeTravellers("w4", { remove: ["Sabine"] }, "Gidenler: Sabine çıkarıldı");
     expect((await d.get("trips", "w4"))!.travellers).toEqual({ names: [] });
-    expect((await listMessages("w4")).filter((m) => m.role === "event").map((m) => m.text)).toEqual(["Gidenler: Sabine eklendi", "Gidenler: Sabine çıkarıldı"]);
+    const lines = (await listMessages("w4")).filter((m) => m.role === "event");
+    expect(lines.map((m) => m.text)).toEqual(["Gidenler: Sabine eklendi", "Gidenler: Sabine çıkarıldı"]);
+    // Geçmiş's Geri al on the newest line: Sabine is back; the older line no longer matches the trip, so it stays.
+    await undoEvent(lines[1].id);
+    expect((await d.get("trips", "w4"))!.travellers).toEqual({ names: ["Sabine"] });
+    await undoEvent(lines[0].id); // "eklendi" taken back now: nobody named, as before it
+    expect("travellers" in (await d.get("trips", "w4"))!).toBe(false);
   });
 });

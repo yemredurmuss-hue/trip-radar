@@ -13,6 +13,8 @@ import { anthropicProvider } from "../src/lib/llm/anthropic";
 import { currencyOf, restoreFields, withCurrency } from "../src/lib/tripSettings";
 import { onTripChange, type TripChange } from "../src/lib/tripUndo";
 import { undo } from "../src/app/actions";
+import { ChangedSince, undoEvent } from "../src/lib/eventUndo";
+import { buildHistory } from "../src/lib/history";
 import type { Item, Trip } from "../src/lib/types";
 
 const today = new Date().toISOString().slice(0, 10);
@@ -147,6 +149,42 @@ describe("the trip's money", () => {
     expect(makeContext(back, items).currency).toBe("TRY");
   });
 
+  it("Geçmiş's Geri al puts the money back on an unshared trip, once, and never over a later change", async () => {
+    stubChrome(true);
+    const { trip, items } = await seed({ amount: 81755, currency: "TRY" });
+    const history = async () =>
+      buildHistory({ me: "", settings: null, notices: [], undone: [], events: await listMessages(trip.id), trash: [], hidden: [], items: [], current: null, now: Date.now() });
+    const turn = () => fakeClient([toolCall("s1", "set_settings", { currency: "EUR", language: "" }), reply("Euroya çevirdim.")]);
+    await sendMessage(trip.id, "bütçeyi euro yap", anthropicProvider(turn().client, "claude-opus-5"));
+    const row = (await history()).find((r) => r.text.startsWith("Para birimi TRY → EUR"))!;
+    expect(row.action).toMatchObject({ kind: "undo-event" });
+    expect(row.undone).toBeNull();
+    await undoEvent((row.action as { messageId: string }).messageId);
+    expect((await stored(trip.id)).budget).toEqual({ amount: 81755, currency: "TRY" });
+    expect(makeContext(await stored(trip.id), items).currency).toBe("TRY");
+    const after = (await history()).find((r) => r.key === row.key)!;
+    expect(after.action).toBeNull();
+    expect(after.undone).toMatchObject({ by: "Ben" });
+    // Taken back already: a second click changes nothing.
+    await expect(undoEvent((row.action as { messageId: string }).messageId)).resolves.toEqual({ reload: false });
+
+    // Changed again since (the budget said anew): the older line doesn't overwrite it.
+    await sendMessage(trip.id, "bütçeyi euro yap", anthropicProvider(turn().client, "claude-opus-5"));
+    const again = (await history()).find((r) => r.text.startsWith("Para birimi TRY → EUR") && r.action)!;
+    await (await db()).put("trips", { ...(await stored(trip.id)), budget: { amount: 2500, currency: "EUR" } });
+    await expect(undoEvent((again.action as { messageId: string }).messageId)).rejects.toBeInstanceOf(ChangedSince);
+    expect((await stored(trip.id)).budget).toEqual({ amount: 2500, currency: "EUR" });
+
+    // The board's toast goes through the same line: Geçmiş then says "geri alındı".
+    const t2 = await seed({ amount: 47500, currency: "TRY" });
+    await sendMessage(t2.trip.id, "euro", anthropicProvider(turn().client, "claude-opus-5"));
+    const change = changes.find((c) => c.tripId === t2.trip.id)!;
+    expect(change.eventId).toBeTruthy();
+    await undo({ kind: "trip", change });
+    expect((await stored(t2.trip.id)).budget).toEqual({ amount: 47500, currency: "TRY" });
+    expect((await listMessages(t2.trip.id)).find((m) => m.id === change.eventId)!.undoneAt).toBeTypeOf("number");
+  });
+
   it("update_trip with only a currency and no budget (the 0.36.6 'ok' that changed nothing) now changes the money shown", async () => {
     stubChrome(true);
     const { trip, items } = await seed(null);
@@ -198,6 +236,11 @@ describe("the board's language", () => {
     const again = fakeClient([toolCall("l2", "set_settings", { currency: "", language: "tr" }), reply("Pano zaten Türkçe.")]);
     await sendMessage(trip.id, "Türkçe olsun", anthropicProvider(again.client, "claude-opus-5"));
     expect(JSON.parse(toolResults(again.calls[1])[0].content as string)).toMatchObject({ unchanged: true });
+    // Geçmiş's Geri al: English again (the board reloads into it).
+    const line = (await listMessages(trip.id)).find((m) => m.undo?.kind === "lang")!;
+    await expect(undoEvent(line.id)).resolves.toEqual({ reload: true });
+    expect(lang()).toBe("en");
+    expect(store.lang).toBe("en");
   });
 });
 

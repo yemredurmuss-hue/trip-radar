@@ -2439,7 +2439,19 @@ try {
   await app.screenshot({ path: `${out}/18b-travellers-removed.png` });
   await app.keyboard.press("Escape");
   await box.waitFor({ state: "detached" });
-  console.log("✓ travellers: the hero's people box names Sabine without sharing (Emre & Sabine · 2 kişi), × takes her off, Esc closes it");
+  // Geçmiş (the trip isn't shared): "Gidenler: Sabine çıkarıldı" has its own Geri al; Sabine comes back, the line
+  // says "geri alındı".
+  await app.getByRole("button", { name: "Gezi menüsü" }).first().click();
+  await app.locator(".menu").getByRole("button", { name: "Geçmiş ve çöp kutusu" }).click();
+  const history = app.getByRole("dialog", { name: "Geçmiş" });
+  const removedLine = history.locator(".hs-ev", { hasText: "Gidenler: Sabine çıkarıldı" });
+  await removedLine.getByRole("button", { name: "Geri al" }).click();
+  await removedLine.locator(".hs-tag", { hasText: "geri alındı" }).waitFor();
+  await app.screenshot({ path: `${out}/18c-travellers-history-undo.png` });
+  await history.getByRole("button", { name: "Kapat" }).click();
+  await history.waitFor({ state: "detached" });
+  await app.waitForFunction(() => document.querySelector(".hx .hx-side .hx-who-text")?.innerText.replace(/\s+/g, " ").trim() === "Emre & Sabine 2 kişi", null, { timeout: 10000 });
+  console.log("✓ travellers: the hero's people box names Sabine without sharing (Emre & Sabine · 2 kişi), × takes her off, Esc closes it; Geçmiş's Geri al brings her back");
 } finally {
   await whoGoes.close();
 }

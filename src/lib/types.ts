@@ -397,7 +397,19 @@ export interface ChatMessage {
   /** Provider whose native format `content` is in. Missing on rows written before Gemini support = Claude. */
   provider?: "gemini" | "anthropic";
   createdAt: number;
+  /** A history line for a trip setting changed on this computer (0.37): what Geçmiş's "Geri al" puts back. */
+  undo?: EventUndo;
+  /** Taken back (from Geçmiş or the board's "Geri al"): when. Geçmiş shows it "geri alındı". */
+  undoneAt?: number;
 }
+
+/**
+ * How a history line is taken back: these trip fields to their values before (only while they still hold the
+ * values after), or the board's language to the one before.
+ */
+export type EventUndo =
+  | { kind: "fields"; fields: (keyof Trip)[]; before: Partial<Trip>; after: Partial<Trip> }
+  | { kind: "lang"; prev: "tr" | "en" };
 
 export interface Settings {
   provider: "gemini" | "anthropic";

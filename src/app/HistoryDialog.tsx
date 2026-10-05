@@ -14,6 +14,7 @@ import { getShareConfig, isConfigured } from "../lib/share/store";
 import { dropTrash, emptyTrash, listTrash, purgeTrash, restoreTrash } from "../lib/trash";
 import type { ChatMessage, Item, TrashEntry, TrashKind, Trip } from "../lib/types";
 import { setHidden, setItemStatus } from "./actions";
+import { undoEvent } from "../lib/eventUndo";
 import { useShare } from "./Share";
 import { Avatar, DiffParts } from "./ShareSafety";
 
@@ -147,6 +148,13 @@ export function HistoryDialog({ trip, items, hidden, onClose, onShow, onOpenTrip
         case "unhide":
           if (tripId) await setHidden(tripId, action.key, false, action.label);
           return;
+        case "undo-event": {
+          // The money, who goes, the language changed on this computer: its values before come back.
+          const result = await undoEvent(action.messageId);
+          await load();
+          if (result.reload) location.reload(); // the language: the board's words need the page again
+          return;
+        }
         case "show":
           onClose();
           onShow?.(action.itemId);
@@ -168,7 +176,7 @@ export function HistoryDialog({ trip, items, hidden, onClose, onShow, onOpenTrip
   }
 
   const actionLabel = (a: HistoryAction) =>
-    a.kind === "undo-setting" ? L("Geri al", "Undo") : a.kind === "show" ? L("Panoda göster", "Show on the board") : L("Geri getir", "Bring back");
+    a.kind === "undo-setting" || a.kind === "undo-event" ? L("Geri al", "Undo") : a.kind === "show" ? L("Panoda göster", "Show on the board") : L("Geri getir", "Bring back");
 
   const foot = !trip
     ? L("Silinen geziler 30 gün Çöp kutusu'nda durur, sonra kendiliğinden gider.", "Deleted trips stay in the trash for 30 days, then go by themselves.")
@@ -287,7 +295,7 @@ function HistoryRowView({
             </button>
           )}
           {actionLabel && (
-            <button type="button" className={`hs-btn${row.action?.kind === "undo-setting" ? " dark" : ""}`} disabled={busy} onClick={onAction}>
+            <button type="button" className={`hs-btn${row.action?.kind === "undo-setting" || row.action?.kind === "undo-event" ? " dark" : ""}`} disabled={busy} onClick={onAction}>
               {actionLabel}
             </button>
           )}
