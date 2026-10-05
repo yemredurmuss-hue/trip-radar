@@ -10,7 +10,7 @@ import { formatDateRange } from "../../lib/items";
 import { L, locale } from "../../lib/i18n";
 import type { DayRow } from "../../lib/journey";
 import { insertAtDay, type InsertAt } from "../../lib/templates";
-import type { RentalEntry, TimelineSection } from "../../lib/timeline";
+import type { RentalEntry, StayEntry, TimelineSection } from "../../lib/timeline";
 import type { Listing } from "../../lib/types";
 import { KindIcon, MediaSilhouette, TransportArt } from "../cards/Silhouettes";
 import { HeroIcon } from "../Icons";
@@ -45,6 +45,8 @@ const isTransport = (k: CardKind): k is TransportMode => (TRANSPORT_MODES as rea
 
 export function DayCards(props: DayCardsProps) {
   const cards = dayCards(props.sections, { rentals: props.rentals, listings: props.listings });
+  // The stays by their nights' first day: on that day the check-in line opens to the stay's own card.
+  const stays = new Map<string, StayEntry>(props.sections.flatMap((s) => (s.kind === "city" ? s.stays.map((st) => [st.key, st] as [string, StayEntry]) : [])));
   const [open, setOpen] = useState<{ key: string; row: string | null } | null>(null);
   return (
     <div className="dc">
@@ -54,6 +56,7 @@ export function DayCards(props: DayCardsProps) {
           card={c}
           open={open?.key === c.key}
           focus={open?.key === c.key ? open.row : null}
+          stays={stays}
           onToggle={(row) => setOpen(open?.key === c.key && !row ? null : { key: c.key, row })}
           {...props}
         />
@@ -116,7 +119,7 @@ function useDayPhoto(card: DayCard, cityImage: DayCardsProps["cityImage"]): stri
 
 // --- a day ----------------------------------------------------------------------------------------
 
-function Day({ card, open, focus, onToggle, ...props }: { card: DayCard; open: boolean; focus: string | null; onToggle: (row: string | null) => void } & DayCardsProps) {
+function Day({ card, open, focus, onToggle, stays, ...props }: { card: DayCard; open: boolean; focus: string | null; onToggle: (row: string | null) => void; stays: Map<string, StayEntry> } & DayCardsProps) {
   const photo = useDayPhoto(card, props.cityImage);
   const flow = flowRows(card);
   const ideas = ideaCount(card.rows);
@@ -157,7 +160,7 @@ function Day({ card, open, focus, onToggle, ...props }: { card: DayCard; open: b
         ) : open ? (
           <ol className="dc-tl full">
             {flow.map((r) => (
-              <Full key={r.key} row={r} {...props} />
+              <Full key={r.key} row={r} stay={checkInStay(r, card, stays)} {...props} />
             ))}
           </ol>
         ) : (
@@ -216,8 +219,24 @@ function Line({ row, onTap }: { row: DayRow; onTap: () => void }) {
   );
 }
 
-/** A line of the open day: its time and dot, then its own card as the Plan shows it. */
-function Full({ row, cards, leg }: { row: DayRow } & DayCardsProps) {
+/** The stay a check-in line opens to: the line names the nights that start this day. */
+function checkInStay(row: DayRow, card: DayCard, stays: Map<string, StayEntry>): StayEntry | null {
+  const stay = row.stayKey ? stays.get(row.stayKey) : undefined;
+  return stay && stay.block.range.start === card.date ? stay : null;
+}
+
+/** A line of the open day: its time and dot, then its own card as the Plan shows it (check-in: the stay's card). */
+function Full({ row, stay, cards, leg }: { row: DayRow; stay: StayEntry | null } & DayCardsProps) {
+  if (stay)
+    return (
+      <li className="dc-full" id={`dc-${row.key}`} data-title={row.line ?? row.title}>
+        <span className="t">{time(row)}</span>
+        <span className="dot" />
+        <div className="dc-slot">
+          <PlanEntry entry={stay} legCard={cards.legCard} renderGroup={cards.renderGroup} settled={cards.settled} />
+        </div>
+      </li>
+    );
   if (isLine(row)) return <InfoLine row={row} />;
   let body: ReactNode = null;
   if (row.entry) body = <PlanEntry entry={row.entry} legCard={cards.legCard} renderGroup={cards.renderGroup} settled={cards.settled} />;

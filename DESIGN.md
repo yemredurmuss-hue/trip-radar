@@ -142,7 +142,7 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
   Hiçbir şey katlanmaz ("+N daha" yok), kart günü kadar uzar. Kısa günde sağ altta türün soluk silueti.
 - Açınca (başlığa, fotoğrafa ya da bir satıra dokunarak) kart **yerinde** büyür: fotoğraf üstte şerit olur, aynı
   satırlar aynı sırayla her biri **Plan'daki kartıyla** görünür (uçuş, uçuşa giden transfer ve "nasıl gideceksin",
-  tur, restoran, fikir); bilgi satırları ince kalır. Plan'dan farkı kategoriye göre değil gün gün dizilmesi.
+  tur, restoran, fikir); giriş günündeki check-in konaklamanın Plan kartıyla açılır; diğer bilgi satırları (check-out, metro) ince kalır. Plan'dan farkı kategoriye göre değil gün gün dizilmesi.
   Kapalı karttaki bir satıra dokunmak günü o kartı görünür halde açar. Aynı anda tek gün açık; altta "+ Bu güne ekle".
 - Saat solda: kayıttan gelen düz, alışılmış ya da hesaplanan "~"; bilinmeyen boş.
 

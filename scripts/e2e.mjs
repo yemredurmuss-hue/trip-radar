@@ -434,7 +434,9 @@ try {
   const arrive = flowCard("Havalimanı → Otel");
   assert.equal(await flowTime("Havalimanı → Otel").innerText(), "10:05");
   assert.match(await arrive.innerText(), /Planlanmadı/);
-  assert.match(await dayPage.locator(".dc-step.info", { hasText: "Check-in" }).innerText(), /14:00\s*Check-in\s*·\s*Jardim Stay/);
+  // Check-in opens to the stay's own card, as on the Plan.
+  assert.equal(await flowTime("Check-in").innerText(), "14:00");
+  await flowCard("Check-in").locator(".settled-card", { hasText: "Jardim Stay" }).waitFor();
   // A transfer with no plan opens right there: what's easy to miss, how to go, "Gerek yok".
   await openCard("Havalimanı → Otel");
   await arrive.locator(".leg-note", { hasText: "Varış 10:05, giriş en erken 14:00 (sayfada yazıyor)" }).waitFor();
