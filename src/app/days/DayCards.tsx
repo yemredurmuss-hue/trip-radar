@@ -448,7 +448,19 @@ function Line({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tri
       </button>
       <LiveLine row={row} />
       <ArrivalAsk row={row} />
-      {row.warn && <p className="dc-warn">{row.warn}</p>}
+      {row.warn && (
+        <p className="dc-warn">
+          {row.warn}
+          {row.user && (
+            <>
+              {" "}
+              <button type="button" className="link-btn" onClick={() => void clearOwnTime(tripId, row.key)}>
+                {L("Hesaplanan saate dön", "Back to the worked-out time")}
+              </button>
+            </>
+          )}
+        </p>
+      )}
     </li>
   );
 }
@@ -458,6 +470,18 @@ function Line({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tri
  * yol ~1 sa". Only for the times the plan works out (a ticket's own time needs no note).
  */
 const sourceOf = (row: DayRow): string | null => (row.why && !row.user && (row.estimated || (!row.time && row.hint)) ? row.why : null);
+
+/** A time set by hand taken back: the plan's own again (as the time cell's ×). */
+const clearOwnTime = (tripId: string, key: string) =>
+  updateTrip(
+    tripId,
+    (t) => {
+      const own = { ...(t.dayTimes ?? {}) };
+      delete own[key];
+      return { ...t, dayTimes: own };
+    },
+    { touch: false },
+  );
 
 /**
  * The flight's real data under its line (0.36.15): "Rötar 25 dk · Terminal 1 · Kapı D5 · Bant 4", red when

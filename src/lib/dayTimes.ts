@@ -28,6 +28,18 @@ const shift = (t: string, by: number): string | null => {
 };
 const isClock = (t: string | null | undefined): t is string => !!t && /^\d{2}:\d{2}$/.test(t);
 
+/**
+ * A time with its Turkish locative, as it's read aloud: "22:15'te" (on beş), "20:30'da" (otuz), "09:00'da"
+ * (dokuz). The last number said picks the suffix: the minutes, or the hour when they're 00.
+ */
+export function clockAt(t: string): string {
+  const [h, m] = [Number(t.slice(0, 2)), Number(t.slice(3, 5))];
+  const n = m || h;
+  const units = ["da", "de", "de", "te", "te", "te", "da", "de", "de", "da"];
+  const tens: Record<number, string> = { 0: "da", 10: "da", 20: "de", 30: "da", 40: "ta", 50: "de" };
+  return `${t}'${n % 10 ? units[n % 10] : tens[n % 100 >= 60 ? 0 : n % 100] ?? "da"}`;
+}
+
 /** Minutes on, past midnight too (for "gece ~00:45"). */
 const wrap = (t: string, by: number) => toClock((((toMin(t) + by) % 1440) + 1440) % 1440);
 const clockOf = (iso: string | null | undefined) => iso?.match(/T(\d{2}:\d{2})/)?.[1] ?? null;
@@ -63,7 +75,7 @@ export function applyDayTimes(rows: DayRow[], overrides: DayTimeOverrides = {}):
           : null,
       });
     } else if (isClock(leaving.time) && toMin(leaving.time) + TRANSFER_MINUTES > toMin(by)) {
-      leaving.warn = L(`${by}'da ${hubWord(leaving)} olmalısın: bu saatle geç kalabilirsin.`, `You need to be ${hubWord(leaving)} by ${by}: this may be too late.`);
+      leaving.warn = L(`${clockAt(by)} ${hubWord(leaving)} olmalısın: bu saatle geç kalabilirsin.`, `You need to be ${hubWord(leaving)} by ${by}: this may be too late.`);
     }
   }
   // Check out before leaving (and never after it).
@@ -94,6 +106,15 @@ export function applyDayTimes(rows: DayRow[], overrides: DayTimeOverrides = {}):
       hint: outAt ? landing.hint : L(`gece ~${wrap(landed, exitMin)}`, `night ~${wrap(landed, exitMin)}`),
       why: L(`Varış ${landed}; çıkış ~${exitMin} dk`, `Arrives ${landed}; out in ~${exitMin} min`),
     });
+  }
+  // The traveller's own check-in time stays, but not silently when they'd still be in the air (0.36.15).
+  if (checkin?.user && isClock(checkin.time) && isClock(landed) && (overnight || toMin(checkin.time) < toMin(landed))) {
+    checkin.warn = L(
+      `${clockAt(landed)} iniyorsun: ${clockAt(checkin.time)} check-in olamaz.`,
+      `You land at ${landed}: checking in at ${checkin.time} can't be.`,
+    );
+  } else if (checkin?.user && isClock(checkin.time) && !isClock(landed) && inbound && toMin(checkin.time) < toMin(inbound.time!)) {
+    checkin.warn = L(`${inbound.time} yolculuğundan önce check-in olamaz.`, `Checking in before the ${inbound.time} trip can't be.`);
   }
   // Check in once there: out of the airport plus an hour, not before the room is ready.
   if (checkin && !checkin.user) {

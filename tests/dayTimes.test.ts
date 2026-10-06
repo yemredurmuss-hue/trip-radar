@@ -1,7 +1,7 @@
 // The day's times from what's fixed: Emre's examples, the night, the traveller's own time, and the rules that
 // must always hold (never leave after being due at the airport, never check out after leaving, never a wrong time).
 import { afterEach, describe, expect, it } from "vitest";
-import { applyDayTimes } from "../src/lib/dayTimes";
+import { applyDayTimes, clockAt } from "../src/lib/dayTimes";
 import { setLang } from "../src/lib/i18n";
 import type { DayRow } from "../src/lib/journey";
 
@@ -44,7 +44,7 @@ describe("the traveller's own time", () => {
   it("is kept, the rest follow it, and a late one is warned about", () => {
     const rows = applyDayTimes([checkout("11:00"), toAirport("13:00"), flight("15:00")], { go: "12:30" });
     expect(times(rows)).toMatchObject({ go: "12:30", out: "11:00" });
-    expect(rows[1]).toMatchObject({ user: true, warn: "13:00'da havalimanında olmalısın: bu saatle geç kalabilirsin." });
+    expect(rows[1]).toMatchObject({ user: true, warn: "13:00'te havalimanında olmalısın: bu saatle geç kalabilirsin." });
     expect(times(applyDayTimes([checkout("11:00"), toAirport("13:00")], { go: "10:30" }))).toMatchObject({ out: "~10:15", go: "10:30" });
   });
   it("moves the check-in after an arrival transfer they set", () => {
@@ -102,6 +102,12 @@ describe("the trip in is the anchor (Emre's 7 October: Istanbul → Copenhagen �
   it("the traveller's own check-in time stands", () => {
     expect(times(applyDayTimes([ticket("a", "20:30", null), checkin("15:00")], { in: "23:00" })).in).toBe("23:00");
   });
+  it("...but says so when it's before landing (Emre's 15:00, set by hand, on a 22:15 landing)", () => {
+    const rows = applyDayTimes(legs("2026-10-07T22:15"), { in: "15:00" });
+    expect(times(rows).in).toBe("15:00");
+    expect(rows[3].warn).toBe("22:15'te iniyorsun: 15:00'te check-in olamaz.");
+    expect(applyDayTimes(legs("2026-10-07T22:15"), { in: "23:59" })[3].warn).toBeUndefined();
+  });
 });
 
 describe("arrivalAt: the landing the traveller types", () => {
@@ -112,5 +118,13 @@ describe("arrivalAt: the landing the traveller types", () => {
     expect(arrivalAt(f("2026-10-07T20:30"), "22:00")).toBe("2026-10-07T22:00");
     expect(arrivalAt(f("2026-10-07T22:30"), "01:35")).toBe("2026-10-08T01:35");
     expect(arrivalAt(f("2026-10-07T20:30"), "2200")).toBeNull();
+  });
+});
+
+describe("clockAt: a time's locative, as read aloud", () => {
+  it("by the last number said", () => {
+    expect(["22:15", "20:30", "09:00", "13:00", "15:00", "12:40", "10:50", "06:00", "00:20", "11:07", "16:09"].map(clockAt)).toEqual([
+      "22:15'te", "20:30'da", "09:00'da", "13:00'te", "15:00'te", "12:40'ta", "10:50'de", "06:00'da", "00:20'de", "11:07'de", "16:09'da",
+    ]);
   });
 });

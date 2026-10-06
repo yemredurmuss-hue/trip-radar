@@ -20,6 +20,7 @@ import type { Timeline } from "../lib/timeline";
 
 import type { Capture, Item, Suggestion, Trip } from "../lib/types";
 import { chooseItem, hideNights, markSuggestionAdded, undo as takeBack, updateTrip } from "./actions";
+import { liveKey } from "../lib/flightData";
 import { legEndsByItem, legModeByItem } from "../lib/cardKinds";
 import { inheritedDocs } from "../lib/docs";
 import { deleteItem, onHidden, onRemoved } from "../lib/removal";
@@ -545,6 +546,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     />
   );
 
+  // The flights on the plan that can be followed once the trip is on (a number and a day each).
+  const followable = items.filter((i) => (i.status === "booked" || i.status === "chosen") && liveKey(i));
+
   return (
     <CardEnvContext.Provider value={env}>
       <SilhouetteDefs />
@@ -566,6 +570,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           action={action}
           working={working.length + reading}
           menu={menu}
+          flights={followable.length && !trip.demo ? { count: followable.length, going: !!trip.going, onGoing: (on) => void updateTrip(trip.id, (t) => ({ ...t, going: on })) } : null}
         />
         <TripFacts
           key={`facts:${trip.id}`}
