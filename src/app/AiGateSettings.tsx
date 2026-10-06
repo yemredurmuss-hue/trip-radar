@@ -97,7 +97,7 @@ export function AiGateSettings({ ownKey, geminiKey = "" }: { ownKey: boolean; ge
       {invited && !ownKey && (
         <p className="note small ai-invited">{L("✓ Davetle geldin: AI, davet edenin sunucusundan çalışıyor. Kendi anahtarın gerekmez.", "✓ You came with an invite: AI runs on the inviter's server. You don't need a key of your own.")}</p>
       )}
-      <button type="button" className="link-btn quiet" aria-expanded={open} onClick={() => setOpen(!open)}>
+      <button type="button" className="link-btn quiet calm" aria-expanded={open} onClick={() => setOpen(!open)}>
         {L("AI kapısı · kullanım ve ayrıntılar", "AI gate · usage and details")} {open ? "▴" : "▾"}
       </button>
       {open && (

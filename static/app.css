@@ -95,6 +95,8 @@ a { color: var(--accent); text-decoration: none; }
 }
 .composer.drag { border-color: var(--accent); background: var(--accent-soft); }
 .composer input[type="text"] { flex: 1; min-width: 0; border: 0; outline: 0; font-size: 15px; padding: 8px 4px; background: transparent; }
+/* The input draws no ring of its own: the whole box gets the app's focus ring instead. */
+.composer:has(input[type="text"]:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 .icon-btn { width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--soft); display: grid; place-items: center; }
 .send-btn { width: 40px; height: 40px; border-radius: 50%; border: 0; background: #111; color: #fff; display: grid; place-items: center; }
 .send-btn:disabled { opacity: .35; }
@@ -555,6 +557,8 @@ a.sc-source.link:focus-visible { outline: 2px solid var(--accent); outline-offse
 .sc-actions { display: inline-flex; align-items: center; gap: 12px; }
 .link-btn.quiet { color: var(--muted); font-size: 13.5px; }
 .link-btn.quiet:hover { color: var(--danger); }
+/* A quiet link that opens something (not a removal): darkens on hover, never danger red. */
+.link-btn.quiet.calm:hover { color: var(--text); }
 .pill-btn { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 8px 18px; font-size: 14px; font-weight: 600; border: 0; white-space: nowrap; }
 .pill-btn.dark { background: var(--ink); color: #fff; padding: 8px 26px; }
 .pill-btn.dark:hover { background: #000; }
@@ -1523,7 +1527,8 @@ button.hx-people:hover b { color: var(--hx-accent); }
   .pk-txt h3 { font-size: 17px; }
   .pk-txt p { font-size: 14px; }
   .pk-sub, .pk-opt { display: none; }
-  .pk-foot { gap: 8px; }
+  /* the state and the price on two lines when they don't fit on one ("Planlandı · ⏳ 3 gün" over "€25 toplam") */
+  .pk-foot { gap: 8px; flex-wrap: wrap; row-gap: 4px; padding-block: 6px; }
   .pk-form { grid-template-columns: 1fr; }
 }
 
@@ -1836,7 +1841,7 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .hx-avatars i.photo { overflow: hidden; padding: 0; }
 .hx-avatars i.photo img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
 /* 0.36 Settings → AI kapısı */
-.ai-gate { margin-top: 14px; padding-top: 12px; border-top: 1px solid #ece9e3; }
+.ai-gate { margin-top: 14px; margin-bottom: 12px; padding-top: 12px; border-top: 1px solid #ece9e3; }
 .ai-gate-body { margin-top: 8px; }
 .ai-invited { color: #1d7442; }
 .ai-on { color: #1d7442; }
@@ -1986,6 +1991,11 @@ button.cat-hidden-name:hover { text-decoration: underline; }
   .cat-day { grid-template-columns: minmax(0, 1fr); padding-bottom: 14px; }
   .cat-day::before, .cat-dot { display: none; }
   .cat-date { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 0 4px 8px; text-align: left; }
+}
+/* narrower still (≤440 px): the bar goes (the count says the same) and a long name wraps, never cut ("Di…") */
+@container panel (max-width: 440px) {
+  .cat-bar { display: none; }
+  .cat-title b { white-space: normal; overflow: visible; text-overflow: clip; }
 }
 
 /* ---------- Günlük akış (0.35.1): one hierarchy for Liste and Kartlar ----------
@@ -2835,6 +2845,14 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .pk-airline { width: 34px; height: 34px; object-fit: contain; }
 .pk-logo > svg { color: var(--mc); opacity: .55; }
 @media (max-width: 560px) { .pk-mid.has-logo { grid-template-columns: 36px minmax(0, 1fr) minmax(110px, 34%) minmax(0, 1fr); } .pk-logo { width: 36px; height: 36px; border-radius: 10px; } .pk-airline { width: 28px; height: 28px; } }
+/* A narrow board: logo, departure, arrival on one row, the route under them (the narrow rule puts the arrival in
+   column 2, which with the logo was the departure's: "Porto İstanbul", "İstanbu/l"). */
+@container panel (max-width: 620px) {
+  .pk-mid.has-logo { grid-template-columns: 36px 1fr 1fr; }
+  .pk-mid.has-logo .pk-stop.r { grid-column: 3; }
+  .pk-logo { width: 36px; height: 36px; border-radius: 10px; }
+  .pk-airline { width: 28px; height: 28px; }
+}
 
 /* 0.36.24: the day's groups after the settled lines, quiet ("Henüz rezerve edilmedi · 2", "Fikirler · 4") */
 .dc-tl > li.dc-tier { list-style: none; margin: 14px 0 4px; padding-left: 58px; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #a1a1a6; }
