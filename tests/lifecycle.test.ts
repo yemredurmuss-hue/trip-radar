@@ -10,6 +10,7 @@ import {
   heroNumbers,
   needStage,
   needStageOf,
+  nightsSummary,
   openNeedsText,
   percentPossessive,
   plannedBookedText,
@@ -141,6 +142,22 @@ describe("words", () => {
     expect([0, 1, 2, 3, 6, 9, 10, 20, 30, 40, 50, 60, 67, 70, 80, 90, 100].map(percentPossessive)).toEqual([
       "%0'ı", "%1'i", "%2'si", "%3'ü", "%6'sı", "%9'u", "%10'u", "%20'si", "%30'u", "%40'ı", "%50'si", "%60'ı", "%67'si", "%70'i", "%80'i", "%90'ı", "%100'ü",
     ]);
+  });
+
+  it("the stay nights as a sentence: how many of them are what", () => {
+    expect(nightsSummary({ total: 6, booked: 3, chosen: 0, open: 3 })).toBe("6 gecenin 3'ü rezerve, 3'ü boş");
+    expect(nightsSummary({ total: 6, booked: 2, chosen: 1, open: 3 })).toBe("6 gecenin 2'si rezerve, 1'i seçildi, 3'ü boş");
+    expect(nightsSummary({ total: 6, booked: 6, chosen: 0, open: 0 })).toBe("6 gece, hepsi rezerve");
+    expect(nightsSummary({ total: 6, booked: 0, chosen: 0, open: 0 })).toBe("6 gece");
+    setLang("en");
+    expect(nightsSummary({ total: 6, booked: 3, chosen: 0, open: 3 })).toBe("3 of 6 nights booked, 3 open");
+    expect(nightsSummary({ total: 6, booked: 0, chosen: 0, open: 6 })).toBe("6 nights, all open");
+  });
+
+  it("what waits for a decision, in English too", () => {
+    expect(openNeedsText(7)).toBe("7 ihtiyaç karar bekliyor");
+    setLang("en");
+    expect([openNeedsText(1), openNeedsText(7)]).toEqual(["1 decision to make", "7 decisions to make"]);
   });
 });
 

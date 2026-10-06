@@ -210,7 +210,7 @@ try {
   // The box counts the stages, so no sentence of counts above it ("3 karar ve 1 rezervasyon bekliyor" said another 3).
   assert.equal(await hero.locator(".hx-lead").count(), 0, "no second set of numbers in the lead");
   // The hero's % (spec aşamalar): over what's planned only, (Rezerve + Hazır) ÷ (Planlandı + Rezerve + Hazır); what
-  // waits for a decision is a count beside it. The sample: 2 booked, the boat tour planned, 7 needs to decide.
+  // waits for a decision is a count beside it. The sample: 2 booked, the boat tour planned, 7 decisions to make.
   // The ideas (Yapılacak şeyler, Restoranlar, İlham) have no "3/4" and are never needs (0.35.3).
   assert.equal(await app.locator('.cat-sec[data-section="todo"] .cat-count, .cat-sec[data-section="food"] .cat-count').count(), 0, "an idea section has no x/y");
   const atStart = await listMatchesHero("the sample");
@@ -917,10 +917,10 @@ try {
   await app.setViewportSize(wide);
   // Back on the plan, without the train Porto → Lizbon is a move to plan: by plane it reads as a flight, with its status on it.
   await tab("Plan").click();
-  // "Ele" in the card's menu: it leaves the options and waits at the end of its section, under "Gizlenenler".
+  // "Çıkar" in the card's menu: it leaves the options and waits at the end of its section, under "Gizlenenler".
   const train = pk("CP Alfa Pendular · Porto → Lizbon");
   await train.getByRole("button", { name: "Kart menüsü" }).click();
-  await train.getByRole("menuitem", { name: "Ele" }).click();
+  await train.getByRole("menuitem", { name: "Çıkar" }).click();
   await sec("transport").locator(".cat-hidden-link", { hasText: "Gizlenenler · 1 göster" }).waitFor();
   await sec("transport").locator(".cat-hidden-link button").click();
   const ruledOut = sec("transport").locator(".cat-hidden-row.dismissed", { hasText: "CP Alfa Pendular" });
@@ -2867,9 +2867,9 @@ try {
   const back1 = await hrefs(backFlight);
   assert.equal(new URL(back1[0][1]).searchParams.get("q"), "Flights from Denpasar to İstanbul on 2027-01-10 one way");
   assert.equal(back1[2][1], "https://www.kayak.com/flights/DPS-IST/2027-01-10/2adults");
-  // Konaklama: each stop's nights, "Yer yok"; Booking and Airbnb with the nights and 2 adults.
+  // Konaklama: each stop's nights, "Henüz otel yok"; Booking and Airbnb with the nights and 2 adults.
   const ubud = ekSec("stay").locator(".ek-card", { hasText: "Ubud" }).first();
-  assert.equal(await ubud.locator(".ek-state").innerText(), "Yer yok");
+  assert.equal(await ubud.locator(".ek-state").innerText(), "Henüz otel yok");
   assert.match(await ubud.locator(".ek-txt").innerText(), /Ubud\s*12 gece · 2 kişi · otel seçilmedi/);
   const ubudLinks = await hrefs(ubud);
   assert.deepEqual(ubudLinks.map(([b, u]) => [b, u]), [

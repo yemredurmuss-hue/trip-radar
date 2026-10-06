@@ -74,7 +74,7 @@ export function SwipeCard(props: CardProps) {
 function SwipeCardFace({ item, group, decision, decisions, ranked, onOpen, onCompare }: CardProps) {
   const env = useCardEnv();
   const [open, setOpen] = useState(false);
-  // Shared trip: both travellers said 👎 → it steps back like "Ele" (a vote undoes it).
+  // Shared trip: both travellers said 👎 → it steps back like "Çıkar" (a vote undoes it).
   const allNo = useShare()?.tally(item).allNo ?? false;
   const facts = cardFacts(item, decision, decisions?.ctx);
   const option = decision?.options.find((o) => o.item.id === item.id);
@@ -186,7 +186,7 @@ function SwipeCardFace({ item, group, decision, decisions, ranked, onOpen, onCom
             ) : (
               <span className="sc-actions">
                 <button className="link-btn quiet" onClick={() => void setItemStatus(item, "dismissed")} title={L("Seçeneklerden çıkar; bölümün Gizlenenler'inde durur", "Take it out of the options; it waits under the section's Hidden")}>
-                  {L("Ele", "Rule out")}
+                  {L("Çıkar", "Rule out")}
                 </button>
                 <button className="pill-btn primary" onClick={() => void chooseItem(item, group)}>
                   {L("Seç", "Choose")}

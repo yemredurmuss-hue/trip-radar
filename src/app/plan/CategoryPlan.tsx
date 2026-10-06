@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 import { sectionOfItem, type CatSection, type SectionId } from "../../lib/categories";
 import { activityGaps } from "../../lib/emptyCards";
 import { L } from "../../lib/i18n";
+import { nightsSummary } from "../../lib/lifecycle";
 import type { Plan } from "../../lib/plan";
 import type { InsertAt } from "../../lib/templates";
 import type { Item, Suggestion } from "../../lib/types";
@@ -40,7 +41,6 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
   suggestions?: Pick<BoardSuggestions, "bySection" | "add" | "dismiss" | "notes">;
 }) {
   const n = plan.nights;
-  const parts = [n.booked && L(`${n.booked} rezerve`, `${n.booked} booked`), n.chosen && L(`${n.chosen} seçildi`, `${n.chosen} chosen`), n.open && L(`${n.open} açık`, `${n.open} open`)].filter(Boolean);
   const waiting = (s: CatSection) => pending?.bySection[s.id] != null;
   // A section with only suggestions is drawn too (its header says "2 öneri"); they never count in its "3/4".
   // The rule's eSIM suggestion is the eSIM's empty card (its "Gerek yok" the same dismissal), not a suggestion card.
@@ -60,7 +60,7 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
     <div className="section trip-plan cat-plan">
       <div className="section-head">
         <span>{L("Gezi planı", "Trip plan")}</span>
-        {n.total > 0 && <span className="muted">{[L(`${n.total} gece`, `${n.total} night${n.total === 1 ? "" : "s"}`), ...parts].join(" · ")}</span>}
+        {n.total > 0 && <span className="muted">{nightsSummary(n)}</span>}
         <AddButton onClick={() => onAdd(null, null)} />
       </div>
       {plan.notices.map((x) => (

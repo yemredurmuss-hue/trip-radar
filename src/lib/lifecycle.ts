@@ -184,17 +184,39 @@ export function heroNumbers(c: StageCounts): { done: number; planned: number; in
   return { done, planned: c.planned, inPlan, open: c.search + c.options, pct: inPlan ? Math.round((done / inPlan) * 100) : null };
 }
 
-/** Turkish "%67'si", "%30'u", "%100'ü": the number's suffix as it's read aloud. */
-export function percentPossessive(n: number): string {
+/** Turkish "3'ü", "6'sı", "20'si": the number's possessive suffix as it's read aloud. */
+export function numberPossessive(n: number): string {
   const units = ["ı", "i", "si", "ü", "ü", "i", "sı", "si", "i", "u"]; // sıfır bir iki üç dört beş altı yedi sekiz dokuz
   const tens = ["", "u", "si", "u", "ı", "si", "ı", "i", "i", "ı"]; // on yirmi otuz kırk elli altmış yetmiş seksen doksan
   const whole = Math.round(Math.abs(n));
   // yüz is read last in 100; else the units; else the tens.
   const end = whole === 0 ? "ı" : whole % 100 === 0 ? "ü" : whole % 10 ? units[whole % 10] : tens[Math.floor(whole / 10) % 10];
-  return `%${whole}'${end}`;
+  return `${whole}'${end}`;
+}
+
+/** Turkish "%67'si", "%30'u", "%100'ü": the number's suffix as it's read aloud. */
+export const percentPossessive = (n: number): string => `%${numberPossessive(n)}`;
+
+/**
+ * The stay section's nights: "6 gecenin 3'ü rezerve, 3'ü boş" / "3 of 6 nights booked, 3 open"; "6 gece, hepsi
+ * rezerve" when one state holds them all; just "6 gece" when none is counted.
+ */
+export function nightsSummary(n: { total: number; booked: number; chosen: number; open: number }): string {
+  const states = [
+    [n.booked, L("rezerve", "booked")],
+    [n.chosen, L("seçildi", "chosen")],
+    [n.open, L("boş", "open")],
+  ].filter(([k]) => (k as number) > 0) as [number, string][];
+  const all = L(`${n.total} gece`, `${n.total} night${n.total === 1 ? "" : "s"}`);
+  if (!states.length) return all;
+  if (states.length === 1 && states[0][0] === n.total) return L(`${all}, hepsi ${states[0][1]}`, `${all}, all ${states[0][1]}`);
+  return L(
+    `${n.total} gecenin ${states.map(([k, w]) => `${numberPossessive(k)} ${w}`).join(", ")}`,
+    `${states[0][0]} of ${all} ${states[0][1]}${states.slice(1).map(([k, w]) => `, ${k} ${w}`).join("")}`,
+  );
 }
 
 /** "Planlananların %67'si rezerve" / "67% of what's planned is booked". */
 export const plannedBookedText = (pct: number): string => L(`Planlananların ${percentPossessive(pct)} rezerve`, `${pct}% of what's planned is booked`);
-/** "3 ihtiyaç karar bekliyor" / "3 needs to decide". */
-export const openNeedsText = (n: number): string => L(`${n} ihtiyaç karar bekliyor`, `${n} ${n === 1 ? "need" : "needs"} to decide`);
+/** "3 ihtiyaç karar bekliyor" / "3 decisions to make". */
+export const openNeedsText = (n: number): string => L(`${n} ihtiyaç karar bekliyor`, `${n} ${n === 1 ? "decision" : "decisions"} to make`);

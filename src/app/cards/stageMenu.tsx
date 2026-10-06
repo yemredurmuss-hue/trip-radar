@@ -44,7 +44,7 @@ export function useStageMenu(item: Item): { menu: MenuEntry[]; remove: () => voi
       case "edit":
         return { label: L("Düzenle", "Edit"), run: () => env.edit(item) };
       case "dismiss":
-        return { label: L("Ele", "Rule out"), run: () => void setItemStatus(item, "dismissed") };
+        return { label: L("Çıkar", "Rule out"), run: () => void setItemStatus(item, "dismissed") };
       case "change":
         return { label: L("Değiştir", "Change"), run: change };
       case "addDoc":

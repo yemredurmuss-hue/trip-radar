@@ -26,7 +26,7 @@ const statusActions = (): { status: ItemStatus; label: string; event: (name: str
     label: L("Rezerve ettim", "I booked it"),
     event: (name) => L(`${name} rezerve edildi olarak işaretlendi`, `${name} marked as booked`),
   },
-  { status: "dismissed", label: L("Ele", "Rule out"), event: (name) => L(`${name} elendi`, `${name} ruled out`) },
+  { status: "dismissed", label: L("Çıkar", "Rule out"), event: (name) => L(`${name} elendi`, `${name} ruled out`) },
   {
     status: "saved",
     label: L("Seçeneklere geri al", "Back to options"),

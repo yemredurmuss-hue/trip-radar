@@ -216,7 +216,7 @@ function OptionCard({ option, decision, ctx, badge, ticked, onTick, onOpen, onCh
           <span className="bd-act">
             {!chosen && !booked && !out && (
               <button type="button" className="bd-ele" onClick={() => void setItemStatus(item, "dismissed")}>
-                {L("Ele", "Rule out")}
+                {L("Çıkar", "Rule out")}
               </button>
             )}
             {booked ? (

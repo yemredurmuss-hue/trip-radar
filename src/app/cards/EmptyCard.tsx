@@ -209,7 +209,7 @@ export function EmptyRecordCard({ item }: { item: Item }) {
 }
 
 const STATUS_WORD = (kind: CardKind, n: number | null): string => {
-  if (kind === "stay") return L("Yer yok", "No place yet");
+  if (kind === "stay") return L("Henüz otel yok", "No place yet");
   if ((RENTAL_MODES as readonly string[]).includes(kind)) return L("Kiralanmadı", "Not rented");
   if (kind === "esim" || kind === "insurance") return L("Alınmadı", "Not bought");
   if (kind === "transport") return L("Alınmadı", "Not booked");
@@ -379,7 +379,7 @@ export function EmptyStayBlock({ block, label }: { block: Extract<StayBlock, { k
       menu={slot ? [{ label: L("Düzenle", "Edit"), run: () => env.edit(slot) }, { label: L("Sil", "Delete"), run: () => env.remove(slot), danger: true }] : [{ label: L("Gerek yok", "Not needed"), run: hide }]}
       x={slot ? <DeleteX name={slot.name} className="stay-x" onDelete={() => env.remove(slot)} /> : <DeleteX name={label} hide className="stay-x" onDelete={hide} />}
       body={body}
-      status={L("Yer yok", "No place yet")}
+      status={L("Henüz otel yok", "No place yet")}
       links={own ? [] : stayLinks({ city, checkin: block.range.start, checkout: block.range.end, adults: n })}
       onSkip={slot ? undefined : hide}
       skipTitle={L("Bu geceler için yer gerekmiyor", "No place needed for these nights")}
