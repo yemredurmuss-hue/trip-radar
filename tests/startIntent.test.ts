@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { setLang, withLang } from "../src/lib/i18n";
 import { eventById, EVENTS, findEvent, intentOf, nextFullMoon, nextOccurrence, TABLE_LAST_YEAR } from "../src/lib/startEvents";
 import {
-  acceptExtraction, applyAnswer, applyText, autoHeld, autoPrint, autoSeconds, memoAfterGenerate, nextLine, routeForGenerate as routeMade, waitingInstead, withGuessTaken, checklist, creationOf, essentialsDone, eventLine, isComplete, isGoCommand, lineLink, mergeExtracted,
+  acceptExtraction, applyAnswer, applyText, autoHeld, autoPrint, autoSeconds, eventClash, memoAfterGenerate, nextLine, routeForGenerate as routeMade, waitingInstead, withGuessTaken, checklist, creationOf, essentialsDone, eventLine, isComplete, isGoCommand, lineLink, mergeExtracted,
   newStart, nextQuestion, parseStartText, questionOf, replyText, routeForGenerate, shouldAutoStart, skip, startName, totalNights, tripDates, tripTitle,
   withTypedLang, type RawExtraction, type StartCtx, type StartState,
 } from "../src/lib/startTrip";
@@ -182,7 +182,9 @@ describe("the events' table", () => {
     const read = parseStartText("Full moon party", TODAY, "where");
     expect(read.where).toMatchObject({ place: "Koh Phangan", code: "TH" });
     expect(read.intent?.dates).toEqual({ start: "2026-10-26", end: "2026-10-27", approx: true });
-    expect(nextFullMoon("2026-10-26")[0]).toBe("2026-11-24");
+    // On the full moon's day itself: tonight's party; the day after, the next one.
+    expect(nextFullMoon("2026-10-26")[0]).toBe("2026-10-26");
+    expect(nextFullMoon("2026-10-27")[0]).toBe("2026-11-24");
   });
 
   it("burning man alone: Black Rock City, US, by way of Reno", () => {
@@ -209,7 +211,8 @@ describe("the events' table", () => {
       expect(e.url, e.id).toMatch(/^https:\/\//);
       const next = nextOccurrence(e, TODAY);
       if (next) {
-        expect(next[0] > TODAY, e.id).toBe(true);
+        // Ahead, or on now with at least two days left.
+        expect(next[1] > TODAY, e.id).toBe(true);
         expect(next[1] >= next[0], e.id).toBe(true);
       }
     }
@@ -361,6 +364,81 @@ describe("review 2: never over a half-typed message", () => {
   });
 });
 
+describe("review 3 and 10: a month or dates said with the event", () => {
+  it("a month that meets the event is the event's time (Oktoberfest'e Eylül'de 10 gün; Nisan'da 10 gün AfrikaBurn)", () => {
+    const okt = typed(newStart("o", "plan", 1, "tr"), "Oktoberfest'e Eylül'de 10 gün");
+    expect(okt.start).toMatchObject({ event: true });
+    // Shorter than the festival: it starts with it.
+    expect(tripDates(okt)).toEqual({ start: "2027-09-18", end: "2027-09-27" });
+    expect(eventClash(okt)).toBe(false);
+    expect(nextQuestion(okt)).toBe("from");
+    const ab = typed(newStart("a", "plan", 1, "tr"), "Nisan'da 10 gün AfrikaBurn");
+    expect(ab.route!.stops.map((x) => x.city)).toEqual(["Cape Town", "Tankwa Karoo", "Cape Town"]);
+    expect(tripDates(ab)).toEqual({ start: "2027-04-25", end: "2027-05-04" });
+  });
+  it("dates that miss it are asked about; kept, the event goes and the place stays (Wimbledon in March)", () => {
+    const w = withLang("en", () => typed(newStart("w", "plan", 1, "en"), "a hotel in Wimbledon for 5 days in March"));
+    expect(w.intent?.id).toBe("wimbledon");
+    expect(eventClash(w)).toBe(true);
+    expect(nextQuestion(w)).toBe("clash");
+    const q = withLang("tr", () => questionOf(w, "clash", ctx));
+    expect(q.text).toBe("Bu tarihler Wimbledon ile çakışmıyor (tahmini 28 Haziran – 11 Temmuz). Etkinlik tarihlerine göre ayarlayayım mı?");
+    expect(q.chips.map((c) => c.label)).toEqual(["Etkinlik tarihlerine göre ayarla", "Benim tarihlerim kalsın"]);
+    const kept = applyAnswer(w, { q: "clash", keep: true }, 3);
+    expect(kept.intent).toBeNull();
+    expect(kept.where?.place).toBe("London");
+    expect(kept.start).toMatchObject({ approx: true });
+    expect(tripTitle(kept)).toBe("London Gezisi");
+    const fitted = applyAnswer(w, { q: "clash", keep: false }, 3);
+    expect(tripDates(fitted)).toEqual({ start: "2027-06-28", end: "2027-07-02" });
+    expect(nextQuestion(fitted)).toBe("from");
+    // An exact start that misses it too; one that meets it is theirs, kept as said.
+    expect(eventClash(typed(newStart("m", "plan", 1, "tr"), "Mart'ta 5 günlüğüne Oktoberfest"))).toBe(true);
+    const meets = typed(newStart("d", "plan", 1, "tr"), "Oktoberfest 20 Eylül 4 gün");
+    expect(eventClash(meets)).toBe(false);
+    expect(tripDates(meets)).toEqual({ start: "2027-09-20", end: "2027-09-23" });
+  });
+});
+
+describe("review 4: a place of their own is kept", () => {
+  const read = (t: string) => withLang("en", () => parseStartText(t, TODAY, "where"));
+  it("a real edition there: its own place and site (Lollapalooza Berlin, Paris), the same dates only when they are (Holi in Nepal, Diwali anywhere)", () => {
+    expect(read("Lollapalooza Berlin'e gitmek istiyorum")).toMatchObject({ where: { place: "Berlin", code: "DE" }, intent: { name: "Lollapalooza Berlin", dates: null, url: "https://www.lollapaloozade.com" } });
+    expect(read("I want to go to Lollapalooza Paris").intent).toMatchObject({ name: "Lollapalooza Paris", code: "FR", dates: null });
+    expect(read("Holi in Nepal")).toMatchObject({ where: { place: "Kathmandu", code: "NP" }, intent: { name: "Holi", dates: { start: "2027-03-21", end: "2027-03-22", approx: true } } });
+    // Not held there: their place (read loosely with "in" too), the event as a theme.
+    expect(read("Oktoberfest in Istanbul")).toMatchObject({ where: { place: "Istanbul", code: "TR" }, intent: { kind: "place", dates: null }, guess: null });
+    // Another city's fringe is never Edinburgh's (the model reads it).
+    expect(read("Adelaide Fringe festival").intent).toBeUndefined();
+    expect(read("Diwali in London with my family")).toMatchObject({ where: { place: "London", code: "GB" }, intent: { id: "diwali", dates: { start: "2026-11-06" } } });
+  });
+  it("anywhere else: a theme for their place, titled so, no dates nor route of the event's; asked which they mean", () => {
+    const s = typed(newStart("i", "plan", 1, "tr"), "İstanbul'da Oktoberfest yapalım");
+    expect(s.where).toMatchObject({ place: "İstanbul", code: "TR" });
+    expect(s.intent).toMatchObject({ kind: "place", name: "Oktoberfest", dates: null, original: { place: "Münih" } });
+    expect(tripTitle(s)).toBe("Oktoberfest İstanbul");
+    expect(nextQuestion(s)).toBe("venue");
+    const q = questionOf(s, "venue", ctx);
+    expect(q.text).toBe("Asıl Oktoberfest (Münih) mi, yoksa İstanbul'da bir Oktoberfest mi?");
+    const local = applyAnswer(s, { q: "venue", original: false }, 3);
+    expect(nextQuestion(local)).toBe("duration");
+    const later = applyAnswer(local, { q: "duration", duration: { unit: "day", n: 4 } }, 4);
+    expect(later.start).toBeNull();
+    expect(later.route?.source).not.toBe("event");
+    const original = applyAnswer(s, { q: "venue", original: true }, 3);
+    expect(original.where?.place).toBe("Münih");
+    expect(original.intent?.dates?.start).toBe("2027-09-18");
+    expect(tripTitle(original)).toBe("Oktoberfest 2027");
+  });
+  it("its own place or country said again changes nothing (Holi in India, Wimbledon London, cherry blossom in Japan)", () => {
+    expect(read("Holi in India").where?.place).toBe("Mathura");
+    expect(read("Wimbledon in London").intent?.kind).toBe("event");
+    expect(read("cherry blossom in Japan").intent?.places?.length).toBe(3);
+    // A theme elsewhere: their place, its season (the northern lights in Iceland).
+    expect(read("northern lights in Iceland")).toMatchObject({ where: { code: "IS" }, intent: { kind: "theme", dates: null } });
+  });
+});
+
 describe("review 5: Turkish possessive and buffer endings", () => {
   it.each([
     ["kuzey ışıklarını görmek", "northern-lights"], ["kuzey ışıklarına", "northern-lights"], ["Kopenhag'dan roskilde festivaline", "roskilde"],
@@ -371,6 +449,32 @@ describe("review 5: Turkish possessive and buffer endings", () => {
   it("never a word that only starts like one", () => {
     for (const t of ["hacı", "Hacettepe", "edcamp", "sakurajima", "holiday"]) expect(findEvent(t), t).toBeNull();
     expect(findEvent("burning man with my african friends")?.entry.id).toBe("burningman");
+  });
+});
+
+describe("review 6: an edition on now is kept while it has two days left", () => {
+  it("Balloon Fiesta on 6 October 2026, Oktoberfest on 25 September", () => {
+    const b = intentOf(eventById("balloon-fiesta")!, "2026-10-06");
+    expect(b).toMatchObject({ running: true, dates: { start: "2026-10-06", end: "2026-10-11" } });
+    expect(eventLine(b)).toBe("Albuquerque Balon Festivali 2026 şu an sürüyor: 6–11 Ekim (tahmini; resmî siteden kontrol et).");
+    expect(nextOccurrence(eventById("oktoberfest")!, "2026-09-25")).toEqual(["2026-09-19", "2026-10-04"]);
+    // The last day: the next one.
+    expect(nextOccurrence(eventById("balloon-fiesta")!, "2026-10-11")?.[0]).toBe("2027-10-02");
+    // The days around one on now: from today, the extra ones after.
+    let s = typed(newStart("b", "plan", 1, "tr"), "Balloon fiesta");
+    s = applyAnswer(s, { q: "duration", duration: { unit: "day", n: 8 } }, 3);
+    expect(tripDates(s)?.start).toBe("2026-10-06");
+  });
+});
+
+describe("review 7: a year said with it", () => {
+  it("AfrikaBurn 2028, Holi 2028: that year's dates and title", () => {
+    const a = typed(newStart("a", "plan", 1, "tr"), "AfrikaBurn 2028'e gitmek istiyorum");
+    expect(a.intent?.dates).toEqual({ start: "2028-04-24", end: "2028-04-30", approx: true });
+    expect(tripTitle(a)).toBe("AfrikaBurn 2028");
+    const h = typed(newStart("h", "plan", 1, "tr"), "Holi 2028");
+    expect(h.intent?.dates?.start).toBe("2028-03-10");
+    expect(tripTitle(h)).toBe("Holi 2028");
   });
 });
 

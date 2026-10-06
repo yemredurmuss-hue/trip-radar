@@ -29,6 +29,15 @@ export interface Intent {
   places?: { city: string; code?: string | null }[];
   /** Its usual time in words ("Nisan sonu – Mayıs başı"). */
   typical?: string | null;
+  /** The year the traveller said with it ("AfrikaBurn 2028"): its dates and the title are that year's. */
+  year?: number | null;
+  /** On now (it started before today): its dates from today on. */
+  running?: boolean;
+  /**
+   * kind "place": the event named somewhere it isn't held ("Oktoberfest İstanbul"), only a theme for the traveller's
+   * own place; the event as the table has it, in case they meant that one (asked).
+   */
+  original?: Intent | null;
 }
 
 type Pair = [string, string];
@@ -50,6 +59,13 @@ export interface EventEntry {
   typical: Pair;
   /** The inclusive days it runs in a year, or null (none that year). */
   occur?: (y: number) => Span | null;
+  /**
+   * Its other real editions, by the country they're in (Lollapalooza Berlin, Holi in Nepal): their own place, their
+   * own site, and the table's dates only when they are the same (a lunar festival), else none (asked as usual).
+   */
+  editions?: { code: string; place: Pair; url?: string; sameDates: boolean }[];
+  /** Kept wherever the traveller goes, with its dates (Diwali is celebrated anywhere). */
+  anywhere?: boolean;
   /** The next time after today, for one that comes more often than yearly (a full moon). */
   next?: (today: string) => Span | null;
   url: string;
@@ -106,10 +122,12 @@ export function nextFullMoon(today: string): Span {
   const ref = Date.UTC(2000, 0, 21, 4, 40); // a full moon (the lunar eclipse of 21 January 2000)
   const period = 29.530588853 * 86_400_000;
   const t = Date.parse(`${today}T00:00:00Z`);
-  let k = Math.ceil((t - ref) / period);
+  // From the one before (a full moon early in the day, Thailand's time, is still today's).
+  let k = Math.ceil((t - ref) / period) - 1;
   for (;;) {
     const local = new Date(ref + k * period + 7 * 3_600_000).toISOString().slice(0, 10);
-    if (local > today) return [local, plusDays(local, 1)];
+    // On the day itself: tonight's.
+    if (local >= today) return [local, plusDays(local, 1)];
     k++;
   }
 }
@@ -193,6 +211,7 @@ export const EVENTS: EventEntry[] = [
   E({
     id: "holi", kind: "event", name: ["Holi", "Holi"], aliases: ["holi", "holi festival", "holi festivali", "festival of colours", "festival of colors", "renkler festivali"],
     place: ["Mathura", "Mathura"], code: "IN", gateway: ["Delhi", "Delhi"], typical: ["Mart'ta, dolunaya göre", "in March, by the full moon"],
+    editions: [{ code: "NP", place: ["Katmandu", "Kathmandu"], sameDates: true }],
     occur: dayTable("holi", { 2026: "2026-03-04", 2027: "2027-03-22", 2028: "2028-03-11" }, 1, 0), url: "https://www.incredibleindia.gov.in",
   }),
   E({
@@ -205,7 +224,7 @@ export const EVENTS: EventEntry[] = [
   }),
   E({
     id: "diwali", kind: "event", name: ["Diwali", "Diwali"], aliases: ["diwali", "deepavali", "divali"],
-    place: ["Jaipur", "Jaipur"], code: "IN", gateway: ["Delhi", "Delhi"], typical: ["Ekim sonu ya da Kasım, ay takvimine göre", "late October or November, by the lunar calendar"],
+    place: ["Jaipur", "Jaipur"], code: "IN", gateway: ["Delhi", "Delhi"], typical: ["Ekim sonu ya da Kasım, ay takvimine göre", "late October or November, by the lunar calendar"], anywhere: true,
     occur: dayTable("diwali", { 2026: "2026-11-08", 2027: "2027-10-29", 2028: "2028-10-17" }, 2, 2), url: "https://www.incredibleindia.gov.in",
   }),
   E({
@@ -321,6 +340,11 @@ export const EVENTS: EventEntry[] = [
   }),
   E({
     id: "lollapalooza", kind: "event", name: ["Lollapalooza", "Lollapalooza"], aliases: ["lollapalooza", "lollapalooza chicago", "lolla chicago"],
+    editions: [
+      { code: "DE", place: ["Berlin", "Berlin"], url: "https://www.lollapaloozade.com", sameDates: false },
+      { code: "FR", place: ["Paris", "Paris"], url: "https://www.lollaparis.com", sameDates: false },
+      { code: "CL", place: ["Santiago", "Santiago"], url: "https://www.lollapaloozacl.com", sameDates: false },
+    ],
     place: ["Chicago", "Chicago"], code: "US", typical: ["Temmuz sonu – Ağustos başı", "late July to early August"], occur: (y) => span(onOrAfter(y, 7, 30, 4), 4), url: "https://www.lollapalooza.com",
   }),
 ];
@@ -394,14 +418,24 @@ export function findEvent(text: string): EventHit | null {
   return best?.hit ?? null;
 }
 
-/** The dates it runs the next time it starts after today (inclusive days), or null (a season, unknown). */
-export function nextOccurrence(entry: EventEntry, today: string): Span | null {
+/** An edition still worth going to: at least two of its days left, today included. */
+const stillOn = (got: Span, today: string) => daysBetween(today, got[1]) >= 1;
+
+/**
+ * The dates it runs the next time (inclusive days), or null (a season, unknown): the one on now while it has at least
+ * two days left (Balloon Fiesta on its fourth day), else the next to come. `year`: that year's, when it has one.
+ */
+export function nextOccurrence(entry: EventEntry, today: string, year?: number | null): Span | null {
+  if (year && entry.occur) {
+    const got = entry.occur(year);
+    if (got && stillOn(got, today)) return got;
+  }
   if (entry.next) return entry.next(today);
   if (!entry.occur) return null;
   const y = Number(today.slice(0, 4));
-  for (let k = 0; k < 4; k++) {
+  for (let k = -1; k < 4; k++) {
     const got = entry.occur(y + k);
-    if (got && got[0] > today) return got;
+    if (got && stillOn(got, today)) return got;
   }
   return null;
 }
@@ -416,11 +450,15 @@ function regionOf(code: string, l: Lang): string | null {
 }
 const pick = (p: Pair) => L(p[0], p[1]);
 
-/** The entry as the trip's intent, in the language now; its dates the next time, estimated. */
-export function intentOf(entry: EventEntry, today: string): Intent {
-  const dates = nextOccurrence(entry, today);
+/**
+ * The entry as the trip's intent, in the language now; its dates the next time (or the year said), estimated. One on
+ * now has its dates from today ("running").
+ */
+export function intentOf(entry: EventEntry, today: string, year?: number | null): Intent {
+  const dates = nextOccurrence(entry, today, year);
   const place = pick(entry.place);
   const own = regionOf(entry.code, lang());
+  const running = Boolean(dates && dates[0] < today);
   return {
     kind: entry.kind,
     id: entry.id,
@@ -428,12 +466,55 @@ export function intentOf(entry: EventEntry, today: string): Intent {
     place,
     country: own,
     code: entry.code,
-    dates: dates ? { start: dates[0], end: dates[1], approx: true } : null,
+    dates: dates ? { start: running ? today : dates[0], end: dates[1], approx: true } : null,
     url: entry.url,
     gateway: entry.gateway ? pick(entry.gateway) : null,
     ...(entry.places ? { places: entry.places.map((p) => ({ city: pick(p.name), code: p.code ?? entry.code })) } : {}),
     typical: pick(entry.typical),
+    ...(year && (!dates || dates[0].startsWith(String(year))) ? { year } : {}),
+    ...(running ? { running: true } : {}),
   };
+}
+
+/** A place the traveller named with the event: its name, its country's name and code, and whether it is a country. */
+export interface NamedPlace {
+  place: string;
+  country: string | null;
+  code: string | null;
+  isCountry: boolean;
+}
+
+/**
+ * The event named with a place that isn't its own ("Lollapalooza Berlin", "Holi in Nepal", "Diwali in London",
+ * "Oktoberfest in Istanbul"): a real edition there is that edition (its own place and site; the table's dates only
+ * when they are the same); one celebrated anywhere keeps its dates at their place; anything else is a theme for their
+ * place ("Oktoberfest İstanbul", kind "place": no dates, no route), the event itself kept to ask about. Null when the
+ * place is the event's own (its country, its city, a theme's own places).
+ */
+export function intentAt(entry: EventEntry, today: string, at: NamedPlace, year?: number | null, same?: (a: string, b: string) => boolean): Intent | null {
+  const eq = same ?? ((a: string, b: string) => normWords(a).join("") === normWords(b).join(""));
+  const base = intentOf(entry, today, year);
+  if (at.code === entry.code && (at.isCountry || eq(at.place, base.place) || (base.gateway != null && eq(at.place, base.gateway)))) return null;
+  const edition = entry.editions?.find((e) => e.code === at.code);
+  if (edition) {
+    const place = at.isCountry ? pick(edition.place) : at.place;
+    return {
+      ...base,
+      name: edition.sameDates ? base.name : `${base.name} ${place}`,
+      place,
+      country: regionOf(edition.code, lang()) ?? at.country,
+      code: edition.code,
+      dates: edition.sameDates ? base.dates : null,
+      url: edition.url ?? base.url,
+      gateway: null,
+      typical: edition.sameDates ? base.typical : null,
+      running: edition.sameDates ? base.running : undefined,
+    };
+  }
+  if (entry.anywhere) return { ...base, place: at.place, country: at.country, code: at.code, gateway: null };
+  // A theme goes where they go (the northern lights in Iceland, cherry blossom in Korea): its season, no dates.
+  if (entry.kind === "theme") return { ...base, place: at.place, country: at.country, code: at.code, dates: null, places: undefined, gateway: null };
+  return { kind: "place", id: entry.id, name: base.name, place: at.place, country: at.country, code: at.code, dates: null, url: null, gateway: null, typical: null, original: base };
 }
 
 export const eventById = (id: string | null | undefined): EventEntry | null => (id ? (EVENTS.find((e) => e.id === id) ?? null) : null);
@@ -442,8 +523,10 @@ export const eventById = (id: string | null | undefined): EventEntry | null => (
 export const eventDays = (dates: { start: string; end: string }): number => daysBetween(dates.start, dates.end) + 1;
 
 /** The trip's title from its intent: "AfrikaBurn 2027", "Kiraz Çiçekleri 2027", "Kuzey Işıkları Gezisi". */
-export function intentTitle(intent: Pick<Intent, "name" | "dates" | "kind">): string {
-  const year = intent.dates?.start.slice(0, 4);
+export function intentTitle(intent: Pick<Intent, "name" | "dates" | "kind"> & { place?: string; year?: number | null }): string {
+  // An event as a theme for their own place: "Oktoberfest İstanbul".
+  if (intent.kind === "place" && intent.place) return `${intent.name} ${intent.place}`;
+  const year = intent.dates?.start.slice(0, 4) ?? (intent.year ? String(intent.year) : undefined);
   if (year && !/\b(19|20)\d{2}\b/.test(intent.name)) return `${intent.name} ${year}`;
   if (intent.kind === "theme") return L(`${intent.name} Gezisi`, `${intent.name} trip`);
   return intent.name;
