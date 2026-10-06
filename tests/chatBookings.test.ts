@@ -17,8 +17,10 @@ import { buildLegs } from "../src/lib/legs";
 import { anthropicProvider } from "../src/lib/llm/anthropic";
 import { buildPlan } from "../src/lib/plan";
 import { plannedInput, plannedItem, type PlannedInput } from "../src/lib/planned";
+import { checkSuggestionInput, suggestedItem } from "../src/lib/suggestions";
+import { quickItem, templateItem, TEMPLATES } from "../src/lib/templates";
 import { buildTimeline } from "../src/lib/timeline";
-import type { Item, Trip } from "../src/lib/types";
+import type { Item, Suggestion, Trip } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
 type Block = Anthropic.ContentBlock;
@@ -232,6 +234,20 @@ describe("the matching itself", () => {
     await sendMessage(T, "eSIM alalım", llm);
     const [e] = (await all()).filter((i) => i.category === "esim");
     expect(e).toMatchObject({ city: "Portugal", country: "Portugal", countryCode: "PT" });
+  });
+
+  it("an eSIM from the add sheet (the form or the quick '+') is put in its country too", () => {
+    const tpl = TEMPLATES.find((t) => t.id === "esim")!;
+    const form = { from: "", to: "", city: "Porto", name: "", date: "", end: "", time: "", price: "", currency: "EUR" };
+    expect(templateItem(tpl, form, T, "x", 1)).toMatchObject({ category: "esim", city: "Portugal", country: "Portugal", countryCode: "PT" });
+    expect(quickItem(tpl, { city: "Porto", date: null }, T, "y", 1)).toMatchObject({ city: "Portugal", countryCode: "PT" });
+    // Anything else keeps its city.
+    expect(quickItem(TEMPLATES.find((t) => t.id === "car")!, { city: "Porto", date: null }, T, "z", 1).city).toBe("Porto");
+  });
+
+  it("an eSIM added from a suggestion ('Plana ekle') is put in its country, not the suggestion's first city", () => {
+    const s = checkSuggestionInput({ section: "other", kind: "add", title: "eSIM", why: "Planda eSIM yok.", template: "esim", city: "Porto", start: "", end: "" }, "chat", 1) as Suggestion;
+    expect(suggestedItem(s, T, "x", 2)).toMatchObject({ category: "esim", city: "Portugal", country: "Portugal", countryCode: "PT" });
   });
 
   it("an eSIM per country: one in Spain is not the Portuguese one", () => {

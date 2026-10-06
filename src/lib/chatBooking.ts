@@ -67,6 +67,13 @@ export function esimCountry(said: string | null, item: Item | null, items: Item[
   );
 }
 
+/** An eSIM put in its country (the add sheet's or a suggestion's city, "Porto" → Portekiz); anything else as it is. */
+export function esimInCountry(item: Item): Item {
+  if (item.category !== "esim") return item;
+  const country = countryOfPlace(item.city) ?? countryOfPlace(item.country);
+  return country ? { ...item, city: country.name, country: country.name, countryCode: country.code ?? item.countryCode } : item;
+}
+
 const sameName = (a: string, b: string) => {
   const [x, y] = [fold(a).replace(/[^a-z0-9]+/g, " ").trim(), fold(b).replace(/[^a-z0-9]+/g, " ").trim()];
   return Boolean(x && y && (x === y || x.includes(y) || y.includes(x)));

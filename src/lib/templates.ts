@@ -11,6 +11,7 @@ import { isoDate } from "./items";
 import { ALL_PLANNED_KINDS, checkPlanned, isGeneratedName, plannedItem, type PlannedInput } from "./planned";
 import { addDays } from "./plan";
 import { cityOfAirport } from "./airports";
+import { esimInCountry } from "./chatBooking";
 import type { TimelineEntry, TimelineSection } from "./timeline";
 import type { Item, PlannedKind } from "./types";
 
@@ -134,7 +135,8 @@ export function withPrice(item: Item, price: { amount: number; currency: string 
 export function templateItem(tpl: Template, f: FormValues, tripId: string, id: string, now: number): Item | string {
   const r = templateInput(tpl, f);
   if (typeof r === "string") return r;
-  const made = plannedItem(r.input, tripId, id, now);
+  // An eSIM's place is its country, never the first city (the sheet's city "Porto" → Portekiz).
+  const made = esimInCountry(plannedItem(r.input, tripId, id, now));
   // "Yapılacak" is never a booking; "Etkinlik · tur" is one by its evidence (a price, ticket words), like the
   // rest (booking.ts): named "Porto Belo Pazarı" it's a to-do.
   const item: Item = tpl.id === "todo" ? { ...made, booking: "none" } : made;
@@ -266,7 +268,7 @@ export function quickItem(tpl: Template, at: InsertAt | null, tripId: string, id
     booked: false,
     note: null,
   };
-  const made = plannedItem(input, tripId, id, now);
+  const made = esimInCountry(plannedItem(input, tripId, id, now));
   return tpl.id in KIND_WORD ? { ...made, name: KIND_WORD[tpl.id as keyof typeof KIND_WORD] } : made;
 }
 

@@ -10,6 +10,7 @@
 // eSIM suggestion keeps its whole topic away, a rule's included (the monthly rental keyed by another main place
 // after the places regroup stays gone). Pure: the writes are app/actions.ts.
 import { countryOfAirport } from "./airports";
+import { esimInCountry } from "./chatBooking";
 import type { SectionId } from "./categories";
 import { mainPlaces, placesKey, resolveParents, type MainPlace } from "./destinations";
 import { countryCodesOf, countryNames } from "./heroInfo";
@@ -531,7 +532,8 @@ export function suggestedAdd(s: Suggestion, tripId: string, id: string, now: num
 export function suggestedItem(s: Suggestion, tripId: string, id: string, now: number): Item | null {
   const tpl = s.kind === "add" ? TEMPLATES.find((t) => t.id === s.template) : undefined;
   if (!tpl) return null;
-  const made = plannedItem(inputOf(s, tpl), tripId, id, now);
+  // An eSIM's place is its country (the suggestion's city is the first one), like one said in the chat.
+  const made = esimInCountry(plannedItem(inputOf(s, tpl), tripId, id, now));
   return tpl.id === "todo" ? { ...made, booking: "none" } : made;
 }
 
