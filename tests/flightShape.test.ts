@@ -12,7 +12,7 @@ const answer = [
     codeshareStatus: "IsOperator",
     airline: { name: "KLM" },
     departure: { airport: { iata: "AMS", shortName: "Schiphol" }, scheduledTime: { utc: "2026-10-07 18:30Z", local: "2026-10-07 20:30+02:00" }, terminal: "2", gate: "D5" },
-    arrival: { airport: { iata: "OPO", name: "Porto" }, scheduledTime: { utc: "2026-10-07 21:05Z", local: "2026-10-07 22:05+01:00" }, baggageBelt: "4" },
+    arrival: { airport: { iata: "OPO", name: "Porto" }, scheduledTime: { utc: "2026-10-07 21:05Z", local: "2026-10-07 22:05+01:00" }, runwayTime: { utc: "2026-10-07 20:58Z", local: "2026-10-07 21:58+01:00" }, baggageBelt: "4" },
   },
   { number: "DL 9520", status: "Expected", codeshareStatus: "IsCodeshared", airline: { name: "Delta" }, departure: {}, arrival: {} },
 ];
@@ -39,7 +39,8 @@ describe("the answer as the extension reads it", () => {
       airline: "KLM",
       status: "Expected",
       departure: { iata: "AMS", airport: "Schiphol", scheduled: "2026-10-07T20:30", revised: null, actual: null, terminal: "2", gate: "D5", desk: null },
-      arrival: { iata: "OPO", airport: "Porto", scheduled: "2026-10-07T22:05", revised: null, actual: null, terminal: null, gate: null, belt: "4" },
+      arrival: { iata: "OPO", airport: "Porto", scheduled: "2026-10-07T22:05", revised: null, actual: "2026-10-07T21:58", terminal: null, gate: null, belt: "4" },
+      minutes: 155,
       fetchedAt: "t",
     });
   });
@@ -56,5 +57,7 @@ describe("how long an answer stays good", () => {
     expect(freshFor(f, "2026-10-07", new Date("2026-10-07T10:00:00Z"))).toBe(180);
     expect(freshFor(f, "2026-10-07", new Date("2026-10-07T19:00:00Z"))).toBe(15);
     expect(freshFor({ ...f, status: "Arrived" }, "2026-10-07", now)).toBe(Infinity);
+    // A runway time days ahead is a forecast: still asked again.
+    expect(freshFor(f, "2026-10-07", new Date("2026-10-01T12:00:00Z"))).toBe(24 * 60);
   });
 });

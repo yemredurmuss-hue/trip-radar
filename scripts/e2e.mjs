@@ -917,7 +917,8 @@ try {
   // 4b. Plan cards: a file on a card, delete + undo (the file comes back), add from a template, narrow.
   const douroCard = () => app.locator(".tl-event .pk-card", { hasText: "Douro tekne turu" });
   await douroCard().locator("input.pk-file").first().setInputFiles({ name: "bilet.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n%e2e\n") });
-  const pill = douroCard().locator(".pk-docpill", { hasText: "bilet.pdf" });
+  // The chip is short ("Belge"); the file's name on hover (0.36.20).
+  const pill = douroCard().locator('.pk-docpill[title^="bilet.pdf"]', { hasText: "Belge" });
   await pill.waitFor();
   const [docTab] = await Promise.all([context.waitForEvent("page"), pill.click()]);
   assert.match(docTab.url(), /^blob:chrome-extension:\/\//);
@@ -926,7 +927,7 @@ try {
   await douroCard().getByRole("menuitem", { name: "Sil" }).click();
   await douroCard().waitFor({ state: "detached" });
   await app.locator(".pk-undo", { hasText: "Douro tekne turu silindi" }).getByRole("button", { name: "Geri al" }).click();
-  await douroCard().locator(".pk-docpill", { hasText: "bilet.pdf" }).waitFor();
+  await douroCard().locator('.pk-docpill[title^="bilet.pdf"]').waitFor();
   await app.getByRole("button", { name: "Ekle", exact: true }).first().click();
   const sheet = app.getByRole("dialog", { name: "Ne eklemek istersin?" });
   await sheet.getByRole("button", { name: "Otobüs", exact: true }).waitFor();
@@ -2060,7 +2061,7 @@ try {
   if (await otherSec.evaluate((el) => el.classList.contains("closed"))) await otherSec.locator(".cat-title").click();
   const policyCard = otherSec.locator('.pk-card[aria-label="Seyahat sağlık sigortası · Allianz"]');
   await policyCard.locator(".pk-ring.done").waitFor();
-  await policyCard.locator(".pk-docpill", { hasText: "allianz-police.pdf" }).waitFor();
+  await policyCard.locator('.pk-docpill[title^="allianz-police.pdf"]').waitFor();
   assert.equal(await board.locator('.cat-sec[data-section="todo"] [aria-label="Seyahat sağlık sigortası · Allianz"]').count(), 0, "a policy is never a thing to do");
   await otherSec.scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/13a-policy-card.png` });

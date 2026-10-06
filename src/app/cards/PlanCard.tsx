@@ -3,7 +3,7 @@
 // ‹ 1/2 › in its bottom strip (stays keep their side-by-side cards). CardEnv carries what every card needs
 // from the board (decisions, files, delete with undo, the add sheet) without threading it through Timeline.
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { cardFacts } from "../../lib/cardFacts";
+import { cardFacts, durationText } from "../../lib/cardFacts";
 import { cardKind, isTransportKind, type LegEnds } from "../../lib/cardKinds";
 import { footOf, mediaFace, menuFor, ringOf, transportFace } from "../../lib/cardView";
 import type { Choice, Ranked } from "../../lib/choice";
@@ -134,7 +134,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   // what's known on its day, red when it's late; the ticket against the schedule and the source at the foot.
   const booked = kind === "flight" && item.status === "booked";
   const live = booked ? (item.flightLive ?? null) : null;
-  const number = booked ? (live?.number ?? flightNumber(item.flight?.flightNumber)) : null;
+  // The number and the logo on any flight that has one (an option too, as on flight search sites).
+  const number = kind === "flight" ? (live?.number ?? flightNumber(item.flight?.flightNumber)) : null;
   const tag = number ? [live?.airline ?? item.flight?.carrier, number].filter(Boolean).join(" ") : null;
   const tiles = flightTiles(live);
   const red = flightAlert(live);
@@ -142,6 +143,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   // The airline's logo by its code (the flight number's first two letters), beside the duration; none when it
   // won't load.
   if (face && number) face.logo = `https://images.kiwi.com/airlines/64/${number.slice(0, 2)}.png`;
+  // No duration on the page: the schedule's (gate to gate, by UTC).
+  if (face && !face.middle && live?.minutes) face.middle = [durationText(live.minutes), item.flight?.stops === 0 ? L("direkt", "direct") : null].filter(Boolean).join(" · ");
   if (face && live) {
     const term = (t: string | null) => (t ? ` T${t}` : "");
     // Red only where a new time came (a landing not yet re-estimated stays as it was).

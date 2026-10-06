@@ -115,11 +115,13 @@ export interface FlightTile {
 export function phaseOf(live: FlightLive, now: Date = new Date()): "far" | "before" | "air" | "landed" | "canceled" | "diverted" {
   if (/^Canceled/.test(live.status)) return "canceled";
   if (live.status === "Diverted") return "diverted";
-  if (live.status === "Arrived" || live.arrival.actual) return "landed";
-  if (["Departed", "EnRoute", "Approaching"].includes(live.status) || live.departure.actual) return "air";
-  const leaves = live.departure.revised ?? live.departure.scheduled;
   // Local times read as UTC: hours off by the time zone at most, enough for "within a day".
-  const hours = leaves ? (Date.parse(`${leaves}:00Z`) - now.getTime()) / 36e5 : Infinity;
+  const hoursTo = (t: string | null) => (t ? (Date.parse(`${t}:00Z`) - now.getTime()) / 36e5 : Infinity);
+  // By its status first: a runway time can be a forecast for a flight still days off (AeroDataBox fills it in
+  // early), so it counts only once it's well in the past.
+  if (live.status === "Arrived" || hoursTo(live.arrival.actual) < -4) return "landed";
+  if (["Departed", "EnRoute", "Approaching"].includes(live.status) || hoursTo(live.departure.actual) < -4) return "air";
+  const hours = hoursTo(live.departure.revised ?? live.departure.scheduled);
   return hours > 30 ? "far" : "before";
 }
 

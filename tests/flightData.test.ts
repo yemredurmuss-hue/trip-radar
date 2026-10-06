@@ -107,3 +107,13 @@ describe("asking the server", () => {
     expect(await refreshFlights([flight(null)], { kv, fetcher: answer({ error: "not-configured" }) })).toBe(false);
   });
 });
+
+describe("a runway time isn't a landing (AeroDataBox forecasts it days ahead)", () => {
+  it("KL1274 on 6 October: 'landed 17:47' was wrong, it's tomorrow", () => {
+    const f = kl({ status: "Expected", departure: { ...kl().departure, scheduled: "2026-10-07T16:30" }, arrival: { ...kl().arrival, scheduled: "2026-10-07T17:55", actual: "2026-10-07T17:47", revised: "2026-10-07T17:47" } });
+    expect(phaseOf(f, new Date("2026-10-06T13:00:00Z"))).toBe("before");
+    expect(flightTiles(f, new Date("2026-10-06T13:00:00Z")).map((t) => `${t.label} ${t.value}`)).toEqual(["Tahmini kalkış 16:30"]);
+    expect(phaseOf(f, new Date("2026-10-04T13:00:00Z"))).toBe("far");
+    expect(phaseOf(f, new Date("2026-10-07T23:30:00Z"))).toBe("landed");
+  });
+});

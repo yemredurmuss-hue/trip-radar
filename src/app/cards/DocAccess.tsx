@@ -90,11 +90,11 @@ export function DocAccess({ item, docs }: { item: Item; docs: DocMeta[] }) {
   }
   return (
     <span className="pk-docs">
-      <button type="button" className="pk-docpill" title={docs.length === 1 ? L("Belgeyi aç", "Open the document") : L("Belgeler", "Documents")}
+      {/* Short (0.36.20): "Belge" or "3 belge"; the file's name on hover. */}
+      <button type="button" className="pk-docpill" title={docs.length === 1 ? `${pill.name} · ${L("aç", "open")}` : docs.map((d) => d.name).join("\n")}
         onClick={(e) => { e.stopPropagation(); if (docs.length === 1) void openDoc(docs[0].id); else setList(!list); }}>
-        <UiIcon name="doc" size={15} />
-        <span>{pill.name}</span>
-        {pill.more > 0 && <b>+{pill.more}</b>}
+        <UiIcon name="doc" size={14} />
+        <span>{docs.length === 1 ? L("Belge", "Document") : L(`${docs.length} belge`, `${docs.length} documents`)}</span>
       </button>
       {list && (
         <div className="pk-doclist" onClick={(e) => e.stopPropagation()}>

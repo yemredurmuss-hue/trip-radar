@@ -35,6 +35,8 @@ export interface FlightLive {
   /** `desk`: the check-in desks ("12-16"), when the airport gives them. */
   departure: FlightEnd & { desk?: string | null };
   arrival: FlightEnd & { belt: string | null };
+  /** Gate to gate, by the schedule's UTC times (the two ends' clocks can't be subtracted across time zones). */
+  minutes?: number | null;
   fetchedAt: string;
 }
 
@@ -43,6 +45,12 @@ type Raw = Record<string, any>;
 const local = (t: Raw | undefined): string | null => {
   const m = typeof t?.local === "string" ? t.local.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/) : null;
   return m ? `${m[1]}T${m[2]}` : null;
+};
+/** Minutes between two of AeroDataBox's times by their UTC ("2026-10-07 18:30Z"). */
+const span = (a: Raw | undefined, b: Raw | undefined): number | null => {
+  const t = (x: Raw | undefined) => (typeof x?.utc === "string" ? Date.parse(x.utc.replace(" ", "T")) : NaN);
+  const m = Math.round((t(b) - t(a)) / 6e4);
+  return Number.isFinite(m) && m > 0 && m < 24 * 60 ? m : null;
 };
 const text = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
 const end = (e: Raw | undefined): FlightEnd => ({
@@ -66,6 +74,7 @@ export function shapeFlight(answer: unknown, number: string, fetchedAt: string):
     status: text(f.status) ?? "Unknown",
     departure: { ...end(f.departure), desk: text(f.departure?.checkInDesk) },
     arrival: { ...end(f.arrival), belt: text(f.arrival?.baggageBelt) },
+    minutes: span(f.departure?.scheduledTime, f.arrival?.scheduledTime),
     fetchedAt,
   };
 }
@@ -77,7 +86,8 @@ export function shapeFlight(answer: unknown, number: string, fetchedAt: string):
 export function freshFor(data: FlightLive | null, day: string, now: Date): number {
   const dep = data?.departure.revised ?? data?.departure.scheduled ?? `${day}T12:00`;
   const hoursOff = (Date.parse(`${dep}:00Z`) - now.getTime()) / 36e5; // local times read as UTC: hours, roughly
-  if (data && (data.status === "Arrived" || data.arrival.actual)) return Infinity;
+  // Landed: by its status (a runway time can be a forecast for a flight still days off).
+  if (data?.status === "Arrived") return Infinity;
   if (data?.status === "Canceled") return Infinity;
   if (hoursOff > 48) return 24 * 60;
   if (hoursOff > 3) return 180;

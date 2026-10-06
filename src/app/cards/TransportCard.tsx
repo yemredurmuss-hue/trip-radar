@@ -8,6 +8,7 @@ import type { End, TransportFace } from "../../lib/cardView";
 import type { FieldKey } from "../../lib/inlineEdit";
 import { Editable, useInlineEdit } from "./InlineEdit";
 import { FallbackImg } from "../FallbackImg";
+import { KindIcon } from "./Silhouettes";
 
 // A long name, or one long word that can't wrap ("Booking.com", "Hostelworld"), goes down to 24 so it
 // isn't broken in the middle of the word.
@@ -40,15 +41,10 @@ export function TransportCardBody({ face, title }: { face: TransportFace; title:
   if (!face.from && !face.to && !ends) return <h3 className="pk-title">{title}</h3>;
   return (
     <div className={`pk-mid${face.logo ? " has-logo" : ""}`}>
+      {/* The airline's logo first, as on flight search sites (an empty box when it won't load keeps the grid). */}
+      {face.logo && <span className="pk-logo"><FallbackImg className="pk-airline" src={face.logo} fallback={<KindIcon kind="flight" size={20} />} /></span>}
       <Stop end={face.from} right={false} field={face.rental ? "city" : "from"} timed={!face.rental} />
-      <div className="pk-route">
-        {(face.middle || face.logo) && (
-          <small className={face.logo ? "with-logo" : undefined}>
-            {face.logo && <FallbackImg className="pk-airline" src={face.logo} fallback={null} />}
-            {face.middle}
-          </small>
-        )}
-      </div>
+      <div className="pk-route">{face.middle && <small>{face.middle}</small>}</div>
       <Stop end={face.to} right field={face.rental ? null : "to"} timed={false} />
     </div>
   );
