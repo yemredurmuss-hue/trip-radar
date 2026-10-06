@@ -149,11 +149,13 @@ export const WEB_SEARCH_RULES_EN = `Web search (web_search):
 /** When the chat asks the offers' sources (find_offers) instead of suggesting from what it knows. */
 export const FIND_OFFERS_RULES_TR = `Fiyatlı öneriler (find_offers):
 - Konaklama ya da uçuş için "daha ucuz", "daha ucuz öneriler getir", "alternatif", "öner", "başka otel/uçuş var mı" isteklerinde ÖNCE find_offers'ı çağır (kind stay ya da flight; şehir ya da nereden/nereye, tarihler plandan; kullanıcı bir tavan söylediyse max_per_night: konaklamada gecelik, uçuşta kişi başı, € cinsinden). Daha ucuz istenince prefer "cheap".
+- live true yalnız kullanıcı açıkça "canlı", "şimdi bak", "güncel fiyat", "şu anki fiyat" gibi o anki fiyatı istediğinde (Google Flights / Google Hotels'a bakar, kotası küçük); diğer her durumda false.
 - Sonuçtaki teklifler sohbette kart olarak (en fazla 3, "Ekle" butonuyla) gösterilir: yanıtında yalnız kısaca anlat (hangisi neden), fiyat, puan ya da ad uydurma, link yazma; sayıları sonuçtan al.
 - Sonuçta over_max varsa onun cümlesini aynen söyle (bu fiyata bulunamadı, en ucuzu ...).
 - Yalnız find_offers hiçbir şey döndürmediyse (found 0) genel bilginle öneri verebilirsin; o zaman bunu açıkça "kaynakta bulunamadı, tahmini" diye işaretle. Kendi uydurduğun yerleri asla gerçek teklif gibi sunma.`;
 export const FIND_OFFERS_RULES_EN = `Priced offers (find_offers):
 - For a stay or a flight, when the user asks for "cheaper", "cheaper options", "alternatives", "suggest", "any other hotel/flight", call find_offers FIRST (kind stay or flight; the city or from/to, and the dates from the plan; max_per_night when the user gave a ceiling: a night for a stay, per person for a flight, in €). When cheaper is asked for, prefer "cheap".
+- live true only when the user plainly asks for the price right now ("live", "check now", "current price"): it looks at Google Flights / Google Hotels and its quota is small; false otherwise.
 - The offers in the result show in the chat as cards (at most 3, with an "Add" button): in your reply only say briefly which and why; never make up prices, ratings or names, write no links; take the numbers from the result.
 - If the result has over_max, say its sentence as it is (nothing at that price, the cheapest is ...).
 - Only when find_offers returned nothing at all (found 0) may you suggest from general knowledge; then mark it plainly as "not found in the sources, estimated". Never present places you made up as real offers.`;
@@ -725,8 +727,9 @@ function buildTools(en: boolean): ToolSpec[] {
           adults: { type: "number", description: t("Kişi sayısı; bilinmiyorsa 0 (gezininki)", "How many people; 0 when not said (the trip's)") },
           max_per_night: { type: "number", description: t("Tavan, €: konaklamada gecelik, uçuşta kişi başı; yoksa 0", "A ceiling in €: a night for a stay, per person for a flight; 0 for none") },
           prefer: { type: "string", enum: ["cheap", "best"] },
+          live: { type: "boolean", description: t("Yalnız kullanıcı açıkça şu anki/canlı fiyatı isterse true (Google Flights/Hotels, küçük kota)", "True only when the user plainly asks for the live price now (Google Flights/Hotels, small quota)") },
         },
-        required: ["kind", "city", "from", "to", "start", "end", "adults", "max_per_night", "prefer"],
+        required: ["kind", "city", "from", "to", "start", "end", "adults", "max_per_night", "prefer", "live"],
         additionalProperties: false,
       },
     },
@@ -2049,18 +2052,20 @@ export async function findOffersTool(tripId: string, input: any, items: Item[]):
   if (typeof need === "string") throw new ToolError(need);
   const max = positive(input?.max_per_night);
   const prefer = input?.prefer === "best" ? null : "cheap";
+  // The live look (SerpApi: a small monthly quota) only when the user asked for the price now.
+  const live = input?.live === true;
   searchStarted(tripId, "offers");
   try {
     // A stay with no ceiling: the same three picks as the empty card's row ("Sana en uygun", "Daha ekonomik", "Daha
     // konforlu"), out of the source's candidates; a ceiling (or no candidates) keeps the cheapest under it, said honestly.
-    if (need.kind === "stay" && max == null) {
+    if (need.kind === "stay" && max == null && !live) {
       const rates = trip?.budget && trip.budget.currency !== "EUR" ? await getRates() : null;
       const picks = pickList(pickThree(await stayCandidates(need), picksContext(need, trip ?? null, items, rates)));
       if (picks.length) return { need, offers: picks.map(({ kind, pick }) => candidateOffer(pick.cand, kind, pick.why)), overMax: null };
     }
-    const first = validOffers(await findOffers(need, { prefer, max }), need);
+    const first = validOffers(await findOffers(need, { prefer, max, ...(live ? { live } : {}) }), need);
     if (first.length || max == null) return { need, offers: first, overMax: null };
-    const cheapest = validOffers(await findOffers(need, { prefer: "cheap" }), need);
+    const cheapest = validOffers(await findOffers(need, { prefer: "cheap", ...(live ? { live } : {}) }), need);
     const prices = cheapest.map((o) => ({ o, at: unitPrice(o, need) })).filter((x): x is { o: Offer; at: number } => x.at != null);
     const low = prices.length ? prices.reduce((a, b) => (b.at < a.at ? b : a)) : null;
     const amount = low ? formatPrice(Math.round(low.at), low.o.currency ?? "EUR") : null;
