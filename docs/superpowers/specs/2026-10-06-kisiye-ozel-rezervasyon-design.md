@@ -72,6 +72,10 @@ mantıkla. Boş kartlar sayaca bugünkü kurala göre girer.
 - Başlangıç sohbetinde kişi başı kalkış ("Sabine Alicante'den") — başlangıç sohbeti revizyonu (0.36.21) bittikten
   sonra aynı `Travellers.from` üzerine eklenir.
 - Kişi başı belge klasörü.
+- Paylaşımda `forWho`: kayıtlar paylaşılmaz (her bilgisayar kayıtlarını paylaşılan sayfalardan kurar; durum,
+  `userEdits` ve sohbet planları da yerel kalır), bu yüzden rozet yalnız işaretlendiği bilgisayarda görünür.
+  `Travellers.from` ayarlarla paylaşılır. Kayıt düzeyinde bir paylaşım kanalı gelince `forWho` onunla taşınır.
+- Kişinin uçuş tarihi ana uçuşun tarihi sonradan değişince onu izlemez (açıldığı günde kalır).
 
 ## Sahiplik (iki oturum)
 
