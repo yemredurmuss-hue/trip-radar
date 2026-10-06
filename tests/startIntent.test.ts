@@ -153,7 +153,7 @@ describe("the events' table", () => {
     expect(findEvent("Holi'ye Hindistan'a")?.entry.id).toBe("holi");
     expect(findEvent("Monza GP'ye gidelim")?.entry.id).toBe("f1-italy");
     expect(findEvent("F1 İstanbul")?.entry.id).toBe("f1-turkey");
-    expect(findEvent("kuzey ışıklarını görmek istiyorum")).toBeNull(); // an ending on a word of two: not read (the model's)
+    expect(findEvent("kuzey ışıklarını görmek istiyorum")?.entry.id).toBe("northern-lights");
     expect(findEvent("kuzey ışıkları için Norveç")?.entry.id).toBe("northern-lights");
   });
 
@@ -358,6 +358,19 @@ describe("review 2: never over a half-typed message", () => {
     expect(autoHeld({ typing: "Cape To", composing: false, hidden: false })).toBe(true);
     expect(autoHeld({ typing: "", composing: true, hidden: false })).toBe(true);
     expect(autoHeld({ typing: "", composing: false, hidden: true })).toBe(true);
+  });
+});
+
+describe("review 5: Turkish possessive and buffer endings", () => {
+  it.each([
+    ["kuzey ışıklarını görmek", "northern-lights"], ["kuzey ışıklarına", "northern-lights"], ["Kopenhag'dan roskilde festivaline", "roskilde"],
+    ["rio karnavalına", "rio-carnival"], ["noel pazarına gitmek istiyorum", "christmas-markets"], ["ölüler gününe", "day-of-the-dead"],
+    ["boğa koşusuna", "sanfermin"], ["dolunay partisine", "fullmoon"], ["çin yeni yılında", "cny"], ["kiraz çiçeklerini görmek", "cherry-blossom"],
+    ["edcye gidelim", "edc"], ["edcde", "edc"], ["holiye", "holi"],
+  ])("%s", (text, id) => expect(findEvent(text)?.entry.id).toBe(id));
+  it("never a word that only starts like one", () => {
+    for (const t of ["hacı", "Hacettepe", "edcamp", "sakurajima", "holiday"]) expect(findEvent(t), t).toBeNull();
+    expect(findEvent("burning man with my african friends")?.entry.id).toBe("burningman");
   });
 });
 

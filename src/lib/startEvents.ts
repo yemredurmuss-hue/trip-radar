@@ -129,18 +129,20 @@ const f1 = (...places: string[]) => F1_WORDS.flatMap((w) => places.flatMap((p) =
 const raceWeekend = (sunday: string): Span => [plusDays(sunday, -2), sunday];
 
 const E = (e: EventEntry) => e;
+/** "burning man africa", "burning man in south africa", "afrika'da burning man": AfrikaBurn ("with my african friends" isn't). */
+const AFRIKABURN = /burning ?man (in |to |at )?(the )?(south |guney )?afri[ck]a(n|da|de|ya)?\b|\bafri[ck]an? (da |de )?burning ?man/;
 
 export const EVENTS: EventEntry[] = [
   E({
     id: "afrikaburn", kind: "event", name: ["AfrikaBurn", "AfrikaBurn"],
     aliases: ["afrikaburn", "afrika burn", "africa burn", "africaburn", "afrikaburns", "burning man africa", "burning man afrika", "african burning man", "afrika burning man", "africa burning man", "burning man south africa", "burning man güney afrika"],
-    match: /burning ?man .*\b(afri[ck]a|afri[ck]an)\b|\bafri[ck]a\b.* burning ?man/,
+    match: AFRIKABURN,
     place: ["Tankwa Karoo", "Tankwa Karoo"], code: "ZA", gateway: ["Cape Town", "Cape Town"],
     typical: ["Nisan sonu – Mayıs başı", "late April to early May"],
     occur: (y) => span(nth(y, 4, 1, -1), 7), url: "https://www.afrikaburn.org",
   }),
   E({
-    id: "burningman", kind: "event", name: ["Burning Man", "Burning Man"], aliases: ["burning man", "burningman", "black rock city"], notIf: /\bafri[ck]an?\b/,
+    id: "burningman", kind: "event", name: ["Burning Man", "Burning Man"], aliases: ["burning man", "burningman", "black rock city"], notIf: AFRIKABURN,
     place: ["Black Rock City", "Black Rock City"], code: "US", gateway: ["Reno", "Reno"],
     typical: ["Ağustos sonu – Eylül'ün ilk pazartesisi", "late August to Labor Day"],
     occur: (y) => [plusDays(nth(y, 9, 1, 1), -8), nth(y, 9, 1, 1)], url: "https://burningman.org",
@@ -271,7 +273,8 @@ export const EVENTS: EventEntry[] = [
     place: ["Londra", "London"], code: "GB", typical: ["Haziran sonu – Temmuz ortası", "late June to mid-July"], occur: (y) => span(onOrAfter(y, 6, 26, 1), 14), url: "https://www.wimbledon.com",
   }),
   E({
-    id: "fringe", kind: "event", name: ["Edinburgh Fringe", "Edinburgh Fringe"], aliases: ["edinburgh fringe", "edinburgh fringe festival", "fringe festival", "edinburgh festival"],
+    id: "fringe", kind: "event", name: ["Edinburgh Fringe", "Edinburgh Fringe"], // (Never "fringe festival" alone: Adelaide's, Brighton's… are their own.)
+    aliases: ["edinburgh fringe", "edinburgh fringe festival", "edinburgh festival"],
     place: ["Edinburgh", "Edinburgh"], code: "GB", typical: ["Ağustos boyunca", "throughout August"], occur: (y) => span(nth(y, 8, 5, 1), 25), url: "https://www.edfringe.com",
   }),
   E({
@@ -334,8 +337,18 @@ export const normWords = (s: string): string[] =>
     .split(/[^\p{L}\p{N}]+/u)
     .filter(Boolean);
 
-/** A Turkish ending typed onto the last word ("oktoberfeste", "tomorrowlanda", "holiye", "sziget'te" is a token apart). */
-const GLUED = /(dan|den|tan|ten|da|de|ta|te|ya|ye|yi|yı|yu|yü|nin|nın|in|ın|a|e|i|u|ü)$/;
+/**
+ * A Turkish ending typed onto the last word ("oktoberfeste", "tomorrowlanda", "holiye"; "sziget'te" is a token apart),
+ * with its buffer letter after a possessive ("festivaline", "karnavalına", "ışıklarını", "yılında", "partisine"). Read on
+ * the plain words (ı → i, ü → u).
+ */
+const ENDING = /^[nys]?(a|e|i|u|ya|ye|yi|yu|da|de|ta|te|dan|den|tan|ten|in|un|nin|nun|ni|nu|na|ne|nda|nde|ndan|nden|la|le|yla|yle)$/;
+/** A word typed as the name with an ending on it; a name of three letters only with a whole ending ("edcye", never "hacı"). */
+const withEnding = (typed: string, name: string) => {
+  if (name.length < 3 || !typed.startsWith(name)) return false;
+  const rest = typed.slice(name.length);
+  return ENDING.test(rest) && (name.length >= 4 || rest.length >= 2);
+};
 
 interface Compiled {
   entry: EventEntry;
@@ -361,8 +374,8 @@ export function findEvent(text: string): EventHit | null {
         const ok = alias.every((w, k) => {
           const typed = words[i + k];
           if (typed === w) return true;
-          // The ending on the last word only, and only after a name of 4+ letters ("hacca" is listed itself).
-          return k === alias.length - 1 && w.length >= 4 && typed.startsWith(w) && GLUED.test(typed.slice(w.length)) && typed.slice(w.length).replace(GLUED, "") === "";
+          // The ending on the last word only.
+          return k === alias.length - 1 && withEnding(typed, w);
         });
         if (!ok) continue;
         const score = alias.length * 100 + alias.join(" ").length;
@@ -373,7 +386,7 @@ export function findEvent(text: string): EventHit | null {
       // Above a name of one or two words, below a listed name of three ("burning man in south africa").
       const score = 250;
       if (!best || score > best.score) {
-        const named = words.flatMap((w, k) => (/^(burning|man|afri[ck]an?|south|guney)$/.test(w) ? [k] : []));
+        const named = words.flatMap((w, k) => (/^(burning|burningman|man|afri[ck]an?|afri[ck]a(da|de|ya)|south|guney)$/.test(w) ? [k] : []));
         best = { hit: { entry, at: [named[0] ?? 0, (named.at(-1) ?? words.length - 1) + 1] }, score };
       }
     }
