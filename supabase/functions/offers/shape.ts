@@ -89,6 +89,9 @@ export interface AviaFlight {
   duration_to?: number;
   duration?: number;
   link?: string;
+  /** Read elsewhere than Aviasales' cache (Google Flights, live): its name, and the landing as the airport shows it. */
+  source?: string;
+  arrive_local?: string;
 }
 
 /** "02:25" from "2026-11-19T02:25:00+03:00": the clock the airport shows. */
@@ -188,7 +191,7 @@ export function flightOffer({ f, why }: { f: AviaFlight; why: string }, ctx: Fli
     carrier: name ?? code,
     carrierCode: /^[A-Z0-9]{2}$/.test(code) ? code : null,
     depart: localClock(f.departure_at),
-    arrive: arrivalClock(f.departure_at, minutes ?? undefined, to ? ctx.zone(to) : null),
+    arrive: f.arrive_local ?? arrivalClock(f.departure_at, minutes ?? undefined, to ? ctx.zone(to) : null),
     fromCode: f.origin_airport ?? f.origin ?? null,
     toCode: to,
     durationMinutes: minutes,
@@ -197,7 +200,7 @@ export function flightOffer({ f, why }: { f: AviaFlight; why: string }, ctx: Fli
     currency: "EUR",
     url: `https://www.aviasales.com${f.link}`,
     why,
-    source: "Aviasales",
+    source: f.source ?? "Aviasales",
     fetchedAt: seenAt(f.link, ctx.now),
   };
 }
@@ -416,4 +419,126 @@ export function stayCandidate(h: XoHotel, offer: OfferOut | null, ctx: { lang: L
     currency: "EUR",
     fetchedAt: offer?.fetchedAt ?? ctx.now,
   };
+}
+
+// --- live (SerpApi: Google Flights, Google Hotels) --------------------------------------------------------
+// Asked only when the cached sources have nothing, or when the traveller asks for a live look (the chat): its
+// free quota is small. The price is Google's, read now; the page opened stays a partner's (Aviasales' search for the
+// same flight day, Booking's for the hotel), so a booking still pays the project.
+
+interface SerpLeg {
+  departure_airport?: { id?: string; time?: string };
+  arrival_airport?: { id?: string; time?: string };
+  airline?: string;
+  flight_number?: string;
+  duration?: number;
+}
+interface SerpTrip {
+  flights?: SerpLeg[];
+  total_duration?: number;
+  price?: number;
+}
+
+/** "21 Oct": Aviasales' search path for one way, as its site writes it (/search/FNC2110IST2). */
+export const aviasalesSearch = (from: string, to: string, day: string, adults: number): string => `/search/${from}${day.slice(8, 10)}${day.slice(5, 7)}${to}${adults}`;
+
+/**
+ * Google Flights' answer as Aviasales-shaped flights (one way): its price is for everyone asked for, so per person
+ * here like Aviasales'; the carrier from the first leg's number, the clocks as the airports show them.
+ */
+export function serpFlights(body: unknown, adults: number, from: string, to: string, day: string): AviaFlight[] {
+  const b = body as { best_flights?: SerpTrip[]; other_flights?: SerpTrip[] };
+  const trips = [...(b?.best_flights ?? []), ...(b?.other_flights ?? [])];
+  const out: AviaFlight[] = [];
+  for (const t of trips) {
+    const legs = t.flights ?? [];
+    const first = legs[0], last = legs.at(-1);
+    const dep = first?.departure_airport?.time, arr = last?.arrival_airport?.time;
+    const code = first?.flight_number?.match(/^([A-Z0-9]{2})\s*\d+/)?.[1];
+    if (!legs.length || !dep || !code || typeof t.price !== "number" || t.price <= 0) continue;
+    out.push({
+      origin_airport: first?.departure_airport?.id ?? from,
+      destination_airport: last?.arrival_airport?.id ?? to,
+      airline: code,
+      flight_number: first?.flight_number?.replace(/^[A-Z0-9]{2}\s*/, "") ?? "",
+      departure_at: dep.replace(" ", "T"),
+      arrive_local: arr?.match(/ (\d{2}:\d{2})$/)?.[1] ?? undefined,
+      transfers: legs.length - 1,
+      duration_to: t.total_duration,
+      price: Math.round(t.price / Math.max(1, adults)),
+      link: aviasalesSearch(from, to, day, adults),
+      source: "Google Flights",
+    });
+  }
+  return out;
+}
+
+interface SerpHotel {
+  type?: string;
+  name?: string;
+  overall_rating?: number;
+  reviews?: number;
+  gps_coordinates?: { latitude?: number; longitude?: number };
+  images?: { thumbnail?: string; original_image?: string }[];
+  rate_per_night?: { extracted_lowest?: number };
+  total_rate?: { extracted_lowest?: number };
+  hotel_class?: string;
+  amenities?: string[];
+}
+
+/**
+ * Google Hotels' answer as hotels with their price for these nights (the list's own, for the people asked): kept
+ * only with a name, a rating and a price; the page is Booking's search for it (a partner's).
+ */
+export function serpStays(body: unknown, ctx: { lang: Lang; nights: number; now: number; search: (name: string) => string }): StayCandidate[] {
+  const props = ((body as { properties?: SerpHotel[] })?.properties ?? []).filter((p) => p.name && (p.overall_rating ?? 0) > 0 && (p.total_rate?.extracted_lowest ?? p.rate_per_night?.extracted_lowest ?? 0) > 0);
+  return props.map((p) => {
+    const total = p.total_rate?.extracted_lowest ?? Math.round(p.rate_per_night!.extracted_lowest! * ctx.nights);
+    const lat = p.gps_coordinates?.latitude, lng = p.gps_coordinates?.longitude;
+    const img = p.images?.[0]?.original_image ?? p.images?.[0]?.thumbnail ?? null;
+    return {
+      id: `gh:${p.name!.toLocaleLowerCase("en").replace(/[^\p{L}\p{N}]+/gu, "-")}`,
+      name: p.name!,
+      rating: p.overall_rating ?? null,
+      reviews: p.reviews ?? null,
+      photo: img && /^https:\/\//.test(img) ? img : null,
+      geo: typeof lat === "number" && typeof lng === "number" ? { lat, lng } : null,
+      area: p.type === "vacation rental" ? T(ctx.lang, "Ev", "Rental") : T(ctx.lang, "Otel", "Hotel"),
+      labels: [],
+      url: ctx.search(p.name!),
+      nightly: Math.round(total / Math.max(1, ctx.nights)),
+      total,
+      nights: ctx.nights,
+      priceRange: null,
+      source: "Google Hotels",
+      currency: "EUR",
+      fetchedAt: ctx.now,
+    };
+  });
+}
+
+/** A live hotel as an offer for the card's row (the three picked by `pickStays`' reasons, from these). */
+export function candidateOffer(c: StayCandidate, why: string, lang: Lang): OfferOut {
+  return {
+    id: c.id, kind: "stay", title: c.name, photo: c.photo, rating: c.rating, price: c.total, currency: "EUR", nights: c.nights, url: c.url,
+    why, source: c.source ?? "Google Hotels", fetchedAt: c.fetchedAt, area: c.area,
+    meta: c.reviews ? T(lang, `${count(c.reviews, lang)} yorum`, `${count(c.reviews, lang)} reviews`) : null,
+  };
+}
+
+/** Three of the live hotels for the row, each for its own reason (best liked, least dear well liked, the list's first). */
+export function pickLiveStays(list: StayCandidate[], lang: Lang): OfferOut[] {
+  if (!list.length) return [];
+  const out: OfferOut[] = [];
+  const taken = new Set<string>();
+  const add = (c: StayCandidate | undefined, why: string) => {
+    if (c && !taken.has(c.id)) {
+      taken.add(c.id);
+      out.push(candidateOffer(c, why, lang));
+    }
+  };
+  add(list[0], T(lang, "Google Hotels'ta öne çıkan", "Google Hotels' top pick"));
+  add([...list].filter((c) => (c.reviews ?? 0) >= 200).sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || (b.reviews ?? 0) - (a.reviews ?? 0))[0], T(lang, "En beğenilenlerden", "Among the best liked"));
+  add([...list].filter((c) => (c.rating ?? 0) >= 4.3).sort((a, b) => (a.total ?? 0) - (b.total ?? 0))[0], T(lang, "İyi puanlılar içinde en uygunu", "The least dear of the well liked"));
+  return out;
 }

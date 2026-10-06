@@ -3,7 +3,8 @@
 import { describe, expect, it } from "vitest";
 import {
   adultsOf, airportCodeOk, arrivalClock, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, localClock, maxOf,
-  nightsBetween, pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickStays, placeOk, preferOf, seenAt, stayCandidate, stayOffer, type AviaFlight,
+  aviasalesSearch, nightsBetween, pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf, seenAt, serpFlights,
+  serpStays, stayCandidate, stayOffer, type AviaFlight,
   type OfferOut, type XoHotel,
 } from "../supabase/functions/offers/shape";
 
@@ -195,5 +196,54 @@ describe("a stay's candidates (up to six, from the one list)", () => {
     const range = stayCandidate(h("c", 4.4, 150, 60), null, ctx);
     expect(range).toMatchObject({ nightly: null, total: null, source: null, geo: null, photo: null, url: ctx.url, priceRange: { min: 60, max: 120 }, fetchedAt: 5 });
     expect(stayCandidate(h("z", 4.2, 10, 0), null, ctx).priceRange).toBeNull();
+  });
+});
+
+describe("live (SerpApi)", () => {
+  // Trimmed from a real answer: Madeira → İstanbul, 21 Oct 2026, two people.
+  const google = {
+    best_flights: [
+      {
+        flights: [
+          { departure_airport: { id: "FNC", time: "2026-10-21 19:40" }, arrival_airport: { id: "BUD", time: "2026-10-22 01:20" }, airline: "Wizz Air", flight_number: "W6 2498", duration: 280 },
+          { departure_airport: { id: "BUD", time: "2026-10-22 05:30" }, arrival_airport: { id: "IST", time: "2026-10-22 08:45" }, airline: "Wizz Air", flight_number: "W6 2429", duration: 135 },
+        ],
+        total_duration: 665,
+        price: 520,
+      },
+    ],
+    other_flights: [{ flights: [{ departure_airport: { id: "FNC" }, flight_number: "TP 1" }], price: 600 }, { flights: [], price: 1 }],
+  };
+
+  it("reads Google Flights as flights per person, clocks as the airports show them, the page Aviasales' search", () => {
+    const list = serpFlights(google, 2, "FNC", "IST", "2026-10-21");
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ airline: "W6", flight_number: "2498", departure_at: "2026-10-21T19:40", arrive_local: "08:45", transfers: 1, duration_to: 665, price: 260, source: "Google Flights", link: "/search/FNC2110IST2" });
+    const offer = flightOffer({ f: list[0], why: "x" }, { adults: 2, now: 1, airline: () => "Wizz Air", zone: () => null });
+    expect(offer).toMatchObject({ depart: "19:40", arrive: "08:45", price: 520, source: "Google Flights", stops: 1 });
+    expect(offer.url).toBe("https://www.aviasales.com/search/FNC2110IST2");
+    expect(aviasalesSearch("IST", "DPS", "2026-11-10", 1)).toBe("/search/IST1011DPS1");
+    expect(serpFlights(null, 1, "A", "B", "2026-01-01")).toEqual([]);
+  });
+
+  it("reads Google Hotels as priced hotels and picks three, each for its own reason", () => {
+    const body = { properties: [
+      { name: "Alaya Resort Ubud", overall_rating: 4.7, reviews: 4075, rate_per_night: { extracted_lowest: 115 }, total_rate: { extracted_lowest: 461 }, gps_coordinates: { latitude: -8.5, longitude: 115.26 }, images: [{ thumbnail: "https://lh3/x.jpg" }] },
+      { name: "Adiwana Bisma", overall_rating: 4.9, reviews: 1492, rate_per_night: { extracted_lowest: 125 }, total_rate: { extracted_lowest: 502 } },
+      { name: "The Lokha Ubud", overall_rating: 4.6, reviews: 1535, rate_per_night: { extracted_lowest: 79 } },
+      { name: "No price", overall_rating: 4.9, reviews: 10 },
+      { name: "No rating", rate_per_night: { extracted_lowest: 20 } },
+    ] };
+    const list = serpStays(body, { lang: "tr", nights: 4, now: 7, search: (n) => `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(n)}` });
+    expect(list.map((c) => c.name)).toEqual(["Alaya Resort Ubud", "Adiwana Bisma", "The Lokha Ubud"]);
+    expect(list[0]).toMatchObject({ rating: 4.7, reviews: 4075, nightly: 115, total: 461, nights: 4, geo: { lat: -8.5, lng: 115.26 }, photo: "https://lh3/x.jpg", source: "Google Hotels" });
+    expect(list[2]).toMatchObject({ nightly: 79, total: 316 });
+    const picks = pickLiveStays(list, "tr");
+    expect(picks.map((o) => [o.title, o.why])).toEqual([
+      ["Alaya Resort Ubud", "Google Hotels'ta öne çıkan"],
+      ["Adiwana Bisma", "En beğenilenlerden"],
+      ["The Lokha Ubud", "İyi puanlılar içinde en uygunu"],
+    ]);
+    expect(picks[0]).toMatchObject({ kind: "stay", price: 461, nights: 4, meta: "4.075 yorum" });
   });
 });

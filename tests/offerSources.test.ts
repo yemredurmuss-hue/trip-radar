@@ -27,6 +27,7 @@ describe("the question for a need", () => {
   it("narrows when the chat asks for cheaper ones or a ceiling", () => {
     expect(queryOf(stay, "tr", { prefer: "cheap", max: 80.4 })).toBe("kind=stay&city=Ubud&start=2026-11-12&end=2026-11-16&adults=2&lang=tr&country=Indonesia&prefer=cheap&max=80");
     expect(queryOf(flight, "tr", { prefer: null, max: 0 })).toBe("kind=flight&from=IST&to=DPS&day=2026-11-10&adults=2&lang=tr");
+    expect(queryOf(flight, "tr", { prefer: "cheap", live: true })).toBe("kind=flight&from=IST&to=DPS&day=2026-11-10&adults=2&lang=tr&prefer=cheap&live=1");
   });
 
   it("asks nothing for kinds with no source yet", () => {

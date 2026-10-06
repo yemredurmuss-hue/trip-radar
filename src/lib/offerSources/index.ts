@@ -57,11 +57,14 @@ const countryName = (code: string | null | undefined): string | null => {
 export interface Narrow {
   prefer?: "cheap" | null;
   max?: number | null;
+  /** A live look (Google Flights / Google Hotels, now): only when the traveller asks, its quota is small. */
+  live?: boolean;
 }
 
 const narrowed = (q: Record<string, string>, n: Narrow): Record<string, string> => {
   if (n.prefer === "cheap") q.prefer = "cheap";
   if (n.max != null && Number.isFinite(n.max) && n.max >= 1) q.max = String(Math.round(n.max));
+  if (n.live) q.live = "1";
   return q;
 };
 

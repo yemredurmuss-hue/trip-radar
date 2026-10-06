@@ -11,6 +11,8 @@
 // `prefer=cheap` (the chat's "daha ucuz") gives the three cheapest instead of the mixed three, and `max` a ceiling
 // in euros (a stay's by the night, a flight's per person). A stay's `candidates=1` adds up to six hotels from the
 // same list, each priced for the dates (one Xotelo call each, cached a day; one it can't price keeps its usual range).
+// Live prices (SerpApi: Google Flights, Google Hotels; SERPAPI_KEY, a small free quota) only when those have
+// nothing, or on `live=1` (the chat's live look); the page opened stays a partner's.
 // Each source is its own part: one failing leaves that kind with no offers and the card with its search buttons.
 // Calls out are capped per source and day. Deployed with verify_jwt off like `flight`: nothing personal comes in,
 // only places, days and a head-count.
@@ -18,8 +20,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   adultsOf, airportCodeOk, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, langOf, maxOf, nightsBetween,
-  pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickStays, placeOk, preferOf, stayCandidate, stayOffer, type AviaFlight,
-  type OfferOut, type StayCandidate, type XoHotel, type XoRate,
+  candidateOffer, pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf,
+  serpFlights, serpStays, stayCandidate, stayOffer, type AviaFlight, type OfferOut, type StayCandidate, type XoHotel, type XoRate,
 } from "./shape.ts";
 
 const cors = {
@@ -30,7 +32,7 @@ const cors = {
 const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
 const HOURS = { flight: 12, stay: 24 };
-const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300 };
+const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300, serpapi: 8 };
 const cap = (source: string) => Number(Deno.env.get(`OFFERS_CAP_${source.toUpperCase()}`)) || CAPS[source];
 
 type Sb = ReturnType<typeof createClient>;
@@ -66,9 +68,27 @@ async function loadNames() {
   }
 }
 
-type Ask = { adults: number; lang: "tr" | "en"; prefer: "cheap" | null; max: number | null };
+type Ask = { adults: number; lang: "tr" | "en"; prefer: "cheap" | null; max: number | null; live: boolean };
 
-async function flights(sb: Sb, token: string, from: string, to: string, day: string, { adults, lang, prefer, max }: Ask): Promise<OfferOut[]> {
+/** One SerpApi search, cached (its answers don't change in hours), under its own small daily cap. */
+async function serp(sb: Sb, params: Record<string, string>, hours: number): Promise<unknown | null> {
+  const key = (Deno.env.get("SERPAPI_KEY") ?? "").trim();
+  if (!key) return null;
+  const q = new URLSearchParams(params);
+  const cacheKey = `serp|${q}`;
+  const had = await cached<unknown>(sb, cacheKey, hours);
+  if (had) return had;
+  if (!(await take(sb, "serpapi"))) return (await cached<unknown>(sb, cacheKey, null)) ?? null;
+  q.set("api_key", key);
+  const res = await fetch(`https://serpapi.com/search.json?${q}`);
+  if (!res.ok) return null;
+  const body = await res.json();
+  if ((body as { error?: unknown }).error) return null;
+  await store(sb, cacheKey, body);
+  return body;
+}
+
+async function flights(sb: Sb, token: string, from: string, to: string, day: string, { adults, lang, prefer, max, live }: Ask): Promise<OfferOut[]> {
   const ask = async (direct: boolean): Promise<AviaFlight[]> => {
     const key = `avia|${from}|${to}|${day}|${direct ? "d" : "a"}`;
     const had = await cached<AviaFlight[]>(sb, key, HOURS.flight);
@@ -81,8 +101,14 @@ async function flights(sb: Sb, token: string, from: string, to: string, day: str
     await store(sb, key, data);
     return data;
   };
-  const [all, direct] = await Promise.all([ask(false), ask(true)]);
-  const picked = prefer === "cheap" || max != null ? pickCheapFlights([...all, ...direct], lang, adults, max) : pickFlights(all, direct, lang, adults);
+  const pick = (all: AviaFlight[], direct: AviaFlight[]) =>
+    prefer === "cheap" || max != null ? pickCheapFlights([...all, ...direct], lang, adults, max) : pickFlights(all, direct, lang, adults);
+  let picked = live ? [] : pick(...(await Promise.all([ask(false), ask(true)])));
+  // Live from Google Flights: asked for (the chat), or the cache has nothing for this day.
+  if (!picked.length) {
+    const body = await serp(sb, { engine: "google_flights", departure_id: from, arrival_id: to, outbound_date: day, type: "2", currency: "EUR", hl: "en", adults: String(adults) }, 6);
+    picked = pick(serpFlights(body, adults, from, to, day), []);
+  }
   if (!picked.length) return [];
   await loadNames();
   const now = Date.now();
@@ -118,11 +144,23 @@ async function xotelo<T>(sb: Sb, path: string, hours: number): Promise<T | null>
 
 type Stays = { offers: OfferOut[]; candidates: StayCandidate[] };
 
-async function stays(sb: Sb, rapidKey: string, city: string, country: string | null, start: string, end: string, { adults, lang, prefer, max }: Ask): Promise<Stays> {
+/** Google Hotels for these nights (live): its hotels with their prices; the row's three from them. */
+async function liveStays(sb: Sb, city: string, country: string | null, start: string, end: string, { adults, lang, prefer, max }: Ask): Promise<Stays> {
+  const nights = nightsBetween(start, end);
+  const body = await serp(sb, { engine: "google_hotels", q: `${city}${country ? `, ${country}` : ""} hotels`, check_in_date: start, check_out_date: end, adults: String(adults), currency: "EUR", hl: lang === "en" ? "en" : "tr" }, 12);
+  const all = serpStays(body, { lang, nights, now: Date.now(), search: (name) => bookingSearch(name, city, start, end, adults) });
+  const within = max != null ? all.filter((c) => (c.nightly ?? Infinity) <= max) : all;
+  const offers = prefer === "cheap" || max != null ? cheapest(within.map((c) => candidateOffer(c, "", lang)), lang, max) : pickLiveStays(within, lang);
+  return { offers, candidates: within.slice(0, 6) };
+}
+
+async function stays(sb: Sb, rapidKey: string, city: string, country: string | null, start: string, end: string, ask: Ask): Promise<Stays> {
+  const { adults, lang, prefer, max } = ask;
   const nights = nightsBetween(start, end);
   if (nights < 1 || nights > 60) return { offers: [], candidates: [] };
+  if (ask.live) return liveStays(sb, city, country, start, end, ask);
   const geo = await geoOf(sb, rapidKey, city, country);
-  if (!geo) return { offers: [], candidates: [] };
+  if (!geo) return liveStays(sb, city, country, start, end, ask);
   const cheap = prefer === "cheap" || max != null;
   // Asked for cheaper ones, a longer list: the cheap ones are seldom in the best value's first thirty.
   const list = await xotelo<{ list?: XoHotel[] }>(sb, `list?location_key=g${geo}&limit=${cheap ? 100 : 30}&sort=best_value`, 24 * 7);
@@ -140,6 +178,11 @@ async function stays(sb: Sb, rapidKey: string, city: string, country: string | n
   const offers = cheap ? cheapest(priced, lang, max) : priced;
   const offerOf = new Map([...priced, ...extra.filter((o): o is OfferOut => !!o)].map((o) => [o.id, o]));
   const candidates = chosen.map((h) => stayCandidate(h, offerOf.get(`xo:${h.key}`) ?? null, { lang, nights, now, url: bookingSearch(h.name!, city, start, end, adults) }));
+  // Too few priced for these nights: Google Hotels' live list instead (when it has any).
+  if (offers.length < 2 || candidates.filter((c) => c.total != null).length < 3) {
+    const live = await liveStays(sb, city, country, start, end, ask);
+    if (live.offers.length >= offers.length && live.candidates.length) return live;
+  }
   return { offers, candidates };
 }
 
@@ -181,8 +224,8 @@ Deno.serve(async (req: Request) => {
   if (!token) return reply(503, { error: "not-configured" });
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
   const now = new Date();
-  const ask: Ask = { adults: adultsOf(p("adults")), lang: langOf(p("lang")), prefer: preferOf(p("prefer")), max: maxOf(p("max")) };
-  const how = `${ask.prefer ?? ""}|${ask.max ?? ""}`;
+  const ask: Ask = { adults: adultsOf(p("adults")), lang: langOf(p("lang")), prefer: preferOf(p("prefer")), max: maxOf(p("max")), live: p("live") === "1" };
+  const how = `${ask.prefer ?? ""}|${ask.max ?? ""}${ask.live ? "|live" : ""}`;
   let offers: OfferOut[] = [];
   try {
     if (p("kind") === "flight") {
