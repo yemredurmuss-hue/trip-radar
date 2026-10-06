@@ -2452,7 +2452,3 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .dc-step > .dc-live { grid-column: -2 / -1; margin: -4px 0 6px 52px; font-size: 12.5px; font-weight: 600; color: #13756a; }
 .dc-step > .dc-live.alert { color: #b42318; }
 .dc-live small { font-weight: 400; color: #8a8a8e; }
-.hx-going { display: block; margin: 10px 0 0; padding: 0; border: 0; background: none; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--hx-accent, #5b3fd6); cursor: pointer; text-align: left; }
-.hx-going:hover { text-decoration: underline; }
-p.hx-going.on { color: #13756a; cursor: default; }
-p.hx-going.on:hover { text-decoration: none; }
