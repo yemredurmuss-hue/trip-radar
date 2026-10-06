@@ -285,6 +285,10 @@ function StayPicksRow({ need }: { need: Need }) {
     };
   }, [budgetMoney]);
   const picks = useMemo(() => pickList(pickThree(cands, picksContext(need, trip, items ?? [], rates))), [cands, need, trip, items, rates]);
+  // Favorited: read back from the records (a favorite turns the empty card into an option group, which remounts this
+  // row); the local list only answers the tap at once.
+  const saved = useMemo(() => cands.filter((c) => (items ?? []).some((i) => i.url === c.url && i.status !== "dismissed")).map((c) => c.id), [cands, items]);
+  const shown = useMemo(() => [...new Set([...saved, ...added])], [saved, added]);
   if (!available) return null;
   const toggle = () => {
     writeOffersOpen(storeKey, !open);
@@ -294,7 +298,7 @@ function StayPicksRow({ need }: { need: Need }) {
     <StayPicksView
       picks={picks}
       open={open}
-      added={added}
+      added={shown}
       onToggle={toggle}
       onFavorite={(kind, { cand, why }) => {
         setAdded((a) => (a.includes(cand.id) ? a : [...a, cand.id]));
