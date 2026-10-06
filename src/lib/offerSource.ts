@@ -49,6 +49,8 @@ export interface Offer {
   fetchedAt: number;
   // A flight's or transfer's row (ai-oneriler-turler-v3): who runs it, the hours, the ends' codes, how long, the stops.
   carrier?: string | null;
+  /** The carrier's own two-character code (TK, PC), as the source gives it; never made up from the name. */
+  carrierCode?: string | null;
   depart?: string | null;
   arrive?: string | null;
   fromCode?: string | null;
@@ -137,6 +139,7 @@ export function validOffers(list: unknown, need: Pick<Need, "kind">): Offer[] {
       source,
       fetchedAt: num(raw.fetchedAt) ?? 0,
       carrier: text(raw.carrier, 40),
+      carrierCode: typeof raw.carrierCode === "string" && /^[A-Z0-9]{2}$/.test(raw.carrierCode) ? raw.carrierCode : null,
       depart: clock(raw.depart),
       arrive: clock(raw.arrive),
       fromCode: text(raw.fromCode, 8),
@@ -224,5 +227,21 @@ export function offerItem(offer: Offer, need: Need, tripId: string, id: string, 
     guests: { ...base.guests, adults: need.adults ?? null },
     rating: { value: offer.rating ?? null, scale, count: null, source: offer.rating == null ? "none" : "url" },
     price: { ...base.price, amount: offer.price ?? null, currency: offer.price == null ? null : (offer.currency ?? null), scope: offer.price == null ? "unknown" : "total", source: offer.price == null ? "none" : "url", observedAt: offer.fetchedAt || now },
+    // A flight's or transfer's row as the source read it: the carrier, the hours on the need's day, the ends' codes.
+    flight: offer.kind === "flight" || offer.kind === "transfer" ? offerFlight(offer, need, base.flight) : base.flight,
+  };
+}
+
+function offerFlight(offer: Offer, need: Need, base: Item["flight"]): Item["flight"] {
+  const day = need.start && /^\d{4}-\d{2}-\d{2}$/.test(need.start) ? need.start : null;
+  const at = (hhmm: string | null | undefined) => (day && hhmm ? `${day}T${hhmm}` : (base?.departure ?? null));
+  return {
+    from: offer.fromCode ?? base?.from ?? need.from ?? null,
+    to: offer.toCode ?? base?.to ?? need.to ?? null,
+    departure: offer.depart ? at(offer.depart) : (base?.departure ?? null),
+    arrival: offer.arrive && day ? `${day}T${offer.arrive}` : (base?.arrival ?? null),
+    carrier: offer.carrier ?? base?.carrier ?? null,
+    flightNumber: base?.flightNumber ?? null,
+    stops: offer.stops ?? base?.stops ?? null,
   };
 }

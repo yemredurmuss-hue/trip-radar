@@ -6,7 +6,6 @@ import { sectionOfItem } from "./categories";
 import { formatDateRange } from "./items";
 import { legItem, type Leg } from "./legs";
 import { sameCity, type DateRange, type Plan } from "./plan";
-import { isPlaceholder } from "./startTrip";
 import type { Item, Trip } from "./types";
 
 /**
@@ -32,13 +31,13 @@ const NEVER_EMPTY: readonly CardKind[] = ["taxi", "note", "todo", "food", "other
  * flights, stays, the car), or a plan said with no concrete option (bareChatPlan). Never one with a file on it
  * (a ticket's PDF says it's bought), never one booked, never one with other options saved for the same need.
  */
-export function isEmptyRecord(trip: Pick<Trip, "startGuide">, item: Item, files = 0, siblings: Item[] = []): boolean {
+export function isEmptyRecord(_trip: Pick<Trip, "startGuide">, item: Item, files = 0, siblings: Item[] = []): boolean {
   if (item.status !== "chosen" || files > 0) return false;
   if (NEVER_EMPTY.includes(cardKind(item))) return false;
   if (siblings.some((i) => i.id !== item.id && i.status !== "dismissed" && i.category === item.category && i.needKey === item.needKey)) return false;
-  // The start's placeholders are such plans (made in the chat, nothing concrete); one that got a page, a price or an
-  // hour is a real option now, whatever its print says.
-  return (isPlaceholder(trip, item) || item.origin === "chat") && bareChatPlan(item);
+  // The start's placeholders (startTrip isPlaceholder) are such plans: made in the chat, nothing concrete. One that
+  // got a page, a price or an hour is a real option now, whatever its print says.
+  return bareChatPlan(item);
 }
 
 /**

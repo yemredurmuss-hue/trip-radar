@@ -245,6 +245,10 @@ const ESIM_SLUGS: Record<string, { airalo: string; holafly: string }> = {
   US: { airalo: "united-states", holafly: "usa" },
   GB: { airalo: "united-kingdom", holafly: "united-kingdom" },
   CZ: { airalo: "czech-republic", holafly: "czech-republic" },
+  // Intl says "Hong Kong SAR China", "Macao SAR China", "Myanmar (Burma)".
+  HK: { airalo: "hong-kong", holafly: "hong-kong" },
+  MO: { airalo: "macau", holafly: "macau" },
+  MM: { airalo: "myanmar", holafly: "myanmar" },
 };
 
 /** "Netherlands" → "netherlands", "United Arab Emirates" → "united-arab-emirates"; null for anything not a country code. */

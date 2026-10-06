@@ -145,6 +145,7 @@ describe("activity and eSIM searches", () => {
     expect(urls(esimLinks("US"))).toEqual(["https://www.airalo.com/united-states-esim", "https://esim.holafly.com/esim-usa/"]);
     expect(urls(esimLinks("TR"))).toEqual(["https://www.airalo.com/turkey-esim", "https://esim.holafly.com/esim-turkey/"]);
     expect(urls(esimLinks("AE"))[0]).toBe("https://www.airalo.com/united-arab-emirates-esim");
+    expect([urls(esimLinks("HK"))[0], urls(esimLinks("MO"))[0], urls(esimLinks("MM"))[1]]).toEqual(["https://www.airalo.com/hong-kong-esim", "https://www.airalo.com/macau-esim", "https://esim.holafly.com/esim-myanmar/"]);
     expect([esimLinks(null), esimLinks("Netherlands"), esimLinks("ZZ")]).toEqual([[], [], []]);
   });
   it("every brand has a name, a colour and one letter", () => {

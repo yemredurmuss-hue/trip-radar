@@ -37,10 +37,13 @@ function SourceMark({ source }: { source: string }) {
   const brand = Object.values(BRANDS).find((b) => b.name.toLocaleLowerCase("tr") === source.toLocaleLowerCase("tr"));
   return (
     <span className="ek-lg" style={{ background: brand?.color ?? "#8e8e93" }} aria-hidden>
-      {brand?.letter ?? source.slice(0, 1).toLocaleUpperCase("tr")}
+      {brand?.letter ?? initial(source)}
     </span>
   );
 }
+
+/** A name's first letter, upper-cased the plain way (Iberia → I, never İ). */
+const initial = (name: string): string => [...name.trim()][0]?.toUpperCase() ?? "";
 
 /** "2 sa önce": how fresh the source's price is (in the source name's tooltip only). */
 function freshness(fetchedAt: number, now: number): string {
@@ -58,8 +61,9 @@ function RouteBody({ o }: { o: Offer }) {
       {o.carrier && (
         <span className="ek-of-carrier">
           {o.carrier}
+          {/* The carrier's own code when the source gives it (TK), else its initial: never a code made from the name. */}
           <span className="ek-of-air" aria-hidden>
-            {o.carrier.slice(0, 2).toLocaleUpperCase("tr")}
+            {o.carrierCode ?? initial(o.carrier)}
           </span>
         </span>
       )}

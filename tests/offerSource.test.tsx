@@ -109,6 +109,21 @@ describe("the row as drawn", () => {
     const html = renderToStaticMarkup(<OfferRowView offers={[flight]} open adults={2} onToggle={noop} onAdd={noop} onLess={noop} />);
     for (const part of ["Turkish Airlines", "07:40", "IST", "10:25", "AMS", "3 sa 45 dk", "Direkt", "€312", "2 kişi toplam"]) expect(html).toContain(part);
     expect(html).not.toContain("/ gece");
+    // No code given: the carrier's initial, never one made from its name (TU, SU, İB).
+    expect(html).toContain('<span class="ek-of-air" aria-hidden="true">T</span>');
+    const coded = renderToStaticMarkup(<OfferRowView offers={[{ ...flight, carrierCode: "TK" }]} open onToggle={noop} onAdd={noop} onLess={noop} />);
+    expect(coded).toContain('<span class="ek-of-air" aria-hidden="true">TK</span>');
+    const iberia = renderToStaticMarkup(<OfferRowView offers={[{ ...flight, carrier: "iberia", source: "iberia.com" }]} open onToggle={noop} onAdd={noop} onLess={noop} />);
+    expect(iberia).toContain('<span class="ek-of-air" aria-hidden="true">I</span>');
+    expect(iberia).not.toContain("İ");
+  });
+  it("a carrier code is kept only as two letters or digits; an added flight keeps its carrier, hours and codes", () => {
+    const raw = { ...offer({ id: "f2", kind: "flight", title: "TK 1951", carrier: "Turkish Airlines", depart: "07:40", arrive: "10:25", fromCode: "IST", toCode: "AMS", stops: 0 }) };
+    const flightNeed: Need = { key: "flight:ist:ams:2026-12-10", section: "flight", kind: "flight", from: "IST", to: "AMS", start: "2026-12-10", adults: 2 };
+    expect(validOffers([{ ...raw, carrierCode: "TK" }], flightNeed)[0].carrierCode).toBe("TK");
+    expect(validOffers([{ ...raw, carrierCode: "tk" }, { ...raw, id: "f3", carrierCode: "TKX" }], flightNeed).map((o) => o.carrierCode)).toEqual([null, null]);
+    const item = offerItem(validOffers([raw], flightNeed)[0], flightNeed, "t1", "n1", 1);
+    expect(item.flight).toMatchObject({ from: "IST", to: "AMS", departure: "2026-12-10T07:40", arrival: "2026-12-10T10:25", carrier: "Turkish Airlines", stops: 0 });
   });
   it("the deal's unit by kind: a stay by the night, a flight's total, an activity per people, an eSIM once", () => {
     expect(dealPrice({ kind: "stay", price: 896, nights: 7 }, 2)).toMatchObject({ amount: 128, perNight: true });
