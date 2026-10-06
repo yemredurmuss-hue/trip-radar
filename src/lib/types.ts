@@ -539,6 +539,25 @@ export interface ChatMessage {
   ask?: ChatAsk;
   /** A capture that didn't go into this trip as handed: where it went (Aç · Geri al), or the question (placeCheck.ts). */
   routing?: RoutingNote;
+  /** Web search: the links its sources gave in this reply; only these show as links (anything else, its host as text). */
+  webSources?: string[];
+  /**
+   * A web search's result that came after its turn, as its own line: not a reply (the reply before keeps its chips and
+   * question), never the first line of a model context.
+   */
+  landed?: boolean;
+  /** Web searches still running when this reply was saved: asked again when the chat opens, until each has landed. */
+  pendingSearches?: PendingSearch[];
+}
+
+/** A web search the chat is waiting for (assistant.ts, landSearch). */
+export interface PendingSearch {
+  query: string;
+  kind: "event_dates" | "fact" | "research";
+  lang: "tr" | "en";
+  year: number | null;
+  /** Its line landed (or was given up): never asked again. */
+  resolved?: boolean;
 }
 
 /** The code's own question under a reply, and what its chips mean (whoseStore.answerAsk). */

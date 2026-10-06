@@ -107,6 +107,26 @@ describe("webSearch (client)", () => {
     expect([...cache.data.values()][0].result.reason).toBe("no-result");
   });
 
+  it("the same search asked twice while on its way: one call, one answer", async () => {
+    const { f, calls } = answering(ok);
+    const cache = memCache();
+    const [a, b] = await Promise.all([
+      webSearch("Ozora 2027 twice", { kind: "fact", fetch: f, cache, kv: memoryKV() }),
+      webSearch("  ozora 2027 TWICE", { kind: "fact", fetch: f, cache, kv: memoryKV() }),
+    ]);
+    expect(calls).toHaveLength(1);
+    expect(a).toBe(b);
+  });
+
+  it("keeps only https sources", async () => {
+    const r = await webSearch("mixed sources q", {
+      fetch: answering({ ...ok, sources: [{ title: "a", url: "http://a.example/" }, { title: "b", url: "https://b.example/" }, { title: "c", url: "javascript:alert(1)" }] }).f,
+      cache: memCache(),
+      kv: memoryKV(),
+    });
+    expect(r.sources).toEqual([{ title: "b", url: "https://b.example/" }]);
+  });
+
   it("names a source by its site", () => {
     expect(siteName({ title: "uefa.com", url: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/abc" })).toBe("uefa.com");
     expect(siteName({ title: "Tickets – Ozora", url: "https://www.ozorafestival.eu/tickets" })).toBe("ozorafestival.eu");

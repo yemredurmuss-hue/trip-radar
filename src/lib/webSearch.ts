@@ -117,13 +117,32 @@ const REASONS: readonly SearchMiss[] = ["not-configured", "capped", "limited", "
 function readSources(raw: unknown): SearchSource[] {
   if (!Array.isArray(raw)) return [];
   return raw
-    .filter((s): s is { title?: unknown; url: string } => typeof s?.url === "string" && /^https?:\/\//.test(s.url))
+    .filter((s): s is { title?: unknown; url: string } => typeof s?.url === "string" && /^https:\/\//.test(s.url))
     .map((s) => ({ title: typeof s.title === "string" ? s.title : "", url: s.url }))
     .slice(0, 5);
 }
 
+/** The same search, however it's worded ("Ozora 2027" / "  ozora 2027"): one key for the cache and for one in flight. */
+export function searchKey(q: string, opts: Pick<SearchOptions, "kind" | "lang" | "year"> = {}): string {
+  const kind = opts.kind && SEARCH_KINDS.includes(opts.kind) ? opts.kind : "fact";
+  const year = typeof opts.year === "number" && Number.isInteger(opts.year) ? opts.year : null;
+  return keyOf(kind, opts.lang ?? "tr", q.trim().slice(0, 200), year);
+}
+
+/** Searches on their way: the same one asked again meanwhile waits for it (one call, one answer). */
+const inFlight = new Map<string, Promise<WebSearchResult>>();
+
 /** Asks the server; never throws. A miss says why (reason). A try that timed out is retried once, silently. */
-export async function webSearch(q: string, opts: SearchOptions = {}): Promise<WebSearchResult> {
+export function webSearch(q: string, opts: SearchOptions = {}): Promise<WebSearchResult> {
+  const key = searchKey(q, opts);
+  const running = inFlight.get(key);
+  if (running) return running;
+  const job = searchWithRetry(q, opts).finally(() => inFlight.delete(key));
+  inFlight.set(key, job);
+  return job;
+}
+
+async function searchWithRetry(q: string, opts: SearchOptions): Promise<WebSearchResult> {
   const first = await searchOnce(q, opts);
   if (first.reason !== "timeout") return first;
   await new Promise((resolve) => setTimeout(resolve, opts.retryPauseMs ?? RETRY_PAUSE_MS));

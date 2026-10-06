@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
-import { sendMessage } from "../lib/assistant";
+import { resumeSearches, sendMessage } from "../lib/assistant";
 import { chatStatusOf, onChatStatus, type ChatStatus } from "../lib/chatStatus";
 import { L, lang } from "../lib/i18n";
 import { reloadIfLangChanged } from "./langSwitch";
@@ -39,14 +39,18 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
   const [status, setStatus] = useState<ChatStatus>(() => chatStatusOf(trip.id));
   useEffect(() => {
     setStatus(chatStatusOf(trip.id));
-    return onChatStatus((tripId, s) => tripId === trip.id && setStatus(s));
+    const stop = onChatStatus((tripId, s) => tripId === trip.id && setStatus(s));
+    // Searches that were still running when the board was closed land now (each once).
+    void resumeSearches(trip.id).catch(() => undefined);
+    return stop;
   }, [trip.id]);
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
 
   const visible = messages.filter((m) => m.text.trim() !== "");
-  const last = visible.at(-1);
+  // A web search's late line isn't a reply: the reply before it keeps its chips.
+  const last = visible.filter((m) => !m.landed).at(-1);
   const choices = last?.role === "assistant" && !busy ? last.choices : [];
   // Links and files handed here this session, with their chips (arrive/ChatArrivals.tsx).
   const arrivals = useChatArrivals({ trip, messages: visible, items, trips, openCaptures });
@@ -158,7 +162,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
           const line = (
             <div key={m.id} className={`msg-${m.role}`}>
               {/* A reply stored before the filter (the raw trip state as the answer) is cleaned here too. */}
-              <RichText text={m.role === "assistant" ? shownReply(m.text) : m.text} />
+              <RichText text={m.role === "assistant" ? shownReply(m.text) : m.text} links={m.role === "assistant" ? m.webSources : undefined} />
               {/* A change said with no tool that made it (claims.ts): on screen only, never in the model's history. */}
               {m.role === "assistant" && m.unbacked && <p className="msg-note">{noChangeNote()}</p>}
             </div>
@@ -325,24 +329,38 @@ export function RoutingLine({ m, routing, trips }: { m: ChatMessage; routing: Ro
 }
 
 /** The model's light formatting: **bold** is shown bold, [site](https://…) as a link (a web search's "Kaynak:"), everything else as plain text. */
-function RichText({ text }: { text: string }) {
+function RichText({ text, links }: { text: string; links?: string[] }) {
   const parts = text.split(/\*\*(.+?)\*\*/g);
-  return <>{parts.map((part, i) => (i % 2 ? <b key={i}>{part}</b> : <Links key={i} text={part} />))}</>;
+  return <>{parts.map((part, i) => (i % 2 ? <b key={i}>{part}</b> : <Links key={i} text={part} allowed={links ?? []} />))}</>;
 }
 
-function Links({ text }: { text: string }) {
-  const parts = text.split(/\[([^\]\n]{1,80})\]\((https?:\/\/[^\s)]+)\)/g);
+/** [site](https://…): a link only when it's one of that reply's web sources; any other, its host as plain text. */
+function Links({ text, allowed }: { text: string; allowed: string[] }) {
+  const parts = text.split(/\[([^\]\n]{1,80})\]\((https:\/\/[^\s)]+)\)/g);
   if (parts.length === 1) return <>{text}</>;
   const out: ReactNode[] = [];
   for (let i = 0; i < parts.length; i += 3) {
     out.push(parts[i]);
     if (i + 2 < parts.length) {
+      const url = parts[i + 2];
       out.push(
-        <a key={i} href={parts[i + 2]} target="_blank" rel="noopener noreferrer">
-          {parts[i + 1]}
-        </a>,
+        allowed.includes(url) ? (
+          <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+            {parts[i + 1]}
+          </a>
+        ) : (
+          hostOf(url)
+        ),
       );
     }
   }
   return <>{out}</>;
 }
+
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+};
