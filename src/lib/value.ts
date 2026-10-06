@@ -298,7 +298,7 @@ export function valueCard(d: GroupDecision, ctx: DecisionContext, budget: Budget
     ...d.options.filter((o) => o.eliminated).map((o) => L(`${o.item.name} elendi: ${o.eliminated!.reason}`, `${o.item.name} is out: ${o.eliminated!.reason}`)),
     ...d.checks.map((c) => {
       const name = d.options.find((o) => o.item.id === c.itemId)?.item.name ?? "";
-      return L(`Kontrol gerekiyor: ${name} — ${c.reason} (sayfada doğrulanamadı)`, `Needs a check: ${name}: ${c.reason} (couldn't be confirmed on the page)`);
+      return L(`Kontrol gerekiyor: ${name}: ${c.reason} (sayfada doğrulanamadı)`, `Needs a check: ${name}: ${c.reason} (couldn't be confirmed on the page)`);
     }),
   ];
 

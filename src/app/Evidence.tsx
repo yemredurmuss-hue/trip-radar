@@ -114,13 +114,13 @@ function EvidenceLine({ line, sign, item, listing }: { line: ProCon; sign: strin
           <div className="quotes">
             {reviews.map((r) => (
               <blockquote key={r.id}>
-                “{r.text}”{r.date && <span className="muted">{L(" — ", " · ")}{monthLabel(r.date)}</span>}
+                “{r.text}”{r.date && <span className="muted">{" · "}{monthLabel(r.date)}</span>}
               </blockquote>
             ))}
             {f.quotes.map((q) => (
               <blockquote key={q}>
                 “{q}”<span className="muted">
-                  {L(" — ", " · ")}
+                  {" · "}
                   {f.source === "amenities" ? L("olanaklar", "amenities") : f.source === "policy" ? L("kurallar", "house rules") : L("açıklama", "description")}
                 </span>
               </blockquote>

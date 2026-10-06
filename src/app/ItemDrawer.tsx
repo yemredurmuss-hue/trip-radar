@@ -67,7 +67,7 @@ function DecisionBreakdown({ item, decision, onCompare }: { item: Item; decision
               </span>
             </>
           ) : option.excluded ? (
-            <span className="tone-warning">{L(`${option.excluded} — karşılaştırmaya alınmadı`, `${option.excluded}: left out of the comparison`)}</span>
+            <span className="tone-warning">{L(`${option.excluded}: karşılaştırmaya alınmadı`, `${option.excluded}: left out of the comparison`)}</span>
           ) : (
             <span className="tone-warning">
               {L("Puan yok", "No score")}

@@ -1535,7 +1535,7 @@ function explain(a: OptionResult, b: OptionResult): { reasons: Reason[]; tradeof
         criterion: pa.criterion,
         label: pa.label,
         points: Math.round(points * 10) / 10,
-        text: `${pa.label}: ${pa.display}${L(" — ", "; ")}${b.item.name}: ${withoutSharedStart(pa.display ?? "", pb.display ?? "")}`,
+        text: `${pa.label}: ${pa.display}; ${b.item.name}: ${withoutSharedStart(pa.display ?? "", pb.display ?? "")}`,
       };
     })
     .filter((r): r is Reason => r != null && Math.abs(r.points) >= 0.5);
@@ -1548,7 +1548,7 @@ function explain(a: OptionResult, b: OptionResult): { reasons: Reason[]; tradeof
       key: "serious",
       label: L("Ciddi sorun", "Serious problem"),
       points: gap,
-      text: `${L("Ciddi sorun", "Serious problem")}: ${worse.item.name}${L(" — ", ": ")}${worse.penalties.map((f) => lowerText(f.text)).join(", ")}`,
+      text: `${L("Ciddi sorun", "Serious problem")}: ${worse.item.name}${L(" · ", ": ")}${worse.penalties.map((f) => lowerText(f.text)).join(", ")}`,
     });
   }
   return {

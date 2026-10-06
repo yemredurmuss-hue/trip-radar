@@ -12,9 +12,9 @@ import type { Settings as SettingsShape } from "../lib/types";
 import { ShareSettings } from "./Share";
 
 const claudeModels = () => [
-  { id: DEFAULT_MODEL, label: L("Claude Opus 5 — en iyi sonuç", "Claude Opus 5 · best results") },
-  { id: "claude-sonnet-5", label: L("Claude Sonnet 5 — daha ucuz", "Claude Sonnet 5 · cheaper") },
-  { id: "claude-haiku-4-5", label: L("Claude Haiku 4.5 — en ucuz", "Claude Haiku 4.5 · cheapest") },
+  { id: DEFAULT_MODEL, label: L("Claude Opus 5 · en iyi sonuç", "Claude Opus 5 · best results") },
+  { id: "claude-sonnet-5", label: L("Claude Sonnet 5 · daha ucuz", "Claude Sonnet 5 · cheaper") },
+  { id: "claude-haiku-4-5", label: L("Claude Haiku 4.5 · en ucuz", "Claude Haiku 4.5 · cheapest") },
 ];
 
 /** "Dil / Language": both names written in their own language, so anyone finds theirs. Switching reloads the board. */
@@ -226,7 +226,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
             {L("Tanı dosyası indir", "Download diagnostics file")}
           </button>{" "}
           {L(
-            "— kaydettiğin sayfaları ve okunanları içerir, anahtarlarını ve sohbetini içermez. Bir şey yanlış okunduysa bu dosyayı paylaşabilirsin.",
+            "· kaydettiğin sayfaları ve okunanları içerir, anahtarlarını ve sohbetini içermez. Bir şey yanlış okunduysa bu dosyayı paylaşabilirsin.",
             "· has your saved pages and what was read from them, not your keys or chat. If something was read wrong, you can share this file.",
           )}
         </p>

@@ -1045,7 +1045,7 @@ export function currentSession(messages: ChatMessage[], provider: ProviderId): C
   return session;
 }
 
-export async function resetConversation(tripId: string, note = L("— Yeni sohbet —", "New conversation")): Promise<void> {
+export async function resetConversation(tripId: string, note = L("Yeni sohbet", "New conversation")): Promise<void> {
   await saveMessage({ tripId, role: "event", content: null, text: note, choices: [], resetsContext: true });
 }
 
@@ -2628,7 +2628,7 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   if (JSON.stringify(session.map((m) => m.content)).length > SESSION_CHAR_LIMIT) {
     await resetConversation(
       tripId,
-      L("— Sohbet uzadı, yeni oturum başladı (kararların kayıtlı) —", "The chat got long, so a new session started (your decisions are saved)"),
+      L("Sohbet uzadı, yeni oturum başladı (kararların kayıtlı)", "The chat got long, so a new session started (your decisions are saved)"),
     );
     session = [];
   }

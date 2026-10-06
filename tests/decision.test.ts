@@ -86,7 +86,7 @@ describe("decideGroup", () => {
     expect(d.criteria).toEqual(expect.arrayContaining(["price", "location", "rating", "cancellation"]));
     expect(d.criteria).not.toContain("comfort"); // no data for anyone → not compared
     expect(d.reasons[0].criterion).toBe("location");
-    expect(d.reasons[0].text).toMatch(/^Konum: kaydettiğin 2 yere \d+ dk yürüme — Casa Azul: \d+ dk yürüme$/);
+    expect(d.reasons[0].text).toMatch(/^Konum: kaydettiğin 2 yere \d+ dk yürüme; Casa Azul: \d+ dk yürüme$/);
     expect(d.tradeoffs[0].criterion).toBe("price");
     expect(d.summary).toContain("Jardim Stay öne çıkıyor");
     // Casa Azul's reason to still be considered is its price.

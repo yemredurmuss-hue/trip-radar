@@ -215,7 +215,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
               <span className="error-text" title={c.error ?? ""}>
                 <span className="err">⚠ {c.title || c.url || L("Ekran görüntüsü", "Screenshot")}</span>
                 <span className="muted">
-                  {L(" — ", " · ")}
+                  {" · "}
                   {c.error}
                 </span>
               </span>
