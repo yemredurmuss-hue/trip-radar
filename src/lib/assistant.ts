@@ -43,6 +43,7 @@ import {
   fromOf,
   namesChanged,
   ownersAfter,
+  sameName,
   whoGoes,
   withCurrency,
   withTravellers,
@@ -1161,13 +1162,19 @@ async function changeTravellers(tripId: string, input: any, items: Item[], turn:
   const came = placed.length ? await arrivals(tripId, placed, turn.who) : { made: [] as Item[], ask: null, lines: [] as string[] };
   if (came.ask) turn.ask = came.ask;
   came.made.forEach((i) => turn.touched.add(i.id));
-  const fromText = Object.entries(after.travellers?.from ?? {}).map(([n, p]) => L(`${n} (${ablative(p)})`, `${n} (from ${p})`));
-  const fromLine = fromText.length ? ` · ${fromText.join(", ")}` : "";
+  // "Sabine (Alicante'den)": where each comes from beside the name; me (not among the names) after them.
+  const withPlace = (n: string, p: string | null) => (p ? L(`${n} (${ablative(p)})`, `${n} (from ${p})`) : n);
+  const listed = [
+    ...names.map((n) => withPlace(n, fromOf(after.travellers, n))),
+    ...Object.entries(after.travellers?.from ?? {})
+      .filter(([n]) => !names.some((x) => sameName(x, n)))
+      .map(([n, p]) => withPlace(n, p)),
+  ];
   const eventId = await addEvent(
     tripId,
     L(
-      `Gidenler: ${names.length ? names.join(", ") : "isim yok"}${after.travellers?.count ? ` · ${after.travellers.count} kişi` : ""}${fromLine} (sohbetten)`,
-      `Who's going: ${names.length ? names.join(", ") : "no names"}${after.travellers?.count ? ` · ${nPeople(after.travellers.count)}` : ""}${fromLine} (from the chat)`,
+      `Gidenler: ${listed.length ? listed.join(", ") : "isim yok"}${after.travellers?.count ? ` · ${after.travellers.count} kişi` : ""} (sohbetten)`,
+      `Who's going: ${listed.length ? listed.join(", ") : "no names"}${after.travellers?.count ? ` · ${nPeople(after.travellers.count)}` : ""} (from the chat)`,
     ),
     {
       undo: {

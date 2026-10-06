@@ -259,6 +259,7 @@ describe("the chat: set_travellers from and set_owner", () => {
     expect(headCountOf(items.find((i) => i.id === "b1-out")!, bali, { total: 2, items, who: "Emre" })).toBe(1);
     expect(whoseOf(items.find((i) => i.id === "b1-stay")!, bali, "Emre")).toBeNull();
     const result = toolResult(calls[1]);
+    expect((await listMessages("b1")).some((m) => m.role === "event" && m.text === "Gidenler: Sabine (Alicante'den) (sohbetten)")).toBe(true);
     expect(result.flights_opened).toHaveLength(1);
     expect(result.shown).toMatch(/Sabine için Alicante → Denpasar boş uçuş kartı açıldı \(10 Aralık\), rozeti "Sabine'in bileti"; Uçuş · İstanbul → Denpasar artık 1 kişi\./);
     const last = (await listMessages("b1")).filter((m) => m.role === "assistant").at(-1)!;
@@ -270,7 +271,7 @@ describe("the chat: set_travellers from and set_owner", () => {
     expect(calls).toHaveLength(2);
     const home = (await listItems("b1")).find((i) => i.forWho?.length && i.flight?.to === "Alicante")!;
     expect(home).toMatchObject({ flight: { from: "Denpasar", to: "Alicante" }, dates: { start: "2027-01-10" } });
-    expect((await listMessages("b1")).filter((m) => m.role === "assistant").at(-1)!.text).toMatch(/^Sabine'in dönüşünü ekledim: Denpasar → Alicante, 10 Ocak\./);
+    expect((await listMessages("b1")).filter((m) => m.role === "assistant").at(-1)!.text).toMatch(/^Sabine'in dönüşünü ekledim: Denpasar → Alicante, 10 Ocak, boş kart olarak/);
     // Geri al on the travellers' change: her place goes, and the flight it opened with it.
     expect(changes).toHaveLength(1);
     await undoEvent(changes[0].eventId!);

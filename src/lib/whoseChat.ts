@@ -4,7 +4,6 @@
 // questions are answered here, without the model (ChatMessage.ask). Every sentence says only what was done.
 import { db, listItems, newId, notifyChanged } from "./db";
 import { L } from "./i18n";
-import { ablative } from "./i18nText";
 import { formatDateRange } from "./items";
 import { checkPlanned, planToSave, type PlannedInput } from "./planned";
 import { sameCity } from "./plan";
@@ -138,8 +137,8 @@ export async function answerAsk(tripId: string, ask: ChatAsk, chips: string[], s
     if (!made) return L(`${genitive(ask.name)} dönüş kartı açılamadı; hiçbir şey değişmedi.`, `${ask.name}'s flight home couldn't be made; nothing changed.`);
     const day = ask.date ? `, ${formatDateRange(ask.date, null)}` : "";
     return L(
-      `${genitive(ask.name)} dönüşünü ekledim: ${ask.leave} → ${ask.place}${day}. Kartında "${whoseLabel([ask.name], "ticket")}" yazıyor; aramaları ${ablative(ask.leave)} ${ask.name} için.`,
-      `I added ${ask.name}'s way home: ${ask.leave} → ${ask.place}${day}. Its card says "${whoseLabel([ask.name], "ticket")}"; its searches are from ${ask.leave} for ${ask.name}.`,
+      `${genitive(ask.name)} dönüşünü ekledim: ${ask.leave} → ${ask.place}${day}, boş kart olarak; üstünde "${whoseLabel([ask.name], "ticket")}" yazıyor, aramaları 1 kişilik.`,
+      `I added ${ask.name}'s way home: ${ask.leave} → ${ask.place}${day}, as an empty card; it says "${whoseLabel([ask.name], "ticket")}", its searches for one.`,
     );
   }
   const item = await (await db()).get("items", ask.itemId);
