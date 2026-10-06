@@ -3,6 +3,7 @@
 import { RENTAL_MODES, type CardKind } from "../../lib/cardKinds";
 import { topDate } from "../../lib/cardView";
 import { formatDateRange, isoDate } from "../../lib/items";
+import { L } from "../../lib/i18n";
 import { clockOf } from "../../lib/legs";
 import type { Item } from "../../lib/types";
 import { Editable, useInlineEdit } from "./InlineEdit";
@@ -26,5 +27,8 @@ export function CardDate({ item, kind }: { item: Item; kind: CardKind }) {
       </>
     );
   }
+  // An eSIM or a policy with no days of its own is for the whole trip: said so, not "Tarih ekle" (a day can still
+  // be given from its form).
+  if ((kind === "esim" || kind === "insurance") && !start) return <>{L("Tüm gezi", "Whole trip")}</>;
   return <Editable field="date">{topDate(item, kind)}</Editable>;
 }
