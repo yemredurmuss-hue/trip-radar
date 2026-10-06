@@ -4337,13 +4337,18 @@ await flightDay.route("**/functions/v1/offers**", (route) => route.fulfill({ jso
 // Web search is off unless a test routes it (the start chat looks up an event's dates): never the live server, and
 // "not-configured" is never cached (a "no-result" would be, and answer a later test's search for the same event).
 await flightDay.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
-await flightDay.clock.install({ time: new Date("2026-10-14T12:00:00") });
+// The sample trip starts three days after the day it's loaded (demo.ts): loaded on 5 October it's as written
+// (8–14 October), then the calendar moves on to the flight's day.
+await flightDay.clock.install({ time: new Date("2026-10-05T10:00:00") });
 try {
   const worker = flightDay.serviceWorkers()[0] ?? (await flightDay.waitForEvent("serviceworker"));
   const id = new URL(worker.url()).host;
   const app = await flightDay.newPage();
   await app.goto(`chrome-extension://${id}/app.html`);
   await app.getByText("Örnek geziyi yükle →").click();
+  await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
+  await flightDay.clock.setSystemTime(new Date("2026-10-14T12:00:00"));
+  await app.reload();
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
   const flat = (texts) => texts.map((t) => t.replace(/\s+/g, " ").trim());
   const tab = (name) => app.getByRole("tab", { name, exact: true });

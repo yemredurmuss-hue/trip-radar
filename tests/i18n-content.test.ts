@@ -134,7 +134,7 @@ describe("English model calls", () => {
 describe("English sample trip", () => {
   it("is written in English, with its review kept for English", async () => {
     setLang("en");
-    const id = await loadDemoTrip();
+    const id = await loadDemoTrip({ today: "2026-10-05" });
     const trip = (await (await db()).get("trips", id))!;
     expect(trip.title).toBe("Portugal (sample)");
     expect(isDemoTrip(trip)).toBe(true);
@@ -157,7 +157,7 @@ describe("English sample trip", () => {
   });
 
   it("asks again for an analysis written in the other language", async () => {
-    const id = await loadDemoTrip(); // Turkish review stored
+    const id = await loadDemoTrip({ today: "2026-10-05" }); // Turkish review stored
     const trip = (await (await db()).get("trips", id))!;
     const items = await listItems(id);
     const porto = (t: Awaited<ReturnType<typeof loadDecisions>>) =>

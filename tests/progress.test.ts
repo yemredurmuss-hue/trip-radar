@@ -15,7 +15,7 @@ import type { Item } from "../src/lib/types";
 const TODAY = "2026-09-29";
 
 async function demo() {
-  const id = await loadDemoTrip();
+  const id = await loadDemoTrip({ today: "2026-10-05" });
   const trip = (await (await db()).get("trips", id))!;
   const items = await listItems(id);
   const { ctx, decisions } = await loadDecisions(trip, items);

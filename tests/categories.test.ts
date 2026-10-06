@@ -86,7 +86,7 @@ describe("the record's section", () => {
 
 describe("the sample trip by category", () => {
   it("puts every block in its section, in date order, nothing twice", async () => {
-    const id = await loadDemoTrip();
+    const id = await loadDemoTrip({ today: "2026-10-05" });
     const t = (await (await db()).get("trips", id))!;
     const items = await listItems(id);
     const { ctx } = await loadDecisions(t, items);
@@ -425,7 +425,7 @@ describe("what's hidden, section by section (kategoriler-v4: \"Gizlenenler · N 
   });
 
   it("the sample trip: the stay a booking closed is under Konaklama", async () => {
-    const id = await loadDemoTrip();
+    const id = await loadDemoTrip({ today: "2026-10-05" });
     const t = (await (await db()).get("trips", id))!;
     const items = [...(await listItems(id))];
     const plan = buildPlan(t, items);
@@ -446,7 +446,7 @@ describe("the header's bar", () => {
     expect(of(0, 0)).toEqual({ settled: 0, total: 0, pct: 0, complete: false });
   });
   it("the hero's \"Rezervasyonların\" is the headers' \"3/4\"s added up", async () => {
-    const id = await loadDemoTrip();
+    const id = await loadDemoTrip({ today: "2026-10-05" });
     const t = (await (await db()).get("trips", id))!;
     const { sections } = sectionsOf(await listItems(id), t);
     const sum = sections.filter((s) => !isIdeaSection(s.id)).reduce((a, s) => ({ settled: a.settled + sectionProgress(s).settled, total: a.total + sectionProgress(s).total }), { settled: 0, total: 0 });

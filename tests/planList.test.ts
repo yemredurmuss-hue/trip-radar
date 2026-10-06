@@ -73,7 +73,7 @@ function listOf(items: Item[], trip: Trip = base, files: string[] = []): { list:
 
 describe("one source: hero = list = Plan sections", () => {
   it("the sample trip", async () => {
-    const id = await loadDemoTrip();
+    const id = await loadDemoTrip({ today: "2026-10-05" });
     const trip = (await (await db()).get("trips", id))!;
     const { list } = listOf(await listItems(id), trip);
     expect(list.counts.search + list.counts.options).toBeGreaterThan(0);

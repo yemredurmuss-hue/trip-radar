@@ -13,7 +13,7 @@ import { buildPlan } from "../src/lib/plan";
 import { buildTimeline } from "../src/lib/timeline";
 
 async function demoCards() {
-  const id = await loadDemoTrip();
+  const id = await loadDemoTrip({ today: "2026-10-05" });
   const trip = (await (await db()).get("trips", id))!;
   const items = await listItems(id);
   const { ctx } = await loadDecisions(trip, items);

@@ -25,7 +25,7 @@ const titles = (t: ReturnType<typeof buildTimeline>) =>
 
 describe("timeline", () => {
   it("lays out the sample trip from the flight in to the flight home", async () => {
-    const id = await loadDemoTrip();
+    const id = await loadDemoTrip({ today: "2026-10-05" });
     const trip = (await (await db()).get("trips", id))!;
     const items = await listItems(id);
     const { ctx } = await loadDecisions(trip, items);

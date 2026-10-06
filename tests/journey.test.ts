@@ -112,7 +112,7 @@ describe("a day on the move", () => {
   });
 
   it("says what's missing on the sample trip, and marks usual hours", async () => {
-    const id = await loadDemoTrip();
+    const id = await loadDemoTrip({ today: "2026-10-05" });
     const trip = (await (await db()).get("trips", id))!;
     const items = await listItems(id);
     const { ctx } = await loadDecisions(trip, items);

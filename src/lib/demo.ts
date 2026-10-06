@@ -19,13 +19,62 @@ function finding(
   return { id: `${topic}:${polarity}:${textId(text)}`, text, polarity, topic, source, severity, reviewIds: reviews.map(String), quotes, verified: true };
 }
 
-export async function loadDemoTrip(): Promise<string> {
+/** The day the sample trip is written for; it starts three days after the day it's loaded. */
+export const DEMO_START = "2026-10-08";
+const DAY_MS = 86_400_000;
+const addDays = (iso: string, days: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+
+/** Whole days the sample moves so it begins three days after `today` (0 when loaded on 5 October 2026). */
+export function demoShift(today: string): number {
+  return Math.round((Date.parse(`${addDays(today, 3)}T00:00:00Z`) - Date.parse(`${DEMO_START}T00:00:00Z`)) / DAY_MS);
+}
+
+/** Every ISO date in the strings of `value` (dates, times, links) moved by `days`; a review's month ("2026-09") too. */
+export function shiftDates<T>(value: T, days: number): T {
+  if (!days) return value;
+  const walk = (v: unknown): unknown => {
+    if (typeof v === "string") {
+      if (/^\d{4}-\d{2}$/.test(v)) return addDays(`${v}-15`, days).slice(0, 7);
+      return v.replace(/\b\d{4}-\d{2}-\d{2}/g, (iso) => (Number.isNaN(Date.parse(`${iso}T00:00:00Z`)) ? iso : addDays(iso, days)));
+    }
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]));
+    return v;
+  };
+  return walk(value) as T;
+}
+
+const MONTHS_TR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+/** The short month with its "-e kadar" suffix ("5 Eki'ye kadar"). */
+const MONTHS_UNTIL_TR = ["Oca'ya", "Şub'a", "Mar'a", "Nis'e", "May'a", "Haz'a", "Tem'e", "Ağu'ya", "Eyl'e", "Eki'ye", "Kas'a", "Ara'ya"];
+const MONTHS_SHORT_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * The sample trip, always ahead: written for 8–14 October 2026 and moved in whole days, every date with it
+ * (the items, their times and links, the cancellation deadline, the reviews' months), so it starts three days
+ * after `today` (the e2e's frozen 5 October loads it as written).
+ */
+export async function loadDemoTrip({ today = new Date().toISOString().slice(0, 10) }: { today?: string } = {}): Promise<string> {
   const d = await db();
   const now = Date.now();
+  const shift = demoShift(today);
+  const dayMonth = (iso: string) => {
+    const [, m, day] = addDays(iso, shift).split("-").map(Number);
+    return { day, m };
+  };
+  /** "8 Ekim 07:10" / "8 Oct 07:10" for a sample's summary. */
+  const when = (iso: string, time: string) => {
+    const { day, m } = dayMonth(iso);
+    return L(`${day} ${MONTHS_TR[m - 1]} ${time}`, `${day} ${MONTHS_SHORT_EN[m - 1]} ${time}`);
+  };
+  const freeUntil = (() => {
+    const { day, m } = dayMonth("2026-10-05");
+    return L(`${day} ${MONTHS_UNTIL_TR[m - 1]} kadar ücretsiz iptal`, `Free cancellation until ${day} ${MONTHS_SHORT_EN[m - 1]}`);
+  })();
   const trip: Trip = {
     id: newId(),
     title: L("Portekiz (örnek)", "Portugal (sample)"),
-    confirmedDates: { start: "2026-10-08", end: "2026-10-14" },
+    confirmedDates: { start: addDays("2026-10-08", shift), end: addDays("2026-10-14", shift) },
     budget: { amount: 1500, currency: "EUR" },
     heroImage: null,
     demo: true,
@@ -63,7 +112,7 @@ export async function loadDemoTrip(): Promise<string> {
       guests: { adults: 2, children: null, rooms: 1 },
       price: { amount, currency: "EUR", scope: "total", taxesIncluded: "yes", source: "page", observedAt: now },
       priceHistory: [],
-      cancellation: { summary: L("5 Eki'ye kadar ücretsiz iptal", "Free cancellation until 5 Oct"), freeUntil: "2026-10-05", source: "page" },
+      cancellation: { summary: freeUntil, freeUntil: "2026-10-05", source: "page" },
       rating: { value: null, scale: null, count: null, source: "none" },
       flight: null,
       metrics: { ...EMPTY_METRICS, ...metrics },
@@ -82,9 +131,9 @@ export async function loadDemoTrip(): Promise<string> {
 
   const geo = (lat: number, lng: number) => ({ lat, lng, source: "page" as const });
   const noDates = { start: null, end: null, source: "none" as const };
-  const items: Item[] = [
+  const items: Item[] = shiftDates([
     item("flight", "flight:ist-opo", L("Pegasus · direkt", "Pegasus · direct"), 148, {
-      summary: L("8 Ekim 07:10 · Direkt", "8 Oct 07:10 · Direct"),
+      summary: `${when("2026-10-08", "07:10")} · ${L("Direkt", "Direct")}`,
       provider: "Pegasus",
       optionDetail: L("Avantajlı paket (20 kg bagaj)", "Advantage package (20 kg bag)"),
       dates: { start: "2026-10-08", end: null, source: "page" },
@@ -93,7 +142,7 @@ export async function loadDemoTrip(): Promise<string> {
       metrics: { durationMinutes: 295, checkedBagIncluded: true, cancellationType: "non_refundable" },
     }),
     item("flight", "flight:ist-opo", L("TAP · Lizbon aktarmalı", "TAP · via Lisbon"), 118, {
-      summary: L("8 Ekim 05:40 · 1 aktarma", "8 Oct 05:40 · 1 stop"),
+      summary: `${when("2026-10-08", "05:40")} · ${L("1 aktarma", "1 stop")}`,
       provider: "TAP Air Portugal",
       optionDetail: L("Discount (yalnız kabin bagajı)", "Discount (cabin bag only)"),
       dates: { start: "2026-10-08", end: null, source: "page" },
@@ -179,13 +228,13 @@ export async function loadDemoTrip(): Promise<string> {
     // Getting to Lisbon: a saved train (the move and the station transfers show up on their own), and home by air.
     item("transport", "transport:porto-lizbon", L("CP Alfa Pendular · Porto → Lizbon", "CP Alfa Pendular · Porto → Lisbon"), 31, {
       provider: "CP",
-      summary: L("11 Ekim 13:09 · 2 sa 55 dk", "11 Oct 13:09 · 2 h 55 min"),
+      summary: `${when("2026-10-11", "13:09")} · ${L("2 sa 55 dk", "2 h 55 min")}`,
       dates: { start: "2026-10-11", end: null, source: "page" },
       flight: { from: "Porto Campanhã", to: "Lisboa Santa Apolónia", departure: "2026-10-11T13:09", arrival: "2026-10-11T16:04", carrier: "CP", flightNumber: null, stops: 0 },
       cancellation: { summary: L("Kalkıştan 15 dk öncesine kadar iade", "Refundable until 15 min before departure"), freeUntil: null, source: "page" },
     }),
     item("flight", "flight:lis-ist", L("TAP · Lizbon → İstanbul", "TAP · Lisbon → Istanbul"), 162, {
-      summary: L("14 Ekim 19:40 · Direkt", "14 Oct 19:40 · Direct"),
+      summary: `${when("2026-10-14", "19:40")} · ${L("Direkt", "Direct")}`,
       provider: "TAP Air Portugal",
       status: "booked",
       city: L("İstanbul", "Istanbul"),
@@ -233,7 +282,7 @@ export async function loadDemoTrip(): Promise<string> {
       summary: L("Sınırsız · 7 gün", "Unlimited · 7 days"),
       metrics: { unlimitedData: true, validityDays: 7 },
     }),
-  ];
+  ], shift);
   for (const i of items) await d.put("items", i);
 
   // What a close reading of the three Porto pages found (sample reviews, as a site shows them).
@@ -333,7 +382,7 @@ export async function loadDemoTrip(): Promise<string> {
   }
 
   function reading(item: Item, total: number, reviews: [string, string][], findings: Finding[]): Listing {
-    const stored = reviews.map(([text, date]) => ({ id: textId(text), text, date, captureId: "demo" }));
+    const stored = reviews.map(([text, date]) => ({ id: textId(text), text, date: shiftDates(date, shift), captureId: "demo" }));
     return {
       key: listingKeyOf(item),
       name: item.name,

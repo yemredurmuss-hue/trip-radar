@@ -17,7 +17,7 @@ afterEach(() => setLang("tr"));
 
 describe("hero tally", () => {
   it("counts what the Plan's sections hold, as their headers' totals do", async () => {
-    const id = await loadDemoTrip();
+    const id = await loadDemoTrip({ today: "2026-10-05" });
     const trip = (await (await db()).get("trips", id))!;
     const items = await listItems(id);
     const { ctx } = await loadDecisions(trip, items);
@@ -152,7 +152,7 @@ describe("weather", () => {
 describe("hero places", () => {
   it("reads countries and each city's days from the sample trip", async () => {
     const { countriesOf, cityRanges } = await import("../src/lib/heroInfo");
-    const id = await loadDemoTrip();
+    const id = await loadDemoTrip({ today: "2026-10-05" });
     const trip = (await (await db()).get("trips", id))!;
     const items = await listItems(id);
     const plan = buildPlan(trip, items);

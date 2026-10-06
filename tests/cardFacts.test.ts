@@ -15,7 +15,7 @@ beforeAll(() => vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-01T1
 afterAll(() => vi.useRealTimers());
 
 async function demo() {
-  const id = await loadDemoTrip();
+  const id = await loadDemoTrip({ today: "2026-10-05" });
   const trip = (await (await db()).get("trips", id))!;
   const items = await listItems(id);
   const result = await loadDecisions(trip, items);

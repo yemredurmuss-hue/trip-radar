@@ -107,7 +107,8 @@ function Popup() {
       {state.step === "skipped" && <p>{L("Eklenmedi.", "Not added.")}</p>}
       {state.step === "error" && <p className="error">{state.text}</p>}
       {state.step === "hint" && <p>{state.text}</p>}
-      {!hasKey && <p className="warning">{L("Kayıt duruyor. AI'ın işlemesi için ücretsiz Gemini anahtarını bir kez bağla.", "Saved, but waiting. Connect a free Gemini key once so the AI can read it.")}</p>}
+      {/* Only once something was saved: on the board, an error or "Eklenmedi" nothing is waiting. */}
+      {!hasKey && (state.step === "working" || state.step === "done") && <p className="warning">{L("Kayıt duruyor. AI'ın işlemesi için ücretsiz Gemini anahtarını bir kez bağla.", "Saved, but waiting. Connect a free Gemini key once so the AI can read it.")}</p>}
       <button
         className="primary"
         onClick={() => void openBoard(!hasKey ? "#settings" : state.step === "done" ? `#trip=${state.tripId}` : "")}

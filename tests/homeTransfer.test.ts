@@ -15,7 +15,7 @@ import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
 async function day(extra: (tripId: string) => Item[], date: string) {
-  const id = await loadDemoTrip();
+  const id = await loadDemoTrip({ today: "2026-10-05" });
   const trip = (await (await db()).get("trips", id))!;
   // The flight in booked (Pegasus 07:10, İstanbul → Porto): the way to its airport is before it.
   const saved = (await listItems(id)).map((i) => (i.flight?.flightNumber === "PC 1201" ? { ...i, status: "booked" as const } : i));
