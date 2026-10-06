@@ -9,7 +9,10 @@ import { createContext, Fragment, useContext, useEffect, useMemo, useState, type
 import { cardKindColor, cardKindLabel, RENTAL_MODES, TRANSPORT_MODES, type CardKind, type TransportMode } from "../../lib/cardKinds";
 import { imageProxy } from "../../lib/cityImages";
 import { dayCards, dayPhoto, daysLabel, flowRows, groupDays, highlightOf, ideaCount, isAsideRow, isPlanRow, movedOrder, orderRows, rowKind, rowMark, tieredRows, tierOf, type DayCard, type DayGroup } from "../../lib/dayCards";
-import { placeRoute, rowIcon, rowTitle, titleText, withLayovers, type Place, type RowTitle } from "../../lib/dayRowTitle";
+import { placeRoute, rowIcon, rowItem, rowTitle, titleText, withLayovers, withMeetings, type Place, type RowTitle } from "../../lib/dayRowTitle";
+import { CardEnvContext } from "../cards/PlanCard";
+import { WhoAvatar, usePhotoOf, useWhoCtx } from "../cards/WhoseBadge";
+import { whoseOf } from "../../lib/whose";
 import { RowGlyph } from "./RowGlyph";
 import { mainPlaceOf, type MainPlace } from "../../lib/destinations";
 import { formatDateRange } from "../../lib/items";
@@ -57,6 +60,11 @@ export interface DayCardsProps {
 
 /** A city as its main place, for the lines' routes (display only; the plan keeps its places). */
 const PlaceCtx = createContext<Place>((c) => c);
+/** Whose a record is (kişiye özel rezervasyon): its owners by name, null for everyone's. */
+const OwnersCtx = createContext<(item: Item) => string[] | null>(() => null);
+const useOwners = () => useContext(OwnersCtx);
+/** A day's lines with their layovers and meet-ups (two people landing at the same airport on their own flights). */
+const withAside = (lines: DayRow[], ownersOf: (item: Item) => string[] | null) => withMeetings(withLayovers(lines), ownersOf);
 const usePlace = () => useContext(PlaceCtx);
 
 const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(locale(), { weekday: "short", timeZone: "UTC" });
@@ -87,6 +95,9 @@ export function DayCards(props: DayCardsProps) {
   const [target, setTarget] = useState<{ id: string; flash: boolean } | null>(null);
   const mains = props.mainPlaces;
   const place = useMemo<Place>(() => (c) => (mains?.length ? (mainPlaceOf(mains, c) ?? c) : c), [mains]);
+  const env = useContext(CardEnvContext);
+  const who = useWhoCtx();
+  const ownersOf = useMemo(() => (item: Item) => (env ? (whoseOf(item, env.trip, who)?.names ?? null) : null), [env, who]);
   const setMode = (m: Mode, at: { id: string; flash: boolean } | null = null) => {
     setModeState(m);
     setTarget(at);
@@ -112,6 +123,7 @@ export function DayCards(props: DayCardsProps) {
   const flip = (key: string) => setFlipped((s) => (s.has(key) ? new Set([...s].filter((k) => k !== key)) : new Set([...s, key])));
   return (
     <PlaceCtx.Provider value={place}>
+     <OwnersCtx.Provider value={ownersOf}>
     <div className="dc">
       <div className="dc-bar">
         <div className="dc-seg" role="tablist" aria-label={L("Görünüm", "View")}>
@@ -153,6 +165,7 @@ export function DayCards(props: DayCardsProps) {
         />
       ))}
     </div>
+     </OwnersCtx.Provider>
     </PlaceCtx.Provider>
   );
 }
@@ -280,7 +293,7 @@ function DaySection({ card, mode, isToday, stays, onPick, ...props }: { card: Da
   const photo = useDayPhoto(card, props.cityImage);
   // The day's lines (insurance and the eSIM aren't among them), a layover between two connecting flights.
   const lines = dayLines(card, props);
-  const flow = withLayovers(lines);
+  const flow = withAside(lines, useOwners());
   const dnd = useReorder(lines, card.date, props.tripId);
   const experiences = flow.filter((r) => r.item && (r.item.category === "activity" || r.item.category === "food")).length;
   return (
@@ -329,7 +342,7 @@ function TimeCell({ row, tripId }: { row: DayRow; tripId: string }) {
   const [edit, setEdit] = useState(false);
   const place = usePlace();
   // A layover's time is its first flight's landing: nothing to set.
-  if (row.layover) return <span className="t">{row.time}</span>;
+  if (row.layover || row.meeting) return <span className="t">{row.time}</span>;
   const save = (value: string | null) =>
     void updateTrip(
       tripId,
@@ -387,6 +400,7 @@ function InfoLine({ row, tripId, dnd }: { row: DayRow; tripId: string; dnd?: Dnd
         {t.detail && <small> · {t.detail}</small>}
         {sourceOf(row) && <small className="dc-why"> · {sourceOf(row)}</small>}
       </span>
+      <Faces row={row} />
     </li>
   );
 }
@@ -449,6 +463,7 @@ function Line({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tri
           {mark && <i className={mark.done ? "done" : "todo"}>{mark.done ? "✓" : ""}</i>}
         </span>
         <RowName t={t} why={sourceOf(row)} />
+        <Faces row={row} />
       </button>
       <LiveLine row={row} />
       <ArrivalAsk row={row} />
@@ -466,6 +481,22 @@ function Line({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tri
         </p>
       )}
     </li>
+  );
+}
+
+/** Whose a line is, on its right (kişiye özel rezervasyon): their faces; a meet-up shows everyone meeting. */
+function Faces({ row }: { row: DayRow }) {
+  const ownersOf = useOwners();
+  const photoOf = usePhotoOf();
+  const item = rowItem(row);
+  const names = row.meeting ? row.meeting.who.flatMap((w) => w.names) : item ? ownersOf(item) : null;
+  if (!names?.length) return null;
+  return (
+    <span className="dc-who" aria-hidden>
+      {names.slice(0, 3).map((n) => (
+        <WhoAvatar key={n} name={n} photo={photoOf(n)} />
+      ))}
+    </span>
   );
 }
 
@@ -630,7 +661,7 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
   const place = usePlace();
   // Every line of the day (0.35.6): with a time by the clock, without one where it was put (drag, or ↑ ↓).
   const lines = dayLines(card, props);
-  const shown = withLayovers(lines);
+  const shown = withAside(lines, useOwners());
   const dnd = useReorder(lines, card.date, props.tripId);
   const lead = highlightOf(card);
   const tint = lead ? cardKindColor(rowKind(lead)) : "#5b7fa6";

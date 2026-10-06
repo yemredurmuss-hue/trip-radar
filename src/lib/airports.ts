@@ -18,6 +18,13 @@ const AIRPORTS: Record<string, [tr: string, en: string]> = {
   HEL: ["Helsinki", "Helsinki"], MXP: ["Milano", "Milan"], VCE: ["Venedik", "Venice"], NAP: ["Napoli", "Naples"],
   NCE: ["Nice", "Nice"], PMI: ["Palma", "Palma"], AGP: ["Malaga", "Malaga"], SVQ: ["Sevilla", "Seville"],
   FAO: ["Faro", "Faro"], PDL: ["Ponta Delgada", "Ponta Delgada"], DOH: ["Doha", "Doha"],
+  ALC: ["Alicante", "Alicante"], VLC: ["Valensiya", "Valencia"], BIO: ["Bilbao", "Bilbao"], IBZ: ["İbiza", "Ibiza"],
+  TFS: ["Tenerife", "Tenerife"], LPA: ["Gran Canaria", "Gran Canaria"], GVA: ["Cenevre", "Geneva"], LYS: ["Lyon", "Lyon"],
+  MRS: ["Marsilya", "Marseille"], MAN: ["Manchester", "Manchester"], EDI: ["Edinburgh", "Edinburgh"], BLQ: ["Bologna", "Bologna"],
+  FLR: ["Floransa", "Florence"], CTA: ["Katanya", "Catania"], DBV: ["Dubrovnik", "Dubrovnik"], SPU: ["Split", "Split"],
+  KRK: ["Krakov", "Krakow"], SOF: ["Sofya", "Sofia"], OTP: ["Bükreş", "Bucharest"], BEG: ["Belgrad", "Belgrade"],
+  LCA: ["Larnaka", "Larnaca"], ECN: ["Lefkoşa", "Nicosia"], TLV: ["Tel Aviv", "Tel Aviv"], CAI: ["Kahire", "Cairo"],
+  RAK: ["Marakeş", "Marrakesh"], DPS: ["Bali", "Bali"], BKK: ["Bangkok", "Bangkok"], HKT: ["Phuket", "Phuket"],
 };
 
 /** The airport's own name, where it isn't only its city's ("Sabiha Gökçen", "Kastrup"). */
@@ -41,6 +48,9 @@ const COUNTRY: Record<string, string> = {
   CPH: "DK", BER: "DE", VIE: "AT", ZRH: "CH", BRU: "BE", DUB: "IE", ATH: "GR", PRG: "CZ", BUD: "HU", WAW: "PL",
   ARN: "SE", OSL: "NO", HEL: "FI", MXP: "IT", VCE: "IT", NAP: "IT", NCE: "FR", PMI: "ES", AGP: "ES", SVQ: "ES",
   FAO: "PT", PDL: "PT", DOH: "QA",
+  ALC: "ES", VLC: "ES", BIO: "ES", IBZ: "ES", TFS: "ES", LPA: "ES", GVA: "CH", LYS: "FR", MRS: "FR", MAN: "GB", EDI: "GB",
+  BLQ: "IT", FLR: "IT", CTA: "IT", DBV: "HR", SPU: "HR", KRK: "PL", SOF: "BG", OTP: "RO", BEG: "RS", LCA: "CY", ECN: "CY",
+  TLV: "IL", CAI: "EG", RAK: "MA", DPS: "ID", BKK: "TH", HKT: "TH",
 };
 export const countryOfAirport = (code: string | null | undefined): string | null => (code ? (COUNTRY[code.toUpperCase()] ?? null) : null);
 

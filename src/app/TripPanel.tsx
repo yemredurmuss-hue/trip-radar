@@ -219,6 +219,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   };
   const env: CardEnv = {
     tripId: trip.id,
+    trip,
     decisions,
     today,
     legModes,

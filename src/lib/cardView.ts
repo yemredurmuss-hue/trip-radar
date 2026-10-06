@@ -141,6 +141,8 @@ export interface TransportFace {
   rental: boolean;
   /** A booked flight's airline logo (0.36.18), beside the duration as on flight search sites. */
   logo?: string | null;
+  /** Where the logo is asked for when the first won't load (Kiwi's Pegasus file doesn't open in Chrome). */
+  logo2?: string | null;
 }
 
 const dayOf = (iso: string | null | undefined) => {

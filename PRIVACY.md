@@ -135,8 +135,8 @@ profilleri ve geçmişiyle birlikte) senin isteğinle silinir: info@emredurmus.n
   kapısı, terminali ve bagaj bandı için yalnız uçuş numarası ve günü gönderilir ("KL1577, 7 Ekim"), bizim
   sunucumuz üzerinden. Sunucu bu herkese açık uçuş bilgisini, aynı uçuşu soran herkes için tekrar sormamak adına uçuş
   numarası ve güne göre saklar; kimin sorduğunu saklamaz. Cevap bu bilgisayarda da saklanır.
-- **Kiwi.com görsel sunucusu:** bileti alınmış uçuşun kartında havayolu logosu için yalnız havayolunun iki harfli kodu
-  ("KL") istenir.
+- **Kiwi.com ve Aviasales görsel sunucuları:** uçuş kartında havayolu logosu için yalnız havayolunun iki harfli kodu
+  ("KL") istenir (Kiwi açılmazsa Aviasales'ten).
 
 Bu hizmetlere ad, e-posta ya da gezi içeriği gönderilmez. Her bağlantıda olduğu gibi, istek yapılan sunucu
 IP adresini görebilir.
@@ -356,8 +356,8 @@ and history) is deleted on request: write to info@emredurmus.net.
   ("KL1577, 7 October"), for that flight's schedule, status, gate, terminal and baggage belt, through our server. The server keeps
   this public flight information by flight number and day, so the same flight isn't asked about again for everyone
   who has it; it doesn't keep who asked. The answer is also kept on this computer.
-- **Kiwi.com image server:** only the airline's two-letter code ("KL"), for the airline's logo on a booked flight's
-  card.
+- **Kiwi.com and Aviasales image servers:** only the airline's two-letter code ("KL"), for the airline's logo on a
+  flight's card (from Aviasales when Kiwi's won't load).
 
 No name, email or trip content is sent to these services. As with any connection, the server receiving the request
 can see your IP address.

@@ -42,7 +42,7 @@ export function TransportCardBody({ face, title }: { face: TransportFace; title:
   return (
     <div className={`pk-mid${face.logo ? " has-logo" : ""}`}>
       {/* The airline's logo first, as on flight search sites (an empty box when it won't load keeps the grid). */}
-      {face.logo && <span className="pk-logo"><FallbackImg className="pk-airline" src={face.logo} fallback={<KindIcon kind="flight" size={20} />} /></span>}
+      {face.logo && <span className="pk-logo"><FallbackImg className="pk-airline" src={face.logo} fallback={face.logo2 ? <FallbackImg className="pk-airline" src={face.logo2} fallback={<KindIcon kind="flight" size={20} />} /> : <KindIcon kind="flight" size={20} />} /></span>}
       <Stop end={face.from} right={false} field={face.rental ? "city" : "from"} timed={!face.rental} />
       <div className="pk-route">{face.middle && <small>{face.middle}</small>}</div>
       <Stop end={face.to} right field={face.rental ? null : "to"} timed={false} />

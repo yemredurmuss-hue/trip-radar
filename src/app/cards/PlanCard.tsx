@@ -13,8 +13,11 @@ import { dateAlert } from "../../lib/progress";
 import type { CardFocus } from "../../lib/inlineEdit";
 import type { DateRange } from "../../lib/plan";
 import type { InsertAt } from "../../lib/templates";
-import type { DocMeta, Item, LegMode } from "../../lib/types";
-import { chooseItem, setInstalled, setItemStatus } from "../actions";
+import type { DocMeta, Item, LegMode, Trip } from "../../lib/types";
+import { chooseItem, setInstalled, setItemStatus, setOwner } from "../actions";
+import { WhoAvatar, WhoseBadge, usePhotoOf, useWhoCtx } from "./WhoseBadge";
+import { isUnnamedMe, peopleOf, whoseOf } from "../../lib/whose";
+import { sameName } from "../../lib/tripSettings";
 import { useShare } from "../Share";
 import type { Decisions } from "../useDecisions";
 import { CardDate } from "./CardDate";
@@ -32,6 +35,8 @@ import { flightNumber } from "../../../supabase/functions/flight/shape";
 
 export interface CardEnv {
   tripId: string;
+  /** The trip (its people: whose a plan is, kişiye özel rezervasyon). */
+  trip: Trip;
   decisions: Decisions | null;
   today: string;
   /** The way chosen for each record's transfer (cardKinds.legModeByItem). */
@@ -85,6 +90,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   headline?: Choice | null;
 }) {
   const env = useCardEnv();
+  const who = useWhoCtx();
+  const photoOf = usePhotoOf();
   const [open, setOpen] = useState(false);
   // Shared trip: both travellers said 👎 → it steps back like "Ele" (a vote undoes it).
   const allNo = useShare()?.tally(item).allNo ?? false;
@@ -104,13 +111,35 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
     else if (does === "install") void setInstalled(item, true);
     else if (does === "restore") void setItemStatus(item, "saved");
   };
-  const menu: MenuEntry[] = menuFor(item).map((a) =>
-    a === "edit"
+  // "Kimin için?" (kişiye özel rezervasyon): everyone, or some of the trip's people, ticked; on a trip of two or more.
+  const people = peopleOf(env.trip, who);
+  const whose = whoseOf(item, env.trip, who);
+  const owners = whose?.names ?? [];
+  const setFor = (names: string[]) => void setOwner(item.id, names.length && names.length < people.length ? names : null);
+  const forWho: MenuEntry[] =
+    people.length < 2
+      ? []
+      : [
+          { label: L("Kimin için?", "Who's it for?"), heading: true, run: () => undefined },
+          { label: L("Herkes", "Everyone"), checked: !whose, run: () => setFor([]) },
+          ...people.map((n) => {
+            const on = owners.some((o) => sameName(o, n));
+            return {
+              label: isUnnamedMe(n, who) ? L("Ben", "Me") : n,
+              checked: on,
+              lead: <WhoAvatar name={n} photo={photoOf(n)} />,
+              run: () => setFor(on ? owners.filter((o) => !sameName(o, n)) : whose ? [...owners, n] : [n]),
+            };
+          }),
+        ];
+  const menu: MenuEntry[] = [...forWho, ...menuFor(item).map((a, i) => ({ ...entryOf(a), sep: forWho.length > 0 && i === 0 }))];
+  function entryOf(a: ReturnType<typeof menuFor>[number]): MenuEntry {
+    return a === "edit"
       ? { label: L("Düzenle", "Edit"), run: () => env.edit(item) }
       : a === "dismiss"
         ? { label: L("Ele", "Rule out"), run: () => void setItemStatus(item, "dismissed") }
-        : { label: L("Sil", "Delete"), run: () => env.remove(item), danger: true },
-  );
+        : { label: L("Sil", "Delete"), run: () => env.remove(item), danger: true };
+  }
   const alternatives = onChange ? Math.max(0, group.length - 1) : 0;
   const actions = (
     <>
@@ -142,7 +171,10 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   const face = transport ? transportFace(item, kind, env.legEnds.get(item.id)) : null;
   // The airline's logo by its code (the flight number's first two letters), beside the duration; none when it
   // won't load.
-  if (face && number) face.logo = `https://images.kiwi.com/airlines/64/${number.slice(0, 2)}.png`;
+  if (face && number) {
+    face.logo = `https://images.kiwi.com/airlines/64/${number.slice(0, 2)}.png`;
+    face.logo2 = `https://pics.avs.io/128/128/${number.slice(0, 2)}.png`;
+  }
   // No duration on the page: the schedule's (gate to gate, by UTC).
   if (face && !face.middle && live?.minutes) face.middle = [durationText(live.minutes), item.flight?.stops === 0 ? L("direkt", "direct") : null].filter(Boolean).join(" · ");
   if (face && live) {
@@ -168,6 +200,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       }
       ariaLabel={item.name}
       itemId={item.id}
+      badge={<WhoseBadge item={item} trip={env.trip} />}
       extraClass={[allNo ? "pk-all-no" : "", red ? "pk-alert" : ""].filter(Boolean).join(" ") || undefined}
       art={transport && kind !== "transport" ? <TransportArt mode={kind} /> : null}
       docs={<DocAccess item={item} docs={docs} />}

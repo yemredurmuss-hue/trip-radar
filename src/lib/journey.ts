@@ -303,6 +303,11 @@ export interface DayRow {
   stay?: StayFacts | null;
   /** A connection between two flights, shown between them (dayRowTitle.ts withLayovers): where and how long. */
   layover?: { airport: string; minutes: number } | null;
+  /**
+   * Two people arriving the same day at the same airport on their own flights (kişiye özel rezervasyon): where
+   * they meet, and who lands when ("Sabine 10:35 · Emre 10:05"); at the later landing.
+   */
+  meeting?: { airport: string; who: { names: string[]; time: string }[] } | null;
 }
 
 type DayEntry = Extract<TimelineEntry, { kind: "day" }>;

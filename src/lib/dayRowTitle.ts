@@ -425,6 +425,10 @@ export function rowTitle(row: DayRow, place: Place = same): RowTitle {
     const where = place(placeName(row.layover.airport) ?? row.layover.airport);
     return { what: W.layover(), which: `${where} · ${hoursMinutes(row.layover.minutes)}`, detail: "" };
   }
+  if (row.meeting) {
+    const city = place(placeName(row.meeting.airport) ?? row.meeting.airport);
+    return { what: L("Buluşma", "Meet-up"), which: L(`${city} Havalimanı`, `${city} Airport`), detail: row.meeting.who.map((w) => `${w.names.join(L(" ve ", " & "))} ${w.time}`).join(" · ") };
+  }
   if (row.key.endsWith(":checkin")) return stayTitle(row, true);
   if (row.key.endsWith(":checkout")) return stayTitle(row, false);
   if (row.rental) return rentalTitle(row, row.key.endsWith(":return"));
@@ -501,6 +505,7 @@ export type RowIconName =
  */
 export function rowIcon(row: DayRow, place: Place = same): RowIconName {
   if (row.layover) return "clock";
+  if (row.meeting) return "pin";
   const t = rowTitle(row, place);
   const by: [() => string, RowIconName][] = [
     [W.flight, "plane"], [W.train, "train"], [W.bus, "bus"], [W.minibus, "bus"], [W.ferry, "ferry"],
@@ -517,4 +522,57 @@ export function rowIcon(row: DayRow, place: Place = same): RowIconName {
     return way.find(([w]) => t.which === w())?.[1] ?? "taxi";
   }
   return by.find(([w]) => w() === t.what)?.[1] ?? "pin";
+}
+
+// --- meeting up (kişiye özel rezervasyon, 0.36.26) -----------------------------------------------------------
+
+/** The record a line is about: its own, or the trip it draws (a flight settled for it). */
+export const rowItem = (row: DayRow): Item | null =>
+  row.item ?? (row.entry?.kind === "travel" ? (row.entry.travel?.settled ?? (row.entry.travel?.items.length === 1 ? row.entry.travel.items[0] : null)) : null);
+
+/**
+ * The day's lines with "Buluşma · Porto Havalimanı" after the later of two (or more) flights landing at the same
+ * airport that day for different people (`ownersOf`: whose a record is, null for everyone's): "Sabine 10:35 ·
+ * Emre 10:05". Flights for everyone, or for the same people, meet nobody.
+ */
+export function withMeetings(rows: DayRow[], ownersOf: (item: Item) => string[] | null): DayRow[] {
+  const landings = rows
+    .map((r) => ({ r, f: flightOf(r) }))
+    .filter((x): x is { r: DayRow; f: { flight: Flight; item: Item } } => !!x.f && !!x.f.flight.to && !!x.f.flight.arrival)
+    .map(({ r, f }) => ({ r, to: f.flight.to!, at: f.flight.arrival!, owners: ownersOf(f.item) }))
+    .filter((x) => x.owners?.length);
+  const out = [...rows];
+  const done = new Set<DayRow>();
+  for (const a of landings) {
+    if (done.has(a.r)) continue;
+    const group = landings.filter((b) => sameAirport(a.to, b.to) && a.at.slice(0, 10) === b.at.slice(0, 10));
+    const people = new Set(group.flatMap((g) => g.owners!.map((n) => n.toLocaleLowerCase("tr"))));
+    group.forEach((g) => done.add(g.r));
+    // Different people, not the same ones on two tickets.
+    if (group.length < 2 || people.size < 2 || group.every((g) => g.owners!.join() === group[0].owners!.join())) continue;
+    const last = group.reduce((x, y) => (instant(y.at) > instant(x.at) ? y : x));
+    const meet: DayRow = {
+      key: `meet:${a.to}:${a.at.slice(0, 10)}`,
+      kind: "info",
+      time: clockOf(last.at),
+      estimated: false,
+      hint: null,
+      otherDay: null,
+      title: L("Buluşma", "Meet-up"),
+      sub: null,
+      line: null,
+      state: "info",
+      status: "",
+      notes: [],
+      entry: null,
+      leg: null,
+      item: null,
+      items: [],
+      rental: null,
+      stayKey: null,
+      meeting: { airport: a.to, who: [...group].sort((x, y) => instant(y.at) - instant(x.at)).map((g) => ({ names: g.owners!, time: clockOf(g.at) ?? "" })) },
+    };
+    out.splice(out.indexOf(last.r) + 1, 0, meet);
+  }
+  return out;
 }

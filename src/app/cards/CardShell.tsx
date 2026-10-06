@@ -23,6 +23,14 @@ export interface MenuEntry {
   label: string;
   run: () => void;
   danger?: boolean;
+  /** A group's title ("Kimin için?"): not a button. */
+  heading?: boolean;
+  /** Ticked (a multi-choice group): ✓ on the right, and the menu stays open on a tap. */
+  checked?: boolean;
+  /** Before it, a line (the end of a group). */
+  sep?: boolean;
+  /** Beside the label: a face (whose it is). */
+  lead?: ReactNode;
 }
 
 export function CardMenu({ entries }: { entries: MenuEntry[] }) {
@@ -42,11 +50,19 @@ export function CardMenu({ entries }: { entries: MenuEntry[] }) {
       </button>
       {open && (
         <div className="pk-menu" role="menu" onClick={(e) => e.stopPropagation()}>
-          {entries.map((m) => (
-            <button key={m.label} type="button" role="menuitem" className={m.danger ? "danger" : undefined} onClick={() => { setOpen(false); m.run(); }}>
-              {m.label}
-            </button>
-          ))}
+          {entries.map((m) =>
+            m.heading ? (
+              <div key={m.label} className="pk-menu-h">{m.label}</div>
+            ) : (
+              <button key={m.label} type="button" role={m.checked === undefined ? "menuitem" : "menuitemcheckbox"} aria-checked={m.checked}
+                className={[m.danger ? "danger" : "", m.sep ? "sep" : "", m.checked ? "on" : ""].filter(Boolean).join(" ") || undefined}
+                onClick={() => { if (m.checked === undefined) setOpen(false); m.run(); }}>
+                {m.lead}
+                <span className="pk-menu-l">{m.label}</span>
+                {m.checked && <span className="pk-menu-tick" aria-hidden>✓</span>}
+              </button>
+            ),
+          )}
         </div>
       )}
     </span>
@@ -138,6 +154,8 @@ export function CardShell(props: {
   ring: RingState;
   /** The top line's day (a string, or its editable pieces on a record's card). */
   date: ReactNode;
+  /** Whose it is, after the date ("Sabine'in bileti"; nothing for everyone's). */
+  badge?: ReactNode;
   ariaLabel: string;
   itemId?: string;
   domId?: string;
@@ -176,6 +194,7 @@ export function CardShell(props: {
           {props.label ?? cardKindLabel(props.kind)}
         </span>
         {props.date && <span className="pk-date">· {props.date}</span>}
+        {props.badge}
         <span className="pk-end">
           {props.docs}
           {props.onDelete && <DeleteX name={props.ariaLabel} onDelete={props.onDelete} />}

@@ -2,7 +2,7 @@
 // in Turkish and English.
 import { afterEach, describe, expect, it } from "vitest";
 import { cityOfAirport } from "../src/lib/airports";
-import { fromTime, placeName, placeRoute, rowIcon, rowTitle, simpleName, titleText, toTime, withLayovers, withoutWord } from "../src/lib/dayRowTitle";
+import { fromTime, placeName, placeRoute, rowIcon, rowTitle, simpleName, titleText, toTime, withLayovers, withMeetings, withoutWord } from "../src/lib/dayRowTitle";
 import { mainPlaceOf, mainPlaces } from "../src/lib/destinations";
 import { setLang } from "../src/lib/i18n";
 import type { DayRow } from "../src/lib/journey";
@@ -334,5 +334,25 @@ describe("each line its own icon (0.36.24), from its fixed word", () => {
     expect(rowIcon(row({ key: "leg", kind: "leg", leg: leg({ mode: "metro" }) }))).toBe("metro");
     expect(rowIcon(row({ key: "leg", kind: "leg", leg: leg({}) }))).toBe("taxi");
     expect(rowIcon(row({ key: "lay", layover: { airport: "AMS", minutes: 150 } }))).toBe("clock");
+  });
+});
+
+describe("meeting up (kişiye özel rezervasyon): two people landing at the same airport on their own flights", () => {
+  const emre = flight("IST", "OPO", "2026-10-08T07:10", "2026-10-08T10:05", { id: "emre-f" });
+  const sabine = flight("ALC", "OPO", "2026-10-08T09:40", "2026-10-08T10:35", { id: "sabine-f" });
+  const owners = (who: Record<string, string[] | null>) => (item: Item) => who[item.id] ?? null;
+  it("a 'Buluşma' line after the later landing: who lands when", () => {
+    const rows = withMeetings([travelRow(emre), travelRow(sabine)], owners({ "emre-f": ["Emre"], "sabine-f": ["Sabine"] }));
+    const meet = rows[2];
+    expect(rows.map((r) => r.key)).toEqual([travelRow(emre).key, travelRow(sabine).key, "meet:OPO:2026-10-08"]);
+    expect(meet.time).toBe("10:35");
+    expect(rowTitle(meet)).toEqual({ what: "Buluşma", which: "Porto Havalimanı", detail: "Sabine 10:35 · Emre 10:05" });
+    expect(rowIcon(meet)).toBe("pin");
+  });
+  it("none for everyone's flights, the same people's, or other airports", () => {
+    expect(withMeetings([travelRow(emre), travelRow(sabine)], owners({}))).toHaveLength(2);
+    expect(withMeetings([travelRow(emre), travelRow(sabine)], owners({ "emre-f": ["Sabine"], "sabine-f": ["Sabine"] }))).toHaveLength(2);
+    const lisbon = flight("ALC", "LIS", "2026-10-08T09:40", "2026-10-08T10:35", { id: "sabine-f" });
+    expect(withMeetings([travelRow(emre), travelRow(lisbon)], owners({ "emre-f": ["Emre"], "sabine-f": ["Sabine"] }))).toHaveLength(2);
   });
 });
