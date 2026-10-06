@@ -3364,6 +3364,8 @@ try {
   assert.equal(await map.locator(".gm-home.in").count(), 1, "home");
   assert.equal(await map.locator(".gm-stop.in").count(), 0, "the stops wait for the landing");
   assert.equal(await board.locator(".st-gen canvas").count(), 0, "no canvas (no MapLibre)");
+  // The trip is made at its own pace (never waiting on the map): its steps say so while the plane is still flying.
+  await board.locator(".st-step.done", { hasText: /Klasik rota çizildi: Sigiriya \d+ gece → Kandy \d+ gece → Ella \d+ gece → Mirissa \d+ gece/ }).waitFor();
   await board.waitForTimeout(700);
   await board.screenshot({ path: `${out}/23b-start-map-midflight.png` });
   await board.locator(".st-gen .gm[data-phase=landed]").waitFor({ timeout: 6000 });
@@ -3372,7 +3374,6 @@ try {
   assert.equal(await map.locator(".gm-photos .gm-card").count() > 0, true, "the photos fan in inside the card");
   await board.waitForTimeout(400);
   await board.screenshot({ path: `${out}/23c-start-map-landed.png` });
-  await board.locator(".st-step.done", { hasText: /Klasik rota çizildi: Sigiriya \d+ gece → Kandy \d+ gece → Ella \d+ gece → Mirissa \d+ gece/ }).waitFor();
   await board.getByRole("heading", { name: "Sri Lanka Gezisi", exact: true }).waitFor({ timeout: 20000 });
   const lkMade = await board.evaluate(async () => {
     const database = await new Promise((resolve) => { const q = indexedDB.open("trip-radar"); q.onsuccess = () => resolve(q.result); });
