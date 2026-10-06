@@ -25,7 +25,7 @@ import {
   applyAnswer, applyExtracted, applyText, askAgain, budgetChips, budgetWord, canGenerate, checklist, drawingLine, isComplete, knownLines, mergeExtracted,
   missingForGenerate, modelReplyText, NOT_UNDERSTOOD, nextQuestion, onlyEmpty, parseRouteText, parseStartText, photosToFind, preparedRoute, previewOf,
   questionOf, replyText, restoreRoute, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
-  tentativeWhere, whereKey, withGuessTaken, withPhotos, withPreparedRoute, withTypedLang,
+  tentativeWhere, whereKey, withGuessTaken, withoutOverruled, withPhotos, withPreparedRoute, withTypedLang,
   type Answer, type Extracted, type QuestionId, type StartCtx, type StartRoute, type StartState,
 } from "../../lib/startTrip";
 import { STYLE_META, STYLES, type BudgetLevel, type StyleId } from "../../lib/tripStyle";
@@ -265,8 +265,11 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     if (stale()) return;
     const now = live.current;
     if (turn.current === mine && !busy.current) {
-      const more = T(() => applyText(now, line, mergeExtracted(code, read), Date.now(), q));
-      if (!more.understood) return;
+      const merged = mergeExtracted(code, read);
+      const base = T(() => withoutOverruled(now, before, code, merged));
+      const more = T(() => applyText(base, line, merged, Date.now(), q));
+      if (!more.understood && base === now) return;
+      if (!more.understood) more.state = base;
       commit(more.state);
       const drawing = routeNow();
       const after = live.current;
@@ -422,7 +425,11 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
       if (!got || stale()) return;
       if (turn.current !== mine) return lateReading(got.read, code, line, q, mine, before, at);
       // What the model read that the code missed is added (bound to the same question); then its words.
-      const more = T(() => applyText(live.current, line, mergeExtracted(code, got.read), Date.now(), q));
+      // (A lower-case reading of the code's the model reads otherwise is taken back first.)
+      const merged = mergeExtracted(code, got.read);
+      const base = T(() => withoutOverruled(live.current, before, code, merged));
+      if (base !== live.current) commit(base);
+      const more = T(() => applyText(base, line, merged, Date.now(), q));
       if (more.understood) commit(more.state);
       // What it added may make the route the question now: the circuit at once, or the chat says it is drawing it.
       const drawing = routeNow();

@@ -264,6 +264,7 @@ export function monthGlued(token: string): number | null {
 
 /** Words before a short month that make it one ("on nov", "in dec", "around jan", "late sep"). */
 const MONTH_BEFORE = new Set(["in", "on", "around", "by", "during", "early", "mid", "late", "next", "this", "until", "from", "for"]);
+const capital0 = (w: string | undefined) => !!w && /^\p{Lu}/u.test(w);
 
 /** The next time this month/day comes, from today on (this year's if it hasn't passed). */
 export function nextDate(month: number, day: number, today: string, year?: number): string | null {
@@ -378,6 +379,31 @@ const plain = (s: string) =>
 const squash = (s: string) => plain(s).replace(/[^\p{L}\p{N}]/gu, "");
 const PLACE_INDEX = new Map<string, KnownPlace>();
 for (const p of KNOWN_PLACES) for (const n of [p.tr, p.en, ...(p.also ?? [])]) PLACE_INDEX.set(squash(n), p);
+/** A name compared with its words kept apart ("sri lanka", "ko pha ngan"): several words typed match only this (rev 3). */
+const spaced = (s: string) => plain(s).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+const wordCount = (s: string) => spaced(s).split(" ").filter(Boolean).length;
+const PLACE_SPACED = new Map<string, KnownPlace>();
+for (const p of KNOWN_PLACES) for (const n of [p.tr, p.en, ...(p.also ?? [])]) if (wordCount(n) > 1) PLACE_SPACED.set(spaced(n), p);
+
+/**
+ * Several typed words as a name of as many words, the ending stripped from the last one only ("Sri lankaya" → Sri
+ * Lanka, "to"; "Yeni Zelanda" → New Zealand). Never a one-word name ("to go" is never Togo, "i ran" never Iran).
+ */
+function severalWords<T>(words: string[], index: Map<string, T>): { hit: T; dir: "from" | "to" | null } | null {
+  const key = spaced(words.join(" "));
+  const exact = index.get(key);
+  if (exact) return { hit: exact, dir: null };
+  const last = spaced(words[words.length - 1]);
+  const head = spaced(words.slice(0, -1).join(" "));
+  for (const [re, dir] of GLUED) {
+    const bare = last.replace(re, "");
+    if (bare !== last && bare.length >= 2) {
+      const hit = index.get(`${head} ${bare}`);
+      if (hit) return { hit, dir };
+    }
+  }
+  return null;
+}
 
 const placeName = (p: KnownPlace) => L(p.tr, p.en);
 /** Its country in the chat's language; a country stands for itself. */
@@ -432,21 +458,26 @@ export function fuzzyPlaceOf(word: string): KnownPlace | null {
  * of 10+ letters, 1 for a shorter one, the first letters the same; never a real country's own name.
  */
 export function fuzzyCountryOf(words: string): { p: KnownPlace; dir: "from" | "to" | null } | null {
-  if (words.trim().split(/\s+/).length < 2 || countryNamed(words)) return null;
-  const k = squash(words);
-  if (k.length < 8) return null;
-  const tries: [string, "from" | "to" | null][] = [[k, null]];
+  const typed = spaced(words).split(" ").filter(Boolean);
+  if (typed.length < 2 || countryNamed(words) || squash(words).length < 8) return null;
+  // As many words as the name; all the same but one, that one at most 2 edits away (1 for a short word), its first
+  // letter right; the last word may carry an ending ("Ginee'ye").
+  const tries: [string[], "from" | "to" | null][] = [[typed, null]];
   for (const [re, dir] of GLUED) {
-    const bare = k.replace(re, "");
-    if (bare !== k) tries.push([bare, dir]);
+    const bare = typed[typed.length - 1].replace(re, "");
+    if (bare !== typed[typed.length - 1] && bare.length >= 3) tries.push([[...typed.slice(0, -1), bare], dir]);
   }
   let best: { code: string; dir: "from" | "to" | null; d: number } | null = null;
-  for (const [name, code] of squashedCountries()) {
-    if (name.length < 8) continue;
+  for (const [name, code] of spacedCountries()) {
+    const want = name.split(" ");
+    if (want.length !== typed.length) continue;
     for (const [t, dir] of tries) {
-      if (t[0] !== name[0] || t.slice(0, 3) !== name.slice(0, 3)) continue;
-      const max = name.length >= 10 ? 2 : 1;
-      const d = editDistance(t, name, max);
+      const off = want.flatMap((w, k) => (w === t[k] ? [] : [k]));
+      if (off.length !== 1) continue;
+      const [a, b] = [t[off[0]], want[off[0]]];
+      if (a[0] !== b[0] || Math.min(a.length, b.length) < 3) continue;
+      const max = b.length >= 5 ? 2 : 1;
+      const d = editDistance(a, b, max);
       if (d <= max && (!best || d < best.d)) best = { code, dir, d };
     }
   }
@@ -525,6 +556,12 @@ function countryPlace(code: string): KnownPlace | null {
  * "Dominik Cumhuriyeti'ne", "Japonyadan"): the country and which way the ending points. Null for anything else.
  */
 export function countryNamed(words: string): { p: KnownPlace; dir: "from" | "to" | null } | null {
+  // Several words: only a name of as many words (rev 3: "to go" is never Togo, "can ada" never Canada).
+  const parts = spaced(words).split(" ").filter(Boolean);
+  if (parts.length > 1) {
+    const got = severalWords(parts, spacedCountries());
+    return got ? withDir(countryPlace(got.hit), got.dir) : null;
+  }
   const squashed = squashedCountries();
   const k = squash(words);
   const direct = squashed.get(k);
@@ -538,13 +575,26 @@ export function countryNamed(words: string): { p: KnownPlace; dir: "from" | "to"
 }
 const withDir = (p: KnownPlace | null, dir: "from" | "to" | null) => (p ? { p, dir } : null);
 
+let countrySpaced: Map<string, string> | null = null;
+/** The countries' names of several words, their words kept apart ("papua new guinea") → code; built once. */
+function spacedCountries(): Map<string, string> {
+  if (!countrySpaced) {
+    countrySpaced = new Map();
+    for (const [n, code] of countryNames()) {
+      const k = spaced(n);
+      if (k.includes(" ") && !countrySpaced.has(k)) countrySpaced.set(k, code);
+    }
+  }
+  return countrySpaced;
+}
+
 /** The countries' names without spaces or dashes ("papuanewguinea") → code; built once. */
 function squashedCountries(): Map<string, string> {
   if (!countrySquashed) {
     countrySquashed = new Map();
     for (const [n, code] of countryNames()) {
       const k = squash(n);
-      if (k.length >= 3 && !countrySquashed.has(k)) countrySquashed.set(k, code);
+      if (k.length >= 2 && !countrySquashed.has(k)) countrySquashed.set(k, code);
     }
   }
   return countrySquashed;
@@ -581,9 +631,16 @@ function countryNames(): Map<string, string> {
 const MORE_CODES: Record<string, string> = {
   ABD: "US", USA: "US", Amerika: "US", "Birleşik Krallık": "GB", İngiltere: "GB", England: "GB", Türkiye: "TR", Turkey: "TR", Hollanda: "NL", Holland: "NL",
   Çekya: "CZ", "Çek Cumhuriyeti": "CZ", "Czech Republic": "CZ", "Güney Kore": "KR", "South Korea": "KR", Emirlikler: "AE", Seylan: "LK", Ceylon: "LK",
+  America: "US", UK: "GB", Myanmar: "MM", Burma: "MM", "Hong Kong": "HK", Hongkong: "HK", Macau: "MO", Macao: "MO", Makao: "MO",
+  // Korea alone is South Korea, where people travel; Congo alone the bigger one, Kinshasa (the Republic, Brazzaville,
+  // is named in full: "Kongo - Brazavil", "Congo - Brazzaville").
+  Kore: "KR", Korea: "KR", Kongo: "CD", Congo: "CD", "Fildişi Sahili": "CI", "Ivory Coast": "CI",
 };
 /** The name the chat uses for a country whose Intl name is long or official. */
-const MAIN_NAMES: Record<string, [string, string]> = { US: ["ABD", "United States"], GB: ["Birleşik Krallık", "United Kingdom"], CZ: ["Çekya", "Czechia"], NL: ["Hollanda", "Netherlands"] };
+const MAIN_NAMES: Record<string, [string, string]> = {
+  US: ["ABD", "United States"], GB: ["Birleşik Krallık", "United Kingdom"], CZ: ["Çekya", "Czechia"], NL: ["Hollanda", "Netherlands"],
+  HK: ["Hong Kong", "Hong Kong"], MO: ["Makao", "Macao"], MM: ["Myanmar", "Myanmar"], CD: ["Kongo", "DR Congo"], CI: ["Fildişi Sahili", "Ivory Coast"],
+};
 
 /** A known place's country code: its country's, or its own when it is a country. */
 const knownCode = (p: KnownPlace): string | null => countryCodeOfName(p.countryEn ?? p.en) ?? countryCodeOfName(p.countryTr ?? p.tr);
@@ -616,6 +673,9 @@ export interface Extracted {
   whereSure?: boolean;
   /** A place recognised only by a loose spelling: asked back ("Antalya mı demek istedin?"), never taken silently. */
   guess?: PlaceGuess | null;
+  /** Read from several words all in lower case ("sri lankaya"): the model's reading wins over it (rev 3). */
+  whereWeak?: boolean;
+  fromWeak?: boolean;
 }
 
 /** "Kohphandan" read as Koh Phangan: kept apart until the traveller says yes ("Evet") or no ("Hayır, Kohphandan"). */
@@ -665,7 +725,7 @@ export function companyCount(text: string, kind: Companions | null): number | nu
   const low = text.toLocaleLowerCase("tr");
   const n = (w: string) => (/^\d+$/.test(w) ? Number(w) : (COUNT_WORDS[w] ?? null));
   const people =
-    low.match(/(?<![\p{L}\d])(\d{1,2}|iki|üç|dört|beş|altı|two|three|four|five|six)\s*(kişi\p{L}*|people|persons|of us)(?![\p{L}])/u) ??
+    low.match(/(?<![\p{L}\d])(\d{1,2}|iki|üç|dört|beş|altı|two|three|four|five|six)\s*(kişiyiz|kişi olarak|kişi gidiyoruz|kişi gideceğiz|people|persons|of us)(?![\p{L}])/u) ??
     low.match(/(?<![\p{L}])we(?:'re| are)\s+(\d{1,2}|two|three|four|five|six)(?![\p{L}])/u);
   if (people) {
     const v = n(people[1]);
@@ -679,6 +739,16 @@ export function companyCount(text: string, kind: Companions | null): number | nu
   if (kind === "friends" && /(arkadaşımla|(?<![\p{L}])bir arkadaş\p{L}*|with (my|a|one) friend(?!s))/u.test(low)) return 2;
   return null;
 }
+
+/** Words before a one-word country that make it the place meant ("to Peru", "visit Chile", "in Spain"). */
+const COUNTRY_CUE_BEFORE = new Set(["to", "from", "in", "visit", "visiting", "explore", "see", "trip", "holiday", "vacation"]);
+/** Words after a sentence-opening country that keep it one ("Spain in May", "Japonya 2 hafta", "Peru'da"). */
+const COUNTRY_CUE_AFTER = new Set([
+  "in", "for", "with", "and", "or", "then", "trip", "holiday", "vacation", "again", "this", "next", "da", "de", "ta", "te", "ya", "ve", "veya", "ile",
+  "için", "gezisi", "tatili", "tatil", "turu", "sonra", "olsun", "gidelim", "gidiyoruz", "gitmek", "istiyorum",
+]);
+/** Words that make a country's name something else ("Hindistan cevizi", "Mısır gevreği", "Mali durumum"). */
+const COUNTRY_STOP_AFTER = new Set(["cevizi", "gevreği", "gevregi", "unu", "durum", "durumu", "durumum", "durumumuz", "işler", "isler", "is", "was", "says", "said"]);
 
 /** Words that look like a name before "ile" but aren't one. */
 const NOT_NAMES = new Set(["ben", "biz", "sen", "o", "onlar", "partner", "aile", "arkadaş", "araba", "uçak", "tren", "otobüs", "gemi", "feribot"]);
@@ -747,7 +817,9 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
             : /^(gün|gun|günlük|günlüğüne|gunluk|day|days)$/.test(unit)
               ? "day"
               : null;
-      if (u && n >= 1 && n <= (u === "day" || u === "night" ? 120 : u === "week" ? 16 : 4)) {
+      // "3 hafta önce döndüm", "3 days ago": a time, not the trip's length (rev 3).
+      const when = /^(önce|once|sonra|evvel|ago|before|later|earlier)$/.test(low[i + 2] ?? "");
+      if (u && !when && n >= 1 && n <= (u === "day" || u === "night" ? 120 : u === "week" ? 16 : 4)) {
         out.duration = { unit: u, n };
         used.add(i).add(i + 1);
         continue;
@@ -772,6 +844,8 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
       const before = MONTH_BEFORE.has(low[i - 1] ?? "");
       if (m && (low[i].length > 3 || /^(ta|da|te|de|ayında|ayi|ayı)$/.test(low[i + 1] ?? "") || before)) {
         if (low[i] === "may" && low[i - 1] !== "in") continue;
+        // An English month typed in lower case is a word too ("november rain"): only with a cue ("in november").
+        if (MONTHS_EN.includes(low[i]) && !MONTHS_TR.includes(low[i]) && !capital0(raw[i]) && !before) continue;
         out.start = { date: monthStart(m, today), approx: true };
         used.add(i);
         break;
@@ -782,40 +856,62 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
   // Places: known ones (spelled loosely too); "X'den" is where from, "X'e" where to. An answer to "Nereden?" is
   // where from unless it says "to" ("aslında Bali'ye"). Where to is the most specific place said: "Tayland
   // Kohphandan" is Koh Phangan (in Thailand), not Thailand.
-  type Hit = { p: KnownPlace; dir: "from" | "to" | null; loose: string | null };
+  type Hit = { p: KnownPlace; dir: "from" | "to" | null; loose: string | null; weak?: boolean };
   const found: Hit[] = [];
   const capital = (w: string | undefined) => !!w && /^\p{Lu}/u.test(w);
+  /**
+   * A country of one word is a word too ("Mali durumum", "Chad is coming", "Hindistan cevizi", "Mısır gevreği",
+   * "Atlanta, Georgia"): taken only as the whole answer, with a direction ("to Peru", "Peru'ya", "Perudan"), or
+   * capitalised where a name stands (not opening a sentence that goes on in lower case; rev 3).
+   */
+  const singleCountryOk = (i: number, glued: "from" | "to" | null, isWhole: boolean): boolean => {
+    if (isWhole) return true;
+    const next = low[i + 1] ?? "";
+    if (glued || TO_SUFFIX.has(next) || FROM_SUFFIX.has(next) || COUNTRY_CUE_BEFORE.has(low[i - 1] ?? "")) return true;
+    if (!capital(raw[i]) || COUNTRY_STOP_AFTER.has(next)) return false;
+    // "Atlanta, Georgia": a state after its city.
+    if (low[i] === "georgia" && capital(raw[i - 1]) && new RegExp(`${raw[i - 1]}\\s*,\\s*${raw[i]}`, "u").test(text)) return false;
+    // Opening a sentence that goes on in lower case ("Mali durumum iyi değil", "Chad is coming").
+    const opens = i === 0 || /[.!?]\s*$/.test(text.slice(0, text.indexOf(raw[i])));
+    return !(opens && raw[i + 1] && /^\p{Ll}/u.test(raw[i + 1]) && !COUNTRY_CUE_AFTER.has(next));
+  };
   const short = looksLikePlace(text);
   // A change of mind ("Rome instead", "Hayır, Roma") answers no pending "Nereden?": it is where to.
   const change = saysWhereTo(text);
   const JOINERS = new Set(["with", "and", "ile", "ve"]);
   const joined = (i: number, n: number) =>
     JOINERS.has(low[i - 1] ?? "") || JOINERS.has(low[i + n] ?? "") || WITH_SUFFIX.has(low[i + n] ?? "") || new RegExp(`&\\s*${raw[i]}|${raw[i + n - 1]}\\s*&`, "u").test(text);
+  const whole = (words: string) => squash(bareName(text)) === squash(words);
   for (let i = 0; i < raw.length; i++) {
     let hit: Hit | null = null;
     let len = 0;
     for (const n of [3, 2, 1]) {
       if (i + n > raw.length) continue;
-      const words = raw.slice(i, i + n).join(" ");
-      const known = knownPlaceOf(words);
+      const parts = raw.slice(i, i + n);
+      const words = parts.join(" ");
+      // Several words match only a name of as many words, its ending read off the last one ("Sri lankaya"); never
+      // a one-word name ("to go" is never Togo; rev 3). Typed all in lower case, the model's reading wins over it.
+      const weak = n > 1 && !parts.some((w) => capital(w));
+      const known = n === 1 ? knownPlaceOf(words) : (PLACE_SPACED.get(spaced(words)) ?? null);
       if (known) {
-        hit = { p: known, dir: null, loose: null };
+        hit = { p: known, dir: null, loose: null, weak };
         len = n;
         break;
       }
-      // A name of several words with a Turkish ending typed on ("Sri lankaya", "Koh Samuiden").
-      const glued = gluedPlace(words);
+      // A name with a Turkish ending typed on ("Balide", "Sri lankaya", "Koh Samuiden").
+      const glued = n === 1 ? gluedPlace(words) : severalWords(parts, PLACE_SPACED);
       if (glued) {
-        [hit, len] = [{ ...glued, loose: null }, n];
+        [hit, len] = [{ p: "hit" in glued ? glued.hit : glued.p, dir: glued.dir, loose: null, weak }, n];
         break;
       }
-      // Any country by its Turkish or English name (rev 3), endings too ("Yeni Zelanda'ya", "Güney Kore'ye"). One
-      // word only when capitalised or the whole answer (a country's name can be a word: "mali", "ırak"), never a
+      // Any country by its Turkish or English name (rev 3), endings too ("Yeni Zelanda'ya", "Güney Kore'ye"); never a
       // person's ("with Jordan", "Chad and I"), never "New Jersey", nor while who's coming is asked.
-      if (pending !== "who" && pending !== "names" && (n > 1 || capital(raw[i]) || squash(bareName(text)) === squash(words)) && !joined(i, n) && !(n === 1 && low[i - 1] === "new") && !monthOf(raw[i])) {
+      if (pending !== "who" && pending !== "names" && !joined(i, n) && !(n === 1 && low[i - 1] === "new") && !monthOf(raw[i])) {
         const country = countryNamed(words);
-        if (country) {
-          [hit, len] = [{ ...country, loose: null }, n];
+        // (A two-letter name only in capitals: "UK", never "uk".)
+        const tooShort = n === 1 && squash(words).length < 3 && !/^\p{Lu}+$/u.test(words);
+        if (country && !tooShort && (n > 1 || singleCountryOk(i, country.dir, whole(words)))) {
+          [hit, len] = [{ ...country, loose: null, weak }, n];
           break;
         }
       }
@@ -870,7 +966,8 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
     const marked = toHits.filter((f) => f.dir === "to");
     const pool = marked.length ? marked : toHits;
     const inside = toHits.find((f) => f.p.countryEn && pool.some((g) => g !== f && g.p.en === f.p.countryEn));
-    const pick = inside ?? pool.find((f) => f.p.countryEn) ?? pool[0];
+    // Countries only, none marked: the last one said ("I loved Peru last year, now Spain"; rev 3).
+    const pick = inside ?? pool.find((f) => f.p.countryEn) ?? pool[pool.length - 1];
     const sure = (p: Hit) => p.dir === "to" || p === inside;
     const where = (p: Hit): Place => ({ place: placeName(p.p), country: countryNameOf(p.p), code: knownCode(p.p) });
     if (pick.loose) {
@@ -881,8 +978,10 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
     } else {
       out.where = where(pick);
       out.whereSure = sure(pick);
+      if (pick.weak) out.whereWeak = true;
     }
   }
+  if (fromHit?.weak && out.from) out.fromWeak = true;
 
   // Who: words for a companion, and names ("Sabine'yle", "Sabine ile", "with Sabine").
   let kind: Companions | null = null;
@@ -1066,20 +1165,33 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
   const kind = code.who?.kind ?? model.who?.kind ?? null;
   const count = code.who?.count ?? model.who?.count ?? null;
   // The code's destination when it is marked as one ("Bali'ye", "to Bali"); unmarked, the model's when it has one.
-  const where = code.where && (code.whereSure || !model.where) ? code.where : (model.where ?? code.where);
+  // Read from lower-case words only ("sri lankaya"): the model's, even when it has none (rev 3).
+  const where = code.whereWeak ? model.where : code.where && (code.whereSure || !model.where) ? code.where : (model.where ?? code.where);
+  const from = code.fromWeak ? model.from : (code.from ?? model.from);
   // A loose spelling the model read as the same place needs no asking back.
   const guess = code.guess && !(model.where && samePlace(model.where.place, code.guess.place.place)) ? code.guess : null;
   return {
     where,
     whereSure: where === code.where && code.whereSure,
     guess,
-    from: code.from ?? model.from,
+    from,
     who: kind || names.length || count ? { kind, names, ...(count ? { count } : {}) } : null,
     start: code.start && !code.start.approx ? code.start : (model.start ?? code.start),
     duration: code.duration ?? model.duration,
     styles: [...new Set([...code.styles, ...model.styles])],
     budget: code.budget ?? model.budget,
   };
+}
+
+/**
+ * The code's lower-case reading taken at once and the model's, come later, says otherwise (rev 3): that slot goes
+ * back to what it was before the message (the model's own place, if any, is then applied as usual).
+ */
+export function withoutOverruled(s: StartState, before: Pick<StartState, "where" | "from">, code: Extracted, merged: Extracted): StartState {
+  let next = s;
+  if (code.whereWeak && code.where && !samePlace(merged.where?.place, code.where.place) && samePlace(s.where?.place, code.where.place)) next = keepRoute(s, { ...next, where: before.where });
+  if (code.fromWeak && code.from && !samePlace(merged.from, code.from) && samePlace(s.from, code.from)) next = { ...next, from: before.from };
+  return next;
 }
 
 const said = (e: Extracted) => Boolean(e.where || e.from || e.who || e.start || e.duration || e.styles.length || e.budget);
@@ -1207,6 +1319,11 @@ function keepRoute(before: StartState, next: StartState): StartState {
   const total = totalNights(after);
   const sum = after.route.stops.reduce((a, b) => a + b.nights, 0);
   if (placeChanged || total == null || (sum !== total && after.route.source !== "single")) return restoreRoute({ ...after, route: null, editingRoute: false });
+  // A classic circuit proposed (not agreed) is made again when where they leave from changes (never a stop; rev 3).
+  if (after.route.source === "circuit" && !after.route.confirmed && after.from !== before.from) {
+    const again = circuitRoute(after);
+    return again ? { ...after, route: again } : restoreRoute({ ...after, route: null });
+  }
   // A single stop follows the length.
   if (after.route.source === "single" && sum !== total) return { ...after, route: { ...after.route, stops: [{ ...after.route.stops[0], nights: total }] } };
   return after;
@@ -1885,13 +2002,17 @@ function countryItself(where: Place): string | null {
  * The classic circuit for a week or more in a popular country (or Bali), fitted to the nights and the style (rev 3):
  * proposed at once, without the model, which refines it when its own comes and differs. Null for anything else.
  */
-export function circuitRoute(s: Pick<StartState, "where" | "duration" | "start" | "styles">): StartRoute | null {
+export function circuitRoute(s: Pick<StartState, "where" | "duration" | "start" | "styles"> & { from?: string | null }): StartRoute | null {
   const total = totalNights(s);
   if (!s.where || !total || total < 7) return null;
   const region = squash(s.where.place);
   const code = Object.hasOwn(CIRCUITS, region) ? region : countryItself(s.where);
-  const circuit = code && Object.hasOwn(CIRCUITS, code) ? CIRCUITS[code] : null;
-  if (!code || !circuit) return null;
+  const full = code && Object.hasOwn(CIRCUITS, code) ? CIRCUITS[code] : null;
+  if (!code || !full) return null;
+  // Where they leave from is never one of its stops (İstanbul for a trip round Türkiye from İstanbul; rev 3).
+  const home = s.from ?? null;
+  const circuit = home ? { ...full, stops: full.stops.filter((x) => !samePlace(x.tr, home) && !samePlace(x.en, home)) } : full;
+  if (circuit.stops.length < 2) return null;
   const fit = fitCircuit(circuit, total, s.styles);
   if (!fit) return null;
   const stopCode = s.where.code ?? (code.length === 2 ? code : null);
