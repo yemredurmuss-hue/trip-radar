@@ -131,6 +131,9 @@ export interface TravellersChange {
   me?: string | null;
 }
 
+/** "Me" said instead of a name ("ben", "me"). */
+export const ME_WORD = /^(ben|me|i|myself|benim|kendim)$/i;
+
 const cleanPlace = (place: unknown) => (typeof place === "string" ? place.replace(/\s+/g, " ").trim().slice(0, 60) : "");
 
 /** The key `from` holds a name under: the spelling on the trip, else the one given. */
@@ -149,10 +152,14 @@ export function withTravellers(current: Travellers | undefined, change: Travelle
   const kept = before
     .filter((n) => !remove.some((r) => sameName(n, r)))
     .map((n) => renames.find(([a]) => sameName(n, a))?.[1] ?? n);
-  const places = (change.from ?? []).map((f) => [clean(f?.name), cleanPlace(f?.place)] as const).filter(([n]) => n);
+  // "Ben İzmir'den geliyorum": me by my name; with no name yet, nothing (never a traveller called "Ben").
+  const places = (change.from ?? [])
+    .map((f) => [clean(f?.name), cleanPlace(f?.place)] as const)
+    .map(([n, p]) => [ME_WORD.test(n) ? (clean(change.me) || "") : n, p] as const)
+    .filter(([n]) => n);
   // Someone said to come from somewhere is going (Sabine Alicante'den geliyor), unless it's me.
   const comers = places.filter(([n, p]) => p && !sameName(n, change.me)).map(([n]) => n);
-  const names = uniqueNames([...kept, ...(change.add ?? []).map(clean), ...comers]).slice(0, MAX_NAMES);
+  const names = uniqueNames([...kept, ...(change.add ?? []).map(clean).filter((n) => !ME_WORD.test(n)), ...comers]).slice(0, MAX_NAMES);
   const nextCount = count === 0 || count === undefined ? (current?.count ?? null) : count;
   // Where each comes from: a name taken off leaves it, a name changed takes it along, then what was said now.
   const from: Record<string, string> = {};

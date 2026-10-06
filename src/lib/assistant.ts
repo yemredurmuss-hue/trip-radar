@@ -41,6 +41,7 @@ import {
   currencyOf,
   fieldsBefore,
   fromOf,
+  ME_WORD,
   namesChanged,
   ownersAfter,
   sameName,
@@ -52,9 +53,9 @@ import {
   type TripFieldsBefore,
 } from "./tripSettings";
 import { ablative } from "./i18nText";
-import { isUnnamedMe, meOf, ownersByOrigin, type WhoCtx } from "./whose";
+import { isUnnamedMe, meOf, ownersByOrigin, samePlace, tripOrigin, type WhoCtx } from "./whose";
 import { loadWho, writeOwners } from "./whoseStore";
-import { answerAsk, arrivals, nameAsk, SAYS_ME, setOwnerTool, type TurnAsk } from "./whoseChat";
+import { answerAsk, arrivals, nameAsk, SAYS_ME, setOwnerTool, withLine, type TurnAsk } from "./whoseChat";
 import { announceTripChange } from "./tripUndo";
 import { claimsChange } from "./claims";
 import { cleanContent, cleanReply, replyFallback } from "./replyText";
@@ -1125,14 +1126,19 @@ async function changeTravellers(tripId: string, input: any, items: Item[], turn:
   const list = (v: unknown) => (Array.isArray(v) ? v : []);
   const count = typeof input.count === "number" && Number.isFinite(input.count) ? input.count : 0;
   const me = turn.who && typeof turn.who === "object" ? (turn.who.me ?? null) : (turn.who ?? null);
+  const origin = tripOrigin(items, (await (await db()).get("trips", tripId)) ?? undefined);
   const change: TravellersChange = {
     add: list(input.add),
     remove: list(input.remove),
     count,
-    from: list(input.from).map((f: any) => ({ name: f?.name, place: f?.place })),
+    // Coming from where the trip leaves from is no exception: nothing to keep (and never a flight of their own).
+    from: list(input.from).map((f: any) => ({ name: f?.name, place: samePlace(f?.place, origin) ? "" : f?.place })),
     rename: list(input.rename).map((r: any) => ({ from: r?.from, to: r?.to })),
     me,
   };
+  // "Ben İzmir'den geliyorum" with no name yet: nothing is kept for "Ben"; my name is asked first (in bold).
+  const unnamedFrom = !me && (change.from ?? []).some((f) => typeof f.name === "string" && ME_WORD.test(f.name.trim()) && String(f.place ?? "").trim());
+  if (unnamedFrom) turn.ask = nameAsk(null);
   let result: ReturnType<typeof withTravellers> | null = null;
   let before: TripFieldsBefore | null = null;
   const after = await changeTrip(tripId, (t) => {
@@ -1148,7 +1154,13 @@ async function changeTravellers(tripId: string, input: any, items: Item[], turn:
   const who = whoGoes({ travellers: after.travellers, adults: adultsOf(items.map(withEdits)) });
   const hero = who.names.length ? `${travellersTitle(who.names, who.count)} · ${nPeople(who.count)}` : nPeople(who.count);
   const missing = done?.missing.length ? { not_found: done.missing } : {};
-  if (!before) return { unchanged: true, named: after.travellers?.names ?? [], people: who.count, ...missing, note: L("Hiçbir şey değişmedi.", "Nothing changed.") };
+  const noName = unnamedFrom
+    ? L(
+        " Kullanıcının adı yok, yeri kaydedilmedi: kod yanıtın sonunda kalın 'Sana ne diyeyim?' diye soruyor; sen sorma. Adını söyleyince nereden geldiğini tekrar söylemesini iste.",
+        " The user has no name yet, so their place wasn't kept: the code asks 'What should I call you?' in bold at the end; don't ask it. Once named, ask them to say where they come from again.",
+      )
+    : "";
+  if (!before) return { unchanged: true, named: after.travellers?.names ?? [], people: who.count, ...missing, note: L("Hiçbir şey değişmedi.", "Nothing changed.") + noName };
   const names = after.travellers?.names ?? [];
   const undoable = before as TripFieldsBefore;
   const was = undoable.before.travellers;
@@ -1189,6 +1201,8 @@ async function changeTravellers(tripId: string, input: any, items: Item[], turn:
       },
     },
   );
+  // What its question's answer adds later goes back with this line too.
+  if (turn.ask) turn.ask = withLine(turn.ask, eventId);
   // The toast names people, never the "Ben" stand-in: me by my name, else only the others.
   const shownNames = whoGoes({ travellers: after.travellers, me: meOf(turn.who), adults: adultsOf(items.map(withEdits)) }).names.filter((n) => !isUnnamedMe(n, turn.who));
   const toast = shownNames.length ? `${travellersTitle(shownNames, who.count)} · ${nPeople(who.count)}` : nPeople(who.count);
@@ -1210,6 +1224,7 @@ async function changeTravellers(tripId: string, input: any, items: Item[], turn:
       ...came.lines,
       ...(everyones.length ? [L(`${everyones.join(", ")} artık herkesin (sahibi gezide değil).`, `${everyones.join(", ")}: everyone's now (its owner isn't on the trip).`)] : []),
       ...(came.ask ? [L(`Dönüş sorusu yanıtın sonuna kalın olarak eklenir ("${came.ask.text}"); sen sorma.`, `The way-home question is added in bold at the end of the reply ("${came.ask.text}"); don't ask it yourself.`)] : []),
+      ...(noName ? [noName.trim()] : []),
     ].join(" "),
   };
 }

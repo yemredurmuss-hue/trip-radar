@@ -10,11 +10,11 @@ import { formatDateRange } from "./items";
 import { checkPlanned, planToSave, type PlannedInput } from "./planned";
 import { sameCity } from "./plan";
 import { cityOfAirport } from "./airports";
-import { saveShareConfig } from "./share/store";
+import { getShareConfig, saveShareConfig } from "./share/store";
 import { dative, placeholderPrint } from "./startTrip";
-import { sameName } from "./tripSettings";
-import { firstStop, genitive, isUnnamedMe, lastStop, ownerWords, peopleOf, restOwners, tripOrigin, whoseLabel, whoseOf, type WhoCtx } from "./whose";
-import { loadWho, saveOwners, withOwners, writeOwners } from "./whoseStore";
+import { fromOf, sameName } from "./tripSettings";
+import { firstStop, genitive, isTripStop, isUnnamedMe, lastStop, ownerWords, peopleOf, restOwners, tripOrigin, whoseLabel, whoseOf, type WhoCtx } from "./whose";
+import { appendToLine, loadWho, saveOwners, withOwners, writeOwners } from "./whoseStore";
 import type { ChatAsk, Item, OwnerChange, Trip } from "./types";
 
 /** A question the code puts under the reply, its chips and what they mean. */
@@ -94,7 +94,8 @@ const restLines = (changes: { item: Item; owners: string[] }[]) =>
  * Someone said to come from somewhere else (set_travellers `from`): without a flight of their own there yet, one is
  * opened for them (their place → where the trip lands, the trip's first day), and the trip's own flight there goes
  * to the rest ("Emre'nin bileti"); then the way home is asked (my name first, if I have none and the rest is me).
- * A place that is where the trip leaves from changes nothing. The caller's line in Geçmiş takes it all back.
+ * A place that is where the trip leaves from changes nothing; one the trip goes through itself (Lizbon on a Lizbon →
+ * Porto trip) is where they join it: no flight of their own, nothing asked. The caller's line takes it all back.
  */
 export async function arrivals(
   tripId: string,
@@ -111,6 +112,10 @@ export async function arrivals(
     const origin = tripOrigin(items, trip);
     if (origin && same(from, origin)) {
       lines.push(L(`${name} gezinin kalktığı yerden (${origin}) geliyor; ayrı uçuş açılmadı.`, `${name} leaves from where the trip does (${origin}); no flight of their own was opened.`));
+      continue;
+    }
+    if (isTripStop(from, trip, items)) {
+      lines.push(L(`${from} gezinin bir durağı: ${name} gezi orada katılıyor sayıldı; ayrı uçuş açılmadı, dönüş sorulmadı.`, `${from} is one of the trip's stops: ${name} is taken to join there; no flight of their own was opened and the way home wasn't asked.`));
       continue;
     }
     const first = firstStop(trip, items);
@@ -145,16 +150,35 @@ export async function arrivals(
   return { made, owners: rest.owners, ask, lines: [...lines, ...rest.lines] };
 }
 
-/** A name as said ("Emre", "ben Emre", "Emre de"): letters only, at most three words; null for anything else. */
-function nameSaid(text: string): string | null {
-  const t = text
-    .trim()
-    .replace(/^(ben|bana|adım|benim adım|i'm|i am|call me|my name is)\s+/i, "")
-    .replace(/\s+(de|diyebilirsin|derler|yeter)$/i, "")
-    .replace(/[.!]+$/, "")
-    .trim();
-  if (!t || t.length > 40 || t.split(/\s+/).length > 3 || !/^\p{L}[\p{L}' -]*$/u.test(t) || /^(ben|me|herkes|everyone)$/i.test(t)) return null;
-  return t.charAt(0).toLocaleUpperCase("tr-TR") + t.slice(1);
+/** The Geçmiş line a question came from, kept on it (and on what waits behind it) so its answer goes back with it. */
+export function withLine(ask: TurnAsk, line: string): TurnAsk {
+  const a = ask.ask;
+  if (a.kind === "return") return { ...ask, ask: { ...a, line } };
+  if (a.kind === "name") return { ...ask, ask: { ...a, line, then: a.then ? withLine(a.then, line) : null } };
+  return ask;
+}
+
+/** Words that answer a question but aren't a name ("tamam", "hayır"). */
+const NOT_A_NAME = new Set([
+  "evet", "hayır", "hayir", "tamam", "tamamdır", "yok", "var", "olur", "olmaz", "peki", "belki", "bilmem", "bilmiyorum", "ok", "okay", "okey",
+  "yes", "no", "nope", "sure", "thanks", "teşekkürler", "sağol", "sağ ol", "merhaba", "selam", "hello", "hi", "ben", "me", "sen", "you",
+  "herkes", "everyone", "kimse", "nobody", "iptal", "vazgeç", "boşver", "geç", "atla", "skip", "de", "da",
+]);
+
+/**
+ * A name as said: 1–2 words, each starting with a capital ("Emre", "Ana María"), or after "ben", "adım", "benim adım",
+ * "bana … de", "I'm", "I am", "call me", "my name is". Null for anything else ("tamam", "otel öner", "ben de").
+ */
+export function nameSaid(text: string): string | null {
+  const t = text.trim().replace(/[.!]+$/, "").trim();
+  const led = t.match(/^(?:ben|adım|benim adım|i'm|i am|im|call me|my name is)\s+(.+)$/i) ?? t.match(/^bana\s+(.+?)\s+(?:de|diyebilirsin)$/i);
+  const raw = (led ? led[1] : t).trim();
+  const words = raw.split(/\s+/);
+  if (!raw || raw.length > 40 || words.length > 2) return null;
+  if (words.some((w) => NOT_A_NAME.has(w.toLocaleLowerCase("tr-TR")) || !/^\p{L}[\p{L}'-]*$/u.test(w))) return null;
+  // Said bare, it must look like a name (a capital first letter); after "ben"/"adım" any case will do.
+  if (!led && !words.every((w) => /^\p{Lu}/u.test(w))) return null;
+  return words.map((w) => w.charAt(0).toLocaleUpperCase("tr-TR") + w.slice(1)).join(" ");
 }
 
 /** What the code says back to its own question's answer, and the next question when there is one. */
@@ -163,15 +187,25 @@ export interface AskAnswer {
   next?: TurnAsk | null;
 }
 
+const noLonger = () => ({ text: L("Bu soru artık geçerli değil (sonradan değişti); hiçbir şey yapmadım.", "That question no longer applies (things changed since); I did nothing.") });
+
 /**
  * An answer to a question the code asked (ChatMessage.ask), handled without the model: a chip, or my name for
- * "Sana ne diyeyim?". Null when what was said isn't one (the model answers then).
+ * "Sana ne diyeyim?". Null when what was said isn't one (the model answers then). A question things have moved on
+ * from (her place taken back, a name off the trip) does nothing and says so.
  */
 export async function answerAsk(tripId: string, ask: ChatAsk, chips: string[], said: string): Promise<AskAnswer | null> {
   if (ask.kind === "name") return answerName(tripId, ask, said);
   const n = chips.findIndex((c) => c.trim().toLocaleLowerCase("tr-TR") === said.trim().toLocaleLowerCase("tr-TR"));
   if (n < 0) return null;
+  const trip = await (await db()).get("trips", tripId);
+  if (!trip) return noLonger();
+  const who = await loadWho(trip);
   if (ask.kind === "return") {
+    // Still on the trip, still coming from there?
+    const people = peopleOf(trip, who);
+    const from = fromOf(trip.travellers, ask.name);
+    if (!people.some((p) => sameName(p, ask.name)) || !from || !same(from, ask.place)) return noLonger();
     if (n === chips.length - 1) {
       return { text: L(`Tamam; ${genitive(ask.name)} dönüşü belli olunca söyle, kartını o zaman açarım.`, `All right; tell me when ${ask.name}'s way home is known and I'll open its card then.`) };
     }
@@ -183,12 +217,13 @@ export async function answerAsk(tripId: string, ask: ChatAsk, chips: string[], s
     if (there) return { text: L(`${genitive(ask.name)} dönüş uçuşu zaten var (${there.name}); yeni kart açmadım.`, `${ask.name} already has a flight home (${there.name}); I didn't open another.`) };
     const made = await personFlight(tripId, ask.name, ask.leave, ask.place, ask.date);
     if (!made) return { text: L(`${genitive(ask.name)} dönüş kartı açılamadı; hiçbir şey değişmedi.`, `${ask.name}'s flight home couldn't be made; nothing changed.`) };
-    // The trip's own flight home goes to the rest; the one "Geri al" takes both back.
-    const trip = await (await db()).get("trips", tripId);
-    const rest = trip ? restOwners(trip, await listItems(tripId), await loadWho(trip)) : { changes: [], needName: false };
+    // The trip's own flight home goes to the rest; its own "Geri al" takes both back, and so does the line that
+    // said where she comes from.
+    const rest = restOwners(trip, await listItems(tripId), who);
     const day = ask.date ? `, ${formatDateRange(ask.date, null)}` : "";
     const label = L(`${genitive(ask.name)} dönüşü eklendi: ${ask.leave} → ${ask.place}`, `${ask.name}'s way home added: ${ask.leave} → ${ask.place}`);
-    await saveOwners(tripId, rest.changes.map((c) => ({ id: c.item.id, owners: c.owners })), { event: label, label }, [made.id]);
+    const saved = await saveOwners(tripId, rest.changes.map((c) => ({ id: c.item.id, owners: c.owners })), { event: label, label }, [made.id]);
+    await appendToLine(ask.line, { owners: saved?.changed ?? [], made: [made.id] });
     const text = L(
       `${genitive(ask.name)} dönüşünü ekledim: ${ask.leave} → ${ask.place}${day}, boş kart olarak; üstünde "${whoseLabel([ask.name], "ticket")}" yazıyor, aramaları 1 kişilik.`,
       `I added ${ask.name}'s way home: ${ask.leave} → ${ask.place}${day}, as an empty card; it says "${whoseLabel([ask.name], "ticket")}", its searches for one.`,
@@ -199,37 +234,54 @@ export async function answerAsk(tripId: string, ask: ChatAsk, chips: string[], s
   if (!item) return { text: L("O kayıt artık yok; hiçbir şey değişmedi.", "That record is gone; nothing changed.") };
   const owners = n < ask.names.length ? [ask.names[n]] : null;
   // "Ben" while I have no name: my name first, then it's mine.
-  const trip = await (await db()).get("trips", tripId);
-  if (owners && trip && isUnnamedMe(owners[0], await loadWho(trip))) return { text: "", next: nameAsk(null, item.id) };
+  if (owners && isUnnamedMe(owners[0], who)) return { text: "", next: nameAsk(null, item.id) };
+  // A name taken off the trip since: the question is gone.
+  if (owners && !peopleOf(trip, who).some((p) => sameName(p, owners[0]))) return noLonger();
   const words = ownerWords(item, owners);
   const saved = await saveOwners(tripId, [{ id: item.id, owners }], { event: words, label: words });
   return { text: saved ? L(`Tamam: ${words}.`, `Done: ${words}.`) : L(`Zaten öyleydi (${words}); hiçbir şey değişmedi.`, `It already was (${words}); nothing changed.`) };
 }
 
-
 /**
  * "Sana ne diyeyim?" answered: the name is saved as my profile (sharing) name, as Ayarlar → Profilim saves it; then
- * the plan asked about is mine, the trip's own flights go to whom they're for, and what waited is asked.
+ * the plan asked about is mine, the trip's own flights go to whom they're for, and what waited is asked. One line
+ * in Geçmiş with "Geri al" puts the name and the owners back. Not a name ("tamam"), or a name on the trip already
+ * ("Sabine"): asked once more; after that the model answers.
  */
 async function answerName(tripId: string, ask: Extract<ChatAsk, { kind: "name" }>, said: string): Promise<AskAnswer | null> {
+  const trip = await (await db()).get("trips", tripId);
+  if (!trip) return null;
+  const before = await loadWho(trip);
+  // Named since (Ayarlar → Profilim): the question is gone.
+  if (before.me) return noLonger();
   const name = nameSaid(said);
-  if (!name) return null;
+  const taken = name ? peopleOf(trip, before).find((p) => sameName(p, name) && !isUnnamedMe(p, before)) : undefined;
+  if (!name || taken) {
+    if (ask.retried) return null;
+    const again = taken
+      ? L(`${taken} gezide başka biri olarak var; senin adın ne?`, `${taken} is someone else on the trip; what's your name?`)
+      : L("Bunu ad olarak alamadım; sana ne diyeyim? (ör. Emre)", "I couldn't take that as a name; what should I call you? (e.g. Emre)");
+    return { text: "", next: { text: again, choices: [], ask: { ...ask, retried: true } } };
+  }
+  let previous = "";
   try {
+    previous = (await getShareConfig()).name ?? "";
     await saveShareConfig({ name });
   } catch {
     return { text: L("Adını kaydedemedim (depolama yok); Ayarlar → Profilim'den yazabilirsin. Hiçbir şey değişmedi.", "I couldn't save your name (no storage); you can write it in Settings → My profile. Nothing changed.") };
   }
-  const trip = await (await db()).get("trips", tripId);
-  const who = trip ? { ...(await loadWho(trip)), me: name } : name;
+  const who = { ...before, me: name };
   const mine = ask.ownerItem ? await (await db()).get("items", ask.ownerItem) : undefined;
   const items = (await listItems(tripId)).map((i) => (mine && i.id === mine.id ? withOwners(i, [name]) : i));
-  const rest = trip ? restOwners(trip, items, who) : { changes: [], needName: false };
+  const rest = restOwners(trip, items, who);
   const changes = [...(mine ? [{ id: mine.id, owners: [name] }] : []), ...rest.changes.map((c) => ({ id: c.item.id, owners: c.owners }))];
-  const words = mine ? ownerWords(mine, [name]) : rest.changes.length ? restLines(rest.changes).join(" ") : null;
-  if (words && changes.length) await saveOwners(tripId, changes, { event: words, label: words });
-  const done = [L(`Tamam, ${name}; adını profiline kaydettim.`, `All right, ${name}; I saved your name to your profile.`), ...(mine ? [`${words}.`] : []), ...restLines(rest.changes)];
-  const then = ask.then ?? null;
-  return { text: done.join(" "), next: then };
+  const words = [L(`Adın: ${name}`, `Your name: ${name}`), ...(mine ? [ownerWords(mine, [name])] : []), ...restLines(rest.changes)].join(" · ");
+  const saved = await saveOwners(tripId, changes, { event: words, label: words }, [], { before: previous });
+  // The flights given to the rest go back with the line that asked, too.
+  const fromRest = (saved?.changed ?? []).filter((c) => rest.changes.some((r) => r.item.id === c.id));
+  await appendToLine(ask.line, { owners: fromRest });
+  const done = [L(`Tamam, ${name}; adını profiline kaydettim.`, `All right, ${name}; I saved your name to your profile.`), ...(mine ? [`${ownerWords(mine, [name])}.`] : []), ...restLines(rest.changes)];
+  return { text: done.join(" "), next: ask.then ?? null };
 }
 
 /** "Bu Ryanair bileti kimin?" with a chip for each of the trip's people and Herkes. */

@@ -25,7 +25,7 @@ import { L } from "./i18n";
 import { tripDateRange } from "./items";
 import { sameCity } from "./plan";
 import { isRental } from "./travelKinds";
-import { sameName, whoGoes } from "./tripSettings";
+import { fromOf, sameName, whoGoes } from "./tripSettings";
 import type { Item, Trip } from "./types";
 
 /** My name, or everything whoGoes needs on a shared trip. */
@@ -74,20 +74,44 @@ const SILENT_E = new Set([
 ]);
 
 /**
+ * English names whose spelling hides the vowel heard, with the ending they take: Mike is said "Mayk" (Mike'ın),
+ * Kate "Keyt" (Kate'in), George "Corc" (George'un).
+ */
+const HEARD: Record<string, string> = {
+  mike: "ın", kate: "in", steve: "in", george: "un", grace: "in", jane: "in", dave: "in", jake: "in", blake: "in",
+  luke: "un", bruce: "un", rose: "un", wayne: "in", clyde: "ın", clive: "ın", pete: "in", eve: "in", james: "in",
+  charles: "ın", louis: "nin", joe: "nun", joanne: "un", leslie: "nin",
+};
+
+/** Arabic-origin names whose last l is said soft (front): Kemal'in, Celal'in, Bilal'in, not Kemal'ın. */
+const FRONT_L = new Set(["kemal", "celal", "cemal", "bilal", "hilal", "iclal", "ikbal", "nihal", "kemâl", "celâl", "cemâl", "istiklal"]);
+
+/** A last digit as it's read in Turkish: 0 sıfır'ın, 1 bir'in, 2 iki'nin … 9 dokuz'un. */
+const DIGITS = ["ın", "in", "nin", "ün", "ün", "in", "nın", "nin", "in", "un"];
+
+/**
  * A name's Turkish genitive with its apostrophe, by the last vowel heard (big vowel harmony) and the buffer n after a
  * vowel: Emre'nin, Sabine'in, Ali'nin, Mert'in, Oğuz'un, Ümüt'ün, Duru'nun, Ayşe'nin, Can'ın. Several words: the
- * last one decides ("Emre Durmuş'un").
+ * last one decides ("Emre Durmuş'un"). Foreign names by how they're said (Mike'ın, Amy'nin), a digit as read (7'nin).
  */
 export function genitive(name: string): string {
   const n = name.trim();
   if (!n) return n;
-  const lower = n.toLocaleLowerCase("tr-TR");
-  const word = lower.split(/\s+/).at(-1) ?? lower;
+  const last = n.split(/\s+/).at(-1) ?? n;
+  const digit = last.match(/(\d)$/);
+  if (digit) return `${n}'${DIGITS[Number(digit[1])]}`;
+  // The lists are looked up in plain lower case ("ISABELLE" is isabelle, not ısabelle); the vowels in Turkish.
+  const en = last.toLowerCase();
+  if (HEARD[en]) return `${n}'${HEARD[en]}`;
+  const tr = last.toLocaleLowerCase("tr-TR");
+  if (FRONT_L.has(en) || FRONT_L.has(tr)) return `${n}'in`;
   // "Sophie" is said "Sofi": the i before the silent e is the last vowel heard, and it ends in a vowel.
-  const heard = SILENT_E.has(word) ? word.slice(0, -1) : word;
+  let heard = SILENT_E.has(en) ? tr.slice(0, -1) : tr;
+  // A final y after a consonant is said i: Amy'nin, Ivy'nin, Tony'nin.
+  if (/[^aeıioöuüy]y$/.test(heard)) heard = `${heard.slice(0, -1)}i`;
   const letters = [...heard].filter((ch) => /\p{L}/u.test(ch));
-  const last = [...letters].reverse().find((ch) => VOWELS.includes(ch));
-  const vowel = last ? (HARMONY[last] ?? "i") : "i";
+  const lastVowel = [...letters].reverse().find((ch) => VOWELS.includes(ch));
+  const vowel = lastVowel ? (HARMONY[lastVowel] ?? "i") : "i";
   const vowelEnd = letters.length > 0 && VOWELS.includes(letters[letters.length - 1]);
   return `${n}'${vowelEnd ? "n" : ""}${vowel}n`;
 }
@@ -152,46 +176,74 @@ const dayOf = (i: Item) => i.flight?.departure?.slice(0, 10) ?? i.dates.start ??
 const byDay = (a: Item, b: Item) => (a.flight?.departure ?? a.dates.start ?? "9").localeCompare(b.flight?.departure ?? b.dates.start ?? "9");
 const place = (s: string | null | undefined) => (s?.trim() ? cityOfAirport(s.trim()) : null);
 const same = (a: string | null | undefined, b: string | null | undefined) => Boolean(place(a) && place(b) && sameCity(place(a), place(b)));
+/** The same place, by city (an airport code read as its city): "IST" and "İstanbul". */
+export const samePlace = (a: unknown, b: unknown): boolean => same(typeof a === "string" ? a : null, typeof b === "string" ? b : null);
 
 /**
- * The trip's own flights, live, in order: with the trip, those not to or from where someone comes from on their own
- * (Sabine's Alicante flights aside; the trip's own may have owners, the rest of the people); without it, everyone's.
+ * A person's own flight (kişiye özel rezervasyon): it has owners, each comes from somewhere of their own
+ * (travellers.from), and it goes from or to one of those places (Sabine's Alicante → Porto). The trip's own flights
+ * stay the trip's whoever they're for (İstanbul → Porto as "Emre'nin bileti"); without the trip: any with owners.
  */
-const mainFlights = (items: Item[], trip?: Pick<Trip, "travellers">) => {
-  const places = Object.values(trip?.travellers?.from ?? {});
-  const personal = (f: Item) => (trip ? places.some((p) => same(f.flight?.from, p) || same(f.flight?.to ?? f.city, p)) : (f.forWho ?? []).length > 0);
-  return items.filter((i) => live(i) && i.category === "flight" && !personal(i)).sort(byDay);
-};
+function isPersonal(f: Item, trip?: Pick<Trip, "travellers">): boolean {
+  const owners = (f.forWho ?? []).filter((n) => n.trim());
+  if (!owners.length) return false;
+  if (!trip) return true;
+  const places = owners.map((n) => fromOf(trip.travellers, n));
+  if (places.some((p) => !p)) return false;
+  return places.some((p) => same(f.flight?.from, p) || same(f.flight?.to ?? f.city, p));
+}
+
+/** The trip's own flights, live, in order (a person's own aside). */
+const mainFlights = (items: Item[], trip?: Pick<Trip, "travellers">) =>
+  items.filter((i) => live(i) && i.category === "flight" && !isPersonal(i, trip)).sort(byDay);
 
 /** Where the trip leaves from: the first of its own flights' start ("İstanbul"); null when no such flight says it. */
 export function tripOrigin(items: Item[], trip?: Pick<Trip, "travellers">): string | null {
   return place(mainFlights(items, trip).find((f) => f.flight?.from)?.flight?.from) ?? null;
 }
 
+/** The trip's way in (its first own flight) and way home (its last own flight back to where it left from). */
+function endsOf(items: Item[], trip?: Pick<Trip, "travellers">): { inbound: Item | null; home: Item | null } {
+  const flights = mainFlights(items, trip);
+  const inbound = flights.find((f) => f.flight?.to) ?? null;
+  const origin = place(flights.find((f) => f.flight?.from)?.flight?.from);
+  const home = [...flights].reverse().find((f) => f.id !== inbound?.id && origin && same(f.flight?.to, origin) && f.flight?.from) ?? null;
+  return { inbound, home };
+}
+
 /** Where the trip's way in lands (its first flight's end), else its first stay's city; and its first day. */
 export function firstStop(trip: Pick<Trip, "confirmedDates" | "travellers">, items: Item[]): { city: string | null; date: string | null } {
-  const flight = mainFlights(items, trip).find((f) => f.flight?.to);
+  const flight = endsOf(items, trip).inbound;
   const stay = items.filter((i) => live(i) && i.category === "stay" && i.city).sort(byDay)[0];
   const date = (flight ? dayOf(flight) : null) ?? trip.confirmedDates?.start ?? tripDateRange(items)?.start ?? null;
   return { city: place(flight?.flight?.to) ?? stay?.city ?? null, date };
 }
 
-/** Where the way home leaves from (the last everyone's flight back to where the trip leaves from), else the last stay's city; and the last day. */
+/** Where the way home leaves from (the trip's last own flight back to where it left from), else the last stay's city; and the last day. */
 export function lastStop(trip: Pick<Trip, "confirmedDates" | "travellers">, items: Item[]): { city: string | null; date: string | null } {
-  const origin = tripOrigin(items, trip);
-  const flights = mainFlights(items, trip);
-  const home = [...flights].reverse().find((f) => origin && same(f.flight?.to, origin) && f.flight?.from);
+  const home = endsOf(items, trip).home;
   const stays = items.filter((i) => live(i) && i.category === "stay" && i.city).sort(byDay);
   const date = (home ? dayOf(home) : null) ?? trip.confirmedDates?.end ?? tripDateRange(items)?.end ?? null;
   return { city: place(home?.flight?.from) ?? stays.at(-1)?.city ?? null, date };
 }
 
+/** A place the trip itself goes through (where its own flights land or leave, or a stay's city): someone joining there needs no flight. */
+export function isTripStop(at: string, trip: Pick<Trip, "travellers">, items: Item[]): boolean {
+  const flights = mainFlights(items, trip);
+  const origin = tripOrigin(items, trip);
+  if (origin && same(at, origin)) return false;
+  return (
+    flights.some((f) => same(f.flight?.to ?? f.city, at) || same(f.flight?.from, at)) ||
+    items.some((i) => live(i) && i.category === "stay" && i.city && sameCity(i.city, place(at)))
+  );
+}
+
 // --- how many a plan is for ----------------------------------------------------------------------------
 
 /**
- * How many a plan is for (its price's "1 kişi", its searches' head count): its owners when it's someone's; on an
- * everyone's flight, everyone but those with a flight of their own the same way (Sabine's Alicante → Porto takes
- * her off İstanbul → Porto: they go to the same place, or leave from the same one). `total`: how many go.
+ * How many a plan is for (its price's "1 kişi", its searches' head count): its owners when it's someone's; on the
+ * trip's way in or home, everyone but those with a flight of their own that way that day (Sabine's Alicante → Porto
+ * takes her off İstanbul → Porto). Flights within the trip are everyone's. `total`: how many go.
  */
 export function headCountOf(item: Item, trip: Pick<Trip, "travellers">, opts: { total: number | null; items?: Item[]; who?: WhoCtx }): number | null {
   const whose = whoseOf(item, trip, opts.who);
@@ -202,31 +254,44 @@ export function headCountOf(item: Item, trip: Pick<Trip, "travellers">, opts: { 
   return Math.max(1, total - awayOf(item, trip, opts.items, opts.who).length);
 }
 
-/** The people with a flight of their own the same way as this one (to the same place, or from the same one). */
+/**
+ * The people with a flight of their own instead of this one: only for the trip's way in (their flight lands where it
+ * does, the same day) and its way home (theirs leaves from where it does, the same day). A flight within the trip
+ * (Porto → Funchal) has nobody away.
+ */
 export function awayOf(item: Item, trip: Pick<Trip, "travellers">, items: Item[], who?: WhoCtx): string[] {
+  const { inbound, home } = endsOf(items, trip);
+  const isIn = inbound?.id === item.id;
+  const isHome = home?.id === item.id;
+  if (!isIn && !isHome) return [];
+  const day = dayOf(item);
   const away = new Set<string>();
   for (const other of items) {
-    if (other.id === item.id || !live(other) || other.category !== "flight") continue;
+    if (other.id === item.id || other.id === inbound?.id || other.id === home?.id || !live(other) || other.category !== "flight") continue;
     const owners = whoseOf(other, trip, who);
     if (!owners) continue;
-    const sameWay = same(other.flight?.to ?? other.city, item.flight?.to ?? item.city) || same(other.flight?.from, item.flight?.from);
+    const otherDay = dayOf(other);
+    if (day && otherDay && day !== otherDay) continue;
+    const sameWay = isIn ? same(other.flight?.to ?? other.city, item.flight?.to ?? item.city) : same(other.flight?.from, item.flight?.from);
     if (sameWay) owners.names.forEach((n) => away.add(n));
   }
   return [...away];
 }
 
 /**
- * The trip's own flights whose way someone has a flight of their own for: they go to the rest of the people
+ * The trip's way in and home, when someone has a flight of their own instead, go to the rest of the people
  * (İstanbul → Denpasar is "Emre'nin bileti" once Sabine flies from Alicante), so no card reads "1 kişi" unexplained.
- * `needName`: the rest would be me while I have no name yet (never "Ben'in bileti": the chat asks first).
+ * Not when more go than are named (the rest has no names: the count says it). `needName`: the rest would be me
+ * while I have no name yet (never "Ben'in bileti": the chat asks first).
  */
 export function restOwners(trip: Pick<Trip, "travellers">, items: Item[], who?: WhoCtx): { changes: { item: Item; owners: string[] }[]; needName: boolean } {
   const people = peopleOf(trip, who);
   const changes: { item: Item; owners: string[] }[] = [];
   let needName = false;
-  if (people.length < 2) return { changes, needName };
-  for (const flight of mainFlights(items, trip)) {
-    if ((flight.forWho ?? []).length) continue;
+  if (people.length < 2 || (trip.travellers?.count ?? 0) > people.length) return { changes, needName };
+  const { inbound, home } = endsOf(items, trip);
+  for (const flight of [inbound, home]) {
+    if (!flight || (flight.forWho ?? []).length) continue;
     const away = awayOf(flight, trip, items, who);
     if (!away.length) continue;
     const rest = people.filter((p) => !away.includes(p));
@@ -306,6 +371,8 @@ export function ownersByOrigin(item: Item, trip: Pick<Trip, "travellers">, items
   if (people.length < 2) return null;
   const origin = tripOrigin(items.filter((i) => i.id !== item.id), trip);
   if (origin && same(item.flight.from, origin)) return null;
+  // A place the trip itself goes through (Lizbon → Porto between its stops) is everyone's way, whoever lives there.
+  if (isTripStop(item.flight.from, trip, items.filter((i) => i.id !== item.id))) return null;
   const owners = people.filter((p) => {
     const key = Object.keys(from).find((k) => sameName(k, p));
     return key != null && same(from[key], item.flight!.from);

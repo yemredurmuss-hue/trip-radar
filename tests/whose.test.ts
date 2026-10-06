@@ -21,7 +21,8 @@ import { flightLinks } from "../src/lib/searchLinks";
 import { fromOf, namesChanged, ownersAfter, withTravellers } from "../src/lib/tripSettings";
 import { onTripChange, type TripChange } from "../src/lib/tripUndo";
 import type { Item, Trip } from "../src/lib/types";
-import { foldName, genitive, headCountOf, ownersByOrigin, ownersFromDoc, peopleOf, tripOrigin, whoseLabel, whoseOf } from "../src/lib/whose";
+import { firstStop, foldName, genitive, headCountOf, isTripStop, lastStop, ownersByOrigin, ownersFromDoc, peopleOf, restOwners, tripOrigin, whoseLabel, whoseOf } from "../src/lib/whose";
+import { nameSaid } from "../src/lib/whoseChat";
 
 const trip = (over: Partial<Trip> = {}): Trip => ({ id: "p1", title: "Porto", confirmedDates: null, budget: null, heroImage: null, createdAt: 1, updatedAt: 1, ...over });
 const two = trip({ travellers: { names: ["Sabine"] } });
@@ -390,5 +391,178 @@ describe("a ticket whose names can't be placed", () => {
     const ticket = (await listItems("dq")).find((i) => i.category === "flight")!;
     expect(ticket.forWho).toEqual(["Sabine"]);
     expect((await listMessages("dq")).filter((m) => m.role === "assistant").at(-1)!.text).toBe(`Tamam: ${ticket.name}: Sabine'in bileti.`);
+  });
+});
+
+// --- review (2026-10-06): probes 1–4 as tests ------------------------------------------------------------
+
+describe("review: the genitive by how a name is said (probe 1–2)", () => {
+  it("front l, English spellings, a final y, capitals and digits", () => {
+    const cases: [string, string][] = [
+      ["Kemal", "Kemal'in"], ["Celal", "Celal'in"], ["Cemal", "Cemal'in"], ["Bilal", "Bilal'in"],
+      ["Mike", "Mike'ın"], ["Kate", "Kate'in"], ["Steve", "Steve'in"], ["George", "George'un"], ["Grace", "Grace'in"],
+      ["Ivy", "Ivy'nin"], ["Amy", "Amy'nin"], ["Isabelle", "Isabelle'in"], ["ISABELLE", "ISABELLE'in"],
+      ["7", "7'nin"], ["Agent 7", "Agent 7'nin"], ["R2D2", "R2D2'nin"], ["Kerem 9", "Kerem 9'un"],
+      // unchanged
+      ["Emre", "Emre'nin"], ["Sabine", "Sabine'in"], ["Can", "Can'ın"], ["Ay", "Ay'ın"],
+    ];
+    for (const [name, want] of cases) expect(genitive(name), name).toBe(want);
+  });
+});
+
+describe("review: only the trip's way in and home are given away (probe 3)", () => {
+  const fl = (id: string, from: string, to: string, day: string, forWho?: string[]) => said({ kind: "flight", date: day, from, to }, id, "p1", forWho);
+  const trip3 = trip({ travellers: { names: ["Sabine"], from: { Sabine: "Alicante" } } });
+  const legs = [fl("m1", "İstanbul", "Porto", "2026-11-01"), fl("m2", "Porto", "Funchal", "2026-11-04"), fl("m3", "Funchal", "Porto", "2026-11-08"), fl("m4", "Porto", "İstanbul", "2026-11-10")];
+  const hersOut = fl("s1", "Alicante", "Porto", "2026-11-01", ["Sabine"]);
+  const hersHome = fl("s2", "Porto", "Alicante", "2026-11-10", ["Sabine"]);
+  it("Funchal → Porto stays everyone's, for 2; only İstanbul → Porto goes to Emre", () => {
+    const items = [...legs, hersOut];
+    expect(restOwners(trip3, items, "Emre").changes.map((c) => [c.item.id, c.owners])).toEqual([["m1", ["Emre"]]]);
+    expect(legs.map((i) => headCountOf(i, trip3, { total: 2, items, who: "Emre" }))).toEqual([1, 2, 2, 2]);
+    expect(restOwners(trip3, [...items, hersHome], "Emre").changes.map((c) => c.item.id)).toEqual(["m1", "m4"]);
+    expect([tripOrigin(items, trip3), firstStop(trip3, items).city, lastStop(trip3, items).city]).toEqual(["İstanbul", "Porto", "Porto"]);
+  });
+  it("her flight another day doesn't take her off the trip's", () => {
+    const items = [...legs, fl("s1", "Alicante", "Porto", "2026-11-02", ["Sabine"])];
+    expect(restOwners(trip3, items, "Emre").changes).toEqual([]);
+    expect(headCountOf(legs[0], trip3, { total: 2, items, who: "Emre" })).toBe(2);
+  });
+  it("more go than are named: nobody gets the rest, the count says total − away (probe 2)", () => {
+    const t = trip({ travellers: { names: ["Sabine"], count: 4, from: { Sabine: "Alicante" } } });
+    const items = [legs[0], legs[3], hersOut];
+    expect(restOwners(t, items, "Emre").changes).toEqual([]);
+    expect(headCountOf(legs[0], t, { total: 4, items, who: "Emre" })).toBe(3);
+  });
+});
+
+describe("review: places, not anyone's (probe 4)", () => {
+  const fl = (id: string, from: string, to: string, day: string, forWho?: string[]) => said({ kind: "flight", date: day, from, to }, id, "p1", forWho);
+  it("my own place is the trip's start: the start stays, its flight is nobody's", () => {
+    const t = trip({ travellers: { names: ["Sabine"], from: { Sabine: "Alicante", Emre: "İstanbul" } } });
+    const items = [fl("m1", "İstanbul", "Porto", "2026-11-01"), fl("m4", "Porto", "İstanbul", "2026-11-10")];
+    expect(tripOrigin(items, t)).toBe("İstanbul");
+    expect(firstStop(t, items).city).toBe("Porto");
+    expect(ownersByOrigin(fl("n", "İstanbul", "Porto", "2026-11-01"), t, items, "Emre")).toBeNull();
+  });
+  it("from a stop of the trip: she joins there; Lizbon → Porto is everyone's", () => {
+    const t = trip({ travellers: { names: ["Sabine"], from: { Sabine: "Lizbon" } } });
+    const items = [fl("m1", "İstanbul", "Lizbon", "2026-11-01"), fl("m2", "Lizbon", "Porto", "2026-11-04"), fl("m3", "Porto", "İstanbul", "2026-11-08")];
+    expect(isTripStop("Lizbon", t, items)).toBe(true);
+    expect(isTripStop("Alicante", t, items)).toBe(false);
+    expect(firstStop(t, items).city).toBe("Lizbon");
+    expect(ownersByOrigin(items[1], t, items, "Emre")).toBeNull();
+  });
+  it("'Ben' in from is me by name, or nothing: never a traveller called Ben (probe 2)", () => {
+    expect(withTravellers({ names: ["Sabine"] }, { from: [{ name: "Ben", place: "Berlin" }], me: null })).toEqual({ travellers: { names: ["Sabine"] }, missing: [] });
+    expect(withTravellers({ names: ["Sabine"] }, { from: [{ name: "ben", place: "Berlin" }], me: "Emre" })).toEqual({ travellers: { names: ["Sabine"], from: { Emre: "Berlin" } }, missing: [] });
+    expect(withTravellers({ names: [] }, { add: ["Ben", "me"] })).toEqual({ travellers: { names: [] }, missing: [] });
+  });
+});
+
+describe("review: what counts as a name", () => {
+  it("1–2 capitalised words, or after ben / adım / I'm; never an answer word", () => {
+    expect(["Emre", "Ana María", "ben emre", "Adım Emre", "I'm Emre", "bana Emre de", "Emre."].map(nameSaid)).toEqual(["Emre", "Ana María", "Emre", "Emre", "Emre", "Emre", "Emre"]);
+    expect(["Hayır", "tamam", "otel öner", "ben de", "Evet", "ok", "emre", "Emre Can Yılmaz", "Emre!?", "Ben"].map(nameSaid)).toEqual(Array(10).fill(null));
+  });
+});
+
+describe("review: the chat's questions (probes 2–3)", () => {
+  let store: Record<string, unknown> = {};
+  let changes: TripChange[] = [];
+  let off = () => {};
+  beforeEach(() => {
+    store = { shareName: "Emre" };
+    vi.stubGlobal("chrome", {
+      storage: {
+        local: {
+          get: async (key: string) => ({ [key]: store[key] }),
+          set: async (v: Record<string, unknown>) => void Object.assign(store, v),
+          remove: async (key: string) => void delete store[key],
+        },
+      },
+    });
+    changes = [];
+    off = onTripChange((c) => changes.push(c));
+  });
+  afterEach(() => {
+    off();
+    vi.unstubAllGlobals();
+  });
+  const comes = () => fakeClient([toolCall("t1", "set_travellers", { add: [], remove: [], count: 0, from: [{ name: "Sabine", place: "Alicante" }], rename: [] }), reply("Not ettim.")]);
+  const lastReply = async (id: string) => (await listMessages(id)).filter((m) => m.role === "assistant").at(-1)!;
+
+  it("undo cascades: the travellers line takes back her flight home and the owners the chip gave", async () => {
+    await seedBali("r1");
+    const llm = anthropicProvider(comes().client, "claude-opus-5");
+    await sendMessage("r1", "Sabine Alicante'den geliyor", llm);
+    await sendMessage("r1", "Evet, Alicante", llm);
+    const d = await db();
+    const herHome = (await listItems("r1")).find((i) => i.forWho?.includes("Sabine") && i.flight?.to === "Alicante")!;
+    expect((await d.get("items", "r1-home"))!.forWho).toEqual(["Emre"]);
+    await undoEvent(changes[0].eventId!); // the travellers line, first
+    expect(await d.get("items", herHome.id)).toBeUndefined();
+    expect((await d.get("items", "r1-home"))!.forWho).toBeUndefined();
+    expect((await d.get("items", "r1-out"))!.forWho).toBeUndefined();
+    expect((await listItems("r1")).filter((i) => i.forWho?.length)).toEqual([]);
+  });
+
+  it("a stale chip does nothing: after Geri al, 'Evet, Alicante' says the question no longer applies", async () => {
+    await seedBali("r2");
+    const llm = anthropicProvider(comes().client, "claude-opus-5");
+    await sendMessage("r2", "Sabine Alicante'den geliyor", llm);
+    await undoEvent(changes[0].eventId!);
+    const before = (await listItems("r2")).length;
+    await sendMessage("r2", "Evet, Alicante", llm);
+    expect((await listItems("r2")).length).toBe(before);
+    expect((await lastReply("r2")).text).toBe("Bu soru artık geçerli değil (sonradan değişti); hiçbir şey yapmadım.");
+  });
+
+  it("'Sana ne diyeyim?': 'tamam' or a traveller's name is asked once more, then left to the model; the name goes back with Geri al", async () => {
+    store = {};
+    await seedBali("r3");
+    const { client, calls } = fakeClient([
+      toolCall("t1", "set_travellers", { add: [], remove: [], count: 0, from: [{ name: "Sabine", place: "Alicante" }], rename: [] }),
+      reply("Not ettim."),
+      reply("Anladım."),
+    ]);
+    const llm = anthropicProvider(client, "claude-opus-5");
+    await sendMessage("r3", "Sabine Alicante'den geliyor", llm);
+    await sendMessage("r3", "Sabine", llm);
+    expect(store.shareName).toBeUndefined();
+    expect((await lastReply("r3")).text).toBe("**Sabine gezide başka biri olarak var; senin adın ne?**");
+    await sendMessage("r3", "tamam", llm); // asked once more already: the model answers
+    expect(store.shareName).toBeUndefined();
+    expect(calls).toHaveLength(3);
+    expect((await (await db()).get("items", "r3-out"))!.forWho).toBeUndefined();
+
+    // A fresh ask, answered: the name and the owners in one line, and its Geri al puts the name back.
+    await seedBali("r4");
+    const second = fakeClient([toolCall("t1", "set_travellers", { add: [], remove: [], count: 0, from: [{ name: "Sabine", place: "Alicante" }], rename: [] }), reply("Not ettim.")]);
+    const llm2 = anthropicProvider(second.client, "claude-opus-5");
+    await sendMessage("r4", "Sabine Alicante'den geliyor", llm2);
+    await sendMessage("r4", "ben Emre", llm2);
+    expect(store.shareName).toBe("Emre");
+    expect(changes.at(-1)!.label).toBe("Adın: Emre · Uçuş · İstanbul → Denpasar artık \"Emre'nin bileti\".");
+    await undoEvent(changes.at(-1)!.eventId!);
+    expect(store.shareName).toBe("");
+    expect((await (await db()).get("items", "r4-out"))!.forWho).toBeUndefined();
+  });
+
+  it("coming from where the trip leaves from is no exception: nothing kept, no flight", async () => {
+    await seedBali("r5");
+    const { client } = fakeClient([toolCall("t1", "set_travellers", { add: [], remove: [], count: 0, from: [{ name: "Emre", place: "İstanbul" }], rename: [] }), reply("Tamam.")]);
+    await sendMessage("r5", "ben de İstanbul'danım", anthropicProvider(client, "claude-opus-5"));
+    expect((await (await db()).get("trips", "r5"))!.travellers).toEqual({ names: ["Sabine"] });
+    expect((await listItems("r5")).length).toBe(3);
+  });
+
+  it("'ben Berlin'den geliyorum' with no name: no 'Ben' traveller; my name asked in bold", async () => {
+    store = {};
+    await seedBali("r6");
+    const { client } = fakeClient([toolCall("t1", "set_travellers", { add: [], remove: [], count: 0, from: [{ name: "ben", place: "Berlin" }], rename: [] }), reply("Tamam.")]);
+    await sendMessage("r6", "ben Berlin'den geliyorum", anthropicProvider(client, "claude-opus-5"));
+    expect((await (await db()).get("trips", "r6"))!.travellers).toEqual({ names: ["Sabine"] });
+    expect((await lastReply("r6")).text).toBe("Tamam.\n\n**Sana ne diyeyim?**");
   });
 });

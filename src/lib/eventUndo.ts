@@ -5,6 +5,7 @@
 import { db, notifyChanged } from "./db";
 import { L, lang, saveLang } from "./i18n";
 import { stableJson } from "./share/settings";
+import { saveShareConfig } from "./share/store";
 import { restoreFields } from "./tripSettings";
 import type { ChatMessage, EventUndo, Trip } from "./types";
 
@@ -36,7 +37,8 @@ export async function undoEvent(messageId: string): Promise<{ reload: boolean }>
     // The plans whose owners the same change set (a name taken off, "bu bilet Sabine'in"): only while they still are.
     const owners = line.undo.owners ?? [];
     const records = await Promise.all(owners.map((o) => tx.objectStore("items").get(o.id)));
-    const ownersAsAfter = owners.every((o, n) => !records[n] || ownersJson(records[n]!.forWho) === ownersJson(o.after));
+    // Already back (a later line taken back first) counts as still as this change left it.
+    const ownersAsAfter = owners.every((o, n) => !records[n] || [o.after, o.before].some((v) => ownersJson(records[n]!.forWho) === ownersJson(v)));
     if (!stillAsAfter(trip, line.undo) || !ownersAsAfter) {
       await tx.done;
       throw new ChangedSince(L("Bu ayar sonra yine değişti; eski haline döndürülmedi.", "This setting changed again since; it wasn't put back."));
@@ -62,6 +64,8 @@ export async function undoEvent(messageId: string): Promise<{ reload: boolean }>
   await tx.objectStore("messages").put({ ...line, undoneAt: Date.now() });
   await tx.done;
   notifyChanged();
+  // My name the chat saved ("Sana ne diyeyim?"): the profile name goes back to what it was.
+  if (line.undo.kind === "fields" && line.undo.profileName) await saveShareConfig({ name: line.undo.profileName.before });
   if (line.undo.kind === "lang") {
     await saveLang(line.undo.prev);
     return { reload: true };

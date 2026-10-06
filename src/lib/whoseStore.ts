@@ -70,12 +70,42 @@ export async function saveOwners(
   words: { event: string; label: string },
   /** Records the same change made (a person's flight home): the same "Geri al" takes them away. */
   made: string[] = [],
+  /** My profile name before this change set it ("Sana ne diyeyim?"): the same "Geri al" puts it back. */
+  profileName?: { before: string },
 ): Promise<{ changed: OwnerChange[]; eventId: string } | null> {
   const changed = await writeOwners(changes);
-  if (!changed.length && !made.length) return null;
-  const undo: EventUndo = { kind: "fields", fields: [], before: {}, after: {}, ...(changed.length ? { owners: changed } : {}), ...(made.length ? { made } : {}) };
+  if (!changed.length && !made.length && !profileName) return null;
+  const undo: EventUndo = {
+    kind: "fields",
+    fields: [],
+    before: {},
+    after: {},
+    ...(changed.length ? { owners: changed } : {}),
+    ...(made.length ? { made } : {}),
+    ...(profileName ? { profileName } : {}),
+  };
   const eventId = await addEvent(tripId, words.event, { undo });
   announceTripChange({ tripId, fields: [], before: {}, eventId, label: words.label });
   notifyChanged();
   return { changed, eventId };
+}
+
+/**
+ * What a later answer did because of an earlier change (her flight home after "Sabine Alicante'den geliyor", the
+ * trip's own flights given to the rest) goes into that change's line too: taking it back takes all of it back.
+ */
+export async function appendToLine(lineId: string | null | undefined, extra: { owners?: OwnerChange[]; made?: string[] }): Promise<void> {
+  if (!lineId || (!extra.owners?.length && !extra.made?.length)) return;
+  const d = await db();
+  const line = await d.get("messages", lineId);
+  if (!line || line.undoneAt || line.undo?.kind !== "fields") return;
+  const undo = line.undo;
+  await d.put("messages", {
+    ...line,
+    undo: {
+      ...undo,
+      ...(extra.owners?.length ? { owners: [...(undo.owners ?? []), ...extra.owners] } : {}),
+      ...(extra.made?.length ? { made: [...(undo.made ?? []), ...extra.made] } : {}),
+    },
+  });
 }
