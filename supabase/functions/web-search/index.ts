@@ -7,8 +7,8 @@
 // The key is a Supabase secret, GEMINI_SEARCH_KEY (a separate, billed Google project used only for search).
 // Without it: { answer: null, reason: "not-configured" }. Answers are cached in trip_radar.search_cache by kind +
 // question + year (event dates 30 days, a fact 7, research 3, "nothing found" 1). Calls out are capped: 150 a day
-// for everyone (SEARCH_DAILY_CAP) → reason "capped", and 30 a day per caller → reason "limited". A caller is the
-// extension's install id (x-install-id header), else its address; only a hash of either is stored. Never throws.
+// for everyone (SEARCH_DAILY_CAP) → reason "capped", and per caller → reason "limited": 30 a day per install id
+// (x-install-id header) and 60 per address, both checked; only hashes of either are stored. Never throws.
 // Deployed with verify_jwt on, like city-image: the extension sends the publishable key as `apikey`.
 //
 // Gemini: the Interactions API with the google_search tool and the current Flash model, as documented at
@@ -27,6 +27,7 @@ import {
   langOf,
   normalizeQuery,
   PER_CALLER_DAILY,
+  PER_IP_DAILY,
   searchPrompt,
   shapeAnswer,
   yearOf,
@@ -51,12 +52,14 @@ async function sha256(text: string): Promise<string> {
   return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** Who's asking, as a hash: the install id when sent, else the first forwarded address. */
-async function callerOf(req: Request): Promise<string> {
+/**
+ * Who's asking, as hashes: the install id when sent, and always the address (a fresh install id per call must not
+ * get round the limit: the address has its own, PER_IP_DAILY).
+ */
+async function callersOf(req: Request): Promise<{ install: string | null; ip: string }> {
   const id = installIdOf(req.headers.get("x-install-id"));
-  if (id) return `i:${await sha256(id)}`;
   const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("cf-connecting-ip") ?? "").split(",")[0].trim();
-  return `a:${await sha256(ip || "unknown")}`;
+  return { install: id ? `i:${await sha256(id)}` : null, ip: `a:${await sha256(ip || "unknown")}` };
 }
 
 async function askGemini(key: string, model: string, prompt: string): Promise<{ ok: true; shaped: Shaped } | { ok: false; status: number }> {
@@ -114,7 +117,17 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const verdict = (await sb.rpc("search_take_call", { p_caller: await callerOf(req), p_cap: dailyCap(Deno.env.get("SEARCH_DAILY_CAP")), p_per_caller: PER_CALLER_DAILY }))
+    // Both the install and the address must be under their day's limits (web_search_ip_limit.sql).
+    const who = await callersOf(req);
+    const verdict = (
+      await sb.rpc("search_take_call2", {
+        p_install: who.install,
+        p_ip: who.ip,
+        p_cap: dailyCap(Deno.env.get("SEARCH_DAILY_CAP")),
+        p_per_install: PER_CALLER_DAILY,
+        p_per_ip: PER_IP_DAILY,
+      })
+    )
       .data as string | null;
     if (verdict !== "ok") return none(verdict === "limited" ? "limited" : "capped");
 

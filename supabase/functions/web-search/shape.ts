@@ -44,6 +44,8 @@ export const freshDays = (kind: SearchKind, found: boolean) => (found ? FRESH_DA
 
 export const DEFAULT_DAILY_CAP = 150;
 export const PER_CALLER_DAILY = 30;
+/** Per address (hashed): several installs behind one address, never a fresh install id per call to get round 30. */
+export const PER_IP_DAILY = 60;
 /** SEARCH_DAILY_CAP when it's a positive whole number, else 150. */
 export function dailyCap(raw: string | undefined): number {
   const n = Number(raw);
