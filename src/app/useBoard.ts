@@ -42,7 +42,11 @@ export function useBoard(initialTripId: string | null) {
     loaded: false,
   });
 
+  // Loads can overlap (a change notice while one is reading): only the latest one started may set the board, so a
+  // slower, older read never puts back what a newer one already replaced.
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const mine = ++seq.current;
     const [trips, allItems, openCaptures, arrivals] = await Promise.all([
       listTrips(),
       // A saved page's corrections stand in for what it said, everywhere the board reads it (userEdits.ts); a
@@ -53,6 +57,7 @@ export function useBoard(initialTripId: string | null) {
     ]);
     const trip = trips.find((t) => t.id === selectedId) ?? null;
     const messages = trip ? await listMessages(trip.id) : [];
+    if (mine !== seq.current) return;
     const items = trip ? allItems.filter((i) => i.tripId === trip.id) : [];
     setData({ trips, trip, items, allItems, messages, openCaptures, arrivals, loaded: true });
     // The flights' real data, asked for when it may have changed; the board reads again when something new came.
