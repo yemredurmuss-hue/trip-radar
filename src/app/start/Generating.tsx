@@ -7,7 +7,9 @@
 //
 // Rev 3: a map first (FlightMap: the flight from where they leave to where they land, drawn on a bundled world
 // map), the stops' photos fanning in under it once the plane lands; the steps tick alongside as the work finishes.
-import { useEffect, useRef, useState } from "react";
+// The map is now a real one (TripMap, MapLibre on the globe: the plane flies home → destination, a pulse, the stops
+// with their photos); the bundled FlightMap stands in when it can't be drawn (no WebGL, offline, no tiles in ~4 s).
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cityKeyOf } from "../../lib/plan";
 import { L, withLang } from "../../lib/i18n";
 import { runStep, stepsFor, type StepId } from "../../lib/startCreate";
@@ -15,6 +17,7 @@ import { tripPoints, type TripPoints } from "../../lib/startMap";
 import { creationOf, preparedPhotos, stopsOf, type StartState } from "../../lib/startTrip";
 import { updateTrip } from "../actions";
 import { FlightMap, loadWorld, type WorldMap } from "./FlightMap";
+import { TripMap, type TripMapLeg, type TripMapStop } from "../map/TripMap";
 import { placePhotos } from "./model";
 
 /** A step is seen running at least this long, so a quick one doesn't flash past (the work itself is often quicker). */
@@ -96,6 +99,9 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
     };
   }, []);
   const showPhotos = landed || world === null;
+  // The real map first; the bundled one when it can't be drawn.
+  const [bundled, setBundled] = useState(false);
+  const real = useMemo(() => (points?.to ? realMap(points, state, photos) : null), [points]);
 
   async function run(from: number) {
     setFailed(null);
@@ -180,7 +186,11 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
       <h2>{L(`${place} Gezisi planlanıyor`, `Planning your ${place} trip`)}</h2>
       <div className={`st-gen-stage${world === null ? " no-map" : ""}`}>
         {world === "loading" ? <div className="st-map st-map-wait" aria-hidden /> : world && points?.to ? (
-          <FlightMap from={points.from} to={points.to} stops={points.stops} lang={state.lang} onLanded={() => setLanded(true)} />
+          bundled || !real ? (
+            <FlightMap from={points.from} to={points.to} stops={points.stops} lang={state.lang} onLanded={() => setLanded(true)} />
+          ) : (
+            <TripMap mode="generate" stops={real.stops} legs={real.legs} home={points.from} lang={state.lang} onLanded={() => setLanded(true)} onUnavailable={() => setBundled(true)} />
+          )
         ) : null}
         {showPhotos && (
           <div className="st-photos" aria-hidden>
@@ -234,4 +244,23 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
       )}
     </div>
   ));
+}
+
+/**
+ * The generating screen's real map: the flight from home to the destination, then the stops (their nights from the
+ * route, their photos as prepared, else asked for by name) joined by a dashed line; the destination itself when
+ * the route has fewer than two stops.
+ */
+function realMap(points: TripPoints, state: StartState, photos: { place: string; url: string }[]): { stops: TripMapStop[]; legs: TripMapLeg[] } {
+  const to = points.to!;
+  const nights = new Map(stopsOf(state).map((s) => [cityKeyOf(s.city), s.nights]));
+  const photo = (name: string) => photos.find((p) => cityKeyOf(p.place) === cityKeyOf(name))?.url ?? null;
+  const places = points.stops.length >= 2 ? points.stops : [to];
+  const stops: TripMapStop[] = places.map((p, i) => ({
+    key: `${i}:${cityKeyOf(p.name)}`, name: p.name, lat: p.lat, lng: p.lng, nights: nights.get(cityKeyOf(p.name)) ?? null, photo: photo(p.name), photoQuery: p.name,
+  }));
+  const legs: TripMapLeg[] = [];
+  if (points.from) legs.push({ key: "out", from: points.from, to, mode: "flight", minutes: null, booked: false });
+  for (let i = 1; i < stops.length; i++) legs.push({ key: `stop:${i}`, from: stops[i - 1], to: stops[i], mode: null, minutes: null, booked: false });
+  return { stops, legs };
 }

@@ -32,7 +32,7 @@ const reducedMotion = () => typeof matchMedia === "function" && matchMedia("(pre
 const part = (ms: number, [a, b]: readonly [number, number]) => Math.min(1, Math.max(0, (ms - a) / (b - a)));
 
 /** A small plane pointing east (rotated to the curve). */
-const PLANE = "M-10 -1.6 L3 -1.6 L-2 -9 L1.6 -9 L9 -1.6 L12 -1.6 Q15 0 12 1.6 L9 1.6 L1.6 9 L-2 9 L3 1.6 L-10 1.6 L-12.5 5 L-14.5 5 L-12.8 0 L-14.5 -5 L-12.5 -5 Z";
+export const PLANE = "M-10 -1.6 L3 -1.6 L-2 -9 L1.6 -9 L9 -1.6 L12 -1.6 Q15 0 12 1.6 L9 1.6 L1.6 9 L-2 9 L3 1.6 L-10 1.6 L-12.5 5 L-14.5 5 L-12.8 0 L-14.5 -5 L-12.5 -5 Z";
 
 /**
  * What the map is given (kept small: a map library can take its place with the same props): where the flight leaves

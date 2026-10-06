@@ -54,6 +54,7 @@ import { HistoryDialog } from "./HistoryDialog";
 import { ChangeNotices } from "./ShareSafety";
 import type { HiddenInput } from "../lib/history";
 import { DocsTab } from "./docs/DocsTab";
+import { BoardMap } from "./map/BoardMap";
 import { CategoryPlan } from "./plan/CategoryPlan";
 import { SECTION_META, useSectionOpen } from "./plan/sectionMeta";
 import { SettledCard, SwipeCard } from "./SwipeCard";
@@ -90,7 +91,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
-  const [view, setView] = useState<TimelineMode | "docs">("plan");
+  const [view, setView] = useState<TimelineMode | "docs" | "map">("plan");
   const working = openCaptures.filter((c) => c.status === "pending" || c.status === "processing");
   const failed = openCaptures.filter((c) => c.status === "error");
   const listings = decisions?.ctx.listings;
@@ -689,9 +690,14 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           <button role="tab" aria-selected={view === "docs"} className={view === "docs" ? "on" : ""} onClick={() => setView("docs")}>
             {L("Belgeler", "Documents")}
           </button>
+          <button role="tab" aria-selected={view === "map"} className={view === "map" ? "on" : ""} onClick={() => setView("map")}>
+            {L("Harita", "Map")}
+          </button>
         </div>
       )}
-      {view === "docs" ? (
+      {view === "map" ? (
+        <BoardMap trip={trip} plan={plan} legs={legs} />
+      ) : view === "docs" ? (
         <DocsTab tripId={trip.id} items={items} onGo={(id) => reveal({ item: id })} offer={offer} />
       ) : view === "days" && timeline.entries.length > 0 ? (
         <TimelineView onShow={showOnPlan} timeline={timeline} tripId={trip.id} leg={leg} onAdd={env.add} listings={listings} today={today} cityImage={cityImageOf} cards={{ legCard, renderGroup, settled }} dayTimes={trip.dayTimes} dayOrder={trip.dayOrder} dayLoose={trip.dayLoose} mainPlaces={mains} />
