@@ -239,6 +239,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     legEnds,
     docsFor,
     remove: (item) => void deleteItem(item).then((removed) => offer({ kind: "removed", removed })),
+    offer,
     hideNights: (range, label) => void hideNights(trip.id, range, label).then(offer),
     add: (at) => setSheet({ at, editing: null }),
     edit: (item) => setSheet({ at: null, editing: item }),

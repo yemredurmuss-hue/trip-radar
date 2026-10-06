@@ -6,6 +6,7 @@ import { durationText, type CardFacts } from "./cardFacts";
 import { L } from "./i18n";
 import { count, nDays, nOptions, nReviews, nStops, num } from "./i18nText";
 import { formatDateRange, isoDate, metricsOf, nightsBetween } from "./items";
+import { actionsFor, stageLabel, stageOf } from "./lifecycle";
 import { clockOf, legItem, legTiming, MODE_LABELS, stayWordOf, type Leg } from "./legs";
 import type { DateAlert } from "./progress";
 import { flightSearchUrl } from "./timeline";
@@ -62,7 +63,7 @@ function bookedSub(item: Item): string | null {
  * "Plana seç"; chosen, what's missing and the one action; done, a ✓ and what was kept. A deadline from
  * progress.dateAlert adds its short form ("Seçildi · bilet alınmadı · 4 gün"); its sentence is in the details.
  */
-export function footOf(item: Item, kind: CardKind, opts: { options?: number; alert?: DateAlert | null } = {}): FootView {
+export function footOf(item: Item, kind: CardKind, opts: { options?: number; alert?: DateAlert | null; docs?: number } = {}): FootView {
   const w = words(item, kind);
   const alert = opts.alert ?? null;
   const withAlert = (left: FootLeft): FootLeft => (alert && left.kind === "state" ? { ...left, when: alert.short, alert: alert.tone } : left);
@@ -82,6 +83,8 @@ export function footOf(item: Item, kind: CardKind, opts: { options?: number; ale
     }
     case "booked": {
       if (NO_BOOKING.includes(kind)) return { left: withAlert(state("done", L("Planlandı", "Planned"), bookedSub(item))), action: null };
+      // Booked with its file (a ticket, a voucher): Hazır (lifecycle.ts); an eSIM is ready once put in, below.
+      if (kind !== "esim" && (opts.docs ?? 0) > 0) return { left: withAlert(state("done", stageLabel("ready"), bookedSub(item))), action: null };
       if (kind === "esim" && !item.installedAt) {
         return { left: withAlert(state("wait", L("Alındı", "Bought"), L("kurulmadı", "not installed"))), action: { label: L("Kurdum", "Installed it"), does: "install" } };
       }
@@ -102,12 +105,19 @@ export function topDate(item: Item, kind: CardKind): string | null {
   return time ? `${formatDateRange(start, null)} · ${time}` : formatDateRange(start, null);
 }
 
-export type MenuAction = "edit" | "dismiss" | "delete";
-/** The ••• menu: change a plan made by hand or in the chat, rule out a saved option (it waits under its section's Gizlenenler), delete. */
-export function menuFor(item: Item): MenuAction[] {
+export type MenuAction = "edit" | "dismiss" | "change" | "addDoc" | "cancel" | "delete";
+/**
+ * The ••• menu: change a plan made by hand or in the chat, rule out a saved option (it waits under its section's
+ * Gizlenenler), and by its stage (lifecycle.ts actionsFor): Planlandı "Değiştir" (back to the options), Rezerve
+ * edildi "Belge ekle", "İptal ettim" and "Değiştir" (once the old one is cancelled), Hazır "İptal ettim"; delete.
+ * `docs`: its files (booked with one is Hazır).
+ */
+export function menuFor(item: Item, opts: { docs?: number } = {}): MenuAction[] {
   const out: MenuAction[] = [];
   if (item.origin === "chat") out.push("edit");
   if (item.status === "saved" && item.origin !== "chat") out.push("dismiss");
+  const can = actionsFor(stageOf(item, { docs: opts.docs ?? 0 }));
+  for (const a of ["addDoc", "cancel", "change"] as const) if (can.includes(a)) out.push(a);
   out.push("delete");
   return out;
 }

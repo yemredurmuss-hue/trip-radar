@@ -1055,13 +1055,35 @@ try {
   await bus.waitFor();
   const jardim = app.locator(".stay-block.chosen .settled-card", { hasText: "Jardim Stay" });
   await jardim.getByRole("button", { name: "Kart menüsü" }).click();
-  assert.deepEqual(await jardim.getByRole("menuitem").allInnerTexts(), ["Sil"]);
+  // Planlandı (aşamalar, lifecycle.ts): Değiştir takes it back to its options.
+  assert.deepEqual(await jardim.getByRole("menuitem").allInnerTexts(), ["Değiştir", "Sil"]);
   await jardim.getByRole("button", { name: "Kart menüsü" }).click();
   await jardim.hover();
   await jardim.getByRole("button", { name: "Jardim Stay: sil" }).click();
   await jardim.waitFor({ state: "detached" });
   await app.locator(".pk-undo", { hasText: "Jardim Stay silindi" }).getByRole("button", { name: "Geri al" }).click();
   await jardim.waitFor();
+  // Rezerve edildi: Belge ekle, İptal ettim, Değiştir; Sil asks first ("İptal ettiysen 'İptal ettim' de"), and
+  // nothing goes when the answer is no. İptal ettim takes it off the plan (its nights to find again), Geri al
+  // brings the booking back.
+  const loft = app.locator(".stay-block .settled-card", { hasText: "Lisboa Loft" });
+  await loft.scrollIntoViewIfNeeded();
+  await loft.getByRole("button", { name: "Kart menüsü" }).click();
+  assert.deepEqual(await loft.getByRole("menuitem").allInnerTexts(), ["Belge ekle", "İptal ettim", "Değiştir", "Sil"]);
+  let deleteAsked = null;
+  app.once("dialog", (d) => {
+    deleteAsked = d.message();
+    void d.dismiss();
+  });
+  await loft.getByRole("menuitem", { name: "Sil" }).click();
+  await app.waitForTimeout(200);
+  assert.match(deleteAsked ?? "", /Bu rezervasyon onaylı/, "deleting a booking asks first");
+  assert.equal(await loft.count(), 1, "no: it stays");
+  await loft.getByRole("button", { name: "Kart menüsü" }).click();
+  await loft.getByRole("menuitem", { name: "İptal ettim" }).click();
+  await loft.waitFor({ state: "detached" });
+  await app.locator(".pk-undo", { hasText: "Lisboa Loft iptal edildi" }).getByRole("button", { name: "Geri al" }).click();
+  await loft.waitFor();
   // "+": always there (faint), each with the right city and day.
   const sheetWhere = async (button) => {
     await button.click();

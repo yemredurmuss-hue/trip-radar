@@ -19,14 +19,19 @@ export async function openDoc(id: string): Promise<void> {
   window.open(trackObjectUrl(URL.createObjectURL(doc.blob)), "_blank", "noopener");
 }
 
-export function DocPickButton({ item, className, title, children }: { item: Pick<Item, "id" | "tripId">; className?: string; title?: string; children: ReactNode }) {
+/**
+ * The file picker for a card's documents: `pick` opens it (a button, the ••• menu's "Belge ekle"), `field` is the
+ * hidden input and the error line to put next to it.
+ */
+export function useDocPick(item: Pick<Item, "id" | "tripId">): { pick: () => void; field: ReactNode } {
   const input = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
-  return (
+  const pick = () => {
+    setError(null);
+    input.current?.click();
+  };
+  const field = (
     <>
-      <button type="button" className={className} title={title} aria-label={title} onClick={(e) => { e.stopPropagation(); setError(null); input.current?.click(); }}>
-        {children}
-      </button>
       <input ref={input} className="pk-file" type="file" accept={DOC_ACCEPT} multiple hidden
         onChange={async (e) => {
           const files = [...(e.target.files ?? [])];
@@ -40,6 +45,19 @@ export function DocPickButton({ item, className, title, children }: { item: Pick
           }
         }} />
       {error && <span className="pk-doc-error" role="alert">{error}</span>}
+    </>
+  );
+  return { pick, field };
+}
+
+export function DocPickButton({ item, className, title, children }: { item: Pick<Item, "id" | "tripId">; className?: string; title?: string; children: ReactNode }) {
+  const { pick, field } = useDocPick(item);
+  return (
+    <>
+      <button type="button" className={className} title={title} aria-label={title} onClick={(e) => { e.stopPropagation(); pick(); }}>
+        {children}
+      </button>
+      {field}
     </>
   );
 }

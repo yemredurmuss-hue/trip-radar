@@ -5,7 +5,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { cardFacts, durationText } from "../../lib/cardFacts";
 import { cardKind, isTransportKind, type LegEnds } from "../../lib/cardKinds";
-import { footOf, mediaFace, menuFor, ringOf, transportFace } from "../../lib/cardView";
+import { footOf, mediaFace, ringOf, transportFace } from "../../lib/cardView";
 import type { Choice, Ranked } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
 import { L } from "../../lib/i18n";
@@ -14,6 +14,7 @@ import type { CardFocus } from "../../lib/inlineEdit";
 import type { DateRange } from "../../lib/plan";
 import type { InsertAt } from "../../lib/templates";
 import type { DocMeta, Item, LegMode, Trip } from "../../lib/types";
+import type { Undoable } from "../../lib/undoables";
 import { chooseItem, setInstalled, setItemStatus, setOwner } from "../actions";
 import { WhoAvatar, WhoseBadge, usePhotoOf, useWhoCtx } from "./WhoseBadge";
 import { isUnnamedMe, peopleOf, whoseOf } from "../../lib/whose";
@@ -25,6 +26,7 @@ import { CardDetail } from "./CardDetail";
 import { CardFoot, CardShell, type MenuEntry, type Nav } from "./CardShell";
 import { DocAccess, DocPickButton } from "./DocAccess";
 import { InlineEdit } from "./InlineEdit";
+import { useStageMenu } from "./stageMenu";
 import { MediaCardBody } from "./MediaCard";
 import { datedLink } from "./parts";
 import { TransportArt } from "./Silhouettes";
@@ -47,6 +49,8 @@ export interface CardEnv {
   docsFor: (itemId: string) => DocMeta[];
   /** Deletes with an 8-second "Geri al". */
   remove: (item: Item) => void;
+  /** Shows the one "Geri al" for what a card just did ("İptal ettim"). */
+  offer: (u: Undoable) => void;
   /** Empty nights' ×: "Gerek yok" for them, with an 8-second "Geri al". */
   hideNights: (range: DateRange, label: string) => void;
   /** Opens the add sheet (null: from the plan's header). */
@@ -99,8 +103,9 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   const facts = cardFacts(item, decision, env.decisions?.ctx);
   const alert = dateAlert(item, env.today);
   const ring = ringOf(item, kind);
-  const foot = footOf(item, kind, { options: nav?.total ?? 1, alert });
   const docs = env.docsFor(item.id);
+  const foot = footOf(item, kind, { options: nav?.total ?? 1, alert, docs: docs.length });
+  const stageMenu = useStageMenu(item);
   const { url: datedUrl } = datedLink(item, decision);
   const page = datedUrl ?? item.url;
   const best = ranked?.rank === 1;
@@ -132,14 +137,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
             };
           }),
         ];
-  const menu: MenuEntry[] = [...forWho, ...menuFor(item).map((a, i) => ({ ...entryOf(a), sep: forWho.length > 0 && i === 0 }))];
-  function entryOf(a: ReturnType<typeof menuFor>[number]): MenuEntry {
-    return a === "edit"
-      ? { label: L("Düzenle", "Edit"), run: () => env.edit(item) }
-      : a === "dismiss"
-        ? { label: L("Ele", "Rule out"), run: () => void setItemStatus(item, "dismissed") }
-        : { label: L("Sil", "Delete"), run: () => env.remove(item), danger: true };
-  }
+  const menu: MenuEntry[] = [...forWho, ...stageMenu.menu.map((e, i) => ({ ...e, sep: forWho.length > 0 && i === 0 }))];
   const alternatives = onChange ? Math.max(0, group.length - 1) : 0;
   const actions = (
     <>
@@ -155,7 +153,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       {item.status === "chosen" && item.origin !== "chat" && <button type="button" className="quiet" onClick={() => void setItemStatus(item, "saved")}>{L("Seçimi geri al", "Undo choice")}</button>}
       {item.status === "booked" && <button type="button" className="quiet" onClick={() => void setItemStatus(item, "chosen")}>{L("Rezervasyonu geri al", "Mark as not booked")}</button>}
       {kind === "esim" && item.installedAt && <button type="button" className="quiet" onClick={() => void setInstalled(item, false)}>{L("Kurulmadı", "Not installed")}</button>}
-      <button type="button" className="del" onClick={() => env.remove(item)}>{L("Sil", "Delete")}</button>
+      <button type="button" className="del" onClick={stageMenu.remove}>{L("Sil", "Delete")}</button>
     </>
   );
   const transport = isTransportKind(kind);
@@ -204,7 +202,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       extraClass={[allNo ? "pk-all-no" : "", red ? "pk-alert" : ""].filter(Boolean).join(" ") || undefined}
       art={transport && kind !== "transport" ? <TransportArt mode={kind} /> : null}
       docs={<DocAccess item={item} docs={docs} />}
-      onDelete={() => env.remove(item)}
+      onDelete={stageMenu.remove}
       menu={menu}
       open={open}
       onToggle={() => setOpen(!open)}
@@ -218,7 +216,12 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
           <MediaCardBody face={mediaFace(item, kind, facts.source)} kind={kind} score={facts.score} best={best} city={item.city} />
         )
       }
-      foot={<CardFoot view={foot} nav={nav} best={best} price={facts.price} onAction={act} live={liveFoot} />}
+      foot={
+        <>
+          <CardFoot view={foot} nav={nav} best={best} price={facts.price} onAction={act} live={liveFoot} />
+          {stageMenu.field}
+        </>
+      }
       detail={<CardDetail item={item} group={group} decision={decision} decisions={env.decisions} ranked={ranked} headline={headline} facts={facts} alert={alert} docs={docs} actions={actions} />}
     />
   );

@@ -33,6 +33,9 @@ describe("the bottom strip, per the spec's action table", () => {
     expect(footOf(train({ status: "chosen" }), "car")).toMatchObject({ left: { sub: "rezerve edilmedi" }, action: { label: "Rezerve ettim" } });
     expect(footOf(makeItem({ category: "activity", status: "chosen" }), "activity")).toMatchObject({ action: { label: "Bileti aldım" } });
     expect(footOf(makeItem({ category: "esim", status: "chosen" }), "esim")).toMatchObject({ left: { sub: "satın alınmadı" }, action: { label: "Satın aldım" } });
+    // Booked with its file: Hazır (an eSIM is ready once put in, not by a file).
+    expect(state(footOf(train({ status: "booked" }), "train", { docs: 1 }))[1]).toBe("Hazır");
+    expect(state(footOf(train({ status: "booked" }), "train"))[1]).not.toBe("Hazır");
     expect(footOf(makeItem({ category: "other", status: "chosen" }), "insurance")).toMatchObject({ left: { sub: "poliçe alınmadı" }, action: { label: "Poliçe aldım" } });
   });
   it("a taxi: planned, no booking, no button", () => {
@@ -74,8 +77,13 @@ describe("the date on the top line", () => {
 describe("the ••• menu", () => {
   it("edit a plan made by hand or in the chat, rule out a saved option, delete anything", () => {
     expect(menuFor(train())).toEqual(["dismiss", "delete"]);
-    expect(menuFor(train({ origin: "chat", status: "chosen" }))).toEqual(["edit", "delete"]);
-    expect(menuFor(train({ status: "chosen" }))).toEqual(["delete"]);
+    // By its stage (lifecycle.ts): Planlandı changes back to its options; a booking takes a file, is said
+    // cancelled, or changed (once cancelled); with its file (Hazır) only cancelled.
+    expect(menuFor(train({ origin: "chat", status: "chosen" }))).toEqual(["edit", "change", "delete"]);
+    expect(menuFor(train({ status: "chosen" }))).toEqual(["change", "delete"]);
+    expect(menuFor(train({ status: "booked" }))).toEqual(["addDoc", "cancel", "change", "delete"]);
+    expect(menuFor(train({ status: "booked" }), { docs: 1 })).toEqual(["cancel", "delete"]);
+    expect(menuFor(train({ status: "dismissed" }))).toEqual(["delete"]);
   });
 });
 

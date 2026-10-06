@@ -20,7 +20,9 @@ export type Undoable =
   /** The board's language the chat switched (the board reloaded since): `prev` comes back. */
   | { kind: "lang"; tripId: string; prev: Lang; label: string }
   /** A suggestion taken ("Plana ekle": `item` is the record it made, which goes again) or said not needed ("Gerek yok"): it opens again. */
-  | { kind: "suggestion"; tripId: string; suggestion: Suggestion; state: "added" | "dismissed"; item: Item | null };
+  | { kind: "suggestion"; tripId: string; suggestion: Suggestion; state: "added" | "dismissed"; item: Item | null }
+  /** A booking said cancelled ("İptal ettim" on its card): it's a booking again. */
+  | { kind: "cancelled"; item: Item };
 
 /** "Douro tekne turu silindi", "Otobüs eklendi", "Porto 14–15 Ekim gizlendi", "Para birimi: EUR". */
 export function undoText(u: Undoable): string {
@@ -37,6 +39,8 @@ export function undoText(u: Undoable): string {
       return u.change.label;
     case "lang":
       return u.label;
+    case "cancelled":
+      return L(`${u.item.name} iptal edildi`, `${u.item.name} cancelled`);
     case "suggestion":
       return u.state === "added"
         ? L(`${u.item?.name ?? u.suggestion.title} plana eklendi`, `${u.item?.name ?? u.suggestion.title} added to the plan`)
@@ -50,6 +54,7 @@ export function undoTrip(u: Undoable): string {
     case "removed":
       return u.removed.item.tripId;
     case "added":
+    case "cancelled":
       return u.item.tripId;
     case "doc":
       return u.doc.tripId;

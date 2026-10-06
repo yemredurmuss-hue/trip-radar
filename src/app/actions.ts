@@ -42,6 +42,22 @@ export async function setItemStatus(item: Item, status: ItemStatus): Promise<voi
 }
 
 /**
+ * "İptal ettim" (lifecycle.ts İptal edildi): the booking is kept, ruled out with the day it was cancelled and what was
+ * said about the refund, as the chat's cancel does (assistant.ts): it leaves the plan, its need is to find again,
+ * and it waits under Gizlenenler. Returns what "Geri al" takes back.
+ */
+export async function cancelBooking(item: Item, refundNote: string | null = null): Promise<Undoable> {
+  const d = await db();
+  const found = (await d.get("items", item.id)) ?? item;
+  const now = Date.now();
+  const cancelled: Item = { ...found, status: "dismissed", dismissedFrom: "booked", cancelledAt: now, refundNote: refundNote?.trim() || null, statusAt: now, updatedAt: now };
+  await d.put("items", cancelled);
+  await addEvent(item.tripId, L(`${item.name} iptal edildi`, `${item.name} cancelled`));
+  notifyChanged();
+  return { kind: "cancelled", item: cancelled };
+}
+
+/**
  * Applies a change to the trip as stored right now (not a possibly stale copy from the last render).
  * `touch: false` keeps `updatedAt` as it was: for cache writes (hero photos, mood sentence) that aren't an edit
  * by the traveller and mustn't win a settings-sync conflict.
@@ -217,6 +233,8 @@ export async function restoreSuggestion(tripId: string, key: string, label: stri
 /** "Geri al": a deletion restored, a one-tap add taken away again, hidden nights brought back. */
 export async function undo(u: Undoable): Promise<void> {
   if (u.kind === "removed") return restoreItem(u.removed);
+  // Back from "İptal ettim": a booking again (setItemStatus reads dismissedFrom and drops the cancellation).
+  if (u.kind === "cancelled") return setItemStatus(u.item, "saved");
   if (u.kind === "doc") return restoreDoc(u.doc);
   if (u.kind === "suggestion") {
     // The record "Plana ekle" made goes again (nothing of the traveller's: no trash entry), and the card is back.

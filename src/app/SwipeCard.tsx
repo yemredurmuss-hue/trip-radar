@@ -17,26 +17,21 @@ import { datedLink, Details, Links, Price, ProsCons, ratingOf, SourceBadge, Trad
 import { DocAccess } from "./cards/DocAccess";
 import { Editable, InlineEdit } from "./cards/InlineEdit";
 import { StayLine } from "./cards/StayLine";
-import { CardMenu, DeleteX, Ring, type MenuEntry } from "./cards/CardShell";
-import { menuFor } from "../lib/cardView";
+import { CardMenu, DeleteX, Ring } from "./cards/CardShell";
 import { useCardEnv } from "./cards/PlanCard";
+import { useStageMenu } from "./cards/stageMenu";
 import { useShare, VoteBar } from "./Share";
 import type { Decisions } from "./useDecisions";
 
 /** A stay's ••• (Düzenle for a plan, Ele for a saved option, Sil) and the hover × left of it, top right. */
 function StayTools({ item }: { item: Item }) {
-  const env = useCardEnv();
-  const menu: MenuEntry[] = menuFor(item).map((a) =>
-    a === "edit"
-      ? { label: L("Düzenle", "Edit"), run: () => env.edit(item) }
-      : a === "dismiss"
-        ? { label: L("Ele", "Rule out"), run: () => void setItemStatus(item, "dismissed") }
-        : { label: L("Sil", "Delete"), run: () => env.remove(item), danger: true },
-  );
+  // By its stage (stageMenu.tsx): Değiştir, Belge ekle, İptal ettim; a booking is deleted only after asking.
+  const { menu, remove, field } = useStageMenu(item);
   return (
     <span className="st-tools">
-      <DeleteX name={item.name} onDelete={() => env.remove(item)} />
+      <DeleteX name={item.name} onDelete={remove} />
       <CardMenu entries={menu} />
+      {field}
     </span>
   );
 }
