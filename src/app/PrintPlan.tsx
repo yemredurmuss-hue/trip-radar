@@ -109,6 +109,8 @@ export function PrintPlan(props: PrintPlanProps) {
     const copy = from.cloneNode(true) as HTMLElement;
     // What's only there to tap ("Birini davet et", "Düzenle ›", "1 soru") or an empty block's hint means nothing on paper.
     copy.querySelectorAll(".hx-go, .hx-alt, .hx-menu, .hx-acts, .todo-list, .hx-prefs-link, .ask-mark, .hx-styles .empty, .hx-wait, small.accent").forEach((el) => el.remove());
+    // Only the photo shown (its credit is the one drawn): the other cities' photos would only make the file heavy.
+    copy.querySelectorAll(".hx-photo img:not(.on)").forEach((img) => img.remove());
     copy.querySelectorAll("img").forEach((img) => img.removeAttribute("loading"));
     box.replaceChildren(copy);
     setCopied(true);
