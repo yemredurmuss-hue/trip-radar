@@ -104,6 +104,12 @@ describe("the row as drawn", () => {
     expect(html).not.toContain("Öneri<");
     expect(html).toContain('rel="noopener noreferrer"');
   });
+  it("the rating chip: a star for a 5-scale rating ('★ 4,7'), the bare number for a 10-scale one ('8,9')", () => {
+    const html = renderToStaticMarkup(<OfferRowView offers={[offer({ rating: 4.7 }), offer({ id: "o2", rating: 8.9 }), offer({ id: "o3", rating: 5 })]} open onToggle={noop} onAdd={noop} onLess={noop} />);
+    expect(html).toContain('<span class="ek-of-rate">★ 4,7</span>');
+    expect(html).toContain('<span class="ek-of-rate">8,9</span>');
+    expect(html).toContain('<span class="ek-of-rate">★ 5</span>');
+  });
   it("open, a flight: carrier, hours and codes, how long, Direkt; the total for who goes", () => {
     const flight = offer({ id: "f1", kind: "flight", title: "TK 1951", carrier: "Turkish Airlines", depart: "07:40", arrive: "10:25", fromCode: "IST", toCode: "AMS", durationMinutes: 225, stops: 0, price: 312, nights: null, photo: null, source: "Google Flights" });
     const html = renderToStaticMarkup(<OfferRowView offers={[flight]} open adults={2} onToggle={noop} onAdd={noop} onLess={noop} />);

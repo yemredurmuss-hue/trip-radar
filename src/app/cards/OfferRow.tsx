@@ -8,12 +8,13 @@
 import { useEffect, useState } from "react";
 import { durationText } from "../../lib/cardFacts";
 import { L } from "../../lib/i18n";
-import { num, nStops } from "../../lib/i18nText";
+import { nStops } from "../../lib/i18nText";
 import { formatPrice } from "../../lib/items";
 import {
   dealPrice,
   offerCount,
   offersOpenKey,
+  ratingText,
   readOffersOpen,
   shownOffers,
   validOffers,
@@ -99,7 +100,7 @@ function MediaBody({ o }: { o: Offer }) {
         </a>
         {(o.rating != null || o.area) && (
           <span className="ek-of-s">
-            {o.rating != null && <span className="ek-of-rate">{num(o.rating)}</span>}
+            {o.rating != null && <span className="ek-of-rate">{ratingText(o.rating)}</span>}
             {o.area}
           </span>
         )}

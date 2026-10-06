@@ -7,6 +7,7 @@
 // else is dropped. Kept apart from suggestions.ts: those say what the plan lacks and are cards of their own;
 // these are priced options under one need. Pure, except the remembered open/closed state (localStorage, guarded).
 import { L } from "./i18n";
+import { num as numText } from "./i18nText";
 import { plannedItem } from "./planned";
 import type { Item, PlannedKind } from "./types";
 
@@ -112,6 +113,9 @@ export function dealPrice(offer: Pick<Offer, "kind" | "price" | "nights">, adult
       return { amount: offer.price, perNight: false, unit: () => (adults ? people(adults) : "") };
   }
 }
+
+/** A rating's chip: "★ 4,7" out of 5 (Tripadvisor's), "8,9" out of 10 (Booking's), as the source gives it. */
+export const ratingText = (rating: number): string => (rating <= 5 ? `★ ${numText(rating)}` : numText(rating));
 
 /** At most three offers under a need (the mockup's rule): the source's order, well-formed ones only. */
 export const MAX_OFFERS = 3;
