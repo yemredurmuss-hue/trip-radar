@@ -68,6 +68,11 @@ export interface Leg {
   /** Local times it has to fit: not before landing, and at the airport or station by. */
   after: string | null;
   before: string | null;
+  /**
+   * The traveller's own time for it: the chosen (or only) transfer's clock ("06:15 evden çıkış"), shown on the
+   * day instead of the one worked out from the flight. Null when none was said.
+   */
+  at?: string | null;
   /** Saved flights or transport for it (only the booked one once something is booked). */
   options: Item[];
   mode: LegMode | null;
@@ -115,6 +120,11 @@ function modeOf(i: Item): LegMode | null {
 }
 
 const settledOf = (items: Item[]) => items.find((i) => i.status === "booked") ?? items.find((i) => i.status === "chosen") ?? null;
+/** A transfer's own clock, as the traveller said it ("2026-10-07T06:15" → "06:15"). */
+const ownClock = (i: Item | null): string | null => i?.flight?.departure?.match(/T(\d{2}:\d{2})/)?.[1] ?? null;
+
+/** Home ↔ the airport of the trip in or out (buildLegs' `home`): a leg the traveller added, never one of the plan's own. */
+export const isHomeLeg = (l: Pick<Leg, "key">) => l.key.endsWith(":home");
 
 function mostCommon(values: (string | null)[]): string | null {
   const counts = new Map<string, number>();
@@ -349,6 +359,7 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
       key, kind, date, slot, from, to,
       after: times.after ?? null,
       before: times.before ?? null,
+      at: ownClock(settled ?? (options.length === 1 ? options[0] : null)),
       options: settled?.status === "booked" ? [settled] : options,
       mode, via, travel, choice, notes,
       ...status(options, choice, mode),
@@ -425,8 +436,15 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
   const inbound = pick((t) => dayDiff(t.arrives, first.range.start), -3, 1, (t) => directionScore(t, null, first.city));
   const outbound = pick((t) => dayDiff(t.day, last.range.end), -1, 3, (t) => directionScore(t, last.city, null));
 
+  // From home to the first trip's airport and from the last one's back home: a step only when the traveller
+  // added that transfer (the chat's "sabah 06:15 evden çıkış, Sabiha Gökçen'e"), never one to plan for everyone.
+  // Taken first, so the transfer at the other end of that day's flight never takes it.
+  const homeOut = home("departure", inbound ? inbound.day : first.range.start, first.city, inbound);
+  const homeIn = home("arrival", outbound ? outbound.arrives : last.range.end, last.city, outbound);
+
   // The transfers are on the flights' days (the options' common day until one is chosen), so the board
   // never shows "Transfer 18 Ekim" next to "Dönüş 17 Ekim". The timing notes need a chosen flight.
+  if (homeOut) legs.push(homeOut);
   legs.push(
     arriving(pointOf(first), inbound ? inbound.arrives : first.range.start, 0, inbound, inbound?.mode ?? null, inbound?.settled ? dayDiff(inbound.arrives, first.range.start) : 0, first.range.start),
   );
@@ -434,9 +452,53 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
   legs.push(
     departing(pointOf(last), outbound ? outbound.day : last.range.end, blocks.length, outbound, outbound?.mode ?? null, outbound?.settled ? dayDiff(outbound.day, last.range.end) : 0, last.range.end),
   );
+  if (homeIn) legs.push(homeIn);
   return legs;
 
   // Hoisted helpers: they share the saved local transfers and choices above.
+
+  /**
+   * Home and the airport (or station) of the trip in or out, on that trip's day: the transfers the traveller added
+   * that day away from the trip's first (or last) place, before that flight leaves (or after it lands) when both
+   * say a time. Null when there's none.
+   */
+  function home(kind: "departure" | "arrival", date: string, away: string | null, travel: Travel | null): Leg | null {
+    // Only with the trip's own flight (or train) and its time known, and the transfer's time said: before it leaves,
+    // or after it lands. Anything vaguer stays with the transfers at the trip's own places.
+    const trip = travel?.settled ?? (travel?.items.length === 1 ? travel.items[0] : null);
+    const flightAt = clock(kind === "departure" ? trip?.flight?.departure : trip?.flight?.arrival);
+    if (!flightAt) return null;
+    const options = locals.filter((i) => {
+      if (takenLocals.has(i.id) || departureDay(i) !== date) return false;
+      const place = i.city ?? i.flight?.[kind === "departure" ? "to" : "from"] ?? null;
+      if (!place || (away && sameCity(place, away))) return false;
+      const own = ownClock(i);
+      return !!own && (kind === "departure" ? minutes(own) < minutes(flightAt) : minutes(own) > minutes(flightAt));
+    });
+    if (!options.length) return null;
+    options.forEach((i) => takenLocals.add(i.id));
+    const settled = settledOf(options);
+    const pick = settled ?? options[0];
+    const [homeEnd, hubEnd] = kind === "departure" ? (["from", "to"] as const) : (["to", "from"] as const);
+    const homePoint: LegPoint = { label: pick.flight?.[homeEnd]?.trim() || L("Ev", "Home"), city: null, item: null };
+    const hubPoint: LegPoint = { label: pick.flight?.[hubEnd]?.trim() || pick.city || hubLabel(travel, kind === "departure" ? "from" : "to", null, travel?.mode ?? null), city: null, item: null };
+    const key = `${date}:${kind}:home`;
+    const choice = choiceOf(key);
+    const mode = (settled && modeOf(settled)) ?? choice?.mode ?? null;
+    const buffer = kind === "departure" && travel?.mode ? hubBuffer(travel.mode, trip) : undefined;
+    return {
+      key, kind, date,
+      slot: kind === "departure" ? 0 : blocks.length,
+      from: kind === "departure" ? homePoint : hubPoint,
+      to: kind === "departure" ? hubPoint : homePoint,
+      after: kind === "arrival" ? flightAt : null,
+      before: kind === "departure" && flightAt && buffer !== undefined ? hhmm(minutes(flightAt) - buffer) : null,
+      at: ownClock(settled ?? (options.length === 1 ? options[0] : null)),
+      options: settled?.status === "booked" ? [settled] : options,
+      mode, via: travel?.mode ?? null, travel, choice, notes: [],
+      ...status(options, choice, mode),
+    };
+  }
 
   /** From the airport or station (or wherever the traveller arrives) to a stay. `offset`: landing day minus the first night. */
   function arriving(to: LegPoint, date: string, slot: number, travel: Travel | null, mode: LegMode | null, offset: number, keyDate: string): Leg {

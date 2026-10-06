@@ -210,9 +210,10 @@ function legStep(j: Journey, e: Extract<TimelineEntry, { kind: "leg" }>): Journe
     key: e.key,
     kind: "transfer",
     otherDay: leg.date !== j.date ? leg.date : null,
-    time: leaving ? leg.before : leg.after,
+    // The traveller's own time when one was said ("06:15 evden çıkış"), else the one it has to fit.
+    time: leg.at ?? (leaving ? leg.before : leg.after),
     estimated: false,
-    hint: leaving ? (leg.before ? L(`en geç ${at ?? "orada"}`, `${at ?? "there"} at the latest`) : null) : leg.after ? W.landing : null,
+    hint: leg.at ? null : leaving ? (leg.before ? L(`en geç ${at ?? "orada"}`, `${at ?? "there"} at the latest`) : null) : leg.after ? W.landing : null,
     title: legShortTitle(leg),
     sub: `${leg.from.label} → ${leg.to.label}`,
     standing,
@@ -371,12 +372,12 @@ function fromStep(st: JourneyStep): DayRow {
 const legLine = (leg: Leg) => leg.statusText.replace(/\s*✓\s*$/, "") || null;
 
 function legRow(leg: Leg): DayRow {
-  const t = leg.kind === "departure" ? leg.before : leg.after;
+  const t = leg.at ?? (leg.kind === "departure" ? leg.before : leg.after);
   return row({
     key: `leg:${leg.key}`,
     kind: "leg",
     time: t,
-    hint: t ? (leg.kind === "departure" ? W.latest : W.arrival) : null,
+    hint: t && !leg.at ? (leg.kind === "departure" ? W.latest : W.arrival) : null,
     title: legShortTitle(leg),
     sub: `${leg.from.label} → ${leg.to.label}`,
     state: legState(leg),

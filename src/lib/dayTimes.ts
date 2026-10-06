@@ -66,8 +66,10 @@ export function applyDayTimes(rows: DayRow[], overrides: DayTimeOverrides = {}):
 
   // To the airport or station: an hour before being there.
   const by = leaving?.leg?.before;
+  // A transfer with its own time (the chosen one's, "06:15 evden çıkış") keeps it, like one set by hand.
+  const ownLeave = !!leaving && !leaving.user && isClock(leaving.leg?.at);
   if (leaving && isClock(by)) {
-    if (!leaving.user) {
+    if (!leaving.user && !ownLeave) {
       const go = shift(by, -TRANSFER_MINUTES);
       Object.assign(leaving, {
         time: go,
@@ -100,7 +102,7 @@ export function applyDayTimes(rows: DayRow[], overrides: DayTimeOverrides = {}):
   const byAir = landing ? landing.leg?.via === "flight" : !!ticket?.flight;
   const exitMin = byAir ? LANDING_EXIT_MINUTES : 10;
   // Out of the airport 45 minutes after landing (the transfer then); past midnight, said in words.
-  if (landing && !landing.user && isClock(landed)) {
+  if (landing && !landing.user && !isClock(landing.leg?.at) && isClock(landed)) {
     const outAt = overnight ? null : shift(landed, exitMin);
     Object.assign(landing, {
       time: outAt,

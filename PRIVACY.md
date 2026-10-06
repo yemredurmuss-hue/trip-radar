@@ -148,9 +148,12 @@ profilleri ve geçmişiyle birlikte) senin isteğinle silinir: info@emredurmus.n
   kimliğini Tripadvisor'dan (RapidAPI üzerinden), otelleri ve platform fiyatlarını Xotelo'dan alır; herkese açık bu
   bilgiyi, aynı soruyu soran herkes için tekrar sormamak adına sorulan yere ve güne göre saklar, kimin sorduğunu
   saklamaz. Cevap bu bilgisayarda da birkaç saat saklanır.
-- **Travelpayouts ortaklık bağlantıları:** önerilerdeki bağlantılar Travelpayouts ortaklık bağlantısıdır
-  (tp.media). Birine tıklayıp o sitede (Booking, Aviasales gibi) rezervasyon yaparsan Trip Radar komisyon alabilir;
-  sana ek bir ücret çıkmaz. Bağlantıya yalnız sen tıklarsan gidilir; eklenti ziyaret ettiğin sitelerdeki
+- **Travelpayouts ortaklık bağlantıları:** panodan açtığın, Trip Radar'ın ortağı olduğu bir markanın sayfası
+  (öneriler, arama düğmeleri, kaydettiğin bir sayfa; Booking, Agoda, Trip.com, GetYourGuide, Viator, Aviasales gibi)
+  tıkladığın anda Travelpayouts ortaklık bağlantısından (tp.media) geçer ve aynı sayfaya varır; Travelpayouts o
+  sayfanın adresini görür. Orada rezervasyon yaparsan Trip Radar komisyon alabilir; sana ek bir ücret çıkmaz.
+  Kendi rezervasyonunu ya da hesabını taşıyabilecek sayfalar (rezervasyon yönetimi, onay, hesap, giriş; içinde
+  rezervasyon numarası ya da anahtar olan adresler) hiçbir zaman çevrilmez. Eklenti ziyaret ettiğin sitelerdeki
   bağlantıları değiştirmez. Tıkladığında Travelpayouts ve o site kendi çerezlerini koyar.
 
 Bu hizmetlere ad, e-posta ya da gezi içeriği gönderilmez. Her bağlantıda olduğu gibi, istek yapılan sunucu
@@ -386,9 +389,12 @@ and history) is deleted on request: write to info@emredurmus.net.
   the city's id from Tripadvisor (via RapidAPI), hotels and each platform's price from Xotelo; it keeps this public
   information by the place and days asked, so the same question isn't asked again for everyone, and doesn't keep
   who asked. The answer is also kept on this computer for a few hours.
-- **Travelpayouts affiliate links:** the links in the offers are Travelpayouts affiliate links (tp.media). If you
-  click one and book on that site (Booking, Aviasales and the like), Trip Radar may earn a commission; it costs you
-  nothing extra. A link is only followed when you click it; the extension doesn't change links on the sites you visit.
+- **Travelpayouts affiliate links:** a page of a brand Trip Radar is a partner of, opened from the board (offers,
+  search buttons, a page you saved; Booking, Agoda, Trip.com, GetYourGuide, Viator, Aviasales and the like), goes
+  through Travelpayouts' affiliate link (tp.media) as you click it and lands on the same page; Travelpayouts sees
+  that page's address. If you book there, Trip Radar may earn a commission; it costs you nothing extra. Pages that
+  may carry your own booking or account (managing a booking, confirmations, account, sign-in; addresses with a
+  booking number or a key in them) are never turned. The extension doesn't change links on the sites you visit.
   When you click, Travelpayouts and that site set their own cookies.
 
 No name, email or trip content is sent to these services. As with any connection, the server receiving the request

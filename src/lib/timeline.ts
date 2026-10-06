@@ -5,7 +5,7 @@
 import { L } from "./i18n";
 import { liveLabels, nNights } from "./i18nText";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
-import { endsOf, isHiddenLeg, isRental, travelsOf, type Leg, type Travel } from "./legs";
+import { endsOf, isHiddenLeg, isHomeLeg, isRental, travelsOf, type Leg, type Travel } from "./legs";
 import { cityKeyOf, sameCity, type DateRange, type OptionGroup, type Plan, type StayBlock } from "./plan";
 import { isIdea, needsBooking } from "./booking";
 import type { Category, Item, LegMode } from "./types";
@@ -320,6 +320,9 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
 
   // Getting there.
   const inJ = first ? journey("arrival", first.date, end_(before[0] ?? inbound, "from"), blocks[0].city, null, blocks[0]) : null;
+  // Leaving home for the airport (added by the traveller): the first step of the way there.
+  const homeOut = legs.find((l) => isHomeLeg(l) && l.kind === "departure");
+  if (homeOut) entries.push(join(inJ, legRow(homeOut)));
   entries.push(...before.map((t) => join(inJ, tripEntry(t))));
   if (first) {
     const t = first.travel;
@@ -414,6 +417,9 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
     }
   }
   entries.push(...after.map((t) => join(outJ, tripEntry(t))));
+  // From the airport back home (added by the traveller): the last step of the way home.
+  const homeIn = legs.find((l) => isHomeLeg(l) && l.kind === "arrival");
+  if (homeIn) entries.push(join(outJ, legRow(homeIn)));
 
   // Any other trip with a day goes on that day (after its card): a flight the plan can't pair with a
   // change of city is still where it happens, never at the bottom.

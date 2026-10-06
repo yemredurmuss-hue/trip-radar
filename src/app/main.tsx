@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { installPartnerLinks } from "../lib/affiliate";
 import { requestProcessing } from "../lib/browser";
 import { L, lang, loadLang } from "../lib/i18n";
 import { reloadIfStale } from "../lib/update";
@@ -6,6 +7,8 @@ import { App } from "./App";
 import { ErrorBoundary, installErrorBanner } from "./ErrorBoundary";
 
 installErrorBanner();
+// A partner brand's page opened from the board goes through the partner link, only as it's clicked (affiliate.ts).
+installPartnerLinks();
 // The language first (stored choice, else the browser's), so nothing renders in the wrong one. And
 // files newer than the loaded extension (the updater just swapped them) reload it before the database
 // is opened: the old version still holds it.
