@@ -8,14 +8,17 @@
 //    AERODATABOX_KEY; asked once per city, kept for good), then Xotelo's hotel list and each platform's price;
 //  - every page is turned into a Travelpayouts partner link (Links API, marker and project as secrets or the
 //    defaults below) so a booking made there pays the project; a page it can't turn stays as it was.
+// `prefer=cheap` (the chat's "daha ucuz") gives the three cheapest instead of the mixed three, and `max` a ceiling
+// in euros (a stay's by the night, a flight's per person).
 // Each source is its own part: one failing leaves that kind with no offers and the card with its search buttons.
 // Calls out are capped per source and day. Deployed with verify_jwt off like `flight`: nothing personal comes in,
 // only places, days and a head-count.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
-  adultsOf, airportCodeOk, askableDay, bookingSearch, flightOffer, geoFromTypeahead, langOf, nightsBetween, pickFlights,
-  pickStays, placeOk, stayOffer, type AviaFlight, type OfferOut, type XoHotel, type XoRate,
+  adultsOf, airportCodeOk, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, langOf, maxOf, nightsBetween,
+  pickCheapFlights, pickCheapStays, pickFlights, pickStays, placeOk, preferOf, stayOffer, type AviaFlight, type OfferOut, type XoHotel,
+  type XoRate,
 } from "./shape.ts";
 
 const cors = {
@@ -62,7 +65,9 @@ async function loadNames() {
   }
 }
 
-async function flights(sb: Sb, token: string, from: string, to: string, day: string, adults: number, lang: "tr" | "en"): Promise<OfferOut[]> {
+type Ask = { adults: number; lang: "tr" | "en"; prefer: "cheap" | null; max: number | null };
+
+async function flights(sb: Sb, token: string, from: string, to: string, day: string, { adults, lang, prefer, max }: Ask): Promise<OfferOut[]> {
   const ask = async (direct: boolean): Promise<AviaFlight[]> => {
     const key = `avia|${from}|${to}|${day}|${direct ? "d" : "a"}`;
     const had = await cached<AviaFlight[]>(sb, key, HOURS.flight);
@@ -76,7 +81,7 @@ async function flights(sb: Sb, token: string, from: string, to: string, day: str
     return data;
   };
   const [all, direct] = await Promise.all([ask(false), ask(true)]);
-  const picked = pickFlights(all, direct, lang, adults);
+  const picked = prefer === "cheap" || max != null ? pickCheapFlights([...all, ...direct], lang, adults, max) : pickFlights(all, direct, lang, adults);
   if (!picked.length) return [];
   await loadNames();
   const now = Date.now();
@@ -110,13 +115,15 @@ async function xotelo<T>(sb: Sb, path: string, hours: number): Promise<T | null>
   return body.result;
 }
 
-async function stays(sb: Sb, rapidKey: string, city: string, country: string | null, start: string, end: string, adults: number, lang: "tr" | "en"): Promise<OfferOut[]> {
+async function stays(sb: Sb, rapidKey: string, city: string, country: string | null, start: string, end: string, { adults, lang, prefer, max }: Ask): Promise<OfferOut[]> {
   const nights = nightsBetween(start, end);
   if (nights < 1 || nights > 60) return [];
   const geo = await geoOf(sb, rapidKey, city, country);
   if (!geo) return [];
-  const list = await xotelo<{ list?: XoHotel[] }>(sb, `list?location_key=g${geo}&limit=30&sort=best_value`, 24 * 7);
-  const picked = pickStays(list?.list ?? [], lang);
+  const cheap = prefer === "cheap" || max != null;
+  // Asked for cheaper ones, a longer list: the cheap ones are seldom in the best value's first thirty.
+  const list = await xotelo<{ list?: XoHotel[] }>(sb, `list?location_key=g${geo}&limit=${cheap ? 100 : 30}&sort=best_value`, 24 * 7);
+  const picked = cheap ? pickCheapStays(list?.list ?? [], max).map((h) => ({ h, why: "" })) : pickStays(list?.list ?? [], lang);
   const now = Date.now();
   const out = await Promise.all(
     picked.map(async (p) => {
@@ -124,7 +131,8 @@ async function stays(sb: Sb, rapidKey: string, city: string, country: string | n
       return stayOffer(p, rates?.rates ?? [], { lang, nights, now, search: (h, platform) => (platform === "BookingCom" ? bookingSearch(h.name!, city, start, end, adults) : null) });
     }),
   );
-  return out.filter((o): o is OfferOut => !!o);
+  const priced = out.filter((o): o is OfferOut => !!o);
+  return cheap ? cheapest(priced, lang, max) : priced;
 }
 
 /** Every page as a Travelpayouts partner link, ten at a time; a page it can't turn is kept as it was. */
@@ -160,23 +168,23 @@ Deno.serve(async (req: Request) => {
   if (!token) return reply(503, { error: "not-configured" });
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
   const now = new Date();
-  const adults = adultsOf(p("adults"));
-  const lang = langOf(p("lang"));
+  const ask: Ask = { adults: adultsOf(p("adults")), lang: langOf(p("lang")), prefer: preferOf(p("prefer")), max: maxOf(p("max")) };
+  const how = `${ask.prefer ?? ""}|${ask.max ?? ""}`;
   let offers: OfferOut[] = [];
   try {
     if (p("kind") === "flight") {
       const from = airportCodeOk(p("from")), to = airportCodeOk(p("to")), day = askableDay(p("day"), now);
       if (!from || !to || !day || from === to) return reply(400, { error: "ask" });
-      const key = `out|f|${from}|${to}|${day}|${adults}|${lang}`;
+      const key = `out|f|${from}|${to}|${day}|${ask.adults}|${ask.lang}|${how}`;
       const had = await cached<OfferOut[]>(sb, key, HOURS.flight);
-      offers = had ?? (await partnerLinks(sb, token, await flights(sb, token, from, to, day, adults, lang)));
+      offers = had ?? (await partnerLinks(sb, token, await flights(sb, token, from, to, day, ask)));
       if (!had) await store(sb, key, offers);
     } else if (p("kind") === "stay") {
       const city = placeOk(p("city")), country = placeOk(p("country")), start = askableDay(p("start"), now), end = askableDay(p("end"), now);
       if (!city || !start || !end || end <= start) return reply(400, { error: "ask" });
-      const key = `out|s|${city.toLocaleLowerCase("en")}|${country ?? ""}|${start}|${end}|${adults}|${lang}`;
+      const key = `out|s|${city.toLocaleLowerCase("en")}|${country ?? ""}|${start}|${end}|${ask.adults}|${ask.lang}|${how}`;
       const had = await cached<OfferOut[]>(sb, key, HOURS.stay);
-      offers = had ?? (await partnerLinks(sb, token, await stays(sb, (Deno.env.get("AERODATABOX_KEY") ?? "").trim(), city, country, start, end, adults, lang)));
+      offers = had ?? (await partnerLinks(sb, token, await stays(sb, (Deno.env.get("AERODATABOX_KEY") ?? "").trim(), city, country, start, end, ask)));
       if (!had) await store(sb, key, offers);
     } else {
       return reply(400, { error: "ask" });

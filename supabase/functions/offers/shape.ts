@@ -57,6 +57,15 @@ export const adultsOf = (raw: string | null): number => {
 
 export const langOf = (raw: string | null): Lang => (raw === "en" ? "en" : "tr");
 
+/** "cheap" when the traveller asked for cheaper ones (the chat's "daha ucuz"); else the mixed three. */
+export const preferOf = (raw: string | null): "cheap" | null => (raw === "cheap" ? "cheap" : null);
+
+/** A ceiling in euros (a stay's by the night, a flight's per person), 1 to 100 000; none when not said. */
+export const maxOf = (raw: string | null): number | null => {
+  const n = Math.round(Number(raw));
+  return raw != null && raw !== "" && Number.isFinite(n) && n >= 1 && n <= 100_000 ? n : null;
+};
+
 /** A place to look a city up by: letters, spaces and a few marks, up to 80. */
 export function placeOk(raw: string | null): string | null {
   const s = raw?.normalize("NFC").replace(/\s+/g, " ").trim();
@@ -142,6 +151,24 @@ export function pickFlights(cheapest: AviaFlight[], direct: AviaFlight[], lang: 
   return out.slice(0, 3);
 }
 
+/** Asked for cheaper ones: the three cheapest (under the ceiling per person, when one's said), each said against the first. */
+export function pickCheapFlights(list: AviaFlight[], lang: Lang, adults = 1, max: number | null = null): { f: AviaFlight; why: string }[] {
+  const id = (f: AviaFlight) => `${f.airline}${f.flight_number}|${f.departure_at}`;
+  const seen = new Set<string>();
+  const cheap = list
+    .filter(valid)
+    .filter((f) => max == null || f.price! <= max)
+    .sort((a, b) => a.price! - b.price!)
+    .filter((f) => !seen.has(id(f)) && !!seen.add(id(f)))
+    .slice(0, 3);
+  return cheap.map((f, i) => {
+    const direct = f.transfers === 0 ? T(lang, " · direkt", " · direct") : "";
+    if (i === 0) return { f, why: T(lang, "Bulunanların en ucuzu", "The cheapest found") + direct };
+    const more = (f.price! - cheap[0].price!) * adults;
+    return { f, why: (more > 0 ? T(lang, `En ucuzdan ${euros(more)} fazla`, `${euros(more)} more than the cheapest`) : T(lang, "En ucuzla aynı fiyat", "Same as the cheapest")) + direct };
+  });
+}
+
 export interface FlightCtx {
   adults: number;
   now: number;
@@ -217,6 +244,32 @@ export function pickStays(list: XoHotel[], lang: Lang): { h: XoHotel; why: strin
     .sort((a, b) => a.price_ranges!.minimum! - b.price_ranges!.minimum!)[0];
   if (cheap) out.push({ h: cheap, why: T(lang, "İyi puanlılar içinde en uygunu", "The least dear of the well liked") });
   return out;
+}
+
+/**
+ * Asked for cheaper ones: up to five well-liked hotels (4 and up, 50 reviews or more) by the least their nights go
+ * for on Tripadvisor, under the ceiling when one's said; their real prices are asked next and the three cheapest kept
+ * (`cheapest`).
+ */
+export function pickCheapStays(list: XoHotel[], max: number | null = null): XoHotel[] {
+  return list
+    .filter((h) => okHotel(h) && rating(h) >= 4 && reviews(h) >= 50 && (h.price_ranges?.minimum ?? 0) > 0)
+    .filter((h) => max == null || h.price_ranges!.minimum! <= max)
+    .sort((a, b) => a.price_ranges!.minimum! - b.price_ranges!.minimum!)
+    .slice(0, 5);
+}
+
+/** The offers priced, by the night under the ceiling (when said), the cheapest three, each said against the first. */
+export function cheapest(offers: OfferOut[], lang: Lang, max: number | null = null): OfferOut[] {
+  const night = (o: OfferOut) => (o.price ?? Infinity) / Math.max(1, o.nights ?? 1);
+  const kept = offers.filter((o) => o.price != null && (max == null || night(o) <= max)).sort((a, b) => a.price! - b.price!).slice(0, 3);
+  return kept.map((o, i) => {
+    const more = night(o) - night(kept[0]);
+    const why = i === 0 ? T(lang, "Bulduklarımın en ucuzu", "The cheapest I found") : more >= 1 ? T(lang, `Gecelik ${euros(more)} daha fazla`, `${euros(more)} more a night`) : T(lang, "En ucuzla aynı fiyat", "Same as the cheapest");
+    // what the platforms said stays ("· Trip.com'da gecelik €84"): the card's lines already carry the rest
+    const tail = o.why ? (o.why.startsWith(" · ") ? o.why : ` · ${o.why}`) : "";
+    return { ...o, why: why + tail };
+  });
 }
 
 const KINDS: Record<string, [string, string]> = {

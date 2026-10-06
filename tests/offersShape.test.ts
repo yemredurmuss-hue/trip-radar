@@ -2,8 +2,9 @@
 // and turned into offers. Answers below are trimmed from real ones (İstanbul → Bali, Ubud, 6 Oct 2026).
 import { describe, expect, it } from "vitest";
 import {
-  adultsOf, airportCodeOk, arrivalClock, askableDay, bookingSearch, flightOffer, geoFromTypeahead, localClock, nightsBetween,
-  pickFlights, pickStays, placeOk, seenAt, stayOffer, type AviaFlight, type XoHotel,
+  adultsOf, airportCodeOk, arrivalClock, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, localClock, maxOf,
+  nightsBetween, pickCheapFlights, pickCheapStays, pickFlights, pickStays, placeOk, preferOf, seenAt, stayOffer, type AviaFlight,
+  type OfferOut, type XoHotel,
 } from "../supabase/functions/offers/shape";
 
 const now = new Date("2026-10-06T18:00:00Z");
@@ -134,5 +135,38 @@ describe("stays", () => {
     expect(geoFromTypeahead(body)).toBe("297701");
     expect(geoFromTypeahead({ data: [] })).toBeNull();
     expect(geoFromTypeahead(null)).toBeNull();
+  });
+});
+
+describe("cheaper ones (the chat's \"daha ucuz\")", () => {
+  it("reads the ask: cheap or not, a ceiling or none", () => {
+    expect(preferOf("cheap")).toBe("cheap");
+    expect(preferOf("x")).toBeNull();
+    expect(maxOf("120")).toBe(120);
+    expect(maxOf("")).toBeNull();
+    expect(maxOf("-3")).toBeNull();
+    expect(maxOf(null)).toBeNull();
+  });
+
+  it("flights: the three cheapest under the ceiling, each said against the first, for everyone going", () => {
+    const f = (airline: string, price: number, transfers = 1): AviaFlight => ({ airline, flight_number: "1", departure_at: `2026-11-10T0${price % 9}:00:00+03:00`, price, transfers, link: "/search/x", duration_to: 600 });
+    const picked = pickCheapFlights([f("A", 300), f("B", 320, 0), f("C", 500), f("D", 280), f("D", 280)], "tr", 2, 400);
+    expect(picked.map((p) => p.f.airline)).toEqual(["D", "A", "B"]);
+    expect(picked.map((p) => p.why)).toEqual(["Bulunanların en ucuzu", "En ucuzdan €40 fazla", "En ucuzdan €80 fazla · direkt"]);
+    expect(pickCheapFlights([f("A", 300)], "tr", 1, 100)).toEqual([]);
+  });
+
+  const h = (key: string, rating: number, count: number, min: number): XoHotel => ({ name: key, key, review_summary: { rating, count }, price_ranges: { minimum: min } });
+  it("stays: well liked ones by their least price, under the ceiling, five to price", () => {
+    const list = [h("a", 4.5, 300, 90), h("b", 3.5, 900, 20), h("c", 4.2, 60, 40), h("d", 4.8, 20, 30), h("e", 4.1, 80, 55), h("f", 4.6, 500, 70), h("g", 4.4, 100, 65), h("i", 4.3, 90, 140)];
+    expect(pickCheapStays(list).map((x) => x.key)).toEqual(["c", "e", "g", "f", "a"]);
+    expect(pickCheapStays(list, 60).map((x) => x.key)).toEqual(["c", "e"]);
+  });
+
+  it("keeps the three cheapest priced by the night under the ceiling, the platforms' note kept", () => {
+    const o = (id: string, price: number, why = ""): OfferOut => ({ id, kind: "stay", title: id, price, nights: 3, currency: "EUR", url: "https://x", why, source: "Booking", fetchedAt: 0, rating: 4.5 });
+    const kept = cheapest([o("a", 300), o("b", 180, " · Trip.com'da gecelik €55"), o("c", 240), o("d", 600)], "tr", 90);
+    expect(kept.map((k) => k.id)).toEqual(["b", "c"]);
+    expect(kept.map((k) => k.why)).toEqual(["Bulduklarımın en ucuzu · Trip.com'da gecelik €55", "Gecelik €20 daha fazla"]);
   });
 });

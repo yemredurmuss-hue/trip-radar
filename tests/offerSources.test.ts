@@ -24,6 +24,11 @@ describe("the question for a need", () => {
     expect(queryOf({ ...stay, city: " " }, "tr")).toBeNull();
   });
 
+  it("narrows when the chat asks for cheaper ones or a ceiling", () => {
+    expect(queryOf(stay, "tr", { prefer: "cheap", max: 80.4 })).toBe("kind=stay&city=Ubud&start=2026-11-12&end=2026-11-16&adults=2&lang=tr&country=Indonesia&prefer=cheap&max=80");
+    expect(queryOf(flight, "tr", { prefer: null, max: 0 })).toBe("kind=flight&from=IST&to=DPS&day=2026-11-10&adults=2&lang=tr");
+  });
+
   it("asks nothing for kinds with no source yet", () => {
     expect(queryOf({ key: "a", section: "activity", kind: "activity", city: "Ubud" }, "tr")).toBeNull();
     expect(queryOf({ key: "e", section: "other", kind: "esim", country: "ID" }, "tr")).toBeNull();
@@ -52,6 +57,15 @@ describe("asking", () => {
     t += 7 * 36e5;
     await src.offers(stay);
     expect(calls).toHaveLength(2);
+  });
+
+  it("the chat's find asks the narrowed question, apart from the cards' own", async () => {
+    const { calls, fetcher } = answer([offer("a")]);
+    const src = makeLiveSource({ kv: memoryKV(), fetcher, server: "https://srv" });
+    await src.offers(stay);
+    await src.find(stay, { prefer: "cheap" });
+    expect(calls).toHaveLength(2);
+    expect(calls[1]).toContain("prefer=cheap");
   });
 
   it("two cards asking the same at once make one call", async () => {

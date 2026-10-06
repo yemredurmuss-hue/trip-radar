@@ -29,14 +29,26 @@ const countryName = (code: string | null | undefined): string | null => {
   }
 };
 
+/** How the chat may narrow it: the cheapest instead of the mixed three, a ceiling in euros (a stay's by the night, a flight's per person). */
+export interface Narrow {
+  prefer?: "cheap" | null;
+  max?: number | null;
+}
+
+const narrowed = (q: Record<string, string>, n: Narrow): Record<string, string> => {
+  if (n.prefer === "cheap") q.prefer = "cheap";
+  if (n.max != null && Number.isFinite(n.max) && n.max >= 1) q.max = String(Math.round(n.max));
+  return q;
+};
+
 /** The function's question for a need, or null when it can't be searched (or its kind has no source yet). */
-export function queryOf(need: Need, language: "tr" | "en" = lang()): string | null {
+export function queryOf(need: Need, language: "tr" | "en" = lang(), narrow: Narrow = {}): string | null {
   const adults = String(Math.min(9, Math.max(1, Math.round(need.adults ?? 1))));
   if (need.kind === "flight") {
     const from = need.fromCode ?? airportCode(need.from);
     const to = need.toCode ?? airportCode(need.to);
     if (!from || !to || from === to || !need.start || !DAY.test(need.start)) return null;
-    return new URLSearchParams({ kind: "flight", from, to, day: need.start, adults, lang: language }).toString();
+    return new URLSearchParams(narrowed({ kind: "flight", from, to, day: need.start, adults, lang: language }, narrow)).toString();
   }
   if (need.kind === "stay") {
     const city = need.city?.trim();
@@ -44,13 +56,15 @@ export function queryOf(need: Need, language: "tr" | "en" = lang()): string | nu
     const q: Record<string, string> = { kind: "stay", city, start: need.start, end: need.end, adults, lang: language };
     const country = countryName(need.country);
     if (country) q.country = country;
-    return new URLSearchParams(q).toString();
+    return new URLSearchParams(narrowed(q, narrow)).toString();
   }
   return null;
 }
 
-/** The live source, with its storage and fetch handed in for the tests. */
-export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: () => number; server?: string } = {}): SuggestionSource {
+/** The live source, with its storage and fetch handed in for the tests; `find` is the chat's way in (find_offers). */
+export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: () => number; server?: string } = {}): SuggestionSource & {
+  find(need: Need, narrow?: Narrow): Promise<Offer[]>;
+} {
   const kv = opts.kv ?? chromeKV;
   const get = opts.fetcher ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
   const now = opts.now ?? Date.now;
@@ -86,17 +100,26 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
     }
   }
 
+  const find = (need: Need, narrow: Narrow = {}): Promise<Offer[]> => {
+    const q = queryOf(need, lang(), narrow);
+    if (!q) return Promise.resolve([]);
+    // The same question asked by two cards at once goes out once.
+    const going = asking.get(q) ?? ask(q).finally(() => asking.delete(q));
+    asking.set(q, going);
+    return going;
+  };
+
   return {
     available: () => true,
-    offers(need) {
-      const q = queryOf(need);
-      if (!q) return Promise.resolve([]);
-      // The same question asked by two cards at once goes out once.
-      const going = asking.get(q) ?? ask(q).finally(() => asking.delete(q));
-      asking.set(q, going);
-      return going;
-    },
+    offers: (need) => find(need),
+    find,
   };
 }
 
-export const liveSource: SuggestionSource = makeLiveSource();
+/**
+ * The chat's find_offers: real offers for a need, the cheapest or under a ceiling when asked; [] when the sources
+ * have none (then the chat says it found none rather than making one up).
+ */
+export const findOffers = (need: Need, narrow: Narrow = {}): Promise<Offer[]> => liveSource.find(need, narrow);
+
+export const liveSource = makeLiveSource();
