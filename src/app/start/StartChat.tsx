@@ -65,7 +65,8 @@ function BotLine({ text }: { text: string }) {
   const cut = text.lastIndexOf("\n");
   const last = cut >= 0 ? text.slice(cut + 1) : text;
   // Only a question is bold (the ready line, "Rotayı çiziyorum…" aren't); a one-line question too.
-  const question = /\?\s*$/.test(last) && (cut >= 0 || !/[.!:]\s/.test(text)) ? last : null;
+  // (A question may end with a note in brackets: "…ne istiyorsun? (birden çok seçebilirsin)".)
+  const question = /\?\s*(\([^)]*\))?\s*$/.test(last) && (cut >= 0 || !/[.!:]\s/.test(text.split("?")[0])) ? last : null;
   if (!question) return <>{text}</>;
   const ack = cut >= 0 ? text.slice(0, cut) : "";
   return (
@@ -492,9 +493,11 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     const preview = previewOf(state, ctx);
     const last = state.messages.at(-1);
     const holding = stage === "thinking";
-    // The route being drawn for the place and nights now (rev 3): said on the ROTA row only; its chips wait for it.
-    const drawing = Boolean(drawingKey && drawingKey === routeKey(state) && !state.route);
-    const showChips = phase === "chat" && !holding && question && last?.role === "assistant" && !(question.id === "route" && drawing && !state.editingRoute);
+    // The route being drawn for the place and nights now (rev 3): said on the ROTA row only ("new": nothing yet, its
+    // chips wait for it; "refine": the classic circuit is there, the model's may refine it).
+    const drawingNow = Boolean(drawingKey && drawingKey === routeKey(state) && !state.route?.confirmed);
+    const drawing = !drawingNow ? null : !state.route ? "new" : state.route.source === "circuit" ? "refine" : null;
+    const showChips = phase === "chat" && !holding && question && last?.role === "assistant" && !(question.id === "route" && drawing === "new" && !state.editingRoute);
     const generating = phase === "generating";
     const stageText = stage === "writing" ? L("Yazıyor…", "Writing…") : L("Düşünüyor…", "Thinking…");
 

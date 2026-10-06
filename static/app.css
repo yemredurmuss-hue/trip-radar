@@ -2475,14 +2475,14 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-row-value { display: block; margin-top: 2px; font-size: 17px; color: var(--hx-ink); }
 .st-row:not(.done) .st-row-value { color: #5d5885; }
 .st-gen-card { background: rgba(255, 255, 255, .72); border-radius: 22px; padding: 18px; text-align: center; }
-.st-gen-btn { width: 100%; border: 0; border-radius: 999px; padding: 15px; background: #221b3a; color: #fff; font-size: 17px; font-weight: 650; cursor: pointer; opacity: 1; transition: background-color .2s ease, transform .15s ease; }
+.st-gen-btn { width: 100%; border: 0; border-radius: 999px; padding: 15px; background: #221b3a; color: #fff; font-size: 17px; font-weight: 650; cursor: pointer; opacity: 1; transition: transform .15s ease; }
 .st-gen-btn:hover:not(:disabled) { background: #120d24; }
 .st-gen-btn:active:not(:disabled) { transform: scale(.985); }
 /* Disabled only while there is no destination (rev 3): then, and only then, it looks so. */
 .st-gen-btn:disabled { background: #b8b0d8; color: #f4f1ff; cursor: not-allowed; }
 .st-bar-gen { cursor: pointer; }
 /* The ROTA row while the route's proposal is on its way (rev 3): the chat goes on meanwhile. */
-.st-row-drawing { display: inline-flex; align-items: center; gap: 8px; color: var(--hx-accent); }
+.st-row-drawing { display: flex; align-items: center; gap: 8px; color: var(--hx-accent); font-size: 14.5px; }
 .st-row.drawing .st-check { border-color: var(--hx-accent); }
 .st-gen-card p { margin: 10px 0 0; font-size: 13.5px; color: #4b4670; }
 .st-bar { display: none; }

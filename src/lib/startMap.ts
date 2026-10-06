@@ -75,18 +75,19 @@ export function tripPoints(s: Pick<StartState, "from" | "where" | "route" | "dur
 
 /**
  * The view that frames the points with room around them, at the given width/height ratio: never narrower than
- * `minW` map units (a single island isn't zoomed into a blur), never wider than the map.
+ * `minW` map units (a single island isn't zoomed into a blur), never wider than the map. The lowest `bottom` share
+ * is kept free (the photos fan in over it), the points framed in the rest.
  */
-export function frame(points: XY[], aspect: number, pad = 0.28, minW = 150): View {
+export function frame(points: XY[], aspect: number, pad = 0.28, minW = 150, bottom = 0.24): View {
   if (!points.length) return { x: 0, y: (MAP_H - MAP_W / aspect) / 2, w: MAP_W, h: MAP_W / aspect };
   const xs = points.map((p) => p.x);
   const ys = points.map((p) => p.y);
   const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-  let w = Math.max(minW, (x1 - x0) * (1 + 2 * pad), (y1 - y0) * (1 + 2 * pad) * aspect);
+  let w = Math.max(minW, (x1 - x0) * (1 + 2 * pad), ((y1 - y0) * (1 + 2 * pad) * aspect) / (1 - bottom));
   w = Math.min(w, MAP_W);
   const h = w / aspect;
-  // The arc bends upwards: a little more room above.
-  return { x: (x0 + x1) / 2 - w / 2, y: (y0 + y1) / 2 - h / 2 - h * 0.06, w, h };
+  const usable = h * (1 - bottom);
+  return { x: (x0 + x1) / 2 - w / 2, y: (y0 + y1) / 2 - usable / 2, w, h };
 }
 
 /** A view eased towards another (t from 0 to 1). */

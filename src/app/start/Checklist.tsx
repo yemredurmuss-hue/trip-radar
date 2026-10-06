@@ -29,12 +29,15 @@ interface Props {
   rows: ChecklistRow[];
   onAsk: (q: QuestionId) => void;
   disabled?: boolean;
-  /** The route's proposal is on its way (rev 3): the ROTA row says so, the chat goes on. */
-  drawing?: boolean;
+  /**
+   * The route's proposal is on its way (rev 3): the ROTA row says so, the chat goes on. "new": nothing shown yet;
+   * "refine": the classic circuit is shown, the model's may refine it.
+   */
+  drawing?: "new" | "refine" | null;
   lang: Lang;
 }
 
-export function Checklist({ rows, onAsk, disabled, drawing = false, lang }: Props) {
+export function Checklist({ rows, onAsk, disabled, drawing = null, lang }: Props) {
   const done = rows.filter((r) => r.done).length;
   return withLang(lang, () => (
     <div className="st-list">
@@ -48,7 +51,17 @@ export function Checklist({ rows, onAsk, disabled, drawing = false, lang }: Prop
       </div>
       <ol className="st-rows">
         {rows.map((r) => {
-          const busy = drawing && r.id === "route" && !r.done;
+          const busy = Boolean(drawing) && r.id === "route" && !r.done;
+          const status = (
+            <span className="st-row-drawing" role="status">
+              <span className="st-dots" aria-hidden>
+                <i />
+                <i />
+                <i />
+              </span>
+              {L("Rotayı çiziyor…", "Drawing the route…")}
+            </span>
+          );
           return (
             <li key={r.id}>
               <button type="button" className={`st-row${r.done ? " done" : ""}${busy ? " drawing" : ""}`} disabled={disabled} onClick={() => onAsk(r.ask)} title={L("Bunu yeniden sor", "Ask this again")}>
@@ -61,15 +74,13 @@ export function Checklist({ rows, onAsk, disabled, drawing = false, lang }: Prop
                     {r.required && !r.done && <em>{L(" · gerekli", " · needed")}</em>}
                   </span>
                   <span className="st-row-value">
-                    {busy ? (
-                      <span className="st-row-drawing" role="status">
-                        <span className="st-dots" aria-hidden>
-                          <i />
-                          <i />
-                          <i />
-                        </span>
-                        {L("Rotayı çiziyor…", "Drawing the route…")}
-                      </span>
+                    {busy && drawing === "new" ? (
+                      status
+                    ) : busy ? (
+                      <>
+                        {r.value}
+                        {status}
+                      </>
                     ) : r.skipped && !r.done ? (
                       L("Atlandı · sonra sohbetten", "Skipped · later in the chat")
                     ) : (
