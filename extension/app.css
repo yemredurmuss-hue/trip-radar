@@ -1794,6 +1794,91 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .cat-search-link:hover { text-decoration: underline; }
 @container panel (max-width: 620px) { .cat-search { margin-left: 0; } }
 
+/* ---------- Boş kartlar (2026-10-06, docs/mockups/2026-10-06-bos-kartlar-v1.html): the approved card made plain ---------- */
+.ek-card { background: #fff; border: 1.5px dashed #ddd7cd; }
+.ek-card.ek-still { cursor: default; }
+.ek-card:hover { box-shadow: 0 4px 16px rgba(0, 0, 0, .04); }
+.ek-card .pk-ring.open { border: 1.5px dashed #c6bfb3; }
+.ek-card .pk-date { color: #8e8e93; }
+.ek-card .stay-x { position: static; }
+.ek-route { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; margin: 6px 0 4px; }
+.ek-end { min-width: 0; }
+.ek-end b { display: block; font-size: 17px; line-height: 1.2; font-weight: 700; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.ek-end b.ek-missing { font-weight: 500; color: #b9b4ab; }
+.ek-end small { display: block; margin-top: 1px; font-size: 12px; color: #8e8e93; overflow-wrap: anywhere; }
+.ek-end.r { text-align: right; }
+.ek-sil { width: 124px; height: 40px; color: var(--mc); opacity: .35; }
+.ek-sil .pk-art { position: static; transform: none; width: 100%; height: 100%; opacity: 1; }
+.ek-media { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: center; margin: 6px 0 4px; }
+.ek-tile { width: 52px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--mc) 8%, #fff); color: var(--mc); }
+.ek-tile svg { width: 34px; height: 28px; opacity: .55; }
+.ek-txt { min-width: 0; }
+.ek-txt b { display: block; font-size: 15.5px; line-height: 1.25; font-weight: 700; overflow-wrap: anywhere; }
+.ek-txt small { display: block; margin-top: 1px; font-size: 12.5px; color: #8e8e93; overflow-wrap: anywhere; }
+.ek-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 6px; padding-top: 8px; border-top: 1px dashed #eee9e1; }
+.ek-state { font-size: 12.5px; color: #8e8e93; }
+.ek-state.alert-amber { color: #9a6400; }
+.ek-state.alert-red { color: #b42318; }
+.ek-find { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px; }
+.ek-ara { margin-right: 2px; font-size: 12px; color: #8e8e93; }
+.ek-link { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px 0 5px; border-radius: 999px; border: 1px solid #ece8e1; background: #fff; color: #55526a; font-size: 12px; text-decoration: none; white-space: nowrap; }
+.ek-link:hover, .ek-link:focus-visible { border-color: #cfc9be; color: #1d1d1f; }
+.ek-lg { flex: none; width: 15px; height: 15px; border-radius: 4px; display: grid; place-items: center; font-size: 8.5px; font-weight: 800; line-height: 1; color: #fff; }
+.ek-skip { padding: 0; margin-left: 2px; border: 0; background: none; font: inherit; font-size: 12px; color: #8e8e93; cursor: pointer; }
+.ek-skip:hover { color: #3a3a3c; text-decoration: underline; }
+.ek-slot { scroll-margin-top: 12px; }
+@container panel (max-width: 620px) {
+  .ek-sil { width: 76px; height: 26px; }
+  .ek-end b { font-size: 15px; }
+  .ek-find { margin-left: 0; justify-content: flex-start; width: 100%; }
+}
+/* the AI offers' row (revision 2; cards: docs/mockups/2026-10-06-ai-oneriler-turler-v3.html), only with a data source connected */
+.ek-offers { margin: 8px 0 0; }
+.ek-offers-head { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border-radius: 12px; border: 1px solid #e4dcff; background: #f6f3ff; font: inherit; font-size: 13px; font-weight: 600; color: #5b45e0; cursor: pointer; text-align: left; }
+.ek-offers-chev { margin-left: auto; transition: transform .2s; }
+.ek-offers.open .ek-offers-chev { transform: rotate(180deg); }
+.ek-offer-list { display: grid; gap: 6px; margin-top: 6px; }
+.ek-offer { display: grid; grid-template-columns: minmax(0, 1fr) 168px; border-radius: 16px; background: #fff; border: 1px solid #e4dcff; overflow: hidden; }
+.ek-of-body { min-width: 0; padding: 12px 14px 11px; }
+.ek-why { margin: 8px 0 0; font-size: 12px; color: #5b45e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* a flight or a transfer: carrier, hours and codes, how long over a thin line, direct in green */
+.ek-of-route { display: grid; grid-template-columns: max-content auto minmax(70px, 1fr) auto; align-items: center; gap: 14px; }
+.ek-of-carrier { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.ek-of-air { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: #6a4fe0; color: #fff; font-size: 12px; font-weight: 800; }
+.ek-of-tm { font-size: 18px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.ek-of-tm small { display: block; font-size: 12.5px; font-weight: 400; color: #6e6e73; }
+.ek-of-mid { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; font-size: 12px; color: #6e6e73; }
+.ek-of-ln { position: relative; display: block; width: 100%; height: 1px; background: #cfcbe0; }
+.ek-of-ln svg { position: absolute; right: -4px; top: -6px; color: #9a96b0; }
+.ek-of-ok { color: #1f8a70; font-weight: 500; }
+/* a stay, an activity, an eSIM: photo, name, rating chip and area, one line */
+.ek-of-media { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; align-items: center; }
+.ek-of-ph { width: 92px; height: 72px; border-radius: 12px; overflow: hidden; display: grid; place-items: center; background: #eef1fb; color: #3b6fd1; }
+.ek-of-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ek-of-ph svg { opacity: .55; }
+.ek-of-txt { min-width: 0; display: grid; }
+.ek-of-t { font-size: 15.5px; font-weight: 700; color: #1d1d1f; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ek-of-t:hover { text-decoration: underline; }
+.ek-of-s { margin-top: 3px; font-size: 12.5px; color: #6e6e73; }
+.ek-of-rate { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 20px; margin-right: 6px; padding: 0 5px; border-radius: 6px; background: #1f8a70; color: #fff; font-size: 11.5px; font-weight: 700; }
+/* the deal: source, the big price, its unit, a full-width "Ekle →", × in the corner */
+.ek-deal { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 12px 14px; border-left: 1px solid #e4dcff; background: #f6f3ff; }
+.ek-from { display: flex; align-items: center; gap: 5px; padding-right: 18px; font-size: 11.5px; color: #6e6e73; text-decoration: none; white-space: nowrap; }
+.ek-from .ek-lg { width: 13px; height: 13px; font-size: 7.5px; border-radius: 3px; }
+.ek-amt { font-size: 22px; font-weight: 800; letter-spacing: -.3px; }
+.ek-amt small { font-size: 13px; font-weight: 500; color: #6e6e73; letter-spacing: 0; }
+.ek-per { margin-top: -2px; font-size: 11.5px; color: #6e6e73; }
+.ek-go { margin-top: 8px; height: 36px; border: 0; border-radius: 10px; background: #5b45e0; color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.ek-go:hover { background: #4a35cf; }
+.ek-offer-x { position: absolute; top: 7px; right: 7px; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: none; color: #a7a2c4; display: grid; place-items: center; cursor: pointer; }
+.ek-offer-x:hover { background: #ebe5ff; color: #3a3a3c; }
+@container panel (max-width: 620px) {
+  .ek-offer { grid-template-columns: 1fr; }
+  .ek-deal { border-left: 0; border-top: 1px solid #e4dcff; }
+  .ek-of-route { grid-template-columns: auto minmax(60px, 1fr) auto; }
+  .ek-of-carrier { grid-column: 1 / -1; flex-direction: row; align-items: center; }
+}
+
 /* the empty sections: one chip each, at the bottom */
 .cat-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 4px 0; font-size: 13px; color: #6e6e73; }
 .cat-chip { --c: #6e6e73; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--c) 30%, #fff); background: #fff; font: inherit; font-size: 13px; font-weight: 500; color: #1d1d1f; cursor: pointer; }
