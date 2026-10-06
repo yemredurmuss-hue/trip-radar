@@ -12,7 +12,8 @@ import { L, lang } from "./i18n";
 import { currencyCode, formatDateRange, isoDate, metricsOf } from "./items";
 import { cityKeyOf, departureDay, sameCity, stayRange } from "./plan";
 import { isGeneratedName, plannedItem, type PlannedInput } from "./planned";
-import { countryCodeOfName, knownPlaceOf, regionName } from "./startTrip";
+import { countryCodeOfName, editDistance, KNOWN_PLACES, knownPlaceOf, regionName } from "./startTrip";
+import { airportCode } from "./searchLinks";
 import { countryCodesOf } from "./heroInfo";
 import { fromPage, saidEdits, withEdits, withoutEdits } from "./userEdits";
 import type { Item } from "./types";
@@ -68,6 +69,82 @@ export function countryOfPlace(place: string | null | undefined, items: Item[] =
   if (code) return { name: regionName(code, lang()) ?? country ?? place, code };
   const there = items.find((i) => i.status !== "dismissed" && i.category !== "esim" && i.city && i.countryCode && sameCity(i.city, place));
   return fromCode(there?.countryCode) ?? (country ? { name: country, code: null } : null);
+}
+
+const squashed = (s: string) => fold(s).replace(/[^a-z0-9]+/g, "");
+
+/**
+ * The places the trip already names (its records' cities and their ends), with the names the code knows for them
+ * ("Madeira" for a trip whose records say Funchal: one place, one airport).
+ */
+function tripPlaceNames(items: Item[]): string[] {
+  const own = items
+    .filter((i) => i.status !== "dismissed")
+    .flatMap((raw) => {
+      const i = withEdits(raw);
+      return [i.city, i.flight?.from, i.flight?.to];
+    })
+    .filter((p): p is string => Boolean(p?.trim()) && !/^[A-Z]{3}$/.test(p!.trim()));
+  const keys = new Set(own.map((p) => cityKeyOf(p)).filter(Boolean));
+  const known = KNOWN_PLACES.filter((k) => [k.tr, k.en, k.airport].some((n) => n && keys.has(cityKeyOf(n)))).flatMap((k) => [k.tr, k.en]);
+  return [...new Set([...own, ...known])];
+}
+
+/**
+ * A place said in the chat as the trip spells it, when it was typed loosely ("Maderia" → Madeira, on a trip to
+ * Madeira): a name of 5+ letters, its first letter right, at most 2 edits away (1 for a short one) from one place
+ * the trip already names. A place the code knows as it is (İstanbul, an airport, a country) or one the trip doesn't
+ * name stays as said: never a guess between two of the trip's places.
+ */
+export function tripPlaceOf(said: string | null | undefined, items: Item[]): string | null {
+  const text = said?.trim();
+  if (!text) return said ?? null;
+  const key = cityKeyOf(text);
+  const names = tripPlaceNames(items);
+  if (names.some((n) => cityKeyOf(n) === key)) return text;
+  if (airportCode(text) || knownPlaceOf(text) || countryCodeOfName(text)) return text;
+  const typed = squashed(text);
+  if (typed.length < 5) return text;
+  // The closest name of each of the trip's places it could be.
+  const hits = new Map<string, { d: number; name: string }>();
+  for (const name of names) {
+    const want = squashed(name);
+    if (want[0] !== typed[0] || want.length < 5) continue;
+    const max = Math.min(typed.length, want.length) >= 6 ? 2 : 1;
+    const d = editDistance(typed, want, max);
+    const k = cityKeyOf(name) ?? want;
+    if (d <= max && (!hits.has(k) || d < hits.get(k)!.d)) hits.set(k, { d, name });
+  }
+  return hits.size === 1 ? [...hits.values()][0].name : text;
+}
+
+/** What really differs between a record before and after a write, as the card shows it (its corrections in place). */
+export type ChangeField = "name" | "route" | "city" | "dates" | "time" | "provider" | "price" | "status" | "package";
+
+export function changedFields(beforeRaw: Item, afterRaw: Item): Map<ChangeField, string> {
+  const [a, b] = [withEdits(beforeRaw), withEdits(afterRaw)];
+  const out = new Map<ChangeField, string>();
+  const same = (x: unknown, y: unknown) => (x ?? null) === (y ?? null);
+  if (!same(a.name, b.name)) out.set("name", b.name);
+  if (!same(a.flight?.from, b.flight?.from) || !same(a.flight?.to, b.flight?.to)) out.set("route", `${b.flight?.from ?? "?"} → ${b.flight?.to ?? "?"}`);
+  if (!same(a.city, b.city)) out.set("city", b.city ?? "");
+  if (!same(a.dates.start, b.dates.start) || !same(a.dates.end, b.dates.end)) out.set("dates", b.dates.start ? formatDateRange(b.dates.start, b.dates.end) : "");
+  const clock = (i: Item) => i.flight?.departure?.slice(11, 16) || null;
+  if (!same(clock(a), clock(b))) out.set("time", clock(b) ?? "");
+  if (!same(a.provider, b.provider)) out.set("provider", b.provider ?? "");
+  if (!same(a.price.amount, b.price.amount) || !same(a.price.currency, b.price.currency)) out.set("price", b.price.amount != null ? `${b.price.amount} ${b.price.currency ?? ""}`.trim() : "");
+  if (a.status !== b.status) out.set("status", b.status === "booked" ? L("rezerve edildi", "booked") : b.status === "chosen" ? L("planlandı", "planned") : b.status);
+  const [ma, mb] = [metricsOf(a), metricsOf(b)];
+  if (!same(ma.dataGb, mb.dataGb) || !same(ma.unlimitedData, mb.unlimitedData) || !same(ma.validityDays, mb.validityDays)) out.set("package", mb.dataGb ? gbText(mb.dataGb) : "");
+  return out;
+}
+
+/** "I updated the flight card: Madeira → İstanbul" from what really changed; "already says this" when nothing did. */
+export function updateSummary(kind: CardKind, changed: string[]): string {
+  const label = cardKindLabel(kind);
+  return changed.length
+    ? L(`${label} kartını güncelledim: ${changed.join(", ")}`, `I updated the ${label} card: ${changed.join(", ")}`)
+    : L(`${label} kartı zaten böyle; değişen bir şey yok`, `The ${label} card already says this; nothing changed`);
 }
 
 /** The trip's countries, by code: its records' own, and those of the cities the code knows. */
@@ -268,6 +345,8 @@ export function candidateLabel(raw: Item): string {
 export interface BookingUpdate {
   item: Item;
   changed: string[];
+  /** Which field each of `changed` is (the same order): the reply keeps only those that really changed. */
+  fields: ChangeField[];
   /** "eSIM kartını güncelledim: 10 GB, alındı" (the card's kind in words). */
   summary: string;
 }
@@ -285,6 +364,11 @@ export function bookedUpdate(raw: Item, said: PlannedInput, extras: BookingExtra
   const view = withEdits(raw);
   const kind = cardKind(view);
   const changed: string[] = [];
+  const fields: ChangeField[] = [];
+  const note = (field: ChangeField, text: string) => {
+    changed.push(text);
+    fields.push(field);
+  };
   const page = fromPage(raw);
   let next: Item = { ...raw };
   const edits: Record<string, string | number | null> = {};
@@ -301,13 +385,13 @@ export function bookedUpdate(raw: Item, said: PlannedInput, extras: BookingExtra
   if (name && name !== view.name) {
     if (page) edits.name = name;
     else next.name = name;
-    changed.push(name);
+    note("name", name);
   }
   if (pack && (pack.dataGb || pack.unlimited || pack.days)) {
     const m = { ...metricsOf(raw) };
     if (pack.dataGb && m.dataGb !== pack.dataGb) {
       m.dataGb = pack.dataGb;
-      if (!name || name === view.name) changed.push(gbText(pack.dataGb));
+      if (!name || name === view.name) note("package", gbText(pack.dataGb));
     }
     if (pack.unlimited) m.unlimitedData = true;
     if (pack.days) m.validityDays = pack.days;
@@ -315,7 +399,7 @@ export function bookedUpdate(raw: Item, said: PlannedInput, extras: BookingExtra
   }
   if (extras.provider && extras.provider !== view.provider) {
     next.provider = extras.provider;
-    changed.push(extras.provider);
+    note("provider", extras.provider);
   }
   if (extras.price != null) {
     const currency = currencyCode(extras.currency)!;
@@ -326,7 +410,7 @@ export function bookedUpdate(raw: Item, said: PlannedInput, extras: BookingExtra
       if (page && pageScope === "total") Object.assign(edits, { price: extras.price, currency });
       else next = withoutEdits({ ...next, price: { amount: extras.price, currency, scope: "total", taxesIncluded: "unknown", source: "user", observedAt: now } }, ["price", "currency"]);
       next.priceHistory = [...raw.priceHistory, { amount: extras.price, currency, observedAt: now }];
-      changed.push(`${extras.price} ${currency}`);
+      note("price", `${extras.price} ${currency}`);
     }
   }
 
@@ -342,8 +426,8 @@ export function bookedUpdate(raw: Item, said: PlannedInput, extras: BookingExtra
       if (days.time && start) next.flight = { ...(next.flight ?? { from: null, to: null, departure: null, arrival: null, carrier: null, flightNumber: null, stops: null }), departure: `${start}T${days.time}` };
       next = withoutEdits(next, ["start", "end", "time"]);
     }
-    const r = days.start ? formatDateRange(days.start, days.end) : days.time;
-    if (r) changed.push(r);
+    if (days.start) note("dates", formatDateRange(days.start, days.end));
+    else if (days.time) note("time", days.time);
   }
   if (kind === "esim") {
     const country = esimCountry(said.city ?? said.to, view, items);
@@ -352,19 +436,34 @@ export function bookedUpdate(raw: Item, said: PlannedInput, extras: BookingExtra
       else next = withoutEdits({ ...next, city: country.name }, ["city"]);
       next.country = country.name;
       next.countryCode = country.code ?? next.countryCode;
-      if (view.city !== country.name) changed.push(country.name);
+      if (view.city !== country.name) note("city", country.name);
+    }
+  } else if (TRAVEL.includes(kind)) {
+    // A trip's ends ("Madeira'dan İstanbul'a"): where the card and its offers read them (flight.from / flight.to),
+    // the place it goes its city too when it had none or the old end.
+    const f = view.flight ?? { from: null, to: null, departure: null, arrival: null, carrier: null, flightNumber: null, stops: null };
+    const from = said.from && cityKeyOf(said.from) !== cityKeyOf(f.from) ? said.from : null;
+    const to = (said.to ?? said.city) && cityKeyOf(said.to ?? said.city) !== cityKeyOf(f.to) ? (said.to ?? said.city)! : null;
+    if (from || to) {
+      if (page) Object.assign(edits, from ? { from } : {}, to ? { to } : {});
+      else {
+        next.flight = { ...(next.flight ?? f), ...(from ? { from } : {}), ...(to ? { to } : {}) };
+        if (to && (!view.city || cityKeyOf(view.city) === cityKeyOf(f.to))) next.city = to;
+        next = withoutEdits(next, [...(from ? (["from"] as const) : []), ...(to ? (["to", "city"] as const) : [])]);
+      }
+      note("route", `${from ?? f.from ?? "?"} → ${to ?? f.to ?? "?"}`);
     }
   } else if (!view.city && (said.city ?? (TRAVEL.includes(kind) ? null : said.to))) {
     const city = said.city ?? said.to;
     if (page) edits.city = city;
     else next.city = city;
-    changed.push(city!);
+    note("city", city!);
   }
   if (said.note && said.note !== view.statusNote) next.statusNote = said.note;
   if (said.booked && raw.status !== "booked") {
     next.status = "booked";
     next.statusAt = now;
-    changed.push(bookedWord(kind));
+    note("status", bookedWord(kind));
   }
   if (!raw.plannedKind && raw.origin === "chat") next.plannedKind = said.kind;
   if (page && Object.keys(edits).length) {
@@ -373,11 +472,7 @@ export function bookedUpdate(raw: Item, said: PlannedInput, extras: BookingExtra
     next.userEdits = corrections;
   }
   next.updatedAt = now;
-  const label = cardKindLabel(kind);
-  const summary = changed.length
-    ? L(`${label} kartını güncelledim: ${changed.join(", ")}`, `I updated the ${label} card: ${changed.join(", ")}`)
-    : L(`${label} kartı zaten böyle; değişen bir şey yok`, `The ${label} card already says this; nothing changed`);
-  return { item: next, changed, summary };
+  return { item: next, changed, fields, summary: updateSummary(kind, changed) };
 }
 
 /** "alındı" for what is bought, "rezerve edildi" for what is booked. */

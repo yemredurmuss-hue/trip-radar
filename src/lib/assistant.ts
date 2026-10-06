@@ -24,8 +24,8 @@ import { coverageText, searchText } from "./listing";
 import { prosConsFor } from "./proscons";
 import { activeSignals, pendingSignals } from "./intent";
 import { buildLegs, canHideLeg, isHiddenLeg, legTiming, staleHiddenMoves, withLegChoice, type Leg } from "./legs";
-import { checkPlanned, guardKind, plannedInput, plannedItem, planToSave, PLANNED_KINDS, type PlannedInput } from "./planned";
-import { bookedUpdate, candidateLabel, decideBooking, esimPackage, saidKind, sameKind, SECOND_PURCHASE, type BookingExtras } from "./chatBooking";
+import { checkPlanned, guardKind, isGeneratedName, plannedInput, plannedItem, planToSave, PLANNED_KINDS, type PlannedInput } from "./planned";
+import { bookedUpdate, candidateLabel, changedFields, countryOfPlace, decideBooking, esimPackage, saidKind, sameKind, SECOND_PURCHASE, tripPlaceOf, updateSummary, type BookingExtras } from "./chatBooking";
 import { cardKind, cardKindLabel } from "./cardKinds";
 import { isIdea } from "./booking";
 import { sectionOfItem, type SectionId } from "./categories";
@@ -1653,7 +1653,9 @@ async function runTool(tripId: string, name: string, input: any, choices: string
     }
     case "plan_item": {
       // A policy or an eSIM said as an activity or a to-do is that record (0.34.6 §2), whatever kind came.
-      const said = guardKind(plannedInput(input));
+      const typed = guardKind(plannedInput(input));
+      // A place typed loosely ("Maderia") is the trip's own (Madeira): the card, its search and its offers read it.
+      const said = { ...typed, from: tripPlaceOf(typed.from, items), to: tripPlaceOf(typed.to, items), city: tripPlaceOf(typed.city, items) };
       // A wrong value is refused here; what's missing (the city of a hire already on the plan) only for a new one.
       const problem = checkPlanned(said, PLANNED_KINDS, { complete: false });
       if (problem) throw new ToolError(problem);
@@ -1708,10 +1710,21 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       if (byOrigin) saved.forWho = byOrigin;
       await d.put("items", saved);
       turn.touched.add(saved.id);
+      // Honest: "updated" only for what really differs on the stored record, read back after the write.
+      const before = record ?? same;
+      const real = before ? changedFields(before, (await d.get("items", saved.id)) ?? saved) : null;
+      let verified: { changed: string[]; summary: string } | null = null;
+      if (real) {
+        const told = booking ? booking.changed.filter((_, k) => real.has(booking.fields[k])) : [];
+        // A name the code makes from the route ("Flight · Madeira → İstanbul") is said by the route already.
+        const rest = booking ? [] : [...real].filter(([f, v]) => v && !(f === "city" && real.has("route")) && !(f === "name" && isGeneratedName(v))).map(([, v]) => v);
+        const changed = [...told, ...rest];
+        verified = { changed, summary: updateSummary(cardKind(withEdits(saved)), changed) };
+      }
       // The board's "Geri al" (and Geçmiş's) puts the record back exactly as it was before this booking.
-      if (booking && record && booking.changed.length) {
-        const eventId = await addEvent(tripId, booking.summary, { undo: { kind: "fields", fields: [], before: {}, after: {}, records: [{ before: record, afterAt: saved.updatedAt }] } });
-        announceTripChange({ tripId, fields: [], before: {}, eventId, label: booking.summary });
+      if (booking && record && verified?.changed.length) {
+        const eventId = await addEvent(tripId, verified.summary, { undo: { kind: "fields", fields: [], before: {}, after: {}, records: [{ before: record, afterAt: saved.updatedAt }] } });
+        announceTripChange({ tripId, fields: [], before: {}, eventId, label: verified.summary });
       }
       // Where it landed on the Plan (booking.ts reads a thing to do from its evidence, not its kind): the reply
       // says "added to Things to do", never "booked", for a market said as an activity.
@@ -1719,12 +1732,15 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       const prep = section === "other" && isIdea(saved);
       const todo = section === "todo" || prep;
       const result: Record<string, unknown> = {
+        // Nothing really differs: said so first, so a reply saying "updated" is caught (claims.ts).
+        ...(verified && !verified.changed.length ? { unchanged: true } : {}),
         [same ? "updated" : "added"]: saved.name,
         item_id: saved.id,
-        ...(booking
+        ...(verified && !booking ? { changed: verified.changed, summary: verified.summary, said_only: L("Yanıtında yalnız summary'deki değişeni söyle.", "In your reply say only what changed, from summary.") } : {}),
+        ...(booking && verified
           ? {
-              changed: booking.changed,
-              summary: booking.summary,
+              changed: verified.changed,
+              summary: verified.summary,
               kept: L(
                 "Aynı kayıt güncellendi, ikinci bir kayıt açılmadı; dosyaları, kimin için olduğu ve linkleri yerinde. Yanıtında summary'deki değişeni söyle.",
                 "The same record was updated, no second one was made; its files, whose it is and its links stay. Say what changed, from summary, in your reply.",
