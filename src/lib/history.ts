@@ -226,7 +226,7 @@ export function buildHistory(input: HistoryInput): HistoryRow[] {
   for (const h of input.hidden) {
     if (h.kind === "dismissed") {
       const item = h.item;
-      const line = events.find((m) => !used.has(m.id) && m.text.startsWith(`${item.name} `) && /kaldırıldı|elendi|removed|ruled out/.test(m.text));
+      const line = events.find((m) => !used.has(m.id) && m.text.startsWith(`${item.name} `) && /kaldırıldı|elendi|iptal edildi|removed|ruled out|cancelled/.test(m.text));
       if (line) used.add(line.id);
       const chat = Boolean(item.dismissedFrom);
       rows.push({
@@ -234,7 +234,8 @@ export function buildHistory(input: HistoryInput): HistoryRow[] {
         at: item.statusAt ?? line?.createdAt ?? item.updatedAt ?? null,
         who: meName,
         me: true,
-        verb: chat ? L("Kaldırıldı", "Removed") : L("Elendi", "Ruled out"),
+        // A booking cancelled ("İptal ettim", lifecycle.ts) says so: one row with the chat's line.
+        verb: item.cancelledAt ? L("İptal edildi", "Cancelled") : chat ? L("Kaldırıldı", "Removed") : L("Elendi", "Ruled out"),
         parts: null,
         text: item.name,
         how: chat ? [L("sohbetten", "in the chat"), L("Gizlenenler'de", "under Hidden")] : [L("Gizlenenler'de", "under Hidden")],

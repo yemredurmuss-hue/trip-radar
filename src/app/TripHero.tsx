@@ -73,7 +73,8 @@ export function TripHero(props: {
   const dateAppear = useAppear(!!range);
   const barAppear = useAppear(done.total > 0);
   const deadlines = todo.deadlines.length;
-  const listed = todo.open.length + todo.book.length + todo.ways.length + deadlines;
+  // Everything the list holds, a missing file too: any of it opens the list.
+  const listed = todo.open.length + todo.book.length + todo.docs.length + todo.ways.length + deadlines;
   const toggle = (list: "all" | "deadline") => props.onList(props.list === list ? null : list);
   // Aşamalar (lifecycle.ts): the percentage is over what's in the plan only, booked (or ready) of planned + booked;
   // what waits for a decision is a count beside it, never in it. Nothing in the plan: no percentage.
@@ -95,6 +96,8 @@ export function TripHero(props: {
   const words: [string, ReactNode][] = [];
   if (pct != null && open) words.push(["open", openNeedsText(open)]);
   if (planned) words.push(["planned", <><i className="hx-key planned" aria-hidden />{L(`${planned} rezerve edilecek`, `${planned} to book`)}</>]);
+  // Everything booked, files still to add: say so, so "Belge eksik" alone still opens the list.
+  if (!open && !planned && todo.needs.docs) words.push(["docs", L(`${todo.needs.docs} belge eksik`, `${todo.needs.docs} file${todo.needs.docs === 1 ? "" : "s"} missing`)]);
   const ways = todo.ways.length;
   if (ways && !open) words.push(["ways", L(`${ways} ulaşım sorusu`, `${ways} transfer question${ways === 1 ? "" : "s"}`)]);
   // The line wraps between the parts, never inside one, and a dot goes with the part after it (none left dangling).

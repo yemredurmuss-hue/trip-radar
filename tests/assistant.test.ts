@@ -415,7 +415,7 @@ describe("assistant", () => {
     // Gizlenenler's "Geri al": the booking it was, no longer cancelled.
     await setItemStatus(after, "saved");
     const back = (await listItems("t1")).find((i) => i.id === hotel.id)!;
-    expect([back.status, back.cancelledAt, stageOf(back)]).toEqual(["booked", undefined, "booked"]);
+    expect([back.status, back.cancelledAt, back.refundNote, stageOf(back)]).toEqual(["booked", undefined, undefined, "booked"]);
   });
   it("moves an undated ticket to its day when the traveller says the date, keeping the times read from it", async () => {
     const { items } = await seed();

@@ -33,8 +33,9 @@ export async function setItemStatus(item: Item, status: ItemStatus): Promise<voi
   // Taken off by the chat ("kaldır"): "Geri al" puts back what it was (a plan said in the chat is planned again,
   // a booking booked), not "an option".
   const back = status === "saved" && found.status === "dismissed" && found.dismissedFrom ? found.dismissedFrom : status;
-  // A cancelled booking brought back is a booking again, not a cancelled one (lifecycle.ts reads cancelledAt).
-  const { dismissedFrom: _from, cancelledAt: _cancelled, ...fresh } = found;
+  // A cancelled booking brought back is a booking again, not a cancelled one (lifecycle.ts reads cancelledAt), and
+  // what was said about its refund goes with the cancellation.
+  const { dismissedFrom: _from, cancelledAt: _cancelled, refundNote: _refund, ...fresh } = found;
   await d.put("items", { ...fresh, status: back, statusAt: Date.now(), updatedAt: Date.now() });
   await addEvent(item.tripId, statusEvent(item.name, back));
   notifyChanged();

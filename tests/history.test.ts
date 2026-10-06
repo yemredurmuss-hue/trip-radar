@@ -188,6 +188,13 @@ describe("the history", () => {
     const rows = buildHistory(input({ settings: [change(1, "Sabine", at(5, 9), asSettings(null), asSettings({ title: 3 }), ["title"])] }));
     expect(rows).toEqual([]);
   });
+
+  it("a booking cancelled in the chat is one row, İptal edildi (its line merges with it), Geri al from Gizlenenler", () => {
+    const hotel = makeItem({ name: "Jardim", status: "booked" });
+    const cancelled = { ...hotel, status: "dismissed" as const, dismissedFrom: "booked" as const, cancelledAt: at(5, 9), statusAt: at(5, 9), refundNote: "iade yok" };
+    const rows = buildHistory(input({ events: [event("m1", "Jardim iptal edildi", at(5, 9))], hidden: [{ kind: "dismissed", item: cancelled }], items: [cancelled] }));
+    expect(rows.map((r) => [r.verb, r.text, r.action?.kind])).toEqual([["İptal edildi", "Jardim", "restore-dismissed"]]);
+  });
 });
 
 describe("days and segments", () => {
