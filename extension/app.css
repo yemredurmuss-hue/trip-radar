@@ -2510,4 +2510,6 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .pk-src { flex: none; margin-left: auto; font-size: 11.5px; color: #a1a1a6; white-space: nowrap; }
 .pk-src + .pk-price { margin-left: 12px; }
 @media (max-width: 560px) { .pk-live { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.pk-airline { width: 16px; height: 16px; border-radius: 4px; object-fit: contain; vertical-align: -3px; margin-right: 5px; background: #fff; }
+.pk-route small.with-logo { display: flex; align-items: center; justify-content: center; gap: 8px; bottom: -38px; }
+.pk-mid.has-logo { margin-bottom: 42px; }
+.pk-airline { flex: none; width: 30px; height: 30px; padding: 3px; border-radius: 8px; object-fit: contain; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .06); }
