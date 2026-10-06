@@ -7,6 +7,7 @@ import { useState } from "react";
 import type { HiddenThing } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import { formatDateRange, formatPrice } from "../../lib/items";
+import { stageLabel, stageOf } from "../../lib/lifecycle";
 import type { Item } from "../../lib/types";
 import { setHidden, setItemStatus } from "../actions";
 import { useCardEnv } from "../cards/PlanCard";
@@ -41,7 +42,9 @@ function HiddenRow({ thing }: { thing: HiddenThing }) {
     case "dismissed":
     case "closed": {
       const { item } = thing;
-      const meta = [thing.kind === "closed" ? thing.reason : L("Elendi", "Ruled out"), item.city, priceOf(item)].filter(Boolean).join(" · ");
+      // A booking cancelled ("İptal ettim") says so, with what was said about the refund (lifecycle.ts).
+      const why = thing.kind === "closed" ? thing.reason : stageOf(item) === "cancelled" ? stageLabel("cancelled") : L("Elendi", "Ruled out");
+      const meta = [why, item.refundNote, item.city, priceOf(item)].filter(Boolean).join(" · ");
       return (
         <li className={`cat-hidden-row ${thing.kind}`} data-item-id={item.id}>
           <button type="button" className="cat-hidden-name" onClick={() => env.onOpenItem(item)}>

@@ -160,7 +160,7 @@ Nasıl konuşursun:
   • "X'i kaldır/sil", "ulaşımda X var, onu kaldır" → remove_from_plan. target_id ya bir seçeneğin items[].id'si (plandan çıkar, silinmez: Gizlenenler'de durur, oradan geri getirilebilir) ya da bir transferin plan.legs[].key'i (panoda "Gaula → Madeira" gibi görünen şehir değişimi ya da transfer; panodaki adı plan.legs[].cities; "Gerek yok" gibi gizlenir). Hiçbiri silinmez; Gizlenenler'den geri getirilebilir. Araç hata verirse kaldırılmadı: nedenini söyle, "kaldırdım" deme.
   • "X iptal, yerine Y" ("araç kiralama iptal, yerine karavan kiraladık") → aynı mesajda ikisini birden yap: Y'yi plan_item ile replaces = X'in id'si vererek ekle (Y kayıtlıysa update_items, X'i de remove_from_plan ile kaldır). X yalnız tek bir kayda uyuyorsa kaldır; birden fazla aday varsa hangisi olduğunu sor.
   • Kullanıcının istemediği rezervasyonlu bir şeyi (araç, konaklama, uçuş, tur) kendiliğinden plana ekleme. Önerdiğin şeyi suggest ile doğru bölüme bırak (ör. aylık motor kiralama → Ulaşım); kullanıcı açıkça eklemeni isterse plan_item. Sigorta ve eSIM önerisi Diğer'e gider. suggest yalnız plana girecek somut bir şey içindir (araç, konaklama, sigorta, eSIM, tur ya da bilet); genel ipuçları ("erken çık", "nakit taşı") kart değildir, yanıtında söyle. trip_state.suggestions.on_board'daki kartları tekrar önerme. Bir öneriyi asla todo, prep ya da activity olarak plan_item ile ekleme; Yapılacak şeyler yalnız kullanıcının söylediği deneyimler içindir. suggest'te fiyat, saat ya da yüzde uydurma; gerekçe tek cümle, plandaki olgulara dayansın. O günleri kapsayan bir araç (karavan, kiralık araba, motosiklet) zaten varsa, kullanıcı bu mesajda açıkça istemedikçe ikinci bir araç ekleme; plan_item bunu reddeder, önce sor.
-- Gerek olmayanı sil: "transfere gerek yok", "orayı arabayla hallederiz, transfer yok" → set_leg mode "none" (transfer gizlenir, geri getirilebilir). "X'i ele / istemiyorum" → update_items status dismissed (bölümünün sonunda Gizlenenler'de durur, silinmez).
+- Gerek olmayanı sil: "transfere gerek yok", "orayı arabayla hallederiz, transfer yok" → set_leg mode "none" (transfer gizlenir, geri getirilebilir). "X'i ele / istemiyorum" → update_items status dismissed (bölümünün sonunda Gizlenenler'de durur, silinmez). Rezerve edilmiş bir şeyi iptal ettiğini söylerse ("oteli iptal ettim", "uçuşu iptal ettik, iade 3 güne") update_items status cancelled, iade için söyleneni note'a; başka bir şey yerine alındıysa yukarıdaki replaces kuralı.
 - Soruların kısa ve sade olsun, şehirlerle sor: "Porto → Madeira nasıl geçeceksiniz?" gibi; otel adlarıyla, uzun ya da karışık cümle kurma.
 - Transferler: kullanıcı nasıl gideceğini söylediğinde ("metroyla gideceğim", "trenle geçeriz", "transferi ayarladım", "otel servisiyle") set_leg ile ilgili transferi işaretle (tarih ve şehirden hangisi olduğunu bul); booked yalnız "ayarladım/aldım/rezerve ettim" derse true. Plan konuşurken boş (empty) bir transferi uygun anda, bir seferde bir tane, sor; notes'taki ince detayı ilgili olduğunda söyle. Nasıl gidilebileceğini genel bilginle önerebilirsin ("genelde havalimanından metro var") ama fiyat ya da sefer saati uydurma.
 - Kullanıcı bir seçeneğin trip_state'te olmayan bir detayını sorarsa (TV, havuz, check-in saati, otopark...) search_page ile kayıtlı sayfasında ara. Bulduğunu alıntıyla söyle; bulamazsan "kaydettiğin sayfada göremedim" de, tahmin etme.
@@ -218,7 +218,7 @@ How you talk:
   • "remove/delete X", "there's X in transport, remove it" → remove_from_plan. target_id is either an option's items[].id (it leaves the plan, not deleted: it waits under Hidden and can be brought back from there) or a transfer's plan.legs[].key (a change of city or a transfer the board shows like "Gaula → Madeira"; its name on the board is plan.legs[].cities; it's hidden like "Not needed"). Nothing is deleted; it can be brought back from Hidden. If the tool returns an error, nothing was removed: say why, never "removed".
   • "X is cancelled, Y instead" ("the car rental is cancelled, we rented a campervan instead") → do both in the same message: add Y with plan_item and replaces = X's id (if Y is saved, update_items, and remove X with remove_from_plan). Remove X only when it matches one record; if several could be meant, ask which.
   • Never add something bookable the user didn't ask for (a vehicle, a stay, a flight, a tour) on your own. Leave what you suggest in the right section with suggest (e.g. a monthly scooter rental → Getting around); if the user explicitly asks you to add it, plan_item. Insurance and eSIM suggestions go to Other. suggest is only for something concrete that would go on the plan (a vehicle, a stay, insurance, an eSIM, a tour or a ticket); general tips ("leave early", "carry cash") are not cards, say them in your reply. Don't suggest again the cards in trip_state.suggestions.on_board. Never add a suggestion with plan_item as a todo, prep or activity; Things to do is only for experiences the user said. In suggest, don't make up prices, times or percentages; the why is one sentence resting on facts in the plan. If a vehicle (campervan, rental car, motorbike) already covers those days, don't add a second one unless the user explicitly asks in this message; plan_item refuses it, ask first.
-- Remove what isn't needed: "no transfer needed", "we'll drive there, no transfer" → set_leg mode "none" (the transfer is hidden and can be brought back). "rule out X / don't want it" → update_items status dismissed (it stays among the ruled-out ones, not deleted).
+- Remove what isn't needed: "no transfer needed", "we'll drive there, no transfer" → set_leg mode "none" (the transfer is hidden and can be brought back). "rule out X / don't want it" → update_items status dismissed (it stays among the ruled-out ones, not deleted). When they say they cancelled something booked ("I cancelled the hotel", "we cancelled the flight, refund in 3 days") → update_items status cancelled, with what was said about the refund in note; if something else was bought in its place, the replaces rule above.
 - Keep questions short and simple, and ask with cities: like "How will you get from Porto to Madeira?"; not with hotel names, and not long or tangled sentences.
 - Transfers: when the user says how they'll go ("I'll take the metro", "we'll go by train", "I've arranged the transfer", "with the hotel shuttle"), mark that transfer with set_leg (work out which one from the date and city); booked is true only if they say "arranged/bought/booked". While planning, ask about an empty transfer at a good moment, one at a time; mention a detail from notes when relevant. You can suggest how to get there from general knowledge ("there's usually a metro from the airport") but never make up prices or timetables.
 - If the user asks about a detail of an option that isn't in trip_state (TV, pool, check-in time, parking...), search its saved page with search_page. Say what you found with the quote; if nothing, say "I couldn't see it on the page you saved"; don't guess.
@@ -337,7 +337,7 @@ function buildTools(en: boolean): ToolSpec[] {
     {
       name: "update_items",
       description:
-        t("Seçeneklerin durumunu değiştirir. chosen = plana alındı, booked = kullanıcı rezervasyonu yaptı, dismissed = elendi, saved = tekrar seçenek. Yalnız durum ve not yazar; kullanıcı aldığı şeyin ayrıntısını da söylediyse (paket, şirket, fiyat, ad: '10 GB aldım', 'Europcar'dan kiraladım') plan_item'ı item_id ile kullan.", "Changes the status of options. chosen = in the plan, booked = the user made the booking, dismissed = ruled out, saved = back to being an option. It writes only the status and a note; when the user also says what they bought (a package, a company, a price, a name: 'bought 10 GB', 'rented it from Europcar'), use plan_item with item_id."),
+        t("Seçeneklerin durumunu değiştirir. chosen = plana alındı, booked = kullanıcı rezervasyonu yaptı, dismissed = elendi, saved = tekrar seçenek, cancelled = kullanıcı rezerve edilmiş bir şeyi iptal etti ('X'i iptal ettim'; yalnız booked olan; iade için söyleneni note'a yaz; ihtiyaç yeniden aranacak olur, Geri al geri getirir). Yalnız durum ve not yazar; kullanıcı aldığı şeyin ayrıntısını da söylediyse (paket, şirket, fiyat, ad: '10 GB aldım', 'Europcar'dan kiraladım') plan_item'ı item_id ile kullan.", "Changes the status of options. chosen = in the plan, booked = the user made the booking, dismissed = ruled out, saved = back to being an option, cancelled = the user cancelled something booked ('I cancelled X'; only a booked one; put what was said about the refund in note; its need is to find again, Undo brings it back). It writes only the status and a note; when the user also says what they bought (a package, a company, a price, a name: 'bought 10 GB', 'rented it from Europcar'), use plan_item with item_id."),
       schema: {
         type: "object",
         properties: {
@@ -347,7 +347,7 @@ function buildTools(en: boolean): ToolSpec[] {
               type: "object",
               properties: {
                 item_id: { type: "string" },
-                status: { type: "string", enum: ["saved", "chosen", "booked", "dismissed"] },
+                status: { type: "string", enum: ["saved", "chosen", "booked", "dismissed", "cancelled"] },
                 note: { ...nullable({ type: "string" }), description: t("Kısa gerekçe, ör. eleme sebebi", "Short reason, e.g. why it was ruled out") },
               },
               required: ["item_id", "status", "note"],
@@ -884,6 +884,8 @@ export function tripState(
       ...(withDocs && needsDoc(i) && !withDocs.has(i.id) ? { document: "missing" } : {}),
       ...(i.origin === "chat" ? { said_in_chat: true } : {}),
       ...(i.forWho?.length ? { for_who: i.forWho } : {}),
+      // A booking the user cancelled (lifecycle.ts İptal edildi): out of the plan, its need to find again.
+      ...(i.cancelledAt ? { cancelled: true, ...(i.refundNote ? { refund_note: i.refundNote } : {}) } : {}),
     })),
     // Suggestion cards left before (not part of the plan) and the ones the user said "Gerek yok" to: never again.
     ...(trip.suggestions?.length || onBoard.length
@@ -1322,7 +1324,7 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       );
       const unknown = changes.filter((c) => !byId.has(c.item_id)).map((c) => c.item_id);
       if (unknown.length) throw new ToolError(L(`Bu id'lerle seçenek yok: ${unknown.join(", ")}`, `No options with these ids: ${unknown.join(", ")}`));
-      const badStatus = changes.filter((c) => !(ITEM_STATUSES as readonly string[]).includes(c.status));
+      const badStatus = changes.filter((c) => !(ITEM_STATUSES as readonly string[]).includes(c.status) && (c.status as string) !== "cancelled");
       if (badStatus.length) throw new ToolError(L(`Geçersiz durum: ${badStatus.map((c) => c.status).join(", ")}`, `Invalid status: ${badStatus.map((c) => c.status).join(", ")}`));
       const trip = await d.get("trips", tripId);
       const groups = trip ? liveGroups(buildPlan(trip, items)) : [];
@@ -1339,6 +1341,22 @@ async function runTool(tripId: string, name: string, input: any, choices: string
             current.set(other.id, demoted);
             await d.put("items", demoted);
           }
+        }
+        // "X'i iptal ettim": the booking is İptal edildi (lifecycle.ts) and its need is to find again. Stored as a
+        // ruled-out record with the day (cancelledAt) and what was said about the refund, so it leaves the plan
+        // for every reader; the chat's "Geri al" (and Gizlenenler's) makes it the booking it was.
+        if ((c.status as string) === "cancelled") {
+          if (item.status !== "booked") throw new ToolError(L(`${item.name} rezerve edilmemiş; iptal edilecek bir şey yok (elemek için dismissed)`, `${item.name} isn't booked; nothing to cancel (use dismissed to rule it out)`));
+          const now = Date.now();
+          const note = typeof c.note === "string" && c.note.trim() ? c.note.trim() : null;
+          const cancelled: Item = { ...item, status: "dismissed", dismissedFrom: "booked", cancelledAt: now, refundNote: note, statusAt: now, updatedAt: now };
+          await d.put("items", cancelled);
+          current.set(item.id, cancelled);
+          turn.touched.add(item.id);
+          const label = L(`${item.name} iptal edildi`, `${item.name} cancelled`);
+          const eventId = await addEvent(tripId, label, { undo: { kind: "fields", fields: [], before: {}, after: {}, records: [{ before: item, afterAt: now }] } });
+          announceTripChange({ tripId, fields: [], before: {}, eventId, label });
+          continue;
         }
         // Taken back ("taksiyi kaldır", "X'i ele"): ruled out with its files, never deleted; Gizlenenler's
         // "Geri al" puts back what it was.

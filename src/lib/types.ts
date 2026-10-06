@@ -450,6 +450,14 @@ export interface Item {
   statusAt?: number;
   /** The status it had when the chat took it off the plan (dismissed): Gizlenenler's "Geri al" puts that back. */
   dismissedFrom?: ItemStatus;
+  /**
+   * A booking the traveller cancelled ("X'i iptal ettim", lifecycle.ts İptal edildi): it leaves the plan as a
+   * ruled-out record does (status "dismissed", dismissedFrom "booked"), so every reader, an older version too,
+   * already keeps it out of the plan, and its need is to find again. Gizlenenler's "Geri al" makes it booked again.
+   */
+  cancelledAt?: number;
+  /** What was said about the money back ("iade 3 güne yatar", "iade yok"). */
+  refundNote?: string | null;
   /** "chat": the traveller said it in the chat, no page behind it (a plan until a saved page replaces it). */
   origin?: "chat";
   /** What kind of plan was said in the chat, or added from a template (a car rental or a transfer can carry any title). */

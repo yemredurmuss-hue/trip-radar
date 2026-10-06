@@ -8,6 +8,7 @@ import { onRemoved, type Removed } from "../src/lib/removal";
 import { setItemStatus } from "../src/app/actions";
 import { anthropicProvider } from "../src/lib/llm/anthropic";
 import { bookingOf } from "../src/lib/booking";
+import { stageOf } from "../src/lib/lifecycle";
 import type { Item, Trip } from "../src/lib/types";
 
 function fakeClient(responses: Partial<Anthropic.Message>[]) {
@@ -392,6 +393,29 @@ describe("assistant", () => {
     const back = (await listItems("t1")).find((i) => i.id === taxi.id)!;
     expect([back.status, back.dismissedFrom]).toEqual(["chosen", undefined]);
     expect((await listDocMeta("t1")).map((x) => x.name)).toContain("taksi.pdf");
+  });
+  it("'X'i iptal ettim': a booking becomes İptal edildi (out of the plan, its need to find again); Geri al makes it booked again", async () => {
+    const { items } = await seed();
+    const d = await db();
+    const hotel = { ...items[0], status: "booked" as const };
+    await d.put("items", hotel);
+    const { client, calls } = fakeClient([
+      { stop_reason: "tool_use", content: [{ type: "tool_use", id: "c1", name: "update_items", caller: { type: "direct" }, input: { changes: [{ item_id: hotel.id, status: "cancelled", note: "iade 3 güne yatar" }] } }] as Anthropic.ContentBlock[] },
+      { stop_reason: "tool_use", content: [{ type: "tool_use", id: "c2", name: "update_items", caller: { type: "direct" }, input: { changes: [{ item_id: items[1].id, status: "cancelled", note: null }] } }] as Anthropic.ContentBlock[] },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "İptal ettim.", citations: null }] as Anthropic.ContentBlock[] },
+    ]);
+    await sendMessage("t1", `${hotel.name}'i iptal ettim, iade 3 güne yatar`, anthropicProvider(client, "claude-opus-5"));
+    const after = (await listItems("t1")).find((i) => i.id === hotel.id)!;
+    expect([after.status, after.dismissedFrom, after.refundNote, typeof after.cancelledAt]).toEqual(["dismissed", "booked", "iade 3 güne yatar", "number"]);
+    expect(stageOf(after)).toBe("cancelled");
+    // Only a booking can be cancelled: one not booked is ruled out instead, and the tool says so.
+    const [refused] = calls[2].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[];
+    expect(refused.is_error).toBe(true);
+    expect((await listItems("t1")).find((i) => i.id === items[1].id)!.status).toBe(items[1].status);
+    // Gizlenenler's "Geri al": the booking it was, no longer cancelled.
+    await setItemStatus(after, "saved");
+    const back = (await listItems("t1")).find((i) => i.id === hotel.id)!;
+    expect([back.status, back.cancelledAt, stageOf(back)]).toEqual(["booked", undefined, "booked"]);
   });
   it("moves an undated ticket to its day when the traveller says the date, keeping the times read from it", async () => {
     const { items } = await seed();
