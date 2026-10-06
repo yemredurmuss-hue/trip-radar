@@ -2700,3 +2700,6 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .popup-held-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .home-waiting { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; }
 .home-waiting-h { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #8e8e93; }
+
+/* 0.36.30: a line's warning under its words, never under its icon (the list's two columns, the timeline's node) */
+.dc-cday.dl-day .dc-step > .dc-warn { grid-column: -2 / -1; margin: -4px 0 6px; padding-left: 52px; }
