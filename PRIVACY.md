@@ -1,6 +1,6 @@
 # Trip Radar — Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-06 · Sürüm / Version: 0.36.33
+Son güncelleme / Last updated: 2026-10-06 · Sürüm / Version: 0.36.34
 
 ---
 
@@ -141,6 +141,17 @@ profilleri ve geçmişiyle birlikte) senin isteğinle silinir: info@emredurmus.n
   numarası ve güne göre saklar; kimin sorduğunu saklamaz. Cevap bu bilgisayarda da saklanır.
 - **Kiwi.com ve Aviasales görsel sunucuları:** uçuş kartında havayolu logosu için yalnız havayolunun iki harfli kodu
   ("KL") istenir (Kiwi açılmazsa Aviasales'ten).
+- **Öneriler (Travelpayouts / Aviasales, Tripadvisor, Xotelo):** boş bir uçuş ya da konaklama kartının altındaki
+  "Senin için N öneri" satırı için, bizim sunucumuz üzerinden yalnız aramanın gerektirdiği gönderilir: uçuşta iki
+  havalimanı kodu, gün ve kişi sayısı ("IST, DPS, 10 Kasım, 2 kişi"); konaklamada şehir ve ülke adı, giriş ve çıkış
+  günü ve kişi sayısı. Sunucu uçuş fiyatlarını Aviasales'in önbellekteki fiyatlarından (Travelpayouts), şehrin
+  kimliğini Tripadvisor'dan (RapidAPI üzerinden), otelleri ve platform fiyatlarını Xotelo'dan alır; herkese açık bu
+  bilgiyi, aynı soruyu soran herkes için tekrar sormamak adına sorulan yere ve güne göre saklar, kimin sorduğunu
+  saklamaz. Cevap bu bilgisayarda da birkaç saat saklanır.
+- **Travelpayouts ortaklık bağlantıları:** önerilerdeki bağlantılar Travelpayouts ortaklık bağlantısıdır
+  (tp.media). Birine tıklayıp o sitede (Booking, Aviasales gibi) rezervasyon yaparsan Trip Radar komisyon alabilir;
+  sana ek bir ücret çıkmaz. Bağlantıya yalnız sen tıklarsan gidilir; eklenti ziyaret ettiğin sitelerdeki
+  bağlantıları değiştirmez. Tıkladığında Travelpayouts ve o site kendi çerezlerini koyar.
 
 Bu hizmetlere ad, e-posta ya da gezi içeriği gönderilmez. Her bağlantıda olduğu gibi, istek yapılan sunucu
 IP adresini görebilir.
@@ -161,7 +172,7 @@ IP adresini görebilir.
 Trip Radar'ın hiçbir sunucusu Türkiye'de değildir:
 
 - Paylaşım sunucusu ve AI kapısı aynı Supabase projesindedir ve **Hindistan'da (Mumbai, ap-south-1)** çalışır.
-- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com ve Aviasales kendi sunucularını kullanır; bunlar ABD, AB ya da
+- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI) ve Xotelo kendi sunucularını kullanır; bunlar ABD, AB ya da
   başka ülkelerde olabilir.
 
 Bu aktarımlar yalnız senin başlattığın işlemler (yapay zekâ, paylaşım, davet) için ve o işlem için gerektiği kadar
@@ -180,6 +191,7 @@ kullanmaman yeterlidir; tarayıcında kalan veriler hiçbir yere gitmez.
 | AI kapısı sayaçları (içerik yok, yalnız sayı) | Sunucu | Davet var olduğu sürece; silinmesini isteyene kadar |
 | Davet edenin Gemini anahtarı | Sunucu | Silinmesini isteyene kadar |
 | Uçuş bilgisi (uçuş numarası, gün, tarife ve durum; kişi yok) | Sunucu ve tarayıcın | Sunucuda silinmesini isteyene kadar; tarayıcında eklentiyi kaldırana kadar |
+| Öneriler (sorulan yer ve gün, kaynakların fiyat ve otel bilgisi; kişi yok) | Sunucu ve tarayıcın | Sunucuda silinmesini isteyene kadar (fiyatlar 12–24 saatte yenilenir); tarayıcında 6 saat |
 | Yapay zekâya gönderilen içerik | Google / Anthropic | Sağlayıcının kendi koşullarına göre |
 
 ### 12. Güvenlik
@@ -193,7 +205,8 @@ kullanmaman yeterlidir; tarayıcında kalan veriler hiçbir yere gitmez.
 ### 13. Çerezler ve izleme
 
 Eklenti çerez koymaz, reklam ya da analiz aracı kullanmaz, seni siteler arasında izlemez. Ziyaret ettiğin sitelerin
-kendi çerezleri o sitelerin politikalarına tabidir.
+kendi çerezleri o sitelerin politikalarına tabidir; bir öneri bağlantısına tıkladığında Travelpayouts'un ve gittiğin
+sitenin çerezleri de böyledir (bkz. 8).
 
 ### 14. Çocuklar
 
@@ -366,6 +379,17 @@ and history) is deleted on request: write to info@emredurmus.net.
   who has it; it doesn't keep who asked. The answer is also kept on this computer.
 - **Kiwi.com and Aviasales image servers:** only the airline's two-letter code ("KL"), for the airline's logo on a
   flight's card (from Aviasales when Kiwi's won't load).
+- **Offers (Travelpayouts / Aviasales, Tripadvisor, Xotelo):** for the "N offers for you" row under an empty flight or
+  stay card, only what the search needs is sent, through our server: for a flight the two airport codes, the day and
+  the head-count ("IST, DPS, 10 November, 2 people"); for a stay the city and country name, the check-in and
+  check-out days and the head-count. The server takes flight prices from Aviasales' cached prices (Travelpayouts),
+  the city's id from Tripadvisor (via RapidAPI), hotels and each platform's price from Xotelo; it keeps this public
+  information by the place and days asked, so the same question isn't asked again for everyone, and doesn't keep
+  who asked. The answer is also kept on this computer for a few hours.
+- **Travelpayouts affiliate links:** the links in the offers are Travelpayouts affiliate links (tp.media). If you
+  click one and book on that site (Booking, Aviasales and the like), Trip Radar may earn a commission; it costs you
+  nothing extra. A link is only followed when you click it; the extension doesn't change links on the sites you visit.
+  When you click, Travelpayouts and that site set their own cookies.
 
 No name, email or trip content is sent to these services. As with any connection, the server receiving the request
 can see your IP address.
@@ -386,7 +410,7 @@ can see your IP address.
 None of Trip Radar's servers are in Turkey:
 
 - The sharing server and the AI gate are in the same Supabase project, in **India (Mumbai, ap-south-1)**.
-- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com and Aviasales use their own servers, which may be in the US,
+- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI) and Xotelo use their own servers, which may be in the US,
   the EU or other countries.
 
 These transfers happen only for actions you start (AI, sharing, invites) and only as far as that action needs; what
@@ -404,6 +428,7 @@ apply. If you don't want a transfer, not using that action is enough; what stays
 | AI gate counters (numbers only, no content) | Server | While the invite exists; until deletion is requested |
 | Inviter's Gemini key | Server | Until deletion is requested |
 | Flight information (number, day, schedule and status; no person) | Server and your browser | On the server until deletion is requested; in your browser until you uninstall |
+| Offers (the place and days asked, the sources' prices and hotels; no person) | Server and your browser | On the server until deletion is requested (prices refreshed every 12–24 hours); in your browser for 6 hours |
 | Content sent to the AI | Google / Anthropic | Under the provider's own terms |
 
 ### 12. Security
@@ -417,7 +442,8 @@ apply. If you don't want a transfer, not using that action is enough; what stays
 ### 13. Cookies and tracking
 
 The extension sets no cookies, uses no advertising or analytics tools, and does not track you across sites. Cookies
-set by the websites you visit are governed by those sites' policies.
+set by the websites you visit are governed by those sites' policies; so are Travelpayouts' and the site's cookies
+when you click an offer's link (see 8).
 
 ### 14. Children
 
