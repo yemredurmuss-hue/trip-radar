@@ -52,9 +52,9 @@ import {
   type TripFieldsBefore,
 } from "./tripSettings";
 import { ablative } from "./i18nText";
-import { ownersByOrigin, type WhoCtx } from "./whose";
+import { isUnnamedMe, meOf, ownersByOrigin, type WhoCtx } from "./whose";
 import { loadWho, writeOwners } from "./whoseStore";
-import { answerAsk, arrivals, setOwnerTool, type TurnAsk } from "./whoseChat";
+import { answerAsk, arrivals, nameAsk, SAYS_ME, setOwnerTool, type TurnAsk } from "./whoseChat";
 import { announceTripChange } from "./tripUndo";
 import { claimsChange } from "./claims";
 import { cleanContent, cleanReply, replyFallback } from "./replyText";
@@ -90,6 +90,7 @@ import {
   type CriterionId,
   type Item,
   type ItemStatus,
+  type OwnerChange,
   type LegMode,
   type Listing,
   type PriorityLevel,
@@ -1159,7 +1160,9 @@ async function changeTravellers(tripId: string, input: any, items: Item[], turn:
   const placed = Object.entries(after.travellers?.from ?? {})
     .filter(([name, place]) => fromOf(was, name) !== place)
     .map(([name, place]) => ({ name, place }));
-  const came = placed.length ? await arrivals(tripId, placed, turn.who) : { made: [] as Item[], ask: null, lines: [] as string[] };
+  const came = placed.length ? await arrivals(tripId, placed, turn.who) : { made: [] as Item[], owners: [] as OwnerChange[], ask: null, lines: [] as string[] };
+  // The trip's own flights given to the rest ("Emre'nin bileti") go back with the same "Geri al".
+  owners.push(...came.owners);
   if (came.ask) turn.ask = came.ask;
   came.made.forEach((i) => turn.touched.add(i.id));
   // "Sabine (Alicante'den)": where each comes from beside the name; me (not among the names) after them.
@@ -1186,7 +1189,10 @@ async function changeTravellers(tripId: string, input: any, items: Item[], turn:
       },
     },
   );
-  announceTripChange({ tripId, ...undoable, eventId, label: L(`Gidenler: ${hero}`, `Who's going: ${hero}`) });
+  // The toast names people, never the "Ben" stand-in: me by my name, else only the others.
+  const shownNames = whoGoes({ travellers: after.travellers, me: meOf(turn.who), adults: adultsOf(items.map(withEdits)) }).names.filter((n) => !isUnnamedMe(n, turn.who));
+  const toast = shownNames.length ? `${travellersTitle(shownNames, who.count)} · ${nPeople(who.count)}` : nPeople(who.count);
+  announceTripChange({ tripId, ...undoable, eventId, label: L(`Gidenler: ${toast}`, `Who's going: ${toast}`) });
   notifyChanged();
   return {
     named: names,
@@ -1430,6 +1436,19 @@ async function runTool(tripId: string, name: string, input: any, choices: string
     case "set_owner": {
       const trip = await d.get("trips", tripId);
       if (!trip) throw new ToolError(L("Gezi bulunamadı.", "Trip not found."));
+      // "Bu bilet benim" while I have no name: the code asks "Sana ne diyeyim?" in bold, then makes it mine.
+      const ids = Array.isArray(input.item_ids) ? input.item_ids.filter((id: unknown) => typeof id === "string" && byId.has(id)) : [];
+      const names = Array.isArray(input.names) ? input.names : [input.names];
+      if (!meOf(turn.who) && ids.length === 1 && names.some((n: unknown) => typeof n === "string" && SAYS_ME.test(n.trim()))) {
+        turn.ask = nameAsk(null, ids[0]);
+        return JSON.stringify({
+          unchanged: true,
+          note: L(
+            "Kullanıcının adı yok; kod yanıtın sonunda kalın olarak 'Sana ne diyeyim?' diye soruyor ve adını söyleyince bu planı ona yazıyor. Sen sorma, değişti deme.",
+            "The user has no name yet; the code asks 'What should I call you?' in bold at the end of the reply and makes this plan theirs once they say it. Don't ask it yourself or say it changed.",
+          ),
+        });
+      }
       try {
         return JSON.stringify(await setOwnerTool(tripId, input, items, trip, turn.who));
       } catch (error) {
@@ -1718,8 +1737,19 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   if (asked?.ask && session.filter((m) => m.role !== "event").at(-1)?.id === asked.id) {
     const answer = await answerAsk(tripId, asked.ask, asked.choices, userText);
     if (answer != null) {
+      // What comes next ("Sabine dönüşte de Alicante'ye mi?" after my name) is asked the same way, in bold.
+      const next = answer.next ?? null;
+      const text = [answer.text, next ? `**${next.text}**` : ""].filter(Boolean).join("\n\n");
       await saveMessage({ tripId, role: "user", content: provider.userContent([userText]), text: userText, choices: [], provider: provider.id });
-      await saveMessage({ tripId, role: "assistant", content: provider.assistantContent(answer), text: answer, choices: [], provider: provider.id });
+      await saveMessage({
+        tripId,
+        role: "assistant",
+        content: provider.assistantContent(text),
+        text,
+        choices: next?.choices ?? [],
+        provider: provider.id,
+        ...(next ? { ask: next.ask } : {}),
+      });
       notifyChanged();
       return;
     }

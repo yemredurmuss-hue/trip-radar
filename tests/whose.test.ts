@@ -252,16 +252,21 @@ describe("the chat: set_travellers from and set_owner", () => {
     const d = await db();
     expect((await d.get("trips", "b1"))!.travellers).toEqual({ names: ["Sabine"], from: { Sabine: "Alicante" } });
     const items = await listItems("b1");
-    const hers = items.find((i) => i.forWho?.length)!;
+    const hers = items.find((i) => i.forWho?.includes("Sabine"))!;
     expect(hers).toMatchObject({ forWho: ["Sabine"], flight: { from: "Alicante", to: "Denpasar" }, dates: { start: "2026-12-10" }, status: "chosen", origin: "chat" });
     const bali = (await d.get("trips", "b1"))!;
     expect(whoseOf(hers, bali, "Emre")?.label).toBe("Sabine'in bileti");
     expect(headCountOf(items.find((i) => i.id === "b1-out")!, bali, { total: 2, items, who: "Emre" })).toBe(1);
+    // The trip's own flight there is the rest's now: "Emre'nin bileti", never a bare "1 kişi".
+    expect(items.find((i) => i.id === "b1-out")!.forWho).toEqual(["Emre"]);
+    expect(whoseOf(items.find((i) => i.id === "b1-out")!, bali, "Emre")?.label).toBe("Emre'nin bileti");
+    expect(items.find((i) => i.id === "b1-home")!.forWho).toBeUndefined();
+    expect(changes[0].label).toBe("Gidenler: Emre & Sabine · 2 kişi");
     expect(whoseOf(items.find((i) => i.id === "b1-stay")!, bali, "Emre")).toBeNull();
     const result = toolResult(calls[1]);
     expect((await listMessages("b1")).some((m) => m.role === "event" && m.text === "Gidenler: Sabine (Alicante'den) (sohbetten)")).toBe(true);
     expect(result.flights_opened).toHaveLength(1);
-    expect(result.shown).toMatch(/Sabine için Alicante → Denpasar boş uçuş kartı açıldı \(10 Aralık\), rozeti "Sabine'in bileti"; Uçuş · İstanbul → Denpasar artık 1 kişi\./);
+    expect(result.shown).toMatch(/Sabine için Alicante → Denpasar boş uçuş kartı açıldı \(10 Aralık\), rozeti "Sabine'in bileti"\. Uçuş · İstanbul → Denpasar artık "Emre'nin bileti"\./);
     const last = (await listMessages("b1")).filter((m) => m.role === "assistant").at(-1)!;
     expect(last.text).toBe("Not ettim: Sabine Alicante'den geliyor, onun için ayrı bir gidiş kartı açtım.\n\n**Sabine dönüşte de Alicante'ye mi?**");
     expect(last.choices).toEqual(["Evet, Alicante", "Hayır, İstanbul'a", "Henüz belli değil"]);
@@ -269,14 +274,21 @@ describe("the chat: set_travellers from and set_owner", () => {
     // "Evet, Alicante": answered by the code (no model call), her flight home made.
     await sendMessage("b1", "Evet, Alicante", llm);
     expect(calls).toHaveLength(2);
-    const home = (await listItems("b1")).find((i) => i.forWho?.length && i.flight?.to === "Alicante")!;
+    const home = (await listItems("b1")).find((i) => i.forWho?.includes("Sabine") && i.flight?.to === "Alicante")!;
     expect(home).toMatchObject({ flight: { from: "Denpasar", to: "Alicante" }, dates: { start: "2027-01-10" } });
     expect((await listMessages("b1")).filter((m) => m.role === "assistant").at(-1)!.text).toMatch(/^Sabine'in dönüşünü ekledim: Denpasar → Alicante, 10 Ocak, boş kart olarak/);
-    // Geri al on the travellers' change: her place goes, and the flight it opened with it.
-    expect(changes).toHaveLength(1);
+    expect((await d.get("items", "b1-home"))!.forWho).toEqual(["Emre"]);
+    // Its own Geri al (the board's toast): her flight home goes, and the trip's own is everyone's again.
+    expect(changes).toHaveLength(2);
+    expect(changes[1].label).toBe("Sabine'in dönüşü eklendi: Denpasar → Alicante");
+    await undoEvent(changes[1].eventId!);
+    expect(await d.get("items", home.id)).toBeUndefined();
+    expect((await d.get("items", "b1-home"))!.forWho).toBeUndefined();
+    // Geri al on the travellers' change: her place goes, the flight it opened with it, and the owner it wrote.
     await undoEvent(changes[0].eventId!);
     expect((await d.get("trips", "b1"))!.travellers).toEqual({ names: ["Sabine"] });
     expect((await d.get("items", hers.id))).toBeUndefined();
+    expect((await d.get("items", "b1-out"))!.forWho).toBeUndefined();
   });
 
   it("'Hayır, İstanbul'a' and 'Henüz belli değil' change nothing and say so", async () => {
@@ -316,15 +328,42 @@ describe("the chat: set_travellers from and set_owner", () => {
     expect(await setOwner("b3-home", null)).toBe(false);
   });
 
-  it("set_owner: 'me' without a name asks for it first; nothing is written", async () => {
+  it("without a name: never 'Ben' on a badge or a toast; 'Sana ne diyeyim?' in bold, the name saved to the profile, then the flight is mine and the way home asked", async () => {
+    store = {};
+    await seedBali("b5");
+    const { client } = fakeClient([toolCall("t1", "set_travellers", { add: [], remove: [], count: 0, from: [{ name: "Sabine", place: "Alicante" }], rename: [] }), reply("Not ettim.")]);
+    const llm = anthropicProvider(client, "claude-opus-5");
+    await sendMessage("b5", "Sabine Alicante'den geliyor", llm);
+    const d = await db();
+    expect((await d.get("items", "b5-out"))!.forWho).toBeUndefined(); // never "Ben'in bileti"
+    expect(changes.at(-1)!.label).toBe("Gidenler: Sabine · 2 kişi");
+    let last = (await listMessages("b5")).filter((m) => m.role === "assistant").at(-1)!;
+    expect(last.text).toBe("Not ettim.\n\n**Sana ne diyeyim?**");
+    expect(last.choices).toEqual([]);
+    expect(last.ask).toMatchObject({ kind: "name", then: { ask: { kind: "return", name: "Sabine" } } });
+    // "Emre": saved as the profile name (Ayarlar → Profilim's), the trip's flight there his, then the way home.
+    await sendMessage("b5", "Emre", llm);
+    expect(store.shareName).toBe("Emre");
+    expect((await d.get("items", "b5-out"))!.forWho).toEqual(["Emre"]);
+    last = (await listMessages("b5")).filter((m) => m.role === "assistant").at(-1)!;
+    expect(last.text).toBe('Tamam, Emre; adını profiline kaydettim. Uçuş · İstanbul → Denpasar artık "Emre\'nin bileti".\n\n**Sabine dönüşte de Alicante\'ye mi?**');
+    expect(last.choices).toEqual(["Evet, Alicante", "Hayır, İstanbul'a", "Henüz belli değil"]);
+    await undoEvent(changes.at(-1)!.eventId!);
+    expect((await d.get("items", "b5-out"))!.forWho).toBeUndefined();
+  });
+
+  it("set_owner: 'benim' without a name asks it in bold and makes the plan mine once said; nothing before", async () => {
     store = {};
     await seedBali("b4");
-    const { client, calls } = fakeClient([toolCall("t1", "set_owner", { item_ids: ["b4-home"], names: ["ben"] }), reply("Sana ne diyeyim?")]);
-    await sendMessage("b4", "dönüş bileti benim", anthropicProvider(client, "claude-opus-5"));
-    const result = (calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[])[0];
-    expect(result.is_error).toBe(true);
-    expect(result.content).toMatch(/Sana ne diyeyim\?/);
+    const { client, calls } = fakeClient([toolCall("t1", "set_owner", { item_ids: ["b4-home"], names: ["ben"] }), reply("Tamam.")]);
+    const llm = anthropicProvider(client, "claude-opus-5");
+    await sendMessage("b4", "dönüş bileti benim", llm);
+    expect(toolResult(calls[1])).toMatchObject({ unchanged: true });
     expect((await (await db()).get("items", "b4-home"))!.forWho).toBeUndefined();
+    expect((await listMessages("b4")).filter((m) => m.role === "assistant").at(-1)!.text).toBe("Tamam.\n\n**Sana ne diyeyim?**");
+    await sendMessage("b4", "Bana Emre de", llm);
+    expect((await (await db()).get("items", "b4-home"))!.forWho).toEqual(["Emre"]);
+    expect(calls).toHaveLength(2);
   });
 });
 

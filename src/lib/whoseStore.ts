@@ -68,10 +68,12 @@ export async function saveOwners(
   tripId: string,
   changes: { id: string; owners: string[] | null }[],
   words: { event: string; label: string },
+  /** Records the same change made (a person's flight home): the same "Geri al" takes them away. */
+  made: string[] = [],
 ): Promise<{ changed: OwnerChange[]; eventId: string } | null> {
   const changed = await writeOwners(changes);
-  if (!changed.length) return null;
-  const undo: EventUndo = { kind: "fields", fields: [], before: {}, after: {}, owners: changed };
+  if (!changed.length && !made.length) return null;
+  const undo: EventUndo = { kind: "fields", fields: [], before: {}, after: {}, ...(changed.length ? { owners: changed } : {}), ...(made.length ? { made } : {}) };
   const eventId = await addEvent(tripId, words.event, { undo });
   announceTripChange({ tripId, fields: [], before: {}, eventId, label: words.label });
   notifyChanged();

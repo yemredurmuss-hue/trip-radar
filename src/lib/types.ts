@@ -501,7 +501,12 @@ export type ChatAsk =
   /** "Sabine dönüşte de Alicante'ye mi?": yes adds her flight home from `leave` to `place` on `date`. */
   | { kind: "return"; name: string; place: string; leave: string | null; date: string | null; origin: string | null }
   /** "Bu Ryanair bileti kimin?": a name (or several) makes it theirs, "Herkes" everyone's. */
-  | { kind: "owner"; itemId: string; names: string[] };
+  | { kind: "owner"; itemId: string; names: string[] }
+  /**
+   * "Sana ne diyeyim?": I have no name yet and a plan would be mine (never "Ben'in bileti"). What's said is saved as
+   * my profile name; then `ownerItem` is mine, the trip's own flights go to whom they're for, and `then` is asked.
+   */
+  | { kind: "name"; ownerItem?: string | null; then?: { text: string; choices: string[]; ask: ChatAsk } | null };
 
 /** A plan's owners before and after a change (kişiye özel rezervasyon): what "Geri al" puts back. */
 export interface OwnerChange {

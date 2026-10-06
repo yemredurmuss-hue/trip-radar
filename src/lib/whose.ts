@@ -33,6 +33,15 @@ export type WhoCtx = string | null | undefined | { me?: string | null; members?:
 
 const ctxOf = (who: WhoCtx) => (who && typeof who === "object" ? who : { me: who ?? null });
 
+/** My name on this computer, or null (no profile name yet). */
+export const meOf = (who: WhoCtx): string | null => ctxOf(who).me?.trim() || null;
+
+/**
+ * The stand-in whoGoes puts first when I have no name ("Ben" / "Me"): fine in a list ("Ben", "Ben (Emre)"), never
+ * in a badge or a toast. A plan that would be mine waits for my name ("Sana ne diyeyim?").
+ */
+export const isUnnamedMe = (name: string, who: WhoCtx): boolean => !meOf(who) && !ctxOf(who).shared && /^(ben|me)$/i.test(name.trim());
+
 /** The trip's people by name, me first ("Ben" when I have no name and the trip isn't shared); [] when nobody is named. */
 export function peopleOf(trip: Pick<Trip, "travellers">, who?: WhoCtx): string[] {
   const c = ctxOf(who);
@@ -131,6 +140,8 @@ export function whoseOf(item: Item, trip: Pick<Trip, "travellers">, who?: WhoCtx
   if (people.length < 2) return null;
   const names = ownersOn(forWho, people);
   if (!names || !names.length || names.length >= people.length) return null;
+  // Never "Ben'in bileti": a plan of mine shows once I have a name.
+  if (names.some((n) => isUnnamedMe(n, who))) return null;
   return { names, label: whoseLabel(names, nounOf(item)), partial: names.length > 1 };
 }
 
@@ -142,29 +153,36 @@ const byDay = (a: Item, b: Item) => (a.flight?.departure ?? a.dates.start ?? "9"
 const place = (s: string | null | undefined) => (s?.trim() ? cityOfAirport(s.trim()) : null);
 const same = (a: string | null | undefined, b: string | null | undefined) => Boolean(place(a) && place(b) && sameCity(place(a), place(b)));
 
-/** The trip's own flights: everyone's (no owners), live, in order. */
-const mainFlights = (items: Item[]) => items.filter((i) => live(i) && i.category === "flight" && !(i.forWho ?? []).length).sort(byDay);
+/**
+ * The trip's own flights, live, in order: with the trip, those not to or from where someone comes from on their own
+ * (Sabine's Alicante flights aside; the trip's own may have owners, the rest of the people); without it, everyone's.
+ */
+const mainFlights = (items: Item[], trip?: Pick<Trip, "travellers">) => {
+  const places = Object.values(trip?.travellers?.from ?? {});
+  const personal = (f: Item) => (trip ? places.some((p) => same(f.flight?.from, p) || same(f.flight?.to ?? f.city, p)) : (f.forWho ?? []).length > 0);
+  return items.filter((i) => live(i) && i.category === "flight" && !personal(i)).sort(byDay);
+};
 
-/** Where the trip leaves from: the first everyone's flight's start ("İstanbul"); null when no such flight says it. */
-export function tripOrigin(items: Item[]): string | null {
-  return place(mainFlights(items).find((f) => f.flight?.from)?.flight?.from) ?? null;
+/** Where the trip leaves from: the first of its own flights' start ("İstanbul"); null when no such flight says it. */
+export function tripOrigin(items: Item[], trip?: Pick<Trip, "travellers">): string | null {
+  return place(mainFlights(items, trip).find((f) => f.flight?.from)?.flight?.from) ?? null;
 }
 
 /** Where the trip's way in lands (its first flight's end), else its first stay's city; and its first day. */
-export function firstStop(trip: Pick<Trip, "confirmedDates">, items: Item[]): { city: string | null; date: string | null } {
-  const flight = mainFlights(items).find((f) => f.flight?.to);
+export function firstStop(trip: Pick<Trip, "confirmedDates" | "travellers">, items: Item[]): { city: string | null; date: string | null } {
+  const flight = mainFlights(items, trip).find((f) => f.flight?.to);
   const stay = items.filter((i) => live(i) && i.category === "stay" && i.city).sort(byDay)[0];
-  const date = trip.confirmedDates?.start ?? tripDateRange(items)?.start ?? (flight ? dayOf(flight) : null);
+  const date = (flight ? dayOf(flight) : null) ?? trip.confirmedDates?.start ?? tripDateRange(items)?.start ?? null;
   return { city: place(flight?.flight?.to) ?? stay?.city ?? null, date };
 }
 
 /** Where the way home leaves from (the last everyone's flight back to where the trip leaves from), else the last stay's city; and the last day. */
-export function lastStop(trip: Pick<Trip, "confirmedDates">, items: Item[]): { city: string | null; date: string | null } {
-  const origin = tripOrigin(items);
-  const flights = mainFlights(items);
+export function lastStop(trip: Pick<Trip, "confirmedDates" | "travellers">, items: Item[]): { city: string | null; date: string | null } {
+  const origin = tripOrigin(items, trip);
+  const flights = mainFlights(items, trip);
   const home = [...flights].reverse().find((f) => origin && same(f.flight?.to, origin) && f.flight?.from);
   const stays = items.filter((i) => live(i) && i.category === "stay" && i.city).sort(byDay);
-  const date = trip.confirmedDates?.end ?? tripDateRange(items)?.end ?? (home ? dayOf(home) : null);
+  const date = (home ? dayOf(home) : null) ?? trip.confirmedDates?.end ?? tripDateRange(items)?.end ?? null;
   return { city: place(home?.flight?.from) ?? stays.at(-1)?.city ?? null, date };
 }
 
@@ -180,17 +198,46 @@ export function headCountOf(item: Item, trip: Pick<Trip, "travellers">, opts: { 
   if (whose) return whose.names.length;
   const total = opts.total;
   if (!total || item.category !== "flight" || !opts.items) return total;
-  const people = peopleOf(trip, opts.who);
-  if (people.length < 2) return total;
+  if (peopleOf(trip, opts.who).length < 2) return total;
+  return Math.max(1, total - awayOf(item, trip, opts.items, opts.who).length);
+}
+
+/** The people with a flight of their own the same way as this one (to the same place, or from the same one). */
+export function awayOf(item: Item, trip: Pick<Trip, "travellers">, items: Item[], who?: WhoCtx): string[] {
   const away = new Set<string>();
-  for (const other of opts.items) {
+  for (const other of items) {
     if (other.id === item.id || !live(other) || other.category !== "flight") continue;
-    const owners = whoseOf(other, trip, opts.who);
+    const owners = whoseOf(other, trip, who);
     if (!owners) continue;
     const sameWay = same(other.flight?.to ?? other.city, item.flight?.to ?? item.city) || same(other.flight?.from, item.flight?.from);
     if (sameWay) owners.names.forEach((n) => away.add(n));
   }
-  return Math.max(1, total - away.size);
+  return [...away];
+}
+
+/**
+ * The trip's own flights whose way someone has a flight of their own for: they go to the rest of the people
+ * (İstanbul → Denpasar is "Emre'nin bileti" once Sabine flies from Alicante), so no card reads "1 kişi" unexplained.
+ * `needName`: the rest would be me while I have no name yet (never "Ben'in bileti": the chat asks first).
+ */
+export function restOwners(trip: Pick<Trip, "travellers">, items: Item[], who?: WhoCtx): { changes: { item: Item; owners: string[] }[]; needName: boolean } {
+  const people = peopleOf(trip, who);
+  const changes: { item: Item; owners: string[] }[] = [];
+  let needName = false;
+  if (people.length < 2) return { changes, needName };
+  for (const flight of mainFlights(items, trip)) {
+    if ((flight.forWho ?? []).length) continue;
+    const away = awayOf(flight, trip, items, who);
+    if (!away.length) continue;
+    const rest = people.filter((p) => !away.includes(p));
+    if (!rest.length) continue;
+    if (rest.some((p) => isUnnamedMe(p, who))) {
+      needName = true;
+      continue;
+    }
+    changes.push({ item: flight, owners: rest });
+  }
+  return { changes, needName };
 }
 
 // --- who it is, worked out (never guessed) ---------------------------------------------------------------
@@ -257,7 +304,7 @@ export function ownersByOrigin(item: Item, trip: Pick<Trip, "travellers">, items
   const from = trip.travellers?.from ?? {};
   const people = peopleOf(trip, who);
   if (people.length < 2) return null;
-  const origin = tripOrigin(items.filter((i) => i.id !== item.id));
+  const origin = tripOrigin(items.filter((i) => i.id !== item.id), trip);
   if (origin && same(item.flight.from, origin)) return null;
   const owners = people.filter((p) => {
     const key = Object.keys(from).find((k) => sameName(k, p));

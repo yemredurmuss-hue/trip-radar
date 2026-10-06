@@ -2609,7 +2609,7 @@ try {
 
   // 23. Kişiye özel rezervasyon (spec 2026-10-06-kisiye-ozel-rezervasyon-design.md, mockup v1): on this two-person
   // trip (me & Sabine) the chat "Sabine Alicante'den geliyor" opens Sabine's own empty flight there with the badge
-  // "Sabine'in bileti", its searches from Alicante for 1, the trip's own flight there for 1; the way home is asked in
+  // "Sabine'in bileti", its searches from Alicante for 1, the trip's own flight there "Emre'nin bileti" (my name asked first, in bold, as no profile name is set); the way home is asked in
   // bold with chips the code answers ("Evet, Alicante" adds it); "bu bilet Sabine'in" marks an existing flight; the
   // shared stays show nothing; a one-person trip shows no badge anywhere.
   const tripRecords = (title) =>
@@ -2649,9 +2649,21 @@ try {
   const chatBox = board.getByPlaceholder("Bir link bırak, görsel yapıştır veya yaz…");
   await chatBox.fill("Sabine Alicante'den geliyor");
   await board.getByRole("button", { name: "Gönder" }).click();
+  // No profile name on this computer: never "Ben" on a badge or the toast; my name is asked first, in bold.
+  const nameAsked = board.locator(".msg-assistant", { hasText: "Sana ne diyeyim?" });
+  await nameAsked.waitFor({ timeout: 20000 });
+  assert.ok((await nameAsked.innerText()).startsWith("Not ettim: Sabine Alicante'den geliyor"), "the model's own words first");
+  assert.equal(await nameAsked.locator("strong, b", { hasText: "Sana ne diyeyim?" }).count(), 1, "my name asked in bold");
+  assert.equal(await board.locator(".choices button").count(), 0);
+  await board.locator(".pk-undo", { hasText: "Gidenler: Sabine · 2 kişi" }).waitFor();
+  assert.equal(await board.locator(".pk-undo", { hasText: "Ben" }).count(), 0, "no 'Ben' in the toast");
+  assert.equal(await panel.locator(".wh-badge", { hasText: "Ben" }).count(), 0, "no 'Ben' on a badge");
+  await chatBox.fill("Emre");
+  await board.getByRole("button", { name: "Gönder" }).click();
   const asked = board.locator(".msg-assistant", { hasText: "Sabine dönüşte de Alicante'ye mi?" });
   await asked.waitFor({ timeout: 20000 });
-  assert.ok((await asked.innerText()).startsWith("Not ettim: Sabine Alicante'den geliyor"), "the model's own words first");
+  assert.ok((await asked.innerText()).startsWith("Tamam, Emre; adını profiline kaydettim."), "the name said back");
+  assert.equal(await board.evaluate(async () => (await chrome.storage.local.get("shareName")).shareName), "Emre", "saved as the profile name");
   assert.equal(await asked.locator("strong, b", { hasText: "Sabine dönüşte de Alicante'ye mi?" }).count(), 1, "the way home asked in bold");
   assert.deepEqual(await board.locator(".choices button").allInnerTexts(), ["Evet, Alicante", "Hayır, İstanbul'a", "Henüz belli değil"]);
   // Sabine's own flight there: an empty card with her badge, searched from Alicante for one.
@@ -2666,10 +2678,11 @@ try {
   assert.equal(new URL(herLinks[0][1]).searchParams.get("q"), "Flights from Alicante to Denpasar on 2026-12-10 one way");
   assert.equal(herLinks[1][1], "https://www.skyscanner.net/transport/flights/alc/dps/261210/?adultsv2=1&rtn=0");
   assert.equal(herLinks[2][1], "https://www.kayak.com/flights/ALC-DPS/2026-12-10/1adults");
-  // The trip's own flight there is for one now; it shows no badge (everyone's).
+  // The trip's own flight there is the rest's now: "Emre'nin bileti", for one.
   const mainOut = ekSec("flight").locator('.ek-card[aria-label="Uçuş · İstanbul → Denpasar"]');
   assert.equal(await mainOut.locator(".ek-state").innerText(), "Bilet yok · 1 kişi");
-  assert.equal(await mainOut.locator(".wh-badge").count(), 0);
+  await mainOut.locator(".wh-badge .wh-label", { hasText: "Emre'nin bileti" }).waitFor({ timeout: 10000 });
+  assert.equal(await mainOut.locator(".wh-av").innerText(), "E");
   assert.match((await hrefs(mainOut))[1][1], /adultsv2=1&/);
   // The section counts each ticket on its own (no route dedupe): three flights to book now.
   assert.match(await ekSec("flight").locator(".cat-count").innerText(), /^0\/3$/);
@@ -2690,7 +2703,15 @@ try {
   const herHome = ekSec("flight").locator('.ek-card[aria-label="Uçuş · Denpasar → Alicante"]');
   await herHome.waitFor({ timeout: 10000 });
   assert.equal(await herHome.locator(".wh-label").innerText(), "Sabine'in bileti");
-  assert.equal(await ekSec("flight").locator('.ek-card[aria-label="Uçuş · Denpasar → İstanbul"] .ek-state').innerText(), "Bilet yok · 1 kişi");
+  const mainBack = ekSec("flight").locator(`.ek-card[data-item-id="${mainHome.id}"]`);
+  assert.equal(await mainBack.locator(".ek-state").innerText(), "Bilet yok · 1 kişi");
+  await mainBack.locator(".wh-badge .wh-label", { hasText: "Emre'nin bileti" }).waitFor({ timeout: 10000 });
+  // Its own "Geri al" (the board's toast): her flight home goes, the trip's own is everyone's again; then again.
+  const backToast = board.locator(".pk-undo", { hasText: "Sabine'in dönüşü eklendi: Denpasar → Alicante" });
+  await backToast.getByRole("button", { name: "Geri al" }).click();
+  await herHome.waitFor({ state: "detached", timeout: 10000 });
+  await mainBack.locator(".wh-badge").waitFor({ state: "detached" });
+  assert.equal(await mainBack.locator(".ek-state").innerText(), "Bilet yok · 2 kişi");
   // "bu bilet Sabine'in" on an existing flight: its badge appears.
   await chatBox.fill("bu bilet Sabine'in, İstanbul'a dönüş");
   await board.getByRole("button", { name: "Gönder" }).click();
@@ -2707,6 +2728,8 @@ try {
   assert.deepEqual(after.trip.travellers.from, { Sabine: "Alicante" });
   assert.deepEqual(after.items.find((i) => i.id === mainHome.id).forWho, ["Sabine"]);
   await flow.unroute("https://generativelanguage.googleapis.com/**", perPerson);
+  // The profile name said here goes again: the later steps start as before (no name on this computer).
+  await board.evaluate(() => chrome.storage.local.remove("shareName"));
   // A one-person trip: a plan written for someone (as a stale share could leave it) shows no badge anywhere.
   const solo = await tripRecords("Portekiz");
   assert.ok(solo.trip && !(solo.trip.travellers?.names ?? []).length, "Portekiz names nobody");
@@ -2728,7 +2751,7 @@ try {
   await board.locator(".cat-sec").first().waitFor();
   assert.equal(await board.locator(".wh-badge").count(), 0, "a one-person trip shows no badge");
   await board.screenshot({ path: `${out}/23d-per-person-solo.png` });
-  console.log("✓ kişiye özel: 'Sabine Alicante'den geliyor' → her empty flight with 'Sabine'in bileti', searched from Alicante for 1, the main flight for 1, 0/3; the way home asked in bold, 'Evet, Alicante' by the code; 'bu bilet Sabine'in' marks a flight; stays and a one-person trip show nothing");
+  console.log("✓ kişiye özel: no profile name → 'Sana ne diyeyim?' in bold, no 'Ben' on a badge or toast, 'Emre' saved; Sabine's empty flight from Alicante ('Sabine'in bileti', searched for 1), the trip's own 'Emre'nin bileti', 0/3; the way home asked in bold, 'Evet, Alicante' by the code with its own Geri al; 'bu bilet Sabine'in' marks a flight; stays and a one-person trip show nothing");
 
   // 20e. Words with a link on the home: the link is saved, the words go on ("Linki kaydettim; geri kalanını konuşalım").
   // A month only is never a day made up: the day is asked next; "Ortası" is said back and marked roughly.
