@@ -3251,7 +3251,8 @@ try {
   assert.equal(await board.locator(".st-gen figure.gm svg .gm-land").count(), 3, "the bundled world, as SVG");
   assert.equal(await board.locator(".st-gen canvas").count(), 0, "no canvas (no MapLibre) on the generating screen");
   // The big steps: 28 px marks.
-  assert.equal(await board.locator(".st-gen .st-step-mark").first().evaluate((n) => Math.round(n.getBoundingClientRect().width)), 28, "28 px step icons");
+  // (Its layout size: a tick popping in is scaled for a moment.)
+  assert.equal(await board.locator(".st-gen .st-step-mark").first().evaluate((n) => n.offsetWidth), 28, "28 px step icons");
   await board.locator(".st-step.done", { hasText: "Gezi açıldı: Koh Phangan Gezisi" }).waitFor();
   assert.equal(await board.locator(".st-gen-foot").innerText().then((t) => /%/.test(t)), false, "no percentages");
   await board.locator(".st-progress").waitFor();
