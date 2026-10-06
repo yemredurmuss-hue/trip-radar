@@ -96,6 +96,18 @@ export function queryOf(need: Need, language: "tr" | "en" = lang(), narrow: Narr
     if (country) q.country = country;
     return new URLSearchParams(narrowed(q, narrow)).toString();
   }
+  if (need.kind === "transfer") {
+    const from = need.from?.trim(), to = need.to?.trim();
+    if (!from || !to || from.toLocaleLowerCase("tr") === to.toLocaleLowerCase("tr")) return null;
+    return new URLSearchParams({ kind: "transfer", from, to, adults, lang: language }).toString();
+  }
+  if (need.kind === "esim") {
+    const country = need.country?.trim().toUpperCase();
+    if (!country || !/^[A-Z]{2}$/.test(country)) return null;
+    const q: Record<string, string> = { kind: "esim", country, lang: language };
+    if (need.start && need.end && DAY.test(need.start) && DAY.test(need.end) && need.end >= need.start) Object.assign(q, { start: need.start, end: need.end });
+    return new URLSearchParams(q).toString();
+  }
   return null;
 }
 

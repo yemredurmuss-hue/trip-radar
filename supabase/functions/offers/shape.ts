@@ -11,7 +11,7 @@ const T = (lang: Lang, tr: string, en: string) => (lang === "en" ? en : tr);
 
 export interface OfferOut {
   id: string;
-  kind: "flight" | "stay" | "activity";
+  kind: "flight" | "stay" | "activity" | "esim" | "transfer";
   title: string;
   photo?: string | null;
   rating?: number | null;
@@ -626,4 +626,250 @@ export function pickActivities(list: ViProduct[], lang: Lang, adults: number, no
       meta: [viReviews(p) ? T(lang, `${count(viReviews(p), lang)} yorum`, `${count(viReviews(p), lang)} reviews`) : null, free].filter(Boolean).join(" · ") || null,
     };
   });
+}
+
+// --- eSIMs (Airalo's product feed, a Travelpayouts partner's) --------------------------------------------------
+// Each package as Airalo lists it ("5 GB Portugal travel eSIM valid for 7 days"; "Israel travel eSIM | 5 GB, 50 mins of
+// local calls, 50 SMS valid for 30 days"; "… | Unlimited GB, …"), its price in dollars as the feed says it.
+
+export interface EsimPack {
+  place: string;
+  /** Null: unlimited. */
+  gb: number | null;
+  days: number;
+  /** Calls and texts included ("50 mins of local calls, 50 SMS"), when the package has them. */
+  calls: boolean;
+  price: number;
+  currency: string;
+  link: string;
+}
+
+const tagOf = (s: string, tag: string) => (s.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`)) || [])[1]?.replace(/<!\[CDATA\[|\]\]>/g, "").trim() ?? null;
+
+/** The feed's packages that read as one of its two title shapes; anything else is left out. */
+export function airaloPacks(xml: string): EsimPack[] {
+  const out: EsimPack[] = [];
+  for (const item of xml.split("<item>").slice(1)) {
+    const title = tagOf(item, "g:title");
+    const [amount, currency] = (tagOf(item, "g:price") ?? "").split(/\s+/);
+    const link = tagOf(item, "g:link");
+    const price = Number(amount);
+    if (!title || !link || !/^https:\/\//.test(link) || !(price > 0)) continue;
+    const a = title.match(/^(\d+(?:\.\d+)?)\s*GB\s+(.+?)\s+travel eSIM valid for (\d+) days?$/i);
+    const b = title.match(/^(.+?)\s+travel eSIM\s*\|\s*(Unlimited|\d+(?:\.\d+)?)\s*GB(,[^|]*?)?\s+valid for (\d+) days?$/i);
+    if (a) out.push({ place: a[2], gb: Number(a[1]), days: Number(a[3]), calls: false, price, currency: currency || "USD", link });
+    else if (b) out.push({ place: b[1], gb: /unlimited/i.test(b[2]) ? null : Number(b[2]), days: Number(b[4]), calls: !!b[3] && /call|SMS/i.test(b[3]), price, currency: currency || "USD", link });
+  }
+  return out;
+}
+
+/** Airalo's name for a country (English), from its two-letter code; a few it writes its own way. */
+const AIRALO_NAMES: Record<string, string> = { "Türkiye": "Turkey", Czechia: "Czech Republic", "Hong Kong SAR China": "Hong Kong", "Macao SAR China": "Macau", "Côte d’Ivoire": "Ivory Coast", "Myanmar (Burma)": "Myanmar" };
+export function airaloPlace(code: string): string | null {
+  if (!/^[A-Za-z]{2}$/.test(code)) return null;
+  try {
+    const name = new Intl.DisplayNames(["en"], { type: "region" }).of(code.toUpperCase());
+    return name ? (AIRALO_NAMES[name] ?? name) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Three packages for a stay of `days` there, each for its own reason, cheapest first: the cheapest that lasts the trip
+ * with 3 GB or more, the most data for the money at up to three times its price, plenty (unlimited, else the most
+ * data) at up to six times. Nothing that lasts: the longest ones.
+ */
+export function pickEsims(packs: EsimPack[], days: number, lang: Lang, now: number): OfferOut[] {
+  if (!packs.length) return [];
+  const longest = Math.max(...packs.map((p) => p.days));
+  const lasting = packs.filter((p) => p.days >= Math.min(days, longest));
+  const enough = lasting.filter((p) => p.gb == null || p.gb >= 3).sort((a, b) => a.price - b.price);
+  const picked: { p: EsimPack; why: string }[] = [];
+  const add = (p: EsimPack | undefined, why: string) => {
+    if (p && !picked.some((x) => x.p.link === p.link)) picked.push({ p, why });
+  };
+  add(enough[0] ?? [...lasting].sort((a, b) => a.price - b.price)[0], T(lang, `${days} günlük gezine yeten en uygun paket`, `The cheapest that lasts your ${days} days`));
+  const first = picked[0]?.p.price ?? Infinity;
+  add([...lasting].filter((p) => p.gb != null && p.gb >= 3 && p.price <= first * 3).sort((a, b) => a.price / a.gb! - b.price / b.gb! || b.gb! - a.gb!)[0], T(lang, "Gigabayt başına en uygun", "The most data for the money"));
+  add(
+    lasting.filter((p) => p.gb == null && p.price <= first * 6).sort((a, b) => a.price - b.price)[0] ??
+      [...lasting].filter((p) => p.gb != null && p.price <= first * 6).sort((a, b) => b.gb! - a.gb! || a.price - b.price)[0],
+    T(lang, "Bol internet", "Plenty of data"),
+  );
+  picked.sort((a, b) => a.p.price - b.p.price);
+  return picked.slice(0, 3).map(({ p, why }) => {
+    const data = p.gb == null ? T(lang, "Sınırsız", "Unlimited") : `${p.gb} GB`;
+    return {
+      id: `ai:${p.link.replace(/^https:\/\/www\.airalo\.com\//, "").replace(/\?.*$/, "")}`,
+      kind: "esim" as const,
+      title: `${p.place} ${data}`,
+      photo: null,
+      rating: null,
+      price: Math.round(p.price * 100) / 100,
+      currency: p.currency,
+      url: p.link,
+      why,
+      source: "Airalo",
+      fetchedAt: now,
+      area: T(lang, `${p.days} gün · ${data}`, `${p.days} days · ${data}`),
+      meta: p.calls ? T(lang, "Yerel arama ve SMS dahil", "Local calls and texts included") : null,
+    };
+  });
+}
+
+// --- between cities (Omio's route feed, a Travelpayouts partner's) ------------------------------------------------
+// Omio lists some 18 000 routes, mostly in Europe, each with the least a train, a bus, a flight and a ferry went for
+// and the shortest each takes, as read when the feed was made (a snapshot, not today's price: said as "starting
+// price" and seen on the feed's day). Its English file names the places, its German one prices them in euros.
+
+/** A CSV file's rows (quotes, doubled quotes, commas and line breaks inside quotes); a field at a time, by search. */
+export function csvRows(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let i = 0;
+  const n = text.length;
+  while (i < n) {
+    let cell: string;
+    if (text.charCodeAt(i) === 34) {
+      // quoted: up to the quote that isn't doubled
+      let j = i + 1;
+      cell = "";
+      for (;;) {
+        const q = text.indexOf('"', j);
+        if (q < 0) {
+          cell += text.slice(j);
+          i = n;
+          break;
+        }
+        cell += text.slice(j, q);
+        if (text.charCodeAt(q + 1) === 34) {
+          cell += '"';
+          j = q + 2;
+        } else {
+          i = q + 1;
+          break;
+        }
+      }
+    } else {
+      let end = i;
+      while (end < n) {
+        const c = text.charCodeAt(end);
+        if (c === 44 || c === 10 || c === 13) break;
+        end++;
+      }
+      cell = text.slice(i, end);
+      i = end;
+    }
+    row.push(cell);
+    const c = text.charCodeAt(i);
+    if (c === 44) i++;
+    else {
+      // a line's end (or the text's)
+      if (c === 13 && text.charCodeAt(i + 1) === 10) i++;
+      i++;
+      rows.push(row);
+      row = [];
+    }
+  }
+  if (row.length) rows.push(row);
+  return rows.filter((r) => r.length > 1);
+}
+
+/** A place's name as it's looked up: no marks, lower case, single spaces ("Zürich" → "zurich"). */
+export const placeKey = (name: string): string => name.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("en").replace(/\s+/g, " ").trim();
+
+/** Turkish names of places Omio lists by their English ones ("Floransa" → "Florence"); keyed by placeKey. */
+const EXONYMS: Record<string, string> = Object.fromEntries(
+  ([
+    ["Lizbon", "Lisbon"], ["Roma", "Rome"], ["Floransa", "Florence"], ["Venedik", "Venice"], ["Napoli", "Naples"], ["Milano", "Milan"],
+    ["Cenova", "Genoa"], ["Torino", "Turin"], ["Bolonya", "Bologna"], ["Atina", "Athens"], ["Selanik", "Thessaloniki"],
+    ["Viyana", "Vienna"], ["Prag", "Prague"], ["Budapeşte", "Budapest"], ["Varşova", "Warsaw"], ["Krakov", "Krakow"],
+    ["Kopenhag", "Copenhagen"], ["Stokholm", "Stockholm"], ["Brüksel", "Brussels"], ["Brugge", "Bruges"], ["Lahey", "The Hague"],
+    ["Lüksemburg", "Luxembourg"], ["Münih", "Munich"], ["Köln", "Cologne"], ["Kolonya", "Cologne"], ["Zürih", "Zurich"],
+    ["Cenevre", "Geneva"], ["Londra", "London"], ["Edinburg", "Edinburgh"], ["Barselona", "Barcelona"], ["Sevilla", "Seville"],
+    ["Valensiya", "Valencia"], ["Marsilya", "Marseille"], ["Nis", "Nice"], ["Belgrad", "Belgrade"], ["Bükreş", "Bucharest"],
+    ["Sofya", "Sofia"], ["Lizbon Havalimanı", "Lisbon Airport"],
+  ] as [string, string][]).map(([tr, en]) => [placeKey(tr), en]),
+);
+/** The name Omio would use for a place said in Turkish; any other name as it is. */
+export const omioName = (name: string): string => EXONYMS[placeKey(name)] ?? name;
+
+export type TransferMode = "train" | "bus" | "flight" | "ferry";
+export const MODES: TransferMode[] = ["train", "bus", "flight", "ferry"];
+/** A route: its ends (Omio's position ids, the English names) and each way's least price (euros) and minutes. */
+export interface OmioRoute {
+  from: string;
+  to: string;
+  fromId: string;
+  toId: string;
+  ways: Partial<Record<TransferMode, [price: number, minutes: number | null]>>;
+}
+
+/** The routes by "from|to" (placeKey), from the English file's names and the German file's euros. */
+export function omioRoutes(english: string, german: string): Record<string, OmioRoute> {
+  const table = (text: string) => {
+    const [head, ...rows] = csvRows(text);
+    const col = (name: string) => head.indexOf(name);
+    return { rows, col };
+  };
+  const de = table(german);
+  const id = de.col("route_id");
+  const euros = new Map(de.rows.map((r) => [r[id], r]));
+  const en = table(english);
+  const c = (n: string) => en.col(n);
+  const out: Record<string, OmioRoute> = {};
+  for (const r of en.rows) {
+    const priced = euros.get(r[c("route_id")]);
+    const from = r[c("origin_name")]?.trim(), to = r[c("destination_name")]?.trim();
+    const fromId = r[c("origin_position_id")], toId = r[c("destination_position_id")];
+    if (!priced || !from || !to || !/^\d+$/.test(fromId ?? "") || !/^\d+$/.test(toId ?? "")) continue;
+    const ways: OmioRoute["ways"] = {};
+    for (const m of MODES) {
+      const price = Number(priced[de.col(`${m}_min_price`)]);
+      const minutes = Number(r[c(`${m}_min_duration`)]);
+      if (price > 0) ways[m] = [Math.round(price * 100) / 100, minutes > 0 ? minutes : null];
+    }
+    if (Object.keys(ways).length) out[`${placeKey(from)}|${placeKey(to)}`] = { from, to, fromId, toId, ways };
+  }
+  return out;
+}
+
+const MODE_WORDS: Record<TransferMode, [string, string]> = { train: ["Tren", "Train"], bus: ["Otobüs", "Bus"], flight: ["Uçak", "Flight"], ferry: ["Feribot", "Ferry"] };
+
+/** Omio's page for the route (by its position ids: no name to guess). */
+export const omioPage = (r: Pick<OmioRoute, "fromId" | "toId">): string => `https://www.omio.com/lps/?id=${btoa(`connection_page_nt.com.${r.fromId}.${r.toId}`)}`;
+
+/**
+ * Up to three ways, cheapest first: the cheapest, the quickest when it isn't the cheapest, then the next cheapest;
+ * each the least price for everyone going, said as a starting price, seen on the feed's day.
+ */
+export function pickTransfers(r: OmioRoute, adults: number, lang: Lang, seen: number): OfferOut[] {
+  const ways = MODES.filter((m) => r.ways[m]).map((m) => ({ m, price: r.ways[m]![0], minutes: r.ways[m]![1] }));
+  if (!ways.length) return [];
+  const byPrice = [...ways].sort((a, b) => a.price - b.price);
+  const quick = ways.filter((w) => w.minutes != null).sort((a, b) => a.minutes! - b.minutes!)[0];
+  const picked: { w: (typeof ways)[number]; why: string }[] = [{ w: byPrice[0], why: T(lang, "En ucuz yol", "The cheapest way") }];
+  if (quick && quick.m !== byPrice[0].m) picked.push({ w: quick, why: T(lang, "En hızlı yol", "The quickest way") });
+  const next = byPrice.find((w) => !picked.some((p) => p.w.m === w.m));
+  if (next) picked.push({ w: next, why: T(lang, "Bir başka yol", "Another way") });
+  if (picked[0].w.m === quick?.m) picked[0].why = T(lang, "En ucuz ve en hızlı yol", "The cheapest and quickest way");
+  return picked
+    .sort((a, b) => a.w.price - b.w.price)
+    .map(({ w, why }) => {
+      const word = MODE_WORDS[w.m][lang === "en" ? 1 : 0];
+      return {
+        id: `om:${r.fromId}-${r.toId}:${w.m}`,
+        kind: "transfer" as const,
+        title: `${word} · ${r.from} → ${r.to}`,
+        price: Math.round(w.price * adults),
+        currency: "EUR",
+        url: omioPage(r),
+        why: `${why} · ${T(lang, "başlangıç fiyatı", "starting price")}`,
+        source: "Omio",
+        fetchedAt: seen,
+        durationMinutes: w.minutes,
+        via: word,
+      };
+    });
 }

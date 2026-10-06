@@ -15,16 +15,21 @@
 // nothing, or on `live=1` (the chat's live look); the page opened stays a partner's.
 // Activities (?kind=activity&city=Ubud&start=…&end=…&adults=2[&q=cooking class]) from Viator's Partner API (VIATOR_KEY):
 // its pages carry the project's Viator partner code already, so they aren't turned; kept an hour, as Viator asks.
+// eSIMs (?kind=esim&country=PT&start=…&end=…) from Airalo's public product feed, three packages that last the trip,
+// each page turned into a partner link; the feed read at most a few times a day.
+// Between cities (?kind=transfer&from=Lisbon&to=Porto&adults=2) from Omio's route feed: each way's starting price
+// and time, its page a partner link.
 // Each source is its own part: one failing leaves that kind with no offers and the card with its search buttons.
 // Calls out are capped per source and day. Deployed with verify_jwt off like `flight`: nothing personal comes in,
 // only places, days and a head-count.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { gunzipSync, strFromU8, unzipSync } from "npm:fflate@0.8.2";
 import {
   adultsOf, airportCodeOk, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, langOf, maxOf, nightsBetween,
   candidateOffer, pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf,
-  pickActivities, serpFlights, serpStays, stayCandidate, stayOffer, viatorDestination, type AviaFlight, type OfferOut, type StayCandidate,
-  type ViProduct, type XoHotel, type XoRate,
+  airaloPacks, airaloPlace, omioName, omioRoutes, pickActivities, pickEsims, pickTransfers, placeKey, serpFlights, serpStays, stayCandidate, stayOffer, viatorDestination, type AviaFlight, type OfferOut, type StayCandidate,
+  type EsimPack, type OmioRoute, type ViProduct, type XoHotel, type XoRate,
 } from "./shape.ts";
 
 const cors = {
@@ -34,8 +39,8 @@ const cors = {
 };
 const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
-const HOURS = { flight: 12, stay: 24, activity: 1 };
-const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300, serpapi: 8, viator: 300 };
+const HOURS = { flight: 12, stay: 24, activity: 1, esim: 24, transfer: 24 };
+const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300, serpapi: 8, viator: 300, airalo: 6, omio: 4 };
 const cap = (source: string) => Number(Deno.env.get(`OFFERS_CAP_${source.toUpperCase()}`)) || CAPS[source];
 
 type Sb = ReturnType<typeof createClient>;
@@ -228,6 +233,53 @@ async function activities(sb: Sb, city: string, country: string | null, start: s
   return pickActivities(found ?? [], lang, adults, Date.now(), prefer === "cheap");
 }
 
+/** Airalo's packages by country, read from its product feed (15 MB) at most a few times a day and kept for a day. */
+let esimFeed: { at: number; byPlace: Record<string, EsimPack[]> } | null = null;
+async function esimPacks(sb: Sb, place: string): Promise<EsimPack[]> {
+  if (!esimFeed || Date.now() - esimFeed.at > HOURS.esim * 36e5) {
+    let byPlace = await cached<Record<string, EsimPack[]>>(sb, "ai-feed", HOURS.esim);
+    if (!byPlace && (await take(sb, "airalo"))) {
+      const res = await fetch("https://www.airalo.com/products.xml");
+      if (res.ok) {
+        byPlace = {};
+        for (const pack of airaloPacks(await res.text())) (byPlace[pack.place.toLocaleLowerCase("en")] ??= []).push(pack);
+        await store(sb, "ai-feed", byPlace);
+      }
+    }
+    if (byPlace) esimFeed = { at: Date.now(), byPlace };
+  }
+  return esimFeed?.byPlace[place.toLocaleLowerCase("en")] ?? [];
+}
+
+/**
+ * Omio's routes, from the feed Travelpayouts hands out (a zip on Google Drive, 25 MB: one gzipped CSV per language),
+ * its English and German files read; kept a month, the feed being a snapshot made now and then. When it was made
+ * is the zip's own date for its files (OMIO_FEED_DAY, else the one it had when this was written).
+ */
+const OMIO_FEED = "https://drive.usercontent.google.com/download?id=1aO8k1QBW4CwbFJ9yNZEE7mUMzupKEEul&export=download&confirm=t";
+const omioSeen = () => Date.parse(`${Deno.env.get("OMIO_FEED_DAY") ?? "2025-08-29"}T12:00:00Z`);
+let omioFeed: { at: number; routes: Record<string, OmioRoute> } | null = null;
+async function omioRoute(sb: Sb, from: string, to: string): Promise<OmioRoute | null> {
+  if (!omioFeed || Date.now() - omioFeed.at > 24 * 36e5) {
+    let routes = await cached<Record<string, OmioRoute>>(sb, "om-feed", 24 * 30);
+    if (!routes && (await take(sb, "omio"))) {
+      const res = await fetch(OMIO_FEED);
+      if (res.ok) {
+        const want = new Set(["English-(UK)_CUSTOM.csv.gz", "DE-(German)_CUSTOM.csv.gz"]);
+        const files = unzipSync(new Uint8Array(await res.arrayBuffer()), { filter: (f) => want.has(f.name) });
+        const read = (name: string) => (files[name] ? strFromU8(gunzipSync(files[name])) : "");
+        const found = omioRoutes(read("English-(UK)_CUSTOM.csv.gz"), read("DE-(German)_CUSTOM.csv.gz"));
+        if (Object.keys(found).length) {
+          routes = found;
+          await store(sb, "om-feed", routes);
+        }
+      }
+    }
+    if (routes) omioFeed = { at: Date.now(), routes };
+  }
+  return omioFeed?.routes[`${placeKey(omioName(from))}|${placeKey(omioName(to))}`] ?? null;
+}
+
 /** Every page as a Travelpayouts partner link, ten at a time; a page it can't turn is kept as it was. */
 async function partnerLinks(sb: Sb, token: string, offers: OfferOut[]): Promise<OfferOut[]> {
   const turned = await turnLinks(sb, token, offers.map((o) => o.url));
@@ -303,6 +355,27 @@ Deno.serve(async (req: Request) => {
       const had = await cached<OfferOut[]>(sb, key, HOURS.activity);
       offers = had ?? (await activities(sb, city, country, start, end, q, ask));
       if (!had) await store(sb, key, offers);
+    } else if (p("kind") === "esim") {
+      const place = airaloPlace(p("country") ?? "");
+      const start = askableDay(p("start"), now), end = askableDay(p("end"), now);
+      if (!place) return reply(400, { error: "ask" });
+      const days = start && end && end >= start ? Math.min(90, nightsBetween(start, end) + 1) : 7;
+      const key = `out2|e|${place.toLocaleLowerCase("en")}|${days}|${ask.lang}`;
+      const had = await cached<OfferOut[]>(sb, key, HOURS.esim);
+      offers = had ?? (await partnerLinks(sb, token, pickEsims(await esimPacks(sb, place), days, ask.lang, Date.now())));
+      if (!had && offers.length) await store(sb, key, offers);
+    } else if (p("kind") === "transfer") {
+      const from = placeOk(p("from")), to = placeOk(p("to"));
+      if (!from || !to || placeKey(from) === placeKey(to)) return reply(400, { error: "ask" });
+      const key = `out|t|${placeKey(omioName(from))}|${placeKey(omioName(to))}|${ask.adults}|${ask.lang}`;
+      const had = await cached<OfferOut[]>(sb, key, HOURS.transfer);
+      if (had) offers = had;
+      else {
+        const route = await omioRoute(sb, from, to);
+        offers = route ? await partnerLinks(sb, token, pickTransfers(route, ask.adults, ask.lang, omioSeen())) : [];
+        // "no route" is kept only when the feed was there to say so
+        if (omioFeed) await store(sb, key, offers);
+      }
     } else {
       return reply(400, { error: "ask" });
     }

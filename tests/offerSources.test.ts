@@ -38,8 +38,18 @@ describe("the question for a need", () => {
     expect(queryOf({ key: "a", section: "activity", kind: "activity", city: " " }, "tr")).toBeNull();
   });
 
-  it("asks nothing for kinds with no source yet", () => {
-    expect(queryOf({ key: "e", section: "other", kind: "esim", country: "ID" }, "tr")).toBeNull();
+  it("asks an eSIM by its country's code and the trip's days", () => {
+    expect(queryOf({ key: "e", section: "other", kind: "esim", country: "pt", start: "2026-10-08", end: "2026-10-14" }, "tr")).toBe("kind=esim&country=PT&lang=tr&start=2026-10-08&end=2026-10-14");
+    expect(queryOf({ key: "e", section: "other", kind: "esim", country: "ID" }, "en")).toBe("kind=esim&country=ID&lang=en");
+    expect(queryOf({ key: "e", section: "other", kind: "esim", country: "Portugal" }, "tr")).toBeNull();
+    expect(queryOf({ key: "e", section: "other", kind: "esim", country: null }, "tr")).toBeNull();
+  });
+
+  it("asks a way between two cities by their names and head-count", () => {
+    const t: Need = { key: "t", section: "transport", kind: "transfer", from: "Lizbon", to: "Porto", start: "2026-10-08", adults: 2 };
+    expect(queryOf(t, "tr")).toBe("kind=transfer&from=Lizbon&to=Porto&adults=2&lang=tr");
+    expect(queryOf({ ...t, to: "lizbon" }, "tr")).toBeNull();
+    expect(queryOf({ ...t, from: null }, "tr")).toBeNull();
   });
 });
 

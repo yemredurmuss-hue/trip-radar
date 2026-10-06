@@ -142,17 +142,20 @@ profilleri ve geçmişiyle birlikte) senin isteğinle silinir: info@emredurmus.n
   numarası ve güne göre saklar; kimin sorduğunu saklamaz. Cevap bu bilgisayarda da saklanır.
 - **Kiwi.com ve Aviasales görsel sunucuları:** uçuş kartında havayolu logosu için yalnız havayolunun iki harfli kodu
   ("KL") istenir (Kiwi açılmazsa Aviasales'ten).
-- **Öneriler (Travelpayouts / Aviasales, Tripadvisor, Xotelo):** boş bir uçuş ya da konaklama kartının altındaki
+- **Öneriler (Travelpayouts / Aviasales, Tripadvisor, Xotelo, Viator, Airalo, Omio):** boş bir uçuş ya da konaklama kartının altındaki
   "Senin için N öneri" satırı için, bizim sunucumuz üzerinden yalnız aramanın gerektirdiği gönderilir: uçuşta iki
   havalimanı kodu, gün ve kişi sayısı ("IST, DPS, 10 Kasım, 2 kişi"); konaklamada şehir ve ülke adı, giriş ve çıkış
-  günü ve kişi sayısı; etkinlikte şehir, günler, kişi sayısı ve kartın adı ("Tekne turu"). Sunucu uçuş fiyatlarını Aviasales'in önbellekteki fiyatlarından (Travelpayouts), şehrin
+  günü ve kişi sayısı; etkinlikte şehir, günler, kişi sayısı ve kartın adı ("Tekne turu"); eSIM'de ülke kodu ve gezinin günleri; şehirler
+  arası ulaşımda iki şehrin adı ve kişi sayısı ("Lizbon, Porto, 2 kişi"). Sunucu uçuş fiyatlarını Aviasales'in önbellekteki fiyatlarından (Travelpayouts), şehrin
   kimliğini Tripadvisor'dan (RapidAPI üzerinden), otelleri ve platform fiyatlarını Xotelo'dan alır; bunlarda sonuç
   yoksa ya da sohbette canlı fiyat istendiğinde aynı arama bilgisini Google Flights / Google Hotels sonuçları için
-  SerpApi'ye gönderir; etkinlikleri Viator'dan (Viator Partner API) alır; herkese açık bu
+  SerpApi'ye gönderir; etkinlikleri Viator'dan (Viator Partner API) alır; eSIM paketlerini Airalo'nun, şehirler
+  arası tren, otobüs, uçak ve feribot başlangıç fiyatlarını Omio'nun herkese açık ürün listesinden okur (bu ikisine
+  senin araman gönderilmez, liste bütün olarak indirilir); herkese açık bu
   bilgiyi, aynı soruyu soran herkes için tekrar sormamak adına sorulan yere ve güne göre saklar, kimin sorduğunu
   saklamaz. Cevap bu bilgisayarda da birkaç saat saklanır.
 - **Travelpayouts ortaklık bağlantıları:** panodan açtığın, Trip Radar'ın ortağı olduğu bir markanın sayfası
-  (öneriler, arama düğmeleri, kaydettiğin bir sayfa; Booking, Agoda, Trip.com, GetYourGuide, Viator, Aviasales gibi)
+  (öneriler, arama düğmeleri, kaydettiğin bir sayfa; Booking, Agoda, Trip.com, GetYourGuide, Viator, Aviasales, Airalo, Omio gibi)
   tıkladığın anda Travelpayouts ortaklık bağlantısından (tp.media) geçer ve aynı sayfaya varır; Travelpayouts o
   sayfanın adresini görür. Orada rezervasyon yaparsan Trip Radar komisyon alabilir; sana ek bir ücret çıkmaz.
   Kendi rezervasyonunu ya da hesabını taşıyabilecek sayfalar (rezervasyon yönetimi, onay, hesap, giriş; içinde
@@ -178,7 +181,7 @@ IP adresini görebilir.
 Trip Radar'ın hiçbir sunucusu Türkiye'de değildir:
 
 - Paylaşım sunucusu ve AI kapısı aynı Supabase projesindedir ve **Hindistan'da (Mumbai, ap-south-1)** çalışır.
-- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo, SerpApi ve Viator kendi sunucularını kullanır; bunlar ABD, AB ya da
+- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo, SerpApi, Viator, Airalo ve Omio kendi sunucularını kullanır; bunlar ABD, AB ya da
   başka ülkelerde olabilir.
 
 Bu aktarımlar yalnız senin başlattığın işlemler (yapay zekâ, paylaşım, davet) için ve o işlem için gerektiği kadar
@@ -386,18 +389,21 @@ and history) is deleted on request: write to info@emredurmus.net.
   who has it; it doesn't keep who asked. The answer is also kept on this computer.
 - **Kiwi.com and Aviasales image servers:** only the airline's two-letter code ("KL"), for the airline's logo on a
   flight's card (from Aviasales when Kiwi's won't load).
-- **Offers (Travelpayouts / Aviasales, Tripadvisor, Xotelo):** for the "N offers for you" row under an empty flight or
+- **Offers (Travelpayouts / Aviasales, Tripadvisor, Xotelo, Viator, Airalo, Omio):** for the "N offers for you" row under an empty flight or
   stay card, only what the search needs is sent, through our server: for a flight the two airport codes, the day and
   the head-count ("IST, DPS, 10 November, 2 people"); for a stay the city and country name, the check-in and
   check-out days and the head-count; for an activity the city, the days, the head-count and the card's name ("Boat
-  tour"). The server takes flight prices from Aviasales' cached prices (Travelpayouts),
+  tour"); for an eSIM the country code and the trip's days; between cities the two cities' names and the head-count
+  ("Lisbon, Porto, 2 people"). The server takes flight prices from Aviasales' cached prices (Travelpayouts),
   the city's id from Tripadvisor (via RapidAPI), hotels and each platform's price from Xotelo; when those have nothing,
   or a live price is asked for in the chat, the same search goes to SerpApi for Google Flights / Google Hotels results;
-  activities come from Viator (Viator Partner API); it keeps this public
+  activities come from Viator (Viator Partner API); eSIM packages from Airalo's, and starting prices for trains, buses,
+  flights and ferries between cities from Omio's public product list (your search isn't sent to either: the list is
+  downloaded whole); it keeps this public
   information by the place and days asked, so the same question isn't asked again for everyone, and doesn't keep
   who asked. The answer is also kept on this computer for a few hours.
 - **Travelpayouts affiliate links:** a page of a brand Trip Radar is a partner of, opened from the board (offers,
-  search buttons, a page you saved; Booking, Agoda, Trip.com, GetYourGuide, Viator, Aviasales and the like), goes
+  search buttons, a page you saved; Booking, Agoda, Trip.com, GetYourGuide, Viator, Aviasales, Airalo, Omio and the like), goes
   through Travelpayouts' affiliate link (tp.media) as you click it and lands on the same page; Travelpayouts sees
   that page's address. If you book there, Trip Radar may earn a commission; it costs you nothing extra. Pages that
   may carry your own booking or account (managing a booking, confirmations, account, sign-in; addresses with a
@@ -423,7 +429,7 @@ can see your IP address.
 None of Trip Radar's servers are in Turkey:
 
 - The sharing server and the AI gate are in the same Supabase project, in **India (Mumbai, ap-south-1)**.
-- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo, SerpApi and Viator use their own servers, which may be in the US,
+- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo, SerpApi, Viator, Airalo and Omio use their own servers, which may be in the US,
   the EU or other countries.
 
 These transfers happen only for actions you start (AI, sharing, invites) and only as far as that action needs; what

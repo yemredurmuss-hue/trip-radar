@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   adultsOf, airportCodeOk, arrivalClock, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, localClock, maxOf,
   aviasalesSearch, durationWords, pickActivities, viatorDestination, nightsBetween, pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf, seenAt, serpFlights,
-  serpStays, stayCandidate, stayOffer, type AviaFlight,
+  serpStays, stayCandidate, stayOffer, airaloPacks, airaloPlace, pickEsims, csvRows, omioPage, omioRoutes, pickTransfers, placeKey, omioName, type OmioRoute, type AviaFlight, type EsimPack,
   type OfferOut, type XoHotel,
 } from "../supabase/functions/offers/shape";
 
@@ -288,5 +288,104 @@ describe("activities (Viator)", () => {
   it("asked for cheaper ones: the three cheapest well liked", () => {
     const list = [vi("A", 4.6, 120, 30), vi("B", 5, 703, 68), vi("C", 4.8, 90, 20), vi("D", 4.1, 80, 5)];
     expect(pickActivities(list, "tr", 1, 0, true).map((o) => o.id)).toEqual(["vi:C", "vi:A", "vi:B"]);
+  });
+});
+
+describe("eSIMs (Airalo's feed)", () => {
+  const item = (title: string, price: string, link: string) =>
+    `<item><g:id>1</g:id><g:title><![CDATA[${title}]]></g:title><g:price>${price}</g:price><g:link>${link}</g:link></item>`;
+  const feed = `<?xml version="1.0"?><rss><channel>${[
+    item("5 GB Portugal travel eSIM valid for 7 days", "7.50 USD", "https://www.airalo.com/portugal-esim/fofo-in-7days-5gb?currency=USD"),
+    item("Israel travel eSIM | 5 GB, 50 mins of local calls, 50 SMS valid for 30 days", "21.00 USD", "https://www.airalo.com/israel-esim/a-30days-5gb"),
+    item("Guam travel eSIM | Unlimited GB, unlimited mins of local calls, unlimited SMS valid for 15 days", "30 USD", "https://www.airalo.com/guam-esim/b"),
+    item("Europe regional eSIM 10GB", "20 USD", "https://www.airalo.com/europe"),
+    item("1 GB Portugal travel eSIM valid for 7 days", "0 USD", "https://www.airalo.com/free"),
+    item("2 GB Portugal travel eSIM valid for 7 days", "5 USD", "http://www.airalo.com/insecure"),
+  ].join("")}</channel></rss>`;
+
+  it("reads both title shapes, and nothing else", () => {
+    const packs = airaloPacks(feed);
+    expect(packs).toEqual([
+      { place: "Portugal", gb: 5, days: 7, calls: false, price: 7.5, currency: "USD", link: "https://www.airalo.com/portugal-esim/fofo-in-7days-5gb?currency=USD" },
+      { place: "Israel", gb: 5, days: 30, calls: true, price: 21, currency: "USD", link: "https://www.airalo.com/israel-esim/a-30days-5gb" },
+      { place: "Guam", gb: null, days: 15, calls: true, price: 30, currency: "USD", link: "https://www.airalo.com/guam-esim/b" },
+    ]);
+  });
+
+  it("names a country as Airalo does", () => {
+    expect(airaloPlace("pt")).toBe("Portugal");
+    expect(airaloPlace("TR")).toBe("Turkey");
+    expect(airaloPlace("US")).toBe("United States");
+    expect(airaloPlace("Portugal")).toBeNull();
+  });
+
+  const pack = (gb: number | null, days: number, price: number, calls = false): EsimPack => ({
+    place: "Portugal", gb, days, calls, price, currency: "USD", link: `https://www.airalo.com/portugal-esim/p-${days}days-${gb ?? "u"}gb`,
+  });
+  const packs = [pack(1, 7, 4.5), pack(3, 7, 8), pack(5, 15, 13), pack(10, 30, 20), pack(20, 30, 34), pack(null, 30, 60, true), pack(5, 7, 9.5)];
+
+  it("three that last the trip: the cheapest with enough data, the most per dollar, plenty", () => {
+    const got = pickEsims(packs, 10, "tr", 1);
+    expect(got.map((o) => [o.title, o.price, o.why])).toEqual([
+      ["Portugal 5 GB", 13, "10 günlük gezine yeten en uygun paket"],
+      ["Portugal 20 GB", 34, "Gigabayt başına en uygun"],
+      ["Portugal Sınırsız", 60, "Bol internet"],
+    ]);
+    expect(got[0]).toMatchObject({ kind: "esim", source: "Airalo", currency: "USD", area: "15 gün · 5 GB", meta: null, url: "https://www.airalo.com/portugal-esim/p-15days-5gb" });
+    expect(got[2].meta).toBe("Yerel arama ve SMS dahil");
+    expect(got[0].id).toBe("ai:portugal-esim/p-15days-5gb");
+  });
+
+  it("goes up in price, plenty kept within reach of the first", () => {
+    const pt = [pack(5, 15, 8), pack(20, 15, 18.5), pack(50, 30, 35), pack(100, 30, 80)];
+    expect(pickEsims(pt, 8, "tr", 1).map((o) => [o.title, o.why])).toEqual([
+      ["Portugal 5 GB", "8 günlük gezine yeten en uygun paket"],
+      ["Portugal 20 GB", "Gigabayt başına en uygun"],
+      ["Portugal 50 GB", "Bol internet"],
+    ]);
+  });
+
+  it("a short trip gets the short ones; a trip longer than any package the longest", () => {
+    expect(pickEsims(packs, 5, "en", 1)[0]).toMatchObject({ title: "Portugal 3 GB", price: 8, why: "The cheapest that lasts your 5 days" });
+    expect(pickEsims(packs, 60, "tr", 1).every((o) => o.area?.startsWith("30 gün"))).toBe(true);
+    expect(pickEsims([], 7, "tr", 1)).toEqual([]);
+  });
+});
+
+describe("between cities (Omio's feed)", () => {
+  it("reads a CSV with quotes, commas and line breaks inside", () => {
+    expect(csvRows('a,b,c\r\n1,"x, ""y""\nz",3\n')).toEqual([["a", "b", "c"], ["1", 'x, "y"\nz', "3"]]);
+  });
+
+  it("puts the English names with the German file's euros, by route", () => {
+    const en = [
+      "route_id,title,description,origin_name,destination_name,origin_position_id,destination_position_id,train_min_duration,bus_min_duration,flight_min_duration,ferry_min_duration,train_min_price,bus_min_price,flight_min_price,ferry_min_price",
+      '1_2,Lisbon - Porto,"Train, bus or flight",Lisbon,Porto,1,2,178,195,60,,8.5,3.2,40,',
+      "3_4,Nowhere - There,x,Nowhere,There,3,4,10,,,,,,,",
+    ].join("\n");
+    const de = ["route_id,origin_name,destination_name,train_min_price,bus_min_price,flight_min_price,ferry_min_price", "1_2,Lissabon,Porto,10.00,3.95,46.43,", "3_4,Nirgendwo,Dort,,,,"].join("\n");
+    expect(omioRoutes(en, de)).toEqual({
+      "lisbon|porto": { from: "Lisbon", to: "Porto", fromId: "1", toId: "2", ways: { train: [10, 178], bus: [3.95, 195], flight: [46.43, 60] } },
+    });
+    expect(placeKey(" Zürich  Hbf ")).toBe("zurich hbf");
+    expect([omioName("Floransa"), omioName("budapeşte"), omioName("BÜKREŞ"), omioName("Porto")]).toEqual(["Florence", "Budapest", "Bucharest", "Porto"]);
+  });
+
+  const route: OmioRoute = { from: "Lisbon", to: "Porto", fromId: "372432", toId: "373108", ways: { train: [10, 178], bus: [3.95, 195], flight: [46.43, 60] } };
+
+  it("the cheapest, the quickest, another; for everyone going, as a starting price", () => {
+    const got = pickTransfers(route, 2, "tr", 5);
+    expect(got.map((o) => [o.title, o.price, o.why, o.durationMinutes])).toEqual([
+      ["Otobüs · Lisbon → Porto", 8, "En ucuz yol · başlangıç fiyatı", 195],
+      ["Tren · Lisbon → Porto", 20, "Bir başka yol · başlangıç fiyatı", 178],
+      ["Uçak · Lisbon → Porto", 93, "En hızlı yol · başlangıç fiyatı", 60],
+    ]);
+    expect(got[0]).toMatchObject({ kind: "transfer", source: "Omio", currency: "EUR", fetchedAt: 5, via: "Otobüs", url: omioPage(route) });
+    expect(omioPage(route)).toBe(`https://www.omio.com/lps/?id=${btoa("connection_page_nt.com.372432.373108")}`);
+  });
+
+  it("one way that's both cheapest and quickest says so", () => {
+    const got = pickTransfers({ ...route, ways: { train: [9, 100], bus: [12, 200] } }, 1, "en", 5);
+    expect(got.map((o) => o.why)).toEqual(["The cheapest and quickest way · starting price", "Another way · starting price"]);
   });
 });
