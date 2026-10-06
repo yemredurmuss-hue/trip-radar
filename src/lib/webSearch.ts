@@ -43,11 +43,15 @@ export const cantSearch = (r: WebSearchResult) => r.answer == null && r.reason !
 
 const FRESH_DAYS: Record<SearchKind, number> = { event_dates: 30, fact: 7, research: 3 };
 const MISS_DAYS = 1;
-export const TIMEOUT_MS = 8000;
+/** A fresh search takes 10-30 s (Gemini searching; longer on a cold start): one try waits this long. */
+export const TIMEOUT_MS = 35_000;
+/** After a try that timed out, the pause before the one silent retry (a cold start often answers the second time). */
+export const RETRY_PAUSE_MS = 1500;
 
 /** The question as the server keys it: trimmed, lower case, one space, at most 200 characters. */
 export const normalizeQuery = (q: string) => q.trim().toLowerCase().replace(/\u0307/g, "").replace(/\s+/g, " ").slice(0, 200).trim();
-const keyOf = (kind: SearchKind, q: string, year: number | null) => `${kind}|${year ?? 0}|${normalizeQuery(q)}`;
+/** One answer per language, as on the server (the answer is written in the asker's language). */
+const keyOf = (kind: SearchKind, lang: string, q: string, year: number | null) => `${kind}|${lang}|${year ?? 0}|${normalizeQuery(q)}`;
 
 export interface SearchCache {
   get(key: string): Promise<{ result: WebSearchResult; savedAt: number } | undefined>;
@@ -102,6 +106,8 @@ export interface SearchOptions {
   cache?: SearchCache | null;
   kv?: KV;
   timeoutMs?: number;
+  /** The pause before the retry after a timeout (tests make it short). */
+  retryPauseMs?: number;
   now?: () => number;
 }
 
@@ -116,15 +122,23 @@ function readSources(raw: unknown): SearchSource[] {
     .slice(0, 5);
 }
 
-/** Asks the server; never throws. A miss says why (reason). */
+/** Asks the server; never throws. A miss says why (reason). A try that timed out is retried once, silently. */
 export async function webSearch(q: string, opts: SearchOptions = {}): Promise<WebSearchResult> {
+  const first = await searchOnce(q, opts);
+  if (first.reason !== "timeout") return first;
+  await new Promise((resolve) => setTimeout(resolve, opts.retryPauseMs ?? RETRY_PAUSE_MS));
+  return searchOnce(q, opts);
+}
+
+async function searchOnce(q: string, opts: SearchOptions): Promise<WebSearchResult> {
   const kind = opts.kind && SEARCH_KINDS.includes(opts.kind) ? opts.kind : "fact";
   const year = typeof opts.year === "number" && Number.isInteger(opts.year) ? opts.year : null;
   const question = q.trim().slice(0, 200);
   if (question.length < 2) return miss(kind, "error");
   const now = opts.now ?? Date.now;
   const cache = opts.cache === undefined ? idbCache : opts.cache;
-  const key = keyOf(kind, question, year);
+  const lang = opts.lang ?? "tr";
+  const key = keyOf(kind, lang, question, year);
   const hit = await cache?.get(key);
   if (hit && (now() - hit.savedAt) / 864e5 < (hit.result.answer ? FRESH_DAYS[kind] : MISS_DAYS)) return { ...hit.result, cached: true };
 
@@ -137,7 +151,7 @@ export async function webSearch(q: string, opts: SearchOptions = {}): Promise<We
     const res = await (opts.fetch ?? fetch)(`${DEFAULT_SERVER.url}/functions/v1/web-search`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ q: question, lang: opts.lang ?? "tr", kind, ...(year ? { year } : {}) }),
+      body: JSON.stringify({ q: question, lang, kind, ...(year ? { year } : {}) }),
       signal: AbortSignal.timeout(opts.timeoutMs ?? TIMEOUT_MS),
     });
     // Not deployed yet (404) is the same as no key: the chat says it can't search.

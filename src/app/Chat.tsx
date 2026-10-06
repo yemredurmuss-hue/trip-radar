@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
 import { sendMessage } from "../lib/assistant";
-import { onChatStatus, type ChatStatus } from "../lib/chatStatus";
+import { chatStatusOf, onChatStatus, type ChatStatus } from "../lib/chatStatus";
 import { L, lang } from "../lib/i18n";
 import { reloadIfLangChanged } from "./langSwitch";
 import { noChangeNote } from "../lib/claims";
@@ -35,8 +35,12 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   // What the answer is waiting on beyond thinking: a web search ("Web'de arıyorum…").
-  const [status, setStatus] = useState<ChatStatus>(null);
-  useEffect(() => onChatStatus((tripId, s) => tripId === trip.id && setStatus(s)), [trip.id]);
+  // A search can run on after its turn's reply (10-30 s): its line stays while the traveller writes on.
+  const [status, setStatus] = useState<ChatStatus>(() => chatStatusOf(trip.id));
+  useEffect(() => {
+    setStatus(chatStatusOf(trip.id));
+    return onChatStatus((tripId, s) => tripId === trip.id && setStatus(s));
+  }, [trip.id]);
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
@@ -72,7 +76,6 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
       setError(describeError(e));
     } finally {
       setBusy(false);
-      setStatus(null);
       // "Türkçeye geç": the reply is saved; the board opens again in the new language, with its "Geri al". Not after
       // an error: the error stays on screen (the language switched is there on the next load all the same).
       if (!failed) reloadIfLangChanged(trip.id, langBefore);
@@ -178,7 +181,11 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
             ))}
           </div>
         )}
-        {busy && <div className="thinking">{status === "web" ? L("Web'de arıyorum…", "Searching the web…") : L("Düşünüyor…", "Thinking…")}</div>}
+        {(busy || status === "web") && (
+          <div className="thinking">
+            {status === "web" ? L("Web'de arıyorum…", "Searching the web…") : L("Düşünüyor…", "Thinking…")}
+          </div>
+        )}
         {error && <div className="chat-error">{error}</div>}
         <div ref={bottom} />
       </div>

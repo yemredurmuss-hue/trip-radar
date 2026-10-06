@@ -2,7 +2,7 @@
 // (supabase/functions/web-search/shape.ts).
 import { describe, expect, it } from "vitest";
 import { memoryKV } from "../src/lib/share/store";
-import { siteName, webSearch, type SearchCache, type WebSearchResult } from "../src/lib/webSearch";
+import { siteName, TIMEOUT_MS, webSearch, type SearchCache, type WebSearchResult } from "../src/lib/webSearch";
 import { dailyCap, freshDays, installIdOf, normalizeQuery, readEvent, searchPrompt, shapeAnswer, yearOf } from "../supabase/functions/web-search/shape";
 
 function memCache(): SearchCache & { data: Map<string, { result: WebSearchResult; savedAt: number }> } {
@@ -57,13 +57,32 @@ describe("webSearch (client)", () => {
     expect(calls).toHaveLength(2);
   });
 
-  it("gives up after the timeout: reason timeout, nothing cached", async () => {
-    const hang = ((_url: string, init: RequestInit) =>
-      new Promise((_, reject) => init.signal!.addEventListener("abort", () => reject(init.signal!.reason)))) as unknown as typeof fetch;
+  it("a timeout is retried once, silently, after a short pause; a second timeout gives up: reason timeout, nothing cached", async () => {
+    let tries = 0;
+    const hang = ((_url: string, init: RequestInit) => {
+      tries++;
+      return new Promise((_, reject) => init.signal!.addEventListener("abort", () => reject(init.signal!.reason)));
+    }) as unknown as typeof fetch;
     const cache = memCache();
-    const r = await webSearch("feribot saatleri", { fetch: hang, cache, kv: memoryKV(), timeoutMs: 20 });
+    const r = await webSearch("feribot saatleri", { fetch: hang, cache, kv: memoryKV(), timeoutMs: 20, retryPauseMs: 5 });
     expect(r).toMatchObject({ answer: null, reason: "timeout", sources: [] });
+    expect(tries).toBe(2);
     expect(cache.data.size).toBe(0);
+  });
+
+  it("a cold start that times out answers on the retry", async () => {
+    let tries = 0;
+    const coldThenWarm = (async (_url: string, init: RequestInit) => {
+      if (++tries === 1) return new Promise((_, reject) => init.signal!.addEventListener("abort", () => reject(init.signal!.reason)));
+      return new Response(JSON.stringify(ok), { status: 200, headers: { "Content-Type": "application/json" } });
+    }) as unknown as typeof fetch;
+    const r = await webSearch("Ozora 2027", { kind: "event_dates", fetch: coldThenWarm, cache: memCache(), kv: memoryKV(), timeoutMs: 20, retryPauseMs: 5 });
+    expect(tries).toBe(2);
+    expect(r).toMatchObject({ answer: ok.answer, sources: ok.sources });
+  });
+
+  it("waits 35 s for one try (a fresh search takes 10-30 s)", () => {
+    expect(TIMEOUT_MS).toBe(35_000);
   });
 
   it("capped and not-configured say why, and aren't kept", async () => {

@@ -77,7 +77,7 @@ import {
 } from "./suggestions";
 import { loadHome } from "./passport";
 import { cantSearch, SEARCH_KINDS, siteName, webSearch, type SearchKind, type SearchSource, type WebSearchResult } from "./webSearch";
-import { setChatStatus } from "./chatStatus";
+import { chatStatusOf, searchEnded, searchStarted } from "./chatStatus";
 
 /** What became of the chat's suggestion, as its result says it. */
 type SuggestOutcome = MergeOutcome | "already_added" | "covered_by_rule" | "already_on_plan";
@@ -1033,6 +1033,8 @@ interface Turn {
   searchSources: SearchSource[];
   searchFound: boolean;
   searchDown: boolean;
+  /** The model that answers this turn: a slow search lands later as its own reply line in its words' format. */
+  provider?: LlmProvider;
 }
 const newTurn = (userText = "", previousReply: string | null = null, who: WhoCtx = null): Turn => ({
   userText, previousReply, removed: new Set(), removedVehicles: new Set(), touched: new Set(), done: 0, changed: 0, who,
@@ -1884,12 +1886,25 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       turn.searches++;
       const kind: SearchKind = SEARCH_KINDS.includes(input.kind) ? input.kind : "fact";
       const year = Number(query.match(/\b(20\d{2})\b/)?.[1]) || null;
-      setChatStatus(tripId, "web");
-      try {
-        return searchToolResult(await webSearch(query, { kind, lang: lang(), year }), turn);
-      } finally {
-        setChatStatus(tripId, null);
+      // "Web'de arıyorum…" for as long as it runs, even after this turn's reply (searchEnded when it lands).
+      searchStarted(tripId);
+      const job = webSearch(query, { kind, lang: lang(), year });
+      const quick = turn.provider ? await Promise.race([job, new Promise<null>((resolve) => setTimeout(() => resolve(null), searchTiming.inlineMs))]) : await job;
+      if (quick) {
+        searchEnded(tripId);
+        return searchToolResult(quick, turn);
       }
+      // A fresh search takes 10-30 s: the turn ends now (the traveller can write meanwhile) and the result lands
+      // as its own reply line, which the model reads in its next turn.
+      void landSearch(tripId, query, job, turn.provider!);
+      return JSON.stringify({
+        found: false,
+        pending: true,
+        note: L(
+          "Arama sürüyor (web yavaş, 10-30 sn). Sonucu gelince sohbette kendi mesajı olarak, kaynağıyla görünecek; kullanıcı bu arada yazabilir. Şimdi yalnız kısaca araştırdığını ve sonucun birazdan burada olacağını söyle; tarih ya da tahmin verme, 'Kaynak' yazma.",
+          "The search is still running (the web is slow, 10-30 s). Its result will show in the chat as its own message, with its source; the user can write meanwhile. Now only say briefly that you're looking it up and the result will be here shortly; give no dates or guesses, write no 'Source'.",
+        ),
+      });
     }
     case "offer_choices":
       choices.splice(0, choices.length, ...(input.options as string[]).slice(0, 2));
@@ -2029,7 +2044,48 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
     await sendMessageNow(tripId, userText, llm);
   } finally {
     answering.delete(tripId);
+    // A search that landed while this turn was answering goes in now, after its reply (never inside its tool calls).
+    await saveLanded(tripId).catch(() => undefined);
   }
+}
+
+/** How long a turn waits for a web search before the search goes on by itself (tests make it short). */
+export const searchTiming = { inlineMs: 8000 };
+
+/** What a search that went on by itself says when it lands: the answer with its "Kaynak:", or honestly why not. */
+export function landedText(query: string, r: WebSearchResult): string {
+  if (r.answer) {
+    const line = sourceLine(r.sources);
+    return line ? `${r.answer}\n\n${line}` : r.answer;
+  }
+  if (r.reason === "no-result") return L(`Web'de "${query}" için bir şey bulamadım; tarih ya da saat uydurmayayım.`, `I found nothing on the web for "${query}"; I won't make up dates or times.`);
+  if (r.reason === "timeout") return L(`"${query}" için web araması bitemedi (çok uzun sürdü). Biraz sonra yeniden sorabilirsin.`, `The web search for "${query}" couldn't finish (it took too long). You can ask again in a little while.`);
+  return L(`Şu an web'de arama yapamıyorum; "${query}" için kaynaklı bir bilgi veremiyorum.`, `I can't search the web right now, so I can't give a sourced answer for "${query}".`);
+}
+
+/** Landed searches waiting for the trip's answering turn to end. */
+const landed = new Map<string, { text: string; provider: LlmProvider }[]>();
+
+async function landSearch(tripId: string, query: string, job: Promise<WebSearchResult>, provider: LlmProvider): Promise<void> {
+  try {
+    const text = landedText(query, await job);
+    landed.set(tripId, [...(landed.get(tripId) ?? []), { text, provider }]);
+    await saveLanded(tripId);
+  } catch (e) {
+    console.warn("[assistant] a web search's result couldn't be saved", e);
+  } finally {
+    searchEnded(tripId);
+  }
+}
+
+/** Saves the landed searches as reply lines, unless the trip's chat is answering (that turn's end saves them). */
+async function saveLanded(tripId: string): Promise<void> {
+  if (answering.has(tripId)) return;
+  const queue = landed.get(tripId);
+  if (!queue?.length) return;
+  landed.delete(tripId);
+  for (const l of queue) await saveMessage({ tripId, role: "assistant", content: l.provider.assistantContent(l.text), text: l.text, choices: [], provider: l.provider.id });
+  notifyChanged();
 }
 
 async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvider): Promise<void> {
@@ -2091,6 +2147,15 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   const stateHash = hash(state);
   const lastStateHash = session.findLast((m) => m.stateHash)?.stateHash;
   const texts = stateHash === lastStateHash ? [userText] : [`<trip_state>${state}</trip_state>`, userText];
+  // A search still running from before: its result comes as its own line; it isn't asked for again.
+  if (chatStatusOf(tripId) === "web") {
+    texts.push(
+      L(
+        "(Uygulama notu, kullanıcı görmez: bir web araması hâlâ sürüyor; sonucu gelince sohbette kendi mesajı olarak görünecek. Aynı şeyi tekrar arama.)",
+        "(App note, not shown to the user: a web search is still running; its result will show in the chat as its own message. Don't search for the same thing again.)",
+      ),
+    );
+  }
   await saveMessage({
     tripId,
     role: "user",
@@ -2102,6 +2167,7 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   });
 
   const turn = newTurn(userText, session.findLast((m) => m.role === "assistant" && m.text.trim())?.text ?? null, who);
+  turn.provider = provider;
   let askedAgain = false;
   for (let step = 0; step < MAX_STEPS; step++) {
     const history = currentSession(await listMessages(tripId), provider.id);

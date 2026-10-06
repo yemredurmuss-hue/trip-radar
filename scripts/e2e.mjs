@@ -3156,6 +3156,47 @@ try {
   await flow.unroute(/functions\/v1\/web-search/, searchFn);
   console.log("✓ web search: 'Ozora 2027 tarihlerini araştır' shows 'Web'de arıyorum…', then the answer with 'Kaynak: ozorafestival.eu' as a link; only the question went out");
 
+  // 20d3. A slow search (a fresh one takes 10-30 s): the turn ends after 8 s with a short reply, "Web'de arıyorum…"
+  // stays, the traveller writes on and is answered, and the result lands as its own line with its source.
+  const slowFn = async (route) => {
+    if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" } });
+    await new Promise((resolve) => setTimeout(resolve, 11000));
+    return route.fulfill({
+      headers: { "Access-Control-Allow-Origin": "*" },
+      json: { answer: "Livraria Lello her gün 09:00–19:00 açık.", sources: [{ title: "livrarialello.pt", url: "https://www.livrarialello.pt/" }], kind: "fact", cached: false, at: "2026-10-05T10:00:00Z" },
+    });
+  };
+  const slowModel = async (route) => {
+    const body = route.request().method() === "POST" ? route.request().postDataJSON() : null;
+    if (!body?.contents || body.generationConfig?.responseJsonSchema) return route.fallback();
+    const last = JSON.stringify(body.contents.at(-1));
+    if (last.includes("functionResponse") && last.includes("pending")) return route.fulfill(reply([{ text: "Araştırıyorum, sonuç birazdan burada." }]));
+    if (last.includes("Lello açılış saatlerini araştır")) {
+      return route.fulfill(reply([{ functionCall: { id: "ws-2", name: "web_search", args: { query: "Livraria Lello opening hours", kind: "fact", why: "açılış saati canlı bilgi" } } }]));
+    }
+    if (last.includes("teşekkürler")) return route.fulfill(reply([{ text: "Rica ederim." }]));
+    return route.fallback();
+  };
+  await flow.route(/functions\/v1\/web-search/, slowFn);
+  await flow.route("https://generativelanguage.googleapis.com/**", slowModel);
+  await esimBox.fill("Lello açılış saatlerini araştır");
+  await board.getByRole("button", { name: "Gönder" }).click();
+  await board.locator(".msg-assistant", { hasText: "Araştırıyorum, sonuç birazdan burada." }).waitFor({ timeout: 20000 });
+  await board.locator(".thinking", { hasText: "Web'de arıyorum…" }).waitFor({ timeout: 2000 });
+  await esimBox.fill("teşekkürler");
+  await board.getByRole("button", { name: "Gönder" }).click();
+  await board.locator(".msg-assistant", { hasText: "Rica ederim." }).waitFor({ timeout: 10000 });
+  assert.equal(await board.locator(".thinking", { hasText: "Web'de arıyorum…" }).count(), 1, "the search's line stays while the traveller writes on");
+  await board.screenshot({ path: `${out}/27d-web-search-slow.png` });
+  const landedReply = board.locator(".msg-assistant", { hasText: "Livraria Lello her gün 09:00–19:00 açık." });
+  await landedReply.waitFor({ timeout: 20000 });
+  assert.match(await landedReply.innerText(), /Kaynak: livrarialello\.pt/, "the landed line ends with its source");
+  await board.locator(".thinking").waitFor({ state: "detached", timeout: 5000 });
+  await board.screenshot({ path: `${out}/27e-web-search-landed.png` });
+  await flow.unroute("https://generativelanguage.googleapis.com/**", slowModel);
+  await flow.unroute(/functions\/v1\/web-search/, slowFn);
+  console.log("✓ web search, slow: the reply comes after 8 s, 'Web'de arıyorum…' stays while 'teşekkürler' is answered, then the result lands with 'Kaynak: livrarialello.pt'");
+
   // 20e. Words with a link on the home: the link is saved, the words go on ("Linki kaydettim; geri kalanını konuşalım").
   // A month only is never a day made up: the day is asked next; "Ortası" is said back and marked roughly.
   await board.getByRole("button", { name: /Seyahatlerim/ }).first().click();

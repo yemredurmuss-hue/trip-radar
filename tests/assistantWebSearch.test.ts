@@ -3,8 +3,8 @@
 import "fake-indexeddb/auto";
 import type Anthropic from "@anthropic-ai/sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MAX_SEARCHES, sendMessage, sourceLine, systemPrompt, tools, WEB_SEARCH_RULES_EN, WEB_SEARCH_RULES_TR, withSearchNotes } from "../src/lib/assistant";
-import { onChatStatus, type ChatStatus } from "../src/lib/chatStatus";
+import { landedText, MAX_SEARCHES, searchTiming, sendMessage, sourceLine, systemPrompt, tools, WEB_SEARCH_RULES_EN, WEB_SEARCH_RULES_TR, withSearchNotes } from "../src/lib/assistant";
+import { chatStatusOf, onChatStatus, type ChatStatus } from "../src/lib/chatStatus";
 import { db, listMessages } from "../src/lib/db";
 import { setLang } from "../src/lib/i18n";
 import { anthropicProvider } from "../src/lib/llm/anthropic";
@@ -35,11 +35,12 @@ async function seed(id: string): Promise<void> {
   const trip: Trip = { id, title: "Macaristan", confirmedDates: { start: "2027-07-20", end: "2027-08-05" }, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 };
   await (await db()).put("trips", trip);
 }
-const server = (body: unknown) => {
+const server = (body: unknown, delayMs = 0) => {
   const asked: unknown[] = [];
   vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
     if (!String(url).endsWith("/functions/v1/web-search")) return new Response("{}", { status: 503 });
     asked.push(JSON.parse(String(init!.body)));
+    if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
     return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
   });
   return asked;
@@ -49,7 +50,11 @@ const lastReply = async (tripId: string) => (await listMessages(tripId)).filter(
 afterEach(() => {
   vi.unstubAllGlobals();
   setLang("tr");
+  searchTiming.inlineMs = 8000;
 });
+const until = async (check: () => Promise<boolean>) => {
+  for (let i = 0; i < 200 && !(await check()); i++) await new Promise((resolve) => setTimeout(resolve, 10));
+};
 
 describe("assistant: web_search", () => {
   it("'Ozora 2027 tarihlerini araştır' → one search; the reply ends with 'Kaynak:' and the link; the chat heard 'web'", async () => {
@@ -112,6 +117,37 @@ describe("assistant: web_search", () => {
     const { client } = fakeClient([searchCalls("Ozora 2027 dates"), done("Şu an web'de arayamıyorum; tahmini: temmuz sonu.")]);
     await sendMessage("ws4", "Ozora 2027 ne zaman?", anthropicProvider(client, "claude-opus-5"));
     expect(await lastReply("ws4")).toBe("Şu an web'de arayamıyorum; tahmini: temmuz sonu.");
+  });
+
+  it("a slow search goes on after the reply: the line stays, the traveller writes meanwhile, the result lands as its own line", async () => {
+    await seed("ws5");
+    searchTiming.inlineMs = 20;
+    server({ answer: "Ozora 2027: 23 Temmuz – 3 Ağustos.", sources: [{ title: "ozorafestival.eu", url: "https://ozorafestival.eu/" }], kind: "event_dates", cached: false, at: "2026-10-06T10:00:00Z" }, 300);
+    const statuses: ChatStatus[] = [];
+    const stop = onChatStatus((tripId, s) => tripId === "ws5" && statuses.push(s));
+    const { client, calls } = fakeClient([searchCalls("Ozora 2027 festival tarihleri"), done("Araştırıyorum, sonuç birazdan burada."), done("Rica ederim.")]);
+    const llm = anthropicProvider(client, "claude-opus-5");
+    await sendMessage("ws5", "Ozora 2027 tarihlerini araştır", llm);
+    // The turn ended before the search: the tool said so, and the line is still on.
+    expect(JSON.parse(String(results(calls[1])[0].content))).toMatchObject({ found: false, pending: true });
+    expect(await lastReply("ws5")).toBe("Araştırıyorum, sonuç birazdan burada.");
+    expect(chatStatusOf("ws5")).toBe("web");
+    // Written meanwhile: answered, and told not to search the same thing again.
+    await sendMessage("ws5", "teşekkürler", llm);
+    expect(JSON.stringify(calls[2].messages.at(-1))).toContain("bir web araması hâlâ sürüyor");
+    expect(await lastReply("ws5")).toBe("Rica ederim.");
+    await until(async () => (await lastReply("ws5")).startsWith("Ozora 2027"));
+    stop();
+    expect(await lastReply("ws5")).toBe("Ozora 2027: 23 Temmuz – 3 Ağustos.\n\nKaynak: [ozorafestival.eu](https://ozorafestival.eu/)");
+    expect(statuses).toEqual(["web", null]);
+    expect(chatStatusOf("ws5")).toBeNull();
+  });
+
+  it("a search that couldn't finish says so honestly when it lands", () => {
+    const miss = { answer: null, sources: [], kind: "fact" as const, cached: false, at: null };
+    expect(landedText("Lello hours", { ...miss, reason: "timeout" })).toBe('"Lello hours" için web araması bitemedi (çok uzun sürdü). Biraz sonra yeniden sorabilirsin.');
+    expect(landedText("Lello hours", { ...miss, reason: "capped" })).toContain("Şu an web'de arama yapamıyorum");
+    expect(landedText("Lello hours", { ...miss, reason: "no-result" })).toContain("bir şey bulamadım");
   });
 
   it("the prompt's rule: only when needed, never general knowledge, 2 at most, sources, no made-up dates (TR and EN)", () => {
