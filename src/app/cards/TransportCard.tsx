@@ -7,6 +7,7 @@
 import type { End, TransportFace } from "../../lib/cardView";
 import type { FieldKey } from "../../lib/inlineEdit";
 import { Editable, useInlineEdit } from "./InlineEdit";
+import { FallbackImg } from "../FallbackImg";
 
 // A long name, or one long word that can't wrap ("Booking.com", "Hostelworld"), goes down to 24 so it
 // isn't broken in the middle of the word.
@@ -38,9 +39,16 @@ export function TransportCardBody({ face, title }: { face: TransportFace; title:
   const ends = Boolean(api?.fields.includes(face.rental ? "city" : "from"));
   if (!face.from && !face.to && !ends) return <h3 className="pk-title">{title}</h3>;
   return (
-    <div className="pk-mid">
+    <div className={`pk-mid${face.logo ? " has-logo" : ""}`}>
       <Stop end={face.from} right={false} field={face.rental ? "city" : "from"} timed={!face.rental} />
-      <div className="pk-route">{face.middle && <small>{face.middle}</small>}</div>
+      <div className="pk-route">
+        {(face.middle || face.logo) && (
+          <small className={face.logo ? "with-logo" : undefined}>
+            {face.logo && <FallbackImg className="pk-airline" src={face.logo} fallback={null} />}
+            {face.middle}
+          </small>
+        )}
+      </div>
       <Stop end={face.to} right field={face.rental ? null : "to"} timed={false} />
     </div>
   );

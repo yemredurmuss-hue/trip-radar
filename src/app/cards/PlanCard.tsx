@@ -27,7 +27,6 @@ import { datedLink } from "./parts";
 import { TransportArt } from "./Silhouettes";
 import { TransportCardBody } from "./TransportCard";
 import { FlightTiles } from "./FlightLive";
-import { FallbackImg } from "../FallbackImg";
 import { flightAlert, flightTiles, sourceText, ticketDiff } from "../../lib/flightData";
 import { flightNumber } from "../../../supabase/functions/flight/shape";
 
@@ -140,6 +139,9 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   const tiles = flightTiles(live);
   const red = flightAlert(live);
   const face = transport ? transportFace(item, kind, env.legEnds.get(item.id)) : null;
+  // The airline's logo by its code (the flight number's first two letters), beside the duration; none when it
+  // won't load.
+  if (face && number) face.logo = `https://images.kiwi.com/airlines/64/${number.slice(0, 2)}.png`;
   if (face && live) {
     const term = (t: string | null) => (t ? ` T${t}` : "");
     // Red only where a new time came (a landing not yet re-estimated stays as it was).
@@ -158,14 +160,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       date={
         <>
           <CardDate item={item} kind={kind} />
-          {tag && (
-            <>
-              {" · "}
-              {/* The airline's logo by its code (the flight number's first two letters); none when it won't load. */}
-              <FallbackImg className="pk-airline" src={`https://images.kiwi.com/airlines/64/${number!.slice(0, 2)}.png`} fallback={null} />
-              {tag}
-            </>
-          )}
+          {tag && ` · ${tag}`}
         </>
       }
       ariaLabel={item.name}

@@ -139,6 +139,8 @@ export interface TransportFace {
   /** Under the drawing: duration and stops, or what's rented ("Otomatik"). */
   middle: string | null;
   rental: boolean;
+  /** A booked flight's airline logo (0.36.18), beside the duration as on flight search sites. */
+  logo?: string | null;
 }
 
 const dayOf = (iso: string | null | undefined) => {
