@@ -87,7 +87,7 @@ describe("D1: a cancel clause is read only up to what comes in its place", () =>
     await sendMessage(T, "araç kiralamayı iptal ettik yerine karavan kiraladık", llm);
     const [refused] = resultsOf(calls, 1);
     expect(refused.is_error).toBe(true);
-    expect(String(refused.content)).toContain("update_items");
+    expect(String(refused.content)).toContain("item_id");
     const items = await stored();
     expect(items.get("vanpage")!.status).toBe("booked");
     expect(items.get("sixt")!.status).toBe("dismissed");

@@ -80,6 +80,8 @@ export interface DayGroup {
   key: string;
   date: string | null;
   city: string | null;
+  /** Diğer's undated (an eSIM, a policy): for the whole trip, "Tüm gezi" like its row's meta, never "Tarihsiz". */
+  whole?: boolean;
   entries: CatEntry[];
 }
 
@@ -654,11 +656,15 @@ function sortEntries(entries: CatEntry[], plan: Plan): CatEntry[] {
   });
 }
 
-function daysOf(entries: CatEntry[], plan: Plan): DayGroup[] {
+function daysOf(entries: CatEntry[], plan: Plan, id: SectionId): DayGroup[] {
   const days: DayGroup[] = [];
   for (const e of entries) {
     const last = days.at(-1);
-    if (e.date) {
+    if (!e.date && id === "other") {
+      // An eSIM or a policy is for the whole trip (its place a country): one "Tüm gezi" row, whatever its city.
+      if (last?.whole) last.entries.push(e);
+      else days.push({ key: "whole", date: null, city: null, whole: true, entries: [e] });
+    } else if (e.date) {
       if (last?.date === e.date) last.entries.push(e);
       else days.push({ key: `day:${e.date}`, date: e.date, city: cityOfNight(plan, e.date) ?? e.city, entries: [e] });
     } else if (last && !last.date && (last.city === e.city || (last.city && e.city && sameCity(last.city, e.city)))) {
@@ -724,7 +730,7 @@ function sectionOf(id: SectionId, list: CatEntry[], plan: Plan, hidden: HiddenTh
   const ideas = isIdeaSection(id) ? ideaTally(entries, today) : null;
   // Things to do and restaurants open while there are any (a list to use, on the road too); İlham waits closed.
   const open = id === "inspo" ? false : ideas ? entries.length > 0 : status?.tone === "wait";
-  return { id, entries, days: daysOf(rest, plan), status, settled: entries.filter((e) => e.state === "done").length, open, hidden, prep, ideas };
+  return { id, entries, days: daysOf(rest, plan, id), status, settled: entries.filter((e) => e.state === "done").length, open, hidden, prep, ideas };
 }
 
 /** "5 fikir · 2 tanesi bir güne kondu · 1 yapıldı": on a day means a day still ahead (or a booked table). */

@@ -24,7 +24,8 @@ import { coverageText, searchText } from "./listing";
 import { prosConsFor } from "./proscons";
 import { activeSignals, pendingSignals } from "./intent";
 import { buildLegs, canHideLeg, isHiddenLeg, legTiming, staleHiddenMoves, withLegChoice, type Leg } from "./legs";
-import { checkPlanned, guardKind, plannedInput, planToSave, PLANNED_KINDS } from "./planned";
+import { checkPlanned, guardKind, plannedInput, planToSave, PLANNED_KINDS, type PlannedInput } from "./planned";
+import { bookedUpdate, bookingCandidates, candidateLabel, esimPackage, narrowCandidates, type BookingExtras } from "./chatBooking";
 import { isIdea } from "./booking";
 import { sectionOfItem, type SectionId } from "./categories";
 import { addDays, buildPlan, cityKeyOf, liveGroups, sameCity, stayRange, type Plan } from "./plan";
@@ -146,12 +147,12 @@ Nasıl konuşursun:
 - Pano ayarları: "bütçeyi euro göster", "her şey TL olsun" → set_settings currency (bütçe günün kuruyla çevrilir; kur yoksa araç reddeder: "kur bilgisi yok, sonra dene" de, tutar uydurma). "Türkçeye geç", "İngilizce olsun" → set_settings language; ondan sonra o dilde yanıt ver. Kimler gidiyor: "Sabine de geliyor", "Ali gelmiyor", "2 kişiyiz" → set_travellers (paylaşmadan kaydeder; davet etmek isterse kahramandaki kişiler kutusundan "Birini davet et (paylaş)").
 - Kişiye özel rezervasyon: herkes aynı yerden gelmeyebilir. "Sabine Alicante'den geliyor" → set_travellers from [{name: "Sabine", place: "Alicante"}]: kod onun için gidiş boş uçuş kartını açar ve dönüşü kendisi kalın soruyla sorar (sen dönüşü ayrıca sorma, offer_choices çağırma); sonuçtaki shown'u anlat. "Bu bilet Sabine'in", "Ryanair Sabine'in", "bu otel yalnız Emre ve Ali'nin" → set_owner (item_ids, names; herkesinse names ["everyone"]). Kişiye adıyla yaz, asla "senin" deme; kullanıcının adı trip.travellers.me'dir; adı yoksa ve plan onunsa önce "Sana ne diyeyim?" diye sor. Bir planın kimin olduğu belli değilse tahmin etme, sor. items[].for_who o planın sahipleri (yoksa herkesin).
 - Boş geceler varsa uygun bir anda bir kez hatırlat.
-- Planlar: kullanıcı bir planını söylediğinde, linki olmasa da (ör. "7 Ekim'de İstanbul'dan Porto'ya uçuyoruz", "11 Ekim'de Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız", "10-17 Ekim Funchal'da kalacağız", "9 Ekim akşamı fado") plan_item ile hemen panoya ekle; tarih ve nereden/nereye ya da şehir ver. Gün belli değilse beklemeden date null ile ekle (şehrin bloğunda "gün belli değil" diye durur); gün plandan açıksa (ör. Madeira'ya varış günü) o tarihi kullan; gün sonra söylenince aynı şeyi plan_item ile tarihle tekrar ver, kart o güne geçer. "gideriz/düşünüyoruz" → planlanıyor (booked false); "aldım/rezerve ettim" → booked true. Aynı şey items'ta zaten varsa plan_item yerine update_items kullan. Şehir değişimi için ulaşım söylenirse (Madeira'ya uçakla) kind flight ile ekle.
+- Planlar: kullanıcı bir planını söylediğinde, linki olmasa da (ör. "7 Ekim'de İstanbul'dan Porto'ya uçuyoruz", "11 Ekim'de Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız", "10-17 Ekim Funchal'da kalacağız", "9 Ekim akşamı fado") plan_item ile hemen panoya ekle; tarih ve nereden/nereye ya da şehir ver. Gün belli değilse beklemeden date null ile ekle (şehrin bloğunda "gün belli değil" diye durur); gün plandan açıksa (ör. Madeira'ya varış günü) o tarihi kullan; gün sonra söylenince aynı şeyi plan_item ile tarihle tekrar ver, kart o güne geçer. "gideriz/düşünüyoruz" → planlanıyor (booked false); "aldım/rezerve ettim" → booked true. Planda zaten olan bir şeyi aldığını/rezerve ettiğini söylerse ("10 GB aldım", "arabayı kiraladım, Europcar", "oteli rezerve ettim") ikinci bir kayıt açma: plan_item'ı item_id = o kaydın id'si, booked true ve söylenen ayrıntılarla çağır (title: paket ya da ad, ör. "10 GB eSIM"; provider; price + currency; tarih). O kayıt güncellenir; yanıtında sonucun summary alanındaki değişeni söyle ("eSIM kartını güncelledim: 10 GB, alındı"). Hangi kayıt olduğu belli değilse sor. Başka bir şey onun yerine alındıysa ("tekne turu yerine parti teknesini aldım") item_id değil replaces = eskisinin id'si. Yalnız seçme/eleme (ayrıntısız durum) için update_items. Şehir değişimi için ulaşım söylenirse (Madeira'ya uçakla) kind flight ile ekle.
 - Planı sohbetten şekillendirme (hemen, aynı mesajda, sormadan):
   • "12 Ekim'e uçak bileti", "dönüş uçağı 12'si" → plan_item kind flight, o tarih; nereden/nereye plandan belliyse ver, değilse null bırak (bilet şablonu açılır). Sonra gelen bilgiyi aynı gün için plan_item ile tekrar ver (nereden/nereye, saat), fiyatı set_price ile yaz.
   • "12 Ekim'e taksi koyalım", "havalimanına taksiyle" → plan_item kind taxi (date, söylendiyse time; from/to: "Otel", "Havalimanı" gibi; city o günün şehri). O günün transferinde görünür, yoksa kendi bloğu olur. Yalnız nasıl gideceğini söylüyorsa ("metroyla gideceğim") set_leg.
-  • "eSIM alalım" → plan_item kind esim (date null; ülke/şehir biliniyorsa city). Diğer bölümünde planlanıyor olarak durur.
-  • Seyahat sigortası: "sigorta alalım" → plan_item kind insurance (booked false). "Sigortam var", "poliçeyi attım/ekledim", "sigortayı aldım" → kind insurance, booked true (sağlayıcı title'a, poliçe no note'a). Bilet, rezervasyon ya da poliçe için "aldım/attım/var/ekledim" diyorsa kayıt alınmış sayılır (booked true), asla yapılacak iş değildir. Sigorta, vize, eSIM hiçbir zaman todo ya da activity değildir; hepsi Diğer bölümüne düşer.
+  • "eSIM alalım" → plan_item kind esim (date null; city: ülke, ör. Portekiz). Diğer bölümünde "Tüm gezi" satırında durur; yeri ülkesidir. "10 GB aldım" ve planda eSIM var → o eSIM'in item_id'siyle plan_item (title "10 GB eSIM", booked true).
+  • Seyahat sigortası: "sigorta alalım" → plan_item kind insurance (booked false). "Sigortam var", "poliçeyi attım/ekledim", "sigortayı aldım" → kind insurance, booked true (sağlayıcı provider'a, poliçe no note'a; planda sigorta varsa onun item_id'siyle). Bilet, rezervasyon ya da poliçe için "aldım/attım/var/ekledim" diyorsa kayıt alınmış sayılır (booked true), asla yapılacak iş değildir. Sigorta, vize, eSIM hiçbir zaman todo ya da activity değildir; hepsi Diğer bölümüne düşer.
   • Gezi öncesi hazırlık işleri (bir şey satın almak, başvurmak, rezervasyon yapmak, yazdırmak, paketlemek, döviz bozdurmak, vize başvurusu, sigorta/eSIM işleri; ör. "Decathlon'dan yağmurluk al", "biletleri yazdır", "döviz bozdur") → plan_item kind prep (title kısa, booked false). Diğer bölümünün sonundaki Hazırlık listesine düşer; Yapılacak şeyler'e değil.
   • Destinasyonda yapılacak, rezervasyon gerektirmeyen bir deneyim ("pazara gidelim", "Porto Belo Pazarı", "outdoor alışverişi", "Dom Luís'ten gün batımını izleyelim", "Ribeira'da yürürüz", plaj, park, manzara noktası, mahalle, kilise, ücretsiz müze, sokak lezzeti) → plan_item kind todo (title kısa, city o şehir, date söylendiyse). Plan'da Yapılacak şeyler bölümüne düşer, rezervasyon sayılmaz. Kullanıcı "gideceğiz/yaptık/ekle" dese de booked false ver; booked yalnız bilet ya da rezervasyon alındıysa. kind activity yalnız bilet, rezervasyon, giriş ücreti, tur ya da gösteri/konser olan şey için; o zaman kullanıcının söylediğini note'a yaz ("bileti aldım", "rezervasyon 20:00", PNR/onay no, fiyat). Kanıtsız (fiyat, bilet sitesi, bilet/rezervasyon/tur sözü yok) bir activity panoda yine Yapılacak şeyler'e düşer; sonucun plan_section alanı nereye düştüğünü söyler, kullanıcıya onu anlat ("rezerve edildi" deme).
   • Konaklamayı birleştirme/uzatma/kısaltma ("Porto tek blok olsun 7-12", "Porto'yu 13'üne uzat") → plan_item kind stay, şehrin TÜM gecelerini tek aralıkla (date = giriş, end_date = çıkış). O şehirde bu aralığın içinde kalan eski sohbet konaklamaları birleşir (sonuçta merged); board alanıyla panoda ne göründüğünü anlat.
@@ -204,12 +205,12 @@ How you talk:
 - Board settings: "show the budget in euros", "everything in TRY" → set_settings currency (the budget is converted at the day's rate; without a rate the tool refuses: say "no exchange rate right now, try later", never make up an amount). "switch to Turkish", "in English please" → set_settings language; answer in that language from then on. If the user writes in Turkish, you may offer once to switch the board to Turkish. Who's going: "Sabine is coming too", "Ali isn't coming", "we're 2" → set_travellers (saved without sharing; to invite someone, point to "Invite someone (share)" in the hero's people box).
 - Per-person bookings: not everyone may come from the same place. "Sabine is coming from Alicante" → set_travellers from [{name: "Sabine", place: "Alicante"}]: the code opens her empty outbound flight card and asks about her way home itself, in bold (don't ask it again, don't call offer_choices); tell what the result's shown says. "This ticket is Sabine's", "the Ryanair one is Sabine's", "this hotel is only Emre and Ali's" → set_owner (item_ids, names; names ["everyone"] for everyone's). Always use the person's name, never "yours"; the user's own name is trip.travellers.me; if they have none and the plan is theirs, first ask "What should I call you?". If it isn't clear whose a plan is, don't guess: ask. items[].for_who are a plan's owners (none: everyone's).
 - If there are empty nights, mention it once at a good moment.
-- Plans: when the user mentions a plan, even without a link (e.g. "we fly Istanbul to Porto on 7 October", "we'll fly over to Madeira on 11 October", "we'll hire a car in Madeira", "we'll stay in Funchal 10-17 October", "fado on the evening of 9 October"), add it to the board right away with plan_item; give the date and from/to or the city. If the day isn't known, add it straight away with date null (it waits in the city's block as "day not set"); if the day is clear from the plan (e.g. the day they arrive in Madeira), use that date; when the day is given later, send the same thing again with plan_item and the date, and the card moves to that day. "we'll go/we're thinking" → planned (booked false); "bought it/booked it" → booked true. If the same thing is already in items, use update_items instead of plan_item. If transport for a change of city is mentioned (to Madeira by plane), add it with kind flight.
+- Plans: when the user mentions a plan, even without a link (e.g. "we fly Istanbul to Porto on 7 October", "we'll fly over to Madeira on 11 October", "we'll hire a car in Madeira", "we'll stay in Funchal 10-17 October", "fado on the evening of 9 October"), add it to the board right away with plan_item; give the date and from/to or the city. If the day isn't known, add it straight away with date null (it waits in the city's block as "day not set"); if the day is clear from the plan (e.g. the day they arrive in Madeira), use that date; when the day is given later, send the same thing again with plan_item and the date, and the card moves to that day. "we'll go/we're thinking" → planned (booked false); "bought it/booked it" → booked true. When they say they bought/booked something already on the plan ("bought 10 GB", "rented the car, Europcar", "booked the hotel"), never open a second record: call plan_item with item_id = that record's id, booked true and the details said (title: the package or name, e.g. "10 GB eSIM"; provider; price + currency; dates). That record is updated; in your reply say what changed, from the result's summary ("I updated the eSIM card: 10 GB, bought"). If it's unclear which record, ask. If another thing was bought in its place ("bought the party boat instead of the boat tour"), use replaces = the old one's id, not item_id. update_items only for choosing/ruling out (a status with no details). If transport for a change of city is mentioned (to Madeira by plane), add it with kind flight.
 - Shaping the plan from the chat (right away, in the same message, without asking):
   • "a plane ticket for 12 October", "the return flight is on the 12th" → plan_item kind flight on that date; give from/to if clear from the plan, else leave null (a ticket template opens). Send later details again with plan_item for the same day (from/to, time), and the price with set_price.
   • "let's put a taxi on 12 October", "taxi to the airport" → plan_item kind taxi (date, time if said; from/to like "Hotel", "Airport"; city is that day's city). It shows in that day's transfer, else as its own block. If they only say how they'll go ("I'll take the metro") → set_leg.
-  • "let's get an eSIM" → plan_item kind esim (date null; city if the country/city is known). It sits in the Other section as planned.
-  • Travel insurance: "let's get insurance" → plan_item kind insurance (booked false). "I have insurance", "I sent/attached the policy", "bought the insurance" → kind insurance, booked true (the provider in title, the policy number in note). When they say "I have / I sent / I bought / I attached" a ticket, a booking or a policy, the record is booked (booked true), never a to-do. Insurance, a visa and an eSIM are never todo or activity; they all go to the Other section.
+  • "let's get an eSIM" → plan_item kind esim (date null; city: the country, e.g. Portugal). It sits in the Other section's "Whole trip" row; its place is its country. "bought 10 GB" with an eSIM on the plan → plan_item with that eSIM's item_id (title "10 GB eSIM", booked true).
+  • Travel insurance: "let's get insurance" → plan_item kind insurance (booked false). "I have insurance", "I sent/attached the policy", "bought the insurance" → kind insurance, booked true (the provider in provider, the policy number in note; with the insurance's item_id when one is on the plan). When they say "I have / I sent / I bought / I attached" a ticket, a booking or a policy, the record is booked (booked true), never a to-do. Insurance, a visa and an eSIM are never todo or activity; they all go to the Other section.
   • Chores before the trip (buying something, applying, making a booking, printing, packing, changing money, a visa application, insurance/eSIM tasks; e.g. "buy a rain jacket at Decathlon", "print the tickets", "exchange money") → plan_item kind prep (short title, booked false). They go to the Prep list at the end of the Other section, not to Things to do.
   • An experience at the destination with no booking ("let's go to the market", "Porto Belo market", "outdoor shopping", "watch the sunset from Dom Luís", "a walk along Ribeira", a beach, a park, a viewpoint, a neighbourhood, a church, a free museum, street food) → plan_item kind todo (short title, city, date if said). It goes to the Plan's Things to do and isn't a booking. Even if the user says "we'll go / we did it / add it", give booked false; booked only when a ticket or a reservation was bought. Kind activity only for something with a ticket, a reservation, an entry fee, a tour or a show/concert; then write what the user said in note ("bought the tickets", "table at 20:00", the PNR/confirmation number, the price). An activity without evidence (no price, ticket site, or ticket/reservation/tour words) still lands in Things to do; the result's plan_section says where it landed: tell the user that (don't say "booked").
   • Merging/extending/shortening a stay ("make Porto one block, 7-12", "extend Porto to the 13th") → plan_item kind stay with ALL the city's nights as one range (date = check-in, end_date = check-out). Earlier chat stays in that city inside this range merge (merged in the result); use the board field to say what the board shows.
@@ -335,7 +336,7 @@ function buildTools(en: boolean): ToolSpec[] {
     {
       name: "update_items",
       description:
-        t("Seçeneklerin durumunu değiştirir. chosen = plana alındı, booked = kullanıcı rezervasyonu yaptı, dismissed = elendi, saved = tekrar seçenek.", "Changes the status of options. chosen = in the plan, booked = the user made the booking, dismissed = ruled out, saved = back to being an option."),
+        t("Seçeneklerin durumunu değiştirir. chosen = plana alındı, booked = kullanıcı rezervasyonu yaptı, dismissed = elendi, saved = tekrar seçenek. Yalnız durum ve not yazar; kullanıcı aldığı şeyin ayrıntısını da söylediyse (paket, şirket, fiyat, ad: '10 GB aldım', 'Europcar'dan kiraladım') plan_item'ı item_id ile kullan.", "Changes the status of options. chosen = in the plan, booked = the user made the booking, dismissed = ruled out, saved = back to being an option. It writes only the status and a note; when the user also says what they bought (a package, a company, a price, a name: 'bought 10 GB', 'rented it from Europcar'), use plan_item with item_id."),
       schema: {
         type: "object",
         properties: {
@@ -548,7 +549,7 @@ function buildTools(en: boolean): ToolSpec[] {
     {
       name: "plan_item",
       description:
-        t("Kullanıcının sohbette söylediği bir planı (linki, tarihi olmasa da) hemen panoya ekler: uçuş, tren, otobüs, feribot, transfer, taksi, araç kiralama, konaklama, etkinlik (activity: yalnız bilet, rezervasyon, giriş ücreti, tur ya da gösteri varsa), eSIM, seyahat sigortası (insurance; Diğer'e düşer), yapılacak (todo: destinasyonda rezervasyonsuz deneyim — pazar, alışveriş, yürüyüş, manzara, plaj; Plan'da Yapılacak şeyler'e düşer), hazırlık (prep: gezi öncesi iş — satın al, başvur, yazdır, paketle, döviz; Diğer'in Hazırlık listesine düşer). Uçuş gün verilince nereye gittiği bilinmeden de eklenir (bilet şablonu). Tarihliyse kendi gününde, tarihsizse şehrinin bloğunda görünür; booked false ise 'planlanıyor' yazar. Konaklama (kind stay, booked false) o geceler için ayrı, boş bir konaklama bloğu açar: otel seçilmez, o gecelere önceden seçilmiş bir yer varsa kalan gecelerde kalır. Aynı plan tekrar söylenirse (tarih sonradan gelse de) onu günceller. Konaklamada o şehirde bu gecelerin içinde kalan eski sohbet konaklamaları bununla birleşir (merged). Sonuç panonun o gecelerde ne gösterdiğini döndürür (board). O günleri kapsayan bir araç (karavan, kiralık araba, motosiklet) varken kullanıcı bu mesajda istemediyse ikinci bir aracı eklemez, reddeder: önce sor. replaces: kullanıcı bu planın yerine geçtiği kaydı söylediyse ('araç kiralama iptal, yerine karavan') onun id'si; o kayıt plandan çıkar (Gizlenenler'den geri getirilebilir).", "Adds a plan the user mentioned in the chat to the board right away (even without a link or date): flight, train, bus, ferry, transfer, taxi, car hire, stay, activity (only with a ticket, a reservation, an entry fee, a tour or a show), eSIM, travel insurance (insurance; it goes to Other), to-do (todo: an experience at the destination with no booking — a market, shopping, a walk, a viewpoint, a beach; it goes to the Plan's Things to do), prep (a chore before the trip — buy, apply, print, pack, change money; it goes to Other's Prep list). A flight is added once its day is given, even before its destination is known (a ticket template). Dated, it shows on its day; undated, in its city's block; with booked false it says 'planned'. A stay (kind stay, booked false) opens a separate, empty stay block for those nights: no hotel is chosen, and a place chosen before for those nights stays for the remaining nights. Said again (even with the date coming later), the same plan is updated. For a stay, earlier chat stays in that city within these nights merge into it (merged). The result tells what the board shows for those nights (board). While a vehicle (campervan, rental car, motorbike) covers those days, it refuses to add a second one the user didn't ask for in this message: ask first. replaces: the id of the record this plan replaces, when the user said so ('the car rental is cancelled, a campervan instead'); that record leaves the plan (it can be brought back from Hidden)."),
+        t("Kullanıcının sohbette söylediği bir planı (linki, tarihi olmasa da) hemen panoya ekler: uçuş, tren, otobüs, feribot, transfer, taksi, araç kiralama, konaklama, etkinlik (activity: yalnız bilet, rezervasyon, giriş ücreti, tur ya da gösteri varsa), eSIM, seyahat sigortası (insurance; Diğer'e düşer), yapılacak (todo: destinasyonda rezervasyonsuz deneyim — pazar, alışveriş, yürüyüş, manzara, plaj; Plan'da Yapılacak şeyler'e düşer), hazırlık (prep: gezi öncesi iş — satın al, başvur, yazdır, paketle, döviz; Diğer'in Hazırlık listesine düşer). Uçuş gün verilince nereye gittiği bilinmeden de eklenir (bilet şablonu). Tarihliyse kendi gününde, tarihsizse şehrinin bloğunda görünür; booked false ise 'planlanıyor' yazar. Konaklama (kind stay, booked false) o geceler için ayrı, boş bir konaklama bloğu açar: otel seçilmez, o gecelere önceden seçilmiş bir yer varsa kalan gecelerde kalır. Aynı plan tekrar söylenirse (tarih sonradan gelse de) onu günceller. Konaklamada o şehirde bu gecelerin içinde kalan eski sohbet konaklamaları bununla birleşir (merged). Sonuç panonun o gecelerde ne gösterdiğini döndürür (board). O günleri kapsayan bir araç (karavan, kiralık araba, motosiklet) varken kullanıcı bu mesajda istemediyse ikinci bir aracı eklemez, reddeder: önce sor. replaces: kullanıcı bu planın yerine geçtiği kaydı söylediyse ('araç kiralama iptal, yerine karavan') onun id'si; o kayıt plandan çıkar (Gizlenenler'den geri getirilebilir). Planda zaten olan bir şey alındı/rezerve edildi denirse (item_id ile ya da kod aynı tür, yer ve günden bulursa) yeni kayıt açılmaz, o kayıt güncellenir: booked, ad/paket, provider, fiyat, tarih; dosyaları, kimin için olduğu ve linkleri kalır. Birden fazla kayıt olabilecekse hiçbir şey değişmez ve sonuç hangilerinin olduğunu söyler: kullanıcıya sor.", "Adds a plan the user mentioned in the chat to the board right away (even without a link or date): flight, train, bus, ferry, transfer, taxi, car hire, stay, activity (only with a ticket, a reservation, an entry fee, a tour or a show), eSIM, travel insurance (insurance; it goes to Other), to-do (todo: an experience at the destination with no booking — a market, shopping, a walk, a viewpoint, a beach; it goes to the Plan's Things to do), prep (a chore before the trip — buy, apply, print, pack, change money; it goes to Other's Prep list). A flight is added once its day is given, even before its destination is known (a ticket template). Dated, it shows on its day; undated, in its city's block; with booked false it says 'planned'. A stay (kind stay, booked false) opens a separate, empty stay block for those nights: no hotel is chosen, and a place chosen before for those nights stays for the remaining nights. Said again (even with the date coming later), the same plan is updated. For a stay, earlier chat stays in that city within these nights merge into it (merged). The result tells what the board shows for those nights (board). While a vehicle (campervan, rental car, motorbike) covers those days, it refuses to add a second one the user didn't ask for in this message: ask first. replaces: the id of the record this plan replaces, when the user said so ('the car rental is cancelled, a campervan instead'); that record leaves the plan (it can be brought back from Hidden). When something already on the plan is said to be bought/booked (by item_id, or found by the code from the same kind, place and day), no new record is made: that record is updated (booked, the name/package, provider, price, dates; its files, whose it is and its links stay). When more than one record could be meant, nothing changes and the result lists them: ask the user."),
       schema: {
         type: "object",
         properties: {
@@ -562,9 +563,13 @@ function buildTools(en: boolean): ToolSpec[] {
           title: { ...nullable({ type: "string" }), description: t("Kısa ad; boşsa türden üretilir", "Short name, in English; made from the kind if empty") },
           booked: { type: "boolean", description: t("Kullanıcı bileti aldığını/rezerve ettiğini söylediyse true (gideceğiz, ekle, yaptık değil)", "true if the user said they bought the ticket/booked it (not 'we'll go', 'add it', 'we did it')") },
           note: { ...nullable({ type: "string" }), description: t("Kullanıcının söylediği kısa not; bilet/rezervasyon varsa onu yaz (\"bileti aldım\", \"masa 20:00\", PNR)", "A short note from what the user said; for a ticket/booking say so (\"bought the tickets\", \"table at 20:00\", the PNR)") },
-          replaces: { ...nullable({ type: "string" }), description: t("Bu planın yerine geçtiği kaydın items[].id'si (kullanıcı 'X iptal, yerine bu' dediyse); yoksa null", "The items[].id of the record this plan replaces (when the user said 'X is cancelled, this instead'); else null") },
+          replaces: { ...nullable({ type: "string" }), description: t("Bu planın yerine geçtiği kaydın items[].id'si (kullanıcı 'X iptal, yerine bu' ya da 'X yerine Y aldım' dediyse); yoksa null", "The items[].id of the record this plan replaces (when the user said 'X is cancelled, this instead' or 'bought Y instead of X'); else null") },
+          item_id: { ...nullable({ type: "string" }), description: t("Kullanıcı planda zaten olan şeyi aldığını/rezerve ettiğini söylediyse o kaydın items[].id'si: o kayıt güncellenir, ikinci bir kayıt açılmaz. Başka bir şey onun yerine geldiyse item_id değil replaces. Yoksa null", "The items[].id of the record, when the user said they bought/booked something already on the plan: that record is updated, never a second one. If another thing takes its place, use replaces, not item_id. Else null") },
+          provider: { ...nullable({ type: "string" }), description: t("Söylendiyse satıcı/şirket (Airalo, Europcar, Allianz, havayolu)", "The shop or company if said (Airalo, Europcar, Allianz, the airline)") },
+          price: { ...nullable({ type: "number" }), description: t("Söylendiyse toplam fiyat (sayı)", "The total price if said (a number)") },
+          currency: { ...nullable({ type: "string" }), description: t("Fiyatın para birimi, ISO kodu (EUR, TRY, USD)", "The price's currency, an ISO code (EUR, TRY, USD)") },
         },
-        required: ["kind", "date", "end_date", "time", "from", "to", "city", "title", "booked", "note", "replaces"],
+        required: ["kind", "date", "end_date", "time", "from", "to", "city", "title", "booked", "note", "replaces", "item_id", "provider", "price", "currency"],
         additionalProperties: false,
       },
     },
@@ -971,6 +976,8 @@ interface Turn {
   who: WhoCtx;
   /** The code's own question for the end of the reply ("Sabine dönüşte de Alicante'ye mi?"), with its chips. */
   ask?: TurnAsk | null;
+  /** Which record a booking is for, when several could be (plan_item asked): their names as the reply's chips. */
+  pick?: string[];
 }
 const newTurn = (userText = "", previousReply: string | null = null, who: WhoCtx = null): Turn => ({
   userText, previousReply, removed: new Set(), removedVehicles: new Set(), touched: new Set(), done: 0, changed: 0, who,
@@ -1020,6 +1027,41 @@ async function dismissItem(item: Item, note: string | null, turn: Turn): Promise
   await addEvent(item.tripId, L(`${fresh.name} sohbetten kaldırıldı (Gizlenenler'de)`, `${fresh.name} removed in the chat (under Hidden)`));
   notifyChanged();
   return "dismissed";
+}
+
+/** plan_item's shop and price (a price only as a positive number). */
+function bookingExtras(input: any): BookingExtras {
+  const price = typeof input?.price === "number" ? input.price : typeof input?.price === "string" ? Number(input.price.replace(",", ".")) : NaN;
+  return { provider: text(input?.provider), price: Number.isFinite(price) && price > 0 ? price : null, currency: text(input?.currency) };
+}
+
+/**
+ * The record plan_item updates instead of adding one: the one named by item_id, else, for something said bought or
+ * booked (and an eSIM or insurance, one per trip), the one on the plan it can only be (chatBooking.ts). Several:
+ * nothing changes, the model is told which they are and asks, and their names are the reply's chips.
+ */
+function bookingTarget(input: any, said: PlannedInput, extras: BookingExtras, items: Item[], tripId: string, replaced: Item | undefined, turn: Turn): Item | null {
+  const id = text(input?.item_id);
+  if (id) {
+    const named = items.find((i) => i.id === id);
+    if (!named || named.status === "dismissed") {
+      throw new ToolError(L(`item_id: planda bu id'le kayıt yok: ${id}. Hiçbir şey değişmedi.`, `item_id: no record on the plan with this id: ${id}. Nothing changed.`));
+    }
+    if (named.id === replaced?.id) throw new ToolError(L("item_id ile replaces aynı kayıt olamaz.", "item_id and replaces can't be the same record."));
+    return named;
+  }
+  if (!said.booked && said.kind !== "esim" && said.kind !== "insurance") return null;
+  const skip = new Set([...(replaced ? [replaced.id] : []), ...turn.removed]);
+  const found = narrowCandidates(bookingCandidates(said, extras, items, tripId, skip), said);
+  if (found.length <= 1) return found[0] ?? null;
+  const labels = found.map(candidateLabel);
+  turn.pick = labels.slice(0, 3);
+  throw new ToolError(
+    L(
+      `Bu, planda birden fazla kayıt olabilir: ${found.map((i, n) => `${i.id} = ${labels[n]}`).join("; ")}. Hiçbir şey değişmedi. Kullanıcıya hangisi olduğunu sor (butonlar gösterildi); cevaplayınca plan_item'ı o kaydın item_id'siyle tekrar çağır.`,
+      `This could be more than one record on the plan: ${found.map((i, n) => `${i.id} = ${labels[n]}`).join("; ")}. Nothing changed. Ask the user which one it is (buttons are shown); when they answer, call plan_item again with that record's item_id.`,
+    ),
+  );
 }
 
 /**
@@ -1269,6 +1311,17 @@ async function runTool(tripId: string, name: string, input: any, choices: string
         }
         turn.touched.add(item.id);
         const note = typeof c.note === "string" && c.note.trim() ? c.note.trim() : item.statusNote;
+        // "10 GB aldım" sent as a note on an eSIM: the package goes on the card (its title), not only in the note.
+        const pack = c.status === "booked" && note && item.category === "esim" ? esimPackage(note) : null;
+        if (pack && (pack.dataGb || pack.unlimited)) {
+          const said = { kind: "esim" as const, date: null, end_date: null, time: null, from: null, to: null, city: null, title: null, booked: true, note };
+          const update = bookedUpdate(item, said, { provider: null, price: null, currency: null }, items, Date.now());
+          if (typeof update !== "string") {
+            current.set(item.id, update.item);
+            await d.put("items", update.item);
+            continue;
+          }
+        }
         const updated = { ...item, status: c.status, statusNote: note, ...(c.status !== item.status ? { statusAt: Date.now() } : {}), updatedAt: Date.now() };
         current.set(item.id, updated);
         await d.put("items", updated);
@@ -1473,7 +1526,8 @@ async function runTool(tripId: string, name: string, input: any, choices: string
     case "plan_item": {
       // A policy or an eSIM said as an activity or a to-do is that record (0.34.6 §2), whatever kind came.
       const said = guardKind(plannedInput(input));
-      const problem = checkPlanned(said);
+      // A wrong value is refused here; what's missing (the city of a hire already on the plan) only for a new one.
+      const problem = checkPlanned(said, PLANNED_KINDS, { complete: false });
       if (problem) throw new ToolError(problem);
       // "Araç kiralama iptal, yerine karavan": the record this plan takes the place of.
       const replacesId = text(input.replaces);
@@ -1481,7 +1535,22 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       if (replacesId && !replaced && !turn.removed.has(replacesId)) {
         throw new ToolError(L(`replaces: bu id'le kayıt yok: ${replacesId}. Hiçbir şey eklenmedi.`, `replaces: no record with this id: ${replacesId}. Nothing was added.`));
       }
-      const { item: saved, same } = planToSave(said, items, tripId, newId(), Date.now());
+      // Bought or booked, and already on the plan ("10 GB aldım", "arabayı kiraladım, Europcar"): that record is
+      // updated, never a second one; several that could be meant are asked about (chips), nothing guessed.
+      const extras = bookingExtras(input);
+      const target = bookingTarget(input, said, extras, items, tripId, replaced, turn);
+      const booking = target ? bookedUpdate(target, said, extras, items, Date.now()) : null;
+      if (typeof booking === "string") throw new ToolError(booking);
+      const missing = booking ? null : checkPlanned(said);
+      if (missing) throw new ToolError(missing);
+      const { item: saved, same } = booking ? { item: booking.item, same: target } : planToSave(said, items, tripId, newId(), Date.now());
+      if (!booking) {
+        // A new one: the shop and the price said with it; an eSIM's place is its country, never the first city.
+        const fresh = bookedUpdate(saved, { ...said, title: null, date: null, end_date: null, time: null, note: null, booked: false }, extras, items, Date.now());
+        if (typeof fresh === "string") throw new ToolError(fresh);
+        Object.assign(saved, { provider: fresh.item.provider, price: fresh.item.price, priceHistory: fresh.item.priceHistory, metrics: fresh.item.metrics });
+        if (saved.category === "esim") Object.assign(saved, { city: fresh.item.city, country: fresh.item.country, countryCode: fresh.item.countryCode });
+      }
       // A vehicle for days one already covers is added only when asked for in this message (or in place of it).
       const check = checkVehicle({
         added: saved,
@@ -1511,6 +1580,16 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       const result: Record<string, unknown> = {
         [same ? "updated" : "added"]: saved.name,
         item_id: saved.id,
+        ...(booking
+          ? {
+              changed: booking.changed,
+              summary: booking.summary,
+              kept: L(
+                "Aynı kayıt güncellendi, ikinci bir kayıt açılmadı; dosyaları, kimin için olduğu ve linkleri yerinde. Yanıtında summary'deki değişeni söyle.",
+                "The same record was updated, no second one was made; its files, whose it is and its links stay. Say what changed, from summary, in your reply.",
+              ),
+            }
+          : {}),
         ...(byOrigin ? { for_who: byOrigin, for_who_why: L(`${byOrigin.join(", ")} oradan geliyor`, `${byOrigin.join(", ")} come(s) from there`) } : {}),
         status: todo ? (saved.status === "booked" ? "done" : "planned") : saved.status === "booked" ? "booked" : "planned",
         plan_section: prep ? "Diğer → Hazırlık / Other → Prep (a chore before the trip, ticked off when done)" : PLAN_SECTION_NAMES[section],
@@ -1863,6 +1942,8 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
         if (Array.isArray(content)) content = [...content, ...(provider.assistantContent(question.text) as unknown[])];
       }
     }
+    // "Hangi otel?": plan_item found more than one record the booking could be for; their names are the chips.
+    if (last && turn.pick?.length && !choices.length) choices.splice(0, 0, ...turn.pick);
     // The code's own question (kişiye özel rezervasyon: "Sabine dönüşte de Alicante'ye mi?"), in bold at the end
     // with its chips, which the code answers (answerAsk). The model's own question, if it asked one, gives way.
     const ask = last ? turn.ask : null;

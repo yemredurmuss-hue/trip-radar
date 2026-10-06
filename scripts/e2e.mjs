@@ -2916,6 +2916,71 @@ try {
   await board.screenshot({ path: `${out}/23d-per-person-solo.png` });
   console.log("✓ kişiye özel: no profile name → 'Sana ne diyeyim?' in bold, no 'Ben' on a badge or toast, 'Emre' saved; Sabine's empty flight from Alicante ('Sabine'in bileti', searched for 1), the trip's own 'Emre'nin bileti', 0/3; the way home asked in bold, 'Evet, Alicante' by the code with its own Geri al; 'bu bilet Sabine'in' marks a flight; stays and a one-person trip show nothing");
 
+  // 27a. A booking said for what's already on the plan updates it (Emre: "10 GB aldım" with the trip's eSIM bought
+  // and installed left the card "eSIM · Porto · Tarihsiz", the 10 GB only in its note): the same card, its title
+  // the package and the country, still bought and installed, in Diğer's "Tüm gezi" row, never "Tarihsiz".
+  await board.evaluate(async (tripId) => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tx = database.transaction("items", "readwrite");
+    const store = tx.objectStore("items");
+    const items = await new Promise((resolve) => (store.getAll().onsuccess = (e) => resolve(e.target.result)));
+    const base = items.find((x) => x.tripId === tripId);
+    const { forWho: _who, userEdits: _edits, ...rest } = base;
+    store.put({
+      ...rest, id: "e2e-esim", category: "esim", plannedKind: "esim", origin: "chat", needKey: "esim:porto", name: "eSIM · Porto", city: "Porto",
+      country: null, countryCode: null, provider: null, url: null, captureIds: [], summary: "", statusNote: null, status: "booked", installedAt: 1,
+      dates: { start: null, end: null, source: "unverified" }, flight: null, metrics: { ...rest.metrics, dataGb: null, unlimitedData: null, validityDays: null },
+      price: { amount: null, currency: null, scope: "unknown", taxesIncluded: "unknown", source: "none", observedAt: 1 }, priceHistory: [], createdAt: 1, updatedAt: 1,
+    });
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+  }, solo.trip.id);
+  await board.getByRole("button", { name: /Seyahatlerim/ }).first().click();
+  await board.locator(".trip-card", { hasText: "Portekiz" }).first().click();
+  await board.getByRole("heading", { name: "Portekiz" }).waitFor();
+  const esimPrompts = [];
+  const esimModel = async (route) => {
+    const body = route.request().method() === "POST" ? route.request().postDataJSON() : null;
+    if (!body?.contents || body.generationConfig?.responseJsonSchema) return route.fallback();
+    const last = JSON.stringify(body.contents.at(-1));
+    if (last.includes("functionResponse") && last.includes("e2e-esim")) {
+      esimPrompts.push(last);
+      return route.fulfill(reply([{ text: "eSIM kartını güncelledim: 10 GB, Portekiz." }]));
+    }
+    if (last.includes("10 GB aldım")) {
+      const args = { kind: "esim", date: null, end_date: null, time: null, from: null, to: null, city: null, title: "10 GB eSIM", booked: true, note: null, replaces: null, item_id: null, provider: null, price: null, currency: null };
+      return route.fulfill(reply([{ functionCall: { id: "es-1", name: "plan_item", args } }]));
+    }
+    return route.fallback();
+  };
+  await flow.route("https://generativelanguage.googleapis.com/**", esimModel);
+  const esimBox = board.getByPlaceholder("Bir link bırak, görsel yapıştır veya yaz…");
+  await esimBox.fill("10 GB aldım");
+  await board.getByRole("button", { name: "Gönder" }).click();
+  await board.locator(".msg-assistant", { hasText: "eSIM kartını güncelledim: 10 GB, Portekiz." }).waitFor({ timeout: 20000 });
+  assert.ok(esimPrompts[0].includes("I updated the eSIM card") || esimPrompts[0].includes("eSIM kartını güncelledim"), "the tool says what changed");
+  const other27 = ekSec("other");
+  await other27.waitFor();
+  if (await other27.evaluate((el) => el.classList.contains("closed"))) await other27.locator(".cat-title").click();
+  const booked27Cards = other27.locator(".pk-card", { has: board.locator(".pk-kind", { hasText: "eSIM" }) });
+  const booked27Card = other27.locator('.pk-card[data-item-id="e2e-esim"]');
+  await booked27Card.locator("h3", { hasText: "10 GB · Portekiz" }).waitFor({ timeout: 10000 });
+  assert.equal(await booked27Cards.count(), 1, "one eSIM card, never a second");
+  assert.match(await booked27Card.innerText(), /Kuruldu/, "still bought and installed");
+  const booked27Row = other27.locator(".cat-day", { has: board.locator('.pk-card[data-item-id="e2e-esim"]') });
+  assert.equal(await booked27Row.locator(".cat-date b").innerText(), "Tüm gezi");
+  assert.equal(await other27.locator(".cat-date b", { hasText: "Tarihsiz" }).count(), 0, "not under 'Tarihsiz'");
+  const booked27After = (await tripRecords("Portekiz")).items.filter((i) => i.category === "esim" && i.status !== "dismissed");
+  assert.equal(booked27After.length, 1);
+  assert.deepEqual([booked27After[0].id, booked27After[0].status, booked27After[0].name, booked27After[0].city, booked27After[0].countryCode, booked27After[0].metrics.dataGb], ["e2e-esim", "booked", "10 GB eSIM", "Portekiz", "PT", 10]);
+  await booked27Card.scrollIntoViewIfNeeded();
+  await board.screenshot({ path: `${out}/27a-esim-updated.png` });
+  await flow.unroute("https://generativelanguage.googleapis.com/**", esimModel);
+  console.log("✓ chat bookings: '10 GB aldım' with the eSIM on the plan updates that card (10 GB · Portekiz, still installed), one eSIM, in Diğer's 'Tüm gezi' row");
+
   // 20e. Words with a link on the home: the link is saved, the words go on ("Linki kaydettim; geri kalanını konuşalım").
   // A month only is never a day made up: the day is asked next; "Ortası" is said back and marked roughly.
   await board.getByRole("button", { name: /Seyahatlerim/ }).first().click();

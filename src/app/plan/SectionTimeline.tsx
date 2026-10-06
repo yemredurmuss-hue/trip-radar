@@ -70,6 +70,8 @@ export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, o
                   <b>{shortDay(day.date)}</b>
                   <span>{weekday(day.date)}</span>
                 </>
+              ) : day.whole ? (
+                <b>{L("Tüm gezi", "Whole trip")}</b>
               ) : (
                 <b>{L("Tarihsiz", "No date")}</b>
               )}
