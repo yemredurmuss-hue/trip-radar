@@ -3,7 +3,7 @@
 // search per event and year.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setLang, withLang } from "../src/lib/i18n";
-import { applyLiveDates, lookupFor, readLiveDates, startLookup, type DatesLookup } from "../src/lib/startEventDates";
+import { applyLiveDates, DATES_WAIT_MS, datesWait, lookupFor, readLiveDates, startLookup, type DatesLookup } from "../src/lib/startEventDates";
 import { applyAnswer, applyText, checklist, mergeExtracted, newStart, nextQuestion, parseStartText, withTypedLang, type StartCtx, type StartState } from "../src/lib/startTrip";
 import type { WebSearchResult } from "../src/lib/webSearch";
 
@@ -126,6 +126,45 @@ describe("the traveller's own dates", () => {
     const look: DatesLookup = { key: "afrikaburn|2027", name: "AfrikaBurn", year: 2027, query: "AfrikaBurn 2027 dates" };
     const got = withLang("tr", () => applyLiveDates(confirmed, look, found("2027-04-27", "2027-05-03", "high"), ctx, 500));
     expect(got).toBe(confirmed);
+  });
+});
+
+describe("the countdown's wait for the dates", () => {
+  afterEach(() => vi.useRealTimers());
+  const settledAt = (p: Promise<string>) => {
+    let got: string | null = null;
+    void p.then((v) => (got = v));
+    return () => got;
+  };
+
+  it("waits until the search answers", async () => {
+    vi.useFakeTimers();
+    let answer!: (r: WebSearchResult) => void;
+    const job = new Promise<WebSearchResult>((resolve) => (answer = resolve));
+    const got = settledAt(datesWait(job));
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(got()).toBeNull();
+    answer(missed("no-result"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(got()).toBe("answered");
+  });
+
+  it("a cached answer: no wait", async () => {
+    vi.useFakeTimers();
+    const got = settledAt(datesWait(Promise.resolve(found("2027-04-27", "2027-05-03", "high"))));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(got()).toBe("answered");
+  });
+
+  it("12 seconds at most, then the countdown goes on", async () => {
+    vi.useFakeTimers();
+    expect(DATES_WAIT_MS).toBe(12_000);
+    const got = settledAt(datesWait(new Promise(() => undefined)));
+    await vi.advanceTimersByTimeAsync(11_999);
+    expect(got()).toBeNull();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(got()).toBe("timeout");
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
 

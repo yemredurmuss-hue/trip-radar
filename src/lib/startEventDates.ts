@@ -60,6 +60,21 @@ export function startLookup(s: Pick<StartState, "intent" | "lang">, today: strin
   return { look, job: search(look.query, { kind: "event_dates", year: look.year, lang: s.lang }) };
 }
 
+/** How long the countdown before the trip makes itself waits for the dates, from when the intent was known. */
+export const DATES_WAIT_MS = 12_000;
+
+/**
+ * The countdown's wait for the dates (2026-10-07): until the search settles (at once for a cached answer) or `ms`
+ * have passed, whichever comes first; never rejects. After it, the countdown goes on as before (a late answer is
+ * dropped once the trip is being made). "Oluştur" pressed never waits.
+ */
+export function datesWait(job: Promise<unknown>, ms = DATES_WAIT_MS): Promise<"answered" | "timeout"> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const cap = new Promise<"timeout">((resolve) => (timer = setTimeout(() => resolve("timeout"), ms)));
+  const settled = job.then(() => "answered" as const, () => "answered" as const);
+  return Promise.race([settled, cap]).finally(() => clearTimeout(timer));
+}
+
 /** The step line while it runs (v5): "2027 tarihlerini resmî siteden kontrol ediyorum…". */
 export const checkingLine = (look: DatesLookup) => L(`${look.year} tarihlerini resmî siteden kontrol ediyorum…`, `Checking the ${look.year} dates on the official site…`);
 

@@ -26,7 +26,7 @@ import { L, withLang } from "../../lib/i18n";
 import { loadHome } from "../../lib/passport";
 import { wouldMake } from "../../lib/startCreate";
 import { removeDraft, saveDraft, worthKeeping } from "../../lib/startDrafts";
-import { applyLiveDates, checkingLine, lookupFor, startLookup, type DatesLookup } from "../../lib/startEventDates";
+import { applyLiveDates, checkingLine, datesWait, lookupFor, startLookup, type DatesLookup } from "../../lib/startEventDates";
 import { rulesPreview } from "../../lib/startHooks";
 import {
   applyAnswer, applyExtracted, applyText, askAgain, budgetChips, budgetWord, canGenerate, checklist, autoPrint, drawingLine, isComplete, isGoCommand, knownLines, lineLink, mergeExtracted, startName,
@@ -429,16 +429,24 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
   /** A style or budget chip tapped while it counts: from 3 again (the chip isn't a "stop"). */
   const pickWhileCounting = () => autoTimer.current != null && runAuto(AUTO_SECONDS);
 
+  // The event's dates being looked up (startEventDates.ts): the search started for each event and year, the one
+  // running now, and whether the countdown still waits for it (until it answers, DATES_WAIT_MS at most).
+  const datesAsked = useRef(new Set<string>());
+  const [checking, setChecking] = useState<DatesLookup | null>(null);
+  const [datesHeld, setDatesHeld] = useState(false);
+  const datesWaitId = useRef(0);
+
   // The essentials known and nothing on its way: "Oluşturuyorum… 3 · Vazgeç", then the trip is made. After the
-  // traveller stopped it, only a later full checklist starts it again.
+  // traveller stopped it, only a later full checklist starts it again. The event's dates being looked up hold it
+  // back a little (2026-10-07: DATES_WAIT_MS at most); "Oluştur" pressed never waits.
   useEffect(() => {
-    if (phase !== "chat" || stage || autoTimer.current || left.current || held()) return;
+    if (phase !== "chat" || stage || autoTimer.current || left.current || held() || datesHeld) return;
     const s = live.current;
     if (!T(() => shouldAutoStart(s, ctx, { for: autoFor.current, stopped: autoStopped.current }))) return;
     autoFor.current = T(() => autoPrint(s, ctx));
     autoStopped.current = false;
     runAuto(autoSeconds(s));
-  }, [state, phase, stage, shown, text]);
+  }, [state, phase, stage, shown, text, datesHeld]);
 
 
   // Built in the background while chatting (item 7), into the draft only: the photos of the place (and its stops),
@@ -480,9 +488,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
 
   // The event's dates looked up live (2026-10-07, startEventDates.ts): one search per event and year, fired as soon
   // as the intent is known, never waited for; its step line shows while it runs, its answer is applied when it lands
-  // (dropped once the trip is being made or the screen was left).
-  const datesAsked = useRef(new Set<string>());
-  const [checking, setChecking] = useState<DatesLookup | null>(null);
+  // (dropped once the trip is being made or the screen was left). The countdown waits for it DATES_WAIT_MS at most.
   useEffect(() => {
     if (phase !== "chat" || left.current) return;
     const started = startLookup(live.current, ctx.today, datesAsked.current);
@@ -495,6 +501,11 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
       const next = T(() => applyLiveDates(live.current, look, r, ctx, Date.now()));
       if (next !== live.current) commit(next);
     });
+    // (Settled after the answer is applied: the countdown then starts with the dates in.)
+    // (Only the latest look-up's wait lets it go: another event named meanwhile waits for its own.)
+    const mine = ++datesWaitId.current;
+    setDatesHeld(true);
+    void datesWait(job).then(() => datesWaitId.current === mine && setDatesHeld(false));
   }, [state, phase]);
 
   function answer(a: Answer, label: string) {
