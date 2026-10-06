@@ -2322,11 +2322,39 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-primary:hover { background: #4b36cf; }
 .st-skip { border: 0; background: none; padding: 7px 8px; color: var(--hx-muted); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
 .st-date { border: 1px solid var(--hx-accent); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 14px; color: var(--hx-ink); }
-.st-thinking { display: flex; align-items: center; gap: 5px; color: var(--hx-muted); font-size: 14px; }
-.st-thinking span { width: 6px; height: 6px; border-radius: 50%; background: var(--hx-accent); animation: st-dot 1s ease-in-out infinite; }
-.st-thinking span:nth-child(2) { animation-delay: .15s; }
-.st-thinking span:nth-child(3) { animation-delay: .3s; margin-right: 4px; }
-@keyframes st-dot { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+/* What the chat is doing while waiting (revision 2, item 6): three pulsing dots and the stage in words. */
+.st-thinking { display: inline-flex; align-self: flex-start; align-items: center; gap: 9px; padding: 7px 13px 7px 11px; border-radius: 999px; background: #f4f1ff; color: #5d5885; font-size: 13.5px; animation: st-in .25s ease-out both; }
+.st-dots { display: inline-flex; gap: 4px; }
+.st-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--hx-accent); animation: st-dot 1.1s ease-in-out infinite; }
+.st-dots i:nth-child(2) { animation-delay: .16s; }
+.st-dots i:nth-child(3) { animation-delay: .32s; }
+.st-stage { animation: st-in .3s ease-out both; }
+@keyframes st-dot { 0%, 100% { opacity: .25; transform: translateY(0); } 45% { opacity: 1; transform: translateY(-2px); } }
+@keyframes st-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* A line (and the model's richer one replacing it) fades in. */
+.st-msg-bot { animation: st-in .35s ease-out both; }
+
+/* The live preview under the checklist (revision 2, item 4): each part fades in as it becomes known. */
+.st-pv { background: rgba(255, 255, 255, .62); border-radius: 22px; padding: 16px 18px 18px; animation: st-in .4s ease-out both; }
+.st-pv .st-eyebrow { margin-bottom: 10px; }
+.st-pv-photos { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; height: 104px; margin-bottom: 12px; }
+.st-pv-photo { position: relative; overflow: hidden; border-radius: 14px; background: linear-gradient(150deg, #9db7e8, #5b45e0); animation: st-in .4s ease-out both; }
+.st-pv-photo-1 { background: linear-gradient(150deg, #f7c77e, #e07a5f); }
+.st-pv-photo-2 { background: linear-gradient(150deg, #8fd3c1, #2c8f7b); }
+.st-pv-photo-3 { background: linear-gradient(150deg, #c3a8ff, #7b2fa8); }
+.st-pv-photo-name { position: absolute; left: 10px; bottom: 8px; z-index: 1; color: #fff; font-size: 13px; font-weight: 700; text-shadow: 0 1px 6px rgba(0, 0, 0, .35); }
+.st-pv-photo img, .st-photo img { opacity: 0; transition: opacity .6s ease; }
+.st-pv-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.st-pv-photo img.in, .st-photo img.in { opacity: 1; }
+.st-pv-rows { display: flex; flex-direction: column; gap: 9px; }
+.st-pv-row { display: flex; align-items: flex-start; gap: 10px; animation: st-in .4s ease-out both; }
+.st-pv-icon { flex: none; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 9px; background: #efeaff; color: var(--hx-accent); }
+.st-pv-text { display: flex; flex-direction: column; min-width: 0; }
+.st-pv-label { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #5d5885; }
+.st-pv-value { font-size: 15px; color: var(--hx-ink); overflow-wrap: anywhere; }
+.st-pv-chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.st-pv-chip { padding: 2px 10px; border-radius: 999px; background: #efeaff; color: var(--hx-accent); font-size: 13px; font-weight: 600; }
+.st-pv-note { margin: 10px 0 0; font-size: 13px; color: #5d5885; }
 .st-composer { display: flex; align-items: center; gap: 8px; margin: 0 20px 18px; padding: 10px 10px 10px 18px; border: 1px solid #e3def6; border-radius: 22px; box-shadow: 0 6px 20px rgba(28, 26, 51, .06); }
 .st-composer input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 16px; color: var(--hx-ink); }
 .st-composer .send-btn { background: var(--hx-accent); }
@@ -2376,20 +2404,28 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-photo-3 > span { background: linear-gradient(150deg, #c3a8ff, #7b2fa8); }
 @keyframes st-fan { from { opacity: 0; transform: rotate(0deg) translateY(24px) scale(.92); } to { opacity: 1; transform: rotate(var(--r)) translateY(var(--y)); } }
 .st-steps { display: inline-flex; flex-direction: column; gap: 14px; margin: 0 auto; padding: 0; list-style: none; text-align: left; }
-.st-step { display: flex; align-items: center; gap: 14px; font-size: 17px; color: var(--hx-ink); }
+.st-step { display: flex; align-items: center; gap: 14px; font-size: 17px; color: var(--hx-ink); transition: color .35s ease; }
 .st-step.wait { color: rgba(28, 26, 51, .42); }
-.st-step-mark { flex: none; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; border: 2px solid rgba(91, 69, 224, .3); font-size: 13px; font-weight: 800; }
-.st-step.done .st-step-mark { border: 0; color: #23845a; font-size: 19px; }
+.st-step-text { animation: st-in .35s ease-out both; }
+.st-step-mark { flex: none; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; border: 2px solid rgba(91, 69, 224, .3); font-size: 13px; font-weight: 800; transition: border-color .3s ease, background-color .3s ease; }
+.st-step.done .st-step-mark { border-color: transparent; background: #e1f3e8; color: #23845a; font-size: 14px; }
+.st-tick { display: inline-block; animation: st-tick .45s cubic-bezier(.2, .9, .3, 1.3) both; }
+@keyframes st-tick { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: scale(1); } }
 .st-step.run .st-step-mark { border-color: var(--hx-accent); border-right-color: transparent; animation: st-spin .8s linear infinite; }
 .st-step.error .st-step-mark { border: 0; background: #c0392b; color: #fff; }
 @keyframes st-spin { to { transform: rotate(360deg); } }
-.st-gen-foot { margin-top: 26px; font-size: 14px; color: #4b4670; }
+.st-gen-foot { margin: 26px auto 0; max-width: 360px; font-size: 14px; color: #4b4670; }
+/* Filled by the steps done, eased: no percentages that jump. */
+.st-progress { height: 6px; overflow: hidden; border-radius: 3px; background: rgba(91, 69, 224, .16); }
+.st-progress span { display: block; height: 100%; background: var(--hx-accent); border-radius: 3px; transform-origin: left center; transition: transform .7s cubic-bezier(.3, .7, .3, 1); }
+.st-gen-note { margin-top: 10px; }
 .st-gen-error { display: inline-block; margin-top: 22px; padding: 14px 18px; border-radius: 16px; background: #fff; text-align: left; color: var(--hx-ink); }
 .st-gen-error p { margin: 0; }
 .st-gen-actions { display: flex; gap: 10px; margin-top: 10px; }
 @media (prefers-reduced-motion: reduce) {
-  .st-photo { animation: none; }
-  .st-step.run .st-step-mark, .st-thinking span { animation: none; }
+  .st-photo, .st-tick, .st-step-text, .st-msg-bot, .st-thinking, .st-stage, .st-pv, .st-pv-row, .st-pv-photo { animation: none; }
+  .st-step.run .st-step-mark, .st-dots i { animation: none; }
+  .st-progress span, .st-pv-photo img, .st-photo img, .st-step, .st-step-mark, .st-ring-fg, .st-bar-track span { transition: none; }
 }
 
 /* Narrow (item 9): the checklist folds into a thin bar above the chat; generating takes the screen. */

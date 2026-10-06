@@ -8,9 +8,10 @@ import { buildLegs } from "../../lib/legs";
 import { loadHome } from "../../lib/passport";
 import { cityKeyOf } from "../../lib/plan";
 import { boardMains } from "../../lib/startBoard";
-import { setSuggestionsReview } from "../../lib/startHooks";
+import { setRulesPreview, setSuggestionsReview } from "../../lib/startHooks";
 import { reviewKey, reviewPrompt, runReview } from "../../lib/suggestReview";
-import { ruleSuggestions, shownSuggestions } from "../../lib/suggestions";
+import { boardRules, ruleSuggestions, shownSuggestions } from "../../lib/suggestions";
+import type { Item, Trip } from "../../lib/types";
 import { buildTimeline } from "../../lib/timeline";
 import { whoGoes } from "../../lib/tripSettings";
 import { updateTrip } from "../actions";
@@ -42,3 +43,11 @@ export async function reviewNewTrip(tripId: string): Promise<number> {
 }
 
 setSuggestionsReview(reviewNewTrip);
+
+/** The rules' suggestions for what "Oluştur" would write (in memory, never stored): their titles for the preview. */
+export function previewRules(trip: Trip, items: Item[], home: string | null): string[] {
+  const today = new Date().toISOString().slice(0, 10);
+  return boardRules(trip, items, home, today).map((s) => s.title).slice(0, 4);
+}
+
+setRulesPreview(previewRules);

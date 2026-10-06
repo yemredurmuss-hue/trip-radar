@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { requestProcessing } from "../lib/browser";
-import { L } from "../lib/i18n";
+import { L, withLang } from "../lib/i18n";
 import { formatDateRange, tripDateRange } from "../lib/items";
 import { retryCapture } from "../lib/process";
 import { listDrafts, onDraftsChanged, removeDraft, saveDraft } from "../lib/startDrafts";
-import { checklist, dative, progressOf, splitLinks, tripNamedIn, type StartCtx, type StartMode, type StartState } from "../lib/startTrip";
+import { checklist, dative, detectLang, progressOf, splitLinks, tripNamedIn, type StartCtx, type StartMode, type StartState } from "../lib/startTrip";
 import { isDemoTrip } from "../lib/trips";
 import type { Capture, Item, Trip } from "../lib/types";
 import { UiIcon } from "./cards/Silhouettes";
@@ -98,7 +98,8 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
       if (!words) return;
     }
     const said = links.length ? words : typed;
-    const note = links.length ? L("Linki kaydettim; geri kalanını konuşalım.", "I've saved the link; let's talk about the rest.") : undefined;
+    // Said in the language the words are written in: the chat goes on in it (revision 2, item 1).
+    const note = links.length && said ? withLang(detectLang(said), () => L("Linki kaydettim; geri kalanını konuşalım.", "I've saved the link; let's talk about the rest.")) : undefined;
     if (!said) return onStart({ mode, label });
     const named = mode === "plan" ? tripNamedIn(said, trips, items) : null;
     if (named) return setAsk({ trip: named.trip, text: said });

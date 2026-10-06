@@ -1,7 +1,8 @@
 // "Gezin şekilleniyor N/6": the interview's checklist (Layla's "Your trip is taking shape"). A row pressed asks
-// its question again. On a narrow screen it folds into a thin bar above the chat (spec item 9).
+// its question again. On a narrow screen it folds into a thin bar above the chat (spec item 9). In the chat's
+// language (each part made inside withLang), whatever the board's.
 import { useState } from "react";
-import { L } from "../../lib/i18n";
+import { L, withLang, type Lang } from "../../lib/i18n";
 import type { ChecklistRow, QuestionId } from "../../lib/startTrip";
 import { UiIcon } from "../cards/Silhouettes";
 
@@ -28,11 +29,12 @@ interface Props {
   rows: ChecklistRow[];
   onAsk: (q: QuestionId) => void;
   disabled?: boolean;
+  lang: Lang;
 }
 
-export function Checklist({ rows, onAsk, disabled }: Props) {
+export function Checklist({ rows, onAsk, disabled, lang }: Props) {
   const done = rows.filter((r) => r.done).length;
-  return (
+  return withLang(lang, () => (
     <div className="st-list">
       <div className="st-list-head">
         <Ring done={done} total={rows.length} />
@@ -61,30 +63,38 @@ export function Checklist({ rows, onAsk, disabled }: Props) {
         ))}
       </ol>
     </div>
-  );
+  ));
 }
 
-/** The dark "Gezimi oluştur" card under the list. */
-export function GenerateCard({ ready, busy = false, missing, onGenerate }: { ready: boolean; busy?: boolean; missing: string[]; onGenerate: () => void }) {
-  return (
+/** "Gezimi oluştur" when every row is done; "Şimdilik bununla oluştur" while some are open (item 4). */
+export const generateLabel = (complete: boolean) => (complete ? L("Gezimi oluştur", "Generate my trip") : L("Şimdilik bununla oluştur", "Generate with this for now"));
+
+/**
+ * The dark card under the list: it works as soon as the destination is known (what's missing is asked later in the
+ * board's chat, which goes on with this conversation).
+ */
+export function GenerateCard({ ready, complete, busy = false, missing, onGenerate, lang }: { ready: boolean; complete: boolean; busy?: boolean; missing: string[]; onGenerate: () => void; lang: Lang }) {
+  return withLang(lang, () => (
     <div className="st-gen-card">
       <button type="button" className="st-gen-btn" disabled={!ready || busy} onClick={onGenerate}>
-        <span aria-hidden>✨</span> {L("Gezimi oluştur", "Generate my trip")}
+        <span aria-hidden>✨</span> {generateLabel(complete)}
       </button>
       <p>
-        {ready
-          ? L("Şimdi oluşturur, eksikleri sonra sohbetten sorar; ya da konuşmaya devam et.", "It builds it now and asks what's missing later in the chat; or keep talking.")
-          : L(`Oluşturmak için ${missing.join(" ve ")} yeter.`, `All it needs is ${missing.join(" and ")}.`)}
+        {!ready
+          ? L(`Oluşturmak için ${missing.join(" ve ")} yeter.`, `All it needs is ${missing.join(" and ")}.`)
+          : complete
+            ? L("Her şey hazır; oluşturunca pano açılır.", "Everything's set; the board opens once it's made.")
+            : L("Şimdi oluşturur, eksikleri sonra pano sohbetinde sorar; ya da konuşmaya devam et.", "It builds it now and asks what's missing later in the board's chat; or keep talking.")}
       </p>
     </div>
-  );
+  ));
 }
 
 /** Narrow screens: "4/6 · Gezin şekilleniyor ▾", the list opening under it. */
-export function ChecklistBar({ rows, onAsk, ready, onGenerate, disabled }: Props & { ready: boolean; onGenerate: () => void }) {
+export function ChecklistBar({ rows, onAsk, ready, complete, onGenerate, disabled, lang }: Props & { ready: boolean; complete: boolean; onGenerate: () => void }) {
   const [open, setOpen] = useState(false);
   const done = rows.filter((r) => r.done).length;
-  return (
+  return withLang(lang, () => (
     <div className={`st-bar${open ? " open" : ""}`}>
       <div className="st-bar-row">
         <button type="button" className="st-bar-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
@@ -100,11 +110,11 @@ export function ChecklistBar({ rows, onAsk, ready, onGenerate, disabled }: Props
         </button>
         {ready && (
           <button type="button" className="st-bar-gen" onClick={onGenerate} disabled={disabled}>
-            ✨ {L("Oluştur", "Generate")}
+            ✨ {complete ? L("Oluştur", "Generate") : L("Şimdilik oluştur", "Generate for now")}
           </button>
         )}
       </div>
-      {open && <Checklist rows={rows} onAsk={(q) => (setOpen(false), onAsk(q))} disabled={disabled} />}
+      {open && <Checklist rows={rows} onAsk={(q) => (setOpen(false), onAsk(q))} disabled={disabled} lang={lang} />}
     </div>
-  );
+  ));
 }
