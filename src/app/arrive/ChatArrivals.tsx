@@ -19,13 +19,21 @@ function useCaptures(ids: readonly string[], open: Capture[]): (id: string) => C
   const byId = useMemo(() => new Map(open.map((c) => [c.id, c])), [open]);
   const key = ids.join(" ");
   useEffect(() => {
-    const missing = ids.filter((id) => !byId.has(id) && !finished.has(id));
+    // A held capture (placeCheck.ts) is read again until it's answered: its chip changes with the answer.
+    const asking = (c: Capture | null | undefined) => Boolean(c?.held && !c.held.answer);
+    const missing = ids.filter((id) => !byId.has(id) && (!finished.has(id) || asking(finished.get(id))));
     if (!missing.length) return;
     let live = true;
     void Promise.all(missing.map(captureById)).then((rows) => {
       if (!live) return;
-      // A held capture (placeCheck.ts) isn't settled until it's answered: its chip changes with the answer.
-      const settled = missing.flatMap((id, i) => (rows[i] === null || (rows[i]?.status === "done" && !(rows[i]?.held && !rows[i]?.held?.answer)) ? [[id, rows[i]] as const] : []));
+      const settled = missing.flatMap((id, i) => {
+        const row = rows[i];
+        if (row !== null && row?.status !== "done") return [];
+        const before = finished.get(id);
+        // Unchanged since the last read (still asking): nothing to store, so this doesn't run again by itself.
+        if (finished.has(id) && before?.held?.answer === row?.held?.answer && before?.itemId === row?.itemId) return [];
+        return [[id, row] as const];
+      });
       if (settled.length) setFinished((prev) => new Map([...prev, ...settled]));
     });
     return () => {

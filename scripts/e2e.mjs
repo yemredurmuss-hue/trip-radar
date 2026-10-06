@@ -2280,6 +2280,132 @@ try {
   await board.locator(".ar-drop").waitFor({ state: "detached" });
   console.log("✓ arrivals: an Airbnb link waits in Konaklama while read, lands with a ring; the chat's chip says where and goes there; a drop overlay over the board");
 
+  // 24a. The owner's report (2026-10-06): a Bali tour from Tripadvisor ("Nusa Penida 2Day 1Night", Denpasar, the
+  // page's date picker on 8 October) sent while the Portugal trip is open lands in the Bali trip, never on the
+  // Portugal trip's 8 October; the Portugal chat says where it went (Aç · Geri al). A place with no trip of its own
+  // is asked about ("Bu yer Japonya'da, gezin Portekiz'de"); a page that isn't travel (humanoid robots) too.
+  const routedNames = (title) => board.evaluate(async (title) => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+    const all = (store) => new Promise((resolve) => (database.transaction(store).objectStore(store).getAll().onsuccess = (e) => resolve(e.target.result)));
+    const trips = await all("trips");
+    const trip = trips.find((t) => t.title === title);
+    return trip ? (await all("items")).filter((i) => i.tripId === trip.id).map((i) => i.name) : null;
+  }, title);
+  await board.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+    const tx = database.transaction(["trips", "items"], "readwrite");
+    const now = Date.now();
+    tx.objectStore("trips").put({ id: "e2e-route-bali", title: "Bali", confirmedDates: { start: "2027-01-10", end: "2027-01-20" }, budget: null, heroImage: null, createdAt: now, updatedAt: 1 });
+    tx.objectStore("items").put({
+      id: "e2e-route-sanur", tripId: "e2e-route-bali", captureIds: [], key: null, category: "stay", needKey: "stay:sanur", name: "Sanur Villa", provider: null, summary: "", optionDetail: null,
+      url: null, imageUrl: null, city: "Sanur", country: "Endonezya", countryCode: "ID", location: { address: null, area: null, approximate: false },
+      dates: { start: "2027-01-10", end: "2027-01-20", source: "user" }, guests: { adults: 2, children: null, rooms: null },
+      price: { amount: null, currency: null, scope: "unknown", taxesIncluded: "unknown", source: "none", observedAt: now }, priceHistory: [],
+      cancellation: { summary: null, freeUntil: null, source: "none" }, rating: { value: null, scale: null, count: null, source: "none" }, flight: null,
+      highlights: [], concerns: [], reviewSummary: null, missing: [], status: "saved", statusNote: null, createdAt: now, updatedAt: now,
+    });
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  const routedExtraction = (over) => ({
+    ...casaExtraction, category: "activity", provider: "Tripadvisor", summary: "2 gün 1 gece tur", option_detail: null,
+    location: { address: null, area: null, approximate: false }, guests: { adults: 2, children: null, rooms: null },
+    price: { ...casaExtraction.price, amount: 73, currency: "USD", scope: "per_person", evidence: null, source: "screenshot" },
+    rating: { value: 5, scale: 5, count: 4, source: "screenshot", evidence: null }, metrics: null, highlights: [], concerns: [],
+    dates: { start: "2026-10-08", end: null, source: "page" }, ...over,
+  });
+  const nusaExtraction = routedExtraction({
+    name: "Nusa Penida 2Day 1Night With Accomodation", city: "Denpasar", country: "Endonezya", country_code: "ID",
+    trip: { existing_trip_id: null, new_trip_title: "Bali" }, need_key: "activity:denpasar",
+  });
+  const kyotoExtraction = routedExtraction({
+    name: "Kyoto Tea Ceremony", city: "Kyoto", country: "Japonya", country_code: "JP", trip: { existing_trip_id: null, new_trip_title: "Japonya" }, need_key: "activity:kyoto",
+  });
+  const robotsExtraction = routedExtraction({
+    category: "other", name: "Realbotix Echo Humanoid Robots", city: null, country: "ABD", country_code: "US", dates: { start: null, end: null, source: "none" },
+    price: { ...casaExtraction.price, amount: null, evidence: null, source: "none" }, rating: { value: null, scale: null, count: null, source: "none", evidence: null },
+    trip: { existing_trip_id: null, new_trip_title: null }, need_key: "other:robots", travel: false,
+  });
+  const routedModel = async (route) => {
+    const request = route.request();
+    const body = request.method() === "POST" ? request.postDataJSON() : null;
+    const prompt = JSON.stringify(body?.contents ?? "");
+    const extracting = body?.generationConfig?.responseJsonSchema && !/<place>|<engine_result>|<places>|<notes>|<suggest_review>/.test(prompt);
+    const page = extracting && (prompt.includes("e2e-nusa") ? nusaExtraction : prompt.includes("e2e-kyoto") ? kyotoExtraction : prompt.includes("e2e-robots") ? robotsExtraction : null);
+    return page ? route.fulfill(reply([{ text: JSON.stringify(page) }])) : route.fallback();
+  };
+  await flow.route("https://generativelanguage.googleapis.com/**", routedModel);
+  const composer = board.getByPlaceholder("Bir link bırak, görsel yapıştır veya yaz…");
+  await composer.fill("https://www.tripadvisor.com/AttractionProductReview-g297694-d23-Nusa_Penida_2Day_1Night.html?e2e-nusa");
+  await board.getByRole("button", { name: "Gönder" }).click();
+  const moved = board.locator('.chat .msg-route[data-routing="moved"]', { hasText: "Nusa Penida" });
+  await moved.waitFor({ timeout: 25000 });
+  assert.match(await moved.innerText(), /Nusa Penida 2Day 1Night With Accomodation Bali gezine eklendi \(yeri Endonezya\)/);
+  await moved.getByRole("button", { name: "Aç" }).waitFor();
+  await moved.getByRole("button", { name: "Geri al" }).waitFor();
+  // The board's own notice (a capture that landed in another trip), and the chip under the link.
+  await board.locator(".toast", { hasText: "Bali" }).waitFor({ timeout: 10000 });
+  await board.locator(".ar-sent", { hasText: "e2e-nusa" }).locator(".ar-chip-text", { hasText: "✓ Bali gezisine eklendi" }).waitFor({ timeout: 5000 });
+  assert.deepEqual((await routedNames("Bali")).sort(), ["Nusa Penida 2Day 1Night With Accomodation", "Sanur Villa"]);
+  assert.ok(!(await routedNames("Portekiz")).some((n) => n.startsWith("Nusa Penida")), "the Portugal trip has no Nusa Penida");
+  assert.equal(await board.locator(".panel", { hasText: "Nusa Penida" }).count(), 0, "nothing of it on the Portugal board (Etkinlikler, its days)");
+  await board.locator(".chat").screenshot({ path: `${out}/24a-routed-chat.png` });
+  await board.screenshot({ path: `${out}/24a-routed-board.png` });
+
+  // No trip of its place: asked, nothing added, no trip made behind the scenes.
+  await composer.fill("https://www.tripadvisor.com/AttractionProductReview-g298564-d7-Tea_Ceremony.html?e2e-kyoto");
+  await board.getByRole("button", { name: "Gönder" }).click();
+  const placeAsk = board.locator('.chat .msg-route.ask', { hasText: "Kyoto Tea Ceremony" });
+  await placeAsk.waitFor({ timeout: 25000 });
+  assert.match(await placeAsk.innerText(), /Kyoto Tea Ceremony: bu yer Japonya'da, gezin Portekiz.*Nereye ekleyeyim\?/);
+  await placeAsk.getByRole("button", { name: "Bu geziye yine de ekle" }).waitFor();
+  await placeAsk.getByRole("button", { name: "Yeni gezi: Japonya" }).waitFor();
+  await board.locator(".ar-sent", { hasText: "e2e-kyoto" }).locator(".ar-chip-text", { hasText: "Eklenmedi" }).waitFor({ timeout: 5000 });
+  assert.equal(await routedNames("Japonya"), null, "no Japan trip made without asking");
+  await board.locator(".chat").screenshot({ path: `${out}/24a-ask-place.png` });
+  await placeAsk.getByRole("button", { name: "Ekleme" }).click();
+  await board.locator('.chat .msg-route[data-routing="ask"]', { hasText: "Kyoto Tea Ceremony" }).getByText("Eklenmedi").waitFor();
+  assert.ok(!(await routedNames("Portekiz")).includes("Kyoto Tea Ceremony"));
+
+  // Not travel at all: asked, not added.
+  await composer.fill("https://www.realbotix.com/echo?e2e-robots");
+  await board.getByRole("button", { name: "Gönder" }).click();
+  const notTravel = board.locator('.chat .msg-route.ask', { hasText: "Realbotix" });
+  await notTravel.waitFor({ timeout: 25000 });
+  assert.match(await notTravel.innerText(), /bu sayfa bir gezi planına benzemiyor\. Yine de eklensin mi\?/);
+  assert.ok(!(await routedNames("Portekiz")).includes("Realbotix Echo Humanoid Robots"));
+  await board.locator(".chat").screenshot({ path: `${out}/24a-ask-travel.png` });
+  await notTravel.getByRole("button", { name: "Ekleme" }).click();
+  await board.locator('.chat .msg-route[data-routing="ask"]', { hasText: "Realbotix" }).getByText("Eklenmedi").waitFor();
+
+  // Aç goes to the Bali trip, where the tour is; back to Portugal for what follows.
+  await moved.getByRole("button", { name: "Aç" }).click();
+  await board.getByRole("heading", { name: "Bali" }).waitFor();
+  await board.locator(".panel", { hasText: "Nusa Penida" }).first().waitFor();
+  await board.screenshot({ path: `${out}/24a-bali-trip.png` });
+  await flow.unroute("https://generativelanguage.googleapis.com/**", routedModel);
+  await board.getByRole("button", { name: /Seyahatlerim/ }).click();
+  await board.locator(".trip-card", { hasText: "Portekiz" }).click();
+  await board.getByRole("heading", { name: "Portekiz" }).waitFor();
+  // The steps after this one know two trips: the Bali one goes, and the address no longer names it.
+  await board.evaluate(async () => {
+    history.replaceState(null, "", location.pathname);
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+    const tx = database.transaction(["trips", "items", "messages"], "readwrite");
+    tx.objectStore("trips").delete("e2e-route-bali");
+    for (const store of ["items", "messages"]) {
+      tx.objectStore(store).getAll().onsuccess = (e) => {
+        for (const row of e.target.result) if (row.tripId === "e2e-route-bali") tx.objectStore(store).delete(row.id);
+      };
+    }
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  console.log("✓ 24a trip routing: a Bali tour sent in the Portugal chat lands in the Bali trip (Aç · Geri al, the board's notice), not on Portugal's days; a place with no trip and a non-travel page are asked about, nothing added");
+
   // 19. Öneriler (spec 2026-10-06 §1): a trip with 25 nights in one city and no vehicle shows the monthly rental as
   // a card atop Ulaşım ("1 öneri" in its header, never in a count); "Plana ekle" adds a rental card; another
   // suggestion's "Gerek yok" takes it away, and it doesn't come back after a reload. The passport is set (as in
