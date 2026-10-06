@@ -12,7 +12,7 @@ import { withLang, type Lang } from "../../lib/i18n";
 import { getProvider } from "../../lib/llm";
 import {
   acceptExtraction, acceptReply, acceptRoute, photoQuery, routePrompt, routeSchema, routeSystem, singleRoute,
-  totalNights, turnPrompt, turnSchema, turnSystem, wantsRouteAdvice, type Extracted, type QuestionId, type StartRoute, type StartState,
+  totalNights, turnLiteSchema, turnPrompt, turnSchema, turnSystem, wantsRouteAdvice, type Extracted, type QuestionId, type StartRoute, type StartState,
 } from "../../lib/startTrip";
 
 /** A message's reading: applied whenever it comes within this (the traveller may be waiting for it, "Düşünüyor…"). */
@@ -73,17 +73,33 @@ export async function readAndReply(
   ms = READ_MS,
   signal?: AbortSignal,
 ): Promise<{ read: Extracted; reply: ModelReply | null } | null> {
+  const started = Date.now();
   try {
     const llm = await getProvider();
-    const [system, prompt] = withLang(a.lang, () => [turnSystem(), turnPrompt(a)]);
+    const plan = !planRefused;
+    const [system, prompt] = withLang(a.lang, () => [turnSystem(plan), turnPrompt(a)]);
     // Worth its answer only now: no retry after a wait, aborted at the limit or when the screen is left.
-    const raw = await timed((sig) => llm.generateJson(system, prompt, turnSchema, [], { signal: sig, maxRetries: 0 }), ms, signal);
+    const raw = await timed((sig) => llm.generateJson(system, prompt, plan ? turnSchema : turnLiteSchema, [], { signal: sig, maxRetries: 0 }), ms, signal).catch(async (error) => {
+      // The playbook's part refused by a model (a schema too big for its grammar) never costs the reading: read again
+      // without it, once, in the time left; asked no more on this page.
+      const left = ms - (Date.now() - started);
+      if (!plan || signal?.aborted || String(error?.message ?? error) === "timeout" || left < 3000) throw error;
+      console.warn("[start] reading with the playbook failed; reading without it", error);
+      planRefused = true;
+      const lite = withLang(a.lang, () => turnSystem(false));
+      return timed((sig) => llm.generateJson(lite, prompt, turnLiteSchema, [], { signal: sig, maxRetries: 0 }), left, signal);
+    });
     return withLang(a.lang, () => ({ read: acceptExtraction(raw, a.today), reply: acceptReply(raw.reply, a.lang) }));
   } catch (error) {
     if (!signal?.aborted) console.warn("[start] reading the message", error);
     return null;
   }
 }
+
+/** A model refused the reading with the playbook's part once: asked without it from then on (this page). */
+let planRefused = false;
+/** For the tests. */
+export const resetPlanRefused = () => void (planRefused = false);
 
 /** Resolves with the promise's value, or `fallback` once `ms` have passed (the promise runs on). */
 export function within<T, F>(p: Promise<T>, ms: number, fallback: F): Promise<T | F> {

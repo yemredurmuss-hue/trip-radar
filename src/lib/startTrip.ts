@@ -1147,6 +1147,8 @@ export const replySchema = z.object({ text: z.string(), question: z.string() });
 export type RawReply = z.infer<typeof replySchema>;
 /** One call per typed message: what it says, and the reply to it. */
 export const turnSchema = extractionSchema.extend({ reply: replySchema, plan: planSchema.optional() });
+/** The same without the playbook's part: when a model refuses the bigger one, the reading still goes on. */
+export const turnLiteSchema = extractionSchema.extend({ reply: replySchema });
 export type RawTurn = z.infer<typeof turnSchema>;
 
 const replyRules = () =>
@@ -1218,7 +1220,7 @@ Examples: ${planExamples()}`,
   );
 
 /** The system prompt for a typed message: read it, make the trip's playbook when its kind is first clear, then reply. */
-export const turnSystem = () => `${extractionSystem()}\n${planRules()}\n${replyRules()}\n${answerIn()}`;
+export const turnSystem = (plan = true) => `${extractionSystem()}\n${plan ? `${planRules()}\n` : ""}${replyRules()}\n${answerIn()}`;
 
 /** What is known so far, one line per answer, for the model ("Nereye: Koh Phangan (Tayland)"). */
 export function knownLines(s: StartState, ctx: StartCtx): string {
