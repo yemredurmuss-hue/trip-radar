@@ -1306,6 +1306,15 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .pk-ring.done { background: #1f8f4e; color: #fff; }
 .pk-kind { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--mc); white-space: nowrap; }
 .pk-date { white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Kişiye özel rezervasyon (docs/mockups/2026-10-06-kisiye-ozel-v1.html): whose a plan is, only when it isn't
+   everyone's. A white pill, lavender edge, dark purple words, the person's 20 px face (photo or initial). */
+.wh-badge { display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; height: 22px; padding: 0 8px 0 1px; border-radius: 999px; background: #fff; border: 1px solid #e6e1f7; color: #4b3fb0; font-size: 12px; font-weight: 600; line-height: 1; white-space: nowrap; flex: 0 1 auto; }
+.wh-faces { display: inline-flex; flex: none; }
+.wh-av { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; overflow: hidden; flex: none; background: #e9e4ff; color: #4b3fb0; font-size: 10px; font-weight: 700; }
+.wh-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wh-faces .wh-av + .wh-av { margin-left: -7px; box-shadow: 0 0 0 2px #fff; }
+.wh-label { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.hx-who-list .who-name small.wh-from { display: block; margin-top: 1px; font-size: 11.5px; line-height: 1.2; }
 .pk-end { margin-left: auto; display: flex; align-items: center; gap: 4px; }
 .pk-ib { width: 28px; height: 24px; border: 0; border-radius: 8px; background: transparent; color: var(--pk-gray); display: grid; place-items: center; cursor: pointer; }
 .pk-ib.pk-clip { color: #b9b3a6; }
