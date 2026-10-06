@@ -69,7 +69,8 @@ export function tripPoints(s: Pick<StartState, "from" | "where" | "route" | "dur
     const c = centroidOf(code, centroids);
     if (c) to = { ...c, name: where.place };
   }
-  if (to && where && stops.length < 2) to = { ...to, name: where.place };
+  // Labelled with the destination ("Sri Lanka", not its first stop).
+  if (to && where) to = { ...to, name: where.place };
   return { from, to, stops: stops.length >= 2 ? stops : [] };
 }
 

@@ -1,5 +1,5 @@
 // Classic circuits for popular countries (rev 3): a route proposed at once, without the model, for a week or more in
-// a country or a large region ("Sri Lanka, 14 gece" → Sigiriya 2 · Kandy 4 · Ella 3 · Mirissa 5). The model's
+// a country or a large region ("Sri Lanka, 14 gece" → Sigiriya 3 · Kandy 3 · Ella 3 · Mirissa 5). The model's
 // proposal refines it when it comes and differs; the generating screen uses it when the model's isn't there yet.
 // Also the coordinates the generating screen's map needs: the main cities people leave from, the circuits' stops and
 // a few popular places (the destination's country centroid comes from the map data itself). Pure; no imports but i18n.

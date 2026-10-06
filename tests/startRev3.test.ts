@@ -350,14 +350,14 @@ describe("photos and the map (fix 4)", () => {
     const s = { from: "İstanbul", where: { place: "Sri Lanka", country: "Sri Lanka", code: "LK" }, route: circuitRoute({ where: { place: "Sri Lanka", country: "Sri Lanka", code: "LK" }, duration: { unit: "night", n: 14 }, start: null, styles: [] }), duration: { unit: "night" as const, n: 14 }, start: null };
     const p = tripPoints(s, null);
     expect(p.from).toMatchObject({ name: "İstanbul", lat: 41.01 });
-    expect(p.to?.name).toBe("Sigiriya");
+    expect(p.to).toMatchObject({ name: "Sri Lanka", lat: 7.96 });
     expect(p.stops.map((x) => x.name)).toEqual(["Sigiriya", "Kandy", "Ella", "Mirissa"]);
     const nz = tripPoints({ from: "Berlin", where: { place: "Yeni Zelanda", country: null, code: "NZ" }, route: null, duration: null, start: null }, { NZ: [172.5, -41.8] });
     expect(nz.to).toEqual({ lat: -41.8, lng: 172.5, name: "Yeni Zelanda" });
     expect(centroidOf("MV", null)).toEqual({ lat: 4.18, lng: 73.51 });
     // At home: the first stop that isn't where they leave from.
     const tr = circuitRoute({ where: { place: "Türkiye", country: "Türkiye", code: "TR" }, duration: { unit: "night", n: 14 }, start: null, styles: [] });
-    expect(tripPoints({ from: "İstanbul", where: { place: "Türkiye", country: "Türkiye", code: "TR" }, route: tr, duration: null, start: null }, null).to?.name).toBe("Kapadokya");
+    expect(tripPoints({ from: "İstanbul", where: { place: "Türkiye", country: "Türkiye", code: "TR" }, route: tr, duration: null, start: null }, null).to).toMatchObject({ name: "Türkiye", lat: 38.64 });
   });
 
   it("the bundled map: small, no network, land and borders, a centroid per country", () => {
