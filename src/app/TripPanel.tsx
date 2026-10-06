@@ -558,9 +558,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // Boş kartlar (spec 2026-10-06-bos-kartlar-design.md), on the Plan only: a need with nothing booked or saved yet
   // (a flight or stay the start made room for, a flight said with nothing chosen, a transfer with no plan) is the
   // approved card made plain. A need with another option, a file or a booking keeps today's full card.
+  // The card being filled in where it stands (a tile just added, a field opened) is the full card while it's edited:
+  // its hour and price are there to type; once left with nothing concrete on it, it's empty again.
+  const emptyRecord = (item: Item) => focus?.id !== item.id && isEmptyRecord(trip, item, env.docsFor(item.id).length, items);
   const planRenderGroup: RenderGroup = (group, heading, groupSubtitle, nested = false) => {
     const lone = group.items.length === 1 ? group.items[0] : null;
-    if (!lone || !isEmptyRecord(trip, lone, env.docsFor(lone.id).length)) return renderGroup(group, heading, groupSubtitle, nested);
+    if (!lone || !emptyRecord(lone)) return renderGroup(group, heading, groupSubtitle, nested);
     return (
       <div key={group.key} className={nested ? "group nested" : "section"} data-option-ids={lone.id}>
         {(heading || groupSubtitle) && (
@@ -575,6 +578,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       </div>
     );
   };
+  // A decided record drawn alone (an activity on its day, a plan in its city): empty while it has no concrete option.
+  const planSettled: SettledFor = (item, decision, onChange, changing) =>
+    !onChange && item.category !== "stay" && emptyRecord(item) ? <EmptyRecordCard key={item.id} item={item} /> : settled(item, decision, onChange, changing);
   const planLegCard = (l: Leg) => (isEmptyLeg(l) ? <EmptyLegCard key={l.key} leg={l} /> : legCard(l));
   const emptyEnv: EmptyEnv = {
     tripId: trip.id,
@@ -695,7 +701,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             pending={arrivals.pending}
             tripId={trip.id}
             cities={cityNames}
-            cards={{ legCard: planLegCard, renderGroup: planRenderGroup, card, settled }}
+            cards={{ legCard: planLegCard, renderGroup: planRenderGroup, card, settled: planSettled }}
             onAdd={addIn}
             today={today}
             items={items}

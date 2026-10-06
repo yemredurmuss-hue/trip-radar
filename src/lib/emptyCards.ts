@@ -1,6 +1,7 @@
 // Boş kartlar (spec 2026-10-06-bos-kartlar-design.md): which needs are drawn as the approved card made plain,
 // because nothing is booked or saved for them yet. As soon as an option or a booking exists the board draws
 // today's full card again; everything here only says "this one is still empty". Pure.
+import { cardKind, type CardKind } from "./cardKinds";
 import { sectionOfItem } from "./categories";
 import { formatDateRange } from "./items";
 import { legItem, type Leg } from "./legs";
@@ -9,26 +10,35 @@ import { isPlaceholder } from "./startTrip";
 import type { Item, Trip } from "./types";
 
 /**
- * A flight said in the chat with nothing of a real flight on it ("11 Ekim'e uçak bileti", "Lizbon'a uçarız"):
- * no hour, no flight number, no price, no page. Once any of those is said it's a flight chosen, the full card.
+ * A plan said in the chat (or added from a tile) with no concrete option on it ("11 Ekim'e uçak bileti", "Lizbon'a
+ * uçarız", "eSIM de alalım"): no shop or airline, no flight number, no hour, no price, no page. Once any of those
+ * is there it's a real option, chosen and not booked yet: the full (sand) card.
  */
-export function bareChatFlight(item: Item): boolean {
-  if (item.category !== "flight" || item.origin !== "chat" || item.status !== "chosen") return false;
+export function bareChatPlan(item: Item): boolean {
+  if (item.origin !== "chat" || item.status !== "chosen") return false;
   const f = item.flight;
   const timed = Boolean(f?.departure && f.departure.length > 10) || Boolean(f?.arrival && f.arrival.length > 10);
-  return !timed && !f?.flightNumber && !f?.carrier && item.price.amount == null && !item.url;
+  return !timed && !f?.flightNumber && !f?.carrier && !item.provider?.trim() && item.price.amount == null && !item.url;
 }
 
+/** The flight case of bareChatPlan. */
+export const bareChatFlight = (item: Item): boolean => item.category === "flight" && bareChatPlan(item);
+
+/** Kinds whose card has no "not bought yet" (planned is done: a taxi, a note, a to-do) or no empty design (a restaurant, other). */
+const NEVER_EMPTY: readonly CardKind[] = ["taxi", "note", "todo", "food", "other"];
+
 /**
- * A record drawn as an empty card on the Plan: a flight or a stay the start only made room for (startTrip
- * isPlaceholder), or a flight said in the chat with nothing chosen. Never one with a file on it (a ticket's PDF
- * says it's bought), never one booked.
+ * A record drawn as an empty card on the Plan: what the start only made room for (startTrip isPlaceholder:
+ * flights, stays, the car), or a plan said with no concrete option (bareChatPlan). Never one with a file on it
+ * (a ticket's PDF says it's bought), never one booked, never one with other options saved for the same need.
  */
-export function isEmptyRecord(trip: Pick<Trip, "startGuide">, item: Item, files = 0): boolean {
+export function isEmptyRecord(trip: Pick<Trip, "startGuide">, item: Item, files = 0, siblings: Item[] = []): boolean {
   if (item.status !== "chosen" || files > 0) return false;
-  if (item.category === "flight") return isPlaceholder(trip, item) || bareChatFlight(item);
-  if (item.category === "stay") return isPlaceholder(trip, item);
-  return false;
+  if (NEVER_EMPTY.includes(cardKind(item))) return false;
+  if (siblings.some((i) => i.id !== item.id && i.status !== "dismissed" && i.category === item.category && i.needKey === item.needKey)) return false;
+  // The start's placeholders are such plans (made in the chat, nothing concrete); one that got a page, a price or an
+  // hour is a real option now, whatever its print says.
+  return (isPlaceholder(trip, item) || item.origin === "chat") && bareChatPlan(item);
 }
 
 /**

@@ -878,8 +878,10 @@ try {
   const move = app.locator('.pk-leg[aria-label="Porto → Lizbon"]');
   await sec("transport").locator('.pk-leg[aria-label="Porto → Lizbon"]').waitFor();
   await move.locator(".pk-ring.open").waitFor();
-  await move.locator(".pk-foot", { hasText: "Planlanmadı" }).waitFor();
-  assert.match(await move.locator(".pk-mid").innerText(), /Porto[\s\S]*Lizbon/);
+  // Nothing said for it: its empty card (boş kartlar), "Nasıl gideceğin belli değil", the directions to search; tapped, how to go.
+  await move.locator(".ek-foot", { hasText: "Nasıl gideceğin belli değil" }).waitFor();
+  assert.match(await move.locator(".ek-route").innerText(), /Porto[\s\S]*Lizbon/);
+  assert.equal(new URL(await move.getByRole("link", { name: "Yol tarifi" }).getAttribute("href")).searchParams.get("destination"), "Lizbon");
   await move.locator(".pk-body").click();
   await move.getByRole("button", { name: "✈ Uçak" }).click();
   // By plane it's a flight: it leaves Ulaşım for Uçuş, and the page follows it there with a flash.
@@ -907,7 +909,8 @@ try {
   await tab("Plan").click();
   // What still needs booking without a day: Etkinlikler's "Tarihsiz · Porto", one card under another (Majestic
   // Café, a café with no booking, is a restaurant card instead).
-  const undatedActs = sec("activity").locator(".cat-day.undated");
+  // (Lizbon, with no activity yet, is an empty card on its own line after them: .ek-line.)
+  const undatedActs = sec("activity").locator(".cat-line:not(.ek-line) .cat-day.undated");
   assert.match(await undatedActs.locator(".cat-date").innerText(), /Tarihsiz\s*Porto/);
   assert.deepEqual(await undatedActs.locator(".pk-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Livraria Lello", "Serralves Müzesi", "Tiyatro"]);
   assert.equal(await app.locator(".pk-card", { hasText: "Majestic Café" }).count(), 0);
@@ -1176,10 +1179,18 @@ try {
   await sec("activity").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/4l-activities.png` });
   // 0.35.11: a GetYourGuide search per city under Etkinlikler; a booking with no file says "Belge eksik" (and picks one).
+  // Boş kartlar: Lizbon has no activity yet, so it's the activity's empty card with its three searches instead.
   assert.deepEqual(await sec("activity").locator(".cat-search-link").evaluateAll((els) => els.map((a) => [a.textContent, a.getAttribute("href")])), [
     ["Porto etkinliklerini ara ↗", "https://www.getyourguide.com/s/?q=Porto"],
-    ["Lizbon etkinliklerini ara ↗", "https://www.getyourguide.com/s/?q=Lizbon"],
   ]);
+  const lisbonActs = sec("activity").locator('.ek-card[aria-label="Lizbon\'da tur ve bilet"]');
+  assert.equal(await lisbonActs.locator(".ek-state").innerText(), "Henüz yok");
+  assert.deepEqual(await lisbonActs.locator(".ek-link").evaluateAll((els) => els.map((a) => a.getAttribute("href"))), [
+    "https://www.getyourguide.com/s/?q=Lizbon",
+    "https://www.viator.com/searchResults/all?text=Lizbon",
+    "https://www.klook.com/search/result/?query=Lizbon",
+  ]);
+  assert.equal(await sec("activity").locator(".ek-card").count(), 1, "Porto has its activities: no empty card there");
   assert.ok((await app.locator(".cat-plan .pk-docmiss", { hasText: "Belge eksik" }).count()) > 0, "a booking without its ticket says so");
   await app.setViewportSize({ width: 1440, height: 900 });
   // Narrow: the + and × are there without a hover.
@@ -1218,8 +1229,10 @@ try {
   await box("Nereye").fill("Braga");
   await box("Nereye").press("Escape");
   await box("Nereye").waitFor({ state: "detached" });
-  assert.match(await portoBus.locator(".pk-mid").innerText(), /Porto[\s\S]*Saat ekle[\s\S]*Nereye/);
-  assert.match(await portoBus.locator(".pk-foot").innerText(), /Fiyat ekle/);
+  // Left with nothing concrete on it (no hour, no price, no page): the bus's empty card (boş kartlar), where it goes still to say.
+  assert.match(await portoBus.locator(".ek-route").innerText(), /Porto[\s\S]*Nereye/);
+  assert.match(await portoBus.locator(".ek-state").innerText(), /^Bilet yok/);
+  assert.equal(await portoBus.locator(".pk-foot, .pk-price").count(), 0, "no price on an empty card");
   await app.locator(".pk-undo", { hasText: "Otobüs eklendi" }).getByRole("button", { name: "Geri al" }).click();
   await portoBus.waitFor({ state: "detached" });
   // "+" after Porto's stay → Otel: its last night, a stay apart, its name ready; the check-in moved keeps one night.
@@ -2334,10 +2347,15 @@ try {
   // Ubud is Bali's (the hero's main place, from the table of regions): the nights are counted for Bali.
   assert.match(await rentalCard.innerText(), /25 gece Bali'de kalıyorsun/);
   assert.doesNotMatch(await rentalCard.innerText(), /%/, "no invented percentage");
-  await sgSec("other").locator(".sg-count", { hasText: "2 öneri" }).waitFor();
+  // Insurance is a suggestion ("1 öneri"); the eSIM is its empty card (boş kartlar), Airalo and Holafly for Indonesia.
+  await sgSec("other").locator(".sg-count", { hasText: "1 öneri" }).waitFor();
   await openSec("other");
-  const esimCard = sgSec("other").locator(".sg-card", { hasText: "eSIM" });
+  const esimCard = sgSec("other").locator('.ek-card[data-suggestion="rule:esim"]');
   await esimCard.waitFor();
+  assert.equal(await esimCard.locator(".ek-txt b").innerText(), "eSIM · Endonezya");
+  assert.equal(await esimCard.locator(".ek-state").innerText(), "Alınmadı");
+  assert.deepEqual(await esimCard.locator(".ek-link").evaluateAll((els) => els.map((a) => a.getAttribute("href"))), ["https://www.airalo.com/indonesia-esim", "https://esim.holafly.com/esim-indonesia/"]);
+  assert.equal(await sgSec("other").locator(".sg-card", { hasText: "eSIM" }).count(), 0, "the eSIM is never a suggestion card too");
   await sgSec("transport").scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/19-suggestions.png` });
   // Plana ekle: the rental is a real card in Ulaşım now; the suggestion is done.
@@ -2348,8 +2366,8 @@ try {
   assert.match(await sgSec("transport").locator(".cat-count").innerText(), /^0\/1$/);
   await sgSec("transport").locator(".cat-count").waitFor();
   assert.equal(await sgSec("transport").locator(".sg-count").count(), 0);
-  // Gerek yok: the eSIM suggestion goes, the insurance one stays.
-  await esimCard.getByRole("button", { name: /gerek yok/i }).click();
+  // Gerek yok: the eSIM's empty card goes (its suggestion dismissed), the insurance suggestion stays.
+  await esimCard.getByRole("button", { name: "Gerek yok" }).click();
   await esimCard.waitFor({ state: "detached" });
   await sgSec("other").locator(".sg-count", { hasText: "1 öneri" }).waitFor();
   await board.waitForTimeout(300); // the trip write lands
@@ -2358,7 +2376,7 @@ try {
   await sgSec("other").locator(".sg-count", { hasText: "1 öneri" }).waitFor({ timeout: 10000 });
   await openSec("other");
   await sgSec("other").locator(".sg-card", { hasText: "Seyahat sağlık sigortası" }).waitFor();
-  assert.equal(await sgSec("other").locator(".sg-card", { hasText: "eSIM" }).count(), 0, "Gerek yok is for good");
+  assert.equal(await sgSec("other").locator('.sg-card:has-text("eSIM"), .ek-card[data-suggestion="rule:esim"]').count(), 0, "Gerek yok is for good");
   assert.equal(await sgSec("transport").locator(".sg-card").count(), 0, "the added suggestion doesn't come back");
   await sgSec("transport").getByText("Motosiklet", { exact: true }).first().waitFor();
   assert.equal(reviewPrompts.filter((p) => p.includes("Ubud")).length, 1, "the AI review is asked once for the trip");
@@ -2496,6 +2514,80 @@ try {
   await guide.getByRole("button", { name: "Başlangıç kartını kapat" }).click();
   await guide.waitFor({ state: "detached" });
   console.log("✓ start by chat: one line fills who/when/where, chips finish it, the route agreed → Bali Gezisi with Ubud 12 · Canggu 10 · Uluwatu 9 nights, İstanbul ⇄ Denpasar flights to fill (not chosen), Emre & Sabine, Doğa · Deniz, Indonesia, the suggestions' review, the start card and the same conversation");
+
+  // 22. Boş kartlar (spec 2026-10-06-bos-kartlar-design.md): the new trip's needs with nothing booked or saved are
+  // the approved cards made plain: dashed, white, one grey word, then "Ara:" and the brands' searches, prefilled with
+  // the cities, the dates and the two who go. No AI source is connected, so no "✨ Senin için N öneri" row.
+  const ekSec = (id) => panel.locator(`.cat-sec[data-section="${id}"]`);
+  const ekOpen = async (id) => {
+    if (await ekSec(id).evaluate((el) => el.classList.contains("closed"))) await ekSec(id).locator(".cat-title").click();
+    await ekSec(id).locator(".cat-body").waitFor();
+  };
+  const hrefs = (scope) => scope.locator(".ek-link").evaluateAll((els) => els.map((a) => [a.dataset.brand, a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel")]));
+  for (const id of ["flight", "stay", "transport", "other"]) await ekOpen(id);
+  // Emre's rule: what the start made (startGuide.placeholders) is never the yellow "Seçildi · bilet alınmadı" card.
+  assert.equal(await panel.locator(".cat-plan .pk-card.pk-sand, .cat-plan .settled-card").count(), 0, "no yellow card for a placeholder: only empty cards");
+  assert.equal(await panel.locator(".cat-plan .pk-cta", { hasText: /Bileti aldım|Rezerve ettim/ }).count(), 0);
+  // Uçuş: İstanbul → Denpasar and back, "Bilet yok · 2 kişi"; Google Flights by city, Skyscanner and Kayak by airport.
+  const [outFlight, backFlight] = [ekSec("flight").locator(".ek-card").nth(0), ekSec("flight").locator(".ek-card").nth(1)];
+  assert.equal(await ekSec("flight").locator(".ek-card").count(), 2, "both flights the start made are empty cards");
+  assert.equal(await ekSec("flight").locator(".pk-card:not(.ek-card)").count(), 0, "no full flight card yet");
+  assert.match(await outFlight.locator(".ek-route").innerText(), /İstanbul[\s\S]*Denpasar/);
+  assert.equal(await outFlight.locator(".ek-state").innerText(), "Bilet yok · 2 kişi");
+  assert.equal(await outFlight.locator(".ek-ara").innerText(), "Ara:");
+  assert.equal(await outFlight.locator(".pk-cta, .pk-price").count(), 0, "no price, no Bileti aldım");
+  const out1 = await hrefs(outFlight);
+  assert.deepEqual(out1.map(([b, , t, r]) => [b, t, r]), [["gflights", "_blank", "noopener noreferrer"], ["skyscanner", "_blank", "noopener noreferrer"], ["kayak", "_blank", "noopener noreferrer"]]);
+  assert.equal(new URL(out1[0][1]).searchParams.get("q"), "Flights from İstanbul to Denpasar on 2026-12-10 one way");
+  assert.equal(out1[1][1], "https://www.skyscanner.net/transport/flights/ist/dps/261210/?adultsv2=2&rtn=0");
+  assert.equal(out1[2][1], "https://www.kayak.com/flights/IST-DPS/2026-12-10/2adults");
+  const back1 = await hrefs(backFlight);
+  assert.equal(new URL(back1[0][1]).searchParams.get("q"), "Flights from Denpasar to İstanbul on 2027-01-10 one way");
+  assert.equal(back1[2][1], "https://www.kayak.com/flights/DPS-IST/2027-01-10/2adults");
+  // Konaklama: each stop's nights, "Yer yok"; Booking and Airbnb with the nights and 2 adults.
+  const ubud = ekSec("stay").locator(".ek-card", { hasText: "Ubud" }).first();
+  assert.equal(await ubud.locator(".ek-state").innerText(), "Yer yok");
+  assert.match(await ubud.locator(".ek-txt").innerText(), /Ubud\s*12 gece · 2 kişi · otel seçilmedi/);
+  const ubudLinks = await hrefs(ubud);
+  assert.deepEqual(ubudLinks.map(([b, u]) => [b, u]), [
+    ["booking", "https://www.booking.com/searchresults.html?ss=Ubud&checkin=2026-12-10&checkout=2026-12-22&group_adults=2&no_rooms=1"],
+    ["airbnb", "https://www.airbnb.com/s/Ubud/homes?checkin=2026-12-10&checkout=2026-12-22&adults=2"],
+  ]);
+  assert.equal(await ekSec("stay").locator(".ek-card").count(), 3, "three stops, three empty stays");
+  // Ulaşım: the transfers and changes of city with no plan, "Nasıl gideceğin belli değil", Uber and the directions.
+  const transfers = ekSec("transport").locator(".ek-card.pk-leg");
+  assert.ok((await transfers.count()) >= 2, "the transfers with no plan are empty cards");
+  const firstLeg = transfers.first();
+  assert.equal(await firstLeg.locator(".ek-state").innerText(), "Nasıl gideceğin belli değil");
+  const legLinks = await hrefs(firstLeg);
+  assert.deepEqual(legLinks.map(([b]) => b), ["uber", "maps"]);
+  assert.match(decodeURIComponent(legLinks[0][1]), /^https:\/\/m\.uber\.com\/ul\/\?action=setPickup&.*dropoff\[formatted_address\]=/);
+  assert.equal(await firstLeg.getByRole("link", { name: "Yol tarifi" }).count(), 1);
+  // Diğer: the eSIM for Indonesia, "Alınmadı", Airalo and Holafly.
+  const esimEmpty = ekSec("other").locator('.ek-card[data-suggestion="rule:esim"]');
+  assert.equal(await esimEmpty.locator(".ek-state").innerText(), "Alınmadı");
+  assert.deepEqual((await hrefs(esimEmpty)).map(([, u]) => u), ["https://www.airalo.com/indonesia-esim", "https://esim.holafly.com/esim-indonesia/"]);
+  // Etkinlikler: a card per stop with nothing booked there.
+  await ekOpen("activity");
+  assert.equal(await ekSec("activity").locator(".ek-card").count(), 3);
+  assert.deepEqual((await hrefs(ekSec("activity").locator(".ek-card", { hasText: "Canggu" }))).map(([, u]) => u), [
+    "https://www.getyourguide.com/s/?q=Canggu",
+    "https://www.viator.com/searchResults/all?text=Canggu",
+    "https://www.klook.com/search/result/?query=Canggu",
+  ]);
+  // No AI source: no offers' row anywhere; the logos are drawn here (no request to a brand's site).
+  assert.equal(await panel.locator(".ek-offers").count(), 0, "no AI row without a data source");
+  assert.equal(await panel.locator(".ek-card img").count(), 0, "no brand image fetched");
+  // The look: a white ground in a dashed frame, the cities 17 px.
+  assert.deepEqual(await outFlight.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopStyle, getComputedStyle(el.querySelector(".ek-end b")).fontSize]), ["rgb(255, 255, 255)", "dashed", "17px"]);
+  await ekSec("flight").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await board.screenshot({ path: `${out}/22a-empty-cards.png` });
+  await board.setViewportSize({ width: 560, height: 1400 });
+  await ekSec("flight").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await board.screenshot({ path: `${out}/22b-empty-cards-narrow.png` });
+  assert.ok(await board.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with empty cards");
+  await board.setViewportSize({ width: 1440, height: 900 });
+  console.log("✓ boş kartlar: a new trip's flights, stays, transfers, eSIM and activities are plain cards with Ara: and branded searches (cities, dates, 2 people), no AI row");
 
   // 20e. Words with a link on the home: the link is saved, the words go on ("Linki kaydettim; geri kalanını konuşalım").
   // A month only is never a day made up: the day is asked next; "Ortası" is said back and marked roughly.

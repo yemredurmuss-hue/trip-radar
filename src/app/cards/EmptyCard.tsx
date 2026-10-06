@@ -5,8 +5,8 @@
 // no action button. The bottom line: one grey word where it stands, then "Ara:" and the brands' searches.
 // The board picks this card or the full one (TripPanel's Plan cards); the full card is untouched.
 import { useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
-import { cardKindColor, cardKindLabel, type CardKind, type TransportMode } from "../../lib/cardKinds";
-import { legCardView, legEnd, legMenuFor, topDate, transportFace, type End } from "../../lib/cardView";
+import { cardKind, cardKindColor, cardKindLabel, isTransportKind, RENTAL_MODES, type CardKind, type TransportMode } from "../../lib/cardKinds";
+import { activityDrawing, footOf, legCardView, legEnd, legMenuFor, transportFace, type End, type MediaDrawing } from "../../lib/cardView";
 import { needKey, rangeText, type ActivityGap } from "../../lib/emptyCards";
 import { countryNames, nPeople } from "../../lib/heroInfo";
 import { L } from "../../lib/i18n";
@@ -21,7 +21,10 @@ import { setHidden, setItemStatus, updateTrip } from "../actions";
 import { kindLabel, LegBody } from "../LegRow";
 import { CardMenu, DeleteX, Ring, type MenuEntry } from "./CardShell";
 import { useEmptyEnv } from "./emptyEnv";
-import { Editable, InlineEdit } from "./InlineEdit";
+import { Editable, InlineEdit, useInlineEdit } from "./InlineEdit";
+import { CardDate } from "./CardDate";
+import type { FieldKey } from "../../lib/inlineEdit";
+import { isGeneratedName } from "../../lib/planned";
 import { OfferRow } from "./OfferRow";
 import { useCardEnv } from "./PlanCard";
 import { KindIcon, MediaSilhouette, TransportArt } from "./Silhouettes";
@@ -46,31 +49,36 @@ export function SearchRow({ links }: { links: SearchLink[] }) {
   );
 }
 
-/** One end of a trip, a size smaller than the full card's; an end not known yet reads faint. */
-function Stop({ end, right, missing }: { end: End | null; right: boolean; missing: string }) {
+/**
+ * One end of a trip, a size smaller than the full card's; an end not known yet reads faint. On a record's card
+ * (inside InlineEdit) the city is edited where it stands, as on the full card ("Nereden", "Nereye").
+ */
+function Stop({ end, right, missing, field }: { end: End | null; right: boolean; missing: string; field?: FieldKey | null }) {
+  const api = useInlineEdit();
+  const editable = Boolean(field && api?.fields.includes(field));
   return (
     <span className={`ek-end${right ? " r" : ""}`}>
-      {end ? <b>{end.city}</b> : <b className="ek-missing">{missing}</b>}
+      {editable ? <b><Editable field={field!}>{end?.city}</Editable></b> : end ? <b>{end.city}</b> : <b className="ek-missing">{missing}</b>}
       {end?.sub && <small>{end.sub}</small>}
     </span>
   );
 }
 
 /** A trip's body: city — the way of travel drawn faint and small — city. */
-export function EmptyRoute({ from, to, art }: { from: End | null; to: End | null; art: TransportMode | null }) {
+export function EmptyRoute({ from, to, art, fields }: { from: End | null; to: End | null; art: TransportMode | null; fields?: [FieldKey | null, FieldKey | null] }) {
   return (
     <div className="ek-route">
-      <Stop end={from} right={false} missing={L("Nereden", "From")} />
+      <Stop end={from} right={false} missing={L("Nereden", "From")} field={fields?.[0]} />
       <span className="ek-sil" aria-hidden>
         {art && <TransportArt mode={art} />}
       </span>
-      <Stop end={to} right missing={L("Nereye", "To")} />
+      <Stop end={to} right missing={L("Nereye", "To")} field={fields?.[1]} />
     </div>
   );
 }
 
 /** A stay's, an activity's, an eSIM's body: the drawing's tile and the name, a grey line under it. */
-export function EmptyMedia({ kind, drawing, title, sub }: { kind: CardKind; drawing?: "ticket" | "esim" | null; title: ReactNode; sub: ReactNode }) {
+export function EmptyMedia({ kind, drawing, title, sub }: { kind: CardKind; drawing?: MediaDrawing | null; title: ReactNode; sub: ReactNode }) {
   return (
     <div className="ek-media">
       <span className="ek-tile" aria-hidden>
@@ -167,54 +175,89 @@ const withPeople = (word: string, n: number | null) => (n ? `${word} · ${nPeopl
 const noTicket = (n: number | null) => withPeople(L("Bilet yok", "No ticket"), n);
 
 /**
- * A record with nothing chosen for it yet: a flight the start made room for or one said in the chat without a
- * real flight, a stay the start made. Its ••• keeps what the full card could do ("Bileti aldım", "Düzenle", "Sil").
+ * A record with no concrete option yet (lib/emptyCards isEmptyRecord): what the start made room for (flights, stays,
+ * the car) or a plan said in the chat or added from a tile with no shop, price, page or hour. Edited where it
+ * stands like the full card (its ends, day, name); its ••• keeps what the full card's button did ("Bileti aldım",
+ * "Rezerve ettim"…), "Düzenle" and "Sil".
  */
 export function EmptyRecordCard({ item }: { item: Item }) {
+  return (
+    <InlineEdit item={item} only={["name", "from", "to", "city", "date", "end", "time"]}>
+      <EmptyRecordFace item={item} />
+    </InlineEdit>
+  );
+}
+
+const STATUS_WORD = (kind: CardKind, n: number | null): string => {
+  if (kind === "stay") return L("Yer yok", "No place yet");
+  if ((RENTAL_MODES as readonly string[]).includes(kind)) return L("Kiralanmadı", "Not rented");
+  if (kind === "esim" || kind === "insurance") return L("Alınmadı", "Not bought");
+  if (kind === "transport") return L("Alınmadı", "Not booked");
+  return noTicket(n);
+};
+
+function EmptyRecordFace({ item }: { item: Item }) {
   const env = useCardEnv();
-  const { travellers } = useEmptyEnv();
+  const { travellers, esimCountries } = useEmptyEnv();
   const n = travellers ?? item.guests.adults ?? null;
+  const kind = cardKind(item, env.legModes.get(item.id) ?? null);
+  const action = footOf(item, kind).action;
   const menu: MenuEntry[] = [
-    ...(item.category === "flight" ? [{ label: L("Bileti aldım", "I got the ticket"), run: () => void setItemStatus(item, "booked") }] : []),
+    ...(action?.does === "book" ? [{ label: action.label, run: () => void setItemStatus(item, "booked") }] : []),
     ...(item.origin === "chat" ? [{ label: L("Düzenle", "Edit"), run: () => env.edit(item) }] : []),
     { label: L("Sil", "Delete"), run: () => env.remove(item), danger: true },
   ];
-  const x = <DeleteX name={item.name} onDelete={() => env.remove(item)} />;
-  if (item.category === "stay") {
-    const start = isoDate(item.dates.start);
-    const end = isoDate(item.dates.end);
+  const shell = { kind, ariaLabel: item.name, itemId: item.id, menu, x: <DeleteX name={item.name} onDelete={() => env.remove(item)} />, status: STATUS_WORD(kind, n) };
+  const start = isoDate(item.flight?.departure?.slice(0, 10)) ?? isoDate(item.dates.start);
+  const end = isoDate(item.dates.end);
+  if (kind === "stay") {
     const nights = start && end ? nightsBetween(start, end) : 0;
+    const title = isGeneratedName(item.name) ? (item.city ?? item.name) : item.name;
     return (
       <EmptyShell
-        kind="stay"
-        date={start ? formatDateRange(start, end) : null}
-        ariaLabel={item.name}
-        itemId={item.id}
-        menu={menu}
-        x={x}
-        body={<EmptyMedia kind="stay" title={item.city ?? item.name} sub={[nights ? nNights(nights) : null, n ? nPeople(n) : null, L("otel seçilmedi", "no hotel chosen")].filter(Boolean).join(" · ")} />}
-        status={L("Yer yok", "No place yet")}
+        {...shell}
+        date={<CardDate item={item} kind={kind} />}
+        body={<EmptyMedia kind="stay" title={title} sub={[nights ? nNights(nights) : null, n ? nPeople(n) : null, L("otel seçilmedi", "no hotel chosen")].filter(Boolean).join(" · ")} />}
         links={stayLinks({ city: item.city, checkin: start, checkout: end, adults: n })}
         need={{ key: needKey("stay", item.city, start, end), section: "stay", kind: "stay", city: item.city, start, end, adults: n }}
       />
     );
   }
-  const face = transportFace(item, "flight", env.legEnds.get(item.id));
-  const day = isoDate(item.flight?.departure?.slice(0, 10)) ?? isoDate(item.dates.start);
-  const from = item.flight?.from ?? null;
-  const to = item.flight?.to ?? item.city ?? null;
+  if (isTransportKind(kind)) {
+    const rental = (RENTAL_MODES as readonly string[]).includes(kind);
+    const face = transportFace(item, kind, env.legEnds.get(item.id));
+    const from = item.flight?.from ?? null;
+    const to = item.flight?.to ?? (rental ? null : item.city) ?? null;
+    const links = kind === "flight" ? flightLinks({ from, to, date: start, adults: n }) : rental ? [] : transferLinks({ from, to }).filter((l) => l.brand === "maps");
+    const section = kind === "flight" ? "flight" : "transport";
+    return (
+      <EmptyShell
+        {...shell}
+        date={<CardDate item={item} kind={kind} />}
+        body={<EmptyRoute from={face.from} to={face.to ?? (to && !rental ? { city: to, sub: null, time: null } : null)} art={kind === "transport" ? null : kind} fields={rental ? ["city", null] : ["from", "to"]} />}
+        links={links}
+        need={kind === "flight" && to ? { key: needKey("flight", from, to, start), section, kind: "flight", from, to, start, adults: n } : null}
+      />
+    );
+  }
+  // An activity, an eSIM, insurance: the drawing's tile and the name.
+  const drawing = kind === "esim" ? "esim" : kind === "insurance" ? "shield" : kind === "activity" ? activityDrawing(item) : null;
+  const country = item.countryCode ?? esimCountries[0] ?? null;
+  const links = kind === "activity" ? activityLinks(item.city) : kind === "esim" ? esimLinks(country) : [];
+  const sub = kind === "esim" ? L("tüm gezi için internet", "internet for the whole trip") : kind === "activity" ? <Editable field="city">{item.city}</Editable> : null;
   return (
     <EmptyShell
-      kind="flight"
-      date={topDate(item, "flight")}
-      ariaLabel={item.name}
-      itemId={item.id}
-      menu={menu}
-      x={x}
-      body={<EmptyRoute from={face.from} to={face.to ?? (to ? { city: to, sub: null, time: null } : null)} art="flight" />}
-      status={noTicket(n)}
-      links={flightLinks({ from, to, date: day, adults: n })}
-      need={to ? { key: needKey("flight", from, to, day), section: "flight", kind: "flight", from, to, start: day, adults: n } : null}
+      {...shell}
+      date={<CardDate item={item} kind={kind} />}
+      body={<EmptyMedia kind={kind} drawing={drawing} title={<Editable field="name">{item.name}</Editable>} sub={sub} />}
+      links={links}
+      need={
+        kind === "activity" && item.city
+          ? { key: needKey("activity", item.city, start, end), section: "activity", kind: "activity", city: item.city, start, end, adults: n }
+          : kind === "esim" && country
+            ? { key: needKey("esim", country), section: "other", kind: "esim", country, start, end }
+            : null
+      }
     />
   );
 }
@@ -251,7 +294,10 @@ export function EmptyStayBlock({ block, label }: { block: Extract<StayBlock, { k
   const city = slot?.city ?? block.city;
   const hide = () => env.hideNights(block.range, label);
   const nights = L(`${block.nights} gece`, `${block.nights} night${block.nights === 1 ? "" : "s"}`);
-  const body = slot ? (
+  // A stay said apart with nothing of its own yet (the start's nights at a stop, "Konaklama · Ubud"): the city, the
+  // nights and who goes, as the empty nights read. One with a name or a price of its own keeps them, edited in place.
+  const named = slot && !(isGeneratedName(slot.name) && slot.price.amount == null && !slot.url && !slot.provider?.trim());
+  const body = named && slot ? (
     <InlineEdit item={slot}>
       <EmptyMedia
         kind="stay"
@@ -265,7 +311,7 @@ export function EmptyStayBlock({ block, label }: { block: Extract<StayBlock, { k
       />
     </InlineEdit>
   ) : (
-    <EmptyMedia kind="stay" title={block.city ?? L("Konaklama", "Stay")} sub={[nights, n ? nPeople(n) : null, L("otel seçilmedi", "no hotel chosen")].filter(Boolean).join(" · ")} />
+    <EmptyMedia kind="stay" title={city ?? L("Konaklama", "Stay")} sub={[nights, n ? nPeople(n) : null, L("otel seçilmedi", "no hotel chosen")].filter(Boolean).join(" · ")} />
   );
   return (
     <EmptyShell
@@ -274,7 +320,7 @@ export function EmptyStayBlock({ block, label }: { block: Extract<StayBlock, { k
       ariaLabel={slot?.name ?? label}
       itemId={slot?.id}
       extraClass="stay-open"
-      menu={slot ? [{ label: L("Sil", "Delete"), run: () => env.remove(slot), danger: true }] : [{ label: L("Gerek yok", "Not needed"), run: hide }]}
+      menu={slot ? [{ label: L("Düzenle", "Edit"), run: () => env.edit(slot) }, { label: L("Sil", "Delete"), run: () => env.remove(slot), danger: true }] : [{ label: L("Gerek yok", "Not needed"), run: hide }]}
       x={slot ? <DeleteX name={slot.name} className="stay-x" onDelete={() => env.remove(slot)} /> : <DeleteX name={label} hide className="stay-x" onDelete={hide} />}
       body={body}
       status={L("Yer yok", "No place yet")}
@@ -286,9 +332,11 @@ export function EmptyStayBlock({ block, label }: { block: Extract<StayBlock, { k
   );
 }
 
-/** Where a transfer's end is, as a map would find it: the stay's address (else its name and city), the airport, the city. */
+/** Where a transfer's end is, as a map would find it: the stay's address (else its name and city), the airport, the city; a change of city's, the city. */
 function endPlace(leg: Leg, side: "from" | "to"): string | null {
   const point = leg[side];
+  // A change of city goes city to city (as its card says it).
+  if (leg.kind === "move") return point.city ?? point.label;
   if (point.item) return point.item.location.address ?? [point.item.name, point.item.city].filter(Boolean).join(", ");
   const hub = (leg.kind === "arrival" && side === "from") || (leg.kind === "departure" && side === "to");
   if (hub) return legEnd(leg, side).city;

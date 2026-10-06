@@ -19,8 +19,10 @@ describe("records with nothing chosen yet", () => {
     const s = stay();
     const trip = made(f, s);
     expect([isEmptyRecord(trip, f), isEmptyRecord(trip, s)]).toEqual([true, true]);
-    // Changed (another day, booked): the start's print no longer matches, or it's booked: the full card.
-    expect(isEmptyRecord(trip, { ...s, dates: { ...s.dates, end: "2026-12-20" } })).toBe(false);
+    // Changed into a real option (an hour, a page) or booked: the full card. Changed only in its days, still nothing concrete: empty.
+    expect(isEmptyRecord(trip, { ...f, flight: { ...f.flight!, departure: "2026-12-10T07:40" } })).toBe(false);
+    expect(isEmptyRecord(trip, { ...s, url: "https://www.booking.com/hotel/id/alaya.html" })).toBe(false);
+    expect(isEmptyRecord(trip, { ...s, dates: { ...s.dates, end: "2026-12-20" } })).toBe(true);
     expect(isEmptyRecord(trip, { ...s, status: "booked" })).toBe(false);
   });
   it("a file on it (a ticket's PDF) or a booking makes it a full card", () => {
@@ -42,10 +44,24 @@ describe("records with nothing chosen yet", () => {
     expect(bareChatFlight({ ...f, origin: undefined })).toBe(false);
     expect(bareChatFlight({ ...f, status: "saved" })).toBe(false);
   });
-  it("a stay said in the chat is empty only as the start's placeholder; other kinds never", () => {
-    expect(isEmptyRecord({ startGuide: null }, stay())).toBe(false);
-    const car = makeItem({ category: "transport", status: "chosen", origin: "chat" });
-    expect(isEmptyRecord(made(car), car)).toBe(false);
+  it("the start's car is empty too; any plan said with no shop, price, page or hour is", () => {
+    const car = makeItem({ category: "transport", status: "chosen", origin: "chat", plannedKind: "car_rental", name: "Araç kiralama · Bali", city: "Bali" });
+    expect(isEmptyRecord(made(car), car)).toBe(true);
+    expect(isEmptyRecord(made(car), { ...car, provider: "Sixt" })).toBe(false); // Sixt is a real option
+    const esim = makeItem({ category: "esim", status: "chosen", origin: "chat", plannedKind: "esim", name: "eSIM" });
+    const tour = makeItem({ category: "activity", status: "chosen", origin: "chat", plannedKind: "activity", name: "Douro turu", city: "Porto" });
+    expect([isEmptyRecord({ startGuide: null }, esim), isEmptyRecord({ startGuide: null }, tour)]).toEqual([true, true]);
+    expect(isEmptyRecord({ startGuide: null }, { ...tour, price: { ...tour.price, amount: 25 } })).toBe(false);
+    expect(isEmptyRecord({ startGuide: null }, stay())).toBe(true);
+  });
+  it("never for a taxi, a note, a to-do or a restaurant (planned is done there), nor with other options for the need", () => {
+    const taxi = makeItem({ category: "transport", status: "chosen", origin: "chat", plannedKind: "taxi", name: "Taksi · Otel → Havalimanı", flight: { from: null, to: null, departure: null, arrival: null, carrier: null, flightNumber: null, stops: null } });
+    expect(isEmptyRecord({ startGuide: null }, taxi)).toBe(false);
+    expect(isEmptyRecord({ startGuide: null }, makeItem({ category: "food", status: "chosen", origin: "chat" }))).toBe(false);
+    const f = flight({ needKey: "flight:ist-dps" });
+    const option = makeItem({ category: "flight", status: "saved", needKey: "flight:ist-dps" });
+    expect(isEmptyRecord({ startGuide: null }, f, 0, [f, option])).toBe(false);
+    expect(isEmptyRecord({ startGuide: null }, f, 0, [f, { ...option, status: "dismissed" }])).toBe(true);
   });
 });
 

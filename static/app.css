@@ -1800,6 +1800,7 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .ek-card:hover { box-shadow: 0 4px 16px rgba(0, 0, 0, .04); }
 .ek-card .pk-ring.open { border: 1.5px dashed #c6bfb3; }
 .ek-card .pk-date { color: #8e8e93; }
+.ek-card .stay-x { position: static; }
 .ek-route { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; margin: 6px 0 4px; }
 .ek-end { min-width: 0; }
 .ek-end b { display: block; font-size: 17px; line-height: 1.2; font-weight: 700; letter-spacing: -.01em; overflow-wrap: anywhere; }
