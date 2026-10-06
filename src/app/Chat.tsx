@@ -6,7 +6,7 @@ import { noChangeNote } from "../lib/claims";
 import { describeError } from "../lib/llm";
 import { shownReply } from "../lib/replyText";
 import { answerHeld, answerStray, RoutingChanged, undoMove } from "../lib/routing";
-import type { Capture, ChatMessage, Item, RoutingNote, Trip } from "../lib/types";
+import type { Capture, ChatMessage, HeldAnswer, Item, RoutingNote, Trip } from "../lib/types";
 import { DOC_ACCEPT } from "../lib/docs";
 import { DropOverlay } from "./arrive/ArriveViews";
 import { useChatArrivals } from "./arrive/ChatArrivals";
@@ -220,7 +220,7 @@ function openTrip(id: string) {
  * "↪ Nusa Penida … Bali gezine eklendi · Aç · Geri al", or the question about a capture that wasn't added
  * ("Bu yer Endonezya'da, gezin Portekiz'de. Nereye ekleyeyim?") with its answers; once answered, what was done.
  */
-function RoutingLine({ m, routing, trips }: { m: ChatMessage; routing: RoutingNote; trips: Trip[] }) {
+export function RoutingLine({ m, routing, trips }: { m: ChatMessage; routing: RoutingNote; trips: Trip[] }) {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const title = (id: string | undefined) => trips.find((t) => t.id === id)?.title ?? null;
@@ -283,12 +283,17 @@ function RoutingLine({ m, routing, trips }: { m: ChatMessage; routing: RoutingNo
     const went = title(routing.answeredTripId);
     actions = <span className="muted">{routing.answer === "skip" || !went ? L("Eklenmedi", "Not added") : L(`→ ${went} gezisine eklendi`, `→ Added to ${went}`)}</span>;
   } else {
-    const answer = (a: "here" | "new" | "skip") => () => void act(() => answerHeld(routing.captureId, a));
+    const answer = (a: HeldAnswer) => () => void act(() => answerHeld(routing.captureId, a));
+    const there = title(routing.toTripId ?? undefined);
     actions =
       routing.reason === "place" ? (
         <>
           <button type="button" className="small-btn" disabled={busy} onClick={answer("here")}>{L("Bu geziye yine de ekle", "Add to this trip anyway")}</button>
-          <button type="button" className="small-btn" disabled={busy} onClick={answer("new")}>{L(`Yeni gezi: ${routing.newTitle}`, `New trip: ${routing.newTitle}`)}</button>
+          {there ? (
+            <button type="button" className="small-btn" disabled={busy} onClick={answer("there")}>{L(`${there} gezisine ekle`, `Add to ${there}`)}</button>
+          ) : (
+            <button type="button" className="small-btn" disabled={busy} onClick={answer("new")}>{L(`Yeni gezi: ${routing.newTitle}`, `New trip: ${routing.newTitle}`)}</button>
+          )}
           <button type="button" className="btn-link" disabled={busy} onClick={answer("skip")}>{L("Ekleme", "Don't add")}</button>
         </>
       ) : (

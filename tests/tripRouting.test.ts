@@ -64,7 +64,7 @@ const item = (tripId: string, over: Partial<Item>): Item =>
 
 async function reset() {
   const d = await db();
-  for (const store of ["trips", "items", "captures", "messages", "docs"] as const) await d.clear(store);
+  for (const store of ["trips", "items", "captures", "messages", "docs", "trash", "trashData"] as const) await d.clear(store);
   pages = {};
 }
 
@@ -93,29 +93,34 @@ const events = async (tripId: string) => (await listMessages(tripId)).filter((m)
 beforeEach(reset);
 
 describe("a Bali activity handed to the Portugal trip", () => {
-  it("goes to the Bali trip when there is one, and the Portugal trip says so (board drop)", async () => {
-    await portugalTrip();
-    await baliTrip();
-    pages = { Nusa_Penida: nusaPenida };
-    await savePastedLink(NUSA, "pt");
-    await processPending(deps);
-
-    expect(await names("pt")).toEqual(["Jardim Stay", "Casa Verde"]);
-    expect(await names("bali")).toContain("Nusa Penida 2Day 1Night With Accomodation");
-    const note = (await events("pt")).find((m) => m.routing?.kind === "moved");
-    expect(note?.text).toMatch(/Nusa Penida 2Day 1Night With Accomodation Bali gezine eklendi/);
-    expect(note?.routing).toMatchObject({ kind: "moved", fromTripId: "pt", toTripId: "bali", far: true, merged: false });
-    expect((await events("bali")).some((m) => /✓ Nusa Penida .* kaydedildi → Etkinlikler · Denpasar/.test(m.text))).toBe(true);
-  });
-
-  it("goes to the Bali trip from the chat as well", async () => {
+  it("goes to the Bali trip when there is one, and the Portugal trip says so (chat)", async () => {
     await portugalTrip();
     await baliTrip();
     pages = { Nusa_Penida: nusaPenida };
     await savePastedLink(NUSA, undefined, "pt");
     await processPending(deps);
-    expect(await names("bali")).toContain("Nusa Penida 2Day 1Night With Accomodation");
-    expect((await events("pt")).some((m) => m.routing?.kind === "moved")).toBe(true);
+
+    expect(await names("pt")).toEqual(["Jardim Stay", "Casa Verde"]);
+    const moved = (await listItems("bali")).find((i) => i.name.startsWith("Nusa Penida"))!;
+    // The date picker's 8 October isn't the Bali trip's (January): it doesn't come along (review #2).
+    expect(moved.dates.start).toBeNull();
+    const note = (await events("pt")).find((m) => m.routing?.kind === "moved");
+    expect(note?.text).toMatch(/Nusa Penida 2Day 1Night With Accomodation Bali gezine eklendi/);
+    expect(note?.routing).toMatchObject({ kind: "moved", fromTripId: "pt", toTripId: "bali", far: true, merged: false, dates: { start: "2026-10-08" } });
+    expect((await events("bali")).some((m) => /✓ Nusa Penida .* kaydedildi → Etkinlikler · Denpasar/.test(m.text))).toBe(true);
+  });
+
+  it("dropped on the Portugal board, it is asked about, never moved; 'Bali gezisine ekle' puts it there (review #3)", async () => {
+    await portugalTrip();
+    await baliTrip();
+    pages = { Nusa_Penida: nusaPenida };
+    const capture = await savePastedLink(NUSA, "pt");
+    await processPending(deps);
+    expect(await names("bali")).toEqual(["Ubud Villa"]);
+    const ask = (await events("pt")).find((m) => m.routing?.kind === "ask")!;
+    expect(ask.routing).toMatchObject({ reason: "place", toTripId: "bali" });
+    expect(await answerHeld(capture.id, "there")).toBe("bali");
+    expect((await listItems("bali")).find((i) => i.name.startsWith("Nusa"))?.dates.start).toBeNull();
   });
 
   it("from the toolbar, its own trip wins over the dates its page's date picker gave (the reported case)", async () => {
@@ -128,16 +133,21 @@ describe("a Bali activity handed to the Portugal trip", () => {
     expect(await names("bali")).toContain("Nusa Penida 2Day 1Night With Accomodation");
   });
 
-  it("Geri al puts it in the trip it was handed to, on none of its days", async () => {
+  it("Geri al puts it in the trip it was handed to, on none of its days, for good (placeOk: a later save keeps it)", async () => {
     await portugalTrip();
     await baliTrip();
     pages = { Nusa_Penida: nusaPenida };
-    await savePastedLink(NUSA, "pt");
+    await savePastedLink(NUSA, undefined, "pt");
     await processPending(deps);
     const note = (await events("pt")).find((m) => m.routing?.kind === "moved")!;
     await undoMove(note.id);
     const back = (await listItems("pt")).find((i) => i.name.startsWith("Nusa Penida"))!;
     expect(back.dates.start).toBeNull();
+    expect(back.placeOk).toBe(true);
+    // Saved again from the toolbar (to check the price): it stays (review #4, probe D2).
+    await savePastedLink(NUSA);
+    await processPending(deps);
+    expect(await names("pt")).toContain("Nusa Penida 2Day 1Night With Accomodation");
     expect(await names("bali")).toEqual(["Ubud Villa"]);
     expect((await (await db()).get("messages", note.id))?.routing).toMatchObject({ kind: "moved" });
     expect(((await (await db()).get("messages", note.id))?.routing as { undoneAt?: number }).undoneAt).toBeTypeOf("number");
@@ -176,6 +186,12 @@ describe("a Bali activity handed to the Portugal trip", () => {
     expect(await answerHeld(capture.id, "here")).toBe("pt");
     const added = (await listItems("pt")).find((i) => i.name.startsWith("Nusa Penida"))!;
     expect(added.dates).toEqual({ start: null, end: null, source: "none" });
+    // ...for good: saved again, it isn't asked about again (review #4, probe D).
+    expect(added.placeOk).toBe(true);
+    await savePastedLink(NUSA);
+    await processPending(deps);
+    expect(await names("pt")).toContain("Nusa Penida 2Day 1Night With Accomodation");
+    expect((await (await db()).getAll("captures")).filter((c) => c.held && !c.held.answer)).toEqual([]);
   });
 
   it("'Ekleme' adds nothing", async () => {
@@ -276,16 +292,28 @@ describe("a place found later", () => {
     expect((await events("pt")).some((m) => m.routing?.kind === "moved" && m.routing.toTripId === "bali")).toBe(true);
   });
 
-  it("with no trip of its place, it leaves the plan and the trip asks", async () => {
+  it("with no trip of its place, it stays on the plan while the trip asks; 'Ekleme' puts it in the trash (review #1, probe C)", async () => {
     await portugalTrip();
+    const d = await db();
     pages = { Nusa_Penida: () => ({ ...nusaPenida([]), country: null, country_code: null, city: null }) };
     await savePastedLink(NUSA, "pt");
     await processPending(deps);
-    pages = { Nusa_Penida: (trips) => nusaPenida(trips) };
+    const id = (await listItems("pt")).find((i) => i.name.startsWith("Nusa"))!.id;
+    await d.put("docs", { id: "doc1", tripId: "pt", itemId: id, name: "voucher.pdf", type: "application/pdf", size: 4, blob: new Blob(["%PDF"]), createdAt: 1 } as never);
+    pages = { Nusa_Penida: (trips) => nusaPenida(trips, { price: { ...nusaPenida([]).price, amount: 80 } }) };
     await savePastedLink(NUSA);
     await processPending(deps);
-    expect(await names("pt")).toEqual(["Jardim Stay", "Casa Verde"]);
+    // Still there, with what the new save said; asked about.
+    expect((await d.get("items", id))?.price.amount).toBe(80);
+    const capture = (await d.getAll("captures")).find((c) => c.held && !c.held.answer)!;
+    expect(capture.held).toMatchObject({ existing: true, reason: "place", tripId: "pt" });
     expect((await events("pt")).some((m) => m.routing?.kind === "ask")).toBe(true);
+
+    await answerHeld(capture.id, "skip");
+    expect(await d.get("items", id)).toBeUndefined();
+    const [trashed] = await d.getAll("trash");
+    expect(trashed.label).toMatch(/^Nusa Penida/);
+    expect(await d.get("docs", "doc1")).toBeUndefined(); // in the trash with it, not left pointing at nothing
   });
 });
 

@@ -8,8 +8,9 @@ import { geocode } from "./geo";
 import { L } from "./i18n";
 import { imageProxy, pickCityImage } from "./cityImages";
 import { buildItem, CATEGORY_LABELS, corpusOf, findDuplicate, formatDateRange, isoDate, mergeItem } from "./items";
-import { chooseTrip, countryCodeOf, countryName, isDemoTrip, profileTrips, uniqueTitle, type TripChoice, type TripSignal } from "./trips";
-import { askText, countriesText, looksLikeTravel, placeCodes, placeFit, routeCapture, titleCodes, tripPlaceCodes, type Route } from "./placeCheck";
+import { chooseTrip, countryCodeOf, countryName, gapDays, isDemoTrip, profileTrips, uniqueTitle, type TripChoice, type TripSignal } from "./trips";
+import { askText, countriesText, datesIn, looksLikeTravel, placeCodes, placeFitOf, routeCapture, titleCodes, tripPlaceCodes, type Route } from "./placeCheck";
+import { loadHome } from "./passport";
 import type { PageSnapshot } from "./pagecapture";
 import type { Capture, Geo, HeldCapture, Item, Trip } from "./types";
 import { parseUrl, type UrlFacts } from "./url";
@@ -24,6 +25,8 @@ export interface Deps {
   geocode?: (query: string) => Promise<Geo | null>;
   /** Cuts the option's photo out of a screenshot (defaults to an offscreen canvas where there is one). */
   crop?: (dataUrl: string, box: Box) => Promise<string | null>;
+  /** The traveller's home country when set (Settings → Pasaport): always a trip's own (placeCheck.ts). */
+  home?: () => Promise<string | null>;
 }
 
 const defaultDeps: Deps = {
@@ -132,7 +135,16 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
     // Where it was handed over (a trip's board or chat): what the place check measures it against.
     const anchor = forced ?? (capture.fromTripId ? trips.find((t) => t.id === capture.fromTripId) : undefined);
     const allItems = await d.getAll("items");
-    const choice: TripChoice = forced ? { tripId: forced.id } : chooseTrip(tripSignal(extraction, facts), profileTrips(trips, allItems));
+    const signal = tripSignal(extraction, facts);
+    let choice: TripChoice = forced ? { tripId: forced.id } : chooseTrip(signal, profileTrips(trips, allItems));
+    // Sent in a trip's chat and its place is that trip's own (where it flies from, home: the İstanbul airport
+    // hotel of the Porto trip), on its dates or none: it stays there, not in another trip of that country.
+    if (anchor && !forced && !("tripId" in choice && choice.tripId === anchor.id)) {
+      const probe = buildItem(extraction, capture, facts, anchor.id);
+      const range = profileTrips([anchor], allItems)[0]?.range;
+      const onDates = !probe.dates.start || !range || gapDays(range, probe.dates.start, probe.dates.end) <= 7;
+      if (onDates && placeFitOf(probe, anchor.id, trips, allItems, await (deps.home ?? loadHome)()) === "in") choice = { tripId: anchor.id };
+    }
     // A new trip is only made once something goes into it (a page that is asked about makes none).
     const newTripId = "tripId" in choice ? null : newId();
     let incoming = buildItem(extraction, capture, facts, "tripId" in choice ? choice.tripId : newTripId!);
@@ -150,6 +162,12 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
 
     // Does it belong where it is going? (placeCheck.ts) A shared trip's capture was checked on the computer it
     // was saved on: what arrives from the server goes where its sender put it.
+    // A page's own date (a date picker's remembered day) put in a trip by its place: only if it falls in that
+    // trip's dates, so it never stretches the Bali trip to the Porto dates (review #2).
+    const pageDates = item.dates; // the moved note keeps them for Geri al
+    const landed = trips.find((t) => t.id === item.tripId);
+    if (!duplicate && signal.softDates && landed) item = { ...item, dates: datesIn(item, landed, allItems) };
+    const home = await (deps.home ?? loadHome)();
     const route: Route = capture.sharedAt
       ? { kind: "keep" }
       : routeCapture({
@@ -157,6 +175,8 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
           merged: Boolean(duplicate),
           newTrip: item.tripId === newTripId,
           anchorId: anchor?.id ?? null,
+          board: Boolean(forced),
+          home,
           travel: looksLikeTravel(extraction),
           trips,
           items: allItems,
@@ -167,7 +187,11 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
       return;
     }
     const before = duplicate?.item.tripId ?? null;
-    if (route.kind === "move") item = { ...item, tripId: route.toTripId };
+    // Moved: its dates only when they fall in that trip's (Geri al puts them back from the note).
+    if (route.kind === "move") {
+      const target = trips.find((t) => t.id === route.toTripId)!;
+      item = { ...item, tripId: target.id, dates: datesIn(item, target, allItems) };
+    }
     if (item.tripId === newTripId) {
       const now = Date.now();
       const made: Trip = {
@@ -190,9 +214,9 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
     const noteIn = anchor && anchor.id !== item.tripId ? anchor.id : before && before !== item.tripId ? before : null;
     if (noteIn) {
       const to = (await d.get("trips", item.tripId))?.title ?? "";
-      const far = placeFit(placeCodes(item), tripPlaceCodes(noteIn, allItems, item.id)) === "far";
+      const far = placeFitOf(item, noteIn, trips, allItems, home) === "far";
       await addEvent(noteIn, movedLine(item, to), {
-        routing: { kind: "moved", itemId: item.id, fromTripId: noteIn, toTripId: item.tripId, far, merged: Boolean(duplicate) && before === item.tripId },
+        routing: { kind: "moved", itemId: item.id, fromTripId: noteIn, toTripId: item.tripId, far, merged: Boolean(duplicate) && before === item.tripId, dates: pageDates },
       });
     }
     // The trip as stored now: it may have changed (shared, renamed) while the model was reading.
@@ -258,13 +282,23 @@ async function holdCapture(capture: Capture, item: Item, route: Extract<Route, {
   const tripCodes = route.askIn ? tripPlaceCodes(route.askIn, allItems, item.id) : new Set<string>();
   const asked = trips.find((t) => t.id === route.askIn);
   const question = askText(route.reason, item.name, codes, tripCodes.size ? tripCodes : asked ? titleCodes(asked.title) : []);
-  const held: HeldCapture = { reason: route.reason, item: { ...item, tripId: route.askIn ?? item.tripId }, tripId: route.askIn, newTitle, question, askedAt: Date.now() };
-  if (existed) {
-    await d.delete("items", item.id);
-    await addEvent(item.tripId, L(`${item.name} plandan çıkarıldı: yeri bu gezinin değil`, `${item.name} taken off the plan: its place isn't this trip's`));
-  }
-  await d.put("captures", { ...capture, status: "done", error: null, itemId: null, held });
-  if (route.askIn) await addEvent(route.askIn, question, { routing: { kind: "ask", captureId: capture.id, reason: route.reason, newTitle } });
+  const toTripId = route.toTripId ?? null;
+  const held: HeldCapture = {
+    reason: route.reason,
+    item: existed ? item : { ...item, tripId: route.askIn ?? item.tripId },
+    tripId: route.askIn,
+    newTitle,
+    question,
+    askedAt: Date.now(),
+    ...(existed ? { existing: true } : {}),
+    ...(toTripId ? { toTripId } : {}),
+  };
+  // A record already saved stays as it is (with what this save updated) until the traveller answers: never
+  // removed behind their back. "Ekleme" puts it in the trash (routing.ts).
+  if (existed) await d.put("items", item);
+  await d.put("captures", { ...capture, status: "done", error: null, itemId: existed ? item.id : null, held });
+  // No trip to ask in (no trip at all): the home's "Bekleyen kayıtlar" asks (messages of no trip, tripId "").
+  await addEvent(route.askIn ?? "", question, { routing: { kind: "ask", captureId: capture.id, reason: route.reason, newTitle, ...(toTripId ? { toTripId } : {}) } });
 }
 
 /**

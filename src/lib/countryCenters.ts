@@ -37,8 +37,39 @@ const C: Record<string, [number, number]> = {
   GY: [4.9, -58.9], SR: [3.9, -56.0], GL: [72.0, -40.0],
 };
 
+// The rest of ISO 3166-1, compact ("code lat lng"): islands, territories and small states, so none is "unknown".
+const MORE =
+  "AG 17.1 -61.8 AI 18.2 -63.05 AO -11.2 17.9 AQ -75 0 AS -14.3 -170.7 AX 60.2 20.0 BF 12.2 -1.6 BI -3.4 29.9 BJ 9.3 2.3 " +
+  "BL 17.9 -62.83 BM 32.3 -64.75 BQ 12.2 -68.3 BV -54.4 3.4 CC -12.2 96.9 CD -2.9 23.7 CF 6.6 20.9 CG -0.7 15.2 CK -21.2 -159.8 " +
+  "CX -10.5 105.7 DJ 11.8 42.6 DM 15.4 -61.4 EH 24.2 -12.9 ER 15.2 39.8 FK -51.8 -59.5 FM 7.4 150.6 GA -0.8 11.6 GD 12.1 -61.7 " +
+  "GF 4.0 -53.1 GG 49.45 -2.58 GN 9.9 -9.7 GP 16.25 -61.55 GQ 1.6 10.3 GS -54.4 -36.6 GU 13.4 144.8 GW 11.8 -15.2 HM -53.1 73.5 " +
+  "IM 54.2 -4.5 IO -6.3 71.9 JE 49.2 -2.13 KI 1.9 -157.4 KM -11.9 43.9 KN 17.3 -62.75 KY 19.3 -81.25 LC 13.9 -60.98 LR 6.4 -9.4 " +
+  "LS -29.6 28.2 MF 18.07 -63.05 MH 7.1 171.2 ML 17.6 -4.0 MP 15.1 145.7 MQ 14.64 -61.02 MR 21.0 -10.9 MS 16.74 -62.19 " +
+  "MW -13.3 34.3 NE 17.6 8.1 NF -29.04 167.95 NR -0.52 166.93 NU -19.05 -169.87 PM 46.9 -56.3 PN -24.4 -128.3 PW 7.5 134.6 " +
+  "RE -21.1 55.5 SB -9.6 160.2 SH -15.97 -5.7 SJ 77.6 18.0 SL 8.5 -11.8 SO 5.2 46.2 SS 6.9 31.3 ST 0.2 6.6 SX 18.04 -63.05 " +
+  "SZ -26.5 31.5 TC 21.7 -71.8 TD 15.5 18.7 TF -49.3 69.3 TG 8.6 0.8 TK -9.2 -171.8 TO -21.2 -175.2 TV -7.1 177.6 " +
+  "UM 19.3 166.6 VC 13.25 -61.2 VG 18.42 -64.64 VI 18.34 -64.9 VU -15.4 166.9 WF -13.77 -177.16 WS -13.76 -172.1 YT -12.8 45.15 " +
+  "GM 13.44 -15.31 IC 28.3 -15.6 EA 35.6 -4.5 UK 54.0 -2.5 AC -7.95 -14.36 TA -37.1 -12.3 DG -7.3 72.4 CQ 49.43 -2.36";
+for (const [code, lat, lng] of MORE.split(" ").reduce<string[][]>((rows, v, i) => (i % 3 ? rows.at(-1)!.push(v) : rows.push([v]), rows), [])) {
+  C[code] ??= [Number(lat), Number(lng)];
+}
+
 /** Two countries this close can be one journey (Portugal → Spain, Thailand → Bali); farther apart is another trip. */
 export const NEAR_KM = 3000;
+
+/**
+ * Journeys taken together often though their middles are farther apart than NEAR_KM (spec review 2026-10-06):
+ * Australia and New Zealand, Dubai and the Maldives, Bali and Australia, the US and the Caribbean or Costa Rica,
+ * Japan and Thailand, South Africa and Mauritius. Each pair both ways.
+ */
+const TOGETHER = new Set(
+  [
+    "AU NZ", "AU FJ", "NZ FJ", "AU ID", "AU SG", "AE MV", "QA MV", "IN MV", "LK MV", "AE LK", "AE TH", "JP TH", "JP VN", "KR TH", "CN TH",
+    "US CR", "US PR", "US BS", "US JM", "US AW", "US CW", "US DO", "US CU", "US KY", "US TC", "US VI", "US LC", "US BB", "US AG", "US PA",
+    "US BZ", "US GT", "CA MX", "CA CU", "CA DO", "ZA MU", "ZA SC", "ZA MZ", "KE SC", "TZ SC", "AE SC", "AE MU", "FR GP", "FR MQ", "FR RE",
+    "MU RE", "PT CV", "ES CV", "GB BB", "GB JM",
+  ].flatMap((p) => [p, p.split(" ").reverse().join(" ")]),
+);
 
 /** Kilometres between two countries' middles; null when either isn't known here. */
 export function countryDistanceKm(a: string, b: string): number | null {
@@ -50,9 +81,13 @@ export function countryDistanceKm(a: string, b: string): number | null {
   return 2 * 6371 * Math.asin(Math.sqrt(h));
 }
 
-/** Same country, or close enough to be the same journey. A country this table doesn't know is never "near". */
-export function nearCountries(a: string, b: string): boolean {
-  if (a.toUpperCase() === b.toUpperCase()) return true;
-  const km = countryDistanceKm(a, b);
-  return km != null && km <= NEAR_KM;
+/**
+ * Same country, close enough to be the same journey, or a pair often travelled together: true; farther: false.
+ * null: a code this table doesn't know (the distance can't be measured, so nothing is decided by it).
+ */
+export function nearCountries(a: string, b: string): boolean | null {
+  const [x, y] = [a.toUpperCase(), b.toUpperCase()];
+  if (x === y || TOGETHER.has(`${x} ${y}`)) return true;
+  const km = countryDistanceKm(x, y);
+  return km == null ? null : km <= NEAR_KM;
 }

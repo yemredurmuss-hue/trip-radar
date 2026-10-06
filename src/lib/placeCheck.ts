@@ -3,6 +3,7 @@
 // because that trip was open, or because the page's date picker said 8 October. Pure: process.ts acts on it.
 import { countryOfAirport } from "./airports";
 import { nearCountries } from "./countryCenters";
+import { ownCountries } from "./tripCountries";
 import type { Extraction } from "./extract";
 import { L } from "./i18n";
 import { locative } from "./i18nText";
@@ -37,13 +38,36 @@ export function placeCodes(item: Placed): string[] {
  */
 export function tripPlaceCodes(tripId: string, items: Item[], exceptId?: string): Set<string> {
   const own = items.filter((i) => i.tripId === tripId && i.id !== exceptId && i.status !== "dismissed");
-  const places = own.filter((i) => i.category !== "flight").flatMap(placeCodes);
-  if (places.length) return new Set(places);
+  // Its own countries only: a record far from the rest (a Bali tour saved into the Portugal trip) doesn't count.
+  const places = own
+    .filter((i) => i.category !== "flight")
+    .map((i) => ({ codes: placeCodes(i), stay: i.category === "stay", start: i.dates.start, kept: i.placeOk }));
+  if (places.some((p) => p.codes.length)) return ownCountries(places);
   const first = own
     .filter((i) => i.category === "flight")
     .sort((a, b) => (a.flight?.departure ?? a.dates.start ?? "9").localeCompare(b.flight?.departure ?? b.dates.start ?? "9"))[0];
   const arrival = first ? (countryCodeOf(first.countryCode) ?? codeOfPlaceName(first.flight?.to)) : null;
   return new Set(arrival ? [arrival] : []);
+}
+
+/**
+ * Where the trip starts from: the countries its flights leave from (İstanbul for the flight out). An airport
+ * hotel, a lounge or an insurance there belongs to the trip, never to another trip in that country.
+ */
+export function tripStartCodes(tripId: string, items: Item[]): Set<string> {
+  const flights = items.filter((i) => i.tripId === tripId && i.category === "flight" && i.status !== "dismissed");
+  return new Set(flights.map((f) => codeOfPlaceName(f.flight?.from)).filter((c): c is string => Boolean(c)));
+}
+
+/**
+ * A record's dates in the trip it is moved to: kept when they fall in that trip's dates (or it has none yet, or it
+ * is booked); dropped otherwise, so a page's remembered dates never stretch or break the trip (spec review #2).
+ */
+export function datesIn(item: Item, trip: Trip, items: Item[]): Item["dates"] {
+  if (!item.dates.start || item.status === "booked") return item.dates;
+  const range = profileTrips([trip], items.filter((i) => i.id !== item.id))[0]?.range;
+  if (!range || gapDays(range, item.dates.start, item.dates.end) === 0) return item.dates;
+  return { start: null, end: null, source: "none" };
 }
 
 /** The countries a trip's title names ("Porto ve Madeira Gezisi" → PT, "Bali" → ID): only to find a trip, never to refuse one. */
@@ -54,15 +78,19 @@ export function titleCodes(title: string): Set<string> {
 }
 
 /**
- * in: the trip is there; near: another country close enough to be the same journey (Portugal → Spain); far:
- * another trip altogether (Portugal → Bali); unknown: the record's place or the trip's isn't known yet.
+ * in: the trip is there (or starts there, or it's home); near: another country close enough to be the same
+ * journey (Portugal → Spain); far: another trip altogether (Portugal → Bali); unknown: the record's place or the
+ * trip's isn't known yet, or the distance can't be measured.
  */
 export type Fit = "in" | "near" | "far" | "unknown";
 
-export function placeFit(codes: readonly string[], tripCodes: ReadonlySet<string>): Fit {
+export function placeFit(codes: readonly string[], tripCodes: ReadonlySet<string>, home: ReadonlySet<string> = new Set()): Fit {
+  if (codes.some((c) => home.has(c))) return "in";
   if (!codes.length || !tripCodes.size) return "unknown";
   if (codes.some((c) => tripCodes.has(c))) return "in";
-  if (codes.some((c) => [...tripCodes].some((t) => nearCountries(c, t)))) return "near";
+  const near = codes.flatMap((c) => [...tripCodes].map((t) => nearCountries(c, t)));
+  if (near.includes(true)) return "near";
+  if (near.includes(null)) return "unknown";
   return "far";
 }
 
@@ -101,8 +129,11 @@ export type Route =
   | { kind: "keep" }
   /** It belongs to another trip: it goes there, and `noteIn` (where it was handed) says so with Aç · Geri al. */
   | { kind: "move"; toTripId: string }
-  /** Nothing is added: the trip `askIn` (null: none to ask in) asks where it goes, or whether it goes at all. */
-  | { kind: "ask"; reason: "place" | "travel"; askIn: string | null };
+  /**
+   * Nothing is added (a record already saved stays as it is): the trip `askIn` (null: none to ask in, the home
+   * asks) asks where it goes, or whether it goes at all; `toTripId`: the trip of its place, offered as a choice.
+   */
+  | { kind: "ask"; reason: "place" | "travel"; askIn: string | null; toTripId?: string | null };
 
 export interface RouteInput {
   /** The record as it would be saved (merged into an earlier save of the same page, when there was one). */
@@ -113,6 +144,10 @@ export interface RouteInput {
   newTrip: boolean;
   /** Where it was handed over: a trip's board or chat. Null: from the toolbar, or the home. */
   anchorId: string | null;
+  /** Dropped on that trip's board: the traveller put it there, so a far place is asked about, never moved. */
+  board?: boolean;
+  /** The traveller's home country, when known (Settings → Pasaport): always the trip's own. */
+  home?: string | null;
   travel: boolean;
   trips: Trip[];
   /** Every saved record (the one being checked is left out by id). */
@@ -134,12 +169,23 @@ export function routeCapture(input: RouteInput): Route {
   // A new trip takes its place from the record (as always); handed to a trip, that trip's places are what count.
   const checked = input.newTrip ? anchorId : item.tripId;
   if (!checked) return { kind: "keep" };
-  const fit = placeFit(codes, tripPlaceCodes(checked, items, item.id));
-  if (fit !== "far") return { kind: "keep" };
+  if (placeFitOf(item, checked, trips, items, input.home ?? null) !== "far") return { kind: "keep" };
   const other = tripForPlace(codes, trips, items.filter((i) => i.id !== item.id), checked, item.dates.start, item.dates.end);
+  if (input.board) return { kind: "ask", reason: "place", askIn: checked, toTripId: other?.id ?? null };
   if (other) return { kind: "move", toTripId: other.id };
   // Handed to a trip and far from it, with no trip of its own yet: asked, not a new trip made behind the scenes.
   return { kind: "ask", reason: "place", askIn: anchorId ?? item.tripId };
+}
+
+/**
+ * A record against a trip: the trip's places (what's in it besides the record, and what its title names), where
+ * it starts from (its flights' departures) and home count as its own.
+ */
+export function placeFitOf(item: Item, tripId: string, trips: Trip[], items: Item[], home: string | null): Fit {
+  const trip = trips.find((t) => t.id === tripId);
+  const places = new Set([...tripPlaceCodes(tripId, items, item.id), ...(trip ? titleCodes(trip.title) : [])]);
+  const own = new Set([...tripStartCodes(tripId, items.filter((i) => i.id !== item.id)), ...(home ? [home] : [])]);
+  return placeFit(placeCodes(item), places, own);
 }
 
 /** The countries' names in the board's language, "Portekiz ve İspanya". */

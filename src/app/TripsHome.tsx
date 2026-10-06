@@ -6,7 +6,9 @@ import { retryCapture } from "../lib/process";
 import { listDrafts, onDraftsChanged, removeDraft, saveDraft } from "../lib/startDrafts";
 import { checklist, dative, detectLang, progressOf, splitLinks, tripNamedIn, type StartCtx, type StartMode, type StartState } from "../lib/startTrip";
 import { isDemoTrip } from "../lib/trips";
-import type { Capture, Item, Trip } from "../lib/types";
+import { listMessages, onChanged } from "../lib/db";
+import type { Capture, ChatMessage, Item, Trip } from "../lib/types";
+import { RoutingLine } from "./Chat";
 import { UiIcon } from "./cards/Silhouettes";
 import { addImages, addLinks } from "./capture";
 import { FallbackImg } from "./FallbackImg";
@@ -68,6 +70,13 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
     load();
     return onDraftsChanged(load);
   }, []);
+  // Bekleyen kayıtlar: a page asked about when there was no trip to ask in (placeCheck.ts: lines of no trip, "").
+  const [waiting, setWaiting] = useState<ChatMessage[]>([]);
+  useEffect(() => {
+    const load = () => void listMessages("").then((rows) => setWaiting(rows.filter((m) => m.routing?.kind === "ask" && !m.routing.answer)));
+    load();
+    return onChanged(load);
+  }, []);
   // "Taslak silindi · Geri al" for a few seconds.
   useEffect(() => {
     if (!removed) return;
@@ -119,6 +128,12 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
           <div className="home-menu">{menu}</div>
         </div>
         <h1 className="st-hello">{hello}</h1>
+        {waiting.length > 0 && (
+          <section className="home-waiting" aria-label={L("Bekleyen kayıtlar", "Waiting saves")}>
+            <div className="home-waiting-h">{L("Bekleyen kayıtlar", "Waiting saves")}</div>
+            {waiting.map((m) => m.routing && <RoutingLine key={m.id} m={m} routing={m.routing} trips={trips} />)}
+          </section>
+        )}
         <form
           className={`st-prompt${dragging ? " drag" : ""}`}
           onSubmit={(e) => {

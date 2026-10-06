@@ -74,11 +74,11 @@ function Popup() {
       const capture = await d.get("captures", state.captureId);
       if (capture?.status === "error") setState({ step: "error", text: capture.error ?? L("İşlenemedi.", "Couldn't process it.") });
       const held = capture?.held;
-      if (capture?.status === "done" && !capture.itemId && held && !held.answer) {
+      // Asked (a record already saved stays on its trip while asked, so it has an itemId too).
+      if (capture?.status === "done" && held && !held.answer) {
         const trip = held.tripId ? await d.get("trips", held.tripId) : undefined;
         setState({ step: "held", captureId: capture.id, text: held.question ?? held.item.name, reason: held.reason, newTitle: held.newTitle, tripTitle: trip?.title ?? null });
-      }
-      if (capture?.status === "done" && capture.itemId) {
+      } else if (capture?.status === "done" && capture.itemId) {
         const item = await d.get("items", capture.itemId);
         const trip = item ? await d.get("trips", item.tripId) : undefined;
         if (item) {

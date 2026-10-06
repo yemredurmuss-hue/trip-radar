@@ -346,6 +346,9 @@ export interface Capture {
 }
 
 /** A capture read but kept off the plan until the traveller answers (spec 2026-10-06 trip routing). */
+/** here: this trip anyway; there: the trip of its place; new: a new trip; skip: not added (a saved one: trash). */
+export type HeldAnswer = "here" | "there" | "new" | "skip";
+
 export interface HeldCapture {
   /** place: far from the trip it was handed to, and no trip of its own; travel: not a trip page at all. */
   reason: "place" | "travel";
@@ -358,7 +361,11 @@ export interface HeldCapture {
   /** The question as the chat asks it ("Bu yer Endonezya'da, gezin Portekiz'de. Nereye ekleyeyim?"). */
   question?: string;
   askedAt: number;
-  answer?: "here" | "new" | "skip";
+  answer?: HeldAnswer;
+  /** The record was already saved: it stays where it is while asked; "Ekleme" puts it in the trash. */
+  existing?: boolean;
+  /** The trip of its place, offered as "Bali gezisine ekle" (a board drop is asked, never moved). */
+  toTripId?: string | null;
   answeredAt?: number;
 }
 
@@ -550,8 +557,8 @@ export interface OwnerChange {
  * its days; `merged`: it updated a record already there, nothing to take back). ask: the capture held, asking.
  */
 export type RoutingNote =
-  | { kind: "moved"; itemId: string; fromTripId: string; toTripId: string; far: boolean; merged: boolean; undoneAt?: number }
-  | { kind: "ask"; captureId: string; reason: "place" | "travel"; newTitle: string; answer?: "here" | "new" | "skip"; answeredTripId?: string }
+  | { kind: "moved"; itemId: string; fromTripId: string; toTripId: string; far: boolean; merged: boolean; undoneAt?: number; dates?: Item["dates"] }
+  | { kind: "ask"; captureId: string; reason: "place" | "travel"; newTitle: string; toTripId?: string | null; answer?: HeldAnswer; answeredTripId?: string }
   /** Records already saved whose place looks like another trip's (strays.ts): asked about one by one, never moved by itself. */
   | { kind: "stray"; entries: StrayEntry[] };
 

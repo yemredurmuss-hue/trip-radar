@@ -3,11 +3,12 @@
 // Used by a trip's chat and by the popup.
 import { addEvent, db, listTrips, newId, notifyChanged } from "./db";
 import { moveDocsToTrip } from "./docs";
-import { deleteItem } from "./removal";
+import { datesIn } from "./placeCheck";
+import { announceRemoved, deleteItem } from "./removal";
 import { L } from "./i18n";
 import { destinationImage, savedLine } from "./process";
 import { uniqueTitle } from "./trips";
-import type { ChatMessage, Item, Trip } from "./types";
+import type { ChatMessage, HeldAnswer, Item, Trip } from "./types";
 
 /** Thrown when the record moved or went since: nothing is written. */
 export class RoutingChanged extends Error {}
@@ -15,19 +16,29 @@ export class RoutingChanged extends Error {}
 const NO_DATES: Item["dates"] = { start: null, end: null, source: "none" };
 
 /**
- * here: into the trip that asked (a place far from it goes on none of its days: its dates were the other
- * place's); new: into a new trip named after its place, dates kept; skip: nothing is added. Returns the trip it
- * went into (null for skip, or when it was answered already).
+ * here: into the trip that asked, for good (placeOk: a later save never moves it); a place far from it goes on
+ * none of its days unless booked (its dates were the other place's). there: the trip of its place, its dates
+ * only if they fall in that trip's. new: a new trip named after its place, dates kept. skip: nothing is added; a
+ * record already saved goes to the trash (Geri al, Çöp kutusu). Returns the trip it is in (null for skip, or
+ * when it was answered already).
  */
-export async function answerHeld(captureId: string, answer: "here" | "new" | "skip"): Promise<string | null> {
+export async function answerHeld(captureId: string, answer: HeldAnswer): Promise<string | null> {
   const d = await db();
   const capture = await d.get("captures", captureId);
   const held = capture?.held;
   if (!capture || !held || held.answer) return null;
+  // A record already saved is answered as it is stored now (it stayed on the plan while asked).
+  const stored = held.existing ? await d.get("items", held.item.id) : undefined;
+  if (held.existing && !stored) throw new RoutingChanged(L("Bu kayıt sonra silindi.", "This record was deleted since."));
+  const base = stored ?? held.item;
   let tripId: string | null = null;
-  if (answer !== "skip") {
+  if (answer === "skip") {
+    if (stored) announceRemoved(await deleteItem(stored, L(`${stored.name} plandan çıkarıldı (Çöp kutusunda)`, `${stored.name} taken off the plan (in the trash)`)));
+  } else {
     const trips = await listTrips();
-    let target: Trip | undefined = answer === "here" && held.tripId ? trips.find((t) => t.id === held.tripId) : undefined;
+    const allItems = await d.getAll("items");
+    let target: Trip | undefined =
+      answer === "here" && held.tripId ? trips.find((t) => t.id === held.tripId) : answer === "there" && held.toTripId ? trips.find((t) => t.id === held.toTripId) : undefined;
     if (!target) {
       const now = Date.now();
       target = {
@@ -41,22 +52,23 @@ export async function answerHeld(captureId: string, answer: "here" | "new" | "sk
       };
       await d.put("trips", target);
     }
-    const offDays = answer === "here" && held.reason === "place";
-    const item: Item = { ...held.item, tripId: target.id, ...(offDays ? { dates: NO_DATES } : {}), updatedAt: Date.now() };
+    const offDays = answer === "here" && held.reason === "place" && base.status !== "booked";
+    const dates = offDays ? NO_DATES : answer === "there" ? datesIn(base, target, allItems) : base.dates;
+    const item: Item = { ...base, tripId: target.id, dates, ...(answer === "here" ? { placeOk: true } : {}), updatedAt: Date.now() };
     await d.put("items", item);
-    await moveDocsToTrip(item.id, target.id);
-    await addEvent(target.id, savedLine(item, item.status === "booked", false, capture.sharedBy));
+    if (base.tripId !== target.id || !stored) {
+      await moveDocsToTrip(item.id, target.id);
+      await addEvent(target.id, savedLine(item, item.status === "booked", false, capture.sharedBy));
+    }
     const current = (await d.get("trips", target.id)) ?? target;
     await d.put("trips", { ...current, heroImage: current.heroImage ?? item.imageUrl, updatedAt: Date.now() });
     tripId = target.id;
   }
   await d.put("captures", { ...capture, itemId: tripId ? held.item.id : null, held: { ...held, answer, answeredAt: Date.now() } });
-  if (held.tripId) {
-    const lines = (await d.getAllFromIndex("messages", "tripId", held.tripId)) as ChatMessage[];
-    for (const m of lines) {
-      if (m.routing?.kind !== "ask" || m.routing.captureId !== captureId) continue;
-      await d.put("messages", { ...m, routing: { ...m.routing, answer, ...(tripId ? { answeredTripId: tripId } : {}) } });
-    }
+  const lines = (await d.getAllFromIndex("messages", "tripId", held.tripId ?? "")) as ChatMessage[];
+  for (const m of lines) {
+    if (m.routing?.kind !== "ask" || m.routing.captureId !== captureId) continue;
+    await d.put("messages", { ...m, routing: { ...m.routing, answer, ...(tripId ? { answeredTripId: tripId } : {}) } });
   }
   notifyChanged();
   return tripId;
@@ -79,7 +91,7 @@ export async function answerStray(messageId: string, itemId: string, answer: "mo
   if (answer === "move") {
     const to = entry.toTripId ? await d.get("trips", entry.toTripId) : undefined;
     if (!to) throw new RoutingChanged(L("O gezi artık yok.", "That trip is gone."));
-    await d.put("items", { ...item, tripId: to.id, updatedAt: Date.now() });
+    await d.put("items", { ...item, tripId: to.id, dates: datesIn(item, to, await d.getAll("items")), updatedAt: Date.now() });
     await moveDocsToTrip(item.id, to.id);
     await addEvent(to.id, L(`${item.name} bu geziye taşındı`, `${item.name} moved to this trip`));
     await addEvent(line.tripId, L(`${item.name} → ${to.title} gezisine taşındı`, `${item.name} moved to ${to.title}`));
@@ -96,8 +108,9 @@ export async function answerStray(messageId: string, itemId: string, answer: "mo
 }
 
 /**
- * "Geri al" on a capture that went to the trip of its place: it comes into the trip it was handed to after all
- * (on none of its days when its place is far from this trip's). Only while it is still where it was sent.
+ * "Geri al" on a capture that went to the trip of its place: it comes into the trip it was handed to after all,
+ * for good (placeOk), with the dates its page gave (none when its place is far from this trip's and it isn't
+ * booked: never on a day there). Only while it is still where it was sent.
  */
 export async function undoMove(messageId: string): Promise<void> {
   const d = await db();
@@ -109,7 +122,8 @@ export async function undoMove(messageId: string): Promise<void> {
   if (!item || item.tripId !== routing.toTripId || !home) {
     throw new RoutingChanged(L("Bu kayıt sonra değişti ya da silindi; geri alınmadı.", "This record changed or was deleted since; it wasn't taken back."));
   }
-  const back: Item = { ...item, tripId: home.id, ...(routing.far ? { dates: NO_DATES } : {}), updatedAt: Date.now() };
+  const dates = routing.far && item.status !== "booked" ? NO_DATES : (routing.dates ?? item.dates);
+  const back: Item = { ...item, tripId: home.id, dates, placeOk: true, updatedAt: Date.now() };
   await d.put("items", back);
   await moveDocsToTrip(item.id, home.id);
   await addEvent(routing.toTripId, L(`${item.name} bu geziden çıkarıldı: ${home.title} gezisine geri alındı`, `${item.name} left this trip: taken back to ${home.title}`));

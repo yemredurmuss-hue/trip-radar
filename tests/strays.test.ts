@@ -23,6 +23,10 @@ const pt = trip("pt", "Porto ve Madeira Gezisi");
 const portugal = () => [
   item("pt", { name: "Jardim Stay", category: "stay", city: "Porto", countryCode: "PT", dates: { start: "2026-10-08", end: "2026-10-15", source: "url" } }),
   item("pt", { name: "Casa Verde", category: "stay", city: "Porto", countryCode: "PT", dates: { start: "2026-10-15", end: "2026-10-22", source: "url" } }),
+  // A Portugal trip's other places (two Bali records among ten aren't the trip's).
+  ...["Livraria Lello", "Ribeira walk", "Port cellars", "Bolhão", "Douro cruise", "Sintra tour", "Belém", "Majestic Café"].map((name) =>
+    item("pt", { name, city: "Porto", countryCode: "PT" }),
+  ),
 ];
 const nusa = () => item("pt", { name: "Nusa Penida 2Day 1Night", city: "Denpasar", country: "Endonezya", countryCode: "ID", dates: { start: "2026-10-08", end: null, source: "page" } });
 
@@ -102,14 +106,15 @@ describe("once per trip, then the answers", () => {
     expect((await (await db()).get("items", "nusa"))?.placeOk).toBe(true);
 
     const d = await db();
-    await d.put("items", { ...nusa(), id: "nusa2" });
+    // Kept: Indonesia is this trip's now. A Kyoto tour is asked about, and taken off the plan.
+    await d.put("items", item("pt", { id: "kyoto", name: "Kyoto Tea Ceremony", city: "Kyoto", countryCode: "JP" }));
     await d.put("trips", { ...pt, strayCheckedAt: undefined });
     await checkStraysOnce();
     const second = (await listMessages("pt")).filter((m) => m.routing?.kind === "stray").at(-1)!;
-    expect(second.routing).toMatchObject({ entries: [{ itemId: "nusa2" }] });
-    await answerStray(second.id, "nusa2", "remove");
-    expect(await d.get("items", "nusa2")).toBeUndefined();
-    expect((await d.getAll("trash")).map((t) => t.label)).toContain("Nusa Penida 2Day 1Night");
+    expect(second.routing).toMatchObject({ entries: [{ itemId: "kyoto" }] });
+    await answerStray(second.id, "kyoto", "remove");
+    expect(await d.get("items", "kyoto")).toBeUndefined();
+    expect((await d.getAll("trash")).map((t) => t.label)).toContain("Kyoto Tea Ceremony");
   });
 
   it("a document read into a far place is asked about, not moved", async () => {

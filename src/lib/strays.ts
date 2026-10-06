@@ -3,34 +3,33 @@
 // ait görünüyor: Nusa Penida… (Endonezya)", each with [Bali gezisine taşı] [Burada kalsın] [Plandan çıkar].
 // Nothing already saved is ever moved by itself. A document read into a far place is asked about the same way.
 import { nearCountries } from "./countryCenters";
+import { ownCountries } from "./tripCountries";
 import { addEvent, db, listTrips, notifyChanged } from "./db";
 import { L } from "./i18n";
-import { countriesText, placeCodes, titleCodes, tripForPlace } from "./placeCheck";
+import { countriesText, placeCodes, titleCodes, tripForPlace, tripStartCodes } from "./placeCheck";
+import { loadHome } from "./passport";
 import { countryCodeOf, isDemoTrip } from "./trips";
 import type { Item, StrayEntry, Trip } from "./types";
 
 /** Booked, corrected, or made by hand: asked about only when its own country code says so, not a guess from its city. */
 const byHand = (item: Item) => item.status === "booked" || Boolean(item.userEdits && Object.keys(item.userEdits).length) || item.origin === "chat" || Boolean(item.plannedKind);
 
-/** The country most of the trip's places are in (by count, the earliest first on a tie); null when none is known. */
-function mainCountry(own: Item[]): string | null {
-  const counts = new Map<string, { n: number; first: string }>();
-  for (const i of own) {
-    if (i.category === "flight") continue;
-    for (const c of placeCodes(i)) {
-      const at = counts.get(c) ?? { n: 0, first: "9" };
-      counts.set(c, { n: at.n + 1, first: [at.first, i.dates.start ?? "9"].sort()[0] });
-    }
-  }
-  return [...counts].sort((a, b) => b[1].n - a[1].n || a[1].first.localeCompare(b[1].first))[0]?.[0] ?? null;
-}
+/** The trip's own countries from its places (tripCountries.ts): one Bali tour among Portugal's places isn't one. */
+const placeCountries = (own: Item[]): Set<string> =>
+  ownCountries(own.filter((i) => i.category !== "flight").map((i) => ({ codes: placeCodes(i), stay: i.category === "stay", start: i.dates.start, kept: i.placeOk })));
 
-/** Whether a country is the trip's own: its main one, one near it, or one its title names. Null: no place known yet. */
-function homeOf(trip: Trip, own: Item[]): ((code: string) => boolean) | null {
-  const main = mainCountry(own);
+/**
+ * Whether a country is the trip's own: one of its countries or near one (Portugal → Spain, the pairs travelled
+ * together), one its title names, where its flights leave from, or home. A distance that can't be measured
+ * counts as its own (nothing is asked on a guess). Null: no place known yet.
+ */
+function homeOf(trip: Trip, own: Item[], homeCountry: string | null): ((code: string) => boolean) | null {
+  const places = placeCountries(own);
   const named = titleCodes(trip.title);
-  if (!main && !named.size) return null;
-  return (c: string) => named.has(c) || (main != null && nearCountries(c, main));
+  if (!places.size && !named.size) return null;
+  const starts = tripStartCodes(trip.id, own);
+  return (c: string) =>
+    named.has(c) || starts.has(c) || c === homeCountry || [...places].some((p) => nearCountries(c, p) !== false);
 }
 
 /**
@@ -39,10 +38,10 @@ function homeOf(trip: Trip, own: Item[]): ((code: string) => boolean) | null {
  * ruled out, what the traveller said stays ("Burada kalsın"), a flight (it starts at home), a record whose place
  * isn't known; a booked or hand-made one only on its own country code.
  */
-export function strayItems(trip: Trip, items: Item[]): { item: Item; codes: string[] }[] {
+export function strayItems(trip: Trip, items: Item[], homeCountry: string | null = null): { item: Item; codes: string[] }[] {
   if (isDemoTrip(trip)) return [];
   const own = items.filter((i) => i.tripId === trip.id && i.status !== "dismissed");
-  const home = homeOf(trip, own);
+  const home = homeOf(trip, own, homeCountry);
   if (!home) return [];
   return own.flatMap((item) => {
     if (item.placeOk || item.category === "flight") return [];
@@ -83,7 +82,7 @@ export async function askIfFar(tripId: string, item: Item, items: Item[]): Promi
   const trips = await listTrips();
   const trip = trips.find((t) => t.id === tripId);
   const codes = placeCodes(item);
-  const home = trip ? homeOf(trip, items.filter((i) => i.tripId === tripId && i.id !== item.id && i.status !== "dismissed")) : null;
+  const home = trip ? homeOf(trip, items.filter((i) => i.tripId === tripId && i.id !== item.id && i.status !== "dismissed"), await loadHome()) : null;
   if (!trip || isDemoTrip(trip) || !home || !codes.length || codes.some(home)) return false;
   await askAboutStrays(tripId, strayEntries([{ item, codes }], trips, items, tripId));
   return true;
@@ -91,9 +90,20 @@ export async function askIfFar(tripId: string, item: Item, items: Item[]): Promi
 
 let running: Promise<number> | null = null;
 
+/** Sets the trip's flag in one transaction, only if no one (another tab) set it first: true when this one did. */
+async function claimTrip(tripId: string): Promise<boolean> {
+  const d = await db();
+  const tx = d.transaction("trips", "readwrite");
+  const trip = await tx.store.get(tripId);
+  const mine = Boolean(trip && !trip.strayCheckedAt);
+  if (trip && mine) await tx.store.put({ ...trip, strayCheckedAt: Date.now() });
+  await tx.done;
+  return mine;
+}
+
 /**
- * Once per trip on this computer (Trip.strayCheckedAt): looks for strays and asks. A sample trip is skipped.
- * Returns how many trips were asked in.
+ * Once per trip on this computer (Trip.strayCheckedAt, claimed in IndexedDB before the line is posted, so two
+ * open boards never both ask): looks for strays and asks. A sample trip is skipped. Returns how many trips were asked in.
  */
 export function checkStraysOnce(): Promise<number> {
   running ??= (async () => {
@@ -101,15 +111,14 @@ export function checkStraysOnce(): Promise<number> {
       const d = await db();
       const trips = await listTrips();
       const items = await d.getAll("items");
+      const homeCountry = await loadHome();
       let asked = 0;
       for (const trip of trips) {
         if (trip.strayCheckedAt || isDemoTrip(trip)) continue;
-        const entries = strayEntries(strayItems(trip, items), trips, items, trip.id);
+        if (!(await claimTrip(trip.id))) continue;
+        const entries = strayEntries(strayItems(trip, items, homeCountry), trips, items, trip.id);
         await askAboutStrays(trip.id, entries);
         if (entries.length) asked++;
-        // As stored now (the line above didn't touch it, but the board may have).
-        const fresh = (await d.get("trips", trip.id)) ?? trip;
-        await d.put("trips", { ...fresh, strayCheckedAt: Date.now() });
       }
       if (asked) notifyChanged();
       return asked;

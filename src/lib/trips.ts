@@ -1,6 +1,7 @@
 // Which trip does a new capture belong to? The model suggests one, but the decision is made here
 // from facts: a Thailand hotel never lands in the Portugal trip just because the model said so.
 import { nearCountries } from "./countryCenters";
+import { ownCountries } from "./tripCountries";
 import { normalize } from "./evidence";
 import { L, lang } from "./i18n";
 import type { Item, Trip } from "./types";
@@ -38,13 +39,19 @@ export function countryCodeOf(value: string | null | undefined): string | null {
 
 export function profileTrips(trips: Trip[], items: Item[]): TripProfile[] {
   return trips.map((trip) => {
-    const own = items.filter((i) => i.tripId === trip.id && i.status !== "dismissed");
+    const live = items.filter((i) => i.tripId === trip.id && i.status !== "dismissed");
+    // Its countries from its places (a flight only when there is nothing else): a record whose own country is far
+    // from the trip's (a Bali tour saved into the Portugal trip) neither speaks for it nor draws others in.
+    const placed = live.filter((i) => i.category !== "flight" && countryCodeOf(i.countryCode));
+    const basis = placed.length ? placed : live.filter((i) => countryCodeOf(i.countryCode));
+    const mine = ownCountries(basis.map((i) => ({ codes: [countryCodeOf(i.countryCode)!], stay: i.category === "stay", start: i.dates.start, kept: i.placeOk })));
+    const own = live.filter((i) => !countryCodeOf(i.countryCode) || mine.has(countryCodeOf(i.countryCode)!) || i.category === "flight");
     const starts = own.map((i) => i.dates.start).filter(Boolean) as string[];
     const ends = own.map((i) => i.dates.end ?? i.dates.start).filter(Boolean) as string[];
     const range = trip.confirmedDates ?? (starts.length ? { start: starts.sort()[0], end: ends.sort().at(-1)! } : null);
     return {
       trip,
-      countryCodes: new Set(own.map((i) => countryCodeOf(i.countryCode)).filter(Boolean) as string[]),
+      countryCodes: mine,
       countryNames: new Set([...own.map((i) => name(i.country)).filter(Boolean), name(trip.title)]),
       range,
     };
@@ -66,6 +73,11 @@ export function gapDays(a: { start: string; end: string }, start: string, end: s
 
 /** Same country and dates at most this far apart = the same trip ("benzer tarihler"). */
 const SAME_TRIP_DAYS = 7;
+/**
+ * A page's own date (softDates) is overlooked up to half a year: the Bali trip in January still takes a tour the
+ * date picker put in October, but a 2027 page never joins a 2025 trip.
+ */
+const SOFT_DATES_DAYS = 183;
 /** A different country joins a trip only when its dates touch it (e.g. Portugal → Spain). */
 const SAME_JOURNEY_DAYS = 2;
 
@@ -101,7 +113,7 @@ export function chooseTrip(signal: TripSignal, allProfiles: TripProfile[]): Trip
     // Same place and similar (or unknown) dates → same trip; the nearest dates win.
     const compatible = sameCountry.filter((p) => {
       const g = gap(p);
-      return g === null || g <= SAME_TRIP_DAYS || signal.softDates;
+      return g === null || g <= SAME_TRIP_DAYS || (signal.softDates && g <= SOFT_DATES_DAYS);
     });
     if (compatible.length) {
       const dated = compatible.filter((p) => gap(p) !== null).sort((a, b) => gap(a)! - gap(b)!);
@@ -111,7 +123,7 @@ export function chooseTrip(signal: TripSignal, allProfiles: TripProfile[]): Trip
     // own (Portugal → Spain). Bali never joins the Portugal trip because a page's date picker said 8 October.
     const journey = byRecency.find((p) => {
       const g = gap(p);
-      const near = p.countryCodes.size === 0 || (code != null && [...p.countryCodes].some((c) => nearCountries(c, code)));
+      const near = p.countryCodes.size === 0 || (code != null && [...p.countryCodes].some((c) => nearCountries(c, code) !== false));
       return g !== null && g <= SAME_JOURNEY_DAYS && near;
     });
     return journey ? { tripId: journey.trip.id } : newTrip();
