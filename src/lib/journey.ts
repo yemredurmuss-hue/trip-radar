@@ -457,7 +457,9 @@ export function dayRows(input: { journey?: JourneySection; day?: DayEntry | null
     for (const r of cars.end) place(rows, r);
   }
   for (const item of day?.items ?? []) {
-    if (isIdea(item)) place(rows, ideaRow(item));
+    // A restaurant put on the plan is a line of it, nothing to book (0.36.25); one only saved is an idea.
+    if (item.category === "food" && item.status === "chosen") place(rows, { ...ideaRow(item), key: `item:${item.id}`, kind: "item", status: "" });
+    else if (isIdea(item)) place(rows, ideaRow(item));
     else if (item.status === "chosen" || item.status === "booked") place(rows, itemRow(item));
   }
   // Options saved for the day that need booking and aren't picked yet: one grey line.

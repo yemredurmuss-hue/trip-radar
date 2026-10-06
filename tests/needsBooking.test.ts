@@ -38,9 +38,10 @@ describe("older records and pages that don't say: by kind", () => {
     expect(bookingByKind(makeItem({ category: "activity", name: "Ribeira → Foz nehir kenarı yürüyüşü" }))).toBe("none");
     expect(bookingByKind(makeItem({ category: "activity", name: "Turuncu kapılar sokağı" }))).toBe("none");
   });
-  it("a restaurant only when its page asks for a reservation", () => {
+  it("a restaurant is never a booking to make, even when its page asks for a table (0.36.25, Emre); a table booked is one", () => {
     expect(bookingByKind(makeItem({ category: "food", name: "Majestic Café" }))).toBe("none");
-    expect(bookingByKind(makeItem({ category: "food", name: "Belcanto", summary: "Rezervasyon şart · 2 Michelin yıldızı" }))).toBe("needed");
+    expect(bookingByKind(makeItem({ category: "food", name: "Belcanto", summary: "Rezervasyon şart · 2 Michelin yıldızı" }))).toBe("none");
+    expect(bookingByKind(makeItem({ category: "food", name: "Belcanto", status: "booked" }))).toBe("needed");
     expect(bookingByKind(makeItem({ category: "food", name: "Taberna", price: priced(30) }))).toBe("none");
   });
   it("a note or a to-do never; any other record with a price does", () => {
@@ -52,11 +53,13 @@ describe("older records and pages that don't say: by kind", () => {
 });
 
 describe("chosen or booked: a thing to do by its evidence, the rest stays a booking", () => {
-  it("a page booked is a booking; a thing to do chosen is one only with evidence; a restaurant chosen stays one", () => {
+  it("a page booked is a booking; a thing to do chosen is one only with evidence; a restaurant chosen is just on the plan", () => {
     expect(bookingOf(makeItem({ category: "activity", name: "Fado gecesi", status: "chosen" }))).toBe("needed");
     expect(bookingOf(makeItem({ category: "activity", name: "Ribeira yürüyüşü", status: "chosen" }))).toBe("none");
     expect(bookingOf(makeItem({ category: "activity", name: "Ribeira yürüyüşü", status: "booked" }))).toBe("needed");
-    expect(bookingOf(makeItem({ category: "food", name: "Cantinho do Avillez", status: "chosen" }))).toBe("needed");
+    expect(bookingOf(makeItem({ category: "food", name: "Cantinho do Avillez", status: "chosen" }))).toBe("none");
+    expect(bookingOf(makeItem({ category: "food", name: "Cantinho do Avillez", status: "chosen", booking: "needed" }))).toBe("none");
+    expect(bookingOf(makeItem({ category: "food", name: "Cantinho do Avillez", status: "booked" }))).toBe("needed");
     expect(bookingOf(makeItem({ category: "other", name: "Plan · Porto", plannedKind: "other", status: "chosen", origin: "chat" }))).toBe("none");
     expect(isIdea(makeItem({ category: "activity", name: "Fado gecesi", status: "booked" }))).toBe(false);
     expect(bookingOf(makeItem({ category: "other", name: "Not", plannedKind: "note", status: "chosen" }))).toBe("none");

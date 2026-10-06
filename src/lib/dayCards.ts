@@ -230,7 +230,7 @@ export function orderRows(rows: DayRow[], saved?: readonly string[] | null): Day
  */
 export function tierOf(r: DayRow): 0 | 1 | 2 {
   if (r.kind === "idea" || r.kind === "ideas") return 2;
-  if (r.kind === "item" && r.state !== "done") return 1;
+  if (r.kind === "item" && (r.state === "pending" || r.state === "decide" || r.state === "open")) return 1;
   return 0;
 }
 

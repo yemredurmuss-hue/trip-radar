@@ -274,7 +274,9 @@ describe("timeline from what's said and saved", () => {
     expect(timeline.entries.some((e) => e.kind === "plan")).toBe(false); // the undated to-do isn't a city plan either
     expect(timeline.undated.map((i) => i.name)).toEqual([]);
     const day = timeline.entries.find((e) => e.kind === "day" && e.date === "2026-10-09")!;
-    expect(dayRows({ day: day as never }).map((r) => `${r.kind} ${r.title}${r.sub ? ` · ${r.sub}` : ""}`)).toEqual(["item Douro tekne turu", "idea Café Santiago · akşam"]);
+    expect(dayRows({ day: day as never }).map((r) => `${r.kind} ${r.title}${r.sub ? ` · ${r.sub}` : ""}`)).toEqual(["item Douro tekne turu", "item Café Santiago · akşam"]);
+    // A restaurant put on the plan is a line of it (0.36.25), nothing to book: no ✓ or "rezerve et" on it.
+    expect(dayRows({ day: day as never }).find((r) => r.title === "Café Santiago")?.state).toBe("info");
   });
 
   it("puts a car said in the chat without a day in its city's block at once, then on its day", () => {

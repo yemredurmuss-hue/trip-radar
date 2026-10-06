@@ -208,8 +208,8 @@ describe("sections from what's saved and said", () => {
     expect(todo.open).toBe(true);
     expect(todo.entries.map((e) => e.row.status)).toEqual(["Güne eklendi", "Fikir"]);
     const food = sections.find((s) => s.id === "food")!;
-    // A table picked and not booked is still waiting; a restaurant with no day isn't.
-    expect(food.status).toEqual({ text: "1 rezerve edilmedi", tone: "wait" });
+    // A restaurant waits for nothing (0.36.25, Emre: no booking to make for a restaurant).
+    expect(food.status).toBeNull();
     expect(food.ideas).toEqual({ total: 2, onDay: 1, done: 0 });
     expectEachOnce(sections, items);
   });
@@ -237,7 +237,8 @@ describe("sections from what's saved and said", () => {
     const { sections } = sectionsOf(items);
     const count = Object.fromEntries(sections.filter((s) => s.entries.length).map((s) => [s.id, `${s.settled}/${s.entries.length}`]));
     // Ulaşım: the taxi planned (nothing to book) of it and the change of city not planned yet.
-    expect(count).toEqual({ flight: "1/2", stay: "1/2", transport: "1/2", activity: "1/2", todo: "2/3", food: "2/4", other: "1/2" });
+    // Restoranlar: Belcanto picked is settled too (no table to book, 0.36.25).
+    expect(count).toEqual({ flight: "1/2", stay: "1/2", transport: "1/2", activity: "1/2", todo: "2/3", food: "3/4", other: "1/2" });
     // All settled: the count is full and the pill green.
     const done = sectionsOf([stay("Jardim Stay", "2026-10-08", "2026-10-14", "Porto")]).sections.find((s) => s.id === "stay")!;
     expect([done.settled, done.entries.length, done.status?.tone]).toEqual([1, 1, "done"]);

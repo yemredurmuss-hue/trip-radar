@@ -75,6 +75,7 @@ function toDoBooking(item: Item): Booking {
  */
 export function bookingByKind(item: Item): Booking {
   // A policy, a visa, an eSIM is bought or got, whatever kind the chat or a quick line gave it (spec 0.34.6).
+  if (restaurant(item)) return item.status === "booked" ? "needed" : "none";
   if (isPaperwork(item)) return "needed";
   if (neverBooked(item)) return "none";
   if (thingToDo(item)) return ticketSays(item) ? "needed" : "none";
@@ -93,8 +94,16 @@ export function bookingByKind(item: Item): Booking {
   }
 }
 
+/**
+ * A restaurant is never a booking to make (0.36.25, Emre: "restoranlar book etmeyi kaldıralım, sal onları
+ * plana; rezervasyon yapılırsa sohbetten söylenir"): it goes on the plan as it is; a table booked (said in the
+ * chat, or marked) is a booking made.
+ */
+const restaurant = (item: Item) => item.category === "food";
+
 /** A thing to do by its evidence; the rest: a booking made is a booking, then the record's own answer, then its kind. */
 export function bookingOf(item: Item): Booking {
+  if (restaurant(item)) return item.status === "booked" ? "needed" : "none";
   if (isPaperwork(item)) return "needed";
   if (neverBooked(item)) return "none";
   if (thingToDo(item)) return toDoBooking(item);
