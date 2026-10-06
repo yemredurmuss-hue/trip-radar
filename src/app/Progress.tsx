@@ -1,8 +1,9 @@
 // What's left to do, as a list under the hero: the progress box's "3 rezerve · 3 planlandı · 2 karar bekliyor"
-// lists them all, in groups (Karar bekliyor, Rezerve edilecek, then the cancellations running out), its "⏳ 2"
-// only the free cancellations running out; a tap on an entry takes you to it.
+// lists them all, in groups (Karar bekliyor, Rezerve edilecek: the same needs it counts; then the transfers not
+// said yet and the cancellations running out), its "⏳ 2" only the cancellations; a tap on an entry takes you to it.
 import { L } from "../lib/i18n";
-import { entryDomId, nextStepText, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
+import type { PlanList } from "../lib/planList";
+import { entryDomId, nextStepText, type Todo, type TodoKind } from "../lib/progress";
 
 /** Scrolls to an element and makes it glow for a moment. */
 export function show(el: Element | null) {
@@ -41,24 +42,23 @@ export const kinds = (): { kind: TodoKind; label: string }[] => [
 export const when = (t: Todo) =>
   t.days == null ? null : t.days < 0 ? null : t.days === 0 ? L("bugün", "today") : L(`${t.days} gün`, `${t.days} day${t.days === 1 ? "" : "s"}`);
 
-/** The "all" list's groups: waiting for a decision (options, or nothing yet), decided and still to book, then the cancellations. */
-const groups = (): { kinds: TodoKind[]; label: string }[] => [
-  { kinds: ["decide", "plan"], label: L("Karar bekliyor", "To decide") },
-  { kinds: ["book"], label: L("Rezerve edilecek", "To book") },
-  { kinds: ["deadline"], label: L("İptal süresi", "Cancel by") },
-];
-
-/** Every to-do ("all", in groups), or the ones of one kind (the hero's "⏳": the cancellations running out). */
-export function TodoList({ progress, open, onGo }: { progress: DecisionProgress; open: TodoKind | "all"; onGo: (target: Todo["target"]) => void }) {
-  const list = open === "all" ? progress.todos : progress.todos.filter((t) => t.kind === open);
-  if (!list.length) return null;
-  const label = open === "all" ? L("Yapılacaklar", "To do") : kinds().find((k) => k.kind === open)?.label;
-  const parts: { key: string; label: string | null; todos: Todo[] }[] =
+/**
+ * Every to-do ("all", in groups: exactly the hero's "karar bekliyor" and "planlandı", then the transfers not said
+ * yet and the cancellations running out), or only the cancellations (the hero's "⏳").
+ */
+export function TodoList({ list, open, onGo }: { list: PlanList; open: "all" | "deadline"; onGo: (target: Todo["target"]) => void }) {
+  const parts: { key: string; label: string | null; todos: Todo[] }[] = (
     open === "all"
-      ? groups()
-          .map((g) => ({ key: g.kinds.join(), label: g.label, todos: list.filter((t) => g.kinds.includes(t.kind)) }))
-          .filter((g) => g.todos.length)
-      : [{ key: open, label: null, todos: list }];
+      ? [
+          { key: "open", label: L("Karar bekliyor", "To decide"), todos: list.open },
+          { key: "book", label: L("Rezerve edilecek", "To book"), todos: list.book },
+          { key: "ways", label: L("Ulaşım · nasıl gidilecek", "Getting there · how"), todos: list.ways },
+          { key: "deadline", label: L("İptal süresi", "Cancel by"), todos: list.deadlines },
+        ]
+      : [{ key: "deadline", label: null, todos: list.deadlines }]
+  ).filter((g) => g.todos.length);
+  if (!parts.length) return null;
+  const label = open === "all" ? L("Yapılacaklar", "To do") : kinds().find((k) => k.kind === "deadline")?.label;
   return (
     <div className="todo-list" role="group" aria-label={label}>
       {parts.map((g) => (

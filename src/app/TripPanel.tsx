@@ -26,7 +26,8 @@ import { deleteItem, onHidden, onRemoved } from "../lib/removal";
 import { undoSlot } from "../lib/undo";
 import { undoTrip, type Undoable } from "../lib/undoables";
 import { addQuick, templateLabel, TEMPLATES, type InsertAt, type Template, type TemplateId } from "../lib/templates";
-import { categorize, catDomKey, findInSections, planProgress, planStages, sectionOfItem, SECTION_ORDER, type SectionId } from "../lib/categories";
+import { categorize, catDomKey, findInSections, planProgress, sectionOfItem, SECTION_ORDER, type SectionId } from "../lib/categories";
+import { listTodos, planList } from "../lib/planList";
 import { firstField, keepDraftFor, type CardFocus } from "../lib/inlineEdit";
 import { newId } from "../lib/db";
 import { AddSheet } from "./cards/AddSheet";
@@ -485,18 +486,21 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const mood = trip.mood?.key === moodFor && trip.mood.text ? trip.mood.text : null;
   // A trip the start chat made, while its places are still to fill: "2 uçuş ve 31 gece seni bekliyor."
   const startWaiting = trip.startGuide ? startLead(trip, items, plan.nights.open, new Set(plan.closed.map((c) => c.item.id))) : null;
-  // One sentence: the mood, else what's waiting (the progress box shows the numbers, so never both).
+  // The sections' "3/4"s added up: whether anything is saved yet, and (with nothing left to do) all set.
+  const done = useMemo(() => planProgress(sections), [sections]);
+  // The hero's "Planlama %75" and the list it opens, from the same needs: booked / planned / waiting for a
+  // decision. A flight or a stay the start chat only made room for waits for a decision (startTrip.ts isPlaceholder).
+  const todo = planList(sections, progress.todos, today, (i) => isPlaceholder(trip, i));
+  // One sentence: the mood, else what's waiting. Once the progress box counts the stages, the counts are its
+  // own, never a second set of numbers here.
   const lead =
     startWaiting ??
     mood ??
-    (range
-      ? statusSentence(progress.count, { flightsDone, waitingCity: mainPlaceOf(mains, waitingCityOf(progress, timeline, items)) })
-      : L("Tarih ve şehir, kaydettikçe netleşir.", "Dates and cities fill in as you save."));
-  // The sections' "3/4"s added up: whether anything is saved yet, and (with nothing left to do) all set.
-  const done = useMemo(() => planProgress(sections), [sections]);
-  // The hero's "Planlama %75": what needs a booking, booked / planned / waiting for a decision. A flight or a stay
-  // the start chat only made room for waits for a decision (startTrip.ts isPlaceholder).
-  const stages = useMemo(() => planStages(sections, (i) => isPlaceholder(trip, i)), [sections, trip]);
+    (!range
+      ? L("Tarih ve şehir, kaydettikçe netleşir.", "Dates and cities fill in as you save.")
+      : done.total > 0
+        ? ""
+        : statusSentence(progress.count, { flightsDone, waitingCity: mainPlaceOf(mains, waitingCityOf(progress, timeline, items)) }));
   /** A section of the Plan (a cell of the hero's plan line): opened and scrolled to (else its "Ekle" chip). */
   const openSection = (id: SectionId) => {
     const drawn = sections.some((s) => s.id === id && (s.entries.length || s.hidden.length));
@@ -508,9 +512,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       else show(document.querySelector(`[data-section-chip="${id}"]`));
     }, 60);
   };
-  const first = progress.todos[0];
+  const first = listTodos(todo)[0];
   // All set only when every section is settled and nothing is left to do (a cancellation running out is).
-  const allDone = done.complete && progress.todos.length === 0;
+  const allDone = done.complete && !first;
   const unsettled = sections.find((s) => s.entries.length && s.settled < s.entries.length);
   const action: HeroAction | null =
     done.total === 0
@@ -613,8 +617,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           tally={tally}
           onTally={(kind) => openSection(tallySection(kind, sections))}
           done={{ ...done, complete: allDone }}
-          stages={stages}
-          progress={progress}
+          todo={todo}
           list={todoOpen}
           onList={setTodoOpen}
           action={action}
@@ -637,7 +640,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           onShare={onShare}
         />
       </section>
-      {todoOpen && <TodoList progress={progress} open={todoOpen} onGo={reveal} />}
+      {todoOpen && <TodoList list={todo} open={todoOpen} onGo={reveal} />}
 
       {/* On the Plan a failed capture is its own card ("Okunamadı · Tekrar dene · Kaldır"); here on the other views. */}
       {failed.length > 0 && view !== "plan" && (

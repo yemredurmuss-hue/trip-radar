@@ -792,15 +792,22 @@ export function planStages(
   sections: (Pick<CatSection, "id" | "entries"> & { prep?: CatEntry[] })[],
   isPlaceholder: (item: Item) => boolean = () => false,
 ): PlanStages {
-  const out: PlanStages = { booked: 0, planned: 0, open: 0, total: 0 };
+  const { booked, planned, open } = stagedEntries(sections, isPlaceholder);
+  return { booked: booked.length, planned: planned.length, open: open.length, total: booked.length + planned.length + open.length };
+}
+
+/** planStages' entries themselves, in the Plan's order: the hero's list shows exactly these (planList.ts). */
+export function stagedEntries(
+  sections: (Pick<CatSection, "id" | "entries"> & { prep?: CatEntry[] })[],
+  isPlaceholder: (item: Item) => boolean = () => false,
+): Record<"booked" | "planned" | "open", CatEntry[]> {
+  const out: Record<"booked" | "planned" | "open", CatEntry[]> = { booked: [], planned: [], open: [] };
   for (const s of sections) {
     if (isIdeaSection(s.id)) continue;
     const chores = new Set((s.prep ?? []).map((e) => e.key));
     for (const e of s.entries) {
       const stage = stageOf(e, chores.has(e.key), isPlaceholder);
-      if (!stage) continue;
-      out[stage]++;
-      out.total++;
+      if (stage) out[stage].push(e);
     }
   }
   return out;
