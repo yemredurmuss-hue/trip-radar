@@ -15,6 +15,12 @@
 // when it comes; with neither, the chat says it is drawing the route and goes on ("Rotayı çiziyor…" on the ROTA
 // row only). "Oluştur" can be pressed whenever the destination is known, also while the model is working: the
 // pending reply is dropped (the turn guard) and the best route there is gets built.
+//
+// Intent (2026-10-06): an event or a theme named ("burning man africa") is read at once by the code (startEvents.ts):
+// the destination is its place, its dates are said as estimated with the official site linked, only the total length
+// is asked. Once the essentials are known (where, when or how long, where from, who) the trip makes itself after a
+// visible 3-second "Oluşturuyorum… · Vazgeç" row: any typing or tap stops it, and a later full checklist starts it
+// again; "tamam oluştur", "hadi", "let's go" typed ask for it at once.
 import { useEffect, useRef, useState } from "react";
 import { L, withLang } from "../../lib/i18n";
 import { loadHome } from "../../lib/passport";
@@ -22,9 +28,9 @@ import { wouldMake } from "../../lib/startCreate";
 import { removeDraft, saveDraft, worthKeeping } from "../../lib/startDrafts";
 import { rulesPreview } from "../../lib/startHooks";
 import {
-  applyAnswer, applyExtracted, applyText, askAgain, budgetChips, budgetWord, canGenerate, checklist, drawingLine, isComplete, knownLines, mergeExtracted,
+  applyAnswer, applyExtracted, applyText, askAgain, budgetChips, budgetWord, canGenerate, checklist, autoPrint, drawingLine, isComplete, isGoCommand, knownLines, lineLink, mergeExtracted, startName,
   missingForGenerate, modelReplyText, NOT_UNDERSTOOD, nextQuestion, onlyEmpty, parseRouteText, parseStartText, photosToFind, preparedRoute, previewOf,
-  questionOf, replyText, restoreRoute, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
+  questionOf, replyText, restoreRoute, shouldAutoStart, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
   tentativeWhere, whereKey, withGuessTaken, withoutOverruled, withPhotos, withPreparedRoute, withTypedLang,
   type Answer, type Extracted, type QuestionId, type StartCtx, type StartRoute, type StartState,
 } from "../../lib/startTrip";
@@ -54,6 +60,9 @@ interface Props {
 /** What the chat is waiting for: reading a message it couldn't read itself (holds the answers back), writing a line (doesn't). */
 type Stage = "thinking" | "writing" | null;
 
+/** The countdown before the trip makes itself (seconds). */
+export const AUTO_SECONDS = 3;
+
 const today = () => new Date().toISOString().slice(0, 10);
 const LATE = Symbol("late");
 
@@ -61,19 +70,29 @@ const LATE = Symbol("late");
  * An assistant line (rev 3): what was understood, then the question on its own line in bold. The line break stays
  * in the text (a screen reader and a copy read them as two sentences).
  */
-function BotLine({ text }: { text: string }) {
+function BotLine({ text, link }: { text: string; link?: string }) {
   const cut = text.lastIndexOf("\n");
   const last = cut >= 0 ? text.slice(cut + 1) : text;
   // Only a question is bold (the ready line, "Rotayı çiziyorum…" aren't); a one-line question too.
   // (A question may end with a note in brackets: "…ne istiyorsun? (birden çok seçebilirsin)".)
   const question = /\?\s*(\([^)]*\))?\s*$/.test(last) && (cut >= 0 || !/[.!:]\s/.test(text.split("?")[0])) ? last : null;
-  if (!question) return <>{text}</>;
+  // The event's official site, after the line that says to check it (2026-10-06).
+  const site = link ? (
+    <>
+      {" "}
+      <a className="st-link" href={link} target="_blank" rel="noopener noreferrer">
+        {L("Resmî site", "Official site")} ↗
+      </a>
+    </>
+  ) : null;
+  if (!question) return <>{text}{site}</>;
   const ack = cut >= 0 ? text.slice(0, cut) : "";
   return (
     <>
-      {ack && <span className="st-ack">{ack}</span>}
+      {ack && <span className="st-ack">{ack}{site}</span>}
       {ack && "\n"}
       <strong className="st-q">{question}</strong>
+      {!ack && site}
     </>
   );
 }
@@ -120,6 +139,13 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
   const input = useRef<HTMLInputElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
   const opened = useRef(false);
+  /** The countdown before the trip makes itself: seconds left, or null (2026-10-06). */
+  const [auto, setAuto] = useState<number | null>(null);
+  const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** The checklist the countdown was last started for (never twice for the same answers). */
+  const autoFor = useRef<string | null>(null);
+  /** Stopped by the traveller: started again only by a later full checklist. */
+  const autoStopped = useRef(false);
 
   if (!model.current) {
     model.current = modelAvailable();
@@ -140,14 +166,20 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     saving.current = saving.current.then(() => saveDraft(next)).catch(() => undefined);
   }
   const lineIds = useRef(0);
-  const say = (s: StartState, role: "user" | "assistant", line: string): StartState => ({
-    ...s,
-    messages: [...s.messages, { role, text: line, at: Date.now(), id: `${Date.now().toString(36)}-${++lineIds.current}` }],
-    updatedAt: Date.now(),
-  });
+  const say = (s: StartState, role: "user" | "assistant", line: string): StartState => {
+    const link = role === "assistant" ? lineLink(s, line) : null;
+    return {
+      ...s,
+      messages: [...s.messages, { role, text: line, at: Date.now(), id: `${Date.now().toString(36)}-${++lineIds.current}`, ...(link ? { link } : {}) }],
+      updatedAt: Date.now(),
+    };
+  };
   /** The line at `at` said again in other words (the model's): the same line (its id kept, so it isn't made anew). */
-  const replaceLine = (s: StartState, at: number, line: string): StartState =>
-    s.messages[at]?.role === "assistant" ? { ...s, messages: s.messages.map((m, i) => (i === at ? { ...m, text: line } : m)), updatedAt: Date.now() } : s;
+  const replaceLine = (s: StartState, at: number, line: string): StartState => {
+    if (s.messages[at]?.role !== "assistant") return s;
+    const link = lineLink(s, line);
+    return { ...s, messages: s.messages.map((m, i) => (i === at ? { ...m, text: line, link: link ?? undefined } : m)), updatedAt: Date.now() };
+  };
   const isLast = (s: StartState, at: number | null) => at != null && at === s.messages.length - 1;
 
   const setStage = (st: Stage) => {
@@ -316,8 +348,43 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     return () => {
       left.current = true;
       stopAll();
+      clearAuto();
     };
   }, []);
+
+  // --- making the trip by itself (2026-10-06) ------------------------------------------------------------------
+
+  function clearAuto() {
+    if (autoTimer.current) clearInterval(autoTimer.current);
+    autoTimer.current = null;
+  }
+  /** Any typing or tap while it counts: stopped (a later full checklist starts it again). */
+  function stopAuto() {
+    if (autoTimer.current == null) return;
+    clearAuto();
+    autoStopped.current = true;
+    setAuto(null);
+  }
+
+  // The essentials known and nothing on its way: "Oluşturuyorum… 3 · Vazgeç", then the trip is made. After the
+  // traveller stopped it, only a later full checklist starts it again.
+  useEffect(() => {
+    if (phase !== "chat" || stage || autoTimer.current || left.current) return;
+    const s = live.current;
+    if (!T(() => shouldAutoStart(s, ctx, { for: autoFor.current, stopped: autoStopped.current }))) return;
+    autoFor.current = T(() => autoPrint(s, ctx));
+    autoStopped.current = false;
+    let secs = AUTO_SECONDS;
+    setAuto(secs);
+    autoTimer.current = setInterval(() => {
+      secs -= 1;
+      if (secs > 0) return void setAuto(secs);
+      clearAuto();
+      setAuto(null);
+      generate(true);
+    }, 1000);
+  }, [state, phase, stage]);
+
 
   // Built in the background while chatting (item 7), into the draft only: the photos of the place (and its stops),
   // the route proposal once the place and nights are settled, the rules' suggestions for what would be made.
@@ -383,6 +450,9 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     const line = raw.trim();
     if (!line || busy.current || stale()) return;
     setText("");
+    stopAuto();
+    // "Tamam oluştur", "hadi", "let's go": made now when it can be; else what's missing is said.
+    if (isGoCommand(line) && canGenerate(live.current)) return generate();
     const mine = nextTurn();
     // The first typed line decides the chat's language (item 1).
     const before = withTypedLang(live.current, line);
@@ -462,9 +532,11 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     setPicking({ styles: now.styles, budget: now.budget });
   }
 
-  function generate() {
+  function generate(byItself = false) {
     // Once; whatever is on its way is dropped (its reply would land on the trip being made) and stopped.
     if (stale() || !canGenerate(live.current)) return;
+    clearAuto();
+    setAuto(null);
     nextTurn();
     stopAll();
     const label = T(() => (isComplete(live.current) ? L("Gezimi oluştur", "Generate my trip") : L("Şimdilik bununla oluştur", "Generate with this for now")));
@@ -472,7 +544,9 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     const s = T(() => withGuessTaken(live.current, Date.now()));
     // The best route there is (rev 3): the agreed one, the proposal on screen, the classic circuit, or one stop.
     const route = T(() => routeForGenerate(s));
-    commit(say({ ...s, route: route ?? s.route, editingRoute: false, asking: null }, "user", label));
+    // Made by itself: no line put in the traveller's mouth.
+    const made = { ...s, route: route ?? s.route, editingRoute: false, asking: null };
+    commit(byItself ? made : say(made, "user", label));
     setDrawingKey(null);
     setPhase("generating");
   }
@@ -510,19 +584,19 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     const stageText = stage === "writing" ? L("Yazıyor…", "Writing…") : L("Düşünüyor…", "Thinking…");
 
     return (
-      <div className={`st-screen${generating ? " generating" : ""}`} lang={lang}>
+      <div className={`st-screen${generating ? " generating" : ""}`} lang={lang} onPointerDownCapture={stopAuto}>
         <section className="st-chat">
           <div className="st-top">
             <button type="button" className="trip-switch" onClick={close} disabled={generating}>
               <Back /> {L("Seyahatlerim", "My trips")}
             </button>
-            <div className="st-top-title">{state.where ?? tentativeWhere(state) ? L(`${(state.where ?? tentativeWhere(state))!.place} · yeni gezi`, `${(state.where ?? tentativeWhere(state))!.place} · new trip`) : L("Yeni gezi", "New trip")}</div>
+            <div className="st-top-title">{startName(state) ? L(`${startName(state)} · yeni gezi`, `${startName(state)} · new trip`) : L("Yeni gezi", "New trip")}</div>
           </div>
           {!generating && <ChecklistBar rows={rows} onAsk={ask} ready={ready} complete={complete} onGenerate={generate} disabled={holding} drawing={drawing} lang={lang} />}
           <div className="st-msgs" role="log" aria-live="polite" aria-label={L("Sohbet", "Conversation")}>
             {state.messages.map((m, i) => (
               <div key={m.id ?? `line-${i}`} className={m.role === "user" ? "st-msg-user" : "st-msg-bot"}>
-                {m.role === "assistant" ? <BotLine text={m.text} /> : m.text}
+                {m.role === "assistant" ? <BotLine text={m.text} link={m.link} /> : m.text}
               </div>
             ))}
             {showChips && question && (
@@ -569,7 +643,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
                       </button>
                     ))}
                     {question.other && (
-                      <button type="button" className="st-chip" onClick={() => (setPlaceholder(withLang(lang, () => (question.id === "from" ? L("Şehrini yaz…", "Type your city…") : L("Yerin adını yaz…", "Type the place…")))), input.current?.focus())}>
+                      <button type="button" className="st-chip" onClick={() => (setPlaceholder(withLang(lang, () => (question.id === "from" ? L("Şehrini yaz…", "Type your city…") : question.id === "count" ? L("Kaç kişi? Sayıyı yaz…", "How many? Type the number…") : L("Yerin adını yaz…", "Type the place…")))), input.current?.focus())}>
                         {L("Başka…", "Other…")}
                       </button>
                     )}
@@ -586,6 +660,15 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
                         </button>
                       </span>
                     )}
+                    {question.eventDate &&
+                      (dateOpen ? (
+                        <input type="date" className="st-date" min={today()} autoFocus aria-label={L("Etkinliğin başladığı gün", "The day the event starts")}
+                          onChange={(e) => e.target.value && void answer({ q: "event", start: e.target.value }, e.target.value.split("-").reverse().join("."))} />
+                      ) : (
+                        <button type="button" className="st-chip" onClick={() => setDateOpen(true)}>
+                          📅 {L("Farklı tarih", "Different dates")}
+                        </button>
+                      ))}
                     {question.date && question.id !== "day" &&
                       (dateOpen ? (
                         <input type="date" className="st-date" min={today()} autoFocus aria-label={L("Başlangıç günü", "Start day")}
@@ -608,6 +691,19 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
           </div>
           {/* What it is doing now, said as it changes (item 6): its own status region, outside the conversation's log. */}
           <div className="st-status" role="status" aria-live="polite">
+            {auto != null && !generating && (
+              <div className="st-auto">
+                <span className="st-auto-bar" aria-hidden>
+                  <span style={{ animationDuration: `${AUTO_SECONDS}s` }} />
+                </span>
+                <span>
+                  {L("Oluşturuyorum…", "Generating…")} <b>{auto}</b>
+                </span>
+                <button type="button" className="st-auto-stop" onClick={stopAuto}>
+                  {L("Vazgeç", "Cancel")}
+                </button>
+              </div>
+            )}
             {stage && (
               <div className="st-thinking" data-stage={stage}>
                 <span className="st-dots" aria-hidden>
@@ -620,7 +716,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
             )}
           </div>
           <form className="st-composer" onSubmit={(e) => (e.preventDefault(), void send())}>
-            <input ref={input} type="text" value={text} disabled={generating} onChange={(e) => setText(e.target.value)}
+            <input ref={input} type="text" value={text} disabled={generating} onChange={(e) => (stopAuto(), setText(e.target.value))}
               placeholder={placeholder ?? L("Ya da kendin yaz…", "Or type it yourself…")} aria-label={L("Mesaj", "Message")} />
             <button type="submit" className="send-btn" disabled={!text.trim() || holding || generating} aria-label={L("Gönder", "Send")}>
               <ArrowUp />

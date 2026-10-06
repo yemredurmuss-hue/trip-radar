@@ -184,7 +184,7 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
 
   return T(() => (
     <div className="st-gen" role="status" aria-live="polite">
-      <h2>{L(`${place} Gezisi planlanıyor`, `Planning your ${place} trip`)}</h2>
+      <h2>{state.intent ? L(`${creationOf(state)?.title} planlanıyor`, `Planning ${creationOf(state)?.title}`) : L(`${place} Gezisi planlanıyor`, `Planning your ${place} trip`)}</h2>
       <div className={`st-gen-stage${world === null ? " no-map" : ""}`}>
         {world === "loading" ? <div className="st-map st-map-wait" aria-hidden /> : world && points?.to ? (
           bundled || !real ? (

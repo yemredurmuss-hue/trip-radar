@@ -115,3 +115,24 @@ tanınınca sorulur: "Koh Phangan mı demek istedin?" [Evet] [Hayır, Kohphandan
 geçebilir. Sohbetin dili gezide durur (`trip.lang`): pano sohbeti ve öneri gözden geçirmesi o dilde. Bütçe çipleri
 "Ekonomik · Orta · Yüksek bütçe". Tarihsiz gezinin tarihleri sonra sohbette söylenince (update_trip) başlangıcın
 tarihsiz konaklama ve uçuşları o tarihleri alır, yenisi açılmaz.
+
+## Revizyon 4: niyet (2026-10-06, Emre'nin İngilizce testi)
+
+"I want to go burning man africa with my friends and partner" yalnız KİMLE'yi doldurmuş, "Burning man africa ne
+zamansa o zaman?" anlaşılmamış, rota "Clanwilliam 3 · Tankwa Karoo 3 · Sutherland 3" olmuştu. Düzeltmeler:
+
+1. **Niyet:** `state.intent = { kind: event|place|theme, name, place, country, code, dates?: {start,end,approx}, url,
+   gateway, places?, typical }`. Kodun kendi tablosu (`src/lib/startEvents.ts`, 40 etkinlik/tema: TR/EN adlar, Türkçe
+   ekler, yer ve ülke, giriş şehri, olağan tarih kuralı, resmî site) ilk mesajda anında okur; "burning man africa",
+   "africa burn" AfrikaBurn'dür, Burning Man değil. Model de `event*` alanlarıyla okur; adı tablo biliyorsa tablonunki.
+2. **Dürüst tarih:** bir sonraki tekrar bugünden sonra hesaplanır, hep "tahmini", resmî site bağlantısıyla; [Bu tarihler
+   doğru] [Farklı tarih] çipleri. Modelin tarihi, emin olduğunu söylemedikçe tahmini.
+3. **Soru sırası:** nereye ve ne zaman etkinlikten; yalnız toplam gün sorulur (Sadece X (N gün) · +2 gün Cape Town ·
+   +4 gün); fazla günler giriş şehrinde önce/sonra bölünür (azı önce). Sonra nereden, kimle (grupsa kaç kişi). Genel
+   sıra da artık: nereye, süre, başlangıç, nereden, kimle, kaç kişi; sonra gün, tarz, rota (isteğe bağlı).
+4. **Rota:** etkinlikte giriş → etkinlik → giriş (Cape Town 2 → Tankwa Karoo 6 → Cape Town 2), onaylı; temada tablodaki
+   yerler, öneri. Klasik tur ve model rotası sorulmaz.
+5. **Kendiliğinden oluşturma:** nereye + ne zaman/süre + nereden + kimle (atlanan da sayılır) belli olunca 3 saniyelik
+   "Oluşturuyorum… 3 · Vazgeç" satırı; yazmak ya da dokunmak durdurur, sonra liste tamamen dolunca yeniden başlar.
+   "tamam oluştur", "hadi", "generate", "let's go" yazılınca hemen oluşturur. Azaltılmış harekette animasyon yok.
+6. **Başlık:** gezi ve başlangıç ekranı niyetten ("AfrikaBurn 2027"); hero `trip.title`'ı okur. Gidilen yer yer kalır.

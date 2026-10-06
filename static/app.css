@@ -2442,6 +2442,17 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-dots i:nth-child(2) { animation-delay: .16s; }
 .st-dots i:nth-child(3) { animation-delay: .32s; }
 .st-stage { animation: st-in .3s ease-out both; }
+/* The trip about to make itself (2026-10-06): "Oluşturuyorum… 3 · Vazgeç", a bar filling over the 3 seconds. */
+.st-auto { display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; border-radius: 16px; background: #221b3a; color: #fff; font-size: 14px; animation: st-in .25s ease-out both; }
+.st-auto b { font-variant-numeric: tabular-nums; }
+.st-auto-bar { flex: 0 0 64px; height: 5px; overflow: hidden; border-radius: 3px; background: rgba(255, 255, 255, .22); }
+.st-auto-bar span { display: block; height: 100%; width: 100%; background: #fff; transform-origin: left; animation: st-auto-fill linear both; }
+.st-auto-stop { margin-left: auto; border: 0; border-radius: 999px; padding: 6px 14px; background: rgba(255, 255, 255, .16); color: #fff; font-size: 13.5px; font-weight: 650; }
+.st-auto-stop:hover { background: rgba(255, 255, 255, .26); }
+@keyframes st-auto-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .st-auto, .st-auto-bar span { animation: none; } }
+/* The event's official site after the line that says to check it. */
+.st-link { color: var(--hx-accent); font-weight: 650; white-space: nowrap; }
 @keyframes st-dot { 0%, 100% { opacity: .25; transform: translateY(0); } 45% { opacity: 1; transform: translateY(-2px); } }
 @keyframes st-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 /* A line (and the model's richer one replacing it) fades in. */
