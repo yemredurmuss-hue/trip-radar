@@ -3318,7 +3318,7 @@ try {
 
   // 25. The board's Harita tab: a Denmark–Netherlands trip, every journey in date order. Out from Istanbul (booked),
   // Copenhagen → Amsterdam by plane (booked), a train to Rotterdam (not booked: dashed; Rotterdam isn't in the
-  // city table, so it's geocoded), home from Rotterdam, and a day trip to a place no one can find (listed under it).
+  // city table, so it's geocoded), home from Rotterdam, and a chosen day trip to a place no one can find (listed under it; one only saved would not be drawn).
   const rotterdam = (route) => (/rotterdam/i.test(new URL(route.request().url()).searchParams.get("q") ?? "") ? route.fulfill({ json: [{ lat: "51.92", lon: "4.48" }] }) : route.fallback());
   await flow.route("https://nominatim.openstreetmap.org/**", rotterdam);
   await board.evaluate(async () => {
@@ -3341,7 +3341,7 @@ try {
       base({ id: "e2e-map-2", name: "Hotel Nyhavn", city: "Kopenhag", countryCode: "DK", needKey: "stay:kopenhag", dates: { start: "2026-10-08", end: "2026-10-12", source: "page" } }),
       flight("e2e-map-3", "CPH", "AMS", "2026-10-12T11:00", "2026-10-12T12:25", "booked"),
       base({ id: "e2e-map-4", name: "Canal House", city: "Amsterdam", countryCode: "NL", needKey: "stay:amsterdam", status: "chosen", dates: { start: "2026-10-12", end: "2026-10-15", source: "page" } }),
-      flight("e2e-map-5", "AMS", "Zzyzx", "2026-10-13T08:00", "2026-10-13T09:00", "saved"),
+      flight("e2e-map-5", "AMS", "Zzyzx", "2026-10-13T08:00", "2026-10-13T09:00", "chosen"),
       base({ id: "e2e-map-6", category: "transport", name: "NS Intercity train Amsterdam → Rotterdam", city: "Rotterdam", countryCode: "NL", needKey: "transport:rotterdam", status: "saved", dates: { start: "2026-10-15", end: null, source: "page" } }),
       base({ id: "e2e-map-7", name: "Hotel New York", city: "Rotterdam", countryCode: "NL", needKey: "stay:rotterdam", dates: { start: "2026-10-15", end: "2026-10-18", source: "page" } }),
       flight("e2e-map-8", "RTM", "IST", "2026-10-18T18:00", "2026-10-18T22:40", "saved"),
