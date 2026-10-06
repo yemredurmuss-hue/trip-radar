@@ -1,6 +1,6 @@
 # Trip Radar — Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-06 · Sürüm / Version: 0.36.35
+Son güncelleme / Last updated: 2026-10-06 · Sürüm / Version: 0.36.36
 
 ---
 
@@ -132,6 +132,7 @@ profilleri ve geçmişiyle birlikte) senin isteğinle silinir: info@emredurmus.n
 - **OpenFreeMap (tiles.openfreemap.org):** Harita açıldığında yalnız ekranda görünen bölgenin harita parçaları, yazı
   tipleri ve simgeler istenir; gezinin adı, tarihleri, kişiler ya da rezervasyonlar gönderilmez. Her web isteği gibi
   IP adresin ve tarayıcı bilgin görünür.
+- **Web araması (Google, sunucumuz üzerinden):** Sohbet canlı bir bilgiyi (ör. etkinlik tarihleri, açılış saatleri) aradığında ya da sen "şunu araştır" dediğinde yalnız arama sorusu gider; bir yer ya da etkinlik adı içerebilir. Seninle ya da gezinin geri kalanıyla ilgili hiçbir şey gönderilmez. Sonuç sunucuda soruyla birlikte birkaç gün saklanır (aynı soru tekrar aranmaz); günlük sınır için cihazının rastgele kimliği ve adresinin yalnız tek yönlü özeti (hash) tutulur.
 - **Frankfurter:** döviz kuru için yalnız para birimi çifti gönderilir.
 - **Wikipedia / Pexels:** şehir fotoğrafı için yalnız şehir adı gönderilir; Wikipedia'ya doğrudan, Pexels'a paylaşım
   sunucusu üzerinden.
@@ -373,6 +374,7 @@ and history) is deleted on request: write to info@emredurmus.net.
 - **OpenFreeMap (tiles.openfreemap.org):** when a map opens, only the map tiles, fonts and icons for the area in view
   are requested; nothing about the trip, its dates, travellers or bookings is sent. As with any web request, your IP
   address and browser details are visible.
+- **Web search (Google, through our server):** when the chat looks up a live fact (e.g. an event's dates, opening hours) or you ask it to research something, only the search question is sent; it may contain a place or event name. Nothing about you or the rest of the trip is sent. The answer is kept on the server with the question for a few days (the same question isn't searched again); for the daily limit, only a one-way hash of your install's random id and of your address is kept.
 - **Frankfurter:** only a currency pair, for exchange rates.
 - **Wikipedia / Pexels:** only a city name, for a city photo; directly to Wikipedia, and to Pexels through the sharing
   server.
