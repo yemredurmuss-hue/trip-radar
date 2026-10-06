@@ -13,7 +13,7 @@ import { nNights } from "./i18nText";
 import { ideaDay, shortDay } from "./ideas";
 import { isInspiration } from "./inspo";
 import { formatDateRange, isoDate } from "./items";
-import { countStages, needStage, needStageOf, type Stage, type StageCounts, type StageCtx } from "./lifecycle";
+import { countStages, needStage, needStageOf, stageLabel, type Stage, type StageCounts, type StageCtx } from "./lifecycle";
 import { isHiddenLeg, legItem, legShortTitle, type Leg } from "./legs";
 import { cityKeyOf, departureDay, sameCity, type DateRange, type OptionGroup, type Plan } from "./plan";
 import { hiddenNights, nightsKey, toBook, type Timeline, type TimelineEntry } from "./timeline";
@@ -72,6 +72,11 @@ export interface CatEntry {
   stage: Stage | null;
   /** The need it's part of: its own key, or the need shared with other people's groups (Emre's and Sabine's flight). */
   need: string;
+  /**
+   * The people coming their own way in (Trip.travellers.from) with no record yet for the way in this entry is:
+   * each a part of its need still to find (Emre's ticket booked, Sabine's from Alicante not yet: Aranacak).
+   */
+  missingFor?: string[];
   /** Empty nights in it (a stay): the header says "2 gece boş". */
   nights: number;
   /** A ticket is bought for it (a flight, a train, a tour): "bilet yok", else "rezerve edilmedi". */
@@ -400,6 +405,8 @@ function rowStatus(section: SectionId, state: EntryState, items: Item[], options
     case "decide":
       return { status: options >= 2 ? L(`${options} seçenek`, `${options} options`) : L("Karar", "Decide"), ok: false };
     case "empty":
+      // A record there that's still to find (a placeholder, a booking cancelled): it is added, just not found yet.
+      if (items.length) return { status: stageLabel("search"), ok: false };
       return { status: section === "stay" ? L("Boş", "Empty") : section === "flight" ? L("Eklenmedi", "Not added") : L("Planlanmadı", "Not planned"), ok: false };
     case "unscheduled":
       // An idea without a day is just an idea (0.35.3), nothing missing.
@@ -434,12 +441,19 @@ interface Draft {
   nights: number;
 }
 
-/** The group a block draws (a flight's options, a car's), whose key names its need. */
-function groupKeyOf(piece: CatPiece): string | null {
-  if (piece.kind === "group") return piece.group.key;
-  if (piece.kind !== "entry") return null;
-  const e = piece.entry;
-  return e.kind === "travel" ? (e.travel?.group.key ?? null) : e.kind === "rental" ? e.group.key : null;
+/** Whose a record is, as plan.ts keys a person's own group ("" for everyone's): forWho, case and order aside. */
+const ownersKey = (i: Item) => (i.forWho ?? []).map((n) => n.trim().toLocaleLowerCase("tr")).filter(Boolean).sort().join("|");
+
+/**
+ * The need a block's group stands for. plan.ts gives each person's options a group of their own, keyed
+ * `${need}#${owners}` (Emre's flight and Sabine's): that suffix, and only that one, is taken off. "#" in a key
+ * means other things too (a city, a number), which stay.
+ */
+function groupNeedOf(piece: CatPiece): string | null {
+  const group = piece.kind === "group" ? piece.group : piece.kind === "entry" ? (piece.entry.kind === "travel" ? (piece.entry.travel?.group ?? null) : piece.entry.kind === "rental" ? piece.entry.group : null) : null;
+  if (!group) return null;
+  const owners = group.items.map(ownersKey).find(Boolean);
+  return owners && group.key.endsWith(`#${owners}`) ? group.key.slice(0, -(owners.length + 1)) : group.key;
 }
 
 /**
@@ -450,7 +464,8 @@ function groupKeyOf(piece: CatPiece): string | null {
 function draftStage(d: Draft, ctxOf: (item: Item) => StageCtx): Stage | null {
   if (isIdeaSection(d.section) || d.state === "unscheduled") return null;
   if (d.items.some((i) => isIdea(i) && isPrep(i))) return null;
-  if (d.state === "empty") return "search";
+  // Nothing there: to find. A record in an empty block (a stay said in the chat) stands as far as it goes.
+  if (d.state === "empty" && !d.items.some((i) => i.status !== "dismissed")) return "search";
   const leg = d.piece.kind === "entry" ? (d.piece.entry.kind === "leg" ? d.piece.entry.leg : d.piece.entry.kind === "travel" ? (d.piece.entry.leg ?? null) : null) : null;
   const anyBooked = d.items.some((i) => i.status === "booked" || (i.installedAt != null && decided(i)));
   if (leg && legBooked(leg) && !anyBooked) return "booked";
@@ -459,15 +474,56 @@ function draftStage(d: Draft, ctxOf: (item: Item) => StageCtx): Stage | null {
   return needStageOf(d.items, ctxOf);
 }
 
+/**
+ * A stay's nights in one city back to back are one need (spec aşamalar, "Kısmi"): 3 nights booked and the next 3
+ * empty are one stay to finish, Aranacak, its blocks still drawn apart. Nights in another city, or after a gap,
+ * are a need of their own.
+ */
+function joinStayNeeds(entries: CatEntry[]): CatEntry[] {
+  const blocks = entries
+    .filter((e) => e.stage && e.piece.kind === "entry" && e.piece.entry.kind === "stay")
+    .map((e) => ({ e, block: (e.piece as { entry: Extract<TimelineEntry, { kind: "stay" }> }).entry.block }))
+    .sort((a, b) => a.block.range.start.localeCompare(b.block.range.start));
+  for (let n = 1; n < blocks.length; n++) {
+    const [prev, cur] = [blocks[n - 1], blocks[n]];
+    if (prev.block.range.end === cur.block.range.start && sameCity(prev.block.city, cur.block.city)) cur.e.need = prev.e.need;
+  }
+  return entries;
+}
+
+/**
+ * The way in for people coming from somewhere else (kişiye özel): each of them with no record of their own for the
+ * trip's way in (its arrival: any record for them that day, whatever the route) is a part still to find.
+ */
+function withOwnWays(entries: CatEntry[], names: string[]): CatEntry[] {
+  if (!names.length) return entries;
+  const arrival = entries.find((e) => e.stage && e.piece.kind === "entry" && e.piece.entry.kind === "travel" && e.piece.entry.role === "arrival");
+  if (!arrival) return entries;
+  const owners = new Set(
+    entries
+      // Their own way in is often another route (Alicante → Porto): any flight or transfer in that day counts.
+      .filter((e) => e.need === arrival.need || ((e.section === "flight" || e.section === "transport") && e.date === arrival.date))
+      .flatMap((e) => piecesItems(e.piece))
+      .filter((i) => i.status !== "dismissed")
+      .flatMap((i) => (i.forWho ?? []).map((w) => w.trim().toLocaleLowerCase("tr"))),
+  );
+  const missing = names.filter((name) => !owners.has(name.trim().toLocaleLowerCase("tr")));
+  if (missing.length) arrival.missingFor = missing;
+  return entries;
+}
+
+function piecesItems(piece: CatPiece): Item[] {
+  return piece.kind === "entry" ? itemsOfEntry(piece.entry) : piece.kind === "group" ? piece.group.items : [piece.item];
+}
+
 /** The state a stage draws (the ring, the row's words, the header's "3/4"). */
 const STATE_OF: Partial<Record<Stage, EntryState>> = { search: "empty", options: "decide", planned: "book", booked: "done", ready: "done", used: "done" };
 
 function finish(d: Draft, seq: number, rank: Ranking, ctxOf: (item: Item) => StageCtx = () => ({})): CatEntry {
   const stage = draftStage(d, ctxOf);
   if (stage && STATE_OF[stage]) d = { ...d, state: STATE_OF[stage]! };
-  const group = groupKeyOf(d.piece);
-  // Each person's options are a group of their own ("flight:ist-opo#sabine"): one need with the group before "#".
-  const need = group ? group.split("#")[0] : d.key;
+  // Each person's own group joins its need (groupNeedOf); a stay's blocks join theirs after (joinStayNeeds).
+  const need = groupNeedOf(d.piece) ?? d.key;
   const options = new Set(d.items.map((i) => i.id)).size;
   const leg = d.piece.kind === "entry" ? (d.piece.entry.kind === "leg" ? d.piece.entry.leg : d.piece.entry.kind === "travel" ? d.piece.entry.leg : null) : null;
   const ticket = ticketOf(d.section, d.items, leg);
@@ -522,6 +578,8 @@ export interface CategorizeInput {
    * empty card, its files. Without it nothing is a placeholder or empty, and nothing has a file.
    */
   stageCtx?: (item: Item) => Omit<StageCtx, "today">;
+  /** Who comes their own way in (the names of Trip.travellers.from): the way in is theirs to find too. */
+  ownWayIn?: string[];
 }
 
 /**
@@ -529,7 +587,7 @@ export interface CategorizeInput {
  * then what has no block: options with no day (another flight, a stay outside the dates, an eSIM), what
  * needs booking without a block of its own, and the ideas. A record already drawn is never drawn twice.
  */
-export function categorize({ plan, timeline, items, legs = [], hidden = new Set(), rank = new Map(), today = new Date().toISOString().slice(0, 10), stageCtx = () => ({}) }: CategorizeInput): CatSection[] {
+export function categorize({ plan, timeline, items, legs = [], hidden = new Set(), rank = new Map(), today = new Date().toISOString().slice(0, 10), stageCtx = () => ({}), ownWayIn = [] }: CategorizeInput): CatSection[] {
   const drafts: Draft[] = [];
   const drawn = new Set<string>();
   const closed = new Set(plan.closed.map((c) => c.item.id));
@@ -628,7 +686,19 @@ export function categorize({ plan, timeline, items, legs = [], hidden = new Set(
     drawn.add(item.id);
   }
 
-  const entries = drafts.map((d, i) => finish(d, i, rank, (item) => ({ ...stageCtx(item), today })));
+  // A booking cancelled (lifecycle.ts İptal edildi) reopens its need: Aranacak. A stay's nights and a flight in or
+  // out keep their place on the plan (an empty block, "Gidiş uçuşu") which is that need already; anything else
+  // (an eSIM, insurance, a ticket, a car) would have no block left, so the cancelled record stands for it, unless
+  // something live for the same need is on the Plan.
+  const liveNeeds = new Set(drafts.flatMap((d) => d.items.filter((i) => i.status !== "dismissed").map((i) => `${i.category}|${i.needKey}`)));
+  for (const item of items) {
+    if (!item.cancelledAt || item.status !== "dismissed" || drawn.has(item.id)) continue;
+    if (item.category === "stay" || item.category === "flight" || liveNeeds.has(`${item.category}|${item.needKey}`)) continue;
+    drafts.push({ ...itemDraft(item, [item]), key: `cancelled:${item.id}` });
+    drawn.add(item.id);
+  }
+
+  const entries = withOwnWays(joinStayNeeds(drafts.map((d, i) => finish(d, i, rank, (item) => ({ ...stageCtx(item), today })))), ownWayIn);
   const out = hiddenThings({ plan, timeline, items, legs, hidden });
   return SECTION_ORDER.map((id) => sectionOf(id, entries.filter((e) => e.section === id), plan, out.filter((h) => h.section === id), today));
 }
@@ -731,17 +801,21 @@ export function sectionStatus(id: SectionId, entries: CatEntry[]): CatSection["s
   if (!entries.length) return null;
   const n = (s: EntryState) => entries.filter((e) => e.state === s).length;
   const parts: string[] = [];
-  const empty = n("empty");
+  // Aranacak with a record (a placeholder, a plan said with nothing concrete, a booking cancelled): "aranacak",
+  // never "eklenmedi" (it is added).
+  const toFind = entries.filter((e) => e.state === "empty" && e.itemIds.length && e.nights === 0).length;
+  const empty = n("empty") - toFind;
   if (empty) {
     const nights = entries.reduce((s, e) => s + e.nights, 0);
     parts.push(
-      id === "stay"
+      id === "stay" && nights
         ? L(`${nights} gece boş`, `${nights} night${nights === 1 ? "" : "s"} empty`)
         : id === "flight"
           ? L(`${empty} uçuş eklenmedi`, `${empty} flight${empty === 1 ? "" : "s"} not added`)
           : L(`${empty} planlanmadı`, `${empty} not planned`),
     );
   }
+  if (toFind) parts.push(L(`${toFind} aranacak`, `${toFind} to find`));
   const booking = entries.filter((e) => e.state === "book");
   if (booking.length) {
     const tickets = booking.filter((e) => e.ticket).length;
@@ -847,7 +921,7 @@ export function needsOf(sections: Pick<CatSection, "id" | "entries">[]): Need[] 
       else out.set(e.need, { key: e.need, section: s.id, stage: e.stage, entries: [e] });
     }
   }
-  for (const n of out.values()) n.stage = needStage(n.entries.map((e) => e.stage!));
+  for (const n of out.values()) n.stage = needStage([...n.entries.map((e) => e.stage!), ...n.entries.flatMap((e) => (e.missingFor ?? []).map((): Stage => "search"))]);
   return [...out.values()];
 }
 

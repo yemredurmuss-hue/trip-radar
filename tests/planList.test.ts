@@ -50,7 +50,7 @@ function listOf(items: Item[], trip: Trip = base, files: string[] = []): { list:
   const timeline = buildTimeline(plan, legs, items, hidden);
   const docs = (i: Item) => (files.includes(i.id) ? 1 : 0);
   const stageCtx = (i: Item) => ({ placeholder: isPlaceholder(trip, i), empty: isEmptyRecord(trip, i, docs(i), items), docs: docs(i) });
-  const sections = categorize({ plan, timeline, items, legs, hidden, today: TODAY, stageCtx });
+  const sections = categorize({ plan, timeline, items, legs, hidden, today: TODAY, stageCtx, ownWayIn: Object.keys(trip.travellers?.from ?? {}) });
   const progress = decisionProgress(timeline, items, plan, undefined, TODAY, (i) => isPlaceholder(trip, i));
   const list = planList(sections, progress.todos, TODAY);
   // One source of truth: the hero's counts = the list's group headings = the Plan sections' stages added up.
@@ -135,14 +135,74 @@ describe("one source: hero = list = Plan sections", () => {
     expect(list.open.map((t) => t.title)).toEqual(expect.arrayContaining(["Lello bileti", "Airalo"]));
   });
 
-  it("a cancelled booking: out of the plan, its need to find again", () => {
+  it("a cancelled booking, of every kind: out of the plan, its need to find again (Aranacak, never gone)", () => {
+    const cancel = (i: Item): Item => ({ ...i, status: "dismissed", dismissedFrom: "booked", cancelledAt: 5, refundNote: "iade 3 gün" });
     const hotel = stay("Jardim", "booked");
-    const cancelled: Item = { ...hotel, status: "dismissed", dismissedFrom: "booked", cancelledAt: 5 };
-    const before = listOf([hotel]).list.counts;
-    const after = listOf([cancelled]).list.counts;
-    expect(before.booked).toBe(1);
-    expect(after.booked).toBe(0);
-    expect(after.search).toBe(before.search + 1);
+    const kinds: [string, Item, Item[]][] = [
+      ["stay", hotel, [flight("Out", "IST", "OPO", "2026-10-08", "booked"), flight("Ret", "OPO", "IST", "2026-10-14", "booked")]],
+      ["flight", flight("Out", "IST", "OPO", "2026-10-08", "booked"), [hotel]],
+      ["eSIM", makeItem({ name: "Airalo", category: "esim", needKey: "esim:pt", status: "booked" }), [hotel]],
+      ["insurance", makeItem({ name: "Allianz sigorta", category: "other", needKey: "insurance:x", status: "booked", summary: "seyahat sigortası" }), [hotel]],
+      ["activity", said({ kind: "activity", date: "2026-10-09", city: "Porto", title: "Douro turu" }, { status: "booked", booking: "needed" }), [hotel]],
+      ["car", said({ kind: "car_rental", date: "2026-10-09", end_date: "2026-10-10", city: "Porto" }, { status: "booked", provider: "Europcar" }), [hotel]],
+    ];
+    for (const [kind, booked, rest] of kinds) {
+      const before = listOf([...rest, booked]);
+      const after = listOf([...rest, cancel(booked)]);
+      expect([kind, after.list.counts.booked + after.list.counts.ready], kind).toEqual([kind, before.list.counts.booked + before.list.counts.ready - 1]);
+      expect([kind, after.list.counts.search], kind).toEqual([kind, before.list.counts.search + 1]);
+      expect(needsOf(after.sections).length, kind).toBe(needsOf(before.sections).length);
+    }
+    // With an option still saved for it, the need is back to its options.
+    const out = flight("Out", "IST", "OPO", "2026-10-08", "booked");
+    const back = listOf([hotel, cancel(out), flight("Alt", "IST", "OPO", "2026-10-08", "saved")]).list.counts;
+    expect(back.options).toBe(1);
+    // Its row says "Aranacak", the header "1 aranacak" (it was added: never "eklenmedi").
+    const esim = listOf([hotel, cancel(kinds[2][1])]).sections.find((s) => s.id === "other")!;
+    expect(esim.entries.map((e) => e.row.status)).toEqual(["Aranacak"]);
+    expect(esim.status?.text).toBe("1 aranacak");
+  });
+
+  it("a stay's nights back to back in one city are one need, the furthest-behind block's stage; a gap or another city, needs of their own", () => {
+    const jardim = (start: string, end: string, status: Item["status"] = "booked", city = "Porto") =>
+      makeItem({ name: `Jardim ${start}`, category: "stay", city, needKey: `stay:${city.toLowerCase()}`, dates: { start, end, source: "url" }, status });
+    const flights = [flight("Out", "IST", "OPO", "2026-10-08", "booked"), flight("Ret", "OPO", "IST", "2026-10-14", "booked")];
+    // 3 nights booked, the next 3 empty: one stay to finish, Aranacak, its blocks drawn apart.
+    const half = listOf([jardim("2026-10-08", "2026-10-11"), ...flights]);
+    const stays = half.sections.find((s) => s.id === "stay")!;
+    expect(stays.entries).toHaveLength(2);
+    expect(needsOf([stays]).map((nd) => nd.stage)).toEqual(["search"]);
+    expect(half.list.counts).toMatchObject({ search: 1, booked: 2 });
+    // Both blocks booked: one need, booked.
+    expect(needsOf(listOf([jardim("2026-10-08", "2026-10-11"), jardim("2026-10-11", "2026-10-14"), ...flights]).sections).filter((nd) => nd.section === "stay").map((nd) => nd.stage)).toEqual(["booked"]);
+    // Another city after it: two needs.
+    const two = listOf([jardim("2026-10-08", "2026-10-11"), jardim("2026-10-11", "2026-10-14", "booked", "Lizbon"), ...flights]);
+    expect(needsOf(two.sections).filter((nd) => nd.section === "stay")).toHaveLength(2);
+  });
+
+  it("a plan said in the chat that names something is Planlandı; one that names nothing is Aranacak", () => {
+    const named = listOf([stay("Jardim", "booked"), said({ kind: "flight", date: "2026-10-08", from: "IST", to: "OPO", title: "TK1449" })]);
+    expect(named.list.counts).toMatchObject({ planned: 1 });
+    const stayNamed = listOf([said({ kind: "stay", date: "2026-10-08", end_date: "2026-10-14", city: "Porto", title: "Jardim Stay" })]);
+    expect(stayNamed.list.counts.planned).toBe(1);
+    const bare = listOf([stay("Jardim", "booked"), said({ kind: "flight", date: "2026-10-08", from: "IST", to: "OPO" })]);
+    const flights = bare.sections.find((s) => s.id === "flight")!;
+    expect(bare.list.counts.planned).toBe(0);
+    // The one with a record says "aranacak"; the one with nothing at all "eklenmedi".
+    expect(flights.status?.text).toBe("1 uçuş eklenmedi · 1 aranacak");
+  });
+
+  it("someone coming their own way in with nothing for it yet: the way in is Aranacak, with a row for them", () => {
+    const trip: Trip = { ...base, travellers: { names: ["Sabine"], count: 2, from: { Sabine: "Alicante" } } };
+    const items = [stay("Jardim", "booked"), flight("Ret", "OPO", "IST", "2026-10-14", "booked"), flight("Emre TK", "IST", "OPO", "2026-10-08", "booked", { forWho: ["Emre"] })];
+    const { list } = listOf(items, trip);
+    expect(list.counts).toMatchObject({ search: 1, booked: 2 });
+    expect(list.open.map((t) => t.title)).toEqual(["İstanbul → Porto · Sabine"]);
+    // Without anyone coming their own way, Emre's booking is the way in.
+    expect(listOf(items, { ...trip, travellers: { names: ["Sabine"], count: 2 } }).list.counts).toMatchObject({ search: 0, booked: 3 });
+    // Sabine's own record, booked: done.
+    const own = listOf([...items, flight("Sabine V7", "ALC", "OPO", "2026-10-08", "booked", { forWho: ["Sabine"], needKey: "flight:ist-opo" })], trip);
+    expect(own.list.counts.search).toBe(0);
   });
 
   it("the next step is the soonest row; a missing file isn't one", () => {

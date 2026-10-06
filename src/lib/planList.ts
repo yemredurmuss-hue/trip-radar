@@ -73,7 +73,11 @@ export function planList(sections: CatSection[], todos: Todo[], today: string): 
   // A need's rows: its parts at the need's own stage (the ones holding it there).
   const group = (stages: readonly Stage[], kind: (e: CatEntry) => Todo["kind"]) => {
     const at = needs.filter((n) => stages.includes(n.stage));
-    const list = at.flatMap((n) => n.entries.filter((e) => e.stage === n.stage).map((e) => rows.get(e.key) ?? rowOf(e, kind(e), today)));
+    const list = at.flatMap((n) => [
+      ...n.entries.filter((e) => e.stage === n.stage).map((e) => rows.get(e.key) ?? rowOf(e, kind(e), today)),
+      // Someone coming their own way with nothing for it yet: a row of their own ("Gidiş · Sabine").
+      ...(n.stage === "search" ? n.entries.flatMap((e) => (e.missingFor ?? []).map((who) => ({ ...rowOf(e, "plan", today), key: `cat:${e.key}:${who}`, title: `${e.row.name} · ${who}` }))) : []),
+    ]);
     return { count: at.length, list: list.sort(byDate) };
   };
   const open = group(OPEN, (e) => (e.stage === "search" ? "plan" : "decide"));

@@ -112,7 +112,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     (item: Item) => ({ placeholder: isPlaceholder(trip, item), empty: isEmptyRecord(trip, item, docsFor(item.id).length, items), docs: docsFor(item.id).length }),
     [trip, items, docsFor],
   );
-  const sections = useMemo(() => categorize({ plan, timeline, items, legs, hidden, rank, today, stageCtx }), [plan, timeline, items, legs, hidden, rank, today, stageCtx]);
+  // Who comes their own way in (kişiye özel): the way in is theirs to find too.
+  const ownWayIn = useMemo(() => Object.keys(trip.travellers?.from ?? {}), [trip.travellers?.from]);
+  const sections = useMemo(
+    () => categorize({ plan, timeline, items, legs, hidden, rank, today, stageCtx, ownWayIn }),
+    [plan, timeline, items, legs, hidden, rank, today, stageCtx, ownWayIn],
+  );
   // What Gizlenenler holds, for the history's "Geri getir" (0.37): ruled-out records, transfers and nights not needed.
   const hiddenForHistory = useMemo<HiddenInput[]>(
     () =>
@@ -174,7 +179,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // --- plan cards: the way chosen per transfer, files, delete with undo, the add sheet ---
   const legModes = useMemo(() => legModeByItem(legs), [legs]);
   const legEnds = useMemo(() => legEndsByItem(legs), [legs]);
-  const undo =useMemo(() => undoSlot<Undoable>(), []);
+  const undo = useMemo(() => undoSlot<Undoable>(), []);
   const [undoable, setUndoable] = useState<Undoable | null>(null);
   const [undoError, setUndoError] = useState<string | null>(null);
   useEffect(() => undo.subscribe(setUndoable), [undo]);

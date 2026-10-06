@@ -29,7 +29,16 @@ describe("stageOf: one record", () => {
     expect(stageOf(rec("saved"))).toBe("options");
     expect(stageOf(rec("chosen"))).toBe("planned");
     expect(stageOf(rec("chosen"), { placeholder: true })).toBe("search");
-    expect(stageOf(rec("chosen"), { empty: true })).toBe("search");
+    // An empty card is Aranacak only when it names nothing: "Uçuş · Porto → Lizbon" is a place to fill, "TK1449"
+    // or "Jardim Stay" (or a shop: provider) is a decision made.
+    expect(stageOf(rec("chosen", { name: "Uçuş · Porto → Lizbon" }), { empty: true })).toBe("search");
+    expect(stageOf(rec("chosen", { name: "Konaklama · Porto" }), { empty: true })).toBe("search");
+    expect(stageOf(rec("chosen", { name: "eSIM" }), { empty: true })).toBe("search");
+    expect(stageOf(rec("chosen", { name: "TK1449" }), { empty: true })).toBe("planned");
+    expect(stageOf(rec("chosen", { name: "Jardim Stay" }), { empty: true })).toBe("planned");
+    expect(stageOf(rec("chosen", { name: "eSIM", provider: "Airalo" }), { empty: true })).toBe("planned");
+    // What the start made room for is to find, whatever it's called.
+    expect(stageOf(rec("chosen", { name: "Gidiş uçuşu" }), { placeholder: true })).toBe("search");
     expect(stageOf(rec("booked"))).toBe("booked");
     expect(stageOf(rec("dismissed"))).toBe("notNeeded");
   });

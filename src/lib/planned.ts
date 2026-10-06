@@ -136,6 +136,24 @@ export function checkPlanned(input: PlannedInput, kinds: readonly string[] = PLA
   return null;
 }
 
+/** The words a plan said with no title is named by (nameOf), in both languages. */
+const GENERIC_NAMES = [
+  ...["Uçuş", "Flight", "Tren", "Train", "Otobüs", "Bus", "Minibüs", "Minibus", "Feribot", "Ferry", "Transfer", "Taksi", "Taxi"],
+  ...["Araç kiralama", "Car rental", "Motosiklet kiralama", "Motorbike rental", "Karavan kiralama", "Camper van rental", "Bisiklet kiralama", "Bike rental"],
+  ...["Seyahat sigortası", "Travel insurance", "Restoran", "Restaurant", "Not", "Note", "Yapılacak", "To-do", "Hazırlık", "Prep", "Konaklama", "Stay", "eSIM", "Plan"],
+];
+
+/**
+ * Whether a plan said in the chat names a concrete thing ("TK1449", "Jardim Stay", "Europcar"): a title of its own,
+ * not the kind's word the chat names it by when nothing was said ("Uçuş · Porto → Lizbon", "Konaklama · Porto").
+ * A named plan is Planlandı; an unnamed one is a place to fill (lifecycle.ts Aranacak).
+ */
+export function namesSomething(item: Pick<Item, "name" | "provider">): boolean {
+  if (item.provider?.trim()) return true;
+  const name = item.name.trim();
+  return !GENERIC_NAMES.some((w) => name === w || name.startsWith(`${w} · `));
+}
+
 function nameOf(i: PlannedInput): string {
   if (i.title?.trim()) return i.title.trim().slice(0, 80);
   const where = i.city ?? i.to;

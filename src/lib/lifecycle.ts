@@ -10,6 +10,7 @@
 // blocks, one ticket per person) stands where its furthest-behind part stands. Pure.
 import { L } from "./i18n";
 import { isoDate } from "./items";
+import { namesSomething } from "./planned";
 import type { Item } from "./types";
 
 export type Stage = "search" | "options" | "planned" | "booked" | "ready" | "cancelled" | "notNeeded" | "used";
@@ -49,7 +50,10 @@ export function stageOf(item: Pick<Item, "status" | "dates" | "flight" | "instal
     case "saved":
       return "options";
     case "chosen":
-      if (ctx.placeholder || ctx.empty) return "search";
+      // Only a truly empty place is Aranacak: what the start made room for, or a plan said with nothing concrete.
+      // One that names something ("TK1449", "Jardim Stay") is a decision made: Planlandı.
+      if (ctx.placeholder) return "search";
+      if (ctx.empty && !("name" in item && namesSomething(item as Item))) return "search";
       // An eSIM put in ("Kurdum"): nothing more to buy or attach.
       return item.installedAt ? "ready" : "planned";
     case "booked": {

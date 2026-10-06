@@ -6,6 +6,7 @@ import { buildLegs, withLegChoice } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
 import { plannedItem, type PlannedInput } from "../src/lib/planned";
 import { isPlaceholder, placeholderPrint } from "../src/lib/startTrip";
+import { isEmptyRecord } from "../src/lib/emptyCards";
 import { buildTimeline } from "../src/lib/timeline";
 import type { Item, Trip } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
@@ -31,14 +32,15 @@ const flight = (name: string, from: string, to: string, day: string, status: Ite
     ...over,
   });
 
-/** `placeholders`: tell categorize which records the start chat only made room for (TripPanel does). */
-function sectionsOf(items: Item[], trip: Trip = base, placeholders = false): CatSection[] {
+/** The board as TripPanel builds it: its real stageCtx (placeholders, empty cards, files) and who comes their own way. */
+function sectionsOf(items: Item[], trip: Trip = base, docs: Record<string, number> = {}): CatSection[] {
   const plan = buildPlan(trip, items);
   const legs = buildLegs(plan, trip);
   const hidden = new Set(trip.hidden ?? []);
   const timeline = buildTimeline(plan, legs, items, hidden);
-  const stageCtx = placeholders ? (i: Item) => ({ placeholder: isPlaceholder(trip, i) }) : undefined;
-  return categorize({ plan, timeline, items, legs, hidden, today: "2026-10-01", stageCtx });
+  const files = (i: Item) => docs[i.id] ?? 0;
+  const stageCtx = (i: Item) => ({ placeholder: isPlaceholder(trip, i), empty: isEmptyRecord(trip, i, files(i), items), docs: files(i) });
+  return categorize({ plan, timeline, items, legs, hidden, today: "2026-10-01", stageCtx, ownWayIn: Object.keys(trip.travellers?.from ?? {}) });
 }
 /** The three the first hero counted: booked (and ready), planned, waiting for a decision (to find, or options). */
 const stagesOf = (sections: CatSection[]) => {
@@ -55,9 +57,9 @@ describe("planStages", () => {
     const trip: Trip = { ...base, startGuide: { placeholders: { [home.id]: placeholderPrint(home) } } as Trip["startGuide"] };
     const items = [flight("Gidiş", "IST", "OPO", "2026-10-08", "booked"), stay("Jardim Stay", "chosen"), home];
     expect(isPlaceholder(trip, home)).toBe(true);
-    expect(stagesOf(flightsAndStays(sectionsOf(items, trip, true)))).toEqual({ booked: 1, planned: 1, open: 1, total: 3 });
+    expect(stagesOf(flightsAndStays(sectionsOf(items, trip)))).toEqual({ booked: 1, planned: 1, open: 1, total: 3 });
     // Without the start chat's print it's a choice like any other.
-    expect(stagesOf(flightsAndStays(sectionsOf(items, trip)))).toEqual({ booked: 1, planned: 2, open: 0, total: 3 });
+    expect(stagesOf(flightsAndStays(sectionsOf(items, base)))).toEqual({ booked: 1, planned: 2, open: 0, total: 3 });
   });
 
   it("planned in the chat: planned; booked: booked", () => {
@@ -120,9 +122,11 @@ describe("planStages", () => {
     expect(transport(withLegChoice(base, arrival.key, { mode: "taxi", booked: true }))).toEqual({ booked: 1, planned: 0, open: 0, total: 1 });
   });
 
-  it("a car hire: planned once said, booked once booked", () => {
-    const car = said({ kind: "car_rental", date: "2026-10-09", end_date: "2026-10-10", city: "Porto" });
+  it("a car hire: to find while it names nothing, planned once a company is said, booked once booked", () => {
+    const bare = said({ kind: "car_rental", date: "2026-10-09", end_date: "2026-10-10", city: "Porto" });
+    const car = { ...bare, provider: "Europcar" };
     const of = (i: Item) => stagesOf(sectionsOf([stay("Jardim Stay", "booked"), i]).filter((x) => x.id === "transport"));
+    expect(of(bare)).toEqual({ booked: 0, planned: 0, open: 1, total: 1 });
     expect(of(car)).toEqual({ booked: 0, planned: 1, open: 0, total: 1 });
     expect(of({ ...car, status: "booked" })).toEqual({ booked: 1, planned: 0, open: 0, total: 1 });
   });
