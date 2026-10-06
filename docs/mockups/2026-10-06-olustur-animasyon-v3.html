@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oluştur animasyonu v3</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+<style>
+  :root { --accent:#5b45e0; --pink:#ff3d8b; --ink:#1d1d1f; --gray:#6e6e73; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif; color:var(--ink); }
+  html,body { margin:0; height:100%; background:#0b1020; overflow:hidden; }
+  .app { display:grid; grid-template-columns:380px 1fr; height:100vh; }
+  .chat { background:#fff; padding:22px 22px 0; display:flex; flex-direction:column; font-size:14.5px; line-height:1.5; z-index:2; box-shadow:4px 0 30px rgba(0,0,0,.18); }
+  .chat .back { color:#9a98a6; margin-bottom:8px; }
+  .chat h1 { font-size:21px; margin:0 0 14px; }
+  .u { align-self:flex-end; max-width:85%; background:#ece8ff; border-radius:16px; padding:8px 13px; margin-bottom:10px; }
+  .bt { margin-bottom:10px; } .bt b { display:block; margin-top:3px; }
+  .tip { background:#f6f3ff; border:1px solid #e4dcff; border-radius:12px; padding:8px 11px; font-size:13px; color:#3f3594; margin:2px 0 10px; }
+  .spacer { flex:1; } .input { border:1px solid #e6e3ee; border-radius:16px; padding:13px; color:#9a98a6; margin-bottom:18px; }
+  .stage { position:relative; overflow:hidden; }
+  #map { position:absolute; inset:0; }
+  .vignette { position:absolute; inset:0; pointer-events:none; background:radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(20,12,60,.28)); }
+  .title { position:absolute; top:24px; left:50%; transform:translate(-50%,-14px); opacity:0; transition:all .8s cubic-bezier(.2,.8,.2,1); background:rgba(255,255,255,.9); backdrop-filter:blur(10px); border-radius:18px; padding:11px 22px; box-shadow:0 10px 30px rgba(30,20,80,.18); text-align:center; }
+  .title.in { opacity:1; transform:translate(-50%,0); }
+  .title b { font-size:21px; display:block; letter-spacing:-.2px; } .title small { color:var(--gray); font-size:13px; }
+  .steps { position:absolute; left:24px; bottom:24px; width:350px; background:rgba(255,255,255,.93); backdrop-filter:blur(10px); border-radius:18px; padding:14px 16px 12px; box-shadow:0 12px 34px rgba(30,20,80,.2); font-size:13.5px; opacity:0; transform:translateY(16px); transition:all .7s cubic-bezier(.2,.8,.2,1); }
+  .steps.in { opacity:1; transform:none; }
+  .st { display:flex; gap:10px; align-items:center; padding:5px 0; color:#a3a0b3; transition:color .4s; }
+  .st i { width:18px; height:18px; border-radius:50%; flex:none; border:2px solid #dcd6f2; display:grid; place-items:center; font-style:normal; font-size:10px; transition:all .3s; }
+  .st.run { color:var(--ink); } .st.run i { border-color:var(--accent); border-right-color:transparent; animation:spin .8s linear infinite; }
+  .st.ok { color:var(--ink); } .st.ok i { background:#22a35a; border-color:#22a35a; color:#fff; animation:pop .35s ease; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @keyframes pop { 0%{ transform:scale(.4);} 70%{ transform:scale(1.25);} 100%{ transform:scale(1);} }
+  .bar { height:5px; border-radius:3px; background:#ebe6ff; margin-top:9px; overflow:hidden; } .bar span { display:block; width:0; height:100%; background:linear-gradient(90deg,#7b61ff,#5b45e0); transition:width .8s ease; }
+  /* uçak */
+  .plane { position:relative; width:58px; height:58px; transition:transform .1s linear; }
+  .plane svg { position:absolute; inset:0; width:100%; height:100%; }
+  .plane .shadow { filter:blur(3px); opacity:.35; }
+  /* ev ve iniş halkası */
+  .home { width:40px; height:40px; border-radius:50%; background:#fff; display:grid; place-items:center; box-shadow:0 4px 14px rgba(0,0,0,.3); font-size:18px; transform:scale(0); transition:transform .5s cubic-bezier(.3,1.6,.5,1); }
+  .home.in { transform:scale(1); }
+  .ring { width:24px; height:24px; border-radius:50%; border:3px solid var(--pink); animation:ring 1.2s ease-out 2; opacity:0; }
+  @keyframes ring { 0%{ transform:scale(.3); opacity:1;} 100%{ transform:scale(3.2); opacity:0;} }
+  /* duraklar */
+  .stop { display:flex; flex-direction:column; align-items:center; gap:6px; opacity:0; transform:translateY(-34px) scale(.6); transition:all .6s cubic-bezier(.3,1.5,.5,1); }
+  .stop.in { opacity:1; transform:none; }
+  .stop .nm { background:#fff; border-radius:10px; padding:4px 10px; font-weight:700; font-size:13.5px; box-shadow:0 3px 10px rgba(0,0,0,.2); white-space:nowrap; }
+  .stop .ph { position:relative; width:62px; height:62px; border-radius:50%; border:3px solid #fff; background:#ddd center/cover; box-shadow:0 6px 16px rgba(0,0,0,.3); }
+  .stop.fest .ph { border-color:var(--pink); box-shadow:0 0 0 5px rgba(255,61,139,.25), 0 6px 16px rgba(0,0,0,.3); }
+  .stop .n { position:absolute; top:-6px; right:-8px; min-width:24px; height:24px; padding:0 4px; border-radius:12px; background:#fff; font-weight:800; font-size:12.5px; display:grid; place-items:center; box-shadow:0 1px 5px rgba(0,0,0,.3); }
+  .stop.fest .n { background:var(--pink); color:#fff; }
+  .dest { display:flex; align-items:center; gap:6px; background:#fff; border-radius:12px; padding:6px 11px; font-weight:700; font-size:14px; box-shadow:0 4px 14px rgba(0,0,0,.25); opacity:0; transform:translateY(8px); transition:all .5s ease; }
+  .dest.in { opacity:1; transform:none; } .dest.out { opacity:0; }
+  /* fotoğraflar */
+  .photos { position:absolute; right:26px; bottom:26px; display:flex; }
+  .card { width:140px; height:178px; margin-left:-18px; border-radius:16px; border:4px solid #fff; background:#ddd center/cover; box-shadow:0 12px 30px rgba(0,0,0,.28); position:relative; opacity:0; transform:translateY(60px) rotate(0); transition:all .7s cubic-bezier(.2,1.2,.4,1); }
+  .card span { position:absolute; left:9px; bottom:8px; color:#fff; font-weight:800; font-size:13.5px; text-shadow:0 1px 6px rgba(0,0,0,.7); }
+  .card.in:nth-child(1){ opacity:1; transform:rotate(-6deg) translateY(8px); } .card.in:nth-child(2){ opacity:1; transform:rotate(0) translateY(-6px); z-index:2; } .card.in:nth-child(3){ opacity:1; transform:rotate(6deg) translateY(8px); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="chat">
+    <div class="back">‹ Seyahatlerim</div>
+    <h1>Ozora Festivali 2027 · yeni gezi</h1>
+    <div class="u">2 hafta süren bir Ozora festivali planla 2027'de sevgilimle</div>
+    <div class="bt">Ozora! Macaristan'ın Dádpuszta vadisinde, dünyanın en sevilen psytrance festivallerinden biri. 2027'de 26 Temmuz – 2 Ağustos (resmî siteden teyit ettim). Sevgilinle harika bir plan, hadi kuralım.<b>Nereden yola çıkıyorsun?</b></div>
+    <div class="u">Antalya</div>
+    <div class="bt">Festival 8 gün, sen 2 hafta dedin.<b>Kalan günleri nasıl değerlendirelim?</b></div>
+    <div class="tip">💡 Çoğu kişi 1–2 gün erken gidip iyi bir kamp yeri kapıyor. Sonrası için Balaton Gölü kıyısında dinlenmek çok iyi gider.</div>
+    <div class="u">2 gün erken + sonra Balaton</div>
+    <div class="bt">Süper, oluşturuyorum.</div>
+    <div class="spacer"></div>
+    <div class="input">Ya da kendin yaz…</div>
+  </div>
+  <div class="stage">
+    <div id="map"></div>
+    <div class="vignette"></div>
+    <div class="title" id="title"><b>Ozora Festivali 2027</b><small>Antalya → Budapeşte → Ozora 🎪 → Balaton · 14 gece</small></div>
+    <div class="steps" id="steps">
+      <div class="st" data-s="0"><i></i>Gezi açıldı: Ozora Festivali 2027</div>
+      <div class="st" data-s="1"><i></i>Festival tarihleri: 26 Tem – 2 Ağu</div>
+      <div class="st" data-s="2"><i></i>Antalya ⇄ Budapeşte uçuşları</div>
+      <div class="st" data-s="3"><i></i>Budapeşte → Ozora transfer / araç</div>
+      <div class="st" data-s="4"><i></i>Festival bileti ve kamp hazırlığı</div>
+      <div class="bar"><span id="bar"></span></div>
+    </div>
+    <div class="photos" id="photos"></div>
+  </div>
+</div>
+<script>
+const KEY="sb_publishable_HotkmMyo4PGggsarTsiVZQ_eOSUlhS0";
+const photo=(q)=>fetch("https://zjkesdsbructiyflzqvq.supabase.co/functions/v1/city-image?q="+encodeURIComponent(q),{headers:{apikey:KEY}}).then(r=>r.json()).then(j=>j.url).catch(()=>null);
+const A=[30.70,36.90], B=[19.04,47.50], OZ=[18.40,46.75], BAL=[17.90,46.95];
+const STOPS=[{n:"Budapeşte",c:B,k:2,q:"Budapest"},{n:"Ozora 🎪",c:OZ,k:8,q:"Ozora festival Hungary",f:1},{n:"Balaton",c:BAL,k:4,q:"Lake Balaton"}];
+const ease=(t)=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+function bow(a,b,n=180,h=-0.32){ const c=[(a[0]+b[0])/2+(-(b[1]-a[1]))*h,(a[1]+b[1])/2+(b[0]-a[0])*h]; const o=[];
+  for(let i=0;i<=n;i++){ const t=i/n,u=1-t; o.push([u*u*a[0]+2*u*t*c[0]+t*t*b[0],u*u*a[1]+2*u*t*c[1]+t*t*b[1]]);} return o; }
+const arc=bow(A,B);
+const step=(i,cls)=>{ const e=document.querySelector(`.st[data-s="${i}"]`); e.className="st "+cls; if(cls==="ok") e.querySelector("i").textContent="✓"; };
+const bar=(p)=>document.getElementById("bar").style.width=p+"%";
+const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/liberty",center:[24,42],zoom:1.5,attributionControl:{compact:true},interactive:false,preserveDrawingBuffer:true});
+map.on("style.load",()=>{ map.setProjection({type:"globe"}); try{ map.setSky({"sky-color":"#9cc3ff","horizon-color":"#e6f0ff","fog-color":"#ffffff","atmosphere-blend":["interpolate",["linear"],["zoom"],0,1,6,.4,8,0]}); }catch{} });
+map.on("load", async ()=>{
+  for (const l of map.getStyle().layers) if (l.type==="symbol" && l.layout?.["text-field"]) { try{ map.setLayoutProperty(l.id,"text-field",["coalesce",["get","name:tr"],["get","name_en"],["get","name"]]);}catch{} }
+  map.addSource("ahead",{type:"geojson",data:{type:"Feature",geometry:{type:"LineString",coordinates:arc}}});
+  map.addLayer({id:"ahead",type:"line",source:"ahead",paint:{"line-color":"#5b45e0","line-opacity":0,"line-width":2.5,"line-dasharray":[1,2]},layout:{"line-cap":"round"}});
+  map.addSource("trail",{type:"geojson",lineMetrics:true,data:{type:"Feature",geometry:{type:"LineString",coordinates:[arc[0],arc[0]]}}});
+  map.addLayer({id:"trail",type:"line",source:"trail",paint:{"line-width":5,"line-gradient":["interpolate",["linear"],["line-progress"],0,"rgba(91,69,224,0.15)",0.6,"rgba(91,69,224,0.85)",1,"#5b45e0"]},layout:{"line-cap":"round","line-join":"round"}});
+  map.addSource("ground",{type:"geojson",data:{type:"Feature",geometry:{type:"LineString",coordinates:[B,B]}}});
+  map.addLayer({id:"ground",type:"line",source:"ground",paint:{"line-color":"#ff3d8b","line-width":3.5,"line-dasharray":[1,1.3]},layout:{"line-cap":"round"}});
+  const photos=await Promise.all(STOPS.map(s=>photo(s.q)));
+  // --- 0) küre girişi
+  document.getElementById("title").classList.add("in");
+  await sleep(300);
+  map.easeTo({center:[24.3,42.5],zoom:4.2,pitch:0,duration:2200,easing:ease});
+  setTimeout(()=>document.getElementById("steps").classList.add("in"),700);
+  setTimeout(()=>step(0,"run"),900); setTimeout(()=>{ step(0,"ok"); bar(15); step(1,"run"); },1600);
+  await sleep(1500);
+  const he=document.createElement("div"); he.className="home"; he.textContent="⌂";
+  new maplibregl.Marker({element:he}).setLngLat(A).addTo(map); requestAnimationFrame(()=>he.classList.add("in"));
+  const de=document.createElement("div"); de.className="dest"; de.innerHTML="🇭🇺 Macaristan · Ozora 🎪";
+  const dm=new maplibregl.Marker({element:de,anchor:"bottom",offset:[0,-10]}).setLngLat(OZ).addTo(map); setTimeout(()=>de.classList.add("in"),200);
+  map.setPaintProperty("ahead","line-opacity",.45);
+  await sleep(800);
+  step(1,"ok"); bar(30); step(2,"run");
+  // --- 1) uçuş
+  const pl=document.createElement("div"); pl.className="plane";
+  const P='M12 1.6c.7 0 1.2.8 1.2 1.8v5.5l8.3 4.9v1.8l-8.3-2.5v5l2.4 1.8v1.4L12 20.4 8.4 21.3v-1.4l2.4-1.8v-5l-8.3 2.5v-1.8l8.3-4.9V3.4c0-1 .5-1.8 1.2-1.8z';
+  pl.innerHTML=`<svg class="shadow" viewBox="0 0 24 24"><path d="${P}" fill="#000"/></svg><svg viewBox="0 0 24 24"><path d="${P}" fill="#fff" stroke="#2b2350" stroke-width=".7" stroke-linejoin="round"/></svg>`;
+  const shadow=pl.querySelector(".shadow");
+  const pm=new maplibregl.Marker({element:pl,rotationAlignment:"viewport"}).setLngLat(A).addTo(map);
+  const D=3600, t0=performance.now(); const startC=map.getCenter(); 
+  await new Promise(res=>{ function f(now){ const r=Math.min(1,(now-t0)/D), t=ease(r), i=Math.max(1,Math.round(t*(arc.length-1)));
+      const p=arc[i], q=arc[Math.min(arc.length-1,i+2)], p0=map.project(arc[i-1]), p1=map.project(q);
+      const ang=Math.atan2(p1.x-p0.x, -(p1.y-p0.y))*180/Math.PI;
+      const alt=Math.sin(Math.PI*t); pm.setLngLat(p); pl.style.transform=`rotate(${ang}deg) scale(${0.85+0.35*alt})`;
+      shadow.style.transform=`translate(${8+16*alt}px,${10+20*alt}px) scale(.9)`; shadow.style.opacity=(.35-.15*alt).toFixed(2);
+      map.getSource("trail").setData({type:"Feature",geometry:{type:"LineString",coordinates:arc.slice(0,i+1)}});
+      map.jumpTo({center:[startC.lng+(p[0]-startC.lng)*0.35, startC.lat+(p[1]-startC.lat)*0.35], zoom:4.2-0.25*alt});
+      if (r<1) requestAnimationFrame(f); else res(); } requestAnimationFrame(f); });
+  // --- 2) iniş
+  const re=document.createElement("div"); re.className="ring"; new maplibregl.Marker({element:re}).setLngLat(B).addTo(map);
+  pl.style.transition="opacity .5s, transform .5s"; pl.style.opacity="0"; pl.style.transform+=" scale(.4)";
+  step(2,"ok"); bar(55); step(3,"run");
+  await sleep(450);
+  de.classList.add("out"); map.setPaintProperty("ahead","line-opacity",0);
+  map.flyTo({center:[18.75,47.1],zoom:7.6,duration:2200,curve:1.4,easing:ease});
+  await sleep(1700);
+  // --- 3) duraklar + yer yolu
+  const route=[B,OZ,BAL,B]; 
+  STOPS.forEach((s,j)=>{ setTimeout(()=>{ const e=document.createElement("div"); e.className="stop"+(s.f?" fest":"");
+      e.innerHTML=`<span class="nm">${s.n}</span><span class="ph" style="background-image:url(${photos[j]||''})"><span class="n">${s.k}</span></span>`;
+      new maplibregl.Marker({element:e,anchor:"bottom"}).setLngLat(s.c).addTo(map); requestAnimationFrame(()=>e.classList.add("in")); }, j*380); });
+  const pts=[]; for(let s=0;s<route.length-1;s++) for(let k=0;k<=30;k++){ const t=k/30; pts.push([route[s][0]+(route[s+1][0]-route[s][0])*t, route[s][1]+(route[s+1][1]-route[s][1])*t]); }
+  const g0=performance.now(); await new Promise(res=>{ function g(now){ const r=Math.min(1,(now-g0)/1800), n=Math.max(2,Math.round(ease(r)*pts.length));
+      map.getSource("ground").setData({type:"Feature",geometry:{type:"LineString",coordinates:pts.slice(0,n)}}); if(r<1) requestAnimationFrame(g); else res(); } requestAnimationFrame(g); });
+  step(3,"ok"); bar(80); step(4,"run");
+  // --- 4) fotoğraflar
+  const P2=document.getElementById("photos");
+  STOPS.forEach((s,j)=>{ P2.insertAdjacentHTML("beforeend",`<div class="card" style="background-image:url(${photos[j]||''})"><span>${s.n}</span></div>`); });
+  [...P2.children].forEach((c,j)=>setTimeout(()=>c.classList.add("in"),j*160));
+  await sleep(900); step(4,"ok"); bar(100);
+  window.__done=true;
+});
+</script>
+</body>
+</html>
