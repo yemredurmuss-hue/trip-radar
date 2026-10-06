@@ -101,7 +101,8 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
   const showPhotos = landed || world === null;
   // The real map first; the bundled one when it can't be drawn.
   const [bundled, setBundled] = useState(false);
-  const real = useMemo(() => (points?.to ? realMap(points, state, photos) : null), [points]);
+  // The stops' photos as they're found here (the places asked for here aren't asked again by the map).
+  const real = useMemo(() => (points?.to ? realMap(points, state, photos, places) : null), [points, photos]);
 
   async function run(from: number) {
     setFailed(null);
@@ -251,13 +252,14 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
  * route, their photos as prepared, else asked for by name) joined by a dashed line; the destination itself when
  * the route has fewer than two stops.
  */
-function realMap(points: TripPoints, state: StartState, photos: { place: string; url: string }[]): { stops: TripMapStop[]; legs: TripMapLeg[] } {
+function realMap(points: TripPoints, state: StartState, photos: { place: string; url: string }[], asked: string[]): { stops: TripMapStop[]; legs: TripMapLeg[] } {
+  const askedHere = new Set(asked.map((x) => cityKeyOf(x)));
   const to = points.to!;
   const nights = new Map(stopsOf(state).map((s) => [cityKeyOf(s.city), s.nights]));
   const photo = (name: string) => photos.find((p) => cityKeyOf(p.place) === cityKeyOf(name))?.url ?? null;
   const places = points.stops.length >= 2 ? points.stops : [to];
   const stops: TripMapStop[] = places.map((p, i) => ({
-    key: `${i}:${cityKeyOf(p.name)}`, name: p.name, lat: p.lat, lng: p.lng, nights: nights.get(cityKeyOf(p.name)) ?? null, photo: photo(p.name), photoQuery: p.name,
+    key: `${i}:${cityKeyOf(p.name)}`, name: p.name, lat: p.lat, lng: p.lng, nights: nights.get(cityKeyOf(p.name)) ?? null, photo: photo(p.name), photoQuery: askedHere.has(cityKeyOf(p.name)) ? null : p.name,
   }));
   const legs: TripMapLeg[] = [];
   if (points.from) legs.push({ key: "out", from: points.from, to, mode: "flight", minutes: null, booked: false });

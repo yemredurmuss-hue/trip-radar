@@ -47,11 +47,11 @@ export function loadMapLibre(): Promise<MapLibreGL> {
   return loading;
 }
 
-/** Whether this browser can draw the map at all (MapLibre 5 needs WebGL 2). */
+/** Whether this browser can draw the map at all: WebGL 2, or WebGL 1 (MapLibre falls back to it). */
 export function canDrawMap(): boolean {
   try {
     const canvas = document.createElement("canvas");
-    const gl = canvas.getContext("webgl2");
+    const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
     if (!gl) return false;
     gl.getExtension("WEBGL_lose_context")?.loseContext();
     return true;

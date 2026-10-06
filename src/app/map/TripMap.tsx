@@ -3,9 +3,12 @@
 // them. Two uses: "generate" (the start's generating screen: the globe zoomed out, the plane flies from home to the
 // destination while the camera frames it, a pulse where it lands, then the stops) and "board" (the Harita tab: every
 // journey, ▶ plays the trip, a stop shows its dates). The library loads only when a map opens (maplibre.ts). When it
-// can't draw (no WebGL, offline, no tiles within ~4 s) it says so through onUnavailable and draws nothing.
+// can't draw (no WebGL, offline; on the generating screen also no tiles within ~4 s) it says so through onUnavailable
+// and draws nothing.
 //
-// Only the map's region goes to OpenFreeMap (the tiles for what's in view); nothing about the trip or who goes.
+// What leaves the device: the map's region to OpenFreeMap (the tiles, fonts and icons for what's in view), and a stop's
+// name when its photo isn't known yet, to the city-image proxy and Wikipedia (cityImages.ts). Nothing about the trip's
+// dates, bookings or who goes.
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { GeoJSONSource, Map as MlMap, Marker } from "maplibre-gl";
 import { pickCityImage, imageProxy } from "../../lib/cityImages";
@@ -63,7 +66,7 @@ const LAND_MS = 500;
 
 const systemReduced = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// Lucide's outlines (ISC), one per way of going, for the pills on the journeys.
+// Lucide's outlines (ISC licence, static/licenses/lucide.txt, shipped in dist/licenses/), one per way of going.
 const ICONS: Record<MapMode | "any", string> = {
   flight:
     '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>',
@@ -129,7 +132,7 @@ interface Drawn {
   markers: Marker[];
   lines: Map<string, LngLat[]>;
   /** The stops' markers (most nights first) and the pills with their journey's ends, for decluttering. */
-  stops: { node: HTMLElement; at: LngLat; nights: number }[];
+  stops: { node: HTMLElement; at: LngLat; nights: number; key: string; img: HTMLImageElement }[];
   pills: { node: HTMLElement; from: LngLat; to: LngLat }[];
 }
 
@@ -143,6 +146,7 @@ export function TripMap(props: TripMapProps) {
   const libRef = useRef<MapLibreGL | null>(null);
   const drawn = useRef<Drawn>({ markers: [], lines: new Map(), stops: [], pills: [] });
   const fitted = useRef(false);
+  const handMoved = useRef(false);
   const anim = useRef(0);
   const flying = useRef<Marker | null>(null);
   const still = useMemo(() => props.reducedMotion ?? systemReduced(), [props.reducedMotion]);
@@ -172,7 +176,8 @@ export function TripMap(props: TripMapProps) {
       queueMicrotask(() => fail("webgl"));
       return () => void (live = false);
     }
-    const timer = setTimeout(() => fail("timeout"), MAP_LOAD_MS);
+    // The generating screen can't wait (the bundled map stands in); the board waits for a slow line.
+    const timer = mode === "generate" ? setTimeout(() => fail("timeout"), MAP_LOAD_MS) : undefined;
     void loadMapLibre()
       .then((lib) => {
         if (!live || failed || !box.current) return;
@@ -225,6 +230,8 @@ export function TripMap(props: TripMapProps) {
         });
         map.once("load", alive);
         map.on("moveend", () => declutter(map));
+        // Moved by hand: the camera isn't fitted again over them (a programmatic move has no originalEvent).
+        for (const ev of ["dragstart", "zoomstart", "rotatestart", "pitchstart"] as const) map.on(ev, (e: { originalEvent?: unknown }) => void (e.originalEvent && (handMoved.current = true)));
         map.on("error", (e: { sourceId?: string; tile?: unknown }) => {
           // Before the first frame, the style or the library failing is the map failing (a tile is waited for).
           if (!loaded && !e.sourceId && !e.tile) fail("error");
@@ -240,10 +247,15 @@ export function TripMap(props: TripMapProps) {
     };
   }, []);
 
-  // The board's journeys and stops change as places are looked up: drawn again (the camera fits them once).
+  // What's drawn, as a key: a re-render with the same journeys and stops changes nothing (an open popover stays).
+  const content = useMemo(() => JSON.stringify([stops, legs, home]), [stops, legs, home]);
+  // The board's journeys and stops change as places are looked up: drawn again, the camera fitting them until the
+  // map is moved by hand. The generating screen only takes photos that came after the landing.
   useEffect(() => {
-    if (mode === "board" && phase === "ready" && mapRef.current) draw(mapRef.current);
-  }, [stops, legs, home, phase]);
+    if (!mapRef.current) return;
+    if (mode === "board" && phase === "ready") draw(mapRef.current);
+    if (mode === "generate" && phase === "landed") refreshPhotos();
+  }, [content, phase]);
 
   /** The journeys' lines (booked solid, the rest dashed) and the generating screen's flight, under the markers. */
   function addOverlays(map: MlMap) {
@@ -341,7 +353,7 @@ export function TripMap(props: TripMapProps) {
       node.setAttribute("aria-label", withLang(lang, () => [s.name, s.start ? formatDateRange(s.start, s.end ?? null) : "", s.nights ? nNights(s.nights) : ""].filter(Boolean).join(", ")));
     }
     addMarker(map, node, [s.lng, s.lat], "bottom");
-    drawn.current.stops.push({ node, at: [s.lng, s.lat], nights: s.nights ?? 0 });
+    drawn.current.stops.push({ node, at: [s.lng, s.lat], nights: s.nights ?? 0, key: s.key, img });
   }
 
   function pill(map: MlMap, l: TripMapLeg) {
@@ -390,19 +402,29 @@ export function TripMap(props: TripMapProps) {
     for (const s of p.stops) stopMarker(map, s, false);
     declutter(map);
     const b = boundsOf(pointsOf(p, drawn.current.lines));
-    if (b && !fitted.current) {
+    if (b && !handMoved.current) {
+      map.fitBounds(b, { padding: { top: 110, bottom: 50, left: 70, right: 70 }, maxZoom: 6, duration: fitted.current && !still ? 500 : 0 });
       fitted.current = true;
-      map.fitBounds(b, { padding: { top: 110, bottom: 50, left: 70, right: 70 }, maxZoom: 6, duration: 0 });
+    }
+  }
+
+  /** A stop's photo that came after its marker (the generating screen finds them while the plane flies). */
+  function refreshPhotos() {
+    const p = latest.current;
+    for (const d of drawn.current.stops) {
+      const photo = d.key === "all" ? p.stops[0]?.photo : p.stops.find((s) => s.key === d.key)?.photo;
+      if (photo && !d.img.getAttribute("src") && d.img.isConnected) d.img.src = photo;
     }
   }
 
   /** The generating screen: home, the flight drawn as the plane flies it, a pulse where it lands, then the stops. */
   function generate(map: MlMap) {
     const p = latest.current;
-    const fly = p.legs[0] ?? null;
+    // The flight is the way out from home; without a home there's no flight, only the stops.
+    const fly = p.legs.find((l) => l.key === "out") ?? null;
     const line = fly ? lineOf(fly) : [];
     if (fly) drawn.current.lines.set(fly.key, line);
-    const rest = p.legs.slice(1);
+    const rest = p.legs.filter((l) => l !== fly);
     const all = pointsOf(p, drawn.current.lines);
     const b = boundsOf(all);
     // The flight framed (room above for the stop's photo and name): the globe fills the card, its curve only at the
@@ -415,6 +437,8 @@ export function TripMap(props: TripMapProps) {
     const landed = () => {
       // Gone meanwhile (the board opened): nothing to land on.
       if (mapRef.current !== map) return;
+      // As they are now (photos found while it flew).
+      const p = latest.current;
       setPhase("landed");
       if (fly) {
         const pulse = el("div", `tm-pulse${still ? "" : " go"}`);
@@ -520,8 +544,9 @@ export function TripMap(props: TripMapProps) {
     anim.current = requestAnimationFrame(tick);
   }
 
+  const out = legs.find((l) => l.key === "out");
   const label = withLang(lang, () =>
-    mode === "generate" && legs[0] ? L(`${legs[0].from.name} → ${legs[0].to.name} uçuşu, haritada`, `The flight ${legs[0].from.name} → ${legs[0].to.name} on a map`) : L("Gezinin haritası", "The trip's map"),
+    mode === "generate" && out ? L(`${out.from.name} → ${out.to.name} uçuşu, haritada`, `The flight ${out.from.name} → ${out.to.name} on a map`) : L("Gezinin haritası", "The trip's map"),
   );
   if (phase === "failed") return null;
   return (
