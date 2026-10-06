@@ -24,8 +24,8 @@ describe("city-image picking", () => {
   it("asks 10 landscape answers of each, and keys the cache by version and every search", () => {
     expect(unsplashSearchUrl("Ozora Festival")).toBe("https://api.unsplash.com/search/photos?query=Ozora%20Festival&orientation=landscape&per_page=10&content_filter=high");
     expect(pexelsSearchUrl("Ella Sri Lanka")).toBe("https://api.pexels.com/v1/search?query=Ella%20Sri%20Lanka&orientation=landscape&per_page=10");
-    expect(cacheKey([" Madeira  Island "])).toBe("v2:madeira island");
-    expect(cacheKey(["Ozora", "Ozora festival"])).toBe("v2:ozora|ozora festival");
+    expect(cacheKey([" Madeira  Island "])).toBe("v3:madeira island");
+    expect(cacheKey(["Ozora", "Ozora festival"])).toBe("v3:ozora|ozora festival");
   });
 
   it("takes Unsplash's most liked, at 2400 px with ixid kept, credited with the UTM", () => {
@@ -108,5 +108,19 @@ describe("the hero's photo credit", () => {
     const t = { heroImage: "h", cityImages: { x: "n", y: null }, photoCredits: { h: c, old: c } };
     expect(keptCredits(t, [{ url: "n", credit: c }, null])).toEqual({ h: c, n: c });
     expect(keptCredits({ heroImage: null }, [])).toBeUndefined();
+  });
+});
+
+describe("an event's own name", () => {
+  it("counts a photo only when its words name the event", async () => {
+    const { namesIt, pickUnsplash } = await import("../supabase/functions/city-image/pick");
+    expect(namesIt("crowd at ozora festival main stage", "Ozora Festival")).toBe(true);
+    expect(namesIt("person drawing on paper", "Ozora Festival")).toBe(false);
+    expect(namesIt("anything", "Festival")).toBe(false);
+    const drawing = { urls: { raw: "https://images.unsplash.com/a?ixid=1" }, likes: 900, alt_description: "person drawing", slug: "drawing-abc", links: { html: "https://unsplash.com/photos/drawing-abc" } };
+    const stage = { urls: { raw: "https://images.unsplash.com/b?ixid=2" }, likes: 5, alt_description: "Ozora stage at night", slug: "x", links: { html: "https://unsplash.com/photos/x" } };
+    expect(pickUnsplash([drawing, stage], "Ozora Festival")!.url).toContain("/b?");
+    expect(pickUnsplash([drawing], "Ozora Festival")).toBeNull();
+    expect(pickUnsplash([drawing, stage])!.url).toContain("/a?");
   });
 });

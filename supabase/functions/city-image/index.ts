@@ -41,7 +41,7 @@ const fromRow = (r: Row): Hit =>
   r.url ? { url: r.url, by: r.by, source: r.source ?? "pexels", author_url: r.author_url ?? null, photo_page: r.photo_page ?? null } : { url: null };
 
 /** One search at a provider: the photo taken, null when it has none, or the failure ("unsplash-403"). */
-async function search(source: PhotoSource, q: string, key: string): Promise<Picked | null | string> {
+async function search(source: PhotoSource, q: string, key: string, named?: string): Promise<Picked | null | string> {
   if (Date.now() < blockedUntil[source]) return `${source}-429`;
   const unsplash = source === "unsplash";
   const res = await fetch(unsplash ? unsplashSearchUrl(q) : pexelsSearchUrl(q), {
@@ -51,7 +51,7 @@ async function search(source: PhotoSource, q: string, key: string): Promise<Pick
   if (res.status === 429 || (unsplash && res.status === 403 && res.headers.get("X-Ratelimit-Remaining") === "0")) blockedUntil[source] = Date.now() + 15 * 6e4;
   if (!res.ok) return `${source}-${res.status}`;
   const body = await res.json();
-  return unsplash ? pickUnsplash(body?.results) : pickPexels(body?.photos);
+  return unsplash ? pickUnsplash(body?.results, named) : pickPexels(body?.photos, named);
 }
 
 Deno.serve(async (req: Request) => {
@@ -81,10 +81,12 @@ Deno.serve(async (req: Request) => {
   const providers = [...(unsplash ? [["unsplash", unsplash] as const] : []), ...(pexels ? [["pexels", pexels] as const] : [])];
   let picked: Picked | null = null;
   let failed: string | null = null;
-  chain: for (const query of queries) {
+  chain: for (const [i, query] of queries.entries()) {
+    // An event's own name (the first of several searches): only a photo whose words name it.
+    const named = i === 0 && queries.length > 1 ? query : undefined;
     for (const [source, key] of providers) {
       try {
-        const got = await search(source, query, key);
+        const got = await search(source, query, key, named);
         if (typeof got === "string") failed = got;
         else if (got) {
           picked = got;
