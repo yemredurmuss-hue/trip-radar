@@ -5,9 +5,9 @@
 // intent, and the trip making itself once the essentials are known (the countdown's arming and stopping).
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { setLang, withLang } from "../src/lib/i18n";
-import { EVENTS, findEvent, intentOf, nextFullMoon, nextOccurrence } from "../src/lib/startEvents";
+import { EVENTS, findEvent, intentOf, nextFullMoon, nextOccurrence, TABLE_LAST_YEAR } from "../src/lib/startEvents";
 import {
-  acceptExtraction, applyAnswer, applyText, autoPrint, checklist, creationOf, essentialsDone, eventLine, isComplete, isGoCommand, lineLink, mergeExtracted,
+  acceptExtraction, applyAnswer, applyText, autoPrint, autoSeconds, nextLine, waitingInstead, checklist, creationOf, essentialsDone, eventLine, isComplete, isGoCommand, lineLink, mergeExtracted,
   newStart, nextQuestion, parseStartText, questionOf, replyText, routeForGenerate, shouldAutoStart, skip, startName, totalNights, tripDates, tripTitle,
   withTypedLang, type RawExtraction, type StartCtx, type StartState,
 } from "../src/lib/startTrip";
@@ -191,6 +191,15 @@ describe("the events' table", () => {
     expect(read.intent?.dates).toEqual({ start: "2027-08-29", end: "2027-09-06", approx: true });
   });
 
+  it("the lunar and irregular year tables still reach this year (extend them once this fails)", () => {
+    expect(Object.keys(TABLE_LAST_YEAR).sort()).toEqual(["cny", "diwali", "hajj", "holi"]);
+    // The real clock, on purpose: fails once today passes the last year of any table.
+    const year = new Date().getUTCFullYear();
+    for (const [id, last] of Object.entries(TABLE_LAST_YEAR)) expect(year, `${id}'s table ends in ${last}`).toBeLessThanOrEqual(last);
+    expect(Math.min(...Object.values(TABLE_LAST_YEAR))).toBe(2028);
+    expect(Math.max(...Object.values(TABLE_LAST_YEAR))).toBe(2029);
+  });
+
   it("forty entries, each with names, a place, a country, its typical time and a site; dates ahead of today", () => {
     expect(EVENTS.length).toBeGreaterThanOrEqual(40);
     expect(new Set(EVENTS.map((e) => e.id)).size).toBe(EVENTS.length);
@@ -284,6 +293,26 @@ describe("making the trip by itself", () => {
     const full = answered(applyAnswer(go, { q: "want", styles: ["adventure"], budget: null }, 6));
     expect(isComplete(full)).toBe(true);
     expect(shouldAutoStart(full, ctx, stopped)).toBe(true);
+  });
+  it("6 seconds when the style question shows as it starts (time to read its chips), else 3", () => {
+    const go = applyAnswer(ready(), { q: "count", n: 4 }, 5);
+    expect(nextQuestion(go)).toBe("want");
+    expect(autoSeconds(go)).toBe(6);
+    const styled = applyAnswer(go, { q: "want", styles: ["adventure"], budget: null }, 6);
+    expect(nextQuestion(styled)).toBeNull();
+    expect(autoSeconds(styled)).toBe(3);
+  });
+  it("the last line says it makes itself; stopped, it waits", () => {
+    const done = applyAnswer(applyAnswer(ready(), { q: "count", n: 4 }, 5), { q: "want", styles: ["adventure"], budget: null }, 6);
+    const tr = withLang("tr", () => nextLine(done, ctx));
+    expect(tr).toBe("Hazırım, birkaç saniye içinde oluşturuyorum. Eklemek istediğin bir şey varsa yaz.");
+    expect(withLang("tr", () => waitingInstead(`Tamam, rota bu.\n${tr}`))).toBe("Tamam, rota bu.\nTamam, bekliyorum. Hazır olunca Oluştur'a bas ya da 'oluştur' yaz.");
+    expect(withLang("en", () => nextLine(done, ctx))).toBe("I'm ready and will build it in a few seconds. Write if you want to add anything.");
+    expect(withLang("en", () => waitingInstead("I'm ready and will build it in a few seconds. Write if you want to add anything."))).toBe(
+      "OK, I'll wait. Press Generate or type 'generate' when you're ready.",
+    );
+    // A question on screen stays as it is.
+    expect(withLang("en", () => waitingInstead("What are you after on this trip? (pick as many as you like)"))).toBeNull();
   });
   it("asked for in words", () => {
     for (const t of ["tamam oluştur", "Hadi", "generate", "let's go!", "Tamam, oluştur.", "go ahead"]) expect(isGoCommand(t), t).toBe(true);

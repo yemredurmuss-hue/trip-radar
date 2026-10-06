@@ -1375,6 +1375,24 @@ export const autoPrint = (s: StartState, ctx: StartCtx): string => JSON.stringif
  * said (nothing asked of the traveller still on its way), not already for these answers. Stopped by the traveller
  * (typing, a tap, "Vazgeç"): only a later full checklist starts it again.
  */
+/** The countdown: 3 seconds; 6 when the style question shows as it starts (time to read its chips). */
+export const AUTO_SECONDS = 3;
+export const AUTO_WITH_STYLE = 6;
+export const autoSeconds = (s: StartState): number => (nextQuestion(s) === "want" ? AUTO_WITH_STYLE : AUTO_SECONDS);
+
+/** The last line when nothing is left to ask: the trip makes itself in a few seconds. */
+export const readyLine = () =>
+  L("Hazırım, birkaç saniye içinde oluşturuyorum. Eklemek istediğin bir şey varsa yaz.", "I'm ready and will build it in a few seconds. Write if you want to add anything.");
+/** Said instead once the countdown is stopped. */
+export const waitingLine = () =>
+  L("Tamam, bekliyorum. Hazır olunca Oluştur'a bas ya da 'oluştur' yaz.", "OK, I'll wait. Press Generate or type 'generate' when you're ready.");
+
+/** The chat's last line with "ready" said as "waiting" (the countdown stopped); null when it doesn't end with it. */
+export function waitingInstead(text: string): string | null {
+  const ready = readyLine();
+  return text.endsWith(ready) ? text.slice(0, text.length - ready.length) + waitingLine() : null;
+}
+
 export function shouldAutoStart(s: StartState, ctx: StartCtx, memo: AutoMemo): boolean {
   if (s.messages.at(-1)?.role !== "assistant" || !canGenerate(s) || !essentialsDone(s)) return false;
   if (autoPrint(s, ctx) === memo.for) return false;
@@ -2100,7 +2118,7 @@ export function nextLine(after: StartState, ctx: StartCtx, drawing = false): str
   if (q === "route" && drawing && !after.route && !after.editingRoute) return drawingLine();
   if (q) return questionOf(after, q, ctx).text;
   return canGenerate(after)
-    ? L("Hazırım. Gezimi oluştur'a bas; eklemek istediğin bir şey varsa yaz.", "I'm ready. Press Generate my trip, or type anything you'd like to add.")
+    ? readyLine()
     : L(`Oluşturmak için ${missingForGenerate(after).join(" ve ")} gerekli; listeden ona basabilirsin.`, `To generate I need ${missingForGenerate(after).join(" and ")}; press it in the list.`);
 }
 

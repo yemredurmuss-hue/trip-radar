@@ -2599,6 +2599,8 @@ try {
   await list.getByText("Sabine ile · 2 kişi").waitFor();
   assert.equal(await answers.locator(".st-chip").first().innerText(), "İstanbul", "the origin's guess comes first");
   await answers.getByRole("button", { name: "İstanbul", exact: true }).click();
+  // The essentials known: the countdown (6 s, the style question shows); stopped here to go on by hand.
+  await board.locator(".st-auto").getByRole("button", { name: "Vazgeç" }).click();
   await board.locator(".st-msg-bot", { hasText: "Bu gezide en çok ne istiyorsun?" }).waitFor();
   await answers.getByRole("button", { name: /Doğa/ }).click();
   await answers.getByRole("button", { name: /Deniz/ }).click();
@@ -2615,8 +2617,13 @@ try {
   await board.screenshot({ path: `${out}/20b2-start-narrow.png` });
   await board.setViewportSize({ width: 1440, height: 900 });
   await answers.getByRole("button", { name: "Bu olsun" }).click();
-  await board.locator(".st-msg-bot", { hasText: "Hazırım" }).waitFor();
-  await side.getByRole("button", { name: /Gezimi oluştur/ }).click();
+  await board.locator(".st-msg-bot", { hasText: "Hazırım, birkaç saniye içinde oluşturuyorum. Eklemek istediğin bir şey varsa yaz." }).waitFor();
+  // Stopped, the line says it waits; "oluştur" typed makes it at once.
+  await board.locator(".st-auto").getByRole("button", { name: "Vazgeç" }).click();
+  await board.locator(".st-msg-bot", { hasText: "Tamam, bekliyorum. Hazır olunca Oluştur'a bas ya da 'oluştur' yaz." }).waitFor();
+  assert.equal(await board.locator(".st-msg-bot", { hasText: "Hazırım" }).count(), 0, "the ready line said as waiting");
+  await board.locator(".st-chat").getByLabel("Mesaj").fill("oluştur");
+  await board.locator(".st-chat").getByLabel("Mesaj").press("Enter");
   await board.locator(".st-gen", { hasText: "Bali Gezisi planlanıyor" }).waitFor();
   await board.locator(".st-step.done", { hasText: "Gezi açıldı: Bali Gezisi" }).waitFor();
   await board.screenshot({ path: `${out}/20c-start-generating.png` });
@@ -3250,6 +3257,8 @@ try {
   assert.equal(await board.locator(".st-msg-bot", { hasText: "Nereye gidiyoruz?" }).count(), 0, "where to isn't asked again");
   // The chat goes on while the model is still reading (chips, no waiting).
   await answers.getByRole("button", { name: "İstanbul", exact: true }).click();
+  // The essentials known: the countdown (6 s, the style question shows); stopped here to go on by hand.
+  await board.locator(".st-auto").getByRole("button", { name: "Vazgeç" }).click();
   await board.locator(".st-msg-bot .st-q", { hasText: "Bu gezide en çok ne istiyorsun?" }).waitFor();
   await answers.getByRole("button", { name: /Doğa/ }).click();
   await answers.getByRole("button", { name: "Tamam" }).click();
@@ -3509,18 +3518,24 @@ try {
   await answers.getByRole("button", { name: "4", exact: true }).click();
   const autoRow = board.locator(".st-auto", { hasText: "Generating…" });
   await autoRow.waitFor();
+  const autoLength = () => autoRow.locator(".st-auto-bar span").evaluate((n) => n.style.animationDuration);
+  assert.equal(await autoLength(), "6s", "6 s while the style question shows");
   assert.equal(await board.locator(".st-msg-bot a.st-link").first().innerText(), "Official site ↗", "in the chat's language");
   await board.waitForTimeout(450); // the row faded in
   await board.screenshot({ path: `${out}/26b-intent-countdown.png` });
+  // A style tapped: from 3 s again, not stopped.
+  await answers.getByRole("button", { name: /Adventure/ }).click();
+  await board.waitForFunction(() => document.querySelector(".st-auto-bar span")?.style.animationDuration === "3s");
+  assert.equal(await autoRow.count(), 1, "a style chip doesn't stop it");
   // A letter typed: stopped, and nothing is made.
   await chat.getByLabel("Message").fill("x");
   await autoRow.waitFor({ state: "detached" });
   await board.waitForTimeout(3500);
   assert.equal(await board.locator(".st-gen").count(), 0, "stopped: nothing made");
   await chat.getByLabel("Message").fill("");
-  // A later full checklist starts it again; then it makes itself.
-  await answers.getByRole("button", { name: /Adventure/ }).click();
+  // A later full checklist starts it again (Adventure is still picked); then it makes itself.
   await answers.getByRole("button", { name: "Done" }).click();
+  await board.locator(".st-msg-bot", { hasText: "I'm ready and will build it in a few seconds. Write if you want to add anything." }).waitFor();
   await autoRow.waitFor();
   await board.locator(".st-gen h2", { hasText: /^Planning AfrikaBurn 20\d\d$/ }).waitFor({ timeout: 6000 });
   await board.locator(".st-step.done", { hasText: "Route drawn: Cape Town 2 nights → Tankwa Karoo 6 nights → Cape Town 2 nights" }).waitFor({ timeout: 15000 });

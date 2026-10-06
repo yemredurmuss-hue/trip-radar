@@ -30,7 +30,7 @@ import { rulesPreview } from "../../lib/startHooks";
 import {
   applyAnswer, applyExtracted, applyText, askAgain, budgetChips, budgetWord, canGenerate, checklist, autoPrint, drawingLine, isComplete, isGoCommand, knownLines, lineLink, mergeExtracted, startName,
   missingForGenerate, modelReplyText, NOT_UNDERSTOOD, nextQuestion, onlyEmpty, parseRouteText, parseStartText, photosToFind, preparedRoute, previewOf,
-  questionOf, replyText, restoreRoute, shouldAutoStart, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
+  questionOf, replyText, restoreRoute, shouldAutoStart, AUTO_SECONDS, autoSeconds, waitingInstead, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
   tentativeWhere, whereKey, withGuessTaken, withoutOverruled, withPhotos, withPreparedRoute, withTypedLang,
   type Answer, type Extracted, type QuestionId, type StartCtx, type StartRoute, type StartState,
 } from "../../lib/startTrip";
@@ -60,8 +60,6 @@ interface Props {
 /** What the chat is waiting for: reading a message it couldn't read itself (holds the answers back), writing a line (doesn't). */
 type Stage = "thinking" | "writing" | null;
 
-/** The countdown before the trip makes itself (seconds). */
-export const AUTO_SECONDS = 3;
 
 const today = () => new Date().toISOString().slice(0, 10);
 const LATE = Symbol("late");
@@ -117,6 +115,9 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
   const stale = () => left.current || phaseNow.current !== "chat";
   const [dayPick, setDayPick] = useState("");
   const [picking, setPicking] = useState<{ styles: StyleId[]; budget: BudgetLevel | null }>({ styles: initial.styles, budget: initial.budget });
+  /** The styles picked now, for the countdown's end (its timer outlives a render). */
+  const pickNow = useRef(picking);
+  pickNow.current = picking;
   const [dateOpen, setDateOpen] = useState(false);
   const model = useRef<Promise<boolean> | null>(null);
   /** The model's availability once known (false until then: nothing waits for it). */
@@ -141,6 +142,10 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
   const opened = useRef(false);
   /** The countdown before the trip makes itself: seconds left, or null (2026-10-06). */
   const [auto, setAuto] = useState<number | null>(null);
+  /** The countdown's whole length now (the bar fills over it). */
+  const [autoTotal, setAutoTotal] = useState(AUTO_SECONDS);
+  /** Each start of the countdown (the bar starts filling again). */
+  const [autoRun, setAutoRun] = useState(0);
   const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   /** The checklist the countdown was last started for (never twice for the same answers). */
   const autoFor = useRef<string | null>(null);
@@ -358,13 +363,36 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     if (autoTimer.current) clearInterval(autoTimer.current);
     autoTimer.current = null;
   }
-  /** Any typing or tap while it counts: stopped (a later full checklist starts it again). */
+  /** Any typing or tap while it counts: stopped (a later full checklist starts it again); "ready" said as "waiting". */
   function stopAuto() {
     if (autoTimer.current == null) return;
     clearAuto();
     autoStopped.current = true;
     setAuto(null);
+    const s = live.current;
+    const at = s.messages.length - 1;
+    const waiting = s.messages[at]?.role === "assistant" ? T(() => waitingInstead(s.messages[at].text)) : null;
+    if (waiting) commit(replaceLine(s, at, waiting));
   }
+  /** Counting from `secs`; at 0 the trip is made (a style picked but not yet "Tamam"'d goes with it). */
+  function runAuto(secs: number) {
+    clearAuto();
+    let left = secs;
+    setAutoTotal(secs);
+    setAutoRun((n) => n + 1);
+    setAuto(left);
+    autoTimer.current = setInterval(() => {
+      left -= 1;
+      if (left > 0) return void setAuto(left);
+      clearAuto();
+      setAuto(null);
+      const p = pickNow.current;
+      if (nextQuestion(live.current) === "want" && (p.styles.length || p.budget)) commit(applyAnswer(live.current, { q: "want", ...p }, Date.now()));
+      generate(true);
+    }, 1000);
+  }
+  /** A style or budget chip tapped while it counts: from 3 again (the chip isn't a "stop"). */
+  const pickWhileCounting = () => autoTimer.current != null && runAuto(AUTO_SECONDS);
 
   // The essentials known and nothing on its way: "Oluşturuyorum… 3 · Vazgeç", then the trip is made. After the
   // traveller stopped it, only a later full checklist starts it again.
@@ -374,15 +402,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     if (!T(() => shouldAutoStart(s, ctx, { for: autoFor.current, stopped: autoStopped.current }))) return;
     autoFor.current = T(() => autoPrint(s, ctx));
     autoStopped.current = false;
-    let secs = AUTO_SECONDS;
-    setAuto(secs);
-    autoTimer.current = setInterval(() => {
-      secs -= 1;
-      if (secs > 0) return void setAuto(secs);
-      clearAuto();
-      setAuto(null);
-      generate(true);
-    }, 1000);
+    runAuto(autoSeconds(s));
   }, [state, phase, stage]);
 
 
@@ -584,7 +604,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     const stageText = stage === "writing" ? L("Yazıyor…", "Writing…") : L("Düşünüyor…", "Thinking…");
 
     return (
-      <div className={`st-screen${generating ? " generating" : ""}`} lang={lang} onPointerDownCapture={stopAuto}>
+      <div className={`st-screen${generating ? " generating" : ""}`} lang={lang} onPointerDownCapture={(e) => !(e.target as Element).closest?.("[data-auto-keep]") && stopAuto()}>
         <section className="st-chat">
           <div className="st-top">
             <button type="button" className="trip-switch" onClick={close} disabled={generating}>
@@ -604,30 +624,30 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
                 {question.hint && <div className="st-hint">{question.hint}</div>}
                 {question.multi ? (
                   <>
-                    <div className="st-chips" role="group" aria-label={L("Tarz", "Style")}>
+                    <div className="st-chips" role="group" aria-label={L("Tarz", "Style")} data-auto-keep>
                       {(Object.keys(STYLES) as StyleId[]).map((id) => {
                         const on = picking.styles.includes(id);
                         return (
                           <button key={id} type="button" className={`st-chip st-style${on ? " on" : ""}`} aria-pressed={on}
                             style={on ? { background: STYLE_META[id].bg, color: STYLE_META[id].fg, borderColor: STYLE_META[id].fg } : undefined}
-                            onClick={() => setPicking((p) => ({ ...p, styles: on ? p.styles.filter((x) => x !== id) : [...p.styles, id] }))}>
+                            onClick={() => (setPicking((p) => ({ ...p, styles: on ? p.styles.filter((x) => x !== id) : [...p.styles, id] })), pickWhileCounting())}>
                             <HeroIcon name={STYLE_META[id].icon} size={15} /> {STYLES[id]()}
                           </button>
                         );
                       })}
                     </div>
-                    <div className="st-chips" role="group" aria-label={L("Bütçe", "Budget")}>
+                    <div className="st-chips" role="group" aria-label={L("Bütçe", "Budget")} data-auto-keep>
                       {budgetChips().map(([level, label]) => {
                         const on = picking.budget === level;
                         return (
-                          <button key={level} type="button" className={`st-chip${on ? " on" : ""}`} aria-pressed={on} onClick={() => setPicking((p) => ({ ...p, budget: on ? null : level }))}>
+                          <button key={level} type="button" className={`st-chip${on ? " on" : ""}`} aria-pressed={on} onClick={() => (setPicking((p) => ({ ...p, budget: on ? null : level })), pickWhileCounting())}>
                             <HeroIcon name="wallet" size={15} /> {label}
                           </button>
                         );
                       })}
                     </div>
                     <div className="st-chips">
-                      <button type="button" className="st-primary" onClick={() => void answer({ q: "want", ...picking }, withLang(lang, () => [picking.styles.map((id) => STYLES[id]()).join(", "), picking.budget ? budgetWord(picking.budget) : ""].filter(Boolean).join(" · ") || L("Fark etmez", "Anything goes")))}>
+                      <button type="button" className="st-primary" data-auto-keep onClick={() => (clearAuto(), setAuto(null), void answer({ q: "want", ...picking }, withLang(lang, () => [picking.styles.map((id) => STYLES[id]()).join(", "), picking.budget ? budgetWord(picking.budget) : ""].filter(Boolean).join(" · ") || L("Fark etmez", "Anything goes"))))}>
                         {L("Tamam", "Done")}
                       </button>
                       <button type="button" className="st-skip" onClick={() => void onSkip(question.id)}>
@@ -694,7 +714,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
             {auto != null && !generating && (
               <div className="st-auto">
                 <span className="st-auto-bar" aria-hidden>
-                  <span style={{ animationDuration: `${AUTO_SECONDS}s` }} />
+                  <span key={autoRun} style={{ animationDuration: `${autoTotal}s` }} />
                 </span>
                 <span>
                   {L("Oluşturuyorum…", "Generating…")} <b>{auto}</b>

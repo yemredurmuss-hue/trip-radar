@@ -4,6 +4,9 @@
 // city flights land in, a rule for its usual dates (computed for the next time it comes after today) and the official
 // site. Dates are never presented as confirmed: they are the usual pattern, always "tahmini", with the link to check.
 // Pure; nothing but i18n.
+//
+// The lunar and irregular dates (Holi, Diwali, Chinese New Year, Hajj) come from year tables that run to 2028–29
+// (TABLE_LAST_YEAR); tests/startIntent.test.ts fails once today passes the last year of any of them: extend them then.
 import { L, lang, type Lang } from "./i18n";
 
 /** What the traveller is going for: an event (fixed dates), a place, or a theme (a season, a sight). */
@@ -84,10 +87,19 @@ export function easter(y: number): string {
   return ymd(y, month, day);
 }
 const fromEaster = (y: number, from: number, to: number): Span => [plusDays(easter(y), from), plusDays(easter(y), to)];
+/** The last year each event's year table knows (its dates by a lunar or irregular calendar). */
+export const TABLE_LAST_YEAR: Record<string, number> = {};
+const lastYear = (id: string, table: Record<number, unknown>) => (TABLE_LAST_YEAR[id] = Math.max(...Object.keys(table).map(Number)));
 /** By a table of years (lunar calendars); none for a year it doesn't list. */
-const byYear = (table: Record<number, Span>) => (y: number): Span | null => table[y] ?? null;
-const dayTable = (table: Record<number, string>, before: number, after: number) => (y: number): Span | null =>
-  table[y] ? [plusDays(table[y], -before), plusDays(table[y], after)] : null;
+function byYear(id: string, table: Record<number, Span>) {
+  lastYear(id, table);
+  return (y: number): Span | null => table[y] ?? null;
+}
+/** A table of each year's main day, and the days around it. */
+function dayTable(id: string, table: Record<number, string>, before: number, after: number) {
+  lastYear(id, table);
+  return (y: number): Span | null => (table[y] ? [plusDays(table[y], -before), plusDays(table[y], after)] : null);
+}
 
 /** The next full moon after today (in Thailand's time), and the morning after. */
 export function nextFullMoon(today: string): Span {
@@ -179,7 +191,7 @@ export const EVENTS: EventEntry[] = [
   E({
     id: "holi", kind: "event", name: ["Holi", "Holi"], aliases: ["holi", "holi festival", "holi festivali", "festival of colours", "festival of colors", "renkler festivali"],
     place: ["Mathura", "Mathura"], code: "IN", gateway: ["Delhi", "Delhi"], typical: ["Mart'ta, dolunaya göre", "in March, by the full moon"],
-    occur: dayTable({ 2026: "2026-03-04", 2027: "2027-03-22", 2028: "2028-03-11" }, 1, 0), url: "https://www.incredibleindia.gov.in",
+    occur: dayTable("holi", { 2026: "2026-03-04", 2027: "2027-03-22", 2028: "2028-03-11" }, 1, 0), url: "https://www.incredibleindia.gov.in",
   }),
   E({
     id: "songkran", kind: "event", name: ["Songkran", "Songkran"], aliases: ["songkran", "thai new year", "tayland yeni yılı"],
@@ -192,12 +204,12 @@ export const EVENTS: EventEntry[] = [
   E({
     id: "diwali", kind: "event", name: ["Diwali", "Diwali"], aliases: ["diwali", "deepavali", "divali"],
     place: ["Jaipur", "Jaipur"], code: "IN", gateway: ["Delhi", "Delhi"], typical: ["Ekim sonu ya da Kasım, ay takvimine göre", "late October or November, by the lunar calendar"],
-    occur: dayTable({ 2026: "2026-11-08", 2027: "2027-10-29", 2028: "2028-10-17" }, 2, 2), url: "https://www.incredibleindia.gov.in",
+    occur: dayTable("diwali", { 2026: "2026-11-08", 2027: "2027-10-29", 2028: "2028-10-17" }, 2, 2), url: "https://www.incredibleindia.gov.in",
   }),
   E({
     id: "cny", kind: "event", name: ["Çin Yeni Yılı", "Chinese New Year"], aliases: ["chinese new year", "lunar new year", "çin yeni yılı", "cny hong kong"],
     place: ["Hong Kong", "Hong Kong"], code: "HK", typical: ["Ocak sonu – Şubat, ay takvimine göre", "late January or February, by the lunar calendar"],
-    occur: dayTable({ 2026: "2026-02-17", 2027: "2027-02-06", 2028: "2028-01-26", 2029: "2029-02-13" }, 1, 2), url: "https://www.discoverhongkong.com",
+    occur: dayTable("cny", { 2026: "2026-02-17", 2027: "2027-02-06", 2028: "2028-01-26", 2029: "2029-02-13" }, 1, 2), url: "https://www.discoverhongkong.com",
   }),
   E({
     id: "northern-lights", kind: "theme", name: ["Kuzey Işıkları", "Northern Lights"], aliases: ["northern lights", "aurora borealis", "kuzey ışıkları", "kutup ışıkları", "aurora hunting"],
@@ -282,7 +294,7 @@ export const EVENTS: EventEntry[] = [
   E({
     id: "hajj", kind: "event", name: ["Hac", "Hajj"], aliases: ["hajj", "haj", "hac", "hacc", "hacca", "hac ibadeti", "hac ziyareti"],
     place: ["Mekke", "Mecca"], code: "SA", gateway: ["Cidde", "Jeddah"], typical: ["Zilhicce ayında, ay takvimine göre", "in Dhu al-Hijjah, by the lunar calendar"],
-    occur: byYear({ 2026: ["2026-05-25", "2026-05-30"], 2027: ["2027-05-14", "2027-05-19"], 2028: ["2028-05-03", "2028-05-08"] }), url: "https://www.haj.gov.sa",
+    occur: byYear("hajj", { 2026: ["2026-05-25", "2026-05-30"], 2027: ["2027-05-14", "2027-05-19"], 2028: ["2028-05-03", "2028-05-08"] }), url: "https://www.haj.gov.sa",
   }),
   E({
     id: "kumbh", kind: "event", name: ["Kumbh Mela", "Kumbh Mela"], aliases: ["kumbh mela", "kumbh", "kumbha mela", "maha kumbh"],

@@ -108,7 +108,7 @@ export const generateLabel = (complete: boolean) => (complete ? L("Gezimi oluşt
 export function GenerateCard({ ready, complete, missing, onGenerate, lang }: { ready: boolean; complete: boolean; missing: string[]; onGenerate: () => void; lang: Lang }) {
   return withLang(lang, () => (
     <div className="st-gen-card">
-      <button type="button" className="st-gen-btn" disabled={!ready} aria-disabled={!ready} onClick={onGenerate}>
+      <button type="button" className="st-gen-btn" data-auto-keep disabled={!ready} aria-disabled={!ready} onClick={onGenerate}>
         <span aria-hidden>✨</span> {generateLabel(complete)}
       </button>
       <p>
@@ -141,7 +141,7 @@ export function ChecklistBar({ rows, onAsk, ready, complete, onGenerate, disable
           </span>
         </button>
         {ready && (
-          <button type="button" className="st-bar-gen" onClick={onGenerate}>
+          <button type="button" className="st-bar-gen" data-auto-keep onClick={onGenerate}>
             ✨ {complete ? L("Oluştur", "Generate") : L("Şimdilik oluştur", "Generate for now")}
           </button>
         )}
