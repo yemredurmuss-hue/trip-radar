@@ -32,6 +32,11 @@ import { newId } from "../lib/db";
 import { AddSheet } from "./cards/AddSheet";
 import { useTripDocs } from "./cards/DocAccess";
 import { LegCard } from "./cards/LegCard";
+import { EmptyLegCard, EmptyRecordCard } from "./cards/EmptyCard";
+import { EmptyEnvContext, type EmptyEnv } from "./cards/emptyEnv";
+import { isEmptyLeg, isEmptyRecord } from "../lib/emptyCards";
+import { NO_SOURCE } from "../lib/offerSource";
+import { foreignCountries, homeFromFlights } from "../lib/suggestions";
 import { CardEnvContext, NavGroup, PlanCard, type CardEnv } from "./cards/PlanCard";
 import { SilhouetteDefs } from "./cards/Silhouettes";
 import { UndoToast } from "./cards/UndoToast";
@@ -442,6 +447,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   );
   const settledItem = (i: Item) => i.status === "chosen" || i.status === "booked";
   const who = useWho(trip, facts.adults);
+  // The countries abroad an eSIM is for (the eSIM's empty card): home as Settings has it, else where the first flight leaves.
+  const esimCountries = useMemo(() => {
+    const own = home ?? homeFromFlights(items);
+    return own ? foreignCountries(items, own) : [];
+  }, [home, items]);
   // Öneriler: the rules' and the AI's/chat's suggestions atop their sections (never counted); the AI review when due,
   // told the hero's main places and who goes.
   const suggestions = useSuggestions({
@@ -545,6 +555,35 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     />
   );
 
+  // Boş kartlar (spec 2026-10-06-bos-kartlar-design.md), on the Plan only: a need with nothing booked or saved yet
+  // (a flight or stay the start made room for, a flight said with nothing chosen, a transfer with no plan) is the
+  // approved card made plain. A need with another option, a file or a booking keeps today's full card.
+  const planRenderGroup: RenderGroup = (group, heading, groupSubtitle, nested = false) => {
+    const lone = group.items.length === 1 ? group.items[0] : null;
+    if (!lone || !isEmptyRecord(trip, lone, env.docsFor(lone.id).length)) return renderGroup(group, heading, groupSubtitle, nested);
+    return (
+      <div key={group.key} className={nested ? "group nested" : "section"} data-option-ids={lone.id}>
+        {(heading || groupSubtitle) && (
+          <div className={nested ? "group-head" : "section-head"}>
+            <span className="group-title">
+              {heading && <span>{heading}</span>}
+              {groupSubtitle && <span className="muted">{groupSubtitle}</span>}
+            </span>
+          </div>
+        )}
+        <EmptyRecordCard item={lone} />
+      </div>
+    );
+  };
+  const planLegCard = (l: Leg) => (isEmptyLeg(l) ? <EmptyLegCard key={l.key} leg={l} /> : legCard(l));
+  const emptyEnv: EmptyEnv = {
+    tripId: trip.id,
+    travellers: who.count || null,
+    esimCountries,
+    // No offers' source is connected yet: the "✨ Senin için N öneri" row is never drawn.
+    offers: NO_SOURCE,
+  };
+
   return (
     <CardEnvContext.Provider value={env}>
       <SilhouetteDefs />
@@ -647,20 +686,22 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       ) : view === "days" && timeline.entries.length > 0 ? (
         <TimelineView onShow={showOnPlan} timeline={timeline} tripId={trip.id} leg={leg} onAdd={env.add} listings={listings} today={today} cityImage={cityImageOf} cards={{ legCard, renderGroup, settled }} dayTimes={trip.dayTimes} dayOrder={trip.dayOrder} dayLoose={trip.dayLoose} mainPlaces={mains} />
       ) : (
-        <CategoryPlan
-          plan={plan}
-          sections={sections}
-          isOpen={arrivals.isOpen}
-          onOpen={arrivals.onOpen}
-          pending={arrivals.pending}
-          tripId={trip.id}
-          cities={cityNames}
-          cards={{ legCard, renderGroup, card, settled }}
-          onAdd={addIn}
-          today={today}
-          items={items}
-          suggestions={suggestions}
-        />
+        <EmptyEnvContext.Provider value={emptyEnv}>
+          <CategoryPlan
+            plan={plan}
+            sections={sections}
+            isOpen={arrivals.isOpen}
+            onOpen={arrivals.onOpen}
+            pending={arrivals.pending}
+            tripId={trip.id}
+            cities={cityNames}
+            cards={{ legCard: planLegCard, renderGroup: planRenderGroup, card, settled }}
+            onAdd={addIn}
+            today={today}
+            items={items}
+            suggestions={suggestions}
+          />
+        </EmptyEnvContext.Provider>
       )}
 
       {sheet && (

@@ -70,13 +70,19 @@ describe("flight searches", () => {
     expect(unknown.map((l) => l.brand)).toEqual(["gflights"]);
     expect(decodeURIComponent(unknown[0].url)).toContain("to Ouarzazate on 2026-12-10");
   });
-  it("no day: only Google Flights, without one; no destination: nothing", () => {
+  it("one end known: Google Flights alone; neither: nothing", () => {
+    expect(flightLinks({ from: "Porto", to: null, date: "2026-10-14", adults: 2 }).map((l) => decodeURIComponent(l.url))).toEqual([
+      "https://www.google.com/travel/flights?q=Flights from Porto on 2026-10-14 one way",
+    ]);
+    expect(flightLinks({ from: " ", to: null, date: "2026-10-14", adults: 2 })).toEqual([]);
+  });
+  it("no day: only Google Flights, without one; no end: nothing", () => {
     const links = flightLinks({ from: "IST", to: "AMS", date: null, adults: 2 });
     expect(links.map((l) => l.brand)).toEqual(["gflights"]);
     expect(decodeURIComponent(links[0].url)).toBe("https://www.google.com/travel/flights?q=Flights from İstanbul to Amsterdam one way");
     expect(flightLinks({ from: "IST", to: "AMS", date: "2026-13-40", adults: 2 }).map((l) => l.brand)).toEqual(["gflights"]);
-    expect(flightLinks({ from: "IST", to: null, date: "2026-12-10", adults: 2 })).toEqual([]);
-    expect(flightLinks({ from: "IST", to: "  ", date: "2026-12-10", adults: 2 })).toEqual([]);
+    expect(flightLinks({ from: null, to: null, date: "2026-12-10", adults: 2 })).toEqual([]);
+    expect(flightLinks({ from: "", to: "  ", date: "2026-12-10", adults: 2 })).toEqual([]);
   });
   it("how many go: none is one on Skyscanner and nothing on Kayak; more than nine is nine", () => {
     const [, sky, kayak] = flightLinks({ from: "IST", to: "AMS", date: "2026-12-10", adults: null });

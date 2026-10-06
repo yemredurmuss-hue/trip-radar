@@ -11,6 +11,7 @@ import type { InsertAt, TemplateId } from "../lib/templates";
 import { withEdits } from "../lib/userEdits";
 import { checkVehicle, overlaps, periodOf, vehicleOf } from "../lib/vehicles";
 import { nightsKey } from "../lib/timeline";
+import { offerItem, type Need, type Offer } from "../lib/offerSource";
 import type { DateRange } from "../lib/plan";
 import type { Category, Item, ItemStatus, Suggestion, SuggestionState, Trip } from "../lib/types";
 import type { Undoable } from "../lib/undoables";
@@ -108,6 +109,15 @@ export async function setHidden(tripId: string, key: string, hide: boolean, labe
     hide ? L(`${label}: gerek yok denildi, gizlendi`, `${label}: marked not needed, hidden`) : L(`${label} geri getirildi`, `${label} brought back`),
   );
   notifyChanged();
+}
+
+/** An offer from a connected data source under an empty card: "Seçeneklere ekle" saves it as one of the need's options. */
+export async function addOffer(tripId: string, offer: Offer, need: Need): Promise<Item> {
+  const item = offerItem(offer, need, tripId, newId(), Date.now());
+  await (await db()).put("items", item);
+  await addEvent(tripId, L(`${item.name} seçeneklere eklendi`, `${item.name} added to the options`));
+  notifyChanged();
+  return item;
 }
 
 /** A block of empty nights' ×: "Gerek yok" for those nights, handed back for the 8-second "Geri al". */

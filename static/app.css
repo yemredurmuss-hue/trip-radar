@@ -1794,6 +1794,71 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .cat-search-link:hover { text-decoration: underline; }
 @container panel (max-width: 620px) { .cat-search { margin-left: 0; } }
 
+/* ---------- Boş kartlar (2026-10-06, docs/mockups/2026-10-06-bos-kartlar-v1.html): the approved card made plain ---------- */
+.ek-card { background: #fff; border: 1.5px dashed #ddd7cd; }
+.ek-card.ek-still { cursor: default; }
+.ek-card:hover { box-shadow: 0 4px 16px rgba(0, 0, 0, .04); }
+.ek-card .pk-ring.open { border: 1.5px dashed #c6bfb3; }
+.ek-card .pk-date { color: #8e8e93; }
+.ek-route { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; margin: 6px 0 4px; }
+.ek-end { min-width: 0; }
+.ek-end b { display: block; font-size: 17px; line-height: 1.2; font-weight: 700; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.ek-end b.ek-missing { font-weight: 500; color: #b9b4ab; }
+.ek-end small { display: block; margin-top: 1px; font-size: 12px; color: #8e8e93; overflow-wrap: anywhere; }
+.ek-end.r { text-align: right; }
+.ek-sil { width: 124px; height: 40px; color: var(--mc); opacity: .35; }
+.ek-sil .pk-art { position: static; transform: none; width: 100%; height: 100%; opacity: 1; }
+.ek-media { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: center; margin: 6px 0 4px; }
+.ek-tile { width: 52px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--mc) 8%, #fff); color: var(--mc); }
+.ek-tile svg { width: 34px; height: 28px; opacity: .55; }
+.ek-txt { min-width: 0; }
+.ek-txt b { display: block; font-size: 15.5px; line-height: 1.25; font-weight: 700; overflow-wrap: anywhere; }
+.ek-txt small { display: block; margin-top: 1px; font-size: 12.5px; color: #8e8e93; overflow-wrap: anywhere; }
+.ek-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 6px; padding-top: 8px; border-top: 1px dashed #eee9e1; }
+.ek-state { font-size: 12.5px; color: #8e8e93; }
+.ek-find { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px; }
+.ek-ara { margin-right: 2px; font-size: 12px; color: #8e8e93; }
+.ek-link { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px 0 5px; border-radius: 999px; border: 1px solid #ece8e1; background: #fff; color: #55526a; font-size: 12px; text-decoration: none; white-space: nowrap; }
+.ek-link:hover, .ek-link:focus-visible { border-color: #cfc9be; color: #1d1d1f; }
+.ek-lg { flex: none; width: 15px; height: 15px; border-radius: 4px; display: grid; place-items: center; font-size: 8.5px; font-weight: 800; line-height: 1; color: #fff; }
+.ek-skip { padding: 0; margin-left: 2px; border: 0; background: none; font: inherit; font-size: 12px; color: #8e8e93; cursor: pointer; }
+.ek-skip:hover { color: #3a3a3c; text-decoration: underline; }
+.ek-slot { scroll-margin-top: 12px; }
+@container panel (max-width: 620px) {
+  .ek-sil { width: 76px; height: 26px; }
+  .ek-end b { font-size: 15px; }
+  .ek-find { margin-left: 0; justify-content: flex-start; width: 100%; }
+}
+/* the AI offers' row (revision 2): only with a data source connected */
+.ek-offers { margin: 4px 0 0; }
+.ek-offers-head { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 600; color: #6a4fe0; cursor: pointer; }
+.ek-offers-chev { transition: transform .15s; }
+.ek-offers:not(.open) .ek-offers-chev { transform: rotate(-90deg); }
+.ek-offer-list { display: grid; gap: 8px; margin-top: 4px; }
+.ek-offer { position: relative; display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 34px 10px 10px; border-radius: 14px; background: #f6f3ff; border: 1px solid #e4dcff; }
+.ek-offer-img { width: 76px; height: 58px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; background: #ebe5ff; color: #6a4fe0; }
+.ek-offer-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ek-offer-txt { min-width: 0; display: grid; gap: 2px; }
+.ek-offer-name { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 15px; font-weight: 600; }
+.ek-offer-name a { color: #1d1d1f; text-decoration: none; }
+.ek-offer-name a:hover { text-decoration: underline; }
+.ek-badge { padding: 0 6px; border-radius: 999px; border: 1px solid #cfc3fb; background: #fff; font-size: 11px; font-weight: 600; color: #6a4fe0; }
+.ek-offer-meta { font-size: 12.5px; color: #6e6e73; }
+.ek-why { font-size: 12.5px; color: #6a4fe0; }
+.ek-offer-end { display: grid; justify-items: end; gap: 2px; }
+.ek-offer-price { font-size: 16px; }
+.ek-offer-end small { font-size: 12px; color: #6e6e73; }
+.ek-offer-add { margin-top: 4px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1.5px solid #6a4fe0; background: #fff; color: #6a4fe0; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.ek-offer-add:hover { background: #6a4fe0; color: #fff; }
+.ek-offer-x { position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: none; color: #8e8e93; display: grid; place-items: center; cursor: pointer; }
+.ek-offer-x:hover { background: #ebe5ff; color: #3a3a3c; }
+.ek-offers-note { margin: 0 4px; font-size: 12px; color: #8e8e93; }
+@container panel (max-width: 620px) {
+  .ek-offer { grid-template-columns: 60px minmax(0, 1fr); }
+  .ek-offer-img { width: 60px; height: 48px; }
+  .ek-offer-end { grid-column: 1 / -1; grid-auto-flow: column; justify-content: end; align-items: center; gap: 8px; }
+}
+
 /* the empty sections: one chip each, at the bottom */
 .cat-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 4px 0; font-size: 13px; color: #6e6e73; }
 .cat-chip { --c: #6e6e73; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--c) 30%, #fff); background: #fff; font: inherit; font-size: 13px; font-weight: 500; color: #1d1d1f; cursor: pointer; }

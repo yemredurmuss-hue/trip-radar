@@ -12,6 +12,8 @@ import type { Item } from "../../lib/types";
 import { entryDomId } from "../../lib/progress";
 import { insertAt, type InsertAt } from "../../lib/templates";
 import { activitySearches, returnFlightSearch } from "../../lib/searchLinks";
+import { activityGaps } from "../../lib/emptyCards";
+import { sameCity } from "../../lib/plan";
 import { InsertPoint } from "../cards/AddSheet";
 import { IdeaList, InspoGrid } from "../ideas/IdeaList";
 import { QuickAdd } from "../ideas/QuickAdd";
@@ -122,7 +124,8 @@ function SearchLinks({ section, plan, items }: { section: CatSection; plan: Pick
     section.id === "flight"
       ? [returnFlightSearch(items, plan)].filter((x): x is { label: string; url: string } => x != null)
       : section.id === "activity"
-        ? activitySearches(plan)
+        ? // A city with no activity yet has its empty card (with its searches) instead.
+          activitySearches(plan).filter((l) => !activityGaps(plan, items).some((g) => sameCity(g.city, l.city)))
         : [];
   if (!links.length) return null;
   return (

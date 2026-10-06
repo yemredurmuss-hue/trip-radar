@@ -153,14 +153,15 @@ export interface FlightNeed {
 /**
  * A one-way flight search on Google Flights (plain words, the city as written: it reads both), Skyscanner
  * (`/transport/flights/ist/ams/261210/?adultsv2=2&rtn=0`) and Kayak (`/flights/IST-AMS/2026-12-10/2adults`).
- * Skyscanner and Kayak only with both airports known and a day; Google Flights needs where it goes.
+ * Skyscanner and Kayak only with both airports known and a day; Google Flights needs one end (with no home
+ * known, the way home is "Flights from Porto on …": it fills in where the traveller is).
  */
 export function flightLinks({ from, to, date, adults }: FlightNeed): SearchLink[] {
-  if (!to?.trim()) return [];
+  const [a, b] = [from?.trim() || null, to?.trim() || null];
+  if (!a && !b) return [];
   const day = dayOf(date);
   const n = headCount(adults);
-  const [a, b] = [from?.trim() || null, to.trim()];
-  const words = `Flights ${a ? `from ${cityOfAirport(a)} ` : ""}to ${cityOfAirport(b)}${day ? ` on ${day}` : ""} one way`;
+  const words = ["Flights", a && `from ${cityOfAirport(a)}`, b && `to ${cityOfAirport(b)}`, day && `on ${day}`, "one way"].filter(Boolean).join(" ");
   const out = [link("gflights", `https://www.google.com/travel/flights?q=${enc(words)}`)];
   const [ca, cb] = [airportCode(a), airportCode(b)];
   if (ca && cb && ca !== cb && day) {
