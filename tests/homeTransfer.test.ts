@@ -68,11 +68,13 @@ describe("a transfer's own time on the day", () => {
   it("is kept, not worked out from the flight; too late to make it, it says so", async () => {
     const { card } = await day((id) => [homeTransfer(id)], "2026-10-08");
     const leaving = card.rows.find((r) => r.leg?.key === "2026-10-08:departure:home")!;
-    // The booked Pegasus leaves 07:10 abroad: at the airport by 04:10, so 04:30 from home is said to be late.
+    // The booked Pegasus leaves 07:10 abroad: at the airport ideally by 04:10, at the latest 05:10 (Emre: 2 h at
+    // least, 3 h ideally), so 04:30 from home with an hour's way there is said to be late.
     expect(leaving.leg?.before).toBe("04:10");
+    expect(leaving.leg?.latest).toBe("05:10");
     expect(leaving.time).toBe("04:30");
-    expect(leaving.warn).toContain("04:10");
-    const withBy = (by: string, at: string) => applyDayTimes([{ ...leaving, warn: undefined, time: at, leg: { ...leaving.leg!, before: by, at } }]);
+    expect(leaving.warn).toContain("05:10");
+    const withBy = (by: string, at: string) => applyDayTimes([{ ...leaving, warn: undefined, time: at, leg: { ...leaving.leg!, before: by, latest: by, at } }]);
     // Be at the airport by 07:10: leaving at 04:30 is kept as said, no "~", no warning.
     expect(withBy("07:10", "04:30")[0]).toMatchObject({ time: "04:30", estimated: false });
     expect(withBy("07:10", "04:30")[0].warn).toBeUndefined();

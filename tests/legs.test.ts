@@ -78,7 +78,7 @@ describe("legs: every transfer the plan needs", () => {
     ]);
     expect(legs.map((l) => l.slot)).toEqual([0, 1, 1, 1, 2]);
     expect(legTiming(legs[0])).toBe("Varış 10:05");
-    expect(legTiming(legs[4])).toBe("En geç 16:40 havalimanında");
+    expect(legTiming(legs[4])).toBe("İdeali 16:40, en geç 17:40 havalimanında");
     expect(legs[0].key).toBe("2026-10-07:arrival:porto");
     expect(legs[2].key).toBe("2026-10-10:move:porto>lizbon");
   });

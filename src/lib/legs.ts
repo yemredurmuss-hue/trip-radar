@@ -38,7 +38,10 @@ const HUB_BUFFER: Record<string, number> = { flight: 120, train: 20, bus: 20, fe
 /** A flight leaving Schengen (or to or from an airport we can't place) wants an hour more at the airport. */
 const OUTSIDE_SCHENGEN_EXTRA = 60;
 
-/** How early to be at the airport or station: 2 h for a flight within Schengen, 3 h otherwise; the rest by mode. */
+/**
+ * How early to be at the airport or station, ideally: 2 h for a flight within Schengen, 3 h otherwise; the rest by
+ * mode. The least it can be is an hour less for a flight (Emre: abroad "2 saat min, 3 ideal"), `hubMinimum`.
+ */
 export function hubBuffer(mode: LegMode, settled: Item | null): number | undefined {
   const base = HUB_BUFFER[mode];
   if (mode !== "flight" || base === undefined) return base;
@@ -46,6 +49,12 @@ export function hubBuffer(mode: LegMode, settled: Item | null): number | undefin
   const b = countryOfAirport(settled?.flight?.to);
   const inside = (c: string | null) => !!c && SCHENGEN.includes(c);
   return a && b && (a === b || (inside(a) && inside(b))) ? base : base + OUTSIDE_SCHENGEN_EXTRA;
+}
+
+/** The least time at the airport or station before leaving: a flight's ideal less an hour; the rest as their ideal. */
+export function hubMinimum(mode: LegMode, settled: Item | null): number | undefined {
+  const ideal = hubBuffer(mode, settled);
+  return ideal !== undefined && mode === "flight" ? ideal - 60 : ideal;
 }
 /** Roughly how long getting between a stay and the airport or station takes, for timing notes only. */
 const TRANSFER_MIN = 60;
@@ -68,6 +77,8 @@ export interface Leg {
   /** Local times it has to fit: not before landing, and at the airport or station by. */
   after: string | null;
   before: string | null;
+  /** At the airport or station at the latest (`before` is the ideal): later than this is too late. */
+  latest?: string | null;
   /**
    * The traveller's own time for it: the chosen (or only) transfer's clock ("06:15 evden çıkış"), shown on the
    * day instead of the one worked out from the flight. Null when none was said.
@@ -342,7 +353,7 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
     slot: number,
     from: LegPoint,
     to: LegPoint,
-    times: { after?: string | null; before?: string | null },
+    times: { after?: string | null; before?: string | null; latest?: string | null },
     notes: string[],
     via: LegMode | null = null,
     travel: Travel | null = null,
@@ -359,6 +370,7 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
       key, kind, date, slot, from, to,
       after: times.after ?? null,
       before: times.before ?? null,
+      latest: times.latest ?? null,
       at: ownClock(settled ?? (options.length === 1 ? options[0] : null)),
       options: settled?.status === "booked" ? [settled] : options,
       mode, via, travel, choice, notes,
@@ -486,6 +498,7 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
     const choice = choiceOf(key);
     const mode = (settled && modeOf(settled)) ?? choice?.mode ?? null;
     const buffer = kind === "departure" && travel?.mode ? hubBuffer(travel.mode, trip) : undefined;
+    const least = kind === "departure" && travel?.mode ? hubMinimum(travel.mode, trip) : undefined;
     return {
       key, kind, date,
       slot: kind === "departure" ? 0 : blocks.length,
@@ -493,6 +506,7 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
       to: kind === "departure" ? hubPoint : homePoint,
       after: kind === "arrival" ? flightAt : null,
       before: kind === "departure" && flightAt && buffer !== undefined ? hhmm(minutes(flightAt) - buffer) : null,
+      latest: kind === "departure" && flightAt && least !== undefined ? hhmm(minutes(flightAt) - least) : null,
       at: ownClock(settled ?? (options.length === 1 ? options[0] : null)),
       options: settled?.status === "booked" ? [settled] : options,
       mode, via: travel?.mode ?? null, travel, choice, notes: [],
@@ -565,6 +579,8 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
     const leaves = clock(settled?.flight?.departure);
     const buffer = mode ? hubBuffer(mode, settled) : undefined;
     const by = leaves && buffer !== undefined ? hhmm(minutes(leaves) - buffer) : null;
+    const least = mode ? hubMinimum(mode, settled) : undefined;
+    const latest = leaves && least !== undefined ? hhmm(minutes(leaves) - least) : null;
     const hub = hubLabel(travel, "from", from.city, mode);
     const notes: string[] = [];
     const t = timesOf(from.item, listings);
@@ -623,7 +639,7 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
       }
     }
     if (mode === "flight" && t.house?.airportShuttle) notes.push(SHUTTLE());
-    return local("departure", date, slot, from, { label: hub, city: from.city, item: null }, { before: by }, notes, mode, travel, keyDate);
+    return local("departure", date, slot, from, { label: hub, city: from.city, item: null }, { before: by, latest }, notes, mode, travel, keyDate);
   }
 }
 
@@ -660,6 +676,9 @@ export function legTiming(leg: Leg): string | null {
   if (leg.after) return `${L("Varış", "Arrives")} ${leg.after}`;
   if (leg.before) {
     const flight = leg.via === "flight";
+    if (leg.latest && leg.latest !== leg.before) {
+      return L(`İdeali ${leg.before}, en geç ${leg.latest} ${flight ? "havalimanında" : "istasyonda"}`, `At the ${flight ? "airport" : "station"} ideally by ${leg.before}, at the latest ${leg.latest}`);
+    }
     return L(`En geç ${leg.before} ${flight ? "havalimanında" : "istasyonda"}`, `At the ${flight ? "airport" : "station"} by ${leg.before}`);
   }
   return null;

@@ -68,18 +68,23 @@ export function applyDayTimes(rows: DayRow[], overrides: DayTimeOverrides = {}):
   const by = leaving?.leg?.before;
   // A transfer with its own time (the chosen one's, "06:15 evden çıkış") keeps it, like one set by hand.
   const ownLeave = !!leaving && !leaving.user && isClock(leaving.leg?.at);
+  // The ideal (`before`) sets the worked-out time; only past the latest (`latest`, a flight's hour less) is it too late.
+  const latest = isClock(leaving?.leg?.latest) ? leaving!.leg!.latest! : by;
   if (leaving && isClock(by)) {
     if (!leaving.user && !ownLeave) {
       const go = shift(by, -TRANSFER_MINUTES);
+      const ideal = latest && latest !== by;
       Object.assign(leaving, {
         time: go,
         estimated: go != null,
         why: go
-          ? L(`En geç ${by} ${hubWord(leaving)} olmalısın; transfer ~1 sa`, `Be ${hubWord(leaving)} by ${by}; the transfer takes ~1 h`)
+          ? ideal
+            ? L(`İdeali ${by}, en geç ${latest} ${hubWord(leaving)}; transfer ~1 sa`, `${hubWord(leaving)} ideally by ${by}, at the latest ${latest}; the transfer takes ~1 h`)
+            : L(`En geç ${by} ${hubWord(leaving)} olmalısın; transfer ~1 sa`, `Be ${hubWord(leaving)} by ${by}; the transfer takes ~1 h`)
           : null,
       });
-    } else if (isClock(leaving.time) && toMin(leaving.time) + TRANSFER_MINUTES > toMin(by)) {
-      leaving.warn = L(`${clockAt(by)} ${hubWord(leaving)} olmalısın: bu saatle geç kalabilirsin.`, `You need to be ${hubWord(leaving)} by ${by}: this may be too late.`);
+    } else if (isClock(leaving.time) && isClock(latest) && toMin(leaving.time) + TRANSFER_MINUTES > toMin(latest)) {
+      leaving.warn = L(`${clockAt(latest)} ${hubWord(leaving)} olmalısın: bu saatle geç kalabilirsin.`, `You need to be ${hubWord(leaving)} by ${latest}: this may be too late.`);
     }
   }
   // Check out before leaving (and never after it).

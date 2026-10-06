@@ -619,14 +619,15 @@ try {
   // A line that isn't a card of its own reads the same in Kartlar: NE in bold, which, the grey line.
   assert.equal(await flowCard("Check-out · Porto konaklaması").locator(".txt").innerText(), "Check-out · Porto konaklaması · yer seçilmedi");
   await openDay(7);
-  assert.deepEqual(await dayTimes(), ["~11:00", "~15:40", "19:40"]); // at the airport by 16:40 (leaving Schengen: 3 h), the transfer an hour before
+  assert.deepEqual(await dayTimes(), ["~11:00", "~15:40", "19:40"]); // at the airport ideally by 16:40 (leaving Schengen: 3 h), the transfer an hour before
   await flowCard("Uçuş · Lizbon → İstanbul").locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
   // A time of one's own (dayTimes.ts): kept, a late one warned about in red; "×" gives the worked-out one back.
   const going = flowCard("Havalimanı transferi");
-  assert.match(await going.locator("> button.t").getAttribute("title"), /En geç 16:40 havalimanında olmalısın; transfer ~1 sa/);
+  // Emre: abroad 2 h at the least, 3 h ideally: the time worked out from the ideal, a warning only past the latest.
+  assert.match(await going.locator("> button.t").getAttribute("title"), /İdeali 16:40, en geç 17:40 havalimanında; transfer ~1 sa/);
   await going.locator("> button.t").click();
   await going.locator('input[type="time"]').fill("17:00");
-  await going.locator(".dc-warn", { hasText: "16:40'ta havalimanında olmalısın" }).waitFor();
+  await going.locator(".dc-warn", { hasText: "17:40'ta havalimanında olmalısın" }).waitFor();
   await going.getByRole("button", { name: "×" }).click();
   await going.locator(".dc-warn").waitFor({ state: "detached" });
   assert.equal(await going.locator("> button.t").innerText(), "~15:40");

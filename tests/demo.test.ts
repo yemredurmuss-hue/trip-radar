@@ -23,7 +23,7 @@ describe("demo trip", () => {
       "2026-10-14 Lisboa Loft → LIS havalimanı [Boş]",
     ]);
     const home = legs.at(-1)!;
-    expect(legTiming(home)).toBe("En geç 16:40 havalimanında");
+    expect(legTiming(home)).toBe("İdeali 16:40, en geç 17:40 havalimanında"); // abroad: 3 h ideally, 2 h at least
     expect(home.notes).toEqual(["Çıkış 11:00 (genelde), gidiş 19:40: arada ~5 saat boşluk; bavul emaneti ya da geç çıkış sor."]);
   });
 });

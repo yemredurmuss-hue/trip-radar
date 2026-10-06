@@ -40,6 +40,19 @@ describe("arriving", () => {
   });
 });
 
+describe("the ideal and the latest at the airport (abroad: 3 h ideally, 2 h at least)", () => {
+  const ideal = (before: string, latest: string) => ({ ...toAirport(before), leg: { ...toAirport(before).leg!, latest } }) as DayRow;
+  it("works the time out from the ideal and says both", () => {
+    const rows = applyDayTimes([checkout("11:00"), ideal("13:00", "14:00"), flight("16:00")]);
+    expect(times(rows)).toMatchObject({ go: "~12:00" });
+    expect(rows[1].why).toBe("İdeali 13:00, en geç 14:00 havalimanında; transfer ~1 sa");
+  });
+  it("warns only past the latest", () => {
+    expect(applyDayTimes([ideal("13:00", "14:00"), flight("16:00")], { go: "12:45" })[0].warn).toBeUndefined();
+    expect(applyDayTimes([ideal("13:00", "14:00"), flight("16:00")], { go: "13:30" })[0].warn).toBe("14:00'te havalimanında olmalısın: bu saatle geç kalabilirsin.");
+  });
+});
+
 describe("the traveller's own time", () => {
   it("is kept, the rest follow it, and a late one is warned about", () => {
     const rows = applyDayTimes([checkout("11:00"), toAirport("13:00"), flight("15:00")], { go: "12:30" });
