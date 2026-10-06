@@ -2685,7 +2685,7 @@ try {
         seen.canvas = Math.max(seen.canvas, gen.querySelectorAll("canvas").length);
         const mark = gen.querySelector(".st-step-mark");
         if (mark) seen.mark = mark.offsetWidth;
-        for (const s of gen.querySelectorAll(".st-step.done")) if (!seen.steps.includes(s.textContent)) seen.steps.push(s.textContent);
+        for (const s of gen.querySelectorAll(".st-step.done .st-step-text")) if (!seen.steps.includes(s.textContent)) seen.steps.push(s.textContent);
         const gm = gen.querySelector(".gm");
         if (!gm) return;
         if (seen.phases.at(-1) !== gm.dataset.phase) seen.phases.push(gm.dataset.phase);
@@ -2703,7 +2703,11 @@ try {
       };
       new MutationObserver(look).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
     });
-  const genSeen = () => board.evaluate(() => window.__gen);
+  // Read once the generating screen has closed (the board is open).
+  const genSeen = async () => {
+    await board.locator(".st-gen").waitFor({ state: "detached", timeout: 20000 });
+    return board.evaluate(() => window.__gen);
+  };
   await board.locator(".st-msg-bot", { hasText: "Nereden yola çıkıyorsun?" }).waitFor();
   // Only what the first message left out is asked (item 2).
   const side = board.locator(".st-side");
