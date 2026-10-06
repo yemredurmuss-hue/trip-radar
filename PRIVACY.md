@@ -1,6 +1,6 @@
 # Trip Radar — Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-06 · Sürüm / Version: 0.36.27
+Son güncelleme / Last updated: 2026-10-06 · Sürüm / Version: 0.36.28
 
 ---
 
@@ -127,7 +127,11 @@ profilleri ve geçmişiyle birlikte) senin isteğinle silinir: info@emredurmus.n
 
 ### 8. Diğer hizmetler
 
-- **OpenStreetMap Nominatim:** bir adresi haritaya yerleştirmek için yalnız o adres gönderilir.
+- **OpenStreetMap Nominatim:** bir adresi ya da haritanın tanımadığı bir şehir, kasaba veya havalimanını yerleştirmek
+  için yalnız o ad gönderilir; sonuç cihazında saklanır, aynı ad bir daha sorulmaz.
+- **OpenFreeMap (tiles.openfreemap.org):** Harita açıldığında yalnız ekranda görünen bölgenin harita parçaları, yazı
+  tipleri ve simgeler istenir; gezinin adı, tarihleri, kişiler ya da rezervasyonlar gönderilmez. Her web isteği gibi
+  IP adresin ve tarayıcı bilgin görünür.
 - **Frankfurter:** döviz kuru için yalnız para birimi çifti gönderilir.
 - **Wikipedia / Pexels:** şehir fotoğrafı için yalnız şehir adı gönderilir; Wikipedia'ya doğrudan, Pexels'a paylaşım
   sunucusu üzerinden.
@@ -157,7 +161,7 @@ IP adresini görebilir.
 Trip Radar'ın hiçbir sunucusu Türkiye'de değildir:
 
 - Paylaşım sunucusu ve AI kapısı aynı Supabase projesindedir ve **Hindistan'da (Mumbai, ap-south-1)** çalışır.
-- Google, Anthropic, OpenStreetMap, Frankfurter, Wikipedia, Pexels ve AeroDataBox (RapidAPI) kendi sunucularını kullanır; bunlar ABD, AB ya da
+- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com ve Aviasales kendi sunucularını kullanır; bunlar ABD, AB ya da
   başka ülkelerde olabilir.
 
 Bu aktarımlar yalnız senin başlattığın işlemler (yapay zekâ, paylaşım, davet) için ve o işlem için gerektiği kadar
@@ -348,7 +352,11 @@ and history) is deleted on request: write to info@emredurmus.net.
 
 ### 8. Other services
 
-- **OpenStreetMap Nominatim:** only an address, to place it on a map.
+- **OpenStreetMap Nominatim:** only an address, or the name of a city, town or airport the map doesn't know, to place
+  it; the result is stored on your device and not asked again.
+- **OpenFreeMap (tiles.openfreemap.org):** when a map opens, only the map tiles, fonts and icons for the area in view
+  are requested; nothing about the trip, its dates, travellers or bookings is sent. As with any web request, your IP
+  address and browser details are visible.
 - **Frankfurter:** only a currency pair, for exchange rates.
 - **Wikipedia / Pexels:** only a city name, for a city photo; directly to Wikipedia, and to Pexels through the sharing
   server.
@@ -378,7 +386,7 @@ can see your IP address.
 None of Trip Radar's servers are in Turkey:
 
 - The sharing server and the AI gate are in the same Supabase project, in **India (Mumbai, ap-south-1)**.
-- Google, Anthropic, OpenStreetMap, Frankfurter, Wikipedia, Pexels and AeroDataBox (RapidAPI) use their own servers, which may be in the US,
+- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com and Aviasales use their own servers, which may be in the US,
   the EU or other countries.
 
 These transfers happen only for actions you start (AI, sharing, invites) and only as far as that action needs; what
