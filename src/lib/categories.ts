@@ -773,6 +773,67 @@ export function planProgress(sections: Pick<CatSection, "id" | "settled" | "entr
   });
 }
 
+/**
+ * The hero's planning bar (two tones): what needs a booking (a stay, a flight, a train, a bus, a ferry, a car,
+ * a ticketed thing to do, an eSIM, insurance, a visa) in three stages. `booked`: booked, bought, arranged or
+ * installed. `planned`: decided but not booked yet (chosen, or planned in the chat). `open`: options to pick
+ * from, or a place with nothing chosen (an empty card, a placeholder the start chat made). A need decided as
+ * something that takes no booking (a taxi, a walk) and a chore ticked off aren't counted, nor are the ideas
+ * (things to do, restaurants, İlham) and what's ruled out (not in the sections' entries).
+ */
+export interface PlanStages {
+  booked: number;
+  planned: number;
+  open: number;
+  total: number;
+}
+
+export function planStages(
+  sections: (Pick<CatSection, "id" | "entries"> & { prep?: CatEntry[] })[],
+  isPlaceholder: (item: Item) => boolean = () => false,
+): PlanStages {
+  const out: PlanStages = { booked: 0, planned: 0, open: 0, total: 0 };
+  for (const s of sections) {
+    if (isIdeaSection(s.id)) continue;
+    const chores = new Set((s.prep ?? []).map((e) => e.key));
+    for (const e of s.entries) {
+      const stage = stageOf(e, chores.has(e.key), isPlaceholder);
+      if (!stage) continue;
+      out[stage]++;
+      out.total++;
+    }
+  }
+  return out;
+}
+
+function piecesItems(piece: CatPiece): Item[] {
+  return piece.kind === "entry" ? itemsOfEntry(piece.entry) : piece.kind === "group" ? piece.group.items : [piece.item];
+}
+
+function stageOf(e: CatEntry, chore: boolean, isPlaceholder: (item: Item) => boolean): "booked" | "planned" | "open" | null {
+  const items = piecesItems(e.piece);
+  if (chore || items.some((i) => isIdea(i) && isPrep(i))) return null;
+  switch (e.state) {
+    case "decide":
+    case "empty":
+      return "open";
+    case "book": {
+      // A flight or a stay the start chat only made room for is a place to fill, not a choice (startTrip.isPlaceholder).
+      const chosen = items.filter((i) => i.status === "chosen");
+      return chosen.length && chosen.every(isPlaceholder) ? "open" : "planned";
+    }
+    case "done": {
+      const p = e.piece;
+      const leg = p.kind === "entry" ? (p.entry.kind === "leg" ? p.entry.leg : p.entry.kind === "travel" ? (p.entry.leg ?? null) : null) : null;
+      const booked = items.some((i) => i.status === "booked" || (i.installedAt && decided(i))) || (leg != null && legBooked(leg));
+      // Done without a booking: planned as something that needs none (a taxi, a walk), so not a need.
+      return booked ? "booked" : null;
+    }
+    case "unscheduled":
+      return null;
+  }
+}
+
 /** The section and entry that hold a to-do's target (a record, a transfer, a block), tried in that order; `dom`: its card's key. */
 export function findInSections(
   sections: CatSection[],

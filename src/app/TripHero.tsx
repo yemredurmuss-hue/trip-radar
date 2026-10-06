@@ -1,9 +1,11 @@
 // The trip at a glance, left column (hero v9, docs/superpowers/specs/2026-10-05-hero-v9-design.md): a photo
 // per city (switcher top left, countdown and ••• top right), the title, the dates, one muted sentence, the plan
-// in four cells (a tap opens that section of the Plan) and "Rezervasyonların": the sections' "3/4"s added up,
-// a bar and the one dark button. Every block has an empty state; what arrives later fades in.
+// in four cells (a tap opens that section of the Plan) and "Planlama %75": what needs a booking in three stages
+// (booked, planned, waiting for a decision), a bar in two greens and the one dark button. Every block has an
+// empty state; what arrives later fades in.
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { countdown, countdownText } from "../lib/countdown";
+import type { PlanStages } from "../lib/categories";
 import type { HeroTally } from "../lib/heroInfo";
 import { formatDateRange, nightsBetween } from "../lib/items";
 import { L } from "../lib/i18n";
@@ -37,8 +39,10 @@ export function TripHero(props: {
   tally: HeroTally;
   /** A cell of the plan line: its section on the Plan. */
   onTally: (kind: keyof HeroTally) => void;
-  /** The Plan's sections' settled / total, added up (categories.planProgress). */
+  /** The Plan's sections' settled / total, added up (categories.planProgress): nothing saved, or all done. */
   done: { settled: number; total: number; pct: number; complete: boolean };
+  /** What needs a booking, in three stages (categories.planStages): the bar's two fills and its words. */
+  stages: PlanStages;
   progress: DecisionProgress;
   /** Which list is open under the hero: every to-do, or the cancellations running out. */
   list: "all" | "deadline" | null;
@@ -47,7 +51,7 @@ export function TripHero(props: {
   working: number;
   menu: ReactNode;
 }) {
-  const { trip, cities, range, tally, done, progress } = props;
+  const { trip, cities, range, tally, done, progress, stages } = props;
   const [i, setI] = useState(0);
   // Every 6 s to the next city; a tap on one restarts the wait.
   useEffect(() => {
@@ -71,7 +75,29 @@ export function TripHero(props: {
   const barAppear = useAppear(done.total > 0);
   const deadlines = progress.count.deadline;
   const toggle = (list: "all" | "deadline") => props.onList(props.list === list ? null : list);
-  const pct = L(`%${done.pct}`, `${done.pct}%`);
+  const { booked, planned, open, total } = stages;
+  // Planned or booked of all that needs a booking; never 100 while something waits for a decision. Nothing to
+  // book: all done.
+  const pct = total ? Math.min(Math.round(((booked + planned) / total) * 100), open ? 99 : 100) : 100;
+  const reach = total ? ((booked + planned) / total) * 100 : 100;
+  const bookedW = total ? (booked / total) * 100 : 100;
+  // "3 rezerve · 3 planlandı · 2 karar bekliyor": a zero says nothing, so it's left out. Once nothing waits for a
+  // decision, what's planned is what's left to book.
+  const words: [string, ReactNode][] = [];
+  if (booked) words.push(["booked", <><i className="hx-key booked" aria-hidden />{L(`${booked} rezerve`, `${booked} booked`)}</>]);
+  if (planned) words.push(["planned", <><i className="hx-key planned" aria-hidden />{open ? L(`${planned} planlandı`, `${planned} planned`) : L(`${planned} rezervasyon kaldı`, `${planned} ${planned === 1 ? "booking" : "bookings"} left`)}</>]);
+  if (open) words.push(["open", L(`${open} karar bekliyor`, `${open} to decide`)]);
+  const parts = words.map(([k, w], n) => (
+    <Fragment key={k}>
+      {n > 0 && (
+        <span className="dot" aria-hidden>
+          ·
+        </span>
+      )}
+      <span className="hx-part">{w}</span>
+    </Fragment>
+  ));
+  const barLabel = L(`Planlama: ${booked} rezerve, ${planned} planlandı, ${open} karar bekliyor`, `Planning: ${booked} booked, ${planned} planned, ${open} to decide`);
   return (
     <div className="hx-left">
       <div className={`hx-photo${hasImage ? "" : " empty"}`}>
@@ -143,28 +169,17 @@ export function TripHero(props: {
         <div className={`hx-progress${done.total ? "" : " empty"}`}>
           <div className="hx-progress-main">
             <div className="hx-progress-head">
-              <b>{done.complete ? L("Her şey hazır", "All set") : L("Rezervasyonların", "Your bookings")}</b>
+              <b>{done.total === 0 ? L("Planlama", "Planning") : done.complete ? L("Her şey hazır", "All set") : stages.open === 0 ? L("Planlama tamam", "Planning done") : L(`Planlama %${pct}`, `Planning ${pct}%`)}</b>
               {done.total > 0 ? (
                 <span key="count" className={`hx-progress-meta${barAppear}`}>
-                  {progress.todos.length > 0 ? (
-                    <button className="hx-progress-count" aria-expanded={props.list === "all"} title={L("Yapılacakları göster", "Show what's left")} onClick={() => toggle("all")}>
-                      {L(`${done.settled}/${done.total} onaylandı`, `${done.settled}/${done.total} confirmed`)}
-{" "}
-                      <span className="dot" aria-hidden>
-                        ·
-                      </span>{" "}
-                      <b>{pct}</b>
-                    </button>
-                  ) : (
-                    <span className="hx-progress-count">
-                      {L(`${done.settled}/${done.total} onaylandı`, `${done.settled}/${done.total} confirmed`)}
-{" "}
-                      <span className="dot" aria-hidden>
-                        ·
-                      </span>{" "}
-                      <b>{pct}</b>
-                    </span>
-                  )}
+                  {parts.length > 0 &&
+                    (progress.todos.length > 0 ? (
+                      <button className="hx-progress-count" aria-expanded={props.list === "all"} title={L("Yapılacakları göster", "Show what's left")} onClick={() => toggle("all")}>
+                        {parts}
+                      </button>
+                    ) : (
+                      <span className="hx-progress-count">{parts}</span>
+                    ))}
                   {deadlines > 0 && (
                     <button
                       className="hx-deadline"
@@ -183,8 +198,10 @@ export function TripHero(props: {
                 </span>
               )}
             </div>
-            <div className="hx-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={done.pct} aria-label={L("Onaylanan", "Confirmed")}>
-              {done.pct > 0 && <i style={{ width: `${done.pct}%` }} />}
+            {/* Two fills from the left: planned (light) under booked (dark), so booked + planned is the light one's end. */}
+            <div className="hx-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={done.total ? pct : 0} aria-label={barLabel}>
+              {done.total > 0 && reach > 0 && <i className="hx-bar-planned" style={{ width: `${reach}%` }} />}
+              {done.total > 0 && bookedW > 0 && <i className="hx-bar-booked" style={{ width: `${bookedW}%` }} />}
             </div>
           </div>
           {props.action && (

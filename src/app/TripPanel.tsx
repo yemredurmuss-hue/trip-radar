@@ -26,7 +26,7 @@ import { deleteItem, onHidden, onRemoved } from "../lib/removal";
 import { undoSlot } from "../lib/undo";
 import { undoTrip, type Undoable } from "../lib/undoables";
 import { addQuick, templateLabel, TEMPLATES, type InsertAt, type Template, type TemplateId } from "../lib/templates";
-import { categorize, catDomKey, findInSections, planProgress, sectionOfItem, SECTION_ORDER, type SectionId } from "../lib/categories";
+import { categorize, catDomKey, findInSections, planProgress, planStages, sectionOfItem, SECTION_ORDER, type SectionId } from "../lib/categories";
 import { firstField, keepDraftFor, type CardFocus } from "../lib/inlineEdit";
 import { newId } from "../lib/db";
 import { AddSheet } from "./cards/AddSheet";
@@ -492,8 +492,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     (range
       ? statusSentence(progress.count, { flightsDone, waitingCity: mainPlaceOf(mains, waitingCityOf(progress, timeline, items)) })
       : L("Tarih ve şehir, kaydettikçe netleşir.", "Dates and cities fill in as you save."));
-  // "Rezervasyonların": the sections' "3/4"s added up, so the hero and the Plan's headers say the same thing.
+  // The sections' "3/4"s added up: whether anything is saved yet, and (with nothing left to do) all set.
   const done = useMemo(() => planProgress(sections), [sections]);
+  // The hero's "Planlama %75": what needs a booking, booked / planned / waiting for a decision. A flight or a stay
+  // the start chat only made room for waits for a decision (startTrip.ts isPlaceholder).
+  const stages = useMemo(() => planStages(sections, (i) => isPlaceholder(trip, i)), [sections, trip]);
   /** A section of the Plan (a cell of the hero's plan line): opened and scrolled to (else its "Ekle" chip). */
   const openSection = (id: SectionId) => {
     const drawn = sections.some((s) => s.id === id && (s.entries.length || s.hidden.length));
@@ -610,6 +613,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           tally={tally}
           onTally={(kind) => openSection(tallySection(kind, sections))}
           done={{ ...done, complete: allDone }}
+          stages={stages}
           progress={progress}
           list={todoOpen}
           onList={setTodoOpen}

@@ -1,5 +1,6 @@
-// What's left to do, as a list under the hero: "3/6 onaylandı" in the hero's progress box lists them all,
-// its "⏳ 2" only the free cancellations running out; a tap on an entry takes you to it.
+// What's left to do, as a list under the hero: the progress box's "3 rezerve · 3 planlandı · 2 karar bekliyor"
+// lists them all, in groups (Karar bekliyor, Rezerve edilecek, then the cancellations running out), its "⏳ 2"
+// only the free cancellations running out; a tap on an entry takes you to it.
 import { L } from "../lib/i18n";
 import { entryDomId, nextStepText, type DecisionProgress, type Todo, type TodoKind } from "../lib/progress";
 
@@ -40,24 +41,48 @@ export const kinds = (): { kind: TodoKind; label: string }[] => [
 export const when = (t: Todo) =>
   t.days == null ? null : t.days < 0 ? null : t.days === 0 ? L("bugün", "today") : L(`${t.days} gün`, `${t.days} day${t.days === 1 ? "" : "s"}`);
 
-/** Every to-do ("all"), or the ones of one kind (the hero's "⏳": the cancellations running out). */
+/** The "all" list's groups: waiting for a decision (options, or nothing yet), decided and still to book, then the cancellations. */
+const groups = (): { kinds: TodoKind[]; label: string }[] => [
+  { kinds: ["decide", "plan"], label: L("Karar bekliyor", "To decide") },
+  { kinds: ["book"], label: L("Rezerve edilecek", "To book") },
+  { kinds: ["deadline"], label: L("İptal süresi", "Cancel by") },
+];
+
+/** Every to-do ("all", in groups), or the ones of one kind (the hero's "⏳": the cancellations running out). */
 export function TodoList({ progress, open, onGo }: { progress: DecisionProgress; open: TodoKind | "all"; onGo: (target: Todo["target"]) => void }) {
   const list = open === "all" ? progress.todos : progress.todos.filter((t) => t.kind === open);
   if (!list.length) return null;
   const label = open === "all" ? L("Yapılacaklar", "To do") : kinds().find((k) => k.kind === open)?.label;
+  const parts: { key: string; label: string | null; todos: Todo[] }[] =
+    open === "all"
+      ? groups()
+          .map((g) => ({ key: g.kinds.join(), label: g.label, todos: list.filter((t) => g.kinds.includes(t.kind)) }))
+          .filter((g) => g.todos.length)
+      : [{ key: open, label: null, todos: list }];
   return (
-    <ul className="todo-list" aria-label={label}>
-      {list.map((t) => (
-        <li key={t.key}>
-          <button onClick={() => onGo(t.target)}>
-            <span className="todo-text">
-              <b>{open === "all" ? nextStepText(t) : t.title}</b>
-              <span className="muted">{t.note}</span>
-            </span>
-            {when(t) && <span className={`todo-when${t.soon ? " soon" : ""}`}>{when(t)}</span>}
-          </button>
-        </li>
+    <div className="todo-list" role="group" aria-label={label}>
+      {parts.map((g) => (
+        <div key={g.key} className="todo-group">
+          {g.label && (
+            <h3 className="todo-head">
+              {g.label} <span>{g.todos.length}</span>
+            </h3>
+          )}
+          <ul aria-label={g.label ?? label}>
+            {g.todos.map((t) => (
+              <li key={t.key}>
+                <button onClick={() => onGo(t.target)}>
+                  <span className="todo-text">
+                    <b>{open === "all" ? nextStepText(t) : t.title}</b>
+                    <span className="muted">{t.note}</span>
+                  </span>
+                  {when(t) && <span className={`todo-when${t.soon ? " soon" : ""}`}>{when(t)}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 }
