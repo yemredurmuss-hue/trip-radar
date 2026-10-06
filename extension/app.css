@@ -2443,3 +2443,9 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-guide-approx { margin: 10px 0 0; font-size: 14px; color: var(--hx-ink); }
 .st-guide-approx .btn-link { font-size: 14px; font-weight: 650; color: var(--hx-accent); }
 .st-day { display: inline-flex; align-items: center; gap: 8px; }
+
+/* 0.36.13: a time in words, its source, and "İniş saati?" */
+.t .t-hint { display: block; font-size: 11px; line-height: 1.2; font-weight: 600; color: #a35a00; white-space: normal; }
+.dc-arrive { font-size: 12.5px; font-weight: 600; }
+.dc-step > .dc-arrive { grid-column: -2 / -1; justify-self: start; margin: -4px 0 6px 52px; }
+.dc-arrive input { font: inherit; padding: 3px 6px; border: 1px solid #d8d4cc; border-radius: 8px; }
