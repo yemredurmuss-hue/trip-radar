@@ -3509,6 +3509,8 @@ try {
   await answers.getByRole("button", { name: "4", exact: true }).click();
   const autoRow = board.locator(".st-auto", { hasText: "Generating…" });
   await autoRow.waitFor();
+  assert.equal(await board.locator(".st-msg-bot a.st-link").first().innerText(), "Official site ↗", "in the chat's language");
+  await board.waitForTimeout(450); // the row faded in
   await board.screenshot({ path: `${out}/26b-intent-countdown.png` });
   // A letter typed: stopped, and nothing is made.
   await chat.getByLabel("Message").fill("x");

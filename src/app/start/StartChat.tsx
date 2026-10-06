@@ -70,7 +70,7 @@ const LATE = Symbol("late");
  * An assistant line (rev 3): what was understood, then the question on its own line in bold. The line break stays
  * in the text (a screen reader and a copy read them as two sentences).
  */
-function BotLine({ text, link }: { text: string; link?: string }) {
+function BotLine({ text, link, linkLabel }: { text: string; link?: string; linkLabel: string }) {
   const cut = text.lastIndexOf("\n");
   const last = cut >= 0 ? text.slice(cut + 1) : text;
   // Only a question is bold (the ready line, "Rotayı çiziyorum…" aren't); a one-line question too.
@@ -81,7 +81,7 @@ function BotLine({ text, link }: { text: string; link?: string }) {
     <>
       {" "}
       <a className="st-link" href={link} target="_blank" rel="noopener noreferrer">
-        {L("Resmî site", "Official site")} ↗
+        {linkLabel} ↗
       </a>
     </>
   ) : null;
@@ -596,7 +596,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
           <div className="st-msgs" role="log" aria-live="polite" aria-label={L("Sohbet", "Conversation")}>
             {state.messages.map((m, i) => (
               <div key={m.id ?? `line-${i}`} className={m.role === "user" ? "st-msg-user" : "st-msg-bot"}>
-                {m.role === "assistant" ? <BotLine text={m.text} link={m.link} /> : m.text}
+                {m.role === "assistant" ? <BotLine text={m.text} link={m.link} linkLabel={L("Resmî site", "Official site")} /> : m.text}
               </div>
             ))}
             {showChips && question && (
