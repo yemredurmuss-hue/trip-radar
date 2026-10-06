@@ -5,10 +5,10 @@
 // code in one standard (satır standardı v2, dayRowTitle.ts): NE · HANGİSİ ("Uçuş · İstanbul → Kopenhag") and a
 // grey line; no dot, no dotted line. Insurance, the eSIM and a visa aren't part of a day: they stay in Plan →
 // Diğer. Kartlar (0.35.1, after Layla): a rail of stretches, each line as its own card on the Plan.
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, Fragment, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { cardKindColor, cardKindLabel, RENTAL_MODES, TRANSPORT_MODES, type CardKind, type TransportMode } from "../../lib/cardKinds";
 import { imageProxy } from "../../lib/cityImages";
-import { dayCards, dayPhoto, daysLabel, flowRows, groupDays, highlightOf, ideaCount, isAsideRow, isPlanRow, movedOrder, orderRows, rowKind, rowMark, type DayCard, type DayGroup } from "../../lib/dayCards";
+import { dayCards, dayPhoto, daysLabel, flowRows, groupDays, highlightOf, ideaCount, isAsideRow, isPlanRow, movedOrder, orderRows, rowKind, rowMark, tieredRows, tierOf, type DayCard, type DayGroup } from "../../lib/dayCards";
 import { placeRoute, rowTitle, titleText, withLayovers, type Place, type RowTitle } from "../../lib/dayRowTitle";
 import { mainPlaceOf, type MainPlace } from "../../lib/destinations";
 import { formatDateRange } from "../../lib/items";
@@ -303,13 +303,16 @@ function DaySection({ card, mode, isToday, stays, onPick, ...props }: { card: Da
         <p className="dc-free">{L("Henüz plan yok.", "Nothing planned yet.")}</p>
       ) : (
         <ol className={`dc-tl${mode === "cards" ? " full" : ""}`}>
-          {flow.map((r) =>
-            mode === "cards" ? (
-              <Full key={r.key} row={r} stay={checkInStay(r, card, stays)} dnd={lines.includes(r) ? dnd(r) : undefined} {...props} />
-            ) : (
-              <Line key={r.key} row={r} onTap={() => onPick(r.key)} tripId={props.tripId} dnd={lines.includes(r) ? dnd(r) : undefined} />
-            ),
-          )}
+          {flow.map((r, i) => (
+            <Fragment key={r.key}>
+              <TierHead rows={flow} at={i} />
+              {mode === "cards" ? (
+                <Full row={r} stay={checkInStay(r, card, stays)} dnd={lines.includes(r) ? dnd(r) : undefined} {...props} />
+              ) : (
+                <Line row={r} onTap={() => onPick(r.key)} tripId={props.tripId} dnd={lines.includes(r) ? dnd(r) : undefined} />
+              )}
+            </Fragment>
+          ))}
         </ol>
       )}
       <AddDay card={card} onAdd={props.onAdd} />
@@ -661,8 +664,11 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
         </header>
         {lines.length > 0 ? (
           <ol className="dc-tl">
-            {shown.map((r) => (
-              <Line key={r.key} row={r} onTap={() => onPick(r.key)} tripId={props.tripId} dnd={lines.includes(r) ? dnd(r) : undefined} />
+            {shown.map((r, i) => (
+              <Fragment key={r.key}>
+                <TierHead rows={shown} at={i} />
+                <Line row={r} onTap={() => onPick(r.key)} tripId={props.tripId} dnd={lines.includes(r) ? dnd(r) : undefined} />
+              </Fragment>
             ))}
           </ol>
         ) : (
@@ -684,7 +690,26 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
 function dayLines(card: DayCard, props: Pick<DayCardsProps, "times" | "order" | "loose">): DayRow[] {
   // A line moved by hand off its time stays where it was put, its time hidden (a time given puts it back).
   const all = flowRows(card, props.times).map((r) => (r.time && props.loose?.includes(r.key) ? { ...r, freed: r.time, time: null, estimated: false } : r));
-  return orderRows(all.filter((r) => !isAsideRow(r)), props.order?.[card.date]);
+  // What's settled first, with its time; then what's chosen but not booked; the ideas last (0.36.24).
+  return tieredRows(orderRows(all.filter((r) => !isAsideRow(r)), props.order?.[card.date]));
+}
+
+/**
+ * The quiet heading before a group that isn't the first (0.36.24): "Rezerve edilmedi · 2", "Fikirler · 4". A day
+ * of only one kind needs none.
+ */
+function TierHead({ rows, at }: { rows: DayRow[]; at: number }) {
+  const r = rows[at];
+  if (!r || r.layover) return null;
+  const tier = tierOf(r);
+  const before = rows.slice(0, at).filter((x) => !x.layover);
+  if (!before.length || tierOf(before.at(-1)!) === tier) return null;
+  const n = rows.filter((x) => !x.layover && tierOf(x) === tier).length;
+  return (
+    <li className="dc-tier" aria-hidden>
+      {tier === 2 ? L(`Fikirler · ${n}`, `Ideas · ${n}`) : L(`Henüz rezerve edilmedi · ${n}`, `Not booked yet · ${n}`)}
+    </li>
+  );
 }
 
 /** What a line needs to be moved: its grip, its drop handlers, its class while dragged over. */

@@ -222,6 +222,21 @@ export function orderRows(rows: DayRow[], saved?: readonly string[] | null): Day
   return out;
 }
 
+/**
+ * A line's group in the day (0.36.24, Emre: "kesin belli olanlar üste … onaylanmayanlar, things to do'lar ayrı
+ * aşağıda"): 0 what's settled (booked, and the day's frame: its trips, transfers, check-in and -out, the car),
+ * 1 a plan not booked yet (a tour chosen, no ticket), 2 the ideas saved for the day. The trips stay in the
+ * frame whatever their state, so a travel day still reads in the order it happens.
+ */
+export function tierOf(r: DayRow): 0 | 1 | 2 {
+  if (r.kind === "idea" || r.kind === "ideas") return 2;
+  if (r.kind === "item" && r.state !== "done") return 1;
+  return 0;
+}
+
+/** The day's lines by group (each group in its own order: by the clock, else where they were put). */
+export const tieredRows = (rows: DayRow[]): DayRow[] => [0, 1, 2].flatMap((t) => rows.filter((r) => tierOf(r) === t));
+
 /** The day's order after moving a line before or after another (by key): what `trip.dayOrder` keeps. */
 export function movedOrder(rows: DayRow[], key: string, target: string, after: boolean): string[] {
   const keys = rows.map((r) => r.key).filter((k) => k !== key);

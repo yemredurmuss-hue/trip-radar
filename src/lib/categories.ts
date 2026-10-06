@@ -629,6 +629,12 @@ function looseSubtitle(plan: Plan, g: OptionGroup): string {
   return `${title}${g.range ? "" : L(" · tarih seçilmemiş", " · no dates chosen")}`;
 }
 
+/**
+ * Within a day, what's settled first (0.36.24, Emre: "kesin belli olanlar üste"): a booked tour or table before
+ * one still without a ticket. The trips (flights, trains, transfers) and the stays keep the clock's order.
+ */
+const settledFirst = (e: CatEntry) => (e.section === "flight" || e.section === "transport" || e.section === "stay" ? 0 : e.state === "done" ? 0 : 1);
+
 /** Dated first, by date then time (ties keep the front's order); the undated last, by city in the trip's order. */
 function sortEntries(entries: CatEntry[], plan: Plan): CatEntry[] {
   const cities: string[] = [];
@@ -639,7 +645,7 @@ function sortEntries(entries: CatEntry[], plan: Plan): CatEntry[] {
     return i >= 0 ? ([0, String(i).padStart(4, "0")] as const) : ([1, cityKeyOf(city) ?? city] as const);
   };
   return [...entries].sort((a, b) => {
-    if (a.date && b.date) return a.date.localeCompare(b.date) || (a.time ?? "").localeCompare(b.time ?? "") || a.seq - b.seq;
+    if (a.date && b.date) return a.date.localeCompare(b.date) || settledFirst(a) - settledFirst(b) || (a.time ?? "~").localeCompare(b.time ?? "~") || a.seq - b.seq;
     if (a.date || b.date) return a.date ? -1 : 1;
     const [ra, ka] = cityRank(a.city);
     const [rb, kb] = cityRank(b.city);

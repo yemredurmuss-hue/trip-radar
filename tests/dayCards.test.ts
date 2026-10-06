@@ -4,7 +4,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { loadDecisions } from "../src/lib/analysis";
 import { db, listItems } from "../src/lib/db";
-import { orderRows, movedOrder, dayCards, endsOf, foldRows, highlightOf, isAsideRow, isPlanRow, rowMark, type DayCard } from "../src/lib/dayCards";
+import { orderRows, movedOrder, dayCards, endsOf, foldRows, highlightOf, isAsideRow, isPlanRow, rowMark, tieredRows, tierOf, type DayCard } from "../src/lib/dayCards";
 import { makeItem } from "./fixtures/makeItem";
 import { loadDemoTrip } from "../src/lib/demo";
 import type { DayRow } from "../src/lib/journey";
@@ -136,5 +136,25 @@ describe("what isn't part of a day", () => {
     expect(isAsideRow(taxi)).toBe(false);
     expect(highlightOf({ rows: [insurance, taxi] } as DayCard)?.key).toBe("leg:x");
     expect(highlightOf({ rows: [insurance] } as DayCard)).toBeNull();
+  });
+});
+
+describe("the day's groups (0.36.24): settled first, then what's not booked, the ideas last", () => {
+  const r = (key: string, over: Partial<DayRow>) => ({ key, kind: "item", state: "done", time: null, estimated: false, hint: null, otherDay: null, title: key, sub: null, line: null, status: "", notes: [], entry: null, leg: null, item: null, items: [], rental: null, stayKey: null, ...over }) as DayRow;
+  it("Emre's Porto day 3: the booked boat on top with its time, the tour without a ticket next, the ideas last", () => {
+    const rows = [
+      r("pazar", { kind: "idea" }),
+      r("bisiklet", { state: "pending", time: "10:00" }),
+      r("outdoor", { kind: "idea" }),
+      r("serralves", { kind: "idea" }),
+      r("tekne", { state: "done", time: "16:00" }),
+      r("fado", { state: "pending" }),
+    ];
+    expect(tieredRows(rows).map((x) => x.key)).toEqual(["tekne", "bisiklet", "fado", "pazar", "outdoor", "serralves"]);
+  });
+  it("a travel day keeps its order: trips and transfers stay in the frame whatever their state", () => {
+    const rows = [r("out", { kind: "info", state: "info" }), r("taxi", { kind: "leg", state: "open" }), r("fly", { kind: "travel", state: "decide" }), r("in", { kind: "info", state: "info" })];
+    expect(tieredRows(rows).map((x) => x.key)).toEqual(["out", "taxi", "fly", "in"]);
+    expect(rows.map(tierOf)).toEqual([0, 0, 0, 0]);
   });
 });
