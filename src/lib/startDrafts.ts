@@ -4,8 +4,9 @@
 // database: a trip record would be a place for captures to land (trips.ts chooseTrip), would be counted,
 // shared, searched by the chat and the share sync, and would need a migration. A draft here is read only by
 // the home and the start screen; removing the key removes every draft and nothing else.
+import { lang } from "./i18n";
 import { chromeKV, type KV } from "./share/store";
-import { knownStyles, type StartState } from "./startTrip";
+import { knownStyles, noPrep, type Prepared, type StartRoute, type StartState } from "./startTrip";
 
 const KEY = "startDrafts";
 /** The newest few are kept. */
@@ -22,7 +23,26 @@ const clean = (d: StartState): StartState => ({
   who: d.who ? { kind: d.who.kind ?? null, names: Array.isArray(d.who.names) ? d.who.names.filter((n) => typeof n === "string") : [] } : null,
   route: d.route && Array.isArray(d.route.stops) ? d.route : null,
   messages: d.messages.filter((m) => m && typeof m.text === "string" && (m.role === "user" || m.role === "assistant")),
+  // Drafts from before revision 2: the board's language, nothing prepared.
+  lang: d.lang === "tr" || d.lang === "en" ? d.lang : lang(),
+  langFixed: d.langFixed === true,
+  prepared: cleanPrepared(d.prepared),
 });
+
+/** What was prepared, only in its shape (anything else is dropped and prepared again). */
+function cleanPrepared(p: unknown): Prepared {
+  const out = noPrep();
+  if (!p || typeof p !== "object") return out;
+  const v = p as Partial<Prepared>;
+  if (v.photos && typeof v.photos.for === "string" && v.photos.urls && typeof v.photos.urls === "object") {
+    const urls = Object.fromEntries(Object.entries(v.photos.urls).filter(([, u]) => u === null || (typeof u === "string" && /^https:\/\//.test(u))));
+    out.photos = { for: v.photos.for, urls };
+  }
+  if (v.routes && typeof v.routes === "object")
+    out.routes = Object.fromEntries(Object.entries(v.routes).filter(([, r]) => r === null || (!!r && typeof r === "object" && Array.isArray((r as StartRoute).stops))));
+  if (v.rules && typeof v.rules.key === "string" && Array.isArray(v.rules.titles)) out.rules = { key: v.rules.key, titles: v.rules.titles.filter((t) => typeof t === "string") };
+  return out;
+}
 
 async function read(kv: KV): Promise<StartState[]> {
   try {

@@ -17,6 +17,22 @@ export function setLang(next: Lang): void {
 /** The text in the current language. */
 export const L = (tr: string, en: string): string => (current === "en" ? en : tr);
 
+/**
+ * Runs `fn` with another language current and puts the board's back (the start chat speaks the language its
+ * first message was written in, whatever the board's). Synchronous only: every L() inside `fn` reads `l`; an
+ * await inside would let the rest run in the board's language again.
+ */
+export function withLang<T>(l: Lang | null | undefined, fn: () => T): T {
+  if (!l || l === current) return fn();
+  const before = current;
+  current = l;
+  try {
+    return fn();
+  } finally {
+    current = before;
+  }
+}
+
 /** Locale for numbers, dates and sorting in the current language. */
 export const locale = (): string => (current === "en" ? "en-GB" : "tr-TR");
 

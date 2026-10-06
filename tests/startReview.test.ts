@@ -79,11 +79,12 @@ describe("a start never made up", () => {
     expect(monthParts("2026-12-01", TODAY).map((p) => p.date)).toEqual(["2026-12-01", "2026-12-15", "2026-12-25"]);
     expect(monthParts("2026-10-13", TODAY).map((p) => p.part)).toEqual(["mid", "end"]);
   });
-  it("a month only can't generate yet; skipping its day takes the 1st and says so", () => {
+  it("a month only asks its day (generating meanwhile takes its beginning, roughly); skipping its day takes the 1st and says so", () => {
     let s = interview(false);
     s = applyAnswer(s, { q: "start", date: "2026-12-01", approx: true }, 5);
-    expect(canGenerate(s)).toBe(false);
-    expect(missingForGenerate(s)).toEqual(["başlangıç günü"]);
+    expect(canGenerate(s)).toBe(true);
+    expect(missingForGenerate(s)).toEqual([]);
+    expect(creationOf(s)!.approxStart).toBe("2026-12-01");
     expect(checklist(s, ctx).find((r) => r.id === "when")?.done).toBe(false);
     const skipped = skip(s, "day", 6);
     expect(skipped.start).toEqual({ date: "2026-12-01", approx: true, part: "begin" });

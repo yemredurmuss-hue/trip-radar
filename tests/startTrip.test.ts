@@ -189,11 +189,12 @@ describe("the interview", () => {
     expect(out.understood).toBe(false);
     expect(out.state).toBe(s2);
   });
-  it("where + when are the minimum to generate", () => {
+  it("the destination is all it takes to generate (revision 2, item 4); the rest is asked later", () => {
+    expect(canGenerate(fresh())).toBe(false);
     let s = applyAnswer(fresh(), { q: "where", place: "Bali", country: null }, 2);
-    expect(canGenerate(s)).toBe(false);
+    expect(canGenerate(s)).toBe(true);
     s = applyAnswer(s, { q: "duration", duration: { unit: "week", n: 1 } }, 2);
-    expect(canGenerate(s)).toBe(false);
+    expect(canGenerate(s)).toBe(true);
     s = applyAnswer(s, { q: "start", date: "2026-11-02", approx: false }, 2);
     expect(canGenerate(s)).toBe(true);
     const done = progressOf(checklist(s, ctx));
@@ -202,9 +203,14 @@ describe("the interview", () => {
   it("the reply says back what was understood, then asks the next question", () => {
     const before = fresh();
     const { state } = typed(before, "Sabine'yle 10 Aralık'tan 1 ay Bali");
-    expect(replyText(before, state, ctx)).toBe("Not aldım: Bali · Sabine ile · 2 kişi · 10 Aralık – 10 Ocak · 31 gece. Nereden yola çıkıyorsun?");
+    expect(replyText(before, state, ctx)).toBe(
+      "Sabine ile Bali kulağa harika geliyor: Ubud'un pirinç terasları, tapınaklar ve okyanusta gün batımları. Not aldım: Bali · Sabine ile · 2 kişi · 10 Aralık – 10 Ocak · 31 gece. Nereden yola çıkıyorsun?",
+    );
     const where = applyAnswer(before, { q: "where", place: "Bali", country: null }, 2);
-    expect(replyText(before, where, ctx)).toBe("Harika, Bali! Nereden yola çıkıyorsun?");
+    expect(replyText(before, where, ctx)).toBe("Bali kulağa harika geliyor: Ubud'un pirinç terasları, tapınaklar ve okyanusta gün batımları. Nereden yola çıkıyorsun?");
+    // A place the small table doesn't know: the plain word.
+    const other = applyAnswer(before, { q: "where", place: "Zagreb", country: null }, 2);
+    expect(replyText(before, other, ctx)).toBe("Harika, Zagreb! Nereden yola çıkıyorsun?");
   });
   it("quick answers: the origin guess first; lengths and start months asked apart (item 3)", () => {
     const s = applyAnswer(fresh(), { q: "where", place: "Bali", country: null }, 2);
@@ -312,8 +318,13 @@ describe("what gets made", () => {
     expect(c.road).toBe(true);
     expect(c.travel.map((x) => [x.kind, x.city, x.date, x.end_date])).toEqual([["car_rental", "Toskana", "2027-05-01", "2027-05-08"]]);
   });
-  it("nothing without where and when", () => {
-    expect(creationOf(applyAnswer(fresh(), { q: "where", place: "Bali", country: null }, 2))).toBeNull();
+  it("nothing without where; with only where, an undated stay and flights to fill, the trip without dates", () => {
+    expect(creationOf(fresh())).toBeNull();
+    const c = creationOf(applyAnswer(fresh(), { q: "where", place: "Bali", country: "Endonezya", code: "ID" }, 2))!;
+    expect(c.dates).toBeNull();
+    expect(c.stays.map((x) => [x.kind, x.city, x.date, x.end_date])).toEqual([["stay", "Bali", null, null]]);
+    expect(c.travel.map((x) => [x.kind, x.from, x.to, x.date])).toEqual([["flight", null, "Denpasar", null]]);
+    expect(c.approxStart).toBeNull();
   });
   it("people: one alone, two with a partner, everyone named and the traveller", () => {
     expect(peopleCount({ kind: "solo", names: [] })).toBe(1);

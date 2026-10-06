@@ -127,8 +127,8 @@ describe("Gezimi oluştur", () => {
     expect(lines).toEqual([
       "Gezi açıldı: Bali Gezisi",
       "Rota çizildi: Ubud 12 gece → Canggu 10 gece → Uluwatu 9 gece",
-      "Uçuşlar için yer açıldı: İstanbul ⇄ Denpasar",
-      "Kişi ve tarz: Sabine ile · 2 kişi · Doğa · Orta bütçe",
+      "İstanbul ⇄ Denpasar uçuşları için yer açıldı",
+      "2 kişi · Doğa · Orta bütçe",
     ]);
   });
 });
