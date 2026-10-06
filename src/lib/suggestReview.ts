@@ -8,8 +8,9 @@ import type { MainPlace } from "./destinations";
 import { L, withLang, type Lang } from "./i18n";
 import { getProvider, MissingKeyError, type LlmProvider } from "./llm";
 import { cityKeyOf, type DateRange } from "./plan";
+import { allowedSuggestions, blockedWords } from "./playbooks";
 import { checkSuggestionInput, mergeIncoming, SECTION_TEMPLATES, SUGGESTION_SECTIONS } from "./suggestions";
-import type { Item, Suggestion, Trip } from "./types";
+import type { Item, PlaybookKind, Suggestion, Trip } from "./types";
 
 export const REVIEW_EVERY_MS = 24 * 60 * 60 * 1000;
 /** A review marked running this long ago never came back (a closed tab): it may be asked again. */
@@ -43,7 +44,13 @@ export function reviewDue(last: Trip["suggestReview"], key: string, now: number)
   return last.key !== key || Boolean(last.failed);
 }
 
-export const reviewSystem = (): string =>
+/** The system prompt; with what doesn't belong on this kind of trip (playbooks/), when it is one. */
+export const reviewSystem = (playbook?: PlaybookKind | null): string => {
+  const avoid = blockedWords(playbook);
+  return avoid ? `${reviewRules()}\n- ${avoid}` : reviewRules();
+};
+
+const reviewRules = (): string =>
   L(
     `Bir seyahat planına bakıp en fazla ${REVIEW_MAX} öneri yaz: yolcunun planında olmayan ama işine yarayacak şeyler. Yalnız JSON döndür.
 - section şunlardan biri: ${SUGGESTION_SECTIONS.join(", ")}. kind: "add" (plana eklenecek bir şey) ya da "warning" (kontrol edilecek bir şey; template "").
@@ -86,11 +93,15 @@ export function reviewPrompt(input: {
   return `<suggest_review>\n${JSON.stringify(data)}\n</suggest_review>`;
 }
 
-/** The answer checked: at most three valid new ones, none the traveller dismissed (by key or topic). */
-export function acceptReview(answer: ReviewAnswer, stored: Suggestion[] | undefined, now: number): { list: Suggestion[]; added: Suggestion[] } {
-  const valid = answer.suggestions
+/**
+ * The answer checked: at most three valid new ones, none the traveller dismissed (by key or topic), none that doesn't
+ * belong on this kind of trip (playbooks/: no tours on a festival trip, one activity at most on a retreat).
+ */
+export function acceptReview(answer: ReviewAnswer, stored: Suggestion[] | undefined, now: number, playbook?: PlaybookKind | null): { list: Suggestion[]; added: Suggestion[] } {
+  const checked = answer.suggestions
     .map((raw) => checkSuggestionInput(raw, "ai", now))
     .filter((s): s is Suggestion => typeof s !== "string");
+  const valid = allowedSuggestions(playbook, checked, stored ?? []);
   let list = [...(stored ?? [])];
   const added: Suggestion[] = [];
   for (const s of valid) {
@@ -116,6 +127,8 @@ export async function runReview(args: {
   provider?: () => Promise<LlmProvider>;
   /** The trip's own language (a trip started by chat in Turkish on an English board): the review is written in it. */
   lang?: Lang | null;
+  /** The trip's playbook (trip.intent): what doesn't belong on it is never asked for. */
+  playbook?: PlaybookKind | null;
 }): Promise<"done" | "no-key" | "failed" | "skipped"> {
   const now = args.now ?? Date.now();
   let llm: LlmProvider;
@@ -135,8 +148,8 @@ export async function runReview(args: {
   });
   if (!claimed) return "skipped";
   try {
-    const answer = await llm.generateJson(withLang(args.lang, reviewSystem), args.prompt, ReviewSchema);
-    await args.save((t) => ({ ...t, suggestions: acceptReview(answer, t.suggestions, now).list, suggestReview: { key: args.key, at: now, state: "done" } }));
+    const answer = await llm.generateJson(withLang(args.lang, () => reviewSystem(args.playbook)), args.prompt, ReviewSchema);
+    await args.save((t) => ({ ...t, suggestions: acceptReview(answer, t.suggestions, now, t.intent?.playbook ?? args.playbook).list, suggestReview: { key: args.key, at: now, state: "done" } }));
     return "done";
   } catch (error) {
     if (error instanceof MissingKeyError) {

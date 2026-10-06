@@ -120,7 +120,7 @@ export function useSuggestions(args: {
     }
     // In the trip's own language when it has one (started by chat in another language than the board's).
     const prompt = withLang(trip.lang, () => reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers }));
-    void runReview({ key, prompt, lang: trip.lang, save: (change) => updateTrip(trip.id, change, { touch: false }) });
+    void runReview({ key, prompt, lang: trip.lang, playbook: trip.intent?.playbook, save: (change) => updateTrip(trip.id, change, { touch: false }) });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- asked once per trip state (key)
   }, [trip.id, key, due]);
 

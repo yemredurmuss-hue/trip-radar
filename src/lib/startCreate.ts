@@ -10,6 +10,8 @@ import { L, withLang } from "./i18n";
 import { nightsBetween } from "./items";
 import { checkPlanned, guardKind, planToSave } from "./planned";
 import { cityKeyOf } from "./plan";
+import type { PlannedInput } from "./planned";
+import { playbookOf, startPlaybook, tripIntentOf } from "./playbooks";
 import { styleKeyFor } from "./startBoard";
 import { suggestionsReview } from "./startHooks";
 import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, placeholderPrint, readyText, wantText, type Creation, type StartState } from "./startTrip";
@@ -107,8 +109,10 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
   if (id === "trip") {
     const existing = s.tripId ? await d.get("trips", s.tripId) : undefined;
     if (existing) {
+      const intent = tripIntentOf(s);
       await d.put("trips", {
         ...existing,
+        ...(intent ? { intent } : {}),
         confirmedDates: c.dates,
         startGuide: { ...(existing.startGuide ?? { createdAt: now() }), road: c.road || undefined, approxStart: c.approxStart },
         lang: s.lang,
@@ -119,6 +123,7 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
       return { tripId: existing.id };
     }
     const trips = await d.getAll("trips");
+    const intent = tripIntentOf(s);
     const trip: Trip = {
       id: newId(),
       title: T(() => uniqueTitle(c.title, c.dates?.start ?? null, trips)),
@@ -130,6 +135,8 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
       lang: s.lang,
       // Ubud, Canggu and Uluwatu are Bali's: the hero says Bali without asking the model.
       ...(c.parents ? { placeParents: c.parents } : {}),
+      // A festival, a ski trip, a honeymoon, a retreat (playbooks/): the suggestions keep to it. None on a classic trip.
+      ...(intent ? { intent } : {}),
       createdAt: now(),
       updatedAt: now(),
     };
@@ -141,12 +148,18 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
   if (!tripId || !(await d.get("trips", tripId))) throw new Error(T(() => L("Gezi kaydı bulunamadı.", "The trip record wasn't found.")));
   let done: string | undefined;
   if (id === "route") {
-    // Made again (another route after "Sohbete dön"): the stays made before and never touched go first.
-    await dropPlaceholders(tripId, (i) => i.category === "stay");
+    // Made again (another route after "Sohbete dön"): the stays made before and never touched go first (and the
+    // playbook's cards for them: a festival ticket, a ski pass on the days before).
+    await dropPlaceholders(tripId, (i) => i.category === "stay" || i.category === "activity");
     await sayAll(tripId, c.stays, c, now, T);
+    const pb = T(() => playbookCards(s, c));
+    await sayAll(tripId, pb.plan, c, now, T);
+    // The preparation list's lines are the traveller's to tick, never places to fill (said again, each is the same one).
+    await sayAll(tripId, pb.prep, c, now, T, false);
   } else if (id === "travel") {
     await dropPlaceholders(tripId, (i) => i.category === "flight" || i.category === "transport");
-    await sayAll(tripId, c.travel, c, now, T);
+    // The flights (or the car), then the playbook's transfer from where they land (to the festival site, the resort).
+    await sayAll(tripId, [...c.travel, ...T(() => playbookCards(s, c)).travel], c, now, T);
   } else if (id === "people") {
     const items = await listItems(tripId);
     const prefs = await listPreferences(tripId);
@@ -206,7 +219,7 @@ async function dropPlaceholders(tripId: string, kind: (i: Item) => boolean): Pro
  * Plans said for the trip, each the way the chat's plan_item saves it (checked first; a wrong one stops the step),
  * with the stop's country and how many go; each kept as a place to fill (not a choice) on the trip.
  */
-async function sayAll(tripId: string, said: Creation["stays"], c: Creation, now: () => number, T: <R>(fn: () => R) => R = (fn) => fn()): Promise<Item[]> {
+async function sayAll(tripId: string, said: Creation["stays"], c: Creation, now: () => number, T: <R>(fn: () => R) => R = (fn) => fn(), placeholder = true): Promise<Item[]> {
   const d = await db();
   const saved: Item[] = [];
   for (const raw of said) {
@@ -219,6 +232,7 @@ async function sayAll(tripId: string, said: Creation["stays"], c: Creation, now:
     const placed = placedFor(item, c);
     await d.put("items", placed);
     saved.push(placed);
+    if (!placeholder) continue;
     // Kept as a place to fill as soon as it's saved (a later one failing leaves none of these looking chosen).
     await change(tripId, (t) => ({
       ...t,
@@ -226,6 +240,29 @@ async function sayAll(tripId: string, said: Creation["stays"], c: Creation, now:
     }));
   }
   return saved;
+}
+
+/**
+ * What the trip's playbook (playbooks/) adds to what the start makes, in its order: the transfer from where the flight
+ * lands (with the flights), the cards for the stay (a festival ticket, a ski pass) and the preparation list's lines.
+ * Nothing for a classic trip: it is made exactly as before.
+ */
+export function playbookCards(s: StartState, c: Creation): { travel: PlannedInput[]; plan: PlannedInput[]; prep: PlannedInput[] } {
+  const kind = startPlaybook(s);
+  if (kind === "classic") return { travel: [], plan: [], prep: [] };
+  const p = playbookOf(kind);
+  const flight = c.travel.find((x) => x.kind === "flight");
+  const cards = p.skeleton({
+    intent: s.intent ?? null,
+    dates: c.dates,
+    stays: c.stays,
+    arrive: c.road ? null : (flight?.to ?? null),
+    road: c.road,
+    code: s.where?.code ?? s.intent?.code ?? null,
+  });
+  const moving = (x: PlannedInput) => x.kind === "transfer" || x.kind === "taxi" || x.kind.endsWith("_rental") || x.kind === "ferry";
+  const prep = p.prep().map((title): PlannedInput => ({ kind: "prep", date: null, end_date: null, time: null, from: null, to: null, city: null, title, booked: false, note: null }));
+  return { travel: cards.filter(moving), plan: cards.filter((x) => !moving(x)), prep };
 }
 
 /** A record as the start places it: with the stop's country (flights leave home, so they keep none) and how many go. */
@@ -250,6 +287,8 @@ export function wouldMake(s: StartState, now = Date.now()): { trip: Trip; items:
     const c = creationOf(s);
     if (!c) return null;
     const people = c.travellers ? withTravellers(undefined, { add: c.travellers.names, ...(c.travellers.count ? { count: c.travellers.count } : {}) }) : null;
+    const intent = tripIntentOf(s);
+    const pb = playbookCards(s, c);
     const trip: Trip = {
       id: "start-preview",
       title: c.title,
@@ -259,11 +298,13 @@ export function wouldMake(s: StartState, now = Date.now()): { trip: Trip; items:
       startGuide: { createdAt: now, ...(c.road ? { road: true } : {}) },
       ...(c.parents ? { placeParents: c.parents } : {}),
       ...(people && typeof people !== "string" ? { travellers: people.travellers } : {}),
+      ...(intent ? { intent } : {}),
       createdAt: now,
       updatedAt: now,
     };
     const items: Item[] = [];
-    for (const raw of [...c.stays, ...c.travel]) {
+    // The playbook's cards after what every trip has (none for a classic trip).
+    for (const raw of [...c.stays, ...c.travel, ...pb.travel, ...pb.plan, ...pb.prep]) {
       const input = guardKind(raw);
       if (checkPlanned(input)) continue;
       const { item } = planToSave(input, items, trip.id, `start-preview-${items.length}`, now);

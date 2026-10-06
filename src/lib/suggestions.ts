@@ -20,6 +20,7 @@ import { formatDateRange, isoDate } from "./items";
 import { buildLegs, isHiddenLeg, type Leg } from "./legs";
 import { buildPlan, cityKeyOf, type Plan } from "./plan";
 import { ALL_PLANNED_KINDS, checkPlanned, plannedItem, type PlannedInput } from "./planned";
+import { allowedSuggestions } from "./playbooks";
 import { TEMPLATES, type TemplateId } from "./templates";
 import { buildTimeline, nightsKey, type Timeline } from "./timeline";
 import { ESIM_WORDS, isInsurance } from "./travelKinds";
@@ -63,7 +64,7 @@ export function topicOf(s: Pick<Suggestion, "template">): "vehicle" | "insurance
 // --- rules -------------------------------------------------------------------------------------------
 
 export interface RuleInput {
-  trip: Pick<Trip, "confirmedDates" | "hidden">;
+  trip: Pick<Trip, "confirmedDates" | "hidden" | "intent">;
   plan: Pick<Plan, "range" | "stayBlocks">;
   items: Item[];
   timeline: Pick<Timeline, "entries">;
@@ -285,7 +286,8 @@ export function ruleSuggestions({ trip, plan, items, timeline, legs, mains, home
     }
   }
 
-  return sortSuggestions(out);
+  // What doesn't belong on this kind of trip (playbooks/: no tours on a festival trip) never comes up.
+  return sortSuggestions(allowedSuggestions(trip.intent?.playbook, out));
 }
 
 /**

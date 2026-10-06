@@ -19,6 +19,7 @@ import { placesKey } from "./destinations";
 import { addDays, cityKeyOf } from "./plan";
 import { looksLikeUrl } from "./url";
 import type { PlannedInput } from "./planned";
+import { playbookPromptLine } from "./playbooks";
 import { CIRCUITS, englishName, fitCircuit } from "./startCircuits";
 import { daysBetween, eventDays, findEvent, intentAt, intentOf, intentTitle, plusDays, type Intent } from "./startEvents";
 import { STYLES, type BudgetLevel, type StyleId } from "./tripStyle";
@@ -1145,6 +1146,8 @@ export function knownLines(s: StartState, ctx: StartCtx): string {
     s.who ? `${L("Kimle", "Who")}: ${whoText(s.who, ctx.myName)}` : "",
     whenText(s) ? `${L("Ne zaman", "When")}: ${whenText(s)}` : "",
     wantText(s) ? `${L("Tarz", "Style")}: ${wantText(s)}` : "",
+    // A festival, a ski trip, a honeymoon, a retreat (playbooks/): its tone, and its one tip until it's been said.
+    playbookPromptLine(s),
   ].filter(Boolean);
   return rows.length ? rows.join("; ") : L("henüz bir şey yok", "nothing yet");
 }
@@ -2947,11 +2950,15 @@ export function isPlaceholder(trip: Pick<Trip, "startGuide">, item: Item): boole
   return print != null && print === placeholderPrint(item) && item.status === "chosen" && item.origin === "chat";
 }
 
+/** A rented vehicle the start made (a road trip's car), not a playbook's transfer. */
+const rentedVehicle = (i: Item) => !i.plannedKind || i.plannedKind.endsWith("_rental");
+
 /**
  * A trip made without dates gets them later in its chat (update_trip): the undated places the start made take them
  * instead of new ones being made beside them. The stay (when there is one) the whole stay, the flight there the
  * first day, the flight home the last, a car the whole stay. They stay places to fill (their new prints returned).
  */
+
 export function datePlaceholders(trip: Pick<Trip, "startGuide">, items: Item[], dates: { start: string; end: string }): { items: Item[]; prints: Record<string, string> } {
   const open = items.filter((i) => !i.dates.start && i.status !== "dismissed" && isPlaceholder(trip, i));
   const dated = (i: Item, start: string, end: string | null): Item => ({ ...i, dates: { ...i.dates, start, end } });
@@ -2962,7 +2969,8 @@ export function datePlaceholders(trip: Pick<Trip, "startGuide">, items: Item[], 
   const flights = open.filter((i) => i.category === "flight").sort((a, b) => a.createdAt - b.createdAt);
   if (flights[0]) out.push(dated(flights[0], dates.start, null));
   if (flights[1]) out.push(dated(flights[1], dates.end, null));
-  for (const car of open.filter((i) => i.category === "transport")) out.push(dated(car, dates.start, dates.end));
+  // A car for the whole stay; a playbook's transfer (to the festival site, the resort) on the first day.
+  for (const car of open.filter((i) => i.category === "transport")) out.push(rentedVehicle(car) ? dated(car, dates.start, dates.end) : dated(car, dates.start, null));
   return { items: out, prints: Object.fromEntries(out.map((i) => [i.id, placeholderPrint(i)])) };
 }
 
@@ -2978,7 +2986,8 @@ export function startLead(trip: Pick<Trip, "startGuide" | "confirmedDates">, ite
   const live = items.filter((i) => !closed.has(i.id) && i.status !== "dismissed" && isPlaceholder(trip, i));
   if (!live.length) return null;
   const flights = live.filter((i) => i.category === "flight").length;
-  const cars = live.filter((i) => i.category === "transport").length;
+  // (A playbook's transfer is no car: its own card says it.)
+  const cars = live.filter((i) => i.category === "transport" && rentedVehicle(i)).length;
   const parts = [
     flights ? L(`${flights} uçuş`, `${flights} flight${flights === 1 ? "" : "s"}`) : "",
     cars ? L(`${cars} araç`, `${cars} car${cars === 1 ? "" : "s"}`) : "",
