@@ -890,7 +890,9 @@ try {
   assert.equal(await move.locator(".pk-kind").innerText(), "Uçuş");
   await move.locator(".pk-ring.half").waitFor();
   // Its details open again in its new place.
-  if (!(await move.getByRole("link", { name: "Uçuş ara ↗" }).count())) await move.locator(".pk-body").click();
+  // Opened as an empty card, it stays open as the full card the way picked made it.
+  await move.getByRole("link", { name: "Uçuş ara ↗" }).waitFor();
+  assert.equal(await move.locator(".pk-body").getAttribute("aria-expanded"), "true");
   await move.locator(".pk-foot").getByText("bilet alınmadı").waitFor();
   assert.equal(
     decodeURIComponent(await move.getByRole("link", { name: "Uçuş ara ↗" }).getAttribute("href")),
@@ -2587,7 +2589,23 @@ try {
   await board.screenshot({ path: `${out}/22b-empty-cards-narrow.png` });
   assert.ok(await board.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with empty cards");
   await board.setViewportSize({ width: 1440, height: 900 });
-  console.log("✓ boş kartlar: a new trip's flights, stays, transfers, eSIM and activities are plain cards with Ara: and branded searches (cities, dates, 2 people), no AI row");
+  // Günlük akış keeps its own markup: no empty card there.
+  await board.getByRole("tab", { name: "Günlük akış", exact: true }).click();
+  await board.locator(".panel .dc-bar").waitFor();
+  assert.equal(await panel.locator(".ek-card, .ek-route, .ek-foot, .ek-find, .ek-link, .ek-line").count(), 0, "no empty card in Günlük akış");
+  await board.getByRole("tab", { name: "Plan", exact: true }).click();
+  await ekSec("flight").waitFor();
+  // A placeholder's day edited where it stands: still nothing concrete, so still the empty card (never the yellow one).
+  const backId = await ekSec("flight").locator(".ek-card").nth(1).getAttribute("data-item-id");
+  const back = panel.locator(`.ek-card[data-item-id="${backId}"]`);
+  await back.getByRole("button", { name: "Tarih: düzenle" }).click();
+  await board.locator('.pk-ed-input[aria-label="Tarih"]').fill("2027-01-09");
+  await board.locator('.pk-ed-input[aria-label="Tarih"]').press("Enter");
+  await board.locator('.pk-ed-input[aria-label="Tarih"]').waitFor({ state: "detached" });
+  await back.locator(".pk-date", { hasText: "9 Ocak" }).waitFor();
+  assert.equal(await panel.locator(`[data-item-id="${backId}"].pk-sand, [data-item-id="${backId}"] .pk-sand, .cat-plan .settled-card`).count(), 0, "an edited placeholder stays an empty card");
+  assert.equal(new URL((await hrefs(back))[0][1]).searchParams.get("q"), "Flights from Denpasar to İstanbul on 2027-01-09 one way");
+  console.log("✓ boş kartlar: a new trip's flights, stays, transfers, eSIM and activities are plain cards with Ara: and branded searches (cities, dates, 2 people), no AI row; none in Günlük akış; a placeholder's day edited stays empty");
 
   // 20e. Words with a link on the home: the link is saved, the words go on ("Linki kaydettim; geri kalanını konuşalım").
   // A month only is never a day made up: the day is asked next; "Ortası" is said back and marked roughly.

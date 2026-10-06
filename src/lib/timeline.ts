@@ -29,6 +29,8 @@ export type TimelineEntry =
       searchUrl: string | null;
       /** Nothing saved: the trip's city at this end (arrival: the first, departure: the last), for its empty card. */
       city?: string | null;
+      /** Nothing saved: where the trip starts and ends (an airport code or a city), the other end of that empty card. */
+      home?: string | null;
     }
   /** A transfer on a day that has no card of its own (landing the night before, leaving for the station). */
   | { kind: "leg"; key: string; date: string; leg: Leg }
@@ -331,6 +333,7 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
         leg: null,
         searchUrl: t ? null : flightSearchUrl("to", first.to.city, date, home),
         city: first.to.city,
+        home,
       }));
     }
     if (shown(first)) entries.push(join(inJ, legRow(first)));
@@ -403,6 +406,7 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
         leg: null,
         searchUrl: t ? null : flightSearchUrl("from", last.from.city, date, home),
         city: last.from.city,
+        home,
       }));
     }
   }

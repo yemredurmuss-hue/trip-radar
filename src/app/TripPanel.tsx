@@ -560,7 +560,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // approved card made plain. A need with another option, a file or a booking keeps today's full card.
   // The card being filled in where it stands (a tile just added, a field opened) is the full card while it's edited:
   // its hour and price are there to type; once left with nothing concrete on it, it's empty again.
-  const emptyRecord = (item: Item) => focus?.id !== item.id && isEmptyRecord(trip, item, env.docsFor(item.id).length, items);
+  const emptyRecord = (item: Item) => !(focus?.id === item.id && focus.field != null) && isEmptyRecord(trip, item, env.docsFor(item.id).length, items);
   const planRenderGroup: RenderGroup = (group, heading, groupSubtitle, nested = false) => {
     const lone = group.items.length === 1 ? group.items[0] : null;
     if (!lone || !emptyRecord(lone)) return renderGroup(group, heading, groupSubtitle, nested);
@@ -663,7 +663,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           trip={trip}
           items={items}
           plan={plan}
-          openSuggestions={SECTION_ORDER.reduce((n, id) => n + (suggestions.bySection[id]?.length ?? 0), 0)}
+          openSuggestions={SECTION_ORDER.reduce((n, id) => n + (suggestions.bySection[id]?.filter((s) => s.key !== "rule:esim").length ?? 0), 0)}
           onGo={(step) => {
             if (step === "stays") return openSection("stay");
             if (step === "flights") return openSection(trip.startGuide?.road ? "transport" : "flight");

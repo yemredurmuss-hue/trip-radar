@@ -4,7 +4,11 @@
 // and the name), on a white ground in a dashed frame, the cities a size smaller, the drawing faint, no price and
 // no action button. The bottom line: one grey word where it stands, then "Ara:" and the brands' searches.
 // The board picks this card or the full one (TripPanel's Plan cards); the full card is untouched.
-import { useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { useRef, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { addDoc, DOC_ACCEPT } from "../../lib/docs";
+import { dateAlert, type DateAlert } from "../../lib/progress";
+import { useLegOpen } from "./legOpen";
+import { cityOfAirport } from "../../lib/airports";
 import { cardKind, cardKindColor, cardKindLabel, isTransportKind, RENTAL_MODES, type CardKind, type TransportMode } from "../../lib/cardKinds";
 import { activityDrawing, footOf, legCardView, legEnd, legMenuFor, transportFace, type End, type MediaDrawing } from "../../lib/cardView";
 import { needKey, rangeText, type ActivityGap } from "../../lib/emptyCards";
@@ -116,6 +120,10 @@ export function EmptyShell(props: {
   /** The offers' row under the card (drawn only with a data source connected). */
   need?: Need | null;
   data?: Record<string, string>;
+  /** A date running out (progress.dateAlert): the status word tinted, the days after it, the sentence on hover. */
+  alert?: DateAlert | null;
+  /** Hidden helpers inside the card (the file picker "Belge ekle" opens). */
+  extra?: ReactNode;
 }) {
   const style = { "--mc": cardKindColor(props.kind) } as CSSProperties;
   const tap = (e: MouseEvent) => {
@@ -156,7 +164,10 @@ export function EmptyShell(props: {
           <div className="pk-body ek-body">{props.body}</div>
         )}
         <div className="ek-foot">
-          <span className="ek-state">{props.status}</span>
+          <span className={`ek-state${props.alert ? ` alert-${props.alert.tone}` : ""}`} title={props.alert?.text}>
+            {props.status}
+            {props.alert && <span className="ek-when"> · ⏳ {props.alert.short}</span>}
+          </span>
           <SearchRow links={props.links} />
           {props.onSkip && (
             <button type="button" className="ek-skip" title={props.skipTitle} onClick={(e) => { e.stopPropagation(); props.onSkip!(); }}>
@@ -165,6 +176,7 @@ export function EmptyShell(props: {
           )}
         </div>
         {props.open && props.detail}
+        {props.extra}
       </article>
       {props.need && <OfferRow key={props.need.key} need={props.need} />}
     </>
@@ -202,12 +214,24 @@ function EmptyRecordFace({ item }: { item: Item }) {
   const n = travellers ?? item.guests.adults ?? null;
   const kind = cardKind(item, env.legModes.get(item.id) ?? null);
   const action = footOf(item, kind).action;
+  const picker = useRef<HTMLInputElement>(null);
   const menu: MenuEntry[] = [
     ...(action?.does === "book" ? [{ label: action.label, run: () => void setItemStatus(item, "booked") }] : []),
     ...(item.origin === "chat" ? [{ label: L("Düzenle", "Edit"), run: () => env.edit(item) }] : []),
+    // What the full card's details offered: a file (a ticket's PDF makes it a full card), all its details.
+    { label: L("Belge ekle", "Add a document"), run: () => picker.current?.click() },
+    { label: L("Tüm detaylar", "All details"), run: () => env.onOpenItem(item) },
     { label: L("Sil", "Delete"), run: () => env.remove(item), danger: true },
   ];
-  const shell = { kind, ariaLabel: item.name, itemId: item.id, menu, x: <DeleteX name={item.name} onDelete={() => env.remove(item)} />, status: STATUS_WORD(kind, n) };
+  const extra = (
+    <input ref={picker} className="pk-file" type="file" accept={DOC_ACCEPT} multiple hidden
+      onChange={async (e) => {
+        const files = [...(e.target.files ?? [])];
+        e.target.value = "";
+        for (const file of files) await addDoc(item, file).catch((err: Error) => console.warn("Belge eklenemedi", err.message));
+      }} />
+  );
+  const shell = { kind, ariaLabel: item.name, itemId: item.id, menu, x: <DeleteX name={item.name} onDelete={() => env.remove(item)} />, status: STATUS_WORD(kind, n), alert: dateAlert(item, env.today), extra };
   const start = isoDate(item.flight?.departure?.slice(0, 10)) ?? isoDate(item.dates.start);
   const end = isoDate(item.dates.end);
   if (kind === "stay") {
@@ -263,11 +287,14 @@ function EmptyRecordFace({ item }: { item: Item }) {
 }
 
 /** "Henüz eklenmedi": the way in or home with no flight saved at all, as the flight's empty card. */
-export function EmptyTravelCard({ role, date, city }: { role: "arrival" | "departure"; date: string; city: string }) {
+export function EmptyTravelCard({ role, date, city, home = null }: { role: "arrival" | "departure"; date: string; city: string; home?: string | null }) {
   const env = useCardEnv();
   const { travellers: n } = useEmptyEnv();
   const at = { city, sub: null, time: null };
-  const [from, to] = role === "arrival" ? [null, at] : [at, null];
+  // Where the trip starts and ends (the other flight's airport): the other end, so the searches have both.
+  const there = home ? { city: cityOfAirport(home), sub: cityOfAirport(home) !== home ? home : null, time: null } : null;
+  const [from, to] = role === "arrival" ? [there, at] : [at, there];
+  const [a, b] = role === "arrival" ? [home, city] : [city, home];
   return (
     <EmptyShell
       kind="flight"
@@ -276,8 +303,8 @@ export function EmptyTravelCard({ role, date, city }: { role: "arrival" | "depar
       menu={[{ label: L("Uçuş ekle", "Add a flight"), run: () => env.add({ city, date }) }]}
       body={<EmptyRoute from={from} to={to} art="flight" />}
       status={noTicket(n)}
-      links={flightLinks(role === "arrival" ? { from: null, to: city, date, adults: n } : { from: city, to: null, date, adults: n })}
-      need={role === "arrival" ? { key: needKey("flight", null, city, date), section: "flight", kind: "flight", to: city, start: date, adults: n } : { key: needKey("flight", city, null, date), section: "flight", kind: "flight", from: city, start: date, adults: n }}
+      links={flightLinks({ from: a, to: b, date, adults: n })}
+      need={{ key: needKey("flight", a, b, date), section: "flight", kind: "flight", from: a, to: b, start: date, adults: n }}
     />
   );
 }
@@ -347,7 +374,7 @@ function endPlace(leg: Leg, side: "from" | "to"): string | null {
 export function EmptyLegCard({ leg }: { leg: Leg }) {
   const env = useCardEnv();
   const { travellers: n } = useEmptyEnv();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useLegOpen(leg.key);
   const v = legCardView(leg);
   const own = legItem(leg);
   const hide = () => void setHidden(env.tripId, `leg:${leg.key}`, true, kindLabel()[leg.kind]);

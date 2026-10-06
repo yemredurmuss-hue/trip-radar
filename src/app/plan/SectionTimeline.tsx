@@ -107,7 +107,7 @@ function Piece({ entry, cards }: { entry: CatEntry; cards: SectionCards }): Reac
   const p = entry.piece;
   switch (p.kind) {
     case "entry":
-      return <PlanEntry entry={p.entry} legCard={cards.legCard} renderGroup={cards.renderGroup} settled={cards.settled} />;
+      return <PlanEntry entry={p.entry} legCard={cards.legCard} renderGroup={cards.renderGroup} settled={cards.settled} plain />;
     case "group":
       return cards.renderGroup(p.group, null, p.subtitle, true);
     case "item":

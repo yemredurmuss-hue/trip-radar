@@ -1,28 +1,34 @@
 // A block of the plan's front as it was always drawn (spec 0.31–0.33): a flight or a change of city with its
 // options, a transfer's card, a stretch of nights (booked, chosen, options, a stay said apart, empty nights),
 // a rented car, a booking on its day. The Plan's sections (CategoryPlan) place these; their cards are the
-// approved ones, unchanged; what has nothing booked or saved yet is its empty card (cards/EmptyCard.tsx).
+// approved ones, unchanged. On the Plan only (`plain`), what has nothing booked or saved yet is its empty card
+// (cards/EmptyCard.tsx); Günlük akış draws these blocks too and keeps them exactly as they were.
 import { L } from "../../lib/i18n";
-import { formatDateRange, nightsBetween } from "../../lib/items";
+import { formatDateRange, formatPrice, nightsBetween } from "../../lib/items";
 import type { StayBlock } from "../../lib/plan";
 import type { TimelineEntry } from "../../lib/timeline";
 import type { Item } from "../../lib/types";
 import { DeleteX } from "../cards/CardShell";
 import { EmptyStayBlock, EmptyTravelCard } from "../cards/EmptyCard";
+import { Editable, InlineEdit } from "../cards/InlineEdit";
 import { useCardEnv } from "../cards/PlanCard";
+import { StayLine } from "../cards/StayLine";
+import { StatusBar } from "../Status";
 import type { LegCardFor, RenderGroup, SettledFor } from "../Timeline";
 
-export function PlanEntry({ entry, legCard, renderGroup, settled }: {
+export function PlanEntry({ entry, legCard, renderGroup, settled, plain = false }: {
   entry: TimelineEntry;
   legCard: LegCardFor;
   renderGroup: RenderGroup;
   settled: SettledFor;
+  /** The Plan's sections (boş kartlar): empty nights and a missing flight as their empty cards. Off elsewhere. */
+  plain?: boolean;
 }) {
   switch (entry.kind) {
     case "leg":
       return <>{legCard(entry.leg)}</>;
     case "stay":
-      return <Block block={entry.block} renderGroup={renderGroup} settled={settled} />;
+      return <Block block={entry.block} renderGroup={renderGroup} settled={settled} plain={plain} />;
     case "travel":
       if (entry.travel) {
         return (
@@ -35,9 +41,9 @@ export function PlanEntry({ entry, legCard, renderGroup, settled }: {
         <div className={`tl-travel role-${entry.role}`}>
           {entry.role === "move" && entry.leg ? (
             legCard(entry.leg)
-          ) : (entry.role === "arrival" || entry.role === "departure") && entry.city ? (
+          ) : plain && (entry.role === "arrival" || entry.role === "departure") && entry.city ? (
             // Boş kartlar: the way in or home with no flight saved, the flight's empty card.
-            <EmptyTravelCard role={entry.role} date={entry.date} city={entry.city} />
+            <EmptyTravelCard role={entry.role} date={entry.date} city={entry.city} home={entry.home ?? null} />
           ) : (
             <div className="empty-card">
               <span>
@@ -76,7 +82,7 @@ function SlotNote({ slot }: { slot: Item }) {
 
 const blockState = (block: StayBlock) => (block.kind === "open" && !block.groups.length ? "empty" : block.kind);
 
-function Block({ block, renderGroup, settled }: { block: StayBlock; renderGroup: RenderGroup; settled: SettledFor }) {
+function Block({ block, renderGroup, settled, plain }: { block: StayBlock; renderGroup: RenderGroup; settled: SettledFor; plain: boolean }) {
   const state = blockState(block);
   const label = `${block.city ?? L("Konaklama", "Stay")} ${formatDateRange(block.range.start, block.range.end)}`;
   return (
@@ -101,9 +107,56 @@ function Block({ block, renderGroup, settled }: { block: StayBlock; renderGroup:
           )}
         </p>
       )}
-      {/* Boş kartlar: nights with no place are the stay's empty card (cards/EmptyCard.tsx). */}
-      {block.kind === "open" && !block.groups.length && <EmptyStayBlock block={block} label={label} />}
+      {block.kind === "open" && !block.groups.length && (plain ? <EmptyStayBlock block={block} label={label} /> : <OpenNights block={block} label={label} />)}
     </div>
   );
 }
 
+/** Empty nights as they were always drawn (Günlük akış): "Planlanmadı", the nights, "Gerek yok", "Booking'de ara". */
+function OpenNights({ block, label }: { block: Extract<StayBlock, { kind: "open" }>; label: string }) {
+  const env = useCardEnv();
+  return (
+    <div className="settled-card st-open stay-open" data-item-id={block.slot?.id}>
+      {/* ×: a stay said apart is deleted (its nights go back to the stay around them); empty nights are "Gerek yok". */}
+      {block.slot ? (
+        <DeleteX name={block.slot.name} className="stay-x" onDelete={() => env.remove(block.slot!)} />
+      ) : (
+        <DeleteX name={label} hide className="stay-x" onDelete={() => env.hideNights(block.range, label)} />
+      )}
+      <StatusBar standing="open" text={L("Planlanmadı", "Not planned")} sub={block.slot ? L("ayrı konaklama · otel seçilmedi", "separate stay · no hotel chosen") : L("bu geceler için kayıtlı yer yok", "nothing saved for these nights")} />
+      <div className="empty-card">
+        {block.slot ? (
+          // A stay said apart or added with "+": its name, city, nights and price are edited right here (spec 0.33 §3).
+          <InlineEdit item={block.slot}>
+            <span>
+              <b>
+                <Editable field="name">{block.slot.name}</Editable>
+              </b>
+              <span className="muted">
+                <StayLine item={block.slot} /> · {L(`${block.nights} gece`, `${block.nights} night${block.nights === 1 ? "" : "s"}`)} ·{" "}
+                <Editable field="price">{block.slot.price.amount != null ? formatPrice(block.slot.price.amount, block.slot.price.currency) : null}</Editable>
+              </span>
+            </span>
+          </InlineEdit>
+        ) : (
+          <span>
+            <b>{block.city ?? L("Konaklama", "Stay")}</b>
+            <span className="muted">
+              {formatDateRange(block.range.start, block.range.end)} · {L(`${block.nights} gece`, `${block.nights} night${block.nights === 1 ? "" : "s"}`)}
+            </span>
+          </span>
+        )}
+        <span className="sc-actions">
+          {!block.slot && (
+            <button className="link-btn quiet" onClick={() => env.hideNights(block.range, label)} title={L("Bu geceler için yer gerekmiyor", "No place needed for these nights")}>
+              {L("Gerek yok", "Not needed")}
+            </button>
+          )}
+          <a className="pill-btn outline" href={block.searchUrl} target="_blank" rel="noreferrer">
+            {L("Booking'de ara ↗", "Search Booking ↗")}
+          </a>
+        </span>
+      </div>
+    </div>
+  );
+}

@@ -1,7 +1,7 @@
 // A transfer (airport ↔ hotel, hotel change) or a change of city as a transport card on the plan: its way
 // of travel drawn, the two ends, where it stands. Opened, the transfer's own body (LegRow's): notes,
 // saved options, how to go, "Ayarlandı", and a flight search when going by plane.
-import { useState } from "react";
+import { useLegOpen } from "./legOpen";
 import { legCardView, legMenuFor } from "../../lib/cardView";
 import { L } from "../../lib/i18n";
 import { formatDateRange } from "../../lib/items";
@@ -16,7 +16,8 @@ import { TransportCardBody } from "./TransportCard";
 
 export function LegCard({ leg }: { leg: Leg }) {
   const env = useCardEnv();
-  const [open, setOpen] = useState(false);
+  // Shared with its empty card: a way picked there keeps it open here.
+  const [open, setOpen] = useLegOpen(leg.key);
   const v = legCardView(leg);
   const book = () => void updateTrip(env.tripId, (t) => withLegChoice(t, leg.key, { booked: true }));
   // The transfer's own record (a taxi planned or booked for it): its files and its Sil are here.

@@ -1817,6 +1817,8 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .ek-txt small { display: block; margin-top: 1px; font-size: 12.5px; color: #8e8e93; overflow-wrap: anywhere; }
 .ek-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 6px; padding-top: 8px; border-top: 1px dashed #eee9e1; }
 .ek-state { font-size: 12.5px; color: #8e8e93; }
+.ek-state.alert-amber { color: #9a6400; }
+.ek-state.alert-red { color: #b42318; }
 .ek-find { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px; }
 .ek-ara { margin-right: 2px; font-size: 12px; color: #8e8e93; }
 .ek-link { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px 0 5px; border-radius: 999px; border: 1px solid #ece8e1; background: #fff; color: #55526a; font-size: 12px; text-decoration: none; white-space: nowrap; }
