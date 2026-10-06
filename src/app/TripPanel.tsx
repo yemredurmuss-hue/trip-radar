@@ -519,8 +519,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const lead =
     startWaiting ??
     mood ??
+    // No dates yet: the hero's date line says so already ("Tarihler kaydettikçe netleşir"), never twice.
     (!range
-      ? L("Tarih ve şehir, kaydettikçe netleşir.", "Dates and cities fill in as you save.")
+      ? ""
       : done.total > 0
         ? ""
         : statusSentence(progress.count, { flightsDone, waitingCity: mainPlaceOf(mains, waitingCityOf(progress, timeline, items)) }));
@@ -717,7 +718,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
               <span className="error-text" title={c.error ?? ""}>
                 <span className="err">⚠ {c.title || c.url || L("Ekran görüntüsü", "Screenshot")}</span>
                 <span className="muted">
-                  {L(" — ", " · ")}
+                  {" · "}
                   {c.error}
                 </span>
               </span>

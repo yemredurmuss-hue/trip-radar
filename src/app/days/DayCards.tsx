@@ -230,7 +230,11 @@ function DayChips({ card }: { card: DayCard }) {
   const left = card.rows.filter((r) => isPlanRow(r) && !isAsideRow(r) && r.state !== "done" && r.state !== "info").length;
   return (
     <>
-      {left > 0 && <span className="dc-left">{L(`${left} iş`, `${left} to do`)}</span>}
+      {left > 0 && (
+        <span className="dc-left" title={L("Bu günde rezerve edilecek, karar verilecek ya da planlanacak satırlar", "Lines of this day to book, decide or plan")}>
+          {L(`${left} satır bekliyor`, `${left} waiting`)}
+        </span>
+      )}
       {ideas > 0 && <span className="dc-ideas-n">{L(`${ideas} fikir`, `${ideas} idea${ideas === 1 ? "" : "s"}`)}</span>}
     </>
   );

@@ -1662,7 +1662,8 @@ try {
   await bare.locator(".hx-ph", { hasText: "Şehir belli olunca fotoğrafı gelir" }).waitFor();
   assert.equal(await bare.locator(".hx-count, .hx-cities").count(), 0, "no dates, no countdown; no cities, no switcher");
   assert.equal(await bare.locator(".hx-when").innerText(), "Tarihler kaydettikçe netleşir");
-  assert.equal(await bare.locator(".hx-lead").innerText(), "Tarih ve şehir, kaydettikçe netleşir.");
+  // The date line says it already: no second sentence saying the same (gece denetimi 15a).
+  assert.equal(await bare.locator(".hx-lead").count(), 0, "the same sentence never twice");
   assert.deepEqual(flat(await bare.locator(".hx-tally button.zero").allInnerTexts()), ["0 uçuş", "0 konaklama", "0 ulaşım", "0 deneyim"]);
   assert.equal(flat([await bare.locator(".hx-progress-main").innerText()])[0], "Planlama Henüz kayıt yok");
   assert.equal(flat([await bare.locator(".hx-go").innerText()])[0], "İlk kaydı ekle");

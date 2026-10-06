@@ -124,19 +124,21 @@ export function TripHero(props: {
   if (!open && !planned && todo.needs.docs) words.push(["docs", L(`${todo.needs.docs} belge eksik`, `${todo.needs.docs} file${todo.needs.docs === 1 ? "" : "s"} missing`)]);
   const ways = todo.ways.length;
   if (ways && !open) words.push(["ways", L(`${ways} ulaşım sorusu`, `${ways} transfer question${ways === 1 ? "" : "s"}`)]);
-  // The line wraps between the parts, never inside one, and a dot goes with the part after it (none left dangling).
+  // The line wraps between the parts, never inside one, and a dot goes with the part before it: a wrapped line
+  // never starts with "·" (gece denetimi 13a).
   const parts = words.map(([k, w], n) => (
     <Fragment key={k}>
       {n > 0 && " "}
       <span className="hx-part">
-        {n > 0 && (
+        {w}
+        {n < words.length - 1 && (
           <>
+            {" "}
             <span className="dot" aria-hidden>
               ·
-            </span>{" "}
+            </span>
           </>
         )}
-        {w}
       </span>
     </Fragment>
   ));

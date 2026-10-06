@@ -1060,7 +1060,7 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 /* Who took the photo: small, bottom right, readable on any picture. */
 .hx-credit {
   position: absolute; right: 12px; bottom: 10px; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  padding: 3px 9px; border-radius: 999px; background: rgba(0,0,0,.38); color: rgba(255,255,255,.92); font-size: 11.5px; line-height: 1.4;
+  padding: 3px 9px; border-radius: 999px; background: rgba(0,0,0,.55); color: rgba(255,255,255,.95); font-size: 11.5px; line-height: 1.4;
 }
 .hx-credit a { color: inherit; text-decoration: none; }
 .hx-credit a:hover { text-decoration: underline; }
@@ -1128,7 +1128,7 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .hx-progress-head > b { flex: 0 1 auto; min-width: 0; font-size: 17px; font-weight: 700; color: var(--hx-ink); }
 .hx-progress-meta { display: block; margin-top: 6px; font-size: 15px; color: var(--hx-muted); }
 .hx-progress-count { padding: 0; border: 0; background: none; font-size: 15px; color: var(--hx-muted); font-variant-numeric: tabular-nums; text-align: left; }
-.hx-progress-count .dot { margin: 0 2px 0 0; }
+.hx-progress-count .dot { margin: 0 0 0 2px; }
 .hx-part { white-space: nowrap; }
 /* The meta line's key to the bar: a dot in each fill's green before "rezerve" and "planlandı". */
 .hx-key { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; vertical-align: 1px; }
@@ -1272,7 +1272,7 @@ button.hx-people:hover b { color: var(--hx-accent); }
    nothing. A tag is a topic in a word or two, never wider than the card ("…" as a last resort, its words and
    level on hover and in the window); a must or "Çok önemli" in the accent. */
 .hx-ptags { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; margin: 10px 0 0; padding: 0; list-style: none; }
-.hx-ptag { max-width: 100%; height: 28px; padding: 0 11px; border-radius: 999px; background: #f0eef3; color: var(--hx-ink); font-size: 14px; line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hx-ptag { max-width: 100%; min-height: 28px; padding: 4px 11px; border-radius: 14px; background: #f0eef3; color: var(--hx-ink); font-size: 14px; line-height: 20px; overflow-wrap: anywhere; }
 .hx-ptag.strong { background: color-mix(in srgb, var(--hx-accent) 13%, #fff); color: var(--hx-accent); font-weight: 600; }
 .hx-prefs-link { margin-top: 8px; flex-wrap: wrap; }
 .hx-prefs-link .sep { color: var(--hx-muted); }
