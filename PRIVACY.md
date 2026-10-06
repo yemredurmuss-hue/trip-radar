@@ -1,6 +1,6 @@
 # Trip Radar — Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-07 · Sürüm / Version: 0.36.46
+Son güncelleme / Last updated: 2026-10-07 · Sürüm / Version: 0.36.48
 
 ---
 
@@ -134,8 +134,8 @@ profilleri ve geçmişiyle birlikte) senin isteğinle silinir: info@emredurmus.n
   IP adresin ve tarayıcı bilgin görünür.
 - **Web araması (Google, sunucumuz üzerinden):** Sohbet canlı bir bilgiyi (ör. etkinlik tarihleri, açılış saatleri) aradığında ya da sen "şunu araştır" dediğinde yalnız arama sorusu gider; bir yer ya da etkinlik adı içerebilir. Seninle ya da gezinin geri kalanıyla ilgili hiçbir şey gönderilmez. Sonuç sunucuda soruyla birlikte birkaç gün saklanır (aynı soru tekrar aranmaz); günlük sınır için cihazının rastgele kimliği ve adresinin yalnız tek yönlü özeti (hash) tutulur.
 - **Frankfurter:** döviz kuru için yalnız para birimi çifti gönderilir.
-- **Wikipedia / Pexels:** şehir fotoğrafı için yalnız şehir adı gönderilir; Wikipedia'ya doğrudan, Pexels'a paylaşım
-  sunucusu üzerinden.
+- **Wikipedia / Unsplash / Pexels:** gezi fotoğrafı için yalnız yerin ya da etkinliğin adı gönderilir; Wikipedia'ya
+  doğrudan, Unsplash ve Pexels'a paylaşım sunucusu üzerinden. Fotoğrafın altında çekenin adı ve kaynağı yazılır.
 - **AeroDataBox (RapidAPI üzerinden):** yalnız bileti alınmış (rezerve) uçuşlar için, o uçuşun tarifesi, durumu,
   kapısı, terminali ve bagaj bandı için yalnız uçuş numarası ve günü gönderilir ("KL1577, 7 Ekim"), bizim
   sunucumuz üzerinden. Sunucu bu herkese açık uçuş bilgisini, aynı uçuşu soran herkes için tekrar sormamak adına uçuş
@@ -181,7 +181,7 @@ IP adresini görebilir.
 Trip Radar'ın hiçbir sunucusu Türkiye'de değildir:
 
 - Paylaşım sunucusu ve AI kapısı aynı Supabase projesindedir ve **Hindistan'da (Mumbai, ap-south-1)** çalışır.
-- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo, SerpApi, Viator, Airalo ve Omio kendi sunucularını kullanır; bunlar ABD, AB ya da
+- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Unsplash, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo, SerpApi, Viator, Airalo ve Omio kendi sunucularını kullanır; bunlar ABD, AB ya da
   başka ülkelerde olabilir.
 
 Bu aktarımlar yalnız senin başlattığın işlemler (yapay zekâ, paylaşım, davet) için ve o işlem için gerektiği kadar
@@ -381,8 +381,8 @@ and history) is deleted on request: write to info@emredurmus.net.
   address and browser details are visible.
 - **Web search (Google, through our server):** when the chat looks up a live fact (e.g. an event's dates, opening hours) or you ask it to research something, only the search question is sent; it may contain a place or event name. Nothing about you or the rest of the trip is sent. The answer is kept on the server with the question for a few days (the same question isn't searched again); for the daily limit, only a one-way hash of your install's random id and of your address is kept.
 - **Frankfurter:** only a currency pair, for exchange rates.
-- **Wikipedia / Pexels:** only a city name, for a city photo; directly to Wikipedia, and to Pexels through the sharing
-  server.
+- **Wikipedia / Unsplash / Pexels:** only the name of a place or an event, for a trip photo; directly to Wikipedia,
+  and to Unsplash and Pexels through the sharing server. The photo shows who took it and where it is from.
 - **AeroDataBox (via RapidAPI):** only for flights with a ticket bought (booked), only a flight number and its day
   ("KL1577, 7 October"), for that flight's schedule, status, gate, terminal and baggage belt, through our server. The server keeps
   this public flight information by flight number and day, so the same flight isn't asked about again for everyone
@@ -429,7 +429,7 @@ can see your IP address.
 None of Trip Radar's servers are in Turkey:
 
 - The sharing server and the AI gate are in the same Supabase project, in **India (Mumbai, ap-south-1)**.
-- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo, SerpApi, Viator, Airalo and Omio use their own servers, which may be in the US,
+- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Unsplash, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo, SerpApi, Viator, Airalo and Omio use their own servers, which may be in the US,
   the EU or other countries.
 
 These transfers happen only for actions you start (AI, sharing, invites) and only as far as that action needs; what
