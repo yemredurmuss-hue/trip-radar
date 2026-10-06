@@ -507,3 +507,33 @@ export function withLayovers(rows: DayRow[]): DayRow[] {
   });
   return out;
 }
+
+// --- a line's icon (0.36.24) -----------------------------------------------------------------------------
+
+export type RowIconName =
+  | "plane" | "train" | "bus" | "ferry" | "taxi" | "car" | "walk" | "metro" | "bed" | "clock" | "boat" | "show" | "museum"
+  | "tour" | "event" | "meal" | "coffee" | "sweet" | "bar" | "view" | "nature" | "shop" | "fun" | "pin";
+
+/**
+ * Each kind its own icon (Emre: "otel, event, vapur, alışveriş hepsi farklı olmalı"), read from the line's
+ * fixed word (NE), so the icon and the title always say the same thing.
+ */
+export function rowIcon(row: DayRow, place: Place = same): RowIconName {
+  if (row.layover) return "clock";
+  const t = rowTitle(row, place);
+  const by: [() => string, RowIconName][] = [
+    [W.flight, "plane"], [W.train, "train"], [W.bus, "bus"], [W.minibus, "bus"], [W.ferry, "ferry"],
+    [W.carPickUp, "car"], [W.carReturn, "car"], [W.boat, "boat"], [W.show, "show"], [W.museum, "museum"],
+    [W.tour, "tour"], [W.event, "event"], [W.meal, "meal"], [W.layover, "clock"], [W.journey, "pin"],
+    [MEALS.breakfast, "meal"], [MEALS.lunch, "meal"], [MEALS.dinner, "meal"], [MEALS.coffee, "coffee"], [MEALS.sweet, "sweet"], [MEALS.bar, "bar"],
+    [IDEA_WORDS.view, "view"], [IDEA_WORDS.culture, "museum"], [IDEA_WORDS.nature, "nature"], [IDEA_WORDS.shop, "shop"],
+    [IDEA_WORDS.walk, "walk"], [IDEA_WORDS.fun, "fun"],
+  ];
+  if (t.what === "Check-in" || t.what === "Check-out") return "bed";
+  // A transfer by how it goes: on foot, the metro, a train; else a taxi.
+  if (t.what === W.transfer() || t.what === W.airportTransfer()) {
+    const way: [() => string, RowIconName][] = [[WAY.walk, "walk"], [WAY.metro, "metro"], [WAY.train, "train"], [WAY.bus, "bus"], [WAY.ferry, "ferry"], [WAY.car, "car"]];
+    return way.find(([w]) => t.which === w())?.[1] ?? "taxi";
+  }
+  return by.find(([w]) => w() === t.what)?.[1] ?? "pin";
+}

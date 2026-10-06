@@ -9,7 +9,8 @@ import { createContext, Fragment, useContext, useEffect, useMemo, useState, type
 import { cardKindColor, cardKindLabel, RENTAL_MODES, TRANSPORT_MODES, type CardKind, type TransportMode } from "../../lib/cardKinds";
 import { imageProxy } from "../../lib/cityImages";
 import { dayCards, dayPhoto, daysLabel, flowRows, groupDays, highlightOf, ideaCount, isAsideRow, isPlanRow, movedOrder, orderRows, rowKind, rowMark, tieredRows, tierOf, type DayCard, type DayGroup } from "../../lib/dayCards";
-import { placeRoute, rowTitle, titleText, withLayovers, type Place, type RowTitle } from "../../lib/dayRowTitle";
+import { placeRoute, rowIcon, rowTitle, titleText, withLayovers, type Place, type RowTitle } from "../../lib/dayRowTitle";
+import { RowGlyph } from "./RowGlyph";
 import { mainPlaceOf, type MainPlace } from "../../lib/destinations";
 import { formatDateRange } from "../../lib/items";
 import { L, locale } from "../../lib/i18n";
@@ -444,7 +445,7 @@ function Line({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tri
       <TimeCell row={row} tripId={tripId} />
       <button className="dc-line" onClick={onTap}>
         <span className="dc-tile" style={{ ["--k" as string]: cardKindColor(kind) }} title={cardKindLabel(kind)}>
-          <KindIcon kind={kind} size={19} />
+          <RowGlyph name={rowIcon(row, place)} />
           {mark && <i className={mark.done ? "done" : "todo"}>{mark.done ? "✓" : ""}</i>}
         </span>
         <RowName t={t} why={sourceOf(row)} />

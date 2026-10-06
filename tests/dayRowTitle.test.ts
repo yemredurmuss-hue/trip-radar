@@ -2,7 +2,7 @@
 // in Turkish and English.
 import { afterEach, describe, expect, it } from "vitest";
 import { cityOfAirport } from "../src/lib/airports";
-import { fromTime, placeName, placeRoute, rowTitle, simpleName, titleText, toTime, withLayovers, withoutWord } from "../src/lib/dayRowTitle";
+import { fromTime, placeName, placeRoute, rowIcon, rowTitle, simpleName, titleText, toTime, withLayovers, withoutWord } from "../src/lib/dayRowTitle";
 import { mainPlaceOf, mainPlaces } from "../src/lib/destinations";
 import { setLang } from "../src/lib/i18n";
 import type { DayRow } from "../src/lib/journey";
@@ -316,5 +316,23 @@ describe("helpers", () => {
       "15:00'ten", "14:00'ten", "16:00'dan", "10:00'dan", "12:00'den", "14:30'dan", "13:00'ten", "20:00'den", "00:00'dan",
     ]);
     expect(["11:00", "12:00", "10:00", "16:00", "14:00", "11:30", "09:00"].map(toTime)).toEqual(["11:00'e", "12:00'ye", "10:00'a", "16:00'ya", "14:00'e", "11:30'a", "09:00'a"]);
+  });
+});
+
+describe("each line its own icon (0.36.24), from its fixed word", () => {
+  const activity = (name: string, over: Partial<Item> = {}) => row({ key: `item:${name}`, kind: "item", item: makeItem({ category: "activity", name, ...over }) });
+  it("a flight, a hotel, a boat, a show, a museum, shopping: each its own", () => {
+    expect(rowIcon(travelRow(flight("SAW", "CPH", "2026-10-07T09:40", "2026-10-07T12:35")))).toBe("plane");
+    expect(rowIcon(row({ key: "j:checkin", title: "Check-in", stayKey: "stay:x" }))).toBe("bed");
+    expect(rowIcon(activity("Douro tekne turu"))).toBe("boat");
+    expect(rowIcon(activity("Authentic Fado Show"))).toBe("show");
+    expect(rowIcon(activity("Serralves Müzesi"))).toBe("museum");
+    expect(rowIcon(activity("3 Saatlik Rehberli Bisiklet Turu"))).toBe("tour");
+    expect(rowIcon(row({ key: "idea:x", kind: "idea", item: makeItem({ category: "activity", name: "Porto Belo Pazarı", ideaKind: "shop" }) }))).toBe("shop");
+  });
+  it("a transfer by how it goes; a layover is a clock", () => {
+    expect(rowIcon(row({ key: "leg", kind: "leg", leg: leg({ mode: "metro" }) }))).toBe("metro");
+    expect(rowIcon(row({ key: "leg", kind: "leg", leg: leg({}) }))).toBe("taxi");
+    expect(rowIcon(row({ key: "lay", layover: { airport: "AMS", minutes: 150 } }))).toBe("clock");
   });
 });
