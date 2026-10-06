@@ -72,7 +72,15 @@ export interface Nav {
 }
 
 /** The bottom strip: where it stands (or ‹ 1/2 ›) on the left, the price and the one action on the right. */
-export function CardFoot({ view, nav, best = false, price, onAction }: { view: FootView; nav?: Nav; best?: boolean; price: CardFacts["price"] | null; onAction?: () => void }) {
+export function CardFoot({ view, nav, best = false, price, onAction, live }: {
+  view: FootView;
+  nav?: Nav;
+  best?: boolean;
+  price: CardFacts["price"] | null;
+  onAction?: () => void;
+  /** A flight's real data (0.36.18): a note (the ticket against the schedule, a delay) and its source. */
+  live?: { note: string | null; tone: "warn" | "bad"; source: string | null } | null;
+}) {
   const left = view.left;
   // On an editable card a missing price is a faint "Fiyat ekle".
   const pricing = Boolean(useInlineEdit()?.fields.includes("price"));
@@ -100,6 +108,8 @@ export function CardFoot({ view, nav, best = false, price, onAction }: { view: F
           {left.when && <span className="pk-when">· ⏳ {left.when}</span>}
         </span>
       ) : null}
+      {live?.note && <span className={`pk-live-note ${live.tone}`}>{live.note}</span>}
+      {live?.source && <span className="pk-src">{live.source}</span>}
       {(price || pricing) && (
         <span className="pk-price">
           <Editable field="price">

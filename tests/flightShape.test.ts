@@ -38,7 +38,7 @@ describe("the answer as the extension reads it", () => {
       number: "KL1577",
       airline: "KLM",
       status: "Expected",
-      departure: { iata: "AMS", airport: "Schiphol", scheduled: "2026-10-07T20:30", revised: null, actual: null, terminal: "2", gate: "D5" },
+      departure: { iata: "AMS", airport: "Schiphol", scheduled: "2026-10-07T20:30", revised: null, actual: null, terminal: "2", gate: "D5", desk: null },
       arrival: { iata: "OPO", airport: "Porto", scheduled: "2026-10-07T22:05", revised: null, actual: null, terminal: null, gate: null, belt: "4" },
       fetchedAt: "t",
     });

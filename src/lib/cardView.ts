@@ -130,6 +130,8 @@ export interface End {
   sub: string | null;
   /** Shown bold after the sub line. */
   time: string | null;
+  /** The time is a delay's new one (0.36.18): red. */
+  late?: boolean;
 }
 export interface TransportFace {
   from: End | null;

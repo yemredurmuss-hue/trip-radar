@@ -1,5 +1,5 @@
 // Domain model. Kept storage-agnostic so the same shapes can move to a server DB later.
-import type { FlightLive } from "../../supabase/functions/flight/shape";
+import type { FlightSeen } from "./flightData";
 import { L, type Lang } from "./i18n";
 
 export type Category = "flight" | "stay" | "transport" | "activity" | "food" | "esim" | "other";
@@ -440,7 +440,7 @@ export interface Item {
    * The flight's real data (0.36.15, flightData.ts): its schedule and, on the day, status, gate, terminal and
    * belt. Read in memory where the board reads the records (never stored on the record).
    */
-  flightLive?: FlightLive | null;
+  flightLive?: FlightSeen | null;
   /** Set by withEdits on the board's copy, never stored: what the page says under each correction. */
   pageValues?: PageValues;
   createdAt: number;

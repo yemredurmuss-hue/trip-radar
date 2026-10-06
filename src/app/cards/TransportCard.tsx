@@ -23,7 +23,11 @@ function Stop({ end, right, field, timed }: { end: End | null; right: boolean; f
       <span>
         {end?.sub}
         {end?.sub && (end?.time || time) ? " · " : ""}
-        {time ? <Editable field="time">{end?.time && <strong>{end.time}</strong>}</Editable> : end?.time && <strong>{end.time}</strong>}
+        {time ? (
+          <Editable field="time">{end?.time && <strong className={end.late ? "pk-late" : undefined}>{end.time}</strong>}</Editable>
+        ) : (
+          end?.time && <strong className={end.late ? "pk-late" : undefined}>{end.time}</strong>
+        )}
       </span>
     </div>
   );

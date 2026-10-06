@@ -26,6 +26,10 @@ import { MediaCardBody } from "./MediaCard";
 import { datedLink } from "./parts";
 import { TransportArt } from "./Silhouettes";
 import { TransportCardBody } from "./TransportCard";
+import { FlightTiles } from "./FlightLive";
+import { FallbackImg } from "../FallbackImg";
+import { flightAlert, flightTiles, sourceText, ticketDiff } from "../../lib/flightData";
+import { flightNumber } from "../../../supabase/functions/flight/shape";
 
 export interface CardEnv {
   tripId: string;
@@ -127,14 +131,46 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
     </>
   );
   const transport = isTransportKind(kind);
+  // A booked flight's real data (0.36.18): its number in the header, the terminals by the codes, boxes for
+  // what's known on its day, red when it's late; the ticket against the schedule and the source at the foot.
+  const booked = kind === "flight" && item.status === "booked";
+  const live = booked ? (item.flightLive ?? null) : null;
+  const number = booked ? (live?.number ?? flightNumber(item.flight?.flightNumber)) : null;
+  const tag = number ? [live?.airline ?? item.flight?.carrier, number].filter(Boolean).join(" ") : null;
+  const tiles = flightTiles(live);
+  const red = flightAlert(live);
+  const face = transport ? transportFace(item, kind, env.legEnds.get(item.id)) : null;
+  if (face && live) {
+    const term = (t: string | null) => (t ? ` T${t}` : "");
+    // Red only where a new time came (a landing not yet re-estimated stays as it was).
+    if (face.from) face.from = { ...face.from, sub: `${face.from.sub ?? ""}${term(live.departure.terminal)}`.trim(), late: red && !!live.departure.revised };
+    if (face.to) face.to = { ...face.to, sub: `${face.to.sub ?? ""}${term(live.arrival.terminal)}`.trim(), late: red && !!live.arrival.revised };
+  }
+  const liveFoot = live
+    ? red
+      ? { note: L("Rötar: plan yeni saate göre kaydı", "Delayed: the plan moved with it"), tone: "bad" as const, source: sourceText(live) }
+      : { note: ticketDiff(live), tone: "warn" as const, source: tiles.length ? sourceText(live) : null }
+    : null;
   return (
     <CardShell
       kind={kind}
       ring={ring}
-      date={<CardDate item={item} kind={kind} />}
+      date={
+        <>
+          <CardDate item={item} kind={kind} />
+          {tag && (
+            <>
+              {" · "}
+              {/* The airline's logo by its code (the flight number's first two letters); none when it won't load. */}
+              <FallbackImg className="pk-airline" src={`https://images.kiwi.com/airlines/64/${number!.slice(0, 2)}.png`} fallback={null} />
+              {tag}
+            </>
+          )}
+        </>
+      }
       ariaLabel={item.name}
       itemId={item.id}
-      extraClass={allNo ? "pk-all-no" : undefined}
+      extraClass={[allNo ? "pk-all-no" : "", red ? "pk-alert" : ""].filter(Boolean).join(" ") || undefined}
       art={transport && kind !== "transport" ? <TransportArt mode={kind} /> : null}
       docs={<DocAccess item={item} docs={docs} />}
       onDelete={() => env.remove(item)}
@@ -143,12 +179,15 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       onToggle={() => setOpen(!open)}
       body={
         transport ? (
-          <TransportCardBody face={transportFace(item, kind, env.legEnds.get(item.id))} title={item.name} />
+          <>
+            <TransportCardBody face={face!} title={item.name} />
+            <FlightTiles tiles={tiles} />
+          </>
         ) : (
           <MediaCardBody face={mediaFace(item, kind, facts.source)} kind={kind} score={facts.score} best={best} city={item.city} />
         )
       }
-      foot={<CardFoot view={foot} nav={nav} best={best} price={facts.price} onAction={act} />}
+      foot={<CardFoot view={foot} nav={nav} best={best} price={facts.price} onAction={act} live={liveFoot} />}
       detail={<CardDetail item={item} group={group} decision={decision} decisions={env.decisions} ranked={ranked} headline={headline} facts={facts} alert={alert} docs={docs} actions={actions} />}
     />
   );

@@ -462,7 +462,9 @@ try {
   await app.screenshot({ path: `${out}/3e-arrival-asked.png` });
   // Typed by hand, kept as a correction: the record's own arrival is the page's (empty here); put it back.
   await setTrainArrival("2026-10-11T16:04");
-  // 0.36.15: a flight's real data under its line (as the server would give it): late in red, its gate, the source.
+  // 0.36.15/0.36.18: a flight's real data (as the server would give it) on its day: late in red, its gate, the
+  // source, in the day view's line and as boxes on the Plan's card.
+  await app.clock.setSystemTime(new Date("2026-10-14T12:00:00"));
   await app.evaluate(async () => {
     const end = (iata, t) => ({ iata, airport: null, scheduled: t, revised: null, actual: null, terminal: null, gate: null });
     const flight = {
@@ -476,10 +478,22 @@ try {
   });
   const live = dayCard(7).locator(".dc-live.alert");
   await live.waitFor();
-  assert.equal(await live.innerText(), "Rötar 25 dk · Terminal 1 · Kapı 14 · Veri: AeroDataBox");
+  assert.equal(await live.innerText(), "Yeni kalkış 20:05 (+25 dk) · Kapı 14 · Veri: AeroDataBox");
   await live.scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/3e-flight-live.png` });
+  await tab("Plan").click();
+  const tpCard = app.locator('.pk-card[aria-label*="Lizbon → İstanbul"]').first();
+  await tpCard.locator(".pk-live").waitFor();
+  assert.ok(await tpCard.evaluate((el) => el.classList.contains("pk-alert")), "late: the card goes red");
+  assert.deepEqual(flat(await tpCard.locator(".pk-lv").allInnerTexts()), ["Yeni kalkış 20:05+25 dk", "Kapı 14"]);
+  assert.match(flat([await tpCard.locator(".pk-top").innerText()])[0], /TAP TP1760/);
+  assert.match(flat([await tpCard.locator(".pk-foot").innerText()])[0], /Rötar: plan yeni saate göre kaydı.*AeroDataBox/);
+  assert.match(flat([await tpCard.locator(".pk-stop").first().innerText()])[0], /LIS T1 · 20:05/);
+  await tpCard.scrollIntoViewIfNeeded();
+  await app.screenshot({ path: `${out}/3e-flight-card-live.png` });
+  await tab("Günlük akış").click();
   await app.evaluate(() => chrome.storage.local.remove("flightLive"));
+  await app.clock.setSystemTime(new Date("2026-10-05T10:00:00"));
   // Flights with a ticket bought are followed (0.36.16); the sample's never are, so here it's a real trip for a
   // moment (the server answered here, not asked).
   const setTrip = (patch) =>

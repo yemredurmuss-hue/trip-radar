@@ -32,7 +32,8 @@ export interface FlightLive {
   airline: string | null;
   /** AeroDataBox's word: Expected, CheckIn, Boarding, GateClosed, Departed, EnRoute, Approaching, Arrived, Delayed, Canceled, Diverted, Unknown. */
   status: string;
-  departure: FlightEnd;
+  /** `desk`: the check-in desks ("12-16"), when the airport gives them. */
+  departure: FlightEnd & { desk?: string | null };
   arrival: FlightEnd & { belt: string | null };
   fetchedAt: string;
 }
@@ -63,7 +64,7 @@ export function shapeFlight(answer: unknown, number: string, fetchedAt: string):
     number,
     airline: text(f.airline?.name),
     status: text(f.status) ?? "Unknown",
-    departure: end(f.departure),
+    departure: { ...end(f.departure), desk: text(f.departure?.checkInDesk) },
     arrival: { ...end(f.arrival), belt: text(f.arrival?.baggageBelt) },
     fetchedAt,
   };
