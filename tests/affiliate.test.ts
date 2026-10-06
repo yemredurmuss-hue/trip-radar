@@ -23,6 +23,9 @@ describe("partner links", () => {
       "https://www.google.com/travel/flights?q=x",
       "https://notbooking.com/x",
       "https://tp.media/r?campaign_id=84&u=x",
+      // the project's own Viator / GetYourGuide partner pages keep their code
+      "https://www.viator.com/tours/Ubud/x/d5467-7626P305?mcid=42383&pid=P00324133&medium=api",
+      "https://www.getyourguide.com/ubud-l1234/?partner_id=ABC123",
       "mailto:a@b.c",
       "not a url",
     ]) expect(partnerUrl(url)).toBe(url);

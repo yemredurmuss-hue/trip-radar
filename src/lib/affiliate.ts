@@ -71,6 +71,9 @@ export function partnerUrl(url: string): string {
   if (u.hostname === "tp.media" || u.hostname.endsWith(".tp.st")) return url;
   const ids = brandOf(u.hostname);
   if (!ids) return url;
+  // Already the project's own partner page (Viator's API pages carry its pid, GetYourGuide's its partner_id): kept.
+  if (u.searchParams.has("pid") && /(^|\.)viator\.com$/.test(u.hostname)) return url;
+  if (u.searchParams.has("partner_id") && /(^|\.)getyourguide\.com$/.test(u.hostname)) return url;
   if (PRIVATE_PATH.test(u.pathname) || PRIVATE_QUERY.test(u.search.slice(1))) return url;
   const q = new URLSearchParams({ campaign_id: String(ids[0]), marker: String(MARKER), p: String(ids[1]), sub_id: SUB, trs: String(TRS), u: url });
   return `https://tp.media/r?${q}`;

@@ -145,10 +145,10 @@ profilleri ve geçmişiyle birlikte) senin isteğinle silinir: info@emredurmus.n
 - **Öneriler (Travelpayouts / Aviasales, Tripadvisor, Xotelo):** boş bir uçuş ya da konaklama kartının altındaki
   "Senin için N öneri" satırı için, bizim sunucumuz üzerinden yalnız aramanın gerektirdiği gönderilir: uçuşta iki
   havalimanı kodu, gün ve kişi sayısı ("IST, DPS, 10 Kasım, 2 kişi"); konaklamada şehir ve ülke adı, giriş ve çıkış
-  günü ve kişi sayısı. Sunucu uçuş fiyatlarını Aviasales'in önbellekteki fiyatlarından (Travelpayouts), şehrin
+  günü ve kişi sayısı; etkinlikte şehir, günler, kişi sayısı ve kartın adı ("Tekne turu"). Sunucu uçuş fiyatlarını Aviasales'in önbellekteki fiyatlarından (Travelpayouts), şehrin
   kimliğini Tripadvisor'dan (RapidAPI üzerinden), otelleri ve platform fiyatlarını Xotelo'dan alır; bunlarda sonuç
   yoksa ya da sohbette canlı fiyat istendiğinde aynı arama bilgisini Google Flights / Google Hotels sonuçları için
-  SerpApi'ye gönderir; herkese açık bu
+  SerpApi'ye gönderir; etkinlikleri Viator'dan (Viator Partner API) alır; herkese açık bu
   bilgiyi, aynı soruyu soran herkes için tekrar sormamak adına sorulan yere ve güne göre saklar, kimin sorduğunu
   saklamaz. Cevap bu bilgisayarda da birkaç saat saklanır.
 - **Travelpayouts ortaklık bağlantıları:** panodan açtığın, Trip Radar'ın ortağı olduğu bir markanın sayfası
@@ -178,7 +178,7 @@ IP adresini görebilir.
 Trip Radar'ın hiçbir sunucusu Türkiye'de değildir:
 
 - Paylaşım sunucusu ve AI kapısı aynı Supabase projesindedir ve **Hindistan'da (Mumbai, ap-south-1)** çalışır.
-- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo ve SerpApi kendi sunucularını kullanır; bunlar ABD, AB ya da
+- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo, SerpApi ve Viator kendi sunucularını kullanır; bunlar ABD, AB ya da
   başka ülkelerde olabilir.
 
 Bu aktarımlar yalnız senin başlattığın işlemler (yapay zekâ, paylaşım, davet) için ve o işlem için gerektiği kadar
@@ -389,9 +389,11 @@ and history) is deleted on request: write to info@emredurmus.net.
 - **Offers (Travelpayouts / Aviasales, Tripadvisor, Xotelo):** for the "N offers for you" row under an empty flight or
   stay card, only what the search needs is sent, through our server: for a flight the two airport codes, the day and
   the head-count ("IST, DPS, 10 November, 2 people"); for a stay the city and country name, the check-in and
-  check-out days and the head-count. The server takes flight prices from Aviasales' cached prices (Travelpayouts),
+  check-out days and the head-count; for an activity the city, the days, the head-count and the card's name ("Boat
+  tour"). The server takes flight prices from Aviasales' cached prices (Travelpayouts),
   the city's id from Tripadvisor (via RapidAPI), hotels and each platform's price from Xotelo; when those have nothing,
-  or a live price is asked for in the chat, the same search goes to SerpApi for Google Flights / Google Hotels results; it keeps this public
+  or a live price is asked for in the chat, the same search goes to SerpApi for Google Flights / Google Hotels results;
+  activities come from Viator (Viator Partner API); it keeps this public
   information by the place and days asked, so the same question isn't asked again for everyone, and doesn't keep
   who asked. The answer is also kept on this computer for a few hours.
 - **Travelpayouts affiliate links:** a page of a brand Trip Radar is a partner of, opened from the board (offers,
@@ -421,7 +423,7 @@ can see your IP address.
 None of Trip Radar's servers are in Turkey:
 
 - The sharing server and the AI gate are in the same Supabase project, in **India (Mumbai, ap-south-1)**.
-- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo and SerpApi use their own servers, which may be in the US,
+- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo, SerpApi and Viator use their own servers, which may be in the US,
   the EU or other countries.
 
 These transfers happen only for actions you start (AI, sharing, invites) and only as far as that action needs; what

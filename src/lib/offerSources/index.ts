@@ -1,11 +1,11 @@
 // The live source for the empty cards' "✨ Senin için N öneri" row (src/lib/offerSource.ts): asks Trip Radar's
 // `offers` function (supabase/functions/offers) for a flight's or a stay's offers, from real sources only
-// (Aviasales' cached prices; Tripadvisor's hotels and each platform's price, via Xotelo), the pages already turned
-// into partner links there. Only what a search needs leaves the board: the airports or the place, the days and
+// (Aviasales' cached prices; Tripadvisor's hotels and each platform's price, via Xotelo; a city's tours on Viator),
+// the pages already partner links there. Only what a search needs leaves the board: the airports or the place, the days and
 // the head-count, never a name nor the trip.
 //
 // Answers are kept here for a few hours per question (chrome.storage), so opening the board again asks nothing.
-// Nothing for the other kinds yet (transfers, activities, eSIMs: no source connected), nor when the question is
+// Nothing for the other kinds yet (transfers, eSIMs: no source connected), nor when the question is
 // short of what a search needs; a failure or an unconfigured server is no offers, so the row stays away.
 import { lang } from "../i18n";
 import { airportCode } from "../searchLinks";
@@ -76,6 +76,17 @@ export function queryOf(need: Need, language: "tr" | "en" = lang(), narrow: Narr
     const to = need.toCode ?? airportCode(need.to);
     if (!from || !to || from === to || !need.start || !DAY.test(need.start)) return null;
     return new URLSearchParams(narrowed({ kind: "flight", from, to, day: need.start, adults, lang: language }, narrow)).toString();
+  }
+  if (need.kind === "activity") {
+    const city = need.city?.trim();
+    if (!city) return null;
+    const q: Record<string, string> = { kind: "activity", city, adults, lang: language };
+    if (need.start && need.end && DAY.test(need.start) && DAY.test(need.end) && need.end >= need.start) Object.assign(q, { start: need.start, end: need.end });
+    const country = countryName(need.country);
+    if (country) q.country = country;
+    const words = need.query?.trim();
+    if (words) q.q = words.slice(0, 80);
+    return new URLSearchParams(narrowed(q, narrow)).toString();
   }
   if (need.kind === "stay") {
     const city = need.city?.trim();
