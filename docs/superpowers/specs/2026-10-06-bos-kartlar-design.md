@@ -37,6 +37,16 @@ icat edilmez. Seçenek ya da bilet gelince kart kendiliğinden bugünkü büyük
 | Kural önerisi "eSIM (ülke)" | eSIM | Alınmadı | Airalo · Holafly |
 | Etkinliği olmayan her şehir | Etkinlik · "X'te tur ve bilet" | Henüz yok | GetYourGuide · Viator · Klook |
 
+**Emre'nin kuralı (başlangıç):** sohbetle açılan gezide `startGuide.placeholders` (uçuşlar, konaklamalar, araç)
+hiçbir zaman sarı "Seçildi · bilet alınmadı" kartı olmaz; hep boş karttır. Sarı kart yalnız **gerçek bir seçenek**
+içindir (kaydedilmiş sayfa ya da somut ayrıntısıyla söylenmiş uçuş). Sohbette söylenmiş ya da kutucukla eklenmiş,
+somut bir seçeneği olmayan her plan da boş karttır: sağlayıcı yok, fiyat yok, sayfa yok, saat yok, uçuş no yok
+(`emptyCards.ts` `bareChatPlan`). Bunlardan biri gelince (ya da aynı ihtiyaca bir sayfa kaydedilince) bugünkü
+büyük kart olur. Taksi, not, yapılacak ve restoran hariç (onlarda "planlandı" zaten bitmiştir).
+Yerinde düzenlenen kart (yeni eklenmiş kutucuk, açılmış bir alan) düzenlenirken bugünkü karttır: saati ve fiyatı
+yazılabilsin; somut bir şey yazılmadan bırakılınca yine boş karttır. Bilet ve rezervasyon düğmesinin işi •••
+menüsünde kalır ("Bileti aldım", "Rezerve ettim"…).
+
 Kart yalnız **Plan** sekmesinde sadeleşir; Günlük akış (LegRow, gün kartları) bu işin dışında.
 Belgesi olan bir kayıt (bilet PDF'i) boş sayılmaz. Aynı ihtiyaçta başka bir seçenek varsa bugünkü kart çizilir.
 Etkinlik ve eSIM boş kartları bölümün "3/4" sayısına girmez (öneriler gibi), kahramanın sayıları değişmez.
@@ -68,8 +78,14 @@ Markanın rengi üstünde tek harf (mockup'taki gibi), eklentinin içinde CSS il
 
 Yalnız bir yapay zekâ veri kaynağı bağlıyken, kartın altında ince bir satır: **"✨ Senin için N öneri ▾"**.
 - Kapalı başlar; açık/kapalı her bölüm için hatırlanır (`localStorage`, try/catch içinde).
-- Açılınca seçenek kartlarıyla aynı düzen: fotoğraf, ad, puan, fiyat, gece. Mor zemin, "Öneri" etiketi, mor
-  "neden" satırı, "Seçeneklere ekle" ve × ("bunun gibileri gösterme").
+- Açılınca her öneri bir fiyat kartı (onaylı v3: `docs/mockups/2026-10-06-ai-oneriler-turler-v3.html`): iki sütun
+  `1fr 168px`, beyaz zemin, lavanta çerçeve. Sol: uçuş/transfer için şirket ve karosu, büyük kalkış saati ve kodu,
+  süre ince çizginin üstünde, altında yeşil "Direkt" (transferde yol), büyük varış saati ve kodu; otel, etkinlik,
+  eSIM için 92×72 fotoğraf, ad, yeşil puan çipi ve semt, bir satır bilgi. En altta tek mor "✨ neden" satırı.
+  Sağ "fırsat" paneli: kaynağın işareti ve adı (tazelik yalnız başlık ipucunda), büyük fiyat (22 px), birimi,
+  tam genişlik "Ekle →" (#5b45e0), köşede × ("Bunun gibileri gösterme"). "Öneri" etiketi yok; "Seç" son karar için.
+- Fiyat birimi: konaklamada büyük fiyat **gecelik** ("€128 / gece", altında "7 gece · €896 toplam"); uçuşta
+  kişilerin toplamı ("2 kişi toplam"); transfer ve etkinlikte "2 kişi"; eSIM'de "tek seferlik".
 - Yeni bir sayı yalnız sayıyı günceller, satırı kendiliğinden açmaz.
 - Arayüz `SuggestionSource` (`src/lib/offerSource.ts`): `{ available(): boolean; offers(need): Promise<Offer[]> }`.
   Bugün kaynak bağlı değil (`available()` false), satır hiç çizilmez.

@@ -47,6 +47,19 @@ export interface Offer {
   /** Where it was read ("Booking"). */
   source: string;
   fetchedAt: number;
+  // A flight's or transfer's row (ai-oneriler-turler-v3): who runs it, the hours, the ends' codes, how long, the stops.
+  carrier?: string | null;
+  depart?: string | null;
+  arrive?: string | null;
+  fromCode?: string | null;
+  toCode?: string | null;
+  durationMinutes?: number | null;
+  stops?: number | null;
+  /** A transfer's way ("tren + tramvay"), said under its line instead of "Direkt". */
+  via?: string | null;
+  // A stay's, an activity's, an eSIM's lines: the area ("Jordaan · Dam'a 10 dk"), one more line ("30 gün · 5G").
+  area?: string | null;
+  meta?: string | null;
 }
 
 export interface SuggestionSource {
@@ -70,6 +83,30 @@ const https = (url: unknown): url is string => {
 };
 const text = (v: unknown, max: number): string | null => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null);
+const clock = (v: unknown): string | null => (typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : null);
+
+/**
+ * The deal panel's price (ai-oneriler-turler-v3): a stay's is by the night ("€128 / gece", "7 gece · €896 toplam");
+ * a flight's the total for who goes ("2 kişi toplam"); a transfer's and an activity's for them ("2 kişi"); an eSIM's
+ * once ("tek seferlik"). Null without a price.
+ */
+export function dealPrice(offer: Pick<Offer, "kind" | "price" | "nights">, adults: number | null): { amount: number; perNight: boolean; unit: (total: string) => string } | null {
+  if (offer.price == null) return null;
+  const people = (n: number) => L(`${n} kişi`, n === 1 ? "1 person" : `${n} people`);
+  switch (offer.kind) {
+    case "stay": {
+      const nights = offer.nights && offer.nights > 0 ? offer.nights : null;
+      if (!nights) return { amount: offer.price, perNight: false, unit: () => L("toplam", "total") };
+      return { amount: offer.price / nights, perNight: true, unit: (total) => L(`${nights} gece · ${total} toplam`, `${nights} night${nights === 1 ? "" : "s"} · ${total} total`) };
+    }
+    case "flight":
+      return { amount: offer.price, perNight: false, unit: () => (adults ? L(`${people(adults)} toplam`, `${people(adults)} total`) : L("toplam", "total")) };
+    case "esim":
+      return { amount: offer.price, perNight: false, unit: () => L("tek seferlik", "one-off") };
+    default:
+      return { amount: offer.price, perNight: false, unit: () => (adults ? people(adults) : "") };
+  }
+}
 
 /** At most three offers under a need (the mockup's rule): the source's order, well-formed ones only. */
 export const MAX_OFFERS = 3;
@@ -99,6 +136,16 @@ export function validOffers(list: unknown, need: Pick<Need, "kind">): Offer[] {
       why: text(raw.why, 160) ?? "",
       source,
       fetchedAt: num(raw.fetchedAt) ?? 0,
+      carrier: text(raw.carrier, 40),
+      depart: clock(raw.depart),
+      arrive: clock(raw.arrive),
+      fromCode: text(raw.fromCode, 8),
+      toCode: text(raw.toCode, 8),
+      durationMinutes: num(raw.durationMinutes),
+      stops: num(raw.stops),
+      via: text(raw.via, 40),
+      area: text(raw.area, 80),
+      meta: text(raw.meta, 80),
     });
     if (out.length === MAX_OFFERS) break;
   }

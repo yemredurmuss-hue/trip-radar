@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { EmptyEnvContext } from "../src/app/cards/emptyEnv";
 import { OfferRow, OfferRowView } from "../src/app/cards/OfferRow";
 import {
+  dealPrice,
   MAX_OFFERS,
   NO_SOURCE,
   offerItem,
@@ -90,12 +91,32 @@ describe("the row as drawn", () => {
     expect(html).toContain('aria-expanded="false"');
     expect(html).not.toContain("ek-offer-list");
   });
-  it("open: the option card's layout on purple: photo, name, Öneri, rating, nights, price, why, Seçeneklere ekle, ×", () => {
-    const html = renderToStaticMarkup(<OfferRowView offers={[offer()]} open onToggle={noop} onAdd={noop} onLess={noop} />);
-    for (const part of ["Senin için 1 öneri", 'aria-expanded="true"', 'src="https://img.example.com/a.jpg"', "Alaya Ubud", "Öneri", "★ 8,9", "12 gece", "Booking", "€943", "Seçtiğin semtte, €15 daha ucuz", "Seçeneklere ekle", "Alaya Ubud: bunun gibileri gösterme"]) {
+  it("open, a stay (v3): photo, name, rating chip and area, the why; the deal by the night, the total under it, Ekle →, ×", () => {
+    const html = renderToStaticMarkup(
+      <OfferRowView offers={[offer({ area: "Ubud merkez · Monkey Forest'a 5 dk" })]} open adults={2} now={5 + 2 * 3_600_000} onToggle={noop} onAdd={noop} onLess={noop} />,
+    );
+    for (const part of [
+      "Senin için 1 öneri", 'aria-expanded="true"', 'src="https://img.example.com/a.jpg"', "Alaya Ubud", '<span class="ek-of-rate">8,9</span>', "Ubud merkez · Monkey Forest&#x27;a 5 dk",
+      "✨ Seçtiğin semtte, €15 daha ucuz", "Booking", 'title="Booking · 2 sa önce"', "€79", "/ gece", "12 gece · €943 toplam", "Ekle", "→", 'aria-label="Bunun gibileri gösterme"',
+    ]) {
       expect(html).toContain(part);
     }
+    expect(html).not.toContain("Öneri<");
     expect(html).toContain('rel="noopener noreferrer"');
+  });
+  it("open, a flight: carrier, hours and codes, how long, Direkt; the total for who goes", () => {
+    const flight = offer({ id: "f1", kind: "flight", title: "TK 1951", carrier: "Turkish Airlines", depart: "07:40", arrive: "10:25", fromCode: "IST", toCode: "AMS", durationMinutes: 225, stops: 0, price: 312, nights: null, photo: null, source: "Google Flights" });
+    const html = renderToStaticMarkup(<OfferRowView offers={[flight]} open adults={2} onToggle={noop} onAdd={noop} onLess={noop} />);
+    for (const part of ["Turkish Airlines", "07:40", "IST", "10:25", "AMS", "3 sa 45 dk", "Direkt", "€312", "2 kişi toplam"]) expect(html).toContain(part);
+    expect(html).not.toContain("/ gece");
+  });
+  it("the deal's unit by kind: a stay by the night, a flight's total, an activity per people, an eSIM once", () => {
+    expect(dealPrice({ kind: "stay", price: 896, nights: 7 }, 2)).toMatchObject({ amount: 128, perNight: true });
+    expect(dealPrice({ kind: "stay", price: 896, nights: 7 }, 2)!.unit("€896")).toBe("7 gece · €896 toplam");
+    expect(dealPrice({ kind: "flight", price: 312, nights: null }, 2)!.unit("€312")).toBe("2 kişi toplam");
+    expect(dealPrice({ kind: "activity", price: 32, nights: null }, 2)!.unit("€32")).toBe("2 kişi");
+    expect(dealPrice({ kind: "esim", price: 15, nights: null }, 2)!.unit("€15")).toBe("tek seferlik");
+    expect(dealPrice({ kind: "stay", price: null, nights: 7 }, 2)).toBeNull();
   });
   it("no offers: nothing", () => {
     expect(renderToStaticMarkup(<OfferRowView offers={[]} open onToggle={noop} onAdd={noop} onLess={noop} />)).toBe("");

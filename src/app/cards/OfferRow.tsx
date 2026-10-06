@@ -1,13 +1,17 @@
-// "✨ Senin için N öneri ▾" under an empty card (spec 2026-10-06-bos-kartlar-design.md, revision 2): drawn only
-// while an AI data source is connected and has offers for the need. Closed at first; opened or closed it's
-// remembered per section; a new count changes the number, never opens it. Open, the offers in the option
-// cards' layout (photo, name, rating, price, nights) on a purple ground: "Öneri", a purple why, "Seçeneklere
-// ekle", and × ("bunun gibileri gösterme").
+// "✨ Senin için N öneri ▾" under an empty card (spec 2026-10-06-bos-kartlar-design.md, revision 2; card layout
+// docs/mockups/2026-10-06-ai-oneriler-turler-v3.html): drawn only while an AI data source is connected and has
+// offers for the need. Closed at first; opened or closed it's remembered per section; a new count changes the
+// number, never opens it. Each offer is a price card: on the left only what the kind needs to decide (a flight or
+// transfer: who runs it, the hours and codes, how long, direct; a stay, an activity, an eSIM: the photo, the name,
+// the rating and area, one line) and one purple "✨ why" line; on the right the deal: the source, the big price (a
+// stay's by the night), its unit, a full-width "Ekle →" and × in the corner ("Bunun gibileri gösterme").
 import { useEffect, useState } from "react";
-import { num, nNights } from "../../lib/i18nText";
+import { durationText } from "../../lib/cardFacts";
 import { L } from "../../lib/i18n";
+import { num, nStops } from "../../lib/i18nText";
 import { formatPrice } from "../../lib/items";
 import {
+  dealPrice,
   offerCount,
   offersOpenKey,
   readOffersOpen,
@@ -21,22 +25,98 @@ import {
   type OfferKind,
   type OfferRowState,
 } from "../../lib/offerSource";
+import { BRANDS } from "../../lib/searchLinks";
 import { addOffer } from "../actions";
 import { useEmptyEnv } from "./emptyEnv";
 import { KindIcon, UiIcon } from "./Silhouettes";
 
 const ICON: Record<OfferKind, "flight" | "stay" | "taxi" | "activity" | "esim"> = { flight: "flight", stay: "stay", transfer: "taxi", activity: "activity", esim: "esim" };
 
+/** The source's mark: a brand we draw (one letter on its colour), else its first letter on grey. */
+function SourceMark({ source }: { source: string }) {
+  const brand = Object.values(BRANDS).find((b) => b.name.toLocaleLowerCase("tr") === source.toLocaleLowerCase("tr"));
+  return (
+    <span className="ek-lg" style={{ background: brand?.color ?? "#8e8e93" }} aria-hidden>
+      {brand?.letter ?? source.slice(0, 1).toLocaleUpperCase("tr")}
+    </span>
+  );
+}
+
+/** "2 sa önce": how fresh the source's price is (in the source name's tooltip only). */
+function freshness(fetchedAt: number, now: number): string {
+  const hours = Math.max(0, Math.round((now - fetchedAt) / 3_600_000));
+  if (!fetchedAt) return "";
+  if (hours < 1) return L("az önce", "just now");
+  return hours < 48 ? L(`${hours} sa önce`, `${hours} h ago`) : L(`${Math.round(hours / 24)} gün önce`, `${Math.round(hours / 24)} days ago`);
+}
+
+/** A flight's or transfer's body: carrier and its tile, the hour and code at each end, how long and direct between. */
+function RouteBody({ o }: { o: Offer }) {
+  const direct = o.kind === "flight" && o.stops != null ? (o.stops === 0 ? L("Direkt", "Direct") : nStops(o.stops)) : null;
+  return (
+    <div className="ek-of-route">
+      {o.carrier && (
+        <span className="ek-of-carrier">
+          {o.carrier}
+          <span className="ek-of-air" aria-hidden>
+            {o.carrier.slice(0, 2).toLocaleUpperCase("tr")}
+          </span>
+        </span>
+      )}
+      <span className="ek-of-tm">
+        {o.depart ?? "–"}
+        {o.fromCode && <small>{o.fromCode}</small>}
+      </span>
+      <span className="ek-of-mid">
+        {o.durationMinutes ? <span>{durationText(o.durationMinutes)}</span> : <span />}
+        <span className="ek-of-ln" aria-hidden>
+          <KindIcon kind={ICON[o.kind]} size={13} />
+        </span>
+        {o.via ? <span className="ek-of-ok">{o.via}</span> : direct ? <span className={o.stops === 0 ? "ek-of-ok" : undefined}>{direct}</span> : null}
+      </span>
+      <span className="ek-of-tm">
+        {o.arrive ?? "–"}
+        {o.toCode && <small>{o.toCode}</small>}
+      </span>
+    </div>
+  );
+}
+
+/** A stay's, an activity's, an eSIM's body: the photo, the name, the rating chip and area, one more line. */
+function MediaBody({ o }: { o: Offer }) {
+  return (
+    <div className="ek-of-media">
+      <span className="ek-of-ph">
+        {o.photo ? <img src={o.photo} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <KindIcon kind={ICON[o.kind]} size={30} />}
+      </span>
+      <span className="ek-of-txt">
+        <a className="ek-of-t" href={o.url} target="_blank" rel="noopener noreferrer">
+          {o.title}
+        </a>
+        {(o.rating != null || o.area) && (
+          <span className="ek-of-s">
+            {o.rating != null && <span className="ek-of-rate">{num(o.rating)}</span>}
+            {o.area}
+          </span>
+        )}
+        {o.meta && <span className="ek-of-s">{o.meta}</span>}
+      </span>
+    </div>
+  );
+}
+
 /** The row as drawn, from its state (no fetching, no storage): what the tests render. */
-export function OfferRowView({ offers, open, onToggle, onAdd, onLess }: {
+export function OfferRowView({ offers, open, adults = null, now = Date.now(), onToggle, onAdd, onLess }: {
   offers: Offer[];
   open: boolean;
+  /** Who goes: a flight's "2 kişi toplam", a transfer's or an activity's "2 kişi". */
+  adults?: number | null;
+  now?: number;
   onToggle: () => void;
   onAdd: (offer: Offer) => void;
   onLess: (offer: Offer) => void;
 }) {
   if (!offers.length) return null;
-  const sources = [...new Set(offers.map((o) => o.source))].join(", ");
   return (
     <div className={`ek-offers${open ? " open" : ""}`}>
       <button type="button" className="ek-offers-head" aria-expanded={open} onClick={onToggle}>
@@ -48,37 +128,40 @@ export function OfferRowView({ offers, open, onToggle, onAdd, onLess }: {
       </button>
       {open && (
         <div className="ek-offer-list">
-          {offers.map((o) => (
-            <div key={o.id} className="ek-offer" data-offer={o.id}>
-              <span className="ek-offer-img">
-                {o.photo ? <img src={o.photo} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <KindIcon kind={ICON[o.kind]} size={28} />}
-              </span>
-              <span className="ek-offer-txt">
-                <span className="ek-offer-name">
-                  <a href={o.url} target="_blank" rel="noopener noreferrer">
-                    {o.title}
+          {offers.map((o) => {
+            const deal = dealPrice(o, adults);
+            const total = o.price != null ? formatPrice(o.price, o.currency ?? null) : "";
+            const fresh = freshness(o.fetchedAt, now);
+            return (
+              <div key={o.id} className={`ek-offer kind-${o.kind}`} data-offer={o.id}>
+                <div className="ek-of-body">
+                  {o.kind === "flight" || o.kind === "transfer" ? <RouteBody o={o} /> : <MediaBody o={o} />}
+                  {o.why && <p className="ek-why">✨ {o.why}</p>}
+                </div>
+                <div className="ek-deal">
+                  <a className="ek-from" href={o.url} target="_blank" rel="noopener noreferrer" title={fresh ? `${o.source} · ${fresh}` : o.source}>
+                    <SourceMark source={o.source} />
+                    {o.source}
                   </a>
-                  <span className="ek-badge">{L("Öneri", "Suggested")}</span>
-                </span>
-                <span className="ek-offer-meta">
-                  {[o.rating != null ? `★ ${num(o.rating)}` : null, o.nights ? nNights(o.nights) : null, o.source].filter(Boolean).join(" · ")}
-                </span>
-                {o.why && <span className="ek-why">{o.why}</span>}
-              </span>
-              <span className="ek-offer-end">
-                {o.price != null && <b className="ek-offer-price">{formatPrice(o.price, o.currency ?? null)}</b>}
-                {o.price != null && o.nights ? <small>{nNights(o.nights)}</small> : null}
-                <button type="button" className="ek-offer-add" onClick={() => onAdd(o)}>
-                  {L("Seçeneklere ekle", "Add to options")}
-                </button>
-              </span>
-              <button type="button" className="ek-offer-x" onClick={() => onLess(o)}
-                aria-label={L(`${o.title}: bunun gibileri gösterme`, `${o.title}: show fewer like this`)} title={L("Bunun gibileri gösterme", "Show fewer like this")}>
-                <UiIcon name="x" size={12} />
-              </button>
-            </div>
-          ))}
-          <p className="ek-offers-note">{L(`Fiyat ve puan: ${sources}`, `Prices and ratings: ${sources}`)}</p>
+                  {deal && (
+                    <>
+                      <b className="ek-amt">
+                        {formatPrice(Math.round(deal.amount), o.currency ?? null)}
+                        {deal.perNight && <small> {L("/ gece", "/ night")}</small>}
+                      </b>
+                      <span className="ek-per">{deal.unit(total)}</span>
+                    </>
+                  )}
+                  <button type="button" className="ek-go" onClick={() => onAdd(o)} aria-label={L(`${o.title}: seçeneklere ekle`, `${o.title}: add to options`)}>
+                    {L("Ekle", "Add")} →
+                  </button>
+                  <button type="button" className="ek-offer-x" onClick={() => onLess(o)} aria-label={L("Bunun gibileri gösterme", "Show fewer like this")} title={L("Bunun gibileri gösterme", "Show fewer like this")}>
+                    <UiIcon name="x" size={12} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -113,6 +196,7 @@ export function OfferRow({ need }: { need: Need }) {
     <OfferRowView
       offers={shownOffers(state)}
       open={state.open}
+      adults={need.adults ?? null}
       onToggle={toggle}
       onAdd={(o) => {
         setState((s) => without(s, o.id));

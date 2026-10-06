@@ -1830,34 +1830,51 @@ button.cat-hidden-name:hover { text-decoration: underline; }
   .ek-end b { font-size: 15px; }
   .ek-find { margin-left: 0; justify-content: flex-start; width: 100%; }
 }
-/* the AI offers' row (revision 2): only with a data source connected */
-.ek-offers { margin: 4px 0 0; }
-.ek-offers-head { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 600; color: #6a4fe0; cursor: pointer; }
-.ek-offers-chev { transition: transform .15s; }
-.ek-offers:not(.open) .ek-offers-chev { transform: rotate(-90deg); }
-.ek-offer-list { display: grid; gap: 8px; margin-top: 4px; }
-.ek-offer { position: relative; display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 34px 10px 10px; border-radius: 14px; background: #f6f3ff; border: 1px solid #e4dcff; }
-.ek-offer-img { width: 76px; height: 58px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; background: #ebe5ff; color: #6a4fe0; }
-.ek-offer-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.ek-offer-txt { min-width: 0; display: grid; gap: 2px; }
-.ek-offer-name { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 15px; font-weight: 600; }
-.ek-offer-name a { color: #1d1d1f; text-decoration: none; }
-.ek-offer-name a:hover { text-decoration: underline; }
-.ek-badge { padding: 0 6px; border-radius: 999px; border: 1px solid #cfc3fb; background: #fff; font-size: 11px; font-weight: 600; color: #6a4fe0; }
-.ek-offer-meta { font-size: 12.5px; color: #6e6e73; }
-.ek-why { font-size: 12.5px; color: #6a4fe0; }
-.ek-offer-end { display: grid; justify-items: end; gap: 2px; }
-.ek-offer-price { font-size: 16px; }
-.ek-offer-end small { font-size: 12px; color: #6e6e73; }
-.ek-offer-add { margin-top: 4px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1.5px solid #6a4fe0; background: #fff; color: #6a4fe0; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-.ek-offer-add:hover { background: #6a4fe0; color: #fff; }
-.ek-offer-x { position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: none; color: #8e8e93; display: grid; place-items: center; cursor: pointer; }
+/* the AI offers' row (revision 2; cards: docs/mockups/2026-10-06-ai-oneriler-turler-v3.html), only with a data source connected */
+.ek-offers { margin: 8px 0 0; }
+.ek-offers-head { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border-radius: 12px; border: 1px solid #e4dcff; background: #f6f3ff; font: inherit; font-size: 13px; font-weight: 600; color: #5b45e0; cursor: pointer; text-align: left; }
+.ek-offers-chev { margin-left: auto; transition: transform .2s; }
+.ek-offers.open .ek-offers-chev { transform: rotate(180deg); }
+.ek-offer-list { display: grid; gap: 6px; margin-top: 6px; }
+.ek-offer { display: grid; grid-template-columns: minmax(0, 1fr) 168px; border-radius: 16px; background: #fff; border: 1px solid #e4dcff; overflow: hidden; }
+.ek-of-body { min-width: 0; padding: 12px 14px 11px; }
+.ek-why { margin: 8px 0 0; font-size: 12px; color: #5b45e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* a flight or a transfer: carrier, hours and codes, how long over a thin line, direct in green */
+.ek-of-route { display: grid; grid-template-columns: max-content auto minmax(70px, 1fr) auto; align-items: center; gap: 14px; }
+.ek-of-carrier { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.ek-of-air { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: #6a4fe0; color: #fff; font-size: 12px; font-weight: 800; }
+.ek-of-tm { font-size: 18px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.ek-of-tm small { display: block; font-size: 12.5px; font-weight: 400; color: #6e6e73; }
+.ek-of-mid { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; font-size: 12px; color: #6e6e73; }
+.ek-of-ln { position: relative; display: block; width: 100%; height: 1px; background: #cfcbe0; }
+.ek-of-ln svg { position: absolute; right: -4px; top: -6px; color: #9a96b0; }
+.ek-of-ok { color: #1f8a70; font-weight: 500; }
+/* a stay, an activity, an eSIM: photo, name, rating chip and area, one line */
+.ek-of-media { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; align-items: center; }
+.ek-of-ph { width: 92px; height: 72px; border-radius: 12px; overflow: hidden; display: grid; place-items: center; background: #eef1fb; color: #3b6fd1; }
+.ek-of-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ek-of-ph svg { opacity: .55; }
+.ek-of-txt { min-width: 0; display: grid; }
+.ek-of-t { font-size: 15.5px; font-weight: 700; color: #1d1d1f; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ek-of-t:hover { text-decoration: underline; }
+.ek-of-s { margin-top: 3px; font-size: 12.5px; color: #6e6e73; }
+.ek-of-rate { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 20px; margin-right: 6px; padding: 0 5px; border-radius: 6px; background: #1f8a70; color: #fff; font-size: 11.5px; font-weight: 700; }
+/* the deal: source, the big price, its unit, a full-width "Ekle →", × in the corner */
+.ek-deal { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 12px 14px; border-left: 1px solid #e4dcff; background: #f6f3ff; }
+.ek-from { display: flex; align-items: center; gap: 5px; padding-right: 18px; font-size: 11.5px; color: #6e6e73; text-decoration: none; white-space: nowrap; }
+.ek-from .ek-lg { width: 13px; height: 13px; font-size: 7.5px; border-radius: 3px; }
+.ek-amt { font-size: 22px; font-weight: 800; letter-spacing: -.3px; }
+.ek-amt small { font-size: 13px; font-weight: 500; color: #6e6e73; letter-spacing: 0; }
+.ek-per { margin-top: -2px; font-size: 11.5px; color: #6e6e73; }
+.ek-go { margin-top: 8px; height: 36px; border: 0; border-radius: 10px; background: #5b45e0; color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.ek-go:hover { background: #4a35cf; }
+.ek-offer-x { position: absolute; top: 7px; right: 7px; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: none; color: #a7a2c4; display: grid; place-items: center; cursor: pointer; }
 .ek-offer-x:hover { background: #ebe5ff; color: #3a3a3c; }
-.ek-offers-note { margin: 0 4px; font-size: 12px; color: #8e8e93; }
 @container panel (max-width: 620px) {
-  .ek-offer { grid-template-columns: 60px minmax(0, 1fr); }
-  .ek-offer-img { width: 60px; height: 48px; }
-  .ek-offer-end { grid-column: 1 / -1; grid-auto-flow: column; justify-content: end; align-items: center; gap: 8px; }
+  .ek-offer { grid-template-columns: 1fr; }
+  .ek-deal { border-left: 0; border-top: 1px solid #e4dcff; }
+  .ek-of-route { grid-template-columns: auto minmax(60px, 1fr) auto; }
+  .ek-of-carrier { grid-column: 1 / -1; flex-direction: row; align-items: center; }
 }
 
 /* the empty sections: one chip each, at the bottom */
