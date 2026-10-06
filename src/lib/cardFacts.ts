@@ -257,7 +257,7 @@ export function cardFacts(
     item.status === "booked"
       ? { text: L("Rezerve ✓", "Booked ✓"), tone: "success" }
       : item.status === "chosen"
-        ? { text: L("Seçildi", "Chosen"), tone: "accent" }
+        ? { text: L("Planlandı", "Planned"), tone: "accent" }
         : label && label.tone !== "muted"
           ? { text: label.text, tone: label.tone }
           : null;

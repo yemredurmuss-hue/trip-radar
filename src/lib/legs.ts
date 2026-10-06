@@ -249,8 +249,8 @@ function status(options: Item[], choice: LegChoice | null, mode: LegMode | null)
   if (choice?.booked) return { status: "booked", statusText: label ? `${label} · ${L("ayarlandı", "arranged")} ✓` : L("Ayarlandı ✓", "Arranged ✓") };
   const chosen = options.find((i) => i.status === "chosen");
   // Said in the chat ("11'ine taksi"): planned, like any plan said there.
-  if (chosen?.origin === "chat") return { status: "planned", statusText: label ? `${label} · ${L("planlanıyor", "planning")}` : L("Planlanıyor", "Planning") };
-  if (chosen) return { status: "chosen", statusText: L("Seçildi · rezerve edilmedi", "Chosen · not booked") };
+  if (chosen?.origin === "chat") return { status: "planned", statusText: label ? `${label} · ${L("planlandı", "planned")}` : L("Planlandı", "Planned") };
+  if (chosen) return { status: "chosen", statusText: L("Planlandı · rezerve edilmedi", "Planned · not booked") };
   if (choice?.mode && label) {
     return { status: "planned", statusText: `${label} · ${BOOKABLE.includes(choice.mode) ? L("rezerve edilmedi", "not booked") : L("planlandı", "planned")}` };
   }

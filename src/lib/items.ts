@@ -385,7 +385,7 @@ const DEFAULT_STALE_MS = 3 * 24 * 3600e3;
 
 export function rowLabel(item: Item, group: Item[], now = Date.now()): RowLabel {
   if (item.status === "booked") return { text: L("Rezerve edildi", "Booked"), tone: "success" };
-  if (item.status === "chosen") return { text: L("Seçildi", "Chosen"), tone: "success" };
+  if (item.status === "chosen") return { text: L("Planlandı", "Planned"), tone: "success" };
 
   const majority = mostCommon(group.map((i) => `${i.dates.start}|${i.dates.end}`));
   if (item.dates.start && majority && `${item.dates.start}|${item.dates.end}` !== majority) {

@@ -25,7 +25,7 @@ describe("a transfer or a change of city as a card", () => {
   it("by plane between cities: amber until the ticket, with a flight search", () => {
     const v = legCardView(leg({ choice: choice("flight"), status: "planned" }));
     expect([v.kind, v.label, v.ring]).toEqual(["flight", "Uçuş", "half"]);
-    expect(state(v)).toEqual(["wait", "Planlanıyor", "bilet alınmadı"]);
+    expect(state(v)).toEqual(["wait", "Planlandı", "bilet alınmadı"]);
     expect(v.foot.action).toEqual({ label: "Bileti aldım", does: "book" });
     expect(decodeURIComponent(v.searchUrl!)).toBe("https://www.google.com/travel/flights?q=Flights from Porto to Lizbon on 2026-10-11");
     const done = legCardView(leg({ choice: choice("flight", true), status: "booked" }));

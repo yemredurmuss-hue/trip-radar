@@ -311,7 +311,7 @@ function SettledCardFace({
       <StayTools item={item} />
       <StatusBar
         standing={booked ? "booked" : "planned"}
-        text={booked ? bookedWord(item) : planned ? L("Planlanıyor", "Planning") : L("Seçildi", "Chosen")}
+        text={booked ? bookedWord(item) : L("Planlandı", "Planned")}
         sub={booked ? null : notBookedWord(item)}
         ring={<Ring state={booked ? "done" : "half"} />}
       />

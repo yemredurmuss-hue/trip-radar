@@ -11,7 +11,7 @@ import { Editable, useInlineEdit } from "./InlineEdit";
 import { KindIcon, UiIcon } from "./Silhouettes";
 
 export function Ring({ state }: { state: RingState }) {
-  const label = { open: L("Karar bekliyor", "To decide"), half: L("Seçildi, alınmadı", "Chosen, not booked"), done: L("Alındı ya da planlandı", "Booked or planned") }[state];
+  const label = { open: L("Karar bekliyor", "To decide"), half: L("Planlandı, rezerve edilmedi", "Planned, not booked"), done: L("Rezerve edildi ya da rezervasyon gerekmiyor", "Booked, or no booking needed") }[state];
   return (
     <span className={`pk-ring ${state}`} role="img" aria-label={label} title={label}>
       {state === "done" && <UiIcon name="check" size={13} />}

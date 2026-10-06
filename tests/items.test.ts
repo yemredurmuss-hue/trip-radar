@@ -239,7 +239,7 @@ describe("labels and groups", () => {
     expect(rowLabel(b, group, now).text).toBe("En ekonomik");
     expect(rowLabel(c, group, now).text).toBe("Fiyat yok");
     expect(rowLabel(d, group, now).text).toBe("Farklı tarih");
-    expect(rowLabel({ ...a, status: "chosen" }, group, now).text).toBe("Seçildi");
+    expect(rowLabel({ ...a, status: "chosen" }, group, now).text).toBe("Planlandı");
     expect(rowLabel(b, group, now + 4 * 24 * 3600e3).text).toBe("Fiyat 4 gün önce");
   });
 

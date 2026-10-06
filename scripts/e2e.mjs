@@ -923,7 +923,7 @@ try {
   const bus = pk("Otobüs · Lizbon → Lagos");
   await bus.locator(".pk-price", { hasText: "18" }).waitFor();
   await bus.locator(".pk-kind", { hasText: "Otobüs" }).waitFor();
-  await bus.locator(".pk-foot", { hasText: "Planlanıyor" }).waitFor();
+  await bus.locator(".pk-foot", { hasText: "Planlandı" }).waitFor();
   // The panel scrolls inside the page, so a tall window shows the whole plan in one picture.
   await app.setViewportSize({ width: 1440, height: 2600 });
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));

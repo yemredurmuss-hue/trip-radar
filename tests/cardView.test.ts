@@ -28,8 +28,8 @@ describe("the bottom strip, per the spec's action table", () => {
   });
   it("chosen: what is still missing and the one action", () => {
     expect(footOf(train({ status: "chosen" }), "train")).toMatchObject({ action: { label: "Bileti aldım", does: "book" } });
-    expect(state(footOf(train({ status: "chosen" }), "train"))).toEqual(["wait", "Seçildi", "bilet alınmadı"]);
-    expect(state(footOf(train({ status: "chosen", origin: "chat" }), "train"))).toEqual(["wait", "Planlanıyor", "bilet alınmadı"]);
+    expect(state(footOf(train({ status: "chosen" }), "train"))).toEqual(["wait", "Planlandı", "bilet alınmadı"]);
+    expect(state(footOf(train({ status: "chosen", origin: "chat" }), "train"))).toEqual(["wait", "Planlandı", "bilet alınmadı"]);
     expect(footOf(train({ status: "chosen" }), "car")).toMatchObject({ left: { sub: "rezerve edilmedi" }, action: { label: "Rezerve ettim" } });
     expect(footOf(makeItem({ category: "activity", status: "chosen" }), "activity")).toMatchObject({ action: { label: "Bileti aldım" } });
     expect(footOf(makeItem({ category: "esim", status: "chosen" }), "esim")).toMatchObject({ left: { sub: "satın alınmadı" }, action: { label: "Satın aldım" } });
@@ -57,7 +57,7 @@ describe("the bottom strip, per the spec's action table", () => {
   });
   it("time running out adds a word or two, never the sentence (that's in the details)", () => {
     const f = footOf(train({ status: "chosen" }), "train", { alert: { tone: "amber", text: "Bilet alınmadı · yolculuğa 4 gün · ücretsiz iptalli, şimdi ayırmak risksiz", short: "4 gün" } });
-    expect(f.left).toMatchObject({ text: "Seçildi", sub: "bilet alınmadı", when: "4 gün", alert: "amber" });
+    expect(f.left).toMatchObject({ text: "Planlandı", sub: "bilet alınmadı", when: "4 gün", alert: "amber" });
   });
 });
 

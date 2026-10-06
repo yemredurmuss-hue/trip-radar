@@ -76,7 +76,8 @@ export function footOf(item: Item, kind: CardKind, opts: { options?: number; ale
       };
     case "chosen": {
       if (NO_BOOKING.includes(kind)) return { left: withAlert(state("done", L("Planlandı", "Planned"), kind === "taxi" ? L("rezervasyon gerekmez", "no booking needed") : null)), action: null };
-      const text = item.origin === "chat" ? L("Planlanıyor", "Planning") : L("Seçildi", "Chosen");
+      // Decided, not booked yet (0.36.30, Emre: "Plan: karar verildi, muhtemelen book edilecek ama henüz edilmedi").
+      const text = L("Planlandı", "Planned");
       return { left: withAlert(state("wait", text, w.not)), action: { label: w.act, does: "book" } };
     }
     case "booked": {
@@ -329,7 +330,7 @@ export function legCardView(leg: Leg): LegCardView {
   const date = move ? formatDateRange(leg.date, null) : null;
   let foot: FootView;
   if (booked) foot = { left: state("done", ticketed ? L("Alındı", "Booked") : L("Ayarlandı", "Arranged"), settled?.name ?? null), action: null };
-  else if (planned && ticketed) foot = { left: state("wait", L("Planlanıyor", "Planning"), L("bilet alınmadı", "no ticket yet")), action: { label: L("Bileti aldım", "I got the ticket"), does: "book" } };
+  else if (planned && ticketed) foot = { left: state("wait", L("Planlandı", "Planned"), L("bilet alınmadı", "no ticket yet")), action: { label: L("Bileti aldım", "I got the ticket"), does: "book" } };
   else if (planned) foot = { left: state("done", L("Planlandı", "Planned"), settled?.name ?? L("rezervasyon gerekmez", "no booking needed")), action: null };
   else if (leg.status === "options") foot = { left: state("wait", nOptions(leg.options.length), L("birini seç", "pick one")), action: null };
   else foot = { left: state("plain", L("Planlanmadı", "Not planned"), move ? L("nasıl geçeceksiniz?", "how will you get there?") : L("nasıl gideceksin?", "how will you go?")), action: null };
