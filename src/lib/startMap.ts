@@ -147,3 +147,84 @@ export const arcPath = (a: XY, c: XY, b: XY): string => `M${r1(a.x)} ${r1(a.y)}Q
 
 /** The stops joined in order (a dashed line after landing). */
 export const stopsPath = (points: XY[]): string => points.map((p, i) => `${i ? "L" : "M"}${r1(p.x)} ${r1(p.y)}`).join("");
+
+// --- the generating screen's map, v5 (2026-10-06 mockup): its timeline and its frames ----------------------------
+
+/** The map card's width over its height (v5). */
+export const GEN_ASPECT = 2.5;
+
+/** The whole world at the card's ratio (the first frame). */
+export const worldView = (aspect = GEN_ASPECT): View => ({ x: 0, y: (MAP_H - MAP_W / aspect) / 2, w: MAP_W, h: MAP_W / aspect });
+
+/**
+ * The v5 sequence, in ms from the map's first frame: the world closes in on the flight's frame; home and the
+ * destination's label appear; the plane flies the arc; a ring where it lands; the view closes in on the stops; they
+ * drop one by one; the ground route draws leg by leg; the photos fan in. Without a flight (no home, or home is
+ * there): the world closes in on the stops directly.
+ */
+export interface GenTimeline {
+  zoom: [number, number];
+  labels: number;
+  flight: [number, number] | null;
+  land: number;
+  zoom2: [number, number] | null;
+  /** When each stop drops. */
+  stops: number[];
+  /** When each leg of the ground route starts and ends. */
+  ground: [number, number][];
+  photos: number;
+  end: number;
+}
+
+export function genTimeline(flies: boolean, stops: number, legs: number): GenTimeline {
+  const zoom: [number, number] = [0, flies ? 1200 : 1400];
+  const labels = zoom[1];
+  const flight: [number, number] | null = flies ? [labels + 550, labels + 550 + 2500] : null;
+  const land = flight ? flight[1] : labels;
+  const zoom2: [number, number] | null = flies ? [land, land + 1400] : null;
+  const first = (zoom2 ? zoom2[1] : land) + 100;
+  const drops = Array.from({ length: stops }, (_, i) => first + i * 300);
+  const ground: [number, number][] = Array.from({ length: legs }, (_, i) => [first + i * 350, first + (i + 1) * 350]);
+  const photos = Math.max(drops.at(-1) ?? first, ground.at(-1)?.[1] ?? first) + 250;
+  return { zoom, labels, flight, land, zoom2, stops: drops, ground, photos, end: photos + 900 };
+}
+
+/** The board opens this long after the map started at the latest, landed or not (a slow device never holds it). */
+export const OPEN_CAP_MS = 6000;
+
+/**
+ * How long the made trip waits before its board opens (the trip is made at its own pace, never waiting on the map):
+ * until the plane has landed, at most until OPEN_CAP_MS after the map started; a short breath once that has passed.
+ */
+export const openDelay = (land: number, elapsed: number): number => Math.max(300, Math.min(land, OPEN_CAP_MS) - elapsed);
+
+/** Whether there is a flight to draw: home known and not where the trip lands (the shorter way round). */
+export function fliesBetween(from: LatLng | null, to: LatLng): boolean {
+  if (!from) return false;
+  const a = project(from);
+  const b = nearSide(a, project(to));
+  return Math.hypot(a.x - b.x, a.y - b.y) > 2;
+}
+
+/** The flight's frame: home, the destination and the arc's bend, with room around them. */
+export const flightView = (a: XY, b: XY, c: XY, aspect = GEN_ASPECT): View =>
+  frame([a, b, { x: (a.x + 2 * c.x + b.x) / 4, y: (a.y + 2 * c.y + b.y) / 4 }], aspect, 0.18, 120, 0);
+
+/** The stops' frame, close (a single place isn't zoomed into a blur: 36 map units at least, ~13° of longitude). */
+export const stopsView = (points: XY[], aspect = GEN_ASPECT): View => frame(points, aspect, 0.4, 36, 0.12);
+
+/** The ground route drawn up to `ms`, leg by leg (the leg on its way partly). */
+export function groundPath(points: XY[], ground: [number, number][], ms: number): string {
+  if (points.length < 2) return "";
+  const out: XY[] = [points[0]];
+  for (let i = 1; i < points.length; i++) {
+    const [s, e] = ground[i - 1] ?? [0, 0];
+    if (ms <= s) break;
+    const k = Math.min(1, (ms - s) / Math.max(1, e - s));
+    const a = points[i - 1];
+    const b = points[i];
+    out.push({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k });
+    if (k < 1) break;
+  }
+  return out.length > 1 ? stopsPath(out) : "";
+}

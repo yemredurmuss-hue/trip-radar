@@ -112,10 +112,10 @@ describe("Gezimi oluştur", () => {
   it("the suggestions step shows only when their review is there, and runs it", async () => {
     const s = interview(true);
     const c = creationOf(s)!;
-    expect(stepsFor(s, c).map((x) => x.id)).toEqual(["trip", "route", "travel", "people"]);
+    expect(stepsFor(s, c).map((x) => x.id)).toEqual(["trip", "travel", "route", "people"]);
     const reviewed: string[] = [];
     setSuggestionsReview(async (tripId) => (reviewed.push(tripId), 2));
-    expect(stepsFor(s, c).map((x) => x.id)).toEqual(["trip", "route", "travel", "people", "suggestions"]);
+    expect(stepsFor(s, c).map((x) => x.id)).toEqual(["trip", "travel", "route", "people", "suggestions"]);
     const made = await runAll(s);
     expect(reviewed).toEqual([made.tripId]);
     setSuggestionsReview(null);
@@ -126,8 +126,9 @@ describe("Gezimi oluştur", () => {
     const lines = stepsFor(s, creationOf(s)!).map((x) => x.done);
     expect(lines).toEqual([
       "Gezi açıldı: Bali Gezisi",
-      "Rota çizildi: Ubud 12 gece → Canggu 10 gece → Uluwatu 9 gece",
+      // In the map's order (v5): the way there, then the stays.
       "İstanbul ⇄ Denpasar uçuşları için yer açıldı",
+      "Rota çizildi: Ubud 12 gece → Canggu 10 gece → Uluwatu 9 gece",
       "2 kişi · Doğa · Orta bütçe",
     ]);
   });

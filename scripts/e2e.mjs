@@ -2705,6 +2705,7 @@ try {
   await board.locator(".st-chat").getByLabel("Mesaj").fill("oluştur");
   await board.locator(".st-chat").getByLabel("Mesaj").press("Enter");
   await board.locator(".st-gen", { hasText: "Bali Gezisi planlanıyor" }).waitFor();
+  await board.locator(".st-gen-sub", { hasText: "İstanbul → Ubud → Canggu → Uluwatu · 31 gece" }).waitFor();
   await board.locator(".st-step.done", { hasText: "Gezi açıldı: Bali Gezisi" }).waitFor();
   await board.screenshot({ path: `${out}/20c-start-generating.png` });
   await board.locator(".st-step.done", { hasText: "Rota çizildi: Ubud 12 gece → Canggu 10 gece → Uluwatu 9 gece" }).waitFor();
@@ -3176,7 +3177,9 @@ try {
   // "Kohphandan" is a loose spelling: the code asks back, never takes it silently ...
   await board.locator(".st-msg-bot", { hasText: "Koh Phangan mı demek istedin?" }).waitFor();
   const firstLine = await board.locator(".st-msg-bot").first().elementHandle();
-  await board.locator(".st-thinking", { hasText: "Yazıyor…" }).waitFor();
+  // v5: the step line names what the running call reads; the row the message can still fill reads too.
+  await board.locator(".st-thinking[data-call=read]", { hasText: "Koh Phangan'ı tanıyorum…" }).waitFor();
+  await board.locator(".st-side .st-row.reading", { hasText: "NEREDEN" }).waitFor();
   // The row is its own polite status, outside the conversation's log.
   await board.locator(".st-status[role=status][aria-live=polite] .st-thinking").waitFor();
   assert.equal(await board.locator(".st-msgs .st-thinking, [role=log] [role=status]").count(), 0, "the status row is not inside the log");
@@ -3186,12 +3189,15 @@ try {
   await board.locator(".st-msg-bot", { hasText: "palmiyeli koylar, orman şelaleleri ve dolunay sahilleri. Nereden yola çıkıyorsun?" }).waitFor();
   assert.match(await firstLine.evaluate((n) => n.isConnected && n.textContent), /palmiyeli koylar/, "the replaced line keeps its element");
   await board.locator(".st-thinking").waitFor({ state: "detached" });
+  assert.equal(await board.locator(".st-side .st-row.reading").count(), 0, "the reading is over: no row reads");
   // The route's row pressed while the proposal is still on its way (rev 3): the chat says it's drawing it and goes
   // on; only the ROTA row says "Rotayı çiziyor…"; "Oluştur" can be pressed meanwhile; the proposal is said when it comes.
   await board.locator(".st-side .st-row", { hasText: "ROTA" }).click();
   await board.locator(".st-msg-bot", { hasText: "Rotayı çiziyorum; hazır olunca burada öneririm." }).waitFor();
   await board.locator(".st-side .st-row.drawing .st-row-drawing", { hasText: "Rotayı çiziyor…" }).waitFor();
-  assert.equal(await board.locator(".st-thinking").count(), 0, "the chat isn't held by the route");
+  assert.equal(await board.locator(".st-thinking[data-call=read]").count(), 0, "the chat isn't held by the route");
+  // The route call running: its own step line (v5), never a reading one.
+  await board.locator(".st-thinking[data-call=route]", { hasText: "Rotayı düşünüyorum…" }).waitFor();
   assert.equal(await board.locator(".st-side .st-gen-btn").isEnabled(), true, "Oluştur works while the route is drawn");
   await board.locator(".st-msg-bot", { hasText: "Rota önerim: Koh Phangan 21 · Koh Samui 10 gece. Bu olsun mu?" }).waitFor({ timeout: 15000 });
   await board.locator(".st-side .st-row-drawing").waitFor({ state: "detached" });
@@ -3236,22 +3242,16 @@ try {
   assert.equal(rev.message, 2, "one read-and-reply call per typed message");
   assert.equal(rev.route, 1, "the route asked once, for the destination (never the origin)");
   assert.ok(!rev.routeFor[0].includes("Yer: İstanbul"), "the route is for Koh Phangan");
-  // Generate with what there is; the steps say what they really wrote. No WebGL here (an old GPU): the bundled map
-  // stands in for the real one.
-  await board.evaluate(() => {
-    const real = HTMLCanvasElement.prototype.getContext;
-    window.__realGetContext = real;
-    HTMLCanvasElement.prototype.getContext = function (kind, ...rest) {
-      return /webgl/.test(kind) ? null : real.call(this, kind, ...rest);
-    };
-  });
+  // Generate with what there is; the steps say what they really wrote. v5: the light SVG map (the bundled world, drawn
+  // three times side by side for the date line), never a map library on this screen.
   await genBtn.click();
   await board.locator(".st-gen", { hasText: "Koh Phangan Gezisi planlanıyor" }).waitFor();
   // The map speaks the chat's language on the English board.
-  await board.locator(".st-map-credit", { hasText: "Harita: Natural Earth" }).waitFor();
-  assert.equal(await board.locator(".st-map svg .st-map-land").count(), 3, "without WebGL: the bundled map");
-  assert.equal(await board.locator(".tm canvas").count(), 0, "and no real map");
-  await board.evaluate(() => (HTMLCanvasElement.prototype.getContext = window.__realGetContext));
+  await board.locator(".gm-credit", { hasText: "Harita: Natural Earth" }).waitFor();
+  assert.equal(await board.locator(".st-gen figure.gm svg .gm-land").count(), 3, "the bundled world, as SVG");
+  assert.equal(await board.locator(".st-gen canvas").count(), 0, "no canvas (no MapLibre) on the generating screen");
+  // The big steps: 28 px marks.
+  assert.equal(await board.locator(".st-gen .st-step-mark").first().evaluate((n) => Math.round(n.getBoundingClientRect().width)), 28, "28 px step icons");
   await board.locator(".st-step.done", { hasText: "Gezi açıldı: Koh Phangan Gezisi" }).waitFor();
   assert.equal(await board.locator(".st-gen-foot").innerText().then((t) => /%/.test(t)), false, "no percentages");
   await board.locator(".st-progress").waitFor();
@@ -3357,26 +3357,20 @@ try {
   // Pressed while "Rotayı çiziyor…" shows: the circuit is built.
   await lkGen.click();
   await board.locator(".st-gen", { hasText: "Sri Lanka Gezisi planlanıyor" }).waitFor();
-  // The real map (TripMap, MapLibre on the globe): home, the plane flying to Sri Lanka, then the stops.
-  const map = board.locator("figure.st-map.tm-generate");
-  await map.locator("canvas").waitFor({ timeout: 6000 });
-  await board.locator(".tm-generate[data-phase=flying]").waitFor({ timeout: 6000 });
-  assert.equal(await map.locator(".tm-plane").count(), 1, "the plane");
-  assert.equal(await map.locator(".tm-home").count(), 1, "home");
-  assert.equal(await map.locator(".tm-stop").count(), 0, "the stops wait for the landing");
+  // v5: the light SVG map: home, the white plane flying the arc to Sri Lanka, a ring where it lands, then the stops.
+  const map = board.locator(".st-gen figure.gm");
+  await board.locator(".st-gen .gm[data-phase=flying]").waitFor({ timeout: 6000 });
+  assert.equal(await map.locator(".gm-plane").count(), 1, "the plane");
+  assert.equal(await map.locator(".gm-home.in").count(), 1, "home");
+  assert.equal(await map.locator(".gm-stop.in").count(), 0, "the stops wait for the landing");
+  assert.equal(await board.locator(".st-gen canvas").count(), 0, "no canvas (no MapLibre)");
   await board.waitForTimeout(700);
   await board.screenshot({ path: `${out}/23b-start-map-midflight.png` });
-  await board.locator(".tm-generate[data-phase=landed]").waitFor({ timeout: 6000 });
-  await map.locator(".tm-pulse").waitFor();
-  // Four stops too close to tell apart from this far: one marker, named by the destination (not "Mirissa").
-  assert.deepEqual(await map.locator(".tm-stop").evaluateAll((n) => n.map((x) => `${x.dataset.name} (${x.dataset.stops})`)), ["Sri Lanka · 4 durak · 14 gece (4)"]);
-  // The photos come under the map, over its bottom edge only.
-  const [mapBox, fan] = [await map.boundingBox(), await board.locator(".st-gen-stage .st-photos").boundingBox()];
-  assert.ok(mapBox.y + mapBox.height - fan.y <= 20, `the photos overlap the map's edge only (${Math.round(mapBox.y + mapBox.height - fan.y)} px)`);
-  assert.equal(await map.locator(".st-map-land").count(), 0, "not the bundled map");
-  assert.ok(tileAsks.style > 0 && tileAsks.tiles > 0, "the style and its tiles asked of the (simulated) OpenFreeMap");
-  await board.locator(".st-gen-stage .st-photo").first().waitFor();
-  await board.waitForTimeout(900);
+  await board.locator(".st-gen .gm[data-phase=landed]").waitFor({ timeout: 6000 });
+  await map.locator(".gm-ring.go").waitFor();
+  assert.deepEqual(await map.locator(".gm-stop").evaluateAll((n) => n.map((x) => x.dataset.name)), ["Sigiriya", "Kandy", "Ella", "Mirissa"]);
+  assert.equal(await map.locator(".gm-photos .gm-card").count() > 0, true, "the photos fan in inside the card");
+  await board.waitForTimeout(400);
   await board.screenshot({ path: `${out}/23c-start-map-landed.png` });
   await board.locator(".st-step.done", { hasText: /Klasik rota çizildi: Sigiriya \d+ gece → Kandy \d+ gece → Ella \d+ gece → Mirissa \d+ gece/ }).waitFor();
   await board.getByRole("heading", { name: "Sri Lanka Gezisi", exact: true }).waitFor({ timeout: 20000 });
@@ -3587,6 +3581,9 @@ try {
   await board.locator(".st-msg-bot .st-q", { hasText: "How many days in total: just AfrikaBurn, or some days in Cape Town before and after?" }).waitFor();
   assert.equal(await board.locator(".st-msg-bot", { hasText: "Where are we going?" }).count(), 0, "where to isn't asked");
   assert.equal(await board.locator(".st-top-title").innerText(), "AfrikaBurn · new trip");
+  // v5: while the model reads (it never answers here), the step line names the event and the row it can still fill reads.
+  await board.locator(".st-thinking[data-call=read]", { hasText: "Recognising AfrikaBurn…" }).waitFor();
+  await abList.locator(".st-row.reading", { hasText: "WHERE FROM" }).waitFor();
   assert.deepEqual(await answers.locator(".st-chip").allInnerTexts(), ["Just AfrikaBurn (7 days)", "+2 days in Cape Town", "+4 days in Cape Town", "These dates are right", "📅 Different dates"]);
   await board.waitForTimeout(600);
   await board.screenshot({ path: `${out}/26a-intent-afrikaburn.png` });
@@ -3622,6 +3619,8 @@ try {
   await board.locator(".st-msg-bot", { hasText: "I'm ready and will build it in a few seconds. Write if you want to add anything." }).waitFor();
   await autoRow.waitFor();
   await board.locator(".st-gen h2", { hasText: /^Planning AfrikaBurn 20\d\d$/ }).waitFor({ timeout: 6000 });
+  await board.locator(".st-gen-sub", { hasText: "Istanbul → Cape Town → Tankwa Karoo 🎪 → Cape Town · 10 nights" }).waitFor();
+  assert.deepEqual(await board.locator(".st-gen .gm-stop.fest").evaluateAll((n) => n.map((x) => x.dataset.name)), ["Tankwa Karoo"], "the festival's stop is pink");
   await board.locator(".st-step.done", { hasText: "Route drawn: Cape Town 2 nights → Tankwa Karoo 6 nights → Cape Town 2 nights" }).waitFor({ timeout: 15000 });
   await board.screenshot({ path: `${out}/26c-intent-generating.png` });
   await board.getByRole("heading", { name: /^AfrikaBurn 20\d\d$/ }).waitFor({ timeout: 20000 });

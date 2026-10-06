@@ -210,7 +210,7 @@ describe("always generatable (item 4)", () => {
     const c = withLang("tr", () => creationOf(s))!;
     expect(c.dates).toBeNull();
     expect(withLang("tr", () => readyText(c, ["ne zaman"]))).toBe("Koh Phangan Gezisi hazır. Tarihleri söyleyince geceleri ve uçuşları yerleştiririm. Eksik kalanları buradan konuşalım: ne zaman.");
-    expect(withLang("tr", () => stepsFor(s, c)).map((x) => x.done)[1]).toBe("Koh Phangan'a konaklama yeri açıldı; geceler tarihle gelir");
+    expect(withLang("tr", () => stepsFor(s, c)).find((x) => x.id === "route")?.done).toBe("Koh Phangan'a konaklama yeri açıldı; geceler tarihle gelir");
   });
 
   it("the trip without dates is made: undated stay and flights, no dates on the trip", async () => {

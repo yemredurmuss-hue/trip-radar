@@ -47,9 +47,9 @@ export function stepsFor(s: StartState, c: Creation): StepPlan[] {
     const arrive = c.travel[0]?.to ?? "";
     const n = c.travellers?.count ?? null;
     const people = [n ? L(`${n} kişi`, n === 1 ? "1 person" : `${n} people`) : "", wantText(s)].filter(Boolean).join(" · ");
+    // In the map's order (v5): the trip, the way there (the plane flies), the stays (the stops drop), who goes.
     const steps: StepPlan[] = [
       { id: "trip", running: L("Gezi kaydı açılıyor…", "Opening the trip…"), done: L(`Gezi açıldı: ${c.title}`, `Trip opened: ${c.title}`) },
-      { id: "route", running: L("Geceler duraklara bölünüyor…", "Splitting the nights by stop…"), done: routeDone },
       c.road
         ? { id: "travel", running: L("Araç için yer açılıyor…", "Making room for the car…"), done: L(`Araç kiralama yeri açıldı: ${c.travel[0]?.city ?? ""}`, `Room made for a car rental: ${c.travel[0]?.city ?? ""}`) }
         : {
@@ -59,10 +59,27 @@ export function stepsFor(s: StartState, c: Creation): StepPlan[] {
               ? L(`${s.from ?? ""} çıkışlı: uçuş gerekmiyor`, `Leaving from ${s.from ?? ""}: no flights needed`)
               : s.from ? L(`${s.from} ⇄ ${arrive} uçuşları için yer açıldı`, `Room made for the ${s.from} ⇄ ${arrive} flights`) : L(`${arrive} uçuşları için yer açıldı`, `Room made for the flights to ${arrive}`),
           },
+      { id: "route", running: L("Geceler duraklara bölünüyor…", "Splitting the nights by stop…"), done: routeDone },
       { id: "people", running: L("Kişi ve tarz yazılıyor…", "Writing down who and what…"), done: people || L("Sohbet geziye taşındı", "The chat moved to the trip") },
     ];
     if (suggestionsReview()) steps.push({ id: "suggestions", running: L("Öneriler hazırlanıyor…", "Preparing suggestions…"), done: L("Öneriler bölümlerinde", "Suggestions are in their sections") });
     return steps;
+  });
+}
+
+/**
+ * The generating screen's line under its title (v5): where from, the stays in order (a place come back to said again,
+ * the event's own marked 🎪), and the nights ("İstanbul → Cape Town → Tankwa Karoo 🎪 → Cape Town · 10 gece").
+ */
+export function genSubLine(s: StartState, c: Creation): string {
+  return withLang(s.lang, () => {
+    const it = s.intent;
+    const cities = c.stays.map((x) => x.city ?? "").filter(Boolean);
+    const stops = cities.filter((x, i) => i === 0 || cityKeyOf(x) !== cityKeyOf(cities[i - 1]));
+    const marked = stops.map((x) => (it?.kind === "event" && cityKeyOf(x) === cityKeyOf(it.place) ? `${x} 🎪` : x));
+    const way = [...(s.from && !c.road && c.travel.length ? [s.from] : []), ...marked].join(" → ");
+    const nights = c.dates ? nightsBetween(c.dates.start, c.dates.end) : 0;
+    return [way, nights ? L(`${nights} gece`, `${nights} night${nights === 1 ? "" : "s"}`) : ""].filter(Boolean).join(" · ");
   });
 }
 

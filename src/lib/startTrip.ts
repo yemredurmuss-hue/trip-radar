@@ -2227,6 +2227,71 @@ export function modelReplyText(before: StartState, after: StartState, ctx: Start
   return `${reply.text}\n${question}`;
 }
 
+// --- what the chat is waiting for, in words (v5, spec 2026-10-06-niyet-planlayici §1) ------------------------------
+
+/**
+ * A name with the Turkish accusative: "Bali'yi", "Roma'yı", "Berlin'i", "AfrikaBurn'ü", and after a possessive ending
+ * "Ozora Festivali'ni", "Kuzey Işıkları'nı", "Ölüler Günü'nü".
+ */
+export function accusative(name: string): string {
+  const n = name.trim();
+  const lower = n.toLocaleLowerCase("tr-TR");
+  const last = [...lower].reverse().find((ch) => /[aeıioöuü]/.test(ch));
+  const v = last === "e" || last === "i" ? "i" : last === "o" || last === "u" ? "u" : last === "ö" || last === "ü" ? "ü" : "ı";
+  const possessive = /\s/.test(n) && /(si|sı|su|sü|li|lı|ları|leri|günü|yılı)$/.test(lower);
+  const vowelEnd = /[aeıioöuü]$/.test(lower);
+  return `${n}'${possessive ? "n" : vowelEnd ? "y" : ""}${v}`;
+}
+
+/**
+ * The chat's step line while the model reads a message (a real call, shown only while it runs): its dates being
+ * looked for when the event named has none yet ("Formula 1 Türkiye GP tarihlerini kontrol ediyorum…"), the place or
+ * event named being recognised ("Ozora Festivali'ni tanıyorum…"), else "Okuyorum…".
+ */
+export function readingLine(a: { name: string | null; datesPending: boolean }): string {
+  if (a.name && a.datesPending) return L(`${a.name} tarihlerini kontrol ediyorum…`, `Checking the dates of ${a.name}…`);
+  if (a.name) return L(`${accusative(a.name)} tanıyorum…`, `Recognising ${a.name}…`);
+  return L("Okuyorum…", "Reading…");
+}
+
+/** The step line while the route is asked of the model. */
+export const routeThinkingLine = () => L("Rotayı düşünüyorum…", "Thinking about the route…");
+
+/** The checklist row a question fills. */
+const ROW_OF: Record<QuestionId, SlotId | null> = {
+  where: "where", guess: "where", venue: "where", from: "from", who: "who", count: "who", names: null, duration: "when", start: "when", day: "when",
+  clash: "when", want: "want", route: "route",
+};
+
+/**
+ * The rows a message being read by the model can still fill (v5: they show "reading" until the reading lands): on the
+ * first message, every essential row still empty; after it, the row of the question it answers, when still empty.
+ * Rows the code filled at once aren't among them.
+ */
+export function readingRows(after: StartState, q: QuestionId | null, first: boolean, ctx: StartCtx): SlotId[] {
+  const rows = checklist(after, ctx);
+  const empty = (id: SlotId) => {
+    const r = rows.find((x) => x.id === id);
+    if (!r || r.done || r.tentative || r.skipped) return false;
+    if (id === "where") return !after.where;
+    if (id === "who") return !after.who;
+    if (id === "when") return !after.duration && !after.start && !after.intent?.dates;
+    if (id === "from") return !after.from;
+    return true;
+  };
+  if (first) return (["where", "from", "who", "when"] as SlotId[]).filter(empty);
+  const row = q ? ROW_OF[q] : null;
+  return row && row !== "route" && row !== "want" && empty(row) ? [row] : [];
+}
+
+/** What the step line names while a message is read: the event or place the code read in it, when there is one. */
+export function readingName(before: StartState, after: StartState, read: Extracted): { name: string | null; datesPending: boolean } {
+  const it = read.intent ?? null;
+  if (it) return { name: it.name, datesPending: it.kind === "event" && !it.dates };
+  const place = read.guess?.slot === "where" ? read.guess.place.place : read.where && read.where.place !== before.where?.place ? (after.where?.place ?? read.where.place) : null;
+  return { name: place, datesPending: false };
+}
+
 export const NOT_UNDERSTOOD = () =>
   L("Bunu anlayamadım. Çiplerden seçebilir, başka türlü yazabilir ya da Atla diyebilirsin.", "I didn't catch that. Pick a chip, put it another way, or press Skip.");
 

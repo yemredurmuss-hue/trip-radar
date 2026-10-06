@@ -30,9 +30,9 @@ import { rulesPreview } from "../../lib/startHooks";
 import {
   applyAnswer, applyExtracted, applyText, askAgain, budgetChips, budgetWord, canGenerate, checklist, autoPrint, drawingLine, isComplete, isGoCommand, knownLines, lineLink, mergeExtracted, startName,
   missingForGenerate, modelReplyText, NOT_UNDERSTOOD, nextQuestion, onlyEmpty, parseRouteText, parseStartText, photosToFind, preparedRoute, previewOf,
-  questionOf, replyText, restoreRoute, shouldAutoStart, autoHeld, memoAfterGenerate, AUTO_SECONDS, autoSeconds, waitingInstead, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
+  questionOf, readingLine, readingName, readingRows, replyText, restoreRoute, routeThinkingLine, shouldAutoStart, autoHeld, memoAfterGenerate, AUTO_SECONDS, autoSeconds, waitingInstead, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
   tentativeWhere, whereKey, withGuessTaken, withoutOverruled, withPhotos, withPreparedRoute, withTypedLang,
-  type Answer, type Extracted, type QuestionId, type StartCtx, type StartRoute, type StartState,
+  type Answer, type Extracted, type QuestionId, type SlotId, type StartCtx, type StartRoute, type StartState,
 } from "../../lib/startTrip";
 import { STYLE_META, STYLES, type BudgetLevel, type StyleId } from "../../lib/tripStyle";
 import { ArrowUp, Back, HeroIcon } from "../Icons";
@@ -191,9 +191,16 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     busy.current = st === "thinking";
     setStageState(st);
   };
+  /**
+   * The model reading a message, while it runs (v5): the step line it shows ("Ozora Festivali'ni tanıyorum…") and the
+   * rows it can still fill ("reading"). Gone when the call ends, or when the traveller moves on.
+   */
+  const [reading, setReading] = useState<{ turn: number; line: string; rows: SlotId[] } | null>(null);
+  const readingDone = (mine: number) => setReading((r) => (r && r.turn === mine ? null : r));
   /** A new message from the traveller: anything still on its way for the last one is dropped. */
   const nextTurn = () => {
     setStage(null);
+    setReading(null);
     drawingSaid.current = false;
     return ++turn.current;
   };
@@ -527,10 +534,15 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
       const predicted = nextQuestion(first.state);
       const controller = hasModel ? track() : null;
       const pending = controller
-        ? readAndReply({ text: line, today: today(), pending: q, next: predicted, known: T(() => knownLines(first.state, ctx)), lang: asked.lang }, READ_MS, controller.signal).finally(() =>
-            inflight.current.delete(controller),
-          )
+        ? readAndReply({ text: line, today: today(), pending: q, next: predicted, known: T(() => knownLines(first.state, ctx)), lang: asked.lang }, READ_MS, controller.signal).finally(() => {
+            inflight.current.delete(controller);
+            readingDone(mine);
+          })
         : null;
+      if (pending) {
+        const opening = !before.where && !before.guess;
+        setReading({ turn: mine, line: T(() => readingLine(readingName(before, first.state, code))), rows: T(() => readingRows(first.state, q, opening, ctx)) });
+      }
       const at = reply(before, first.state);
       if (!pending || at == null) return;
       setStage("writing");
@@ -560,9 +572,11 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     if (!hasModel) return commit(say(live.current, "assistant", T(NOT_UNDERSTOOD)));
     // Nothing the code knows: the model reads it, the traveller waits ("Düşünüyor…").
     setStage("thinking");
+    setReading({ turn: mine, line: T(() => readingLine({ name: null, datesPending: false })), rows: T(() => readingRows(asked, q, !before.where && !before.guess, ctx)) });
     const controller = track();
     const got = await readAndReply({ text: line, today: today(), pending: q, next: q, known: T(() => knownLines(asked, ctx)), lang: asked.lang }, READ_MS, controller.signal);
     inflight.current.delete(controller);
+    readingDone(mine);
     if (turn.current === mine) setStage(null);
     if (stale() || turn.current !== mine) return;
     const { state: after, understood } = T(() => applyText(live.current, line, mergeExtracted(code, got?.read ?? null), Date.now(), q));
@@ -634,7 +648,10 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     const drawing = !drawingNow ? null : !state.route ? "new" : state.route.source === "circuit" ? "refine" : null;
     const showChips = phase === "chat" && !holding && question && last?.role === "assistant" && !(question.id === "route" && drawing === "new" && !state.editingRoute);
     const generating = phase === "generating";
-    const stageText = stage === "writing" ? L("Yazıyor…", "Writing…") : L("Düşünüyor…", "Thinking…");
+    // The step line (v5): the model reading the message, else the route being thought of (only while each call runs).
+    const routing = drawing === "new" && q === "route" && !state.editingRoute;
+    const stepLine = reading && !generating ? { call: "read", text: reading.line } : routing && !generating ? { call: "route", text: routeThinkingLine() } : null;
+    const readingIds = reading && !generating ? reading.rows : [];
 
     return (
       <div className={`st-screen${generating ? " generating" : ""}`} lang={lang} onPointerDownCapture={(e) => !(e.target as Element).closest?.("[data-auto-keep]") && stopAuto()}
@@ -647,7 +664,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
             </button>
             <div className="st-top-title">{startName(state) ? L(`${startName(state)} · yeni gezi`, `${startName(state)} · new trip`) : L("Yeni gezi", "New trip")}</div>
           </div>
-          {!generating && <ChecklistBar rows={rows} onAsk={ask} ready={ready} complete={complete} onGenerate={generate} disabled={holding} drawing={drawing} lang={lang} />}
+          {!generating && <ChecklistBar rows={rows} onAsk={ask} ready={ready} complete={complete} onGenerate={generate} disabled={holding} drawing={drawing} reading={readingIds} lang={lang} />}
           <div className="st-msgs" role="log" aria-live="polite" aria-label={L("Sohbet", "Conversation")}>
             {state.messages.map((m, i) => (
               <div key={m.id ?? `line-${i}`} className={m.role === "user" ? "st-msg-user" : "st-msg-bot"}>
@@ -759,14 +776,14 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
                 </button>
               </div>
             )}
-            {stage && (
-              <div className="st-thinking" data-stage={stage}>
+            {stepLine && (
+              <div className="st-thinking" data-call={stepLine.call}>
                 <span className="st-dots" aria-hidden>
                   <i />
                   <i />
                   <i />
                 </span>
-                <span className="st-stage">{stageText}</span>
+                <span className="st-stage">{stepLine.text}</span>
               </div>
             )}
           </div>
@@ -794,7 +811,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
             />
           ) : (
             <div className="st-side-inner">
-              <Checklist rows={rows} onAsk={ask} disabled={holding} drawing={drawing} lang={lang} />
+              <Checklist rows={rows} onAsk={ask} disabled={holding} drawing={drawing} reading={readingIds} lang={lang} />
               <GenerateCard ready={ready} complete={complete} missing={missingForGenerate(state)} onGenerate={generate} lang={lang} />
               {preview && <TripPreview preview={preview} place={state.where?.place ?? ""} lang={lang} />}
             </div>

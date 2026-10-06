@@ -157,6 +157,15 @@ const PLACES: [string[], number, number][] = [
   [["Koh Lanta"], 7.62, 99.04], [["Krabi"], 8.09, 98.91], [["Chiang Mai"], 18.79, 98.98], [["Santorini"], 36.39, 25.46], [["Maldivler", "Maldives", "Malé", "Male"], 4.18, 73.51],
   [["Kolombo", "Colombo"], 6.93, 79.85], [["Galle"], 6.03, 80.22], [["Singapur", "Singapore"], 1.35, 103.82], [["Mauritius"], -20.25, 57.55],
   [["Napoli", "Naples"], 40.85, 14.27], [["Faro"], 37.02, -7.93], [["Malaga"], 36.72, -4.42], [["Cancún", "Cancun"], 21.16, -86.85], [["Venedik", "Venice"], 45.44, 12.33],
+  // The events' places and the cities flights land in for them (startEvents.ts), so their routes draw (2026-10-06).
+  [["Tankwa Karoo"], -32.33, 19.75], [["Cape Town", "Kapstadt"], -33.92, 18.42], [["Black Rock City"], 40.79, -119.2], [["Reno"], 39.53, -119.81],
+  [["Boom"], 51.09, 4.37], [["Glastonbury"], 51.15, -2.71], [["Bristol"], 51.45, -2.59], [["Indio"], 33.72, -116.22], [["Rio de Janeiro"], -22.91, -43.17],
+  [["Buñol", "Bunol"], 39.42, -0.79], [["Valencia"], 39.47, -0.38], [["Pamplona"], 42.81, -1.64], [["Mathura"], 27.49, 77.67], [["Delhi", "New Delhi"], 28.61, 77.21],
+  [["Jaipur"], 26.91, 75.79], [["Hong Kong"], 22.32, 114.17], [["Tromsø", "Tromso"], 69.65, 18.96], [["Roskilde"], 55.64, 12.08], [["Miami"], 25.76, -80.19],
+  [["Las Vegas"], 36.17, -115.14], [["Monako", "Monaco"], 43.74, 7.42], [["Nice"], 43.7, 7.27], [["Silverstone"], 52.07, -1.02], [["Monza"], 45.58, 9.27],
+  [["Spa-Francorchamps", "Spa"], 50.44, 5.97], [["Edinburgh"], 55.95, -3.19], [["New Orleans"], 29.95, -90.07], [["Mekke", "Mecca"], 21.39, 39.86],
+  [["Cidde", "Jeddah"], 21.49, 39.19], [["Haridwar"], 29.95, 78.16], [["Lyon"], 45.76, 4.84], [["Nürnberg", "Nuremberg"], 49.45, 11.08],
+  [["Albuquerque"], 35.08, -106.65], [["Katmandu", "Kathmandu"], 27.72, 85.32], [["Santiago"], -33.45, -70.67], [["Münih", "Munich"], 48.14, 11.58],
 ];
 
 const COORDS = new Map<string, { lat: number; lng: number }>();

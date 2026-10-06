@@ -34,10 +34,12 @@ interface Props {
    * "refine": the classic circuit is shown, the model's may refine it.
    */
   drawing?: "new" | "refine" | null;
+  /** The rows a message being read can still fill (v5): a turning ring and a shimmer in place of the value. */
+  reading?: string[];
   lang: Lang;
 }
 
-export function Checklist({ rows, onAsk, disabled, drawing = null, lang }: Props) {
+export function Checklist({ rows, onAsk, disabled, drawing = null, reading = [], lang }: Props) {
   const done = rows.filter((r) => r.done || r.tentative).length;
   return withLang(lang, () => (
     <div className="st-list">
@@ -52,6 +54,7 @@ export function Checklist({ rows, onAsk, disabled, drawing = null, lang }: Props
       <ol className="st-rows">
         {rows.map((r) => {
           const busy = Boolean(drawing) && r.id === "route" && !r.done;
+          const read = reading.includes(r.id) && !r.done;
           const status = (
             <span className="st-row-drawing" role="status">
               <span className="st-dots" aria-hidden>
@@ -64,7 +67,7 @@ export function Checklist({ rows, onAsk, disabled, drawing = null, lang }: Props
           );
           return (
             <li key={r.id}>
-              <button type="button" className={`st-row${r.done ? " done" : ""}${r.tentative ? " tentative" : ""}${busy ? " drawing" : ""}`} disabled={disabled} onClick={() => onAsk(r.ask)} title={L("Bunu yeniden sor", "Ask this again")}>
+              <button type="button" className={`st-row${r.done ? " done" : ""}${r.tentative ? " tentative" : ""}${busy ? " drawing" : ""}${read ? " reading" : ""}`} disabled={disabled} onClick={() => onAsk(r.ask)} title={L("Bunu yeniden sor", "Ask this again")}>
                 <span className="st-check" aria-hidden>
                   {r.done ? <UiIcon name="check" size={14} /> : r.tentative ? "?" : null}
                 </span>
@@ -123,7 +126,7 @@ export function GenerateCard({ ready, complete, missing, onGenerate, lang }: { r
 }
 
 /** Narrow screens: "4/6 · Gezin şekilleniyor ▾", the list opening under it. */
-export function ChecklistBar({ rows, onAsk, ready, complete, onGenerate, disabled, drawing, lang }: Props & { ready: boolean; complete: boolean; onGenerate: () => void }) {
+export function ChecklistBar({ rows, onAsk, ready, complete, onGenerate, disabled, drawing, reading, lang }: Props & { ready: boolean; complete: boolean; onGenerate: () => void }) {
   const [open, setOpen] = useState(false);
   const done = rows.filter((r) => r.done || r.tentative).length;
   return withLang(lang, () => (
@@ -146,7 +149,7 @@ export function ChecklistBar({ rows, onAsk, ready, complete, onGenerate, disable
           </button>
         )}
       </div>
-      {open && <Checklist rows={rows} onAsk={(q) => (setOpen(false), onAsk(q))} disabled={disabled} drawing={drawing} lang={lang} />}
+      {open && <Checklist rows={rows} onAsk={(q) => (setOpen(false), onAsk(q))} disabled={disabled} drawing={drawing} reading={reading} lang={lang} />}
     </div>
   ));
 }
