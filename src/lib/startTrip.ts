@@ -77,12 +77,19 @@ export interface StartMsg {
   id?: string;
 }
 
+/** Who goes: the kind of group, the names said, and how many when it was said ("with my friend": 2; rev 3). */
+export interface Who {
+  kind: Companions | null;
+  names: string[];
+  count?: number | null;
+}
+
 export interface StartState {
   id: string;
   mode: StartMode;
   where: Place | null;
   from: string | null;
-  who: { kind: Companions | null; names: string[] } | null;
+  who: Who | null;
   duration: Duration | null;
   start: StartDay | null;
   styles: StyleId[];
@@ -246,6 +253,18 @@ export function monthOf(token: string): number | null {
   return null;
 }
 
+/** A full month's name with a Turkish ending typed on: "kasımda", "aralıkta", "eylülde", "kasım'da" read apart. */
+export function monthGlued(token: string): number | null {
+  const t = token.toLocaleLowerCase("tr");
+  const bare = t.replace(/(ayında|ayinda|ında|inde|unda|ünde|da|de|ta|te)$/u, "");
+  if (bare === t) return null;
+  const i = MONTHS_TR.indexOf(bare);
+  return i >= 0 ? i + 1 : null;
+}
+
+/** Words before a short month that make it one ("on nov", "in dec", "around jan", "late sep"). */
+const MONTH_BEFORE = new Set(["in", "on", "around", "by", "during", "early", "mid", "late", "next", "this", "until", "from", "for"]);
+
 /** The next time this month/day comes, from today on (this year's if it hasn't passed). */
 export function nextDate(month: number, day: number, today: string, year?: number): string | null {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -407,6 +426,35 @@ export function fuzzyPlaceOf(word: string): KnownPlace | null {
   return best;
 }
 
+/**
+ * A country of several words spelt loosely (rev 3): "Papua New Gune" → Papua New Guinea, "Papua Yeni Ginee'ye" →
+ * Papua Yeni Gine (an ending typed on is read apart). The words compared without spaces, at most 2 edits for a name
+ * of 10+ letters, 1 for a shorter one, the first letters the same; never a real country's own name.
+ */
+export function fuzzyCountryOf(words: string): { p: KnownPlace; dir: "from" | "to" | null } | null {
+  if (words.trim().split(/\s+/).length < 2 || countryNamed(words)) return null;
+  const k = squash(words);
+  if (k.length < 8) return null;
+  const tries: [string, "from" | "to" | null][] = [[k, null]];
+  for (const [re, dir] of GLUED) {
+    const bare = k.replace(re, "");
+    if (bare !== k) tries.push([bare, dir]);
+  }
+  let best: { code: string; dir: "from" | "to" | null; d: number } | null = null;
+  for (const [name, code] of squashedCountries()) {
+    if (name.length < 8) continue;
+    for (const [t, dir] of tries) {
+      if (t[0] !== name[0] || t.slice(0, 3) !== name.slice(0, 3)) continue;
+      const max = name.length >= 10 ? 2 : 1;
+      const d = editDistance(t, name, max);
+      if (d <= max && (!best || d < best.d)) best = { code, dir, d };
+    }
+  }
+  if (!best) return null;
+  const p = countryPlace(best.code);
+  return p ? { p, dir: best.dir } : null;
+}
+
 /** Turkish endings typed onto a name without an apostrophe ("İstanbuldan", "Balide", "Romaya"): where from, where to, where at. */
 const GLUED: [RegExp, "from" | "to" | null][] = [
   [/(dan|den|tan|ten)$/, "from"],
@@ -429,6 +477,10 @@ function gluedPlace(word: string): { p: KnownPlace; dir: "from" | "to" | null } 
 export function placeOf(name: string, country: string | null = null, code: string | null = null): Place {
   const known = knownPlaceOf(name);
   if (known) return { place: placeName(known), country: countryNameOf(known), code: knownCode(known) };
+  // A country by any of its names: its own name in the chat's language ("papua new guinea" → "Papua Yeni Gine"; rev 3).
+  const asCountry = countryCodeOfName(name.trim());
+  const canonical = asCountry ? countryPlace(asCountry) : null;
+  if (canonical) return { place: placeName(canonical), country: placeName(canonical), code: asCountry };
   const c = country?.trim() || null;
   return { place: capitalizeWords(name.trim()), country: c, code: isoCode(code) ?? countryCodeOfName(c) ?? countryCodeOfName(name) };
 }
@@ -473,6 +525,21 @@ function countryPlace(code: string): KnownPlace | null {
  * "Dominik Cumhuriyeti'ne", "Japonyadan"): the country and which way the ending points. Null for anything else.
  */
 export function countryNamed(words: string): { p: KnownPlace; dir: "from" | "to" | null } | null {
+  const squashed = squashedCountries();
+  const k = squash(words);
+  const direct = squashed.get(k);
+  if (direct) return withDir(countryPlace(direct), null);
+  for (const [re, dir] of GLUED) {
+    const bare = k.replace(re, "");
+    const code = bare !== k && bare.length >= 3 ? squashed.get(bare) : undefined;
+    if (code) return withDir(countryPlace(code), dir);
+  }
+  return null;
+}
+const withDir = (p: KnownPlace | null, dir: "from" | "to" | null) => (p ? { p, dir } : null);
+
+/** The countries' names without spaces or dashes ("papuanewguinea") → code; built once. */
+function squashedCountries(): Map<string, string> {
   if (!countrySquashed) {
     countrySquashed = new Map();
     for (const [n, code] of countryNames()) {
@@ -480,17 +547,8 @@ export function countryNamed(words: string): { p: KnownPlace; dir: "from" | "to"
       if (k.length >= 3 && !countrySquashed.has(k)) countrySquashed.set(k, code);
     }
   }
-  const k = squash(words);
-  const direct = countrySquashed.get(k);
-  if (direct) return withDir(countryPlace(direct), null);
-  for (const [re, dir] of GLUED) {
-    const bare = k.replace(re, "");
-    const code = bare !== k && bare.length >= 3 ? countrySquashed.get(bare) : undefined;
-    if (code) return withDir(countryPlace(code), dir);
-  }
-  return null;
+  return countrySquashed;
 }
-const withDir = (p: KnownPlace | null, dir: "from" | "to" | null) => (p ? { p, dir } : null);
 
 /** Every country's name (Intl, Turkish and English, every code A–Z), plain → its code; built once. */
 function countryNames(): Map<string, string> {
@@ -546,7 +604,7 @@ export const bareName = (text: string) => text.trim().replace(/[.!?]+$/, "").spl
 export interface Extracted {
   where: Place | null;
   from: string | null;
-  who: { kind: Companions | null; names: string[] } | null;
+  who: Who | null;
   start: StartDay | null;
   duration: Duration | null;
   styles: StyleId[];
@@ -592,10 +650,35 @@ const STYLE_WORDS: [RegExp, StyleId][] = [
 
 const COMPANION_WORDS: [RegExp, Companions][] = [
   [/(partnerimle|sevgilimle|eşimle|esimle|karımla|kocamla|nişanlımla|my partner|my wife|my husband|my girlfriend|my boyfriend|as a couple)/i, "partner"],
-  [/(arkadaşlarımla|arkadaşlarla|arkadaşımla|with friends|with my friends|with a friend)/i, "friends"],
+  [/(arkadaşlarımla|arkadaşlarla|arkadaşımla|arkadaşla|with friends|with my friends?\b|with a friend|with \w+ friends)/i, "friends"],
   [/(ailemle|ailece|çocuklarla|çocuklarımla|with my family|with family|with the kids|with kids)/i, "family"],
   [/(yalnız|tek başıma|solo|alone|by myself|on my own)/i, "solo"],
 ];
+
+const COUNT_WORDS: Record<string, number> = { a: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, bir: 1, iki: 2, üç: 3, uc: 3, dört: 4, dort: 4, beş: 5, bes: 5, altı: 6 };
+
+/**
+ * How many go, when the words say it (rev 3): "with my friend", "arkadaşımla" are two; "with 3 friends", "3
+ * arkadaşımla" four; "4 kişiyiz", "we are 4", "4 people" four. Null when not said.
+ */
+export function companyCount(text: string, kind: Companions | null): number | null {
+  const low = text.toLocaleLowerCase("tr");
+  const n = (w: string) => (/^\d+$/.test(w) ? Number(w) : (COUNT_WORDS[w] ?? null));
+  const people =
+    low.match(/(?<![\p{L}\d])(\d{1,2}|iki|üç|dört|beş|altı|two|three|four|five|six)\s*(kişi\p{L}*|people|persons|of us)(?![\p{L}])/u) ??
+    low.match(/(?<![\p{L}])we(?:'re| are)\s+(\d{1,2}|two|three|four|five|six)(?![\p{L}])/u);
+  if (people) {
+    const v = n(people[1]);
+    if (v && v >= 1 && v <= 30) return v;
+  }
+  const friends = low.match(/(?<![\p{L}\d])(\d{1,2}|iki|üç|dört|beş|two|three|four|five)\s+(arkadaş\p{L}*|friends|kids|children|çocuk\p{L}*)(?![\p{L}])/u);
+  if (friends) {
+    const v = n(friends[1]);
+    if (v && v <= 20) return v + 1;
+  }
+  if (kind === "friends" && /(arkadaşımla|(?<![\p{L}])bir arkadaş\p{L}*|with (my|a|one) friend(?!s))/u.test(low)) return 2;
+  return null;
+}
 
 /** Words that look like a name before "ile" but aren't one. */
 const NOT_NAMES = new Set(["ben", "biz", "sen", "o", "onlar", "partner", "aile", "arkadaş", "araba", "uçak", "tren", "otobüs", "gemi", "feribot"]);
@@ -654,13 +737,14 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
     // Lengths: "1 ay", "iki hafta", "10 gün", "10 gece", "2 weeks".
     if (!out.duration && n != null && i + 1 < low.length) {
       const unit = low[i + 1];
-      const u: DurationUnit | null = /^(ay|aylık|month|months)$/.test(unit)
+      // (With the endings Turkish puts on them: "3 haftalığına", "10 günlüğüne", "1 aylığına".)
+      const u: DurationUnit | null = /^(ay|aylık|aylik|aylığına|ayliğina|month|months)$/.test(unit)
         ? "month"
-        : /^(hafta|haftalık|week|weeks)$/.test(unit)
+        : /^(hafta|haftalık|haftalik|haftalığına|haftaliğina|week|weeks)$/.test(unit)
           ? "week"
-          : /^(gece|gecelik|night|nights)$/.test(unit)
+          : /^(gece|gecelik|geceliğine|night|nights)$/.test(unit)
             ? "night"
-            : /^(gün|gun|günlük|day|days)$/.test(unit)
+            : /^(gün|gun|günlük|günlüğüne|gunluk|day|days)$/.test(unit)
               ? "day"
               : null;
       if (u && n >= 1 && n <= (u === "day" || u === "night" ? 120 : u === "week" ? 16 : 4)) {
@@ -681,9 +765,12 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
   if (!out.start) {
     for (let i = 0; i < low.length; i++) {
       if (used.has(i)) continue;
-      const m = monthOf(low[i]);
-      // "May" in English is also a word: only as a month next to "in"/"ayında"/a suffix.
-      if (m && (low[i].length > 3 || /^(ta|da|te|de|ayında|ayi|ayı)$/.test(low[i + 1] ?? "") || low[i - 1] === "in")) {
+      // A month with its Turkish ending typed on counts too ("kasımda", "aralıkta"; rev 3).
+      const m = monthOf(low[i]) ?? monthGlued(low[i]);
+      // "May" in English is also a word, "ara" a Turkish one: a short form only next to "in"/"on"/"around"…,
+      // "ayında" or a suffix.
+      const before = MONTH_BEFORE.has(low[i - 1] ?? "");
+      if (m && (low[i].length > 3 || /^(ta|da|te|de|ayında|ayi|ayı)$/.test(low[i + 1] ?? "") || before)) {
         if (low[i] === "may" && low[i - 1] !== "in") continue;
         out.start = { date: monthStart(m, today), approx: true };
         used.add(i);
@@ -735,6 +822,20 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
     }
     // Spelled loosely (8+ letters): a capitalised word or a short answer that is only a name; never a common word, a
     // word next to "with"/"and"/"ile"/"&" (a person: "Frances and I"), nor while who's coming is asked. Asked back.
+    // A country's name of several words spelt loosely ("Papua New Gune", "Papua Yeni Gine'ye" misspelt): its first
+    // word capitalised (or the whole answer), the last one a near miss; asked back too (rev 3).
+    if (!hit && pending !== "who" && pending !== "names" && (capital(raw[i]) || short) && !monthOf(raw[i]) && !NOT_NAMES.has(low[i])) {
+      for (const n of [4, 3, 2]) {
+        if (i + n > raw.length) continue;
+        const words = raw.slice(i, i + n);
+        if (words.some((w) => /^\d/.test(w))) continue;
+        const loose = fuzzyCountryOf(words.join(" "));
+        if (loose) {
+          [hit, len] = [{ p: loose.p, dir: loose.dir, loose: words.join(" ") }, n];
+          break;
+        }
+      }
+    }
     if (!hit && pending !== "who" && pending !== "names" && (capital(raw[i]) || short) && !monthOf(raw[i]) && !NOT_NAMES.has(low[i])) {
       for (const n of [2, 1]) {
         if (i + n > raw.length || (n === 2 && !capital(raw[i + 1])) || joined(i, n)) continue;
@@ -797,7 +898,8 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
     const next = low[i + 1] ?? "";
     if (WITH_SUFFIX.has(next) || low[i - 1] === "with") names.push(word);
   }
-  if (kind || names.length) out.who = { kind, names: [...new Set(names)] };
+  const count = companyCount(text, kind);
+  if (kind || names.length || count) out.who = { kind: kind ?? (count === 1 ? "solo" : null), names: [...new Set(names)], ...(count ? { count } : {}) };
 
   for (const [re, id] of STYLE_WORDS) if (re.test(text) && !out.styles.includes(id)) out.styles.push(id);
   if (/(ekonomik|ucuz|düşük bütçe|budget trip|cheap|on a budget)/i.test(text)) out.budget = "low";
@@ -962,6 +1064,7 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
   if (!model) return code;
   const names = [...new Set([...(code.who?.names ?? []), ...(model.who?.names ?? [])])];
   const kind = code.who?.kind ?? model.who?.kind ?? null;
+  const count = code.who?.count ?? model.who?.count ?? null;
   // The code's destination when it is marked as one ("Bali'ye", "to Bali"); unmarked, the model's when it has one.
   const where = code.where && (code.whereSure || !model.where) ? code.where : (model.where ?? code.where);
   // A loose spelling the model read as the same place needs no asking back.
@@ -971,7 +1074,7 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
     whereSure: where === code.where && code.whereSure,
     guess,
     from: code.from ?? model.from,
-    who: kind || names.length ? { kind, names } : null,
+    who: kind || names.length || count ? { kind, names, ...(count ? { count } : {}) } : null,
     start: code.start && !code.start.approx ? code.start : (model.start ?? code.start),
     duration: code.duration ?? model.duration,
     styles: [...new Set([...code.styles, ...model.styles])],
@@ -983,14 +1086,22 @@ const said = (e: Extracted) => Boolean(e.where || e.from || e.who || e.start || 
 
 // --- the interview ----------------------------------------------------------------------------------------
 
+/**
+ * Most important first (rev 3): where to, when (how long, which month), where from, the start day when only the
+ * month is known (not needed to generate), what they're after, who's coming, the route. Names are never asked here:
+ * the board's chat asks them once, after the trip exists.
+ */
 const ORDER: Record<StartMode, QuestionId[]> = {
-  plan: ["where", "from", "who", "names", "duration", "start", "day", "want", "route"],
-  road: ["where", "from", "who", "names", "duration", "start", "day", "want", "route"],
-  lastminute: ["where", "from", "who", "names", "duration", "start", "day", "want", "route"],
-  inspire: ["want", "where", "from", "who", "names", "duration", "start", "day", "route"],
+  plan: ["where", "duration", "start", "from", "day", "want", "who", "route"],
+  road: ["where", "duration", "start", "from", "day", "want", "who", "route"],
+  lastminute: ["where", "duration", "start", "from", "day", "want", "who", "route"],
+  inspire: ["want", "where", "duration", "start", "from", "day", "who", "route"],
 };
 
 const NAMED_COMPANY: Companions[] = ["partner", "friends", "family"];
+
+/** Who goes with them but not by name (a partner, friends, family): the board's chat asks once, gently (rev 3). */
+export const namesToAsk = (s: Pick<StartState, "who">): boolean => Boolean(s.who?.kind && NAMED_COMPANY.includes(s.who.kind) && !s.who.names.length);
 
 function open(s: StartState, q: QuestionId): boolean {
   if (s.skipped.includes(q)) return false;
@@ -1002,7 +1113,8 @@ function open(s: StartState, q: QuestionId): boolean {
     case "who":
       return !s.who;
     case "names":
-      return Boolean(s.who?.kind && NAMED_COMPANY.includes(s.who.kind) && !s.who.names.length && !s.skipped.includes("who"));
+      // Never in the start chat (rev 3): asked once in the board's chat after the trip is made (namesToAsk).
+      return false;
     case "duration":
       return !s.duration;
     case "start":
@@ -1022,7 +1134,8 @@ function open(s: StartState, q: QuestionId): boolean {
 /** The question asked now: a loose spelling to confirm, one pressed in the checklist, else the first still open in the mode's order. */
 export function nextQuestion(s: StartState): QuestionId | null {
   if (s.guess) return "guess";
-  if (s.asking) return s.asking;
+  // (An older draft may still be asking for the names: not any more.)
+  if (s.asking && s.asking !== "names") return s.asking;
   return ORDER[s.mode].find((q) => open(s, q)) ?? null;
 }
 
@@ -1110,7 +1223,7 @@ export function applyAnswer(s: StartState, a: Answer, now: number): StartState {
       next.from = a.city;
       break;
     case "who":
-      next.who = { kind: a.kind, names: a.kind === "solo" ? [] : (s.who?.names ?? []) };
+      next.who = { kind: a.kind, names: a.kind === "solo" ? [] : (s.who?.names ?? []), ...(a.kind !== "solo" && s.who?.kind === a.kind && s.who.count ? { count: s.who.count } : {}) };
       break;
     case "names":
       next.who = { kind: s.who?.kind ?? null, names: a.names };
@@ -1155,7 +1268,10 @@ export function applyExtracted(s: StartState, e: Extracted, now: number): StartS
   const next: StartState = { ...s, updatedAt: now };
   if (e.where) next.where = e.where;
   if (e.from) next.from = e.from;
-  if (e.who) next.who = { kind: e.who.kind ?? s.who?.kind ?? null, names: e.who.names.length ? e.who.names : (s.who?.names ?? []) };
+  if (e.who) {
+    const count = e.who.count ?? s.who?.count ?? null;
+    next.who = { kind: e.who.kind ?? s.who?.kind ?? null, names: e.who.names.length ? e.who.names : (s.who?.names ?? []), ...(count ? { count } : {}) };
+  }
   if (e.start) next.start = e.start;
   if (e.duration) next.duration = e.duration;
   if (e.styles.length || e.budget) {
@@ -1466,30 +1582,59 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
 
 /** What the last answer added, said back in a few words before the next question ("Harika, Bali!"). */
 export function ackText(before: StartState, after: StartState, ctx: StartCtx): string {
-  const parts: string[] = [];
-  if (after.where && after.where.place !== before.where?.place) parts.push(after.where.place);
-  if (after.who && JSON.stringify(after.who) !== JSON.stringify(before.who)) {
-    const w = whoText(after.who, ctx.myName);
-    if (w) parts.push(w);
-  }
-  const datesBefore = whenText(before);
-  const datesAfter = whenText(after);
-  // Only dates worth saying back (a length with no start yet is asked next, not said).
-  if (datesAfter && datesAfter !== datesBefore && after.start && !after.start.part) parts.push(datesAfter);
-  if (after.from && after.from !== before.from && parts.length) parts.push(L(`${after.from}${fromSuffix(after.from)}`, `from ${after.from}`));
-  if (after.route?.confirmed && !before.route?.confirmed) return L("Tamam, rota bu.", "Great, that's the route.");
-  // A part of the month taken as the start: said, so it can be changed.
-  if (after.start?.part && (after.start.date !== before.start?.date || !before.start?.part)) {
-    const d = dayText(after.start.date);
-    return L(`${d}'${dayAccusative(after.start.date)} başlangıç aldım, değiştirebilirsin.`, `I've taken ${d} as the start; you can change it.`);
-  }
-  if (!parts.length) return "";
-  // The place just said gets a word of its own (a small table of popular places; the model writes richer ones).
+  const must = mustSay(before, after);
+  if (must) return must;
   const newPlace = Boolean(after.where && after.where.place !== before.where?.place);
-  const colour = newPlace ? colourLine(after, ctx) : null;
-  if (parts.length === 1 && newPlace) return colour ?? L(`Harika, ${after.where!.place}!`, `Great, ${after.where!.place}!`);
-  const got = L(`Not aldım: ${parts.join(" · ")}.`, `Got it: ${parts.join(" · ")}.`);
-  return colour ? `${colour} ${got}` : got;
+  const when = whenWords(before, after);
+  const who = after.who && JSON.stringify(after.who) !== JSON.stringify(before.who) ? whoWords(after.who, ctx.myName) : "";
+  const from = after.from && after.from !== before.from ? after.from : null;
+  // A length alone, its start still to come, isn't said back ("1 hafta · başlangıç?"): the start is asked.
+  if (!newPlace && !who && !from && after.duration && !after.start) return "";
+  // The place alone gets a word of its own (a small table of popular places; the model writes richer ones).
+  if (newPlace && !when && !who && !from) return colourLine(after, ctx) ?? L(`Harika, ${after.where!.place}!`, `Great, ${after.where!.place}!`);
+  // Else one short sentence of what was understood: "Papua New Guinea, 3 weeks in November with a friend."
+  const head = [newPlace ? after.where!.place : "", when].filter(Boolean).join(", ");
+  const fromText = from ? L(`${from}${fromSuffix(from)}`, `from ${from}`) : "";
+  if (!head && !who && !fromText) return "";
+  // "Sabine ile Bali, 10 Aralık – 10 Ocak · 31 gece, İstanbul'dan." / "Bali, Dec 10 – Jan 10 · 31 nights with Sabine from Istanbul."
+  const line = L(
+    [[who, head].filter(Boolean).join(" "), fromText].filter(Boolean).join(", "),
+    [head, who, fromText].filter(Boolean).join(" ").replace(/^, /, ""),
+  );
+  return `${line.charAt(0).toLocaleUpperCase(lang() === "tr" ? "tr" : "en")}${line.slice(1)}.`;
+}
+
+/** The dates or the length just said, in words ("3 weeks in November", "Kasım'da 3 hafta", "20 Kasım – 4 Aralık · 14 gece"). */
+function whenWords(before: StartState, after: StartState): string {
+  if (whenText(before) === whenText(after)) return "";
+  const month = after.start?.approx && !after.start.part ? monthName(Number(after.start.date.slice(5, 7))) : null;
+  if (after.start && after.duration && !month) return whenText(after);
+  if (month && after.duration) return L(`${month}${locative(month)} ${durationText(after.duration)}`, `${durationText(after.duration).toLowerCase()} in ${month}`);
+  if (month) return L(`${month}${locative(month)}`, `in ${month}`);
+  if (after.duration && !after.start) return L(durationText(after.duration), durationText(after.duration).toLowerCase());
+  if (after.start) return dayText(after.start.date);
+  return "";
+}
+
+/** "Kasım'da", "Eylül'de", "Mart'ta": the month's locative. */
+function locative(name: string): string {
+  const lower = name.toLocaleLowerCase("tr-TR");
+  const last = [...lower].reverse().find((ch) => /[aeıioöuü]/.test(ch));
+  const front = last != null && /[eiöü]/.test(last);
+  const hard = /[fstkçşhp]$/.test(lower);
+  return `'${hard ? "t" : "d"}${front ? "e" : "a"}`;
+}
+
+/** Who goes, as said back: "with a friend", "bir arkadaşınla", "Sabine ile", "with your partner", "just you". */
+function whoWords(who: NonNullable<StartState["who"]>, myName: string | null): string {
+  const names = who.names.filter((n) => n !== myName);
+  if (who.kind === "solo") return L("tek başına", "just you");
+  if (names.length) return L(`${names.join(", ")} ile`, `with ${names.join(", ")}`);
+  const n = peopleCount(who);
+  if (who.kind === "friends") return n === 2 ? L("bir arkadaşınla", "with a friend") : n ? L(`${n - 1} arkadaşınla`, `with ${n - 1} friends`) : L("arkadaşlarınla", "with friends");
+  if (who.kind === "partner") return L("partnerinle", "with your partner");
+  if (who.kind === "family") return L("ailenle", "with your family");
+  return n ? L(`${n} kişi`, `${n} of you`) : "";
 }
 
 /** A few words for popular places (no key, or until the model's line comes): by country, a few places of their own. */
@@ -1544,8 +1689,24 @@ function fromSuffix(name: string): string {
 }
 
 /** The next assistant line: what was understood, then the next question (or "ready"). */
-export function replyText(before: StartState, after: StartState, ctx: StartCtx, drawing = false): string {
-  return [ackText(before, after, ctx), nextLine(after, ctx, drawing)].filter(Boolean).join(" ");
+export function replyText(before: StartState, after: StartState, ctx: StartCtx, drawing = false, chip = false): string {
+  // The question on its own line (shown in bold); a chip's answer isn't said back (the bubble says it), only what
+  // must be exact (the route agreed, a part of the month taken as the start).
+  // "Evet" to "Papua New Guinea mı demek istedin?": what was understood is said once, in full, with the place.
+  const confirmed = chip && before.guess && !after.guess && after.where && after.where.place !== before.where?.place;
+  const nothing: StartState = { ...after, where: null, who: null, start: null, duration: null, from: null };
+  const ack = confirmed ? ackText(nothing, after, ctx) : chip ? mustSay(before, after) : ackText(before, after, ctx);
+  return [ack, nextLine(after, ctx, drawing)].filter(Boolean).join("\n");
+}
+
+/** What is said back even after a chip: the route agreed, a part of the month taken as the start. */
+function mustSay(before: StartState, after: StartState): string {
+  if (after.route?.confirmed && !before.route?.confirmed) return L("Tamam, rota bu.", "Great, that's the route.");
+  if (after.start?.part && (after.start.date !== before.start?.date || !before.start?.part)) {
+    const d = dayText(after.start.date);
+    return L(`${d}'${dayAccusative(after.start.date)} başlangıç aldım, değiştirebilirsin.`, `I've taken ${d} as the start; you can change it.`);
+  }
+  return "";
 }
 
 /** The route is the question but its proposal is still being drawn (rev 3): said, and the chat goes on meanwhile. */
@@ -1583,7 +1744,7 @@ export function modelReplyText(before: StartState, after: StartState, ctx: Start
   if (!reply || !modelMayReply(before, after)) return replyText(before, after, ctx, drawing);
   const q = nextQuestion(after);
   const question = q && q === askedFor && reply.question ? reply.question : nextLine(after, ctx, drawing);
-  return `${reply.text} ${question}`;
+  return `${reply.text}\n${question}`;
 }
 
 export const NOT_UNDERSTOOD = () =>
@@ -1601,7 +1762,7 @@ export function whoText(who: StartState["who"], myName: string | null): string {
     const text = myName ? (names.length === 2 ? `${names[0]} & ${names[1]}` : names.join(", ")) : L(`${who.names.join(", ")} ile`, `with ${who.names.join(", ")}`);
     return [text, count].filter(Boolean).join(" · ");
   }
-  const word = { partner: L("Partnerinle", "With your partner"), friends: L("Arkadaşlarla", "With friends"), family: L("Ailenle", "With family") };
+  const word = { partner: L("Partnerinle", "With your partner"), friends: n === 2 ? L("Bir arkadaşınla", "With a friend") : L("Arkadaşlarla", "With friends"), family: L("Ailenle", "With family") };
   return [who.kind ? word[who.kind] : "", count].filter(Boolean).join(" · ");
 }
 
@@ -1609,6 +1770,7 @@ export function whoText(who: StartState["who"], myName: string | null): string {
 export function peopleCount(who: StartState["who"]): number | null {
   if (!who) return null;
   if (who.kind === "solo") return 1;
+  if (who.count && who.count >= who.names.length + 1) return who.count;
   if (who.names.length) return who.names.length + 1;
   if (who.kind === "partner") return 2;
   return null;
@@ -1620,7 +1782,7 @@ export function whenText(s: Pick<StartState, "start" | "duration">): string {
   if (dates && s.start && n != null) {
     const nights = L(`${n} gece`, `${n} night${n === 1 ? "" : "s"}`);
     // A month only: no day yet (asked next). A part of the month: the dates, said to be a guess.
-    if (s.start.approx && !s.start.part) return `${monthName(Number(s.start.date.slice(5, 7)))} · ${nights}`;
+    if (s.start.approx && !s.start.part) return `${monthName(Number(s.start.date.slice(5, 7)))} · ${s.duration ? durationText(s.duration) : nights}`;
     return `${formatDateRange(dates.start, dates.end)} · ${nights}${s.start.approx ? L(" (yaklaşık)", " (roughly)") : ""}`;
   }
   if (s.duration) return `${durationText(s.duration)} · ${L("başlangıç?", "start?")}`;
@@ -1665,7 +1827,7 @@ export function checklist(s: StartState, ctx: StartCtx): ChecklistRow[] {
     { id: "from", label: L("NEREDEN", "WHERE FROM"), value: s.from ?? L("Nereden yola çıkıyorsun?", "Where are you leaving from?"), done: !!s.from, ask: "from", required: false, skipped: s.skipped.includes("from") },
     { id: "who", label: L("KİMLE", "WHO'S COMING"), value: whoText(s.who, ctx.myName) || L("Kimle gidiyorsun?", "Who's coming?"), done: !!s.who, ask: "who", required: false, skipped: s.skipped.includes("who") },
     {
-      id: "when", label: L("NE ZAMAN", "WHEN"), value: whenText(s) || L("Ne zaman, kaç gün?", "When, and for how long?"), done: !!tripDates(s) && !monthOnly(s),
+      id: "when", label: L("NE ZAMAN", "WHEN"), value: whenText(s) || L("Ne zaman, kaç gün?", "When, and for how long?"), done: !!tripDates(s),
       ask: !s.duration ? "duration" : "start", required: true, skipped: s.skipped.includes("duration") || s.skipped.includes("start"),
     },
     { id: "want", label: L("NE İSTİYORSUN", "WHAT YOU'RE AFTER"), value: wantText(s) || L("Sence ne yapsın bu gezi?", "What should this trip be about?"), done: s.wantDone && Boolean(s.styles.length || s.budget), ask: "want", required: false, skipped: s.skipped.includes("want") },
@@ -2132,11 +2294,13 @@ export function startLead(trip: Pick<Trip, "startGuide" | "confirmedDates">, ite
 }
 
 /** The line under "Gezin hazır": "31 gün, 3 durak. Önce uçuşu bul, sonra Ubud konaklamasını seçelim." */
-export function readyText(c: Creation, missing: string[] = []): string {
+export function readyText(c: Creation, missing: string[] = [], askNames = false): string {
   const stops = c.stays.length;
   const firstCity = c.stays[0]?.city ?? "";
-  // What wasn't said in the interview is asked here, in the board's chat that goes on with it (item 4).
-  const ask = missing.length ? L(` Eksik kalanları buradan konuşalım: ${missing.join(", ")}.`, ` Let's settle what's still open here: ${missing.join(", ")}.`) : "";
+  // What wasn't said in the interview is asked here, in the board's chat that goes on with it (item 4); the names
+  // of who goes, once and gently (rev 3: never asked before the trip is made).
+  const names = askNames ? L(" Bu arada, kimlerle gidiyorsun? İstersen adlarını yazabilirsin.", " By the way, who's going with you? Tell me their names if you like.") : "";
+  const ask = (missing.length ? L(` Eksik kalanları buradan konuşalım: ${missing.join(", ")}.`, ` Let's settle what's still open here: ${missing.join(", ")}.`) : "") + names;
   if (!c.dates) {
     return `${L(`${c.title} hazır.`, `${c.title} is ready.`)} ${L("Tarihleri söyleyince geceleri ve uçuşları yerleştiririm.", "Tell me the dates and I'll place the nights and the flights.")}${ask}`;
   }

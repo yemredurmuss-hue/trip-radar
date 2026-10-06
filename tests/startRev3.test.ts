@@ -11,7 +11,7 @@ import { stepsFor } from "../src/lib/startCreate";
 import { CIRCUITS, cityCoord, fitCircuit, stopsFor } from "../src/lib/startCircuits";
 import { along, arcControl, centroidOf, frame, LAT_BOTTOM, LAT_TOP, MAP_H, MAP_W, project, tripPoints } from "../src/lib/startMap";
 import {
-  acceptRoute, applyAnswer, applyExtracted, applyText, circuitRoute, countryNamed, creationOf, EMPTY_EXTRACTED, mergeExtracted, newStart, nextLine,
+  acceptRoute, applyAnswer, applyExtracted, applyText, canGenerate, checklist, circuitRoute, countryNamed, creationOf, EMPTY_EXTRACTED, mergeExtracted, namesToAsk, newStart, nextLine, placeOf, readyText, skip,
   nextQuestion, onlyEmpty, parseStartText, peopleCount, photoQuery, questionOf, replyText, restoreRoute, routeForGenerate, routeKey, routeSystem, totalNights,
   tripDates, withPreparedRoute, withTypedLang, type StartCtx, type StartState,
 } from "../src/lib/startTrip";
@@ -86,6 +86,86 @@ describe("the reported sentence, no model (fix 1)", () => {
     expect(withLang("en", () => parseStartText("with Jordan and me", TODAY, "who").where)).toBeNull();
     expect(withLang("en", () => parseStartText("Jordan and I want to travel", TODAY, "where").where)).toBeNull();
     expect(withLang("en", () => parseStartText("New Jersey", TODAY, "where").where?.code)).not.toBe("JE");
+  });
+});
+
+describe("instant capture, most important first (the owner's second report)", () => {
+  const EN = "Lets go to Papua New Gune with my friend for 3 weeks on nov";
+  const TR = "Kasımda arkadaşımla 3 haftalığına Papua Yeni Gine'ye gidelim";
+
+  it("the English sentence, no model: Papua New Guinea asked back, a friend, 3 weeks, November", () => {
+    const read = withLang("en", () => parseStartText(EN, TODAY, "where"));
+    expect(read.guess).toMatchObject({ typed: "Papua New Gune", slot: "where", place: { place: "Papua New Guinea", code: "PG" } });
+    expect(read.who).toEqual({ kind: "friends", names: [], count: 2 });
+    expect(read.duration).toEqual({ unit: "week", n: 3 });
+    expect(read.start).toEqual({ date: "2026-11-01", approx: true });
+    const before = newStart("png", "plan", 1, "en");
+    const s = typed(before, EN);
+    expect(s.lang).toBe("en");
+    expect(nextQuestion(s)).toBe("guess");
+    expect(withLang("en", () => replyText(before, s, ctx))).toBe("3 weeks in November with a friend.\nDid you mean Papua New Guinea?");
+    const rows = withLang("en", () => checklist(s, ctx));
+    expect(rows.find((r) => r.id === "who")).toMatchObject({ done: true, value: "With a friend · 2 people" });
+    expect(rows.find((r) => r.id === "when")).toMatchObject({ done: true, value: "November · 3 weeks" });
+    // "Yes": the canonical name, said back once in full; then where from (no names, no day first).
+    const yes = withLang("en", () => applyAnswer(s, { q: "guess", accept: true }, 3));
+    expect(yes.where).toEqual({ place: "Papua New Guinea", country: "Papua New Guinea", code: "PG" });
+    expect(nextQuestion(yes)).toBe("from");
+    expect(withLang("en", () => replyText(s, yes, ctx, false, true))).toBe("Papua New Guinea, 3 weeks in November with a friend.\nWhere are you leaving from?");
+    expect(canGenerate(yes)).toBe(true);
+    // Then the day (not needed), the style, who: never the names.
+    let next = withLang("en", () => applyAnswer(yes, { q: "from", city: "London" }, 4));
+    expect(nextQuestion(next)).toBe("day");
+    next = skip(next, "day", 5);
+    expect(nextQuestion(next)).toBe("want");
+    next = withLang("en", () => applyAnswer(next, { q: "want", styles: ["adventure"], budget: null }, 6));
+    expect(nextQuestion(next)).toBe("route");
+  });
+
+  it("typed again loosely, the title is the country's own name, never the misspelling", () => {
+    const s = typed(newStart("png2", "plan", 1, "en"), "Papua new guine");
+    expect(s.guess?.place.place).toBe("Papua New Guinea");
+    expect(withLang("en", () => placeOf("papua new guinea").place)).toBe("Papua New Guinea");
+    expect(withLang("tr", () => placeOf("Papua New Guinea").place)).toBe("Papua Yeni Gine");
+  });
+
+  it("the Turkish sentence: exact, so taken at once; where from is next", () => {
+    const before = newStart("png3", "plan", 1, "tr");
+    const s = typed(before, TR);
+    expect(s.where).toEqual({ place: "Papua Yeni Gine", country: "Papua Yeni Gine", code: "PG" });
+    expect(s.who).toEqual({ kind: "friends", names: [], count: 2 });
+    expect(s.duration).toEqual({ unit: "week", n: 3 });
+    expect(s.start).toEqual({ date: "2026-11-01", approx: true });
+    expect(nextQuestion(s)).toBe("from");
+    expect(withLang("tr", () => replyText(before, s, ctx))).toBe("Bir arkadaşınla Papua Yeni Gine, Kasım'da 3 hafta.\nNereden yola çıkıyorsun?");
+    expect(withLang("tr", () => checklist(s, ctx).find((r) => r.id === "when"))).toMatchObject({ done: true, value: "Kasım · 3 hafta" });
+  });
+
+  it("companions and counts; months with endings and short forms; lengths with endings", () => {
+    const who = (t: string) => parseStartText(t, TODAY, null).who;
+    expect(who("eşimle gidiyoruz")).toMatchObject({ kind: "partner" });
+    expect(peopleCount(who("sevgilimle")!)).toBe(2);
+    expect(who("ailemle")).toMatchObject({ kind: "family" });
+    expect(peopleCount(who("with 3 friends")!)).toBe(4);
+    expect(peopleCount(who("3 arkadaşımla")!)).toBe(4);
+    expect(peopleCount(who("4 kişiyiz")!)).toBe(4);
+    expect(peopleCount(who("with my friends")!)).toBeNull();
+    const start = (t: string) => parseStartText(t, TODAY, null).start;
+    expect(start("aralıkta")).toEqual({ date: "2026-12-01", approx: true });
+    expect(start("in dec")).toEqual({ date: "2026-12-01", approx: true });
+    expect(start("around jan")).toEqual({ date: "2027-01-01", approx: true });
+    expect(start("ara sıra")).toBeNull();
+    const length = (t: string) => parseStartText(t, TODAY, null).duration;
+    expect(length("10 günlüğüne")).toEqual({ unit: "day", n: 10 });
+    expect(length("1 aylığına")).toEqual({ unit: "month", n: 1 });
+    expect(length("2 haftalık")).toEqual({ unit: "week", n: 2 });
+  });
+
+  it("the names are asked once in the board's chat, after the trip is made", () => {
+    const s = typed(newStart("png4", "plan", 1, "tr"), TR);
+    const made = withLang("tr", () => creationOf(s))!;
+    expect(withLang("tr", () => readyText(made, [], namesToAsk(s)))).toMatch(/Bu arada, kimlerle gidiyorsun\? İstersen adlarını yazabilirsin\.$/);
+    expect(namesToAsk({ who: { kind: "partner", names: ["Sabine"] } })).toBe(false);
   });
 });
 

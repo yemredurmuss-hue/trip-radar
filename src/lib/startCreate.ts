@@ -12,7 +12,7 @@ import { checkPlanned, guardKind, planToSave } from "./planned";
 import { cityKeyOf } from "./plan";
 import { styleKeyFor } from "./startBoard";
 import { suggestionsReview } from "./startHooks";
-import { creationOf, dative, historyRows, isPlaceholder, missingInfo, placeholderPrint, readyText, wantText, type Creation, type StartState } from "./startTrip";
+import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, placeholderPrint, readyText, wantText, type Creation, type StartState } from "./startTrip";
 import { withTravellers } from "./tripSettings";
 import { uniqueTitle } from "./trips";
 import type { Item, Trip } from "./types";
@@ -146,7 +146,7 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
     if (!messages.some((m) => m.role !== "event")) {
       const provider = env.provider ?? (await getSettings()).provider;
       // What wasn't said is asked there, in the same conversation (item 4).
-      for (const row of T(() => historyRows(s.messages, readyText(c, missingInfo(s)), provider, tripId))) await d.put("messages", { ...row, id: newId() });
+      for (const row of T(() => historyRows(s.messages, readyText(c, missingInfo(s), namesToAsk(s)), provider, tripId))) await d.put("messages", { ...row, id: newId() });
     }
   } else if (id === "suggestions") {
     const review = suggestionsReview();

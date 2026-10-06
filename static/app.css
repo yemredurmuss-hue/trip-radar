@@ -2396,6 +2396,12 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-msgs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 12px 28px 20px; }
 .st-msg-user { align-self: flex-end; max-width: 82%; background: var(--hx-lav); color: var(--hx-ink); border-radius: 18px; padding: 10px 16px; font-size: 15.5px; white-space: pre-wrap; }
 .st-msg-bot { font-size: 16.5px; line-height: 1.55; color: var(--hx-ink); white-space: pre-wrap; }
+/* Rev 3: what was understood, then the question on its own line in bold. */
+.st-msg-bot .st-q { display: inline-block; margin-top: 2px; font-weight: 700; }
+.st-msg-bot .st-ack { color: #3d3863; }
+/* A row filling in (the moment a message is sent): its check pops in. */
+.st-row.done .st-check { animation: st-tick .45s cubic-bezier(.2, .9, .3, 1.3) both; }
+.st-row.done .st-row-value { animation: st-in .35s ease-out both; }
 .st-answers { display: flex; flex-direction: column; gap: 8px; margin-top: -4px; }
 .st-hint { font-size: 13px; color: var(--hx-muted); }
 .st-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -2537,7 +2543,7 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-gen-stage .st-photos { position: relative; height: 200px; margin: -78px 0 0; }
 .st-gen-stage.no-map .st-photos { height: 220px; margin: 10px 0 6px; }
 @media (prefers-reduced-motion: reduce) {
-  .st-map, .st-map-ring { animation: none; }
+  .st-map, .st-map-ring, .st-row.done .st-check, .st-row.done .st-row-value { animation: none; }
   .st-photo, .st-tick, .st-step-text, .st-msg-bot, .st-thinking, .st-stage, .st-pv, .st-pv-row, .st-pv-photo { animation: none; }
   .st-step.run .st-step-mark, .st-dots i { animation: none; }
   .st-progress span, .st-pv-photo img, .st-photo img, .st-step, .st-step-mark, .st-ring-fg, .st-bar-track span { transition: none; }

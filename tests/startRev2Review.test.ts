@@ -40,7 +40,11 @@ function typed(s: StartState, text: string, model: RawExtraction | null = null, 
 }
 /** Koh Phangan known, "Nereden?" asked, in the given language. */
 function atFrom(l: "tr" | "en"): StartState {
-  const s = { ...newStart(`f-${l}`, "plan", 1, l), langFixed: true, where: { place: "Koh Phangan", country: l === "tr" ? "Tayland" : "Thailand", code: "TH" } };
+  // (Rev 3 asks when before where from: the dates are known here.)
+  const s = {
+    ...newStart(`f-${l}`, "plan", 1, l), langFixed: true, where: { place: "Koh Phangan", country: l === "tr" ? "Tayland" : "Thailand", code: "TH" },
+    duration: { unit: "night" as const, n: 5 }, start: { date: "2026-11-10", approx: false },
+  };
   expect(nextQuestion(s)).toBe("from");
   return s;
 }

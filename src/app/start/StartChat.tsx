@@ -57,6 +57,26 @@ type Stage = "thinking" | "writing" | null;
 const today = () => new Date().toISOString().slice(0, 10);
 const LATE = Symbol("late");
 
+/**
+ * An assistant line (rev 3): what was understood, then the question on its own line in bold. The line break stays
+ * in the text (a screen reader and a copy read them as two sentences).
+ */
+function BotLine({ text }: { text: string }) {
+  const cut = text.lastIndexOf("\n");
+  const last = cut >= 0 ? text.slice(cut + 1) : text;
+  // Only a question is bold (the ready line, "Rotayı çiziyorum…" aren't); a one-line question too.
+  const question = /\?\s*$/.test(last) && (cut >= 0 || !/[.!:]\s/.test(text)) ? last : null;
+  if (!question) return <>{text}</>;
+  const ack = cut >= 0 ? text.slice(0, cut) : "";
+  return (
+    <>
+      {ack && <span className="st-ack">{ack}</span>}
+      {ack && "\n"}
+      <strong className="st-q">{question}</strong>
+    </>
+  );
+}
+
 export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onClose, onCreated }: Props) {
   const [state, setState] = useState(initial);
   const live = useRef(initial);
@@ -343,8 +363,8 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
       commit(say(after, "assistant", T(() => questionOf(after, "route", ctx).text)));
       return;
     }
-    // A quick answer costs no model call: the code's line (with the place's words from the small table).
-    reply(before, after);
+    // A quick answer costs no model call: the code's line; the chip isn't said back (its bubble says it, rev 3).
+    reply(before, after, (next, drawing) => replyText(before, next, ctx, drawing, true));
   }
 
   function onSkip(q: QuestionId) {
@@ -352,7 +372,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     nextTurn();
     const before = live.current;
     const asked = say(before, "user", T(() => L("Atla", "Skip")));
-    reply(before, skip(asked, q, Date.now()));
+    reply(before, skip(asked, q, Date.now()), (next, drawing) => replyText(before, next, ctx, drawing, true));
   }
 
   async function send(raw = text) {
@@ -375,6 +395,8 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     // The code reads it at once, bound to the question it answers (item 2).
     const code = T(() => parseStartText(line, today(), q));
     const first = T(() => applyText(asked, line, code, Date.now(), q));
+    // What the code read fills the list the moment it's sent (rev 3), before anything is waited for.
+    if (first.understood) commit(first.state);
     const hasModel = await model.current!;
     if (stale() || turn.current !== mine) return;
     if (first.understood) {
@@ -489,7 +511,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
           <div className="st-msgs" role="log" aria-live="polite" aria-label={L("Sohbet", "Conversation")}>
             {state.messages.map((m, i) => (
               <div key={m.id ?? `line-${i}`} className={m.role === "user" ? "st-msg-user" : "st-msg-bot"}>
-                {m.text}
+                {m.role === "assistant" ? <BotLine text={m.text} /> : m.text}
               </div>
             ))}
             {showChips && question && (

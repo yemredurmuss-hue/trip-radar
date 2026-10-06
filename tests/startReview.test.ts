@@ -15,7 +15,7 @@ import { runStep, stepsFor } from "../src/lib/startCreate";
 import { listDrafts, removeDraft, saveDraft } from "../src/lib/startDrafts";
 import {
   acceptExtraction, acceptRoute, applyAnswer, applyText, approxDates, canGenerate, checklist, creationOf, missingForGenerate, replyText, skip, isPlaceholder, knownStyles, mergeExtracted, monthParts,
-  newStart, parseRouteText, parseStartText, placeholderPrint, splitLinks, startLead, wantText, type StartState,
+  newStart, nextQuestion, parseRouteText, parseStartText, placeholderPrint, splitLinks, startLead, wantText, type StartState,
 } from "../src/lib/startTrip";
 import { buildTimeline } from "../src/lib/timeline";
 import { acceptStyle } from "../src/lib/tripStyle";
@@ -85,7 +85,9 @@ describe("a start never made up", () => {
     expect(canGenerate(s)).toBe(true);
     expect(missingForGenerate(s)).toEqual([]);
     expect(creationOf(s)!.approxStart).toBe("2026-12-01");
-    expect(checklist(s, ctx).find((r) => r.id === "when")?.done).toBe(false);
+    // A month and a length are enough for the list (rev 3: "Aralık · 1 ay"); the day is asked, not needed.
+    expect(checklist(s, ctx).find((r) => r.id === "when")).toMatchObject({ done: true, value: "Aralık · 1 ay" });
+    expect(nextQuestion(s)).toBe("day");
     const skipped = skip(s, "day", 6);
     expect(skipped.start).toEqual({ date: "2026-12-01", approx: true, part: "begin" });
     expect(canGenerate(skipped)).toBe(true);
