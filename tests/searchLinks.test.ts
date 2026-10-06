@@ -24,6 +24,10 @@ describe("Dönüş bileti ara", () => {
     expect(returnFlightSearch([flight("IST", "OPO", "2026-10-08", "saved")], plan)).toBeNull();
     expect(returnFlightSearch([], plan)).toBeNull();
   });
+  it("the way home booked while the way out is still being decided: no 'Lizbon → Lizbon'", () => {
+    const lisbon = { range: { start: "2026-10-08", end: "2026-10-14" }, stayBlocks: [{ city: "Porto" }, { city: "Lizbon" }] } as never;
+    expect(returnFlightSearch([flight("IST", "OPO", "2026-10-08", "saved"), flight("LIS", "IST", "2026-10-14")], lisbon)).toBeNull();
+  });
 });
 
 describe("GetYourGuide per city", () => {

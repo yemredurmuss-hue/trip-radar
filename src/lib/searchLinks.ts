@@ -23,8 +23,12 @@ export function returnFlightSearch(items: Item[], plan: Pick<Plan, "range" | "st
   if (!out) return null;
   const home = out.flight!.from!;
   const homeCity = place(home);
+  // The first decided flight leaving from one of the trip's own cities isn't the way out (the way out is still
+  // being decided; this one is the way home or between cities): no search ("Lizbon → Lizbon" before).
+  if (plan.stayBlocks.some((b) => b.city && sameCity(b.city, homeCity))) return null;
   if (flights.slice(1).some((f) => f.flight!.to === home || sameCity(place(f.flight!.to!), homeCity))) return null;
   const from = plan.stayBlocks.at(-1)?.city ?? place(out.flight!.to!);
+  if (sameCity(from, homeCity)) return null;
   const date = plan.range?.end ?? null;
   const query = `Flights from ${from} to ${homeCity}${date ? ` on ${date}` : ""} one way`;
   return {
