@@ -87,7 +87,7 @@ describe("Ozora: a festival", () => {
     const transfer = made.items.find((i) => i.plannedKind === "transfer")!;
     expect(transfer).toMatchObject({ category: "transport", city: "Ozora" });
     const ticket = made.items.find((i) => i.name === "Festival bileti")!;
-    expect(ticket).toMatchObject({ category: "activity", city: "Ozora", dates: { start: "2027-07-27", end: "2027-08-02" }, statusNote: "Resmî site: https://ozorafestival.eu" });
+    expect(ticket).toMatchObject({ category: "activity", city: "Ozora", dates: { start: "2027-07-26", end: "2027-08-01" }, statusNote: "Resmî site: https://ozorafestival.eu" });
     const prep = made.items.filter(isPrep);
     expect(titles(prep)).toEqual(["Çadır", "Uyku tulumu", "Kafa lambası", "Nakit", "Kulak tıkacı"]);
   });

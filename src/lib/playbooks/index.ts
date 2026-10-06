@@ -56,7 +56,7 @@ export const PLAYBOOKS: Readonly<Record<PlaybookKind, Playbook>> = { festival, s
 export const playbookOf = (kind: PlaybookKind | null | undefined): Playbook => PLAYBOOKS[kind ?? "classic"] ?? classic;
 
 /** The table's events that are a festival (music, a burn): the rest (a Grand Prix, Hajj, Oktoberfest) stay classic. */
-const FESTIVAL_IDS = new Set(["afrikaburn", "burningman", "tomorrowland", "glastonbury", "coachella", "sziget", "primavera", "roskilde", "ultra", "edc", "lollapalooza"]);
+const FESTIVAL_IDS = new Set(["afrikaburn", "burningman", "tomorrowland", "glastonbury", "coachella", "sziget", "ozora", "primavera", "roskilde", "ultra", "edc", "lollapalooza"]);
 
 // On the plain words (normWords: lower case, no accents, "ı" as "i", "ğ" as "g"); a Turkish ending is a word's rest.
 const WELLNESS = /^(wellness|retreat\w*|yoga\w*|meditasyon\w*|meditation\w*|inziva\w*|detoks\w*|detox\w*|ayurveda\w*|spa)$/;

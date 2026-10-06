@@ -301,7 +301,7 @@ function EmptyRecordFace({ item }: { item: Item }) {
       links={links}
       need={
         kind === "activity" && item.city
-          ? { key: needKey("activity", item.city, start, end), section: "activity", kind: "activity", city: item.city, start, end, adults: n }
+          ? { key: needKey("activity", item.city, start, end), section: "activity", kind: "activity", city: item.city, start, end, adults: n, query: isGeneratedName(item.name) ? null : item.name }
           : kind === "esim" && country
             ? { key: needKey("esim", country), section: "other", kind: "esim", country, start, end }
             : null

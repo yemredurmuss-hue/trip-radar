@@ -247,6 +247,11 @@ export const EVENTS: EventEntry[] = [
     typical: ["Mart sonu – Nisan başı", "late March to early April"], occur: (y) => [ymd(y, 3, 25), ymd(y, 4, 7)], url: "https://www.japan.travel",
   }),
   E({
+    id: "ozora", kind: "event", name: ["Ozora Festival", "Ozora Festival"], aliases: ["ozora", "ozora festival", "ozora festivali", "o.z.o.r.a."],
+    place: ["Ozora", "Ozora"], code: "HU", gateway: ["Budapeşte", "Budapest"],
+    typical: ["Temmuz sonu – Ağustos başı", "late July to early August"], occur: (y) => span(onOrAfter(y, 7, 22, 1), 7), url: "https://ozorafestival.eu",
+  }),
+  E({
     id: "sziget", kind: "event", name: ["Sziget", "Sziget"], aliases: ["sziget", "sziget festival", "sziget festivali"],
     place: ["Budapeşte", "Budapest"], code: "HU", typical: ["Ağustos'un ikinci haftası", "the second week of August"], occur: (y) => span(onOrAfter(y, 8, 5, 3), 6), url: "https://szigetfestival.com",
   }),
