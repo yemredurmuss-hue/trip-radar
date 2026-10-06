@@ -4,6 +4,7 @@ import { EMPTY_METRICS } from "../src/lib/items";
 import { buildLegs } from "../src/lib/legs";
 import { buildPlan, cityKeyOf, groupKeyOf, liveGroups, tripRange, type StayBlock } from "../src/lib/plan";
 import type { Item, ItemStatus, Trip } from "../src/lib/types";
+import { makeItem } from "./fixtures/makeItem";
 
 const trip = (over: Partial<Trip> = {}): Trip => ({
   id: "t", title: "Porto ve Madeira", confirmedDates: { start: "2026-10-07", end: "2026-10-17" }, budget: null, heroImage: null,
@@ -325,5 +326,28 @@ describe("plan: nights said apart in the chat", () => {
       ["chosen", "2026-10-07", "2026-10-08", "Airport Inn"],
       ["chosen", "2026-10-08", "2026-10-11", "Loft"],
     ]);
+  });
+});
+
+describe("a booking takes the place of the plan for the same thing (0.36.24, Emre's Porto boat)", () => {
+  const act = (name: string, status: ItemStatus, day: string | null, over: Partial<Item> = {}) =>
+    makeItem({ name, category: "activity", status, city: "Porto", needKey: `activity:${name}`, dates: { start: day, end: null, source: "page" }, ...over });
+  it("the River Party Boat booked: the Douro boat tour planned that day leaves the plan, with the reason", () => {
+    const booked = act("Douro River Party Boat", "booked", "2026-10-09");
+    const planned = act("Douro nehri tekne turu", "chosen", "2026-10-09");
+    const plan = buildPlan(trip(), [booked, planned]);
+    expect(plan.closed.map((c) => [c.item.name, c.reason, c.by])).toEqual([["Douro nehri tekne turu", "Yerine Douro River Party Boat geldi", booked.id]]);
+  });
+  it("an idea for it with no day goes too; another kind or another day stays", () => {
+    const booked = act("Douro River Party Boat", "booked", "2026-10-09");
+    const idea = act("Rabelo boat cruise", "saved", null);
+    const show = act("Fado show", "chosen", "2026-10-09");
+    const later = act("Sunset sailing", "chosen", "2026-10-11");
+    const plan = buildPlan(trip(), [booked, idea, show, later]);
+    expect(plan.closed.map((c) => c.item.name)).toEqual(["Rabelo boat cruise"]);
+  });
+  it("two bookings both stay (nothing booked is taken away)", () => {
+    const plan = buildPlan(trip(), [act("Douro River Party Boat", "booked", "2026-10-09"), act("Rabelo tekne turu", "booked", "2026-10-09")]);
+    expect(plan.closed).toEqual([]);
   });
 });

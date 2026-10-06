@@ -3,6 +3,7 @@
 // a stay brings its alternatives straight back, and nothing is ever deleted to "close" a need.
 import { L } from "./i18n";
 import { nNights } from "./i18nText";
+import { experienceOf } from "./experiences";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
 import { isLocalTransfer, isRental, isTrip } from "./travelKinds";
 import type { Category, Item, Trip } from "./types";
@@ -737,6 +738,22 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
         range: null,
         booked: booked[0] ?? null,
       });
+    }
+  }
+  // A booked experience takes the place of the plan for the same thing (0.36.24, Emre: "River Party teknesini
+  // book ettim, diğerini çıkarman gerek"): the same kind (a boat, a show, a museum, a tour) in the same city,
+  // on the same day or one not given a day yet, not booked itself. It leaves the plan and the day with the
+  // reason ("Yerine … geldi"), under "Gizlenenler", its files going with the booking; nothing is deleted.
+  for (const b of live.filter((i) => i.category === "activity" && i.status === "booked")) {
+    const kind = experienceOf(b);
+    if (kind === "event") continue;
+    const day = departureDay(b);
+    for (const o of live) {
+      if (o === b || o.category !== "activity" || o.status === "booked" || closed.some((c) => c.item.id === o.id)) continue;
+      const oDay = departureDay(o);
+      const sameDay = !oDay || !day || oDay === day;
+      const samePlaceToo = !o.city || !b.city || sameCity(o.city, b.city);
+      if (sameDay && samePlaceToo && experienceOf(o) === kind) closed.push({ item: o, reason: replacedReason(b.name), by: b.id });
     }
   }
   const firstDay = (g: OptionGroup) => g.items.map(departureDay).filter(Boolean).sort()[0] ?? "9999";

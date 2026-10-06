@@ -8,6 +8,7 @@ import { isIdea } from "./booking";
 import { transportMode } from "./cardKinds";
 import { L } from "./i18n";
 import { count, hoursMinutes, lowerFirst, nDays, nNights, nOptions } from "./i18nText";
+import { experienceOf, fold, type Experience } from "./experiences";
 import { ideaKindOf, type IdeaKind } from "./ideaKinds";
 import { metricsOf } from "./items";
 import type { DayRow } from "./journey";
@@ -179,17 +180,6 @@ const IDEA_WORDS: Record<IdeaKind, () => string> = {
   bar: MEALS.bar,
 };
 
-const fold = (s: string) => s.toLocaleLowerCase("tr").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ı/g, "i");
-
-type Experience = "boat" | "show" | "museum" | "tour" | "event";
-// First match wins: a boat tour is a boat tour before it's a tour.
-// Whole words of the folded text ("Kültürü" isn't a "turu", "Cooperativa" isn't an opera, a showroom isn't a show).
-const EXPERIENCE_WORDS: [Experience, RegExp][] = [
-  ["boat", /\b(tekne\w*|boats?|cruises?|cruzeiro|yat|yachts?|yelken\w*|sail|sailing|gulet|rabelo|catamaran|katamaran)\b/],
-  ["show", /\b(gosteri\w*|shows?|konser\w*|concerts?|tiyatro\w*|theatre|theater|fado|opera|bale|ballet|performans\w*|performances?|musical|muzikal|flamenko|flamenco)\b/],
-  ["museum", /\b(muze\w*|museums?|museu|museo|musee|galeri\w*|gallery|galleries|galeria)\b/],
-  ["tour", /\b(tur|turu|turlari|tours?|rehberli|guided|mahzen\w*|cellars?|tadim\w*|tasting|excursions?|gezisi|safari)\b/],
-];
 /** The words of each kind that the name needn't repeat, longest first. */
 const LABEL_WORDS: Record<Experience, string[]> = {
   boat: ["tekne turu", "tekne gezisi", "boat tour", "boat trip", "river cruise", "cruise", "tekne"],
@@ -200,15 +190,6 @@ const LABEL_WORDS: Record<Experience, string[]> = {
 };
 const EXPERIENCE_LABEL: Record<Experience, () => string> = { boat: W.boat, show: W.show, museum: W.museum, tour: W.tour, event: W.event };
 
-/** By its name and option first; its summary only when they say nothing (a bookshop whose summary mentions a boat stays a bookshop). */
-function experienceOf(item: Item): Experience {
-  const by = (text: string) => EXPERIENCE_WORDS.find(([, re]) => re.test(fold(text)))?.[0] ?? null;
-  const own = by([item.name, item.optionDetail].filter(Boolean).join(" "));
-  if (own) return own;
-  // A name that already says what it is ("Livraria Lello": culture) isn't read from its summary.
-  if (ideaKindOf({ ...item, summary: "", ideaKind: null })) return "event";
-  return (item.summary ? by(item.summary) : null) ?? "event";
-}
 
 /**
  * The name without its kind's word ("Douro nehri tekne turu" → "Douro nehri", "Boat tour: Douro" → "Douro"): at
