@@ -2396,6 +2396,12 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-msgs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 12px 28px 20px; }
 .st-msg-user { align-self: flex-end; max-width: 82%; background: var(--hx-lav); color: var(--hx-ink); border-radius: 18px; padding: 10px 16px; font-size: 15.5px; white-space: pre-wrap; }
 .st-msg-bot { font-size: 16.5px; line-height: 1.55; color: var(--hx-ink); white-space: pre-wrap; }
+/* Rev 3: what was understood, then the question on its own line in bold. */
+.st-msg-bot .st-q { display: inline-block; margin-top: 2px; font-weight: 700; }
+.st-msg-bot .st-ack { color: #3d3863; }
+/* A row filling in (the moment a message is sent): its check pops in. */
+.st-row.done .st-check { animation: st-tick .45s cubic-bezier(.2, .9, .3, 1.3) both; }
+.st-row.done .st-row-value { animation: st-in .35s ease-out both; }
 .st-answers { display: flex; flex-direction: column; gap: 8px; margin-top: -4px; }
 .st-hint { font-size: 13px; color: var(--hx-muted); }
 .st-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -2464,14 +2470,24 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-row:hover:not(:disabled) .st-row-value { text-decoration: underline; text-underline-offset: 3px; }
 .st-check { position: relative; z-index: 1; flex: none; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; border: 2px dashed rgba(91, 69, 224, .45); background: #e6deff; color: #fff; }
 .st-row.done .st-check { border: 0; background: var(--hx-ink); }
+/* A destination still to confirm (rev 3): filled, with a "?" instead of the check. */
+.st-row.tentative .st-check { border: 2px solid var(--hx-accent); background: #fff; color: var(--hx-accent); font-size: 14px; font-weight: 800; }
+.st-row.tentative .st-row-value { color: var(--hx-ink); }
+.st-row-label em.st-row-check { color: #a35a00; }
 .st-row-label { display: block; font-size: 12.5px; font-weight: 700; letter-spacing: .08em; color: #5d5885; }
 .st-row-label em { font-style: normal; font-weight: 600; letter-spacing: 0; color: var(--hx-accent); }
 .st-row-value { display: block; margin-top: 2px; font-size: 17px; color: var(--hx-ink); }
 .st-row:not(.done) .st-row-value { color: #5d5885; }
 .st-gen-card { background: rgba(255, 255, 255, .72); border-radius: 22px; padding: 18px; text-align: center; }
-.st-gen-btn { width: 100%; border: 0; border-radius: 999px; padding: 15px; background: #221b3a; color: #fff; font-size: 17px; font-weight: 650; }
+.st-gen-btn { width: 100%; border: 0; border-radius: 999px; padding: 15px; background: #221b3a; color: #fff; font-size: 17px; font-weight: 650; cursor: pointer; opacity: 1; transition: transform .15s ease; }
 .st-gen-btn:hover:not(:disabled) { background: #120d24; }
-.st-gen-btn:disabled { opacity: .45; cursor: default; }
+.st-gen-btn:active:not(:disabled) { transform: scale(.985); }
+/* Disabled only while there is no destination (rev 3): then, and only then, it looks so. */
+.st-gen-btn:disabled { background: #b8b0d8; color: #f4f1ff; cursor: not-allowed; }
+.st-bar-gen { cursor: pointer; }
+/* The ROTA row while the route's proposal is on its way (rev 3): the chat goes on meanwhile. */
+.st-row-drawing { display: flex; align-items: center; gap: 8px; color: var(--hx-accent); font-size: 14.5px; }
+.st-row.drawing .st-check { border-color: var(--hx-accent); }
 .st-gen-card p { margin: 10px 0 0; font-size: 13.5px; color: #4b4670; }
 .st-bar { display: none; }
 
@@ -2510,7 +2526,28 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-gen-error { display: inline-block; margin-top: 22px; padding: 14px 18px; border-radius: 16px; background: #fff; text-align: left; color: var(--hx-ink); }
 .st-gen-error p { margin: 0; }
 .st-gen-actions { display: flex; gap: 10px; margin-top: 10px; }
+/* The map (rev 3): lavender land on a soft sea, the flight drawn across it, the photos fanning in under it. */
+.st-gen-stage { position: relative; margin: 26px 0 24px; }
+.st-map { position: relative; margin: 0; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 22px; background: #f4f0ff; box-shadow: 0 16px 40px rgba(40, 20, 120, .16); animation: st-map-in .5s ease-out both; }
+.st-map svg { display: block; width: 100%; height: 100%; }
+.st-map-sea { fill: #f4f0ff; }
+.st-map-land { fill: #cfc3ff; }
+.st-map-borders { fill: none; stroke: #f4f0ff; stroke-width: .8; stroke-linejoin: round; }
+.st-map-arc { fill: none; stroke: var(--hx-accent); stroke-linecap: round; }
+.st-map-stops { fill: none; stroke: #2c2560; stroke-linecap: round; }
+.st-map-stop { fill: #fff; stroke: #2c2560; stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.st-map-from { fill: #221b3a; }
+.st-map-to { fill: var(--hx-accent); }
+.st-map-ring { fill: none; stroke: var(--hx-accent); stroke-width: 1.5px; vector-effect: non-scaling-stroke; transform-box: fill-box; transform-origin: center; animation: st-map-ring 1.5s ease-out 2 both; }
+.st-map-plane path { fill: #221b3a; }
+.st-map-label { fill: #221b3a; font-weight: 750; paint-order: stroke; stroke: #fff; stroke-linejoin: round; }
+.st-map-credit { position: absolute; right: 12px; bottom: 6px; font-size: 10.5px; color: #6b6790; }
+@keyframes st-map-in { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes st-map-ring { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(4.5); } }
+.st-gen-stage .st-photos { position: relative; height: 200px; margin: -78px 0 0; }
+.st-gen-stage.no-map .st-photos { height: 220px; margin: 10px 0 6px; }
 @media (prefers-reduced-motion: reduce) {
+  .st-map, .st-map-ring, .st-row.done .st-check, .st-row.done .st-row-value { animation: none; }
   .st-photo, .st-tick, .st-step-text, .st-msg-bot, .st-thinking, .st-stage, .st-pv, .st-pv-row, .st-pv-photo { animation: none; }
   .st-step.run .st-step-mark, .st-dots i { animation: none; }
   .st-progress span, .st-pv-photo img, .st-photo img, .st-step, .st-step-mark, .st-ring-fg, .st-bar-track span { transition: none; }
@@ -2537,6 +2574,9 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
   .st-screen.generating .st-side { display: flex; padding: 32px 16px; }
   .st-photo { width: 120px; height: 150px; }
   .st-photos { height: 170px; }
+  .st-gen-stage { margin: 18px 0 16px; }
+  .st-gen-stage .st-photos { height: 160px; margin-top: -54px; }
+  .st-gen h2 { font-size: 24px; }
 }
 @media (max-width: 600px) {
   .st-hero { padding: 14px 16px 44px; }
