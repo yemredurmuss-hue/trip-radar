@@ -34,7 +34,7 @@ export async function reviewNewTrip(tripId: string): Promise<number> {
   const prompt = withLang(trip.lang, () => reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers }));
   // Claims the review for this key first ({ key, at, state: "running" }), so the board opening meanwhile waits
   // instead of asking too; "skipped" when it was claimed already, "no-key" without a model: the rules still show.
-  await runReview({ key, prompt, lang: trip.lang, playbook: trip.intent?.playbook, save: (change) => updateTrip(tripId, change, { touch: false }) });
+  await runReview({ key, prompt, lang: trip.lang, playbook: trip.intent, save: (change) => updateTrip(tripId, change, { touch: false }) });
   const after = (await d.get("trips", tripId)) ?? trip;
   const legs = buildLegs(plan, after);
   const timeline = buildTimeline(plan, legs, items, new Set(after.hidden ?? []));

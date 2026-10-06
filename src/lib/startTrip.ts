@@ -20,13 +20,13 @@ import { addDays, cityKeyOf } from "./plan";
 import { looksLikeUrl } from "./url";
 import type { PlannedInput } from "./planned";
 import {
-  budgetSet, chipsFor, effectsOf, optionsText, playbookAsks, playbookFor, playbookPromptLine, readAnswer, say, startOffset, startPlaybook, staysAfter,
-  type PbChip, type PbEffect, type PbQuestion,
+  budgetSet, chipsFor, effectsOf, optionsText, planSchema, playbookFor, playbookPromptLine, readAnswer, realPlace, say, startOffset, startPlaybook, startPlaybookObj, staysAfter,
+  validModelPlaybook, validQuestions, type PbChip, type PbEffect, type PbQuestion, type RawPlan,
 } from "./playbooks";
 import { CIRCUITS, englishName, fitCircuit } from "./startCircuits";
 import { daysBetween, eventDays, findEvent, intentAt, intentOf, intentTitle, plusDays, type Intent } from "./startEvents";
 import { STYLES, type BudgetLevel, type StyleId } from "./tripStyle";
-import type { ChatMessage, Item, Trip } from "./types";
+import type { ChatMessage, CustomPlaybook, Item, StayKind, Trip } from "./types";
 
 // --- the state -----------------------------------------------------------------------------------------
 
@@ -131,6 +131,11 @@ export interface StartState {
    * Never holding the trip back: what isn't answered is made as before.
    */
   pbAnswers?: Record<string, string | null>;
+  /**
+   * The playbook the model made for this trip (playbooks/model.ts, checked): its kind in words, what must hold, and,
+   * for a kind with no playbook of its own, its cards, questions and list. The latest one made wins.
+   */
+  playbook?: CustomPlaybook | null;
   messages: StartMsg[];
   /** The trip record once made: a retry after a failed step continues it, never makes a second trip. */
   tripId: string | null;
@@ -706,6 +711,8 @@ export interface Extracted {
   intent?: Intent | null;
   /** The model's pick among a trip kind's question's options (its value, or "skip"); checked against them before use. */
   choice?: string | null;
+  /** The playbook the model made for this trip (checked); only the model makes one. */
+  playbook?: CustomPlaybook | null;
 }
 
 /** "Kohphandan" read as Koh Phangan: kept apart until the traveller says yes ("Evet") or no ("Hayır, Kohphandan"). */
@@ -1139,7 +1146,7 @@ export const extractionPrompt = (text: string, today: string, pending: QuestionI
 export const replySchema = z.object({ text: z.string(), question: z.string() });
 export type RawReply = z.infer<typeof replySchema>;
 /** One call per typed message: what it says, and the reply to it. */
-export const turnSchema = extractionSchema.extend({ reply: replySchema });
+export const turnSchema = extractionSchema.extend({ reply: replySchema, plan: planSchema.optional() });
 export type RawTurn = z.infer<typeof turnSchema>;
 
 const replyRules = () =>
@@ -1150,8 +1157,68 @@ reply.question: yalnız "Sıradaki soru" için tek, kısa bir soru, soru işaret
 reply.question: one short question for "Next question" only, ending with a question mark; "" when there is no next question.`,
   );
 
-/** The system prompt for a typed message: read it, then reply. */
-export const turnSystem = () => `${extractionSystem()}\n${replyRules()}\n${answerIn()}`;
+// What a made playbook looks like (spec 2026-10-07-akilli-planlayici §A): two short examples, a kind with a playbook
+// of its own (the festival's, as the code has it) and one without (a liveaboard), so the model sees the shape filled.
+const NO_EFFECT = { card: "", to: "", n: 0, amount: 0, currency: "", items: [] as string[] };
+const planExamples = () =>
+  JSON.stringify([
+    {
+      label: L("Ozora Festivali", "Ozora Festival"), base: "festival", focus: "only", stay_type: "hotel", stay_port: "",
+      cards: [{ ref: "ticket", kind: "activity", title: L("Festival bileti", "Festival ticket"), place: "Ozora", anchor: "stay" }],
+      questions: [{ id: "ticket", text: L("Biletini aldın mı?", "Have you got your ticket yet?"), chips: [
+        { value: "have", label: L("Aldım", "Got it"), aliases: ["aldım", "bought"], effects: [{ ...NO_EFFECT, op: "markHandled", card: "ticket" }] },
+        { value: "not_yet", label: L("Henüz değil", "Not yet"), aliases: [], effects: [] },
+      ] }],
+      blocked_sections: ["activity"], blocked_words: [L("tekne turu", "boat tour"), L("müze", "museum")],
+      prep: [L("Çadır", "Tent"), L("Kafa lambası", "Head torch")], tip: L("Çoğu kişi 1–2 gün erken gidip iyi kamp yeri kapıyor.", "Most people arrive a day or two early for a good camping spot."),
+      tone: L("Enerjik, festivali bilen bir arkadaş gibi.", "Energetic, like a friend who knows festivals."), avoid: L("Tur ya da müze önerme; amaç festival.", "No tours or museums; the festival is the point."), musts: [],
+    },
+    {
+      label: L("Kızıldeniz liveaboard dalış gezisi", "Red Sea liveaboard diving trip"), base: "classic", focus: "only", stay_type: "boat", stay_port: L("Hurgada", "Hurghada"),
+      cards: [
+        { ref: "transfer", kind: "transfer", title: L("Limana transfer", "Transfer to the marina"), place: L("Hurgada", "Hurghada"), anchor: "arrive" },
+        { ref: "gear", kind: "activity", title: L("Dalış ekipmanı kiralama", "Dive gear rental"), place: L("Hurgada", "Hurghada"), anchor: "stay" },
+        { ref: "insurance", kind: "insurance", title: L("Dalış sigortası (DAN)", "Dive insurance (DAN)"), place: "", anchor: "arrive" },
+      ],
+      questions: [{ id: "gear", text: L("Kendi ekipmanın var mı?", "Do you have your own gear?"), chips: [
+        { value: "own", label: L("Var", "Yes"), aliases: ["var", "kendi"], effects: [{ ...NO_EFFECT, op: "dropCard", card: "gear" }] },
+        { value: "rent", label: L("Kiralayacağım", "I'll rent"), aliases: ["kira"], effects: [] },
+      ] }],
+      blocked_sections: [], blocked_words: [L("şehir turu", "city tour")],
+      prep: [L("Dalış sertifikası ve logbook", "Dive card and logbook"), L("Deniz tutması ilacı", "Seasickness tablets")], tip: L("Uçuşla son dalış arasında en az 18 saat bırak.", "Leave at least 18 hours between your last dive and the flight home."),
+      tone: L("Sakin, deneyimli bir dalış arkadaşı gibi.", "Calm, like an experienced dive buddy."), avoid: L("Karada şehir turu önerme; günler teknede geçiyor.", "No city tours; the days are on the boat."),
+      musts: [{ id: "level", text: L("İleri seviye dalgıç", "Advanced diver") }],
+    },
+  ]);
+
+const planRules = () =>
+  L(
+    `plan: bu geziye özel kalıp. YALNIZ gezinin ne tür bir gezi olduğu bu mesajda ilk kez anlaşılıyorsa ya da kullanıcı türü değiştiriyorsa doldur. Bilinenlerde "Kalıp hazır" varsa ve tür değişmediyse plan.label "" kalır (yeni bir şart söylendiyse kalıbı yeniden ver, şartlarla).
+- label: türün kısa adı ("Kızıldeniz liveaboard dalış gezisi", "Babanın 70. yaşı, aile kutlaması", "Toskana karavan turu"). Sıradan bir şehir gezisinde label yaz, base classic, kart ve soru verme.
+- base: festival | ski | honeymoon | wellness | classic, en yakını.
+- focus: gezinin amacını anla. Kullanıcı yalnız bu deneyim için gidip geliyorsa ("sadece festivale", "yalnız dalış için", "maça gidip döneceğim") "only": plan yalnız deneyimin gerektirdiği şeyler (oraya ulaşım, bilet, ekipman, izin, transfer, gerektiği kadar gece); araya tur, şehir gezisi ya da başka durak konmaz. Deneyimin etrafında bir tatil istiyorsa ya da belli değilse "around".
+- stay_type: hotel | boat (liveaboard, gulet, mavi yolculuk) | camp (çadır, kamp alanı) | vehicle (karavanda/araçta uyunur). stay_port: boat ya da camp için kalkış limanı ya da üs olan GERÇEK şehir ("Hurgada", "Fethiye"). Deniz, okyanus, körfez ya da bölge adı ("Kızıldeniz", "Red Sea") asla şehir değildir; ne stay_port ne place olur.
+- cards: rota, konaklama ve uçuşlar dışında açılacak yer tutucular, en fazla 6: ref (küçük harf, kısa), kind (transfer, taxi, car_rental, rv_rental, train, bus, ferry, activity, todo, esim, insurance, other), title, place (gerçek yer ya da ""), anchor (arrive: varış günü, stay: kalış boyunca, leave: dönüş günü).
+- questions: planı gerçekten değiştiren en fazla 3 soru (gerekmiyorsa []); her çipin value, label, aliases ve effects'i var. effects.op: dropCard (card = bir kartın ref'i ya da "stay:first"), markHandled (card = ref), moveCards (to = yer ya da "$value"), setStartOffsetDays (n), splitStay (n), setBudget (amount, currency), addPrep (items). Kullanmadığın alanlar "", 0 ya da [].
+- blocked_sections (stay, transport, activity, todo, food, other) ve blocked_words: bu gezide önerilmeyecekler; avoid: bunu tek cümleyle.
+- prep: türe özel hazırlık (en fazla 8). tip: tek kısa, doğru tavsiye. tone: sohbetin tonu, tek satır.
+- musts: yalnız kullanıcının açıkça söylediği şartlar: id step_free (merdiven çıkamıyor, yürümekte zorlanıyor, tekerlekli sandalye), private_transfer (özel araç), kitchen, quiet, pool, pet, breakfast, level (deneyim seviyesi), diet, age (bebek, çok yaşlı), other; text kısa, kullanıcının sözüyle. Söylenmeyeni ekleme.
+Örnekler: ${planExamples()}`,
+    `plan: this trip's own playbook. Fill it ONLY when this message first makes clear what kind of trip it is, or the user changes the kind. When "Playbook made" is in the known facts and the kind hasn't changed, plan.label stays "" (if a new must is said, give the playbook again with it).
+- label: the kind in a few words ("Red Sea liveaboard diving trip", "Dad's 70th, a family celebration", "Tuscany camper van tour"). For a plain city trip give a label, base classic, no cards or questions.
+- base: festival | ski | honeymoon | wellness | classic, the nearest.
+- focus: understand what the trip is for. When the user goes only for this experience and back ("just for the festival", "only to dive", "fly in for the match"), "only": the plan holds only what the experience needs (getting there, tickets, gear, permits, transfers, the nights it takes); no tours, sightseeing or other stops in between. A holiday around it, or unclear: "around".
+- stay_type: hotel | boat (liveaboard, gulet) | camp (tent, campsite) | vehicle (sleeping in a camper van). stay_port: for boat or camp, the REAL town the boat leaves from or the camp is based at ("Hurghada"). A sea, ocean, gulf or region ("Red Sea") is never a town: never stay_port or place.
+- cards: placeholders to open besides the route, the stays and the flights, at most 6: ref (short, lower case), kind (transfer, taxi, car_rental, rv_rental, train, bus, ferry, activity, todo, esim, insurance, other), title, place (a real place or ""), anchor (arrive: the day they arrive, stay: over the stay, leave: the day they leave).
+- questions: at most 3 that really change the plan ([] if none); each chip has value, label, aliases and effects. effects.op: dropCard (card = a card's ref or "stay:first"), markHandled (card = ref), moveCards (to = a place or "$value"), setStartOffsetDays (n), splitStay (n), setBudget (amount, currency), addPrep (items). Fields not used are "", 0 or [].
+- blocked_sections (stay, transport, activity, todo, food, other) and blocked_words: what not to suggest on this trip; avoid: that in one sentence.
+- prep: the kind's own preparation (at most 8). tip: one short, true tip. tone: the chat's tone, one line.
+- musts: only what the user clearly said must hold: id step_free (can't climb stairs, walks with difficulty, wheelchair), private_transfer (a car of their own), kitchen, quiet, pool, pet, breakfast, level (experience level), diet, age (a baby, very old), other; text short, in the user's words. Add nothing unsaid.
+Examples: ${planExamples()}`,
+  );
+
+/** The system prompt for a typed message: read it, make the trip's playbook when its kind is first clear, then reply. */
+export const turnSystem = () => `${extractionSystem()}\n${planRules()}\n${replyRules()}\n${answerIn()}`;
 
 /** What is known so far, one line per answer, for the model ("Nereye: Koh Phangan (Tayland)"). */
 export function knownLines(s: StartState, ctx: StartCtx): string {
@@ -1216,8 +1283,10 @@ const COMPANIONS: readonly Companions[] = ["solo", "partner", "friends", "family
 const BUDGETS: readonly BudgetLevel[] = ["low", "mid", "high"];
 
 /** The model's answer, kept only where it makes sense: a real date, a sane length, a name-like place, listed styles. */
-export function acceptExtraction(raw: RawExtraction, today: string): Extracted {
+export function acceptExtraction(raw: RawExtraction & { plan?: RawPlan | null }, today: string): Extracted {
   const out: Extracted = { ...EMPTY_EXTRACTED, styles: [] };
+  const playbook = validModelPlaybook(raw.plan);
+  if (playbook) out.playbook = playbook;
   const dest = bareName(raw.destination ?? "");
   if (dest && looksLikePlace(dest)) out.where = placeOf(dest, raw.destination_country || null, raw.destination_country_code || null);
   const origin = bareName(raw.origin ?? "");
@@ -1310,6 +1379,7 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
     styles: [...new Set([...code.styles, ...model.styles])],
     budget: code.budget ?? model.budget,
     ...(model.choice || code.choice ? { choice: model.choice || code.choice } : {}),
+    ...(model.playbook ? { playbook: model.playbook } : {}),
   };
 }
 
@@ -1356,12 +1426,13 @@ export function pbAsks(s: StartState): PbAsk[] {
   if (!s.where) return [];
   const kind = startPlaybook(s);
   if (kind === "classic") return [];
+  const p = startPlaybookObj(s);
   const ctx = {
     code: s.where.code ?? s.intent?.code ?? countryCodeOfName(s.where.country) ?? null,
     countryDestination: Boolean(countryItself(s.where)),
     eventDates: Boolean(s.intent?.kind === "event" && s.intent.dates && !s.intent.running),
   };
-  return playbookAsks(kind).flatMap((q) => {
+  return validQuestions(p.questions).flatMap((q) => {
     const chips = chipsFor(q, ctx);
     return chips ? [{ key: `${kind}:${q.id}`, q, chips }] : [];
   });
@@ -1730,6 +1801,11 @@ export function applyExtracted(s: StartState, e: Extracted, now: number): StartS
   }
   if (e.start) next.start = e.start;
   if (e.duration) next.duration = e.duration;
+  // Another kind of trip said: its playbook replaces the one before, and the old kind's answers go with it.
+  if (e.playbook) {
+    if (s.playbook && s.playbook.label !== e.playbook.label) next.pbAnswers = Object.fromEntries(Object.entries(s.pbAnswers ?? {}).filter(([k]) => !k.startsWith("custom:")));
+    next.playbook = e.playbook;
+  }
   if (e.styles.length || e.budget) {
     next.styles = e.styles.length ? e.styles : s.styles;
     next.budget = e.budget ?? s.budget;
@@ -1755,6 +1831,7 @@ export function onlyEmpty(s: StartState, e: Extracted): Extracted {
     duration: s.duration || s.skipped.includes("duration") ? null : e.duration,
     styles: want ? e.styles : [],
     budget: want ? e.budget : null,
+    ...(s.playbook || !e.playbook ? {} : { playbook: e.playbook }),
   };
 }
 
@@ -2664,9 +2741,10 @@ function countryItself(where: Place): string | null {
  * The classic circuit for a week or more in a popular country (or Bali), fitted to the nights and the style (rev 3):
  * proposed at once, without the model, which refines it when its own comes and differs. Null for anything else.
  */
-export function circuitRoute(s: Pick<StartState, "where" | "duration" | "start" | "styles"> & { from?: string | null }): StartRoute | null {
+export function circuitRoute(s: Pick<StartState, "where" | "duration" | "start" | "styles"> & { from?: string | null; playbook?: CustomPlaybook | null }): StartRoute | null {
   const total = totalNights(s);
-  if (!s.where || !total || total < 7) return null;
+  // Going for one experience only: no tour round the country.
+  if (!s.where || !total || total < 7 || s.playbook?.focus === "only") return null;
   const region = squash(s.where.place);
   const code = Object.hasOwn(CIRCUITS, region) ? region : countryItself(s.where);
   const full = code && Object.hasOwn(CIRCUITS, code) ? CIRCUITS[code] : null;
@@ -2698,8 +2776,10 @@ export function routeForGenerate(s: StartState): StartRoute | null {
 }
 
 /** Short trips and single cities are one stop; the model is asked only for a longer trip to a country, an island or a region. */
-export function wantsRouteAdvice(s: Pick<StartState, "where" | "duration" | "start"> & { intent?: Intent | null }): boolean {
+export function wantsRouteAdvice(s: Pick<StartState, "where" | "duration" | "start"> & { intent?: Intent | null; playbook?: CustomPlaybook | null }): boolean {
   const total = totalNights(s) ?? 0;
+  // Going for one experience only ("sadece dalışa gidip geleceğim"): no other stops are drawn around it.
+  if (s.playbook?.focus === "only") return false;
   // An event or a theme with a route of its own (gateway → event → gateway): never the model's for the place.
   if (!s.where || total < 6 || intentRoute(s)) return false;
   const known = knownPlaceOf(s.where.place);
@@ -2985,6 +3065,20 @@ export interface Creation {
   approxStart: string | null;
   /** The budget a trip kind's answer set (a honeymoon's "6.000 €"); null when none did. */
   budget: { amount: number; currency: string } | null;
+  /**
+   * The nights a model-made playbook spends on a boat, in a camp or a camper van: the stays in `city` (all of them when
+   * null) are that kind of stay (Item.metrics.stayKind), never a hotel to find. Null: hotels, as every trip.
+   */
+  stayAs?: { kind: StayKind; city: string | null } | null;
+}
+
+/** A model-made playbook this start runs (its kind has no playbook of its own), else null. */
+export const customOf = (s: StartState): CustomPlaybook | null => (s.playbook && startPlaybook(s) === "custom" ? s.playbook : null);
+
+/** A stay of a kind's own in a word and its place ("Liveaboard · Hurgada", "Kamp · Ozora", "Karavan · Floransa"). */
+export function ownStayTitle(c: Pick<CustomPlaybook, "stayType" | "label">, city: string | null): string {
+  const word = c.stayType === "boat" ? (/liveaboard/i.test(c.label) ? "Liveaboard" : L("Tekne", "Boat")) : c.stayType === "camp" ? L("Kamp", "Camp") : L("Karavan", "Camper van");
+  return city ? `${word} · ${city}` : word;
 }
 
 const said0 = (p: Partial<PlannedInput> & Pick<PlannedInput, "kind">): PlannedInput => ({
@@ -3017,7 +3111,12 @@ export function creationOf(s: StartState): Creation | null {
   if (!s.where) return null;
   const dates = tripDates(s);
   const where = s.where;
-  const stops = dates ? stopsOf(s) : s.route?.confirmed ? s.route.stops : [{ city: where.place, nights: 0, code: where.code ?? null }];
+  const custom = customOf(s);
+  // A boat or a camp leaves from a real town ("Hurgada"): the nights said for the sea or the region ("Kızıldeniz")
+  // are spent from there, and the flight goes there. Never a sea made into a city.
+  const port = custom && custom.stayType !== "hotel" ? (realPlace(custom.stayPort) ?? null) : null;
+  const atPort = (list: RouteStop[]) => (port ? list.map((x) => (samePlace(x.city, where.place) || list.length === 1 ? { ...x, city: port } : x)) : list);
+  const stops = atPort(dates ? stopsOf(s) : s.route?.confirmed ? s.route.stops : [{ city: where.place, nights: 0, code: where.code ?? null }]);
   // The stops' nights follow the dates (a route made for a rough length is fitted: the last stop takes the rest).
   const fitted = stops.map((x) => ({ ...x }));
   const stays: PlannedInput[] = [];
@@ -3059,7 +3158,10 @@ export function creationOf(s: StartState): Creation | null {
   const parents = region ? { key: placesKey(fitted.map((x) => x.city)), parents: Object.fromEntries(fitted.map((x) => [cityKeyOf(x.city)!, where.place])) } : null;
   // The trip kind's answers (playbooks/questions.ts): the stays they drop, move (a resort picked) or split.
   const effects = pbEffects(s);
-  const shaped = effects.length ? staysAfter(stays, effects, { dest: where.place, eventPlace: s.intent?.kind === "event" ? s.intent.place : null }) : stays;
+  const shaped0 = effects.length ? staysAfter(stays, effects, { dest: port ?? where.place, eventPlace: s.intent?.kind === "event" ? s.intent.place : null }) : stays;
+  // The nights of a kind's own (on the boat, in the camp, in the van): named for it, never "Konaklama · …" to fill with a hotel.
+  const stayAs = custom && custom.stayType !== "hotel" ? { kind: custom.stayType as StayKind, city: custom.stayType === "vehicle" ? null : (port ?? where.place) } : null;
+  const shaped = stayAs ? shaped0.map((x) => (stayAs.city == null || samePlace(x.city, stayAs.city) ? { ...x, title: ownStayTitle(custom!, x.city) } : x)) : shaped0;
   for (const e of effects) {
     const key = e.op === "moveCards" ? cityKeyOf(e.to) : null;
     // A resort inside the country said: the country's flag, weather and visa.
@@ -3077,6 +3179,7 @@ export function creationOf(s: StartState): Creation | null {
     road,
     approxStart: s.start?.approx && dates ? dates.start : null,
     budget: budgetSet(effects),
+    ...(stayAs ? { stayAs } : {}),
   };
 }
 

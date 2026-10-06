@@ -17,6 +17,7 @@ import { L } from "../../lib/i18n";
 import { locative, nNights } from "../../lib/i18nText";
 import { formatDateRange, formatPrice, isoDate, nightsBetween } from "../../lib/items";
 import { legItem, withLegChoice, type Leg } from "../../lib/legs";
+import { isOwnStay } from "../../lib/playbooks";
 import type { Need } from "../../lib/offerSource";
 import type { StayBlock } from "../../lib/plan";
 import { activityLinks, airportCode, BRANDS, esimLinks, flightLinks, stayLinks, transferLinks, type SearchLink } from "../../lib/searchLinks";
@@ -261,13 +262,15 @@ function EmptyRecordFace({ item }: { item: Item }) {
   if (kind === "stay") {
     const nights = start && end ? nightsBetween(start, end) : 0;
     const title = isGeneratedName(item.name) ? (item.city ?? item.name) : item.name;
+    // A night on the boat, in the camp or the van (a trip kind's own stay): no hotel to choose, find or price.
+    const own = isOwnStay(item);
     return (
       <EmptyShell
         {...shell}
         date={<CardDate item={item} kind={kind} />}
-        body={<EmptyMedia kind="stay" title={title} sub={[nights ? nNights(nights) : null, n ? nPeople(n) : null, L("otel seçilmedi", "no hotel chosen")].filter(Boolean).join(" · ")} />}
-        links={stayLinks({ city: item.city, checkin: start, checkout: end, adults: n })}
-        need={{ key: needKey("stay", item.city, start, end), section: "stay", kind: "stay", city: item.city, start, end, adults: n, country: item.countryCode ?? countryOfPlace(item.city, items)?.code ?? null }}
+        body={<EmptyMedia kind="stay" title={title} sub={[nights ? nNights(nights) : null, n ? nPeople(n) : null, own ? L("yer seçilmedi", "not chosen yet") : L("otel seçilmedi", "no hotel chosen")].filter(Boolean).join(" · ")} />}
+        links={own ? [] : stayLinks({ city: item.city, checkin: start, checkout: end, adults: n })}
+        need={own ? null : { key: needKey("stay", item.city, start, end), section: "stay", kind: "stay", city: item.city, start, end, adults: n, country: item.countryCode ?? countryOfPlace(item.city, items)?.code ?? null }}
       />
     );
   }
@@ -344,6 +347,8 @@ export function EmptyStayBlock({ block, label }: { block: Extract<StayBlock, { k
   const slot = block.slot ?? null;
   const city = slot?.city ?? block.city;
   const hide = () => env.hideNights(block.range, label);
+  // The nights on the boat, in the camp or the van (a trip kind's own stay): no hotel to find or price.
+  const own = isOwnStay(slot);
   const nights = L(`${block.nights} gece`, `${block.nights} night${block.nights === 1 ? "" : "s"}`);
   // A stay said apart with nothing of its own yet (the start's nights at a stop, "Konaklama · Ubud"): the city, the
   // nights and who goes, as the empty nights read. One with a name or a price of its own keeps them, edited in place.
@@ -375,10 +380,10 @@ export function EmptyStayBlock({ block, label }: { block: Extract<StayBlock, { k
       x={slot ? <DeleteX name={slot.name} className="stay-x" onDelete={() => env.remove(slot)} /> : <DeleteX name={label} hide className="stay-x" onDelete={hide} />}
       body={body}
       status={L("Yer yok", "No place yet")}
-      links={stayLinks({ city, checkin: block.range.start, checkout: block.range.end, adults: n })}
+      links={own ? [] : stayLinks({ city, checkin: block.range.start, checkout: block.range.end, adults: n })}
       onSkip={slot ? undefined : hide}
       skipTitle={L("Bu geceler için yer gerekmiyor", "No place needed for these nights")}
-      need={city ? { key: needKey("stay", city, block.range.start, block.range.end), section: "stay", kind: "stay", city, start: block.range.start, end: block.range.end, adults: n, country: countryOfPlace(city, items)?.code ?? null } : null}
+      need={city && !own ? { key: needKey("stay", city, block.range.start, block.range.end), section: "stay", kind: "stay", city, start: block.range.start, end: block.range.end, adults: n, country: countryOfPlace(city, items)?.code ?? null } : null}
     />
   );
 }

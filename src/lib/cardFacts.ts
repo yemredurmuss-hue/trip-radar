@@ -40,6 +40,9 @@ const STAY_KIND_LABELS: Readonly<Record<StayKind, string>> = liveLabels({
   guesthouse: ["Pansiyon", "Guesthouse"],
   hostel: ["Hostel", "Hostel"],
   other: ["Konaklama", "Stay"],
+  boat: ["Tekne", "Boat"],
+  camp: ["Kamp", "Camp"],
+  vehicle: ["Karavan", "Camper van"],
 });
 
 const bedrooms = (n: number) => count(n, "yatak odası", "bedroom");

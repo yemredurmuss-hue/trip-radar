@@ -128,7 +128,8 @@ export interface ItemMetrics {
   bedrooms?: number | null;
 }
 
-export const STAY_KINDS = ["hotel_room", "apartment", "house", "guesthouse", "hostel", "other"] as const;
+/** boat, camp, vehicle: nights spent on a liveaboard, in a camp, in a camper van (a trip kind's own stay): no hotel to find. */
+export const STAY_KINDS = ["hotel_room", "apartment", "house", "guesthouse", "hostel", "other", "boat", "camp", "vehicle"] as const;
 export type StayKind = (typeof STAY_KINDS)[number];
 
 export interface Geo {
@@ -291,8 +292,59 @@ export interface Suggestion {
   stateAt?: number;
 }
 
-/** The kinds of trip with a playbook of their own (playbooks/); "classic" is every other trip, as before. */
-export type PlaybookKind = "festival" | "ski" | "honeymoon" | "wellness" | "classic";
+/**
+ * The kinds of trip with a playbook of their own (playbooks/); "classic" is every other trip, as before; "custom" is
+ * the playbook the start chat's model made for this trip (a liveaboard, a camper van tour, a family celebration).
+ */
+export type PlaybookKind = "festival" | "ski" | "honeymoon" | "wellness" | "classic" | "custom";
+
+/**
+ * What the traveller said must hold, as the code applies it (playbooks/model.ts): step_free (no stairs: lifts, ground
+ * floor), private_transfer (a car of their own), kitchen, quiet, pool, pet, breakfast (the stay's labels); level, diet,
+ * age, other: words the AI review and the chat keep to.
+ */
+export type MustId = "step_free" | "private_transfer" | "kitchen" | "quiet" | "pool" | "pet" | "breakfast" | "level" | "diet" | "age" | "other";
+export interface Must {
+  id: MustId;
+  /** In the traveller's words, short ("Babam merdiven çıkamaz"). */
+  text: string;
+}
+
+/** A card of a model-made playbook: where it sits is said by its anchor (the day they arrive, the stay, the day they leave). */
+export interface CustomCard {
+  ref: string;
+  kind: PlannedKind;
+  title: string;
+  /** A real place (the destination, the port, the airport city); null: the destination. */
+  place: string | null;
+  anchor: "arrive" | "stay" | "leave";
+}
+
+/** A playbook the model made for this trip, checked (playbooks/model.ts validModelPlaybook): plain data, stored on the trip. */
+export interface CustomPlaybook {
+  /** The kind in words ("Kızıldeniz liveaboard dalış gezisi"). */
+  label: string;
+  /** The nearest kind with a playbook of its own (its tone when none is given). */
+  base: Exclude<PlaybookKind, "custom">;
+  /**
+   * What the trip is around: "only" the experience (go, do it, come back: no tours, no other stops, only what the
+   * experience needs), or a holiday "around" it.
+   */
+  focus: "only" | "around";
+  /** How the nights at the destination are spent: a hotel (as every trip), on a boat, in a camp, in a camper van. */
+  stayType: "hotel" | "boat" | "camp" | "vehicle";
+  /** Where a boat leaves from or a camp is based (a real place: "Hurgada"), when it isn't the destination. */
+  stayPort: string | null;
+  cards: CustomCard[];
+  /** At most three (playbooks/questions.ts PbQuestion, checked). */
+  questions: import("./playbooks/questions").PbQuestion[];
+  blocked: { sections: SuggestionSection[]; words: string[] };
+  prep: string[];
+  tip: string;
+  tone: string;
+  avoid: string;
+  musts: Must[];
+}
 
 /** A photo's credit for the hero ("Fotoğraf: <by> / Unsplash"): both parts linked when their pages are known. */
 export interface PhotoCredit {
@@ -309,6 +361,12 @@ export interface TripIntent {
   playbook: PlaybookKind;
   name?: string | null;
   url?: string | null;
+  /** The kind in words, as the model said it ("Liveaboard dalış"). */
+  label?: string | null;
+  /** The model's own playbook (playbook "custom"). */
+  custom?: CustomPlaybook | null;
+  /** What must hold, whatever the kind: every stay pick, transfer, suggestion and the chat keep to these. */
+  musts?: Must[];
 }
 
 /** The new trip's start card: closed with ×, the suggestions looked at, a road trip (a car instead of flights). */

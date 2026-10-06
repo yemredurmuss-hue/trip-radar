@@ -7,11 +7,11 @@
 // its id) and a plan said again updates the one before (planToSave), so "Tekrar dene" never makes anything twice.
 import { db, getSettings, listItems, listMessages, listPreferences, newId, notifyChanged } from "./db";
 import { L, withLang } from "./i18n";
-import { nightsBetween } from "./items";
-import { checkPlanned, guardKind, planToSave } from "./planned";
+import { EMPTY_METRICS, nightsBetween } from "./items";
+import { ALL_PLANNED_KINDS, checkPlanned, guardKind, planToSave } from "./planned";
 import { cityKeyOf } from "./plan";
 import type { PlannedInput } from "./planned";
-import { cardsAfter, playbookOf, prepAdded, startPlaybook, tripIntentOf } from "./playbooks";
+import { cardsAfter, hasMust, prepAdded, startPlaybook, startPlaybookObj, tripIntentOf, withMusts } from "./playbooks";
 import { styleKeyFor } from "./startBoard";
 import { suggestionsReview } from "./startHooks";
 import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, pbEffects, placeholderPrint, readyText, wantText, type Creation, type StartState } from "./startTrip";
@@ -110,7 +110,7 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
     const existing = s.tripId ? await d.get("trips", s.tripId) : undefined;
     if (existing) {
       const intent = tripIntentOf(s);
-      await d.put("trips", {
+      await d.put("trips", withMusts({
         ...existing,
         ...(intent ? { intent } : {}),
         // A budget a trip kind's answer set, when the trip has none yet (never over one said on the board).
@@ -120,7 +120,7 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
         lang: s.lang,
         ...(c.parents && !existing.placeParents ? { placeParents: c.parents } : {}),
         updatedAt: now(),
-      });
+      }, intent));
       notifyChanged();
       return { tripId: existing.id };
     }
@@ -142,7 +142,8 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
       createdAt: now(),
       updatedAt: now(),
     };
-    await d.put("trips", trip);
+    // What must hold ("babam merdiven çıkamaz", "mutfak şart"): the stays' requirements and wanted amenities.
+    await d.put("trips", withMusts(trip, intent));
     notifyChanged();
     return { tripId: trip.id };
   }
@@ -226,7 +227,8 @@ async function sayAll(tripId: string, said: Creation["stays"], c: Creation, now:
   const saved: Item[] = [];
   for (const raw of said) {
     const input = guardKind(raw);
-    const problem = T(() => checkPlanned(input));
+    // The start's own cards may be a kind only the add sheet makes (a camper van rental).
+    const problem = T(() => checkPlanned(input, ALL_PLANNED_KINDS));
     if (problem) throw new Error(problem);
     const items = await listItems(tripId);
     // Made one after another (the flight there before the flight home: dating them later reads this order).
@@ -251,9 +253,20 @@ async function sayAll(tripId: string, said: Creation["stays"], c: Creation, now:
  */
 export function playbookCards(s: StartState, c: Creation): { travel: PlannedInput[]; plan: PlannedInput[]; prep: PlannedInput[] } {
   const kind = startPlaybook(s);
-  if (kind === "classic") return { travel: [], plan: [], prep: [] };
-  const p = playbookOf(kind);
   const flight = c.travel.find((x) => x.kind === "flight");
+  const intent = tripIntentOf(s);
+  // "Özel araç olsun": a car of their own from where the flight lands, whatever the kind (one the playbook opens is
+  // said as private instead).
+  const privateRide = hasMust(intent, "private_transfer") && !c.road;
+  const ride = L("Özel transfer", "Private transfer");
+  if (kind === "classic") {
+    const first = c.stays[0];
+    const extra: PlannedInput[] = privateRide && flight?.to && first?.city
+      ? [{ kind: "transfer", date: first.date, end_date: null, time: null, from: flight.to, to: first.city, city: null, title: ride, booked: false, note: null }]
+      : [];
+    return { travel: extra, plan: [], prep: [] };
+  }
+  const p = startPlaybookObj(s);
   // The trip kind's answers (the same operations for every kind): cards dropped, marked booked, moved; lines added.
   const effects = pbEffects(s);
   const skeleton = p.skeleton({
@@ -265,7 +278,9 @@ export function playbookCards(s: StartState, c: Creation): { travel: PlannedInpu
     code: s.where?.code ?? s.intent?.code ?? null,
   });
   // (Its name for the operations never goes into the plan.)
-  const cards = cardsAfter(skeleton, effects, { dest: s.where?.place ?? "" }).map(({ ref: _ref, ...x }): PlannedInput => x);
+  const cards = cardsAfter(skeleton, effects, { dest: s.where?.place ?? "" })
+    .map(({ ref: _ref, ...x }): PlannedInput => x)
+    .map((x) => (privateRide && x.kind === "transfer" ? { ...x, title: x.title && !/özel|private/i.test(x.title) ? `${ride} · ${x.title}` : ride } : x));
   const moving = (x: PlannedInput) => x.kind === "transfer" || x.kind === "taxi" || x.kind.endsWith("_rental") || x.kind === "ferry";
   const prep = [...p.prep(), ...prepAdded(effects)].map((title): PlannedInput => ({ kind: "prep", date: null, end_date: null, time: null, from: null, to: null, city: null, title, booked: false, note: null }));
   return { travel: cards.filter(moving), plan: cards.filter((x) => !moving(x)), prep };
@@ -275,8 +290,11 @@ export function playbookCards(s: StartState, c: Creation): { travel: PlannedInpu
 function placedFor(item: Item, c: Creation): Item {
   const people = c.travellers?.count ?? null;
   const country = item.category !== "flight" ? c.countries[cityKeyOf(item.city) ?? ""] : undefined;
+  // A night on the boat, in the camp, in the van (a model-made playbook's own stay): that kind, never a hotel to find.
+  const own = c.stayAs && item.category === "stay" && (c.stayAs.city == null || cityKeyOf(item.city) === cityKeyOf(c.stayAs.city)) ? c.stayAs.kind : null;
   return {
     ...item,
+    ...(own ? { metrics: { ...(item.metrics ?? EMPTY_METRICS), stayKind: own } } : {}),
     // The flag, the weather, the visa, the minis.
     ...(country && !item.countryCode ? { countryCode: country.code, country: item.country ?? country.name } : {}),
     // How many travel, on the plans themselves (the search links read it from there).
@@ -308,11 +326,12 @@ export function wouldMake(s: StartState, now = Date.now()): { trip: Trip; items:
       createdAt: now,
       updatedAt: now,
     };
+    Object.assign(trip, withMusts(trip, intent));
     const items: Item[] = [];
     // The playbook's cards after what every trip has (none for a classic trip).
     for (const raw of [...c.stays, ...c.travel, ...pb.travel, ...pb.plan, ...pb.prep]) {
       const input = guardKind(raw);
-      if (checkPlanned(input)) continue;
+      if (checkPlanned(input, ALL_PLANNED_KINDS)) continue;
       const { item } = planToSave(input, items, trip.id, `start-preview-${items.length}`, now);
       items.push(placedFor(item, c));
     }

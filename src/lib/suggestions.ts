@@ -287,7 +287,7 @@ export function ruleSuggestions({ trip, plan, items, timeline, legs, mains, home
   }
 
   // What doesn't belong on this kind of trip (playbooks/: no tours on a festival trip) never comes up.
-  return sortSuggestions(allowedSuggestions(trip.intent?.playbook, out));
+  return sortSuggestions(allowedSuggestions(trip.intent, out));
 }
 
 /**

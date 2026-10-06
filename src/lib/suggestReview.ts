@@ -8,7 +8,7 @@ import type { MainPlace } from "./destinations";
 import { L, withLang, type Lang } from "./i18n";
 import { getProvider, MissingKeyError, type LlmProvider } from "./llm";
 import { cityKeyOf, type DateRange } from "./plan";
-import { allowedSuggestions, blockedWords } from "./playbooks";
+import { allowedSuggestions, blockedWords, type KindOrIntent } from "./playbooks";
 import { checkSuggestionInput, mergeIncoming, SECTION_TEMPLATES, SUGGESTION_SECTIONS } from "./suggestions";
 import type { Item, PlaybookKind, Suggestion, Trip } from "./types";
 
@@ -45,7 +45,7 @@ export function reviewDue(last: Trip["suggestReview"], key: string, now: number)
 }
 
 /** The system prompt; with what doesn't belong on this kind of trip (playbooks/), when it is one. */
-export const reviewSystem = (playbook?: PlaybookKind | null): string => {
+export const reviewSystem = (playbook?: KindOrIntent): string => {
   const avoid = blockedWords(playbook);
   return avoid ? `${reviewRules()}\n- ${avoid}` : reviewRules();
 };
@@ -97,7 +97,7 @@ export function reviewPrompt(input: {
  * The answer checked: at most three valid new ones, none the traveller dismissed (by key or topic), none that doesn't
  * belong on this kind of trip (playbooks/: no tours on a festival trip, one activity at most on a retreat).
  */
-export function acceptReview(answer: ReviewAnswer, stored: Suggestion[] | undefined, now: number, playbook?: PlaybookKind | null): { list: Suggestion[]; added: Suggestion[] } {
+export function acceptReview(answer: ReviewAnswer, stored: Suggestion[] | undefined, now: number, playbook?: KindOrIntent): { list: Suggestion[]; added: Suggestion[] } {
   const checked = answer.suggestions
     .map((raw) => checkSuggestionInput(raw, "ai", now))
     .filter((s): s is Suggestion => typeof s !== "string");
@@ -127,8 +127,8 @@ export async function runReview(args: {
   provider?: () => Promise<LlmProvider>;
   /** The trip's own language (a trip started by chat in Turkish on an English board): the review is written in it. */
   lang?: Lang | null;
-  /** The trip's playbook (trip.intent): what doesn't belong on it is never asked for. */
-  playbook?: PlaybookKind | null;
+  /** The trip's playbook (trip.intent, or its kind): what doesn't belong on it and what must hold are said. */
+  playbook?: KindOrIntent;
 }): Promise<"done" | "no-key" | "failed" | "skipped"> {
   const now = args.now ?? Date.now();
   let llm: LlmProvider;
@@ -149,7 +149,7 @@ export async function runReview(args: {
   if (!claimed) return "skipped";
   try {
     const answer = await llm.generateJson(withLang(args.lang, () => reviewSystem(args.playbook)), args.prompt, ReviewSchema);
-    await args.save((t) => ({ ...t, suggestions: acceptReview(answer, t.suggestions, now, t.intent?.playbook ?? args.playbook).list, suggestReview: { key: args.key, at: now, state: "done" } }));
+    await args.save((t) => ({ ...t, suggestions: acceptReview(answer, t.suggestions, now, t.intent ?? args.playbook).list, suggestReview: { key: args.key, at: now, state: "done" } }));
     return "done";
   } catch (error) {
     if (error instanceof MissingKeyError) {

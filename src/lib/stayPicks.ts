@@ -16,7 +16,7 @@ import { formatPrice } from "./items";
 import type { Need, Offer } from "./offerSource";
 import type { StayCandidate } from "./offerSources";
 import { cityKeyOf, sameCity } from "./plan";
-import type { CriterionId, Item, PriorityLevel, Trip } from "./types";
+import type { Amenity, CriterionId, Item, PriorityLevel, Trip } from "./types";
 
 export type PickKind = "best" | "cheaper" | "comfier";
 export interface StayPick {
@@ -33,7 +33,7 @@ export interface PickCtx {
   /** The middle of the trip's plans in this city (their places on the map); null when none is on the map. */
   centre: { lat: number; lng: number } | null;
   /** The trip's own priorities and musts (decision.ts); missing: the defaults. */
-  trip?: Partial<Pick<Trip, "priorities" | "categoryPriorities" | "requirements" | "wantedAmenities">> | null;
+  trip?: Partial<Pick<Trip, "priorities" | "categoryPriorities" | "requirements" | "wantedAmenities" | "intent">> | null;
 }
 
 /** The order the three are shown in, and their labels. */
@@ -99,6 +99,17 @@ interface Want {
 }
 const BREAKFAST = /kahvaltı dahil|breakfast included/i;
 const FREE_CANCEL = /ücretsiz iptal|free cancellation/i;
+/** The sources' words for an amenity asked for (a must or a wish): only labels that say it count. */
+const AMENITY_LABEL: Partial<Record<Amenity, RegExp>> = {
+  mutfak: /mutfak|kitchen/i,
+  havuz: /havuz|pool/i,
+  sessiz: /sessiz|quiet/i,
+  "evcil hayvan kabul": /evcil|pets? (allowed|friendly)|pet-friendly/i,
+  asansör: /asansör|elevator|lift/i,
+  "engelli erişimi": /engelli|erişilebilir|accessib|wheelchair/i,
+};
+/** "Babam merdiven çıkamaz" (a must of the trip, playbooks/model.ts): a lift, step-free access or the ground floor. */
+const STEP_FREE = /asansör|elevator|\blift\b|engelli|erişilebilir|accessib|wheelchair|zemin kat|ground floor|step-free|basamaksız/i;
 
 function wantsOf(trip: PickCtx["trip"]): Want[] {
   if (!trip) return [];
@@ -109,6 +120,14 @@ function wantsOf(trip: PickCtx["trip"]): Want[] {
   if (mustBreakfast || wantedAmenities(t).includes("kahvaltı dahil") || levelFor(t, "stay", "breakfast") > 0) out.push({ test: BREAKFAST, must: mustBreakfast });
   const mustCancel = req.some((r) => r.kind === "free_cancellation");
   if (mustCancel || (levelSource(t, "stay", "cancellation") === "explicit" && levelFor(t, "stay", "cancellation") >= 3)) out.push({ test: FREE_CANCEL, must: mustCancel });
+  // What the trip said must hold (its musts, as requirements) or wants (amenities), as far as a label can say it.
+  const stepFree = Boolean(t.intent?.musts?.some((m) => m.id === "step_free"));
+  if (stepFree) out.push({ test: STEP_FREE, must: true });
+  for (const [amenity, test] of Object.entries(AMENITY_LABEL) as [Amenity, RegExp][]) {
+    if (stepFree && (amenity === "asansör" || amenity === "engelli erişimi")) continue;
+    const must = req.some((r) => r.kind === "amenity" && r.amenity === amenity);
+    if (must || wantedAmenities(t).includes(amenity)) out.push({ test, must });
+  }
   return out;
 }
 const matched = (c: StayCandidate, wants: Want[]): string[] => wants.flatMap((w) => c.labels.filter((l) => w.test.test(l)).slice(0, 1));

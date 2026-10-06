@@ -654,6 +654,9 @@ const STAY_WORDS: Readonly<Partial<Record<string, string>>> = liveLabels({
   house: ["Ev", "House"],
   hostel: ["Hostel", "Hostel"],
   guesthouse: ["Pansiyon", "Guesthouse"],
+  boat: ["Tekne", "Boat"],
+  camp: ["Kamp", "Camp"],
+  vehicle: ["Karavan", "Camper van"],
 });
 /** A stay in one word by what it is: "Daire", "Ev", "Hostel", "Pansiyon", else "Otel". */
 export const stayWordOf = (item: Item | null) => STAY_WORDS[item?.metrics?.stayKind ?? ""] ?? L("Otel", "Hotel");
