@@ -34,8 +34,11 @@ export async function addLinks(text: string, from?: { tripId: string | null; sou
   const tokens = text.trim().split(/\s+/).filter(Boolean);
   if (!tokens.length || !tokens.every(looksLikeUrl)) return false;
   for (const url of tokens) {
-    // Handed to a trip's board: it goes into that trip, wherever its country or dates would send it.
-    const capture = await savePastedLink(url, from?.source === "board" && from.tripId ? from.tripId : undefined);
+    // Handed to a trip's board: it goes into that trip, wherever its dates would send it (its place is checked:
+    // placeCheck.ts). Sent in a trip's chat: routed as any capture, and that trip says where it went or asks.
+    const forTrip = from?.source === "board" && from.tripId ? from.tripId : undefined;
+    const fromTrip = from?.source === "chat" && from.tripId ? from.tripId : undefined;
+    const capture = await savePastedLink(url, forTrip, fromTrip);
     if (from) addIntake<LinkIntake>({ kind: "link", tripId: from.tripId, source: from.source, url, captureId: capture.id });
   }
   requestProcessing();
@@ -66,7 +69,7 @@ export async function addTripFiles(tripId: string, files: Iterable<File>, source
   const intakes = all.map((file) => addIntake<FileIntake>({ kind: "file", tripId, source, name: file.name, type: file.type, state: "reading" }));
   const screenshot = async (file: File, at: FileIntake) => {
     const shot = await downscale(await fileToDataUrl(file));
-    const capture = await saveImage(shot, source === "board" ? tripId : undefined);
+    const capture = await saveImage(shot, source === "board" ? tripId : undefined, source === "chat" ? tripId : undefined);
     updateIntake(at.id, { state: "screenshot", captureId: capture.id, thumb: shot });
     screenshots++;
   };

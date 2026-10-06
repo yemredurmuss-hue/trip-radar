@@ -330,10 +330,34 @@ export interface Capture {
   itemId: string | null;
   /** Came from a shared trip: it goes into this trip, not wherever chooseTrip would put it. */
   forTripId?: string;
+  /**
+   * Handed over in this trip's chat: routed as any capture, but checked against this trip's places, and the
+   * trip says where it went (or asks) when it doesn't belong here (placeCheck.ts).
+   */
+  fromTripId?: string;
+  /** Read, but not added: a trip's chat (or the popup) asks where it goes, or whether at all (placeCheck.ts). */
+  held?: HeldCapture;
   /** Who saved it, when someone else did (a shared trip's other traveller). */
   sharedBy?: string;
   /** When it reached the sharing server (or arrived from it): never uploaded again. */
   sharedAt?: number;
+}
+
+/** A capture read but kept off the plan until the traveller answers (spec 2026-10-06 trip routing). */
+export interface HeldCapture {
+  /** place: far from the trip it was handed to, and no trip of its own; travel: not a trip page at all. */
+  reason: "place" | "travel";
+  /** The record as it would have been saved (its trip: the one asked in, or a new one's id). */
+  item: Item;
+  /** The trip whose chat asks; null when there was none to ask in (the popup asks). */
+  tripId: string | null;
+  /** "Yeni gezi: Bali": the new trip's name if that is the answer. */
+  newTitle: string;
+  /** The question as the chat asks it ("Bu yer Endonezya'da, gezin Portekiz'de. Nereye ekleyeyim?"). */
+  question?: string;
+  askedAt: number;
+  answer?: "here" | "new" | "skip";
+  answeredAt?: number;
 }
 
 export interface Price {
@@ -494,6 +518,8 @@ export interface ChatMessage {
    * the model ("Evet, Alicante" adds the way home; "Sabine" makes the ticket hers). Only the newest reply's counts.
    */
   ask?: ChatAsk;
+  /** A capture that didn't go into this trip as handed: where it went (Aç · Geri al), or the question (placeCheck.ts). */
+  routing?: RoutingNote;
 }
 
 /** The code's own question under a reply, and what its chips mean (whoseStore.answerAsk). */
@@ -514,6 +540,14 @@ export interface OwnerChange {
   before: string[] | null;
   after: string[] | null;
 }
+
+/**
+ * moved: it went to the trip of its place instead (`far`: far from this one, so Geri al puts it here without
+ * its days; `merged`: it updated a record already there, nothing to take back). ask: the capture held, asking.
+ */
+export type RoutingNote =
+  | { kind: "moved"; itemId: string; fromTripId: string; toTripId: string; far: boolean; merged: boolean; undoneAt?: number }
+  | { kind: "ask"; captureId: string; reason: "place" | "travel"; newTitle: string; answer?: "here" | "new" | "skip"; answeredTripId?: string };
 
 /**
  * How a history line is taken back: these trip fields to their values before (only while they still hold the

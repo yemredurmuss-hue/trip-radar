@@ -7,12 +7,16 @@ import { L, lang, loadLang } from "./lib/i18n";
 import { CATEGORY_LABELS } from "./lib/items";
 import { collectPage } from "./lib/pagecapture";
 import { saveSnapshot } from "./lib/process";
+import { answerHeld } from "./lib/routing";
 import { reloadIfStale } from "./lib/update";
 
 type State =
   | { step: "saving" }
   | { step: "working"; captureId: string }
   | { step: "done"; text: string; tripId: string }
+  /** Read, not added (placeCheck.ts): the same question the trip's chat asks. */
+  | { step: "held"; captureId: string; text: string; reason: "place" | "travel"; newTitle: string; tripTitle: string | null }
+  | { step: "skipped" }
   | { step: "error"; text: string }
   | { step: "hint"; text: string };
 
@@ -69,6 +73,11 @@ function Popup() {
       const d = await db();
       const capture = await d.get("captures", state.captureId);
       if (capture?.status === "error") setState({ step: "error", text: capture.error ?? L("İşlenemedi.", "Couldn't process it.") });
+      const held = capture?.held;
+      if (capture?.status === "done" && !capture.itemId && held && !held.answer) {
+        const trip = held.tripId ? await d.get("trips", held.tripId) : undefined;
+        setState({ step: "held", captureId: capture.id, text: held.question ?? held.item.name, reason: held.reason, newTitle: held.newTitle, tripTitle: trip?.title ?? null });
+      }
       if (capture?.status === "done" && capture.itemId) {
         const item = await d.get("items", capture.itemId);
         const trip = item ? await d.get("trips", item.tripId) : undefined;
@@ -94,6 +103,8 @@ function Popup() {
         </p>
       )}
       {state.step === "done" && <p>✓ {state.text}</p>}
+      {state.step === "held" && <HeldQuestion state={state} onDone={setState} />}
+      {state.step === "skipped" && <p>{L("Eklenmedi.", "Not added.")}</p>}
       {state.step === "error" && <p className="error">{state.text}</p>}
       {state.step === "hint" && <p>{state.text}</p>}
       {!hasKey && <p className="warning">{L("Kayıt duruyor. AI'ın işlemesi için ücretsiz Gemini anahtarını bir kez bağla.", "Saved, but waiting. Connect a free Gemini key once so the AI can read it.")}</p>}
@@ -103,6 +114,39 @@ function Popup() {
       >
         {!hasKey ? L("1 dakikalık kurulum", "1-minute setup") : state.step === "done" ? L("Geziyi aç", "Open trip") : L("Panoyu aç", "Open board")}
       </button>
+    </div>
+  );
+}
+
+/** The question the trip's chat asks too; answered here, it's answered there. */
+function HeldQuestion({ state, onDone }: { state: Extract<State, { step: "held" }>; onDone: (next: State) => void }) {
+  const [busy, setBusy] = useState(false);
+  async function answer(a: "here" | "new" | "skip") {
+    setBusy(true);
+    try {
+      const tripId = await answerHeld(state.captureId, a);
+      if (!tripId) return onDone({ step: "skipped" });
+      const d = await db();
+      const trip = await d.get("trips", tripId);
+      onDone({ step: "done", text: `${trip?.title ?? ""}`, tripId });
+    } catch (error) {
+      onDone({ step: "error", text: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  // With no trip to ask in, "here" makes the new trip too: only one way to add it.
+  const here = state.tripTitle ? (state.reason === "place" ? L(`${state.tripTitle}: yine de ekle`, `${state.tripTitle}: add anyway`) : L("Yine de ekle", "Add it anyway")) : null;
+  return (
+    <div className="popup-held">
+      <p>{state.text}</p>
+      <div className="popup-held-actions">
+        {here && <button className="small-btn" disabled={busy} onClick={() => void answer("here")}>{here}</button>}
+        {(state.reason === "place" || !here) && (
+          <button className="small-btn" disabled={busy} onClick={() => void answer("new")}>
+            {L(`Yeni gezi: ${state.newTitle}`, `New trip: ${state.newTitle}`)}
+          </button>
+        )}
+        <button className="small-btn" disabled={busy} onClick={() => void answer("skip")}>{L("Ekleme", "Don't add")}</button>
+      </div>
     </div>
   );
 }

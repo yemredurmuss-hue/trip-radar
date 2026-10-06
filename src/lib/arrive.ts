@@ -251,7 +251,7 @@ export type ChipState =
  * "⚠ okunamadı". `capture` undefined: not read back yet (still working).
  */
 export function chipState(
-  capture: { id: string; status: "pending" | "processing" | "done" | "error"; error: string | null; itemId: string | null } | null | undefined,
+  capture: { id: string; status: "pending" | "processing" | "done" | "error"; error: string | null; itemId: string | null; held?: { answer?: string } } | null | undefined,
   landed: { id: string; tripId: string; section: SectionId } | null,
   ctx: { tripId: string; site: string | null; tripTitle?: (id: string) => string | null; screenshot?: boolean },
 ): ChipState {
@@ -260,6 +260,10 @@ export function chipState(
     return { tone: "work", text: ctx.screenshot ? L("Ekran görüntüsü okunuyor…", "Reading the screenshot…") : ctx.site ? L(`${ctx.site} okunuyor…`, `Reading ${ctx.site}…`) : L("Okunuyor…", "Reading…") };
   }
   if (capture.status === "error") return { tone: "error", text: L("Okunamadı", "Couldn't read it"), captureId: capture.id, detail: capture.error };
+  // Read but not added (placeCheck.ts): the question is the chat's next line; "Ekleme" leaves it out.
+  if (capture.held && !capture.itemId) {
+    return { tone: "done", text: capture.held.answer ? L("Eklenmedi", "Not added") : L("Eklenmedi · nereye, aşağıda soruyorum", "Not added yet · asking where, below"), itemId: null };
+  }
   if (landed && landed.tripId !== ctx.tripId) {
     const title = ctx.tripTitle?.(landed.tripId);
     return { tone: "done", text: title ? L(`✓ ${title} gezisine eklendi`, `✓ Added to ${title}`) : L("✓ Başka bir geziye eklendi", "✓ Added to another trip"), itemId: null };

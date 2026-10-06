@@ -1,5 +1,6 @@
 // Which trip does a new capture belong to? The model suggests one, but the decision is made here
 // from facts: a Thailand hotel never lands in the Portugal trip just because the model said so.
+import { nearCountries } from "./countryCenters";
 import { normalize } from "./evidence";
 import { L, lang } from "./i18n";
 import type { Item, Trip } from "./types";
@@ -18,6 +19,11 @@ export interface TripSignal {
   end: string | null;
   suggestedTripId: string | null;
   suggestedTitle: string | null;
+  /**
+   * The dates are only the page's (an activity's date picker, a restaurant's booking box), not what was searched
+   * for: a trip to the same place is still that trip whatever they say (spec 2026-10-06 trip routing).
+   */
+  softDates?: boolean;
 }
 
 export type TripChoice = { tripId: string } | { newTitle: string };
@@ -48,7 +54,7 @@ export function profileTrips(trips: Trip[], items: Item[]): TripProfile[] {
 const DAY = 24 * 3600e3;
 
 /** Days between two date ranges (0 when they overlap). */
-function gapDays(a: { start: string; end: string }, start: string, end: string | null): number {
+export function gapDays(a: { start: string; end: string }, start: string, end: string | null): number {
   const s = Date.parse(start);
   const e = Date.parse(end ?? start);
   const as = Date.parse(a.start);
@@ -95,16 +101,18 @@ export function chooseTrip(signal: TripSignal, allProfiles: TripProfile[]): Trip
     // Same place and similar (or unknown) dates → same trip; the nearest dates win.
     const compatible = sameCountry.filter((p) => {
       const g = gap(p);
-      return g === null || g <= SAME_TRIP_DAYS;
+      return g === null || g <= SAME_TRIP_DAYS || signal.softDates;
     });
     if (compatible.length) {
       const dated = compatible.filter((p) => gap(p) !== null).sort((a, b) => gap(a)! - gap(b)!);
       return { tripId: (dated[0] ?? compatible.find((p) => p === suggested) ?? compatible[0]).trip.id };
     }
-    // Different country whose dates touch an existing trip → one journey.
+    // Different country whose dates touch an existing trip → one journey, but only a country near the trip's
+    // own (Portugal → Spain). Bali never joins the Portugal trip because a page's date picker said 8 October.
     const journey = byRecency.find((p) => {
       const g = gap(p);
-      return g !== null && g <= SAME_JOURNEY_DAYS;
+      const near = p.countryCodes.size === 0 || (code != null && [...p.countryCodes].some((c) => nearCountries(c, code)));
+      return g !== null && g <= SAME_JOURNEY_DAYS && near;
     });
     return journey ? { tripId: journey.trip.id } : newTrip();
   }

@@ -24,7 +24,8 @@ function useCaptures(ids: readonly string[], open: Capture[]): (id: string) => C
     let live = true;
     void Promise.all(missing.map(captureById)).then((rows) => {
       if (!live) return;
-      const settled = missing.flatMap((id, i) => (rows[i] === null || rows[i]?.status === "done" ? [[id, rows[i]] as const] : []));
+      // A held capture (placeCheck.ts) isn't settled until it's answered: its chip changes with the answer.
+      const settled = missing.flatMap((id, i) => (rows[i] === null || (rows[i]?.status === "done" && !(rows[i]?.held && !rows[i]?.held?.answer)) ? [[id, rows[i]] as const] : []));
       if (settled.length) setFinished((prev) => new Map([...prev, ...settled]));
     });
     return () => {

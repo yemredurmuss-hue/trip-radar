@@ -119,6 +119,10 @@ function buildExtractionSchema(en: boolean) {
       .enum(["yes", "no", "unknown"])
       .optional()
       .describe(t("Giriş bileti, rezervasyon ya da önceden kayıt gerekiyor mu? Konaklama, uçuş, ulaşım, eSIM: yes. Etkinlik/restoran: sayfa bilet, rezervasyon, giriş ücreti ya da tur satıyorsa yes; serbest girişse (sokak, pazar, manzara noktası, park) no; sayfa söylemiyorsa unknown", "Is an entry ticket, a reservation or signing up ahead needed? Stay, flight, transport, eSIM: yes. Activity/restaurant: yes if the page sells a ticket, a reservation, an entry fee or a tour; no if it's free to walk in (a street, a market, a viewpoint, a park); unknown if the page doesn't say")),
+    travel: z
+      .boolean()
+      .optional()
+      .describe(t("Bu sayfa bir geziyle ilgili mi (kalacak yer, uçuş, ulaşım, etkinlik, restoran, gezilecek yer, eSIM, sigorta, vize, gezi rehberi ya da ilhamı, rezervasyon)? Geziyle ilgisi olmayan bir haber, ürün, yazılım ya da başka bir konu: false", "Is this page about a trip (a place to stay, a flight, transport, an activity, a restaurant, a place to visit, an eSIM, insurance, a visa, a travel guide or inspiration, a booking)? A news article, a product, software or anything else unrelated to travel: false")),
     booking_quote: z.string().nullable().optional().describe(t("Onayı söyleyen ifade, sayfadan ya da ekrandan birebir ('Rezervasyonunuz onaylandı', 'Booking confirmed'); yoksa null", "The words that say it is confirmed, verbatim from the page or screen ('Booking confirmed', 'Rezervasyonunuz onaylandı'); else null")),
   });
 }

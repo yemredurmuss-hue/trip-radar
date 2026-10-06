@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState, type ClipboardEvent } from "react";
+import { useEffect, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
 import { sendMessage } from "../lib/assistant";
 import { L, lang } from "../lib/i18n";
 import { reloadIfLangChanged } from "./langSwitch";
 import { noChangeNote } from "../lib/claims";
 import { describeError } from "../lib/llm";
 import { shownReply } from "../lib/replyText";
-import type { Capture, ChatMessage, Item, Trip } from "../lib/types";
+import { answerHeld, RoutingChanged, undoMove } from "../lib/routing";
+import type { Capture, ChatMessage, Item, RoutingNote, Trip } from "../lib/types";
 import { DOC_ACCEPT } from "../lib/docs";
 import { DropOverlay } from "./arrive/ArriveViews";
 import { useChatArrivals } from "./arrive/ChatArrivals";
@@ -135,6 +136,8 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
         {arrivals.rows.map((row) => {
           if (row.kind === "intake") return arrivals.bubble(row.e);
           const m = row.m;
+          // A capture that went to the trip of its place, or the question about one (placeCheck.ts).
+          if (m.routing) return <RoutingLine key={m.id} m={m} routing={m.routing} trips={trips} />;
           // An event line about a record goes to its card ("✓ Casa Azul kaydedildi → Konaklama").
           const about = arrivals.eventItem(m);
           if (about) {
@@ -203,6 +206,80 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
         </button>
       </form>
     </section>
+  );
+}
+
+/** Opens a trip by its address (App follows #trip=…); the same address again still opens it. */
+function openTrip(id: string) {
+  const hash = `#trip=${id}`;
+  if (location.hash === hash) window.dispatchEvent(new HashChangeEvent("hashchange"));
+  else location.hash = hash;
+}
+
+/**
+ * "↪ Nusa Penida … Bali gezine eklendi · Aç · Geri al", or the question about a capture that wasn't added
+ * ("Bu yer Endonezya'da, gezin Portekiz'de. Nereye ekleyeyim?") with its answers; once answered, what was done.
+ */
+function RoutingLine({ m, routing, trips }: { m: ChatMessage; routing: RoutingNote; trips: Trip[] }) {
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const title = (id: string | undefined) => trips.find((t) => t.id === id)?.title ?? null;
+  async function act(work: () => Promise<unknown>) {
+    if (busy) return;
+    setBusy(true);
+    setProblem(null);
+    try {
+      await work();
+    } catch (e) {
+      setProblem(e instanceof RoutingChanged ? e.message : describeError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  let actions: ReactNode = null;
+  if (routing.kind === "moved") {
+    const there = title(routing.toTripId);
+    actions = routing.undoneAt ? (
+      <span className="muted">{routing.far ? L("Geri alındı · bu geziye eklendi, bir güne konmadı", "Taken back · added to this trip, on no day") : L("Geri alındı · bu geziye eklendi", "Taken back · added to this trip")}</span>
+    ) : (
+      <>
+        {there && (
+          <button type="button" className="btn-link" onClick={() => openTrip(routing.toTripId)}>
+            {L("Aç", "Open")}
+          </button>
+        )}
+        {!routing.merged && (
+          <button type="button" className="btn-link" disabled={busy} onClick={() => void act(() => undoMove(m.id))}>
+            {L("Geri al", "Undo")}
+          </button>
+        )}
+      </>
+    );
+  } else if (routing.answer) {
+    const went = title(routing.answeredTripId);
+    actions = <span className="muted">{routing.answer === "skip" || !went ? L("Eklenmedi", "Not added") : L(`→ ${went} gezisine eklendi`, `→ Added to ${went}`)}</span>;
+  } else {
+    const answer = (a: "here" | "new" | "skip") => () => void act(() => answerHeld(routing.captureId, a));
+    actions =
+      routing.reason === "place" ? (
+        <>
+          <button type="button" className="small-btn" disabled={busy} onClick={answer("here")}>{L("Bu geziye yine de ekle", "Add to this trip anyway")}</button>
+          <button type="button" className="small-btn" disabled={busy} onClick={answer("new")}>{L(`Yeni gezi: ${routing.newTitle}`, `New trip: ${routing.newTitle}`)}</button>
+          <button type="button" className="btn-link" disabled={busy} onClick={answer("skip")}>{L("Ekleme", "Don't add")}</button>
+        </>
+      ) : (
+        <>
+          <button type="button" className="small-btn" disabled={busy} onClick={answer("here")}>{L("Yine de ekle", "Add it anyway")}</button>
+          <button type="button" className="btn-link" disabled={busy} onClick={answer("skip")}>{L("Ekleme", "Don't add")}</button>
+        </>
+      );
+  }
+  return (
+    <div className={`msg-route${routing.kind === "ask" && !routing.answer ? " ask" : ""}`} data-routing={routing.kind}>
+      <div>{m.text}</div>
+      <div className="msg-route-actions">{actions}</div>
+      {problem && <div className="chat-error">{problem}</div>}
+    </div>
   );
 }
 
