@@ -37,7 +37,23 @@ import { makeContext } from "./decision";
 import { nPeople, travellersTitle } from "./heroInfo";
 import { stableJson } from "./share/settings";
 import { adultsOf } from "./tripFacts";
-import { currencyOf, fieldsBefore, whoGoes, withCurrency, withTravellers, type CurrencyChange, type TripFieldsBefore } from "./tripSettings";
+import {
+  currencyOf,
+  fieldsBefore,
+  fromOf,
+  namesChanged,
+  ownersAfter,
+  whoGoes,
+  withCurrency,
+  withTravellers,
+  type CurrencyChange,
+  type TravellersChange,
+  type TripFieldsBefore,
+} from "./tripSettings";
+import { ablative } from "./i18nText";
+import { ownersByOrigin, type WhoCtx } from "./whose";
+import { loadWho, writeOwners } from "./whoseStore";
+import { answerAsk, arrivals, setOwnerTool, type TurnAsk } from "./whoseChat";
 import { announceTripChange } from "./tripUndo";
 import { claimsChange } from "./claims";
 import { cleanContent, cleanReply, replyFallback } from "./replyText";
@@ -125,6 +141,7 @@ Nasıl konuşursun:
 - Yalnız araçların yaptığını söyle: bir aracı çağırmadıysan ya da araç hata verdiyse "güncelledim/not ettim/böldüm" deme. Aracın döndürdüğü sonuçla (ör. plan_item'ın board alanı) panoda gerçekten ne olduğunu anlat.
 - Bir şeyin değiştiğini ("güncelledim", "değiştirdim", "ekledim", "tamam, yaptım") ancak BU mesajda çağırdığın bir araç başarılı olduysa söyle; sonuçta "unchanged" varsa hiçbir şey değişmemiştir, öyle söyle. İsteneni yapan bir araç yoksa bunu açıkça söyle ve nerede yapılabileceğini göster ("Bunu buradan değiştiremiyorum; Ayarlar'dan yapabilirsin").
 - Pano ayarları: "bütçeyi euro göster", "her şey TL olsun" → set_settings currency (bütçe günün kuruyla çevrilir; kur yoksa araç reddeder: "kur bilgisi yok, sonra dene" de, tutar uydurma). "Türkçeye geç", "İngilizce olsun" → set_settings language; ondan sonra o dilde yanıt ver. Kimler gidiyor: "Sabine de geliyor", "Ali gelmiyor", "2 kişiyiz" → set_travellers (paylaşmadan kaydeder; davet etmek isterse kahramandaki kişiler kutusundan "Birini davet et (paylaş)").
+- Kişiye özel rezervasyon: herkes aynı yerden gelmeyebilir. "Sabine Alicante'den geliyor" → set_travellers from [{name: "Sabine", place: "Alicante"}]: kod onun için gidiş boş uçuş kartını açar ve dönüşü kendisi kalın soruyla sorar (sen dönüşü ayrıca sorma, offer_choices çağırma); sonuçtaki shown'u anlat. "Bu bilet Sabine'in", "Ryanair Sabine'in", "bu otel yalnız Emre ve Ali'nin" → set_owner (item_ids, names; herkesinse names ["everyone"]). Kişiye adıyla yaz, asla "senin" deme; kullanıcının adı trip.travellers.me'dir; adı yoksa ve plan onunsa önce "Sana ne diyeyim?" diye sor. Bir planın kimin olduğu belli değilse tahmin etme, sor. items[].for_who o planın sahipleri (yoksa herkesin).
 - Boş geceler varsa uygun bir anda bir kez hatırlat.
 - Planlar: kullanıcı bir planını söylediğinde, linki olmasa da (ör. "7 Ekim'de İstanbul'dan Porto'ya uçuyoruz", "11 Ekim'de Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız", "10-17 Ekim Funchal'da kalacağız", "9 Ekim akşamı fado") plan_item ile hemen panoya ekle; tarih ve nereden/nereye ya da şehir ver. Gün belli değilse beklemeden date null ile ekle (şehrin bloğunda "gün belli değil" diye durur); gün plandan açıksa (ör. Madeira'ya varış günü) o tarihi kullan; gün sonra söylenince aynı şeyi plan_item ile tarihle tekrar ver, kart o güne geçer. "gideriz/düşünüyoruz" → planlanıyor (booked false); "aldım/rezerve ettim" → booked true. Aynı şey items'ta zaten varsa plan_item yerine update_items kullan. Şehir değişimi için ulaşım söylenirse (Madeira'ya uçakla) kind flight ile ekle.
 - Planı sohbetten şekillendirme (hemen, aynı mesajda, sormadan):
@@ -182,6 +199,7 @@ How you talk:
 - Only say what the tools did: if you didn't call a tool, or it returned an error, don't say "updated/noted/split". Use the tool's result (e.g. plan_item's board field) to say what really happened on the board.
 - Say something changed ("updated", "changed", "added", "done!") only when a tool you called in THIS message succeeded; a result with "unchanged" means nothing changed, so say that. If no tool does what was asked, say so plainly and point to where it can be done ("I can't change that from here; you can do it in Settings").
 - Board settings: "show the budget in euros", "everything in TRY" → set_settings currency (the budget is converted at the day's rate; without a rate the tool refuses: say "no exchange rate right now, try later", never make up an amount). "switch to Turkish", "in English please" → set_settings language; answer in that language from then on. If the user writes in Turkish, you may offer once to switch the board to Turkish. Who's going: "Sabine is coming too", "Ali isn't coming", "we're 2" → set_travellers (saved without sharing; to invite someone, point to "Invite someone (share)" in the hero's people box).
+- Per-person bookings: not everyone may come from the same place. "Sabine is coming from Alicante" → set_travellers from [{name: "Sabine", place: "Alicante"}]: the code opens her empty outbound flight card and asks about her way home itself, in bold (don't ask it again, don't call offer_choices); tell what the result's shown says. "This ticket is Sabine's", "the Ryanair one is Sabine's", "this hotel is only Emre and Ali's" → set_owner (item_ids, names; names ["everyone"] for everyone's). Always use the person's name, never "yours"; the user's own name is trip.travellers.me; if they have none and the plan is theirs, first ask "What should I call you?". If it isn't clear whose a plan is, don't guess: ask. items[].for_who are a plan's owners (none: everyone's).
 - If there are empty nights, mention it once at a good moment.
 - Plans: when the user mentions a plan, even without a link (e.g. "we fly Istanbul to Porto on 7 October", "we'll fly over to Madeira on 11 October", "we'll hire a car in Madeira", "we'll stay in Funchal 10-17 October", "fado on the evening of 9 October"), add it to the board right away with plan_item; give the date and from/to or the city. If the day isn't known, add it straight away with date null (it waits in the city's block as "day not set"); if the day is clear from the plan (e.g. the day they arrive in Madeira), use that date; when the day is given later, send the same thing again with plan_item and the date, and the card moves to that day. "we'll go/we're thinking" → planned (booked false); "bought it/booked it" → booked true. If the same thing is already in items, use update_items instead of plan_item. If transport for a change of city is mentioned (to Madeira by plane), add it with kind flight.
 - Shaping the plan from the chat (right away, in the same message, without asking):
@@ -490,8 +508,37 @@ function buildTools(en: boolean): ToolSpec[] {
           add: { type: "array", items: { type: "string" } },
           remove: { type: "array", items: { type: "string" } },
           count: { type: "number", description: t("Toplam kişi sayısı (kullanıcı dahil); değişmiyorsa 0", "Total number of people (the user included); 0 if unchanged") },
+          from: {
+            type: "array",
+            description: t(
+              "Gezinin kalktığı yerden farklı yerden gelenler ('Sabine Alicante'den geliyor' → {name: 'Sabine', place: 'Alicante'}); place boş: gezinin kalktığı yerden. Kullanıcının kendisi trip.travellers.me adıyla. Yoksa [].",
+              "People coming from somewhere other than where the trip leaves from ('Sabine is coming from Alicante' → {name: 'Sabine', place: 'Alicante'}); an empty place: from where the trip leaves. The user by trip.travellers.me. Else [].",
+            ),
+            items: { type: "object", properties: { name: { type: "string" }, place: { type: "string" } }, required: ["name", "place"], additionalProperties: false },
+          },
+          rename: {
+            type: "array",
+            description: t("Yanlış yazılmış bir ad ('Sabina değil Sabine' → {from: 'Sabina', to: 'Sabine'}); planları ve geldiği yer adla birlikte gider. Yoksa [].", "A name spelt wrong ('not Sabina, Sabine' → {from: 'Sabina', to: 'Sabine'}); their plans and place go with the name. Else []."),
+            items: { type: "object", properties: { from: { type: "string" }, to: { type: "string" } }, required: ["from", "to"], additionalProperties: false },
+          },
         },
-        required: ["add", "remove", "count"],
+        required: ["add", "remove", "count", "from", "rename"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "set_owner",
+      description: t(
+        "Bir ya da birkaç planın kimin olduğunu yazar (kişiye özel rezervasyon): 'bu bilet Sabine'in', 'Ryanair Sabine'in', 'bu otel Emre ve Ali'nin'. item_ids: items[].id'ler. names: gezideki adlar (kullanıcı trip.travellers.me adıyla); herkesinse ['everyone']. Kartta yalnız herkes olmayan sahipler görünür ('Sabine'in bileti'). Gezide olmayan ad ya da adı olmayan kullanıcı için reddeder; hiçbir şey değişmez.",
+        "Says whose one or more plans are (per-person bookings): 'this ticket is Sabine's', 'the Ryanair one is Sabine's', 'this hotel is Emre and Ali's'. item_ids: items[].id. names: names on the trip (the user by trip.travellers.me); ['everyone'] for everyone's. A card shows owners only when they aren't everyone ('Sabine's ticket'). Refuses a name not on the trip, or the user when they have no name; nothing changes then.",
+      ),
+      schema: {
+        type: "object",
+        properties: {
+          item_ids: { type: "array", items: { type: "string" } },
+          names: { type: "array", items: { type: "string" }, description: t("Sahiplerin adları ya da ['everyone']", "The owners' names, or ['everyone']") },
+        },
+        required: ["item_ids", "names"],
         additionalProperties: false,
       },
     },
@@ -770,6 +817,8 @@ export function tripState(
   withDocs?: Set<string>,
   /** The rules' suggestion cards the board shows now (worked out, not stored): so the model doesn't suggest them twice. */
   onBoard: Suggestion[] = [],
+  /** Me on this computer (my profile name): the plans' owners are written by name, mine too. */
+  me: string | null = null,
 ): string {
   const range = tripDateRange(items);
   return JSON.stringify({
@@ -783,7 +832,17 @@ export function tripState(
       // The language this trip's conversation is in, when it was started in another one: answer in it.
       ...(trip.lang && trip.lang !== lang() ? { conversation_language: trip.lang } : {}),
       // Who goes, said without sharing (set_travellers); the user themself isn't in the names.
-      ...(trip.travellers ? { travellers: { names: trip.travellers.names, count: trip.travellers.count ?? null } } : {}),
+      // Who comes from elsewhere (kişiye özel rezervasyon), and my own name (owners are written by name).
+      ...(trip.travellers || me
+        ? {
+            travellers: {
+              names: trip.travellers?.names ?? [],
+              count: trip.travellers?.count ?? null,
+              ...(trip.travellers?.from ? { from: trip.travellers.from } : {}),
+              ...(me ? { me } : {}),
+            },
+          }
+        : {}),
     },
     preferences,
     intent,
@@ -815,6 +874,7 @@ export function tripState(
       missing: i.missing,
       ...(withDocs && needsDoc(i) && !withDocs.has(i.id) ? { document: "missing" } : {}),
       ...(i.origin === "chat" ? { said_in_chat: true } : {}),
+      ...(i.forWho?.length ? { for_who: i.forWho } : {}),
     })),
     // Suggestion cards left before (not part of the plan) and the ones the user said "Gerek yok" to: never again.
     ...(trip.suggestions?.length || onBoard.length
@@ -904,9 +964,13 @@ interface Turn {
   done: number;
   /** Of those, the ones that change something (not search_page, offer_choices): a reply saying "changed" needs one. */
   changed: number;
+  /** Me on this computer (kişiye özel rezervasyon: the trip's people by name). */
+  who: WhoCtx;
+  /** The code's own question for the end of the reply ("Sabine dönüşte de Alicante'ye mi?"), with its chips. */
+  ask?: TurnAsk | null;
 }
-const newTurn = (userText = "", previousReply: string | null = null): Turn => ({
-  userText, previousReply, removed: new Set(), removedVehicles: new Set(), touched: new Set(), done: 0, changed: 0,
+const newTurn = (userText = "", previousReply: string | null = null, who: WhoCtx = null): Turn => ({
+  userText, previousReply, removed: new Set(), removedVehicles: new Set(), touched: new Set(), done: 0, changed: 0, who,
 });
 
 /** Tools that only read or show something: they never make "I changed it" true. */
@@ -1049,14 +1113,28 @@ async function changeLanguage(tripId: string, next: Lang): Promise<Record<string
   };
 }
 
-/** "Sabine de geliyor", "3 kişiyiz": who goes, without sharing; undoable like the money. */
-async function changeTravellers(tripId: string, input: any, items: Item[]): Promise<Record<string, unknown>> {
+/**
+ * "Sabine de geliyor", "3 kişiyiz", "Sabine Alicante'den geliyor": who goes and who comes from elsewhere, without
+ * sharing; undoable like the money. A name taken off leaves the plans that were theirs (one left with nobody is
+ * everyone's), and someone coming from elsewhere gets their own flight there as an empty card, its way home asked
+ * at the end of the reply (whoseChat.arrivals). The one "Geri al" puts all of it back.
+ */
+async function changeTravellers(tripId: string, input: any, items: Item[], turn: Turn): Promise<Record<string, unknown>> {
   const list = (v: unknown) => (Array.isArray(v) ? v : []);
   const count = typeof input.count === "number" && Number.isFinite(input.count) ? input.count : 0;
+  const me = turn.who && typeof turn.who === "object" ? (turn.who.me ?? null) : (turn.who ?? null);
+  const change: TravellersChange = {
+    add: list(input.add),
+    remove: list(input.remove),
+    count,
+    from: list(input.from).map((f: any) => ({ name: f?.name, place: f?.place })),
+    rename: list(input.rename).map((r: any) => ({ from: r?.from, to: r?.to })),
+    me,
+  };
   let result: ReturnType<typeof withTravellers> | null = null;
   let before: TripFieldsBefore | null = null;
   const after = await changeTrip(tripId, (t) => {
-    result = withTravellers(t.travellers, { add: list(input.add), remove: list(input.remove), count });
+    result = withTravellers(t.travellers, change);
     if (typeof result === "string") return null;
     if (stableJson(result.travellers) === stableJson(t.travellers ?? { names: [] })) return null;
     before = fieldsBefore(t, ["travellers"]);
@@ -1071,10 +1149,35 @@ async function changeTravellers(tripId: string, input: any, items: Item[]): Prom
   if (!before) return { unchanged: true, named: after.travellers?.names ?? [], people: who.count, ...missing, note: L("Hiçbir şey değişmedi.", "Nothing changed.") };
   const names = after.travellers?.names ?? [];
   const undoable = before as TripFieldsBefore;
+  const was = undoable.before.travellers;
+  // Their plans: a name taken off leaves them, a name changed is changed on them.
+  const touched = ownersAfter(items, namesChanged(was, change));
+  const owners = await writeOwners(touched.map((t) => ({ id: t.item.id, owners: t.after })));
+  const everyones = touched.filter((t) => !t.after && owners.some((o) => o.id === t.item.id)).map((t) => t.item.name);
+  // Someone said to come from somewhere else now: their own flight there, and the way home asked.
+  const placed = Object.entries(after.travellers?.from ?? {})
+    .filter(([name, place]) => fromOf(was, name) !== place)
+    .map(([name, place]) => ({ name, place }));
+  const came = placed.length ? await arrivals(tripId, placed, turn.who) : { made: [] as Item[], ask: null, lines: [] as string[] };
+  if (came.ask) turn.ask = came.ask;
+  came.made.forEach((i) => turn.touched.add(i.id));
+  const fromText = Object.entries(after.travellers?.from ?? {}).map(([n, p]) => L(`${n} (${ablative(p)})`, `${n} (from ${p})`));
+  const fromLine = fromText.length ? ` · ${fromText.join(", ")}` : "";
   const eventId = await addEvent(
     tripId,
-    L(`Gidenler: ${names.length ? names.join(", ") : "isim yok"}${after.travellers?.count ? ` · ${after.travellers.count} kişi` : ""} (sohbetten)`, `Who's going: ${names.length ? names.join(", ") : "no names"}${after.travellers?.count ? ` · ${nPeople(after.travellers.count)}` : ""} (from the chat)`),
-    { undo: { kind: "fields", ...undoable, after: { travellers: after.travellers } } },
+    L(
+      `Gidenler: ${names.length ? names.join(", ") : "isim yok"}${after.travellers?.count ? ` · ${after.travellers.count} kişi` : ""}${fromLine} (sohbetten)`,
+      `Who's going: ${names.length ? names.join(", ") : "no names"}${after.travellers?.count ? ` · ${nPeople(after.travellers.count)}` : ""}${fromLine} (from the chat)`,
+    ),
+    {
+      undo: {
+        kind: "fields",
+        ...undoable,
+        after: { travellers: after.travellers },
+        ...(owners.length ? { owners } : {}),
+        ...(came.made.length ? { made: came.made.map((i) => i.id) } : {}),
+      },
+    },
   );
   announceTripChange({ tripId, ...undoable, eventId, label: L(`Gidenler: ${hero}`, `Who's going: ${hero}`) });
   notifyChanged();
@@ -1082,10 +1185,19 @@ async function changeTravellers(tripId: string, input: any, items: Item[]): Prom
     named: names,
     people: who.count,
     ...missing,
-    shown: L(
-      `Kahramanda: ${hero} ("Ben" kullanıcının kendisi). Paylaşılmadı; davet ayrı. Panodaki 'Geri al' eski haline döndürür.`,
-      `The hero shows: ${hero} ("Me" is the user). Nothing was shared; an invite is separate. The board's 'Undo' puts it back.`,
-    ),
+    ...(after.travellers?.from ? { from: after.travellers.from } : {}),
+    ...(came.made.length ? { flights_opened: came.made.map((i) => ({ item_id: i.id, name: i.name, for_who: i.forWho, date: i.dates.start })) } : {}),
+    ...(everyones.length ? { everyones_now: everyones } : {}),
+    ...(came.ask ? { asked_at_the_end: came.ask.text } : {}),
+    shown: [
+      L(
+        `Kahramanda: ${hero} ("Ben" kullanıcının kendisi). Paylaşılmadı; davet ayrı. Panodaki 'Geri al' eski haline döndürür.`,
+        `The hero shows: ${hero} ("Me" is the user). Nothing was shared; an invite is separate. The board's 'Undo' puts it back.`,
+      ),
+      ...came.lines,
+      ...(everyones.length ? [L(`${everyones.join(", ")} artık herkesin (sahibi gezide değil).`, `${everyones.join(", ")}: everyone's now (its owner isn't on the trip).`)] : []),
+      ...(came.ask ? [L(`Dönüş sorusu yanıtın sonuna kalın olarak eklenir ("${came.ask.text}"); sen sorma.`, `The way-home question is added in bold at the end of the reply ("${came.ask.text}"); don't ask it yourself.`)] : []),
+    ].join(" "),
   };
 }
 
@@ -1307,7 +1419,16 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       return JSON.stringify(parts.every((p) => p.unchanged) ? { unchanged: true, ...result } : result);
     }
     case "set_travellers":
-      return JSON.stringify(await changeTravellers(tripId, input, items));
+      return JSON.stringify(await changeTravellers(tripId, input, items, turn));
+    case "set_owner": {
+      const trip = await d.get("trips", tripId);
+      if (!trip) throw new ToolError(L("Gezi bulunamadı.", "Trip not found."));
+      try {
+        return JSON.stringify(await setOwnerTool(tripId, input, items, trip, turn.who));
+      } catch (error) {
+        throw new ToolError(error instanceof Error ? error.message : String(error));
+      }
+    }
     case "plan_item": {
       // A policy or an eSIM said as an activity or a to-do is that record (0.34.6 §2), whatever kind came.
       const said = guardKind(plannedInput(input));
@@ -1335,6 +1456,10 @@ async function runTool(tripId: string, name: string, input: any, choices: string
         await dismissItem(byId.get(old.id) ?? old, L(`Yerine: ${saved.name}`, `Replaced by ${saved.name}`), turn);
         gone.push(old.name);
       }
+      // A flight from where only some of the trip come from is theirs (kişiye özel rezervasyon; never a guess).
+      const tripNow = saved.category === "flight" && !saved.forWho?.length ? await d.get("trips", tripId) : undefined;
+      const byOrigin = tripNow ? ownersByOrigin(saved, tripNow, items, turn.who) : null;
+      if (byOrigin) saved.forWho = byOrigin;
       await d.put("items", saved);
       turn.touched.add(saved.id);
       // Where it landed on the Plan (booking.ts reads a thing to do from its evidence, not its kind): the reply
@@ -1345,6 +1470,7 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       const result: Record<string, unknown> = {
         [same ? "updated" : "added"]: saved.name,
         item_id: saved.id,
+        ...(byOrigin ? { for_who: byOrigin, for_who_why: L(`${byOrigin.join(", ")} oradan geliyor`, `${byOrigin.join(", ")} come(s) from there`) } : {}),
         status: todo ? (saved.status === "booked" ? "done" : "planned") : saved.status === "booked" ? "booked" : "planned",
         plan_section: prep ? "Diğer → Hazırlık / Other → Prep (a chore before the trip, ticked off when done)" : PLAN_SECTION_NAMES[section],
         ...(todo ? { booking: "none" } : {}),
@@ -1578,6 +1704,20 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
     session = [];
   }
 
+  // A chip of the code's own question under the last reply ("Evet, Alicante", "Sabine", "Herkes"): answered by the
+  // code, no model call (kişiye özel rezervasyon).
+  const who = await loadWho(trip);
+  const asked = session.findLast((m) => m.role === "assistant" && m.text.trim());
+  if (asked?.ask && session.filter((m) => m.role !== "event").at(-1)?.id === asked.id) {
+    const answer = await answerAsk(tripId, asked.ask, asked.choices, userText);
+    if (answer != null) {
+      await saveMessage({ tripId, role: "user", content: provider.userContent([userText]), text: userText, choices: [], provider: provider.id });
+      await saveMessage({ tripId, role: "assistant", content: provider.assistantContent(answer), text: answer, choices: [], provider: provider.id });
+      notifyChanged();
+      return;
+    }
+  }
+
   const prefs = (await listPreferences(tripId)).map((p) => p.text);
   // The trip as the board shows it (a saved page's corrections in place); the tools write the stored records.
   const items = (await listItems(tripId)).map(withEdits);
@@ -1592,6 +1732,7 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
     result,
     new Set((await listDocMeta(tripId)).map((d) => d.itemId)),
     shownSuggestions(trip.suggestions, boardRules(trip, items, await loadHome(), result.ctx.today, result.ctx.listings), items).filter((s) => s.source === "rule"),
+    who.me ?? null,
   );
   const stateHash = hash(state);
   const lastStateHash = session.findLast((m) => m.stateHash)?.stateHash;
@@ -1606,7 +1747,7 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
     provider: provider.id,
   });
 
-  const turn = newTurn(userText, session.findLast((m) => m.role === "assistant" && m.text.trim())?.text ?? null);
+  const turn = newTurn(userText, session.findLast((m) => m.role === "assistant" && m.text.trim())?.text ?? null, who);
   let askedAgain = false;
   for (let step = 0; step < MAX_STEPS; step++) {
     const history = currentSession(await listMessages(tripId), provider.id);
@@ -1670,6 +1811,17 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
         if (Array.isArray(content)) content = [...content, ...(provider.assistantContent(question.text) as unknown[])];
       }
     }
+    // The code's own question (kişiye özel rezervasyon: "Sabine dönüşte de Alicante'ye mi?"), in bold at the end
+    // with its chips, which the code answers (answerAsk). The model's own question, if it asked one, gives way.
+    const ask = last ? turn.ask : null;
+    if (ask) {
+      const bold = `**${ask.text}**`;
+      if (!text.includes(ask.text)) {
+        text = text ? `${text}\n\n${bold}` : bold;
+        if (Array.isArray(content)) content = [...content, ...(provider.assistantContent(bold) as unknown[])];
+      }
+      choices.splice(0, choices.length, ...ask.choices);
+    }
     await saveMessage({
       tripId,
       role: "assistant",
@@ -1678,6 +1830,7 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
       choices,
       provider: provider.id,
       ...(unbacked ? { unbacked: true } : {}),
+      ...(ask ? { ask: ask.ask } : {}),
     });
     if (last) return;
     await saveMessage({

@@ -141,6 +141,12 @@ export interface Travellers {
   names: string[];
   /** How many go, when it's more than the names (null: as many as the names, or the saves say). */
   count?: number | null;
+  /**
+   * Kişiye özel rezervasyon (spec 2026-10-06): who comes from somewhere other than where the trip leaves from, by
+   * name as on the trip ("Sabine" → "Alicante"; me by my profile name). Shared with the settings like the names;
+   * a name taken off leaves it, a name changed takes it along (tripSettings.withTravellers).
+   */
+  from?: Record<string, string>;
 }
 
 export interface Trip {
@@ -441,6 +447,13 @@ export interface Item {
    * belt. Read in memory where the board reads the records (never stored on the record).
    */
   flightLive?: FlightSeen | null;
+  /**
+   * Kişiye özel rezervasyon (spec 2026-10-06): whose it is, by the names on the trip ("Sabine"; me by my profile or
+   * sharing name, never "Ben"), matched case aside. Missing or empty: everyone's. Only a strict part of the trip's
+   * people is shown (whose.ts whoseOf: "Sabine'in bileti"); a name taken off the trip leaves it, and a plan left
+   * with nobody is everyone's again (tripSettings.ownersAfter).
+   */
+  forWho?: string[];
   /** Set by withEdits on the board's copy, never stored: what the page says under each correction. */
   pageValues?: PageValues;
   createdAt: number;
@@ -476,14 +489,42 @@ export interface ChatMessage {
   undoneAt?: number;
   /** An assistant reply saying something changed while no tool changed anything (claims.ts): a note shows under it. */
   unbacked?: boolean;
+  /**
+   * A question the code asked under this reply (kişiye özel rezervasyon): its chips are answered by the code, not
+   * the model ("Evet, Alicante" adds the way home; "Sabine" makes the ticket hers). Only the newest reply's counts.
+   */
+  ask?: ChatAsk;
+}
+
+/** The code's own question under a reply, and what its chips mean (whoseStore.answerAsk). */
+export type ChatAsk =
+  /** "Sabine dönüşte de Alicante'ye mi?": yes adds her flight home from `leave` to `place` on `date`. */
+  | { kind: "return"; name: string; place: string; leave: string | null; date: string | null; origin: string | null }
+  /** "Bu Ryanair bileti kimin?": a name (or several) makes it theirs, "Herkes" everyone's. */
+  | { kind: "owner"; itemId: string; names: string[] };
+
+/** A plan's owners before and after a change (kişiye özel rezervasyon): what "Geri al" puts back. */
+export interface OwnerChange {
+  id: string;
+  before: string[] | null;
+  after: string[] | null;
 }
 
 /**
  * How a history line is taken back: these trip fields to their values before (only while they still hold the
- * values after), or the board's language to the one before.
+ * values after), or the board's language to the one before. `owners`: plans whose owners the same change set
+ * (a name taken off, "bu bilet Sabine'in"), put back the same way (no trip field when `fields` is empty).
  */
 export type EventUndo =
-  | { kind: "fields"; fields: (keyof Trip)[]; before: Partial<Trip>; after: Partial<Trip> }
+  | {
+      kind: "fields";
+      fields: (keyof Trip)[];
+      before: Partial<Trip>;
+      after: Partial<Trip>;
+      owners?: OwnerChange[];
+      /** Records the same change made ("Sabine Alicante'den geliyor" opens her flight): they go again. */
+      made?: string[];
+    }
   | { kind: "lang"; prev: "tr" | "en" };
 
 export interface Settings {

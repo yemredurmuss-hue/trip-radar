@@ -12,7 +12,9 @@ export const SYNCED_FIELDS = [
   "wantedAmenities",
   "requirements",
   // Who goes (0.37): the names typed or said and the count, a fact about the trip like its dates. Never me (the
-  // profile name) nor the shared trip's people: those come from sharing itself.
+  // profile name) nor the shared trip's people: those come from sharing itself. Who comes from elsewhere
+  // (kişiye özel rezervasyon, `travellers.from`: "Sabine" → "Alicante") rides inside it, so it syncs, is diffed
+  // (settingsDiff) and goes into the settings' history with the names.
   "travellers",
 ] as const satisfies readonly (keyof Trip)[];
 
@@ -40,8 +42,19 @@ export function applySettings(trip: Trip, s: SyncedSettings): Trip {
   }
   // Who goes: missing from the server's settings means a board that doesn't know the field yet (an older version
   // on the other computer), never "nobody": the names here stay. Taking every name out is sent as `{ names: [] }`.
-  if (isTravellers(s.travellers)) next.travellers = s.travellers;
+  if (isTravellers(s.travellers)) next.travellers = withCleanFrom(s.travellers);
   return next;
+}
+
+/** Who comes from where, as the other computer sent it: only names to places (text to text); none left, no field. */
+function withCleanFrom(t: NonNullable<Trip["travellers"]>): NonNullable<Trip["travellers"]> {
+  const { from, ...rest } = t;
+  if (from == null) return rest;
+  const clean =
+    typeof from === "object" && !Array.isArray(from)
+      ? Object.fromEntries(Object.entries(from).filter(([k, v]) => k.trim() && typeof v === "string" && v.trim()))
+      : {};
+  return Object.keys(clean).length ? { ...rest, from: clean } : rest;
 }
 
 const isTravellers = (v: unknown): v is NonNullable<Trip["travellers"]> =>

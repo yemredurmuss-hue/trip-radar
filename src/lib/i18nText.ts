@@ -84,3 +84,6 @@ export function locative(name: string): string {
   const hard = /[fstkçşhp]$/.test(lower);
   return `${n}'${hard ? "t" : "d"}${front ? "e" : "a"}`;
 }
+
+/** A Turkish proper name with "from" ("Alicante'den", "Paris'ten", "İstanbul'dan"): the locative with an n. */
+export const ablative = (name: string): string => (name.trim() ? `${locative(name)}n` : name.trim());

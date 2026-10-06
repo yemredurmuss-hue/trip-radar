@@ -127,7 +127,7 @@ const CITY_AIRPORTS: Record<string, string> = Object.fromEntries(
       ["BER", "Berlin"], ["VIE", "Viyana", "Vienna"], ["ZRH", "Zürih", "Zurich"], ["BRU", "Brüksel", "Brussels"], ["DUB", "Dublin"],
       ["ATH", "Atina", "Athens"], ["PRG", "Prag", "Prague"], ["BUD", "Budapeşte", "Budapest"], ["WAW", "Varşova", "Warsaw"],
       ["ARN", "Stockholm"], ["OSL", "Oslo"], ["HEL", "Helsinki"], ["MXP", "Milano", "Milan"], ["VCE", "Venedik", "Venice"],
-      ["NAP", "Napoli", "Naples"], ["NCE", "Nice"], ["PMI", "Palma"], ["AGP", "Malaga"], ["SVQ", "Sevilla", "Seville"],
+      ["NAP", "Napoli", "Naples"], ["NCE", "Nice"], ["PMI", "Palma"], ["AGP", "Malaga"], ["SVQ", "Sevilla", "Seville"], ["ALC", "Alicante"],
       ["FAO", "Faro"], ["PDL", "Ponta Delgada"], ["DOH", "Doha"], ["DPS", "Denpasar", "Bali"], ["BKK", "Bangkok"],
       ["HKT", "Phuket"], ["HND", "Tokyo"], ["TBS", "Tiflis", "Tbilisi"], ["CAI", "Kahire", "Cairo"], ["MLE", "Malé", "Male", "Maldivler", "Maldives"],
     ] as string[][]

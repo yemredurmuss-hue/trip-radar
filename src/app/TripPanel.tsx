@@ -588,6 +588,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     esimCountries,
     // No offers' source is connected yet: the "✨ Senin için N öneri" row is never drawn.
     offers: NO_SOURCE,
+    // Kişiye özel rezervasyon: whose a plan is, a person's own head count and place.
+    trip,
+    items,
   };
 
   return (

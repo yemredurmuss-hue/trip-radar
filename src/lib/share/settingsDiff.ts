@@ -3,8 +3,9 @@
 // Written when shown (the board's language at the time), from the two settings kept. Pure.
 import { amenityLabel, CRITERION_LABELS, LEVEL_LABELS, requirementLabel } from "../decision";
 import { L } from "../i18n";
-import { lowerText } from "../i18nText";
+import { ablative, lowerText } from "../i18nText";
 import { CATEGORY_LABELS, formatDateRange, formatPrice } from "../items";
+import { sameName } from "../tripSettings";
 import type { Amenity, Category, CriterionId, Requirement, Trip } from "../types";
 import { asSettings, changedFields, stableJson, type SyncedField, type SyncedSettings } from "./settings";
 
@@ -120,14 +121,21 @@ const requirementsText = (v: unknown): string =>
       }),
   );
 
-/** "Sabine, Ali · 3 kişi", "yok". */
+/** "Sabine, Ali · 3 kişi", "Emre, Sabine (Alicante'den)", "yok". */
 const travellersText = (v: unknown): string => {
   const t = record(v);
   const names = (Array.isArray(t.names) ? t.names : []).filter((n): n is string => typeof n === "string" && n.trim() !== "");
   const count = typeof t.count === "number" && t.count > 0 ? t.count : null;
-  if (!names.length && !count) return none();
+  // Who comes from elsewhere (kişiye özel rezervasyon): after the name; me (not among the names) after the rest.
+  const from = Object.entries(record(t.from)).filter((e): e is [string, string] => typeof e[1] === "string" && e[1].trim() !== "");
+  const said = (name: string) => {
+    const place = from.find(([k]) => sameName(k, name))?.[1];
+    return place ? L(`${name} (${ablative(place)})`, `${name} (from ${place})`) : name;
+  };
+  const others = from.filter(([k]) => !names.some((n) => sameName(n, k))).map(([k]) => said(k));
+  if (!names.length && !count && !others.length) return none();
   const people = count ? L(`${count} kişi`, count === 1 ? "1 person" : `${count} people`) : null;
-  return [names.join(", "), people].filter(Boolean).join(" · ");
+  return [[...names.map(said), ...others].join(", "), people].filter(Boolean).join(" · ");
 };
 
 /** What one field changed from and to, as lines (priorities: one per criterion). */

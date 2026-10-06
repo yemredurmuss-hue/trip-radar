@@ -5,7 +5,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { initials, nPeople, travellersTitle } from "../lib/heroInfo";
 import { L } from "../lib/i18n";
-import { sameName, whoGoes, type Who } from "../lib/tripSettings";
+import { ablative } from "../lib/i18nText";
+import { fromOf, sameName, whoGoes, type Who } from "../lib/tripSettings";
 import type { Trip } from "../lib/types";
 import { changeTravellers } from "./actions";
 import { HeroIcon } from "./Icons";
@@ -164,19 +165,28 @@ function WhoPopover({ trip, who, isShared, shared, ownPhotos, onInvite }: { trip
       <ul className="hx-who-list">
         <li>
           <PersonPhoto name={meName || L("Ben", "Me")} photo={myPhoto} me />
-          <span className="who-name">{meName ? L(`Ben (${meName})`, `Me (${meName})`) : L("Ben", "Me")}</span>
+          <span className="who-name">
+            {meName ? L(`Ben (${meName})`, `Me (${meName})`) : L("Ben", "Me")}
+            <From place={fromOf(trip.travellers, meName)} />
+          </span>
         </li>
         {fromShare.map((m) => (
           <li key={`s:${m}`}>
             <PersonPhoto name={m} photo={peoplePhoto(m)} own={ownPhotos[m] ?? null} />
-            <span className="who-name">{m}</span>
+            <span className="who-name">
+              {m}
+              <From place={fromOf(trip.travellers, m)} />
+            </span>
             <small>{L("paylaşımda", "on the share")}</small>
           </li>
         ))}
         {others.map((n) => (
           <li key={n}>
             <PersonPhoto name={n} photo={peoplePhoto(n)} />
-            <span className="who-name">{n}</span>
+            <span className="who-name">
+              {n}
+              <From place={fromOf(trip.travellers, n)} />
+            </span>
             <button type="button" className="who-x" aria-label={L(`${n} çıkar`, `Remove ${n}`)} title={L("Çıkar", "Remove")} onClick={() => remove(n)}>
               ×
             </button>
@@ -231,4 +241,10 @@ function WhoPopover({ trip, who, isShared, shared, ownPhotos, onInvite }: { trip
       )}
     </div>
   );
+}
+
+/** Under a name: where they come from when it is not where the trip leaves from ("Alicante'den"; kişiye özel rezervasyon). */
+function From({ place }: { place: string | null }) {
+  if (!place) return null;
+  return <small className="wh-from">{L(ablative(place), `from ${place}`)}</small>;
 }

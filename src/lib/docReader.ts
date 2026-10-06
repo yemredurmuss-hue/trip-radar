@@ -19,6 +19,9 @@ import { cityKeyOf, departureDay, sameCity } from "./plan";
 import { ALL_PLANNED_KINDS, checkPlanned, plannedItem, type PlannedInput } from "./planned";
 import { isInsurance, isPaperwork, isRental, isTrip, isVisa } from "./travelKinds";
 import { DOC_KINDS, type ChatMessage, type DocKind, type DocRecord, type Item, type PlannedKind, type Trip } from "./types";
+import { ownersByOrigin, ownersFromDoc, peopleOf, type WhoCtx } from "./whose";
+import { ownerAsk } from "./whoseChat";
+import { loadWho } from "./whoseStore";
 
 /** Read at most this much (Gemini takes 20 MB inline, base64 is a third larger); a bigger file is kept unread. */
 export const DOC_READ_MAX_BYTES = 10 * 1024 * 1024;
@@ -207,7 +210,7 @@ function refNote(kind: DocKind, ref: string | null): string | null {
  * The card with the document's facts: booked, and each field it lacks filled in. Nothing it already says is
  * replaced, and a field the traveller corrected (userEdits) is left alone.
  */
-export function fillFromDoc(item: Item, facts: DocFacts, now: number): Item {
+export function fillFromDoc(item: Item, facts: DocFacts, now: number, owners: string[] | null = null): Item {
   const kind = facts.doc_type as DocKind;
   const edited = item.userEdits ?? {};
   const out: Item = { ...item, updatedAt: now };
@@ -234,6 +237,9 @@ export function fillFromDoc(item: Item, facts: DocFacts, now: number): Item {
   }
   if (!item.provider && facts.provider) out.provider = facts.provider;
   if (item.guests.adults == null && facts.travellers.length) out.guests = { ...item.guests, adults: facts.travellers.length };
+  // Whose it is (kişiye özel rezervasyon), when the names on it are some of the trip's people: never over owners
+  // already said.
+  if (owners?.length && !item.forWho?.length) out.forWho = owners;
   const note = refNote(kind, facts.booking_ref);
   if (note && !(item.statusNote ?? "").includes(facts.booking_ref ?? note)) out.statusNote = [item.statusNote, note].filter(Boolean).join(" · ");
   return out;
@@ -286,18 +292,46 @@ export function itemFromDoc(facts: DocFacts, tripId: string, id: string, now: nu
 }
 
 export type DocOutcome =
-  | { kind: "linked"; item: Item; facts: DocFacts }
-  | { kind: "created"; item: Item; facts: DocFacts }
+  /** `ask`: the names on it can't be placed among the trip's people ("Bu Ryanair bileti kimin?"). */
+  | { kind: "linked"; item: Item; facts: DocFacts; ask?: boolean }
+  | { kind: "created"; item: Item; facts: DocFacts; ask?: boolean }
   | { kind: "kept"; facts: DocFacts }
   | { kind: "not_document"; facts: DocFacts };
 
+/**
+ * Whose the document's record is (kişiye özel rezervasyon), in order, never a guess: the names on it when they are
+ * some of the trip's people; else, for a flight, where it leaves from when only some come from there. Names that
+ * can't be placed (one not on the trip, one that could be two people): asked (`ask`). Owners said before stay.
+ */
+export function docOwners(facts: DocFacts, item: Item, items: Item[], whose: { trip: Pick<Trip, "travellers">; who: WhoCtx } | undefined): { owners: string[] | null; ask: boolean } {
+  if (!whose || item.forWho?.length) return { owners: null, ask: false };
+  const byDoc = ownersFromDoc(facts.travellers, peopleOf(whose.trip, whose.who));
+  if (Array.isArray(byDoc)) return { owners: byDoc, ask: false };
+  if (byDoc === "everyone") return { owners: null, ask: false };
+  const byOrigin = ownersByOrigin(item, whose.trip, items, whose.who);
+  if (byOrigin) return { owners: byOrigin, ask: false };
+  return { owners: null, ask: byDoc === "ask" };
+}
+
 /** Where the document goes: the card that takes it, a new booked record, or Belgeler alone. */
-export function placeDoc(facts: DocFacts, items: Item[], tripId: string, id: string, now: number): DocOutcome {
+export function placeDoc(
+  facts: DocFacts,
+  items: Item[],
+  tripId: string,
+  id: string,
+  now: number,
+  whose?: { trip: Pick<Trip, "travellers">; who: WhoCtx },
+): DocOutcome {
   if (facts.doc_type === "not_a_document") return { kind: "not_document", facts };
   const match = matchDoc(facts, items);
-  if (match) return { kind: "linked", item: fillFromDoc(match, facts, now), facts };
+  if (match) {
+    const { owners, ask } = docOwners(facts, fillFromDoc(match, facts, now), items, whose);
+    return { kind: "linked", item: fillFromDoc(match, facts, now, owners), facts, ...(ask ? { ask } : {}) };
+  }
   const made = itemFromDoc(facts, tripId, id, now);
-  return made ? { kind: "created", item: made, facts } : { kind: "kept", facts };
+  if (!made) return { kind: "kept", facts };
+  const { owners, ask } = docOwners(facts, made, items, whose);
+  return { kind: "created", item: owners && !made.forWho?.length ? { ...made, forWho: owners } : made, facts, ...(ask ? { ask } : {}) };
 }
 
 /** "Diğer'e", "to Other": the section a record landed in, as the sentence says it. */
@@ -412,14 +446,18 @@ export async function readDocument(tripId: string, docId: string, deps: ReadDeps
   const file = await (deps.attachment ?? plainAttachment)(doc);
   const raw = await llm.generateJson(docSystem(), docPrompt(trip, doc.name, deps.today ?? new Date(now).toISOString().slice(0, 10)), DocFactsSchema, [file]);
   const facts = cleanFacts(raw);
-  const outcome = placeDoc(facts, await listItems(tripId), tripId, (deps.newId ?? makeId)(), now);
-  const sentence = docSentence(outcome, doc.name);
+  const who = await loadWho(trip);
+  const outcome = placeDoc(facts, await listItems(tripId), tripId, (deps.newId ?? makeId)(), now, { trip, who });
+  const said = docSentence(outcome, doc.name);
+  // Names on it that can't be placed: "Bu Ryanair bileti kimin?" in bold, the trip's people and Herkes as chips.
+  const ask = (outcome.kind === "linked" || outcome.kind === "created") && outcome.ask ? ownerAsk(outcome.item, peopleOf(trip, who)) : null;
+  const sentence = ask ? `${said}\n\n**${ask.text}**` : said;
   if (outcome.kind === "not_document") return { ...outcome, sentence };
   if (outcome.kind === "linked" || outcome.kind === "created") await d.put("items", outcome.item);
   const kind = facts.doc_type === "not_a_document" ? undefined : facts.doc_type;
   await linkDoc(doc.id, outcome.kind === "kept" ? doc.itemId : outcome.item.id, kind);
   await saveTurn({ tripId, role: "user", content: llm.userContent([L(`[Belge eklendi: ${doc.name}]`, `[Document added: ${doc.name}]`)]), text: `📎 ${doc.name}`, choices: [], provider: llm.id });
-  await saveTurn({ tripId, role: "assistant", content: llm.assistantContent(sentence), text: sentence, choices: [], provider: llm.id });
+  await saveTurn({ tripId, role: "assistant", content: llm.assistantContent(sentence), text: sentence, choices: ask?.choices ?? [], provider: llm.id, ...(ask ? { ask: ask.ask } : {}) });
   notifyChanged();
   return { ...outcome, sentence };
 }

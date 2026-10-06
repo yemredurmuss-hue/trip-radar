@@ -1,9 +1,11 @@
 // Small write actions shared by the board's views.
-import { addEvent, db, newId, notifyChanged } from "../lib/db";
+import { addEvent, db, listItems, newId, notifyChanged } from "../lib/db";
 import { restoreDoc } from "../lib/docs";
 import { L, saveLang } from "../lib/i18n";
 import { announceRemoved, deleteItem, restoreItem, type Removed } from "../lib/removal";
-import { restoreFields, withTravellers, type TravellersChange } from "../lib/tripSettings";
+import { namesChanged, ownersAfter, restoreFields, withTravellers, type TravellersChange } from "../lib/tripSettings";
+import { ownerWords } from "../lib/whose";
+import { cleanOwners, saveOwners, writeOwners } from "../lib/whoseStore";
 import { latestLangLine, undoEvent } from "../lib/eventUndo";
 import { stableJson } from "../lib/share/settings";
 import { suggestedAdd, withState } from "../lib/suggestions";
@@ -253,6 +255,8 @@ export async function undo(u: Undoable): Promise<void> {
 /**
  * Who goes, changed in the hero's popover ("İsim ekle", ×, the count): written at once with a line in Geçmiş that
  * can take it back. A change that changes nothing (a name already there) writes nothing, not even the time.
+ * A name taken off leaves the plans that were theirs (kişiye özel rezervasyon); one left with nobody is everyone's
+ * again, said in its own line. The same "Geri al" puts those back too.
  */
 export async function changeTravellers(tripId: string, change: TravellersChange, event: string): Promise<boolean> {
   const tx = (await db()).transaction("trips", "readwrite");
@@ -264,7 +268,25 @@ export async function changeTravellers(tripId: string, change: TravellersChange,
   }
   await tx.store.put({ ...trip, travellers: next.travellers, updatedAt: Date.now() });
   await tx.done;
-  await addEvent(tripId, event, { undo: { kind: "fields", fields: ["travellers"], before: { travellers: trip.travellers ?? { names: [] } }, after: { travellers: next.travellers } } });
+  const touched = ownersAfter(await listItems(tripId), namesChanged(trip.travellers, change));
+  const owners = await writeOwners(touched.map((t) => ({ id: t.item.id, owners: t.after })));
+  await addEvent(tripId, event, {
+    undo: { kind: "fields", fields: ["travellers"], before: { travellers: trip.travellers ?? { names: [] } }, after: { travellers: next.travellers }, ...(owners.length ? { owners } : {}) },
+  });
+  const everyones = touched.filter((t) => !t.after && owners.some((o) => o.id === t.item.id)).map((t) => t.item.name);
+  if (everyones.length) await addEvent(tripId, L(`${everyones.join(", ")}: artık herkesin`, `${everyones.join(", ")}: everyone's now`));
   notifyChanged();
   return true;
+}
+
+/**
+ * "Kimin için?" (a card's •••) and the chat's set_owner: whose a plan is, by the trip's names (null or none:
+ * everyone's), with a line in Geçmiş and the board's "Geri al" (whoseStore.saveOwners). False when nothing changed.
+ */
+export async function setOwner(itemId: string, names: string[] | null): Promise<boolean> {
+  const item = await (await db()).get("items", itemId);
+  if (!item) return false;
+  const owners = cleanOwners(names);
+  const words = ownerWords(item, owners);
+  return Boolean(await saveOwners(item.tripId, [{ id: itemId, owners }], { event: words, label: words }));
 }

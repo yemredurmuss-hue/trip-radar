@@ -4,7 +4,7 @@
 import { convert, type Rates } from "./currency";
 import { currencyCode, formatPrice } from "./items";
 import { L } from "./i18n";
-import type { Travellers, Trip } from "./types";
+import type { Item, Travellers, Trip } from "./types";
 
 /** "euro", "avro", "dolar", "TL" said in words, else an ISO code ("eur", "€" via currencyCode). */
 const CURRENCY_WORDS: Record<string, string> = {
@@ -120,7 +120,21 @@ export interface TravellersChange {
   remove?: unknown[];
   /** How many go; 0 or undefined leaves it, null clears it (as many as the names, or the saves). */
   count?: number | null;
+  /**
+   * Who comes from somewhere else (kişiye özel rezervasyon): the name and the place ("Sabine", "Alicante"); an
+   * empty place takes it off (they leave from where the trip does). A name not on the trip is added, never me.
+   */
+  from?: { name: unknown; place: unknown }[];
+  /** A name written another way ("Sabina" → "Sabine"): the place they come from goes along (their plans: ownersAfter). */
+  rename?: { from: unknown; to: unknown }[];
+  /** My name (the profile's): never added to the names, though it may have a place. */
+  me?: string | null;
 }
+
+const cleanPlace = (place: unknown) => (typeof place === "string" ? place.replace(/\s+/g, " ").trim().slice(0, 60) : "");
+
+/** The key `from` holds a name under: the spelling on the trip, else the one given. */
+const keyIn = (map: Record<string, string>, name: string) => Object.keys(map).find((k) => sameName(k, name)) ?? null;
 
 /** The names and count after a change; `missing` = names asked to go that weren't there. A bad count: the reason. */
 export function withTravellers(current: Travellers | undefined, change: TravellersChange): { travellers: Travellers; missing: string[] } | string {
@@ -129,12 +143,70 @@ export function withTravellers(current: Travellers | undefined, change: Travelle
     return L(`Kişi sayısı 1 ile ${MAX_COUNT} arasında tam sayı olmalı: ${count}`, `The number of people must be a whole number from 1 to ${MAX_COUNT}: ${count}`);
   }
   const remove = (change.remove ?? []).map(clean).filter(Boolean);
+  const renames = (change.rename ?? []).map((r) => [clean(r?.from), clean(r?.to)] as const).filter(([a, b]) => a && b && a !== b);
   const before = current?.names ?? [];
   const missing = remove.filter((r) => !before.some((n) => sameName(n, r)));
-  const kept = before.filter((n) => !remove.some((r) => sameName(n, r)));
-  const names = uniqueNames([...kept, ...(change.add ?? []).map(clean)]).slice(0, MAX_NAMES);
+  const kept = before
+    .filter((n) => !remove.some((r) => sameName(n, r)))
+    .map((n) => renames.find(([a]) => sameName(n, a))?.[1] ?? n);
+  const places = (change.from ?? []).map((f) => [clean(f?.name), cleanPlace(f?.place)] as const).filter(([n]) => n);
+  // Someone said to come from somewhere is going (Sabine Alicante'den geliyor), unless it's me.
+  const comers = places.filter(([n, p]) => p && !sameName(n, change.me)).map(([n]) => n);
+  const names = uniqueNames([...kept, ...(change.add ?? []).map(clean), ...comers]).slice(0, MAX_NAMES);
   const nextCount = count === 0 || count === undefined ? (current?.count ?? null) : count;
-  return { travellers: { names, ...(nextCount != null ? { count: nextCount } : {}) }, missing };
+  // Where each comes from: a name taken off leaves it, a name changed takes it along, then what was said now.
+  const from: Record<string, string> = {};
+  for (const [name, place] of Object.entries(current?.from ?? {})) {
+    if (remove.some((r) => sameName(name, r))) continue;
+    const renamed = renames.find(([a]) => sameName(name, a))?.[1] ?? name;
+    from[names.find((n) => sameName(n, renamed)) ?? renamed] = place;
+  }
+  for (const [name, place] of places) {
+    const key = keyIn(from, name) ?? names.find((n) => sameName(n, name)) ?? name;
+    if (place) from[key] = place;
+    else delete from[key];
+  }
+  return { travellers: { names, ...(nextCount != null ? { count: nextCount } : {}), ...(Object.keys(from).length ? { from } : {}) }, missing };
+}
+
+/** Where this person comes from, when it isn't where the trip leaves from (null: with the trip). */
+export function fromOf(travellers: Travellers | undefined, name: string | null | undefined): string | null {
+  if (!name || !travellers?.from) return null;
+  const key = keyIn(travellers.from, name);
+  return key ? travellers.from[key] : null;
+}
+
+/**
+ * The plans whose owners a change of names touches (kişiye özel rezervasyon): a name changed is changed on them,
+ * a name taken off leaves them, and a plan left with nobody is everyone's again (`after` null). Pure.
+ */
+export function ownersAfter(
+  items: Item[],
+  change: { removed?: string[]; renamed?: (readonly [string, string])[] },
+): { item: Item; before: string[]; after: string[] | null }[] {
+  const out: { item: Item; before: string[]; after: string[] | null }[] = [];
+  for (const item of items) {
+    const before = item.forWho ?? [];
+    if (!before.length) continue;
+    const next = uniqueNames(
+      before
+        .filter((n) => !(change.removed ?? []).some((r) => sameName(n, r)))
+        .map((n) => change.renamed?.find(([a]) => sameName(n, a))?.[1] ?? n),
+    );
+    if (next.length === before.length && next.every((n, i) => n === before[i])) continue;
+    out.push({ item, before, after: next.length ? next : null });
+  }
+  return out;
+}
+
+/** The names a change took off (as they were written) and changed (old → new), from the names before and after. */
+export function namesChanged(before: Travellers | undefined, change: TravellersChange): { removed: string[]; renamed: [string, string][] } {
+  const names = before?.names ?? [];
+  const removed = names.filter((n) => (change.remove ?? []).some((r) => sameName(n, clean(r))));
+  const renamed = (change.rename ?? [])
+    .map((r) => [clean(r?.from), clean(r?.to)] as [string, string])
+    .filter(([a, b]) => a && b && !sameName(a, b) && names.some((n) => sameName(n, a)));
+  return { removed, renamed };
 }
 
 export interface Who {

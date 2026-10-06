@@ -21,6 +21,9 @@ import type { Need } from "../../lib/offerSource";
 import type { StayBlock } from "../../lib/plan";
 import { activityLinks, BRANDS, esimLinks, flightLinks, stayLinks, transferLinks, type SearchLink } from "../../lib/searchLinks";
 import type { Item, Suggestion } from "../../lib/types";
+import { fromOf } from "../../lib/tripSettings";
+import { headCountOf, whoseOf } from "../../lib/whose";
+import { useWhoCtx, WhoseBadge } from "./WhoseBadge";
 import { setHidden, setItemStatus, updateTrip } from "../actions";
 import { kindLabel, LegBody } from "../LegRow";
 import { CardMenu, DeleteX, Ring, type MenuEntry } from "./CardShell";
@@ -99,6 +102,8 @@ export function EmptyMedia({ kind, drawing, title, sub }: { kind: CardKind; draw
 export function EmptyShell(props: {
   kind: CardKind;
   label?: string;
+  /** Whose it is, after the kind (kişiye özel rezervasyon: WhoseBadge, nothing for everyone's). */
+  badge?: ReactNode;
   date: ReactNode;
   ariaLabel: string;
   itemId?: string;
@@ -148,6 +153,7 @@ export function EmptyShell(props: {
             <KindIcon kind={props.kind} size={15} />
             {props.label ?? cardKindLabel(props.kind)}
           </span>
+          {props.badge}
           {props.date && <span className="pk-date">· {props.date}</span>}
           <span className="pk-end">
             {props.x}
@@ -210,8 +216,15 @@ const STATUS_WORD = (kind: CardKind, n: number | null): string => {
 
 function EmptyRecordFace({ item }: { item: Item }) {
   const env = useCardEnv();
-  const { travellers, esimCountries } = useEmptyEnv();
-  const n = travellers ?? item.guests.adults ?? null;
+  const { travellers, esimCountries, trip, items } = useEmptyEnv();
+  const who = useWhoCtx();
+  // Kişiye özel rezervasyon: a plan for some of the trip is searched for them ("1 kişi"); an everyone's flight
+  // counts out those with their own flight the same way.
+  const total = travellers ?? item.guests.adults ?? null;
+  const n = trip ? headCountOf(item, trip, { total, items, who }) : total;
+  const whose = trip ? whoseOf(item, trip, who) : null;
+  // A person's own flight leaves from where they come from.
+  const ownFrom = whose?.names.length === 1 ? fromOf(trip?.travellers, whose.names[0]) : null;
   const kind = cardKind(item, env.legModes.get(item.id) ?? null);
   const action = footOf(item, kind).action;
   const picker = useRef<HTMLInputElement>(null);
@@ -231,7 +244,17 @@ function EmptyRecordFace({ item }: { item: Item }) {
         for (const file of files) await addDoc(item, file).catch((err: Error) => console.warn("Belge eklenemedi", err.message));
       }} />
   );
-  const shell = { kind, ariaLabel: item.name, itemId: item.id, menu, x: <DeleteX name={item.name} onDelete={() => env.remove(item)} />, status: STATUS_WORD(kind, n), alert: dateAlert(item, env.today), extra };
+  const shell = {
+    kind,
+    ariaLabel: item.name,
+    itemId: item.id,
+    menu,
+    x: <DeleteX name={item.name} onDelete={() => env.remove(item)} />,
+    status: STATUS_WORD(kind, n),
+    alert: dateAlert(item, env.today),
+    extra,
+    badge: trip ? <WhoseBadge item={item} trip={trip} /> : null,
+  };
   const start = isoDate(item.flight?.departure?.slice(0, 10)) ?? isoDate(item.dates.start);
   const end = isoDate(item.dates.end);
   if (kind === "stay") {
@@ -250,7 +273,7 @@ function EmptyRecordFace({ item }: { item: Item }) {
   if (isTransportKind(kind)) {
     const rental = (RENTAL_MODES as readonly string[]).includes(kind);
     const face = transportFace(item, kind, env.legEnds.get(item.id));
-    const from = item.flight?.from ?? null;
+    const from = item.flight?.from ?? (kind === "flight" ? ownFrom : null) ?? null;
     const to = item.flight?.to ?? (rental ? null : item.city) ?? null;
     const links = kind === "flight" ? flightLinks({ from, to, date: start, adults: n }) : rental ? [] : transferLinks({ from, to }).filter((l) => l.brand === "maps");
     const section = kind === "flight" ? "flight" : "transport";
