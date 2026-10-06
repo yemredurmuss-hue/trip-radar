@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advantageOver, decideGroup, levelFor, makeContext, resetPriorities, withPriorities } from "../src/lib/decision";
+import { advantageOver, cancellationType, decideGroup, levelFor, makeContext, resetPriorities, withPriorities } from "../src/lib/decision";
 import { activeSignals, inferSignals, toInferred, pendingSignals } from "../src/lib/intent";
 import { budgetState, rolesOf, valueCard } from "../src/lib/value";
 import { EMPTY_METRICS } from "../src/lib/items";
@@ -417,5 +417,15 @@ describe("sifting what was read: facts aren't minuses, one review isn't a verdic
       fit: "unfit",
       eliminated: { reason: "Yan binada inşaat (2 yorum); önemli dedin" },
     });
+  });
+});
+
+describe("cancellation read from its words", () => {
+  it("knows 'İade yok' with a capital İ, and English in capitals", () => {
+    const item = (summary: string) => ({ cancellation: { summary, freeUntil: null, source: "page" }, metrics: { ...EMPTY_METRICS } }) as unknown as Item;
+    expect(cancellationType(item("İade yok"))).toBe("non_refundable");
+    expect(cancellationType(item("İADE EDİLMEZ"))).toBe("non_refundable");
+    expect(cancellationType(item("FREE CANCELLATION"))).toBe("free");
+    expect(cancellationType(item("PARTIAL REFUND"))).toBe("partial");
   });
 });

@@ -408,10 +408,14 @@ function comparablePrice(item: Item, ctx: DecisionContext): { amount: number; or
 
 export function cancellationType(item: Item, m: ItemMetrics = metricsOf(item)): ItemMetrics["cancellationType"] {
   if (m.cancellationType !== "unknown") return m.cancellationType;
-  const text = item.cancellation.summary ?? "";
-  if (/iade (yok|edilmez)|non.?refundable|iadesiz|no refund/i.test(text)) return "non_refundable";
-  if (/ücretsiz iptal|free cancel|cancel for free|fully refundable/i.test(text)) return "free";
-  if (/kısmi|partial|%\s?50|50\s?%/i.test(text)) return "partial";
+  // As written and as Turkish lower case: the /i flag doesn't fold "İade yok" to "iade", and Turkish lower case
+  // turns "PARTIAL" into "partıal", so each reading is tried.
+  const raw = item.cancellation.summary ?? "";
+  const tr = raw.toLocaleLowerCase("tr-TR");
+  const says = (re: RegExp) => re.test(raw) || re.test(tr);
+  if (says(/iade (yok|edilmez)|non.?refundable|iadesiz|no refund/i)) return "non_refundable";
+  if (says(/ücretsiz iptal|free cancel|cancel for free|fully refundable/i)) return "free";
+  if (says(/kısmi|partial|%\s?50|50\s?%/i)) return "partial";
   return "unknown";
 }
 
