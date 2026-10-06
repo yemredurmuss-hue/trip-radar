@@ -1,0 +1,138 @@
+// The offers function's rules (supabase/functions/offers/shape.ts): what may be asked, the sources' answers picked
+// and turned into offers. Answers below are trimmed from real ones (İstanbul → Bali, Ubud, 6 Oct 2026).
+import { describe, expect, it } from "vitest";
+import {
+  adultsOf, airportCodeOk, arrivalClock, askableDay, bookingSearch, flightOffer, geoFromTypeahead, localClock, nightsBetween,
+  pickFlights, pickStays, placeOk, seenAt, stayOffer, type AviaFlight, type XoHotel,
+} from "../supabase/functions/offers/shape";
+
+const now = new Date("2026-10-06T18:00:00Z");
+const link = (d: string) => `/search/IST1911DPS1?t=TK&search_date=${d}&expected_price=521`;
+const fl = (o: Partial<AviaFlight>): AviaFlight => ({
+  origin_airport: "IST", destination_airport: "DPS", airline: "TK", flight_number: "66", departure_at: "2026-11-19T02:25:00+03:00",
+  transfers: 1, duration_to: 1000, price: 400, link: link("05102026"), ...o,
+});
+
+describe("what may be asked", () => {
+  it("takes a day from today to a year ahead", () => {
+    expect(askableDay("2026-11-10", now)).toBe("2026-11-10");
+    expect(askableDay("2026-10-06", now)).toBe("2026-10-06");
+    expect(askableDay("2026-10-05", now)).toBeNull();
+    expect(askableDay("2027-12-01", now)).toBeNull();
+    expect(askableDay("10.11.2026", now)).toBeNull();
+  });
+  it("takes three-letter codes, head-counts 1–9 and plain place names", () => {
+    expect(airportCodeOk("dps")).toBe("DPS");
+    expect(airportCodeOk("Bali")).toBeNull();
+    expect(adultsOf("2")).toBe(2);
+    expect(adultsOf("40")).toBe(1);
+    expect(adultsOf(null)).toBe(1);
+    expect(placeOk("  Ubud ")).toBe("Ubud");
+    expect(placeOk("İstanbul")).toBe("İstanbul");
+    expect(placeOk("a<script>")).toBeNull();
+    expect(nightsBetween("2026-11-12", "2026-11-16")).toBe(4);
+  });
+});
+
+describe("flights", () => {
+  it("reads the clocks: leaving as the airport shows it, landing in the destination's zone", () => {
+    expect(localClock("2026-11-19T02:25:00+03:00")).toBe("02:25");
+    // 02:25 in İstanbul (23:25 UTC) + 12 h 40 min = 12:05 UTC = 20:05 in Bali (UTC+8)
+    expect(arrivalClock("2026-11-19T02:25:00+03:00", 760, "Asia/Makassar")).toBe("20:05");
+    expect(arrivalClock("2026-11-19T02:25:00+03:00", 760, null)).toBeNull();
+    expect(arrivalClock("2026-11-19T02:25:00+03:00", 760, "Not/AZone")).toBeNull();
+  });
+
+  it("says when the price was seen, from the link's search day", () => {
+    expect(new Date(seenAt(link("02102026"), now.getTime())).toISOString().slice(0, 10)).toBe("2026-10-02");
+    expect(seenAt("/search/x", 123)).toBe(123);
+  });
+
+  const cheap = fl({ airline: "D7", flight_number: "605", price: 300, transfers: 1, duration_to: 1300 });
+  const mid = fl({ airline: "EY", flight_number: "542", price: 350, transfers: 1, duration_to: 905 });
+  const quick = fl({ airline: "QR", flight_number: "1", price: 450, transfers: 1, duration_to: 700 });
+  const direct = fl({ airline: "TK", flight_number: "66", price: 521, transfers: 0, duration_to: 760 });
+
+  it("offers the cheapest, then a direct one, then the quickest when it's an hour quicker than both", () => {
+    const picked = pickFlights([cheap, mid, quick], [direct], "tr");
+    expect(picked.map((p) => p.f.airline)).toEqual(["D7", "TK", "QR"]);
+    expect(picked[0].why).toBe("En ucuz seçenek");
+    expect(picked[1].why).toBe("Direkt · en ucuzdan €221 fazla");
+    // two going: the card's prices are both theirs, so is the difference
+    expect(pickFlights([cheap, mid, quick], [direct], "tr", 2)[1].why).toBe("Direkt · en ucuzdan €442 fazla");
+    expect(picked[2].why).toBe("En kısa yolculuk · 1 sa daha kısa");
+  });
+
+  it("offers no quickest slower than the direct one already offered; without a direct, the quickest against the cheapest", () => {
+    expect(pickFlights([cheap, mid], [direct], "tr").map((p) => p.f.airline)).toEqual(["D7", "TK"]);
+    const picked = pickFlights([cheap, mid], [], "tr");
+    expect(picked.map((p) => p.f.airline)).toEqual(["D7", "EY"]);
+    expect(picked[1].why).toBe("En kısa yolculuk · 6 sa 35 dk daha kısa");
+  });
+
+  it("says so when the cheapest is direct, and offers nothing twice nor anything broken", () => {
+    const direct = fl({ price: 300, transfers: 0, duration_to: 760 });
+    const picked = pickFlights([direct, fl({ price: 0 }), fl({ link: undefined })], [direct], "en");
+    expect(picked).toHaveLength(1);
+    expect(picked[0].why).toBe("The cheapest, and direct");
+    expect(pickFlights([], [], "tr")).toEqual([]);
+  });
+
+  it("makes the offer: name, the clocks, price for everyone going, the page and its source", () => {
+    const o = flightOffer({ f: fl({ transfers: 0, duration_to: 760, price: 521 }), why: "x" }, { adults: 2, now: now.getTime(), airline: (c) => (c === "TK" ? "Turkish Airlines" : null), zone: () => "Asia/Makassar" });
+    expect(o).toMatchObject({ kind: "flight", title: "Turkish Airlines", carrierCode: "TK", depart: "02:25", arrive: "20:05", fromCode: "IST", toCode: "DPS", durationMinutes: 760, stops: 0, price: 1042, currency: "EUR", source: "Aviasales" });
+    expect(o.url.startsWith("https://www.aviasales.com/search/")).toBe(true);
+    const unknown = flightOffer({ f: fl({}), why: "x" }, { adults: 1, now: now.getTime(), airline: () => null, zone: () => null });
+    expect(unknown.title).toBe("TK");
+    expect(unknown.arrive).toBeNull();
+  });
+});
+
+describe("stays", () => {
+  const h = (o: Partial<XoHotel>): XoHotel => ({ name: "Goya Boutique Resort", key: "g297701-d9454181", accommodation_type: "Resort", url: "https://www.tripadvisor.com/Hotel_Review-g297701-d9454181.html", review_summary: { rating: 4.9, count: 150 }, price_ranges: { minimum: 156, maximum: 325 }, image: "https://dynamic-media-cdn.tripadvisor.com/x.jpg", merchandising_labels: [], ...o });
+
+  it("picks the best value first, then the best liked with enough reviews, then the least dear well liked", () => {
+    const list = [
+      h({ key: "a", name: "A" }),
+      h({ key: "b", name: "B", review_summary: { rating: 4.7, count: 3640 }, price_ranges: { minimum: 123 } }),
+      h({ key: "c", name: "C", review_summary: { rating: 4.8, count: 2100 }, price_ranges: { minimum: 213 } }),
+      h({ key: "d", name: "D", review_summary: { rating: 4.4, count: 300 }, price_ranges: { minimum: 69 } }),
+      h({ key: "e", name: "E", review_summary: { rating: 4.0, count: 900 }, price_ranges: { minimum: 30 } }),
+    ];
+    const picked = pickStays(list, "tr");
+    expect(picked.map((p) => p.h.key)).toEqual(["a", "c", "d"]);
+    expect(picked[1].why).toBe("2.100 yorumla en beğenilenlerden");
+    expect(pickStays([h({ review_summary: { rating: 0 } })], "tr")).toEqual([]);
+  });
+
+  const ctx = { lang: "tr" as const, nights: 4, now: now.getTime(), search: (x: XoHotel) => bookingSearch(x.name!, "Ubud", "2026-11-12", "2026-11-16", 2) };
+
+  it("prices on Booking (its page opens on the hotel) and says when another platform is cheaper", () => {
+    const o = stayOffer({ h: h({ merchandising_labels: ["Breakfast included"] }), why: "En iyisi" }, [
+      { code: "BookingCom", name: "Booking.com", rate: 157 }, { code: "CtripTA", name: "Trip.com", rate: 140 }, { code: "Agoda", name: "Agoda.com", rate: 145 },
+    ], ctx)!;
+    expect(o).toMatchObject({ kind: "stay", title: "Goya Boutique Resort", rating: 4.9, price: 628, nights: 4, source: "Booking", area: "Resort", meta: "150 yorum · Kahvaltı dahil" });
+    expect(o.why).toBe("En iyisi · Trip.com'da gecelik €140");
+    expect(o.url).toContain("booking.com/searchresults.html?ss=Goya+Boutique+Resort%2C+Ubud&checkin=2026-11-12&checkout=2026-11-16&group_adults=2");
+  });
+
+  it("without Booking takes the cheapest on Tripadvisor's page; without any price, offers nothing", () => {
+    const o = stayOffer({ h: h({}), why: "En iyisi" }, [{ code: "Agoda", name: "Agoda.com", rate: 145 }, { code: "Vio", name: "Vio.com", rate: 147 }], ctx)!;
+    expect(o).toMatchObject({ source: "Agoda.com", price: 580, why: "En iyisi" });
+    expect(o.url).toContain("tripadvisor.com");
+    expect(stayOffer({ h: h({}), why: "x" }, [], ctx)).toBeNull();
+    const own = stayOffer({ h: h({}), why: "x" }, [{ code: "BookingCom", name: "Booking.com", rate: 160 }, { code: "Official", name: "Official Site", rate: 143 }], ctx)!;
+    expect(own.why).toBe("x · otelin kendi sitesinde gecelik €143");
+    expect(stayOffer({ h: h({}), why: "x" }, [{ code: "Agoda", name: "Agoda.com", rate: 145 }], { ...ctx, nights: 0 })).toBeNull();
+  });
+
+  it("reads a city's id from Tripadvisor's typeahead, skipping hotels", () => {
+    const body = { data: [
+      { trackingItems: { dataType: "LOCATION", placeType: "ACCOMMODATION", locationId: 307574 } },
+      { trackingItems: { dataType: "LOCATION", placeType: "MUNICIPALITY", locationId: 297701 } },
+    ] };
+    expect(geoFromTypeahead(body)).toBe("297701");
+    expect(geoFromTypeahead({ data: [] })).toBeNull();
+    expect(geoFromTypeahead(null)).toBeNull();
+  });
+});
