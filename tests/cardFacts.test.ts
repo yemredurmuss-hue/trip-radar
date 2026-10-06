@@ -91,7 +91,7 @@ describe("decision card facts", () => {
     // Porto: Jardim first (the quietest), Ribeira second, Casa Azul last: the cheapest, but with construction
     // noise next door, to check before choosing (not ruled out: quiet is a wish, not a must).
     expect(choice("Jardim Stay")).toMatchObject({
-      headline: "Önerim Jardim Stay: en sessiz; €45 daha ucuz, 5 Eki'ye kadar ücretsiz iptal ve daha konforlu. Tasarruf için 3. Casa Azul (€45 daha ucuz).",
+      headline: "Önerim Jardim Stay: en sessiz; 2.'ye göre €45 daha ucuz, 5 Eki'ye kadar ücretsiz iptal ve daha konforlu. Tasarruf için 3. Casa Azul (1.'ye göre €45 daha ucuz).",
       ranked: [
         [1, "Jardim Stay", "En sessiz", "fit"],
         [2, "Ribeira Rooms", "", "fit"],
@@ -102,7 +102,7 @@ describe("decision card facts", () => {
     expect(choice("Jardim Stay").why[1]).toBe("+€45 (gecelik +€15) · yorumlar daha iyi (9,2/10 – 8,9/10), odadan nehir manzarası · 3 yorum · eksiği: hafta sonu gece gürültüsü · 3 yorum, iade yok, konforu daha zayıf");
     // Flights, nothing asked: the best one first, the cheaper one second with what the saving costs.
     expect(choice("Pegasus · direkt")).toMatchObject({
-      headline: "Önerim Pegasus · direkt: €30 fazlasına bagaj dahil ve direkt. Tasarruf için 2. TAP · Lizbon aktarmalı (€30 daha ucuz).",
+      headline: "Önerim Pegasus · direkt: €30 fazlasına bagaj dahil ve direkt. Tasarruf için 2. TAP · Lizbon aktarmalı (1.'ye göre €30 daha ucuz).",
       ranked: [
         [1, "Pegasus · direkt", "", "fit"],
         [2, "TAP · Lizbon aktarmalı", "En ekonomik", "fit"],

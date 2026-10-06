@@ -182,7 +182,7 @@ describe("the choice", () => {
     expect(tradeText(casa.trade!, "EUR")).toBe("+€60 (gecelik +€20) · 15 dk daha yakın, mutfak var, balkondan nehir manzarası · 2 yorum · eksiği: gece bar gürültüsü · 3 yorum");
     expect(tradeText(bonfim.trade!, "EUR")).toBe("€60 daha ucuz (gecelik −€20) · sessiz sokak · 4 yorum · eksiği: 15 dk daha uzak, mutfak yazmıyor, yorumları daha zayıf (4,9/5 – 9/10)");
     expect(choice.headline).toBe(
-      "Önerim Casa Ribeira: en iyi konum; €60 fazlasına mutfak var ve yorumlar daha iyi (9/10 – 4,9/5). Tasarruf ve sessizlik için 2. Bonfim Loft (€60 daha ucuz).",
+      "Önerim Casa Ribeira: en iyi konum; €60 fazlasına mutfak var ve yorumlar daha iyi (9/10 – 4,9/5). Tasarruf ve sessizlik için 2. Bonfim Loft (1.'ye göre €60 daha ucuz).",
     );
   });
 
@@ -200,5 +200,36 @@ describe("the choice", () => {
     const cheaper = stay("Hotel C", 250, { rating: { value: 9.2, scale: 10, count: 500, source: "page" } });
     const d2 = decide(trip(), [cheaper, b]);
     expect(choiceOf(d2, ctxOf(trip(), [cheaper, b])).headline).toBe("Önerim Hotel C: en ekonomik; yorumlar daha iyi (9,2/10 – 8,2/10).");
+  });
+
+  it("says what each saving is against: the pick against the 2nd, an alternative against the 1st", () => {
+    const free = { summary: null, freeUntil: null, source: "page" } as Item["cancellation"];
+    const quiet = stay("Quiet", 300, { rating: { value: 9.4, scale: 10, count: 500, source: "page" }, cancellation: free });
+    const second = stay("Second", 345, { rating: { value: 9.2, scale: 10, count: 500, source: "page" }, cancellation: free });
+    const cheap = stay("Cheap", 255, { rating: { value: 6.4, scale: 10, count: 500, source: "page" }, cancellation: free });
+    const items = [quiet, second, cheap];
+    expect(choiceOf(decide(trip(), items), ctxOf(trip(), items)).headline).toBe(
+      "Önerim Quiet: 2.'ye göre €45 daha ucuz. Tasarruf için 3. Cheap (1.'ye göre €45 daha ucuz).",
+    );
+  });
+});
+
+describe("free cancellation that has run out", () => {
+  // A free cancellation whose day has passed is worth what a non-refundable one is: not an edge over it.
+  const pair = (freeUntil: string) => {
+    const a = stay("Hotel A", 300, { rating: { value: 9, scale: 10, count: 500, source: "page" }, cancellation: { summary: "Ücretsiz iptal", freeUntil, source: "page" }, metrics: { cancellationType: "free" } });
+    const b = stay("Hotel B", 300, { rating: { value: 8.2, scale: 10, count: 500, source: "page" }, cancellation: { summary: "Non-refundable", freeUntil: null, source: "page" }, metrics: { cancellationType: "non_refundable" } });
+    const choice = choiceOf(decide(trip(), [a, b]), ctxOf(trip(), [a, b]));
+    return { headline: choice.headline ?? "", gains: choice.ranked[0].trade?.gains ?? [] };
+  };
+
+  it("still counts while it can be used", () => {
+    expect(pair("2026-10-05").gains.join(" ")).toMatch(/ücretsiz iptal/i);
+  });
+
+  it("isn't said as a plus once expired", () => {
+    const { headline, gains } = pair("2026-09-20");
+    expect(gains.join(" ")).not.toMatch(/iptal/i);
+    expect(headline).not.toMatch(/süresi geçmiş|iptal/i);
   });
 });

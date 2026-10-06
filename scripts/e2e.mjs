@@ -645,7 +645,7 @@ try {
   // thing asked for, and what speaks for and against it.
   const card = (name) => app.locator(`.swipe-card[aria-label="${name}"]`);
   const stayCard = app.locator(".stay-block .reco-line.headline").first();
-  assert.equal(await stayCard.locator("p").innerText(), "Önerim Jardim Stay: en sessiz; €45 daha ucuz, 5 Eki'ye kadar ücretsiz iptal ve daha konforlu. Tasarruf için 3. Casa Azul (€45 daha ucuz).");
+  assert.equal(await stayCard.locator("p").innerText(), "Önerim Jardim Stay: en sessiz; 2.'ye göre €45 daha ucuz, 5 Eki'ye kadar ücretsiz iptal ve daha konforlu. Tasarruf için 3. Casa Azul (1.'ye göre €45 daha ucuz).");
   const porto = app.locator(".stay-block.open .option-grid").first();
   assert.deepEqual(await porto.locator(".swipe-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Jardim Stay", "Ribeira Rooms", "Casa Azul"]);
   assert.deepEqual(await porto.locator(".opt-rank").allInnerTexts(), ["1", "2", "3"]);

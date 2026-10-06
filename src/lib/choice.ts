@@ -455,7 +455,7 @@ function lensNoun(c: CriterionId, o: OptionResult, ctx: Ctx): string {
 
 /**
  * "Önerim Casa Ribeira: en iyi konum; €60 fazlasına 15 dk daha yakın ve mutfak var. Tasarruf ve sessizlik
- * için 2. Bonfim Loft (€60 daha ucuz)." The pick is the first that fits; why, from what it's strongest on
+ * için 2. Bonfim Loft (1.'ye göre €60 daha ucuz)." The pick is the first that fits; why, from what it's strongest on
  * and what it has over the second; then the other options that lead on something, with their place.
  */
 function headlineOf(ranked: Ranked[], ctx: Ctx, contenders: OptionResult[]): string | null {
@@ -475,7 +475,8 @@ function headlineOf(ranked: Ranked[], ctx: Ctx, contenders: OptionResult[]): str
     const diff = top.trade?.diff ?? null;
     const money = diff != null && Math.abs(diff) >= 1 ? formatPrice(Math.abs(diff), ctx.currency) : null;
     if (money && diff! > 0 && gains.length) why.push(L(`${money} fazlasına ${joinTr(gains)}`, `for ${money} more, ${joinTr(gains)}`));
-    else if (money && diff! < 0 && !own.has(LENS.price!.best)) why.push(joinTr([L(`${money} daha ucuz`, `${money} cheaper`), ...gains]));
+    // Said against what: the card chips' "2.'ye göre", so it can't read as the same saving as an alternative's.
+    else if (money && diff! < 0 && !own.has(LENS.price!.best)) why.push(joinTr([L(`${second.rank}.'ye göre ${money} daha ucuz`, `${money} cheaper than #${second.rank}`), ...gains]));
     else if (gains.length) why.push(joinTr(gains));
   }
   const reasons = why.length ? `: ${why.join("; ")}` : "";
@@ -484,7 +485,7 @@ function headlineOf(ranked: Ranked[], ctx: Ctx, contenders: OptionResult[]): str
     .filter((r) => r !== top && r.lenses.length && contenders.includes(r.option))
     .slice(0, 2)
     .map((r) => {
-      const money = r.trade?.money && r.trade.money !== SAME_PRICE() ? ` (${r.trade.money})` : "";
+      const money = r.trade?.money && r.trade.money !== SAME_PRICE() && r.vsRank ? ` (${L(`${r.vsRank}.'ye göre ${r.trade.money}`, `${r.trade.money} vs #${r.vsRank}`)})` : "";
       return L(`${joinTr(r.lenses)} için ${r.rank}. ${r.option.item.name}${money}`, `for ${joinTr(r.lenses)}, #${r.rank} ${r.option.item.name}${money}`);
     });
   if (alternatives.length) text += ` ${capital(alternatives.join("; "))}.`;

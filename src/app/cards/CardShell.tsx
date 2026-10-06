@@ -1,7 +1,7 @@
 // The frame every plan card shares (etkinlik-v4): the ground says where it stands (sand: not bought yet,
 // green: done), a 24 px top line (ring · kind · date | files · •••), the body, the 48 px bottom strip, and
 // the details that open inside the card on a tap.
-import { useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import type { CardFacts } from "../../lib/cardFacts";
 import { cardKindColor, cardKindLabel, type CardKind } from "../../lib/cardKinds";
 import { groundOf, type FootView, type Ring as RingState } from "../../lib/cardView";
@@ -33,18 +33,41 @@ export interface MenuEntry {
   lead?: ReactNode;
 }
 
+/** Only one ••• menu is open at a time: opening one closes whichever was open (its setter is kept here). */
+let closeOpenMenu: (() => void) | null = null;
+
 export function CardMenu({ entries }: { entries: MenuEntry[] }) {
   const [open, setOpen] = useState(false);
+  const wrap = useRef<HTMLSpanElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
     const close = () => setOpen(false);
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
+    if (closeOpenMenu && closeOpenMenu !== close) closeOpenMenu();
+    closeOpenMenu = close;
+    // Capture phase: a press anywhere outside closes it, even where a handler stops propagation.
+    const onDown = (e: PointerEvent) => {
+      if (wrap.current && e.target instanceof Node && wrap.current.contains(e.target)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      setOpen(false);
+      button.current?.focus();
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("keydown", onKey, true);
+      if (closeOpenMenu === close) closeOpenMenu = null;
+    };
   }, [open]);
   if (!entries.length) return null;
   return (
-    <span className="pk-menu-wrap">
-      <button type="button" className="pk-ib" aria-label={L("Kart menüsü", "Card menu")} aria-haspopup="menu" aria-expanded={open}
+    <span className="pk-menu-wrap" ref={wrap}>
+      <button ref={button} type="button" className="pk-ib" aria-label={L("Kart menüsü", "Card menu")} aria-haspopup="menu" aria-expanded={open}
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
         <UiIcon name="dots" size={16} />
       </button>

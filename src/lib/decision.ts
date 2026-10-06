@@ -516,7 +516,7 @@ function measure(criterion: CriterionId, item: Item, ctx: DecisionContext, analy
       const type = cancellationType(item, m);
       if (type === "unknown") return null;
       const expired = type === "free" && item.cancellation.freeUntil != null && item.cancellation.freeUntil < ctx.today;
-      const value = expired ? 0.3 : type === "free" ? 1 : type === "partial" ? 0.5 : 0;
+      const value = expired ? 0 : type === "free" ? 1 : type === "partial" ? 0.5 : 0;
       const display =
         item.cancellation.summary ??
         (type === "free" ? L("Ücretsiz iptal", "Free cancellation") : type === "partial" ? L("Kısmi iade", "Partial refund") : L("İade yok", "Non-refundable"));
