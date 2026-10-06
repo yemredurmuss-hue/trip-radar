@@ -18,14 +18,14 @@ import {
 import { needsFor } from "./cardFacts";
 import { listDocMeta, moveDocs, needsDoc } from "./docs";
 import { choiceOf, tradeText } from "./choice";
-import { currencyCode, isoDate, listingKeyOf, tripDateRange } from "./items";
+import { currencyCode, isoDate, listingKeyOf, metricsOf, tripDateRange } from "./items";
 import { NEED_MARK } from "./needs";
 import { coverageText, searchText } from "./listing";
 import { prosConsFor } from "./proscons";
 import { activeSignals, pendingSignals } from "./intent";
 import { buildLegs, canHideLeg, isHiddenLeg, legTiming, staleHiddenMoves, withLegChoice, type Leg } from "./legs";
 import { checkPlanned, guardKind, plannedInput, plannedItem, planToSave, PLANNED_KINDS, type PlannedInput } from "./planned";
-import { bookedUpdate, candidateLabel, decideBooking, esimPackage, saidKind, sameKind, type BookingExtras } from "./chatBooking";
+import { bookedUpdate, candidateLabel, decideBooking, esimPackage, saidKind, sameKind, SECOND_PURCHASE, type BookingExtras } from "./chatBooking";
 import { cardKind, cardKindLabel } from "./cardKinds";
 import { isIdea } from "./booking";
 import { sectionOfItem, type SectionId } from "./categories";
@@ -1068,8 +1068,6 @@ function bookingTarget(input: any, said: PlannedInput, extras: BookingExtras, it
   switch (decision.kind) {
     case "add":
       return null;
-    case "new":
-      return "new";
     case "update":
       return decision.item;
     case "which": {
@@ -1354,12 +1352,20 @@ async function runTool(tripId: string, name: string, input: any, choices: string
         const note = typeof c.note === "string" && c.note.trim() ? c.note.trim() : item.statusNote;
         // "10 GB aldım" sent as a note on an eSIM: the package goes on the card (its title), not only in the note.
         const pack = c.status === "booked" && note && item.category === "esim" ? esimPackage(note) : null;
-        if (pack && (pack.dataGb || pack.unlimited)) {
+        // Never over a package already bought ("5 GB daha aldım" on a booked 10 GB): that one stays as it is.
+        const had = metricsOf(item).dataGb;
+        const otherPack = item.status === "booked" && (SECOND_PURCHASE.test(turn.userText) || Boolean(had && pack?.dataGb && had !== pack.dataGb));
+        if (pack && (pack.dataGb || pack.unlimited) && !otherPack) {
           const said = { kind: "esim" as const, date: null, end_date: null, time: null, from: null, to: null, city: null, title: null, booked: true, note };
           const update = bookedUpdate(item, said, { provider: null, price: null, currency: null }, items, Date.now());
           if (typeof update !== "string") {
             current.set(item.id, update.item);
             await d.put("items", update.item);
+            // The same "Geri al" as plan_item's: the record back as it was.
+            if (update.changed.length) {
+              const eventId = await addEvent(tripId, update.summary, { undo: { kind: "fields", fields: [], before: {}, after: {}, records: [{ before: item, afterAt: update.item.updatedAt }] } });
+              announceTripChange({ tripId, fields: [], before: {}, eventId, label: update.summary });
+            }
             continue;
           }
         }

@@ -326,11 +326,16 @@ describe("review fixes (0f7dbd5)", () => {
     expect(flights.filter((i) => i.id !== "tap").map((i) => [i.provider, i.price.amount, i.status])).toEqual([["Pegasus", 120, "booked"]]);
   });
 
-  it("2: '5 GB daha aldım' next to a booked 10 GB Airalo is a second eSIM; '5 GB aldım' asks", async () => {
+  it("2: '5 GB daha aldım' next to a booked 10 GB Airalo asks (never a record on the word alone); item_id 'new' adds it; '5 GB aldım' asks", async () => {
     const e = withGb(said({ kind: "esim", city: "Portugal", title: "10 GB eSIM", booked: true }, { id: "e", provider: "Airalo", countryCode: "PT" }), 10);
     await putTrip([stayIn("opo", "Porto", "PT", "2026-10-08", "2026-10-14"), e]);
-    const more = fake([use({ name: "plan_item", input: plan({ kind: "esim", title: "5 GB eSIM", booked: true, price: 8, currency: "EUR" }) }), say("ok")]);
+    const more = fake([use({ name: "plan_item", input: plan({ kind: "esim", title: "5 GB eSIM", booked: true, price: 8, currency: "EUR" }) }), say("?")]);
     await sendMessage(T, "5 GB daha aldım, 8 euro", more.llm);
+    expect(resultsOf(more.calls, 1)[0].is_error).toBe(true);
+    expect((await lastReply()).choices).toEqual(["Update this card", "Add a new one"]);
+    expect((await all()).filter((i) => i.category === "esim").map((i) => i.id)).toEqual(["e"]);
+    const add = fake([use({ name: "plan_item", input: plan({ kind: "esim", title: "5 GB eSIM", booked: true, price: 8, currency: "EUR", item_id: "new" }) }), say("ok")]);
+    await sendMessage(T, "Add a new one", add.llm);
     let esims = (await all()).filter((i) => i.category === "esim");
     expect(esims.find((i) => i.id === "e")).toMatchObject({ name: "10 GB eSIM", metrics: { dataGb: 10 } });
     expect(esims.filter((i) => i.id !== "e").map((i) => [i.name, i.metrics?.dataGb, i.price.amount])).toEqual([["5 GB eSIM", 5, 8]]);
@@ -340,6 +345,50 @@ describe("review fixes (0f7dbd5)", () => {
     expect(resultText(ask.calls, 1)).toContain("another package (10 GB → 5 GB)");
     esims = (await all()).filter((i) => i.category === "esim");
     expect(esims.map((i) => [i.id, i.name])).toEqual([["e", "10 GB eSIM"]]);
+  });
+
+  describe("'daha', 'ikinci', 'extra' next to a booked match: always asked, never a second record on the word alone", () => {
+    const porto = () => said({ kind: "stay", city: "Porto", date: "2026-10-08", end_date: "2026-10-12", booked: true }, { id: "st" });
+    const tour = () => said({ kind: "activity", title: "Tekne turu", city: "Porto", date: "2026-10-09", booked: true }, { id: "tour" });
+    const tap = () => said({ kind: "flight", from: "Istanbul", to: "Porto", date: "2026-10-08", time: "10:00", booked: true }, { id: "fl" });
+    const cases: [string, () => Item, Record<string, unknown>][] = [
+      ["Porto'da bir gün daha kalacağız, oteli 13'üne uzattım", porto, { kind: "stay", city: "Porto", date: "2026-10-08", end_date: "2026-10-13", booked: true }],
+      ["daha ucuza rezerve ettim, 500 EUR", porto, { kind: "stay", city: "Porto", booked: true, price: 500, currency: "EUR" }],
+      ["ikinci gün tekne turu biletini aldım", tour, { kind: "activity", title: "Tekne turu", city: "Porto", date: "2026-10-09", booked: true }],
+      ["uçağı daha erken saate aldım", tap, { kind: "flight", from: "Istanbul", to: "Porto", date: "2026-10-08", time: "07:00", booked: true }],
+      ["booked an extra night in Porto", porto, { kind: "stay", city: "Porto", date: "2026-10-08", end_date: "2026-10-13", booked: true }],
+    ];
+    for (const [text, make, input] of cases) {
+      it(text, async () => {
+        const before = make();
+        await putTrip([before]);
+        const { llm, calls } = fake([use({ name: "plan_item", input: plan(input) }), say("?")]);
+        await sendMessage(T, text, llm);
+        expect(resultsOf(calls, 1)[0].is_error).toBe(true);
+        expect((await lastReply()).choices).toEqual(["Update this card", "Add a new one"]);
+        const after = await all();
+        expect(after).toHaveLength(1);
+        expect(after[0]).toMatchObject({ id: before.id, dates: before.dates, price: before.price, flight: before.flight });
+      });
+    }
+  });
+
+  it("update_items with '5 GB daha aldım' never rewrites a booked 10 GB eSIM's package; one with none gets it, with Geri al", async () => {
+    const e = withGb(said({ kind: "esim", city: "Portugal", title: "10 GB eSIM", booked: true }, { id: "e", countryCode: "PT" }), 10);
+    await putTrip([hotel(), e]);
+    const more = fake([use({ name: "update_items", input: { changes: [{ item_id: "e", status: "booked", note: "Bought 5 GB more" }] } }), say("ok")]);
+    await sendMessage(T, "5 GB daha aldım", more.llm);
+    expect((await all()).find((i) => i.id === "e")).toMatchObject({ name: "10 GB eSIM", metrics: { dataGb: 10 } });
+    const plain = said({ kind: "esim", city: "Porto" }, { id: "p", status: "booked" });
+    await putTrip([hotel(), plain]);
+    const seen: TripChange[] = [];
+    const stop = onTripChange((c) => seen.push(c));
+    const first = fake([use({ name: "update_items", input: { changes: [{ item_id: "p", status: "booked", note: "Bought 10GB eSIM." }] } }), say("ok")]);
+    await sendMessage(T, "10 GB aldım", first.llm);
+    stop();
+    expect((await all()).find((i) => i.id === "p")!.metrics?.dataGb).toBe(10);
+    await undo({ kind: "trip", change: seen[0] });
+    expect((await all()).find((i) => i.id === "p")).toMatchObject({ name: plain.name, city: "Porto" });
   });
 
   it("3: a total said for a page priced per night is a total (never 600 a night)", async () => {

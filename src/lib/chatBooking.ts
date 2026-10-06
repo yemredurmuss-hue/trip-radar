@@ -170,7 +170,7 @@ export function narrowCandidates(list: Item[], said: PlannedInput): Item[] {
   return onPlan.length ? onPlan : list;
 }
 
-/** "5 GB daha", "bir tane daha", "ikinci bilet", "another one": a purchase besides the one on the plan. */
+/** "5 GB daha", "ikinci bilet", "another one": maybe a purchase besides the one on the plan, maybe not ("bir gün daha kalacağız", "daha ucuza"): next to one already bought, always asked, never a record on the word alone. */
 export const SECOND_PURCHASE = /(^|[^\p{L}])(daha|ikinci|another|one more|second|extra|additional)(?![\p{L}])/iu;
 
 /** A name on the trip said in the message ("Sabine'in bileti", "for Sabine"), whole word, case aside. */
@@ -211,7 +211,6 @@ export function differsFromBooked(raw: Item, said: PlannedInput, extras: Booking
 /** What plan_item does with a booking: update one record, add (a new one, or forced new), or ask. */
 export type BookingDecision =
   | { kind: "add" }
-  | { kind: "new" }
   | { kind: "update"; item: Item }
   | { kind: "which"; items: Item[] }
   | { kind: "booked"; item: Item; why: string }
@@ -221,7 +220,7 @@ export type BookingDecision =
  * Which record a booking said in the chat is for (plan_item without item_id). Said bought/booked (or an eSIM or
  * insurance, one per trip): the one record it can only be is updated; several are asked about; one already
  * booked is updated only when nothing said differs, else asked about ("Bu kartı güncelle" / "Yeni kayıt ekle"),
- * or made a new record when it's plainly a second purchase. Booked stays said over several of the chat's own,
+ * "daha", "another" next to it too: only the model's item_id "new" adds one. Booked stays said over several of the chat's own,
  * all inside the nights said ("8–14 rezerve ettim" over 8–10 and 10–14), merge as before (add). An eSIM with no
  * country, on a trip of several, asks which.
  */
@@ -235,7 +234,7 @@ export function decideBooking(said: PlannedInput, extras: BookingExtras, items: 
   const why = new Map<string, string>();
   for (const i of all) {
     if (i.status !== "booked") continue;
-    const reason = second ? L("ikinci bir alım", "a second purchase") : differsFromBooked(i, said, extras, ctx);
+    const reason = differsFromBooked(i, said, extras, ctx) ?? (second ? L("belki ikinci bir alım (\"daha\", \"ikinci\" dendi)", "maybe a second purchase (\"another\", \"extra\" said)") : null);
     if (reason) why.set(i.id, reason);
   }
   const found = narrowCandidates(all.filter((i) => !why.has(i.id)), said);
@@ -250,7 +249,7 @@ export function decideBooking(said: PlannedInput, extras: BookingExtras, items: 
   if (found.length === 1) return { kind: "update", item: found[0] };
   if (found.length > 1) return { kind: "which", items: found };
   const booked = all.filter((i) => why.has(i.id));
-  if (booked.length) return second ? { kind: "new" } : { kind: "booked", item: booked[0], why: why.get(booked[0].id)! };
+  if (booked.length) return { kind: "booked", item: booked[0], why: why.get(booked[0].id)! };
   if (oneEsim && countries.length > 1) return { kind: "country", countries };
   return { kind: "add" };
 }
