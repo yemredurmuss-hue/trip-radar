@@ -2350,6 +2350,9 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .msg-route-actions .btn-link { padding: 0; border: 0; background: none; font: inherit; font-weight: 500; color: var(--accent); cursor: pointer; }
 .msg-route-actions .small-btn { background: #fff; border: 1px solid var(--line); }
 .msg-route-actions .muted { font-size: 12.5px; }
+.msg-route-strays { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.msg-route-strays li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.msg-route-name { flex-basis: 100%; font-weight: 500; overflow-wrap: anywhere; }
 button.ar-ev { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
 button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-underline-offset: 3px; }
 

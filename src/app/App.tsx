@@ -5,6 +5,7 @@ import { L } from "../lib/i18n";
 import { routeUrl } from "../lib/items";
 import { buildPlan, groupKeyOf, liveGroups } from "../lib/plan";
 import { purgeTrash, restoreTrash, trashTrip } from "../lib/trash";
+import { checkStraysOnce } from "../lib/strays";
 import { isDemoTrip } from "../lib/trips";
 import type { Item, TrashEntry } from "../lib/types";
 import { undoSlot } from "../lib/undo";
@@ -83,6 +84,8 @@ export function App() {
 
   // Çöp kutusu: what is older than 30 days goes when the board opens (and whenever the trash is read).
   useEffect(() => void purgeTrash().catch(() => 0), []);
+  // Once per trip on this computer: records that look like another trip's are asked about in its chat (strays.ts).
+  useEffect(() => void checkStraysOnce().catch(() => 0), []);
   // Another trip on screen: the dialogs of the one before close.
   useEffect(() => {
     setHistoryOpen(false);

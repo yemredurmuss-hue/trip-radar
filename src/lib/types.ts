@@ -247,6 +247,8 @@ export interface Trip {
    * its suggestions are written in it, whatever the board's language. Unset: the board's.
    */
   lang?: Lang | null;
+  /** When this computer looked once for records that seem to belong to another trip (strays.ts); never again after. Local. */
+  strayCheckedAt?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -447,6 +449,8 @@ export interface Item {
   plannedKind?: PlannedKind;
   /** eSIM: when the traveller said it's installed ("Kurdum"). */
   installedAt?: number;
+  /** "Burada kalsın": its place is far from the trip's, and that's fine; never asked about again (strays.ts). */
+  placeOk?: boolean;
   /**
    * Needs a booking (counts as "Rezerve et") or not (an idea: Yapılacak şeyler, Restoranlar). Missing on
    * older records and pages that didn't say: read by kind (booking.ts bookingOf).
@@ -547,7 +551,20 @@ export interface OwnerChange {
  */
 export type RoutingNote =
   | { kind: "moved"; itemId: string; fromTripId: string; toTripId: string; far: boolean; merged: boolean; undoneAt?: number }
-  | { kind: "ask"; captureId: string; reason: "place" | "travel"; newTitle: string; answer?: "here" | "new" | "skip"; answeredTripId?: string };
+  | { kind: "ask"; captureId: string; reason: "place" | "travel"; newTitle: string; answer?: "here" | "new" | "skip"; answeredTripId?: string }
+  /** Records already saved whose place looks like another trip's (strays.ts): asked about one by one, never moved by itself. */
+  | { kind: "stray"; entries: StrayEntry[] };
+
+/** One record in a "Bunlar başka bir geziye ait görünüyor" line, and what was done with it. */
+export interface StrayEntry {
+  itemId: string;
+  name: string;
+  /** Its country, in words ("Endonezya"). */
+  country: string;
+  /** The trip of its place, when there is one ("Bali gezisine taşı"). */
+  toTripId: string | null;
+  answer?: "move" | "keep" | "remove";
+}
 
 /**
  * How a history line is taken back: these trip fields to their values before (only while they still hold the

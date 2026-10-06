@@ -3,6 +3,7 @@
 // Used by a trip's chat and by the popup.
 import { addEvent, db, listTrips, newId, notifyChanged } from "./db";
 import { moveDocsToTrip } from "./docs";
+import { deleteItem } from "./removal";
 import { L } from "./i18n";
 import { destinationImage, savedLine } from "./process";
 import { uniqueTitle } from "./trips";
@@ -59,6 +60,39 @@ export async function answerHeld(captureId: string, answer: "here" | "new" | "sk
   }
   notifyChanged();
   return tripId;
+}
+
+/**
+ * One record of a "Bunlar başka bir geziye ait görünüyor" line (strays.ts): move: to the trip of its place (its
+ * dates go with it: they are that trip's); keep: it stays, never asked again; remove: off the plan, into the
+ * trash (Çöp kutusu brings it back).
+ */
+export async function answerStray(messageId: string, itemId: string, answer: "move" | "keep" | "remove"): Promise<void> {
+  const d = await db();
+  const line = await d.get("messages", messageId);
+  const routing = line?.routing;
+  if (!line || routing?.kind !== "stray") return;
+  const entry = routing.entries.find((e) => e.itemId === itemId);
+  if (!entry || entry.answer) return;
+  const item = await d.get("items", itemId);
+  if (!item || item.tripId !== line.tripId) throw new RoutingChanged(L("Bu kayıt sonra değişti ya da silindi.", "This record changed or was deleted since."));
+  if (answer === "move") {
+    const to = entry.toTripId ? await d.get("trips", entry.toTripId) : undefined;
+    if (!to) throw new RoutingChanged(L("O gezi artık yok.", "That trip is gone."));
+    await d.put("items", { ...item, tripId: to.id, updatedAt: Date.now() });
+    await moveDocsToTrip(item.id, to.id);
+    await addEvent(to.id, L(`${item.name} bu geziye taşındı`, `${item.name} moved to this trip`));
+    await addEvent(line.tripId, L(`${item.name} → ${to.title} gezisine taşındı`, `${item.name} moved to ${to.title}`));
+  } else if (answer === "keep") {
+    await d.put("items", { ...item, placeOk: true, updatedAt: Date.now() });
+  } else {
+    await deleteItem(item, L(`${item.name} plandan çıkarıldı (Çöp kutusunda)`, `${item.name} taken off the plan (in the trash)`));
+  }
+  const fresh = (await d.get("messages", messageId)) ?? line;
+  if (fresh.routing?.kind === "stray") {
+    await d.put("messages", { ...fresh, routing: { ...fresh.routing, entries: fresh.routing.entries.map((e) => (e.itemId === itemId ? { ...e, answer } : e)) } });
+  }
+  notifyChanged();
 }
 
 /**

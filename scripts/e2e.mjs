@@ -2389,6 +2389,42 @@ try {
   await board.getByRole("button", { name: /Seyahatlerim/ }).click();
   await board.locator(".trip-card", { hasText: "Portekiz" }).click();
   await board.getByRole("heading", { name: "Portekiz" }).waitFor();
+  // 24b. Saved before the check: a Bali tour already in the Portugal trip. On the board's next open the trip asks
+  // once ("Bu başka bir geziye ait görünüyor: … (Endonezya)") with [Bali gezisine taşı] [Burada kalsın] [Plandan
+  // çıkar]; nothing moves by itself; the chip moves it.
+  await board.evaluate(async () => {
+    history.replaceState(null, "", location.pathname); // Aç left the Bali trip in the address: the reload opens Portekiz
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+    const all = (store) => new Promise((resolve) => (database.transaction(store).objectStore(store).getAll().onsuccess = (e) => resolve(e.target.result)));
+    const portugal =(await all("trips")).find((t) => t.title === "Portekiz");
+    const stray = (await all("items")).find((i) => i.id === "e2e-route-sanur");
+    const tx = database.transaction(["trips", "items"], "readwrite");
+    const { strayCheckedAt: _seen, ...unchecked } = portugal;
+    tx.objectStore("trips").put(unchecked);
+    tx.objectStore("items").put({ ...stray, id: "e2e-old-stray", tripId: portugal.id, name: "Kecak Fire Dance", category: "activity", city: "Uluwatu", status: "saved", dates: { start: null, end: null, source: "none" } });
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+  });
+  await board.reload();
+  await board.getByRole("heading", { name: "Portekiz" }).waitFor();
+  const strayLine = board.locator('.chat .msg-route[data-routing="stray"]', { hasText: "Kecak Fire Dance" });
+  await strayLine.waitFor({ timeout: 10000 });
+  assert.match(await strayLine.innerText(), /Bu başka bir geziye ait görünüyor: Kecak Fire Dance \(Endonezya\)/);
+  await strayLine.getByRole("button", { name: "Burada kalsın" }).waitFor();
+  await strayLine.getByRole("button", { name: "Plandan çıkar" }).waitFor();
+  assert.ok((await routedNames("Portekiz")).includes("Kecak Fire Dance"), "nothing moves by itself");
+  await board.locator(".chat").screenshot({ path: `${out}/24b-stray-ask.png` });
+  await strayLine.getByRole("button", { name: "Bali gezisine taşı" }).click();
+  await strayLine.getByText("taşındı").waitFor();
+  assert.ok((await routedNames("Bali")).includes("Kecak Fire Dance"));
+  assert.ok(!(await routedNames("Portekiz")).includes("Kecak Fire Dance"));
+  // Asked once: another open doesn't ask again.
+  await board.reload();
+  await board.getByRole("heading", { name: "Portekiz" }).waitFor();
+  await board.waitForTimeout(500);
+  assert.equal(await board.locator('.chat .msg-route[data-routing="stray"]').count(), 1, "the line is asked once");
+  console.log("✓ 24b strays: a Bali record saved before the check is asked about once in the Portugal chat; 'Bali gezisine taşı' moves it");
+
   // The steps after this one know two trips: the Bali one goes, and the address no longer names it.
   await board.evaluate(async () => {
     history.replaceState(null, "", location.pathname);

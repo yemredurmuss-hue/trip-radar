@@ -5,7 +5,7 @@ import { reloadIfLangChanged } from "./langSwitch";
 import { noChangeNote } from "../lib/claims";
 import { describeError } from "../lib/llm";
 import { shownReply } from "../lib/replyText";
-import { answerHeld, RoutingChanged, undoMove } from "../lib/routing";
+import { answerHeld, answerStray, RoutingChanged, undoMove } from "../lib/routing";
 import type { Capture, ChatMessage, Item, RoutingNote, Trip } from "../lib/types";
 import { DOC_ACCEPT } from "../lib/docs";
 import { DropOverlay } from "./arrive/ArriveViews";
@@ -255,6 +255,30 @@ function RoutingLine({ m, routing, trips }: { m: ChatMessage; routing: RoutingNo
         )}
       </>
     );
+  } else if (routing.kind === "stray") {
+    const done = { move: L("taşındı", "moved"), keep: L("burada kalıyor", "stays here"), remove: L("plandan çıkarıldı", "taken off the plan") };
+    actions = (
+      <ul className="msg-route-strays">
+        {routing.entries.map((e) => {
+          const there = title(e.toTripId ?? undefined);
+          const answer = (a: "move" | "keep" | "remove") => () => void act(() => answerStray(m.id, e.itemId, a));
+          return (
+            <li key={e.itemId} data-stray={e.itemId}>
+              <span className="msg-route-name">{e.name} ({e.country})</span>
+              {e.answer ? (
+                <span className="muted">{done[e.answer]}</span>
+              ) : (
+                <>
+                  {there && <button type="button" className="small-btn" disabled={busy} onClick={answer("move")}>{L(`${there} gezisine taşı`, `Move to ${there}`)}</button>}
+                  <button type="button" className="small-btn" disabled={busy} onClick={answer("keep")}>{L("Burada kalsın", "Keep it here")}</button>
+                  <button type="button" className="btn-link" disabled={busy} onClick={answer("remove")}>{L("Plandan çıkar", "Take off the plan")}</button>
+                </>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    );
   } else if (routing.answer) {
     const went = title(routing.answeredTripId);
     actions = <span className="muted">{routing.answer === "skip" || !went ? L("Eklenmedi", "Not added") : L(`→ ${went} gezisine eklendi`, `→ Added to ${went}`)}</span>;
@@ -275,7 +299,7 @@ function RoutingLine({ m, routing, trips }: { m: ChatMessage; routing: RoutingNo
       );
   }
   return (
-    <div className={`msg-route${routing.kind === "ask" && !routing.answer ? " ask" : ""}`} data-routing={routing.kind}>
+    <div className={`msg-route${(routing.kind === "ask" && !routing.answer) || (routing.kind === "stray" && routing.entries.some((e) => !e.answer)) ? " ask" : ""}`} data-routing={routing.kind}>
       <div>{m.text}</div>
       <div className="msg-route-actions">{actions}</div>
       {problem && <div className="chat-error">{problem}</div>}

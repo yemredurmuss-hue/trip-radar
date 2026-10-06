@@ -128,6 +128,8 @@ export function routeCapture(input: RouteInput): Route {
   const { item, anchorId, trips, items } = input;
   const latest = [...trips].filter((t) => !isDemoTrip(t)).sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id ?? null;
   if (!input.travel && !input.merged) return { kind: "ask", reason: "travel", askIn: anchorId ?? (input.newTrip ? latest : item.tripId) };
+  // A record the traveller said stays where it is ("Burada kalsın", strays.ts) isn't moved by a later save of it.
+  if (input.merged && item.placeOk) return { kind: "keep" };
   const codes = placeCodes(item);
   // A new trip takes its place from the record (as always); handed to a trip, that trip's places are what count.
   const checked = input.newTrip ? anchorId : item.tripId;

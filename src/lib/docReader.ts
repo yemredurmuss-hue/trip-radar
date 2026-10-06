@@ -19,6 +19,7 @@ import { cityKeyOf, departureDay, sameCity } from "./plan";
 import { ALL_PLANNED_KINDS, checkPlanned, plannedItem, type PlannedInput } from "./planned";
 import { isInsurance, isPaperwork, isRental, isTrip, isVisa } from "./travelKinds";
 import { DOC_KINDS, type ChatMessage, type DocKind, type DocRecord, type Item, type PlannedKind, type Trip } from "./types";
+import { askIfFar } from "./strays";
 import { ownersByOrigin, ownersFromDoc, peopleOf, type WhoCtx } from "./whose";
 import { ownerAsk } from "./whoseChat";
 import { loadWho } from "./whoseStore";
@@ -447,7 +448,8 @@ export async function readDocument(tripId: string, docId: string, deps: ReadDeps
   const raw = await llm.generateJson(docSystem(), docPrompt(trip, doc.name, deps.today ?? new Date(now).toISOString().slice(0, 10)), DocFactsSchema, [file]);
   const facts = cleanFacts(raw);
   const who = await loadWho(trip);
-  const outcome = placeDoc(facts, await listItems(tripId), tripId, (deps.newId ?? makeId)(), now, { trip, who });
+  const tripItems = await listItems(tripId);
+  const outcome = placeDoc(facts, tripItems, tripId, (deps.newId ?? makeId)(), now, { trip, who });
   const said = docSentence(outcome, doc.name);
   // Names on it that can't be placed: "Bu Ryanair bileti kimin?" in bold, the trip's people and Herkes as chips.
   const ask = (outcome.kind === "linked" || outcome.kind === "created") && outcome.ask ? ownerAsk(outcome.item, peopleOf(trip, who)) : null;
@@ -458,6 +460,8 @@ export async function readDocument(tripId: string, docId: string, deps: ReadDeps
   await linkDoc(doc.id, outcome.kind === "kept" ? doc.itemId : outcome.item.id, kind);
   await saveTurn({ tripId, role: "user", content: llm.userContent([L(`[Belge eklendi: ${doc.name}]`, `[Document added: ${doc.name}]`)]), text: `📎 ${doc.name}`, choices: [], provider: llm.id });
   await saveTurn({ tripId, role: "assistant", content: llm.assistantContent(sentence), text: sentence, choices: ask?.choices ?? [], provider: llm.id, ...(ask ? { ask: ask.ask } : {}) });
+  // A new record whose place is far from this trip's (a Bali voucher in the Portugal trip): asked, not moved (strays.ts).
+  if (outcome.kind === "created") await askIfFar(tripId, outcome.item, tripItems).catch(() => false);
   notifyChanged();
   return { ...outcome, sentence };
 }
