@@ -19,6 +19,7 @@ import { placesKey } from "./destinations";
 import { addDays, cityKeyOf } from "./plan";
 import { looksLikeUrl } from "./url";
 import type { PlannedInput } from "./planned";
+import { CIRCUITS, englishName, fitCircuit } from "./startCircuits";
 import { STYLES, type BudgetLevel, type StyleId } from "./tripStyle";
 import type { ChatMessage, Item, Trip } from "./types";
 
@@ -63,9 +64,10 @@ export interface StartRoute {
   /** Where the flight in lands and the one out leaves, when it isn't the first/last stop ("Denpasar" for Ubud). */
   arrive: string | null;
   leave: string | null;
-  /** "Bu olsun" pressed (or typed by the traveller): only then is it built as more than one stop. */
+  /** "Bu olsun" pressed (or typed by the traveller), or "Oluştur" pressed with it: only then is it built as more than one stop. */
   confirmed: boolean;
-  source: "ai" | "user" | "single";
+  /** The model's proposal, the traveller's own, one stop, or the classic circuit for the country (rev 3: at once, no model). */
+  source: "ai" | "user" | "single" | "circuit";
 }
 export interface StartMsg {
   role: "user" | "assistant";
@@ -289,6 +291,8 @@ interface KnownPlace {
   also?: string[];
   /** Where flights land for it, when that isn't its own name (Bali → Denpasar). */
   airport?: string;
+  /** The airport's city in English when it's spelt otherwise ("Kolombo" / "Colombo"). */
+  airportEn?: string;
 }
 const P = (tr: string, en: string, countryTr: string | null, countryEn: string | null, city: boolean, also: string[] = [], airport?: string): KnownPlace => ({ tr, en, countryTr, countryEn, city, also, ...(airport ? { airport } : {}) });
 /** A few places the code knows without the model (the no-key path): popular cities, islands and countries. */
@@ -329,7 +333,7 @@ export const KNOWN_PLACES: KnownPlace[] = [
   P("Antalya", "Antalya", "Türkiye", "Türkiye", true),
   P("Bodrum", "Bodrum", "Türkiye", "Türkiye", true),
   P("Kapadokya", "Cappadocia", "Türkiye", "Türkiye", false, [], "Kayseri"),
-  P("Maldivler", "Maldives", null, null, false, [], "Malé"),
+  P("Maldivler", "Maldives", null, null, false, ["maldiv", "maldiv adaları"], "Malé"),
   P("İzlanda", "Iceland", null, null, false),
   P("Tayland", "Thailand", null, null, false),
   P("Japonya", "Japan", null, null, false),
@@ -339,7 +343,7 @@ export const KNOWN_PLACES: KnownPlace[] = [
   P("Yunanistan", "Greece", null, null, false),
   P("Vietnam", "Vietnam", null, null, false),
   P("Meksika", "Mexico", null, null, false),
-  P("Sri Lanka", "Sri Lanka", null, null, false),
+  { ...P("Sri Lanka", "Sri Lanka", null, null, false, ["srilanka", "seylan", "ceylon"], "Kolombo"), airportEn: "Colombo" },
   P("Endonezya", "Indonesia", null, null, false),
   P("Fransa", "France", null, null, false),
 ];
@@ -432,9 +436,64 @@ export function placeOf(name: string, country: string | null = null, code: strin
 const isoCode = (v: string | null | undefined) => (v && /^[A-Za-z]{2}$/.test(v.trim()) ? v.trim().toUpperCase() : null);
 
 let countryIndex: Map<string, string> | null = null;
+/** The same names compared without spaces or dashes ("yenizelanda"), for a name with an ending typed on. */
+let countrySquashed: Map<string, string> | null = null;
+/**
+ * Codes Intl names that are no country to travel to (the EU, the UN, the eurozone, pseudo-regions), and the old
+ * codes it still names like today's: "Almanya" is DE, never East Germany's DD; "Vietnam" VN, never VD.
+ */
+const NOT_COUNTRIES = new Set(["EU", "EZ", "UN", "QO", "XA", "XB", "ZZ", "AQ", "AN", "BU", "CS", "DD", "FX", "SU", "TP", "VD", "YD", "YU", "ZR", "UK"]);
+
 /** "Endonezya", "Indonesia" → "ID": a country's name in Turkish or English (Intl), compared plain; null for anything else. */
 export function countryCodeOfName(name: string | null | undefined): string | null {
   if (!name) return null;
+  return countryNames().get(plain(name)) ?? null;
+}
+
+/** A country's name in a language (Intl), or null. */
+export function regionName(code: string, l: Lang): string | null {
+  try {
+    const n = new Intl.DisplayNames([l], { type: "region" }).of(code);
+    return n && n !== code ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A country as a known place (rev 3: every country, by its Turkish or English name): the table's entry when it has one. */
+function countryPlace(code: string): KnownPlace | null {
+  const tr = MAIN_NAMES[code]?.[0] ?? regionName(code, "tr");
+  const en = MAIN_NAMES[code]?.[1] ?? regionName(code, "en");
+  if (!tr || !en) return null;
+  return PLACE_INDEX.get(squash(tr)) ?? PLACE_INDEX.get(squash(en)) ?? { tr, en, countryTr: null, countryEn: null, city: false, also: [] };
+}
+
+/**
+ * Any country said by its name, with a Turkish ending typed on or not ("Yeni Zelanda'ya", "Güney Kore'ye",
+ * "Dominik Cumhuriyeti'ne", "Japonyadan"): the country and which way the ending points. Null for anything else.
+ */
+export function countryNamed(words: string): { p: KnownPlace; dir: "from" | "to" | null } | null {
+  if (!countrySquashed) {
+    countrySquashed = new Map();
+    for (const [n, code] of countryNames()) {
+      const k = squash(n);
+      if (k.length >= 3 && !countrySquashed.has(k)) countrySquashed.set(k, code);
+    }
+  }
+  const k = squash(words);
+  const direct = countrySquashed.get(k);
+  if (direct) return withDir(countryPlace(direct), null);
+  for (const [re, dir] of GLUED) {
+    const bare = k.replace(re, "");
+    const code = bare !== k && bare.length >= 3 ? countrySquashed.get(bare) : undefined;
+    if (code) return withDir(countryPlace(code), dir);
+  }
+  return null;
+}
+const withDir = (p: KnownPlace | null, dir: "from" | "to" | null) => (p ? { p, dir } : null);
+
+/** Every country's name (Intl, Turkish and English, every code A–Z), plain → its code; built once. */
+function countryNames(): Map<string, string> {
   if (!countryIndex) {
     countryIndex = new Map();
     for (const l of ["tr", "en"]) {
@@ -453,15 +512,20 @@ export function countryCodeOfName(name: string | null | undefined): string | nul
           } catch {
             n = undefined;
           }
-          if (n && n !== code && !countryIndex.has(plain(n))) countryIndex.set(plain(n), code);
+          if (n && n !== code && !NOT_COUNTRIES.has(code) && !countryIndex.has(plain(n))) countryIndex.set(plain(n), code);
         }
     }
     for (const [n, code] of Object.entries(MORE_CODES)) countryIndex.set(plain(n), code);
   }
-  return countryIndex.get(plain(name)) ?? null;
+  return countryIndex;
 }
-/** Names Intl doesn't give (short forms). */
-const MORE_CODES: Record<string, string> = { ABD: "US", USA: "US", "Birleşik Krallık": "GB", İngiltere: "GB", England: "GB", Türkiye: "TR", Turkey: "TR", Hollanda: "NL", Çekya: "CZ" };
+/** Names Intl doesn't give (short forms, older names). */
+const MORE_CODES: Record<string, string> = {
+  ABD: "US", USA: "US", Amerika: "US", "Birleşik Krallık": "GB", İngiltere: "GB", England: "GB", Türkiye: "TR", Turkey: "TR", Hollanda: "NL", Holland: "NL",
+  Çekya: "CZ", "Çek Cumhuriyeti": "CZ", "Czech Republic": "CZ", "Güney Kore": "KR", "South Korea": "KR", Emirlikler: "AE", Seylan: "LK", Ceylon: "LK",
+};
+/** The name the chat uses for a country whose Intl name is long or official. */
+const MAIN_NAMES: Record<string, [string, string]> = { US: ["ABD", "United States"], GB: ["Birleşik Krallık", "United Kingdom"], CZ: ["Çekya", "Czechia"], NL: ["Hollanda", "Netherlands"] };
 
 /** A known place's country code: its country's, or its own when it is a country. */
 const knownCode = (p: KnownPlace): string | null => countryCodeOfName(p.countryEn ?? p.en) ?? countryCodeOfName(p.countryTr ?? p.tr);
@@ -645,16 +709,29 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
     let len = 0;
     for (const n of [3, 2, 1]) {
       if (i + n > raw.length) continue;
-      const known = knownPlaceOf(raw.slice(i, i + n).join(" "));
+      const words = raw.slice(i, i + n).join(" ");
+      const known = knownPlaceOf(words);
       if (known) {
         hit = { p: known, dir: null, loose: null };
         len = n;
         break;
       }
-    }
-    if (!hit) {
-      const glued = gluedPlace(raw[i]);
-      if (glued) [hit, len] = [{ ...glued, loose: null }, 1];
+      // A name of several words with a Turkish ending typed on ("Sri lankaya", "Koh Samuiden").
+      const glued = gluedPlace(words);
+      if (glued) {
+        [hit, len] = [{ ...glued, loose: null }, n];
+        break;
+      }
+      // Any country by its Turkish or English name (rev 3), endings too ("Yeni Zelanda'ya", "Güney Kore'ye"). One
+      // word only when capitalised or the whole answer (a country's name can be a word: "mali", "ırak"), never a
+      // person's ("with Jordan", "Chad and I"), never "New Jersey", nor while who's coming is asked.
+      if (pending !== "who" && pending !== "names" && (n > 1 || capital(raw[i]) || squash(bareName(text)) === squash(words)) && !joined(i, n) && !(n === 1 && low[i - 1] === "new") && !monthOf(raw[i])) {
+        const country = countryNamed(words);
+        if (country) {
+          [hit, len] = [{ ...country, loose: null }, n];
+          break;
+        }
+      }
     }
     // Spelled loosely (8+ letters): a capitalised word or a short answer that is only a name; never a common word, a
     // word next to "with"/"and"/"ile"/"&" (a person: "Frances and I"), nor while who's coming is asked. Asked back.
@@ -1089,6 +1166,28 @@ export function applyExtracted(s: StartState, e: Extracted, now: number): StartS
   return keepRoute(s, next);
 }
 
+/**
+ * A reading that came late (rev 3: after the traveller said something newer): only what is still empty is taken
+ * (where, where from, who, when, the style), never a loose spelling to ask back. Nothing said since is overwritten.
+ */
+export function onlyEmpty(s: StartState, e: Extracted): Extracted {
+  const want = !s.wantDone && !s.skipped.includes("want");
+  return {
+    where: s.where || s.guess || s.skipped.includes("where") ? null : e.where,
+    whereSure: e.whereSure,
+    guess: null,
+    from: s.from || s.skipped.includes("from") ? null : e.from,
+    who: s.who || s.skipped.includes("who") ? null : e.who,
+    start: s.start || s.skipped.includes("start") ? null : e.start,
+    duration: s.duration || s.skipped.includes("duration") ? null : e.duration,
+    styles: want ? e.styles : [],
+    budget: want ? e.budget : null,
+  };
+}
+
+/** Whether a reading says anything at all. */
+export const saysSomething = (e: Extracted): boolean => said(e);
+
 const samePlace = (a: string | null | undefined, b: string | null | undefined) => !!a && !!b && (cityKeyOf(a) === cityKeyOf(b) || squash(a) === squash(b));
 
 /** "Aslında Bali'ye gidelim", "olsun", "let's go to Bali instead": the traveller means to change where they go. */
@@ -1445,13 +1544,21 @@ function fromSuffix(name: string): string {
 }
 
 /** The next assistant line: what was understood, then the next question (or "ready"). */
-export function replyText(before: StartState, after: StartState, ctx: StartCtx): string {
-  return [ackText(before, after, ctx), nextLine(after, ctx)].filter(Boolean).join(" ");
+export function replyText(before: StartState, after: StartState, ctx: StartCtx, drawing = false): string {
+  return [ackText(before, after, ctx), nextLine(after, ctx, drawing)].filter(Boolean).join(" ");
 }
 
-/** The question asked next, or "ready" when none is left. */
-export function nextLine(after: StartState, ctx: StartCtx): string {
+/** The route is the question but its proposal is still being drawn (rev 3): said, and the chat goes on meanwhile. */
+export const drawingLine = () =>
+  L(
+    "Rotayı çiziyorum; hazır olunca burada öneririm. Bu arada istersen oluşturabilir ya da eklemek istediğini yazabilirsin.",
+    "I'm drawing the route and will suggest it here when it's ready. Meanwhile you can generate, or type anything you'd like to add.",
+  );
+
+/** The question asked next, or "ready" when none is left; `drawing`: the route's proposal is on its way. */
+export function nextLine(after: StartState, ctx: StartCtx, drawing = false): string {
   const q = nextQuestion(after);
+  if (q === "route" && drawing && !after.route && !after.editingRoute) return drawingLine();
   if (q) return questionOf(after, q, ctx).text;
   return canGenerate(after)
     ? L("Hazırım. Gezimi oluştur'a bas; eklemek istediğin bir şey varsa yaz.", "I'm ready. Press Generate my trip, or type anything you'd like to add.")
@@ -1472,10 +1579,10 @@ export function modelMayReply(before: StartState, after: StartState): boolean {
  * The reply with the model's words: its line, then its question when it asks what the code asks next (else the
  * code's question); the code's line when the model's didn't hold. The route and "ready" are always the code's.
  */
-export function modelReplyText(before: StartState, after: StartState, ctx: StartCtx, reply: { text: string; question: string | null } | null, askedFor: QuestionId | null): string {
-  if (!reply || !modelMayReply(before, after)) return replyText(before, after, ctx);
+export function modelReplyText(before: StartState, after: StartState, ctx: StartCtx, reply: { text: string; question: string | null } | null, askedFor: QuestionId | null, drawing = false): string {
+  if (!reply || !modelMayReply(before, after)) return replyText(before, after, ctx, drawing);
   const q = nextQuestion(after);
-  const question = q && q === askedFor && reply.question ? reply.question : nextLine(after, ctx);
+  const question = q && q === askedFor && reply.question ? reply.question : nextLine(after, ctx, drawing);
   return `${reply.text} ${question}`;
 }
 
@@ -1582,6 +1689,42 @@ export function singleRoute(s: Pick<StartState, "where" | "duration" | "start">)
   return { stops: [{ city: s.where.place, nights: total }], arrive: null, leave: null, confirmed: false, source: "single" };
 }
 
+/** The country a destination is when it is one ("Sri Lanka" → LK); null for a city, an island or a region. */
+function countryItself(where: Place): string | null {
+  const code = countryCodeOfName(where.place);
+  return code && (!where.code || where.code === code) ? code : null;
+}
+
+/**
+ * The classic circuit for a week or more in a popular country (or Bali), fitted to the nights and the style (rev 3):
+ * proposed at once, without the model, which refines it when its own comes and differs. Null for anything else.
+ */
+export function circuitRoute(s: Pick<StartState, "where" | "duration" | "start" | "styles">): StartRoute | null {
+  const total = totalNights(s);
+  if (!s.where || !total || total < 7) return null;
+  const region = squash(s.where.place);
+  const code = Object.hasOwn(CIRCUITS, region) ? region : countryItself(s.where);
+  const circuit = code && Object.hasOwn(CIRCUITS, code) ? CIRCUITS[code] : null;
+  if (!code || !circuit) return null;
+  const fit = fitCircuit(circuit, total, s.styles);
+  if (!fit) return null;
+  const stopCode = s.where.code ?? (code.length === 2 ? code : null);
+  return { stops: fit.stops.map((x) => ({ ...x, ...(stopCode ? { code: stopCode } : {}) })), arrive: fit.arrive, leave: fit.leave, confirmed: false, source: "circuit" };
+}
+
+/**
+ * The route "Oluştur" builds (rev 3): the one agreed; else, unless the route was skipped, the proposal on screen (the
+ * model's, kept or prepared), else the classic circuit, else one stop. Agreed by pressing it.
+ */
+export function routeForGenerate(s: StartState): StartRoute | null {
+  if (s.route?.confirmed) return s.route;
+  const single = singleRoute(s);
+  if (s.skipped.includes("route")) return single ? { ...single, confirmed: true } : null;
+  const kept = preparedRoute(s);
+  const best = (s.route && s.route.source !== "single" ? s.route : null) ?? (kept?.source === "ai" ? kept : null) ?? circuitRoute(s) ?? s.route ?? single;
+  return best ? { ...best, confirmed: true } : null;
+}
+
 /** Short trips and single cities are one stop; the model is asked only for a longer trip to a country, an island or a region. */
 export function wantsRouteAdvice(s: Pick<StartState, "where" | "duration" | "start">): boolean {
   const total = totalNights(s) ?? 0;
@@ -1599,8 +1742,8 @@ export type RawRoute = z.infer<typeof routeSchema>;
 
 export const routeSystem = () =>
   `${L(
-    "Bir gezi için 1 ile 4 durak arasında gerçekçi bir rota öner. Duraklar gidilen yerin içinde ya da yakınında; yurt dışı gezide yola çıkılan şehir durak değildir (aynı ülkede bir gezide olabilir). Her durak gerçek bir şehir, kasaba ya da ada adı; gece sayıları tam sayı ve toplamı tam olarak verilen geceye eşit. Az durak tercih et (uzun kalış için 2-3). country_code: durağın ülkesinin ISO 3166-1 alpha-2 kodu (ör. TH). arrival_airport_city: ilk uçuşun indiği şehir (havalimanı olan); departure_airport_city: dönüş uçuşunun kalktığı şehir. Bilmiyorsan \"\" yaz.",
-    "Suggest a realistic route of 1 to 4 stops for a trip. The stops are in or near the place visited; abroad, the city they leave from is never a stop (on a trip in their own country it can be). Each stop is a real city, town or island; the nights are whole numbers adding up to exactly the given total. Prefer few stops (2-3 for a long stay). country_code: the stop's country, ISO 3166-1 alpha-2 (e.g. TH). arrival_airport_city: the city the first flight lands in (with an airport); departure_airport_city: where the flight home leaves from. Write \"\" if unsure.",
+    "Bu tarz ve gece sayısı için yerin klasik rotasını öner: 1-4 gerçek şehir, kasaba ya da ada, gezilecek sırayla; geceler tam sayı, toplamı tam verilen gece. Bir ülke ya da büyük bölgede 7+ gece için 2-4 durak (ör. Sri Lanka 14 gece: Sigiriya 3, Kandy 3, Ella 3, Mirissa 5); bir şehir tek durak. Yurt dışında yola çıkılan şehir durak olmaz. country_code: durağın ISO 3166-1 alpha-2 kodu. arrival_airport_city / departure_airport_city: ilk uçuşun indiği, dönüşün kalktığı havalimanlı şehir (ör. Kolombo); bilmiyorsan \"\".",
+    "Suggest the place's classic route for this style and length: 1-4 real cities, towns or islands in travel order; whole nights adding up to exactly the total. For 7+ nights in a country or large region, 2-4 stops (e.g. Sri Lanka 14 nights: Sigiriya 3, Kandy 3, Ella 3, Mirissa 5); a city is one stop. Abroad, the city they leave from is never a stop. country_code: the stop's ISO 3166-1 alpha-2 code. arrival_airport_city / departure_airport_city: the city with the airport the first flight lands in and the flight home leaves from (e.g. Colombo); \"\" if unsure.",
   )}\n${L("Yer adlarını Türkçe yaz.", "Write the place names in English.")}`;
 
 export function routePrompt(s: StartState): string {
@@ -1703,7 +1846,11 @@ export function withPreparedRoute(s: StartState, key: string, route: StartRoute 
   const routes = { ...s.prepared.routes, [key]: route };
   for (const old of Object.keys(routes).slice(0, Math.max(0, Object.keys(routes).length - MAX_ROUTES))) delete routes[old];
   const next: StartState = { ...s, prepared: { ...s.prepared, routes } };
-  return !next.route && route && routeKey(next) === key ? { ...next, route: { ...route, confirmed: false } } : next;
+  if (!route || routeKey(next) !== key) return next;
+  if (!next.route) return { ...next, route: { ...route, confirmed: false } };
+  // The model's proposal refines the classic circuit shown meanwhile (never one agreed, typed or edited).
+  const refines = route.source === "ai" && next.route.source === "circuit" && !next.route.confirmed && !next.editingRoute && routeText(route) !== routeText(next.route);
+  return refines ? { ...next, route: { ...route, confirmed: false } } : next;
 }
 
 /** The places to show and make photos for: the destination, the route's stops, its country (four at most). */
@@ -1711,6 +1858,21 @@ export function photoPlaces(s: Pick<StartState, "where" | "route">): string[] {
   if (!s.where) return [];
   const names = [s.where.place, ...(s.route?.stops ?? []).map((x) => x.city), s.where.country ?? ""].filter(Boolean);
   return [...new Map(names.map((n) => [squash(n), n])).values()].slice(0, 4);
+}
+
+/**
+ * What to ask the photo search for a place (rev 3): a country as its landscape ("Sri Lanka landscape"), a stop with
+ * its country so a town isn't a person ("Ella Sri Lanka"; Wikipedia "Ella, Sri Lanka" first), the destination as it
+ * is named. English names, which the search knows best.
+ */
+export function photoQuery(place: string, s: Pick<StartState, "where">): { query: string; titles: string[] } {
+  const own = countryCodeOfName(place);
+  if (own) return { query: `${regionName(own, "en") ?? place} landscape`, titles: [] };
+  const code = s.where?.code ?? countryCodeOfName(s.where?.country) ?? null;
+  const country = code ? regionName(code, "en") : null;
+  if (!country || samePlace(place, s.where?.place)) return { query: place, titles: [] };
+  const en = englishName(place) ?? knownPlaceOf(place)?.en ?? place;
+  return { query: `${en} ${country}`, titles: [`${en}, ${country}`] };
 }
 
 /** The places whose photo hasn't been looked for yet (for this destination). */
@@ -1755,7 +1917,9 @@ function keepPrepared(s: StartState): StartState {
 export function restoreRoute(s: StartState): StartState {
   if (s.route) return s;
   const kept = preparedRoute(s);
-  return kept ? { ...s, route: { ...kept, confirmed: false } } : s;
+  // The model's proposal kept; else the classic circuit at once (rev 3); else what was kept (one stop).
+  const best = (kept?.source === "ai" ? kept : null) ?? (s.guess ? null : circuitRoute(s)) ?? kept;
+  return best ? { ...s, route: { ...best, confirmed: false } } : s;
 }
 
 // --- the preview on the right (item 4): what the trip is so far ---------------------------------------------------
@@ -1841,7 +2005,8 @@ export function airportsOf(s: StartState, stops: RouteStop[] = stopsOf(s)): { ar
   const where = s.where;
   const first = stops[0]?.city ?? where.place;
   const last = stops.at(-1)?.city ?? where.place;
-  const airportOf = (city: string) => knownPlaceOf(city)?.airport ?? (city === first || city === last ? knownPlaceOf(where.place)?.airport : undefined) ?? city;
+  const airportName = (p: KnownPlace | null) => (p?.airport ? L(p.airport, p.airportEn ?? p.airport) : undefined);
+  const airportOf = (city: string) => airportName(knownPlaceOf(city)) ?? (city === first || city === last ? airportName(knownPlaceOf(where.place)) : undefined) ?? city;
   return { arrive: (s.route?.confirmed && s.route.arrive) || airportOf(first), leave: (s.route?.confirmed && s.route.leave) || airportOf(last) };
 }
 

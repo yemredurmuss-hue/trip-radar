@@ -69,8 +69,12 @@ export async function imageProxy(): Promise<ImageProxy | null> {
   }
 }
 
-/** The city's photo URL; null when it has none. Throws NetworkError when a request got no answer and nothing was found, so a miss isn't confused with an outage. */
-export async function pickCityImage(city: string, opts: { fetchJson?: FetchJson; proxy?: ImageProxy | null } = {}): Promise<string | null> {
+/**
+ * The city's photo URL; null when it has none. Throws NetworkError when a request got no answer and nothing was found,
+ * so a miss isn't confused with an outage. `query`: what the proxy is asked instead of the bare name ("Ella Sri Lanka",
+ * "Sri Lanka landscape"); `titles`: Wikipedia pages tried before the name ("Ella, Sri Lanka").
+ */
+export async function pickCityImage(city: string, opts: { fetchJson?: FetchJson; proxy?: ImageProxy | null; query?: string; titles?: string[] } = {}): Promise<string | null> {
   const fetchJson = opts.fetchJson ?? defaultFetch;
   let failed: unknown = null;
   const get = async (url: string, init?: RequestInit) => {
@@ -82,14 +86,17 @@ export async function pickCityImage(city: string, opts: { fetchJson?: FetchJson;
     }
   };
   if (opts.proxy) {
-    const p = await get(`${opts.proxy.url}?q=${encodeURIComponent(city)}`, { headers: opts.proxy.headers });
+    const p = await get(`${opts.proxy.url}?q=${encodeURIComponent(opts.query?.trim() || city)}`, { headers: opts.proxy.headers });
     if (p?.url) return p.url as string;
   }
-  for (const wiki of lang() === "en" ? ["en", "tr"] : ["tr", "en"]) {
-    const s = await get(`https://${wiki}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(city)}`);
+  // The pages asked for first (an English title such as "Ella, Sri Lanka" on the English Wikipedia), then the name.
+  const titles = [...new Set([...(opts.titles ?? []), city])];
+  const wikis = lang() === "en" ? ["en", "tr"] : ["tr", "en"];
+  for (const [title, wiki] of titles.flatMap((t, k) => (k < titles.length - 1 ? [[t, "en"]] : wikis.map((w) => [t, w])))) {
+    const s = await get(`https://${wiki}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
     const src = summaryImage(s);
     if (src && isPhoto(src)) return src;
-    const m = await get(`https://${wiki}.wikipedia.org/api/rest_v1/page/media-list/${encodeURIComponent(city)}`);
+    const m = await get(`https://${wiki}.wikipedia.org/api/rest_v1/page/media-list/${encodeURIComponent(title)}`);
     const pick = (m?.items ?? []).find((i: any) => i.type === "image" && isPhoto(i.title ?? "") && i.srcset?.length);
     if (pick) {
       const url = sized(pick.srcset.at(-1).src);

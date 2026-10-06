@@ -293,11 +293,12 @@ describe("prepared while chatting (item 7)", () => {
     expect(photosToFind(kept)).toEqual(["Koh Samui"]);
     const bali = typed(kept, "Aslında Bali'ye gidelim", null, 3);
     expect(bali.where?.place).toBe("Bali");
-    expect(bali.route).toBeNull();
+    // Koh Phangan's route is gone; Bali's classic circuit is proposed at once (rev 3), the model still asked.
+    expect(bali.route?.source).toBe("circuit");
     expect(bali.prepared.photos).toBeNull();
     expect(preparedPhotos(bali)).toEqual([]);
     expect(routeToPrepare(bali)).toBe("bali|ID|31");
-    expect(photosToFind(bali)).toEqual(["Bali", "Endonezya"]);
+    expect(photosToFind(bali)).toEqual(["Bali", "Ubud", "Sidemen", "Canggu"]);
     // Photos found for Koh Phangan after the change are not Bali's.
     expect(withPhotos(bali, whereKey(kept)!, { "Koh Phangan": "https://img.test/late.jpg" })).toBe(bali);
     const back = typed(bali, "Aslında Koh Phangan'a gidelim", null, 4);

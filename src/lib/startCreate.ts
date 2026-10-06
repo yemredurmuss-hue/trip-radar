@@ -39,7 +39,10 @@ export function stepsFor(s: StartState, c: Creation): StepPlan[] {
     const routeDone = !c.dates
       ? L(`${dative(stays[0]?.city ?? "")} konaklama yeri açıldı; geceler tarihle gelir`, `Room made for a stay in ${stays[0]?.city ?? ""}; the nights come with the dates`)
       : stays.length > 1
-        ? L(`Rota çizildi: ${stays.map((x) => `${x.city} ${nightsOf(x)} gece`).join(" → ")}`, `Route drawn: ${stays.map((x) => `${x.city} ${nightsOf(x)} nights`).join(" → ")}`)
+        ? s.route?.source === "circuit"
+          ? // Honest about what it used (rev 3): the classic circuit when the model's wasn't there.
+            L(`Klasik rota çizildi: ${stays.map((x) => `${x.city} ${nightsOf(x)} gece`).join(" → ")}`, `Classic route drawn: ${stays.map((x) => `${x.city} ${nightsOf(x)} nights`).join(" → ")}`)
+          : L(`Rota çizildi: ${stays.map((x) => `${x.city} ${nightsOf(x)} gece`).join(" → ")}`, `Route drawn: ${stays.map((x) => `${x.city} ${nightsOf(x)} nights`).join(" → ")}`)
         : L(`${dative(stays[0]?.city ?? "")} ${nightsOf(stays[0])} gece yazıldı`, `${nightsOf(stays[0])} night${nightsOf(stays[0]) === 1 ? "" : "s"} written for ${stays[0]?.city ?? ""}`);
     const arrive = c.travel[0]?.to ?? "";
     const n = c.travellers?.count ?? null;

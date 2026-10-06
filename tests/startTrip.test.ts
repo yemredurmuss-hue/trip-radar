@@ -267,7 +267,10 @@ describe("the route (item 1)", () => {
     expect(parseRouteText("Ubud 10, Canggu 21", 31)).toEqual({ route: { stops: [{ city: "Ubud", nights: 10 }, { city: "Canggu", nights: 21 }], arrive: null, leave: null, confirmed: true, source: "user" } });
     expect(parseRouteText("Ubud 10 ve Canggu 10", 31)).toEqual({ error: "Geceler toplamı 31 olmalı (yazdığın: 20)." });
     const longer = applyAnswer(ok, { q: "duration", duration: { unit: "week", n: 2 } }, 4);
-    expect(longer.route).toBeNull();
+    // The route agreed for 31 nights is gone; Bali's classic circuit for 14 nights is proposed at once (rev 3).
+    expect(longer.route?.source).toBe("circuit");
+    expect(longer.route?.confirmed).toBe(false);
+    expect(longer.route?.stops.reduce((n, x) => n + x.nights, 0)).toBe(14);
   });
 });
 
