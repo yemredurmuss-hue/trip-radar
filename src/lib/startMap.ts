@@ -106,6 +106,15 @@ export function widen(v: View, by: number): View {
 
 export const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
+/**
+ * The point as seen from another across the shorter way round (rev 3): New York → Japan crosses the Pacific, the
+ * destination drawn a map's width to the left (the map is drawn three times side by side).
+ */
+export function nearSide(from: XY, to: XY): XY {
+  const dx = to.x - from.x;
+  return dx > MAP_W / 2 ? { ...to, x: to.x - MAP_W } : dx < -MAP_W / 2 ? { ...to, x: to.x + MAP_W } : to;
+}
+
 /** The flight's bend: a control point off the middle of the line, on its upper side (great-circle-like). */
 export function arcControl(a: XY, b: XY): XY {
   const mx = (a.x + b.x) / 2;

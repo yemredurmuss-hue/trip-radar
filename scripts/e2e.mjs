@@ -2767,6 +2767,8 @@ try {
   // Generate with what there is; the steps say what they really wrote.
   await genBtn.click();
   await board.locator(".st-gen", { hasText: "Koh Phangan Gezisi planlanıyor" }).waitFor();
+  // The map speaks the chat's language on the English board.
+  await board.locator(".st-map-credit", { hasText: "Harita: Natural Earth" }).waitFor();
   await board.locator(".st-step.done", { hasText: "Gezi açıldı: Koh Phangan Gezisi" }).waitFor();
   assert.equal(await board.locator(".st-gen-foot").innerText().then((t) => /%/.test(t)), false, "no percentages");
   await board.locator(".st-progress").waitFor();

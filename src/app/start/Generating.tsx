@@ -179,7 +179,9 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
     <div className="st-gen" role="status" aria-live="polite">
       <h2>{L(`${place} Gezisi planlanıyor`, `Planning your ${place} trip`)}</h2>
       <div className={`st-gen-stage${world === null ? " no-map" : ""}`}>
-        {world === "loading" ? <div className="st-map st-map-wait" aria-hidden /> : world && points ? <FlightMap world={world} points={points} onLanded={() => setLanded(true)} /> : null}
+        {world === "loading" ? <div className="st-map st-map-wait" aria-hidden /> : world && points?.to ? (
+          <FlightMap from={points.from} to={points.to} stops={points.stops} lang={state.lang} onLanded={() => setLanded(true)} />
+        ) : null}
         {showPhotos && (
           <div className="st-photos" aria-hidden>
             {cards.map((p, i) => (

@@ -3,8 +3,8 @@
 // flies along it, a soft pulse where it lands, then the stops joined by a dashed line. With reduced motion: the same
 // picture at once, nothing moving.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { L } from "../../lib/i18n";
-import { along, arcControl, arcPath, between, easeInOut, frame, project, stopsPath, widen, type TripPoints, type View, type XY } from "../../lib/startMap";
+import { L, withLang, type Lang } from "../../lib/i18n";
+import { along, arcControl, arcPath, between, easeInOut, frame, MAP_W, nearSide, project, stopsPath, widen, type MapPoint, type View, type XY } from "../../lib/startMap";
 
 /** The map data as bundled (made by scripts/build-world-map.mjs). */
 export interface WorldMap {
@@ -34,17 +34,52 @@ const part = (ms: number, [a, b]: readonly [number, number]) => Math.min(1, Math
 /** A small plane pointing east (rotated to the curve). */
 const PLANE = "M-10 -1.6 L3 -1.6 L-2 -9 L1.6 -9 L9 -1.6 L12 -1.6 Q15 0 12 1.6 L9 1.6 L1.6 9 L-2 9 L3 1.6 L-10 1.6 L-12.5 5 L-14.5 5 L-12.8 0 L-14.5 -5 L-12.5 -5 Z";
 
-export function FlightMap({ world, points, onLanded }: { world: WorldMap; points: TripPoints; onLanded?: () => void }) {
-  const still = useMemo(reducedMotion, []);
+/**
+ * What the map is given (kept small: a map library can take its place with the same props): where the flight leaves
+ * from and lands, the stops, the chat's language (its label and credit, whatever the board's), reduced motion (else
+ * the system's setting), and a call once it has landed (the photos fan in then).
+ */
+export interface FlightMapProps {
+  from: MapPoint | null;
+  to: MapPoint;
+  stops: MapPoint[];
+  lang: Lang;
+  reducedMotion?: boolean;
+  onLanded?: () => void;
+}
+
+/** The map once its data is read (the bundled world, read once); nothing when it can't be (landed at once). */
+export function FlightMap(props: FlightMapProps) {
+  const [world, setWorld] = useState<WorldMap | null | "loading">("loading");
+  useEffect(() => {
+    let live = true;
+    void loadWorld().then((w) => {
+      if (!live) return;
+      setWorld(w);
+      if (!w) props.onLanded?.();
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (world === "loading") return <div className="st-map st-map-wait" aria-hidden />;
+  return world ? <WorldFlight world={world} {...props} /> : null;
+}
+
+/** The map drawn from its data (exported for the tests). */
+export function WorldFlight({ world, from, to, stops: stopPoints, lang, reducedMotion: reduced, onLanded }: FlightMapProps & { world: WorldMap }) {
+  const points = { from, to, stops: stopPoints };
+  const still = useMemo(() => reduced ?? reducedMotion(), [reduced]);
   const [ms, setMs] = useState(still ? MAP_TIMES.end : 0);
   const landedSaid = useRef(false);
 
   const a: XY | null = points.from ? project(points.from) : null;
-  const b: XY | null = points.to ? project(points.to) : null;
+  // The shorter way round: across the Pacific a map's width over (the land is drawn three times side by side).
+  const b: XY | null = points.to ? (a ? nearSide(a, project(points.to)) : project(points.to)) : null;
   const flies = Boolean(a && b && Math.hypot(a.x - b.x, a.y - b.y) > 2);
   const c = flies ? arcControl(a!, b!) : null;
-  const stops = points.stops.map(project);
-  const end: View = useMemo(() => frame([...(a ? [a] : []), ...(b ? [b] : []), ...(c ? [c] : []), ...stops], ASPECT), [points]);
+  const stops = points.stops.map((p) => (b ? nearSide(b, project(p)) : project(p)));
+  const end: View = useMemo(() => frame([...(a ? [a] : []), ...(b ? [b] : []), ...(c ? [c] : []), ...stops], ASPECT), [from, to, stopPoints]);
   const start = useMemo(() => widen(end, 2.6), [end]);
 
   useEffect(() => {
@@ -75,13 +110,17 @@ export function FlightMap({ world, points, onLanded }: { world: WorldMap; points
   const u = view.w / 100;
   const dash = part(ms, MAP_TIMES.stops);
 
-  return (
+  return withLang(lang, () => (
     <figure className="st-map" data-phase={!flies ? "here" : landed ? "landed" : ms < MAP_TIMES.flight[0] ? "zoom" : "flying"}>
       <svg viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`} preserveAspectRatio="xMidYMid slice" role="img"
         aria-label={points.from && points.to ? L(`${points.from.name} → ${points.to.name} uçuşu, haritada`, `The flight ${points.from.name} → ${points.to.name} on a map`) : L("Harita", "Map")}>
         <rect x={-MAP_WIDE} y={-MAP_WIDE} width={MAP_WIDE * 3} height={MAP_WIDE * 3} className="st-map-sea" />
-        <path d={world.land} className="st-map-land" />
-        <path d={world.borders} className="st-map-borders" vectorEffect="non-scaling-stroke" />
+        {[-MAP_W, 0, MAP_W].map((dx) => (
+          <g key={dx} transform={dx ? `translate(${dx} 0)` : undefined}>
+            <path d={world.land} className="st-map-land" />
+            <path d={world.borders} className="st-map-borders" vectorEffect="non-scaling-stroke" />
+          </g>
+        ))}
         {flies && (
           <path d={arcPath(a!, c!, b!)} className="st-map-arc" pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - (still ? 1 : fly)} strokeWidth={0.5 * u} />
         )}
@@ -106,7 +145,7 @@ export function FlightMap({ world, points, onLanded }: { world: WorldMap; points
       </svg>
       <figcaption className="st-map-credit">{L("Harita: Natural Earth", "Map: Natural Earth")}</figcaption>
     </figure>
-  );
+  ));
 }
 
 /** Room around the map for the sea while the view moves. */

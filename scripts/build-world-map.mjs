@@ -34,8 +34,26 @@ const ring = (indices) => {
     const pts = arcPoints(i);
     out.push(...(k ? pts.slice(1) : pts));
   }
-  return out;
+  return unwrap(out);
 };
+/**
+ * A ring or line that crosses the date line (Fiji, Chukotka) made continuous: each step of more than 180° in
+ * longitude is taken the other way round, so the ring runs past ±180° instead of a stripe across the whole map. The
+ * screen draws the map three times side by side, so what runs past the edge shows on the other side.
+ */
+function unwrap(points) {
+  let shift = 0;
+  return points.map(([lng, lat], k) => {
+    if (k) {
+      const prev = points[k - 1][0];
+      if (lng - prev > 180) shift -= 360;
+      else if (prev - lng > 180) shift += 360;
+    }
+    return [lng + shift, lat];
+  });
+}
+/** A longitude back in [-180, 180]. */
+const wrapLng = (lng) => ((((lng + 180) % 360) + 360) % 360) - 180;
 const polygonsOf = (g) => (g.type === "Polygon" ? [g.arcs] : g.type === "MultiPolygon" ? g.arcs : []);
 
 // --- path writing: absolute start, relative steps rounded to 0.1 px, tiny steps merged -------------------------
@@ -70,7 +88,7 @@ for (const g of topo.objects.countries.geometries)
     const a = i < 0 ? ~i : i;
     uses.set(a, (uses.get(a) ?? 0) + 1);
   }
-const borders = [...uses].filter(([, n]) => n > 1).map(([a]) => pathOf(arcs[a], false));
+const borders = [...uses].filter(([, n]) => n > 1).map(([a]) => pathOf(unwrap(arcs[a]), false));
 
 // Centroids by code: the largest polygon's outer ring (planar, in degrees), named through Intl.
 const FIX = {
@@ -120,8 +138,10 @@ for (const g of topo.objects.countries.geometries) {
     const c = area(ring(poly[0]));
     if (Number.isFinite(c.x) && (!best || Math.abs(c.a) > Math.abs(best.a))) best = c;
   }
-  if (best) centroids[code] = [Math.round(best.x * 100) / 100, Math.round(best.y * 100) / 100];
+  if (best) centroids[code] = [Math.round(wrapLng(best.x) * 100) / 100, Math.round(best.y * 100) / 100];
 }
+// Countries round the date line or spread over islands: their main land by hand ([lng, lat]).
+Object.assign(centroids, { FJ: [178.07, -17.75], RU: [96.7, 61.5], KI: [172.98, 1.45] });
 
 mkdirSync("static/map", { recursive: true });
 const out = { w: W, h: H, top: LAT_TOP, bottom: LAT_BOTTOM, source: "Natural Earth 1:110m (public domain), via world-atlas 2", land: land.join(""), borders: borders.join(""), centroids };
