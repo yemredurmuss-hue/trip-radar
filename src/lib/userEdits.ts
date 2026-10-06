@@ -221,3 +221,32 @@ export const clearUserEdit = (item: Item, field: FieldKey) =>
     },
     (name) => L(`${name}: sayfadaki değere dönüldü`, `${name}: back to the page's value`),
   );
+
+/**
+ * A flight's landing as the traveller gives it ("İniş saati?", 0.36.13, from their ticket): HH:MM on its day,
+ * the next day when it's before take-off. Null when the flight has no day to put it on.
+ */
+export function arrivalAt(item: Item, hhmm: string): string | null {
+  const day = startOf(item);
+  if (!day || !/^\d{2}:\d{2}$/.test(hhmm)) return null;
+  const off = clock(item.flight?.departure);
+  return `${off && hhmm < off ? addDays(day, 1) : day}T${hhmm}`;
+}
+
+/** Writes it as a correction (a page saved again can't take it away); null takes it back. */
+export const saveArrival = (item: Item, hhmm: string | null) =>
+  writeEdits(
+    item,
+    (fresh) => {
+      const at = hhmm ? arrivalAt(withEdits(fresh), hhmm) : null;
+      if (hhmm && !at) return L("Önce uçuşun gününü gir.", "Add the flight's day first.");
+      const rest: UserEdits = { ...fresh.userEdits };
+      if (at) rest.arrival = at;
+      else delete rest.arrival;
+      return rest;
+    },
+    (name) =>
+      item.category === "flight"
+        ? hhmm ? L(`${name}: iniş ${hhmm}`, `${name}: lands ${hhmm}`) : L(`${name}: iniş saati silindi`, `${name}: landing time removed`)
+        : hhmm ? L(`${name}: varış ${hhmm}`, `${name}: arrives ${hhmm}`) : L(`${name}: varış saati silindi`, `${name}: arrival time removed`),
+  );

@@ -17,7 +17,8 @@ import type { DayRow } from "../../lib/journey";
 import { insertAtDay, type InsertAt } from "../../lib/templates";
 import { updateTrip } from "../actions";
 import type { RentalEntry, StayEntry, TimelineSection } from "../../lib/timeline";
-import type { Listing } from "../../lib/types";
+import type { Item, Listing } from "../../lib/types";
+import { saveArrival } from "../../lib/userEdits";
 import { KindIcon } from "../cards/Silhouettes";
 import { PlanEntry } from "../plan/PlanEntry";
 import type { LegCardFor, LegFor, RenderGroup, SettledFor } from "../Timeline";
@@ -360,8 +361,8 @@ function TimeCell({ row, tripId }: { row: DayRow; tripId: string }) {
       title={row.freed ? L(`Elle taşındı (saati ${row.freed}). Dokun: saat ver ya da × ile saatine geri koy`, `Moved by hand (its time ${row.freed}). Tap: set a time, or × to put it back on its time`) : (row.why ?? L("Saat ver", "Set a time"))}
       aria-label={time(row) ? undefined : L(`${titleText(rowTitle(row, place))}: saat ver`, `${titleText(rowTitle(row, place))}: set a time`)}
       onClick={() => setEdit(true)}>
-      {/* No time: the cell stays blank (a tap still gives one). */}
-      {time(row) || null}
+      {/* No time: blank (a tap still gives one), or in words when it can't be a clock ("varıştan sonra", "gece ~00:45"). */}
+      {time(row) || (row.hint ? <small className="t-hint">{row.hint}</small> : null)}
     </button>
   );
 }
@@ -379,6 +380,7 @@ function InfoLine({ row, tripId, dnd }: { row: DayRow; tripId: string; dnd?: Dnd
         <b>{t.what}</b>
         {t.which && ` · ${t.which}`}
         {t.detail && <small> · {t.detail}</small>}
+        {sourceOf(row) && <small className="dc-why"> · {sourceOf(row)}</small>}
       </span>
     </li>
   );
@@ -387,7 +389,7 @@ function InfoLine({ row, tripId, dnd }: { row: DayRow; tripId: string; dnd?: Dnd
 const isLine = (r: DayRow) => !isPlanRow(r) && r.kind !== "idea";
 
 /** NE in bold · HANGİSİ, the grey line under them (satır standardı v2). */
-const RowName = ({ t }: { t: RowTitle }) => (
+const RowName = ({ t, why }: { t: RowTitle; why?: string | null }) => (
   <span className="name">
     <span className="dc-ttl">
       <b className="dc-what">{t.what}</b>
@@ -399,7 +401,7 @@ const RowName = ({ t }: { t: RowTitle }) => (
         </>
       )}
     </span>
-    {t.detail && <small>{t.detail}</small>}
+    {(t.detail || why) && <small>{[t.detail, why].filter(Boolean).join(" · ")}</small>}
   </span>
 );
 
@@ -441,10 +443,56 @@ function Line({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tri
           <KindIcon kind={kind} size={19} />
           {mark && <i className={mark.done ? "done" : "todo"}>{mark.done ? "✓" : ""}</i>}
         </span>
-        <RowName t={t} />
+        <RowName t={t} why={sourceOf(row)} />
       </button>
+      <ArrivalAsk row={row} />
       {row.warn && <p className="dc-warn">{row.warn}</p>}
     </li>
+  );
+}
+
+/**
+ * Where a worked-out time comes from, at the end of its grey line (0.36.13): "Havalimanından çıkış 22:45 +
+ * yol ~1 sa". Only for the times the plan works out (a ticket's own time needs no note).
+ */
+const sourceOf = (row: DayRow): string | null => (row.why && !row.user && (row.estimated || (!row.time && row.hint)) ? row.why : null);
+
+/** The flight's ticket (the travel line's settled flight). */
+const ticketOf = (row: DayRow): Item | null => {
+  const t = row.kind === "travel" && row.entry?.kind === "travel" ? row.entry.travel : null;
+  return t?.settled ?? (t?.items.length === 1 ? t.items[0] : null);
+};
+
+/**
+ * "İniş saati?" on a flight whose page didn't say when it lands (0.36.13): the traveller types it from their
+ * ticket, and the transfer and the check-in after it are worked out from it.
+ */
+function ArrivalAsk({ row }: { row: DayRow }) {
+  const [open, setOpen] = useState(false);
+  const item = ticketOf(row);
+  if (!item?.flight?.departure || item.flight.arrival) return null;
+  const name = item.flight.flightNumber ?? item.name;
+  const air = item.category === "flight";
+  return open ? (
+    <span className="dc-arrive">
+      <input
+        type="time"
+        autoFocus
+        aria-label={air ? L(`${name}: iniş saati`, `${name}: landing time`) : L(`${name}: varış saati`, `${name}: arrival time`)}
+        onBlur={(e) => {
+          if (e.target.value) void saveArrival(item, e.target.value);
+          setOpen(false);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setOpen(false);
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        }}
+      />
+    </span>
+  ) : (
+    <button type="button" className="dc-arrive link-btn" onClick={() => setOpen(true)} title={L("Biletindeki iniş saati: aktarma ve check-in buna göre hesaplanır", "The landing time on your ticket: the transfer and check-in are worked out from it")}>
+      {air ? L("İniş saati?", "Landing time?") : L("Varış saati?", "Arrival time?")}
+    </button>
   );
 }
 

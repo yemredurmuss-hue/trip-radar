@@ -1,13 +1,18 @@
 // What each decision card shows for the sample trip: source, what it is, the price for these nights,
 // where it stands, and the short pros and cons (the reason an option is out first).
 import "fake-indexeddb/auto";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { loadDecisions } from "../src/lib/analysis";
 import { cardDetails, cardFacts, hostOf } from "../src/lib/cardFacts";
 import { db, listItems } from "../src/lib/db";
 import { loadDemoTrip } from "../src/lib/demo";
 import { choiceOf, tradeText } from "../src/lib/choice";
 import { makeItem } from "./fixtures/makeItem";
+
+// The sample trip's dates are fixed (its free cancellation ends 5 October 2026): read before the trip, so the
+// test doesn't change with the calendar (it broke on 6 October).
+beforeAll(() => vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-01T10:00:00Z") }));
+afterAll(() => vi.useRealTimers());
 
 async function demo() {
   const id = await loadDemoTrip();

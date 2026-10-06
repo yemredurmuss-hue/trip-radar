@@ -3,7 +3,9 @@
 // hour before being there, check out before leaving, out of the airport 45 minutes after landing, check in an
 // hour after. A time the traveller sets is fixed too and the rest follow it. Computed times are never stored
 // (they're worked out again on every view, so a changed flight moves them); one that can't be worked out
-// safely (it would cross midnight) is left empty rather than wrong. Pure.
+// safely is left without a clock rather than wrong (0.36.13): past midnight it says "gece ~00:45", and a
+// check-in after a flight whose landing isn't known says "inişten sonra", never the hotel's usual 15:00
+// while the traveller is still in the air. Pure.
 import { L } from "./i18n";
 import type { DayRow } from "./journey";
 
@@ -25,6 +27,10 @@ const shift = (t: string, by: number): string | null => {
   return m >= 0 && m < 24 * 60 ? toClock(m) : null;
 };
 const isClock = (t: string | null | undefined): t is string => !!t && /^\d{2}:\d{2}$/.test(t);
+
+/** Minutes on, past midnight too (for "gece ~00:45"). */
+const wrap = (t: string, by: number) => toClock((((toMin(t) + by) % 1440) + 1440) % 1440);
+const clockOf = (iso: string | null | undefined) => iso?.match(/T(\d{2}:\d{2})/)?.[1] ?? null;
 
 const isCheck = (r: DayRow, word: "Check-in" | "Check-out") => r.kind === "info" && r.title === word && !!r.stayKey;
 const hubWord = (r: DayRow) => (r.leg?.via === "flight" ? L("havalimanında", "at the airport") : L("istasyonda", "at the station"));
@@ -67,21 +73,54 @@ export function applyDayTimes(rows: DayRow[], overrides: DayTimeOverrides = {}):
       Object.assign(checkout, { time: latest, estimated: true, why: L(`Yola çıkış ${leaving.time}: ondan önce çıkış`, `Leaving at ${leaving.time}: check out before`) });
     }
   }
-  // Off the plane: out of the airport 45 minutes after landing (the transfer then).
-  const landed = landing?.leg?.after;
+  // The trip in (the day's last flight or train with a time): what's after it can't come before it.
+  const trips = out.filter((r) => r.kind === "travel" && isClock(r.time));
+  const inbound = trips.length ? trips.reduce((a, b) => (toMin(b.time!) >= toMin(a.time!) ? b : a)) : null;
+  // Its ticket: the one settled on, or the only option (whose time the line shows, journey.ts travelStep).
+  const travel = inbound?.entry?.kind === "travel" ? inbound.entry.travel : null;
+  const ticket = travel?.settled ?? (travel?.items.length === 1 ? travel.items[0] : null);
+  // Off the plane: the transfer's "after" (the flight's local arrival), else the inbound ticket's own.
+  const ticketLands = clockOf(ticket?.flight?.arrival);
+  const overnight = !!ticket?.flight?.arrival && !!ticket.flight.departure && ticket.flight.arrival.slice(0, 10) > ticket.flight.departure.slice(0, 10);
+  const landed = isClock(landing?.leg?.after) ? landing!.leg!.after! : ticketLands;
+  const byAir = landing ? landing.leg?.via === "flight" : !!ticket?.flight;
+  const exitMin = byAir ? LANDING_EXIT_MINUTES : 10;
+  // Out of the airport 45 minutes after landing (the transfer then); past midnight, said in words.
   if (landing && !landing.user && isClock(landed)) {
-    const outAt = shift(landed, landing.leg?.via === "flight" ? LANDING_EXIT_MINUTES : 10);
+    const outAt = overnight ? null : shift(landed, exitMin);
     Object.assign(landing, {
       time: outAt,
       estimated: outAt != null,
-      why: outAt ? L(`Varış ${landed}; çıkış ~${landing.leg?.via === "flight" ? 45 : 10} dk`, `Arrives ${landed}; out in ~${landing.leg?.via === "flight" ? 45 : 10} min`) : null,
+      hint: outAt ? landing.hint : L(`gece ~${wrap(landed, exitMin)}`, `night ~${wrap(landed, exitMin)}`),
+      why: L(`Varış ${landed}; çıkış ~${exitMin} dk`, `Arrives ${landed}; out in ~${exitMin} min`),
     });
   }
-  // Check in once there: the transfer's time plus an hour, not before the room is ready.
-  if (checkin && !checkin.user && landing && isClock(landing.time)) {
-    const there = shift(landing.time, TRANSFER_MINUTES);
-    if (there && (!isClock(checkin.time) || toMin(there) > toMin(checkin.time))) {
-      Object.assign(checkin, { time: there, estimated: true, why: L(`Transfer ${landing.time} + ~1 sa`, `Transfer ${landing.time} + ~1 h`) });
+  // Check in once there: out of the airport plus an hour, not before the room is ready.
+  if (checkin && !checkin.user) {
+    const outAt = landing && isClock(landing.time) ? landing.time : isClock(landed) && !overnight ? shift(landed, exitMin) : null;
+    const there = outAt ? shift(outAt, TRANSFER_MINUTES) : null;
+    if (there) {
+      if (!isClock(checkin.time) || toMin(there) > toMin(checkin.time)) {
+        const from = byAir ? L("Havalimanından", "Out of the airport") : L("İstasyondan", "Out of the station");
+        Object.assign(checkin, { time: there, estimated: true, hint: null, why: L(`${from} çıkış ${outAt} + yol ~1 sa`, `${from} ${outAt} + ~1 h on the way`) });
+      }
+    } else if (isClock(landed)) {
+      // Landing late: after midnight once there.
+      const at = wrap(landed, exitMin + TRANSFER_MINUTES);
+      Object.assign(checkin, {
+        time: null,
+        estimated: false,
+        hint: L(`gece ~${at}`, `night ~${at}`),
+        why: L(`Varış ${landed}; çıkış ~${exitMin} dk + yol ~1 sa: gece yarısından sonra. Geç girişi otelle ayarla.`, `Arriving ${landed}; ~${exitMin} min out + ~1 h on the way: after midnight. Arrange a late check-in.`),
+      });
+    } else if (inbound) {
+      // The trip in has no arrival time: the hotel's hour would be a guess (15:00 while still in the air).
+      Object.assign(checkin, {
+        time: null,
+        estimated: false,
+        hint: L("varıştan sonra", "after arriving"),
+        why: L(`${inbound.time} yolculuğunun varış saati yok; girince check-in hesaplanır.`, `The ${inbound.time} trip has no arrival time; add it and the check-in is worked out.`),
+      });
     }
   }
   return out;

@@ -14,6 +14,9 @@ const checkin = (time: string | null) => row("in", { title: "Check-in", time, st
 const toAirport = (before: string | null) => row("go", { kind: "leg", state: "open", title: "Otel → Havalimanı", leg: { kind: "departure", before, after: null, via: "flight" } as never });
 const fromAirport = (after: string | null) => row("come", { kind: "leg", state: "open", title: "Havalimanı → Otel", leg: { kind: "arrival", before: null, after, via: "flight" } as never });
 const flight = (time: string) => row("fly", { kind: "travel", state: "done", title: "Uçuş", time });
+/** A flight on a ticket: its departure, and its landing when the page or ticket said it. */
+const ticket = (key: string, dep: string, arrival: string | null, day = "2026-10-07") =>
+  row(key, { kind: "travel", state: "done", title: "Uçuş", time: dep, entry: { kind: "travel", travel: { settled: { flight: { departure: `${day}T${dep}`, arrival } }, items: [] } } as never });
 const times = (rows: DayRow[]) => Object.fromEntries(rows.map((r) => [r.key, `${r.estimated ? "~" : ""}${r.time ?? "—"}`]));
 
 describe("leaving: flight 15:00, at the airport by 13:00", () => {
@@ -55,7 +58,11 @@ describe("the traveller's own time", () => {
 describe("never a wrong time", () => {
   it("leaves it empty when it would cross midnight", () => {
     expect(times(applyDayTimes([checkout("11:00"), toAirport("00:30")]))).toEqual({ out: "11:00", go: "—" });
-    expect(times(applyDayTimes([fromAirport("23:40"), checkin("15:00")]))).toEqual({ come: "—", in: "15:00" });
+    // Landing late: never the hotel's 15:00 then, but the night in words (0.36.13).
+    const late = applyDayTimes([fromAirport("23:40"), checkin("15:00")]);
+    expect(times(late)).toEqual({ come: "—", in: "—" });
+    expect(late.map((r) => r.hint)).toEqual(["gece ~00:25", "gece ~01:25"]);
+    expect(late[1].why).toContain("Geç girişi otelle ayarla");
   });
   it("without a flight time, nothing is made up", () => {
     expect(times(applyDayTimes([checkout("11:00"), toAirport(null), checkin(null)]))).toEqual({ out: "11:00", go: "—", in: "—" });
@@ -69,5 +76,41 @@ describe("never a wrong time", () => {
         expect(o.time! < g.time!).toBe(true);
       }
     }
+  });
+});
+
+describe("the trip in is the anchor (Emre's 7 October: Istanbul → Copenhagen → Amsterdam → Porto)", () => {
+  const legs = (last: string | null) => [ticket("a", "09:40", "2026-10-07T12:30"), ticket("b", "16:30", "2026-10-07T18:00"), ticket("c", "20:30", last), checkin("15:00")];
+  it("the last flight's landing unknown: no 15:00 while still in the air, \"varıştan sonra\" instead", () => {
+    const rows = applyDayTimes(legs(null));
+    expect(times(rows).in).toBe("—");
+    expect(rows[3].hint).toBe("varıştan sonra");
+    expect(rows[3].why).toContain("20:30");
+  });
+  it("its landing known (on the ticket, no transfer line): out at 22:45, checked in ~23:45", () => {
+    const rows = applyDayTimes(legs("2026-10-07T22:00"));
+    expect(times(rows).in).toBe("~23:45");
+    expect(rows[3].why).toBe("Havalimanından çıkış 22:45 + yol ~1 sa");
+  });
+  it("landing the next day: the night in words", () => {
+    const rows = applyDayTimes([ticket("a", "22:30", "2026-10-08T01:35"), checkin("15:00")]);
+    expect(rows[1]).toMatchObject({ time: null, hint: "gece ~03:20" });
+  });
+  it("an early landing keeps the hotel's hour (the room isn't ready before)", () => {
+    expect(times(applyDayTimes([ticket("a", "06:00", "2026-10-07T08:00"), checkin("15:00")])).in).toBe("15:00");
+  });
+  it("the traveller's own check-in time stands", () => {
+    expect(times(applyDayTimes([ticket("a", "20:30", null), checkin("15:00")], { in: "23:00" })).in).toBe("23:00");
+  });
+});
+
+describe("arrivalAt: the landing the traveller types", () => {
+  it("on the flight's day, or the next when it's before take-off", async () => {
+    const { arrivalAt } = await import("../src/lib/userEdits");
+    const { makeItem } = await import("./fixtures/makeItem");
+    const f = (dep: string) => makeItem({ category: "flight", flight: { from: "AMS", to: "OPO", departure: dep, arrival: null, carrier: null, flightNumber: "KL1577", stops: 0 } });
+    expect(arrivalAt(f("2026-10-07T20:30"), "22:00")).toBe("2026-10-07T22:00");
+    expect(arrivalAt(f("2026-10-07T22:30"), "01:35")).toBe("2026-10-08T01:35");
+    expect(arrivalAt(f("2026-10-07T20:30"), "2200")).toBeNull();
   });
 });

@@ -33,6 +33,9 @@ const LANG_ARG = "--lang=tr-TR";
 // No window on the owner's screen: Chromium's new headless mode (extensions load in it). E2E_HEADED=1 shows the browser.
 const HEADLESS_ARGS = process.env.E2E_HEADED ? [] : ["--headless=new"];
 
+// The sample trip's dates are fixed (8–14 October 2026): the pages read the calendar as on 5 October, so the
+// run doesn't change with the day it's run on (it broke on 6 October: a free cancellation "past"). Time flows on.
+const frozen = (ctx) => ctx.clock.install({ time: new Date("2026-10-05T10:00:00") });
 const context = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-")), {
   executablePath,
   headless: false,
@@ -49,6 +52,7 @@ const context = await chromium.launchPersistentContext(mkdtempSync(path.join(tmp
   // Behind a proxy (CI/sandbox), route the browser through it so real API calls can be checked.
   ...(process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY } } : {}),
 });
+await frozen(context);
 
 try {
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
@@ -431,8 +435,33 @@ try {
   assert.equal(new Set(lines.map(([, , h]) => h)).size, 1, `every line the same height (${lines.map(([, , h]) => h)})`);
   assert.deepEqual(
     await dayCard(4).locator(".dc-tl > .dc-step").evaluateAll((els) => els.map((e) => e.querySelector(".name small")?.textContent ?? "")),
-    ["yer seçilmedi", "Porto konaklaması → Porto Campanhã · planlanmadı", "Porto Campanhã → Lisboa Santa Apolónia · varış 16:04 · 1 seçenek · seç", "Lisboa Santa Apolónia → Lisboa Loft · planlanmadı", "3 gece"],
+    ["yer seçilmedi", "Porto konaklaması → Porto Campanhã · planlanmadı", "Porto Campanhã → Lisboa Santa Apolónia · varış 16:04 · 1 seçenek · seç", "Lisboa Santa Apolónia → Lisboa Loft · planlanmadı · Varış 16:04; çıkış ~10 dk", "3 gece · İstasyondan çıkış 16:14 + yol ~1 sa"],
   );
+  // 0.36.13: a worked-out time says where it comes from, on its grey line (the lines stay one height).
+  // The train in without its arrival time: no hotel hour while still on the train, "varıştan sonra"; the
+  // line asks for it, and from the time typed the check-in is worked out again.
+  const setTrainArrival = (arrival) =>
+    app.evaluate(async (arrival) => {
+      const request = indexedDB.open("trip-radar");
+      const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+      const items = await new Promise((resolve) => (database.transaction("items").objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result)));
+      const train = items.find((i) => i.flight?.from === "Porto Campanhã");
+      train.flight.arrival = arrival;
+      await new Promise((resolve) => (database.transaction("items", "readwrite").objectStore("items").put(train).onsuccess = resolve));
+      new BroadcastChannel("trip-radar").postMessage("changed");
+    }, arrival);
+  await setTrainArrival(null);
+  const loftIn = dayCard(4).locator('.dc-tl > li[data-title="Check-in · Lisboa Loft"]');
+  await loftIn.locator(".t .t-hint", { hasText: "varıştan sonra" }).waitFor();
+  assert.match(await loftIn.locator(".name small, .txt small").last().innerText(), /varış saati yok/);
+  await dayCard(4).getByRole("button", { name: "Varış saati?" }).click();
+  const arriveBox = dayCard(4).getByRole("textbox", { name: /varış saati/ }).or(dayCard(4).locator('.dc-arrive input[type="time"]'));
+  await arriveBox.fill("16:04");
+  await arriveBox.blur();
+  await app.waitForFunction(() => [...document.querySelectorAll('.dc-cday.list li[data-title="Check-in · Lisboa Loft"] > .t')].some((t) => t.textContent === "~17:14"), null, { timeout: 10000 });
+  await app.screenshot({ path: `${out}/3e-arrival-asked.png` });
+  // Typed by hand, kept as a correction: the record's own arrival is the page's (empty here); put it back.
+  await setTrainArrival("2026-10-11T16:04");
   assert.equal(await dayCard(4).locator(".dc-tl .dot").count(), 0, "no dot on a line of the list");
   assert.equal(await dayCard(4).locator(".dc-tl").evaluate((el) => getComputedStyle(el, "::before").display), "none", "no dotted line");
   assert.equal(await app.locator(".dc-cday .dc-free").count(), 2);
@@ -1613,6 +1642,7 @@ const flow = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir
   ...TURKISH,
   args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
 });
+// Not frozen: its worker writes analyses on the real clock, and the board judges their freshness by it.
 try {
   const geminiBodies = [];
   const extraction = {
@@ -2445,6 +2475,7 @@ const updating = await chromium.launchPersistentContext(mkdtempSync(path.join(tm
   ...TURKISH,
   args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${installDir}`, `--load-extension=${installDir}`],
 });
+await frozen(updating);
 try {
   const worker = updating.serviceWorkers()[0] ?? (await updating.waitForEvent("serviceworker"));
   const id = new URL(worker.url()).host;
@@ -2502,6 +2533,7 @@ const safety = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpd
   ...TURKISH,
   args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
 });
+await frozen(safety);
 try {
   const worker = safety.serviceWorkers()[0] ?? (await safety.waitForEvent("serviceworker"));
   const id = new URL(worker.url()).host;
@@ -2624,6 +2656,7 @@ const whoGoes = await chromium.launchPersistentContext(mkdtempSync(path.join(tmp
   ...TURKISH,
   args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
 });
+await frozen(whoGoes);
 try {
   const worker = whoGoes.serviceWorkers()[0] ?? (await whoGoes.waitForEvent("serviceworker"));
   const id = new URL(worker.url()).host;
