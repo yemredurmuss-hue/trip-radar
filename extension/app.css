@@ -2,6 +2,8 @@
   /* The hero v9's colours (hero, its card, the view tabs). */
   --hx-ink: #1c1a33; --hx-muted: #6b6790; --hx-accent: #5b45e0; --hx-lav: #ece8ff;
   --hx-mint: #eaf7f2; --hx-mintbar: #2cc79a; --hx-card: #f7f5f1; --hx-line: #e7e4dd;
+  /* The planning bar: booked dark, planned the same green lighter (one hue, two tones; a soft stripe on the light). */
+  --hx-booked: #1a9f78; --hx-planned: #a5e3cf; --hx-planned2: #b9eadb;
   --text: #111114;
   --muted: #6b665f;
   --line: #ececef;
@@ -1088,19 +1090,26 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .hx-tally .c-experience svg { color: #a8336f; }
 .hx-tally button.zero, .hx-tally button.zero svg { color: var(--hx-muted); opacity: .7; }
 
-/* "Rezervasyonların": the sections' "3/4"s added up, a bar, the one dark button. */
+/* "Planlama %75": what needs a booking (booked · planned · waiting for a decision), a bar in two greens, the one dark button. */
 .hx-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 26px; margin-top: 16px; padding: 22px; border-radius: 20px; background: var(--hx-mint); }
-.hx-progress-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
-.hx-progress-head > b { font-size: 17px; font-weight: 700; color: var(--hx-ink); }
-.hx-progress-meta { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 15px; color: var(--hx-muted); }
-.hx-progress-count { white-space: nowrap; padding: 0; border: 0; background: none; font-size: 15px; color: var(--hx-muted); font-variant-numeric: tabular-nums; }
-.hx-progress-count .dot { margin: 0 4px; }
-.hx-progress-count b { color: var(--hx-ink); font-weight: 600; }
+.hx-progress-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.hx-progress-head > b { flex: 0 1 auto; min-width: 0; font-size: 17px; font-weight: 700; color: var(--hx-ink); }
+.hx-progress-meta { display: block; margin-top: 6px; font-size: 15px; color: var(--hx-muted); }
+.hx-progress-count { padding: 0; border: 0; background: none; font-size: 15px; color: var(--hx-muted); font-variant-numeric: tabular-nums; text-align: left; }
+.hx-progress-count .dot { margin: 0 2px 0 0; }
+.hx-part { white-space: nowrap; }
+/* The meta line's key to the bar: a dot in each fill's green before "rezerve" and "planlandı". */
+.hx-key { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; vertical-align: 1px; }
+.hx-key.booked { background: var(--hx-booked); }
+.hx-key.planned { background: var(--hx-planned); box-shadow: inset 0 0 0 1px var(--hx-booked); }
 button.hx-progress-count:hover, button.hx-progress-count[aria-expanded="true"] { text-decoration: underline; text-underline-offset: 3px; }
-.hx-deadline { white-space: nowrap; padding: 2px 10px; border: 0; border-radius: 999px; background: #fff1d9; color: #8a5300; font-size: 14px; font-weight: 600; }
+.hx-deadline { flex: none; white-space: nowrap; padding: 2px 10px; border: 0; border-radius: 999px; background: #fff1d9; color: #8a5300; font-size: 14px; font-weight: 600; }
 .hx-deadline[aria-expanded="true"] { background: #f6dfb3; }
-.hx-bar { height: 12px; margin-top: 14px; border-radius: 999px; overflow: hidden; background: #dfe4e8; }
-.hx-bar i { display: block; height: 100%; border-radius: 999px; background: var(--hx-mintbar); transition: width .4s; }
+.hx-bar { position: relative; flex: 1 1 48px; min-width: 48px; height: 12px; border-radius: 999px; overflow: hidden; background: #dfe4e8; }
+/* Both fills start from the left: planned (light, softly striped) reaches booked + planned, booked (dark) on top. */
+.hx-bar i { position: absolute; top: 0; left: 0; bottom: 0; border-radius: 999px; transition: width .4s; }
+.hx-bar .hx-bar-booked { background: var(--hx-booked); }
+.hx-bar .hx-bar-planned { background: repeating-linear-gradient(135deg, var(--hx-planned) 0 6px, var(--hx-planned2) 6px 12px); }
 .hx-go { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 52px; padding: 0 22px; border: 0; border-radius: 14px; background: var(--hx-ink); color: #fff; font-size: 17px; font-weight: 500; white-space: nowrap; }
 .hx-go:hover { background: #2c2950; }
 /* The story too narrow for four cells (a small laptop beside the chat, or a narrow board): the button under the bar. */
@@ -1110,6 +1119,10 @@ button.hx-progress-count:hover, button.hx-progress-count[aria-expanded="true"] {
 }
 .hx-go svg { flex: none; }
 .hx + .todo-list { margin: -8px 0 24px; max-width: none; }
+.todo-list ul { list-style: none; margin: 0; padding: 0; }
+.todo-group + .todo-group { margin-top: 4px; padding-top: 4px; border-top: 1px solid #ece7df; }
+.todo-head { margin: 0; padding: 8px 12px 2px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.todo-head span { margin-left: 4px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* The card on the right: blocks one under the other, a hairline between. Beside the story it is as tall as the
    story (the grid's row stretches it) and ends level with "Rezervasyonların" (revizyon 1): compact by itself
