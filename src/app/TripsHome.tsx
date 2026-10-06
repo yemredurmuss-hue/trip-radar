@@ -5,6 +5,7 @@ import { formatDateRange, tripDateRange } from "../lib/items";
 import { retryCapture } from "../lib/process";
 import { listDrafts, onDraftsChanged, removeDraft, saveDraft } from "../lib/startDrafts";
 import { checklist, dative, detectLang, progressOf, splitLinks, tripNamedIn, type StartCtx, type StartMode, type StartState } from "../lib/startTrip";
+import { tripCardPlaces } from "../lib/tripBrief";
 import { isDemoTrip } from "../lib/trips";
 import { listMessages, onChanged } from "../lib/db";
 import type { Capture, ChatMessage, Item, Trip } from "../lib/types";
@@ -292,8 +293,8 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
             {ordered.map((trip) => {
               const own = items.filter((i) => i.tripId === trip.id && i.status !== "dismissed");
               const range = trip.confirmedDates ?? tripDateRange(own);
-              // An eSIM's place is its country, never one of the trip's cities.
-              const cities = [...new Set(own.filter((i) => i.category !== "esim").map((i) => i.city).filter(Boolean) as string[])].slice(0, 3);
+              // Where it stays and does things: not the home the flight back lands in, nor an eSIM's country.
+              const cities = tripCardPlaces(own);
               const decided = own.filter((i) => i.status === "chosen" || i.status === "booked").length;
               const image = trip.heroImage ?? own.find((i) => i.imageUrl)?.imageUrl ?? null;
               return (

@@ -32,6 +32,22 @@ export function tripPlaces(trip: Pick<Trip, "intent" | "title">, items: Item[]):
   return [...new Map(all.map((x) => [cityKeyOf(x), x])).values()];
 }
 
+/**
+ * The places a trip's card names ("Porto ve Lizbon"): where it stays (in order), then where it does things. A
+ * flight's or train's city is where it lands, and the way back lands at home, so travel names a place only when
+ * nothing on the ground does (then the first one out); an eSIM's or an insurance's is never one.
+ */
+export function tripCardPlaces(items: Item[], max = 3): string[] {
+  const live = items.filter((i) => i.status !== "dismissed" && i.city?.trim());
+  const ground = live.filter((i) => i.category === "activity" || i.category === "food");
+  const travel = live
+    .filter((i) => i.category === "flight" || i.category === "transport")
+    .sort((a, b) => (a.dates.start ?? "9999").localeCompare(b.dates.start ?? "9999"));
+  let all = [...stops(live), ...ground.map((i) => i.city!)];
+  if (!all.length && travel.length) all = [travel[0].city!];
+  return [...new Map(all.map((x) => [cityKeyOf(x), x])).values()].slice(0, max);
+}
+
 /** "İstanbul → Lizbon → Porto · 1–8 Aralık · 2 kişi (Sabine) · Konsept: … · Şartlar: …", at most 400 characters. */
 export function tripBrief(trip: Trip, items: Item[], me: string | null = null): string {
   const route = stops(items);

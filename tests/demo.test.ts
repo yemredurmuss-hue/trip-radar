@@ -8,6 +8,8 @@ import { demoShift, loadDemoTrip, shiftDates } from "../src/lib/demo";
 import { listingKeyOf } from "../src/lib/items";
 import { buildLegs, legTiming } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
+import { tripCardPlaces } from "../src/lib/tripBrief";
+import { makeItem } from "./fixtures/makeItem";
 
 describe("demo trip", () => {
   it("has its transfers laid out", async () => {
@@ -51,5 +53,16 @@ describe("demo trip", () => {
     const listing = await d.get("listings", listingKeyOf(jardim));
     expect(listing!.reviews.map((r) => r.date)).toEqual(["2026-10", "2026-10", "2026-09", "2026-09", "2026-08"]);
     expect(shiftDates("2026-10-05", 0)).toBe("2026-10-05");
+  });
+
+  it("is listed with the places it goes to, not the home the flight back lands in", async () => {
+    const id = await loadDemoTrip({ today: "2026-10-05" });
+    expect(tripCardPlaces(await listItems(id))).toEqual(["Porto", "Lizbon"]);
+    // Only travel saved: the first one out names the place; the way back doesn't.
+    const out = makeItem({ category: "flight", city: "Porto", dates: { start: "2026-10-08", end: null, source: "page" } });
+    const back = makeItem({ category: "flight", city: "İstanbul", dates: { start: "2026-10-14", end: null, source: "page" } });
+    const esim = makeItem({ category: "esim", city: "Portekiz" });
+    expect(tripCardPlaces([back, out, esim])).toEqual(["Porto"]);
+    expect(tripCardPlaces([esim])).toEqual([]);
   });
 });
