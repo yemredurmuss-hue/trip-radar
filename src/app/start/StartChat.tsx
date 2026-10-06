@@ -15,7 +15,7 @@ import { wouldMake } from "../../lib/startCreate";
 import { removeDraft, saveDraft, worthKeeping } from "../../lib/startDrafts";
 import { rulesPreview } from "../../lib/startHooks";
 import {
-  applyAnswer, applyText, askAgain, canGenerate, checklist, isComplete, knownLines, mergeExtracted, missingForGenerate, modelMayReply, modelReplyText,
+  applyAnswer, applyText, askAgain, budgetChips, budgetWord, canGenerate, checklist, isComplete, knownLines, mergeExtracted, missingForGenerate, modelMayReply, modelReplyText,
   NOT_UNDERSTOOD, nextQuestion, parseRouteText, parseStartText, photosToFind, preparedRoute, previewOf, questionOf, replyText, routeKey, routeToPrepare,
   rulesKey, singleRoute, skip, totalNights, wantsRouteAdvice, whereKey, withPhotos, withPreparedRoute, withTypedLang,
   type Answer, type QuestionId, type StartCtx, type StartRoute, type StartState,
@@ -24,7 +24,7 @@ import { STYLE_META, STYLES, type BudgetLevel, type StyleId } from "../../lib/tr
 import { ArrowUp, Back, HeroIcon } from "../Icons";
 import { Checklist, ChecklistBar, GenerateCard } from "./Checklist";
 import { Generating } from "./Generating";
-import { findPhotos, LIMIT_MS, modelAvailable, proposeRoute, readAndReply, REPLY_MS, replyTo } from "./model";
+import { findPhotos, LIMIT_MS, modelAvailable, proposeRoute, readAndReply, REPLY_MS } from "./model";
 import { TripPreview } from "./Preview";
 // The suggestions' review as the generating screen's last step, and the rules' preview (registered through startHooks).
 import "./registerReview";
@@ -93,10 +93,15 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     setState(next);
     saving.current = saving.current.then(() => saveDraft(next)).catch(() => undefined);
   }
-  const say = (s: StartState, role: "user" | "assistant", line: string): StartState => ({ ...s, messages: [...s.messages, { role, text: line, at: Date.now() }], updatedAt: Date.now() });
-  /** The line at `at` said again in other words (the model's): a new `at`, so it fades in anew. */
+  const lineIds = useRef(0);
+  const say = (s: StartState, role: "user" | "assistant", line: string): StartState => ({
+    ...s,
+    messages: [...s.messages, { role, text: line, at: Date.now(), id: `${Date.now().toString(36)}-${++lineIds.current}` }],
+    updatedAt: Date.now(),
+  });
+  /** The line at `at` said again in other words (the model's): the same line (its id kept, so it isn't made anew). */
   const replaceLine = (s: StartState, at: number, line: string): StartState =>
-    s.messages[at]?.role === "assistant" ? { ...s, messages: s.messages.map((m, i) => (i === at ? { ...m, text: line, at: Date.now() } : m)), updatedAt: Date.now() } : s;
+    s.messages[at]?.role === "assistant" ? { ...s, messages: s.messages.map((m, i) => (i === at ? { ...m, text: line } : m)), updatedAt: Date.now() } : s;
 
   const setStage = (st: Stage) => {
     busy.current = st === "thinking" || st === "route";
@@ -132,18 +137,27 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
   }
 
   /** After an answer: a route proposed when it's time for one, then the next line. The line's index, or null. */
+  /**
+   * When the route is the question now and there is no proposal yet (the answer just made it next, the model's
+   * reading did, or its row was pressed): the proposal, kept or asked ("Rotayı çiziyor…"). False once stale.
+   */
+  async function routeIfAsked(): Promise<boolean> {
+    const s = live.current;
+    if (nextQuestion(s) !== "route" || s.route) return !stale();
+    setStage("route");
+    const route = await ensureRoute(s);
+    setStage(null);
+    if (stale()) return false;
+    // The state as it is now, not the one it started from.
+    if (!live.current.route) commit({ ...live.current, route });
+    return true;
+  }
+
   async function reply(before: StartState, after: StartState, write?: (next: StartState) => string): Promise<number | null> {
     if (stale()) return null;
     // The answer is kept at once (a draft left while the route is thought about has it).
     if (after !== live.current) commit(after);
-    if (nextQuestion(after) === "route" && !after.route) {
-      setStage("route");
-      const route = await ensureRoute(after);
-      setStage(null);
-      if (stale()) return null;
-      // The state as it is now, not the one it started from.
-      if (!live.current.route) commit({ ...live.current, route });
-    }
+    if (!(await routeIfAsked())) return null;
     const next = live.current;
     commit(say(next, "assistant", T(() => (write ? write(next) : replyText(before, next, ctx)))));
     setPicking({ styles: next.styles, budget: next.budget });
@@ -220,7 +234,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
 
   async function answer(a: Answer, label: string) {
     if (busy.current || stale()) return;
-    const mine = nextTurn();
+    nextTurn();
     const before = live.current;
     const asked = say(before, "user", label);
     commit(asked);
@@ -229,19 +243,8 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
       commit(say(after, "assistant", T(() => questionOf(after, "route", ctx).text)));
       return;
     }
-    const at = await reply(before, after);
-    if (at == null || turn.current !== mine) return;
-    // The model's words over the code's line, when it may write this one and answers in time.
-    const now = live.current;
-    if (!(await model.current) || !modelMayReply(before, now)) return;
-    if (turn.current !== mine || stale()) return;
-    const next = nextQuestion(now);
-    setStage("writing");
-    const got = await replyTo({ said: label, next, known: T(() => knownLines(now, ctx)), lang: now.lang }, REPLY_MS);
-    if (turn.current !== mine) return;
-    setStage(null);
-    if (!got || stale()) return;
-    commit(replaceLine(live.current, at, T(() => modelReplyText(before, live.current, ctx, got, next))));
+    // A quick answer costs no model call: the code's line (with the place's words from the small table).
+    await reply(before, after);
   }
 
   async function onSkip(q: QuestionId) {
@@ -289,7 +292,10 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
       if (!got || stale()) return;
       // What the model read that the code missed is added (bound to the same question); then its words.
       const more = T(() => applyText(live.current, line, mergeExtracted(code, got.read), Date.now(), q));
-      const now = more.understood ? more.state : live.current;
+      if (more.understood) commit(more.state);
+      // What it added may make the route the question now: its proposal first, never the empty "type the stops".
+      if (!(await routeIfAsked()) || turn.current !== mine) return;
+      const now = live.current;
       commit(replaceLine(now, at, T(() => modelReplyText(before, now, ctx, got.reply, predicted))));
       if (more.understood) setPicking({ styles: now.styles, budget: now.budget });
       return;
@@ -305,12 +311,16 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     await reply(before, after, (next) => modelReplyText(before, next, ctx, got?.reply ?? null, q));
   }
 
-  function ask(q: QuestionId) {
-    nextTurn();
+  async function ask(q: QuestionId) {
+    const mine = nextTurn();
     const before = live.current;
     const next = askAgain(before, q, Date.now());
-    commit(say(next, "assistant", T(() => questionOf(next, q, ctx).text)));
-    setPicking({ styles: next.styles, budget: next.budget });
+    commit(next);
+    // The route's row pressed before a proposal came: it is drawn first.
+    if (!(await routeIfAsked()) || turn.current !== mine) return;
+    const now = live.current;
+    commit(say(now, "assistant", T(() => questionOf(now, q, ctx).text)));
+    setPicking({ styles: now.styles, budget: now.budget });
   }
 
   function generate() {
@@ -360,7 +370,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
           {!generating && <ChecklistBar rows={rows} onAsk={ask} ready={ready} complete={complete} onGenerate={generate} disabled={holding} lang={lang} />}
           <div className="st-msgs" role="log" aria-live="polite" aria-label={L("Sohbet", "Conversation")}>
             {state.messages.map((m, i) => (
-              <div key={`${i}:${m.at}`} className={m.role === "user" ? "st-msg-user" : "st-msg-bot"}>
+              <div key={m.id ?? `line-${i}`} className={m.role === "user" ? "st-msg-user" : "st-msg-bot"}>
                 {m.text}
               </div>
             ))}
@@ -382,7 +392,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
                       })}
                     </div>
                     <div className="st-chips" role="group" aria-label={L("Bütçe", "Budget")}>
-                      {([["low", L("Ekonomik", "Budget")], ["mid", L("Orta", "Mid-range")], ["high", L("Lüks", "Luxury")]] as const).map(([level, label]) => {
+                      {budgetChips().map(([level, label]) => {
                         const on = picking.budget === level;
                         return (
                           <button key={level} type="button" className={`st-chip${on ? " on" : ""}`} aria-pressed={on} onClick={() => setPicking((p) => ({ ...p, budget: on ? null : level }))}>
@@ -392,7 +402,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
                       })}
                     </div>
                     <div className="st-chips">
-                      <button type="button" className="st-primary" onClick={() => void answer({ q: "want", ...picking }, withLang(lang, () => [picking.styles.map((id) => STYLES[id]()).join(", "), picking.budget ? { low: L("Ekonomik", "Budget"), mid: L("Orta bütçe", "Mid-range"), high: L("Lüks bütçe", "Luxury budget") }[picking.budget] : ""].filter(Boolean).join(" · ") || L("Fark etmez", "Anything goes")))}>
+                      <button type="button" className="st-primary" onClick={() => void answer({ q: "want", ...picking }, withLang(lang, () => [picking.styles.map((id) => STYLES[id]()).join(", "), picking.budget ? budgetWord(picking.budget) : ""].filter(Boolean).join(" · ") || L("Fark etmez", "Anything goes")))}>
                         {L("Tamam", "Done")}
                       </button>
                       <button type="button" className="st-skip" onClick={() => void onSkip(question.id)}>
@@ -443,9 +453,12 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
                 )}
               </div>
             )}
+            <div ref={bottom} />
+          </div>
+          {/* What it is doing now, said as it changes (item 6): its own status region, outside the conversation's log. */}
+          <div className="st-status" role="status" aria-live="polite">
             {stage && (
-              // What it is doing now, said as it changes (item 6): reading, drawing the route, writing.
-              <div className="st-thinking" role="status" aria-live="polite" data-stage={stage}>
+              <div className="st-thinking" data-stage={stage}>
                 <span className="st-dots" aria-hidden>
                   <i />
                   <i />
@@ -454,7 +467,6 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
                 <span className="st-stage">{stageText}</span>
               </div>
             )}
-            <div ref={bottom} />
           </div>
           <form className="st-composer" onSubmit={(e) => (e.preventDefault(), void send())}>
             <input ref={input} type="text" value={text} disabled={generating} onChange={(e) => setText(e.target.value)}

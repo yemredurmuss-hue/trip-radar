@@ -102,6 +102,16 @@ birini "Gerek yok"; ekran görüntüleri.
    önerileri hazırlanır. Yer değişince rota ve fotoğraflar düşer; geri dönülürse saklı rota yeniden sorulmadan gelir.
    Yapay zekâ öneri gözden geçirmesi yine yalnız "Oluştur"da.
 
-**Model bütçesi (bir görüşme):** yazılan her mesaja en çok 1 okuma+cevap çağrısı; her hızlı cevaba (çip) en çok 1 cevap
-çağrısı (rota onayı, tahmini gün ve rota sorusu kodun, çağrı yok; "Atla" çağrı yapmaz); her farklı (yer, gece) için en
-çok 1 rota çağrısı; "Oluştur"da 1 öneri gözden geçirmesi.
+**Model bütçesi (bir görüşme):** yazılan her mesaja en çok 1 okuma+cevap çağrısı (zaman aşımında istek iptal edilir,
+yeniden denenmez); hızlı cevaplar (çipler) ve "Atla" model çağırmaz (kodun satırı + yer renk tablosu); her farklı (yer,
+gece) için en çok 1 rota çağrısı; "Oluştur"da 1 öneri gözden geçirmesi.
+
+**İnceleme düzeltmeleri:** dil tartılarak bulunur (İngilizce kelime/ek sayısı ↔ Türkçe kelime, ek ve büyük harfle
+başlamayan kelimelerdeki Türkçe harf; "we've" içindeki "ve" sayılmaz, "Şule", "İstanbul" gibi adlar dil söylemez).
+"Nereden?"de fikir değişikliği ("Rome instead", "Hayır, Roma", "Bali değil Roma", "Romaya gidelim") gidilen yeri
+değiştirir, nereden'e dokunmaz. "to"/"'e" ile işaretli yer kazanır ("Istanbul to Bali" → Bali); işaretsizse modelin
+okuduğu yer. Bozuk yazım yalnız 8+ harfli adlarda, kişi adı yanında ("ile", "and", "&") ve "kimle" sorusunda asla;
+tanınınca sorulur: "Koh Phangan mı demek istedin?" [Evet] [Hayır, Kohphandan]. Yurt içi gezide rota çıkış şehrinden
+geçebilir. Sohbetin dili gezide durur (`trip.lang`): pano sohbeti ve öneri gözden geçirmesi o dilde. Bütçe çipleri
+"Ekonomik · Orta · Yüksek bütçe". Tarihsiz gezinin tarihleri sonra sohbette söylenince (update_trip) başlangıcın
+tarihsiz konaklama ve uçuşları o tarihleri alır, yenisi açılmaz.

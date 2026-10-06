@@ -88,6 +88,7 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
         ...existing,
         confirmedDates: c.dates,
         startGuide: { ...(existing.startGuide ?? { createdAt: now() }), road: c.road || undefined, approxStart: c.approxStart },
+        lang: s.lang,
         ...(c.parents && !existing.placeParents ? { placeParents: c.parents } : {}),
         updatedAt: now(),
       });
@@ -102,6 +103,8 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
       budget: null,
       heroImage: null,
       startGuide: { createdAt: now(), ...(c.road ? { road: true } : {}), ...(c.approxStart ? { approxStart: c.approxStart } : {}) },
+      // The conversation's language: the trip's chat and its suggestions go on in it.
+      lang: s.lang,
       // Ubud, Canggu and Uluwatu are Bali's: the hero says Bali without asking the model.
       ...(c.parents ? { placeParents: c.parents } : {}),
       createdAt: now(),
@@ -188,7 +191,8 @@ async function sayAll(tripId: string, said: Creation["stays"], c: Creation, now:
     const problem = T(() => checkPlanned(input));
     if (problem) throw new Error(problem);
     const items = await listItems(tripId);
-    const { item } = T(() => planToSave(input, items, tripId, newId(), now()));
+    // Made one after another (the flight there before the flight home: dating them later reads this order).
+    const { item } = T(() => planToSave(input, items, tripId, newId(), now() + saved.length));
     const placed = placedFor(item, c);
     await d.put("items", placed);
     saved.push(placed);

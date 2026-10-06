@@ -7,7 +7,7 @@ import { imageProxy, pickCityImage } from "../../lib/cityImages";
 import { withLang, type Lang } from "../../lib/i18n";
 import { getProvider } from "../../lib/llm";
 import {
-  acceptExtraction, acceptReply, acceptRoute, replyPrompt, replySchema, replySystem, routePrompt, routeSchema, routeSystem, singleRoute,
+  acceptExtraction, acceptReply, acceptRoute, routePrompt, routeSchema, routeSystem, singleRoute,
   totalNights, turnPrompt, turnSchema, turnSystem, wantsRouteAdvice, type Extracted, type QuestionId, type StartRoute, type StartState,
 } from "../../lib/startTrip";
 
@@ -16,14 +16,21 @@ export const LIMIT_MS = 25_000;
 /** The model's richer line over the code's (shown already): dropped when it comes later than this. */
 export const REPLY_MS = 6_000;
 
-export function withTimeout<T>(p: Promise<T>, ms = LIMIT_MS): Promise<T> {
+export function withTimeout<T>(p: Promise<T>, ms = LIMIT_MS, controller?: AbortController): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("timeout")), ms);
+    // Too slow: the request itself is aborted too (it doesn't run on, nor get retried, after its answer is dropped).
+    const timer = setTimeout(() => (controller?.abort(), reject(new Error("timeout"))), ms);
     p.then(
       (v) => (clearTimeout(timer), resolve(v)),
       (e) => (clearTimeout(timer), reject(e)),
     );
   });
+}
+
+/** A model call bounded in time: aborted at the limit; `maxRetries` passed on (0 for the chat's replies). */
+async function timed<T>(call: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
+  const controller = new AbortController();
+  return withTimeout(call(controller.signal), ms, controller);
 }
 
 /** Whether there's a way to the model (your key, or an invite's AI gate); false on any error. */
@@ -51,23 +58,11 @@ export async function readAndReply(
   try {
     const llm = await getProvider();
     const [system, prompt] = withLang(a.lang, () => [turnSystem(), turnPrompt(a)]);
-    const raw = await withTimeout(llm.generateJson(system, prompt, turnSchema), ms);
+    // A reply is worth its answer only now: no retry after a wait, aborted at the limit.
+    const raw = await timed((signal) => llm.generateJson(system, prompt, turnSchema, [], { signal, maxRetries: 0 }), ms);
     return withLang(a.lang, () => ({ read: acceptExtraction(raw, a.today), reply: acceptReply(raw.reply, a.lang) }));
   } catch (error) {
     console.warn("[start] reading the message", error);
-    return null;
-  }
-}
-
-/** A quick answer's reply in the model's words (checked), or null: the code's line stands. */
-export async function replyTo(a: { said: string; next: QuestionId | null; known: string; lang: Lang }, ms = REPLY_MS): Promise<ModelReply | null> {
-  try {
-    const llm = await getProvider();
-    const [system, prompt] = withLang(a.lang, () => [replySystem(), replyPrompt(a)]);
-    const raw = await withTimeout(llm.generateJson(system, prompt, replySchema), ms);
-    return acceptReply(raw, a.lang);
-  } catch (error) {
-    console.warn("[start] the reply", error);
     return null;
   }
 }
@@ -80,8 +75,8 @@ export async function proposeRoute(s: StartState, useModel: boolean): Promise<St
   try {
     const llm = await getProvider();
     const [system, prompt] = withLang(s.lang, () => [routeSystem(), routePrompt(s)]);
-    const raw = await withTimeout(llm.generateJson(system, prompt, routeSchema));
-    return acceptRoute(raw, total, s.from) ?? single;
+    const raw = await timed((signal) => llm.generateJson(system, prompt, routeSchema, [], { signal }), LIMIT_MS);
+    return acceptRoute(raw, total, s.from, s.where?.code ?? null) ?? single;
   } catch (error) {
     console.warn("[start] the route", error);
     return single;

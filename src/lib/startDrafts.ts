@@ -27,6 +27,8 @@ const clean = (d: StartState): StartState => ({
   lang: d.lang === "tr" || d.lang === "en" ? d.lang : lang(),
   langFixed: d.langFixed === true,
   prepared: cleanPrepared(d.prepared),
+  guess:
+    d.guess && typeof d.guess.typed === "string" && typeof d.guess.place?.place === "string" && (d.guess.slot === "where" || d.guess.slot === "from") ? d.guess : null,
 });
 
 /** What was prepared, only in its shape (anything else is dropped and prepared again). */

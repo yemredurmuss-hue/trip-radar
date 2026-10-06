@@ -3,6 +3,7 @@
 // the board runs (suggestReview.ts, for the same key, so the board doesn't ask again when it opens) and says how
 // many suggestions the board will show (the rules' and the stored ones).
 import { db, listItems } from "../../lib/db";
+import { withLang } from "../../lib/i18n";
 import { sectionOfItem } from "../../lib/categories";
 import { buildLegs } from "../../lib/legs";
 import { loadHome } from "../../lib/passport";
@@ -30,10 +31,10 @@ export async function reviewNewTrip(tripId: string): Promise<number> {
     nights[cityKeyOf(m.name) ?? m.name] = plan.stayBlocks.filter((b) => b.city && keys.has(cityKeyOf(b.city))).reduce((n, b) => n + b.nights, 0);
   }
   const travellers = whoGoes({ travellers: trip.travellers, adults: null }).count || null;
-  const prompt = reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers });
+  const prompt = withLang(trip.lang, () => reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers }));
   // Claims the review for this key first ({ key, at, state: "running" }), so the board opening meanwhile waits
   // instead of asking too; "skipped" when it was claimed already, "no-key" without a model: the rules still show.
-  await runReview({ key, prompt, save: (change) => updateTrip(tripId, change, { touch: false }) });
+  await runReview({ key, prompt, lang: trip.lang, save: (change) => updateTrip(tripId, change, { touch: false }) });
   const after = (await d.get("trips", tripId)) ?? trip;
   const legs = buildLegs(plan, after);
   const timeline = buildTimeline(plan, legs, items, new Set(after.hidden ?? []));

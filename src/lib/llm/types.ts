@@ -41,6 +41,16 @@ export interface Attachment {
   data: string;
 }
 
+/**
+ * For one call that is only worth its answer for a short while (the start chat's replies): `signal` aborts the
+ * request itself (a timeout doesn't leave it running), `maxRetries: 0` skips the wait-and-retry. Unset: the
+ * provider's defaults, as everywhere else.
+ */
+export interface CallOptions {
+  signal?: AbortSignal;
+  maxRetries?: number;
+}
+
 export interface LlmProvider {
   id: ProviderId;
   extract(capture: Capture, facts: UrlFacts, trips: Trip[]): Promise<Extraction>;
@@ -48,7 +58,7 @@ export interface LlmProvider {
    * One structured-output call validated against the schema (the decision analysis; with `files`, a document
    * read: Gemini inline data, Claude a document or image block). Files go only to the traveller's own provider.
    */
-  generateJson<T>(system: string, prompt: string, schema: ZodType<T>, files?: Attachment[]): Promise<T>;
+  generateJson<T>(system: string, prompt: string, schema: ZodType<T>, files?: Attachment[], opts?: CallOptions): Promise<T>;
   /** One model call over the stored session. Null when the model returned nothing to store. */
   chatStep(history: ChatMessage[], system: string, tools: ToolSpec[]): Promise<ChatStep | null>;
   /** Native content for a user turn made of text blocks. */

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sectionOfItem, type SectionId } from "../lib/categories";
 import type { MainPlace } from "../lib/destinations";
+import { withLang } from "../lib/i18n";
 import type { HiddenInput } from "../lib/history";
 import type { Leg } from "../lib/legs";
 import { newId } from "../lib/db";
@@ -117,8 +118,9 @@ export function useSuggestions(args: {
       const keys = new Set([m.name, ...m.members].map(cityKeyOf));
       nights[cityKeyOf(m.name) ?? m.name] = plan.stayBlocks.filter((b) => b.city && keys.has(cityKeyOf(b.city))).reduce((n, b) => n + b.nights, 0);
     }
-    const prompt = reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers });
-    void runReview({ key, prompt, save: (change) => updateTrip(trip.id, change, { touch: false }) });
+    // In the trip's own language when it has one (started by chat in another language than the board's).
+    const prompt = withLang(trip.lang, () => reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers }));
+    void runReview({ key, prompt, lang: trip.lang, save: (change) => updateTrip(trip.id, change, { touch: false }) });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- asked once per trip state (key)
   }, [trip.id, key, due]);
 

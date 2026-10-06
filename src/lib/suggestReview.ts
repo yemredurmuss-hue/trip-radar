@@ -5,7 +5,7 @@
 // traveller already dismissed never comes back. No key: silent. A failure is remembered for a day, not as done.
 import { z } from "zod";
 import type { MainPlace } from "./destinations";
-import { L } from "./i18n";
+import { L, withLang, type Lang } from "./i18n";
 import { getProvider, MissingKeyError, type LlmProvider } from "./llm";
 import { cityKeyOf, type DateRange } from "./plan";
 import { checkSuggestionInput, mergeIncoming, SECTION_TEMPLATES, SUGGESTION_SECTIONS } from "./suggestions";
@@ -114,6 +114,8 @@ export async function runReview(args: {
   save: (change: (trip: Trip) => Trip) => Promise<void>;
   now?: number;
   provider?: () => Promise<LlmProvider>;
+  /** The trip's own language (a trip started by chat in Turkish on an English board): the review is written in it. */
+  lang?: Lang | null;
 }): Promise<"done" | "no-key" | "failed" | "skipped"> {
   const now = args.now ?? Date.now();
   let llm: LlmProvider;
@@ -133,7 +135,7 @@ export async function runReview(args: {
   });
   if (!claimed) return "skipped";
   try {
-    const answer = await llm.generateJson(reviewSystem(), args.prompt, ReviewSchema);
+    const answer = await llm.generateJson(withLang(args.lang, reviewSystem), args.prompt, ReviewSchema);
     await args.save((t) => ({ ...t, suggestions: acceptReview(answer, t.suggestions, now).list, suggestReview: { key: args.key, at: now, state: "done" } }));
     return "done";
   } catch (error) {

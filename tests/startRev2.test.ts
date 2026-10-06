@@ -40,6 +40,11 @@ function typed(s: StartState, text: string, model: RawExtraction | null = null, 
   });
 }
 
+/** "Evet" to the loose spelling asked back. */
+const yes = (s: StartState) => withLang(s.lang, () => applyAnswer(s, { q: "guess", accept: true }, 3));
+/** The owner's sentence without the model: "Kohphandan" is asked back ("Koh Phangan mı demek istedin?"), then "Evet". */
+const opening = (id: string) => yes(typed(newStart(id, "plan", 1), SENTENCE_TR));
+
 const ENGLISH = /\b(Got it|Where|people|nights|Great|sounds)\b/;
 
 // The board is in English for these: the chat must not be.
@@ -57,12 +62,18 @@ describe("the chat's language (item 1)", () => {
     expect(langSignal("istanbuldan 2 hafta gitmek istiyoruz")).toBe("tr");
     const s0 = newStart("k1", "plan", 1);
     expect(s0.lang).toBe("en");
-    const s1 = typed(s0, SENTENCE_TR);
-    expect(s1.lang).toBe("tr");
-    expect(s1.langFixed).toBe(true);
-    const reply = withLang(s1.lang, () => replyText(s0, s1, ctx));
+    const asked = typed(s0, SENTENCE_TR);
+    expect(asked.lang).toBe("tr");
+    expect(asked.langFixed).toBe(true);
+    // The loose spelling asked back first, in Turkish, with its chips.
+    const back = withLang(asked.lang, () => replyText(s0, asked, ctx));
+    expect(back).toMatch(/Koh Phangan mı demek istedin\?$/);
+    expect(back).not.toMatch(ENGLISH);
+    expect(withLang(asked.lang, () => questionOf(asked, "guess", ctx)).chips.map((c) => c.label)).toEqual(["Evet", "Hayır, Kohphandan"]);
+    const s1 = yes(asked);
+    const reply = withLang(s1.lang, () => replyText(asked, s1, ctx));
     expect(reply).toMatch(/Nereden yola çıkıyorsun\?$/);
-    expect(reply).toContain("Not aldım: Koh Phangan · Emre & Sabine · 2 kişi");
+    expect(reply).toContain("Sabine ile Koh Phangan kulağa harika geliyor");
     expect(reply).not.toMatch(ENGLISH);
     const from = withLang(s1.lang, () => questionOf(s1, "from", ctx));
     // The English board's guess, said the Turkish way and only once.
@@ -78,7 +89,7 @@ describe("the chat's language (item 1)", () => {
   it("every model prompt of the start says which language to answer in", () => {
     expect(withLang("tr", turnSystem)).toMatch(/Yanıtı Türkçe yaz\.$/);
     expect(withLang("en", turnSystem)).toMatch(/Answer in English\.$/);
-    const s = typed(newStart("k2", "plan", 1), SENTENCE_TR);
+    const s = opening("k2");
     const prompt = withLang("tr", () => turnPrompt({ text: "İstanbul", today: TODAY, pending: "from", next: "want", known: knownLines(s, ctx) }));
     expect(prompt).toContain("Kullanıcının cevapladığı soru: nereden yola çıkılacağı (origin)");
     expect(prompt).toContain("Nereye: Koh Phangan (Tayland)");
@@ -86,7 +97,7 @@ describe("the chat's language (item 1)", () => {
   });
 
   it("the trip is written in the chat's language on an English board (title, records, the chat's last line)", async () => {
-    let s = typed(newStart(`k3-${Math.random()}`, "plan", 1), SENTENCE_TR);
+    let s = opening(`k3-${Math.random()}`);
     s = typed(s, "İstanbul", null, 3);
     for (const step of stepsFor(s, withLang(s.lang, () => creationOf(s))!)) {
       const { tripId } = await runStep(step.id, s, { provider: "gemini" });
@@ -108,7 +119,9 @@ describe("the chat's language (item 1)", () => {
 describe("an answer fills the question it answers (item 2)", () => {
   it("the reported conversation, in Turkish: Koh Phangan stays the destination, İstanbul is where from", () => {
     const s0 = newStart("b1", "plan", 1);
-    const s1 = typed(s0, SENTENCE_TR);
+    // With the model (it reads "Kohphandan" as Koh Phangan): nothing to ask back.
+    const s1 = typed(s0, SENTENCE_TR, raw({ destination: "Koh Phangan", destination_country: "Tayland", destination_country_code: "TH", names: ["Sabine"] }));
+    expect(s1.guess).toBeNull();
     expect(s1.where).toEqual({ place: "Koh Phangan", country: "Tayland", code: "TH" });
     expect(s1.who).toEqual({ kind: null, names: ["Sabine"] });
     expect(s1.start).toEqual({ date: "2027-01-10", approx: false });
@@ -149,7 +162,7 @@ describe("an answer fills the question it answers (item 2)", () => {
   });
 
   it("where changes only when the traveller says so; a place in the same country said more exactly refines it", () => {
-    const s1 = typed(newStart("b3", "plan", 1), SENTENCE_TR);
+    const s1 = opening("b3");
     // "Aslında Bali'ye gidelim" while "Nereden?" is asked: a change, said clearly.
     const bali = typed(s1, "Aslında Bali'ye gidelim", null, 3);
     expect(bali.where?.place).toBe("Bali");
@@ -214,7 +227,7 @@ describe("always generatable (item 4)", () => {
   });
 
   it("the preview: stops and nights, dates, who, the flights to the island's airport", () => {
-    let s = typed(newStart("g3", "plan", 1), SENTENCE_TR);
+    let s = opening("g3");
     s = typed(s, "İstanbul", null, 3);
     const p = withLang("tr", () => previewOf(s, ctx))!;
     expect(p.stops).toEqual([{ city: "Koh Phangan", nights: 31 }]);
@@ -239,7 +252,7 @@ describe("the model's reply (item 5)", () => {
   });
 
   it("its question only for the question the code asks next; the route and a guessed day are always the code's", () => {
-    const s1 = typed(newStart("m1", "plan", 1), SENTENCE_TR);
+    const s1 = opening("m1");
     const s2 = typed(s1, "İstanbul", null, 3);
     const reply = { text: "İstanbul'dan Koh Phangan'a uzun ama güzel bir yol.", question: "Bu gezide en çok ne arıyorsunuz?" };
     expect(withLang("tr", () => modelReplyText(s1, s2, ctx, reply, "want"))).toBe(`${reply.text} ${reply.question}`);
@@ -258,7 +271,7 @@ describe("prepared while chatting (item 7)", () => {
     const monthOnly = typed(newStart("p1", "plan", 1), "Koh Phangan 1 ay");
     // A month is 28 to 31 nights: it waits for the start.
     expect(routeToPrepare(monthOnly)).toBeNull();
-    const s = typed(newStart("p2", "plan", 1), SENTENCE_TR);
+    const s = opening("p2");
     const key = routeToPrepare(s)!;
     expect(key).toBe(routeKey(s));
     expect(key).toMatch(/^kohphangan\|TH\|31$/);
@@ -272,7 +285,7 @@ describe("prepared while chatting (item 7)", () => {
   });
 
   it("changing where drops the prepared route and photos; coming back brings the route back without asking again", () => {
-    const s = typed(newStart("p4", "plan", 1), SENTENCE_TR);
+    const s = opening("p4");
     const key = routeToPrepare(s)!;
     let kept = withPreparedRoute(s, key, route([["Koh Phangan", 21], ["Koh Samui", 10]]));
     kept = withPhotos(kept, whereKey(kept)!, { "Koh Phangan": "https://img.test/kp.jpg", Tayland: null });
@@ -293,7 +306,7 @@ describe("prepared while chatting (item 7)", () => {
   });
 
   it("what Oluştur would write is worked out in memory only, in the chat's language", async () => {
-    const s = typed(typed(newStart("p5", "plan", 1), SENTENCE_TR), "İstanbul", null, 3);
+    const s = typed(opening("p5"), "İstanbul", null, 3);
     const before = (await (await db()).getAll("trips")).length;
     const made = wouldMake(s)!;
     expect(made.trip.title).toBe("Koh Phangan Gezisi");
@@ -303,7 +316,7 @@ describe("prepared while chatting (item 7)", () => {
 
   it("a draft keeps its language and what was prepared; an old draft gets the board's language and nothing prepared", async () => {
     const kv = memoryKV();
-    const s = withPhotos(typed(newStart("d1", "plan", 1), SENTENCE_TR), "kohphangan|TH", { "Koh Phangan": "https://img.test/kp.jpg" });
+    const s = withPhotos(opening("d1"), "kohphangan|TH", { "Koh Phangan": "https://img.test/kp.jpg" });
     await saveDraft(s, kv);
     const back = (await getDraft("d1", kv))!;
     expect(back.lang).toBe("tr");

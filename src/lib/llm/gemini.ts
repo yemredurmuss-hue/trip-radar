@@ -5,7 +5,7 @@ import { z } from "zod";
 import { buildPrompt, extractionSchema, extractionSystem, imagePart, today } from "../extract";
 import { L, lang } from "../i18n";
 import type { ChatMessage } from "../types";
-import type { ChatStep, LlmProvider, ToolResult, ToolSpec } from "./types";
+import type { CallOptions, ChatStep, LlmProvider, ToolResult, ToolSpec } from "./types";
 
 function jsonSchemaFor(zodSchema: z.ZodType): Record<string, unknown> {
   const schema = z.toJSONSchema(zodSchema) as Record<string, unknown>;
@@ -31,11 +31,11 @@ const RETRY_AFTER_MS = 20_000;
 /** Rate limits (429) and "model overloaded" (5xx) are usually gone after a short wait: retry once. */
 const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 
-async function withRetry<T>(call: () => Promise<T>, waitMs = RETRY_AFTER_MS): Promise<T> {
+async function withRetry<T>(call: () => Promise<T>, waitMs = RETRY_AFTER_MS, retries = 1): Promise<T> {
   try {
     return await call();
   } catch (error) {
-    if (!(error instanceof ApiError) || !RETRYABLE.has(error.status)) throw error;
+    if (retries < 1 || !(error instanceof ApiError) || !RETRYABLE.has(error.status)) throw error;
     await new Promise((resolve) => setTimeout(resolve, waitMs));
     return call();
   }
@@ -110,16 +110,17 @@ export function geminiProvider(client: GeminiClient, model: string, retryWaitMs 
       return parsed.data;
     },
 
-    async generateJson(system, prompt, schema, files = []) {
+    async generateJson(system, prompt, schema, files = [], opts: CallOptions = {}) {
       const parts: Part[] = [...files.map((f): Part => ({ inlineData: { mimeType: f.mimeType, data: f.data } })), { text: prompt }];
       const response = await withRetry(
         () =>
           client.models.generateContent({
             model,
             contents: [{ role: "user", parts }],
-            config: { systemInstruction: system, responseMimeType: "application/json", responseJsonSchema: jsonSchemaFor(schema) },
+            config: { systemInstruction: system, responseMimeType: "application/json", responseJsonSchema: jsonSchemaFor(schema), ...(opts.signal ? { abortSignal: opts.signal } : {}) },
           }),
         retryWaitMs,
+        opts.maxRetries ?? 1,
       );
       const text = visibleText(answerParts(response));
       let json: unknown;

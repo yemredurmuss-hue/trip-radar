@@ -2408,7 +2408,7 @@ try {
   await answers.getByRole("button", { name: "Tamam" }).click();
   await board.locator(".st-msg-bot", { hasText: "Rota önerim: Ubud 12 · Canggu 10 · Uluwatu 9 gece. Bu olsun mu?" }).waitFor();
   assert.equal(startPrompts.length, 2, "the model read the one typed line and was asked for the route once (prepared in the background as soon as Bali and 31 nights were known)");
-  assert.ok(replyPrompts.length <= 2, `at most one reply call per quick answer (${replyPrompts.length})`);
+  assert.equal(replyPrompts.length, 0, "a quick answer costs no model call");
   await board.screenshot({ path: `${out}/20b-start-interview.png` });
   // Narrow (item 9): the list folds into a bar above the chat.
   await board.setViewportSize({ width: 560, height: 900 });
@@ -2543,6 +2543,7 @@ try {
     if (prompt.includes("<route_request>") && prompt.includes("Koh Phangan")) {
       rev.route++;
       rev.routeFor.push(prompt);
+      await later(4000); // slow, so the route's row pressed meanwhile waits for it ("Rotayı çiziyor…")
       return json(route, { stops: [{ city: "Koh Phangan", nights: 21, country_code: "TH" }, { city: "Koh Samui", nights: 10, country_code: "TH" }], arrival_airport_city: "Koh Samui", departure_airport_city: "Koh Samui" });
     }
     if (prompt.includes("<start_reply>")) {
@@ -2575,13 +2576,26 @@ try {
   if (await board.locator(".st-ask").count()) await board.locator(".st-ask").getByRole("button", { name: "New trip", exact: true }).click();
   const chat = board.locator(".st-chat");
   // The code's line at once, in Turkish; the row says it's writing; then the model's line over it.
-  await board.locator(".st-msg-bot", { hasText: "Nereden yola çıkıyorsun?" }).waitFor();
+  // "Kohphandan" is a loose spelling: the code asks back, never takes it silently ...
+  await board.locator(".st-msg-bot", { hasText: "Koh Phangan mı demek istedin?" }).waitFor();
+  const firstLine = await board.locator(".st-msg-bot").first().elementHandle();
   await board.locator(".st-thinking", { hasText: "Yazıyor…" }).waitFor();
-  assert.equal(await board.locator(".st-thinking").getAttribute("role"), "status", "the thinking row is a polite status");
+  // The row is its own polite status, outside the conversation's log.
+  await board.locator(".st-status[role=status][aria-live=polite] .st-thinking").waitFor();
+  assert.equal(await board.locator(".st-msgs .st-thinking, [role=log] [role=status]").count(), 0, "the status row is not inside the log");
   await board.waitForTimeout(500); // the lines' fade-in done, the model still writing (1.5 s)
   await board.screenshot({ path: `${out}/21b-start-thinking.png` });
-  await board.locator(".st-msg-bot", { hasText: "palmiyeli koylar, orman şelaleleri ve dolunay sahilleri. Nereden yola çıkıyorsunuz?" }).waitFor();
+  // ... the model read it as Koh Phangan: its line replaces the code's, in the same element (not made anew).
+  await board.locator(".st-msg-bot", { hasText: "palmiyeli koylar, orman şelaleleri ve dolunay sahilleri. Nereden yola çıkıyorsun?" }).waitFor();
+  assert.match(await firstLine.evaluate((n) => n.isConnected && n.textContent), /palmiyeli koylar/, "the replaced line keeps its element");
   await board.locator(".st-thinking").waitFor({ state: "detached" });
+  // The route's row pressed while the proposal is still on its way: it waits for it, then proposes it.
+  await board.locator(".st-side .st-row", { hasText: "ROTA" }).click();
+  await board.locator(".st-thinking", { hasText: "Rotayı çiziyor…" }).waitFor();
+  await board.locator(".st-msg-bot", { hasText: "Rota önerim: Koh Phangan 21 · Koh Samui 10 gece. Bu olsun mu?" }).waitFor({ timeout: 15000 });
+  // Back to where from (the route stays a proposal).
+  await board.locator(".st-side .st-row", { hasText: "NEREDEN" }).click();
+  await board.locator(".st-msg-bot", { hasText: /^Nereden yola çıkıyorsun\?$/ }).waitFor();
   const revList = board.locator(".st-side .st-list");
   await revList.getByText("Koh Phangan · Tayland").waitFor();
   await revList.getByText(/10 Ocak – 10 Şubat · 31 gece/).waitFor();

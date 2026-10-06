@@ -6,7 +6,7 @@ import { L } from "../i18n";
 import type { ZodType } from "zod";
 import type { ChatMessage } from "../types";
 import { fitsStrict, schemaLoad, strictTools } from "./schemaBudget";
-import type { ChatStep, LlmProvider, ToolResult, ToolSpec } from "./types";
+import type { CallOptions, ChatStep, LlmProvider, ToolResult, ToolSpec } from "./types";
 
 /** Haiku 4.5 rejects the effort parameter; the other offered models accept it. */
 function outputEffort(model: string, effort: "low" | "medium") {
@@ -28,7 +28,7 @@ export function anthropicProvider(client: Anthropic, model: string): LlmProvider
       return structured(client, model, extractionSystem(), content, extractionSchema(), "low", L("Model bu sayfayı işlemeyi reddetti.", "The model declined to process this page."));
     },
 
-    async generateJson(system, prompt, schema, files = []) {
+    async generateJson(system, prompt, schema, files = [], opts = {}) {
       const content: Anthropic.ContentBlockParam[] = [
         ...files.map((f): Anthropic.ContentBlockParam =>
           f.mimeType === "application/pdf"
@@ -37,7 +37,7 @@ export function anthropicProvider(client: Anthropic, model: string): LlmProvider
         ),
         { type: "text", text: prompt },
       ];
-      return structured(client, model, system, content, schema, "medium", L("Model bu analizi yapmayı reddetti.", "The model declined to do this analysis."));
+      return structured(client, model, system, content, schema, "medium", L("Model bu analizi yapmayı reddetti.", "The model declined to do this analysis."), opts);
     },
 
     async chatStep(history: ChatMessage[], system: string, tools: ToolSpec[]): Promise<ChatStep | null> {
@@ -109,7 +109,10 @@ async function structured<T>(
   schema: ZodType<T>,
   effort: "low" | "medium",
   refusal: string,
+  opts: CallOptions = {},
 ): Promise<T> {
+  // The SDK's own request options: an abort, and how many retries (its default when unset).
+  const request = { ...(opts.signal ? { signal: opts.signal } : {}), ...(opts.maxRetries != null ? { maxRetries: opts.maxRetries } : {}) };
   const format = zodOutputFormat(schema as any);
   if (fitsStrict(schemaLoad(format.schema))) {
     const response = await client.messages.parse({
@@ -118,7 +121,7 @@ async function structured<T>(
       system,
       messages: [{ role: "user", content }],
       output_config: { format, ...outputEffort(model, effort) },
-    });
+    }, request);
     if (response.stop_reason === "refusal") throw new Error(refusal);
     if (!response.parsed_output) throw new Error(L("Model geçerli bir yanıt döndürmedi.", "The model didn't return a valid answer."));
     return response.parsed_output as T;
@@ -138,7 +141,7 @@ async function structured<T>(
       system,
       messages,
       ...("effort" in outputConfig ? { output_config: outputConfig } : {}),
-    });
+    }, request);
     if (response.stop_reason === "refusal") throw new Error(refusal);
     const text = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")

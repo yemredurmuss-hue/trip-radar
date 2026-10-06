@@ -1,6 +1,6 @@
 // Domain model. Kept storage-agnostic so the same shapes can move to a server DB later.
 import type { FlightLive } from "../../supabase/functions/flight/shape";
-import { L } from "./i18n";
+import { L, type Lang } from "./i18n";
 
 export type Category = "flight" | "stay" | "transport" | "activity" | "food" | "esim" | "other";
 
@@ -236,6 +236,11 @@ export interface Trip {
   suggestReview?: { key: string; at: number; failed?: boolean; state?: "running" | "done" | "failed" } | null;
   /** Made by the start chat (spec 2026-10-06 §2): its one-time start card above the plan (startTrip.ts guideSteps). */
   startGuide?: StartGuide | null;
+  /**
+   * The language of the conversation the trip was started with (start chat, revision 2): its chat goes on in it and
+   * its suggestions are written in it, whatever the board's language. Unset: the board's.
+   */
+  lang?: Lang | null;
   createdAt: number;
   updatedAt: number;
 }

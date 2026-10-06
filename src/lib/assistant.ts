@@ -29,7 +29,8 @@ import { isIdea } from "./booking";
 import { sectionOfItem, type SectionId } from "./categories";
 import { addDays, buildPlan, cityKeyOf, liveGroups, sameCity, stayRange, type Plan } from "./plan";
 import { fromPage, saidEdits, withEdits, withoutEdits } from "./userEdits";
-import { L, lang, saveLang, setLang, type Lang } from "./i18n";
+import { L, lang, saveLang, setLang, withLang, type Lang } from "./i18n";
+import { datePlaceholders } from "./startTrip";
 import { announceHidden } from "./removal";
 import { getRates } from "./currency";
 import { makeContext } from "./decision";
@@ -779,6 +780,8 @@ export function tripState(
       // The money every price and the budget show in (set_settings changes it), and the board's language.
       currency: reading?.ctx.currency ?? makeContext(trip, items).currency,
       board_language: lang(),
+      // The language this trip's conversation is in, when it was started in another one: answer in it.
+      ...(trip.lang && trip.lang !== lang() ? { conversation_language: trip.lang } : {}),
       // Who goes, said without sharing (set_travellers); the user themself isn't in the names.
       ...(trip.travellers ? { travellers: { names: trip.travellers.names, count: trip.travellers.count ?? null } } : {}),
     },
@@ -1262,9 +1265,18 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       };
       const changes = (["title", "confirmedDates", "budget"] as const).filter((f) => stableJson(next[f]) !== stableJson(trip[f]));
       if (!changes.length && !onlyCurrency) return JSON.stringify({ unchanged: true, note: L("Hiçbir şey değişmedi.", "Nothing changed.") });
+      // A trip started without dates: the undated stay and flights it made take the dates (no second set beside them).
+      let dated = 0;
+      if (changes.includes("confirmedDates") && next.confirmedDates && next.startGuide?.placeholders) {
+        const made = datePlaceholders(next, items, next.confirmedDates);
+        for (const item of made.items) await d.put("items", { ...item, updatedAt: Date.now() });
+        dated = made.items.length;
+        if (dated) next.startGuide = { ...next.startGuide, placeholders: { ...next.startGuide.placeholders, ...made.prints } };
+      }
       if (changes.length) await d.put("trips", { ...next, updatedAt: Date.now() });
       const out: Record<string, unknown> = {
         changed: changes,
+        ...(dated ? { dated_places: dated } : {}),
         title: next.title,
         dates: next.confirmedDates,
         budget: next.budget ? { amount: next.budget.amount, currency: next.budget.currency, ceiling: next.budget.ceiling ?? null } : null,
@@ -1598,7 +1610,8 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   let askedAgain = false;
   for (let step = 0; step < MAX_STEPS; step++) {
     const history = currentSession(await listMessages(tripId), provider.id);
-    const answer = await provider.chatStep(history, systemPrompt(), tools());
+    // A trip started by chat in another language goes on in it (trip.lang), whatever the board's.
+    const answer = await provider.chatStep(history, withLang(trip.lang, systemPrompt), withLang(trip.lang, tools));
     if (!answer) return;
 
     const choices: string[] = [];

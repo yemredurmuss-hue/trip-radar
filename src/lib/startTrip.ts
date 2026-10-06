@@ -26,7 +26,8 @@ import type { ChatMessage, Item, Trip } from "./types";
 
 /** How the interview was started (the home's chips): the order and the quick answers follow it. */
 export type StartMode = "plan" | "inspire" | "road" | "lastminute";
-export type QuestionId = "where" | "from" | "who" | "names" | "duration" | "start" | "day" | "want" | "route";
+/** "guess": a place read from a loose spelling, asked back before it is taken ("Koh Phangan mı demek istedin?"). */
+export type QuestionId = "where" | "from" | "who" | "names" | "duration" | "start" | "day" | "want" | "route" | "guess";
 /** Which part of a month a start chip took: never a day made up without saying so. */
 export type MonthPart = "begin" | "mid" | "end";
 export interface StartDay {
@@ -70,6 +71,8 @@ export interface StartMsg {
   role: "user" | "assistant";
   text: string;
   at: number;
+  /** Stable while the line is said again in other words (the screen keys it by this; older drafts have none). */
+  id?: string;
 }
 
 export interface StartState {
@@ -91,6 +94,8 @@ export interface StartState {
   skipped: QuestionId[];
   /** A row of the checklist pressed: that question is asked again. */
   asking: QuestionId | null;
+  /** A place read from a loose spelling, waiting for "Evet" or "Hayır" (never taken silently). */
+  guess?: PlaceGuess | null;
   messages: StartMsg[];
   /** The trip record once made: a retry after a failed step continues it, never makes a second trip. */
   tripId: string | null;
@@ -118,23 +123,38 @@ export const noPrep = (): Prepared => ({ photos: null, routes: {}, rules: null }
 export function newStart(id: string, mode: StartMode, now: number, l: Lang = lang()): StartState {
   return {
     id, mode, where: null, from: null, who: null, duration: null, start: null, styles: [], budget: null, wantDone: false,
-    route: null, editingRoute: false, skipped: [], asking: null, messages: [], tripId: null, lang: l, langFixed: false, prepared: noPrep(),
+    route: null, editingRoute: false, skipped: [], asking: null, guess: null, messages: [], tripId: null, lang: l, langFixed: false, prepared: noPrep(),
     createdAt: now, updatedAt: now,
   };
 }
 
 // --- the chat's language --------------------------------------------------------------------------------------
 
-/** Turkish words a message is likely to have even typed without its letters ("gitmek", "ay", "ile"). */
+/**
+ * Turkish words a message is likely to have even typed without its letters ("gitmek", "ile"). Never right after an
+ * apostrophe ("we've" is not "ve"); none that are also common in English or too short to tell ("ve", "ay", "gun").
+ */
 const TR_WORDS =
-  /(?<![\p{L}])(ile|ve|bir|ay|aylık|gün|gun|gece|hafta|için|icin|gitmek|gitmeyi|gidelim|gidiyoruz|gideceğiz|düşünüyorum|dusunuyorum|istiyoruz|istiyorum|beraber|birlikte|nereye|nereden|tatil|tatile|gezi|sevgilimle|eşimle|ailemle|arkadaşlarla|yalnız|olsun|evet|hayır|tamam|civarı|civarları|aslında)(?![\p{L}])/iu;
+  /(?<![\p{L}'’])(ile|bir|aylık|gün|gece|hafta|için|icin|gitmek|gitmeyi|gidelim|gidiyoruz|gideceğiz|düşünüyorum|dusunuyorum|istiyoruz|istiyorum|beraber|birlikte|nereye|nereden|tatil|tatile|gezi|sevgilimle|eşimle|ailemle|arkadaşlarla|yalnız|olsun|evet|hayır|tamam|civarı|civarları|aslında|değil|ama|çok|cok|biz|ben|sonra|önce)(?![\p{L}'’])/giu;
 /** English words that tell English apart from a bare name ("Bali" says nothing). */
-const EN_WORDS = /\b(the|to|with|and|for|from|want|wanna|going|go|trip|weeks?|days?|nights?|months?|we|i'm|i am|my|in|of|around|about|thinking|planning|yes|no|just|me|partner|friends|family)\b/i;
+const EN_WORDS =
+  /(?<![\p{L}'’])(the|a|an|to|with|and|for|from|want|wants|wanted|wanna|going|go|goes|fly|flying|trip|weeks?|days?|nights?|months?|we|i|i'm|my|our|us|in|of|at|around|about|thinking|planning|yes|no|just|me|partner|friends|family|always|got|have|has|would|like|love|visit|visiting|travel|travelling|traveling|holiday|vacation|next|this|is|are|be|it|there|then|instead|how|make|actually|maybe|live|not)(?![\p{L}'’])/giu;
+/** A Turkish ending after an apostrophe ("Bali'ye", "İstanbul'dan"); English endings ("I've", "we're", "Bali's") are not. */
+const TR_SUFFIX = /\p{L}['’](d[ae]n|t[ae]n|y?[ae]|d[ae]|t[ae]|y?l[ae]|n[ae]|n[ıiuü]n|y[ıiuü])(?![\p{L}])/gu;
+const EN_SUFFIX = /\p{L}['’](ve|re|ll|m|d|s|t)(?![\p{L}])/giu;
 
-/** The language a message shows: Turkish letters, a Turkish ending or word; English words. Null when it can't tell ("Bali"). */
+/**
+ * The language a message shows, weighed: English words and endings against Turkish words, endings and Turkish
+ * letters in words that aren't capitalised (a name like "İstanbul" or "Şule" in an English line says nothing).
+ * Null when it can't tell ("Bali") or it's even.
+ */
 export function langSignal(text: string): Lang | null {
-  if (/[çğıİöşüÇĞÖŞÜ]/.test(text) || /\p{L}['’](d[ae]n|t[ae]n|y?[ae]|d[ae]|t[ae]|y?l[ae]|n[ae])(?![\p{L}])/u.test(text) || TR_WORDS.test(text)) return "tr";
-  if (EN_WORDS.test(text)) return "en";
+  const count = (re: RegExp) => text.match(re)?.length ?? 0;
+  const letters = text.split(/[^\p{L}'’]+/u).filter((w) => /[çğıöşü]/.test(w) && !/^\p{Lu}/u.test(w)).length;
+  const tr = count(TR_WORDS) + 2 * count(TR_SUFFIX) + letters;
+  const en = count(EN_WORDS) + count(EN_SUFFIX);
+  if (tr > en) return "tr";
+  if (en > tr) return "en";
   return null;
 }
 
@@ -205,6 +225,12 @@ const MONTHS_EN = ["january", "february", "march", "april", "may", "june", "july
 const MONTH_NAMES_TR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 const MONTH_NAMES_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const monthName = (m: number) => L(MONTH_NAMES_TR[m - 1], MONTH_NAMES_EN[m - 1]);
+
+/** The question particle after a name, by its last vowel: "Antalya mı", "Koh Phangan mı", "Berlin mi", "Porto mu", "Köln mü". */
+export function questionParticle(name: string): string {
+  const last = [...name.toLocaleLowerCase("tr")].reverse().find((ch) => /[aeıioöuü]/.test(ch));
+  return last === "e" || last === "i" ? "mi" : last === "o" || last === "u" ? "mu" : last === "ö" || last === "ü" ? "mü" : "mı";
+}
 
 /** "aralık", "ara", "december", "dec" → 12; null for anything else (3 letters at least, so "ay" isn't May). */
 export function monthOf(token: string): number | null {
@@ -356,18 +382,18 @@ export function editDistance(a: string, b: string, max = 2): number {
 }
 
 /**
- * A known place spelled loosely ("Kohphandan" → Koh Phangan): compared without spaces, at most 2 edits for a
- * long name (8+ letters), 1 for a shorter one (6-7); short names and real countries' names ("Ireland" isn't
- * Iceland) are never guessed.
+ * A known place spelled loosely ("Kohphandan" → Koh Phangan): compared without spaces, at most 2 edits, and only
+ * between long names (8+ letters both): "Antakya" is never Antalya, "Frances", "Athena" or "Lyndon" never a place.
+ * Real countries' names ("Ireland" isn't Iceland) are never guessed. The chat asks back before taking it.
  */
 export function fuzzyPlaceOf(word: string): KnownPlace | null {
   const k = squash(word);
-  if (k.length < 5 || countryCodeOfName(word)) return null;
+  if (k.length < 8 || countryCodeOfName(word)) return null;
   let best: KnownPlace | null = null;
   let bestD = Infinity;
   for (const [name, p] of PLACE_INDEX) {
-    if (name.length < 6) continue;
-    const max = name.length >= 8 ? 2 : 1;
+    if (name.length < 8) continue;
+    const max = 2;
     const d = editDistance(k, name, max);
     if (d <= max && d < bestD) {
       best = p;
@@ -461,6 +487,20 @@ export interface Extracted {
   duration: Duration | null;
   styles: StyleId[];
   budget: BudgetLevel | null;
+  /**
+   * The code's destination is marked as one ("Bali'ye", "to Bali", an island inside the country said): the model's
+   * reading doesn't override it. Unmarked, the model's destination wins when it has one.
+   */
+  whereSure?: boolean;
+  /** A place recognised only by a loose spelling: asked back ("Antalya mı demek istedin?"), never taken silently. */
+  guess?: PlaceGuess | null;
+}
+
+/** "Kohphandan" read as Koh Phangan: kept apart until the traveller says yes ("Evet") or no ("Hayır, Kohphandan"). */
+export interface PlaceGuess {
+  typed: string;
+  place: Place;
+  slot: "where" | "from";
 }
 
 export const EMPTY_EXTRACTED: Extracted = { where: null, from: null, who: null, start: null, duration: null, styles: [], budget: null };
@@ -591,50 +631,79 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
   // Places: known ones (spelled loosely too); "X'den" is where from, "X'e" where to. An answer to "Nereden?" is
   // where from unless it says "to" ("aslında Bali'ye"). Where to is the most specific place said: "Tayland
   // Kohphandan" is Koh Phangan (in Thailand), not Thailand.
-  const found: { p: KnownPlace; dir: "from" | "to" | null }[] = [];
+  type Hit = { p: KnownPlace; dir: "from" | "to" | null; loose: string | null };
+  const found: Hit[] = [];
   const capital = (w: string | undefined) => !!w && /^\p{Lu}/u.test(w);
   const short = looksLikePlace(text);
+  // A change of mind ("Rome instead", "Hayır, Roma") answers no pending "Nereden?": it is where to.
+  const change = saysWhereTo(text);
+  const JOINERS = new Set(["with", "and", "ile", "ve"]);
+  const joined = (i: number, n: number) =>
+    JOINERS.has(low[i - 1] ?? "") || JOINERS.has(low[i + n] ?? "") || WITH_SUFFIX.has(low[i + n] ?? "") || new RegExp(`&\\s*${raw[i]}|${raw[i + n - 1]}\\s*&`, "u").test(text);
   for (let i = 0; i < raw.length; i++) {
-    let hit: { p: KnownPlace; dir: "from" | "to" | null } | null = null;
+    let hit: Hit | null = null;
     let len = 0;
     for (const n of [3, 2, 1]) {
       if (i + n > raw.length) continue;
       const known = knownPlaceOf(raw.slice(i, i + n).join(" "));
       if (known) {
-        hit = { p: known, dir: null };
+        hit = { p: known, dir: null, loose: null };
         len = n;
         break;
       }
     }
     if (!hit) {
       const glued = gluedPlace(raw[i]);
-      if (glued) [hit, len] = [glued, 1];
+      if (glued) [hit, len] = [{ ...glued, loose: null }, 1];
     }
-    // Spelled loosely: only a capitalised word (or a short answer that is only a name), never a common word.
-    if (!hit && (capital(raw[i]) || short) && !monthOf(raw[i]) && !NOT_NAMES.has(low[i]) && !WITH_SUFFIX.has(low[i + 1] ?? "")) {
+    // Spelled loosely (8+ letters): a capitalised word or a short answer that is only a name; never a common word, a
+    // word next to "with"/"and"/"ile"/"&" (a person: "Frances and I"), nor while who's coming is asked. Asked back.
+    if (!hit && pending !== "who" && pending !== "names" && (capital(raw[i]) || short) && !monthOf(raw[i]) && !NOT_NAMES.has(low[i])) {
       for (const n of [2, 1]) {
-        if (i + n > raw.length || (n === 2 && !capital(raw[i + 1]) && !short)) continue;
+        if (i + n > raw.length || (n === 2 && !capital(raw[i + 1])) || joined(i, n)) continue;
         const loose = fuzzyPlaceOf(raw.slice(i, i + n).join(""));
         if (loose) {
-          [hit, len] = [{ p: loose, dir: null }, n];
+          [hit, len] = [{ p: loose, dir: null, loose: raw.slice(i, i + n).join(" ") }, n];
           break;
         }
       }
     }
     if (!hit) continue;
-    const suffix = low[i + len] ?? "";
-    hit.dir ??= FROM_SUFFIX.has(suffix) || low[i - 1] === "from" ? "from" : TO_SUFFIX.has(suffix) || low[i - 1] === "to" ? "to" : null;
-    found.push(hit);
+    const next = low[i + len] ?? "";
+    // "Bali değil", "not Bali", "instead of Bali": not where they go.
+    const denied = next === "değil" || low[i - 1] === "not" || (low[i - 1] === "of" && low[i - 2] === "instead");
+    if (!denied) {
+      hit.dir ??= FROM_SUFFIX.has(next) || low[i - 1] === "from" || next === "to" || (low[i - 1] === "in" && ["live", "living", "based"].includes(low[i - 2] ?? ""))
+        ? "from"
+        : TO_SUFFIX.has(next) || low[i - 1] === "to"
+          ? "to"
+          : null;
+      found.push(hit);
+    }
     i += len - 1;
   }
-  const fromHit = found.find((f) => f.dir === "from") ?? (pending === "from" ? found.find((f) => f.dir !== "to") : undefined);
-  if (fromHit) out.from = placeName(fromHit.p);
+  const fromHit = found.find((f) => f.dir === "from") ?? (pending === "from" && !change ? found.find((f) => f.dir !== "to") : undefined);
+  if (fromHit?.loose) out.guess = { typed: fromHit.loose, place: placeOf(placeName(fromHit.p)), slot: "from" };
+  else if (fromHit) out.from = placeName(fromHit.p);
   const toHits = found.filter((f) => f !== fromHit && (f.p !== fromHit?.p || f.dir === "to"));
   if (toHits.length) {
-    // A place inside another one said (an island in the country said), else a place before a country, else the first.
-    const inside = toHits.find((f) => f.p.countryEn && toHits.some((g) => g !== f && g.p.en === f.p.countryEn));
-    const pick = inside ?? toHits.find((f) => f.p.countryEn) ?? toHits[0];
-    out.where = { place: placeName(pick.p), country: countryNameOf(pick.p), code: knownCode(pick.p) };
+    // The place marked as where they go ("Bali'ye", "to Bali"); inside it (or anywhere), a place in a country said
+    // (an island in the country); else a place before a country; else the first.
+    const marked = toHits.filter((f) => f.dir === "to");
+    const pool = marked.length ? marked : toHits;
+    const inside = toHits.find((f) => f.p.countryEn && pool.some((g) => g !== f && g.p.en === f.p.countryEn));
+    const pick = inside ?? pool.find((f) => f.p.countryEn) ?? pool[0];
+    const sure = (p: Hit) => p.dir === "to" || p === inside;
+    const where = (p: Hit): Place => ({ place: placeName(p.p), country: countryNameOf(p.p), code: knownCode(p.p) });
+    if (pick.loose) {
+      // Asked back first; meanwhile the place it is in, when that was said exactly.
+      out.guess = { typed: pick.loose, place: where(pick), slot: "where" };
+      const host = pool.find((f) => !f.loose && f.p.en === pick.p.countryEn) ?? pool.find((f) => !f.loose);
+      if (host) out.where = where(host);
+    } else {
+      out.where = where(pick);
+      out.whereSure = sure(pick);
+    }
   }
 
   // Who: words for a companion, and names ("Sabine'yle", "Sabine ile", "with Sabine").
@@ -710,6 +779,7 @@ export const slotWords = (q: QuestionId): string =>
     day: L("ayın hangi günü başlanacağı", "which day of the month it starts"),
     want: L("gezide ne istendiği (tarz, bütçe)", "what they want from the trip (style, budget)"),
     route: L("rota", "the route"),
+    guess: L("yazılan yerin doğru okunup okunmadığı", "whether the place typed was read right"),
   })[q];
 
 export const extractionPrompt = (text: string, today: string, pending: QuestionId | null) =>
@@ -734,9 +804,6 @@ reply.question: one short question for "Next question" only, ending with a quest
 
 /** The system prompt for a typed message: read it, then reply. */
 export const turnSystem = () => `${extractionSystem()}\n${replyRules()}\n${answerIn()}`;
-/** The system prompt for a quick answer (a chip): only the reply. */
-export const replySystem = () =>
-  `${L("Bir gezi planlama sohbetinde asistansın; kullanıcı az önce bir seçenek seçti.", "You are the assistant in a trip-planning chat; the user just picked an answer.")}\n${replyRules().replace(/reply\./g, "")}\n${answerIn()}`;
 
 /** What is known so far, one line per answer, for the model ("Nereye: Koh Phangan (Tayland)"). */
 export function knownLines(s: StartState, ctx: StartCtx): string {
@@ -763,17 +830,6 @@ export function turnPrompt(a: { text: string; today: string; pending: QuestionId
   ].filter(Boolean).join("\n");
 }
 
-/** A chip answered, for the model: what is known now, what was picked, the next question. */
-export function replyPrompt(a: { said: string; next: QuestionId | null; known: string }): string {
-  return [
-    "<start_reply>",
-    `${L("Bilinenler", "Known so far")}: ${a.known}`,
-    `${L("Kullanıcının seçtiği", "The user picked")}: ${a.said}`,
-    `${L("Sıradaki soru", "Next question")}: ${a.next ? slotWords(a.next) : L("yok", "none")}`,
-    "</start_reply>",
-  ].join("\n");
-}
-
 const PRICE = /[€$£₺¥฿]|\d[\d.,]*\s?(tl|try|eur|euro|usd|dolar|dollars?|lira|baht|thb|gbp|pound)(?![\p{L}])/iu;
 const BOOKING = /(rezervasyon\p{L}*\s+(yap|tamam|hazır|onay)|ayırttım|ayırdım|bilet\p{L}*\s+(aldım|alındı)|booked|reserved|i'?ve (booked|reserved)|tickets? (are )?(bought|booked))/iu;
 export const REPLY_MAX = 220;
@@ -787,9 +843,11 @@ export function acceptReply(raw: RawReply | null | undefined, l: Lang): { text: 
   const clean = (v: string) => v.replace(/\s+/g, " ").replace(/—/g, ",").trim();
   const text = clean(raw.text ?? "");
   const question = clean(raw.question ?? "");
-  // Turkish words in an English line, or an English line with nothing Turkish (a Turkish name like "İstanbul" in
-  // an English line is fine).
-  const wrongLang = (v: string) => (l === "en" ? TR_WORDS.test(v) : langSignal(v) === "en");
+  // A line that reads as the other language, weighed (a Turkish name like "İstanbul", or "I've", says nothing).
+  const wrongLang = (v: string) => {
+    const said = langSignal(v);
+    return said != null && said !== l;
+  };
   if (!text || text.length > REPLY_MAX || PRICE.test(text) || BOOKING.test(text) || wrongLang(text)) return null;
   const q = question && question.endsWith("?") && question.length <= 160 && !PRICE.test(question) && !wrongLang(question) ? question : null;
   return { text, question: q };
@@ -827,8 +885,14 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
   if (!model) return code;
   const names = [...new Set([...(code.who?.names ?? []), ...(model.who?.names ?? [])])];
   const kind = code.who?.kind ?? model.who?.kind ?? null;
+  // The code's destination when it is marked as one ("Bali'ye", "to Bali"); unmarked, the model's when it has one.
+  const where = code.where && (code.whereSure || !model.where) ? code.where : (model.where ?? code.where);
+  // A loose spelling the model read as the same place needs no asking back.
+  const guess = code.guess && !(model.where && samePlace(model.where.place, code.guess.place.place)) ? code.guess : null;
   return {
-    where: code.where ?? model.where,
+    where,
+    whereSure: where === code.where && code.whereSure,
+    guess,
     from: code.from ?? model.from,
     who: kind || names.length ? { kind, names } : null,
     start: code.start && !code.start.approx ? code.start : (model.start ?? code.start),
@@ -873,11 +937,14 @@ function open(s: StartState, q: QuestionId): boolean {
       return !s.wantDone;
     case "route":
       return Boolean(s.where && totalNights(s) && !s.route?.confirmed);
+    case "guess":
+      return Boolean(s.guess);
   }
 }
 
-/** The question asked now: one pressed in the checklist, else the first still open in the mode's order. */
+/** The question asked now: a loose spelling to confirm, one pressed in the checklist, else the first still open in the mode's order. */
 export function nextQuestion(s: StartState): QuestionId | null {
+  if (s.guess) return "guess";
   if (s.asking) return s.asking;
   return ORDER[s.mode].find((q) => open(s, q)) ?? null;
 }
@@ -912,6 +979,8 @@ export function missingInfo(s: StartState): string[] {
 export const isComplete = (s: StartState): boolean => checklist(s, { myName: null, fromGuess: null, today: "" }).every((r) => r.done);
 
 export function skip(s: StartState, q: QuestionId, now: number): StartState {
+  // A guess skipped is a guess not taken.
+  if (q === "guess") return { ...s, guess: null, updatedAt: now };
   // The day skipped: the month's beginning, said back as a guess (never a day made up silently).
   if (q === "day" && s.start && monthOnly(s)) {
     // (The month's own start as the month chip took it: its 1st, or a week from today for this month.)
@@ -950,7 +1019,8 @@ export type Answer =
   | { q: "start"; date: string; approx: boolean }
   | { q: "day"; date: string; part: MonthPart | null }
   | { q: "want"; styles: StyleId[]; budget: BudgetLevel | null }
-  | { q: "route"; action: "accept" | "change" | "single" };
+  | { q: "route"; action: "accept" | "change" | "single" }
+  | { q: "guess"; accept: boolean };
 
 /** A quick answer (a chip) applied. */
 export function applyAnswer(s: StartState, a: Answer, now: number): StartState {
@@ -981,6 +1051,16 @@ export function applyAnswer(s: StartState, a: Answer, now: number): StartState {
     case "want":
       next = { ...next, styles: a.styles, budget: a.budget, wantDone: true };
       break;
+    case "guess": {
+      // "Evet": the place read; "Hayır, Kohphandan": the name as typed.
+      const g = s.guess;
+      next.guess = null;
+      if (!g) return next;
+      const place = a.accept ? g.place : placeOf(g.typed);
+      if (g.slot === "from") next.from = place.place;
+      else next.where = place;
+      return keepRoute(s, next);
+    }
     case "route":
       if (a.action === "accept" && s.route) next = { ...next, route: { ...s.route, confirmed: true }, editingRoute: false };
       else if (a.action === "change") next = { ...next, editingRoute: true, asking: "route" };
@@ -1014,9 +1094,11 @@ const samePlace = (a: string | null | undefined, b: string | null | undefined) =
 /** "Aslında Bali'ye gidelim", "olsun", "let's go to Bali instead": the traveller means to change where they go. */
 export function saysWhereTo(text: string): boolean {
   const low = text.toLocaleLowerCase("tr");
+  // "Bali'ye", "Roma'ya gidelim", and the same typed on ("Romaya gidelim").
   if (/['’](y?[ae]|n[ae])(?![\p{L}])/u.test(text)) return true;
-  if (/(?<![\p{L}])(aslında|yerine|vazgeç\p{L}*|değiştir\p{L}*|gidelim|gidiyoruz|gideceğiz|gidiyorum|gideceğim|gitmek|gitmeyi|gitsek|olsun)(?![\p{L}])/u.test(low)) return true;
-  return /\b(actually|instead|rather|let'?s go|go to|going to|travel to|head to|fly to|switch to|change (it|the destination|the place))\b/i.test(text);
+  if (text.split(/[^\p{L}]+/u).some((w) => gluedPlace(w)?.dir === "to")) return true;
+  if (/(?<![\p{L}])(aslında|yerine|vazgeç\p{L}*|değiştir\p{L}*|değil|hayır|gidelim|gidiyoruz|gideceğiz|gidiyorum|gideceğim|gitmek|gitmeyi|gitsek|olsun)(?![\p{L}])/u.test(low)) return true;
+  return /\b(actually|instead|rather|how about|what about|make it|let'?s go|go to|going to|travel to|head to|fly to|switch to|change (it|the destination|the place))\b/i.test(text);
 }
 
 /**
@@ -1029,7 +1111,9 @@ export function bindToQuestion(s: StartState, text: string, read: Extracted, q: 
   if (!e.where || !s.where || samePlace(e.where.place, s.where.place)) return e;
   // Koh Phangan after Thailand: the same country, said more exactly.
   const refines = Boolean(s.where.code && e.where.code === s.where.code && countryCodeOfName(s.where.place) === s.where.code);
-  if (q === "where" || refines || saysWhereTo(text)) return e;
+  if (q === "where" || refines) return e;
+  // A change of mind: where changes; where from stays as it was unless this line says it ("İstanbul'dan", "from").
+  if (saysWhereTo(text)) return q === "from" && !/['’](d|t)[ae]n(?![\p{L}])|\bfrom\b/iu.test(text) ? { ...e, from: null } : e;
   if (q === "from" && !e.from) return { ...e, from: e.where.place, where: null };
   return { ...e, where: null };
 }
@@ -1042,10 +1126,17 @@ export function bindToQuestion(s: StartState, text: string, read: Extracted, q: 
 export function applyText(s: StartState, text: string, read: Extracted, now: number, pending: QuestionId | null = nextQuestion(s)): { state: StartState; understood: boolean } {
   const q = pending;
   let e = bindToQuestion(s, text, read, q);
-  // An origin that is the destination itself ("İstanbul" read as both) is the answer to the question asked only.
-  if (e.from && e.where && samePlace(e.from, e.where.place)) e = q === "from" || s.where ? { ...e, where: null } : { ...e, from: null };
+  // An origin that is the destination itself ("İstanbul" read as both) is the answer to the question asked only
+  // (a change of mind is where to).
+  if (e.from && e.where && samePlace(e.from, e.where.place)) e = !saysWhereTo(text) && (q === "from" || s.where) ? { ...e, where: null } : { ...e, from: null };
+  // A loose spelling already taken (the model read it the same way) needs no asking back.
+  if (e.guess && [e.where?.place, e.from, s.where?.place, s.from].some((p) => samePlace(p, e.guess!.place.place))) e = { ...e, guess: null };
   let state = applyExtracted(s, e, now);
-  const filled = said(e);
+  if (e.guess) state = { ...state, guess: e.guess };
+  // A guess still asked about that is now taken (the model's reading said that place): asked no more.
+  const asked = state.guess;
+  if (asked && [state.where?.place, state.from].some((p) => samePlace(p, asked.place.place))) state = { ...state, guess: null };
+  const filled = said(e) || Boolean(e.guess);
   const bare = bareName(text);
   if (q === "where" && !e.where && looksLikePlace(bare) && !filled) state = applyAnswer(state, { q: "where", ...placeOf(bare) }, now);
   else if (q === "from" && !e.from && looksLikePlace(bare) && !filled) state = applyAnswer(state, { q: "from", city: placeOf(bare).place }, now);
@@ -1175,6 +1266,18 @@ export function dative(name: string): string {
 export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Question {
   const tr = lang() === "tr";
   switch (q) {
+    case "guess": {
+      const g = s.guess;
+      const place = g?.place.place ?? "";
+      return {
+        id: q,
+        text: L(`${place} ${questionParticle(place)} demek istedin?`, `Did you mean ${place}?`),
+        chips: [
+          { label: L("Evet", "Yes"), answer: { q: "guess", accept: true } },
+          { label: L(`Hayır, ${g?.typed ?? ""}`, `No, ${g?.typed ?? ""}`), answer: { q: "guess", accept: false } },
+        ],
+      };
+    }
     case "where": {
       if (s.mode === "inspire") {
         return {
@@ -1421,9 +1524,18 @@ export function whenText(s: Pick<StartState, "start" | "duration">): string {
 /** Only the ids on the list (a draft or an answer with another word can't break the screen). */
 export const knownStyles = (ids: readonly string[] | undefined): StyleId[] => (Array.isArray(ids) ? ids.filter((id): id is StyleId => typeof id === "string" && Object.hasOwn(STYLES, id)) : []);
 
+/** A budget in words, never the style "Lüks" again: Ekonomik · Orta bütçe · Yüksek bütçe. */
+const BUDGET_WORDS: Record<BudgetLevel, () => string> = {
+  low: () => L("Ekonomik", "Budget"),
+  mid: () => L("Orta bütçe", "Mid-range"),
+  high: () => L("Yüksek bütçe", "High budget"),
+};
+export const budgetWord = (level: BudgetLevel): string => BUDGET_WORDS[level]();
+/** The budget's quick answers: Ekonomik · Orta · Yüksek bütçe (Budget · Mid-range · High budget). */
+export const budgetChips = (): [BudgetLevel, string][] => [["low", L("Ekonomik", "Budget")], ["mid", L("Orta", "Mid-range")], ["high", L("Yüksek bütçe", "High budget")]];
+
 export function wantText(s: Pick<StartState, "styles" | "budget">): string {
-  const words: Record<string, string> = { low: L("Ekonomik", "Budget"), mid: L("Orta bütçe", "Mid-range"), high: L("Lüks bütçe", "Luxury budget") };
-  const budget = s.budget && Object.hasOwn(words, s.budget) ? words[s.budget] : "";
+  const budget = s.budget && Object.hasOwn(BUDGET_WORDS, s.budget) ? budgetWord(s.budget) : "";
   return [knownStyles(s.styles).map((id) => STYLES[id]()).join(", "), budget].filter(Boolean).join(" · ");
 }
 
@@ -1487,8 +1599,8 @@ export type RawRoute = z.infer<typeof routeSchema>;
 
 export const routeSystem = () =>
   `${L(
-    "Bir gezi için 1 ile 4 durak arasında gerçekçi bir rota öner. Duraklar gidilen yerin içinde ya da yakınında; yola çıkılan şehir asla durak değildir. Her durak gerçek bir şehir, kasaba ya da ada adı; gece sayıları tam sayı ve toplamı tam olarak verilen geceye eşit. Az durak tercih et (uzun kalış için 2-3). country_code: durağın ülkesinin ISO 3166-1 alpha-2 kodu (ör. TH). arrival_airport_city: ilk uçuşun indiği şehir (havalimanı olan); departure_airport_city: dönüş uçuşunun kalktığı şehir. Bilmiyorsan \"\" yaz.",
-    "Suggest a realistic route of 1 to 4 stops for a trip. The stops are in or near the place visited; the city they leave from is never a stop. Each stop is a real city, town or island; the nights are whole numbers adding up to exactly the given total. Prefer few stops (2-3 for a long stay). country_code: the stop's country, ISO 3166-1 alpha-2 (e.g. TH). arrival_airport_city: the city the first flight lands in (with an airport); departure_airport_city: where the flight home leaves from. Write \"\" if unsure.",
+    "Bir gezi için 1 ile 4 durak arasında gerçekçi bir rota öner. Duraklar gidilen yerin içinde ya da yakınında; yurt dışı gezide yola çıkılan şehir durak değildir (aynı ülkede bir gezide olabilir). Her durak gerçek bir şehir, kasaba ya da ada adı; gece sayıları tam sayı ve toplamı tam olarak verilen geceye eşit. Az durak tercih et (uzun kalış için 2-3). country_code: durağın ülkesinin ISO 3166-1 alpha-2 kodu (ör. TH). arrival_airport_city: ilk uçuşun indiği şehir (havalimanı olan); departure_airport_city: dönüş uçuşunun kalktığı şehir. Bilmiyorsan \"\" yaz.",
+    "Suggest a realistic route of 1 to 4 stops for a trip. The stops are in or near the place visited; abroad, the city they leave from is never a stop (on a trip in their own country it can be). Each stop is a real city, town or island; the nights are whole numbers adding up to exactly the given total. Prefer few stops (2-3 for a long stay). country_code: the stop's country, ISO 3166-1 alpha-2 (e.g. TH). arrival_airport_city: the city the first flight lands in (with an airport); departure_airport_city: where the flight home leaves from. Write \"\" if unsure.",
   )}\n${L("Yer adlarını Türkçe yaz.", "Write the place names in English.")}`;
 
 export function routePrompt(s: StartState): string {
@@ -1496,7 +1608,7 @@ export function routePrompt(s: StartState): string {
   return [
     "<route_request>",
     `${L("Yer", "Place")}: ${s.where?.place ?? ""}${s.where?.country && s.where.country !== s.where.place ? ` (${s.where.country})` : ""}`,
-    s.from ? `${L("Yola çıkış (durak değil)", "Leaving from (not a stop)")}: ${s.from}` : "",
+    s.from ? `${L("Yola çıkış", "Leaving from")}: ${s.from}` : "",
     `${L("Toplam gece", "Total nights")}: ${total}`,
     s.start ? `${L("Başlangıç", "Start")}: ${s.start.date}` : "",
     s.styles.length ? `${L("Tarz", "Style")}: ${s.styles.join(", ")}` : "",
@@ -1508,14 +1620,17 @@ export function routePrompt(s: StartState): string {
 const STOP_NAME = /^[\p{L}][\p{L} .'’-]{1,40}$/u;
 
 /** The model's route, kept only when it holds: 1–4 distinct real-looking names, whole nights adding up to the total. */
-export function acceptRoute(raw: RawRoute, total: number, origin: string | null = null): StartRoute | null {
+export function acceptRoute(raw: RawRoute, total: number, origin: string | null = null, whereCode: string | null = null): StartRoute | null {
   const stops: RouteStop[] = (raw.stops ?? []).map((x) => {
     const code = isoCode(x.country_code);
     return { city: (x.city ?? "").trim(), nights: x.nights, ...(code ? { code } : {}) };
   });
   if (stops.length < 1 || stops.length > 4) return null;
-  // The city they leave from is never a stop (item 2: the route comes from the destination, never the origin).
-  if (origin && stops.some((x) => samePlace(x.city, origin))) return null;
+  // Abroad, the city they leave from is never a stop (item 2: the route comes from the destination, never the
+  // origin); a trip at home may pass through it (Ankara → İstanbul → Bodrum, all in Türkiye).
+  const originCode = origin ? (knownPlaceOf(origin) ? knownCode(knownPlaceOf(origin)!) : countryCodeOfName(origin)) : null;
+  const domestic = Boolean(originCode && whereCode && originCode === whereCode);
+  if (origin && !domestic && stops.some((x) => samePlace(x.city, origin))) return null;
   if (stops.some((x) => !STOP_NAME.test(x.city) || !Number.isInteger(x.nights) || x.nights < 1)) return null;
   if (new Set(stops.map((x) => cityKeyOf(x.city))).size !== stops.length) return null;
   if (stops.reduce((a, b) => a + b.nights, 0) !== total) return null;
@@ -1574,7 +1689,8 @@ export function preparedRoute(s: StartState): StartRoute | null | undefined {
  * place that can be a route (wantsRouteAdvice), none asked for them before. One call per distinct place and nights.
  */
 export function routeToPrepare(s: StartState): string | null {
-  if (stableNights(s) == null || !wantsRouteAdvice(s) || s.route?.confirmed) return null;
+  // Not while a loosely spelt place waits for its yes (the destination may still change).
+  if (s.guess || stableNights(s) == null || !wantsRouteAdvice(s) || s.route?.confirmed) return null;
   const k = routeKey(s);
   return k && !Object.hasOwn(s.prepared.routes, k) ? k : null;
 }
@@ -1599,6 +1715,7 @@ export function photoPlaces(s: Pick<StartState, "where" | "route">): string[] {
 
 /** The places whose photo hasn't been looked for yet (for this destination). */
 export function photosToFind(s: StartState): string[] {
+  if (s.guess) return [];
   const k = whereKey(s);
   const have = s.prepared.photos?.for === k ? s.prepared.photos.urls : {};
   return photoPlaces(s).filter((p) => !Object.hasOwn(have, p));
@@ -1668,7 +1785,6 @@ export function previewOf(s: StartState, ctx: StartCtx): Preview | null {
   const air = airportsOf(s, s.route?.confirmed ? s.route.stops : stopsOf(s).length ? stopsOf(s) : stops);
   const road = s.mode === "road";
   const code = s.where.code ?? countryCodeOfName(s.where.country);
-  const budgetWords: Record<string, string> = { low: L("Ekonomik", "Budget"), mid: L("Orta bütçe", "Mid-range"), high: L("Lüks bütçe", "Luxury budget") };
   return {
     photos: preparedPhotos(s),
     stops,
@@ -1677,7 +1793,7 @@ export function previewOf(s: StartState, ctx: StartCtx): Preview | null {
     when: whenText(s) || null,
     people: s.who ? whoText(s.who, ctx.myName) || null : null,
     styles: knownStyles(s.styles),
-    budget: s.budget && Object.hasOwn(budgetWords, s.budget) ? budgetWords[s.budget] : null,
+    budget: s.budget && Object.hasOwn(BUDGET_WORDS, s.budget) ? budgetWord(s.budget) : null,
     flights: road ? null : air ? (s.from ? `${s.from} ⇄ ${air.arrive}` : air.arrive) : null,
     road,
     country: code ? { code, name: s.where.country ?? s.where.place } : null,
@@ -1804,6 +1920,25 @@ export const placeholderPrint = (i: Item): string =>
 export function isPlaceholder(trip: Pick<Trip, "startGuide">, item: Item): boolean {
   const print = trip.startGuide?.placeholders?.[item.id];
   return print != null && print === placeholderPrint(item) && item.status === "chosen" && item.origin === "chat";
+}
+
+/**
+ * A trip made without dates gets them later in its chat (update_trip): the undated places the start made take them
+ * instead of new ones being made beside them. The stay (when there is one) the whole stay, the flight there the
+ * first day, the flight home the last, a car the whole stay. They stay places to fill (their new prints returned).
+ */
+export function datePlaceholders(trip: Pick<Trip, "startGuide">, items: Item[], dates: { start: string; end: string }): { items: Item[]; prints: Record<string, string> } {
+  const open = items.filter((i) => !i.dates.start && i.status !== "dismissed" && isPlaceholder(trip, i));
+  const dated = (i: Item, start: string, end: string | null): Item => ({ ...i, dates: { ...i.dates, start, end } });
+  const out: Item[] = [];
+  const stays = open.filter((i) => i.category === "stay");
+  if (stays.length === 1) out.push(dated(stays[0], dates.start, dates.end));
+  // Made in order: the flight there first, the flight home after it.
+  const flights = open.filter((i) => i.category === "flight").sort((a, b) => a.createdAt - b.createdAt);
+  if (flights[0]) out.push(dated(flights[0], dates.start, null));
+  if (flights[1]) out.push(dated(flights[1], dates.end, null));
+  for (const car of open.filter((i) => i.category === "transport")) out.push(dated(car, dates.start, dates.end));
+  return { items: out, prints: Object.fromEntries(out.map((i) => [i.id, placeholderPrint(i)])) };
 }
 
 /**
