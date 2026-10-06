@@ -149,21 +149,32 @@ try {
   // countdown on it, the title, the dates, one sentence, the plan in four cells, "Rezervasyonların", and the card.
   const hero = app.locator(".hx");
   const flat = (texts) => texts.map((t) => t.replace(/\s+/g, " ").trim());
-  // The box's "N rezerve · N planlandı · N karar bekliyor" and the list it opens, read off the page and compared:
-  // the same needs, so the same counts and as many rows (one screen once showed three different "karar" counts).
+  // Aşamalar (lifecycle.ts): the box says "Planlananların %X'i rezerve" over "N ihtiyaç karar bekliyor · M rezerve
+  // edilecek"; the bar's label names every number. Read off the page and compared with the list it opens: the same
+  // needs, so the same counts (one screen once showed three different "karar" counts). A heading counts needs; its
+  // rows can be more (one per person).
+  const heroNumbersOnPage = async () => {
+    const head = flat([await app.locator(".hx .hx-progress-head > b").innerText()])[0];
+    const meta = flat([await app.locator(".hx .hx-progress-meta").innerText()])[0];
+    const label = await app.locator(".hx .hx-bar").getAttribute("aria-label");
+    const of = (text, words) => Number(text.match(new RegExp(`(\\d+) ${words}`))?.[1] ?? 0);
+    return { head, meta, label, booked: of(label, "rezerve,"), planned: of(label, "planlandı"), open: of(label, "ihtiyaç karar bekliyor"), pct: Number(await app.locator(".hx .hx-bar").getAttribute("aria-valuenow")) };
+  };
   const listMatchesHero = async (where) => {
-    const line = flat([await app.locator(".hx .hx-progress-count").innerText()])[0];
-    const of = (word) => Number(line.match(new RegExp(`(\\d+) ${word}`))?.[1] ?? 0);
-    const s = { line, booked: of("rezerve"), planned: of("planlandı") + of("rezervasyon kaldı"), open: of("karar bekliyor") };
+    const s = await heroNumbersOnPage();
     const list = app.locator(".hx + .todo-list");
     const wasOpen = (await list.count()) > 0;
     if (!wasOpen) await app.locator(".hx button.hx-progress-count").click();
     const heads = Object.fromEntries(flat(await list.locator(".todo-head").allInnerTexts()).map((t) => [t.replace(/ \d+$/, ""), Number(t.match(/(\d+)$/)[1])]));
     const rows = (label) => list.locator(".todo-group", { has: app.locator(".todo-head", { hasText: label }) }).locator("li").count();
-    assert.equal(heads["Karar bekliyor"] ?? 0, s.open, `${where}: "karar bekliyor" in the box and the list (${line} / ${JSON.stringify(heads)})`);
-    assert.equal(await rows("Karar bekliyor"), s.open, `${where}: one row per need waiting`);
-    assert.equal(heads["Rezerve edilecek"] ?? 0, s.planned, `${where}: "planlandı" in the box is "Rezerve edilecek" in the list (${line} / ${JSON.stringify(heads)})`);
-    assert.equal(await rows("Rezerve edilecek"), s.planned, `${where}: one row per need to book`);
+    const said = JSON.stringify({ ...s, heads });
+    assert.equal(heads["Karar bekliyor"] ?? 0, s.open, `${where}: the needs waiting for a decision, in the box and the list (${said})`);
+    assert.equal(heads["Rezerve edilecek"] ?? 0, s.planned, `${where}: the needs planned in the box are "Rezerve edilecek" in the list (${said})`);
+    assert.ok((heads["Belge eksik"] ?? 0) <= s.booked, `${where}: "Belge eksik" is some of what's booked (${said})`);
+    // The words say the same numbers.
+    if (s.open) assert.ok(`${s.head} ${s.meta}`.includes(`${s.open} ihtiyaç karar bekliyor`), `${where}: "N ihtiyaç karar bekliyor" (${said})`);
+    if (s.planned) assert.ok(s.meta.includes(`${s.planned} rezerve edilecek`), `${where}: "N rezerve edilecek" (${said})`);
+    for (const label of ["Karar bekliyor", "Rezerve edilecek", "Belge eksik"]) assert.ok((await rows(label)) >= (heads[label] ?? 0), `${where}: a row at least per need under ${label}`);
     if (!wasOpen) await app.locator(".hx button.hx-progress-count").click();
     return { ...s, heads };
   };
@@ -195,32 +206,23 @@ try {
   assert.ok(Number(tallyWant[3].split(" ")[0]) >= 4, "every activity and restaurant on the Plan counts, chosen or not");
   // The box counts the stages, so no sentence of counts above it ("3 karar ve 1 rezervasyon bekliyor" said another 3).
   assert.equal(await hero.locator(".hx-lead").count(), 0, "no second set of numbers in the lead");
-  // "Planlama %N" (two-tier bar): what needs a booking on the Plan, booked · planned · waiting for a decision, out
-  // of the section headers' "3/4"s (what takes no booking, a planned taxi or a chore, isn't a need). The ideas
-  // (Yapılacak şeyler, Restoranlar, İlham) have no "3/4" and aren't in it (0.35.3).
+  // The hero's % (spec aşamalar): over what's planned only, (Rezerve + Hazır) ÷ (Planlandı + Rezerve + Hazır); what
+  // waits for a decision is a count beside it. The sample: 2 booked, the boat tour planned, 7 needs to decide.
+  // The ideas (Yapılacak şeyler, Restoranlar, İlham) have no "3/4" and are never needs (0.35.3).
   assert.equal(await app.locator('.cat-sec[data-section="todo"] .cat-count, .cat-sec[data-section="food"] .cat-count').count(), 0, "an idea section has no x/y");
-  const [settled, total] = (await app.locator(".cat-sec .cat-count").allInnerTexts())
-    .map((t) => t.replace(/\s/g, "").split("/").map(Number))
-    .reduce(([a, b], [c, d]) => [a + c, b + d], [0, 0]);
-  assert.ok(total > 0);
-  const stagesLine = flat([await hero.locator(".hx-progress-count").innerText()])[0];
-  const stageOf = (word) => Number(stagesLine.match(new RegExp(`(\\d+) ${word}`))?.[1] ?? 0);
-  const [booked, planned, waiting] = [stageOf("rezerve"), stageOf("planlandı"), stageOf("karar bekliyor")];
-  console.log(`  hero: ${stagesLine} (sections ${settled}/${total})`);
-  // A zero says nothing: only the parts there are, in this order.
-  assert.equal(stagesLine, [booked && `${booked} rezerve`, planned && `${planned} planlandı`, waiting && `${waiting} karar bekliyor`].filter(Boolean).join(" · "));
-  const needs = booked + planned + waiting;
-  assert.ok(waiting > 0 && planned > 0 && booked > 0 && needs <= total, `the sample has all three stages, within the sections' ${total} (${stagesLine})`);
   const atStart = await listMatchesHero("the sample");
+  console.log(`  hero: ${atStart.head} · ${atStart.meta}`);
+  assert.deepEqual([atStart.booked, atStart.planned, atStart.open], [2, 1, 7], JSON.stringify(atStart));
+  assert.equal(atStart.pct, Math.round((atStart.booked / (atStart.booked + atStart.planned)) * 100));
+  assert.equal(atStart.head, `Planlananların %${atStart.pct}'si rezerve`);
+  assert.equal(atStart.meta, "7 ihtiyaç karar bekliyor · 1 rezerve edilecek", JSON.stringify(atStart));
+  assert.deepEqual([atStart.heads["Karar bekliyor"], atStart.heads["Rezerve edilecek"], atStart.heads["Belge eksik"]], [7, 1, 2]);
   // The transfers nobody said anything about are asked apart, outside the stages.
   assert.ok(atStart.heads["Ulaşım · nasıl gidilecek"] > 0, `the transfers' own group (${JSON.stringify(atStart.heads)})`);
-  const planPct = Math.min(Math.round(((booked + planned) / needs) * 100), 99);
-  assert.equal(await hero.locator(".hx-progress-head > b").innerText(), `Planlama %${planPct}`);
-  // The bar: one progressbar, two fills from the left, booked (dark) inside planned (light) — booked + planned.
+  // The bar: one progressbar, the planned set in two tones from the left, booked (dark) inside it (light, whole).
   const planBar = hero.locator(".hx-bar");
   assert.equal(await planBar.getAttribute("role"), "progressbar");
-  assert.equal(await planBar.getAttribute("aria-valuenow"), String(planPct));
-  assert.equal(await planBar.getAttribute("aria-label"), `Planlama: ${booked} rezerve, ${planned} planlandı, ${waiting} karar bekliyor`);
+  assert.equal(await planBar.getAttribute("aria-label"), `${atStart.head}: 2 rezerve, 1 planlandı, 7 ihtiyaç karar bekliyor`);
   const fills = await planBar.evaluate((el) => {
     const of = (sel) => {
       const i = el.querySelector(sel);
@@ -230,8 +232,8 @@ try {
     return { booked: of(".hx-bar-booked"), planned: of(".hx-bar-planned"), count: el.children.length };
   });
   assert.equal(fills.count, 2, "two fills");
-  assert.ok(Math.abs(fills.booked.width - (booked / needs) * 100) < 0.1, `the dark fill is what's booked (${JSON.stringify(fills)})`);
-  assert.ok(Math.abs(fills.planned.width - ((booked + planned) / needs) * 100) < 0.1, `the light fill reaches booked + planned (${JSON.stringify(fills)})`);
+  assert.ok(Math.abs(fills.booked.width - (2 / 3) * 100) < 0.1, `the dark fill is what's booked of the planned set (${JSON.stringify(fills)})`);
+  assert.equal(fills.planned.width, 100, "the light fill is the whole planned set");
   assert.ok(fills.booked.left === "0px" && fills.planned.left === "0px", "both start from the left");
   assert.notEqual(fills.booked.paint, fills.planned.paint, "two tones");
   assert.equal(flat([await hero.locator(".hx-go").innerText()])[0], "Planı tamamla");
@@ -416,13 +418,13 @@ try {
       return { oneLine: barBeside && meta.height < 30 && meta.top >= title.bottom, main: Math.round(main.height), box: Math.round(r(".hx-progress").height) };
     });
   const row1280 = await progressRow();
-  assert.ok(row1280.oneLine && row1280.main <= 53, `1280: the bar beside "Planlama %N", the stages one line under, no taller than before (${JSON.stringify(row1280)})`);
+  assert.ok(row1280.oneLine && row1280.main <= 53, `1280: the bar beside the headline, the stages one line under, no taller than before (${JSON.stringify(row1280)})`);
   await app.locator(".hx").screenshot({ path: `${out}/28a-hero-planned.png` });
   await app.setViewportSize({ width: 1440, height: 900 });
   const row1440 = await progressRow();
-  // 1440 beside the chat: the button beside the bar leaves the words less room, the stages may take two lines (as
-  // "Rezervasyonların · 2/10 onaylandı" did), never more.
-  assert.ok(row1440.main <= 75, `1440: the bar beside "Planlama %N", the stages in two lines at most (${JSON.stringify({ row1280, row1440 })})`);
+  // 1440 beside the chat: the button beside the words leaves them less room, so the bar may go under the headline
+  // and the stages take two lines; the box still no taller than at 1280 (where the button is under it).
+  assert.ok(row1440.main <= 100 && row1440.box <= row1280.box, `1440: the headline, the bar and the stages in four short lines at most (${JSON.stringify({ row1280, row1440 })})`);
   assert.deepEqual(await spilled(), [], "1440 px: every hero cell's text stays inside it");
   await putNote(null);
   await prefTags.filter({ hasText: "Odada mutlaka bir…" }).waitFor({ state: "detached" });
