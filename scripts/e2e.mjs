@@ -54,6 +54,9 @@ const context = await chromium.launchPersistentContext(mkdtempSync(path.join(tmp
 });
 // The offers' live data source answers nothing here: no test depends on live prices.
 await context.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
+// Web search is off unless a test routes it (the start chat looks up an event's dates): never the live server, and
+// "not-configured" is never cached (a "no-result" would be, and answer a later test's search for the same event).
+await context.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
 await frozen(context);
 
 try {
@@ -1786,6 +1789,9 @@ const flow = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir
 });
 // The offers' live data source answers nothing here: no test depends on live prices.
 await flow.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
+// Web search is off unless a test routes it (the start chat looks up an event's dates): never the live server, and
+// "not-configured" is never cached (a "no-result" would be, and answer a later test's search for the same event).
+await flow.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
 // The trip map's tiles (OpenFreeMap), simulated: a small style of its own and empty tiles, so no run depends on (or
 // loads) the real service. The worker's tile requests come through here too. `tileAsks` counts what was asked.
 const tileAsks = { style: 0, tiles: 0 };
@@ -3954,6 +3960,9 @@ const updating = await chromium.launchPersistentContext(mkdtempSync(path.join(tm
 });
 // The offers' live data source answers nothing here: no test depends on live prices.
 await updating.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
+// Web search is off unless a test routes it (the start chat looks up an event's dates): never the live server, and
+// "not-configured" is never cached (a "no-result" would be, and answer a later test's search for the same event).
+await updating.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
 await frozen(updating);
 try {
   const worker = updating.serviceWorkers()[0] ?? (await updating.waitForEvent("serviceworker"));
@@ -4014,6 +4023,9 @@ const safety = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpd
 });
 // The offers' live data source answers nothing here: no test depends on live prices.
 await safety.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
+// Web search is off unless a test routes it (the start chat looks up an event's dates): never the live server, and
+// "not-configured" is never cached (a "no-result" would be, and answer a later test's search for the same event).
+await safety.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
 await frozen(safety);
 try {
   const worker = safety.serviceWorkers()[0] ?? (await safety.waitForEvent("serviceworker"));
@@ -4139,6 +4151,9 @@ const whoGoes = await chromium.launchPersistentContext(mkdtempSync(path.join(tmp
 });
 // The offers' live data source answers nothing here: no test depends on live prices.
 await whoGoes.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
+// Web search is off unless a test routes it (the start chat looks up an event's dates): never the live server, and
+// "not-configured" is never cached (a "no-result" would be, and answer a later test's search for the same event).
+await whoGoes.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
 await frozen(whoGoes);
 try {
   const worker = whoGoes.serviceWorkers()[0] ?? (await whoGoes.waitForEvent("serviceworker"));
@@ -4232,6 +4247,9 @@ const flightDay = await chromium.launchPersistentContext(mkdtempSync(path.join(t
 });
 // The offers' live data source answers nothing here: no test depends on live prices.
 await flightDay.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
+// Web search is off unless a test routes it (the start chat looks up an event's dates): never the live server, and
+// "not-configured" is never cached (a "no-result" would be, and answer a later test's search for the same event).
+await flightDay.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
 await flightDay.clock.install({ time: new Date("2026-10-14T12:00:00") });
 try {
   const worker = flightDay.serviceWorkers()[0] ?? (await flightDay.waitForEvent("serviceworker"));

@@ -26,6 +26,7 @@ import { L, withLang } from "../../lib/i18n";
 import { loadHome } from "../../lib/passport";
 import { wouldMake } from "../../lib/startCreate";
 import { removeDraft, saveDraft, worthKeeping } from "../../lib/startDrafts";
+import { applyLiveDates, checkingLine, lookupFor, startLookup, type DatesLookup } from "../../lib/startEventDates";
 import { rulesPreview } from "../../lib/startHooks";
 import {
   applyAnswer, applyExtracted, applyText, askAgain, budgetChips, budgetWord, canGenerate, checklist, autoPrint, drawingLine, isComplete, isGoCommand, knownLines, lineLink, mergeExtracted, startName,
@@ -477,6 +478,25 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     }
   }, [state, phase]);
 
+  // The event's dates looked up live (2026-10-07, startEventDates.ts): one search per event and year, fired as soon
+  // as the intent is known, never waited for; its step line shows while it runs, its answer is applied when it lands
+  // (dropped once the trip is being made or the screen was left).
+  const datesAsked = useRef(new Set<string>());
+  const [checking, setChecking] = useState<DatesLookup | null>(null);
+  useEffect(() => {
+    if (phase !== "chat" || left.current) return;
+    const started = startLookup(live.current, ctx.today, datesAsked.current);
+    if (!started) return;
+    const { look, job } = started;
+    setChecking(look);
+    void job.then((r) => {
+      setChecking((c) => (c?.key === look.key ? null : c));
+      if (stale()) return;
+      const next = T(() => applyLiveDates(live.current, look, r, ctx, Date.now()));
+      if (next !== live.current) commit(next);
+    });
+  }, [state, phase]);
+
   function answer(a: Answer, label: string) {
     if (busy.current || stale()) return;
     nextTurn();
@@ -648,9 +668,11 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     const drawing = !drawingNow ? null : !state.route ? "new" : state.route.source === "circuit" ? "refine" : null;
     const showChips = phase === "chat" && !holding && question && last?.role === "assistant" && !(question.id === "route" && drawing === "new" && !state.editingRoute);
     const generating = phase === "generating";
-    // The step line (v5): the model reading the message, else the route being thought of (only while each call runs).
+    // The step line (v5): the model reading the message, else the route being thought of, else the event's dates being
+    // looked up while the intent is still that event's (only while each call runs).
     const routing = drawing === "new" && q === "route" && !state.editingRoute;
-    const stepLine = reading && !generating ? { call: "read", text: reading.line } : routing && !generating ? { call: "route", text: routeThinkingLine() } : null;
+    const checkingNow = checking && lookupFor(state, ctx.today)?.key === checking.key ? checking : null;
+    const stepLine = generating ? null : reading ? { call: "read", text: reading.line } : routing ? { call: "route", text: routeThinkingLine() } : checkingNow ? { call: "dates", text: checkingLine(checkingNow) } : null;
     const readingIds = reading && !generating ? reading.rows : [];
 
     return (

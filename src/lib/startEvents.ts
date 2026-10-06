@@ -34,6 +34,11 @@ export interface Intent {
   /** On now (it started before today): its dates from today on. */
   running?: boolean;
   /**
+   * Its dates looked up on the web (startEventDates.ts, 2026-10-07): sure when read from its official site (dates no
+   * longer approx), else "teyitsiz" (still approx); the site's name and link said with them. Missing: not looked up.
+   */
+  checked?: { sure: boolean; site: string | null; url: string | null } | null;
+  /**
    * kind "place": the event named somewhere it isn't held ("Oktoberfest İstanbul"), only a theme for the traveller's
    * own place; the event as the table has it, in case they meant that one (asked).
    */

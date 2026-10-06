@@ -2425,7 +2425,7 @@ export function checklist(s: StartState, ctx: StartCtx): ChecklistRow[] {
     { id: "who", label: L("KİMLE", "WHO'S COMING"), value: whoText(s.who, ctx.myName) || L("Kimle gidiyorsun?", "Who's coming?"), done: !!s.who && !open(s, "count"), ask: s.who && open(s, "count") ? "count" : "who", required: false, skipped: s.skipped.includes("who") },
     {
       id: "when", label: L("NE ZAMAN", "WHEN"),
-      value: whenText(s) || (s.intent?.dates ? `${formatDateRange(s.intent.dates.start, s.intent.dates.end)}${s.intent.dates.approx ? L(" (tahmini)", " (estimated)") : ""} · ${L("toplam kaç gün?", "how many days in all?")}` : "") || L("Ne zaman, kaç gün?", "When, and for how long?"),
+      value: whenText(s) || (s.intent?.dates ? `${formatDateRange(s.intent.dates.start, s.intent.dates.end)}${s.intent.dates.approx ? (s.intent.checked ? L(" (teyitsiz)", " (unconfirmed)") : L(" (tahmini)", " (estimated)")) : ""} · ${L("toplam kaç gün?", "how many days in all?")}` : "") || L("Ne zaman, kaç gün?", "When, and for how long?"),
       done: !!tripDates(s),
       ask: !s.duration ? "duration" : "start", required: true, skipped: s.skipped.includes("duration") || s.skipped.includes("start"),
     },
@@ -2462,6 +2462,14 @@ export function withEventDates(s: StartState): StartState {
   const date = s.intent?.running ? d.start : plusDays(d.start, -Math.floor(extra / 2));
   if (s.start?.date === date && s.start.approx === d.approx) return s;
   return { ...s, start: { date, approx: d.approx, event: true } };
+}
+
+/**
+ * The event's intent replaced (its dates read live, startEventDates.ts): the trip's days worked out from the event
+ * and its route follow, as for any change of the event's dates; a start the traveller gave stays.
+ */
+export function withIntent(s: StartState, intent: Intent, now: number): StartState {
+  return keepRoute(s, { ...s, intent, updatedAt: now });
 }
 
 /** Whether the month of a day meets the event's days. */
