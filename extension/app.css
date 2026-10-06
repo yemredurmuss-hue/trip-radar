@@ -83,6 +83,11 @@ a { color: var(--accent); text-decoration: none; }
 }
 .btn-link { background: none; border: 0; color: var(--accent); font-size: 17px; padding: 0; }
 .thinking { color: var(--muted); font-size: 15px; }
+/* The chat's turn, step by step ("Lizbon otelini fikre alıyorum…"), the board changing with each (0.36.47). */
+.chat-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.chat-steps li { color: var(--muted); }
+.chat-steps li.now { color: var(--ink, inherit); font-weight: 500; }
+.chat-steps li.done span { color: var(--ok, #2e9e5b); }
 .chat-error { color: var(--danger); font-size: 14px; }
 .composer {
   margin: 0 20px 20px; border: 1px solid var(--line); border-radius: 20px; display: flex; align-items: center;
