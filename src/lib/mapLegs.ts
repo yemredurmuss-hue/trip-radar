@@ -19,6 +19,8 @@ export type MapMode = "flight" | "train" | "bus" | "ferry" | "car";
 export interface PlaceRef {
   name: string;
   geo?: LatLng | null;
+  /** No place is said (nights without a city): never looked up, never on the map. */
+  unknown?: boolean;
 }
 export interface MapPlace extends LatLng {
   name: string;
@@ -118,61 +120,100 @@ function stopsOf(plan: Plan): StopRef[] {
 export function mapRoute(plan: Plan, legs: Leg[], opts: { home?: string | null } = {}): MapRoute {
   const stops = stopsOf(plan);
   const blocks = plan.stayBlocks.length;
+  const travels = travelsOf(plan);
   const inbound = legs.find((l) => l.kind === "arrival" && l.slot === 0) ?? null;
   const outbound = [...legs].reverse().find((l) => l.kind === "departure" && l.slot === blocks) ?? null;
   const end = (t: Travel | null, side: "from" | "to") => {
     const v = itemOf(t)?.flight?.[side]?.trim();
     return v ? placeName(v) : null;
   };
-  const homeName = opts.home?.trim() || end(inbound?.travel ?? null, "from") || end(outbound?.travel ?? null, "to") || null;
+  const used = new Set<string>();
+  [inbound?.travel, outbound?.travel, ...legs.filter((l) => l.kind === "move").map((l) => l.travel)].forEach((t) => t && used.add(travelKey(t)));
+  /**
+   * A connection booked on its own (IST → FRA, then FRA → CPH): the same-day trips that land where this one leaves
+   * (`back`: that leave where this one lands), in order. Home is where the first of them leaves, not Frankfurt.
+   */
+  const chain = (t: Travel | null, back: boolean): Travel[] => {
+    const found: Travel[] = [];
+    let at = t;
+    while (at) {
+      const here = at;
+      const next = travels.find(
+        (u) => !used.has(travelKey(u)) && !found.includes(u) &&
+          (back ? u.day === here.arrives && sameCity(end(u, "from"), end(here, "to")) : u.arrives === here.day && sameCity(end(u, "to"), end(here, "from"))),
+      );
+      if (!next) break;
+      found.push(next);
+      used.add(travelKey(next));
+      at = next;
+    }
+    return back ? found : found.reverse();
+  };
+  const before = chain(inbound?.travel ?? null, false);
+  const after = chain(outbound?.travel ?? null, true);
+  const homeName =
+    opts.home?.trim() || end(before[0] ?? inbound?.travel ?? null, "from") || end(after.at(-1) ?? outbound?.travel ?? null, "to") || null;
   const home: PlaceRef | null = homeName ? { name: homeName } : null;
   const stopAt = (city: string | null) => (city ? (stops.find((s) => sameCity(s.name, city)) ?? null) : null);
   const refOf = (s: StopRef): PlaceRef => ({ name: s.name, geo: s.geo });
 
-  const out: LegRef[] = [];
-  const used = new Set<string>();
-  const travelLeg = (key: string, kind: LegRef["kind"], date: string, from: PlaceRef, to: PlaceRef, t: Travel | null, mode: LegMode | null, booked: boolean) => {
-    if (t) used.add(travelKey(t));
+  const outs: LegRef[] = [];
+  const rest: LegRef[] = [];
+  const backs: LegRef[] = [];
+  const legOf = (key: string, kind: LegRef["kind"], date: string, from: PlaceRef, to: PlaceRef, t: Travel | null, mode: LegMode | null, booked: boolean): LegRef => {
     const m = mapModeOf(mode ?? t?.mode ?? null);
-    out.push({ key, kind, date, from, to, mode: m, minutes: minutesOf(itemOf(t), m), booked });
+    return { key, kind, date, from, to, mode: m, minutes: minutesOf(itemOf(t), m), booked };
   };
+  const ownLeg = (t: Travel, kind: LegRef["kind"]) =>
+    legOf(`${kind}:${travelKey(t)}`, kind, t.day, { name: end(t, "from")! }, { name: end(t, "to")! }, t, t.mode, t.settled?.status === "booked");
 
   const first = stops[0];
   if (first && inbound) {
     const t = inbound.travel;
     const from = end(t, "from") ?? home?.name ?? null;
-    if (from) travelLeg(`out:${inbound.key}`, "out", t?.day ?? inbound.date, { name: from }, refOf(first), t, t?.mode ?? inbound.via, t?.settled?.status === "booked");
+    for (const c of before) outs.push(ownLeg(c, "out"));
+    if (from) outs.push(legOf(`out:${inbound.key}`, "out", t?.day ?? inbound.date, { name: from }, refOf(first), t, t?.mode ?? inbound.via, t?.settled?.status === "booked"));
   }
   for (const l of legs) {
     if (l.kind !== "move") continue;
     const [a, b] = [stopAt(l.from.city), stopAt(l.to.city)];
     if (!a || !b) continue;
-    travelLeg(`move:${l.key}`, "move", l.date, refOf(a), refOf(b), l.travel, l.mode, l.status === "booked");
+    rest.push(legOf(`move:${l.key}`, "move", l.date, refOf(a), refOf(b), l.travel, l.mode, l.status === "booked"));
+  }
+  // Nights with no place said between two cities: the way there and on can't be drawn (counted, not dropped).
+  const bs = plan.stayBlocks;
+  for (let i = 0; i < bs.length; i++) {
+    if (bs[i].city || (i > 0 && !bs[i - 1].city)) continue;
+    let j = i;
+    while (j < bs.length && !bs[j].city) j++;
+    const [prev, next] = [bs.slice(0, i).reverse().find((x) => x.city), bs[j]];
+    if (!prev || !next) continue;
+    const nowhere: PlaceRef = { name: "?", unknown: true };
+    rest.push(legOf(`gap:${bs[i].range.start}:in`, "move", bs[i].range.start, { name: placeName(prev.city!) }, nowhere, null, null, false));
+    rest.push(legOf(`gap:${bs[i].range.start}:on`, "move", next.range.start, nowhere, { name: placeName(next.city!) }, null, null, false));
   }
   const last = stops[stops.length - 1];
-  const back: LegRef[] = [];
   if (last && outbound) {
     const t = outbound.travel;
     const to = end(t, "to") ?? home?.name ?? null;
-    if (to) {
-      travelLeg(`back:${outbound.key}`, "back", t?.day ?? outbound.date, refOf(last), { name: to }, t, t?.mode ?? outbound.via, t?.settled?.status === "booked");
-      back.push(out.pop()!);
-    }
+    if (to) backs.push(legOf(`back:${outbound.key}`, "back", t?.day ?? outbound.date, refOf(last), { name: to }, t, t?.mode ?? outbound.via, t?.settled?.status === "booked"));
+    for (const c of after) backs.push(ownLeg(c, "back"));
   }
-  // Flights and trips saved that no change of city took (a trip with no stays yet, a side trip): their own ends.
-  for (const t of travelsOf(plan)) {
-    if (used.has(travelKey(t))) continue;
+  // Flights and trips chosen or booked that no change of city took (a trip with no stays yet, a side trip): their
+  // own ends. An option only saved isn't drawn: it's one of the alternatives, not a way the trip goes.
+  for (const t of travels) {
+    if (used.has(travelKey(t)) || !t.settled) continue;
     const [from, to] = [end(t, "from"), end(t, "to")];
     if (!from || !to || sameCity(from, to)) continue;
-    travelLeg(`trip:${travelKey(t)}`, "move", t.day, { name: from }, { name: to }, t, t.mode, t.settled?.status === "booked");
+    rest.push(ownLeg(t, "move"));
   }
-  const [outs, rest] = [out.filter((l) => l.kind === "out"), out.filter((l) => l.kind !== "out")];
   rest.sort((x, y) => x.date.localeCompare(y.date));
-  return { home, stops, legs: [...outs, ...rest, ...back] };
+  return { home, stops, legs: [...outs, ...rest, ...backs] };
 }
 
 /** Coordinates the app knows without asking: the saved page's, else the city table's (an airport code by its city). */
 export function knownCoord(ref: PlaceRef): LatLng | null {
+  if (ref.unknown) return null;
   if (ref.geo) return ref.geo;
   return cityCoord(ref.name) ?? cityCoord(cityOfAirport(ref.name)) ?? null;
 }
@@ -184,13 +225,14 @@ export const geocodeQuery = (ref: PlaceRef): string => (isCode(ref.name) ? `${ai
 export function unplaced(route: MapRoute): PlaceRef[] {
   const all = [...(route.home ? [route.home] : []), ...route.stops, ...route.legs.flatMap((l) => [l.from, l.to])];
   const seen = new Map<string, PlaceRef>();
-  for (const r of all) if (!knownCoord(r) && !seen.has(geocodeQuery(r))) seen.set(geocodeQuery(r), r);
+  for (const r of all) if (!r.unknown && !knownCoord(r) && !seen.has(geocodeQuery(r))) seen.set(geocodeQuery(r), r);
   return [...seen.values()];
 }
 
 /** The route on the map: `coordOf` places what the tables don't (geocoded); a journey with an end it can't place is left off. */
 export function placeRoute(route: MapRoute, coordOf: (ref: PlaceRef) => LatLng | null = () => null): TripMapData {
   const place = (r: PlaceRef): MapPlace | null => {
+    if (r.unknown) return null;
     const c = knownCoord(r) ?? coordOf(r);
     return c ? { name: r.name, lat: c.lat, lng: c.lng } : null;
   };

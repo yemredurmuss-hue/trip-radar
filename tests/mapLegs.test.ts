@@ -137,11 +137,48 @@ describe("mapLegs: every journey of the plan, in date order", () => {
     expect(brief(map)).toEqual(["out İstanbul → Amsterdam flight planned", "back Amsterdam → İstanbul ? planned"]);
   });
 
-  it("draws a saved flight no change of city took (a side trip)", () => {
-    const side = flight("Day trip", "CPH", "OSL", "2026-10-10T08:00", "2026-10-10T09:10", "saved");
-    const { map } = mapOf([...DK_NL, side]);
+  it("draws a side trip once it's chosen or booked, never while it's only saved (alternatives aren't the route)", () => {
+    const oslo = flight("Day trip", "CPH", "OSL", "2026-10-10T08:00", "2026-10-10T09:10", "saved");
+    const berlin = flight("Day trip 2", "CPH", "BER", "2026-10-10T08:30", "2026-10-10T09:40", "saved");
+    const saved = brief(mapOf([...DK_NL, oslo, berlin]).map);
+    expect(saved.some((l) => /Oslo|Berlin/.test(l))).toBe(false);
+    const { map } = mapOf([...DK_NL, { ...oslo, status: "chosen" }, berlin]);
     expect(brief(map)).toContain("move Kopenhag → Oslo flight planned");
+    expect(brief(map).some((l) => /Berlin/.test(l))).toBe(false);
     expect(map.legs.at(-1)!.kind).toBe("back");
+  });
+
+  it("an unchosen flight for another need isn't drawn (IST → LIS saved while IST → OPO is chosen)", () => {
+    const { map } = mapOf([
+      flight("TK", "IST", "OPO", "2026-10-08T07:00", "2026-10-08T10:00", "chosen"),
+      flight("Pegasus", "IST", "LIS", "2026-10-08T08:00", "2026-10-08T11:00", "saved"),
+      stay("A", "Porto", "2026-10-08", "2026-10-17"),
+    ]);
+    expect(brief(map)).toEqual(["out İstanbul → Porto flight planned", "back Porto → İstanbul ? planned"]);
+  });
+
+  it("a connection booked on its own is part of the way out: home is where it starts (not Frankfurt)", () => {
+    const { map } = mapOf([
+      item("LH 1", { ...flight("L1", "IST", "FRA", "2026-10-08T07:00", "2026-10-08T09:00"), needKey: "flight:ist-fra" }),
+      item("LH 2", { ...flight("L2", "FRA", "CPH", "2026-10-08T10:00", "2026-10-08T11:30"), needKey: "flight:fra-cph" }),
+      stay("A", "Kopenhag", "2026-10-08", "2026-10-17"),
+      item("LH 3", { ...flight("L3", "CPH", "FRA", "2026-10-17T12:00", "2026-10-17T13:30"), needKey: "flight:cph-fra" }),
+      item("LH 4", { ...flight("L4", "FRA", "IST", "2026-10-17T15:00", "2026-10-17T19:00"), needKey: "flight:fra-ist" }),
+    ]);
+    expect(map.home?.name).toBe("İstanbul");
+    expect(brief(map)).toEqual([
+      "out İstanbul → Frankfurt flight booked",
+      "out Frankfurt → Kopenhag flight booked",
+      "back Kopenhag → Frankfurt flight booked",
+      "back Frankfurt → İstanbul flight booked",
+    ]);
+  });
+
+  it("nights with no place said between two cities: the ways there and on are counted as missing, not dropped", () => {
+    const { plan, legs, map } = mapOf([stay("A", "Porto", "2026-10-08", "2026-10-10"), item("B", { dates: { start: "2026-10-10", end: "2026-10-14", source: "url" }, status: "booked" }), stay("C", "Lizbon", "2026-10-14", "2026-10-17")], { home: "İstanbul" });
+    expect(map.missing.map((l) => `${l.from.name} → ${l.to.name}`)).toEqual(["Porto → ?", "? → Lizbon"]);
+    // Nothing to look up for them.
+    expect(unplaced(mapRoute(plan, legs))).toEqual([]);
   });
 });
 
