@@ -35,7 +35,7 @@ import { LegCard } from "./cards/LegCard";
 import { EmptyLegCard, EmptyRecordCard } from "./cards/EmptyCard";
 import { EmptyEnvContext, type EmptyEnv } from "./cards/emptyEnv";
 import { isEmptyLeg, isEmptyRecord } from "../lib/emptyCards";
-import { NO_SOURCE } from "../lib/offerSource";
+import { liveSource } from "../lib/offerSources";
 import { foreignCountries, homeFromFlights } from "../lib/suggestions";
 import { CardEnvContext, NavGroup, PlanCard, type CardEnv } from "./cards/PlanCard";
 import { SilhouetteDefs } from "./cards/Silhouettes";
@@ -589,7 +589,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     travellers: who.count || null,
     esimCountries,
     // No offers' source is connected yet: the "✨ Senin için N öneri" row is never drawn.
-    offers: NO_SOURCE,
+    offers: liveSource,
     // Kişiye özel rezervasyon: whose a plan is, a person's own head count and place.
     trip,
     items,

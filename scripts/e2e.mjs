@@ -52,6 +52,8 @@ const context = await chromium.launchPersistentContext(mkdtempSync(path.join(tmp
   // Behind a proxy (CI/sandbox), route the browser through it so real API calls can be checked.
   ...(process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY } } : {}),
 });
+// The offers' live data source answers nothing here: no test depends on live prices.
+await context.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
 await frozen(context);
 
 try {
@@ -1684,6 +1686,8 @@ const flow = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir
   // The trip map (MapLibre) needs WebGL 2: headless Chromium draws it in software.
   args: [...HEADLESS_ARGS, LANG_ARG, "--use-angle=swiftshader", "--enable-unsafe-swiftshader", `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
 });
+// The offers' live data source answers nothing here: no test depends on live prices.
+await flow.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
 // The trip map's tiles (OpenFreeMap), simulated: a small style of its own and empty tiles, so no run depends on (or
 // loads) the real service. The worker's tile requests come through here too. `tileAsks` counts what was asked.
 const tileAsks = { style: 0, tiles: 0 };
@@ -2749,8 +2753,8 @@ try {
     "https://www.viator.com/searchResults/all?text=Canggu",
     "https://www.klook.com/search/result/?query=Canggu",
   ]);
-  // No AI source: no offers' row anywhere; the logos are drawn here (no request to a brand's site).
-  assert.equal(await panel.locator(".ek-offers").count(), 0, "no AI row without a data source");
+  // The source finds nothing (routed empty): no offers' row anywhere; the logos are drawn here (no request to a brand's site).
+  assert.equal(await panel.locator(".ek-offers").count(), 0, "no offers' row when the source finds nothing");
   assert.equal(await panel.locator(".ek-card img").count(), 0, "no brand image fetched");
   // The look: a white ground in a dashed frame, the cities 17 px.
   assert.deepEqual(await outFlight.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopStyle, getComputedStyle(el.querySelector(".ek-end b")).fontSize]), ["rgb(255, 255, 255)", "dashed", "17px"]);
@@ -3595,6 +3599,8 @@ const updating = await chromium.launchPersistentContext(mkdtempSync(path.join(tm
   ...TURKISH,
   args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${installDir}`, `--load-extension=${installDir}`],
 });
+// The offers' live data source answers nothing here: no test depends on live prices.
+await updating.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
 await frozen(updating);
 try {
   const worker = updating.serviceWorkers()[0] ?? (await updating.waitForEvent("serviceworker"));
@@ -3653,6 +3659,8 @@ const safety = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpd
   ...TURKISH,
   args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
 });
+// The offers' live data source answers nothing here: no test depends on live prices.
+await safety.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
 await frozen(safety);
 try {
   const worker = safety.serviceWorkers()[0] ?? (await safety.waitForEvent("serviceworker"));
@@ -3776,6 +3784,8 @@ const whoGoes = await chromium.launchPersistentContext(mkdtempSync(path.join(tmp
   ...TURKISH,
   args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
 });
+// The offers' live data source answers nothing here: no test depends on live prices.
+await whoGoes.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
 await frozen(whoGoes);
 try {
   const worker = whoGoes.serviceWorkers()[0] ?? (await whoGoes.waitForEvent("serviceworker"));
@@ -3867,6 +3877,8 @@ const flightDay = await chromium.launchPersistentContext(mkdtempSync(path.join(t
   ...TURKISH,
   args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
 });
+// The offers' live data source answers nothing here: no test depends on live prices.
+await flightDay.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
 await flightDay.clock.install({ time: new Date("2026-10-14T12:00:00") });
 try {
   const worker = flightDay.serviceWorkers()[0] ?? (await flightDay.waitForEvent("serviceworker"));
