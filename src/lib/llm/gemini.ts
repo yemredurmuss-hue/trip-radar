@@ -134,7 +134,7 @@ export function geminiProvider(client: GeminiClient, model: string, retryWaitMs 
       return parsed.data;
     },
 
-    async chatStep(history: ChatMessage[], system: string, tools: ToolSpec[]): Promise<ChatStep | null> {
+    async chatStep(history: ChatMessage[], system: string, tools: ToolSpec[], opts: CallOptions = {}): Promise<ChatStep | null> {
       const response = await withRetry(
         () =>
           client.models.generateContent({
@@ -151,6 +151,7 @@ export function geminiProvider(client: GeminiClient, model: string, retryWaitMs 
                   })),
                 },
               ],
+              ...(opts.signal ? { abortSignal: opts.signal } : {}),
             },
           }),
         retryWaitMs,

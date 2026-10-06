@@ -6,7 +6,7 @@
 // what's out of the way (ruled out, closed by a booking, "Gerek yok") at the end of its own section. Pure:
 // derived on every render, nothing stored but which sections the traveller opened.
 import { cityOfAirport } from "./airports";
-import { isIdea, needsBooking } from "./booking";
+import { isIdea, needsBooking, setAside } from "./booking";
 import { legTransportMode, TICKET_MODES, transportMode } from "./cardKinds";
 import { L } from "./i18n";
 import { nNights } from "./i18nText";
@@ -208,12 +208,18 @@ function legState(leg: Leg): EntryState {
   const mode = leg.choice?.mode ?? leg.mode;
   const planned = mode != null || leg.status === "chosen" || leg.status === "planned";
   if (!planned) return "empty";
-  return leg.kind === "move" && mode != null && LEG_TICKETS.includes(mode) ? "book" : "done";
+  return leg.kind === "move" && mode != null && LEG_TICKETS.includes(mode) && !leg.choice?.noBooking ? "book" : "done";
 }
 
 /** Booked (or an eSIM chosen and put in: "Kurdum") is done; chosen is still to buy; else options to pick from. */
 const settledState = (items: Item[]): EntryState =>
-  items.some((i) => i.status === "booked" || (i.status === "chosen" && i.installedAt)) ? "done" : items.some((i) => i.status === "chosen") ? "book" : "decide";
+  items.some((i) => i.status === "booked" || (i.status === "chosen" && i.installedAt)) ? "done" : items.some((i) => i.status === "chosen") ? (asideOnly(items) ? "done" : "book") : "decide";
+
+/** What's chosen there was all set aside as needing no booking (booking.setAside): planned, an idea, nothing to book. */
+const asideOnly = (items: Item[]): boolean => {
+  const chosen = items.filter((i) => i.status === "chosen");
+  return chosen.length > 0 && chosen.every(setAside);
+};
 
 /** The eSIM put in ("Kurdum") is done like a booking. */
 const itemState = (item: Item): EntryState => {
@@ -230,7 +236,7 @@ function entryState(entry: TimelineEntry): EntryState {
     case "travel": {
       const t = entry.travel;
       if (entry.leg?.choice?.booked) return "done";
-      if (t) return t.settled ? (t.settled.status === "booked" ? "done" : "book") : "decide";
+      if (t) return t.settled ? (t.settled.status === "booked" || setAside(t.settled) ? "done" : "book") : "decide";
       return entry.leg ? legState(entry.leg) : "empty";
     }
     case "leg":
@@ -238,7 +244,10 @@ function entryState(entry: TimelineEntry): EntryState {
     case "stay": {
       const b = entry.block;
       if (b.kind === "booked") return "done";
-      if (b.kind === "chosen") return "book";
+      if (b.kind === "chosen") return setAside(b.item) ? "done" : "book";
+      // A stay said in the chat with no place yet, set aside as needing no booking: an idea, nothing to find (its
+      // saved options, if any, wait as options; the need takes no booking).
+      if (b.slot && setAside(b.slot)) return "done";
       return b.groups.length ? "decide" : "empty";
     }
     case "event":
@@ -397,6 +406,7 @@ function rowStatus(section: SectionId, state: EntryState, items: Item[], options
         return { status: items.some((i) => i.doneAt) ? L("Yapıldı", "Done") : L("Güne eklendi", "On a day"), ok: true };
       }
       const booked = items.some((i) => i.status === "booked");
+      if (!booked && asideOnly(items)) return { status: L("Fikir", "Idea"), ok: true };
       if (!booked) return { status: items.some((i) => i.installedAt) ? L("Kuruldu", "Installed") : L("Planlandı", "Planned"), ok: true };
       return { status: section === "stay" || section === "food" ? L("Rezerve", "Booked") : L("Alındı", "Booked"), ok: true };
     }
@@ -469,6 +479,8 @@ function draftStage(d: Draft, ctxOf: (item: Item) => StageCtx): Stage | null {
   const leg = d.piece.kind === "entry" ? (d.piece.entry.kind === "leg" ? d.piece.entry.leg : d.piece.entry.kind === "travel" ? (d.piece.entry.leg ?? null) : null) : null;
   const anyBooked = d.items.some((i) => i.status === "booked" || (i.installedAt != null && decided(i)));
   if (leg && legBooked(leg) && !anyBooked) return "booked";
+  // All that's decided there was set aside as needing no booking (booking.setAside): out of the stages.
+  if (!anyBooked && asideOnly(d.items)) return null;
   if (d.state === "done" && !anyBooked) return null;
   if (d.state === "book" && !d.items.some(decided)) return "planned";
   return needStageOf(d.items, ctxOf);

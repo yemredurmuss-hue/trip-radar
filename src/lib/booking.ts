@@ -101,8 +101,15 @@ export function bookingByKind(item: Item): Booking {
  */
 const restaurant = (item: Item) => item.category === "food";
 
-/** A thing to do by its evidence; the rest: a booking made is a booking, then the record's own answer, then its kind. */
+/** Set aside by the traveller as needing no booking (types.Item.noBooking), and not booked since. */
+export const setAside = (item: Item): boolean => item.noBooking != null && item.status !== "booked";
+
+/**
+ * The traveller's word first (set aside: none); then a thing to do by its evidence; the rest: a booking made is a
+ * booking, then the record's own answer, then its kind.
+ */
 export function bookingOf(item: Item): Booking {
+  if (setAside(item)) return "none";
   if (restaurant(item)) return item.status === "booked" ? "needed" : "none";
   if (isPaperwork(item)) return "needed";
   if (neverBooked(item)) return "none";

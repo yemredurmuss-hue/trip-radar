@@ -3213,6 +3213,51 @@ try {
   await flow.unroute("https://generativelanguage.googleapis.com/**", esimModel);
   console.log("✓ chat bookings: '10 GB aldım' with the eSIM on the plan updates that card (10 GB · Portekiz, still installed), one eSIM, in Diğer's 'Tüm gezi' row");
 
+  // 20d1b. "Book etmemiz gerekenleri yaptık, gerisi fikir olarak kalsın" (0.36.47): the chat sets every unbooked plan
+  // aside with set_booking_need; while it works the chat lists its steps ("X fikre alınıyor", ticked as it goes) and
+  // the board changes with each; then nothing is left to book: the hero's % is 100 and the cards say "Fikir".
+  const asideBefore = (await tripRecords("Portekiz")).items.filter((i) => i.status === "chosen" && i.noBooking == null);
+  let asideReplied = false;
+  const asideModel = async (route) => {
+    const body = route.request().method() === "POST" ? route.request().postDataJSON() : null;
+    if (!body?.contents || body.generationConfig?.responseJsonSchema) return route.fallback();
+    const last = JSON.stringify(body.contents.at(-1));
+    if (last.includes("functionResponse") && last.includes("kept_as_ideas")) {
+      // The reply comes a little later, so the steps can be seen on screen while it's written.
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      asideReplied = true;
+      return route.fulfill(reply([{ text: "Rezerve edilmeyenleri planda fikir olarak bıraktım." }]));
+    }
+    if (last.includes("gerisi fikir olarak kalsın")) {
+      return route.fulfill(reply([{ functionCall: { id: "nb-1", name: "set_booking_need", args: { all_unbooked: true, item_ids: [], leg_keys: [], needed: false } } }]));
+    }
+    return route.fallback();
+  };
+  await flow.route("https://generativelanguage.googleapis.com/**", asideModel);
+  await esimBox.fill("book etmemiz gerekenleri yaptık, gerisi fikir olarak kalsın");
+  await board.getByRole("button", { name: "Gönder" }).click();
+  if (asideBefore.length) {
+    await board.locator(".chat-steps li.done", { hasText: "fikre alınıyor" }).first().waitFor({ timeout: 15000 });
+    await board.screenshot({ path: `${out}/27b-aside-steps.png` });
+    assert.ok(!asideReplied, "the steps show before the reply");
+  }
+  await board.locator(".msg-assistant", { hasText: "Rezerve edilmeyenleri planda fikir olarak bıraktım." }).waitFor({ timeout: 20000 });
+  assert.equal(await board.locator(".chat-steps").count(), 0, "the steps go once the reply is there");
+  const asideAfter = (await tripRecords("Portekiz")).items;
+  // Every concrete plan set aside; an empty one ("Konaklama · Porto", no hotel) stays a gap to find.
+  assert.ok(asideAfter.some((i) => i.noBooking != null), "something set aside");
+  assert.equal(asideAfter.filter((i) => asideBefore.some((b) => b.id === i.id) && i.status !== "chosen").length, 0, "nothing ruled out or deleted");
+  const asideHero = await board.locator(".hx .hx-bar").getAttribute("aria-label");
+  // What's still "Rezerve edilecek", by name, for the message.
+  await board.locator(".hx button.hx-progress-count").click();
+  const asideLeft = await board.locator(".hx + .todo-list .todo-group", { has: board.locator(".todo-head", { hasText: "Rezerve edilecek" }) }).locator("li").allInnerTexts();
+  await board.locator(".hx button.hx-progress-count").click();
+  console.log("  left to book:", JSON.stringify(asideLeft), JSON.stringify(asideAfter.filter((i) => i.status === "chosen").map((i) => [i.name, i.category, i.plannedKind ?? null, i.noBooking ?? null])));
+  assert.ok(!/(\d+) planlandı/.test(asideHero ?? "") || /\b0 planlandı/.test(asideHero ?? ""), `nothing left planned to book (${asideHero})`);
+  await board.screenshot({ path: `${out}/27c-aside-done.png` });
+  await flow.unroute("https://generativelanguage.googleapis.com/**", asideModel);
+  console.log(`✓ chat 'gerisi fikir olarak kalsın': ${asideBefore.length} unbooked plans set aside one step at a time, the steps shown as it worked, none left to book (${asideHero})`);
+
   // 20d2. Web search: "Ozora 2027 tarihlerini araştır" → the chat calls web_search; while it runs the thinking line
   // says "Web'de arıyorum…"; the answer ends with "Kaynak:" and the site's link. Only the question goes out.
   const searched = [];

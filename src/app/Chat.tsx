@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
 import { resumeSearches, sendMessage } from "../lib/assistant";
-import { chatStatusOf, onChatStatus, type ChatStatus } from "../lib/chatStatus";
+import { chatStatusOf, chatStepsOf, onChatStatus, type ChatStatus, type ChatStep } from "../lib/chatStatus";
 import { L, lang } from "../lib/i18n";
 import { reloadIfLangChanged } from "./langSwitch";
 import { noChangeNote } from "../lib/claims";
@@ -38,9 +38,16 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
   // What the answer is waiting on beyond thinking: a web search ("Web'de arıyorum…"), prices ("Fiyatlara bakıyorum…").
   // A search can run on after its turn's reply (10-30 s): its line stays while the traveller writes on.
   const [status, setStatus] = useState<ChatStatus>(() => chatStatusOf(trip.id));
+  // The turn's steps as they're done ("Lizbon otelini fikre alıyorum…"), the board changing with each.
+  const [steps, setSteps] = useState<ChatStep[]>(() => chatStepsOf(trip.id));
   useEffect(() => {
     setStatus(chatStatusOf(trip.id));
-    const stop = onChatStatus((tripId, s) => tripId === trip.id && setStatus(s));
+    setSteps(chatStepsOf(trip.id));
+    const stop = onChatStatus((tripId, s) => {
+      if (tripId !== trip.id) return;
+      setStatus(s);
+      setSteps(chatStepsOf(tripId));
+    });
     // Searches that were still running when the board was closed land now (each once).
     void resumeSearches(trip.id).catch(() => undefined);
     return stop;
@@ -60,7 +67,8 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
   // from an effect is treated as its cleanup function (React then crashes calling it).
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" });
-  }, [arrivals.rows.length, busy]);
+    // Each step of the turn as it comes (it's what the traveller watches while the board changes).
+  }, [arrivals.rows.length, busy, steps.length]);
 
   async function submit(value = text) {
     const input = value.trim();
@@ -187,6 +195,15 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
               </button>
             ))}
           </div>
+        )}
+        {busy && steps.length > 0 && (
+          <ul className="chat-steps" aria-live="polite">
+            {steps.map((s, i) => (
+              <li key={i} className={s.done ? "done" : "now"}>
+                <span aria-hidden>{s.done ? "✓" : "•"}</span> {s.text}
+              </li>
+            ))}
+          </ul>
         )}
         {(busy || status === "web") && (
           <div className="thinking">

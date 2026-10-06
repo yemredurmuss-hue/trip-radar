@@ -40,7 +40,7 @@ export function anthropicProvider(client: Anthropic, model: string): LlmProvider
       return structured(client, model, system, content, schema, "medium", L("Model bu analizi yapmayı reddetti.", "The model declined to do this analysis."), opts);
     },
 
-    async chatStep(history: ChatMessage[], system: string, tools: ToolSpec[]): Promise<ChatStep | null> {
+    async chatStep(history: ChatMessage[], system: string, tools: ToolSpec[], opts: CallOptions = {}): Promise<ChatStep | null> {
       const effort = outputEffort(model, "medium");
       const strict = strictTools(tools.map((t) => t.schema));
       const response = await client.messages.create({
@@ -56,7 +56,7 @@ export function anthropicProvider(client: Anthropic, model: string): LlmProvider
         messages: history.map((m) => ({ role: m.role, content: m.content }) as Anthropic.MessageParam),
         cache_control: { type: "ephemeral" },
         ...("effort" in effort ? { output_config: effort } : {}),
-      });
+      }, opts.signal ? { signal: opts.signal } : undefined);
       // An empty assistant turn would make every later request invalid, so it is never stored.
       if (response.content.length === 0) return null;
       return {

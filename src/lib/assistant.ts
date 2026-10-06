@@ -17,6 +17,7 @@ import {
 } from "./decision";
 import { needsFor } from "./cardFacts";
 import { listDocMeta, moveDocs, needsDoc } from "./docs";
+import { isEmptyRecord } from "./emptyCards";
 import { choiceOf, tradeText } from "./choice";
 import { currencyCode, formatPrice, isoDate, listingKeyOf, metricsOf, tripDateRange } from "./items";
 import { NEED_MARK } from "./needs";
@@ -32,7 +33,7 @@ import { sectionOfItem, type SectionId } from "./categories";
 import { addDays, buildPlan, cityKeyOf, liveGroups, sameCity, stayRange, type Plan } from "./plan";
 import { fromPage, saidEdits, withEdits, withoutEdits } from "./userEdits";
 import { L, lang, saveLang, setLang, withLang, type Lang } from "./i18n";
-import { datePlaceholders, regionName } from "./startTrip";
+import { datePlaceholders, isPlaceholder, regionName } from "./startTrip";
 import { announceHidden } from "./removal";
 import { getRates } from "./currency";
 import { makeContext } from "./decision";
@@ -77,7 +78,7 @@ import {
 } from "./suggestions";
 import { loadHome } from "./passport";
 import { cantSearch, SEARCH_KINDS, searchKey, siteName, webSearch, type SearchKind, type SearchSource, type WebSearchResult } from "./webSearch";
-import { chatStatusOf, searchEnded, searchStarted } from "./chatStatus";
+import { chatStatusOf, searchEnded, searchStarted, stepsCleared, stepsDone, stepStarted } from "./chatStatus";
 import { needKey } from "./emptyCards";
 import { dealPrice, validOffers, type Need, type Offer } from "./offerSource";
 import { findOffers, stayCandidates } from "./offerSources";
@@ -203,6 +204,7 @@ Nasıl konuşursun:
   • Destinasyonda yapılacak, rezervasyon gerektirmeyen bir deneyim ("pazara gidelim", "Porto Belo Pazarı", "outdoor alışverişi", "Dom Luís'ten gün batımını izleyelim", "Ribeira'da yürürüz", plaj, park, manzara noktası, mahalle, kilise, ücretsiz müze, sokak lezzeti) → plan_item kind todo (title kısa, city o şehir, date söylendiyse). Plan'da Yapılacak şeyler bölümüne düşer, rezervasyon sayılmaz. Kullanıcı "gideceğiz/yaptık/ekle" dese de booked false ver; booked yalnız bilet ya da rezervasyon alındıysa. kind activity yalnız bilet, rezervasyon, giriş ücreti, tur ya da gösteri/konser olan şey için; o zaman kullanıcının söylediğini note'a yaz ("bileti aldım", "rezervasyon 20:00", PNR/onay no, fiyat). Kanıtsız (fiyat, bilet sitesi, bilet/rezervasyon/tur sözü yok) bir activity panoda yine Yapılacak şeyler'e düşer; sonucun plan_section alanı nereye düştüğünü söyler, kullanıcıya onu anlat ("rezerve edildi" deme).
   • Konaklamayı birleştirme/uzatma/kısaltma ("Porto tek blok olsun 7-12", "Porto'yu 13'üne uzat") → plan_item kind stay, şehrin TÜM gecelerini tek aralıkla (date = giriş, end_date = çıkış). O şehirde bu aralığın içinde kalan eski sohbet konaklamaları birleşir (sonuçta merged); board alanıyla panoda ne göründüğünü anlat.
   • "X'i kaldır/sil", "ulaşımda X var, onu kaldır" → remove_from_plan. target_id ya bir seçeneğin items[].id'si (plandan çıkar, silinmez: Gizlenenler'de durur, oradan geri getirilebilir) ya da bir transferin plan.legs[].key'i (panoda "Gaula → Madeira" gibi görünen şehir değişimi ya da transfer; panodaki adı plan.legs[].cities; "Gerek yok" gibi gizlenir). Hiçbiri silinmez; Gizlenenler'den geri getirilebilir. Araç hata verirse kaldırılmadı: nedenini söyle, "kaldırdım" deme.
+  • "Rezerve etmemiz gerekenleri yaptık, gerisi fikir olarak kalsın", "book edilmemişleri fikir olarak al", "X için rezervasyon gerekmiyor" → set_booking_need (hepsi için all_unbooked true; tek tek için item_ids / leg_keys; needed false). Silme, eleme, remove_from_plan kullanma: planda kalırlar. Sonucun still_open'ındaki boşlukları (bulunmamış konaklama/uçuş) kullanıcıya sor.
   • "X iptal, yerine Y" ("araç kiralama iptal, yerine karavan kiraladık") → aynı mesajda ikisini birden yap: Y'yi plan_item ile replaces = X'in id'si vererek ekle (Y kayıtlıysa update_items, X'i de remove_from_plan ile kaldır). X yalnız tek bir kayda uyuyorsa kaldır; birden fazla aday varsa hangisi olduğunu sor.
   • Kullanıcının istemediği rezervasyonlu bir şeyi (araç, konaklama, uçuş, tur) kendiliğinden plana ekleme. Önerdiğin şeyi suggest ile doğru bölüme bırak (ör. aylık motor kiralama → Ulaşım); kullanıcı açıkça eklemeni isterse plan_item. Sigorta ve eSIM önerisi Diğer'e gider. suggest yalnız plana girecek somut bir şey içindir (araç, konaklama, sigorta, eSIM, tur ya da bilet); genel ipuçları ("erken çık", "nakit taşı") kart değildir, yanıtında söyle. trip_state.suggestions.on_board'daki kartları tekrar önerme. Bir öneriyi asla todo, prep ya da activity olarak plan_item ile ekleme; Yapılacak şeyler yalnız kullanıcının söylediği deneyimler içindir. suggest'te fiyat, saat ya da yüzde uydurma; gerekçe tek cümle, plandaki olgulara dayansın. O günleri kapsayan bir araç (karavan, kiralık araba, motosiklet) zaten varsa, kullanıcı bu mesajda açıkça istemedikçe ikinci bir araç ekleme; plan_item bunu reddeder, önce sor.
 - Gerek olmayanı sil: "transfere gerek yok", "orayı arabayla hallederiz, transfer yok" → set_leg mode "none" (transfer gizlenir, geri getirilebilir). "X'i ele / istemiyorum" → update_items status dismissed (bölümünün sonunda Gizlenenler'de durur, silinmez). Rezerve edilmiş bir şeyi iptal ettiğini söylerse ("oteli iptal ettim", "uçuşu iptal ettik, iade 3 güne") update_items status cancelled, iade için söyleneni note'a; başka bir şey yerine alındıysa yukarıdaki replaces kuralı.
@@ -265,6 +267,7 @@ How you talk:
   • An experience at the destination with no booking ("let's go to the market", "Porto Belo market", "outdoor shopping", "watch the sunset from Dom Luís", "a walk along Ribeira", a beach, a park, a viewpoint, a neighbourhood, a church, a free museum, street food) → plan_item kind todo (short title, city, date if said). It goes to the Plan's Things to do and isn't a booking. Even if the user says "we'll go / we did it / add it", give booked false; booked only when a ticket or a reservation was bought. Kind activity only for something with a ticket, a reservation, an entry fee, a tour or a show/concert; then write what the user said in note ("bought the tickets", "table at 20:00", the PNR/confirmation number, the price). An activity without evidence (no price, ticket site, or ticket/reservation/tour words) still lands in Things to do; the result's plan_section says where it landed: tell the user that (don't say "booked").
   • Merging/extending/shortening a stay ("make Porto one block, 7-12", "extend Porto to the 13th") → plan_item kind stay with ALL the city's nights as one range (date = check-in, end_date = check-out). Earlier chat stays in that city inside this range merge (merged in the result); use the board field to say what the board shows.
   • "remove/delete X", "there's X in transport, remove it" → remove_from_plan. target_id is either an option's items[].id (it leaves the plan, not deleted: it waits under Hidden and can be brought back from there) or a transfer's plan.legs[].key (a change of city or a transfer the board shows like "Gaula → Madeira"; its name on the board is plan.legs[].cities; it's hidden like "Not needed"). Nothing is deleted; it can be brought back from Hidden. If the tool returns an error, nothing was removed: say why, never "removed".
+  • "We booked what we had to, keep the rest as ideas", "take the unbooked ones as ideas", "X needs no booking" → set_booking_need (all_unbooked true for all of them; item_ids / leg_keys one by one; needed false). Don't delete, rule out or remove_from_plan: they stay on the plan. Ask the user about the gaps in the result's still_open (a stay or flight not found yet).
   • "X is cancelled, Y instead" ("the car rental is cancelled, we rented a campervan instead") → do both in the same message: add Y with plan_item and replaces = X's id (if Y is saved, update_items, and remove X with remove_from_plan). Remove X only when it matches one record; if several could be meant, ask which.
   • Never add something bookable the user didn't ask for (a vehicle, a stay, a flight, a tour) on your own. Leave what you suggest in the right section with suggest (e.g. a monthly scooter rental → Getting around); if the user explicitly asks you to add it, plan_item. Insurance and eSIM suggestions go to Other. suggest is only for something concrete that would go on the plan (a vehicle, a stay, insurance, an eSIM, a tour or a ticket); general tips ("leave early", "carry cash") are not cards, say them in your reply. Don't suggest again the cards in trip_state.suggestions.on_board. Never add a suggestion with plan_item as a todo, prep or activity; Things to do is only for experiences the user said. In suggest, don't make up prices, times or percentages; the why is one sentence resting on facts in the plan. If a vehicle (campervan, rental car, motorbike) already covers those days, don't add a second one unless the user explicitly asks in this message; plan_item refuses it, ask first.
 - Remove what isn't needed: "no transfer needed", "we'll drive there, no transfer" → set_leg mode "none" (the transfer is hidden and can be brought back). "rule out X / don't want it" → update_items status dismissed (it stays among the ruled-out ones, not deleted). When they say they cancelled something booked ("I cancelled the hotel", "we cancelled the flight, refund in 3 days") → update_items status cancelled, with what was said about the refund in note; if something else was bought in its place, the replaces rule above.
@@ -663,6 +666,24 @@ function buildTools(en: boolean): ToolSpec[] {
           note: nullable({ type: "string" }),
         },
         required: ["leg_key", "mode", "booked", "note"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "set_booking_need",
+      description: t(
+        "Kullanıcı planda olan ama rezerve edilmemiş şeylerin rezervasyon gerektirmediğini söylerse ('book etmemiz gerekenleri yaptık, gerisi fikir olarak kalsın', 'bunları fikir olarak al', 'X için rezervasyon gerekmiyor') onları rezerve edilecek olmaktan çıkarır: planda kalırlar, 'Fikir · rezervasyon gerekmiyor' yazar, 'Rezerve et' listesine ve rezerve yüzdesine girmezler. all_unbooked true: planda olup rezerve edilmemiş HER kayıt ve biletli transfer (item_ids boş). Ya da item_ids: items[].id'ler; transferler için plan.legs[].key'ler leg_keys'e. needed true geri alır (yeniden rezerve edilecek). Silmez, elemez; seçenekler (saved) ve rezerve edilmişler değişmez. Sonuç neyin değiştiğini ve hâlâ açık kalan boşlukları (still_open: henüz bulunmamış konaklama, uçuş) söyler; onları kullanıcıya sor, kendiliğinden kaldırma.",
+        "When the user says things on the plan that aren't booked need no booking ('we booked what we had to, keep the rest as ideas', 'take these as ideas', 'X needs no booking'), it takes them out of what's to book: they stay on the plan, read 'Idea · no booking needed', and leave the 'Book' list and the booked percentage. all_unbooked true: EVERY record on the plan not booked, and every ticketed transfer (item_ids empty). Or item_ids: items[].id; transfers by plan.legs[].key in leg_keys. needed true takes it back (to book again). Nothing is deleted or ruled out; options (saved) and bookings don't change. The result says what changed and the gaps still open (still_open: a stay or flight not found yet); ask the user about those, never remove them yourself.",
+      ),
+      schema: {
+        type: "object",
+        properties: {
+          all_unbooked: { type: "boolean" },
+          item_ids: { type: "array", items: { type: "string" } },
+          leg_keys: { type: "array", items: { type: "string" } },
+          needed: { type: "boolean", description: t("false: rezervasyon gerekmiyor (fikir); true: yeniden rezerve edilecek", "false: no booking needed (an idea); true: to book again") },
+        },
+        required: ["all_unbooked", "item_ids", "leg_keys", "needed"],
         additionalProperties: false,
       },
     },
@@ -1101,6 +1122,76 @@ const newTurn = (userText = "", previousReply: string | null = null, who: WhoCtx
 
 /** Tools that only read or show something: they never make "I changed it" true. */
 const READ_ONLY_TOOLS = new Set(["search_page", "offer_choices", "web_search", "find_offers"]);
+
+/**
+ * The chat says what it's doing while it does it (0.36.47, Emre: "ne yaptığını söylesin, sağdaki değişiklikler canlı
+ * canlı gösterilsin, topluca bir kerede değil"): each change is a step of its own, the board refreshed with it and a
+ * short pause before the next, so the traveller sees them land one by one. A model's answer gets a time limit: one
+ * that never comes back ends the turn with the honest line, never "Düşünüyor…" for ever. Tests make both short.
+ */
+export const liveTiming = { stepMs: 260, answerMs: 90_000 };
+const pause = (ms: number) => (ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve());
+
+/** One step said in the chat ("Lizbon oteli fikre alınıyor"), the board refreshed; with a pause when more follow. */
+async function liveStep(tripId: string, text: string, more: boolean): Promise<void> {
+  stepStarted(tripId, text);
+  notifyChanged();
+  if (more) await pause(liveTiming.stepMs);
+}
+
+/** What a tool call does, as the chat says it while doing it; null for one with a line of its own (search, prices). */
+function describeCall(name: string, input: any, byId: Map<string, Item>): string | null {
+  const nameOf = (id: unknown) => (typeof id === "string" ? byId.get(id)?.name : undefined);
+  const titled = (s: unknown) => (typeof s === "string" && s.trim() ? s.trim().slice(0, 60) : null);
+  switch (name) {
+    case "update_items": {
+      const changes = Array.isArray(input?.changes) ? input.changes : [];
+      if (changes.length !== 1) return L(`${changes.length} seçeneği güncelliyorum`, `Updating ${changes.length} options`);
+      const what = nameOf(changes[0].item_id) ?? L("Seçenek", "The option");
+      const words: Record<string, [string, string]> = {
+        chosen: [`${what} plana alınıyor`, `Putting ${what} on the plan`],
+        booked: [`${what} rezerve olarak işaretleniyor`, `Marking ${what} booked`],
+        dismissed: [`${what} eleniyor`, `Ruling out ${what}`],
+        saved: [`${what} seçeneklere geri dönüyor`, `Putting ${what} back among the options`],
+        cancelled: [`${what} iptal edildi olarak işaretleniyor`, `Marking ${what} cancelled`],
+      };
+      const w = words[changes[0].status];
+      return w ? L(w[0], w[1]) : L(`${what} güncelleniyor`, `Updating ${what}`);
+    }
+    case "plan_item": {
+      const what = nameOf(input?.item_id) ?? titled(input?.title) ?? titled(input?.city) ?? L("plan", "the plan");
+      return input?.booked ? L(`${what} rezerve olarak işleniyor`, `Saving ${what} as booked`) : L(`Panoya ekliyorum: ${what}`, `Adding to the board: ${what}`);
+    }
+    case "remove_from_plan":
+      return L(`${nameOf(input?.target_id) ?? "Transfer"} plandan çıkarılıyor`, `Taking ${nameOf(input?.target_id) ?? "the transfer"} off the plan`);
+    case "set_booking_need":
+      return L("Rezerve edilmemiş planlara bakıyorum", "Looking at what's planned and not booked");
+    case "set_leg":
+      return L("Transfer güncelleniyor", "Updating the transfer");
+    case "set_price":
+      return L(`${nameOf(input?.item_id) ?? "Fiyat"} fiyatı güncelleniyor`, `Updating ${nameOf(input?.item_id) ?? "the"} price`);
+    case "set_details":
+      return L(`${nameOf(input?.item_id) ?? "Kayıt"} düzeltiliyor`, `Correcting ${nameOf(input?.item_id) ?? "the record"}`);
+    case "set_owner":
+      return L("Kimin olduğu yazılıyor", "Saying whose it is");
+    case "set_travellers":
+      return L("Yolcular güncelleniyor", "Updating who's going");
+    case "update_trip":
+      return L("Gezinin bilgileri güncelleniyor", "Updating the trip");
+    case "set_settings":
+      return L("Ayarlar değişiyor", "Changing the settings");
+    case "set_priorities":
+    case "set_requirements":
+    case "save_preference":
+      return L("Tercihin kaydediliyor", "Saving your preference");
+    case "suggest":
+      return L(`Öneri bırakıyorum: ${titled(input?.title) ?? ""}`.trim(), `Leaving a suggestion: ${titled(input?.title) ?? ""}`.trim());
+    case "search_page":
+      return L("Kayıtlı sayfada arıyorum", "Looking in the saved page");
+    default:
+      return null;
+  }
+}
 
 /**
  * The trip as stored right now, changed in one transaction (never a copy read before an await): a write from
@@ -1898,6 +1989,74 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       if (!updated) throw new ToolError(L("Gezi bulunamadı.", "Trip not found."));
       return JSON.stringify(legsState(buildPlan(updated, items), updated, listings).find((l) => l.key === input.leg_key));
     }
+    case "set_booking_need": {
+      // "Book etmemiz gerekenleri yaptık, gerisi fikir olarak kalsın" (Emre, 0.36.47): what's on the plan and not
+      // booked stays there as an idea, out of "Rezerve et" and the percentage; one at a time, the board with each.
+      const trip = await d.get("trips", tripId);
+      if (!trip) throw new ToolError(L("Gezi bulunamadı.", "Trip not found."));
+      const needed = input.needed === true;
+      const all = input.all_unbooked === true;
+      const ids = (Array.isArray(input.item_ids) ? input.item_ids : []).filter((x: unknown): x is string => typeof x === "string");
+      const keys = (Array.isArray(input.leg_keys) ? input.leg_keys : []).filter((x: unknown): x is string => typeof x === "string");
+      const unknown = ids.filter((id: string) => !byId.has(id));
+      if (unknown.length) throw new ToolError(L(`Bu id'lerle kayıt yok: ${unknown.join(", ")}. Hiçbir şey değişmedi.`, `No records with these ids: ${unknown.join(", ")}. Nothing changed.`));
+      const listings = (await loadDecisions(trip, items)).ctx.listings;
+      const legs = buildLegs(buildPlan(trip, items), trip, listings);
+      const badKeys = keys.filter((k: string) => !legs.some((l) => l.key === k));
+      if (badKeys.length) throw new ToolError(L(`Bu anahtarla transfer yok: ${badKeys.join(", ")}. Hiçbir şey değişmedi.`, `No transfer with this key: ${badKeys.join(", ")}. Nothing changed.`));
+      // On the plan, not booked, and something concrete: a place the start only made room for, or a plan said with
+      // nothing in it ("Konaklama · Porto", no hotel), is a gap to find, not a plan to keep as an idea.
+      const files = new Set((await listDocMeta(tripId)).map((m) => m.itemId));
+      const gap = (i: Item) => isPlaceholder(trip, i) || isEmptyRecord(trip, i, files.has(i.id) ? 1 : 0, items);
+      const open = (i: Item) => i.status === "chosen" && !i.installedAt && !gap(i);
+      // In the board's order (by day), so the cards change down the plan.
+      const targets = (all ? items.filter(open) : ids.map((id: string) => byId.get(id)!).filter((i: Item) => i.status === "chosen")).sort(
+        (a: Item, b: Item) => (a.flight?.departure ?? a.dates.start ?? "9999").localeCompare(b.flight?.departure ?? b.dates.start ?? "9999"),
+      );
+      const ticketed = (l: Leg) => l.kind === "move" && ["flight", "train", "bus", "ferry"].includes((l.choice?.mode ?? l.mode) ?? "") && !(l.choice?.booked || l.status === "booked");
+      const legTargets = all ? legs.filter(ticketed) : legs.filter((l) => keys.includes(l.key));
+      const changed: string[] = [];
+      const already: string[] = [];
+      const many = targets.length + legTargets.length > 1;
+      for (const item of targets) {
+        if (needed ? item.noBooking == null : item.noBooking != null) {
+          already.push(item.name);
+          continue;
+        }
+        await liveStep(tripId, needed ? L(`${item.name} yeniden rezerve edilecekler arasına alınıyor`, `Putting ${item.name} back to book`) : L(`${item.name} fikre alınıyor`, `Keeping ${item.name} as an idea`), many);
+        const { noBooking: _was, ...rest } = item;
+        await d.put("items", needed ? { ...rest, updatedAt: Date.now() } : { ...item, noBooking: Date.now(), updatedAt: Date.now() });
+        turn.touched.add(item.id);
+        changed.push(item.name);
+        notifyChanged();
+      }
+      for (const leg of legTargets) {
+        const name = legCities(leg);
+        if (needed ? !leg.choice?.noBooking : leg.choice?.noBooking) {
+          already.push(name);
+          continue;
+        }
+        await liveStep(tripId, needed ? L(`${name} yeniden bilet alınacaklara ekleniyor`, `Putting ${name} back to get tickets`) : L(`${name} fikre alınıyor`, `Keeping ${name} as an idea`), many);
+        await changeTrip(tripId, (t) => {
+          const choice = t.legs?.[leg.key];
+          const patch = needed ? { noBooking: undefined } : { noBooking: Date.now() };
+          return withLegChoice(t, leg.key, choice ? patch : { mode: leg.choice?.mode ?? leg.mode, ...patch });
+        });
+        changed.push(name);
+        notifyChanged();
+      }
+      // What's still a gap: a place the start made room for, nothing found yet.
+      const stillOpen = all && !needed ? items.filter((i) => i.status === "chosen" && gap(i)).map((i) => i.name) : [];
+      if (!changed.length && !already.length) return `${UNCHANGED}: true, "why": ${JSON.stringify(L("Planda rezerve edilmemiş bir şey yok.", "Nothing on the plan is unbooked."))}${stillOpen.length ? `, "still_open": ${JSON.stringify(stillOpen)}` : ""}}`;
+      return JSON.stringify({
+        [needed ? "to_book_again" : "kept_as_ideas"]: changed,
+        ...(already.length ? { already } : {}),
+        ...(stillOpen.length ? { still_open: stillOpen } : {}),
+        note: needed
+          ? L("Yeniden 'Rezerve et' listesinde ve yüzdede.", "Back on the 'Book' list and in the percentage.")
+          : L("Planda kaldılar: kartlarında 'Fikir · rezervasyon gerekmiyor' yazar, 'Rezerve et' listesine ve rezerve yüzdesine girmezler. Rezerve edilirse yine işaretlenebilir.", "They stay on the plan: their cards read 'Idea · no booking needed', out of the 'Book' list and the booked percentage. Booking one later still marks it booked."),
+      });
+    }
     case "remove_from_plan": {
       const id = text(input.target_id);
       if (!id) throw new ToolError(L("target_id gerekli: items[].id ya da plan.legs[].key.", "target_id is required: items[].id or plan.legs[].key."));
@@ -2263,8 +2422,40 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
     await sendMessageNow(tripId, userText, llm);
   } finally {
     answering.delete(tripId);
+    stepsDone(tripId);
+    stepsCleared(tripId);
     // A search that landed while this turn was answering goes in now, after its reply (never inside its tool calls).
     await saveLanded(tripId).catch(() => undefined);
+  }
+}
+
+/** The model's answer within liveTiming.answerMs, else the turn ends with the honest line (the request is called off). */
+async function answerInTime<T>(tripId: string, ask: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const stop = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      stop.abort();
+      reject(new AnswerTimeout());
+    }, liveTiming.answerMs);
+  });
+  try {
+    return await Promise.race([ask(stop.signal), late]);
+  } finally {
+    clearTimeout(timer);
+    void tripId;
+  }
+}
+
+/** The model didn't answer in time: what was done before stays done (each step was saved as it went). */
+export class AnswerTimeout extends Error {
+  constructor() {
+    super(
+      L(
+        `Model ${Math.round(liveTiming.answerMs / 1000)} saniyede yanıt vermedi, isteği durdurdum. Yaptıklarım panoda duruyor; kalanı için tekrar yazar mısın?`,
+        `The model didn't answer in ${Math.round(liveTiming.answerMs / 1000)} seconds, so I stopped the request. What I did is on the board; could you ask again for the rest?`,
+      ),
+    );
   }
 }
 
@@ -2471,14 +2662,22 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   for (let step = 0; step < MAX_STEPS; step++) {
     const history = currentSession(await listMessages(tripId), provider.id);
     // A trip started by chat in another language goes on in it (trip.lang), whatever the board's.
-    const answer = await provider.chatStep(history, withLang(trip.lang, systemPrompt), withLang(trip.lang, tools));
+    const answer = await answerInTime(tripId, (signal) => provider.chatStep(history, withLang(trip.lang, systemPrompt), withLang(trip.lang, tools), { signal }));
     if (!answer) return;
 
     const choices: string[] = [];
     const results: ToolResult[] = [];
-    for (const call of answer.calls) {
+    const byId = new Map((await listItems(tripId)).map((i) => [i.id, i]));
+    for (const [n, call] of answer.calls.entries()) {
+      // Said while it's done, the board refreshed after it, a short pause before the next (never all at once).
+      const said = describeCall(call.name, call.input, byId);
+      if (said) stepStarted(tripId, said);
       try {
         const content = await runTool(tripId, call.name, call.input, choices, turn);
+        if (!READ_ONLY_TOOLS.has(call.name)) {
+          notifyChanged();
+          if (n < answer.calls.length - 1) await pause(liveTiming.stepMs);
+        }
         results.push({ call, content, isError: false });
         turn.done++;
         if (!READ_ONLY_TOOLS.has(call.name) && !content.startsWith(UNCHANGED)) turn.changed++;

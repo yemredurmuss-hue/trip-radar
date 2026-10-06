@@ -336,6 +336,8 @@ export interface LegChoice {
   /** Arranged outside the tool: a ticket, the hotel's shuttle, a friend picking them up... */
   booked: boolean;
   note: string | null;
+  /** Set aside by the traveller as needing no ticket (the chat's "book edilmemişleri fikir olarak al", 0.36.47): when. */
+  noBooking?: number;
   updatedAt: number;
 }
 
@@ -502,6 +504,12 @@ export interface Item {
    * older records and pages that didn't say: read by kind (booking.ts bookingOf).
    */
   booking?: "needed" | "none";
+  /**
+   * Set aside by the traveller as needing no booking (the chat's "book edilmemişleri fikir olarak al", 0.36.47): it
+   * stays on the plan as an idea, never "Rezerve et", out of the booked percentage. When it was said. A booking
+   * made later (status booked) wins; the chat's "rezervasyon gerekiyor" takes it off.
+   */
+  noBooking?: number;
   /** A to-do or an idea ticked off ("Yapıldı · 12 Eki"). */
   doneAt?: number;
   /** Moved by the traveller between Hazırlık (true) and Yapılacak şeyler (false); wins over its words. */

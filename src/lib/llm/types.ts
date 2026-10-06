@@ -60,7 +60,7 @@ export interface LlmProvider {
    */
   generateJson<T>(system: string, prompt: string, schema: ZodType<T>, files?: Attachment[], opts?: CallOptions): Promise<T>;
   /** One model call over the stored session. Null when the model returned nothing to store. */
-  chatStep(history: ChatMessage[], system: string, tools: ToolSpec[]): Promise<ChatStep | null>;
+  chatStep(history: ChatMessage[], system: string, tools: ToolSpec[], opts?: CallOptions): Promise<ChatStep | null>;
   /** Native content for a user turn made of text blocks. */
   userContent(texts: string[]): unknown;
   /** Native content for an assistant turn written by code (a document read: "…Belgeler'de duruyor."). */
