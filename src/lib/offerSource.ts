@@ -9,6 +9,7 @@
 import { L } from "./i18n";
 import { num as numText } from "./i18nText";
 import { plannedItem } from "./planned";
+import type { StayCandidate } from "./offerSources";
 import type { Item, PlannedKind } from "./types";
 
 export type OfferKind = "flight" | "stay" | "transfer" | "activity" | "esim";
@@ -40,6 +41,8 @@ export interface Offer {
   photo?: string | null;
   /** Out of 10 or 5, as the source gives it. */
   rating?: number | null;
+  /** How many reviews the rating is from, when the source says. */
+  reviews?: number | null;
   /** The total for the need (the nights, the people). */
   price?: number | null;
   currency?: string | null;
@@ -66,6 +69,8 @@ export interface Offer {
   // A stay's, an activity's, an eSIM's lines: the area ("Jordaan · Dam'a 10 dk"), one more line ("30 gün · 5G").
   area?: string | null;
   meta?: string | null;
+  /** One of a stay's three picks (stayPicks.ts): "Sana en uygun", "Daha ekonomik", "Daha konforlu". */
+  pick?: "best" | "cheaper" | "comfier" | null;
 }
 
 export interface SuggestionSource {
@@ -74,6 +79,8 @@ export interface SuggestionSource {
   offers(need: Need): Promise<Offer[]>;
   /** "Bunun gibileri gösterme": the source learns from the ×. */
   less?(offer: Offer, need: Need): void;
+  /** A stay's hotels to choose three from (stayPicks.ts); a source without them shows its offers as they are. */
+  candidates?(need: Need): Promise<StayCandidate[]>;
 }
 
 /** No source connected: no row anywhere. */
@@ -232,7 +239,7 @@ export function offerItem(offer: Offer, need: Need, tripId: string, id: string, 
     imageUrl: offer.photo ?? null,
     countryCode: need.country ?? null,
     guests: { ...base.guests, adults: need.adults ?? null },
-    rating: { value: offer.rating ?? null, scale, count: null, source: offer.rating == null ? "none" : "url" },
+    rating: { value: offer.rating ?? null, scale, count: offer.reviews ?? null, source: offer.rating == null ? "none" : "url" },
     price: { ...base.price, amount: offer.price ?? null, currency: offer.price == null ? null : (offer.currency ?? null), scope: offer.price == null ? "unknown" : "total", source: offer.price == null ? "none" : "url", observedAt: offer.fetchedAt || now },
     // A flight's or transfer's row as the source read it: the carrier, the hours on the need's day, the ends' codes.
     flight: offer.kind === "flight" || offer.kind === "transfer" ? offerFlight(offer, need, base.flight) : base.flight,
