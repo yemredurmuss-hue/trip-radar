@@ -8,7 +8,7 @@
 import { createContext, Fragment, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { cardKindColor, cardKindLabel, RENTAL_MODES, TRANSPORT_MODES, type CardKind, type TransportMode } from "../../lib/cardKinds";
 import { imageProxy } from "../../lib/cityImages";
-import { dayCards, dayPhoto, daysLabel, flowRows, groupDays, highlightOf, ideaCount, isAsideRow, isPlanRow, movedOrder, orderRows, rowKind, rowMark, tieredRows, tierOf, type DayCard, type DayGroup } from "../../lib/dayCards";
+import { dayCards, dayLinesOf, dayPhoto, daysLabel, flowRows, groupDays, highlightOf, ideaCount, isAsideRow, isPlanRow, movedOrder, orderRows, rowKind, rowMark, tieredRows, tierOf, type DayCard, type DayGroup } from "../../lib/dayCards";
 import { placeRoute, rowIcon, rowItem, rowTitle, titleText, withLayovers, withMeetings, type Place, type RowTitle } from "../../lib/dayRowTitle";
 import { CardEnvContext } from "../cards/PlanCard";
 import { WhoAvatar, usePhotoOf, useWhoCtx } from "../cards/WhoseBadge";
@@ -732,12 +732,7 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
  * The day's lines in their order (the timed by the clock, the rest where put). Insurance, the eSIM and a visa
  * aren't part of a day (satır standardı v2): they stay in Plan → Diğer.
  */
-function dayLines(card: DayCard, props: Pick<DayCardsProps, "times" | "order" | "loose">): DayRow[] {
-  // A line moved by hand off its time stays where it was put, its time hidden (a time given puts it back).
-  const all = flowRows(card, props.times).map((r) => (r.time && props.loose?.includes(r.key) ? { ...r, freed: r.time, time: null, estimated: false } : r));
-  // What's settled first, with its time; then what's chosen but not booked; the ideas last (0.36.24).
-  return tieredRows(orderRows(all.filter((r) => !isAsideRow(r)), props.order?.[card.date]));
-}
+const dayLines = (card: DayCard, props: Pick<DayCardsProps, "times" | "order" | "loose">): DayRow[] => dayLinesOf(card, props);
 
 /**
  * The quiet heading before a group that isn't the first (0.36.24): "Rezerve edilmedi · 2", "Fikirler · 4". A day

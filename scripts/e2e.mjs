@@ -3258,6 +3258,31 @@ try {
   await flow.unroute("https://generativelanguage.googleapis.com/**", asideModel);
   console.log(`✓ chat 'gerisi fikir olarak kalsın': ${asideBefore.length} unbooked plans set aside one step at a time, the steps shown as it worked, none left to book (${asideHero})`);
 
+  // 20d1c. The plan as a PDF (0.36.51): at %100 the hero's main button is "Planı PDF olarak indir"; it opens the print
+  // window on a page laid out for paper (the hero's facts, the bookings, every day's lines). The print window is caught
+  // here and the page printed to a real PDF file (Chrome's own printToPDF) to look at.
+  await board.locator(".hx-go", { hasText: "Planı PDF olarak indir" }).waitFor({ timeout: 10000 });
+  await board.evaluate(() => {
+    window.__printSettleMs = 30000;
+    window.__printed = 0;
+    window.print = () => void (window.__printed += 1);
+  });
+  await board.locator(".hx-go", { hasText: "Planı PDF olarak indir" }).click();
+  await board.waitForFunction(() => window.__printed === 1, null, { timeout: 10000 });
+  assert.ok(await board.evaluate(() => document.body.classList.contains("printing")), "the page is in its print layout");
+  assert.match(await board.title(), /^Portekiz.* · Trip Radar$/, "the file is named after the trip");
+  const printed = await board.locator(".print-plan").evaluate((el) => ({ title: el.querySelector("h1")?.textContent, days: el.querySelectorAll(".pp-day").length, lines: el.querySelectorAll(".pp-day li").length, facts: [...el.querySelectorAll(".pp-facts dt")].map((d) => d.textContent) }));
+  assert.equal(printed.title, "Portekiz");
+  assert.ok(printed.days >= 5 && printed.lines > 0, `every day with its lines (${JSON.stringify(printed)})`);
+  assert.ok(printed.facts.includes("Kimler") && printed.facts.includes("Plan"), `the hero's facts (${JSON.stringify(printed.facts)})`);
+  const cdp = await board.context().newCDPSession(board);
+  const pdf = await cdp.send("Page.printToPDF", { printBackground: true, preferCSSPageSize: true });
+  writeFileSync(`${out}/27d-plan.pdf`, Buffer.from(pdf.data, "base64"));
+  await cdp.detach();
+  await board.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+  await board.waitForFunction(() => !document.body.classList.contains("printing"));
+  console.log(`✓ plan as PDF: at %100 the main button prints the plan (${printed.days} days, ${printed.lines} lines) → ${out}/27d-plan.pdf`);
+
   // 20d2. Web search: "Ozora 2027 tarihlerini araştır" → the chat calls web_search; while it runs the thinking line
   // says "Web'de arıyorum…"; the answer ends with "Kaynak:" and the site's link. Only the question goes out.
   const searched = [];

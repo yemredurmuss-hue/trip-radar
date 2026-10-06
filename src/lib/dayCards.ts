@@ -274,3 +274,14 @@ export function daysLabel(cards: DayCard[]): string {
   const hi = Math.max(...nums);
   return lo === hi ? L(`${lo}. gün`, `Day ${lo}`) : L(`${lo}–${hi}. gün`, `Days ${lo}–${hi}`);
 }
+
+/**
+ * The day's lines in their order (the timed by the clock, the rest where put): what the Günlük akış list shows and
+ * the printed plan prints. Insurance, the eSIM and a visa aren't part of a day (satır standardı v2): they stay in
+ * Plan → Diğer. A line moved by hand off its time stays where it was put, its time hidden (a time given puts it
+ * back); what's settled first, with its time; then what's chosen but not booked; the ideas last (0.36.24).
+ */
+export function dayLinesOf(card: DayCard, opts: { times?: DayTimeOverrides; order?: Record<string, string[]>; loose?: readonly string[] }): DayRow[] {
+  const all = flowRows(card, opts.times).map((r) => (r.time && opts.loose?.includes(r.key) ? { ...r, freed: r.time, time: null, estimated: false } : r));
+  return tieredRows(orderRows(all.filter((r) => !isAsideRow(r)), opts.order?.[card.date]));
+}

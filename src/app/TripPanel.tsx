@@ -50,6 +50,8 @@ import { acceptNoteLabel, type Pref } from "../lib/preferences";
 import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../lib/tripStyle";
 import { intentEntries } from "./IntentCard";
 import { TripHero, type HeroAction, type HeroCity } from "./TripHero";
+import { PrintPlan } from "./PrintPlan";
+import { heroNumbers, openNeedsText, plannedBookedText } from "../lib/lifecycle";
 import { kindLabel, LegRow } from "./LegRow";
 import { HistoryDialog } from "./HistoryDialog";
 import { ChangeNotices } from "./ShareSafety";
@@ -448,6 +450,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     }
   }, []);
   const [todoOpen, setTodoOpen] = useState<"all" | "deadline" | null>(null);
+  // The plan as a PDF (PrintPlan.tsx): drawn while the print window is open.
+  const [printing, setPrinting] = useState(false);
+  const heroRef = useRef<HTMLElement>(null);
   // Another trip's to-do list isn't the one that was open.
   useEffect(() => {
     setTodoOpen(null);
@@ -534,10 +539,21 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // All set only when every section is settled and nothing is left to do (a cancellation running out is).
   const allDone = done.complete && !first;
   const unsettled = sections.find((s) => s.entries.length && s.settled < s.entries.length);
+  const endPrint = useCallback(() => setPrinting(false), []);
+  // Everything planned is booked (the hero's %100, lifecycle.heroNumbers): the plan as a PDF is the main button
+  // (0.36.51, Emre); before that it's there too, beside "Planı tamamla", never the main one.
+  const numbers = heroNumbers(todo.counts);
+  const pdf: HeroAction = {
+    label: L("Planı PDF olarak indir", "Download the plan as PDF"),
+    title: L("Gezinin özeti ve gün gün akışı; açılan pencerede 'PDF olarak kaydet'i seç", "The trip's summary and its days; pick 'Save as PDF' in the window that opens"),
+    run: () => setPrinting(true),
+  };
   const action: HeroAction | null =
     done.total === 0
       ? { label: L("İlk kaydı ekle", "Add the first one"), run: () => addIn(null, null) }
-      : allDone
+      : numbers.pct === 100
+        ? pdf
+        : allDone
         ? onShare
           ? { label: L("Paylaş", "Share"), title: L("Bu geziyi paylaş", "Share this trip"), run: onShare }
           : null
@@ -546,6 +562,15 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           : unsettled
             ? { label: L("Planı tamamla", "Finish the plan"), run: () => openSection(unsettled.id) }
             : null;
+  // Beside the main button: the PDF while the plan isn't all booked; once it is, sharing (when the trip can be).
+  const secondary: HeroAction | null =
+    done.total === 0
+      ? null
+      : numbers.pct !== 100
+        ? { ...pdf, label: L("PDF indir", "Download PDF") }
+        : allDone && onShare
+          ? { label: L("Paylaş", "Share"), title: L("Bu geziyi paylaş", "Share this trip"), run: onShare }
+          : null;
   const decisionOf = (item: Item) => [...(decisions?.byGroup.values() ?? [])].find((d) => d.options.some((o) => o.item.id === item.id));
   /** A stay keeps its decision card; everything else is a plan card (cards/PlanCard.tsx). */
   const card: CardFor = (item, group, decision, ranked, onCompareGroup) =>
@@ -623,7 +648,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   return (
     <CardEnvContext.Provider value={env}>
       <SilhouetteDefs />
-      <section className="hx">
+      <section className="hx" ref={heroRef}>
         <TripHero
           key={trip.id}
           trip={trip}
@@ -639,6 +664,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           list={todoOpen}
           onList={setTodoOpen}
           action={action}
+          secondary={secondary}
           working={working.length + reading}
           menu={menu}
         />
@@ -659,6 +685,29 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         />
       </section>
       {todoOpen && <TodoList list={todo} open={todoOpen} onGo={reveal} />}
+      {printing && (
+        <PrintPlan
+          trip={trip}
+          cities={cities}
+          range={range}
+          estimated={!!range && !trip.confirmedDates && !plan.range}
+          tally={tally}
+          progress={{ head: numbers.pct != null ? plannedBookedText(numbers.pct) : null, meta: numbers.open ? openNeedsText(numbers.open) : null }}
+          who={who}
+          chips={chips}
+          bar={bar}
+          facts={facts}
+          home={passport}
+          countries={countries}
+          items={items}
+          timeline={timeline}
+          listings={listings}
+          mainPlaces={mains}
+          cityImage={cityImageOf}
+          onDone={endPrint}
+          hero={heroRef}
+        />
+      )}
 
       {/* On the Plan a failed capture is its own card ("Okunamadı · Tekrar dene · Kaldır"); here on the other views. */}
       {failed.length > 0 && view !== "plan" && (

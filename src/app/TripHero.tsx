@@ -69,6 +69,8 @@ export function TripHero(props: {
   list: "all" | "deadline" | null;
   onList: (list: "all" | "deadline" | null) => void;
   action: HeroAction | null;
+  /** A quieter one beside it (the PDF while the plan isn't all booked; sharing once it is). */
+  secondary?: HeroAction | null;
   working: number;
   menu: ReactNode;
 }) {
@@ -247,11 +249,20 @@ export function TripHero(props: {
               </span>
             )}
           </div>
-          {props.action && (
-            <button className="hx-go" title={props.action.title} aria-label={props.action.title ? `${props.action.label}: ${props.action.title}` : undefined} onClick={props.action.run}>
-              {props.action.label}
-              <HeroIcon name="arrow" size={20} />
-            </button>
+          {(props.action || props.secondary) && (
+            <div className="hx-acts">
+              {props.action && (
+                <button className="hx-go" title={props.action.title} aria-label={props.action.title ? `${props.action.label}: ${props.action.title}` : undefined} onClick={props.action.run}>
+                  {props.action.label}
+                  <HeroIcon name="arrow" size={20} />
+                </button>
+              )}
+              {props.secondary && (
+                <button type="button" className="hx-alt" title={props.secondary.title} onClick={props.secondary.run}>
+                  {props.secondary.label}
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
