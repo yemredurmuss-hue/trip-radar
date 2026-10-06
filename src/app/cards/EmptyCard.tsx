@@ -19,7 +19,8 @@ import { formatDateRange, formatPrice, isoDate, nightsBetween } from "../../lib/
 import { legItem, withLegChoice, type Leg } from "../../lib/legs";
 import type { Need } from "../../lib/offerSource";
 import type { StayBlock } from "../../lib/plan";
-import { activityLinks, BRANDS, esimLinks, flightLinks, stayLinks, transferLinks, type SearchLink } from "../../lib/searchLinks";
+import { activityLinks, airportCode, BRANDS, esimLinks, flightLinks, stayLinks, transferLinks, type SearchLink } from "../../lib/searchLinks";
+import { countryOfPlace } from "../../lib/chatBooking";
 import type { Item, Suggestion } from "../../lib/types";
 import { fromOf } from "../../lib/tripSettings";
 import { headCountOf, whoseOf } from "../../lib/whose";
@@ -266,7 +267,7 @@ function EmptyRecordFace({ item }: { item: Item }) {
         date={<CardDate item={item} kind={kind} />}
         body={<EmptyMedia kind="stay" title={title} sub={[nights ? nNights(nights) : null, n ? nPeople(n) : null, L("otel seçilmedi", "no hotel chosen")].filter(Boolean).join(" · ")} />}
         links={stayLinks({ city: item.city, checkin: start, checkout: end, adults: n })}
-        need={{ key: needKey("stay", item.city, start, end), section: "stay", kind: "stay", city: item.city, start, end, adults: n }}
+        need={{ key: needKey("stay", item.city, start, end), section: "stay", kind: "stay", city: item.city, start, end, adults: n, country: item.countryCode ?? countryOfPlace(item.city, items)?.code ?? null }}
       />
     );
   }
@@ -283,7 +284,7 @@ function EmptyRecordFace({ item }: { item: Item }) {
         date={<CardDate item={item} kind={kind} />}
         body={<EmptyRoute from={face.from} to={face.to ?? (to && !rental ? { city: to, sub: null, time: null } : null)} art={kind === "transport" ? null : kind} fields={rental ? ["city", null] : ["from", "to"]} />}
         links={links}
-        need={kind === "flight" && to ? { key: needKey("flight", from, to, start), section, kind: "flight", from, to, start, adults: n } : null}
+        need={kind === "flight" && to ? { key: needKey("flight", from, to, start), section, kind: "flight", from, to, start, adults: n, fromCode: airportCode(from), toCode: airportCode(to) } : null}
       />
     );
   }
@@ -327,7 +328,7 @@ export function EmptyTravelCard({ role, date, city, home = null }: { role: "arri
       body={<EmptyRoute from={from} to={to} art="flight" />}
       status={noTicket(n)}
       links={flightLinks({ from: a, to: b, date, adults: n })}
-      need={{ key: needKey("flight", a, b, date), section: "flight", kind: "flight", from: a, to: b, start: date, adults: n }}
+      need={{ key: needKey("flight", a, b, date), section: "flight", kind: "flight", from: a, to: b, start: date, adults: n, fromCode: airportCode(a), toCode: airportCode(b) }}
     />
   );
 }
@@ -339,7 +340,7 @@ export function EmptyTravelCard({ role, date, city, home = null }: { role: "arri
  */
 export function EmptyStayBlock({ block, label }: { block: Extract<StayBlock, { kind: "open" }>; label: string }) {
   const env = useCardEnv();
-  const { travellers: n } = useEmptyEnv();
+  const { travellers: n, items } = useEmptyEnv();
   const slot = block.slot ?? null;
   const city = slot?.city ?? block.city;
   const hide = () => env.hideNights(block.range, label);
@@ -377,7 +378,7 @@ export function EmptyStayBlock({ block, label }: { block: Extract<StayBlock, { k
       links={stayLinks({ city, checkin: block.range.start, checkout: block.range.end, adults: n })}
       onSkip={slot ? undefined : hide}
       skipTitle={L("Bu geceler için yer gerekmiyor", "No place needed for these nights")}
-      need={city ? { key: needKey("stay", city, block.range.start, block.range.end), section: "stay", kind: "stay", city, start: block.range.start, end: block.range.end, adults: n } : null}
+      need={city ? { key: needKey("stay", city, block.range.start, block.range.end), section: "stay", kind: "stay", city, start: block.range.start, end: block.range.end, adults: n, country: countryOfPlace(city, items)?.code ?? null } : null}
     />
   );
 }

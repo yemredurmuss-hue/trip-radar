@@ -25,8 +25,11 @@ export interface Need {
   start?: string | null;
   end?: string | null;
   adults?: number | null;
-  /** ISO alpha-2, for an eSIM. */
+  /** ISO alpha-2: an eSIM's country; a stay's, when known (for a hotel source's search). */
   country?: string | null;
+  /** A flight's airports (IATA), when the ends are known; the city names stay in `from` / `to`. */
+  fromCode?: string | null;
+  toCode?: string | null;
 }
 
 export interface Offer {
