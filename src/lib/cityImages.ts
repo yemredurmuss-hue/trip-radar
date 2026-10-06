@@ -1,7 +1,9 @@
-// One landscape photo per city for the hero. A sharing-server proxy (Pexels, key on the server) when
-// it answers; otherwise Wikipedia, skipping flags, coats of arms, maps and drawings.
-import { lang } from "./i18n";
+// One landscape photo per city for the hero. A sharing-server proxy (Unsplash or Pexels, keys on the server) when
+// it answers; otherwise Wikipedia, skipping flags, coats of arms, maps and drawings. The proxy says who took the
+// photo; the hero credits it ("Fotoğraf: <Ad> / Unsplash", both linked).
+import { L, lang } from "./i18n";
 import { getShareConfig } from "./share/store";
+import type { PhotoCredit } from "./types";
 
 /** null: the server answered without a usable body. Throws (NetworkError): no answer at all. */
 type FetchJson = (url: string, init?: RequestInit) => Promise<any | null>;
@@ -69,12 +71,42 @@ export async function imageProxy(): Promise<ImageProxy | null> {
   }
 }
 
+/** A photo and who to credit for it (null: none said; the address may still tell, creditOf). */
+export interface CityPhoto {
+  url: string;
+  credit: PhotoCredit | null;
+}
+/** `alt`: the proxy's searches after `query` when it finds nothing (an event's: "Ozora Festival", "music festival crowd stage"). */
+type PhotoOpts = { fetchJson?: FetchJson; proxy?: ImageProxy | null; query?: string; titles?: string[]; alt?: string[] };
+
+/** Credits the proxy gave this session, by photo URL: a photo found before its trip exists (the start) keeps its credit. */
+const seenCredits = new Map<string, PhotoCredit>();
+export const creditFor = (url: string | null | undefined): PhotoCredit | null => (url ? (seenCredits.get(url) ?? null) : null);
+
+/** The proxy's address for a search and the ones after it. */
+export const proxyQuery = (base: string, q: string, alt: string[] = []): string =>
+  `${base}?q=${encodeURIComponent(q)}${alt.map((a) => `&alt=${encodeURIComponent(a)}`).join("")}`;
+
+const SOURCES = ["unsplash", "pexels"] as const;
+/** The proxy's { by, source, author_url, photo_page } as a credit; one without a source is Pexels' (before 2026-10-07). */
+export function proxyCredit(p: any): PhotoCredit | null {
+  const source = SOURCES.find((s) => s === p?.source) ?? (p?.by ? "pexels" : null);
+  if (!source) return null;
+  const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  return { by: text(p?.by), source, authorUrl: text(p?.author_url), photoPage: text(p?.photo_page) };
+}
+
+/** The city's photo URL; null when it has none (findCityPhoto without the credit). */
+export async function pickCityImage(city: string, opts: PhotoOpts = {}): Promise<string | null> {
+  return (await findCityPhoto(city, opts))?.url ?? null;
+}
+
 /**
- * The city's photo URL; null when it has none. Throws NetworkError when a request got no answer and nothing was found,
- * so a miss isn't confused with an outage. `query`: what the proxy is asked instead of the bare name ("Ella Sri Lanka",
- * "Sri Lanka landscape"); `titles`: Wikipedia pages tried before the name ("Ella, Sri Lanka").
+ * The city's photo and its credit; null when it has none. Throws NetworkError when a request got no answer and nothing
+ * was found, so a miss isn't confused with an outage. `query`: what the proxy is asked instead of the bare name ("Ella
+ * Sri Lanka", "Sri Lanka landscape"); `titles`: Wikipedia pages tried before the name ("Ella, Sri Lanka").
  */
-export async function pickCityImage(city: string, opts: { fetchJson?: FetchJson; proxy?: ImageProxy | null; query?: string; titles?: string[] } = {}): Promise<string | null> {
+export async function findCityPhoto(city: string, opts: PhotoOpts = {}): Promise<CityPhoto | null> {
   const fetchJson = opts.fetchJson ?? defaultFetch;
   let failed: unknown = null;
   const get = async (url: string, init?: RequestInit) => {
@@ -86,8 +118,12 @@ export async function pickCityImage(city: string, opts: { fetchJson?: FetchJson;
     }
   };
   if (opts.proxy) {
-    const p = await get(`${opts.proxy.url}?q=${encodeURIComponent(opts.query?.trim() || city)}`, { headers: opts.proxy.headers });
-    if (p?.url) return p.url as string;
+    const p = await get(proxyQuery(opts.proxy.url, opts.query?.trim() || city, opts.alt), { headers: opts.proxy.headers });
+    if (p?.url) {
+      const credit = proxyCredit(p);
+      if (credit) seenCredits.set(p.url, credit);
+      return { url: p.url as string, credit };
+    }
   }
   // The pages asked for first (an English title such as "Ella, Sri Lanka" on the English Wikipedia), then the name.
   const titles = [...new Set([...(opts.titles ?? []), city])];
@@ -95,12 +131,13 @@ export async function pickCityImage(city: string, opts: { fetchJson?: FetchJson;
   for (const [title, wiki] of titles.flatMap((t, k) => (k < titles.length - 1 ? [[t, "en"]] : wikis.map((w) => [t, w])))) {
     const s = await get(`https://${wiki}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
     const src = summaryImage(s);
-    if (src && isPhoto(src)) return src;
+    if (src && isPhoto(src)) return { url: src, credit: creditOf(src) };
     const m = await get(`https://${wiki}.wikipedia.org/api/rest_v1/page/media-list/${encodeURIComponent(title)}`);
     const pick = (m?.items ?? []).find((i: any) => i.type === "image" && isPhoto(i.title ?? "") && i.srcset?.length);
     if (pick) {
-      const url = sized(pick.srcset.at(-1).src);
-      return url.startsWith("//") ? `https:${url}` : url;
+      const src = sized(pick.srcset.at(-1).src);
+      const url = src.startsWith("//") ? `https:${src}` : src;
+      return { url, credit: creditOf(url) };
     }
   }
   if (failed) throw failed instanceof NetworkError ? failed : new NetworkError(failed instanceof Error ? failed.message : undefined);
@@ -135,4 +172,71 @@ export function nextHeroImage(hero: string | null, found: string | null): string
   if (!found) return hero;
   if (!hero) return found;
   return isWikiImage(hero) && !isWikiImage(found) ? found : hero;
+}
+
+const hostOf = (url: string): string => {
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+};
+
+/**
+ * A photo's credit: the one stored with it (or given this session), else what its address tells (Wikipedia, a Pexels
+ * photo's page, Unsplash); null for anything else (a booking page's own photo).
+ */
+export function creditOf(url: string | null | undefined, stored?: Record<string, PhotoCredit> | null): PhotoCredit | null {
+  if (!url) return null;
+  const own = stored?.[url] ?? seenCredits.get(url);
+  if (own) return own;
+  if (isWikiImage(url)) return { by: null, source: "wikipedia", authorUrl: null, photoPage: null };
+  const host = hostOf(url);
+  if (host === "images.pexels.com") {
+    const id = /\/photos\/(\d+)\//.exec(url)?.[1];
+    return { by: null, source: "pexels", authorUrl: null, photoPage: id ? `https://www.pexels.com/photo/${id}/` : null };
+  }
+  if (host === "images.unsplash.com") return { by: null, source: "unsplash", authorUrl: null, photoPage: null };
+  return null;
+}
+
+/** Unsplash's links say where the visitor came from (their attribution rule); others are left as they are. */
+export function withUtm(url: string): string {
+  if (!/(^|\.)unsplash\.com$/.test(hostOf(url)) || url.includes("utm_source=")) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}utm_source=trip_radar&utm_medium=referral`;
+}
+
+/** A part of the credit line: its words and, when known, its link. */
+export interface CreditPart {
+  text: string;
+  href: string | null;
+}
+const SOURCE_NAME = { unsplash: "Unsplash", pexels: "Pexels", wikipedia: "Wikipedia" } as const;
+const SOURCE_HOME = { unsplash: "https://unsplash.com/", pexels: "https://www.pexels.com/", wikipedia: "https://www.wikipedia.org/" } as const;
+
+/**
+ * The hero's credit line: "Fotoğraf: <photographer> / Unsplash" (their page; Unsplash's home, Pexels' or
+ * Wikipedia's photo page), every Unsplash link with its UTM.
+ */
+export function creditLine(c: PhotoCredit): { label: string; by: CreditPart | null; source: CreditPart } {
+  const page = c.source === "unsplash" ? SOURCE_HOME.unsplash : (c.photoPage ?? SOURCE_HOME[c.source]);
+  return {
+    label: L("Fotoğraf:", "Photo:"),
+    by: c.by ? { text: c.by, href: c.authorUrl ? withUtm(c.authorUrl) : null } : null,
+    source: { text: SOURCE_NAME[c.source], href: withUtm(page) },
+  };
+}
+
+/**
+ * The trip's credits with new photos' added, keeping only those of the photos it still shows (its hero and city
+ * photos), so the map doesn't grow with every photo replaced. Undefined when none is left.
+ */
+export function keptCredits(
+  t: { heroImage: string | null; cityImages?: Record<string, string | null>; photoCredits?: Record<string, PhotoCredit> },
+  add: (CityPhoto | null)[] = [],
+): Record<string, PhotoCredit> | undefined {
+  const all = { ...t.photoCredits, ...Object.fromEntries(add.flatMap((p) => (p?.credit ? [[p.url, p.credit]] : []))) };
+  const shown = new Set([t.heroImage, ...Object.values(t.cityImages ?? {})].filter(Boolean));
+  const kept = Object.fromEntries(Object.entries(all).filter(([url]) => shown.has(url)));
+  return Object.keys(kept).length ? kept : undefined;
 }

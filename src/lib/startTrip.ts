@@ -20,7 +20,7 @@ import { addDays, cityKeyOf } from "./plan";
 import { looksLikeUrl } from "./url";
 import type { PlannedInput } from "./planned";
 import {
-  budgetSet, chipsFor, effectsOf, optionsText, playbookAsks, playbookPromptLine, readAnswer, say, startOffset, startPlaybook, staysAfter,
+  budgetSet, chipsFor, effectsOf, optionsText, playbookAsks, playbookFor, playbookPromptLine, readAnswer, say, startOffset, startPlaybook, staysAfter,
   type PbChip, type PbEffect, type PbQuestion,
 } from "./playbooks";
 import { CIRCUITS, englishName, fitCircuit } from "./startCircuits";
@@ -2833,12 +2833,32 @@ export function photoPlaces(s: Pick<StartState, "where" | "route">): string[] {
   return [...new Map(names.map((n) => [squash(n), n])).values()].slice(0, 4);
 }
 
+/** What the photo search is asked (cityImages.ts findCityPhoto): an event adds the searches after its name. */
+export interface PhotoQuery {
+  query: string;
+  titles: string[];
+  alt?: string[];
+}
+
+/**
+ * An event's photo (2026-10-07): the event, not the village. Its name searched (in English when the table knows it,
+ * "Glastonbury Festival"; its Wikipedia page too); finding nothing, "<name> festival", then the feeling of it.
+ */
+export function eventPhotoQuery(name: string, festival: boolean): PhotoQuery {
+  const en = findEvent(name)?.entry.name[1] ?? name;
+  const alt = [/\bfestival\b/i.test(en) ? "" : `${en} festival`, festival ? "music festival crowd stage" : "festival crowd celebration"].filter(Boolean);
+  return { query: en, titles: [en], alt };
+}
+
 /**
  * What to ask the photo search for a place (rev 3): a country as its landscape ("Sri Lanka landscape"), a stop with
  * its country so a town isn't a person ("Ella Sri Lanka"; Wikipedia "Ella, Sri Lanka" first), the destination as it
  * is named. English names, which the search knows best.
  */
-export function photoQuery(place: string, s: Pick<StartState, "where">): { query: string; titles: string[] } {
+export function photoQuery(place: string, s: Pick<StartState, "where" | "intent">): PhotoQuery {
+  // An event's place is the event (2026-10-07): Ozora is the festival, not the village.
+  const it = s.intent;
+  if (it?.kind === "event" && samePlace(place, it.place)) return eventPhotoQuery(it.name, playbookFor(it) === "festival");
   const own = countryCodeOfName(place);
   if (own) return { query: `${regionName(own, "en") ?? place} landscape`, titles: [] };
   const code = s.where?.code ?? countryCodeOfName(s.where?.country) ?? null;

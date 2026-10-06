@@ -116,7 +116,7 @@ export async function proposeRoute(s: StartState, useModel: boolean, signal?: Ab
 }
 
 /** The photo of each place (the Pexels proxy first, as the hero does, asked the rev 3 way): null where none was found or it failed. */
-export async function findPhotos(places: string[], s?: Pick<StartState, "where">): Promise<Record<string, string | null>> {
+export async function findPhotos(places: string[], s?: Pick<StartState, "where" | "intent">): Promise<Record<string, string | null>> {
   const proxy = await imageProxy().catch(() => null);
   const found = await Promise.all(
     places.slice(0, 4).map(async (place) => {
@@ -132,7 +132,7 @@ export async function findPhotos(places: string[], s?: Pick<StartState, "where">
 }
 
 /** Up to four photos for the places; the ones not found are left out. */
-export async function placePhotos(places: string[], s?: Pick<StartState, "where">): Promise<{ place: string; url: string }[]> {
+export async function placePhotos(places: string[], s?: Pick<StartState, "where" | "intent">): Promise<{ place: string; url: string }[]> {
   const found = await findPhotos(places, s);
   return places.flatMap((place) => (found[place] ? [{ place, url: found[place]! }] : []));
 }

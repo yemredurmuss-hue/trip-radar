@@ -13,6 +13,7 @@
 // finishes, never waiting on the animation; the map plays alongside. The board opens once it's made and the plane has
 // landed, or OPEN_CAP_MS after the map started, whichever comes first.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { creditFor, keptCredits } from "../../lib/cityImages";
 import { cityKeyOf } from "../../lib/plan";
 import { L, withLang } from "../../lib/i18n";
 import { genSubLine, runStep, stepsFor, type StepId } from "../../lib/startCreate";
@@ -163,11 +164,15 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
     if (!found.length) return;
     await updateTrip(
       tripId,
-      (t) => ({
-        ...t,
-        heroImage: t.heroImage ?? found[0].url,
-        cityImages: { ...Object.fromEntries(found.map((p) => [cityKeyOf(p.place)!, p.url])), ...t.cityImages },
-      }),
+      (t) => {
+        const next = {
+          ...t,
+          heroImage: t.heroImage ?? found[0].url,
+          cityImages: { ...Object.fromEntries(found.map((p) => [cityKeyOf(p.place)!, p.url])), ...t.cityImages },
+        };
+        // Who took them, as the proxy said while they were found.
+        return { ...next, photoCredits: keptCredits(next, found.map((p) => ({ url: p.url, credit: creditFor(p.url) }))) };
+      },
       { touch: false },
     ).catch(() => undefined);
   }

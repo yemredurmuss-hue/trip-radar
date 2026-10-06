@@ -11,13 +11,35 @@ import { L } from "../lib/i18n";
 import { nDays } from "../lib/i18nText";
 import { heroNumbers, openNeedsText, plannedBookedText } from "../lib/lifecycle";
 import type { PlanList } from "../lib/planList";
-import type { Trip } from "../lib/types";
+import { creditLine, type CreditPart } from "../lib/cityImages";
+import type { PhotoCredit, Trip } from "../lib/types";
 import { HeroIcon, type HeroIconName } from "./Icons";
 import { useAppear } from "./useAppear";
 
 export interface HeroCity {
   name: string;
   image: string | null;
+  /** Who took the photo (cityImages.ts creditOf): shown small at its bottom right. */
+  credit?: PhotoCredit | null;
+}
+
+/** "Fotoğraf: <Ad> / Unsplash", each part a link when its page is known (new tab). */
+function PhotoCreditLine({ credit }: { credit: PhotoCredit }) {
+  const line = creditLine(credit);
+  const part = (p: CreditPart) =>
+    p.href ? (
+      <a href={p.href} target="_blank" rel="noopener noreferrer">
+        {p.text}
+      </a>
+    ) : (
+      <span>{p.text}</span>
+    );
+  return (
+    <div className="hx-credit">
+      {line.label} {line.by && <>{part(line.by)} / </>}
+      {part(line.source)}
+    </div>
+  );
 }
 
 /** The progress box's button: where the next step is (or the first save, or sharing). */
@@ -138,6 +160,7 @@ export function TripHero(props: {
             ))}
           </div>
         )}
+        {cities[at]?.image && cities[at].credit && <PhotoCreditLine key={cities[at].image} credit={cities[at].credit} />}
         <div className="hx-badges">
           {props.working > 0 && (
             <span className="hx-busy" title={busy}>

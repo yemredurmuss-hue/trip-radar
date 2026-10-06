@@ -11,7 +11,7 @@ import { budgetBar, decisionProgress, entryDomId, nextStepText, type DecisionPro
 import { cityKeyOf, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 import { L } from "../lib/i18n";
-import { imageProxy, nextCityImage, nextHeroImage, pickCityImage, wantsCityImage } from "../lib/cityImages";
+import { creditOf, findCityPhoto, imageProxy, keptCredits, nextCityImage, nextHeroImage, wantsCityImage } from "../lib/cityImages";
 import { acceptMood, moodKey, statusSentence } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
 import { loadHome, loadPassport } from "../lib/passport";
@@ -307,9 +307,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     const photo = (key: string | null) => (key ? trip.cityImages?.[key] : null) || null;
     const list = mains.map((m) => ({ name: m.name, image: photo(cityKeyOf(m.name)) ?? m.members.map((c) => photo(cityKeyOf(c))).find(Boolean) ?? null }));
     // A trip from before the city photos: its one picture goes to the first city (or stands alone).
-    if (trip.heroImage && !list.some((c) => c.image)) return list.length ? [{ ...list[0], image: trip.heroImage }, ...list.slice(1)] : [{ name: "", image: trip.heroImage }];
-    return list;
-  }, [mains, trip.cityImages, trip.heroImage]);
+    const shown =
+      trip.heroImage && !list.some((c) => c.image) ? (list.length ? [{ ...list[0], image: trip.heroImage }, ...list.slice(1)] : [{ name: "", image: trip.heroImage }]) : list;
+    // Who took each: as the proxy said, else what the address tells (Wikipedia, Pexels).
+    return shown.map((c) => ({ ...c, credit: creditOf(c.image, trip.photoCredits) }));
+  }, [mains, trip.cityImages, trip.heroImage, trip.photoCredits]);
   // A city's photo is looked up once (a miss is stored as null, so it isn't asked again). Once the
   // sharing server's photo proxy is set up, a stored miss or Wikipedia picture is asked for again, once
   // per trip and city in a session; a miss then keeps the old picture. The first city's new photo also
@@ -330,14 +332,18 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         const key = cityKeyOf(name)!;
         if (!wantsCityImage(trip.cityImages?.[key], Boolean(proxy))) continue;
         try {
-          const url = await pickCityImage(name, { proxy });
+          const found = await findCityPhoto(name, { proxy });
+          const url = found?.url ?? null;
           await updateTrip(
             trip.id,
-            (t) => ({
-              ...t,
-              cityImages: { ...t.cityImages, [key]: nextCityImage(t.cityImages?.[key], url) },
-              ...(key === firstKey ? { heroImage: nextHeroImage(t.heroImage, url) } : {}),
-            }),
+            (t) => {
+              const next = {
+                ...t,
+                cityImages: { ...t.cityImages, [key]: nextCityImage(t.cityImages?.[key], url) },
+                ...(key === firstKey ? { heroImage: nextHeroImage(t.heroImage, url) } : {}),
+              };
+              return { ...next, photoCredits: keptCredits(next, [found]) };
+            },
             { touch: false },
           );
         } catch (error) {

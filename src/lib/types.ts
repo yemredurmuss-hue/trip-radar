@@ -220,6 +220,11 @@ export interface Trip {
   shareId?: string;
   /** Hero photo per city (city key → URL, null when none was found); fetched once. */
   cityImages?: Record<string, string | null>;
+  /**
+   * Who took the trip's photos (heroImage, cityImages), by photo URL, as the city-image proxy said (2026-10-07). A photo
+   * without one is credited from its address (cityImages.ts creditOf: Wikipedia, Pexels, Unsplash) or not at all.
+   */
+  photoCredits?: Record<string, PhotoCredit>;
   /** The AI's mood sentence for the hero and the cities it was written for (see heroText.ts). */
   mood?: { key: string; text: string } | null;
   /** The style words the model picked for the hero (tripStyle.ts) and what they were picked for. */
@@ -288,6 +293,16 @@ export interface Suggestion {
 
 /** The kinds of trip with a playbook of their own (playbooks/); "classic" is every other trip, as before. */
 export type PlaybookKind = "festival" | "ski" | "honeymoon" | "wellness" | "classic";
+
+/** A photo's credit for the hero ("Fotoğraf: <by> / Unsplash"): both parts linked when their pages are known. */
+export interface PhotoCredit {
+  by: string | null;
+  source: "unsplash" | "pexels" | "wikipedia";
+  /** The photographer's page (Unsplash's with its UTM). */
+  authorUrl: string | null;
+  /** The photo's page on the source. */
+  photoPage: string | null;
+}
 
 /** Trip.intent: the playbook, and the event or theme it was read from (its name and official site), when there was one. */
 export interface TripIntent {
