@@ -50,7 +50,10 @@ async function lookUp(key: string, query: string): Promise<Geo | null> {
     // Stamped before asking: a slow answer doesn't let the next request go early.
     lastRequest = Date.now();
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=tr&q=${encodeURIComponent(query)}`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=tr&q=${encodeURIComponent(query)}`, {
+        // A request that never answers would hold every later lookup on the page behind it.
+        signal: AbortSignal.timeout(10_000),
+      });
       if (!res.ok) return null; // don't cache failures: they may be temporary
       const [hit] = (await res.json()) as { lat: string; lon: string }[];
       const lat = hit ? Number(hit.lat) : null;
