@@ -10,7 +10,7 @@
 // cache still answers. Unsplash's rule: when a photo is chosen, its download_location is called once.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { cacheKey, keyOf, pexelsSearchUrl, pickPexels, pickUnsplash, publicAnswer, unsplashSearchUrl, type Picked, type PhotoSource } from "./pick.ts";
+import { cacheKey, keyOf, pexelsSearchUrl, pickPexels, pickUnsplash, placeQuery, publicAnswer, unsplashSearchUrl, type Picked, type PhotoSource } from "./pick.ts";
 
 type Answer = Omit<Picked, "download_location">;
 type Hit = Answer | { url: null };
@@ -59,7 +59,9 @@ Deno.serve(async (req: Request) => {
   const params = new URL(req.url).searchParams;
   const q = (params.get("q") ?? "").trim().slice(0, 80);
   if (!q) return json({ url: null }, {}, 400);
-  const queries = [q, ...params.getAll("alt").map((a) => a.trim().slice(0, 80)).filter(Boolean)].slice(0, 3);
+  const alts = params.getAll("alt").map((a) => a.trim().slice(0, 80)).filter(Boolean);
+  // A place alone is searched as a trip (placeQuery); an event (with its alternatives) as itself.
+  const queries = (alts.length ? [q, ...alts] : [placeQuery(q)]).slice(0, 3);
   // Pasted secrets sometimes carry quotes, the name, a "NAME=" prefix or extra lines: keep the key-shaped token.
   const pexels = (Deno.env.get("PEXELS_API_KEY") ?? "").match(/[A-Za-z0-9]{40,}/)?.[0] ?? "";
   const unsplash = keyOf(Deno.env.get("UNSPLASH_ACCESS_KEY"));

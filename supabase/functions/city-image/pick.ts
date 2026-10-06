@@ -15,14 +15,27 @@ export interface Picked {
   download_location?: string | null;
 }
 
-/** Bumped when the picking changes, so older picks are chosen again (v2: Unsplash, credits; v3: an event's name must be in the photo's words; 2026-10-07). */
-export const CACHE_VERSION = "v3:";
+/** Bumped when the picking changes, so older picks are chosen again (v2: Unsplash, credits; v3: an event's name must be in the photo's words; v4: a place searched as a trip, people last; 2026-10-07). */
+export const CACHE_VERSION = "v4:";
 /** The cache's key: the search and the ones tried after it when it finds nothing (an event's). */
 export const cacheKey = (queries: string[]) => CACHE_VERSION + queries.map((s) => s.trim().toLowerCase().replace(/\s+/g, " ")).join("|");
 
 export const unsplashSearchUrl = (q: string) =>
   `https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&orientation=landscape&per_page=10&content_filter=high`;
 export const pexelsSearchUrl = (q: string) => `https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&orientation=landscape&per_page=10`;
+
+/**
+ * A place is searched as a trip ("Madeira travel"): its bare name can be a word too (Portuguese "madeira" is wood, and a
+ * wood slab won). An event's searches are its own.
+ */
+export const placeQuery = (q: string) => (/\btravel\b/i.test(q) ? q : `${q} travel`);
+
+/** A photo about someone (a woman on a rock, a man on a bike): taken only when nothing else came. */
+const PEOPLE = /\b(person|people|woman|women|man|men|girl|boy|couple|child|kid|selfie|portrait)\b/i;
+const preferNoPeople = <T>(list: T[], text: (p: T) => string): T[] => {
+  const without = list.filter((p) => !PEOPLE.test(text(p)));
+  return without.length ? without : list;
+};
 
 /** Appends query parameters to an address that may already carry some (Unsplash's raw URL has ixid, kept). */
 const appendQuery = (url: string, params: string) => `${url}${url.includes("?") ? "&" : "?"}${params}`;
@@ -49,7 +62,10 @@ const pexelsText = (p: any) => [p?.alt, p?.url].filter(Boolean).join(" ");
 
 /** Unsplash: the most liked of its answers (the earlier on a tie), at 2400 px; credit links with the UTM. */
 export function pickUnsplash(results: unknown, named?: string): Picked | null {
-  const list = (Array.isArray(results) ? results : []).filter((p: any) => p?.urls?.raw && (!named || namesIt(unsplashText(p), named)));
+  const list = preferNoPeople(
+    (Array.isArray(results) ? results : []).filter((p: any) => p?.urls?.raw && (!named || namesIt(unsplashText(p), named))),
+    (p: any) => [p?.alt_description, p?.description, p?.slug].filter(Boolean).join(" "),
+  );
   if (!list.length) return null;
   const p: any = list.reduce((best: any, cur: any) => ((Number(cur?.likes) || 0) > (Number(best?.likes) || 0) ? cur : best));
   return {
@@ -67,7 +83,10 @@ export const PEXELS_FIRST = 5;
 
 /** Pexels: the widest landscape of its first few answers (the earlier on a tie), the original at 2400 px, compressed. */
 export function pickPexels(photos: unknown, named?: string): Picked | null {
-  const list = (Array.isArray(photos) ? photos : []).slice(0, PEXELS_FIRST).filter((p: any) => p?.src?.original && (!named || namesIt(pexelsText(p), named)));
+  const list = preferNoPeople(
+    (Array.isArray(photos) ? photos : []).slice(0, PEXELS_FIRST).filter((p: any) => p?.src?.original && (!named || namesIt(pexelsText(p), named))),
+    (p: any) => [p?.alt, p?.url].filter(Boolean).join(" "),
+  );
   if (!list.length) return null;
   const width = (p: any) => (Number(p?.width) > Number(p?.height) ? Number(p.width) : 0);
   const p: any = list.reduce((best: any, cur: any) => (width(cur) > width(best) ? cur : best));
