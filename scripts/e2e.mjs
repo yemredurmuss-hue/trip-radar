@@ -57,6 +57,8 @@ await context.route("**/functions/v1/offers**", (route) => route.fulfill({ json:
 // Web search is off unless a test routes it (the start chat looks up an event's dates): never the live server, and
 // "not-configured" is never cached (a "no-result" would be, and answer a later test's search for the same event).
 await context.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
+// The hero's photo proxy answers "no photo" unless a test routes it: never the live server.
+await context.route(/functions\/v1\/city-image/, (route) => route.fulfill({ json: { url: null, reason: "no-photo" } }));
 await frozen(context);
 
 try {
@@ -4050,6 +4052,8 @@ await updating.route("**/functions/v1/offers**", (route) => route.fulfill({ json
 // Web search is off unless a test routes it (the start chat looks up an event's dates): never the live server, and
 // "not-configured" is never cached (a "no-result" would be, and answer a later test's search for the same event).
 await updating.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
+// The hero's photo proxy answers "no photo" unless a test routes it: never the live server.
+await updating.route(/functions\/v1\/city-image/, (route) => route.fulfill({ json: { url: null, reason: "no-photo" } }));
 await frozen(updating);
 try {
   const worker = updating.serviceWorkers()[0] ?? (await updating.waitForEvent("serviceworker"));
@@ -4113,6 +4117,8 @@ await safety.route("**/functions/v1/offers**", (route) => route.fulfill({ json: 
 // Web search is off unless a test routes it (the start chat looks up an event's dates): never the live server, and
 // "not-configured" is never cached (a "no-result" would be, and answer a later test's search for the same event).
 await safety.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
+// The hero's photo proxy answers "no photo" unless a test routes it: never the live server.
+await safety.route(/functions\/v1\/city-image/, (route) => route.fulfill({ json: { url: null, reason: "no-photo" } }));
 await frozen(safety);
 try {
   const worker = safety.serviceWorkers()[0] ?? (await safety.waitForEvent("serviceworker"));
@@ -4241,6 +4247,8 @@ await whoGoes.route("**/functions/v1/offers**", (route) => route.fulfill({ json:
 // Web search is off unless a test routes it (the start chat looks up an event's dates): never the live server, and
 // "not-configured" is never cached (a "no-result" would be, and answer a later test's search for the same event).
 await whoGoes.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
+// The hero's photo proxy answers "no photo" unless a test routes it: never the live server.
+await whoGoes.route(/functions\/v1\/city-image/, (route) => route.fulfill({ json: { url: null, reason: "no-photo" } }));
 await frozen(whoGoes);
 try {
   const worker = whoGoes.serviceWorkers()[0] ?? (await whoGoes.waitForEvent("serviceworker"));
@@ -4337,6 +4345,8 @@ await flightDay.route("**/functions/v1/offers**", (route) => route.fulfill({ jso
 // Web search is off unless a test routes it (the start chat looks up an event's dates): never the live server, and
 // "not-configured" is never cached (a "no-result" would be, and answer a later test's search for the same event).
 await flightDay.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
+// The hero's photo proxy answers "no photo" unless a test routes it: never the live server.
+await flightDay.route(/functions\/v1\/city-image/, (route) => route.fulfill({ json: { url: null, reason: "no-photo" } }));
 // The sample trip starts three days after the day it's loaded (demo.ts): loaded on 5 October it's as written
 // (8–14 October), then the calendar moves on to the flight's day.
 await flightDay.clock.install({ time: new Date("2026-10-05T10:00:00") });
