@@ -80,7 +80,8 @@ import { cantSearch, SEARCH_KINDS, searchKey, siteName, webSearch, type SearchKi
 import { chatStatusOf, searchEnded, searchStarted } from "./chatStatus";
 import { needKey } from "./emptyCards";
 import { dealPrice, validOffers, type Need, type Offer } from "./offerSource";
-import { findOffers } from "./offerSources";
+import { findOffers, stayCandidates } from "./offerSources";
+import { candidateOffer, pickLabel, pickList, picksContext, pickThree } from "./stayPicks";
 import { airportCode } from "./searchLinks";
 
 /** What became of the chat's suggestion, as its result says it. */
@@ -2050,6 +2051,13 @@ export async function findOffersTool(tripId: string, input: any, items: Item[]):
   const prefer = input?.prefer === "best" ? null : "cheap";
   searchStarted(tripId, "offers");
   try {
+    // A stay with no ceiling: the same three picks as the empty card's row ("Sana en uygun", "Daha ekonomik", "Daha
+    // konforlu"), out of the source's candidates; a ceiling (or no candidates) keeps the cheapest under it, said honestly.
+    if (need.kind === "stay" && max == null) {
+      const rates = trip?.budget && trip.budget.currency !== "EUR" ? await getRates() : null;
+      const picks = pickList(pickThree(await stayCandidates(need), picksContext(need, trip ?? null, items, rates)));
+      if (picks.length) return { need, offers: picks.map(({ kind, pick }) => candidateOffer(pick.cand, kind, pick.why)), overMax: null };
+    }
     const first = validOffers(await findOffers(need, { prefer, max }), need);
     if (first.length || max == null) return { need, offers: first, overMax: null };
     const cheapest = validOffers(await findOffers(need, { prefer: "cheap" }), need);
@@ -2086,8 +2094,12 @@ function offersToolResult({ need, offers, overMax }: { need: Need; offers: Offer
     offers: offers.map((o) => {
       const deal = dealPrice(o, need.adults ?? null);
       return {
+        ...(o.pick ? { pick: pickLabel(o.pick) } : {}),
         title: o.title,
         total: o.price != null ? formatPrice(o.price, o.currency ?? null) : null,
+        // No price for these dates: only its usual range, said as such.
+        ...(o.price == null && o.meta ? { price_note: o.meta } : {}),
+        ...(o.reviews != null ? { reviews: o.reviews } : {}),
         ...(deal?.perNight ? { per_night: formatPrice(Math.round(deal.amount), o.currency ?? null) } : {}),
         ...(o.rating != null ? { rating: `${o.rating}/${o.rating > 5 ? 10 : 5}` } : {}),
         source: o.source,
@@ -2098,10 +2110,15 @@ function offersToolResult({ need, offers, overMax }: { need: Need; offers: Offer
       };
     }),
     ...(overMax ? { over_max: overMax } : {}),
-    shown: L(
-      "Bu teklifler yanıtının altında kart olarak, 'Ekle' butonuyla gösteriliyor (Ekle onu seçeneklere ekler). Kısaca hangisinin neden uyduğunu söyle; link yazma, sayı uydurma.",
-      "These offers show as cards under your reply, each with an 'Add' button (Add saves it as an option). Briefly say which fits and why; write no links, make up no numbers.",
-    ),
+    shown: offers.some((o) => o.pick)
+      ? L(
+          "Bunlar kaynağın otelleri arasından seçilen üç öneri; yanıtının altında etiketleriyle (pick) kart olarak, 'Ekle' butonuyla gösteriliyor. Her birinin 'why' satırı yalnız veriden; kısaca onları söyle. Listede olmayan bir özellik (sessizlik, manzara, konum) iddia etme; link yazma, sayı uydurma.",
+          "These are three picks out of the source's hotels; they show as cards under your reply with their labels (pick) and an 'Add' button. Each 'why' is from the data only; say them briefly. Claim no feature that isn't listed (quiet, view, location); write no links, make up no numbers.",
+        )
+      : L(
+          "Bu teklifler yanıtının altında kart olarak, 'Ekle' butonuyla gösteriliyor (Ekle onu seçeneklere ekler). Kısaca hangisinin neden uyduğunu söyle; link yazma, sayı uydurma.",
+          "These offers show as cards under your reply, each with an 'Add' button (Add saves it as an option). Briefly say which fits and why; write no links, make up no numbers.",
+        ),
   };
 }
 

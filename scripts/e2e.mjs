@@ -2920,6 +2920,7 @@ try {
   assert.equal(new URL((await hrefs(back))[0][1]).searchParams.get("q"), "Flights from Denpasar to İstanbul on 2027-01-09 one way");
   console.log("✓ boş kartlar: a new trip's flights, stays, transfers, eSIM and activities are plain cards with Ara: and branded searches (cities, dates, 2 people), no AI row; none in Günlük akış; a placeholder's day edited stays empty");
 
+
   // 23. Kişiye özel rezervasyon (spec 2026-10-06-kisiye-ozel-rezervasyon-design.md, mockup v1): on this two-person
   // trip (me & Sabine) the chat "Sabine Alicante'den geliyor" opens Sabine's own empty flight there with the badge
   // "Sabine'in bileti", its searches from Alicante for 1, the trip's own flight there "Emre'nin bileti" (my name asked first, in bold, as no profile name is set); the way home is asked in
@@ -3041,6 +3042,80 @@ try {
   assert.deepEqual(after.trip.travellers.from, { Sabine: "Alicante" });
   assert.deepEqual(after.items.find((i) => i.id === mainHome.id).forWho, ["Sabine"]);
   await flow.unroute("https://generativelanguage.googleapis.com/**", perPerson);
+  // 23b. Üç akıllı konaklama önerisi (stayPicks.ts, owner-approved MVP): the source's candidates for Ubud (fixed here,
+  // €40/47/103/155/173/209 by the night) narrowed to three labelled cards under its empty card, "Sana en uygun",
+  // "Daha ekonomik", "Daha konforlu", each with its price and scope and one line of why; Favorile saves one as an
+  // option of the need.
+  const pickCand = (id, name, nightly, rating, reviews) => ({
+    id, name, rating, reviews, photo: null, geo: null, area: "Otel", labels: [], url: `https://www.booking.com/hotel/id/${id}.html`,
+    nightly, total: nightly * 12, nights: 12, priceRange: null, source: "Booking", currency: "EUR", fetchedAt: Date.now(),
+  });
+  const ubudCandidates = [
+    pickCand("e2e-bucu", "Bucu View", 40, 4.3, 380),
+    pickCand("e2e-hostel", "Ubud Hostel", 47, 3.9, 900),
+    pickCand("e2e-alaya", "Alaya Resort", 103, 4.5, 2100),
+    pickCand("e2e-komaneka", "Komaneka", 155, 4.6, 1240),
+    pickCand("e2e-maya", "Maya Ubud", 173, 4.8, 3000),
+    pickCand("e2e-mandapa", "Mandapa", 209, 4.9, 640),
+  ];
+  const candidatesAsked = [];
+  const candidatesFn = (route) => {
+    const url = new URL(route.request().url());
+    const mine = url.searchParams.get("kind") === "stay" && url.searchParams.get("city") === "Ubud" && url.searchParams.get("candidates") === "1";
+    if (mine) candidatesAsked.push(url.toString());
+    return route.fulfill({ headers: { "Access-Control-Allow-Origin": "*" }, json: mine ? { offers: [], candidates: ubudCandidates } : { offers: [] } });
+  };
+  await flow.route("**/functions/v1/offers**", candidatesFn);
+  // The empty answers asked so far are kept for hours: forgotten, and the Plan drawn again (each card asks anew).
+  await board.evaluate(() => chrome.storage.local.remove("offersSeen"));
+  await board.getByRole("tab", { name: "Günlük akış", exact: true }).click();
+  await board.locator(".panel .dc-bar").waitFor();
+  await board.getByRole("tab", { name: "Plan", exact: true }).click();
+  await ekOpen("stay");
+  const ubudCard = ekSec("stay").locator(".ek-card", { hasText: "Ubud" }).first();
+  // The row sits right under its card (EmptyCard draws it after the card itself).
+  const picksRow = ekSec("stay").locator('.ek-card:has-text("Ubud") + .ek-offers.ek-picks').first();
+  await picksRow.waitFor({ timeout: 10000 });
+  assert.ok(candidatesAsked.length >= 1 && candidatesAsked.every((u) => /start=2026-12-10/.test(u) && /end=2026-12-22/.test(u)), "Ubud's candidates asked for its nights");
+  // Closed at first: the count only.
+  assert.equal(await picksRow.locator(".ek-offers-head").innerText().then((t) => t.replace(/\s+/g, " ").trim()), "✨ Senin için 3 öneri ▾");
+  assert.equal(await picksRow.locator(".ek-pick").count(), 0, "closed by default");
+  await picksRow.locator(".ek-offers-head").click();
+  const pickCards = picksRow.locator(".ek-pick");
+  await pickCards.first().waitFor();
+  assert.equal(await pickCards.count(), 3, "three cards");
+  assert.deepEqual(await picksRow.locator(".ek-pick-label").allInnerTexts(), ["Sana en uygun", "Daha ekonomik", "Daha konforlu"]);
+  assert.deepEqual(await picksRow.locator(".ek-pick-name").allInnerTexts(), ["Alaya Resort", "Bucu View", "Mandapa"]);
+  assert.match(await pickCards.nth(1).innerText(), /★ 4,3[\s\S]*380 yorum[\s\S]*€40 \/ gece · 12 gece €480[\s\S]*Bulduklarımın en ucuzu, ★4,3/);
+  assert.match(await pickCards.nth(2).innerText(), /Gecelik €106 daha fazla ama ★4,9/);
+  assert.equal(await pickCards.nth(0).getByRole("link", { name: "İncele ↗" }).getAttribute("href"), "https://www.booking.com/hotel/id/e2e-alaya.html");
+  // Wide: three side by side, the best one accented.
+  const tops = await pickCards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
+  assert.equal(new Set(tops).size, 1, "three columns when wide");
+  assert.equal(await pickCards.nth(0).locator(".ek-pick-label").evaluate((el) => getComputedStyle(el).color), "rgb(255, 255, 255)");
+  await ubudCard.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await board.screenshot({ path: `${out}/29a-stay-picks.png` });
+  // Narrow: stacked.
+  await board.setViewportSize({ width: 560, height: 1400 });
+  const narrowTops = await pickCards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
+  assert.equal(new Set(narrowTops).size, 3, "stacked when narrow");
+  await ubudCard.evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await board.screenshot({ path: `${out}/29b-stay-picks-narrow.png` });
+  await board.setViewportSize({ width: 1440, height: 900 });
+  // Favorile: "Daha ekonomik" saved as an option of Ubud's nights, its page, rating and reviews, price for the nights.
+  await pickCards.nth(1).getByRole("button", { name: "Bucu View: favorile" }).click();
+  let favoured = [];
+  for (let i = 0; i < 50 && !favoured.length; i++) {
+    favoured = (await tripRecords("Bali Gezisi")).items.filter((x) => x.name === "Bucu View");
+    if (!favoured.length) await board.waitForTimeout(100);
+  }
+  assert.deepEqual(
+    favoured.map((x) => [x.category, x.status, x.city, x.dates.start, x.dates.end, x.url, x.provider, x.rating.value, x.rating.count, x.price.amount]),
+    [["stay", "saved", "Ubud", "2026-12-10", "2026-12-22", "https://www.booking.com/hotel/id/e2e-bucu.html", "Booking", 4.3, 380, 480]],
+  );
+  await board.screenshot({ path: `${out}/29c-stay-picks-favoured.png` });
+  await flow.unroute("**/functions/v1/offers**", candidatesFn);
+  console.log("✓ stay picks: Ubud's six candidates narrowed to 'Sana en uygun' Alaya Resort, 'Daha ekonomik' Bucu View (€40 / gece · 12 gece €480), 'Daha konforlu' Mandapa (€106 more, ★4,9); closed at first, 3 columns wide, stacked narrow; Favorile saves Bucu View as Ubud's option");
   // The profile name said here goes again: the later steps start as before (no name on this computer).
   await board.evaluate(() => chrome.storage.local.remove("shareName"));
   // A one-person trip: a plan written for someone (as a stale share could leave it) shows no badge anywhere.
@@ -3261,7 +3336,10 @@ try {
   assert.match(await chatCards.nth(0).innerText(), /Pensão Favorita[\s\S]*★ 4,7[\s\S]*Tripadvisor[\s\S]*Ribeira'ya 8 dk[\s\S]*€270[\s\S]*€90 \/ gece/);
   assert.match(await chatCards.nth(1).innerText(), /8,9/);
   assert.equal(await chatCards.nth(0).locator('a[href="https://www.tripadvisor.com/Hotel_Review-e2e-favorita"]').count(), 2, "its page through the offer's own link");
-  assert.ok(offersAsked.length >= 1 && offersAsked.every((u) => /kind=stay/.test(u) && /city=Porto/.test(u) && /prefer=cheap/.test(u)), "the source asked for Porto's cheapest");
+  // A stay with no ceiling asks its candidates first (the three picks); none here, so the cheapest as before.
+  const offersOnly = offersAsked.filter((u) => !/candidates=1/.test(u));
+  assert.ok(offersAsked.length > offersOnly.length, "the stay's candidates asked first");
+  assert.ok(offersOnly.length >= 1 && offersOnly.every((u) => /kind=stay/.test(u) && /city=Porto/.test(u) && /prefer=cheap/.test(u)), "the source asked for Porto's cheapest");
   await chatCards.nth(0).getByRole("button", { name: "Pensão Favorita: seçeneklere ekle" }).click();
   await chatCards.nth(0).getByRole("button", { name: "Pensão Favorita eklendi" }).waitFor({ timeout: 5000 });
   await board.screenshot({ path: `${out}/27f-chat-offers.png` });

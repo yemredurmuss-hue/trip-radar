@@ -4,7 +4,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { EmptyEnvContext } from "../src/app/cards/emptyEnv";
-import { OfferRow, OfferRowView } from "../src/app/cards/OfferRow";
+import { OfferRow, OfferRowView, StayPicksView } from "../src/app/cards/OfferRow";
+import type { StayCandidate } from "../src/lib/offerSources";
+import { candidateOffer, pickList, pickThree } from "../src/lib/stayPicks";
 import {
   dealPrice,
   MAX_OFFERS,
@@ -84,7 +86,6 @@ describe("open or closed", () => {
 });
 
 describe("the row as drawn", () => {
-  const noop = () => {};
   it("closed: the count line only, never the cards", () => {
     const html = renderToStaticMarkup(<OfferRowView offers={[offer(), offer({ id: "o2" })]} open={false} onToggle={noop} onAdd={noop} onLess={noop} />);
     expect(html).toContain("Senin için 2 öneri");
@@ -141,6 +142,54 @@ describe("the row as drawn", () => {
   });
   it("no offers: nothing", () => {
     expect(renderToStaticMarkup(<OfferRowView offers={[]} open onToggle={noop} onAdd={noop} onLess={noop} />)).toBe("");
+  });
+});
+
+const noop = () => {};
+
+describe("a stay's three picks in the row", () => {
+  const c = (id: string, over: Partial<StayCandidate> = {}): StayCandidate => ({
+    id, name: id, rating: 4.6, reviews: 1240, photo: `https://img.example.com/${id}.jpg`, geo: null, area: "Resort", labels: [],
+    url: `https://www.booking.com/${id}?aid=1`, nightly: 155, total: 620, nights: 4, priceRange: null, source: "Booking", currency: "EUR", fetchedAt: 1, ...over,
+  });
+  const picks = () =>
+    pickList(pickThree([c("Komaneka"), c("Bucu View", { nightly: 40, total: 160, rating: 4.3, reviews: 380 }), c("Mandapa", { nightly: 209, total: 836, rating: 4.9, reviews: 640 })], { budgetPerNight: null, centre: null }));
+  it("the labels on top, then photo, name, ★ rating · reviews, the price with its scope, why, Favorile and İncele ↗", () => {
+    const html = renderToStaticMarkup(<StayPicksView picks={picks()} open added={["Mandapa"]} onToggle={noop} onFavorite={noop} />);
+    expect(html.match(/class="ek-pick pick-/g)).toHaveLength(3);
+    expect([...html.matchAll(/data-pick="(\w+)"/g)].map((m) => m[1])).toEqual(["best", "cheaper", "comfier"]);
+    for (const part of [
+      '<span class="ek-pick-label">Sana en uygun</span>', '<span class="ek-pick-label">Daha ekonomik</span>', '<span class="ek-pick-label">Daha konforlu</span>',
+      'src="https://img.example.com/Komaneka.jpg"', '<span class="ek-of-rate">★ 4,6</span>1.240 yorum · Resort', "<b>€155 / gece</b> · 4 gece €620",
+      "✨ Bulduklarımın en ucuzu, ★4,3", "✨ Gecelik €54 daha fazla ama ★4,9", ">Favorile<", "✓ Favorilendi",
+      'href="https://www.booking.com/Komaneka?aid=1"', "İncele ↗",
+    ]) {
+      expect(html).toContain(part);
+    }
+  });
+  it("closed: the count only; nothing to show: nothing at all", () => {
+    const html = renderToStaticMarkup(<StayPicksView picks={picks()} open={false} added={[]} onToggle={noop} onFavorite={noop} />);
+    expect(html).toContain("Senin için 3 öneri");
+    expect(html).not.toContain("ek-pick-list");
+    expect(renderToStaticMarkup(<StayPicksView picks={[]} open added={[]} onToggle={noop} onFavorite={noop} />)).toBe("");
+  });
+  it("a hotel with only its usual range: said as typical, no price for the dates", () => {
+    const only = pickList(pickThree([c("Range", { nightly: null, total: null, source: null, priceRange: { min: 120, max: 180 } })], { budgetPerNight: null, centre: null }));
+    expect(renderToStaticMarkup(<StayPicksView picks={only} open added={[]} onToggle={noop} onFavorite={noop} />)).toContain("<b>tipik €120–180 / gece</b> · tarihli fiyat yok");
+  });
+  it("Favorile saves the pick as an option of the need: its page, rating with reviews, the price for these nights", () => {
+    const [{ kind, pick }] = picks();
+    const item = offerItem(candidateOffer(pick.cand, kind, pick.why), need, "t1", "n1", 9);
+    expect(item).toMatchObject({ status: "saved", name: "Komaneka", provider: "Booking", url: "https://www.booking.com/Komaneka?aid=1", rating: { value: 4.6, scale: 5, count: 1240 }, price: { amount: 620, currency: "EUR", scope: "total" } });
+  });
+  it("a source with candidates: a stay's row waits for them (nothing drawn before), never the plain list", () => {
+    const fake: SuggestionSource = { available: () => true, offers: vi.fn(async () => [offer()]), candidates: vi.fn(async () => []) };
+    const html = renderToStaticMarkup(
+      <EmptyEnvContext.Provider value={{ tripId: "t1", travellers: 2, esimCountries: [], offers: fake }}>
+        <OfferRow need={need} />
+      </EmptyEnvContext.Provider>,
+    );
+    expect(html).toBe("");
   });
 });
 

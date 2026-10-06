@@ -5,10 +5,15 @@
 // transfer: who runs it, the hours and codes, how long, direct; a stay, an activity, an eSIM: the photo, the name,
 // the rating and area, one line) and one purple "✨ why" line; on the right the deal: the source, the big price (a
 // stay's by the night), its unit, a full-width "Ekle →" and × in the corner ("Bunun gibileri gösterme").
-import { useEffect, useState } from "react";
+// A stay, when the source has candidates, shows its three picks instead (stayPicks.ts: "Sana en uygun", "Daha
+// ekonomik", "Daha konforlu"), each with "Favorile" and "İncele ↗"; the same row's open/closed state.
+import { useEffect, useMemo, useState } from "react";
 import { durationText } from "../../lib/cardFacts";
+import { getRates, type Rates } from "../../lib/currency";
 import { L } from "../../lib/i18n";
-import { nStops } from "../../lib/i18nText";
+import { nReviews, nStops } from "../../lib/i18nText";
+import type { StayCandidate } from "../../lib/offerSources";
+import { candidateOffer, pickLabel, pickList, picksContext, pickThree, priceParts, type PickKind, type StayPick } from "../../lib/stayPicks";
 import { formatPrice } from "../../lib/items";
 import {
   dealPrice,
@@ -173,8 +178,140 @@ export function OfferRowView({ offers, open, adults = null, now = Date.now(), on
   );
 }
 
-/** The row for one need: asks the source once per need, nothing at all while no source is connected. */
+/**
+ * A stay's three picks (stayPicks.ts, owner-approved MVP), as the row draws them: "Sana en uygun" (accent), "Daha
+ * ekonomik", "Daha konforlu" (muted) on top; the photo, the name, ★ rating · reviews, the price with its scope, the one
+ * "why"; "Favorile" (an option of the need, then "✓ Favorilendi") and "İncele ↗" (the hotel's page). Three columns when
+ * wide, stacked when narrow.
+ */
+export function StayPicksView({ picks, open, added, onToggle, onFavorite }: {
+  picks: { kind: PickKind; pick: StayPick }[];
+  open: boolean;
+  /** The candidates favoured from here ("✓ Favorilendi"). */
+  added: string[];
+  onToggle: () => void;
+  onFavorite: (kind: PickKind, pick: StayPick) => void;
+}) {
+  if (!picks.length) return null;
+  return (
+    <div className={`ek-offers ek-picks${open ? " open" : ""}`}>
+      <button type="button" className="ek-offers-head" aria-expanded={open} onClick={onToggle}>
+        <span aria-hidden>✨</span>
+        <span className="ek-offers-count">{offerCount(picks.length)}</span>
+        <span className="ek-offers-chev" aria-hidden>
+          ▾
+        </span>
+      </button>
+      {open && (
+        <div className="ek-pick-list">
+          {picks.map(({ kind, pick: { cand: c, why } }) => {
+            const done = added.includes(c.id);
+            const price = priceParts(c);
+            return (
+              <div key={c.id} className={`ek-pick pick-${kind}`} data-pick={kind} data-offer={c.id}>
+                <span className="ek-pick-label">{pickLabel(kind)}</span>
+                <span className="ek-pick-ph">
+                  {c.photo ? <img src={c.photo} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <KindIcon kind="stay" size={30} />}
+                </span>
+                <div className="ek-pick-body">
+                  <span className="ek-pick-name" title={c.name}>
+                    {c.name}
+                  </span>
+                  {(c.rating != null || c.area) && (
+                    <span className="ek-pick-s">
+                      {c.rating != null && <span className="ek-of-rate">{ratingText(c.rating)}</span>}
+                      {[c.reviews != null ? nReviews(c.reviews) : null, c.area].filter(Boolean).join(" · ")}
+                    </span>
+                  )}
+                  <span className="ek-pick-price">
+                    {price.main && <b>{price.main}</b>}
+                    {price.main && price.rest ? " · " : ""}
+                    {price.rest}
+                  </span>
+                  {why && <p className="ek-pick-why">✨ {why}</p>}
+                </div>
+                <div className="ek-pick-acts">
+                  <button
+                    type="button"
+                    className={`ek-pick-fav${done ? " done" : ""}`}
+                    disabled={done}
+                    onClick={() => onFavorite(kind, { cand: c, why })}
+                    aria-label={done ? L(`${c.name} favorilendi`, `${c.name} saved`) : L(`${c.name}: favorile`, `${c.name}: save as an option`)}
+                  >
+                    {done ? L("✓ Favorilendi", "✓ Saved") : L("Favorile", "Save")}
+                  </button>
+                  <a className="ek-pick-go" href={c.url} target="_blank" rel="noopener noreferrer">
+                    {L("İncele", "View")} ↗
+                  </a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A stay's row: the source's candidates narrowed to three for this trip (its budget, its plans there, its priorities). */
+function StayPicksRow({ need }: { need: Need }) {
+  const { offers: source, tripId, trip, items } = useEmptyEnv();
+  const available = source.available();
+  const storeKey = offersOpenKey(tripId, need.section);
+  const [open, setOpen] = useState(() => readOffersOpen(storeKey));
+  const [cands, setCands] = useState<StayCandidate[]>([]);
+  const [added, setAdded] = useState<string[]>([]);
+  const [rates, setRates] = useState<Rates | null>(null);
+  useEffect(() => {
+    if (!available || !source.candidates) return;
+    let live = true;
+    source.candidates(need).then(
+      (list) => live && setCands(Array.isArray(list) ? list : []),
+      () => live && setCands([]),
+    );
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- asked again only for another need
+  }, [available, source, need.key]);
+  // A budget in another money: today's rate turns it into euros (none: the budget plays no part).
+  const budgetMoney = trip?.budget?.currency ?? null;
+  useEffect(() => {
+    if (!budgetMoney || budgetMoney === "EUR") return;
+    let live = true;
+    void getRates().then((r) => live && setRates(r));
+    return () => {
+      live = false;
+    };
+  }, [budgetMoney]);
+  const picks = useMemo(() => pickList(pickThree(cands, picksContext(need, trip, items ?? [], rates))), [cands, need, trip, items, rates]);
+  if (!available) return null;
+  const toggle = () => {
+    writeOffersOpen(storeKey, !open);
+    setOpen(!open);
+  };
+  return (
+    <StayPicksView
+      picks={picks}
+      open={open}
+      added={added}
+      onToggle={toggle}
+      onFavorite={(kind, { cand, why }) => {
+        setAdded((a) => (a.includes(cand.id) ? a : [...a, cand.id]));
+        void addOffer(tripId, candidateOffer(cand, kind, why), need).catch((e: Error) => console.warn("Favorilenemedi", e.message));
+      }}
+    />
+  );
+}
+
+/** The row for one need: a stay's three picks when the source has candidates, else its offers as they come. */
 export function OfferRow({ need }: { need: Need }) {
+  const { offers: source } = useEmptyEnv();
+  return need.kind === "stay" && source.candidates ? <StayPicksRow need={need} /> : <PlainOfferRow need={need} />;
+}
+
+/** The plain row: asks the source once per need, nothing at all while no source is connected. */
+function PlainOfferRow({ need }: { need: Need }) {
   const { offers: source, tripId } = useEmptyEnv();
   const available = source.available();
   const storeKey = offersOpenKey(tripId, need.section);

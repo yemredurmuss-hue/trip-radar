@@ -6,11 +6,20 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const found = vi.hoisted(() => ({ calls: [] as { need: any; narrow: any }[], answer: (_need: any, _narrow: any): any[] => [] }));
+const found = vi.hoisted(() => ({
+  calls: [] as { need: any; narrow: any }[],
+  answer: (_need: any, _narrow: any): any[] => [],
+  asked: [] as any[],
+  candidates: (_need: any): any[] => [],
+}));
 vi.mock("../src/lib/offerSources", () => ({
   findOffers: async (need: any, narrow: any = {}) => {
     found.calls.push({ need, narrow });
     return found.answer(need, narrow);
+  },
+  stayCandidates: async (need: any) => {
+    found.asked.push(need);
+    return found.candidates(need);
   },
 }));
 
@@ -75,6 +84,8 @@ const lastReply = async () => (await listMessages(T)).filter((m) => m.role === "
 beforeEach(() => {
   found.calls = [];
   found.answer = () => [];
+  found.asked = [];
+  found.candidates = () => [];
 });
 afterEach(() => setLang("tr"));
 
@@ -154,5 +165,70 @@ describe("find_offers", () => {
     expect(await addChatOffer(reply.id, first, reply.offers!.need)).toBeNull();
     expect((await listItems(T)).filter((i) => i.name === "Quinta Mãe dos Homens")).toHaveLength(1);
     expect((await (await db()).get("messages", reply.id))!.offers!.added).toEqual(["o1"]);
+  });
+});
+
+describe("find_offers for a stay: the three picks", () => {
+  const cand = (id: string, nightly: number | null, rating: number, reviews: number, over: Record<string, unknown> = {}) => ({
+    id, name: id, rating, reviews, photo: null, geo: null, area: "Otel", labels: [], url: `https://www.booking.com/${id}?aid=1`,
+    nightly, total: nightly == null ? null : nightly * 3, nights: 3, priceRange: null, source: nightly == null ? null : "Booking", currency: "EUR", fetchedAt: 5, ...over,
+  });
+  const priceOf = (o: Offer) => ({ price: o.price ?? null, meta: o.meta ?? null });
+  const madeira = () => [
+    cand("Quinta Range", null, 4.7, 1500, { priceRange: { min: 60, max: 90 } }),
+    cand("Hotel do Carmo", 110, 4.2, 800),
+    cand("Pestana", 160, 4.5, 2400),
+    cand("Reid's", 380, 4.8, 3100),
+  ];
+
+  it("no ceiling: the candidates narrowed to 'Sana en uygun', 'Daha ekonomik', 'Daha konforlu'; the model reads the labels and only the data", async () => {
+    await put([stay()]);
+    found.candidates = () => madeira();
+    const { llm, calls } = fake([use("find_offers", ask({ prefer: "best" })), say("Üç öneri aşağıda.")]);
+    await sendMessage(T, "Funchal için otel öner", llm);
+    expect(found.asked).toHaveLength(1);
+    expect(found.calls).toHaveLength(0);
+    const reply = await lastReply();
+    expect(reply.offers!.offers.map((o) => [o.pick, o.id])).toEqual([["best", "Quinta Range"], ["cheaper", "Hotel do Carmo"], ["comfier", "Reid's"]]);
+    // The best one has no price for the dates: only its usual range, said as such (no total, no per night).
+    expect(priceOf(reply.offers!.offers[0])).toEqual({ price: null, meta: "tipik €60–90 / gece · tarihli fiyat yok" });
+    const result = JSON.parse(String(resultOf(calls, 1).content));
+    expect(result.offers.map((o: any) => o.pick)).toEqual(["Sana en uygun", "Daha ekonomik", "Daha konforlu"]);
+    expect(result.offers[0]).toMatchObject({ title: "Quinta Range", total: null, price_note: "tipik €60–90 / gece · tarihli fiyat yok", reviews: 1500 });
+    expect(result.offers[0].per_night).toBeUndefined();
+    expect(result.offers[1]).toMatchObject({ title: "Hotel do Carmo", total: "€330", per_night: "€110", why: "Bulduklarımın en ucuzu, ★4,2" });
+    expect(result.shown).toContain("üç öneri");
+    // Drawn with the same labels, the best one accented.
+    const html = renderToStaticMarkup(<ChatOffersView offers={reply.offers!.offers} need={reply.offers!.need} added={[]} onAdd={() => {}} />);
+    expect(html).toContain('<span class="co-pick">Sana en uygun</span>');
+    expect(html).toContain('<span class="co-pick">Daha ekonomik</span>');
+    expect(html).toContain('<span class="co-pick">Daha konforlu</span>');
+    expect(html).toContain('class="chat-offer pick-best"');
+    // Ekle saves the pick as an option, its reviews with it.
+    const item = await addChatOffer(reply.id, reply.offers!.offers[1], reply.offers!.need);
+    expect(item).toMatchObject({ name: "Hotel do Carmo", status: "saved", provider: "Booking", rating: { value: 4.2, scale: 5, count: 800 }, price: { amount: 330, currency: "EUR" } });
+  });
+
+  it("a hotel unpriced for the dates shows only its usual range, never as this stay's price", () => {
+    const need = offersNeed(ask(), [stay()], 2) as Need;
+    const o: Offer = { id: "q", kind: "stay", title: "Quinta Range", rating: 4.7, price: null, url: "https://x.example/q", why: "", source: "Tripadvisor", fetchedAt: 1, meta: "tipik €60–90 / gece · tarihli fiyat yok", pick: "best" };
+    const html = renderToStaticMarkup(<ChatOffersView offers={[o]} need={need} added={[]} onAdd={() => {}} />);
+    expect(html).toContain("tipik €60–90 / gece · tarihli fiyat yok");
+    expect(html).not.toContain('class="co-amt"');
+  });
+
+  it("a ceiling keeps the cheapest under it (the candidates aren't asked); no candidates: the source's offers as before", async () => {
+    await put([stay()]);
+    found.candidates = () => madeira();
+    found.answer = () => three();
+    const { llm } = fake([use("find_offers", ask({ max_per_night: 120 })), say("Tamam.")]);
+    await sendMessage(T, "gecesi 120 euroya kadar otel", llm);
+    expect(found.asked).toHaveLength(0);
+    expect((await lastReply()).offers!.offers.map((o) => o.id)).toEqual(["o1", "o2", "o3"]);
+    found.candidates = () => [];
+    const second = fake([use("find_offers", ask()), say("Tamam.")]);
+    await sendMessage(T, "daha ucuz otel öner", second.llm);
+    expect(found.asked).toHaveLength(1);
+    expect((await lastReply()).offers!.offers.every((o) => !o.pick)).toBe(true);
   });
 });
