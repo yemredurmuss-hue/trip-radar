@@ -87,14 +87,20 @@ export function TripHero(props: {
   if (booked) words.push(["booked", <><i className="hx-key booked" aria-hidden />{L(`${booked} rezerve`, `${booked} booked`)}</>]);
   if (planned) words.push(["planned", <><i className="hx-key planned" aria-hidden />{open ? L(`${planned} planlandı`, `${planned} planned`) : L(`${planned} rezervasyon kaldı`, `${planned} ${planned === 1 ? "booking" : "bookings"} left`)}</>]);
   if (open) words.push(["open", L(`${open} karar bekliyor`, `${open} to decide`)]);
+  // The line wraps between the parts, never inside one, and a dot goes with the part after it (none left dangling).
   const parts = words.map(([k, w], n) => (
     <Fragment key={k}>
-      {n > 0 && (
-        <span className="dot" aria-hidden>
-          ·
-        </span>
-      )}
-      <span className="hx-part">{w}</span>
+      {n > 0 && " "}
+      <span className="hx-part">
+        {n > 0 && (
+          <>
+            <span className="dot" aria-hidden>
+              ·
+            </span>{" "}
+          </>
+        )}
+        {w}
+      </span>
     </Fragment>
   ));
   const barLabel = L(`Planlama: ${booked} rezerve, ${planned} planlandı, ${open} karar bekliyor`, `Planning: ${booked} booked, ${planned} planned, ${open} to decide`);
@@ -168,41 +174,42 @@ export function TripHero(props: {
         </div>
         <div className={`hx-progress${done.total ? "" : " empty"}`}>
           <div className="hx-progress-main">
+            {/* The words, the bar (and "⏳ 2") on one line, the three stages under them: the box keeps the height it had. */}
             <div className="hx-progress-head">
               <b>{done.total === 0 ? L("Planlama", "Planning") : done.complete ? L("Her şey hazır", "All set") : stages.open === 0 ? L("Planlama tamam", "Planning done") : L(`Planlama %${pct}`, `Planning ${pct}%`)}</b>
-              {done.total > 0 ? (
-                <span key="count" className={`hx-progress-meta${barAppear}`}>
-                  {parts.length > 0 &&
-                    (progress.todos.length > 0 ? (
-                      <button className="hx-progress-count" aria-expanded={props.list === "all"} title={L("Yapılacakları göster", "Show what's left")} onClick={() => toggle("all")}>
-                        {parts}
-                      </button>
-                    ) : (
-                      <span className="hx-progress-count">{parts}</span>
-                    ))}
-                  {deadlines > 0 && (
-                    <button
-                      className="hx-deadline"
-                      aria-expanded={props.list === "deadline"}
-                      aria-label={L(`Ücretsiz iptal süresi yaklaşan ${deadlines} rezervasyon`, `${deadlines} free cancellation(s) running out`)}
-                      title={L(`Ücretsiz iptal süresi yaklaşan ${deadlines} rezervasyon`, `${deadlines} free cancellation(s) running out`)}
-                      onClick={() => toggle("deadline")}
-                    >
-                      ⏳ {deadlines}
-                    </button>
-                  )}
-                </span>
-              ) : (
-                <span key="none" className="hx-progress-meta">
-                  {L("Henüz kayıt yok", "Nothing saved yet")}
-                </span>
+              {/* Two fills from the left: planned (light) under booked (dark), so booked + planned is the light one's end. */}
+              <div className="hx-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={done.total ? pct : 0} aria-label={barLabel}>
+                {done.total > 0 && reach > 0 && <i className="hx-bar-planned" style={{ width: `${reach}%` }} />}
+                {done.total > 0 && bookedW > 0 && <i className="hx-bar-booked" style={{ width: `${bookedW}%` }} />}
+              </div>
+              {done.total > 0 && deadlines > 0 && (
+                <button
+                  className="hx-deadline"
+                  aria-expanded={props.list === "deadline"}
+                  aria-label={L(`Ücretsiz iptal süresi yaklaşan ${deadlines} rezervasyon`, `${deadlines} free cancellation(s) running out`)}
+                  title={L(`Ücretsiz iptal süresi yaklaşan ${deadlines} rezervasyon`, `${deadlines} free cancellation(s) running out`)}
+                  onClick={() => toggle("deadline")}
+                >
+                  ⏳ {deadlines}
+                </button>
               )}
             </div>
-            {/* Two fills from the left: planned (light) under booked (dark), so booked + planned is the light one's end. */}
-            <div className="hx-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={done.total ? pct : 0} aria-label={barLabel}>
-              {done.total > 0 && reach > 0 && <i className="hx-bar-planned" style={{ width: `${reach}%` }} />}
-              {done.total > 0 && bookedW > 0 && <i className="hx-bar-booked" style={{ width: `${bookedW}%` }} />}
-            </div>
+            {done.total > 0 ? (
+              <span key="count" className={`hx-progress-meta${barAppear}`}>
+                {parts.length > 0 &&
+                  (progress.todos.length > 0 ? (
+                    <button className="hx-progress-count" aria-expanded={props.list === "all"} title={L("Yapılacakları göster", "Show what's left")} onClick={() => toggle("all")}>
+                      {parts}
+                    </button>
+                  ) : (
+                    <span className="hx-progress-count">{parts}</span>
+                  ))}
+              </span>
+            ) : (
+              <span key="none" className="hx-progress-meta">
+                {L("Henüz kayıt yok", "Nothing saved yet")}
+              </span>
+            )}
           </div>
           {props.action && (
             <button className="hx-go" title={props.action.title} aria-label={props.action.title ? `${props.action.label}: ${props.action.title}` : undefined} onClick={props.action.run}>

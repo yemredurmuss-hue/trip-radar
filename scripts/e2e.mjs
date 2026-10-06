@@ -176,14 +176,42 @@ try {
   assert.deepEqual(tallyWant.slice(0, 2), ["2 uçuş", "2 konaklama"]);
   assert.ok(Number(tallyWant[3].split(" ")[0]) >= 4, "every activity and restaurant on the Plan counts, chosen or not");
   assert.equal(await hero.locator(".hx-lead").innerText(), "3 karar ve 1 rezervasyon bekliyor.");
-  // "Rezervasyonların": the Plan's section headers' "3/4"s added up, so both always say the same thing. The ideas
+  // "Planlama %N" (two-tier bar): what needs a booking on the Plan, booked · planned · waiting for a decision, out
+  // of the section headers' "3/4"s (what takes no booking, a planned taxi or a chore, isn't a need). The ideas
   // (Yapılacak şeyler, Restoranlar, İlham) have no "3/4" and aren't in it (0.35.3).
   assert.equal(await app.locator('.cat-sec[data-section="todo"] .cat-count, .cat-sec[data-section="food"] .cat-count').count(), 0, "an idea section has no x/y");
   const [settled, total] = (await app.locator(".cat-sec .cat-count").allInnerTexts())
     .map((t) => t.replace(/\s/g, "").split("/").map(Number))
     .reduce(([a, b], [c, d]) => [a + c, b + d], [0, 0]);
   assert.ok(total > 0);
-  assert.equal(flat([await hero.locator(".hx-progress-count").innerText()])[0], `${settled}/${total} onaylandı · %${Math.round((settled / total) * 100)}`);
+  const stagesLine = flat([await hero.locator(".hx-progress-count").innerText()])[0];
+  const stageOf = (word) => Number(stagesLine.match(new RegExp(`(\\d+) ${word}`))?.[1] ?? 0);
+  const [booked, planned, waiting] = [stageOf("rezerve"), stageOf("planlandı"), stageOf("karar bekliyor")];
+  console.log(`  hero: ${stagesLine} (sections ${settled}/${total})`);
+  // A zero says nothing: only the parts there are, in this order.
+  assert.equal(stagesLine, [booked && `${booked} rezerve`, planned && `${planned} planlandı`, waiting && `${waiting} karar bekliyor`].filter(Boolean).join(" · "));
+  const needs = booked + planned + waiting;
+  assert.ok(waiting > 0 && planned > 0 && booked > 0 && needs <= total, `the sample has all three stages, within the sections' ${total} (${stagesLine})`);
+  const planPct = Math.min(Math.round(((booked + planned) / needs) * 100), 99);
+  assert.equal(await hero.locator(".hx-progress-head > b").innerText(), `Planlama %${planPct}`);
+  // The bar: one progressbar, two fills from the left, booked (dark) inside planned (light) — booked + planned.
+  const planBar = hero.locator(".hx-bar");
+  assert.equal(await planBar.getAttribute("role"), "progressbar");
+  assert.equal(await planBar.getAttribute("aria-valuenow"), String(planPct));
+  assert.equal(await planBar.getAttribute("aria-label"), `Planlama: ${booked} rezerve, ${planned} planlandı, ${waiting} karar bekliyor`);
+  const fills = await planBar.evaluate((el) => {
+    const of = (sel) => {
+      const i = el.querySelector(sel);
+      const cs = getComputedStyle(i);
+      return { width: parseFloat(i.style.width), left: cs.left, paint: `${cs.backgroundColor} ${cs.backgroundImage}` };
+    };
+    return { booked: of(".hx-bar-booked"), planned: of(".hx-bar-planned"), count: el.children.length };
+  });
+  assert.equal(fills.count, 2, "two fills");
+  assert.ok(Math.abs(fills.booked.width - (booked / needs) * 100) < 0.1, `the dark fill is what's booked (${JSON.stringify(fills)})`);
+  assert.ok(Math.abs(fills.planned.width - ((booked + planned) / needs) * 100) < 0.1, `the light fill reaches booked + planned (${JSON.stringify(fills)})`);
+  assert.ok(fills.booked.left === "0px" && fills.planned.left === "0px", "both start from the left");
+  assert.notEqual(fills.booked.paint, fills.planned.paint, "two tones");
   assert.equal(flat([await hero.locator(".hx-go").innerText()])[0], "Planı tamamla");
   assert.match(await hero.locator(".hx-go").getAttribute("title"), /^\S.*: \S/); // the next step in words ("Karar ver: …", "Lisboa Loft: ücretsiz iptal …")
   const side = hero.locator(".hx-side");
@@ -315,7 +343,7 @@ try {
   await app.setViewportSize({ width: 560, height: 1400 });
   await hero.scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/2d-hero-narrow.png` });
-  const heroLines = ".hx-tally span, .hx-progress-head, .hx-when, .hx-who-text b, .hx-styles span, .hx-budget-line, .hx-ptag, .hx-minis span, .hx-weather > span, .card-alert";
+  const heroLines = ".hx-tally span, .hx-progress-head, .hx-progress-meta, .hx-when, .hx-who-text b, .hx-styles span, .hx-budget-line, .hx-ptag, .hx-minis span, .hx-weather > span, .card-alert";
   assert.deepEqual(await uncut(heroLines), [], "the hero's lines and a card's warning wrap, never cut");
   assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll on a narrow hero");
   // Nothing runs out of its cell: a plan cell's label (two by two until there's room for four), and the small
@@ -355,7 +383,24 @@ try {
   await checkStyles("1280");
   const at1280 = await heroBox();
   console.log(`  1280: card bottom ${at1280.card.toFixed(1)}, progress bottom ${at1280.progress.toFixed(1)}`);
+  assert.ok(Math.abs(at1280.card - at1280.progress) <= 2, `1280: the card ends level with the progress box (${JSON.stringify(at1280)})`);
+  // The box keeps the height it had (0.36.30: 53 px of words and bar over the button): "Planlama %N" and the bar
+  // share a line, the three stages one line under them.
+  const progressRow = () =>
+    app.evaluate(() => {
+      const r = (sel) => document.querySelector(sel).getBoundingClientRect();
+      const [title, bar, meta, main] = [r(".hx-progress-head > b"), r(".hx-progress .hx-bar"), r(".hx-progress-meta"), r(".hx-progress-main")];
+      const barBeside = bar.left > title.right && Math.abs(bar.top + bar.height / 2 - (title.top + title.height / 2)) < 3;
+      return { oneLine: barBeside && meta.height < 30 && meta.top >= title.bottom, main: Math.round(main.height), box: Math.round(r(".hx-progress").height) };
+    });
+  const row1280 = await progressRow();
+  assert.ok(row1280.oneLine && row1280.main <= 53, `1280: the bar beside "Planlama %N", the stages one line under, no taller than before (${JSON.stringify(row1280)})`);
+  await app.locator(".hx").screenshot({ path: `${out}/28a-hero-planned.png` });
   await app.setViewportSize({ width: 1440, height: 900 });
+  const row1440 = await progressRow();
+  // 1440 beside the chat: the button beside the bar leaves the words less room, the stages may take two lines (as
+  // "Rezervasyonların · 2/10 onaylandı" did), never more.
+  assert.ok(row1440.main <= 75, `1440: the bar beside "Planlama %N", the stages in two lines at most (${JSON.stringify({ row1280, row1440 })})`);
   assert.deepEqual(await spilled(), [], "1440 px: every hero cell's text stays inside it");
   await putNote(null);
   await prefTags.filter({ hasText: "Odada mutlaka bir…" }).waitFor({ state: "detached" });
@@ -619,8 +664,8 @@ try {
   assert.equal(await tap.locator(".pk-badges").innerText(), "En ekonomik");
   await tap.locator(".pk-body").click();
   await tap.getByRole("button", { name: "Önceki seçenek" }).click();
-  // "Planı tamamla" goes to the next step; "x/y onaylandı" lists every to-do under the hero (what to decide,
-  // book and plan), a tap goes there; tapped again, the list closes.
+  // "Planı tamamla" goes to the next step; "3 rezerve · 1 planlandı · …" lists every to-do under the hero in groups
+  // (Karar bekliyor: decide and plan; Rezerve edilecek), a tap goes there; tapped again, the list closes.
   const todoCount = app.locator(".hx-progress-count");
   const todoList = app.locator(".hx + .todo-list");
   await app.locator(".hx-go").click();
@@ -628,6 +673,8 @@ try {
   await todoCount.click();
   const listed = await todoList.innerText();
   assert.deepEqual(["Karar ver: ", "Rezerve et: ", "Planla: "].map((k) => listed.split(k).length - 1), [3, 1, 4]);
+  assert.deepEqual(flat(await todoList.locator(".todo-head").allInnerTexts()).slice(0, 2), ["Karar bekliyor 7", "Rezerve edilecek 1"]);
+  assert.equal(await todoList.locator(".todo-group", { has: app.locator(".todo-head", { hasText: "Rezerve edilecek" }) }).locator("li", { hasText: "Rezerve et: " }).count(), 1, "what's to book under Rezerve edilecek");
   await todoList.locator("button", { hasText: "Porto konaklama · 8–11 Ekim" }).click();
   await app.locator(".tl-stay.flash").waitFor();
   assert.match(await todoList.innerText(), /Varış transferi · 8 Ekim[\s\S]*nasıl\?/);
@@ -1562,7 +1609,7 @@ try {
   assert.equal(await bare.locator(".hx-when").innerText(), "Tarihler kaydettikçe netleşir");
   assert.equal(await bare.locator(".hx-lead").innerText(), "Tarih ve şehir, kaydettikçe netleşir.");
   assert.deepEqual(flat(await bare.locator(".hx-tally button.zero").allInnerTexts()), ["0 uçuş", "0 konaklama", "0 ulaşım", "0 deneyim"]);
-  assert.equal(flat([await bare.locator(".hx-progress-head").innerText()])[0], "Rezervasyonların Henüz kayıt yok");
+  assert.equal(flat([await bare.locator(".hx-progress-main").innerText()])[0], "Planlama Henüz kayıt yok");
   assert.equal(flat([await bare.locator(".hx-go").innerText()])[0], "İlk kaydı ekle");
   const bareSide = bare.locator(".hx-side");
   assert.equal(flat([await bareSide.locator(".hx-who-text").innerText()])[0], "Kimler gidiyor? Kişi sayısı kayıtlardan anlaşılır");
@@ -1594,7 +1641,7 @@ try {
   await app.mouse.click(5, 5); // outside: the window closes
   await prefs.locator(".hx-prefs-pop").waitFor({ state: "detached" });
   assert.deepEqual(flat(await prefs.locator(".hx-ptag.strong").allInnerTexts()), ["Fiyat"]);
-  console.log('✓ hero v9: four cells open their Plan sections, "x/y onaylandı" is the headers added up and lists the to-dos, "Planı tamamla" goes to the next, Tercihler (tags, window, ×), a new trip\'s empty blocks fill as information arrives');
+  console.log('✓ hero v9: four cells open their Plan sections, "Planlama %N" is what needs a booking in two greens (booked, planned) and lists the to-dos in groups, "Planı tamamla" goes to the next, Tercihler (tags, window, ×), a new trip\'s empty blocks fill as information arrives');
 
   // Hero fix 2: a stay in Gaula, a parish on Madeira, is Madeira's on the hero with no model to ask (no key here):
   // a Porto stay and a campervan picked up in Gaula show "Porto | Madeira", never "Porto | Gaula".
