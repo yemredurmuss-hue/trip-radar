@@ -244,6 +244,11 @@ export interface Trip {
   /** Made by the start chat (spec 2026-10-06 §2): its one-time start card above the plan (startTrip.ts guideSteps). */
   startGuide?: StartGuide | null;
   /**
+   * What the trip is for, when the start chat read a kind of trip with its own playbook (playbooks/: a festival, a
+   * ski trip, a honeymoon, a wellness retreat): the suggestions keep to it. Unset for a classic trip.
+   */
+  intent?: TripIntent | null;
+  /**
    * The language of the conversation the trip was started with (start chat, revision 2): its chat goes on in it and
    * its suggestions are written in it, whatever the board's language. Unset: the board's.
    */
@@ -279,6 +284,16 @@ export interface Suggestion {
   createdAt: number;
   state: SuggestionState;
   stateAt?: number;
+}
+
+/** The kinds of trip with a playbook of their own (playbooks/); "classic" is every other trip, as before. */
+export type PlaybookKind = "festival" | "ski" | "honeymoon" | "wellness" | "classic";
+
+/** Trip.intent: the playbook, and the event or theme it was read from (its name and official site), when there was one. */
+export interface TripIntent {
+  playbook: PlaybookKind;
+  name?: string | null;
+  url?: string | null;
 }
 
 /** The new trip's start card: closed with ×, the suggestions looked at, a road trip (a car instead of flights). */
