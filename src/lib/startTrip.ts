@@ -1559,7 +1559,11 @@ export const waitingLine = () =>
 /** The chat's last line with "ready" said as "waiting" (the countdown stopped); null when it doesn't end with it. */
 export function waitingInstead(text: string): string | null {
   const ready = readyLine();
-  return text.endsWith(ready) ? text.slice(0, text.length - ready.length) + waitingLine() : null;
+  if (!text.endsWith(ready)) return null;
+  const before = text.slice(0, text.length - ready.length);
+  // Never "Tamam" twice in a row ("Tamam, rota bu. Tamam, bekliyorum."): the second goes.
+  const waiting = /(^|[.!?]\s+)(Tamam|OK|Great|Got it)\b[^.!?]*[.!?]\s*$/.test(before) ? waitingLine().replace(/^(Tamam|OK), /, "").replace(/^\p{Ll}/u, (c) => c.toLocaleUpperCase(L("tr", "en"))) : waitingLine();
+  return before + waiting;
 }
 
 /**

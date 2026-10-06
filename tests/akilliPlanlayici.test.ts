@@ -242,3 +242,13 @@ describe("the plan said back before it's made", () => {
     expect(sum.musts).toEqual(["İleri seviye dalgıç"]);
   });
 });
+
+describe("the waiting line after an OK", () => {
+  it("never says 'Tamam' twice in a row", async () => {
+    const { readyLine, waitingInstead } = await import("../src/lib/startTrip");
+    expect(waitingInstead(`Tamam, rota bu. ${readyLine()}`)).toBe("Tamam, rota bu. Bekliyorum. Hazır olunca Oluştur'a bas ya da 'oluştur' yaz.");
+    expect(waitingInstead(readyLine())).toBe("Tamam, bekliyorum. Hazır olunca Oluştur'a bas ya da 'oluştur' yaz.");
+    setLang("en");
+    expect(waitingInstead(`Great, that's the route. ${readyLine()}`)).toBe("Great, that's the route. I'll wait. Press Generate or type 'generate' when you're ready.");
+  });
+});

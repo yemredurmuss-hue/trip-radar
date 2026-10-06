@@ -318,7 +318,7 @@ describe("making the trip by itself", () => {
     const done = applyAnswer(skipKind(applyAnswer(ready(), { q: "count", n: 4 }, 5)), { q: "want", styles: ["adventure"], budget: null }, 6);
     const tr = withLang("tr", () => nextLine(done, ctx));
     expect(tr).toBe("Hazırım, birkaç saniye içinde oluşturuyorum. Eklemek istediğin bir şey varsa yaz.");
-    expect(withLang("tr", () => waitingInstead(`Tamam, rota bu.\n${tr}`))).toBe("Tamam, rota bu.\nTamam, bekliyorum. Hazır olunca Oluştur'a bas ya da 'oluştur' yaz.");
+    expect(withLang("tr", () => waitingInstead(`Tamam, rota bu.\n${tr}`))).toBe("Tamam, rota bu.\nBekliyorum. Hazır olunca Oluştur'a bas ya da 'oluştur' yaz.");
     expect(withLang("en", () => nextLine(done, ctx))).toBe("I'm ready and will build it in a few seconds. Write if you want to add anything.");
     expect(withLang("en", () => waitingInstead("I'm ready and will build it in a few seconds. Write if you want to add anything."))).toBe(
       "OK, I'll wait. Press Generate or type 'generate' when you're ready.",
