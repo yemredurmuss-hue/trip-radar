@@ -9,7 +9,6 @@
 // ekonomik", "Daha konforlu"), each with "Favorile" and "İncele ↗"; the same row's open/closed state.
 import { useEffect, useMemo, useState } from "react";
 import { durationText } from "../../lib/cardFacts";
-import { getRates, type Rates } from "../../lib/currency";
 import { L } from "../../lib/i18n";
 import { nReviews, nStops } from "../../lib/i18nText";
 import type { StayCandidate } from "../../lib/offerSources";
@@ -253,7 +252,7 @@ export function StayPicksView({ picks, open, added, onToggle, onFavorite }: {
   );
 }
 
-/** A stay's row: the source's candidates narrowed to three for this trip (its budget, its plans there, its priorities). */
+/** A stay's row: the source's candidates narrowed to three for this trip (its plans there, its priorities). */
 function StayPicksRow({ need }: { need: Need }) {
   const { offers: source, tripId, trip, items } = useEmptyEnv();
   const available = source.available();
@@ -261,7 +260,6 @@ function StayPicksRow({ need }: { need: Need }) {
   const [open, setOpen] = useState(() => readOffersOpen(storeKey));
   const [cands, setCands] = useState<StayCandidate[]>([]);
   const [added, setAdded] = useState<string[]>([]);
-  const [rates, setRates] = useState<Rates | null>(null);
   useEffect(() => {
     if (!available || !source.candidates) return;
     let live = true;
@@ -274,17 +272,7 @@ function StayPicksRow({ need }: { need: Need }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- asked again only for another need
   }, [available, source, need.key]);
-  // A budget in another money: today's rate turns it into euros (none: the budget plays no part).
-  const budgetMoney = trip?.budget?.currency ?? null;
-  useEffect(() => {
-    if (!budgetMoney || budgetMoney === "EUR") return;
-    let live = true;
-    void getRates().then((r) => live && setRates(r));
-    return () => {
-      live = false;
-    };
-  }, [budgetMoney]);
-  const picks = useMemo(() => pickList(pickThree(cands, picksContext(need, trip, items ?? [], rates))), [cands, need, trip, items, rates]);
+  const picks = useMemo(() => pickList(pickThree(cands, picksContext(need, trip, items ?? []))), [cands, need, trip, items]);
   // Favorited: read back from the records (a favorite turns the empty card into an option group, which remounts this
   // row); the local list only answers the tap at once.
   const saved = useMemo(() => cands.filter((c) => (items ?? []).some((i) => i.url === c.url && i.status !== "dismissed")).map((c) => c.id), [cands, items]);

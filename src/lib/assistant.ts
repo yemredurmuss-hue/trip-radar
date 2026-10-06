@@ -2059,8 +2059,7 @@ export async function findOffersTool(tripId: string, input: any, items: Item[]):
     // A stay with no ceiling: the same three picks as the empty card's row ("Sana en uygun", "Daha ekonomik", "Daha
     // konforlu"), out of the source's candidates; a ceiling (or no candidates) keeps the cheapest under it, said honestly.
     if (need.kind === "stay" && max == null && !live) {
-      const rates = trip?.budget && trip.budget.currency !== "EUR" ? await getRates() : null;
-      const picks = pickList(pickThree(await stayCandidates(need), picksContext(need, trip ?? null, items, rates)));
+      const picks = pickList(pickThree(await stayCandidates(need), picksContext(need, trip ?? null, items)));
       if (picks.length) return { need, offers: picks.map(({ kind, pick }) => candidateOffer(pick.cand, kind, pick.why)), overMax: null };
     }
     const first = validOffers(await findOffers(need, { prefer, max, ...(live ? { live } : {}) }), need);

@@ -153,7 +153,7 @@ describe("a stay's three picks in the row", () => {
     url: `https://www.booking.com/${id}?aid=1`, nightly: 155, total: 620, nights: 4, priceRange: null, source: "Booking", currency: "EUR", fetchedAt: 1, ...over,
   });
   const picks = () =>
-    pickList(pickThree([c("Komaneka"), c("Bucu View", { nightly: 40, total: 160, rating: 4.3, reviews: 380 }), c("Mandapa", { nightly: 209, total: 836, rating: 4.9, reviews: 640 })], { budgetPerNight: null, centre: null }));
+    pickList(pickThree([c("Komaneka"), c("Bucu View", { nightly: 40, total: 160, rating: 4.3, reviews: 380 }), c("Mandapa", { nightly: 209, total: 836, rating: 4.9, reviews: 640 })], { centre: null }));
   it("the labels on top, then photo, name, ★ rating · reviews, the price with its scope, why, Favorile and İncele ↗", () => {
     const html = renderToStaticMarkup(<StayPicksView picks={picks()} open added={["Mandapa"]} onToggle={noop} onFavorite={noop} />);
     expect(html.match(/class="ek-pick pick-/g)).toHaveLength(3);
@@ -174,7 +174,7 @@ describe("a stay's three picks in the row", () => {
     expect(renderToStaticMarkup(<StayPicksView picks={[]} open added={[]} onToggle={noop} onFavorite={noop} />)).toBe("");
   });
   it("a hotel with only its usual range: said as typical, no price for the dates", () => {
-    const only = pickList(pickThree([c("Range", { nightly: null, total: null, source: null, priceRange: { min: 120, max: 180 } })], { budgetPerNight: null, centre: null }));
+    const only = pickList(pickThree([c("Range", { nightly: null, total: null, source: null, priceRange: { min: 120, max: 180 } })], { centre: null }));
     expect(renderToStaticMarkup(<StayPicksView picks={only} open added={[]} onToggle={noop} onFavorite={noop} />)).toContain("<b>tipik €120–180 / gece</b> · tarihli fiyat yok");
   });
   it("Favorile saves the pick as an option of the need: its page, rating with reviews, the price for these nights", () => {

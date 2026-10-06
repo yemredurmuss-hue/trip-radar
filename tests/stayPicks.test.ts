@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { setLang } from "../src/lib/i18n";
 import type { StayCandidate } from "../src/lib/offerSources";
 import { plannedItem } from "../src/lib/planned";
-import { centreOf, pickList, pickThree, picksContext, priceLine, stayBudgetPerNight, type PickCtx, type Picks } from "../src/lib/stayPicks";
+import { centreOf, pickList, pickThree, picksContext, priceLine, type PickCtx, type Picks } from "../src/lib/stayPicks";
 import type { Item, Trip } from "../src/lib/types";
 
 afterEach(() => setLang("tr"));
@@ -24,7 +24,7 @@ const ubud = (): StayCandidate[] => [
   priced("Maya Ubud", 173, 4.8, { reviews: 3000, geo: { lat: -8.51, lng: 115.275 } }),
   priced("Mandapa", 209, 4.9, { reviews: 640, geo: { lat: -8.48, lng: 115.25 } }),
 ];
-const plain: PickCtx = { budgetPerNight: null, centre: null, trip: null };
+const plain: PickCtx = { centre: null, trip: null };
 const ids = (p: Picks) => ({ best: p.best?.cand.id ?? null, cheaper: p.cheaper?.cand.id ?? null, comfier: p.comfier?.cand.id ?? null });
 const whys = (p: Picks) => pickList(p).map((x) => x.pick.why);
 const distinctIds = (p: Picks) => {
@@ -101,23 +101,11 @@ describe("the three", () => {
 });
 
 describe("the trip's own data", () => {
-  it("no budget: never a word of budget; with one, the best says whether it fits by the night", () => {
+  it("the price is weighed against the other hotels, never a share of the trip's budget: no word of budget", () => {
     for (const why of whys(pickThree(ubud(), plain))) expect(why).not.toMatch(/bütçe/);
-    const p = pickThree(ubud(), { ...plain, budgetPerNight: 120 });
-    expect(p.best!.cand.nightly! <= 120).toBe(true);
-    expect(p.best!.why).toContain("bütçenin konaklama payına uyuyor");
-    expect(p.cheaper!.why).toBe("Bulduklarımın en ucuzu, ★4,3, bütçenin konaklama payına uyuyor");
-    // A tight budget never makes a 3.9 the best for you; over the budget is said plainly.
-    const tight = pickThree(ubud(), { ...plain, budgetPerNight: 80, centre: UBUD });
-    expect(tight.best!.cand.rating).toBeGreaterThanOrEqual(4);
-    expect(tight.best!.why).toMatch(/bütçenin konaklama payını gecelik €\d+ aşıyor/);
-  });
-
-  it("a budget by the night: the trip's over its nights, the stay's share, in euros (no rate: none)", () => {
-    expect(stayBudgetPerNight({ budget: { amount: 3000, currency: "EUR" } }, 12, null)).toBeCloseTo(100);
-    expect(stayBudgetPerNight({ budget: { amount: 100000, currency: "TRY" } }, 10, { base: "EUR", date: "x", rates: { EUR: 1, TRY: 50 } })).toBeCloseTo(80);
-    expect(stayBudgetPerNight({ budget: { amount: 100000, currency: "TRY" } }, 10, null)).toBeNull();
-    expect(stayBudgetPerNight({ budget: null }, 10, null)).toBeNull();
+    expect(pickThree(ubud(), plain).cheaper!.why).toBe("Bulduklarımın en ucuzu, ★4,3");
+    // Even nearby, the best for you is rated 4 or more.
+    expect(pickThree(ubud(), { ...plain, centre: UBUD }).best!.cand.rating).toBeGreaterThanOrEqual(4);
   });
 
   it("no place on the map: distance plays no part and is never said", () => {
@@ -140,7 +128,7 @@ describe("the trip's own data", () => {
     expect(centreOf(items, "Seminyak")).toBeNull();
     expect(centreOf([at("Ubud", null, "x")], "Ubud")).toBeNull();
     const trip: Trip = { id: "t", title: "Bali", confirmedDates: { start: "2026-12-10", end: "2026-12-22" }, budget: { amount: 3000, currency: "EUR" }, heroImage: null, createdAt: 1, updatedAt: 1 };
-    expect(picksContext({ city: "Ubud" }, trip, items, null)).toMatchObject({ budgetPerNight: 100, centre: { lat: expect.closeTo(-8.51), lng: expect.closeTo(115.27) } });
+    expect(picksContext({ city: "Ubud" }, trip, items)).toMatchObject({ centre: { lat: expect.closeTo(-8.51), lng: expect.closeTo(115.27) } });
   });
 
   it("a must the labels answer ('kahvaltı dahil'): weighed and said; with no label saying it, ignored, never guessed", () => {
@@ -176,7 +164,7 @@ describe("the why: data only", () => {
       cand("No Price", { rating: 4.9, reviews: null, priceRange: null }),
       cand("Range Only", { rating: 4.6, reviews: null, priceRange: { min: 100, max: 140 } }),
     ];
-    const p = pickThree(bare, { ...plain, centre: UBUD, budgetPerNight: 100 });
+    const p = pickThree(bare, { ...plain, centre: UBUD });
     distinctIds(p);
     for (const { pick } of pickList(p)) {
       expect(pick.why).not.toMatch(/yorum|km|undefined|null|NaN/);
@@ -198,8 +186,8 @@ describe("the why: data only", () => {
 
   it("in English", () => {
     setLang("en");
-    const p = pickThree(ubud(), { ...plain, budgetPerNight: 120 });
-    expect(p.cheaper!.why).toBe("The cheapest I found, ★4.3, fits your budget's share for stays");
+    const p = pickThree(ubud(), plain);
+    expect(p.cheaper!.why).toBe("The cheapest I found, ★4.3");
     expect(priceLine(ubud()[3])).toBe("€155 / night · 4 nights €620");
     expect(priceLine(cand("x", { priceRange: { min: 120, max: 180 } }))).toBe("typically €120–180 / night · no price for your dates");
   });

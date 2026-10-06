@@ -4,18 +4,18 @@
 //
 // Nothing is made up. A pick is always one of the candidates; its one sentence of "why" is built only from what the
 // sources said (rating, reviews, the price for these nights, the usual range, the labels, the place on the map) and
-// from the trip's own data (its budget, its plans' places, its priorities and musts). A field that isn't known is
+// from the trip's own data (its plans' places, its priorities and musts). A field that isn't known is
 // never scored as good or bad and never claimed: a "quiet" wish counts only when a label says it, a distance only
-// when both the hotel and the trip's plans in that city are on the map, a budget only when the trip has one.
-import { convert, type Rates } from "./currency";
+// when both the hotel and the trip's plans in that city are on the map. The price is weighed against the other
+// candidates, never against a share of the trip's budget: how much of a trip goes on beds differs every trip.
 import { levelFor, levelSource, wantedAmenities } from "./decision";
 import { distanceKm } from "./geo";
 import { L } from "./i18n";
 import { nNights, nReviews, num } from "./i18nText";
-import { formatPrice, nightsBetween } from "./items";
+import { formatPrice } from "./items";
 import type { Need, Offer } from "./offerSource";
 import type { StayCandidate } from "./offerSources";
-import { cityKeyOf, sameCity, tripRange } from "./plan";
+import { cityKeyOf, sameCity } from "./plan";
 import type { CriterionId, Item, PriorityLevel, Trip } from "./types";
 
 export type PickKind = "best" | "cheaper" | "comfier";
@@ -30,8 +30,6 @@ export interface Picks {
 }
 
 export interface PickCtx {
-  /** The stay's share of the trip's budget for one night, in EUR; null when the trip has no budget (or no rate for its money). */
-  budgetPerNight: number | null;
   /** The middle of the trip's plans in this city (their places on the map); null when none is on the map. */
   centre: { lat: number; lng: number } | null;
   /** The trip's own priorities and musts (decision.ts); missing: the defaults. */
@@ -45,12 +43,6 @@ export const pickLabel = (kind: PickKind): string =>
 
 /** "Daha ekonomik" needs at least this rating (out of 5): never the cheapest bad one. */
 export const CHEAP_MIN_RATING = 4;
-/**
- * The stay's share of the budget. The board's own split (tripStyle.budgetLevel) is the budget over the trip's days; a
- * bed is usually about two fifths of a trip's spending, so a night's stay is judged against that share of the budget
- * by the night, not all of it (an assumption, not the traveller's word: never said as theirs).
- */
-export const STAY_SHARE = 0.4;
 /** decision.ts' weights for the priority levels (Önemsiz … Şart). */
 const LEVEL_WEIGHT = [0, 0.5, 1, 2, 3];
 /** The rating the reviews are weighed against: few reviews pull a rating towards it (ten 5-star reviews aren't 1.240). */
@@ -62,14 +54,6 @@ const WISH_BONUS = 0.06;
 
 // --- what the trip brings ------------------------------------------------------------------------------
 
-/** A night's stay budget in EUR: the trip's budget over its nights, the stay's share of it. Null without a budget or a rate. */
-export function stayBudgetPerNight(trip: Partial<Pick<Trip, "budget">>, nights: number, rates: Rates | null): number | null {
-  const b = trip.budget;
-  if (!b || !(b.amount > 0) || !(nights > 0)) return null;
-  const eur = convert(b.amount, b.currency, "EUR", rates);
-  return eur == null ? null : (eur / nights) * STAY_SHARE;
-}
-
 /** The middle of the trip's plans in a city that are on the map (their average place); null when none is. */
 export function centreOf(items: Item[], city: string | null | undefined): { lat: number; lng: number } | null {
   if (!city) return null;
@@ -78,12 +62,9 @@ export function centreOf(items: Item[], city: string | null | undefined): { lat:
   return { lat: here.reduce((s, i) => s + i.geo!.lat, 0) / here.length, lng: here.reduce((s, i) => s + i.geo!.lng, 0) / here.length };
 }
 
-/** Everything the picks need from the board: the budget by the night, the plans' middle there, the priorities. */
-export function picksContext(need: Pick<Need, "city">, trip: Trip | null | undefined, items: Item[], rates: Rates | null): PickCtx {
-  if (!trip) return { budgetPerNight: null, centre: centreOf(items, need.city), trip: null };
-  const range = tripRange(trip, items);
-  const nights = range ? nightsBetween(range.start, range.end) : 0;
-  return { budgetPerNight: stayBudgetPerNight(trip, nights, rates), centre: centreOf(items, need.city), trip };
+/** Everything the picks need from the board: the plans' middle there, the priorities. */
+export function picksContext(need: Pick<Need, "city">, trip: Trip | null | undefined, items: Item[]): PickCtx {
+  return { centre: centreOf(items, need.city), trip: trip ?? null };
 }
 
 // --- the candidates ------------------------------------------------------------------------------------
@@ -137,7 +118,7 @@ const weight = (trip: PickCtx["trip"], c: CriterionId): number => LEVEL_WEIGHT[l
 
 /**
  * "Sana en uygun"'s measure for this trip: the rating with its reviews (standing in for comfort too), the price
- * against the budget by the night (else against the others), the distance to the plans' middle, and a bonus for
+ * against the others, the distance to the plans' middle, and a bonus for
  * each label the trip asks for. Only what's known is weighed; what isn't lowers the confidence, never the parts.
  */
 function fitScore(c: StayCandidate, all: StayCandidate[], ctx: PickCtx, wants: Want[]): number {
@@ -148,12 +129,9 @@ function fitScore(c: StayCandidate, all: StayCandidate[], ctx: PickCtx, wants: W
   const p = comparablePrice(c);
   let ps: number | null = null;
   if (p != null) {
-    if (ctx.budgetPerNight) ps = p <= ctx.budgetPerNight ? 1 : clamp(1 - (p - ctx.budgetPerNight) / ctx.budgetPerNight);
-    else {
-      const prices = all.map(comparablePrice).filter((x): x is number => x != null);
-      const [lo, hi] = [Math.min(...prices), Math.max(...prices)];
-      ps = hi > lo ? 1 - (p - lo) / (hi - lo) : 1;
-    }
+    const prices = all.map(comparablePrice).filter((x): x is number => x != null);
+    const [lo, hi] = [Math.min(...prices), Math.max(...prices)];
+    ps = hi > lo ? 1 - (p - lo) / (hi - lo) : 1;
   }
   parts.push({ w: weight(trip, "price"), s: ps });
   // No plan of the trip in that city on the map: distance isn't part of it at all.
@@ -246,11 +224,6 @@ class Why {
   private topRated(c: StayCandidate): boolean {
     return c.rating != null && this.all.every((o) => o.rating != null && o.rating <= c.rating!);
   }
-  private budgetPart(c: StayCandidate): string | null {
-    const b = this.ctx.budgetPerNight;
-    if (!b || c.nightly == null) return null;
-    return c.nightly <= b ? L("bütçenin konaklama payına uyuyor", "fits your budget's share for stays") : L(`bütçenin konaklama payını gecelik ${eur(c.nightly - b)} aşıyor`, `${eur(c.nightly - b)} a night over your budget's share for stays`);
-  }
   private distancePart(c: StayCandidate): string | null {
     const km = kmFrom(c, this.ctx.centre);
     return km == null ? null : L(`planının merkezine ${num(km)} km`, `${num(km)} km from your plans' centre`);
@@ -261,8 +234,6 @@ class Why {
     if (r) parts.push(this.topRated(c) ? L(`en yüksek puan (${r})`, `the highest rating (${r})`) : r);
     const d = this.distancePart(c);
     if (d) parts.push(d);
-    const b = this.budgetPart(c);
-    if (b) parts.push(b);
     for (const label of matched(c, this.wants)) parts.push(L(`${label.toLocaleLowerCase("tr")}, istediğin gibi`, `${label.toLocaleLowerCase("en")}, as you asked`));
     if (!parts.length && c.nightly != null) parts.push(L(`gecelik ${eur(c.nightly)}`, `${eur(c.nightly)} a night`));
     return capital(parts.slice(0, 3).join(", "));
@@ -270,10 +241,7 @@ class Why {
   cheaper(c: StayCandidate): string {
     const lowest = this.all.every((o) => o.nightly == null || o.nightly >= c.nightly!);
     const head = lowest ? L("Bulduklarımın en ucuzu", "The cheapest I found") : L(`★${CHEAP_MIN_RATING} ve üstünün en ucuzu`, `The cheapest rated ★${CHEAP_MIN_RATING} or more`);
-    const parts = [head, `★${num(c.rating!)}`];
-    const b = this.budgetPart(c);
-    if (b) parts.push(b);
-    return parts.join(", ");
+    return [head, `★${num(c.rating!)}`].join(", ");
   }
   comfier(c: StayCandidate, ref: StayCandidate | null): string {
     const r = `★${num(c.rating!)}`;
