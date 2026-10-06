@@ -2679,6 +2679,8 @@ try {
   for (const city of ["Ubud", "Canggu", "Uluwatu"]) await panel.locator("[data-section='stay']").getByText(city, { exact: false }).first().waitFor();
   await panel.locator("[data-section='flight']").getByText("Denpasar", { exact: false }).first().waitFor();
   await board.locator(".chat .msg-user", { hasText: "Sabine'yle 10 Aralık'tan 1 ay Bali" }).waitFor();
+  // "oluştur" typed is kept as said (not swapped for the button's words).
+  await board.locator(".chat .msg-user", { hasText: /^oluştur$/ }).waitFor();
   await board.locator(".chat .msg-assistant", { hasText: "Bali Gezisi hazır: 31 gece, 3 durak." }).waitFor();
   await guide.scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/20d-start-board.png` });

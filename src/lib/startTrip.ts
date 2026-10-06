@@ -1393,6 +1393,21 @@ export function waitingInstead(text: string): string | null {
   return text.endsWith(ready) ? text.slice(0, text.length - ready.length) + waitingLine() : null;
 }
 
+/**
+ * After "Oluştur" (by hand or by itself): its answers taken as counted down and stopped, so "Sohbete dön" never
+ * makes the trip again by itself (the route it confirmed changes the checklist).
+ */
+export const memoAfterGenerate = (made: StartState, ctx: StartCtx): AutoMemo => ({ for: autoPrint(made, ctx), stopped: true });
+
+/** What the screen holds the countdown for: a message half-typed, a word being composed (IME), the tab hidden. */
+export interface AutoHold {
+  typing: string;
+  composing: boolean;
+  hidden: boolean;
+}
+/** Never started, and never made on its last second, while any holds. */
+export const autoHeld = (h: AutoHold): boolean => Boolean(h.typing.trim()) || h.composing || h.hidden;
+
 export function shouldAutoStart(s: StartState, ctx: StartCtx, memo: AutoMemo): boolean {
   if (s.messages.at(-1)?.role !== "assistant" || !canGenerate(s) || !essentialsDone(s)) return false;
   if (autoPrint(s, ctx) === memo.for) return false;

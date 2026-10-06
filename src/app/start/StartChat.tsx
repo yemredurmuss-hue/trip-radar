@@ -30,7 +30,7 @@ import { rulesPreview } from "../../lib/startHooks";
 import {
   applyAnswer, applyExtracted, applyText, askAgain, budgetChips, budgetWord, canGenerate, checklist, autoPrint, drawingLine, isComplete, isGoCommand, knownLines, lineLink, mergeExtracted, startName,
   missingForGenerate, modelReplyText, NOT_UNDERSTOOD, nextQuestion, onlyEmpty, parseRouteText, parseStartText, photosToFind, preparedRoute, previewOf,
-  questionOf, replyText, restoreRoute, shouldAutoStart, AUTO_SECONDS, autoSeconds, waitingInstead, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
+  questionOf, replyText, restoreRoute, shouldAutoStart, autoHeld, memoAfterGenerate, AUTO_SECONDS, autoSeconds, waitingInstead, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
   tentativeWhere, whereKey, withGuessTaken, withoutOverruled, withPhotos, withPreparedRoute, withTypedLang,
   type Answer, type Extracted, type QuestionId, type StartCtx, type StartRoute, type StartState,
 } from "../../lib/startTrip";
@@ -363,12 +363,32 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     if (autoTimer.current) clearInterval(autoTimer.current);
     autoTimer.current = null;
   }
-  /** Any typing or tap while it counts: stopped (a later full checklist starts it again); "ready" said as "waiting". */
-  function stopAuto() {
+  /** A word being composed with an IME (a Turkish or Japanese keyboard): the countdown waits for it. */
+  const composing = useRef(false);
+  /** The typing box's words now (the timer outlives a render). */
+  const typingNow = useRef("");
+  typingNow.current = text;
+  /** Bumped when the tab is shown again: a countdown held back while it was hidden starts then. */
+  const [shown, setShown] = useState(0);
+  const held = () => autoHeld({ typing: typingNow.current, composing: composing.current, hidden: typeof document !== "undefined" && document.visibilityState === "hidden" });
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") setShown((n) => n + 1);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
+  /**
+   * Any typing, key, focus or tap while it counts: stopped (a later full checklist starts it again); "ready" said as
+   * "waiting", unless `quiet` (the traveller is typing: their message answers it).
+   */
+  function stopAuto(quiet = false) {
     if (autoTimer.current == null) return;
     clearAuto();
     autoStopped.current = true;
     setAuto(null);
+    if (quiet) return;
     const s = live.current;
     const at = s.messages.length - 1;
     const waiting = s.messages[at]?.role === "assistant" ? T(() => waitingInstead(s.messages[at].text)) : null;
@@ -382,6 +402,13 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     setAutoRun((n) => n + 1);
     setAuto(left);
     autoTimer.current = setInterval(() => {
+      // Held (a half-typed message, an IME word, the tab hidden): not made; started again once it's let go.
+      if (held()) {
+        clearAuto();
+        setAuto(null);
+        autoFor.current = null;
+        return;
+      }
       left -= 1;
       if (left > 0) return void setAuto(left);
       clearAuto();
@@ -397,13 +424,13 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
   // The essentials known and nothing on its way: "Oluşturuyorum… 3 · Vazgeç", then the trip is made. After the
   // traveller stopped it, only a later full checklist starts it again.
   useEffect(() => {
-    if (phase !== "chat" || stage || autoTimer.current || left.current) return;
+    if (phase !== "chat" || stage || autoTimer.current || left.current || held()) return;
     const s = live.current;
     if (!T(() => shouldAutoStart(s, ctx, { for: autoFor.current, stopped: autoStopped.current }))) return;
     autoFor.current = T(() => autoPrint(s, ctx));
     autoStopped.current = false;
     runAuto(autoSeconds(s));
-  }, [state, phase, stage]);
+  }, [state, phase, stage, shown, text]);
 
 
   // Built in the background while chatting (item 7), into the draft only: the photos of the place (and its stops),
@@ -470,9 +497,11 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     const line = raw.trim();
     if (!line || busy.current || stale()) return;
     setText("");
-    stopAuto();
-    // "Tamam oluştur", "hadi", "let's go": made now when it can be; else what's missing is said.
-    if (isGoCommand(line) && canGenerate(live.current)) return generate();
+    typingNow.current = "";
+    // "Tamam oluştur", "hadi", "let's go": made now when it can be, the words kept in the conversation (no "waiting"
+    // line flashed first); else what's missing is said.
+    if (isGoCommand(line) && canGenerate(live.current)) return generate(false, line);
+    stopAuto(true);
     const mine = nextTurn();
     // The first typed line decides the chat's language (item 1).
     const before = withTypedLang(live.current, line);
@@ -552,7 +581,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     setPicking({ styles: now.styles, budget: now.budget });
   }
 
-  function generate(byItself = false) {
+  function generate(byItself = false, typed?: string) {
     // Once; whatever is on its way is dropped (its reply would land on the trip being made) and stopped.
     if (stale() || !canGenerate(live.current)) return;
     clearAuto();
@@ -566,7 +595,11 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     const route = T(() => routeForGenerate(s));
     // Made by itself: no line put in the traveller's mouth.
     const made = { ...s, route: route ?? s.route, editingRoute: false, asking: null };
-    commit(byItself ? made : say(made, "user", label));
+    commit(byItself ? made : say(made, "user", typed ?? label));
+    // Never again by itself for these answers: "Sohbete dön" goes back to the chat, not to a new countdown.
+    const memo = T(() => memoAfterGenerate(made, ctx));
+    autoFor.current = memo.for;
+    autoStopped.current = memo.stopped;
     setDrawingKey(null);
     setPhase("generating");
   }
@@ -604,7 +637,9 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     const stageText = stage === "writing" ? L("Yazıyor…", "Writing…") : L("Düşünüyor…", "Thinking…");
 
     return (
-      <div className={`st-screen${generating ? " generating" : ""}`} lang={lang} onPointerDownCapture={(e) => !(e.target as Element).closest?.("[data-auto-keep]") && stopAuto()}>
+      <div className={`st-screen${generating ? " generating" : ""}`} lang={lang} onPointerDownCapture={(e) => !(e.target as Element).closest?.("[data-auto-keep]") && stopAuto()}
+        onKeyDownCapture={(e) => !(e.target as Element).closest?.("[data-auto-keep]") && stopAuto(e.target === input.current)}
+        onFocusCapture={(e) => !(e.target as Element).closest?.("[data-auto-keep]") && stopAuto(e.target === input.current)}>
         <section className="st-chat">
           <div className="st-top">
             <button type="button" className="trip-switch" onClick={close} disabled={generating}>
@@ -719,7 +754,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
                 <span>
                   {L("Oluşturuyorum…", "Generating…")} <b>{auto}</b>
                 </span>
-                <button type="button" className="st-auto-stop" onClick={stopAuto}>
+                <button type="button" className="st-auto-stop" onClick={() => stopAuto()}>
                   {L("Vazgeç", "Cancel")}
                 </button>
               </div>
@@ -736,7 +771,8 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
             )}
           </div>
           <form className="st-composer" onSubmit={(e) => (e.preventDefault(), void send())}>
-            <input ref={input} type="text" value={text} disabled={generating} onChange={(e) => (stopAuto(), setText(e.target.value))}
+            <input ref={input} type="text" value={text} disabled={generating} onChange={(e) => (stopAuto(true), setText(e.target.value))}
+              onCompositionStart={() => ((composing.current = true), stopAuto(true))} onCompositionEnd={() => (composing.current = false)}
               placeholder={placeholder ?? L("Ya da kendin yaz…", "Or type it yourself…")} aria-label={L("Mesaj", "Message")} />
             <button type="submit" className="send-btn" disabled={!text.trim() || holding || generating} aria-label={L("Gönder", "Send")}>
               <ArrowUp />

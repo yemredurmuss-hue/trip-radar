@@ -5,9 +5,9 @@
 // intent, and the trip making itself once the essentials are known (the countdown's arming and stopping).
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { setLang, withLang } from "../src/lib/i18n";
-import { EVENTS, findEvent, intentOf, nextFullMoon, nextOccurrence, TABLE_LAST_YEAR } from "../src/lib/startEvents";
+import { eventById, EVENTS, findEvent, intentOf, nextFullMoon, nextOccurrence, TABLE_LAST_YEAR } from "../src/lib/startEvents";
 import {
-  acceptExtraction, applyAnswer, applyText, autoPrint, autoSeconds, nextLine, waitingInstead, checklist, creationOf, essentialsDone, eventLine, isComplete, isGoCommand, lineLink, mergeExtracted,
+  acceptExtraction, applyAnswer, applyText, autoHeld, autoPrint, autoSeconds, memoAfterGenerate, nextLine, routeForGenerate as routeMade, waitingInstead, withGuessTaken, checklist, creationOf, essentialsDone, eventLine, isComplete, isGoCommand, lineLink, mergeExtracted,
   newStart, nextQuestion, parseStartText, questionOf, replyText, routeForGenerate, shouldAutoStart, skip, startName, totalNights, tripDates, tripTitle,
   withTypedLang, type RawExtraction, type StartCtx, type StartState,
 } from "../src/lib/startTrip";
@@ -330,5 +330,33 @@ describe("the title from the intent", () => {
     expect(startName(bali)).toBe("Bali");
     expect(withLang("en", () => tripTitle(bali))).toBe("Bali trip");
     expect(intentOf(EVENTS.find((e) => e.id === "f1-turkey")!, TODAY).dates).toBeNull();
+  });
+});
+
+// --- the review of 3cbda03 (one test per finding) -------------------------------------------------------------------
+
+describe("review 1: 'Sohbete dön' never makes the trip again by itself", () => {
+  it("the answers as made are taken as counted down and stopped (the confirmed route changes the checklist)", () => {
+    let s = newStart("x", "plan", 1, "tr");
+    s = applyAnswer(s, { q: "where", place: "Portekiz", country: "Portekiz", code: "PT" }, 2);
+    s = applyAnswer(s, { q: "duration", duration: { unit: "day", n: 10 } }, 2);
+    s = applyAnswer(s, { q: "start", date: "2026-11-10", approx: false }, 2);
+    s = applyAnswer(applyAnswer(s, { q: "from", city: "İzmir" }, 2), { q: "who", kind: "partner" }, 2);
+    s = answered(s);
+    const g = withGuessTaken(s, 6);
+    const made = { ...g, route: routeMade(g) ?? g.route, editingRoute: false, asking: null };
+    // Before the fix: the memo of the countdown (not of what was made) let it start again.
+    expect(shouldAutoStart(made, ctx, { for: autoPrint(s, ctx), stopped: false })).toBe(true);
+    expect(shouldAutoStart(made, ctx, memoAfterGenerate(made, ctx))).toBe(false);
+  });
+});
+
+describe("review 2: never over a half-typed message", () => {
+  it("held while words are typed, a word is composed or the tab is hidden", () => {
+    expect(autoHeld({ typing: "", composing: false, hidden: false })).toBe(false);
+    expect(autoHeld({ typing: "   ", composing: false, hidden: false })).toBe(false);
+    expect(autoHeld({ typing: "Cape To", composing: false, hidden: false })).toBe(true);
+    expect(autoHeld({ typing: "", composing: true, hidden: false })).toBe(true);
+    expect(autoHeld({ typing: "", composing: false, hidden: true })).toBe(true);
   });
 });
