@@ -2470,6 +2470,10 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-row:hover:not(:disabled) .st-row-value { text-decoration: underline; text-underline-offset: 3px; }
 .st-check { position: relative; z-index: 1; flex: none; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; border: 2px dashed rgba(91, 69, 224, .45); background: #e6deff; color: #fff; }
 .st-row.done .st-check { border: 0; background: var(--hx-ink); }
+/* A destination still to confirm (rev 3): filled, with a "?" instead of the check. */
+.st-row.tentative .st-check { border: 2px solid var(--hx-accent); background: #fff; color: var(--hx-accent); font-size: 14px; font-weight: 800; }
+.st-row.tentative .st-row-value { color: var(--hx-ink); }
+.st-row-label em.st-row-check { color: #a35a00; }
 .st-row-label { display: block; font-size: 12.5px; font-weight: 700; letter-spacing: .08em; color: #5d5885; }
 .st-row-label em { font-style: normal; font-weight: 600; letter-spacing: 0; color: var(--hx-accent); }
 .st-row-value { display: block; margin-top: 2px; font-size: 17px; color: var(--hx-ink); }

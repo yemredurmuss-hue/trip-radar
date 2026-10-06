@@ -2932,6 +2932,15 @@ try {
   await pngList.locator(".st-row.done", { hasText: "With a friend · 2 people" }).waitFor({ timeout: 3000 });
   await pngList.locator(".st-row.done", { hasText: "November · 3 weeks" }).waitFor({ timeout: 3000 });
   await board.locator(".st-msg-bot", { hasText: "3 weeks in November with a friend." }).waitFor();
+  // WHERE TO is filled at once, marked to check (not the done tick), counted; Generate works with it.
+  const tentativeRow = pngList.locator(".st-row.tentative", { hasText: "Papua New Guinea?" });
+  await tentativeRow.waitFor({ timeout: 3000 });
+  await tentativeRow.getByText("· check").waitFor();
+  assert.equal(await pngList.locator(".st-row.tentative.done").count(), 0, "not ticked");
+  assert.equal(await pngList.locator(".st-row", { hasText: "WHERE TO" }).getByText("· needed").count(), 0, "not 'needed'");
+  await pngList.getByText("3 of 6 captured").waitFor();
+  assert.equal(await board.locator(".st-side .st-gen-btn").isEnabled(), true, "Generate works with the guess");
+  assert.equal(await board.locator(".st-top-title").innerText(), "Papua New Guinea · new trip");
   await board.waitForTimeout(600); // the lines and rows faded in
   await board.screenshot({ path: `${out}/23e-start-png-captured.png` });
   await answers.getByRole("button", { name: "Yes", exact: true }).click();

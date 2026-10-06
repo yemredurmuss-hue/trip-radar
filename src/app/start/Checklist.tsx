@@ -38,7 +38,7 @@ interface Props {
 }
 
 export function Checklist({ rows, onAsk, disabled, drawing = null, lang }: Props) {
-  const done = rows.filter((r) => r.done).length;
+  const done = rows.filter((r) => r.done || r.tentative).length;
   return withLang(lang, () => (
     <div className="st-list">
       <div className="st-list-head">
@@ -64,14 +64,14 @@ export function Checklist({ rows, onAsk, disabled, drawing = null, lang }: Props
           );
           return (
             <li key={r.id}>
-              <button type="button" className={`st-row${r.done ? " done" : ""}${busy ? " drawing" : ""}`} disabled={disabled} onClick={() => onAsk(r.ask)} title={L("Bunu yeniden sor", "Ask this again")}>
+              <button type="button" className={`st-row${r.done ? " done" : ""}${r.tentative ? " tentative" : ""}${busy ? " drawing" : ""}`} disabled={disabled} onClick={() => onAsk(r.ask)} title={L("Bunu yeniden sor", "Ask this again")}>
                 <span className="st-check" aria-hidden>
-                  {r.done && <UiIcon name="check" size={14} />}
+                  {r.done ? <UiIcon name="check" size={14} /> : r.tentative ? "?" : null}
                 </span>
                 <span className="st-row-text">
                   <span className="st-row-label">
                     {r.label}
-                    {r.required && !r.done && <em>{L(" · gerekli", " · needed")}</em>}
+                    {r.tentative ? <em className="st-row-check">{L(" · kontrol", " · check")}</em> : r.required && !r.done && <em>{L(" · gerekli", " · needed")}</em>}
                   </span>
                   <span className="st-row-value">
                     {busy && drawing === "new" ? (
@@ -125,7 +125,7 @@ export function GenerateCard({ ready, complete, missing, onGenerate, lang }: { r
 /** Narrow screens: "4/6 · Gezin şekilleniyor ▾", the list opening under it. */
 export function ChecklistBar({ rows, onAsk, ready, complete, onGenerate, disabled, drawing, lang }: Props & { ready: boolean; complete: boolean; onGenerate: () => void }) {
   const [open, setOpen] = useState(false);
-  const done = rows.filter((r) => r.done).length;
+  const done = rows.filter((r) => r.done || r.tentative).length;
   return withLang(lang, () => (
     <div className={`st-bar${open ? " open" : ""}`}>
       <div className="st-bar-row">

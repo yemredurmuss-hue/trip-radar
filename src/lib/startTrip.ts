@@ -1146,11 +1146,23 @@ const monthOnly = (s: Pick<StartState, "start">) => Boolean(s.start?.approx && !
  * "Oluştur" works as soon as the destination is known (item 4): what's missing is asked later in the board's chat,
  * which goes on with this conversation. A month only is made as its beginning, said to be rough.
  */
-export const canGenerate = (s: StartState): boolean => Boolean(s.where);
+export const canGenerate = (s: StartState): boolean => Boolean(s.where || tentativeWhere(s));
+
+/**
+ * A destination read from a loose spelling, waiting for "Evet" (rev 3): shown at once as a guess ("Papua New
+ * Guinea?"), counted in the list, enough to generate. Every guess the code makes is a strong one (8+ letters at most
+ * 2 edits away, or a country of several words with one word near). Null when there is none.
+ */
+export const tentativeWhere = (s: Pick<StartState, "guess">): Place | null => (s.guess?.slot === "where" ? s.guess.place : null);
+
+/** The guess taken as the answer: "Oluştur" pressed while it is still asked (rev 3) builds the suggested name. */
+export function withGuessTaken(s: StartState, now: number): StartState {
+  return tentativeWhere(s) ? applyAnswer(s, { q: "guess", accept: true }, now) : s;
+}
 
 /** What's still needed to generate, in words ("nereye"): only the destination. */
 export function missingForGenerate(s: StartState): string[] {
-  return s.where ? [] : [L("nereye", "where")];
+  return s.where || tentativeWhere(s) ? [] : [L("nereye", "where")];
 }
 
 /** What the checklist still misses, in words ("nereden, ne zaman"): asked on the board's chat after "Oluştur". */
@@ -1340,6 +1352,12 @@ export function bindToQuestion(s: StartState, text: string, read: Extracted, q: 
  */
 export function applyText(s: StartState, text: string, read: Extracted, now: number, pending: QuestionId | null = nextQuestion(s)): { state: StartState; understood: boolean } {
   const q = pending;
+  // "Evet" / "Hayır" typed to "… mı demek istedin?" (rev 3), as the chips.
+  if (q === "guess" && s.guess) {
+    const word = text.trim().toLocaleLowerCase("tr").replace(/[.!]+$/, "");
+    if (/^(evet|evet o|doğru|aynen|yes|yep|yeah|right|correct|that one)$/.test(word)) return { state: applyAnswer(s, { q: "guess", accept: true }, now), understood: true };
+    if (/^(hayır|hayir|no|nope)$/.test(word)) return { state: applyAnswer(s, { q: "guess", accept: false }, now), understood: true };
+  }
   let e = bindToQuestion(s, text, read, q);
   // An origin that is the destination itself ("İstanbul" read as both) is the answer to the question asked only
   // (a change of mind is where to).
@@ -1349,6 +1367,8 @@ export function applyText(s: StartState, text: string, read: Extracted, now: num
   let state = applyExtracted(s, e, now);
   if (e.guess) state = { ...state, guess: e.guess };
   // A guess still asked about that is now taken (the model's reading said that place): asked no more.
+  // Another place typed while a guess is asked: that answer wins (rev 3).
+  if (q === "guess" && s.guess && !e.guess && (s.guess.slot === "where" ? e.where : e.from)) state = { ...state, guess: null };
   const asked = state.guess;
   if (asked && [state.where?.place, state.from].some((p) => samePlace(p, asked.place.place))) state = { ...state, guess: null };
   const filled = said(e) || Boolean(e.guess);
@@ -1815,6 +1835,8 @@ export interface ChecklistRow {
   done: boolean;
   /** The question a press on the row asks again. */
   ask: QuestionId;
+  /** Filled from a guess still to confirm ("Papua New Guinea?"): counted, but not checked (rev 3). */
+  tentative?: boolean;
   /** Needed for "Gezimi oluştur". */
   required: boolean;
   skipped: boolean;
@@ -1823,7 +1845,9 @@ export interface ChecklistRow {
 export function checklist(s: StartState, ctx: StartCtx): ChecklistRow[] {
   const total = totalNights(s);
   const rows: ChecklistRow[] = [
-    { id: "where", label: L("NEREYE", "WHERE TO"), value: s.where ? [...new Set([s.where.place, s.where.country])].filter(Boolean).join(" · ") : L("Nereye gidiyoruz?", "Where are we going?"), done: !!s.where, ask: "where", required: true, skipped: s.skipped.includes("where") },
+    tentativeWhere(s)
+      ? { id: "where", label: L("NEREYE", "WHERE TO"), value: `${tentativeWhere(s)!.place}?`, done: false, tentative: true, ask: "guess", required: true, skipped: false }
+      : { id: "where", label: L("NEREYE", "WHERE TO"), value: s.where ? [...new Set([s.where.place, s.where.country])].filter(Boolean).join(" · ") : L("Nereye gidiyoruz?", "Where are we going?"), done: !!s.where, ask: "where", required: true, skipped: s.skipped.includes("where") },
     { id: "from", label: L("NEREDEN", "WHERE FROM"), value: s.from ?? L("Nereden yola çıkıyorsun?", "Where are you leaving from?"), done: !!s.from, ask: "from", required: false, skipped: s.skipped.includes("from") },
     { id: "who", label: L("KİMLE", "WHO'S COMING"), value: whoText(s.who, ctx.myName) || L("Kimle gidiyorsun?", "Who's coming?"), done: !!s.who, ask: "who", required: false, skipped: s.skipped.includes("who") },
     {

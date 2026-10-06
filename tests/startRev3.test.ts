@@ -13,7 +13,7 @@ import { along, arcControl, centroidOf, frame, LAT_BOTTOM, LAT_TOP, MAP_H, MAP_W
 import {
   acceptRoute, applyAnswer, applyExtracted, applyText, canGenerate, checklist, circuitRoute, countryNamed, creationOf, EMPTY_EXTRACTED, mergeExtracted, namesToAsk, newStart, nextLine, placeOf, readyText, skip,
   nextQuestion, onlyEmpty, parseStartText, peopleCount, photoQuery, questionOf, replyText, restoreRoute, routeForGenerate, routeKey, routeSystem, totalNights,
-  tripDates, withPreparedRoute, withTypedLang, type StartCtx, type StartState,
+  tentativeWhere, tripDates, withGuessTaken, withPreparedRoute, withTypedLang, type StartCtx, type StartState,
 } from "../src/lib/startTrip";
 
 const TODAY = "2026-10-06";
@@ -120,6 +120,22 @@ describe("instant capture, most important first (the owner's second report)", ()
     expect(nextQuestion(next)).toBe("want");
     next = withLang("en", () => applyAnswer(next, { q: "want", styles: ["adventure"], budget: null }, 6));
     expect(nextQuestion(next)).toBe("route");
+  });
+
+  it("the guess fills WHERE TO at once, tentatively; generatable with the suggested name; another answer wins", () => {
+    const s = typed(newStart("png5", "plan", 1, "en"), EN);
+    const row = withLang("en", () => checklist(s, ctx))[0];
+    expect(row).toMatchObject({ id: "where", value: "Papua New Guinea?", done: false, tentative: true });
+    expect(tentativeWhere(s)?.code).toBe("PG");
+    expect(canGenerate(s)).toBe(true);
+    const made = withGuessTaken(s, 3);
+    expect(made.where?.place).toBe("Papua New Guinea");
+    expect(made.guess).toBeNull();
+    // "No": the typing as written; "yes" typed: the guess; another place typed: that one.
+    expect(withLang("en", () => applyAnswer(s, { q: "guess", accept: false }, 3)).where?.place).toBe("Papua New Gune");
+    expect(typed(s, "yes", 3).where?.place).toBe("Papua New Guinea");
+    const fiji = typed(s, "Fiji", 3);
+    expect([fiji.where?.code, fiji.guess]).toEqual(["FJ", null]);
   });
 
   it("typed again loosely, the title is the country's own name, never the misspelling", () => {

@@ -25,7 +25,7 @@ import {
   applyAnswer, applyExtracted, applyText, askAgain, budgetChips, budgetWord, canGenerate, checklist, drawingLine, isComplete, knownLines, mergeExtracted,
   missingForGenerate, modelReplyText, NOT_UNDERSTOOD, nextQuestion, onlyEmpty, parseRouteText, parseStartText, photosToFind, preparedRoute, previewOf,
   questionOf, replyText, restoreRoute, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
-  whereKey, withPhotos, withPreparedRoute, withTypedLang,
+  tentativeWhere, whereKey, withGuessTaken, withPhotos, withPreparedRoute, withTypedLang,
   type Answer, type Extracted, type QuestionId, type StartCtx, type StartRoute, type StartState,
 } from "../../lib/startTrip";
 import { STYLE_META, STYLES, type BudgetLevel, type StyleId } from "../../lib/tripStyle";
@@ -460,8 +460,9 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     if (stale() || !canGenerate(live.current)) return;
     nextTurn();
     stopAll();
-    const s = live.current;
-    const label = T(() => (isComplete(s) ? L("Gezimi oluştur", "Generate my trip") : L("Şimdilik bununla oluştur", "Generate with this for now")));
+    const label = T(() => (isComplete(live.current) ? L("Gezimi oluştur", "Generate my trip") : L("Şimdilik bununla oluştur", "Generate with this for now")));
+    // A destination still to confirm ("Papua New Guinea?"): the suggested name is built (rev 3).
+    const s = T(() => withGuessTaken(live.current, Date.now()));
     // The best route there is (rev 3): the agreed one, the proposal on screen, the classic circuit, or one stop.
     const route = T(() => routeForGenerate(s));
     commit(say({ ...s, route: route ?? s.route, editingRoute: false, asking: null }, "user", label));
@@ -508,7 +509,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
             <button type="button" className="trip-switch" onClick={close} disabled={generating}>
               <Back /> {L("Seyahatlerim", "My trips")}
             </button>
-            <div className="st-top-title">{state.where ? L(`${state.where.place} · yeni gezi`, `${state.where.place} · new trip`) : L("Yeni gezi", "New trip")}</div>
+            <div className="st-top-title">{state.where ?? tentativeWhere(state) ? L(`${(state.where ?? tentativeWhere(state))!.place} · yeni gezi`, `${(state.where ?? tentativeWhere(state))!.place} · new trip`) : L("Yeni gezi", "New trip")}</div>
           </div>
           {!generating && <ChecklistBar rows={rows} onAsk={ask} ready={ready} complete={complete} onGenerate={generate} disabled={holding} drawing={drawing} lang={lang} />}
           <div className="st-msgs" role="log" aria-live="polite" aria-label={L("Sohbet", "Conversation")}>
