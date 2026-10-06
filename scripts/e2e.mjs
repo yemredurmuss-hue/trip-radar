@@ -2872,8 +2872,9 @@ try {
   // Pressed while "Rotayı çiziyor…" shows: the circuit is built.
   await lkGen.click();
   await board.locator(".st-gen", { hasText: "Sri Lanka Gezisi planlanıyor" }).waitFor();
-  const map = board.locator(".st-map");
-  await map.locator("svg .st-map-land").waitFor();
+  const map = board.locator("figure.st-map");
+  await map.locator("svg .st-map-land").first().waitFor();
+  assert.equal(await map.locator("svg .st-map-land").count(), 3, "the land drawn three times side by side (the date line)");
   assert.equal(await map.locator(".st-map-arc").count(), 1, "the flight's curve");
   assert.equal(await map.locator(".st-map-plane").count(), 1, "the plane");
   assert.equal(await map.getAttribute("data-phase").then((p) => ["zoom", "flying"].includes(p)), true, "it flies");
