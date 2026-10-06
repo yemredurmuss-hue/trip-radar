@@ -1681,8 +1681,38 @@ const flow = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir
   headless: false,
   viewport: { width: 1440, height: 900 },
   ...TURKISH,
-  args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+  // The trip map (MapLibre) needs WebGL 2: headless Chromium draws it in software.
+  args: [...HEADLESS_ARGS, LANG_ARG, "--use-angle=swiftshader", "--enable-unsafe-swiftshader", `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
 });
+// The trip map's tiles (OpenFreeMap), simulated: a small style of its own and empty tiles, so no run depends on (or
+// loads) the real service. The worker's tile requests come through here too. `tileAsks` counts what was asked.
+const tileAsks = { style: 0, tiles: 0 };
+await flow.route(/tiles\.openfreemap\.org/, (route) => {
+  const url = route.request().url();
+  if (/\/styles\//.test(url)) {
+    tileAsks.style++;
+    return route.fulfill({
+      json: {
+        version: 8,
+        name: "e2e",
+        sources: { openmaptiles: { type: "vector", tiles: ["https://tiles.openfreemap.org/planet/e2e/{z}/{x}/{y}.pbf"], maxzoom: 6, attribution: "OpenFreeMap © OpenMapTiles Data from OpenStreetMap" } },
+        glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+        layers: [
+          { id: "background", type: "background", paint: { "background-color": "#a9c8f5" } },
+          { id: "water", type: "fill", source: "openmaptiles", "source-layer": "water", paint: { "fill-color": "#a9c8f5" } },
+          { id: "place", type: "symbol", source: "openmaptiles", "source-layer": "place", layout: { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"] } },
+        ],
+      },
+    });
+  }
+  tileAsks.tiles++;
+  return route.fulfill({ status: 200, contentType: "application/x-protobuf", body: Buffer.alloc(0) });
+});
+// MV3's CSP on the extension's pages: the map's library and worker must load without a violation.
+const cspErrors = [];
+const watchCsp = (p) => p.on("console", (m) => m.type() === "error" && /Content Security Policy|Refused to (load|execute|create)/i.test(m.text()) && cspErrors.push(m.text()));
+flow.pages().forEach(watchCsp);
+flow.on("page", watchCsp);
 // Not frozen: its worker writes analyses on the real clock, and the board judges their freshness by it.
 try {
   const geminiBodies = [];
@@ -3043,11 +3073,22 @@ try {
   assert.equal(rev.message, 2, "one read-and-reply call per typed message");
   assert.equal(rev.route, 1, "the route asked once, for the destination (never the origin)");
   assert.ok(!rev.routeFor[0].includes("Yer: İstanbul"), "the route is for Koh Phangan");
-  // Generate with what there is; the steps say what they really wrote.
+  // Generate with what there is; the steps say what they really wrote. No WebGL here (an old GPU): the bundled map
+  // stands in for the real one.
+  await board.evaluate(() => {
+    const real = HTMLCanvasElement.prototype.getContext;
+    window.__realGetContext = real;
+    HTMLCanvasElement.prototype.getContext = function (kind, ...rest) {
+      return /webgl/.test(kind) ? null : real.call(this, kind, ...rest);
+    };
+  });
   await genBtn.click();
   await board.locator(".st-gen", { hasText: "Koh Phangan Gezisi planlanıyor" }).waitFor();
   // The map speaks the chat's language on the English board.
   await board.locator(".st-map-credit", { hasText: "Harita: Natural Earth" }).waitFor();
+  assert.equal(await board.locator(".st-map svg .st-map-land").count(), 3, "without WebGL: the bundled map");
+  assert.equal(await board.locator(".tm canvas").count(), 0, "and no real map");
+  await board.evaluate(() => (HTMLCanvasElement.prototype.getContext = window.__realGetContext));
   await board.locator(".st-step.done", { hasText: "Gezi açıldı: Koh Phangan Gezisi" }).waitFor();
   assert.equal(await board.locator(".st-gen-foot").innerText().then((t) => /%/.test(t)), false, "no percentages");
   await board.locator(".st-progress").waitFor();
@@ -3151,18 +3192,21 @@ try {
   // Pressed while "Rotayı çiziyor…" shows: the circuit is built.
   await lkGen.click();
   await board.locator(".st-gen", { hasText: "Sri Lanka Gezisi planlanıyor" }).waitFor();
-  const map = board.locator("figure.st-map");
-  await map.locator("svg .st-map-land").first().waitFor();
-  assert.equal(await map.locator("svg .st-map-land").count(), 3, "the land drawn three times side by side (the date line)");
-  assert.equal(await map.locator(".st-map-arc").count(), 1, "the flight's curve");
-  assert.equal(await map.locator(".st-map-plane").count(), 1, "the plane");
-  assert.equal(await map.getAttribute("data-phase").then((p) => ["zoom", "flying"].includes(p)), true, "it flies");
-  await board.locator(".st-map[data-phase=flying]").waitFor({ timeout: 4000 });
+  // The real map (TripMap, MapLibre on the globe): home, the plane flying to Sri Lanka, then the stops.
+  const map = board.locator("figure.st-map.tm-generate");
+  await map.locator("canvas").waitFor({ timeout: 6000 });
+  await board.locator(".tm-generate[data-phase=flying]").waitFor({ timeout: 6000 });
+  assert.equal(await map.locator(".tm-plane").count(), 1, "the plane");
+  assert.equal(await map.locator(".tm-home").count(), 1, "home");
+  assert.equal(await map.locator(".tm-stop").count(), 0, "the stops wait for the landing");
   await board.waitForTimeout(700);
   await board.screenshot({ path: `${out}/23b-start-map-midflight.png` });
-  await board.locator(".st-map[data-phase=landed]").waitFor({ timeout: 6000 });
-  await map.locator(".st-map-stops").waitFor();
-  assert.equal(await map.locator(".st-map-stop").count(), 4, "the four stops on the map");
+  await board.locator(".tm-generate[data-phase=landed]").waitFor({ timeout: 6000 });
+  await map.locator(".tm-pulse").waitFor();
+  assert.equal(await map.locator(".tm-stop").count(), 4, "the four stops on the map");
+  assert.deepEqual(await map.locator(".tm-stop").evaluateAll((n) => n.map((x) => x.dataset.name)), ["Sigiriya", "Kandy", "Ella", "Mirissa"]);
+  assert.equal(await map.locator(".st-map-land").count(), 0, "not the bundled map");
+  assert.ok(tileAsks.style > 0 && tileAsks.tiles > 0, "the style and its tiles asked of the (simulated) OpenFreeMap");
   await board.locator(".st-gen-stage .st-photo").first().waitFor();
   await board.waitForTimeout(900);
   await board.screenshot({ path: `${out}/23c-start-map-landed.png` });
@@ -3268,6 +3312,91 @@ try {
   await board.waitForTimeout(600);
   await board.screenshot({ path: `${out}/23g-start-png-tr.png` });
   await board.getByRole("button", { name: /Seyahatlerim/ }).first().click();
+
+  // 25. The board's Harita tab: a Denmark–Netherlands trip, every journey in date order. Out from Istanbul (booked),
+  // Copenhagen → Amsterdam by plane (booked), a train to Rotterdam (not booked: dashed; Rotterdam isn't in the
+  // city table, so it's geocoded), home from Rotterdam, and a day trip to a place no one can find (listed under it).
+  const rotterdam = (route) => (/rotterdam/i.test(new URL(route.request().url()).searchParams.get("q") ?? "") ? route.fulfill({ json: [{ lat: "51.92", lon: "4.48" }] }) : route.fallback());
+  await flow.route("https://nominatim.openstreetmap.org/**", rotterdam);
+  await board.evaluate(async () => {
+    const database = await new Promise((resolve, reject) => { const q = indexedDB.open("trip-radar"); q.onsuccess = () => resolve(q.result); q.onerror = () => reject(q.error); });
+    const tx = database.transaction(["trips", "items"], "readwrite");
+    const now = Date.now();
+    const t = { id: "e2e-map", title: "Danimarka ve Hollanda", confirmedDates: { start: "2026-10-08", end: "2026-10-18" }, budget: null, heroImage: null, createdAt: now, updatedAt: now };
+    const base = (over) => ({
+      tripId: t.id, captureIds: ["e2e-cap"], key: null, category: "stay", provider: null, summary: "", optionDetail: null, url: null, imageUrl: null,
+      country: null, countryCode: null, guests: { adults: 2, children: null, rooms: null }, location: { address: null, area: null, approximate: false },
+      price: { amount: null, currency: null, scope: "unknown", taxesIncluded: "unknown", source: "none", observedAt: now }, priceHistory: [],
+      cancellation: { summary: null, freeUntil: null, source: "none" }, rating: { value: null, scale: null, count: null, source: "none" }, flight: null, geo: null,
+      highlights: [], concerns: [], reviewSummary: null, missing: [], status: "booked", statusNote: null, createdAt: now, updatedAt: now, ...over,
+    });
+    const flight = (id, from, to, dep, arr, status) =>
+      base({ id, category: "flight", name: `${from} → ${to}`, needKey: `flight:${from}-${to}`.toLowerCase(), status, dates: { start: dep.slice(0, 10), end: null, source: "page" }, flight: { from, to, departure: dep, arrival: arr, carrier: null, flightNumber: null, stops: 0 } });
+    tx.objectStore("trips").put(t);
+    for (const i of [
+      flight("e2e-map-1", "IST", "CPH", "2026-10-08T07:10", "2026-10-08T09:45", "booked"),
+      base({ id: "e2e-map-2", name: "Hotel Nyhavn", city: "Kopenhag", countryCode: "DK", needKey: "stay:kopenhag", dates: { start: "2026-10-08", end: "2026-10-12", source: "page" } }),
+      flight("e2e-map-3", "CPH", "AMS", "2026-10-12T11:00", "2026-10-12T12:25", "booked"),
+      base({ id: "e2e-map-4", name: "Canal House", city: "Amsterdam", countryCode: "NL", needKey: "stay:amsterdam", status: "chosen", dates: { start: "2026-10-12", end: "2026-10-15", source: "page" } }),
+      flight("e2e-map-5", "AMS", "Zzyzx", "2026-10-13T08:00", "2026-10-13T09:00", "saved"),
+      base({ id: "e2e-map-6", category: "transport", name: "NS Intercity train Amsterdam → Rotterdam", city: "Rotterdam", countryCode: "NL", needKey: "transport:rotterdam", status: "saved", dates: { start: "2026-10-15", end: null, source: "page" } }),
+      base({ id: "e2e-map-7", name: "Hotel New York", city: "Rotterdam", countryCode: "NL", needKey: "stay:rotterdam", dates: { start: "2026-10-15", end: "2026-10-18", source: "page" } }),
+      flight("e2e-map-8", "RTM", "IST", "2026-10-18T18:00", "2026-10-18T22:40", "saved"),
+    ]) tx.objectStore("items").put(i);
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  const mapAsked = tileAsks.style;
+  await board.goto(`chrome-extension://${id}/app.html#trip=e2e-map`);
+  await board.getByRole("heading", { name: "Danimarka ve Hollanda" }).waitFor();
+  assert.equal(await board.locator(".tm canvas").count(), 0, "no map until the tab opens");
+  assert.equal(tileAsks.style, mapAsked, "nor its style asked for");
+  assert.equal(await board.evaluate(() => Boolean(document.querySelector('script[src*="maplibre"]'))), false, "nor its library loaded");
+  await board.getByRole("tab", { name: "Harita" }).click();
+  const tm = board.locator("figure.tm-board");
+  await board.locator(".tm-board[data-phase=ready]").waitFor({ timeout: 8000 });
+  await tm.locator("canvas").waitFor();
+  // Rotterdam comes once it's geocoded; the place no one finds is said under the map.
+  await tm.locator(".tm-stop", { hasText: "Rotterdam" }).waitFor({ timeout: 8000 });
+  await board.locator(".tm-missing", { hasText: "1 yolculuk haritada yok: yeri bilinmiyor" }).waitFor({ timeout: 8000 });
+  assert.match(await board.locator(".tm-missing-list").innerText(), /Amsterdam → Zzyzx/);
+  assert.deepEqual(await tm.locator(".tm-stop").evaluateAll((n) => n.map((x) => x.dataset.name)), ["Kopenhag", "Amsterdam", "Rotterdam"]);
+  assert.equal(await tm.locator(".tm-stop", { hasText: "Kopenhag" }).locator(".tm-n").innerText(), "4", "Copenhagen's nights");
+  assert.equal(await tm.locator(".tm-home").count(), 1, "home");
+  const pills = await tm.locator(".tm-dur").evaluateAll((n) => n.map((x) => `${x.dataset.from} → ${x.dataset.to} ${x.dataset.mode} ${x.dataset.booked === "true" ? "booked" : "planned"}`));
+  assert.deepEqual(pills, [
+    "İstanbul → Kopenhag flight booked",
+    "Kopenhag → Amsterdam flight booked",
+    "Amsterdam → Rotterdam train planned",
+    "Rotterdam → İstanbul flight planned",
+  ], "every journey in date order: out, the city-to-city flight, the train, home");
+  assert.match(await tm.locator(".tm-dur[data-from=Kopenhag]").innerText(), /^~1 sa \d+ dk$/, "a flight's time worked out from the distance");
+  await tm.scrollIntoViewIfNeeded();
+  await board.waitForTimeout(800);
+  await board.screenshot({ path: `${out}/25a-board-map.png` });
+  // A stop's dates and nights.
+  await tm.locator(".tm-stop", { hasText: "Kopenhag" }).click();
+  const pop = tm.locator(".tm-pop");
+  await pop.waitFor();
+  assert.deepEqual((await pop.innerText()).split("\n").map((x) => x.trim()).filter(Boolean), ["Kopenhag", "8–12 Ekim", "4 gece"]);
+  await board.screenshot({ path: `${out}/25b-board-map-stop.png` });
+  // ▶ plays the trip: the plane flies the journeys, the camera following it.
+  await tm.getByRole("button", { name: "Geziyi oynat" }).click();
+  await tm.locator(".tm-plane").waitFor();
+  assert.equal(await tm.getAttribute("data-playing"), "true");
+  await board.waitForTimeout(1500);
+  await board.screenshot({ path: `${out}/25c-board-map-playing.png` });
+  await tm.getByRole("button", { name: "Durdur" }).click();
+  await tm.locator(".tm-plane").waitFor({ state: "detached" });
+  // Narrow: the map fits the column.
+  await board.setViewportSize({ width: 560, height: 900 });
+  await board.waitForTimeout(500);
+  assert.ok((await tm.boundingBox()).width <= 560, "no wider than the board");
+  await board.screenshot({ path: `${out}/25d-board-map-narrow.png` });
+  await board.setViewportSize({ width: 1440, height: 900 });
+  await flow.unroute("https://nominatim.openstreetmap.org/**", rotterdam);
+  assert.deepEqual(cspErrors, [], "the map's library and worker load under the extension's CSP");
+  console.log("✓ trip map (MapLibre): the generating screen flies home → Sri Lanka on the globe (the bundled map without WebGL); Harita draws every journey in date order (CPH → AMS by plane, a train, out and home), booked solid / planned dashed, stops with their nights and dates, ▶ plays it; an unplaceable journey is listed; no CSP errors; tiles simulated");
   await flow.unroute("https://generativelanguage.googleapis.com/**", silent);
   await flow.unroute(/wikipedia\.org\/api\/rest_v1\//, wiki);
   await flow.unroute(/upload\.wikimedia\.org\/e2e\//, upload);
