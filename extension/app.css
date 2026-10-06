@@ -2641,3 +2641,27 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .pk-airline { width: 34px; height: 34px; object-fit: contain; }
 .pk-logo > svg { color: var(--mc); opacity: .55; }
 @media (max-width: 560px) { .pk-mid.has-logo { grid-template-columns: 36px minmax(0, 1fr) minmax(110px, 34%) minmax(0, 1fr); } .pk-logo { width: 36px; height: 36px; border-radius: 10px; } .pk-airline { width: 28px; height: 28px; } }
+
+/* 0.36.24: the day's groups after the settled lines, quiet ("Henüz rezerve edilmedi · 2", "Fikirler · 4") */
+.dc-tl > li.dc-tier { list-style: none; margin: 14px 0 4px; padding-left: 58px; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #a1a1a6; }
+
+/* 0.36.24 Liste as a timeline (Emre: "iconları bağlayan, net anlaşılır; renkleri hepsi aynı"): one colour for
+   every line, round nodes joined by a thin line behind them, the name and one small line of detail. */
+.dc-cday.dl-day { --node: #6a5ad8; }
+.dc-cday.dl-day .dc-step { min-height: 52px; }
+.dc-cday.dl-day .dc-tile { width: 38px; height: 38px; border-radius: 50%; color: var(--node); background: color-mix(in srgb, var(--node) 11%, #fffdfa); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--node) 30%, #fffdfa); z-index: 1; }
+.dc-cday.dl-day .dc-tile i { right: -3px; bottom: -3px; width: 15px; height: 15px; }
+.dc-cday.dl-day .dc-tl > .dc-step::before { content: ""; position: absolute; left: 88px; top: -10px; bottom: -10px; width: 2px; background: color-mix(in srgb, var(--node) 30%, #fffdfa); }
+.dc-cday.dl-day .dc-tl > .dc-step:first-child::before, .dc-cday.dl-day .dc-tl > .dc-tier + .dc-step::before { top: 50%; }
+.dc-cday.dl-day .dc-tl > .dc-step:last-child::before, .dc-cday.dl-day .dc-tl > .dc-step:has(+ .dc-tier)::before { bottom: 50%; }
+.dc-cday.dl-day .dc-tl > .dc-step:only-child::before { display: none; }
+/* The ideas: open nodes, not on the line (nothing's settled about them). */
+.dc-cday.dl-day .dc-tl > .dc-step.idea::before { display: none; }
+.dc-cday.dl-day .dc-step.idea .dc-tile { background: #fffdfa; box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--node) 30%, #fffdfa); }
+.dc-cday.dl-day .dc-step.quiet .dc-tile { background: #fffdfa; color: #a1a1a6; }
+/* Smaller words: the name, and one line under it. */
+.dc-cday.dl-day .dc-step .dc-line .name { font-size: 15.5px; }
+.dc-cday.dl-day .dc-step .dc-line .name small { font-size: 12.5px; }
+.dc-cday.dl-day .dc-step .t { font-size: 15px; }
+.dc-cday.dl-day .dc-tl > li.dc-tier { padding-left: 106px; margin: 10px 0 2px; font-size: 10.5px; }
+@media (max-width: 720px) { .dc-cday.dl-day .dc-tl > .dc-step::before { left: 74px; } .dc-cday.dl-day .dc-tl > li.dc-tier { padding-left: 92px; } }
