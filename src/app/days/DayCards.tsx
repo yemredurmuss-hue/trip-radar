@@ -462,7 +462,7 @@ function Line({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tri
           <RowGlyph name={rowIcon(row, place)} />
           {mark && <i className={mark.done ? "done" : "todo"}>{mark.done ? "✓" : ""}</i>}
         </span>
-        <RowName t={t} why={sourceOf(row)} />
+        <RowName t={{ ...t, detail: shortDetail(t.detail) }} />
         <Faces row={row} />
       </button>
       <LiveLine row={row} />
@@ -482,6 +482,19 @@ function Line({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tri
       )}
     </li>
   );
+}
+
+/**
+ * The list's grey line, short (0.36.27, Emre: "daha mini infolar"): the route the title already says goes ("Porto
+ * Campanhã → Lisboa Santa Apolónia"), and so does a worked-out time's reason (it's on the time, on hover); two
+ * pieces at most: "varış 16:04 · 1 seçenek", "planlanmadı", "3 gece · yer seçilmedi".
+ */
+function shortDetail(detail: string): string {
+  return detail
+    .split(" · ")
+    .filter((p) => p && !p.includes("→") && !/^(Varış|Arrives) \d/.test(p))
+    .slice(0, 2)
+    .join(" · ");
 }
 
 /** Whose a line is, on its right (kişiye özel rezervasyon): their faces; a meet-up shows everyone meeting. */

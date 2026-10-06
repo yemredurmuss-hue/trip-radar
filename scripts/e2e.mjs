@@ -435,7 +435,8 @@ try {
   assert.equal(new Set(lines.map(([, , h]) => h)).size, 1, `every line the same height (${lines.map(([, , h]) => h)})`);
   assert.deepEqual(
     await dayCard(4).locator(".dc-tl > .dc-step").evaluateAll((els) => els.map((e) => e.querySelector(".name small")?.textContent ?? "")),
-    ["yer seçilmedi", "Porto konaklaması → Porto Campanhã · planlanmadı", "Porto Campanhã → Lisboa Santa Apolónia · varış 16:04 · 1 seçenek · seç", "Lisboa Santa Apolónia → Lisboa Loft · planlanmadı · Varış 16:04; çıkış ~10 dk", "3 gece · İstasyondan çıkış 16:14 + yol ~1 sa"],
+    // Short (0.36.27): the route the title says and a worked-out time's reason aren't repeated; two pieces at most.
+    ["yer seçilmedi", "planlanmadı", "varış 16:04 · 1 seçenek", "planlanmadı", "3 gece"],
   );
   // 0.36.13: a worked-out time says where it comes from, on its grey line (the lines stay one height).
   // The train in without its arrival time: no hotel hour while still on the train, "varıştan sonra"; the
@@ -453,7 +454,8 @@ try {
   await setTrainArrival(null);
   const loftIn = dayCard(4).locator('.dc-tl > li[data-title="Check-in · Lisboa Loft"]');
   await loftIn.locator(".t .t-hint", { hasText: "varıştan sonra" }).waitFor();
-  assert.match(await loftIn.locator(".name small, .txt small").last().innerText(), /varış saati yok/);
+  // Why it has no clock: on the time, on hover (the list's grey line stays short, 0.36.27).
+  assert.match(await loftIn.locator("> .t").getAttribute("title"), /varış saati yok/);
   await dayCard(4).getByRole("button", { name: "Varış saati?" }).click();
   const arriveBox = dayCard(4).getByRole("textbox", { name: /varış saati/ }).or(dayCard(4).locator('.dc-arrive input[type="time"]'));
   await arriveBox.fill("16:04");
@@ -462,38 +464,7 @@ try {
   await app.screenshot({ path: `${out}/3e-arrival-asked.png` });
   // Typed by hand, kept as a correction: the record's own arrival is the page's (empty here); put it back.
   await setTrainArrival("2026-10-11T16:04");
-  // 0.36.15/0.36.18: a flight's real data (as the server would give it) on its day: late in red, its gate, the
-  // source, in the day view's line and as boxes on the Plan's card.
-  await app.clock.setSystemTime(new Date("2026-10-14T12:00:00"));
-  await app.evaluate(async () => {
-    const end = (iata, t) => ({ iata, airport: null, scheduled: t, revised: null, actual: null, terminal: null, gate: null });
-    const flight = {
-      number: "TP1760", airline: "TAP", status: "Delayed",
-      departure: { ...end("LIS", "2026-10-14T19:40"), revised: "2026-10-14T20:05", terminal: "1", gate: "14" },
-      arrival: { ...end("IST", "2026-10-15T01:35"), belt: null },
-      fetchedAt: "t",
-    };
-    await chrome.storage.local.set({ flightLive: { "TP1760|2026-10-14": { flight, at: Date.now() } } });
-    new BroadcastChannel("trip-radar").postMessage("changed");
-  });
-  const live = dayCard(7).locator(".dc-live.alert");
-  await live.waitFor();
-  assert.equal(await live.innerText(), "Yeni kalkış 20:05 (+25 dk) · Kapı 14 · Veri: AeroDataBox");
-  await live.scrollIntoViewIfNeeded();
-  await app.screenshot({ path: `${out}/3e-flight-live.png` });
-  await tab("Plan").click();
-  const tpCard = app.locator('.pk-card[aria-label*="Lizbon → İstanbul"]').first();
-  await tpCard.locator(".pk-live").waitFor();
-  assert.ok(await tpCard.evaluate((el) => el.classList.contains("pk-alert")), "late: the card goes red");
-  assert.deepEqual(flat(await tpCard.locator(".pk-lv").allInnerTexts()), ["Yeni kalkış 20:05+25 dk", "Kapı 14"]);
-  assert.match(flat([await tpCard.locator(".pk-top").innerText()])[0], /TAP TP1760/);
-  assert.match(flat([await tpCard.locator(".pk-foot").innerText()])[0], /Rötar: plan yeni saate göre kaydı.*AeroDataBox/);
-  assert.match(flat([await tpCard.locator(".pk-stop").first().innerText()])[0], /LIS T1 · 20:05/);
-  await tpCard.scrollIntoViewIfNeeded();
-  await app.screenshot({ path: `${out}/3e-flight-card-live.png` });
-  await tab("Günlük akış").click();
-  await app.evaluate(() => chrome.storage.local.remove("flightLive"));
-  await app.clock.setSystemTime(new Date("2026-10-05T10:00:00"));
+  // (A flight's real data on its day is checked in its own browser at the end: Part 6.)
   // Flights with a ticket bought are followed (0.36.16); the sample's never are, so here it's a real trip for a
   // moment (the server answered here, not asked).
   const setTrip = (patch) =>
@@ -520,7 +491,7 @@ try {
   assert.equal(await dayCard(4).locator(".dc-tl").evaluate((el) => getComputedStyle(el, "::before").display), "none", "no dotted line");
   assert.equal(await app.locator(".dc-cday .dc-free").count(), 2);
   await dayCard(7).locator('.dc-step[data-title="Uçuş · Lizbon → İstanbul"]').locator(".dc-tile i.done").waitFor();
-  assert.equal(await dayCard(7).locator('.dc-step[data-title="Uçuş · Lizbon → İstanbul"] .name small').innerText(), "Humberto Delgado → İstanbul Havalimanı · varış 01:35 (+1) · TP 1760");
+  assert.equal(await dayCard(7).locator('.dc-step[data-title="Uçuş · Lizbon → İstanbul"] .name small').innerText(), "varış 01:35 (+1) · TP 1760"); // short (0.36.27): the airports the title says aren't repeated
   // Closed, nothing is folded: check-out, the transfer to the airport, the flight.
   assert.deepEqual(await dayCard(7).locator(".dc-tl > [data-title]").evaluateAll((els) => els.map((e) => e.getAttribute("data-title"))), ["Check-out · Lisboa Loft", "Havalimanı transferi", "Uçuş · Lizbon → İstanbul"]);
   // 0.35.6: a line without a time is moved by its grip (drag, or ↑ ↓); the day keeps that order, in both views.
@@ -3419,4 +3390,60 @@ try {
   console.log("✓ travellers: the hero's people box names Sabine without sharing (Emre & Sabine · 2 kişi), × takes her off, Esc closes it; Geçmiş's Geri al brings her back");
 } finally {
   await whoGoes.close();
+}
+
+// ---------------------------------------------------------------------------------------------
+// Part 6: a flight's real data on its day (0.36.15/0.36.18), in its own browser with the calendar on the flight's
+// day (14 October): changing the clock of a page the other parts go on with left its "today" behind.
+const flightDay = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-live-")), {
+  executablePath,
+  headless: false,
+  viewport: { width: 1440, height: 900 },
+  ...TURKISH,
+  args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+});
+await flightDay.clock.install({ time: new Date("2026-10-14T12:00:00") });
+try {
+  const worker = flightDay.serviceWorkers()[0] ?? (await flightDay.waitForEvent("serviceworker"));
+  const id = new URL(worker.url()).host;
+  const app = await flightDay.newPage();
+  await app.goto(`chrome-extension://${id}/app.html`);
+  await app.getByText("Örnek geziyi yükle →").click();
+  await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
+  const flat = (texts) => texts.map((t) => t.replace(/\s+/g, " ").trim());
+  const tab = (name) => app.getByRole("tab", { name, exact: true });
+  await tab("Günlük akış").click();
+  await app.locator(".dc-seg").getByRole("tab", { name: "Liste", exact: true }).click();
+  const dayCard = (n) => app.locator(".dc-cday.list", { has: app.locator(".dc-pill", { hasText: new RegExp(`^${n}\\. gün$`) }) });
+  // 0.36.15/0.36.18: a flight's real data (as the server would give it) on its day: late in red, its gate, the
+  // source, in the day view's line and as boxes on the Plan's card.
+  await app.evaluate(async () => {
+    const end = (iata, t) => ({ iata, airport: null, scheduled: t, revised: null, actual: null, terminal: null, gate: null });
+    const flight = {
+      number: "TP1760", airline: "TAP", status: "Delayed",
+      departure: { ...end("LIS", "2026-10-14T19:40"), revised: "2026-10-14T20:05", terminal: "1", gate: "14" },
+      arrival: { ...end("IST", "2026-10-15T01:35"), belt: null },
+      fetchedAt: "t",
+    };
+    await chrome.storage.local.set({ flightLive: { "TP1760|2026-10-14": { flight, at: Date.now() } } });
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  const live = dayCard(7).locator(".dc-live.alert");
+  await live.waitFor();
+  assert.equal(await live.innerText(), "Yeni kalkış 20:05 (+25 dk) · Kapı 14 · Veri: AeroDataBox");
+  await live.scrollIntoViewIfNeeded();
+  await app.screenshot({ path: `${out}/3e-flight-live.png` });
+  await tab("Plan").click();
+  const tpCard = app.locator('.pk-card[aria-label*="Lizbon → İstanbul"]').first();
+  await tpCard.locator(".pk-live").waitFor();
+  assert.ok(await tpCard.evaluate((el) => el.classList.contains("pk-alert")), "late: the card goes red");
+  assert.deepEqual(flat(await tpCard.locator(".pk-lv").allInnerTexts()), ["Yeni kalkış 20:05+25 dk", "Kapı 14"]);
+  assert.match(flat([await tpCard.locator(".pk-top").innerText()])[0], /TAP TP1760/);
+  assert.match(flat([await tpCard.locator(".pk-foot").innerText()])[0], /Rötar: plan yeni saate göre kaydı.*AeroDataBox/);
+  assert.match(flat([await tpCard.locator(".pk-stop").first().innerText()])[0], /LIS T1 · 20:05/);
+  await tpCard.scrollIntoViewIfNeeded();
+  await app.screenshot({ path: `${out}/3e-flight-card-live.png` });
+  console.log("✓ flight on its day: late in red with its new time and gate, in the day's line and as boxes on the Plan's card, the source named");
+} finally {
+  await flightDay.close();
 }
