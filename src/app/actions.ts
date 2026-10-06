@@ -140,6 +140,23 @@ export async function addOffer(tripId: string, offer: Offer, need: Need): Promis
   return item;
 }
 
+/**
+ * "Ekle" on an offer the chat found (find_offers): the same option the row's "Ekle" saves, and the reply remembers
+ * it ("Eklendi"), so a second tap or the chat opened again never adds it twice. Null when it was added already.
+ */
+export async function addChatOffer(messageId: string, offer: Offer, need: Need): Promise<Item | null> {
+  const d = await db();
+  const tx = d.transaction("messages", "readwrite");
+  const m = await tx.store.get(messageId);
+  if (!m?.offers || m.offers.added?.includes(offer.id)) {
+    await tx.done;
+    return null;
+  }
+  await tx.store.put({ ...m, offers: { ...m.offers, added: [...(m.offers.added ?? []), offer.id] } });
+  await tx.done;
+  return addOffer(m.tripId, offer, need);
+}
+
 /** A block of empty nights' ×: "Gerek yok" for those nights, handed back for the 8-second "Geri al". */
 export async function hideNights(tripId: string, range: DateRange, label: string): Promise<Undoable> {
   const key = nightsKey(range);

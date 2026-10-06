@@ -1,5 +1,6 @@
 // Domain model. Kept storage-agnostic so the same shapes can move to a server DB later.
 import type { FlightSeen } from "./flightData";
+import type { Need, Offer } from "./offerSource";
 import { L, type Lang } from "./i18n";
 
 export type Category = "flight" | "stay" | "transport" | "activity" | "food" | "esim" | "other";
@@ -548,6 +549,16 @@ export interface ChatMessage {
   landed?: boolean;
   /** Web searches still running when this reply was saved: asked again when the chat opens, until each has landed. */
   pendingSearches?: PendingSearch[];
+  /** find_offers: the real offers this reply shows as cards (at most 3), for the need they were found for. */
+  offers?: ChatOffers;
+}
+
+/** The offers a chat reply shows (find_offers): read from the sources, each with "Ekle" (an option for the need). */
+export interface ChatOffers {
+  need: Need;
+  offers: Offer[];
+  /** The offers added as options from here ("Eklendi"). */
+  added?: string[];
 }
 
 /** A web search the chat is waiting for (assistant.ts, landSearch). */

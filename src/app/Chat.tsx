@@ -15,6 +15,7 @@ import { requestReveal } from "./arrive/intake";
 import { droppedLinks, useDropZone } from "./arrive/useDropZone";
 import { addLinks, addTripFiles, isTripFile } from "./capture";
 import { UiIcon } from "./cards/Silhouettes";
+import { ChatOffers } from "./ChatOffers";
 import { ArrowUp, Back } from "./Icons";
 
 interface Props {
@@ -34,7 +35,7 @@ interface Props {
 export function Chat({ trip, messages, onBack, items, trips, openCaptures, pending, onPendingTaken }: Props) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  // What the answer is waiting on beyond thinking: a web search ("Web'de arıyorum…").
+  // What the answer is waiting on beyond thinking: a web search ("Web'de arıyorum…"), prices ("Fiyatlara bakıyorum…").
   // A search can run on after its turn's reply (10-30 s): its line stays while the traveller writes on.
   const [status, setStatus] = useState<ChatStatus>(() => chatStatusOf(trip.id));
   useEffect(() => {
@@ -165,6 +166,8 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
               <RichText text={m.role === "assistant" ? shownReply(m.text) : m.text} links={m.role === "assistant" ? m.webSources : undefined} />
               {/* A change said with no tool that made it (claims.ts): on screen only, never in the model's history. */}
               {m.role === "assistant" && m.unbacked && <p className="msg-note">{noChangeNote()}</p>}
+              {/* find_offers: the real offers it found, as cards with "Ekle". */}
+              {m.role === "assistant" && m.offers && <ChatOffers m={m} />}
             </div>
           );
           return row.file ? (
@@ -187,7 +190,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
         )}
         {(busy || status === "web") && (
           <div className="thinking">
-            {status === "web" ? L("Web'de arıyorum…", "Searching the web…") : L("Düşünüyor…", "Thinking…")}
+            {status === "web" ? L("Web'de arıyorum…", "Searching the web…") : status === "offers" ? L("Fiyatlara bakıyorum…", "Checking prices…") : L("Düşünüyor…", "Thinking…")}
           </div>
         )}
         {error && <div className="chat-error">{error}</div>}

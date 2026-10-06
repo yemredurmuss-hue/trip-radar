@@ -3219,6 +3219,58 @@ try {
   await flow.unroute(/functions\/v1\/web-search/, slowFn);
   console.log("✓ web search, slow: the reply comes after 8 s, 'Web'de arıyorum…' stays while 'teşekkürler' is answered, then the result lands with 'Kaynak: livrarialello.pt'");
 
+  // 20d4. find_offers: "daha ucuz öneriler getir" asks the offers' source (never the model's own ideas): "Fiyatlara
+  // bakıyorum…" while it's asked, then the real offers as cards under the reply ("★ 4,7", "8,9", the source, why);
+  // "Ekle" saves one as an option of the trip.
+  const offersAsked = [];
+  const offersFn = async (route) => {
+    offersAsked.push(route.request().url());
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const offer = (id, title, rating, price, source, url, why) => ({ id, kind: "stay", title, photo: null, rating, price, currency: "EUR", nights: 3, url, why, source, fetchedAt: Date.now() });
+    return route.fulfill({
+      headers: { "Access-Control-Allow-Origin": "*" },
+      json: {
+        offers: [
+          offer("e2e-o1", "Pensão Favorita", 4.7, 270, "Tripadvisor", "https://www.tripadvisor.com/Hotel_Review-e2e-favorita", "Ribeira'ya 8 dk, en ucuzu"),
+          offer("e2e-o2", "Hotel da Música", 8.9, 330, "Booking", "https://www.booking.com/hotel/pt/e2e-musica.html", "Metroya 2 dk"),
+          offer("e2e-o3", "Casa do Conto", null, 450, "Agoda", "https://www.agoda.com/e2e-conto", ""),
+        ],
+      },
+    });
+  };
+  const offersModel = async (route) => {
+    const body = route.request().method() === "POST" ? route.request().postDataJSON() : null;
+    if (!body?.contents || body.generationConfig?.responseJsonSchema) return route.fallback();
+    const last = JSON.stringify(body.contents.at(-1));
+    if (last.includes("functionResponse") && last.includes("Pensão Favorita")) return route.fulfill(reply([{ text: "Kaynaklarda üç uygun yer var; en ucuzu Pensão Favorita." }]));
+    if (last.includes("daha ucuz öneriler getir")) {
+      const args = { kind: "stay", city: "Porto", from: "", to: "", start: "2026-12-10", end: "2026-12-13", adults: 0, max_per_night: 0, prefer: "cheap" };
+      return route.fulfill(reply([{ functionCall: { id: "fo-1", name: "find_offers", args } }]));
+    }
+    return route.fallback();
+  };
+  await flow.route("**/functions/v1/offers**", offersFn);
+  await flow.route("https://generativelanguage.googleapis.com/**", offersModel);
+  await esimBox.fill("Porto için daha ucuz öneriler getir");
+  await board.getByRole("button", { name: "Gönder" }).click();
+  await board.locator(".thinking", { hasText: "Fiyatlara bakıyorum…" }).waitFor({ timeout: 15000 });
+  const offersReply = board.locator(".msg-assistant", { hasText: "Kaynaklarda üç uygun yer var; en ucuzu Pensão Favorita." });
+  await offersReply.waitFor({ timeout: 20000 });
+  const chatCards = offersReply.locator(".chat-offer");
+  assert.equal(await chatCards.count(), 3, "three offers as cards under the reply");
+  assert.match(await chatCards.nth(0).innerText(), /Pensão Favorita[\s\S]*★ 4,7[\s\S]*Tripadvisor[\s\S]*Ribeira'ya 8 dk[\s\S]*€270[\s\S]*€90 \/ gece/);
+  assert.match(await chatCards.nth(1).innerText(), /8,9/);
+  assert.equal(await chatCards.nth(0).locator('a[href="https://www.tripadvisor.com/Hotel_Review-e2e-favorita"]').count(), 2, "its page through the offer's own link");
+  assert.ok(offersAsked.length >= 1 && offersAsked.every((u) => /kind=stay/.test(u) && /city=Porto/.test(u) && /prefer=cheap/.test(u)), "the source asked for Porto's cheapest");
+  await chatCards.nth(0).getByRole("button", { name: "Pensão Favorita: seçeneklere ekle" }).click();
+  await chatCards.nth(0).getByRole("button", { name: "Pensão Favorita eklendi" }).waitFor({ timeout: 5000 });
+  await board.screenshot({ path: `${out}/27f-chat-offers.png` });
+  const offerSaved = (await tripRecords("Portekiz")).items.filter((i) => i.name === "Pensão Favorita");
+  assert.deepEqual(offerSaved.map((i) => [i.category, i.status, i.provider, i.url]), [["stay", "saved", "Tripadvisor", "https://www.tripadvisor.com/Hotel_Review-e2e-favorita"]]);
+  await flow.unroute("https://generativelanguage.googleapis.com/**", offersModel);
+  await flow.unroute("**/functions/v1/offers**", offersFn);
+  console.log("✓ find_offers: 'daha ucuz öneriler getir' shows 'Fiyatlara bakıyorum…', then 3 real offers as cards ('★ 4,7', '8,9', source, why, €90 / gece); Ekle saves Pensão Favorita as an option");
+
   // 20e. Words with a link on the home: the link is saved, the words go on ("Linki kaydettim; geri kalanını konuşalım").
   // A month only is never a day made up: the day is asked next; "Ortası" is said back and marked roughly.
   await board.getByRole("button", { name: /Seyahatlerim/ }).first().click();
