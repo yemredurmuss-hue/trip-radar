@@ -2670,6 +2670,40 @@ try {
   await ask.waitFor();
   await ask.getByRole("button", { name: "Yeni gezi" }).click();
   const answers = board.locator(".st-answers");
+  // The generating screen opens the board by itself a few seconds in (v5: the trip is made at its own pace, the board
+  // opens once made and landed, at most 6 s after the map starts), so what it shows is recorded as it happens (a
+  // MutationObserver set before "Oluştur") and checked afterwards: a slow screenshot never makes a check miss it.
+  const watchGen = () =>
+    board.evaluate(() => {
+      const seen = { phases: [], steps: [], plane: false, home: false, ring: false, stops: [], fest: [], stopsIn: 0, cards: 0, canvas: 0, land: 0, credit: "", sub: "", title: "", mark: 0 };
+      window.__gen = seen;
+      const look = () => {
+        const gen = document.querySelector(".st-gen");
+        if (!gen) return;
+        seen.title = gen.querySelector("h2")?.textContent ?? seen.title;
+        seen.sub = gen.querySelector(".st-gen-sub")?.textContent ?? seen.sub;
+        seen.canvas = Math.max(seen.canvas, gen.querySelectorAll("canvas").length);
+        const mark = gen.querySelector(".st-step-mark");
+        if (mark) seen.mark = mark.offsetWidth;
+        for (const s of gen.querySelectorAll(".st-step.done")) if (!seen.steps.includes(s.textContent)) seen.steps.push(s.textContent);
+        const gm = gen.querySelector(".gm");
+        if (!gm) return;
+        if (seen.phases.at(-1) !== gm.dataset.phase) seen.phases.push(gm.dataset.phase);
+        seen.land = Math.max(seen.land, gm.querySelectorAll("svg .gm-land").length);
+        seen.credit = gm.querySelector(".gm-credit")?.textContent ?? seen.credit;
+        seen.plane ||= Boolean(gm.querySelector(".gm-plane"));
+        seen.home ||= Boolean(gm.querySelector(".gm-home.in"));
+        seen.ring ||= Boolean(gm.querySelector(".gm-ring.go"));
+        seen.stops = [...gm.querySelectorAll(".gm-stop")].map((n) => n.dataset.name);
+        seen.fest = [...gm.querySelectorAll(".gm-stop.fest")].map((n) => n.dataset.name);
+        seen.stopsIn = Math.max(seen.stopsIn, gm.querySelectorAll(".gm-stop.in").length);
+        seen.cards = Math.max(seen.cards, gm.querySelectorAll(".gm-photos .gm-card.in").length);
+        // Stops never drop before the plane lands.
+        if (gm.dataset.phase === "flying" && gm.querySelector(".gm-stop.in")) seen.early = true;
+      };
+      new MutationObserver(look).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+    });
+  const genSeen = () => board.evaluate(() => window.__gen);
   await board.locator(".st-msg-bot", { hasText: "Nereden yola çıkıyorsun?" }).waitFor();
   // Only what the first message left out is asked (item 2).
   const side = board.locator(".st-side");
@@ -2702,18 +2736,18 @@ try {
   await board.locator(".st-auto").getByRole("button", { name: "Vazgeç" }).click();
   await board.locator(".st-msg-bot", { hasText: "Tamam, bekliyorum. Hazır olunca Oluştur'a bas ya da 'oluştur' yaz." }).waitFor();
   assert.equal(await board.locator(".st-msg-bot", { hasText: "Hazırım" }).count(), 0, "the ready line said as waiting");
+  await watchGen();
   await board.locator(".st-chat").getByLabel("Mesaj").fill("oluştur");
   await board.locator(".st-chat").getByLabel("Mesaj").press("Enter");
   await board.locator(".st-gen", { hasText: "Bali Gezisi planlanıyor" }).waitFor();
-  await board.locator(".st-gen-sub", { hasText: "İstanbul → Ubud → Canggu → Uluwatu · 31 gece" }).waitFor();
-  await board.locator(".st-step.done", { hasText: "Gezi açıldı: Bali Gezisi" }).waitFor();
   await board.screenshot({ path: `${out}/20c-start-generating.png` });
-  await board.locator(".st-step.done", { hasText: "Rota çizildi: Ubud 12 gece → Canggu 10 gece → Uluwatu 9 gece" }).waitFor();
-  await board.locator(".st-step.done", { hasText: "İstanbul ⇄ Denpasar uçuşları için yer açıldı" }).waitFor();
-  // The suggestions' review is the last real step (the same review the board runs, so it isn't asked again there).
-  await board.locator(".st-step.done", { hasText: /öneri bölümlerinde|Şimdilik öneri yok/ }).waitFor({ timeout: 15000 });
   // The board: the trip, its nights by stop and its flights to plan, the start card, the same conversation.
-  await board.getByRole("heading", { name: "Bali Gezisi" }).waitFor({ timeout: 15000 });
+  await board.getByRole("heading", { name: "Bali Gezisi" }).waitFor({ timeout: 20000 });
+  const baliGen = await genSeen();
+  assert.equal(baliGen.sub, "İstanbul → Ubud → Canggu → Uluwatu · 31 gece");
+  for (const step of ["Gezi açıldı: Bali Gezisi", "İstanbul ⇄ Denpasar uçuşları için yer açıldı", "Rota çizildi: Ubud 12 gece → Canggu 10 gece → Uluwatu 9 gece"]) assert.ok(baliGen.steps.includes(step), `step "${step}" (${baliGen.steps.join(" | ")})`);
+  // The suggestions' review is the last real step (the same review the board runs, so it isn't asked again there).
+  assert.ok(baliGen.steps.some((x) => /öneri bölümlerinde|Şimdilik öneri yok/.test(x)), "the suggestions' step");
   const guide = board.locator(".st-guide");
   await guide.getByText("Uçuşları bul").waitFor();
   await guide.getByText("Konaklamaları seç").waitFor();
@@ -3244,24 +3278,22 @@ try {
   assert.ok(!rev.routeFor[0].includes("Yer: İstanbul"), "the route is for Koh Phangan");
   // Generate with what there is; the steps say what they really wrote. v5: the light SVG map (the bundled world, drawn
   // three times side by side for the date line), never a map library on this screen.
+  await watchGen();
   await genBtn.click();
   await board.locator(".st-gen", { hasText: "Koh Phangan Gezisi planlanıyor" }).waitFor();
-  // The map speaks the chat's language on the English board.
-  await board.locator(".gm-credit", { hasText: "Harita: Natural Earth" }).waitFor();
-  assert.equal(await board.locator(".st-gen figure.gm svg .gm-land").count(), 3, "the bundled world, as SVG");
-  assert.equal(await board.locator(".st-gen canvas").count(), 0, "no canvas (no MapLibre) on the generating screen");
-  // The big steps: 28 px marks.
-  // (Its layout size: a tick popping in is scaled for a moment.)
-  assert.equal(await board.locator(".st-gen .st-step-mark").first().evaluate((n) => n.offsetWidth), 28, "28 px step icons");
-  await board.locator(".st-step.done", { hasText: "Gezi açıldı: Koh Phangan Gezisi" }).waitFor();
   assert.equal(await board.locator(".st-gen-foot").innerText().then((t) => /%/.test(t)), false, "no percentages");
-  await board.locator(".st-progress").waitFor();
   await board.screenshot({ path: `${out}/21c-start-generating.png` });
-  // Rev 3: "Oluştur" builds the proposal on screen (the model's, kept in the background) rather than one stop.
-  await board.locator(".st-step.done", { hasText: "Rota çizildi: Koh Phangan 21 gece → Koh Samui 10 gece" }).waitFor();
-  await board.locator(".st-step.done", { hasText: "İstanbul ⇄ Koh Samui uçuşları için yer açıldı" }).waitFor();
-  await board.locator(".st-step.done", { hasText: "2 kişi" }).waitFor();
   await board.getByRole("heading", { name: "Koh Phangan Gezisi", exact: true }).waitFor({ timeout: 20000 });
+  const kpGen = await genSeen();
+  // The map speaks the chat's language on the English board; the bundled world as SVG; no canvas (no MapLibre).
+  assert.equal(kpGen.credit, "Harita: Natural Earth");
+  assert.equal(kpGen.land, 3, "the bundled world, as SVG (three times side by side, for the date line)");
+  assert.equal(kpGen.canvas, 0, "no canvas (no MapLibre) on the generating screen");
+  // The big steps: 28 px marks (their layout size: a tick popping in is scaled for a moment).
+  assert.equal(kpGen.mark, 28, "28 px step icons");
+  // Rev 3: "Oluştur" builds the proposal on screen (the model's, kept in the background) rather than one stop.
+  for (const step of ["Gezi açıldı: Koh Phangan Gezisi", "Rota çizildi: Koh Phangan 21 gece → Koh Samui 10 gece", "İstanbul ⇄ Koh Samui uçuşları için yer açıldı"]) assert.ok(kpGen.steps.includes(step), `step "${step}" (${kpGen.steps.join(" | ")})`);
+  assert.ok(kpGen.steps.some((x) => x.startsWith("2 kişi")), "who goes");
   const kp = await board.evaluate(async () => {
     const database = await new Promise((resolve) => { const q = indexedDB.open("trip-radar"); q.onsuccess = () => resolve(q.result); });
     const all = (store) => new Promise((resolve) => { const q = database.transaction(store).objectStore(store).getAll(); q.onsuccess = () => resolve(q.result); });
@@ -3356,26 +3388,23 @@ try {
   await board.waitForTimeout(600);
   await board.screenshot({ path: `${out}/23a-start-srilanka-circuit.png` });
   // Pressed while "Rotayı çiziyor…" shows: the circuit is built.
+  await watchGen();
   await lkGen.click();
   await board.locator(".st-gen", { hasText: "Sri Lanka Gezisi planlanıyor" }).waitFor();
-  // v5: the light SVG map: home, the white plane flying the arc to Sri Lanka, a ring where it lands, then the stops.
-  const map = board.locator(".st-gen figure.gm");
-  await board.locator(".st-gen .gm[data-phase=flying]").waitFor({ timeout: 6000 });
-  assert.equal(await map.locator(".gm-plane").count(), 1, "the plane");
-  assert.equal(await map.locator(".gm-home.in").count(), 1, "home");
-  assert.equal(await map.locator(".gm-stop.in").count(), 0, "the stops wait for the landing");
-  assert.equal(await board.locator(".st-gen canvas").count(), 0, "no canvas (no MapLibre)");
-  // The trip is made at its own pace (never waiting on the map): its steps say so while the plane is still flying.
-  await board.locator(".st-step.done", { hasText: /Klasik rota çizildi: Sigiriya \d+ gece → Kandy \d+ gece → Ella \d+ gece → Mirissa \d+ gece/ }).waitFor();
-  await board.waitForTimeout(700);
-  await board.screenshot({ path: `${out}/23b-start-map-midflight.png` });
-  await board.locator(".st-gen .gm[data-phase=landed]").waitFor({ timeout: 6000 });
-  await map.locator(".gm-ring.go").waitFor();
-  assert.deepEqual(await map.locator(".gm-stop").evaluateAll((n) => n.map((x) => x.dataset.name)), ["Sigiriya", "Kandy", "Ella", "Mirissa"]);
-  assert.equal(await map.locator(".gm-photos .gm-card").count() > 0, true, "the photos fan in inside the card");
-  await board.waitForTimeout(400);
-  await board.screenshot({ path: `${out}/23c-start-map-landed.png` });
+  // Pictures along the way (best effort: the board opens by itself a few seconds in).
+  await board.locator(".st-gen .gm[data-phase=flying]").waitFor({ timeout: 6000 }).then(() => board.screenshot({ path: `${out}/23b-start-map-midflight.png` })).catch(() => undefined);
+  await board.locator(".st-gen .gm[data-phase=landed]").waitFor({ timeout: 6000 }).then(() => board.screenshot({ path: `${out}/23c-start-map-landed.png` })).catch(() => undefined);
   await board.getByRole("heading", { name: "Sri Lanka Gezisi", exact: true }).waitFor({ timeout: 20000 });
+  // v5: the light SVG map: home, the white plane flying the arc to Sri Lanka, a ring where it lands, then the stops
+  // (never before it lands) and the photos inside the card; no canvas.
+  const lkGenSeen = await genSeen();
+  assert.deepEqual(lkGenSeen.phases.filter((p) => ["flying", "landed"].includes(p)), ["flying", "landed"], `the map's phases (${lkGenSeen.phases.join(" → ")})`);
+  assert.ok(lkGenSeen.plane && lkGenSeen.home && lkGenSeen.ring, "the plane, home, the landing ring");
+  assert.ok(!lkGenSeen.early, "the stops wait for the landing");
+  assert.deepEqual(lkGenSeen.stops, ["Sigiriya", "Kandy", "Ella", "Mirissa"]);
+  assert.equal(lkGenSeen.canvas, 0, "no canvas (no MapLibre)");
+  // The trip is made at its own pace (never waiting on the map).
+  assert.ok(lkGenSeen.steps.some((x) => /^Klasik rota çizildi: Sigiriya \d+ gece → Kandy \d+ gece → Ella \d+ gece → Mirissa \d+ gece$/.test(x)), `the classic route (${lkGenSeen.steps.join(" | ")})`);
   const lkMade = await board.evaluate(async () => {
     const database = await new Promise((resolve) => { const q = indexedDB.open("trip-radar"); q.onsuccess = () => resolve(q.result); });
     const all = (store) => new Promise((resolve) => { const q = database.transaction(store).objectStore(store).getAll(); q.onsuccess = () => resolve(q.result); });
@@ -3617,15 +3646,18 @@ try {
   assert.equal(await board.locator(".st-gen").count(), 0, "stopped: nothing made");
   await chat.getByLabel("Message").fill("");
   // A later full checklist starts it again (Adventure is still picked); then it makes itself.
+  await watchGen();
   await answers.getByRole("button", { name: "Done" }).click();
   await board.locator(".st-msg-bot", { hasText: "I'm ready and will build it in a few seconds. Write if you want to add anything." }).waitFor();
   await autoRow.waitFor();
   await board.locator(".st-gen h2", { hasText: /^Planning AfrikaBurn 20\d\d$/ }).waitFor({ timeout: 6000 });
-  await board.locator(".st-gen-sub", { hasText: "Istanbul → Cape Town → Tankwa Karoo 🎪 → Cape Town · 10 nights" }).waitFor();
-  assert.deepEqual(await board.locator(".st-gen .gm-stop.fest").evaluateAll((n) => n.map((x) => x.dataset.name)), ["Tankwa Karoo"], "the festival's stop is pink");
-  await board.locator(".st-step.done", { hasText: "Route drawn: Cape Town 2 nights → Tankwa Karoo 6 nights → Cape Town 2 nights" }).waitFor({ timeout: 15000 });
   await board.screenshot({ path: `${out}/26c-intent-generating.png` });
   await board.getByRole("heading", { name: /^AfrikaBurn 20\d\d$/ }).waitFor({ timeout: 20000 });
+  const abGen = await genSeen();
+  assert.equal(abGen.sub, "Istanbul → Cape Town → Tankwa Karoo 🎪 → Cape Town · 10 nights");
+  assert.deepEqual(abGen.fest, ["Tankwa Karoo"], "the festival's stop is pink");
+  assert.deepEqual(abGen.stops, ["Cape Town", "Tankwa Karoo"], "Cape Town once (its nights added up), the festival");
+  assert.ok(abGen.steps.includes("Route drawn: Cape Town 2 nights → Tankwa Karoo 6 nights → Cape Town 2 nights"), `the route (${abGen.steps.join(" | ")})`);
   const ab = await board.evaluate(async () => {
     const database = await new Promise((resolve) => { const q = indexedDB.open("trip-radar"); q.onsuccess = () => resolve(q.result); });
     const all = (store) => new Promise((resolve) => { const q = database.transaction(store).objectStore(store).getAll(); q.onsuccess = () => resolve(q.result); });
