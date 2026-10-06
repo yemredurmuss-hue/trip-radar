@@ -70,3 +70,38 @@ girmeme, "Plana ekle" doğru şablonla kurma; soru-cevap durum makinesi (ilk mes
 rota onayı), oluşturma (tek durak/çok durak, anahtar yok yolu), taslak devam. e2e (penceresiz): kutuya "Sabine'yle 10
 Aralık'tan 1 ay Bali" → çiplerle tamamla → oluştur → panoda geceler, uçuş yerleri, öneri kartları; bir öneriyi ekle,
 birini "Gerek yok"; ekran görüntüleri.
+
+## Revizyon 2 (2026-10-06, Emre'nin geri bildirimi)
+
+İngilizce panoda "Sabine ile beraber Tayland Kohphandan 1 ay 10 ocak civarları gitmeyi düşünüyorum" yazıldı; sohbet
+İngilizce cevap verdi, "Nereden?" sorusuna "İstanbul" denince gezi "Istanbul trip" oldu. Düzeltmeler:
+
+1. **Dil:** sohbet ilk yazılan mesajın dilinde konuşur (Türkçe harf/ek/kelime → TR, İngilizce kelime → EN, yalnız bir
+   yer adı → panonun dili). `state.lang` taslakta durur; her satır, çip, liste etiketi, gezinin başlığı ve modele giden
+   her istem o dilde ("Yanıtı Türkçe yaz."). Panonun kendi dil ayarı değişmez.
+2. **Cevap, sorusunun alanını doldurur:** bekleyen soru hem koda hem modele verilir; "Nereden?"e verilen yer `from`
+   olur, `where` yalnız açıkça söylenince değişir ("aslında Bali'ye gidelim", soru yeniden sorulunca, aynı ülkede daha
+   belirgin bir yer). En belirgin yer kalır ("Tayland Kohphandan" → Koh Phangan, Tayland); yazım bozukluğu boşluksuz en
+   çok 2 harf farkla tanınır (gerçek bir ülke adı asla başka yere çevrilmez). Rota ve "Değiştir" hep varıştan; çıkış
+   şehri durak olamaz.
+3. **Dürüst oluşturma ekranı:** her adım en az ~600 ms görünür, bitince gerçekte yaptığını söyler ("Koh Phangan'a 31
+   gece yazıldı", "İstanbul ⇄ Koh Samui uçuşları için yer açıldı", "2 kişi · Dingin"); tik yumuşak gelir; yüzde yok,
+   biten adımlarla dolan akıcı bir çubuk; fotoğraflar yüklenince belirir; azaltılmış hareket tercihinde animasyon yok.
+4. **Hep oluşturulabilir:** varış belli olunca düğme açılır: liste doluysa "Gezimi oluştur", değilse "Şimdilik bununla
+   oluştur". Tarih yoksa gezi tarihsiz; konaklama ve gidiş uçuşu tarihsiz yer olarak açılır; eksikler pano sohbetinin son
+   satırında sorulur. Sağda listenin altında canlı **Gezi önizlemesi**: fotoğraflar, duraklar ve geceler, tarih, kimle,
+   tarz, uçuşlar, ülke bilgisi, kural önerileri; her parça bilindiği an yumuşakça belirir.
+5. **Zengin sohbet:** anahtar varsa yazılan her mesaj için **tek** model çağrısı hem okur hem cevap yazar (`reply:
+   {text, question}`: 1-2 cümle, yere özgü renk, en çok 220 karakter, fiyat ve rezervasyon olgusu yok, sohbetin dilinde;
+   tutmazsa kodun satırı kalır). Kodun satırı hemen görünür, modelinki ~6 sn içinde gelirse üstüne yazılır. Anahtarsız:
+   kodun satırları + popüler yerler için küçük bir renk tablosu (TR/EN).
+6. **Düşünme göstergesi:** sohbette üç nabız noktası ve gerçek aşama: "Düşünüyor…" (kod anlamadığında model okurken),
+   "Rotayı çiziyor…", "Yazıyor…"; `role=status`, `aria-live=polite`; azaltılmış harekette durur.
+7. **Arka planda hazırlık:** varış ve süre bilinir bilinmez taslağa (yalnız taslağa; listelerde, senkronda, dışa
+   aktarımda yok) fotoğraflar, rota önerisi (yer + gece kararlaşınca; her farklı yer+gece için bir kez) ve kural
+   önerileri hazırlanır. Yer değişince rota ve fotoğraflar düşer; geri dönülürse saklı rota yeniden sorulmadan gelir.
+   Yapay zekâ öneri gözden geçirmesi yine yalnız "Oluştur"da.
+
+**Model bütçesi (bir görüşme):** yazılan her mesaja en çok 1 okuma+cevap çağrısı; her hızlı cevaba (çip) en çok 1 cevap
+çağrısı (rota onayı, tahmini gün ve rota sorusu kodun, çağrı yok; "Atla" çağrı yapmaz); her farklı (yer, gece) için en
+çok 1 rota çağrısı; "Oluştur"da 1 öneri gözden geçirmesi.
