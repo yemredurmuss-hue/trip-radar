@@ -19,6 +19,7 @@ import { updateTrip } from "../actions";
 import type { RentalEntry, StayEntry, TimelineSection } from "../../lib/timeline";
 import type { Item, Listing } from "../../lib/types";
 import { saveArrival } from "../../lib/userEdits";
+import { liveLine } from "../../lib/flightData";
 import { KindIcon } from "../cards/Silhouettes";
 import { PlanEntry } from "../plan/PlanEntry";
 import type { LegCardFor, LegFor, RenderGroup, SettledFor } from "../Timeline";
@@ -445,6 +446,7 @@ function Line({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tri
         </span>
         <RowName t={t} why={sourceOf(row)} />
       </button>
+      <LiveLine row={row} />
       <ArrivalAsk row={row} />
       {row.warn && <p className="dc-warn">{row.warn}</p>}
     </li>
@@ -456,6 +458,21 @@ function Line({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tri
  * yol ~1 sa". Only for the times the plan works out (a ticket's own time needs no note).
  */
 const sourceOf = (row: DayRow): string | null => (row.why && !row.user && (row.estimated || (!row.time && row.hint)) ? row.why : null);
+
+/**
+ * The flight's real data under its line (0.36.15): "Rötar 25 dk · Terminal 1 · Kapı D5 · Bant 4", red when
+ * it's late, cancelled or diverted; the source named (AeroDataBox's free plan asks for it).
+ */
+function LiveLine({ row }: { row: DayRow }) {
+  const live = liveLine(ticketOf(row)?.flightLive);
+  if (!live) return null;
+  return (
+    <p className={`dc-live${live.alert ? " alert" : ""}`}>
+      {live.text}
+      <small> · {L("Veri: AeroDataBox", "Data: AeroDataBox")}</small>
+    </p>
+  );
+}
 
 /** The flight's ticket (the travel line's settled flight). */
 const ticketOf = (row: DayRow): Item | null => {

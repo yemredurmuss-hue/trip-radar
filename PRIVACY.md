@@ -130,6 +130,10 @@ profilleri ve geçmişiyle birlikte) senin isteğinle silinir: info@emredurmus.n
 - **Frankfurter:** döviz kuru için yalnız para birimi çifti gönderilir.
 - **Wikipedia / Pexels:** şehir fotoğrafı için yalnız şehir adı gönderilir; Wikipedia'ya doğrudan, Pexels'a paylaşım
   sunucusu üzerinden.
+- **AeroDataBox (RapidAPI üzerinden):** planındaki (rezerve ya da seçilmiş) bir uçuşun tarifesi, durumu, kapısı,
+  terminali ve bagaj bandı için yalnız uçuş numarası ve günü gönderilir ("KL1577, 7 Ekim"), bizim sunucumuz
+  üzerinden. Sunucu bu herkese açık uçuş bilgisini, aynı uçuşu soran herkes için tekrar sormamak adına uçuş
+  numarası ve güne göre saklar; kimin sorduğunu saklamaz. Cevap bu bilgisayarda da saklanır.
 
 Bu hizmetlere ad, e-posta ya da gezi içeriği gönderilmez. Her bağlantıda olduğu gibi, istek yapılan sunucu
 IP adresini görebilir.
@@ -150,7 +154,7 @@ IP adresini görebilir.
 Trip Radar'ın hiçbir sunucusu Türkiye'de değildir:
 
 - Paylaşım sunucusu ve AI kapısı aynı Supabase projesindedir ve **Hindistan'da (Mumbai, ap-south-1)** çalışır.
-- Google, Anthropic, OpenStreetMap, Frankfurter, Wikipedia ve Pexels kendi sunucularını kullanır; bunlar ABD, AB ya da
+- Google, Anthropic, OpenStreetMap, Frankfurter, Wikipedia, Pexels ve AeroDataBox (RapidAPI) kendi sunucularını kullanır; bunlar ABD, AB ya da
   başka ülkelerde olabilir.
 
 Bu aktarımlar yalnız senin başlattığın işlemler (yapay zekâ, paylaşım, davet) için ve o işlem için gerektiği kadar
@@ -168,6 +172,7 @@ kullanmaman yeterlidir; tarayıcında kalan veriler hiçbir yere gitmez.
 | Ortak ayarların eski hâlleri | Paylaşım sunucusu | En yeni 200 sürüm; daha eskisi kendiliğinden silinir |
 | AI kapısı sayaçları (içerik yok, yalnız sayı) | Sunucu | Davet var olduğu sürece; silinmesini isteyene kadar |
 | Davet edenin Gemini anahtarı | Sunucu | Silinmesini isteyene kadar |
+| Uçuş bilgisi (uçuş numarası, gün, tarife ve durum; kişi yok) | Sunucu ve tarayıcın | Sunucuda silinmesini isteyene kadar; tarayıcında eklentiyi kaldırana kadar |
 | Yapay zekâya gönderilen içerik | Google / Anthropic | Sağlayıcının kendi koşullarına göre |
 
 ### 12. Güvenlik
@@ -342,6 +347,10 @@ and history) is deleted on request: write to info@emredurmus.net.
 - **Frankfurter:** only a currency pair, for exchange rates.
 - **Wikipedia / Pexels:** only a city name, for a city photo; directly to Wikipedia, and to Pexels through the sharing
   server.
+- **AeroDataBox (via RapidAPI):** only a flight number and its day ("KL1577, 7 October"), for the schedule, status,
+  gate, terminal and baggage belt of a flight on your plan (booked or chosen), through our server. The server keeps
+  this public flight information by flight number and day, so the same flight isn't asked about again for everyone
+  who has it; it doesn't keep who asked. The answer is also kept on this computer.
 
 No name, email or trip content is sent to these services. As with any connection, the server receiving the request
 can see your IP address.
@@ -362,7 +371,7 @@ can see your IP address.
 None of Trip Radar's servers are in Turkey:
 
 - The sharing server and the AI gate are in the same Supabase project, in **India (Mumbai, ap-south-1)**.
-- Google, Anthropic, OpenStreetMap, Frankfurter, Wikipedia and Pexels use their own servers, which may be in the US,
+- Google, Anthropic, OpenStreetMap, Frankfurter, Wikipedia, Pexels and AeroDataBox (RapidAPI) use their own servers, which may be in the US,
   the EU or other countries.
 
 These transfers happen only for actions you start (AI, sharing, invites) and only as far as that action needs; what
@@ -379,6 +388,7 @@ apply. If you don't want a transfer, not using that action is enough; what stays
 | Earlier versions of common settings | Sharing server | The newest 200 versions; older ones are deleted automatically |
 | AI gate counters (numbers only, no content) | Server | While the invite exists; until deletion is requested |
 | Inviter's Gemini key | Server | Until deletion is requested |
+| Flight information (number, day, schedule and status; no person) | Server and your browser | On the server until deletion is requested; in your browser until you uninstall |
 | Content sent to the AI | Google / Anthropic | Under the provider's own terms |
 
 ### 12. Security

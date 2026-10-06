@@ -462,6 +462,24 @@ try {
   await app.screenshot({ path: `${out}/3e-arrival-asked.png` });
   // Typed by hand, kept as a correction: the record's own arrival is the page's (empty here); put it back.
   await setTrainArrival("2026-10-11T16:04");
+  // 0.36.15: a flight's real data under its line (as the server would give it): late in red, its gate, the source.
+  await app.evaluate(async () => {
+    const end = (iata, t) => ({ iata, airport: null, scheduled: t, revised: null, actual: null, terminal: null, gate: null });
+    const flight = {
+      number: "TP1760", airline: "TAP", status: "Delayed",
+      departure: { ...end("LIS", "2026-10-14T19:40"), revised: "2026-10-14T20:05", terminal: "1", gate: "14" },
+      arrival: { ...end("IST", "2026-10-15T01:35"), belt: null },
+      fetchedAt: "t",
+    };
+    await chrome.storage.local.set({ flightLive: { "TP1760|2026-10-14": { flight, at: Date.now() } } });
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  const live = dayCard(7).locator(".dc-live.alert");
+  await live.waitFor();
+  assert.equal(await live.innerText(), "Rötar 25 dk · Terminal 1 · Kapı 14 · Veri: AeroDataBox");
+  await live.scrollIntoViewIfNeeded();
+  await app.screenshot({ path: `${out}/3e-flight-live.png` });
+  await app.evaluate(() => chrome.storage.local.remove("flightLive"));
   assert.equal(await dayCard(4).locator(".dc-tl .dot").count(), 0, "no dot on a line of the list");
   assert.equal(await dayCard(4).locator(".dc-tl").evaluate((el) => getComputedStyle(el, "::before").display), "none", "no dotted line");
   assert.equal(await app.locator(".dc-cday .dc-free").count(), 2);
