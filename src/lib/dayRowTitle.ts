@@ -548,8 +548,9 @@ export function withMeetings(rows: DayRow[], ownersOf: (item: Item) => string[] 
     const group = landings.filter((b) => sameAirport(a.to, b.to) && a.at.slice(0, 10) === b.at.slice(0, 10));
     const people = new Set(group.flatMap((g) => g.owners!.map((n) => n.toLocaleLowerCase("tr"))));
     group.forEach((g) => done.add(g.r));
-    // Different people, not the same ones on two tickets.
+    // Different people, not the same ones on two tickets; and on different flights (on the same one they're together).
     if (group.length < 2 || people.size < 2 || group.every((g) => g.owners!.join() === group[0].owners!.join())) continue;
+    if (group.every((g) => g.at === group[0].at)) continue;
     const last = group.reduce((x, y) => (instant(y.at) > instant(x.at) ? y : x));
     const meet: DayRow = {
       key: `meet:${a.to}:${a.at.slice(0, 10)}`,

@@ -351,3 +351,23 @@ describe("a booking takes the place of the plan for the same thing (0.36.24, Emr
     expect(plan.closed).toEqual([]);
   });
 });
+
+describe("per-person bookings don't close each other (kişiye özel rezervasyon)", () => {
+  const fl = (id: string, who: string[] | undefined, status: ItemStatus) =>
+    makeItem({ id, name: `${id} flight`, category: "flight", status, needKey: "flight:ist-opo", forWho: who, dates: { start: "2026-10-08", end: null, source: "page" }, flight: { from: "IST", to: "OPO", departure: "2026-10-08T07:10", arrival: "2026-10-08T10:05", carrier: null, flightNumber: null, stops: 0 } });
+  it("Emre's flight booked leaves Sabine's chosen one on the plan, a group of its own", () => {
+    const plan = buildPlan(trip(), [fl("emre", ["Emre"], "booked"), fl("sabine", ["Sabine"], "chosen")]);
+    expect(plan.closed).toEqual([]);
+    const flights = plan.groups.filter((g) => g.category === "flight");
+    expect(flights.map((g) => [g.items.map((i) => i.id), g.booked?.id ?? null])).toEqual([[["emre"], "emre"], [["sabine"], null]]);
+  });
+  it("one for everyone still closes like before; the same person's other option too", () => {
+    expect(buildPlan(trip(), [fl("emre", ["Emre"], "booked"), fl("all", undefined, "saved")]).closed.map((c) => c.item.id)).toEqual(["all"]);
+    expect(buildPlan(trip(), [fl("emre", ["Emre"], "booked"), fl("emre2", ["emre"], "saved")]).closed.map((c) => c.item.id)).toEqual(["emre2"]);
+  });
+  it("a booked boat for Emre doesn't take Sabine's boat off the plan", () => {
+    const boat = (id: string, who: string[], status: ItemStatus) =>
+      makeItem({ id, name: `Douro tekne turu ${id}`, category: "activity", city: "Porto", status, forWho: who, dates: { start: "2026-10-09", end: null, source: "page" } });
+    expect(buildPlan(trip(), [boat("e", ["Emre"], "booked"), boat("s", ["Sabine"], "chosen")]).closed).toEqual([]);
+  });
+});

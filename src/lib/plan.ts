@@ -243,6 +243,17 @@ function mostCommon(values: (string | null)[]): string | null {
 }
 
 const rangeTitle = (r: DateRange) => `${formatDateRange(r.start, r.end)} · ${nNights(nightsBetween(r.start, r.end))}`;
+/** Whose a record is, as a key ("" for everyone's): forWho, case and order aside. */
+const ownersKey = (i: Item) => (i.forWho ?? []).map((n) => n.trim().toLocaleLowerCase("tr")).filter(Boolean).sort().join("|");
+/**
+ * Two records for different people (kişiye özel rezervasyon): Emre's flight booked doesn't close Sabine's, nor the
+ * other way. One for everyone (no forWho) goes with anyone's, as before.
+ */
+const apart = (a: Item, b: Item) => {
+  const [x, y] = [ownersKey(a), ownersKey(b)];
+  return !!x && !!y && x !== y;
+};
+
 /** Why a saved option left the plan: something else took its place. */
 const replacedReason = (by: string) => L(`Yerine ${by} geldi`, `Replaced by ${by}`);
 
@@ -720,24 +731,40 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
       const { key } = need;
       let list = need.items;
       // Once a saved page is chosen or booked, the plan said in the chat has done its job.
-      const real = list.find((i) => i.origin !== "chat" && (i.status === "chosen" || i.status === "booked"));
-      if (real) {
-        for (const i of list.filter((x) => x.origin === "chat")) closed.push({ item: i, reason: replacedReason(real.name), by: real.id });
-        list = list.filter((x) => x.origin !== "chat");
+      // ...for the same people (a plan for Sabine stays when Emre's page comes).
+      const reals = list.filter((i) => i.origin !== "chat" && (i.status === "chosen" || i.status === "booked"));
+      const said = new Set<Item>();
+      for (const i of list.filter((x) => x.origin === "chat")) {
+        const real = reals.find((r) => !apart(r, i));
+        if (!real) continue;
+        closed.push({ item: i, reason: replacedReason(real.name), by: real.id });
+        said.add(i);
       }
+      list = list.filter((x) => !said.has(x));
       const booked = list.filter((i) => i.status === "booked");
-      if (booked.length) {
-        for (const i of list.filter((x) => x.status !== "booked")) closed.push({ item: i, reason: L(`${booked[0].name} rezerve edildi`, `${booked[0].name} was booked`), by: booked[0].id });
+      // A booking settles the need for its own people: the options for someone else stay in play.
+      const settled = new Set<Item>();
+      for (const i of list.filter((x) => x.status !== "booked")) {
+        const by = booked.find((b) => !apart(b, i));
+        if (!by) continue;
+        closed.push({ item: i, reason: L(`${by.name} rezerve edildi`, `${by.name} was booked`), by: by.id });
+        settled.add(i);
       }
-      const itemsInPlay = booked.length ? booked : list;
-      groups.push({
-        key,
-        category,
-        title: category === "esim" ? null : travelTitle(itemsInPlay),
-        items: itemsInPlay,
-        range: null,
-        booked: booked[0] ?? null,
-      });
+      const itemsInPlay = list.filter((i) => !settled.has(i));
+      // Different people's options are their own decisions (Emre's flight and Sabine's, the same day and route):
+      // a group each; everyone's options go with the first. One person's (or nobody's) stays one group, as before.
+      const keys = [...new Set(itemsInPlay.map(ownersKey).filter(Boolean))];
+      const parts = keys.length > 1 ? keys.map((k, n) => itemsInPlay.filter((i) => ownersKey(i) === k || (n === 0 && !ownersKey(i)))) : [itemsInPlay];
+      parts.forEach((part, n) =>
+        groups.push({
+          key: n === 0 ? key : `${key}#${keys[n]}`,
+          category,
+          title: category === "esim" ? null : travelTitle(part),
+          items: part,
+          range: null,
+          booked: part.find((i) => i.status === "booked") ?? null,
+        }),
+      );
     }
   }
   // A booked experience takes the place of the plan for the same thing (0.36.24, Emre: "River Party teknesini
@@ -749,7 +776,7 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
     if (kind === "event") continue;
     const day = departureDay(b);
     for (const o of live) {
-      if (o === b || o.category !== "activity" || o.status === "booked" || closed.some((c) => c.item.id === o.id)) continue;
+      if (o === b || o.category !== "activity" || o.status === "booked" || apart(o, b) || closed.some((c) => c.item.id === o.id)) continue;
       const oDay = departureDay(o);
       const sameDay = !oDay || !day || oDay === day;
       const samePlaceToo = !o.city || !b.city || sameCity(o.city, b.city);

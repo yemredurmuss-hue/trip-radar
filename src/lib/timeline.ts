@@ -199,7 +199,9 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
     const ends = endsOf(t);
     if (inbound) {
       const chain = Boolean(ends.to && ends.to === endsOf(inbound).from);
-      return t.day <= inbound.day && t.day >= addDaysIso(inbound.day, -2) && (chain || leaves(t) < leaves(inbound));
+      // Someone else's own flight in (kişiye özel rezervasyon): the same day, to the same place.
+      const alongside = Boolean(ends.to && ends.to === endsOf(inbound).to && t.day === inbound.day);
+      return alongside || (t.day <= inbound.day && t.day >= addDaysIso(inbound.day, -2) && (chain || leaves(t) < leaves(inbound)));
     }
     return t.day <= start && t.day >= addDaysIso(start, -2) && !(ends.from && ends.from === firstCity);
   };
@@ -207,7 +209,8 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
     const ends = endsOf(t);
     if (outbound) {
       const chain = Boolean(ends.from && ends.from === endsOf(outbound).to);
-      return t.day >= outbound.day && t.day <= addDaysIso(outbound.day, 2) && (chain || leaves(t) > leaves(outbound));
+      const alongside = Boolean(ends.from && ends.from === endsOf(outbound).from && t.day === outbound.day);
+      return alongside || (t.day >= outbound.day && t.day <= addDaysIso(outbound.day, 2) && (chain || leaves(t) > leaves(outbound)));
     }
     return t.day >= end && t.day <= addDaysIso(end, 2) && !(ends.to && ends.to === lastCity);
   };
