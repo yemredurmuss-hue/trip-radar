@@ -2997,7 +2997,13 @@ try {
   // "Aralık · 1 hafta" is a done row already (the day is asked, not needed).
   await list.locator(".st-row.done", { hasText: "Aralık · 1 hafta" }).waitFor();
   await skipQ(); // where from
+  // Who is an essential (2026-10-06): asked before the day. Skipped, the essentials are in: the countdown starts, and
+  // "Vazgeç" stops it.
+  await board.locator(".st-msg-bot .st-q", { hasText: "Kimle gidiyorsun?" }).waitFor();
+  await skipQ();
   await board.locator(".st-msg-bot", { hasText: "Aralık ayının hangi günü başlıyor?" }).waitFor();
+  await board.locator(".st-auto", { hasText: "Oluşturuyorum…" }).getByRole("button", { name: "Vazgeç" }).click();
+  await board.locator(".st-auto").waitFor({ state: "detached" });
   assert.deepEqual(await answers.locator(".st-chip").allInnerTexts(), ["Ayın başı", "Ortası", "Sonu"]);
   await answers.locator("input[type=date]").waitFor();
   await board.screenshot({ path: `${out}/20e-start-day.png` });
@@ -3121,6 +3127,9 @@ try {
   await chat.getByLabel("Mesaj").press("Enter");
   await board.locator(".st-msg-bot", { hasText: "Bu gezide en çok ne istiyorsun?" }).waitFor();
   await board.locator(".st-msg-bot", { hasText: "İstanbul'dan Koh Phangan'a uzun ama keyifli bir yol. Bu gezide en çok ne arıyorsunuz?" }).waitFor();
+  // Where, when, where from and who known: the trip would make itself in 3 s (2026-10-06); stopped here to look.
+  await board.locator(".st-auto").getByRole("button", { name: "Vazgeç" }).click();
+  await board.locator(".st-auto").waitFor({ state: "detached" });
   await revList.getByText("Koh Phangan · Tayland").waitFor();
   assert.equal(await revList.locator(".st-row").first().innerText().then((t) => /İstanbul/.test(t)), false, "the destination is not İstanbul");
   await revList.locator(".st-row", { hasText: "NEREDEN" }).getByText("İstanbul", { exact: true }).waitFor();
@@ -3465,6 +3474,82 @@ try {
   await flow.unroute("https://nominatim.openstreetmap.org/**", rotterdam);
   assert.deepEqual(cspErrors, [], "the map's library and worker load under the extension's CSP");
   console.log("✓ trip map (MapLibre): the generating screen flies home → Sri Lanka on the globe (the bundled map without WebGL); Harita draws every journey in date order (CPH → AMS by plane, a train, out and home), booked solid / planned dashed, stops with their nights and dates, ▶ plays it; an unplaceable journey is listed; no CSP errors; tiles simulated");
+
+  // 26. Intent (2026-10-06, the owner's English test): "I want to go burning man africa with my friends and partner".
+  // At once, without the model (it never answers here): AfrikaBurn in the Tankwa Karoo, South Africa; its dates said
+  // as an estimate with the official site; the next question is the total length (its own chips). "+4 days in Cape
+  // Town", where from, how many: the essentials known, "Generating… 3 · Cancel"; a typed letter stops it; a style
+  // picked fills the checklist and it starts again; the trip makes itself: "AfrikaBurn 20xx", Cape Town 2 → Tankwa
+  // Karoo 6 → Cape Town 2, İstanbul ⇄ Cape Town, 4 people.
+  await board.getByRole("button", { name: /Seyahatlerim/ }).first().click({ timeout: 3000 }).catch(() => undefined);
+  await board.locator(".st-hello").waitFor();
+  await board.getByLabel("Gezi kutusu").fill("I want to go burning man africa with my friends and partner");
+  await board.getByRole("button", { name: /Planlamaya başla/ }).click();
+  await board.locator(".st-ask, .st-screen").first().waitFor();
+  if (await board.locator(".st-ask").count()) await board.locator(".st-ask").getByRole("button", { name: "Yeni gezi", exact: true }).click();
+  const abList = board.locator(".st-side .st-list");
+  await abList.locator(".st-row.done", { hasText: "AfrikaBurn · Tankwa Karoo · South Africa" }).waitFor({ timeout: 3000 });
+  await abList.locator(".st-row", { hasText: /\d+ April – \d+ May \(estimated\) · how many days in all\?/ }).waitFor({ timeout: 3000 });
+  await abList.locator(".st-row", { hasText: "With friends" }).waitFor({ timeout: 3000 });
+  await board.locator(".st-msg-bot", { hasText: /AfrikaBurn 20\d\d usually runs late April to early May \(estimated \d+ April – \d+ May; check the official site\)\./ }).waitFor({ timeout: 3000 });
+  assert.equal(await board.locator(".st-msg-bot a.st-link").getAttribute("href"), "https://www.afrikaburn.org", "the official site linked");
+  await board.locator(".st-msg-bot .st-q", { hasText: "How many days in total: just AfrikaBurn, or some days in Cape Town before and after?" }).waitFor();
+  assert.equal(await board.locator(".st-msg-bot", { hasText: "Where are we going?" }).count(), 0, "where to isn't asked");
+  assert.equal(await board.locator(".st-top-title").innerText(), "AfrikaBurn · new trip");
+  assert.deepEqual(await answers.locator(".st-chip").allInnerTexts(), ["Just AfrikaBurn (7 days)", "+2 days in Cape Town", "+4 days in Cape Town", "These dates are right", "📅 Different dates"]);
+  await board.waitForTimeout(600);
+  await board.screenshot({ path: `${out}/26a-intent-afrikaburn.png` });
+  await answers.getByRole("button", { name: "+4 days in Cape Town" }).click();
+  await board.locator(".st-msg-bot", { hasText: /The trip: \d+ April – \d+ May · 10 nights \(estimated\) \(Cape Town 2 · Tankwa Karoo 6 · Cape Town 2 nights\)\./ }).waitFor();
+  await board.locator(".st-msg-bot .st-q", { hasText: "Where are you leaving from?" }).last().waitFor();
+  await abList.locator(".st-row.done", { hasText: "ROUTE" }).getByText("Cape Town 2 · Tankwa Karoo 6 · Cape Town 2 nights").waitFor();
+  await answers.getByRole("button", { name: /stanbul/ }).first().click();
+  await board.locator(".st-msg-bot .st-q", { hasText: "How many of you are going, you included?" }).waitFor();
+  assert.equal(await board.locator(".st-auto").count(), 0, "not before how many");
+  await answers.getByRole("button", { name: "4", exact: true }).click();
+  const autoRow = board.locator(".st-auto", { hasText: "Generating…" });
+  await autoRow.waitFor();
+  await board.screenshot({ path: `${out}/26b-intent-countdown.png` });
+  // A letter typed: stopped, and nothing is made.
+  await chat.getByLabel("Message").fill("x");
+  await autoRow.waitFor({ state: "detached" });
+  await board.waitForTimeout(3500);
+  assert.equal(await board.locator(".st-gen").count(), 0, "stopped: nothing made");
+  await chat.getByLabel("Message").fill("");
+  // A later full checklist starts it again; then it makes itself.
+  await answers.getByRole("button", { name: /Adventure/ }).click();
+  await answers.getByRole("button", { name: "Done" }).click();
+  await autoRow.waitFor();
+  await board.locator(".st-gen h2", { hasText: /^Planning AfrikaBurn 20\d\d$/ }).waitFor({ timeout: 6000 });
+  await board.locator(".st-step.done", { hasText: "Route drawn: Cape Town 2 nights → Tankwa Karoo 6 nights → Cape Town 2 nights" }).waitFor({ timeout: 15000 });
+  await board.screenshot({ path: `${out}/26c-intent-generating.png` });
+  await board.getByRole("heading", { name: /^AfrikaBurn 20\d\d$/ }).waitFor({ timeout: 20000 });
+  const ab = await board.evaluate(async () => {
+    const database = await new Promise((resolve) => { const q = indexedDB.open("trip-radar"); q.onsuccess = () => resolve(q.result); });
+    const all = (store) => new Promise((resolve) => { const q = database.transaction(store).objectStore(store).getAll(); q.onsuccess = () => resolve(q.result); });
+    const trip = (await all("trips")).find((t) => /^AfrikaBurn 20\d\d$/.test(t.title));
+    const items = (await all("items")).filter((i) => i.tripId === trip.id);
+    return {
+      nights: Math.round((Date.parse(trip.confirmedDates.end) - Date.parse(trip.confirmedDates.start)) / 86400000),
+      stays: items.filter((i) => i.category === "stay").sort((a, b) => a.dates.start.localeCompare(b.dates.start)).map((i) => `${i.city} ${i.countryCode}`),
+      flights: items.filter((i) => i.category === "flight").map((i) => `${i.flight.from}→${i.flight.to}`).sort(),
+      travellers: trip.travellers,
+      style: trip.style?.ids,
+      approx: trip.startGuide?.approxStart === trip.confirmedDates.start,
+    };
+  });
+  assert.deepEqual(ab, {
+    nights: 10,
+    stays: ["Cape Town ZA", "Tankwa Karoo ZA", "Cape Town ZA"],
+    flights: ["Cape Town→Istanbul", "Istanbul→Cape Town"],
+    travellers: { names: [], count: 4 },
+    style: ["adventure"],
+    approx: true,
+  });
+  await board.waitForTimeout(800);
+  await board.screenshot({ path: `${out}/26d-intent-board.png` });
+  console.log("✓ intent (the owner's English test): AfrikaBurn at once (Tankwa Karoo · South Africa, the dates estimated with the official site, the length next); +4 days, Istanbul, 4 → the countdown; a typed letter stops it; a full checklist starts it again and the trip makes itself: AfrikaBurn 20xx, Cape Town 2 → Tankwa Karoo 6 → Cape Town 2, Istanbul ⇄ Cape Town, 4 people");
+  await board.getByRole("button", { name: /Seyahatlerim|My trips/ }).first().click({ timeout: 3000 }).catch(() => undefined);
   await flow.unroute("https://generativelanguage.googleapis.com/**", silent);
   await flow.unroute(/wikipedia\.org\/api\/rest_v1\//, wiki);
   await flow.unroute(/upload\.wikimedia\.org\/e2e\//, upload);
