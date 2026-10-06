@@ -6,8 +6,10 @@ import { nearCountries } from "./countryCenters";
 import { ownCountries } from "./tripCountries";
 import { addEvent, db, listTrips, notifyChanged } from "./db";
 import { L } from "./i18n";
-import { countriesText, placeCodes, titleCodes, tripForPlace, tripStartCodes } from "./placeCheck";
+import { countriesText, isWayThere, placeCodes, titleCodes, tripForPlace, tripRecords, tripStart } from "./placeCheck";
+import { cityKeyOf } from "./plan";
 import { loadHome } from "./passport";
+import { homeFromFlights } from "./suggestions";
 import { countryCodeOf, isDemoTrip } from "./trips";
 import type { Item, StrayEntry, Trip } from "./types";
 
@@ -15,21 +17,23 @@ import type { Item, StrayEntry, Trip } from "./types";
 const byHand = (item: Item) => item.status === "booked" || Boolean(item.userEdits && Object.keys(item.userEdits).length) || item.origin === "chat" || Boolean(item.plannedKind);
 
 /** The trip's own countries from its places (tripCountries.ts): one Bali tour among Portugal's places isn't one. */
-const placeCountries = (own: Item[]): Set<string> =>
-  ownCountries(own.filter((i) => i.category !== "flight").map((i) => ({ codes: placeCodes(i), stay: i.category === "stay", start: i.dates.start, kept: i.placeOk })));
+const placeCountries = (own: Item[]): Set<string> => ownCountries(tripRecords(own));
 
 /**
- * Whether a country is the trip's own: one of its countries or near one (Portugal → Spain, the pairs travelled
- * together), one its title names, where its flights leave from, or home. A distance that can't be measured
- * counts as its own (nothing is asked on a guess). Null: no place known yet.
+ * Whether a record's country is the trip's own: one of its countries or near one (Portugal → Spain, the pairs
+ * travelled together), one its title names; for the way there (an airport hotel, a lounge, insurance) or a place
+ * in the city the trip leaves from, also where it starts and home. A distance that can't be measured counts as its
+ * own (nothing is asked on a guess). Null: no place known yet.
  */
-function homeOf(trip: Trip, own: Item[], homeCountry: string | null): ((code: string) => boolean) | null {
+function homeOf(trip: Trip, own: Item[], homeCountry: string | null): ((item: Item, code: string) => boolean) | null {
   const places = placeCountries(own);
   const named = titleCodes(trip.title);
   if (!places.size && !named.size) return null;
-  const starts = tripStartCodes(trip.id, own);
-  return (c: string) =>
-    named.has(c) || starts.has(c) || c === homeCountry || [...places].some((p) => nearCountries(c, p) !== false);
+  const start = tripStart(trip.id, own);
+  return (item: Item, c: string) => {
+    const wayThere = isWayThere(item) || Boolean(start.city && item.city && cityKeyOf(item.city) === start.city);
+    return named.has(c) || (wayThere && (c === start.code || c === homeCountry)) || [...places].some((p) => nearCountries(c, p) !== false);
+  };
 }
 
 /**
@@ -46,7 +50,7 @@ export function strayItems(trip: Trip, items: Item[], homeCountry: string | null
   return own.flatMap((item) => {
     if (item.placeOk || item.category === "flight") return [];
     const codes = byHand(item) ? [countryCodeOf(item.countryCode)].filter((c): c is string => Boolean(c)) : placeCodes(item);
-    if (!codes.length || codes.some(home)) return [];
+    if (!codes.length || codes.some((c) => home(item, c))) return [];
     return [{ item, codes }];
   });
 }
@@ -83,7 +87,7 @@ export async function askIfFar(tripId: string, item: Item, items: Item[]): Promi
   const trip = trips.find((t) => t.id === tripId);
   const codes = placeCodes(item);
   const home = trip ? homeOf(trip, items.filter((i) => i.tripId === tripId && i.id !== item.id && i.status !== "dismissed"), await loadHome()) : null;
-  if (!trip || isDemoTrip(trip) || !home || !codes.length || codes.some(home)) return false;
+  if (!trip || isDemoTrip(trip) || !home || !codes.length || codes.some((c) => home(item, c))) return false;
   await askAboutStrays(tripId, strayEntries([{ item, codes }], trips, items, tripId));
   return true;
 }
@@ -111,7 +115,8 @@ export function checkStraysOnce(): Promise<number> {
       const d = await db();
       const trips = await listTrips();
       const items = await d.getAll("items");
-      const homeCountry = await loadHome();
+      const real = new Set(trips.filter((t) => !isDemoTrip(t)).map((t) => t.id));
+      const homeCountry = (await loadHome()) ?? homeFromFlights(items.filter((i) => real.has(i.tripId)));
       let asked = 0;
       for (const trip of trips) {
         if (trip.strayCheckedAt || isDemoTrip(trip)) continue;

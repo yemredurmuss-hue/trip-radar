@@ -2,6 +2,7 @@
 // from facts: a Thailand hotel never lands in the Portugal trip just because the model said so.
 import { nearCountries } from "./countryCenters";
 import { ownCountries } from "./tripCountries";
+import { countryOfAirport } from "./airports";
 import { normalize } from "./evidence";
 import { L, lang } from "./i18n";
 import type { Item, Trip } from "./types";
@@ -25,6 +26,8 @@ export interface TripSignal {
    * for: a trip to the same place is still that trip whatever they say (spec 2026-10-06 trip routing).
    */
   softDates?: boolean;
+  /** Today (YYYY-MM-DD): a trip already over never takes a page by its place alone (review D). */
+  today?: string;
 }
 
 export type TripChoice = { tripId: string } | { newTitle: string };
@@ -37,14 +40,27 @@ export function countryCodeOf(value: string | null | undefined): string | null {
   return code && /^[A-Z]{2}$/.test(code) ? code : null;
 }
 
+/** The trip's first flight (the one out): where it lands is where the trip is (a flight home lands at home). */
+export function firstFlight(items: Item[]): Item | null {
+  return (
+    items
+      .filter((i) => i.category === "flight" && i.status !== "dismissed")
+      .sort((a, b) => (a.flight?.departure ?? a.dates.start ?? "9").localeCompare(b.flight?.departure ?? b.dates.start ?? "9"))[0] ?? null
+  );
+}
+
 export function profileTrips(trips: Trip[], items: Item[]): TripProfile[] {
   return trips.map((trip) => {
     const live = items.filter((i) => i.tripId === trip.id && i.status !== "dismissed");
-    // Its countries from its places (a flight only when there is nothing else): a record whose own country is far
+    // Its countries from its places and where its first flight lands: a record whose own country is far
     // from the trip's (a Bali tour saved into the Portugal trip) neither speaks for it nor draws others in.
     const placed = live.filter((i) => i.category !== "flight" && countryCodeOf(i.countryCode));
-    const basis = placed.length ? placed : live.filter((i) => countryCodeOf(i.countryCode));
-    const mine = ownCountries(basis.map((i) => ({ codes: [countryCodeOf(i.countryCode)!], stay: i.category === "stay", start: i.dates.start, kept: i.placeOk })));
+    const first = firstFlight(live);
+    const arrival = first ? (countryCodeOf(first.countryCode) ?? countryOfAirport(first.flight?.to)) : null;
+    const mine = ownCountries([
+      ...placed.map((i) => ({ codes: [countryCodeOf(i.countryCode)!], stay: i.category === "stay", start: i.dates.start, end: i.dates.end, kept: i.placeOk })),
+      ...(arrival ? [{ codes: [arrival], stay: false, arrival: true, start: first!.dates.start }] : []),
+    ]);
     const own = live.filter((i) => !countryCodeOf(i.countryCode) || mine.has(countryCodeOf(i.countryCode)!) || i.category === "flight");
     const starts = own.map((i) => i.dates.start).filter(Boolean) as string[];
     const ends = own.map((i) => i.dates.end ?? i.dates.start).filter(Boolean) as string[];
@@ -113,7 +129,8 @@ export function chooseTrip(signal: TripSignal, allProfiles: TripProfile[]): Trip
     // Same place and similar (or unknown) dates → same trip; the nearest dates win.
     const compatible = sameCountry.filter((p) => {
       const g = gap(p);
-      return g === null || g <= SAME_TRIP_DAYS || (signal.softDates && g <= SOFT_DATES_DAYS);
+      const over = Boolean(signal.today && p.range && p.range.end < signal.today);
+      return g === null || g <= SAME_TRIP_DAYS || (signal.softDates && g <= SOFT_DATES_DAYS && !over);
     });
     if (compatible.length) {
       const dated = compatible.filter((p) => gap(p) !== null).sort((a, b) => gap(a)! - gap(b)!);

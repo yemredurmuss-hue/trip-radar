@@ -1,14 +1,15 @@
 // Does a capture belong in the trip it is about to go into? (spec 2026-10-06 trip routing.) A page's place is
 // checked against the trip's own places before anything is added: a Bali tour never lands in the Portugal trip
 // because that trip was open, or because the page's date picker said 8 October. Pure: process.ts acts on it.
-import { countryOfAirport } from "./airports";
+import { cityOfAirport, countryOfAirport } from "./airports";
 import { nearCountries } from "./countryCenters";
-import { ownCountries } from "./tripCountries";
+import { ownCountries, type PlacedRecord } from "./tripCountries";
+import { cityKeyOf } from "./plan";
 import type { Extraction } from "./extract";
 import { L } from "./i18n";
 import { locative } from "./i18nText";
 import { countryCodeOfName, knownPlaceOf, placeOf } from "./startTrip";
-import { countryCodeOf, countryName, gapDays, isDemoTrip, profileTrips } from "./trips";
+import { countryCodeOf, countryName, firstFlight, gapDays, isDemoTrip, profileTrips } from "./trips";
 import type { Item, Trip } from "./types";
 
 type Placed = Pick<Item, "category" | "countryCode" | "country" | "city" | "flight">;
@@ -32,31 +33,43 @@ export function placeCodes(item: Placed): string[] {
   return [...new Set(ends.filter((c): c is string => Boolean(c)))];
 }
 
-/**
- * The countries a trip is in, from what's in it (not the record being checked): its places' countries; a trip
- * with only flights so far, the first flight's arrival. Empty: the trip has no place yet (it takes anything).
- */
-export function tripPlaceCodes(tripId: string, items: Item[], exceptId?: string): Set<string> {
-  const own = items.filter((i) => i.tripId === tripId && i.id !== exceptId && i.status !== "dismissed");
-  // Its own countries only: a record far from the rest (a Bali tour saved into the Portugal trip) doesn't count.
+/** A trip's records for ownCountries: its places, and where its first flight lands (tripCountries.ts). */
+export function tripRecords(own: Item[]): PlacedRecord[] {
   const places = own
     .filter((i) => i.category !== "flight")
-    .map((i) => ({ codes: placeCodes(i), stay: i.category === "stay", start: i.dates.start, kept: i.placeOk }));
-  if (places.some((p) => p.codes.length)) return ownCountries(places);
-  const first = own
-    .filter((i) => i.category === "flight")
-    .sort((a, b) => (a.flight?.departure ?? a.dates.start ?? "9").localeCompare(b.flight?.departure ?? b.dates.start ?? "9"))[0];
+    .map((i) => ({ codes: placeCodes(i), stay: i.category === "stay", start: i.dates.start, end: i.dates.end, kept: i.placeOk }));
+  const first = firstFlight(own);
   const arrival = first ? (countryCodeOf(first.countryCode) ?? codeOfPlaceName(first.flight?.to)) : null;
-  return new Set(arrival ? [arrival] : []);
+  return arrival ? [...places, { codes: [arrival], stay: false, arrival: true, start: first!.dates.start }] : places;
 }
 
 /**
- * Where the trip starts from: the countries its flights leave from (İstanbul for the flight out). An airport
- * hotel, a lounge or an insurance there belongs to the trip, never to another trip in that country.
+ * The countries a trip is in, from what's in it (not the record being checked): its own countries, where a record
+ * far from the rest (a Bali tour saved into the Portugal trip) doesn't count. Empty: no place yet (it takes anything).
  */
-export function tripStartCodes(tripId: string, items: Item[]): Set<string> {
-  const flights = items.filter((i) => i.tripId === tripId && i.category === "flight" && i.status !== "dismissed");
-  return new Set(flights.map((f) => codeOfPlaceName(f.flight?.from)).filter((c): c is string => Boolean(c)));
+export function tripPlaceCodes(tripId: string, items: Item[], exceptId?: string): Set<string> {
+  return ownCountries(tripRecords(items.filter((i) => i.tripId === tripId && i.id !== exceptId && i.status !== "dismissed")));
+}
+
+/**
+ * Where the trip starts from: the country and city its first flight leaves from (İstanbul). An airport hotel, a
+ * lounge or an insurance for the way there belongs to the trip, never to another trip in that country.
+ */
+export function tripStart(tripId: string, items: Item[]): { code: string | null; city: string | null } {
+  const from = firstFlight(items.filter((i) => i.tripId === tripId))?.flight?.from ?? null;
+  return { code: codeOfPlaceName(from), city: from ? cityKeyOf(cityOfAirport(from.trim())) : null };
+}
+
+/**
+ * The way to and from the trip: a flight, an airport hotel, a lounge, an airport transfer, insurance, an eSIM.
+ * Only these are the trip's when they're at home (review E): a Kapadokya hotel sent in the Bali chat isn't.
+ */
+export function isWayThere(item: Pick<Item, "category" | "name" | "summary" | "city"> & Partial<Pick<Item, "plannedKind">>): boolean {
+  if (item.category === "flight" || item.category === "esim" || item.plannedKind === "insurance") return true;
+  const words = `${item.name} ${item.summary ?? ""}`;
+  if (/sigorta|insurance|assurance|seguro|versicherung/i.test(words)) return true;
+  if (/lounge|salon/i.test(words)) return true;
+  return /airport|havaliman|havalimanı|aeroporto|aeropuerto|aéroport|flughafen|\b[A-Z]{3}\s+(?:airport|transfer)\b/i.test(words);
 }
 
 /**
@@ -170,21 +183,34 @@ export function routeCapture(input: RouteInput): Route {
   const checked = input.newTrip ? anchorId : item.tripId;
   if (!checked) return { kind: "keep" };
   if (placeFitOf(item, checked, trips, items, input.home ?? null) !== "far") return { kind: "keep" };
-  const other = tripForPlace(codes, trips, items.filter((i) => i.id !== item.id), checked, item.dates.start, item.dates.end);
+  let other = tripForPlace(codes, trips, items.filter((i) => i.id !== item.id), checked, item.dates.start, item.dates.end);
+  // A stay or a ticket with its own dates (searched, booked) goes to that trip only on that trip's dates: the
+  // İstanbul hotel of 7 October is never the May Kapadokya trip's (review B); asked instead.
+  if (other && hardDates(item)) {
+    const range = profileTrips([other], items.filter((i) => i.id !== item.id))[0]?.range;
+    if (range && gapDays(range, item.dates.start!, item.dates.end) > 7) other = null;
+  }
   if (input.board) return { kind: "ask", reason: "place", askIn: checked, toTripId: other?.id ?? null };
   if (other) return { kind: "move", toTripId: other.id };
   // Handed to a trip and far from it, with no trip of its own yet: asked, not a new trip made behind the scenes.
   return { kind: "ask", reason: "place", askIn: anchorId ?? item.tripId };
 }
 
+/** Dates that are the record's own, not a page's guess: searched for (in the address), booked, or a stay's or a ticket's. */
+export const hardDates = (item: Item): boolean =>
+  Boolean(item.dates.start) && (item.dates.source === "url" || item.status === "booked" || ["stay", "flight", "transport"].includes(item.category));
+
 /**
- * A record against a trip: the trip's places (what's in it besides the record, and what its title names), where
- * it starts from (its flights' departures) and home count as its own.
+ * A record against a trip: the trip's places (what's in it besides the record, and what its title names) are its
+ * own. So are where it starts from and home, but only for the way there (an airport hotel, a lounge, insurance,
+ * an eSIM, a transfer, a flight) or a place in the very city it leaves from (review E).
  */
 export function placeFitOf(item: Item, tripId: string, trips: Trip[], items: Item[], home: string | null): Fit {
   const trip = trips.find((t) => t.id === tripId);
   const places = new Set([...tripPlaceCodes(tripId, items, item.id), ...(trip ? titleCodes(trip.title) : [])]);
-  const own = new Set([...tripStartCodes(tripId, items.filter((i) => i.id !== item.id)), ...(home ? [home] : [])]);
+  const start = tripStart(tripId, items.filter((i) => i.id !== item.id));
+  const fromCity = Boolean(start.city && item.city && cityKeyOf(item.city) === start.city);
+  const own = isWayThere(item) || fromCity ? new Set([start.code, home].filter((c): c is string => Boolean(c))) : new Set<string>();
   return placeFit(placeCodes(item), places, own);
 }
 

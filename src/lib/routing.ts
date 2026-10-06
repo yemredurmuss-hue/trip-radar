@@ -3,7 +3,7 @@
 // Used by a trip's chat and by the popup.
 import { addEvent, db, listTrips, newId, notifyChanged } from "./db";
 import { moveDocsToTrip } from "./docs";
-import { datesIn } from "./placeCheck";
+import { datesIn, isWayThere } from "./placeCheck";
 import { announceRemoved, deleteItem } from "./removal";
 import { L } from "./i18n";
 import { destinationImage, savedLine } from "./process";
@@ -52,8 +52,10 @@ export async function answerHeld(captureId: string, answer: HeldAnswer): Promise
       };
       await d.put("trips", target);
     }
+    // Off-place in this trip: on none of its days, unless booked or the way there (the airport hotel the night
+    // before keeps its night when it falls in the trip's dates).
     const offDays = answer === "here" && held.reason === "place" && base.status !== "booked";
-    const dates = offDays ? NO_DATES : answer === "there" ? datesIn(base, target, allItems) : base.dates;
+    const dates = offDays ? (isWayThere(base) ? datesIn(base, target, allItems) : NO_DATES) : answer === "there" ? datesIn(base, target, allItems) : base.dates;
     const item: Item = { ...base, tripId: target.id, dates, ...(answer === "here" ? { placeOk: true } : {}), updatedAt: Date.now() };
     await d.put("items", item);
     if (base.tripId !== target.id || !stored) {
@@ -122,7 +124,11 @@ export async function undoMove(messageId: string): Promise<void> {
   if (!item || item.tripId !== routing.toTripId || !home) {
     throw new RoutingChanged(L("Bu kayıt sonra değişti ya da silindi; geri alınmadı.", "This record changed or was deleted since; it wasn't taken back."));
   }
-  const dates = routing.far && item.status !== "booked" ? NO_DATES : (routing.dates ?? item.dates);
+  // The page's dates come back when they fall in this trip's (review B); a far place that isn't the way there
+  // (a Bali tour in the Porto trip) still goes on none of its days.
+  const original = { ...item, dates: routing.dates ?? item.dates };
+  const fits = datesIn(original, home, await d.getAll("items")).start != null;
+  const dates = item.status === "booked" || (fits && (!routing.far || isWayThere(item))) ? original.dates : NO_DATES;
   const back: Item = { ...item, tripId: home.id, dates, placeOk: true, updatedAt: Date.now() };
   await d.put("items", back);
   await moveDocsToTrip(item.id, home.id);

@@ -1,7 +1,7 @@
 // Capture pipeline: URL facts -> model extraction -> trip assignment -> merge or insert item.
 import { addEvent, db, listTrips, newId, nextTime, notifyChanged } from "./db";
 import { moveDocsToTrip } from "./docs";
-import type { Extraction } from "./extract";
+import { today, type Extraction } from "./extract";
 import { describeError, getProvider } from "./llm";
 import { valueOnPage } from "./evidence";
 import { geocode } from "./geo";
@@ -11,6 +11,7 @@ import { buildItem, CATEGORY_LABELS, corpusOf, findDuplicate, formatDateRange, i
 import { chooseTrip, countryCodeOf, countryName, gapDays, isDemoTrip, profileTrips, uniqueTitle, type TripChoice, type TripSignal } from "./trips";
 import { askText, countriesText, datesIn, looksLikeTravel, placeCodes, placeFitOf, routeCapture, titleCodes, tripPlaceCodes, type Route } from "./placeCheck";
 import { loadHome } from "./passport";
+import { homeFromFlights } from "./suggestions";
 import type { PageSnapshot } from "./pagecapture";
 import type { Capture, Geo, HeldCapture, Item, Trip } from "./types";
 import { parseUrl, type UrlFacts } from "./url";
@@ -136,14 +137,20 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
     const anchor = forced ?? (capture.fromTripId ? trips.find((t) => t.id === capture.fromTripId) : undefined);
     const allItems = await d.getAll("items");
     const signal = tripSignal(extraction, facts);
+    // Home: the passport set in Settings, else where the trips' first flights leave from (suggestions.ts, review B).
+    const real = new Set(trips.filter((t) => !isDemoTrip(t)).map((t) => t.id));
+    const home = (await (deps.home ?? loadHome)()) ?? homeFromFlights(allItems.filter((i) => real.has(i.tripId)));
     let choice: TripChoice = forced ? { tripId: forced.id } : chooseTrip(signal, profileTrips(trips, allItems));
-    // Sent in a trip's chat and its place is that trip's own (where it flies from, home: the İstanbul airport
-    // hotel of the Porto trip), on its dates or none: it stays there, not in another trip of that country.
+    // Sent in a trip's chat and its place is that trip's own (the way there from home: the İstanbul airport hotel of
+    // the Porto trip), or a country it already has a stay in (the Kenya of an Egypt + Kenya trip), on its dates or
+    // none: it stays there, not in another trip of that country.
     if (anchor && !forced && !("tripId" in choice && choice.tripId === anchor.id)) {
       const probe = buildItem(extraction, capture, facts, anchor.id);
       const range = profileTrips([anchor], allItems)[0]?.range;
       const onDates = !probe.dates.start || !range || gapDays(range, probe.dates.start, probe.dates.end) <= 7;
-      if (onDates && placeFitOf(probe, anchor.id, trips, allItems, await (deps.home ?? loadHome)()) === "in") choice = { tripId: anchor.id };
+      const codes = placeCodes(probe);
+      const staysThere = allItems.some((i) => i.tripId === anchor.id && i.category === "stay" && i.status !== "dismissed" && codes.includes(countryCodeOf(i.countryCode) ?? ""));
+      if (onDates && (staysThere || placeFitOf(probe, anchor.id, trips, allItems, home) === "in")) choice = { tripId: anchor.id };
     }
     // A new trip is only made once something goes into it (a page that is asked about makes none).
     const newTripId = "tripId" in choice ? null : newId();
@@ -167,7 +174,6 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
     const pageDates = item.dates; // the moved note keeps them for Geri al
     const landed = trips.find((t) => t.id === item.tripId);
     if (!duplicate && signal.softDates && landed) item = { ...item, dates: datesIn(item, landed, allItems) };
-    const home = await (deps.home ?? loadHome)();
     const route: Route = capture.sharedAt
       ? { kind: "keep" }
       : routeCapture({
@@ -241,6 +247,7 @@ function tripSignal(extraction: Extraction, facts: UrlFacts): TripSignal {
     suggestedTitle: extraction.trip.new_trip_title,
     // An activity's or a restaurant's date from its page (a date picker remembers the last search) isn't the trip's.
     softDates: !facts.checkIn && ["activity", "food", "other"].includes(extraction.category),
+    today: today(),
   };
 }
 
