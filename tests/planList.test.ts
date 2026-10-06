@@ -196,13 +196,32 @@ describe("one source: hero = list = Plan sections", () => {
     const trip: Trip = { ...base, travellers: { names: ["Sabine"], count: 2, from: { Sabine: "Alicante" } } };
     const items = [stay("Jardim", "booked"), flight("Ret", "OPO", "IST", "2026-10-14", "booked"), flight("Emre TK", "IST", "OPO", "2026-10-08", "booked", { forWho: ["Emre"] })];
     const { list } = listOf(items, trip);
-    expect(list.counts).toMatchObject({ search: 1, booked: 2 });
-    expect(list.open.map((t) => t.title)).toEqual(["İstanbul → Porto · Sabine"]);
+    // Her way home too: the everyone's flight back isn't hers (a row for each way).
+    expect(list.counts).toMatchObject({ search: 2, booked: 1 });
+    expect(list.open.map((t) => t.title)).toEqual(["İstanbul → Porto · Sabine", "Porto → İstanbul · Sabine"]);
     // Without anyone coming their own way, Emre's booking is the way in.
     expect(listOf(items, { ...trip, travellers: { names: ["Sabine"], count: 2 } }).list.counts).toMatchObject({ search: 0, booked: 3 });
     // Sabine's own record, booked: done.
     const own = listOf([...items, flight("Sabine V7", "ALC", "OPO", "2026-10-08", "booked", { forWho: ["Sabine"], needKey: "flight:ist-opo" })], trip);
-    expect(own.list.counts.search).toBe(0);
+    expect(own.list.open.map((t) => t.title)).toEqual(["Porto → İstanbul · Sabine"]);
+  });
+
+  it("someone going their own way home on the last day with nothing for it yet: the way home is Aranacak, a row for them", () => {
+    const trip: Trip = { ...base, travellers: { names: ["Sabine"], count: 2, from: { Sabine: "Alicante" } } };
+    const ways = [
+      stay("Jardim", "booked"),
+      flight("Emre TK", "IST", "OPO", "2026-10-08", "booked", { forWho: ["Emre"] }),
+      flight("Sabine V7", "ALC", "OPO", "2026-10-08", "booked", { forWho: ["Sabine"], needKey: "flight:ist-opo" }),
+      flight("Emre back", "OPO", "IST", "2026-10-14", "booked", { forWho: ["Emre"] }),
+    ];
+    const { list } = listOf(ways, trip);
+    expect(list.counts.search).toBe(1);
+    expect(list.open.map((t) => t.title)).toEqual(["Porto → İstanbul · Sabine"]);
+    // Her own way home, another route (Porto → Alicante) that day: done.
+    const home = listOf([...ways, flight("Sabine back", "OPO", "ALC", "2026-10-14", "booked", { forWho: ["Sabine"] })], trip);
+    expect(home.list.counts.search).toBe(0);
+    // Nobody coming their own way: Emre's flight back is the way home.
+    expect(listOf(ways, { ...trip, travellers: { names: ["Sabine"], count: 2 } }).list.counts.search).toBe(0);
   });
 
   it("the next step is the soonest row; a missing file isn't one", () => {

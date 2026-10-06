@@ -73,7 +73,7 @@ export interface CatEntry {
   /** The need it's part of: its own key, or the need shared with other people's groups (Emre's and Sabine's flight). */
   need: string;
   /**
-   * The people coming their own way in (Trip.travellers.from) with no record yet for the way in this entry is:
+   * The people coming their own way (Trip.travellers.from) with no record yet for the way in or home this entry is:
    * each a part of its need still to find (Emre's ticket booked, Sabine's from Alicante not yet: Aranacak).
    */
   missingFor?: string[];
@@ -492,23 +492,27 @@ function joinStayNeeds(entries: CatEntry[]): CatEntry[] {
 }
 
 /**
- * The way in for people coming from somewhere else (kişiye özel): each of them with no record of their own for the
- * trip's way in (its arrival: any record for them that day, whatever the route) is a part still to find.
+ * The way in and home for people coming from somewhere else (kişiye özel): each of them with no record of their own
+ * for the trip's way in (its arrival) or its way home on the last day (its departure), any record for them that day
+ * whatever the route, is a part still to find.
  */
 function withOwnWays(entries: CatEntry[], names: string[]): CatEntry[] {
   if (!names.length) return entries;
-  const arrival = entries.find((e) => e.stage && e.piece.kind === "entry" && e.piece.entry.kind === "travel" && e.piece.entry.role === "arrival");
-  if (!arrival) return entries;
-  const owners = new Set(
-    entries
-      // Their own way in is often another route (Alicante → Porto): any flight or transfer in that day counts.
-      .filter((e) => e.need === arrival.need || ((e.section === "flight" || e.section === "transport") && e.date === arrival.date))
-      .flatMap((e) => piecesItems(e.piece))
-      .filter((i) => i.status !== "dismissed")
-      .flatMap((i) => (i.forWho ?? []).map((w) => w.trim().toLocaleLowerCase("tr"))),
-  );
-  const missing = names.filter((name) => !owners.has(name.trim().toLocaleLowerCase("tr")));
-  if (missing.length) arrival.missingFor = missing;
+  // The way in, and the same for the way home on the trip's last day (Porto → Alicante, theirs to find too).
+  for (const role of ["arrival", "departure"] as const) {
+    const way = entries.find((e) => e.stage && e.piece.kind === "entry" && e.piece.entry.kind === "travel" && e.piece.entry.role === role);
+    if (!way) continue;
+    const owners = new Set(
+      entries
+        // Their own way is often another route (Alicante → Porto): any flight or transfer that day counts.
+        .filter((e) => e.need === way.need || ((e.section === "flight" || e.section === "transport") && e.date === way.date))
+        .flatMap((e) => piecesItems(e.piece))
+        .filter((i) => i.status !== "dismissed")
+        .flatMap((i) => (i.forWho ?? []).map((w) => w.trim().toLocaleLowerCase("tr"))),
+    );
+    const missing = names.filter((name) => !owners.has(name.trim().toLocaleLowerCase("tr")));
+    if (missing.length) way.missingFor = missing;
+  }
   return entries;
 }
 
@@ -578,7 +582,7 @@ export interface CategorizeInput {
    * empty card, its files. Without it nothing is a placeholder or empty, and nothing has a file.
    */
   stageCtx?: (item: Item) => Omit<StageCtx, "today">;
-  /** Who comes their own way in (the names of Trip.travellers.from): the way in is theirs to find too. */
+  /** Who comes their own way (the names of Trip.travellers.from): the way in and home are theirs to find too. */
   ownWayIn?: string[];
 }
 
