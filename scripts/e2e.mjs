@@ -3422,7 +3422,13 @@ try {
   await board.locator(".st-msg-bot .st-q", { hasText: "Kimle gidiyorsun?" }).waitFor();
   await skipQ();
   await board.locator(".st-msg-bot", { hasText: "Aralık ayının hangi günü başlıyor?" }).waitFor();
+  // The plan said back while it counts (2026-10-07): the route and the days; gone once stopped.
+  await board.locator(".st-summary", { hasText: "Lizbon" }).waitFor();
+  assert.deepEqual(await board.locator(".st-summary dt").allInnerTexts(), ["Rota", "Tarih"]);
+  await board.waitForTimeout(400);
+  await board.screenshot({ path: `${out}/20d2-start-summary.png` });
   await board.locator(".st-auto", { hasText: "Oluşturuyorum…" }).getByRole("button", { name: "Vazgeç" }).click();
+  await board.locator(".st-summary").waitFor({ state: "detached" });
   await board.locator(".st-auto").waitFor({ state: "detached" });
   assert.deepEqual(await answers.locator(".st-chip").allInnerTexts(), ["Ayın başı", "Ortası", "Sonu"]);
   await answers.locator("input[type=date]").waitFor();

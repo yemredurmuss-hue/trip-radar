@@ -5,7 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { setLang, withLang } from "../src/lib/i18n";
 import { allowedSuggestions, isOwnStay, notAPlace, playbookPromptLine, realPlace, startPlaybook, validModelPlaybook, type RawPlan } from "../src/lib/playbooks";
-import { playbookCards, wouldMake } from "../src/lib/startCreate";
+import { planSummary, playbookCards, wouldMake } from "../src/lib/startCreate";
 import {
   acceptExtraction, applyAnswer, applyText, circuitRoute, creationOf, knownLines, mergeExtracted, newStart, nextQuestion, parseStartText, pbAsks, turnSchema, wantsRouteAdvice,
   withTypedLang, type RawExtraction, type StartState,
@@ -229,5 +229,16 @@ describe("a kind with a playbook of its own keeps it", () => {
     expect(made.items.some((i) => i.name === "Başka bir şey")).toBe(false);
     expect(made.trip.intent).toMatchObject({ playbook: "festival", label: "Ozora Festivali", musts: [{ id: "diet", text: "Glütensiz" }] });
     expect(made.trip.intent?.custom).toBeUndefined();
+  });
+});
+
+describe("the plan said back before it's made", () => {
+  it("gives the route with the boat marked, the days, the concept and what must hold", () => {
+    const sum = planSummary(liveaboard(), { myName: null })!;
+    expect(sum.rows.map((r) => r.label)).toEqual(["Rota", "Tarih", "Konsept"]);
+    expect(sum.rows[0].value).toContain("⛴ Hurgada");
+    expect(sum.rows[0].value).not.toMatch(/Kızıldeniz/);
+    expect(sum.rows[2].value).toBe("Kızıldeniz liveaboard dalış gezisi · yalnız bu deneyim");
+    expect(sum.musts).toEqual(["İleri seviye dalgıç"]);
   });
 });

@@ -7,14 +7,14 @@
 // its id) and a plan said again updates the one before (planToSave), so "Tekrar dene" never makes anything twice.
 import { db, getSettings, listItems, listMessages, listPreferences, newId, notifyChanged } from "./db";
 import { L, withLang } from "./i18n";
-import { EMPTY_METRICS, nightsBetween } from "./items";
+import { EMPTY_METRICS, formatDateRange, nightsBetween } from "./items";
 import { ALL_PLANNED_KINDS, checkPlanned, guardKind, planToSave } from "./planned";
 import { cityKeyOf } from "./plan";
 import type { PlannedInput } from "./planned";
 import { cardsAfter, hasMust, prepAdded, startPlaybook, startPlaybookObj, tripIntentOf, withMusts } from "./playbooks";
 import { styleKeyFor } from "./startBoard";
 import { suggestionsReview } from "./startHooks";
-import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, pbEffects, placeholderPrint, readyText, wantText, type Creation, type StartState } from "./startTrip";
+import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, pbEffects, placeholderPrint, readyText, wantText, whoText, type Creation, type StartCtx, type StartState } from "./startTrip";
 import { withTravellers } from "./tripSettings";
 import { uniqueTitle } from "./trips";
 import type { Item, Trip } from "./types";
@@ -78,10 +78,35 @@ export function genSubLine(s: StartState, c: Creation): string {
     const it = s.intent;
     const cities = c.stays.map((x) => x.city ?? "").filter(Boolean);
     const stops = cities.filter((x, i) => i === 0 || cityKeyOf(x) !== cityKeyOf(cities[i - 1]));
-    const marked = stops.map((x) => (it?.kind === "event" && cityKeyOf(x) === cityKeyOf(it.place) ? `${x} 🎪` : x));
+    // The nights of a kind's own: on the boat ⛴, in the camp ⛺, in the van 🚐.
+    const own = c.stayAs ? { boat: "⛴", camp: "⛺", vehicle: "🚐" }[c.stayAs.kind as "boat" | "camp" | "vehicle"] : null;
+    const marked = stops.map((x) =>
+      it?.kind === "event" && cityKeyOf(x) === cityKeyOf(it.place) ? `${x} 🎪` : own && (c.stayAs!.city == null || cityKeyOf(x) === cityKeyOf(c.stayAs!.city)) ? `${own} ${x}` : x,
+    );
     const way = [...(s.from && !c.road && c.travel.length ? [s.from] : []), ...marked].join(" → ");
     const nights = c.dates ? nightsBetween(c.dates.start, c.dates.end) : 0;
     return [way, nights ? L(`${nights} gece`, `${nights} night${nights === 1 ? "" : "s"}`) : ""].filter(Boolean).join(" · ");
+  });
+}
+
+/** The plan said back before it is made (spec 2026-10-07 §C): the route, the days, who, what it is for, what must hold. */
+export interface PlanSummary {
+  rows: { label: string; value: string }[];
+  musts: string[];
+}
+
+/** The short plan shown while it counts down: only what is known; null until the destination is. */
+export function planSummary(s: StartState, ctx: Pick<StartCtx, "myName">): PlanSummary | null {
+  return withLang(s.lang, () => {
+    const c = creationOf(s);
+    if (!c) return null;
+    const rows: PlanSummary["rows"] = [{ label: L("Rota", "Route"), value: genSubLine(s, c) }];
+    if (c.dates) rows.push({ label: L("Tarih", "Dates"), value: `${formatDateRange(c.dates.start, c.dates.end)}${c.approxStart ? L(" (yaklaşık)", " (approx.)") : ""}` });
+    if (s.who) rows.push({ label: L("Kişi", "Who"), value: whoText(s.who, ctx.myName) });
+    const intent = tripIntentOf(s);
+    const concept = intent?.label ?? (s.intent && s.intent.kind !== "place" ? s.intent.name : null);
+    if (concept) rows.push({ label: L("Konsept", "Concept"), value: `${concept}${s.playbook?.focus === "only" ? L(" · yalnız bu deneyim", " · this experience only") : ""}` });
+    return { rows, musts: intent?.musts?.map((m) => m.text) ?? [] };
   });
 }
 

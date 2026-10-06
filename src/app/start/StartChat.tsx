@@ -24,7 +24,7 @@
 import { useEffect, useRef, useState } from "react";
 import { L, withLang } from "../../lib/i18n";
 import { loadHome } from "../../lib/passport";
-import { wouldMake } from "../../lib/startCreate";
+import { planSummary, wouldMake } from "../../lib/startCreate";
 import { removeDraft, saveDraft, worthKeeping } from "../../lib/startDrafts";
 import { applyLiveDates, checkingLine, datesWait, lookupFor, startLookup, type DatesLookup } from "../../lib/startEventDates";
 import { rulesPreview } from "../../lib/startHooks";
@@ -352,7 +352,8 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" });
-  }, [state.messages.length, stage]);
+    // The plan said back when it starts counting: in view (2026-10-07).
+  }, [state.messages.length, stage, auto != null]);
 
   // The typing box ready on open; the screen left (unmounted): every answer still on its way is dropped and stopped.
   useEffect(() => {
@@ -823,6 +824,30 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
                 )}
               </div>
             )}
+            {/* The plan said back while it counts (spec 2026-10-07 §C): route, days, who, what it's for, what must hold. */}
+            {auto != null && !generating && (() => {
+              const sum = planSummary(state, ctx);
+              return sum ? (
+                <div className="st-summary" aria-label={L("Plan özeti", "Plan summary")}>
+                  <div className="st-summary-head">{L("Plan özeti", "Plan summary")}</div>
+                  <dl>
+                    {sum.rows.map((r) => (
+                      <div key={r.label}>
+                        <dt>{r.label}</dt>
+                        <dd>{r.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  {sum.musts.length > 0 && (
+                    <div className="st-musts">
+                      {sum.musts.map((m) => (
+                        <span key={m} className="st-must">✓ {m}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null;
+            })()}
             <div ref={bottom} />
           </div>
           {/* What it is doing now, said as it changes (item 6): its own status region, outside the conversation's log. */}
