@@ -3,6 +3,8 @@
 // a rented car, a booking on its day. The Plan's sections (CategoryPlan) place these; their cards are the
 // approved ones, unchanged. On the Plan only (`plain`), what has nothing booked or saved yet is its empty card
 // (cards/EmptyCard.tsx); Günlük akış draws these blocks too and keeps them exactly as they were.
+import { countryOfPlace } from "../../lib/chatBooking";
+import { needKey } from "../../lib/emptyCards";
 import { L } from "../../lib/i18n";
 import { formatDateRange, formatPrice, nightsBetween } from "../../lib/items";
 import type { StayBlock } from "../../lib/plan";
@@ -10,6 +12,8 @@ import type { TimelineEntry } from "../../lib/timeline";
 import type { Item } from "../../lib/types";
 import { DeleteX } from "../cards/CardShell";
 import { EmptyStayBlock, EmptyTravelCard } from "../cards/EmptyCard";
+import { useEmptyEnv } from "../cards/emptyEnv";
+import { OfferRow } from "../cards/OfferRow";
 import { Editable, InlineEdit } from "../cards/InlineEdit";
 import { useCardEnv } from "../cards/PlanCard";
 import { StayLine } from "../cards/StayLine";
@@ -69,6 +73,19 @@ export function PlanEntry({ entry, legCard, renderGroup, settled, plain = false 
   }
 }
 
+/**
+ * Nights with options and none chosen yet (Seçenekler): the same "✨ Senin için" row as the empty card's stays under
+ * them, so a hotel favoured from it ("Favorile") doesn't take the other picks away. It goes once one is chosen
+ * (Planlandı: the block is no longer open). The need is the empty card's for these nights (EmptyStayBlock).
+ */
+function OptionsOffers({ block }: { block: Extract<StayBlock, { kind: "open" }> }) {
+  const { travellers: n, items } = useEmptyEnv();
+  const city = block.slot?.city ?? block.city;
+  if (!city) return null;
+  const { start, end } = block.range;
+  return <OfferRow key={needKey("stay", city, start, end)} need={{ key: needKey("stay", city, start, end), section: "stay", kind: "stay", city, start, end, adults: n, country: countryOfPlace(city, items)?.code ?? null }} />;
+}
+
 /** A stay said apart (in the chat, or added with "+") with options under it: the line saying so, and its × (spec 0.33 §1). */
 function SlotNote({ slot }: { slot: Item }) {
   const env = useCardEnv();
@@ -94,6 +111,7 @@ function Block({ block, renderGroup, settled, plain }: { block: StayBlock; rende
           renderGroup(g, null, g.range && g.range.start === block.range.start && g.range.end === block.range.end ? null : g.title, true),
         )}
       {block.kind === "open" && block.slot && block.groups.length > 0 && <SlotNote slot={block.slot} />}
+      {plain && block.kind === "open" && block.groups.length > 0 && <OptionsOffers block={block} />}
       {block.kind === "chosen" && block.gap && block.gap.length > 0 && (
         <p className="slot-note gap">
           {L(
