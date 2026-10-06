@@ -2522,6 +2522,16 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-auto-stop:hover { background: rgba(255, 255, 255, .26); }
 @keyframes st-auto-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @media (prefers-reduced-motion: reduce) { .st-auto, .st-auto-bar span { animation: none; } }
+/* The plan said back while it counts down (2026-10-07). */
+.st-summary { margin: 6px 0 2px; padding: 12px 14px; border-radius: 16px; background: var(--hx-card, #fff); border: 1px solid rgba(34, 27, 58, .12); font-size: 14px; animation: st-in .25s ease-out both; }
+.st-summary-head { font-weight: 700; margin-bottom: 6px; }
+.st-summary dl { margin: 0; display: grid; gap: 4px; }
+.st-summary dl > div { display: grid; grid-template-columns: 72px 1fr; gap: 8px; }
+.st-summary dt { color: rgba(34, 27, 58, .6); }
+.st-summary dd { margin: 0; overflow-wrap: anywhere; }
+.st-musts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.st-must { padding: 3px 10px; border-radius: 999px; background: rgba(34, 27, 58, .07); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .st-summary { animation: none; } }
 /* The event's official site after the line that says to check it. */
 .st-link { color: var(--hx-accent); font-weight: 650; white-space: nowrap; }
 @keyframes st-dot { 0%, 100% { opacity: .25; transform: translateY(0); } 45% { opacity: 1; transform: translateY(-2px); } }
