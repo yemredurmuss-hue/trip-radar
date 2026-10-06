@@ -132,7 +132,7 @@ describe("the interview", () => {
     expect(totalNights(want)).toBe(31);
     expect(whenText(want)).toBe("10 Aralık – 10 Ocak · 31 gece");
   });
-  it("the full order from nothing (rev 3: where, when, where from, the day, style, who; never the names)", () => {
+  it("the full order from nothing (2026-10-06: where, when, where from, who, then the day, style; never the names)", () => {
     let s = fresh();
     expect(nextQuestion(s)).toBe("where");
     s = applyAnswer(s, { q: "where", place: "Lizbon", country: "Portekiz" }, 2);
@@ -142,6 +142,9 @@ describe("the interview", () => {
     s = applyAnswer(s, { q: "start", date: "2026-11-01", approx: true }, 2);
     expect(nextQuestion(s)).toBe("from");
     s = applyAnswer(s, { q: "from", city: "İzmir" }, 2);
+    // Who is an essential (the trip makes itself once it is known): asked before the optional questions.
+    expect(nextQuestion(s)).toBe("who");
+    s = applyAnswer(s, { q: "who", kind: "partner" }, 2);
     // A month only: never a day made up; the day is asked next (item 3, the review's decision), not needed to generate.
     expect(nextQuestion(s)).toBe("day");
     const day = questionOf(s, "day", ctx);
@@ -157,9 +160,7 @@ describe("the interview", () => {
     s = mid;
     expect(nextQuestion(s)).toBe("want");
     s = applyAnswer(s, { q: "want", styles: ["culture"], budget: null }, 4);
-    expect(nextQuestion(s)).toBe("who");
     // A partner: no names asked here (the board's chat asks once, after the trip is made).
-    s = applyAnswer(s, { q: "who", kind: "partner" }, 5);
     expect(nextQuestion(s)).toBe("route");
     expect(namesToAsk(s)).toBe(true);
     expect(namesToAsk(applyAnswer(s, { q: "who", kind: "solo" }, 6))).toBe(false);
@@ -172,6 +173,8 @@ describe("the interview", () => {
     s = skip(skip(s, "duration", 2), "start", 2);
     expect(nextQuestion(s)).toBe("from");
     s = skip(s, "from", 2);
+    expect(nextQuestion(s)).toBe("who");
+    s = skip(s, "who", 2);
     expect(nextQuestion(s)).toBe("want");
     s = askAgain(s, "where", 3);
     expect(nextQuestion(s)).toBe("where");

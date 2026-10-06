@@ -20,7 +20,16 @@ const clean = (d: StartState): StartState => ({
   ...d,
   styles: knownStyles(d.styles),
   skipped: Array.isArray(d.skipped) ? d.skipped : [],
-  who: d.who ? { kind: d.who.kind ?? null, names: Array.isArray(d.who.names) ? d.who.names.filter((n) => typeof n === "string") : [] } : null,
+  who: d.who
+    ? {
+        kind: d.who.kind ?? null,
+        names: Array.isArray(d.who.names) ? d.who.names.filter((n) => typeof n === "string") : [],
+        // How many go (asked for a group): kept, or it would be asked again.
+        ...(typeof d.who.count === "number" && d.who.count > 0 ? { count: d.who.count } : {}),
+      }
+    : null,
+  // What the trip is for (2026-10-06): only in its shape.
+  intent: d.intent && typeof d.intent.name === "string" && typeof d.intent.place === "string" ? d.intent : null,
   route: d.route && Array.isArray(d.route.stops) ? d.route : null,
   messages: d.messages.filter((m) => m && typeof m.text === "string" && (m.role === "user" || m.role === "assistant")),
   // Drafts from before revision 2: the board's language, nothing prepared.
