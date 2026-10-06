@@ -1,7 +1,7 @@
 // The board's "Harita" tab: the trip on a map (TripMap, board mode). Every journey of the plan in date order
 // (mapLegs.ts), the stops with their photos and nights. Places the tables don't know are looked up (Nominatim,
 // cached, one a second) while the map shows what it can; a journey still without a place is listed under it.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { geocode } from "../../lib/geo";
 import { L, lang } from "../../lib/i18n";
 import type { Leg } from "../../lib/legs";
@@ -20,13 +20,22 @@ export function BoardMap({ trip, plan, legs }: Props) {
   const route = useMemo(() => mapRoute(plan, legs), [plan, legs]);
   const [found, setFound] = useState<ReadonlyMap<string, LatLng | null>>(new Map());
   const [failed, setFailed] = useState(false);
+  // "Tekrar dene": a new map from scratch.
+  const [attempt, setAttempt] = useState(0);
   const wanted = useMemo(() => unplaced(route).map(geocodeQuery), [route]);
+  const wantedKey = wanted.join("|");
   const looking = wanted.filter((q) => !found.has(q));
+  const foundRef = useRef(found);
+  foundRef.current = found;
 
+  // The places to look up, one after the other (geocode() keeps to one request a second): started again only when
+  // what's wanted changes, never because an answer came; what's found already isn't asked again.
   useEffect(() => {
     let live = true;
     void (async () => {
-      for (const q of looking) {
+      for (const q of wanted) {
+        if (!live) return;
+        if (foundRef.current.has(q)) continue;
         const at = await geocode(q).catch(() => null);
         if (!live) return;
         setFound((m) => new Map(m).set(q, at ? { lat: at.lat, lng: at.lng } : null));
@@ -35,7 +44,7 @@ export function BoardMap({ trip, plan, legs }: Props) {
     return () => {
       live = false;
     };
-  }, [looking.join("|")]);
+  }, [wantedKey]);
 
   const data = useMemo(() => placeRoute(route, (r) => found.get(geocodeQuery(r)) ?? null), [route, found]);
   const stops = useMemo<TripMapStop[]>(
@@ -51,9 +60,14 @@ export function BoardMap({ trip, plan, legs }: Props) {
       {empty ? (
         <p className="tm-note">{looking.length ? L("Yerler haritada aranıyor…", "Finding the places on the map…") : L("Haritada gösterecek yer yok henüz: konaklama ya da yolculuk ekledikçe çizilir.", "Nothing to show on the map yet: it's drawn as stays and journeys are added.")}</p>
       ) : failed ? (
-        <p className="tm-note">{L("Harita şu an açılamıyor (çevrimdışı ya da tarayıcı haritayı çizemiyor).", "The map can't open right now (offline, or the browser can't draw it).")}</p>
+        <div className="tm-note">
+          <p>{L("Harita şu an açılamıyor (çevrimdışı ya da tarayıcı haritayı çizemiyor).", "The map can't open right now (offline, or the browser can't draw it).")}</p>
+          <button type="button" className="tm-retry" onClick={() => (setFailed(false), setAttempt((n) => n + 1))}>
+            {L("Tekrar dene", "Try again")}
+          </button>
+        </div>
       ) : (
-        <TripMap key={trip.id} mode="board" stops={stops} legs={data.legs} home={data.home} lang={lang()} onUnavailable={() => setFailed(true)} />
+        <TripMap key={`${trip.id}:${attempt}`} mode="board" stops={stops} legs={data.legs} home={data.home} lang={lang()} onUnavailable={() => setFailed(true)} />
       )}
       {missing > 0 && (
         <p className="tm-missing" role="note">

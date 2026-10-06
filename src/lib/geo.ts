@@ -23,29 +23,44 @@ export function formatDistance(km: number): string {
 }
 
 let lastRequest = 0;
+/** The requests in line: each waits for the one before it, so there's never more than one a second (Nominatim's policy). */
+let line: Promise<unknown> = Promise.resolve();
+/** A place being looked up: asked again meanwhile, it's the same answer (one request). */
+const asking = new Map<string, Promise<Geo | null>>();
+const GAP_MS = 1100;
 
 /** Coordinates for a free-text place ("Rua do Almada 10, Porto"); null when not found or offline. */
-export async function geocode(query: string): Promise<Geo | null> {
+export function geocode(query: string): Promise<Geo | null> {
   const key = query.trim().toLowerCase();
-  if (key.length < 3) return null;
+  if (key.length < 3) return Promise.resolve(null);
+  const already = asking.get(key);
+  if (already) return already;
+  const answer = lookUp(key, query).finally(() => asking.delete(key));
+  asking.set(key, answer);
+  return answer;
+}
+
+async function lookUp(key: string, query: string): Promise<Geo | null> {
   const d = await db();
   const cached = await d.get("geocache", key);
   if (cached) return cached.lat != null && cached.lng != null ? { lat: cached.lat, lng: cached.lng, source: "geocoded" } : null;
-
-  const wait = lastRequest + 1100 - Date.now(); // Nominatim usage policy: max 1 request/second
-  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-  lastRequest = Date.now();
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=tr&q=${encodeURIComponent(query)}`,
-    );
-    if (!res.ok) return null; // don't cache failures: they may be temporary
-    const [hit] = (await res.json()) as { lat: string; lon: string }[];
-    const lat = hit ? Number(hit.lat) : null;
-    const lng = hit ? Number(hit.lon) : null;
-    await d.put("geocache", { query: key, lat, lng, at: Date.now() });
-    return lat != null && lng != null ? { lat, lng, source: "geocoded" } : null;
-  } catch {
-    return null;
-  }
+  const turn = line.then(async () => {
+    const wait = lastRequest + GAP_MS - Date.now();
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    // Stamped before asking: a slow answer doesn't let the next request go early.
+    lastRequest = Date.now();
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=tr&q=${encodeURIComponent(query)}`);
+      if (!res.ok) return null; // don't cache failures: they may be temporary
+      const [hit] = (await res.json()) as { lat: string; lon: string }[];
+      const lat = hit ? Number(hit.lat) : null;
+      const lng = hit ? Number(hit.lon) : null;
+      await d.put("geocache", { query: key, lat, lng, at: Date.now() });
+      return lat != null && lng != null ? ({ lat, lng, source: "geocoded" } as Geo) : null;
+    } catch {
+      return null;
+    }
+  });
+  line = turn.catch(() => undefined);
+  return turn;
 }
