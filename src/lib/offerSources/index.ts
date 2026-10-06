@@ -17,7 +17,31 @@ const KEEP_HOURS = 6;
 /** Answers kept at most; the oldest go first. */
 const KEEP_MAX = 60;
 
-type Seen = Record<string, { at: number; offers: Offer[] }>;
+/**
+ * A hotel to choose from (the offers function's `candidates`): what the sources said, nothing guessed. `nightly`
+ * and `total` are for these nights (null when this one wasn't priced); `priceRange` is Tripadvisor's usual one.
+ */
+export interface StayCandidate {
+  id: string;
+  name: string;
+  rating: number | null;
+  reviews: number | null;
+  photo: string | null;
+  geo: { lat: number; lng: number } | null;
+  area: string | null;
+  labels: string[];
+  url: string;
+  nightly: number | null;
+  total: number | null;
+  nights: number;
+  priceRange: { min: number; max: number } | null;
+  source: string | null;
+  currency: "EUR";
+  fetchedAt: number;
+}
+
+type Answer = { offers: Offer[]; candidates?: StayCandidate[] };
+type Seen = Record<string, { at: number } & Answer>;
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const countryName = (code: string | null | undefined): string | null => {
@@ -64,14 +88,15 @@ export function queryOf(need: Need, language: "tr" | "en" = lang(), narrow: Narr
 /** The live source, with its storage and fetch handed in for the tests; `find` is the chat's way in (find_offers). */
 export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: () => number; server?: string } = {}): SuggestionSource & {
   find(need: Need, narrow?: Narrow): Promise<Offer[]>;
+  candidates(need: Need): Promise<StayCandidate[]>;
 } {
   const kv = opts.kv ?? chromeKV;
   const get = opts.fetcher ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
   const now = opts.now ?? Date.now;
   const server = opts.server ?? DEFAULT_SERVER.url;
-  const asking = new Map<string, Promise<Offer[]>>();
+  const asking = new Map<string, Promise<Answer>>();
 
-  async function ask(q: string): Promise<Offer[]> {
+  async function ask(q: string): Promise<Answer> {
     let seen: Seen = {};
     try {
       seen = (await kv.get<Seen>(STORE_KEY)) ?? {};
@@ -79,13 +104,13 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
       // no storage: asked every time
     }
     const had = seen[q];
-    if (had && now() - had.at < KEEP_HOURS * 36e5) return had.offers;
+    if (had && now() - had.at < KEEP_HOURS * 36e5) return had;
     try {
       const res = await get(`${server}/functions/v1/offers?${q}`);
-      if (!res.ok) return [];
-      const body = (await res.json()) as { offers?: Offer[] };
-      const offers = Array.isArray(body.offers) ? body.offers : [];
-      const kept = Object.entries({ ...seen, [q]: { at: now(), offers } })
+      if (!res.ok) return { offers: [] };
+      const body = (await res.json()) as { offers?: Offer[]; candidates?: StayCandidate[] };
+      const answer: Answer = { offers: Array.isArray(body.offers) ? body.offers : [], ...(Array.isArray(body.candidates) ? { candidates: body.candidates } : {}) };
+      const kept = Object.entries({ ...seen, [q]: { at: now(), ...answer } })
         .filter(([, v]) => now() - v.at < KEEP_HOURS * 36e5)
         .sort((a, b) => b[1].at - a[1].at)
         .slice(0, KEEP_MAX);
@@ -94,25 +119,34 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
       } catch {
         // not kept this time
       }
-      return offers;
+      return answer;
     } catch {
-      return [];
+      return { offers: [] };
     }
   }
-
-  const find = (need: Need, narrow: Narrow = {}): Promise<Offer[]> => {
-    const q = queryOf(need, lang(), narrow);
-    if (!q) return Promise.resolve([]);
+  const once = (q: string): Promise<Answer> => {
     // The same question asked by two cards at once goes out once.
     const going = asking.get(q) ?? ask(q).finally(() => asking.delete(q));
     asking.set(q, going);
     return going;
   };
 
+  const find = async (need: Need, narrow: Narrow = {}): Promise<Offer[]> => {
+    const q = queryOf(need, lang(), narrow);
+    return q ? (await once(q)).offers : [];
+  };
+  /** Up to six hotels for a stay to choose three from ("Sana en uygun", "Daha ekonomik", "Daha konforlu"). */
+  const candidates = async (need: Need): Promise<StayCandidate[]> => {
+    if (need.kind !== "stay") return [];
+    const q = queryOf(need, lang());
+    return q ? ((await once(`${q}&candidates=1`)).candidates ?? []) : [];
+  };
+
   return {
     available: () => true,
     offers: (need) => find(need),
     find,
+    candidates,
   };
 }
 
@@ -121,5 +155,8 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
  * have none (then the chat says it found none rather than making one up).
  */
 export const findOffers = (need: Need, narrow: Narrow = {}): Promise<Offer[]> => liveSource.find(need, narrow);
+
+/** A stay's hotels to choose from (up to six; the priced ones first): [] when the sources have none. */
+export const stayCandidates = (need: Need): Promise<StayCandidate[]> => liveSource.candidates(need);
 
 export const liveSource = makeLiveSource();

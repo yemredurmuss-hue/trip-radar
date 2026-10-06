@@ -213,6 +213,7 @@ export interface XoHotel {
   price_ranges?: { minimum?: number; maximum?: number };
   image?: string;
   merchandising_labels?: string[];
+  geo?: { latitude?: number; longitude?: number };
 }
 export interface XoRate {
   code?: string;
@@ -342,4 +343,77 @@ export function geoFromTypeahead(body: unknown): string | null {
     if (t?.dataType === "LOCATION" && t.placeType && PLACES.has(t.placeType) && typeof t.locationId === "number") return String(t.locationId);
   }
   return null;
+}
+
+// --- candidates (the chat's and the card's own choice of three: "Sana en uygun", "Daha ekonomik", "Daha konforlu") --
+
+/** A hotel the client may choose from: only what the sources said; an unknown is null, never guessed. */
+export interface StayCandidate {
+  id: string;
+  name: string;
+  /** Out of 5 (Tripadvisor). */
+  rating: number | null;
+  reviews: number | null;
+  photo: string | null;
+  geo: { lat: number; lng: number } | null;
+  /** The kind ("Resort", "Pansiyon"). */
+  area: string | null;
+  labels: string[];
+  url: string;
+  /** A price for these nights, from a platform (null when no platform gave one). */
+  nightly: number | null;
+  total: number | null;
+  nights: number;
+  /** Tripadvisor's usual nightly range: not for these dates. */
+  priceRange: { min: number; max: number } | null;
+  /** Where the price for these nights is from ("Booking"); null without one. */
+  source: string | null;
+  currency: "EUR";
+  fetchedAt: number;
+}
+
+/**
+ * Up to `max` hotels from the one list already asked: the offers' hotels first, then the list's cheapest by its
+ * usual range and its best liked, for a choice to be had; no hotel twice (each is then priced for the dates).
+ */
+export function pickCandidates(list: XoHotel[], priced: string[], max = 6): XoHotel[] {
+  const ok = list.filter(okHotel);
+  const out: XoHotel[] = [];
+  const add = (h: XoHotel | undefined) => {
+    if (h && out.length < max && !out.some((x) => x.key === h.key)) out.push(h);
+  };
+  for (const key of priced) add(ok.find((h) => h.key === key));
+  const cheap = ok.filter((h) => (h.price_ranges?.minimum ?? 0) > 0 && rating(h) >= 4).sort((a, b) => a.price_ranges!.minimum! - b.price_ranges!.minimum!);
+  const liked = ok.filter((h) => reviews(h) >= 100).sort((a, b) => rating(b) - rating(a) || reviews(b) - reviews(a));
+  for (let i = 0; out.length < max && (i < cheap.length || i < liked.length); i++) {
+    add(cheap[i]);
+    add(liked[i]);
+  }
+  for (const h of ok) add(h);
+  return out;
+}
+
+/** A candidate: its own offer's price when it has one, else only the usual range; the page as for its offer. */
+export function stayCandidate(h: XoHotel, offer: OfferOut | null, ctx: { lang: Lang; nights: number; now: number; url: string }): StayCandidate {
+  const lang = ctx.lang;
+  const lat = h.geo?.latitude, lng = h.geo?.longitude;
+  const min = h.price_ranges?.minimum, max = h.price_ranges?.maximum;
+  return {
+    id: `xo:${h.key}`,
+    name: h.name!,
+    rating: rating(h) || null,
+    reviews: reviews(h) || null,
+    photo: h.image && /^https:\/\//.test(h.image) ? h.image : null,
+    geo: typeof lat === "number" && typeof lng === "number" ? { lat, lng } : null,
+    area: h.accommodation_type ? (KINDS[h.accommodation_type]?.[lang === "en" ? 1 : 0] ?? h.accommodation_type) : null,
+    labels: (h.merchandising_labels ?? []).map((l) => LABELS[l]?.[lang === "en" ? 1 : 0]).filter((l): l is string => !!l),
+    url: offer?.url ?? ctx.url,
+    nightly: offer?.price != null ? Math.round(offer.price / Math.max(1, ctx.nights)) : null,
+    total: offer?.price ?? null,
+    nights: ctx.nights,
+    priceRange: typeof min === "number" && min > 0 ? { min, max: typeof max === "number" && max >= min ? max : min } : null,
+    source: offer ? offer.source : null,
+    currency: "EUR",
+    fetchedAt: offer?.fetchedAt ?? ctx.now,
+  };
 }

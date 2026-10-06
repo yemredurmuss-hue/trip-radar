@@ -2,7 +2,7 @@
 // that a failure is simply no offers.
 import { describe, expect, it } from "vitest";
 import type { Need, Offer } from "../src/lib/offerSource";
-import { makeLiveSource, queryOf } from "../src/lib/offerSources";
+import { makeLiveSource, queryOf, type StayCandidate } from "../src/lib/offerSources";
 import { memoryKV } from "../src/lib/share/store";
 
 const flight: Need = { key: "f", section: "flight", kind: "flight", from: "İstanbul", to: "Denpasar", start: "2026-11-10", adults: 2 };
@@ -66,6 +66,20 @@ describe("asking", () => {
     await src.find(stay, { prefer: "cheap" });
     expect(calls).toHaveLength(2);
     expect(calls[1]).toContain("prefer=cheap");
+  });
+
+  it("asks a stay's candidates apart, a flight's never", async () => {
+    const calls: string[] = [];
+    const cand = { id: "xo:a", name: "A" } as StayCandidate;
+    const fetcher = (async (url: string) => {
+      calls.push(url);
+      return { ok: true, json: async () => ({ offers: [offer("a")], candidates: [cand] }) } as Response;
+    }) as unknown as typeof fetch;
+    const src = makeLiveSource({ kv: memoryKV(), fetcher, server: "https://srv" });
+    expect(await src.candidates(stay)).toEqual([cand]);
+    expect(calls[0].endsWith("&candidates=1")).toBe(true);
+    expect(await src.candidates(flight)).toEqual([]);
+    expect(calls).toHaveLength(1);
   });
 
   it("two cards asking the same at once make one call", async () => {

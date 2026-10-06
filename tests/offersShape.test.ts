@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import {
   adultsOf, airportCodeOk, arrivalClock, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, localClock, maxOf,
-  nightsBetween, pickCheapFlights, pickCheapStays, pickFlights, pickStays, placeOk, preferOf, seenAt, stayOffer, type AviaFlight,
+  nightsBetween, pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickStays, placeOk, preferOf, seenAt, stayCandidate, stayOffer, type AviaFlight,
   type OfferOut, type XoHotel,
 } from "../supabase/functions/offers/shape";
 
@@ -168,5 +168,32 @@ describe("cheaper ones (the chat's \"daha ucuz\")", () => {
     const kept = cheapest([o("a", 300), o("b", 180, " · Trip.com'da gecelik €55"), o("c", 240), o("d", 600)], "tr", 90);
     expect(kept.map((k) => k.id)).toEqual(["b", "c"]);
     expect(kept.map((k) => k.why)).toEqual(["Bulduklarımın en ucuzu · Trip.com'da gecelik €55", "Gecelik €20 daha fazla"]);
+  });
+});
+
+describe("a stay's candidates (up to six, from the one list)", () => {
+  const h = (key: string, rating: number, count: number, min: number, over: Partial<XoHotel> = {}): XoHotel => ({ name: key.toUpperCase(), key, review_summary: { rating, count }, price_ranges: { minimum: min, maximum: min * 2 }, ...over });
+  const list = [h("a", 4.6, 900, 120), h("b", 4.9, 2000, 200), h("c", 4.4, 150, 60), h("d", 4.8, 400, 300), h("e", 4.1, 80, 45), h("f", 4.7, 1200, 90), h("g", 3.6, 5000, 20), h("x", 0, 0, 0)];
+
+  it("the priced first, then the cheapest and the best liked by turns, none twice, six at most", () => {
+    const keys = pickCandidates(list, ["a", "b", "c"]).map((x) => x.key);
+    expect(keys.slice(0, 3)).toEqual(["a", "b", "c"]);
+    expect(keys).toHaveLength(6);
+    expect(new Set(keys).size).toBe(6);
+    // the cheapest well liked (e 45, f 90) and the best liked (d 4.8) come next; g (3.6) and x (no rating) don't
+    expect(keys).toContain("e");
+    expect(keys).toContain("d");
+    expect(keys).not.toContain("x");
+    expect(pickCandidates(list.slice(0, 2), ["a"]).map((x) => x.key)).toEqual(["a", "b"]);
+  });
+
+  it("carries what the sources said; a hotel not priced has its usual range only, nothing guessed", () => {
+    const ctx = { lang: "tr" as const, nights: 3, now: 5, url: "https://www.booking.com/searchresults.html?ss=A" };
+    const offer = { id: "xo:a", kind: "stay" as const, title: "A", price: 360, currency: "EUR", nights: 3, url: "https://tp.media/r?a", why: "", source: "Booking", fetchedAt: 9 };
+    const priced = stayCandidate(h("a", 4.6, 900, 120, { geo: { latitude: -8.5, longitude: 115.2 }, accommodation_type: "Resort", merchandising_labels: ["Breakfast included", "Unknown"] }), offer, ctx);
+    expect(priced).toMatchObject({ id: "xo:a", name: "A", rating: 4.6, reviews: 900, geo: { lat: -8.5, lng: 115.2 }, area: "Resort", labels: ["Kahvaltı dahil"], url: "https://tp.media/r?a", nightly: 120, total: 360, nights: 3, priceRange: { min: 120, max: 240 }, source: "Booking", fetchedAt: 9 });
+    const range = stayCandidate(h("c", 4.4, 150, 60), null, ctx);
+    expect(range).toMatchObject({ nightly: null, total: null, source: null, geo: null, photo: null, url: ctx.url, priceRange: { min: 60, max: 120 }, fetchedAt: 5 });
+    expect(stayCandidate(h("z", 4.2, 10, 0), null, ctx).priceRange).toBeNull();
   });
 });
