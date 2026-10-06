@@ -50,6 +50,27 @@ export interface PrintPlanProps {
   hero?: React.RefObject<HTMLElement | null>;
 }
 
+/** A photo at the size paper needs (about 1600 px wide), from the sources that can scale it; any other as it is. */
+export function paperSize(src: string): string {
+  try {
+    const u = new URL(src);
+    if (u.hostname === "images.unsplash.com") {
+      u.searchParams.set("w", "1600");
+      u.searchParams.set("q", "80");
+      u.searchParams.set("fm", "jpg");
+      return u.toString();
+    }
+    if (u.hostname === "images.pexels.com") {
+      u.searchParams.set("auto", "compress");
+      u.searchParams.set("w", "1600");
+      return u.toString();
+    }
+  } catch {
+    // not a web address: as it is
+  }
+  return src;
+}
+
 const weekday = (d: string) =>
   new Date(`${d}T12:00:00Z`).toLocaleDateString(locale(), {
     weekday: "long",
@@ -111,7 +132,10 @@ export function PrintPlan(props: PrintPlanProps) {
     copy.querySelectorAll(".hx-go, .hx-alt, .hx-menu, .hx-acts, .todo-list, .hx-prefs-link, .ask-mark, .hx-styles .empty, .hx-wait, small.accent").forEach((el) => el.remove());
     // Only the photo shown (its credit is the one drawn): the other cities' photos would only make the file heavy.
     copy.querySelectorAll(".hx-photo img:not(.on)").forEach((img) => img.remove());
-    copy.querySelectorAll("img").forEach((img) => img.removeAttribute("loading"));
+    copy.querySelectorAll("img").forEach((img) => {
+      img.removeAttribute("loading");
+      img.src = paperSize(img.src);
+    });
     box.replaceChildren(copy);
     setCopied(true);
   }, [props.hero]);
