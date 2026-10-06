@@ -20,10 +20,19 @@ export interface CircuitStop {
 export interface Circuit {
   /** In travel order. */
   stops: CircuitStop[];
-  /** Where flights land and leave when it isn't the first or last stop. */
-  arrive?: [string, string];
-  leave?: [string, string];
+  /**
+   * Where flights land and leave when it isn't the first or last stop: its name, and the stops it serves (English
+   * names; none: the whole country). Dropped when the stop kept first (in) or last (out) isn't one of them (rev 3:
+   * a week in Türkiye without Fethiye never flies home from Dalaman).
+   */
+  arrive?: Airport;
+  leave?: Airport;
 }
+export interface Airport {
+  name: [string, string];
+  near?: string[];
+}
+const A = (tr: string, en: string, near?: string[]): Airport => ({ name: [tr, en], ...(near ? { near } : {}) });
 
 const S = (tr: string, en: string, lat: number, lng: number, weight: number, rank: 1 | 2 | 3, kind?: CircuitStop["kind"]): CircuitStop => ({ tr, en, lat, lng, weight, rank, ...(kind ? { kind } : {}) });
 
@@ -31,8 +40,8 @@ const S = (tr: string, en: string, lat: number, lng: number, weight: number, ran
 export const CIRCUITS: Record<string, Circuit> = {
   LK: {
     stops: [S("Sigiriya", "Sigiriya", 7.96, 80.76, 2, 3, "culture"), S("Kandy", "Kandy", 7.29, 80.63, 3, 1, "culture"), S("Ella", "Ella", 6.87, 81.05, 3, 2, "nature"), S("Mirissa", "Mirissa", 5.95, 80.46, 5, 1, "beach")],
-    arrive: ["Kolombo", "Colombo"],
-    leave: ["Kolombo", "Colombo"],
+    arrive: A("Kolombo", "Colombo"),
+    leave: A("Kolombo", "Colombo"),
   },
   TH: {
     stops: [S("Bangkok", "Bangkok", 13.76, 100.5, 3, 1, "culture"), S("Chiang Mai", "Chiang Mai", 18.79, 98.98, 3, 2, "nature"), S("Koh Samui", "Koh Samui", 9.51, 100.01, 3, 3, "beach"), S("Krabi", "Krabi", 8.09, 98.91, 4, 1, "beach")],
@@ -45,43 +54,43 @@ export const CIRCUITS: Record<string, Circuit> = {
   },
   IT: {
     stops: [S("Venedik", "Venice", 45.44, 12.33, 2, 2, "culture"), S("Floransa", "Florence", 43.77, 11.26, 3, 1, "culture"), S("Roma", "Rome", 41.9, 12.5, 4, 1, "culture"), S("Amalfi", "Amalfi", 40.63, 14.6, 3, 3, "beach")],
-    leave: ["Napoli", "Naples"],
+    leave: A("Napoli", "Naples", ["Amalfi"]),
   },
   PT: {
     stops: [S("Porto", "Porto", 41.15, -8.61, 3, 1, "culture"), S("Coimbra", "Coimbra", 40.2, -8.41, 1, 3, "culture"), S("Lizbon", "Lisbon", 38.72, -9.14, 4, 1, "culture"), S("Lagos", "Lagos", 37.1, -8.67, 3, 2, "beach")],
-    leave: ["Faro", "Faro"],
+    leave: A("Faro", "Faro", ["Lagos"]),
   },
   ES: {
     stops: [S("Barselona", "Barcelona", 41.39, 2.17, 4, 1, "culture"), S("Madrid", "Madrid", 40.42, -3.7, 3, 2, "culture"), S("Sevilla", "Seville", 37.39, -5.98, 3, 1, "culture"), S("Granada", "Granada", 37.18, -3.6, 2, 3, "culture")],
-    leave: ["Malaga", "Malaga"],
+    leave: A("Malaga", "Malaga", ["Granada"]),
   },
   GR: {
     stops: [S("Atina", "Athens", 37.98, 23.73, 2, 1, "culture"), S("Paros", "Paros", 37.08, 25.15, 3, 3, "beach"), S("Naksos", "Naxos", 37.1, 25.38, 3, 2, "beach"), S("Santorini", "Santorini", 36.39, 25.46, 3, 1, "beach")],
   },
   TR: {
     stops: [S("İstanbul", "Istanbul", 41.01, 28.98, 3, 1, "culture"), S("Kapadokya", "Cappadocia", 38.64, 34.83, 3, 1, "nature"), S("Selçuk", "Selçuk", 37.95, 27.37, 2, 3, "culture"), S("Fethiye", "Fethiye", 36.62, 29.12, 4, 2, "beach")],
-    leave: ["Dalaman", "Dalaman"],
+    leave: A("Dalaman", "Dalaman", ["Fethiye"]),
   },
   ID: {
     stops: [S("Yogyakarta", "Yogyakarta", -7.8, 110.36, 3, 3, "culture"), S("Ubud", "Ubud", -8.51, 115.26, 4, 1, "culture"), S("Gili Air", "Gili Air", -8.36, 116.08, 3, 2, "beach"), S("Uluwatu", "Uluwatu", -8.83, 115.09, 3, 1, "beach")],
-    leave: ["Denpasar", "Denpasar"],
+    leave: A("Denpasar", "Denpasar", ["Ubud", "Uluwatu", "Gili Air"]),
   },
   bali: {
     stops: [S("Ubud", "Ubud", -8.51, 115.26, 4, 1, "culture"), S("Sidemen", "Sidemen", -8.48, 115.44, 2, 3, "nature"), S("Canggu", "Canggu", -8.65, 115.13, 3, 2, "beach"), S("Uluwatu", "Uluwatu", -8.83, 115.09, 3, 1, "beach")],
-    arrive: ["Denpasar", "Denpasar"],
-    leave: ["Denpasar", "Denpasar"],
+    arrive: A("Denpasar", "Denpasar"),
+    leave: A("Denpasar", "Denpasar"),
   },
   MA: {
     stops: [S("Marakeş", "Marrakesh", 31.63, -7.99, 4, 1, "culture"), S("Merzouga", "Merzouga", 31.1, -4.01, 2, 2, "nature"), S("Fes", "Fes", 34.03, -5.0, 3, 1, "culture"), S("Şefşavan", "Chefchaouen", 35.17, -5.27, 2, 3, "culture")],
-    leave: ["Fes", "Fes"],
+    leave: A("Fes", "Fes", ["Fes"]),
   },
   PE: {
     stops: [S("Lima", "Lima", -12.05, -77.04, 2, 2), S("Arequipa", "Arequipa", -16.41, -71.54, 3, 3, "culture"), S("Cusco", "Cusco", -13.53, -71.97, 4, 1, "culture"), S("Urubamba", "Urubamba", -13.31, -72.12, 2, 1, "nature")],
-    leave: ["Cusco", "Cusco"],
+    leave: A("Cusco", "Cusco", ["Cusco", "Urubamba"]),
   },
   MX: {
     stops: [S("Meksiko", "Mexico City", 19.43, -99.13, 3, 1, "culture"), S("Oaxaca", "Oaxaca", 17.07, -96.73, 3, 2, "culture"), S("Mérida", "Mérida", 20.97, -89.62, 2, 3, "culture"), S("Tulum", "Tulum", 20.21, -87.47, 4, 1, "beach")],
-    leave: ["Cancún", "Cancún"],
+    leave: A("Cancún", "Cancún", ["Tulum", "Mérida"]),
   },
 };
 
@@ -112,8 +121,9 @@ export function fitCircuit(c: Circuit, total: number, styles: readonly string[] 
   let left = total - nights.reduce((a, b) => a + b, 0);
   const order = exact.map((x, i) => ({ r: x - Math.floor(x), i })).sort((a, b) => b.r - a.r || a.i - b.i);
   for (let k = 0; left > 0; k = (k + 1) % order.length, left--) nights[order[k].i]++;
-  const name = (p: [string, string] | undefined) => (p ? L(p[0], p[1]) : null);
-  return { stops: kept.map((s, i) => ({ city: L(s.tr, s.en), nights: nights[i] })), arrive: name(c.arrive), leave: name(c.leave) };
+  // An airport only when the stop it serves is kept, first (in) or last (out).
+  const name = (a: Airport | undefined, by: CircuitStop) => (a && (!a.near || a.near.includes(by.en)) ? L(a.name[0], a.name[1]) : null);
+  return { stops: kept.map((s, i) => ({ city: L(s.tr, s.en), nights: nights[i] })), arrive: name(c.arrive, kept[0]), leave: name(c.leave, kept[kept.length - 1]) };
 }
 
 // --- coordinates for the map --------------------------------------------------------------------------------------
@@ -140,7 +150,8 @@ const PLACES: [string[], number, number][] = [
   [["Helsinki"], 60.17, 24.94], [["Varşova", "Warsaw"], 52.23, 21.01], [["Prag", "Prague"], 50.08, 14.44], [["Budapeşte", "Budapest"], 47.5, 19.04],
   [["Madrid"], 40.42, -3.7], [["Barselona", "Barcelona"], 41.39, 2.17], [["Lizbon", "Lisbon", "Lisboa"], 38.72, -9.14], [["Porto"], 41.15, -8.61],
   [["Roma", "Rome"], 41.9, 12.5], [["Milano", "Milan"], 45.46, 9.19], [["Atina", "Athens"], 37.98, 23.73], [["Dublin"], 53.35, -6.26],
-  [["New York"], 40.71, -74.01], [["Dubai"], 25.2, 55.27], [["Doha"], 25.29, 51.53], [["Kahire", "Cairo"], 30.04, 31.24], [["Tiflis", "Tbilisi"], 41.72, 44.79],
+  [["New York"], 40.71, -74.01], [["Los Angeles", "LA"], 34.05, -118.24], [["San Francisco"], 37.77, -122.42], [["Chicago"], 41.88, -87.63],
+  [["Toronto"], 43.65, -79.38], [["Sydney"], -33.87, 151.21], [["Manchester"], 53.48, -2.24], [["Abu Dabi", "Abu Dhabi"], 24.45, 54.38], [["Dubai"], 25.2, 55.27], [["Doha"], 25.29, 51.53], [["Kahire", "Cairo"], 30.04, 31.24], [["Tiflis", "Tbilisi"], 41.72, 44.79],
   [["Bali"], -8.41, 115.19], [["Denpasar"], -8.65, 115.22], [["Madeira", "Funchal"], 32.65, -16.91], [["Tokyo"], 35.68, 139.69], [["Kyoto"], 35.01, 135.77],
   [["Bangkok"], 13.76, 100.5], [["Phuket"], 7.88, 98.39], [["Koh Phangan"], 9.73, 100.01], [["Koh Samui", "Samui"], 9.51, 100.01], [["Koh Tao"], 10.1, 99.84],
   [["Koh Lanta"], 7.62, 99.04], [["Krabi"], 8.09, 98.91], [["Chiang Mai"], 18.79, 98.98], [["Santorini"], 36.39, 25.46], [["Maldivler", "Maldives", "Malé", "Male"], 4.18, 73.51],
