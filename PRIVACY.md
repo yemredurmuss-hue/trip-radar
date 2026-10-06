@@ -1,6 +1,6 @@
 # Trip Radar — Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-06 · Sürüm / Version: 0.36.23
+Son güncelleme / Last updated: 2026-10-06 · Sürüm / Version: 0.36.24
 
 ---
 
@@ -111,7 +111,7 @@ Anahtarının sunucudan silinmesini istersen info@emredurmus.net adresine yaz; s
 
 Bir geziyi paylaşırsan paylaşım sunucusuna (Supabase) şunlar gider:
 
-- gezinin ayarları (gezide kimlerin olduğunu söylediğin adlar, "Gidenler", dahil),
+- gezinin ayarları (gezide kimlerin olduğunu söylediğin adlar, "Gidenler", ve farklı yerden gelenlerin kalkış şehri dahil),
 - kaydettiğin sayfalar (küçük ekran görüntüsü dahil),
 - oylar ve tepkiler,
 - üyelerin adları ve (eklediyseler) küçük profil fotoğrafları (128 piksel JPEG).
@@ -333,7 +333,7 @@ To have your key deleted from the server, write to info@emredurmus.net; we delet
 
 When you share a trip, the following goes to the sharing server (Supabase):
 
-- the trip's settings (including the names of who's going that you entered, "Travellers"),
+- the trip's settings (including the names of who's going that you entered, "Travellers", and the departure city of anyone coming from elsewhere),
 - the pages you saved (including the small screenshot),
 - votes and reactions,
 - members' names and (if they added one) small profile photos (128-pixel JPEG).
