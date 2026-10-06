@@ -3109,6 +3109,53 @@ try {
   await flow.unroute("https://generativelanguage.googleapis.com/**", esimModel);
   console.log("✓ chat bookings: '10 GB aldım' with the eSIM on the plan updates that card (10 GB · Portekiz, still installed), one eSIM, in Diğer's 'Tüm gezi' row");
 
+  // 20d2. Web search: "Ozora 2027 tarihlerini araştır" → the chat calls web_search; while it runs the thinking line
+  // says "Web'de arıyorum…"; the answer ends with "Kaynak:" and the site's link. Only the question goes out.
+  const searched = [];
+  const searchFn = async (route) => {
+    if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" } });
+    searched.push(route.request().postDataJSON());
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return route.fulfill({
+      headers: { "Access-Control-Allow-Origin": "*" },
+      json: {
+        answer: "Ozora Festival 2027: 26 Temmuz – 2 Ağustos, Dádpuszta.",
+        sources: [{ title: "ozorafestival.eu", url: "https://ozorafestival.eu/" }],
+        kind: "event_dates",
+        cached: false,
+        at: "2026-10-05T10:00:00Z",
+        event: { start: "2027-07-26", end: "2027-08-02", place: "Dádpuszta, Hungary", official_url: "https://ozorafestival.eu/", confidence: "high" },
+      },
+    });
+  };
+  const searchModel = async (route) => {
+    const body = route.request().method() === "POST" ? route.request().postDataJSON() : null;
+    if (!body?.contents || body.generationConfig?.responseJsonSchema) return route.fallback();
+    const last = JSON.stringify(body.contents.at(-1));
+    if (last.includes("functionResponse") && last.includes("ozorafestival.eu")) {
+      return route.fulfill(reply([{ text: "Ozora 2027, 26 Temmuz – 2 Ağustos arası Dádpuszta'da." }]));
+    }
+    if (last.includes("Ozora 2027 tarihlerini araştır")) {
+      return route.fulfill(reply([{ functionCall: { id: "ws-1", name: "web_search", args: { query: "Ozora Festival 2027 dates", kind: "event_dates", why: "festival tarihi canlı bilgi" } } }]));
+    }
+    return route.fallback();
+  };
+  await flow.route(/functions\/v1\/web-search/, searchFn);
+  await flow.route("https://generativelanguage.googleapis.com/**", searchModel);
+  await esimBox.fill("Ozora 2027 tarihlerini araştır");
+  await board.getByRole("button", { name: "Gönder" }).click();
+  await board.locator(".thinking", { hasText: "Web'de arıyorum…" }).waitFor({ timeout: 15000 });
+  await board.screenshot({ path: `${out}/27b-web-searching.png` });
+  const searchReply = board.locator(".msg-assistant", { hasText: "Ozora 2027, 26 Temmuz – 2 Ağustos arası Dádpuszta'da." });
+  await searchReply.waitFor({ timeout: 20000 });
+  assert.match(await searchReply.innerText(), /Kaynak: ozorafestival\.eu/, "the reply ends with its source");
+  assert.equal(await searchReply.locator('a[href="https://ozorafestival.eu/"]').count(), 1, "the source is a link");
+  assert.deepEqual(searched, [{ q: "Ozora Festival 2027 dates", lang: "tr", kind: "event_dates", year: 2027 }], "only the question goes out");
+  await board.screenshot({ path: `${out}/27c-web-search-answer.png` });
+  await flow.unroute("https://generativelanguage.googleapis.com/**", searchModel);
+  await flow.unroute(/functions\/v1\/web-search/, searchFn);
+  console.log("✓ web search: 'Ozora 2027 tarihlerini araştır' shows 'Web'de arıyorum…', then the answer with 'Kaynak: ozorafestival.eu' as a link; only the question went out");
+
   // 20e. Words with a link on the home: the link is saved, the words go on ("Linki kaydettim; geri kalanını konuşalım").
   // A month only is never a day made up: the day is asked next; "Ortası" is said back and marked roughly.
   await board.getByRole("button", { name: /Seyahatlerim/ }).first().click();

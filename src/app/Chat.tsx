@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
 import { sendMessage } from "../lib/assistant";
+import { onChatStatus, type ChatStatus } from "../lib/chatStatus";
 import { L, lang } from "../lib/i18n";
 import { reloadIfLangChanged } from "./langSwitch";
 import { noChangeNote } from "../lib/claims";
@@ -33,6 +34,9 @@ interface Props {
 export function Chat({ trip, messages, onBack, items, trips, openCaptures, pending, onPendingTaken }: Props) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  // What the answer is waiting on beyond thinking: a web search ("Web'de arıyorum…").
+  const [status, setStatus] = useState<ChatStatus>(null);
+  useEffect(() => onChatStatus((tripId, s) => tripId === trip.id && setStatus(s)), [trip.id]);
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
@@ -68,6 +72,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
       setError(describeError(e));
     } finally {
       setBusy(false);
+      setStatus(null);
       // "Türkçeye geç": the reply is saved; the board opens again in the new language, with its "Geri al". Not after
       // an error: the error stays on screen (the language switched is there on the next load all the same).
       if (!failed) reloadIfLangChanged(trip.id, langBefore);
@@ -173,7 +178,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
             ))}
           </div>
         )}
-        {busy && <div className="thinking">{L("Düşünüyor…", "Thinking…")}</div>}
+        {busy && <div className="thinking">{status === "web" ? L("Web'de arıyorum…", "Searching the web…") : L("Düşünüyor…", "Thinking…")}</div>}
         {error && <div className="chat-error">{error}</div>}
         <div ref={bottom} />
       </div>
@@ -312,8 +317,25 @@ export function RoutingLine({ m, routing, trips }: { m: ChatMessage; routing: Ro
   );
 }
 
-/** The model's light formatting: **bold** is shown bold, everything else as plain text. */
+/** The model's light formatting: **bold** is shown bold, [site](https://…) as a link (a web search's "Kaynak:"), everything else as plain text. */
 function RichText({ text }: { text: string }) {
   const parts = text.split(/\*\*(.+?)\*\*/g);
-  return <>{parts.map((part, i) => (i % 2 ? <b key={i}>{part}</b> : part))}</>;
+  return <>{parts.map((part, i) => (i % 2 ? <b key={i}>{part}</b> : <Links key={i} text={part} />))}</>;
+}
+
+function Links({ text }: { text: string }) {
+  const parts = text.split(/\[([^\]\n]{1,80})\]\((https?:\/\/[^\s)]+)\)/g);
+  if (parts.length === 1) return <>{text}</>;
+  const out: ReactNode[] = [];
+  for (let i = 0; i < parts.length; i += 3) {
+    out.push(parts[i]);
+    if (i + 2 < parts.length) {
+      out.push(
+        <a key={i} href={parts[i + 2]} target="_blank" rel="noopener noreferrer">
+          {parts[i + 1]}
+        </a>,
+      );
+    }
+  }
+  return <>{out}</>;
 }
