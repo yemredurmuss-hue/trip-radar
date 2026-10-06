@@ -29,10 +29,12 @@ interface Props {
   rows: ChecklistRow[];
   onAsk: (q: QuestionId) => void;
   disabled?: boolean;
+  /** The route's proposal is on its way (rev 3): the ROTA row says so, the chat goes on. */
+  drawing?: boolean;
   lang: Lang;
 }
 
-export function Checklist({ rows, onAsk, disabled, lang }: Props) {
+export function Checklist({ rows, onAsk, disabled, drawing = false, lang }: Props) {
   const done = rows.filter((r) => r.done).length;
   return withLang(lang, () => (
     <div className="st-list">
@@ -45,22 +47,40 @@ export function Checklist({ rows, onAsk, disabled, lang }: Props) {
         </div>
       </div>
       <ol className="st-rows">
-        {rows.map((r) => (
-          <li key={r.id}>
-            <button type="button" className={`st-row${r.done ? " done" : ""}`} disabled={disabled} onClick={() => onAsk(r.ask)} title={L("Bunu yeniden sor", "Ask this again")}>
-              <span className="st-check" aria-hidden>
-                {r.done && <UiIcon name="check" size={14} />}
-              </span>
-              <span className="st-row-text">
-                <span className="st-row-label">
-                  {r.label}
-                  {r.required && !r.done && <em>{L(" · gerekli", " · needed")}</em>}
+        {rows.map((r) => {
+          const busy = drawing && r.id === "route" && !r.done;
+          return (
+            <li key={r.id}>
+              <button type="button" className={`st-row${r.done ? " done" : ""}${busy ? " drawing" : ""}`} disabled={disabled} onClick={() => onAsk(r.ask)} title={L("Bunu yeniden sor", "Ask this again")}>
+                <span className="st-check" aria-hidden>
+                  {r.done && <UiIcon name="check" size={14} />}
                 </span>
-                <span className="st-row-value">{r.skipped && !r.done ? L("Atlandı · sonra sohbetten", "Skipped · later in the chat") : r.value}</span>
-              </span>
-            </button>
-          </li>
-        ))}
+                <span className="st-row-text">
+                  <span className="st-row-label">
+                    {r.label}
+                    {r.required && !r.done && <em>{L(" · gerekli", " · needed")}</em>}
+                  </span>
+                  <span className="st-row-value">
+                    {busy ? (
+                      <span className="st-row-drawing" role="status">
+                        <span className="st-dots" aria-hidden>
+                          <i />
+                          <i />
+                          <i />
+                        </span>
+                        {L("Rotayı çiziyor…", "Drawing the route…")}
+                      </span>
+                    ) : r.skipped && !r.done ? (
+                      L("Atlandı · sonra sohbetten", "Skipped · later in the chat")
+                    ) : (
+                      r.value
+                    )}
+                  </span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
       </ol>
     </div>
   ));
@@ -71,12 +91,13 @@ export const generateLabel = (complete: boolean) => (complete ? L("Gezimi oluşt
 
 /**
  * The dark card under the list: it works as soon as the destination is known (what's missing is asked later in the
- * board's chat, which goes on with this conversation).
+ * board's chat, which goes on with this conversation), also while the model is working (rev 3: what's on its way is
+ * dropped, the best route there is gets built). Only "no destination yet" disables it, and only then does it look so.
  */
-export function GenerateCard({ ready, complete, busy = false, missing, onGenerate, lang }: { ready: boolean; complete: boolean; busy?: boolean; missing: string[]; onGenerate: () => void; lang: Lang }) {
+export function GenerateCard({ ready, complete, missing, onGenerate, lang }: { ready: boolean; complete: boolean; missing: string[]; onGenerate: () => void; lang: Lang }) {
   return withLang(lang, () => (
     <div className="st-gen-card">
-      <button type="button" className="st-gen-btn" disabled={!ready || busy} onClick={onGenerate}>
+      <button type="button" className="st-gen-btn" disabled={!ready} aria-disabled={!ready} onClick={onGenerate}>
         <span aria-hidden>✨</span> {generateLabel(complete)}
       </button>
       <p>
@@ -91,7 +112,7 @@ export function GenerateCard({ ready, complete, busy = false, missing, onGenerat
 }
 
 /** Narrow screens: "4/6 · Gezin şekilleniyor ▾", the list opening under it. */
-export function ChecklistBar({ rows, onAsk, ready, complete, onGenerate, disabled, lang }: Props & { ready: boolean; complete: boolean; onGenerate: () => void }) {
+export function ChecklistBar({ rows, onAsk, ready, complete, onGenerate, disabled, drawing, lang }: Props & { ready: boolean; complete: boolean; onGenerate: () => void }) {
   const [open, setOpen] = useState(false);
   const done = rows.filter((r) => r.done).length;
   return withLang(lang, () => (
@@ -109,12 +130,12 @@ export function ChecklistBar({ rows, onAsk, ready, complete, onGenerate, disable
           </span>
         </button>
         {ready && (
-          <button type="button" className="st-bar-gen" onClick={onGenerate} disabled={disabled}>
+          <button type="button" className="st-bar-gen" onClick={onGenerate}>
             ✨ {complete ? L("Oluştur", "Generate") : L("Şimdilik oluştur", "Generate for now")}
           </button>
         )}
       </div>
-      {open && <Checklist rows={rows} onAsk={(q) => (setOpen(false), onAsk(q))} disabled={disabled} lang={lang} />}
+      {open && <Checklist rows={rows} onAsk={(q) => (setOpen(false), onAsk(q))} disabled={disabled} drawing={drawing} lang={lang} />}
     </div>
   ));
 }

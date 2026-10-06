@@ -4,12 +4,17 @@
 // every step stays on screen long enough to be read, its tick eases in, the bar fills smoothly with the steps done
 // (no jumping percentages), photos fade in as they load; with reduced motion nothing moves. A step that fails stops
 // there with its reason: "Tekrar dene" runs it again (nothing is made twice), "Yine de aç" opens what's made so far.
+//
+// Rev 3: a map first (FlightMap: the flight from where they leave to where they land, drawn on a bundled world
+// map), the stops' photos fanning in under it once the plane lands; the steps tick alongside as the work finishes.
 import { useEffect, useRef, useState } from "react";
 import { cityKeyOf } from "../../lib/plan";
 import { L, withLang } from "../../lib/i18n";
 import { runStep, stepsFor, type StepId } from "../../lib/startCreate";
+import { tripPoints, type TripPoints } from "../../lib/startMap";
 import { creationOf, preparedPhotos, stopsOf, type StartState } from "../../lib/startTrip";
 import { updateTrip } from "../actions";
+import { FlightMap, loadWorld, type WorldMap } from "./FlightMap";
 import { placePhotos } from "./model";
 
 /** A step is seen running at least this long, so a quick one doesn't flash past (the work itself is often quicker). */
@@ -66,12 +71,31 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
     let live = true;
     const have = new Set(photos.map((p) => cityKeyOf(p.place)));
     const missing = places.filter((p) => !have.has(cityKeyOf(p)));
-    if (missing.length && photos.length < 4) void placePhotos(missing).then((found) => live && found.length && setPhotos((now) => [...now, ...found].slice(0, 4)));
+    if (missing.length && photos.length < 4) void placePhotos(missing, state).then((found) => live && found.length && setPhotos((now) => [...now, ...found].slice(0, 4)));
     return () => {
       live = false;
     };
     // Once, for the places as they were when it opened.
   }, [places]);
+
+  // The map (bundled, read once): "loading" keeps its room; null shows the photos alone.
+  const [world, setWorld] = useState<WorldMap | null | "loading">("loading");
+  const [points, setPoints] = useState<TripPoints | null>(null);
+  // The photos fan in once the plane lands (at once without a map).
+  const [landed, setLanded] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void loadWorld().then((w) => {
+      if (!live) return;
+      const p = w ? tripPoints(state, w.centroids) : null;
+      setPoints(p);
+      setWorld(w && p?.to ? w : null);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  const showPhotos = landed || world === null;
 
   async function run(from: number) {
     setFailed(null);
@@ -154,10 +178,15 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
   return T(() => (
     <div className="st-gen" role="status" aria-live="polite">
       <h2>{L(`${place} Gezisi planlanıyor`, `Planning your ${place} trip`)}</h2>
-      <div className="st-photos" aria-hidden>
-        {cards.map((p, i) => (
-          <Card key={i} i={i} place={i === 0 ? place : p.place} url={p.url} />
-        ))}
+      <div className={`st-gen-stage${world === null ? " no-map" : ""}`}>
+        {world === "loading" ? <div className="st-map st-map-wait" aria-hidden /> : world && points ? <FlightMap world={world} points={points} onLanded={() => setLanded(true)} /> : null}
+        {showPhotos && (
+          <div className="st-photos" aria-hidden>
+            {cards.map((p, i) => (
+              <Card key={`${i}:${p.place}`} i={i} place={p.place || (i === 0 ? place : "")} url={p.url} />
+            ))}
+          </div>
+        )}
       </div>
       <ol className="st-steps">
         {steps.map((s) => {
