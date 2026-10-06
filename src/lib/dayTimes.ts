@@ -53,6 +53,8 @@ const hubWord = (r: DayRow) => (r.leg?.via === "flight" ? L("havalimanında", "a
  */
 export function applyDayTimes(rows: DayRow[], overrides: DayTimeOverrides = {}): DayRow[] {
   const out = rows.map((r) => ({ ...r }));
+  // Each line's own time before the traveller's (a check-in set before landing goes back to it, below).
+  const planned = new Map(out.map((r) => [r.key, r.time]));
   for (const r of out) {
     const own = overrides[r.key];
     if (isClock(own)) Object.assign(r, { time: own, estimated: false, user: true, why: L("Senin saatin", "Your time") });
@@ -107,11 +109,15 @@ export function applyDayTimes(rows: DayRow[], overrides: DayTimeOverrides = {}):
       why: L(`Varış ${landed}; çıkış ~${exitMin} dk`, `Arrives ${landed}; out in ~${exitMin} min`),
     });
   }
-  // The traveller's own check-in time stays, but not silently when they'd still be in the air (0.36.15).
+  // A check-in set by hand before the flight in lands can't be (0.36.30, Emre's 15:00 on a 22:15 landing): the
+  // line goes by the landing again, at its place in the day, saying the time set by hand was put aside
+  // (`ownTime`: "Elle girileni sil" takes it away for good).
   if (checkin?.user && isClock(checkin.time) && isClock(landed) && (overnight || toMin(checkin.time) < toMin(landed))) {
+    const own = checkin.time;
+    Object.assign(checkin, { time: planned.get(checkin.key) ?? null, user: false, estimated: false, why: null, ownTime: own });
     checkin.warn = L(
-      `${clockAt(landed)} iniyorsun: ${clockAt(checkin.time)} check-in olamaz.`,
-      `You land at ${landed}: checking in at ${checkin.time} can't be.`,
+      `Elle girilen ${own} inişten (${landed}) önceydi; check-in inişe göre gösteriliyor.`,
+      `The ${own} set by hand was before landing (${landed}); check-in goes by the landing.`,
     );
   } else if (checkin?.user && isClock(checkin.time) && !isClock(landed) && inbound && toMin(checkin.time) < toMin(inbound.time!)) {
     checkin.warn = L(`${inbound.time} yolculuğundan önce check-in olamaz.`, `Checking in before the ${inbound.time} trip can't be.`);

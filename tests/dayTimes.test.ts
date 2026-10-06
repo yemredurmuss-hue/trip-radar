@@ -102,10 +102,11 @@ describe("the trip in is the anchor (Emre's 7 October: Istanbul → Copenhagen �
   it("the traveller's own check-in time stands", () => {
     expect(times(applyDayTimes([ticket("a", "20:30", null), checkin("15:00")], { in: "23:00" })).in).toBe("23:00");
   });
-  it("...but says so when it's before landing (Emre's 15:00, set by hand, on a 22:15 landing)", () => {
+  it("...unless it's before landing (Emre's 15:00, set by hand, on a 22:15 landing): put aside, said so", () => {
     const rows = applyDayTimes(legs("2026-10-07T22:15"), { in: "15:00" });
-    expect(times(rows).in).toBe("15:00");
-    expect(rows[3].warn).toBe("22:15'te iniyorsun: 15:00'te check-in olamaz.");
+    // By the landing again: out at 23:00, an hour on the way: after midnight.
+    expect(rows[3]).toMatchObject({ time: null, user: false, hint: "gece ~00:00", ownTime: "15:00" });
+    expect(rows[3].warn).toBe("Elle girilen 15:00 inişten (22:15) önceydi; check-in inişe göre gösteriliyor.");
     expect(applyDayTimes(legs("2026-10-07T22:15"), { in: "23:59" })[3].warn).toBeUndefined();
   });
 });

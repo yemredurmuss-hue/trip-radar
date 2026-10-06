@@ -278,6 +278,8 @@ export interface DayRow {
    */
   freed?: string | null;
   user?: boolean;
+  /** A time set by hand that couldn't be (a check-in before landing), put aside: shown in the warning, removable. */
+  ownTime?: string | null;
   /** Their time doesn't leave room ("bu saatle geç kalabilirsin"). */
   warn?: string | null;
   estimated: boolean;

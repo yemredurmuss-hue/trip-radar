@@ -470,11 +470,11 @@ function Line({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tri
       {row.warn && (
         <p className="dc-warn">
           {row.warn}
-          {row.user && (
+          {(row.user || row.ownTime) && (
             <>
               {" "}
               <button type="button" className="link-btn" onClick={() => void clearOwnTime(tripId, row.key)}>
-                {L("Hesaplanan saate dön", "Back to the worked-out time")}
+                {row.ownTime ? L("Elle girileni sil", "Remove the time set by hand") : L("Hesaplanan saate dön", "Back to the worked-out time")}
               </button>
             </>
           )}
