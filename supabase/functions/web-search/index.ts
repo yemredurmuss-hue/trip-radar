@@ -61,7 +61,7 @@ async function callerOf(req: Request): Promise<string> {
 
 async function askGemini(key: string, model: string, prompt: string): Promise<{ ok: true; shaped: Shaped } | { ok: false; status: number }> {
   const headers = { "Content-Type": "application/json", "x-goog-api-key": key };
-  const signal = AbortSignal.timeout(25_000);
+  const signal = AbortSignal.timeout(40_000);
   let res = await fetch(`${API}/interactions`, { method: "POST", headers, signal, body: JSON.stringify({ model, input: prompt, tools: [{ type: "google_search" }] }) });
   if (res.status === 404) {
     res = await fetch(`${API}/models/${model}:generateContent`, {
