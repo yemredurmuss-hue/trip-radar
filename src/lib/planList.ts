@@ -1,22 +1,28 @@
-// The hero's list of what's left, from the same entries as its "Planlama %75" (categories.planStages), so the box
-// and the list it opens never disagree: "Karar bekliyor" is exactly the needs waiting for a decision, "Rezerve
-// edilecek" exactly the ones planned and not booked, one row per need (two people's tickets on one flight card
-// are one row, as they're one need). A need with no to-do of its own (an activity or an eSIM with options, say)
-// gets a row from its card. Apart from the stages: the ways between places that aren't on the Plan yet ("Varış
-// transferi · nasıl?") and the free cancellations running out. Pure.
-import { findInSections, stagedEntries, type CatEntry, type CatSection, type PlanStages } from "./categories";
+// The hero's list of what's left, from the same needs as its numbers (categories.needsOf, lifecycle.ts), so the
+// box and the list it opens never disagree. Its groups count needs: "Karar bekliyor" (Aranacak + Seçenekler),
+// "Rezerve edilecek" (Planlandı), "Belge eksik" (Rezerve edildi, no file yet). A group's rows are the parts that
+// hold its needs there: one per need, or one per person when each person's options are a group of their own
+// (Emre's ticket and Sabine's). A part with no to-do of its own (an activity or an eSIM with options, say) gets a
+// row from its card. Apart from the needs: the transfers not on the Plan yet ("Varış transferi · nasıl?") and the
+// free cancellations running out. Pure.
+import { findInSections, needsOf, type CatEntry, type CatSection } from "./categories";
+import { countStages, type Stage, type StageCounts } from "./lifecycle";
 import { locale } from "./i18n";
 import { nightsBetween } from "./items";
 import type { Todo } from "./progress";
-import type { Item } from "./types";
 
 export interface PlanList {
-  stages: PlanStages;
-  /** Waiting for a decision: options, or nothing yet (Karar bekliyor). */
+  /** The needs at each stage: the hero's numbers (lifecycle.heroNumbers). */
+  counts: StageCounts;
+  /** How many needs each group stands for (its heading's number; its rows can be more: one per person). */
+  needs: { open: number; book: number; docs: number };
+  /** Waiting for a decision: Aranacak and Seçenekler (Karar bekliyor). */
   open: Todo[];
-  /** Decided, not booked yet (Rezerve edilecek). */
+  /** Planned, not booked yet (Rezerve edilecek). */
   book: Todo[];
-  /** A transfer or a way between two places not on the Plan yet: a question, not one of the stages. */
+  /** Booked, no file on it yet (Belge eksik). */
+  docs: Todo[];
+  /** A transfer not on the Plan yet: a question, not a need. */
   ways: Todo[];
   /** Free cancellations running out. */
   deadlines: Todo[];
@@ -25,7 +31,7 @@ export interface PlanList {
 const SOON_DAYS = 14;
 const byDate = (a: Todo, b: Todo) => (a.date ?? "9999").localeCompare(b.date ?? "9999") || a.title.localeCompare(b.title, locale());
 
-/** A row for a need that has no to-do of its own: its card's name, where and when, and its state. */
+/** A row for a part that has no to-do of its own: its card's name, where and when, and its state. */
 function rowOf(e: CatEntry, kind: Todo["kind"], today: string): Todo {
   const days = e.date ? nightsBetween(today, e.date) : null;
   return {
@@ -40,12 +46,16 @@ function rowOf(e: CatEntry, kind: Todo["kind"], today: string): Todo {
   };
 }
 
-export function planList(sections: CatSection[], todos: Todo[], today: string, isPlaceholder: (item: Item) => boolean = () => false): PlanList {
-  const staged = stagedEntries(sections, isPlaceholder);
-  const stage = new Map<string, "open" | "planned">([...staged.open.map((e) => [e.key, "open"] as const), ...staged.planned.map((e) => [e.key, "planned"] as const)]);
+const OPEN: readonly Stage[] = ["search", "options"];
+/** Which to-dos stand for a part at a stage: a decision for one waiting, a booking for one planned. */
+const fits = (stage: Stage, kind: Todo["kind"]) => (OPEN.includes(stage) ? kind === "decide" || kind === "plan" : stage === "planned" ? kind === "book" : false);
+
+export function planList(sections: CatSection[], todos: Todo[], today: string): PlanList {
+  const needs = needsOf(sections);
   const rows = new Map<string, Todo>();
   const ways: Todo[] = [];
   const deadlines: Todo[] = [];
+  const entries = new Map(needs.flatMap((n) => n.entries.map((e) => [e.key, e] as const)));
   for (const t of todos) {
     if (t.kind === "deadline") {
       deadlines.push(t);
@@ -53,25 +63,32 @@ export function planList(sections: CatSection[], todos: Todo[], today: string, i
     }
     const hit = findInSections(sections, t.target);
     if (hit) {
-      const s = stage.get(hit.key);
-      // The to-do says what its need's stage says (a decision, or a booking), else the card's own row stands in.
-      const fits = s === "open" ? t.kind === "decide" || t.kind === "plan" : s === "planned" ? t.kind === "book" : false;
-      if (fits && !rows.has(hit.key)) rows.set(hit.key, t);
+      const e = entries.get(hit.key);
+      if (e?.stage && fits(e.stage, t.kind) && !rows.has(e.key)) rows.set(e.key, t);
       continue;
     }
     // Not on the Plan: a transfer nobody has said anything about yet.
     if (t.target.leg) ways.push(t);
   }
-  const open = staged.open.map((e) => rows.get(e.key) ?? rowOf(e, e.state === "empty" ? "plan" : "decide", today));
-  const book = staged.planned.map((e) => rows.get(e.key) ?? rowOf(e, "book", today));
+  // A need's rows: its parts at the need's own stage (the ones holding it there).
+  const group = (stages: readonly Stage[], kind: (e: CatEntry) => Todo["kind"]) => {
+    const at = needs.filter((n) => stages.includes(n.stage));
+    const list = at.flatMap((n) => n.entries.filter((e) => e.stage === n.stage).map((e) => rows.get(e.key) ?? rowOf(e, kind(e), today)));
+    return { count: at.length, list: list.sort(byDate) };
+  };
+  const open = group(OPEN, (e) => (e.stage === "search" ? "plan" : "decide"));
+  const book = group(["planned"], () => "book");
+  const docs = group(["booked"], () => "doc");
   return {
-    stages: { booked: staged.booked.length, planned: book.length, open: open.length, total: staged.booked.length + book.length + open.length },
-    open: open.sort(byDate),
-    book: book.sort(byDate),
+    counts: countStages(needs.map((n) => n.stage)),
+    needs: { open: open.count, book: book.count, docs: docs.count },
+    open: open.list,
+    book: book.list,
+    docs: docs.list,
     ways: ways.sort(byDate),
     deadlines: deadlines.sort(byDate),
   };
 }
 
-/** Everything in the list, soonest first: the hero's "Planı tamamla" goes to the first. */
+/** What's left to act on, soonest first: the hero's "Planı tamamla" goes to the first. A missing file isn't a step. */
 export const listTodos = (list: PlanList): Todo[] => [...list.open, ...list.book, ...list.ways, ...list.deadlines].sort(byDate);

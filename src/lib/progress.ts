@@ -13,7 +13,7 @@ import { needsBooking } from "./booking";
 import { isTrip } from "./travelKinds";
 import type { Item } from "./types";
 
-export type TodoKind = "decide" | "book" | "plan" | "deadline";
+export type TodoKind = "decide" | "book" | "plan" | "deadline" | "doc";
 
 export interface Todo {
   key: string;
@@ -32,7 +32,8 @@ export interface Todo {
 
 export interface DecisionProgress {
   todos: Todo[];
-  count: Record<TodoKind, number>;
+  // What this strip makes ("doc", a file missing, comes only from planList.ts).
+  count: Record<Exclude<TodoKind, "doc">, number>;
 }
 
 const SOON_DAYS = 14;
@@ -286,8 +287,8 @@ export function decisionProgress(
   });
   // By date (undated last), then by name, so the list doesn't reshuffle.
   todos.sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999") || a.title.localeCompare(b.title, locale()));
-  const count: Record<TodoKind, number> = { decide: 0, book: 0, plan: 0, deadline: 0 };
-  for (const t of todos) count[t.kind]++;
+  const count: Record<Exclude<TodoKind, "doc">, number> = { decide: 0, book: 0, plan: 0, deadline: 0 };
+  for (const t of todos) if (t.kind !== "doc") count[t.kind]++;
   return { todos, count };
 }
 
@@ -303,6 +304,8 @@ export function nextStepText(todo: Todo): string {
       return L(`Rezerve et: ${todo.title}`, `Book: ${todo.title}`);
     case "plan":
       return L(`Planla: ${todo.title}`, `Plan: ${todo.title}`);
+    case "doc":
+      return L(`Belge ekle: ${todo.title}`, `Add the file: ${todo.title}`);
     case "deadline":
       return !todo.days
         ? L(`${todo.title}: ücretsiz iptal bugün bitiyor`, `${todo.title}: free cancellation ends today`)

@@ -14,7 +14,7 @@ export function acceptMood(text: string): boolean {
 export const moodKey = (cities: string[]) => cities.map((c) => c.trim().toLowerCase()).join("|");
 
 /** One clause for what's most pressing: decisions and bookings first; the other to-dos only when there are none. */
-export function statusSentence(count: Record<TodoKind, number>, ctx: { flightsDone: boolean; waitingCity: string | null }): string {
+export function statusSentence(count: Record<Exclude<TodoKind, "doc">, number>, ctx: { flightsDone: boolean; waitingCity: string | null }): string {
   const { decide, book } = count;
   const other = count.plan + count.deadline;
   if (decide + book + other === 0) return L("Her şey hazır.", "Everything's set.");

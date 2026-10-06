@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { requestProcessing } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
@@ -104,7 +104,15 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const timeline = useMemo(() => buildTimeline(plan, legs, items, hidden), [plan, legs, items, hidden]);
   // The Plan by category (spec 0.34): every block and record in one of seven sections; which are open, per trip.
   const rank = useMemo(() => new Map([...(decisions?.byGroup.values() ?? [])].flatMap((d) => d.options.map((o, i) => [o.item.id, i] as const))), [decisions?.byGroup]);
-  const sections = useMemo(() => categorize({ plan, timeline, items, legs, hidden, rank, today }), [plan, timeline, items, legs, hidden, rank, today]);
+  // A record's files (its own and those of the plans it replaced): a booking with one is Hazır (lifecycle.ts).
+  const inherited = useMemo(() => inheritedDocs(plan.closed), [plan.closed]);
+  const docsFor = useTripDocs(trip.id, inherited);
+  // Where each need stands (lifecycle.ts): a place the start only made room for and an empty card are Aranacak.
+  const stageCtx = useCallback(
+    (item: Item) => ({ placeholder: isPlaceholder(trip, item), empty: isEmptyRecord(trip, item, docsFor(item.id).length, items), docs: docsFor(item.id).length }),
+    [trip, items, docsFor],
+  );
+  const sections = useMemo(() => categorize({ plan, timeline, items, legs, hidden, rank, today, stageCtx }), [plan, timeline, items, legs, hidden, rank, today, stageCtx]);
   // What Gizlenenler holds, for the history's "Geri getir" (0.37): ruled-out records, transfers and nights not needed.
   const hiddenForHistory = useMemo<HiddenInput[]>(
     () =>
@@ -166,9 +174,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // --- plan cards: the way chosen per transfer, files, delete with undo, the add sheet ---
   const legModes = useMemo(() => legModeByItem(legs), [legs]);
   const legEnds = useMemo(() => legEndsByItem(legs), [legs]);
-  const inherited = useMemo(() => inheritedDocs(plan.closed), [plan.closed]);
-  const docsFor = useTripDocs(trip.id, inherited);
-  const undo = useMemo(() => undoSlot<Undoable>(), []);
+  const undo =useMemo(() => undoSlot<Undoable>(), []);
   const [undoable, setUndoable] = useState<Undoable | null>(null);
   const [undoError, setUndoError] = useState<string | null>(null);
   useEffect(() => undo.subscribe(setUndoable), [undo]);
@@ -490,7 +496,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const done = useMemo(() => planProgress(sections), [sections]);
   // The hero's "Planlama %75" and the list it opens, from the same needs: booked / planned / waiting for a
   // decision. A flight or a stay the start chat only made room for waits for a decision (startTrip.ts isPlaceholder).
-  const todo = planList(sections, progress.todos, today, (i) => isPlaceholder(trip, i));
+  const todo = planList(sections, progress.todos, today);
   // One sentence: the mood, else what's waiting. Once the progress box counts the stages, the counts are its
   // own, never a second set of numbers here.
   const lead =

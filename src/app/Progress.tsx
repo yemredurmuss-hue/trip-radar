@@ -1,6 +1,6 @@
-// What's left to do, as a list under the hero: the progress box's "3 rezerve · 3 planlandı · 2 karar bekliyor"
-// lists them all, in groups (Karar bekliyor, Rezerve edilecek: the same needs it counts; then the transfers not
-// said yet and the cancellations running out), its "⏳ 2" only the cancellations; a tap on an entry takes you to it.
+// What's left to do, as a list under the hero: the progress box's words list it all, in groups (Karar bekliyor,
+// Rezerve edilecek, Belge eksik: the needs the hero counts; then the transfers not said yet and the cancellations
+// running out), its "⏳ 2" only the cancellations; a tap on an entry takes you to it.
 import { L } from "../lib/i18n";
 import type { PlanList } from "../lib/planList";
 import { entryDomId, nextStepText, type Todo, type TodoKind } from "../lib/progress";
@@ -47,15 +47,17 @@ export const when = (t: Todo) =>
  * yet and the cancellations running out), or only the cancellations (the hero's "⏳").
  */
 export function TodoList({ list, open, onGo }: { list: PlanList; open: "all" | "deadline"; onGo: (target: Todo["target"]) => void }) {
-  const parts: { key: string; label: string | null; todos: Todo[] }[] = (
+  // A heading's number is the needs (the hero's); its rows can be more, one per person.
+  const parts: { key: string; label: string | null; count: number; todos: Todo[] }[] = (
     open === "all"
       ? [
-          { key: "open", label: L("Karar bekliyor", "To decide"), todos: list.open },
-          { key: "book", label: L("Rezerve edilecek", "To book"), todos: list.book },
-          { key: "ways", label: L("Ulaşım · nasıl gidilecek", "Getting there · how"), todos: list.ways },
-          { key: "deadline", label: L("İptal süresi", "Cancel by"), todos: list.deadlines },
+          { key: "open", label: L("Karar bekliyor", "To decide"), count: list.needs.open, todos: list.open },
+          { key: "book", label: L("Rezerve edilecek", "To book"), count: list.needs.book, todos: list.book },
+          { key: "docs", label: L("Belge eksik", "File missing"), count: list.needs.docs, todos: list.docs },
+          { key: "ways", label: L("Ulaşım · nasıl gidilecek", "Getting there · how"), count: list.ways.length, todos: list.ways },
+          { key: "deadline", label: L("İptal süresi", "Cancel by"), count: list.deadlines.length, todos: list.deadlines },
         ]
-      : [{ key: "deadline", label: null, todos: list.deadlines }]
+      : [{ key: "deadline", label: null, count: list.deadlines.length, todos: list.deadlines }]
   ).filter((g) => g.todos.length);
   if (!parts.length) return null;
   const label = open === "all" ? L("Yapılacaklar", "To do") : kinds().find((k) => k.kind === "deadline")?.label;
@@ -65,7 +67,7 @@ export function TodoList({ list, open, onGo }: { list: PlanList; open: "all" | "
         <div key={g.key} className="todo-group">
           {g.label && (
             <h3 className="todo-head">
-              {g.label} <span>{g.todos.length}</span>
+              {g.label} <span>{g.count}</span>
             </h3>
           )}
           <ul aria-label={g.label ?? label}>

@@ -1,14 +1,15 @@
 // The trip at a glance, left column (hero v9, docs/superpowers/specs/2026-10-05-hero-v9-design.md): a photo
 // per city (switcher top left, countdown and ••• top right), the title, the dates, one muted sentence, the plan
-// in four cells (a tap opens that section of the Plan) and "Planlama %75": what needs a booking in three stages
-// (booked, planned, waiting for a decision), a bar in two greens and the one dark button. Every block has an
-// empty state; what arrives later fades in.
+// in four cells (a tap opens that section of the Plan) and "Planlananların %67'si rezerve · 3 ihtiyaç karar
+// bekliyor" (lifecycle.ts: the percentage over what's in the plan only), a bar in two greens and the one dark
+// button. Every block has an empty state; what arrives later fades in.
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { countdown, countdownText } from "../lib/countdown";
 import type { HeroTally } from "../lib/heroInfo";
 import { formatDateRange, nightsBetween } from "../lib/items";
 import { L } from "../lib/i18n";
 import { nDays } from "../lib/i18nText";
+import { heroNumbers, openNeedsText, plannedBookedText } from "../lib/lifecycle";
 import type { PlanList } from "../lib/planList";
 import type { Trip } from "../lib/types";
 import { HeroIcon, type HeroIconName } from "./Icons";
@@ -74,20 +75,26 @@ export function TripHero(props: {
   const deadlines = todo.deadlines.length;
   const listed = todo.open.length + todo.book.length + todo.ways.length + deadlines;
   const toggle = (list: "all" | "deadline") => props.onList(props.list === list ? null : list);
-  const { booked, planned, open, total } = todo.stages;
-  // Planned or booked of all that needs a booking; never 100 while something waits for a decision. Nothing that
-  // needs a booking: an empty bar (no stage to fill), never a full one.
-  const pct = total ? Math.min(Math.round(((booked + planned) / total) * 100), open ? 99 : 100) : 0;
-  const reach = total ? ((booked + planned) / total) * 100 : 0;
-  const bookedW = total ? (booked / total) * 100 : 0;
-  // "3 rezerve · 3 planlandı · 2 karar bekliyor": a zero says nothing, so it's left out. Once nothing waits for a
-  // decision, what's planned is what's left to book.
+  // Aşamalar (lifecycle.ts): the percentage is over what's in the plan only, booked (or ready) of planned + booked;
+  // what waits for a decision is a count beside it, never in it. Nothing in the plan: no percentage.
+  const { done: booked, planned, inPlan, open, pct } = heroNumbers(todo.counts);
+  const bookedW = inPlan ? (booked / inPlan) * 100 : 0;
+  const reach = inPlan ? 100 : 0;
+  const headline =
+    done.total === 0
+      ? L("Planlama", "Planning")
+      : done.complete
+        ? L("Her şey hazır", "All set")
+        : pct != null
+          ? plannedBookedText(pct)
+          : open
+            ? openNeedsText(open)
+            : L("Planlama", "Planning");
+  // Under it: what waits for a decision (when the headline is the percentage), what's left to book (the light
+  // tone's key) and, with no decision left, the transfers not said yet. A zero says nothing.
   const words: [string, ReactNode][] = [];
-  if (booked) words.push(["booked", <><i className="hx-key booked" aria-hidden />{L(`${booked} rezerve`, `${booked} booked`)}</>]);
-  if (planned) words.push(["planned", <><i className="hx-key planned" aria-hidden />{open ? L(`${planned} planlandı`, `${planned} planned`) : L(`${planned} rezervasyon kaldı`, `${planned} ${planned === 1 ? "booking" : "bookings"} left`)}</>]);
-  if (open) words.push(["open", L(`${open} karar bekliyor`, `${open} to decide`)]);
-  // The transfers not said yet aren't a stage (no fill in the bar); with no decision left they still get a word, so
-  // "Planlama tamam" never hides them and the list stays one tap away.
+  if (pct != null && open) words.push(["open", openNeedsText(open)]);
+  if (planned) words.push(["planned", <><i className="hx-key planned" aria-hidden />{L(`${planned} rezerve edilecek`, `${planned} to book`)}</>]);
   const ways = todo.ways.length;
   if (ways && !open) words.push(["ways", L(`${ways} ulaşım sorusu`, `${ways} transfer question${ways === 1 ? "" : "s"}`)]);
   // The line wraps between the parts, never inside one, and a dot goes with the part after it (none left dangling).
@@ -106,7 +113,7 @@ export function TripHero(props: {
       </span>
     </Fragment>
   ));
-  const barLabel = L(`Planlama: ${booked} rezerve, ${planned} planlandı, ${open} karar bekliyor`, `Planning: ${booked} booked, ${planned} planned, ${open} to decide`);
+  const barLabel = L(`${headline}: ${booked} rezerve, ${planned} planlandı, ${open} ihtiyaç karar bekliyor`, `${headline}: ${booked} booked, ${planned} planned, ${open} to decide`);
   return (
     <div className="hx-left">
       <div className={`hx-photo${hasImage ? "" : " empty"}`}>
@@ -179,9 +186,9 @@ export function TripHero(props: {
           <div className="hx-progress-main">
             {/* The words, the bar (and "⏳ 2") on one line, the three stages under them: the box keeps the height it had. */}
             <div className="hx-progress-head">
-              <b>{done.total === 0 ? L("Planlama", "Planning") : done.complete ? L("Her şey hazır", "All set") : total === 0 ? L("Planlama", "Planning") : open === 0 ? L("Planlama tamam", "Planning done") : L(`Planlama %${pct}`, `Planning ${pct}%`)}</b>
+              <b>{headline}</b>
               {/* Two fills from the left: planned (light) under booked (dark), so booked + planned is the light one's end. */}
-              <div className="hx-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={barLabel}>
+              <div className="hx-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? 0} aria-label={barLabel}>
                 {reach > 0 && <i className="hx-bar-planned" style={{ width: `${reach}%` }} />}
                 {bookedW > 0 && <i className="hx-bar-booked" style={{ width: `${bookedW}%` }} />}
               </div>
