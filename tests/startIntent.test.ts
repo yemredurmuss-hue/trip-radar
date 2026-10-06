@@ -74,7 +74,12 @@ describe("the owner's sentence (English, no model)", () => {
 
   it("+4 days: Cape Town 2 → Tankwa Karoo 6 → Cape Town 2, then where from, then how many; the essentials then done", () => {
     let s = typed(newStart("ab", "plan", 1, "tr"), OWNER);
+    const asked = s;
     s = withLang("en", () => applyAnswer(s, { q: "duration", duration: { unit: "day", n: 11 } }, 3));
+    // Said back exactly, never as a month only ("April · 11 days"): the days, estimated, and the route.
+    expect(withLang("en", () => replyText(asked, s, ctx, false, true))).toBe(
+      "The trip: 24 April – 4 May · 10 nights (estimated) (Cape Town 2 · Tankwa Karoo 6 · Cape Town 2 nights).\nWhere are you leaving from?",
+    );
     expect(tripDates(s)).toEqual({ start: "2027-04-24", end: "2027-05-04" });
     expect(s.start).toEqual({ date: "2027-04-24", approx: true, event: true });
     expect(totalNights(s)).toBe(10);

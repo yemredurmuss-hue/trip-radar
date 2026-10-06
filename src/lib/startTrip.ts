@@ -1976,7 +1976,7 @@ export function ackText(before: StartState, after: StartState, ctx: StartCtx): s
 /** The dates or the length just said, in words ("3 weeks in November", "Kasım'da 3 hafta", "20 Kasım – 4 Aralık · 14 gece"). */
 function whenWords(before: StartState, after: StartState): string {
   if (whenText(before) === whenText(after)) return "";
-  const month = after.start?.approx && !after.start.part ? monthName(Number(after.start.date.slice(5, 7))) : null;
+  const month = after.start && monthOnly(after) ? monthName(Number(after.start.date.slice(5, 7))) : null;
   if (after.start && after.duration && !month) return whenText(after);
   if (month && after.duration) return L(`${month}${locative(month)} ${durationText(after.duration)}`, `${durationText(after.duration).toLowerCase()} in ${month}`);
   if (month) return L(`${month}${locative(month)}`, `in ${month}`);
@@ -2204,7 +2204,7 @@ export function whenText(s: Pick<StartState, "start" | "duration">): string {
   if (dates && s.start && n != null) {
     const nights = L(`${n} gece`, `${n} night${n === 1 ? "" : "s"}`);
     // A month only: no day yet (asked next). A part of the month: the dates, said to be a guess.
-    if (s.start.approx && !s.start.part) return `${monthName(Number(s.start.date.slice(5, 7)))} · ${s.duration ? durationText(s.duration) : nights}`;
+    if (monthOnly(s)) return `${monthName(Number(s.start.date.slice(5, 7)))} · ${s.duration ? durationText(s.duration) : nights}`;
     return `${formatDateRange(dates.start, dates.end)} · ${nights}${s.start.approx ? (s.start.event ? L(" (tahmini)", " (estimated)") : L(" (yaklaşık)", " (roughly)")) : ""}`;
   }
   if (s.duration) return `${durationText(s.duration)} · ${L("başlangıç?", "start?")}`;
