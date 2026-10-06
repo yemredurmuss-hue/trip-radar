@@ -13,6 +13,8 @@
 // same list, each priced for the dates (one Xotelo call each, cached a day; one it can't price keeps its usual range).
 // Live prices (SerpApi: Google Flights, Google Hotels; SERPAPI_KEY, a small free quota) only when those have
 // nothing, or on `live=1` (the chat's live look); the page opened stays a partner's.
+// Activities (?kind=activity&city=Ubud&start=…&end=…&adults=2[&q=cooking class]) from Viator's Partner API (VIATOR_KEY):
+// its pages carry the project's Viator partner code already, so they aren't turned; kept an hour, as Viator asks.
 // Each source is its own part: one failing leaves that kind with no offers and the card with its search buttons.
 // Calls out are capped per source and day. Deployed with verify_jwt off like `flight`: nothing personal comes in,
 // only places, days and a head-count.
@@ -21,7 +23,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   adultsOf, airportCodeOk, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, langOf, maxOf, nightsBetween,
   candidateOffer, pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf,
-  serpFlights, serpStays, stayCandidate, stayOffer, type AviaFlight, type OfferOut, type StayCandidate, type XoHotel, type XoRate,
+  pickActivities, serpFlights, serpStays, stayCandidate, stayOffer, viatorDestination, type AviaFlight, type OfferOut, type StayCandidate,
+  type ViProduct, type XoHotel, type XoRate,
 } from "./shape.ts";
 
 const cors = {
@@ -31,8 +34,8 @@ const cors = {
 };
 const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
-const HOURS = { flight: 12, stay: 24 };
-const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300, serpapi: 8 };
+const HOURS = { flight: 12, stay: 24, activity: 1 };
+const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300, serpapi: 8, viator: 300 };
 const cap = (source: string) => Number(Deno.env.get(`OFFERS_CAP_${source.toUpperCase()}`)) || CAPS[source];
 
 type Sb = ReturnType<typeof createClient>;
@@ -186,6 +189,45 @@ async function stays(sb: Sb, rapidKey: string, city: string, country: string | n
   return { offers, candidates };
 }
 
+/** Viator's Partner API: a POST with the key, under its own daily cap; null when it can't answer. */
+async function viator(sb: Sb, path: string, body: unknown): Promise<unknown | null> {
+  const key = (Deno.env.get("VIATOR_KEY") ?? "").trim();
+  if (!key || !(await take(sb, "viator"))) return null;
+  const res = await fetch(`https://api.viator.com/partner${path}`, {
+    method: "POST",
+    headers: { "exp-api-key": key, Accept: "application/json;version=2.0", "Accept-Language": "en-US", "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return res.ok ? await res.json() : null;
+}
+
+/** A city's activities on Viator for these days: by its words when the card names one ("tekne turu"), else the city's own. */
+async function activities(sb: Sb, city: string, country: string | null, start: string | null, end: string | null, q: string | null, { adults, lang, prefer }: Ask): Promise<OfferOut[]> {
+  const where = country ? `${city}, ${country}` : city;
+  const geoKey = `vi-dest|${where.toLocaleLowerCase("en")}`;
+  let dest = (await cached<{ id: string | null }>(sb, geoKey, 24 * 7))?.id ?? null;
+  if (!dest) {
+    dest = viatorDestination(await viator(sb, "/search/freetext", { searchTerm: where, searchTypes: [{ searchType: "DESTINATIONS", pagination: { start: 1, count: 1 } }], currency: "EUR" }));
+    if (dest) await store(sb, geoKey, { id: dest });
+  }
+  if (!dest) return [];
+  const dates = start && end ? { startDate: start, endDate: end } : {};
+  const found = q
+    ? ((await viator(sb, "/search/freetext", {
+        searchTerm: q,
+        productFiltering: { destination: dest, ...(start && end ? { dateRange: { from: start, to: end } } : {}), rating: { from: 4, to: 5 } },
+        searchTypes: [{ searchType: "PRODUCTS", pagination: { start: 1, count: 20 } }],
+        currency: "EUR",
+      })) as { products?: { results?: ViProduct[] } } | null)?.products?.results
+    : ((await viator(sb, "/products/search", {
+        filtering: { destination: dest, ...dates, rating: { from: 4, to: 5 } },
+        sorting: { sort: "DEFAULT" },
+        pagination: { start: 1, count: 20 },
+        currency: "EUR",
+      })) as { products?: ViProduct[] } | null)?.products;
+  return pickActivities(found ?? [], lang, adults, Date.now(), prefer === "cheap");
+}
+
 /** Every page as a Travelpayouts partner link, ten at a time; a page it can't turn is kept as it was. */
 async function partnerLinks(sb: Sb, token: string, offers: OfferOut[]): Promise<OfferOut[]> {
   const turned = await turnLinks(sb, token, offers.map((o) => o.url));
@@ -251,6 +293,16 @@ Deno.serve(async (req: Request) => {
       }
       if (p("candidates") === "1") return reply(200, { offers: found.offers, candidates: found.candidates });
       offers = found.offers;
+    } else if (p("kind") === "activity") {
+      const city = placeOk(p("city")), country = placeOk(p("country"));
+      const start = askableDay(p("start"), now), end = askableDay(p("end"), now);
+      const raw = p("q")?.normalize("NFC").replace(/\s+/g, " ").trim() ?? "";
+      const q = raw && raw.length <= 80 && /^[\p{L}\p{M}\p{N} .,'’&()-]+$/u.test(raw) ? raw : null;
+      if (!city) return reply(400, { error: "ask" });
+      const key = `out|a|${city.toLocaleLowerCase("en")}|${country ?? ""}|${start ?? ""}|${end ?? ""}|${q ?? ""}|${ask.adults}|${ask.lang}|${how}`;
+      const had = await cached<OfferOut[]>(sb, key, HOURS.activity);
+      offers = had ?? (await activities(sb, city, country, start, end, q, ask));
+      if (!had) await store(sb, key, offers);
     } else {
       return reply(400, { error: "ask" });
     }

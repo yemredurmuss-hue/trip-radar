@@ -11,10 +11,11 @@ const T = (lang: Lang, tr: string, en: string) => (lang === "en" ? en : tr);
 
 export interface OfferOut {
   id: string;
-  kind: "flight" | "stay";
+  kind: "flight" | "stay" | "activity";
   title: string;
   photo?: string | null;
   rating?: number | null;
+  reviews?: number | null;
   price: number | null;
   currency: string;
   nights?: number | null;
@@ -541,4 +542,88 @@ export function pickLiveStays(list: StayCandidate[], lang: Lang): OfferOut[] {
   add([...list].filter((c) => (c.reviews ?? 0) >= 200).sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || (b.reviews ?? 0) - (a.reviews ?? 0))[0], T(lang, "En beğenilenlerden", "Among the best liked"));
   add([...list].filter((c) => (c.rating ?? 0) >= 4.3).sort((a, b) => (a.total ?? 0) - (b.total ?? 0))[0], T(lang, "İyi puanlılar içinde en uygunu", "The least dear of the well liked"));
   return out;
+}
+
+// --- activities (Viator Partner API, basic access) ---------------------------------------------------------
+// A city's tours, tickets and classes as Viator lists them for the dates; its own page carries the project's Viator
+// partner code (pid), so it isn't turned into another partner's link. Viator asks for a search's results to be kept
+// an hour at most.
+
+export interface ViProduct {
+  productCode?: string;
+  title?: string;
+  images?: { isCover?: boolean; variants?: { width?: number; height?: number; url?: string }[] }[];
+  reviews?: { totalReviews?: number; combinedAverageRating?: number };
+  duration?: { fixedDurationInMinutes?: number; variableDurationFromMinutes?: number; variableDurationToMinutes?: number };
+  pricing?: { summary?: { fromPrice?: number }; currency?: string };
+  productUrl?: string;
+  flags?: string[];
+}
+
+/** Viator's destination id for a city, from its free-text search's first destination. */
+export const viatorDestination = (body: unknown): string | null => {
+  const id = (body as { destinations?: { results?: { id?: number }[] } })?.destinations?.results?.[0]?.id;
+  return typeof id === "number" ? String(id) : null;
+};
+
+const viRating = (p: ViProduct) => p.reviews?.combinedAverageRating ?? 0;
+const viReviews = (p: ViProduct) => p.reviews?.totalReviews ?? 0;
+const viPrice = (p: ViProduct) => p.pricing?.summary?.fromPrice ?? 0;
+const viOk = (p: ViProduct) => !!p.productCode && !!p.title && viRating(p) > 0 && viPrice(p) > 0 && !!p.productUrl && /^https:\/\//.test(p.productUrl);
+
+/** "3 sa", "8–10 sa", "45 dk": how long, as Viator says it. */
+export function durationWords(d: ViProduct["duration"], lang: Lang): string | null {
+  const span = (m: number) => (m >= 60 ? `${Math.round((m / 60) * 10) / 10}`.replace(".", lang === "en" ? "." : ",") : `${m}`);
+  const unit = (m: number) => (m >= 60 ? T(lang, "sa", "h") : T(lang, "dk", "min"));
+  if (d?.fixedDurationInMinutes) return `${span(d.fixedDurationInMinutes)} ${unit(d.fixedDurationInMinutes)}`;
+  const a = d?.variableDurationFromMinutes, b = d?.variableDurationToMinutes;
+  if (a && b) return a >= 60 && b >= 60 ? `${span(a)}–${span(b)} ${unit(b)}` : `${span(a)} ${unit(a)}–${span(b)} ${unit(b)}`;
+  return null;
+}
+
+/** The cover's picture at a card's size (about 480 wide). */
+const viPhoto = (p: ViProduct): string | null => {
+  const img = p.images?.find((i) => i.isCover) ?? p.images?.[0];
+  const v = (img?.variants ?? []).filter((x) => x.url && /^https:\/\//.test(x.url)).sort((a, b) => Math.abs((a.width ?? 0) - 480) - Math.abs((b.width ?? 0) - 480))[0];
+  return v?.url ?? null;
+};
+
+/**
+ * Three, each for its own reason: Viator's own first (its featured order), the best liked with reviews enough to
+ * mean it, the least dear of the well liked; "hızlı tükeniyor" said when Viator says so.
+ */
+export function pickActivities(list: ViProduct[], lang: Lang, adults: number, now: number, cheap = false): OfferOut[] {
+  const ok = list.filter(viOk);
+  if (!ok.length) return [];
+  const picked: { p: ViProduct; why: string }[] = [];
+  const add = (p: ViProduct | undefined, why: string) => {
+    if (p && !picked.some((x) => x.p.productCode === p.productCode)) picked.push({ p, why });
+  };
+  if (cheap) {
+    [...ok].filter((p) => viRating(p) >= 4.3).sort((a, b) => viPrice(a) - viPrice(b)).slice(0, 3).forEach((p, i) => add(p, i === 0 ? T(lang, "Bulduklarımın en ucuzu", "The cheapest I found") : T(lang, "İyi puanlı, uygun fiyatlı", "Well liked, low priced")));
+  } else {
+    add(ok[0], T(lang, "Viator'da öne çıkan", "Viator's featured pick"));
+    add([...ok].filter((p) => viReviews(p) >= 200).sort((a, b) => viRating(b) - viRating(a) || viReviews(b) - viReviews(a))[0], T(lang, "En beğenilenlerden", "Among the best liked"));
+    add([...ok].filter((p) => viRating(p) >= 4.5 && viReviews(p) >= 50).sort((a, b) => viPrice(a) - viPrice(b))[0], T(lang, "İyi puanlılar içinde en uygunu", "The least dear of the well liked"));
+  }
+  return picked.slice(0, 3).map(({ p, why }) => {
+    const soon = p.flags?.includes("LIKELY_TO_SELL_OUT") ? T(lang, " · hızlı tükeniyor", " · likely to sell out") : "";
+    const free = p.flags?.includes("FREE_CANCELLATION") ? T(lang, "Ücretsiz iptal", "Free cancellation") : null;
+    return {
+      id: `vi:${p.productCode}`,
+      kind: "activity" as const,
+      title: p.title!,
+      photo: viPhoto(p),
+      rating: Math.round(viRating(p) * 10) / 10,
+      reviews: viReviews(p) || null,
+      price: Math.round(viPrice(p) * adults),
+      currency: p.pricing?.currency ?? "EUR",
+      url: p.productUrl!,
+      why: why + soon,
+      source: "Viator",
+      fetchedAt: now,
+      area: durationWords(p.duration, lang),
+      meta: [viReviews(p) ? T(lang, `${count(viReviews(p), lang)} yorum`, `${count(viReviews(p), lang)} reviews`) : null, free].filter(Boolean).join(" · ") || null,
+    };
+  });
 }

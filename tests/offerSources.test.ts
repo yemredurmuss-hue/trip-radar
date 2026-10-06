@@ -30,8 +30,15 @@ describe("the question for a need", () => {
     expect(queryOf(flight, "tr", { prefer: "cheap", live: true })).toBe("kind=flight&from=IST&to=DPS&day=2026-11-10&adults=2&lang=tr&prefer=cheap&live=1");
   });
 
+  it("asks an activity by its city, the days when known and the card's own words", () => {
+    expect(queryOf({ key: "a", section: "activity", kind: "activity", city: "Ubud" }, "tr")).toBe("kind=activity&city=Ubud&adults=1&lang=tr");
+    expect(queryOf({ key: "a", section: "activity", kind: "activity", city: "Porto", start: "2026-10-08", end: "2026-10-11", adults: 2, query: "Tekne turu" }, "en")).toBe(
+      "kind=activity&city=Porto&adults=2&lang=en&start=2026-10-08&end=2026-10-11&q=Tekne+turu",
+    );
+    expect(queryOf({ key: "a", section: "activity", kind: "activity", city: " " }, "tr")).toBeNull();
+  });
+
   it("asks nothing for kinds with no source yet", () => {
-    expect(queryOf({ key: "a", section: "activity", kind: "activity", city: "Ubud" }, "tr")).toBeNull();
     expect(queryOf({ key: "e", section: "other", kind: "esim", country: "ID" }, "tr")).toBeNull();
   });
 });

@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import {
   adultsOf, airportCodeOk, arrivalClock, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, localClock, maxOf,
-  aviasalesSearch, nightsBetween, pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf, seenAt, serpFlights,
+  aviasalesSearch, durationWords, pickActivities, viatorDestination, nightsBetween, pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf, seenAt, serpFlights,
   serpStays, stayCandidate, stayOffer, type AviaFlight,
   type OfferOut, type XoHotel,
 } from "../supabase/functions/offers/shape";
@@ -245,5 +245,48 @@ describe("live (SerpApi)", () => {
       ["The Lokha Ubud", "İyi puanlılar içinde en uygunu"],
     ]);
     expect(picks[0]).toMatchObject({ kind: "stay", price: 461, nights: 4, meta: "4.075 yorum" });
+  });
+});
+
+describe("activities (Viator)", () => {
+  // Trimmed from a real answer: Ubud, 12–16 Nov 2026.
+  const vi = (code: string, rating: number, reviews: number, price: number, over: Record<string, unknown> = {}) => ({
+    productCode: code, title: `Tour ${code}`, reviews: { combinedAverageRating: rating, totalReviews: reviews }, pricing: { summary: { fromPrice: price }, currency: "EUR" },
+    productUrl: `https://www.viator.com/tours/Ubud/x/d5467-${code}?mcid=42383&pid=P00324133&medium=api`, duration: { fixedDurationInMinutes: 180 },
+    images: [{ isCover: true, variants: [{ width: 100, url: "https://media/100.jpg" }, { width: 480, url: "https://media/480.jpg" }, { width: 720, url: "https://media/720.jpg" }] }],
+    flags: ["FREE_CANCELLATION"], ...over,
+  });
+
+  it("reads the city's destination id", () => {
+    expect(viatorDestination({ destinations: { results: [{ id: 5467, name: "Ubud" }] } })).toBe("5467");
+    expect(viatorDestination({})).toBeNull();
+  });
+
+  it("says how long as Viator does", () => {
+    expect(durationWords({ fixedDurationInMinutes: 180 }, "tr")).toBe("3 sa");
+    expect(durationWords({ fixedDurationInMinutes: 90 }, "tr")).toBe("1,5 sa");
+    expect(durationWords({ variableDurationFromMinutes: 480, variableDurationToMinutes: 600 }, "tr")).toBe("8–10 sa");
+    expect(durationWords({ fixedDurationInMinutes: 45 }, "en")).toBe("45 min");
+    expect(durationWords(undefined, "tr")).toBeNull();
+  });
+
+  it("picks Viator's first, the best liked, the least dear well liked; price for everyone going; its own page", () => {
+    const list = [vi("A", 4.6688525, 120, 30), vi("B", 5, 703, 68.1, { flags: ["LIKELY_TO_SELL_OUT"] }), vi("C", 4.8, 90, 20.48), vi("D", 3.9, 5000, 5), vi("E", 4.9, 300, 0)];
+    const picks = pickActivities(list, "tr", 2, 9);
+    expect(picks.map((o) => [o.id, o.why])).toEqual([
+      ["vi:A", "Viator'da öne çıkan"],
+      ["vi:B", "En beğenilenlerden · hızlı tükeniyor"],
+      ["vi:C", "İyi puanlılar içinde en uygunu"],
+    ]);
+    expect(picks[1]).toMatchObject({ kind: "activity", rating: 5, reviews: 703, price: 136, source: "Viator", area: "3 sa", meta: "703 yorum", photo: "https://media/480.jpg" });
+    expect(picks[2].meta).toBe("90 yorum · Ücretsiz iptal");
+    expect(picks[0].rating).toBe(4.7);
+    expect(picks[0].url).toContain("pid=P00324133");
+    expect(pickActivities([], "tr", 1, 0)).toEqual([]);
+  });
+
+  it("asked for cheaper ones: the three cheapest well liked", () => {
+    const list = [vi("A", 4.6, 120, 30), vi("B", 5, 703, 68), vi("C", 4.8, 90, 20), vi("D", 4.1, 80, 5)];
+    expect(pickActivities(list, "tr", 1, 0, true).map((o) => o.id)).toEqual(["vi:C", "vi:A", "vi:B"]);
   });
 });

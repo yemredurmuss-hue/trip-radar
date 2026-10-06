@@ -32,6 +32,8 @@ export interface Need {
   /** A flight's airports (IATA), when the ends are known; the city names stay in `from` / `to`. */
   fromCode?: string | null;
   toCode?: string | null;
+  /** An activity the card names ("Tekne turu", "Yemek kursu"): searched by its words in the city. */
+  query?: string | null;
 }
 
 export interface Offer {
