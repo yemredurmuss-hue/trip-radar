@@ -1370,7 +1370,8 @@ const GROUPS: Companions[] = ["friends", "family"];
  * group), each said or skipped; nothing still to confirm. Style and the route never hold it back.
  */
 export function essentialsDone(s: StartState): boolean {
-  if (!s.where || s.guess) return false;
+  // Nothing still to settle about the event: dates that miss it, or which one they mean (2026-10-06 review).
+  if (!s.where || s.guess || open(s, "clash") || open(s, "venue")) return false;
   const answered = (q: QuestionId) => s.skipped.includes(q);
   const when = Boolean(s.duration || s.start) || (answered("duration") && answered("start"));
   const from = Boolean(s.from) || answered("from");

@@ -489,3 +489,24 @@ describe("review 8: no flight from a place to itself", () => {
     expect(creationOf(m)!.travel).toEqual([]);
   });
 });
+
+describe("review (final): never by itself while the event is still to settle", () => {
+  it("dates that miss it (Mart'ta 5 günlüğüne Oktoberfest), until answered", () => {
+    let s = typed(newStart("m", "plan", 1, "tr"), "Mart'ta 5 günlüğüne Oktoberfest");
+    s = applyAnswer(applyAnswer(s, { q: "from", city: "İstanbul" }, 3), { q: "who", kind: "solo" }, 4);
+    expect(nextQuestion(s)).toBe("clash");
+    expect(essentialsDone(s)).toBe(false);
+    expect(shouldAutoStart(answered(s), ctx, { for: null, stopped: false })).toBe(false);
+    const fitted = applyAnswer(s, { q: "clash", keep: false }, 5);
+    expect(shouldAutoStart(answered(fitted), ctx, { for: null, stopped: false })).toBe(true);
+  });
+  it("which one they mean (İstanbul'da Oktoberfest), until answered", () => {
+    let s = typed(newStart("i", "plan", 1, "tr"), "İstanbul'da Oktoberfest yapalım 4 gün");
+    s = applyAnswer(applyAnswer(s, { q: "from", city: "Ankara" }, 3), { q: "who", kind: "solo" }, 4);
+    expect(nextQuestion(s)).toBe("venue");
+    expect(essentialsDone(s)).toBe(false);
+    expect(shouldAutoStart(answered(s), ctx, { for: null, stopped: false })).toBe(false);
+    const local = applyAnswer(s, { q: "venue", original: false }, 5);
+    expect(shouldAutoStart(answered(local), ctx, { for: null, stopped: false })).toBe(true);
+  });
+});
