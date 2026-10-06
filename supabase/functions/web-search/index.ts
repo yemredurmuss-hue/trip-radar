@@ -97,12 +97,14 @@ Deno.serve(async (req: Request) => {
     const kind: SearchKind = kindOf(body.kind);
     const lang = langOf(body.lang);
     const year = yearOf(body.year);
+    // The answer is written in the asker's language, so the cache keeps one per language.
+    const ck = `${lang}:${q}`;
     // Pasted secrets sometimes carry quotes, the name or a "NAME=" prefix: keep the key-shaped token.
     const key = (Deno.env.get("GEMINI_SEARCH_KEY") ?? "").match(/[A-Za-z0-9._-]{30,}/)?.[0] ?? "";
     if (!key) return none("not-configured");
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-    const row = (await sb.rpc("search_cached", { p_kind: kind, p_q: q, p_year: year })).data as CachedRow | null;
+    const row = (await sb.rpc("search_cached", { p_kind: kind, p_q: ck, p_year: year })).data as CachedRow | null;
     if (row) {
       const days = (Date.now() - Date.parse(row.fetched_at)) / 864e5;
       if (days < freshDays(kind, row.answer != null)) {
@@ -120,7 +122,7 @@ Deno.serve(async (req: Request) => {
     const got = await askGemini(key, Deno.env.get("SEARCH_MODEL")?.trim() || MODEL, searchPrompt(q, kind, lang, year, today));
     if (!got.ok) return none(`upstream-${got.status}`);
     const { answer, sources, event } = got.shaped;
-    await sb.rpc("search_store", { p_kind: kind, p_q: q, p_year: year, p_answer: answer, p_sources: sources, p_event: event });
+    await sb.rpc("search_store", { p_kind: kind, p_q: ck, p_year: year, p_answer: answer, p_sources: sources, p_event: event });
     const at = new Date().toISOString();
     if (!answer) return reply({ answer: null, reason: "no-result", kind, cached: false, at });
     return reply({ answer, sources, kind, cached: false, at, ...(kind === "event_dates" ? { event } : {}) });
