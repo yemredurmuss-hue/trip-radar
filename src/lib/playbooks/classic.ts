@@ -8,6 +8,6 @@ export const classic: Playbook = {
   blocked: {},
   prep: () => [],
   tip: () => "",
-  questions: () => [],
+  questions: [],
   tone: () => "",
 };

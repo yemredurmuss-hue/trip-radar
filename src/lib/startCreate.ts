@@ -11,10 +11,10 @@ import { nightsBetween } from "./items";
 import { checkPlanned, guardKind, planToSave } from "./planned";
 import { cityKeyOf } from "./plan";
 import type { PlannedInput } from "./planned";
-import { playbookOf, startPlaybook, tripIntentOf } from "./playbooks";
+import { cardsAfter, playbookOf, prepAdded, startPlaybook, tripIntentOf } from "./playbooks";
 import { styleKeyFor } from "./startBoard";
 import { suggestionsReview } from "./startHooks";
-import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, placeholderPrint, readyText, wantText, type Creation, type StartState } from "./startTrip";
+import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, pbEffects, placeholderPrint, readyText, wantText, type Creation, type StartState } from "./startTrip";
 import { withTravellers } from "./tripSettings";
 import { uniqueTitle } from "./trips";
 import type { Item, Trip } from "./types";
@@ -113,6 +113,8 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
       await d.put("trips", {
         ...existing,
         ...(intent ? { intent } : {}),
+        // A budget a trip kind's answer set, when the trip has none yet (never over one said on the board).
+        ...(c.budget && !existing.budget ? { budget: c.budget } : {}),
         confirmedDates: c.dates,
         startGuide: { ...(existing.startGuide ?? { createdAt: now() }), road: c.road || undefined, approxStart: c.approxStart },
         lang: s.lang,
@@ -128,7 +130,7 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
       id: newId(),
       title: T(() => uniqueTitle(c.title, c.dates?.start ?? null, trips)),
       confirmedDates: c.dates,
-      budget: null,
+      budget: c.budget,
       heroImage: null,
       startGuide: { createdAt: now(), ...(c.road ? { road: true } : {}), ...(c.approxStart ? { approxStart: c.approxStart } : {}) },
       // The conversation's language: the trip's chat and its suggestions go on in it.
@@ -252,7 +254,9 @@ export function playbookCards(s: StartState, c: Creation): { travel: PlannedInpu
   if (kind === "classic") return { travel: [], plan: [], prep: [] };
   const p = playbookOf(kind);
   const flight = c.travel.find((x) => x.kind === "flight");
-  const cards = p.skeleton({
+  // The trip kind's answers (the same operations for every kind): cards dropped, marked booked, moved; lines added.
+  const effects = pbEffects(s);
+  const skeleton = p.skeleton({
     intent: s.intent ?? null,
     dates: c.dates,
     stays: c.stays,
@@ -260,8 +264,10 @@ export function playbookCards(s: StartState, c: Creation): { travel: PlannedInpu
     road: c.road,
     code: s.where?.code ?? s.intent?.code ?? null,
   });
+  // (Its name for the operations never goes into the plan.)
+  const cards = cardsAfter(skeleton, effects, { dest: s.where?.place ?? "" }).map(({ ref: _ref, ...x }): PlannedInput => x);
   const moving = (x: PlannedInput) => x.kind === "transfer" || x.kind === "taxi" || x.kind.endsWith("_rental") || x.kind === "ferry";
-  const prep = p.prep().map((title): PlannedInput => ({ kind: "prep", date: null, end_date: null, time: null, from: null, to: null, city: null, title, booked: false, note: null }));
+  const prep = [...p.prep(), ...prepAdded(effects)].map((title): PlannedInput => ({ kind: "prep", date: null, end_date: null, time: null, from: null, to: null, city: null, title, booked: false, note: null }));
   return { travel: cards.filter(moving), plan: cards.filter((x) => !moving(x)), prep };
 }
 
@@ -293,9 +299,9 @@ export function wouldMake(s: StartState, now = Date.now()): { trip: Trip; items:
       id: "start-preview",
       title: c.title,
       confirmedDates: c.dates,
-      budget: null,
+      budget: c.budget,
       heroImage: null,
-      startGuide: { createdAt: now, ...(c.road ? { road: true } : {}) },
+      startGuide: { createdAt: now,...(c.road ? { road: true } : {}) },
       ...(c.parents ? { placeParents: c.parents } : {}),
       ...(people && typeof people !== "string" ? { travellers: people.travellers } : {}),
       ...(intent ? { intent } : {}),

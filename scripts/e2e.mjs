@@ -3881,10 +3881,19 @@ try {
   const autoRow = board.locator(".st-auto", { hasText: "Generating…" });
   await autoRow.waitFor();
   const autoLength = () => autoRow.locator(".st-auto-bar span").evaluate((n) => n.style.animationDuration);
-  assert.equal(await autoLength(), "6s", "6 s while the style question shows");
+  assert.equal(await autoLength(), "6s", "6 s while the festival's own question shows");
   assert.equal(await board.locator(".st-msg-bot a.st-link").first().innerText(), "Official site ↗", "in the chat's language");
   await board.waitForTimeout(450); // the row faded in
   await board.screenshot({ path: `${out}/26b-intent-countdown.png` });
+  // The festival's own questions (2026-10-07) show first, with their chips: each skipped starts the countdown over,
+  // never stops it; then the style question.
+  for (const q of ["Camping, or a hotel?", "Have you got your ticket yet?", "How many days before the festival would you like to arrive?"]) {
+    await board.locator(".st-msg-bot .st-q", { hasText: q }).last().waitFor();
+    await answers.getByRole("button", { name: "Skip" }).click();
+  }
+  await board.locator(".st-msg-bot .st-q", { hasText: "What are you after on this trip?" }).last().waitFor();
+  assert.equal(await autoRow.count(), 1, "the festival's questions skipped: still counting");
+  assert.equal(await autoLength(), "6s", "6 s while the style question shows");
   // A style tapped: from 3 s again, not stopped.
   await answers.getByRole("button", { name: /Adventure/ }).click();
   await board.waitForFunction(() => document.querySelector(".st-auto-bar span")?.style.animationDuration === "3s");

@@ -26,8 +26,13 @@ function typed(s: StartState, text: string, at = 2): StartState {
     return out.understood ? out.state : asked;
   });
 }
+/** The trip kind's own questions (a festival's camping, ticket, days early: 2026-10-07) skipped, one by one. */
+const skipKind = (s: StartState): StartState => {
+  while (nextQuestion(s) === "pb") s = skip(s, "pb", 50);
+  return s;
+};
 /** The chat's line said after it (the countdown waits for the assistant's word). */
-const answered = (s: StartState): StartState => ({ ...s, messages: [...s.messages, { role: "assistant" as const, text: "…", at: 99 }] });
+const answered =(s: StartState): StartState => ({ ...s, messages: [...s.messages, { role: "assistant" as const, text: "…", at: 99 }] });
 
 beforeEach(() => setLang("tr"));
 afterEach(() => setLang("tr"));
@@ -96,8 +101,10 @@ describe("the owner's sentence (English, no model)", () => {
     s = withLang("en", () => applyText(s, "4", parseStartText("4", TODAY, "count"), 5, "count").state);
     expect(s.who).toEqual({ kind: "friends", names: [], count: 4 });
     expect(essentialsDone(s)).toBe(true);
-    // Style is optional (asked, never holding the trip back).
-    expect(nextQuestion(s)).toBe("want");
+    // A festival's own questions next (camping or a hotel first), then the style: both optional, never holding it back.
+    expect(nextQuestion(s)).toBe("pb");
+    expect(withLang("en", () => questionOf(s, "pb", ctx).text)).toBe("Camping, or a hotel?");
+    expect(nextQuestion(skipKind(s))).toBe("want");
     const c = withLang("en", () => creationOf(s))!;
     expect(c.title).toBe("AfrikaBurn 2027");
     expect(c.dates).toEqual({ start: "2027-04-24", end: "2027-05-04" });
@@ -298,7 +305,9 @@ describe("making the trip by itself", () => {
     expect(shouldAutoStart(full, ctx, stopped)).toBe(true);
   });
   it("6 seconds when the style question shows as it starts (time to read its chips), else 3", () => {
-    const go = applyAnswer(ready(), { q: "count", n: 4 }, 5);
+    // (A festival's own question shows first: 6 too.)
+    expect(autoSeconds(applyAnswer(ready(), { q: "count", n: 4 }, 5))).toBe(6);
+    const go = skipKind(applyAnswer(ready(), { q: "count", n: 4 }, 5));
     expect(nextQuestion(go)).toBe("want");
     expect(autoSeconds(go)).toBe(6);
     const styled = applyAnswer(go, { q: "want", styles: ["adventure"], budget: null }, 6);
@@ -306,7 +315,7 @@ describe("making the trip by itself", () => {
     expect(autoSeconds(styled)).toBe(3);
   });
   it("the last line says it makes itself; stopped, it waits", () => {
-    const done = applyAnswer(applyAnswer(ready(), { q: "count", n: 4 }, 5), { q: "want", styles: ["adventure"], budget: null }, 6);
+    const done = applyAnswer(skipKind(applyAnswer(ready(), { q: "count", n: 4 }, 5)), { q: "want", styles: ["adventure"], budget: null }, 6);
     const tr = withLang("tr", () => nextLine(done, ctx));
     expect(tr).toBe("Hazırım, birkaç saniye içinde oluşturuyorum. Eklemek istediğin bir şey varsa yaz.");
     expect(withLang("tr", () => waitingInstead(`Tamam, rota bu.\n${tr}`))).toBe("Tamam, rota bu.\nTamam, bekliyorum. Hazır olunca Oluştur'a bas ya da 'oluştur' yaz.");

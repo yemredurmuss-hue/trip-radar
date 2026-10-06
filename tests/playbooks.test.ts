@@ -6,9 +6,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { db, listItems } from "../src/lib/db";
 import { setLang, withLang } from "../src/lib/i18n";
 import { isPrep } from "../src/lib/prep";
-import { allowedSuggestions, playbookFor, playbookPromptLine, playbookQuestions, startPlaybook } from "../src/lib/playbooks";
+import { allowedSuggestions, matchChip, moneyOf, playbookAsks, playbookFor, playbookPromptLine, playbookQuestions, startPlaybook, validEffect, validQuestion, validQuestions } from "../src/lib/playbooks";
 import { playbookCards, runStep, stepsFor, wouldMake } from "../src/lib/startCreate";
-import { acceptExtraction, applyAnswer, applyText, creationOf, isPlaceholder, knownLines, mergeExtracted, newStart, nextQuestion, parseStartText, withTypedLang, type RawExtraction, type StartState } from "../src/lib/startTrip";
+import {
+  acceptExtraction, applyAnswer, applyText, creationOf, essentialsDone, isPlaceholder, knownLines, mergeExtracted, newStart, nextQuestion, parseStartText, pbAsks, pbCurrent, pbPromptOf, questionOf, skip,
+  withTypedLang, type RawExtraction, type StartState,
+} from "../src/lib/startTrip";
 import { acceptReview, reviewSystem } from "../src/lib/suggestReview";
 import { ruleSuggestions } from "../src/lib/suggestions";
 import type { Item, Suggestion } from "../src/lib/types";
@@ -189,5 +192,160 @@ describe("a classic trip", () => {
     expect("intent" in made.trip).toBe(false);
     expect(made.items.map((i) => i.category).sort()).toEqual(["flight", "flight", "stay"]);
     expect(withLang("tr", () => playbookCards(s, creationOf(s)!))).toEqual({ travel: [], plan: [], prep: [] });
+  });
+});
+
+// --- the trip kind's own questions (2026-10-07): data, asked after the essentials, never holding the trip back -----
+
+const ctx = { myName: null, fromGuess: null, today: TODAY };
+/** A chip of the question on screen pressed (by its label). */
+function chip(s: StartState, label: string): StartState {
+  expect(nextQuestion(s)).toBe("pb");
+  const c = withLang(s.lang, () => questionOf(s, "pb", ctx)).chips.find((x) => x.label === label);
+  expect(c, label).toBeTruthy();
+  return applyAnswer(s, c!.answer, 9);
+}
+const skipAll = (s: StartState): StartState => {
+  while (nextQuestion(s) === "pb") s = skip(s, "pb", 9);
+  return s;
+};
+/** Ozora, ten days, alone: the essentials in. */
+const ozoraReady = () => applyAnswer(applyAnswer(ozora(), { q: "duration", duration: { unit: "day", n: 10 } }, 4), { q: "who", kind: "solo" }, 5);
+const stays = (items: Item[]) => items.filter((i) => i.category === "stay").map((i) => `${i.city} ${i.dates.start}..${i.dates.end}`);
+
+describe("the trip kind's questions", () => {
+  it("come only after the essentials, one per turn, with their chips and Atla", () => {
+    let s = ozora();
+    expect(nextQuestion(s)).not.toBe("pb");
+    expect(essentialsDone(s)).toBe(false);
+    s = ozoraReady();
+    expect(essentialsDone(s)).toBe(true);
+    expect(nextQuestion(s)).toBe("pb");
+    const q = withLang("tr", () => questionOf(s, "pb", ctx));
+    expect(q.text).toBe("Kamp mı yapacaksın, otelde mi kalacaksın?");
+    expect(q.chips.map((c) => c.label)).toEqual(["Kamp", "Otel"]);
+    s = skip(s, "pb", 6);
+    expect(withLang("tr", () => questionOf(s, "pb", ctx)).chips.map((c) => c.label)).toEqual(["Aldım", "Henüz değil"]);
+    s = skip(s, "pb", 7);
+    expect(withLang("tr", () => questionOf(s, "pb", ctx)).chips.map((c) => c.label)).toEqual(["1 gün", "2 gün", "Aynı gün"]);
+    s = skip(s, "pb", 8);
+    expect(nextQuestion(s)).toBe("want");
+  });
+  it("are never asked on a classic trip", () => {
+    let s = typed(newStart("rome", "plan", 1, "tr"), "Roma'ya 10 Mayıs'tan 5 gün");
+    s = applyAnswer(applyAnswer(s, { q: "from", city: "İstanbul" }, 3), { q: "who", kind: "solo" }, 4);
+    expect(pbAsks(s)).toEqual([]);
+    expect(nextQuestion(s)).toBe("want");
+  });
+  it("skipped, all of them: the trip made exactly as without them", () => {
+    const s = ozoraReady();
+    const plain = wouldMake(s, 1)!;
+    const skipped = wouldMake(skipAll(s), 1)!;
+    expect(skipped.items).toEqual(plain.items);
+    expect(skipped.trip).toEqual(plain.trip);
+  });
+  it("Ozora + Kamp: no room for the festival's nights, a camping spot on the list; the ticket and transfer stay", () => {
+    const s = ozoraReady();
+    expect(stays(wouldMake(s)!.items).some((x) => x.startsWith("Ozora"))).toBe(true);
+    const camp = chip(s, "Kamp");
+    const made = wouldMake(camp)!;
+    expect(stays(made.items).some((x) => x.startsWith("Ozora"))).toBe(false);
+    expect(stays(made.items).length).toBeGreaterThan(0);
+    expect(titles(made.items.filter(isPrep))).toContain("Kamp yeri ayır");
+    expect(made.items.find((i) => i.name === "Festival bileti")).toBeTruthy();
+    expect(made.items.find((i) => i.plannedKind === "transfer")).toMatchObject({ city: "Ozora", dates: { start: "2027-07-26" } });
+    // Typed: "kamp yapacağız" is read by the code the same way.
+    expect(stays(wouldMake(typed(s, "kamp yapacağız"))!.items)).toEqual(stays(made.items));
+  });
+  it("Otel keeps the stay by the site; the ticket bought is opened as booked, never a place to fill", () => {
+    const s = chip(chip(ozoraReady(), "Otel"), "Aldım");
+    const made = wouldMake(s)!;
+    expect(stays(made.items).some((x) => x.startsWith("Ozora"))).toBe(true);
+    expect(made.items.find((i) => i.name === "Festival bileti")?.status).toBe("booked");
+  });
+  it("'2 gün': the trip starts two days before the festival; 'Aynı gün' on its first day", () => {
+    const base = skip(skip(ozoraReady(), "pb", 6), "pb", 7);
+    const two = chip(base, "2 gün");
+    expect(creationOf(two)!.dates?.start).toBe("2027-07-24");
+    expect(creationOf(chip(base, "Aynı gün"))!.dates?.start).toBe("2027-07-26");
+    // Just the festival said (its own 7 days): made long enough to hold the two days before it.
+    const just = skip(skip(applyAnswer(applyAnswer(ozora(), { q: "duration", duration: { unit: "day", n: 7 } }, 4), { q: "who", kind: "solo" }, 5), "pb", 6), "pb", 7);
+    expect(creationOf(chip(just, "2 gün"))!.dates).toEqual({ start: "2027-07-24", end: "2027-08-01" });
+    // Typed "2 gün önce" answers the question, never the trip's length.
+    const typedTwo = typed(base, "2 gün önce");
+    expect(typedTwo.duration).toEqual(two.duration);
+    expect(creationOf(typedTwo)!.dates).toEqual(creationOf(two)!.dates);
+  });
+  it("Bulgaristan'da kayak: 'orta seviye', 'bansko', 'Var': in Bansko, the school kept, no rental", () => {
+    let s = typed(newStart("ski", "plan", 1, "tr"), "Bulgaristan'da kayak, 10 Ocak'tan 5 gün");
+    s = applyAnswer(applyAnswer(s, { q: "from", city: "İstanbul" }, 3), { q: "who", kind: "solo" }, 4);
+    expect(withLang("tr", () => questionOf(s, "pb", ctx)).chips.map((c) => c.label)).toEqual(["Başlangıç", "Orta", "İleri"]);
+    s = typed(s, "orta seviye");
+    expect(withLang("tr", () => questionOf(s, "pb", ctx)).chips.map((c) => c.label)).toEqual(["Bansko", "Borovets", "Pamporovo"]);
+    s = typed(s, "bansko");
+    s = chip(s, "Var");
+    expect(nextQuestion(s)).toBe("want");
+    const made = wouldMake(s)!;
+    expect(stays(made.items)).toEqual(["Bansko 2027-01-10..2027-01-14"]);
+    expect(made.items.find((i) => i.category === "stay")?.countryCode).toBe("BG");
+    expect(made.items.find((i) => i.name === "Kayak pası")?.city).toBe("Bansko");
+    expect(made.items.find((i) => i.plannedKind === "transfer")?.city).toBe("Bansko");
+    expect(titles(made.items.filter((i) => i.category === "activity"))).toEqual(["Kayak pası", "Kayak okulu"]);
+  });
+  it("ski 'İleri' drops the school; a resort said as the destination isn't asked which resort", () => {
+    let s = typed(newStart("ski2", "plan", 1, "tr"), "Bansko'da kayak, 10 Ocak'tan 5 gün");
+    if (!s.where) s = applyAnswer(s, { q: "where", place: "Bansko", country: "Bulgaristan", code: "BG" }, 2);
+    s = applyAnswer(applyAnswer(s, { q: "from", city: "İstanbul" }, 3), { q: "who", kind: "solo" }, 4);
+    s = chip(s, "İleri");
+    expect(withLang("tr", () => questionOf(s, "pb", ctx)).text).toBe("Ekipmanın var mı, yoksa kiralayacak mısın?");
+    s = chip(s, "Kiralayacağım");
+    expect(titles(wouldMake(s)!.items.filter((i) => i.category === "activity"))).toEqual(["Kayak pası", "Ekipman kiralama"]);
+  });
+  it("Maldivler balayı: '8000 euro' is the budget, 'İki resort' two stays splitting the nights", () => {
+    let s = typed(newStart("hm", "plan", 1, "tr"), "Maldivler balayı, 3 Mart'tan 7 gece");
+    s = applyAnswer(applyAnswer(s, { q: "from", city: "İstanbul" }, 3), { q: "who", kind: "partner" }, 4);
+    expect(withLang("tr", () => questionOf(s, "pb", ctx)).chips.map((c) => c.label)).toEqual(["3.000 €", "6.000 €", "10.000 €"]);
+    s = typed(s, "8000 euro civarı");
+    s = chip(s, "İki resort");
+    const made = wouldMake(s)!;
+    expect(made.trip.budget).toEqual({ amount: 8000, currency: "EUR" });
+    expect(stays(made.items)).toEqual(["Maldivler 2027-03-03..2027-03-07", "Maldivler 2027-03-07..2027-03-10"]);
+  });
+  it("a typed answer the code can't place goes to the model's pick among the options, bound to that question", () => {
+    const s = ozoraReady();
+    const key = pbCurrent(s)!.key;
+    const read = { ...parseStartText("bir şeyler ayarlarız", TODAY, "pb"), choice: "hotel" };
+    const out = applyText(s, "bir şeyler ayarlarız", read, 9, "pb", key);
+    expect(out.understood).toBe(true);
+    expect(out.state.pbAnswers).toEqual({ [key]: "hotel" });
+    // The same reading landing late answers that question only, never the next one.
+    expect(applyText(out.state, "bir şeyler ayarlarız", { ...read, choice: "have" }, 10, "pb", key).understood).toBe(false);
+    // "skip" from the model: no answer, asked no more; a value not among the options: nothing.
+    expect(applyText(s, "bilmem", { ...read, choice: "skip" }, 9, "pb", key).state.pbAnswers).toEqual({ [key]: null });
+    expect(applyText(s, "bilmem", { ...read, choice: "yacht" }, 9, "pb", key).understood).toBe(false);
+    // The model is given the question with its options.
+    expect(withLang("tr", () => pbPromptOf(s, key))).toBe('"Kamp mı yapacaksın, otelde mi kalacaksın?" (seçenekler: camp = Kamp; hotel = Otel)');
+  });
+  it("the validator drops a malformed question or an unknown operation, never crashes", () => {
+    expect(validEffect({ op: "teleport", to: "Mars" })).toBeNull();
+    expect(validEffect({ op: "splitStay", n: 9 })).toBeNull();
+    expect(validEffect({ op: "setBudget", amount: 5000, currency: "EUR" })).toEqual({ op: "setBudget", amount: 5000, currency: "EUR" });
+    expect(validQuestion({ id: "x" })).toBeNull();
+    expect(validQuestion(null)).toBeNull();
+    const raw = { id: "x", text: { tr: "Soru?" }, chips: [{ value: "a", label: { en: "A" }, effects: [{ op: "nope" }, { op: "dropCard", card: "pass" }] }, "junk"] };
+    expect(validQuestion({ ...raw, askIf: "full moon" })).toBeNull();
+    const ok = validQuestion(raw)!;
+    expect(ok).toEqual({ id: "x", text: { tr: "Soru?", en: "Soru?" }, chips: [{ value: "a", label: { tr: "A", en: "A" }, effects: [{ op: "dropCard", card: "pass" }] }] });
+    expect(validQuestions([ok, ok, { bad: 1 }, { ...ok, id: "y" }, { ...ok, id: "z" }, { ...ok, id: "w" }]).map((q) => q.id)).toEqual(["x", "y", "z"]);
+  });
+  it("reads the obvious answers by their words, Turkish endings and money included", () => {
+    const [stay] = playbookAsks("festival");
+    expect(matchChip(stay.chips, "otelde kalırım")?.value).toBe("hotel");
+    expect(matchChip(stay.chips, "Kampta")?.value).toBe("camp");
+    expect(matchChip(stay.chips, "kamp değil otel")).toBeNull();
+    expect(moneyOf("5.000 €")).toEqual({ amount: 5000, currency: "EUR" });
+    expect(moneyOf("150 bin TL")).toEqual({ amount: 150000, currency: "TRY" });
+    expect(moneyOf("2 kişi 5000 euro")).toEqual({ amount: 5000, currency: "EUR" });
+    expect(moneyOf("5 gün")).toBeNull();
   });
 });

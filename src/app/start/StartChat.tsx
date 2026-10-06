@@ -30,7 +30,7 @@ import { applyLiveDates, checkingLine, datesWait, lookupFor, startLookup, type D
 import { rulesPreview } from "../../lib/startHooks";
 import {
   applyAnswer, applyExtracted, applyText, askAgain, budgetChips, budgetWord, canGenerate, checklist, autoPrint, drawingLine, isComplete, isGoCommand, knownLines, lineLink, mergeExtracted, startName,
-  missingForGenerate, modelReplyText, NOT_UNDERSTOOD, nextQuestion, onlyEmpty, parseRouteText, parseStartText, photosToFind, preparedRoute, previewOf,
+  missingForGenerate, modelReplyText, NOT_UNDERSTOOD, nextQuestion, onlyEmpty, parseRouteText, parseStartText, pbCurrent, pbPromptOf, photosToFind, preparedRoute, previewOf, skipPb,
   questionOf, readingLine, readingName, readingRows, replyText, restoreRoute, routeThinkingLine, shouldAutoStart, autoHeld, memoAfterGenerate, AUTO_SECONDS, autoSeconds, waitingInstead, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
   tentativeWhere, whereKey, withGuessTaken, withoutOverruled, withPhotos, withPreparedRoute, withTypedLang,
   type Answer, type Extracted, type QuestionId, type SlotId, type StartCtx, type StartRoute, type StartState,
@@ -306,13 +306,13 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
    * it came in time, its line said again with what it read. Something said since: only what's still empty is filled,
    * and when that changes the question, the chat says so.
    */
-  function lateReading(read: Extracted, code: Extracted, line: string, q: QuestionId | null, mine: number, before: StartState, at: number | null) {
+  function lateReading(read: Extracted, code: Extracted, line: string, q: QuestionId | null, mine: number, before: StartState, at: number | null, pk: string | null = null) {
     if (stale()) return;
     const now = live.current;
     if (turn.current === mine && !busy.current) {
       const merged = mergeExtracted(code, read);
       const base = T(() => withoutOverruled(now, before, code, merged));
-      const more = T(() => applyText(base, line, merged, Date.now(), q));
+      const more = T(() => applyText(base, line, merged, Date.now(), q, pk));
       if (!more.understood && base === now) return;
       if (!more.understood) more.state = base;
       commit(more.state);
@@ -521,6 +521,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     }
     // A quick answer costs no model call: the code's line; the chip isn't said back (its bubble says it, rev 3).
     reply(before, after, (next, drawing) => replyText(before, next, ctx, drawing, true));
+    if (a.q === "pb") countAgain();
   }
 
   function onSkip(q: QuestionId) {
@@ -529,6 +530,26 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     const before = live.current;
     const asked = say(before, "user", T(() => L("Atla", "Skip")));
     reply(before, skip(asked, q, Date.now()), (next, drawing) => replyText(before, next, ctx, drawing, true));
+    if (q === "pb") countAgain();
+  }
+
+  /**
+   * A trip kind's question answered or skipped while it counts (2026-10-07): the countdown starts over, it never
+   * waits for those questions; one stopped by typing the answer is let go, so it starts again by itself.
+   */
+  function countAgain(typed = false) {
+    if (autoTimer.current != null) return void runAuto(autoSeconds(live.current));
+    if (typed) {
+      autoStopped.current = false;
+      autoFor.current = null;
+    }
+  }
+
+  /** A typed answer to a trip kind's question that nothing came of: that question skipped (never "anlamadım"). */
+  function pbUnread(before: StartState, pk: string | null, counting: boolean) {
+    const now = live.current;
+    reply(before, skipPb(now, pk, Date.now()), (next, drawing) => replyText(before, next, ctx, drawing, true));
+    if (counting) countAgain(true);
   }
 
   async function send(raw = text) {
@@ -539,11 +560,14 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     // "Tamam oluştur", "hadi", "let's go": made now when it can be, the words kept in the conversation (no "waiting"
     // line flashed first); else what's missing is said.
     if (isGoCommand(line) && canGenerate(live.current)) return generate(false, line);
+    const counting = autoTimer.current != null;
     stopAuto(true);
     const mine = nextTurn();
     // The first typed line decides the chat's language (item 1).
     const before = withTypedLang(live.current, line);
     const q = nextQuestion(before);
+    // The trip kind's question on screen (its answer, read now or later, is for this one).
+    const pk = q === "pb" ? T(() => pbCurrent(before)?.key ?? null) : null;
     const asked = say(before, "user", line);
     commit(asked);
     // The stops typed after "Değiştir": "Ubud 12, Canggu 19".
@@ -555,17 +579,20 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     }
     // The code reads it at once, bound to the question it answers (item 2).
     const code = T(() => parseStartText(line, today(), q));
-    const first = T(() => applyText(asked, line, code, Date.now(), q));
+    const first = T(() => applyText(asked, line, code, Date.now(), q, pk));
     // What the code read fills the list the moment it's sent (rev 3), before anything is waited for.
     if (first.understood) commit(first.state);
     const hasModel = await model.current!;
     if (stale() || turn.current !== mine) return;
+    // The trip kind's question answered and asked next, in their words (the model picks an option in `choice`).
+    const pbPending = pk ? T(() => pbPromptOf(asked, pk)) : null;
     if (first.understood) {
       // The code's line now; the model's (one call: its reading and its words) replaces it when it comes in time.
       const predicted = nextQuestion(first.state);
+      const pbNext = predicted === "pb" ? T(() => questionOf(first.state, "pb", ctx).text) : null;
       const controller = hasModel ? track() : null;
       const pending = controller
-        ? readAndReply({ text: line, today: today(), pending: q, next: predicted, known: T(() => knownLines(first.state, ctx)), lang: asked.lang }, READ_MS, controller.signal).finally(() => {
+        ? readAndReply({ text: line, today: today(), pending: q, next: predicted, known: T(() => knownLines(first.state, ctx)), lang: asked.lang, pbPending, pbNext }, READ_MS, controller.signal).finally(() => {
             inflight.current.delete(controller);
             readingDone(mine);
           })
@@ -575,23 +602,24 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
         setReading({ turn: mine, line: T(() => readingLine(readingName(before, first.state, code))), rows: T(() => readingRows(first.state, q, opening, ctx)) });
       }
       const at = reply(before, first.state);
+      if (q === "pb" && counting) countAgain(true);
       if (!pending || at == null) return;
       setStage("writing");
       // Its words are waited for REPLY_MS at most; its reading is applied whenever it lands (rev 3).
       const got = await within(pending, REPLY_MS, LATE);
       if (turn.current === mine) setStage(null);
       if (got === LATE) {
-        void pending.then((late) => late && lateReading(late.read, code, line, q, mine, before, at));
+        void pending.then((late) => late && lateReading(late.read, code, line, q, mine, before, at, pk));
         return;
       }
       if (!got || stale()) return;
-      if (turn.current !== mine) return lateReading(got.read, code, line, q, mine, before, at);
+      if (turn.current !== mine) return lateReading(got.read, code, line, q, mine, before, at, pk);
       // What the model read that the code missed is added (bound to the same question); then its words.
       // (A lower-case reading of the code's the model reads otherwise is taken back first.)
       const merged = mergeExtracted(code, got.read);
       const base = T(() => withoutOverruled(live.current, before, code, merged));
       if (base !== live.current) commit(base);
-      const more = T(() => applyText(base, line, merged, Date.now(), q));
+      const more = T(() => applyText(base, line, merged, Date.now(), q, pk));
       if (more.understood) commit(more.state);
       // What it added may make the route the question now: the circuit at once, or the chat says it is drawing it.
       const drawing = routeNow();
@@ -600,18 +628,20 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
       if (more.understood) setPicking({ styles: now.styles, budget: now.budget });
       return;
     }
-    if (!hasModel) return commit(say(live.current, "assistant", T(NOT_UNDERSTOOD)));
+    // A trip kind's question: what nothing came of is skipped, never "anlamadım" (after the model's try, when there is one).
+    if (!hasModel) return q === "pb" ? pbUnread(before, pk, counting) : commit(say(live.current, "assistant", T(NOT_UNDERSTOOD)));
     // Nothing the code knows: the model reads it, the traveller waits ("Düşünüyor…").
     setStage("thinking");
     setReading({ turn: mine, line: T(() => readingLine({ name: null, datesPending: false })), rows: T(() => readingRows(asked, q, !before.where && !before.guess, ctx)) });
     const controller = track();
-    const got = await readAndReply({ text: line, today: today(), pending: q, next: q, known: T(() => knownLines(asked, ctx)), lang: asked.lang }, READ_MS, controller.signal);
+    const got = await readAndReply({ text: line, today: today(), pending: q, next: q, known: T(() => knownLines(asked, ctx)), lang: asked.lang, pbPending, pbNext: pbPending ? T(() => questionOf(asked, "pb", ctx).text) : null }, READ_MS, controller.signal);
     inflight.current.delete(controller);
     readingDone(mine);
     if (turn.current === mine) setStage(null);
     if (stale() || turn.current !== mine) return;
-    const { state: after, understood } = T(() => applyText(live.current, line, mergeExtracted(code, got?.read ?? null), Date.now(), q));
-    if (!understood) return commit(say(live.current, "assistant", T(NOT_UNDERSTOOD)));
+    const { state: after, understood } = T(() => applyText(live.current, line, mergeExtracted(code, got?.read ?? null), Date.now(), q, pk));
+    if (!understood) return q === "pb" ? pbUnread(before, pk, counting) : commit(say(live.current, "assistant", T(NOT_UNDERSTOOD)));
+    if (q === "pb" && counting) countAgain(true);
     reply(before, after, (next, drawing) => modelReplyText(before, next, ctx, got?.reply ?? null, q, drawing));
   }
 
@@ -741,7 +771,8 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
                     </div>
                   </>
                 ) : (
-                  <div className="st-chips">
+                  // A trip kind's question while it counts: its chips and "Atla" start the countdown over, never stop it.
+                  <div className="st-chips" {...(question.id === "pb" ? { "data-auto-keep": true } : {})}>
                     {question.chips.map((c, i) => (
                       <button key={c.label} type="button" className={`st-chip${i === 0 && (question.id === "from" || question.id === "route") ? " first" : ""}`} onClick={() => void answer(c.answer, c.label)}>
                         {c.label}

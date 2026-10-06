@@ -13,8 +13,10 @@ import { festival } from "./festival";
 import { honeymoon } from "./honeymoon";
 import { ski } from "./ski";
 import { wellness } from "./wellness";
+import { say, validQuestions, type Card, type PbQuestion } from "./questions";
 
 export type { PlaybookKind };
+export * from "./questions";
 
 /** What a skeleton is made from: the trip as the start would make it. */
 export interface PlaybookCtx {
@@ -36,15 +38,18 @@ export interface Playbook {
    * The cards the made plan opens besides the stays and flights, in order (a transfer, the festival ticket, the ski
    * pass): places to fill, each said the way the chat's plan_item says it.
    */
-  skeleton: (ctx: PlaybookCtx) => PlannedInput[];
+  skeleton: (ctx: PlaybookCtx) => Card[];
   /** Suggestions that don't belong: whole sections, words in a title, sections kept to one suggestion at most. */
   blocked: { sections?: SuggestionSection[]; words?: RegExp; few?: SuggestionSection[] };
   /** The preparation list's lines (kind prep), in the language now. */
   prep: () => string[];
   /** One short tip, said once in the start chat. */
   tip: () => string;
-  /** At most three questions the kind really needs, asked only after the essentials. */
-  questions: () => string[];
+  /**
+   * At most three questions the kind really needs, asked only after the essentials, as data (questions.ts): each
+   * with its chips and what each answer does to the made trip. Checked before use (validQuestions).
+   */
+  questions: readonly PbQuestion[];
   /** The chat's tone, one line for the model. */
   tone: () => string;
   /** What the AI review is told not to suggest on this kind of trip, in words. */
@@ -122,8 +127,11 @@ export function blockedWords(kind: PlaybookKind | null | undefined): string {
   return playbookOf(kind).avoid?.() ?? "";
 }
 
-/** The questions a playbook asks after the essentials (where, when, who), at most three; none for a classic trip. */
-export const playbookQuestions = (kind: PlaybookKind | null | undefined): string[] => playbookOf(kind).questions().slice(0, 3);
+/** A playbook's questions, checked (a malformed one or an unknown operation dropped), at most three. */
+export const playbookAsks = (kind: PlaybookKind | null | undefined): PbQuestion[] => validQuestions(playbookOf(kind).questions);
+
+/** The questions a playbook asks after the essentials (where, when, who), in words; none for a classic trip. */
+export const playbookQuestions = (kind: PlaybookKind | null | undefined): string[] => playbookAsks(kind).map((q) => say(q.text));
 
 // --- the start chat -------------------------------------------------------------------------------------------------
 

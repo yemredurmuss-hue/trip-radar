@@ -28,9 +28,27 @@ export const honeymoon: Playbook = {
   blocked: {},
   prep: () => [L("Evlilik belgesinin kopyası", "Copy of the marriage certificate"), L("Resif dostu güneş kremi", "Reef-safe sunscreen"), L("Şnorkel maskesi", "Snorkel mask"), L("Akşam yemeği için şık kıyafet", "Something smart for dinner")],
   tip: () => L("Rezervasyonda balayı olduğunu söyle; çoğu resort küçük bir sürpriz hazırlıyor.", "Mention it's your honeymoon when booking; many resorts prepare a small surprise."),
-  questions: () => [
-    L("Aşağı yukarı bütçeniz ne kadar?", "Roughly what's your budget?"),
-    L("Tek resort mu, iki farklı resort mu?", "One resort, or two?"),
+  questions: [
+    {
+      id: "budget",
+      text: { tr: "Aşağı yukarı bütçeniz ne kadar?", en: "Roughly what's your budget?" },
+      // An amount typed with its money ("8000 euro", "200 bin TL") is taken too.
+      money: true,
+      chips: [3000, 6000, 10000].map((amount) => ({
+        value: `${amount} EUR`,
+        label: { tr: `${amount.toLocaleString("tr-TR")} €`, en: `€${amount.toLocaleString("en-GB")}` },
+        effects: [{ op: "setBudget" as const, amount, currency: "EUR" }],
+      })),
+    },
+    {
+      id: "resorts",
+      text: { tr: "Tek resort mu, iki farklı resort mu?", en: "One resort, or two?" },
+      chips: [
+        { value: "one", label: { tr: "Tek resort", en: "One resort" }, aliases: ["tek", "one", "single", "aynı"], effects: [] },
+        // Two: the nights split between two stays (each a place to fill).
+        { value: "two", label: { tr: "İki resort", en: "Two resorts" }, aliases: ["iki", "two", "2", "farklı", "different"], effects: [{ op: "splitStay", n: 2 }] },
+      ],
+    },
   ],
   tone: () => L("Romantik ve sakin; çifti kutla ama abartma.", "Romantic and calm; celebrate the couple without overdoing it."),
 };

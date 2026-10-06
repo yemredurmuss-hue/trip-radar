@@ -19,7 +19,10 @@ import { placesKey } from "./destinations";
 import { addDays, cityKeyOf } from "./plan";
 import { looksLikeUrl } from "./url";
 import type { PlannedInput } from "./planned";
-import { playbookPromptLine } from "./playbooks";
+import {
+  budgetSet, chipsFor, effectsOf, optionsText, playbookAsks, playbookPromptLine, readAnswer, say, startOffset, startPlaybook, staysAfter,
+  type PbChip, type PbEffect, type PbQuestion,
+} from "./playbooks";
 import { CIRCUITS, englishName, fitCircuit } from "./startCircuits";
 import { daysBetween, eventDays, findEvent, intentAt, intentOf, intentTitle, plusDays, type Intent } from "./startEvents";
 import { STYLES, type BudgetLevel, type StyleId } from "./tripStyle";
@@ -35,7 +38,8 @@ export type StartMode = "plan" | "inspire" | "road" | "lastminute";
  * "clash": the dates said miss the event (fit them to it, or keep them and drop the event); "venue": the event named
  * somewhere it isn't held ("Oktoberfest in Istanbul": the original, or one there?).
  */
-export type QuestionId = "where" | "from" | "who" | "count" | "names" | "duration" | "start" | "day" | "want" | "route" | "guess" | "clash" | "venue";
+/** "pb": the trip kind's own question asked now (playbooks/: camping or a hotel, the ski level), after the essentials. */
+export type QuestionId = "where" | "from" | "who" | "count" | "names" | "duration" | "start" | "day" | "want" | "route" | "guess" | "clash" | "venue" | "pb";
 export type { Intent };
 /** Which part of a month a start chip took: never a day made up without saying so. */
 export type MonthPart = "begin" | "mid" | "end";
@@ -122,6 +126,11 @@ export interface StartState {
   asking: QuestionId | null;
   /** A place read from a loose spelling, waiting for "Evet" or "Hayır" (never taken silently). */
   guess?: PlaceGuess | null;
+  /**
+   * The trip kind's questions answered, by "kind:id" ("festival:stay" → "camp"); null: skipped or not understood.
+   * Never holding the trip back: what isn't answered is made as before.
+   */
+  pbAnswers?: Record<string, string | null>;
   messages: StartMsg[];
   /** The trip record once made: a retry after a failed step continues it, never makes a second trip. */
   tripId: string | null;
@@ -695,6 +704,8 @@ export interface Extracted {
   fromWeak?: boolean;
   /** An event or a theme named ("burning man africa"): the destination is its place (always sure). */
   intent?: Intent | null;
+  /** The model's pick among a trip kind's question's options (its value, or "skip"); checked against them before use. */
+  choice?: string | null;
 }
 
 /** "Kohphandan" read as Koh Phangan: kept apart until the traveller says yes ("Evet") or no ("Hayır, Kohphandan"). */
@@ -1072,6 +1083,8 @@ export const extractionSchema = z.object({
   event_start: z.string().optional(),
   event_end: z.string().optional(),
   event_dates_sure: z.boolean().optional(),
+  // The option picked when a trip kind's question with options is answered (optional, like the event's).
+  choice: z.string().optional(),
 });
 export type RawExtraction = z.infer<typeof extractionSchema>;
 
@@ -1086,14 +1099,16 @@ origin: yola çıkılan şehir ("İstanbul'dan" → "İstanbul"). companions: so
 start_date: başlangıç günü YYYY-MM-DD (bugünden sonraki ilk uygun yıl). Yalnız ay söylendiyse start_date "" ve start_month 1-12.
 duration_days: gün olarak süre (gece söylendiyse gece + 1); "1 ay" gibi ay söylendiyse duration_months. styles: yalnız bu id'lerden: ${Object.keys(STYLES).join(", ")}. budget: low | mid | high ya da "".
 "Kullanıcının cevapladığı soru" verildiyse mesaj o soruyu cevaplar: "nereden" sorusuna verilen yer adı origin'dir, destination değil. Gidilecek yer bilinirken destination yalnız kullanıcı açıkça başka yere gitmek istediğini söylerse ("aslında Bali'ye gidelim") dolar.
-event: kullanıcı bir etkinliğe, festivale ya da temaya gitmek istiyorsa onun bilinen adı ("burning man africa" → "AfrikaBurn", "kuzey ışıkları" → "Kuzey Işıkları"); yoksa "". event_kind: event | theme. event_place: yapıldığı yer (destination da o olur, ör. "Tankwa Karoo"); event_country_code: ülkesinin ISO kodu. event_start / event_end: bildiğin sıradaki tarihleri (bugünden sonraki ilk) YYYY-MM-DD, bilmiyorsan "". event_dates_sure: yalnız tarihlerden kesin eminsen true.`,
+event: kullanıcı bir etkinliğe, festivale ya da temaya gitmek istiyorsa onun bilinen adı ("burning man africa" → "AfrikaBurn", "kuzey ışıkları" → "Kuzey Işıkları"); yoksa "". event_kind: event | theme. event_place: yapıldığı yer (destination da o olur, ör. "Tankwa Karoo"); event_country_code: ülkesinin ISO kodu. event_start / event_end: bildiğin sıradaki tarihleri (bugünden sonraki ilk) YYYY-MM-DD, bilmiyorsan "". event_dates_sure: yalnız tarihlerden kesin eminsen true.
+choice: cevaplanan soru seçenekleriyle verildiyse ("değer = etiket"), mesajın seçtiği seçeneğin değeri; cevap vermek istemiyorsa ya da hiçbirine uymuyorsa "skip"; seçenek yoksa "".`,
     `From the user's message in a trip-planning chat, take only what is clearly said. Never invent; what isn't said stays empty ("" or 0 or []).
 destination: the place to go (a city, island, region or country), its name only; when several are said, the most specific ("Thailand, Koh Phangan" → "Koh Phangan", country Thailand), spelled correctly. destination_country: its country when known; destination_country_code: that country's ISO 3166-1 alpha-2 code ("TH").
 origin: the city they leave from. companions: solo | partner | friends | family or "". names: the people going with them (not the user).
 start_date: the first day, YYYY-MM-DD (the first fitting year from today). If only a month is said, start_date "" and start_month 1-12.
 duration_days: the length in days (nights said: nights + 1); a length in months goes in duration_months. styles: only these ids: ${Object.keys(STYLES).join(", ")}. budget: low | mid | high or "".
 When "The user is answering" is given, the message answers that question: a place given to "where from" is the origin, not the destination. While the destination is known, destination is filled only when the user clearly says they want to go somewhere else ("actually, let's go to Bali").
-event: when the user wants to go to an event, a festival or a theme, its known name ("burning man africa" → "AfrikaBurn", "the northern lights" → "Northern Lights"); else "". event_kind: event | theme. event_place: where it happens (that is the destination too, e.g. "Tankwa Karoo"); event_country_code: its country's ISO code. event_start / event_end: its next dates you know (the first after today) as YYYY-MM-DD, "" if unsure. event_dates_sure: true only when you are certain of the dates.`,
+event: when the user wants to go to an event, a festival or a theme, its known name ("burning man africa" → "AfrikaBurn", "the northern lights" → "Northern Lights"); else "". event_kind: event | theme. event_place: where it happens (that is the destination too, e.g. "Tankwa Karoo"); event_country_code: its country's ISO code. event_start / event_end: its next dates you know (the first after today) as YYYY-MM-DD, "" if unsure. event_dates_sure: true only when you are certain of the dates.
+choice: when the question being answered comes with options ("value = label"), the value of the option the message picks; "skip" when they'd rather not say or it fits none; "" when there are no options.`,
   );
 
 /** What each question asks, in words for the model ("where they leave from"). */
@@ -1112,6 +1127,7 @@ export const slotWords = (q: QuestionId): string =>
     want: L("gezide ne istendiği (tarz, bütçe)", "what they want from the trip (style, budget)"),
     route: L("rota", "the route"),
     guess: L("yazılan yerin doğru okunup okunmadığı", "whether the place typed was read right"),
+    pb: L("gezi türüne özel bir soru", "a question for this kind of trip"),
   })[q];
 
 export const extractionPrompt = (text: string, today: string, pending: QuestionId | null) =>
@@ -1148,18 +1164,26 @@ export function knownLines(s: StartState, ctx: StartCtx): string {
     wantText(s) ? `${L("Tarz", "Style")}: ${wantText(s)}` : "",
     // A festival, a ski trip, a honeymoon, a retreat (playbooks/): its tone, and its one tip until it's been said.
     playbookPromptLine(s),
+    // Its questions answered so far ("Kamp mı yapacaksın, otelde mi kalacaksın? Kamp").
+    ...pbAsks(s).flatMap((a) => {
+      const v = s.pbAnswers?.[a.key];
+      return v ? [`${say(a.q.text)} ${a.chips.find((c) => c.value === v) ? say(a.chips.find((c) => c.value === v)!.label) : v}`] : [];
+    }),
   ].filter(Boolean);
   return rows.length ? rows.join("; ") : L("henüz bir şey yok", "nothing yet");
 }
 
-/** A typed message for the model: today, what is known, the question it answers, the next question, the message. */
-export function turnPrompt(a: { text: string; today: string; pending: QuestionId | null; next: QuestionId | null; known: string }): string {
+/**
+ * A typed message for the model: today, what is known, the question it answers, the next question, the message. A
+ * trip kind's question is given in its own words, the one answered with its options (the model picks one in `choice`).
+ */
+export function turnPrompt(a: { text: string; today: string; pending: QuestionId | null; next: QuestionId | null; known: string; pbPending?: string | null; pbNext?: string | null }): string {
   return [
     "<start_message>",
     `${L("Bugün", "Today")}: ${a.today}`,
     `${L("Bilinenler", "Known so far")}: ${a.known}`,
-    a.pending ? `${L("Kullanıcının cevapladığı soru", "The user is answering")}: ${slotWords(a.pending)}` : "",
-    `${L("Sıradaki soru", "Next question")}: ${a.next ? slotWords(a.next) : L("yok", "none")}`,
+    a.pending ? `${L("Kullanıcının cevapladığı soru", "The user is answering")}: ${a.pending === "pb" && a.pbPending ? a.pbPending : slotWords(a.pending)}` : "",
+    `${L("Sıradaki soru", "Next question")}: ${a.next === "pb" && a.pbNext ? a.pbNext : a.next ? slotWords(a.next) : L("yok", "none")}`,
     `${L("Mesaj", "Message")}: ${a.text}`,
     "</start_message>",
   ].filter(Boolean).join("\n");
@@ -1201,6 +1225,8 @@ export function acceptExtraction(raw: RawExtraction, today: string): Extracted {
   const kind = (COMPANIONS as readonly string[]).includes(raw.companions) ? (raw.companions as Companions) : null;
   const names = (raw.names ?? []).map((n) => n.trim()).filter((n) => /^[\p{L}][\p{L} .'-]{0,30}$/u.test(n)).slice(0, 8);
   if (kind || names.length) out.who = { kind, names: [...new Set(names)] };
+  const choice = typeof raw.choice === "string" ? raw.choice.trim() : "";
+  if (choice && choice.length <= 60) out.choice = choice;
   const date = isoDate(raw.start_date);
   // A start in the past (or years away) is a misread, not a plan.
   if (date && date >= today && date <= addMonths(today, 36)) out.start = { date, approx: false };
@@ -1283,6 +1309,7 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
     duration: code.duration ?? model.duration,
     styles: [...new Set([...code.styles, ...model.styles])],
     budget: code.budget ?? model.budget,
+    ...(model.choice || code.choice ? { choice: model.choice || code.choice } : {}),
   };
 }
 
@@ -1305,14 +1332,60 @@ const said = (e: Extracted) => Boolean(e.where || e.intent || e.from || e.who ||
  * The essentials first (2026-10-06 intent: where, when or how long, where from, who and how many in a group), then
  * what is optional and never holds the trip back: the start day when only the month is known, what they're after,
  * the route. With an event, where and when come from it: only the total length is asked. Names are never asked
- * here: the board's chat asks them once, after the trip exists.
+ * here: the board's chat asks them once, after the trip exists. The trip kind's own questions ("pb": camping or a
+ * hotel, the ski level) come right after the essentials, one per turn, and never hold the trip back either.
  */
 const ORDER: Record<StartMode, QuestionId[]> = {
-  plan: ["where", "venue", "clash", "duration", "start", "from", "who", "count", "day", "want", "route"],
-  road: ["where", "venue", "clash", "duration", "start", "from", "who", "count", "day", "want", "route"],
-  lastminute: ["where", "venue", "clash", "duration", "start", "from", "who", "count", "day", "want", "route"],
-  inspire: ["want", "where", "venue", "clash", "duration", "start", "from", "who", "count", "day", "route"],
+  plan: ["where", "venue", "clash", "duration", "start", "from", "who", "count", "day", "pb", "want", "route"],
+  road: ["where", "venue", "clash", "duration", "start", "from", "who", "count", "day", "pb", "want", "route"],
+  lastminute: ["where", "venue", "clash", "duration", "start", "from", "who", "count", "day", "pb", "want", "route"],
+  inspire: ["want", "where", "venue", "clash", "duration", "start", "from", "who", "count", "day", "pb", "route"],
 };
+
+// --- the trip kind's own questions (playbooks/questions.ts: data, run the same for every kind) ---------------------
+
+/** One of the trip kind's questions as asked here: its key on the start ("festival:stay") and its chips here. */
+export interface PbAsk {
+  key: string;
+  q: PbQuestion;
+  chips: PbChip[];
+}
+
+/** The trip kind's questions that apply to this start, in order (none for a classic trip or before the destination). */
+export function pbAsks(s: StartState): PbAsk[] {
+  if (!s.where) return [];
+  const kind = startPlaybook(s);
+  if (kind === "classic") return [];
+  const ctx = {
+    code: s.where.code ?? s.intent?.code ?? countryCodeOfName(s.where.country) ?? null,
+    countryDestination: Boolean(countryItself(s.where)),
+    eventDates: Boolean(s.intent?.kind === "event" && s.intent.dates && !s.intent.running),
+  };
+  return playbookAsks(kind).flatMap((q) => {
+    const chips = chipsFor(q, ctx);
+    return chips ? [{ key: `${kind}:${q.id}`, q, chips }] : [];
+  });
+}
+
+/** The trip kind's question still to ask (one per turn), or null. */
+export const pbCurrent = (s: StartState): PbAsk | null => pbAsks(s).find((a) => !Object.hasOwn(s.pbAnswers ?? {}, a.key)) ?? null;
+
+/** What the answers so far do to the made trip, in the order asked (an answer skipped does nothing). */
+export const pbEffects = (s: StartState): PbEffect[] => (s.pbAnswers ? pbAsks(s).flatMap((a) => effectsOf(a.q, a.chips, s.pbAnswers?.[a.key])) : []);
+
+/** A trip kind's question left unanswered (skipped, or a typed answer nothing came of): asked no more. */
+export function skipPb(s: StartState, key: string | null, now: number): StartState {
+  if (!key || Object.hasOwn(s.pbAnswers ?? {}, key)) return s;
+  return { ...s, pbAnswers: { ...s.pbAnswers, [key]: null }, asking: null, updatedAt: now };
+}
+
+/** The trip kind's question being answered, for the model: its words and its options ("camp = Kamp; hotel = Otel"). */
+export function pbPromptOf(s: StartState, key: string | null): string | null {
+  const a = pbAsks(s).find((x) => x.key === key);
+  if (!a) return null;
+  const options = optionsText(a.chips);
+  return `"${say(a.q.text)}"${options ? ` (${L("seçenekler", "options")}: ${options})` : ""}`;
+}
 
 const NAMED_COMPANY: Companions[] = ["partner", "friends", "family"];
 
@@ -1351,6 +1424,8 @@ function open(s: StartState, q: QuestionId): boolean {
       return Boolean(s.where && totalNights(s) && !s.route?.confirmed);
     case "guess":
       return Boolean(s.guess);
+    case "pb":
+      return Boolean(pbCurrent(s));
   }
 }
 
@@ -1399,7 +1474,7 @@ export const autoPrint = (s: StartState, ctx: StartCtx): string => JSON.stringif
 /** The countdown: 3 seconds; 6 when the style question shows as it starts (time to read its chips). */
 export const AUTO_SECONDS = 3;
 export const AUTO_WITH_STYLE = 6;
-export const autoSeconds = (s: StartState): number => (nextQuestion(s) === "want" ? AUTO_WITH_STYLE : AUTO_SECONDS);
+export const autoSeconds = (s: StartState): number => (nextQuestion(s) === "want" || nextQuestion(s) === "pb" ? AUTO_WITH_STYLE : AUTO_SECONDS);
 
 /** The last line when nothing is left to ask: the trip makes itself in a few seconds. */
 export const readyLine = () =>
@@ -1480,6 +1555,8 @@ export function missingInfo(s: StartState): string[] {
 export const isComplete = (s: StartState): boolean => checklist(s, { myName: null, fromGuess: null, today: "" }).every((r) => r.done);
 
 export function skip(s: StartState, q: QuestionId, now: number): StartState {
+  // The trip kind's question skipped: that one only, asked no more (the next one comes).
+  if (q === "pb") return skipPb(s, pbCurrent(s)?.key ?? null, now);
   // A guess skipped is a guess not taken.
   if (q === "guess") return { ...s, guess: null, updatedAt: now };
   // The length skipped with an event: just the event, its own days.
@@ -1544,12 +1621,27 @@ export type Answer =
   | { q: "day"; date: string; part: MonthPart | null }
   | { q: "want"; styles: StyleId[]; budget: BudgetLevel | null }
   | { q: "route"; action: "accept" | "change" | "single" }
-  | { q: "guess"; accept: boolean };
+  | { q: "guess"; accept: boolean }
+  | { q: "pb"; key: string; value: string | null };
+
+/** The days a length covers (a month as 30 days and one). */
+const lengthDays = (d: Duration) => (d.unit === "month" ? 30 * d.n + 1 : roughNights(d) + 1);
 
 /** A quick answer (a chip) applied. */
 export function applyAnswer(s: StartState, a: Answer, now: number): StartState {
   let next: StartState = { ...s, asking: null, updatedAt: now };
   switch (a.q) {
+    case "pb": {
+      next.pbAnswers = { ...s.pbAnswers, [a.key]: a.value };
+      // Arriving days before the event: the trip long enough to hold them and the event (unless they gave its start).
+      const n = startOffset(pbEffects(next));
+      const d = s.intent?.dates;
+      if (n != null && d && !s.intent?.running && (!s.start || s.start.event)) {
+        const need = n + eventDays(d);
+        if (!s.duration || lengthDays(s.duration) < need) next.duration = { unit: "day", n: need };
+      }
+      return keepRoute(s, next);
+    }
     case "where":
       next.where = { place: a.place, country: a.country, code: a.code ?? null };
       // Another place picked: no longer the event's (unless it is its place).
@@ -1708,8 +1800,20 @@ export function bindToQuestion(s: StartState, text: string, read: Extracted, q: 
  * nothing the code recognises, a short answer taken as the answer to that question ("İzmir" to "Nereden?").
  * `understood: false` when nothing came of it.
  */
-export function applyText(s: StartState, text: string, read: Extracted, now: number, pending: QuestionId | null = nextQuestion(s)): { state: StartState; understood: boolean } {
+export function applyText(s: StartState, text: string, read: Extracted, now: number, pending: QuestionId | null = nextQuestion(s), pbKey: string | null = null): { state: StartState; understood: boolean } {
   const q = pending;
+  // The trip kind's question (`pbKey`: the one on screen when the line was typed; a reading that comes later still
+  // answers that one, never the next): a chip's words or an amount by the code, else the model's pick among the
+  // options. Nothing came of it: what else the line says is taken, but never a length or a start ("2 gün önce" is
+  // the question's, not the trip's); the screen then counts it as skipped (never "anlamadım").
+  if (q === "pb") {
+    const a = pbKey ? pbAsks(s).find((x) => x.key === pbKey) : pbCurrent(s);
+    if (a && !Object.hasOwn(s.pbAnswers ?? {}, a.key)) {
+      const value = readAnswer(a.q, a.chips, text, read.choice);
+      if (value !== undefined) return { state: applyAnswer(s, { q: "pb", key: a.key, value }, now), understood: true };
+    }
+    read = { ...read, start: null, duration: null };
+  }
   // "Evet" / "Hayır" typed to "… mı demek istedin?" (rev 3), as the chips.
   if (q === "guess" && s.guess) {
     const word = text.trim().toLocaleLowerCase("tr").replace(/[.!]+$/, "");
@@ -2021,6 +2125,15 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
         date: true,
       };
     }
+    case "pb": {
+      // The trip kind's question, its words and chips as its playbook gives them (the same for every kind).
+      const a = pbCurrent(s);
+      return {
+        id: q,
+        text: a ? say(a.q.text) : "",
+        chips: a ? a.chips.map((c) => ({ label: say(c.label), answer: { q: "pb" as const, key: a.key, value: c.value } })) : [],
+      };
+    }
     case "want":
       return {
         id: q, text: L("Bu gezide en çok ne istiyorsun? (birden çok seçebilirsin)", "What are you after on this trip? (pick as many as you like)"),
@@ -2226,7 +2339,8 @@ export function modelMayReply(before: StartState, after: StartState): boolean {
 export function modelReplyText(before: StartState, after: StartState, ctx: StartCtx, reply: { text: string; question: string | null } | null, askedFor: QuestionId | null, drawing = false): string {
   if (!reply || !modelMayReply(before, after)) return replyText(before, after, ctx, drawing);
   const q = nextQuestion(after);
-  const question = q && q === askedFor && reply.question ? reply.question : nextLine(after, ctx, drawing);
+  // (A trip kind's question is always the code's: its chips answer those words, and the next one may be another.)
+  const question = q && q !== "pb" && q === askedFor && reply.question ? reply.question : nextLine(after, ctx, drawing);
   return `${reply.text}\n${question}`;
 }
 
@@ -2263,7 +2377,7 @@ export const routeThinkingLine = () => L("Rotayı düşünüyorum…", "Thinking
 /** The checklist row a question fills. */
 const ROW_OF: Record<QuestionId, SlotId | null> = {
   where: "where", guess: "where", venue: "where", from: "from", who: "who", count: "who", names: null, duration: "when", start: "when", day: "when",
-  clash: "when", want: "want", route: "route",
+  clash: "when", want: "want", route: "route", pb: null,
 };
 
 /**
@@ -2459,10 +2573,11 @@ export function withEventDates(s: StartState): StartState {
   const theirs = s.start && !s.start.event && !(monthOnly(s) && monthMeets(s.start.date, d));
   if (theirs) return s;
   if (!s.duration) return s.start && !s.start.event ? { ...s, start: { date: d.start, approx: d.approx, event: true } } : s;
-  const days = s.duration.unit === "month" ? 30 * s.duration.n + 1 : roughNights(s.duration) + 1;
-  const extra = Math.max(0, days - eventDays(d));
+  const extra = Math.max(0, lengthDays(s.duration) - eventDays(d));
+  // Arriving N days before, as answered (the trip kind's question): those days first, the rest after it.
+  const early = s.pbAnswers ? startOffset(pbEffects(s)) : null;
   // On now: the days left from today, the extra ones after it.
-  const date = s.intent?.running ? d.start : plusDays(d.start, -Math.floor(extra / 2));
+  const date = s.intent?.running ? d.start : plusDays(d.start, -(early != null ? Math.min(early, extra) : Math.floor(extra / 2)));
   if (s.start?.date === date && s.start.approx === d.approx) return s;
   return { ...s, start: { date, approx: d.approx, event: true } };
 }
@@ -2848,6 +2963,8 @@ export interface Creation {
   road: boolean;
   /** The start was a guess (a part of the month, or a month only): the hero says "tarih yaklaşık" until confirmed. */
   approxStart: string | null;
+  /** The budget a trip kind's answer set (a honeymoon's "6.000 €"); null when none did. */
+  budget: { amount: number; currency: string } | null;
 }
 
 const said0 = (p: Partial<PlannedInput> & Pick<PlannedInput, "kind">): PlannedInput => ({
@@ -2920,10 +3037,18 @@ export function creationOf(s: StartState): Creation | null {
   // A route through a region (Ubud, Canggu in Bali): the hero shows Bali. A country's cities stay the main places.
   const region = fitted.length > 1 && !fitted.some((x) => cityKeyOf(x.city) === cityKeyOf(where.place)) && !countryCodeOfName(where.place);
   const parents = region ? { key: placesKey(fitted.map((x) => x.city)), parents: Object.fromEntries(fitted.map((x) => [cityKeyOf(x.city)!, where.place])) } : null;
+  // The trip kind's answers (playbooks/questions.ts): the stays they drop, move (a resort picked) or split.
+  const effects = pbEffects(s);
+  const shaped = effects.length ? staysAfter(stays, effects, { dest: where.place, eventPlace: s.intent?.kind === "event" ? s.intent.place : null }) : stays;
+  for (const e of effects) {
+    const key = e.op === "moveCards" ? cityKeyOf(e.to) : null;
+    // A resort inside the country said: the country's flag, weather and visa.
+    if (key && !countries[key] && whereCode) countries[key] = countries[cityKeyOf(where.place) ?? ""] ?? { code: whereCode, name: where.country ?? where.place };
+  }
   return {
     title: tripTitle(s),
     dates,
-    stays,
+    stays: shaped,
     travel,
     travellers: count || names.length ? { names, count } : null,
     styles: knownStyles(s.styles),
@@ -2931,6 +3056,7 @@ export function creationOf(s: StartState): Creation | null {
     parents,
     road,
     approxStart: s.start?.approx && dates ? dates.start : null,
+    budget: budgetSet(effects),
   };
 }
 
