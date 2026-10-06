@@ -3514,7 +3514,9 @@ try {
   await board.locator(".st-msg-bot", { hasText: /The trip: \d+ April – \d+ May · 10 nights \(estimated\) \(Cape Town 2 · Tankwa Karoo 6 · Cape Town 2 nights\)\./ }).waitFor();
   await board.locator(".st-msg-bot .st-q", { hasText: "Where are you leaving from?" }).last().waitFor();
   await abList.locator(".st-row.done", { hasText: "ROUTE" }).getByText("Cape Town 2 · Tankwa Karoo 6 · Cape Town 2 nights").waitFor();
-  await answers.getByRole("button", { name: /stanbul/ }).first().click();
+  // Typed (the origin's guess depends on the trips before this one).
+  await chat.getByLabel("Message").fill("Istanbul");
+  await chat.getByLabel("Message").press("Enter");
   await board.locator(".st-msg-bot .st-q", { hasText: "How many of you are going, you included?" }).waitFor();
   assert.equal(await board.locator(".st-auto").count(), 0, "not before how many");
   await answers.getByRole("button", { name: "4", exact: true }).click();
