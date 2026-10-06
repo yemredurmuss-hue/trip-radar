@@ -149,6 +149,24 @@ try {
   // countdown on it, the title, the dates, one sentence, the plan in four cells, "Rezervasyonların", and the card.
   const hero = app.locator(".hx");
   const flat = (texts) => texts.map((t) => t.replace(/\s+/g, " ").trim());
+  // The box's "N rezerve · N planlandı · N karar bekliyor" and the list it opens, read off the page and compared:
+  // the same needs, so the same counts and as many rows (one screen once showed three different "karar" counts).
+  const listMatchesHero = async (where) => {
+    const line = flat([await app.locator(".hx .hx-progress-count").innerText()])[0];
+    const of = (word) => Number(line.match(new RegExp(`(\\d+) ${word}`))?.[1] ?? 0);
+    const s = { line, booked: of("rezerve"), planned: of("planlandı") + of("rezervasyon kaldı"), open: of("karar bekliyor") };
+    const list = app.locator(".hx + .todo-list");
+    const wasOpen = (await list.count()) > 0;
+    if (!wasOpen) await app.locator(".hx button.hx-progress-count").click();
+    const heads = Object.fromEntries(flat(await list.locator(".todo-head").allInnerTexts()).map((t) => [t.replace(/ \d+$/, ""), Number(t.match(/(\d+)$/)[1])]));
+    const rows = (label) => list.locator(".todo-group", { has: app.locator(".todo-head", { hasText: label }) }).locator("li").count();
+    assert.equal(heads["Karar bekliyor"] ?? 0, s.open, `${where}: "karar bekliyor" in the box and the list (${line} / ${JSON.stringify(heads)})`);
+    assert.equal(await rows("Karar bekliyor"), s.open, `${where}: one row per need waiting`);
+    assert.equal(heads["Rezerve edilecek"] ?? 0, s.planned, `${where}: "planlandı" in the box is "Rezerve edilecek" in the list (${line} / ${JSON.stringify(heads)})`);
+    assert.equal(await rows("Rezerve edilecek"), s.planned, `${where}: one row per need to book`);
+    if (!wasOpen) await app.locator(".hx button.hx-progress-count").click();
+    return { ...s, heads };
+  };
   assert.deepEqual(await hero.locator(".hx-cities button").allInnerTexts(), ["Porto", "Lizbon"]);
   assert.match(await hero.locator(".hx-count").innerText(), /^(\d+ gün kaldı|Yarın|\d+\. gün \/ 7|Bitti)$/);
   assert.equal(flat([await hero.locator(".hx-when").innerText()])[0], "8–14 Ekim · 7 gün");
@@ -175,7 +193,8 @@ try {
   assert.deepEqual(flat(await hero.locator(".hx-tally button").allInnerTexts()), tallyWant);
   assert.deepEqual(tallyWant.slice(0, 2), ["2 uçuş", "2 konaklama"]);
   assert.ok(Number(tallyWant[3].split(" ")[0]) >= 4, "every activity and restaurant on the Plan counts, chosen or not");
-  assert.equal(await hero.locator(".hx-lead").innerText(), "3 karar ve 1 rezervasyon bekliyor.");
+  // The box counts the stages, so no sentence of counts above it ("3 karar ve 1 rezervasyon bekliyor" said another 3).
+  assert.equal(await hero.locator(".hx-lead").count(), 0, "no second set of numbers in the lead");
   // "Planlama %N" (two-tier bar): what needs a booking on the Plan, booked · planned · waiting for a decision, out
   // of the section headers' "3/4"s (what takes no booking, a planned taxi or a chore, isn't a need). The ideas
   // (Yapılacak şeyler, Restoranlar, İlham) have no "3/4" and aren't in it (0.35.3).
@@ -192,6 +211,9 @@ try {
   assert.equal(stagesLine, [booked && `${booked} rezerve`, planned && `${planned} planlandı`, waiting && `${waiting} karar bekliyor`].filter(Boolean).join(" · "));
   const needs = booked + planned + waiting;
   assert.ok(waiting > 0 && planned > 0 && booked > 0 && needs <= total, `the sample has all three stages, within the sections' ${total} (${stagesLine})`);
+  const atStart = await listMatchesHero("the sample");
+  // The transfers nobody said anything about are asked apart, outside the stages.
+  assert.ok(atStart.heads["Ulaşım · nasıl gidilecek"] > 0, `the transfers' own group (${JSON.stringify(atStart.heads)})`);
   const planPct = Math.min(Math.round(((booked + planned) / needs) * 100), 99);
   assert.equal(await hero.locator(".hx-progress-head > b").innerText(), `Planlama %${planPct}`);
   // The bar: one progressbar, two fills from the left, booked (dark) inside planned (light) — booked + planned.
@@ -664,17 +686,21 @@ try {
   assert.equal(await tap.locator(".pk-badges").innerText(), "En ekonomik");
   await tap.locator(".pk-body").click();
   await tap.getByRole("button", { name: "Önceki seçenek" }).click();
-  // "Planı tamamla" goes to the next step; "3 rezerve · 1 planlandı · …" lists every to-do under the hero in groups
-  // (Karar bekliyor: decide and plan; Rezerve edilecek), a tap goes there; tapped again, the list closes.
+  // "Planı tamamla" goes to the next step; "2 rezerve · 1 planlandı · …" lists every to-do under the hero in groups
+  // (Karar bekliyor and Rezerve edilecek: the box's own needs; then the transfers, then the cancellations), a tap
+  // goes there; tapped again, the list closes.
   const todoCount = app.locator(".hx-progress-count");
   const todoList = app.locator(".hx + .todo-list");
   await app.locator(".hx-go").click();
   await app.locator(".flash").first().waitFor();
   await todoCount.click();
-  const listed = await todoList.innerText();
-  assert.deepEqual(["Karar ver: ", "Rezerve et: ", "Planla: "].map((k) => listed.split(k).length - 1), [3, 1, 4]);
-  assert.deepEqual(flat(await todoList.locator(".todo-head").allInnerTexts()).slice(0, 2), ["Karar bekliyor 7", "Rezerve edilecek 1"]);
-  assert.equal(await todoList.locator(".todo-group", { has: app.locator(".todo-head", { hasText: "Rezerve edilecek" }) }).locator("li", { hasText: "Rezerve et: " }).count(), 1, "what's to book under Rezerve edilecek");
+  const now = await listMatchesHero("after the comparisons");
+  const group = (label) => todoList.locator(".todo-group", { has: app.locator(".todo-head", { hasText: label }) });
+  assert.equal(await group("Rezerve edilecek").locator("li", { hasText: "Rezerve et: " }).count(), now.planned, "what's to book under Rezerve edilecek");
+  assert.equal(await group("Karar bekliyor").locator("li", { hasText: "Rezerve et: " }).count(), 0, "nothing to book among the decisions");
+  // The transfers: "nasıl?", in their own group, never among the decisions the box counts.
+  assert.equal(await group("Karar bekliyor").locator("li", { hasText: "transferi" }).count(), 0);
+  assert.ok((await group("Ulaşım · nasıl gidilecek").locator("li", { hasText: "transferi" }).count()) >= 4);
   await todoList.locator("button", { hasText: "Porto konaklama · 8–11 Ekim" }).click();
   await app.locator(".tl-stay.flash").waitFor();
   assert.match(await todoList.innerText(), /Varış transferi · 8 Ekim[\s\S]*nasıl\?/);
@@ -1562,6 +1588,7 @@ try {
   // A to-do in a closed section: the hero's list opens it there.
   assert.match(await sec("stay").getAttribute("class"), /closed/);
   await app.locator(".hx-progress-count").click();
+  await listMatchesHero("after a reload");
   await app.locator(".hx + .todo-list button", { hasText: "Rezerve et: Jardim Stay" }).click();
   await sec("stay").locator(".flash").waitFor();
   assert.doesNotMatch(await sec("stay").getAttribute("class"), /closed/);
