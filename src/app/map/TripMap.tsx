@@ -55,6 +55,8 @@ export interface TripMapProps {
 
 /** How long the tiles have to come before the map gives up (the bundled map stands in). */
 export const MAP_LOAD_MS = 4000;
+/** Generate: never further out than this at the end of the flight (the land seen, the globe filling the card). */
+const GEN_MIN_ZOOM = 2.5;
 /** Generate: the flight from home to the destination. */
 export const FLY_MS = 2300;
 const LAND_MS = 500;
@@ -208,6 +210,12 @@ export function TripMap(props: TripMapProps) {
             // Mercator then.
           }
           nameLabels(map, latest.current.lang);
+          // A light sky round the globe (the card's own colour), never a black box.
+          try {
+            map.setSky({ "sky-color": "#c9bdff", "horizon-color": "#f4f0ff", "sky-horizon-blend": 0.7, "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 7, 0] });
+          } catch {
+            // No sky in this build: the card's colour shows.
+          }
           addOverlays(map);
           styled = true;
           if (map.loaded()) alive();
@@ -288,9 +296,10 @@ export function TripMap(props: TripMapProps) {
     addMarker(map, node, [h.lng, h.lat]);
   }
 
-  function stopMarker(map: MlMap, s: TripMapStop, fade: boolean) {
-    const node = el("div", `tm-stop${fade ? " tm-in" : ""}`);
+  function stopMarker(map: MlMap, s: TripMapStop, fade: boolean, count = 1) {
+    const node = el("div", `tm-stop${fade ? " tm-in" : ""}${count > 1 ? " tm-all" : ""}`);
     node.dataset.name = s.name;
+    node.dataset.stops = String(count);
     const name = el("span", "tm-name", s.name);
     const ph = el("span", "tm-ph");
     ph.append(el("span", "tm-initial", s.name.slice(0, 1)));
@@ -396,9 +405,10 @@ export function TripMap(props: TripMapProps) {
     const rest = p.legs.slice(1);
     const all = pointsOf(p, drawn.current.lines);
     const b = boundsOf(all);
-    // The lowest ~40% is kept free: the photos fan in over it after the landing.
-    const h = map.getContainer().clientHeight || 360;
-    const cam = b ? map.cameraForBounds(b, { padding: { top: 56, bottom: Math.round(h * 0.4), left: 60, right: 60 }, maxZoom: 6 }) : undefined;
+    // The flight framed (room above for the stop's photo and name): the globe fills the card, its curve only at the
+    // edges. A long haul still close enough to see the land (never further out than GEN_MIN_ZOOM).
+    const fit = b ? map.cameraForBounds(b, { padding: { top: 104, bottom: 64, left: 56, right: 56 }, maxZoom: 5 }) : undefined;
+    const cam = fit ? { ...fit, zoom: Math.max(fit.zoom ?? GEN_MIN_ZOOM, GEN_MIN_ZOOM) } : undefined;
     if (p.home) homeMarker(map, p.home);
     const flySource = map.getSource("tm-fly") as GeoJSONSource | undefined;
     const setFly = (coords: LngLat[]) => flySource?.setData({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } });
@@ -411,8 +421,21 @@ export function TripMap(props: TripMapProps) {
         addMarker(map, pulse, [fly.to.lng, fly.to.lat]);
       }
       setLegs(map, rest);
-      for (const s of p.stops) stopMarker(map, s, !still);
-      declutter(map);
+      // Stops too close to tell apart at this distance (Sri Lanka's four): one marker for them all, named by the
+      // destination ("Sri Lanka · 4 durak · 14 gece"), not by whichever stop would cover the others.
+      const pts = p.stops.map((s) => map.project([s.lng, s.lat]));
+      const crowded = pts.some((a, i) => pts.some((b, k) => k > i && Math.hypot(a.x - b.x, a.y - b.y) < NEAR_PX));
+      if (crowded && p.stops.length > 1) {
+        const nights = p.stops.every((s) => s.nights) ? p.stops.reduce((n, s) => n + (s.nights ?? 0), 0) : null;
+        const place = fly?.to.name ?? p.stops[0].name;
+        const name = withLang(lang, () => [place, L(`${p.stops.length} durak`, `${p.stops.length} stops`), nights ? nNights(nights) : ""].filter(Boolean).join(" · "));
+        const mid = { lat: p.stops.reduce((n, s) => n + s.lat, 0) / p.stops.length, lng: p.stops.reduce((n, s) => n + s.lng, 0) / p.stops.length };
+        const first = p.stops[0];
+        stopMarker(map, { key: "all", name, ...mid, nights: null, photo: first.photo, photoQuery: first.photoQuery }, !still, p.stops.length);
+      } else {
+        for (const s of p.stops) stopMarker(map, s, !still);
+        declutter(map);
+      }
       p.onLanded?.();
     };
     if (still || !fly) {

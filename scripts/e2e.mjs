@@ -3203,8 +3203,11 @@ try {
   await board.screenshot({ path: `${out}/23b-start-map-midflight.png` });
   await board.locator(".tm-generate[data-phase=landed]").waitFor({ timeout: 6000 });
   await map.locator(".tm-pulse").waitFor();
-  assert.equal(await map.locator(".tm-stop").count(), 4, "the four stops on the map");
-  assert.deepEqual(await map.locator(".tm-stop").evaluateAll((n) => n.map((x) => x.dataset.name)), ["Sigiriya", "Kandy", "Ella", "Mirissa"]);
+  // Four stops too close to tell apart from this far: one marker, named by the destination (not "Mirissa").
+  assert.deepEqual(await map.locator(".tm-stop").evaluateAll((n) => n.map((x) => `${x.dataset.name} (${x.dataset.stops})`)), ["Sri Lanka · 4 durak · 14 gece (4)"]);
+  // The photos come under the map, over its bottom edge only.
+  const [mapBox, fan] = [await map.boundingBox(), await board.locator(".st-gen-stage .st-photos").boundingBox()];
+  assert.ok(mapBox.y + mapBox.height - fan.y <= 20, `the photos overlap the map's edge only (${Math.round(mapBox.y + mapBox.height - fan.y)} px)`);
   assert.equal(await map.locator(".st-map-land").count(), 0, "not the bundled map");
   assert.ok(tileAsks.style > 0 && tileAsks.tiles > 0, "the style and its tiles asked of the (simulated) OpenFreeMap");
   await board.locator(".st-gen-stage .st-photo").first().waitFor();

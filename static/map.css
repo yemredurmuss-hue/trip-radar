@@ -3,7 +3,9 @@
 .tm { position: relative; margin: 0; overflow: hidden; background: #0b1020; }
 /* Over maplibre-gl.css's .maplibregl-map { position: relative }. */
 .tm > .tm-canvas { position: absolute; inset: 0; }
-.tm.tm-generate { animation: st-map-in .5s ease-out both; }
+.tm.tm-generate { animation: st-map-in .5s ease-out both; background: radial-gradient(circle at 50% 40%, #f4f0ff 0%, #e3dcff 100%); }
+/* The photos come under the real map, over its bottom edge only (the landing and the arc stay in view). */
+.st-gen-stage .tm-generate + .st-photos { margin-top: -16px; height: 214px; }
 .tm-tab { margin: 0 0 24px; }
 .tm-board { height: min(640px, 72vh); min-height: 380px; border-radius: 22px; box-shadow: 0 16px 40px rgba(40, 20, 120, .16); }
 .tm-note { margin: 24px auto; max-width: 560px; text-align: center; color: var(--hx-muted); font-size: 15px; }
