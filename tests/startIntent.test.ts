@@ -360,3 +360,15 @@ describe("review 2: never over a half-typed message", () => {
     expect(autoHeld({ typing: "", composing: false, hidden: true })).toBe(true);
   });
 });
+
+describe("review 8: no flight from a place to itself", () => {
+  it("leaving from the gateway: the stays, no flights", () => {
+    let s = typed(newStart("e", "plan", 1, "tr"), "AfrikaBurn'e gitmek istiyorum");
+    s = applyAnswer(applyAnswer(s, { q: "duration", duration: { unit: "day", n: 9 } }, 3), { q: "from", city: "Cape Town" }, 4);
+    expect(creationOf(s)!.travel).toEqual([]);
+    let m = newStart("m", "plan", 1, "tr");
+    m = applyAnswer(m, { q: "where", place: "Münih", country: "Almanya", code: "DE" }, 2);
+    m = applyAnswer(applyAnswer(m, { q: "duration", duration: { unit: "day", n: 5 } }, 2), { q: "from", city: "Münih" }, 2);
+    expect(creationOf(m)!.travel).toEqual([]);
+  });
+});

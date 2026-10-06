@@ -2730,9 +2730,10 @@ export function creationOf(s: StartState): Creation | null {
   const travel: PlannedInput[] = road
     ? [said0({ kind: "car_rental", date: dates?.start ?? null, end_date: dates?.end ?? null, city: first })]
     : [
-        said0({ kind: "flight", date: dates?.start ?? null, from: s.from, to: arrive }),
+        // None from a place to itself (leaving from Cape Town for AfrikaBurn: no flight to Cape Town).
+        ...(s.from && samePlace(s.from, arrive) ? [] : [said0({ kind: "flight", date: dates?.start ?? null, from: s.from, to: arrive })]),
         // The flight home needs its day or where home is (an undated one to nowhere is no plan).
-        ...(dates || s.from ? [said0({ kind: "flight", date: dates?.end ?? null, from: leave, to: s.from })] : []),
+        ...((dates || s.from) && !(s.from && samePlace(leave, s.from)) ? [said0({ kind: "flight", date: dates?.end ?? null, from: leave, to: s.from })] : []),
       ];
   const count = peopleCount(s.who);
   const names = s.who?.kind === "solo" ? [] : (s.who?.names ?? []);

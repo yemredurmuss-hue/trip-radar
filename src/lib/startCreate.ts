@@ -54,7 +54,10 @@ export function stepsFor(s: StartState, c: Creation): StepPlan[] {
         ? { id: "travel", running: L("Araç için yer açılıyor…", "Making room for the car…"), done: L(`Araç kiralama yeri açıldı: ${c.travel[0]?.city ?? ""}`, `Room made for a car rental: ${c.travel[0]?.city ?? ""}`) }
         : {
             id: "travel", running: L("Uçuşlar için yer açılıyor…", "Making room for the flights…"),
-            done: s.from ? L(`${s.from} ⇄ ${arrive} uçuşları için yer açıldı`, `Room made for the ${s.from} ⇄ ${arrive} flights`) : L(`${arrive} uçuşları için yer açıldı`, `Room made for the flights to ${arrive}`),
+            // None from a place to itself (leaving from the event's gateway city).
+            done: !c.travel.length
+              ? L(`${s.from ?? ""} çıkışlı: uçuş gerekmiyor`, `Leaving from ${s.from ?? ""}: no flights needed`)
+              : s.from ? L(`${s.from} ⇄ ${arrive} uçuşları için yer açıldı`, `Room made for the ${s.from} ⇄ ${arrive} flights`) : L(`${arrive} uçuşları için yer açıldı`, `Room made for the flights to ${arrive}`),
           },
       { id: "people", running: L("Kişi ve tarz yazılıyor…", "Writing down who and what…"), done: people || L("Sohbet geziye taşındı", "The chat moved to the trip") },
     ];
