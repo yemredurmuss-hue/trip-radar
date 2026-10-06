@@ -2623,7 +2623,7 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .gm-borders { fill: none; stroke: #c8bdf1; stroke-width: 1px; }
 .gm-ahead { fill: none; stroke: #5b45e0; stroke-opacity: .35; stroke-width: 2px; stroke-dasharray: 4 6; stroke-linecap: round; transition: opacity .4s; }
 .gm-ahead.off { opacity: 0; }
-.gm-trail { fill: none; stroke: url(#gm-trail); stroke-width: 4px; stroke-linecap: round; }
+.gm-trail { fill: none; stroke: url(#gm-trail); stroke-linecap: round; }
 .gm-ground { fill: none; stroke: #ff3d8b; stroke-width: 3px; stroke-linecap: round; stroke-dasharray: 6 7; }
 .gm-ov { position: absolute; inset: 0; pointer-events: none; }
 .gm-ov > * { position: absolute; }

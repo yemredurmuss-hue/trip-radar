@@ -95,9 +95,11 @@ export function GenMap({ world, from, to, label, stops, ground, photos, timeline
   else if (t.zoom2 && wide) view = between(wide, close, easeInOut(part(ms, t.zoom2)));
   else view = close;
 
+  // Pixels per map unit now (the card fits the view: slice, at the same ratio).
+  const scale = size ? Math.max(size.w / view.w, size.h / view.h) : 1;
   const toPx = (p: XY) => {
     if (!size) return { x: -999, y: -999 };
-    const s = Math.max(size.w / view.w, size.h / view.h);
+    const s = scale;
     return { x: (p.x - view.x) * s + (size.w - view.w * s) / 2, y: (p.y - view.y) * s + (size.h - view.h * s) / 2 };
   };
 
@@ -136,7 +138,8 @@ export function GenMap({ world, from, to, label, stops, ground, photos, timeline
         {flies && (
           <>
             <path d={arcPath(a!, c!, b)} className={`gm-ahead${landed || ms < t.labels ? " off" : ""}`} vectorEffect="non-scaling-stroke" />
-            <path d={arcPath(a!, c!, b)} className="gm-trail" pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - (ms >= t.labels ? fly : 0)} vectorEffect="non-scaling-stroke" />
+            {/* Drawn behind the plane (its width in map units: a non-scaling stroke would break the dashes' reveal). */}
+            <path d={arcPath(a!, c!, b)} className="gm-trail" pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - (ms >= t.labels ? fly : 0)} strokeWidth={4 / scale} />
           </>
         )}
         {path.length > 1 && <path d={groundPath(path, t.ground, ms)} className="gm-ground" vectorEffect="non-scaling-stroke" />}
