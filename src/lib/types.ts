@@ -589,6 +589,11 @@ export type EventUndo =
       made?: string[];
       /** My profile (sharing) name before the change set it ("Sana ne diyeyim?"): it goes back to this. */
       profileName?: { before: string };
+      /**
+       * Records the change rewrote (a booking said in the chat for one on the plan): each goes back to `before`,
+       * only while it is still as the change left it (`afterAt` its updatedAt then).
+       */
+      records?: { before: Item; afterAt: number }[];
     }
   | { kind: "lang"; prev: "tr" | "en" };
 

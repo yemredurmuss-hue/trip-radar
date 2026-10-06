@@ -39,7 +39,11 @@ export async function undoEvent(messageId: string): Promise<{ reload: boolean }>
     const records = await Promise.all(owners.map((o) => tx.objectStore("items").get(o.id)));
     // Already back (a later line taken back first) counts as still as this change left it.
     const ownersAsAfter = owners.every((o, n) => !records[n] || [o.after, o.before].some((v) => ownersJson(records[n]!.forWho) === ownersJson(v)));
-    if (!stillAsAfter(trip, line.undo) || !ownersAsAfter) {
+    // Records a booking rewrote ("10 GB aldım"): only while nothing changed them since.
+    const rewritten = line.undo.records ?? [];
+    const nowRecords = await Promise.all(rewritten.map((r) => tx.objectStore("items").get(r.before.id)));
+    const recordsAsAfter = rewritten.every((r, n) => !nowRecords[n] || nowRecords[n]!.updatedAt === r.afterAt);
+    if (!stillAsAfter(trip, line.undo) || !ownersAsAfter || !recordsAsAfter) {
       await tx.done;
       throw new ChangedSince(L("Bu ayar sonra yine değişti; eski haline döndürülmedi.", "This setting changed again since; it wasn't put back."));
     }
@@ -50,6 +54,7 @@ export async function undoEvent(messageId: string): Promise<{ reload: boolean }>
       const { forWho: _was, ...rest } = record;
       await tx.objectStore("items").put(o.before?.length ? { ...record, forWho: o.before, updatedAt: Date.now() } : { ...rest, updatedAt: Date.now() });
     }
+    for (const [n, r] of rewritten.entries()) if (nowRecords[n]) await tx.objectStore("items").put({ ...r.before, updatedAt: Date.now() });
     // What the change made (a person's own flight, an empty card): it goes again, unless it was booked or given a
     // price or a page since (then it's the traveller's, and stays).
     for (const id of line.undo.made ?? []) {

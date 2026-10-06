@@ -196,8 +196,8 @@ export function checkVehicle(args: {
     return {
       dismiss: [],
       refusal: L(
-        `Bu günler için kayıtlı aynı türde bir araç var: ${listed(sameKind)}. Kullanıcı büyük ihtimalle onu kastediyor; hiçbir şey eklenmedi. O kaydı plan_item'ı item_id = o kaydın id'siyle çağırarak güncelle (booked, şirket, fiyat); ikinci bir tane istediğinden emin değilsen sor.`,
-        `A vehicle of the same kind is saved for these days: ${listed(sameKind)}. The user most likely means that one; nothing was added. Update that record by calling plan_item with item_id = its id (booked, the company, the price); if you're not sure they want a second one, ask.`,
+        `Bu günler için kayıtlı aynı türde bir araç var: ${listed(sameKind)}. Kullanıcı büyük ihtimalle onu kastediyor; hiçbir şey eklenmedi. O kaydı güncelle: durumu için update_items (booked); şirket ya da fiyat da söylendiyse plan_item'ı o kaydın kendi türüyle (kind) ve item_id = o kaydın id'siyle çağır; ikinci bir tane istediğinden emin değilsen sor.`,
+        `A vehicle of the same kind is saved for these days: ${listed(sameKind)}. The user most likely means that one; nothing was added. Update that record: update_items (booked) for its status; if a company or a price was said too, call plan_item with that record's own kind and item_id = its id; if you're not sure they want a second one, ask.`,
       ),
     };
   }

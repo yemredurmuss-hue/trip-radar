@@ -5,11 +5,11 @@ import "fake-indexeddb/auto";
 import type Anthropic from "@anthropic-ai/sdk";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { sendMessage } from "../src/lib/assistant";
-import { setItemStatus } from "../src/app/actions";
+import { setItemStatus, undo } from "../src/app/actions";
 import { categorize } from "../src/lib/categories";
 import { cardKind } from "../src/lib/cardKinds";
 import { mediaFace } from "../src/lib/cardView";
-import { bookingCandidates, countryOfPlace, esimPackage } from "../src/lib/chatBooking";
+import { bookingCandidates, countryOfPlace, esimCountry, esimPackage, sameName } from "../src/lib/chatBooking";
 import { db, listItems, listMessages } from "../src/lib/db";
 import { addDoc, listDocMeta } from "../src/lib/docs";
 import { setLang } from "../src/lib/i18n";
@@ -20,6 +20,7 @@ import { plannedInput, plannedItem, type PlannedInput } from "../src/lib/planned
 import { checkSuggestionInput, suggestedItem } from "../src/lib/suggestions";
 import { quickItem, templateItem, TEMPLATES } from "../src/lib/templates";
 import { buildTimeline } from "../src/lib/timeline";
+import { onTripChange, type TripChange } from "../src/lib/tripUndo";
 import type { Item, Suggestion, Trip } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -273,5 +274,144 @@ describe("the matching itself", () => {
     expect(esimPackage("Bought 10GB eSIM.")).toEqual({ dataGb: 10, unlimited: false, days: null });
     expect(esimPackage("Sınırsız, 30 gün")).toEqual({ dataGb: null, unlimited: true, days: 30 });
     expect(esimPackage("3,5 GB")).toMatchObject({ dataGb: 3.5 });
+  });
+});
+
+describe("review fixes (0f7dbd5)", () => {
+  const stayIn = (id: string, city: string, code: string, start: string, end: string) =>
+    makeItem({ id, tripId: T, category: "stay", needKey: `stay:${city.toLowerCase()}`, name: `Hotel ${city}`, city, countryCode: code, status: "booked", captureIds: ["c"], dates: { start, end, source: "page" } });
+  async function putTrip(items: Item[], over: Partial<Trip> = {}) {
+    const d = await db();
+    for (const store of ["items", "messages", "trips"] as const) await d.clear(store);
+    await d.put("trips", { ...trip, ...over });
+    for (const i of items) await d.put("items", i);
+  }
+  const lastReply = async () => (await listMessages(T)).filter((m) => m.role === "assistant").at(-1)!;
+  const withGb = (i: Item, gb: number): Item => ({ ...i, metrics: { ...i.metrics!, dataGb: gb } });
+
+  it("1: an eSIM for a city the code doesn't know goes to that city's country, never the trip's first one", async () => {
+    const pt = said({ kind: "esim", city: "Portugal" }, { id: "pt", countryCode: "PT", country: "Portugal", status: "booked" });
+    await putTrip([stayIn("opo", "Porto", "PT", "2026-10-08", "2026-10-11"), stayIn("mad", "Madrid", "ES", "2026-10-11", "2026-10-14"), pt]);
+    const { llm } = fake([use({ name: "plan_item", input: plan({ kind: "esim", city: "Madrid" }) }), say("ok")]);
+    await sendMessage(T, "Madrid için eSIM alalım", llm);
+    const esims = (await all()).filter((i) => i.category === "esim");
+    expect(esims.map((i) => [i.id === "pt" ? "pt" : "new", i.city, i.countryCode]).sort()).toEqual([["new", "Spain", "ES"], ["pt", "Portugal", "PT"]]);
+    // Unknown and on no record: kept as said, never another country.
+    expect(esimCountry("Funchal", null, [stayIn("opo", "Porto", "PT", "2026-10-08", "2026-10-11")])).toBeNull();
+    expect(templateItem(TEMPLATES.find((t) => t.id === "esim")!, { from: "", to: "", city: "Madrid", name: "", date: "", end: "", time: "", price: "", currency: "EUR" }, T, "x", 1)).toMatchObject({ city: "Madrid" });
+  });
+
+  it("12: an eSIM with no country on a trip of two countries asks which, with the countries as chips", async () => {
+    await putTrip([stayIn("opo", "Porto", "PT", "2026-10-08", "2026-10-11"), stayIn("mad", "Madrid", "ES", "2026-10-11", "2026-10-14")]);
+    const { llm, calls } = fake([use({ name: "plan_item", input: plan({ kind: "esim" }) }), say("Which country?")]);
+    await sendMessage(T, "eSIM alalım", llm);
+    expect(resultsOf(calls, 1)[0].is_error).toBe(true);
+    expect((await all()).filter((i) => i.category === "esim")).toEqual([]);
+    expect((await lastReply()).choices).toEqual(["Portugal", "Spain"]);
+  });
+
+  it("2: Sabine's ticket never overwrites Emre's booked one: asked (update or new), and 'new' adds her own", async () => {
+    const tap = said({ kind: "flight", from: "Istanbul", to: "Porto", date: "2026-10-08", booked: true }, { id: "tap", provider: "TAP", forWho: ["Emre"], price: { amount: 300, currency: "EUR", scope: "total", taxesIncluded: "unknown", source: "user", observedAt: 1 } });
+    await putTrip([tap], { travellers: { names: ["Emre", "Sabine"] } });
+    const flight = { kind: "flight", from: "Istanbul", to: "Porto", date: "2026-10-08", booked: true, provider: "Pegasus", price: 120, currency: "EUR" };
+    const ask = fake([use({ name: "plan_item", input: plan(flight) }), say("Update or new?")]);
+    await sendMessage(T, "Sabine'in biletini aldım, Pegasus 120 euro", ask.llm);
+    expect(resultsOf(ask.calls, 1)[0].is_error).toBe(true);
+    expect((await lastReply()).choices).toEqual(["Update this card", "Add a new one"]);
+    expect((await all()).map((i) => [i.id, i.provider, i.price.amount])).toEqual([["tap", "TAP", 300]]);
+    const add = fake([use({ name: "plan_item", input: plan({ ...flight, item_id: "new" }) }), say("ok")]);
+    await sendMessage(T, "Add a new one", add.llm);
+    const flights = await all();
+    expect(flights.find((i) => i.id === "tap")).toMatchObject({ provider: "TAP", price: { amount: 300 }, forWho: ["Emre"] });
+    expect(flights.filter((i) => i.id !== "tap").map((i) => [i.provider, i.price.amount, i.status])).toEqual([["Pegasus", 120, "booked"]]);
+  });
+
+  it("2: '5 GB daha aldım' next to a booked 10 GB Airalo is a second eSIM; '5 GB aldım' asks", async () => {
+    const e = withGb(said({ kind: "esim", city: "Portugal", title: "10 GB eSIM", booked: true }, { id: "e", provider: "Airalo", countryCode: "PT" }), 10);
+    await putTrip([stayIn("opo", "Porto", "PT", "2026-10-08", "2026-10-14"), e]);
+    const more = fake([use({ name: "plan_item", input: plan({ kind: "esim", title: "5 GB eSIM", booked: true, price: 8, currency: "EUR" }) }), say("ok")]);
+    await sendMessage(T, "5 GB daha aldım, 8 euro", more.llm);
+    let esims = (await all()).filter((i) => i.category === "esim");
+    expect(esims.find((i) => i.id === "e")).toMatchObject({ name: "10 GB eSIM", metrics: { dataGb: 10 } });
+    expect(esims.filter((i) => i.id !== "e").map((i) => [i.name, i.metrics?.dataGb, i.price.amount])).toEqual([["5 GB eSIM", 5, 8]]);
+    await putTrip([stayIn("opo", "Porto", "PT", "2026-10-08", "2026-10-14"), e]);
+    const ask = fake([use({ name: "plan_item", input: plan({ kind: "esim", title: "5 GB eSIM", booked: true }) }), say("?")]);
+    await sendMessage(T, "5 GB aldım", ask.llm);
+    expect(resultText(ask.calls, 1)).toContain("another package (10 GB → 5 GB)");
+    esims = (await all()).filter((i) => i.category === "esim");
+    expect(esims.map((i) => [i.id, i.name])).toEqual([["e", "10 GB eSIM"]]);
+  });
+
+  it("3: a total said for a page priced per night is a total (never 600 a night)", async () => {
+    const page = makeItem({ id: "pg", tripId: T, category: "stay", needKey: "stay:porto", name: "Hotel Infante", city: "Porto", captureIds: ["c"], status: "chosen", dates: { start: "2026-10-08", end: "2026-10-14", source: "page" }, price: { amount: 100, currency: "EUR", scope: "per_night", taxesIncluded: "unknown", source: "page", observedAt: 1 } });
+    await putTrip([page]);
+    const { llm } = fake([use({ name: "plan_item", input: plan({ kind: "stay", title: "Hotel Infante", city: "Porto", booked: true, price: 600, currency: "EUR" }) }), say("ok")]);
+    await sendMessage(T, "Hotel Infante'yi 600 euroya rezerve ettim", llm);
+    const [s] = await all();
+    expect(s.price).toMatchObject({ amount: 600, currency: "EUR", scope: "total" });
+    expect(s.userEdits?.price).toBeUndefined();
+  });
+
+  it("4: Geri al puts the record back as it was before the booking", async () => {
+    const e = said({ kind: "esim", city: "Porto" }, { id: "esim", status: "booked", installedAt: 5 });
+    await putTrip([hotel(), e]);
+    const seen: TripChange[] = [];
+    const stop = onTripChange((c) => seen.push(c));
+    const { llm } = fake([use({ name: "plan_item", input: plan({ kind: "esim", title: "10 GB eSIM", booked: true }) }), say("ok")]);
+    await sendMessage(T, "10 GB aldım", llm);
+    stop();
+    expect(seen.map((c) => c.label)).toEqual(["I updated the eSIM card: 10 GB eSIM, Portugal"]);
+    await undo({ kind: "trip", change: seen[0] });
+    const back = (await all()).find((i) => i.id === "esim")!;
+    expect(back).toMatchObject({ name: e.name, city: "Porto", status: "booked", installedAt: 5 });
+    expect(back.metrics?.dataGb ?? null).toBeNull();
+  });
+
+  it("5: item_id of another kind is refused (an eSIM never renames the insurance)", async () => {
+    const ins = said({ kind: "insurance" }, { id: "ins" });
+    await putTrip([ins]);
+    const { llm, calls } = fake([use({ name: "plan_item", input: plan({ kind: "esim", item_id: "ins", title: "10 GB eSIM", booked: true }) }), say("ok")]);
+    await sendMessage(T, "10 GB aldım", llm);
+    expect(resultsOf(calls, 1)[0].is_error).toBe(true);
+    expect((await all()).map((i) => [i.id, i.name, i.status])).toEqual([["ins", ins.name, "chosen"]]);
+  });
+
+  it("6: one booked stay over two of the chat's own in the same city merges them, as before", async () => {
+    const a = said({ kind: "stay", city: "Porto", date: "2026-10-08", end_date: "2026-10-10" }, { id: "a" });
+    const b = said({ kind: "stay", city: "Porto", date: "2026-10-10", end_date: "2026-10-14" }, { id: "b" });
+    await putTrip([a, b]);
+    const { llm, calls } = fake([use({ name: "plan_item", input: plan({ kind: "stay", city: "Porto", date: "2026-10-08", end_date: "2026-10-14", booked: true }) }), say("ok")]);
+    await sendMessage(T, "Porto'yu 8-14 tek otel rezerve ettim", llm);
+    expect(JSON.parse(resultText(calls, 1)).merged).toHaveLength(1);
+    expect((await all()).map((i) => [i.id, i.status, i.dates.start, i.dates.end])).toEqual([["a", "booked", "2026-10-08", "2026-10-14"]]);
+  });
+
+  it("7: a price with no currency is asked about; nothing changes", async () => {
+    const car = said({ kind: "car_rental", city: "Porto" }, { id: "car" });
+    await putTrip([car]);
+    const { llm, calls } = fake([use({ name: "plan_item", input: plan({ kind: "car_rental", booked: true, price: 90 }) }), say("Which currency?")]);
+    await sendMessage(T, "arabayı 90'a kiraladım", llm);
+    expect(resultsOf(calls, 1)[0].is_error).toBe(true);
+    expect((await all())[0]).toMatchObject({ status: "chosen", price: { amount: null } });
+  });
+
+  it("8: the summary says only what changed; 9: a new '10 GB eSIM' carries its package", async () => {
+    const e = withGb(said({ kind: "esim", city: "Portugal", title: "10 GB eSIM", booked: true }, { id: "e", countryCode: "PT", country: "Portugal" }), 10);
+    await putTrip([hotel(), e]);
+    const again = fake([use({ name: "plan_item", input: plan({ kind: "esim", title: "10 GB eSIM", booked: true }) }), say("ok")]);
+    await sendMessage(T, "10 GB aldım", again.llm);
+    expect(JSON.parse(resultText(again.calls, 1))).toMatchObject({ changed: [], summary: "The eSIM card already says this; nothing changed" });
+    await putTrip([hotel()]);
+    const fresh = fake([use({ name: "plan_item", input: plan({ kind: "esim", title: "10 GB eSIM", booked: true }) }), say("ok")]);
+    await sendMessage(T, "10 GB eSIM aldım", fresh.llm);
+    const [made] = (await all()).filter((i) => i.category === "esim");
+    expect(made).toMatchObject({ name: "10 GB eSIM", city: "Portugal", metrics: { dataGb: 10 } });
+  });
+
+  it("11: names match on whole words", () => {
+    expect(sameName("Tour", "Boat tour")).toBe(false);
+    expect(sameName("Tekne turu", "Douro tekne turu")).toBe(true);
+    expect(sameName("Hotel Infante", "hotel infante")).toBe(true);
+    expect(sameName("Infante", "Infantes Hotel")).toBe(false);
   });
 });

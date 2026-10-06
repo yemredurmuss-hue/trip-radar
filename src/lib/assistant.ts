@@ -24,14 +24,15 @@ import { coverageText, searchText } from "./listing";
 import { prosConsFor } from "./proscons";
 import { activeSignals, pendingSignals } from "./intent";
 import { buildLegs, canHideLeg, isHiddenLeg, legTiming, staleHiddenMoves, withLegChoice, type Leg } from "./legs";
-import { checkPlanned, guardKind, plannedInput, planToSave, PLANNED_KINDS, type PlannedInput } from "./planned";
-import { bookedUpdate, bookingCandidates, candidateLabel, esimPackage, narrowCandidates, type BookingExtras } from "./chatBooking";
+import { checkPlanned, guardKind, plannedInput, plannedItem, planToSave, PLANNED_KINDS, type PlannedInput } from "./planned";
+import { bookedUpdate, candidateLabel, decideBooking, esimPackage, saidKind, sameKind, type BookingExtras } from "./chatBooking";
+import { cardKind, cardKindLabel } from "./cardKinds";
 import { isIdea } from "./booking";
 import { sectionOfItem, type SectionId } from "./categories";
 import { addDays, buildPlan, cityKeyOf, liveGroups, sameCity, stayRange, type Plan } from "./plan";
 import { fromPage, saidEdits, withEdits, withoutEdits } from "./userEdits";
 import { L, lang, saveLang, setLang, withLang, type Lang } from "./i18n";
-import { datePlaceholders } from "./startTrip";
+import { datePlaceholders, regionName } from "./startTrip";
 import { announceHidden } from "./removal";
 import { getRates } from "./currency";
 import { makeContext } from "./decision";
@@ -147,7 +148,7 @@ Nasıl konuşursun:
 - Pano ayarları: "bütçeyi euro göster", "her şey TL olsun" → set_settings currency (bütçe günün kuruyla çevrilir; kur yoksa araç reddeder: "kur bilgisi yok, sonra dene" de, tutar uydurma). "Türkçeye geç", "İngilizce olsun" → set_settings language; ondan sonra o dilde yanıt ver. Kimler gidiyor: "Sabine de geliyor", "Ali gelmiyor", "2 kişiyiz" → set_travellers (paylaşmadan kaydeder; davet etmek isterse kahramandaki kişiler kutusundan "Birini davet et (paylaş)").
 - Kişiye özel rezervasyon: herkes aynı yerden gelmeyebilir. "Sabine Alicante'den geliyor" → set_travellers from [{name: "Sabine", place: "Alicante"}]: kod onun için gidiş boş uçuş kartını açar ve dönüşü kendisi kalın soruyla sorar (sen dönüşü ayrıca sorma, offer_choices çağırma); sonuçtaki shown'u anlat. "Bu bilet Sabine'in", "Ryanair Sabine'in", "bu otel yalnız Emre ve Ali'nin" → set_owner (item_ids, names; herkesinse names ["everyone"]). Kişiye adıyla yaz, asla "senin" deme; kullanıcının adı trip.travellers.me'dir; adı yoksa ve plan onunsa önce "Sana ne diyeyim?" diye sor. Bir planın kimin olduğu belli değilse tahmin etme, sor. items[].for_who o planın sahipleri (yoksa herkesin).
 - Boş geceler varsa uygun bir anda bir kez hatırlat.
-- Planlar: kullanıcı bir planını söylediğinde, linki olmasa da (ör. "7 Ekim'de İstanbul'dan Porto'ya uçuyoruz", "11 Ekim'de Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız", "10-17 Ekim Funchal'da kalacağız", "9 Ekim akşamı fado") plan_item ile hemen panoya ekle; tarih ve nereden/nereye ya da şehir ver. Gün belli değilse beklemeden date null ile ekle (şehrin bloğunda "gün belli değil" diye durur); gün plandan açıksa (ör. Madeira'ya varış günü) o tarihi kullan; gün sonra söylenince aynı şeyi plan_item ile tarihle tekrar ver, kart o güne geçer. "gideriz/düşünüyoruz" → planlanıyor (booked false); "aldım/rezerve ettim" → booked true. Planda zaten olan bir şeyi aldığını/rezerve ettiğini söylerse ("10 GB aldım", "arabayı kiraladım, Europcar", "oteli rezerve ettim") ikinci bir kayıt açma: plan_item'ı item_id = o kaydın id'si, booked true ve söylenen ayrıntılarla çağır (title: paket ya da ad, ör. "10 GB eSIM"; provider; price + currency; tarih). O kayıt güncellenir; yanıtında sonucun summary alanındaki değişeni söyle ("eSIM kartını güncelledim: 10 GB, alındı"). Hangi kayıt olduğu belli değilse sor. Başka bir şey onun yerine alındıysa ("tekne turu yerine parti teknesini aldım") item_id değil replaces = eskisinin id'si. Yalnız seçme/eleme (ayrıntısız durum) için update_items. Şehir değişimi için ulaşım söylenirse (Madeira'ya uçakla) kind flight ile ekle.
+- Planlar: kullanıcı bir planını söylediğinde, linki olmasa da (ör. "7 Ekim'de İstanbul'dan Porto'ya uçuyoruz", "11 Ekim'de Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız", "10-17 Ekim Funchal'da kalacağız", "9 Ekim akşamı fado") plan_item ile hemen panoya ekle; tarih ve nereden/nereye ya da şehir ver. Gün belli değilse beklemeden date null ile ekle (şehrin bloğunda "gün belli değil" diye durur); gün plandan açıksa (ör. Madeira'ya varış günü) o tarihi kullan; gün sonra söylenince aynı şeyi plan_item ile tarihle tekrar ver, kart o güne geçer. "gideriz/düşünüyoruz" → planlanıyor (booked false); "aldım/rezerve ettim" → booked true. Planda zaten olan bir şeyi aldığını/rezerve ettiğini söylerse ("10 GB aldım", "arabayı kiraladım, Europcar", "oteli rezerve ettim") ikinci bir kayıt açma: plan_item'ı item_id = o kaydın id'si, booked true ve söylenen ayrıntılarla çağır (title: paket ya da ad, ör. "10 GB eSIM"; provider; price + currency; tarih). O kayıt güncellenir; yanıtında sonucun summary alanındaki değişeni söyle ("eSIM kartını güncelledim: 10 GB, alındı"). Hangi kayıt olduğu belli değilse sor. Başka bir şey onun yerine alındıysa ("tekne turu yerine parti teknesini aldım") item_id değil replaces = eskisinin id'si. Alınmış bir şeyin yanına ikincisi alındıysa ("5 GB daha aldım", Emre'nin biletinin yanında "Sabine'in bileti") item_id "new": yeni kayıt açılır, alınmış olan değişmez. Yalnız seçme/eleme (ayrıntısız durum) için update_items. Şehir değişimi için ulaşım söylenirse (Madeira'ya uçakla) kind flight ile ekle.
 - Planı sohbetten şekillendirme (hemen, aynı mesajda, sormadan):
   • "12 Ekim'e uçak bileti", "dönüş uçağı 12'si" → plan_item kind flight, o tarih; nereden/nereye plandan belliyse ver, değilse null bırak (bilet şablonu açılır). Sonra gelen bilgiyi aynı gün için plan_item ile tekrar ver (nereden/nereye, saat), fiyatı set_price ile yaz.
   • "12 Ekim'e taksi koyalım", "havalimanına taksiyle" → plan_item kind taxi (date, söylendiyse time; from/to: "Otel", "Havalimanı" gibi; city o günün şehri). O günün transferinde görünür, yoksa kendi bloğu olur. Yalnız nasıl gideceğini söylüyorsa ("metroyla gideceğim") set_leg.
@@ -205,7 +206,7 @@ How you talk:
 - Board settings: "show the budget in euros", "everything in TRY" → set_settings currency (the budget is converted at the day's rate; without a rate the tool refuses: say "no exchange rate right now, try later", never make up an amount). "switch to Turkish", "in English please" → set_settings language; answer in that language from then on. If the user writes in Turkish, you may offer once to switch the board to Turkish. Who's going: "Sabine is coming too", "Ali isn't coming", "we're 2" → set_travellers (saved without sharing; to invite someone, point to "Invite someone (share)" in the hero's people box).
 - Per-person bookings: not everyone may come from the same place. "Sabine is coming from Alicante" → set_travellers from [{name: "Sabine", place: "Alicante"}]: the code opens her empty outbound flight card and asks about her way home itself, in bold (don't ask it again, don't call offer_choices); tell what the result's shown says. "This ticket is Sabine's", "the Ryanair one is Sabine's", "this hotel is only Emre and Ali's" → set_owner (item_ids, names; names ["everyone"] for everyone's). Always use the person's name, never "yours"; the user's own name is trip.travellers.me; if they have none and the plan is theirs, first ask "What should I call you?". If it isn't clear whose a plan is, don't guess: ask. items[].for_who are a plan's owners (none: everyone's).
 - If there are empty nights, mention it once at a good moment.
-- Plans: when the user mentions a plan, even without a link (e.g. "we fly Istanbul to Porto on 7 October", "we'll fly over to Madeira on 11 October", "we'll hire a car in Madeira", "we'll stay in Funchal 10-17 October", "fado on the evening of 9 October"), add it to the board right away with plan_item; give the date and from/to or the city. If the day isn't known, add it straight away with date null (it waits in the city's block as "day not set"); if the day is clear from the plan (e.g. the day they arrive in Madeira), use that date; when the day is given later, send the same thing again with plan_item and the date, and the card moves to that day. "we'll go/we're thinking" → planned (booked false); "bought it/booked it" → booked true. When they say they bought/booked something already on the plan ("bought 10 GB", "rented the car, Europcar", "booked the hotel"), never open a second record: call plan_item with item_id = that record's id, booked true and the details said (title: the package or name, e.g. "10 GB eSIM"; provider; price + currency; dates). That record is updated; in your reply say what changed, from the result's summary ("I updated the eSIM card: 10 GB, bought"). If it's unclear which record, ask. If another thing was bought in its place ("bought the party boat instead of the boat tour"), use replaces = the old one's id, not item_id. update_items only for choosing/ruling out (a status with no details). If transport for a change of city is mentioned (to Madeira by plane), add it with kind flight.
+- Plans: when the user mentions a plan, even without a link (e.g. "we fly Istanbul to Porto on 7 October", "we'll fly over to Madeira on 11 October", "we'll hire a car in Madeira", "we'll stay in Funchal 10-17 October", "fado on the evening of 9 October"), add it to the board right away with plan_item; give the date and from/to or the city. If the day isn't known, add it straight away with date null (it waits in the city's block as "day not set"); if the day is clear from the plan (e.g. the day they arrive in Madeira), use that date; when the day is given later, send the same thing again with plan_item and the date, and the card moves to that day. "we'll go/we're thinking" → planned (booked false); "bought it/booked it" → booked true. When they say they bought/booked something already on the plan ("bought 10 GB", "rented the car, Europcar", "booked the hotel"), never open a second record: call plan_item with item_id = that record's id, booked true and the details said (title: the package or name, e.g. "10 GB eSIM"; provider; price + currency; dates). That record is updated; in your reply say what changed, from the result's summary ("I updated the eSIM card: 10 GB, bought"). If it's unclear which record, ask. If another thing was bought in its place ("bought the party boat instead of the boat tour"), use replaces = the old one's id, not item_id. When a second one is bought next to one already bought ("bought 5 GB more", "Sabine's ticket" next to Emre's), item_id "new": a new record is made, the bought one stays as it is. update_items only for choosing/ruling out (a status with no details). If transport for a change of city is mentioned (to Madeira by plane), add it with kind flight.
 - Shaping the plan from the chat (right away, in the same message, without asking):
   • "a plane ticket for 12 October", "the return flight is on the 12th" → plan_item kind flight on that date; give from/to if clear from the plan, else leave null (a ticket template opens). Send later details again with plan_item for the same day (from/to, time), and the price with set_price.
   • "let's put a taxi on 12 October", "taxi to the airport" → plan_item kind taxi (date, time if said; from/to like "Hotel", "Airport"; city is that day's city). It shows in that day's transfer, else as its own block. If they only say how they'll go ("I'll take the metro") → set_leg.
@@ -564,7 +565,7 @@ function buildTools(en: boolean): ToolSpec[] {
           booked: { type: "boolean", description: t("Kullanıcı bileti aldığını/rezerve ettiğini söylediyse true (gideceğiz, ekle, yaptık değil)", "true if the user said they bought the ticket/booked it (not 'we'll go', 'add it', 'we did it')") },
           note: { ...nullable({ type: "string" }), description: t("Kullanıcının söylediği kısa not; bilet/rezervasyon varsa onu yaz (\"bileti aldım\", \"masa 20:00\", PNR)", "A short note from what the user said; for a ticket/booking say so (\"bought the tickets\", \"table at 20:00\", the PNR)") },
           replaces: { ...nullable({ type: "string" }), description: t("Bu planın yerine geçtiği kaydın items[].id'si (kullanıcı 'X iptal, yerine bu' ya da 'X yerine Y aldım' dediyse); yoksa null", "The items[].id of the record this plan replaces (when the user said 'X is cancelled, this instead' or 'bought Y instead of X'); else null") },
-          item_id: { ...nullable({ type: "string" }), description: t("Kullanıcı planda zaten olan şeyi aldığını/rezerve ettiğini söylediyse o kaydın items[].id'si: o kayıt güncellenir, ikinci bir kayıt açılmaz. Başka bir şey onun yerine geldiyse item_id değil replaces. Yoksa null", "The items[].id of the record, when the user said they bought/booked something already on the plan: that record is updated, never a second one. If another thing takes its place, use replaces, not item_id. Else null") },
+          item_id: { ...nullable({ type: "string" }), description: t("Kullanıcı planda zaten olan şeyi aldığını/rezerve ettiğini söylediyse o kaydın items[].id'si: o kayıt güncellenir, ikinci bir kayıt açılmaz. Başka bir şey onun yerine geldiyse item_id değil replaces. Alınmış olanın yanına ikincisi alındıysa (ya da kullanıcı 'Yeni kayıt ekle' dediyse) \"new\". Yoksa null", "The items[].id of the record, when the user said they bought/booked something already on the plan: that record is updated, never a second one. If another thing takes its place, use replaces, not item_id. A second one bought next to the one already bought (or the user said 'Add a new one'): \"new\". Else null") },
           provider: { ...nullable({ type: "string" }), description: t("Söylendiyse satıcı/şirket (Airalo, Europcar, Allianz, havayolu)", "The shop or company if said (Airalo, Europcar, Allianz, the airline)") },
           price: { ...nullable({ type: "number" }), description: t("Söylendiyse toplam fiyat (sayı)", "The total price if said (a number)") },
           currency: { ...nullable({ type: "string" }), description: t("Fiyatın para birimi, ISO kodu (EUR, TRY, USD)", "The price's currency, an ISO code (EUR, TRY, USD)") },
@@ -1040,28 +1041,68 @@ function bookingExtras(input: any): BookingExtras {
  * booked (and an eSIM or insurance, one per trip), the one on the plan it can only be (chatBooking.ts). Several:
  * nothing changes, the model is told which they are and asks, and their names are the reply's chips.
  */
-function bookingTarget(input: any, said: PlannedInput, extras: BookingExtras, items: Item[], tripId: string, replaced: Item | undefined, turn: Turn): Item | null {
+function bookingTarget(input: any, said: PlannedInput, extras: BookingExtras, items: Item[], tripId: string, replaced: Item | undefined, turn: Turn, names: string[]): Item | "new" | null {
   const id = text(input?.item_id);
+  // "Yeni kayıt ekle": a second purchase, never the record already on the plan.
+  if (id && /^(new|yeni)$/i.test(id)) return "new";
   if (id) {
     const named = items.find((i) => i.id === id);
     if (!named || named.status === "dismissed") {
       throw new ToolError(L(`item_id: planda bu id'le kayıt yok: ${id}. Hiçbir şey değişmedi.`, `item_id: no record on the plan with this id: ${id}. Nothing changed.`));
     }
     if (named.id === replaced?.id) throw new ToolError(L("item_id ile replaces aynı kayıt olamaz.", "item_id and replaces can't be the same record."));
+    // An eSIM's update never lands on the insurance: item_id's record is of the kind said.
+    const [was, now] = [cardKind(withEdits(named)), saidKind(said, tripId)];
+    if (!sameKind(was, now)) {
+      throw new ToolError(
+        L(
+          `item_id ${id} bir ${cardKindLabel(was)} kaydı, ${cardKindLabel(now)} değil. Hiçbir şey değişmedi. Doğru kaydın id'sini ver ya da kind'ı düzelt.`,
+          `item_id ${id} is a ${cardKindLabel(was)} record, not ${cardKindLabel(now)}. Nothing changed. Give the right record's id or fix the kind.`,
+        ),
+      );
+    }
     return named;
   }
-  if (!said.booked && said.kind !== "esim" && said.kind !== "insurance") return null;
   const skip = new Set([...(replaced ? [replaced.id] : []), ...turn.removed]);
-  const found = narrowCandidates(bookingCandidates(said, extras, items, tripId, skip), said);
-  if (found.length <= 1) return found[0] ?? null;
-  const labels = found.map(candidateLabel);
-  turn.pick = labels.slice(0, 3);
-  throw new ToolError(
-    L(
-      `Bu, planda birden fazla kayıt olabilir: ${found.map((i, n) => `${i.id} = ${labels[n]}`).join("; ")}. Hiçbir şey değişmedi. Kullanıcıya hangisi olduğunu sor (butonlar gösterildi); cevaplayınca plan_item'ı o kaydın item_id'siyle tekrar çağır.`,
-      `This could be more than one record on the plan: ${found.map((i, n) => `${i.id} = ${labels[n]}`).join("; ")}. Nothing changed. Ask the user which one it is (buttons are shown); when they answer, call plan_item again with that record's item_id.`,
-    ),
-  );
+  const decision = decideBooking(said, extras, items, tripId, skip, { userText: turn.userText, names });
+  switch (decision.kind) {
+    case "add":
+      return null;
+    case "new":
+      return "new";
+    case "update":
+      return decision.item;
+    case "which": {
+      const labels = decision.items.map(candidateLabel);
+      turn.pick = labels.slice(0, 3);
+      throw new ToolError(
+        L(
+          `Bu, planda birden fazla kayıt olabilir: ${decision.items.map((i, n) => `${i.id} = ${labels[n]}`).join("; ")}. Hiçbir şey değişmedi. Kullanıcıya hangisi olduğunu sor (butonlar gösterildi); cevaplayınca plan_item'ı o kaydın item_id'siyle tekrar çağır.`,
+          `This could be more than one record on the plan: ${decision.items.map((i, n) => `${i.id} = ${labels[n]}`).join("; ")}. Nothing changed. Ask the user which one it is (buttons are shown); when they answer, call plan_item again with that record's item_id.`,
+        ),
+      );
+    }
+    case "booked": {
+      const label = candidateLabel(decision.item);
+      turn.pick = [L("Bu kartı güncelle", "Update this card"), L("Yeni kayıt ekle", "Add a new one")];
+      throw new ToolError(
+        L(
+          `Planda bu zaten alınmış: ${decision.item.id} = ${label}; söylenen farklı: ${decision.why}. Hiçbir şey değişmedi. Kullanıcıya bu kartı mı güncelleyeceğini, yoksa yeni bir kayıt mı ekleyeceğini sor (butonlar: "Bu kartı güncelle" / "Yeni kayıt ekle"). Güncelle derse plan_item'ı item_id "${decision.item.id}" ile, yeni derse item_id "new" ile tekrar çağır.`,
+          `This is already bought on the plan: ${decision.item.id} = ${label}; what was said differs: ${decision.why}. Nothing changed. Ask the user whether to update this card or add a new one (buttons: "Update this card" / "Add a new one"). If update, call plan_item again with item_id "${decision.item.id}"; if new, with item_id "new".`,
+        ),
+      );
+    }
+    case "country": {
+      const countries = decision.countries.map((c) => regionName(c, lang()) ?? c);
+      turn.pick = countries.slice(0, 3);
+      throw new ToolError(
+        L(
+          `Gezide birden fazla ülke var (${countries.join(", ")}); eSIM hangi ülke için? Hiçbir şey eklenmedi. Kullanıcıya sor (butonlar gösterildi); sonra plan_item'ı city = o ülke ile tekrar çağır.`,
+          `The trip has more than one country (${countries.join(", ")}); which country is the eSIM for? Nothing was added. Ask the user (buttons are shown); then call plan_item again with city = that country.`,
+        ),
+      );
+    }
+  }
 }
 
 /**
@@ -1538,15 +1579,23 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       // Bought or booked, and already on the plan ("10 GB aldım", "arabayı kiraladım, Europcar"): that record is
       // updated, never a second one; several that could be meant are asked about (chips), nothing guessed.
       const extras = bookingExtras(input);
-      const target = bookingTarget(input, said, extras, items, tripId, replaced, turn);
-      const booking = target ? bookedUpdate(target, said, extras, items, Date.now()) : null;
+      const tripOf = await d.get("trips", tripId);
+      const names = [...new Set([...(tripOf?.travellers?.names ?? []), meOf(turn.who)].filter((n): n is string => Boolean(n?.trim())))];
+      const target = bookingTarget(input, said, extras, items, tripId, replaced, turn, names);
+      const record = target && target !== "new" ? target : null;
+      const booking = record ? bookedUpdate(record, said, extras, items, Date.now()) : null;
       if (typeof booking === "string") throw new ToolError(booking);
       const missing = booking ? null : checkPlanned(said);
       if (missing) throw new ToolError(missing);
-      const { item: saved, same } = booking ? { item: booking.item, same: target } : planToSave(said, items, tripId, newId(), Date.now());
+      // "Yeni kayıt ekle" / a second purchase: a record of its own, never the one already bought (no samePlan).
+      const { item: saved, same } = booking
+        ? { item: booking.item, same: record }
+        : target === "new"
+          ? { item: plannedItem(said, tripId, newId(), Date.now()), same: null }
+          : planToSave(said, items, tripId, newId(), Date.now());
       if (!booking) {
-        // A new one: the shop and the price said with it; an eSIM's place is its country, never the first city.
-        const fresh = bookedUpdate(saved, { ...said, title: null, date: null, end_date: null, time: null, note: null, booked: false }, extras, items, Date.now());
+        // A new one: the shop, the price and an eSIM's package said with it; an eSIM's place is its country.
+        const fresh = bookedUpdate(saved, { ...said, date: null, end_date: null, time: null, booked: false }, extras, items, Date.now());
         if (typeof fresh === "string") throw new ToolError(fresh);
         Object.assign(saved, { provider: fresh.item.provider, price: fresh.item.price, priceHistory: fresh.item.priceHistory, metrics: fresh.item.metrics });
         if (saved.category === "esim") Object.assign(saved, { city: fresh.item.city, country: fresh.item.country, countryCode: fresh.item.countryCode });
@@ -1572,6 +1621,11 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       if (byOrigin) saved.forWho = byOrigin;
       await d.put("items", saved);
       turn.touched.add(saved.id);
+      // The board's "Geri al" (and Geçmiş's) puts the record back exactly as it was before this booking.
+      if (booking && record && booking.changed.length) {
+        const eventId = await addEvent(tripId, booking.summary, { undo: { kind: "fields", fields: [], before: {}, after: {}, records: [{ before: record, afterAt: saved.updatedAt }] } });
+        announceTripChange({ tripId, fields: [], before: {}, eventId, label: booking.summary });
+      }
       // Where it landed on the Plan (booking.ts reads a thing to do from its evidence, not its kind): the reply
       // says "added to Things to do", never "booked", for a market said as an activity.
       const section = sectionOfItem(saved);

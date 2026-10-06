@@ -292,7 +292,8 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
             {ordered.map((trip) => {
               const own = items.filter((i) => i.tripId === trip.id && i.status !== "dismissed");
               const range = trip.confirmedDates ?? tripDateRange(own);
-              const cities = [...new Set(own.map((i) => i.city).filter(Boolean) as string[])].slice(0, 3);
+              // An eSIM's place is its country, never one of the trip's cities.
+              const cities = [...new Set(own.filter((i) => i.category !== "esim").map((i) => i.city).filter(Boolean) as string[])].slice(0, 3);
               const decided = own.filter((i) => i.status === "chosen" || i.status === "booked").length;
               const image = trip.heroImage ?? own.find((i) => i.imageUrl)?.imageUrl ?? null;
               return (
