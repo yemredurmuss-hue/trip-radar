@@ -173,12 +173,7 @@ export interface Trip {
   heroImage: string | null;
   /** Sample data; never receives real captures. */
   demo?: boolean;
-  /**
-   * "Bu seyahate gidiyoruz" (0.36.15): the trip is on, its planned flights are followed (flightData.ts: the
-   * schedule, then on the day status, gate, belt). Off while it's still being planned, so the quota goes only
-   * to trips taken.
-   */
-  going?: boolean;
+
   /** How much each criterion matters on this trip, for every category (defaults per category otherwise). */
   priorities?: Partial<Record<CriterionId, PriorityLevel>>;
   /** Overrides for one category (set from its comparison view); win over `priorities`. */

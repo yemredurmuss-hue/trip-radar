@@ -46,11 +46,6 @@ export function TripHero(props: {
   action: HeroAction | null;
   working: number;
   menu: ReactNode;
-  /**
-   * The planned flights that can be followed and whether the trip is on ("Gidiyoruz", 0.36.15); null when
-   * there are none.
-   */
-  flights?: { count: number; going: boolean; onGoing: (on: boolean) => void } | null;
 }) {
   const { trip, cities, range, tally, done, progress } = props;
   const [i, setI] = useState(0);
@@ -191,20 +186,6 @@ export function TripHero(props: {
             <div className="hx-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={done.pct} aria-label={L("Onaylanan", "Confirmed")}>
               {done.pct > 0 && <i style={{ width: `${done.pct}%` }} />}
             </div>
-            {props.flights &&
-              (props.flights.going ? (
-                <p className="hx-going on">
-                  ✈ {L("Gidiyoruz: uçuşlar takipte (iniş, rötar, kapı, bant)", "We're going: flights followed (landing, delays, gate, belt)")}{" "}
-                  <button type="button" className="link-btn" onClick={() => props.flights!.onGoing(false)}>
-                    {L("Takibi kapat", "Stop following")}
-                  </button>
-                </p>
-              ) : (
-                <button type="button" className="hx-going" onClick={() => props.flights!.onGoing(true)}
-                  title={L("Uçuşların gerçek saatleri, uçuş günü rötar, kapı ve bagaj bandı (Veri: AeroDataBox)", "Your flights' real times, and on the day delays, gate and baggage belt (Data: AeroDataBox)")}>
-                  ✈ {L(`Bu seyahate gidiyoruz: ${props.flights.count} uçuşu takip et`, `We're going: follow ${props.flights.count} flight${props.flights.count === 1 ? "" : "s"}`)}
-                </button>
-              ))}
           </div>
           {props.action && (
             <button className="hx-go" title={props.action.title} aria-label={props.action.title ? `${props.action.label}: ${props.action.title}` : undefined} onClick={props.action.run}>

@@ -130,9 +130,9 @@ profilleri ve geçmişiyle birlikte) senin isteğinle silinir: info@emredurmus.n
 - **Frankfurter:** döviz kuru için yalnız para birimi çifti gönderilir.
 - **Wikipedia / Pexels:** şehir fotoğrafı için yalnız şehir adı gönderilir; Wikipedia'ya doğrudan, Pexels'a paylaşım
   sunucusu üzerinden.
-- **AeroDataBox (RapidAPI üzerinden):** yalnız "Bu seyahate gidiyoruz" dediğin gezide, planındaki (rezerve ya da
-  seçilmiş) bir uçuşun tarifesi, durumu, kapısı, terminali ve bagaj bandı için yalnız uçuş numarası ve günü
-  gönderilir ("KL1577, 7 Ekim"), bizim sunucumuz üzerinden. "Takibi kapat" ile durur. Sunucu bu herkese açık uçuş bilgisini, aynı uçuşu soran herkes için tekrar sormamak adına uçuş
+- **AeroDataBox (RapidAPI üzerinden):** yalnız bileti alınmış (rezerve) uçuşlar için, o uçuşun tarifesi, durumu,
+  kapısı, terminali ve bagaj bandı için yalnız uçuş numarası ve günü gönderilir ("KL1577, 7 Ekim"), bizim
+  sunucumuz üzerinden. Sunucu bu herkese açık uçuş bilgisini, aynı uçuşu soran herkes için tekrar sormamak adına uçuş
   numarası ve güne göre saklar; kimin sorduğunu saklamaz. Cevap bu bilgisayarda da saklanır.
 
 Bu hizmetlere ad, e-posta ya da gezi içeriği gönderilmez. Her bağlantıda olduğu gibi, istek yapılan sunucu
@@ -347,9 +347,8 @@ and history) is deleted on request: write to info@emredurmus.net.
 - **Frankfurter:** only a currency pair, for exchange rates.
 - **Wikipedia / Pexels:** only a city name, for a city photo; directly to Wikipedia, and to Pexels through the sharing
   server.
-- **AeroDataBox (via RapidAPI):** only on a trip you've marked "We're going", only a flight number and its day
-  ("KL1577, 7 October"), for the schedule, status, gate, terminal and baggage belt of a flight on your plan (booked or
-  chosen), through our server. "Stop following" stops it. The server keeps
+- **AeroDataBox (via RapidAPI):** only for flights with a ticket bought (booked), only a flight number and its day
+  ("KL1577, 7 October"), for that flight's schedule, status, gate, terminal and baggage belt, through our server. The server keeps
   this public flight information by flight number and day, so the same flight isn't asked about again for everyone
   who has it; it doesn't keep who asked. The answer is also kept on this computer.
 

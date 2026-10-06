@@ -480,8 +480,8 @@ try {
   await live.scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/3e-flight-live.png` });
   await app.evaluate(() => chrome.storage.local.remove("flightLive"));
-  // "Bu seyahate gidiyoruz" (0.36.15): flights are followed only once the trip is on. The sample is never followed,
-  // so here it's a real trip for a moment (the server answered here, not asked).
+  // Flights with a ticket bought are followed (0.36.16); the sample's never are, so here it's a real trip for a
+  // moment (the server answered here, not asked).
   const setTrip = (patch) =>
     app.evaluate(async (patch) => {
       const request = indexedDB.open("trip-radar");
@@ -494,15 +494,13 @@ try {
     }, patch);
   const asked = [];
   await app.route("**/functions/v1/flight**", (route) => (asked.push(route.request().url()), route.fulfill({ json: { flight: null } })));
-  assert.equal(await app.locator(".hx-going").count(), 0, "the sample's flights are never followed");
+  await new Promise((r) => setTimeout(r, 1000));
+  assert.equal(asked.length, 0, "the sample's flights are never asked about");
   await setTrip({ demo: false });
-  await app.getByRole("button", { name: /^✈ Bu seyahate gidiyoruz: \d uçuşu takip et$/ }).click();
-  await app.locator("p.hx-going.on", { hasText: "Gidiyoruz: uçuşlar takipte" }).waitFor();
   await new Promise((r) => setTimeout(r, 1500));
-  assert.ok(asked.some((u) => u.includes("number=TP1760&day=2026-10-14")), `the trip's flights asked about (${asked.join(", ")})`);
-  await app.getByRole("button", { name: "Takibi kapat" }).click();
-  await app.locator("button.hx-going").waitFor();
-  await setTrip({ demo: true, going: false });
+  assert.ok(asked.some((u) => u.includes("number=TP1760&day=2026-10-14")), `the booked flight asked about (${asked.join(", ")})`);
+  assert.ok(!asked.some((u) => u.includes("TP1761") || u.includes("PC1201")), "an option without a ticket isn't");
+  await setTrip({ demo: true });
   await app.unroute("**/functions/v1/flight**");
   assert.equal(await dayCard(4).locator(".dc-tl .dot").count(), 0, "no dot on a line of the list");
   assert.equal(await dayCard(4).locator(".dc-tl").evaluate((el) => getComputedStyle(el, "::before").display), "none", "no dotted line");

@@ -56,9 +56,9 @@ export function useBoard(initialTripId: string | null) {
     const items = trip ? allItems.filter((i) => i.tripId === trip.id) : [];
     setData({ trips, trip, items, allItems, messages, openCaptures, arrivals, loaded: true });
     // The flights' real data, asked for when it may have changed; the board reads again when something new came.
-    // Only the trips being taken ("Gidiyoruz", Trip.going), never the sample's (its flights are made up).
-    const going = new Set(trips.filter((t) => t.going && !t.demo).map((t) => t.id));
-    void refreshFlights(allItems.filter((i) => going.has(i.tripId))).then((changed) => changed && setTimeout(() => void loadRef.current(), 0)).catch(() => undefined);
+    // Flights with a ticket bought (refreshFlights), never the sample's (its flights are made up).
+    const real = new Set(trips.filter((t) => !t.demo).map((t) => t.id));
+    void refreshFlights(allItems.filter((i) => real.has(i.tripId))).then((changed) => changed && setTimeout(() => void loadRef.current(), 0)).catch(() => undefined);
   }, [selectedId]);
   const loadRef = useRef(load);
   loadRef.current = load;

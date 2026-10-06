@@ -41,8 +41,8 @@ export function withLive(item: Item, stored: Stored): Item {
   return { ...item, flight, flightLive: live };
 }
 
-/** The flights worth asking about: on the plan (booked or chosen), from two days ago to a year ahead. */
-const wanted = (item: Item) => (item.status === "booked" || item.status === "chosen") && liveKey(item) != null;
+/** The flights worth asking about: the ones with a ticket bought (booked), from two days ago to a year ahead. */
+const wanted = (item: Item) => item.status === "booked" && liveKey(item) != null;
 
 /**
  * Asks the server for the flights whose data may have changed (at most `max` at a time); true when something
