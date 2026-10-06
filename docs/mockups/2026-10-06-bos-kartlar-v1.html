@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boş kartlar v1</title>
+<style>
+  :root { --ink:#1d1d1f; --gray:#6e6e73; --soft:#8e8e93; --line:#ece9e4;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif; color:var(--ink); -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f8f7f4; }
+  a, button { font-family:inherit; }
+  .wrap { max-width:1180px; margin:0 auto; padding:24px 16px 48px; }
+  .cap { margin:0 4px 4px; font-size:15px; color:var(--gray); font-weight:600; }
+  .sub { margin:0 4px 16px; font-size:13.5px; color:var(--gray); }
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; }
+  @media (max-width:980px){ .cols{ grid-template-columns:1fr; } }
+  .lbl { margin:0 4px 8px; font-size:14px; color:var(--gray); }
+  .lbl b { color:var(--ink); }
+  .plan { background:#fff; border-radius:22px; box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 24px rgba(0,0,0,.04); padding:12px 18px 16px; }
+  .sh { display:flex; align-items:center; gap:10px; padding:6px 0 4px; }
+  .sh b { font-size:16px; }
+  .sh .n { margin-left:auto; font-size:13px; color:var(--soft); }
+  .sh .st { font-size:13px; color:#9a6400; margin:0 0 6px 32px; }
+  .sh svg { width:20px; height:20px; color:var(--c); }
+  .row { display:grid; grid-template-columns:64px 14px 1fr; gap:0 10px; margin-top:10px; }
+  .date { text-align:right; font-size:12.5px; color:var(--gray); line-height:1.3; padding-top:10px; }
+  .date b { display:block; font-size:14.5px; color:var(--ink); }
+  .dot { width:10px; height:10px; margin-top:16px; border-radius:50%; border:2px solid var(--c); background:#fff; }
+
+  /* BOŞ KART: onaylı kart kabuğunun sade hâli */
+  .card { position:relative; border:1.5px dashed #ddd7cd; border-radius:18px; background:#fff; padding:10px 14px 10px; }
+  .top { display:flex; align-items:center; gap:8px; font-size:12.5px; }
+  .ring { width:16px; height:16px; border-radius:50%; border:1.5px dashed #c6bfb3; flex:none; }
+  .kind { display:inline-flex; align-items:center; gap:5px; font-weight:600; color:var(--c); }
+  .kind svg { width:14px; height:14px; }
+  .top .when { color:var(--soft); }
+  .top .menu { margin-left:auto; color:#b9b4ab; letter-spacing:1px; }
+  /* ulaşım gövdesi: şehir — soluk siluet — şehir, bir boy küçük */
+  .route { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; margin:6px 0 4px; }
+  .route .a, .route .b { font-size:17px; font-weight:700; letter-spacing:-.01em; }
+  .route .b { text-align:right; }
+  .route small { display:block; font-size:12px; font-weight:400; color:var(--soft); }
+  .sil { width:120px; height:34px; color:var(--c); opacity:.35; }
+  /* medya gövdesi: soluk siluet karosu + ad */
+  .media { display:grid; grid-template-columns:52px 1fr; gap:12px; align-items:center; margin:6px 0 4px; }
+  .tile { width:52px; height:40px; border-radius:10px; display:grid; place-items:center; background:color-mix(in srgb, var(--c) 8%, #fff); color:var(--c); }
+  .tile svg { width:30px; height:22px; opacity:.55; }
+  .media .t { font-size:15.5px; font-weight:700; }
+  .media small { display:block; font-size:12.5px; color:var(--soft); font-weight:400; margin-top:1px; }
+  /* alt satır: durum + logolu arama (sessiz) */
+  .foot { display:flex; align-items:center; gap:8px; margin-top:6px; padding-top:8px; border-top:1px dashed #eee9e1; }
+  .foot .s { font-size:12.5px; color:var(--soft); }
+  .find { margin-left:auto; display:flex; gap:4px; }
+  .find a { display:inline-flex; align-items:center; gap:5px; height:26px; padding:0 8px 0 5px; border-radius:999px; border:1px solid #ece8e1; background:#fff; color:#55526a; font-size:12px; text-decoration:none; white-space:nowrap; }
+  .find a:hover { border-color:#cfc9be; color:var(--ink); }
+  .lg { width:15px; height:15px; border-radius:4px; display:grid; place-items:center; font-size:8.5px; font-weight:800; color:#fff; }
+  .skip { font-size:12px; color:var(--soft); text-decoration:none; margin-left:2px; }
+  .plus { display:flex; justify-content:center; margin:6px 0 0 88px; }
+  .plus span { width:22px; height:22px; border-radius:50%; border:1px solid #e6e1d8; color:#b9b4ab; display:grid; place-items:center; font-size:14px; background:#fff; }
+
+  /* karşılaştırma için: dolu (bugünkü) kart küçük temsil */
+  .full { border:1.5px solid #ecd9b0; background:#fbf6ea; border-radius:18px; padding:10px 14px; }
+  .full .route .a, .full .route .b { font-size:20px; }
+  .full .sil { opacity:.9; width:150px; height:40px; }
+  .full .foot { border-top:0; background:#fff; border-radius:12px; padding:8px 10px; }
+  .full .price { margin-left:auto; font-weight:700; }
+  .full .btn { height:28px; padding:0 12px; border-radius:999px; background:#111; color:#fff; border:0; font-size:12px; font-weight:600; margin-left:8px; }
+  .note { margin:18px 4px 0; font-size:13px; color:var(--gray); line-height:1.7; }
+  .note b { color:var(--ink); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <pattern id="dots" width="3" height="3" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r=".7" fill="currentColor"/></pattern>
+  <symbol id="plane" viewBox="0 0 24 24"><path fill="currentColor" d="M21 15.5v-1.8l-7.5-4.6V4a1.5 1.5 0 0 0-3 0v5.1L3 13.7v1.8l7.5-2.3V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-4.8z"/></symbol>
+  <symbol id="bed" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6.5A2.5 2.5 0 0 1 5.5 9h13a2.5 2.5 0 0 1 2.5 2.5V18M3 15h18M3 18v2M21 18v2"/><path d="M5 9V6.5A1.5 1.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5V9"/></g></symbol>
+  <symbol id="ticket" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M3 9.5v-2a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2a2.5 2.5 0 0 0 0 5v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a2.5 2.5 0 0 0 0-5z"/></g></symbol>
+  <symbol id="sim" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><rect x="9.5" y="11" width="6" height="6" rx="1"/></g></symbol>
+  <symbol id="taxi" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-4l2-5h12l2 5v4M3 16h18v2H3zM9 7l1-3h4l1 3"/><circle cx="7.5" cy="18" r="1.5"/><circle cx="16.5" cy="18" r="1.5"/></g></symbol>
+  <symbol id="silplane" viewBox="0 0 120 34"><path fill="url(#dots)" stroke="currentColor" stroke-width=".8" d="M6 18c0-2 2-3 5-3h34l14-12h8l-6 12h30l7-7h6l-3 9c3 1 4 2 4 3s-1 2-4 3l3 9h-6l-7-7H65l6 12h-8L49 25H11c-3 0-5-1-5-3z"/></symbol>
+  <symbol id="silticket" viewBox="0 0 40 28"><path fill="url(#dots)" stroke="currentColor" stroke-width=".8" d="M2 6h36v6a3 3 0 0 0 0 4v6H2v-6a3 3 0 0 0 0-4z"/></symbol>
+  <symbol id="silsim" viewBox="0 0 40 28"><path fill="url(#dots)" stroke="currentColor" stroke-width=".8" d="M10 2h14l6 6v18H10z"/></symbol>
+  <symbol id="silbed" viewBox="0 0 40 28"><path fill="url(#dots)" stroke="currentColor" stroke-width=".8" d="M3 22V12a3 3 0 0 1 3-3h28a3 3 0 0 1 3 3v10M3 18h34M6 9V5h28v4"/></symbol>
+  <symbol id="siltaxi" viewBox="0 0 120 34"><path fill="url(#dots)" stroke="currentColor" stroke-width=".8" d="M14 24v-8l8-9h34l10 9h30c4 0 6 2 6 5v3H14zM40 3h14v4H40z"/><circle cx="32" cy="26" r="4" fill="#fff" stroke="currentColor"/><circle cx="88" cy="26" r="4" fill="#fff" stroke="currentColor"/></symbol>
+</defs></svg>
+<div class="wrap" id="app"></div>
+<script>
+  const L = { gf:["Google Flights","#4285f4","G"], sky:["Skyscanner","#0770e3","S"], kayak:["Kayak","#ff690f","K"], bk:["Booking","#003580","B"], ab:["Airbnb","#ff5a5f","A"],
+    gyg:["GetYourGuide","#ff5533","G"], via:["Viator","#186b6d","V"], klook:["Klook","#ff5722","K"], airalo:["Airalo","#1c1c1e","a"], holafly:["Holafly","#e8344e","H"], uber:["Uber","#000","U"], bolt:["Bolt","#34d186","B"] };
+  const find = (ks) => `<span class="find">${ks.map((k) => `<a href="#" title="${L[k][0]}'da ara"><span class="lg" style="background:${L[k][1]}">${L[k][2]}</span>${L[k][0]}</a>`).join("")}</span>`;
+  const row = (c, d, w, city, body) => `<div class="row" style="--c:${c}"><div class="date"><b>${d}</b>${w}<br>${city}</div><span class="dot"></span><div>${body}</div></div><div class="plus"><span>+</span></div>`;
+  const head2 = (k, ic, when) => `<div class="top"><span class="ring"></span><span class="kind"><svg><use href="#${ic}"/></svg>${k}</span><span class="when">· ${when}</span><span class="menu">•••</span></div>`;
+
+  const flightEmpty = (a, aw, b, bw, when, people) => `<div class="card">${head2("Uçuş","plane",when)}
+      <div class="route"><span class="a">${a}<small>${aw}</small></span><svg class="sil"><use href="#silplane"/></svg><span class="b">${b}<small>${bw}</small></span></div>
+      <div class="foot"><span class="s">Bilet yok · ${people}</span>${find(["gf","sky","kayak"])}</div></div>`;
+  const stayEmpty = (city, dates, nights, people) => `<div class="card">${head2("Konaklama","bed",dates)}
+      <div class="media"><span class="tile"><svg><use href="#silbed"/></svg></span><span class="t">${city}<small>${nights} · ${people} · otel seçilmedi</small></span></div>
+      <div class="foot"><span class="s">Yer yok</span>${find(["bk","ab"])}<a class="skip" href="#">Gerek yok</a></div></div>`;
+  const actEmpty = (title, sub) => `<div class="card">${head2("Etkinlik","ticket",sub)}
+      <div class="media"><span class="tile"><svg><use href="#silticket"/></svg></span><span class="t">${title}<small>tur, müze, gösteri · bilet gereken her şey</small></span></div>
+      <div class="foot"><span class="s">Henüz yok</span>${find(["gyg","via","klook"])}</div></div>`;
+  const esimEmpty = (country, dates) => `<div class="card">${head2("eSIM","sim",dates)}
+      <div class="media"><span class="tile"><svg><use href="#silsim"/></svg></span><span class="t">eSIM · ${country}<small>tüm gezi için internet</small></span></div>
+      <div class="foot"><span class="s">Alınmadı</span>${find(["airalo","holafly"])}<a class="skip" href="#">Gerek yok</a></div></div>`;
+  const transferEmpty = (a, b, when) => `<div class="card">${head2("Havalimanı transferi","taxi",when)}
+      <div class="route"><span class="a">${a}<small>varış 10:25</small></span><svg class="sil"><use href="#siltaxi"/></svg><span class="b">${b}<small>konaklama</small></span></div>
+      <div class="foot"><span class="s">Nasıl gideceğin belli değil</span>${find(["uber","bolt"])}<a class="skip" href="#">Gerek yok</a></div></div>`;
+  const flightFull = `<div class="full"><div class="top"><span class="ring" style="border:1.5px solid #e0a43a"></span><span class="kind" style="color:#6a4fe0"><svg><use href="#plane"/></svg>Uçuş</span><span class="when">· 10 Aralık</span></div>
+      <div class="route"><span class="a">İstanbul<small>IST · 07:40</small></span><svg class="sil" style="color:#6a4fe0"><use href="#silplane"/></svg><span class="b">Amsterdam<small>AMS · 10:25</small></span></div>
+      <div class="foot"><span class="s" style="color:#9a6400;font-weight:600">Seçildi</span><span class="s">· bilet alınmadı</span><span class="price">€312</span><button class="btn">Bileti aldım</button></div></div>`;
+
+  document.getElementById("app").innerHTML = `
+    <h2 class="cap">Boş kartlar v1 · onaylı kartların sade hâli (henüz bilet/otel yokken)</h2>
+    <p class="sub">Aynı kabuk, aynı siluet, aynı renk; yalnız: kesikli çerçeve, beyaz zemin, bir boy küçük şehir adları, soluk siluet, altta tek sessiz satır "durum · logolu arama". Bilet/otel gelince bugünkü büyük kart olur.</p>
+    <div class="cols">
+      <div>
+        <p class="lbl"><b>Boşken</b> (yeni gezi, "Gezimi oluştur" sonrası)</p>
+        <div class="plan">
+          <div class="sh" style="--c:#6a4fe0"><svg><use href="#plane"/></svg><b>Uçuş</b><span class="n">0/2</span></div>
+          ${row("#6a4fe0","10 Ara","Çar","İstanbul", flightEmpty("İstanbul","IST · Sabiha Gökçen","Amsterdam","AMS","10 Aralık","2 kişi"))}
+          ${row("#6a4fe0","17 Ara","Çar","Amsterdam", flightEmpty("Amsterdam","AMS","İstanbul","IST","17 Aralık","2 kişi"))}
+        </div>
+        <div class="plan" style="margin-top:12px">
+          <div class="sh" style="--c:#23998b"><svg><use href="#bed"/></svg><b>Konaklama</b><span class="n">0/1</span></div>
+          ${row("#23998b","10 Ara","Çar","Amsterdam", stayEmpty("Amsterdam","10–17 Aralık","7 gece","2 kişi"))}
+        </div>
+        <div class="plan" style="margin-top:12px">
+          <div class="sh" style="--c:#2563c9"><svg><use href="#taxi"/></svg><b>Ulaşım</b><span class="n">0/1</span></div>
+          ${row("#d29a00","10 Ara","Çar","Amsterdam", transferEmpty("Schiphol","Konaklama","10 Aralık"))}
+        </div>
+        <div class="plan" style="margin-top:12px">
+          <div class="sh" style="--c:#a8336f"><svg><use href="#ticket"/></svg><b>Etkinlikler</b><span class="n">0</span></div>
+          ${row("#a8336f","Tarihsiz","","Amsterdam", actEmpty("Amsterdam'da tur ve bilet","10–17 Aralık"))}
+        </div>
+        <div class="plan" style="margin-top:12px">
+          <div class="sh" style="--c:#3b6fd1"><svg><use href="#sim"/></svg><b>Diğer (Sigorta, eSIM)</b><span class="n">0/1</span></div>
+          ${row("#3b6fd1","Tüm gezi","","", esimEmpty("Hollanda","10–17 Aralık"))}
+        </div>
+      </div>
+      <div>
+        <p class="lbl"><b>Dolunca</b> (bugünkü onaylı kart, değişmez) · karşılaştırma için</p>
+        <div class="plan">
+          <div class="sh" style="--c:#6a4fe0"><svg><use href="#plane"/></svg><b>Uçuş</b><span class="n">1/2</span></div>
+          ${row("#6a4fe0","10 Ara","Çar","İstanbul", flightFull)}
+          ${row("#6a4fe0","17 Ara","Çar","Amsterdam", flightEmpty("Amsterdam","AMS","İstanbul","IST","17 Aralık","2 kişi"))}
+        </div>
+        <p class="note">
+          <b>Kural:</b> boş kart = onaylı kartın sade hâli. Değişmeyenler: üst satır (çember · tür ikonu ve rengi · tarih · •••), şehir — siluet — şehir düzeni (ulaşım), siluet karosu + ad (konaklama, etkinlik, eSIM), zaman çizelgesi, + noktaları.
+          Sadeleşenler: kesikli çerçeve ve beyaz zemin (sarı-bej yok), şehir adları 20 → 17 px, siluet %35 soluk ve küçük, fiyat ve "Bileti aldım" yok, durum tek gri kelime ("Bilet yok", "Yer yok", "Alınmadı").
+          Alt satırın sağında sessiz logolu arama (tarih, şehir, kişi dolu açılır; logolar eklentinin içinde, siteye istek gitmez). "Gerek yok" konaklama, transfer ve eSIM'de.
+          Seçenek ya da bilet gelince kart kendiliğinden bugünkü büyük karta döner.
+        </p>
+      </div>
+    </div>
+  `;
+</script>
+</body>
+</html>
