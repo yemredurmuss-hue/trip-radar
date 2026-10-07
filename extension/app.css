@@ -1061,11 +1061,21 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 }
 .hx-cities button { flex: none; height: 40px; border: 0; background: transparent; padding: 0 22px; border-radius: 999px; font-size: 16px; font-weight: 500; color: var(--hx-muted); }
 .hx-cities button.on { background: #fff; color: var(--hx-ink); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-/* Who took the photo: small, bottom right, readable on any picture. */
+/* Who took the photo: a small ⓘ at the bottom right (0.36.54); the credit opens on hover or focus, readable on any picture. */
 .hx-credit {
-  position: absolute; right: 12px; bottom: 10px; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  padding: 3px 9px; border-radius: 999px; background: rgba(0,0,0,.55); color: rgba(255,255,255,.95); font-size: 11.5px; line-height: 1.4;
+  position: absolute; right: 10px; bottom: 10px; max-width: calc(100% - 20px); display: flex; align-items: center; justify-content: flex-end;
+  color: rgba(255,255,255,.95); font-size: 11.5px; line-height: 1.4; outline: none;
 }
+.hx-credit-i {
+  flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(0,0,0,.42); font: italic 600 12px/1 Georgia, serif; color: #fff; cursor: default;
+}
+.hx-credit-text {
+  display: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  margin-right: 6px; padding: 3px 9px; border-radius: 999px; background: rgba(0,0,0,.6);
+}
+.hx-credit:hover .hx-credit-text, .hx-credit:focus-within .hx-credit-text { display: block; }
+.hx-credit:focus-visible .hx-credit-i { box-shadow: 0 0 0 2px #fff; }
 .hx-credit a { color: inherit; text-decoration: none; }
 .hx-credit a:hover { text-decoration: underline; }
 .hx-badges { position: absolute; top: 16px; right: 70px; display: flex; align-items: center; gap: 8px; }
@@ -2912,6 +2922,9 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
   .pp-hero-copy .hx { margin: 0 0 8px; }
   .pp-hero-copy .hx-photo img { transition: none; }
   .pp-hero-copy button { pointer-events: none; }
+  /* On paper there's no hover: the photo's credit in full, the ⓘ left out. */
+  .pp-hero-copy .hx-credit-text { display: block; }
+  .pp-hero-copy .hx-credit-i { display: none; }
   .pp-hero[hidden] { display: none; }
   .pp-photo { margin: 0; position: relative; }
   .pp-photo img { display: block; width: 100%; height: 62mm; object-fit: cover; border-radius: 8px; }
