@@ -1,6 +1,6 @@
 // The plan as a PDF (0.36.51, Emre: "%100 olunca planı PDF olarak indir; hero'daki tüm bilgiler ve gün gün detaylı
-// akış"): a page laid out for paper, drawn only while printing, then Chrome's print window opens on it, where "PDF
-// olarak kaydet" saves it (the file's name is the trip's). What it says is what the board says: the hero (photo and
+// akış"): a page laid out for paper off screen, its picture cut into A4 pages and saved as a PDF file named after the
+// trip (0.36.55, Emre: "dosya"); Chrome's print window only when the file can't be made. What it says is what the board says: the hero (photo and
 // its credit, dates, route, who goes, style, where the plan stands, the plan line, budget, the country's small
 // things), the bookings, then every day's lines in their order with their times, notes and ideas. Pure drawing:
 // the board hands it everything already worked out.
@@ -23,6 +23,7 @@ import type { TripFacts as Facts } from "../lib/tripFacts";
 import type { Who } from "../lib/tripSettings";
 import type { StyleChip } from "../lib/tripStyle";
 import type { Item, Listing, Trip } from "../lib/types";
+import { jpegPagesToPdf, pageBreaks, type PdfPage } from "../lib/pdfFile";
 import type { HeroCity } from "./TripHero";
 
 export interface PrintPlanProps {
@@ -45,7 +46,7 @@ export interface PrintPlanProps {
   mainPlaces?: MainPlace[];
   cityImage: (city: string | null) => string | null;
   /** The print window closed (saved or not): the page goes. */
-  onDone: () => void;
+  onDone: (made: "file" | "print" | null) => void;
   /** The board's own hero (section.hx): copied onto the page as it is drawn, photo, faces and all; without it, a summary. */
   hero?: React.RefObject<HTMLElement | null>;
 }
@@ -78,42 +79,91 @@ const weekday = (d: string) =>
   });
 const dayDate = (c: DayCard) => (c.end ? formatDateRange(c.date, c.end) : `${formatDateRange(c.date, null)} · ${weekday(c.date)}`);
 
-/** Opens the print window once the page and its photos are there (a photo that doesn't come in 4 s isn't waited for). */
-function usePrintWhenReady(root: React.RefObject<HTMLDivElement | null>, title: string, onDone: () => void) {
+/** A4 at 96 px to the inch, the way the page is laid out off screen; its margins top and bottom. */
+const PAGE = { width: 794, height: 1123, margin: 53 };
+
+/** The file's name: the trip's title and dates, without what a file name can't hold. */
+export const fileNameOf = (title: string): string => `${title.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim()}.pdf`;
+
+/**
+ * Once the page and its photos are there (a photo that doesn't come in 4 s isn't waited for): its picture taken,
+ * cut into A4 pages between its blocks (the hero, a booking's row, a day), saved as a PDF file (Emre, 0.36.55:
+ * "dosya"). The print window only if the file can't be made.
+ */
+function useFileWhenReady(root: React.RefObject<HTMLDivElement | null>, title: string, onDone: (made: "file" | "print" | null) => void) {
   useEffect(() => {
     let gone = false;
     const before = document.title;
-    const done = () => {
+    const el = root.current;
+    const finish = (made: "file" | "print" | null) => {
       if (gone) return;
       gone = true;
       document.title = before;
       document.body.classList.remove("printing");
-      window.removeEventListener("afterprint", done);
-      onDone();
+      onDone(made);
     };
-    const imgs = [...(root.current?.querySelectorAll("img") ?? [])];
-    const loaded = Promise.all(
-      imgs.map((img) => (img.complete ? Promise.resolve() : new Promise<void>((r) => ((img.onload = () => r()), (img.onerror = () => r()))))),
-    );
-    const wait = Promise.race([loaded, new Promise((r) => setTimeout(r, 4000))]);
-    void wait.then(() => {
-      if (gone) return;
-      // The saved file is named after the page's title.
-      document.title = title;
-      document.body.classList.add("printing");
-      window.addEventListener("afterprint", done);
-      window.print();
-      // Chrome's print() returns once its window is closed; one that never says so (some systems): the page goes
-      // anyway a moment later. The e2e run holds it longer to print the page itself (window.__printSettleMs).
-      setTimeout(done, (window as unknown as { __printSettleMs?: number }).__printSettleMs ?? 1500);
-    });
+    const imgs = [...(el?.querySelectorAll("img") ?? [])];
+    const loaded = Promise.all(imgs.map((img) => (img.complete ? Promise.resolve() : new Promise<void>((r) => ((img.onload = () => r()), (img.onerror = () => r()))))));
+    void Promise.race([loaded, new Promise((r) => setTimeout(r, 4000))])
+      .then(async () => {
+        if (gone || !el) return;
+        const bytes = await planPdf(el);
+        if (gone) return;
+        const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: "application/pdf" }));
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileNameOf(title);
+        document.body.append(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        finish("file");
+      })
+      .catch((error) => {
+        if (gone) return;
+        console.warn("[print] the PDF file couldn't be made; the print window instead", error);
+        // The print window: its "PDF olarak kaydet" saves the same page.
+        document.title = title;
+        el?.classList.remove("capturing");
+        document.body.classList.add("printing");
+        window.print();
+        setTimeout(() => finish("print"), (window as unknown as { __printSettleMs?: number }).__printSettleMs ?? 1500);
+      });
     return () => {
       gone = true;
       document.title = before;
       document.body.classList.remove("printing");
-      window.removeEventListener("afterprint", done);
     };
   }, [root, title, onDone]);
+}
+
+/** The page laid out off screen as a PDF: its picture at twice the size, cut into A4 pages, each a JPEG. */
+async function planPdf(el: HTMLElement): Promise<Uint8Array> {
+  const { toCanvas } = await import("html-to-image");
+  const top = el.getBoundingClientRect().top;
+  const blocks = [...el.querySelectorAll(".pp-hero-copy, .pp-hero:not([hidden]), h2, .pp-bookings tr, .pp-day, .pp-foot")].map((b) => {
+    const r = b.getBoundingClientRect();
+    return { top: r.top - top, bottom: r.bottom - top };
+  });
+  const total = el.scrollHeight;
+  const ratio = 2;
+  const canvas = await toCanvas(el, { pixelRatio: ratio, backgroundColor: "#ffffff", width: PAGE.width, height: total, style: { left: "0", position: "static" } });
+  const scale = canvas.height / total;
+  const pages: PdfPage[] = [];
+  for (const slice of pageBreaks(blocks, total, PAGE.height - PAGE.margin * 2)) {
+    const page = document.createElement("canvas");
+    page.width = Math.round(PAGE.width * scale);
+    page.height = Math.round(PAGE.height * scale);
+    const g = page.getContext("2d")!;
+    g.fillStyle = "#ffffff";
+    g.fillRect(0, 0, page.width, page.height);
+    const h = (slice.end - slice.start) * scale;
+    g.drawImage(canvas, 0, slice.start * scale, canvas.width, h, 0, PAGE.margin * scale, page.width, h);
+    const blob = await new Promise<Blob | null>((r) => page.toBlob(r, "image/jpeg", 0.86));
+    if (!blob) throw new Error("a page couldn't be drawn");
+    pages.push({ jpeg: new Uint8Array(await blob.arrayBuffer()), width: page.width, height: page.height });
+  }
+  return jpegPagesToPdf(pages);
 }
 
 export function PrintPlan(props: PrintPlanProps) {
@@ -140,7 +190,7 @@ export function PrintPlan(props: PrintPlanProps) {
     setCopied(true);
   }, [props.hero]);
   const title = `${trip.title}${range ? ` · ${formatDateRange(range.start, range.end)}` : ""} · Trip Radar`;
-  usePrintWhenReady(root, title, props.onDone);
+  useFileWhenReady(root, title, props.onDone);
 
   const rentals = props.timeline.entries.filter((e): e is RentalEntry => e.kind === "rental");
   const cards = dayCards(props.timeline.sections, {
@@ -159,7 +209,7 @@ export function PrintPlan(props: PrintPlanProps) {
     .sort((a, b) => (a.flight?.departure ?? a.dates.start ?? "9999").localeCompare(b.flight?.departure ?? b.dates.start ?? "9999"));
 
   return createPortal(
-    <div className="print-plan" ref={root} lang={trip.lang ?? undefined}>
+    <div className="print-plan capturing" ref={root} lang={trip.lang ?? undefined}>
       <div className="pp-hero-copy" ref={heroBox} />
       <header className="pp-hero" hidden={copied}>
         {cover?.image && (

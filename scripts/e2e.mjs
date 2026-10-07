@@ -3266,29 +3266,24 @@ try {
   await flow.unroute("https://generativelanguage.googleapis.com/**", asideModel);
   console.log(`✓ chat 'gerisi fikir olarak kalsın': ${asideBefore.length} unbooked plans set aside one step at a time, the steps shown as it worked, none left to book (${asideHero})`);
 
-  // 20d1c. The plan as a PDF (0.36.51): at %100 the hero's main button is "Planı PDF olarak indir"; it opens the print
-  // window on a page laid out for paper (the hero's facts, the bookings, every day's lines). The print window is caught
-  // here and the page printed to a real PDF file (Chrome's own printToPDF) to look at.
+  // 20d1c. The plan as a PDF file (0.36.51; a file since 0.36.55): at %100 the hero's main button is "Planı PDF olarak
+  // indir"; the page laid out for paper (the hero as drawn, the bookings, every day's lines) is saved as a PDF named
+  // after the trip, no print window.
   await board.locator(".hx-go", { hasText: "Planı PDF olarak indir" }).waitFor({ timeout: 10000 });
   await board.evaluate(() => {
-    window.__printSettleMs = 30000;
     window.__printed = 0;
     window.print = () => void (window.__printed += 1);
   });
-  await board.locator(".hx-go", { hasText: "Planı PDF olarak indir" }).click();
-  await board.waitForFunction(() => window.__printed === 1, null, { timeout: 10000 });
-  assert.ok(await board.evaluate(() => document.body.classList.contains("printing")), "the page is in its print layout");
-  assert.match(await board.title(), /^Portekiz.* · Trip Radar$/, "the file is named after the trip");
-  const printed = await board.locator(".print-plan").evaluate((el) => ({ title: el.querySelector("h1")?.textContent, days: el.querySelectorAll(".pp-day").length, lines: el.querySelectorAll(".pp-day li").length, facts: [...el.querySelectorAll(".pp-facts dt")].map((d) => d.textContent) }));
-  assert.equal(printed.title, "Portekiz");
-  assert.ok(printed.days >= 5 && printed.lines > 0, `every day with its lines (${JSON.stringify(printed)})`);
-  assert.ok(printed.facts.includes("Kimler") && printed.facts.includes("Plan"), `the hero's facts (${JSON.stringify(printed.facts)})`);
-  const cdp = await board.context().newCDPSession(board);
-  const pdf = await cdp.send("Page.printToPDF", { printBackground: true, preferCSSPageSize: true });
-  writeFileSync(`${out}/27d-plan.pdf`, Buffer.from(pdf.data, "base64"));
-  await cdp.detach();
-  await board.evaluate(() => window.dispatchEvent(new Event("afterprint")));
-  await board.waitForFunction(() => !document.body.classList.contains("printing"));
+  const [pdfFile] = await Promise.all([board.waitForEvent("download", { timeout: 30000 }), board.locator(".hx-go", { hasText: "Planı PDF olarak indir" }).click()]);
+  assert.match(pdfFile.suggestedFilename(), /^Portekiz .*Trip Radar\.pdf$/, "named after the trip");
+  await pdfFile.saveAs(`${out}/27d-plan.pdf`);
+  const pdfBytes = readFileSync(`${out}/27d-plan.pdf`);
+  assert.equal(pdfBytes.subarray(0, 8).toString("latin1"), "%PDF-1.4");
+  const pdfPages = (pdfBytes.toString("latin1").match(/\/Type \/Page /g) ?? []).length;
+  assert.ok(pdfPages >= 2, `the hero and the days on their pages (${pdfPages})`);
+  assert.equal(await board.evaluate(() => window.__printed), 0, "no print window");
+  await board.locator(".print-plan").waitFor({ state: "detached" });
+  console.log(`✓ plan as PDF: at %100 the main button saves the plan as a file (${pdfPages} pages, ${Math.round(pdfBytes.length / 1024)} KB) → ${out}/27d-plan.pdf`);
   // The photo's credit (0.36.54): a small ⓘ on the photo, the credit on hover; on paper in full.
   const creditBox = board.locator(".hx > .hx-left .hx-credit").first();
   if (await creditBox.count()) {
@@ -3298,7 +3293,7 @@ try {
     await board.screenshot({ path: `${out}/27e-credit-hover.png` });
     await board.mouse.move(5, 5);
   }
-  console.log(`✓ plan as PDF: at %100 the main button prints the plan (${printed.days} days, ${printed.lines} lines) → ${out}/27d-plan.pdf`);
+  console.log("✓ photo credit: a small ⓘ on the photo, the credit on hover");
 
   // 20d2. Web search: "Ozora 2027 tarihlerini araştır" → the chat calls web_search; while it runs the thinking line
   // says "Web'de arıyorum…"; the answer ends with "Kaynak:" and the site's link. Only the question goes out.

@@ -6,7 +6,7 @@ import { reloadIfLangChanged } from "./langSwitch";
 import { noChangeNote } from "../lib/claims";
 import { describeError } from "../lib/llm";
 import { shownReply } from "../lib/replyText";
-import { answerHeld, answerStray, RoutingChanged, undoMove } from "../lib/routing";
+import { answerDuplicate, answerHeld, answerStray, RoutingChanged, undoMove } from "../lib/routing";
 import type { Capture, ChatMessage, HeldAnswer, Item, RoutingNote, Trip } from "../lib/types";
 import { DOC_ACCEPT } from "../lib/docs";
 import { DropOverlay } from "./arrive/ArriveViews";
@@ -315,6 +315,20 @@ export function RoutingLine({ m, routing, trips }: { m: ChatMessage; routing: Ro
         })}
       </ul>
     );
+  } else if (routing.kind === "duplicate") {
+    // The same thing saved again (0.36.55): merged; kept so, or kept apart.
+    actions = routing.answer ? (
+      <span className="muted">{routing.answer === "separate" ? L("Ayrı tutuldu", "Kept apart") : L("Birleşik kaldı", "Kept merged")}</span>
+    ) : (
+      <>
+        <button type="button" className="small-btn" disabled={busy} onClick={() => void act(() => answerDuplicate(m.id, "merge"))}>
+          {L("Birleşik kalsın", "Keep merged")}
+        </button>
+        <button type="button" className="small-btn" disabled={busy} onClick={() => void act(() => answerDuplicate(m.id, "separate"))}>
+          {L("Ayrı tut", "Keep apart")}
+        </button>
+      </>
+    );
   } else if (routing.answer) {
     const went = title(routing.answeredTripId);
     actions = <span className="muted">{routing.answer === "skip" || !went ? L("Eklenmedi", "Not added") : L(`→ ${went} gezisine eklendi`, `→ Added to ${went}`)}</span>;
@@ -340,7 +354,7 @@ export function RoutingLine({ m, routing, trips }: { m: ChatMessage; routing: Ro
       );
   }
   return (
-    <div className={`msg-route${(routing.kind === "ask" && !routing.answer) || (routing.kind === "stray" && routing.entries.some((e) => !e.answer)) ? " ask" : ""}`} data-routing={routing.kind}>
+    <div className={`msg-route${(routing.kind === "ask" && !routing.answer) || (routing.kind === "stray" && routing.entries.some((e) => !e.answer)) || (routing.kind === "duplicate" && !routing.answer) ? " ask" : ""}`} data-routing={routing.kind}>
       <div>{m.text}</div>
       <div className="msg-route-actions">{actions}</div>
       {problem && <div className="chat-error">{problem}</div>}

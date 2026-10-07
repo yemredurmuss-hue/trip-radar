@@ -215,6 +215,16 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
     if (before && before !== item.tripId) await moveDocsToTrip(item.id, item.tripId);
 
     await addEvent(item.tripId, savedLine(item, incoming.status === "booked", Boolean(duplicate), capture.sharedBy));
+    // The same thing saved again (Emre, 0.36.55): merged as always, and asked whether to keep it apart instead. Not a
+    // booking's confirmation (it books what was saved), nor what a shared trip sends.
+    if (duplicate && incoming.status !== "booked" && !capture.sharedAt) {
+      const when = duplicate.item.dates.start ? ` (${formatDateRange(duplicate.item.dates.start, duplicate.item.dates.end)})` : "";
+      await addEvent(
+        item.tripId,
+        L(`${duplicate.item.name}${when} bu gezide zaten kayıtlıydı; bu kaydı onunla birleştirdim. Ayrı mı tutayım?`, `${duplicate.item.name}${when} was already saved in this trip; I merged this save into it. Keep them apart?`),
+        { routing: { kind: "duplicate", itemId: item.id, before: duplicate.item, separate: { ...incoming, id: newId(), tripId: item.tripId, dates: duplicate.placeOnly ? item.dates : incoming.dates } } },
+      );
+    }
     // Handed to one trip, gone to another (the trip of its place): the trip it was handed to says where, with
     // Aç · Geri al. So does the trip a record left when its place turned out to be another's (a later save).
     const noteIn = anchor && anchor.id !== item.tripId ? anchor.id : before && before !== item.tripId ? before : null;

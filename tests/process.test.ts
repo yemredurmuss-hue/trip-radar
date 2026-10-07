@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { db, listItems, listMessages, listTrips } from "../src/lib/db";
+import { answerDuplicate } from "../src/lib/routing";
 import type { Extraction } from "../src/lib/extract";
 import {
   processPending,
@@ -85,8 +86,38 @@ describe("capture pipeline", () => {
     expect(events).toEqual([
       "✓ Jardim Stay kaydedildi → Konaklama · Porto",
       "↻ Jardim Stay güncellendi",
+      // Saved twice (0.36.55): merged, and asked whether to keep them apart instead.
+      "Jardim Stay (8–11 Ekim) bu gezide zaten kayıtlıydı; bu kaydı onunla birleştirdim. Ayrı mı tutayım?",
       "✓ Casa Azul kaydedildi → Konaklama · Porto",
     ]);
+
+    // "Ayrı tut": the one saved goes back to what it was (€285), this save stands beside it (€270).
+    const ask = (await listMessages(trips[0].id)).find((m) => m.routing?.kind === "duplicate")!;
+    await answerDuplicate(ask.id, "separate");
+    const apart = (await listItems(trips[0].id)).filter((i) => i.name === "Jardim Stay");
+    expect(apart.map((i) => i.price.amount).sort()).toEqual([270, 285]);
+    expect((await listMessages(trips[0].id)).find((m) => m.id === ask.id)!.routing).toMatchObject({ kind: "duplicate", answer: "separate" });
+    // Answered once: a second tap changes nothing.
+    await answerDuplicate(ask.id, "separate");
+    expect((await listItems(trips[0].id)).filter((i) => i.name === "Jardim Stay")).toHaveLength(2);
+  });
+
+  it("a booking's confirmation of what was saved isn't asked about: it books it", async () => {
+    const d = await db();
+    for (const store of ["items", "messages", "trips", "captures"] as const) await d.clear(store);
+    const extractor: Extractor = async (capture, _facts, trips) => {
+      const trip = { existing_trip_id: trips[0]?.id ?? null, new_trip_title: trips[0] ? null : "Portekiz" };
+      return capture.pageText.includes("Onaylandı") ? { ...base, booked: true, booking_reference: "4031.552.187", booking_quote: "Rezervasyonunuz onaylandı", trip } : { ...base, trip };
+    };
+    const deps: Deps = { extract: extractor, heroImage: async () => null, geocode: async () => null };
+    const url = "https://www.booking.com/hotel/pt/jardim-stay.html?checkin=2026-10-08&checkout=2026-10-11";
+    await saveSnapshot(snapshot(url, "Jardim Stay € 285"), null);
+    await processPending(deps);
+    await saveSnapshot(snapshot(url, "Jardim Stay Onaylandı"), null);
+    await processPending(deps);
+    const trip = (await listTrips())[0];
+    expect((await listItems(trip.id)).map((i) => i.status)).toEqual(["booked"]);
+    expect((await listMessages(trip.id)).some((m) => m.routing?.kind === "duplicate")).toBe(false);
   });
 
   it("records a readable error and leaves the capture retryable", async () => {

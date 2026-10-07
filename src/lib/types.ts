@@ -694,7 +694,13 @@ export type RoutingNote =
   | { kind: "moved"; itemId: string; fromTripId: string; toTripId: string; far: boolean; merged: boolean; undoneAt?: number; dates?: Item["dates"] }
   | { kind: "ask"; captureId: string; reason: "place" | "travel"; newTitle: string; toTripId?: string | null; answer?: HeldAnswer; answeredTripId?: string }
   /** Records already saved whose place looks like another trip's (strays.ts): asked about one by one, never moved by itself. */
-  | { kind: "stray"; entries: StrayEntry[] };
+  | { kind: "stray"; entries: StrayEntry[] }
+  /**
+   * The same thing saved again (0.36.55, Emre: "uyarı çıksın, birleştirilsin mi ayrı mı"): merged into the one saved
+   * as before, and asked: "Birleşik kalsın" or "Ayrı tut" (the one saved goes back to what it was, this save stands
+   * as a record of its own).
+   */
+  | { kind: "duplicate"; itemId: string; before: Item; separate: Item; answer?: "merge" | "separate" };
 
 /** One record in a "Bunlar başka bir geziye ait görünüyor" line, and what was done with it. */
 export interface StrayEntry {

@@ -77,6 +77,29 @@ export async function answerHeld(captureId: string, answer: HeldAnswer): Promise
 }
 
 /**
+ * The same thing saved again, merged (process.ts): merge keeps it so; separate puts the one saved back as it was
+ * before this save and adds this save as a record of its own beside it. Only while the merged record is still there.
+ */
+export async function answerDuplicate(messageId: string, answer: "merge" | "separate"): Promise<void> {
+  const d = await db();
+  const line = await d.get("messages", messageId);
+  const routing = line?.routing;
+  if (!line || routing?.kind !== "duplicate" || routing.answer) return;
+  if (answer === "separate") {
+    const stored = await d.get("items", routing.itemId);
+    if (!stored) throw new RoutingChanged(L("Bu kayıt sonra silindi.", "This record was deleted since."));
+    const now = Date.now();
+    // The one saved as it was (its status and what was said about it now, if changed since), this save beside it.
+    await d.put("items", { ...routing.before, status: stored.status, statusNote: stored.statusNote, updatedAt: now });
+    const separate: Item = { ...routing.separate, tripId: stored.tripId, updatedAt: now };
+    await d.put("items", separate);
+    await addEvent(stored.tripId, savedLine(separate, false, false));
+  }
+  await d.put("messages", { ...line, routing: { ...routing, answer } });
+  notifyChanged();
+}
+
+/**
  * One record of a "Bunlar başka bir geziye ait görünüyor" line (strays.ts): move: to the trip of its place (its
  * dates go with it: they are that trip's); keep: it stays, never asked again; remove: off the plan, into the
  * trash (Çöp kutusu brings it back).

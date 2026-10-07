@@ -545,8 +545,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // (0.36.51, Emre); before that it's there too, beside "Planı tamamla", never the main one.
   const numbers = heroNumbers(todo.counts);
   const pdf: HeroAction = {
-    label: L("Planı PDF olarak indir", "Download the plan as PDF"),
-    title: L("Gezinin özeti ve gün gün akışı; açılan pencerede 'PDF olarak kaydet'i seç", "The trip's summary and its days; pick 'Save as PDF' in the window that opens"),
+    label: printing ? L("PDF hazırlanıyor…", "Making the PDF…") : L("Planı PDF olarak indir", "Download the plan as PDF"),
+    title: L("Gezinin özeti ve gün gün akışı, bir PDF dosyası olarak", "The trip's summary and its days, as a PDF file"),
     run: () => setPrinting(true),
   };
   const action: HeroAction | null =
@@ -568,7 +568,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     done.total === 0
       ? null
       : numbers.pct !== 100
-        ? { ...pdf, label: L("PDF indir", "Download PDF") }
+        ? { ...pdf, label: printing ? L("PDF hazırlanıyor…", "Making the PDF…") : L("PDF indir", "Download PDF") }
         : allDone && onShare
           ? { label: L("Paylaş", "Share"), title: L("Bu geziyi paylaş", "Share this trip"), run: onShare }
           : null;

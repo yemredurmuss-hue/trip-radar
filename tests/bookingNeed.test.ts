@@ -152,6 +152,18 @@ describe("the chat: set_booking_need", () => {
     expect((await listItems(T)).find((i) => i.id === "jardim")!.noBooking).toBeUndefined();
   });
 
+  it("an empty card too (a stay said with no hotel): an idea, out of what waits (Emre, 0.36.55: 'fikir')", async () => {
+    const empty = plannedItem({ kind: "stay", date: "2026-10-08", end_date: "2026-10-11", time: null, from: null, to: null, city: "Porto", title: null, booked: false, note: null }, T, "empty", 1);
+    await put([flight("out", "IST", "OPO", "2026-10-08", "booked"), empty]);
+    const { llm, calls } = fake([use({ name: "set_booking_need", input: { all_unbooked: true, item_ids: [], leg_keys: [], needed: false } }), say("Tamam.")]);
+    await sendMessage(T, "gerisi fikir olarak kalsın", llm);
+    expect(JSON.parse(String(resultsOf(calls, 1)[0].content)).kept_as_ideas).toEqual([empty.name]);
+    const after = await listItems(T);
+    expect(after.find((i) => i.id === "empty")!.noBooking).toBeTypeOf("number");
+    // Out of what waits; only the way home with nothing on the plan for it ("Dönüş uçuşu") is still to find.
+    expect(heroNumbers(planStages(flightsAndStays(sectionsOf(after))))).toMatchObject({ planned: 0, open: 1, pct: 100 });
+  });
+
   it("an unknown id changes nothing and says so", async () => {
     await put([stay("chosen")]);
     const { llm, calls } = fake([use({ name: "set_booking_need", input: { all_unbooked: false, item_ids: ["nope"], leg_keys: [], needed: false } }), say("Bulamadım.")]);
