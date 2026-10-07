@@ -39,6 +39,8 @@ const frozen = (ctx) => ctx.clock.install({ time: new Date("2026-10-05T10:00:00"
 const context = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-")), {
   executablePath,
   headless: false,
+  // The owner's home time (the hero's "−2 saat" to Portugal): the same wherever the Mac is.
+  timezoneId: "Europe/Istanbul",
   viewport: { width: 1440, height: 900 },
   ...TURKISH,
   args: [
@@ -1786,6 +1788,8 @@ try {
 const flow = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-flow-")), {
   executablePath,
   headless: false,
+  // The owner's home time (the hero's "−2 saat" to Portugal): the same wherever the Mac is.
+  timezoneId: "Europe/Istanbul",
   viewport: { width: 1440, height: 900 },
   ...TURKISH,
   // The trip map (MapLibre) needs WebGL 2: headless Chromium draws it in software.
@@ -3285,6 +3289,15 @@ try {
   await cdp.detach();
   await board.evaluate(() => window.dispatchEvent(new Event("afterprint")));
   await board.waitForFunction(() => !document.body.classList.contains("printing"));
+  // The photo's credit (0.36.54): a small ⓘ on the photo, the credit on hover; on paper in full.
+  const creditBox = board.locator(".hx > .hx-left .hx-credit").first();
+  if (await creditBox.count()) {
+    assert.equal(await creditBox.locator(".hx-credit-text").isVisible(), false, "only the ⓘ until hovered");
+    await creditBox.hover();
+    assert.match(await creditBox.locator(".hx-credit-text").innerText(), /^Fotoğraf: /);
+    await board.screenshot({ path: `${out}/27e-credit-hover.png` });
+    await board.mouse.move(5, 5);
+  }
   console.log(`✓ plan as PDF: at %100 the main button prints the plan (${printed.days} days, ${printed.lines} lines) → ${out}/27d-plan.pdf`);
 
   // 20d2. Web search: "Ozora 2027 tarihlerini araştır" → the chat calls web_search; while it runs the thinking line
@@ -4044,6 +4057,8 @@ cpSync(extension, installDir, { recursive: true });
 const updating = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-upd-")), {
   executablePath,
   headless: false,
+  // The owner's home time (the hero's "−2 saat" to Portugal): the same wherever the Mac is.
+  timezoneId: "Europe/Istanbul",
   viewport: { width: 1200, height: 800 },
   ...TURKISH,
   args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${installDir}`, `--load-extension=${installDir}`],
@@ -4109,6 +4124,8 @@ try {
 const safety = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-safe-")), {
   executablePath,
   headless: false,
+  // The owner's home time (the hero's "−2 saat" to Portugal): the same wherever the Mac is.
+  timezoneId: "Europe/Istanbul",
   viewport: { width: 1440, height: 900 },
   ...TURKISH,
   args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
@@ -4239,6 +4256,8 @@ try {
 const whoGoes = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-who-")), {
   executablePath,
   headless: false,
+  // The owner's home time (the hero's "−2 saat" to Portugal): the same wherever the Mac is.
+  timezoneId: "Europe/Istanbul",
   viewport: { width: 1440, height: 900 },
   ...TURKISH,
   args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
@@ -4337,6 +4356,8 @@ try {
 const flightDay = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-live-")), {
   executablePath,
   headless: false,
+  // The owner's home time (the hero's "−2 saat" to Portugal): the same wherever the Mac is.
+  timezoneId: "Europe/Istanbul",
   viewport: { width: 1440, height: 900 },
   ...TURKISH,
   args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],

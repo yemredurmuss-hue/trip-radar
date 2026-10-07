@@ -23,7 +23,11 @@ export interface HeroCity {
   credit?: PhotoCredit | null;
 }
 
-/** "Fotoğraf: <Ad> / Unsplash", each part a link when its page is known (new tab). */
+/**
+ * "Fotoğraf: <Ad> / Unsplash", each part a link when its page is known (new tab). On the photo only a small ⓘ
+ * (Emre, 0.36.54: "zorunlu ise i koyalım, çok göze batmaz"): the credit opens on hover or focus, and stays in the
+ * page for screen readers and the printed plan (PrintPlan prints it in full).
+ */
 function PhotoCreditLine({ credit }: { credit: PhotoCredit }) {
   const line = creditLine(credit);
   const part = (p: CreditPart) =>
@@ -35,9 +39,14 @@ function PhotoCreditLine({ credit }: { credit: PhotoCredit }) {
       <span>{p.text}</span>
     );
   return (
-    <div className="hx-credit">
-      {line.label} {line.by && <>{part(line.by)} / </>}
-      {part(line.source)}
+    <div className="hx-credit" tabIndex={0} aria-label={`${line.label} ${line.by ? `${line.by.text} / ` : ""}${line.source.text}`}>
+      <span className="hx-credit-i" aria-hidden>
+        i
+      </span>
+      <span className="hx-credit-text">
+        {line.label} {line.by && <>{part(line.by)} / </>}
+        {part(line.source)}
+      </span>
     </div>
   );
 }
