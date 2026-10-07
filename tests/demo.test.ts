@@ -8,7 +8,7 @@ import { demoShift, loadDemoTrip, shiftDates } from "../src/lib/demo";
 import { listingKeyOf } from "../src/lib/items";
 import { buildLegs, legTiming } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
-import { tripCardPlaces } from "../src/lib/tripBrief";
+import { tripCardPhoto, tripCardPlaces } from "../src/lib/tripBrief";
 import { makeItem } from "./fixtures/makeItem";
 
 describe("demo trip", () => {
@@ -64,5 +64,22 @@ describe("demo trip", () => {
     const esim = makeItem({ category: "esim", city: "Portekiz" });
     expect(tripCardPlaces([back, out, esim])).toEqual(["Porto"]);
     expect(tripCardPlaces([esim])).toEqual([]);
+  });
+});
+
+describe("a trip's card in the list", () => {
+  it("shows the photo its board's hero shows, as stored; the gradient (null) without one", async () => {
+    const id = await loadDemoTrip({ today: "2026-10-05" });
+    const items = await listItems(id);
+    expect(tripCardPhoto({ heroImage: null }, items)).toBe(items.find((i) => i.imageUrl)?.imageUrl ?? null);
+    const porto = "https://images.unsplash.com/photo-porto";
+    const lisbon = "https://images.unsplash.com/photo-lisbon";
+    // The first place's city photo, as the hero shows it first; the trip's one picture comes after.
+    expect(tripCardPhoto({ heroImage: "https://x/hero.jpg", cityImages: { lizbon: lisbon, porto } }, items)).toBe(porto);
+    expect(tripCardPhoto({ heroImage: "https://x/hero.jpg", cityImages: { porto: null } }, items)).toBe("https://x/hero.jpg");
+    // Madeira's photo, its places being Funchal: any city photo the trip keeps.
+    const funchal = makeItem({ category: "stay", city: "Funchal" });
+    expect(tripCardPhoto({ heroImage: null, cityImages: { madeira: "https://x/madeira.jpg" } }, [funchal])).toBe("https://x/madeira.jpg");
+    expect(tripCardPhoto({ heroImage: null }, [funchal])).toBeNull();
   });
 });

@@ -34,7 +34,7 @@ export function memoryKV(): KV & { data: Map<string, unknown> } {
   };
 }
 
-// --- settings (Ayarlar → Paylaşım) --------------------------------------------------------------
+// --- settings (Ayarlar → Gelişmiş; the name in Profilim) --------------------------------------------------------------
 
 export interface ShareConfig {
   /** Supabase project address. */

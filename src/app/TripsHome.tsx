@@ -5,7 +5,8 @@ import { formatDateRange, tripDateRange } from "../lib/items";
 import { retryCapture } from "../lib/process";
 import { listDrafts, onDraftsChanged, removeDraft, saveDraft } from "../lib/startDrafts";
 import { checklist, dative, detectLang, progressOf, splitLinks, tripNamedIn, type StartCtx, type StartMode, type StartState } from "../lib/startTrip";
-import { tripCardPlaces } from "../lib/tripBrief";
+import { creditLine, creditOf } from "../lib/cityImages";
+import { tripCardPhoto, tripCardPlaces } from "../lib/tripBrief";
 import { isDemoTrip } from "../lib/trips";
 import { listMessages, onChanged } from "../lib/db";
 import type { Capture, ChatMessage, Item, Trip } from "../lib/types";
@@ -296,10 +297,15 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
               // Where it stays and does things: not the home the flight back lands in, nor an eSIM's country.
               const cities = tripCardPlaces(own);
               const decided = own.filter((i) => i.status === "chosen" || i.status === "booked").length;
-              const image = trip.heroImage ?? own.find((i) => i.imageUrl)?.imageUrl ?? null;
+              // The photo its board's hero shows, as stored (none fetched from the list); the gradient without one.
+              const image = tripCardPhoto(trip, own);
+              // Too small for the credit line: who took it on hover ("Fotoğraf: Ana Lima / Unsplash"); the board's hero links it.
+              const credit = creditOf(image, trip.photoCredits);
+              const line = credit ? creditLine(credit) : null;
+              const photoBy = line ? `${line.label} ${[line.by?.text, line.source.text].filter(Boolean).join(" / ")}` : undefined;
               return (
                 <button key={trip.id} className="trip-card" onClick={() => onOpen(trip.id)}>
-                  <FallbackImg className="trip-card-img" src={image} fallback={<div className="trip-card-img" />} />
+                  <FallbackImg className="trip-card-img" src={image} title={photoBy} fallback={<div className="trip-card-img" />} />
                   <div className="trip-card-body">
                     <div className="trip-card-title">
                       {trip.title}

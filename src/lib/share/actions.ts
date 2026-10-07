@@ -32,7 +32,7 @@ export interface ActionDeps {
 async function ready(deps: ActionDeps): Promise<{ config: ShareConfig; rpc: Rpc; kv: KV }> {
   const kv = deps.kv ?? chromeKV;
   const config = await getShareConfig(kv);
-  if (!isConfigured(config)) throw new ShareError(L("Önce Ayarlar → Paylaşım'da adını, Supabase adresini ve anahtarını yaz.", "First add your name, the Supabase address and key in Settings → Sharing."), "setup");
+  if (!isConfigured(config)) throw new ShareError(L("Önce Ayarlar'da adını, Ayarlar → Gelişmiş'te paylaşım sunucusunun adresini ve anahtarını yaz.", "First add your name in Settings, and the sharing server's address and key under Settings → Advanced."), "setup");
   return { config, rpc: deps.rpc ?? rpcClient(config), kv };
 }
 
@@ -77,7 +77,7 @@ export async function joinSharedTrip(pasted: string, name: string, deps: ActionD
   const own = await ownServerUrl(kv);
   const currentUrl = own ? normalizeServerUrl(own) : null;
   if (currentUrl && currentUrl !== code.url)
-    throw new ShareError(L("Bu kod başka bir paylaşım sunucusuna ait. Ayarlar → Paylaşım'daki adresi silip tekrar dene.", "This code belongs to another sharing server. Clear the address in Settings → Sharing and try again."), "setup");
+    throw new ShareError(L("Bu kod başka bir paylaşım sunucusuna ait. Ayarlar → Gelişmiş'teki adresi silip tekrar dene.", "This code belongs to another sharing server. Clear the address in Settings → Advanced and try again."), "setup");
   const me = (name || current.name).trim();
   if (!me) throw new ShareError(L("Adını yaz (diğer kişi seni bu adla görür).", "Add your name (the others see you by it)."), "setup");
   const ownKey = currentUrl ? current.anonKey : "";

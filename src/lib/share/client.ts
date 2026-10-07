@@ -67,7 +67,7 @@ function errorOf(status: number, body: string): ShareError {
   if (message.includes("not_found")) return new ShareError(L("Paylaşılan gezi sunucuda bulunamadı.", "The shared trip wasn't found on the server."), "not_found");
   if (message.includes("too_large")) return new ShareError(L("Kayıt paylaşmak için çok büyük.", "This save is too big to share."), "too_large");
   if (message.includes("trip_full")) return new ShareError(L("Paylaşılan gezi dolu (kayıt sınırı).", "The shared trip is full (save limit)."), "too_large");
-  if (message.includes("bad_author")) return new ShareError(L("Ayarlar → Paylaşım'da adını yaz.", "Add your name in Settings → Sharing."), "setup");
+  if (message.includes("bad_author")) return new ShareError(L("Ayarlar'da adını yaz.", "Add your name in Settings."), "setup");
   // PostgREST: function missing = the schema wasn't run on this project.
   if (status === 404 || code === "PGRST202" || code === "42883")
     return new ShareError(L("Sunucu kurulumu eksik: supabase/schema.sql çalıştırılmamış.", "Server setup is incomplete: supabase/schema.sql hasn't been run."), "setup");

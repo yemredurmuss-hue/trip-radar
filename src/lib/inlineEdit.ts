@@ -4,6 +4,7 @@
 // stay's time and the plan's own kind stay; a saved page's card keeps the change as a correction beside
 // the page's value (userEdits.ts). Pure, except saveField and saveCardField, which write it, and the open
 // box's draft, kept here so it outlives the card being drawn again.
+import { cardKind } from "./cardKinds";
 import { addEvent, db, notifyChanged } from "./db";
 import { L } from "./i18n";
 import { nightsBetween } from "./items";
@@ -34,8 +35,15 @@ function formKind(item: Item): Form {
 const timed = (item: Item) =>
   item.origin === "chat" ? ["activity", "food"].includes(formOf(item, "EUR").template.kind) : item.category === "activity" || item.category === "food";
 
+/** Insurance and an eSIM are for the whole trip: no city to ask for ("Şehir ekle" on a policy read wrong). */
+function tripWide(item: Item): boolean {
+  const kind = cardKind(item);
+  return kind === "insurance" || kind === "esim" || item.plannedKind === "insurance" || item.plannedKind === "esim";
+}
+
 /** The card's fields in Tab order: every record card (spec 0.33 §3). */
 export function editableFields(item: Item): FieldKey[] {
+  if (formKind(item) === "named" && tripWide(item)) return ["name", "date", "price"];
   switch (formKind(item)) {
     case "trip":
       return ["from", "to", "date", "time", "price"];

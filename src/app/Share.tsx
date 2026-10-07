@@ -1,5 +1,5 @@
 // Sharing a trip with the person you travel with: settings, the share code, joining, votes, sync status.
-// Everything here is inert until sharing is set up in Ayarlar → Paylaşım.
+// Everything here is inert until sharing is set up in Ayarlar → Gelişmiş (server) and Profilim (name).
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { requestProcessing, requestShareSync } from "../lib/browser";
 import { db } from "../lib/db";
@@ -218,7 +218,7 @@ export function ShareDialog({ trip, onClose, onSettings }: { trip: Trip; onClose
         <h2>{trip.shareId ? L("Paylaşım kodu", "Share code") : L("Bu geziyi paylaş", "Share this trip")}</h2>
         {!ready ? (
           <>
-            <p>{L("Paylaşmak için önce Ayarlar → Paylaşım'da adını, Supabase adresini ve anahtarını yaz (bir kez).", "To share, first add your name, the Supabase address and key in Settings → Sharing (once).")}</p>
+            <p>{L("Paylaşmak için önce Ayarlar'da adını, Ayarlar → Gelişmiş'te paylaşım sunucusunun adresini ve anahtarını yaz (bir kez).", "To share, first add your name in Settings, and the sharing server's address and key under Settings → Advanced (once).")}</p>
             <div className="modal-actions">
               <button className="btn-link" style={{ fontSize: 14 }} onClick={onClose}>
                 {L("Vazgeç", "Cancel")}
@@ -350,7 +350,7 @@ export function JoinShared({ onJoined, startOpen = false, onCancel }: { onJoined
   );
 }
 
-// --- Ayarlar → Paylaşım -------------------------------------------------------------------------------
+// --- Ayarlar → Gelişmiş -------------------------------------------------------------------------------
 
 /** Name, server address and key; saved as typed (nothing changes until a trip is shared). */
 export function ShareSettings() {
@@ -382,18 +382,15 @@ export function ShareSettings() {
 
   if (!c) return null;
   return (
-    <details className="share-settings" open={Boolean(c.url || c.name)}>
-      <summary>{L("Paylaşım", "Sharing")}</summary>
+    // Closed by default: the server is a developer's setting; a traveller joining needs only their name (Profilim, above).
+    <details className="share-settings">
+      <summary>{L("Gelişmiş", "Advanced")}</summary>
       <p className="muted small-note">
         {L(
-          `Bir geziyi birlikte gezdiğin kişilerle paylaşmak için (herkes kaydedip oy verir). Kurulumu README'de "Paylaşım" bölümünde. Katılan kişinin yalnız adını yazması yeter; adres ve anahtar koddan gelir.`,
-          `To share a trip with the people you travel with (everyone saves pages and votes). Setup is in the README under "Paylaşım". Someone joining only needs to add their name; the address and key come with the code.`,
+          `Paylaşım sunucusu (geliştiriciler için): bir geziyi birlikte gezdiğin kişilerle paylaşmak için kendi sunucunu kurarsan. Kurulumu README'de "Paylaşım" bölümünde. Koda katılan kişinin yalnız adını yazması yeter; adres ve anahtar koddan gelir.`,
+          `Sharing server (for developers): if you set up your own server to share trips with the people you travel with. Setup is in the README under "Paylaşım". Someone joining with a code only needs their name; the address and key come with the code.`,
         )}
       </p>
-      <label className="field">
-        {L("Adın", "Your name")}
-        <input type="text" value={c.name} maxLength={40} placeholder={L("ör. Emre", "e.g. Emre")} onChange={(e) => update({ name: e.target.value })} />
-      </label>
       <label className="field">
         {L("Supabase adresi", "Supabase address")}
         <input

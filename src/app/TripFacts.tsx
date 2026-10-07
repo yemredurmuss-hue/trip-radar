@@ -161,9 +161,11 @@ function Budget({ bar, ready }: { bar: BudgetBar | null; ready: boolean }) {
     ["free", L("Boşta", "Free"), free],
     ["over", L("Aşıyor", "Over"), over],
   ];
+  // Its name for a screen reader, with spaces: the drawn spans read "Bütçe€1.500Rezerve€552" run together.
+  const spoken = [`${L("Bütçe", "Budget")} ${money(bar.total ?? known)}`, ...lines.filter(([, , n]) => n > 0).map(([, label, n]) => `${label} ${money(n)}`)].join(", ");
   return (
     <div key="full" className={`hx-block hx-budget${appear}`} ref={box}>
-      <button className="hx-budget-btn" aria-expanded={open} title={L("Ayrıntı için tıkla", "Click for details")} onClick={() => setOpen(!open)}>
+      <button className="hx-budget-btn" aria-expanded={open} aria-label={spoken} title={L("Ayrıntı için tıkla", "Click for details")} onClick={() => setOpen(!open)}>
         <span className="hx-budget-top">
           <span className="hx-h">{L("Bütçe", "Budget")}</span>
           <strong title={bar.total == null ? L("Bütçe belirlenmedi; bilinen toplam", "No budget set; the known total") : undefined}>{money(bar.total ?? known)}</strong>

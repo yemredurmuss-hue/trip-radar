@@ -24,7 +24,9 @@ describe("which fields a card offers, in Tab order", () => {
     expect(editableFields(quick("food"))).toEqual(["name", "city", "date", "time", "price"]);
     expect(editableFields(quick("activity"))).toEqual(["name", "city", "date", "time", "price"]);
     expect(editableFields(quick("todo"))).toEqual(["name", "city", "date", "price"]);
-    expect(editableFields(quick("esim"))).toEqual(["name", "city", "date", "price"]);
+    // Insurance and an eSIM are for the whole trip: no city to ask for.
+    expect(editableFields(quick("esim"))).toEqual(["name", "date", "price"]);
+    expect(editableFields(quick("insurance"))).toEqual(["name", "date", "price"]);
   });
   it("a plan said in the chat, and a saved page by what it is", () => {
     expect(editableFields(said({ title: "Tekne turu" }))).toEqual(["name", "city", "date", "time", "price"]);
@@ -33,7 +35,8 @@ describe("which fields a card offers, in Tab order", () => {
     const flight = { from: "IST", to: "OPO", departure: "2026-10-08T07:10", arrival: null, carrier: null, flightNumber: null, stops: 0 };
     expect(editableFields(makeItem({ category: "flight", flight }))).toEqual(["from", "to", "date", "time", "price"]);
     expect(editableFields(makeItem({ category: "transport", name: "Europcar · Funchal", city: "Funchal", dates: { start: "2026-10-12", end: "2026-10-15", source: "page" } }))).toEqual(["city", "date", "end", "price"]);
-    expect(editableFields(makeItem({ category: "esim", name: "Airalo Portekiz" }))).toEqual(["name", "city", "date", "price"]);
+    expect(editableFields(makeItem({ category: "esim", name: "Airalo Portekiz" }))).toEqual(["name", "date", "price"]);
+    expect(editableFields(makeItem({ category: "other", name: "Seyahat sigortası · Allianz" }))).toEqual(["name", "date", "price"]);
   });
   it("a card just added opens at its title, or where a trip goes", () => {
     expect([firstField(quick("todo")), firstField(quick("hotel")), firstField(quick("bus")), firstField(quick("car"))]).toEqual(["name", "name", "to", "end"]);
