@@ -2770,7 +2770,8 @@ try {
   await board.locator(".st-msg-bot", { hasText: "Hazırım, birkaç saniye içinde oluşturuyorum. Eklemek istediğin bir şey varsa yaz." }).waitFor();
   // Stopped, the line says it waits; "oluştur" typed makes it at once.
   await board.locator(".st-auto").getByRole("button", { name: "Vazgeç" }).click();
-  await board.locator(".st-msg-bot", { hasText: "Tamam, bekliyorum. Hazır olunca Oluştur'a bas ya da 'oluştur' yaz." }).waitFor();
+  // "Tamam, bekliyorum…", or just "Bekliyorum…" right after another "Tamam" (never twice in a row); hasText ignores case.
+  await board.locator(".st-msg-bot", { hasText: "bekliyorum. Hazır olunca Oluştur'a bas ya da 'oluştur' yaz." }).waitFor();
   assert.equal(await board.locator(".st-msg-bot", { hasText: "Hazırım" }).count(), 0, "the ready line said as waiting");
   await watchGen();
   await board.locator(".st-chat").getByLabel("Mesaj").fill("oluştur");
