@@ -2907,53 +2907,56 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 /* 0.36.30: a line's warning under its words, never under its icon (the list's two columns, the timeline's node) */
 .dc-cday.dl-day .dc-step > .dc-warn { grid-column: -2 / -1; margin: -4px 0 6px; padding-left: 52px; }
 
-/* --- The plan as a PDF (PrintPlan.tsx, 0.36.51): drawn only while printing, the board hidden under it. --- */
-.print-plan { display: none; }
+/* --- The plan as a PDF (PrintPlan.tsx, 0.36.51; a file since 0.36.55): laid out at A4 width off screen while its
+   picture is taken (.capturing), or printed when the file can't be made (body.printing). --- */
+.print-plan { display: none; background: #fff; color: #1d1a22; font-size: 10.5pt; line-height: 1.4; }
+.print-plan.capturing { display: block; position: fixed; left: -12000px; top: 0; width: 794px; box-sizing: border-box; padding: 0 53px; }
+.print-plan h1 { margin: 10px 0 2px; font-size: 24pt; line-height: 1.1; }
+.print-plan h2 { margin: 18px 0 8px; font-size: 13pt; border-bottom: 1px solid #ddd; padding-bottom: 4px; break-after: avoid; }
+/* The board's hero copied as it is, scaled to the page; its colours and photo kept. */
+.pp-hero-copy { width: 1180px; zoom: .585; }
+.pp-hero-copy, .pp-hero-copy * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.pp-hero-copy .hx { margin: 0 0 8px; }
+.pp-hero-copy .hx-photo img { transition: none; }
+.pp-hero-copy button { pointer-events: none; }
+/* On paper there's no hover: the photo's credit in full, the ⓘ left out. */
+.pp-hero-copy .hx-credit-text { display: block; }
+.pp-hero-copy .hx-credit-i { display: none; }
+.pp-hero[hidden] { display: none; }
+.pp-photo { margin: 0; position: relative; }
+.pp-photo img { display: block; width: 100%; height: 62mm; object-fit: cover; border-radius: 8px; }
+.pp-photo figcaption { margin-top: 3px; font-size: 7.5pt; color: #777; text-align: right; }
+.pp-when { margin: 0; font-size: 12pt; font-weight: 600; }
+.pp-route { margin: 2px 0 0; color: #555; }
+.pp-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; margin: 12px 0 0; }
+.pp-facts div { break-inside: avoid; }
+.pp-facts dt { font-size: 8pt; text-transform: uppercase; letter-spacing: .04em; color: #777; }
+.pp-facts dd { margin: 0; }
+.pp-bookings table { width: 100%; border-collapse: collapse; }
+.pp-bookings td { padding: 5px 6px 5px 0; border-bottom: 1px solid #eee; vertical-align: top; }
+.pp-bookings tr { break-inside: avoid; }
+.pp-kind { width: 22mm; color: #777; font-size: 9pt; }
+.pp-date { width: 30mm; white-space: nowrap; }
+.pp-price { width: 22mm; text-align: right; white-space: nowrap; }
+.pp-sub { display: block; color: #666; font-size: 9pt; }
+.pp-day { break-inside: avoid; margin: 0 0 12px; padding: 8px 10px; border: 1px solid #e6e6e6; border-radius: 8px; }
+.pp-day > header { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; }
+.pp-day > header b { font-size: 11pt; }
+.pp-day > header span { color: #555; }
+.pp-day ol { list-style: none; margin: 0; padding: 0; }
+.pp-day li { display: grid; grid-template-columns: 14mm minmax(0, 1fr) auto; gap: 8px; padding: 3px 0; border-top: 1px solid #f2f2f2; }
+.pp-day li:first-child { border-top: 0; }
+.pp-day li.idea { color: #555; }
+.pp-day li.quiet { color: #777; font-size: 9pt; }
+.pp-time { font-variant-numeric: tabular-nums; font-weight: 600; }
+.pp-state { color: #777; font-size: 9pt; white-space: nowrap; }
+.pp-warn { display: block; color: #b4232c; font-size: 9pt; }
+.pp-free { margin: 0; color: #777; }
+.pp-foot { margin-top: 16px; font-size: 8pt; color: #999; text-align: center; }
 @media print {
   @page { size: A4; margin: 14mm 14mm 16mm; }
   body.printing > *:not(.print-plan) { display: none !important; }
   body.printing { background: #fff !important; }
   body.printing .print-plan { display: block; color: #1d1a22; font-size: 10.5pt; line-height: 1.4; }
-  .print-plan h1 { margin: 10px 0 2px; font-size: 24pt; line-height: 1.1; }
-  .print-plan h2 { margin: 18px 0 8px; font-size: 13pt; border-bottom: 1px solid #ddd; padding-bottom: 4px; break-after: avoid; }
-  /* The board's hero copied as it is, scaled to the page; its colours and photo kept. */
-  .pp-hero-copy { width: 1180px; zoom: .585; }
-  .pp-hero-copy, .pp-hero-copy * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .pp-hero-copy .hx { margin: 0 0 8px; }
-  .pp-hero-copy .hx-photo img { transition: none; }
-  .pp-hero-copy button { pointer-events: none; }
-  /* On paper there's no hover: the photo's credit in full, the ⓘ left out. */
-  .pp-hero-copy .hx-credit-text { display: block; }
-  .pp-hero-copy .hx-credit-i { display: none; }
-  .pp-hero[hidden] { display: none; }
-  .pp-photo { margin: 0; position: relative; }
-  .pp-photo img { display: block; width: 100%; height: 62mm; object-fit: cover; border-radius: 8px; }
-  .pp-photo figcaption { margin-top: 3px; font-size: 7.5pt; color: #777; text-align: right; }
-  .pp-when { margin: 0; font-size: 12pt; font-weight: 600; }
-  .pp-route { margin: 2px 0 0; color: #555; }
-  .pp-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; margin: 12px 0 0; }
-  .pp-facts div { break-inside: avoid; }
-  .pp-facts dt { font-size: 8pt; text-transform: uppercase; letter-spacing: .04em; color: #777; }
-  .pp-facts dd { margin: 0; }
-  .pp-bookings table { width: 100%; border-collapse: collapse; }
-  .pp-bookings td { padding: 5px 6px 5px 0; border-bottom: 1px solid #eee; vertical-align: top; }
-  .pp-bookings tr { break-inside: avoid; }
-  .pp-kind { width: 22mm; color: #777; font-size: 9pt; }
-  .pp-date { width: 30mm; white-space: nowrap; }
-  .pp-price { width: 22mm; text-align: right; white-space: nowrap; }
-  .pp-sub { display: block; color: #666; font-size: 9pt; }
-  .pp-day { break-inside: avoid; margin: 0 0 12px; padding: 8px 10px; border: 1px solid #e6e6e6; border-radius: 8px; }
-  .pp-day > header { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; }
-  .pp-day > header b { font-size: 11pt; }
-  .pp-day > header span { color: #555; }
-  .pp-day ol { list-style: none; margin: 0; padding: 0; }
-  .pp-day li { display: grid; grid-template-columns: 14mm minmax(0, 1fr) auto; gap: 8px; padding: 3px 0; border-top: 1px solid #f2f2f2; }
-  .pp-day li:first-child { border-top: 0; }
-  .pp-day li.idea { color: #555; }
-  .pp-day li.quiet { color: #777; font-size: 9pt; }
-  .pp-time { font-variant-numeric: tabular-nums; font-weight: 600; }
-  .pp-state { color: #777; font-size: 9pt; white-space: nowrap; }
-  .pp-warn { display: block; color: #b4232c; font-size: 9pt; }
-  .pp-free { margin: 0; color: #777; }
-  .pp-foot { margin-top: 16px; font-size: 8pt; color: #999; text-align: center; }
+  body.printing .print-plan { position: static; width: auto; padding: 0; }
 }
