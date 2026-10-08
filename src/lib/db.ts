@@ -117,7 +117,7 @@ export function onChanged(listener: () => void): () => void {
 
 // --- settings (chrome.storage so the service worker can read them too) ------------------------
 
-export const DEFAULT_MODEL = "claude-opus-5";
+export const DEFAULT_MODEL = "claude-sonnet-5-5";
 export const DEFAULT_GEMINI_MODEL = "gemini-3-flash-preview";
 
 const text = (value: unknown, fallback = "") => (typeof value === "string" && value ? value : fallback);

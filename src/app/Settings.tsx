@@ -11,11 +11,16 @@ import { retryAllFailed } from "../lib/process";
 import type { Settings as SettingsShape } from "../lib/types";
 import { ShareSettings } from "./Share";
 
-const claudeModels = () => [
-  { id: DEFAULT_MODEL, label: L("Claude Opus 5 · en iyi sonuç", "Claude Opus 5 · best results") },
-  { id: "claude-sonnet-5", label: L("Claude Sonnet 5 · daha ucuz", "Claude Sonnet 5 · cheaper") },
-  { id: "claude-haiku-4-5", label: L("Claude Haiku 4.5 · en ucuz", "Claude Haiku 4.5 · cheapest") },
-];
+// Sonnet first: near Opus on the start chat's trips (2026-10-09, six real messages) and fast enough for its 25 s reading;
+// Opus 5.5 went past it. A model chosen before (no longer listed) stays shown as it is, never silently swapped.
+const claudeModels = (current: string) => {
+  const list = [
+    { id: DEFAULT_MODEL, label: L("Claude Sonnet 5.5 · önerilen, hızlı", "Claude Sonnet 5.5 · recommended, fast") },
+    { id: "claude-opus-5-5", label: L("Claude Opus 5.5 · en derin, yavaş", "Claude Opus 5.5 · deepest, slow") },
+    { id: "claude-haiku-5-5", label: L("Claude Haiku 5.5 · en ucuz", "Claude Haiku 5.5 · cheapest") },
+  ];
+  return list.some((m) => m.id === current) ? list : [...list, { id: current, label: current }];
+};
 
 /** "Dil / Language": both names written in their own language, so anyone finds theirs. Switching reloads the board. */
 export function LanguagePicker() {
@@ -209,7 +214,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
             <label className="field">
               Model
               <select value={s.model} onChange={(e) => update({ model: e.target.value })}>
-                {claudeModels().map((m) => (
+                {claudeModels(s.model).map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.label}
                   </option>

@@ -42,8 +42,8 @@ export function anthropicProvider(client: Anthropic, model: string): LlmProvider
 
     async chatStep(history: ChatMessage[], system: string, tools: ToolSpec[], opts: CallOptions = {}): Promise<ChatStep | null> {
       const effort = outputEffort(model, "medium");
-      const strict = strictTools(tools.map((t) => t.schema));
-      const response = await client.messages.create({
+      const strictAll = strictTools(tools.map((t) => t.schema));
+      const ask = (strict: boolean[]) => client.messages.create({
         model,
         max_tokens: 16000,
         system,
@@ -57,6 +57,11 @@ export function anthropicProvider(client: Anthropic, model: string): LlmProvider
         cache_control: { type: "ephemeral" },
         ...("effort" in effort ? { output_config: effort } : {}),
       }, opts.signal ? { signal: opts.signal } : undefined);
+      // Past the API's grammar limit (counted more strictly than schemaBudget's estimate): asked again with no strict tool.
+      const response = await ask(strictAll).catch((error) => {
+        if (tooLarge(error)) return ask(strictAll.map(() => false));
+        throw error;
+      });
       // An empty assistant turn would make every later request invalid, so it is never stored.
       if (response.content.length === 0) return null;
       return {
@@ -101,6 +106,8 @@ export function jsonText(text: string): string {
  * the strict limits (the page extraction has dozens of nullable fields) is asked for by instruction
  * and validated here, with one retry that shows the model what was wrong.
  */
+const tooLarge = (error: unknown) => error instanceof Anthropic.BadRequestError && /grammar is too large|too complex/i.test(String(error.message));
+
 async function structured<T>(
   client: Anthropic,
   model: string,
@@ -121,10 +128,15 @@ async function structured<T>(
       system,
       messages: [{ role: "user", content }],
       output_config: { format, ...outputEffort(model, effort) },
-    }, request);
-    if (response.stop_reason === "refusal") throw new Error(refusal);
-    if (!response.parsed_output) throw new Error(L("Model geçerli bir yanıt döndürmedi.", "The model didn't return a valid answer."));
-    return response.parsed_output as T;
+    }, request).catch((error) => {
+      if (tooLarge(error)) return null;
+      throw error;
+    });
+    if (response) {
+      if (response.stop_reason === "refusal") throw new Error(refusal);
+      if (!response.parsed_output) throw new Error(L("Model geçerli bir yanıt döndürmedi.", "The model didn't return a valid answer."));
+      return response.parsed_output as T;
+    }
   }
 
   const instruction =
