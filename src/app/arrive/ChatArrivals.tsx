@@ -75,8 +75,8 @@ export function fileChip(e: FileIntake): ChipState {
   if (e.state === "reading") return { tone: "work", text: L("Okunuyor…", "Reading…") };
   if (e.state === "error") return { tone: "error", text: L("Okunamadı", "Couldn't read it"), captureId: null, detail: e.error ?? null };
   if (e.itemId && e.section) {
-    // "Diğer (Sigorta, eSIM)" is "Diğer" here: the record's own name follows.
-    const where = [SECTION_META[e.section].label().replace(/\s*\(.*\)$/, ""), e.itemName].filter(Boolean).join(" · ");
+    // Where it's drawn (v11: a restaurant under Yapılacak şeyler); a "(…)" in a name is dropped, the record's own name follows.
+    const where = [SECTION_META[e.section === "food" ? "todo" : e.section].label().replace(/\s*\(.*\)$/, ""), e.itemName].filter(Boolean).join(" · ");
     return { tone: "done", text: `→ ${where}`, itemId: e.itemId };
   }
   return { tone: "done", text: L("→ Belgeler'e eklendi", "→ Added to Documents"), itemId: null };

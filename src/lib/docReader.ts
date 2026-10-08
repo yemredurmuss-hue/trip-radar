@@ -8,7 +8,7 @@
 import { z } from "zod";
 import { cityOfAirport } from "./airports";
 import { transportMode } from "./cardKinds";
-import { sectionOfItem, type SectionId } from "./categories";
+import { planSectionOfItem, type SectionId } from "./categories";
 import { db, listItems, newId as makeId, nextTime, notifyChanged } from "./db";
 import { linkDoc } from "./docs";
 import { L } from "./i18n";
@@ -335,15 +335,16 @@ export function placeDoc(
   return { kind: "created", item: owners && !made.forWho?.length ? { ...made, forWho: owners } : made, facts, ...(ask ? { ask } : {}) };
 }
 
-/** "Diğer'e", "to Other": the section a record landed in, as the sentence says it. */
+/** "Sigorta ve internet'e", "Konaklama'ya": the section a record landed in, as the sentence says it. */
 const SECTION_TO: Record<SectionId, [string, string]> = {
   flight: ["Uçuş'a", "Flights"],
   stay: ["Konaklama'ya", "Stays"],
   transport: ["Ulaşım'a", "Getting around"],
-  activity: ["Etkinlikler'e", "Activities"],
+  activity: ["Etkinlik ve turlar'a", "Activities and tours"],
   todo: ["Yapılacak şeyler'e", "Things to do"],
-  food: ["Restoranlar'a", "Restaurants"],
-  other: ["Diğer'e", "Other"],
+  food: ["Yapılacak şeyler'e", "Things to do"],
+  other: ["Sigorta ve internet'e", "Insurance and internet"],
+  prep: ["Hazırlık'a", "Prep"],
   inspo: ["İlham'a", "Inspiration"],
 };
 
@@ -399,7 +400,7 @@ export function docSentence(outcome: DocOutcome, fileName: string): string {
       `I attached ${what} to "${outcome.item.name}" and marked it booked${extras}. It's in Documents.`,
     );
   }
-  const [tr, en] = SECTION_TO[sectionOfItem(outcome.item)];
+  const [tr, en] = SECTION_TO[planSectionOfItem(outcome.item)];
   return L(`${capital(what)} ${tr} ekledim${extras}. Belgeler'de duruyor.`, `I added ${what} to ${en}${extras}. It's in Documents.`);
 }
 const lower = (s: string) => (s ? s[0].toLocaleLowerCase("tr") + s.slice(1) : s);

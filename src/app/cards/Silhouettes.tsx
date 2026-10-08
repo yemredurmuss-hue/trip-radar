@@ -26,7 +26,8 @@ const g = (children: ReactNode, width = 2) => (
   </g>
 );
 
-const KIND_ICONS: Record<CardKind | "home" | "inspo", ReactNode> = {
+const KIND_ICONS: Record<CardKind | "home" | "inspo" | "prep", ReactNode> = {
+  prep: g(<><rect x="4" y="7" width="16" height="13" rx="2.5" /><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M4 12h16" /></>),
   flight: <path fill="currentColor" transform="rotate(90 12 12)" d="M21 15.5v-1.8l-7.5-4.6V4a1.5 1.5 0 0 0-3 0v5.1L3 13.7v1.8l7.5-2.3V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-4.8z" />,
   train: g(<><rect x="5" y="3" width="14" height="14" rx="3.5" /><path d="M5 10h14M9 21l1.5-4M15 21l-1.5-4" /><circle cx="9" cy="13.5" r=".9" fill="currentColor" /><circle cx="15" cy="13.5" r=".9" fill="currentColor" /></>),
   bus: g(<><rect x="4" y="3.5" width="16" height="14" rx="3" /><path d="M4 11h16M4 7h16M7 17.5V20M17 17.5V20" /><circle cx="8" cy="14.3" r=".9" fill="currentColor" /><circle cx="16" cy="14.3" r=".9" fill="currentColor" /></>),
@@ -52,7 +53,7 @@ const KIND_ICONS: Record<CardKind | "home" | "inspo", ReactNode> = {
   inspo: g(<><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9-1.9 5.1-1.9-5.1-5.1-1.9 5.1-1.9z" /><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" /></>),
 };
 
-export function KindIcon({ kind, size = 17, className }: { kind: CardKind | "home" | "inspo"; size?: number; className?: string }) {
+export function KindIcon({ kind, size = 17, className }: { kind: CardKind | "home" | "inspo" | "prep"; size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden>
       {KIND_ICONS[kind]}

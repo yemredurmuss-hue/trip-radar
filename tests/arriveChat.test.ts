@@ -84,7 +84,7 @@ describe("pruneIntake", () => {
 describe("fileChip", () => {
   it("reads, then says where the file went", () => {
     expect(fileChip(file())).toEqual({ tone: "work", text: "Okunuyor…" });
-    expect(fileChip(file({ state: "done", itemId: "i1", section: "other", itemName: "Seyahat sağlık sigortası" }))).toEqual({ tone: "done", text: "→ Diğer · Seyahat sağlık sigortası", itemId: "i1" });
+    expect(fileChip(file({ state: "done", itemId: "i1", section: "other", itemName: "Seyahat sağlık sigortası" }))).toEqual({ tone: "done", text: "→ Sigorta ve internet · Seyahat sağlık sigortası", itemId: "i1" });
     expect(fileChip(file({ state: "done" }))).toEqual({ tone: "done", text: "→ Belgeler'e eklendi", itemId: null });
     expect(fileChip(file({ state: "error", error: "Çok büyük" }))).toEqual({ tone: "error", text: "Okunamadı", captureId: null, detail: "Çok büyük" });
     setLang("en");

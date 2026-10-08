@@ -1,18 +1,19 @@
-// The Plan tab (spec 0.34, docs/mockups/2026-10-05-kategoriler-v4.html): the trip by category — Uçuş,
-// Konaklama, Ulaşım, Etkinlikler, Yapılacak şeyler, Restoranlar, Diğer, İlham (closed, last) — each a band of one white sheet that
+// The Plan tab (spec 0.34, docs/mockups/2026-10-05-kategoriler-v4.html; v11, 2026-10-08-plan-pano-v11-design.md): the trip by
+// category — Uçuş, Konaklama, Ulaşım, Etkinlik ve turlar, Yapılacak şeyler, Sigorta ve internet, Hazırlık, İlham — each a band of one white sheet that
 // opens and closes (remembered per trip), with the approved cards in a timeline inside and what's out of the
 // way at its end. A section with nothing in it (and nothing hidden) isn't drawn; it's one chip in the "Ekle"
 // line at the bottom. Boş kartlar (spec 2026-10-06-bos-kartlar-design.md): Etkinlikler has an empty card per city
 // with nothing booked there, Diğer the eSIM's while a trip abroad has none (the rule's suggestion, drawn as its
 // card); a section with only those is drawn and open, and they're never in its "3/4".
 import type { ReactNode } from "react";
-import { sectionOfItem, type CatSection, type SectionId } from "../../lib/categories";
+import { planSectionOfItem, type CatSection, type SectionId } from "../../lib/categories";
 import { activityGaps } from "../../lib/emptyCards";
 import { L } from "../../lib/i18n";
 import { nightsSummary } from "../../lib/lifecycle";
 import type { Plan } from "../../lib/plan";
 import type { InsertAt } from "../../lib/templates";
 import type { Item, Suggestion } from "../../lib/types";
+import type { Visa } from "../../lib/visa";
 import { AddButton, InsertPoint } from "../cards/AddSheet";
 import { EmptyActivityCard, EmptyEsimCard } from "../cards/EmptyCard";
 import { KindIcon } from "../cards/Silhouettes";
@@ -22,7 +23,7 @@ import { SectionTimeline, type SectionCards } from "./SectionTimeline";
 import { SuggestionCards } from "./SuggestionCards";
 import type { BoardSuggestions } from "../useSuggestions";
 
-export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions }: {
+export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null }: {
   plan: Plan;
   sections: CatSection[];
   /** Open now: the traveller's choice, else the first look (sectionMeta.useSectionOpen). */
@@ -39,13 +40,16 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
   pending?: { lead: ReactNode; bySection: Partial<Record<SectionId, ReactNode>> };
   /** Öneriler (useSuggestions): cards atop their section, "Plana ekle" and "Gerek yok". */
   suggestions?: Pick<BoardSuggestions, "bySection" | "add" | "dismiss" | "notes">;
+  /** The traveller's visa for the trip's country: Hazırlık's first line (v11). */
+  visa?: Visa | null;
 }) {
   const n = plan.nights;
   const waiting = (s: CatSection) => pending?.bySection[s.id] != null;
   // A section with only suggestions is drawn too (its header says "2 öneri"); they never count in its "3/4".
   // The rule's eSIM suggestion is the eSIM's empty card (its "Gerek yok" the same dismissal), not a suggestion card.
   const esim = suggestions?.bySection.other?.find((s) => s.key === ESIM_RULE) ?? null;
-  const suggested = (s: CatSection) => (suggestions?.bySection[s.id] ?? []).filter((x) => x.key !== ESIM_RULE);
+  // v11: a restaurant's suggestion sits atop Yapılacak şeyler, where restaurants are drawn.
+  const suggested = (s: CatSection) => [...(suggestions?.bySection[s.id] ?? []), ...(s.id === "todo" ? (suggestions?.bySection.food ?? []) : [])].filter((x) => x.key !== ESIM_RULE);
   const gaps = activityGaps(plan, items);
   const emptyRows = (s: CatSection): EmptyRow[] =>
     s.id === "activity"
@@ -83,7 +87,7 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
               <Section key={s.id} section={s} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)} suggestions={suggested(s).length}>
                 {suggestions && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
                 {pending?.bySection[s.id]}
-                {own && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(sectionOfItem(item), true)} today={today} items={items} />}
+                {own && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} visa={visa} />}
                 <EmptyRows rows={rows} onAdd={(at) => onAdd(s.id, at)} />
               </Section>
             );

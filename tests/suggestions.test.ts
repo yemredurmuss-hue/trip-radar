@@ -298,8 +298,9 @@ describe("suggestions never count", () => {
     expect(rulesFor(items).length).toBeGreaterThan(0);
   });
 
-  it("each section's templates are its own '+ Ekle' tiles", () => {
-    for (const [id, templates] of Object.entries(SECTION_TEMPLATES)) expect(templates).toEqual(SECTION_META[id as keyof typeof SECTION_META].templates);
+  it("each section's templates are among the '+ Ekle' tiles where it's drawn (v11: a restaurant's under Yapılacak şeyler)", () => {
+    const drawn = (id: string) => (id === "food" ? "todo" : id) as keyof typeof SECTION_META;
+    for (const [id, templates] of Object.entries(SECTION_TEMPLATES)) for (const t of templates) expect(SECTION_META[drawn(id)].templates).toContain(t);
   });
 });
 

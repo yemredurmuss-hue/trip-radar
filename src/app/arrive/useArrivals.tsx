@@ -5,7 +5,7 @@
 // Kept to one hook for TripPanel (a few lines there), the drawing in ArriveViews.tsx.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { arrivedText, diffArrivals, pendingSlot, predictSection, siteOf, hostOf, type Seen } from "../../lib/arrive";
-import { findInSections, sectionOfItem, type CatSection, type SectionId } from "../../lib/categories";
+import { findInSections, planSectionOfItem, type CatSection, type SectionId } from "../../lib/categories";
 import type { Todo } from "../../lib/progress";
 import type { Capture, Item } from "../../lib/types";
 import { findTarget } from "../Progress";
@@ -134,7 +134,7 @@ export function useArrivals({ tripId, items, sections, openCaptures, view, isOpe
     const placed = ids.flatMap((id) => {
       const item = items.find((i) => i.id === id);
       if (!item || item.status === "dismissed") return [];
-      return [{ id, name: item.name, section: findInSections(sections, { item: id })?.section ?? sectionOfItem(item) }];
+      return [{ id, name: item.name, section: findInSections(sections, { item: id })?.section ?? planSectionOfItem(item) }];
     });
     if (!placed.length) return;
     // A section opened for its waiting card stays open for the card (on screen only, see `shown`). One closed
@@ -200,7 +200,9 @@ export function useArrivals({ tripId, items, sections, openCaptures, view, isOpe
   // A failed one always under the Plan's header (pendingSlot): never inside a section that may be closed.
   const known = new Set(sections.map((s) => s.id));
   const slotOf = (p: Pending) => {
-    const slot = pendingSlot(p);
+    const raw = pendingSlot(p);
+    // v11: a restaurant being read waits atop Yapılacak şeyler.
+    const slot = raw === "food" ? "todo" : raw;
     return slot !== "lead" && known.has(slot) ? slot : "lead";
   };
   const bySection: Partial<Record<SectionId, ReactNode>> = {};

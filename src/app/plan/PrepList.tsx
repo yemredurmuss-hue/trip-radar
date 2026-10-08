@@ -1,11 +1,14 @@
-// Diğer's "Hazırlık" (spec 0.34.6 §3): the chores before the trip — buy, apply, print, pack, change money —
-// a quiet tick list at the section's end, one short row each: the tick, the title (edited in place), "Yapıldı ·
+// Hazırlık (spec 0.34.6 §3; its own section since v11): the chores before the trip — buy, apply, print, pack,
+// change money — a quiet tick list, the visa first ("✓ Vize gerekmiyor · 90 güne kadar"), what's done staying in
+// its place ("Hazırları gizle" folds it away), one short row each: the tick, the title (edited in place), "Yapıldı ·
 // 12 Eki" once done, × on hover (deleted with "Geri al"). No day chip: a chore is done or not.
+import { useState } from "react";
 import { catDomKey, type CatEntry } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import { doneText, setDone, setPrep } from "../../lib/ideas";
 import { entryDomId } from "../../lib/progress";
 import type { Item } from "../../lib/types";
+import type { Visa } from "../../lib/visa";
 import { DeleteX } from "../cards/CardShell";
 import { Editable, InlineEdit } from "../cards/InlineEdit";
 import { useCardEnv } from "../cards/PlanCard";
@@ -13,16 +16,23 @@ import { IdeaGlyph } from "../ideas/IdeaIcons";
 
 const recordOf = (e: CatEntry): Item | null => (e.piece.kind === "item" ? e.piece.item : e.piece.kind === "entry" && e.piece.entry.kind === "event" ? e.piece.entry.item : null);
 
-export function PrepList({ entries }: { entries: CatEntry[] }) {
-  const open = entries.filter((e) => e.state !== "done").length;
+export function PrepList({ entries, visa = null }: { entries: CatEntry[]; visa?: Visa | null }) {
+  const [hideDone, setHideDone] = useState(false);
+  const done = entries.filter((e) => e.state === "done").length;
+  const shown = hideDone ? entries.filter((e) => e.state !== "done") : entries;
   return (
     <div className="prep" aria-label={L("Hazırlık", "Prep")}>
+      <VisaLine visa={visa} />
       <p className="prep-head">
-        {L("Hazırlık", "Prep")}
-        <span>{open ? L(`${open} iş kaldı`, `${open} left`) : L("hepsi tamam", "all done")}</span>
+        <span>{L(`${done}/${entries.length} hazır`, `${done}/${entries.length} ready`)}</span>
+        {done > 0 && (
+          <button type="button" className="prep-hide" aria-pressed={hideDone} onClick={() => setHideDone(!hideDone)}>
+            {hideDone ? L("Hazırları göster", "Show the ready ones") : L("Hazırları gizle", "Hide the ready ones")}
+          </button>
+        )}
       </p>
       <ul className="prep-rows">
-        {entries.map((e) => {
+        {shown.map((e) => {
           const item = recordOf(e);
           return item ? (
             <InlineEdit key={e.key} item={item} only={["name"]}>
@@ -32,6 +42,24 @@ export function PrepList({ entries }: { entries: CatEntry[] }) {
         })}
       </ul>
     </div>
+  );
+}
+
+/** The visa first (v11): green when none is needed, amber with its link when one is, nothing at home. */
+function VisaLine({ visa }: { visa: Visa | null }) {
+  if (!visa || visa.kind === "none") return null;
+  const free = visa.kind === "free";
+  return (
+    <p className={`prep-visa${free ? " ok" : ""}`}>
+      {free ? <IdeaGlyph name="check" size={12} /> : null}
+      <b>{free ? L("Vize gerekmiyor", "No visa needed") : visa.kind === "visa" ? L("Vize gerekiyor", "A visa is needed") : L("Vize", "Visa")}</b>
+      <span>{free && visa.days ? L(`· Türk pasaportuyla ${visa.days} güne kadar`, `· up to ${visa.days} days on a Turkish passport`) : `· ${visa.label}`}</span>
+      {!free && (
+        <a href={visa.link} target="_blank" rel="noreferrer">
+          {L("Resmi kaynak ↗", "Official source ↗")}
+        </a>
+      )}
+    </p>
   );
 }
 

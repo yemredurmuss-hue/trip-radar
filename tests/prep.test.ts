@@ -108,7 +108,7 @@ describe("Hazırlık, Yapılacak şeyler and Diğer", () => {
     expect(sectionOfItem(chat({ kind: "activity", title: "Livraria Lello bileti al", note: "bileti aldım", booked: true }))).toBe("activity");
   });
 
-  it("every live record is in exactly one section; the chores are the Diğer section's Hazırlık list", () => {
+  it("every live record is in exactly one section; the chores are Hazırlık's own section (v11)", () => {
     const trip: Trip = { id: "t1", title: "Porto", confirmedDates: { start: "2026-10-08", end: "2026-10-11" }, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 };
     const items = [
       { ...quick("Decathlon'dan yağmurluk al"), id: "rain" },
@@ -121,12 +121,16 @@ describe("Hazırlık, Yapılacak şeyler and Diğer", () => {
     const all = sections.flatMap((s) => s.entries.flatMap((e) => e.itemIds));
     for (const id of ["rain", "money", "market", "policy"]) expect(all.filter((x) => x === id)).toHaveLength(1);
     const other = sections.find((s) => s.id === "other")!;
-    expect(other.prep.flatMap((e) => e.itemIds).sort()).toEqual(["money", "rain"]);
-    // The chores aren't drawn in the section's timeline; the policy is.
+    const prep = sections.find((s) => s.id === "prep")!;
+    expect(prep.prep.flatMap((e) => e.itemIds).sort()).toEqual(["money", "rain"]);
+    expect(prep.entries).toHaveLength(2);
+    expect(prep.days).toEqual([]); // a tick list, not a timeline
+    expect(prep.settled).toBe(1); // the money changed
+    // Sigorta ve internet keeps the policy only.
+    expect(other.prep).toEqual([]);
     expect(other.days.flatMap((d) => d.entries.flatMap((e) => e.itemIds))).toEqual(["policy"]);
-    expect(other.entries).toHaveLength(3);
-    expect(other.settled).toBe(1); // the money changed
-    expect(other.status?.text).toMatch(/1 hazırlık/);
+    expect(other.entries).toHaveLength(1);
+    expect(prep.status?.text).toMatch(/1 hazırlık/);
     expect(sections.find((s) => s.id === "todo")!.entries.flatMap((e) => e.itemIds)).toEqual(["market"]);
   });
 });

@@ -117,10 +117,11 @@ const PLAN_SECTION_NAMES: Record<SectionId, string> = {
   flight: "Uçuş / Flights",
   stay: "Konaklama / Stays",
   transport: "Ulaşım / Getting around",
-  activity: "Etkinlikler / Activities (needs a booking)",
-  todo: "Yapılacak şeyler / Things to do (no booking)",
-  food: "Restoranlar / Restaurants",
-  other: "Diğer / Other (insurance, visa, eSIM; chores in its Hazırlık / Prep list)",
+  activity: "Etkinlik ve turlar / Activities and tours (needs a booking)",
+  todo: "Yapılacak şeyler / Things to do (no booking; restaurants are drawn here too)",
+  food: "Yapılacak şeyler → Restoranlar / Things to do → Restaurants",
+  other: "Sigorta ve internet / Insurance and internet (insurance, visa, eSIM)",
+  prep: "Hazırlık / Prep (a chore before the trip, ticked off when done)",
   inspo: "İlham / Inspiration (a Reel, pin, video or blog saved to look at; put on a day it becomes a thing to do)",
 };
 
@@ -1892,7 +1893,7 @@ async function runTool(tripId: string, name: string, input: any, choices: string
           : {}),
         ...(byOrigin ? { for_who: byOrigin, for_who_why: L(`${byOrigin.join(", ")} oradan geliyor`, `${byOrigin.join(", ")} come(s) from there`) } : {}),
         status: todo ? (saved.status === "booked" ? "done" : "planned") : saved.status === "booked" ? "booked" : "planned",
-        plan_section: prep ? "Diğer → Hazırlık / Other → Prep (a chore before the trip, ticked off when done)" : PLAN_SECTION_NAMES[section],
+        plan_section: prep ? PLAN_SECTION_NAMES.prep : PLAN_SECTION_NAMES[section],
         ...(todo ? { booking: "none" } : {}),
         ...(gone.length
           ? { replaced: gone, replaced_note: L("Yerine geçtiği kayıt plandan çıktı, silinmedi; Gizlenenler'den geri getirilebilir.", "The record it replaces left the plan, not deleted; it can be brought back from Hidden.") }

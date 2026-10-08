@@ -1,4 +1,4 @@
-// The eight sections' look and what "+ Ekle" adds in each (spec 0.34 §Bölüm kabuğu): colour, icon, name, and
+// The sections' look and what "+ Ekle" adds in each (spec 0.34 §Bölüm kabuğu): colour, icon, name, and
 // the template tiles of that kind. One tile adds at once (instant add, 0.33); more open the sheet with only those.
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CardKind } from "../../lib/cardKinds";
@@ -8,7 +8,7 @@ import type { TemplateId } from "../../lib/templates";
 
 export interface SectionMeta {
   color: string;
-  icon: CardKind | "inspo";
+  icon: CardKind | "inspo" | "prep";
   label: () => string;
   /** The empty section's chip at the bottom ("+ Restoran"). */
   short: () => string;
@@ -25,10 +25,13 @@ export const SECTION_META: Record<SectionId, SectionMeta> = {
     short: () => L("Ulaşım", "Transport"),
     templates: ["train", "bus", "minibus", "ferry", "taxi", "car", "moto", "rv", "bike"],
   },
-  activity: { color: "#a8336f", icon: "activity", label: () => L("Etkinlikler", "Activities"), short: () => L("Etkinlik", "Activity"), templates: ["activity"] },
-  todo: { color: "#5d8a1c", icon: "todo", label: () => L("Yapılacak şeyler", "Things to do"), short: () => L("Yapılacak", "To-do"), templates: ["todo"] },
+  activity: { color: "#a8336f", icon: "activity", label: () => L("Etkinlik ve turlar", "Activities and tours"), short: () => L("Etkinlik", "Activity"), templates: ["activity"] },
+  // v11: restaurants are drawn here too (food stays their own record section).
+  todo: { color: "#5d8a1c", icon: "todo", label: () => L("Yapılacak şeyler", "Things to do"), short: () => L("Yapılacak", "To-do"), templates: ["todo", "food"] },
   food: { color: "#b4532a", icon: "food", label: () => L("Restoranlar", "Restaurants"), short: () => L("Restoran", "Restaurant"), templates: ["food"] },
-  other: { color: "#3b6fd1", icon: "insurance", label: () => L("Diğer (Sigorta, eSIM)", "Other (Insurance, eSIM)"), short: () => L("Sigorta · eSIM", "Insurance · eSIM"), templates: ["esim", "insurance"] },
+  other: { color: "#3b6fd1", icon: "insurance", label: () => L("Sigorta ve internet", "Insurance and internet"), short: () => L("Sigorta · eSIM", "Insurance · eSIM"), templates: ["esim", "insurance"] },
+  // The chores before the trip (v11, out of Diğer): said in the chat or moved here from Yapılacak şeyler, no template.
+  prep: { color: "#0f8a6a", icon: "prep", label: () => L("Hazırlık", "Prep"), short: () => L("Hazırlık", "Prep"), templates: [] },
   // Saved by sending a link (a Reel, a pin, a video, a blog), never added by hand: no template, no "Ekle" chip.
   inspo: { color: "#8a5cc7", icon: "inspo", label: () => L("İlham", "Inspiration"), short: () => L("İlham", "Inspiration"), templates: [] },
 };

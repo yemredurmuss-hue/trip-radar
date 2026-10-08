@@ -106,10 +106,10 @@ describe("planStages", () => {
       said({ kind: "prep", title: "Adaptör al" }),
     ];
     const sections = sectionsOf(items);
-    // They're on the Plan (the chores in Diğer's Hazırlık, the ideas in their sections), just not needs.
-    expect(sections.find((x) => x.id === "other")!.entries).toHaveLength(2);
-    expect(sections.filter((x) => x.id === "todo" || x.id === "food").flatMap((x) => x.entries)).toHaveLength(2);
-    const stays = stagesOf(sections.filter((x) => x.id === "stay" || x.id === "todo" || x.id === "food" || x.id === "other"));
+    // They're on the Plan (the chores in Hazırlık, the ideas and the restaurant in Yapılacak şeyler), just not needs.
+    expect(sections.find((x) => x.id === "prep")!.entries).toHaveLength(2);
+    expect(sections.find((x) => x.id === "todo")!.entries).toHaveLength(2);
+    const stays = stagesOf(sections.filter((x) => x.id === "stay" || x.id === "todo" || x.id === "prep" || x.id === "other"));
     expect(stays).toEqual({ booked: 1, planned: 0, open: 0, total: 1 });
   });
 

@@ -649,6 +649,20 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   return (
     <CardEnvContext.Provider value={env}>
       <SilhouetteDefs />
+      {/* v11: one tab bar, atop the board: Plan · Gün gün (its map one switch inside) · Belgeler. */}
+      {timeline.entries.length > 0 && (
+        <div className="view-tabs" role="tablist" aria-label={L("Görünüm", "View")}>
+          <button role="tab" aria-selected={view === "plan"} className={view === "plan" ? "on" : ""} onClick={() => setView("plan")}>
+            {L("Plan", "Plan")}
+          </button>
+          <button role="tab" aria-selected={view === "days" || view === "map"} className={view === "days" || view === "map" ? "on" : ""} onClick={() => setView("days")}>
+            {L("Gün gün", "Day by day")}
+          </button>
+          <button role="tab" aria-selected={view === "docs"} className={view === "docs" ? "on" : ""} onClick={() => setView("docs")}>
+            {L("Belgeler", "Documents")}
+          </button>
+        </div>
+      )}
       <section className="hx" ref={heroRef}>
         <TripHero
           key={trip.id}
@@ -754,18 +768,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           }}
         />
       )}
-      {timeline.entries.length > 0 && (
-        <div className="view-tabs" role="tablist" aria-label={L("Görünüm", "View")}>
-          <button role="tab" aria-selected={view === "plan"} className={view === "plan" ? "on" : ""} onClick={() => setView("plan")}>
-            {L("Plan", "Plan")}
+      {(view === "days" || view === "map") && timeline.entries.length > 0 && (
+        <div className="days-mode" role="group" aria-label={L("Gün gün", "Day by day")}>
+          <button type="button" aria-pressed={view === "days"} onClick={() => setView("days")}>
+            {L("Liste", "List")}
           </button>
-          <button role="tab" aria-selected={view === "days"} className={view === "days" ? "on" : ""} onClick={() => setView("days")}>
-            {L("Günlük akış", "Day by day")}
-          </button>
-          <button role="tab" aria-selected={view === "docs"} className={view === "docs" ? "on" : ""} onClick={() => setView("docs")}>
-            {L("Belgeler", "Documents")}
-          </button>
-          <button role="tab" aria-selected={view === "map"} className={view === "map" ? "on" : ""} onClick={() => setView("map")}>
+          <button type="button" aria-pressed={view === "map"} onClick={() => setView("map")}>
             {L("Harita", "Map")}
           </button>
         </div>
@@ -791,6 +799,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             today={today}
             items={items}
             suggestions={suggestions}
+            visa={facts.visa}
           />
         </EmptyEnvContext.Provider>
       )}

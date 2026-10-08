@@ -5,7 +5,7 @@
 // (8 seconds to take it back). A file that belongs to no card offers "Bir karta bağla". Files stay on this
 // computer (lib/docs.ts).
 import { useEffect, useMemo, useState } from "react";
-import { sectionOfItem, SECTION_ORDER } from "../../lib/categories";
+import { planSectionOfItem, SECTION_ORDER } from "../../lib/categories";
 import { onChanged } from "../../lib/db";
 import { DOC_GROUPS, docGroupOf, getDoc, linkDoc, listDocMeta, sizeText, takeDoc, type DocGroup } from "../../lib/docs";
 import { L, locale } from "../../lib/i18n";
@@ -59,7 +59,7 @@ export function DocsTab({ tripId, items, onGo, offer }: {
   const docs = useDocList(tripId);
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const live = useMemo(
-    () => items.filter((i) => i.status !== "dismissed").sort((a, b) => SECTION_ORDER.indexOf(sectionOfItem(a)) - SECTION_ORDER.indexOf(sectionOfItem(b)) || a.name.localeCompare(b.name, locale())),
+    () => items.filter((i) => i.status !== "dismissed").sort((a, b) => SECTION_ORDER.indexOf(planSectionOfItem(a)) - SECTION_ORDER.indexOf(planSectionOfItem(b)) || a.name.localeCompare(b.name, locale())),
     [items],
   );
   if (!docs) return null;
@@ -159,7 +159,7 @@ function DocRow({ doc, item, live, onGo, offer }: { doc: DocMeta; item: Item | n
 
 /** "Bir karta bağla": the trip's cards by section; picking one links the file to it. */
 function LinkPicker({ doc, live }: { doc: DocMeta; live: Item[] }) {
-  const bySection = SECTION_ORDER.map((s) => ({ s, list: live.filter((i) => sectionOfItem(i) === s) })).filter((x) => x.list.length);
+  const bySection = SECTION_ORDER.map((s) => ({ s, list: live.filter((i) => planSectionOfItem(i) === s) })).filter((x) => x.list.length);
   return (
     <select className="doc-link" aria-label={L(`${doc.name}: bir karta bağla`, `${doc.name}: link to a card`)} value=""
       onChange={(e) => e.target.value && void linkDoc(doc.id, e.target.value)}>

@@ -100,7 +100,8 @@ describe("the sample trip by category", () => {
       stay: ["Porto konaklaması", "Lisboa Loft"],
       transport: ["Porto → Lizbon"],
       activity: ["Douro tekne turu", "Livraria Lello", "Serralves Müzesi", "Tiyatro"],
-      food: ["Majestic Café"],
+      // v11: a restaurant is drawn under Yapılacak şeyler.
+      todo: ["Majestic Café"],
       other: ["Airalo Portekiz 5 GB"],
     });
     expectEachOnce(sections, items, plan.closed.map((c) => c.item.id));
@@ -154,7 +155,8 @@ describe("sections from what's saved and said", () => {
     const hidden = sectionsOf(items, { ...trip, hidden: [nightsKey({ start: "2026-10-10", end: "2026-10-14" }), `leg:${arrival.key}`] });
     expect(hidden.sections.find((s) => s.id === "stay")!.entries.map((e) => e.row.name)).toEqual(["Jardim Stay"]);
     expect(hidden.sections.find((s) => s.id === "stay")!.status).toEqual({ text: "✓ 1 alındı", tone: "done" });
-    expect(hidden.sections.find((s) => s.id === "stay")!.open).toBe(false);
+    // v11: every section opens at first look, done or not; closing it is the traveller's choice.
+    expect(hidden.sections.find((s) => s.id === "stay")!.open).toBe(true);
     expect(taxi.name).toBe("Uber OPO");
   });
 
@@ -192,8 +194,9 @@ describe("sections from what's saved and said", () => {
       makeItem({ name: "Belcanto", category: "food", city: "Lizbon", dates: { start: "2026-10-12", end: null, source: "user" }, status: "chosen", booking: "needed" }),
     ];
     const { sections } = sectionsOf(items);
-    expect(names(sections).todo).toEqual(["Pazar", "Gün batımı"]);
-    expect(names(sections).food).toEqual(["Belcanto", "Majestic Café"]);
+    // v11: the restaurants are drawn under Yapılacak şeyler, each still a restaurant (its own record section).
+    expect(names(sections).todo).toEqual(["Pazar", "Belcanto", "Gün batımı", "Majestic Café"]);
+    expect(sections.find((s) => s.id === "todo")!.entries.filter((e) => e.section === "food").map((e) => e.row.name).sort()).toEqual(["Belcanto", "Majestic Café"]);
     const todo = sections.find((s) => s.id === "todo")!;
     // Ruled-out ones aren't there; one ticked off goes to the bottom of its city.
     const more = sectionsOf([
@@ -201,16 +204,15 @@ describe("sections from what's saved and said", () => {
       said({ kind: "todo", date: null, city: "Porto", title: "Yapıldı bile" }, { status: "saved", booking: "none", doneAt: 9, createdAt: 0 }),
       said({ kind: "todo", date: null, city: "Porto", title: "Elendi" }, { status: "dismissed", booking: "none" }),
     ]).sections;
-    expect(names(more).todo).toEqual(["Pazar", "Gün batımı", "Yapıldı bile"]);
+    expect(names(more).todo).toEqual(["Pazar", "Belcanto", "Gün batımı", "Majestic Café", "Yapıldı bile"]);
     // An idea without a day isn't waiting for anything: no amber line, a neutral count instead (0.35.3).
     expect(todo.status).toBeNull();
-    expect(todo.ideas).toEqual({ total: 2, onDay: 1, done: 0 });
+    expect(todo.ideas).toEqual({ total: 4, onDay: 2, done: 0 });
     expect(todo.open).toBe(true);
-    expect(todo.entries.map((e) => e.row.status)).toEqual(["Güne eklendi", "Fikir"]);
-    const food = sections.find((s) => s.id === "food")!;
-    // A restaurant waits for nothing (0.36.25, Emre: no booking to make for a restaurant).
-    expect(food.status).toBeNull();
-    expect(food.ideas).toEqual({ total: 2, onDay: 1, done: 0 });
+    expect(todo.entries.map((e) => e.row.status)).toEqual(["Güne eklendi", "Güne eklendi", "Fikir", "Fikir"]);
+    // A restaurant waits for nothing (0.36.25, Emre: no booking to make for a restaurant): drawn in Yapılacak
+    // şeyler (v11), it adds no line there; there's no Restoranlar section of its own.
+    expect(sections.find((s) => s.id === "food")).toBeUndefined();
     expectEachOnce(sections, items);
   });
 
@@ -238,7 +240,8 @@ describe("sections from what's saved and said", () => {
     const count = Object.fromEntries(sections.filter((s) => s.entries.length).map((s) => [s.id, `${s.settled}/${s.entries.length}`]));
     // Ulaşım: the taxi planned (nothing to book) of it and the change of city not planned yet.
     // Restoranlar: Belcanto picked is settled too (no table to book, 0.36.25).
-    expect(count).toEqual({ flight: "1/2", stay: "1/2", transport: "1/2", activity: "1/2", todo: "2/3", food: "3/4", other: "1/2" });
+    // v11: Yapılacak şeyler holds the restaurants too (2/3 to-dos + 3/4 restaurants).
+    expect(count).toEqual({ flight: "1/2", stay: "1/2", transport: "1/2", activity: "1/2", todo: "5/7", other: "1/2" });
     // All settled: the count is full and the pill green.
     const done = sectionsOf([stay("Jardim Stay", "2026-10-08", "2026-10-14", "Porto")]).sections.find((s) => s.id === "stay")!;
     expect([done.settled, done.entries.length, done.status?.tone]).toEqual([1, 1, "done"]);
@@ -376,7 +379,7 @@ describe("what's hidden, section by section (kategoriler-v4: \"Gizlenenler · N 
     expect([...seen.values()].every((v) => v.length === 1)).toBe(true);
   }
 
-  it("a ruled-out record waits in its own section: a flight under Uçuş, a restaurant under Restoranlar, a tour under Etkinlikler", () => {
+  it("a ruled-out record waits in its own section: a flight under Uçuş, a restaurant under Yapılacak şeyler, a tour under Etkinlik ve turlar", () => {
     const items = [
       stay("Jardim Stay", "2026-10-08", "2026-10-11", "Porto"),
       flight("TK 1755", "IST", "OPO", "2026-10-08", "dismissed"),
@@ -388,7 +391,8 @@ describe("what's hidden, section by section (kategoriler-v4: \"Gizlenenler · N 
     expect(hiddenOf(sections)).toEqual({
       flight: ["dismissed:TK 1755"],
       activity: ["dismissed:Douro tekne turu"],
-      food: ["dismissed:Cantinho do Avillez"],
+      // v11: a restaurant waits under Yapılacak şeyler, where restaurants are drawn.
+      todo: ["dismissed:Cantinho do Avillez"],
       other: ["dismissed:Airalo eSIM"],
     });
     expectHiddenOnce(sections, items.filter((i) => i.status === "dismissed").map((i) => `item:${i.id}`));
@@ -519,11 +523,11 @@ describe("the ideas as a list by city (0.35.3)", () => {
     expect(sectionOfItem({ ...reel, url: "https://maps.app.goo.gl/x1" })).toBe("todo");
     expect(sectionOfItem({ ...reel, dates: { start: "2026-10-09", end: null, source: "user" } })).toBe("todo");
     expect(sectionOfItem(said({ kind: "food", date: null, city: "Porto", title: "Cafe Santiago" }, { url: "https://www.instagram.com/reel/def/" }))).toBe("food");
-    // Closed at first, counted as saved, never in the hero's "x/y".
+    // Counted as saved, never in the hero's "x/y".
     const { sections } = sectionsOf([...base, reel]);
     const inspo = sections.find((s) => s.id === "inspo")!;
     expect(inspo.entries.map((e) => e.row.name)).toEqual(["Ribeira gün batımı"]);
-    expect(inspo.open).toBe(false);
+    expect(inspo.open).toBe(true); // v11: İlham opens at first look too
     expect(inspo.status).toBeNull();
     expect(planProgress(sections).total).toBe(planProgress(sections.filter((s) => s.id !== "inspo")).total);
   });

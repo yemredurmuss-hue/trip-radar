@@ -148,10 +148,12 @@ const SECTION_TO: Record<SectionId, [string, string]> = {
   flight: ["Uçuş'a", "to Flights"],
   stay: ["Konaklama'ya", "to Stays"],
   transport: ["Ulaşım'a", "to Getting around"],
-  activity: ["Etkinlikler'e", "to Activities"],
+  activity: ["Etkinlik ve turlar'a", "to Activities and tours"],
   todo: ["Yapılacak şeyler'e", "to Things to do"],
-  food: ["Restoranlar'a", "to Restaurants"],
-  other: ["Diğer'e", "to Other"],
+  // v11: a restaurant is drawn under Yapılacak şeyler.
+  food: ["Yapılacak şeyler'e", "to Things to do"],
+  other: ["Sigorta ve internet'e", "to Insurance and internet"],
+  prep: ["Hazırlık'a", "to Prep"],
   inspo: ["İlham'a", "to Inspiration"],
 };
 export const sectionTo = (id: SectionId): string => L(...SECTION_TO[id]);
@@ -174,6 +176,7 @@ const FINDING: Record<SectionId | "none", [string, string]> = {
   todo: ["Yer ve adres bulunuyor…", "Finding the place and address…"],
   food: ["Yer ve adres bulunuyor…", "Finding the place and address…"],
   other: ["Ayrıntılar bulunuyor…", "Finding the details…"],
+  prep: ["Ayrıntılar bulunuyor…", "Finding the details…"],
   inspo: ["Ne olduğuna bakılıyor…", "Looking at what it is…"],
   none: ["Ne olduğuna bakılıyor…", "Looking at what it is…"],
 };

@@ -43,7 +43,8 @@ export function IdeaList({ section, plan, today, fallback }: {
   const tabs = ideaTabs(rows, plan, today);
   // The chips count what the tab shows; a kind no longer there lets go.
   const inTab = rows.filter((r) => tab === "all" || (r.status === "missed" && !during ? "pool" : r.status) === tab);
-  const kinds = kindCounts(inTab, kindsFor(food));
+  // v11: Yapılacak şeyler holds the restaurants too, so its chips are both lists'.
+  const kinds = kindCounts(inTab, food ? kindsFor(true) : [...kindsFor(false), ...kindsFor(true)]);
   const activeKind = kind && kinds.some((k) => k.kind === kind) ? kind : null;
   const activeTab = tabs.some((t) => t.tab === tab) ? tab : "all";
   const groups = ideaGroups(section.entries, plan, today, { tab: activeTab, kind: activeKind });

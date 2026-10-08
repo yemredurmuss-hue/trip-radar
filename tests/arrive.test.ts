@@ -171,7 +171,7 @@ describe("chipState", () => {
   });
   it("speaks English on an English board", () => {
     setLang("en");
-    expect(chipState(cap("done", { itemId: "i1" }), { id: "i1", tripId: "t1", section: "food" }, ctx).text).toBe("✓ Added to Restaurants");
+    expect(chipState(cap("done", { itemId: "i1" }), { id: "i1", tripId: "t1", section: "food" }, ctx).text).toBe("✓ Added to Things to do"); // v11: restaurants are drawn there
   });
 });
 

@@ -1,6 +1,7 @@
-// The Plan by category (spec 0.34, docs/superpowers/specs/2026-10-05-034-kategoriler-design.md): every
-// block and record of the trip goes in exactly one of seven sections — Uçuş, Konaklama, Ulaşım, Etkinlikler,
-// Yapılacak şeyler, Restoranlar, Diğer — and inside a section in date order (then time), the undated last by
+// The Plan by category (spec 0.34, docs/superpowers/specs/2026-10-05-034-kategoriler-design.md; v11,
+// 2026-10-08-plan-pano-v11-design.md): every block and record of the trip goes in exactly one of eight sections —
+// Uçuş, Konaklama, Ulaşım, Etkinlik ve turlar, Yapılacak şeyler (restaurants too), Sigorta ve internet, Hazırlık,
+// İlham — and inside a section in date order (then time), the undated last by
 // city. The blocks themselves are the ones the plan's front always had (timeline.ts board): this only sorts
 // them into sections and says where each stands, for the header's bar and its "3/4" (settled of all), and lists
 // what's out of the way (ruled out, closed by a booking, "Gerek yok") at the end of its own section. Pure:
@@ -21,8 +22,13 @@ import { isPrep } from "./prep";
 import { isInsurance, isPaperwork, itemText } from "./travelKinds";
 import type { Item } from "./types";
 
-export type SectionId = "flight" | "stay" | "transport" | "activity" | "todo" | "food" | "other" | "inspo";
-export const SECTION_ORDER: readonly SectionId[] = ["flight", "stay", "transport", "activity", "todo", "food", "other", "inspo"];
+/**
+ * "food" and "other" stay a record's own section (its row reads as a restaurant's, as insurance's), but on the
+ * Plan (v11) a restaurant is drawn under Yapılacak şeyler and the chores before the trip have their own Hazırlık:
+ * `planSectionOf` says where an entry is drawn.
+ */
+export type SectionId = "flight" | "stay" | "transport" | "activity" | "todo" | "food" | "other" | "prep" | "inspo";
+export const SECTION_ORDER: readonly SectionId[] = ["flight", "stay", "transport", "activity", "todo", "other", "prep", "inspo"];
 /**
  * The ideas (0.35.3): things to do, restaurants, İlham. A list to pick from, not work waiting: no "3/4", no
  * "güne eklenmedi", and never in the hero's "x/y onaylandı".
@@ -716,7 +722,36 @@ export function categorize({ plan, timeline, items, legs = [], hidden = new Set(
 
   const entries = withOwnWays(joinStayNeeds(drafts.map((d, i) => finish(d, i, rank, (item) => ({ ...stageCtx(item), today })))), ownWayIn);
   const out = hiddenThings({ plan, timeline, items, legs, hidden });
-  return SECTION_ORDER.map((id) => sectionOf(id, entries.filter((e) => e.section === id), plan, out.filter((h) => h.section === id), today));
+  return SECTION_ORDER.map((id) => sectionOf(id, entries.filter((e) => planSectionOf(e) === id), plan, out.filter((h) => (h.section === "food" ? "todo" : h.section) === id), today));
+}
+
+/** Where a record is drawn on the Plan (v11), before it has an entry: a restaurant under Yapılacak şeyler, a chore under Hazırlık. */
+export function planSectionOfItem(item: Item): SectionId {
+  const s = sectionOfItem(item);
+  return s === "food" ? "todo" : s === "other" && isIdea(item) ? "prep" : s;
+}
+
+/** Where an entry is drawn on the Plan (v11): a restaurant under Yapılacak şeyler, a chore under Hazırlık, the rest in its own section. */
+export function planSectionOf(e: Pick<CatEntry, "section" | "piece">): SectionId {
+  if (e.section === "food") return "todo";
+  if (isPrepEntry(e as CatEntry)) return "prep";
+  return e.section;
+}
+
+/**
+ * The header's line in stage words (v11): "1 rezerve · 2 seçildi · 1 aranıyor". Rezerve is booked and ready,
+ * seçildi planned, aranıyor what's still to find or pick. Null when nothing in it takes a booking.
+ */
+export function stageLine(stages: StageCounts): string | null {
+  const booked = stages.booked + stages.ready;
+  const chosen = stages.planned;
+  const open = stages.search + stages.options;
+  const parts = [
+    booked && L(`${booked} rezerve`, `${booked} booked`),
+    chosen && L(`${chosen} seçildi`, `${chosen} chosen`),
+    open && L(`${open} aranıyor`, `${open} to find`),
+  ].filter((x): x is string => Boolean(x));
+  return parts.length ? parts.join(" · ") : null;
 }
 
 /**
@@ -869,7 +904,8 @@ function sectionOf(id: SectionId, list: CatEntry[], plan: Plan, hidden: HiddenTh
   const status = withPrep(sectionStatus(id, rest), prep);
   const ideas = isIdeaSection(id) ? ideaTally(entries, today) : null;
   // Things to do and restaurants open while there are any (a list to use, on the road too); İlham waits closed.
-  const open = id === "inspo" ? false : ideas ? entries.length > 0 : status?.tone === "wait";
+  // v11: every section opens at first look (İlham too); closing one is the traveller's choice, remembered.
+  const open = true;
   return { id, entries, days: daysOf(rest, plan, id), status, settled: entries.filter((e) => e.state === "done").length, stages: countStages(needsOf([{ id, entries }]).map((n) => n.stage)), open, hidden, prep, ideas };
 }
 
@@ -954,7 +990,7 @@ export function findInSections(
     (target.item && all.find((e) => e.itemIds.includes(target.item!))) ||
     (target.leg && all.find((e) => e.legKeys.includes(target.leg!))) ||
     (target.entry && (all.find((e) => e.entryKeys.includes(target.entry!)) ?? (target.entry.startsWith("event:") ? all.find((e) => e.itemIds.includes(target.entry!.slice(6))) : undefined)));
-  return hit ? { section: hit.section, key: hit.key, dom: catDomKey(hit) } : null;
+  return hit ? { section: planSectionOf(hit), key: hit.key, dom: catDomKey(hit) } : null;
 }
 
 /** The DOM id of an entry's card wrapper: its block's (the itinerary and the to-dos look for it), else its own. */
