@@ -215,9 +215,14 @@ Hepsi isteğe bağlı alan; eski sürüm bilmediği alanı yok sayar. Paylaşım
   alternatif" → grup çerçeveli.
 - Her faz: unit + e2e yeşil, Mac'te Emre dener.
 
-## Açık kararlar (Emre)
+## Kararlar (Emre, 2026-10-08: "Onaylıyorum hepsini")
 
-1. **Harita** sekmesi nereye? Öneri: Gün gün'ün içinde "Liste | Harita" anahtarı.
-2. **Bölüm bütçesi** ("€3.600 ayrıldı"): AI gezi kurarken toplam bütçeyi bölümlere dağıtsın mı (düzenlenebilir),
-   yoksa yalnız harcanan mı yazsın? Öneri: Faz 1'de yalnız harcanan; dağıtım Faz 6.
-3. Faz sırası: öneri 1 → 2 → 5 → 3 → 4 → 6 (Pano asıl iş olduğu için kartlardan hemen sonra).
+1. **Harita**: Gün gün'ün içinde "Liste | Harita" anahtarı (ayrı sekme yok).
+2. **Bölüm bütçesi**: Faz 1'de yalnız harcanan; dağıtım Faz 6.
+3. **Faz sırası**: 1 → 2 → 5 → 3 → 4 → 6.
+
+## Durum
+
+- **Faz 1 yayında: 0.36.56** (2026-10-09). Not: bölüm başlığında harcanan tutar henüz yok (bugünkü "3/4" çubuğu
+  duruyor); Faz 2'de kart başlığıyla birlikte gelir. İç kimlikler değişmedi: `food` ve `other` kaydın kendi bölümü
+  olarak kalır, `planSectionOf` / `planSectionOfItem` çizildiği yeri söyler (food → todo, other'daki iş → prep).

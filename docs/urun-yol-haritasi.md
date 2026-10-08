@@ -383,3 +383,9 @@ Eleştiri: impeccable critique (bağımsız tasarım incelemesi 26/40 + dedektö
 Emre: "Onaylıyorum" (v11 + tek sekme çubuğu Plan · Gün gün · Pano · Belgeler + her yerde "Plana koy").
 Spec: `docs/superpowers/specs/2026-10-08-plan-pano-v11-design.md` (koda bağlama, veri alanları, 6 faz, test).
 Spec için Emre'den bekleyen: Harita sekmesinin yeri, bölüm bütçesi, faz sırası.
+
+## Faz 1 yayında: 0.36.56 (2026-10-09)
+
+Tek sekme çubuğu hero'nun üstünde (Plan · Gün gün · Belgeler; Harita Gün gün'ün içinde), bölümler yeni sırada
+(Etkinlik ve turlar · Yapılacak şeyler restoranlarla · Sigorta ve internet · Hazırlık kendi bölümü, vize satırı ilk),
+hepsi açık gelir, başlıkta aşama sözleri. Unit 1677/1677, e2e yeşil. Sıradaki: Faz 2 (kartlar).
