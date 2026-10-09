@@ -65,6 +65,7 @@ import { useArrivals } from "./arrive/useArrivals";
 import { useSuggestions } from "./useSuggestions";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
 import { Pano } from "./board/Pano";
+import { journeyOf } from "../lib/tripShape";
 import { UndatedIdeas } from "./ideas/IdeaTiles";
 import { choiceOf, type Choice } from "../lib/choice";
 import { pivotalFindings } from "../lib/pivots";
@@ -103,6 +104,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const failed = openCaptures.filter((c) => c.status === "error");
   const listings = decisions?.ctx.listings;
   const legs = useMemo(() => buildLegs(plan, trip, listings), [plan, trip, listings]);
+  // The trip's shape under the Plan's head (v11): its stops and the way between them.
+  const shape = useMemo(() => journeyOf(plan, legs, items), [plan, legs, items]);
   const reading = listings
     ? new Set(items.filter((i) => needsReading(i, listings.get(listingKeyOf(i))) && !listings.get(listingKeyOf(i))?.error).map(listingKeyOf)).size
     : 0;
@@ -840,6 +843,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             suggestions={suggestions}
             visa={facts.visa}
             visaDone={!!trip.visaDone}
+            shape={shape}
+            onStop={(s) => openSection(s.kind === "end" ? "flight" : "stay")}
+            onJourneyOrder={() => setView("days")}
             onVisaDone={(done) => void setVisaDone(trip.id, done)}
           />
         </EmptyEnvContext.Provider>

@@ -22,9 +22,11 @@ import { provisionalSection, SECTION_META } from "./sectionMeta";
 import { SectionTimeline, type SectionCards } from "./SectionTimeline";
 import { SuggestionCards } from "./SuggestionCards";
 import { VisaRow } from "./VisaRow";
+import { TripShape } from "./TripShape";
+import type { JourneyHop, JourneyStop } from "../../lib/tripShape";
 import type { BoardSuggestions } from "../useSuggestions";
 
-export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone }: {
+export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, shape = null, onStop, onJourneyOrder }: {
   plan: Plan;
   sections: CatSection[];
   /** Open now: the traveller's choice, else the first look (sectionMeta.useSectionOpen). */
@@ -45,6 +47,11 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
   visa?: Visa | null;
   visaDone?: boolean;
   onVisaDone?: (done: boolean) => void;
+  /** The trip's shape under the head (v11): its stops, a tap opens a stop's place. */
+  shape?: { stops: JourneyStop[]; hops: JourneyHop[] } | null;
+  onStop?: (stop: JourneyStop) => void;
+  /** "Yolculuk sırasıyla": the trip in the order it's lived (Gün gün). */
+  onJourneyOrder?: () => void;
 }) {
   const n = plan.nights;
   const waiting = (s: CatSection) => pending?.bySection[s.id] != null;
@@ -84,8 +91,20 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
       <div className="section-head">
         <span>{L("Gezi planı", "Trip plan")}</span>
         {n.total > 0 && <span className="muted">{nightsSummary(n)}</span>}
+        {onJourneyOrder && (
+          <span className="plan-order" role="group" aria-label={L("Sıra", "Order")}>
+            <button type="button" aria-pressed="true">{L("Kategoriye göre", "By category")}</button>
+            <button type="button" aria-pressed="false" onClick={onJourneyOrder}>{L("Yolculuk sırasıyla", "In trip order")}</button>
+          </span>
+        )}
         <AddButton onClick={() => onAdd(null, null)} />
+        <span className="plan-key" aria-label={L("Renklerin anlamı", "What the colours say")}>
+          <span><i className="pk-sw open" />{L("Arıyoruz", "Searching")}</span>
+          <span><i className="pk-sw chosen" />{L("Seçildi", "Chosen")}</span>
+          <span><i className="pk-sw booked" />{L("Rezerve", "Booked")}</span>
+        </span>
       </div>
+      {shape && shape.stops.length > 1 && <TripShape stops={shape.stops} hops={shape.hops} onStop={(s) => onStop?.(s)} />}
       {plan.notices.map((x) => (
         <div key={x.text} className="notice">
           ⚠ {x.text}

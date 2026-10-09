@@ -446,6 +446,11 @@ try {
   assert.equal(await app.locator(".day-strip").count(), 0, "no band of nights");
   const sec = (id) => app.locator(`.cat-sec[data-section="${id}"]`);
   assert.deepEqual(await app.locator(".cat-sec").evaluateAll((els) => els.map((e) => e.getAttribute("data-section"))), ["flight", "stay", "transport", "activity", "todo", "other"]);
+  // v11: the trip's shape under the Plan's head (İstanbul → Porto → Lizbon → İstanbul, each stop in its stage) and
+  // the head's order switch and the stages' key.
+  assert.deepEqual(await app.locator(".ts-strip .ts-stop b").allInnerTexts(), ["İstanbul", "Porto", "Lizbon", "İstanbul"]);
+  assert.deepEqual(await app.locator(".plan-key span").allInnerTexts(), ["Arıyoruz", "Seçildi", "Rezerve"]);
+  await app.locator(".ts-strip").screenshot({ path: `${out}/33a-trip-shape.png` });
   // v11: the restaurant is drawn under Yapılacak şeyler, so no section of the sample is left as a chip.
   assert.deepEqual(await app.locator(".cat-more .cat-chip").allInnerTexts(), []);
   assert.deepEqual((await sec("stay").locator(".cat-date").allInnerTexts()).map((t) => t.replace(/\s+/g, " ")), ["8 Eki Per Porto", "11 Eki Paz Lizbon"]);
