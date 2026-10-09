@@ -3505,3 +3505,267 @@ a.ch-why { text-decoration: none; }
 .st-draft { position: relative; width: 100%; max-width: 352px; }
 .st-draft-x { position: absolute; left: 14px; top: 14px; z-index: 3; width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .92); color: #6b6790; font-size: 18px; line-height: 1; opacity: .75; transition: opacity .2s, color .2s; }
 .st-draft:hover .st-draft-x, .st-draft-x:focus-visible { opacity: 1; } .st-draft-x:hover { color: #c62828; }
+
+/* ===================================================================================================================
+   v11 as drawn (docs/superpowers/specs/2026-10-09-v11-canli-fark-listesi.md; values from the drawing's own tokens):
+   the plan bar on one line, each section its own card, the cards in a grid, the three stages' grounds (Arıyoruz white
+   and dashed, Seçildi cream, Rezerve mint), a small picture beside the name, a quiet foot over a hairline.
+   =================================================================================================================== */
+:root {
+  --v-ink: #1c1a33; --v-muted: #6b6790; --v-line2: #efece7; --v-dash: #b9b5cf; --v-soft: #f7f5f1; --v-tile: #fbfaf7;
+  --v-lav: #ece8ff; --v-accent-ink: #4a35cc;
+  --v-plan-bg: #fbf6ea; --v-plan-line: #e9d29a; --v-plan-ink: #8a5a00; --v-plan-dot: #e09422;
+  --v-book-bg: #eef8f1; --v-book-line: #b9e0c7; --v-book-ink: #1b7f45;
+}
+/* The plan bar: "Plan", the order switch, "+ Ekle", the key on the right. */
+.cat-plan > .plan-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-start; margin: 0 0 8px; padding: 0 2px; border: 0; }
+.plan-h { font-size: 20px; font-weight: 700; letter-spacing: -.01em; color: var(--v-ink); }
+.plan-bar .plan-order { background: var(--v-soft); border-radius: 10px; padding: 3px; }
+.plan-bar .plan-order button { padding: 4px 10px; font-size: 13px; color: var(--v-muted); }
+.plan-bar .plan-order button[aria-pressed="true"] { color: var(--v-ink); }
+.plan-bar .plan-key { margin-left: auto; gap: 14px; font-size: 12.5px; color: var(--v-muted); }
+.plan-key .pk-sw { width: 26px; height: 16px; border-radius: 5px; }
+.plan-key .pk-sw.open { background: #fff; border: 1.5px dashed var(--v-dash); }
+.plan-key .pk-sw.chosen { background: var(--v-plan-bg); border: 1px solid var(--v-plan-line); }
+.plan-key .pk-sw.booked { background: var(--v-book-bg); border: 1px solid var(--v-book-line); }
+
+/* Each section its own card. */
+.cat-sheet { background: none; box-shadow: none; border-radius: 0; display: grid; gap: 12px; }
+.cat-sec { background: #fff; border: 1px solid var(--v-line2); border-radius: 20px; overflow: hidden; }
+.cat-sec + .cat-sec { border-top: 1px solid var(--v-line2); }
+.cat-sec > .cat-head, .cat-sec:first-child > .cat-head, .cat-sec.closed:last-child > .cat-head, .cat-sec.closed:only-child > .cat-head { border-radius: 0; }
+.cat-head { gap: 14px; padding: 14px 18px; }
+.cat-head:hover { background: var(--v-soft); }
+.cat-sec.closed > .cat-head { background: var(--v-soft); }
+.cat-ic { width: 38px; height: 38px; border-radius: 12px; background: color-mix(in srgb, var(--c) 13%, transparent); color: var(--c); }
+.cat-title { gap: 14px; }
+.cat-title b { display: flex; align-items: baseline; gap: 8px; font-size: 18px; font-weight: 700; letter-spacing: -.01em; color: var(--v-ink); }
+.cat-n { font-style: normal; font-size: 14px; font-weight: 600; color: var(--v-muted); }
+.cat-tt small.cat-st, .cat-tt .cat-ideas { font-size: 13px; color: var(--v-muted); font-weight: 400; }
+.cat-end { gap: 14px; }
+.cat-bar { display: flex; width: 110px; height: 6px; border-radius: 99px; background: var(--v-line2); overflow: hidden; }
+.cat-bar > span { border-radius: 0; height: 100%; transition: width .8s cubic-bezier(.16, 1, .3, 1); }
+.cat-bar > .bk { background: var(--v-book-ink); }
+.cat-bar > .ch { background: #f0a53a; }
+.cat-bud { display: grid; justify-items: end; text-align: right; min-width: 78px; line-height: 1.25; }
+.cat-bud .cat-spent { font-size: 15px; font-weight: 700; color: var(--v-ink); }
+.cat-bud .cat-allot { font-size: 13px; color: var(--v-muted); }
+.cat-chev { color: var(--v-muted); }
+.cat-body { padding: 4px 18px 18px; display: grid; gap: 14px; }
+.cat-body > .cat-add { justify-self: start; display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; padding: 2px 4px; font: inherit; font-size: 13px; color: var(--v-muted); cursor: pointer; }
+.cat-body > .cat-add:hover { color: var(--v-accent-ink); }
+
+/* The cards in a grid; transport three across. */
+.cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 14px; align-items: start; }
+.cat-grid.cat-in-transport { grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+.cat-grid > .cat-card, .cat-grid > .ek-cell { min-width: 0; }
+.cat-grid .pk-card, .cat-grid .ek-card { margin: 0; }
+.cat-grid .stay-block { margin: 0; padding: 0; border: 0; background: none; }
+
+/* A card: the three stages' grounds. */
+.pk-card { border-radius: 18px; padding: 14px 16px; display: grid; gap: 10px; align-content: start; background: #fff; border: 1.5px dashed var(--v-dash); color: var(--v-ink); box-shadow: none; }
+.pk-card:hover { box-shadow: 0 1px 2px rgba(28, 26, 51, .06), 0 6px 18px -10px rgba(28, 26, 51, .25); }
+.pk-card.pk-r-half { background: var(--v-plan-bg); border: 1px solid var(--v-plan-line); }
+.pk-card.pk-r-done, .pk-card.pk-green { background: var(--v-book-bg); border: 1px solid var(--v-book-line); }
+.pk-card.pk-r-open, .ek-card { background: #fff; border: 1.5px dashed var(--v-dash); }
+.pk-top { height: auto; min-height: 24px; gap: 8px; font-size: 13px; color: var(--v-muted); }
+.pk-kind { color: var(--v-ink); font-weight: 650; gap: 5px; }
+.pk-kind svg { color: var(--mc); }
+.pk-ring { width: 18px; height: 18px; }
+.pk-ring.open { border: 1.5px dashed var(--v-dash); }
+.pk-ring.half { border: 2px solid var(--v-plan-dot); }
+.pk-ring.done { background: var(--v-book-ink); }
+.pk-lab { font-size: 12.5px; }
+.pk-lab.open { color: var(--v-muted); font-weight: 500; }
+.pk-lab.booked { color: var(--v-book-ink); }
+.pk-aldim { border-color: var(--v-plan-dot); color: var(--v-plan-ink); padding: 3px 10px; font-size: 12.5px; }
+
+/* The body: a small picture beside the name and one grey line. */
+.pk-media { grid-template-columns: 60px minmax(0, 1fr); gap: 12px; margin: 0; align-items: center; }
+.pk-vis { width: 60px; height: 50px; border-radius: 12px; background: var(--v-tile); }
+.pk-vis .pk-img { object-fit: cover; }
+.pk-vis .pk-illus { width: 100%; height: 100%; padding: 4px; object-fit: contain; mix-blend-mode: multiply; }
+.pk-vis .pk-kindbig { transform: scale(.45); }
+.pk-vis svg.pk-sil { width: 44px; height: 38px; }
+.pk-score, .pk-meta { display: none; }
+.pk-txt h3 { font-size: 18px; font-weight: 750; letter-spacing: -.015em; line-height: 1.2; }
+.pk-txt p { margin-top: 2px; font-size: 13px; color: var(--v-muted); }
+.pk-txt p b { color: var(--v-muted); font-weight: 400; }
+.pk-moons { display: inline-flex; gap: 3px; margin-right: 6px; vertical-align: 1px; }
+.pk-moons i { width: 7px; height: 7px; border-radius: 50%; background: #1d8577; opacity: .35; }
+.pk-r-half .pk-moons i { background: var(--v-plan-dot); opacity: 1; }
+.pk-r-done .pk-moons i { background: var(--v-book-ink); opacity: 1; }
+
+/* A ticket's ends: the cities big, the hour and code small, the plane faint in the middle. */
+.pk-mid { grid-template-columns: auto minmax(50px, 1fr) auto; gap: 8px; margin: 0; }
+.pk-mid.has-logo { grid-template-columns: auto minmax(50px, 1fr) auto; }
+.pk-mid .pk-logo { display: none; }
+.pk-stop b, .pk-stop b.long { font-size: 21px; font-weight: 750; letter-spacing: -.02em; }
+.pk-stop > span { font-size: 12.5px; color: var(--v-muted); margin-top: 1px; }
+.pk-stop > span strong { font-size: 14px; color: var(--v-ink); font-weight: 700; }
+.pk-route { height: 44px; }
+.pk-route small { position: static; display: block; margin: 0; text-align: center; font-size: 12px; color: var(--v-muted); white-space: nowrap; }
+.pk-art { top: 44px; height: 44px; width: 34%; opacity: .55; }
+.pk-r-done .pk-art, .pk-r-half .pk-art { opacity: .7; }
+
+/* The foot: over a hairline, no box. */
+.pk-foot { min-height: 34px; padding: 10px 0 0; margin: 0; border-radius: 0; background: none; border-top: 1px solid color-mix(in srgb, var(--v-dash) 40%, transparent); gap: 8px; flex-wrap: wrap; row-gap: 6px; font-size: 13px; }
+.pk-state { font-size: 13px; }
+.pk-state.done { color: var(--v-book-ink); }
+.pk-price { margin-left: 0; font-size: 12.5px; color: var(--v-muted); }
+.pk-price b { font-size: 16px; font-weight: 750; color: var(--v-ink); }
+.pk-foot > .pk-cta, .pk-foot > .pk-go { margin-left: auto; height: auto; padding: 7px 14px; font-size: 13.5px; font-weight: 600; background: var(--v-ink); color: #fff; }
+.pk-foot .pk-alt { margin-left: 4px; }
+.pk-more { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; border: 0; background: none; padding: 0; font: inherit; font-size: 12.5px; color: var(--v-muted); cursor: pointer; white-space: nowrap; }
+.pk-more:hover { color: var(--v-ink); }
+.pk-docname { display: inline-flex; align-items: center; gap: 4px; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--v-book-ink); border: 1px solid var(--v-book-line); background: #fff; border-radius: 999px; padding: 2px 9px; cursor: pointer; font-family: inherit; }
+.pk-stamp { top: 44px; right: 16px; width: 42px; height: 42px; border-color: var(--v-book-ink); color: var(--v-book-ink); opacity: .4; }
+.pk-r-done .pk-media { padding-right: 50px; }
+
+/* A ticket's stub (a booked flight): the airline, the booking code, how many go. */
+.pk-stub { display: grid; gap: 2px; margin: 0 -16px -14px; padding: 12px 16px 14px; border-top: 1.5px dashed var(--v-dash); font-size: 13px; color: var(--v-muted); position: relative; }
+.pk-stub b { font-size: 15px; color: var(--v-ink); letter-spacing: .02em; }
+.pk-stub .pk-stamp { top: auto; bottom: 12px; right: 14px; width: 36px; height: 36px; }
+
+/* v11 fixes after the first look: the plan bar's "+ Ekle" by the switch; the plane in the ticket's middle, no
+   duration under it; a booking's foot is its proof, its file and "Ayrıntı" (its price is in the section's head). */
+.plan-bar .pk-add { margin-left: 0; }
+.pk-route small { display: none; }
+.pk-art { top: 50px; }
+.pk-r-done .pk-foot .pk-price { display: none; }
+.nd-body h3 { font-size: 18px; font-weight: 750; letter-spacing: -.015em; }
+.nd-route .pk-mid { margin: 2px 0 0; }
+.nd-card .pk-art { top: 46px; }
+
+/* v11 the trip's shape as drawn: the picture in the ring, the way moving along the dotted line, its length under it. */
+.ts-strip { margin: 2px 0 16px; padding: 6px 4px 4px; overflow: visible; }
+.ts-stop { position: relative; gap: 3px; }
+.ts-ring { width: 46px; height: 46px; background: var(--v-tile); border: 2px dashed var(--v-dash); transition: transform .35s cubic-bezier(.16, 1, .3, 1); }
+.ts-ring img { width: 32px; height: 26px; object-fit: contain; mix-blend-mode: multiply; }
+.ts-stop.chosen .ts-ring { background: var(--v-tile); border: 2px solid var(--v-plan-dot); }
+.ts-stop.booked .ts-ring { background: var(--v-tile); border: 2px solid var(--v-book-ink); }
+.ts-stop:hover .ts-ring, .ts-stop:focus-visible .ts-ring { transform: translateY(-3px) scale(1.06); }
+.ts-stop b { font-size: 13px; }
+.ts-stop small { font-size: 12px; color: var(--v-muted); }
+.ts-tip { position: absolute; top: calc(100% + 8px); left: 50%; z-index: 5; display: flex; gap: 6px; align-items: flex-start; width: max-content; max-width: 220px; padding: 9px 12px; border-radius: 14px; background: #fff; box-shadow: 0 30px 80px -20px rgba(28, 26, 51, .45), 0 1px 3px rgba(28, 26, 51, .1); font-size: 13px; text-align: left; white-space: normal; color: var(--v-ink); opacity: 0; pointer-events: none; transform: translate(-50%, -6px) scale(.96); transition: opacity .2s, transform .25s cubic-bezier(.16, 1, .3, 1); }
+.ts-tip svg { flex: none; margin-top: 2px; color: var(--v-muted); }
+.ts-stop:hover .ts-tip, .ts-stop:focus-visible .ts-tip { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.ts-item:first-child .ts-tip { left: 0; transform: translate(0, -6px); }
+.ts-item:last-child .ts-tip { left: auto; right: 0; transform: translate(0, -6px); }
+.ts-item:first-child .ts-stop:hover .ts-tip, .ts-item:last-child .ts-stop:hover .ts-tip { transform: none; }
+.ts-hop { position: relative; flex: 1; min-width: 28px; height: 46px; margin: 0 2px; border: 0; overflow: hidden; color: var(--v-muted); }
+.ts-hop::before { content: ""; position: absolute; left: 6px; right: 6px; top: 23px; border-top: 2px dotted var(--v-dash); }
+.ts-mover { position: absolute; top: 14px; left: 0; width: 18px; height: 18px; display: grid; place-items: center; background: #fff; animation: ts-travel 6s cubic-bezier(.45, 0, .55, 1) infinite; }
+.ts-hop.flight .ts-mover { color: #6a4fe0; }
+.ts-hop.train .ts-mover, .ts-hop.bus .ts-mover, .ts-hop.ferry .ts-mover, .ts-hop.car .ts-mover { color: #b5761c; animation-duration: 5s; }
+.ts-lbl { position: absolute; top: 31px; left: 50%; transform: translateX(-50%); padding: 0 4px; background: #fff; font-size: 11.5px; white-space: nowrap; }
+.ts-hop svg { position: static; transform: none; background: none; padding: 0; }
+@keyframes ts-travel { 0% { left: 0; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { left: calc(100% - 18px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ts-mover { animation: none; left: calc(50% - 9px); } }
+.ts-mover, .ts-lbl { background: #f8f7f4; }
+.ts-ring { background: #fff; }
+.ts-stop.chosen .ts-ring, .ts-stop.booked .ts-ring { background: #fff; }
+
+.plan-bar .pk-add { height: 30px; padding: 0 12px; font-size: 13.5px; }
+.cat-body > .cat-hidden-link, .cat-body .cat-hidden { margin-left: 0; padding-left: 0; }
+
+/* v11 the visa as drawn: one full-width line (green when none is needed or it's got, amber while one is to get). */
+.visa-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin: 0; padding: 10px 12px; border-radius: 14px; font-size: 14px; font-weight: 400; background: var(--v-plan-bg); color: var(--v-plan-ink); }
+.visa-row.ok { background: var(--v-book-bg); color: var(--v-book-ink); }
+.visa-row b { font-weight: 650; }
+.visa-row > span:not(.visa-ic) { color: var(--v-ink); }
+.visa-ic { display: inline-grid; place-items: center; width: 16px; height: 16px; font-weight: 800; }
+.visa-sp { flex: 1; }
+.visa-row a { margin: 0; color: inherit; font-weight: 600; font-size: 13px; }
+.visa-row .visa-tick { width: auto; height: auto; display: inline-flex; align-items: center; gap: 4px; border: 1.5px solid var(--v-plan-dot); border-radius: 999px; background: #fff; color: var(--v-plan-ink); padding: 3px 10px; font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; }
+.visa-row.ok .visa-tick { background: none; border-color: transparent; color: var(--v-muted); font-weight: 500; text-decoration: underline dotted; }
+
+/* v11 Hazırlık as drawn: three across, each a soft tile with a square tick; a ready one white with a green edge and
+   "Hazır" (not struck through); a thing to buy has "Amazon ↗". */
+.prep { margin: 0; display: grid; gap: 10px; }
+.cat-grid + .prep { margin-top: 4px; padding-top: 0; border-top: 0; }
+.prep-head { margin: 0; font-size: 13px; color: var(--v-muted); font-weight: 400; }
+.prep-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 8px; }
+.prep-row { min-height: 0; padding: 10px 12px; gap: 10px; border-radius: 12px; background: var(--v-soft); border: 1px solid transparent; }
+.prep-row + .prep-row { border-top: 1px solid transparent; }
+.prep-row.done { background: #fff; border-color: var(--v-book-line); }
+.prep-check { width: 22px; height: 22px; border-radius: 7px; border: 1.5px solid var(--v-dash); background: #fff; }
+.prep-row.done .prep-check { background: var(--v-book-ink); border-color: var(--v-book-ink); }
+.prep-row.done .prep-t { color: var(--v-ink); text-decoration: none; }
+.prep-t { font-size: 14px; }
+.prep-sub { font-size: 12px; color: var(--v-muted); }
+.prep-row.done .prep-done { font-size: 11.5px; font-weight: 700; color: var(--v-book-ink); background: var(--v-book-bg); border-radius: 999px; padding: 1px 8px; }
+.prep-buy { border: 0; padding: 0; font-size: 12px; font-weight: 500; color: var(--v-accent-ink); text-decoration: underline; text-underline-offset: 2px; }
+.prep-buy:hover { background: none; }
+.prep-row .pk-x { right: 6px; }
+.prep-move { right: 34px; background: #fff; }
+
+/* v11 an empty card as drawn: "Kendin ara" on its own line, the foot over a hairline. */
+.ek-card { display: grid; gap: 10px; }
+.ek-self .ek-find { margin: 0; justify-content: flex-start; }
+.ek-foot { display: flex; align-items: center; gap: 8px; min-height: 34px; margin: 0; padding: 10px 0 0; border-top: 1px solid color-mix(in srgb, var(--v-dash) 40%, transparent); background: none; font-size: 13px; }
+.ek-foot .ek-state { color: var(--v-muted); font-weight: 500; }
+.ek-sp { flex: 1; }
+.ek-foot .pk-ask { margin-left: 0; }
+.ek-skip { font-size: 12.5px; }
+.ek-card .pk-top { min-height: 24px; }
+
+/* v11 Etkinlik ve turlar's tiles as drawn: a neutral ground, the picture, the brand's mark, the price a person. */
+.ac-tile-pic { background: var(--v-tile); }
+.ac-tile .it-pic { height: 92px; }
+.ac-tile .ac-art { height: 80px; }
+.ac-bm { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 4px; border-radius: 5px; color: #fff; font-size: 10px; font-weight: 800; vertical-align: middle; }
+.ac-pp { color: var(--v-muted); }
+.ac-offer .ac-name { color: inherit; text-decoration: none; }
+.ac-offer .ac-name:hover { text-decoration: underline; }
+.ac-self { display: grid; gap: 6px; }
+.ac-self-note { margin: 0; font-size: 13px; color: var(--v-muted); }
+.ac-self-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 13px; }
+.ac-self-row .ek-find { margin: 0; justify-content: flex-start; }
+.ac-row.chosen { background: var(--v-plan-bg); border-color: var(--v-plan-line); }
+.ac-row.booked { background: var(--v-book-bg); border-color: var(--v-book-line); }
+.ac-row .ac-pic { width: 48px; height: 48px; border-radius: 10px; background: var(--v-tile); }
+
+/* v11 the Pano's cards as drawn: the drawing when the page gave no photo, a flight's arc, the site's mark, "Neden?". */
+.pn-illus { background: var(--v-tile); }
+.pn-illus img { width: 70%; height: 82%; object-fit: contain; mix-blend-mode: multiply; }
+.pn-arc { position: absolute; inset: 0; display: block; background: #eeebff; color: #6a4fe0; }
+.pn-arc svg { position: absolute; left: 6%; right: 6%; top: 26%; width: 88%; height: 46%; }
+.pn-arc b { position: absolute; bottom: 18%; font-size: 17px; font-weight: 700; color: var(--v-ink); }
+.pn-arc .a { left: 8%; } .pn-arc .b { right: 8%; }
+.pn-meta { display: flex; align-items: center; gap: 6px; }
+.pn-bm { display: inline-grid; place-items: center; flex: none; width: 18px; height: 18px; border-radius: 5px; color: #fff; font-size: 10px; font-weight: 800; }
+.pn-why { color: var(--v-accent-ink); font-weight: 600; }
+.pn-whylist { list-style: none; margin: 0; padding: 8px 14px 12px; display: grid; gap: 4px; font-size: 13px; border-top: 1px solid var(--v-line2); }
+.pn-whylist .pro { color: var(--v-book-ink); }
+.pn-whylist .con { color: #c62828; }
+.pn-whylist .cmp button { border: 0; background: none; padding: 0; font: inherit; color: var(--v-accent-ink); font-weight: 600; cursor: pointer; }
+.pn-img:has(.pn-illus) { background: var(--v-tile); }
+.pn-illus { position: absolute; inset: 0; display: grid; place-items: center; }
+.pn-arc b { bottom: 38%; }
+.pn-arc svg { top: 18%; height: 40%; }
+
+/* v11 Yapılacak şeyler as drawn: flush with the section, five small tiles across, the drawing in place of a photo,
+   "Daha fazla öner" filled lavender, the note plain. */
+.it-wrap { padding: 0; }
+.it-filters { align-items: center; }
+.it-filters .ac-more, .it-filters button.ac-more { border: 0; background: var(--v-lav); color: var(--v-accent-ink); font-weight: 600; font-size: 13px; padding: 5px 12px; }
+.it-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); }
+.it-pic { height: 92px; }
+.it-illus { height: 80px; max-width: 90%; object-fit: contain; mix-blend-mode: multiply; }
+.it-note { padding: 0; border: 0; border-radius: 0; font-size: 12.5px; color: var(--v-muted); }
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* v11: the "+" by a card (add here: its day and city) is out of sight until the card is pointed at or focused. */
+.cat-grid > .cat-card { position: relative; }
+.cat-grid > .cat-card > .pk-insert { position: absolute; left: 50%; bottom: -13px; z-index: 2; transform: translateX(-50%); margin: 0; height: auto; opacity: 0; transition: opacity .15s; }
+.cat-grid > .cat-card > .pk-insert::before { display: none; }
+.cat-grid > .cat-card:hover > .pk-insert, .cat-grid > .cat-card:focus-within > .pk-insert { opacity: 1; }
+.cat-grid > .cat-card > .pk-insert button { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 1px solid var(--v-line2); box-shadow: 0 1px 3px rgba(28, 26, 51, .12); color: var(--v-muted); font-size: 15px; line-height: 1; }
+.cat-grid > .cat-card > .pk-insert button { opacity: 1; }
+/* A ticket's ends never broken inside a word ("Booking.co / m"): long ones a size smaller, wrapping at spaces. */
+.pk-stop b, .pk-stop b.long { overflow-wrap: normal; word-break: normal; }
+.pk-stop b.long { font-size: 17px; }
+.cat-in-transport .pk-stop b { font-size: 18px; }
+.cat-in-transport .pk-stop b.long { font-size: 15px; }
+.nd-body.nd-has-art > .nd-wants, .nd-body.nd-has-art > .nd-self { grid-column: 1 / -1; }
