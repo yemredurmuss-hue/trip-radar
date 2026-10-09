@@ -683,7 +683,8 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     setAuto(null);
     nextTurn();
     stopAll();
-    const label = T(() => (isComplete(live.current) ? L("Gezimi oluştur", "Generate my trip") : L("Şimdilik bununla oluştur", "Generate with this for now")));
+    // One step, one word (Emre, 2026-10-09: "sadece oluştur"): it is "Oluştur" whatever is known.
+    const label = T(() => L("Oluştur", "Generate"));
     // A destination still to confirm ("Papua New Guinea?"): the suggested name is built (rev 3).
     const s = T(() => withGuessTaken(live.current, Date.now()));
     // The best route there is (rev 3): the agreed one, the proposal on screen, the classic circuit, or one stop.

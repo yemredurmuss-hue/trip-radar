@@ -99,8 +99,8 @@ export function Checklist({ rows, onAsk, disabled, drawing = null, reading = [],
   ));
 }
 
-/** "Gezimi oluştur" when every row is done; "Şimdilik bununla oluştur" while some are open (item 4). */
-export const generateLabel = (complete: boolean) => (complete ? L("Gezimi oluştur", "Generate my trip") : L("Şimdilik bununla oluştur", "Generate with this for now"));
+/** One word at every step (Emre, 2026-10-09): what is known or missing is said under the button, never in it. */
+export const generateLabel = () => L("Oluştur", "Generate");
 
 /**
  * The dark card under the list: it works as soon as the destination is known (what's missing is asked later in the
@@ -111,7 +111,7 @@ export function GenerateCard({ ready, complete, missing, onGenerate, lang }: { r
   return withLang(lang, () => (
     <div className="st-gen-card">
       <button type="button" className="st-gen-btn" data-auto-keep disabled={!ready} aria-disabled={!ready} onClick={onGenerate}>
-        <span aria-hidden>✨</span> {generateLabel(complete)}
+        <span aria-hidden>✨</span> {generateLabel()}
       </button>
       <p>
         {!ready
@@ -144,7 +144,7 @@ export function ChecklistBar({ rows, onAsk, ready, complete, onGenerate, disable
         </button>
         {ready && (
           <button type="button" className="st-bar-gen" data-auto-keep onClick={onGenerate}>
-            ✨ {complete ? L("Oluştur", "Generate") : L("Şimdilik oluştur", "Generate for now")}
+            ✨ {L("Oluştur", "Generate")}
           </button>
         )}
       </div>

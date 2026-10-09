@@ -3765,7 +3765,8 @@ try {
   await pv.getByText(/Sabine/).first().waitFor();
   await pv.locator(".st-pv-photo img.in").first().waitFor({ timeout: 15000 });
   const genBtn = board.locator(".st-side .st-gen-btn");
-  assert.match(await genBtn.innerText(), /Şimdilik bununla oluştur/, "before the list is full the button says it's for now");
+  assert.match(await genBtn.innerText(), /Oluştur/, "one word at every step: what is missing is said under the button");
+  assert.match(await board.locator(".st-side .st-gen-card p").innerText(), /Şimdi oluşturur, eksikleri sonra pano sohbetinde sorar/);
   assert.equal(await genBtn.isEnabled(), true, "it works with the destination known");
   // "İstanbul" to "Nereden?": where from, never the destination.
   await chat.getByLabel("Mesaj").fill("İstanbul");
@@ -3779,7 +3780,7 @@ try {
   assert.equal(await revList.locator(".st-row").first().innerText().then((t) => /İstanbul/.test(t)), false, "the destination is not İstanbul");
   await revList.locator(".st-row", { hasText: "NEREDEN" }).getByText("İstanbul", { exact: true }).waitFor();
   await pv.getByText("İstanbul ⇄ Koh Samui").waitFor();
-  assert.match(await genBtn.innerText(), /Şimdilik bununla oluştur/);
+  assert.match(await genBtn.innerText(), /Oluştur/);
   await board.screenshot({ path: `${out}/21a-start-interview-preview.png` });
   // Every assistant line is Turkish on the English board.
   const lines = await board.locator(".st-msg-bot").allInnerTexts();
