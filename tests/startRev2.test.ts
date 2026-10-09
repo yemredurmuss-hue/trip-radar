@@ -244,7 +244,7 @@ describe("the model's reply (item 5)", () => {
       text: "Sabine ile Koh Phangan harika: palmiyeli koylar.",
       question: "Nereden yola çıkıyorsunuz?",
     });
-    expect(acceptReply({ text: "x".repeat(221), question: "" }, "tr")).toBeNull();
+    expect(acceptReply({ text: "x".repeat(301), question: "" }, "tr")).toBeNull();
     expect(acceptReply({ text: "Uçuşlar 450 € civarı, harika.", question: "" }, "tr")).toBeNull();
     expect(acceptReply({ text: "Great, I've booked your hotel.", question: "" }, "en")).toBeNull();
     expect(acceptReply({ text: "Thailand with Sabine sounds incredible.", question: "Where from?" }, "tr")).toBeNull();
@@ -290,7 +290,8 @@ describe("prepared while chatting (item 7)", () => {
     let kept = withPreparedRoute(s, key, route([["Koh Phangan", 21], ["Koh Samui", 10]]));
     kept = withPhotos(kept, whereKey(kept)!, { "Koh Phangan": "https://img.test/kp.jpg", Tayland: null });
     expect(preparedPhotos(kept)).toEqual([{ place: "Koh Phangan", url: "https://img.test/kp.jpg" }]);
-    expect(photosToFind(kept)).toEqual(["Koh Samui"]);
+    // The places first, then the trip's moments (2026-10-09): here the food and the nature, no style said yet.
+    expect(photosToFind(kept)).toEqual(["Koh Samui", "moment:food", "moment:nature"]);
     const bali = typed(kept, "Aslında Bali'ye gidelim", null, 3);
     expect(bali.where?.place).toBe("Bali");
     // Koh Phangan's route is gone; Bali's classic circuit is proposed at once (rev 3), the model still asked.
@@ -298,7 +299,7 @@ describe("prepared while chatting (item 7)", () => {
     expect(bali.prepared.photos).toBeNull();
     expect(preparedPhotos(bali)).toEqual([]);
     expect(routeToPrepare(bali)).toBe("bali|ID|31");
-    expect(photosToFind(bali)).toEqual(["Bali", "Ubud", "Sidemen", "Canggu"]);
+    expect(photosToFind(bali)).toEqual(["Bali", "Ubud", "Sidemen", "Canggu", "moment:food", "moment:nature"]);
     // Photos found for Koh Phangan after the change are not Bali's.
     expect(withPhotos(bali, whereKey(kept)!, { "Koh Phangan": "https://img.test/late.jpg" })).toBe(bali);
     const back = typed(bali, "Aslında Koh Phangan'a gidelim", null, 4);

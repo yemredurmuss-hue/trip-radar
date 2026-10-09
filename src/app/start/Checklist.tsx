@@ -46,7 +46,6 @@ export function Checklist({ rows, onAsk, disabled, drawing = null, reading = [],
       <div className="st-list-head">
         <Ring done={done} total={rows.length} />
         <div>
-          <div className="st-eyebrow">{L("GEZİ LİSTESİ", "TRIP CHECKLIST")}</div>
           <div className="st-list-title">{L("Gezin şekilleniyor", "Your trip is taking shape")}</div>
           <div className="st-list-sub">{L(`${rows.length} bilgiden ${done}'${ACCUSATIVE[done] ?? "i"} tamam`, `${done} of ${rows.length} captured`)}</div>
         </div>

@@ -129,7 +129,8 @@ export function GenMap({ world, from, to, label, stops, ground, photos, timeline
           )}
         </defs>
         <rect x={-MAP_W} y={-MAP_W} width={MAP_W * 3} height={MAP_W * 3} className="gm-sea" />
-        {[-MAP_W, 0, MAP_W].map((dx) => (
+        {/* Only the copies of the world in view (the side ones only near the date line): a third of the drawing per frame. */}
+        {[-MAP_W, 0, MAP_W].filter((dx) => view.x < dx + MAP_W && view.x + view.w > dx).map((dx) => (
           <g key={dx} transform={dx ? `translate(${dx} 0)` : undefined}>
             <path d={world.land} className="gm-land" vectorEffect="non-scaling-stroke" />
             <path d={world.borders} className="gm-borders" vectorEffect="non-scaling-stroke" />

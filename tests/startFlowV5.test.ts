@@ -112,7 +112,8 @@ describe("the map itself", () => {
     }));
     expect(html).toContain('data-phase="done"');
     expect(html).toContain('data-flies="yes"');
-    expect(html.match(/class="gm-land"/g)?.length).toBe(3);
+    // Only the copy of the world in view is drawn (2026-10-09: a third of the drawing per frame); Cape Town is mid-map.
+    expect(html.match(/class="gm-land"/g)?.length).toBe(1);
     expect(html).toContain('class="gm-stop fest');
     expect(html.match(/gm-stop[^"]* in"/g)?.length).toBe(2);
     expect(html).toContain("gm-card gm-card-0 in");

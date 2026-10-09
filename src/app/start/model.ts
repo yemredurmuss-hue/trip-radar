@@ -135,7 +135,7 @@ export async function proposeRoute(s: StartState, useModel: boolean, signal?: Ab
 export async function findPhotos(places: string[], s?: Pick<StartState, "where" | "intent">): Promise<Record<string, string | null>> {
   const proxy = await imageProxy().catch(() => null);
   const found = await Promise.all(
-    places.slice(0, 4).map(async (place) => {
+    places.slice(0, 7).map(async (place) => {
       try {
         const how = s ? photoQuery(place, s) : { query: place, titles: [] };
         return [place, await withTimeout(pickCityImage(place, { proxy, ...how }), 8000)] as const;

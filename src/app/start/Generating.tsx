@@ -41,6 +41,8 @@ interface Props {
   onFinished: (tripId: string, keepDraft?: boolean) => void;
   /** Back to the conversation (nothing made yet, or made and left as it is). */
   onBack: () => void;
+  /** Each step's line once it's done, for the chat beside it (it never stands still while the trip is made). */
+  onLine?: (text: string) => void;
 }
 
 /** A photo card: the gradient (and the place's name) first, the photo fading in over it once loaded. */
@@ -55,7 +57,7 @@ function Card({ i, place, url }: { i: number; place: string; url: string | null 
   );
 }
 
-export function Generating({ state, onTripId, onFinished, onBack }: Props) {
+export function Generating({ state, onTripId, onFinished, onBack, onLine }: Props) {
   const T = <R,>(fn: () => R): R => withLang(state.lang, fn);
   // Made once from the interview as it was when "Oluştur" was pressed.
   const [creation] = useState(() => T(() => creationOf(state)));
@@ -63,8 +65,10 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
   const [status, setStatus] = useState<Record<string, StepState>>({});
   const [failed, setFailed] = useState<{ id: StepId; text: string } | null>(null);
   const [lines, setLines] = useState<Record<string, string>>({});
+  const linesRef = useRef(lines);
+  linesRef.current = lines;
   // What was prepared while chatting shows at once; the rest is looked for now.
-  const [photos, setPhotos] = useState<{ place: string; url: string }[]>(() => preparedPhotos(state));
+  const [photos, setPhotos] = useState<{ place: string; url: string; moment?: boolean }[]>(() => preparedPhotos(state));
   const current = useRef(state);
   const started = useRef(false);
   const place = state.where?.place ?? "";
@@ -114,6 +118,18 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
       const step = steps[i];
       setStatus((s) => ({ ...s, [step.id]: "run" }));
       const began = Date.now();
+      // The suggestions aren't waited for (2026-10-09, Emre: "her şeyi tamamlayana kadar beklemesin"): the board opens and
+      // they keep arriving there (the review is claimed first, so the board waits for it instead of asking again).
+      if (step.id === "suggestions") {
+        const made = current.current;
+        void runStep("suggestions", made).catch(() => undefined);
+        const line = T(() => L("Öneriler hazırlanıyor; panoda gelmeye devam edecek", "Suggestions are on their way; they keep arriving on the board"));
+        setLines((l) => ({ ...l, [step.id]: line }));
+        if (!still) await wait(MIN_STEP_MS);
+        setStatus((s) => ({ ...s, [step.id]: "done" }));
+        onLine?.(line);
+        continue;
+      }
       try {
         const out = await runStep(step.id, current.current);
         if (step.id === "trip") {
@@ -121,7 +137,10 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
           onTripId(out.tripId);
         }
         // A step with its own words now ("3 öneri bölümlerinde").
-        if (out.done) setLines((l) => ({ ...l, [step.id]: out.done! }));
+        if (out.done) {
+          linesRef.current = { ...linesRef.current, [step.id]: out.done };
+          setLines((l) => ({ ...l, [step.id]: out.done! }));
+        }
       } catch (error) {
         setStatus((s) => ({ ...s, [step.id]: "error" }));
         setFailed({ id: step.id, text: error instanceof Error ? error.message : String(error) });
@@ -129,6 +148,7 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
       }
       if (!still) await wait(Math.max(0, MIN_STEP_MS - (Date.now() - began)));
       setStatus((s) => ({ ...s, [step.id]: "done" }));
+      onLine?.(linesRef.current[step.id] ?? step.done);
       if (!still) await wait(TICK_MS);
     }
     const tripId = current.current.tripId;
@@ -195,8 +215,11 @@ export function Generating({ state, onTripId, onFinished, onBack }: Props) {
   const mapPhotos = plan
     ? (() => {
         const byStop = plan.map.stops.map((s) => photos.find((p) => cityKeyOf(p.place) === cityKeyOf(s.name)) ?? null).filter((p): p is { place: string; url: string } => !!p);
-        const rest = photos.filter((p) => !byStop.includes(p));
-        const list = [...byStop, ...rest].slice(0, 3);
+        // A place, a moment of the trip (a romantic dinner, the food), another place: the trip, not only its towns.
+        const moments = photos.filter((p) => p.moment);
+        const places = [...byStop, ...photos.filter((p) => !byStop.includes(p) && !moments.includes(p))];
+        const mixed = [places[0], moments[0], places[1] ?? moments[1], moments[1], places[2]].filter((p, i, all): p is { place: string; url: string } => !!p && all.indexOf(p) === i);
+        const list = mixed.slice(0, 3);
         return list.length ? list : plan.map.stops.slice(0, 3).map((s) => ({ place: s.name, url: null }));
       })()
     : [];

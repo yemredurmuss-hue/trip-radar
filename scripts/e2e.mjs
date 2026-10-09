@@ -2963,8 +2963,9 @@ try {
   const baliGen = await genSeen();
   assert.equal(baliGen.sub, "İstanbul → Ubud → Canggu → Uluwatu · 31 gece");
   for (const step of ["Gezi açıldı: Bali Gezisi", "İstanbul ⇄ Denpasar uçuşları için yer açıldı", "Rota çizildi: Ubud 12 gece → Canggu 10 gece → Uluwatu 9 gece"]) assert.ok(baliGen.steps.includes(step), `step "${step}" (${baliGen.steps.join(" | ")})`);
-  // The suggestions' review is the last real step (the same review the board runs, so it isn't asked again there).
-  assert.ok(baliGen.steps.some((x) => /öneri bölümlerinde|Şimdilik öneri yok/.test(x)), "the suggestions' step");
+  // The suggestions' review is started as the last step and not waited for (2026-10-09): the board opens and they keep
+  // arriving there (the same review the board runs, claimed first, so it isn't asked again there).
+  assert.ok(baliGen.steps.some((x) => /Öneriler hazırlanıyor; panoda gelmeye devam edecek/.test(x)), "the suggestions' step");
   const guide = board.locator(".st-guide");
   await guide.getByText("Uçuşları bul").waitFor();
   await guide.getByText("Konaklamaları seç").waitFor();
@@ -3802,7 +3803,7 @@ try {
   const kpGen = await genSeen();
   // The map speaks the chat's language on the English board; the bundled world as SVG; no canvas (no MapLibre).
   assert.equal(kpGen.credit, "Harita: Natural Earth");
-  assert.equal(kpGen.land, 3, "the bundled world, as SVG (three times side by side, for the date line)");
+  assert.ok(kpGen.land >= 1, "the bundled world, as SVG (only the copies in view: the side ones near the date line)");
   assert.equal(kpGen.canvas, 0, "no canvas (no MapLibre) on the generating screen");
   // The big steps: 28 px marks (their layout size: a tick popping in is scaled for a moment).
   assert.equal(kpGen.mark, 28, "28 px step icons");

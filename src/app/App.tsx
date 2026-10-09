@@ -22,6 +22,7 @@ import { ShareDialog, ShareProvider } from "./Share";
 import { TripPanel } from "./TripPanel";
 import { TripsHome, type StartLaunch } from "./TripsHome";
 import { StartChat } from "./start/StartChat";
+import { withTransition } from "./viewTransition";
 import { newId } from "../lib/db";
 import { loadPassport } from "../lib/passport";
 import { useMyName } from "./Profile";
@@ -253,12 +254,14 @@ export function App() {
           firstLabel={start.draft ? undefined : start.label}
           firstNote={start.draft ? undefined : start.note}
           ctx={startCtx}
-          onClose={() => setStart(null)}
+          onClose={() => withTransition(() => setStart(null))}
           onCreated={(tripId) => {
             // A generation left behind (the screen was left, another start opened) doesn't take the board over.
             if (startKey.current !== start.key) return;
-            setStart(null);
-            board.selectTrip(tripId);
+            withTransition(() => {
+              setStart(null);
+              board.selectTrip(tripId);
+            });
           }}
         />
       ) : (
@@ -270,7 +273,7 @@ export function App() {
             onOpen={board.selectTrip}
             onDemo={() => void loadDemoTrip().then(board.selectTrip)}
             onSettings={() => setSettingsOpen(true)}
-            onStart={(launch) => setStart({ ...launch, key: newId() })}
+            onStart={(launch) => withTransition(() => setStart({ ...launch, key: newId() }))}
             onAddToTrip={addToTrip}
             ctx={startCtx}
             menu={menu}

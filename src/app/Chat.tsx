@@ -66,7 +66,10 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
   // Block body on purpose: newer Chrome returns a Promise from scrollIntoView, and a value returned
   // from an effect is treated as its cleanup function (React then crashes calling it).
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
+    // Only the messages' own box scrolls (scrollIntoView moved the whole page too: a board opened from the start chat
+    // landed at its bottom, 2026-10-09).
+    const box = bottom.current?.closest(".messages");
+    if (box) box.scrollTop = box.scrollHeight;
     // Each step of the turn as it comes (it's what the traveller watches while the board changes).
   }, [arrivals.rows.length, busy, steps.length]);
 

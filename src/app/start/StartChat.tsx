@@ -38,7 +38,10 @@ import {
 import { STYLE_META, STYLES, type BudgetLevel, type StyleId } from "../../lib/tripStyle";
 import { ArrowUp, Back, HeroIcon } from "../Icons";
 import { Checklist, ChecklistBar, GenerateCard } from "./Checklist";
+import { UiIcon } from "../cards/Silhouettes";
+import { loadWorld } from "./FlightMap";
 import { Generating } from "./Generating";
+import { LivePlan } from "./LivePlan";
 import { findPhotos, modelAvailable, proposeRoute, READ_MS, readAndReply, REPLY_MS, within } from "./model";
 import { TripPreview } from "./Preview";
 // The suggestions' review as the generating screen's last step, and the rules' preview (registered through startHooks).
@@ -74,7 +77,11 @@ function BotLine({ text, link, linkLabel }: { text: string; link?: string; linkL
   const last = cut >= 0 ? text.slice(cut + 1) : text;
   // Only a question is bold (the ready line, "Rotayı çiziyorum…" aren't); a one-line question too.
   // (A question may end with a note in brackets: "…ne istiyorsun? (birden çok seçebilirsin)".)
-  const question = /\?\s*(\([^)]*\))?\s*$/.test(last) && (cut >= 0 || !/[.!:]\s/.test(text.split("?")[0])) ? last : null;
+  // (Or with what it unlocks after it, 2026-10-09: "…başlıyorsunuz? Uçuşlar o güne yerleşsin." — the question bold, the
+  // reason soft beside it.)
+  const parts = /^(.*\?)\s*(\([^)]*\)|[^?]{1,110})?\s*$/.exec(last);
+  const question = parts && (cut >= 0 || !/[.!:]\s/.test(text.split("?")[0])) ? last : null;
+  const why = parts?.[2] && !parts[2].startsWith("(") ? parts[2].trim() : null;
   // The event's official site, after the line that says to check it (2026-10-06).
   const site = link ? (
     <>
@@ -90,7 +97,13 @@ function BotLine({ text, link, linkLabel }: { text: string; link?: string; linkL
     <>
       {ack && <span className="st-ack">{ack}{site}</span>}
       {ack && "\n"}
-      <strong className="st-q">{question}</strong>
+      {why ? (
+        <>
+          <strong className="st-q">{parts![1]}</strong> <span className="st-why">{why}</span>
+        </>
+      ) : (
+        <strong className="st-q">{question}</strong>
+      )}
       {!ack && site}
     </>
   );
@@ -103,6 +116,10 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
   const [text, setText] = useState("");
   const [placeholder, setPlaceholder] = useState<string | null>(null);
   const [phase, setPhaseState] = useState<"chat" | "generating">("chat");
+  // What the generating steps did, said in the chat as each finishes (it never stands still while the trip is made).
+  const [genLines, setGenLines] = useState<string[]>([]);
+  // The generating screen's world map read now, while chatting: "Oluştur" starts the flight at once (2026-10-09).
+  useEffect(() => void loadWorld().catch(() => null), []);
   // Read after every wait: an answer that comes back after "Gezimi oluştur", or after the screen was left, is dropped.
   const phaseNow = useRef<"chat" | "generating">("chat");
   const setPhase = (p: "chat" | "generating") => {
@@ -351,7 +368,9 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
   });
 
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
+    // Only the conversation's own box scrolls, never the page.
+    const box = bottom.current?.closest(".st-msgs");
+    if (box) box.scrollTop = box.scrollHeight;
     // The plan said back when it starts counting: in view (2026-10-07).
   }, [state.messages.length, stage, auto != null]);
 
@@ -731,10 +750,24 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
           {!generating && <ChecklistBar rows={rows} onAsk={ask} ready={ready} complete={complete} onGenerate={generate} disabled={holding} drawing={drawing} reading={readingIds} lang={lang} />}
           <div className="st-msgs" role="log" aria-live="polite" aria-label={L("Sohbet", "Conversation")}>
             {state.messages.map((m, i) => (
-              <div key={m.id ?? `line-${i}`} className={m.role === "user" ? "st-msg-user" : "st-msg-bot"}>
+              <div key={m.id ?? `line-${i}`} className={m.role === "user" ? "st-msg-user" : "st-msg-bot"}
+                // The home's box flows into the first thing said (viewTransition.ts).
+                style={i === state.messages.findIndex((x) => x.role === "user") ? { viewTransitionName: "start-prompt" } : undefined}>
                 {m.role === "assistant" ? <BotLine text={m.text} link={m.link} linkLabel={L("Resmî site", "Official site")} /> : m.text}
               </div>
             ))}
+            {generating && genLines.length > 0 && (
+              <div className="st-genlines" aria-label={L("Oluşturuluyor", "Being made")}>
+                {genLines.map((line, i) => (
+                  <div key={`${i}:${line}`} className="st-genline">
+                    <span className="st-genline-tick" aria-hidden>
+                      <UiIcon name="check" size={12} />
+                    </span>
+                    {line}
+                  </div>
+                ))}
+              </div>
+            )}
             {showChips && question && (
               <div className="st-answers">
                 {question.hint && <div className="st-hint">{question.hint}</div>}
@@ -896,13 +929,20 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
                 else forget();
                 onCreated(tripId);
               }}
-              onBack={() => setPhase("chat")}
+              onBack={() => (setGenLines([]), setPhase("chat"))}
+              onLine={(line) => setGenLines((l) => [...l, line])}
             />
           ) : (
             <div className="st-side-inner">
-              <Checklist rows={rows} onAsk={ask} disabled={holding} drawing={drawing} reading={readingIds} lang={lang} />
-              <GenerateCard ready={ready} complete={complete} missing={missingForGenerate(state)} onGenerate={generate} lang={lang} />
-              {preview && <TripPreview preview={preview} place={state.where?.place ?? ""} lang={lang} />}
+              <div className="st-side-main">
+                {preview && <TripPreview preview={preview} place={state.where?.place ?? ""} lang={lang} />}
+                <Checklist rows={rows} onAsk={ask} disabled={holding} drawing={drawing} reading={readingIds} lang={lang} />
+                <GenerateCard ready={ready} complete={complete} missing={missingForGenerate(state)} onGenerate={generate} lang={lang} />
+              </div>
+              {/* The plan "Oluştur" would make, drawn as the answers come (LivePlan.tsx). */}
+              <div className="st-side-plan">
+                <LivePlan state={state} lang={lang} />
+              </div>
             </div>
           )}
         </aside>

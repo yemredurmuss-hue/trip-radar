@@ -1153,10 +1153,10 @@ export type RawTurn = z.infer<typeof turnSchema>;
 
 const replyRules = () =>
   L(
-    `reply.text: sıcak, samimi, 1-2 kısa cümle; söylenen yere özgü renk kat (ör. "Sabine ile Tayland kulağa harika geliyor: Bangkok'tan Chiang Mai'nin sisli dağlarına ve güneyin cennet koylarına."). En fazla 220 karakter. Fiyat yazma; uçuş, otel ya da rezervasyon hakkında olgu uydurma; text içinde soru sorma.
-reply.question: yalnız "Sıradaki soru" için tek, kısa bir soru, soru işaretiyle biter; sıradaki soru yoksa "".`,
-    `reply.text: warm, friendly, 1-2 short sentences with colour specific to the place (e.g. "Thailand with Sabine sounds incredible: from Bangkok to the misty mountains of Chiang Mai and the idyllic beaches down south."). At most 220 characters. No prices; never invent facts about flights, hotels or bookings; no question in text.
-reply.question: one short question for "Next question" only, ending with a question mark; "" when there is no next question.`,
+    `reply.text: sıcak, samimi, 1-3 kısa cümle; bir sohbet gibi, form gibi değil. Kullanıcı mesajında bir şey sorduysa ya da bir endişe söylediyse (hava, en iyi zaman, vize, güvenlik, "nereye gitsek"), önce ona kısa ve dürüst cevap ver; emin olmadığını "kesin bilmiyorum" diye söyle. Sonra söylenen yere özgü renk kat (ör. "Sabine ile Tayland kulağa harika geliyor: Bangkok'tan Chiang Mai'nin sisli dağlarına ve güneyin cennet koylarına."). En fazla 300 karakter. Fiyat yazma; uçuş, otel ya da rezervasyon hakkında olgu uydurma; text içinde soru sorma.
+reply.question: yalnız "Sıradaki soru" için tek, kısa, doğal bir soru, soru işaretiyle biter; gerekirse sonuna neyi açacağını tek kısa ifadeyle ekle (ör. "Hangi gün başlıyorsunuz? Uçuşlar ve oteller o güne yerleşsin."; soru işaretinden sonra en fazla bir kısa cümle). Sıradaki soru yoksa "".`,
+    `reply.text: warm, friendly, 1-3 short sentences; a conversation, not a form. If the user's message asked something or voiced a worry (weather, the best time, visas, safety, "where should we go"), answer that first, briefly and honestly; say "I'm not sure" when you aren't. Then colour specific to the place (e.g. "Thailand with Sabine sounds incredible: from Bangkok to the misty mountains of Chiang Mai and the idyllic beaches down south."). At most 300 characters. No prices; never invent facts about flights, hotels or bookings; no question in text.
+reply.question: one short, natural question for "Next question" only, ending with a question mark; if it helps, add after it one short phrase saying what it unlocks (e.g. "Which day do you start? Then the flights and stays get their dates."; at most one short sentence after the question mark). "" when there is no next question.`,
   );
 
 // What a made playbook looks like (spec 2026-10-07-akilli-planlayici §A): two short examples, a kind with a playbook
@@ -1260,7 +1260,7 @@ export function turnPrompt(a: { text: string; today: string; pending: QuestionId
 
 const PRICE = /[€$£₺¥฿]|\d[\d.,]*\s?(tl|try|eur|euro|usd|dolar|dollars?|lira|baht|thb|gbp|pound)(?![\p{L}])/iu;
 const BOOKING = /(rezervasyon\p{L}*\s+(yap|tamam|hazır|onay)|ayırttım|ayırdım|bilet\p{L}*\s+(aldım|alındı)|booked|reserved|i'?ve (booked|reserved)|tickets? (are )?(bought|booked))/iu;
-export const REPLY_MAX = 220;
+export const REPLY_MAX = 300;
 
 /**
  * The model's reply kept only when it holds: in the chat's language, at most 220 characters, no prices, no claims
@@ -1277,7 +1277,9 @@ export function acceptReply(raw: RawReply | null | undefined, l: Lang): { text: 
     return said != null && said !== l;
   };
   if (!text || text.length > REPLY_MAX || PRICE.test(text) || BOOKING.test(text) || wrongLang(text)) return null;
-  const q = question && question.endsWith("?") && question.length <= 160 && !PRICE.test(question) && !wrongLang(question) ? question : null;
+  // A question, and at most one short line after it on what it unlocks ("…? Uçuşlar o güne yerleşsin.").
+  const asks = /\?\s*([^?]{0,90}[.!]?)?$/.test(question) && question.includes("?");
+  const q = question && asks && question.length <= 200 && !PRICE.test(question) && !wrongLang(question) ? question : null;
   return { text, question: q };
 }
 
@@ -2919,6 +2921,52 @@ export function photoPlaces(s: Pick<StartState, "where" | "route">): string[] {
   return [...new Map(names.map((n) => [squash(n), n])).values()].slice(0, 4);
 }
 
+/** A photo of the trip's mood, not of a place (2026-10-09): its key in the prepared photos starts with this. */
+export const MOMENT = "moment:";
+
+/** Each style's scene: what the search is asked (English, after the destination) and what the card says. */
+const MOMENTS: Record<StyleId, { q: string; label: () => string }> = {
+  romantic: { q: "romantic dinner", label: () => L("Romantik akşam", "A romantic evening") },
+  luxury: { q: "luxury villa pool", label: () => L("Havuzlu villa", "A villa with a pool") },
+  beach: { q: "beach sunset", label: () => L("Gün batımı", "Sunset") },
+  nature: { q: "nature landscape", label: () => L("Doğa", "Nature") },
+  culture: { q: "temple", label: () => L("Kültür", "Culture") },
+  food: { q: "local food", label: () => L("Yerel lezzetler", "Local food") },
+  adventure: { q: "adventure", label: () => L("Macera", "Adventure") },
+  nightlife: { q: "nightlife", label: () => L("Gece hayatı", "Nightlife") },
+  calm: { q: "spa", label: () => L("Dinginlik", "Calm") },
+  city: { q: "street", label: () => L("Sokaklar", "The streets") },
+  family: { q: "family holiday", label: () => L("Aileyle", "With the family") },
+  active: { q: "hiking", label: () => L("Doğa yürüyüşü", "Hiking") },
+};
+
+/**
+ * The trip's moments to show besides its places (2026-10-09, Emre: "Bali deyince kız arkadaşımla heyecanlı Bali
+ * fotoğrafları, yemek, etkinlik, manzara"): one per style said (two at most), a couple's trip romantic when no style
+ * says so, then the food; three at most, never for an event (its own photo is the point).
+ */
+export function photoMoments(s: Pick<StartState, "where" | "styles" | "who" | "intent">): { key: string; style: StyleId }[] {
+  if (!s.where || s.intent?.kind === "event") return [];
+  const said = knownStyles(s.styles ?? []).slice(0, 2);
+  const list: StyleId[] = [...said];
+  if (s.who?.kind === "partner" && !list.includes("romantic")) list.push("romantic");
+  if (!list.includes("food")) list.push("food");
+  if (list.length < 3 && !list.includes("beach") && !list.includes("nature")) list.push("nature");
+  return list.slice(0, 3).map((style) => ({ key: `${MOMENT}${style}`, style }));
+}
+
+/** A moment's words on its card ("Romantik akşam"); null for a place. */
+export function momentLabel(key: string): string | null {
+  if (!key.startsWith(MOMENT)) return null;
+  const m = MOMENTS[key.slice(MOMENT.length) as StyleId];
+  return m ? m.label() : null;
+}
+
+/** Everything to find a photo for: the places first, then the moments (seven at most). */
+export function photoKeys(s: StartState): string[] {
+  return [...photoPlaces(s), ...photoMoments(s).map((m) => m.key)].slice(0, 7);
+}
+
 /** What the photo search is asked (cityImages.ts findCityPhoto): an event adds the searches after its name. */
 export interface PhotoQuery {
   query: string;
@@ -2942,6 +2990,14 @@ export function eventPhotoQuery(name: string, festival: boolean): PhotoQuery {
  * is named. English names, which the search knows best.
  */
 export function photoQuery(place: string, s: Pick<StartState, "where" | "intent">): PhotoQuery {
+  // A moment: the destination's scene ("Bali romantic dinner"), else the scene in its country, else the scene alone.
+  if (place.startsWith(MOMENT)) {
+    const scene = MOMENTS[place.slice(MOMENT.length) as StyleId]?.q ?? "travel";
+    const code = s.where?.code ?? countryCodeOfName(s.where?.country) ?? null;
+    const country = code ? regionName(code, "en") : null;
+    const where = s.where ? (englishName(s.where.place) ?? knownPlaceOf(s.where.place)?.en ?? s.where.place) : "";
+    return { query: `${where} ${scene}`.trim(), titles: [], alt: [country && country !== where ? `${country} ${scene}` : `${scene} travel`] };
+  }
   // An event's place is the event (2026-10-07): Ozora is the festival, not the village.
   const it = s.intent;
   if (it?.kind === "event" && samePlace(place, it.place)) return eventPhotoQuery(it.name, playbookFor(it) === "festival");
@@ -2949,8 +3005,10 @@ export function photoQuery(place: string, s: Pick<StartState, "where" | "intent"
   if (own) return { query: `${regionName(own, "en") ?? place} landscape`, titles: [] };
   const code = s.where?.code ?? countryCodeOfName(s.where?.country) ?? null;
   const country = code ? regionName(code, "en") : null;
-  if (!country || samePlace(place, s.where?.place)) return { query: place, titles: [] };
   const en = englishName(place) ?? knownPlaceOf(place)?.en ?? place;
+  // The destination by its English name: "Lizbon travel" found a "travel the world" tile board, "Lisbon" is Lisbon
+  // (2026-10-09).
+  if (!country || samePlace(place, s.where?.place)) return { query: en, titles: [] };
   return { query: `${en} ${country}`, titles: [`${en}, ${country}`] };
 }
 
@@ -2959,7 +3017,7 @@ export function photosToFind(s: StartState): string[] {
   if (s.guess) return [];
   const k = whereKey(s);
   const have = s.prepared.photos?.for === k ? s.prepared.photos.urls : {};
-  return photoPlaces(s).filter((p) => !Object.hasOwn(have, p));
+  return photoKeys(s).filter((p) => !Object.hasOwn(have, p));
 }
 
 /** Photos found (null: looked for, none), kept when they are still for the destination now. */
@@ -2970,9 +3028,16 @@ export function withPhotos(s: StartState, forKey: string, found: Record<string, 
 }
 
 /** The photos ready for the places now, in their order. */
-export function preparedPhotos(s: StartState): { place: string; url: string }[] {
+export function preparedPhotos(s: StartState): { place: string; url: string; moment?: boolean }[] {
   const urls = s.prepared.photos?.for === whereKey(s) ? s.prepared.photos.urls : {};
-  return photoPlaces(s).flatMap((place) => (urls[place] ? [{ place, url: urls[place]! }] : []));
+  // The same photo found for two searches ("Bali" and "Ubud" both gave the rice terraces) is shown once.
+  const seen = new Set<string>();
+  return photoKeys(s).flatMap((key) => {
+    const url = urls[key];
+    if (!url || seen.has(url)) return [];
+    seen.add(url);
+    return [{ place: momentLabel(key) ?? key, url, ...(key.startsWith(MOMENT) ? { moment: true } : {}) }];
+  });
 }
 
 /** What would be made, in short: the rules' suggestions are worked out again only when it changes. */
