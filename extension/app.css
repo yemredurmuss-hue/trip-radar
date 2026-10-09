@@ -3262,3 +3262,30 @@ a.ch-why { text-decoration: none; }
 .ac-pic.art, .ac-tile .ac-art { mix-blend-mode: multiply; }
 .ac-empty { margin: 4px 0 6px; }
 .cat-sec[data-section="activity"] .cat-search { margin-left: 0; padding-left: 0; }
+
+/* v11 Hazırlık: why these, "Daha fazla öner", a line under each, "Hazır", Amazon for a thing to buy. */
+.prep-head { align-items: center; flex-wrap: wrap; }
+.prep-head span { font-weight: 650; color: #1c1a33; }
+.prep-why { font-size: 13px; font-weight: 400; color: #8e8e93; }
+.prep-sp { flex: 1; }
+.prep-head .prep-hide { margin-left: 0; }
+.prep-t { display: flex; flex-direction: column; gap: 1px; }
+.prep-sub { font-size: 12.5px; color: #8e8e93; }
+.prep-row.done .prep-done { font-size: 12px; font-weight: 650; color: #17784a; background: #e8f6ee; border-radius: 999px; padding: 2px 9px; }
+.prep-buy { flex: none; font-size: 12.5px; font-weight: 650; color: #4b36c9; text-decoration: none; border: 1px solid #ded8ff; border-radius: 999px; padding: 2px 9px; }
+.prep-buy:hover { background: #f4f1ff; }
+
+/* v11: a card's stage word on its top line (Arıyoruz, Rezerve), the booking's stamp, ✨ ask, "Pano'da N alternatif". */
+.pk-lab { font-size: 12.5px; font-weight: 650; white-space: nowrap; margin-right: 6px; }
+.pk-lab.open { color: #8e8e93; font-weight: 500; }
+.pk-lab.booked { color: #17784a; }
+.pk-stamp { position: absolute; right: 16px; top: 46px; width: 40px; height: 40px; border-radius: 50%; border: 2px solid #17784a; color: #17784a; display: grid; place-items: center; transform: rotate(-12deg); opacity: .35; pointer-events: none; }
+.pk-card { position: relative; }
+.pk-ask { flex: none; margin-left: auto; width: 30px; height: 30px; border-radius: 50%; border: 0; background: #efebff; font-size: 14px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
+.pk-ask:hover { background: #e2dcff; }
+.pk-ask:focus-visible { outline: 2px solid #6a4fe0; outline-offset: 2px; }
+.ek-foot .pk-ask { margin-left: 6px; }
+.pk-alt { border: 0; background: none; padding: 0 2px; font: inherit; font-size: 12.5px; color: #6e6e78; border-bottom: 1px dotted #b8b8c4; cursor: pointer; white-space: nowrap; }
+.pk-alt:hover { color: #1c1a33; }
+.ch-more { color: #4b36c9; }
+.it-sp { flex: 1; }
