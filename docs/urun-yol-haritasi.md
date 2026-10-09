@@ -389,3 +389,12 @@ Spec için Emre'den bekleyen: Harita sekmesinin yeri, bölüm bütçesi, faz sı
 Tek sekme çubuğu hero'nun üstünde (Plan · Gün gün · Belgeler; Harita Gün gün'ün içinde), bölümler yeni sırada
 (Etkinlik ve turlar · Yapılacak şeyler restoranlarla · Sigorta ve internet · Hazırlık kendi bölümü, vize satırı ilk),
 hepsi açık gelir, başlıkta aşama sözleri. Unit 1677/1677, e2e yeşil. Sıradaki: Faz 2 (kartlar).
+
+## Faz 2a yayında: 0.36.57 (2026-10-09 gece) + K73
+
+- "Plana koy" her yerde; "✓ Aldım" planlanan kartın üst satırında; × = "Gerek yok" (rezervede önce sorar, panonun
+  kendi penceresi).
+- **K73 · Vize belgelerin yanında (Emre, 2026-10-09: "Belgeler sanki yerinde daha iyiydi … Vizesiz 90 gün yazması hoşuma
+  gitmişti"):** bölümün adı yine "Belgeler ve internet"; ilk satırı vize. Gerekmiyorsa yeşil ve öne çıkan "✓ Vize
+  gerekmiyor · Türk pasaportuyla 90 güne kadar"; gerekiyorsa amber, resmi kaynak linki ve işaretlenebilir "Vize alındı".
+  K64'ün "vize Hazırlık'a" kısmını geri alır. Değişmezler listesine: vize satırı Belgeler ve internet'in ilk satırı.

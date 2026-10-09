@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan ve öneriler v1</title>
+<style>
+  /*
+    Plan ekranı (2026-10-07, Emre'nin taslağından):
+    - Solda sohbet, sağda plan. Planın her bölümü (uçuşlar, her şehrin konaklaması, ulaşım, deneyimler, hazırlık)
+      açılır kapanır; kullanıcı istediğini açıp planlar. Sıradaki karar kendiliğinden açık gelir.
+    - Açık bölüm: "Aradığımız" çipleri (× ile kalkar, sohbet de bunları değiştirir), benzerlerinin fiyat aralığı,
+      3 öneri (Booking), Airbnb için ayrı bir hazır arama satırı, kullanıcının panoya kaydettikleri, kendi araması.
+    - Her düğmenin anlamı sabit: karta tıkla = incele (uygulama içinde panel), "+ Plana ekle" = karar,
+      "Rezervasyona git" = satın alma. Plana eklenince bölüm tek seçili karta daralır.
+    Durumlar: ?s=1 (ilk), ?s=2 (detay paneli), ?s=3 (plana eklendi), ?s=4 (aynı tarihlere ikinci konaklama).
+  */
+  :root {
+    --ink: #17171c; --gray: #6b6b76; --mute: #9a9aa5; --line: #e9e8ef; --bg: #f7f6fb; --card: #fff;
+    --brand: #5b4fe0; --brand-soft: #eeecfd; --brand-ink: #3d32b8;
+    --stay: #1b9a8a; --flight: #6a4fe0; --move: #c27a12; --act: #b0397a; --prep: #4a7bd0;
+    --amber: #9a5b00; --amber-bg: #fdf3e2; --ok: #1f8f4e; --ok-bg: #e8f6ee;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+    color: var(--ink); -webkit-font-smoothing: antialiased;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); }
+  button { font-family: inherit; color: inherit; cursor: pointer; }
+  a { color: inherit; text-decoration: none; }
+
+  /* ---------- üst çubuk ---------- */
+  .top { height: 64px; display: flex; align-items: center; gap: 20px; padding: 0 28px; background: #fff; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 21px; letter-spacing: -.02em; }
+  .logo svg { width: 28px; height: 28px; }
+  .trip { display: flex; align-items: center; gap: 8px; padding-left: 20px; border-left: 1px solid var(--line); font-size: 16px; }
+  .tabs { margin: 0 auto; display: flex; gap: 6px; }
+  .tabs a { padding: 20px 18px; font-size: 16px; color: var(--gray); border-bottom: 2px solid transparent; }
+  .tabs a.on { color: var(--brand); border-color: var(--brand); font-weight: 600; }
+  .tabs a .n { display: inline-block; margin-left: 6px; min-width: 20px; padding: 1px 6px; border-radius: 999px; background: var(--brand-soft); color: var(--brand-ink); font-size: 12px; font-weight: 600; }
+  .share { display: flex; align-items: center; gap: 8px; padding: 9px 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 15px; }
+  .avs { display: flex; }
+  .avs span { width: 36px; height: 36px; border-radius: 50%; border: 2px solid #fff; margin-left: -8px; display: grid; place-items: center; font-size: 14px; font-weight: 700; color: #fff; }
+
+  .app { display: grid; grid-template-columns: 400px 1fr; min-height: calc(100vh - 64px); background: linear-gradient(to right, #fff 399px, var(--line) 399px, var(--line) 400px, var(--bg) 400px); }
+
+  /* ---------- sohbet ---------- */
+  .chat { background: #fff; border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 24px 24px 20px; position: sticky; top: 64px; height: calc(100vh - 64px); }
+  .chat h2 { display: flex; align-items: center; gap: 12px; margin: 0 0 24px; font-size: 20px; letter-spacing: -.01em; }
+  .msgs { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 18px; }
+  .m { display: flex; gap: 12px; align-items: flex-start; }
+  .m .who { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; color: #fff; background: #3b6ea8; }
+  .m .who.ai { background: var(--brand-soft); color: var(--brand); }
+  .m .b { font-size: 15px; line-height: 1.5; }
+  .m.me .b { background: var(--brand-soft); padding: 12px 14px; border-radius: 14px; }
+  .m .t { display: block; margin-top: 6px; font-size: 12px; color: var(--mute); }
+  .m .b b { font-weight: 600; }
+  .qs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .qs button { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--brand); background: #fff; color: var(--brand-ink); font-size: 13px; font-weight: 600; }
+  .sugg { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .sugg button { padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-size: 14px; }
+  .composer { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; border: 1px solid var(--line); border-radius: 16px; }
+  .composer span { flex: 1; color: var(--mute); font-size: 15px; }
+  .composer button { width: 42px; height: 42px; border: 0; border-radius: 12px; background: var(--brand-soft); color: var(--brand); font-size: 18px; }
+
+  /* ---------- plan ---------- */
+  .plan { padding: 26px 34px 60px; max-width: 1100px; }
+  .ph { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  .ph h1 { margin: 0; font-size: 34px; letter-spacing: -.025em; }
+  .ph .sub { margin-top: 4px; font-size: 16px; color: var(--brand-ink); }
+  .ph .sub span { color: var(--gray); }
+  .next { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: #fff; border: 1px solid var(--line); font-size: 14px; color: var(--gray); }
+  .next b { color: var(--ink); }
+  .next .bar { width: 90px; height: 6px; border-radius: 999px; background: #ecebf3; overflow: hidden; }
+  .next .bar i { display: block; height: 100%; background: var(--brand); }
+
+  .route { margin: 18px 0 18px; display: grid; grid-template-columns: 1fr 40px 1fr; align-items: center; background: #fff; border-radius: 16px; padding: 10px; border: 1px solid var(--line); }
+  .stop { display: flex; align-items: center; gap: 16px; }
+  .stop img { width: 170px; height: 76px; object-fit: cover; border-radius: 10px; }
+  .stop b { display: block; font-size: 17px; }
+  .stop span { font-size: 14px; color: var(--gray); }
+  .route .arr { text-align: center; color: var(--gray); font-size: 22px; }
+
+  /* bölüm */
+  .sec { background: #fff; border: 1px solid var(--line); border-radius: 16px; margin-bottom: 12px; overflow: hidden; }
+  .sec.open { border-color: #bfe3dc; box-shadow: 0 6px 24px rgba(27,154,138,.08); }
+  .sh { display: flex; align-items: center; gap: 14px; padding: 14px 18px; cursor: pointer; }
+  .ic { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; }
+  .ic svg { width: 22px; height: 22px; }
+  .sh .tt { flex: 1; min-width: 0; }
+  .sh .tt b { font-size: 17px; letter-spacing: -.01em; }
+  .sh .tt span { margin-left: 10px; font-size: 14px; color: var(--gray); }
+  .sec.open .sh .tt b { font-size: 20px; }
+  .pill { flex: none; padding: 5px 11px; border-radius: 8px; font-size: 13px; font-weight: 500; background: #f1f0f5; color: var(--gray); }
+  .pill.nx { background: var(--brand-soft); color: var(--brand-ink); font-weight: 600; }
+  .pill.wait { background: var(--amber-bg); color: var(--amber); font-weight: 600; }
+  .pill.ok { background: var(--ok-bg); color: var(--ok); font-weight: 600; }
+  .chev { flex: none; width: 28px; text-align: center; color: var(--gray); transition: transform .15s; }
+  .sec.open .chev { transform: rotate(180deg); }
+  .sb { display: none; padding: 0 18px 18px; }
+  .sec.open .sb { display: block; }
+
+  /* aradığımız */
+  .want { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 14px; border-radius: 12px; background: #f6fbfa; border: 1px solid #dcefeb; }
+  .want .lb { font-size: 13px; color: var(--gray); margin-right: 4px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px 6px 11px; border-radius: 999px; background: #fff; border: 1px solid #cfe7e2; font-size: 14px; }
+  .chip i { font-style: normal; color: var(--mute); font-size: 13px; padding: 0 3px; }
+  .chip.plus { border-style: dashed; color: var(--gray); padding-right: 11px; }
+  .band { margin-left: auto; font-size: 13px; color: var(--gray); }
+  .band b { color: var(--ink); font-weight: 600; }
+
+  .rowh { display: flex; align-items: baseline; justify-content: space-between; margin: 18px 2px 10px; }
+  .rowh h3 { margin: 0; font-size: 15px; }
+  .rowh span { font-size: 13px; color: var(--gray); }
+
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .oc { position: relative; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #fff; display: flex; flex-direction: column; cursor: pointer; transition: box-shadow .15s, transform .15s; }
+  .oc:hover { box-shadow: 0 8px 22px rgba(0,0,0,.08); transform: translateY(-1px); }
+  .oc img { width: 100%; height: 150px; object-fit: cover; display: block; }
+  .heart { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.95); border: 0; display: grid; place-items: center; font-size: 16px; }
+  .kind { position: absolute; top: 10px; left: 10px; padding: 4px 9px; border-radius: 999px; background: rgba(255,255,255,.95); font-size: 12px; font-weight: 600; color: var(--stay); }
+  .ob { padding: 12px 14px 14px; display: flex; flex-direction: column; flex: 1; }
+  .ob .nm { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+  .ob .meta { margin-top: 2px; font-size: 13px; color: var(--gray); display: flex; gap: 8px; align-items: center; }
+  .ob .meta .sc { padding: 1px 6px; border-radius: 5px; background: #12397a; color: #fff; font-weight: 700; font-size: 12px; }
+  .ob .why { margin: 8px 0 10px; font-size: 14px; line-height: 1.4; color: #3a3a44; }
+  .ob .why em { font-style: normal; color: var(--stay); font-weight: 600; }
+  .ob .ft { margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+  .price b { font-size: 22px; letter-spacing: -.02em; }
+  .price span { font-size: 13px; color: var(--gray); margin-left: 4px; }
+  .price small { display: block; font-size: 12px; color: var(--mute); }
+  .src { font-size: 12px; color: var(--gray); display: inline-flex; align-items: center; gap: 4px; }
+  .src .bk { width: 16px; height: 16px; border-radius: 4px; background: #003b95; color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
+  .add { margin-top: 12px; width: 100%; padding: 11px; border: 0; border-radius: 10px; background: var(--brand); color: #fff; font-size: 15px; font-weight: 600; }
+  .add.soft { background: var(--brand-soft); color: var(--brand-ink); }
+
+  /* airbnb satırı */
+  .abnb { margin-top: 12px; display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 12px; border: 1px solid #f6d3d8; background: #fff7f8; }
+  .abnb .lg { flex: none; width: 34px; height: 34px; border-radius: 9px; background: #ff385c; color: #fff; display: grid; place-items: center; font-weight: 800; }
+  .abnb p { margin: 0; flex: 1; font-size: 14px; line-height: 1.4; }
+  .abnb p span { color: var(--gray); }
+  .ghost { padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-size: 14px; font-weight: 600; white-space: nowrap; }
+
+  /* senin bulduğun */
+  .mine { display: flex; gap: 12px; }
+  .mi { flex: 1; display: flex; align-items: center; gap: 12px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+  .mi img { width: 64px; height: 52px; border-radius: 8px; object-fit: cover; }
+  .mi div { flex: 1; min-width: 0; }
+  .mi b { display: block; font-size: 15px; }
+  .mi span { font-size: 13px; color: var(--gray); }
+  .mi .add { width: auto; margin: 0; padding: 8px 12px; font-size: 14px; }
+  .mi.empty { justify-content: center; color: var(--gray); font-size: 14px; border-style: dashed; }
+
+  .acts { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 18px; font-size: 14px; }
+  .acts a { color: var(--brand-ink); font-weight: 500; }
+  .acts .sp { margin-left: auto; }
+
+  /* seçili kart */
+  .chosen { display: grid; grid-template-columns: 150px 1fr auto; gap: 18px; align-items: center; }
+  .chosen img { width: 150px; height: 104px; object-fit: cover; border-radius: 12px; }
+  .chosen .nm { font-size: 19px; font-weight: 700; }
+  .chosen .ln { font-size: 14px; color: var(--gray); margin-top: 3px; }
+  .chosen .btns { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+  .go { padding: 11px 18px; border: 0; border-radius: 10px; background: var(--brand); color: #fff; font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .others { margin-top: 12px; font-size: 14px; color: var(--brand-ink); font-weight: 500; cursor: pointer; }
+  .ask { margin-top: 12px; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--amber-bg); border: 1px solid #f1d9a8; font-size: 14px; }
+  .ask p { margin: 0; flex: 1; }
+  .ask .go { padding: 9px 14px; font-size: 14px; }
+
+  /* uçuş satırları */
+  .leg { display: grid; grid-template-columns: 170px 1fr auto auto; gap: 16px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .leg:last-child { border-bottom: 0; }
+  .leg .r b { display: block; font-size: 15px; }
+  .leg .r span { color: var(--gray); }
+  .leg .f b { font-weight: 600; }
+  .leg .f span { color: var(--gray); }
+  .leg .add { width: auto; margin: 0; padding: 8px 12px; font-size: 14px; }
+
+  /* detay paneli */
+  .scrim { display: none; position: fixed; inset: 0; background: rgba(20,18,40,.28); z-index: 20; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 560px; background: #fff; z-index: 21; box-shadow: -12px 0 40px rgba(0,0,0,.12); transform: translateX(100%); transition: transform .2s; display: flex; flex-direction: column; }
+  body.s2 .scrim { display: block; }
+  body.s2 .drawer { transform: none; }
+  .dh { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--line); font-size: 14px; color: var(--gray); }
+  .dh button { border: 0; background: none; font-size: 22px; color: var(--gray); }
+  .dbody { flex: 1; overflow: auto; padding: 0 0 20px; }
+  .gal { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 120px 120px; gap: 4px; }
+  .gal img { width: 100%; height: 100%; object-fit: cover; }
+  .gal img:first-child { grid-row: span 2; }
+  .dc { padding: 18px 22px 0; }
+  .dc h2 { margin: 0; font-size: 24px; letter-spacing: -.02em; }
+  .dc .meta { margin-top: 6px; font-size: 14px; color: var(--gray); display: flex; gap: 10px; align-items: center; }
+  .dc .meta .sc { padding: 2px 7px; border-radius: 5px; background: #12397a; color: #fff; font-weight: 700; font-size: 13px; }
+  .dc h4 { margin: 20px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); }
+  .fit { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 15px; }
+  .fit li { display: flex; gap: 10px; align-items: baseline; }
+  .fit .y { color: var(--ok); font-weight: 700; }
+  .fit .q { color: var(--mute); font-weight: 700; }
+  .fit .n { color: #c0392b; font-weight: 700; }
+  .fit small { color: var(--mute); font-size: 12px; margin-left: 4px; }
+  .df { padding: 14px 20px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 12px; }
+  .df .price { flex: 1; }
+  .df .ghost, .df .go { padding: 12px 18px; font-size: 15px; }
+
+  .foot { margin-top: 18px; text-align: center; font-size: 12px; color: var(--mute); }
+
+  /* durum geçişleri */
+  body:not(.s3):not(.s4) .only3, body:not(.s4) .only4 { display: none !important; }
+  body.s3 .no3, body.s4 .no3 { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>Trip Radar</div>
+  <div class="trip">Porto ve Madeira <span style="color:var(--gray)">⌄</span></div>
+  <nav class="tabs"><a class="on">Plan</a><a>Gün gün</a><a>Pano <span class="n">2</span></a></nav>
+  <button class="share">⇪ Paylaş</button>
+  <div class="avs"><span style="background:#3b6ea8">E</span><span style="background:#c0708a">S</span></div>
+</div>
+
+<div class="app">
+  <!-- ================= sohbet ================= -->
+  <aside class="chat">
+    <h2><span style="color:var(--brand)">✦</span> Seyahat asistanı</h2>
+    <div class="msgs">
+      <div class="m me"><div class="who">E</div><div class="b">7–18 Ekim'de Sabine'le Porto ve Madeira'ya gideceğiz. Biraz romantik, biraz maceralı olsun. Mutfaklı, yürüyerek gezebileceğimiz bir yerde kalmak isteriz.<span class="t">10:24</span></div></div>
+      <div class="m"><div class="who ai">✦</div><div class="b">Taslak hazır: Porto'da 4, Madeira'da 7 gece. Sağdaki her bölümü açıp istediğin sırayla planlayabilirsin.<br><br>Önce <b>Porto'da nerede kalacağınıza</b> bakalım: mutfaklı, yürüyerek gezilebilir ve romantik 3 öneri hazır. Daire istersen Airbnb araması da hazır.<span class="t">10:25</span></div></div>
+      <div class="m only3"><div class="who ai">✦</div><div class="b">Teraslı daireyi Porto'ya ekledim. Rezervasyon bekliyor; yaptığında onay mailini buraya bırakman yeter.<br><br>Sıradaki: <b>Madeira'da nerede kalacaksınız?</b><span class="t">10:31</span></div></div>
+      <div class="m only4"><div class="who ai">✦</div><div class="b">Porto'da bu tarihlerde zaten <b>Teraslı daire</b> var. Nehir manzaralı süit onun yerine mi geçsin, yoksa alternatif olarak mı saklayayım?<div class="qs"><button>Bununla değiştir</button><button>Alternatif olarak sakla</button></div><span class="t">10:33</span></div></div>
+    </div>
+    <div class="sugg"><button>Daha ekonomik</button><button>Daha romantik</button><button>Merkeze daha yakın</button></div>
+    <div class="composer"><span>📎&nbsp; Birlikte değiştirelim…</span><button>↑</button></div>
+  </aside>
+
+  <!-- ================= plan ================= -->
+  <main class="plan">
+    <div class="ph">
+      <div><h1>Porto ve Madeira</h1><div class="sub">7–18 Ekim <span>· 11 gece · 2 kişi</span></div></div>
+      <div class="next"><div class="bar"><i class="no3" style="width:0%"></i><i class="only3" style="width:17%"></i></div><span class="no3"><b>0/6</b> karar · Sıradaki: <b>Porto konaklama</b></span><span class="only3"><b>1/6</b> karar · Sıradaki: <b>Madeira konaklama</b></span></div>
+    </div>
+
+    <div class="route">
+      <div class="stop"><img src="https://images.unsplash.com/photo-1569959595862-1c84553361c1?w=600&q=80&auto=format&fit=crop" alt=""><div><b>Porto</b><span>7–11 Ekim · 4 gece</span></div></div>
+      <div class="arr">→</div>
+      <div class="stop"><img src="https://images.unsplash.com/photo-1748686856746-fc758ac9b4c7?w=600&q=80&auto=format&fit=crop" alt=""><div><b>Madeira</b><span>11–18 Ekim · 7 gece</span></div></div>
+    </div>
+
+    <!-- uçuşlar -->
+    <section class="sec" data-sec>
+      <div class="sh"><div class="ic" style="background:#f0edfd;color:var(--flight)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg></div>
+        <div class="tt"><b>Uçuşlar</b><span>İstanbul → Porto · Porto → Funchal · Funchal → İstanbul</span></div><span class="pill">3 uçuş · öneriler hazır</span><span class="chev">⌄</span></div>
+      <div class="sb">
+        <div class="leg"><div class="r"><b>İST → OPO</b><span>Salı 7 Ekim</span></div><div class="f"><b>TAP · 10:40 → 13:35</b> <span>· aktarmasız · 4 sa 55 dk</span></div><div class="price"><b style="font-size:18px">≈ €184</b><span>kişi</span></div><button class="add">+ Plana ekle</button></div>
+        <div class="leg"><div class="r"><b>OPO → FNC</b><span>Cumartesi 11 Ekim</span></div><div class="f"><b>easyJet · 12:15 → 14:05</b> <span>· aktarmasız · 1 sa 50 dk</span></div><div class="price"><b style="font-size:18px">≈ €62</b><span>kişi</span></div><button class="add">+ Plana ekle</button></div>
+        <div class="leg"><div class="r"><b>FNC → İST</b><span>Cumartesi 18 Ekim</span></div><div class="f"><b>TAP · 06:10 → 15:25</b> <span>· Lizbon aktarmalı · 7 sa 15 dk</span></div><div class="price"><b style="font-size:18px">≈ €231</b><span>kişi</span></div><button class="add">+ Plana ekle</button></div>
+        <div class="acts"><a>Diğer saatler</a><a>Google Flights'ta ara ↗</a><a>+ Link ekle</a></div>
+      </div>
+    </section>
+
+    <!-- porto konaklama -->
+    <section class="sec open" data-sec id="porto">
+      <div class="sh"><div class="ic" style="background:#e6f5f2;color:var(--stay)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 18v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6h-2v-2H5v2zm3-9V7a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2zm7 0V7a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v2z"/></svg></div>
+        <div class="tt"><b>Porto · Konaklama</b><span>7–11 Ekim · 4 gece · 2 kişi</span></div>
+        <span class="pill nx no3">Sıradaki karar</span><span class="pill wait only3">Planda · rezervasyon bekliyor</span><span class="chev">⌄</span></div>
+      <div class="sb">
+        <!-- seçilmeden önce -->
+        <div class="no3">
+          <div class="want"><span class="lb">Aradığımız</span>
+            <span class="chip">Mutfak <i>×</i></span><span class="chip">Yürünebilir konum <i>×</i></span><span class="chip">Romantik <i>×</i></span><span class="chip plus">+ Ekle</span>
+            <span class="band">Porto'da bu tarihlerde benzerleri: <b>≈ €250–420</b> toplam</span></div>
+
+          <div class="rowh"><h3>Öneriler</h3><span>Booking.com fiyatları · 2 saat önce bakıldı</span></div>
+          <div class="cards">
+            <div class="oc" data-open><img src="https://images.unsplash.com/photo-1604349899568-1480825fdcd6?w=700&q=80&auto=format&fit=crop" alt=""><span class="kind">Sana en uygun</span><button class="heart">♡</button>
+              <div class="ob"><div class="nm">Teraslı daire · Ribeira</div><div class="meta"><span class="sc">9,1</span> 1.240 yorum · Ribeira'ya 6 dk</div>
+                <div class="why"><em>Mutfaklı</em>, eski şehrin içinde; terasta akşam yemeği yapılır.</div>
+                <div class="ft"><div class="price"><b>≈ €310</b><span>toplam</span></div><span class="src"><span class="bk">B</span>Booking ↗</span></div>
+                <button class="add">+ Plana ekle</button></div></div>
+            <div class="oc" data-open><img src="https://images.unsplash.com/photo-1590490360182-c33d57733427?w=700&q=80&auto=format&fit=crop" alt=""><span class="kind">Daha ekonomik</span><button class="heart">♡</button>
+              <div class="ob"><div class="nm">Bonfim stüdyo</div><div class="meta"><span class="sc">8,7</span> 410 yorum · merkeze 18 dk</div>
+                <div class="why"><em>Mutfaklı</em> ve sessiz; merkeze yürümek biraz uzun.</div>
+                <div class="ft"><div class="price"><b>≈ €268</b><span>toplam</span></div><span class="src"><span class="bk">B</span>Booking ↗</span></div>
+                <button class="add">+ Plana ekle</button></div></div>
+            <div class="oc" data-open><img src="https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=700&q=80&auto=format&fit=crop" alt=""><span class="kind">Daha konforlu</span><button class="heart">♡</button>
+              <div class="ob"><div class="nm">Nehir manzaralı süit · Gaia</div><div class="meta"><span class="sc">9,4</span> 860 yorum · köprüye 4 dk</div>
+                <div class="why">Balkondan Douro ve Ribeira; <em>romantik</em>. Mutfak yok, mini mutfak var.</div>
+                <div class="ft"><div class="price"><b>≈ €420</b><span>toplam</span></div><span class="src"><span class="bk">B</span>Booking ↗</span></div>
+                <button class="add">+ Plana ekle</button></div></div>
+          </div>
+
+          <div class="abnb"><span class="lg">a</span><p><b>Daire mi istiyorsun?</b> Mutfaklı daireler için en çok seçenek Airbnb'de. <span>7–11 Ekim, 2 kişi, mutfak filtresi hazır.</span></p><button class="ghost">Airbnb'de ara ↗</button></div>
+
+          <div class="rowh"><h3>Senin bulduğun</h3><span>Panodan · eklentiyle kaydettiklerin</span></div>
+          <div class="mine">
+            <div class="mi"><img src="https://images.unsplash.com/photo-1776763255566-f4a1615bb443?w=300&q=70&auto=format&fit=crop" alt=""><div><b>Casa Azulejo</b><span>Booking · ≈ €355 toplam · senin kaydın</span></div><button class="add soft">+ Plana ekle</button></div>
+            <div class="mi empty">Booking'de gezerken beğendiğini kaydet, buraya gelir.</div>
+          </div>
+
+          <div class="acts"><span style="color:var(--gray)">Kendim araştıracağım:</span><a>Booking ↗</a><a>Google Hotels ↗</a><a>+ Link ekle</a><a class="sp">↻ Farklı öneriler getir</a></div>
+        </div>
+
+        <!-- plana eklendikten sonra -->
+        <div class="only3">
+          <div class="chosen"><img src="https://images.unsplash.com/photo-1604349899568-1480825fdcd6?w=500&q=80&auto=format&fit=crop" alt="">
+            <div><div class="nm">Teraslı daire · Ribeira</div><div class="ln">7–11 Ekim · 4 gece · 2 kişi · <b>≈ €310</b> toplam</div><div class="ln">Ücretsiz iptal 4 Ekim'e kadar · Booking.com</div></div>
+            <div class="btns"><button class="go">Rezervasyona git ↗</button><button class="ghost">Rezervasyon yaptım</button></div></div>
+          <div class="others">Diğer 2 öneriyi gör ⌄</div>
+          <div class="ask only4"><p>Porto'da 7–11 Ekim için zaten <b>Teraslı daire</b> var. <b>Nehir manzaralı süit</b> ne olsun?</p><button class="go">Bununla değiştir</button><button class="ghost">Alternatif olarak sakla</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- madeira konaklama -->
+    <section class="sec" data-sec id="madeira">
+      <div class="sh"><div class="ic" style="background:#e6f5f2;color:var(--stay)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 18v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6h-2v-2H5v2zm3-9V7a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2zm7 0V7a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v2z"/></svg></div>
+        <div class="tt"><b>Madeira · Konaklama</b><span>11–18 Ekim · 7 gece · 2 kişi</span></div><span class="pill no3">3 öneri hazır</span><span class="pill nx only3">Sıradaki karar</span><span class="chev">⌄</span></div>
+      <div class="sb"><div class="want"><span class="lb">Aradığımız</span><span class="chip">Mutfak <i>×</i></span><span class="chip">Okyanus manzarası <i>×</i></span><span class="chip">Araçla kolay ulaşım <i>×</i></span><span class="chip plus">+ Ekle</span><span class="band">Funchal'da bu tarihlerde benzerleri: <b>≈ €560–900</b> toplam</span></div>
+        <div class="rowh"><h3>Öneriler</h3><span>Booking.com fiyatları · 2 saat önce bakıldı</span></div>
+        <div style="height:60px;border:1px dashed var(--line);border-radius:12px;display:grid;place-items:center;color:var(--mute);font-size:14px">(Porto'daki gibi 3 öneri, Airbnb satırı, senin bulduğun)</div></div>
+    </section>
+
+    <!-- ulaşım -->
+    <section class="sec" data-sec>
+      <div class="sh"><div class="ic" style="background:#fbf1e0;color:var(--move)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11v7h-2v-2H7v2H5zm2.5-1h9l-1-3h-7zM7.5 14a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm9 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg></div>
+        <div class="tt"><b>Ulaşım</b><span>Havalimanı transferleri · Madeira'da araç</span></div><span class="pill">Henüz seçilmedi</span><span class="chev">⌄</span></div>
+      <div class="sb"></div>
+    </section>
+
+    <!-- deneyimler -->
+    <section class="sec" data-sec>
+      <div class="sh"><div class="ic" style="background:#fbe9f2;color:var(--act)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.3 6.4.5-4.9 4.2 1.5 6.5L12 16l-5.6 3.5 1.5-6.5L3 8.8l6.4-.5z"/></svg></div>
+        <div class="tt"><b>Deneyimler</b><span>Douro tekne turu · Levada yürüyüşü · Pico do Arieiro gün doğumu</span></div><span class="pill">Fikir · 3</span><span class="chev">⌄</span></div>
+      <div class="sb"></div>
+    </section>
+
+    <!-- hazırlık -->
+    <section class="sec" data-sec>
+      <div class="sh"><div class="ic" style="background:#e9f0fb;color:var(--prep)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6v2h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4zm0 9l2 2 4-4-1.4-1.4L11 11.2 10.4 10.6z"/></svg></div>
+        <div class="tt"><b>Hazırlık</b><span>Seyahat sigortası · eSIM</span></div><span class="pill">Henüz seçilmedi</span><span class="chev">⌄</span></div>
+      <div class="sb"></div>
+    </section>
+
+    <div class="foot">Tasarım örneği · konaklama adları ve fiyatlar temsilidir · fotoğraflar Unsplash</div>
+  </main>
+</div>
+
+<!-- ================= detay paneli ================= -->
+<div class="scrim" data-close></div>
+<aside class="drawer">
+  <div class="dh"><span>Porto · Konaklama · öneri 1/3</span><button data-close>×</button></div>
+  <div class="dbody">
+    <div class="gal"><img src="https://images.unsplash.com/photo-1604349899568-1480825fdcd6?w=900&q=80&auto=format&fit=crop" alt=""><img src="https://images.unsplash.com/photo-1776763255566-f4a1615bb443?w=500&q=70&auto=format&fit=crop" alt=""><img src="https://images.unsplash.com/photo-1569959595862-1c84553361c1?w=500&q=70&auto=format&fit=crop" alt=""></div>
+    <div class="dc">
+      <h2>Teraslı daire · Ribeira</h2>
+      <div class="meta"><span class="sc">9,1</span> Çok iyi · 1.240 yorum · Rua da Reboleira, Ribeira</div>
+      <h4>Aradığına göre</h4>
+      <ul class="fit">
+        <li><span class="y">✓</span><span>Mutfak<small>kaynakta "Tam donanımlı mutfak" yazıyor</small></span></li>
+        <li><span class="y">✓</span><span>Yürünebilir konum<small>Ribeira meydanına 6 dk, Livraria Lello'ya 14 dk</small></span></li>
+        <li><span class="q">?</span><span>Romantik<small>kaynak bir şey söylemiyor; özel teras var</small></span></li>
+      </ul>
+      <h4>Dikkat</h4>
+      <ul class="fit">
+        <li><span class="n">!</span><span>Asansör yok, 3. kat</span></li>
+        <li><span class="y">✓</span><span>Ücretsiz iptal 4 Ekim'e kadar</span></li>
+      </ul>
+      <h4>Bu karşılaştırmada</h4>
+      <ul class="fit">
+        <li><span class="q">·</span><span>Benzerlerinin ortasında (≈ €250–420); ekonomik seçenekten €42 pahalı, merkeze 12 dk daha yakın</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="df"><div class="price"><b>≈ €310</b><span>toplam · 4 gece</span><small>Booking.com · 2 saat önce bakıldı</small></div><button class="ghost">Booking'de incele ↗</button><button class="go">+ Plana ekle</button></div>
+</aside>
+
+<script>
+  // Bölümleri aç/kapat; karta tıklayınca detay; "+ Plana ekle" → seçili durum. ?s=1..4 ile durumu baştan kur.
+  const set = (s) => { document.body.className = s > 1 ? "s" + s : ""; if (s >= 3) { document.getElementById("madeira").classList.add("open"); document.getElementById("porto").classList.add("open"); } };
+  document.querySelectorAll("[data-sec] .sh").forEach((h) => h.addEventListener("click", () => h.parentElement.classList.toggle("open")));
+  document.querySelectorAll("[data-open]").forEach((c) => c.addEventListener("click", (e) => { if (e.target.closest(".add")) { set(3); return; } if (!e.target.closest(".heart")) set(2); }));
+  document.querySelectorAll("[data-close]").forEach((c) => c.addEventListener("click", () => set(1)));
+  document.querySelector(".df .go").addEventListener("click", () => set(3));
+  document.querySelector(".others").addEventListener("click", () => set(4));
+  set(Number(new URLSearchParams(location.search).get("s")) || 1);
+</script>
+</body>
+</html>

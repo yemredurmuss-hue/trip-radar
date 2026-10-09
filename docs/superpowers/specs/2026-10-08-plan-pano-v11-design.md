@@ -220,8 +220,18 @@ Hepsi isteğe bağlı alan; eski sürüm bilmediği alanı yok sayar. Paylaşım
 1. **Harita**: Gün gün'ün içinde "Liste | Harita" anahtarı (ayrı sekme yok).
 2. **Bölüm bütçesi**: Faz 1'de yalnız harcanan; dağıtım Faz 6.
 3. **Faz sırası**: 1 → 2 → 5 → 3 → 4 → 6.
+4. **Vize** (2026-10-09): "Belgeler ve internet" bölümünün ilk satırı (bölüm adı geri döndü), Hazırlık'ta değil.
 
 ## Durum
+
+- **Faz 2a yayında: 0.36.57** (2026-10-09 gece): "Plana koy" her yerde, "✓ Aldım" kartın üst satırında (altta sayfası
+  varsa "Bileti al ↗ / Rezerve et ↗"), × = "Gerek yok" (`setNotNeeded`, Gizlenenler, Geri al), rezervede × "Kaldır" ve
+  önce sorar; Sil/Değiştir soruları panonun kendi penceresinde. **Vize düzeltmesi (Emre, 2026-10-09):** vize Hazırlık'tan
+  çıktı, "Belgeler ve internet"in (adı geri döndü) ilk satırı: vize yoksa yeşil "✓ Vize gerekmiyor · Türk pasaportuyla
+  90 güne kadar", gerekirse amber + resmi kaynak + "Vize alındı" işareti (`Trip.visaDone`). Konaklama kartlarında
+  "Rezerve ettim" yeri değişmedi (yalnız fiil ve ×); "Aldım" oraya Faz 2b'de.
+- Faz 2b (sırada, yayınlanmadı): boş kartta ne/nerede/neden + istek çipleri, "N seçenek ›" + kimin eklediği
+  (`Item.addedBy`), seçim penceresinde AI ayrı, konaklama kartında "✓ Aldım", mühür.
 
 - **Faz 1 yayında: 0.36.56** (2026-10-09). Not: bölüm başlığında harcanan tutar henüz yok (bugünkü "3/4" çubuğu
   duruyor); Faz 2'de kart başlığıyla birlikte gelir. İç kimlikler değişmedi: `food` ve `other` kaydın kendi bölümü
