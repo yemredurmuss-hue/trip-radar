@@ -9,7 +9,7 @@ import { Editable, useInlineEdit } from "./InlineEdit";
 import { KindIcon, MediaSilhouette } from "./Silhouettes";
 
 /** The v11 drawing for a kind with no photo (static/illus; index.json lists them). */
-const ILLUS: Partial<Record<CardKind, string>> = { stay: "otel", activity: "etkinlik-tur", insurance: "sigorta", esim: "esim", food: "restoran", todo: "yapilacak", note: "not" };
+export const ILLUS: Partial<Record<CardKind, string>> = { stay: "otel", activity: "etkinlik-tur", insurance: "sigorta", esim: "esim", food: "restoran", todo: "yapilacak", note: "not" };
 
 /** On a record's card the title and the city are editable where they stand (the day and hour are on the top line). */
 export function MediaCardBody({ face, kind, score, best, city = null }: { face: MediaFace; kind: CardKind; score: number | null; best: boolean; city?: string | null }) {

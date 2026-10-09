@@ -21,6 +21,11 @@ import { useMyName } from "../Profile";
 import { CardShell } from "./CardShell";
 import { useCardEnv } from "./PlanCard";
 import { AskButton } from "./AskButton";
+import { ILLUS } from "./MediaCard";
+import { SearchRow } from "./EmptyCard";
+import { headCount, needSearchLinks } from "../../lib/searchLinks";
+import { peopleOf } from "../../lib/whose";
+import { useWhoCtx } from "./WhoseBadge";
 import { KindIcon, TransportArt, UiIcon } from "./Silhouettes";
 import { usePhotoOf, WhoAvatar } from "./WhoseBadge";
 import { datedLink, TradeLine } from "./parts";
@@ -45,6 +50,23 @@ function Faces({ items }: { items: Item[] }) {
   );
 }
 
+/**
+ * v11 "what we're looking for" on a need still to find: what the traveller said for the trip (the stay's "Sakin semt",
+ * "Ücretsiz iptal"), three at most; none for other kinds (what's said is about the stay).
+ */
+function useWants(item: Item): string[] {
+  const env = useCardEnv();
+  if (item.category !== "stay") return [];
+  return (env.decisions?.ctx.preferences ?? []).slice(0, 3);
+}
+
+/** The searches for this need, prefilled ("Kendin ara"), with the trip's people. */
+function useSelfLinks(item: Item) {
+  const env = useCardEnv();
+  const who = useWhoCtx();
+  return needSearchLinks(item, headCount(peopleOf(env.trip, who).length));
+}
+
 export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCompare }: {
   /** The need's options, best first. */
   items: Item[];
@@ -62,6 +84,8 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
   const lowText = cheapest ? (cardFacts(cheapest, decision, env.decisions?.ctx).price?.text ?? null) : null;
   const title = needTitleOf(first);
   const n = items.length;
+  const wants = useWants(first);
+  const self = useSelfLinks(first);
   return (
     <>
       <CardShell
@@ -79,9 +103,16 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
         open={false}
         onToggle={onOpen}
         body={
-          <div className="nd-body">
+          <div className={`nd-body${ILLUS[kind] ? " nd-has-art" : ""}`}>
+            {ILLUS[kind] && <img className="nd-art" src={`illus/${ILLUS[kind]}.png`} alt="" />}
             <h3>{title}</h3>
             {lowText && <p className="nd-sub">{L(`${lowText}'den başlıyor`, `from ${lowText}`)}</p>}
+            {wants.length > 0 && (
+              <ul className="nd-wants" aria-label={L("Aradığımız", "What we're looking for")}>
+                {wants.map((w) => <li key={w}>{w}</li>)}
+              </ul>
+            )}
+            {self.length > 0 && <div className="nd-self"><SearchRow links={self} /></div>}
           </div>
         }
         foot={
@@ -123,6 +154,8 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
   const mine = items.filter((i) => !isAiOption(i));
   const found = items.filter(isAiOption);
   const date = topDate(items[0], kind);
+  const wants = useWants(items[0]);
+  const self = useSelfLinks(items[0]);
   const [why, setWhy] = useState<string | null>(null);
   const currency = env.decisions?.ctx.currency ?? "EUR";
   const row = (item: Item): ReactNode => {
@@ -254,6 +287,11 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
             <UiIcon name="x" size={14} />
           </button>
         </header>
+        {wants.length > 0 && (
+          <ul className="nd-wants ch-wants" aria-label={L("Aradığımız", "What we're looking for")}>
+            {wants.map((w) => <li key={w}>{w}</li>)}
+          </ul>
+        )}
         {choice?.headline && <p className="ch-for">{choice.headline}</p>}
         {choice && choice.verify.length > 0 && (
           <ul className="ch-verify" aria-label={L("Seçmeden kontrol et", "Check before choosing")}>
@@ -275,6 +313,12 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
             <h4>✨ {found.length === 1 ? L("AI'nın bulduğu alternatif", "An alternative the AI found") : L(`AI'nın bulduğu ${found.length} alternatif`, `${found.length} alternatives the AI found`)}</h4>
             <p className="bk-note">{mine.length ? L("Sizin linklerinizin dışında, tercihlerinize göre.", "Beyond your links, by your preferences.") : L("Henüz link yok; tercihlerinize göre aradı.", "No links yet; found by your preferences.")}</p>
             <div className="ch-list">{found.map(row)}</div>
+          </section>
+        )}
+        {self.length > 0 && (
+          <section className="bk-sec ch-self">
+            <h4>{L("Kendin ara", "Search yourself")}</h4>
+            <SearchRow links={self} />
           </section>
         )}
         <footer className="bk-foot">

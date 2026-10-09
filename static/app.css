@@ -3292,3 +3292,18 @@ a.ch-why { text-decoration: none; }
 
 /* v11: the drawing in place of a photo, its white ground laid on the picture's tint. */
 .pk-illus { width: 78%; height: 86%; object-fit: contain; mix-blend-mode: multiply; }
+
+/* v11: what we're looking for on a need still to find, and its searches ("Kendin ara"). */
+.nd-wants { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+.nd-wants li { font-size: 12.5px; font-weight: 600; color: #3d3d47; background: #f1f0f6; border-radius: 999px; padding: 3px 10px; }
+.nd-wants li::before { content: "✓ "; color: #6a4fe0; }
+.nd-self { margin-top: 8px; }
+.nd-self .ek-find, .ch-self .ek-find { margin: 0; }
+.ch-wants { margin: 0 20px 6px; }
+.ch-self h4 { margin-bottom: 8px; }
+.nd-self .ek-find, .ch-self .ek-find { justify-content: flex-start; }
+
+/* v11: a need still to find has the kind's drawing on its left, as the drawing's empty slot. */
+.nd-body.nd-has-art { display: grid; grid-template-columns: 72px minmax(0, 1fr); column-gap: 14px; align-items: start; }
+.nd-has-art > :not(.nd-art) { grid-column: 2; }
+.nd-art { grid-row: 1 / span 4; width: 72px; height: 60px; border-radius: 12px; background: color-mix(in srgb, var(--mc, #1d8577) 10%, #fff); object-fit: contain; padding: 4px; mix-blend-mode: multiply; }

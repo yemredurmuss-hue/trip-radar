@@ -3019,7 +3019,7 @@ try {
   assert.equal(await ekSec("flight").locator(".pk-card:not(.ek-card)").count(), 0, "no full flight card yet");
   assert.match(await outFlight.locator(".ek-route").innerText(), /İstanbul[\s\S]*Denpasar/);
   assert.equal(await outFlight.locator(".ek-state").innerText(), "Bilet yok · 2 kişi");
-  assert.equal(await outFlight.locator(".ek-ara").innerText(), "Ara:");
+  assert.equal(await outFlight.locator(".ek-ara").innerText(), "Kendin ara");
   assert.equal(await outFlight.locator(".pk-cta, .pk-price").count(), 0, "no price, no Bileti aldım");
   const out1 = await hrefs(outFlight);
   assert.deepEqual(out1.map(([b, , t, r]) => [b, t, r]), [["gflights", "_blank", "noopener noreferrer"], ["skyscanner", "_blank", "noopener noreferrer"], ["kayak", "_blank", "noopener noreferrer"]]);

@@ -45,7 +45,7 @@ export function SearchRow({ links }: { links: SearchLink[] }) {
   if (!links.length) return null;
   return (
     <span className="ek-find">
-      <span className="ek-ara">{L("Ara:", "Search:")}</span>
+      <span className="ek-ara">{L("Kendin ara", "Search yourself")}</span>
       {links.map((l) => (
         <a key={l.url} className="ek-link" data-brand={l.brand} href={l.url} target="_blank" rel="noopener noreferrer"
           title={L(`${l.label} · yeni sekmede açılır`, `${l.label} · opens in a new tab`)}>

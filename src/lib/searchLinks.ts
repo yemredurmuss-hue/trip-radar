@@ -291,3 +291,19 @@ export function esimLinks(countryCode: string | null | undefined): SearchLink[] 
   if (!airalo || !holafly) return [];
   return [link("airalo", `https://www.airalo.com/${airalo}-esim`), link("holafly", `https://esim.holafly.com/esim-${holafly}/`)];
 }
+
+/**
+ * v11 "Kendin ara" for a need still to find (a need's card, its choice window): the brands' searches for its kind,
+ * prefilled from its first option — a stay's city and nights, a flight's ends and day, an activity's city.
+ */
+export function needSearchLinks(item: Item, adults: number | null): SearchLink[] {
+  const start = (item.flight?.departure ?? item.dates.start)?.slice(0, 10) ?? null;
+  const end = item.dates.end?.slice(0, 10) ?? null;
+  if (item.category === "stay") return stayLinks({ city: item.city, checkin: start, checkout: end, adults });
+  if (item.category === "flight") {
+    const end2 = (s: string | null | undefined) => (s ? (airportCode(s) ?? s) : null);
+    return flightLinks({ from: end2(item.flight?.from), to: end2(item.flight?.to), date: start, adults });
+  }
+  if (item.category === "activity") return activityLinks(item.city);
+  return [];
+}
