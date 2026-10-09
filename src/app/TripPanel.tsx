@@ -15,6 +15,7 @@ import { creditOf, findCityPhoto, imageProxy, keptCredits, nextCityImage, nextHe
 import { acceptMood, moodKey, statusSentence } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
 import { loadHome, loadPassport } from "../lib/passport";
+import { displayCurrency } from "../lib/displayCurrency";
 import { homeCurrencyOf, tripFacts } from "../lib/tripFacts";
 import type { Timeline } from "../lib/timeline";
 
@@ -484,7 +485,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       tripFacts(items, {
         passport,
         // The traveller's own money (a TR passport: TRY), not the budget's: "€1 = ₺38,20".
-        homeCurrency: homeCurrencyOf(passport, decisions?.ctx.currency ?? "EUR"),
+        homeCurrency: displayCurrency() ?? homeCurrencyOf(passport, decisions?.ctx.currency ?? "EUR"),
         rates: decisions?.ctx.rates ?? null,
         homeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         start: range?.start ?? null,

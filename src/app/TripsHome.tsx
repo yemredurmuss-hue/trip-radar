@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from
 import { requestProcessing } from "../lib/browser";
 import { countdown, countdownText } from "../lib/countdown";
 import { initials } from "../lib/heroInfo";
-import { L, withLang } from "../lib/i18n";
+import { L, lang, saveLang, withLang, type Lang } from "../lib/i18n";
 import { formatDateRange, tripDateRange } from "../lib/items";
 import { retryCapture } from "../lib/process";
 import { listDrafts, onDraftsChanged, removeDraft, saveDraft } from "../lib/startDrafts";
@@ -11,6 +11,7 @@ import { creditLine, creditOf } from "../lib/cityImages";
 import { tripCardPhoto, tripCardPlaces } from "../lib/tripBrief";
 import { isDemoTrip } from "../lib/trips";
 import { getSettings, listMessages, onChanged } from "../lib/db";
+import { CURRENCIES, CURRENCY_SIGN, displayCurrency, saveCurrency, type DisplayCurrency } from "../lib/displayCurrency";
 import type { Capture, ChatMessage, Item, Settings, Trip } from "../lib/types";
 import { RoutingLine } from "./Chat";
 import { UiIcon } from "./cards/Silhouettes";
@@ -43,7 +44,8 @@ interface Props {
   /** "Porto'da bir otel daha" said for a trip there is: that trip opens and its chat gets the line. */
   onAddToTrip: (tripId: string, text: string) => void;
   ctx: StartCtx;
-  menu: React.ReactNode;
+  /** Geçmiş ve çöp kutusu. */
+  onTrash: () => void;
 }
 
 const MODES: { mode: StartMode | "join"; icon: HeroIconName; label: () => string }[] = [
@@ -78,6 +80,102 @@ function modelName(s: Settings): string {
   return words.join(" ").replace(/(\d) (\d)\b/g, "$1.$2");
 }
 
+/** Closes on a press outside it or Escape (the focus back on its button). */
+function usePopover(): { open: boolean; setOpen: (v: boolean) => void; box: React.RefObject<HTMLDivElement | null>; button: React.RefObject<HTMLButtonElement | null> } {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const outside = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      button.current?.focus();
+    };
+    document.addEventListener("pointerdown", outside, true);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", outside, true);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  return { open, setOpen, box, button };
+}
+
+/** A small pill in the top bar (₺, TR) opening its list of choices. */
+function Picker({ label, shown, current, options, onPick }: { label: string; shown: string; current: string | null; options: { value: string; text: string }[]; onPick: (v: string) => void }) {
+  const { open, setOpen, box, button } = usePopover();
+  return (
+    <div className="hm-pick" ref={box}>
+      <button ref={button} type="button" className={`hm-pick-btn${open ? " on" : ""}`} aria-haspopup="listbox" aria-expanded={open} aria-label={`${label}: ${shown}`} title={label} onClick={() => setOpen(!open)}>
+        {shown}
+      </button>
+      {open && (
+        <ul className="hm-pop hm-pop-sm" role="listbox" aria-label={label}>
+          {options.map((o) => (
+            <li key={o.value}>
+              <button type="button" role="option" aria-selected={o.value === current} className={o.value === current ? "on" : ""} onClick={() => (setOpen(false), o.value !== current && onPick(o.value))}>
+                {o.text}
+                {o.value === current && <UiIcon name="check" size={13} />}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The profile photo in the top bar (Layla's, drawn our way): the face (photo, initials, or the person icon) and a small
+ * chevron; its menu gathers what the old ••• held and the settings: who you are and which AI, the trips, the profile,
+ * the settings, joining a shared trip, the sample trip, the trash.
+ */
+function ProfileMenu(p: { name: string | null; photo: string | null; model: string | null; hasDemo: boolean; onSettings: () => void; onTrips: () => void; onJoin: () => void; onDemo: () => void; onTrash: () => void }) {
+  const { open, setOpen, box, button } = usePopover();
+  const go = (fn: () => void) => () => (setOpen(false), fn());
+  const item = (icon: HeroIconName, text: string, fn: () => void, cls = "") => (
+    <li>
+      <button type="button" role="menuitem" className={cls} onClick={go(fn)}>
+        <HeroIcon name={icon} size={17} />
+        {text}
+      </button>
+    </li>
+  );
+  return (
+    <div className="hm-prof" ref={box}>
+      <button ref={button} type="button" className={`hm-prof-btn${open ? " on" : ""}`} aria-haspopup="menu" aria-expanded={open} aria-label={L("Profil ve ayarlar", "Profile and settings")} onClick={() => setOpen(!open)}>
+        <Face name={p.name ?? ""} photo={p.photo} colour={FACES[0]} size={38} />
+        <span className="hm-prof-chev" aria-hidden>
+          <HeroIcon name="chevDown" size={12} />
+        </span>
+      </button>
+      {open && (
+        <div className="hm-pop hm-pop-menu" role="menu" aria-label={L("Profil", "Profile")}>
+          <div className="hm-pop-me">
+            <Face name={p.name ?? ""} photo={p.photo} colour={FACES[0]} size={44} />
+            <div>
+              <b>{p.name ?? L("Profilini kur", "Set up your profile")}</b>
+              <span>{p.model ? L(`Asistan: ${p.model}`, `Assistant: ${p.model}`) : L("Asistan bağlı değil", "No assistant yet")}</span>
+            </div>
+          </div>
+          <ul>
+            {item("pin", L("Seyahatlerim", "My trips"), p.onTrips)}
+            {item("user", L("Profil ve fotoğraf", "Profile and photo"), p.onSettings)}
+            {item("spark", L("Ayarlar · AI asistanı", "Settings · AI assistant"), p.onSettings)}
+          </ul>
+          <ul>
+            {item("users", L("Paylaşılan geziye katıl", "Join a shared trip"), p.onJoin)}
+            {!p.hasDemo && item("star", L("Örnek geziyi yükle", "Load the sample trip"), p.onDemo)}
+            {item("hourglass", L("Geçmiş ve çöp kutusu", "History and trash"), p.onTrash)}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * "Seyahatlerim" (Layla-style home, spec §2; v11 look, 2026-10-09): the app frame with its top bar, a big question and
  * one box on the left, the traveller's corner on the right (who they are, who they travel with, how many trips and
@@ -85,7 +183,7 @@ function modelName(s: Settings): string {
  * trip as before; typed words start a trip by chat (or, when they name a trip there is, ask which). A half-done
  * interview waits as a dashed draft card.
  */
-export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettings, onStart, onAddToTrip, ctx, menu }: Props) {
+export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettings, onStart, onAddToTrip, ctx, onTrash }: Props) {
   const [text, setText] = useState("");
   const [dragging, setDragging] = useState(false);
   const [joining, setJoining] = useState(false);
@@ -167,181 +265,137 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
   })();
   // The faces' colours follow this order (me first); my face without a name is the person icon.
   const people = [me ?? "", ...companions];
-  const real = trips.filter((t) => !isDemoTrip(t));
-  const booked = items.filter((i) => i.status === "booked" && real.some((t) => t.id === i.tripId)).length;
   const today = ctx.today;
-  const next = real
-    .map((t) => ({ t, range: t.confirmedDates ?? tripDateRange(items.filter((i) => i.tripId === t.id && i.status !== "dismissed")) }))
-    .filter((x) => x.range && x.range.end >= today)
-    .sort((a, b) => a.range!.start.localeCompare(b.range!.start))[0];
-  const nextIn = next ? countdownText(countdown(next.range, today)) : null;
+  // Yaklaşan · Geçmiş (Layla's toggle): a trip whose last day is past is past; one without dates is still ahead.
+  const [when, setWhen] = useState<"ahead" | "past">("ahead");
+  const rangeOf = (t: Trip) => t.confirmedDates ?? tripDateRange(items.filter((i) => i.tripId === t.id && i.status !== "dismissed"));
+  const isPast = (t: Trip) => {
+    const r = rangeOf(t);
+    return Boolean(r && r.end < today);
+  };
+  const pastCount = ordered.filter(isPast).length;
+  const shownTrips = ordered.filter((t) => (when === "past" ? isPast(t) : !isPast(t)));
 
   return (
     <div className="home st-home hm" onDragOver={(e) => (e.preventDefault(), setDragging(true))} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
-      <div className="hm-frame">
-        <header className="hm-bar">
-          <span className="hm-logo">
-            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden>
-              <circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
-              <path d="m15.6 8.4-2.2 5-5 2.2 2.2-5z" fill="currentColor" />
-            </svg>
-            <span className="st-brand">Trip Radar</span>
-          </span>
-          <span className="hm-bar-sp" />
-          <button type="button" className="hm-me" onClick={onSettings} title={L("Profil ve ayarlar", "Profile and settings")}>
-            <Face name={people[0]} photo={myPhoto} colour={FACES[0]} size={30} />
-            <span className="hm-me-name">{me ?? L("Profilin", "Your profile")}</span>
-          </button>
-          <div className="home-menu">{menu}</div>
-        </header>
+      <span className="st-blob st-blob-a" aria-hidden />
+      <span className="st-blob st-blob-b" aria-hidden />
+      <header className="hm-bar">
+        <span className="hm-logo">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden>
+            <circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            <path d="m15.6 8.4-2.2 5-5 2.2 2.2-5z" fill="currentColor" />
+          </svg>
+          <span className="st-brand">Trip Radar</span>
+        </span>
+        <span className="hm-bar-sp" />
+        <nav className="hm-prefs" aria-label={L("Tercihler", "Preferences")}>
+          <Picker
+            label={L("Para birimi", "Currency")}
+            shown={CURRENCY_SIGN[displayCurrency() ?? "EUR"]}
+            current={displayCurrency()}
+            options={CURRENCIES.map((c) => ({ value: c, text: `${CURRENCY_SIGN[c]}  ${c}` }))}
+            onPick={(c) => void saveCurrency(c as DisplayCurrency)}
+          />
+          <Picker
+            label={L("Dil", "Language")}
+            shown={lang().toUpperCase()}
+            current={lang()}
+            options={[{ value: "tr", text: "Türkçe" }, { value: "en", text: "English" }]}
+            onPick={(l) => void saveLang(l as Lang).then(() => location.reload())}
+          />
+        </nav>
+        <ProfileMenu
+          name={me}
+          photo={myPhoto}
+          model={settings && (settings.provider === "gemini" ? settings.geminiKey : settings.apiKey) ? modelName(settings) : null}
+          hasDemo={trips.some(isDemoTrip)}
+          onSettings={onSettings}
+          onTrips={() => document.querySelector(".hm-trips")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          onJoin={() => setJoining(true)}
+          onDemo={onDemo}
+          onTrash={onTrash}
+        />
+      </header>
 
-        <section className="hm-hero">
-          <div className="hm-ask">
-            <h1 className="st-hello">
-              {me ? <span className="hm-hi">{L(`Merhaba ${me},`, `Hey ${me},`)}</span> : null}
-              {me ? L("sıradaki gezi nereye?", "where are we going next?") : L("Sıradaki gezi nereye?", "Where are we going next?")}
-            </h1>
-            {waiting.length > 0 && (
-              <section className="home-waiting" aria-label={L("Bekleyen kayıtlar", "Waiting saves")}>
-                <div className="home-waiting-h">{L("Bekleyen kayıtlar", "Waiting saves")}</div>
-                {waiting.map((m) => m.routing && <RoutingLine key={m.id} m={m} routing={m.routing} trips={trips} />)}
-              </section>
-            )}
-            <form
-              className={`st-prompt${dragging ? " drag" : ""}`}
-              onSubmit={(e) => {
+      <section className="st-hero">
+        <h1 className="st-hello">{me ? L(`Merhaba ${me}, sıradaki gezi nereye?`, `Hey ${me}, where are we going next?`) : L("Sıradaki gezi nereye?", "Where are we going next?")}</h1>
+        {waiting.length > 0 && (
+          <section className="home-waiting" aria-label={L("Bekleyen kayıtlar", "Waiting saves")}>
+            <div className="home-waiting-h">{L("Bekleyen kayıtlar", "Waiting saves")}</div>
+            {waiting.map((m) => m.routing && <RoutingLine key={m.id} m={m} routing={m.routing} trips={trips} />)}
+          </section>
+        )}
+        <form
+          className={`st-prompt${dragging ? " drag" : ""}`}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit();
+          }}
+        >
+          <textarea
+            value={text}
+            rows={2}
+            aria-label={L("Gezi kutusu", "Trip box")}
+            placeholder={L("Bali'ye 3 hafta, Sabine'yle… ya da bir link yapıştır", "Three weeks in Bali with Sabine… or paste a link")}
+            onChange={(e) => {
+              setText(e.target.value);
+              setAsk(null);
+            }}
+            onPaste={onPaste}
+            onKeyDown={(e) => {
+              // Enter sends; never while an input method is still composing (Japanese, Chinese, Korean…).
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 void submit();
+              }
+            }}
+          />
+          <div className="st-prompt-foot">
+            <button type="button" className="st-clip" aria-label={L("Ekran görüntüsü ekle", "Add a screenshot")} title={L("Ekran görüntüsü ekle", "Add a screenshot")} onClick={() => fileInput.current?.click()}>
+              <UiIcon name="clip" size={18} />
+            </button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={(e) => {
+                void addImages(Array.from(e.target.files ?? []));
+                e.target.value = "";
               }}
-            >
-              <textarea
-                value={text}
-                rows={2}
-                aria-label={L("Gezi kutusu", "Trip box")}
-                placeholder={L("Bali'ye 3 hafta, Sabine'yle… ya da bir link yapıştır", "Three weeks in Bali with Sabine… or paste a link")}
-                onChange={(e) => {
-                  setText(e.target.value);
-                  setAsk(null);
-                }}
-                onPaste={onPaste}
-                onKeyDown={(e) => {
-                  // Enter sends; never while an input method is still composing (Japanese, Chinese, Korean…).
-                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                    e.preventDefault();
-                    void submit();
-                  }
-                }}
-              />
-              <div className="st-prompt-foot">
-                <button type="button" className="st-clip" aria-label={L("Ekran görüntüsü ekle", "Add a screenshot")} title={L("Ekran görüntüsü ekle", "Add a screenshot")} onClick={() => fileInput.current?.click()}>
-                  <UiIcon name="clip" size={18} />
-                </button>
-                <input
-                  ref={fileInput}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  hidden
-                  onChange={(e) => {
-                    void addImages(Array.from(e.target.files ?? []));
-                    e.target.value = "";
-                  }}
-                />
-                <span className="st-prompt-hint">{L("Kiminle, ne zaman, nasıl bir gezi: ne kadar anlatırsan plan o kadar hazır gelir.", "Who with, when, what kind of trip: the more you say, the readier the plan.")}</span>
-                <button className="st-go" type="submit">
-                  {L("Planlamaya başla", "Start planning")} <span aria-hidden>↗</span>
-                </button>
-              </div>
-            </form>
-            {ask && (
-              <div className="st-ask" role="group" aria-label={L("Hangi gezi?", "Which trip?")}>
-                <span>{L(`${dative(ask.trip.title)} mi ekleyeyim, yeni gezi mi?`, `Add it to ${ask.trip.title}, or a new trip?`)}</span>
-                <button type="button" className="st-primary" onClick={() => (setAsk(null), setText(""), onAddToTrip(ask.trip.id, ask.text))}>
-                  {L(`${dative(ask.trip.title)} ekle`, `Add to ${ask.trip.title}`)}
-                </button>
-                <button type="button" className="st-chip" onClick={() => (setAsk(null), setText(""), onStart({ mode: "plan", text: ask.text }))}>
-                  {L("Yeni gezi", "New trip")}
-                </button>
-              </div>
-            )}
-            <div className="st-starts">
-              {MODES.map((m) => (
-                <button key={m.mode} type="button" className="st-start" onClick={() => (m.mode === "join" ? setJoining(true) : void submit(m.mode, m.label()))}>
-                  <HeroIcon name={m.icon} size={16} /> {m.label()}
-                </button>
-              ))}
-            </div>
-            {joining && (
-              <div className="st-join">
-                <JoinShared startOpen onJoined={onOpen} onCancel={() => setJoining(false)} />
-              </div>
-            )}
+            />
+            <span className="st-prompt-hint">{L("link, ekran görüntüsü ya da yazı", "a link, a screenshot or words")}</span>
+            <button className="st-go" type="submit">
+              {L("Planlamaya başla", "Start planning")} <span aria-hidden>↗</span>
+            </button>
           </div>
-
-          <aside className="hm-corner" aria-label={L("Senin köşen", "Your corner")}>
-            <div className="hm-corner-me">
-              <Face name={people[0]} photo={myPhoto} colour={FACES[0]} size={48} />
-              <div>
-                <div className="hm-corner-name">{me ?? L("Adını ekle", "Add your name")}</div>
-                <button type="button" className="hm-link" onClick={onSettings}>
-                  {me ? L("Profil ve ayarlar", "Profile and settings") : L("Profilini kur ›", "Set up your profile ›")}
-                </button>
-              </div>
-            </div>
-            <div className="hm-corner-block">
-              <div className="hm-corner-h">{L("Yol arkadaşların", "Who you travel with")}</div>
-              {companions.length ? (
-                <div className="hm-people">
-                  {companions.slice(0, 5).map((n) => (
-                    <span key={n} className="hm-person">
-                      <Face name={n} photo={peoplePhoto(n)} colour={faceColour(n, people)} size={28} />
-                      <span>{n}</span>
-                    </span>
-                  ))}
-                  {companions.length > 5 && <span className="hm-more">+{companions.length - 5}</span>}
-                </div>
-              ) : (
-                <p className="hm-quiet">{L("Birlikte gittiklerin gezilerinden buraya gelir.", "The people on your trips show up here.")}</p>
-              )}
-            </div>
-            <div className="hm-corner-block hm-stats">
-              <div>
-                <b>{real.length}</b>
-                <span>{L("gezi", real.length === 1 ? "trip" : "trips")}</span>
-              </div>
-              <div>
-                <b>{booked}</b>
-                <span>{L("rezervasyon", booked === 1 ? "booking" : "bookings")}</span>
-              </div>
-              <div>
-                <b>{drafts.length}</b>
-                <span>{L("taslak", drafts.length === 1 ? "draft" : "drafts")}</span>
-              </div>
-            </div>
-            {next && nextIn && (
-              <button type="button" className="hm-corner-block hm-next" onClick={() => onOpen(next.t.id)}>
-                <span className="hm-corner-h">{L("Sıradaki gezin", "Your next trip")}</span>
-                <span className="hm-next-line">
-                  <b>{next.t.title}</b>
-                  <span className="hm-pill">{nextIn}</span>
-                </span>
-              </button>
-            )}
-            {settings && (
-              <div className="hm-corner-block hm-ai">
-                <HeroIcon name="spark" size={16} />
-                <span>
-                  {(settings.provider === "gemini" ? settings.geminiKey : settings.apiKey) ? L("Asistan: ", "Assistant: ") : L("Asistan bağlı değil · ", "No assistant yet · ")}
-                  {(settings.provider === "gemini" ? settings.geminiKey : settings.apiKey) ? <b>{modelName(settings)}</b> : null}
-                </span>
-                <button type="button" className="hm-link" onClick={onSettings}>
-                  {L("Değiştir", "Change")}
-                </button>
-              </div>
-            )}
-          </aside>
-        </section>
-      </div>
+        </form>
+        {ask && (
+          <div className="st-ask" role="group" aria-label={L("Hangi gezi?", "Which trip?")}>
+            <span>{L(`${dative(ask.trip.title)} mi ekleyeyim, yeni gezi mi?`, `Add it to ${ask.trip.title}, or a new trip?`)}</span>
+            <button type="button" className="st-primary" onClick={() => (setAsk(null), setText(""), onAddToTrip(ask.trip.id, ask.text))}>
+              {L(`${dative(ask.trip.title)} ekle`, `Add to ${ask.trip.title}`)}
+            </button>
+            <button type="button" className="st-chip" onClick={() => (setAsk(null), setText(""), onStart({ mode: "plan", text: ask.text }))}>
+              {L("Yeni gezi", "New trip")}
+            </button>
+          </div>
+        )}
+        <div className="st-starts">
+          {MODES.map((m) => (
+            <button key={m.mode} type="button" className="st-start" onClick={() => (m.mode === "join" ? setJoining(true) : void submit(m.mode, m.label()))}>
+              <HeroIcon name={m.icon} size={16} /> {m.label()}
+            </button>
+          ))}
+        </div>
+        {joining && (
+          <div className="st-join">
+            <JoinShared startOpen onJoined={onOpen} onCancel={() => setJoining(false)} />
+          </div>
+        )}
+      </section>
 
       {(working.length > 0 || failed.length > 0) && (
         <div className="errors">
@@ -402,10 +456,23 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
         <section className="hm-trips">
           <div className="hm-trips-h">
             <h2 className="st-section">{L("Seyahatlerim", "My trips")}</h2>
-            <span className="hm-count">{trips.length + drafts.length}</span>
+            <p className="hm-trips-sub">
+              {L(`Şimdiye kadar ${trips.length} gezi planladın`, `You've planned ${trips.length} trip${trips.length === 1 ? "" : "s"} so far`)}
+              {drafts.length ? L(` · ${drafts.length} taslak`, ` · ${drafts.length} draft${drafts.length === 1 ? "" : "s"}`) : ""}
+            </p>
+            {pastCount > 0 && (
+              <div className="hm-seg" role="tablist" aria-label={L("Geziler", "Trips")}>
+                <button type="button" role="tab" aria-selected={when === "ahead"} className={when === "ahead" ? "on" : ""} onClick={() => setWhen("ahead")}>
+                  {L("Yaklaşan", "Upcoming")}
+                </button>
+                <button type="button" role="tab" aria-selected={when === "past"} className={when === "past" ? "on" : ""} onClick={() => setWhen("past")}>
+                  {L("Geçmiş", "Past")} · {pastCount}
+                </button>
+              </div>
+            )}
           </div>
           <div className="trip-grid">
-            {drafts.map((d) => {
+            {when === "ahead" && drafts.map((d) => {
               const p = progressOf(checklist(d, ctx));
               return (
                 <div key={d.id} className="st-draft">
@@ -434,7 +501,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
                 </div>
               );
             })}
-            {ordered.map((trip) => {
+            {shownTrips.map((trip) => {
               const own = items.filter((i) => i.tripId === trip.id && i.status !== "dismissed");
               const range = trip.confirmedDates ?? tripDateRange(own);
               // Where it stays and does things: not the home the flight back lands in, nor an eSIM's country.
@@ -448,7 +515,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
               const credit = creditOf(image, trip.photoCredits);
               const line = credit ? creditLine(credit) : null;
               const photoBy = line ? `${line.label} ${[line.by?.text, line.source.text].filter(Boolean).join(" / ")}` : undefined;
-              const when = countdownText(countdown(range, today));
+              const left = countdownText(countdown(range, today));
               const names = trip.travellers?.names?.filter((n) => n.trim()) ?? [];
               const total = Math.max(1, own.length);
               return (
@@ -464,7 +531,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
                         ))}
                       </span>
                     )}
-                    {when && <span className="hm-pill hm-pill-on">{when}</span>}
+                    {left && <span className="hm-pill hm-pill-on">{left}</span>}
                   </span>
                   <span className="trip-card-body">
                     <span className="trip-card-title">

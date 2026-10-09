@@ -276,7 +276,7 @@ export function App() {
             onStart={(launch) => withTransition(() => setStart({ ...launch, key: newId() }))}
             onAddToTrip={addToTrip}
             ctx={startCtx}
-            menu={menu}
+            onTrash={() => setHistoryOpen(true)}
           />
         )
       )}

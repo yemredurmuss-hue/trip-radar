@@ -1,6 +1,7 @@
 // Decision engine. Pure and deterministic: the same facts and priorities always give the same scores.
 // The model only supplies facts (extraction) and one clearly labelled, low-weight "AI" criterion;
 // everything else - normalisation, weights, ranking, reasons - is computed here and explainable.
+import { displayCurrency } from "./displayCurrency";
 import { convert, type Rates } from "./currency";
 import { distanceKm, formatDistance, walkingMinutes } from "./geo";
 import { L } from "./i18n";
@@ -305,7 +306,8 @@ export function makeContext(
     trip,
     tripItems,
     rates: extra.rates ?? null,
-    currency: trip.budget?.currency ?? trip.currency ?? common ?? "EUR",
+    // The traveller's own currency (displayCurrency.ts) before the records' most common, when the trip has none of its own.
+    currency: trip.budget?.currency ?? trip.currency ?? displayCurrency() ?? common ?? "EUR",
     tripStart: range?.start ?? null,
     tripNights: range ? Math.max(1, nightsBetween(range.start, range.end)) : 0,
     cityCenters: extra.cityCenters ?? {},
