@@ -224,6 +224,15 @@ Hepsi isteğe bağlı alan; eski sürüm bilmediği alanı yok sayar. Paylaşım
 
 ## Durum
 
+**Hepsi yayında (2026-10-09):** 0.36.56 Faz 1 · 0.36.57 Faz 2a + vize · 0.36.58 düzeltme · 0.36.59 Pano + rezervasyon
+penceresi · 0.36.60 Faz 2b (ihtiyaç kartı + seçim penceresi) + Faz 4 (Yapılacak şeyler kareleri, Gün gün'de "Planda,
+günü yok") · 0.36.61 Faz 6 (sigorta ve eSIM yan yana, bölüm başlığında harcanan).
+Bilinçli olarak dışarıda kalanlar: konaklamaların kendi karşılaştırma bloğu (Faz 2b'nin ihtiyaç kartı onlara
+uygulanmadı); paylaşılan gezide kalbin oylara bağlanması (`likedBy` yerel); bölüm bütçesi payı (sohbetin koyması
+bekleniyor); etkinlik fikirlerinin kare olması (canlıdaki kartlar kaldı).
+
+Önceki notlar:
+
 - **Faz 2a yayında: 0.36.57** (2026-10-09 gece): "Plana koy" her yerde, "✓ Aldım" kartın üst satırında (altta sayfası
   varsa "Bileti al ↗ / Rezerve et ↗"), × = "Gerek yok" (`setNotNeeded`, Gizlenenler, Geri al), rezervede × "Kaldır" ve
   önce sorar; Sil/Değiştir soruları panonun kendi penceresinde. **Vize düzeltmesi (Emre, 2026-10-09):** vize Hazırlık'tan

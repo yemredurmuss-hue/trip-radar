@@ -404,3 +404,9 @@ hepsi açık gelir, başlıkta aşama sözleri. Unit 1677/1677, e2e yeşil. Sır
 - 0.36.58: sayfa sürekli Hazırlık'a kayıyordu, düzeldi (gece oturumu buldu).
 - Pano (Faz 5) `plan-v11-pano` dalında, yayınlanmadı: ekran görüntüleri `docs/mockups/2026-10-09-pano-canli-*.png`.
 - Açık soru: kartta seçenekler ‹ 1/2 › mi kalsın, "3 seçenek ›" + pencere mi olsun (Faz 2b buna bağlı).
+
+## v11 planı tamamlandı (2026-10-09)
+
+0.36.59 Pano + rezervasyon penceresi · 0.36.60 ihtiyaç kartı ("N seçenek ›" + seçim penceresi, AI ayrı) + Yapılacak
+şeyler kareleri (gün Gün gün'de) · 0.36.61 sigorta ve eSIM yan yana + bölüm başlığında harcanan. Açık kalanlar spec'in
+"Durum" bölümünde (konaklama bloğu, paylaşılan gezide kalp ↔ oy, bölüm bütçesi payı, etkinlik kareleri).
