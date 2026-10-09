@@ -12,8 +12,10 @@ import { KindIcon, UiIcon } from "../cards/Silhouettes";
 import { HiddenList } from "./HiddenList";
 import { SECTION_META } from "./sectionMeta";
 
-export function Section({ section, open, onToggle, onAdd, suggestions = 0, children }: {
+export function Section({ section, allot = null, open, onToggle, onAdd, suggestions = 0, children }: {
   section: CatSection;
+  /** v11: its share of the trip's budget, "€500" ("€285 · €500 ayrıldı"). */
+  allot?: string | null;
   open: boolean;
   onToggle: () => void;
   /** "+ Ekle" in the open header: this section's kind, no day. */
@@ -56,6 +58,7 @@ export function Section({ section, open, onToggle, onAdd, suggestions = 0, child
           ) : (
             <>
               {spent && <span className="cat-spent" title={L("Seçilen ve rezerve olanların toplamı", "What's chosen and booked, added up")}>{spent}</span>}
+              {allot && <span className="cat-allot" title={L("Gezi bütçesinden bu bölüme düşen pay (beklenen maliyete göre)", "This part's share of the trip's budget (by what it's likely to cost)")}>{L(`${allot} ayrıldı`, `${allot} set aside`)}</span>}
               <span className={`cat-bar${complete ? " done" : ""}`} aria-hidden>
                 <span style={{ width: `${pct}%` }} />
               </span>

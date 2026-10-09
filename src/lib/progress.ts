@@ -330,6 +330,21 @@ export interface BudgetBar {
   uncounted: number;
   /** Booked + chosen, by kind (what the hero's bar shows). */
   byCategory: Record<BudgetSlice, number>;
+  /** Booked + chosen + each open decision's leading option, by kind: what each part is likely to cost. */
+  expected: Record<BudgetSlice, number>;
+}
+
+/**
+ * v11 "€500 ayrıldı" in a section's header: the trip's budget shared out by what each part is likely to cost
+ * (BudgetBar.expected), to the nearest 10; null with no budget or nothing priced yet.
+ */
+export function sectionAllotments(bar: Pick<BudgetBar, "total" | "expected">): Record<BudgetSlice, number> | null {
+  if (bar.total == null || bar.total <= 0) return null;
+  const sum = BUDGET_SLICES.reduce((a, s) => a + bar.expected[s], 0);
+  if (sum <= 0) return null;
+  const out = { flight: 0, stay: 0, transport: 0, activity: 0, other: 0 } as Record<BudgetSlice, number>;
+  for (const s of BUDGET_SLICES) out[s] = Math.round(((bar.total * bar.expected[s]) / sum) / 10) * 10;
+  return out;
 }
 
 /** What the trip costs so far and what's likely still to come, in the trip's currency. */
@@ -340,6 +355,7 @@ export function budgetBar(plan: Plan, items: Item[], ctx: DecisionContext, decis
   let open = 0;
   let uncounted = 0;
   const byCategory: Record<BudgetSlice, number> = { flight: 0, stay: 0, transport: 0, activity: 0, other: 0 };
+  const expected: Record<BudgetSlice, number> = { flight: 0, stay: 0, transport: 0, activity: 0, other: 0 };
   const add = (item: Item, to: "booked" | "chosen" | "open") => {
     const price = totalPrice(item, ctx);
     if (price == null) {
@@ -347,6 +363,7 @@ export function budgetBar(plan: Plan, items: Item[], ctx: DecisionContext, decis
       return;
     }
     if (to !== "open") byCategory[sliceOf(item.category)] += price;
+    expected[sliceOf(item.category)] += price;
     if (to === "booked") booked += price;
     else if (to === "chosen") chosen += price;
     else open += price;
@@ -362,5 +379,5 @@ export function budgetBar(plan: Plan, items: Item[], ctx: DecisionContext, decis
     if (lead) add(lead, "open");
   }
   const budget = ctx.trip.budget;
-  return { currency: ctx.currency, total: budget && budget.currency === ctx.currency ? budget.amount : null, booked, chosen, open, uncounted, byCategory };
+  return { currency: ctx.currency, total: budget && budget.currency === ctx.currency ? budget.amount : null, booked, chosen, open, uncounted, byCategory, expected };
 }

@@ -461,9 +461,11 @@ try {
   assert.equal(await sec("activity").evaluate((el) => getComputedStyle(el).backgroundColor), "rgba(0, 0, 0, 0)", "no tinted section");
   assert.equal(await app.locator(".cat-tile, .cat-state").count(), 0, "no icon tiles, no status pills");
   // v11 phase 6: what's chosen and booked, added up, before the bar ("€25").
-  assert.match(await sec("activity").locator(".cat-head").innerText(), /^Etkinlik ve turlar\s*[^\n]*\s*Ekle\s*€25\s*0\/4$/);
+  assert.match(await sec("activity").locator(".cat-head").innerText(), /^Etkinlik ve turlar\s*[^\n]*\s*Ekle\s*€25\s*€[\d.,]+ ayrıldı\s*0\/4$/);
+  // v11: each section's share of the trip's budget, by what it's likely to cost ("€40 ayrıldı").
+  assert.match(await sec("stay").locator(".cat-allot").innerText(), /^€[\d.,]+ ayrıldı$/);
   assert.equal(await sec("activity").locator(".cat-st").innerText(), "1 planda · 3 fikir");
-  assert.match(await sec("flight").locator(".cat-head").innerText(), /^Uçuş\s*[^\n]*\s*Ekle\s*(€[\d.,]+\s*)?1\/2$/);
+  assert.match(await sec("flight").locator(".cat-head").innerText(), /^Uçuş\s*[^\n]*\s*Ekle\s*(€[\d.,]+\s*)?(€[\d.,]+ ayrıldı\s*)?1\/2$/);
   assert.equal(await sec("flight").locator(".cat-st").innerText(), "1 rezerve · 1 aranıyor");
   assert.equal(await app.locator(".cat-wait").count(), 0, "no amber line: the stage line says it");
   assert.equal(await sec("flight").locator(".cat-bar > span").evaluate((el) => el.style.width), "50%");
@@ -1738,11 +1740,11 @@ try {
     assert.match(await sec(id).locator(".cat-count").innerText(), /^\d+\/\d+$/);
     // Etkinlik ve turlar counts what's on the plan and the ideas instead ("1 planda · 4 fikir").
     const stage = id === "activity" ? String.raw`(\s*\d+ (?:planda|fikir)(?: · \d+ fikir)?)?` : String.raw`(\s*\d+ (?:rezerve|seçildi|aranıyor)(?: · \d+ (?:rezerve|seçildi|aranıyor))*)?`;
-    assert.match(await sec(id).locator(".cat-head").innerText(), new RegExp(String.raw`^[^\d]+?${stage}\s*(\d+ öneri\s*)?(€[\d.,]+\s*)?\d+\/\d+$`), `${id}: the name, its stage line, what's spent, the count, no other words`);
+    assert.match(await sec(id).locator(".cat-head").innerText(), new RegExp(String.raw`^[^\d]+?${stage}\s*(\d+ öneri\s*)?(€[\d.,]+\s*)?(€[\d.,]+ ayrıldı\s*)?\d+\/\d+$`), `${id}: the name, its stage line, what's spent, the count, no other words`);
     assert.equal(await sec(id).locator(".cat-add").count(), 0, `${id}: no "+ Ekle" when closed`);
     assert.deepEqual(
       await sec(id).locator(".cat-head").evaluate((el) => [...el.querySelectorAll(".cat-title > *, .cat-end > *")].map((c) => c.className || c.tagName.toLowerCase())),
-      ["cat-ic", "cat-tt", ...sg, ...((await sec(id).locator(".cat-spent").count()) ? ["cat-spent"] : []), "cat-bar" + ((await sec(id).locator(".cat-bar.done").count()) ? " done" : ""), "cat-count", "cat-chev"],
+      ["cat-ic", "cat-tt", ...sg, ...((await sec(id).locator(".cat-spent").count()) ? ["cat-spent"] : []), ...((await sec(id).locator(".cat-allot").count()) ? ["cat-allot"] : []), "cat-bar" + ((await sec(id).locator(".cat-bar.done").count()) ? " done" : ""), "cat-count", "cat-chev"],
       `${id}: icon · name … bar · count · arrow`,
     );
     // Complete: the bar full and green.
@@ -1753,7 +1755,7 @@ try {
     counts.push(Math.round(box.x + box.width));
   }
   assert.equal(new Set(counts).size, 1, `the counts line up on the right (${counts})`);
-  assert.match(await sec("stay").locator(".cat-head").innerText(), /^Konaklama\n1 rezerve · 1 seçildi\n€[\d.,]+\n1\/2$/);
+  assert.match(await sec("stay").locator(".cat-head").innerText(), /^Konaklama\n1 rezerve · 1 seçildi\n€[\d.,]+\n(€[\d.,]+ ayrıldı\n)?1\/2$/);
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5c-collapsed.png` });
   await app.setViewportSize({ width: 560, height: 1400 });

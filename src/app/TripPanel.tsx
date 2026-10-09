@@ -7,7 +7,7 @@ import { buildLegs, staleHiddenMoves, type Leg } from "../lib/legs";
 import { buildTimeline } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
 import { cardFacts } from "../lib/cardFacts";
-import { budgetBar, decisionProgress, entryDomId, nextStepText, type DecisionProgress, type Todo } from "../lib/progress";
+import { budgetBar, sectionAllotments, decisionProgress, entryDomId, nextStepText, type DecisionProgress, type Todo } from "../lib/progress";
 import { cityKeyOf, groupKeyOf, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 import { L } from "../lib/i18n";
@@ -477,6 +477,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   }, [trip.id]);
   const progress = decisionProgress(timeline, items, plan, decisions?.byGroup, today, (i) => isPlaceholder(trip, i));
   const bar = decisions ? budgetBar(plan, items, decisions.ctx, decisions.byGroup) : null;
+  // v11: each section's share of the budget ("€500 ayrıldı"), by what it's likely to cost.
+  const allot = bar ? sectionAllotments(bar) : null;
   const facts = useMemo(
     () =>
       tripFacts(items, {
@@ -831,6 +833,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       ) : (
         <EmptyEnvContext.Provider value={emptyEnv}>
           <CategoryPlan
+            allot={allot && bar ? { by: allot, currency: bar.currency } : null}
             plan={plan}
             sections={sections}
             isOpen={arrivals.isOpen}

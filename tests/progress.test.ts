@@ -8,7 +8,7 @@ import { loadDemoTrip } from "../src/lib/demo";
 import { EMPTY_METRICS } from "../src/lib/items";
 import { buildLegs } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
-import { budgetBar, dateAlert, decisionProgress, nextStepText, type Todo } from "../src/lib/progress";
+import { budgetBar, dateAlert, decisionProgress, nextStepText, type Todo, sectionAllotments } from "../src/lib/progress";
 import { buildTimeline } from "../src/lib/timeline";
 import type { Item } from "../src/lib/types";
 
@@ -142,5 +142,16 @@ describe("budget bar", () => {
     const known = Object.values(bar.byCategory).reduce((a, b) => a + b, 0);
     expect(Math.round(known)).toBe(Math.round(bar.booked + bar.chosen));
     expect(bar.byCategory.stay).toBeGreaterThan(0);
+  });
+});
+
+describe("sectionAllotments (v11 '€500 ayrıldı')", () => {
+  const expected = { flight: 300, stay: 700, transport: 0, activity: 100, other: 0 };
+  it("shares the budget out by what each part is likely to cost, to the nearest 10", () => {
+    expect(sectionAllotments({ total: 2200, expected })).toEqual({ flight: 600, stay: 1400, transport: 0, activity: 200, other: 0 });
+  });
+  it("nothing with no budget or nothing priced", () => {
+    expect(sectionAllotments({ total: null, expected })).toBeNull();
+    expect(sectionAllotments({ total: 1000, expected: { flight: 0, stay: 0, transport: 0, activity: 0, other: 0 } })).toBeNull();
   });
 });

@@ -25,8 +25,12 @@ import { VisaRow } from "./VisaRow";
 import { TripShape } from "./TripShape";
 import type { JourneyHop, JourneyStop } from "../../lib/tripShape";
 import type { BoardSuggestions } from "../useSuggestions";
+import type { BudgetSlice } from "../../lib/progress";
+import { formatPrice } from "../../lib/items";
 
-export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, shape = null, onStop, onJourneyOrder }: {
+const SLICE: Partial<Record<SectionId, BudgetSlice>> = { flight: "flight", stay: "stay", transport: "transport", activity: "activity", other: "other" };
+
+export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, shape = null, onStop, onJourneyOrder }: {
   plan: Plan;
   sections: CatSection[];
   /** Open now: the traveller's choice, else the first look (sectionMeta.useSectionOpen). */
@@ -52,6 +56,8 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
   onStop?: (stop: JourneyStop) => void;
   /** "Yolculuk sırasıyla": the trip in the order it's lived (Gün gün). */
   onJourneyOrder?: () => void;
+  /** v11: the budget shared out by section ("€500 ayrıldı"), when the trip has one. */
+  allot?: { by: Record<BudgetSlice, number>; currency: string } | null;
 }) {
   const n = plan.nights;
   const waiting = (s: CatSection) => pending?.bySection[s.id] != null;
@@ -122,7 +128,7 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
             // Only empty cards there (a new trip's Etkinlikler, Diğer's eSIM): open at first look, something's left.
             const opened = isOpen(onlySuggested ? provisionalSection(s) : !own && (rows.length || visaLine(s)) ? { ...s, open: true } : s);
             return (
-              <Section key={s.id} section={s} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)} suggestions={suggested(s).length}>
+              <Section key={s.id} section={s} allot={allot && SLICE[s.id] && allot.by[SLICE[s.id]!] > 0 ? formatPrice(allot.by[SLICE[s.id]!], allot.currency) : null} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)} suggestions={suggested(s).length}>
                 {visaLine(s) && <VisaRow visa={visa} done={visaDone} onDone={(d) => onVisaDone?.(d)} />}
                 {suggestions && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
                 {pending?.bySection[s.id]}
