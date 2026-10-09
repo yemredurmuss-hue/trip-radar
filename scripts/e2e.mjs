@@ -455,9 +455,10 @@ try {
   assert.equal(await app.locator(".cat-plan .cat-sheet").count(), 1);
   assert.equal(await sec("activity").evaluate((el) => getComputedStyle(el).backgroundColor), "rgba(0, 0, 0, 0)", "no tinted section");
   assert.equal(await app.locator(".cat-tile, .cat-state").count(), 0, "no icon tiles, no status pills");
-  assert.match(await sec("activity").locator(".cat-head").innerText(), /^Etkinlik ve turlar\s*[^\n]*\s*Ekle\s*0\/4$/);
+  // v11 phase 6: what's chosen and booked, added up, before the bar ("€25").
+  assert.match(await sec("activity").locator(".cat-head").innerText(), /^Etkinlik ve turlar\s*[^\n]*\s*Ekle\s*€25\s*0\/4$/);
   assert.equal(await sec("activity").locator(".cat-st").innerText(), "1 seçildi · 3 aranıyor");
-  assert.match(await sec("flight").locator(".cat-head").innerText(), /^Uçuş\s*[^\n]*\s*Ekle\s*1\/2$/);
+  assert.match(await sec("flight").locator(".cat-head").innerText(), /^Uçuş\s*[^\n]*\s*Ekle\s*(€[\d.,]+\s*)?1\/2$/);
   assert.equal(await sec("flight").locator(".cat-st").innerText(), "1 rezerve · 1 aranıyor");
   assert.equal(await app.locator(".cat-wait").count(), 0, "no amber line: the stage line says it");
   assert.equal(await sec("flight").locator(".cat-bar > span").evaluate((el) => el.style.width), "50%");
@@ -1710,11 +1711,11 @@ try {
     }
     assert.match(await sec(id).locator(".cat-count").innerText(), /^\d+\/\d+$/);
     const stage = String.raw`(\s*\d+ (?:rezerve|seçildi|aranıyor)(?: · \d+ (?:rezerve|seçildi|aranıyor))*)?`;
-    assert.match(await sec(id).locator(".cat-head").innerText(), new RegExp(String.raw`^[^\d]+?${stage}\s*(\d+ öneri\s*)?\d+\/\d+$`), `${id}: the name, its stage line, the count, no other words`);
+    assert.match(await sec(id).locator(".cat-head").innerText(), new RegExp(String.raw`^[^\d]+?${stage}\s*(\d+ öneri\s*)?(€[\d.,]+\s*)?\d+\/\d+$`), `${id}: the name, its stage line, what's spent, the count, no other words`);
     assert.equal(await sec(id).locator(".cat-add").count(), 0, `${id}: no "+ Ekle" when closed`);
     assert.deepEqual(
       await sec(id).locator(".cat-head").evaluate((el) => [...el.querySelectorAll(".cat-title > *, .cat-end > *")].map((c) => c.className || c.tagName.toLowerCase())),
-      ["cat-ic", "cat-tt", ...sg, "cat-bar" + ((await sec(id).locator(".cat-bar.done").count()) ? " done" : ""), "cat-count", "cat-chev"],
+      ["cat-ic", "cat-tt", ...sg, ...((await sec(id).locator(".cat-spent").count()) ? ["cat-spent"] : []), "cat-bar" + ((await sec(id).locator(".cat-bar.done").count()) ? " done" : ""), "cat-count", "cat-chev"],
       `${id}: icon · name … bar · count · arrow`,
     );
     // Complete: the bar full and green.
@@ -1725,7 +1726,7 @@ try {
     counts.push(Math.round(box.x + box.width));
   }
   assert.equal(new Set(counts).size, 1, `the counts line up on the right (${counts})`);
-  assert.equal(await sec("stay").locator(".cat-head").innerText(), "Konaklama\n1 rezerve · 1 seçildi\n1/2");
+  assert.match(await sec("stay").locator(".cat-head").innerText(), /^Konaklama\n1 rezerve · 1 seçildi\n€[\d.,]+\n1\/2$/);
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5c-collapsed.png` });
   await app.setViewportSize({ width: 560, height: 1400 });
@@ -2759,9 +2760,15 @@ try {
   // Ubud is Bali's (the hero's main place, from the table of regions): the nights are counted for Bali.
   assert.match(await rentalCard.innerText(), /25 gece Bali'de kalıyorsun/);
   assert.doesNotMatch(await rentalCard.innerText(), /%/, "no invented percentage");
-  // Insurance is a suggestion ("1 öneri"); the eSIM is its empty card (boş kartlar), Airalo and Holafly for Indonesia.
-  await sgSec("other").locator(".sg-count", { hasText: "1 öneri" }).waitFor();
+  // v11 phase 6: insurance and the eSIM are their empty cards side by side, as large: insurance with a search to
+  // compare, the eSIM with Airalo and Holafly for Indonesia.
   await openSec("other");
+  const insCard = sgSec("other").locator('.ek-card[data-suggestion="rule:insurance"]');
+  await insCard.waitFor();
+  assert.equal(await insCard.locator(".ek-txt b").innerText(), "Seyahat sağlık sigortası");
+  assert.equal(await insCard.locator(".ek-state").innerText(), "Alınmadı");
+  assert.match(await insCard.locator(".ek-link").first().getAttribute("href"), /^https:\/\/www\.google\.com\/search\?q=seyahat%20sa%C4%9Fl%C4%B1k%20sigortas%C4%B1%20Endonezya$/);
+  assert.equal(await sgSec("other").locator(".sg-card", { hasText: "sigorta" }).count(), 0, "insurance is never a suggestion card too");
   const esimCard = sgSec("other").locator('.ek-card[data-suggestion="rule:esim"]');
   await esimCard.waitFor();
   assert.equal(await esimCard.locator(".ek-txt b").innerText(), "eSIM · Endonezya");
@@ -2778,16 +2785,19 @@ try {
   assert.match(await sgSec("transport").locator(".cat-count").innerText(), /^0\/1$/);
   await sgSec("transport").locator(".cat-count").waitFor();
   assert.equal(await sgSec("transport").locator(".sg-count").count(), 0);
-  // Gerek yok: the eSIM's empty card goes (its suggestion dismissed), the insurance suggestion stays.
+  // Gerek yok: the eSIM's empty card goes (its suggestion dismissed), the insurance's stays.
+  const esimRect = await esimCard.boundingBox();
+  const insRect = await insCard.boundingBox();
+  assert.ok(Math.abs(esimRect.height - insRect.height) < 2 && Math.abs(esimRect.y - insRect.y) < 2, `insurance and eSIM side by side, as large (${JSON.stringify([esimRect, insRect])})`);
   await esimCard.getByRole("button", { name: "Gerek yok" }).click();
   await esimCard.waitFor({ state: "detached" });
-  await sgSec("other").locator(".sg-count", { hasText: "1 öneri" }).waitFor();
+  await insCard.waitFor();
   await board.waitForTimeout(300); // the trip write lands
   await board.reload();
   await board.getByRole("heading", { name: "Bali" }).waitFor();
-  await sgSec("other").locator(".sg-count", { hasText: "1 öneri" }).waitFor({ timeout: 10000 });
+  await sgSec("other").waitFor({ timeout: 10000 });
   await openSec("other");
-  await sgSec("other").locator(".sg-card", { hasText: "Seyahat sağlık sigortası" }).waitFor();
+  await insCard.waitFor();
   assert.equal(await sgSec("other").locator('.sg-card:has-text("eSIM"), .ek-card[data-suggestion="rule:esim"]').count(), 0, "Gerek yok is for good");
   assert.equal(await sgSec("transport").locator(".sg-card").count(), 0, "the added suggestion doesn't come back");
   await sgSec("transport").getByText("Motosiklet", { exact: true }).first().waitFor();

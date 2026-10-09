@@ -20,7 +20,7 @@ import { legItem, withLegChoice, type Leg } from "../../lib/legs";
 import { isOwnStay } from "../../lib/playbooks";
 import type { Need } from "../../lib/offerSource";
 import type { StayBlock } from "../../lib/plan";
-import { activityLinks, airportCode, BRANDS, esimLinks, flightLinks, stayLinks, transferLinks, type SearchLink } from "../../lib/searchLinks";
+import { activityLinks, airportCode, BRANDS, esimLinks, flightLinks, stayLinks, transferLinks, type SearchLink, insuranceLinks } from "../../lib/searchLinks";
 import { countryOfPlace } from "../../lib/chatBooking";
 import type { Item, Suggestion } from "../../lib/types";
 import { fromOf } from "../../lib/tripSettings";
@@ -466,6 +466,36 @@ export function EmptyEsimCard({ suggestion, onAdd, onDismiss }: { suggestion: Su
       onSkip={() => onDismiss(suggestion)}
       skipTitle={L("eSIM gerekmiyor", "No eSIM needed")}
       need={esimCountries[0] ? { key: needKey("esim", esimCountries[0]), section: "other", kind: "esim", country: esimCountries[0], start, end } : null}
+    />
+  );
+}
+
+/**
+ * Belgeler ve internet's insurance while there's none on a trip abroad (v11 phase 6, the rule's suggestion drawn as its
+ * empty card, beside the eSIM's and as large): "Seyahat sağlık sigortası", the shield, "Alınmadı", a search to compare.
+ */
+export function EmptyInsuranceCard({ suggestion, onAdd, onDismiss }: { suggestion: Suggestion; onAdd: (s: Suggestion) => void; onDismiss: (s: Suggestion) => void }) {
+  const { esimCountries } = useEmptyEnv();
+  const names = countryNames(esimCountries);
+  const start = isoDate(suggestion.payload?.start ?? null);
+  const end = isoDate(suggestion.payload?.end ?? null);
+  const title = L("Seyahat sağlık sigortası", "Travel health insurance");
+  return (
+    <EmptyShell
+      kind="insurance"
+      date={start ? formatDateRange(start, end) : null}
+      ariaLabel={title}
+      data={{ "data-suggestion": suggestion.key }}
+      menu={[
+        { label: L("Plana koy", "Add to plan"), run: () => onAdd(suggestion) },
+        { label: L("Gerek yok", "Not needed"), run: () => onDismiss(suggestion) },
+      ]}
+      body={<EmptyMedia kind="insurance" drawing="shield" title={title} sub={names.length ? L(`${names.join(", ")} · zorunlu değil ama önerilir`, `${names.join(", ")} · not required, advised`) : L("zorunlu değil ama önerilir", "not required, advised")} />}
+      status={L("Alınmadı", "Not bought")}
+      links={insuranceLinks(names[0])}
+      onSkip={() => onDismiss(suggestion)}
+      skipTitle={L("Sigorta gerekmiyor", "No insurance needed")}
+      need={null}
     />
   );
 }

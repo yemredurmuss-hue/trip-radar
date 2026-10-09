@@ -15,7 +15,7 @@ import type { InsertAt } from "../../lib/templates";
 import type { Item, Suggestion } from "../../lib/types";
 import type { Visa } from "../../lib/visa";
 import { AddButton, InsertPoint } from "../cards/AddSheet";
-import { EmptyActivityCard, EmptyEsimCard } from "../cards/EmptyCard";
+import { EmptyActivityCard, EmptyEsimCard, EmptyInsuranceCard } from "../cards/EmptyCard";
 import { KindIcon } from "../cards/Silhouettes";
 import { Section } from "./Section";
 import { provisionalSection, SECTION_META } from "./sectionMeta";
@@ -51,14 +51,29 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
   // A section with only suggestions is drawn too (its header says "2 öneri"); they never count in its "3/4".
   // The rule's eSIM suggestion is the eSIM's empty card (its "Gerek yok" the same dismissal), not a suggestion card.
   const esim = suggestions?.bySection.other?.find((s) => s.key === ESIM_RULE) ?? null;
+  // v11 phase 6: the insurance's suggestion is its empty card too, beside the eSIM's and as large.
+  const insurance = suggestions?.bySection.other?.find((s) => s.key === INS_RULE) ?? null;
   // v11: a restaurant's suggestion sits atop Yapılacak şeyler, where restaurants are drawn.
-  const suggested = (s: CatSection) => [...(suggestions?.bySection[s.id] ?? []), ...(s.id === "todo" ? (suggestions?.bySection.food ?? []) : [])].filter((x) => x.key !== ESIM_RULE);
+  const suggested = (s: CatSection) => [...(suggestions?.bySection[s.id] ?? []), ...(s.id === "todo" ? (suggestions?.bySection.food ?? []) : [])].filter((x) => x.key !== ESIM_RULE && x.key !== INS_RULE);
   const gaps = activityGaps(plan, items);
   const emptyRows = (s: CatSection): EmptyRow[] =>
     s.id === "activity"
       ? gaps.map((g) => ({ key: `activity:${g.city}`, when: L("Tarihsiz", "No date"), city: g.city, card: <EmptyActivityCard gap={g} />, at: { city: g.city, date: null } }))
-      : s.id === "other" && esim && suggestions
-        ? [{ key: "esim", when: L("Tüm gezi", "Whole trip"), city: null, card: <EmptyEsimCard suggestion={esim} onAdd={suggestions.add} onDismiss={suggestions.dismiss} />, at: { city: null, date: null } }]
+      : s.id === "other" && (esim || insurance) && suggestions
+        ? [
+            {
+              key: "cover",
+              when: L("Tüm gezi", "Whole trip"),
+              city: null,
+              card: (
+                <div className="ek-pair">
+                  {insurance && <EmptyInsuranceCard suggestion={insurance} onAdd={suggestions.add} onDismiss={suggestions.dismiss} />}
+                  {esim && <EmptyEsimCard suggestion={esim} onAdd={suggestions.add} onDismiss={suggestions.dismiss} />}
+                </div>
+              ),
+              at: { city: null, date: null },
+            },
+          ]
         : [];
   const visaLine = (s: CatSection) => s.id === "other" && visa != null && visa.kind !== "none";
   const shown = sections.filter((s) => s.entries.length || s.hidden.length || waiting(s) || suggested(s).length || emptyRows(s).length || visaLine(s));
@@ -116,6 +131,8 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
 
 /** The rule's eSIM suggestion (lib/suggestions.ts), drawn as the eSIM's empty card. */
 const ESIM_RULE: Suggestion["key"] = "rule:esim";
+/** The rule's insurance suggestion, drawn as the insurance's empty card (v11 phase 6). */
+const INS_RULE: Suggestion["key"] = "rule:insurance";
 
 interface EmptyRow {
   key: string;

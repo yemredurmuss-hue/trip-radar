@@ -6,6 +6,7 @@
 import type { ReactNode } from "react";
 import { isIdeaSection, sectionProgress, stageLine, type CatSection } from "../../lib/categories";
 import { L } from "../../lib/i18n";
+import { formatPrice } from "../../lib/items";
 import { suggestionCount } from "../../lib/suggestions";
 import { KindIcon, UiIcon } from "../cards/Silhouettes";
 import { HiddenList } from "./HiddenList";
@@ -28,6 +29,7 @@ export function Section({ section, open, onToggle, onAdd, suggestions = 0, child
   // v11: the header says where its needs stand in stage words ("1 rezerve · 2 seçildi · 1 aranıyor"); the ideas and
   // Hazırlık count instead.
   const line = isIdeaSection(section.id) || section.id === "prep" ? null : stageLine(section.stages);
+  const spent = isIdeaSection(section.id) || section.id === "prep" ? null : spentOf(section);
   return (
     <section className={`cat-sec${open ? "" : " closed"}`} style={{ "--c": meta.color } as React.CSSProperties} aria-label={label} data-section={section.id}>
       <div className="cat-head" onClick={onToggle}>
@@ -53,6 +55,7 @@ export function Section({ section, open, onToggle, onAdd, suggestions = 0, child
             <span className="cat-ideas">{ideaCount(section.id, ideas, section.entries)}</span>
           ) : (
             <>
+              {spent && <span className="cat-spent" title={L("Seçilen ve rezerve olanların toplamı", "What's chosen and booked, added up")}>{spent}</span>}
               <span className={`cat-bar${complete ? " done" : ""}`} aria-hidden>
                 <span style={{ width: `${pct}%` }} />
               </span>
@@ -77,6 +80,19 @@ export function Section({ section, open, onToggle, onAdd, suggestions = 0, child
       )}
     </section>
   );
+}
+
+/** v11: what's chosen and booked in a section, added up in its main currency ("€2.690"); null when nothing is priced. */
+function spentOf(section: CatSection): string | null {
+  const by = new Map<string, number>();
+  for (const e of section.entries) {
+    if (e.state !== "done" && e.state !== "book") continue;
+    const p = e.row.price;
+    if (!p || !p.currency || !(p.amount > 0)) continue;
+    by.set(p.currency, (by.get(p.currency) ?? 0) + p.amount);
+  }
+  const top = [...by.entries()].sort((a, b) => b[1] - a[1])[0];
+  return top ? formatPrice(Math.round(top[1]), top[0]) : null;
 }
 
 /**

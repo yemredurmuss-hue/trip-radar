@@ -67,7 +67,8 @@ export type Brand =
   | "viator"
   | "klook"
   | "airalo"
-  | "holafly";
+  | "holafly"
+  | "google";
 
 /** A brand's mark on the card: one letter on its colour (drawn in the extension, never fetched from the brand). */
 export interface BrandMark {
@@ -89,6 +90,7 @@ export const BRANDS: Readonly<Record<Brand, BrandMark>> = {
   klook: { name: "Klook", color: "#ff5722", letter: "K" },
   airalo: { name: "Airalo", color: "#1c1c1e", letter: "a" },
   holafly: { name: "Holafly", color: "#e8344e", letter: "H" },
+  google: { name: "Google", color: "#4285f4", letter: "G" },
 };
 
 export interface SearchLink {
@@ -272,6 +274,15 @@ function countrySlug(code: string): string | null {
 }
 
 /** A country's eSIM page on Airalo (`/{country}-esim`) and Holafly (`esim.holafly.com/esim-{country}/`). */
+/**
+ * Travel health insurance (v11 phase 6): no source of offers yet, so one search for the trip's country ("seyahat
+ * sağlık sigortası Japonya"), opening the insurers' own pages to compare.
+ */
+export function insuranceLinks(country: string | null | undefined): SearchLink[] {
+  const q = [L("seyahat sağlık sigortası", "travel health insurance"), country?.trim()].filter(Boolean).join(" ");
+  return [link("google", `https://www.google.com/search?q=${enc(q)}`, L("Sigortaları karşılaştır", "Compare insurers"))];
+}
+
 export function esimLinks(countryCode: string | null | undefined): SearchLink[] {
   const code = countryCode?.trim().toUpperCase() ?? "";
   const fixed = ESIM_SLUGS[code];
