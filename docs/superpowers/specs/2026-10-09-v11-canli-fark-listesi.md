@@ -23,3 +23,21 @@ bölüm bölüm çeker (`e2e-output/shots/mock-*.png`, `live-*.png`). Referans: 
 Bilinçli korunanlar (çizimde yok ama işlev kaybolmasın): kartın ••• menüsü (Düzenle, Değiştir, Sil, Belge ekle) üstüne
 gelince görünür; iptal süresi biten rezervasyonda kırmızı "⏳ iptal bugün biter" uyarısı alt satırda kalır; bölüme ekleme
 bölümün sonunda sessiz bir "+ Ekle" ile kalır (çizimde tek "+ Ekle" plan başlığında).
+
+## Emre'nin revizeleri (2026-10-09 akşam, 0.36.70)
+
+Emre gerçek gezisinde (Porto ve Madeira, İngilizce arayüz, canlı uçuş verisiyle beş uçuş) gördüklerini söyledi;
+`SHOTS_STRESS=1 SHOTS_LANG=en node scripts/shots.mjs` aynısını örnek geziyle üretir.
+
+- **Taşan, üst üste binen yazılar** → kart içeriğine tek standart: kart hücresinden asla geniş değil, uzun ad
+  kelimeden kayar, alt satır en çok iki satır, canlı kutucuklar sığdığı kadar yan yana, üst satır gerekirse alta iner,
+  uçak/tren çizimi iki ucun ortasında akışta (hiçbir yazının üstüne binmez), rezerve kartın alt satırı: durum, biten
+  tarih (kırmızı), belge adı (kısaltılmış), "Ayrıntı ›". Ulaşım kartları en az 300 px.
+- **Sayfa komple kayıyordu** (altta boşluk, sohbet yukarı) → panelin içindeki mutlak konumlu öğeler (ekran okuyucu
+  sayacı, ipuçları, kart "+") panele bağlandı (`.panel`, `.cat-sec` position: relative). e2e: "the page doesn't
+  scroll, the panel does" (düzeltme kaldırılınca düştüğü doğrulandı).
+- **Etkinlik ve turlar karışıktı** (öneri iki yerde: bölüm üstünde sohbetin önerileri, altta kaynağın kareleri; planda
+  olan anlaşılmıyor) → iki yer: **Planda** (büyük satırlar, fiyat sağda belirgin) ve katlanabilir **Öneriler ve
+  fikirler** (sohbet önerileri, Viator teklifleri, kaydedilen fikirler tek ızgarada kare, "+ Plana koy").
+- **Yapılacak şeyler'de plana eklenen anlaşılmıyordu** → aynı kural: Planda satır (günü ya da "Günü yok"), fikirler
+  ve öneriler kare, katlanabilir.
