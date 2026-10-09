@@ -151,6 +151,18 @@ export async function removeItem(item: Item, event?: string): Promise<Removed> {
   return removed;
 }
 
+/**
+ * A record's photo found later (a tour the chat put on the plan, the source's offer of the same tour): kept on the
+ * record so the Plan, the Pano and its details show it. Never over a photo it has; no event (nothing the traveller did).
+ */
+export async function setItemPhoto(itemId: string, url: string): Promise<void> {
+  const d = await db();
+  const fresh = await d.get("items", itemId);
+  if (!fresh || fresh.imageUrl) return;
+  await d.put("items", { ...fresh, imageUrl: url, updatedAt: Date.now() });
+  notifyChanged();
+}
+
 /** eSIM "Kurdum" (and "Kurulmadı" to take it back). */
 export async function setInstalled(item: Item, installed: boolean): Promise<void> {
   const d = await db();

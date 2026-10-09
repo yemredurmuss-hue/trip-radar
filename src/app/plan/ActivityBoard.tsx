@@ -12,11 +12,11 @@ import { entryDomId } from "../../lib/progress";
 import { L } from "../../lib/i18n";
 import { isAiOption } from "../../lib/pano";
 import type { Item } from "../../lib/types";
-import { addOffer, chooseItem, setItemStatus } from "../actions";
+import { addOffer, chooseItem, setItemPhoto, setItemStatus } from "../actions";
 import { durationText } from "../../lib/cardFacts";
 import { needKey } from "../../lib/emptyCards";
 import { formatPrice } from "../../lib/items";
-import { dealPrice, type Need, type Offer } from "../../lib/offerSource";
+import { dealPrice, photoFromOffers, sameTour, type Need, type Offer } from "../../lib/offerSource";
 import { sameCity, type Plan } from "../../lib/plan";
 import { activityLinks, BRANDS } from "../../lib/searchLinks";
 import { SearchRow } from "../cards/EmptyCard";
@@ -50,6 +50,16 @@ export function ActivityBoard({ section, plan, fallback }: { section: CatSection
   const ideas = records.filter((r) => !activityPlanned(r.item));
   const others = rows.filter((r) => r.item == null).map((r) => r.e);
   const offers = useActivityOffers(plan, records.map((r) => r.item));
+  // A tour the chat put on the plan is made from its words, with no photo; the source's offer of the same tour has one:
+  // it's kept on the record (the Plan, the Pano and its details show it).
+  const missingPhotos = records.filter((r) => !r.item.imageUrl).map((r) => r.item);
+  useEffect(() => {
+    for (const item of missingPhotos) {
+      const photo = photoFromOffers(item, offers.all);
+      if (photo) void setItemPhoto(item.id, photo);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- when the offers or the records without a photo change
+  }, [offers.all.length, missingPhotos.map((i) => i.id).join(" ")]);
   const sugg = suggest?.list ?? [];
   const [open, setOpen] = useRemembered(`trip-radar:ideasOpen:${env.tripId}:activity`, true);
   const count = sugg.length + ideas.length + offers.tiles.length;
@@ -180,8 +190,14 @@ export function SuggestTile({ s, note, onAdd, onDismiss, art = ACTIVITY_ART }: {
   );
 }
 
+/**
+ * A tour or a ticket on the plan as its card (Emre 2026-10-09: the photo got lost and the look got worse once on the
+ * plan): the photo kept big on the left, the name, its ring, day, city and source, what to do next under them; the
+ * price a person (and the total) to the right, as on its tile.
+ */
 function ActivityRow({ item, domId }: { item: Item; domId: string }) {
   const env = useCardEnv();
+  const { travellers } = useEmptyEnv();
   const stageMenu = useStageMenu(item);
   const [sheet, setSheet] = useState(false);
   const facts = cardFacts(item, undefined, env.decisions?.ctx);
@@ -189,50 +205,61 @@ function ActivityRow({ item, domId }: { item: Item; domId: string }) {
   const booked = item.status === "booked";
   const page = datedLink(item, undefined).url ?? item.url;
   const date = topDate(item, "activity");
+  const people = item.guests.adults ?? travellers;
+  const amount = item.price.amount;
+  const perHead = amount != null && amount > 0 && people && people > 1 ? formatPrice(Math.round(amount / people), item.price.currency ?? "EUR") : null;
   const open = () => (booked ? setSheet(true) : env.onOpenItem(item));
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   return (
-    <div className={`ac-row${booked ? " booked" : " chosen"}`} aria-label={item.name} data-item-id={item.id} id={domId} role="button" tabIndex={0}
+    <div className={`ac-row${booked ? " booked" : " chosen"}${item.imageUrl ? " has-photo" : ""}`} aria-label={item.name} data-item-id={item.id} id={domId} role="button" tabIndex={0}
       onClick={(e) => !(e.target as HTMLElement).closest("button, a, input, .pk-menu, .pk-ed-wrap") && open()}
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && (e.preventDefault(), open())}>
-      <FallbackImg className="ac-pic" src={item.imageUrl ?? null} fallback={<img className="ac-pic art" src={ACTIVITY_ART} alt="" />} />
-      <b className="ac-t">
-        <Editable field="name">{item.name}</Editable>
-      </b>
-      <span className="ac-m">
-        <Ring state={ringOf(item, "activity")} />
-        {[date, item.city].filter(Boolean).join(" · ")}
-        {facts.source && <span className="ac-src">· {facts.source.label}</span>}
+      <span className="ac-photo">
+        <FallbackImg className="ac-pic" src={item.imageUrl ?? null} fallback={<img className="ac-pic art" src={ACTIVITY_ART} alt="" />} />
       </span>
-      <span className="ac-r" onClick={stop}>
+      <span className="ac-main">
+        <b className="ac-t">
+          <Editable field="name">{item.name}</Editable>
+        </b>
+        <span className="ac-m">
+          <Ring state={ringOf(item, "activity")} />
+          {[date, item.city].filter(Boolean).join(" · ")}
+          {facts.source && <span className="ac-src">· {facts.source.label}</span>}
+        </span>
+        <span className="ac-acts" onClick={stop}>
+          {booked ? (
+            <>
+              <span className="ac-proof">✓ {L("Bilet alındı", "Ticket bought")}</span>
+              <DocAccess item={item} docs={docs} />
+              <button type="button" className="ac-detail" onClick={() => setSheet(true)}>{L("Ayrıntı", "Details")} ›</button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="pk-aldim" aria-label={L(`${item.name}: aldım`, `${item.name}: got it`)} onClick={() => void setItemStatus(item, "booked")}>
+                ✓ {L("Aldım", "Got it")}
+              </button>
+              {page && (
+                <a className="ac-go" href={page} target="_blank" rel="noreferrer">
+                  {facts.source?.host && <FallbackImg className="sc-favicon" src={`https://${facts.source.host}/favicon.ico`} fallback={null} />}
+                  {L("Bilet al ↗", "Get the ticket ↗")}
+                </a>
+              )}
+              <DocAccess item={item} docs={docs} />
+            </>
+          )}
+        </span>
+      </span>
+      <span className="ac-side" onClick={stop}>
+        <span className="ac-tools">
+          <DeleteX name={item.name} onDelete={stageMenu.hide} label={booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed")} className="ac-x" />
+          <CardMenu entries={stageMenu.menu} />
+        </span>
         {facts.price && (
           <span className="ac-price-big">
-            <b>{facts.price.text}</b>
-            {facts.price.label && <small>{facts.price.label}</small>}
+            <b>{perHead ?? facts.price.text}</b>
+            <small>{perHead ? L(`kişi · ${facts.price.text} toplam`, `a person · ${facts.price.text} total`) : facts.price.label}</small>
           </span>
         )}
-        {booked ? (
-          <>
-            <span className="ac-proof">✓ {L("Bilet alındı", "Ticket bought")}</span>
-            <DocAccess item={item} docs={docs} />
-            <button type="button" className="ac-detail" onClick={() => setSheet(true)}>{L("Ayrıntı", "Details")} ›</button>
-          </>
-        ) : (
-          <>
-            <button type="button" className="pk-aldim" aria-label={L(`${item.name}: aldım`, `${item.name}: got it`)} onClick={() => void setItemStatus(item, "booked")}>
-              ✓ {L("Aldım", "Got it")}
-            </button>
-            {page && (
-              <a className="ac-go" href={page} target="_blank" rel="noreferrer">
-                {facts.source?.host && <FallbackImg className="sc-favicon" src={`https://${facts.source.host}/favicon.ico`} fallback={null} />}
-                {L("Bilet al ↗", "Get the ticket ↗")}
-              </a>
-            )}
-            <DocAccess item={item} docs={docs} />
-          </>
-        )}
-        <DeleteX name={item.name} onDelete={stageMenu.hide} label={booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed")} className="ac-x" />
-        <CardMenu entries={stageMenu.menu} />
       </span>
       {stageMenu.field}
       {sheet && (
@@ -325,7 +352,8 @@ function useActivityOffers(plan: Pick<Plan, "stayBlocks">, saved: Item[]) {
   const pages = new Set(saved.map((i) => i.url).filter(Boolean));
   const tiles = cities.flatMap((c) => {
     const got = byCity[c.city];
-    return got && got !== "none" ? got.offers.filter((o) => !pages.has(o.url) && !taken.includes(o.id)).slice(0, PER_CITY).map((o) => ({ o, need: got.need, city: c.city })) : [];
+    // Not one that's saved already (its page, or the same tour by name: one the chat put on the plan).
+    return got && got !== "none" ? got.offers.filter((o) => !pages.has(o.url) && !taken.includes(o.id) && !saved.some((i) => sameTour(i, o))).slice(0, PER_CITY).map((o) => ({ o, need: got.need, city: c.city })) : [];
   });
   const missing = cities.filter((c) => !available || byCity[c.city] === "none");
   const put = async (o: Offer, need: Need) => {
@@ -333,7 +361,8 @@ function useActivityOffers(plan: Pick<Plan, "stayBlocks">, saved: Item[]) {
     const item = await addOffer(tripId, o, need);
     await chooseItem(item, []);
   };
-  return { tiles, missing, available, put, adults: travellers };
+  const all = Object.values(byCity).flatMap((x) => (x === "none" ? [] : x.offers));
+  return { tiles, missing, available, put, adults: travellers, all };
 }
 
 function OfferTile({ offer: o, city, adults, onPut }: { offer: Offer; city: string; adults: number | null; onPut: () => void }) {

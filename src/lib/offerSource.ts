@@ -262,3 +262,37 @@ function offerFlight(offer: Offer, need: Need, base: Item["flight"]): Item["flig
     stops: offer.stops ?? base?.stops ?? null,
   };
 }
+
+/**
+ * The photo a record on the plan should have (Emre 2026-10-09: "fotoğrafları nereye kayboluyor?"): a tour the chat put
+ * on the plan is made from its words and has none, though the source showed it with one. Its own page first, else the
+ * offer whose name is the same tour (most of the words of the shorter name in the other's: "Whale and Dolphin
+ * Watching Tour" ~ "Madeira: Whale and Dolphin Watching Tour from Funchal"); null when none is clearly it.
+ */
+export function photoFromOffers(item: { name: string; url: string | null }, offers: Pick<Offer, "title" | "url" | "photo">[]): string | null {
+  const withPhoto = offers.filter((o) => o.photo);
+  const byPage = item.url ? withPhoto.find((o) => o.url === item.url) : undefined;
+  if (byPage) return byPage.photo ?? null;
+  let best: { photo: string; score: number } | null = null;
+  for (const o of withPhoto) {
+    const score = nameMatch(item.name, o.title);
+    if (score && (!best || score > best.score)) best = { photo: o.photo!, score };
+  }
+  return best?.photo ?? null;
+}
+
+/** The offer is this record's tour: its page, or the same tour by name (see photoFromOffers). */
+export const sameTour = (item: { name: string; url: string | null }, offer: Pick<Offer, "title" | "url">): boolean =>
+  Boolean((item.url && offer.url === item.url) || nameMatch(item.name, offer.title));
+
+/** How surely two names are the same tour (0: not it): most of the shorter name's words in the other's, two at least. */
+function nameMatch(a: string, b: string): number {
+  const words = (s: string) => new Set(s.toLocaleLowerCase("tr").normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !STOP.has(w)));
+  const mine = words(a);
+  const theirs = words(b);
+  if (mine.size < 2 || theirs.size < 2) return 0;
+  const shared = [...mine].filter((w) => theirs.has(w)).length;
+  const score = shared / Math.min(mine.size, theirs.size);
+  return shared >= 2 && score >= 0.75 ? score : 0;
+}
+const STOP = new Set(["the", "and", "with", "from", "tour", "tours", "ile", "turu", "tur", "ve", "for", "day", "full"]);

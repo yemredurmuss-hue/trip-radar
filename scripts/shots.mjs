@@ -7,7 +7,7 @@ import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-const out = path.resolve(`e2e-output/shots${process.env.SHOTS_STRESS ? "-stress" : ""}${process.env.SHOTS_LANG === "en" ? "-en" : ""}`);
+const out = path.resolve(`e2e-output/shots${process.env.SHOTS_STRESS ? "-stress" : ""}${process.env.SHOTS_LANG === "en" ? "-en" : ""}${process.env.SHOTS_OFFER ? "-offer" : ""}`);
 mkdirSync(out, { recursive: true });
 function macChromium() {
   const cache = path.join(homedir(), "Library/Caches/ms-playwright");
@@ -37,7 +37,18 @@ if (only !== "mock") {
     locale: EN ? "en-US" : "tr-TR",
     args: ["--headless=new", EN ? "--lang=en-US" : "--lang=tr-TR", `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
   });
-  await context.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
+  // SHOTS_OFFER=1: Porto's activities answer two tours with photos (the source's real shape), to see a tile and the
+  // same tour once it's on the plan.
+  const OFFER = Boolean(process.env.SHOTS_OFFER);
+  const photo = "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=600";
+  const tours = [
+    { id: "s-v1", kind: "activity", title: "Douro Valley Full-Day Tour with Wine Tasting", photo, price: 178, currency: "EUR", url: "https://www.viator.com/tours/s-v1", why: "", source: "Viator", fetchedAt: Date.now(), durationMinutes: 600 },
+    { id: "s-v2", kind: "activity", title: "Porto Sunset River Cruise", photo, price: 60, currency: "EUR", url: "https://www.viator.com/tours/s-v2", why: "", source: "Viator", fetchedAt: Date.now(), durationMinutes: 60 },
+  ];
+  await context.route("**/functions/v1/offers**", (route) => {
+    const q = new URL(route.request().url()).searchParams;
+    return route.fulfill({ json: { offers: OFFER && q.get("kind") === "activity" && q.get("city") === "Porto" ? tours : [] } });
+  });
   await context.route(/functions\/v1\/(web-search|city-image)/, (route) => route.fulfill({ json: { answer: null, url: null, reason: "not-configured" } }));
   await context.clock.install({ time: new Date(STRESS ? "2026-10-05T23:30:00" : "2026-10-05T10:00:00") });
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
@@ -100,6 +111,29 @@ if (only !== "mock") {
   for (let i = 0; i < (await secs.count()); i++) {
     const sid = await secs.nth(i).getAttribute("data-section");
     await secs.nth(i).screenshot({ path: `${out}/live-sec-${i}-${sid}.png` });
+  }
+  if (OFFER) {
+    // A tour the chat put on the plan (made from its words, no photo): it should take the source's photo of the same tour.
+    await app.evaluate(async () => {
+      const request = indexedDB.open("trip-radar");
+      const database = await new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const tx = database.transaction("items", "readwrite");
+      const items = tx.objectStore("items");
+      const all = await new Promise((resolve) => (items.getAll().onsuccess = (e) => resolve(e.target.result)));
+      const like = all.find((i) => i.category === "activity" && i.status === "chosen");
+      items.put({ ...like, id: "chat-cruise", name: "Sunset River Cruise", imageUrl: null, url: null, origin: "chat", price: { ...like.price, amount: 60 } });
+      await new Promise((resolve) => (tx.oncomplete = resolve));
+      new BroadcastChannel("trip-radar").postMessage("changed");
+    });
+    await app.waitForTimeout(2000);
+    const act = app.locator('.cat-sec[data-section="activity"]');
+    await act.screenshot({ path: `${out}/live-offer-before.png` });
+    await act.locator(".ac-offer .it-put").first().click();
+    await app.waitForTimeout(1500);
+    await act.screenshot({ path: `${out}/live-offer-after.png` });
   }
   await app.setViewportSize({ width: 1440, height: 1000 });
   await app.getByRole("tab", { name: /^(Pano|Board)$/ }).click().catch(() => undefined);
