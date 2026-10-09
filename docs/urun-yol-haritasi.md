@@ -444,3 +444,11 @@ Emre'nin isteğiyle (çizim adımı atlanarak, "yap, sabah bakarım") doğrudan 
 nereden → kimle → gün → tarz → rota (temel bilgiler bitince gezi kendini oluşturabilsin diye). K4'e tam uyum: tarih (gün
 dahil) → tarz/bütçe → rota → kimle → nereden. Denendi; 36 birim testi ve gezi türü sorularının "temel bilgilerden sonra"
 kuralı değişiyor. Karar verilmeden uygulanmadı.
+
+## 0.36.68 · çizim = canlı, ikinci tur (2026-10-09 öğleden sonra) · K75
+
+- **K75 · Karşılaştırma görüntüyle yapılır (Emre: "ikisini tek tek kıyasla"):** "uydu" demeden önce çizim ve canlı aynı
+  genişlikte, bölüm bölüm yan yana çekilir (`node scripts/shots.mjs` → `e2e-output/shots/`). Bu turda 13 fark kapandı
+  (liste: `docs/superpowers/specs/2026-10-09-v11-canli-fark-listesi.md`). Etkinlik fikirleri artık kaynaktan gelen
+  gerçek teklifler (Viator), "+ Plana koy" ile plana girer; kaynak bir şehir için bir şey getirmezse o şehrin kendi
+  aramaları gösterilir, uydurma kart yok.

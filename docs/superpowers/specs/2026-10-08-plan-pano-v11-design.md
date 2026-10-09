@@ -224,6 +224,16 @@ Hepsi isteğe bağlı alan; eski sürüm bilmediği alanı yok sayar. Paylaşım
 
 ## Durum
 
+**0.36.68 (2026-10-09 öğleden sonra): çizimle yan yana denetim, 13 fark kapandı.** Emre önceki turun "uydu" dediği
+yerlerde hâlâ fark gördü (plan çubuğu, hareketsiz rota, kart görünümü, sarı kart, vize, etkinlik önerilerinin AI önerisi
+gibi durması). Bu kez `scripts/shots.mjs` ile çizim ve canlı aynı genişlikte bölüm bölüm çekildi; fark listesi ve
+yapılanlar: `docs/superpowers/specs/2026-10-09-v11-canli-fark-listesi.md`. Öne çıkanlar: bölümler ayrı kart, kartlar
+ızgarada (tarih sütunu yok), üç aşamanın zemini (Arıyoruz beyaz kesik, Seçildi krem, Rezerve nane), kartta küçük çizim
+görseli, sade alt satır, uçuş koçanı; hareketli rota şeridi ve süreler; vize tek satır; Hazırlık kutucukları; etkinlik
+fikirleri kaynaktan (Viator) gerçek teklif kareleri, kaynak yoksa şehir başına "Kendin ara"; Pano kartlarında çizim
+görselleri, uçuş yayı, site işareti, "Neden?". Kart arası "+" kaldı ama yalnız üstüne gelince görünür (çizimde yok,
+yerinde ekleme işlevi kaybolmasın diye).
+
 **Tasarım–canlı farkları kapatıldı (2026-10-09 gündüz, Emre: "tasarımda ne karar verdiysek onu canlıda istiyorum"):**
 çizim ile canlı karşılaştırıldı, bulunan farklar sırayla yayına çıktı:
 - 0.36.62: seçenekli konaklama tek kart ("N seçenek ›"), seçim penceresinde her seçeneğin rozeti, istek işaretleri,
