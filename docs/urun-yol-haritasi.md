@@ -421,3 +421,26 @@ hepsi açık gelir, başlıkta aşama sözleri. Unit 1677/1677, e2e yeşil. Sır
   "Kendin ara"; Hazırlık'ta Amazon + "Daha fazla öner"; Pano'da arama, Kartlar | Karşılaştır tablosu, + Link ekle;
   bölüm başlığında "€X ayrıldı"; paylaşılan gezide kalp = Süper oyu. Yayınlar 0.36.62–0.36.66; ayrıntı spec'in
   "Durum" bölümünde.
+## Gece işi: giriş ekranı ve başlatma akışı (2026-10-09, 0.36.59, dal `gece-giris`, yayın Emre onayı bekliyor)
+
+Emre'nin isteğiyle (çizim adımı atlanarak, "yap, sabah bakarım") doğrudan koda geçildi; referans v11 dili.
+
+- **Ana ekran (Seyahatlerim):** v11 çerçevesi ve üst çubuk; solda soru + kutu + başlangıç çipleri (emoji yerine çizgi
+  ikonlar), sağda "senin köşen" (profil, yol arkadaşları, gezi/rezervasyon/taslak sayısı, sıradaki gezi, hangi AI);
+  gezi kartları fotoğraf + duraklar + geri sayım + aşama çubuğu (yeşil rezerve, amber seçildi) + yüzler; taslak kesikli.
+- **Geçiş:** Enter'da kutu sohbetin ilk balonuna akar (View Transitions), sağ taraf kayarak gelir; oluşturunca pano yumuşak geçer.
+- **Sohbet sırasında sağ taraf:** fotoğraflar büyük, sırayla, adıyla; "Plan taslağı" = Oluştur'un yazacağı kartlar
+  panonun bölümlerinde (kesikli = Arıyoruz), cevap geldikçe düşer, cevap bir kartı değiştirince parlar (K5).
+- **Fotoğraflar:** yerler + gezinin anları (romantik akşam, havuzlu villa, yerel lezzetler…; tarz ve kimle gidildiğinden),
+  aynı foto bir kez, varış yeri İngilizce adıyla aranır (Lizbon → Lisbon; eskiden "travel the world" yazılı taş geliyordu).
+- **Sohbet konuşur:** sorulan şeye önce kısa ve dürüst cevap ("kesin bilmiyorum" dahil), sonra soru; soru kalın, neyi
+  açacağı yanında soluk ("Uçuşlar ve oteller o güne yerleşsin.").
+- **Oluştur:** dünya haritası sohbet sırasında yüklenir, karede yalnız görünen kopya çizilir; uçak inince fotoğraflar
+  haritanın üstünde büyük açılır; her adım sohbette tikle yazılır; öneriler beklenmez, pano açılır ve öneriler orada gelir.
+- **Hatalar:** pano sohbeti ve başlatma sohbeti sayfanın tamamını kaydırıyordu (yalnız kendi kutusu kayar);
+  panonun Hazırlık'a çekilmesi (0.36.58'de diğer oturum yayınladı).
+
+**Açık karar (Emre):** K4 soru sırası ile "temel bilgiler önce" kuralı çakışıyor. Bugün sıra: nereye → süre → başlangıç →
+nereden → kimle → gün → tarz → rota (temel bilgiler bitince gezi kendini oluşturabilsin diye). K4'e tam uyum: tarih (gün
+dahil) → tarz/bütçe → rota → kimle → nereden. Denendi; 36 birim testi ve gezi türü sorularının "temel bilgilerden sonra"
+kuralı değişiyor. Karar verilmeden uygulanmadı.
