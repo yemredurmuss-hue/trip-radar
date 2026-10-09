@@ -17,6 +17,7 @@ import { sameCity } from "../../lib/plan";
 import { InsertPoint } from "../cards/AddSheet";
 import { InspoGrid } from "../ideas/IdeaList";
 import { IdeaTiles } from "../ideas/IdeaTiles";
+import { ActivityBoard } from "./ActivityBoard";
 import type { CardFor, LegCardFor, RenderGroup, SettledFor } from "../Timeline";
 import { PlanEntry } from "./PlanEntry";
 import { PrepList } from "./PrepList";
@@ -51,6 +52,14 @@ export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, o
   if (section.id === "inspo") return <InspoGrid section={section} plan={plan} />;
   // v11 phase 4: tiles, "+ Plana koy" ↔ "✓ Planda"; no quick box (the chat adds), no day here (Gün gün gives it).
   if (section.id === "todo" || section.id === "food") return <IdeaTiles section={section} fallback={(e) => <Piece entry={e} cards={cards} />} />;
+  // v11: what's on the plan as rows, the ideas as tiles under "Fikirler" (plan/ActivityBoard).
+  if (section.id === "activity")
+    return (
+      <>
+        <ActivityBoard section={section} fallback={(e) => <Piece entry={e} cards={cards} />} />
+        <SearchLinks section={section} plan={plan} items={items} />
+      </>
+    );
   return (
     <>
       {section.days.length > 0 && (

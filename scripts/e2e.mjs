@@ -462,7 +462,7 @@ try {
   assert.equal(await app.locator(".cat-tile, .cat-state").count(), 0, "no icon tiles, no status pills");
   // v11 phase 6: what's chosen and booked, added up, before the bar ("€25").
   assert.match(await sec("activity").locator(".cat-head").innerText(), /^Etkinlik ve turlar\s*[^\n]*\s*Ekle\s*€25\s*0\/4$/);
-  assert.equal(await sec("activity").locator(".cat-st").innerText(), "1 seçildi · 3 aranıyor");
+  assert.equal(await sec("activity").locator(".cat-st").innerText(), "1 planda · 3 fikir");
   assert.match(await sec("flight").locator(".cat-head").innerText(), /^Uçuş\s*[^\n]*\s*Ekle\s*(€[\d.,]+\s*)?1\/2$/);
   assert.equal(await sec("flight").locator(".cat-st").innerText(), "1 rezerve · 1 aranıyor");
   assert.equal(await app.locator(".cat-wait").count(), 0, "no amber line: the stage line says it");
@@ -479,7 +479,12 @@ try {
   assert.equal(await app.locator(".stay-block", { hasText: "Alfama Suites" }).count(), 0, "a booking closes its alternatives");
   // A block for each thing, in its section: the flights in and home, the stays, the train, the boat tour.
   const kinds = await app.locator(".cat-card").evaluateAll((els) => els.map((e) => `${e.closest(".cat-sec").dataset.section}:${[...e.classList].find((c) => c.startsWith("tl-")) ?? "item"}`));
-  assert.deepEqual(kinds, ["flight:tl-travel", "flight:tl-travel", "stay:tl-stay", "stay:tl-stay", "transport:tl-travel", "activity:tl-event", "activity:item", "activity:item", "activity:item", "other:item"]);
+  assert.deepEqual(kinds, ["flight:tl-travel", "flight:tl-travel", "stay:tl-stay", "stay:tl-stay", "transport:tl-travel", "other:item"]);
+  // v11 Etkinlik ve turlar: what's on the plan is a row (the boat tour), the ideas are tiles under "Fikirler".
+  assert.deepEqual(await sec("activity").locator(".ac-row").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Douro tekne turu"]);
+  assert.deepEqual(await sec("activity").locator(".ac-tile").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Livraria Lello", "Serralves Müzesi", "Tiyatro"]);
+  assert.match(await sec("activity").locator(".ac-ideas-h").innerText(), /^Fikirler\s*bilet ya da rezervasyon gerektirenler\s*✨ Daha fazla fikir$/);
+  assert.equal(await sec("activity").locator(".ac-row .ac-pic").count(), 1, "a row has its picture");
   // The restaurant is a tile of the ideas, not a card (0.35.3); v11: under Yapılacak şeyler, as a tile.
   assert.equal(await sec("todo").locator(".it-tile").count(), 1);
   // No days, no check-in lines, no transfers without a plan.
@@ -734,8 +739,8 @@ try {
   await budget.click();
   await budget.locator(".hx-pop").waitFor({ state: "detached" });
   // Decided already: the boat tour on the 9th and the flight home.
-  const douro = app.locator(".tl-event .pk-card", { hasText: "Douro tekne turu" });
-  await douro.locator(".pk-foot").getByText("bilet alınmadı").waitFor();
+  const douro = sec("activity").locator(".ac-row", { hasText: "Douro tekne turu" });
+  await douro.locator(".pk-aldim", { hasText: "Aldım" }).waitFor();
   const home = app.locator(".tl-travel.role-departure .pk-card");
   await home.locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
   // A misclick on "Bileti aldım" can be taken back (in the details), and redone.
@@ -758,10 +763,12 @@ try {
 
   // The cities big, the airport codes and hours small; the landing day only because it's the next day.
   assert.match(await home.locator(".pk-mid").innerText(), /Lizbon\s*LIS · 19:40[\s\S]*4 sa 55 dk · direkt[\s\S]*İstanbul\s*IST · 15 Ekim · 01:35/);
-  // Opening a card shows its details on the card (0.33: a tap on its picture; its title is edited where it stands).
-  await douro.locator(".pk-vis").click();
-  await douro.locator(".pk-detail").getByRole("button", { name: "Tüm detaylar" }).waitFor();
-  await douro.locator(".pk-vis").click();
+  // v11: a row on the plan opens its record (a tap anywhere but its controls; its title is edited where it stands).
+  await douro.locator(".ac-m").click();
+  const douroDrawer = app.getByRole("dialog");
+  await douroDrawer.waitFor();
+  await douroDrawer.getByRole("button", { name: "Kapat" }).first().click();
+  await douroDrawer.waitFor({ state: "detached" });
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/3-board.png` });
 
@@ -990,15 +997,17 @@ try {
   // What still needs booking without a day: Etkinlikler's "Tarihsiz · Porto", one card under another (Majestic
   // Café, a café with no booking, is a restaurant card instead).
   // (Lizbon, with no activity yet, is an empty card on its own line after them: .ek-line.)
-  const undatedActs = sec("activity").locator(".cat-line:not(.ek-line) .cat-day.undated");
-  assert.match(await undatedActs.locator(".cat-date").innerText(), /Tarihsiz\s*Porto/);
-  assert.deepEqual(await undatedActs.locator(".pk-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Livraria Lello", "Serralves Müzesi", "Tiyatro"]);
+  // v11: the ideas, tiles under "Fikirler" (each its city, "+ Plana koy").
+  const actTiles = sec("activity").locator(".ac-tile");
+  assert.deepEqual(await actTiles.evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Livraria Lello", "Serralves Müzesi", "Tiyatro"]);
+  assert.match(await actTiles.first().locator(".it-m").innerText(), /^Porto/);
+  await actTiles.first().locator(".it-put", { hasText: "+ Plana koy" }).waitFor();
   assert.equal(await app.locator(".pk-card", { hasText: "Majestic Café" }).count(), 0);
   await sec("todo").locator('.it-tile[aria-label="Majestic Café"]').waitFor();
   assert.equal(await app.locator(".crash").count(), 0, "board crashed after chat updates");
   await app.screenshot({ path: `${out}/5-chosen.png` });
   // 4b. Plan cards: a file on a card, delete + undo (the file comes back), add from a template, narrow.
-  const douroCard = () => app.locator(".tl-event .pk-card", { hasText: "Douro tekne turu" });
+  const douroCard = () => app.locator(".ac-row", { hasText: "Douro tekne turu" });
   await douroCard().locator("input.pk-file").first().setInputFiles({ name: "bilet.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n%e2e\n") });
   // The chip is short ("Belge"); the file's name on hover (0.36.20).
   const pill = douroCard().locator('.pk-docpill[title^="bilet.pdf"]', { hasText: "Belge" });
@@ -1277,9 +1286,8 @@ try {
   await tab("Plan").click();
   assert.match(await sec("activity").locator(".cat-count").innerText(), /^\d+\/5$/);
   // A to-do moved to Etkinlikler is a thing to do with a ticket there, not a "Yapılacak".
-  const lelloCard = sec("activity").locator('.pk-card[aria-label="Livraria Lello, giriş bileti var"]');
+  const lelloCard = sec("activity").locator('[data-item-id][aria-label="Livraria Lello, giriş bileti var"]');
   await lelloCard.waitFor();
-  assert.match(await lelloCard.locator(".pk-kind").innerText(), /Etkinlik/);
   // The panel scrolls inside the page: scroll the list to the top, then take the window.
   await app.setViewportSize({ width: 1440, height: 1400 });
   await sec("activity").evaluate((el) => el.scrollIntoView({ block: "start" }));
@@ -1371,24 +1379,24 @@ try {
   await apart.waitFor({ state: "detached" });
   // A saved page corrected where it stands: the title, then the page's value back from the hint.
   const douroId = await douroCard().getAttribute("data-item-id");
-  const douroPage = app.locator(`.pk-card[data-item-id="${douroId}"]`);
+  const douroPage = app.locator(`.ac-row[data-item-id="${douroId}"]`);
   await douroPage.evaluate((el) => el.scrollIntoView({ block: "center" }));
-  await douroPage.locator("h3").getByRole("button", { name: "Ad: düzenle" }).click();
+  await douroPage.locator(".ac-t").getByRole("button", { name: "Ad: düzenle" }).click();
   await box("Ad").fill("Douro gün batımı turu");
   await box("Ad").press("Enter");
-  await douroPage.locator("h3", { hasText: "Douro gün batımı turu" }).waitFor();
-  await douroPage.locator("h3 .pk-ed").hover();
-  const hint = douroPage.locator("h3 .pk-ed-hint");
+  await douroPage.locator(".ac-t", { hasText: "Douro gün batımı turu" }).waitFor();
+  await douroPage.locator(".ac-t .pk-ed").hover();
+  const hint = douroPage.locator(".ac-t .pk-ed-hint");
   assert.match(await hint.innerText(), /sayfadaki: Douro tekne turu · geri al/);
   await app.screenshot({ path: `${out}/4n-page-correction.png` });
   // The hint shows under the pointer: point at the title again if the card was drawn anew meanwhile, then take the
   // page's value back (the title coming back proves the click).
   for (let i = 0; i < 3 && !(await hint.getByRole("button", { name: "geri al" }).isVisible()); i++) {
     await app.mouse.move(0, 0);
-    await douroPage.locator("h3 .pk-ed").hover();
+    await douroPage.locator(".ac-t .pk-ed").hover();
   }
   await hint.getByRole("button", { name: "geri al" }).click({ force: true });
-  await douroPage.locator("h3", { hasText: "Douro tekne turu" }).waitFor();
+  await douroPage.locator(".ac-t", { hasText: "Douro tekne turu" }).waitFor();
   // A transfer's ends, short: "Porto Havalimanı" over OPO, "Booking.com" over the stay's name.
   assert.match(await arrivalLeg.locator(".pk-mid").innerText(), /Porto Havalimanı\s*OPO[\s\S]*Booking\.com\s*Jardim Stay/);
   // One word isn't broken in the middle ("Booking.co / m"): the end stays on one line.
@@ -1707,7 +1715,8 @@ try {
       continue;
     }
     assert.match(await sec(id).locator(".cat-count").innerText(), /^\d+\/\d+$/);
-    const stage = String.raw`(\s*\d+ (?:rezerve|seçildi|aranıyor)(?: · \d+ (?:rezerve|seçildi|aranıyor))*)?`;
+    // Etkinlik ve turlar counts what's on the plan and the ideas instead ("1 planda · 4 fikir").
+    const stage = id === "activity" ? String.raw`(\s*\d+ (?:planda|fikir)(?: · \d+ fikir)?)?` : String.raw`(\s*\d+ (?:rezerve|seçildi|aranıyor)(?: · \d+ (?:rezerve|seçildi|aranıyor))*)?`;
     assert.match(await sec(id).locator(".cat-head").innerText(), new RegExp(String.raw`^[^\d]+?${stage}\s*(\d+ öneri\s*)?(€[\d.,]+\s*)?\d+\/\d+$`), `${id}: the name, its stage line, what's spent, the count, no other words`);
     assert.equal(await sec(id).locator(".cat-add").count(), 0, `${id}: no "+ Ekle" when closed`);
     assert.deepEqual(
@@ -1739,12 +1748,12 @@ try {
   assert.equal(await app.locator(".cat-sec.closed").count(), 6);
   // The header opens it (its cards come back) and closes it again.
   await sec("activity").locator(".cat-head").click({ position: { x: 300, y: 20 } });
-  await sec("activity").locator('.pk-card[aria-label="Tiyatro"]').waitFor();
+  await sec("activity").locator('.ac-tile[aria-label="Tiyatro"]').waitFor();
   assert.doesNotMatch(await sec("activity").getAttribute("class"), /closed/);
   await sec("activity").locator(".cat-head").click({ position: { x: 300, y: 20 } });
   await sec("activity").and(app.locator(".closed")).waitFor();
   await sec("activity").locator(".cat-title").click();
-  await sec("activity").locator(".cat-card").first().waitFor();
+  await sec("activity").locator(".ac-row").first().waitFor();
   assert.match(await turn(sec("activity")), /^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
   // A to-do in a closed section: the hero's list opens it there.
   assert.match(await sec("stay").getAttribute("class"), /closed/);
@@ -4329,7 +4338,7 @@ try {
   await app.screenshot({ path: `${out}/15-share-notice.png` });
 
   // A card deleted → Geçmiş shows it → Çöp kutusu → "Geri getir" → it's on the board again.
-  const douro = app.locator(".tl-event .pk-card", { hasText: "Douro tekne turu" });
+  const douro = app.locator(".ac-row", { hasText: "Douro tekne turu" });
   await douro.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await douro.getByRole("button", { name: "Kart menüsü" }).click();
   await douro.getByRole("menuitem", { name: "Sil" }).click();

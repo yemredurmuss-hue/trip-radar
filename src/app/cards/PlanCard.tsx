@@ -68,6 +68,8 @@ export interface CardEnv {
   onCompare: (groupKey: string) => void;
   /** v11: the Pano, opened on this need's group ("Pano'da gör"). */
   onPano: (groupKey: string) => void;
+  /** v11: a line for the trip's chat ("Daha fazla fikir", a card's ✨); absent where there's no chat. */
+  ask?: (text: string) => void;
 }
 
 export const CardEnvContext = createContext<CardEnv | null>(null);

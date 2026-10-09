@@ -3213,3 +3213,52 @@ a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: cente
 .ch-links { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .ch-prov { color: #9a6400 !important; font-weight: 650; }
 a.ch-why { text-decoration: none; }
+
+/* v11 Etkinlik ve turlar (plan/ActivityBoard): what's on the plan as rows, the ideas as tiles under "Fikirler". */
+.ac-wrap { display: grid; gap: 14px; padding: 4px 0 6px; }
+.ac-planned { display: grid; gap: 8px; }
+.ac-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 8px 10px 8px 8px; border: 1px solid var(--hx-line, #ececf1); border-radius: 14px; background: #fff; cursor: pointer; transition: box-shadow .2s, border-color .2s; }
+.ac-row:hover { box-shadow: 0 2px 10px rgba(28, 26, 51, .07); }
+.ac-row:focus-visible { outline: 2px solid #6a4fe0; outline-offset: 2px; }
+.ac-row.chosen { border-color: #f3d9a4; background: #fffbf2; }
+.ac-row.booked { border-color: #bfe3cf; background: #f5fbf7; }
+.ac-row .ac-pic { grid-row: span 2; width: 52px; height: 52px; border-radius: 11px; object-fit: cover; background: #f6f3fb; }
+.ac-row .ac-pic.art { object-fit: contain; padding: 3px; }
+.ac-t { font-size: 15px; font-weight: 650; min-width: 0; overflow-wrap: anywhere; }
+.ac-m { grid-column: 2; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; font-size: 13px; color: var(--hx-muted, #6e6e78); font-variant-numeric: tabular-nums; }
+.ac-m .pk-ring { width: 13px; height: 13px; }
+.ac-price { color: #1c1a33; font-weight: 600; }
+.ac-r { grid-row: 1 / span 2; grid-column: 3; display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.ac-r .pk-aldim { margin-right: 0; }
+.ac-go { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 650; color: #4b36c9; text-decoration: none; white-space: nowrap; }
+.ac-go:hover { text-decoration: underline; }
+.ac-go .sc-favicon { width: 14px; height: 14px; border-radius: 3px; }
+.ac-proof { font-size: 13px; font-weight: 650; color: #17784a; white-space: nowrap; }
+.ac-doc { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: #3d3d47; background: #eef0f4; border-radius: 999px; padding: 2px 9px; }
+.ac-docmiss { font: inherit; font-size: 12.5px; font-weight: 600; color: #a34a00; background: #fff4e5; border: 1px dashed #f0a53a; border-radius: 999px; padding: 2px 9px; cursor: pointer; }
+.ac-detail { font: inherit; font-size: 13px; font-weight: 600; color: #3d3d47; background: none; border: 0; cursor: pointer; padding: 2px 4px; }
+.ac-detail:hover { color: #1c1a33; }
+.ac-row .ac-x, .ac-row .pk-menu-wrap, .ac-row .pk-ib { opacity: 0; transition: opacity .15s; }
+.ac-row:hover .ac-x, .ac-row:focus-within .ac-x, .ac-row:hover .pk-ib, .ac-row:focus-within .pk-ib { opacity: 1; }
+@media (hover: none) { .ac-row .ac-x, .ac-row .pk-ib { opacity: .55; } }
+@container panel (max-width: 620px) { .ac-row .ac-x, .ac-row .pk-ib { opacity: .55; } }
+.ac-ideas-h { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13.5px; color: var(--hx-muted, #6e6e78); padding-top: 4px; }
+.ac-ideas-h b { color: #1c1a33; }
+.ac-sp { flex: 1; }
+.ac-more { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13px; font-weight: 600; color: #4b36c9; background: #efebff; border: 0; border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.ac-more:hover { background: #e2dcff; }
+.ac-tile-pic { background: color-mix(in srgb, #c0256b 9%, #fff); }
+.ac-tile .ac-art { height: 80px; object-fit: contain; }
+.ac-name { all: unset; cursor: pointer; }
+.ac-name:hover { text-decoration: underline; }
+.ac-name:focus-visible { outline: 2px solid #6a4fe0; outline-offset: 2px; border-radius: 4px; }
+@media (max-width: 560px) {
+  .ac-row { grid-template-columns: 44px minmax(0, 1fr); }
+  .ac-row .ac-pic { width: 44px; height: 44px; }
+  .ac-r { grid-row: auto; grid-column: 1 / -1; justify-content: flex-start; }
+}
+
+/* The drawings' pictures have a white ground: laid on their tint, the white drops out. */
+.ac-pic.art, .ac-tile .ac-art { mix-blend-mode: multiply; }
+.ac-empty { margin: 4px 0 6px; }
+.cat-sec[data-section="activity"] .cat-search { margin-left: 0; padding-left: 0; }

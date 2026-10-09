@@ -127,7 +127,12 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
                 {suggestions && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
                 {pending?.bySection[s.id]}
                 {own && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} />}
-                <EmptyRows rows={rows} onAdd={(at) => onAdd(s.id, at)} />
+                {s.id === "activity" ? (
+                  // v11: no timeline in Etkinlik ve turlar (rows and tiles), so a city's empty card sits under them as they do.
+                  rows.map((r) => <div key={r.key} className="ac-empty">{r.card}</div>)
+                ) : (
+                  <EmptyRows rows={rows} onAdd={(at) => onAdd(s.id, at)} />
+                )}
               </Section>
             );
           })}

@@ -28,7 +28,7 @@ export function Section({ section, open, onToggle, onAdd, suggestions = 0, child
   const ideas = section.ideas;
   // v11: the header says where its needs stand in stage words ("1 rezerve · 2 seçildi · 1 aranıyor"); the ideas and
   // Hazırlık count instead.
-  const line = isIdeaSection(section.id) || section.id === "prep" ? null : stageLine(section.stages);
+  const line = isIdeaSection(section.id) || section.id === "prep" ? null : section.id === "activity" ? activityLine(section) : stageLine(section.stages);
   const spent = isIdeaSection(section.id) || section.id === "prep" ? null : spentOf(section);
   return (
     <section className={`cat-sec${open ? "" : " closed"}`} style={{ "--c": meta.color } as React.CSSProperties} aria-label={label} data-section={section.id}>
@@ -80,6 +80,15 @@ export function Section({ section, open, onToggle, onAdd, suggestions = 0, child
       )}
     </section>
   );
+}
+
+/** v11 Etkinlik ve turlar: "2 planda · 3 fikir" (what's chosen or booked, and the ideas waiting). */
+function activityLine(section: CatSection): string | null {
+  const records = section.entries.map((e) => (e.piece.kind === "item" ? e.piece.item : e.piece.kind === "entry" && e.piece.entry.kind === "event" ? e.piece.entry.item : null)).filter((i): i is NonNullable<typeof i> => i != null);
+  const planned = records.filter((i) => i.status === "chosen" || i.status === "booked").length;
+  const ideas = records.length - planned;
+  const parts = [planned ? L(`${planned} planda`, `${planned} on the plan`) : null, ideas ? L(`${ideas} fikir`, `${ideas} idea${ideas === 1 ? "" : "s"}`) : null].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
 }
 
 /** v11: what's chosen and booked in a section, added up in its main currency ("€2.690"); null when nothing is priced. */

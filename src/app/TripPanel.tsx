@@ -92,9 +92,11 @@ interface Props {
   /** Geçmiş ve çöp kutusu is open (the ••• menu, 0.37); closing it. */
   historyOpen?: boolean;
   onHistoryClose?: () => void;
+  /** v11: a line for the trip's chat ("Daha fazla fikir", a card's ✨), sent there as if typed. */
+  onAsk?: (text: string) => void;
 }
 
-export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, menu, onShare, historyOpen = false, onHistoryClose }: Props) {
+export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, menu, onShare, historyOpen = false, onHistoryClose, onAsk }: Props) {
   // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
@@ -264,6 +266,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       setPanoFocus(group);
       setView("board");
     },
+    ask: onAsk,
   };
 
   // --- the hero: a photo per city, the paragraph, what's confirmed, the facts column ---

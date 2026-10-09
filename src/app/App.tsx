@@ -241,6 +241,7 @@ export function App() {
               onShare={sharable ? () => setShareOpen(true) : undefined}
               historyOpen={historyOpen}
               onHistoryClose={() => setHistoryOpen(false)}
+              onAsk={(text) => addToTrip(trip.id, text)}
             />
           </main>
         </div>
