@@ -1,6 +1,6 @@
 // The Pano (v11 phase 5, lib/pano.ts): what's on it, its tabs and state filter, the sort, the groups by need.
 import { describe, expect, it } from "vitest";
-import { inCat, inState, matchesQuery, panoCounts, panoEntries, panoGroups, sortEntries } from "../src/lib/pano";
+import { inCat, inState, matchesQuery, panoCounts, panoEntries, panoGroups, sortEntries, withLoves } from "../src/lib/pano";
 import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -76,5 +76,21 @@ describe("matchesQuery (Kayıtlarda ara)", () => {
     const e = entry({ name: "Lisboa Loft", city: "Lizbon", location: { area: "Alfama" } } as unknown as Partial<Item>);
     expect(matchesQuery(e, "LİZBON")).toBe(true);
     expect(matchesQuery(e, "alfama loft")).toBe(true);
+  });
+});
+
+describe("withLoves (a heart is the shared trip's Süper vote)", () => {
+  const item = makeItem({ category: "stay", status: "saved", key: "booking:jardim", likedBy: ["Emre"] } as never);
+  it("lays everyone's Süper votes over the record's likes, one face each", () => {
+    const votes = [
+      { itemKey: "booking:jardim", author: "Sabine", vote: 2 as const },
+      { itemKey: "booking:jardim", author: "emre", vote: 2 as const },
+      { itemKey: "booking:jardim", author: "Ali", vote: 1 as const },
+      { itemKey: "booking:other", author: "Ali", vote: 2 as const },
+    ];
+    expect(withLoves(item, votes).likedBy).toEqual(["Emre", "Sabine"]);
+  });
+  it("the record unchanged with no Süper vote on it", () => {
+    expect(withLoves(item, [])).toBe(item);
   });
 });

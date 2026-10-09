@@ -13,6 +13,7 @@ import {
   inState,
   likersOf,
   matchesQuery,
+  withLoves,
   PANO_CATS,
   panoCatLabel,
   panoCounts,
@@ -30,6 +31,8 @@ import { sameName } from "../../lib/tripSettings";
 import type { Item } from "../../lib/types";
 import { chooseItem, toggleLike } from "../actions";
 import { addLinks } from "../capture";
+import { useShare } from "../Share";
+import { voteKeyOf } from "../../lib/share/votes";
 import { KindIcon, UiIcon } from "../cards/Silhouettes";
 import { usePhotoOf, WhoAvatar } from "../cards/WhoseBadge";
 import { FallbackImg } from "../FallbackImg";
@@ -55,7 +58,10 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
   onBack: () => void;
   onCompare: (group: string) => void;
 }) {
-  const entries = useMemo(() => panoEntries(items, decisions?.byGroup), [items, decisions?.byGroup]);
+  // A shared trip: each heart is a "Süper" vote, so the other traveller's hearts show here too (lib/pano withLoves).
+  const share = useShare();
+  const loved = useMemo(() => (share ? items.map((i) => withLoves(i, share.votes)) : items), [items, share?.votes]);
+  const entries = useMemo(() => panoEntries(loved, decisions?.byGroup), [loved, decisions?.byGroup]);
   const focused = focus ? entries.find((e) => e.group === focus) : undefined;
   const [cat, setCat] = useState<PanoCat>(focused?.section ?? "all");
   const [state, setState] = useState<PanoState>("all");
@@ -302,8 +308,16 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
   const kind = cardKind(item);
   const decision = decisions?.byGroup.get(entry.group);
   const facts = cardFacts(item, decision, decisions?.ctx);
+  const share = useShare();
   const likers = likersOf(item);
-  const liked = likers.some((n) => sameName(n, me));
+  const liked = likers.some((n) => sameName(n, me) || (share?.me ? sameName(n, share.me) : false));
+  // Shared: the heart is my "Süper" vote (2), seen on both computers; my own like is kept in step.
+  const voteKey = share?.me ? voteKeyOf(item) : null;
+  const heart = () => {
+    if (voteKey && share) share.vote(item, liked ? 0 : 2);
+    const mineLocal = (item.likedBy ?? []).some((n) => sameName(n, me));
+    if (!voteKey || mineLocal === liked) void toggleLike(item, me);
+  };
   // Önerim: first in its need's comparison; En ucuz: the lowest price among two or more.
   const best = siblings.length > 1 && decision?.winner?.item.id === item.id;
   const prices = siblings.map((s) => s.item.price.amount).filter((p): p is number => p != null && p > 0);
@@ -316,7 +330,7 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
         <FallbackImg src={item.imageUrl} className="pn-photo" fallback={<span className="pn-art"><KindIcon kind={kind} size={56} /></span>} />
         {(best || cheapest) && <span className="pn-badge">{best ? L("Önerim", "My pick") : L("En ucuz", "Cheapest")}</span>}
         <button type="button" className={`pn-heart${liked ? " on" : ""}`} aria-pressed={liked} aria-label={liked ? L(`${item.name}: beğeniyi geri al`, `${item.name}: unlike`) : L(`${item.name}: beğen`, `${item.name}: like`)}
-          onClick={() => void toggleLike(item, me)}>
+          onClick={heart}>
           <UiIcon name="heart" size={16} />
         </button>
         {entry.score != null && (

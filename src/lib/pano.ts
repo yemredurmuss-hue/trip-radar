@@ -9,6 +9,7 @@ import type { GroupDecision } from "./decision";
 import { L } from "./i18n";
 import { formatDateRange, isoDate } from "./items";
 import { groupKeyOf } from "./plan";
+import { voteKeyOf, type Vote } from "./share/votes";
 import type { Item } from "./types";
 
 /** The Pano's tabs: everything, a section of the Plan (its records as the Plan draws them), and what someone liked. */
@@ -162,3 +163,19 @@ const hostOf = (url: string): string | null => {
     return null;
   }
 };
+
+/**
+ * v11 on a shared trip: a heart is the "Süper" vote (2), the one the person you travel with sees too. The record's
+ * likes with everyone's Süper votes laid over (one face per person), so the counts, "Beğenilenler" and the faces
+ * say the same on both computers.
+ */
+export function withLoves(item: Item, votes: readonly Pick<Vote, "itemKey" | "author" | "vote">[]): Item {
+  const key = voteKeyOf(item);
+  if (!key) return item;
+  const loves = votes.filter((v) => v.itemKey === key && v.vote === 2).map((v) => v.author);
+  if (!loves.length) return item;
+  const mine = likersOf(item);
+  const same = (a: string, b: string) => a.trim().toLocaleLowerCase("tr") === b.trim().toLocaleLowerCase("tr");
+  const added = loves.filter((n, i) => !mine.some((m) => same(m, n)) && loves.findIndex((x) => same(x, n)) === i);
+  return added.length ? { ...item, likedBy: [...mine, ...added] } : item;
+}
