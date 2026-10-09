@@ -145,6 +145,65 @@ nav.steps a:hover, nav.steps a:focus-visible { background: var(--pg-soft); outli
 .opts span.rec { background: var(--pg-accent); color: #fff; }
 .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 @media (max-width: 860px) { .flows, .tcards, .pair { grid-template-columns: minmax(0, 1fr); } body { padding-inline: 16px; } }
+
+/* panel, third draft: big photos, a tidy checklist */
+.p2 { background: #fff; border-radius: 24px; box-shadow: 0 1px 2px rgba(28,26,51,.06), 0 18px 40px -24px rgba(28,26,51,.4); overflow: hidden; display: flex; flex-direction: column; }
+.hero { position: relative; height: 188px; background-size: cover; background-position: center 40%; flex: none; }
+.hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,16,40,0) 55%, rgba(20,16,40,.5)); }
+.hero .cap { position: absolute; left: 18px; bottom: 14px; z-index: 1; color: #fff; font: 650 14px var(--font); display: flex; align-items: center; gap: 6px; text-shadow: 0 1px 8px rgba(0,0,0,.4); }
+.hero .thumbs { position: absolute; right: 16px; bottom: 14px; z-index: 1; display: flex; gap: 8px; }
+.hero .thumbs i { width: 74px; height: 56px; border-radius: 12px; border: 2px solid #fff; background-size: cover; background-position: center; box-shadow: 0 6px 16px -6px rgba(0,0,0,.5); }
+.hero.empty { background: linear-gradient(135deg, #ece8ff, #d9ceff 60%, #c9bbff); display: grid; place-items: center; }
+.hero.empty::after { display: none; }
+.hero.empty div { text-align: center; color: #5b45e0; font: 650 15px var(--font); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.hero.empty .i { width: 38px; height: 38px; stroke-width: 1.4; }
+.ph2 { display: flex; align-items: center; gap: 12px; padding: 13px 22px 7px; }
+.ph2 .t { font: 750 19px var(--display); letter-spacing: -.01em; }
+.ph2 .n { margin-left: auto; font: 700 14px var(--font); color: #5b45e0; background: #f1edff; border-radius: 99px; padding: 3px 12px; }
+.seg { display: flex; gap: 5px; padding: 0 22px 8px; }
+.seg i { flex: 1; height: 5px; border-radius: 3px; background: #ebe8f5; }
+.seg i.on { background: #5b45e0; }
+.ck { list-style: none; margin: 0; padding: 4px 14px 12px; display: flex; flex-direction: column; }
+.ck li { display: flex; align-items: center; gap: 14px; padding: 6px 8px; min-height: 46px; border-radius: 14px; }
+.ck li + li { border-top: 1px solid #f3f0fa; }
+.tk { width: 28px; height: 28px; border-radius: 50%; flex: none; display: grid; place-items: center; border: 2px solid #d4d0e4; color: transparent; background: #fff; }
+.tk .i { width: 16px; height: 16px; stroke-width: 3; }
+.ck li.ok .tk { background: #5b45e0; border-color: #5b45e0; color: #fff; }
+.ck li.now { background: #f6f3ff; }
+.ck li.now .tk { border-color: #5b45e0; background: #fff; }
+.ck li.now .tk::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #5b45e0; }
+.ck .lb { font: 700 11.5px var(--font); letter-spacing: .07em; color: #8a86a6; }
+.ck .vl { font-size: 16px; font-weight: 650; line-height: 1.3; }
+.ck li.todo .vl { color: #a09cbc; font-weight: 500; }
+.ck .vl small { font-weight: 500; font-size: 13px; color: #625e86; margin-left: 6px; }
+.ck .st { margin-left: auto; font: 650 12.5px var(--font); color: #5b45e0; background: #ece8ff; border-radius: 99px; padding: 3px 11px; white-space: nowrap; }
+.ck .st.soft { color: #8a86a6; background: #f4f2fb; }
+.stops { display: inline-flex; gap: 6px; flex-wrap: wrap; vertical-align: middle; }
+.stops b { font: 650 13.5px var(--font); background: #f1edff; color: #4a36c9; border-radius: 99px; padding: 3px 11px; }
+.stops b em { font-style: normal; font-weight: 500; color: #7a6bd8; margin-left: 3px; }
+.foot2 { display: flex; align-items: center; gap: 8px; padding: 11px 22px 15px; font-size: 13px; color: #625e86; border-top: 1px solid #f3f0fa; }
+/* option B: mosaic + tiles */
+.mos { display: grid; grid-template-columns: 1.7fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px; height: 250px; padding: 6px; }
+.mos div { background-size: cover; background-position: center; border-radius: 18px; position: relative; overflow: hidden; }
+.mos div:first-child { grid-row: 1 / 3; }
+.mos div::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 60%, rgba(20,16,40,.45)); }
+.mos span { position: absolute; left: 12px; bottom: 9px; z-index: 1; color: #fff; font: 650 13px var(--font); }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 6px 14px 14px; }
+.tile { border: 1.5px solid #ebe8f5; border-radius: 16px; padding: 11px 13px; display: flex; gap: 11px; align-items: flex-start; min-height: 74px; background: #fff; }
+.tile.ok { border-color: #d6ccff; background: #fbfaff; }
+.tile.now { border-color: #5b45e0; box-shadow: 0 0 0 4px #ece8ff; }
+.tile .tk { width: 26px; height: 26px; margin-top: 1px; }
+.tile.ok .tk { background: #5b45e0; border-color: #5b45e0; color: #fff; }
+.tile.now .tk { border-color: #5b45e0; }
+.tile.now .tk::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #5b45e0; }
+.tile .lb { font: 700 11px var(--font); letter-spacing: .07em; color: #8a86a6; }
+.tile .vl { font-size: 15px; font-weight: 650; line-height: 1.3; }
+.tile.todo .vl { color: #a09cbc; font-weight: 500; }
+.tile .vl small { display: block; font-weight: 500; font-size: 12.5px; color: #625e86; }
+.opt { display: flex; align-items: center; gap: 10px; }
+.opt b { font: 800 13px var(--font); background: var(--pg-accent); color: #fff; border-radius: 99px; padding: 3px 12px; }
+.tri { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 860px) { .tri { grid-template-columns: minmax(0, 1fr); } }
 </style>
 </head>
 <body>
@@ -181,9 +240,11 @@ nav.steps a:hover, nav.steps a:focus-visible { background: var(--pg-soft); outli
 
   <!-- 1 -->
   <section class="step" id="panel">
-    <div class="when">Revizyon 1</div>
-    <h2>Önizleme ile kontrol listesi tek panel oldu</h2>
-    <p class="muted">Bugün sağda iki ayrı kutu var ve aynı şeyi iki kez söylüyorlar: ülke, tarih, kimle, rota. Şimdi tek kart: üstte fotoğraflar, altında altı satır. Her satır hem durumu (tamam mı) hem ayrıntıyı taşıyor.</p>
+    <div class="when">Revizyon 1 · ikinci çizim</div>
+    <h2>Tek panel: büyük fotoğraf, temiz liste</h2>
+    <p class="muted">Önceki çizim kalabalıktı: küçük fotoğraflar, satırlarda alt alta üç satır yazı, belirsiz halka. Bu turda üç şey değişti: fotoğraf panelin yarısı kadar büyük ve tek parça; her satır tek satır (ayrıntılar satırdan çıktı); tikler dolu mor daire, o an sorulan satır içi noktalı halka, bekleyenler boş.</p>
+
+    <div class="opt"><b>Seçenek A · Önerim</b><span class="muted">Kapak fotoğrafı + liste</span></div>
     <div class="fit"><div class="screen">
       <div class="lchat">
         <div class="lc-top"><div class="lc-back"><svg class="i"><use href="#i-back"/></svg>Seyahatlerim</div><div class="lc-title">Bali · yeni gezi</div></div>
@@ -195,41 +256,97 @@ nav.steps a:hover, nav.steps a:focus-visible { background: var(--pg-soft); outli
         <div class="cmp"><span>Ya da kendin yaz…</span><span class="send"><svg class="i"><use href="#i-up"/></svg></span></div>
       </div>
       <div class="rp">
-        <div class="panel">
-          <div class="strip">
-            <div style="background-image:url(img/foto-ubud.jpg)"><span>Ubud</span></div>
-            <div style="background-image:url(img/foto-uluwatu.jpg)"><span>Uluwatu</span></div>
-            <div style="background-image:url(img/foto-romantikaksam.jpg)"><span>Romantik akşam</span></div>
-            <div style="background-image:url(img/foto-yerellezzetler.jpg)"><span>Yerel lezzetler</span></div>
+        <div class="p2">
+          <div class="hero" style="background-image:url(img/foto-ubud.jpg)">
+            <div class="cap">Ubud, Bali</div>
+            <div class="thumbs"><i style="background-image:url(img/foto-uluwatu.jpg)"></i><i style="background-image:url(img/foto-romantikaksam.jpg)"></i><i style="background-image:url(img/foto-yerellezzetler.jpg)"></i></div>
           </div>
-          <div class="ph-h">
-            <div class="ring"><svg viewBox="0 0 64 64"><circle class="bg" cx="32" cy="32" r="26"/><circle class="fg" cx="32" cy="32" r="26" stroke-dasharray="55 164"/></svg><span><b>2</b>/6</span></div>
-            <div><div class="ph-t">Gezin şekilleniyor</div><div class="ph-s">6 bilgiden 2'si tamam</div></div>
-          </div>
-          <ol class="rows">
-            <li class="row done"><span class="chk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="rl">NEREYE</div><div class="rv">Bali · Endonezya 🇮🇩<small>Rupiah · Endonezce · priz C/F</small></div></span></li>
-            <li class="row"><span class="chk"></span><span><div class="rl">NEREDEN</div><div class="rv" style="color:#8a86a6;font-weight:500">En sonda soracağım<small>Uçuşlar buna göre aranır</small></div></span></li>
-            <li class="row done"><span class="chk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="rl">KİMLE</div><div class="rv">Sevgilinle · 2 kişi</div></span></li>
-            <li class="row ask"><span class="chk"></span><span><div class="rl">NE ZAMAN</div><div class="rv">Eylül · 10 gün<small>Hangi gün başlıyor? Sorulan bu.</small></div></span></li>
-            <li class="row"><span class="chk"></span><span><div class="rl">NE İSTİYORSUN</div><div class="rv" style="color:#8a86a6;font-weight:500">Romantik mi, doğa mı, gastronomi mi?</div></span></li>
-            <li class="row"><span class="chk"></span><span><div class="rl">ROTA</div><div class="rv" style="color:#8a86a6;font-weight:500">Önerim hazırlanıyor…<span class="read"></span></div></span></li>
-          </ol>
-          <div class="sugg"><svg class="i"><use href="#i-shield"/></svg>Önerilerde: seyahat sağlık sigortası · eSIM (Endonezya)</div>
+          <div class="ph2"><div class="t">Gezin şekilleniyor</div><div class="n">2 / 6</div></div>
+          <div class="seg"><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></div>
+          <ul class="ck">
+            <li class="ok"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">NEREYE</div><div class="vl">Bali · Endonezya 🇮🇩<small>Rupiah · priz C/F</small></div></span></li>
+            <li class="todo"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">NEREDEN</div><div class="vl">En sonda soracağım</div></span><span class="st soft">Sonra</span></li>
+            <li class="ok"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">KİMLE</div><div class="vl">Sevgilinle · 2 kişi</div></span></li>
+            <li class="now"><span class="tk"></span><span><div class="lb">NE ZAMAN</div><div class="vl">Eylül · 10 gün</div></span><span class="st">Hangi gün?</span></li>
+            <li class="todo"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">NE İSTİYORSUN</div><div class="vl">Romantik mi, doğa mı?</div></span></li>
+            <li class="todo"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">ROTA</div><div class="vl">Önerim hazırlanıyor…</div></span></li>
+          </ul>
         </div>
         <div class="gen"><button type="button"><svg class="i"><use href="#i-spark"/></svg>Oluştur</button><p>Elimdekiyle kurarım, eksikleri panoda sorarım. Ya da konuşmaya devam et.</p></div>
       </div>
     </div></div>
-    <div class="note"><b>Ne değişti</b><ul>
-      <li>"Gezi önizlemesi" kutusu kalktı. Fotoğraflar panelin üstünde, tek şerit: iki yer, iki an (romantik akşam, yerel lezzetler).</li>
-      <li>"Ülke" satırı yok: bayrak, para birimi, dil ve priz NEREYE satırının altına girdi. Aynı yer iki kez yazılmıyor.</li>
-      <li>Tarih, kimle ve rota artık önizlemede tekrar edilmiyor; yalnız kendi satırlarında. Rota satırında duraklar ve geceler, tarzda renkli etiketler, NEREDEN satırında uçuş çifti çıkıyor.</li>
-      <li>Önerilerde (sigorta, eSIM) panelin altında tek satır. Bir satıra basınca o soru yine sorulur; bugünkü gibi.</li>
-      <li>Soru cevaplanınca ilgili satır "pıt" diye tamamlanıyor; sorulan satır nazikçe nabız atıyor; yeni bilgi gelince o satırda ince bir parıltı (K5).</li>
-    </ul></div>
-    <div class="pair">
-      <div class="note"><b>Dolu hali (altı satır da tamam)</b><p class="muted">NEREYE Bali · Endonezya, KİMLE Sevgilinle · 2 kişi, NE ZAMAN 15–25 Eylül · 10 gece (yaklaşık), NE İSTİYORSUN Romantik · Doğa, ROTA Ubud 4 → Uluwatu 3 → Canggu 3, NEREDEN İstanbul (altında İstanbul ⇄ Denpasar). Halka 6/6, Oluştur kartı "Her şey hazır".</p></div>
-      <div class="note"><b>Dar ekran</b><p class="muted">Panel gövdesi bugünkü gibi ince bir çubuğa katlanır ("4/6 · Gezin şekilleniyor ▾", yanında Oluştur). Fotoğraf şeridi katlanınca gizlenir, açılınca üstte durur.</p></div>
+
+    <div class="opt"><b>Seçenek B</b><span class="muted">Mozaik fotoğraf + kutucuklar</span></div>
+    <div class="fit"><div class="screen">
+      <div class="lchat">
+        <div class="lc-top"><div class="lc-back"><svg class="i"><use href="#i-back"/></svg>Seyahatlerim</div><div class="lc-title">Bali · yeni gezi</div></div>
+        <div class="lc-msgs">
+          <div class="ub">Sevgilimle Bali'ye 10 gün gideceğiz, eylülde</div>
+          <div class="ai">Bali'de 10 gün, sevgilinle: güzel bir ikili.<span class="q">Eylülde hangi gün başlıyorsunuz?<span class="why">Uçuşlar, oteller, eSIM ve sigorta o güne yerleşsin.</span></span></div>
+          <div class="chs"><span class="ch">Ayın başı</span><span class="ch">Ortası</span><span class="ch">Sonu</span><span class="skip">Atla</span></div>
+        </div>
+        <div class="cmp"><span>Ya da kendin yaz…</span><span class="send"><svg class="i"><use href="#i-up"/></svg></span></div>
+      </div>
+      <div class="rp">
+        <div class="p2">
+          <div class="mos">
+            <div style="background-image:url(img/foto-ubud.jpg)"><span>Ubud</span></div>
+            <div style="background-image:url(img/foto-uluwatu.jpg)"><span>Uluwatu</span></div>
+            <div style="background-image:url(img/foto-romantikaksam.jpg)"><span>Romantik akşam</span></div>
+          </div>
+          <div class="ph2" style="padding-top:12px"><div class="t">Gezin şekilleniyor</div><div class="n">2 / 6</div></div>
+          <div class="tiles">
+            <div class="tile ok"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">NEREYE</div><div class="vl">Bali 🇮🇩<small>Endonezya</small></div></span></div>
+            <div class="tile todo"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">NEREDEN</div><div class="vl">Sonra soracağım</div></span></div>
+            <div class="tile ok"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">KİMLE</div><div class="vl">Sevgilinle<small>2 kişi</small></div></span></div>
+            <div class="tile now"><span class="tk"></span><span><div class="lb">NE ZAMAN</div><div class="vl">Eylül · 10 gün<small>Hangi gün?</small></div></span></div>
+            <div class="tile todo"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">NE İSTİYORSUN</div><div class="vl">Romantik mi, doğa mı?</div></span></div>
+            <div class="tile todo"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">ROTA</div><div class="vl">Hazırlanıyor…</div></span></div>
+          </div>
+        </div>
+        <div class="gen"><button type="button"><svg class="i"><use href="#i-spark"/></svg>Oluştur</button><p>Elimdekiyle kurarım, eksikleri panoda sorarım. Ya da konuşmaya devam et.</p></div>
+      </div>
+    </div></div>
+
+    <h3>Seçenek A'nın üç hali</h3>
+    <div class="tri">
+      <div class="fit" style="aspect-ratio:auto;height:auto;overflow:visible;box-shadow:none;background:none"><div class="p2" style="box-shadow:var(--pg-shadow)">
+        <div class="hero empty" style="height:150px"><div><svg class="i"><use href="#i-globe"/></svg>Fotoğraflar yer belli olunca gelir</div></div>
+        <div class="ph2"><div class="t" style="font-size:16px">Gezin şekilleniyor</div><div class="n">0 / 6</div></div>
+        <div class="seg"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <ul class="ck" style="padding-bottom:8px">
+          <li class="now"><span class="tk"></span><span><div class="lb">NEREYE</div><div class="vl">Nereye gitmek istiyorsun?</div></span><span class="st">Soruluyor</span></li>
+          <li class="todo"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">NEREDEN</div><div class="vl">Sonra</div></span></li>
+          <li class="todo"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">KİMLE</div><div class="vl">Sonra</div></span></li>
+        </ul></div></div>
+      <div class="fit" style="aspect-ratio:auto;height:auto;overflow:visible;box-shadow:none;background:none"><div class="p2" style="box-shadow:var(--pg-shadow)">
+        <div class="hero" style="height:150px;background-image:url(img/foto-porto.jpg)"><div class="cap">Porto</div></div>
+        <div class="ph2"><div class="t" style="font-size:16px">Gezin şekilleniyor</div><div class="n">4 / 6</div></div>
+        <div class="seg"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+        <ul class="ck" style="padding-bottom:8px">
+          <li class="ok"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">NEREYE</div><div class="vl">Porto · Portekiz 🇵🇹</div></span></li>
+          <li class="ok"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">KİMLE</div><div class="vl">Tek başına</div></span></li>
+          <li class="ok"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">NE ZAMAN</div><div class="vl">8–15 Kasım · 7 gece</div></span></li>
+          <li class="now"><span class="tk"></span><span><div class="lb">NE İSTİYORSUN</div><div class="vl">Ne yapsın bu gezi?</div></span><span class="st">Soruluyor</span></li>
+        </ul></div></div>
+      <div class="fit" style="aspect-ratio:auto;height:auto;overflow:visible;box-shadow:none;background:none"><div class="p2" style="box-shadow:var(--pg-shadow)">
+        <div class="hero" style="height:150px;background-image:url(img/foto-ubud.jpg)"><div class="cap">Ubud, Bali</div><div class="thumbs"><i style="width:56px;height:42px;background-image:url(img/foto-uluwatu.jpg)"></i><i style="width:56px;height:42px;background-image:url(img/foto-seminyak.jpg)"></i></div></div>
+        <div class="ph2"><div class="t" style="font-size:16px">Gezin hazır</div><div class="n">6 / 6</div></div>
+        <div class="seg"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+        <ul class="ck" style="padding-bottom:8px">
+          <li class="ok"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">NE ZAMAN</div><div class="vl">15–25 Eylül · 10 gece</div></span></li>
+          <li class="ok"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">NE İSTİYORSUN</div><div class="vl"><span class="stops"><b>Romantik</b><b>Doğa</b></span></div></span></li>
+          <li class="ok"><span class="tk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="lb">ROTA</div><div class="vl"><span class="stops"><b>Ubud<em>4</em></b><b>Uluwatu<em>3</em></b><b>Canggu<em>3</em></b></span></div></span></li>
+        </ul></div></div>
     </div>
+
+    <div class="note"><b>Ne değişti</b><ul>
+      <li>Fotoğraf: tek büyük kapak (A) ya da mozaik (B); küçük şerit gitti. Sol altta yerin adı, yanında gezinin anlarından üç küçük kare.</li>
+      <li>Satır başına tek satır. Ülke bilgisi (para, priz) yalnız NEREYE satırında, küçük. Önizlemedeki ikinci liste yok.</li>
+      <li>Tik: tamamlanan satırda dolu mor daire ve beyaz tik; sorulan satırda içi noktalı halka ve sağında "Hangi gün?" gibi kısa etiket; bekleyenler boş, soluk yazı.</li>
+      <li>Üstte altı dilimli ince çubuk ilerlemeyi gösteriyor (halka gitti). Dolunca başlık "Gezin hazır" olur.</li>
+      <li>Rota ve tarz satırlarında duraklar ve tarzlar küçük etiket olarak; sigorta ve eSIM önerileri panelden çıktı, oluşunca panoda zaten var.</li>
+    </ul></div>
   </section>
 
   <!-- 2 -->
@@ -362,7 +479,7 @@ nav.steps a:hover, nav.steps a:focus-visible { background: var(--pg-soft); outli
     <div class="when">Senden onay</div>
     <h2>Dört karar</h2>
     <div class="decide">
-      <div><b>1 · Tek panel</b><p class="muted">Önizleme kalkıp ayrıntılar kontrol listesinin satırlarına girer, fotoğraflar üstte. Puanım 8/10: tekrarı bitirir, tek yere bakılır. 10 olması için: satırlardaki alt metinler dolunca ekran kalabalık olmasın diye bir sınır koyup test etmem lazım (uzun rota, çok tarz).</p><div class="opts"><span class="rec">Onayla</span><span>Değiştir (neresi?)</span></div></div>
+      <div><b>1 · Tek panel</b><p class="muted">İki seçenek: A kapak fotoğrafı + liste (önerim, 8/10: sade, tikler net), B mozaik + kutucuklar (7/10: göze hoş ama uzun değerler kutuya sığmayabilir, dar ekranda dört satıra iner).</p><div class="opts"><span class="rec">A (önerim)</span><span>B</span><span>Değiştir (neresi?)</span></div></div>
       <div><b>2 · Her cevaba model sözü</b><p class="muted">Dürüst puan 7/10: daha canlı konuşturur, ama her butona bir model çağrısı demek ve iyi yazılmazsa "yapay" gelir. Soru asla beklemez. İstersen yalnız yazdığın mesajlara kalsın (bugünkü).</p><div class="opts"><span class="rec">Her cevaba söz (önerim)</span><span>Yalnız yazdıklarıma</span><span>Her ikinci cevaba</span></div></div>
       <div><b>3 · Ana ekran önerileri</b><p class="muted">İlham ve son dakika çalışır hale gelir (tek motor). Yol gezisi yarım kalmasın diye "yakında". 8/10; 10 için yol gezisi de aynı turda yapılmalı ama iş iki katına çıkar.</p><div class="opts"><span class="rec">İlham + son dakika şimdi, yol gezisi sonra (önerim)</span><span>Üçü birden</span><span>Yol gezisini tamamen kaldır</span></div></div>
       <div><b>4 · Yüzler yalnız grupta</b><p class="muted">Kart ve önizlemede kuralı uyguluyorum (bu zaten kodda, 0.36.68'de çıkar).</p><div class="opts"><span class="rec">Tamam</span></div></div>
