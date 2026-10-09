@@ -224,7 +224,30 @@ Hepsi isteğe bağlı alan; eski sürüm bilmediği alanı yok sayar. Paylaşım
 
 ## Durum
 
-**Hepsi yayında (2026-10-09):** 0.36.56 Faz 1 · 0.36.57 Faz 2a + vize · 0.36.58 düzeltme · 0.36.59 Pano + rezervasyon
+**Tasarım–canlı farkları kapatıldı (2026-10-09 gündüz, Emre: "tasarımda ne karar verdiysek onu canlıda istiyorum"):**
+çizim ile canlı karşılaştırıldı, bulunan farklar sırayla yayına çıktı:
+- 0.36.62: seçenekli konaklama tek kart ("N seçenek ›"), seçim penceresinde her seçeneğin rozeti, istek işaretleri,
+  "Neden? Artılar ve eksiler", "Tarihlerle aç ↗", "Tüm detaylar"; Etkinlik ve turlar çizimdeki gibi: planda olanlar
+  satır, fikirler kare ("Fikirler · bilet ya da rezervasyon gerektirenler", "Daha fazla fikir"); çizim görselleri
+  (`static/illus`). Gezinin şekli şeridi ve plan başlığındaki sıra düğmesi + renk anahtarı (a5afa8a) de bu partide.
+- 0.36.63: kartın üst satırında "Arıyoruz" / "Rezerve", rezervede damga, seçilmiş kartta "Pano'da N alternatif";
+  ✨ "AI'dan öneri iste" (arama kartı, boş kart, seçim penceresinde "Daha fazla öneri bul", Yapılacak şeyler'de
+  "Daha fazla öner"; satır sohbete gider: `TripPanel onAsk` → App `addToTrip`); Hazırlık'ta "Daha fazla öner",
+  her satırın altında kısa açıklama, "Hazır", alınacak şeye "Amazon ↗" (`lib/prepBuy`).
+- 0.36.64: seçilmiş / rezerve konaklama da v11 kartı (eski "settled card" kalktı): görsel, gece aralığı, "Aldım",
+  "Pano'da N alternatif", "Rezerve et ↗", rezervede "Rezerve" + damga + rezervasyon penceresi; fotoğrafı olmayan
+  kartta çizim görseli.
+- 0.36.65: arama kartında "Aradığımız" çipleri (konaklama: yolcunun tercihleri) ve "Kendin ara" (markaların
+  aramaları, `needSearchLinks`), seçim penceresinde de; Pano'da "Kayıtlarda ara", "Kartlar | Karşılaştır" tablosu,
+  "+ Link ekle".
+- Sonraki yayında: bölüm başlığında "€X ayrıldı" (bütçe, beklenen maliyete göre bölünür: `sectionAllotments`);
+  paylaşılan gezide Pano kalbi "Süper" oyu (2), iki bilgisayarda aynı (`withLoves`).
+
+Bilinçli farklar: uçuş/ulaşım kartlarında damga yok (çizimdeki bilet koçanı canlıda yok, damga şehir adının üstüne
+biniyordu); etkinlik satırında ••• menüsü duruyor (Düzenle, Değiştir, Sil kaybolmasın diye, hover'da görünür);
+Lizbon gibi henüz etkinliği olmayan şehrin boş kartı ("Kendin ara" ile) fikirlerin altında kaldı.
+
+**İlk faz yayınları (2026-10-09):** 0.36.56 Faz 1 · 0.36.57 Faz 2a + vize · 0.36.58 düzeltme · 0.36.59 Pano + rezervasyon
 penceresi · 0.36.60 Faz 2b (ihtiyaç kartı + seçim penceresi) + Faz 4 (Yapılacak şeyler kareleri, Gün gün'de "Planda,
 günü yok") · 0.36.61 Faz 6 (sigorta ve eSIM yan yana, bölüm başlığında harcanan).
 Bilinçli olarak dışarıda kalanlar: konaklamaların kendi karşılaştırma bloğu (Faz 2b'nin ihtiyaç kartı onlara

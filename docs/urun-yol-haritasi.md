@@ -410,3 +410,14 @@ hepsi açık gelir, başlıkta aşama sözleri. Unit 1677/1677, e2e yeşil. Sır
 0.36.59 Pano + rezervasyon penceresi · 0.36.60 ihtiyaç kartı ("N seçenek ›" + seçim penceresi, AI ayrı) + Yapılacak
 şeyler kareleri (gün Gün gün'de) · 0.36.61 sigorta ve eSIM yan yana + bölüm başlığında harcanan. Açık kalanlar spec'in
 "Durum" bölümünde (konaklama bloğu, paylaşılan gezide kalp ↔ oy, bölüm bütçesi payı, etkinlik kareleri).
+
+## Tasarım = canlı (2026-10-09 gündüz) · K74
+
+- **K74 · Tasarımda ne karar verildiyse canlıda o (Emre, 2026-10-09: "sürekli bana sorarak yapamayız"):** çizim ile
+  canlı yan yana denetlendi, belirsizlik çizim lehine çözüldü, sorulmadı. Kapatılan farklar: gezinin şekli şeridi,
+  plan başlığında sıra düğmesi + renk anahtarı; seçenekli konaklama tek kart; seçilmiş/rezerve konaklama v11 kartı;
+  Etkinlik ve turlar satır + fikir kareleri; çizim görselleri (`static/illus`); "Arıyoruz"/"Rezerve" + damga;
+  "Pano'da N alternatif"; ✨ AI'dan öneri iste ve "Daha fazla fikir/öner" (sohbete gider); "Aradığımız" çipleri +
+  "Kendin ara"; Hazırlık'ta Amazon + "Daha fazla öner"; Pano'da arama, Kartlar | Karşılaştır tablosu, + Link ekle;
+  bölüm başlığında "€X ayrıldı"; paylaşılan gezide kalp = Süper oyu. Yayınlar 0.36.62–0.36.66; ayrıntı spec'in
+  "Durum" bölümünde.
