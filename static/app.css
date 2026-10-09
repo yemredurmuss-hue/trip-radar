@@ -3118,3 +3118,48 @@ a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: cente
 .ch-ai h4 { color: var(--hx-accent); }
 .ch-ai .bk-note { margin: -4px 0 8px; }
 @media (max-width: 560px) { .ch-row { grid-template-columns: 40px minmax(0, 1fr); } .ch-end { grid-column: 1 / -1; grid-auto-flow: column; justify-content: space-between; align-items: center; } }
+
+/* v11 (phase 4): Yapılacak şeyler as tiles, like the activities' ideas; Gün gün's "Planda, günü yok". */
+.it-wrap { display: grid; gap: 12px; padding: 4px 20px 16px 60px; }
+@media (max-width: 760px) { .it-wrap { padding-left: 20px; } }
+.it-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.it-filters button { border: 1px solid var(--hx-line); background: #fff; color: var(--hx-muted); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 13.5px; cursor: pointer; }
+.it-filters button i { font-style: normal; margin-left: 3px; }
+.it-filters button[aria-pressed="true"] { background: var(--hx-ink); border-color: var(--hx-ink); color: #fff; }
+.it-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); gap: 12px; }
+.it-tile { position: relative; display: grid; align-content: start; gap: 4px; padding: 8px 8px 10px; border-radius: 16px; background: #fff; border: 1px solid var(--hx-line); transition: transform .25s cubic-bezier(.16, 1, .3, 1), box-shadow .25s; min-width: 0; }
+.it-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(28,26,51,.08); }
+.it-tile.planned { border-color: #9fd6b4; }
+.it-tile.done { opacity: .62; }
+.it-pic { position: relative; height: 104px; border-radius: 11px; display: grid; place-items: center; overflow: hidden; }
+.it-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+.it-glyph { display: grid; place-items: center; }
+.it-maps { position: absolute; left: 6px; bottom: 6px; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,.94); color: #1e8e3e; font-size: 11px; font-weight: 700; }
+.it-who { position: absolute; left: 7px; top: 7px; }
+.it-who .wh-av { box-shadow: 0 0 0 2px #fff; }
+.it-ai { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; background: #fff; font-size: 11px; }
+.it-tools { position: absolute; right: 6px; top: 6px; display: inline-flex; gap: 4px; align-items: center; }
+.it-tools .pk-ib { background: rgba(255,255,255,.94); border-radius: 50%; }
+.it-tools .pk-x { opacity: 0; transition: opacity .15s; }
+.it-tile:hover .it-tools .pk-x, .it-tile:focus-within .it-tools .pk-x { opacity: 1; }
+@media (hover: none) { .it-tools .pk-x { opacity: .7; } }
+.it-t { font-size: 14px; font-weight: 650; line-height: 1.3; margin-top: 4px; overflow-wrap: anywhere; }
+.it-t a { color: inherit; text-decoration: none; }
+.it-t a:hover { color: var(--hx-accent); }
+.it-m { font-size: 12.5px; color: var(--hx-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.it-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+.it-put { border: 1px solid #cfc6ff; background: #fff; color: var(--hx-accent); border-radius: 999px; padding: 4px 11px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+.it-put:hover { background: var(--hx-lav); }
+.it-put.on { border-color: #9fd6b4; background: #eef8f1; color: #1f7a45; }
+.it-day { font-size: 12px; font-weight: 650; color: #1f7a45; background: #eef8f1; border-radius: 999px; padding: 3px 8px; }
+.it-done { font-size: 13px; font-weight: 650; color: var(--hx-muted); }
+.it-note { margin: 2px 0 0; font-size: 12.5px; color: var(--hx-muted); }
+.it-other { margin-top: 4px; }
+.ud-strip { margin: 0 0 16px; padding: 12px 14px; border-radius: 16px; background: #fbf6ea; border: 1px solid #f3dfb4; }
+.ud-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: 0 0 8px; font-size: 14px; }
+.ud-h i { font-style: normal; color: #9a6400; font-weight: 700; }
+.ud-h span { color: var(--hx-muted); font-size: 13px; }
+.ud-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.ud-item { display: inline-flex; align-items: center; gap: 8px; padding: 4px 6px 4px 12px; border-radius: 999px; background: #fff; border: 1px solid var(--hx-line); font-size: 13.5px; }
+.ud-name { font-weight: 600; }
+.ud-city { color: var(--hx-muted); font-size: 12.5px; }

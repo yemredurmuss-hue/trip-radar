@@ -65,6 +65,7 @@ import { useArrivals } from "./arrive/useArrivals";
 import { useSuggestions } from "./useSuggestions";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
 import { Pano } from "./board/Pano";
+import { UndatedIdeas } from "./ideas/IdeaTiles";
 import { choiceOf, type Choice } from "../lib/choice";
 import { pivotalFindings } from "../lib/pivots";
 import type { ValueCard } from "../lib/value";
@@ -818,7 +819,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       ) : view === "docs" ? (
         <DocsTab tripId={trip.id} items={items} onGo={(id) => reveal({ item: id })} offer={offer} />
       ) : view === "days" && timeline.entries.length > 0 ? (
+        <>
+        <UndatedIdeas items={items} plan={plan} />
         <TimelineView onShow={showOnPlan} timeline={timeline} tripId={trip.id} leg={leg} onAdd={env.add} listings={listings} today={today} cityImage={cityImageOf} cards={{ legCard, renderGroup, settled }} dayTimes={trip.dayTimes} dayOrder={trip.dayOrder} dayLoose={trip.dayLoose} mainPlaces={mains} />
+        </>
       ) : (
         <EmptyEnvContext.Provider value={emptyEnv}>
           <CategoryPlan

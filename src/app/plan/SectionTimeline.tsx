@@ -15,8 +15,8 @@ import { activitySearches, returnFlightSearch } from "../../lib/searchLinks";
 import { activityGaps } from "../../lib/emptyCards";
 import { sameCity } from "../../lib/plan";
 import { InsertPoint } from "../cards/AddSheet";
-import { IdeaList, InspoGrid } from "../ideas/IdeaList";
-import { QuickAdd } from "../ideas/QuickAdd";
+import { InspoGrid } from "../ideas/IdeaList";
+import { IdeaTiles } from "../ideas/IdeaTiles";
 import type { CardFor, LegCardFor, RenderGroup, SettledFor } from "../Timeline";
 import { PlanEntry } from "./PlanEntry";
 import { PrepList } from "./PrepList";
@@ -49,15 +49,8 @@ export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, o
   items: Item[];
 }) {
   if (section.id === "inspo") return <InspoGrid section={section} plan={plan} />;
-  if (section.id === "todo" || section.id === "food") {
-    return (
-      <>
-        {section.id === "todo" && <QuickAdd tripId={tripId} cities={cities} onAdded={onIdea} />}
-        {section.id === "todo" && <p className="prep-sub">{L("Orada görülecek, gezilecek, denenecek şeyler", "What to see, visit and try there")}</p>}
-        <IdeaList section={section} plan={plan} today={today} fallback={(e) => <Piece entry={e} cards={cards} />} />
-      </>
-    );
-  }
+  // v11 phase 4: tiles, "+ Plana koy" ↔ "✓ Planda"; no quick box (the chat adds), no day here (Gün gün gives it).
+  if (section.id === "todo" || section.id === "food") return <IdeaTiles section={section} fallback={(e) => <Piece entry={e} cards={cards} />} />;
   return (
     <>
       {section.days.length > 0 && (

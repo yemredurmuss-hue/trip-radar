@@ -197,7 +197,12 @@ try {
       const count = app.locator(`.cat-sec[data-section="${id}"] .cat-count`);
       const ideas = app.locator(`.cat-sec[data-section="${id}"] .cat-ideas`);
       if (await count.count()) n += Number((await count.innerText()).replace(/\s/g, "").split("/")[1]);
-      else if (await ideas.count()) n += Number((await ideas.innerText()).match(/^\d+/)[0]);
+      // v11: Yapılacak şeyler says "3 yer · 2 restoran · 1 planda"; the others "N fikir" / "N kayıt".
+      else if (await ideas.count()) {
+        const text = await ideas.innerText();
+        const of = (word) => Number(text.match(new RegExp(`(\\d+) ${word}`))?.[1] ?? 0);
+        n += of("yer") + of("restoran") + of("fikir") + of("kayıt");
+      }
     }
     return n;
   };
@@ -469,8 +474,8 @@ try {
   // A block for each thing, in its section: the flights in and home, the stays, the train, the boat tour.
   const kinds = await app.locator(".cat-card").evaluateAll((els) => els.map((e) => `${e.closest(".cat-sec").dataset.section}:${[...e.classList].find((c) => c.startsWith("tl-")) ?? "item"}`));
   assert.deepEqual(kinds, ["flight:tl-travel", "flight:tl-travel", "stay:tl-stay", "stay:tl-stay", "transport:tl-travel", "activity:tl-event", "activity:item", "activity:item", "activity:item", "other:item"]);
-  // The restaurant is a row of the ideas' list, not a card (0.35.3); v11: under Yapılacak şeyler.
-  assert.equal(await sec("todo").locator(".il-row").count(), 1);
+  // The restaurant is a tile of the ideas, not a card (0.35.3); v11: under Yapılacak şeyler, as a tile.
+  assert.equal(await sec("todo").locator(".it-tile").count(), 1);
   // No days, no check-in lines, no transfers without a plan.
   assert.equal(await app.locator(".cat-plan .tl-day, .cat-plan .leg, .cat-plan .pk-leg").count(), 0);
   // The itinerary, a tab away (0.34.7): a card a day (its photo, its title, the whole day as a timeline, check-in
@@ -991,7 +996,7 @@ try {
   assert.match(await undatedActs.locator(".cat-date").innerText(), /Tarihsiz\s*Porto/);
   assert.deepEqual(await undatedActs.locator(".pk-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Livraria Lello", "Serralves Müzesi", "Tiyatro"]);
   assert.equal(await app.locator(".pk-card", { hasText: "Majestic Café" }).count(), 0);
-  await sec("todo").locator('.il-row[aria-label="Majestic Café"]').waitFor();
+  await sec("todo").locator('.it-tile[aria-label="Majestic Café"]').waitFor();
   assert.equal(await app.locator(".crash").count(), 0, "board crashed after chat updates");
   await app.screenshot({ path: `${out}/5-chosen.png` });
   // 4b. Plan cards: a file on a card, delete + undo (the file comes back), add from a template, narrow.
@@ -1165,117 +1170,111 @@ try {
   await tab("Plan").and(app.locator('[aria-selected="true"]')).waitFor();
   await box("Ad").fill("Bolhão pazarı");
   await box("Ad").press("Enter");
-  await sec("todo").locator('.il-row[aria-label="Bolhão pazarı"]').waitFor();
+  await sec("todo").locator('.it-tile[aria-label="Bolhão pazarı"]').waitFor();
   await tab("Gün gün").click();
   await listMode();
   // An idea without an hour is a line of the day like the rest (0.35.6), never hidden.
   await dayCard(3).locator(".dc-tl > .dc-step.idea", { hasText: "Bolhão pazarı" }).waitFor();
-  // Yapılacak şeyler and Restoranlar (0.34, where Fikirler was): the quick line at the top, a day for a
-  // restaurant (with its meal), done, moved to Etkinlikler.
+  // v11 phase 4: Yapılacak şeyler as tiles, restaurants with the things to do; no quick box (the chat adds: the run
+  // writes three ideas as the chat would), no day here (Gün gün's "Planda, günü yok" gives it); the rest in the •••.
   await tab("Plan").click();
   const todos = sec("todo");
-  const quick = todos.getByRole("textbox", { name: "Bir şey yaz" });
-  // The city the line names is the card's city, not part of its title.
-  for (const [line, title] of [
-    ["Lizbon'da pastel de nata", "Pastel de nata"],
-    ["Porto'da Dom Luís köprüsünden gün batımı", "Dom Luís köprüsünden gün batımı"],
-    ["Porto'da Livraria Lello, giriş bileti var", "Livraria Lello, giriş bileti var"],
-  ]) {
-    await quick.fill(line);
-    await quick.press("Enter");
-    await app.locator(`.cat-plan [aria-label="${title}"]`).waitFor();
-  }
-  const food = sec("todo");
-  // Restaurants and things to do as one list by city (0.35.3): a row each, the trip's cities in order, what's on a day first.
-  const names = (loc) => loc.locator(".il-row .il-main b").allInnerTexts();
-  // v11: restaurants are drawn under Yapılacak şeyler: one list, by city.
-  assert.deepEqual(await names(food), ["Bolhão pazarı", "Majestic Café", "Dom Luís köprüsünden gün batımı", "Livraria Lello, giriş bileti var", "Pastel de nata"]);
-  assert.deepEqual((await food.locator(".il-head b").allInnerTexts()), ["Porto", "Lizbon"]);
-  assert.equal(await todos.locator('.il-row[aria-label="Bolhão pazarı"] .fk-day.set').innerText(), "10 Eki");
-  await todos.locator('.il-group[data-group="Porto"] .il-row[aria-label="Dom Luís köprüsünden gün batımı"]').waitFor();
-  // No bar, no "güne eklenmedi": a neutral count.
-  assert.equal(await todos.locator(".cat-ideas").innerText(), "5 fikir · 1 tanesi bir güne kondu");
+  assert.equal(await todos.getByRole("textbox", { name: "Bir şey yaz" }).count(), 0, "no quick box: the chat adds");
+  await app.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tx = database.transaction(["trips", "items"], "readwrite");
+    const trips = await new Promise((resolve) => (tx.objectStore("trips").getAll().onsuccess = (e) => resolve(e.target.result)));
+    const tripId = trips.find((t) => t.title === "Portekiz (örnek)").id;
+    const now = Date.now();
+    const base = (over) => ({
+      tripId, captureIds: [], key: null, provider: null, summary: "", optionDetail: null, url: null, imageUrl: null, country: null, countryCode: null,
+      location: { address: null, area: null, approximate: false }, dates: { start: null, end: null, source: "unverified" }, guests: { adults: null, children: null, rooms: null },
+      price: { amount: null, currency: null, scope: "unknown", taxesIncluded: "unknown", source: "none", observedAt: now }, priceHistory: [],
+      cancellation: { summary: null, freeUntil: null, source: "none" }, rating: { value: null, scale: null, count: null, source: "none" }, flight: null, geo: null,
+      highlights: [], concerns: [], reviewSummary: null, missing: [], statusNote: null, createdAt: now, updatedAt: now, origin: "chat", booking: "none", ...over,
+    });
+    const items = tx.objectStore("items");
+    items.put(base({ id: "e2e-nata", category: "food", needKey: "food:lizbon", name: "Pastel de nata", city: "Lizbon", status: "saved", plannedKind: "food" }));
+    items.put(base({ id: "e2e-sunset", category: "activity", needKey: "activity:porto", name: "Dom Luís köprüsünden gün batımı", city: "Porto", status: "saved", plannedKind: "todo" }));
+    items.put(base({ id: "e2e-lello", category: "activity", needKey: "activity:porto", name: "Livraria Lello, giriş bileti var", city: "Porto", status: "saved", plannedKind: "todo" }));
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  const food = todos;
+  const tile = (name) => todos.locator(`.it-tile[aria-label="${name}"]`);
+  await tile("Pastel de nata").waitFor();
+  const names = (loc) => loc.locator(".it-tile").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+  assert.deepEqual(await names(todos), ["Bolhão pazarı", "Majestic Café", "Dom Luís köprüsünden gün batımı", "Livraria Lello, giriş bileti var", "Pastel de nata"]);
+  // Hepsi · Gezilecek yerler · Restoranlar, with their numbers.
+  assert.deepEqual(flat(await todos.locator(".it-filters button").allInnerTexts()), ["Hepsi 5", "Gezilecek yerler 3", "Restoranlar 2"]);
+  await todos.locator(".it-filters button", { hasText: "Restoranlar" }).click();
+  assert.deepEqual(await names(todos), ["Majestic Café", "Pastel de nata"]);
+  await todos.locator(".it-filters button", { hasText: "Hepsi" }).click();
+  // The header counts places, restaurants and what's on the plan; no bar, no amber line.
+  assert.equal(await todos.locator(".cat-ideas").innerText(), "3 yer · 2 restoran · 1 planda");
   assert.equal(await todos.locator(".cat-wait").count(), 0);
-  const majestic = food.locator('.il-row[aria-label="Majestic Café"]');
-  assert.match(await majestic.getByRole("link", { name: "Majestic Café: haritada aç" }).getAttribute("href"), /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=41\.1471%2C-8\.6066$/);
-  const pic = await majestic.locator(".il-ic, .il-img").first().boundingBox();
-  assert.deepEqual([Math.round(pic.width), Math.round(pic.height)], [34, 34]);
-  await majestic.getByRole("button", { name: "+ Güne ekle" }).click();
-  await majestic.getByRole("radio", { name: "öğle" }).click();
-  await majestic.getByRole("dialog", { name: "Hangi gün?" }).getByRole("button", { name: /^9 Eki/ }).click();
-  await majestic.locator(".fk-day.set", { hasText: "9 Eki öğle" }).waitFor();
-  // On its day now: still in Porto, first there.
-  assert.equal(await food.locator('.il-group[data-group="Porto"] .il-row').first().getAttribute("aria-label"), "Majestic Café");
-  // Its name is edited where it stands.
-  await majestic.getByRole("button", { name: "Ad: düzenle" }).click();
+  // A tile's name goes to the map.
+  const majestic = tile("Majestic Café");
+  assert.match(await majestic.locator(".it-t a").getAttribute("href"), /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=41\.1471%2C-8\.6066$/);
+  // "+ Plana koy" ↔ "✓ Planda", in place.
+  await majestic.getByRole("button", { name: "+ Plana koy" }).click();
+  await majestic.getByRole("button", { name: "✓ Planda" }).waitFor();
+  // Its day in Gün gün: "Planda, günü yok", a day and a meal, then it's on that day.
+  await tab("Gün gün").click();
+  const undated = app.locator(".ud-strip");
+  const majesticUndated = undated.locator('.ud-item', { hasText: "Majestic Café" });
+  await majesticUndated.getByRole("button", { name: "+ Güne ekle" }).click();
+  await majesticUndated.getByRole("radio", { name: "öğle" }).click();
+  await majesticUndated.getByRole("dialog", { name: "Hangi gün?" }).getByRole("button", { name: /^9 Eki/ }).click();
+  await majesticUndated.waitFor({ state: "detached" });
+  await tab("Plan").click();
+  await majestic.locator(".it-day", { hasText: "9 Eki öğle" }).waitFor();
+  // The •••: Adını değiştir, Yaptım (and back), Etkinliklere taşı.
+  const tileMenu = async (t, label) => {
+    await t.getByRole("button", { name: "Kart menüsü" }).click();
+    await t.getByRole("menuitem", { name: label }).click();
+  };
+  await tileMenu(majestic, "Adını değiştir");
   await box("Ad").fill("Majestic Café Porto");
   await box("Ad").press("Enter");
-  const majesticPorto = food.locator('.il-row[aria-label="Majestic Café Porto"]');
-  await majesticPorto.waitFor();
-  await majesticPorto.getByRole("button", { name: "Ad: düzenle" }).click();
+  await tile("Majestic Café Porto").waitFor();
+  await tileMenu(tile("Majestic Café Porto"), "Adını değiştir");
   await box("Ad").fill("Majestic Café");
   await box("Ad").press("Enter");
   await majestic.waitFor();
-  // An idea has no tick box: its day, its map, its page (a web search when it has none) and an optional "Yaptım".
-  const market = todos.locator('.il-row[aria-label="Bolhão pazarı"]');
-  assert.equal(await market.getByRole("checkbox").count(), 0, "an idea has no tick");
-  assert.match(await market.getByRole("link", { name: "Bolhão pazarı: haritada aç" }).getAttribute("href"), /google\.com\/maps\/search/);
-  // Fikir havuzu v1: one map link (the name and "Harita" go to the same place), no web search, no second pin.
-  assert.equal(await market.locator(".il-name a").getAttribute("href"), await market.getByRole("link", { name: "Bolhão pazarı: haritada aç" }).getAttribute("href"));
-  assert.equal(await market.getByRole("link", { name: /web'de ara/ }).count(), 0);
-  // The tabs filter by where an idea stands, with their counts; the chips by kind, read from its words.
-  assert.deepEqual(flat(await todos.locator(".il-tabs button").allInnerTexts()), ["Hepsi 5", "Havuzda 3", "Günü var 2", "Yapıldı 0"]);
-  await todos.getByRole("tab", { name: "Günü var 2" }).click();
-  assert.deepEqual(await names(todos), ["Majestic Café", "Bolhão pazarı"]);
-  await todos.getByRole("tab", { name: "Hepsi 5" }).click();
-  assert.equal(await market.locator(".il-kind").innerText(), "Pazar & alışveriş");
-  assert.deepEqual(flat(await todos.locator(".il-chips button").allInnerTexts()), ["Hepsi", "Manzara 1", "Kültür 1", "Pazar & alışveriş 1", "Kahvaltı & kahve 1", "Tatlı 1"]);
-  await todos.locator(".il-chips button", { hasText: "Manzara" }).click();
-  assert.deepEqual(await names(todos), ["Dom Luís köprüsünden gün batımı"]);
-  await todos.locator(".il-chips button", { hasText: "Hepsi" }).click();
-  // The kind is changed from the row ("Otomatik" gives the words' one back).
-  await market.locator(".il-kind").click();
-  await market.getByRole("menuitemradio", { name: "Gezinti" }).click();
-  await market.locator(".il-kind", { hasText: "Gezinti" }).waitFor();
-  await market.locator(".il-kind").click();
-  await market.getByRole("menuitem", { name: "Otomatik" }).click();
-  await market.locator(".il-kind", { hasText: "Pazar & alışveriş" }).waitFor();
-  // Yaptım: under "Yapıldı" at the end; undone, back on its day.
-  await market.getByRole("button", { name: "Bolhão pazarı: yaptım" }).click();
-  const doneGroup = todos.locator(".il-group.done");
-  await doneGroup.waitFor();
-  assert.match(await doneGroup.locator(".il-head").innerText(), /Yapıldı\s*1/);
-  assert.equal(await todos.locator(".cat-ideas").innerText(), "5 fikir · 1 tanesi bir güne kondu · 1 yapıldı");
-  await doneGroup.getByRole("button", { name: "Bolhão pazarı: geri al" }).click();
-  await doneGroup.waitFor({ state: "detached" });
-  assert.equal(await todos.locator('.il-row[aria-label="Bolhão pazarı"] .fk-day.set').innerText(), "10 Eki");
-  // Long names stay one line: every row is as tall as the others.
-  const heights = await app.locator('.cat-sec[data-section="todo"] .il-row, .cat-sec[data-section="food"] .il-row').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
-  assert.equal(new Set(heights).size, 1, `idea rows line up (${heights})`);
-  const lello = todos.locator('.il-row[aria-label="Livraria Lello, giriş bileti var"]');
-  await lello.getByRole("button", { name: /Etkinliklere taşı/ }).waitFor();
+  const market = tile("Bolhão pazarı");
+  await tileMenu(market, "Yaptım");
+  await market.locator(".it-done", { hasText: "Yapıldı" }).waitFor();
+  assert.match(await todos.locator(".cat-ideas").innerText(), /1 yapıldı$/);
+  await tileMenu(market, "Yapılmadı olarak geri al");
+  await market.locator(".it-done").waitFor({ state: "detached" });
+  const lello = tile("Livraria Lello, giriş bileti var");
   await app.setViewportSize({ width: 1440, height: 1400 });
   await todos.evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/4g-todo-food.png` });
   await app.setViewportSize({ width: 560, height: 1400 });
   await todos.evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/4h-todo-food-narrow.png` });
-  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll in Yapılacak şeyler and Restoranlar");
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll in Yapılacak şeyler");
   await app.setViewportSize({ width: 1440, height: 900 });
-  // A to-do deleted with ×, then brought back.
-  const sunset = todos.locator(".il-row", { hasText: "gün batımı" });
+  // A tile deleted with ×, then brought back.
+  const sunset = tile("Dom Luís köprüsünden gün batımı");
   await sunset.hover();
   await sunset.getByRole("button", { name: "Dom Luís köprüsünden gün batımı: sil" }).click();
   await sunset.waitFor({ state: "detached" });
   await app.locator(".pk-undo").getByRole("button", { name: "Geri al" }).click();
   await sunset.waitFor();
-  await lello.getByRole("button", { name: "Etkinliklere taşı" }).click();
+  await tileMenu(lello, "Etkinliklere taşı (bileti var)");
   await lello.waitFor({ state: "detached" });
   // The restaurant on its day is a thin line of the itinerary; the moved one is a booking in Etkinlikler.
   await tab("Gün gün").click();
   await listMode();
-  // Its meal is its NE: "Öğle yemeği · Majestic Café".
-  await dayCard(2).locator('.dc-step.idea[data-title="Öğle yemeği · Majestic Café"]').waitFor();
+  // Its meal is its NE: "Öğle yemeği · Majestic Café"; put on the plan ("Plana koy"), it's a line of the plan, not an idea.
+  await dayCard(2).locator('.dc-step[data-title="Öğle yemeği · Majestic Café"]').waitFor();
   await app.screenshot({ path: `${out}/4k-itinerary-032.png` });
   await tab("Plan").click();
   assert.match(await sec("activity").locator(".cat-count").innerText(), /^\d+\/5$/);
@@ -1473,25 +1472,42 @@ try {
     await new Promise((resolve) => (tx.oncomplete = resolve));
     new BroadcastChannel("trip-radar").postMessage("changed");
   });
-  const todoRow = (name) => sec("todo").locator(`.il-row[aria-label="${name}"]`);
+  const todoRow = (name) => sec("todo").locator(`.it-tile[aria-label="${name}"]`);
   await todoRow("Porto Belo Pazarı").waitFor();
   await todoRow("Outdoor alışverişi").waitFor();
-  // 0.34.6: Yapılacak şeyler is what's done there; a chore typed in the quick box goes to Hazırlık (its own section since v11).
-  const quickBox = sec("todo").locator(".fk-quick input");
-  await quickBox.fill("Decathlon'dan yağmurluk al");
-  await quickBox.press("Enter");
-  await quickBox.fill("Dom Luís'te gün batımı");
-  await quickBox.press("Enter");
+  // 0.34.6: Yapılacak şeyler is what's done there; a chore said (in the chat, v11: no quick box) goes to Hazırlık.
+  await app.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tx = database.transaction(["trips", "items"], "readwrite");
+    const trips = await new Promise((resolve) => (tx.objectStore("trips").getAll().onsuccess = (e) => resolve(e.target.result)));
+    const tripId = trips.find((t) => t.title === "Portekiz (örnek)").id;
+    const now = Date.now();
+    const base = (over) => ({
+      tripId, captureIds: [], key: null, provider: null, summary: "", optionDetail: null, url: null, imageUrl: null, country: null, countryCode: null,
+      location: { address: null, area: null, approximate: false }, dates: { start: null, end: null, source: "unverified" }, guests: { adults: null, children: null, rooms: null },
+      price: { amount: null, currency: null, scope: "unknown", taxesIncluded: "unknown", source: "none", observedAt: now }, priceHistory: [],
+      cancellation: { summary: null, freeUntil: null, source: "none" }, rating: { value: null, scale: null, count: null, source: "none" }, flight: null, geo: null,
+      highlights: [], concerns: [], reviewSummary: null, missing: [], statusNote: null, createdAt: now, updatedAt: now, origin: "chat", booking: "none", status: "saved", ...over,
+    });
+    const items = tx.objectStore("items");
+    items.put(base({ id: "e2e-rain", category: "other", needKey: "other:prep", name: "Decathlon'dan yağmurluk al", city: "Porto", plannedKind: "prep" }));
+    items.put(base({ id: "e2e-sunset2", category: "activity", needKey: "activity:porto", name: "Dom Luís'te gün batımı", city: "Porto", plannedKind: "todo" }));
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
   await todoRow("Dom Luís'te gün batımı").waitFor();
   if (await sec("prep").evaluate((el) => el.classList.contains("closed"))) await sec("prep").locator(".cat-title").click();
   const prepRow = sec("prep").locator(`.prep-row[aria-label="Decathlon'dan yağmurluk al"]`);
   await prepRow.waitFor();
-  assert.equal(await app.locator(`.il-row[aria-label="Decathlon'dan yağmurluk al"]`).count(), 0, "a chore is never a thing to do");
+  assert.equal(await app.locator(`.it-tile[aria-label="Decathlon'dan yağmurluk al"]`).count(), 0, "a chore is never a thing to do");
   assert.equal(await sec("prep").locator(`.prep-row[aria-label="Dom Luís'te gün batımı"]`).count(), 0, "an experience is never a chore");
   // Moved by hand both ways (0.35.9): "Hazırlığa taşı" on a thing to do, "Orada yapılacak" back from Hazırlık.
   if (await sec("prep").evaluate((el) => el.classList.contains("closed"))) await sec("prep").locator(".cat-title").click();
-  await todoRow("Dom Luís'te gün batımı").hover();
-  await todoRow("Dom Luís'te gün batımı").getByRole("button", { name: "Dom Luís'te gün batımı: Hazırlık'a taşı" }).click();
+  await tileMenu(todoRow("Dom Luís'te gün batımı"), "Hazırlık'a taşı");
   const sunsetPrep = sec("prep").locator(`.prep-row[aria-label="Dom Luís'te gün batımı"]`);
   await sunsetPrep.waitFor();
   await todoRow("Dom Luís'te gün batımı").waitFor({ state: "detached" });
@@ -1525,20 +1541,20 @@ try {
   });
   await prepRow.waitFor({ state: "detached" });
   await todoRow("Dom Luís'te gün batımı").waitFor({ state: "detached" });
-  console.log("✓ 0.34.6: a chore typed in the quick box lands in Hazırlık (ticked off there), an experience in Yapılacak şeyler");
+  console.log("✓ 0.34.6: a chore said lands in Hazırlık (ticked off there), an experience in Yapılacak şeyler");
   assert.equal(await sec("activity").locator('.pk-card[aria-label="Porto Belo Pazarı"]').count(), 0, "a market is never a booking");
   // Icons from the words (a bag for a market and shopping); the Maps pin shows its photo instead.
-  assert.equal(await todoRow("Porto Belo Pazarı").locator(".il-ic svg").count(), 1);
-  const pinPhoto = todoRow("Jardins do Palácio de Cristal").locator("img.il-img");
+  assert.equal(await todoRow("Porto Belo Pazarı").locator(".it-glyph svg").count(), 1);
+  const pinPhoto = todoRow("Jardins do Palácio de Cristal").locator("img.it-photo");
   await pinPhoto.scrollIntoViewIfNeeded();
   assert.ok(await pinPhoto.evaluate(async (img) => (await img.decode(), img.naturalWidth > 0)), "the pin's photo loads");
-  // Its name starts where the ones with an icon do (the picture the same size).
-  const titleX = async (name) => (await todoRow(name).locator(".il-main b").boundingBox()).x;
-  assert.ok(Math.abs((await titleX("Jardins do Palácio de Cristal")) - (await titleX("Porto Belo Pazarı"))) < 1, "names in one column");
-  await todoRow("Jardins do Palácio de Cristal").locator(".il-sub", { hasText: "Maps'ten" }).waitFor();
-  assert.equal(await todoRow("Jardins do Palácio de Cristal").locator(".il-kind").innerText(), "Doğa");
-  // Saved from Maps: the map link is its own Maps page.
-  assert.equal(await todoRow("Jardins do Palácio de Cristal").getByRole("link", { name: "Jardins do Palácio de Cristal: haritada aç" }).getAttribute("href"), "https://maps.app.goo.gl/e2e");
+  // The picture is the same size on every tile, a photo or the kind's mark.
+  const picH = async (name) => Math.round((await todoRow(name).locator(".it-pic").boundingBox()).height);
+  assert.equal(await picH("Jardins do Palácio de Cristal"), await picH("Porto Belo Pazarı"), "pictures the same size");
+  // Saved from Maps: "Maps" on its picture, its kind in the grey line, its name to its own Maps page.
+  assert.equal(await todoRow("Jardins do Palácio de Cristal").locator(".it-maps").innerText(), "Maps");
+  assert.match(await todoRow("Jardins do Palácio de Cristal").locator(".it-m").innerText(), /Doğa/);
+  assert.equal(await todoRow("Jardins do Palácio de Cristal").locator(".it-t a").getAttribute("href"), "https://maps.app.goo.gl/e2e");
   await app.setViewportSize({ width: 1440, height: 1100 });
   await sec("todo").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5d-todo.png` });
@@ -1563,7 +1579,7 @@ try {
   // Put on a day, it becomes a thing to do there.
   await reel.getByRole("button", { name: "+ Güne ekle" }).click();
   await reel.getByRole("dialog", { name: "Hangi gün?" }).getByRole("button", { name: /^9 Eki/ }).click();
-  await todoRow("Ribeira'da gün batımı").locator(".fk-day.set", { hasText: "9 Eki" }).waitFor();
+  await todoRow("Ribeira'da gün batımı").locator(".it-day", { hasText: "9 Eki" }).waitFor();
   await inspo.waitFor({ state: "detached" });
   await app.evaluate(async () => {
     const request = indexedDB.open("trip-radar");
@@ -1677,7 +1693,7 @@ try {
   assert.equal(await sec("todo").locator(".cat-chev").evaluate((el) => getComputedStyle(el).transform), "none");
   // Closed, a section is its header line alone, the same in every section: icon, name … bar, settled of all, the arrow;
   // an idea section (Yapılacak şeyler) its neutral count in place of the bar and "x/y"; v11: the stage line under the name.
-  assert.equal(await app.locator(".cat-sec.closed .cat-body, .cat-sec.closed .cat-card, .cat-sec.closed .il-row, .cat-sec.closed li, .cat-sec.closed .cat-wait, .cat-sec.closed .cat-hidden").count(), 0, "nothing under a closed header");
+  assert.equal(await app.locator(".cat-sec.closed .cat-body, .cat-sec.closed .cat-card, .cat-sec.closed .it-tile, .cat-sec.closed li, .cat-sec.closed .cat-wait, .cat-sec.closed .cat-hidden").count(), 0, "nothing under a closed header");
   const counts = [];
   for (const id of ["flight", "stay", "transport", "activity", "todo", "other"]) {
     const head = await sec(id).boundingBox();
@@ -1686,7 +1702,7 @@ try {
     const sg = (await sec(id).locator(".sg-count").count()) ? ["sg-count"] : [];
     if (sg.length) assert.match(await sec(id).locator(".sg-count").innerText(), /^\d+ öneri$/);
     if (id === "todo" || id === "food") {
-      assert.match(await sec(id).locator(".cat-head").innerText(), /^[^\d]+\s*(\d+ öneri\s*)?\d+ fikir( · .+)?$/, `${id}: the name and how many ideas`);
+      assert.match(await sec(id).locator(".cat-head").innerText(), /^[^\d]+\s*(\d+ öneri\s*)?\d+ yer( · \d+ restoran)?( · .+)?$/, `${id}: the name, its places and restaurants`);
       assert.deepEqual(await sec(id).locator(".cat-head").evaluate((el) => [...el.querySelectorAll(".cat-title > *, .cat-end > *")].map((c) => c.className || c.tagName.toLowerCase())), ["cat-ic", "cat-tt", ...sg, "cat-ideas", "cat-chev"]);
       const box = await sec(id).locator(".cat-ideas").boundingBox();
       counts.push(Math.round(box.x + box.width));

@@ -50,7 +50,7 @@ export function Section({ section, open, onToggle, onAdd, suggestions = 0, child
           {suggestions > 0 && <span className="sg-count">{suggestionCount(suggestions)}</span>}
           {/* Drawn only for something being read into it (arrive) or suggested: nothing to count yet. */}
           {!section.entries.length && !section.hidden.length ? null : ideas ? (
-            <span className="cat-ideas">{ideaCount(section.id, ideas)}</span>
+            <span className="cat-ideas">{ideaCount(section.id, ideas, section.entries)}</span>
           ) : (
             <>
               <span className={`cat-bar${complete ? " done" : ""}`} aria-hidden>
@@ -83,8 +83,19 @@ export function Section({ section, open, onToggle, onAdd, suggestions = 0, child
  * An idea section's neutral count (0.35.3), never a "3/4": "5 fikir · 2 tanesi bir güne kondu", İlham "4 kayıt".
  * Done ones join it quietly ("· 1 yapıldı").
  */
-export function ideaCount(id: CatSection["id"], { total, onDay, done }: NonNullable<CatSection["ideas"]>): string {
+export function ideaCount(id: CatSection["id"], { total, onDay, done }: NonNullable<CatSection["ideas"]>, entries: CatSection["entries"] = []): string {
   if (id === "inspo") return L(`${total} kayıt`, `${total} saved`);
+  // v11 phase 4: Yapılacak şeyler counts its places, its restaurants and what's on the plan ("4 yer · 4 restoran · 3 planda").
+  if (id === "todo") {
+    const records = entries.map((e) => (e.piece.kind === "item" ? e.piece.item : e.piece.kind === "entry" && e.piece.entry.kind === "event" ? e.piece.entry.item : null)).filter((i): i is NonNullable<typeof i> => i != null);
+    const food = records.filter((i) => i.category === "food").length;
+    const planned = records.filter((i) => !i.doneAt && (i.status === "chosen" || i.status === "booked" || Boolean(i.dates.start))).length;
+    const parts = [L(`${records.length - food} yer`, `${records.length - food} place${records.length - food === 1 ? "" : "s"}`)];
+    if (food) parts.push(L(`${food} restoran`, `${food} restaurant${food === 1 ? "" : "s"}`));
+    if (planned) parts.push(L(`${planned} planda`, `${planned} on the plan`));
+    if (done) parts.push(L(`${done} yapıldı`, `${done} done`));
+    return parts.join(" · ");
+  }
   const parts = [L(`${total} fikir`, `${total} idea${total === 1 ? "" : "s"}`)];
   if (onDay) parts.push(L(`${onDay} tanesi bir güne kondu`, `${onDay} on a day`));
   if (done) parts.push(id === "food" ? L(`${done} gidildi`, `${done} visited`) : L(`${done} yapıldı`, `${done} done`));
