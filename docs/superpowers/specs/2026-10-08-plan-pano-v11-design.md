@@ -235,6 +235,9 @@ Hepsi isteğe bağlı alan; eski sürüm bilmediği alanı yok sayar. Paylaşım
 - **Faz 5 Pano dalda (plan-v11-pano, yayınlanmadı, Emre bakacak):** sekme, kategoriler, durum süzgeci, sıralama, kalp
   (`Item.likedBy`, yerel; paylaşılan gezide oylara bağlanması sonra), kimin eklediği (`Item.addedBy`), Plan ↔ Pano
   geçişleri. Ekran görüntüleri: `docs/mockups/2026-10-09-pano-canli-*.png`.
+- **Faz 3 dalda (plan-v11-faz3, yayınlanmadı):** rezerve karta basınca "Rezervasyon ayrıntısı" penceresi
+  (`lib/bookingRows.ts`, `Item.bookingRef`), belgeler, Değiştir · İptal ettim · Rezervasyonu geri al · Tüm detaylar ·
+  Kapat. Ekran görüntüsü: `docs/mockups/2026-10-09-rezervasyon-penceresi-canli.png`.
 - **Emre'ye soru (Faz 2b'yi belirler):** canlıda seçenekli kart zaten sabit boyda ve ‹ 1/2 › ile dönüyor; v11'deki
   "3 seçenek ›" + seçim penceresine geçilsin mi, yoksa ‹ 1/2 › kalsın mı?
 - Faz 2b (karara bağlı, yayınlanmadı): boş kartta ne/nerede/neden + istek çipleri, "N seçenek ›" + kimin eklediği
