@@ -40,6 +40,9 @@ function typed(s: StartState, text: string, model: RawExtraction | null = null, 
   });
 }
 
+/** One typed line answering "Nereden?" (K4 asks it last: the question on screen is set, as a pressed row leaves it). */
+const typedFrom = (s: StartState, text: string, model: RawExtraction | null = null, at = 2) => typed({ ...s, asking: "from" }, text, model, at);
+
 /** "Evet" to the loose spelling asked back. */
 const yes = (s: StartState) => withLang(s.lang, () => applyAnswer(s, { q: "guess", accept: true }, 3));
 /** The owner's sentence without the model: "Kohphandan" is asked back ("Koh Phangan mı demek istedin?"), then "Evet". */
@@ -72,9 +75,10 @@ describe("the chat's language (item 1)", () => {
     expect(withLang(asked.lang, () => questionOf(asked, "guess", ctx)).chips.map((c) => c.label)).toEqual(["Evet", "Hayır, Kohphandan"]);
     const s1 = yes(asked);
     const reply = withLang(s1.lang, () => replyText(asked, s1, ctx));
-    expect(reply).toMatch(/Nereden yola çıkıyorsun\?$/);
+    expect(reply).toMatch(/\(birden çok seçebilirsin\)$/);
     expect(reply).toContain("Sabine ile Koh Phangan kulağa harika geliyor");
     expect(reply).not.toMatch(ENGLISH);
+    expect(nextQuestion(s1)).toBe("want");
     const from = withLang(s1.lang, () => questionOf(s1, "from", ctx));
     // The English board's guess, said the Turkish way and only once.
     expect(from.chips.map((c) => c.label)).toEqual(["İstanbul", "Ankara", "İzmir", "Antalya"]);
@@ -98,7 +102,7 @@ describe("the chat's language (item 1)", () => {
 
   it("the trip is written in the chat's language on an English board (title, records, the chat's last line)", async () => {
     let s = opening(`k3-${Math.random()}`);
-    s = typed(s, "İstanbul", null, 3);
+    s = typedFrom(s, "İstanbul", null, 3);
     for (const step of stepsFor(s, withLang(s.lang, () => creationOf(s))!)) {
       const { tripId } = await runStep(step.id, s, { provider: "gemini" });
       if (step.id === "trip") s = { ...s, tripId };
@@ -126,14 +130,14 @@ describe("an answer fills the question it answers (item 2)", () => {
     expect(s1.who).toEqual({ kind: null, names: ["Sabine"] });
     expect(s1.start).toEqual({ date: "2027-01-10", approx: false });
     expect(s1.duration).toEqual({ unit: "month", n: 1 });
-    expect(nextQuestion(s1)).toBe("from");
+    expect(nextQuestion(s1)).toBe("want");
     // The model of the bug: it called "İstanbul" the destination and the origin both.
-    const s2 = typed(s1, "İstanbul", raw({ destination: "İstanbul", destination_country: "Türkiye", destination_country_code: "TR", origin: "İstanbul" }), 3);
+    const s2 = typedFrom(s1, "İstanbul", raw({ destination: "İstanbul", destination_country: "Türkiye", destination_country_code: "TR", origin: "İstanbul" }), 3);
     expect(s2.where).toEqual({ place: "Koh Phangan", country: "Tayland", code: "TH" });
     expect(s2.from).toBe("İstanbul");
     // Without the model, and with a model that only says "destination".
-    expect(typed(s1, "İstanbul", null, 3).where?.place).toBe("Koh Phangan");
-    const onlyDest = typed(s1, "İstanbul", raw({ destination: "İstanbul" }), 3);
+    expect(typedFrom(s1, "İstanbul", null, 3).where?.place).toBe("Koh Phangan");
+    const onlyDest = typedFrom(s1, "İstanbul", raw({ destination: "İstanbul" }), 3);
     expect([onlyDest.where?.place, onlyDest.from]).toEqual(["Koh Phangan", "İstanbul"]);
     // The route and its "Değiştir" come from the destination, never the origin.
     const change = applyAnswer(s2, { q: "route", action: "change" }, 4);
@@ -152,9 +156,9 @@ describe("an answer fills the question it answers (item 2)", () => {
     expect(s1.who?.names).toEqual(["Sabine"]);
     expect(s1.start?.date).toBe("2027-01-10");
     expect(s1.duration).toEqual({ unit: "month", n: 1 });
-    const s2 = typed(s1, "Istanbul", raw({ destination: "Istanbul", origin: "Istanbul" }), 3);
+    const s2 = typedFrom(s1, "Istanbul", raw({ destination: "Istanbul", origin: "Istanbul" }), 3);
     expect([s2.where?.place, s2.from]).toEqual(["Koh Phangan", "Istanbul"]);
-    const s3 = typed(s1, "London", null, 3);
+    const s3 = typedFrom(s1, "London", null, 3);
     expect([s3.where?.place, s3.from]).toEqual(["Koh Phangan", "London"]);
     const reply = withLang("en", () => replyText(s1, s2, ctx));
     expect(reply).toMatch(/^Got it: from Istanbul\.|What are you after/);
@@ -228,7 +232,7 @@ describe("always generatable (item 4)", () => {
 
   it("the preview: stops and nights, dates, who, the flights to the island's airport", () => {
     let s = opening("g3");
-    s = typed(s, "İstanbul", null, 3);
+    s = typedFrom(s, "İstanbul", null, 3);
     const p = withLang("tr", () => previewOf(s, ctx))!;
     expect(p.stops).toEqual([{ city: "Koh Phangan", nights: 31 }]);
     expect(p.when).toBe("10 Ocak – 10 Şubat · 31 gece");
@@ -253,7 +257,7 @@ describe("the model's reply (item 5)", () => {
 
   it("its question only for the question the code asks next; the route and a guessed day are always the code's", () => {
     const s1 = opening("m1");
-    const s2 = typed(s1, "İstanbul", null, 3);
+    const s2 = typedFrom(s1, "İstanbul", null, 3);
     const reply = { text: "İstanbul'dan Koh Phangan'a uzun ama güzel bir yol.", question: "Bu gezide en çok ne arıyorsunuz?" };
     expect(withLang("tr", () => modelReplyText(s1, s2, ctx, reply, "want"))).toBe(`${reply.text}\n${reply.question}`);
     // Told another question: its line, the code's question.
@@ -308,7 +312,7 @@ describe("prepared while chatting (item 7)", () => {
   });
 
   it("what Oluştur would write is worked out in memory only, in the chat's language", async () => {
-    const s = typed(opening("p5"), "İstanbul", null, 3);
+    const s = typedFrom(opening("p5"), "İstanbul", null, 3);
     const before = (await (await db()).getAll("trips")).length;
     const made = wouldMake(s)!;
     expect(made.trip.title).toBe("Koh Phangan Gezisi");

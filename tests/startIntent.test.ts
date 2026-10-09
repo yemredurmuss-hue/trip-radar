@@ -83,28 +83,31 @@ describe("the owner's sentence (English, no model)", () => {
     s = withLang("en", () => applyAnswer(s, { q: "duration", duration: { unit: "day", n: 11 } }, 3));
     // Said back exactly, never as a month only ("April · 11 days"): the days, estimated, and the route.
     expect(withLang("en", () => replyText(asked, s, ctx, false, true))).toBe(
-      "The trip: 24 April – 4 May · 10 nights (estimated) (Cape Town 2 · Tankwa Karoo 6 · Cape Town 2 nights).\nWhere are you leaving from?",
+      "The trip: 24 April – 4 May · 10 nights (estimated) (Cape Town 2 · Tankwa Karoo 6 · Cape Town 2 nights).\nCamping, or a hotel?",
     );
     expect(tripDates(s)).toEqual({ start: "2027-04-24", end: "2027-05-04" });
     expect(s.start).toEqual({ date: "2027-04-24", approx: true, event: true });
     expect(totalNights(s)).toBe(10);
     expect(s.route).toMatchObject({ source: "event", confirmed: true, arrive: "Cape Town", leave: "Cape Town" });
     expect(s.route!.stops.map((x) => [x.city, x.nights, x.code])).toEqual([["Cape Town", 2, "ZA"], ["Tankwa Karoo", 6, "ZA"], ["Cape Town", 2, "ZA"]]);
-    // Not a "which day in April" question: the event's start is no month only.
-    expect(nextQuestion(s)).toBe("from");
+    // Not a "which day in April" question: the event's start is no month only. (K4: the festival's own questions, then
+    // what they want, then how many, and where from last.)
+    expect(nextQuestion(s)).toBe("pb");
+    expect(withLang("en", () => questionOf(s, "pb", ctx).text)).toBe("Camping, or a hotel?");
     expect(essentialsDone(s)).toBe(false);
-    s = applyAnswer(s, { q: "from", city: "İstanbul" }, 4);
+    s = skipKind(s);
+    expect(nextQuestion(s)).toBe("want");
+    s = skip(s, "want", 3);
     expect(nextQuestion(s)).toBe("count");
     expect(withLang("en", () => questionOf(s, "count", ctx).text)).toBe("How many of you are going, you included?");
     expect(essentialsDone(s)).toBe(false);
     // Typed: "4".
     s = withLang("en", () => applyText(s, "4", parseStartText("4", TODAY, "count"), 5, "count").state);
     expect(s.who).toEqual({ kind: "friends", names: [], count: 4 });
+    expect(nextQuestion(s)).toBe("from");
+    s = applyAnswer(s, { q: "from", city: "İstanbul" }, 4);
     expect(essentialsDone(s)).toBe(true);
-    // A festival's own questions next (camping or a hotel first), then the style: both optional, never holding it back.
-    expect(nextQuestion(s)).toBe("pb");
-    expect(withLang("en", () => questionOf(s, "pb", ctx).text)).toBe("Camping, or a hotel?");
-    expect(nextQuestion(skipKind(s))).toBe("want");
+    expect(nextQuestion(s)).toBeNull();
     const c = withLang("en", () => creationOf(s))!;
     expect(c.title).toBe("AfrikaBurn 2027");
     expect(c.dates).toEqual({ start: "2027-04-24", end: "2027-05-04" });
@@ -179,7 +182,7 @@ describe("the events' table", () => {
     const d = tripDates(s)!;
     expect(d).toEqual({ start: "2027-09-18", end: "2027-09-22" });
     expect(d.start >= s.intent!.dates!.start && d.end <= s.intent!.dates!.end).toBe(true);
-    expect(nextQuestion(s)).toBe("from");
+    expect(nextQuestion(s)).toBe("want");
     expect(creationOf(s)!.title).toBe("Oktoberfest 2027");
     // A long event: a few of its days, or all of it.
     expect(questionOf({ ...s, duration: null }, "duration", ctx).chips.slice(0, 4).map((c) => c.label)).toEqual(["3 gün", "5 gün", "7 gün", "Tümü (16 gün)"]);
@@ -380,7 +383,7 @@ describe("review 3 and 10: a month or dates said with the event", () => {
     // Shorter than the festival: it starts with it.
     expect(tripDates(okt)).toEqual({ start: "2027-09-18", end: "2027-09-27" });
     expect(eventClash(okt)).toBe(false);
-    expect(nextQuestion(okt)).toBe("from");
+    expect(nextQuestion(okt)).toBe("want");
     const ab = typed(newStart("a", "plan", 1, "tr"), "Nisan'da 10 gün AfrikaBurn");
     expect(ab.route!.stops.map((x) => x.city)).toEqual(["Cape Town", "Tankwa Karoo", "Cape Town"]);
     expect(tripDates(ab)).toEqual({ start: "2027-04-25", end: "2027-05-04" });
@@ -400,7 +403,7 @@ describe("review 3 and 10: a month or dates said with the event", () => {
     expect(tripTitle(kept)).toBe("London Gezisi");
     const fitted = applyAnswer(w, { q: "clash", keep: false }, 3);
     expect(tripDates(fitted)).toEqual({ start: "2027-06-28", end: "2027-07-02" });
-    expect(nextQuestion(fitted)).toBe("from");
+    expect(nextQuestion(fitted)).toBe("want");
     // An exact start that misses it too; one that meets it is theirs, kept as said.
     expect(eventClash(typed(newStart("m", "plan", 1, "tr"), "Mart'ta 5 günlüğüne Oktoberfest"))).toBe(true);
     const meets = typed(newStart("d", "plan", 1, "tr"), "Oktoberfest 20 Eylül 4 gün");

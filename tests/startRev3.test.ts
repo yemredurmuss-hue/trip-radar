@@ -49,7 +49,7 @@ describe("the reported sentence, no model (fix 1)", () => {
     expect(totalNights(s)).toBe(14);
     expect(tripDates(s)).toEqual({ start: "2026-11-20", end: "2026-12-04" });
     // Not asked again where to: the next question is where from.
-    expect(nextQuestion(s)).toBe("from");
+    expect(nextQuestion(s)).toBe("want");
   });
 
   it("a multi-word name with a Turkish ending typed on, with or without an apostrophe", () => {
@@ -110,8 +110,8 @@ describe("instant capture, most important first (the owner's second report)", ()
     // "Yes": the canonical name, said back once in full; then where from (no names, no day first).
     const yes = withLang("en", () => applyAnswer(s, { q: "guess", accept: true }, 3));
     expect(yes.where).toEqual({ place: "Papua New Guinea", country: "Papua New Guinea", code: "PG" });
-    expect(nextQuestion(yes)).toBe("from");
-    expect(withLang("en", () => replyText(s, yes, ctx, false, true))).toBe("Papua New Guinea, 3 weeks in November with a friend.\nWhere are you leaving from?");
+    expect(nextQuestion(yes)).toBe("day");
+    expect(withLang("en", () => replyText(s, yes, ctx, false, true))).toBe("Papua New Guinea, 3 weeks in November with a friend.\nWhich day in November does it start?");
     expect(canGenerate(yes)).toBe(true);
     // Then the day (not needed), the style, who: never the names.
     let next = withLang("en", () => applyAnswer(yes, { q: "from", city: "London" }, 4));
@@ -152,8 +152,8 @@ describe("instant capture, most important first (the owner's second report)", ()
     expect(s.who).toEqual({ kind: "friends", names: [], count: 2 });
     expect(s.duration).toEqual({ unit: "week", n: 3 });
     expect(s.start).toEqual({ date: "2026-11-01", approx: true });
-    expect(nextQuestion(s)).toBe("from");
-    expect(withLang("tr", () => replyText(before, s, ctx))).toBe("Bir arkadaşınla Papua Yeni Gine, Kasım'da 3 hafta.\nNereden yola çıkıyorsun?");
+    expect(nextQuestion(s)).toBe("day");
+    expect(withLang("tr", () => replyText(before, s, ctx))).toBe("Bir arkadaşınla Papua Yeni Gine, Kasım'da 3 hafta.\nKasım ayının hangi günü başlıyor?");
     expect(withLang("tr", () => checklist(s, ctx).find((r) => r.id === "when"))).toMatchObject({ done: true, value: "Kasım · 3 hafta" });
   });
 

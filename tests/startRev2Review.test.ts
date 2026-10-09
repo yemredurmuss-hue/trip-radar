@@ -40,9 +40,9 @@ function typed(s: StartState, text: string, model: RawExtraction | null = null, 
 }
 /** Koh Phangan known, "Nereden?" asked, in the given language. */
 function atFrom(l: "tr" | "en"): StartState {
-  // (Rev 3 asks when before where from: the dates are known here.)
+  // (Rev 3 asks when before where from; K4 asks where from last: the question on screen is set, as a pressed row leaves it.)
   const s = {
-    ...newStart(`f-${l}`, "plan", 1, l), langFixed: true, where: { place: "Koh Phangan", country: l === "tr" ? "Tayland" : "Thailand", code: "TH" },
+    ...newStart(`f-${l}`, "plan", 1, l), langFixed: true, asking: "from" as const, where: { place: "Koh Phangan", country: l === "tr" ? "Tayland" : "Thailand", code: "TH" },
     duration: { unit: "night" as const, n: 5 }, start: { date: "2026-11-10", approx: false },
   };
   expect(nextQuestion(s)).toBe("from");
@@ -161,7 +161,7 @@ describe("4. loose spellings: long names only, never beside a person, always ask
     expect([first.where?.place, first.guess?.place.place, nextQuestion(first)]).toEqual(["Tayland", "Koh Phangan", "guess"]);
     const model = acceptExtraction(raw({ destination: "Koh Phangan", destination_country: "Tayland", destination_country_code: "TH" }), TODAY);
     const more = withLang("tr", () => applyText(first, line, mergeExtracted(code, model), 3, "where")).state;
-    expect([more.where?.place, more.guess, nextQuestion(more)]).toEqual(["Koh Phangan", null, "from"]);
+    expect([more.where?.place, more.guess, nextQuestion(more)]).toEqual(["Koh Phangan", null, "want"]);
   });
 });
 

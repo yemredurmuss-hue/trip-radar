@@ -1409,11 +1409,15 @@ const said = (e: Extracted) => Boolean(e.where || e.intent || e.from || e.who ||
  * here: the board's chat asks them once, after the trip exists. The trip kind's own questions ("pb": camping or a
  * hotel, the ski level) come right after the essentials, one per turn, and never hold the trip back either.
  */
+// The roadmap's K4 (approved 2026-10-09, drawing v2): the question that opens the most cards comes first. The day settles
+// every flight, stay, event, eSIM and insurance card at once; what the trip is for picks the stays and the ideas; the
+// route gives one stay card per stop; who goes and where from open the fewest (the searches' guests and the flights'
+// starting point), so they come last. A contradiction or the event's own question always comes before all of them.
 const ORDER: Record<StartMode, QuestionId[]> = {
-  plan: ["where", "venue", "clash", "duration", "start", "from", "who", "count", "day", "pb", "want", "route"],
-  road: ["where", "venue", "clash", "duration", "start", "from", "who", "count", "day", "pb", "want", "route"],
-  lastminute: ["where", "venue", "clash", "duration", "start", "from", "who", "count", "day", "pb", "want", "route"],
-  inspire: ["want", "where", "venue", "clash", "duration", "start", "from", "who", "count", "day", "pb", "route"],
+  plan: ["where", "venue", "clash", "duration", "start", "day", "pb", "want", "route", "who", "count", "from"],
+  road: ["where", "venue", "clash", "duration", "start", "day", "pb", "want", "route", "who", "count", "from"],
+  lastminute: ["where", "venue", "clash", "duration", "start", "day", "pb", "want", "route", "who", "count", "from"],
+  inspire: ["want", "where", "venue", "clash", "duration", "start", "day", "pb", "route", "who", "count", "from"],
 };
 
 // --- the trip kind's own questions (playbooks/questions.ts: data, run the same for every kind) ---------------------

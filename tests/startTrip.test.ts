@@ -121,18 +121,18 @@ describe("reading a message with the model (strict shape, checked)", () => {
 });
 
 describe("the interview", () => {
-  it("asks only what the first message left out (item 2): from, what you're after, then the route", () => {
+  it("asks only what the first message left out (item 2, K4 order): what you're after, then the route, then where from", () => {
     const { state, understood } = typed(fresh(), "Sabine'yle 10 Aralık'tan 1 ay Bali");
     expect(understood).toBe(true);
-    expect(nextQuestion(state)).toBe("from");
-    const from = applyAnswer(state, { q: "from", city: "İstanbul" }, 3);
-    expect(nextQuestion(from)).toBe("want");
-    const want = applyAnswer(from, { q: "want", styles: ["nature", "beach"], budget: "mid" }, 4);
+    expect(nextQuestion(state)).toBe("want");
+    const want = applyAnswer(state, { q: "want", styles: ["nature", "beach"], budget: "mid" }, 4);
     expect(nextQuestion(want)).toBe("route");
     expect(totalNights(want)).toBe(31);
     expect(whenText(want)).toBe("10 Aralık – 10 Ocak · 31 gece");
+    const routed = skip(want, "route", 5);
+    expect(nextQuestion(routed)).toBe("from");
   });
-  it("the full order from nothing (2026-10-06: where, when, where from, who, then the day, style; never the names)", () => {
+  it("the full order from nothing (K4, 2026-10-09: where, how long, the start, the day, what you're after, the route, who, where from; never the names)", () => {
     let s = fresh();
     expect(nextQuestion(s)).toBe("where");
     s = applyAnswer(s, { q: "where", place: "Lizbon", country: "Portekiz" }, 2);
@@ -140,12 +140,7 @@ describe("the interview", () => {
     s = applyAnswer(s, { q: "duration", duration: { unit: "week", n: 1 } }, 2);
     expect(nextQuestion(s)).toBe("start");
     s = applyAnswer(s, { q: "start", date: "2026-11-01", approx: true }, 2);
-    expect(nextQuestion(s)).toBe("from");
-    s = applyAnswer(s, { q: "from", city: "İzmir" }, 2);
-    // Who is an essential (the trip makes itself once it is known): asked before the optional questions.
-    expect(nextQuestion(s)).toBe("who");
-    s = applyAnswer(s, { q: "who", kind: "partner" }, 2);
-    // A month only: never a day made up; the day is asked next (item 3, the review's decision), not needed to generate.
+    // A month only: never a day made up; the day is asked next, before anything else (it settles every card's date).
     expect(nextQuestion(s)).toBe("day");
     const day = questionOf(s, "day", ctx);
     expect(day.text).toBe("Kasım ayının hangi günü başlıyor?");
@@ -160,30 +155,39 @@ describe("the interview", () => {
     s = mid;
     expect(nextQuestion(s)).toBe("want");
     s = applyAnswer(s, { q: "want", styles: ["culture"], budget: null }, 4);
-    // A partner: no names asked here (the board's chat asks once, after the trip is made).
     expect(nextQuestion(s)).toBe("route");
+    s = skip(s, "route", 5);
+    // Who and where from open the fewest cards: they come last.
+    expect(nextQuestion(s)).toBe("who");
+    s = applyAnswer(s, { q: "who", kind: "partner" }, 6);
+    expect(nextQuestion(s)).toBe("from");
+    // A partner: no names asked here (the board's chat asks once, after the trip is made).
     expect(namesToAsk(s)).toBe(true);
     expect(namesToAsk(applyAnswer(s, { q: "who", kind: "solo" }, 6))).toBe(false);
+    s = applyAnswer(s, { q: "from", city: "İzmir" }, 7);
+    expect(nextQuestion(s)).toBeNull();
     // An older draft still asking for the names asks no more.
-    expect(nextQuestion({ ...s, asking: "names" })).toBe("route");
+    expect(nextQuestion({ ...s, asking: "names" })).toBeNull();
   });
   it("Atla moves on, and a pressed checklist row asks again", () => {
     let s = skip(fresh(), "where", 2);
     expect(nextQuestion(s)).toBe("duration");
     s = skip(skip(s, "duration", 2), "start", 2);
-    expect(nextQuestion(s)).toBe("from");
-    s = skip(s, "from", 2);
+    expect(nextQuestion(s)).toBe("want");
+    s = skip(s, "want", 2);
+    // (no place or length yet: there is no route to ask)
     expect(nextQuestion(s)).toBe("who");
     s = skip(s, "who", 2);
-    expect(nextQuestion(s)).toBe("want");
+    expect(nextQuestion(s)).toBe("from");
     s = askAgain(s, "where", 3);
     expect(nextQuestion(s)).toBe("where");
     s = applyAnswer(s, { q: "where", place: "Roma", country: "İtalya" }, 4);
     expect(s.asking).toBeNull();
-    expect(nextQuestion(s)).toBe("want");
+    expect(nextQuestion(s)).toBe("from");
   });
   it("a bare place typed answers the question on screen (\"İzmir\" to \"Nereden?\")", () => {
-    const s = { ...applyAnswer(fresh(), { q: "where", place: "Bali", country: "Endonezya" }, 2), duration: { unit: "week" as const, n: 1 }, start: { date: "2026-11-02", approx: false } };
+    // ("Nereden?" is asked last now: the question on screen is set, as a pressed row or a skipped one leaves it.)
+    const s = { ...applyAnswer(fresh(), { q: "where", place: "Bali", country: "Endonezya" }, 2), duration: { unit: "week" as const, n: 1 }, start: { date: "2026-11-02", approx: false }, asking: "from" as const };
     const { state } = typed(s, "İzmir", rawModel({ destination: "İzmir" }));
     expect(state.from).toBe("İzmir");
     expect(state.where?.place).toBe("Bali");
@@ -212,7 +216,7 @@ describe("the interview", () => {
     const before = fresh();
     const { state } = typed(before, "Sabine'yle 10 Aralık'tan 1 ay Bali");
     // Short and specific (rev 3), the question on its own line.
-    expect(replyText(before, state, ctx)).toBe("Sabine ile Bali, 10 Aralık – 10 Ocak · 31 gece.\nNereden yola çıkıyorsun?");
+    expect(replyText(before, state, ctx)).toBe("Sabine ile Bali, 10 Aralık – 10 Ocak · 31 gece.\nBu gezide en çok ne istiyorsun? (birden çok seçebilirsin)");
     const where = applyAnswer(before, { q: "where", place: "Bali", country: null }, 2);
     expect(replyText(before, where, ctx)).toBe("Bali kulağa harika geliyor: Ubud'un pirinç terasları, tapınaklar ve okyanusta gün batımları.\nBali için kaç gün?");
     // A place the small table doesn't know: the plain word.
@@ -220,7 +224,7 @@ describe("the interview", () => {
     expect(replyText(before, other, ctx)).toBe("Harika, Zagreb!\nZagreb için kaç gün?");
     // A chip's answer isn't said back.
     const friends = applyAnswer(state, { q: "who", kind: "friends" }, 3);
-    expect(replyText(state, friends, ctx, false, true)).toBe("Nereden yola çıkıyorsun?");
+    expect(replyText(state, friends, ctx, false, true)).toBe("Bu gezide en çok ne istiyorsun? (birden çok seçebilirsin)");
   });
   it("quick answers: the origin guess first; lengths and start months asked apart (item 3)", () => {
     const s = applyAnswer(fresh(), { q: "where", place: "Bali", country: null }, 2);
