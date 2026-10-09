@@ -230,7 +230,14 @@ Hepsi isteğe bağlı alan; eski sürüm bilmediği alanı yok sayar. Paylaşım
   çıktı, "Belgeler ve internet"in (adı geri döndü) ilk satırı: vize yoksa yeşil "✓ Vize gerekmiyor · Türk pasaportuyla
   90 güne kadar", gerekirse amber + resmi kaynak + "Vize alındı" işareti (`Trip.visaDone`). Konaklama kartlarında
   "Rezerve ettim" yeri değişmedi (yalnız fiil ve ×); "Aldım" oraya Faz 2b'de.
-- Faz 2b (sırada, yayınlanmadı): boş kartta ne/nerede/neden + istek çipleri, "N seçenek ›" + kimin eklediği
+- **0.36.58** (düzeltme): sayfa sürekli Hazırlık'a kayıyordu (bölüm değiştiren kart, çizildiği bölümle kaydın kendi
+  bölümünü karşılaştırıyordu). e2e'de korunuyor.
+- **Faz 5 Pano dalda (plan-v11-pano, yayınlanmadı, Emre bakacak):** sekme, kategoriler, durum süzgeci, sıralama, kalp
+  (`Item.likedBy`, yerel; paylaşılan gezide oylara bağlanması sonra), kimin eklediği (`Item.addedBy`), Plan ↔ Pano
+  geçişleri. Ekran görüntüleri: `docs/mockups/2026-10-09-pano-canli-*.png`.
+- **Emre'ye soru (Faz 2b'yi belirler):** canlıda seçenekli kart zaten sabit boyda ve ‹ 1/2 › ile dönüyor; v11'deki
+  "3 seçenek ›" + seçim penceresine geçilsin mi, yoksa ‹ 1/2 › kalsın mı?
+- Faz 2b (karara bağlı, yayınlanmadı): boş kartta ne/nerede/neden + istek çipleri, "N seçenek ›" + kimin eklediği
   (`Item.addedBy`), seçim penceresinde AI ayrı, konaklama kartında "✓ Aldım", mühür.
 
 - **Faz 1 yayında: 0.36.56** (2026-10-09). Not: bölüm başlığında harcanan tutar henüz yok (bugünkü "3/4" çubuğu

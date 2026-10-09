@@ -398,3 +398,9 @@ hepsi açık gelir, başlıkta aşama sözleri. Unit 1677/1677, e2e yeşil. Sır
   gitmişti"):** bölümün adı yine "Belgeler ve internet"; ilk satırı vize. Gerekmiyorsa yeşil ve öne çıkan "✓ Vize
   gerekmiyor · Türk pasaportuyla 90 güne kadar"; gerekiyorsa amber, resmi kaynak linki ve işaretlenebilir "Vize alındı".
   K64'ün "vize Hazırlık'a" kısmını geri alır. Değişmezler listesine: vize satırı Belgeler ve internet'in ilk satırı.
+
+## 0.36.58 düzeltme + Pano dalda (2026-10-09 gece)
+
+- 0.36.58: sayfa sürekli Hazırlık'a kayıyordu, düzeldi (gece oturumu buldu).
+- Pano (Faz 5) `plan-v11-pano` dalında, yayınlanmadı: ekran görüntüleri `docs/mockups/2026-10-09-pano-canli-*.png`.
+- Açık soru: kartta seçenekler ‹ 1/2 › mi kalsın, "3 seçenek ›" + pencere mi olsun (Faz 2b buna bağlı).
