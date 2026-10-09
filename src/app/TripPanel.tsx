@@ -8,7 +8,7 @@ import { buildTimeline } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
 import { cardFacts } from "../lib/cardFacts";
 import { budgetBar, decisionProgress, entryDomId, nextStepText, type DecisionProgress, type Todo } from "../lib/progress";
-import { cityKeyOf, type OptionGroup, type Plan } from "../lib/plan";
+import { cityKeyOf, groupKeyOf, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 import { L } from "../lib/i18n";
 import { creditOf, findCityPhoto, imageProxy, keptCredits, nextCityImage, nextHeroImage, wantsCityImage } from "../lib/cityImages";
@@ -64,6 +64,7 @@ import { SettledCard, SwipeCard } from "./SwipeCard";
 import { useArrivals } from "./arrive/useArrivals";
 import { useSuggestions } from "./useSuggestions";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
+import { Pano } from "./board/Pano";
 import { choiceOf, type Choice } from "../lib/choice";
 import { pivotalFindings } from "../lib/pivots";
 import type { ValueCard } from "../lib/value";
@@ -94,7 +95,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
-  const [view, setView] = useState<TimelineMode | "docs" | "map">("plan");
+  const [view, setView] = useState<TimelineMode | "docs" | "map" | "board">("plan");
+  // The Pano opened from a plan card ("Pano'da gör"): that need's group, framed, with "← Plan'a dön".
+  const [panoFocus, setPanoFocus] = useState<string | null>(null);
   const working = openCaptures.filter((c) => c.status === "pending" || c.status === "processing");
   const failed = openCaptures.filter((c) => c.status === "error");
   const listings = decisions?.ctx.listings;
@@ -252,6 +255,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     setFocus,
     onOpenItem,
     onCompare,
+    onPano: (group) => {
+      setPanoFocus(group);
+      setView("board");
+    },
   };
 
   // --- the hero: a photo per city, the paragraph, what's confirmed, the facts column ---
@@ -652,7 +659,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   return (
     <CardEnvContext.Provider value={env}>
       <SilhouetteDefs />
-      {/* v11: one tab bar, atop the board: Plan · Gün gün (its map one switch inside) · Belgeler. */}
+      {/* v11: one tab bar, atop the board: Plan · Gün gün (its map one switch inside) · Pano · Belgeler. */}
       {timeline.entries.length > 0 && (
         <div className="view-tabs" role="tablist" aria-label={L("Görünüm", "View")}>
           <button role="tab" aria-selected={view === "plan"} className={view === "plan" ? "on" : ""} onClick={() => setView("plan")}>
@@ -661,11 +668,16 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           <button role="tab" aria-selected={view === "days" || view === "map"} className={view === "days" || view === "map" ? "on" : ""} onClick={() => setView("days")}>
             {L("Gün gün", "Day by day")}
           </button>
+          <button role="tab" aria-selected={view === "board"} className={view === "board" ? "on" : ""} onClick={() => (setPanoFocus(null), setView("board"))}>
+            {L("Pano", "Board")}
+          </button>
           <button role="tab" aria-selected={view === "docs"} className={view === "docs" ? "on" : ""} onClick={() => setView("docs")}>
             {L("Belgeler", "Documents")}
           </button>
         </div>
       )}
+      {/* The Pano is a work table of its own: no hero over it (v11). */}
+      {view !== "board" && (
       <section className="hx" ref={heroRef}>
         <TripHero
           key={trip.id}
@@ -702,7 +714,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           onShare={onShare}
         />
       </section>
-      {todoOpen && <TodoList list={todo} open={todoOpen} onGo={reveal} />}
+      )}
+      {todoOpen && view !== "board" && <TodoList list={todo} open={todoOpen} onGo={reveal} />}
       {printing && (
         <PrintPlan
           trip={trip}
@@ -781,7 +794,26 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           </button>
         </div>
       )}
-      {view === "map" ? (
+      {view === "board" ? (
+        <Pano
+          items={items}
+          decisions={decisions}
+          focus={panoFocus}
+          onShow={(id) => {
+            setPanoFocus(null);
+            setView("plan");
+            setTimeout(() => reveal({ item: id }), 60);
+          }}
+          onBack={() => {
+            const group = panoFocus;
+            setPanoFocus(null);
+            setView("plan");
+            const back = group ? (items.find((i) => groupKeyOf(i) === group && (i.status === "chosen" || i.status === "booked")) ?? items.find((i) => groupKeyOf(i) === group)) : null;
+            if (back) setTimeout(() => reveal({ item: back.id }), 60);
+          }}
+          onCompare={onCompare}
+        />
+      ) : view === "map" ? (
         <BoardMap trip={trip} plan={plan} legs={legs} />
       ) : view === "docs" ? (
         <DocsTab tripId={trip.id} items={items} onGo={(id) => reveal({ item: id })} offer={offer} />

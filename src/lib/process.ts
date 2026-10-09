@@ -211,6 +211,8 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
       };
       await d.put("trips", made);
     }
+    // Who saved it (v11 Pano's faces): a link a fellow traveller shared is theirs; the board's own owner otherwise (absent).
+    if (!duplicate && capture.sharedBy) item = { ...item, addedBy: capture.sharedBy };
     await d.put("items", item);
     if (before && before !== item.tripId) await moveDocsToTrip(item.id, item.tripId);
 

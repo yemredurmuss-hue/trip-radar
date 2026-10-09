@@ -553,6 +553,13 @@ export interface Item {
   refundNote?: string | null;
   /** "chat": the traveller said it in the chat, no page behind it (a plan until a saved page replaces it). */
   origin?: "chat";
+  /**
+   * Who put it on the board (v11 Pano): "ai" for an option a data source found ("Seçeneklere ekle"), a fellow
+   * traveller's name for a link they shared; absent, the board's owner (and every record before this field).
+   */
+  addedBy?: string;
+  /** Who liked it on the Pano (v11): the people's names, the board's owner as "me". Absent: nobody. */
+  likedBy?: string[];
   /** What kind of plan was said in the chat, or added from a template (a car rental or a transfer can carry any title). */
   plannedKind?: PlannedKind;
   /** eSIM: when the traveller said it's installed ("Kurdum"). */
