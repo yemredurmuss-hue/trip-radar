@@ -5,11 +5,9 @@
 // most), one grey line; the price and one button (Plana koy, or Plan'da gör →); who saved it and who liked it.
 // A section's tab groups the options by need ("Kyoto · 5 gece · 3 seçenek", "Seçildi: X · Plan'da gör →").
 import { useEffect, useMemo, useState } from "react";
-import { cityOfAirport } from "../../lib/airports";
 import { cardFacts } from "../../lib/cardFacts";
-import { cardKind, cardKindColor, cardKindLabel } from "../../lib/cardKinds";
+import { cardKind, cardKindColor } from "../../lib/cardKinds";
 import { L } from "../../lib/i18n";
-import { formatDateRange, isoDate } from "../../lib/items";
 import {
   inCat,
   inState,
@@ -19,7 +17,9 @@ import {
   panoCounts,
   panoEntries,
   panoGroups,
+  needTitleOf,
   sortEntries,
+  isAiOption,
   type PanoCat,
   type PanoEntry,
   type PanoSort,
@@ -123,7 +123,7 @@ export function Pano({ items, decisions, focus, onShow, onBack, onCompare }: {
         panoGroups(shown).map((g) => (
           <section key={g.group} id={groupDomId(g.group)} className={`pn-group${focus === g.group ? " focus" : ""}`}>
             <div className="pn-gh">
-              <b>{needTitle(g.entries[0].item)}</b>
+              <b>{needTitleOf(g.entries[0].item)}</b>
               <span className="pn-gn">{L(`${g.entries.length} seçenek`, `${g.entries.length} option${g.entries.length === 1 ? "" : "s"}`)}</span>
               <span className="pn-sp" />
               {g.chosen ? (
@@ -152,15 +152,6 @@ export function Pano({ items, decisions, focus, onShow, onBack, onCompare }: {
 
 export const groupDomId = (group: string) => `pn-g-${group.replace(/[^\w-]/g, "_")}`;
 
-/** A need's name, as the Plan says it: "Porto → Lizbon", "Porto · 8–11 Eki", "eSIM · Portekiz". */
-function needTitle(item: Item): string {
-  if (item.category === "flight" && item.flight?.from && item.flight?.to) return `${cityOfAirport(item.flight.from)} → ${cityOfAirport(item.flight.to)}`;
-  const start = isoDate(item.dates.start);
-  const when = start ? formatDateRange(start, isoDate(item.dates.end)) : null;
-  if (item.category === "stay") return [item.city ?? L("Konaklama", "Stay"), when].filter(Boolean).join(" · ");
-  return [cardKindLabel(cardKind(item)), item.city ?? item.country, when].filter(Boolean).join(" · ");
-}
-
 function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
   entry: PanoEntry;
   showNeed: boolean;
@@ -183,7 +174,7 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
   const prices = siblings.map((s) => s.item.price.amount).filter((p): p is number => p != null && p > 0);
   const cheapest = !best && siblings.length > 1 && item.price.amount != null && item.price.amount === Math.min(...prices);
   const meta = [item.provider, item.location.area ?? item.city, item.rating.value != null ? String(item.rating.value).replace(".", ",") : null].filter(Boolean).join(" · ");
-  const who = item.addedBy;
+  const who = isAiOption(item) ? "ai" : item.addedBy;
   return (
     <article className={`pn-card${entry.inPlan ? ` in-${entry.inPlan}` : ""}`} id={`pn-${item.id}`} aria-label={item.name} style={{ "--c": cardKindColor(kind) } as React.CSSProperties}>
       <div className="pn-img">
@@ -210,7 +201,7 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
         {showNeed && (
           <span className="pn-need">
             <KindIcon kind={kind} size={13} />
-            {needTitle(item)}
+            {needTitleOf(item)}
           </span>
         )}
         <h3 title={item.name}>{item.name}</h3>

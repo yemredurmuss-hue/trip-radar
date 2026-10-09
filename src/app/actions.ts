@@ -69,6 +69,14 @@ export async function toggleLike(item: Item, who: string): Promise<void> {
   notifyChanged();
 }
 
+/** A need's card said not needed (v11 phase 2b): every option of it, one "Geri al" for all. */
+export async function setNeedNotNeeded(items: Item[]): Promise<Undoable> {
+  const [first, ...rest] = items;
+  for (const other of rest) await setNotNeeded(other);
+  const u = await setNotNeeded(first);
+  return u.kind === "notNeeded" ? { ...u, others: rest } : u;
+}
+
 /** Belgeler ve internet's visa line (v11): the visa the trip needs, ticked as got, or not. */
 export async function setVisaDone(tripId: string, done: boolean): Promise<void> {
   await updateTrip(tripId, (t) => ({ ...t, visaDone: done || undefined }));
@@ -288,7 +296,10 @@ export async function undo(u: Undoable): Promise<void> {
   // Back from "İptal ettim": a booking again (setItemStatus reads dismissedFrom and drops the cancellation).
   if (u.kind === "cancelled") return setItemStatus(u.item, "saved");
   // Back from a card's "Gerek yok": as it stood (setItemStatus reads dismissedFrom: a plan is planned again).
-  if (u.kind === "notNeeded") return setItemStatus(u.item, "saved");
+  if (u.kind === "notNeeded") {
+    for (const other of u.others ?? []) await setItemStatus(other, "saved");
+    return setItemStatus(u.item, "saved");
+  }
   if (u.kind === "doc") return restoreDoc(u.doc);
   if (u.kind === "suggestion") {
     // The record "Plana ekle" made goes again (nothing of the traveller's: no trash entry), and the card is back.

@@ -23,6 +23,8 @@ import { useShare } from "../Share";
 import type { Decisions } from "../useDecisions";
 import { CardDate } from "./CardDate";
 import { BookingSheet } from "./BookingSheet";
+import { ChoiceSheet, NeedCard } from "./NeedCard";
+import { needTitleOf } from "../../lib/pano";
 import { CardDetail } from "./CardDetail";
 import { CardFoot, CardShell, type MenuEntry, type Nav } from "./CardShell";
 import { DocAccess, DocPickButton } from "./DocAccess";
@@ -275,6 +277,8 @@ export function NavGroup({ items, heading, nested, decision, choice, decided, on
   onCompare?: () => void;
 }) {
   const [index, setIndex] = useState(0);
+  // v11 phase 2b: the choice window (a need's "N seçenek ›", a decided card's "Diğer N seçenek").
+  const [choosing, setChoosing] = useState(false);
   const ids = items.map((i) => i.id).join(" ");
   useEffect(() => setIndex(0), [ids]);
   // Bringing the options back starts at the chosen one.
@@ -282,6 +286,25 @@ export function NavGroup({ items, heading, nested, decision, choice, decided, on
     if (changing && decided) setIndex(Math.max(0, items.findIndex((i) => i.id === decided.id)));
   }, [changing]);
   const single = decided && !changing;
+  // Not decided and more than one option: the need's own card, one size, its options in the choice window (v11).
+  if (!decided && items.length > 1) {
+    return (
+      <div className={nested ? "group nested" : "section"} data-option-ids={ids}>
+        {heading && <div className={nested ? "group-head" : "section-head"}>{heading}</div>}
+        <NeedCard items={items} decision={decision} choice={choice} open={choosing} onOpen={() => setChoosing(true)} onClose={() => setChoosing(false)} onCompare={onCompare} />
+      </div>
+    );
+  }
+  // Decided, "Diğer N seçenek": the chosen card stays, the choice window opens over it.
+  if (decided && changing) {
+    return (
+      <div className={nested ? "group nested" : "section"} data-option-ids={ids}>
+        {heading && <div className={nested ? "group-head" : "section-head"}>{heading}</div>}
+        <PlanCard key={decided.id} item={decided} group={items} decision={decision} ranked={rankedOf(decided)} onChange={onChange} changing={changing} onCompare={onCompare} headline={null} />
+        <ChoiceSheet items={items} decision={decision} choice={choice} title={needTitleOf(decided)} kind={cardKind(decided)} onClose={() => onChange?.()} onCompare={onCompare} />
+      </div>
+    );
+  }
   const shown = single ? decided : items[Math.min(index, items.length - 1)];
   // A group emptied under us (its last option deleted, the board not yet redrawn): nothing to show.
   if (!shown) return null;

@@ -1,10 +1,13 @@
 // The Pano (v11, docs/superpowers/specs/2026-10-08-plan-pano-v11-design.md, phase 5): every link the trip
 // gathered, in one place to choose from and put on the plan. Its entries, categories, the state filter (Hepsi ·
 // Karar bekleyen · Planda), the sort, the likes and the groups by need. Pure: the board draws what this says.
+import { cityOfAirport } from "./airports";
 import { isIdea } from "./booking";
+import { cardKind, cardKindLabel } from "./cardKinds";
 import { planSectionOfItem, type SectionId } from "./categories";
 import type { GroupDecision } from "./decision";
 import { L } from "./i18n";
+import { formatDateRange, isoDate } from "./items";
 import { groupKeyOf } from "./plan";
 import type { Item } from "./types";
 
@@ -42,6 +45,13 @@ export function panoEntries(items: Item[], decisions?: Map<string, GroupDecision
     return { item, section: planSectionOfItem(item) as PanoEntry["section"], group, score, inPlan, open };
   });
 }
+
+/**
+ * An option a data source found ("Seçeneklere ekle"): addedBy "ai", or on a record from before that field, one with a
+ * page but no capture behind it, not said in the chat nor added from a template (those carry a planned kind).
+ */
+export const isAiOption = (item: Item): boolean =>
+  item.addedBy === "ai" || (!item.addedBy && item.captureIds.length === 0 && item.origin !== "chat" && !item.plannedKind && Boolean(item.url));
 
 /** Who liked it (the board's owner as their name, or "me" when they have none yet). */
 export const likersOf = (item: Item): string[] => item.likedBy ?? [];
@@ -122,3 +132,13 @@ export function panoCatLabel(cat: PanoCat): string {
       return L("Beğenilenler", "Liked");
   }
 }
+
+/** A need's name, as the Plan says it: "Porto → Lizbon", "Porto · 8–11 Eki", "eSIM · Portekiz". */
+export function needTitleOf(item: Item): string {
+  if (item.category === "flight" && item.flight?.from && item.flight?.to) return `${cityOfAirport(item.flight.from)} → ${cityOfAirport(item.flight.to)}`;
+  const start = isoDate(item.dates.start);
+  const when = start ? formatDateRange(start, isoDate(item.dates.end)) : null;
+  if (item.category === "stay") return [item.city ?? L("Konaklama", "Stay"), when].filter(Boolean).join(" · ");
+  return [cardKindLabel(cardKind(item)), item.city ?? item.country, when].filter(Boolean).join(" · ");
+}
+

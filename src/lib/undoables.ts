@@ -23,8 +23,8 @@ export type Undoable =
   | { kind: "suggestion"; tripId: string; suggestion: Suggestion; state: "added" | "dismissed"; item: Item | null }
   /** A booking said cancelled ("İptal ettim" on its card): it's a booking again. */
   | { kind: "cancelled"; item: Item }
-  /** A card said not needed (its × , v11): back as it stood. */
-  | { kind: "notNeeded"; item: Item };
+  /** A card said not needed (its × , v11): back as it stood; `others`, a need's other options said not needed with it. */
+  | { kind: "notNeeded"; item: Item; others?: Item[] };
 
 /** "Douro tekne turu silindi", "Otobüs eklendi", "Porto 14–15 Ekim gizlendi", "Para birimi: EUR". */
 export function undoText(u: Undoable): string {

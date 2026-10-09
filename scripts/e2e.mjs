@@ -686,19 +686,23 @@ try {
   const boxes = await porto.locator(".swipe-card").evaluateAll((els) => els.map((e) => e.getBoundingClientRect()).map((r) => ({ top: Math.round(r.top), width: r.width })));
   assert.ok(boxes.every((b, i) => i === 0 || b.top > boxes[i - 1].top), "best first, top to bottom");
   assert.ok(boxes.every((b) => b.width >= 420), `cards wide enough to read: ${boxes.map((b) => b.width)}`);
-  // Flights: one card with ‹ 1/2 ›, the pick and its reasons in the details.
+  // Flights (v11 phase 2b): the need is one card, one size ("İstanbul → Porto · 2 seçenek"); "2 seçenek ›" opens the
+  // choice window: the pick in a sentence, the options with their fit, who saved them, "+ Plana koy".
   const pk = (name) => app.locator(`.pk-card[aria-label="${name}"]`);
-  const pegasus = pk("Pegasus · direkt");
-  assert.match(await pegasus.locator(".pk-foot").innerText(), /2 seçenek[\s\S]*1\/2[\s\S]*Önerim[\s\S]*€\d+[\s\S]*Plana koy/);
-  await pegasus.locator(".pk-body").click();
-  assert.equal(await pegasus.locator(".pk-why.trade").innerText(), "2.'ye göre+€30 · bagaj dahil, direkt, saatleri daha uygun · eksiği: iade yok, ücretli değişiklik");
-  await pegasus.locator(".pk-body").click();
-  await pegasus.getByRole("button", { name: "Sonraki seçenek" }).click();
-  const tap = pk("TAP · Lizbon aktarmalı");
-  await tap.locator(".pk-body").click();
-  assert.equal(await tap.locator(".pk-badges").innerText(), "En ekonomik");
-  await tap.locator(".pk-body").click();
-  await tap.getByRole("button", { name: "Önceki seçenek" }).click();
+  const outNeed = app.locator(".nd-card", { hasText: "İstanbul → Porto" });
+  assert.match(await outNeed.locator(".pk-foot").innerText(), /2 seçenek[\s\S]*Karar bekliyor/);
+  assert.match(await outNeed.locator(".nd-sub").innerText(), /^€\d+.*'den başlıyor$/);
+  await outNeed.scrollIntoViewIfNeeded();
+  await outNeed.screenshot({ path: `${out}/32b-need-card.png` });
+  await outNeed.locator(".nd-opts").click();
+  const chooser = app.locator(".ch-sheet");
+  await chooser.waitFor();
+  assert.deepEqual((await chooser.locator(".ch-main > b").allInnerTexts()).map((t) => t.replace(/ · \d\d:\d\d$/, "")).sort(), ["Pegasus · direkt", "TAP · Lizbon aktarmalı"]);
+  assert.match(await chooser.locator(".ch-for").innerText(), /Pegasus/);
+  assert.equal(await chooser.getByRole("button", { name: "+ Plana koy" }).count(), 2);
+  await app.screenshot({ path: `${out}/32a-choice-window.png` });
+  await app.keyboard.press("Escape");
+  await chooser.waitFor({ state: "detached" });
   // "Planı tamamla" goes to the next step; "2 rezerve · 1 planlandı · …" lists every to-do under the hero in groups
   // (Karar bekliyor and Rezerve edilecek: the box's own needs; then the transfers, then the cancellations), a tap
   // goes there; tapped again, the list closes.
@@ -879,7 +883,8 @@ try {
   await jardimRow.locator(".stc-details .card-details").waitFor();
   await jardimRow.getByRole("button", { name: "Detaylar", exact: true }).click();
   // "Seç" on a flight card: the flight folds into a line, and its landing time reaches the transfer to the hotel.
-  await pk("Pegasus · direkt").getByRole("button", { name: "Plana koy" }).click();
+  await app.locator(".nd-card", { hasText: "İstanbul → Porto" }).locator(".nd-opts").click();
+  await app.locator(".ch-row", { hasText: "Pegasus · direkt" }).getByRole("button", { name: "+ Plana koy" }).click();
   await app.locator(".tl-travel.role-arrival .pk-card", { hasText: "IST" }).locator(".pk-foot").getByText("bilet alınmadı").waitFor();
   // Porto chosen, Lisbon booked: in the itinerary the transfers lay themselves out (the saved train is
   // the move, with a station transfer on each side), and the way home says what's easy to miss.

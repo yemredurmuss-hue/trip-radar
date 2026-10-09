@@ -3082,3 +3082,39 @@ a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: cente
 .bk-btn.dark { background: var(--hx-ink); border-color: var(--hx-ink); color: #fff; }
 .bk-link { border: 0; background: none; padding: 7px 6px; font: inherit; font-size: 14px; font-weight: 600; color: var(--hx-accent); cursor: pointer; }
 .bk-link.quiet { color: var(--hx-muted); font-weight: 500; }
+
+/* v11 (phase 2b): a need with options is one card, one size: its name, "3 seçenek · €118'den başlıyor", the faces of
+   who saved them and "3 seçenek ›" at its foot; the choice window lists yours first, the AI's alternative apart. */
+.nd-card { border-style: dashed; }
+.nd-body { padding: 4px 0 2px; }
+.nd-body h3 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+.nd-sub { margin: 4px 0 0; font-size: 14px; color: var(--hx-muted); }
+.nd-foot { gap: 10px; }
+.nd-opts { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; border: 0; border-radius: 999px; background: var(--hx-lav); color: var(--hx-accent); font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; }
+.nd-opts:hover { background: #e2dcff; }
+.nd-faces { display: inline-flex; }
+.nd-faces > * { margin-left: -6px; box-shadow: 0 0 0 2px var(--hx-lav); border-radius: 50%; }
+.nd-faces > *:first-child { margin-left: 0; }
+.nd-ai { width: 20px; height: 20px; display: inline-grid; place-items: center; background: #fff; font-size: 11px; }
+.nd-foot .pk-state { margin-left: auto; }
+.ch-for { margin: 14px 20px 2px; padding: 12px 14px; border-radius: 14px; background: var(--hx-lav); color: #2d2470; font-size: 14px; line-height: 1.5; }
+.ch-list { display: grid; gap: 8px; }
+.ch-row { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--hx-line); background: #fff; }
+.ch-row.on { border-color: #f0a53a; background: #fffaf0; }
+.ch-sc { width: 46px; height: 46px; border-radius: 50%; display: grid; place-content: center; text-align: center; background: var(--hx-card); font-weight: 750; font-size: 16px; line-height: 1; }
+.ch-sc small { display: block; margin-top: 2px; font-size: 9px; font-weight: 600; color: var(--hx-muted); }
+.ch-main { display: grid; gap: 2px; min-width: 0; }
+.ch-main b { font-size: 15px; overflow-wrap: anywhere; }
+.ch-time { font-weight: 500; color: var(--hx-muted); }
+.ch-sub { font-size: 13px; color: var(--hx-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ch-who { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--hx-muted); }
+.ch-end { display: grid; justify-items: end; gap: 6px; }
+.ch-pr { text-align: right; }
+.ch-pr b { font-size: 16px; font-variant-numeric: tabular-nums; }
+.ch-pr small { display: block; font-size: 11.5px; color: var(--hx-muted); }
+.ch-put { border: 0; border-radius: 999px; background: var(--hx-ink); color: #fff; padding: 6px 12px; font: inherit; font-size: 13.5px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+.ch-on { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: #9a6400; }
+.ch-ai { margin: 8px 20px 0; padding: 12px; border-radius: 16px; border: 1px dashed #b9adf5; background: color-mix(in srgb, var(--hx-lav) 45%, #fff); }
+.ch-ai h4 { color: var(--hx-accent); }
+.ch-ai .bk-note { margin: -4px 0 8px; }
+@media (max-width: 560px) { .ch-row { grid-template-columns: 40px minmax(0, 1fr); } .ch-end { grid-column: 1 / -1; grid-auto-flow: column; justify-content: space-between; align-items: center; } }
