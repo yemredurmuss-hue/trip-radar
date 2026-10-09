@@ -232,21 +232,19 @@ function Minis({ facts, home }: { facts: Facts; home: string }) {
   return (
     <div className="hx-block">
       <div className="hx-minis">
-        {cells.map(([icon, text, tip], n) => (
-          <span key={icon}>
-            {tip ? (
-              <HoverTip tip={tip} align={n % 2 ? "right" : "left"} className="hx-tip">
-                <HeroIcon name={icon} size={18} />
-                {text}
-              </HoverTip>
-            ) : (
-              <>
-                <HeroIcon name={icon} size={18} />
-                {text}
-              </>
-            )}
-          </span>
-        ))}
+        {cells.map(([icon, text, tip], n) =>
+          tip ? (
+            <HoverTip key={icon} tip={tip} align={n % 2 ? "right" : "left"} className="hx-tip">
+              <HeroIcon name={icon} size={18} />
+              {text}
+            </HoverTip>
+          ) : (
+            <span key={icon}>
+              <HeroIcon name={icon} size={18} />
+              {text}
+            </span>
+          ),
+        )}
       </div>
     </div>
   );

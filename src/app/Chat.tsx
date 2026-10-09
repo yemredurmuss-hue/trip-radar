@@ -15,6 +15,7 @@ import { requestReveal } from "./arrive/intake";
 import { droppedLinks, useDropZone } from "./arrive/useDropZone";
 import { addLinks, addTripFiles, isTripFile } from "./capture";
 import { UiIcon } from "./cards/Silhouettes";
+import { EventFold, foldRuns } from "./ChatFold";
 import { ChatOffers } from "./ChatOffers";
 import { ArrowUp, Back } from "./Icons";
 
@@ -157,7 +158,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
             )}
           </div>
         )}
-        {arrivals.rows.map((row) => {
+        {foldRows(arrivals.rows, (row) => {
           if (row.kind === "intake") return arrivals.bubble(row.e);
           const m = row.m;
           // A capture that went to the trip of its place, or the question about one (placeCheck.ts).
@@ -401,3 +402,21 @@ const hostOf = (url: string) => {
     return url;
   }
 };
+
+type ArrivalRow = ReturnType<typeof useChatArrivals>["rows"][number];
+
+/**
+ * The rows drawn in order, a run of plain change lines folded into one ("12 değişiklik ▾"). A line that went to a card
+ * (its own button), a routing note, a file's line and everything said by a person stay as they are.
+ */
+function foldRows(rows: ArrivalRow[], render: (row: ArrivalRow) => ReactNode): ReactNode[] {
+  return foldRuns(rows, (row) => row.kind === "msg" && row.m.role === "event" && !row.m.routing && !row.file).map((g) =>
+    "fold" in g ? (
+      <EventFold key={`fold-${g.fold[0].kind === "msg" ? g.fold[0].m.id : ""}`} count={g.fold.length}>
+        {g.fold.map(render)}
+      </EventFold>
+    ) : (
+      render(g.row)
+    ),
+  );
+}

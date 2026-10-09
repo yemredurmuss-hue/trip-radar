@@ -262,7 +262,10 @@ try {
   assert.match(flat([await side.locator(".hx-countries").innerText()])[0], /^🇵🇹 ?Portekiz$/);
   // The small things in one row: money (its rate on hover), plug, time, language.
   assert.equal(flat([await side.locator(".hx-minis").innerText()])[0], "Euro C/F priz −2 saat Portekizce");
-  assert.match(await side.locator(".hx-minis span", { hasText: "Euro" }).getAttribute("title"), /^€1 = ₺/);
+  // (the rate is a tip over the money now, drawn on hover, not a native title)
+  await side.locator(".hx-minis .hx-tip", { hasText: "Euro" }).hover();
+  assert.match(await app.locator(".tipx-box").innerText(), /^€1 = ₺/);
+  await app.mouse.move(2, 2);
   await side.locator(".hx-prefs .hx-h", { hasText: "Tercihler" }).waitFor();
   // Revizyon 1: Tercihler rows are keywords, never sentences. The sample's note "Sessiz bir yer istiyoruz" goes by
   // its topic; a long note the code can't name (no model key here) by its first three words.
@@ -466,6 +469,35 @@ try {
   assert.equal(await app.locator(".cat-tile, .cat-state").count(), 0, "no icon tiles, no status pills");
   assert.match(await sec("activity").locator(".cat-head").innerText(), /^Etkinlik ve turlar\s*4\s*1 planda · 3 fikir\s*(\d+\/\d+\s*)?€25\s*€[\d.,]+ ayrıldı/);
   assert.match(await sec("stay").locator(".cat-allot").innerText(), /^€[\d.,]+ ayrıldı$/);
+  // The layered interface (drawing: ux-katmanli-arayuz): the header's money box on hover, nothing hidden meanwhile; the
+  // hero's tips; a thin bar over the panel once the hero has scrolled away.
+  await sec("stay").locator(".cat-bud-tip").hover();
+  const budTip = app.locator(".tipx-box");
+  await budTip.waitFor({ state: "visible" });
+  assert.match(await budTip.innerText(), /Bu bölümün parası[\s\S]*Ayrılan pay/);
+  await app.waitForTimeout(350);
+  await app.screenshot({ path: `${out}/36a-tip-section-money.png` });
+  await app.mouse.move(2, 2);
+  await budTip.waitFor({ state: "detached" });
+  assert.match(await sec("stay").locator(".cat-allot").innerText(), /^€[\d.,]+ ayrıldı$/, "the share is still there, tip or not");
+  const heroTips = app.locator(".hx-minis .hx-tip");
+  if (await heroTips.count()) {
+    await heroTips.first().hover();
+    await app.locator(".tipx-box").waitFor({ state: "visible" });
+    await app.waitForTimeout(350);
+    await app.screenshot({ path: `${out}/36b-tip-hero.png` });
+    await app.mouse.move(2, 2);
+    await app.locator(".tipx-box").waitFor({ state: "detached" });
+  } else console.log("  (no hero tips on this trip: no rate or plug known)");
+  assert.equal(await app.locator(".sbar.show").count(), 0, "the thin bar waits while the hero is in view");
+  await app.locator(".panel").evaluate((el) => (el.scrollTop = el.scrollHeight));
+  await app.locator(".sbar.show").waitFor({ timeout: 4000 });
+  await app.waitForTimeout(350);
+  await app.screenshot({ path: `${out}/36c-sticky-bar.png` });
+  assert.ok((await app.locator(".sbar.show .sbar-t").innerText()).length > 0, "the bar names the trip");
+  await app.locator(".panel").evaluate((el) => (el.scrollTop = 0));
+  await app.locator(".sbar.show").waitFor({ state: "detached", timeout: 4000 });
+  console.log("✓ layered interface: the section's money box on hover, the hero's tips, the thin bar while the hero is scrolled away");
   assert.equal(await sec("activity").locator(".cat-st").innerText(), "1 planda · 3 fikir");
   assert.match(await sec("flight").locator(".cat-head").innerText(), /^Uçuş\s*2\s*1 rezerve · 1 aranıyor/);
   assert.equal(await sec("flight").locator(".cat-st").innerText(), "1 rezerve · 1 aranıyor");
@@ -888,6 +920,13 @@ try {
   await app.screenshot({ path: `${out}/4-drawer.png` });
   await app.getByRole("dialog").getByRole("button", { name: "Plana al", exact: true }).click();
   await app.getByRole("dialog").getByRole("button", { name: "Kapat" }).click();
+  // The chat folds a run of change lines ("N değişiklik ▾", drawing ux-katmanli-arayuz); open it to read them.
+  const changeFold = app.locator(".chat .ev-fold-btn").last();
+  await changeFold.waitFor();
+  assert.match(await changeFold.innerText(), /\d+ değişiklik/);
+  await app.screenshot({ path: `${out}/36d-chat-fold-closed.png` });
+  if ((await changeFold.getAttribute("aria-expanded")) !== "true") await changeFold.click();
+  await app.screenshot({ path: `${out}/36e-chat-fold-open.png` });
   await app.getByText("Jardim Stay plana alındı").waitFor();
   // v11: chosen, the stay is the plan's card: "✓ Aldım" on its top line, "Pano'da 2 alternatif" by its price; its
   // details' "Diğer 2 seçenek" brings the choice window back.
@@ -1156,6 +1195,7 @@ try {
   // The "+" by a card adds there (its day and city); out of sight until the card is pointed at.
   const plus = (scope) => scope.locator(".pk-insert button").first();
   await app.mouse.move(0, 0);
+  await app.waitForTimeout(400); // (the + fades out; read after the fade)
   assert.equal(await sec("stay").locator(".cat-card .pk-insert").first().evaluate((el) => getComputedStyle(el).opacity), "0", "no + on the drawing until pointed at");
   await sectionAdd("transport").click();
   const only = app.getByRole("dialog", { name: "Ne eklemek istersin?" });
@@ -1748,7 +1788,7 @@ try {
     } else {
       assert.match(await sec(id).locator(".cat-count").textContent(), /^\d+\/\d+$/);
       const bar = (await sec(id).locator(".cat-bar").count()) ? ["cat-bar" + ((await sec(id).locator(".cat-bar.done").count()) ? " done" : "")] : [];
-      const bud = (await sec(id).locator(".cat-bud").count()) ? ["cat-bud"] : [];
+      const bud = (await sec(id).locator(".cat-bud").count()) ? ["tipx cat-bud-tip"] : [];
       assert.deepEqual(kids, ["cat-ic", "cat-tt", ...sg, ...bar, "cat-count sr-only", ...bud, "cat-chev"], `${id}: icon · name … bar · spent · arrow`);
       assert.equal(await sec(id).locator(".cat-add").count(), 0, `${id}: no "+ Ekle" when closed`);
       // Complete: the bar full and green.

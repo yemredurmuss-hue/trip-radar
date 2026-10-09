@@ -52,6 +52,7 @@ import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../
 import { intentEntries } from "./IntentCard";
 import { TripHero, type HeroAction, type HeroCity } from "./TripHero";
 import { PrintPlan } from "./PrintPlan";
+import { StickyBar } from "./StickyBar";
 import { heroNumbers, openNeedsText, plannedBookedText } from "../lib/lifecycle";
 import { kindLabel, LegRow } from "./LegRow";
 import { HistoryDialog } from "./HistoryDialog";
@@ -684,6 +685,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           </button>
         </div>
       )}
+      <StickyBar hero={heroRef} active={view === "plan"} title={trip.title} dates={range ? formatDateRange(range.start, range.end) : null} pct={done.total ? numbers.pct : null} action={action} />
       {/* The Pano is a work table of its own: no hero over it (v11). */}
       {view !== "board" && (
       <section className="hx" ref={heroRef}>

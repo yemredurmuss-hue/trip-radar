@@ -8,14 +8,17 @@ import { isIdeaSection, sectionProgress, stageLine, type CatSection } from "../.
 import { L } from "../../lib/i18n";
 import { formatPrice } from "../../lib/items";
 import { suggestionCount } from "../../lib/suggestions";
+import { HoverTip } from "../HoverTip";
 import { KindIcon, UiIcon } from "../cards/Silhouettes";
 import { HiddenList } from "./HiddenList";
 import { SECTION_META } from "./sectionMeta";
 
-export function Section({ section, allot = null, open, onToggle, onAdd, suggestions = 0, children }: {
+export function Section({ section, allot = null, allotNum = null, open, onToggle, onAdd, suggestions = 0, children }: {
   section: CatSection;
   /** v11: its share of the trip's budget, "€500" ("€285 · €500 ayrıldı"). */
   allot?: string | null;
+  /** The same share as a number and its currency: what's left of it shows in the budget's box. */
+  allotNum?: { amount: number; currency: string } | null;
   open: boolean;
   onToggle: () => void;
   /** "+ Ekle" in the open header: this section's kind, no day. */
@@ -70,10 +73,12 @@ export function Section({ section, allot = null, open, onToggle, onAdd, suggesti
                 <i>/{total}</i>
               </span>
               {(spent || allot) && (
-                <span className="cat-bud">
-                  {spent && <b className="cat-spent" title={L("Seçilen ve rezerve olanların toplamı", "What's chosen and booked, added up")}>{spent}</b>}
-                  {allot && <small className="cat-allot" title={L("Gezi bütçesinden bu bölüme düşen pay (beklenen maliyete göre)", "This part's share of the trip's budget (by what it's likely to cost)")}>{L(`${allot} ayrıldı`, `${allot} set aside`)}</small>}
-                </span>
+                <HoverTip below align="right" className="cat-bud-tip" tip={budgetTip(section, allotNum)}>
+                  <span className="cat-bud">
+                    {spent && <b className="cat-spent">{spent}</b>}
+                    {allot && <small className="cat-allot">{L(`${allot} ayrıldı`, `${allot} set aside`)}</small>}
+                  </span>
+                </HoverTip>
               )}
             </>
           )}
@@ -121,6 +126,41 @@ function spentOf(section: CatSection): string | null {
   }
   const top = [...by.entries()].sort((a, b) => b[1] - a[1])[0];
   return top ? formatPrice(Math.round(top[1]), top[0]) : null;
+}
+
+/** The header's money box: what's booked, what's chosen, what's left of the section's share (docs/mockups/ux-katmanli-arayuz). */
+function budgetTip(section: CatSection, allot: { amount: number; currency: string } | null) {
+  const sums = new Map<string, { booked: number; chosen: number }>();
+  for (const e of section.entries) {
+    if (e.state !== "done" && e.state !== "book") continue;
+    const p = e.row.price;
+    if (!p || !p.currency || !(p.amount > 0)) continue;
+    const cur = sums.get(p.currency) ?? { booked: 0, chosen: 0 };
+    if (e.state === "done") cur.booked += p.amount;
+    else cur.chosen += p.amount;
+    sums.set(p.currency, cur);
+  }
+  const top = [...sums.entries()].sort((a, b) => b[1].booked + b[1].chosen - (a[1].booked + a[1].chosen))[0];
+  const money = (n: number, cur: string) => formatPrice(Math.round(n), cur);
+  const line = (cls: string, label: string, text: string) => (
+    <span className="tipx-line">
+      <span>
+        <i className={`d ${cls}`} aria-hidden />
+        {label}
+      </span>
+      <b>{text}</b>
+    </span>
+  );
+  const left = top && allot && allot.currency === top[0] ? allot.amount - top[1].booked - top[1].chosen : null;
+  return (
+    <>
+      <b className="tipx-h">{L("Bu bölümün parası", "This part's money")}</b>
+      {top && top[1].booked > 0 && line("bk", L("Rezerve", "Booked"), money(top[1].booked, top[0]))}
+      {top && top[1].chosen > 0 && line("ch", L("Seçildi", "Chosen"), money(top[1].chosen, top[0]))}
+      {left != null && line(left < 0 ? "ov" : "fr", left < 0 ? L("Aşıyor", "Over") : L("Boşta", "Free"), money(Math.abs(left), top![0]))}
+      <span className="tipx-note">{L("Ayrılan pay, gezi bütçesinden beklenen maliyete göre bölünür.", "The share set aside is the trip's budget divided by what each part is likely to cost.")}</span>
+    </>
+  );
 }
 
 /**
