@@ -3289,3 +3289,6 @@ a.ch-why { text-decoration: none; }
 .pk-alt:hover { color: #1c1a33; }
 .ch-more { color: #4b36c9; }
 .it-sp { flex: 1; }
+
+/* v11: the drawing in place of a photo, its white ground laid on the picture's tint. */
+.pk-illus { width: 78%; height: 86%; object-fit: contain; mix-blend-mode: multiply; }
