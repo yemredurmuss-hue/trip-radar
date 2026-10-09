@@ -47,11 +47,10 @@ export function panoEntries(items: Item[], decisions?: Map<string, GroupDecision
 }
 
 /**
- * An option a data source found ("Seçeneklere ekle"): addedBy "ai", or on a record from before that field, one with a
- * page but no capture behind it, not said in the chat nor added from a template (those carry a planned kind).
+ * An option a data source found ("Seçeneklere ekle"): addedBy "ai". Nothing is guessed for a record from before that
+ * field (a sample's saved stay has no capture either): it counts as the traveller's own.
  */
-export const isAiOption = (item: Item): boolean =>
-  item.addedBy === "ai" || (!item.addedBy && item.captureIds.length === 0 && item.origin !== "chat" && !item.plannedKind && Boolean(item.url));
+export const isAiOption = (item: Item): boolean => item.addedBy === "ai";
 
 /** Who liked it (the board's owner as their name, or "me" when they have none yet). */
 export const likersOf = (item: Item): string[] => item.likedBy ?? [];

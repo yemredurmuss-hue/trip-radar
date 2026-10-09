@@ -3193,3 +3193,23 @@ a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: cente
 .ts-hop svg { position: absolute; left: 50%; top: -9px; transform: translateX(-50%); background: var(--hx-card, #fbfaf7); padding: 0 3px; color: #6e6a86; box-sizing: content-box; }
 .ts-hop.flight svg { color: #6a4fe0; }
 .ts-hop.train svg, .ts-hop.bus svg, .ts-hop.ferry svg, .ts-hop.car svg { color: #c58a2e; }
+.ch-main b a { color: inherit; text-decoration: none; }
+.ch-main b a:hover { color: var(--hx-accent); text-decoration: underline; text-underline-offset: 3px; }
+.ch-badge { margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--hx-lav); color: var(--hx-accent); font-size: 11.5px; font-weight: 700; vertical-align: 2px; }
+.ch-needs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.ch-need { font-size: 12px; padding: 1px 7px; border-radius: 999px; background: #f2f0ec; color: #6e6a86; }
+.ch-need.yes { background: #eef8f1; color: #1f7a45; }
+.ch-need.no { background: #fdeeee; color: #b4342f; }
+.ch-status { font-size: 12.5px; font-weight: 650; color: #9a6400; }
+.ch-why { justify-self: start; border: 0; background: none; padding: 2px 0; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--hx-accent); cursor: pointer; }
+.ch-detail { display: grid; gap: 6px; margin-top: 4px; padding: 8px 10px; border-radius: 10px; background: var(--hx-card); font-size: 13px; }
+.ch-trade { margin: 0; color: #3a3850; }
+.ch-pros, .ch-cons { margin: 0; padding-left: 16px; display: grid; gap: 2px; }
+.ch-pros li::marker { content: "+  "; color: #1f8f4e; font-weight: 700; }
+.ch-cons li::marker { content: "–  "; color: #d9534f; font-weight: 700; }
+.ch-pros i, .ch-cons i { margin-left: 6px; font-style: normal; font-size: 11.5px; color: var(--hx-accent); }
+.ch-verify { margin: 8px 20px 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 13px; color: #8a5a00; }
+.ch-verify li { padding: 7px 12px; border-radius: 10px; background: #fbf6ea; }
+.ch-links { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.ch-prov { color: #9a6400 !important; font-weight: 650; }
+a.ch-why { text-decoration: none; }

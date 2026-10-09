@@ -4,7 +4,7 @@
 // pick, the options saved by the travellers first, the alternative a data source found apart (dashed, "Sizin
 // linklerinizin dışında"), each with "+ Plana koy"; Karşılaştır (the full comparison) and Pano'da gör at its foot.
 // Not for stays (their nights keep the comparison block) nor a need with one option (that card is the option).
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cardFacts } from "../../lib/cardFacts";
 import { cardKind, cardKindColor, isTransportKind } from "../../lib/cardKinds";
@@ -22,6 +22,7 @@ import { CardShell } from "./CardShell";
 import { useCardEnv } from "./PlanCard";
 import { KindIcon, TransportArt, UiIcon } from "./Silhouettes";
 import { usePhotoOf, WhoAvatar } from "./WhoseBadge";
+import { datedLink, TradeLine } from "./parts";
 
 /** Who saved each option: "ai", a fellow traveller's name, or the board's owner (null). */
 const adderOf = (item: Item): string | null => (isAiOption(item) ? "ai" : (item.addedBy ?? null));
@@ -119,8 +120,15 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
   const mine = items.filter((i) => !isAiOption(i));
   const found = items.filter(isAiOption);
   const date = topDate(items[0], kind);
+  const [why, setWhy] = useState<string | null>(null);
+  const currency = env.decisions?.ctx.currency ?? "EUR";
   const row = (item: Item): ReactNode => {
     const facts = cardFacts(item, decision, env.decisions?.ctx);
+    const ranked = choice?.ranked.find((r) => r.option.item.id === item.id);
+    const badge = ranked?.badges[0] ?? null;
+    // Saved without dates: priced for these nights for now; its page again with the dates gets the real price.
+    const { url: datedUrl } = datedLink(item, decision);
+    const open = why === item.id;
     const score = decision?.options.find((o) => o.item.id === item.id)?.score ?? null;
     const on = item.status === "chosen" || item.status === "booked";
     const who = adderOf(item);
@@ -134,8 +142,15 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
         </span>
         <div className="ch-main">
           <b>
-            {item.name}
+            {item.url ? (
+              <a className="ch-name" href={item.url} target="_blank" rel="noreferrer" title={L("Sayfasını aç", "Open its page")}>
+                {item.name}
+              </a>
+            ) : (
+              <span className="ch-name">{item.name}</span>
+            )}
             {time && /^\d\d:\d\d$/.test(time) ? <span className="ch-time"> · {time}</span> : null}
+            {badge && <span className="ch-badge">{badge}</span>}
           </b>
           <span className="ch-sub">{[item.provider, item.city, item.rating.value != null ? String(item.rating.value).replace(".", ",") : null].filter(Boolean).join(" · ")}</span>
           <span className="ch-who">
@@ -148,12 +163,63 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
               </>
             )}
           </span>
+          {facts.needs.length > 0 && (
+            <span className="ch-needs">
+              {facts.needs.map((n) => (
+                <span key={n.key} className={`ch-need ${n.state}`} title={n.text}>
+                  {n.state === "yes" ? "✓" : n.state === "no" ? "✕" : "?"} {n.label}
+                </span>
+              ))}
+            </span>
+          )}
+          {facts.status && <span className={`ch-status ${facts.status.tone}`}>{facts.status.text}</span>}
+          <span className="ch-links">
+            {(ranked?.trade || facts.pros.length > 0 || facts.cons.length > 0) && (
+              <button type="button" className="ch-why ch-pc" aria-expanded={open} onClick={() => setWhy(open ? null : item.id)}>
+                {L("Neden? Artılar ve eksiler", "Why? Pros and cons")} {open ? "▴" : "▾"}
+              </button>
+            )}
+            {datedUrl && (
+              <a className="ch-why" href={datedUrl} target="_blank" rel="noreferrer">
+                {L("Tarihlerle aç ↗", "Open with dates ↗")}
+              </a>
+            )}
+            <button type="button" className="ch-why ch-all" onClick={() => (onClose(), env.onOpenItem(item))}>
+              {L("Tüm detaylar", "All details")}
+            </button>
+          </span>
+          {open && (
+            <div className="ch-detail">
+              {ranked && <TradeLine ranked={ranked} currency={currency} className="ch-trade" />}
+              {facts.pros.length > 0 && (
+                <ul className="ch-pros">
+                  {facts.pros.map((p) => (
+                    <li key={p.text}>
+                      <span>{p.text}</span>
+                      {p.unique && <i>{L("yalnız bunda", "only this one")}</i>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {facts.cons.length > 0 && (
+                <ul className="ch-cons">
+                  {facts.cons.map((c) => (
+                    <li key={c.text}>
+                      <span>{c.text}</span>
+                      {c.unique && <i>{L("yalnız bunda", "only this one")}</i>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
         <div className="ch-end">
           {facts.price && (
             <span className="ch-pr">
               <b>{facts.price.text}</b>
               {facts.price.label && <small>{facts.price.label}</small>}
+              {facts.price.provisional && <small className="ch-prov">{L("geçici", "provisional")}</small>}
             </span>
           )}
           {on ? (
@@ -186,6 +252,15 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
           </button>
         </header>
         {choice?.headline && <p className="ch-for">{choice.headline}</p>}
+        {choice && choice.verify.length > 0 && (
+          <ul className="ch-verify" aria-label={L("Seçmeden kontrol et", "Check before choosing")}>
+            {choice.verify.map((v) => (
+              <li key={`${v.itemId}:${v.what}`}>
+                <b>{L("Seçmeden kontrol et", "Check before choosing")} · {v.name}:</b> {v.what}
+              </li>
+            ))}
+          </ul>
+        )}
         {mine.length > 0 && (
           <section className="bk-sec">
             <h4>{L(`Kaydettikleriniz · ${mine.length}`, `Your saves · ${mine.length}`)}</h4>
@@ -216,5 +291,23 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
       </div>
     </div>,
     document.body,
+  );
+}
+
+/** A need's card with its own window (a stay's options, v11): the heading above it as the group's, the state kept here. */
+export function NeedGroup({ items, heading, nested, decision, choice, onCompare }: {
+  items: Item[];
+  heading: ReactNode;
+  nested: boolean;
+  decision?: GroupDecision;
+  choice: Choice | null;
+  onCompare?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={nested ? "group nested" : "section"} data-option-ids={items.map((i) => i.id).join(" ")}>
+      {heading && <div className={nested ? "group-head" : "section-head"}>{heading}</div>}
+      <NeedCard items={items} decision={decision} choice={choice} open={open} onOpen={() => setOpen(true)} onClose={() => setOpen(false)} onCompare={onCompare} />
+    </div>
   );
 }

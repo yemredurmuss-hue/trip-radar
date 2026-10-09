@@ -65,6 +65,7 @@ import { useArrivals } from "./arrive/useArrivals";
 import { useSuggestions } from "./useSuggestions";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
 import { Pano } from "./board/Pano";
+import { NeedGroup } from "./cards/NeedCard";
 import { journeyOf } from "../lib/tripShape";
 import { UndatedIdeas } from "./ideas/IdeaTiles";
 import { choiceOf, type Choice } from "../lib/choice";
@@ -964,6 +965,11 @@ function OptionGroupView({
       <NavGroup items={byRank} heading={head} nested={nested} decision={decision} choice={choice} decided={decided ?? null}
         onChange={change} changing={changing} rankedOf={rankedOf} onCompare={comparable || single ? onCompare : undefined} />
     );
+  }
+  // v11: a stay with options and no choice yet is one card too ("Porto · 8–11 Eki · 3 seçenek ›"), the pick and its
+  // reasons at the top of its window.
+  if (!decided && byRank.length > 1) {
+    return <NeedGroup items={byRank} heading={head} nested={nested} decision={decision} choice={choice} onCompare={comparable || single ? onCompare : undefined} />;
   }
   if (decided && !(changing && change)) {
     return (

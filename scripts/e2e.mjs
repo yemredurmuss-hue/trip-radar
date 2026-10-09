@@ -658,45 +658,35 @@ try {
   await tab("Plan").click();
   // Where each plan stands is on top of its card: booked in green, planned in amber.
   await app.locator(".cat-card.tl-stay .status-bar.st-booked", { hasText: "Rezerve edildi" }).waitFor();
-  // Undecided needs are a numbered list, best first: each card with its place and score, what it's
-  // strongest on, why it stands there (against the first; the first against the second), a mark per
-  // thing asked for, and what speaks for and against it.
-  const card = (name) => app.locator(`.swipe-card[aria-label="${name}"]`);
-  const stayCard = app.locator(".stay-block .reco-line.headline").first();
-  assert.equal(await stayCard.locator("p").innerText(), "Önerim Jardim Stay: en sessiz; 2.'ye göre €45 daha ucuz, 5 Eki'ye kadar ücretsiz iptal ve daha konforlu. Tasarruf için 3. Casa Azul (1.'ye göre €45 daha ucuz).");
-  const porto = app.locator(".stay-block.open .option-grid").first();
-  assert.deepEqual(await porto.locator(".swipe-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Jardim Stay", "Ribeira Rooms", "Casa Azul"]);
-  assert.deepEqual(await porto.locator(".opt-rank").allInnerTexts(), ["1", "2", "3"]);
-  assert.deepEqual(await porto.locator(".opt-score b").allInnerTexts(), ["83", "55", "53"]);
-  await card("Jardim Stay").locator(".opt-label", { hasText: "En sessiz" }).waitFor();
-  // The site's name is the way to the page: one click, a new tab, the board stays.
-  const site = card("Jardim Stay").locator("a.sc-source");
-  assert.match(await site.innerText(), /Booking\.com\s*↗$/);
+  // v11: an undecided stay is one card too ("Porto · 8–11 Eki", "3 seçenek ›"); its window: the pick in a sentence,
+  // what to check before choosing, the options best first with their fit, what each is strongest on, a mark per
+  // thing asked for, and "Neden? Artılar ve eksiler" (against the first; the first against the second, then the pros
+  // and cons). The name is the way to the page.
+  const portoNeed = app.locator(".nd-card").filter({ has: app.locator(".nd-body h3", { hasText: /^Porto/ }) }).first();
+  await portoNeed.locator(".nd-opts").click();
+  const stayChoice = app.locator(".ch-sheet");
+  await stayChoice.waitFor();
+  assert.equal(await stayChoice.locator(".ch-for").innerText(), "Önerim Jardim Stay: en sessiz; 2.'ye göre €45 daha ucuz, 5 Eki'ye kadar ücretsiz iptal ve daha konforlu. Tasarruf için 3. Casa Azul (1.'ye göre €45 daha ucuz).");
+  const optionRow = (name) => stayChoice.locator(".ch-row", { has: app.locator(".ch-main > b", { hasText: name }) });
+  assert.deepEqual(await stayChoice.locator(".ch-name").allInnerTexts(), ["Jardim Stay", "Ribeira Rooms", "Casa Azul"]);
+  assert.deepEqual((await stayChoice.locator(".ch-sc").allInnerTexts()).map((t) => t.split("\n")[0]), ["83", "55", "53"]);
+  assert.equal(await optionRow("Jardim Stay").locator(".ch-badge").innerText(), "En sessiz");
+  const site = optionRow("Jardim Stay").locator(".ch-name");
   assert.equal(await site.getAttribute("target"), "_blank");
   assert.match(await site.getAttribute("href"), /^https:\/\/www\.booking\.com\//);
-  assert.equal(await card("Jardim Stay").locator(".opt-meta").innerText(), "Otel odası · 8,9 Çok iyi · 1.204 yorum");
-  assert.match(await card("Jardim Stay").locator(".sc-price").innerText(), /€285\s*3 gece toplam\s*€95 \/ gece/);
-  // Why here: the first against the second, the second against the first.
-  assert.match(await card("Jardim Stay").locator(".opt-trade").innerText(), /^2\.'ye göre\s*€45 daha ucuz \(gecelik −€15\) · sessiz odalar, iyi uyku · 3 yorum, 5 Eki'ye kadar ücretsiz iptal, daha konforlu · eksiği: yorumları daha zayıf/);
-  assert.match(await card("Ribeira Rooms").locator(".opt-trade").innerText(), /^1\.'ye göre\s*\+€45 \(gecelik \+€15\) · yorumlar daha iyi \(9,2\/10 – 8,9\/10\), odadan nehir manzarası · 3 yorum · eksiği: hafta sonu gece gürültüsü · 3 yorum/);
-  // A mark for each thing asked for (the words on hover and in the details), then the pros and cons in full.
-  assert.deepEqual(await card("Jardim Stay").locator(".opt-checks .need.yes > span").allInnerTexts(), ["Sessiz"]);
-  assert.equal(await card("Jardim Stay").locator(".opt-checks .need.yes").getAttribute("title"), "Sessiz odalar, iyi uyku · 3 yorum");
-  assert.deepEqual(await card("Jardim Stay").locator(".sc-col.pros li > span").allInnerTexts(), ["Kahvaltı çok iyi", "Gezeceğin yerlere 6 dk", "Ücretsiz iptal · son gün 5 Ekim"]);
-  await card("Jardim Stay").locator(".sc-col.pros li.unique", { hasText: "yalnız bunda" }).waitFor();
-  await card("Ribeira Rooms").locator(".sc-col.pros li.unique", { hasText: "Odadan nehir manzarası" }).waitFor();
-  assert.match(await card("Jardim Stay").locator(".sc-col.cons li > span").first().innerText(), /^Odalar küçük/);
-  // The assistant can't rule a place out on what it read (only the traveller can, 0.28): the construction
-  // it would have ruled Casa Azul out on is a thing to check before choosing.
-  await card("Casa Azul").locator(".opt-status", { hasText: "Seçmeden kontrol et" }).filter({ hasText: "Yan binada inşaat var; sessiz bir yer istiyorsun" }).waitFor();
-  assert.equal(await card("Casa Azul").locator(".opt-status.unfit").count(), 0);
-  // The picture sits beside the name; one card a row, wide enough to read.
-  const media = await card("Jardim Stay").locator(".opt-img").boundingBox();
-  const title = await card("Jardim Stay").locator(".opt-name").boundingBox();
-  assert.ok(title.x > media.x + media.width - 1, "the picture sits beside the name");
-  const boxes = await porto.locator(".swipe-card").evaluateAll((els) => els.map((e) => e.getBoundingClientRect()).map((r) => ({ top: Math.round(r.top), width: r.width })));
-  assert.ok(boxes.every((b, i) => i === 0 || b.top > boxes[i - 1].top), "best first, top to bottom");
-  assert.ok(boxes.every((b) => b.width >= 420), `cards wide enough to read: ${boxes.map((b) => b.width)}`);
+  assert.deepEqual(await optionRow("Jardim Stay").locator(".ch-need.yes").allInnerTexts(), ["✓ Sessiz"]);
+  await optionRow("Jardim Stay").locator(".ch-pc").click();
+  assert.match(await optionRow("Jardim Stay").locator(".ch-trade").innerText(), /^2\.'ye göre\s*€45 daha ucuz \(gecelik −€15\)/);
+  assert.deepEqual(await optionRow("Jardim Stay").locator(".ch-pros li > span").allInnerTexts(), ["Kahvaltı çok iyi", "Gezeceğin yerlere 6 dk", "Ücretsiz iptal · son gün 5 Ekim", "Yorum puanları yüksek"]);
+  await optionRow("Ribeira Rooms").locator(".ch-pc").click();
+  assert.match(await optionRow("Ribeira Rooms").locator(".ch-trade").innerText(), /^1\.'ye göre\s*\+€45 \(gecelik \+€15\)/);
+  await optionRow("Ribeira Rooms").locator(".ch-pros li", { hasText: "Odadan nehir manzarası" }).waitFor();
+  // The assistant can't rule a place out on what it read (only the traveller can, 0.28): Casa Azul's construction
+  // is a thing to check before choosing.
+  await stayChoice.locator(".ch-verify li", { hasText: "Yan binada inşaat var; sessiz bir yer istiyorsun" }).waitFor();
+  await app.screenshot({ path: `${out}/34a-stay-choice.png` });
+  await app.keyboard.press("Escape");
+  await stayChoice.waitFor({ state: "detached" });
   // Flights (v11 phase 2b): the need is one card, one size ("İstanbul → Porto · 2 seçenek"); "2 seçenek ›" opens the
   // choice window: the pick in a sentence, the options with their fit, who saved them, "+ Plana koy".
   const pk = (name) => app.locator(`.pk-card[aria-label="${name}"]`);
@@ -708,7 +698,8 @@ try {
   await outNeed.locator(".nd-opts").click();
   const chooser = app.locator(".ch-sheet");
   await chooser.waitFor();
-  assert.deepEqual((await chooser.locator(".ch-main > b").allInnerTexts()).map((t) => t.replace(/ · \d\d:\d\d$/, "")).sort(), ["Pegasus · direkt", "TAP · Lizbon aktarmalı"]);
+  assert.deepEqual((await chooser.locator(".ch-name").allInnerTexts()).sort(), ["Pegasus · direkt", "TAP · Lizbon aktarmalı"]);
+  assert.equal(await chooser.locator(".ch-row", { hasText: "TAP · Lizbon aktarmalı" }).locator(".ch-badge").innerText(), "En ekonomik");
   assert.match(await chooser.locator(".ch-for").innerText(), /Pegasus/);
   assert.equal(await chooser.getByRole("button", { name: "+ Plana koy" }).count(), 2);
   await app.screenshot({ path: `${out}/32a-choice-window.png` });
@@ -774,24 +765,20 @@ try {
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/3-board.png` });
 
-  // "Detaylar" opens the card in place, kept short: where it stands, the facts, what's for and against it.
-  await card("Jardim Stay").getByRole("button", { name: "Detaylar ▾" }).click();
-  const jardimDetails = card("Jardim Stay").locator(".card-details");
-  await jardimDetails.locator(".cd-verdict").waitFor();
-  await jardimDetails.locator(".cd-list.needs li.yes", { hasText: "Sessiz: Sessiz odalar, iyi uyku · 3 yorum" }).waitFor();
-  assert.match(await jardimDetails.locator(".cd-facts").innerText(), /Tarih\s*8–11 Ekim · 3 gece[\s\S]*Puan\s*8,9 \/ 10 · 1\.204 yorum[\s\S]*İptal/i);
-  await jardimDetails.locator(".small-note", { hasText: "5 yorum incelendi (sitede 1.204)" }).waitFor();
+  // v11: in the stay's window, what each was asked for is a mark with its words on hover; "Tüm detaylar" opens the
+  // record's drawer, where the evidence behind a finding is, with "sorun değil": the construction then no longer
+  // needs checking before choosing.
+  const openStayChoice = async () => {
+    await app.locator(".nd-card").filter({ has: app.locator(".nd-body h3", { hasText: /^Porto/ }) }).first().locator(".nd-opts").click();
+    await app.locator(".ch-sheet").waitFor();
+    return app.locator(".ch-sheet");
+  };
+  let stayWin = await openStayChoice();
+  const winRow = (name) => stayWin.locator(".ch-row", { has: app.locator(".ch-name", { hasText: name }) });
+  assert.equal(await winRow("Jardim Stay").locator(".ch-need.yes").getAttribute("title"), "Sessiz odalar, iyi uyku · 3 yorum");
+  assert.match(await winRow("Ribeira Rooms").locator(".ch-need.no").getAttribute("title"), /Hafta sonu gece gürültüsü/);
   await app.screenshot({ path: `${out}/3-cards.png` });
-  await card("Jardim Stay").getByRole("button", { name: "Kapat ▴" }).click();
-  await card("Ribeira Rooms").getByRole("button", { name: "Detaylar ▾" }).click();
-  await card("Ribeira Rooms").locator(".card-details .cd-list.needs li.no", { hasText: "Hafta sonu gece gürültüsü" }).waitFor();
-  await card("Ribeira Rooms").getByRole("button", { name: "Kapat ▴" }).click();
-
-  // The evidence behind a finding is one tap deeper ("Tüm detaylar"), with "sorun değil": the
-  // construction then no longer needs checking.
-  await card("Casa Azul").getByRole("button", { name: "Detaylar ▾" }).click();
-  await card("Casa Azul").locator(".card-details .cd-list.cons li", { hasText: "Kontrol gerekiyor: Yan binada inşaat var; sessiz bir yer istiyorsun" }).waitFor();
-  await card("Casa Azul").getByRole("button", { name: "Tüm detaylar" }).click();
+  await winRow("Casa Azul").getByRole("button", { name: "Tüm detaylar" }).click();
   const casaDrawer = app.getByRole("dialog");
   const construction = casaDrawer.locator(".pc-line", { hasText: "Yan binada inşaat gürültüsü" });
   await construction.getByText("3 yorum · en yenisi Eyl 2026", { exact: false }).waitFor();
@@ -801,8 +788,10 @@ try {
   await construction.getByRole("button", { name: "Sorun değil" }).click();
   await casaDrawer.locator(".pc-line.accepted", { hasText: "Yan binada inşaat gürültüsü" }).waitFor();
   await casaDrawer.getByRole("button", { name: "Kapat" }).click();
-  await card("Casa Azul").locator(".opt-status", { hasText: "Seçmeden kontrol et" }).waitFor({ state: "detached" });
-  await card("Casa Azul").getByRole("button", { name: "Kapat ▴" }).click();
+  stayWin = await openStayChoice();
+  assert.equal(await stayWin.locator(".ch-verify li", { hasText: "Yan binada inşaat" }).count(), 0, "accepted: nothing to check before choosing");
+  await app.keyboard.press("Escape");
+  await stayWin.waitFor({ state: "detached" });
   // How it understood the traveller so far: what they said (incl. "sorun değil"); a pattern in the saved
   // stays is asked about, and counts only after a yes.
   // On the hero's card it's "Tercihler": two rows, "+N tercih ›" (· 1 soru) opens the window over the card.
@@ -819,8 +808,9 @@ try {
   assert.ok((await intent.locator(".hx-ptag").count()) >= 1, "what was understood, in short tags");
   await app.screenshot({ path: `${out}/3b-card.png` });
 
-  // Comparison: numbers side by side, the weights the user controls, and why.
-  await stayCard.getByRole("button", { name: "Karşılaştır →" }).click();
+  // Comparison: numbers side by side, the weights the user controls, and why (the window's "Karşılaştır").
+  stayWin = await openStayChoice();
+  await stayWin.getByRole("button", { name: "Karşılaştır", exact: true }).click();
   const compare = app.getByRole("dialog", { name: "Karşılaştırma" });
   // 0.37: stays open on the board (Kartlar): a card per option, its badge, score, price and biggest pros/cons.
   await compare.locator(".cmp-views [role=tab].on", { hasText: "Kartlar" }).waitFor();
@@ -867,8 +857,10 @@ try {
   await compare.locator("thead th.win .opt-name", { hasText: "Jardim Stay" }).waitFor();
   await compare.getByRole("button", { name: "Kapat" }).click();
 
-  await card("Jardim Stay").getByRole("button", { name: "Detaylar ▾" }).click();
-  await card("Jardim Stay").getByRole("button", { name: "Tüm detaylar" }).click();
+  // A decided stay's options come back as their cards ("Planda ✓" on the chosen one).
+  const card = (name) => app.locator(`.swipe-card[aria-label="${name}"]`);
+  stayWin = await openStayChoice();
+  await winRow("Jardim Stay").getByRole("button", { name: "Tüm detaylar" }).click();
   await app.getByRole("dialog").waitFor();
   await app.locator(".breakdown .score-big").waitFor(); // per-criterion breakdown in the drawer
   await app.screenshot({ path: `${out}/4-drawer.png` });
@@ -2193,17 +2185,19 @@ try {
 
   // Each page is then read closely (any site): findings with the reviews behind them, counted by code.
   // Weighed by the analysis, which sees the findings with their counts.
-  const casaCard = board.locator('.swipe-card[aria-label="Casa Azul"]');
-  // The analysis would rule it out; only the traveller can (0.28), so it's a thing to check before choosing.
-  await casaCard.locator(".opt-status", { hasText: "Seçmeden kontrol et" }).filter({ hasText: "Yan binada inşaat" }).waitFor({ timeout: 40000 });
+  // v11: the stay's window says it ("Seçmeden kontrol et · Casa Azul: …"); its pros under "Neden?"; "Tüm detaylar"
+  // opens the record with the evidence.
+  await board.locator(".nd-card").filter({ has: board.locator(".nd-body h3", { hasText: /^Porto/ }) }).first().locator(".nd-opts").click();
+  const casaWin = board.locator(".ch-sheet");
+  await casaWin.locator(".ch-verify li", { hasText: "Casa Azul" }).filter({ hasText: "Yan binada inşaat" }).waitFor({ timeout: 40000 });
   assert.ok(analysisPrompts.some((p) => p.includes("Yan binada inşaat gürültüsü") && p.includes('"count":2')), "analysis sees findings and counts");
-  await casaCard.getByRole("button", { name: "Detaylar ▾" }).click();
-  const casaDetails = casaCard.locator(".card-details");
-  await casaDetails.locator(".small-note", { hasText: "3 yorum incelendi (sitede 96)" }).waitFor();
-  await casaDetails.locator(".cd-list.pros li", { hasText: "Altında çok iyi bir İtalyan restoranı · 1 yorum" }).waitFor();
+  const casaRow = casaWin.locator(".ch-row", { has: board.locator(".ch-name", { hasText: "Casa Azul" }) });
+  await casaRow.locator(".ch-pc").click();
+  await casaRow.locator(".ch-detail").waitFor(); // the biggest pros and cons here; everything read is in its details
   // Everything read, with the evidence behind it, is one tap deeper.
-  await casaCard.getByRole("button", { name: "Tüm detaylar" }).click();
+  await casaRow.getByRole("button", { name: "Tüm detaylar" }).click();
   const casaBody = board.getByRole("dialog");
+  await casaBody.locator(".pc-line", { hasText: "Altında çok iyi bir İtalyan restoranı" }).first().waitFor();
   // A serious, recent problem costs points outright, and says so.
   await casaBody.locator(".pc-line.serious", { hasText: "Yan binada inşaat gürültüsü" }).getByText("puandan −8", { exact: false }).waitFor();
   const unverifiedPool = casaBody.locator(".pc-line.unverified", { hasText: "Çatı havuzu" });
@@ -2213,7 +2207,6 @@ try {
   await casaBody.locator("blockquote", { hasText: "The building work next to the flat was loud all day" }).first().waitFor();
   await board.screenshot({ path: `${out}/8a-flow-reading.png`, fullPage: true });
   await casaBody.getByRole("button", { name: "Kapat" }).click();
-  await casaCard.getByRole("button", { name: "Kapat ▴" }).click();
   console.log("✓ flow: pages read closely → verified findings with counts; invented quotes dropped; flagged to check, with evidence");
 
   // An Airbnb page saved without dates joins the same Porto nights (whatever the site), provisionally,
@@ -2233,20 +2226,24 @@ try {
     await new Promise((resolve) => (tx.oncomplete = resolve));
     await chrome.runtime.sendMessage({ type: "process" });
   });
-  const loftCard = board.locator('.stay-block.open .swipe-card[aria-label="Ribeira Loft"]');
-  await loftCard.waitFor({ timeout: 20000 });
+  // v11: it joins the Porto nights' window, priced for them for now ("geçici"), with a way back to its page with dates.
+  const portoNeedB = board.locator(".nd-card").filter({ has: board.locator(".nd-body h3", { hasText: /^Porto/ }) }).first();
+  await portoNeedB.waitFor({ timeout: 20000 });
+  await portoNeedB.locator(".nd-opts").click();
+  const loftRow = board.locator(".ch-sheet .ch-row", { has: board.locator(".ch-name", { hasText: "Ribeira Loft" }) });
+  await loftRow.waitFor({ timeout: 20000 });
   assert.equal(await board.getByText("tarih seçilmemiş").count(), 0, "the undated stay is not set aside");
-  await loftCard.locator(".sc-price", { hasText: "geçici" }).waitFor();
-  await loftCard.getByRole("button", { name: "Detaylar ▾" }).click();
-  await loftCard.locator(".card-details .cd-list.cons", { hasText: "Tarihsiz kaydedildi: bu gecelerin fiyatı belli değil" }).waitFor();
-  const reopen = await loftCard.getByRole("link", { name: "Tarihlerle aç ↗" }).getAttribute("href");
+  await loftRow.locator(".ch-prov", { hasText: "geçici" }).waitFor();
+  const reopen = await loftRow.getByRole("link", { name: "Tarihlerle aç ↗" }).getAttribute("href");
   assert.match(reopen, /airbnb\.com\.tr\/rooms\/777\?.*check_in=2026-10-08&check_out=2026-10-11&adults=2/);
   await board.screenshot({ path: `${out}/8c-flow-undated.png`, fullPage: true });
-  await loftCard.getByRole("button", { name: "Kapat ▴" }).click();
+  await board.keyboard.press("Escape");
+  await board.locator(".ch-sheet").waitFor({ state: "detached" });
   console.log("✓ flow: an undated Airbnb page joins the same nights' comparison, provisionally, with a link to add the dates");
 
   // Two stays → the engine ranks them and the worker asks Gemini for the written analysis.
-  await board.locator(".reco-line").getByRole("button", { name: "Karşılaştır →" }).click({ timeout: 20000 });
+  await portoNeedB.locator(".nd-opts").click();
+  await board.locator(".ch-sheet").getByRole("button", { name: "Karşılaştır", exact: true }).click({ timeout: 20000 });
   let compare = board.getByRole("dialog", { name: "Karşılaştırma" });
   await compare.getByRole("tab", { name: /Tablo/ }).click();
   await compare.getByText("Jardim Stay merkezde ve yorumları tutarlı", { exact: false }).waitFor({ timeout: 20000 });
@@ -2263,7 +2260,8 @@ try {
   assert.ok(chatPrompts[0].includes("decisions") && chatPrompts[0].includes("would_change_if"), "chat sees the engine's result");
   // Remembered as something the traveller said: a tag of the hero's "Tercihler" (scope and level in its window, removable there).
   await board.locator('.hx-ptag.strong[title="Fiyat · Çok önemli"]').waitFor();
-  await board.locator(".reco-line").getByRole("button", { name: "Karşılaştır →" }).click();
+  await portoNeedB.locator(".nd-opts").click();
+  await board.locator(".ch-sheet").getByRole("button", { name: "Karşılaştır", exact: true }).click();
   compare = board.getByRole("dialog", { name: "Karşılaştırma" });
   await compare.getByRole("tab", { name: /Tablo/ }).click();
   assert.equal(await compare.locator("tr", { hasText: "Fiyat" }).locator("select").inputValue(), "4");
