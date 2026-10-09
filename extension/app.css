@@ -3842,3 +3842,23 @@ a.ch-why { text-decoration: none; }
 .it-row:hover .it-foot .it-tools, .it-row:focus-within .it-foot .it-tools { opacity: 1; }
 @media (hover: none) { .it-row .it-foot .it-tools { opacity: 1; } }
 .cat-grid.cat-in-transport { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+
+/* A tour on the plan as its card: the photo big on the left (the tile's, kept), the name and what's next in the
+   middle, the price a person and the total on the right. */
+.ac-row { display: grid; grid-template-columns: 148px minmax(0, 1fr) auto; grid-template-rows: auto; align-items: stretch; gap: 0 16px; padding: 0; overflow: hidden; border-radius: 16px; min-height: 104px; }
+.ac-photo { position: relative; display: block; min-height: 104px; background: var(--v-tile); }
+.ac-row .ac-photo .ac-pic { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 0; object-fit: cover; background: none; grid-row: auto; }
+.ac-row .ac-photo .ac-pic.art { object-fit: contain; padding: 12px; mix-blend-mode: multiply; }
+.ac-main { display: grid; align-content: center; gap: 4px; min-width: 0; padding: 12px 0; }
+.ac-row .ac-t { grid-column: auto; font-size: 16px; }
+.ac-row .ac-m { grid-column: auto; }
+.ac-acts { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.ac-acts .pk-aldim { margin: 0; }
+.ac-side { display: grid; align-content: space-between; justify-items: end; gap: 8px; padding: 10px 14px 12px 0; }
+.ac-tools { display: inline-flex; align-items: center; gap: 2px; }
+.ac-row .ac-price-big { margin: 0; }
+.ac-row .ac-price-big b { font-size: 20px; }
+@media (max-width: 560px) {
+  .ac-row { grid-template-columns: 96px minmax(0, 1fr); }
+  .ac-side { grid-column: 1 / -1; grid-row: auto; justify-items: start; padding: 0 12px 12px; display: flex; justify-content: space-between; align-items: center; }
+}
