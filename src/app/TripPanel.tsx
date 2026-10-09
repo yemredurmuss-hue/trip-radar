@@ -801,6 +801,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       )}
       {view === "board" ? (
         <Pano
+          tripId={trip.id}
           items={items}
           decisions={decisions}
           focus={panoFocus}

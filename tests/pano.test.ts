@@ -1,6 +1,6 @@
 // The Pano (v11 phase 5, lib/pano.ts): what's on it, its tabs and state filter, the sort, the groups by need.
 import { describe, expect, it } from "vitest";
-import { inCat, inState, panoCounts, panoEntries, panoGroups, sortEntries } from "../src/lib/pano";
+import { inCat, inState, matchesQuery, panoCounts, panoEntries, panoGroups, sortEntries } from "../src/lib/pano";
 import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -60,5 +60,21 @@ describe("the Pano", () => {
       [3, "Gion Machiya Evi"],
       [1, null],
     ]);
+  });
+});
+
+describe("matchesQuery (Kayıtlarda ara)", () => {
+  const entry = (over: Partial<Item>) => panoEntries([makeItem({ category: "stay", status: "saved", ...over } as never)])[0];
+  it("finds a record by any of its words, case and Turkish dots ignored", () => {
+    const e = entry({ name: "Jardim Stay", city: "Porto", provider: "Booking.com" } as Partial<Item>);
+    expect(matchesQuery(e, "jardim")).toBe(true);
+    expect(matchesQuery(e, "PORTO booking")).toBe(true);
+    expect(matchesQuery(e, "lizbon")).toBe(false);
+    expect(matchesQuery(e, "  ")).toBe(true);
+  });
+  it("folds ı/İ and accents", () => {
+    const e = entry({ name: "Lisboa Loft", city: "Lizbon", location: { area: "Alfama" } } as unknown as Partial<Item>);
+    expect(matchesQuery(e, "LİZBON")).toBe(true);
+    expect(matchesQuery(e, "alfama loft")).toBe(true);
   });
 });

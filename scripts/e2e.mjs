@@ -1648,6 +1648,25 @@ try {
   await pano.locator('.pn-cats [data-cat="stay"]').click();
   assert.ok((await pano.locator(".pn-group").count()) >= 1, "stays grouped by need");
   await app.screenshot({ path: `${out}/30b-pano-stays.png` });
+  // v11: Kartlar | Karşılaştır — a need's options side by side (fit, the same rows for all, what was asked, ✓ ✗ ?).
+  await pano.locator(".pn-view button", { hasText: "Karşılaştır" }).click();
+  const panoTable = pano.locator(".pn-table").first();
+  await panoTable.waitFor();
+  assert.ok((await panoTable.locator("thead th .pn-tn").count()) >= 2, "two or more options side by side");
+  assert.ok((await panoTable.locator("tbody th").allInnerTexts()).includes("Fiyat"));
+  await app.screenshot({ path: `${out}/30d-pano-compare.png` });
+  await pano.locator(".pn-view button", { hasText: "Kartlar" }).click();
+  // "Kayıtlarda ara": every word somewhere in the record; nothing found says so.
+  await pano.getByRole("searchbox", { name: "Kayıtlarda ara" }).fill("jardim");
+  assert.deepEqual(await pano.locator(".pn-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Jardim Stay"]);
+  await pano.getByRole("searchbox", { name: "Kayıtlarda ara" }).fill("");
+  // "+ Link ekle": a form for a link; what isn't one says so.
+  await pano.locator(".pn-addlink").click();
+  await pano.locator(".pn-linkform input").fill("bir otel");
+  await pano.locator(".pn-linkgo").click();
+  await pano.locator(".pn-linkerr").waitFor();
+  await pano.locator(".pn-linkno").click();
+  await pano.locator(".pn-linkform").waitFor({ state: "detached" });
   // The heart: a like, under Beğenilenler; taken back, gone again.
   const panoFirst = pano.locator(".pn-card").first();
   const likedName = await panoFirst.getAttribute("aria-label");

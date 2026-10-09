@@ -141,3 +141,24 @@ export function needTitleOf(item: Item): string {
   return [cardKindLabel(cardKind(item)), item.city ?? item.country, when].filter(Boolean).join(" · ");
 }
 
+
+/**
+ * v11 "Kayıtlarda ara": every word typed is somewhere in the record — its name, city, area, the site it's from, its
+ * need ("Porto · 8–11 Eki") — case and Turkish dots ignored. An empty search keeps everything.
+ */
+export function matchesQuery(entry: PanoEntry, query: string): boolean {
+  const fold = (s: string) => s.toLocaleLowerCase("tr").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ı/g, "i");
+  const words = fold(query).split(/\s+/).filter(Boolean);
+  if (!words.length) return true;
+  const { item } = entry;
+  const hay = fold([item.name, item.city, item.location.area, item.provider, item.url ? hostOf(item.url) : null, needTitleOf(item)].filter(Boolean).join(" "));
+  return words.every((w) => hay.includes(w));
+}
+
+const hostOf = (url: string): string | null => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+};
