@@ -79,19 +79,19 @@ section.step { display: flex; flex-direction: column; gap: 16px; scroll-margin-t
 .vc { width: 352px; text-align: left; flex: none; color: #1c1a33; font-family: var(--font); cursor: default; }
 .vc * { box-sizing: border-box; }
 .vc-pic { position: relative; height: 214px; border-radius: 22px; background-size: cover; background-position: center; overflow: hidden; box-shadow: 0 1px 2px rgba(28, 26, 51, .06), 0 18px 40px -22px rgba(28, 26, 51, .45); }
-.vc-pic::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20, 16, 40, 0) 42%, rgba(20, 16, 40, .66) 100%); }
+.vc.b .vc-pic::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20, 16, 40, 0) 42%, rgba(20, 16, 40, .66) 100%); }
 .vc-pill { position: absolute; right: 12px; top: 12px; z-index: 2; padding: 5px 12px; border-radius: 99px; background: rgba(255, 255, 255, .92); color: #5b45e0; font-size: 12.5px; font-weight: 650; }
-.vc-title { position: absolute; left: 18px; right: 18px; bottom: 38px; z-index: 2; color: #fff; }
+.vc-title { position: absolute; left: 18px; right: 18px; bottom: 18px; z-index: 2; color: #fff; }
 .vc-title b { display: block; font-size: 28px; letter-spacing: -.025em; line-height: 1.08; font-weight: 800; text-shadow: 0 1px 14px rgba(0, 0, 0, .3); }
 .vc-title span { display: block; margin-top: 3px; font-size: 14px; font-weight: 550; opacity: .94; }
-.vc-sum { position: relative; z-index: 3; margin: -24px 14px 0; display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 16px; background: #fff; box-shadow: 0 1px 2px rgba(28, 26, 51, .06), 0 14px 30px -18px rgba(28, 26, 51, .4); }
-.vc-sum .faces { display: inline-flex; flex: none; } .vc-sum .faces i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12.5px; font-weight: 700; color: #fff; background: #5b45e0; box-shadow: 0 0 0 2px #fff; } .vc-sum .faces i + i { margin-left: -8px; } .vc-sum .faces i.s { background: #1d8577; }
-.vc-sum .txt { flex: 1; min-width: 0; font-size: 14.5px; font-weight: 600; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .vc-sum .txt small { display: block; font-size: 12.5px; font-weight: 500; color: #6b6790; overflow: hidden; text-overflow: ellipsis; }
-.vc-sum .go2 { color: #8d89a8; font-size: 16px; transform: rotate(-90deg); }
+.vc-body { padding: 13px 4px 0; display: flex; flex-direction: column; gap: 3px; }
+.vc-body b { font-size: 21px; letter-spacing: -.02em; line-height: 1.15; font-weight: 750; }
+.vc-body span { font-size: 14.5px; color: #6b6790; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vc-body span em { font-style: normal; font-weight: 650; color: #5b45e0; }
+.vc.b .vc-body { padding-top: 11px; }
 .vc.draft .vc-pic { background: repeating-linear-gradient(135deg, rgba(91, 69, 224, .07) 0 10px, transparent 10px 20px), #ece8ff; box-shadow: none; border: 1.5px dashed #b9b5cf; }
 .vc.draft .vc-pic::after { display: none; }
-.vc.draft .vc-title { color: rgba(91, 69, 224, .5); } .vc.draft .vc-title b { text-shadow: none; font-size: 32px; } .vc.draft .vc-pill { background: #fff; border: 1px dashed #b9b5cf; }
-.vc.draft .vc-sum { box-shadow: 0 1px 2px rgba(28, 26, 51, .05), 0 12px 26px -18px rgba(28, 26, 51, .3); } .vc.draft .vc-sum .txt b { color: #5b45e0; }
+.vc.draft .vc-pill { background: #fff; border: 1px dashed #b9b5cf; }
 .vc-pic { transition: transform .5s cubic-bezier(.16, 1, .3, 1); } .vc:hover .vc-pic { transform: translateY(-3px); }
 .kartstrip { display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; padding: 36px 18px 34px; border-radius: 22px; background: linear-gradient(180deg, #ebe4ff, #e1d6ff); box-shadow: var(--pg-shadow); }
 .toggle2 { display: inline-flex; padding: 4px; border-radius: 99px; background: rgba(255, 255, 255, .8); font: 650 14px var(--font); color: #6b6790; }
@@ -320,8 +320,8 @@ section.step { display: flex; flex-direction: column; gap: 16px; scroll-margin-t
         <div class="chips"><span class="chip"><svg class="i"><use href="#i-spark"/></svg>Yeni gezi planla</span><span class="chip"><svg class="i"><use href="#i-globe"/></svg>Bana ilham ver</span><span class="chip"><svg class="i"><use href="#i-car"/></svg>Yol gezisi</span><span class="chip"><svg class="i"><use href="#i-clock"/></svg>Son dakika kaçamağı</span><span class="chip"><svg class="i"><use href="#i-users"/></svg>Paylaşılan geziye katıl</span></div>
         <div class="trips"><h2>Seyahatlerim</h2><p>Şimdiye kadar 2 gezi planladın</p>
           <div class="cards">
-            <div class="vc"><div class="vc-pic" style="background-image:url(img/foto-ubud.jpg)"><span class="vc-pill">330 gün kaldı</span><div class="vc-title"><b>Bali Gezisi</b><span>15–24 Eylül · 10 gün</span></div></div><div class="vc-sum"><span class="faces"><i>E</i><i class="s">S</i></span><span class="txt">Sabine'yle · Romantik, Lüks<small>Ubud, Uluwatu, Seminyak</small></span><svg class="i go2"><use href="#i-chev"/></svg></div></div>
-            <div class="vc"><div class="vc-pic" style="background-image:url(img/foto-porto.jpg)"><span class="vc-pill">3 gün kaldı</span><div class="vc-title"><b>Portekiz</b><span>12–18 Ekim · 7 gün</span></div></div><div class="vc-sum"><span class="faces"><i>E</i><i class="s">S</i></span><span class="txt">Sabine'yle · Şehir, Kültür<small>Porto, Lizbon</small></span><svg class="i go2"><use href="#i-chev"/></svg></div></div>
+            <div class="vc"><div class="vc-pic" style="background-image:url(img/foto-ubud.jpg)"><span class="vc-pill">330 gün kaldı</span></div><div class="vc-body"><b>Bali Gezisi</b><span>15–24 Eylül · 10 gün · Sabine'yle</span></div></div>
+            <div class="vc"><div class="vc-pic" style="background-image:url(img/foto-porto.jpg)"><span class="vc-pill">3 gün kaldı</span></div><div class="vc-body"><b>Portekiz</b><span>12–18 Ekim · 7 gün · Sabine'yle</span></div></div>
           </div></div>
         <div class="pop" id="s1cur" style="right:104px;top:66px;width:170px"><ul><li>₺ TRY</li><li class="sel">€ EUR <svg class="i"><use href="#i-check"/></svg></li><li>$ USD</li><li>£ GBP</li></ul></div>
         <div class="pop" id="s1menu" style="right:32px;top:66px;width:300px"><div class="me"><div class="mini-av"><svg class="i"><use href="#i-user"/></svg></div><div><b>Emre Durmuş</b><span>Asistan: Claude Sonnet 5.5</span></div></div>
@@ -335,20 +335,26 @@ section.step { display: flex; flex-direction: column; gap: 16px; scroll-margin-t
   </section>
 
   <section class="step" id="kart">
-    <span class="when">Seyahatlerim kartı</span>
-    <h2>Seyahat kartı: önce fotoğraf, altında küçük bir özet</h2>
-    <p class="muted">Fotoğraf kartın kendisi; üstünde gezinin adı ve günleri. Fotoğrafın altına oturan küçük beyaz özet, kimle gittiğini ve gezinin havasını tek satırda söylüyor. Rezerve ve seçildi sayıları, çubuklar kartta yok; onlar panoda.</p>
+    <span class="when">Seyahatlerim kartı · ikinci tur</span>
+    <h2>Seyahat kartı: fotoğraf, başlık, tek satır bilgi</h2>
+    <p class="muted">Beyaz özet paneli kalktı. Fotoğrafın altında yalnız bir başlık ve altında tek satır mini bilgi var: tarih, gün sayısı ve kimle. Başlığın yeri için iki seçenek çizdim.</p>
+    <h3>A · Başlık fotoğrafın altında (önerim)</h3>
     <div class="kartstrip">
-      <div class="vc"><div class="vc-pic" style="background-image:url(img/foto-ubud.jpg)"><span class="vc-pill">330 gün kaldı</span><div class="vc-title"><b>Bali Gezisi</b><span>15–24 Eylül · 10 gün</span></div></div><div class="vc-sum"><span class="faces"><i>E</i><i class="s">S</i></span><span class="txt">Sabine'yle · Romantik, Lüks<small>Ubud, Uluwatu, Seminyak</small></span><svg class="i go2"><use href="#i-chev"/></svg></div></div>
-      <div class="vc"><div class="vc-pic" style="background-image:url(img/foto-porto.jpg)"><span class="vc-pill">3 gün kaldı</span><div class="vc-title"><b>Portekiz</b><span>12–18 Ekim · 7 gün</span></div></div><div class="vc-sum"><span class="faces"><i>E</i><i class="s">S</i></span><span class="txt">Sabine'yle · Şehir, Kültür<small>Porto, Lizbon</small></span><svg class="i go2"><use href="#i-chev"/></svg></div></div>
-      <div class="vc draft"><div class="vc-pic"><span class="vc-pill">Taslak</span><div class="vc-title"><b>Japonya</b></div></div><div class="vc-sum"><span class="txt"><b>Devam et</b><small>1/6 bilgi · yarıda kaldı</small></span><svg class="i go2"><use href="#i-chev"/></svg></div></div>
+      <div class="vc"><div class="vc-pic" style="background-image:url(img/foto-ubud.jpg)"><span class="vc-pill">330 gün kaldı</span></div><div class="vc-body"><b>Bali Gezisi</b><span>15–24 Eylül · 10 gün · Sabine'yle</span></div></div>
+      <div class="vc"><div class="vc-pic" style="background-image:url(img/foto-porto.jpg)"><span class="vc-pill">3 gün kaldı</span></div><div class="vc-body"><b>Portekiz</b><span>12–18 Ekim · 7 gün · Sabine'yle</span></div></div>
+      <div class="vc draft"><div class="vc-pic"><span class="vc-pill">Taslak</span></div><div class="vc-body"><b>Japonya</b><span>1/6 bilgi · yarıda kaldı · <em>Devam et</em></span></div></div>
+    </div>
+    <h3>B · Başlık fotoğrafın üstünde, altta yalnız bilgi satırı</h3>
+    <div class="kartstrip">
+      <div class="vc b"><div class="vc-pic" style="background-image:url(img/foto-ubud.jpg)"><span class="vc-pill">330 gün kaldı</span><div class="vc-title"><b>Bali Gezisi</b><span>15–24 Eylül · 10 gün</span></div></div><div class="vc-body"><span>Sabine'yle · Ubud, Uluwatu, Seminyak</span></div></div>
+      <div class="vc b"><div class="vc-pic" style="background-image:url(img/foto-porto.jpg)"><span class="vc-pill">3 gün kaldı</span><div class="vc-title"><b>Portekiz</b><span>12–18 Ekim · 7 gün</span></div></div><div class="vc-body"><span>Sabine'yle · Porto, Lizbon</span></div></div>
     </div>
     <div class="note"><b>Karttaki her şey nereden gelir</b><ul>
-      <li>Fotoğraf: gezinin kendi fotoğrafı (panodakiyle aynı). Yoksa lavanta zemin.</li>
-      <li>Ad ve gün: "Bali Gezisi", altında tarih ve gün sayısı; sağ üstte kalan gün.</li>
-      <li>Özet satırı: kimle (yüzler ve ad: "Sabine'yle"; yalnızsa "Yalnız", kalabalıksa "4 kişi"), gezinin havası (en çok iki tarz sözcüğü), altında duraklar (en çok üç).</li>
-      <li>Boş olan yazılmaz: tarz yoksa yalnız kimle; yer yoksa "Yerler gezi dolunca gelir".</li>
-      <li>Taslak aynı dilde ama kesik çizgili; "Devam et" ve kaç bilgi kaldığını söyler.</li>
+      <li>Fotoğraf: gezinin kendi fotoğrafı (panodakiyle aynı); yoksa lavanta zemin. Fotoğrafta yalnız kalan gün var.</li>
+      <li><b>A:</b> başlık gezinin adı; altındaki tek satır: tarih · gün sayısı · kimle ("Sabine'yle", yalnızsa "Yalnız", kalabalıksa "4 kişi"). Satır sığmazsa sonu "…" ile biter, ikinci satıra inmez.</li>
+      <li><b>B:</b> başlık ve tarih fotoğrafın üstünde; altta yalnız "kimle · duraklar" satırı.</li>
+      <li>Rezerve ve seçildi sayıları, tarz sözcükleri, yüzler ve çubuk kartta yok; onlar panoda.</li>
+      <li>Taslak aynı dilde ama kesik çizgili; satırda kaç bilgi kaldığı ve "Devam et".</li>
       <li>Üstüne gelince fotoğraf hafifçe kalkar; dokununca gezi açılır. Hareketi azalt açıksa kalkmaz.</li></ul></div>
   </section>
 
@@ -474,7 +480,7 @@ section.step { display: flex; flex-direction: column; gap: 16px; scroll-margin-t
       <div><b>1 · Oluştur: tek kelime, her adımda basılabilir</b><p class="muted">Düğme hep "Oluştur" diyor; elde ne olduğu altında yazıyor. Hiçbir şey belli değilken de basılıyor, ama yer olmadan gezi açılamayacağı için sohbet "önce nereye gittiğini söyle" diyor. Kabul mü?</p></div>
       <div><b>2 · Soru sırası (K4)</b><p class="muted">Gün → ne istediğin → rota → kimle → nereden. Bugünkü sıra tam tersi: nereden → kimle → gün. Yeni sırayı onaylıyor musun?</p></div>
       <div><b>3 · Ana ekran arka planı</b><p class="muted">A · Rota (önerim), B · Aurora, C · Topografya. Hangisi?</p></div>
-      <div><b>4 · Seyahat kartı</b><p class="muted">Fotoğraf önde, altında kimle ve havası. Böyle mi? Özet satırına eklemek ya da çıkarmak istediğin var mı?</p></div>
+      <div><b>4 · Seyahat kartı</b><p class="muted">Altta yalnız başlık ve tek satır bilgi. A (başlık altta) mı, B (başlık fotoğrafta) mı? Satırda başka ne olsun ya da olmasın?</p></div>
       <div><b>5 · Fotoğraf sahnesi</b><p class="muted">Kutu kalkıyor, fotoğraflar sayfanın üstünde süzülüyor, harita ince çizgi olarak kalıyor. Böyle mi?</p></div>
       <div><b>6 · Sağ taraf için bir iade</b><p class="muted">Koda gece eklemiştim: sağda "Plan taslağı" kartları ve önizlemenin kontrol listesinin üstüne alınması. Çizimde yok. Öneri: ikisini de kaldırıp bugünkü sıraya (kontrol listesi, Oluştur, önizleme) dönmek.</p></div>
       <div><b>7 · Pıt pıt sözlüğü</b><p class="muted">Beş hareket ve süreleri uygun mu?</p></div>
