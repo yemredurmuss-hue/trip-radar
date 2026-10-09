@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Giriş Akışı Üçüncü Tur</title>
+<style>
+:root {
+  --pg-bg: #f1eef9; --pg-card: #ffffff; --pg-ink: #1c1a33; --pg-muted: #625e86; --pg-line: #e3dfef; --pg-accent: #5b45e0; --pg-soft: #ece8ff;
+  --pg-shadow: 0 1px 2px rgba(28, 26, 51, .06), 0 18px 40px -24px rgba(28, 26, 51, .35);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --pg-bg: #12111a; --pg-card: #1b1a26; --pg-ink: #edebfa; --pg-muted: #a9a5c8; --pg-line: #2d2b3d; --pg-accent: #a596ff; --pg-soft: #29254a; --pg-shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 40px -24px rgba(0,0,0,.8); }
+}
+:root[data-theme="dark"] { --pg-bg: #12111a; --pg-card: #1b1a26; --pg-ink: #edebfa; --pg-muted: #a9a5c8; --pg-line: #2d2b3d; --pg-accent: #a596ff; --pg-soft: #29254a; --pg-shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 40px -24px rgba(0,0,0,.8); }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--pg-bg); color: var(--pg-ink); font: 16px/1.55 var(--font); padding: 36px 20px 90px; }
+.wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 64px; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(30px, 5vw, 48px); line-height: 1.06; letter-spacing: -.03em; font-weight: 800; }
+h2 { font-size: clamp(23px, 3vw, 29px); letter-spacing: -.02em; font-weight: 750; }
+h3 { font-size: 17px; letter-spacing: -.01em; font-weight: 700; }
+p { margin: 0; max-width: 72ch; }
+.muted { color: var(--pg-muted); }
+.lede { font-size: 18px; color: var(--pg-muted); }
+header, section.step { display: flex; flex-direction: column; gap: 14px; }
+section.step { scroll-margin-top: 76px; }
+.when { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-accent); }
+.keep, .note { background: var(--pg-card); border-radius: 16px; padding: 16px 20px; box-shadow: var(--pg-shadow); font-size: 15px; display: flex; flex-direction: column; gap: 6px; }
+.keep ul, .note ul { margin: 4px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+nav.steps { position: sticky; top: 8px; z-index: 20; display: flex; gap: 6px; overflow-x: auto; padding: 8px; border-radius: 16px; background: color-mix(in srgb, var(--pg-card) 88%, transparent); backdrop-filter: blur(10px); box-shadow: var(--pg-shadow); }
+nav.steps a { flex: none; padding: 8px 14px; border-radius: 99px; color: var(--pg-ink); text-decoration: none; font-weight: 650; font-size: 14.5px; }
+nav.steps a:hover, nav.steps a:focus-visible { background: var(--pg-soft); outline: none; }
+
+/* the product's screens (light, as shipped) */
+.fit { position: relative; width: 100%; aspect-ratio: 1280 / 720; border-radius: 18px; overflow: hidden; box-shadow: var(--pg-shadow); background: #f6f3ff; color: #1c1a33; container-type: inline-size; }
+.screen { position: absolute; inset: 0; width: 1280px; height: 720px; transform-origin: 0 0; transform: scale(calc(100cqw / 1280px)); display: flex; font-family: var(--font); }
+.i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* chat column */
+.lchat { width: 470px; padding: 22px 26px 18px; display: flex; flex-direction: column; background: #fff; border-right: 1px solid #ebe7f6; }
+.lc-top { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #f0edf8; }
+.lc-back { font: 600 14px var(--font); color: #625e86; display: flex; align-items: center; gap: 4px; }
+.lc-title { font: 700 17px var(--display); margin-left: auto; }
+.lc-msgs { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 16px 0 8px; overflow: hidden; }
+.ub { align-self: flex-end; max-width: 80%; background: #221b3a; color: #fff; border-radius: 18px 18px 4px 18px; padding: 10px 15px; font-size: 15px; line-height: 1.4; }
+.ai { max-width: 92%; background: #f4f2fb; border-radius: 18px 18px 18px 4px; padding: 11px 15px; font-size: 15px; line-height: 1.45; }
+.ai .q { display: block; margin-top: 7px; font-weight: 700; }
+.ai .why { display: block; font-weight: 500; font-size: 13.5px; color: #625e86; margin-top: 1px; }
+.ai.late { box-shadow: inset 3px 0 0 #5b45e0; }
+.think { align-self: flex-start; display: flex; align-items: center; gap: 6px; font-size: 13px; color: #625e86; padding: 2px 6px; }
+.think i { width: 5px; height: 5px; border-radius: 50%; background: #5b45e0; opacity: .5; }
+.chs { display: flex; flex-wrap: wrap; gap: 7px; }
+.ch { font: 600 14px var(--font); padding: 7px 14px; border: 1px solid #d9d6e6; border-radius: 99px; background: #fff; }
+.ch.pri { background: #5b45e0; color: #fff; border-color: #5b45e0; }
+.skip { font: 600 14px var(--font); color: #625e86; padding: 7px 8px; }
+.cmp { display: flex; align-items: center; justify-content: space-between; border: 1px solid #d9d6e6; border-radius: 99px; padding: 8px 8px 8px 18px; color: #8a86a6; font-size: 15px; }
+.send { width: 32px; height: 32px; border-radius: 50%; background: #221b3a; color: #fff; display: grid; place-items: center; }
+
+/* right side: ONE panel */
+.rp { flex: 1; padding: 22px 26px; display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+.panel { background: #fff; border-radius: 22px; box-shadow: 0 1px 2px rgba(28,26,51,.06), 0 16px 36px -22px rgba(28,26,51,.35); overflow: hidden; display: flex; flex-direction: column; }
+.strip { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 3px; height: 168px; background: #fff; }
+.strip div { position: relative; background-size: cover; background-position: center; }
+.strip div::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(20,16,40,.55)); }
+.strip span { position: absolute; left: 10px; bottom: 7px; z-index: 1; color: #fff; font: 650 12.5px var(--font); }
+.ph-h { display: flex; align-items: center; gap: 14px; padding: 14px 20px 6px; }
+.ring { position: relative; width: 52px; height: 52px; flex: none; }
+.ring svg { width: 52px; height: 52px; }
+.ring .bg { fill: none; stroke: #ece8ff; stroke-width: 6; }
+.ring .fg { fill: none; stroke: #5b45e0; stroke-width: 6; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; }
+.ring span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #625e86; }
+.ring b { color: #1c1a33; font-size: 15px; }
+.ph-t { font: 750 18px var(--display); letter-spacing: -.01em; }
+.ph-s { font-size: 13px; color: #625e86; }
+.rows { list-style: none; margin: 0; padding: 4px 12px 12px; display: flex; flex-direction: column; }
+.row { display: flex; gap: 12px; padding: 9px 8px; border-radius: 12px; align-items: flex-start; }
+.row + .row { border-top: 1px solid #f3f0fa; }
+.chk { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #d9d6e6; flex: none; margin-top: 2px; display: grid; place-items: center; color: #fff; }
+.row.done .chk { background: #5b45e0; border-color: #5b45e0; }
+.row.done .chk .i { width: 13px; height: 13px; stroke-width: 2.6; }
+.row.ask { background: #f6f3ff; }
+.row.ask .chk { border-color: #5b45e0; box-shadow: 0 0 0 4px #ece8ff; }
+.rl { font: 700 11.5px var(--font); letter-spacing: .07em; color: #8a86a6; }
+.rv { font-size: 15px; font-weight: 600; line-height: 1.35; }
+.rv small { display: block; font-weight: 500; font-size: 13px; color: #625e86; margin-top: 1px; }
+.chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
+.chips b { font: 650 12.5px var(--font); padding: 3px 10px; border-radius: 99px; }
+.read { display: block; height: 12px; width: 150px; border-radius: 6px; background: linear-gradient(90deg, #ece8ff, #f8f6ff, #ece8ff); margin-top: 4px; }
+.sugg { display: flex; align-items: center; gap: 8px; padding: 10px 20px 14px; font-size: 13px; color: #625e86; border-top: 1px solid #f3f0fa; }
+.gen { background: #221b3a; color: #fff; border-radius: 20px; padding: 14px 18px; display: flex; flex-direction: column; gap: 6px; }
+.gen button { all: unset; background: #5b45e0; color: #fff; border-radius: 99px; text-align: center; padding: 11px; font: 700 16px var(--font); display: flex; align-items: center; justify-content: center; gap: 8px; }
+.gen p { font-size: 13px; color: #c9c3e6; }
+
+/* the home */
+.home { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; background: radial-gradient(120% 90% at 50% 0%, #fff, #f1ecff 60%, #e9e2ff); }
+.home h1 { font-size: 40px; font-weight: 800; letter-spacing: -.03em; text-align: center; }
+.hbox { width: 640px; background: #fff; border-radius: 26px; box-shadow: 0 1px 2px rgba(28,26,51,.06), 0 20px 44px -22px rgba(28,26,51,.4); padding: 18px 20px 16px; display: flex; flex-direction: column; gap: 14px; }
+.hbox .ph { color: #8a86a6; font-size: 17px; }
+.hbox .hf { display: flex; justify-content: space-between; align-items: center; }
+.hstarts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; width: 760px; }
+.hs { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #e3dfef; border-radius: 99px; padding: 9px 16px; font: 600 14.5px var(--font); box-shadow: 0 6px 16px -12px rgba(28,26,51,.4); }
+.hs.hot { border-color: #5b45e0; background: #f6f3ff; color: #4a36c9; }
+.hs.off { opacity: .5; }
+
+/* flows (small frames) */
+.flows { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.flow { background: var(--pg-card); border-radius: 18px; padding: 16px; box-shadow: var(--pg-shadow); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.flow h3 { display: flex; align-items: center; gap: 8px; }
+.flow h3 .i { color: var(--pg-accent); }
+.mini { background: #f4f2fb; color: #1c1a33; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.4; }
+.mini .ai2 { background: #fff; border-radius: 12px; padding: 8px 11px; }
+.mini .ai2 b { display: block; }
+.mini .ai2 span { display: block; color: #625e86; font-size: 12.5px; }
+.mini .chs { gap: 5px; }
+.mini .ch { font-size: 12.5px; padding: 4px 10px; }
+.dest { display: grid; grid-template-columns: 78px 1fr; gap: 10px; background: #fff; border-radius: 12px; overflow: hidden; align-items: stretch; }
+.dest .im { background-size: cover; background-position: center; min-height: 64px; }
+.dest div:last-child { padding: 7px 10px 7px 0; }
+.dest b { font-size: 14px; }
+.dest span { display: block; color: #625e86; font-size: 12.5px; line-height: 1.35; }
+.tag { align-self: flex-start; font: 700 11.5px var(--font); letter-spacing: .05em; text-transform: uppercase; padding: 3px 10px; border-radius: 99px; background: var(--pg-soft); color: var(--pg-accent); }
+.tag.warn { background: #fff0d6; color: #8a5a00; }
+
+/* trip cards */
+.tcards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.vc { position: relative; aspect-ratio: 4 / 3; border-radius: 20px; overflow: hidden; background-size: cover; background-position: center; color: #fff; box-shadow: var(--pg-shadow); }
+.vc::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 38%, rgba(22,40,32,.9)); }
+.vc .who { position: absolute; left: 12px; top: 12px; z-index: 1; display: flex; }
+.vc .who i { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; margin-left: -8px; display: grid; place-items: center; font: 700 12px var(--font); font-style: normal; color: #fff; }
+.vc .who i:first-child { margin-left: 0; }
+.vc .vp { position: absolute; right: 12px; top: 12px; z-index: 1; background: rgba(255,255,255,.92); color: #1c1a33; border-radius: 99px; padding: 4px 11px; font: 700 12.5px var(--font); }
+.vc .foot { position: absolute; left: 14px; right: 14px; bottom: 12px; z-index: 1; }
+.vc .foot b { display: block; font: 800 24px/1.1 var(--display); letter-spacing: -.02em; }
+.vc .foot span { font-size: 13.5px; opacity: .92; }
+
+.decide { background: var(--pg-card); border-radius: 18px; padding: 8px 22px; box-shadow: var(--pg-shadow); }
+.decide > div { padding: 16px 0; display: flex; flex-direction: column; gap: 6px; }
+.decide > div + div { border-top: 1px solid var(--pg-line); }
+.decide b { font-family: var(--display); font-size: 17px; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opts span { font-size: 14px; padding: 5px 12px; border-radius: 99px; background: var(--pg-soft); }
+.opts span.rec { background: var(--pg-accent); color: #fff; }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 860px) { .flows, .tcards, .pair { grid-template-columns: minmax(0, 1fr); } body { padding-inline: 16px; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16v-5l2-5h10l2 5v5M3 16h18M7 19v-3M17 19v-3M7 12h10"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M16 4.5a3.5 3.5 0 0 1 0 6.5M18.5 14c2 .6 3 2.2 3 4.5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></symbol>
+</svg>
+
+<div class="wrap">
+  <header>
+    <div class="when">Giriş akışı · üçüncü tur</div>
+    <h1>Tek panel, canlı sohbet, çalışan öneriler</h1>
+    <p class="lede">Dört revizyon, dördü de burada. Onay vermeden kod yazmıyorum; sonda kararlar var.</p>
+    <div class="keep">
+      <b>Dokunulmayanlar (önceki turlarda onayladıkların)</b>
+      <ul>
+        <li>Oluştur tek kelime, her adımda basılabilir. K4 soru sırası: gün, ne istiyorsun, rota, kimle, nereden en son.</li>
+        <li>Ana ekran: Rota arka planı, poster seyahat kartı. Oluşturma ekranı: kutusuz fotoğraflar, pıt pıt hareketleri.</li>
+        <li>Pano ve planlama ekranına dokunulmuyor.</li>
+      </ul>
+    </div>
+  </header>
+
+  <nav class="steps" aria-label="Adımlar">
+    <a href="#panel">1 · Tek panel</a><a href="#sohbet">2 · Canlı sohbet</a><a href="#oneri">3 · Ana ekran önerileri</a><a href="#kart">4 · Kartlarda yüzler</a><a href="#onay">Onay</a>
+  </nav>
+
+  <!-- 1 -->
+  <section class="step" id="panel">
+    <div class="when">Revizyon 1</div>
+    <h2>Önizleme ile kontrol listesi tek panel oldu</h2>
+    <p class="muted">Bugün sağda iki ayrı kutu var ve aynı şeyi iki kez söylüyorlar: ülke, tarih, kimle, rota. Şimdi tek kart: üstte fotoğraflar, altında altı satır. Her satır hem durumu (tamam mı) hem ayrıntıyı taşıyor.</p>
+    <div class="fit"><div class="screen">
+      <div class="lchat">
+        <div class="lc-top"><div class="lc-back"><svg class="i"><use href="#i-back"/></svg>Seyahatlerim</div><div class="lc-title">Bali · yeni gezi</div></div>
+        <div class="lc-msgs">
+          <div class="ub">Sevgilimle Bali'ye 10 gün gideceğiz, eylülde</div>
+          <div class="ai">Bali'de 10 gün, sevgilinle: güzel bir ikili. Ubud'un yeşili ve Uluwatu'nun uçurumları iyi gider.<span class="q">Eylülde hangi gün başlıyorsunuz?<span class="why">Uçuşlar, oteller, eSIM ve sigorta o güne yerleşsin.</span></span></div>
+          <div class="chs"><span class="ch">Ayın başı</span><span class="ch">Ortası</span><span class="ch">Sonu</span><span class="ch">Tarih seç</span><span class="skip">Atla</span></div>
+        </div>
+        <div class="cmp"><span>Ya da kendin yaz…</span><span class="send"><svg class="i"><use href="#i-up"/></svg></span></div>
+      </div>
+      <div class="rp">
+        <div class="panel">
+          <div class="strip">
+            <div style="background-image:url(img/foto-ubud.jpg)"><span>Ubud</span></div>
+            <div style="background-image:url(img/foto-uluwatu.jpg)"><span>Uluwatu</span></div>
+            <div style="background-image:url(img/foto-romantikaksam.jpg)"><span>Romantik akşam</span></div>
+            <div style="background-image:url(img/foto-yerellezzetler.jpg)"><span>Yerel lezzetler</span></div>
+          </div>
+          <div class="ph-h">
+            <div class="ring"><svg viewBox="0 0 64 64"><circle class="bg" cx="32" cy="32" r="26"/><circle class="fg" cx="32" cy="32" r="26" stroke-dasharray="55 164"/></svg><span><b>2</b>/6</span></div>
+            <div><div class="ph-t">Gezin şekilleniyor</div><div class="ph-s">6 bilgiden 2'si tamam</div></div>
+          </div>
+          <ol class="rows">
+            <li class="row done"><span class="chk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="rl">NEREYE</div><div class="rv">Bali · Endonezya 🇮🇩<small>Rupiah · Endonezce · priz C/F</small></div></span></li>
+            <li class="row"><span class="chk"></span><span><div class="rl">NEREDEN</div><div class="rv" style="color:#8a86a6;font-weight:500">En sonda soracağım<small>Uçuşlar buna göre aranır</small></div></span></li>
+            <li class="row done"><span class="chk"><svg class="i"><use href="#i-check"/></svg></span><span><div class="rl">KİMLE</div><div class="rv">Sevgilinle · 2 kişi</div></span></li>
+            <li class="row ask"><span class="chk"></span><span><div class="rl">NE ZAMAN</div><div class="rv">Eylül · 10 gün<small>Hangi gün başlıyor? Sorulan bu.</small></div></span></li>
+            <li class="row"><span class="chk"></span><span><div class="rl">NE İSTİYORSUN</div><div class="rv" style="color:#8a86a6;font-weight:500">Romantik mi, doğa mı, gastronomi mi?</div></span></li>
+            <li class="row"><span class="chk"></span><span><div class="rl">ROTA</div><div class="rv" style="color:#8a86a6;font-weight:500">Önerim hazırlanıyor…<span class="read"></span></div></span></li>
+          </ol>
+          <div class="sugg"><svg class="i"><use href="#i-shield"/></svg>Önerilerde: seyahat sağlık sigortası · eSIM (Endonezya)</div>
+        </div>
+        <div class="gen"><button type="button"><svg class="i"><use href="#i-spark"/></svg>Oluştur</button><p>Elimdekiyle kurarım, eksikleri panoda sorarım. Ya da konuşmaya devam et.</p></div>
+      </div>
+    </div></div>
+    <div class="note"><b>Ne değişti</b><ul>
+      <li>"Gezi önizlemesi" kutusu kalktı. Fotoğraflar panelin üstünde, tek şerit: iki yer, iki an (romantik akşam, yerel lezzetler).</li>
+      <li>"Ülke" satırı yok: bayrak, para birimi, dil ve priz NEREYE satırının altına girdi. Aynı yer iki kez yazılmıyor.</li>
+      <li>Tarih, kimle ve rota artık önizlemede tekrar edilmiyor; yalnız kendi satırlarında. Rota satırında duraklar ve geceler, tarzda renkli etiketler, NEREDEN satırında uçuş çifti çıkıyor.</li>
+      <li>Önerilerde (sigorta, eSIM) panelin altında tek satır. Bir satıra basınca o soru yine sorulur; bugünkü gibi.</li>
+      <li>Soru cevaplanınca ilgili satır "pıt" diye tamamlanıyor; sorulan satır nazikçe nabız atıyor; yeni bilgi gelince o satırda ince bir parıltı (K5).</li>
+    </ul></div>
+    <div class="pair">
+      <div class="note"><b>Dolu hali (altı satır da tamam)</b><p class="muted">NEREYE Bali · Endonezya, KİMLE Sevgilinle · 2 kişi, NE ZAMAN 15–25 Eylül · 10 gece (yaklaşık), NE İSTİYORSUN Romantik · Doğa, ROTA Ubud 4 → Uluwatu 3 → Canggu 3, NEREDEN İstanbul (altında İstanbul ⇄ Denpasar). Halka 6/6, Oluştur kartı "Her şey hazır".</p></div>
+      <div class="note"><b>Dar ekran</b><p class="muted">Panel gövdesi bugünkü gibi ince bir çubuğa katlanır ("4/6 · Gezin şekilleniyor ▾", yanında Oluştur). Fotoğraf şeridi katlanınca gizlenir, açılınca üstte durur.</p></div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="step" id="sohbet">
+    <div class="when">Revizyon 2</div>
+    <h2>Sohbet canlı: sağ taraf okurken sol taraf konuşuyor</h2>
+    <p class="muted">Şimdi bile ilk soru hemen çıkıyor, ama sonraki cevaplar şablon ("Tamam, rota bu."). İki şey değişiyor: sorular beklemeden akıyor ve her cevabın ardından kısa, o gezinin kendisine dair bir söz geliyor.</p>
+    <div class="flows">
+      <div class="flow">
+        <span class="tag">0 sn</span><h3>Yazdın, soru hemen geldi</h3>
+        <div class="mini">
+          <div class="ub" style="align-self:flex-end;font-size:13.5px">Sevgilimle Bali, 10 gün, eylül, Ubud'da kalmak istiyoruz</div>
+          <div class="ai2"><b>Eylülde hangi gün başlıyorsunuz?</b><span>Uçuşlar, oteller, eSIM ve sigorta o güne yerleşsin.</span></div>
+          <div class="chs"><span class="ch">Ayın başı</span><span class="ch">Ortası</span><span class="ch">Sonu</span></div>
+        </div>
+        <p class="muted">Soru kodun okumasından geliyor, model beklenmiyor. Sağda NEREYE, KİMLE, NE ZAMAN "okuyor…" ışıltısında.</p>
+      </div>
+      <div class="flow">
+        <span class="tag">1 sn</span><h3>Sen cevaplarken sağ taraf doluyor</h3>
+        <div class="mini">
+          <div class="ub" style="align-self:flex-end;font-size:13.5px">Ayın ortası</div>
+          <div class="ai2"><b>Bu gezide en çok ne istiyorsunuz?</b><span>Oteller ve öneriler ona göre seçilsin.</span></div>
+          <div class="chs"><span class="ch">Romantik</span><span class="ch">Dingin</span><span class="ch">Doğa</span><span class="ch pri">Tamam</span></div>
+        </div>
+        <p class="muted">Model ilk mesajı hâlâ okuyor; bu arada sen ikinci soruyu cevaplıyorsun. İkisi birleşiyor, hiçbiri kaybolmuyor.</p>
+      </div>
+      <div class="flow">
+        <span class="tag">3 sn</span><h3>Model yetişince söz ekliyor</h3>
+        <div class="mini">
+          <div class="ai2" style="box-shadow:inset 3px 0 0 #5b45e0"><b style="font-weight:600">Ubud'da 4 gece romantik bir tempo için iyi; pirinç tarlalarına bakan villaları öneririm. Eylül kuru mevsim, yağmur az.</b></div>
+          <div class="ai2"><b>Rota önerim: Ubud 4 · Uluwatu 3 · Canggu 3 gece. Bu olsun mu?</b></div>
+          <div class="chs"><span class="ch pri">Bu olsun</span><span class="ch">Değiştir</span></div>
+        </div>
+        <p class="muted">Söz, soruyu geciktirmiyor; yetişince soruların üstüne, kenarında ince mor çizgiyle ekleniyor. Beklerken sen zaten ilerlemiş oluyorsun.</p>
+      </div>
+    </div>
+    <div class="note"><b>Bugün ve yarın</b><ul>
+      <li>Bugün: yazdığın mesaja modelin sözü var; butona basınca şablon ("Tamam, rota bu.", "15 Eylül'ü baz aldım"). Sebebi maliyet: butona basınca model çağrısı yok.</li>
+      <li>Yarın: butona basınca da küçük ve hızlı bir model (Haiku 5.5 ya da Gemini Flash-Lite, en çok 40 kelime) bir söz yazıyor. Soru yine hemen çıkıyor, söz sonradan ekleniyor. Cevap başına maliyet çok küçük olur, ama sayıyı ölçmedim; uygularsam ilk gün ölçüp söylerim.</li>
+      <li>Söz yalnız işe yarıyorsa çıkıyor (mevsim, rota, bütçe, uyarı). "Harika seçim!" tarzı boş övgü yok; model "söyleyecek bir şeyim yok" derse hiçbir şey eklenmiyor.</li>
+    </ul></div>
+  </section>
+
+  <!-- 3 -->
+  <section class="step" id="oneri">
+    <div class="when">Revizyon 3</div>
+    <h2>Ana ekrandaki öneriler artık bir şey yapıyor</h2>
+    <p class="muted">Şu an dört düğmenin dördü de aynı şeyi yapıyor: "Nereye gidiyoruz?" diye soruyor. Doğru: yalnız "Yeni gezi planla" ve "Paylaşılan geziye katıl" gerçekten çalışıyor.</p>
+    <div class="fit"><div class="screen">
+      <div class="home">
+        <h1>Merhaba Emre, sıradaki gezi nereye?</h1>
+        <div class="hbox"><div class="ph">Nereye, kiminle, ne zaman? Bir cümle yeter…</div><div class="hf"><span class="muted" style="font-size:14px">Planlamaya başla</span><span class="send"><svg class="i"><use href="#i-up"/></svg></span></div></div>
+        <div class="hstarts">
+          <span class="hs"><svg class="i"><use href="#i-spark"/></svg>Yeni gezi planla</span>
+          <span class="hs hot"><svg class="i"><use href="#i-globe"/></svg>Bana ilham ver</span>
+          <span class="hs hot"><svg class="i"><use href="#i-clock"/></svg>Son dakika kaçamağı</span>
+          <span class="hs off"><svg class="i"><use href="#i-car"/></svg>Yol gezisi · yakında</span>
+          <span class="hs"><svg class="i"><use href="#i-users"/></svg>Paylaşılan geziye katıl</span>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="flows">
+      <div class="flow">
+        <h3><svg class="i"><use href="#i-globe"/></svg>Bana ilham ver</h3>
+        <div class="mini">
+          <div class="ai2"><b>Üç kısa soru, sonra üç yer öneririm.</b><span>Kiminle gidiyorsun?</span></div>
+          <div class="chs"><span class="ch">Tek başıma</span><span class="ch">Sevgilimle</span><span class="ch">Arkadaşlarla</span><span class="ch">Aile</span></div>
+          <div class="ai2"><b>Ne zaman ve kaç gün?</b><span>Ya da "bilmiyorum".</span></div>
+          <div class="ai2"><b>Nasıl bir hava?</b><span>Deniz · Kültür · Doğa · Gastronomi · Macera · Dinlenmek</span></div>
+        </div>
+        <div class="mini">
+          <div class="dest"><div class="im" style="background-image:url(img/foto-porto.jpg)"></div><div><b>Porto · Portekiz</b><span>Eylülde 24°, 3 saat uçuş. Şarap, nehir kıyısı, ucuz yemek.</span></div></div>
+          <div class="dest"><div class="im" style="background-image:url(img/foto-ubud.jpg)"></div><div><b>Ubud · Bali</b><span>Kuru mevsim, dingin. Uzak (14 saat) ama 10 güne değer.</span></div></div>
+          <div class="dest"><div class="im" style="background:linear-gradient(135deg,#f3b36b,#c4623a)"></div><div><b>Sicilya · İtalya</b><span>Sıcak deniz, kültür, 2,5 saat. Arabayla gezilir.</span></div></div>
+          <div class="chs"><span class="ch pri">Bunu seç</span><span class="ch">Başka öner</span></div>
+        </div>
+        <p class="muted">Seçince sohbet o yerle açılır: NEREYE, KİMLE, NE ZAMAN dolu gelir, sıradaki soru "hangi gün?" olur.</p>
+      </div>
+      <div class="flow">
+        <h3><svg class="i"><use href="#i-clock"/></svg>Son dakika kaçamağı</h3>
+        <div class="mini">
+          <div class="ai2"><b>Ne zaman çıkıyorsun?</b></div>
+          <div class="chs"><span class="ch">Bu hafta sonu</span><span class="ch">Gelecek hafta</span><span class="ch">Tarih seç</span></div>
+          <div class="ai2"><b>Nereden çıkıyorsun, kaç gece?</b><span>İstanbul · 3 gece gibi.</span></div>
+        </div>
+        <div class="mini">
+          <div class="dest"><div class="im" style="background-image:url(img/foto-porto.jpg)"></div><div><b>Lizbon · 4 sa 10 dk</b><span>Bu hafta sonu 22°, güneşli.</span></div></div>
+          <div class="dest"><div class="im" style="background:linear-gradient(135deg,#7ab8d9,#2c5f86)"></div><div><b>Atina · 2 sa 5 dk</b><span>Hafta sonu 25°, deniz ılık.</span></div></div>
+          <div class="dest"><div class="im" style="background:linear-gradient(135deg,#d9b27a,#7a5a2c)"></div><div><b>Budapeşte · 2 sa 30 dk</b><span>Termal hamamlar, yağmur ihtimali düşük.</span></div></div>
+        </div>
+        <p class="muted">Aynı motor, tarih ve süre baştan dolu geliyor; öneriler uçuş süresine ve havaya göre sıralanıyor. Fiyat göstermiyorum: canlı fiyat sonradan, gezi açılınca geliyor.</p>
+      </div>
+      <div class="flow">
+        <h3><svg class="i"><use href="#i-car"/></svg>Yol gezisi <span class="tag warn">yakında</span></h3>
+        <div class="mini">
+          <div class="ai2"><b>Nereden nereye?</b><span>İki uç nokta; ara durakları ben öneririm.</span></div>
+          <div class="ai2"><b>Kaç gün, kaç kişi, araba var mı?</b><span>Yoksa kiralık araç kartı açılır.</span></div>
+        </div>
+        <p class="muted">Bu bir ayrı iş: rota, araç kiralama, günlük sürüş saatleri, konaklama araya göre. Yarım yapıp yanlış söz vermektense düğme "yakında" diye soluk duruyor; basınca "Bunun üzerinde çalışıyorum, bu arada yeni gezi planlayalım mı?" diyor.</p>
+        <span class="tag">Karar sende</span>
+      </div>
+    </div>
+    <div class="note"><b>Nasıl çalışıyor</b><ul>
+      <li>İlham ve son dakika tek motor: 3 soru (kiminle, ne zaman/kaç gün, hava) ardından model 3 yer önerir; her yer için bir cümle neden ve gerçek fotoğraf. Fotoğraf şehir görseli servisinden gelir, bugün sohbetin kullandığı aynı yol.</li>
+      <li>Seçilen yer sohbete "nereye" olarak girer; geri kalan akış bugünkü gibi (K4 sırası, panel, Oluştur).</li>
+      <li>"Başka öner": üç yeni yer, öncekiler tekrarlanmaz. Hiçbirini beğenmezsen yazıyla anlatırsın ("daha serin, daha yakın").</li>
+      <li>Model çağrısı bu öneri için: bir kez 3 yer (kısa), "başka öner" başına bir kez daha.</li>
+    </ul></div>
+  </section>
+
+  <!-- 4 -->
+  <section class="step" id="kart">
+    <div class="when">Revizyon 4</div>
+    <h2>Seyahat kartlarında yüzler yalnız grup gezisinde</h2>
+    <p class="muted">Tek kişilik gezide kendi fotoğrafın her kartın köşesinde duruyordu; göz yoruyordu. Şimdi iki ya da daha fazla kişi varsa yüzler çıkıyor, tek kişiyse köşe boş. Hiçbir bilgi kaybolmuyor (kişi sayısı panoda).</p>
+    <div class="tcards">
+      <div class="vc" style="background-image:url(img/foto-porto.jpg)"><span class="vp">42 gün kaldı</span><div class="foot"><b>Porto</b><span>8–15 Kas · 8 gün</span></div></div>
+      <div class="vc" style="background-image:url(img/foto-ubud.jpg)"><div class="who"><i style="background:#5b45e0">E</i><i style="background:#1d8577">S</i></div><span class="vp">330 gün kaldı</span><div class="foot"><b>Bali</b><span>15–25 Eyl · 10 gün</span></div></div>
+      <div class="vc" style="background-image:url(img/foto-seminyak.jpg)"><div class="who"><i style="background:#5b45e0">E</i><i style="background:#1d8577">S</i><i style="background:#c0256b">A</i><i style="background:#625e86">+2</i></div><span class="vp">12 gün kaldı</span><div class="foot"><b>Seminyak ve Uluwatu</b><span>2–9 Ara · 8 gün</span></div></div>
+    </div>
+    <div class="note"><ul>
+      <li>Solda: tek kişi, yüz yok. Ortada: iki kişi, iki yüz. Sağda: beş kişi, ilk üçü ve "+2".</li>
+      <li>Kullandığın her yerde aynı kural: kart, ana ekran köşe menüsü hariç (orada profil resmin zaten duruyor), önizleme, sohbet başlığı.</li>
+    </ul></div>
+  </section>
+
+  <!-- onay -->
+  <section class="step" id="onay">
+    <div class="when">Senden onay</div>
+    <h2>Dört karar</h2>
+    <div class="decide">
+      <div><b>1 · Tek panel</b><p class="muted">Önizleme kalkıp ayrıntılar kontrol listesinin satırlarına girer, fotoğraflar üstte. Puanım 8/10: tekrarı bitirir, tek yere bakılır. 10 olması için: satırlardaki alt metinler dolunca ekran kalabalık olmasın diye bir sınır koyup test etmem lazım (uzun rota, çok tarz).</p><div class="opts"><span class="rec">Onayla</span><span>Değiştir (neresi?)</span></div></div>
+      <div><b>2 · Her cevaba model sözü</b><p class="muted">Dürüst puan 7/10: daha canlı konuşturur, ama her butona bir model çağrısı demek ve iyi yazılmazsa "yapay" gelir. Soru asla beklemez. İstersen yalnız yazdığın mesajlara kalsın (bugünkü).</p><div class="opts"><span class="rec">Her cevaba söz (önerim)</span><span>Yalnız yazdıklarıma</span><span>Her ikinci cevaba</span></div></div>
+      <div><b>3 · Ana ekran önerileri</b><p class="muted">İlham ve son dakika çalışır hale gelir (tek motor). Yol gezisi yarım kalmasın diye "yakında". 8/10; 10 için yol gezisi de aynı turda yapılmalı ama iş iki katına çıkar.</p><div class="opts"><span class="rec">İlham + son dakika şimdi, yol gezisi sonra (önerim)</span><span>Üçü birden</span><span>Yol gezisini tamamen kaldır</span></div></div>
+      <div><b>4 · Yüzler yalnız grupta</b><p class="muted">Kart ve önizlemede kuralı uyguluyorum (bu zaten kodda, 0.36.68'de çıkar).</p><div class="opts"><span class="rec">Tamam</span></div></div>
+    </div>
+  </section>
+</div>
+</body>
+</html>

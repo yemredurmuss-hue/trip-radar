@@ -509,7 +509,8 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
                   image={image}
                   photoBy={photoBy}
                   left={countdownText(countdown(range, today))}
-                  people={names.map((n) => ({ name: n, photo: n === me ? myPhoto : peoplePhoto(n) }))}
+                  // (a trip of one shows no face: my own picture on every card is noise; two or more show everyone)
+                  people={names.length >= 2 ? names.map((n) => ({ name: n, photo: n === me ? myPhoto : peoplePhoto(n) })) : []}
                   order={people}
                   onOpen={() => onOpen(trip.id)}
                 />
