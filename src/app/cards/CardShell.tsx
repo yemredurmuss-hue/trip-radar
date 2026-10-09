@@ -115,8 +115,10 @@ export interface Nav {
 }
 
 /** The bottom strip: where it stands (or ‹ 1/2 ›) on the left, the price and the one action on the right. */
-export function CardFoot({ view, nav, best = false, price, onAction, live, go }: {
+export function CardFoot({ view, nav, best = false, price, onAction, live, go, alt }: {
   view: FootView;
+  /** v11: a chosen plan's other options, "Pano'da 2 alternatif" by its price (they open on the Pano). */
+  alt?: { count: number; onClick: () => void } | null;
   /** v11: a plan's page to book on ("Rezerve et ↗"), where its "Aldım" moved to the top line. */
   go?: { href: string; label: string } | null;
   nav?: Nav;
@@ -166,6 +168,11 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go }:
             )}
           </Editable>
         </span>
+      )}
+      {alt && alt.count > 0 && (
+        <button type="button" className="pk-alt" onClick={(e) => { e.stopPropagation(); alt.onClick(); }}>
+          {L(`Pano'da ${alt.count} alternatif`, `${alt.count} alternative${alt.count === 1 ? "" : "s"} on the Board`)}
+        </button>
       )}
       {view.action && onAction && (
         <button type="button" className="pk-cta" onClick={onAction}>

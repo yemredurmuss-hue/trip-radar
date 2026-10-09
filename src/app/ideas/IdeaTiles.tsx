@@ -37,6 +37,7 @@ const recordOf = (e: CatEntry): Item | null => (e.piece.kind === "item" ? e.piec
 export const ideaPlanned = (i: Item): boolean => i.status === "chosen" || i.status === "booked" || Boolean(dayChip(i));
 
 export function IdeaTiles({ section, fallback }: { section: CatSection; fallback: (entry: CatEntry) => ReactNode }) {
+  const env = useCardEnv();
   const [filter, setFilter] = useState<Filter>("all");
   const rows = section.entries.map((e) => ({ e, item: recordOf(e) }));
   const items = rows.filter((r): r is { e: CatEntry; item: Item } => r.item != null);
@@ -52,6 +53,12 @@ export function IdeaTiles({ section, fallback }: { section: CatSection; fallback
             {f === "all" ? L("Hepsi", "All") : f === "go" ? L("Gezilecek yerler", "Places to see") : L("Restoranlar", "Restaurants")} <i>{n(f)}</i>
           </button>
         ))}
+        <span className="it-sp" />
+        {env.ask && (
+          <button type="button" className="ac-more" onClick={() => env.ask!(L("Bu gezi için gezilecek birkaç yer ve restoran daha öner.", "Suggest a few more places to see and restaurants for this trip."))}>
+            ✨ {L("Daha fazla öner", "Suggest more")}
+          </button>
+        )}
       </div>
       {shown.length ? (
         <div className="it-grid">

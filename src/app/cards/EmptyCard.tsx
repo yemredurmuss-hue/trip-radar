@@ -36,6 +36,7 @@ import type { FieldKey } from "../../lib/inlineEdit";
 import { isGeneratedName } from "../../lib/planned";
 import { OfferRow } from "./OfferRow";
 import { useCardEnv } from "./PlanCard";
+import { AskButton } from "./AskButton";
 import { KindIcon, MediaSilhouette, TransportArt } from "./Silhouettes";
 import { StayLine } from "./StayLine";
 
@@ -158,6 +159,7 @@ export function EmptyShell(props: {
           {props.badge}
           {props.date && <span className="pk-date">· {props.date}</span>}
           <span className="pk-end">
+            <span className="pk-lab open">{L("Arıyoruz", "Searching")}</span>
             {props.x}
             <CardMenu entries={props.menu} />
           </span>
@@ -177,6 +179,7 @@ export function EmptyShell(props: {
             {props.alert && <span className="ek-when"> · ⏳ {props.alert.short}</span>}
           </span>
           <SearchRow links={props.links} />
+          <AskButton text={L(`${props.ariaLabel} için öneri bul`, `Find options for ${props.ariaLabel}`)} />
           {props.onSkip && (
             <button type="button" className="ek-skip" title={props.skipTitle} onClick={(e) => { e.stopPropagation(); props.onSkip!(); }}>
               {L("Gerek yok", "Not needed")}

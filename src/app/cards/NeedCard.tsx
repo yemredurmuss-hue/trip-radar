@@ -20,6 +20,7 @@ import { chooseItem, setNeedNotNeeded } from "../actions";
 import { useMyName } from "../Profile";
 import { CardShell } from "./CardShell";
 import { useCardEnv } from "./PlanCard";
+import { AskButton } from "./AskButton";
 import { KindIcon, TransportArt, UiIcon } from "./Silhouettes";
 import { usePhotoOf, WhoAvatar } from "./WhoseBadge";
 import { datedLink, TradeLine } from "./parts";
@@ -73,6 +74,7 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
         art={isTransportKind(kind) && kind !== "transport" ? <TransportArt mode={kind} /> : null}
         onDelete={() => void setNeedNotNeeded(items).then(env.offer)}
         deleteLabel={L("Gerek yok", "Not needed")}
+        topAction={<span className="pk-lab open">{L("Arıyoruz", "Searching")}</span>}
         menu={[]}
         open={false}
         onToggle={onOpen}
@@ -90,6 +92,7 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
               <UiIcon name="right" size={13} />
             </button>
             <span className="pk-state wait">{L("Karar bekliyor", "To decide")}</span>
+            <AskButton text={L(`${title} için öneri bul`, `Find options for ${title}`)} />
           </div>
         }
         detail={null}
@@ -275,6 +278,11 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
           </section>
         )}
         <footer className="bk-foot">
+          {env.ask && (
+            <button type="button" className="bk-btn ch-more" onClick={() => (onClose(), env.ask!(L(`${title} için daha fazla öneri bul`, `Find more options for ${title}`)))}>
+              ✨ {L("Daha fazla öneri bul", "Find more options")}
+            </button>
+          )}
           {onCompare && (
             <button type="button" className="bk-btn" onClick={() => (onClose(), onCompare())}>
               {L("Karşılaştır", "Compare")}

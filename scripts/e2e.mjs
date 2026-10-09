@@ -1217,7 +1217,9 @@ try {
   const names = (loc) => loc.locator(".it-tile").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
   assert.deepEqual(await names(todos), ["Bolhão pazarı", "Majestic Café", "Dom Luís köprüsünden gün batımı", "Livraria Lello, giriş bileti var", "Pastel de nata"]);
   // Hepsi · Gezilecek yerler · Restoranlar, with their numbers.
-  assert.deepEqual(flat(await todos.locator(".it-filters button").allInnerTexts()), ["Hepsi 5", "Gezilecek yerler 3", "Restoranlar 2"]);
+  assert.deepEqual(flat(await todos.locator(".it-filters button[aria-pressed]").allInnerTexts()), ["Hepsi 5", "Gezilecek yerler 3", "Restoranlar 2"]);
+  // v11: "✨ Daha fazla öner" at the end of that line (the chat looks for more).
+  await todos.locator(".it-filters .ac-more", { hasText: "Daha fazla öner" }).waitFor();
   await todos.locator(".it-filters button", { hasText: "Restoranlar" }).click();
   assert.deepEqual(await names(todos), ["Majestic Café", "Pastel de nata"]);
   await todos.locator(".it-filters button", { hasText: "Hepsi" }).click();
@@ -1665,10 +1667,10 @@ try {
   await app.locator(".cat-plan").waitFor();
   await app.locator(`.flash`).first().waitFor({ timeout: 5000 });
   assert.equal(await app.locator(".pn").count(), 0, "back on the Plan");
-  // From a plan card's details: "Pano'da …" opens the Pano on its need, framed, with "← Plan'a dön".
-  const fromCard = app.locator(".pk-card").filter({ has: app.locator(".pk-foot") }).first();
-  await fromCard.locator(".pk-body").click();
-  await fromCard.getByRole("button", { name: /^Pano'da / }).click();
+  // From a chosen card's foot (v11): "Pano'da N alternatif" by its price opens the Pano on its need, framed, with "← Plan'a dön".
+  const fromCard = app.locator(".pk-card").filter({ has: app.locator(".pk-alt") }).first();
+  assert.match(await fromCard.locator(".pk-alt").innerText(), /^Pano'da \d+ alternatif$/);
+  await fromCard.locator(".pk-alt").click();
   await app.locator(".pn-group.focus").waitFor();
   await app.getByRole("button", { name: "← Plan'a dön" }).click();
   await app.locator(".cat-plan").waitFor();

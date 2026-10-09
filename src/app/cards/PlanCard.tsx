@@ -33,7 +33,7 @@ import { groupKeyOf } from "../../lib/plan";
 import { useStageMenu } from "./stageMenu";
 import { MediaCardBody } from "./MediaCard";
 import { datedLink } from "./parts";
-import { TransportArt } from "./Silhouettes";
+import { TransportArt, UiIcon } from "./Silhouettes";
 import { TransportCardBody } from "./TransportCard";
 import { FlightTiles } from "./FlightLive";
 import { flightAlert, flightTiles, sourceText, ticketDiff } from "../../lib/flightData";
@@ -156,6 +156,9 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
         ];
   const menu: MenuEntry[] = [...forWho, ...stageMenu.menu.map((e, i) => ({ ...e, sep: forWho.length > 0 && i === 0 }))];
   const alternatives = onChange ? Math.max(0, group.length - 1) : 0;
+  // v11: chosen, not bought yet: its other options are a link by the price ("Pano'da 2 alternatif").
+  const altCount = item.status === "chosen" ? group.filter((g) => g.id !== item.id && g.status !== "dismissed").length : 0;
+  const bookedCard = item.status === "booked";
   const actions = (
     <>
       {onCompare && <button type="button" onClick={onCompare}>{L("Karşılaştır →", "Compare →")}</button>}
@@ -220,7 +223,13 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       itemId={item.id}
       badge={<WhoseBadge item={item} trip={env.trip} />}
       extraClass={[allNo ? "pk-all-no" : "", red ? "pk-alert" : ""].filter(Boolean).join(" ") || undefined}
-      art={transport && kind !== "transport" ? <TransportArt mode={kind} /> : null}
+      art={
+        <>
+          {transport && kind !== "transport" ? <TransportArt mode={kind} /> : null}
+          {/* v11: a booking's stamp, the green ✓ turned a little, faint, in its corner (a ticket's ends fill that corner: none there). */}
+          {bookedCard && !transport && <span className="pk-stamp" aria-hidden><UiIcon name="check" size={16} /></span>}
+        </>
+      }
       docs={<DocAccess item={item} docs={docs} />}
       onDelete={stageMenu.hide}
       deleteLabel={stageMenu.booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed")}
@@ -230,6 +239,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
             onClick={(e) => { e.stopPropagation(); act(); }}>
             ✓ {L("Aldım", "Got it")}
           </button>
+        ) : bookedCard ? (
+          <span className="pk-lab booked">{L("Rezerve", "Booked")}</span>
         ) : null
       }
       menu={menu}
@@ -248,7 +259,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       foot={
         <>
           <CardFoot view={bookTop ? { ...foot, action: null } : foot} nav={nav} best={best} price={facts.price} onAction={act} live={liveFoot}
-            go={bookTop && page ? { href: page, label: goLabel } : null} />
+            go={bookTop && page ? { href: page, label: goLabel } : null}
+            alt={altCount > 0 ? { count: altCount, onClick: () => env.onPano(groupKeyOf(item)) } : null} />
           {stageMenu.field}
           {sheet && (
             <BookingSheet item={item} kind={kind} facts={facts} docs={docs} date={topDate(item, kind)}

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { catDomKey, type CatEntry } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import { doneText, setDone, setPrep } from "../../lib/ideas";
+import { amazonLink } from "../../lib/prepBuy";
 import { entryDomId } from "../../lib/progress";
 import type { Item } from "../../lib/types";
 import { DeleteX } from "../cards/CardShell";
@@ -15,6 +16,7 @@ import { IdeaGlyph } from "../ideas/IdeaIcons";
 const recordOf = (e: CatEntry): Item | null => (e.piece.kind === "item" ? e.piece.item : e.piece.kind === "entry" && e.piece.entry.kind === "event" ? e.piece.entry.item : null);
 
 export function PrepList({ entries }: { entries: CatEntry[] }) {
+  const env = useCardEnv();
   const [hideDone, setHideDone] = useState(false);
   const done = entries.filter((e) => e.state === "done").length;
   const shown = hideDone ? entries.filter((e) => e.state !== "done") : entries;
@@ -22,9 +24,16 @@ export function PrepList({ entries }: { entries: CatEntry[] }) {
     <div className="prep" aria-label={L("Hazırlık", "Prep")}>
       <p className="prep-head">
         <span>{L(`${done}/${entries.length} hazır`, `${done}/${entries.length} ready`)}</span>
+        <small className="prep-why">{L("· gezine göre önerildi, sohbette “şunu da ekle” diyebilirsin", "· suggested for this trip; say “add this too” in the chat")}</small>
+        <i className="prep-sp" />
         {done > 0 && (
           <button type="button" className="prep-hide" aria-pressed={hideDone} onClick={() => setHideDone(!hideDone)}>
             {hideDone ? L("Hazırları göster", "Show the ready ones") : L("Hazırları gizle", "Hide the ready ones")}
+          </button>
+        )}
+        {env.ask && (
+          <button type="button" className="ac-more prep-more" onClick={() => env.ask!(L("Bu gezi için hazırlık listesine eklenecek birkaç şey daha öner (alınacaklar, yapılacak başvurular, yanına alınacaklar).", "Suggest a few more things for this trip's prep list (things to buy, to apply for, to pack)."))}>
+            ✨ {L("Daha fazla öner", "Suggest more")}
           </button>
         )}
       </p>
@@ -45,6 +54,7 @@ export function PrepList({ entries }: { entries: CatEntry[] }) {
 function PrepRow({ item, domId }: { item: Item; domId: string }) {
   const env = useCardEnv();
   const done = Boolean(item.doneAt);
+  const buy = done ? null : amazonLink(item.name);
   return (
     <li id={domId} className={`prep-row${done ? " done" : ""}`} aria-label={item.name} data-item-id={item.id}>
       <button type="button" className="prep-check" role="checkbox" aria-checked={done}
@@ -54,8 +64,14 @@ function PrepRow({ item, domId }: { item: Item; domId: string }) {
       </button>
       <span className="prep-t">
         <Editable field="name">{item.name}</Editable>
+        {item.summary && <small className="prep-sub">{item.summary}</small>}
       </span>
-      {done && <span className="prep-done">{doneText(item)}</span>}
+      {done && <span className="prep-done" title={doneText(item) ?? undefined}>{L("Hazır", "Ready")}</span>}
+      {buy && (
+        <a className="prep-buy" href={buy} target="_blank" rel="noreferrer" title={L("Amazon'da ara", "Search on Amazon")}>
+          Amazon ↗
+        </a>
+      )}
       {/* Not a chore after all ("şemsiye al" to buy there): one tap moves it to Yapılacak şeyler. */}
       <button type="button" className="prep-move" title={L("Gidilen yerde yapılacak: Yapılacak şeyler'e taşı", "Done there: move to Things to do")}
         aria-label={L(`${item.name}: Yapılacak şeyler'e taşı`, `${item.name}: move to Things to do`)} onClick={() => void setPrep(item, false)}>
