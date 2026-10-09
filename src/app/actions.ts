@@ -57,6 +57,18 @@ export async function cancelBooking(item: Item, refundNote: string | null = null
   return { kind: "cancelled", item: cancelled };
 }
 
+/** The Pano's heart (v11): who liked it, by name ("me" for the board's owner without one); no Geçmiş line, likes are light. */
+export async function toggleLike(item: Item, who: string): Promise<void> {
+  const d = await db();
+  const found = (await d.get("items", item.id)) ?? item;
+  const set = new Set(found.likedBy ?? []);
+  if (set.has(who)) set.delete(who);
+  else set.add(who);
+  const { likedBy: _old, ...rest } = found;
+  await d.put("items", set.size ? { ...rest, likedBy: [...set], updatedAt: Date.now() } : { ...rest, updatedAt: Date.now() });
+  notifyChanged();
+}
+
 /** Belgeler ve internet's visa line (v11): the visa the trip needs, ticked as got, or not. */
 export async function setVisaDone(tripId: string, done: boolean): Promise<void> {
   await updateTrip(tripId, (t) => ({ ...t, visaDone: done || undefined }));

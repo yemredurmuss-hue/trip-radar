@@ -62,6 +62,8 @@ export function KindIcon({ kind, size = 17, className }: { kind: CardKind | "hom
 }
 
 const UI_ICONS = {
+  // The Pano's like (v11): an outline, filled by its "on" class.
+  heart: g(<path d="M12 20s-7.2-4.5-7.2-10.1A4.1 4.1 0 0 1 12 7.6a4.1 4.1 0 0 1 7.2 2.3C19.2 15.5 12 20 12 20z" />),
   doc: g(<><path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /><path d="M14 3v4h4M9 13h6M9 17h4" /></>),
   clip: g(<path d="m20 11-8.5 8.5a5 5 0 0 1-7-7L13 4a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4L14.5 7" />, 2.2),
   check: g(<path d="m5 12.5 4.5 4.5L19 7.5" />, 3),

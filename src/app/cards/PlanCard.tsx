@@ -26,6 +26,7 @@ import { CardDetail } from "./CardDetail";
 import { CardFoot, CardShell, type MenuEntry, type Nav } from "./CardShell";
 import { DocAccess, DocPickButton } from "./DocAccess";
 import { InlineEdit } from "./InlineEdit";
+import { groupKeyOf } from "../../lib/plan";
 import { useStageMenu } from "./stageMenu";
 import { MediaCardBody } from "./MediaCard";
 import { datedLink } from "./parts";
@@ -62,6 +63,8 @@ export interface CardEnv {
   setFocus: (focus: CardFocus | null) => void;
   onOpenItem: (item: Item) => void;
   onCompare: (groupKey: string) => void;
+  /** v11: the Pano, opened on this need's group ("Pano'da gör"). */
+  onPano: (groupKey: string) => void;
 }
 
 export const CardEnvContext = createContext<CardEnv | null>(null);
@@ -151,6 +154,9 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       {onCompare && <button type="button" onClick={onCompare}>{L("Karşılaştır →", "Compare →")}</button>}
       {page && <a href={page} target="_blank" rel="noreferrer">{datedUrl ? L("Tarihlerle aç ↗", "Open with dates ↗") : L("Kaydettiğin sayfa ↗", "Your saved page ↗")}</a>}
       <button type="button" onClick={() => env.onOpenItem(item)}>{L("Tüm detaylar", "All details")}</button>
+      <button type="button" onClick={() => env.onPano(groupKeyOf(item))}>
+        {alternatives > 0 ? L(`Pano'da ${alternatives} alternatif`, `${alternatives} alternative${alternatives === 1 ? "" : "s"} on the Board`) : L("Pano'da gör", "See on the Board")}
+      </button>
       <DocPickButton item={item}>{L("Belge ekle", "Add a document")}</DocPickButton>
       {alternatives > 0 && (
         <button type="button" aria-expanded={changing} onClick={onChange}>

@@ -1590,6 +1590,58 @@ try {
   await app.screenshot({ path: `${out}/5i-visa.png` });
   await visaRow.getByRole("checkbox").click();
   await sec("other").locator(".visa-row:not(.ok)", { hasText: "Vize gerekiyor" }).waitFor();
+  // v11 phase 5: the Pano, a tab of its own (no hero over it). Every link as a big photo card; tabs by what it is,
+  // Hepsi · Karar bekleyen · Planda, Sırala; a section's tab groups by need. The heart is a like (Beğenilenler);
+  // "Plan'da gör →" goes to the card on the Plan (it flashes); a plan card's "Pano'da …" comes back framed.
+  await app.setViewportSize({ width: 1440, height: 1400 });
+  await app.getByRole("tab", { name: "Pano", exact: true }).click();
+  const pano = app.locator(".pn");
+  await pano.waitFor();
+  assert.equal(await app.locator(".hx").count(), 0, "no hero over the Pano");
+  assert.equal(await pano.locator(".pn-cats button").first().innerText().then((t) => t.replace(/\s+/g, " ")), `Tümü ${await pano.locator(".pn-card").count()}`);
+  // Every card lines its price and button up with the others in its row.
+  const acts = await pano.locator(".pn-card").evaluateAll((els) => els.slice(0, 3).map((e) => Math.round(e.querySelector(".pn-act").getBoundingClientRect().bottom - e.getBoundingClientRect().bottom)));
+  assert.equal(new Set(acts).size, 1, `the price rows line up (${acts})`);
+  await pano.evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.screenshot({ path: `${out}/30a-pano.png` });
+  // Konaklama: its options by need, the one on the plan named in the group's header.
+  await pano.locator('.pn-cats [data-cat="stay"]').click();
+  assert.ok((await pano.locator(".pn-group").count()) >= 1, "stays grouped by need");
+  await app.screenshot({ path: `${out}/30b-pano-stays.png` });
+  // The heart: a like, under Beğenilenler; taken back, gone again.
+  const panoFirst = pano.locator(".pn-card").first();
+  const likedName = await panoFirst.getAttribute("aria-label");
+  await panoFirst.locator(".pn-heart").click();
+  await panoFirst.locator(".pn-heart.on").waitFor();
+  await pano.locator('.pn-cats [data-cat="liked"]').click();
+  assert.deepEqual(await pano.locator(".pn-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), [likedName]);
+  await pano.locator(".pn-card .pn-heart.on").click();
+  await pano.locator('.pn-cats [data-cat="liked"]').waitFor({ state: "detached" });
+  // Planda: only what's on the plan, each with its ribbon and "Plan'da gör →".
+  await pano.locator('.pn-cats [data-cat="all"]').click();
+  await pano.locator(".pn-seg button", { hasText: "Planda" }).click();
+  const planned = await pano.locator(".pn-card").count();
+  assert.ok(planned > 0 && (await pano.locator(".pn-card .pn-rib").count()) === planned, "Planda: each card on the plan wears its ribbon");
+  const shownName = await pano.locator(".pn-card").first().getAttribute("aria-label");
+  await pano.locator(".pn-card").first().locator(".pn-goplan").click();
+  await app.locator(".cat-plan").waitFor();
+  await app.locator(`.flash`).first().waitFor({ timeout: 5000 });
+  assert.equal(await app.locator(".pn").count(), 0, "back on the Plan");
+  // From a plan card's details: "Pano'da …" opens the Pano on its need, framed, with "← Plan'a dön".
+  const fromCard = app.locator(".pk-card").filter({ has: app.locator(".pk-foot") }).first();
+  await fromCard.locator(".pk-body").click();
+  await fromCard.getByRole("button", { name: /^Pano'da / }).click();
+  await app.locator(".pn-group.focus").waitFor();
+  await app.getByRole("button", { name: "← Plan'a dön" }).click();
+  await app.locator(".cat-plan").waitFor();
+  await app.setViewportSize({ width: 560, height: 1400 });
+  await app.getByRole("tab", { name: "Pano", exact: true }).click();
+  await app.locator(".pn").waitFor();
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll on the Pano");
+  await app.screenshot({ path: `${out}/30c-pano-narrow.png` });
+  await app.getByRole("tab", { name: "Plan", exact: true }).click();
+  await app.setViewportSize({ width: 1440, height: 3600 });
+  console.log(`✓ v11 Pano: a tab of its own, cards in line, stays by need, the heart under Beğenilenler, Planda → Plan'da gör (${shownName}) flashes on the Plan, a card's "Pano'da …" framed with "← Plan'a dön", narrow`);
   await app.setViewportSize({ width: 1440, height: 3600 });
   await app.setViewportSize({ width: 560, height: 3600 });
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
