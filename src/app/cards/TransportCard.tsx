@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 // A transport card's body (ulasim-v3): the city it leaves from on the left (30, bold; a long name 24 and
 // wrapping in its column) with its code or station and **hour** under it, where it goes on the right; the way of travel drawn in the middle (.pk-art,
 // behind) with the duration under it. A rental: where it's picked up, then how many days.
@@ -35,7 +36,8 @@ function Stop({ end, right, field, timed }: { end: End | null; right: boolean; f
   );
 }
 
-export function TransportCardBody({ face, title }: { face: TransportFace; title: string }) {
+/** `art`: the way's drawing, in the middle between the two ends (v11: in the flow, so nothing lies over it). */
+export function TransportCardBody({ face, title, art = null }: { face: TransportFace; title: string; art?: ReactNode }) {
   const api = useInlineEdit();
   const ends = Boolean(api?.fields.includes(face.rental ? "city" : "from"));
   if (!face.from && !face.to && !ends) return <h3 className="pk-title">{title}</h3>;
@@ -44,7 +46,10 @@ export function TransportCardBody({ face, title }: { face: TransportFace; title:
       {/* The airline's logo first, as on flight search sites (an empty box when it won't load keeps the grid). */}
       {face.logo && <span className="pk-logo"><FallbackImg className="pk-airline" src={face.logo} fallback={face.logo2 ? <FallbackImg className="pk-airline" src={face.logo2} fallback={<KindIcon kind="flight" size={20} />} /> : <KindIcon kind="flight" size={20} />} /></span>}
       <Stop end={face.from} right={false} field={face.rental ? "city" : "from"} timed={!face.rental} />
-      <div className="pk-route">{face.middle && <small>{face.middle}</small>}</div>
+      <div className="pk-route">
+        {art}
+        {face.middle && <small>{face.middle}</small>}
+      </div>
       <Stop end={face.to} right field={face.rental ? null : "to"} timed={false} />
     </div>
   );

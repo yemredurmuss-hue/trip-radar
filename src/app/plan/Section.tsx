@@ -134,7 +134,7 @@ export function ideaCount(id: CatSection["id"], { total, onDay, done }: NonNulla
     const records = entries.map((e) => (e.piece.kind === "item" ? e.piece.item : e.piece.kind === "entry" && e.piece.entry.kind === "event" ? e.piece.entry.item : null)).filter((i): i is NonNullable<typeof i> => i != null);
     const food = records.filter((i) => i.category === "food").length;
     const planned = records.filter((i) => !i.doneAt && (i.status === "chosen" || i.status === "booked" || Boolean(i.dates.start))).length;
-    const parts = [L(`${records.length - food} yer`, `${records.length - food} place${records.length - food === 1 ? "" : "s"}`)];
+    const parts = records.length - food ? [L(`${records.length - food} yer`, `${records.length - food} place${records.length - food === 1 ? "" : "s"}`)] : [];
     if (food) parts.push(L(`${food} restoran`, `${food} restaurant${food === 1 ? "" : "s"}`));
     if (planned) parts.push(L(`${planned} planda`, `${planned} on the plan`));
     if (done) parts.push(L(`${done} yapıldı`, `${done} done`));

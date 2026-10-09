@@ -223,10 +223,9 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       ariaLabel={item.name}
       itemId={item.id}
       badge={<WhoseBadge item={item} trip={env.trip} />}
-      extraClass={[allNo ? "pk-all-no" : "", red ? "pk-alert" : ""].filter(Boolean).join(" ") || undefined}
+      extraClass={[allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : ""].filter(Boolean).join(" ") || undefined}
       art={
         <>
-          {transport && kind !== "transport" ? <TransportArt mode={kind} /> : null}
           {/* v11: a booking's stamp, the green ✓ turned a little, faint, in its corner (a ticket's ends fill that corner: none there). */}
           {bookedCard && !transport && <span className="pk-stamp" aria-hidden><UiIcon name="check" size={16} /></span>}
         </>
@@ -250,7 +249,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       body={
         transport ? (
           <>
-            <TransportCardBody face={face!} title={item.name} />
+            <TransportCardBody face={face!} title={item.name} art={kind !== "transport" ? <TransportArt mode={kind} /> : null} />
             <FlightTiles tiles={tiles} />
           </>
         ) : (
@@ -269,7 +268,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
                 docs.length === 1 ? (
                   <button type="button" className="pk-docname" title={docs[0].name} onClick={(e) => { e.stopPropagation(); void openDoc(docs[0].id); }}>
                     <UiIcon name="clip" size={12} />
-                    {docs[0].name}
+                    <span>{docs[0].name}</span>
                   </button>
                 ) : (
                   <DocAccess item={item} docs={docs} />

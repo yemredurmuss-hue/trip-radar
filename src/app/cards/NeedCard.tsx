@@ -101,7 +101,6 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
         ariaLabel={title}
         itemId={first.id}
         extraClass="nd-card"
-        art={isTransportKind(kind) && kind !== "transport" ? <TransportArt mode={kind} /> : null}
         onDelete={() => void setNeedNotNeeded(items).then(env.offer)}
         deleteLabel={L("Gerek yok", "Not needed")}
         topAction={<span className="pk-lab open">{L("Arıyoruz", "Searching")}</span>}
@@ -112,7 +111,7 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
           <div className={`nd-body${ILLUS[kind] ? " nd-has-art" : ""}${route ? " nd-route" : ""}`}>
             {ILLUS[kind] && <img className="nd-art" src={`illus/${ILLUS[kind]}.png`} alt="" />}
             {/* v11: a ticket still to find shows its ends (no hours yet); a stay its city (the nights are on the top line). */}
-            {route ? <TransportCardBody face={route} title={title} /> : <h3>{first.category === "stay" && first.city ? first.city : title}</h3>}
+            {route ? <TransportCardBody face={route} title={title} art={kind !== "transport" ? <TransportArt mode={kind as Parameters<typeof TransportArt>[0]["mode"]} /> : null} /> : <h3>{first.category === "stay" && first.city ? first.city : title}</h3>}
             {lowText && <p className="nd-sub">{L(`${lowText}'den başlıyor`, `from ${lowText}`)}</p>}
             {wants.length > 0 && (
               <ul className="nd-wants" aria-label={L("Aradığımız", "What we're looking for")}>
@@ -126,7 +125,7 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
           <div className="pk-foot nd-foot">
             <button type="button" className="nd-opts" onClick={(e) => (e.stopPropagation(), onOpen())} aria-haspopup="dialog">
               <Faces items={items} />
-              {L(`${n} seçenek`, `${n} options`)}
+              {L(`${n} seçenek`, `${n} option${n === 1 ? "" : "s"}`)}
               <UiIcon name="right" size={13} />
             </button>
             <AskButton text={L(`${title} için öneri bul`, `Find options for ${title}`)} />
@@ -288,7 +287,7 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
           </span>
           <div className="bk-tt">
             <h3 id="ch-title">{title}</h3>
-            <p>{[date, L(`${items.length} seçenek`, `${items.length} options`)].filter(Boolean).join(" · ")}</p>
+            <p>{[date, L(`${items.length} seçenek`, `${items.length} option${items.length === 1 ? "" : "s"}`)].filter(Boolean).join(" · ")}</p>
           </div>
           <button type="button" className="bk-x" aria-label={L("Kapat", "Close")} onClick={onClose} autoFocus>
             <UiIcon name="x" size={14} />

@@ -23,11 +23,16 @@ import { SectionTimeline, type SectionCards } from "./SectionTimeline";
 import { SuggestionCards } from "./SuggestionCards";
 import { VisaRow } from "./VisaRow";
 import { ActivityBoard } from "./ActivityBoard";
+import { IdeaTiles } from "../ideas/IdeaTiles";
+import { SectionSuggestContext } from "./sectionSuggest";
 import { TripShape } from "./TripShape";
 import type { JourneyHop, JourneyStop } from "../../lib/tripShape";
 import type { BoardSuggestions } from "../useSuggestions";
 import type { BudgetSlice } from "../../lib/progress";
 import { formatPrice } from "../../lib/items";
+
+/** The sections whose suggestions are tiles among their ideas. */
+const TILED: SectionId[] = ["activity", "todo"];
 
 const SLICE: Partial<Record<SectionId, BudgetSlice>> = { flight: "flight", stay: "stay", transport: "transport", activity: "activity", other: "other" };
 
@@ -120,17 +125,23 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
             const opened = isOpen(onlySuggested ? provisionalSection(s) : !own && (rows.length || visaLine(s)) ? { ...s, open: true } : s);
             return (
               <Section key={s.id} section={s} allot={allot && SLICE[s.id] && allot.by[SLICE[s.id]!] > 0 ? formatPrice(allot.by[SLICE[s.id]!], allot.currency) : null} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)} suggestions={suggested(s).length}>
+                <SectionSuggestContext.Provider value={suggestions && TILED.includes(s.id) ? { list: suggested(s), add: suggestions.add, dismiss: suggestions.dismiss, notes: suggestions.notes } : null}>
                 {visaLine(s) && <VisaRow visa={visa} done={visaDone} onDone={(d) => onVisaDone?.(d)} />}
-                {suggestions && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
+                {/* Etkinlik ve turlar and Yapılacak şeyler show their suggestions among their ideas, as tiles (sectionSuggest). */}
+                {suggestions && !TILED.includes(s.id) && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
                 {pending?.bySection[s.id]}
                 {/* The empty cards join the section's own grid (side by side with its cards), except Etkinlikler's. */}
                 {own && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} extra={s.id === "activity" ? [] : rows} />}
                 {s.id === "activity" ? (
                   // v11: the tours and tickets come from the source as the shelf's tiles (plan/ActivityBoard), no empty card.
                   own ? null : <ActivityBoard section={s} plan={plan} fallback={() => null} />
+                ) : s.id === "todo" && !own ? (
+                  // Only suggestions so far: they're tiles under "Fikirler ve öneriler" all the same.
+                  <IdeaTiles section={s} fallback={() => null} />
                 ) : own ? null : (
                   <EmptyRows rows={rows} onAdd={(at) => onAdd(s.id, at)} />
                 )}
+                </SectionSuggestContext.Provider>
               </Section>
             );
           })}

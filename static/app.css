@@ -3763,3 +3763,82 @@ a.ch-why { text-decoration: none; }
 .st-row-sub { display: block; margin-top: 1px; font-size: 13px; font-weight: 500; color: #7a76a0; }
 .st-row-chips { display: inline-flex; flex-wrap: wrap; gap: 5px; vertical-align: middle; }
 .st-row-chip { padding: 2px 10px; border-radius: 999px; background: #efeaff; color: var(--hx-accent); font-size: 12.5px; font-weight: 650; }
+
+/* The panel holds what's placed absolutely inside it (the screen-reader count, tooltips, a card's "+"): without a
+   position of its own they'd count against the page and make the whole page scroll past its end. */
+.panel { position: relative; }
+.cat-sec { position: relative; }
+
+/* ===== A card's contents, one standard (Emre 2026-10-09: "üstü binen yazılar … bir standarda dönüşmesi gerekiyor"):
+   a card never wider than its cell; long names wrap at words, their lines under them two at most; the live boxes as
+   many across as fit; the top line wraps under itself; a booking's foot is its word, a red date if one runs out, its
+   file and "Ayrıntı". */
+.cat-grid > .cat-card, .cat-grid > .ek-cell, .cat-card > .stay-block, .cat-card .group, .cat-card .section { min-width: 0; max-width: 100%; }
+.pk-card { min-width: 0; max-width: 100%; }
+.pk-top { flex-wrap: wrap; row-gap: 4px; }
+.pk-top .pk-date { white-space: normal; }
+.pk-end { margin-left: auto; }
+.pk-mid, .pk-mid.has-logo { grid-template-columns: minmax(0, 1fr) minmax(36px, .55fr) minmax(0, 1fr); }
+.pk-stop { min-width: 0; }
+.pk-stop b, .pk-stop b.long { overflow-wrap: break-word; hyphens: auto; }
+.pk-stop > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.pk-txt h3, .nd-body h3 { overflow-wrap: break-word; }
+.pk-txt p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.pk-live { grid-auto-flow: row; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); grid-auto-columns: auto; margin: 2px 0 0; }
+.pk-lv { padding: 8px 10px; gap: 8px; }
+.pk-lv b { font-size: 16px; }
+.pk-booked .pk-foot .pk-sub { display: none; }
+.pk-foot .pk-src { font-size: 11px; color: var(--v-muted); margin-left: 0; }
+.pk-docname { max-width: min(200px, 100%); min-width: 0; }
+.pk-docname > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-foot .pk-state { min-width: 0; }
+
+/* The way's drawing sits in the middle of its ends, in the flow (never over the top line or the boxes). */
+.pk-route { position: relative; display: grid; align-items: center; height: auto; min-height: 40px; }
+.pk-route .pk-art { position: static; transform: none; width: 100%; max-width: 120px; height: 40px; margin: 0 auto; opacity: .6; }
+.pk-r-done .pk-route .pk-art, .pk-r-half .pk-route .pk-art { opacity: .75; }
+
+/* v11 revision: Etkinlik ve turlar in two places — "Planda" (big rows, the price to the right) and "Öneriler ve
+   fikirler" (the chat's suggestions, the source's tours and the saved ideas as one shelf of tiles, folds away). */
+.ac-wrap { gap: 18px; }
+.ac-block { display: grid; gap: 10px; }
+.ac-h { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 8px; margin: 0; font-size: 13.5px; color: var(--v-muted); }
+.ac-h b { font-size: 15px; color: var(--v-ink); }
+.ac-h i, .ac-toggle i { font-style: normal; font-weight: 600; color: var(--v-muted); }
+.ac-on-plan .ac-planned { gap: 10px; }
+.ac-row { grid-template-columns: 64px minmax(0, 1fr) auto; gap: 2px 14px; padding: 10px 12px 10px 10px; border-radius: 16px; }
+.ac-row .ac-pic { width: 64px; height: 64px; border-radius: 12px; }
+.ac-t { font-size: 16px; font-weight: 700; }
+.ac-m { font-size: 13px; }
+.ac-price-big { display: grid; justify-items: end; line-height: 1.2; margin-right: 4px; }
+.ac-price-big b { font-size: 18px; font-weight: 750; color: var(--v-ink); font-variant-numeric: tabular-nums; }
+.ac-price-big small { font-size: 12px; color: var(--v-muted); }
+.ac-ideas { padding-top: 14px; border-top: 1px solid var(--v-line2); }
+.ac-ideas-h { padding-top: 0; }
+.ac-toggle { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 6px 8px; border: 0; background: none; padding: 0; font: inherit; color: var(--v-muted); cursor: pointer; text-align: left; }
+.ac-toggle b { font-size: 15px; color: var(--v-ink); }
+.ac-chev { display: inline-block; transition: transform .25s cubic-bezier(.16, 1, .3, 1); color: var(--v-muted); }
+.ac-ideas:not(.open) .ac-chev { transform: rotate(-90deg); }
+.ac-sugg .ac-why { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.ac-sugg .ac-note { color: #8a5a00; }
+@media (max-width: 560px) { .ac-row .ac-price-big { justify-items: start; } }
+
+/* v11 revision: Yapılacak şeyler — on the plan as rows (picture, name, its line, its day or "Günü yok", ✓ Planda), the
+   ideas and suggestions as tiles under them. */
+.it-rows { display: grid; gap: 8px; }
+.it-tile.it-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; gap: 1px 14px; padding: 8px 12px 8px 8px; border-radius: 14px; background: var(--v-plan-bg); border: 1px solid var(--v-plan-line); }
+.it-tile.it-row.done { background: #fff; border-color: var(--v-line2); }
+.it-tile.it-row:hover { transform: none; }
+.it-row .it-pic { grid-row: 1 / span 2; width: 56px; height: 56px; border-radius: 11px; }
+.it-row .it-pic .it-maps, .it-row .it-pic .it-who { display: none; }
+.it-row .it-pic .it-illus { height: 46px; }
+.it-row .it-pic .it-tools { display: none; }
+.it-row .it-t { grid-column: 2; margin: 0; font-size: 15px; }
+.it-row .it-m { grid-column: 2; }
+.it-row .it-foot { grid-column: 3; grid-row: 1 / span 2; margin: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.it-noday { font-size: 12.5px; color: var(--v-muted); white-space: nowrap; }
+
+.it-row .it-foot .it-tools { position: static; display: inline-flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+.it-row:hover .it-foot .it-tools, .it-row:focus-within .it-foot .it-tools { opacity: 1; }
+@media (hover: none) { .it-row .it-foot .it-tools { opacity: 1; } }
+.cat-grid.cat-in-transport { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }

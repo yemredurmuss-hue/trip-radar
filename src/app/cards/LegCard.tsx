@@ -38,12 +38,11 @@ export function LegCard({ leg }: { leg: Leg }) {
       ariaLabel={v.ariaLabel}
       domId={`leg-${leg.key}`}
       extraClass="pk-leg"
-      art={v.kind !== "transport" ? <TransportArt mode={v.kind} /> : null}
       docs={own ? <DocAccess item={own} docs={env.docsFor(own.id)} /> : undefined}
       menu={menu}
       open={open}
       onToggle={() => setOpen(!open)}
-      body={<TransportCardBody face={{ from: v.from, to: v.to, middle: v.middle, rental: false }} title={v.ariaLabel} />}
+      body={<TransportCardBody face={{ from: v.from, to: v.to, middle: v.middle, rental: false }} title={v.ariaLabel} art={v.kind !== "transport" ? <TransportArt mode={v.kind} /> : null} />}
       foot={<CardFoot view={v.foot} price={null} onAction={book} />}
       detail={
         <div className="pk-detail">

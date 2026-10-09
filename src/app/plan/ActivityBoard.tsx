@@ -31,6 +31,8 @@ import { usePhotoOf, WhoAvatar } from "../cards/WhoseBadge";
 import { Editable, InlineEdit, useInlineEdit } from "../cards/InlineEdit";
 import { FallbackImg } from "../FallbackImg";
 import { useMyName } from "../Profile";
+import type { Suggestion } from "../../lib/types";
+import { useSectionSuggest } from "./sectionSuggest";
 
 /** The drawing's picture for a ticket, a tour or a show (static/illus). */
 export const ACTIVITY_ART = "illus/etkinlik-tur.png";
@@ -41,47 +43,139 @@ export const activityPlanned = (i: Item): boolean => i.status === "chosen" || i.
 
 export function ActivityBoard({ section, plan, fallback }: { section: CatSection; plan: Pick<Plan, "stayBlocks">; fallback: (entry: CatEntry) => ReactNode }) {
   const env = useCardEnv();
+  const suggest = useSectionSuggest();
   const rows = section.entries.map((e) => ({ e, item: recordOf(e) }));
   const records = rows.filter((r): r is { e: CatEntry; item: Item } => r.item != null);
   const planned = records.filter((r) => activityPlanned(r.item));
   const ideas = records.filter((r) => !activityPlanned(r.item));
   const others = rows.filter((r) => r.item == null).map((r) => r.e);
+  const offers = useActivityOffers(plan, records.map((r) => r.item));
+  const sugg = suggest?.list ?? [];
+  const [open, setOpen] = useRemembered(`trip-radar:ideasOpen:${env.tripId}:activity`, true);
+  const count = sugg.length + ideas.length + offers.tiles.length;
   const more = env.ask;
   return (
     <div className="ac-wrap">
-      {planned.length > 0 && (
-        <div className="ac-planned">
-          {/* The name is edited where it stands (just added from "+ Ekle", a page's title corrected). */}
-          {planned.map(({ e, item }) => (
-            <InlineEdit key={e.key} item={item} only={["name"]}>
-              <ActivityRow item={item} domId={entryDomId(catDomKey(e))} />
-            </InlineEdit>
-          ))}
+      {/* v11 revision (Emre 2026-10-09): what's on the plan in its own place, big; the suggestions and ideas apart. */}
+      <section className="ac-block ac-on-plan" aria-label={L("Planda", "On the plan")}>
+        <p className="ac-h">
+          <b>{L("Planda", "On the plan")}</b>
+          <i>{planned.length}</i>
+          {!planned.length && <span>{L("Henüz bir şey yok; aşağıdaki önerilerden “+ Plana koy”.", "Nothing yet; “+ Add to plan” from the suggestions below.")}</span>}
+        </p>
+        {planned.length > 0 && (
+          <div className="ac-planned">
+            {/* The name is edited where it stands (just added from "+ Ekle", a page's title corrected). */}
+            {planned.map(({ e, item }) => (
+              <InlineEdit key={e.key} item={item} only={["name"]}>
+                <ActivityRow item={item} domId={entryDomId(catDomKey(e))} />
+              </InlineEdit>
+            ))}
+          </div>
+        )}
+        {others.map((e) => (
+          <div key={e.key} className="ac-other">{fallback(e)}</div>
+        ))}
+      </section>
+      <section className={`ac-block ac-ideas${open ? " open" : ""}`} aria-label={L("Öneriler ve fikirler", "Suggestions and ideas")}>
+        <div className="ac-ideas-h">
+          <button type="button" className="ac-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+            <span className="ac-chev" aria-hidden>▾</span>
+            <b>{L("Öneriler ve fikirler", "Suggestions and ideas")}</b>
+            <i>{count}</i>
+            <span>{L("bilet ya da rezervasyon gerektirenler", "the ones that take a ticket or a booking")}</span>
+          </button>
+          <span className="ac-sp" />
+          {more && (
+            <button type="button" className="ac-more" onClick={() => more(L("Bu gezi için bilet ya da rezervasyon gerektiren birkaç etkinlik ve tur fikri daha öner.", "Suggest a few more activities and tours for this trip, the kind that take a ticket or a booking."))}>
+              ✨ {L("Daha fazla fikir", "More ideas")}
+            </button>
+          )}
+        </div>
+        {open && (
+          <>
+            {count > 0 && (
+              <div className="it-grid ac-shelf">
+                {sugg.map((x) => (
+                  <SuggestTile key={x.key} s={x} note={suggest?.notes[x.key] ?? null} onAdd={() => suggest?.add(x)} onDismiss={() => suggest?.dismiss(x)} />
+                ))}
+                {offers.tiles.map(({ o, need, city }) => (
+                  <OfferTile key={o.id} offer={o} city={city} adults={offers.adults} onPut={() => void offers.put(o, need)} />
+                ))}
+                {ideas.map(({ e, item }) => (
+                  <InlineEdit key={e.key} item={item} only={["name"]}>
+                    <ActivityTile item={item} domId={entryDomId(catDomKey(e))} />
+                  </InlineEdit>
+                ))}
+              </div>
+            )}
+            {offers.missing.length > 0 && (
+              <div className="ac-self">
+                <p className="ac-self-note">
+                  {offers.available
+                    ? L("Bu şehirler için kaynak şu an öneri getirmedi; kendin bakabilirsin:", "The source brought nothing for these cities just now; look yourself:")
+                    : L("Canlı tur ve bilet kaynağı bağlı değil; kendin bakabilirsin:", "No live tours-and-tickets source is connected; look yourself:")}
+                </p>
+                {offers.missing.map((c) => (
+                  <div key={c.city} className="ac-self-row">
+                    <b>{c.city}</b>
+                    <SearchRow links={activityLinks(c.city)} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
+
+/** A per-viewer open/closed state kept in the browser (nothing else depends on it). */
+export function useRemembered(key: string, initial: boolean): [boolean, (v: boolean) => void] {
+  const [v, setV] = useState<boolean>(() => {
+    try {
+      const got = localStorage.getItem(key);
+      return got == null ? initial : got === "1";
+    } catch {
+      return initial;
+    }
+  });
+  return [
+    v,
+    (next) => {
+      setV(next);
+      try {
+        localStorage.setItem(key, next ? "1" : "0");
+      } catch {
+        // kept for this view only
+      }
+    },
+  ];
+}
+
+/** A suggestion (the chat's, a rule's) as a tile among the ideas: ✨, its name, why, "+ Plana koy", ×. */
+export function SuggestTile({ s, note, onAdd, onDismiss, art = ACTIVITY_ART }: { s: Suggestion; note: string | null; onAdd: () => void; onDismiss: () => void; art?: string }) {
+  return (
+    <div className="it-tile ac-tile ac-sugg" aria-label={s.title} data-suggestion={s.key}>
+      <div className="it-pic ac-tile-pic">
+        <img className="ac-art" src={art} alt="" />
+        <span className="it-who" title={L("Öneri", "Suggestion")}>
+          <span className="it-ai">✨</span>
+        </span>
+        <span className="it-tools">
+          <DeleteX name={s.title} onDelete={onDismiss} label={L("Gerek yok", "Not needed")} className="it-x" />
+        </span>
+      </div>
+      <b className="it-t">{s.title}</b>
+      {s.payload?.city && <span className="it-m">📍 {s.payload.city}</span>}
+      {s.why && <span className="it-m ac-why">{s.why}</span>}
+      {note && <span className="it-m ac-note" role="status">{note}</span>}
+      {s.kind === "add" && (
+        <div className="it-foot">
+          <button type="button" className="it-put" onClick={onAdd}>+ {L("Plana koy", "Add to plan")}</button>
         </div>
       )}
-      {others.map((e) => (
-        <div key={e.key} className="ac-other">{fallback(e)}</div>
-      ))}
-      <div className="ac-ideas-h">
-        <b>{L("Fikirler", "Ideas")}</b>
-        <span>{L("bilet ya da rezervasyon gerektirenler", "the ones that take a ticket or a booking")}</span>
-        <span className="ac-sp" />
-        {more && (
-          <button type="button" className="ac-more" onClick={() => more(L("Bu gezi için bilet ya da rezervasyon gerektiren birkaç etkinlik ve tur fikri daha öner.", "Suggest a few more activities and tours for this trip, the kind that take a ticket or a booking."))}>
-            ✨ {L("Daha fazla fikir", "More ideas")}
-          </button>
-        )}
-      </div>
-      {ideas.length ? (
-        <div className="it-grid ac-shelf">
-          {ideas.map(({ e, item }) => (
-            <InlineEdit key={e.key} item={item} only={["name"]}>
-              <ActivityTile item={item} domId={entryDomId(catDomKey(e))} />
-            </InlineEdit>
-          ))}
-        </div>
-      ) : null}
-      <ActivityOffers plan={plan} saved={records.map((r) => r.item)} />
     </div>
   );
 }
@@ -109,9 +203,14 @@ function ActivityRow({ item, domId }: { item: Item; domId: string }) {
         <Ring state={ringOf(item, "activity")} />
         {[date, item.city].filter(Boolean).join(" · ")}
         {facts.source && <span className="ac-src">· {facts.source.label}</span>}
-        {facts.price && <span className="ac-price">· {facts.price.text}</span>}
       </span>
       <span className="ac-r" onClick={stop}>
+        {facts.price && (
+          <span className="ac-price-big">
+            <b>{facts.price.text}</b>
+            {facts.price.label && <small>{facts.price.label}</small>}
+          </span>
+        )}
         {booked ? (
           <>
             <span className="ac-proof">✓ {L("Bilet alındı", "Ticket bought")}</span>
@@ -198,11 +297,10 @@ const PER_CITY = 4;
 
 /**
  * v11 (Emre, 2026-10-09: "kaynaklarımızdan, API'lerden gerçek öneri olarak çıkmasını bekliyorduk"): each city's tours
- * and tickets from the connected source (Viator), as the shelf's tiles — the photo, the brand, the price a person,
- * "+ Plana koy" puts it on the plan at once. Nothing is made up: with no source, or none answering, each city's
- * own searches ("Kendin ara") and a plain line saying so.
+ * and tickets from the connected source (Viator), for the shelf's tiles — "+ Plana koy" puts one on the plan at once.
+ * Nothing is made up: the cities the source brought nothing for are listed for their own searches ("Kendin ara").
  */
-function ActivityOffers({ plan, saved }: { plan: Pick<Plan, "stayBlocks">; saved: Item[] }) {
+function useActivityOffers(plan: Pick<Plan, "stayBlocks">, saved: Item[]) {
   const { offers: source, tripId, travellers } = useEmptyEnv();
   const cities = citiesOfPlan(plan);
   const key = cities.map((c) => `${c.city}:${c.start}`).join("|");
@@ -235,32 +333,7 @@ function ActivityOffers({ plan, saved }: { plan: Pick<Plan, "stayBlocks">; saved
     const item = await addOffer(tripId, o, need);
     await chooseItem(item, []);
   };
-  return (
-    <>
-      {tiles.length > 0 && (
-        <div className="it-grid ac-shelf ac-offers" aria-label={L("Kaynaktan öneriler", "From the source")}>
-          {tiles.map(({ o, need, city }) => (
-            <OfferTile key={o.id} offer={o} city={city} adults={travellers} onPut={() => void put(o, need)} />
-          ))}
-        </div>
-      )}
-      {missing.length > 0 && (
-        <div className="ac-self">
-          <p className="ac-self-note">
-            {available
-              ? L("Bu şehirler için kaynak şu an öneri getirmedi; kendin bakabilirsin:", "The source brought nothing for these cities just now; look yourself:")
-              : L("Canlı tur ve bilet kaynağı bağlı değil; kendin bakabilirsin:", "No live tours-and-tickets source is connected; look yourself:")}
-          </p>
-          {missing.map((c) => (
-            <div key={c.city} className="ac-self-row">
-              <b>{c.city}</b>
-              <SearchRow links={activityLinks(c.city)} />
-            </div>
-          ))}
-        </div>
-      )}
-    </>
-  );
+  return { tiles, missing, available, put, adults: travellers };
 }
 
 function OfferTile({ offer: o, city, adults, onPut }: { offer: Offer; city: string; adults: number | null; onPut: () => void }) {

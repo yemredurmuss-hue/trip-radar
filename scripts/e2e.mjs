@@ -456,6 +456,9 @@ try {
   // v11: the cards in a grid, no date column; each card's own top line says its days.
   assert.deepEqual(await sec("stay").locator(".cat-card").evaluateAll((els) => els.map((e) => e.dataset.day)), ["2026-10-08", "2026-10-11"]);
   assert.equal(await app.locator(".cat-plan .cat-date, .cat-plan .cat-dot").count(), 0, "no date column");
+  // The page itself never scrolls past the window (Emre 2026-10-09: the chat and all went up, blank under it): what's
+  // placed absolutely inside the panel stays inside it; only the panel scrolls.
+  assert.ok(await app.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1), "the page doesn't scroll, the panel does");
   // v11 as drawn: each section its own white card; its head: the icon on its tint, the name and how many ("Uçuş 2"),
   // under it the stage words, on the right the bar (green booked, amber chosen), what's spent and its share of the budget.
   assert.equal(await sec("activity").evaluate((el) => getComputedStyle(el).backgroundColor), "rgb(255, 255, 255)");
@@ -485,7 +488,14 @@ try {
   // v11 Etkinlik ve turlar: what's on the plan is a row (the boat tour), the ideas are tiles under "Fikirler".
   assert.deepEqual(await sec("activity").locator(".ac-row").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Douro tekne turu"]);
   assert.deepEqual(await sec("activity").locator(".ac-tile").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Livraria Lello", "Serralves Müzesi", "Tiyatro"]);
-  assert.match(await sec("activity").locator(".ac-ideas-h").innerText(), /^Fikirler\s*bilet ya da rezervasyon gerektirenler\s*✨ Daha fazla fikir$/);
+  // v11 revision: "Planda" first (big rows), then "Öneriler ve fikirler" (the chat's suggestions, the source's tours and
+  // the saved ideas as tiles), folding away.
+  assert.match(await sec("activity").locator(".ac-on-plan .ac-h").innerText(), /^Planda\s*1/);
+  assert.match(await sec("activity").locator(".ac-ideas-h").innerText(), /Öneriler ve fikirler\s*3\s*bilet ya da rezervasyon gerektirenler\s*✨ Daha fazla fikir$/);
+  await sec("activity").locator(".ac-toggle").click();
+  assert.equal(await sec("activity").locator(".ac-tile").count(), 0, "folded away");
+  await sec("activity").locator(".ac-toggle").click();
+  await sec("activity").locator(".ac-tile").first().waitFor();
   assert.equal(await sec("activity").locator(".ac-row .ac-pic").count(), 1, "a row has its picture");
   // The restaurant is a tile of the ideas, not a card (0.35.3); v11: under Yapılacak şeyler, as a tile.
   assert.equal(await sec("todo").locator(".it-tile").count(), 1);
@@ -1218,8 +1228,9 @@ try {
   assert.deepEqual(await names(todos), ["Bolhão pazarı", "Majestic Café", "Dom Luís köprüsünden gün batımı", "Livraria Lello, giriş bileti var", "Pastel de nata"]);
   // Hepsi · Gezilecek yerler · Restoranlar, with their numbers.
   assert.deepEqual(flat(await todos.locator(".it-filters button[aria-pressed]").allInnerTexts()), ["Hepsi 5", "Gezilecek yerler 3", "Restoranlar 2"]);
-  // v11: "✨ Daha fazla öner" at the end of that line (the chat looks for more).
-  await todos.locator(".it-filters .ac-more", { hasText: "Daha fazla öner" }).waitFor();
+  // v11 revision: what's on the plan first as rows ("Planda"), then "Fikirler ve öneriler" as tiles with "✨ Daha fazla öner".
+  assert.deepEqual(await todos.locator(".it-on-plan .it-row").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Bolhão pazarı"]);
+  await todos.locator(".ac-ideas-h .ac-more", { hasText: "Daha fazla öner" }).waitFor();
   await todos.locator(".it-filters button", { hasText: "Restoranlar" }).click();
   assert.deepEqual(await names(todos), ["Majestic Café", "Pastel de nata"]);
   await todos.locator(".it-filters button", { hasText: "Hepsi" }).click();
@@ -1232,6 +1243,7 @@ try {
   // "+ Plana koy" ↔ "✓ Planda", in place.
   await majestic.getByRole("button", { name: "+ Plana koy" }).click();
   await majestic.getByRole("button", { name: "✓ Planda" }).waitFor();
+  await todos.locator('.it-on-plan .it-row[aria-label="Majestic Café"]').waitFor(); // it moved up, to "Planda"
   // Its day in Gün gün: "Planda, günü yok", a day and a meal, then it's on that day.
   await tab("Gün gün").click();
   const undated = app.locator(".ud-strip");
@@ -1556,7 +1568,8 @@ try {
   assert.ok(await pinPhoto.evaluate(async (img) => (await img.decode(), img.naturalWidth > 0)), "the pin's photo loads");
   // The picture is the same size on every tile, a photo or the kind's mark.
   const picH = async (name) => Math.round((await todoRow(name).locator(".it-pic").boundingBox()).height);
-  assert.equal(await picH("Jardins do Palácio de Cristal"), await picH("Porto Belo Pazarı"), "pictures the same size");
+  // (Porto Belo Pazarı is on the plan: a row, its picture smaller; the ideas' tiles all alike.)
+  assert.equal(await picH("Jardins do Palácio de Cristal"), 92, "a tile's picture is the drawing's size, a photo or not");
   // Saved from Maps: "Maps" on its picture, its kind in the grey line, its name to its own Maps page.
   assert.equal(await todoRow("Jardins do Palácio de Cristal").locator(".it-maps").innerText(), "Maps");
   assert.match(await todoRow("Jardins do Palácio de Cristal").locator(".it-m").innerText(), /Doğa/);

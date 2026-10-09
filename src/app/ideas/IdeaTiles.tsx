@@ -24,6 +24,8 @@ import { useCardEnv } from "../cards/PlanCard";
 import { usePhotoOf, WhoAvatar } from "../cards/WhoseBadge";
 import { FallbackImg } from "../FallbackImg";
 import { useMyName } from "../Profile";
+import { SuggestTile, useRemembered } from "../plan/ActivityBoard";
+import { useSectionSuggest } from "../plan/sectionSuggest";
 
 
 type Filter = "all" | "go" | "food";
@@ -33,6 +35,7 @@ export const ideaPlanned = (i: Item): boolean => i.status === "chosen" || i.stat
 
 export function IdeaTiles({ section, fallback }: { section: CatSection; fallback: (entry: CatEntry) => ReactNode }) {
   const env = useCardEnv();
+  const suggest = useSectionSuggest();
   const [filter, setFilter] = useState<Filter>("all");
   const rows = section.entries.map((e) => ({ e, item: recordOf(e) }));
   const items = rows.filter((r): r is { e: CatEntry; item: Item } => r.item != null);
@@ -40,6 +43,12 @@ export function IdeaTiles({ section, fallback }: { section: CatSection; fallback
   const n = (f: Filter) => items.filter(({ item }) => f === "all" || (f === "food") === isFoodIdea(item)).length;
   // What's done goes last; the rest keeps the Plan's order (on a day first, then by city).
   const shown = items.filter(({ item }) => filter === "all" || (filter === "food") === isFoodIdea(item)).sort((a, b) => Number(Boolean(a.item.doneAt)) - Number(Boolean(b.item.doneAt)));
+  // v11 revision (Emre 2026-10-09: "plana eklendikten sonra burası tam anlaşılmıyor"): what's on the plan in its own
+  // place as rows (its day, or none yet), the ideas and the suggestions apart as tiles, folding away.
+  const onPlan = shown.filter(({ item }) => ideaPlanned(item) || Boolean(item.doneAt));
+  const ideas = shown.filter(({ item }) => !ideaPlanned(item) && !item.doneAt);
+  const sugg = (suggest?.list ?? []).filter((x) => filter === "all" || (filter === "food") === (x.section === "food" || x.template === "food"));
+  const [open, setOpen] = useRemembered(`trip-radar:ideasOpen:${env.tripId}:todo`, true);
   return (
     <div className="it-wrap">
       <div className="it-filters" role="group" aria-label={L("Ne", "What")}>
@@ -48,24 +57,54 @@ export function IdeaTiles({ section, fallback }: { section: CatSection; fallback
             {f === "all" ? L("Hepsi", "All") : f === "go" ? L("Gezilecek yerler", "Places to see") : L("Restoranlar", "Restaurants")} <i>{n(f)}</i>
           </button>
         ))}
-        <span className="it-sp" />
-        {env.ask && (
-          <button type="button" className="ac-more" onClick={() => env.ask!(L("Bu gezi için gezilecek birkaç yer ve restoran daha öner.", "Suggest a few more places to see and restaurants for this trip."))}>
-            ✨ {L("Daha fazla öner", "Suggest more")}
-          </button>
-        )}
       </div>
-      {shown.length ? (
-        <div className="it-grid">
-          {shown.map(({ e, item }) => (
-            <InlineEdit key={e.key} item={item} only={["name"]}>
-              <IdeaTile item={item} />
-            </InlineEdit>
-          ))}
+      <section className="ac-block it-on-plan" aria-label={L("Planda", "On the plan")}>
+        <p className="ac-h">
+          <b>{L("Planda", "On the plan")}</b>
+          <i>{onPlan.length}</i>
+          <span>{onPlan.length ? L("günü olmayanlara günü Gün gün'de verirsin", "give the ones with no day theirs in Day by day") : L("Henüz bir şey yok; aşağıdan “+ Plana koy”.", "Nothing yet; “+ Add to plan” from below.")}</span>
+        </p>
+        {onPlan.length > 0 && (
+          <div className="it-rows">
+            {onPlan.map(({ e, item }) => (
+              <InlineEdit key={e.key} item={item} only={["name"]}>
+                <IdeaTile item={item} row />
+              </InlineEdit>
+            ))}
+          </div>
+        )}
+      </section>
+      <section className={`ac-block ac-ideas${open ? " open" : ""}`} aria-label={L("Fikirler ve öneriler", "Ideas and suggestions")}>
+        <div className="ac-ideas-h">
+          <button type="button" className="ac-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+            <span className="ac-chev" aria-hidden>▾</span>
+            <b>{L("Fikirler ve öneriler", "Ideas and suggestions")}</b>
+            <i>{ideas.length + sugg.length}</i>
+          </button>
+          <span className="it-sp" />
+          {env.ask && (
+            <button type="button" className="ac-more" onClick={() => env.ask!(L("Bu gezi için gezilecek birkaç yer ve restoran daha öner.", "Suggest a few more places to see and restaurants for this trip."))}>
+              ✨ {L("Daha fazla öner", "Suggest more")}
+            </button>
+          )}
         </div>
-      ) : (
-        <p className="il-none">{L("Burada fikir yok.", "No ideas here.")}</p>
-      )}
+        {open &&
+          (ideas.length || sugg.length ? (
+            <div className="it-grid">
+              {sugg.map((x) => (
+                <SuggestTile key={x.key} s={x} note={suggest?.notes[x.key] ?? null} onAdd={() => suggest?.add(x)} onDismiss={() => suggest?.dismiss(x)}
+                  art={`illus/${x.section === "food" || x.template === "food" ? "restoran" : "yapilacak"}.png`} />
+              ))}
+              {ideas.map(({ e, item }) => (
+                <InlineEdit key={e.key} item={item} only={["name"]}>
+                  <IdeaTile item={item} />
+                </InlineEdit>
+              ))}
+            </div>
+          ) : (
+            <p className="il-none">{L("Burada bekleyen fikir yok.", "No ideas waiting here.")}</p>
+          ))}
+      </section>
       {others.map((e) => (
         <div key={e.key} className="it-other">{fallback(e)}</div>
       ))}
@@ -74,7 +113,8 @@ export function IdeaTiles({ section, fallback }: { section: CatSection; fallback
   );
 }
 
-function IdeaTile({ item }: { item: Item }) {
+/** A thing to do as a tile (an idea), or as a row (`row`: on the plan, its day beside it). */
+function IdeaTile({ item, row = false }: { item: Item; row?: boolean }) {
   const env = useCardEnv();
   const edit = useInlineEdit();
   const myName = useMyName();
@@ -101,18 +141,21 @@ function IdeaTile({ item }: { item: Item }) {
     ...(!food ? [{ label: L("Etkinliklere taşı (bileti var)", "Move to activities (has a ticket)"), run: () => void moveToBookings(item) }] : []),
     ...(!food ? [{ label: L("Hazırlık'a taşı", "Move to Prep"), run: () => void setPrep(item, true) }] : []),
   ];
+  const tools = (
+    <span className="it-tools">
+      <DeleteX name={item.name} onDelete={() => env.remove(item)} className="it-x" />
+      <CardMenu entries={menu} />
+    </span>
+  );
   return (
-    <div className={`it-tile${food ? " food" : ""}${done ? " done" : ""}${planned ? " planned" : ""}`} aria-label={item.name} data-item-id={item.id} title={item.summary ?? undefined}>
+    <div className={`it-tile${row ? " it-row" : ""}${food ? " food" : ""}${done ? " done" : ""}${planned ? " planned" : ""}`} aria-label={item.name} data-item-id={item.id} title={item.summary ?? undefined}>
       <div className="it-pic" style={{ background: `color-mix(in srgb, ${tint} 12%, #fff)` }}>
         <FallbackImg className="it-photo" src={ideaThumb(item)} fallback={<img className="it-illus" src={`illus/${food ? "restoran" : "yapilacak"}.png`} alt="" />} />
         {from === "Maps" && <span className="it-maps">Maps</span>}
         <span className="it-who" title={who === "ai" ? L("AI önerisi", "AI pick") : who ?? myName ?? undefined}>
           {who === "ai" ? <span className="it-ai">✨</span> : <WhoAvatar name={who ?? (myName || L("Ben", "Me"))} photo={photoOf(who ?? myName)} />}
         </span>
-        <span className="it-tools">
-          <DeleteX name={item.name} onDelete={() => env.remove(item)} className="it-x" />
-          <CardMenu entries={menu} />
-        </span>
+        {!row && tools}
       </div>
       <b className="it-t">
         {edit?.open === "name" ? (
@@ -135,7 +178,8 @@ function IdeaTile({ item }: { item: Item }) {
             {planned ? `✓ ${L("Planda", "On the plan")}` : `+ ${L("Plana koy", "Add to plan")}`}
           </button>
         )}
-        {day && !done && <span className="it-day">{day}</span>}
+        {day && !done ? <span className="it-day">{day}</span> : row && !done ? <span className="it-noday">{L("Günü yok", "No day yet")}</span> : null}
+        {row && tools}
       </div>
     </div>
   );
