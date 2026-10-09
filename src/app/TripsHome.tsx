@@ -3,7 +3,7 @@ import { requestProcessing } from "../lib/browser";
 import { countdown, countdownText } from "../lib/countdown";
 import { initials } from "../lib/heroInfo";
 import { L, lang, saveLang, withLang, type Lang } from "../lib/i18n";
-import { formatDateRange, tripDateRange } from "../lib/items";
+import { formatDateRange, nightsBetween, tripDateRange } from "../lib/items";
 import { retryCapture } from "../lib/process";
 import { listDrafts, onDraftsChanged, removeDraft, saveDraft } from "../lib/startDrafts";
 import { checklist, dative, detectLang, progressOf, splitLinks, tripNamedIn, type StartCtx, type StartMode, type StartState } from "../lib/startTrip";
@@ -16,10 +16,11 @@ import type { Capture, ChatMessage, Item, Settings, Trip } from "../lib/types";
 import { RoutingLine } from "./Chat";
 import { UiIcon } from "./cards/Silhouettes";
 import { addImages, addLinks } from "./capture";
-import { FallbackImg } from "./FallbackImg";
+import { HomeBackdrop } from "./HomeBackdrop";
 import { HeroIcon, type HeroIconName } from "./Icons";
 import { useMyPhoto, usePeoplePhotos } from "./Profile";
 import { JoinShared } from "./Share";
+import { DraftCard, TripCard } from "./TripCard";
 import { joinTr } from "./TripPanel";
 
 /** What opens the start chat: a mode (the chips), what was typed, or a draft to go on with. */
@@ -278,8 +279,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
 
   return (
     <div className="home st-home hm" onDragOver={(e) => (e.preventDefault(), setDragging(true))} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
-      <span className="st-blob st-blob-a" aria-hidden />
-      <span className="st-blob st-blob-b" aria-hidden />
+      <HomeBackdrop />
       <header className="hm-bar">
         <span className="hm-logo">
           <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden>
@@ -472,98 +472,47 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
             )}
           </div>
           <div className="trip-grid">
-            {when === "ahead" && drafts.map((d) => {
-              const p = progressOf(checklist(d, ctx));
-              return (
-                <div key={d.id} className="st-draft">
-                  <button type="button" className="st-draft-open" onClick={() => onStart({ mode: d.mode, draft: d })}>
-                    <div className="st-draft-top">
-                      <span className="hm-stage hm-stage-search">{L("Taslak", "Draft")}</span>
-                      <span className="st-draft-place">{d.where?.place ?? L("Yeni gezi", "New trip")}</span>
-                    </div>
-                    <div className="trip-card-body">
-                      <div className="trip-card-title">{d.where?.place ?? L("Yeni gezi", "New trip")}</div>
-                      <div className="hm-bar-line" aria-hidden>
-                        <i style={{ width: `${(p.done / Math.max(1, p.total)) * 100}%` }} className="hm-seg-lav" />
-                      </div>
-                      <div className="muted">{L(`${p.done}/${p.total} bilgi · yarıda kaldı`, `${p.done}/${p.total} answers · left halfway`)}</div>
-                      <div className="st-draft-go">{L("Taslak · Devam et", "Draft · Continue")} →</div>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    className="st-draft-x"
-                    aria-label={L("Taslağı sil", "Delete the draft")}
-                    onClick={() => void removeDraft(d.id).then((gone) => gone && setRemoved(gone))}
-                  >
-                    <UiIcon name="x" size={14} />
-                  </button>
-                </div>
-              );
-            })}
+            {when === "ahead" &&
+              drafts.map((d) => {
+                const p = progressOf(checklist(d, ctx));
+                return (
+                  <DraftCard
+                    key={d.id}
+                    place={d.where?.place ?? L("Yeni gezi", "New trip")}
+                    done={p.done}
+                    total={p.total}
+                    onOpen={() => onStart({ mode: d.mode, draft: d })}
+                    onRemove={() => void removeDraft(d.id).then((gone) => gone && setRemoved(gone))}
+                  />
+                );
+              })}
             {shownTrips.map((trip) => {
               const own = items.filter((i) => i.tripId === trip.id && i.status !== "dismissed");
               const range = trip.confirmedDates ?? tripDateRange(own);
-              // Where it stays and does things: not the home the flight back lands in, nor an eSIM's country.
-              const cities = tripCardPlaces(own);
-              const nBooked = own.filter((i) => i.status === "booked").length;
-              const nChosen = own.filter((i) => i.status === "chosen").length;
-              const nSaved = own.length - nBooked - nChosen;
               // The photo its board's hero shows, as stored (none fetched from the list); the gradient without one.
               const image = tripCardPhoto(trip, own);
               // Too small for the credit line: who took it on hover ("Fotoğraf: Ana Lima / Unsplash"); the board's hero links it.
               const credit = creditOf(image, trip.photoCredits);
               const line = credit ? creditLine(credit) : null;
               const photoBy = line ? `${line.label} ${[line.by?.text, line.source.text].filter(Boolean).join(" / ")}` : undefined;
-              const left = countdownText(countdown(range, today));
-              const names = trip.travellers?.names?.filter((n) => n.trim()) ?? [];
-              const total = Math.max(1, own.length);
+              // Me first, then the others on the trip (each once).
+              const names = [...(me ? [me] : []), ...(trip.travellers?.names ?? []).map((n) => n.trim()).filter((n) => n && n.toLocaleLowerCase() !== me?.toLocaleLowerCase())];
+              const days = range ? nightsBetween(range.start, range.end) + 1 : 0;
+              const info =
+                [range ? formatDateRange(range.start, range.end) : null, days > 1 ? L(`${days} gün`, `${days} days`) : null, isDemoTrip(trip) ? L("Örnek", "Sample") : null].filter(Boolean).join(" · ") ||
+                L("Tarih ve yer kaydettikçe netleşir", "Dates and places fill in as you save");
               return (
-                <button key={trip.id} className="trip-card" onClick={() => onOpen(trip.id)}>
-                  <span className="trip-card-pic">
-                    <FallbackImg className="trip-card-img" src={image} title={photoBy} fallback={<span className="trip-card-img" />} />
-                    {cities.length > 0 && (
-                      <span className="hm-tabs" aria-hidden>
-                        {cities.slice(0, 3).map((c, i) => (
-                          <span key={c} className={i === 0 ? "on" : ""}>
-                            {c}
-                          </span>
-                        ))}
-                      </span>
-                    )}
-                    {left && <span className="hm-pill hm-pill-on">{left}</span>}
-                  </span>
-                  <span className="trip-card-body">
-                    <span className="trip-card-title">
-                      {trip.title}
-                      {isDemoTrip(trip) && <span className="badge">{L("Örnek", "Sample")}</span>}
-                      {trip.shareId && <span className="badge">{L("Paylaşılan", "Shared")}</span>}
-                    </span>
-                    <span className="hm-when">
-                      <HeroIcon name="cal" size={15} />
-                      {[range ? formatDateRange(range.start, range.end) : null, cities.length ? joinTr(cities) : null].filter(Boolean).join(" · ") ||
-                        L("Tarih ve yer kaydettikçe netleşir", "Dates and places fill in as you save")}
-                    </span>
-                    <span className="hm-bar-line" aria-hidden>
-                      <i className="hm-seg-book" style={{ width: `${(nBooked / total) * 100}%` }} />
-                      <i className="hm-seg-plan" style={{ width: `${(nChosen / total) * 100}%` }} />
-                    </span>
-                    <span className="trip-card-meta">
-                      <span className="hm-stages">
-                        <span><i className="hm-dot hm-dot-book" />{L(`${nBooked} rezerve`, `${nBooked} booked`)}</span>
-                        <span><i className="hm-dot hm-dot-plan" />{L(`${nChosen} seçildi`, `${nChosen} chosen`)}</span>
-                        <span><i className="hm-dot" />{L(`${nSaved} kayıt`, `${nSaved} saved`)}</span>
-                      </span>
-                      {names.length > 0 && (
-                        <span className="hm-faces" title={names.join(", ")}>
-                          {names.slice(0, 3).map((n) => (
-                            <Face key={n} name={n} photo={n === me ? myPhoto : peoplePhoto(n)} colour={faceColour(n, people)} size={24} />
-                          ))}
-                        </span>
-                      )}
-                    </span>
-                  </span>
-                </button>
+                <TripCard
+                  key={trip.id}
+                  title={trip.title}
+                  info={info}
+                  image={image}
+                  photoBy={photoBy}
+                  left={countdownText(countdown(range, today))}
+                  people={names.map((n) => ({ name: n, photo: n === me ? myPhoto : peoplePhoto(n) }))}
+                  order={people}
+                  onOpen={() => onOpen(trip.id)}
+                />
               );
             })}
           </div>

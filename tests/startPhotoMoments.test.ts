@@ -60,3 +60,16 @@ describe("the trip's moments", () => {
     ]);
   });
 });
+
+describe("one picture under two addresses", () => {
+  it("shown once when only the tracking parameters differ", () => {
+    let s = bali();
+    s = withPhotos(s, whereKey(s)!, {
+      Bali: "https://images.unsplash.com/photo-1?ixid=a&w=2400",
+      Endonezya: "https://images.unsplash.com/photo-1?ixid=b&w=2400",
+      "moment:food": "https://images.unsplash.com/photo-2?ixid=c&w=2400",
+    });
+    const shown = withLang("tr", () => preparedPhotos(s));
+    expect(shown.map((x) => x.place)).toEqual(["Bali", "Yerel lezzetler"]);
+  });
+});

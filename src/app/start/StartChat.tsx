@@ -41,7 +41,6 @@ import { Checklist, ChecklistBar, GenerateCard } from "./Checklist";
 import { UiIcon } from "../cards/Silhouettes";
 import { loadWorld } from "./FlightMap";
 import { Generating } from "./Generating";
-import { LivePlan } from "./LivePlan";
 import { findPhotos, modelAvailable, proposeRoute, READ_MS, readAndReply, REPLY_MS, within } from "./model";
 import { TripPreview } from "./Preview";
 // The suggestions' review as the generating screen's last step, and the rules' preview (registered through startHooks).
@@ -677,8 +676,15 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
   }
 
   function generate(byItself = false, typed?: string) {
+    if (stale()) return;
+    // Pressable at every step (2026-10-09): with no place yet there is nothing to make, so the chat says so and asks it.
+    if (!canGenerate(live.current)) {
+      nextTurn();
+      const asked = askAgain(live.current, "where", Date.now());
+      commit(say(asked, "assistant", T(() => L("Önce nereye gittiğini söyle; gerisini sonra birlikte tamamlarız.", "First tell me where you're going; we'll fill in the rest together."))));
+      return;
+    }
     // Once; whatever is on its way is dropped (its reply would land on the trip being made) and stopped.
-    if (stale() || !canGenerate(live.current)) return;
     clearAuto();
     setAuto(null);
     nextTurn();
@@ -748,7 +754,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
             </button>
             <div className="st-top-title">{startName(state) ? L(`${startName(state)} · yeni gezi`, `${startName(state)} · new trip`) : L("Yeni gezi", "New trip")}</div>
           </div>
-          {!generating && <ChecklistBar rows={rows} onAsk={ask} ready={ready} complete={complete} onGenerate={generate} disabled={holding} drawing={drawing} reading={readingIds} lang={lang} />}
+          {!generating && <ChecklistBar rows={rows} onAsk={ask} ready={ready} complete={complete} onGenerate={generate} disabled={holding} drawing={drawing} reading={readingIds} now={q} lang={lang} />}
           <div className="st-msgs" role="log" aria-live="polite" aria-label={L("Sohbet", "Conversation")}>
             {state.messages.map((m, i) => (
               <div key={m.id ?? `line-${i}`} className={m.role === "user" ? "st-msg-user" : "st-msg-bot"}
@@ -935,15 +941,9 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
             />
           ) : (
             <div className="st-side-inner">
-              <div className="st-side-main">
-                {preview && <TripPreview preview={preview} place={state.where?.place ?? ""} lang={lang} />}
-                <Checklist rows={rows} onAsk={ask} disabled={holding} drawing={drawing} reading={readingIds} lang={lang} />
-                <GenerateCard ready={ready} complete={complete} missing={missingForGenerate(state)} onGenerate={generate} lang={lang} />
-              </div>
-              {/* The plan "Oluştur" would make, drawn as the answers come (LivePlan.tsx). */}
-              <div className="st-side-plan">
-                <LivePlan state={state} lang={lang} />
-              </div>
+              <Checklist rows={rows} onAsk={ask} disabled={holding} drawing={drawing} reading={readingIds} now={q} lang={lang} />
+              <GenerateCard ready={ready} complete={complete} onGenerate={generate} lang={lang} />
+              {preview && <TripPreview preview={preview} place={state.where?.place ?? ""} lang={lang} />}
             </div>
           )}
         </aside>

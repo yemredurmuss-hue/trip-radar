@@ -3034,8 +3034,10 @@ export function preparedPhotos(s: StartState): { place: string; url: string; mom
   const seen = new Set<string>();
   return photoKeys(s).flatMap((key) => {
     const url = urls[key];
-    if (!url || seen.has(url)) return [];
-    seen.add(url);
+    // The same picture under two addresses (only their tracking parameters differ) is one picture.
+    const same = url ? url.split("?")[0] : null;
+    if (!url || !same || seen.has(same)) return [];
+    seen.add(same);
     return [{ place: momentLabel(key) ?? key, url, ...(key.startsWith(MOMENT) ? { moment: true } : {}) }];
   });
 }
@@ -3073,7 +3075,7 @@ export function restoreRoute(s: StartState): StartState {
 // --- the preview on the right (item 4): what the trip is so far ---------------------------------------------------
 
 export interface Preview {
-  photos: { place: string; url: string }[];
+  photos: { place: string; url: string; moment?: boolean }[];
   /** The stops and their nights (the agreed route, the proposal, or the place itself), and whether it's agreed. */
   stops: RouteStop[];
   routeAgreed: boolean;

@@ -36,10 +36,19 @@ interface Props {
   drawing?: "new" | "refine" | null;
   /** The rows a message being read can still fill (v5): a turning ring and a shimmer in place of the value. */
   reading?: string[];
+  /** The question being asked now: its row pulses softly (2026-10-09). */
+  now?: QuestionId | null;
   lang: Lang;
 }
 
-export function Checklist({ rows, onAsk, disabled, drawing = null, reading = [], lang }: Props) {
+/** The row a question belongs to. */
+const ROW_OF: Partial<Record<QuestionId, string>> = {
+  where: "where", guess: "where", venue: "where", clash: "where", from: "from", who: "who", count: "who",
+  duration: "when", start: "when", day: "when", want: "want", pb: "want", route: "route",
+};
+const SPARKS = [0, 60, 120, 180, 240, 300];
+
+export function Checklist({ rows, onAsk, disabled, drawing = null, reading = [], now = null, lang }: Props) {
   const done = rows.filter((r) => r.done || r.tentative).length;
   return withLang(lang, () => (
     <div className="st-list">
@@ -66,9 +75,14 @@ export function Checklist({ rows, onAsk, disabled, drawing = null, reading = [],
           );
           return (
             <li key={r.id}>
-              <button type="button" className={`st-row${r.done ? " done" : ""}${r.tentative ? " tentative" : ""}${busy ? " drawing" : ""}${read ? " reading" : ""}`} disabled={disabled} onClick={() => onAsk(r.ask)} title={L("Bunu yeniden sor", "Ask this again")}>
+              <button type="button" className={`st-row${r.done ? " done" : ""}${r.tentative ? " tentative" : ""}${busy ? " drawing" : ""}${read ? " reading" : ""}${now && ROW_OF[now] === r.id && !r.done ? " ask" : ""}`} disabled={disabled} onClick={() => onAsk(r.ask)} title={L("Bunu yeniden sor", "Ask this again")}>
                 <span className="st-check" aria-hidden>
                   {r.done ? <UiIcon name="check" size={14} /> : r.tentative ? "?" : null}
+                  <span className="st-sp" aria-hidden>
+                    {SPARKS.map((a) => (
+                      <i key={a} style={{ ["--a" as string]: `${a}deg` }} />
+                    ))}
+                  </span>
                 </span>
                 <span className="st-row-text">
                   <span className="st-row-label">
@@ -107,25 +121,25 @@ export const generateLabel = () => L("Oluştur", "Generate");
  * board's chat, which goes on with this conversation), also while the model is working (rev 3: what's on its way is
  * dropped, the best route there is gets built). Only "no destination yet" disables it, and only then does it look so.
  */
-export function GenerateCard({ ready, complete, missing, onGenerate, lang }: { ready: boolean; complete: boolean; missing: string[]; onGenerate: () => void; lang: Lang }) {
+export function GenerateCard({ ready, complete, onGenerate, lang }: { ready: boolean; complete: boolean; missing?: string[]; onGenerate: () => void; lang: Lang }) {
   return withLang(lang, () => (
     <div className="st-gen-card">
-      <button type="button" className="st-gen-btn" data-auto-keep disabled={!ready} aria-disabled={!ready} onClick={onGenerate}>
+      <button type="button" className="st-gen-btn" data-auto-keep onClick={onGenerate}>
         <span aria-hidden>✨</span> {generateLabel()}
       </button>
       <p>
         {!ready
-          ? L(`Oluşturmak için ${missing.join(" ve ")} yeter.`, `All it needs is ${missing.join(" and ")}.`)
+          ? L("Henüz bir şey belli değil; yine de basabilirsin.", "Nothing is settled yet; you can still press it.")
           : complete
             ? L("Her şey hazır; oluşturunca pano açılır.", "Everything's set; the board opens once it's made.")
-            : L("Şimdi oluşturur, eksikleri sonra pano sohbetinde sorar; ya da konuşmaya devam et.", "It builds it now and asks what's missing later in the board's chat; or keep talking.")}
+            : L("Elimdekiyle kurarım, eksikleri panoda sorarım. Ya da konuşmaya devam et.", "I'll build it with what I have and ask the rest on the board. Or keep talking.")}
       </p>
     </div>
   ));
 }
 
 /** Narrow screens: "4/6 · Gezin şekilleniyor ▾", the list opening under it. */
-export function ChecklistBar({ rows, onAsk, ready, complete, onGenerate, disabled, drawing, reading, lang }: Props & { ready: boolean; complete: boolean; onGenerate: () => void }) {
+export function ChecklistBar({ rows, onAsk, complete, onGenerate, disabled, drawing, reading, now, lang }: Props & { ready: boolean; complete: boolean; onGenerate: () => void }) {
   const [open, setOpen] = useState(false);
   const done = rows.filter((r) => r.done || r.tentative).length;
   return withLang(lang, () => (
@@ -142,13 +156,11 @@ export function ChecklistBar({ rows, onAsk, ready, complete, onGenerate, disable
             · {L("Gezin şekilleniyor", "Your trip is taking shape")} {open ? "▴" : "▾"}
           </span>
         </button>
-        {ready && (
-          <button type="button" className="st-bar-gen" data-auto-keep onClick={onGenerate}>
-            ✨ {L("Oluştur", "Generate")}
-          </button>
-        )}
+        <button type="button" className="st-bar-gen" data-auto-keep onClick={onGenerate}>
+          ✨ {L("Oluştur", "Generate")}
+        </button>
       </div>
-      {open && <Checklist rows={rows} onAsk={(q) => (setOpen(false), onAsk(q))} disabled={disabled} drawing={drawing} reading={reading} lang={lang} />}
+      {open && <Checklist rows={rows} onAsk={(q) => (setOpen(false), onAsk(q))} disabled={disabled} drawing={drawing} reading={reading} now={now} lang={lang} />}
     </div>
   ));
 }
