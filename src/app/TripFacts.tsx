@@ -13,6 +13,7 @@ import type { Who } from "../lib/tripSettings";
 import type { StyleChip } from "../lib/tripStyle";
 import type { Trip } from "../lib/types";
 import { HeroIcon, type HeroIconName } from "./Icons";
+import { HoverTip } from "./HoverTip";
 import { Preferences } from "./IntentCard";
 import { Travellers } from "./Travellers";
 import { useAppear } from "./useAppear";
@@ -88,11 +89,13 @@ export function TripFacts(props: {
           </div>
           {weather.length > 0 && (
             <div key="weather" className={`hx-weather${weatherAppear}`}>
-              {weather.map((w) => (
-                <span key={w.city} title={weatherTitle(w, month)}>
-                  <span className="city">{w.city}</span>
-                  <HeroIcon name={skyIcon(w)} size={22} className={`sky-${w.sky}`} />
-                  <span className="deg">{w.high}°</span>
+              {weather.map((w, n) => (
+                <span key={w.city}>
+                  <HoverTip tip={weatherTitle(w, month)} align={n < 2 ? "left" : "right"} className="hx-tip">
+                    <span className="city">{w.city}</span>
+                    <HeroIcon name={skyIcon(w)} size={22} className={`sky-${w.sky}`} />
+                    <span className="deg">{w.high}°</span>
+                  </HoverTip>
                 </span>
               ))}
             </div>
@@ -218,24 +221,43 @@ function Minis({ facts, home }: { facts: Facts; home: string }) {
   if (!local) return null;
   const fit = plugFit(home, facts.country);
   const offset = offsetText(local.hours);
-  const cells: [HeroIconName, string, string | undefined][] = [
-    ["coin", currencyName(local.currency), local.rateText ?? undefined],
-    ...(local.info.plugs.length ? [["plug", L(`${local.info.plugs.join("/")} priz`, `${local.info.plugs.join("/")} plug`), fit ? plugFitText(fit) : undefined] as [HeroIconName, string, string | undefined]] : []),
-    ...(offset ? [["clock", offset, L("Senin saatine göre", "Against your own time")] as [HeroIconName, string, string | undefined]] : []),
-    ["lang", L(local.info.language.tr, local.info.language.en), undefined],
+  // Each cell's tip says more than its words (the rate, whether the plug fits, an hour for the time difference); the
+  // language has nothing more to say.
+  const cells: [HeroIconName, string, string | null][] = [
+    ["coin", currencyName(local.currency), local.rateText ?? null],
+    ...(local.info.plugs.length ? [["plug", L(`${local.info.plugs.join("/")} priz`, `${local.info.plugs.join("/")} plug`), fit ? plugFitText(fit) : null] as [HeroIconName, string, string | null]] : []),
+    ...(offset ? [["clock", offset, timeTip(local.hours)] as [HeroIconName, string, string | null]] : []),
+    ["lang", L(local.info.language.tr, local.info.language.en), null],
   ];
   return (
     <div className="hx-block">
       <div className="hx-minis">
-        {cells.map(([icon, text, title]) => (
-          <span key={icon} title={title}>
-            <HeroIcon name={icon} size={18} />
-            {text}
+        {cells.map(([icon, text, tip], n) => (
+          <span key={icon}>
+            {tip ? (
+              <HoverTip tip={tip} align={n % 2 ? "right" : "left"} className="hx-tip">
+                <HeroIcon name={icon} size={18} />
+                {text}
+              </HoverTip>
+            ) : (
+              <>
+                <HeroIcon name={icon} size={18} />
+                {text}
+              </>
+            )}
           </span>
         ))}
       </div>
     </div>
   );
+}
+
+/** "Sende 12:00 iken orada 10:00": the difference as an hour, against the traveller's own clock. */
+function timeTip(hours: number | null): string | null {
+  if (hours == null || !hours) return L("Senin saatinle aynı.", "The same time as yours.");
+  const there = ((12 + hours) % 24 + 24) % 24;
+  const clock = (h: number) => `${String(Math.floor(h)).padStart(2, "0")}:${h % 1 ? "30" : "00"}`;
+  return L(`Sende ${clock(12)} iken orada ${clock(there)}. Uçuş saatleri yerel saattir.`, `When it's ${clock(12)} for you it's ${clock(there)} there. Flight times are local.`);
 }
 
 const skyIcon = (w: CityWeather): HeroIconName => w.sky;
