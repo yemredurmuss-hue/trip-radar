@@ -76,23 +76,45 @@ section.step { display: flex; flex-direction: column; gap: 16px; scroll-margin-t
 .grain { position: absolute; inset: 0; opacity: .3; mix-blend-mode: multiply; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .36 0 0 0 0 .28 0 0 0 0 .84 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 .topo path { vector-effect: non-scaling-stroke; }
 .topo { animation: breathe 16s ease-in-out infinite alternate; transform-origin: 50% 50%; } @keyframes breathe { to { transform: scale(1.03); } }
-.vc { width: 352px; text-align: left; flex: none; color: #1c1a33; font-family: var(--font); cursor: default; }
-.vc * { box-sizing: border-box; }
-.vc-pic { position: relative; height: 214px; border-radius: 22px; background-size: cover; background-position: center; overflow: hidden; box-shadow: 0 1px 2px rgba(28, 26, 51, .06), 0 18px 40px -22px rgba(28, 26, 51, .45); }
-.vc.b .vc-pic::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20, 16, 40, 0) 42%, rgba(20, 16, 40, .66) 100%); }
-.vc-pill { position: absolute; right: 12px; top: 12px; z-index: 2; padding: 5px 12px; border-radius: 99px; background: rgba(255, 255, 255, .92); color: #5b45e0; font-size: 12.5px; font-weight: 650; }
-.vc-title { position: absolute; left: 18px; right: 18px; bottom: 18px; z-index: 2; color: #fff; }
-.vc-title b { display: block; font-size: 28px; letter-spacing: -.025em; line-height: 1.08; font-weight: 800; text-shadow: 0 1px 14px rgba(0, 0, 0, .3); }
-.vc-title span { display: block; margin-top: 3px; font-size: 14px; font-weight: 550; opacity: .94; }
-.vc-body { padding: 13px 4px 0; display: flex; flex-direction: column; gap: 3px; }
-.vc-body b { font-size: 21px; letter-spacing: -.02em; line-height: 1.15; font-weight: 750; }
-.vc-body span { font-size: 14.5px; color: #6b6790; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.vc-body span em { font-style: normal; font-weight: 650; color: #5b45e0; }
-.vc.b .vc-body { padding-top: 11px; }
-.vc.draft .vc-pic { background: repeating-linear-gradient(135deg, rgba(91, 69, 224, .07) 0 10px, transparent 10px 20px), #ece8ff; box-shadow: none; border: 1.5px dashed #b9b5cf; }
-.vc.draft .vc-pic::after { display: none; }
-.vc.draft .vc-pill { background: #fff; border: 1px dashed #b9b5cf; }
-.vc-pic { transition: transform .5s cubic-bezier(.16, 1, .3, 1); } .vc:hover .vc-pic { transform: translateY(-3px); }
+.vcard { width: 352px; flex: none; text-align: left; color: #1c1a33; font-family: var(--font); --tint: #143d24; position: relative; --ring: #fff; }
+.vcard * { box-sizing: border-box; }
+.vcard .ttl { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-wrap: balance; overflow-wrap: anywhere; }
+.vcard .inf { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vp { position: absolute; right: 12px; top: 12px; z-index: 2; padding: 5px 12px; border-radius: 99px; background: rgba(255, 255, 255, .92); color: #5b45e0; font-size: 12.5px; font-weight: 650; }
+.fc { display: inline-flex; flex: none; }
+.fc i { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12.5px; font-weight: 700; color: #fff; box-shadow: 0 0 0 2.5px var(--ring); }
+.fc i + i { margin-left: -9px; } .fc .c1 { background: #5b45e0; } .fc .c2 { background: #1d8577; } .fc .c3 { background: #c0256b; } .fc .cn { background: #e6e2f3; color: #5d5885; font-size: 11.5px; }
+.vcard.draft { --tint: #5b45e0; }
+.vcard.draft .pic { background: repeating-linear-gradient(135deg, rgba(91, 69, 224, .08) 0 10px, transparent 10px 20px), #ece8ff; }
+.vcard.draft .vp { background: #fff; border: 1px dashed #b9b5cf; }
+/* 1 · Poster: everything in the photo */
+.v1 .pic { position: relative; height: 270px; border-radius: 24px; overflow: hidden; background-size: cover; background-position: center; box-shadow: 0 1px 2px rgba(28, 26, 51, .06), 0 18px 40px -22px rgba(28, 26, 51, .5); transition: transform .5s cubic-bezier(.16, 1, .3, 1); }
+.v1:hover .pic { transform: translateY(-3px); }
+.v1 .pic::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, 0) 38%, color-mix(in srgb, var(--tint) 92%, #000) 120%); }
+.v1.draft .pic::after { display: none; } .v1.draft .pic { border: 1.5px dashed #b9b5cf; box-shadow: none; }
+.v1 .foot { position: absolute; left: 20px; right: 18px; bottom: 18px; z-index: 2; display: flex; align-items: flex-end; gap: 12px; color: #fff; }
+.v1.draft .foot { color: #4a35cc; }
+.v1 .tx { flex: 1; min-width: 0; } .v1 .ttl { font-size: 26px; line-height: 1.08; font-weight: 800; letter-spacing: -.025em; text-shadow: 0 1px 14px rgba(0, 0, 0, .25); } .v1.draft .ttl { text-shadow: none; }
+.v1 .inf { margin-top: 5px; font-size: 14px; font-weight: 550; opacity: .92; } .v1 .fc { padding-bottom: 2px; }
+/* 2 · Bilet: a boarding-pass stub, the people on the tear-off */
+.v2 { filter: drop-shadow(0 18px 22px rgba(28, 26, 51, .16)) drop-shadow(0 1px 1px rgba(28, 26, 51, .08)); transition: transform .5s cubic-bezier(.16, 1, .3, 1); } .v2:hover { transform: translateY(-3px); }
+.v2 .pic { position: relative; height: 204px; border-radius: 24px 24px 0 0; background-size: cover; background-position: center;
+  -webkit-mask: radial-gradient(circle 12px at 0 100%, #0000 97%, #000) left bottom / 51% 100% no-repeat, radial-gradient(circle 12px at 100% 100%, #0000 97%, #000) right bottom / 51% 100% no-repeat;
+  mask: radial-gradient(circle 12px at 0 100%, #0000 97%, #000) left bottom / 51% 100% no-repeat, radial-gradient(circle 12px at 100% 100%, #0000 97%, #000) right bottom / 51% 100% no-repeat; }
+.v2 .stub { position: relative; display: flex; align-items: center; gap: 14px; padding: 18px 20px; border-radius: 0 0 24px 24px; background: color-mix(in srgb, var(--tint) 8%, #fff); --ring: color-mix(in srgb, var(--tint) 8%, #fff);
+  -webkit-mask: radial-gradient(circle 12px at 0 0, #0000 97%, #000) left top / 51% 100% no-repeat, radial-gradient(circle 12px at 100% 0, #0000 97%, #000) right top / 51% 100% no-repeat;
+  mask: radial-gradient(circle 12px at 0 0, #0000 97%, #000) left top / 51% 100% no-repeat, radial-gradient(circle 12px at 100% 0, #0000 97%, #000) right top / 51% 100% no-repeat; }
+.v2 .stub::before { content: ""; position: absolute; left: 20px; right: 20px; top: 0; border-top: 2px dashed color-mix(in srgb, var(--tint) 24%, transparent); }
+.v2 .tx { flex: 1; min-width: 0; } .v2 .ttl { font-size: 20px; line-height: 1.18; font-weight: 750; letter-spacing: -.015em; } .v2 .inf { margin-top: 4px; font-size: 14px; color: #6b6790; }
+.v2 .tear { flex: none; align-self: stretch; display: flex; align-items: center; padding-left: 14px; border-left: 2px dashed color-mix(in srgb, var(--tint) 24%, transparent); }
+.v2.draft .pic { border: 0; }
+/* 3 · Albüm: a postcard with a stamp */
+.v3 { padding: 8px 8px 16px; border-radius: 26px; background: #fff; box-shadow: 0 1px 2px rgba(28, 26, 51, .06), 0 18px 40px -22px rgba(28, 26, 51, .4); transition: transform .5s cubic-bezier(.16, 1, .3, 1); } .v3:hover { transform: translateY(-3px) rotate(-.4deg); }
+.v3 .pic { position: relative; height: 220px; border-radius: 19px; overflow: hidden; background-size: cover; background-position: center; }
+.v3 .stamp { position: absolute; right: 14px; top: 14px; z-index: 2; width: 62px; padding: 8px 0 7px; text-align: center; background: #fff; border: 4px dotted #fff; background-clip: padding-box; color: var(--tint); line-height: 1; transform: rotate(4deg); filter: drop-shadow(0 2px 5px rgba(0, 0, 0, .3)); }
+.v3 .stamp b { display: block; font-size: 24px; font-weight: 800; letter-spacing: -.03em; } .v3 .stamp small { display: block; margin-top: 3px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.v3 .cap { display: flex; align-items: center; gap: 12px; padding: 14px 10px 0; }
+.v3 .tx { flex: 1; min-width: 0; } .v3 .ttl { font-size: 20px; line-height: 1.18; font-weight: 750; letter-spacing: -.015em; } .v3 .inf { margin-top: 4px; font-size: 14px; color: #6b6790; }
 .kartstrip { display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; padding: 36px 18px 34px; border-radius: 22px; background: linear-gradient(180deg, #ebe4ff, #e1d6ff); box-shadow: var(--pg-shadow); }
 .toggle2 { display: inline-flex; padding: 4px; border-radius: 99px; background: rgba(255, 255, 255, .8); font: 650 14px var(--font); color: #6b6790; }
 .toggle2 b { padding: 7px 16px; border-radius: 99px; font-weight: 650; } .toggle2 b.on { background: #1c1a33; color: #fff; }
@@ -320,8 +342,8 @@ section.step { display: flex; flex-direction: column; gap: 16px; scroll-margin-t
         <div class="chips"><span class="chip"><svg class="i"><use href="#i-spark"/></svg>Yeni gezi planla</span><span class="chip"><svg class="i"><use href="#i-globe"/></svg>Bana ilham ver</span><span class="chip"><svg class="i"><use href="#i-car"/></svg>Yol gezisi</span><span class="chip"><svg class="i"><use href="#i-clock"/></svg>Son dakika kaçamağı</span><span class="chip"><svg class="i"><use href="#i-users"/></svg>Paylaşılan geziye katıl</span></div>
         <div class="trips"><h2>Seyahatlerim</h2><p>Şimdiye kadar 2 gezi planladın</p>
           <div class="cards">
-            <div class="vc"><div class="vc-pic" style="background-image:url(img/foto-ubud.jpg)"><span class="vc-pill">330 gün kaldı</span></div><div class="vc-body"><b>Bali Gezisi</b><span>15–24 Eylül · 10 gün · Sabine'yle</span></div></div>
-            <div class="vc"><div class="vc-pic" style="background-image:url(img/foto-porto.jpg)"><span class="vc-pill">3 gün kaldı</span></div><div class="vc-body"><b>Portekiz</b><span>12–18 Ekim · 7 gün · Sabine'yle</span></div></div>
+            <div class="vcard v2" style="--tint:#143d24"><div class="pic" style="background-image:url(img/foto-ubud.jpg)"><span class="vp">330 gün kaldı</span></div><div class="stub"><div class="tx"><b class="ttl">Bali Gezisi</b><span class="inf">15–24 Eylül · 10 gün</span></div><div class="tear"><span class="fc"><i class="c1" title="Emre">E</i><i class="c2" title="Sabine">S</i></span></div></div></div>
+            <div class="vcard v2" style="--tint:#4a2a12"><div class="pic" style="background-image:url(img/foto-porto.jpg)"><span class="vp">3 gün kaldı</span></div><div class="stub"><div class="tx"><b class="ttl">Portekiz</b><span class="inf">12–18 Ekim · 7 gün</span></div><div class="tear"><span class="fc"><i class="c1" title="Emre">E</i><i class="c2" title="Sabine">S</i></span></div></div></div>
           </div></div>
         <div class="pop" id="s1cur" style="right:104px;top:66px;width:170px"><ul><li>₺ TRY</li><li class="sel">€ EUR <svg class="i"><use href="#i-check"/></svg></li><li>$ USD</li><li>£ GBP</li></ul></div>
         <div class="pop" id="s1menu" style="right:32px;top:66px;width:300px"><div class="me"><div class="mini-av"><svg class="i"><use href="#i-user"/></svg></div><div><b>Emre Durmuş</b><span>Asistan: Claude Sonnet 5.5</span></div></div>
@@ -335,27 +357,34 @@ section.step { display: flex; flex-direction: column; gap: 16px; scroll-margin-t
   </section>
 
   <section class="step" id="kart">
-    <span class="when">Seyahatlerim kartı · ikinci tur</span>
-    <h2>Seyahat kartı: fotoğraf, başlık, tek satır bilgi</h2>
-    <p class="muted">Beyaz özet paneli kalktı. Fotoğrafın altında yalnız bir başlık ve altında tek satır mini bilgi var: tarih, gün sayısı ve kimle. Başlığın yeri için iki seçenek çizdim.</p>
-    <h3>A · Başlık fotoğrafın altında (önerim)</h3>
+    <span class="when">Seyahatlerim kartı · üçüncü tur</span>
+    <h2>Seyahat kartı: üç yön</h2>
+    <p class="muted">Üçünde de fotoğraf önde, kişiler kenarda, başlık en çok iki satır (fazlası "…" ile biter, kart patlamaz). Her satırda bir kısa başlık, bir uzun başlık ve bir taslak var. Gezinin fotoğrafından seçilen koyu bir ton kartın alt rengini belirliyor: Bali yeşil, Bali havuzu deniz mavisi. Böylece her kart kendi havasında.</p>
+    <h3>1 · Poster: her şey fotoğrafın içinde</h3>
     <div class="kartstrip">
-      <div class="vc"><div class="vc-pic" style="background-image:url(img/foto-ubud.jpg)"><span class="vc-pill">330 gün kaldı</span></div><div class="vc-body"><b>Bali Gezisi</b><span>15–24 Eylül · 10 gün · Sabine'yle</span></div></div>
-      <div class="vc"><div class="vc-pic" style="background-image:url(img/foto-porto.jpg)"><span class="vc-pill">3 gün kaldı</span></div><div class="vc-body"><b>Portekiz</b><span>12–18 Ekim · 7 gün · Sabine'yle</span></div></div>
-      <div class="vc draft"><div class="vc-pic"><span class="vc-pill">Taslak</span></div><div class="vc-body"><b>Japonya</b><span>1/6 bilgi · yarıda kaldı · <em>Devam et</em></span></div></div>
+      <div class="vcard v1" style="--tint:#143d24"><div class="pic" style="background-image:url(img/foto-ubud.jpg)"><span class="vp">330 gün kaldı</span><div class="foot"><div class="tx"><b class="ttl">Bali Gezisi</b><span class="inf">15–24 Eylül · 10 gün</span></div><span class="fc"><i class="c1" title="Emre">E</i><i class="c2" title="Sabine">S</i></span></div></div></div>
+      <div class="vcard v1" style="--tint:#0e4a47"><div class="pic" style="background-image:url(img/foto-havuzluvilla.jpg)"><span class="vp">28 gün kaldı</span><div class="foot"><div class="tx"><b class="ttl">Sabine'nin Doğum Günü: Bali, Uluwatu ve Ubud Gezisi</b><span class="inf">2–11 Kasım · 10 gün</span></div><span class="fc"><i class="c1" title="Emre">E</i><i class="c2" title="Sabine">S</i><i class="c3" title="Mert">M</i><i class="cn" title="2 kişi daha">+2</i></span></div></div></div>
+      <div class="vcard v1 draft"><div class="pic"><span class="vp">Taslak</span><div class="foot"><div class="tx"><b class="ttl">Japonya</b><span class="inf">1/6 bilgi · yarıda kaldı · Devam et</span></div></div></div></div>
     </div>
-    <h3>B · Başlık fotoğrafın üstünde, altta yalnız bilgi satırı</h3>
+    <h3>2 · Bilet: kopuk koçanlı biniş kartı (önerim)</h3>
     <div class="kartstrip">
-      <div class="vc b"><div class="vc-pic" style="background-image:url(img/foto-ubud.jpg)"><span class="vc-pill">330 gün kaldı</span><div class="vc-title"><b>Bali Gezisi</b><span>15–24 Eylül · 10 gün</span></div></div><div class="vc-body"><span>Sabine'yle · Ubud, Uluwatu, Seminyak</span></div></div>
-      <div class="vc b"><div class="vc-pic" style="background-image:url(img/foto-porto.jpg)"><span class="vc-pill">3 gün kaldı</span><div class="vc-title"><b>Portekiz</b><span>12–18 Ekim · 7 gün</span></div></div><div class="vc-body"><span>Sabine'yle · Porto, Lizbon</span></div></div>
+      <div class="vcard v2" style="--tint:#143d24"><div class="pic" style="background-image:url(img/foto-ubud.jpg)"><span class="vp">330 gün kaldı</span></div><div class="stub"><div class="tx"><b class="ttl">Bali Gezisi</b><span class="inf">15–24 Eylül · 10 gün</span></div><div class="tear"><span class="fc"><i class="c1" title="Emre">E</i><i class="c2" title="Sabine">S</i></span></div></div></div>
+      <div class="vcard v2" style="--tint:#0e4a47"><div class="pic" style="background-image:url(img/foto-havuzluvilla.jpg)"><span class="vp">28 gün kaldı</span></div><div class="stub"><div class="tx"><b class="ttl">Sabine'nin Doğum Günü: Bali, Uluwatu ve Ubud Gezisi</b><span class="inf">2–11 Kasım · 10 gün</span></div><div class="tear"><span class="fc"><i class="c1" title="Emre">E</i><i class="c2" title="Sabine">S</i><i class="c3" title="Mert">M</i><i class="cn" title="2 kişi daha">+2</i></span></div></div></div>
+      <div class="vcard v2 draft"><div class="pic"><span class="vp">Taslak</span></div><div class="stub"><div class="tx"><b class="ttl">Japonya</b><span class="inf">1/6 bilgi · yarıda kaldı · Devam et</span></div></div></div>
     </div>
-    <div class="note"><b>Karttaki her şey nereden gelir</b><ul>
-      <li>Fotoğraf: gezinin kendi fotoğrafı (panodakiyle aynı); yoksa lavanta zemin. Fotoğrafta yalnız kalan gün var.</li>
-      <li><b>A:</b> başlık gezinin adı; altındaki tek satır: tarih · gün sayısı · kimle ("Sabine'yle", yalnızsa "Yalnız", kalabalıksa "4 kişi"). Satır sığmazsa sonu "…" ile biter, ikinci satıra inmez.</li>
-      <li><b>B:</b> başlık ve tarih fotoğrafın üstünde; altta yalnız "kimle · duraklar" satırı.</li>
-      <li>Rezerve ve seçildi sayıları, tarz sözcükleri, yüzler ve çubuk kartta yok; onlar panoda.</li>
-      <li>Taslak aynı dilde ama kesik çizgili; satırda kaç bilgi kaldığı ve "Devam et".</li>
-      <li>Üstüne gelince fotoğraf hafifçe kalkar; dokununca gezi açılır. Hareketi azalt açıksa kalkmaz.</li></ul></div>
+    <h3>3 · Albüm: pullu kartpostal</h3>
+    <div class="kartstrip">
+      <div class="vcard v3" style="--tint:#143d24"><div class="pic" style="background-image:url(img/foto-ubud.jpg)"><span class="stamp"><b>10</b><small>gün</small></span></div><div class="cap"><div class="tx"><b class="ttl">Bali Gezisi</b><span class="inf">15–24 Eylül · 330 gün kaldı</span></div><span class="fc"><i class="c1" title="Emre">E</i><i class="c2" title="Sabine">S</i></span></div></div>
+      <div class="vcard v3" style="--tint:#0e4a47"><div class="pic" style="background-image:url(img/foto-havuzluvilla.jpg)"><span class="stamp"><b>10</b><small>gün</small></span></div><div class="cap"><div class="tx"><b class="ttl">Sabine'nin Doğum Günü: Bali, Uluwatu ve Ubud Gezisi</b><span class="inf">2–11 Kasım · 28 gün kaldı</span></div><span class="fc"><i class="c1" title="Emre">E</i><i class="c2" title="Sabine">S</i><i class="c3" title="Mert">M</i><i class="cn" title="2 kişi daha">+2</i></span></div></div>
+      <div class="vcard v3 draft"><div class="pic"><span class="stamp"><b>1/6</b><small>bilgi</small></span></div><div class="cap"><div class="tx"><b class="ttl">Japonya</b><span class="inf">yarıda kaldı · Devam et</span></div></div></div>
+    </div>
+    <div class="note"><b>Üçü nasıl çalışıyor</b><ul>
+      <li><b>Poster:</b> en sade. Başlık, tek satır bilgi ve kişiler fotoğrafın altında, koyu bir ton üstünde. Kartın alt kısmı yok; yükseklik hep aynı.</li>
+      <li><b>Bilet:</b> fotoğraf ile alt şerit arasında biniş kartı gibi iki çentik ve kesik çizgi var. Kişiler sağdaki koçanda. Uçuş kartlarımızın biniş kartı diliyle aynı: ürün boyunca tek bir dil olur. Başlık uzunsa kart uzar, taşmaz.</li>
+      <li><b>Albüm:</b> beyaz çerçeveli kartpostal; fotoğrafın köşesinde gün sayısı olan bir pul. Kalan gün bilgi satırına geçiyor.</li>
+      <li>Kişiler: en çok üç yüz ve "+2" gibi bir sayı. Yüzlerin üstüne gelince adı çıkar.</li>
+      <li>Rezerve ve seçildi sayıları, tarz sözcükleri ve çubuk kartta yok; onlar panoda. Taslak her üçünde de aynı dilde, kesik çizgili.</li>
+      <li>Üstüne gelince kart hafifçe kalkar; dokununca gezi açılır. Hareketi azalt açıksa kalkmaz.</li></ul></div>
   </section>
 
   <section class="step" id="a2">
@@ -480,7 +509,7 @@ section.step { display: flex; flex-direction: column; gap: 16px; scroll-margin-t
       <div><b>1 · Oluştur: tek kelime, her adımda basılabilir</b><p class="muted">Düğme hep "Oluştur" diyor; elde ne olduğu altında yazıyor. Hiçbir şey belli değilken de basılıyor, ama yer olmadan gezi açılamayacağı için sohbet "önce nereye gittiğini söyle" diyor. Kabul mü?</p></div>
       <div><b>2 · Soru sırası (K4)</b><p class="muted">Gün → ne istediğin → rota → kimle → nereden. Bugünkü sıra tam tersi: nereden → kimle → gün. Yeni sırayı onaylıyor musun?</p></div>
       <div><b>3 · Ana ekran arka planı</b><p class="muted">A · Rota (önerim), B · Aurora, C · Topografya. Hangisi?</p></div>
-      <div><b>4 · Seyahat kartı</b><p class="muted">Altta yalnız başlık ve tek satır bilgi. A (başlık altta) mı, B (başlık fotoğrafta) mı? Satırda başka ne olsun ya da olmasın?</p></div>
+      <div><b>4 · Seyahat kartı</b><p class="muted">1 Poster, 2 Bilet (önerim), 3 Albüm. Hangisi? Kişilerin kenarda durması ve uzun başlığın iki satırda kesilmesi uygun mu?</p></div>
       <div><b>5 · Fotoğraf sahnesi</b><p class="muted">Kutu kalkıyor, fotoğraflar sayfanın üstünde süzülüyor, harita ince çizgi olarak kalıyor. Böyle mi?</p></div>
       <div><b>6 · Sağ taraf için bir iade</b><p class="muted">Koda gece eklemiştim: sağda "Plan taslağı" kartları ve önizlemenin kontrol listesinin üstüne alınması. Çizimde yok. Öneri: ikisini de kaldırıp bugünkü sıraya (kontrol listesi, Oluştur, önizleme) dönmek.</p></div>
       <div><b>7 · Pıt pıt sözlüğü</b><p class="muted">Beş hareket ve süreleri uygun mu?</p></div>
