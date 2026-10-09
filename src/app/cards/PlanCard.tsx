@@ -5,7 +5,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { cardFacts, durationText } from "../../lib/cardFacts";
 import { cardKind, isTransportKind, type LegEnds } from "../../lib/cardKinds";
-import { footOf, mediaFace, ringOf, transportFace } from "../../lib/cardView";
+import { footOf, mediaFace, ringOf, topDate, transportFace } from "../../lib/cardView";
 import type { Choice, Ranked } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
 import { L } from "../../lib/i18n";
@@ -22,6 +22,7 @@ import { sameName } from "../../lib/tripSettings";
 import { useShare } from "../Share";
 import type { Decisions } from "../useDecisions";
 import { CardDate } from "./CardDate";
+import { BookingSheet } from "./BookingSheet";
 import { CardDetail } from "./CardDetail";
 import { CardFoot, CardShell, type MenuEntry, type Nav } from "./CardShell";
 import { DocAccess, DocPickButton } from "./DocAccess";
@@ -97,6 +98,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   const who = useWhoCtx();
   const photoOf = usePhotoOf();
   const [open, setOpen] = useState(false);
+  // v11 phase 3: a booking opens its own window (reference, times, files, Değiştir / İptal ettim), not the decision.
+  const [sheet, setSheet] = useState(false);
   // Shared trip: both travellers said 👎 → it steps back like "Ele" (a vote undoes it).
   const allNo = useShare()?.tally(item).allNo ?? false;
   const kind = cardKind(item, env.legModes.get(item.id) ?? null);
@@ -221,7 +224,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       }
       menu={menu}
       open={open}
-      onToggle={() => setOpen(!open)}
+      onToggle={() => (item.status === "booked" && !["taxi", "note", "todo"].includes(kind) ? setSheet(true) : setOpen(!open))}
       body={
         transport ? (
           <>
@@ -237,6 +240,10 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
           <CardFoot view={bookTop ? { ...foot, action: null } : foot} nav={nav} best={best} price={facts.price} onAction={act} live={liveFoot}
             go={bookTop && page ? { href: page, label: goLabel } : null} />
           {stageMenu.field}
+          {sheet && (
+            <BookingSheet item={item} kind={kind} facts={facts} docs={docs} date={topDate(item, kind)}
+              onChange={stageMenu.change} onCancel={stageMenu.cancel} onUnbook={() => void setItemStatus(item, "chosen")} onDetails={() => env.onOpenItem(item)} onClose={() => setSheet(false)} />
+          )}
         </>
       }
       detail={<CardDetail item={item} group={group} decision={decision} decisions={env.decisions} ranked={ranked} headline={headline} facts={facts} alert={alert} docs={docs} actions={actions} />}

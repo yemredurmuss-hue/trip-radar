@@ -2983,3 +2983,33 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .pk-aldim:focus-visible { outline: 2px solid #f0a53a; outline-offset: 2px; }
 a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: center; }
 .ask-dlg h3 { overflow-wrap: anywhere; }
+
+/* v11 (phase 3): a booking's window. Its kind's colour in the corner; the price and "Rezerve · belgeli" in a green
+   band; the reference, the way there or the nights as rows; the files; Değiştir · İptal ettim … Tüm detaylar · Kapat. */
+.bk-sheet { width: min(640px, calc(100vw - 32px)); max-height: min(88vh, 820px); overflow: auto; border-radius: 22px; background: #fff; color: var(--hx-ink); box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 24px 70px rgba(0,0,0,.22); }
+.bk-head { display: flex; align-items: center; gap: 12px; padding: 18px 20px 14px; border-bottom: 1px solid #f0eee9; }
+.bk-ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex: none; color: var(--c); background: color-mix(in srgb, var(--c) 13%, #fff); }
+.bk-tt { min-width: 0; flex: 1; }
+.bk-tt h3 { margin: 0; font-size: 19px; line-height: 1.25; overflow-wrap: anywhere; }
+.bk-tt p { margin: 2px 0 0; font-size: 13.5px; color: var(--hx-muted); }
+.bk-x { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--hx-line); background: #fff; color: var(--hx-ink); display: grid; place-items: center; cursor: pointer; flex: none; }
+.bk-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 16px 20px 6px; padding: 12px 14px; border-radius: 14px; background: #eef8f1; }
+.bk-kind { font-size: 12.5px; font-weight: 650; color: #1f7a45; }
+.bk-hero b { font-size: 17px; font-variant-numeric: tabular-nums; }
+.bk-lab { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; font-size: 13px; font-weight: 700; color: #1f7a45; }
+.bk-sec { padding: 12px 20px 4px; }
+.bk-sec h4 { margin: 0 0 8px; font-size: 13px; font-weight: 650; color: var(--hx-muted); }
+.bk-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 8px; margin: 0; }
+.bk-rows div { padding: 9px 12px; border-radius: 12px; background: #f6f9f6; min-width: 0; }
+.bk-rows dt { font-size: 12px; color: var(--hx-muted); }
+.bk-rows dd { margin: 2px 0 0; font-size: 15px; font-weight: 650; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.bk-none { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--hx-card); color: var(--hx-muted); font-size: 14px; }
+.bk-miss { border: 1px solid #f0a53a; background: #fbf6ea; color: #9a6400; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13.5px; font-weight: 650; cursor: pointer; }
+.bk-note { margin: 8px 0 0; font-size: 12.5px; color: var(--hx-muted); }
+.bk-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 14px 20px 18px; margin-top: 10px; border-top: 1px solid #f0eee9; }
+.bk-sp { flex: 1; }
+.bk-btn { border: 1px solid var(--hx-line); background: #fff; color: var(--hx-ink); border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.bk-btn:hover { background: var(--hx-card); }
+.bk-btn.dark { background: var(--hx-ink); border-color: var(--hx-ink); color: #fff; }
+.bk-link { border: 0; background: none; padding: 7px 6px; font: inherit; font-size: 14px; font-weight: 600; color: var(--hx-accent); cursor: pointer; }
+.bk-link.quiet { color: var(--hx-muted); font-weight: 500; }

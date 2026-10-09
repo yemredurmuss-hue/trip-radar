@@ -553,6 +553,8 @@ export interface Item {
   refundNote?: string | null;
   /** "chat": the traveller said it in the chat, no page behind it (a plan until a saved page replaces it). */
   origin?: "chat";
+  /** The booking's reference as its document says it (a PNR, a confirmation no.): the booking window's row (v11 phase 3). */
+  bookingRef?: string;
   /** What kind of plan was said in the chat, or added from a template (a car rental or a transfer can carry any title). */
   plannedKind?: PlannedKind;
   /** eSIM: when the traveller said it's installed ("Kurdum"). */

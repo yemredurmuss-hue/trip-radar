@@ -243,6 +243,8 @@ export function fillFromDoc(item: Item, facts: DocFacts, now: number, owners: st
   if (owners?.length && !item.forWho?.length) out.forWho = owners;
   const note = refNote(kind, facts.booking_ref);
   if (note && !(item.statusNote ?? "").includes(facts.booking_ref ?? note)) out.statusNote = [item.statusNote, note].filter(Boolean).join(" · ");
+  // The reference on its own too (v11 phase 3): the booking's window shows it as a row ("PNR · K7T2QX").
+  if (facts.booking_ref && !item.bookingRef) out.bookingRef = facts.booking_ref.trim();
   return out;
 }
 
