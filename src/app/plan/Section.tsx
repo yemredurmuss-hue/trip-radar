@@ -26,46 +26,55 @@ export function Section({ section, allot = null, open, onToggle, onAdd, suggesti
 }) {
   const meta = SECTION_META[section.id];
   const label = meta.label();
-  const { total, pct, complete } = sectionProgress(section);
+  const { total, complete } = sectionProgress(section);
   const ideas = section.ideas;
   // v11: the header says where its needs stand in stage words ("1 rezerve · 2 seçildi · 1 aranıyor"); the ideas and
   // Hazırlık count instead.
   const line = isIdeaSection(section.id) || section.id === "prep" ? null : section.id === "activity" ? activityLine(section) : stageLine(section.stages);
   const spent = isIdeaSection(section.id) || section.id === "prep" ? null : spentOf(section);
+  // v11: the bar in two colours, booked (green) then chosen (amber), out of all of its needs.
+  const st = section.stages;
+  const booked = st.booked + st.ready + st.used;
+  const chosen = st.planned;
+  const needs = booked + chosen + st.search + st.options;
+  const pctOf = (n: number) => (needs ? Math.round((n / needs) * 100) : 0);
   return (
     <section className={`cat-sec${open ? "" : " closed"}`} style={{ "--c": meta.color } as React.CSSProperties} aria-label={label} data-section={section.id}>
       <div className="cat-head" onClick={onToggle}>
         <button type="button" className="cat-title" aria-expanded={open} onClick={(e) => { e.stopPropagation(); onToggle(); }}>
           <span className="cat-ic" aria-hidden>
-            <KindIcon kind={meta.icon} size={22} />
+            <KindIcon kind={meta.icon} size={20} />
           </span>
           <span className="cat-tt">
-            <b>{label}</b>
-            {line && <small className="cat-st">{line}</small>}
+            <b>
+              {label}
+              {total > 0 && <i className="cat-n">{total}</i>}
+            </b>
+            {line ? <small className="cat-st">{line}</small> : ideas && (section.entries.length || section.hidden.length) ? <small className="cat-st cat-ideas">{ideaCount(section.id, ideas, section.entries)}</small> : null}
           </span>
         </button>
         <span className="cat-end">
-          {open && meta.templates.length > 0 && (
-            <button type="button" className="cat-add" onClick={(e) => { e.stopPropagation(); onAdd(); }} aria-label={L(`${label}: ekle`, `${label}: add`)}>
-              <UiIcon name="plus" size={14} />
-              {L("Ekle", "Add")}
-            </button>
-          )}
           {suggestions > 0 && <span className="sg-count">{suggestionCount(suggestions)}</span>}
           {/* Drawn only for something being read into it (arrive) or suggested: nothing to count yet. */}
-          {!section.entries.length && !section.hidden.length ? null : ideas ? (
-            <span className="cat-ideas">{ideaCount(section.id, ideas, section.entries)}</span>
-          ) : (
+          {!section.entries.length && !section.hidden.length ? null : ideas ? null : (
             <>
-              {spent && <span className="cat-spent" title={L("Seçilen ve rezerve olanların toplamı", "What's chosen and booked, added up")}>{spent}</span>}
-              {allot && <span className="cat-allot" title={L("Gezi bütçesinden bu bölüme düşen pay (beklenen maliyete göre)", "This part's share of the trip's budget (by what it's likely to cost)")}>{L(`${allot} ayrıldı`, `${allot} set aside`)}</span>}
-              <span className={`cat-bar${complete ? " done" : ""}`} aria-hidden>
-                <span style={{ width: `${pct}%` }} />
-              </span>
-              <span className="cat-count" aria-label={L(`${section.settled} / ${total} tamam`, `${section.settled} of ${total} settled`)}>
+              {needs > 0 && (
+                <span className={`cat-bar${complete ? " done" : ""}`} aria-hidden>
+                  <span className="bk" style={{ width: `${pctOf(booked)}%` }} />
+                  <span className="ch" style={{ width: `${pctOf(chosen)}%` }} />
+                </span>
+              )}
+              {/* What's settled of all, said for a screen reader (the bar shows it). */}
+              <span className="cat-count sr-only" aria-label={L(`${section.settled} / ${total} tamam`, `${section.settled} of ${total} settled`)}>
                 {section.settled}
                 <i>/{total}</i>
               </span>
+              {(spent || allot) && (
+                <span className="cat-bud">
+                  {spent && <b className="cat-spent" title={L("Seçilen ve rezerve olanların toplamı", "What's chosen and booked, added up")}>{spent}</b>}
+                  {allot && <small className="cat-allot" title={L("Gezi bütçesinden bu bölüme düşen pay (beklenen maliyete göre)", "This part's share of the trip's budget (by what it's likely to cost)")}>{L(`${allot} ayrıldı`, `${allot} set aside`)}</small>}
+                </span>
+              )}
             </>
           )}
           <span className="cat-chev" aria-hidden>
@@ -79,6 +88,13 @@ export function Section({ section, allot = null, open, onToggle, onAdd, suggesti
         <div className="cat-body">
           {children}
           {section.hidden.length > 0 && <HiddenList things={section.hidden} />}
+          {/* v11: the plan's head has the one "+ Ekle"; a section adds its own kind quietly at its end. */}
+          {meta.templates.length > 0 && (
+            <button type="button" className="cat-add" onClick={onAdd} aria-label={L(`${label}: ekle`, `${label}: add`)}>
+              <UiIcon name="plus" size={13} />
+              {L("Ekle", "Add")}
+            </button>
+          )}
         </div>
       )}
     </section>

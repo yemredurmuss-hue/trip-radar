@@ -173,18 +173,24 @@ export function EmptyShell(props: {
         ) : (
           <div className="pk-body ek-body">{props.body}</div>
         )}
+        {/* v11 as drawn: "Kendin ara" its own line under the card's body; the foot is where it stands, "Gerek yok", ✨. */}
+        {props.links.length > 0 && (
+          <div className="ek-self">
+            <SearchRow links={props.links} />
+          </div>
+        )}
         <div className="ek-foot">
           <span className={`ek-state${props.alert ? ` alert-${props.alert.tone}` : ""}`} title={props.alert?.text}>
             {props.status}
             {props.alert && <span className="ek-when"> · ⏳ {props.alert.short}</span>}
           </span>
-          <SearchRow links={props.links} />
-          <AskButton text={L(`${props.ariaLabel} için öneri bul`, `Find options for ${props.ariaLabel}`)} />
+          <i className="ek-sp" />
           {props.onSkip && (
             <button type="button" className="ek-skip" title={props.skipTitle} onClick={(e) => { e.stopPropagation(); props.onSkip!(); }}>
               {L("Gerek yok", "Not needed")}
             </button>
           )}
+          <AskButton text={L(`${props.ariaLabel} için öneri bul`, `Find options for ${props.ariaLabel}`)} />
         </div>
         {props.open && props.detail}
         {props.extra}

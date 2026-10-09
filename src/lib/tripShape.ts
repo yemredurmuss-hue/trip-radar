@@ -18,11 +18,27 @@ export interface JourneyStop {
   sub: string;
   kind: "end" | "stay";
   stage: JourneyStage;
+  /** What's chosen or booked there ("Jardim Stay", "TAP · Lizbon → İstanbul"); null while it's still to find. */
+  name: string | null;
 }
 
 export interface JourneyHop {
   mode: JourneyMode;
+  /** How long the way takes, when a flight's hours or the chosen way say ("11 sa", "1,5 sa" under the line). */
+  minutes: number | null;
 }
+
+/** A flight's or a way's minutes: what was read, else its hours (gate to gate). */
+const minutesOf = (i: Item | null | undefined): number | null => {
+  // Only for a way chosen or booked: an option's hours aren't the trip's.
+  if (!i || (i.status !== "chosen" && i.status !== "booked")) return null;
+  const read = i.metrics?.durationMinutes;
+  if (read) return read;
+  const [d, a] = [i.flight?.departure, i.flight?.arrival];
+  if (!d || !a) return null;
+  const m = Math.round((Date.parse(a) - Date.parse(d)) / 60000);
+  return m > 0 && m < 48 * 60 ? m : null;
+};
 
 const MODE_OF: Record<string, JourneyMode> = { flight: "flight", train: "train", bus: "bus", minibus: "bus", car: "car", taxi: "car", transfer: "car", moto: "car", rv: "car", ferry: "ferry" };
 
@@ -41,13 +57,14 @@ export function journeyOf(plan: Pick<Plan, "stayBlocks">, legs: Leg[], items: It
     const stage: JourneyStage = b.kind === "booked" ? "booked" : b.kind === "chosen" ? "chosen" : "open";
     const last = stays.at(-1);
     if (last && sameCity(last.city, city)) {
+      if (!last.name && b.kind !== "open") last.name = b.item.name;
       const nights = Number(last.sub.match(/\d+/)?.[0] ?? 0) + b.nights;
       last.sub = L(`${nights} gece`, `${nights} night${nights === 1 ? "" : "s"}`);
       last.stage = last.stage === "open" || stage === "open" ? "open" : last.stage === "chosen" || stage === "chosen" ? "chosen" : "booked";
       ranges[ranges.length - 1].end = b.range.end;
       continue;
     }
-    stays.push({ key: `stay:${b.range.start}`, city, sub: L(`${b.nights} gece`, `${b.nights} night${b.nights === 1 ? "" : "s"}`), kind: "stay", stage });
+    stays.push({ key: `stay:${b.range.start}`, city, sub: L(`${b.nights} gece`, `${b.nights} night${b.nights === 1 ? "" : "s"}`), kind: "stay", stage, name: b.kind !== "open" ? b.item.name : null });
     ranges.push({ start: b.range.start, end: b.range.end });
   }
   if (!stays.length) return null;
@@ -59,23 +76,24 @@ export function journeyOf(plan: Pick<Plan, "stayBlocks">, legs: Leg[], items: It
   const inbound = pick(flights.filter((f) => f.flight!.departure!.slice(0, 10) <= first));
   const outbound = pick(flights.filter((f) => f.flight!.departure!.slice(0, 10) >= lastDay));
   const stops: JourneyStop[] = [];
-  if (inbound?.flight?.from) stops.push({ key: "start", city: cityOfAirport(inbound.flight.from), sub: formatDateRange(inbound.flight.departure!.slice(0, 10), null), kind: "end", stage: stageOfFlight(inbound) });
+  if (inbound?.flight?.from) stops.push({ key: "start", city: cityOfAirport(inbound.flight.from), sub: formatDateRange(inbound.flight.departure!.slice(0, 10), null), kind: "end", stage: stageOfFlight(inbound), name: inbound.status === "saved" ? null : inbound.name });
   stops.push(...stays);
-  if (outbound?.flight?.to) stops.push({ key: "end", city: cityOfAirport(outbound.flight.to), sub: formatDateRange(outbound.flight.departure!.slice(0, 10), null), kind: "end", stage: stageOfFlight(outbound) });
+  if (outbound?.flight?.to) stops.push({ key: "end", city: cityOfAirport(outbound.flight.to), sub: formatDateRange(outbound.flight.departure!.slice(0, 10), null), kind: "end", stage: stageOfFlight(outbound), name: outbound.status === "saved" ? null : outbound.name });
   // The way between two stops: a flight that day, else the transfer's way, else a line with no mark.
   const hops: JourneyHop[] = [];
   for (let n = 0; n < stops.length - 1; n++) {
     const a = stops[n];
     const b = stops[n + 1];
     if (a.kind === "end" || b.kind === "end") {
-      hops.push({ mode: "flight" });
+      hops.push({ mode: "flight", minutes: minutesOf(a.kind === "end" ? inbound : outbound) });
       continue;
     }
     const day = ranges[stays.indexOf(b)]?.start ?? null;
     const flown = flights.some((f) => f.flight!.departure!.slice(0, 10) === day);
     const leg = legs.find((l) => l.date === day && (l.kind === "move" || l.kind === "change"));
     const mode = flown ? "flight" : leg?.mode ? (MODE_OF[leg.mode] ?? "other") : leg?.options.some((o) => o.category === "flight") ? "flight" : "train";
-    hops.push({ mode });
+    const way = flown ? flights.find((f) => f.flight!.departure!.slice(0, 10) === day) : leg?.options.find((o) => o.status === "booked" || o.status === "chosen");
+    hops.push({ mode, minutes: minutesOf(way) });
   }
   return { stops, hops };
 }

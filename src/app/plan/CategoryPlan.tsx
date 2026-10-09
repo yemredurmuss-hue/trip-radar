@@ -14,7 +14,7 @@ import type { Plan } from "../../lib/plan";
 import type { InsertAt } from "../../lib/templates";
 import type { Item, Suggestion } from "../../lib/types";
 import type { Visa } from "../../lib/visa";
-import { AddButton, InsertPoint } from "../cards/AddSheet";
+import { AddButton } from "../cards/AddSheet";
 import { EmptyActivityCard, EmptyEsimCard, EmptyInsuranceCard } from "../cards/EmptyCard";
 import { KindIcon } from "../cards/Silhouettes";
 import { Section } from "./Section";
@@ -22,6 +22,7 @@ import { provisionalSection, SECTION_META } from "./sectionMeta";
 import { SectionTimeline, type SectionCards } from "./SectionTimeline";
 import { SuggestionCards } from "./SuggestionCards";
 import { VisaRow } from "./VisaRow";
+import { ActivityBoard } from "./ActivityBoard";
 import { TripShape } from "./TripShape";
 import type { JourneyHop, JourneyStop } from "../../lib/tripShape";
 import type { BoardSuggestions } from "../useSuggestions";
@@ -72,20 +73,10 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
   const emptyRows = (s: CatSection): EmptyRow[] =>
     s.id === "activity"
       ? gaps.map((g) => ({ key: `activity:${g.city}`, when: L("Tarihsiz", "No date"), city: g.city, card: <EmptyActivityCard gap={g} />, at: { city: g.city, date: null } }))
-      : s.id === "other" && (esim || insurance) && suggestions
+      : s.id === "other" && suggestions
         ? [
-            {
-              key: "cover",
-              when: L("Tüm gezi", "Whole trip"),
-              city: null,
-              card: (
-                <div className="ek-pair">
-                  {insurance && <EmptyInsuranceCard suggestion={insurance} onAdd={suggestions.add} onDismiss={suggestions.dismiss} />}
-                  {esim && <EmptyEsimCard suggestion={esim} onAdd={suggestions.add} onDismiss={suggestions.dismiss} />}
-                </div>
-              ),
-              at: { city: null, date: null },
-            },
+            ...(insurance ? [{ key: "cover:insurance", when: L("Tüm gezi", "Whole trip"), city: null, card: <EmptyInsuranceCard suggestion={insurance} onAdd={suggestions.add} onDismiss={suggestions.dismiss} />, at: { city: null, date: null } }] : []),
+            ...(esim ? [{ key: "cover:esim", when: L("Tüm gezi", "Whole trip"), city: null, card: <EmptyEsimCard suggestion={esim} onAdd={suggestions.add} onDismiss={suggestions.dismiss} />, at: { city: null, date: null } }] : []),
           ]
         : [];
   const visaLine = (s: CatSection) => s.id === "other" && visa != null && visa.kind !== "none";
@@ -94,9 +85,9 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
   const empty = sections.filter((s) => !s.entries.length && !s.hidden.length && !waiting(s) && !suggested(s).length && !emptyRows(s).length && !visaLine(s) && SECTION_META[s.id].templates.length > 0);
   return (
     <div className="section trip-plan cat-plan">
-      <div className="section-head">
-        <span>{L("Gezi planı", "Trip plan")}</span>
-        {n.total > 0 && <span className="muted">{nightsSummary(n)}</span>}
+      {/* v11 plan bar: "Plan", the order switch, "+ Ekle", the colours' key on the right; one line. */}
+      <div className="section-head plan-bar" title={n.total > 0 ? nightsSummary(n) : undefined}>
+        <strong className="plan-h">{L("Plan", "Plan")}</strong>
         {onJourneyOrder && (
           <span className="plan-order" role="group" aria-label={L("Sıra", "Order")}>
             <button type="button" aria-pressed="true">{L("Kategoriye göre", "By category")}</button>
@@ -132,11 +123,12 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
                 {visaLine(s) && <VisaRow visa={visa} done={visaDone} onDone={(d) => onVisaDone?.(d)} />}
                 {suggestions && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
                 {pending?.bySection[s.id]}
-                {own && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} />}
+                {/* The empty cards join the section's own grid (side by side with its cards), except Etkinlikler's. */}
+                {own && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} extra={s.id === "activity" ? [] : rows} />}
                 {s.id === "activity" ? (
-                  // v11: no timeline in Etkinlik ve turlar (rows and tiles), so a city's empty card sits under them as they do.
-                  rows.map((r) => <div key={r.key} className="ac-empty">{r.card}</div>)
-                ) : (
+                  // v11: the tours and tickets come from the source as the shelf's tiles (plan/ActivityBoard), no empty card.
+                  own ? null : <ActivityBoard section={s} plan={plan} fallback={() => null} />
+                ) : own ? null : (
                   <EmptyRows rows={rows} onAdd={(at) => onAdd(s.id, at)} />
                 )}
               </Section>
@@ -173,26 +165,14 @@ interface EmptyRow {
   at: InsertAt;
 }
 
-/** Empty cards on the section's line, as its timeline draws a day: the date column, the dot, the card and its "+". */
-function EmptyRows({ rows, onAdd }: { rows: EmptyRow[]; onAdd: (at: InsertAt) => void }) {
+/** Empty cards in the section's grid (v11: no date column), each card a cell; "+ Ekle" is at the section's end. */
+function EmptyRows({ rows }: { rows: EmptyRow[]; onAdd?: (at: InsertAt) => void }) {
   if (!rows.length) return null;
   return (
-    <ol className="cat-line ek-line">
+    <div className="cat-grid ek-grid">
       {rows.map((r) => (
-        <li key={r.key} className="cat-day undated">
-          <div className="cat-date">
-            <b>{r.when}</b>
-            {r.city && <span className="cat-date-city">{r.city}</span>}
-          </div>
-          <span className="cat-dot" aria-hidden />
-          <div className="cat-cards">
-            <div className="ek-slot">
-              {r.card}
-              <InsertPoint at={r.at} onAdd={onAdd} />
-            </div>
-          </div>
-        </li>
+        <div key={r.key} className="ek-cell">{r.card}</div>
       ))}
-    </ol>
+    </div>
   );
 }

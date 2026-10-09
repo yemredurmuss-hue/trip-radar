@@ -115,8 +115,14 @@ export interface Nav {
 }
 
 /** The bottom strip: where it stands (or ‹ 1/2 ›) on the left, the price and the one action on the right. */
-export function CardFoot({ view, nav, best = false, price, onAction, live, go, alt }: {
+export function CardFoot({ view, nav, best = false, price, onAction, live, go, alt, quietWait = false, docs = null, more }: {
   view: FootView;
+  /** v11: a plan chosen and not bought: its stage is the card's colour and its top line, not words here (a date running out stays). */
+  quietWait?: boolean;
+  /** v11: a booking's file (its name) or "Belge eksik", after its proof. */
+  docs?: ReactNode;
+  /** v11: "Ayrıntı ›", a booking's window. */
+  more?: () => void;
   /** v11: a chosen plan's other options, "Pano'da 2 alternatif" by its price (they open on the Pano). */
   alt?: { count: number; onClick: () => void } | null;
   /** v11: a plan's page to book on ("Rezerve et ↗"), where its "Aldım" moved to the top line. */
@@ -147,6 +153,8 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go, a
           </span>
           {best && <span className="pk-best">{L("Önerim", "My pick")}</span>}
         </>
+      ) : left.kind === "state" && quietWait && left.tone === "wait" ? (
+        left.when ? <span className={`pk-state wait${left.alert ? ` alert-${left.alert}` : ""}`}><span className="pk-when">⏳ {left.when}</span></span> : null
       ) : left.kind === "state" ? (
         <span className={`pk-state ${left.tone}${left.alert ? ` alert-${left.alert}` : ""}`}>
           {left.tone === "done" && <UiIcon name="check" size={13} />}
@@ -183,6 +191,12 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go, a
         <a className="pk-cta pk-go" href={go.href} target="_blank" rel="noreferrer">
           {go.label}
         </a>
+      )}
+      {docs}
+      {more && (
+        <button type="button" className="pk-more" onClick={(e) => { e.stopPropagation(); more(); }}>
+          {L("Ayrıntı", "Details")} ›
+        </button>
       )}
     </div>
   );
@@ -224,7 +238,7 @@ export function CardShell(props: {
   };
   return (
     <article
-      className={`pk-card pk-${groundOf(props.ring)}${props.open ? " pk-open" : ""}${props.extraClass ? ` ${props.extraClass}` : ""}`}
+      className={`pk-card pk-${groundOf(props.ring)} pk-r-${props.ring}${props.open ? " pk-open" : ""}${props.extraClass ? ` ${props.extraClass}` : ""}`}
       style={style}
       aria-label={props.ariaLabel}
       data-item-id={props.itemId}

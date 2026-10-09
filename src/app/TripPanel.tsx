@@ -975,7 +975,7 @@ function OptionGroupView({
   }
   // v11: a stay with options and no choice yet is one card too ("Porto · 8–11 Eki · 3 seçenek ›"), the pick and its
   // reasons at the top of its window.
-  if (!decided && byRank.length > 1) {
+  if (!decided && byRank.length >= 1) {
     return <NeedGroup items={byRank} heading={head} nested={nested} decision={decision} choice={choice} onCompare={comparable || single ? onCompare : undefined} />;
   }
   if (decided && !(changing && change)) {

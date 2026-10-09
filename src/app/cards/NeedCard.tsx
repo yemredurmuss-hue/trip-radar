@@ -8,7 +8,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cardFacts } from "../../lib/cardFacts";
 import { cardKind, cardKindColor, isTransportKind } from "../../lib/cardKinds";
-import { topDate } from "../../lib/cardView";
+import { topDate, transportFace } from "../../lib/cardView";
 import type { Choice } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
 import { L } from "../../lib/i18n";
@@ -20,7 +20,9 @@ import { chooseItem, setNeedNotNeeded } from "../actions";
 import { useMyName } from "../Profile";
 import { CardShell } from "./CardShell";
 import { useCardEnv } from "./PlanCard";
+import { useStageMenu } from "./stageMenu";
 import { AskButton } from "./AskButton";
+import { TransportCardBody } from "./TransportCard";
 import { ILLUS } from "./MediaCard";
 import { SearchRow } from "./EmptyCard";
 import { headCount, needSearchLinks } from "../../lib/searchLinks";
@@ -86,6 +88,10 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
   const n = items.length;
   const wants = useWants(first);
   const self = useSelfLinks(first);
+  // One option only: its own ••• (Çıkar, Sil…), as its card had.
+  const single = useStageMenu(first);
+  const face = isTransportKind(kind) ? transportFace(first, kind as Parameters<typeof transportFace>[1], env.legEnds.get(first.id)) : null;
+  const route = face && (face.from || face.to) ? { ...face, from: face.from && { ...face.from, time: null }, to: face.to && { ...face.to, time: null }, middle: null, logo: null } : null;
   return (
     <>
       <CardShell
@@ -99,13 +105,14 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
         onDelete={() => void setNeedNotNeeded(items).then(env.offer)}
         deleteLabel={L("Gerek yok", "Not needed")}
         topAction={<span className="pk-lab open">{L("Arıyoruz", "Searching")}</span>}
-        menu={[]}
+        menu={n === 1 ? single.menu : []}
         open={false}
         onToggle={onOpen}
         body={
-          <div className={`nd-body${ILLUS[kind] ? " nd-has-art" : ""}`}>
+          <div className={`nd-body${ILLUS[kind] ? " nd-has-art" : ""}${route ? " nd-route" : ""}`}>
             {ILLUS[kind] && <img className="nd-art" src={`illus/${ILLUS[kind]}.png`} alt="" />}
-            <h3>{title}</h3>
+            {/* v11: a ticket still to find shows its ends (no hours yet); a stay its city (the nights are on the top line). */}
+            {route ? <TransportCardBody face={route} title={title} /> : <h3>{first.category === "stay" && first.city ? first.city : title}</h3>}
             {lowText && <p className="nd-sub">{L(`${lowText}'den başlıyor`, `from ${lowText}`)}</p>}
             {wants.length > 0 && (
               <ul className="nd-wants" aria-label={L("Aradığımız", "What we're looking for")}>
@@ -122,8 +129,8 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
               {L(`${n} seçenek`, `${n} options`)}
               <UiIcon name="right" size={13} />
             </button>
-            <span className="pk-state wait">{L("Karar bekliyor", "To decide")}</span>
             <AskButton text={L(`${title} için öneri bul`, `Find options for ${title}`)} />
+            {n === 1 && single.field}
           </div>
         }
         detail={null}

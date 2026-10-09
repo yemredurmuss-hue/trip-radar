@@ -4,17 +4,16 @@
 // between them adds this section's kind on that day, in that city. Yapılacak şeyler and Restoranlar are a
 // list by city instead (0.35.3, ideas/IdeaList), Yapılacak şeyler with the quick line on top; İlham is tiles.
 import type { ReactNode } from "react";
-import { catDomKey, type CatEntry, type CatSection, type DayGroup } from "../../lib/categories";
-import { L, locale } from "../../lib/i18n";
-import { shortDay } from "../../lib/ideas";
+import { catDomKey, type CatEntry, type CatSection } from "../../lib/categories";
 import type { Plan } from "../../lib/plan";
 import type { Item } from "../../lib/types";
 import { entryDomId } from "../../lib/progress";
 import { insertAt, type InsertAt } from "../../lib/templates";
+import { InsertPoint } from "../cards/AddSheet";
+import type { DayGroup } from "../../lib/categories";
 import { activitySearches, returnFlightSearch } from "../../lib/searchLinks";
 import { activityGaps } from "../../lib/emptyCards";
 import { sameCity } from "../../lib/plan";
-import { InsertPoint } from "../cards/AddSheet";
 import { InspoGrid } from "../ideas/IdeaList";
 import { IdeaTiles } from "../ideas/IdeaTiles";
 import { ActivityBoard } from "./ActivityBoard";
@@ -30,13 +29,12 @@ export interface SectionCards {
   settled: SettledFor;
 }
 
-const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(locale(), { weekday: "short", timeZone: "UTC" });
 
-/** The "+" after a card: a block's own place (a stay: its city, its last night), else the card's day and city. */
-const atOf = (e: CatEntry, day: DayGroup): InsertAt => (e.piece.kind === "entry" ? insertAt(e.piece.entry) : { city: e.city ?? day.city, date: e.date });
 
-export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, onIdea, today, items }: {
+export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, onIdea, today, items, extra = [] }: {
   section: CatSection;
+  /** v11: the section's empty cards (the insurance's, the eSIM's), in the same grid as its cards. */
+  extra?: { key: string; card: ReactNode }[];
   plan: Pick<Plan, "range" | "stayBlocks">;
   tripId: string;
   cities: string[];
@@ -56,36 +54,27 @@ export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, o
   if (section.id === "activity")
     return (
       <>
-        <ActivityBoard section={section} fallback={(e) => <Piece entry={e} cards={cards} />} />
-        <SearchLinks section={section} plan={plan} items={items} />
+        <ActivityBoard section={section} plan={plan} fallback={(e) => <Piece entry={e} cards={cards} />} />
       </>
     );
   return (
     <>
-      {section.days.length > 0 && (
-      <ol className={`cat-line cat-in-${section.id}`}>
-        {section.days.map((day) => (
-          <li key={day.key} className={`cat-day${day.date ? "" : " undated"}`}>
-            <div className="cat-date">
-              {day.date ? (
-                <>
-                  <b>{shortDay(day.date)}</b>
-                  <span>{weekday(day.date)}</span>
-                </>
-              ) : day.whole ? (
-                <b>{L("Tüm gezi", "Whole trip")}</b>
-              ) : (
-                <b>{L("Tarihsiz", "No date")}</b>
-              )}
-              {day.city && <span className="cat-date-city">{day.city}</span>}
-            </div>
-            <span className="cat-dot" aria-hidden />
-            <div className="cat-cards">
-              <DayCards section={section} day={day} plan={plan} cards={cards} onAdd={onAdd} />
-            </div>
-          </li>
-        ))}
-      </ol>
+      {/* v11: the cards in a grid (two across, transport three), in the order of their days, no date column. */}
+      {(section.days.length > 0 || extra.length > 0) && (
+        <div className={`cat-grid cat-in-${section.id}`}>
+          {section.days.flatMap((day) =>
+            day.entries.map((e) => (
+              <div key={e.key} id={entryDomId(catDomKey(e))} className={`cat-card${e.piece.kind === "entry" ? ` tl-${e.piece.entry.kind}` : ""}`} data-day={day.date ?? undefined}>
+                <Piece entry={e} cards={cards} />
+                {/* "+" here (this card's day and city), out of sight until the card is pointed at or reached by the keyboard. */}
+                <InsertPoint at={atOf(e, day)} onAdd={onAdd} />
+              </div>
+            )),
+          )}
+          {extra.map((x) => (
+            <div key={x.key} className="ek-cell">{x.card}</div>
+          ))}
+        </div>
       )}
       {section.prep.length > 0 && <PrepList entries={section.prep} />}
       <SearchLinks section={section} plan={plan} items={items} />
@@ -93,18 +82,8 @@ export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, o
   );
 }
 
-function DayCards({ section, day, plan, cards, onAdd }: { section: CatSection; day: DayGroup; plan: Pick<Plan, "range" | "stayBlocks">; cards: SectionCards; onAdd: (at: InsertAt) => void }) {
-  return (
-    <>
-      {day.entries.map((e) => (
-        <div key={e.key} id={entryDomId(catDomKey(e))} className={`cat-card${e.piece.kind === "entry" ? ` tl-${e.piece.entry.kind}` : ""}`}>
-          <Piece entry={e} cards={cards} />
-          <InsertPoint at={atOf(e, day)} onAdd={onAdd} />
-        </div>
-      ))}
-    </>
-  );
-}
+/** The "+" by a card: a block's own place (a stay: its city, its last night), else the card's day and city. */
+const atOf = (e: CatEntry, day: DayGroup): InsertAt => (e.piece.kind === "entry" ? insertAt(e.piece.entry) : { city: e.city ?? day.city, date: e.date });
 
 /** One entry's card: a block of the front, options with no block, or a record decided or still to pick. */
 function Piece({ entry, cards }: { entry: CatEntry; cards: SectionCards }): ReactNode {

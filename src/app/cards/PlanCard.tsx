@@ -27,7 +27,8 @@ import { ChoiceSheet, NeedCard } from "./NeedCard";
 import { needTitleOf } from "../../lib/pano";
 import { CardDetail } from "./CardDetail";
 import { CardFoot, CardShell, type MenuEntry, type Nav } from "./CardShell";
-import { DocAccess, DocPickButton } from "./DocAccess";
+import { nightsBetween } from "../../lib/items";
+import { DocAccess, openDoc, DocPickButton } from "./DocAccess";
 import { InlineEdit } from "./InlineEdit";
 import { groupKeyOf } from "../../lib/plan";
 import { useStageMenu } from "./stageMenu";
@@ -230,7 +231,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
           {bookedCard && !transport && <span className="pk-stamp" aria-hidden><UiIcon name="check" size={16} /></span>}
         </>
       }
-      docs={<DocAccess item={item} docs={docs} />}
+      docs={bookedCard ? null : <DocAccess item={item} docs={docs} />}
       onDelete={stageMenu.hide}
       deleteLabel={stageMenu.booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed")}
       topAction={
@@ -253,14 +254,38 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
             <FlightTiles tiles={tiles} />
           </>
         ) : (
-          <MediaCardBody face={mediaFace(item, kind, facts.source)} kind={kind} score={facts.score} best={best} city={item.city} />
+          <MediaCardBody face={mediaFace(item, kind, facts.source)} kind={kind} score={facts.score} best={best} city={item.city}
+            nights={kind === "stay" && item.dates.start && item.dates.end ? nightsBetween(item.dates.start.slice(0, 10), item.dates.end.slice(0, 10)) : null} />
         )
       }
       foot={
         <>
           <CardFoot view={bookTop ? { ...foot, action: null } : foot} nav={nav} best={best} price={facts.price} onAction={act} live={liveFoot}
             go={bookTop && page ? { href: page, label: goLabel } : null}
-            alt={altCount > 0 ? { count: altCount, onClick: () => env.onPano(groupKeyOf(item)) } : null} />
+            alt={altCount > 0 ? { count: altCount, onClick: () => env.onPano(groupKeyOf(item)) } : null}
+            quietWait={item.status === "chosen"}
+            docs={
+              bookedCard ? (
+                docs.length === 1 ? (
+                  <button type="button" className="pk-docname" title={docs[0].name} onClick={(e) => { e.stopPropagation(); void openDoc(docs[0].id); }}>
+                    <UiIcon name="clip" size={12} />
+                    {docs[0].name}
+                  </button>
+                ) : (
+                  <DocAccess item={item} docs={docs} />
+                )
+              ) : null
+            }
+            more={bookedCard && !["taxi", "note", "todo"].includes(kind) ? () => setSheet(true) : undefined} />
+          {/* v11: a booked flight's stub under a dashed line — the airline, the booking code, how many go — and its stamp. */}
+          {bookedCard && kind === "flight" && (
+            <div className="pk-stub">
+              <span>{item.flight?.carrier ?? item.provider ?? L("Uçuş", "Flight")}</span>
+              {item.bookingRef && <b>{item.bookingRef}</b>}
+              {item.guests.adults ? <span>{L(`${item.guests.adults} yolcu`, `${item.guests.adults} passenger${item.guests.adults === 1 ? "" : "s"}`)}</span> : null}
+              <span className="pk-stamp" aria-hidden><UiIcon name="check" size={14} /></span>
+            </div>
+          )}
           {stageMenu.field}
           {sheet && (
             <BookingSheet item={item} kind={kind} facts={facts} docs={docs} date={topDate(item, kind)}
@@ -301,7 +326,7 @@ export function NavGroup({ items, heading, nested, decision, choice, decided, on
   }, [changing]);
   const single = decided && !changing;
   // Not decided and more than one option: the need's own card, one size, its options in the choice window (v11).
-  if (!decided && items.length > 1) {
+  if (!decided && items.length >= 1) {
     return (
       <div className={nested ? "group nested" : "section"} data-option-ids={ids}>
         {heading && <div className={nested ? "group-head" : "section-head"}>{heading}</div>}

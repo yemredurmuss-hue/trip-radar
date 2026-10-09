@@ -10,7 +10,7 @@ import { needsBooking } from "../../lib/booking";
 import type { CatEntry, CatSection } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import { num } from "../../lib/i18nText";
-import { ideaKindOf, KIND_TINT, kindLabel, type IdeaKind } from "../../lib/ideaKinds";
+import { ideaKindOf, KIND_TINT, kindLabel } from "../../lib/ideaKinds";
 import { dayChip, ideaMapUrl, ideaSource, ideaThumb, isFoodIdea, moveToBookings, setDone, setIdeaDay, setPrep } from "../../lib/ideas";
 import { isIdea } from "../../lib/booking";
 import { planSectionOfItem } from "../../lib/categories";
@@ -24,12 +24,7 @@ import { useCardEnv } from "../cards/PlanCard";
 import { usePhotoOf, WhoAvatar } from "../cards/WhoseBadge";
 import { FallbackImg } from "../FallbackImg";
 import { useMyName } from "../Profile";
-import { IdeaGlyph } from "./IdeaIcons";
 
-const GLYPH: Record<IdeaKind, Parameters<typeof IdeaGlyph>[0]["name"]> = {
-  view: "sun", culture: "museum", nature: "tree", shop: "bag", walk: "walker", fun: "ticket",
-  coffee: "cup", lunch: "food", dinner: "food", sweet: "cupcake", bar: "wine",
-};
 
 type Filter = "all" | "go" | "food";
 const recordOf = (e: CatEntry): Item | null => (e.piece.kind === "item" ? e.piece.item : e.piece.kind === "entry" && e.piece.entry.kind === "event" ? e.piece.entry.item : null);
@@ -106,15 +101,10 @@ function IdeaTile({ item }: { item: Item }) {
     ...(!food ? [{ label: L("Etkinliklere taşı (bileti var)", "Move to activities (has a ticket)"), run: () => void moveToBookings(item) }] : []),
     ...(!food ? [{ label: L("Hazırlık'a taşı", "Move to Prep"), run: () => void setPrep(item, true) }] : []),
   ];
-  const glyph = (
-    <span className="it-glyph" style={{ color: tint }}>
-      <IdeaGlyph name={kind ? GLYPH[kind] : "star"} size={34} />
-    </span>
-  );
   return (
     <div className={`it-tile${food ? " food" : ""}${done ? " done" : ""}${planned ? " planned" : ""}`} aria-label={item.name} data-item-id={item.id} title={item.summary ?? undefined}>
       <div className="it-pic" style={{ background: `color-mix(in srgb, ${tint} 12%, #fff)` }}>
-        <FallbackImg className="it-photo" src={ideaThumb(item)} fallback={glyph} />
+        <FallbackImg className="it-photo" src={ideaThumb(item)} fallback={<img className="it-illus" src={`illus/${food ? "restoran" : "yapilacak"}.png`} alt="" />} />
         {from === "Maps" && <span className="it-maps">Maps</span>}
         <span className="it-who" title={who === "ai" ? L("AI önerisi", "AI pick") : who ?? myName ?? undefined}>
           {who === "ai" ? <span className="it-ai">✨</span> : <WhoAvatar name={who ?? (myName || L("Ben", "Me"))} photo={photoOf(who ?? myName)} />}

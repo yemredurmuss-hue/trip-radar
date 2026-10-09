@@ -32,6 +32,9 @@ import type { Item } from "../../lib/types";
 import { chooseItem, toggleLike } from "../actions";
 import { addLinks } from "../capture";
 import { useShare } from "../Share";
+import { cityOfAirport } from "../../lib/airports";
+import { BRANDS } from "../../lib/searchLinks";
+import { illusOf } from "../cards/MediaCard";
 import { voteKeyOf } from "../../lib/share/votes";
 import { KindIcon, UiIcon } from "../cards/Silhouettes";
 import { usePhotoOf, WhoAvatar } from "../cards/WhoseBadge";
@@ -291,6 +294,45 @@ function PanoTable({ entries, decisions }: { entries: PanoEntry[]; decisions: De
   );
 }
 
+/** The card's picture when the page gave none: the drawing for its kind; a flight its two cities under a dashed arc. */
+function PanoArt({ item, kind }: { item: Item; kind: ReturnType<typeof cardKind> }) {
+  if (kind === "flight" && (item.flight?.from || item.flight?.to)) {
+    const end = (s: string | null | undefined) => (s ? cityOfAirport(s) : "");
+    return (
+      <span className="pn-arc" aria-hidden>
+        <svg viewBox="0 0 240 90" preserveAspectRatio="none">
+          <path d="M30 70 Q120 -10 210 70" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="6 7" strokeLinecap="round" />
+          <circle cx="30" cy="70" r="5" fill="currentColor" />
+          <circle cx="210" cy="70" r="6" fill="#fff" stroke="currentColor" strokeWidth="2.5" />
+        </svg>
+        <b className="a">{end(item.flight?.from)}</b>
+        <b className="b">{end(item.flight?.to)}</b>
+      </span>
+    );
+  }
+  const art = illusOf(kind);
+  return art ? (
+    <span className="pn-art pn-illus">
+      <img src={`illus/${art}.png`} alt="" />
+    </span>
+  ) : (
+    <span className="pn-art">
+      <KindIcon kind={kind} size={56} />
+    </span>
+  );
+}
+
+/** The site's mark before the meta line: its letter on its colour (Booking's B., Airbnb's A). */
+function BrandMark({ label }: { label: string }) {
+  const key = label.toLocaleLowerCase("en").replace(/\.com$/, "").replace(/[^a-z]/g, "");
+  const brand = (BRANDS as Record<string, { color: string; letter: string; name: string } | undefined>)[key];
+  return (
+    <span className="pn-bm" style={{ background: brand?.color ?? "#475467" }} title={label}>
+      {brand?.letter ?? label.charAt(0).toLocaleUpperCase("tr")}
+    </span>
+  );
+}
+
 export const groupDomId = (group: string) => `pn-g-${group.replace(/[^\w-]/g, "_")}`;
 
 function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
@@ -324,10 +366,11 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
   const cheapest = !best && siblings.length > 1 && item.price.amount != null && item.price.amount === Math.min(...prices);
   const meta = [item.provider, item.location.area ?? item.city, item.rating.value != null ? String(item.rating.value).replace(".", ",") : null].filter(Boolean).join(" · ");
   const who = isAiOption(item) ? "ai" : item.addedBy;
+  const [why, setWhy] = useState(false);
   return (
     <article className={`pn-card${entry.inPlan ? ` in-${entry.inPlan}` : ""}`} id={`pn-${item.id}`} aria-label={item.name} style={{ "--c": cardKindColor(kind) } as React.CSSProperties}>
       <div className="pn-img">
-        <FallbackImg src={item.imageUrl} className="pn-photo" fallback={<span className="pn-art"><KindIcon kind={kind} size={56} /></span>} />
+        <FallbackImg src={item.imageUrl} className="pn-photo" fallback={<PanoArt item={item} kind={kind} />} />
         {(best || cheapest) && <span className="pn-badge">{best ? L("Önerim", "My pick") : L("En ucuz", "Cheapest")}</span>}
         <button type="button" className={`pn-heart${liked ? " on" : ""}`} aria-pressed={liked} aria-label={liked ? L(`${item.name}: beğeniyi geri al`, `${item.name}: unlike`) : L(`${item.name}: beğen`, `${item.name}: like`)}
           onClick={heart}>
@@ -354,7 +397,12 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
           </span>
         )}
         <h3 title={item.name}>{item.name}</h3>
-        {meta && <p className="pn-meta">{meta}</p>}
+        {(meta || facts.source) && (
+          <p className="pn-meta">
+            {facts.source && <BrandMark label={facts.source.label} />}
+            {meta}
+          </p>
+        )}
       </div>
       <div className="pn-act">
         <span className="pn-price">
@@ -391,12 +439,27 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
             ))}
           </span>
         )}
-        {siblings.length > 1 && (
-          <button type="button" className="pn-why" onClick={() => onCompare(entry.group)}>
-            {L("Karşılaştır", "Compare")}
+        {(facts.pros.length > 0 || facts.cons.length > 0) && (
+          <button type="button" className="pn-why" aria-expanded={why} onClick={() => setWhy(!why)}>
+            {L("Neden?", "Why?")} <span aria-hidden>{why ? "▴" : "▾"}</span>
           </button>
         )}
       </div>
+      {why && (
+        <ul className="pn-whylist">
+          {facts.pros.slice(0, 3).map((p) => (
+            <li key={`+${p.text}`} className="pro">+ {p.text}</li>
+          ))}
+          {facts.cons.slice(0, 2).map((c) => (
+            <li key={`-${c.text}`} className="con">− {c.text}</li>
+          ))}
+          {siblings.length > 1 && (
+            <li className="cmp">
+              <button type="button" onClick={() => onCompare(entry.group)}>{L("Karşılaştır →", "Compare →")}</button>
+            </li>
+          )}
+        </ul>
+      )}
     </article>
   );
 }
