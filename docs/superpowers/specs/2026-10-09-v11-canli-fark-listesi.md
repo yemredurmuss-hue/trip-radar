@@ -41,3 +41,13 @@ Emre gerçek gezisinde (Porto ve Madeira, İngilizce arayüz, canlı uçuş veri
   fikirler** (sohbet önerileri, Viator teklifleri, kaydedilen fikirler tek ızgarada kare, "+ Plana koy").
 - **Yapılacak şeyler'de plana eklenen anlaşılmıyordu** → aynı kural: Planda satır (günü ya da "Günü yok"), fikirler
   ve öneriler kare, katlanabilir.
+
+## Plana eklenen turun fotoğrafı (0.36.71)
+
+Emre: "fotoğrafları ile önerdiğin şeyleri plana ekleyince fotoğrafları nereye kayboluyor?" Neden (deneyle,
+`SHOTS_OFFER=1 node scripts/shots.mjs`): veri fotoğrafı tutuyordu (`offerItem` → `imageUrl`), ama (1) Planda satırı
+fotoğrafı 64 px köşeye küçültüyordu, kartın en güzel parçası gidiyordu; fiyat karede "kişi", satırda "toplam" diye
+değişiyordu; (2) sohbetin plana koyduğu tur addan kuruluyordu, fotoğrafı yoktu (kaynak aynı turu fotoğraflı
+göstermiş olsa da). Şimdi: Planda kartı fotoğrafı solda büyük tutar, fiyat "€89 kişi · €178 toplam"; fotoğrafsız
+kayıt, kaynağın aynı turuyla (sayfası ya da adı) eşleşince o fotoğrafı alır ve kayda yazılır (Pano ve ayrıntı da
+gösterir); planda olan tur önerilerde tekrar çıkmaz.
