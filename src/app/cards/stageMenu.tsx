@@ -28,7 +28,7 @@ interface Ask {
   run: () => void;
 }
 
-export function useStageMenu(item: Item): { menu: MenuEntry[]; remove: () => void; hide: () => void; booked: boolean; field: ReactNode } {
+export function useStageMenu(item: Item): { menu: MenuEntry[]; remove: () => void; hide: () => void; change: () => void; cancel: () => void; booked: boolean; field: ReactNode } {
   const env = useCardEnv();
   const shared = !!useShare();
   const docs = env.docsFor(item.id).length;
@@ -89,6 +89,8 @@ export function useStageMenu(item: Item): { menu: MenuEntry[]; remove: () => voi
     menu,
     remove,
     hide,
+    change,
+    cancel,
     booked,
     field: (
       <>

@@ -733,14 +733,25 @@ try {
   const home = app.locator(".tl-travel.role-departure .pk-card");
   await home.locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
   // A misclick on "Bileti aldım" can be taken back (in the details), and redone.
+  // v11 phase 3: a booking opens its own window; "Rezervasyonu geri al" is there.
   await home.locator(".pk-body").click();
-  await home.getByRole("button", { name: "Rezervasyonu geri al" }).click();
+  await app.getByRole("dialog").getByRole("button", { name: "Rezervasyonu geri al" }).click();
   await home.locator(".pk-foot").getByText("bilet alınmadı").waitFor();
   await home.getByRole("button", { name: "Bileti aldım" }).click();
   await home.locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
+  // Its window: the booking's rows (the flight, from and to with their hours), its files or "Belge eksik · ekle",
+  // Değiştir · İptal ettim · Rezervasyonu geri al · Tüm detaylar · Kapat; Esc closes it.
+  await home.locator(".pk-body").click();
+  const bk = app.locator(".bk-sheet");
+  await bk.waitFor();
+  assert.match(await bk.locator(".bk-rows").innerText(), /Kalkış[\s\S]*Lizbon LIS[\s\S]*19:40[\s\S]*Varış[\s\S]*İstanbul IST/);
+  assert.deepEqual(await bk.locator(".bk-foot button").allInnerTexts(), ["Değiştir", "İptal ettim", "Rezervasyonu geri al", "Tüm detaylar", "Kapat"]);
+  await app.screenshot({ path: `${out}/31a-booking-sheet.png` });
+  await app.keyboard.press("Escape");
+  await bk.waitFor({ state: "detached" });
+
   // The cities big, the airport codes and hours small; the landing day only because it's the next day.
   assert.match(await home.locator(".pk-mid").innerText(), /Lizbon\s*LIS · 19:40[\s\S]*4 sa 55 dk · direkt[\s\S]*İstanbul\s*IST · 15 Ekim · 01:35/);
-  await home.locator(".pk-body").click();
   // Opening a card shows its details on the card (0.33: a tap on its picture; its title is edited where it stands).
   await douro.locator(".pk-vis").click();
   await douro.locator(".pk-detail").getByRole("button", { name: "Tüm detaylar" }).waitFor();

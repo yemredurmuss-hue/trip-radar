@@ -560,6 +560,8 @@ export interface Item {
   addedBy?: string;
   /** Who liked it on the Pano (v11): the people's names, the board's owner as "me". Absent: nobody. */
   likedBy?: string[];
+  /** The booking's reference as its document says it (a PNR, a confirmation no.): the booking window's row (v11 phase 3). */
+  bookingRef?: string;
   /** What kind of plan was said in the chat, or added from a template (a car rental or a transfer can carry any title). */
   plannedKind?: PlannedKind;
   /** eSIM: when the traveller said it's installed ("Kurdum"). */
