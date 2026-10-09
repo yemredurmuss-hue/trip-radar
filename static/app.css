@@ -2652,9 +2652,7 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-msg-bot { animation: st-in .35s ease-out both; }
 
 /* The live preview under the checklist (revision 2, item 4): each part fades in as it becomes known. */
-.st-pv { background: #fff; border-radius: 22px; padding: 16px 18px 18px; box-shadow: 0 1px 2px rgba(28, 26, 51, .05), 0 16px 40px -22px rgba(28, 26, 51, .28); animation: st-in .4s ease-out both; }
-.st-pv .st-eyebrow { margin-bottom: 10px; }
-.st-pv-photos { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; height: 104px; margin-bottom: 12px; }
+.st-pv-photos { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; height: 100px; margin-bottom: 14px; }
 .st-pv-photo { position: relative; overflow: hidden; border-radius: 14px; background: linear-gradient(150deg, #9db7e8, #5b45e0); animation: st-in .4s ease-out both; }
 .st-pv-photo-1 { background: linear-gradient(150deg, #f7c77e, #e07a5f); }
 .st-pv-photo-2 { background: linear-gradient(150deg, #8fd3c1, #2c8f7b); }
@@ -2663,15 +2661,6 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-pv-photo img, .st-photo img { opacity: 0; transition: opacity .6s ease; }
 .st-pv-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .st-pv-photo img.in, .st-photo img.in { opacity: 1; }
-.st-pv-rows { display: flex; flex-direction: column; gap: 9px; }
-.st-pv-row { display: flex; align-items: flex-start; gap: 10px; animation: st-in .4s ease-out both; }
-.st-pv-icon { flex: none; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 9px; background: #efeaff; color: var(--hx-accent); }
-.st-pv-text { display: flex; flex-direction: column; min-width: 0; }
-.st-pv-label { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #5d5885; }
-.st-pv-value { font-size: 15px; color: var(--hx-ink); overflow-wrap: anywhere; }
-.st-pv-chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
-.st-pv-chip { padding: 2px 10px; border-radius: 999px; background: #efeaff; color: var(--hx-accent); font-size: 13px; font-weight: 600; }
-.st-pv-note { margin: 10px 0 0; font-size: 13px; color: #5d5885; }
 .st-composer { display: flex; align-items: center; gap: 8px; margin: 0 20px 18px; padding: 10px 10px 10px 18px; border: 1px solid #e3def6; border-radius: 22px; box-shadow: 0 6px 20px rgba(28, 26, 51, .06); }
 .st-composer input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 16px; color: var(--hx-ink); }
 .st-composer .send-btn { background: var(--hx-accent); }
@@ -2771,7 +2760,7 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .st-gen-stage.no-map .st-photos { height: 220px; margin: 10px 0 6px; }
 @media (prefers-reduced-motion: reduce) {
   .st-map, .st-map-ring, .st-row.done .st-check, .st-row.done .st-row-value { animation: none; }
-  .st-photo, .st-tick, .st-step-text, .st-msg-bot, .st-thinking, .st-stage, .st-pv, .st-pv-row, .st-pv-photo { animation: none; }
+  .st-photo, .st-tick, .st-step-text, .st-msg-bot, .st-thinking, .st-stage, .st-pv-photo { animation: none; }
   .st-step.run .st-step-mark, .st-dots i { animation: none; }
   .st-progress span, .st-pv-photo img, .st-photo img, .st-step, .st-step-mark, .st-ring-fg, .st-bar-track span { transition: none; }
 }
@@ -3506,8 +3495,7 @@ a.ch-why { text-decoration: none; }
 .st-draft-x { position: absolute; left: 14px; top: 14px; z-index: 3; width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .92); color: #6b6790; font-size: 18px; line-height: 1; opacity: .75; transition: opacity .2s, color .2s; }
 .st-draft:hover .st-draft-x, .st-draft-x:focus-visible { opacity: 1; } .st-draft-x:hover { color: #c62828; }
 
-/* ===================================================================================================================
-   v11 as drawn (docs/superpowers/specs/2026-10-09-v11-canli-fark-listesi.md; values from the drawing's own tokens):
+/* ============================================================================================================   v11 as drawn (docs/superpowers/specs/2026-10-09-v11-canli-fark-listesi.md; values from the drawing's own tokens):
    the plan bar on one line, each section its own card, the cards in a grid, the three stages' grounds (Arıyoruz white
    and dashed, Seçildi cream, Rezerve mint), a small picture beside the name, a quiet foot over a hairline.
    =================================================================================================================== */
@@ -3769,3 +3757,9 @@ a.ch-why { text-decoration: none; }
 .cat-in-transport .pk-stop b { font-size: 18px; }
 .cat-in-transport .pk-stop b.long { font-size: 15px; }
 .nd-body.nd-has-art > .nd-wants, .nd-body.nd-has-art > .nd-self { grid-column: 1 / -1; }
+=======
+/* One card (drawing v3, 2026-10-09): the photos on top of the checklist; the flights and the styles inside their rows. */
+.st-side .st-list .st-pv-photos { margin-bottom: 16px; }
+.st-row-sub { display: block; margin-top: 1px; font-size: 13px; font-weight: 500; color: #7a76a0; }
+.st-row-chips { display: inline-flex; flex-wrap: wrap; gap: 5px; vertical-align: middle; }
+.st-row-chip { padding: 2px 10px; border-radius: 999px; background: #efeaff; color: var(--hx-accent); font-size: 12.5px; font-weight: 650; }

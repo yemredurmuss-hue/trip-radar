@@ -3770,12 +3770,12 @@ try {
   await revList.getByText("Koh Phangan · Tayland").waitFor();
   await revList.getByText(/10 Ocak – 10 Şubat · 31 gece/).waitFor();
   // The preview fills in while chatting: the route proposed in the background, the dates, who, the flights, photos.
-  const pv = board.locator(".st-pv");
-  await pv.getByText("Koh Phangan 21 gece → Koh Samui 10 gece").waitFor({ timeout: 15000 });
-  await pv.getByText("Rota önerisi").waitFor();
-  await pv.getByText(/10 Ocak – 10 Şubat · 31 gece/).waitFor();
-  await pv.getByText(/Sabine/).first().waitFor();
-  await pv.locator(".st-pv-photo img.in").first().waitFor({ timeout: 15000 });
+  // One card (drawing v3): the route and the flights sit in their rows, the photos on top of the list.
+  await revList.getByText("Öneri: Koh Phangan 21 · Koh Samui 10 gece").waitFor({ timeout: 15000 });
+  await revList.getByText(/10 Ocak – 10 Şubat · 31 gece/).waitFor();
+  await revList.getByText(/Sabine/).first().waitFor();
+  await revList.locator(".st-pv-photo img.in").first().waitFor({ timeout: 15000 });
+  assert.equal(await board.locator(".st-pv").count(), 0, "no second box: the preview is part of the list");
   const genBtn = board.locator(".st-side .st-gen-btn");
   assert.match(await genBtn.innerText(), /Oluştur/, "one word at every step: what is missing is said under the button");
   assert.match(await board.locator(".st-side .st-gen-card p").innerText(), /Elimdekiyle kurarım, eksikleri panoda sorarım\. Ya da konuşmaya devam et\./);
@@ -3789,8 +3789,8 @@ try {
   await board.locator(".st-auto").waitFor({ state: "detached" });
   await revList.getByText("Koh Phangan · Tayland").waitFor();
   assert.equal(await revList.locator(".st-row").first().innerText().then((t) => /İstanbul/.test(t)), false, "the destination is not İstanbul");
-  await revList.locator(".st-row", { hasText: "NEREDEN" }).getByText("İstanbul", { exact: true }).waitFor();
-  await pv.getByText("İstanbul ⇄ Koh Samui").waitFor();
+  await revList.locator(".st-row", { hasText: "NEREDEN" }).getByText(/^İstanbul/).first().waitFor();
+  await revList.getByText("Uçuş: İstanbul ⇄ Koh Samui").waitFor();
   assert.match(await genBtn.innerText(), /Oluştur/);
   await board.screenshot({ path: `${out}/21a-start-interview-preview.png` });
   // Every assistant line is Turkish on the English board.

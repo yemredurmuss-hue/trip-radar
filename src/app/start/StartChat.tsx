@@ -42,7 +42,6 @@ import { UiIcon } from "../cards/Silhouettes";
 import { loadWorld } from "./FlightMap";
 import { Generating } from "./Generating";
 import { findPhotos, modelAvailable, proposeRoute, READ_MS, readAndReply, REPLY_MS, within } from "./model";
-import { TripPreview } from "./Preview";
 // The suggestions' review as the generating screen's last step, and the rules' preview (registered through startHooks).
 import "./registerReview";
 
@@ -941,9 +940,8 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
             />
           ) : (
             <div className="st-side-inner">
-              <Checklist rows={rows} onAsk={ask} disabled={holding} drawing={drawing} reading={readingIds} now={q} lang={lang} />
+              <Checklist rows={rows} onAsk={ask} disabled={holding} drawing={drawing} reading={readingIds} now={q} preview={preview} place={state.where?.place ?? ""} lang={lang} />
               <GenerateCard ready={ready} complete={complete} onGenerate={generate} lang={lang} />
-              {preview && <TripPreview preview={preview} place={state.where?.place ?? ""} lang={lang} />}
             </div>
           )}
         </aside>

@@ -3,7 +3,9 @@
 // language (each part made inside withLang), whatever the board's.
 import { useState } from "react";
 import { L, withLang, type Lang } from "../../lib/i18n";
-import type { ChecklistRow, QuestionId } from "../../lib/startTrip";
+import type { ChecklistRow, Preview, QuestionId } from "../../lib/startTrip";
+import { STYLE_META, STYLES } from "../../lib/tripStyle";
+import { PhotoStrip } from "./Preview";
 import { UiIcon } from "../cards/Silhouettes";
 
 /** "4'ü", "6'sı": the ending after a number read aloud (sıfır, bir, iki, üç, dört, beş, altı). */
@@ -38,6 +40,9 @@ interface Props {
   reading?: string[];
   /** The question being asked now: its row pulses softly (2026-10-09). */
   now?: QuestionId | null;
+  /** The trip so far: its photos sit on top of the card, its flights and styles go into their rows (drawing v3). */
+  preview?: Preview | null;
+  place?: string;
   lang: Lang;
 }
 
@@ -48,10 +53,11 @@ const ROW_OF: Partial<Record<QuestionId, string>> = {
 };
 const SPARKS = [0, 60, 120, 180, 240, 300];
 
-export function Checklist({ rows, onAsk, disabled, drawing = null, reading = [], now = null, lang }: Props) {
+export function Checklist({ rows, onAsk, disabled, drawing = null, reading = [], now = null, preview = null, place = "", lang }: Props) {
   const done = rows.filter((r) => r.done || r.tentative).length;
   return withLang(lang, () => (
     <div className="st-list">
+      {preview && <PhotoStrip photos={preview.photos} place={place} />}
       <div className="st-list-head">
         <Ring done={done} total={rows.length} />
         <div>
@@ -101,6 +107,17 @@ export function Checklist({ rows, onAsk, disabled, drawing = null, reading = [],
                       L("Atlandı · sonra sohbetten", "Skipped · later in the chat")
                     ) : (
                       r.value
+                    )}
+                    {r.done && r.id === "from" && preview?.flights && <small className="st-row-sub">{L("Uçuş: ", "Flights: ")}{preview.flights}</small>}
+                    {r.done && r.id === "want" && preview && (preview.styles.length > 0 || preview.budget) && (
+                      <span className="st-row-chips">
+                        {preview.styles.map((id) => (
+                          <span key={id} className="st-row-chip" style={{ background: STYLE_META[id].bg, color: STYLE_META[id].fg }}>
+                            {STYLES[id]()}
+                          </span>
+                        ))}
+                        {preview.budget && <span className="st-row-chip">{preview.budget}</span>}
+                      </span>
                     )}
                   </span>
                 </span>
