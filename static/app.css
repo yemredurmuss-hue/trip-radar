@@ -1709,10 +1709,12 @@ button.hx-people:hover b { color: var(--hx-accent); }
 /* v11: the header's stage line under the section's name; Hazırlık's visa line and "Hazırları gizle". */
 .cat-tt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .cat-st { font-size: 13px; font-weight: 400; color: #6e6a86; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.prep-visa { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; padding: 9px 12px; border-radius: 12px; font-size: 14px; background: #fbf6ea; color: #8a5a00; }
-.prep-visa.ok { background: #eef8f1; color: #1f7a45; }
-.prep-visa span { color: #1d1d1f; }
-.prep-visa a { margin-left: auto; color: inherit; font-weight: 600; }
+.visa-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; font-size: 14.5px; background: #fbf6ea; color: #8a5a00; }
+.visa-row.ok { background: #eef8f1; color: #1f7a45; }
+.visa-row span { color: #1d1d1f; }
+.visa-row a { margin-left: auto; color: inherit; font-weight: 600; }
+.visa-tick { display: inline-grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 1.5px solid currentColor; border-radius: 5px; background: #fff; color: inherit; cursor: pointer; }
+.visa-row.ok .visa-tick { background: #1f8f4e; border-color: #1f8f4e; color: #fff; }
 .prep-hide { margin-left: auto; border: 0; background: none; padding: 0; font: inherit; font-size: 13px; color: #6e6a86; text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; }
 .prep-hide:hover { color: #1d1d1f; }
 .cat-body { padding: 0 20px 18px 60px; }
@@ -2974,3 +2976,10 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
   body.printing .print-plan { display: block; color: #1d1a22; font-size: 10.5pt; line-height: 1.4; }
   body.printing .print-plan { position: static; width: auto; padding: 0; }
 }
+
+/* v11 (phase 2a): a planned card's "✓ Aldım" on its top line; the strip's link to the page to book on. */
+.pk-aldim { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; padding: 3px 11px; border: 1.5px solid #f0a53a; border-radius: 999px; background: #fff; color: #9a6400; font: inherit; font-size: 13px; font-weight: 650; white-space: nowrap; cursor: pointer; }
+.pk-aldim:hover { background: #fbf6ea; }
+.pk-aldim:focus-visible { outline: 2px solid #f0a53a; outline-offset: 2px; }
+a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: center; }
+.ask-dlg h3 { overflow-wrap: anywhere; }

@@ -120,7 +120,7 @@ const PLAN_SECTION_NAMES: Record<SectionId, string> = {
   activity: "Etkinlik ve turlar / Activities and tours (needs a booking)",
   todo: "Yapılacak şeyler / Things to do (no booking; restaurants are drawn here too)",
   food: "Yapılacak şeyler → Restoranlar / Things to do → Restaurants",
-  other: "Sigorta ve internet / Insurance and internet (insurance, visa, eSIM)",
+  other: "Belgeler ve internet / Documents and internet (the visa line, insurance, eSIM)",
   prep: "Hazırlık / Prep (a chore before the trip, ticked off when done)",
   inspo: "İlham / Inspiration (a Reel, pin, video or blog saved to look at; put on a day it becomes a thing to do)",
 };

@@ -335,7 +335,7 @@ export function placeDoc(
   return { kind: "created", item: owners && !made.forWho?.length ? { ...made, forWho: owners } : made, facts, ...(ask ? { ask } : {}) };
 }
 
-/** "Sigorta ve internet'e", "Konaklama'ya": the section a record landed in, as the sentence says it. */
+/** "Belgeler ve internet'e", "Konaklama'ya": the section a record landed in, as the sentence says it. */
 const SECTION_TO: Record<SectionId, [string, string]> = {
   flight: ["Uçuş'a", "Flights"],
   stay: ["Konaklama'ya", "Stays"],
@@ -343,7 +343,7 @@ const SECTION_TO: Record<SectionId, [string, string]> = {
   activity: ["Etkinlik ve turlar'a", "Activities and tours"],
   todo: ["Yapılacak şeyler'e", "Things to do"],
   food: ["Yapılacak şeyler'e", "Things to do"],
-  other: ["Sigorta ve internet'e", "Insurance and internet"],
+  other: ["Belgeler ve internet'e", "Documents and internet"],
   prep: ["Hazırlık'a", "Prep"],
   inspo: ["İlham'a", "Inspiration"],
 };

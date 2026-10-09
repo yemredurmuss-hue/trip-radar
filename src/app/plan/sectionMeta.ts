@@ -29,7 +29,7 @@ export const SECTION_META: Record<SectionId, SectionMeta> = {
   // v11: restaurants are drawn here too (food stays their own record section).
   todo: { color: "#5d8a1c", icon: "todo", label: () => L("Yapılacak şeyler", "Things to do"), short: () => L("Yapılacak", "To-do"), templates: ["todo", "food"] },
   food: { color: "#b4532a", icon: "food", label: () => L("Restoranlar", "Restaurants"), short: () => L("Restoran", "Restaurant"), templates: ["food"] },
-  other: { color: "#3b6fd1", icon: "insurance", label: () => L("Sigorta ve internet", "Insurance and internet"), short: () => L("Sigorta · eSIM", "Insurance · eSIM"), templates: ["esim", "insurance"] },
+  other: { color: "#3b6fd1", icon: "insurance", label: () => L("Belgeler ve internet", "Documents and internet"), short: () => L("Sigorta · eSIM", "Insurance · eSIM"), templates: ["esim", "insurance"] },
   // The chores before the trip (v11, out of Diğer): said in the chat or moved here from Yapılacak şeyler, no template.
   prep: { color: "#0f8a6a", icon: "prep", label: () => L("Hazırlık", "Prep"), short: () => L("Hazırlık", "Prep"), templates: [] },
   // Saved by sending a link (a Reel, a pin, a video, a blog), never added by hand: no template, no "Ekle" chip.

@@ -92,12 +92,16 @@ export function CardMenu({ entries }: { entries: MenuEntry[] }) {
   );
 }
 
-/** The hover ×: deletes the card and its files at once, with the 8-second "Geri al" (no confirm). Empty nights' × hides them (`hide`). */
-export function DeleteX({ name, onDelete, hide = false, className }: { name: string; onDelete: () => void; hide?: boolean; className?: string }) {
+/**
+ * The hover ×: deletes at once with the 8-second "Geri al" (a chore, an idea), or `hide`s: empty nights, and a plan
+ * card's record (v11: "Gerek yok", under Gizlenenler). `label` names it otherwise ("Kaldır" on a booking, which asks).
+ */
+export function DeleteX({ name, onDelete, hide = false, label, className }: { name: string; onDelete: () => void; hide?: boolean; label?: string; className?: string }) {
+  const word = label ?? (hide ? L("Gerek yok", "Not needed") : L("Sil", "Delete"));
   return (
     <button type="button" className={`pk-x${className ? ` ${className}` : ""}`}
-      aria-label={hide ? L(`${name}: gerek yok`, `${name}: not needed`) : L(`${name}: sil`, `${name}: delete`)}
-      title={hide ? L("Gerek yok", "Not needed") : L("Sil", "Delete")}
+      aria-label={`${name}: ${word.toLocaleLowerCase(L("tr", "en"))}`}
+      title={word}
       onClick={(e) => { e.stopPropagation(); onDelete(); }}>
       <UiIcon name="x" size={12} />
     </button>
@@ -111,8 +115,10 @@ export interface Nav {
 }
 
 /** The bottom strip: where it stands (or ‹ 1/2 ›) on the left, the price and the one action on the right. */
-export function CardFoot({ view, nav, best = false, price, onAction, live }: {
+export function CardFoot({ view, nav, best = false, price, onAction, live, go }: {
   view: FootView;
+  /** v11: a plan's page to book on ("Rezerve et ↗"), where its "Aldım" moved to the top line. */
+  go?: { href: string; label: string } | null;
   nav?: Nav;
   best?: boolean;
   price: CardFacts["price"] | null;
@@ -166,6 +172,11 @@ export function CardFoot({ view, nav, best = false, price, onAction, live }: {
           {view.action.label}
         </button>
       )}
+      {!view.action && go && (
+        <a className="pk-cta pk-go" href={go.href} target="_blank" rel="noreferrer">
+          {go.label}
+        </a>
+      )}
     </div>
   );
 }
@@ -187,6 +198,10 @@ export function CardShell(props: {
   docs?: ReactNode;
   /** A record's card: the hover × left of •••. A transfer has none (nothing to delete). */
   onDelete?: () => void;
+  /** What the × says (v11: "Gerek yok", "Kaldır" on a booking). */
+  deleteLabel?: string;
+  /** v11: the planned card's "✓ Aldım", on the top line. */
+  topAction?: ReactNode;
   menu: MenuEntry[];
   open: boolean;
   onToggle: () => void;
@@ -219,8 +234,9 @@ export function CardShell(props: {
         {props.date && <span className="pk-date">· {props.date}</span>}
         {props.badge}
         <span className="pk-end">
+          {props.topAction}
           {props.docs}
-          {props.onDelete && <DeleteX name={props.ariaLabel} onDelete={props.onDelete} />}
+          {props.onDelete && <DeleteX name={props.ariaLabel} onDelete={props.onDelete} label={props.deleteLabel} />}
           <CardMenu entries={props.menu} />
         </span>
       </div>

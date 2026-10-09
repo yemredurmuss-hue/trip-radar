@@ -126,7 +126,7 @@ describe("Hazırlık, Yapılacak şeyler and Diğer", () => {
     expect(prep.entries).toHaveLength(2);
     expect(prep.days).toEqual([]); // a tick list, not a timeline
     expect(prep.settled).toBe(1); // the money changed
-    // Sigorta ve internet keeps the policy only.
+    // Belgeler ve internet keeps the policy only.
     expect(other.prep).toEqual([]);
     expect(other.days.flatMap((d) => d.entries.flatMap((e) => e.itemIds))).toEqual(["policy"]);
     expect(other.entries).toHaveLength(1);

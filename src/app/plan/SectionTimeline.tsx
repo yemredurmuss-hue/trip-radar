@@ -9,7 +9,6 @@ import { L, locale } from "../../lib/i18n";
 import { shortDay } from "../../lib/ideas";
 import type { Plan } from "../../lib/plan";
 import type { Item } from "../../lib/types";
-import type { Visa } from "../../lib/visa";
 import { entryDomId } from "../../lib/progress";
 import { insertAt, type InsertAt } from "../../lib/templates";
 import { activitySearches, returnFlightSearch } from "../../lib/searchLinks";
@@ -35,7 +34,7 @@ const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(loc
 /** The "+" after a card: a block's own place (a stay: its city, its last night), else the card's day and city. */
 const atOf = (e: CatEntry, day: DayGroup): InsertAt => (e.piece.kind === "entry" ? insertAt(e.piece.entry) : { city: e.city ?? day.city, date: e.date });
 
-export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, onIdea, today, items, visa = null }: {
+export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, onIdea, today, items }: {
   section: CatSection;
   plan: Pick<Plan, "range" | "stayBlocks">;
   tripId: string;
@@ -48,8 +47,6 @@ export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, o
   today: string;
   /** The trip's records (a one-way flight's "Dönüş bileti ara"). */
   items: Item[];
-  /** Hazırlık's first line (v11). */
-  visa?: Visa | null;
 }) {
   if (section.id === "inspo") return <InspoGrid section={section} plan={plan} />;
   if (section.id === "todo" || section.id === "food") {
@@ -88,7 +85,7 @@ export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, o
         ))}
       </ol>
       )}
-      {section.prep.length > 0 && <PrepList entries={section.prep} visa={visa} />}
+      {section.prep.length > 0 && <PrepList entries={section.prep} />}
       <SearchLinks section={section} plan={plan} items={items} />
     </>
   );

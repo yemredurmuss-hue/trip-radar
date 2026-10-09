@@ -31,7 +31,7 @@ export function SuggestionCards({ list, onAdd, onDismiss, notes = {} }: {
           <span className="sg-actions">
             {s.kind === "add" && (
               <button type="button" className="sg-add" onClick={() => onAdd(s)}>
-                {L("Plana ekle", "Add to plan")}
+                {L("Plana koy", "Add to plan")}
               </button>
             )}
             <button type="button" className="sg-no" onClick={() => onDismiss(s)} aria-label={L(`${s.title}: gerek yok`, `${s.title}: not needed`)}>

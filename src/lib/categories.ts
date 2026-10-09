@@ -1,6 +1,6 @@
 // The Plan by category (spec 0.34, docs/superpowers/specs/2026-10-05-034-kategoriler-design.md; v11,
 // 2026-10-08-plan-pano-v11-design.md): every block and record of the trip goes in exactly one of eight sections —
-// Uçuş, Konaklama, Ulaşım, Etkinlik ve turlar, Yapılacak şeyler (restaurants too), Sigorta ve internet, Hazırlık,
+// Uçuş, Konaklama, Ulaşım, Etkinlik ve turlar, Yapılacak şeyler (restaurants too), Belgeler ve internet, Hazırlık,
 // İlham — and inside a section in date order (then time), the undated last by
 // city. The blocks themselves are the ones the plan's front always had (timeline.ts board): this only sorts
 // them into sections and says where each stands, for the header's bar and its "3/4" (settled of all), and lists

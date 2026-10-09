@@ -228,7 +228,7 @@ function OptionCard({ option, decision, ctx, badge, ticked, onTick, onOpen, onCh
             ) : (
               !out && (
                 <button type="button" className="bd-pick" onClick={onChoose}>
-                  {L("Seç", "Choose")}
+                  {L("Plana koy", "Add to plan")}
                 </button>
               )
             )}

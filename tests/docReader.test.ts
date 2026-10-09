@@ -61,7 +61,7 @@ describe("reading the answer", () => {
 });
 
 describe("where the document goes", () => {
-  it("a policy with no card: a booked insurance record in Sigorta ve internet, with its facts", () => {
+  it("a policy with no card: a booked insurance record in Belgeler ve internet, with its facts", () => {
     const out = placeDoc(policy, [], "t1", "new", 9);
     expect(out.kind).toBe("created");
     const item = (out as { item: Item }).item;
@@ -71,7 +71,7 @@ describe("where the document goes", () => {
     expect(item.guests.adults).toBe(2);
     expect(item.statusNote).toContain("AZ-998877");
     expect(sectionOfItem(item)).toBe("other");
-    expect(docSentence(out, "police.pdf")).toBe("Allianz seyahat sağlık sigortası poliçeni Sigorta ve internet'e ekledim, 7–21 Ekim, 2 kişi. Belgeler'de duruyor.");
+    expect(docSentence(out, "police.pdf")).toBe("Allianz seyahat sağlık sigortası poliçeni Belgeler ve internet'e ekledim, 7–21 Ekim, 2 kişi. Belgeler'de duruyor.");
   });
 
   it("a policy and the insurance card planned from the template: linked, booked, filled", () => {
@@ -140,7 +140,7 @@ describe("Belgeler's groups", () => {
 const trip: Trip = { id: "t1", title: "Portekiz", confirmedDates: { start: "2026-10-07", end: "2026-10-21" }, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 };
 
 describe("readDocument (mocked model)", () => {
-  it("Gemini gets the PDF inline; the policy lands in Sigorta ve internet, booked, the file linked, two chat lines", async () => {
+  it("Gemini gets the PDF inline; the policy lands in Belgeler ve internet, booked, the file linked, two chat lines", async () => {
     const d = await db();
     await d.put("trips", trip);
     const doc = await addTripDoc("t1", new File(["%PDF-1.4 policy"], "police.pdf", { type: "application/pdf" }), 5);
@@ -164,7 +164,7 @@ describe("readDocument (mocked model)", () => {
     const chat = await listMessages("t1");
     expect(chat.map((m) => [m.role, m.text])).toEqual([
       ["user", "📎 police.pdf"],
-      ["assistant", "Allianz seyahat sağlık sigortası poliçeni Sigorta ve internet'e ekledim, 7–21 Ekim, 2 kişi. Belgeler'de duruyor."],
+      ["assistant", "Allianz seyahat sağlık sigortası poliçeni Belgeler ve internet'e ekledim, 7–21 Ekim, 2 kişi. Belgeler'de duruyor."],
     ]);
     expect(chat[1].content).toEqual([{ text: chat[1].text }]);
   });

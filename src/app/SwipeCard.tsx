@@ -26,10 +26,11 @@ import type { Decisions } from "./useDecisions";
 /** A stay's ••• (Düzenle for a plan, Ele for a saved option, Sil) and the hover × left of it, top right. */
 function StayTools({ item }: { item: Item }) {
   // By its stage (stageMenu.tsx): Değiştir, Belge ekle, İptal ettim; a booking is deleted only after asking.
-  const { menu, remove, field } = useStageMenu(item);
+  // v11: the × is "Gerek yok" (Gizlenenler, as it stood); on a booking it asks "İptal ettin mi?" first.
+  const { menu, hide, booked, field } = useStageMenu(item);
   return (
     <span className="st-tools">
-      <DeleteX name={item.name} onDelete={remove} />
+      <DeleteX name={item.name} onDelete={hide} label={booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed")} />
       <CardMenu entries={menu} />
       {field}
     </span>
@@ -189,7 +190,7 @@ function SwipeCardFace({ item, group, decision, decisions, ranked, onOpen, onCom
                   {L("Çıkar", "Rule out")}
                 </button>
                 <button className="pill-btn primary" onClick={() => void chooseItem(item, group)}>
-                  {L("Seç", "Choose")}
+                  {L("Plana koy", "Add to plan")}
                 </button>
               </span>
             )}

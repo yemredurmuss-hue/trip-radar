@@ -23,7 +23,7 @@ describe("the ring and the ground", () => {
 
 describe("the bottom strip, per the spec's action table", () => {
   it("an option: the navigator with several, 'Karar bekliyor' alone; the action picks it", () => {
-    expect(footOf(train(), "train", { options: 2 })).toEqual({ left: { kind: "nav" }, action: { label: "Plana seç", does: "choose" } });
+    expect(footOf(train(), "train", { options: 2 })).toEqual({ left: { kind: "nav" }, action: { label: "Plana koy", does: "choose" } });
     expect(state(footOf(train(), "train"))).toEqual(["wait", "Karar bekliyor", null]);
   });
   it("chosen: what is still missing and the one action", () => {

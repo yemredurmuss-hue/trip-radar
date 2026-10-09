@@ -57,6 +57,29 @@ export async function cancelBooking(item: Item, refundNote: string | null = null
   return { kind: "cancelled", item: cancelled };
 }
 
+/** Belgeler ve internet's visa line (v11): the visa the trip needs, ticked as got, or not. */
+export async function setVisaDone(tripId: string, done: boolean): Promise<void> {
+  await updateTrip(tripId, (t) => ({ ...t, visaDone: done || undefined }));
+  await addEvent(tripId, done ? L("Vize alındı olarak işaretlendi", "Visa marked as got") : L("Vize alınmadı olarak geri alındı", "Visa marked as not got"));
+  notifyChanged();
+}
+
+/**
+ * A card's × (v11): "Gerek yok". Not deleted: ruled out with what it was (an option, a plan), so it waits under its
+ * section's Gizlenenler and "Geri al" / "Geri getir" puts it back as it stood (setItemStatus reads dismissedFrom).
+ * A booking never comes here: its × asks "İptal ettin mi?" first (cards/stageMenu.tsx).
+ */
+export async function setNotNeeded(item: Item): Promise<Undoable> {
+  const d = await db();
+  const found = (await d.get("items", item.id)) ?? item;
+  const now = Date.now();
+  const from = found.status === "dismissed" ? (found.dismissedFrom ?? "saved") : found.status;
+  await d.put("items", { ...found, status: "dismissed", dismissedFrom: from, statusAt: now, updatedAt: now });
+  await addEvent(item.tripId, L(`${item.name}: gerek yok denildi, gizlendi`, `${item.name}: not needed, hidden`));
+  notifyChanged();
+  return { kind: "notNeeded", item: found };
+}
+
 /**
  * Applies a change to the trip as stored right now (not a possibly stale copy from the last render).
  * `touch: false` keeps `updatedAt` as it was: for cache writes (hero photos, mood sentence) that aren't an edit
@@ -252,6 +275,8 @@ export async function undo(u: Undoable): Promise<void> {
   if (u.kind === "removed") return restoreItem(u.removed);
   // Back from "İptal ettim": a booking again (setItemStatus reads dismissedFrom and drops the cancellation).
   if (u.kind === "cancelled") return setItemStatus(u.item, "saved");
+  // Back from a card's "Gerek yok": as it stood (setItemStatus reads dismissedFrom: a plan is planned again).
+  if (u.kind === "notNeeded") return setItemStatus(u.item, "saved");
   if (u.kind === "doc") return restoreDoc(u.doc);
   if (u.kind === "suggestion") {
     // The record "Plana ekle" made goes again (nothing of the traveller's: no trash entry), and the card is back.

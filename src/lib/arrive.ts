@@ -152,7 +152,7 @@ const SECTION_TO: Record<SectionId, [string, string]> = {
   todo: ["Yapılacak şeyler'e", "to Things to do"],
   // v11: a restaurant is drawn under Yapılacak şeyler.
   food: ["Yapılacak şeyler'e", "to Things to do"],
-  other: ["Sigorta ve internet'e", "to Insurance and internet"],
+  other: ["Belgeler ve internet'e", "to Documents and internet"],
   prep: ["Hazırlık'a", "to Prep"],
   inspo: ["İlham'a", "to Inspiration"],
 };

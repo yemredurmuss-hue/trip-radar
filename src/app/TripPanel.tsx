@@ -19,7 +19,7 @@ import { homeCurrencyOf, tripFacts } from "../lib/tripFacts";
 import type { Timeline } from "../lib/timeline";
 
 import type { Capture, Item, Suggestion, Trip } from "../lib/types";
-import { chooseItem, hideNights, markSuggestionAdded, undo as takeBack, updateTrip } from "./actions";
+import { chooseItem, hideNights, markSuggestionAdded, setVisaDone, undo as takeBack, updateTrip } from "./actions";
 import { legEndsByItem, legModeByItem } from "../lib/cardKinds";
 import { inheritedDocs } from "../lib/docs";
 import { deleteItem, onHidden, onRemoved } from "../lib/removal";
@@ -800,6 +800,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             items={items}
             suggestions={suggestions}
             visa={facts.visa}
+            visaDone={!!trip.visaDone}
+            onVisaDone={(done) => void setVisaDone(trip.id, done)}
           />
         </EmptyEnvContext.Provider>
       )}

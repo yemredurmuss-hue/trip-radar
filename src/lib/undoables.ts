@@ -22,7 +22,9 @@ export type Undoable =
   /** A suggestion taken ("Plana ekle": `item` is the record it made, which goes again) or said not needed ("Gerek yok"): it opens again. */
   | { kind: "suggestion"; tripId: string; suggestion: Suggestion; state: "added" | "dismissed"; item: Item | null }
   /** A booking said cancelled ("İptal ettim" on its card): it's a booking again. */
-  | { kind: "cancelled"; item: Item };
+  | { kind: "cancelled"; item: Item }
+  /** A card said not needed (its × , v11): back as it stood. */
+  | { kind: "notNeeded"; item: Item };
 
 /** "Douro tekne turu silindi", "Otobüs eklendi", "Porto 14–15 Ekim gizlendi", "Para birimi: EUR". */
 export function undoText(u: Undoable): string {
@@ -41,6 +43,8 @@ export function undoText(u: Undoable): string {
       return u.label;
     case "cancelled":
       return L(`${u.item.name} iptal edildi`, `${u.item.name} cancelled`);
+    case "notNeeded":
+      return L(`${u.item.name}: gerek yok, gizlendi`, `${u.item.name}: not needed, hidden`);
     case "suggestion":
       return u.state === "added"
         ? L(`${u.item?.name ?? u.suggestion.title} plana eklendi`, `${u.item?.name ?? u.suggestion.title} added to the plan`)
@@ -55,6 +59,7 @@ export function undoTrip(u: Undoable): string {
       return u.removed.item.tripId;
     case "added":
     case "cancelled":
+    case "notNeeded":
       return u.item.tripId;
     case "doc":
       return u.doc.tripId;

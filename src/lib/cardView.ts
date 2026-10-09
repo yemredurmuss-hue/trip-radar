@@ -61,7 +61,7 @@ function bookedSub(item: Item): string | null {
 
 /**
  * The bottom strip (spec's action table): an option shows the navigator (or "Karar bekliyor" alone) and
- * "Plana seç"; chosen, what's missing and the one action; done, a ✓ and what was kept. A deadline from
+ * "Plana koy" (v11: one verb for putting on the plan); chosen, what's missing and the one action; done, a ✓ and what was kept. A deadline from
  * progress.dateAlert adds its short form ("Seçildi · bilet alınmadı · 4 gün"); its sentence is in the details.
  */
 export function footOf(item: Item, kind: CardKind, opts: { options?: number; alert?: DateAlert | null; docs?: number } = {}): FootView {
@@ -74,7 +74,7 @@ export function footOf(item: Item, kind: CardKind, opts: { options?: number; ale
     case "saved":
       return {
         left: (opts.options ?? 1) > 1 ? { kind: "nav" } : withAlert(state("wait", L("Karar bekliyor", "To decide"))),
-        action: { label: L("Plana seç", "Add to plan"), does: "choose" },
+        action: { label: L("Plana koy", "Add to plan"), does: "choose" },
       };
     case "chosen": {
       if (NO_BOOKING.includes(kind)) return { left: withAlert(state("done", L("Planlandı", "Planned"), kind === "taxi" ? L("rezervasyon gerekmez", "no booking needed") : null)), action: null };

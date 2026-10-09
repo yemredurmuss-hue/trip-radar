@@ -279,7 +279,7 @@ describe("assistant", () => {
     expect(bookingOf(items.find((i) => i.name === "Porto Belo Pazarı")!)).toBe("none");
     expect(bookingOf(items.find((i) => i.name === "Fado gecesi")!)).toBe("needed");
   });
-  it("a policy the model says as an activity is booked insurance in Sigorta ve internet; a chore lands in Hazırlık (0.34.6, v11)", async () => {
+  it("a policy the model says as an activity is booked insurance in Belgeler ve internet; a chore lands in Hazırlık (0.34.6, v11)", async () => {
     await seed();
     const { client, calls } = fakeClient([
       {
@@ -294,7 +294,7 @@ describe("assistant", () => {
     await sendMessage("t1", "Sigorta poliçemi attım; bir de yağmurluk alalım", anthropicProvider(client, "claude-opus-5"));
     const [policy, chore] = (calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[]).map((r) => JSON.parse(String(r.content)));
     expect(policy).toMatchObject({ added: "Travel Health Insurance", status: "booked" });
-    expect(policy.plan_section).toContain("Sigorta ve internet");
+    expect(policy.plan_section).toContain("Belgeler ve internet");
     expect(chore).toMatchObject({ added: "Decathlon'dan yağmurluk al", status: "planned", booking: "none" });
     expect(chore.plan_section).toContain("Hazırlık");
     const items = await listItems("t1");

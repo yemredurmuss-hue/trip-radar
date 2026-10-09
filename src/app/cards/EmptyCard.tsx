@@ -457,7 +457,7 @@ export function EmptyEsimCard({ suggestion, onAdd, onDismiss }: { suggestion: Su
       ariaLabel={title}
       data={{ "data-suggestion": suggestion.key }}
       menu={[
-        { label: L("Plana ekle", "Add to plan"), run: () => onAdd(suggestion) },
+        { label: L("Plana koy", "Add to plan"), run: () => onAdd(suggestion) },
         { label: L("Gerek yok", "Not needed"), run: () => onDismiss(suggestion) },
       ]}
       body={<EmptyMedia kind="esim" drawing="esim" title={title} sub={L("tüm gezi için internet", "internet for the whole trip")} />}

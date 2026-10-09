@@ -1,5 +1,5 @@
 // The Plan tab (spec 0.34, docs/mockups/2026-10-05-kategoriler-v4.html; v11, 2026-10-08-plan-pano-v11-design.md): the trip by
-// category — Uçuş, Konaklama, Ulaşım, Etkinlik ve turlar, Yapılacak şeyler, Sigorta ve internet, Hazırlık, İlham — each a band of one white sheet that
+// category — Uçuş, Konaklama, Ulaşım, Etkinlik ve turlar, Yapılacak şeyler, Belgeler ve internet, Hazırlık, İlham — each a band of one white sheet that
 // opens and closes (remembered per trip), with the approved cards in a timeline inside and what's out of the
 // way at its end. A section with nothing in it (and nothing hidden) isn't drawn; it's one chip in the "Ekle"
 // line at the bottom. Boş kartlar (spec 2026-10-06-bos-kartlar-design.md): Etkinlikler has an empty card per city
@@ -21,9 +21,10 @@ import { Section } from "./Section";
 import { provisionalSection, SECTION_META } from "./sectionMeta";
 import { SectionTimeline, type SectionCards } from "./SectionTimeline";
 import { SuggestionCards } from "./SuggestionCards";
+import { VisaRow } from "./VisaRow";
 import type { BoardSuggestions } from "../useSuggestions";
 
-export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null }: {
+export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone }: {
   plan: Plan;
   sections: CatSection[];
   /** Open now: the traveller's choice, else the first look (sectionMeta.useSectionOpen). */
@@ -40,8 +41,10 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
   pending?: { lead: ReactNode; bySection: Partial<Record<SectionId, ReactNode>> };
   /** Öneriler (useSuggestions): cards atop their section, "Plana ekle" and "Gerek yok". */
   suggestions?: Pick<BoardSuggestions, "bySection" | "add" | "dismiss" | "notes">;
-  /** The traveller's visa for the trip's country: Hazırlık's first line (v11). */
+  /** The traveller's visa for the trip's country: Belgeler ve internet's first line (v11), drawn even with nothing else there. */
   visa?: Visa | null;
+  visaDone?: boolean;
+  onVisaDone?: (done: boolean) => void;
 }) {
   const n = plan.nights;
   const waiting = (s: CatSection) => pending?.bySection[s.id] != null;
@@ -57,9 +60,10 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
       : s.id === "other" && esim && suggestions
         ? [{ key: "esim", when: L("Tüm gezi", "Whole trip"), city: null, card: <EmptyEsimCard suggestion={esim} onAdd={suggestions.add} onDismiss={suggestions.dismiss} />, at: { city: null, date: null } }]
         : [];
-  const shown = sections.filter((s) => s.entries.length || s.hidden.length || waiting(s) || suggested(s).length || emptyRows(s).length);
+  const visaLine = (s: CatSection) => s.id === "other" && visa != null && visa.kind !== "none";
+  const shown = sections.filter((s) => s.entries.length || s.hidden.length || waiting(s) || suggested(s).length || emptyRows(s).length || visaLine(s));
   // İlham fills by sending links (a Reel, a pin), never by hand: no "Ekle" chip for it.
-  const empty = sections.filter((s) => !s.entries.length && !s.hidden.length && !waiting(s) && !suggested(s).length && !emptyRows(s).length && SECTION_META[s.id].templates.length > 0);
+  const empty = sections.filter((s) => !s.entries.length && !s.hidden.length && !waiting(s) && !suggested(s).length && !emptyRows(s).length && !visaLine(s) && SECTION_META[s.id].templates.length > 0);
   return (
     <div className="section trip-plan cat-plan">
       <div className="section-head">
@@ -82,12 +86,13 @@ export function CategoryPlan({ plan, sections, isOpen, onOpen, tripId, cities, c
             const own = s.entries.length > 0 || s.hidden.length > 0;
             const onlySuggested = !own && !waiting(s) && !rows.length && suggested(s).length > 0;
             // Only empty cards there (a new trip's Etkinlikler, Diğer's eSIM): open at first look, something's left.
-            const opened = isOpen(onlySuggested ? provisionalSection(s) : !own && rows.length ? { ...s, open: true } : s);
+            const opened = isOpen(onlySuggested ? provisionalSection(s) : !own && (rows.length || visaLine(s)) ? { ...s, open: true } : s);
             return (
               <Section key={s.id} section={s} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)} suggestions={suggested(s).length}>
+                {visaLine(s) && <VisaRow visa={visa} done={visaDone} onDone={(d) => onVisaDone?.(d)} />}
                 {suggestions && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
                 {pending?.bySection[s.id]}
-                {own && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} visa={visa} />}
+                {own && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} />}
                 <EmptyRows rows={rows} onAdd={(at) => onAdd(s.id, at)} />
               </Section>
             );

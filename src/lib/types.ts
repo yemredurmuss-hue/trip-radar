@@ -217,6 +217,8 @@ export interface Trip {
    * (`nights:<start>_<end>`). Hidden from the board and the to-dos, never deleted; "Geri getir" restores it.
    */
   hidden?: string[];
+  /** The visa the trip needs, ticked as got (Belgeler ve internet's first line, v11). Absent: not ticked. */
+  visaDone?: boolean;
   /** Shared with someone (see share/): the secret id of the shared copy on the sharing server. */
   shareId?: string;
   /** Hero photo per city (city key → URL, null when none was found); fetched once. */

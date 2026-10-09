@@ -689,7 +689,7 @@ try {
   // Flights: one card with ‹ 1/2 ›, the pick and its reasons in the details.
   const pk = (name) => app.locator(`.pk-card[aria-label="${name}"]`);
   const pegasus = pk("Pegasus · direkt");
-  assert.match(await pegasus.locator(".pk-foot").innerText(), /2 seçenek[\s\S]*1\/2[\s\S]*Önerim[\s\S]*€\d+[\s\S]*Plana seç/);
+  assert.match(await pegasus.locator(".pk-foot").innerText(), /2 seçenek[\s\S]*1\/2[\s\S]*Önerim[\s\S]*€\d+[\s\S]*Plana koy/);
   await pegasus.locator(".pk-body").click();
   assert.equal(await pegasus.locator(".pk-why.trade").innerText(), "2.'ye göre+€30 · bagaj dahil, direkt, saatleri daha uygun · eksiği: iade yok, ücretli değişiklik");
   await pegasus.locator(".pk-body").click();
@@ -868,7 +868,7 @@ try {
   await jardimRow.locator(".stc-details .card-details").waitFor();
   await jardimRow.getByRole("button", { name: "Detaylar", exact: true }).click();
   // "Seç" on a flight card: the flight folds into a line, and its landing time reaches the transfer to the hotel.
-  await pk("Pegasus · direkt").getByRole("button", { name: "Plana seç" }).click();
+  await pk("Pegasus · direkt").getByRole("button", { name: "Plana koy" }).click();
   await app.locator(".tl-travel.role-arrival .pk-card", { hasText: "IST" }).locator(".pk-foot").getByText("bilet alınmadı").waitFor();
   // Porto chosen, Lisbon booked: in the itinerary the transfers lay themselves out (the saved train is
   // the move, with a station transfer on each side), and the way home says what's easy to miss.
@@ -1045,16 +1045,16 @@ try {
   await inbound.evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/4e-flight-after-taxi.png` });
   await app.setViewportSize({ width: 1440, height: 900 });
-  // × on hover: a plan card, then a stay; each comes back with "Geri al".
+  // × on hover: a plan card, then a stay; v11: "Gerek yok" (hidden under Gizlenenler, not deleted); each comes back with "Geri al".
   // Read after the .15s fade.
   const opacity = (loc) => loc.evaluate((el) => new Promise((done) => setTimeout(() => done(getComputedStyle(el).opacity), 300)));
   await douroCard().evaluate((el) => el.scrollIntoView({ block: "center" }));
   await douroCard().hover();
   assert.equal(await opacity(douroCard().locator(".pk-x")), "1");
   await app.screenshot({ path: `${out}/4f-hover-x.png` });
-  await douroCard().getByRole("button", { name: "Douro tekne turu: sil" }).click();
+  await douroCard().getByRole("button", { name: "Douro tekne turu: gerek yok" }).click();
   await douroCard().waitFor({ state: "detached" });
-  await app.locator(".pk-undo", { hasText: "Douro tekne turu silindi" }).getByRole("button", { name: "Geri al" }).click();
+  await app.locator(".pk-undo", { hasText: "Douro tekne turu: gerek yok, gizlendi" }).getByRole("button", { name: "Geri al" }).click();
   await douroCard().waitFor();
   // A transport card has the same × and undo.
   await bus.evaluate((el) => el.scrollIntoView({ block: "center" }));
@@ -1065,7 +1065,7 @@ try {
     await bus.hover();
   }
   assert.equal(await opacity(bus.locator(".pk-x")), "1");
-  await bus.getByRole("button", { name: "Otobüs · Lizbon → Lagos: sil" }).click();
+  await bus.getByRole("button", { name: "Otobüs · Lizbon → Lagos: gerek yok" }).click();
   await bus.waitFor({ state: "detached" });
   await app.locator(".pk-undo", { hasText: "Lagos" }).getByRole("button", { name: "Geri al" }).click();
   await bus.waitFor();
@@ -1075,9 +1075,9 @@ try {
   assert.deepEqual(await jardim.getByRole("menuitem").allInnerTexts(), ["Değiştir", "Sil"]);
   await jardim.getByRole("button", { name: "Kart menüsü" }).click();
   await jardim.hover();
-  await jardim.getByRole("button", { name: "Jardim Stay: sil" }).click();
+  await jardim.getByRole("button", { name: "Jardim Stay: gerek yok" }).click();
   await jardim.waitFor({ state: "detached" });
-  await app.locator(".pk-undo", { hasText: "Jardim Stay silindi" }).getByRole("button", { name: "Geri al" }).click();
+  await app.locator(".pk-undo", { hasText: "Jardim Stay: gerek yok, gizlendi" }).getByRole("button", { name: "Geri al" }).click();
   await jardim.waitFor();
   // Rezerve edildi: Belge ekle, İptal ettim, Değiştir; Sil asks first ("İptal ettiysen 'İptal ettim' de"), and
   // nothing goes when the answer is no. İptal ettim takes it off the plan (its nights to find again), Geri al
@@ -1086,15 +1086,20 @@ try {
   await loft.scrollIntoViewIfNeeded();
   await loft.getByRole("button", { name: "Kart menüsü" }).click();
   assert.deepEqual(await loft.getByRole("menuitem").allInnerTexts(), ["Belge ekle", "İptal ettim", "Değiştir", "Sil"]);
-  let deleteAsked = null;
-  app.once("dialog", (d) => {
-    deleteAsked = d.message();
-    void d.dismiss();
-  });
+  // v11: the board's own window asks, not the browser's confirm().
+  const ask = app.getByRole("alertdialog");
   await loft.getByRole("menuitem", { name: "Sil" }).click();
-  await app.waitForTimeout(200);
-  assert.match(deleteAsked ?? "", /Bu rezervasyon onaylı/, "deleting a booking asks first");
+  assert.match(await ask.innerText(), /Bu rezervasyon onaylı/, "deleting a booking asks first");
+  await ask.getByRole("button", { name: "Vazgeç" }).click();
+  await ask.waitFor({ state: "detached" });
   assert.equal(await loft.count(), 1, "no: it stays");
+  // Its × asks too: "İptal ettin mi?" ("İptal ettim, kaldır" cancels it); Vazgeç leaves it.
+  await loft.hover();
+  await loft.getByRole("button", { name: "Lisboa Loft: kaldır" }).click();
+  assert.match(await ask.innerText(), /Bu rezervasyon onaylı[\s\S]*iptal ettin mi\?[\s\S]*İptal ettim, kaldır/);
+  await app.keyboard.press("Escape");
+  await ask.waitFor({ state: "detached" });
+  assert.equal(await loft.count(), 1, "Vazgeç: it stays");
   await loft.getByRole("button", { name: "Kart menüsü" }).click();
   await loft.getByRole("menuitem", { name: "İptal ettim" }).click();
   await loft.waitFor({ state: "detached" });
@@ -1363,7 +1368,13 @@ try {
   const hint = douroPage.locator("h3 .pk-ed-hint");
   assert.match(await hint.innerText(), /sayfadaki: Douro tekne turu · geri al/);
   await app.screenshot({ path: `${out}/4n-page-correction.png` });
-  await hint.getByRole("button", { name: "geri al" }).click();
+  // The hint shows under the pointer: point at the title again if the card was drawn anew meanwhile, then take the
+  // page's value back (the title coming back proves the click).
+  for (let i = 0; i < 3 && !(await hint.getByRole("button", { name: "geri al" }).isVisible()); i++) {
+    await app.mouse.move(0, 0);
+    await douroPage.locator("h3 .pk-ed").hover();
+  }
+  await hint.getByRole("button", { name: "geri al" }).click({ force: true });
   await douroPage.locator("h3", { hasText: "Douro tekne turu" }).waitFor();
   // A transfer's ends, short: "Porto Havalimanı" over OPO, "Booking.com" over the stay's name.
   assert.match(await arrivalLeg.locator(".pk-mid").innerText(), /Porto Havalimanı\s*OPO[\s\S]*Booking\.com\s*Jardim Stay/);
@@ -1554,6 +1565,19 @@ try {
   await app.setViewportSize({ width: 1440, height: 3600 });
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5a-categories.png` });
+  // v11: the visa is Belgeler ve internet's first line (Emre: where the papers are, and something to tick): a
+  // Turkish passport to Portugal needs a Schengen visa, amber with its source; ticked, "Vize alındı", green.
+  const visaRow = sec("other").locator(".visa-row");
+  assert.match((await visaRow.innerText()).replace(/\s+/g, " "), /^Vize gerekiyor · Schengen vizesi Resmi kaynak ↗$/);
+  assert.equal(await app.locator(".prep .visa-row, .prep-visa").count(), 0, "not in Hazırlık");
+  await visaRow.getByRole("checkbox").click();
+  await sec("other").locator(".visa-row.ok", { hasText: "Vize alındı" }).waitFor();
+  await app.setViewportSize({ width: 1440, height: 900 });
+  await sec("other").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.screenshot({ path: `${out}/5i-visa.png` });
+  await visaRow.getByRole("checkbox").click();
+  await sec("other").locator(".visa-row:not(.ok)", { hasText: "Vize gerekiyor" }).waitFor();
+  await app.setViewportSize({ width: 1440, height: 3600 });
   await app.setViewportSize({ width: 560, height: 3600 });
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5b-categories-narrow.png` });
@@ -2195,7 +2219,7 @@ try {
       el.dispatchEvent(new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }));
     }, [name, body]);
   await dropFile("allianz-police.pdf", "%PDF-1.4 e2e-policy");
-  await board.locator(".msg-assistant", { hasText: "Allianz seyahat sağlık sigortası poliçeni Sigorta ve internet'e ekledim, 7–21 Ekim, 2 kişi. Belgeler'de duruyor." }).waitFor({ timeout: 20000 });
+  await board.locator(".msg-assistant", { hasText: "Allianz seyahat sağlık sigortası poliçeni Belgeler ve internet'e ekledim, 7–21 Ekim, 2 kişi. Belgeler'de duruyor." }).waitFor({ timeout: 20000 });
   await board.locator(".msg-user", { hasText: "📎 allianz-police.pdf" }).waitFor();
   assert.ok(geminiBodies.some((b) => JSON.stringify(b.body.contents).includes("application/pdf")), "the PDF went to the model inline");
   const otherSec = board.locator('.cat-sec[data-section="other"]');
@@ -2650,7 +2674,7 @@ try {
   await sgSec("transport").scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/19-suggestions.png` });
   // Plana ekle: the rental is a real card in Ulaşım now; the suggestion is done.
-  await rentalCard.getByRole("button", { name: "Plana ekle" }).click();
+  await rentalCard.getByRole("button", { name: "Plana koy" }).click();
   await rentalCard.waitFor({ state: "detached" });
   // The rental's card (kind "Motosiklet", the place's days), planned and not booked: a real "0/1" now.
   await sgSec("transport").getByText("Motosiklet", { exact: true }).first().waitFor();

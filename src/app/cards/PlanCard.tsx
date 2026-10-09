@@ -109,6 +109,13 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   const { url: datedUrl } = datedLink(item, decision);
   const page = datedUrl ?? item.url;
   const best = ranked?.rank === 1;
+  // v11: planned and not bought yet, "✓ Aldım" moves to the top line and the strip's action is the page to book on.
+  const bookTop = foot.action?.does === "book";
+  const goLabel = ["flight", "train", "bus", "minibus", "ferry", "activity"].includes(kind)
+    ? L("Bileti al ↗", "Get the ticket ↗")
+    : kind === "esim" || kind === "insurance"
+      ? L("Satın al ↗", "Buy ↗")
+      : L("Rezerve et ↗", "Book ↗");
   const act = () => {
     const does = foot.action?.does;
     if (does === "choose") void chooseItem(item, group);
@@ -202,7 +209,16 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       extraClass={[allNo ? "pk-all-no" : "", red ? "pk-alert" : ""].filter(Boolean).join(" ") || undefined}
       art={transport && kind !== "transport" ? <TransportArt mode={kind} /> : null}
       docs={<DocAccess item={item} docs={docs} />}
-      onDelete={stageMenu.remove}
+      onDelete={stageMenu.hide}
+      deleteLabel={stageMenu.booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed")}
+      topAction={
+        bookTop ? (
+          <button type="button" className="pk-aldim" aria-label={L(`${item.name}: ${foot.action!.label}`, `${item.name}: ${foot.action!.label}`)} title={foot.action!.label}
+            onClick={(e) => { e.stopPropagation(); act(); }}>
+            ✓ {L("Aldım", "Got it")}
+          </button>
+        ) : null
+      }
       menu={menu}
       open={open}
       onToggle={() => setOpen(!open)}
@@ -218,7 +234,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       }
       foot={
         <>
-          <CardFoot view={foot} nav={nav} best={best} price={facts.price} onAction={act} live={liveFoot} />
+          <CardFoot view={bookTop ? { ...foot, action: null } : foot} nav={nav} best={best} price={facts.price} onAction={act} live={liveFoot}
+            go={bookTop && page ? { href: page, label: goLabel } : null} />
           {stageMenu.field}
         </>
       }
