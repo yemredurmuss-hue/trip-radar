@@ -1572,6 +1572,19 @@ try {
   assert.equal(await app.locator(".prep .visa-row, .prep-visa").count(), 0, "not in Hazırlık");
   await visaRow.getByRole("checkbox").click();
   await sec("other").locator(".visa-row.ok", { hasText: "Vize alındı" }).waitFor();
+  // The records read again (as after any save): nothing "moves" (a restaurant drawn under Yapılacak şeyler, a chore
+  // under Hazırlık stay where they are), so the page doesn't scroll to one of them on its own (0.36.56's bug).
+  await app.evaluate(() => {
+    window.__scrolls = 0;
+    const own = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (...args) {
+      window.__scrolls++;
+      return own.apply(this, args);
+    };
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  await app.waitForTimeout(800);
+  assert.equal(await app.evaluate(() => window.__scrolls), 0, "the page didn't scroll on its own after the records were read again");
   await app.setViewportSize({ width: 1440, height: 900 });
   await sec("other").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5i-visa.png` });

@@ -153,10 +153,13 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     const before = placed.current?.tripId === trip.id ? placed.current.at : null;
     placed.current = { tripId: trip.id, at: now };
     if (!before || view !== "plan") return;
-    const moved = sections.flatMap((s) => s.entries).find((e) => before.has(e.key) && before.get(e.key) !== e.section);
-    if (!moved) return;
-    setOpened(moved.section, true);
-    setTimeout(() => show(document.getElementById(entryDomId(catDomKey(moved)))), 60);
+    // Compared where it's drawn both times (v11: a restaurant is drawn under Yapılacak şeyler, a chore under Hazırlık,
+    // while their own section stays "food" / "other"): else every one of them "moved" on every change and the page
+    // kept going to Hazırlık.
+    const hit = sections.flatMap((s) => s.entries.map((e) => ({ e, id: s.id }))).find(({ e, id }) => before.has(e.key) && before.get(e.key) !== id);
+    if (!hit) return;
+    setOpened(hit.id, true);
+    setTimeout(() => show(document.getElementById(entryDomId(catDomKey(hit.e)))), 60);
   }, [sections, trip.id, view, setOpened]);
   /**
    * A to-do's place: on this view if it's there; else on the Plan (its section opened); else on the other view
