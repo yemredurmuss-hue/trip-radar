@@ -97,12 +97,13 @@ export function footOf(item: Item, kind: CardKind, opts: { options?: number; ale
   }
 }
 
-/** The top line's date: a day for a trip, a span for a rental, an eSIM or insurance, the hour too for an activity or a table. */
+/** The top line's date: a day for a trip, a span for a stay, a rental, an eSIM or insurance, the hour too for an activity or a table. */
 export function topDate(item: Item, kind: CardKind): string | null {
   const start = isoDate(item.flight?.departure?.slice(0, 10)) ?? isoDate(item.dates.start);
   if (!start) return null;
   const end = isoDate(item.dates.end);
-  const ranged = (RENTAL_MODES as readonly string[]).includes(kind) || kind === "esim" || kind === "insurance";
+  // v11: a stay's nights too ("8–11 Ekim"), as the drawing's top line says.
+  const ranged = (RENTAL_MODES as readonly string[]).includes(kind) || kind === "esim" || kind === "insurance" || kind === "stay";
   if (ranged && end && end !== start) return formatDateRange(start, end);
   const time = kind === "activity" || kind === "food" ? clockOf(item.flight?.departure) : null;
   return time ? `${formatDateRange(start, null)} · ${time}` : formatDateRange(start, null);

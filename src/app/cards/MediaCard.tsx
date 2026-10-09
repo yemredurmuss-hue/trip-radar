@@ -8,13 +8,18 @@ import { FallbackImg } from "../FallbackImg";
 import { Editable, useInlineEdit } from "./InlineEdit";
 import { KindIcon, MediaSilhouette } from "./Silhouettes";
 
+/** The v11 drawing for a kind with no photo (static/illus; index.json lists them). */
+const ILLUS: Partial<Record<CardKind, string>> = { stay: "otel", activity: "etkinlik-tur", insurance: "sigorta", esim: "esim", food: "restoran", todo: "yapilacak", note: "not" };
+
 /** On a record's card the title and the city are editable where they stand (the day and hour are on the top line). */
 export function MediaCardBody({ face, kind, score, best, city = null }: { face: MediaFace; kind: CardKind; score: number | null; best: boolean; city?: string | null }) {
   const placed = Boolean(useInlineEdit()?.fields.includes("city"));
   // The city first, editable; the hour is on the top line then.
   const info = placed ? face.info.filter((x) => x.text !== city && !x.strong) : face.info;
   // The kind's drawing (ticket, museum, eSIM, shield) or its icon: in place of a photo, and when a photo fails.
-  const drawing = face.drawing ? <MediaSilhouette name={face.drawing} /> : <KindIcon kind={kind} size={56} className="pk-kindbig" />;
+  // v11: the drawings' pictures (static/illus) where there's one for the kind.
+  const art = ILLUS[kind];
+  const drawing = art ? <img className="pk-illus" src={`illus/${art}.png`} alt="" /> : face.drawing ? <MediaSilhouette name={face.drawing} /> : <KindIcon kind={kind} size={56} className="pk-kindbig" />;
   return (
     <div className="pk-media">
       <div className="pk-vis">

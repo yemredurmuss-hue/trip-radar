@@ -60,7 +60,7 @@ import { DocsTab } from "./docs/DocsTab";
 import { BoardMap } from "./map/BoardMap";
 import { CategoryPlan } from "./plan/CategoryPlan";
 import { SECTION_META, useSectionOpen } from "./plan/sectionMeta";
-import { SettledCard, SwipeCard } from "./SwipeCard";
+import { SwipeCard } from "./SwipeCard";
 import { useArrivals } from "./arrive/useArrivals";
 import { useSuggestions } from "./useSuggestions";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
@@ -598,13 +598,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     ) : (
       <PlanCard key={item.id} item={item} group={group} decision={decision ?? decisionOf(item)} ranked={ranked} onCompare={onCompareGroup} />
     );
-  /** A decided need: a stay's settled card, else the plan card. */
-  const settled: SettledFor = (item, decision, onChange, changing) =>
-    item.category === "stay" ? (
-      <SettledCard key={item.id} item={item} decision={decision ?? decisionOf(item)} decisions={decisions} onOpen={() => onOpenItem(item)} onChange={onChange} changing={changing} />
-    ) : (
-      <PlanCard key={item.id} item={item} group={[item]} decision={decision ?? decisionOf(item)} onChange={onChange} changing={changing} />
-    );
+  /** A decided need: the plan card (v11: a stay's too, its picture, nights, "Aldım" or its stamp). */
+  const settled: SettledFor = (item, decision, onChange, changing) => (
+    <PlanCard key={item.id} item={item} group={[item]} decision={decision ?? decisionOf(item)} onChange={onChange} changing={changing} />
+  );
   const leg = (l: Leg, opts: { embedded?: boolean; timed?: boolean } = {}) => (
     <LegRow key={l.key} leg={l} tripId={trip.id} onOpenItem={onOpenItem} onRemove={env.remove} embedded={opts.embedded} timed={opts.timed} />
   );
@@ -963,7 +960,9 @@ function OptionGroupView({
     return r && { ...r, pivot: pivots.find((p) => p.itemId === item.id) ?? null };
   };
   // Not a stay: the options as one card with ‹ 1/2 ›, the pick and the reasons in its details (cards/PlanCard.tsx).
-  if (group.category !== "stay") {
+  // v11: a stay chosen or booked is that same card (its picture, its nights, "Aldım", "Pano'da N alternatif",
+  // "Rezerve et ↗"; booked: its stamp, the booking's window), its other options back in the choice window.
+  if (group.category !== "stay" || decided) {
     return (
       <NavGroup items={byRank} heading={head} nested={nested} decision={decision} choice={choice} decided={decided ?? null}
         onChange={change} changing={changing} rankedOf={rankedOf} onCompare={comparable || single ? onCompare : undefined} />

@@ -661,8 +661,8 @@ try {
   await cardsDay(4).locator('.dc-tl > li[data-title="Tren · Porto → Lizbon"]').waitFor();
   assert.equal(await dcMode("Kartlar").getAttribute("aria-selected"), "true");
   await tab("Plan").click();
-  // Where each plan stands is on top of its card: booked in green, planned in amber.
-  await app.locator(".cat-card.tl-stay .status-bar.st-booked", { hasText: "Rezerve edildi" }).waitFor();
+  // Where each plan stands is on top of its card (v11): a booked stay says "Rezerve", its ring green.
+  await app.locator(".cat-card.tl-stay .pk-card .pk-lab.booked", { hasText: "Rezerve" }).waitFor();
   // v11: an undecided stay is one card too ("Porto · 8–11 Eki", "3 seçenek ›"); its window: the pick in a sentence,
   // what to check before choosing, the options best first with their fit, what each is strongest on, a mark per
   // thing asked for, and "Neden? Artılar ve eksiler" (against the first; the first against the second, then the pros
@@ -874,24 +874,21 @@ try {
   await app.getByRole("dialog").getByRole("button", { name: "Plana al", exact: true }).click();
   await app.getByRole("dialog").getByRole("button", { name: "Kapat" }).click();
   await app.getByText("Jardim Stay plana alındı").waitFor();
-  // Chosen: the cards fold into one card; a tap on it brings the other options back, ⓘ opens its details.
-  const jardimRow = app.locator(".stay-block.chosen .settled-card", { hasText: "Jardim Stay" });
-  await jardimRow.locator(".status-bar").getByText("rezerve edilmedi").waitFor();
+  // v11: chosen, the stay is the plan's card: "✓ Aldım" on its top line, "Pano'da 2 alternatif" by its price; its
+  // details' "Diğer 2 seçenek" brings the choice window back.
+  const jardimRow = app.locator('.stay-block.chosen .pk-card[aria-label="Jardim Stay"]');
+  await jardimRow.locator(".pk-aldim").waitFor();
   assert.equal(await app.locator(".stay-block.chosen .swipe-card").count(), 0);
-  // 0.37: the chosen stay's options open on the board ("Seçenekleri karşılaştır"); a tap on the card still unfolds them.
-  await jardimRow.getByRole("button", { name: "Seçenekleri karşılaştır (3)" }).click();
-  const fromPlan = app.getByRole("dialog", { name: "Karşılaştırma" });
-  await fromPlan.locator('.bd-card.chosen[aria-label="Jardim Stay"]').getByRole("button", { name: "✓ Seçili" }).waitFor();
-  await fromPlan.getByRole("button", { name: "Kapat" }).click();
-  await fromPlan.waitFor({ state: "detached" });
-  await jardimRow.locator(".stc-main").click();
-  await app.locator(".stay-block.chosen .swipe-card").first().waitFor();
-  await card("Jardim Stay").getByRole("button", { name: "Planda ✓" }).waitFor();
-  await jardimRow.getByRole("button", { name: "Kapat" }).click();
-  assert.equal(await app.locator(".stay-block.chosen .swipe-card").count(), 0);
-  await jardimRow.getByRole("button", { name: "Detaylar", exact: true }).click();
-  await jardimRow.locator(".stc-details .card-details").waitFor();
-  await jardimRow.getByRole("button", { name: "Detaylar", exact: true }).click();
+  assert.equal(await jardimRow.locator(".pk-alt").innerText(), "Pano'da 2 alternatif");
+  await sec("stay").screenshot({ path: `${out}/35-stay-chosen-v11.png` });
+  await jardimRow.locator(".pk-body").click();
+  await jardimRow.locator(".pk-detail").getByRole("button", { name: "Tüm detaylar" }).waitFor();
+  await jardimRow.locator(".pk-detail").getByRole("button", { name: "Diğer 2 seçenek" }).click();
+  const otherStays = app.locator(".ch-sheet");
+  await otherStays.locator(".ch-row", { hasText: "Jardim Stay" }).waitFor();
+  await otherStays.locator(".bk-foot").getByRole("button", { name: "Kapat" }).click();
+  await otherStays.waitFor({ state: "detached" });
+  if (await jardimRow.locator(".pk-detail").count()) await jardimRow.locator(".pk-body").click();
   // "Seç" on a flight card: the flight folds into a line, and its landing time reaches the transfer to the hotel.
   await app.locator(".nd-card", { hasText: "İstanbul → Porto" }).locator(".nd-opts").click();
   await app.locator(".ch-row", { hasText: "Pegasus · direkt" }).getByRole("button", { name: "+ Plana koy" }).click();
@@ -906,7 +903,7 @@ try {
   assert.match(await arrive.innerText(), /Planlanmadı/);
   // Check-in opens to the stay's own card, as on the Plan.
   assert.equal(await flowTime("Check-in · Jardim Stay").innerText(), "14:00");
-  await flowCard("Check-in · Jardim Stay").locator(".settled-card", { hasText: "Jardim Stay" }).waitFor();
+  await flowCard("Check-in · Jardim Stay").locator('.pk-card[aria-label="Jardim Stay"]').waitFor();
   // A transfer with no plan opens right there: what's easy to miss, how to go, "Gerek yok".
   await openCard("Havalimanı transferi");
   await arrive.locator(".leg-note", { hasText: "Varış 10:05, giriş en erken 14:00 (sayfada yazıyor)" }).waitFor();
@@ -1097,10 +1094,10 @@ try {
   await bus.waitFor({ state: "detached" });
   await app.locator(".pk-undo", { hasText: "Lagos" }).getByRole("button", { name: "Geri al" }).click();
   await bus.waitFor();
-  const jardim = app.locator(".stay-block.chosen .settled-card", { hasText: "Jardim Stay" });
+  const jardim = app.locator('.stay-block.chosen .pk-card[aria-label="Jardim Stay"]');
   await jardim.getByRole("button", { name: "Kart menüsü" }).click();
   // Planlandı (aşamalar, lifecycle.ts): Değiştir takes it back to its options.
-  assert.deepEqual(await jardim.getByRole("menuitem").allInnerTexts(), ["Değiştir", "Sil"]);
+  assert.deepEqual((await jardim.getByRole("menuitem").allInnerTexts()).slice(-2), ["Değiştir", "Sil"]);
   await jardim.getByRole("button", { name: "Kart menüsü" }).click();
   await jardim.hover();
   await jardim.getByRole("button", { name: "Jardim Stay: gerek yok" }).click();
@@ -1110,10 +1107,13 @@ try {
   // Rezerve edildi: Belge ekle, İptal ettim, Değiştir; Sil asks first ("İptal ettiysen 'İptal ettim' de"), and
   // nothing goes when the answer is no. İptal ettim takes it off the plan (its nights to find again), Geri al
   // brings the booking back.
-  const loft = app.locator(".stay-block .settled-card", { hasText: "Lisboa Loft" });
+  const loft = app.locator('.stay-block .pk-card[aria-label="Lisboa Loft"]');
   await loft.scrollIntoViewIfNeeded();
+  // v11: a booking says so on its top line, its stamp in the corner.
+  assert.equal(await loft.locator(".pk-lab.booked").innerText(), "Rezerve");
+  await loft.locator(".pk-stamp").waitFor({ state: "attached" });
   await loft.getByRole("button", { name: "Kart menüsü" }).click();
-  assert.deepEqual(await loft.getByRole("menuitem").allInnerTexts(), ["Belge ekle", "İptal ettim", "Değiştir", "Sil"]);
+  assert.deepEqual((await loft.getByRole("menuitem").allInnerTexts()).slice(-4), ["Belge ekle", "İptal ettim", "Değiştir", "Sil"]);
   // v11: the board's own window asks, not the browser's confirm().
   const ask = app.getByRole("alertdialog");
   await loft.getByRole("menuitem", { name: "Sil" }).click();
