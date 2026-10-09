@@ -3163,3 +3163,8 @@ a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: cente
 .ud-item { display: inline-flex; align-items: center; gap: 8px; padding: 4px 6px 4px 12px; border-radius: 999px; background: #fff; border: 1px solid var(--hx-line); font-size: 13.5px; }
 .ud-name { font-weight: 600; }
 .ud-city { color: var(--hx-muted); font-size: 12.5px; }
+
+/* v11 (phase 6): insurance and eSIM side by side, as large; a section's spend before its bar. */
+.ek-pair { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; align-items: stretch; }
+.ek-pair > * { height: 100%; }
+.cat-spent { font-size: 15px; font-weight: 700; color: var(--hx-ink, #1d1d1f); font-variant-numeric: tabular-nums; white-space: nowrap; }
