@@ -4072,3 +4072,72 @@ a.ch-why { text-decoration: none; }
   .th-dots i, .work-spin { animation-duration: 2.4s; }
   .ms-wrap[data-state] .ms { animation: none !important; }
 }
+
+/* ===== v30 (docs/superpowers/specs/2026-10-11-plan-v30-design.md): two tabs, the sticky summary bar, "Yolculuk sırasıyla" ===== */
+:root { --v30-shadow: 0 1px 2px rgba(40, 28, 90, .06), 0 12px 28px -18px rgba(40, 28, 90, .34); }
+
+/* The tabs: Plan · Pano, a segmented pair. */
+.view-tabs { display: flex; justify-content: center; margin: 4px 0 18px; gap: 0; }
+.view-tabs button { padding: 7px 22px; font-size: 15px; font-weight: 600; border-radius: 10px; color: var(--v-muted); }
+.view-tabs button + button::before { display: none; }
+.view-tabs button.on { background: #fff; color: var(--v-ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
+.view-tabs button.on::after { display: none; }
+.view-tabs { background: var(--v-soft); border: 1px solid var(--v-line2); border-radius: 13px; padding: 3px; width: fit-content; margin-left: auto; margin-right: auto; }
+
+/* The Plan's three ways to read it. */
+.plan-order button[aria-selected="true"], .plan-order button.on { background: #fff; color: var(--v-ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.plan-bar-slim { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; padding: 0 2px; }
+
+/* The sticky summary bar: at the very top of the panel, edge to edge, opaque; nothing shows through it. */
+.sbar.sbar2 { padding: 0; background: #fff; backdrop-filter: none; border-bottom: 1px solid var(--v-line2); overflow: visible; }
+.sbar-in { display: flex; align-items: center; gap: 14px; padding: 10px 40px; min-width: 0; }
+.sbar-cover { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; flex: none; background: var(--v-soft); }
+.sbar-name { display: grid; min-width: 0; line-height: 1.2; }
+.sbar-name .sbar-t { font-size: 15.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sbar-name small { font-size: 12.5px; color: var(--v-muted); white-space: nowrap; }
+.sbar-p { gap: 8px; margin-left: 6px; }
+.sbar-ring { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: none; background: conic-gradient(var(--v-book-ink) 0 var(--p), #e9e6f2 var(--p)); }
+.sbar-ring span { width: 34px; height: 34px; border-radius: 50%; background: #fff; display: grid; place-items: center; font-size: 11.5px; font-weight: 800; color: var(--v-ink); }
+.sbar-pl { font-size: 13px; color: var(--v-muted); }
+.sbar-bud { display: inline-flex; align-items: center; gap: 7px; font-size: 14.5px; white-space: nowrap; padding-left: 14px; border-left: 1px solid var(--v-line2); color: var(--v-ink); }
+.sbar-bud b { font-weight: 750; } .sbar-bud small { color: var(--v-muted); font-size: 13px; }
+.sbar-bud i { width: 8px; height: 8px; border-radius: 50%; } .sbar-bud i.ok { background: var(--v-book-ink); } .sbar-bud i.over { background: #c62828; }
+.sbar-sp { flex: 1; }
+.sbar-tabs { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--v-soft); border: 1px solid var(--v-line2); }
+.sbar-tabs button { padding: 5px 14px; border-radius: 9px; border: 0; background: none; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--v-muted); cursor: pointer; }
+.sbar-tabs button.on { background: #fff; color: var(--v-ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
+.sbar2 .sbar-go { margin-left: 0; padding: 9px 16px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 860px) { .sbar-pl, .sbar-tabs, .sbar-bud { display: none; } .sbar-in { padding: 8px 16px; gap: 10px; } }
+@media (max-width: 520px) { .sbar-cover { display: none; } .sbar-name small { display: none; } }
+
+/* "Yolculuk sırasıyla": the dates at the left, a dashed line with a node per stop, the Plan's cards on the right. */
+.sy { display: grid; }
+.sy-row { display: grid; grid-template-columns: 64px 48px minmax(0, 1fr); column-gap: 8px; }
+.sy-d { padding-top: 10px; display: flex; justify-content: flex-end; align-items: flex-start; }
+.sy-r { position: relative; display: flex; justify-content: center; }
+.sy-r::before { content: ""; position: absolute; left: calc(50% - 1px); top: 0; bottom: 0; border-left: 2px dashed var(--v-dash); }
+.sy-row:first-child .sy-r::before { top: 34px; }
+.sy-row:last-child .sy-r::before { bottom: auto; height: 34px; }
+.sy-node { position: relative; z-index: 1; margin-top: 12px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 2px dashed var(--v-dash); color: var(--v-muted); }
+.sy-c { padding: 6px 0 18px; min-width: 0; }
+.sy-leg .sy-c { max-width: 760px; }
+.sy-date { display: grid; justify-items: center; line-height: 1.12; width: 56px; padding: 6px 2px 7px; border-radius: 12px; background: #fff; box-shadow: var(--v30-shadow); }
+.sy-date span { font-size: 10.5px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--v-accent-ink); }
+.sy-date b { font-size: 21px; font-weight: 800; letter-spacing: -.02em; color: var(--v-ink); }
+.sy-date small { font-size: 11.5px; color: var(--v-muted); }
+.sy-date i { font-style: normal; font-size: 10.5px; font-weight: 700; color: var(--v-muted); margin-top: 3px; padding-top: 3px; border-top: 1px solid var(--v-line2); width: 78%; text-align: center; }
+.sy-same { display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--v-dash); margin: 16px 25px 0 0; }
+.sy-city { border-radius: 20px; background: color-mix(in srgb, #2a8a72 5%, #fff); border: 1px solid color-mix(in srgb, #2a8a72 18%, transparent); padding: 14px; display: grid; gap: 12px; }
+.sy-ch { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.sy-ch b { font-size: 24px; letter-spacing: -.02em; color: var(--v-ink); }
+.sy-ch span { color: var(--v-muted); font-size: 13.5px; }
+.sy-cb { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.sy-here { display: grid; gap: 6px; align-content: start; }
+.sy-lbl { font-size: 11.5px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--v-muted); }
+.sy-none { font-size: 13px; color: var(--v-muted); }
+.sy-ev { display: flex; gap: 8px; align-items: center; padding: 6px 9px; border-radius: 12px; background: #fff; border: 1px dashed var(--v-plan-line); font-size: 13.5px; min-width: 0; }
+.sy-ev.rez { border: 1px solid var(--v-book-line); background: var(--v-book-bg); }
+.sy-ev b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.sy-ev small { margin-left: auto; color: var(--v-book-ink); font-weight: 650; white-space: nowrap; }
+@media (max-width: 760px) { .sy-row { grid-template-columns: 52px 36px minmax(0, 1fr); } .sy-date { width: 46px; } .sy-cb { grid-template-columns: 1fr; } .sy-node { width: 30px; height: 30px; } }
+
