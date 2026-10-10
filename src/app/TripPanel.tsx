@@ -45,7 +45,7 @@ import { UndoToast } from "./cards/UndoToast";
 import { isIdea } from "../lib/booking";
 import { findTarget, show, TodoList } from "./Progress";
 import { TripFacts } from "./TripFacts";
-import { cityRanges, countryCodesOf, countryNames, sectionTally, tallySection } from "../lib/heroInfo";
+import { cityRanges, countryCodesOf, countryNames, sectionTally, tallyLines, tallySection } from "../lib/heroInfo";
 import { answerParents, answersAny, mainPlaceOf, mainPlaces, placesKey, placesPrompt, placesSystemPrompt, resolveParents } from "../lib/destinations";
 import { acceptNoteLabel, type Pref } from "../lib/preferences";
 import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../lib/tripStyle";
@@ -514,6 +514,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   });
   // The plan line: what the Plan's sections hold (each header's "y"), so both always say the same thing.
   const tally = useMemo(() => sectionTally(sections), [sections]);
+  const tallyNames = useMemo(() => tallyLines(sections), [sections]);
   const chips = styleChips(
     // The last words stay on screen while new ones are asked for (no empty flash, no flicker).
     acceptStyle(trip.style?.ids ?? []),
@@ -698,6 +699,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           today={today}
           lead={lead}
           tally={tally}
+          tallyLines={tallyNames}
           onTally={(kind) => openSection(tallySection(kind, sections))}
           done={{ ...done, complete: allDone }}
           todo={todo}
