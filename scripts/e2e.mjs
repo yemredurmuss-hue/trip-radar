@@ -15,8 +15,23 @@ const launchPersistent = chromium.launchPersistentContext.bind(chromium);
 chromium.launchPersistentContext = async (...args) => {
   const ctx = await launchPersistent(...args);
   if (!openingOn) await ctx.addInitScript(() => { try { sessionStorage.setItem("trip-radar:opening-off", "1"); } catch {} });
+  ctx.on("page", settledShots);
   return ctx;
 };
+// The motion language (app.css "Hareket dili", mv-* keyframes) fades windows and drawers in: a page screenshot waits for those
+// entrances to end, or a window is caught half see-through. Looping ones (dots, spinner) and the opening's own pieces are left alone.
+function settledShots(page) {
+  const shot = page.screenshot.bind(page);
+  page.screenshot = async (options) => {
+    await page
+      .evaluate(() => {
+        const entering = document.getAnimations().filter((a) => a.animationName?.startsWith("mv-") && a.effect?.getComputedTiming().iterations !== Infinity);
+        return Promise.race([Promise.all(entering.map((a) => a.finished.catch(() => undefined))), new Promise((done) => setTimeout(done, 2000))]);
+      })
+      .catch(() => undefined);
+    return shot(options);
+  };
+}
 
 const out = path.resolve("e2e-output");
 mkdirSync(out, { recursive: true });
