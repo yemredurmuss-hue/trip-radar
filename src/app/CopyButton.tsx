@@ -1,7 +1,8 @@
 // "Kopyala" (docs/mockups/ux-katmanli-arayuz, "Tek tıkla kopyala"): a booking code, an address or an airport code gets a
 // small button that shows on hover or focus (always on a touch screen). It sits over the page beside the text and takes
 // no room of its own, so nothing moves. A click copies and the label says "Kopyalandı ✓" for a moment; when the browser
-// refuses the clipboard the text is selected instead ("Seçildi, ⌘C").
+// refuses the clipboard the text is selected instead ("Seçildi, ⌘C"). The button is empty and zero wide: its pill and
+// words are drawn by CSS (data-label), so the text around the code reads and copies exactly as before ("LIS · 19:40").
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { copyOrSelect } from "../lib/copyText";
 import { L } from "../lib/i18n";
@@ -11,8 +12,8 @@ const SHOWN_MS = 1600;
 export function CopyText({ value, children, side = "right", label }: {
   value: string;
   children: ReactNode;
-  /** Which side of the text the button sits on: the left one for text at the right edge of a card. */
-  side?: "left" | "right";
+  /** Where its pill shows: beside the text, or under it where the text is at a card's edge. */
+  side?: "right" | "below";
   /** What is copied, for a screen reader ("Rezervasyon kodu"). */
   label?: string;
 }) {
@@ -40,21 +41,20 @@ export function CopyText({ value, children, side = "right", label }: {
     });
   };
   const word = state === "copied" ? L("Kopyalandı ✓", "Copied ✓") : state === "selected" ? L("Seçildi, ⌘C", "Selected, ⌘C") : L("Kopyala", "Copy");
+  const button = (
+    <button
+      type="button"
+      className={`cpy-b${state === "idle" ? "" : " done"}`}
+      data-label={word}
+      aria-label={state === "idle" ? `${label ? `${label}: ` : ""}${value} ${L("kopyala", "copy")}` : word}
+      onClick={copy}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && e.stopPropagation()}
+    />
+  );
   return (
     <span className={`cpy ${side}`}>
       <span className="cpy-t" ref={text}>{children}</span>
-      <button
-        type="button"
-        className={`cpy-b${state === "idle" ? "" : " done"}`}
-        aria-label={`${label ? `${label}: ` : ""}${value} ${L("kopyala", "copy")}`}
-        onClick={copy}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && e.stopPropagation()}
-      >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M9 9h10v11H9zM5 15V4h10" />
-        </svg>
-        <span aria-live="polite">{word}</span>
-      </button>
+      {button}
     </span>
   );
 }
