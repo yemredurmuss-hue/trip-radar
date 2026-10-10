@@ -18,6 +18,7 @@ import { UiIcon } from "./cards/Silhouettes";
 import { EventFold, foldRuns } from "./ChatFold";
 import { ChatOffers } from "./ChatOffers";
 import { ArrowUp, Back } from "./Icons";
+import { Mascot } from "./Mascot";
 
 interface Props {
   trip: Trip;
@@ -145,7 +146,13 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
         <button className="trip-switch" onClick={onBack}>
           <Back /> {L("Seyahatlerim", "My trips")}
         </button>
-        <div className="chat-title">{L("Asistan", "Assistant")}</div>
+        <div className="chat-title">
+          {/* The assistant's mascot, in its seat; the opening takes a copy for its flight (opening.ts). */}
+          <span className="mascot-seat" data-mascot-seat>
+            <Mascot />
+          </span>
+          {L("Asistan", "Assistant")}
+        </div>
         <div className="muted chat-sub">{L(`${trip.title} için`, `For ${trip.title}`)}</div>
       </div>
 
