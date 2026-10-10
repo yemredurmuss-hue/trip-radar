@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect } fr
 import { z } from "zod";
 import { requestProcessing } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
-import { formatDateRange, listingKeyOf, nightsBetween, rankItems, tripDateRange } from "../lib/items";
+import { formatDateRange, formatPrice, listingKeyOf, nightsBetween, rankItems, tripDateRange } from "../lib/items";
 import { buildLegs, staleHiddenMoves, type Leg } from "../lib/legs";
 import { buildTimeline } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
@@ -54,11 +54,15 @@ import { intentEntries } from "./IntentCard";
 import { TripHero, type HeroAction, type HeroCity } from "./TripHero";
 import { PrintPlan } from "./PrintPlan";
 import { StickyBar } from "./StickyBar";
+import { onPanel } from "./panelBus";
+import { PlanOrder } from "./plan/PlanOrder";
+import { StoryView } from "./plan/StoryView";
 import { TipOn } from "./HoverTip";
 import { PanoNewsTip } from "./PanoNewsTip";
 import { usePanoDot } from "./usePanoDot";
 import { claimOpening, playOpening } from "./opening";
 import { heroNumbers, openNeedsText, plannedBookedText } from "../lib/lifecycle";
+import { countdown, countdownText } from "../lib/countdown";
 import { kindLabel, LegRow } from "./LegRow";
 import { HistoryDialog } from "./HistoryDialog";
 import { ChangeNotices } from "./ShareSafety";
@@ -107,7 +111,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
-  const [view, setView] = useState<TimelineMode | "docs" | "map" | "board">("plan");
+  const [view, setView] = useState<TimelineMode | "story" | "docs" | "map" | "board">("plan");
   // The Pano opened from a plan card ("Pano'da gör"): that need's group, framed, with "← Plan'a dön".
   const [panoFocus, setPanoFocus] = useState<string | null>(null);
   // "Son ziyaretten beri": what the other traveller did since the Pano was last open (a dot on its tab), on a shared trip.
@@ -493,6 +497,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const [todoOpen, setTodoOpen] = useState<"all" | "deadline" | null>(null);
   // The plan as a PDF (PrintPlan.tsx): drawn while the print window is open.
   const [printing, setPrinting] = useState(false);
+  // The trip's ••• menu (App.tsx): "Belgeler" opens the documents, "Planı PDF olarak indir" the PDF.
+  useEffect(() => onPanel((c) => (c === "docs" ? setView("docs") : setPrinting(true))), []);
   const heroRef = useRef<HTMLElement>(null);
   // Another trip's to-do list isn't the one that was open.
   useEffect(() => {
@@ -616,6 +622,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         : allDone && onShare
           ? { label: L("Paylaş", "Share"), title: L("Bu geziyi paylaş", "Share this trip"), run: onShare }
           : null;
+  // The sticky bar's money: what the plan will likely cost, against the budget (the hero's own sums).
+  const stickyBudget = bar
+    ? { expected: bar.booked + bar.chosen + bar.open, total: bar.total, currency: bar.currency, expectedText: formatPrice(bar.booked + bar.chosen + bar.open, bar.currency), totalText: bar.total != null ? formatPrice(bar.total, bar.currency) : null }
+    : null;
   const decisionOf = (item: Item) => [...(decisions?.byGroup.values() ?? [])].find((d) => d.options.some((o) => o.item.id === item.id));
   /** A stay keeps its decision card; everything else is a plan card (cards/PlanCard.tsx). */
   const card: CardFor = (item, group, decision, ranked, onCompareGroup) =>
@@ -690,14 +700,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   return (
     <CardEnvContext.Provider value={env}>
       <SilhouetteDefs />
-      {/* v11: one tab bar, atop the board: Plan · Gün gün (its map one switch inside) · Pano · Belgeler. */}
+      {/* v30: two tabs atop the board, Plan · Pano. "Gün gün" is the Plan's third way to read (PlanOrder); "Belgeler" is in the ••• menu
+          and shows here only while it's open. */}
       {timeline.entries.length > 0 && (
         <div className="view-tabs" role="tablist" aria-label={L("Görünüm", "View")}>
-          <button role="tab" aria-selected={view === "plan"} className={view === "plan" ? "on" : ""} onClick={() => setView("plan")}>
+          <button role="tab" aria-selected={view !== "board" && view !== "docs"} className={view !== "board" && view !== "docs" ? "on" : ""} onClick={() => setView("plan")}>
             {L("Plan", "Plan")}
-          </button>
-          <button role="tab" aria-selected={view === "days" || view === "map"} className={view === "days" || view === "map" ? "on" : ""} onClick={() => setView("days")}>
-            {L("Gün gün", "Day by day")}
           </button>
           <TipOn tip={panoNews.length ? <PanoNewsTip news={panoNews} /> : null} below>
             {(bind) => (
@@ -707,12 +715,26 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
               </button>
             )}
           </TipOn>
-          <button role="tab" aria-selected={view === "docs"} className={view === "docs" ? "on" : ""} onClick={() => setView("docs")}>
-            {L("Belgeler", "Documents")}
-          </button>
+          {view === "docs" && (
+            <button role="tab" aria-selected className="on" onClick={() => setView("docs")}>
+              {L("Belgeler", "Documents")}
+            </button>
+          )}
         </div>
       )}
-      <StickyBar hero={heroRef} active={view === "plan"} title={trip.title} dates={range ? formatDateRange(range.start, range.end) : null} pct={done.total ? numbers.pct : null} action={action} />
+      <StickyBar
+        hero={heroRef}
+        active={view === "plan" || view === "story"}
+        title={trip.title}
+        dates={range ? formatDateRange(range.start, range.end) : null}
+        daysLeft={countdownText(countdown(range, today))}
+        cover={trip.heroImage ?? null}
+        pct={done.total ? numbers.pct : null}
+        budget={stickyBudget}
+        view="plan"
+        onView={(v) => (v === "board" ? (setPanoFocus(null), setView("board")) : setView("plan"))}
+        action={action}
+      />
       {/* The Pano is a work table of its own: no hero over it (v11). */}
       {view !== "board" && (
       <section className="hx" ref={heroRef}>
@@ -823,6 +845,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           }}
         />
       )}
+      {(view === "story" || view === "days" || view === "map") && timeline.entries.length > 0 && (
+        <div className="plan-bar-slim">
+          <strong className="plan-h">{L("Plan", "Plan")}</strong>
+          <PlanOrder view={view === "story" ? "story" : "days"} onView={(v) => setView(v)} />
+        </div>
+      )}
       {(view === "days" || view === "map") && timeline.entries.length > 0 && (
         <div className="days-mode" role="group" aria-label={L("Gün gün", "Day by day")}>
           <button type="button" aria-pressed={view === "days"} onClick={() => setView("days")}>
@@ -853,6 +881,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           }}
           onCompare={onCompare}
         />
+      ) : view === "story" ? (
+        <EmptyEnvContext.Provider value={emptyEnv}>
+          <StoryView timeline={timeline} tripStart={range?.start ?? null} cards={{ legCard: planLegCard, renderGroup: planRenderGroup, settled: planSettled }} />
+        </EmptyEnvContext.Provider>
       ) : view === "map" ? (
         <BoardMap trip={trip} plan={plan} legs={legs} />
       ) : view === "docs" ? (
@@ -882,7 +914,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             visaDone={!!trip.visaDone}
             shape={shape && { ...shape, photos: trip.cityImages, places, today }}
             onStop={(s) => openSection(s.kind === "end" ? "flight" : "stay")}
-            onJourneyOrder={() => setView("days")}
+            order={<PlanOrder view="plan" onView={(v) => setView(v)} />}
             onVisaDone={(done) => void setVisaDone(trip.id, done)}
           />
         </EmptyEnvContext.Provider>

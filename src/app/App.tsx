@@ -1,3 +1,4 @@
+import { sendPanel } from "./panelBus";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { resetConversation } from "../lib/assistant";
 import { loadDemoTrip } from "../lib/demo";
@@ -184,7 +185,9 @@ export function App() {
               <button onClick={() => document.querySelector<HTMLInputElement>('.composer input[type="text"]')?.focus()}>
                 {L("Link ya da ekran görüntüsü ekle", "Add a link or screenshot")}
               </button>
+              <button onClick={() => sendPanel("docs")}>{L("Belgeler", "Documents")}</button>
               {sharable && <button onClick={() => setShareOpen(true)}>{trip.shareId ? L("Paylaşım kodu", "Share code") : L("Bu geziyi paylaş", "Share this trip")}</button>}
+              <button onClick={() => sendPanel("pdf")}>{L("Planı PDF olarak indir", "Download the plan as PDF")}</button>
               {mapUrl && (
                 <a href={mapUrl} target="_blank" rel="noreferrer">
                   {L("Rotayı haritada gör", "See the route on a map")}

@@ -2638,7 +2638,9 @@ try {
   assert.equal(await board.locator(".dl-more, .dl-sub").count(), 0);
   await board.locator(".dc-seg").getByRole("tab", { name: "Liste", exact: true }).click();
 
-  await board.getByRole("tab", { name: "Belgeler", exact: true }).click();
+  // v30: Belgeler left the tab bar; it opens from the trip's ••• menu.
+  await board.getByRole("button", { name: "Gezi menüsü" }).click();
+  await board.locator(".menu").getByRole("button", { name: "Belgeler", exact: true }).click();
   const docRow = (name) => board.locator(`.doc-row[aria-label="${name}"]`);
   await board.locator('.doc-group[data-group="insurance"]').locator(`.doc-row[aria-label="allianz-police.pdf"]`).waitFor();
   assert.equal(await docRow("allianz-police.pdf").locator(".doc-go").innerText(), "Seyahat sağlık sigortası · Allianz →");

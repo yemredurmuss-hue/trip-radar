@@ -36,7 +36,7 @@ const TILED: SectionId[] = ["activity", "todo"];
 
 const SLICE: Partial<Record<SectionId, BudgetSlice>> = { flight: "flight", stay: "stay", transport: "transport", activity: "activity", other: "other" };
 
-export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, shape = null, onStop, onJourneyOrder }: {
+export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, shape = null, onStop, order = null }: {
   plan: Plan;
   sections: CatSection[];
   /** Open now: the traveller's choice, else the first look (sectionMeta.useSectionOpen). */
@@ -60,8 +60,8 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
   /** The trip's shape under the head (v11): its stops, a tap opens a stop's place. */
   shape?: ({ stops: JourneyStop[]; hops: JourneyHop[] } & ShapeExtras) | null;
   onStop?: (stop: JourneyStop) => void;
-  /** "Yolculuk sırasıyla": the trip in the order it's lived (Gün gün). */
-  onJourneyOrder?: () => void;
+  /** v30: the three ways to read the plan (PlanOrder), drawn in the plan bar. */
+  order?: ReactNode;
   /** v11: the budget shared out by section ("€500 ayrıldı"), when the trip has one. */
   allot?: { by: Record<BudgetSlice, number>; currency: string } | null;
 }) {
@@ -93,12 +93,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
       {/* v11 plan bar: "Plan", the order switch, "+ Ekle", the colours' key on the right; one line. */}
       <div className="section-head plan-bar" title={n.total > 0 ? nightsSummary(n) : undefined}>
         <strong className="plan-h">{L("Plan", "Plan")}</strong>
-        {onJourneyOrder && (
-          <span className="plan-order" role="group" aria-label={L("Sıra", "Order")}>
-            <button type="button" aria-pressed="true">{L("Kategoriye göre", "By category")}</button>
-            <button type="button" aria-pressed="false" onClick={onJourneyOrder}>{L("Yolculuk sırasıyla", "In trip order")}</button>
-          </span>
-        )}
+        {order}
         <AddButton onClick={() => onAdd(null, null)} />
         <span className="plan-key" aria-label={L("Renklerin anlamı", "What the colours say")}>
           <span><i className="pk-sw open" />{L("Arıyoruz", "Searching")}</span>
