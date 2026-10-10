@@ -54,6 +54,9 @@ import { intentEntries } from "./IntentCard";
 import { TripHero, type HeroAction, type HeroCity } from "./TripHero";
 import { PrintPlan } from "./PrintPlan";
 import { StickyBar } from "./StickyBar";
+import { TipOn } from "./HoverTip";
+import { PanoNewsTip } from "./PanoNewsTip";
+import { usePanoDot } from "./usePanoDot";
 import { heroNumbers, openNeedsText, plannedBookedText } from "../lib/lifecycle";
 import { kindLabel, LegRow } from "./LegRow";
 import { HistoryDialog } from "./HistoryDialog";
@@ -106,6 +109,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const [view, setView] = useState<TimelineMode | "docs" | "map" | "board">("plan");
   // The Pano opened from a plan card ("Pano'da gör"): that need's group, framed, with "← Plan'a dön".
   const [panoFocus, setPanoFocus] = useState<string | null>(null);
+  // "Son ziyaretten beri": what the other traveller did since the Pano was last open (a dot on its tab), on a shared trip.
+  const panoNews = usePanoDot(trip.id, items, view === "board");
   const working = openCaptures.filter((c) => c.status === "pending" || c.status === "processing");
   const failed = openCaptures.filter((c) => c.status === "error");
   const listings = decisions?.ctx.listings;
@@ -683,9 +688,14 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           <button role="tab" aria-selected={view === "days" || view === "map"} className={view === "days" || view === "map" ? "on" : ""} onClick={() => setView("days")}>
             {L("Gün gün", "Day by day")}
           </button>
-          <button role="tab" aria-selected={view === "board"} className={view === "board" ? "on" : ""} onClick={() => (setPanoFocus(null), setView("board"))}>
-            {L("Pano", "Board")}
-          </button>
+          <TipOn tip={panoNews.length ? <PanoNewsTip news={panoNews} /> : null} below>
+            {(bind) => (
+              <button {...bind} role="tab" aria-selected={view === "board"} className={view === "board" ? "on" : ""} onClick={() => (setPanoFocus(null), setView("board"))}>
+                {L("Pano", "Board")}
+                {panoNews.length > 0 && <i className="tab-dot" aria-hidden />}
+              </button>
+            )}
+          </TipOn>
           <button role="tab" aria-selected={view === "docs"} className={view === "docs" ? "on" : ""} onClick={() => setView("docs")}>
             {L("Belgeler", "Documents")}
           </button>
@@ -728,6 +738,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           chips={chips}
           bar={bar}
           who={who}
+          items={items}
           onShare={onShare}
         />
       </section>
