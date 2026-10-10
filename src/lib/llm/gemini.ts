@@ -206,6 +206,12 @@ export async function listGeminiModels(apiKey: string): Promise<string[]> {
   return usable.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
 }
 
+/** A Gemini failure the traveller fixes in Settings: a bad key, no access, a model that is gone. */
+export function geminiNeedsSettings(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false;
+  return (error.status === 400 && /api key/i.test(error.message ?? "")) || error.status === 403 || error.status === 404;
+}
+
 export function describeGeminiError(error: unknown): string | null {
   if (!(error instanceof ApiError)) return null;
   const message = error.message ?? "";

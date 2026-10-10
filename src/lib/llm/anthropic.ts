@@ -179,6 +179,10 @@ async function structured<T>(
   }
 }
 
+/** A Claude failure the traveller fixes in Settings (a bad key, no access), or one where the request never got out. */
+export const anthropicNeedsSettings = (error: unknown) => error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError;
+export const anthropicUnreached = (error: unknown) => error instanceof Anthropic.APIConnectionError;
+
 export function describeAnthropicError(error: unknown): string | null {
   if (error instanceof Anthropic.AuthenticationError) {
     return L("Claude API anahtarı geçersiz. Ayarlardan kontrol et.", "The Claude API key isn't valid. Check it in Settings.");

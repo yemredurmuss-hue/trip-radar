@@ -461,8 +461,13 @@ export async function retryCapture(captureId: string): Promise<void> {
   }
 }
 
-/** Busy model (503), rate limit (429), server or connection errors: worth another try later. */
-const TRANSIENT = /\((429|500|502|503|504)\)|kotası|hız sınırı|bağlanılamadı|high demand|overloaded/i;
+/** Busy model (503), rate limit (429), server or connection errors: worth another try later. Matched on the message in
+ * either language (the board may be in English: "Couldn't reach…" was never retried before 2026-10-11). */
+const TRANSIENT = /\((429|500|502|503|504)\)|kotası|hız sınırı|meşgul|geçici bir sorun|bağlanılamadı|high demand|overloaded|quota|rate limit|is busy|temporary problem|couldn't reach/i;
+/** The request never got out (no internet): the board may try again within seconds, and again as the connection comes back. */
+const CONNECTION = /bağlanılamadı|couldn't reach/i;
+export const isTransient = (message: string | null | undefined) => !!message && TRANSIENT.test(message);
+export const isConnectionError = (message: string | null | undefined) => !!message && CONNECTION.test(message);
 const AUTO_RETRIES = 3;
 
 /** Re-queues captures that failed for a temporary reason, a few times at most. Returns how many. */
@@ -471,8 +476,22 @@ export async function retryTransientFailures(): Promise<number> {
   let count = 0;
   for (const capture of await d.getAllFromIndex("captures", "status", "error")) {
     const tries = capture.autoRetries ?? 0;
-    if (!capture.error || !TRANSIENT.test(capture.error) || tries >= AUTO_RETRIES) continue;
+    if (!isTransient(capture.error) || tries >= AUTO_RETRIES) continue;
     await d.put("captures", { ...capture, status: "pending", error: null, autoRetries: tries + 1 });
+    count++;
+  }
+  if (count) notifyChanged();
+  return count;
+}
+
+/** Re-queues the captures that failed because the request never got out (no internet), however often: the board's
+ * "İnternet yok · N sn sonra tekrar deniyorum" and the connection coming back. Returns how many. */
+export async function retryConnectionFailures(): Promise<number> {
+  const d = await db();
+  let count = 0;
+  for (const capture of await d.getAllFromIndex("captures", "status", "error")) {
+    if (!isConnectionError(capture.error)) continue;
+    await d.put("captures", { ...capture, status: "pending", error: null });
     count++;
   }
   if (count) notifyChanged();

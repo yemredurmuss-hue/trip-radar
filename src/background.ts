@@ -6,6 +6,7 @@ import {
   processPending,
   recoverStuck,
   rehomeFromDemoTrips,
+  retryConnectionFailures,
   retryTransientFailures,
   reverifyFacts,
 } from "./lib/process";
@@ -137,5 +138,11 @@ chrome.alarms.onAlarm.addListener((alarm) => {
       if ((requeued || due) && !isProcessing() && !isReading()) void run();
     });
   }
+});
+// The connection is back: what failed for want of it goes again at once (the 10-minute alarm is the fallback).
+self.addEventListener("online", () => {
+  void retryConnectionFailures().then((requeued) => {
+    if (requeued && !isProcessing() && !isReading()) void run();
+  });
 });
 void applyUpdateIfIdle();

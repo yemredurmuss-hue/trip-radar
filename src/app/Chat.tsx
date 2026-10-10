@@ -4,7 +4,7 @@ import { chatStatusOf, chatStepsOf, onChatStatus, type ChatStatus, type ChatStep
 import { L, lang } from "../lib/i18n";
 import { reloadIfLangChanged } from "./langSwitch";
 import { noChangeNote } from "../lib/claims";
-import { describeError } from "../lib/llm";
+import { describeError, errorKind, type ErrorKind } from "../lib/llm";
 import { shownReply } from "../lib/replyText";
 import { answerDuplicate, answerHeld, answerStray, RoutingChanged, undoMove } from "../lib/routing";
 import type { Capture, ChatMessage, HeldAnswer, Item, RoutingNote, Trip } from "../lib/types";
@@ -56,6 +56,16 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
     return stop;
   }, [trip.id]);
   const [error, setError] = useState<string | null>(null);
+  // What the traveller can do about it: "settings" (a key to add or fix) and "offline" get the banner atop the chat, not the line.
+  const [errKind, setErrKind] = useState<ErrorKind | null>(null);
+  const fail = (e: unknown) => {
+    setError(describeError(e));
+    setErrKind(errorKind(e));
+  };
+  const clearError = () => {
+    setError(null);
+    setErrKind(null);
+  };
   // The thinking line's clock (a slow answer says so after LONG_WAIT) and the mascot's smile once the answer is in.
   const thinking = busy || status === "web";
   const [waitedLong, setWaitedLong] = useState(false);
@@ -98,7 +108,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
   async function submit(value = text) {
     const input = value.trim();
     if (!input || busy) return;
-    setError(null);
+    clearError();
     if (await addLinks(input, { tripId: trip.id, source: "chat" })) {
       setText("");
       return;
@@ -111,7 +121,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
       await sendMessage(trip.id, input);
     } catch (e) {
       failed = true;
-      setError(describeError(e));
+      fail(e);
     } finally {
       setBusy(false);
       // "Türkçeye geç": the reply is saved; the board opens again in the new language, with its "Geri al". Not after
@@ -132,14 +142,14 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
   /** PDFs and pictures (0.34.6): kept in Belgeler and read; a page's screenshot goes the old way. */
   async function addFiles(files: File[]) {
     if (!files.length) return;
-    setError(null);
+    clearError();
     try {
       // Each file shows as a bubble with its chip while it's read (arrive/intake).
       const problems = await addTripFiles(trip.id, files, "chat");
       const unshown = problems.filter((p) => !p.logged);
       if (unshown.length) setError(unshown.map((p) => p.text).join(" "));
     } catch (e) {
-      setError(describeError(e));
+      fail(e);
     }
   }
 
@@ -175,6 +185,27 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
         </div>
         <div className="muted chat-sub">{L(`${trip.title} için`, `For ${trip.title}`)}</div>
       </div>
+      {/* (hareket dili) "Asistana bağlanamadım · Ayarlar'a git": comes down from the top for what the traveller can fix; it goes once acted on. */}
+      {error && errKind && (
+        <div className={`chat-banner ${errKind}`} role="alert">
+          <Mascot state="oops" size={30} />
+          <span>
+            <b>{errKind === "settings" ? L("Asistana bağlanamadım.", "I couldn't reach the assistant.") : L("İnternete bağlanamadım.", "I couldn't get online.")}</b> {error}
+          </span>
+          {errKind === "settings" && (
+            <button
+              type="button"
+              className="small-btn"
+              onClick={() => {
+                clearError();
+                location.hash = "#settings";
+              }}
+            >
+              {L("Ayarlar'a git", "Go to Settings")}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="messages">
         {arrivals.rows.length === 0 && (
@@ -242,7 +273,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
             <span key={thinkingLine(status, waitedLong ? LONG_WAIT : 0)} className="th-line">{thinkingLine(status, waitedLong ? LONG_WAIT : 0)}</span>
           </div>
         )}
-        {error && <div className="chat-error" role="alert">{error}</div>}
+        {error && !errKind && <div className="chat-error" role="alert">{error}</div>}
         <div ref={bottom} />
       </div>
 
