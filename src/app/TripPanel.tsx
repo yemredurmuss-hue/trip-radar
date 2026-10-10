@@ -8,7 +8,8 @@ import { buildTimeline } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
 import { cardFacts } from "../lib/cardFacts";
 import { budgetBar, sectionAllotments, decisionProgress, entryDomId, nextStepText, type DecisionProgress, type Todo } from "../lib/progress";
-import { cityKeyOf, groupKeyOf, type OptionGroup, type Plan } from "../lib/plan";
+import { cachedWeather } from "../lib/climate";
+import { cityKeyOf, groupKeyOf, sameCity, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 import { L } from "../lib/i18n";
 import { creditOf, findCityPhoto, imageProxy, keptCredits, nextCityImage, nextHeroImage, wantsCityImage } from "../lib/cityImages";
@@ -269,6 +270,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       setView("board");
     },
     ask: onAsk,
+    weather: (city) => {
+      const place = city ? places.find((p) => sameCity(p.city, city)) : null;
+      return place ? (cachedWeather(`${place.city}|${place.start}|${place.end}|${today}`) ?? null) : null;
+    },
   };
 
   // --- the hero: a photo per city, the paragraph, what's confirmed, the facts column ---

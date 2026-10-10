@@ -72,15 +72,15 @@ export function useStageMenu(item: Item): { menu: MenuEntry[]; remove: () => voi
   const menu: MenuEntry[] = menuFor(item, { docs }).map((a) => {
     switch (a) {
       case "edit":
-        return { label: L("Düzenle", "Edit"), run: () => env.edit(item) };
+        return { id: a, label: L("Düzenle", "Edit"), run: () => env.edit(item) };
       case "dismiss":
         return { label: L("Çıkar", "Rule out"), run: () => void setItemStatus(item, "dismissed") };
       case "change":
-        return { label: L("Değiştir", "Change"), run: change };
+        return { id: a, label: L("Değiştir", "Change"), run: change };
       case "addDoc":
-        return { label: L("Belge ekle", "Add a document"), run: pick };
+        return { id: a, label: L("Belge ekle", "Add a document"), run: pick };
       case "cancel":
-        return { label: L("İptal ettim", "I cancelled it"), run: cancel };
+        return { id: a, label: L("İptal ettim", "I cancelled it"), run: cancel };
       case "delete":
         return { label: L("Sil", "Delete"), run: remove, danger: true };
     }
