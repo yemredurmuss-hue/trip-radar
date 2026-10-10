@@ -3918,3 +3918,6 @@ a.ch-why { text-decoration: none; }
 .pk-undo-ring .track { stroke: rgba(255, 255, 255, .25); }
 .pk-undo-ring .run { stroke: #fff; stroke-linecap: round; stroke-dasharray: 94.25; stroke-dashoffset: 0; animation: pk-undo-run linear forwards; }
 @keyframes pk-undo-run { to { stroke-dashoffset: 94.25; } }
+/* -- The hero's plan-line tips: a name and where it stands on each line -- */
+.tipx-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tipx-line b { flex: none; font-weight: 650; color: #c9c3e6; }

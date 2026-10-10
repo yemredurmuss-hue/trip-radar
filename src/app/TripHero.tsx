@@ -5,7 +5,7 @@
 // button. Every block has an empty state; what arrives later fades in.
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { countdown, countdownText } from "../lib/countdown";
-import type { HeroTally } from "../lib/heroInfo";
+import type { HeroTally, TallyLine } from "../lib/heroInfo";
 import { formatDateRange, nightsBetween } from "../lib/items";
 import { L } from "../lib/i18n";
 import { nDays } from "../lib/i18nText";
@@ -14,6 +14,7 @@ import type { PlanList } from "../lib/planList";
 import { creditLine, type CreditPart } from "../lib/cityImages";
 import type { PhotoCredit, Trip } from "../lib/types";
 import { HeroIcon, type HeroIconName } from "./Icons";
+import { TipOn } from "./HoverTip";
 import { useAppear } from "./useAppear";
 
 export interface HeroCity {
@@ -59,6 +60,26 @@ export interface HeroAction {
   run: () => void;
 }
 
+/** The box over a cell of the plan line: its records by name and where each stands, then "Plan'da göster". Null while it holds nothing. */
+function tallyTip(kind: keyof HeroTally, word: string, count: number, lines: TallyLine[]): ReactNode | null {
+  if (!count || !lines.length) return null;
+  return (
+    <>
+      <b className="tipx-h">
+        {count} {word}
+      </b>
+      {lines.map((l, n) => (
+        <span key={`${l.name}|${n}`} className="tipx-line">
+          <span className="tipx-nm">{l.name}</span>
+          <b>{l.status}</b>
+        </span>
+      ))}
+      {count > lines.length && <span className="tipx-note">{L(`+ ${count - lines.length} tane daha`, `+ ${count - lines.length} more`)}</span>}
+      <span className="tipx-note">{L("Basınca bölüme gider.", "A click goes to the section.")}</span>
+    </>
+  );
+}
+
 export function TripHero(props: {
   trip: Trip;
   cities: HeroCity[];
@@ -68,6 +89,8 @@ export function TripHero(props: {
   today: string;
   lead: string;
   tally: HeroTally;
+  /** What each cell holds, by name and where it stands (heroInfo.tallyLines): the tip on hover. */
+  tallyLines?: Record<keyof HeroTally, TallyLine[]>;
   /** A cell of the plan line: its section on the Plan. */
   onTally: (kind: keyof HeroTally) => void;
   /** The Plan's sections' settled / total, added up (categories.planProgress): nothing saved, or all done. */
@@ -212,12 +235,17 @@ export function TripHero(props: {
           {shown.map(([k, word, icon], n) => (
             <Fragment key={k}>
               {n > 0 && <i className="hx-sep" aria-hidden />}
-              <button className={`c-${k}${tally[k] ? "" : " zero"}`} title={L("Plan'da göster", "Show on the Plan")} onClick={() => props.onTally(k)}>
-                <HeroIcon name={icon} size={22} />
-                <span>
-                  {tally[k]} {word}
-                </span>
-              </button>
+              {/* Hover or focus lists what is inside; a click still opens its section. */}
+              <TipOn tip={tallyTip(k, word, tally[k], props.tallyLines?.[k] ?? [])} align={n % 2 ? "right" : "left"}>
+                {(bind) => (
+                  <button {...bind} className={`c-${k}${tally[k] ? "" : " zero"}`} aria-label={`${tally[k]} ${word}. ${L("Plan'da göster", "Show on the Plan")}`} onClick={() => props.onTally(k)}>
+                    <HeroIcon name={icon} size={22} />
+                    <span>
+                      {tally[k]} {word}
+                    </span>
+                  </button>
+                )}
+              </TipOn>
             </Fragment>
           ))}
         </div>
