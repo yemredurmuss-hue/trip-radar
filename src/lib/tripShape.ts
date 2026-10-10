@@ -20,6 +20,8 @@ export interface JourneyStop {
   stage: JourneyStage;
   /** What's chosen or booked there ("Jardim Stay", "TAP · Lizbon → İstanbul"); null while it's still to find. */
   name: string | null;
+  /** A stay's days: the first night and the morning it ends (the city's tip says them). */
+  range?: { start: string; end: string };
 }
 
 export interface JourneyHop {
@@ -68,6 +70,7 @@ export function journeyOf(plan: Pick<Plan, "stayBlocks">, legs: Leg[], items: It
     ranges.push({ start: b.range.start, end: b.range.end });
   }
   if (!stays.length) return null;
+  stays.forEach((s, n) => (s.range = { ...ranges[n] }));
   // The ends: the flight in (on or before the first night) and out (on or after the last morning), chosen or booked first.
   const flights = flightsOf(items);
   const first = ranges[0].start;

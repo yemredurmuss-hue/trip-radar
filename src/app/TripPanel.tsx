@@ -853,7 +853,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             suggestions={suggestions}
             visa={facts.visa}
             visaDone={!!trip.visaDone}
-            shape={shape}
+            shape={shape && { ...shape, photos: trip.cityImages, places, today }}
             onStop={(s) => openSection(s.kind === "end" ? "flight" : "stay")}
             onJourneyOrder={() => setView("days")}
             onVisaDone={(done) => void setVisaDone(trip.id, done)}

@@ -25,7 +25,7 @@ import { VisaRow } from "./VisaRow";
 import { ActivityBoard } from "./ActivityBoard";
 import { IdeaTiles } from "../ideas/IdeaTiles";
 import { SectionSuggestContext } from "./sectionSuggest";
-import { TripShape } from "./TripShape";
+import { TripShape, type ShapeExtras } from "./TripShape";
 import type { JourneyHop, JourneyStop } from "../../lib/tripShape";
 import type { BoardSuggestions } from "../useSuggestions";
 import type { BudgetSlice } from "../../lib/progress";
@@ -58,7 +58,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
   visaDone?: boolean;
   onVisaDone?: (done: boolean) => void;
   /** The trip's shape under the head (v11): its stops, a tap opens a stop's place. */
-  shape?: { stops: JourneyStop[]; hops: JourneyHop[] } | null;
+  shape?: ({ stops: JourneyStop[]; hops: JourneyHop[] } & ShapeExtras) | null;
   onStop?: (stop: JourneyStop) => void;
   /** "Yolculuk sırasıyla": the trip in the order it's lived (Gün gün). */
   onJourneyOrder?: () => void;
@@ -106,7 +106,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
           <span><i className="pk-sw booked" />{L("Rezerve", "Booked")}</span>
         </span>
       </div>
-      {shape && shape.stops.length > 1 && <TripShape stops={shape.stops} hops={shape.hops} onStop={(s) => onStop?.(s)} />}
+      {shape && shape.stops.length > 1 && <TripShape {...shape} onStop={(s) => onStop?.(s)} />}
       {plan.notices.map((x) => (
         <div key={x.text} className="notice">
           ⚠ {x.text}

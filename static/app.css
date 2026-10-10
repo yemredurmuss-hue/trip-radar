@@ -3921,3 +3921,6 @@ a.ch-why { text-decoration: none; }
 /* -- The hero's plan-line tips: a name and where it stands on each line -- */
 .tipx-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tipx-line b { flex: none; font-weight: 650; color: #c9c3e6; }
+/* -- The trip shape's city tip: the photo the trip already has on top -- */
+.tipx-ph { display: block; width: 100%; height: 64px; margin-bottom: 7px; border-radius: 8px; object-fit: cover; background: #3a3158; }
+.ts-stop { cursor: pointer; }
