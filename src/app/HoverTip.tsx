@@ -29,10 +29,24 @@ function useTip({ align, below }: { align: "left" | "right"; below: boolean }) {
     const under = below ? !(roomBelow < ROOM && roomAbove > roomBelow) : roomAbove < ROOM && roomBelow > roomAbove;
     setAt({ ...edge, under, ...(under ? { top: r.bottom + 10 } : { bottom: window.innerHeight - r.top + 10 }) });
   };
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
   const close = () => {
+    clearTimeout(timer.current);
     setAt(null);
     setTapped(false);
   };
+  /** Opens after `ms` of staying (a card is a big thing to cross: no flash on the way past). */
+  const openSoon = (ms: number) => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(open, ms);
+  };
+  /** Closes a moment later, so the pointer can cross to a box it may click in. */
+  const closeSoon = (ms = 140) => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(close, ms);
+  };
+  const keep = () => clearTimeout(timer.current);
   // Open, the box goes with a scroll, a click elsewhere or Escape.
   useEffect(() => {
     if (!at) return;
@@ -51,15 +65,15 @@ function useTip({ align, below }: { align: "left" | "right"; below: boolean }) {
     };
   }, [at]);
   const touch = () => matchMedia("(hover: none)").matches;
-  const box = (tip: ReactNode, extra = "") =>
+  const box = (tip: ReactNode, extra = "", interactive = false) =>
     at &&
     createPortal(
-      <span role="tooltip" id={id} className={`tipx-box${align === "right" ? " right" : ""}${at.under ? " below" : ""}${extra}`} style={{ left: at.left, right: at.right, top: at.top, bottom: at.bottom, maxWidth: `min(${WIDTH}px, calc(100vw - 16px))` }}>
+      <span role="tooltip" id={id} onMouseEnter={interactive ? keep : undefined} onMouseLeave={interactive ? () => closeSoon() : undefined} className={`tipx-box${align === "right" ? " right" : ""}${at.under ? " below" : ""}${extra}`} style={{ left: at.left, right: at.right, top: at.top, bottom: at.bottom, maxWidth: `min(${WIDTH}px, calc(100vw - 16px))` }}>
         {tip}
       </span>,
       document.body,
     );
-  return { id, at, tapped, setTapped, trigger, open, close, touch, box };
+  return { id, at, tapped, setTapped, trigger, open, close, openSoon, closeSoon, touch, box };
 }
 
 export function HoverTip({ tip, children, align = "left", below = false, className = "" }: {
@@ -106,34 +120,39 @@ export interface TipBind {
   ref: (el: HTMLElement | null) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
-  onFocus: () => void;
+  onFocus: (e: React.FocusEvent) => void;
   onBlur: () => void;
   "aria-describedby"?: string;
 }
 
-export function TipOn({ tip, children, align = "left", below = false, boxClass = "" }: {
+export function TipOn({ tip, children, align = "left", below = false, boxClass = "", delay = 0, interactive = false }: {
   /** Null: no tip (the element is drawn as it is). */
   tip: ReactNode | null;
   children: (bind: TipBind) => ReactNode;
   align?: "left" | "right";
   below?: boolean;
   boxClass?: string;
+  /** Wait this long (ms) over the element before the box opens. */
+  delay?: number;
+  /** The box can be pointed at and clicked in (a copy button): it stays while the pointer is on it. */
+  interactive?: boolean;
 }) {
   const t = useTip({ align, below });
   const bind: TipBind = {
     ref: (el) => {
       t.trigger.current = el;
     },
-    onMouseEnter: () => tip && !t.touch() && t.open(),
-    onMouseLeave: () => t.close(),
-    onFocus: () => tip && t.open(),
+    onMouseEnter: () => tip && !t.touch() && (delay ? t.openSoon(delay) : t.open()),
+    onMouseLeave: () => (interactive ? t.closeSoon() : t.close()),
+    // (with a delay, the element is a big one: only a key's focus opens it, not the focus a click leaves)
+    onFocus: (e) => tip && (!delay || (e.target as Element).matches?.(":focus-visible")) && t.open(),
     onBlur: () => t.close(),
     "aria-describedby": t.at ? t.id : undefined,
   };
   return (
     <>
       {children(bind)}
-      {tip ? t.box(tip, boxClass ? ` ${boxClass}` : "") : null}
+      {tip ? t.box(tip, boxClass ? ` ${boxClass}` : "", interactive) : null}
     </>
   );
 }

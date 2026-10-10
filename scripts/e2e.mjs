@@ -874,6 +874,74 @@ try {
     await home.screenshot({ path: `${out}/37f-copy-card.png` });
     await app.mouse.move(2, 2);
   }
+  // Round 2, batch B: pointing at the flight card shows the icon strip on its edge (the same actions as the menu; the
+  // ••• and × stay) and, after a moment, a box with the facts the record holds. The card's face doesn't change.
+  {
+    const faceBefore = await home.locator(".pk-foot, .pk-mid").evaluateAll((els) => els.map((e) => e.innerText));
+    const sizeBefore = await home.boundingBox();
+    await home.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    await home.hover({ position: { x: 60, y: 90 } });
+    const strip = home.locator(".pk-strip");
+    await app.waitForFunction((el) => getComputedStyle(el).opacity === "1", await strip.elementHandle(), { timeout: 3000 });
+    assert.ok((await strip.locator("button").count()) >= 2, "the strip has the card's main actions");
+    assert.equal(await strip.getAttribute("aria-hidden"), "true", "the strip is a duplicate of the menu: not read twice");
+    assert.equal(await home.getByRole("button", { name: "Kart menüsü" }).count(), 1, "the ••• menu is where it was");
+    assert.equal(await home.locator(".pk-x").count(), 1, "and so is the ×");
+    const peek = app.locator(".tipx-peek");
+    await peek.waitFor({ state: "visible", timeout: 4000 });
+    assert.match(await peek.innerText(), /Bagaj[\s\S]*Bavul dahil/, "the peek names the bag the record says");
+    await app.waitForTimeout(350);
+    await app.screenshot({ path: `${out}/37g-peek-flight.png` });
+    assert.deepEqual(await home.locator(".pk-foot, .pk-mid").evaluateAll((els) => els.map((e) => e.innerText)), faceBefore, "the card's face reads the same");
+    const sizeNow = await home.boundingBox();
+    assert.deepEqual([sizeNow.width, sizeNow.height], [sizeBefore.width, sizeBefore.height], "the card is the size it was");
+    // The strip's Değiştir does what the menu's does: a booking asks first.
+    await strip.locator('button[title="Değiştir"]').click();
+    const askDlg = app.getByRole("alertdialog");
+    await askDlg.waitFor();
+    assert.match(await askDlg.innerText(), /Değiştirmeden önce/);
+    await askDlg.getByRole("button", { name: "Vazgeç" }).click();
+    await askDlg.waitFor({ state: "detached" });
+    await app.mouse.move(2, 2);
+    await peek.waitFor({ state: "detached" });
+    // A booking code on the record: the peek carries it with the copy button (pointable).
+    await app.evaluate(async () => {
+      const request = indexedDB.open("trip-radar");
+      const database = await new Promise((resolve, reject) => ((request.onsuccess = () => resolve(request.result)), (request.onerror = () => reject(request.error))));
+      const tx = database.transaction(["items"], "readwrite");
+      const all = await new Promise((resolve) => (tx.objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result)));
+      const tp = all.find((i) => i.category === "flight" && i.status === "booked" && /TAP/.test(i.name));
+      tx.objectStore("items").put({ ...tp, bookingRef: "ABC123" });
+      await new Promise((resolve) => (tx.oncomplete = resolve));
+      new BroadcastChannel("trip-radar").postMessage("changed");
+    });
+    await home.locator(".pk-stub b", { hasText: "ABC123" }).waitFor();
+    await home.hover({ position: { x: 60, y: 90 } });
+    await peek.waitFor({ state: "visible", timeout: 4000 });
+    assert.match(await peek.innerText(), /Rezervasyon kodu[\s\S]*ABC123/);
+    const codeBox = peek.locator(".cpy");
+    await codeBox.hover();
+    const pill = await codeBox.locator(".cpy-b").boundingBox();
+    await app.waitForFunction((el) => getComputedStyle(el, "::before").opacity === "1", await codeBox.locator(".cpy-b").elementHandle(), { timeout: 3000 });
+    await app.mouse.click(pill.x + 28, pill.y + pill.height / 2);
+    await app.waitForFunction(() => /^(Kopyalandı ✓|Seçildi, ⌘C)$/.test(document.querySelector(".tipx-peek .cpy-b")?.getAttribute("data-label") ?? ""), null, { timeout: 3000 });
+    await app.screenshot({ path: `${out}/37h-peek-code.png` });
+    await app.mouse.move(2, 2);
+    await peek.waitFor({ state: "detached" });
+    // (put the record back as it was: later checks read it)
+    await app.evaluate(async () => {
+      const request = indexedDB.open("trip-radar");
+      const database = await new Promise((resolve, reject) => ((request.onsuccess = () => resolve(request.result)), (request.onerror = () => reject(request.error))));
+      const tx = database.transaction(["items"], "readwrite");
+      const all = await new Promise((resolve) => (tx.objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result)));
+      const tp = all.find((i) => i.category === "flight" && i.status === "booked" && /TAP/.test(i.name));
+      const { bookingRef, ...rest } = tp;
+      tx.objectStore("items").put(rest);
+      await new Promise((resolve) => (tx.oncomplete = resolve));
+      new BroadcastChannel("trip-radar").postMessage("changed");
+    });
+    await home.locator(".pk-stub b").waitFor({ state: "detached" });
+  }
   // v11: a row on the plan opens its record (a tap anywhere but its controls; its title is edited where it stands).
   await douro.locator(".ac-m").click();
   const douroDrawer = app.getByRole("dialog");
@@ -1192,6 +1260,28 @@ try {
   await arrivalLeg.locator(".pk-body").click();
   await arrivalLeg.getByRole("button", { name: "🚕 Taksi" }).click();
   await arrivalLeg.locator(".pk-kind", { hasText: "Taksi · transfer" }).waitFor();
+  // Round 2, batch B: a transfer's card: its weekday (and what is saved for it) in a box after a moment; the card is as it was.
+  {
+    const peek = app.locator(".tipx-peek");
+    // (an open card shows its details instead: shut it for this, open it again after)
+    const transfer = arrivalLeg;
+    await transfer.locator(".pk-body").click();
+    await transfer.locator(".pk-detail").waitFor({ state: "detached" });
+    await app.mouse.move(2, 2);
+    const size = await transfer.boundingBox();
+    await transfer.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    await transfer.hover({ position: { x: 60, y: 60 } });
+    await peek.waitFor({ state: "visible", timeout: 4000 });
+    assert.match(await peek.innerText(), /(Pazartesi|Salı|Çarşamba|Perşembe|Cuma|Cumartesi|Pazar)/, "the transfer's peek names the weekday");
+    await app.waitForTimeout(350);
+    await app.screenshot({ path: `${out}/37i-peek-transfer.png` });
+    const now = await transfer.boundingBox();
+    assert.deepEqual([now.width, now.height], [size.width, size.height], "the card is the size it was");
+    await app.mouse.move(2, 2);
+    await peek.waitFor({ state: "detached" });
+    await transfer.locator(".pk-body").click();
+    await transfer.locator(".pk-detail").waitFor();
+  }
   const inbound = app.locator(".tl-travel.role-arrival .pk-card").first();
   assert.equal(await inbound.locator(".pk-kind").innerText(), "Uçuş");
   assert.match(await inbound.locator(".pk-mid").innerText(), /İstanbul\s*IST · 07:10[\s\S]*Porto\s*OPO · 10:05/);

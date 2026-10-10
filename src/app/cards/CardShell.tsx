@@ -7,6 +7,8 @@ import { cardKindColor, cardKindLabel, type CardKind } from "../../lib/cardKinds
 import { groundOf, type FootView, type Ring as RingState } from "../../lib/cardView";
 import { L } from "../../lib/i18n";
 import { nOptions } from "../../lib/i18nText";
+import { TipOn } from "../HoverTip";
+import { ActionStrip } from "./ActionStrip";
 import { Editable, useInlineEdit } from "./InlineEdit";
 import { KindIcon, UiIcon } from "./Silhouettes";
 
@@ -20,6 +22,8 @@ export function Ring({ state }: { state: RingState }) {
 }
 
 export interface MenuEntry {
+  /** Which action it is ("edit", "change", "addDoc", "cancel"...), for the icon strip over the card (ActionStrip); absent: only in the menu. */
+  id?: string;
   label: string;
   run: () => void;
   danger?: boolean;
@@ -224,6 +228,8 @@ export function CardShell(props: {
   /** v11: the planned card's "✓ Aldım", on the top line. */
   topAction?: ReactNode;
   menu: MenuEntry[];
+  /** The box that adds facts over the card on hover or a key's focus (Peek.tsx); null: none. The card's face is as it was. */
+  peek?: ReactNode | null;
   open: boolean;
   onToggle: () => void;
   body: ReactNode;
@@ -237,37 +243,43 @@ export function CardShell(props: {
     props.onToggle();
   };
   return (
-    <article
-      className={`pk-card pk-${groundOf(props.ring)} pk-r-${props.ring}${props.open ? " pk-open" : ""}${props.extraClass ? ` ${props.extraClass}` : ""}`}
-      style={style}
-      aria-label={props.ariaLabel}
-      data-item-id={props.itemId}
-      id={props.domId}
-      onClick={tap}
-    >
-      {props.art}
-      <div className="pk-top">
-        <Ring state={props.ring} />
-        <span className="pk-kind">
-          <KindIcon kind={props.kind} size={15} />
-          {props.label ?? cardKindLabel(props.kind)}
-        </span>
-        {props.date && <span className="pk-date">· {props.date}</span>}
-        {props.badge}
-        <span className="pk-end">
-          {props.topAction}
-          {props.docs}
-          {props.onDelete && <DeleteX name={props.ariaLabel} onDelete={props.onDelete} label={props.deleteLabel} />}
-          <CardMenu entries={props.menu} />
-        </span>
-      </div>
-      <div className="pk-body" role="button" tabIndex={0} aria-expanded={props.open}
-        aria-label={props.open ? L(`${props.ariaLabel}: ayrıntıyı kapat`, `${props.ariaLabel}: close details`) : L(`${props.ariaLabel}: ayrıntı`, `${props.ariaLabel}: details`)}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), props.onToggle())}>
-        {props.body}
-      </div>
-      {props.foot}
-      {props.open && props.detail}
-    </article>
+    <TipOn tip={props.open ? null : (props.peek ?? null)} delay={450} interactive boxClass="tipx-peek">
+      {(bind) => (
+        <article
+          {...bind}
+          className={`pk-card pk-${groundOf(props.ring)} pk-r-${props.ring}${props.open ? " pk-open" : ""}${props.extraClass ? ` ${props.extraClass}` : ""}`}
+          style={style}
+          aria-label={props.ariaLabel}
+          data-item-id={props.itemId}
+          id={props.domId}
+          onClick={tap}
+        >
+          {props.art}
+          <div className="pk-top">
+            <Ring state={props.ring} />
+            <span className="pk-kind">
+              <KindIcon kind={props.kind} size={15} />
+              {props.label ?? cardKindLabel(props.kind)}
+            </span>
+            {props.date && <span className="pk-date">· {props.date}</span>}
+            {props.badge}
+            <span className="pk-end">
+              {props.topAction}
+              {props.docs}
+              {props.onDelete && <DeleteX name={props.ariaLabel} onDelete={props.onDelete} label={props.deleteLabel} />}
+              <CardMenu entries={props.menu} />
+            </span>
+          </div>
+          <div className="pk-body" role="button" tabIndex={0} aria-expanded={props.open}
+            aria-label={props.open ? L(`${props.ariaLabel}: ayrıntıyı kapat`, `${props.ariaLabel}: close details`) : L(`${props.ariaLabel}: ayrıntı`, `${props.ariaLabel}: details`)}
+            onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), props.onToggle())}>
+            {props.body}
+          </div>
+          {props.foot}
+          {props.open && props.detail}
+          <ActionStrip entries={props.menu} />
+        </article>
+      )}
+    </TipOn>
   );
 }

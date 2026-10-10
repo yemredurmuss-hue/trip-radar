@@ -3934,3 +3934,14 @@ a.ch-why { text-decoration: none; }
   .ek-link:hover .ek-nm, .ek-link:focus-visible .ek-nm { max-width: 190px; margin-left: 5px; padding-right: 3px; opacity: 1; }
 }
 @media (hover: hover) and (prefers-reduced-motion: reduce) { .ek-link .ek-nm { transition: none; } }
+/* -- Eylem ikonları: on a pointer screen the card's most used menu lines show on its top edge while it is pointed at -- */
+.pk-strip { position: absolute; top: -15px; right: 14px; z-index: 5; display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: #fff; border: 1px solid #e3dfef; box-shadow: 0 6px 16px -8px rgba(28, 26, 51, .4); opacity: 0; transform: translateY(3px); pointer-events: none; transition: opacity .16s ease, transform .16s ease; }
+.pk-strip button { width: 26px; height: 24px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #3b3560; display: grid; place-items: center; cursor: pointer; }
+.pk-strip button:hover { background: #f1edff; color: #4a36c9; }
+.pk-card:hover > .pk-strip, .pk-card:focus-within > .pk-strip { opacity: 1; transform: none; pointer-events: auto; }
+@media (hover: none) { .pk-strip { display: none; } }
+@media (prefers-reduced-motion: reduce) { .pk-strip { transition: none; } }
+/* -- Bakış kutusu: over a flight's or a transfer's card, wider, and pointable (the copy button is in it) -- */
+.tipx-box.tipx-peek { pointer-events: auto; width: 280px; max-width: min(280px, calc(100vw - 16px)); }
+.tipx-peek .tipx-line b { color: #fff; }
+.tipx-peek .tipx-line .cpy-t { color: #fff; }
