@@ -28,7 +28,9 @@ const executablePath =
   process.env.CHROMIUM_PATH ?? (process.platform === "darwin" ? macChromium() : null) ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 // The checks below read the Turkish texts: pin the browser to Turkish (an en-US Chromium would start the
 // board in English, see browserLang in src/lib/i18n.ts).
-const TURKISH = { locale: "tr-TR" };
+// Motion is off here (the board's small movements, src/app/motion.ts, would otherwise be caught half way by the checks that read a
+// number or a class right after a change); Part 5 at the end turns it on and checks each movement by itself.
+const TURKISH = { locale: "tr-TR", reducedMotion: "reduce" };
 const LANG_ARG = "--lang=tr-TR";
 // No window on the owner's screen: Chromium's new headless mode (extensions load in it). E2E_HEADED=1 shows the browser.
 const HEADLESS_ARGS = process.env.E2E_HEADED ? [] : ["--headless=new"];
@@ -4610,6 +4612,56 @@ try {
   await notice.scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/15-share-notice.png` });
 
+  // Layered interface, batch C: who did what. On a face, the person's latest recorded action (here Sabine's change of the
+  // dates); the same line in the box a tap opens. Then the Pano tab's dot once she votes, its tip, and opening it clears the dot.
+  {
+    const tip = app.locator(".tipx-box");
+    await app.locator(".view-tabs").evaluate((el) => el.scrollIntoView({ block: "start" }));
+    const faces = app.locator(".hx-avatars i");
+    let said = "";
+    for (let n = 0; n < (await faces.count()); n++) {
+      await app.mouse.move(2, 2);
+      await faces.nth(n).hover();
+      await app.waitForTimeout(250);
+      if (await tip.count()) said += await tip.innerText();
+    }
+    await app.mouse.move(2, 2);
+    assert.match(said, /Sabine[\s\S]*tarihleri değiştirdi[\s\S]*önce/, "a face says what its person did last and when");
+    await app.waitForTimeout(250);
+    const people = app.locator(".hx-people");
+    await people.click();
+    await app.locator(".hx-who-pop .who-name small.wh-last", { hasText: "tarihleri değiştirdi" }).waitFor();
+    await app.keyboard.press("Escape");
+    // The Pano's dot: nothing is new yet; Sabine votes now; the dot comes on the tab, the tip lists it, opening the Pano clears it.
+    assert.equal(await app.locator(".view-tabs .tab-dot").count(), 0, "nothing new on the first look");
+    await app.evaluate(async () => {
+      const request = indexedDB.open("trip-radar");
+      const database = await new Promise((resolve, reject) => ((request.onsuccess = () => resolve(request.result)), (request.onerror = () => reject(request.error))));
+      const items = await new Promise((resolve) => (database.transaction("items").objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result)));
+      const trips = await new Promise((resolve) => (database.transaction("trips").objectStore("trips").getAll().onsuccess = (e) => resolve(e.target.result)));
+      const trip = trips.find((t) => t.title === "Portekiz (örnek)");
+      // (the sample's records have no shared key: give one stay its place's key, as a saved page has)
+      const stay = items.find((i) => i.tripId === trip.id && i.category === "stay" && i.status !== "dismissed");
+      const tx = database.transaction("items", "readwrite");
+      tx.objectStore("items").put({ ...stay, key: "booking:pt/e2e-stay" });
+      await new Promise((resolve) => (tx.oncomplete = resolve));
+      await chrome.storage.local.set({ [`shareVotes:${trip.shareId}`]: [{ itemKey: "booking:pt/e2e-stay", author: "Sabine", vote: 1, note: null, updatedAt: new Date().toISOString() }] });
+      new BroadcastChannel("trip-radar").postMessage("changed");
+    });
+    await app.locator(".view-tabs .tab-dot").waitFor({ timeout: 5000 });
+    const panoTab = app.getByRole("tab", { name: "Pano" });
+    await panoTab.hover();
+    await tip.waitFor({ state: "visible" });
+    assert.match(await tip.innerText(), /Son ziyaretten beri 1 şey[\s\S]*Sabine · Oy verdi: 👍/);
+    await app.waitForTimeout(350);
+    await app.screenshot({ path: `${out}/37j-pano-dot.png` });
+    await app.mouse.move(2, 2);
+    await panoTab.click();
+    await app.locator(".view-tabs .tab-dot").waitFor({ state: "detached" });
+    await app.getByRole("tab", { name: "Plan", exact: true }).click();
+    assert.equal(await app.locator(".view-tabs .tab-dot").count(), 0, "seen: no dot after the Pano was open");
+  }
+
   // A card deleted → Geçmiş shows it → Çöp kutusu → "Geri getir" → it's on the board again.
   const douro = app.locator(".ac-row", { hasText: "Douro tekne turu" });
   await douro.evaluate((el) => el.scrollIntoView({ block: "center" }));
@@ -4844,4 +4896,121 @@ try {
   console.log("✓ flight on its day: late in red with its new time and gate, in the day's line and as boxes on the Plan's card, the source named");
 } finally {
   await flightDay.close();
+}
+
+// ---------------------------------------------------------------------------------------------
+// Part 5: the motion dictionary (src/app/motion.ts, drawing ux-katmanli-arayuz "Altı hareketlik sözlük"), with motion on.
+// Each movement has its own meaning and none moves the layout:
+//  - yükselme: a card lifts 2 px on hover; nabız: an empty card's ring pulses;
+//  - mühür + parlama: a card that turns booked pops its tick and glows; düşüş: a card the chat added drops in;
+//  - sayaç: the budget's figure counts to its new value.
+// ---------------------------------------------------------------------------------------------
+const motion = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-motion-")), {
+  executablePath,
+  headless: false,
+  timezoneId: "Europe/Istanbul",
+  viewport: { width: 1440, height: 900 },
+  locale: "tr-TR",
+  reducedMotion: "no-preference",
+  args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+});
+await motion.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
+await motion.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
+await motion.route(/functions\/v1\/city-image/, (route) => route.fulfill({ json: { url: null, reason: "no-photo" } }));
+await frozen(motion);
+try {
+  const worker = motion.serviceWorkers()[0] ?? (await motion.waitForEvent("serviceworker"));
+  const id = new URL(worker.url()).host;
+  const app = await motion.newPage();
+  await app.goto(`chrome-extension://${id}/app.html`);
+  await app.getByText("Örnek geziyi yükle →").click();
+  await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
+  await app.locator(".cat-plan").waitFor();
+  // (the page's policy allows no eval: the writes are named here and done inside one function)
+  const idb = (mode, arg) =>
+    app.evaluate(
+      async ([m, a]) => {
+        const request = indexedDB.open("trip-radar");
+        const database = await new Promise((resolve, reject) => ((request.onsuccess = () => resolve(request.result)), (request.onerror = () => reject(request.error))));
+        const tx = database.transaction(["trips", "items"], "readwrite");
+        const trips = await new Promise((resolve) => (tx.objectStore("trips").getAll().onsuccess = (e) => resolve(e.target.result)));
+        const all = await new Promise((resolve) => (tx.objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result)));
+        const trip = trips.find((t) => t.title === "Portekiz (örnek)");
+        const items = all.filter((i) => i.tripId === trip.id);
+        const now = Date.now();
+        if (m === "book") {
+          const it = items.find((i) => i.id === a);
+          tx.objectStore("items").put({ ...it, status: "booked", statusAt: now, updatedAt: now });
+        } else if (m === "dearer") {
+          const it = items.find((i) => i.name === a);
+          tx.objectStore("items").put({ ...it, price: { ...it.price, amount: (it.price.amount ?? 0) + 600 }, updatedAt: now });
+        } else if (m === "chatEsim") {
+          tx.objectStore("items").put({
+            id: "e2e-motion-esim", tripId: trip.id, captureIds: [], key: null, category: "esim", needKey: "esim", name: "Hareket eSIM", provider: null, summary: "", optionDetail: null, url: null,
+            imageUrl: null, city: null, country: null, countryCode: null, location: { address: null, area: null, approximate: false }, dates: { start: null, end: null, source: "unverified" },
+            guests: { adults: null, children: null, rooms: null }, price: { amount: 12, currency: "EUR", scope: "total", taxesIncluded: "unknown", source: "none", observedAt: now }, priceHistory: [],
+            cancellation: { summary: null, freeUntil: null, source: "none" }, rating: { value: null, scale: null, count: null, source: "none" }, flight: null, geo: null, highlights: [], concerns: [],
+            reviewSummary: null, missing: [], status: "chosen", statusNote: null, createdAt: now, updatedAt: now, origin: "chat", plannedKind: "esim", booking: "needed",
+          });
+        }
+        await new Promise((resolve) => (tx.oncomplete = resolve));
+        new BroadcastChannel("trip-radar").postMessage("changed");
+      },
+      [mode, arg],
+    );
+  const animating = (loc, name) => loc.evaluate((el, n) => el.getAnimations().some((a) => a.animationName === n), name);
+
+  // yükselme: a plan card lifts 2 px while pointed at; the page's layout (the card's place in the flow) stays.
+  const flight = app.locator('.pk-card[aria-label*="TAP"]').first();
+  await flight.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await app.mouse.move(2, 2);
+  const at0 = await flight.evaluate((el) => getComputedStyle(el).transform);
+  await flight.hover({ position: { x: 60, y: 60 } });
+  await app.waitForTimeout(400);
+  assert.equal(await flight.evaluate((el) => getComputedStyle(el).transform), "matrix(1, 0, 0, 1, 0, -2)", "yükselme: the card lifts 2 px on hover");
+  assert.equal(at0, "none");
+  await app.mouse.move(2, 2);
+
+  // nabız: an empty card's ring pulses, slowly, forever (box-shadow only: nothing moves).
+  const ring = app.locator(".ek-card .pk-ring.open").first();
+  await ring.waitFor();
+  assert.equal(await ring.evaluate((el) => getComputedStyle(el).animationName), "pk-pulse", "nabız: an empty card's ring pulses");
+
+  // düşüş: a card the chat just made drops in (an old one, from before, never does).
+  await idb("chatEsim");
+  const esim = app.locator('.pk-card[aria-label="Hareket eSIM"]');
+  await esim.waitFor({ timeout: 5000 });
+  assert.ok(await esim.evaluate((el) => el.classList.contains("pk-drop")), "düşüş: the card the chat added drops in");
+  assert.equal(await app.locator('.pk-card[aria-label="Lisboa Loft"]').evaluate((el) => el.classList.contains("pk-drop")), false, "an old card doesn't");
+
+  // mühür + parlama: the chosen eSIM becomes booked: its tick pops and the card glows, each for a moment, then both are gone.
+  await idb("book", "e2e-motion-esim");
+  await app.waitForFunction(() => document.querySelector('.pk-card[aria-label="Hareket eSIM"]')?.classList.contains("pk-seal"), null, { timeout: 3000 });
+  assert.ok(await app.locator('.pk-card[aria-label="Hareket eSIM"]').evaluate((el) => el.classList.contains("pk-glow")), "parlama: the changed card glows");
+  assert.ok(await animating(app.locator('.pk-card[aria-label="Hareket eSIM"] .pk-ring.done'), "pk-pop"), "mühür: its tick pops");
+  await app.waitForTimeout(350);
+  await app.screenshot({ path: `${out}/38a-motion-seal.png` });
+  await app.waitForFunction(() => !document.querySelector('.pk-card[aria-label="Hareket eSIM"]')?.classList.contains("pk-seal"), null, { timeout: 3000 });
+  assert.equal(await app.locator('.pk-card[aria-label="Hareket eSIM"]').evaluate((el) => el.classList.contains("pk-glow")), false, "…and it is over within a moment");
+
+  // sayaç: the budget's figure counts to its new value (it passes through numbers between), then stands.
+  await app.locator(".panel").evaluate((el) => (el.scrollTop = 0));
+  const total = app.locator(".hx-budget-line.planned b, .hx-budget-line.booked b").first();
+  const before = await app.locator(".hx-budget-line.booked b").innerText();
+  const seen = new Set();
+  const sampler = (async () => {
+    for (let n = 0; n < 40; n++) {
+      seen.add(await app.locator(".hx-budget-line.booked b").innerText().catch(() => ""));
+      await app.waitForTimeout(40);
+    }
+  })();
+  await idb("dearer", "Lisboa Loft");
+  await sampler;
+  const after = await app.locator(".hx-budget-line.booked b").innerText();
+  assert.notEqual(after, before, "the booked sum changed");
+  assert.ok(seen.size >= 3, `sayaç: the figure passed through numbers on its way (${[...seen].join(" → ")})`);
+  void total;
+  console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, each on its own and over within a moment");
+} finally {
+  await motion.close();
 }

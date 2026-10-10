@@ -17,6 +17,7 @@ import type { DocMeta, Item, LegMode, Trip } from "../../lib/types";
 import type { Undoable } from "../../lib/undoables";
 import { chooseItem, setInstalled, setItemStatus, setOwner } from "../actions";
 import { CopyText } from "../CopyButton";
+import { dropsIn, useJustBecame, useJustChanged } from "../motion";
 import type { CityWeather } from "../../lib/climate";
 import { flightPeek } from "../../lib/cardPeek";
 import { FlightPeekBox } from "./Peek";
@@ -166,6 +167,10 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   // v11: chosen, not bought yet: its other options are a link by the price ("Pano'da 2 alternatif").
   const altCount = item.status === "chosen" ? group.filter((g) => g.id !== item.id && g.status !== "dismissed").length : 0;
   const bookedCard = item.status === "booked";
+  // The motion dictionary: a card that turns booked pops its tick (mühür), a change glows (parlama), one the chat just added drops in (düşüş).
+  const sealed = useJustBecame(bookedCard);
+  const glow = useJustChanged(item.updatedAt);
+  const [drop] = useState(() => dropsIn(item.id, item.createdAt, item.origin === "chat"));
   const actions = (
     <>
       {onCompare && <button type="button" onClick={onCompare}>{L("Karşılaştır →", "Compare →")}</button>}
@@ -230,7 +235,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       ariaLabel={item.name}
       itemId={item.id}
       badge={<WhoseBadge item={item} trip={env.trip} />}
-      extraClass={[allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : ""].filter(Boolean).join(" ") || undefined}
+      extraClass={[allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined}
       art={
         <>
           {/* v11: a booking's stamp, the green ✓ turned a little, faint, in its corner (a ticket's ends fill that corner: none there). */}
