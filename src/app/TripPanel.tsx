@@ -112,7 +112,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const [panoFocus, setPanoFocus] = useState<string | null>(null);
   // "Son ziyaretten beri": what the other traveller did since the Pano was last open (a dot on its tab), on a shared trip.
   const panoNews = usePanoDot(trip.id, items, view === "board");
-  // "Sihirli açılış": the first time this trip's Plan is open in the browser session, it builds itself in reading order and the mascot winks
+  // "Sihirli açılış": the first time this trip's Plan is ever open in this browser (once per trip), it builds itself in reading order and the mascot winks
   // (opening.ts); never on a tab switch or a re-render, and a touch of the panel ends it at once.
   const openingTried = useRef(false);
   useLayoutEffect(() => {

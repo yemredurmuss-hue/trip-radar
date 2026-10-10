@@ -1957,8 +1957,13 @@ try {
   const openTitles = app.locator(".cat-sec:not(.closed) .cat-title");
   while (await openTitles.count()) await openTitles.first().click();
   assert.equal(await app.locator(".cat-sec.closed").count(), 6);
-  // One arrow, pointing right when closed and down when open, turned on the arrow itself (never mid-turn).
-  const turn = (scope) => scope.locator(".cat-chev svg").evaluate((el) => getComputedStyle(el).transform);
+  // One arrow, pointing right when closed and down when open, turned on the arrow itself (it turns in 260 ms since the
+  // motion language, 2026-10-10: read once it has settled).
+  const turn = async (scope) => {
+    const svg = scope.locator(".cat-chev svg");
+    await svg.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished.catch(() => undefined))));
+    return svg.evaluate((el) => getComputedStyle(el).transform);
+  };
   assert.match(await turn(sec("todo")), /^matrix\([^,]+, -1, 1,/);
   assert.equal(await sec("todo").locator(".cat-chev").evaluate((el) => getComputedStyle(el).transform), "none");
   // Closed, a section is its header line alone, the same in every section: icon, name … bar, settled of all, the arrow;
@@ -5085,7 +5090,7 @@ try {
   assert.equal(await seat.evaluate((el) => el.classList.contains("away")), false);
 
   // A touch ends it at once: opened afresh, one key press and everything is in place.
-  await app.evaluate(() => Object.keys(sessionStorage).filter((k) => k.startsWith("trip-radar:opened:")).forEach((k) => sessionStorage.removeItem(k)));
+  await app.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("trip-radar:opened:")).forEach((k) => localStorage.removeItem(k)));
   await app.getByRole("button", { name: "Seyahatlerim" }).first().click();
   await app.getByText("Portekiz (örnek)").first().click();
   await app.waitForFunction(() => document.querySelector("[data-mascot-seat]")?.classList.contains("away"), null, { timeout: 4000 });

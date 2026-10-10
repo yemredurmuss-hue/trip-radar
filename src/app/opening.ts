@@ -1,4 +1,5 @@
-// "Sihirli açılış" (docs/mockups/sihirli-acilis): when a trip's Plan opens for the first time in a browser session, the assistant's
+// "Sihirli açılış" (docs/mockups/sihirli-acilis): the first time a trip's Plan is ever opened (once per trip, kept in localStorage: Emre,
+// 2026-10-10, "bir kere ilk açılışta olsa yeterli"), the assistant's
 // mascot leaves its seat in the chat for the border of the board, winks (slowly enough to be seen) and sends a burst of sparks; what is in
 // view builds itself in reading order (pıt pıt) while it watches; it flies home; then the panel glides down on its own and everything below
 // the fold pops in as it comes into view, and the panel glides back to the top (Emre, 2026-10-10). Nothing moves from its place: only
@@ -6,6 +7,7 @@
 // is not there is skipped, and any touch, key or wheel ends it at once (the panel stays where it is then). No motion at all for
 // "azaltılmış hareket".
 import { reducedMotion } from "./motion";
+import { photoCarried } from "./viewTransition";
 
 export type Kind = "fade" | "photo" | "wipe" | "pop" | "rise" | "bar" | "glint" | "stop" | "line" | "card";
 
@@ -48,6 +50,14 @@ export const openedKey = (tripId: string) => `trip-radar:opened:${tripId}`;
 export const OFF_KEY = "trip-radar:opening-off";
 
 type Store = Pick<Storage, "getItem" | "setItem">;
+/** Where "already played" is kept: this browser's localStorage, so it plays once per trip, not once per session. */
+const remembered = (): Store | null => {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+};
 const session = (): Store | null => {
   try {
     return window.sessionStorage;
@@ -57,12 +67,13 @@ const session = (): Store | null => {
 };
 
 /**
- * True once per trip per browser session (and marks it): the first time its Plan is open. Never again on a tab switch, a re-render or a
- * reload in the same session; never while the off switch is set. Without storage it plays once per page load (nothing can be told apart).
+ * True the first time a trip's Plan is open in this browser (and marks it): never again, not on a tab switch, a re-render, a reload or
+ * a later session. Never while the off switch is set (in the session, as the tests set it, or in the store). Without storage it plays once
+ * per page load (nothing can be told apart).
  */
-export function claimOpening(tripId: string, store: Store | null = session()): boolean {
+export function claimOpening(tripId: string, store: Store | null = remembered(), offStore: Store | null = session()): boolean {
   try {
-    if (store?.getItem(OFF_KEY) === "1") return false;
+    if (offStore?.getItem(OFF_KEY) === "1" || store?.getItem(OFF_KEY) === "1") return false;
     if (store?.getItem(openedKey(tripId))) return false;
     store?.setItem(openedKey(tripId), "1");
   } catch {
@@ -146,7 +157,8 @@ export interface Run {
  */
 export function playOpening(doc: Document = document): Run | null {
   if (reducedMotion()) return null;
-  const pieces = findPieces(doc);
+  // (a trip opened from its card arrives with its photo already carried into the hero: it is not built again)
+  const pieces = findPieces(doc).filter((p) => !(p.kind === "photo" && photoCarried()));
   if (!pieces.length) return null;
   const anims: Animation[] = [];
   const timers: ReturnType<typeof setTimeout>[] = [];

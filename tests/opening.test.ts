@@ -24,7 +24,7 @@ describe("pıt pıt: the order and the beat", () => {
 });
 
 describe("when it plays", () => {
-  it("once per trip per session, never again, and per trip", () => {
+  it("once per trip, ever (kept in the browser), never again, and per trip", () => {
     const store = memory();
     expect(claimOpening("t1", store)).toBe(true);
     expect(store.getItem(openedKey("t1"))).toBe("1");
