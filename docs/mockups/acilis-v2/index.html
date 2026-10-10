@@ -1,0 +1,545 @@
+<title>Trip Radar Açılış v2</title>
+<style>
+/* Layout: one reading column; the product's Plan screen in a 1280x860 frame that plays today's opening and three lighter ones. Page chrome follows the theme; the product inside stays light, as shipped. */
+:root {
+  --bg: #f2f0f8; --card: #ffffff; --ink: #1c1a33; --muted: #625e86; --line: #e3dfef; --accent: #5b45e0; --soft: #ece8ff; --deep: #221b3a;
+  --shadow: 0 1px 2px rgba(28,26,51,.06), 0 16px 36px -24px rgba(28,26,51,.35);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #12111a; --card: #1b1a26; --ink: #edebfa; --muted: #a9a5c8; --line: #2d2b3d; --accent: #a596ff; --soft: #29254a; --deep: #0e0c18; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 16px 36px -24px rgba(0,0,0,.8); color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #12111a; --card: #1b1a26; --ink: #edebfa; --muted: #a9a5c8; --line: #2d2b3d; --accent: #a596ff; --soft: #29254a; --deep: #0e0c18; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 16px 36px -24px rgba(0,0,0,.8); color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--font); padding-inline: 20px; padding-block: 36px 90px; }
+.wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.06; letter-spacing: -.03em; font-weight: 800; }
+h2 { font-size: clamp(22px, 3vw, 28px); letter-spacing: -.02em; font-weight: 750; }
+h3 { font-size: 18px; font-weight: 720; }
+p { margin: 0; max-width: 70ch; }
+.muted { color: var(--muted); }
+.lede { font-size: 18px; color: var(--muted); }
+.kicker { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+header, section.blk { display: flex; flex-direction: column; gap: 14px; }
+
+/* controls */
+.ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ctl button { font: 650 14.5px var(--font); border: 1.5px solid var(--line); background: var(--card); color: var(--ink); border-radius: 99px; padding: 8px 16px; cursor: pointer; }
+.ctl button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ctl button.play { background: var(--deep); border-color: var(--deep); color: #fff; }
+.ctl button:focus-visible { outline: 3px solid var(--soft); outline-offset: 2px; }
+.ctl .sep { width: 1px; height: 26px; background: var(--line); margin: 0 4px; }
+.ctl label { font-size: 14px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+
+/* the product frame */
+.fit { position: relative; width: 100%; aspect-ratio: 1280 / 860; border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); background: #f8f7f4; container-type: inline-size; }
+.stage { position: absolute; left: 0; top: 0; width: 1280px; height: 860px; transform-origin: 0 0; transform: scale(calc(100cqw / 1280px)); display: grid; grid-template-columns: 400px 1fr; font-family: var(--font); color: #1c1a33; overflow: hidden; }
+.i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+.chat { background: #fff; border-right: 1px solid #ece9e3; padding: 22px 24px; display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 2; }
+.chat .back { font-size: 15px; display: flex; align-items: center; gap: 6px; }
+.chat h4 { margin: 10px 0 0; font: 800 26px var(--display); letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; }
+.chat .sub { font-size: 13.5px; color: #8e8a85; margin-top: -8px; }
+.chat .msg { font-size: 15.5px; line-height: 1.5; }
+.chat .me { align-self: flex-end; background: #efedf2; border-radius: 16px; padding: 8px 14px; font-size: 15px; }
+.chat .typed { min-height: 24px; color: #3b3560; }
+.chat .cmp { margin-top: auto; border: 1px solid #e3e0da; border-radius: 99px; padding: 10px 14px; color: #9a968f; font-size: 14.5px; }
+.avatar-slot { width: 34px; height: 34px; border-radius: 50%; display: inline-grid; place-items: center; transition: box-shadow .2s; }
+.avatar-slot svg { width: 34px; height: 34px; overflow: visible; filter: drop-shadow(0 3px 6px rgba(91,69,224,.35)); }
+.avatar-slot.away svg { opacity: 0; }
+.avatar-slot.away { box-shadow: inset 0 0 0 2px #ddd4ff; }
+
+.panel { position: relative; padding: 14px 36px 30px; overflow: hidden; }
+.tabs { display: flex; justify-content: center; gap: 0; margin-bottom: 14px; font-size: 16px; color: #8e8a85; }
+.tabs span { padding: 6px 20px; position: relative; }
+.tabs span + span::before { content: ""; position: absolute; left: 0; top: 10px; height: 18px; width: 1px; background: #e3e0da; }
+.tabs .on { color: #1c1a33; font-weight: 650; box-shadow: inset 0 -3px 0 #5b45e0; }
+
+.hx { display: grid; grid-template-columns: 1fr 300px; gap: 22px; }
+.photo { height: 170px; border-radius: 18px; background: url(img/foto-porto.jpg) center 60% / cover; position: relative; overflow: hidden; }
+.photo .left { position: absolute; right: 12px; top: 12px; background: rgba(236,232,255,.95); color: #5b45e0; font: 650 13px var(--font); border-radius: 99px; padding: 5px 12px; }
+.ttl { font: 800 36px/1.1 var(--display); letter-spacing: -.03em; margin: 12px 0 4px; }
+.when { display: flex; align-items: center; gap: 8px; font-size: 15px; color: #3b3560; }
+.tally { display: grid; grid-template-columns: repeat(4, 1fr); margin: 12px 0; }
+.tally span { display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 15px; padding: 6px 0; }
+.tally span + span { border-left: 1px solid #e9e6e1; }
+.prog { background: #eaf6f0; border-radius: 18px; padding: 14px 16px; display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; align-items: center; }
+.prog b { font: 750 16px var(--display); }
+.prog .bar { height: 9px; border-radius: 5px; background: #d4ece0; overflow: hidden; grid-column: 1; }
+.prog .bar i { display: block; height: 100%; width: 67%; background: #1d8a5a; border-radius: 5px; transform-origin: left; }
+.prog small { grid-column: 1; color: #4f7f69; font-size: 13px; }
+.prog .go { grid-column: 2; grid-row: 1 / 4; background: #221b3a; color: #fff; border-radius: 14px; padding: 12px 18px; font: 650 15px var(--font); }
+.side { background: #fff; border-radius: 22px; padding: 16px 18px; box-shadow: 0 1px 2px rgba(28,26,51,.05), 0 12px 30px -20px rgba(28,26,51,.3); display: flex; flex-direction: column; gap: 10px; font-size: 14.5px; }
+.side .faces { display: flex; align-items: center; gap: 8px; }
+.side .faces i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 700 12px var(--font); font-style: normal; border: 2px solid #fff; }
+.side .faces i + i { margin-left: -12px; }
+.side .bud { display: flex; justify-content: space-between; font-weight: 750; font-size: 16px; border-top: 1px solid #f0eee9; padding-top: 8px; }
+.side .bl { display: flex; justify-content: space-between; color: #625e86; font-size: 13.5px; }
+.side .bl em { font-style: normal; display: inline-flex; align-items: center; gap: 6px; }
+.side .bl em::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.side .place { display: flex; align-items: center; gap: 8px; border-top: 1px solid #f0eee9; padding-top: 8px; }
+.side .wx { display: flex; gap: 14px; font-size: 14px; }
+.minis { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; border-top: 1px solid #f0eee9; padding-top: 8px; font-size: 13.5px; color: #625e86; }
+.minis span { display: flex; align-items: center; gap: 6px; position: relative; overflow: hidden; border-radius: 6px; }
+
+.planhead { display: flex; align-items: center; gap: 12px; margin: 18px 0 6px; }
+.planhead b { font: 750 19px var(--display); }
+.planhead .seg { font-size: 13px; background: #fff; border-radius: 8px; padding: 3px 10px; color: #3b3560; }
+.legend { margin-left: auto; display: flex; gap: 12px; font-size: 12.5px; color: #8e8a85; }
+.legend i { display: inline-block; width: 18px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+.route { display: flex; align-items: center; padding: 6px 4px 12px; }
+.stop { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 12.5px; color: #8e8a85; width: 80px; }
+.stop b { color: #1c1a33; font-size: 13px; }
+.stop .c { width: 36px; height: 36px; border-radius: 50%; border: 2px dashed #c9c4d9; display: grid; place-items: center; color: #8a86a6; background: #fff; }
+.stop.ok .c { border: 2px solid #1d8a5a; color: #1d8a5a; }
+.leg { flex: 1; height: 0; border-top: 2px dotted #c9bff3; margin: 0 4px 30px; transform-origin: left; }
+
+.sec { background: #fff; border-radius: 20px; padding: 12px 14px 14px; margin-top: 12px; box-shadow: 0 1px 2px rgba(28,26,51,.04); }
+.sh { display: flex; align-items: center; gap: 12px; padding: 2px 4px 10px; }
+.sh .ic { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; }
+.sh b { font: 750 18px var(--display); }
+.sh small { display: block; color: #8e8a85; font-size: 12.5px; }
+.sh .r { margin-left: auto; text-align: right; display: flex; align-items: center; gap: 14px; }
+.sh .mb { width: 100px; height: 6px; border-radius: 3px; background: #efece6; overflow: hidden; display: flex; }
+.sh .mb i { height: 100%; }
+.sh .amt { font: 750 15px var(--font); }
+.sh .amt small { font-weight: 500; }
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cd { position: relative; border-radius: 16px; padding: 10px 14px 12px; border: 1.5px dashed #d6d2e2; background: #fff; font-size: 13px; color: #625e86; }
+.cd.sel { border: 1.5px solid #ecd28f; background: #fffaf0; }
+.cd.res { border: 1.5px solid #a9dcc0; background: #f1faf4; }
+.cd .t { display: flex; align-items: center; gap: 7px; }
+.cd .t b { color: #1c1a33; }
+.cd .t .st { margin-left: auto; font-weight: 650; }
+.cd.res .t .st { color: #1d8a5a; }
+.cd .rg { width: 16px; height: 16px; border-radius: 50%; border: 2px dashed #c9c4d9; flex: none; }
+.cd.sel .rg { border: 2px solid #e2a92f; }
+.cd.res .rg { border: 0; background: #1d8a5a; display: grid; place-items: center; color: #fff; }
+.cd.res .rg .i { width: 10px; height: 10px; stroke-width: 3.4; }
+.cd .big { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; }
+.cd .big b { font: 800 19px var(--display); color: #1c1a33; letter-spacing: -.01em; }
+.cd .meta { margin-top: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pill { font: 650 12px var(--font); border-radius: 99px; padding: 2px 9px; background: #f1edff; color: #4a36c9; }
+.pill.ok { background: #e6f5ec; color: #1d8a5a; } .pill.bad { background: #ffe6ef; color: #c0256b; } .pill.warn { background: #fff3dc; color: #9a6410; }
+.cd .stamp { position: absolute; right: 14px; bottom: 12px; width: 30px; height: 30px; border-radius: 50%; border: 2px solid #9fd4b4; display: grid; place-items: center; color: #1d8a5a; }
+
+/* motion pieces */
+.stage.pre .m { opacity: 0; }
+.stage.ghosted .m { opacity: .2; filter: grayscale(1) blur(2.5px); }
+.shine { position: relative; overflow: hidden; }
+.shine::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,.85) 48%, rgba(181,166,255,.45) 52%, transparent 70%); transform: translateX(-120%); animation: glint .9s ease-out forwards; pointer-events: none; border-radius: inherit; }
+@keyframes glint { to { transform: translateX(120%); } }
+.spark { position: absolute; width: 7px; height: 7px; border-radius: 50%; pointer-events: none; z-index: 30; background: radial-gradient(circle, #fff 0 30%, #a596ff 31% 100%); box-shadow: 0 0 8px 2px rgba(165,150,255,.7); }
+.star { position: absolute; pointer-events: none; z-index: 30; color: #8b74ff; font-size: 14px; line-height: 1; }
+.scan { position: absolute; left: 400px; right: 0; top: 0; height: 120px; pointer-events: none; z-index: 20; opacity: 0; background: linear-gradient(180deg, rgba(91,69,224,0) 0%, rgba(91,69,224,.08) 70%, rgba(91,69,224,.35) 97%, rgba(255,255,255,.9) 100%); border-bottom: 2px solid rgba(139,116,255,.9); box-shadow: 0 6px 22px rgba(139,116,255,.45); }
+.orb { position: absolute; left: 0; top: 0; width: 46px; height: 46px; z-index: 40; pointer-events: none; opacity: 0; filter: drop-shadow(0 6px 14px rgba(91,69,224,.45)); }
+.orb-bob, .orb-in { width: 46px; height: 46px; transform-origin: 23px 23px; }
+.orb svg { width: 46px; height: 46px; overflow: visible; }
+.orb .blink { animation: blink 3.2s infinite; transform-origin: center; transform-box: fill-box; }
+@keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+.skip-hint { position: absolute; right: 18px; bottom: 14px; z-index: 50; font: 600 12.5px var(--font); color: #625e86; background: rgba(255,255,255,.9); border-radius: 99px; padding: 5px 11px; opacity: 0; transition: opacity .2s; }
+.stage.playing .skip-hint { opacity: 1; }
+
+
+/* acilis-v2: the panel scrolls like the product's, a photo that arrives on its own, the spark trail */
+#panel { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.photo .ph { position: absolute; inset: 0; background: linear-gradient(115deg, #e7e1ff, #f5f2ff 45%, #e7e1ff); opacity: 0; pointer-events: none; }
+.photo .ph::after { content: "fotoğraf yükleniyor"; position: absolute; left: 14px; bottom: 12px; font: 600 12.5px var(--font); color: #8a7fd0; }
+.trail { position: absolute; left: 0; top: 0; width: 9px; height: 9px; border-radius: 50%; z-index: 35; pointer-events: none; background: radial-gradient(circle, #fff 0 32%, #a596ff 33% 100%); box-shadow: 0 0 10px 3px rgba(165,150,255,.6); }
+.scroll-hint { position: absolute; left: 50%; bottom: 16px; z-index: 50; transform: translateX(-50%); font: 650 13px var(--font); color: #fff; background: #221b3a; border-radius: 99px; padding: 7px 14px; opacity: 0; pointer-events: none; }
+.vnote { background: var(--card); border-radius: 14px; padding: 12px 16px; box-shadow: var(--shadow); font-size: 15px; display: flex; flex-direction: column; gap: 4px; }
+.vnote b { font-family: var(--display); }
+.ctl button .sc { font-weight: 800; opacity: .75; margin-left: 4px; }
+.ctl button.rec:not([aria-pressed="true"]) { border-color: var(--accent); color: var(--accent); }
+.tl .seg { position: absolute; height: 14px; top: 2px; border-radius: 7px; }
+.tl .seg span { position: absolute; left: 8px; top: -1px; font-size: 11.5px; font-weight: 650; color: #fff; white-space: nowrap; }
+.tl .seg.empty { background: repeating-linear-gradient(135deg, var(--line) 0 6px, transparent 6px 11px); border: 1px solid var(--line); }
+.tl .seg.empty span { color: var(--muted); }
+.tl .seg.fill { background: var(--accent); }
+.tl .seg.glide { background: #c98a1c; }
+.tl .seg.bg { background: transparent; border: 1.5px dashed var(--accent); }
+.tl .seg.bg span { color: var(--accent); }
+.tl .note { position: absolute; top: 1px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.why { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+.why > div { background: var(--card); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow); font-size: 14.5px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.why b { font-family: var(--display); font-size: 15.5px; }
+.why .was { color: var(--muted); font-size: 13.5px; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plane" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></symbol>
+  <symbol id="i-bed" viewBox="0 0 24 24"><path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4M12 4v6M2 18h20"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16v-5l2-5h10l2 5v5M3 16h18M7 19v-3M17 19v-3M7 12h10"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 10h16M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></symbol>
+  <symbol id="i-euro" viewBox="0 0 24 24"><path d="M17 7a6 6 0 1 0 0 10M4 10h10M4 14h10"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+  <symbol id="i-sim" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7zM10 12h5v5h-5z"/></symbol>
+  <radialGradient id="og" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#c9bcff"/><stop offset=".55" stop-color="#7b62f0"/><stop offset="1" stop-color="#4a33c9"/></radialGradient>
+  <symbol id="mascot" viewBox="0 0 46 46" overflow="visible">
+    <circle cx="23" cy="23" r="17" fill="url(#og)"/>
+    <circle cx="17" cy="17" r="4" fill="#fff" opacity=".55"/>
+    <g class="blink"><ellipse cx="18" cy="24" rx="2.2" ry="3" fill="#fff"/><ellipse cx="28" cy="24" rx="2.2" ry="3" fill="#fff"/></g>
+    <path d="M18.5 30.5q4.5 3 9 0" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    <path d="M37 6l1.3 3.4L42 11l-3.7 1.4L37 16l-1.3-3.6L32 11l3.7-1.6z" fill="#ffd36b"/>
+  </symbol>
+</svg>
+
+<div class="wrap">
+  <header>
+    <div class="kicker">Sihirli açılış · dördüncü tur</div>
+    <h1>Pıt pıt, ama hafif</h1>
+    <p class="lede">0.36.78'deki açılış önce iki saniye boş bekletiyor, sonra doluyor, sonra sayfayı kendi kaydırıp geri dönüyor. Bu turda içerik ilk andan başlıyor, kaydırma sende kalıyor, fotoğraf ve hava gibi arkadan gelenler kimseyi beklemiyor. Aşağıda üç yön ve karşılaştırma için şimdiki hâli var.</p>
+  </header>
+
+  <section class="blk" id="oyna">
+    <div class="ctl" role="group" aria-label="Yön seç">
+      <button type="button" data-v="now">Şimdiki <span class="sc">4/10</span></button>
+      <button type="button" data-v="A" class="rec" aria-pressed="true">A · Kıvılcım izi <span class="sc">8/10</span></button>
+      <button type="button" data-v="B">B · Ritim ve sayaçlar <span class="sc">7/10</span></button>
+      <button type="button" data-v="C">C · Sade <span class="sc">6/10</span></button>
+      <span class="sep"></span>
+      <button type="button" class="play" id="play">▶ Oynat</button>
+      <label><input type="checkbox" id="slow"> Yavaş çekim</label>
+    </div>
+    <div class="vnote" id="vnote" aria-live="polite"></div>
+    <div class="fit"><div class="stage" id="stage">
+      <aside class="chat">
+        <div class="back"><svg class="i"><use href="#i-back"/></svg>Seyahatlerim</div>
+        <h4><span class="avatar-slot" id="slot" aria-hidden="true"><svg viewBox="0 0 46 46"><use href="#mascot"/></svg></span>Asistan</h4>
+        <div class="sub">Portekiz (örnek) için</div>
+        <div class="me">Lizbon ve Porto, 8–14 Ekim, sevgilimle</div>
+        <div class="msg">Gezini kurdum: iki şehir, 7 gün. Uçuşlar, konaklamalar ve eSIM için yer açtım; birini rezerve etmişsin bile.</div>
+        <div class="msg typed" id="typed"></div>
+        <div class="cmp">Bir link bırak, görsel yapıştır veya yaz…</div>
+      </aside>
+
+      <main class="panel" id="panel">
+        <div class="tabs m" data-k="fade" data-g="1"><span class="on">Plan</span><span>Gün gün</span><span>Pano</span><span>Belgeler</span></div>
+        <section class="hx">
+          <div>
+            <div class="photo m" data-k="photo" data-g="1"><span class="ph"></span><span class="left">3 gün kaldı</span></div>
+            <div class="ttl m" data-k="wipe" data-g="1">Portekiz (örnek)</div>
+            <div class="when m" data-k="rise" data-g="1"><svg class="i"><use href="#i-cal"/></svg>8–14 Ekim · 7 gün</div>
+            <div class="tally">
+              <span class="m" data-k="pop" data-g="2"><svg class="i" style="color:#5b45e0"><use href="#i-plane"/></svg><b data-count="2">2</b> uçuş</span>
+              <span class="m" data-k="pop" data-g="2"><svg class="i" style="color:#1d8577"><use href="#i-bed"/></svg><b data-count="2">2</b> konaklama</span>
+              <span class="m" data-k="pop" data-g="2"><svg class="i" style="color:#b5761c"><use href="#i-car"/></svg><b data-count="1">1</b> ulaşım</span>
+              <span class="m" data-k="pop" data-g="2"><svg class="i" style="color:#c0256b"><use href="#i-star"/></svg><b data-count="5">5</b> deneyim</span>
+            </div>
+            <div class="prog m" data-k="rise" data-g="2">
+              <b>Planlananların %<span data-count="67">67</span>'si rezerve</b>
+              <span class="go">Planı tamamla →</span>
+              <span class="bar"><i class="m" data-k="bar" data-g="2"></i></span>
+              <small>7 ihtiyaç karar bekliyor · 1 rezerve edilecek</small>
+            </div>
+          </div>
+          <aside class="side m" data-k="rise" data-g="3">
+            <div class="faces"><i style="background:#5b45e0">E</i><i style="background:#1d8577">S</i><b>2 kişi</b></div>
+            <div class="bud"><span>Bütçe</span><span>€<span data-count="1500">1.500</span></span></div>
+            <div class="bl"><em style="--c:#1d8a5a">Rezerve</em><span>€552</span></div>
+            <div class="bl"><em style="--c:#e9a72f">Planlanan</em><span>€25</span></div>
+            <div class="bl"><em style="--c:#c9c4d9">Boşta</em><span>€923</span></div>
+            <div class="place"><span>🇵🇹</span><b>Portekiz</b></div>
+            <div class="wx"><span class="m" data-k="glint" data-g="3">Porto ⛅ 22°</span><span class="m" data-k="glint" data-g="3">Lizbon ☀ 27°</span></div>
+            <div class="minis">
+              <span class="m" data-k="glint" data-g="3"><svg class="i"><use href="#i-euro"/></svg>Euro</span>
+              <span class="m" data-k="glint" data-g="3"><svg class="i"><use href="#i-plug"/></svg>C/F priz</span>
+              <span class="m" data-k="glint" data-g="3"><svg class="i"><use href="#i-clock"/></svg>−2 saat</span>
+              <span class="m" data-k="glint" data-g="3"><svg class="i"><use href="#i-chat"/></svg>Portekizce</span>
+            </div>
+          </aside>
+        </section>
+
+        <div class="planhead m" data-k="fade" data-g="4"><b>Plan</b><span class="seg">Kategoriye göre</span><span class="seg" style="background:none">Yolculuk sırasıyla</span>
+          <span class="legend"><span><i style="border:1.5px dashed #c9c4d9"></i>Arıyoruz</span><span><i style="background:#fff3d6;border:1px solid #ecd28f"></i>Seçildi</span><span><i style="background:#e6f5ec;border:1px solid #a9dcc0"></i>Rezerve</span></span></div>
+        <div class="route">
+          <div class="stop m" data-k="stop" data-g="4"><span class="c"><svg class="i"><use href="#i-plane"/></svg></span><b>İstanbul</b>8 Ekim</div>
+          <span class="leg m" data-k="line" data-g="4"></span>
+          <div class="stop m" data-k="stop" data-g="4"><span class="c"><svg class="i"><use href="#i-bed"/></svg></span><b>Porto</b>3 gece</div>
+          <span class="leg m" data-k="line" data-g="4"></span>
+          <div class="stop ok m" data-k="stop" data-g="4"><span class="c"><svg class="i"><use href="#i-bed"/></svg></span><b>Lizbon</b>3 gece</div>
+          <span class="leg m" data-k="line" data-g="4"></span>
+          <div class="stop ok m" data-k="stop" data-g="4"><span class="c"><svg class="i"><use href="#i-plane"/></svg></span><b>İstanbul</b>14 Ekim</div>
+        </div>
+
+        <section class="sec m" data-k="rise" data-g="5">
+          <div class="sh"><span class="ic" style="background:#efeaff;color:#5b45e0"><svg class="i"><use href="#i-plane"/></svg></span><span><b>Uçuş <small style="display:inline;font-size:14px">2</small></b><small>1 rezerve · 1 aranıyor</small></span>
+            <span class="r"><span class="mb"><i style="width:50%;background:#1d8a5a"></i></span><span class="amt">€162<small style="display:block;color:#8e8a85">€460 ayrıldı</small></span></span></div>
+          <div class="cards">
+            <div class="cd m" data-k="card" data-g="5"><div class="t"><span class="rg"></span><svg class="i" style="width:14px;height:14px;color:#5b45e0"><use href="#i-plane"/></svg><b>Uçuş</b> · 8 Ekim<span class="st">Arıyoruz</span></div><div class="big"><b>İstanbul</b><b>Porto</b></div><div class="meta">€118'den başlıyor · <span class="pill">2 seçenek ›</span></div></div>
+            <div class="cd res m" data-k="card" data-g="5" data-stamp><div class="t"><span class="rg"><svg class="i"><use href="#i-check"/></svg></span><svg class="i" style="width:14px;height:14px;color:#5b45e0"><use href="#i-plane"/></svg><b>Uçuş</b> · 14 Ekim · TAP<span class="st">Rezerve</span></div><div class="big"><b>Lizbon</b><b>İstanbul</b></div><div class="meta"><span class="pill ok">✓ Alındı</span><span class="pill bad">⏳ iptal bugün biter</span><span class="pill warn">Belge eksik</span></div></div>
+          </div>
+        </section>
+
+        <section class="sec m" data-k="rise" data-g="6">
+          <div class="sh"><span class="ic" style="background:#e6f5f1;color:#1d8577"><svg class="i"><use href="#i-bed"/></svg></span><span><b>Konaklama <small style="display:inline;font-size:14px">2</small></b><small>1 rezerve · 1 seçildi</small></span>
+            <span class="r"><span class="mb"><i style="width:40%;background:#1d8a5a"></i><i style="width:30%;background:#e9a72f"></i></span><span class="amt">€675<small style="display:block;color:#8e8a85">€990 ayrıldı</small></span></span></div>
+          <div class="cards">
+            <div class="cd sel m" data-k="card" data-g="6"><div class="t"><span class="rg"></span><svg class="i" style="width:14px;height:14px;color:#1d8577"><use href="#i-bed"/></svg><b>Konaklama</b> · 8–11 Ekim<span class="st pill warn">✓ Aldım</span></div><div class="big"><b>Jardim Stay</b><b>€285</b></div><div class="meta">Porto · Baixa · 3 gece · <span class="pill">Pano'da 2 alternatif</span></div></div>
+            <div class="cd res m" data-k="card" data-g="6" data-stamp><div class="t"><span class="rg"><svg class="i"><use href="#i-check"/></svg></span><svg class="i" style="width:14px;height:14px;color:#1d8577"><use href="#i-bed"/></svg><b>Konaklama</b> · 11–14 Ekim<span class="st">Rezerve</span></div><div class="big"><b>Lisboa Loft</b><b>€390</b></div><div class="meta"><span class="pill ok">✓ Rezerve</span><span class="pill bad">⏳ iptal bugün biter</span></div><span class="stamp"><svg class="i" style="width:14px;height:14px"><use href="#i-check"/></svg></span></div>
+          </div>
+        </section>
+
+        <section class="sec m" data-k="rise" data-g="7">
+          <div class="sh"><span class="ic" style="background:#e6f0fb;color:#2563c9"><svg class="i"><use href="#i-shield"/></svg></span><span><b>Belgeler ve internet <small style="display:inline;font-size:14px">2</small></b><small>2 aranıyor</small></span>
+            <span class="r"><span class="amt" style="color:#8e8a85;font-weight:500;font-size:13px">€10 ayrıldı</span></span></div>
+          <div class="cards">
+            <div class="cd m" data-k="card" data-g="7"><div class="t"><span class="rg"></span><svg class="i" style="width:14px;height:14px;color:#2563c9"><use href="#i-sim"/></svg><b>eSIM</b><span class="st">Arıyoruz</span></div><div class="big"><b>eSIM · Porto</b></div><div class="meta">€9'dan başlıyor · <span class="pill">2 seçenek ›</span></div></div>
+            <div class="cd m" data-k="card" data-g="7"><div class="t"><span class="rg"></span><svg class="i" style="width:14px;height:14px;color:#2563c9"><use href="#i-shield"/></svg><b>Sigorta</b> · 8–14 Ekim<span class="st">Arıyoruz</span></div><div class="big"><b>Seyahat sağlık sigortası</b></div><div class="meta">Portekiz · zorunlu değil ama önerilir</div></div>
+          </div>
+        </section>
+
+        <section class="sec m" data-k="rise" data-g="8">
+          <div class="sh"><span class="ic" style="background:#fdeaf1;color:#c0256b"><svg class="i"><use href="#i-star"/></svg></span><span><b>Deneyimler <small style="display:inline;font-size:14px">2</small></b><small>1 planda · 1 öneri</small></span>
+            <span class="r"><span class="amt" style="color:#8e8a85;font-weight:500;font-size:13px">€80 ayrıldı</span></span></div>
+          <div class="cards">
+            <div class="cd sel m" data-k="card" data-g="8"><div class="t"><span class="rg"></span><svg class="i" style="width:14px;height:14px;color:#c0256b"><use href="#i-star"/></svg><b>Etkinlik</b> · 9 Ekim<span class="st pill warn">Seçildi</span></div><div class="big"><b>Douro tekne turu</b><b>€45</b></div><div class="meta">Porto · 12:00 · 2 kişi</div></div>
+            <div class="cd m" data-k="card" data-g="8"><div class="t"><span class="rg"></span><svg class="i" style="width:14px;height:14px;color:#c0256b"><use href="#i-star"/></svg><b>Yapılacak</b><span class="st">Öneri</span></div><div class="big"><b>Livraria Lello</b></div><div class="meta">Porto · 09:00–19:00 · €8'den</div></div>
+          </div>
+        </section>
+      </main>
+
+      <div class="orb" id="orb" aria-hidden="true"><div class="orb-bob" id="orbBob"><div class="orb-in" id="orbIn"><svg viewBox="0 0 46 46" width="46" height="46" style="overflow:visible"><use href="#mascot"/></svg></div></div></div>
+      <span class="skip-hint">Tıkla, hemen bitsin</span>
+      <span class="scroll-hint" id="hint">Aşağı kaydır: altta kalanlar göründükçe gelir</span>
+    </div></div>
+    <p class="muted" style="font-size:14px">Çerçeve bugünkü Plan ekranının sadeleştirilmiş kopyası. Oynatırken sağ paneli kaydırabilirsin: A, B ve C'de altta kalan bölümler göründükleri anda bir kez gelir. Tıklamak her yönde açılışı hemen bitirir.</p>
+  </section>
+
+  <section class="blk">
+    <h2>Saniye saniye</h2>
+    <p class="muted">Ekranın ne zaman dolu olduğu. Şimdikinde ilk 1,9 saniye boş; yeni yönlerde görünen kısım bir saniyenin altında biter.</p>
+    <div class="timeline">
+      <div class="tl" style="height:190px">
+        <div class="lab" style="top:6px">Şimdiki</div>
+        <div class="row" style="top:6px">
+          <i class="seg empty" style="left:0;width:23.75%"><span>boş · göz kırpma</span></i>
+          <i class="seg fill" style="left:23.75%;width:21.25%"><span>dolar</span></i>
+          <i class="seg glide" style="left:45%;width:50%"><span>kendi aşağı kayar, en üste döner</span></i>
+        </div>
+        <div class="lab" style="top:40px">A · Kıvılcım izi</div>
+        <div class="row" style="top:40px"><i class="seg fill" style="left:0;width:10.6%"></i><span class="note" style="left:12%">dolar · aşağısı sen kaydırdıkça</span></div>
+        <div class="lab" style="top:74px">B · Ritim</div>
+        <div class="row" style="top:74px"><i class="seg fill" style="left:0;width:9.4%"></i><span class="note" style="left:11%">dolar · sayaçlar sayar</span></div>
+        <div class="lab" style="top:108px">C · Sade</div>
+        <div class="row" style="top:108px"><i class="seg fill" style="left:0;width:4.4%"></i><span class="note" style="left:6%">belirir</span></div>
+        <div class="lab" style="top:142px">Arkadan gelenler</div>
+        <div class="row" style="top:142px"><i class="seg bg" style="left:3.75%;width:27.5%"><span>fotoğraf, hava, fiyat: hazır oldukça</span></i></div>
+        <div class="axis"><span>0 sn</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8 sn</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="blk">
+    <h2>Neden daha hafif</h2>
+    <div class="why">
+      <div><b>Boş bekleme yok</b><span>Parçalar ilk karede başlar. Maskot şov yaparken içerik bekletilmez.</span><span class="was">Şimdi: 1,9 sn her şey gizli.</span></div>
+      <div><b>Kaydırma sende</b><span>Altta kalanlar sen kaydırdıkça, göründükleri anda bir kez gelir. Sayfa kendi kaymaz, geri dönmez.</span><span class="was">Şimdi: 1,2 ile 5 sn arası zorla kaydırma.</span></div>
+      <div><b>Ucuz efektler</b><span>Yalnız görünürlük ve küçük büyüme. Bunları ekran kartı çizer, ana iş takılmaz.</span><span class="was">Şimdi: bulanıklık ve soldan silme, her karede ölçü okuma.</span></div>
+      <div><b>Kimse kimseyi beklemez</b><span>Fotoğraf, hava ve fiyat hazır oldukça kendi küçük belirişiyle yerine düşer. Açılış sürerken tıklama ve yazma çalışır.</span><span class="was">Şimdi: her şey aynı sıraya bağlı.</span></div>
+      <div><b>Fotoğraf geçişiyle çakışmaz</b><span>Gezi kartından gelen fotoğraf yerine oturunca açılış başlar.</span><span class="was">Şimdi: ikisi aynı anda koşuyor.</span></div>
+    </div>
+  </section>
+
+  <section class="blk">
+    <div class="kicker">Senden karar</div>
+    <h2>Hangi yön?</h2>
+    <div class="decide">
+      <div><b>Önerim A · Kıvılcım izi (8/10, görmeden verdiğim tahmin).</b><p class="muted">Her pıtın bir sebebi var: maskot yerinden kalkmadan kıvılcım yollar, kıvılcımın değdiği parça yerine oturur. Pıt pıt hissini en çok bu verir ve maskot açılışı bekletmez. B (7/10) maskotsuz, sayaçların saymasıyla "plan kuruldu" der; daha sakin. C (6/10) en hafifi ama sihir hissi azalır. Seçtiğini koda geçirip yayınlarım; göz kırpma ve zorla kaydırma kalkar.</p>
+        <div class="opts"><span class="rec">A · Kıvılcım izi</span><span>B · Ritim ve sayaçlar</span><span>C · Sade</span></div></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const stage = $("#stage"), panel = $("#panel"), slot = $("#slot"), orb = $("#orb"), orbIn = $("#orbIn"), hint = $("#hint");
+  const photoPh = $(".photo .ph");
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const EASE = "cubic-bezier(.2,.7,.2,1)", SPRING = "cubic-bezier(.3,1.4,.5,1)";
+  const NOTES = {
+    now: ["Şimdiki (0.36.78)", "Maskot yerinden çıkar, yavaşça göz kırpar, kıvılcım saçar; parçalar ancak 1,9 sn'de gelmeye başlar. Sonra panel kendi aşağı kayar ve en üste döner. Bulanıklık ve silme efektleri ağır."],
+    A: ["A · Kıvılcım izi (önerim)", "İçerik ilk karede başlar. Maskot sohbetteki yerinden kalkmaz; her bölüme küçük bir kıvılcım yollar, kıvılcımın değdiği parça \"pıt\" diye yerine oturur. Sayılar sıfırdan sayar. Görünen kısım 0,85 sn'de biter, sonunda maskot bir kez zıplar. Fotoğraf kendi hazır olunca belirir."],
+    B: ["B · Ritim ve sayaçlar", "Maskot yok. Parçalar okuma sırasıyla hafifçe yükselerek gelir; sayaçlar, yüzde çubuğu ve bütçe sıfırdan sayar. Görünen kısım 0,75 sn. Daha sakin, ama her pıtın bir sebebi yok."],
+    C: ["C · Sade", "Bölümler sırayla, yalnız saydamlıkla belirir; 0,35 sn. En hafifi, sihir hissi en az."],
+  };
+  let variant = "A", run = 0, io = null;
+  const k = () => ($("#slow").checked ? 3 : 1);
+
+  const later = (fn, ms) => { const id = run; setTimeout(() => id === run && fn(), ms * k()); };
+  const anim = (el, kf, dur, ease, delay = 0) => el.animate(kf, { duration: dur * k(), delay: delay * k(), easing: ease, fill: "backwards" });
+  const scale = () => stage.getBoundingClientRect().width / 1280;
+  const at = (el) => { const s = stage.getBoundingClientRect(), r = el.getBoundingClientRect(), f = scale(); return { x: (r.left - s.left) / f, y: (r.top - s.top) / f, w: r.width / f, h: r.height / f }; };
+  const fold = () => panel.getBoundingClientRect().bottom - 24;
+  const pieces = () => $$(".m", stage);
+  const groups = () => { const g = new Map(); for (const p of pieces()) { const n = +p.dataset.g; if (!g.has(n)) g.set(n, []); g.get(n).push(p); } return [...g.entries()].sort((a, b) => a[0] - b[0]).map((e) => e[1]); };
+
+  function reset() {
+    run++;
+    document.getAnimations().forEach((a) => { const t = a.effect?.target; if (t && stage.contains(t)) a.cancel(); });
+    $$(".trail, .spark, .star", stage).forEach((e) => e.remove());
+    pieces().forEach((p) => (p.style.opacity = ""));
+    io?.disconnect(); io = null;
+    $$("[data-count]", stage).forEach((e) => (e.textContent = Number(e.dataset.count).toLocaleString("tr-TR")));
+    photoPh.style.opacity = 0; orb.style.opacity = 0; slot.classList.remove("away");
+    hint.style.opacity = 0; stage.classList.remove("playing");
+    panel.scrollTop = 0;
+  }
+
+  function count(el, delay, dur = 520) {
+    const to = Number(el.dataset.count), id = run;
+    el.textContent = "0";
+    later(() => {
+      const t0 = performance.now();
+      const step = (now) => {
+        if (id !== run) return;
+        const q = Math.min(1, (now - t0) / (dur * k()));
+        el.textContent = Math.round(to * (1 - (1 - q) ** 3)).toLocaleString("tr-TR");
+        if (q < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }, delay);
+  }
+
+  // one piece "pıt": a small pop, or the shape its kind asks for (a bar fills, a line draws)
+  function pit(p, delay, how) {
+    const kind = p.dataset.k;
+    if (kind === "bar") return anim(p, [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], 600, EASE, delay);
+    if (kind === "line") return anim(p, [{ transform: "scaleX(0)", opacity: 1 }, { transform: "scaleX(1)", opacity: 1 }], 300, EASE, delay);
+    if (how === "fade") return anim(p, [{ opacity: 0 }, { opacity: 1 }], 220, EASE, delay);
+    if (how === "rise") return anim(p, [{ opacity: 0, translate: "0 8px" }, { opacity: 1, translate: "0 0" }], 300, EASE, delay);
+    return anim(p, [{ opacity: 0, scale: ".94" }, { opacity: 1, scale: "1.025", offset: 0.65 }, { opacity: 1, scale: "1" }], 320, SPRING, delay);
+  }
+  const counters = (els, delay) => els.forEach((p) => $$("[data-count]", p).concat(p.matches("[data-count]") ? [p] : []).forEach((c) => count(c, delay)));
+
+  // the photo arrives when it arrives: a soft placeholder, then its own fade, waiting for nothing else
+  function photoArrives(ms) {
+    photoPh.style.opacity = 1;
+    later(() => photoPh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300 * k(), easing: EASE }).finished.then(() => (photoPh.style.opacity = 0)).catch(() => {}), ms);
+  }
+
+  // what is below the fold comes in once, as the traveller scrolls it into view
+  function onScrollIn(below, how) {
+    if (!below.length) return;
+    below.forEach((p) => (p.style.opacity = 0));
+    io = new IntersectionObserver((entries) => {
+      let i = 0;
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        io.unobserve(e.target);
+        e.target.style.opacity = "";
+        pit(e.target, i++ * 45, how);
+        counters([e.target], i * 45);
+      }
+    }, { root: panel, rootMargin: "0px 0px -30px 0px" });
+    below.forEach((p) => io.observe(p));
+    later(() => { hint.style.opacity = 1; hint.animate([{ opacity: 0, translate: "-50% 6px" }, { opacity: 1, translate: "-50% 0" }], { duration: 300, easing: EASE }); }, 900);
+    panel.addEventListener("scroll", () => (hint.style.opacity = 0), { once: true });
+  }
+
+  function trail(from, to, delay, dur) {
+    const s = document.createElement("span");
+    s.className = "trail";
+    stage.appendChild(s);
+    const mx = (from.x + to.x) / 2, my = Math.min(from.y, to.y) - 40;
+    s.animate(
+      [{ transform: `translate(${from.x}px,${from.y}px) scale(.6)`, opacity: 0 }, { transform: `translate(${mx}px,${my}px) scale(1)`, opacity: 1, offset: 0.45 }, { transform: `translate(${to.x}px,${to.y}px) scale(.5)`, opacity: 0 }],
+      { duration: dur * k(), delay: delay * k(), easing: "cubic-bezier(.4,0,.2,1)", fill: "both" },
+    ).finished.then(() => s.remove()).catch(() => s.remove());
+  }
+
+  function playABC(v) {
+    const how = v === "A" ? "pop" : v === "B" ? "rise" : "fade";
+    const gap = v === "A" ? 110 : v === "B" ? 95 : 45, inner = v === "C" ? 0 : 38;
+    const edge = fold();
+    const above = [], below = [];
+    for (const g of groups()) {
+      const vis = g.filter((p) => p.getBoundingClientRect().top < edge), hid = g.filter((p) => p.getBoundingClientRect().top >= edge);
+      if (vis.length) above.push(vis);
+      below.push(...hid);
+    }
+    const seat = at(slot), from = { x: seat.x + seat.w / 2, y: seat.y + seat.h / 2 };
+    above.forEach((g, i) => {
+      const land = i * gap + (v === "A" ? 230 : 0);
+      if (v === "A") { const r = at(g[0]); trail(from, { x: r.x + Math.min(40, r.w / 2), y: r.y + Math.min(20, r.h / 2) }, i * gap, 260); }
+      g.forEach((p, j) => pit(p, land + j * inner, how));
+      if (v !== "C") counters(g, land);
+    });
+    if (v === "A") {
+      slot.animate([{ boxShadow: "0 0 0 0 rgba(139,116,255,0)" }, { boxShadow: "0 0 0 6px rgba(139,116,255,.25)" }, { boxShadow: "0 0 0 0 rgba(139,116,255,0)" }], { duration: 900 * k(), easing: "ease-in-out" });
+      const end = (above.length - 1) * gap + 230 + 320;
+      later(() => $("svg", slot).animate([{ transform: "translateY(0)" }, { transform: "translateY(-6px) scale(1.06)" }, { transform: "translateY(0)" }], { duration: 420 * k(), easing: SPRING }), end);
+    }
+    photoArrives(900);
+    onScrollIn(below, how);
+  }
+
+  // today's opening, as shipped: everything hidden, the mascot's wink first, then the fill, then the glide down and back up
+  function playNow() {
+    const all = pieces();
+    all.forEach((p) => (p.style.opacity = 0));
+    const seat = at(slot), border = { x: 400 - 23, y: seat.y + 80 };
+    later(() => {
+      slot.classList.add("away");
+      orb.style.opacity = 1;
+      orb.animate([{ transform: `translate(${seat.x - 6}px,${seat.y - 6}px) scale(.7)` }, { transform: `translate(${border.x - 23}px,${border.y - 23}px) scale(1)` }], { duration: 600 * k(), easing: EASE, fill: "forwards" });
+    }, 100);
+    later(() => orbIn.animate([{ transform: "scaleY(1)" }, { transform: "scaleY(.82)", offset: 0.5 }, { transform: "scaleY(1)" }], { duration: 700 * k(), easing: "ease-in-out" }), 800);
+    later(() => { for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; trail({ x: border.x, y: border.y }, { x: border.x + Math.cos(a) * 70, y: border.y + Math.sin(a) * 70 }, 0, 500); } }, 1850);
+    const edge = fold();
+    const above = all.filter((p) => p.getBoundingClientRect().top < edge), below = all.filter((p) => p.getBoundingClientRect().top >= edge);
+    above.forEach((p, i) => {
+      const d = 1900 + Math.round((i * 1700) / Math.max(1, above.length - 1));
+      later(() => { p.style.opacity = ""; }, d);
+      if (p.classList.contains("photo")) anim(p, [{ opacity: 0, scale: "1.05", filter: "blur(14px)" }, { opacity: 1, scale: "1", filter: "blur(0)" }], 700, EASE, d);
+      else if (p.dataset.k === "wipe") anim(p, [{ opacity: 0, clipPath: "inset(0 100% 0 0)" }, { opacity: 1, clipPath: "inset(0 0 0 0)" }], 520, EASE, d);
+      else pit(p, d, "pop");
+    });
+    later(() => orb.animate([{ transform: `translate(${border.x - 23}px,${border.y - 23}px)` }, { transform: `translate(${seat.x - 6}px,${seat.y - 6}px) scale(.7)` }], { duration: 500 * k(), easing: EASE, fill: "forwards" }).finished.then(() => { orb.style.opacity = 0; slot.classList.remove("away"); }).catch(() => {}), 3700);
+    later(() => {
+      const id = run, to = panel.scrollHeight - panel.clientHeight, dur = Math.min(5000, Math.max(1200, to / 0.45)) * k(), t0 = performance.now();
+      const step = (now) => {
+        if (id !== run) return;
+        const q = Math.min(1, (now - t0) / dur);
+        panel.scrollTop = to * (q < 0.5 ? 2 * q * q : 1 - (-2 * q + 2) ** 2 / 2);
+        const e = panel.getBoundingClientRect().bottom - 40;
+        for (const p of below) if (p.style.opacity === "0" && p.getBoundingClientRect().top < e) { p.style.opacity = ""; pit(p, 0, "pop"); }
+        if (q < 1) requestAnimationFrame(step);
+        else later(() => { const t1 = performance.now(), from = panel.scrollTop; const back = (n) => { if (id !== run) return; const r = Math.min(1, (n - t1) / (900 * k())); panel.scrollTop = from * (1 - r); if (r < 1) requestAnimationFrame(back); }; requestAnimationFrame(back); }, 700);
+      };
+      requestAnimationFrame(step);
+    }, 4300);
+  }
+
+  function play() {
+    reset();
+    if (still) return;
+    stage.classList.add("playing");
+    variant === "now" ? playNow() : playABC(variant);
+  }
+
+  // a click ends it at once, as in the product
+  stage.addEventListener("pointerdown", () => { if (stage.classList.contains("playing")) reset(); });
+  $("#play").addEventListener("click", play);
+  $$(".ctl [data-v]").forEach((b) => b.addEventListener("click", () => {
+    variant = b.dataset.v;
+    $$(".ctl [data-v]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    showNote();
+    play();
+  }));
+  function showNote() { const [t, d] = NOTES[variant]; $("#vnote").innerHTML = `<b>${t}</b><span class="muted">${d}</span>`; }
+  showNote();
+  if (still) $("#vnote").insertAdjacentHTML("beforeend", "<span class=\"muted\">Cihazında azaltılmış hareket açık: açılış oynamaz, ürün de böyle davranır.</span>");
+})();
+</script>
