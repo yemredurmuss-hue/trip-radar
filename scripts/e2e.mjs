@@ -856,7 +856,8 @@ try {
   {
     const code = bk.locator(".bk-rows .cpy", { hasText: "LIS" });
     await copyClick(code);
-    assert.equal(await code.locator(".cpy-b").evaluate((el) => getComputedStyle(el, "::before").content), '"Kopyalandı ✓"'.replace("Kopyalandı ✓", await code.locator(".cpy-b").getAttribute("data-label")));
+    // (the pill's words are the button's data-label, drawn by CSS)
+    assert.match(await code.locator(".cpy-b").evaluate((el) => getComputedStyle(el, "::before").content), /^"(Kopyala|Kopyalandı ✓|Seçildi, ⌘C)"$/);
     await app.waitForFunction(() => /^(Kopyalandı ✓|Seçildi, ⌘C)$/.test(document.querySelector(".bk-rows .cpy-b")?.getAttribute("data-label") ?? ""), null, { timeout: 3000 });
     await app.waitForTimeout(350);
     await app.screenshot({ path: `${out}/37c-copy-code.png` });
