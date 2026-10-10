@@ -17,6 +17,9 @@ import type { DocMeta, Item, LegMode, Trip } from "../../lib/types";
 import type { Undoable } from "../../lib/undoables";
 import { chooseItem, setInstalled, setItemStatus, setOwner } from "../actions";
 import { CopyText } from "../CopyButton";
+import type { CityWeather } from "../../lib/climate";
+import { flightPeek } from "../../lib/cardPeek";
+import { FlightPeekBox } from "./Peek";
 import { WhoAvatar, WhoseBadge, usePhotoOf, useWhoCtx } from "./WhoseBadge";
 import { isUnnamedMe, peopleOf, whoseOf } from "../../lib/whose";
 import { sameName } from "../../lib/tripSettings";
@@ -70,6 +73,8 @@ export interface CardEnv {
   onCompare: (groupKey: string) => void;
   /** v11: the Pano, opened on this need's group ("Pano'da gör"). */
   onPano: (groupKey: string) => void;
+  /** The city's weather as the hero has it (read from its cache, nothing asked): a transfer card's peek. */
+  weather?: (city: string | null) => CityWeather | null;
   /** v11: a line for the trip's chat ("Daha fazla fikir", a card's ✨); absent where there's no chat. */
   ask?: (text: string) => void;
 }
@@ -182,6 +187,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
     </>
   );
   const transport = isTransportKind(kind);
+  const flightFacts = kind === "flight" ? flightPeek(item) : [];
   // A booked flight's real data (0.36.18): its number in the header, the terminals by the codes, boxes for
   // what's known on its day, red when it's late; the ticket against the schedule and the source at the foot.
   const booked = kind === "flight" && item.status === "booked";
@@ -245,6 +251,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
         ) : null
       }
       menu={menu}
+      peek={flightFacts.length ? <FlightPeekBox facts={flightFacts} /> : null}
       open={open}
       onToggle={() => (item.status === "booked" && !["taxi", "note", "todo"].includes(kind) ? setSheet(true) : setOpen(!open))}
       body={

@@ -8,7 +8,9 @@ import { formatDateRange } from "../../lib/items";
 import { legItem, withLegChoice, type Leg } from "../../lib/legs";
 import { setHidden, updateTrip } from "../actions";
 import { kindLabel, LegBody } from "../LegRow";
+import { legPeek, legPeekHasFacts } from "../../lib/cardPeek";
 import { CardFoot, CardShell, type MenuEntry } from "./CardShell";
+import { LegPeekBox } from "./Peek";
 import { DocAccess } from "./DocAccess";
 import { useCardEnv } from "./PlanCard";
 import { TransportArt } from "./Silhouettes";
@@ -29,6 +31,7 @@ export function LegCard({ leg }: { leg: Leg }) {
         ? { label: L("Planı temizle", "Clear the plan"), run: () => void updateTrip(env.tripId, (t) => withLegChoice(t, leg.key, null)) }
         : { label: L("Sil", "Delete"), run: () => own && env.remove(own), danger: true },
   );
+  const peek = legPeek(leg, env.weather?.(leg.to.city ?? leg.from.city ?? null) ?? null);
   return (
     <CardShell
       kind={v.kind}
@@ -40,6 +43,7 @@ export function LegCard({ leg }: { leg: Leg }) {
       extraClass="pk-leg"
       docs={own ? <DocAccess item={own} docs={env.docsFor(own.id)} /> : undefined}
       menu={menu}
+      peek={legPeekHasFacts(peek) ? <LegPeekBox peek={peek} /> : null}
       open={open}
       onToggle={() => setOpen(!open)}
       body={<TransportCardBody face={{ from: v.from, to: v.to, middle: v.middle, rental: false }} title={v.ariaLabel} art={v.kind !== "transport" ? <TransportArt mode={v.kind} /> : null} />}
