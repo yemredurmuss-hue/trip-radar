@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
 import { z } from "zod";
 import { requestProcessing } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
@@ -57,6 +57,7 @@ import { StickyBar } from "./StickyBar";
 import { TipOn } from "./HoverTip";
 import { PanoNewsTip } from "./PanoNewsTip";
 import { usePanoDot } from "./usePanoDot";
+import { claimOpening, playOpening } from "./opening";
 import { heroNumbers, openNeedsText, plannedBookedText } from "../lib/lifecycle";
 import { kindLabel, LegRow } from "./LegRow";
 import { HistoryDialog } from "./HistoryDialog";
@@ -111,6 +112,16 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const [panoFocus, setPanoFocus] = useState<string | null>(null);
   // "Son ziyaretten beri": what the other traveller did since the Pano was last open (a dot on its tab), on a shared trip.
   const panoNews = usePanoDot(trip.id, items, view === "board");
+  // "Sihirli açılış": the first time this trip's Plan is open in the browser session, it builds itself in reading order and the mascot winks
+  // (opening.ts); never on a tab switch or a re-render, and a touch of the panel ends it at once.
+  const openingTried = useRef(false);
+  useLayoutEffect(() => {
+    if (view !== "plan" || openingTried.current) return;
+    openingTried.current = true;
+    if (!claimOpening(trip.id)) return;
+    const run = playOpening();
+    return () => run?.finish();
+  }, [view, trip.id]);
   const working = openCaptures.filter((c) => c.status === "pending" || c.status === "processing");
   const failed = openCaptures.filter((c) => c.status === "error");
   const listings = decisions?.ctx.listings;

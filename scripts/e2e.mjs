@@ -8,6 +8,16 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { chromium } from "playwright-core";
 
+// The Plan's "sihirli açılış" (src/app/opening.ts) plays the first time a trip is opened in a session and would catch every check half way
+// (pieces fade in over about 2.5 s): it is switched off in every context but the one that checks it (Part 5, `openingOn`).
+let openingOn = false;
+const launchPersistent = chromium.launchPersistentContext.bind(chromium);
+chromium.launchPersistentContext = async (...args) => {
+  const ctx = await launchPersistent(...args);
+  if (!openingOn) await ctx.addInitScript(() => { try { sessionStorage.setItem("trip-radar:opening-off", "1"); } catch {} });
+  return ctx;
+};
+
 const out = path.resolve("e2e-output");
 mkdirSync(out, { recursive: true });
 const extension = path.resolve("dist");
@@ -5011,4 +5021,74 @@ try {
   console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, each on its own and over within a moment");
 } finally {
   await motion.close();
+}
+
+// ---------------------------------------------------------------------------------------------
+// Part 6: the "sihirli açılış" (src/app/opening.ts, docs/mockups/sihirli-acilis), with its switch off for everything else.
+// The first time a trip's Plan is open: the mascot leaves its seat in the chat and comes back, the pieces build themselves and
+// after about three seconds every one is at full opacity and nothing is left over; a reload (same session) doesn't play it again;
+// a touch of the panel ends it at once; the page never scrolls (only the panel).
+// ---------------------------------------------------------------------------------------------
+openingOn = true;
+const opening = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-open-")), {
+  executablePath,
+  headless: false,
+  timezoneId: "Europe/Istanbul",
+  viewport: { width: 1440, height: 900 },
+  locale: "tr-TR",
+  reducedMotion: "no-preference",
+  args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+});
+openingOn = false;
+await opening.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
+await opening.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
+await opening.route(/functions\/v1\/city-image/, (route) => route.fulfill({ json: { url: null, reason: "no-photo" } }));
+await frozen(opening);
+try {
+  const worker = opening.serviceWorkers()[0] ?? (await opening.waitForEvent("serviceworker"));
+  const id = new URL(worker.url()).host;
+  const app = await opening.newPage();
+  await app.goto(`chrome-extension://${id}/app.html`);
+  await app.getByText("Örnek geziyi yükle →").click();
+  await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
+  const seat = app.locator("[data-mascot-seat]");
+  const orb = app.locator(".op-orb");
+  // The mascot has left its seat (a faint ring stays) and is flying; pieces are on their way in.
+  await app.waitForFunction(() => document.querySelector("[data-mascot-seat]")?.classList.contains("away"), null, { timeout: 4000 });
+  await orb.waitFor({ state: "attached" });
+  await app.waitForTimeout(900);
+  await app.screenshot({ path: `${out}/39a-opening-mid.png` });
+  assert.ok(await app.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1), "the page doesn't scroll while it plays");
+  const midOpacity = await app.evaluate(() => [...document.querySelectorAll(".hx-photo, .hx-tally button, .hx-progress, .cat-sec")].map((e) => Number(getComputedStyle(e).opacity)));
+  assert.ok(midOpacity.some((o) => o < 1), `pieces are still arriving mid-way (${midOpacity.map((o) => o.toFixed(2)).join(" ")})`);
+  // After about three seconds: everything is at full opacity, the mascot is home, nothing is left over.
+  await app.locator(".op-fx").waitFor({ state: "detached", timeout: 6000 });
+  assert.equal(await seat.evaluate((el) => el.classList.contains("away")), false, "the mascot is back in its seat");
+  const settled = await app.evaluate(() =>
+    [...document.querySelectorAll(".hx-photo, .hx-story h1, .hx-tally button, .hx-progress, .hx-side > .hx-block, .ts-stop, .cat-sec, .pk-card")].filter((e) => Number(getComputedStyle(e).opacity) < 1 || e.getAnimations().length > 0 && e.getAnimations().some((a) => a.animationName === "")).length,
+  );
+  assert.equal(settled, 0, "every piece is at full opacity and no animation is left on it");
+  assert.equal(await app.locator(".hx-tally button").first().innerText().then((t) => /^\d+ \S/.test(t.trim())), true, "the counters read as numbers again");
+  await app.screenshot({ path: `${out}/39b-opening-done.png` });
+
+  // The same session, a reload: no second opening.
+  await app.reload();
+  await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
+  await app.waitForTimeout(700);
+  assert.equal(await app.locator(".op-orb, .op-fx").count(), 0, "a reload in the same session doesn't play it again");
+  assert.equal(await seat.evaluate((el) => el.classList.contains("away")), false);
+
+  // A touch ends it at once: opened afresh, one key press and everything is in place.
+  await app.evaluate(() => Object.keys(sessionStorage).filter((k) => k.startsWith("trip-radar:opened:")).forEach((k) => sessionStorage.removeItem(k)));
+  await app.getByRole("button", { name: "Seyahatlerim" }).first().click();
+  await app.getByText("Portekiz (örnek)").first().click();
+  await app.waitForFunction(() => document.querySelector("[data-mascot-seat]")?.classList.contains("away"), null, { timeout: 4000 });
+  await app.keyboard.press("Shift");
+  await app.locator(".op-fx").waitFor({ state: "detached", timeout: 600 });
+  assert.equal(await seat.evaluate((el) => el.classList.contains("away")), false, "ended at once: the mascot is home");
+  const rest = await app.evaluate(() => [...document.querySelectorAll(".hx-photo, .hx-tally button, .cat-sec")].filter((e) => Number(getComputedStyle(e).opacity) < 1).length);
+  assert.equal(rest, 0, "ended at once: everything is in place");
+  console.log("✓ opening: the mascot leaves its seat and comes back, the pieces build in order and settle at full opacity, a reload doesn't repeat it, a key press ends it at once");
+} finally {
+  await opening.close();
 }
