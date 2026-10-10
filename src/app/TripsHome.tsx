@@ -18,6 +18,7 @@ import { UiIcon } from "./cards/Silhouettes";
 import { UndoRing } from "./cards/UndoToast";
 import { addImages, addLinks } from "./capture";
 import { HomeBackdrop } from "./HomeBackdrop";
+import { Mascot } from "./Mascot";
 import { HeroIcon, type HeroIconName } from "./Icons";
 import { useMyPhoto, usePeoplePhotos } from "./Profile";
 import { JoinShared } from "./Share";
@@ -400,7 +401,8 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
 
       {(working.length > 0 || failed.length > 0) && (
         <div className="errors">
-          {working.length > 0 && <div className="muted">
+          {working.length > 0 && <div className="muted work-pill" role="status">
+              <span className="work-spin" aria-hidden />
               {L(`${working.length} kayıt işleniyor…`, `Processing ${working.length} save${working.length === 1 ? "" : "s"}…`)}
             </div>}
           {failed.map((c) => (
@@ -428,6 +430,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
 
       {trips.length === 0 && drafts.length === 0 ? (
         <div className="trips-empty">
+          <Mascot size={56} className="empty-mascot" />
           <h2>{L("İlk seçeneğini kaydet", "Save your first option")}</h2>
           <ol>
             <li>
@@ -514,6 +517,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
                   people={names.length >= 2 ? names.map((n) => ({ name: n, photo: n === me ? myPhoto : peoplePhoto(n) })) : []}
                   order={people}
                   onOpen={() => onOpen(trip.id)}
+                  tripId={trip.id}
                 />
               );
             })}

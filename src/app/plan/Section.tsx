@@ -3,7 +3,7 @@
 // right a thin bar of settled of all (green once complete), "3/4", the arrow — and opens and closes it. Under the
 // name, its needs in stage words (v11: "1 rezerve · 2 seçildi · 1 aranıyor"). Open, "+ Ekle" joins the header, then the timeline
 // of cards and, last, "Gizlenenler · N göster" for what's out of the way.
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { isIdeaSection, sectionProgress, stageLine, type CatSection } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import { formatPrice } from "../../lib/items";
@@ -41,10 +41,16 @@ export function Section({ section, allot = null, allotNum = null, open, onToggle
   const chosen = st.planned;
   const needs = booked + chosen + st.search + st.options;
   const pctOf = (n: number) => (needs ? Math.round((n / needs) * 100) : 0);
+  // (hareket dili) a section the traveller opens unfolds; one that is open when the Plan appears is just there.
+  const toggled = useRef(false);
+  const toggle = () => {
+    toggled.current = true;
+    onToggle();
+  };
   return (
     <section className={`cat-sec${open ? "" : " closed"}`} style={{ "--c": meta.color } as React.CSSProperties} aria-label={label} data-section={section.id}>
-      <div className="cat-head" onClick={onToggle}>
-        <button type="button" className="cat-title" aria-expanded={open} onClick={(e) => { e.stopPropagation(); onToggle(); }}>
+      <div className="cat-head" onClick={toggle}>
+        <button type="button" className="cat-title" aria-expanded={open} onClick={(e) => { e.stopPropagation(); toggle(); }}>
           <span className="cat-ic" aria-hidden>
             <KindIcon kind={meta.icon} size={20} />
           </span>
@@ -90,7 +96,7 @@ export function Section({ section, allot = null, allotNum = null, open, onToggle
         </span>
       </div>
       {open && (
-        <div className="cat-body">
+        <div className={`cat-body${toggled.current ? " mv-unfold" : ""}`}>
           {children}
           {section.hidden.length > 0 && <HiddenList things={section.hidden} />}
           {/* v11: the plan's head has the one "+ Ekle"; a section adds its own kind quietly at its end. */}

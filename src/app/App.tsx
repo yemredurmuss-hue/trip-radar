@@ -23,7 +23,7 @@ import { TripPanel } from "./TripPanel";
 import { UndoRing } from "./cards/UndoToast";
 import { TripsHome, type StartLaunch } from "./TripsHome";
 import { StartChat } from "./start/StartChat";
-import { withTransition } from "./viewTransition";
+import { withTransition, withTripPhoto } from "./viewTransition";
 import { newId } from "../lib/db";
 import { loadPassport } from "../lib/passport";
 import { useMyName } from "./Profile";
@@ -221,7 +221,7 @@ export function App() {
           <Chat
             trip={trip}
             messages={board.messages}
-            onBack={() => board.selectTrip(null)}
+            onBack={() => withTripPhoto(() => board.selectTrip(null), trip.id, false)}
             items={board.allItems}
             trips={board.trips}
             openCaptures={board.openCaptures}
@@ -271,7 +271,7 @@ export function App() {
             trips={board.trips}
             items={board.allItems}
             openCaptures={board.openCaptures}
-            onOpen={board.selectTrip}
+            onOpen={(id) => withTripPhoto(() => board.selectTrip(id), id, true)}
             onDemo={() => void loadDemoTrip().then(board.selectTrip)}
             onSettings={() => setSettingsOpen(true)}
             onStart={(launch) => withTransition(() => setStart({ ...launch, key: newId() }))}

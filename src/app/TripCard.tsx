@@ -47,12 +47,14 @@ interface CardProps {
   /** Everyone's order, for their colour. */
   order: string[];
   onOpen: () => void;
+  /** Marks the card so its photo can grow into the trip's hero when it opens (viewTransition.ts withTripPhoto). */
+  tripId?: string;
 }
 
-export function TripCard({ title, info, image, photoBy, left, people, order, onOpen }: CardProps) {
+export function TripCard({ title, info, image, photoBy, left, people, order, onOpen, tripId }: CardProps) {
   const tint = usePhotoTint(image);
   return (
-    <button type="button" className="trip-card vcard v1" style={{ "--tint": tint } as CSSProperties} onClick={onOpen}>
+    <button type="button" className="trip-card vcard v1" data-trip-card={tripId} style={{ "--tint": tint } as CSSProperties} onClick={onOpen}>
       <span className="pic">
         <FallbackImg className="pic-img" src={image} title={photoBy} fallback={<span className="pic-img" />} />
         <span className="who">

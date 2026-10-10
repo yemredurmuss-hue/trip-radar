@@ -5,13 +5,57 @@ import { flushSync } from "react-dom";
 
 type WithTransitions = Document & { startViewTransition?: (update: () => void) => { finished: Promise<void> } };
 
+function canTransition(doc: WithTransitions): boolean {
+  const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return !!doc.startViewTransition && !still && doc.visibilityState === "visible";
+}
+
 export function withTransition(update: () => void): void {
   const doc = document as WithTransitions;
-  const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (!doc.startViewTransition || still || doc.visibilityState !== "visible") return update();
+  if (!canTransition(doc)) return update();
   try {
     doc.startViewTransition(() => flushSync(update)).finished.catch(() => undefined);
   } catch {
+    update();
+  }
+}
+
+// Opening a trip from its card and going back (hareket dili, docs/mockups/hareket): the card's photo grows into the
+// trip's hero photo, and shrinks back into its card. Only the two photos of the change carry the shared name, and only
+// while it runs (a name must be unique on the page). The rest of the screen crossfades as in withTransition.
+const PHOTO = "trip-photo";
+let carrying = false;
+/** True while a trip's photo is being carried to its hero: the opening (opening.ts) then leaves the hero photo as it lands. */
+export const photoCarried = () => carrying;
+
+const cardPhoto = (tripId: string) => document.querySelector<HTMLElement>(`[data-trip-card="${CSS.escape(tripId)}"] .pic`);
+const heroPhoto = () => document.querySelector<HTMLElement>(".hx .hx-photo");
+
+/** `open`: from the trip's card on the home to its board; else from the board back to the home, landing on the card. */
+export function withTripPhoto(update: () => void, tripId: string, open: boolean): void {
+  const doc = document as WithTransitions;
+  if (!canTransition(doc)) return update();
+  const from = open ? cardPhoto(tripId) : heroPhoto();
+  const name = (el: HTMLElement | null, on: boolean) => el?.style.setProperty("view-transition-name", on ? PHOTO : "");
+  let to: HTMLElement | null = null;
+  name(from, true);
+  try {
+    carrying = open;
+    doc
+      .startViewTransition(() => {
+        name(from, false);
+        flushSync(update);
+        to = open ? heroPhoto() : cardPhoto(tripId);
+        name(to, true);
+      })
+      .finished.catch(() => undefined)
+      .finally(() => {
+        carrying = false;
+        name(to, false);
+      });
+  } catch {
+    carrying = false;
+    name(from, false);
     update();
   }
 }

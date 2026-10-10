@@ -19,6 +19,7 @@ import { EventFold, foldRuns } from "./ChatFold";
 import { ChatOffers } from "./ChatOffers";
 import { ArrowUp, Back } from "./Icons";
 import { Mascot } from "./Mascot";
+import { DONE_FOR, LONG_WAIT, mascotFace, thinkingLine } from "./thinking";
 
 interface Props {
   trip: Trip;
@@ -55,6 +56,25 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
     return stop;
   }, [trip.id]);
   const [error, setError] = useState<string | null>(null);
+  // The thinking line's clock (a slow answer says so after LONG_WAIT) and the mascot's smile once the answer is in.
+  const thinking = busy || status === "web";
+  const [waitedLong, setWaitedLong] = useState(false);
+  const [justDone, setJustDone] = useState(false);
+  const wasThinking = useRef(false);
+  useEffect(() => {
+    if (thinking) {
+      wasThinking.current = true;
+      setJustDone(false);
+      setWaitedLong(false);
+      const t = setTimeout(() => setWaitedLong(true), LONG_WAIT);
+      return () => clearTimeout(t);
+    }
+    if (!wasThinking.current) return;
+    wasThinking.current = false;
+    setJustDone(true);
+    const t = setTimeout(() => setJustDone(false), DONE_FOR);
+    return () => clearTimeout(t);
+  }, [thinking]);
   const fileInput = useRef<HTMLInputElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
 
@@ -149,7 +169,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
         <div className="chat-title">
           {/* The assistant's mascot, in its seat; the opening takes a copy for its flight (opening.ts). */}
           <span className="mascot-seat" data-mascot-seat>
-            <Mascot />
+            <Mascot state={mascotFace({ working: thinking, justDone: justDone && !error, error: error != null })} />
           </span>
           {L("Asistan", "Assistant")}
         </div>
@@ -216,12 +236,13 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
             ))}
           </ul>
         )}
-        {(busy || status === "web") && (
+        {thinking && (
           <div className="thinking">
-            {status === "web" ? L("Web'de arıyorum…", "Searching the web…") : status === "offers" ? L("Fiyatlara bakıyorum…", "Checking prices…") : L("Düşünüyor…", "Thinking…")}
+            <span className="th-dots" aria-hidden><i /><i /><i /></span>
+            <span key={thinkingLine(status, waitedLong ? LONG_WAIT : 0)} className="th-line">{thinkingLine(status, waitedLong ? LONG_WAIT : 0)}</span>
           </div>
         )}
-        {error && <div className="chat-error">{error}</div>}
+        {error && <div className="chat-error" role="alert">{error}</div>}
         <div ref={bottom} />
       </div>
 

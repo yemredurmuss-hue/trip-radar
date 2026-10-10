@@ -53,6 +53,9 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const [s, setS] = useState<SettingsShape | null>(null);
   const [geminiModels, setGeminiModels] = useState<string[]>([]);
   const [modelStatus, setModelStatus] = useState<string | null>(null);
+  // How the key check ended: "bad" reddens the box and its line and shakes it once (hareket dili); "ok" greens the line.
+  const [keyTone, setKeyTone] = useState<{ tone: "bad" | "ok"; n: number } | null>(null);
+  const keyEnded = (tone: "bad" | "ok") => setKeyTone((prev) => ({ tone, n: (prev?.n ?? 0) + 1 }));
   const [passport, setPassport] = useState("TR");
 
   useEffect(() => {
@@ -66,10 +69,12 @@ export function Settings({ onClose }: { onClose: () => void }) {
   /** Pasting a key is all it takes: validate it, pick the best free model, save, close. */
   async function connectGemini(key: string) {
     setModelStatus(L("Anahtar kontrol ediliyor…", "Checking the key…"));
+    setKeyTone(null);
     try {
       const ids = await listGeminiModels(key);
       if (!ids.length) {
         setModelStatus(L("Bu anahtarla kullanılabilir model bulunamadı.", "No usable model found for this key."));
+        keyEnded("bad");
         return;
       }
       const geminiModel = ids.includes(s!.geminiModel) ? s!.geminiModel : ids[0];
@@ -77,9 +82,11 @@ export function Settings({ onClose }: { onClose: () => void }) {
       update({ provider: "gemini", geminiKey: key, geminiModel });
       await persist({ ...s!, provider: "gemini", geminiKey: key, geminiModel });
       setModelStatus(L(`✓ Bağlandı (${geminiModel}). Hazırsın.`, `✓ Connected (${geminiModel}). You're all set.`));
+      keyEnded("ok");
       setTimeout(onClose, 1200);
     } catch (error) {
       setModelStatus(describeError(error));
+      keyEnded("bad");
     }
   }
 
@@ -170,6 +177,9 @@ export function Settings({ onClose }: { onClose: () => void }) {
             <label className="field">
               {L("Gemini API anahtarı", "Gemini API key")}
               <input
+                key={keyTone?.tone === "bad" ? `bad-${keyTone.n}` : "key"}
+                className={keyTone?.tone === "bad" ? "key-bad" : undefined}
+                aria-invalid={keyTone?.tone === "bad" || undefined}
                 type="password"
                 value={s.geminiKey}
                 placeholder={L("AIza… (yapıştır)", "AIza… (paste)")}
@@ -195,7 +205,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
                 </button>
               </span>
             </label>
-            {modelStatus && <p className="muted small">{modelStatus}</p>}
+            {modelStatus && <p className={`muted small${keyTone ? ` key-${keyTone.tone}-line` : ""}`}>{modelStatus}</p>}
             <p className="note small">
               {L(
                 `Ücretsiz katmanda Google, gönderilen içeriği (kaydettiğin sayfalar, ekran görüntüleri, sohbet) ürünlerini geliştirmek için kullanabilir ve insanlar okuyabilir. Günlük istek sınırı da var; dolunca kayıtlar "Tekrar dene" ile sonra işlenir.`,

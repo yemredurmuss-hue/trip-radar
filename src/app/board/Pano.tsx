@@ -39,6 +39,7 @@ import { voteKeyOf } from "../../lib/share/votes";
 import { KindIcon, UiIcon } from "../cards/Silhouettes";
 import { usePhotoOf, WhoAvatar } from "../cards/WhoseBadge";
 import { FallbackImg } from "../FallbackImg";
+import { Mascot } from "../Mascot";
 import { useMyName } from "../Profile";
 import type { Decisions } from "../useDecisions";
 
@@ -146,6 +147,8 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
         <p className="pn-empty">{L("Karşılaştırma bir ihtiyaç içinde anlamlı: üstten Uçuş ya da Konaklama'yı seç.", "Comparing makes sense within one need: pick Flights or Stays above.")}</p>
       ) : !shown.length ? (
         <p className="pn-empty">
+          {/* (hareket dili) nothing saved yet: the mascot waits; a filter or search that finds nothing: it looks puzzled */}
+          {state !== "plan" && state !== "open" && <Mascot size={48} state={entries.length ? "oops" : "sleepy"} className="empty-mascot" />}
           {state === "plan"
             ? L("Bu süzgeçte plana konmuş bir şey yok.", "Nothing here is on the plan yet.")
             : state === "open"
