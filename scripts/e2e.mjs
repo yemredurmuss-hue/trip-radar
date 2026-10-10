@@ -454,6 +454,19 @@ try {
   assert.deepEqual(await app.locator(".ts-strip .ts-stop b").allInnerTexts(), ["İstanbul", "Porto", "Lizbon", "İstanbul"]);
   assert.deepEqual(await app.locator(".plan-key span").allInnerTexts(), ["Arıyoruz", "Seçildi", "Rezerve"]);
   await app.locator(".ts-strip").screenshot({ path: `${out}/33a-trip-shape.png` });
+  // Layered interface, round 2: a city on the strip says its days, what is chosen there, its weather; the strip itself is as it was.
+  {
+    const stopTip = app.locator(".tipx-box");
+    await app.locator(".ts-strip .ts-stop").nth(1).hover();
+    await stopTip.waitFor({ state: "visible" });
+    assert.match(await stopTip.innerText(), /Porto[\s\S]*8.*Ekim[\s\S]*gece[\s\S]*(seçildi|rezerve|Henüz seçilmedi)/, "the city's tip: days, nights and what is chosen");
+    await app.waitForTimeout(350);
+    await app.screenshot({ path: `${out}/37b-tip-city.png` });
+    await app.mouse.move(2, 2);
+    await stopTip.waitFor({ state: "detached" });
+    assert.equal(await app.locator(".ts-strip .ts-tip").count(), 0, "the old CSS tip is gone, the new one carries its words");
+    assert.deepEqual(await app.locator(".ts-strip .ts-stop b").allInnerTexts(), ["İstanbul", "Porto", "Lizbon", "İstanbul"], "the strip reads as before");
+  }
   // v11: the restaurant is drawn under Yapılacak şeyler, so no section of the sample is left as a chip.
   assert.deepEqual(await app.locator(".cat-more .cat-chip").allInnerTexts(), []);
   // v11: the cards in a grid, no date column; each card's own top line says its days.
@@ -498,6 +511,22 @@ try {
   await app.locator(".panel").evaluate((el) => (el.scrollTop = 0));
   await app.locator(".sbar.show").waitFor({ state: "detached", timeout: 4000 });
   console.log("✓ layered interface: the section's money box on hover, the hero's tips, the thin bar while the hero is scrolled away");
+  // Round 2: the hero's counters list what is inside on hover and keep their click.
+  {
+    const cell = app.locator(".hx-tally button.c-flight");
+    const before = await app.locator(".hx-tally").boundingBox();
+    await cell.hover();
+    const tip = app.locator(".tipx-box");
+    await tip.waitFor({ state: "visible" });
+    assert.match(await tip.innerText(), /2 uçuş[\s\S]*Basınca bölüme gider/, "the counter's tip names what is inside");
+    await app.waitForTimeout(350);
+    await app.screenshot({ path: `${out}/37a-tip-hero-tally.png` });
+    await app.mouse.move(2, 2);
+    await tip.waitFor({ state: "detached" });
+    const after = await app.locator(".hx-tally").boundingBox();
+    assert.deepEqual(after, before, "the counters look the same");
+    assert.equal(await app.locator(".hx-tally button").count(), 4);
+  }
   assert.equal(await sec("activity").locator(".cat-st").innerText(), "1 planda · 3 fikir");
   assert.match(await sec("flight").locator(".cat-head").innerText(), /^Uçuş\s*2\s*1 rezerve · 1 aranıyor/);
   assert.equal(await sec("flight").locator(".cat-st").innerText(), "1 rezerve · 1 aranıyor");
@@ -803,13 +832,48 @@ try {
   const bk = app.locator(".bk-sheet");
   await bk.waitFor();
   assert.match(await bk.locator(".bk-rows").innerText(), /Kalkış[\s\S]*Lizbon LIS[\s\S]*19:40[\s\S]*Varış[\s\S]*İstanbul IST/);
-  assert.deepEqual(await bk.locator(".bk-foot button").allInnerTexts(), ["Değiştir", "İptal ettim", "Rezervasyonu geri al", "Tüm detaylar", "Kapat"]);
-  await app.screenshot({ path: `${out}/31a-booking-sheet.png` });
+  // Round 2: the airport code in the window copies on a click (the clipboard may be refused here: then it is selected).
+  // (the button is empty and zero wide, its pill is drawn beside it: a click goes to the pill)
+  const copyClick = async (cpy) => {
+    await cpy.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    await cpy.hover();
+    const btn = cpy.locator(".cpy-b");
+    await app.waitForFunction((el) => getComputedStyle(el, "::before").opacity === "1", await btn.elementHandle(), { timeout: 3000 });
+    const below = await cpy.evaluate((el) => el.classList.contains("below"));
+    const at = below ? await cpy.boundingBox() : await btn.boundingBox();
+    await app.mouse.click(below ? at.x + 24 : at.x + 28, below ? at.y + at.height + 15 : at.y + at.height / 2);
+  };
+  {
+    const code = bk.locator(".bk-rows .cpy", { hasText: "LIS" });
+    await copyClick(code);
+    assert.equal(await code.locator(".cpy-b").evaluate((el) => getComputedStyle(el, "::before").content), '"Kopyalandı ✓"'.replace("Kopyalandı ✓", await code.locator(".cpy-b").getAttribute("data-label")));
+    await app.waitForFunction(() => /^(Kopyalandı ✓|Seçildi, ⌘C)$/.test(document.querySelector(".bk-rows .cpy-b")?.getAttribute("data-label") ?? ""), null, { timeout: 3000 });
+    await app.waitForTimeout(350);
+    await app.screenshot({ path: `${out}/37c-copy-code.png` });
+    await app.waitForFunction(() => document.querySelector(".bk-rows .cpy-b")?.getAttribute("data-label") === "Kopyala", null, { timeout: 4000 });
+    assert.ok(await bk.isVisible(), "a click on the copy button does not close the window");
+    assert.equal((await bk.locator(".bk-rows").innerText()).includes("Kopyala"), false, "the button's words are not part of the text");
+  }
   await app.keyboard.press("Escape");
   await bk.waitFor({ state: "detached" });
 
   // The cities big, the airport codes and hours small; the landing day only because it's the next day.
   assert.match(await home.locator(".pk-mid").innerText(), /Lizbon\s*LIS · 19:40[\s\S]*İstanbul\s*IST · 15 Ekim · 01:35/);
+  // Round 2: the card's airport codes have the copy button too; it takes no room and a click on it doesn't open the card.
+  {
+    const stop = home.locator(".pk-mid .pk-stop .cpy").first();
+    const box = await home.boundingBox();
+    await copyClick(stop);
+    assert.equal(await home.locator(".pk-body").getAttribute("aria-expanded"), "false", "copying doesn't open the card");
+    assert.equal(await app.locator(".bk-sheet").count(), 0, "copying doesn't open the booking window");
+    const now = await home.boundingBox();
+    assert.deepEqual([now.width, now.height], [box.width, box.height], "the card is the size it was");
+    // The right-hand end: its pill is under the code (the card's edge is on its right).
+    await copyClick(home.locator(".pk-mid .pk-stop.r .cpy"));
+    assert.equal(await app.locator(".bk-sheet").count(), 0, "copying at the right end doesn't open the booking window either");
+    await home.screenshot({ path: `${out}/37f-copy-card.png` });
+    await app.mouse.move(2, 2);
+  }
   // v11: a row on the plan opens its record (a tap anywhere but its controls; its title is edited where it stands).
   await douro.locator(".ac-m").click();
   const douroDrawer = app.getByRole("dialog");
@@ -1071,6 +1135,15 @@ try {
   await douroCard().getByRole("button", { name: "Kart menüsü" }).click();
   await douroCard().getByRole("menuitem", { name: "Sil" }).click();
   await douroCard().waitFor({ state: "detached" });
+  // Round 2: the toast carries a ring that empties over the 8 seconds; the button works as before.
+  {
+    const toast = app.locator(".pk-undo", { hasText: "Douro tekne turu silindi" });
+    const ring = toast.locator(".pk-undo-ring .run");
+    await ring.waitFor();
+    assert.equal(await ring.evaluate((el) => getComputedStyle(el).animationDuration), "8s", "the ring runs for the 8 seconds of the undo");
+    await app.waitForTimeout(350);
+    await app.screenshot({ path: `${out}/37d-undo-ring.png` });
+  }
   await app.locator(".pk-undo", { hasText: "Douro tekne turu silindi" }).getByRole("button", { name: "Geri al" }).click();
   await douroCard().locator('.pk-docpill[title^="bilet.pdf"]').waitFor();
   await app.getByRole("button", { name: "Ekle", exact: true }).first().click();
@@ -1356,6 +1429,24 @@ try {
     "https://www.klook.com/search/result/?query=Lizbon",
   ]);
   assert.equal(await sec("activity").locator(".ek-card").count(), 0, "no empty card in Etkinlik ve turlar");
+  // Round 2: the chips are logos first; the name and ↗ open beside one on hover, and the row keeps its height.
+  {
+    const row = sec("activity").locator('.ac-self-row:has(b:text-is("Lizbon"))');
+    const chip = row.locator(".ek-link").first();
+    const h = (await row.boundingBox()).height;
+    const w0 = (await chip.boundingBox()).width;
+    assert.ok(w0 < 40, `the chip is a logo until pointed at (${w0}px)`);
+    await chip.hover();
+    await app.waitForTimeout(450);
+    const w1 = (await chip.boundingBox()).width;
+    assert.ok(w1 > 80, `the chip shows its name on hover (${w1}px)`);
+    assert.match(await chip.innerText(), /GetYourGuide\s*↗/);
+    assert.equal((await row.boundingBox()).height, h, "the row doesn't grow");
+    await app.screenshot({ path: `${out}/37e-self-chip.png` });
+    await app.mouse.move(2, 2);
+    await app.waitForTimeout(450);
+    assert.ok((await chip.boundingBox()).width < 40, "the chip folds back");
+  }
   assert.ok((await app.locator(".cat-plan .pk-docmiss", { hasText: "Belge eksik" }).count()) > 0, "a booking without its ticket says so");
   await app.setViewportSize({ width: 1440, height: 900 });
   // Narrow: the + and × are there without a hover.

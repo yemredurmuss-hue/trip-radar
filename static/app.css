@@ -3899,19 +3899,20 @@ a.ch-why { text-decoration: none; }
 @media (prefers-reduced-motion: reduce) { .tipx-box, .sbar, .ev-fold-list, .ev-fold-chev { transition: none; animation: none; } }
 
 /* Layered interface, round 2 (docs/mockups/ux-katmanli-arayuz): additions only. */
-/* -- Kopyala: the button sits over the page beside the text and takes no room -- */
+/* -- Kopyala: an empty, zero-wide button beside the text; its pill is drawn by its ::before (so the text around reads and copies as before) -- */
 .cpy { position: relative; display: inline; }
-.cpy-b { position: absolute; top: 50%; z-index: 3; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 5px; margin: 0; border: 0; border-radius: 99px; padding: 3px 9px; background: #f1edff; color: #4a36c9; font-family: inherit; font-size: 11.5px; font-weight: 650; line-height: 1.3; letter-spacing: 0; text-transform: none; white-space: nowrap; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .16s ease; box-shadow: 0 2px 8px -3px rgba(28, 26, 51, .35); }
-.cpy.right .cpy-b { left: 100%; margin-left: 6px; }
-.cpy.left .cpy-b { right: 100%; margin-right: 6px; }
-.cpy.right .cpy-b::before, .cpy.left .cpy-b::before { content: ""; position: absolute; top: 0; bottom: 0; width: 8px; }
-.cpy.right .cpy-b::before { right: 100%; }
-.cpy.left .cpy-b::before { left: 100%; }
-.cpy:hover .cpy-b, .cpy-b:focus-visible, .cpy-b.done { opacity: 1; pointer-events: auto; }
-.cpy-b:focus-visible { outline: 2px solid #5b45e0; outline-offset: 2px; }
-.cpy-b.done { background: #e4f5ec; color: #1d8a5a; }
-@media (hover: none) { .cpy-b { opacity: 1; pointer-events: auto; } }
-@media (prefers-reduced-motion: reduce) { .cpy-b { transition: none; } }
+.cpy-b { position: relative; display: inline-block; width: 0; height: 1em; margin: 0; padding: 0; border: 0; background: none; vertical-align: middle; overflow: visible; font: inherit; cursor: pointer; user-select: none; -webkit-user-select: none; }
+.cpy-b::before { content: attr(data-label); position: absolute; top: 50%; z-index: 3; transform: translateY(-50%); box-sizing: border-box; padding: 3px 9px 3px 25px; border-radius: 99px; background: #f1edff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a36c9' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 9h10v11H9zM5 15V4h10'/%3E%3C/svg%3E") no-repeat 9px center / 12px; color: #4a36c9; font-family: inherit; font-size: 11.5px; font-weight: 650; line-height: 1.3; letter-spacing: 0; text-transform: none; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .16s ease; box-shadow: 0 2px 8px -3px rgba(28, 26, 51, .35); }
+.cpy.right .cpy-b::before { left: 6px; }
+.pk-stop > span:has(.cpy) { overflow: visible; }
+.cpy.below .cpy-b { position: static; }
+.cpy.below .cpy-b::before { top: 100%; left: 0; margin-top: 5px; transform: none; }
+.cpy:hover .cpy-b::before, .cpy-b:focus-visible::before, .cpy-b.done::before { opacity: 1; pointer-events: auto; }
+.cpy-b:focus-visible { outline: none; }
+.cpy-b:focus-visible::before { outline: 2px solid #5b45e0; outline-offset: 2px; }
+.cpy-b.done::before { background-color: #e4f5ec; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231d8a5a' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E"); color: #1d8a5a; }
+@media (hover: none) { .cpy-b::before { opacity: 1; pointer-events: auto; } }
+@media (prefers-reduced-motion: reduce) { .cpy-b::before { transition: none; } }
 /* -- Geri alma halkası: the time left to "Geri al" -- */
 .pk-undo-ring { width: 26px; height: 26px; flex: none; }
 .pk-undo-ring circle { fill: none; stroke-width: 3; }
@@ -3924,3 +3925,12 @@ a.ch-why { text-decoration: none; }
 /* -- The trip shape's city tip: the photo the trip already has on top -- */
 .tipx-ph { display: block; width: 100%; height: 64px; margin-bottom: 7px; border-radius: 8px; object-fit: cover; background: #3a3158; }
 .ts-stop { cursor: pointer; }
+/* -- "Kendin ara": logo first, the name and ↗ open beside it on hover or focus (a screen with a pointer; a touch screen keeps the names) -- */
+.ek-up { color: #8e8e93; }
+@media (hover: hover) {
+  .ek-find { flex-wrap: nowrap; }
+  .ek-link { gap: 0; padding: 0 5px; }
+  .ek-link .ek-nm { display: inline-block; max-width: 0; overflow: hidden; opacity: 0; transition: max-width .22s ease, opacity .18s ease, margin-left .22s ease; }
+  .ek-link:hover .ek-nm, .ek-link:focus-visible .ek-nm { max-width: 190px; margin-left: 5px; padding-right: 3px; opacity: 1; }
+}
+@media (hover: hover) and (prefers-reduced-motion: reduce) { .ek-link .ek-nm { transition: none; } }
