@@ -3966,3 +3966,31 @@ a.ch-why { text-decoration: none; }
   .pk-card { transition: none; }
   .pk-card:not(.pk-open):not(.ek-still):hover { transform: none; }
 }
+/* -- Sihirli açılış (opening.ts, docs/mockups/sihirli-acilis): the mascot and what is drawn only for the show -- */
+.chat-title { display: flex; align-items: center; gap: 10px; }
+.mascot-seat { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; margin: -2px 0; border-radius: 50%; }
+.mascot-seat.away { box-shadow: inset 0 0 0 2px #ddd4ff; }
+.mascot-seat.away .ms { opacity: 0; }
+.ms-wrap { display: inline-block; line-height: 0; }
+.ms { overflow: visible; }
+.ms-wrap .eyes, .ms-wrap .eye { transform-box: fill-box; transform-origin: center; }
+.ms-wrap .happy { opacity: 0; }
+.ms-wrap[data-state="idle"] .eyes { animation: ms-blink 3.2s infinite; }
+.ms-wrap[data-state="wink"] .eye.r { animation: ms-wink .7s ease-in-out both; }
+.ms-wrap[data-state="work"] .ms { animation: ms-bob 1.1s ease-in-out infinite; }
+.ms-wrap[data-state="work"] .eyes { animation: ms-look 2.2s ease-in-out infinite; }
+.ms-wrap[data-state="done"] .eye { opacity: 0; }
+.ms-wrap[data-state="done"] .happy { opacity: 1; }
+@keyframes ms-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+@keyframes ms-wink { 0%, 100% { transform: scaleY(1); } 25%, 75% { transform: scaleY(.12); } }
+@keyframes ms-bob { 50% { transform: translateY(-4px); } }
+@keyframes ms-look { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(-1.5px); } 65% { transform: translateX(1.5px); } }
+.op-fx { position: fixed; inset: 0; z-index: 8; overflow: hidden; pointer-events: none; }
+.op-orb { position: absolute; left: 0; top: 0; width: 46px; height: 46px; pointer-events: none; filter: drop-shadow(0 6px 14px rgba(91, 69, 224, .45)); }
+.op-orb-in { display: block; width: 46px; height: 46px; transform-origin: 23px 23px; }
+.op-orb svg { width: 46px; height: 46px; }
+.op-spark { position: absolute; width: 7px; height: 7px; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, #fff 0 30%, #a596ff 31% 100%); box-shadow: 0 0 8px 2px rgba(165, 150, 255, .7); }
+.op-star { position: absolute; pointer-events: none; color: #8b74ff; font-size: 14px; line-height: 1; }
+.op-glint { position: absolute; overflow: hidden; pointer-events: none; }
+.op-glint i { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, .85) 48%, rgba(181, 166, 255, .45) 52%, transparent 70%); transform: translateX(-120%); }
+@media (prefers-reduced-motion: reduce) { .ms-wrap .eyes, .ms-wrap .eye, .ms-wrap .ms { animation: none !important; } }
