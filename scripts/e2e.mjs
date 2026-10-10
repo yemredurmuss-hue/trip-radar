@@ -28,9 +28,7 @@ const executablePath =
   process.env.CHROMIUM_PATH ?? (process.platform === "darwin" ? macChromium() : null) ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 // The checks below read the Turkish texts: pin the browser to Turkish (an en-US Chromium would start the
 // board in English, see browserLang in src/lib/i18n.ts).
-// Motion is off here (the board's small movements, src/app/motion.ts, would otherwise be caught half way by the checks that read a
-// number or a class right after a change); Part 5 at the end turns it on and checks each movement by itself.
-const TURKISH = { locale: "tr-TR", reducedMotion: "reduce" };
+const TURKISH = { locale: "tr-TR" };
 const LANG_ARG = "--lang=tr-TR";
 // No window on the owner's screen: Chromium's new headless mode (extensions load in it). E2E_HEADED=1 shows the browser.
 const HEADLESS_ARGS = process.env.E2E_HEADED ? [] : ["--headless=new"];
