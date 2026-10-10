@@ -50,7 +50,7 @@ function CityTip({ stop, photos, places, today }: { stop: JourneyStop } & ShapeE
 
 export function TripShape({ stops, hops, onStop, photos, places, today }: { stops: JourneyStop[]; hops: JourneyHop[]; onStop: (stop: JourneyStop) => void } & ShapeExtras) {
   return (
-    <ol className="ts-strip" aria-label={L("Gezinin şekli", "The trip's shape")}>
+    <ol className="ts-strip" data-pit-children aria-label={L("Gezinin şekli", "The trip's shape")}>
       {stops.map((s, n) => (
         <li key={s.key} className="ts-item">
           {/* Hover or focus: the city's days, what is chosen there, its weather and photo; a click still opens its place. */}

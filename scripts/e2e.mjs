@@ -5065,10 +5065,10 @@ try {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Part 6: the "sihirli açılış" (src/app/opening.ts, docs/mockups/sihirli-acilis), with its switch off for everything else.
-// The first time a trip's Plan is open: the mascot leaves its seat in the chat and comes back, the pieces build themselves and
-// after about three seconds every one is at full opacity and nothing is left over; a reload (same session) doesn't play it again;
-// a touch of the panel ends it at once; the page never scrolls (only the panel).
+// Part 6: the "sihirli açılış" (src/app/opening.ts, docs/mockups/acilis-v2, B · Ritim ve sayaçlar), with its switch off for everything else.
+// The first time a trip's Plan is open: what is in view comes in from the first frame and the counters count up, all of it in within about
+// a second; the panel never scrolls on its own; what is below the fold waits and comes in as it is scrolled into view; a reload doesn't
+// play it again; a key press ends it at once.
 // ---------------------------------------------------------------------------------------------
 openingOn = true;
 const opening = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-open-")), {
@@ -5092,49 +5092,52 @@ try {
   await app.goto(`chrome-extension://${id}/app.html`);
   await app.getByText("Örnek geziyi yükle →").click();
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
-  const seat = app.locator("[data-mascot-seat]");
-  const orb = app.locator(".op-orb");
-  // The mascot has left its seat (a faint ring stays) and is flying; pieces are on their way in.
-  await app.waitForFunction(() => document.querySelector("[data-mascot-seat]")?.classList.contains("away"), null, { timeout: 4000 });
-  await orb.waitFor({ state: "attached" });
-  await app.waitForTimeout(900);
+  // (the opening's own animations are script ones: no CSS animation name)
+  const scripted = () => app.evaluate(() => document.getAnimations().filter((x) => !("animationName" in x) && !("transitionProperty" in x)).length);
+  const PIECES = ".hx-photo, .hx-story > *, .hx-tally button:not(.zero), .hx-side > .hx-block, .ts-item, .cat-sec";
+  const faint = () => app.evaluate((sel) => [...document.querySelectorAll(sel)].filter((e) => e.getBoundingClientRect().height > 0 && Number(getComputedStyle(e).opacity) < 1).length, PIECES);
+  // Coming in from the first frame (no wait before it): pieces are on their way while the counters count.
+  await app.waitForFunction(() => document.getAnimations().some((x) => !("animationName" in x)), null, { timeout: 3000 });
   await app.screenshot({ path: `${out}/39a-opening-mid.png` });
   assert.ok(await app.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1), "the page doesn't scroll while it plays");
-  const midOpacity = await app.evaluate(() => [...document.querySelectorAll(".hx-photo, .hx-tally button, .hx-progress, .cat-sec")].map((e) => Number(getComputedStyle(e).opacity)));
-  assert.ok(midOpacity.some((o) => o < 1), `pieces are still arriving mid-way (${midOpacity.map((o) => o.toFixed(2)).join(" ")})`);
-  // Then the panel glides down on its own and what is below pops in (2026-10-10), and glides back to the top; everything is at full
-  // opacity, the mascot is home, nothing is left over.
-  await app.waitForFunction(() => (document.querySelector(".panel")?.scrollTop ?? 0) > 150, null, { timeout: 12000 });
-  await app.waitForTimeout(500);
-  await app.screenshot({ path: `${out}/39c-opening-glide.png` });
-  await app.locator(".op-fx").waitFor({ state: "detached", timeout: 20000 });
-  assert.ok((await app.locator(".panel").evaluate((el) => el.scrollTop)) < 10, "back at the top when it ends");
-  assert.equal(await seat.evaluate((el) => el.classList.contains("away")), false, "the mascot is back in its seat");
-  const settled = await app.evaluate(() =>
-    [...document.querySelectorAll(".hx-photo, .hx-story h1, .hx-tally button, .hx-progress, .hx-side > .hx-block, .ts-stop, .cat-sec, .pk-card")].filter((e) => Number(getComputedStyle(e).opacity) < 1 || e.getAnimations().length > 0 && e.getAnimations().some((a) => a.animationName === "")).length,
-  );
-  assert.equal(settled, 0, "every piece is at full opacity and no animation is left on it");
+  // Within about a second what is in view is in: full opacity, the counters read their figures, the panel hasn't moved.
+  await app.waitForTimeout(1600);
+  assert.equal(await app.locator(".panel").evaluate((el) => el.scrollTop), 0, "the panel never scrolls on its own");
+  const inView = await app.evaluate((sel) => {
+    const edge = document.querySelector(".panel").getBoundingClientRect().bottom - 24;
+    return [...document.querySelectorAll(sel)].filter((e) => e.getBoundingClientRect().top < edge && e.getBoundingClientRect().height > 0 && Number(getComputedStyle(e).opacity) < 1).length;
+  }, PIECES);
+  assert.equal(inView, 0, "what is in view is in within about a second");
   assert.equal(await app.locator(".hx-tally button").first().innerText().then((t) => /^\d+ \S/.test(t.trim())), true, "the counters read as numbers again");
   await app.screenshot({ path: `${out}/39b-opening-done.png` });
+  // What is below the fold waits, and comes in as it is scrolled into view.
+  const waitingBelow = await faint();
+  assert.ok(waitingBelow > 0, "what is below the fold waits for the scroll");
+  await app.locator(".panel").evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+  await app.waitForFunction((sel) => [...document.querySelectorAll(sel)].every((e) => e.getBoundingClientRect().bottom < 0 || Number(getComputedStyle(e).opacity) === 1), PIECES, { timeout: 4000 });
+  await app.screenshot({ path: `${out}/39c-opening-scrolled.png` });
+  await app.locator(".panel").evaluate((el) => el.scrollTo({ top: 0 }));
+  await app.waitForTimeout(1500);
+  assert.equal(await faint(), 0, "every piece is at full opacity once it has been seen");
+  assert.equal(await scripted(), 0, "nothing of the opening is left running");
 
-  // The same session, a reload: no second opening.
+  // A reload: no second opening.
   await app.reload();
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
-  await app.waitForTimeout(700);
-  assert.equal(await app.locator(".op-orb, .op-fx").count(), 0, "a reload in the same session doesn't play it again");
-  assert.equal(await seat.evaluate((el) => el.classList.contains("away")), false);
+  await app.waitForTimeout(400);
+  assert.equal(await scripted(), 0, "a reload doesn't play it again");
+  assert.equal(await faint(), 0, "a reload shows everything at once");
 
-  // A touch ends it at once: opened afresh, one key press and everything is in place.
+  // A key ends it at once: opened afresh, one key press and everything is in place, below the fold too.
   await app.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("trip-radar:opened:")).forEach((k) => localStorage.removeItem(k)));
   await app.getByRole("button", { name: "Seyahatlerim" }).first().click();
   await app.getByText("Portekiz (örnek)").first().click();
-  await app.waitForFunction(() => document.querySelector("[data-mascot-seat]")?.classList.contains("away"), null, { timeout: 4000 });
+  await app.waitForFunction(() => document.getAnimations().some((x) => !("animationName" in x)), null, { timeout: 3000 });
   await app.keyboard.press("Shift");
-  await app.locator(".op-fx").waitFor({ state: "detached", timeout: 600 });
-  assert.equal(await seat.evaluate((el) => el.classList.contains("away")), false, "ended at once: the mascot is home");
-  const rest = await app.evaluate(() => [...document.querySelectorAll(".hx-photo, .hx-tally button, .cat-sec")].filter((e) => Number(getComputedStyle(e).opacity) < 1).length);
-  assert.equal(rest, 0, "ended at once: everything is in place");
-  console.log("✓ opening: the mascot leaves its seat and comes back, the pieces build in order and settle at full opacity, a reload doesn't repeat it, a key press ends it at once");
+  await app.waitForTimeout(150);
+  assert.equal(await scripted(), 0, "ended at once: nothing left running");
+  assert.equal(await faint(), 0, "ended at once: everything is in place");
+  console.log("✓ opening: what is in view comes in from the first frame with the counters counting, the panel never scrolls itself, below the fold comes in as it is scrolled to, a reload doesn't repeat it, a key press ends it at once");
 } finally {
   await opening.close();
 }

@@ -89,7 +89,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
   // İlham fills by sending links (a Reel, a pin), never by hand: no "Ekle" chip for it.
   const empty = sections.filter((s) => !s.entries.length && !s.hidden.length && !waiting(s) && !suggested(s).length && !emptyRows(s).length && !visaLine(s) && SECTION_META[s.id].templates.length > 0);
   return (
-    <div className="section trip-plan cat-plan">
+    <div className="section trip-plan cat-plan" data-pit-children>
       {/* v11 plan bar: "Plan", the order switch, "+ Ekle", the colours' key on the right; one line. */}
       <div className="section-head plan-bar" title={n.total > 0 ? nightsSummary(n) : undefined}>
         <strong className="plan-h">{L("Plan", "Plan")}</strong>
@@ -109,7 +109,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
       ))}
       {pending?.lead && <div className="ar-lead">{pending.lead}</div>}
       {shown.length > 0 && (
-        <div className="cat-sheet" data-pit-children="">
+        <div className="cat-sheet" data-pit-children>
           {shown.map((s) => {
             // A section drawn only for its suggestions stays closed ("2 öneri" in its header) and keeps no first look,
             // so the first real card there gives it its normal one.

@@ -177,7 +177,7 @@ export function TripHero(props: {
   const barLabel = L(`${headline}: ${booked} rezerve, ${planned} planlandı, ${open} ihtiyaç karar bekliyor`, `${headline}: ${booked} booked, ${planned} planned, ${open} to decide`);
   return (
     <div className="hx-left">
-      <div className={`hx-photo${hasImage ? "" : " empty"}`} data-pit-photo="">
+      <div className={`hx-photo${hasImage ? "" : " empty"}`} data-pit data-pit-photo>
         {/* Under the photos: seen while there's none, or when one fails to load. */}
         <div className="hx-ph" aria-hidden={hasImage || undefined}>
           <HeroIcon name="landscape" size={36} />
@@ -209,7 +209,7 @@ export function TripHero(props: {
       </div>
       {/* Outside the photo (which clips): the menu opens over the page. */}
       <div className="hx-menu">{props.menu}</div>
-      <div className="hx-story">
+      <div className="hx-story" data-pit-children>
         <h1>{trip.title}</h1>
         {range ? (
           <div key="dates" className={`hx-when${dateAppear}`} title={props.estimated ? L("Tahmini · kayıtlardan", "Estimated · from saves") : undefined}>
@@ -230,7 +230,7 @@ export function TripHero(props: {
           </div>
         )}
         {props.lead && <p className="hx-lead">{props.lead}</p>}
-        <div className="hx-tally" role="group" aria-label={L("Planda", "In the plan")}>
+        <div className="hx-tally" data-pit-children role="group" aria-label={L("Planda", "In the plan")}>
           {/* One line each, sized to its words; the lines between are their own items so they sit mid-gap. */}
           {shown.map(([k, word, icon], n) => (
             <Fragment key={k}>
@@ -238,7 +238,7 @@ export function TripHero(props: {
               {/* Hover or focus lists what is inside; a click still opens its section. */}
               <TipOn tip={tallyTip(k, word, tally[k], props.tallyLines?.[k] ?? [])} align={n % 2 ? "right" : "left"}>
                 {(bind) => (
-                  <button {...bind} className={`c-${k}${tally[k] ? "" : " zero"}`} aria-label={`${tally[k]} ${word}. ${L("Plan'da göster", "Show on the Plan")}`} onClick={() => props.onTally(k)}>
+                  <button {...bind} data-count className={`c-${k}${tally[k] ? "" : " zero"}`} aria-label={`${tally[k]} ${word}. ${L("Plan'da göster", "Show on the Plan")}`} onClick={() => props.onTally(k)}>
                     <HeroIcon name={icon} size={22} />
                     <span>
                       {tally[k]} {word}
@@ -253,9 +253,9 @@ export function TripHero(props: {
           <div className="hx-progress-main">
             {/* The words, the bar (and "⏳ 2") on one line, the three stages under them: the box keeps the height it had. */}
             <div className="hx-progress-head">
-              <b>{headline}</b>
+              <b data-count>{headline}</b>
               {/* Two fills from the left: planned (light) under booked (dark), so booked + planned is the light one's end. */}
-              <div className="hx-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? 0} aria-label={barLabel}>
+              <div className="hx-bar" data-pit="bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? 0} aria-label={barLabel}>
                 {reach > 0 && <i className="hx-bar-planned" style={{ width: `${reach}%` }} />}
                 {bookedW > 0 && <i className="hx-bar-booked" style={{ width: `${bookedW}%` }} />}
               </div>

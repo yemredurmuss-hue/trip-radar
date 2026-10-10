@@ -6,8 +6,11 @@ import { L, lang, loadLang } from "../lib/i18n";
 import { reloadIfStale } from "../lib/update";
 import { App } from "./App";
 import { ErrorBoundary, installErrorBanner } from "./ErrorBoundary";
+import { installExitMotion } from "./exitMotion";
 
 installErrorBanner();
+// Windows and drawers leave the way they came in, only quicker (hareket dili).
+installExitMotion();
 // A partner brand's page opened from the board goes through the partner link, only as it's clicked (affiliate.ts).
 installPartnerLinks();
 // The language first (stored choice, else the browser's), so nothing renders in the wrong one. And
