@@ -11,7 +11,7 @@ import { BUDGET_SLICES, type BudgetBar, type BudgetSlice } from "../lib/progress
 import type { TripFacts as Facts } from "../lib/tripFacts";
 import type { Who } from "../lib/tripSettings";
 import type { StyleChip } from "../lib/tripStyle";
-import type { Trip } from "../lib/types";
+import type { Item, Trip } from "../lib/types";
 import { HeroIcon, type HeroIconName } from "./Icons";
 import { HoverTip } from "./HoverTip";
 import { Preferences } from "./IntentCard";
@@ -19,6 +19,7 @@ import { Travellers } from "./Travellers";
 import { useAppear } from "./useAppear";
 import type { Decisions } from "./useDecisions";
 import { useWeather } from "./useWeather";
+import { Counted } from "./Counted";
 
 export function TripFacts(props: {
   trip: Trip;
@@ -36,6 +37,8 @@ export function TripFacts(props: {
   bar: BudgetBar | null;
   /** Who goes (Travellers.useWho): the names and how many. */
   who: Who;
+  /** The trip's records, for each face's latest action on a shared trip. */
+  items?: Item[];
   /** Opens the share dialog; absent where the trip can't be shared (the sample). */
   onShare?: () => void;
 }) {
@@ -51,7 +54,7 @@ export function TripFacts(props: {
   return (
     <aside className="hx-side">
       <div className="hx-block hx-who">
-        <Travellers trip={props.trip} who={props.who} onShare={props.onShare} />
+        <Travellers trip={props.trip} who={props.who} onShare={props.onShare} items={props.items} />
         {props.chips.length > 0 ? (
           <div key="chips" className={`hx-styles${chipsAppear}`} aria-label={L("Gezinin tarzı", "The trip's style")}>
             {props.chips.map((c) => (
@@ -171,7 +174,7 @@ function Budget({ bar, ready }: { bar: BudgetBar | null; ready: boolean }) {
       <button className="hx-budget-btn" aria-expanded={open} aria-label={spoken} title={L("Ayrıntı için tıkla", "Click for details")} onClick={() => setOpen(!open)}>
         <span className="hx-budget-top">
           <span className="hx-h">{L("Bütçe", "Budget")}</span>
-          <strong title={bar.total == null ? L("Bütçe belirlenmedi; bilinen toplam", "No budget set; the known total") : undefined}>{money(bar.total ?? known)}</strong>
+          <strong title={bar.total == null ? L("Bütçe belirlenmedi; bilinen toplam", "No budget set; the known total") : undefined}><Counted value={bar.total ?? known} format={money} /></strong>
         </span>
         {lines
           .filter(([, , n]) => n > 0)
@@ -181,7 +184,7 @@ function Budget({ bar, ready }: { bar: BudgetBar | null; ready: boolean }) {
                 <i aria-hidden />
                 {label}
               </span>
-              <b>{money(n)}</b>
+              <b><Counted value={n} format={money} /></b>
             </span>
           ))}
       </button>
