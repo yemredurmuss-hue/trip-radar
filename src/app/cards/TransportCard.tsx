@@ -6,8 +6,10 @@ import type { ReactNode } from "react";
 // leaves from and goes to (a rental: where it's picked up), the hour under the left end; empty ones read
 // "Nereden" / "Nereye" / "Saat ekle", faint.
 import type { End, TransportFace } from "../../lib/cardView";
+import { L } from "../../lib/i18n";
 import type { FieldKey } from "../../lib/inlineEdit";
 import { Editable, useInlineEdit } from "./InlineEdit";
+import { CopyText } from "../CopyButton";
 import { FallbackImg } from "../FallbackImg";
 import { KindIcon } from "./Silhouettes";
 
@@ -15,16 +17,27 @@ import { KindIcon } from "./Silhouettes";
 // isn't broken in the middle of the word.
 const isLong = (name: string): boolean => name.length > 12 || name.split(/\s+/).some((w) => w.length > 9);
 
-function Stop({ end, right, field, timed }: { end: End | null; right: boolean; field: FieldKey | null; timed: boolean }) {
+// The airport code a trip's end starts with ("LIS", "IST · 15 Ekim"): its copy button sits by it.
+const codeOf = (end: End | null): string | null => /^[A-Z]{3}(?![\p{L}\p{N}])/u.exec(end?.sub ?? "")?.[0] ?? null;
+
+function Stop({ end, right, field, timed, codes }: { end: End | null; right: boolean; field: FieldKey | null; timed: boolean; codes: boolean }) {
   const api = useInlineEdit();
   const editable = Boolean(field && api?.fields.includes(field));
   if (!end && !editable) return <div className={`pk-stop${right ? " r" : ""}`} />;
   const time = timed && api?.fields.includes("time");
+  const code = codes ? codeOf(end) : null;
   return (
     <div className={`pk-stop${right ? " r" : ""}`}>
       <b className={isLong(end?.city ?? "") ? "long" : undefined}>{field ? <Editable field={field}>{end?.city}</Editable> : end?.city}</b>
       <span>
-        {end?.sub}
+        {codes && code ? (
+          <>
+            <CopyText value={code} side={right ? "left" : "right"} label={L("Havalimanı kodu", "Airport code")}>{code}</CopyText>
+            {end!.sub!.slice(code.length)}
+          </>
+        ) : (
+          end?.sub
+        )}
         {end?.sub && (end?.time || time) ? " · " : ""}
         {time ? (
           <Editable field="time">{end?.time && <strong className={end.late ? "pk-late" : undefined}>{end.time}</strong>}</Editable>
@@ -45,12 +58,12 @@ export function TransportCardBody({ face, title, art = null }: { face: Transport
     <div className={`pk-mid${face.logo ? " has-logo" : ""}`}>
       {/* The airline's logo first, as on flight search sites (an empty box when it won't load keeps the grid). */}
       {face.logo && <span className="pk-logo"><FallbackImg className="pk-airline" src={face.logo} fallback={face.logo2 ? <FallbackImg className="pk-airline" src={face.logo2} fallback={<KindIcon kind="flight" size={20} />} /> : <KindIcon kind="flight" size={20} />} /></span>}
-      <Stop end={face.from} right={false} field={face.rental ? "city" : "from"} timed={!face.rental} />
+      <Stop end={face.from} right={false} field={face.rental ? "city" : "from"} timed={!face.rental} codes={!face.rental} />
       <div className="pk-route">
         {art}
         {face.middle && <small>{face.middle}</small>}
       </div>
-      <Stop end={face.to} right field={face.rental ? null : "to"} timed={false} />
+      <Stop end={face.to} right field={face.rental ? null : "to"} timed={false} codes={!face.rental} />
     </div>
   );
 }

@@ -16,6 +16,7 @@ import type { InsertAt } from "../../lib/templates";
 import type { DocMeta, Item, LegMode, Trip } from "../../lib/types";
 import type { Undoable } from "../../lib/undoables";
 import { chooseItem, setInstalled, setItemStatus, setOwner } from "../actions";
+import { CopyText } from "../CopyButton";
 import { WhoAvatar, WhoseBadge, usePhotoOf, useWhoCtx } from "./WhoseBadge";
 import { isUnnamedMe, peopleOf, whoseOf } from "../../lib/whose";
 import { sameName } from "../../lib/tripSettings";
@@ -280,7 +281,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
           {bookedCard && kind === "flight" && (
             <div className="pk-stub">
               <span>{item.flight?.carrier ?? item.provider ?? L("Uçuş", "Flight")}</span>
-              {item.bookingRef && <b>{item.bookingRef}</b>}
+              {item.bookingRef && <b><CopyText value={item.bookingRef} label={L("Rezervasyon kodu", "Booking code")}>{item.bookingRef}</CopyText></b>}
               {item.guests.adults ? <span>{L(`${item.guests.adults} yolcu`, `${item.guests.adults} passenger${item.guests.adults === 1 ? "" : "s"}`)}</span> : null}
               <span className="pk-stamp" aria-hidden><UiIcon name="check" size={14} /></span>
             </div>
