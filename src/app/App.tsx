@@ -20,6 +20,7 @@ import { ItemDrawer } from "./ItemDrawer";
 import { Settings } from "./Settings";
 import { ShareDialog, ShareProvider } from "./Share";
 import { TripPanel } from "./TripPanel";
+import { UndoRing } from "./cards/UndoToast";
 import { TripsHome, type StartLaunch } from "./TripsHome";
 import { StartChat } from "./start/StartChat";
 import { withTransition } from "./viewTransition";
@@ -369,6 +370,7 @@ export function App() {
           >
             {L("Geri al", "Undo")}
           </button>
+          <UndoRing of={deletedTrip} />
         </div>
       )}
       {trip && shareOpen && (
