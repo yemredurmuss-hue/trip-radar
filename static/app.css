@@ -3897,3 +3897,18 @@ a.ch-why { text-decoration: none; }
 .sbar-go:focus-visible { outline: 3px solid #c9bff3; outline-offset: 2px; }
 @media (max-width: 760px) { .sbar-slot { margin: 0 -16px; } .sbar { padding: 9px 16px; } .sbar-d, .sbar-track { display: none; } }
 @media (prefers-reduced-motion: reduce) { .tipx-box, .sbar, .ev-fold-list, .ev-fold-chev { transition: none; animation: none; } }
+
+/* Layered interface, round 2 (docs/mockups/ux-katmanli-arayuz): additions only. */
+/* -- Kopyala: the button sits over the page beside the text and takes no room -- */
+.cpy { position: relative; display: inline; }
+.cpy-b { position: absolute; top: 50%; z-index: 3; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 5px; margin: 0; border: 0; border-radius: 99px; padding: 3px 9px; background: #f1edff; color: #4a36c9; font-family: inherit; font-size: 11.5px; font-weight: 650; line-height: 1.3; letter-spacing: 0; text-transform: none; white-space: nowrap; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .16s ease; box-shadow: 0 2px 8px -3px rgba(28, 26, 51, .35); }
+.cpy.right .cpy-b { left: 100%; margin-left: 6px; }
+.cpy.left .cpy-b { right: 100%; margin-right: 6px; }
+.cpy.right .cpy-b::before, .cpy.left .cpy-b::before { content: ""; position: absolute; top: 0; bottom: 0; width: 8px; }
+.cpy.right .cpy-b::before { right: 100%; }
+.cpy.left .cpy-b::before { left: 100%; }
+.cpy:hover .cpy-b, .cpy-b:focus-visible, .cpy-b.done { opacity: 1; pointer-events: auto; }
+.cpy-b:focus-visible { outline: 2px solid #5b45e0; outline-offset: 2px; }
+.cpy-b.done { background: #e4f5ec; color: #1d8a5a; }
+@media (hover: none) { .cpy-b { opacity: 1; pointer-events: auto; } }
+@media (prefers-reduced-motion: reduce) { .cpy-b { transition: none; } }

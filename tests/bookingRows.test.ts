@@ -1,6 +1,6 @@
 // The booking's window rows (v11 phase 3, lib/bookingRows.ts).
 import { describe, expect, it } from "vitest";
-import { bookingRows, refFromNote } from "../src/lib/bookingRows";
+import { bookingCopies, bookingRows, refFromNote } from "../src/lib/bookingRows";
 import { makeItem } from "./fixtures/makeItem";
 
 describe("a booking's rows", () => {
@@ -38,5 +38,26 @@ describe("a booking's rows", () => {
     expect(refFromNote("PNR K7T2QX · 2 yolcu")).toBe("K7T2QX");
     expect(refFromNote("Bilet · MO-55120")).toBe("MO-55120");
     expect(refFromNote("ücretsiz iptal: 5 Eki")).toBeNull();
+  });
+});
+
+describe("what a booking's rows can copy", () => {
+  it("a flight: the PNR and the airport codes of its ends, labelled as the rows are", () => {
+    const flight = makeItem({
+      category: "flight",
+      status: "booked",
+      bookingRef: "K7T2QX",
+      flight: { from: "IST", to: "HND", departure: "2027-04-01T01:55", arrival: "2027-04-01T19:25", carrier: "TK", flightNumber: "TK52", stops: 0 },
+    });
+    expect(bookingCopies(flight, "flight")).toEqual({
+      PNR: { value: "K7T2QX" },
+      Kalkış: { value: "IST", token: "IST" },
+      Varış: { value: "HND", token: "HND" },
+    });
+  });
+  it("a stay: its booking number and its address, and nothing it does not have", () => {
+    const stay = makeItem({ category: "stay", status: "booked", statusNote: "Rezervasyon no 88120", location: { address: "Asakusa 2-chome", area: null, approximate: false } });
+    expect(bookingCopies(stay, "stay")).toEqual({ "Rezervasyon no": { value: "88120" }, Adres: { value: "Asakusa 2-chome" } });
+    expect(bookingCopies(makeItem({ category: "stay" }), "stay")).toEqual({});
   });
 });

@@ -6,6 +6,7 @@ import { lowerText } from "../lib/i18nText";
 import { CATEGORY_LABELS, formatDateRange, formatPrice } from "../lib/items";
 import type { FactSource, Item, ItemStatus, Trip } from "../lib/types";
 import { removeItem } from "./actions";
+import { CopyText } from "./CopyButton";
 import { Evidence } from "./Evidence";
 import type { Decisions } from "./useDecisions";
 
@@ -278,7 +279,9 @@ export function ItemDrawer({ item, group, trips, decision, decisions, onClose, o
             <div className="fact">
               <span className="k">{L("Konum", "Location")}</span>
               <span>
-                {[item.location.area, item.location.address].filter(Boolean).join(" · ")}
+                {item.location.area}
+                {item.location.area && item.location.address ? " · " : ""}
+                {item.location.address && <CopyText value={item.location.address} label={L("Adres", "Address")}>{item.location.address}</CopyText>}
                 {item.location.approximate && <div className="muted">{L("Yaklaşık konum", "Approximate location")}</div>}
               </span>
             </div>

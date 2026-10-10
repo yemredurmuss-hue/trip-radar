@@ -22,6 +22,23 @@ const day = (iso: string | null | undefined): string | null => {
   return d ? formatDateRange(d, null) : null;
 };
 
+/**
+ * What a row of bookingRows can hand to the clipboard, by the row's label: the reference, the address, and the airport
+ * code of a flight's ends (`token`: the code as the row writes it, so the button can sit right by it). Pure.
+ */
+export function bookingCopies(item: Item, kind: CardKind): Record<string, { value: string; token?: string }> {
+  const out: Record<string, { value: string; token?: string }> = {};
+  const ref = item.bookingRef ?? refFromNote(item.statusNote);
+  if (ref) out[refLabel(kind)] = { value: ref };
+  const f = item.flight;
+  if (kind !== "stay" && f && (f.from || f.to || f.departure)) {
+    if (f.from && /^[A-Z]{3}$/.test(f.from)) out[L("Kalkış", "Departs")] = { value: f.from, token: f.from };
+    if (f.to && /^[A-Z]{3}$/.test(f.to)) out[L("Varış", "Arrives")] = { value: f.to, token: f.to };
+  }
+  if (item.location.address) out[L("Adres", "Address")] = { value: item.location.address };
+  return out;
+}
+
 export function bookingRows(item: Item, kind: CardKind): [string, string][] {
   const rows: [string, string][] = [];
   const ref = item.bookingRef ?? refFromNote(item.statusNote);

@@ -5,7 +5,9 @@
 // whether the old one was cancelled), İptal ettim (its need to find again, "Geri al"), Tüm detaylar, Kapat.
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { bookingRows } from "../../lib/bookingRows";
+import { bookingCopies, bookingRows } from "../../lib/bookingRows";
+import { splitAround } from "../../lib/copyText";
+import { CopyText } from "../CopyButton";
 import type { CardFacts } from "../../lib/cardFacts";
 import { cardKindColor, cardKindLabel, type CardKind } from "../../lib/cardKinds";
 import { L } from "../../lib/i18n";
@@ -33,6 +35,23 @@ export function BookingSheet({ item, kind, facts, docs, date, onChange, onCancel
     return () => document.removeEventListener("keydown", onKey, true);
   }, [onClose]);
   const rows = bookingRows(item, kind);
+  const copies = bookingCopies(item, kind);
+  // The reference and the address are copied whole; a flight's end by its airport code, the button right by it.
+  const cell = (k: string, v: string) => {
+    const c = copies[k];
+    if (!c) return v;
+    if (!c.token) return <CopyText value={c.value} label={k}>{v}</CopyText>;
+    const parts = splitAround(v, c.token);
+    return parts ? (
+      <>
+        {parts[0]}
+        <CopyText value={c.value} label={L("Havalimanı kodu", "Airport code")}>{parts[1]}</CopyText>
+        {parts[2]}
+      </>
+    ) : (
+      v
+    );
+  };
   const sub = [date, item.provider].filter(Boolean).join(" · ");
   return createPortal(
     <div className="modal" onClick={(e) => (e.stopPropagation(), onClose())}>
@@ -64,7 +83,7 @@ export function BookingSheet({ item, kind, facts, docs, date, onChange, onCancel
               {rows.map(([k, v]) => (
                 <div key={k}>
                   <dt>{k}</dt>
-                  <dd>{v}</dd>
+                  <dd>{cell(k, v)}</dd>
                 </div>
               ))}
             </dl>
