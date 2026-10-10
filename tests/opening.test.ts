@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GAP, MAX_START, OFF_KEY, claimOpening, openedKey, schedule } from "../src/app/opening";
+import { GAP, MAX_GLIDE, MAX_START, MIN_GLIDE, OFF_KEY, PHASE, claimOpening, easeInOut, glideTime, openedKey, schedule } from "../src/app/opening";
 
 const memory = () => {
   const data = new Map<string, string>();
@@ -41,5 +41,23 @@ describe("when it plays", () => {
     expect(claimOpening("t1", null)).toBe(true);
     const broken = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } };
     expect(claimOpening("t1", broken)).toBe(true);
+  });
+});
+
+describe("the mascot's beat and the glide (2026-10-10: a slow wink, then the panel glides down)", () => {
+  it("winks long enough to be seen, before anything fills", () => {
+    expect(PHASE.burst - PHASE.wink).toBeGreaterThanOrEqual(900);
+    expect(PHASE.fill).toBeGreaterThanOrEqual(PHASE.burst);
+  });
+  it("glides at a steady speed, never too short or too long", () => {
+    expect(glideTime(0)).toBe(MIN_GLIDE);
+    expect(glideTime(900)).toBe(2000);
+    expect(glideTime(100000)).toBe(MAX_GLIDE);
+  });
+  it("eases in and out, from 0 to 1", () => {
+    expect(easeInOut(0)).toBe(0);
+    expect(easeInOut(1)).toBe(1);
+    expect(easeInOut(0.5)).toBeCloseTo(0.5);
+    expect(easeInOut(0.25)).toBeLessThan(0.25);
   });
 });

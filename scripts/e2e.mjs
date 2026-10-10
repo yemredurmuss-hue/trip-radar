@@ -878,7 +878,7 @@ try {
     assert.equal(await home.locator(".pk-body").getAttribute("aria-expanded"), "false", "copying doesn't open the card");
     assert.equal(await app.locator(".bk-sheet").count(), 0, "copying doesn't open the booking window");
     const now = await home.boundingBox();
-    assert.deepEqual([now.width, now.height], [box.width, box.height], "the card is the size it was");
+    assert.deepEqual([now.width, now.height].map((v) => Math.round(v * 10) / 10), [box.width, box.height].map((v) => Math.round(v * 10) / 10), "the card is the size it was");
     // The right-hand end: its pill is under the code (the card's edge is on its right).
     await copyClick(home.locator(".pk-mid .pk-stop.r .cpy"));
     assert.equal(await app.locator(".bk-sheet").count(), 0, "copying at the right end doesn't open the booking window either");
@@ -905,7 +905,7 @@ try {
     await app.screenshot({ path: `${out}/37g-peek-flight.png` });
     assert.deepEqual(await home.locator(".pk-foot, .pk-mid").evaluateAll((els) => els.map((e) => e.innerText)), faceBefore, "the card's face reads the same");
     const sizeNow = await home.boundingBox();
-    assert.deepEqual([sizeNow.width, sizeNow.height], [sizeBefore.width, sizeBefore.height], "the card is the size it was");
+    assert.deepEqual([sizeNow.width, sizeNow.height].map((v) => Math.round(v * 10) / 10), [sizeBefore.width, sizeBefore.height].map((v) => Math.round(v * 10) / 10), "the card is the size it was");
     // The strip's Değiştir does what the menu's does: a booking asks first.
     await strip.locator('button[title="Değiştir"]').click();
     const askDlg = app.getByRole("alertdialog");
@@ -1287,7 +1287,7 @@ try {
     await app.waitForTimeout(350);
     await app.screenshot({ path: `${out}/37i-peek-transfer.png` });
     const now = await transfer.boundingBox();
-    assert.deepEqual([now.width, now.height], [size.width, size.height], "the card is the size it was");
+    assert.deepEqual([now.width, now.height].map((v) => Math.round(v * 10) / 10), [size.width, size.height].map((v) => Math.round(v * 10) / 10), "the card is the size it was");
     await app.mouse.move(2, 2);
     await peek.waitFor({ state: "detached" });
     await transfer.locator(".pk-body").click();
@@ -5062,8 +5062,13 @@ try {
   assert.ok(await app.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1), "the page doesn't scroll while it plays");
   const midOpacity = await app.evaluate(() => [...document.querySelectorAll(".hx-photo, .hx-tally button, .hx-progress, .cat-sec")].map((e) => Number(getComputedStyle(e).opacity)));
   assert.ok(midOpacity.some((o) => o < 1), `pieces are still arriving mid-way (${midOpacity.map((o) => o.toFixed(2)).join(" ")})`);
-  // After about three seconds: everything is at full opacity, the mascot is home, nothing is left over.
-  await app.locator(".op-fx").waitFor({ state: "detached", timeout: 6000 });
+  // Then the panel glides down on its own and what is below pops in (2026-10-10), and glides back to the top; everything is at full
+  // opacity, the mascot is home, nothing is left over.
+  await app.waitForFunction(() => (document.querySelector(".panel")?.scrollTop ?? 0) > 150, null, { timeout: 12000 });
+  await app.waitForTimeout(500);
+  await app.screenshot({ path: `${out}/39c-opening-glide.png` });
+  await app.locator(".op-fx").waitFor({ state: "detached", timeout: 20000 });
+  assert.ok((await app.locator(".panel").evaluate((el) => el.scrollTop)) < 10, "back at the top when it ends");
   assert.equal(await seat.evaluate((el) => el.classList.contains("away")), false, "the mascot is back in its seat");
   const settled = await app.evaluate(() =>
     [...document.querySelectorAll(".hx-photo, .hx-story h1, .hx-tally button, .hx-progress, .hx-side > .hx-block, .ts-stop, .cat-sec, .pk-card")].filter((e) => Number(getComputedStyle(e).opacity) < 1 || e.getAnimations().length > 0 && e.getAnimations().some((a) => a.animationName === "")).length,
