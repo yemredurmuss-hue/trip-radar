@@ -3912,3 +3912,9 @@ a.ch-why { text-decoration: none; }
 .cpy-b.done { background: #e4f5ec; color: #1d8a5a; }
 @media (hover: none) { .cpy-b { opacity: 1; pointer-events: auto; } }
 @media (prefers-reduced-motion: reduce) { .cpy-b { transition: none; } }
+/* -- Geri alma halkası: the time left to "Geri al" -- */
+.pk-undo-ring { width: 26px; height: 26px; flex: none; }
+.pk-undo-ring circle { fill: none; stroke-width: 3; }
+.pk-undo-ring .track { stroke: rgba(255, 255, 255, .25); }
+.pk-undo-ring .run { stroke: #fff; stroke-linecap: round; stroke-dasharray: 94.25; stroke-dashoffset: 0; animation: pk-undo-run linear forwards; }
+@keyframes pk-undo-run { to { stroke-dashoffset: 94.25; } }

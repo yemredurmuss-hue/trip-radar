@@ -15,6 +15,7 @@ import { CURRENCIES, CURRENCY_SIGN, displayCurrency, saveCurrency, type DisplayC
 import type { Capture, ChatMessage, Item, Settings, Trip } from "../lib/types";
 import { RoutingLine } from "./Chat";
 import { UiIcon } from "./cards/Silhouettes";
+import { UndoRing } from "./cards/UndoToast";
 import { addImages, addLinks } from "./capture";
 import { HomeBackdrop } from "./HomeBackdrop";
 import { HeroIcon, type HeroIconName } from "./Icons";
@@ -525,6 +526,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
           <button type="button" onClick={() => void saveDraft(removed).then(() => setRemoved(null))}>
             {L("Geri al", "Undo")}
           </button>
+          <UndoRing of={removed} />
         </div>
       )}
     </div>
