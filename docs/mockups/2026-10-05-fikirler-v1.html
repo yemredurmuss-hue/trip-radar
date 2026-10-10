@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trip Radar · Fikirler ve yapılacaklar v1</title>
+<style>
+  /*
+    Fikirler sekmesi (Plan · Günlük akış · Fikirler): rezervasyonsuz şeyler. Rezerve edilen kartlardan daha hafif:
+    beyaz zemin, küçük kartlar, liste. Güne eklenince Günlük akışta ince satır olarak görünür.
+    Emre 2026-10-05: "güzel, onu da günün akışı gibi ayrı bir sayfa olarak ekleriz".
+  */
+  :root {
+    --ink: #1d1d1f; --gray: #6e6e73; --line: #e8e8ed; --soft: #f5f5f7;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui, sans-serif;
+    color: var(--ink); -webkit-font-smoothing: antialiased;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; }
+  button { font-family: inherit; cursor: pointer; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 28px 16px 80px; }
+  .sec { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 4px; }
+  .sec b { font-size: 17px; } .sec span { font-size: 13px; color: var(--gray); }
+  .sub { margin: 0 0 14px; font-size: 13px; color: var(--gray); }
+  .quick { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 14px; border-radius: 14px; background: var(--soft); color: var(--gray); font-size: 15px; }
+  .quick svg { color: var(--ink); }
+  .filters { display: flex; gap: 6px; margin: 14px 0 6px; }
+  .filters button { height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font-size: 13px; color: var(--ink); }
+  .filters button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .city { display: flex; align-items: baseline; gap: 8px; margin: 22px 0 10px; }
+  .city b { font-size: 20px; letter-spacing: -.01em; } .city span { font-size: 13px; color: var(--gray); }
+  .label { margin: 0 0 8px; font-size: 13px; color: var(--gray); }
+  .row { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+  .eat { flex: none; width: 196px; }
+  .eat .ph { width: 196px; height: 120px; border-radius: 14px; overflow: hidden; background: var(--soft); }
+  .eat .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .eat b { display: block; margin-top: 8px; font-size: 15px; font-weight: 600; }
+  .eat span { display: block; margin-top: 2px; font-size: 13px; color: var(--gray); }
+  .eat .act { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  .day { height: 28px; padding: 0 11px; border-radius: 999px; border: 1px solid #d2d2d7; background: #fff; font-size: 13px; color: var(--ink); white-space: nowrap; }
+  .day.set { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .map { width: 28px; height: 28px; border-radius: 999px; border: 1px solid var(--line); background: #fff; display: grid; place-items: center; color: var(--gray); }
+  .todo { list-style: none; margin: 0; padding: 0; border-radius: 16px; background: var(--soft); }
+  .todo li { display: flex; align-items: center; gap: 12px; padding: 11px 14px; }
+  .todo li + li { border-top: 1px solid #e9e9ee; }
+  .check { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.6px solid #c7c7cc; background: #fff; display: grid; place-items: center; color: #fff; }
+  .done .check { background: #1f8f4e; border-color: #1f8f4e; }
+  .ic { flex: none; width: 34px; height: 34px; border-radius: 10px; background: #fff; display: grid; place-items: center; color: var(--ink); }
+  .todo .t { min-width: 0; flex: 1; }
+  .todo .t b { display: block; font-size: 15px; font-weight: 500; }
+  .todo .t span { display: block; font-size: 13px; color: var(--gray); }
+  .done .t b { color: var(--gray); text-decoration: line-through; }
+  .todo .t span.promote { display: inline; font-size: 13px; font-weight: 600; color: #1556d6; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-camera" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></g></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7"/></g></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M7 17a5 5 0 0 1 10 0M3 17h18M12 7V4M5.6 10.6 3.5 8.5M18.4 10.6l2.1-2.1M4 21h16"/></g></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z"/></g></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></g></symbol>
+    <symbol id="u-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="u-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/></symbol>
+    <symbol id="u-pin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></g></symbol>
+  </defs>
+</svg>
+<div class="wrap">
+  <div class="sec"><b>Fikirler ve yapılacaklar</b><span>rezervasyon gerekmez</span></div>
+  <p class="sub">Aklına geleni yaz; istersen bir güne ekle, o zaman günlük akışta görünür.</p>
+  <div class="quick"><svg width="18" height="18"><use href="#u-plus"/></svg>Bir fikir yaz… ör. "Dom Luís köprüsünden gün batımı"</div>
+  <div class="filters"><button class="on">Hepsi</button><button>Yeme-içme</button><button>Yapılacaklar</button></div>
+
+  <div class="city"><b>Porto</b><span>7–10 Ekim</span></div>
+  <p class="label">Yeme-içme · fotoğraflar haritadan</p>
+  <div class="row">
+    <div class="eat"><div class="ph"><img src="https://images.pexels.com/photos/20095784/pexels-photo-20095784.jpeg?auto=compress&cs=tinysrgb&h=350" alt=""></div><b>Café Santiago</b><span>Francesinha · €€ · ★ 4,5</span><div class="act"><button class="day set">8 Eki akşam</button><button class="map" title="Haritada aç"><svg width="14" height="14"><use href="#u-pin"/></svg></button></div></div>
+    <div class="eat"><div class="ph"><img src="https://images.pexels.com/photos/8629092/pexels-photo-8629092.jpeg?auto=compress&cs=tinysrgb&h=350" alt=""></div><b>Cervejaria Gazela</b><span>Sokak lezzeti · € · ★ 4,6</span><div class="act"><button class="day">+ Güne ekle</button><button class="map"><svg width="14" height="14"><use href="#u-pin"/></svg></button></div></div>
+    <div class="eat"><div class="ph"><img src="https://images.pexels.com/photos/34315407/pexels-photo-34315407.jpeg?auto=compress&cs=tinysrgb&h=350" alt=""></div><b>Manteigaria</b><span>Pastel de nata · € · ★ 4,7</span><div class="act"><button class="day">+ Güne ekle</button><button class="map"><svg width="14" height="14"><use href="#u-pin"/></svg></button></div></div>
+  </div>
+
+  <p class="label" style="margin-top:16px">Yapılacaklar</p>
+  <ul class="todo">
+    <li><span class="check"></span><span class="ic"><svg width="18" height="18"><use href="#i-camera"/></svg></span><span class="t"><b>Dom Luís köprüsünden gün batımı fotoğrafı</b><span>Üst kat · gün batımı 19.10</span></span><button class="day set">8 Eki</button></li>
+    <li><span class="check"></span><span class="ic"><svg width="18" height="18"><use href="#i-route"/></svg></span><span class="t"><b>Ribeira → Foz nehir kenarı yürüyüşü</b><span>~6 km · düz</span></span><button class="day">+ Güne ekle</button></li>
+    <li><span class="check"></span><span class="ic"><svg width="18" height="18"><use href="#i-book"/></svg></span><span class="t"><b>Livraria Lello</b><span>Giriş bileti gerekiyor · <span class="promote">Rezerve edileceklere taşı</span></span></span><button class="day">+ Güne ekle</button></li>
+  </ul>
+
+  <div class="city"><b>Madeira</b><span>12–18 Ekim</span></div>
+  <ul class="todo">
+    <li><span class="check"></span><span class="ic"><svg width="18" height="18"><use href="#i-sun"/></svg></span><span class="t"><b>Pico do Arieiro'dan gün doğumu</b><span>Araçla 40 dk · gün doğumu 07.45</span></span><button class="day set">13 Eki</button></li>
+    <li><span class="check"></span><span class="ic"><svg width="18" height="18"><use href="#i-route"/></svg></span><span class="t"><b>Levada 25 Fontes yürüyüşü</b><span>~9 km · 3 sa</span></span><button class="day">+ Güne ekle</button></li>
+    <li class="done"><span class="check"><svg width="13" height="13"><use href="#u-check"/></svg></span><span class="ic"><svg width="18" height="18"><use href="#i-bag"/></svg></span><span class="t"><b>Mercado dos Lavradores</b><span>Yapıldı · 12 Eki</span></span></li>
+  </ul>
+</div>
+</body>
+</html>

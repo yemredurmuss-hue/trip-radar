@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trip Radar · Plan kategorilere göre v4 (tek standart)</title>
+<style>
+  /*
+    v3: tek nötr yüzey. Renk yalnız küçük kategori ikonunda; bölüm zemini yok, hap yok.
+    Başlık: ikon · ad · gri "3/4" · (iş varsa) amber yazı · ok. "+ Ekle" açık bölümde/üstüne gelince.
+    Bölüm sonunda sessiz "Gizlenenler · 2 göster" (elenen + gerek yok + kapanan seçenekler, o bölümün).
+    Kartlar onaylı tasarımlar (burada 0.33 ekran görüntüleri).
+  */
+  :root { --ink:#1d1d1f; --gray:#6e6e73; --soft:#8e8e93; --line:#e9e6e1;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif; color:var(--ink); -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f8f7f4; }
+  button { font-family:inherit; cursor:pointer; }
+  .wrap { max-width:920px; margin:0 auto; padding:28px 16px 60px; }
+  .plan-head { display:flex; align-items:baseline; justify-content:space-between; margin:0 4px 6px; }
+  .plan-head b { font-size:22px; letter-spacing:-.01em; } .plan-head span { font-size:14px; color:var(--gray); margin-left:10px; }
+  .plan-head button { height:34px; padding:0 14px; border-radius:999px; border:1px solid #d9d5ce; background:#fff; font-size:14px; font-weight:500; }
+  .sheet { background:#fff; border-radius:22px; box-shadow:0 1px 2px rgba(0,0,0,.04), 0 6px 24px rgba(0,0,0,.04); overflow:hidden; }
+  .sec + .sec { border-top:1px solid var(--line); }
+  .head { display:flex; align-items:center; gap:12px; padding:16px 20px; cursor:pointer; user-select:none; }
+  .head:hover { background:#fbfaf8; }
+  .ic { width:28px; height:28px; display:grid; place-items:center; color:var(--c); flex:none; }
+  .ic svg { width:22px; height:22px; }
+  .head b { font-size:17px; font-weight:600; }
+  .num { font-size:15px; color:var(--ink); font-variant-numeric:tabular-nums; font-weight:600; width:44px; text-align:right; }
+  .num i { font-style:normal; color:var(--soft); font-weight:400; }
+  .bar { width:96px; height:6px; border-radius:999px; background:#efece7; overflow:hidden; flex:none; }
+  .bar span { display:block; height:100%; border-radius:999px; background:var(--c); }
+  .bar.done span { background:#1f8f4e; }
+  .sub { display:none; padding:0 20px 4px 60px; margin-top:-8px; font-size:14px; color:#9a6400; }
+  .sec.open .sub { display:block; }
+  .end { margin-left:auto; display:flex; align-items:center; gap:10px; }
+  .add { display:none; height:30px; padding:0 12px; border-radius:999px; border:1px solid #d9d5ce; background:#fff; font-size:13px; font-weight:500; transition:opacity .15s; }
+  .sec.open .add { display:inline-block; }
+  .chev { width:20px; height:20px; color:#aeaeb2; transition:transform .2s; }
+  .sec.open .chev { transform:rotate(90deg); }
+  .body { display:none; padding:0 20px 18px 60px; }
+  .sec.open .body { display:block; }
+  .tl { display:grid; grid-template-columns:76px 1fr; gap:6px 14px; }
+  .date { padding-top:14px; font-size:13px; color:var(--gray); line-height:1.35; text-align:right; }
+  .date b { display:block; font-size:15px; color:var(--ink); }
+  .tl img { width:100%; display:block; border-radius:20px; }
+  .hidden-link { margin:14px 0 0 90px; font-size:13px; color:var(--soft); }
+  .hidden-link a { color:var(--soft); text-decoration:none; border-bottom:1px dotted #c7c7cc; }
+  .note { margin:18px 4px 0; font-size:13px; color:var(--gray); line-height:1.6; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="i-plane" viewBox="0 0 24 24"><path fill="currentColor" d="M21 15.5v-1.8l-7.5-4.6V4a1.5 1.5 0 0 0-3 0v5.1L3 13.7v1.8l7.5-2.3V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-4.8z"/></symbol>
+  <symbol id="i-bed" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6.5A2.5 2.5 0 0 1 5.5 9h13a2.5 2.5 0 0 1 2.5 2.5V18M3 15h18M3 18v2M21 18v2"/><path d="M5 9V6.5A1.5 1.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5V9"/></g></symbol>
+  <symbol id="i-train" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="14" rx="3.5"/><path d="M5 10h14M9 21l1.5-4M15 21l-1.5-4"/></g></symbol>
+  <symbol id="i-ticket" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M3 9.5v-2a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2a2.5 2.5 0 0 0 0 5v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 7.5v2M14.5 11.5v1M14.5 14.5v2"/></g></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.5 2.5L16 9.5"/></g></symbol>
+  <symbol id="i-food" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 3v7a2 2 0 0 0 2 2v9M10 3v7a2 2 0 0 1-2 2M8 3v5M17 21V3c-2 1-3 4-3 7s1 3 3 3"/></g></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</defs></svg>
+<div class="wrap">
+  <div class="plan-head"><div><b>Gezi planı</b><span>11 gece · 11 rezerve</span></div><button>+ Ekle</button></div>
+  <div class="sheet" id="sheet"></div>
+  <p class="note">Bölümler tek beyaz yüzeyde ince çizgiyle ayrılır; renk yalnız ikonda. Kapalı satır hep aynı: ikon · ad ... ilerleme çubuğu · 3/4 · ok. Çubuk kategori renginde, hepsi tamamsa yeşil. Ne beklediği ("1 bilet yok · 2 karar") ve "+ Ekle" yalnız açıkken görünür. Elenen, gerek yok denen ve kapanan seçenekler kendi bölümünün sonunda "Gizlenenler · N göster" ile saklı durur.</p>
+</div>
+<script>
+  const pct = (n) => { const [a,b] = n.split("/").map(Number); return b ? Math.round(a/b*100) : 0; };
+  const S = [
+    ["#6a4fe0","i-plane","Uçuş","3/4",["todo","1 uçuş eklenmedi"],false,[],0],
+    ["#23998b","i-bed","Konaklama","2/2",["ok","✓ hepsi rezerve"],false,[],1],
+    ["#2563c9","i-train","Ulaşım","2/2",["ok","✓ hepsi tamam"],false,[],0],
+    ["#a8336f","i-ticket","Etkinlikler","0/3",["todo","1 bilet yok · 2 karar"],true,[["9 Eki","Cum · Porto","c1"],["Tarihsiz","Porto","c5"]],2],
+    ["#5d8a1c","i-check","Yapılacak şeyler","3/7",["todo","4 güne eklenmedi"],false,[],0],
+    ["#b4532a","i-food","Restoranlar","0/1",["todo","1 karar"],false,[],0],
+    ["#3b6fd1","i-shield","Diğer · sigorta ve internet","1/1",["ok","✓ alındı"],false,[],0],
+  ];
+  document.getElementById("sheet").innerHTML = S.map(([c,ic,name,num,[k,t],open,rows,hid]) => `
+    <section class="sec${open?" open":""}" style="--c:${c}">
+      <div class="head" onclick="this.parentElement.classList.toggle('open')">
+        <span class="ic"><svg><use href="#${ic}"/></svg></span><b>${name}</b>
+        <span class="end"><button class="add" onclick="event.stopPropagation()">+ Ekle</button><span class="bar${k==="ok"?" done":""}"><span style="width:${pct(num)}%"></span></span><span class="num">${num.split("/")[0]}<i>/${num.split("/")[1]}</i></span><svg class="chev"><use href="#i-chev"/></svg></span>
+      </div>
+      ${k==="todo" ? `<p class="sub">${t}</p>` : ""}
+      <div class="body">
+        <div class="tl">${rows.map(([d,s,img]) => `<div class="date"><b>${d}</b>${s}</div><img src="kategoriler-v2/${img}.png" alt="">`).join("")}</div>
+        ${hid ? `<p class="hidden-link">Gizlenenler · <a href="#">${hid} göster</a></p>` : ""}
+      </div>
+    </section>`).join("");
+</script>
+</body>
+</html>

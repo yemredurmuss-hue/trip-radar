@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan ve öneriler v8</title>
+<style>
+  /*
+    v4 (2026-10-07, Emre'nin referansı): bugünkü panonun üstüne (sohbet, hero, sağ sütun, başlangıç kartı, sekmeler aynı)
+    Plan sekmesi referans gibi kurulur:
+      1. İhtiyaç kartı (büyük): görsel | ARADIĞIMIZ KONAKLAMA · "Porto'da 4 gece" · tarih, kişi · tercih ikonları | durum · Düzenle
+         altında "Bu tarihlerle seçenek bul": Booking'de ara ↗ · Airbnb'de ara ↗ · + Link ekle (+ bir satır açıklama)
+      2. "✦ Başlangıç için 3 öneri" · küçük kartlar: fotoğraf, ad, kaynak, tek kelime, fiyat, Seç · "Panoda gör · 3"
+         İlk plan bir öneriyle gelir: ilk kart "Seçili öneri", durumu "Öneri · onay bekliyor" (Planlandı DEĞİL: hero
+         yüzdesine girmez, bütçeye "≈ tahmini" yazar). Seç → Planlandı · rezerve edilmedi.
+      3. Diğer ihtiyaçlar tek satır (kapalı); açılınca aynı iskelet. Bölüm başlığı ve zaman çizelgesi yok (referans gibi).
+    ?s=1 ilk plan (öneri işaretli) · ?s=3 Seç sonrası
+  */
+  :root {
+    --ink: #17171c; --gray: #6b6b76; --mute: #9a9aa5; --line: #e6e5ec; --hair: #f0eff4;
+    --brand: #5b45e0; --brand-soft: #efecfd; --brand-ink: #3d32b8; --lav: #f6f4fe;
+    --stay: #1b9a8a; --amber: #9a5b00; --amber-bg: #fdf3e2; --ok: #1f8f4e; --mint: #eaf6f1;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+    color: var(--ink); -webkit-font-smoothing: antialiased; font-size: 14px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; }
+  button { font-family: inherit; color: inherit; cursor: pointer; }
+  a { color: inherit; text-decoration: none; }
+  .app { display: grid; grid-template-columns: 490px 1fr; min-height: 100vh; }
+
+  /* sohbet (bugünkü) */
+  .chat { border-right: 1px solid var(--line); padding: 22px 28px 20px; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+  .back { font-size: 15px; display: flex; gap: 10px; align-items: center; }
+  .chat h2 { margin: 26px 0 0; font-size: 24px; letter-spacing: -.02em; }
+  .chat .for { font-size: 14px; color: var(--gray); margin-bottom: 18px; }
+  .msgs { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 14px; font-size: 16px; line-height: 1.55; }
+  .me { align-self: flex-end; background: #f0eff4; padding: 9px 16px; border-radius: 14px; }
+  .bot b { font-weight: 600; }
+  .note { align-self: center; font-size: 12px; color: var(--gray); }
+  .qs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .qs button { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--brand); background: #fff; color: var(--brand-ink); font-size: 13px; font-weight: 600; }
+  .composer { display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border: 1px solid var(--line); border-radius: 999px; box-shadow: 0 2px 10px rgba(0,0,0,.05); margin-top: 12px; }
+  .composer span { flex: 1; color: var(--mute); font-size: 15px; }
+  .composer i { width: 36px; height: 36px; border-radius: 50%; background: #f0eff4; display: grid; place-items: center; font-style: normal; color: var(--gray); }
+
+  /* hero, sütun, başlangıç kartı, sekmeler (bugünkü) */
+  .main { padding: 22px 40px 60px; max-width: 980px; }
+  .herorow { display: grid; grid-template-columns: 1fr 318px; gap: 24px; }
+  .hp { position: relative; height: 270px; border-radius: 22px; overflow: hidden; }
+  .hp img { width: 100%; height: 100%; object-fit: cover; }
+  .hp .sw { position: absolute; top: 16px; left: 16px; display: flex; padding: 3px; border-radius: 999px; background: rgba(255,255,255,.85); font-size: 15px; }
+  .hp .sw span { padding: 8px 18px; border-radius: 999px; } .hp .sw span.on { background: #fff; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+  .hp .cd { position: absolute; top: 16px; right: 66px; padding: 10px 16px; border-radius: 999px; background: #e9e4fb; color: var(--brand-ink); font-size: 15px; }
+  .hp .dots { position: absolute; top: 16px; right: 16px; width: 40px; height: 40px; border-radius: 50%; background: #fff; display: grid; place-items: center; }
+  .hp .cr { position: absolute; right: 16px; bottom: 14px; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,.5); color: #fff; font-size: 12px; }
+  .hero h1 { margin: 22px 0 10px; font-size: 40px; letter-spacing: -.03em; }
+  .hero .dt { font-size: 17px; display: flex; gap: 14px; } .hero .ln { margin-top: 8px; font-size: 16px; color: var(--brand-ink); }
+  .counts { display: flex; margin: 26px 0 20px; font-size: 16px; } .counts span { padding: 0 18px; border-right: 1px solid var(--line); } .counts span:first-child { padding-left: 0; } .counts span:last-child { border: 0; color: var(--mute); }
+  .box { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px; border-radius: 18px; background: var(--mint); }
+  .box .st { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 14px; } .box .st i { width: 76px; height: 8px; border-radius: 999px; background: #dfe9e4; display: block; }
+  .box .btn { padding: 14px 24px; border-radius: 12px; background: #1b1830; color: #fff; font-size: 16px; font-weight: 600; border: 0; }
+  .box .pdf { display: block; text-align: center; margin-top: 8px; font-size: 14px; color: var(--brand-ink); text-decoration: underline; }
+  .rail { border: 1px solid var(--line); border-radius: 22px; padding: 22px; height: fit-content; }
+  .rail .ppl { display: flex; align-items: center; gap: 12px; } .rail .av { display: flex; } .rail .av span { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 600; margin-left: -6px; border: 2px solid #fff; }
+  .rail .ppl b { display: block; font-size: 16px; } .rail .ppl small { color: var(--gray); }
+  .tags { display: flex; gap: 8px; margin-top: 12px; } .tags span { padding: 6px 12px; border-radius: 999px; font-size: 14px; background: #e6f4ee; color: #1f6b4a; } .tags span.b { background: #e6edf9; color: #2f5aa6; }
+  .rail h5 { margin: 0; font-size: 18px; display: flex; justify-content: space-between; } .rail h5 span { font-weight: 600; }
+  .rail .sec { padding: 22px 0; border-bottom: 1px solid var(--line); color: var(--gray); } .rail .sec:last-child { border: 0; padding-bottom: 0; } .rail .sec p { margin: 6px 0 0; }
+  .rail .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+  .guide { margin-top: 22px; border: 1px solid var(--line); border-radius: 18px; padding: 20px 22px; position: relative; }
+  .guide b { font-size: 17px; } .guide .sub { color: var(--gray); margin: 3px 0 14px; } .guide .x { position: absolute; top: 16px; right: 20px; color: var(--brand); font-size: 18px; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .step { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--line); font-size: 15px; font-weight: 500; }
+  .step i { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 700; background: var(--brand-soft); color: var(--brand-ink); }
+  .step.done { color: var(--gray); } .step.done i { background: #e8f6ee; color: var(--ok); } .step.now { background: #1b1830; color: #fff; border-color: #1b1830; } .step.now i { background: #fff; color: #1b1830; } .step .arr { margin-left: auto; opacity: .7; font-size: 12px; }
+  .tabs { display: flex; justify-content: center; gap: 36px; margin: 28px 0 22px; font-size: 17px; color: var(--brand-ink); } .tabs span { padding-bottom: 10px; } .tabs span.on { color: var(--ink); font-weight: 600; border-bottom: 2px solid var(--brand); }
+
+  /* ---------- Plan v8: tek sistem ----------
+     yazı: 12 üst etiket · 13 bilgi · 15 metin · 18 başlık · 28 büyük başlık; kalınlık 400/600
+     renk: mürekkep · gri · mor (tek vurgu). rozet: gri; eylem bekleyen mor. başka renk yok.
+     ızgara: her satır [sol 120px | orta 1fr | sağ 220px sağa hizalı]; satırlar ince çizgiyle ayrılır, iç kart yok. */
+  .plan-h { display: grid; grid-template-columns: 1fr 220px; align-items: center; margin-bottom: 16px; }
+  .plan-h h3 { margin: 0; font-size: 18px; font-weight: 600; } .plan-h h3 small { font-size: 13px; font-weight: 400; color: var(--gray); margin-left: 10px; }
+  .plan-h .add { justify-self: end; height: 36px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-size: 15px; font-weight: 600; }
+
+  .cat { border: 1px solid var(--line); border-radius: 16px; margin-bottom: 12px; background: #fff; overflow: hidden; }
+  .row { display: grid; grid-template-columns: 120px 1fr 220px; column-gap: 16px; align-items: center; padding: 16px 24px; }
+  .row + .row, .cat .cb > .row:first-child { border-top: 1px solid var(--line); }
+  .row .r { justify-self: end; display: flex; align-items: center; gap: 12px; }
+  .row .r.col { flex-direction: column; align-items: flex-end; gap: 8px; }
+
+  .ch { cursor: pointer; }
+  .ch .tile { width: 40px; height: 40px; border-radius: 10px; background: #f1f0f5; color: var(--ink); display: grid; place-items: center; }
+  .ch .tile svg { width: 20px; height: 20px; }
+  .cat.open .ch .tile { background: var(--brand); color: #fff; }
+  .ch .t b { font-size: 18px; font-weight: 600; display: block; }
+  .ch .t span { font-size: 13px; color: var(--gray); display: block; margin-top: 2px; }
+  .ch .n { font-size: 13px; color: var(--gray); min-width: 28px; text-align: right; } .ch .n b { color: var(--ink); font-weight: 600; }
+  .ch .chev { color: var(--gray); width: 12px; text-align: center; transition: transform .15s; } .cat.open .chev { transform: rotate(180deg); }
+  .cb { display: none; } .cat.open .cb { display: block; }
+
+  .pill { height: 28px; display: inline-flex; align-items: center; padding: 0 10px; border-radius: 8px; font-size: 13px; font-weight: 600; background: #f1f0f5; color: var(--ink); white-space: nowrap; }
+  .pill.act { background: var(--brand-soft); color: var(--brand-ink); }
+
+  /* ihtiyaç satırı */
+  .need .kicker { font-size: 12px; letter-spacing: .1em; color: var(--gray); font-weight: 600; text-transform: uppercase; }
+  .need h3 { margin: 4px 0 8px; font-size: 28px; font-weight: 600; letter-spacing: -.02em; line-height: 1.1; }
+  .need img { width: 120px; height: 90px; object-fit: cover; border-radius: 10px; }
+  .prefs { display: flex; gap: 20px; font-size: 15px; color: var(--ink); }
+  .prefs span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .prefs svg { width: 16px; height: 16px; color: var(--gray); }
+  .need .ln { font-size: 13px; color: var(--gray); margin-top: 4px; }
+  .need.compact { cursor: pointer; grid-template-columns: 1fr 220px; } .need.compact > div:first-child { display: none; }
+  .need.compact .nm { font-size: 15px; font-weight: 600; } .need.compact .ln { margin-top: 2px; }
+
+  /* dış arama satırı */
+  .search .lb { grid-column: 1 / 3; font-size: 15px; font-weight: 600; }
+  .search .btns { grid-column: 1 / 4; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+  .search .btns a { height: 44px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid var(--line); border-radius: 10px; font-size: 15px; font-weight: 600; color: var(--ink); }
+  .search .btns i { width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; color: #fff; font-style: normal; font-size: 11px; font-weight: 800; }
+  .search .hint { grid-column: 1 / 4; font-size: 13px; color: var(--gray); margin-top: 10px; }
+
+  /* öneriler */
+  .orow .h { grid-column: 1 / 3; font-size: 15px; font-weight: 600; } .orow .h small { font-weight: 400; color: var(--gray); font-size: 13px; margin-left: 8px; }
+  .orow .r a { font-size: 13px; font-weight: 600; color: var(--brand-ink); }
+  .orow .r .btn { height: 36px; padding: 0 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; }
+  .cards { grid-column: 1 / 4; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+  .oc { display: grid; grid-template-columns: 88px 1fr; column-gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; align-items: start; }
+  .oc.sel { border-color: var(--brand); }
+  .oc img { width: 88px; height: 88px; object-fit: cover; border-radius: 8px; }
+  .oc .nm { font-size: 15px; font-weight: 600; line-height: 1.2; }
+  .oc .m { font-size: 13px; color: var(--gray); margin-top: 4px; line-height: 1.5; }
+  .oc .pr { font-size: 15px; font-weight: 600; margin-top: 6px; } .oc .pr span { font-size: 13px; font-weight: 400; color: var(--gray); margin-left: 4px; }
+  .oc .tag { font-size: 12px; font-weight: 600; color: var(--brand-ink); letter-spacing: .04em; text-transform: uppercase; }
+  .oc .sel-btn { grid-column: 1 / 3; height: 40px; margin-top: 12px; border: 0; border-radius: 10px; background: var(--brand); color: #fff; font-size: 15px; font-weight: 600; }
+
+  .go { height: 40px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--brand); color: #fff; font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .ghost { height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .links { grid-column: 1 / 4; display: flex; gap: 20px; font-size: 13px; font-weight: 600; color: var(--brand-ink); }
+  .ok { color: var(--ink); } .ok svg, .q svg { width: 16px; height: 16px; }
+  .footnote { margin-top: 10px; text-align: center; font-size: 12px; color: var(--mute); }
+  body:not(.s3) .only3 { display: none !important; } body.s3 .no3 { display: none !important; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="chat">
+    <div class="back">‹&nbsp; Seyahatlerim</div>
+    <h2>Asistan</h2><div class="for">Porto ve Madeira için</div>
+    <div class="msgs">
+      <div class="me">7–18 Ekim'de Sabine'yle Porto ve Madeira; romantik, biraz maceralı, mutfaklı ve yürüyerek gezilir bir yer</div>
+      <div class="bot">Sabine ile Porto ve Madeira, 7–18 Ekim · 11 gece. Nereden yola çıkıyorsun?</div>
+      <div class="me">İstanbul</div>
+      <div class="bot">Rota önerim: Porto 4 · Madeira 7 gece. Bu olsun mu?</div>
+      <div class="me">Bu olsun</div>
+      <div class="bot">Porto ve Madeira hazır. Porto için mutfaklı, yürünebilir bir yer arıyoruz; başlangıç olarak <b>Teraslı daire</b>'yi işaretledim (≈ €310). Onayla ya da başka birine dokun. Booking ve Airbnb'de kendin de bak; kaydettiklerin panoda birikir.</div>
+      <div class="bot only3">Teraslı daire planda. Rezervasyonu yapınca onay mailini buraya bırak. Sıradaki: <b>Madeira'da nerede kalacaksınız?</b></div>
+    </div>
+    <div class="composer"><i>📎</i><span>Birlikte değerlendirelim…</span><i>↑</i></div>
+  </aside>
+
+  <main class="main">
+    <div class="herorow">
+      <div class="hero">
+        <div class="hp"><img src="https://images.unsplash.com/photo-1569959595862-1c84553361c1?w=1200&q=80&auto=format&fit=crop" alt="">
+          <div class="sw"><span class="on">Porto</span><span>Madeira</span></div><div class="cd">33 gün kaldı</div><div class="dots">···</div><div class="cr">Fotoğraf: Unsplash</div></div>
+        <h1>Porto ve Madeira</h1>
+        <div class="dt">📅 7 – 18 Ekim <span style="color:var(--gray)">·</span> 12 gün</div>
+        <div class="ln no3">3 uçuş ve 11 gece seni bekliyor.</div><div class="ln only3">3 uçuş ve 7 gece seni bekliyor.</div>
+        <div class="counts"><span>✈ 3 uçuş</span><span>🛏 2 konaklama</span><span>🚕 2 ulaşım</span><span>☆ 0 deneyim</span></div>
+        <div class="box"><div class="st"><span class="no3">7 ihtiyaç karar bekliyor</span><span class="only3">6 ihtiyaç karar bekliyor</span><i></i></div><div><button class="btn">Sıradaki karara git &nbsp;↓</button><a class="pdf">PDF indir</a></div></div>
+      </div>
+      <aside class="rail">
+        <div class="ppl"><div class="av"><span style="background:#e6e3fb;color:#5b45e0">E</span><span style="background:#dff2ee;color:#1b9a8a">S</span></div><div><b>Emre &amp; Sabine</b><small>2 kişi</small></div></div>
+        <div class="tags"><span>♥ Romantik</span><span class="b">⛰ Macera</span></div>
+        <div class="sec"><h5>Bütçe <span class="no3">≈ €310 tahmini</span><span class="only3">≈ €310</span></h5><p class="no3">Öneriler kesinleşince netleşir</p><p class="only3">Planlanan 1 · rezerve 0</p></div>
+        <div class="sec"><h5>Tercihler</h5><p>Mutfak · yürüyerek gezilir · romantik</p></div>
+        <div class="sec"><h5 style="font-size:16px">🇵🇹 Portekiz</h5></div>
+        <div class="sec facts"><span>◉ Euro</span><span>⚡ C/F priz</span><span>◷ −2 saat</span><span>💬 Portekizce</span></div>
+      </aside>
+    </div>
+
+    <div class="tabs"><span class="on">Plan</span><span>Günlük akış</span><span>Belgeler</span><span>Harita</span></div>
+
+    <div class="plan-h"><h3>Gezi planı<small class="no3">11 gece boş</small><small class="only3">7 gece boş</small></h3><button class="add">+ Ekle</button></div>
+    <section class="cat" data-cat>
+      <div class="row ch"><div class="tile"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg></div><div class="t"><b>Uçuşlar</b><span>İstanbul → Porto → Funchal → İstanbul · 2 kişi</span></div><div class="r"><span class="pill act">3 öneri · onay bekliyor</span><span class="n"><b>0</b>/3</span><span class="chev">⌄</span></div></div>
+      <div class="cb"></div>
+    </section>
+    <section class="cat open" data-cat>
+      <div class="row ch"><div class="tile"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 18v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6h-2v-2H5v2zm3-9V7a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2zm7 0V7a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v2z"/></svg></div><div class="t"><b>Konaklama</b><span><span class="no3">Porto 4 gece · Madeira 7 gece · 11 gece boş</span><span class="only3">Porto 4 gece · Madeira 7 gece · 7 gece boş</span></span></div><div class="r"><span class="pill act">Sıradaki karar</span><span class="n"><b class="no3">0</b><b class="only3">1</b>/2</span><span class="chev">⌄</span></div></div>
+      <div class="cb">
+        <div class="no3">
+          <div class="row need"><img src="https://images.unsplash.com/photo-1776763255566-f4a1615bb443?w=400&q=80&auto=format&fit=crop" alt="">
+            <div><div class="kicker">Porto · 7–11 Ekim · 2 kişi</div><h3>Porto'da 4 gece</h3><div class="prefs"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 0-3 2-3 5v3h3v10"/></svg>Mutfak</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13" cy="4" r="1.5"/><path d="M10 21l2-7-3-1-1 4M12 14l3 3 1 4M9 10l3-1 3 2 2-1"/></svg>Yürünebilir konum</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/></svg>Romantik atmosfer</span></div></div>
+            <div class="r"><span class="pill act">Öneri · onay bekliyor</span></div></div>
+          <div class="row search"><div class="lb">Bu tarihlerle seçenek bul</div>
+            <div class="btns"><a><i style="background:#003b95">B</i>Booking'de ara ↗</a><a><i style="background:#ff385c">A</i>Airbnb'de ara ↗</a><a>+ Link ekle</a></div>
+            <div class="hint">Beğendiğini eklentiyle kaydet; panoda birikir, birlikte değerlendiririz.</div></div>
+          <div class="row orow"><div class="h">Başlangıç için 3 öneri<small>Booking · birine dokunarak değiştir</small></div><div class="r"><a>Farklı öneriler ↗</a><span class="btn">Panoda gör · 3 →</span></div>
+            <div class="cards">
+              <div class="oc sel"><img src="https://images.unsplash.com/photo-1604349899568-1480825fdcd6?w=300&q=75&auto=format&fit=crop" alt=""><div><div class="tag">Seçili öneri</div><div class="nm">Teraslı daire</div><div class="m">Booking · ★ 9,1<br>Merkezi, mutfaklı</div><div class="pr">≈ €310<span>toplam</span></div></div><button class="sel-btn" data-pick>Onayla</button></div>
+              <div class="oc"><img src="https://images.unsplash.com/photo-1590490360182-c33d57733427?w=300&q=75&auto=format&fit=crop" alt=""><div><div class="tag">Ekonomik</div><div class="nm">Bonfim'de stüdyo</div><div class="m">Booking · ★ 8,7<br>Sessiz, merkeze 18 dk</div><div class="pr">≈ €268<span>toplam</span></div></div></div>
+              <div class="oc"><img src="https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=300&q=75&auto=format&fit=crop" alt=""><div><div class="tag">Romantik</div><div class="nm">Nehir manzaralı süit</div><div class="m">Booking · ★ 9,4<br>Douro manzarası</div><div class="pr">≈ €420<span>toplam</span></div></div></div>
+            </div></div>
+        </div>
+        <div class="only3">
+          <div class="row need"><img src="https://images.unsplash.com/photo-1604349899568-1480825fdcd6?w=400&q=80&auto=format&fit=crop" alt="">
+            <div><div class="kicker">Porto · 7–11 Ekim · 4 gece · 2 kişi</div><h3>Teraslı daire</h3>
+              <div class="prefs"><span class="ok">✓ Mutfak</span><span class="ok">✓ Yürünebilir konum</span><span style="color:var(--gray)">? Romantik atmosfer</span></div>
+              <div class="ln">≈ €310 toplam · ★ 9,1 · ücretsiz iptal 4 Ekim'e kadar · Booking.com</div></div>
+            <div class="r col"><span class="pill">Planlandı · rezerve edilmedi</span><button class="go">Rezervasyona git ↗</button><button class="ghost">Rezerve ettim</button></div></div>
+          <div class="row"><div class="links"><a>Değiştir · diğer 2 öneri</a><a>Panoda gör · 3</a></div></div>
+        </div>
+        <div class="row need compact"><div></div><div><div class="nm">Madeira</div><div class="ln">11–18 Ekim · 7 gece · 2 kişi</div></div><div class="r"><span class="pill act">Öneri · onay bekliyor</span><span class="chev">⌄</span></div></div>
+</div>
+    </section>
+    <section class="cat" data-cat>
+      <div class="row ch"><div class="tile"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11v7h-2v-2H7v2H5zm2.5-1h9l-1-3h-7zM7.5 14a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm9 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg></div><div class="t"><b>Ulaşım</b><span>Havalimanı transferi · Madeira'da araç kiralama</span></div><div class="r"><span class="pill">Henüz seçilmedi</span><span class="n"><b>0</b>/2</span><span class="chev">⌄</span></div></div>
+      <div class="cb"></div>
+    </section>
+    <section class="cat" data-cat>
+      <div class="row ch"><div class="tile"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.3 6.4.5-4.9 4.2 1.5 6.5L12 16l-5.6 3.5 1.5-6.5L3 8.8l6.4-.5z"/></svg></div><div class="t"><b>Deneyimler</b><span>Douro tekne turu · Levada yürüyüşü · Pico do Arieiro</span></div><div class="r"><span class="pill">3 fikir</span><span class="n"></span><span class="chev">⌄</span></div></div>
+      <div class="cb"></div>
+    </section>
+    <section class="cat" data-cat>
+      <div class="row ch"><div class="tile"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6v2h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4zm0 9l2 2 4-4-1.4-1.4L11 11.2 10.4 10.6z"/></svg></div><div class="t"><b>Diğer</b><span>Seyahat sigortası · eSIM</span></div><div class="r"><span class="pill">Henüz seçilmedi</span><span class="n"><b>0</b>/2</span><span class="chev">⌄</span></div></div>
+      <div class="cb"></div>
+    </section>
+    <div class="footnote">Tasarım örneği · adlar ve fiyatlar temsilidir · görseller Unsplash (illüstrasyon sonraki iş)</div>
+  </main>
+</div>
+<script>
+  const set = (s) => { document.body.className = s > 1 ? "s" + s : ""; };
+  document.querySelectorAll("[data-cat] .ch").forEach((h) => h.addEventListener("click", () => h.parentElement.classList.toggle("open")));
+  document.querySelector("[data-pick]")?.addEventListener("click", () => set(3));
+  set(Number(new URLSearchParams(location.search).get("s")) || 1);
+</script>
+</body>
+</html>

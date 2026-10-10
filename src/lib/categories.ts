@@ -1,0 +1,1000 @@
+// The Plan by category (spec 0.34, docs/superpowers/specs/2026-10-05-034-kategoriler-design.md; v11,
+// 2026-10-08-plan-pano-v11-design.md): every block and record of the trip goes in exactly one of eight sections —
+// Uçuş, Konaklama, Ulaşım, Etkinlik ve turlar, Yapılacak şeyler (restaurants too), Belgeler ve internet, Hazırlık,
+// İlham — and inside a section in date order (then time), the undated last by
+// city. The blocks themselves are the ones the plan's front always had (timeline.ts board): this only sorts
+// them into sections and says where each stands, for the header's bar and its "3/4" (settled of all), and lists
+// what's out of the way (ruled out, closed by a booking, "Gerek yok") at the end of its own section. Pure:
+// derived on every render, nothing stored but which sections the traveller opened.
+import { cityOfAirport } from "./airports";
+import { isIdea, needsBooking, setAside } from "./booking";
+import { legTransportMode, TICKET_MODES, transportMode } from "./cardKinds";
+import { L } from "./i18n";
+import { nNights } from "./i18nText";
+import { ideaDay, shortDay } from "./ideas";
+import { isInspiration } from "./inspo";
+import { formatDateRange, isoDate } from "./items";
+import { countStages, needStage, needStageOf, stageLabel, type Stage, type StageCounts, type StageCtx } from "./lifecycle";
+import { isHiddenLeg, legItem, legShortTitle, type Leg } from "./legs";
+import { cityKeyOf, departureDay, sameCity, type DateRange, type OptionGroup, type Plan } from "./plan";
+import { hiddenNights, nightsKey, toBook, type Timeline, type TimelineEntry } from "./timeline";
+import { isPrep } from "./prep";
+import { isInsurance, isPaperwork, itemText } from "./travelKinds";
+import type { Item } from "./types";
+
+/**
+ * "food" and "other" stay a record's own section (its row reads as a restaurant's, as insurance's), but on the
+ * Plan (v11) a restaurant is drawn under Yapılacak şeyler and the chores before the trip have their own Hazırlık:
+ * `planSectionOf` says where an entry is drawn.
+ */
+export type SectionId = "flight" | "stay" | "transport" | "activity" | "todo" | "food" | "other" | "prep" | "inspo";
+export const SECTION_ORDER: readonly SectionId[] = ["flight", "stay", "transport", "activity", "todo", "other", "prep", "inspo"];
+/**
+ * The ideas (0.35.3): things to do, restaurants, İlham. A list to pick from, not work waiting: no "3/4", no
+ * "güne eklenmedi", and never in the hero's "x/y onaylandı".
+ */
+export const IDEA_SECTIONS: readonly SectionId[] = ["todo", "food", "inspo"];
+export const isIdeaSection = (id: SectionId): boolean => IDEA_SECTIONS.includes(id);
+
+/** Where a block stands: settled, chosen but not bought, options to pick from, nothing yet, an idea with no day. */
+export type EntryState = "done" | "book" | "decide" | "empty" | "unscheduled";
+
+/** What a section entry draws: a block of the plan's front, options with no block, or one record. */
+export type CatPiece =
+  | { kind: "entry"; entry: TimelineEntry }
+  | { kind: "group"; group: OptionGroup; subtitle: string | null }
+  /** `siblings`: the options it's compared with; `settled`: drawn as decided (chosen or booked). */
+  | { kind: "item"; item: Item; siblings: Item[]; settled: boolean };
+
+/** An entry in one line (kategoriler-v2 .row): ring · name · city · date · time · price · status: the entry summed up in one line. */
+export interface CollapsedRow {
+  ring: "open" | "half" | "yes";
+  name: string;
+  meta: string;
+  price: { amount: number; currency: string | null } | null;
+  status: string;
+  ok: boolean;
+}
+
+export interface CatEntry {
+  /** Unique within the plan; the DOM id of its card wrapper comes from it. */
+  key: string;
+  section: SectionId;
+  piece: CatPiece;
+  date: string | null;
+  time: string | null;
+  city: string | null;
+  /** The timeline entry it draws (the itinerary and the to-dos find it by this), else null. */
+  domKey: string | null;
+  /** What a to-do or the itinerary may point at: timeline entry keys, transfer keys, record ids. */
+  entryKeys: string[];
+  legKeys: string[];
+  itemIds: string[];
+  state: EntryState;
+  /**
+   * Its stage (lifecycle.ts) when it's part of a need that takes a booking, else null (an idea, a chore, a transfer
+   * planned as a taxi). `state` follows it, so the ring, the row and the header say the same.
+   */
+  stage: Stage | null;
+  /** The need it's part of: its own key, or the need shared with other people's groups (Emre's and Sabine's flight). */
+  need: string;
+  /**
+   * The people coming their own way (Trip.travellers.from) with no record yet for the way in or home this entry is:
+   * each a part of its need still to find (Emre's ticket booked, Sabine's from Alicante not yet: Aranacak).
+   */
+  missingFor?: string[];
+  /** Empty nights in it (a stay): the header says "2 gece boş". */
+  nights: number;
+  /** A ticket is bought for it (a flight, a train, a tour): "bilet yok", else "rezerve edilmedi". */
+  ticket: boolean;
+  row: CollapsedRow;
+  /** Its place on the plan's front (ties within a day keep that order). */
+  seq: number;
+  /** When its first record was saved: the undated keep the order they were saved in. */
+  created: number;
+}
+
+/** A day of a section's timeline (one date label over its cards), or an undated city ("Tarihsiz"). */
+export interface DayGroup {
+  key: string;
+  date: string | null;
+  city: string | null;
+  /** Diğer's undated (an eSIM, a policy): for the whole trip, "Tüm gezi" like its row's meta, never "Tarihsiz". */
+  whole?: boolean;
+  entries: CatEntry[];
+}
+
+export interface CatSection {
+  id: SectionId;
+  entries: CatEntry[];
+  days: DayGroup[];
+  /** The header's pill: amber while something's left ("1 karar bekliyor"), green once all is done ("✓ 3 alındı"). */
+  status: { text: string; tone: "wait" | "done" } | null;
+  /**
+   * How many of its entries are settled, for the header's "3/4": booked, bought, arranged, installed, or
+   * planned where nothing needs booking (a taxi); a to-do done or on a day; a restaurant on a day or booked.
+   */
+  settled: number;
+  /** Its needs at each stage (needsOf): the sections' stages add up to the hero's. */
+  stages: StageCounts;
+  /** First look: open while something's left, closed once all is done. */
+  open: boolean;
+  /** What belongs here but is out of the way (kategoriler-v4): behind "Gizlenenler · N göster" at the section's end. */
+  hidden: HiddenThing[];
+  /**
+   * Diğer's quiet "Hazırlık" list (0.34.6 §3): the chores before the trip, ticked off, at the section's end.
+   * They are in `entries` (counted, found) but not in `days`. Empty in every other section.
+   */
+  prep: CatEntry[];
+  /**
+   * An idea section's header (todo, food, İlham): "5 fikir · 2 tanesi bir güne kondu" — how many, how many on
+   * a day still ahead (a day gone by without "Yaptım" doesn't count), how many done. Null elsewhere.
+   */
+  ideas: { total: number; onDay: number; done: number } | null;
+}
+
+/**
+ * Out of the plan, one tap from coming back: a record ruled out ("Ele"), an option a booking closed, a
+ * transfer or nights said not needed ("Gerek yok"). `key` is unique across the plan.
+ */
+export type HiddenThing =
+  | { kind: "dismissed"; key: string; section: SectionId; item: Item }
+  | { kind: "closed"; key: string; section: SectionId; item: Item; reason: string }
+  | { kind: "leg"; key: string; section: SectionId; leg: Leg }
+  | { kind: "nights"; key: string; section: SectionId; range: DateRange; city: string | null };
+
+const time = (iso: string | null | undefined): string | null => {
+  const t = iso?.slice(11, 16) ?? null;
+  return t && /^\d{2}:\d{2}$/.test(t) ? t : null;
+};
+const hhmm = (t: string | null | undefined): string | null => (t && /^\d{2}:\d{2}$/.test(t) ? t : null);
+const decided = (i: Item) => i.status === "chosen" || i.status === "booked";
+
+/** A record's section, by what it is: a flight, a place to stay, getting around, something to book or to do, a meal, insurance and internet. */
+export function sectionOfItem(item: Item): SectionId {
+  switch (item.category) {
+    case "flight":
+      return "flight";
+    case "stay":
+      return "stay";
+    case "transport":
+      return isInsurance(item) ? "other" : "transport";
+    case "esim":
+      return "other";
+    case "food":
+      return "food";
+    case "activity":
+      if (isPaperwork(item)) return "other";
+      if (isInspiration(item)) return "inspo";
+      return needsBooking(item) ? "activity" : isPrep(item) ? "other" : "todo";
+    default:
+      if (isPaperwork(item) || isInsurance(item) || /\besim\b|e-sim|sim kart/i.test(itemText(item))) return "other";
+      if (isInspiration(item)) return "inspo";
+      // A chore before the trip goes to Diğer's Hazırlık list, never to the things to do there (0.34.6 §3).
+      return needsBooking(item) ? "activity" : isPrep(item) ? "other" : "todo";
+  }
+}
+
+/** A block of the plan's front: every flight under Uçuş (a missing one, a change of city by plane); transfers, trains, cars under Ulaşım. */
+function sectionOfEntry(entry: TimelineEntry): SectionId {
+  switch (entry.kind) {
+    case "travel": {
+      if (entry.travel) return entry.travel.group.category === "flight" ? "flight" : "transport";
+      // A change of city with no ticket saved yet: Uçuş when it goes by plane (its card says "Uçuş"), else Ulaşım.
+      if (entry.leg) return legByPlane(entry.leg) ? "flight" : "transport";
+      return "flight";
+    }
+    case "stay":
+      return "stay";
+    case "event":
+      return sectionOfItem(entry.item);
+    case "leg":
+      return legByPlane(entry.leg) ? "flight" : "transport";
+    case "rental":
+    case "day":
+    case "plan":
+      return "transport";
+  }
+}
+
+/** Its card's kind is "Uçuş" (cardView.legCardView): the way picked, else what's settled for it. All flights are under Uçuş. */
+function legByPlane(leg: Leg): boolean {
+  const mode = legTransportMode(leg.choice?.mode ?? leg.mode);
+  if (mode) return mode === "flight";
+  const settled = legItem(leg);
+  return Boolean(settled && transportMode(settled) === "flight");
+}
+
+/** As its card says it (cardView.legCardView): arranged is done; a change of city by ticket still to buy; planned is done. */
+const LEG_TICKETS: readonly string[] = ["flight", "train", "bus", "ferry"];
+const legBooked = (leg: Leg) => leg.status === "booked" || Boolean(leg.choice?.booked);
+function legState(leg: Leg): EntryState {
+  if (legBooked(leg)) return "done";
+  if (leg.status === "options") return "decide";
+  const mode = leg.choice?.mode ?? leg.mode;
+  const planned = mode != null || leg.status === "chosen" || leg.status === "planned";
+  if (!planned) return "empty";
+  return leg.kind === "move" && mode != null && LEG_TICKETS.includes(mode) && !leg.choice?.noBooking ? "book" : "done";
+}
+
+/** Booked (or an eSIM chosen and put in: "Kurdum") is done; chosen is still to buy; else options to pick from. */
+const settledState = (items: Item[]): EntryState =>
+  items.some((i) => i.status === "booked" || (i.status === "chosen" && i.installedAt)) ? "done" : items.some((i) => i.status === "chosen") ? (asideOnly(items) ? "done" : "book") : "decide";
+
+/** What's chosen there was all set aside as needing no booking (booking.setAside): planned, an idea, nothing to book. */
+const asideOnly = (items: Item[]): boolean => {
+  const chosen = items.filter((i) => i.status === "chosen");
+  return chosen.length > 0 && chosen.every(setAside);
+};
+
+/** The eSIM put in ("Kurdum") is done like a booking. */
+const itemState = (item: Item): EntryState => {
+  // A chore is settled once ticked, a day alone doesn't do it.
+  if (isIdea(item) && isPrep(item)) return item.doneAt ? "done" : "unscheduled";
+  if (isIdea(item)) return item.doneAt || isoDate(item.dates.start) ? "done" : "unscheduled";
+  if (item.status === "booked" || (item.installedAt && decided(item))) return "done";
+  if (item.status === "chosen") return needsBooking(item) ? "book" : "done";
+  return "decide";
+};
+
+function entryState(entry: TimelineEntry): EntryState {
+  switch (entry.kind) {
+    case "travel": {
+      const t = entry.travel;
+      if (entry.leg?.choice?.booked) return "done";
+      if (t) return t.settled ? (t.settled.status === "booked" || setAside(t.settled) ? "done" : "book") : "decide";
+      return entry.leg ? legState(entry.leg) : "empty";
+    }
+    case "leg":
+      return legState(entry.leg);
+    case "stay": {
+      const b = entry.block;
+      if (b.kind === "booked") return "done";
+      if (b.kind === "chosen") return setAside(b.item) ? "done" : "book";
+      // A stay said in the chat with no place yet, set aside as needing no booking: an idea, nothing to find (its
+      // saved options, if any, wait as options; the need takes no booking).
+      if (b.slot && setAside(b.slot)) return "done";
+      return b.groups.length ? "decide" : "empty";
+    }
+    case "event":
+      return itemState(entry.item);
+    case "rental":
+      return settledState(entry.group.items);
+    default:
+      return "decide";
+  }
+}
+
+/** Every record a block draws (its options, the stay booked and any clash, a said stay). */
+function itemsOfEntry(entry: TimelineEntry): Item[] {
+  switch (entry.kind) {
+    case "travel":
+      return entry.travel?.items ?? [];
+    case "leg":
+      return entry.leg.options;
+    case "stay": {
+      const b = entry.block;
+      if (b.kind === "booked") return [b.item, ...(b.clashes ?? [])];
+      return [...(b.kind === "chosen" ? [b.item] : []), ...b.groups.flatMap((g) => g.items), ...(b.slot ? [b.slot] : [])];
+    }
+    case "event":
+      return [entry.item];
+    case "rental":
+      return entry.group.items;
+    case "plan":
+    case "day":
+      return entry.items;
+  }
+}
+
+const best = (items: Item[]): Item | null => items.find((i) => i.status === "booked") ?? items.find((i) => i.status === "chosen") ?? null;
+const cheapest = (items: Item[]): Item | null =>
+  [...items].filter((i) => i.price.amount != null).sort((a, b) => a.price.amount! - b.price.amount!)[0] ?? null;
+/** The one that stands for a block's options in its row: the chosen, else the one its card shows first (best ranked, else cheapest). */
+/** Each option's place in its decision, best first (the order its card shows them in). */
+export type Ranking = ReadonlyMap<string, number>;
+const lead = (items: Item[], rank: Ranking): Item | null =>
+  best(items) ??
+  [...items].sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity) || (a.price.amount ?? Infinity) - (b.price.amount ?? Infinity))[0] ??
+  null;
+const priceOf = (items: Item[], rank: Ranking) => {
+  const i = lead(items, rank);
+  return i && i.price.amount != null ? { amount: i.price.amount, currency: i.price.currency } : null;
+};
+/** "İstanbul → Porto" from a flight's ends (airport codes read as their city). */
+const routeOf = (i: Item | null | undefined): string | null => {
+  const f = i?.flight;
+  return f?.from && f.to ? `${cityOfAirport(f.from)} → ${cityOfAirport(f.to)}` : null;
+};
+const mostCommon = (values: (string | null)[]): string | null => {
+  const counts = new Map<string, { value: string; n: number }>();
+  for (const v of values) {
+    const k = cityKeyOf(v);
+    if (!k) continue;
+    const c = counts.get(k) ?? { value: v!, n: 0 };
+    c.n++;
+    counts.set(k, c);
+  }
+  return [...counts.values()].sort((a, b) => b.n - a.n)[0]?.value ?? null;
+};
+
+interface Where {
+  date: string | null;
+  time: string | null;
+  city: string | null;
+  /** A stretch (a stay, a rental): its dates in the closed row. */
+  end?: string | null;
+}
+
+function whereOfEntry(entry: TimelineEntry, rank: Ranking): Where {
+  switch (entry.kind) {
+    case "travel": {
+      const i = entry.travel ? (entry.travel.settled ?? lead(entry.travel.items, rank)) : null;
+      const f = i?.flight;
+      const city =
+        entry.role === "departure"
+          ? (entry.leg?.from.city ?? (f?.from ? cityOfAirport(f.from) : null))
+          : (entry.leg?.to.city ?? (f?.to ? cityOfAirport(f.to) : null) ?? i?.city ?? null);
+      return { date: entry.date, time: time(f?.departure) ?? (entry.leg ? hhmm(entry.leg.after) : null), city };
+    }
+    case "leg":
+      return { date: entry.date, time: hhmm(entry.leg.before) ?? hhmm(entry.leg.after), city: entry.leg.to.city ?? entry.leg.from.city };
+    case "stay":
+      return { date: entry.block.range.start, time: null, city: entry.block.city, end: entry.block.range.end };
+    case "event":
+      return { date: entry.date, time: time(entry.item.flight?.departure), city: entry.item.city };
+    case "rental":
+      return { date: entry.date, time: null, city: entry.group.items[0]?.city ?? null, end: entry.end };
+    default:
+      return { date: entry.date, time: null, city: null };
+  }
+}
+
+const whereOfItem = (item: Item): Where => ({ date: departureDay(item), time: time(item.flight?.departure), city: item.city });
+
+function whereOfGroup(group: OptionGroup, rank: Ranking): Where {
+  const days = group.items.map(departureDay).filter((d): d is string => Boolean(d)).sort();
+  const first = lead(group.items, rank);
+  const f = first?.flight;
+  const city = group.category === "flight" ? (f?.to ? cityOfAirport(f.to) : null) : mostCommon(group.items.map((i) => i.city));
+  if (group.category === "stay") return { date: group.range?.start ?? null, time: null, city, end: group.range?.end ?? null };
+  if (group.category === "esim") return { date: null, time: null, city: null };
+  return { date: days[0] ?? null, time: time(f?.departure), city };
+}
+
+function nameOf(piece: CatPiece, rank: Ranking): string {
+  if (piece.kind === "item") return piece.item.name;
+  if (piece.kind === "group") {
+    const i = lead(piece.group.items, rank);
+    return (piece.group.category === "flight" ? routeOf(i) : null) ?? i?.name ?? L("Seçenekler", "Options");
+  }
+  const e = piece.entry;
+  switch (e.kind) {
+    case "travel": {
+      const i = e.travel ? (e.travel.settled ?? lead(e.travel.items, rank)) : null;
+      // A change of city by its cities ("Porto → Lizbon"), not its stations; a flight by its airports' cities.
+      if (e.leg) return legShortTitle(e.leg);
+      if (i) return routeOf(i) ?? i.name;
+      return e.role === "departure" ? L("Dönüş uçuşu", "Flight home") : L("Gidiş uçuşu", "Flight out");
+    }
+    case "leg":
+      return legShortTitle(e.leg);
+    case "stay": {
+      const b = e.block;
+      if (b.kind !== "open") return b.item.name;
+      return b.slot?.name ?? (b.groups.length ? (b.city ? L(`${b.city} konaklaması`, `Stay in ${b.city}`) : L("Konaklama", "Stay")) : L("Konaklama yok", "No stay yet"));
+    }
+    case "event":
+      return e.item.name;
+    case "rental":
+      return lead(e.group.items, rank)?.name ?? L("Araç kiralama", "Car rental");
+    default:
+      return e.items.map((i) => i.name).join(", ");
+  }
+}
+
+/** A ticket is bought for a flight, a tour, a train, a bus, a ferry; a room, a table, a taxi is booked; insurance and an eSIM bought. */
+function ticketOf(section: SectionId, items: Item[], leg: Leg | null): boolean {
+  if (section === "flight" || section === "activity") return true;
+  if (section !== "transport") return false;
+  const ticketMode = (m: string | null | undefined) => (TICKET_MODES as readonly string[]).includes(m ?? "");
+  return items.some((i) => ticketMode(transportMode(i))) || ticketMode(leg?.choice?.mode ?? leg?.mode);
+}
+
+const bookWord = (section: SectionId, ticket: boolean): string =>
+  ticket ? L("Bilet yok", "No ticket") : section === "other" ? L("Satın alınmadı", "Not bought") : L("Rezerve edilmedi", "Not booked");
+
+function rowStatus(section: SectionId, state: EntryState, items: Item[], options: number, ticket: boolean, leg: Leg | null): { status: string; ok: boolean } {
+  switch (state) {
+    case "done": {
+      if (leg && legBooked(leg) && !items.some((i) => i.status === "booked")) return { status: ticket ? L("Alındı", "Booked") : L("Ayarlandı", "Arranged"), ok: true };
+      if (section === "todo" || (section === "food" && items.every(isIdea))) {
+        return { status: items.some((i) => i.doneAt) ? L("Yapıldı", "Done") : L("Güne eklendi", "On a day"), ok: true };
+      }
+      const booked = items.some((i) => i.status === "booked");
+      if (!booked && asideOnly(items)) return { status: L("Fikir", "Idea"), ok: true };
+      if (!booked) return { status: items.some((i) => i.installedAt) ? L("Kuruldu", "Installed") : L("Planlandı", "Planned"), ok: true };
+      return { status: section === "stay" || section === "food" ? L("Rezerve", "Booked") : L("Alındı", "Booked"), ok: true };
+    }
+    case "book":
+      return { status: bookWord(section, ticket), ok: false };
+    case "decide":
+      return { status: options >= 2 ? L(`${options} seçenek`, `${options} options`) : L("Karar", "Decide"), ok: false };
+    case "empty":
+      // A record there that's still to find (a placeholder, a booking cancelled): it is added, just not found yet.
+      if (items.length) return { status: stageLabel("search"), ok: false };
+      return { status: section === "stay" ? L("Boş", "Empty") : section === "flight" ? L("Eklenmedi", "Not added") : L("Planlanmadı", "Not planned"), ok: false };
+    case "unscheduled":
+      // An idea without a day is just an idea (0.35.3), nothing missing.
+      return { status: L("Fikir", "Idea"), ok: true };
+  }
+}
+
+const RING: Record<EntryState, CollapsedRow["ring"]> = { done: "yes", book: "half", decide: "open", empty: "open", unscheduled: "open" };
+
+function metaOf(section: SectionId, where: Where, piece: CatPiece): string {
+  const when = where.date
+    ? where.end && where.end !== where.date
+      ? formatDateRange(where.date, where.end)
+      : shortDay(where.date)
+    : section === "other"
+      ? L("Tüm gezi", "Whole trip")
+      : L("tarih yok", "no date");
+  const extra = piece.kind === "entry" && piece.entry.kind === "stay" ? nNights(piece.entry.block.nights) : null;
+  return [where.city, when, where.time, extra].filter(Boolean).join(" · ");
+}
+
+interface Draft {
+  key: string;
+  section: SectionId;
+  piece: CatPiece;
+  where: Where;
+  domKey: string | null;
+  entryKeys: string[];
+  legKeys: string[];
+  items: Item[];
+  state: EntryState;
+  nights: number;
+}
+
+/** Whose a record is, as plan.ts keys a person's own group ("" for everyone's): forWho, case and order aside. */
+const ownersKey = (i: Item) => (i.forWho ?? []).map((n) => n.trim().toLocaleLowerCase("tr")).filter(Boolean).sort().join("|");
+
+/**
+ * The need a block's group stands for. plan.ts gives each person's options a group of their own, keyed
+ * `${need}#${owners}` (Emre's flight and Sabine's): that suffix, and only that one, is taken off. "#" in a key
+ * means other things too (a city, a number), which stay.
+ */
+function groupNeedOf(piece: CatPiece): string | null {
+  const group = piece.kind === "group" ? piece.group : piece.kind === "entry" ? (piece.entry.kind === "travel" ? (piece.entry.travel?.group ?? null) : piece.entry.kind === "rental" ? piece.entry.group : null) : null;
+  if (!group) return null;
+  const owners = group.items.map(ownersKey).find(Boolean);
+  return owners && group.key.endsWith(`#${owners}`) ? group.key.slice(0, -(owners.length + 1)) : group.key;
+}
+
+/**
+ * Where a block stands as a need (lifecycle.ts), or null when it isn't one: an idea, a chore, something planned
+ * that takes no booking (a taxi, a walk: its state is "done" with nothing booked). A transfer arranged outside
+ * the tool (no record) is booked; one planned by a ticket mode with no record yet is planned.
+ */
+function draftStage(d: Draft, ctxOf: (item: Item) => StageCtx): Stage | null {
+  if (isIdeaSection(d.section) || d.state === "unscheduled") return null;
+  if (d.items.some((i) => isIdea(i) && isPrep(i))) return null;
+  // Nothing there: to find. A record in an empty block (a stay said in the chat) stands as far as it goes.
+  if (d.state === "empty" && !d.items.some((i) => i.status !== "dismissed")) return "search";
+  const leg = d.piece.kind === "entry" ? (d.piece.entry.kind === "leg" ? d.piece.entry.leg : d.piece.entry.kind === "travel" ? (d.piece.entry.leg ?? null) : null) : null;
+  const anyBooked = d.items.some((i) => i.status === "booked" || (i.installedAt != null && decided(i)));
+  if (leg && legBooked(leg) && !anyBooked) return "booked";
+  // All that's decided there was set aside as needing no booking (booking.setAside): out of the stages.
+  if (!anyBooked && asideOnly(d.items)) return null;
+  if (d.state === "done" && !anyBooked) return null;
+  if (d.state === "book" && !d.items.some(decided)) return "planned";
+  return needStageOf(d.items, ctxOf);
+}
+
+/**
+ * A stay's nights in one city back to back are one need (spec aşamalar, "Kısmi"): 3 nights booked and the next 3
+ * empty are one stay to finish, Aranacak, its blocks still drawn apart. Nights in another city, or after a gap,
+ * are a need of their own.
+ */
+function joinStayNeeds(entries: CatEntry[]): CatEntry[] {
+  const blocks = entries
+    .filter((e) => e.stage && e.piece.kind === "entry" && e.piece.entry.kind === "stay")
+    .map((e) => ({ e, block: (e.piece as { entry: Extract<TimelineEntry, { kind: "stay" }> }).entry.block }))
+    .sort((a, b) => a.block.range.start.localeCompare(b.block.range.start));
+  for (let n = 1; n < blocks.length; n++) {
+    const [prev, cur] = [blocks[n - 1], blocks[n]];
+    if (prev.block.range.end === cur.block.range.start && sameCity(prev.block.city, cur.block.city)) cur.e.need = prev.e.need;
+  }
+  return entries;
+}
+
+/**
+ * The way in and home for people coming from somewhere else (kişiye özel): each of them with no record of their own
+ * for the trip's way in (its arrival) or its way home on the last day (its departure), any record for them that day
+ * whatever the route, is a part still to find.
+ */
+function withOwnWays(entries: CatEntry[], names: string[]): CatEntry[] {
+  if (!names.length) return entries;
+  // The way in, and the same for the way home on the trip's last day (Porto → Alicante, theirs to find too).
+  for (const role of ["arrival", "departure"] as const) {
+    const way = entries.find((e) => e.stage && e.piece.kind === "entry" && e.piece.entry.kind === "travel" && e.piece.entry.role === role);
+    if (!way) continue;
+    const owners = new Set(
+      entries
+        // Their own way is often another route (Alicante → Porto): any flight or transfer that day counts.
+        .filter((e) => e.need === way.need || ((e.section === "flight" || e.section === "transport") && e.date === way.date))
+        .flatMap((e) => piecesItems(e.piece))
+        .filter((i) => i.status !== "dismissed")
+        .flatMap((i) => (i.forWho ?? []).map((w) => w.trim().toLocaleLowerCase("tr"))),
+    );
+    const missing = names.filter((name) => !owners.has(name.trim().toLocaleLowerCase("tr")));
+    if (missing.length) way.missingFor = missing;
+  }
+  return entries;
+}
+
+function piecesItems(piece: CatPiece): Item[] {
+  return piece.kind === "entry" ? itemsOfEntry(piece.entry) : piece.kind === "group" ? piece.group.items : [piece.item];
+}
+
+/** The state a stage draws (the ring, the row's words, the header's "3/4"). */
+const STATE_OF: Partial<Record<Stage, EntryState>> = { search: "empty", options: "decide", planned: "book", booked: "done", ready: "done", used: "done" };
+
+function finish(d: Draft, seq: number, rank: Ranking, ctxOf: (item: Item) => StageCtx = () => ({})): CatEntry {
+  const stage = draftStage(d, ctxOf);
+  if (stage && STATE_OF[stage]) d = { ...d, state: STATE_OF[stage]! };
+  // Each person's own group joins its need (groupNeedOf); a stay's blocks join theirs after (joinStayNeeds).
+  const need = groupNeedOf(d.piece) ?? d.key;
+  const options = new Set(d.items.map((i) => i.id)).size;
+  const leg = d.piece.kind === "entry" ? (d.piece.entry.kind === "leg" ? d.piece.entry.leg : d.piece.entry.kind === "travel" ? d.piece.entry.leg : null) : null;
+  const ticket = ticketOf(d.section, d.items, leg);
+  const { status, ok } = rowStatus(d.section, d.state, d.items, options, ticket, leg);
+  return {
+    stage,
+    need,
+    key: d.key,
+    section: d.section,
+    piece: d.piece,
+    date: d.where.date,
+    time: d.where.time,
+    city: d.where.city,
+    domKey: d.domKey,
+    entryKeys: d.entryKeys,
+    legKeys: d.legKeys,
+    itemIds: [...new Set(d.items.map((i) => i.id))],
+    state: d.state,
+    nights: d.nights,
+    ticket,
+    row: { ring: RING[d.state], name: nameOf(d.piece, rank), meta: metaOf(d.section, d.where, d.piece), price: priceOf(d.items, rank), status, ok },
+    seq,
+    created: Math.min(...d.items.map((i) => i.createdAt), Number.MAX_SAFE_INTEGER),
+  };
+}
+
+/** The plan's front in order: the blocks of each section of the board (a city's stays, then its days' blocks). */
+function boardEntries(timeline: Timeline): TimelineEntry[] {
+  return timeline.board.flatMap((s) => (s.kind === "travel" ? [s.entry] : s.kind === "city" ? [...s.stays, ...s.entries] : s.entries));
+}
+
+/** The city slept in on a date (the last day: the last city), for a day's label. */
+export function cityOfNight(plan: Pick<Plan, "range" | "stayBlocks">, date: string): string | null {
+  const block = plan.stayBlocks.find((b) => b.range.start <= date && date < b.range.end);
+  if (block) return block.city;
+  return plan.range && date === plan.range.end ? (plan.stayBlocks.at(-1)?.city ?? null) : null;
+}
+
+export interface CategorizeInput {
+  plan: Plan;
+  timeline: Timeline;
+  items: Item[];
+  /** The trip's transfers and what the traveller hid: a hidden transfer's options wait with it under Gizlenenler. */
+  legs?: Leg[];
+  hidden?: Set<string>;
+  /** Each option's place in its decision (useDecisions), so a row names the option its card shows first. */
+  rank?: Ranking;
+  /** Today (YYYY-MM-DD): an idea whose day has gone by without "Yaptım" is back in its city's pool. */
+  today?: string;
+  /**
+   * What a record's stage needs beyond the record (lifecycle.StageCtx): a place the start only made room for, an
+   * empty card, its files. Without it nothing is a placeholder or empty, and nothing has a file.
+   */
+  stageCtx?: (item: Item) => Omit<StageCtx, "today">;
+  /** Who comes their own way (the names of Trip.travellers.from): the way in and home are theirs to find too. */
+  ownWayIn?: string[];
+}
+
+/**
+ * Every block and record of the trip in its section. The front's blocks first (as they always were drawn),
+ * then what has no block: options with no day (another flight, a stay outside the dates, an eSIM), what
+ * needs booking without a block of its own, and the ideas. A record already drawn is never drawn twice.
+ */
+export function categorize({ plan, timeline, items, legs = [], hidden = new Set(), rank = new Map(), today = new Date().toISOString().slice(0, 10), stageCtx = () => ({}), ownWayIn = [] }: CategorizeInput): CatSection[] {
+  const drafts: Draft[] = [];
+  const drawn = new Set<string>();
+  const closed = new Set(plan.closed.map((c) => c.item.id));
+  const withHiddenLeg = new Set(legs.filter((l) => isHiddenLeg(l, hidden)).flatMap((l) => l.options.map((i) => i.id)));
+  const mark = (list: Item[]) => list.forEach((i) => drawn.add(i.id));
+
+  for (const entry of boardEntries(timeline)) {
+    // Nights marked "Gerek yok" leave the plan; they wait under Gizlenenler with "Geri getir".
+    if (entry.kind === "stay" && entry.skipped) continue;
+    if (entry.kind === "plan" || entry.kind === "day") {
+      // Plans for a city without a day: each record in its own section, as one decided card or its options.
+      entry.items.forEach((item, n) => {
+        if (drawn.has(item.id)) return;
+        const siblings = entry.items.filter((x) => x.needKey === item.needKey);
+        drafts.push({
+          key: `${entry.key}:${item.id}`,
+          section: sectionOfItem(item),
+          piece: { kind: "item", item, siblings, settled: decided(item) },
+          where: { ...whereOfItem(item), city: item.city ?? (entry.kind === "plan" ? entry.city : null) },
+          domKey: n === 0 ? entry.key : null,
+          entryKeys: [entry.key],
+          legKeys: [],
+          items: [item],
+          state: itemState(item),
+          nights: 0,
+        });
+        drawn.add(item.id);
+      });
+      continue;
+    }
+    const list = itemsOfEntry(entry);
+    const state = entryState(entry);
+    drafts.push({
+      key: entry.key,
+      section: sectionOfEntry(entry),
+      piece: { kind: "entry", entry },
+      where: whereOfEntry(entry, rank),
+      domKey: entry.key,
+      entryKeys: [entry.key],
+      legKeys: entry.kind === "leg" ? [entry.leg.key] : entry.kind === "travel" && entry.leg ? [entry.leg.key] : [],
+      items: list,
+      state,
+      nights: entry.kind === "stay" && state === "empty" ? entry.block.nights : 0,
+    });
+    mark(list);
+  }
+
+  // Options with no block: flights and transport the line didn't place, stays outside the dates (or all of
+  // them without dates), eSIMs.
+  const groups: { group: OptionGroup; subtitle: string | null }[] = [
+    ...timeline.unplaced.map((g) => ({ group: g, subtitle: g.title })),
+    ...plan.looseStays.map((g) => ({ group: g, subtitle: looseSubtitle(plan, g) })),
+    ...plan.groups.filter((g) => g.category === "esim").map((g) => ({ group: g, subtitle: g.title })),
+  ];
+  for (const { group, subtitle } of groups) {
+    const list = group.items.filter((i) => !drawn.has(i.id));
+    if (!list.length) continue;
+    const g = list.length === group.items.length ? group : { ...group, items: list };
+    const sections = new Set(list.map(sectionOfItem));
+    // A group is one need, so one section: insurance saved as transport goes with the rest of its need.
+    const section = sections.size === 1 ? [...sections][0] : group.category === "stay" ? "stay" : group.category === "flight" ? "flight" : group.category === "esim" ? "other" : "transport";
+    drafts.push({
+      key: `group:${group.key}`,
+      section,
+      piece: { kind: "group", group: g, subtitle },
+      where: whereOfGroup(g, rank),
+      domKey: null,
+      entryKeys: [],
+      legKeys: [],
+      items: list,
+      state: settledState(list),
+      nights: 0,
+    });
+    mark(list);
+  }
+
+  // What needs booking and has no block of its own (no day, or saved for a day and not chosen yet).
+  const bookings = toBook(timeline).items;
+  for (const item of bookings) {
+    if (drawn.has(item.id)) continue;
+    drafts.push(itemDraft(item, bookings.filter((x) => x.needKey === item.needKey && !drawn.has(x.id))));
+    drawn.add(item.id);
+  }
+
+  // The ideas (no booking): to-dos and restaurants, on their day or waiting for one.
+  for (const item of items) {
+    if (drawn.has(item.id) || closed.has(item.id) || !isIdea(item)) continue;
+    drafts.push(itemDraft(item, [item]));
+    drawn.add(item.id);
+  }
+
+  // Anything else still live (a booking the line couldn't place anywhere): never lost, on its own.
+  for (const item of items) {
+    if (drawn.has(item.id) || closed.has(item.id) || item.status === "dismissed" || withHiddenLeg.has(item.id)) continue;
+    drafts.push({ ...itemDraft(item, [item]), key: `loose:${item.id}` });
+    drawn.add(item.id);
+  }
+
+  // A booking cancelled (lifecycle.ts İptal edildi) reopens its need: Aranacak. A stay's nights and a flight in or
+  // out keep their place on the plan (an empty block, "Gidiş uçuşu") which is that need already; anything else
+  // (an eSIM, insurance, a ticket, a car) would have no block left, so the cancelled record stands for it, unless
+  // something live for the same need is on the Plan.
+  const liveNeeds = new Set(drafts.flatMap((d) => d.items.filter((i) => i.status !== "dismissed").map((i) => `${i.category}|${i.needKey}`)));
+  for (const item of items) {
+    if (!item.cancelledAt || item.status !== "dismissed" || drawn.has(item.id)) continue;
+    if (item.category === "stay" || item.category === "flight" || liveNeeds.has(`${item.category}|${item.needKey}`)) continue;
+    drafts.push({ ...itemDraft(item, [item]), key: `cancelled:${item.id}` });
+    drawn.add(item.id);
+  }
+
+  const entries = withOwnWays(joinStayNeeds(drafts.map((d, i) => finish(d, i, rank, (item) => ({ ...stageCtx(item), today })))), ownWayIn);
+  const out = hiddenThings({ plan, timeline, items, legs, hidden });
+  return SECTION_ORDER.map((id) => sectionOf(id, entries.filter((e) => planSectionOf(e) === id), plan, out.filter((h) => (h.section === "food" ? "todo" : h.section) === id), today));
+}
+
+/** Where a record is drawn on the Plan (v11), before it has an entry: a restaurant under Yapılacak şeyler, a chore under Hazırlık. */
+export function planSectionOfItem(item: Item): SectionId {
+  const s = sectionOfItem(item);
+  return s === "food" ? "todo" : s === "other" && isIdea(item) ? "prep" : s;
+}
+
+/** Where an entry is drawn on the Plan (v11): a restaurant under Yapılacak şeyler, a chore under Hazırlık, the rest in its own section. */
+export function planSectionOf(e: Pick<CatEntry, "section" | "piece">): SectionId {
+  if (e.section === "food") return "todo";
+  if (isPrepEntry(e as CatEntry)) return "prep";
+  return e.section;
+}
+
+/**
+ * The header's line in stage words (v11): "1 rezerve · 2 seçildi · 1 aranıyor". Rezerve is booked and ready,
+ * seçildi planned, aranıyor what's still to find or pick. Null when nothing in it takes a booking.
+ */
+export function stageLine(stages: StageCounts): string | null {
+  const booked = stages.booked + stages.ready;
+  const chosen = stages.planned;
+  const open = stages.search + stages.options;
+  const parts = [
+    booked && L(`${booked} rezerve`, `${booked} booked`),
+    chosen && L(`${chosen} seçildi`, `${chosen} chosen`),
+    open && L(`${open} aranıyor`, `${open} to find`),
+  ].filter((x): x is string => Boolean(x));
+  return parts.length ? parts.join(" · ") : null;
+}
+
+/**
+ * Everything out of the way, each once, in the section it belongs to: closed options and ruled-out records
+ * by what they are, a hidden transfer where its card would be (Ulaşım; Uçuş if by plane), nights under Konaklama.
+ */
+export function hiddenThings({ plan, timeline, items, legs = [], hidden = new Set() }: Pick<CategorizeInput, "plan" | "timeline" | "items" | "legs" | "hidden">): HiddenThing[] {
+  const out: HiddenThing[] = [];
+  const listed = new Set<string>();
+  for (const { item, reason } of plan.closed) {
+    if (listed.has(item.id)) continue;
+    listed.add(item.id);
+    out.push({ kind: "closed", key: `item:${item.id}`, section: sectionOfItem(item), item, reason });
+  }
+  for (const item of items) {
+    if (item.status !== "dismissed" || listed.has(item.id)) continue;
+    listed.add(item.id);
+    out.push({ kind: "dismissed", key: `item:${item.id}`, section: sectionOfItem(item), item });
+  }
+  for (const leg of legs) {
+    if (!isHiddenLeg(leg, hidden)) continue;
+    out.push({ kind: "leg", key: `leg:${leg.key}`, section: legByPlane(leg) ? "flight" : "transport", leg });
+  }
+  for (const { range, city } of hiddenNights(timeline)) out.push({ kind: "nights", key: nightsKey(range), section: "stay", range, city });
+  return out;
+}
+
+/** A record in its own right: an idea, a booking with no block. */
+function itemDraft(item: Item, siblings: Item[]): Draft {
+  return {
+    key: `item:${item.id}`,
+    section: sectionOfItem(item),
+    piece: { kind: "item", item, siblings: siblings.length ? siblings : [item], settled: decided(item) },
+    where: whereOfItem(item),
+    domKey: null,
+    entryKeys: [`event:${item.id}`],
+    legKeys: [],
+    items: [item],
+    state: itemState(item),
+    nights: 0,
+  };
+}
+
+/** A stay that doesn't fit the trip's nights: "outside the trip dates" or "no dates chosen". */
+function looseSubtitle(plan: Plan, g: OptionGroup): string {
+  const title = g.title ?? "";
+  if (plan.range) return `${title}${g.range ? L(" · gezi tarihleri dışında", " · outside the trip dates") : L(" · tarih seçilmemiş", " · no dates chosen")}`;
+  return `${title}${g.range ? "" : L(" · tarih seçilmemiş", " · no dates chosen")}`;
+}
+
+/**
+ * Within a day, what's settled first (0.36.24, Emre: "kesin belli olanlar üste"): a booked tour or table before
+ * one still without a ticket. The trips (flights, trains, transfers) and the stays keep the clock's order.
+ */
+const settledFirst = (e: CatEntry) => (e.section === "flight" || e.section === "transport" || e.section === "stay" ? 0 : e.state === "done" ? 0 : 1);
+
+/** Dated first, by date then time (ties keep the front's order); the undated last, by city in the trip's order. */
+function sortEntries(entries: CatEntry[], plan: Plan): CatEntry[] {
+  const cities: string[] = [];
+  for (const b of plan.stayBlocks) if (b.city && !cities.some((c) => sameCity(c, b.city))) cities.push(b.city);
+  const cityRank = (city: string | null) => {
+    if (!city) return [2, ""] as const;
+    const i = cities.findIndex((c) => sameCity(c, city));
+    return i >= 0 ? ([0, String(i).padStart(4, "0")] as const) : ([1, cityKeyOf(city) ?? city] as const);
+  };
+  return [...entries].sort((a, b) => {
+    if (a.date && b.date) return a.date.localeCompare(b.date) || settledFirst(a) - settledFirst(b) || (a.time ?? "~").localeCompare(b.time ?? "~") || a.seq - b.seq;
+    if (a.date || b.date) return a.date ? -1 : 1;
+    const [ra, ka] = cityRank(a.city);
+    const [rb, kb] = cityRank(b.city);
+    // A to-do ticked off goes to the bottom of its city.
+    return ra - rb || ka.localeCompare(kb) || Number(a.state === "done") - Number(b.state === "done") || a.created - b.created || a.row.name.localeCompare(b.row.name, "tr") || a.seq - b.seq;
+  });
+}
+
+function daysOf(entries: CatEntry[], plan: Plan, id: SectionId): DayGroup[] {
+  const days: DayGroup[] = [];
+  for (const e of entries) {
+    const last = days.at(-1);
+    if (!e.date && id === "other") {
+      // An eSIM or a policy is for the whole trip (its place a country): one "Tüm gezi" row, whatever its city.
+      if (last?.whole) last.entries.push(e);
+      else days.push({ key: "whole", date: null, city: null, whole: true, entries: [e] });
+    } else if (e.date) {
+      if (last?.date === e.date) last.entries.push(e);
+      else days.push({ key: `day:${e.date}`, date: e.date, city: cityOfNight(plan, e.date) ?? e.city, entries: [e] });
+    } else if (last && !last.date && (last.city === e.city || (last.city && e.city && sameCity(last.city, e.city)))) {
+      last.entries.push(e);
+    } else {
+      days.push({ key: `none:${cityKeyOf(e.city) ?? "-"}`, date: null, city: e.city, entries: [e] });
+    }
+  }
+  return days;
+}
+
+/** "1 karar bekliyor", "1 bilet yok · 3 karar", "2 gece boş", "2 güne eklenmedi"; "✓ 3 alındı" once all is done. */
+export function sectionStatus(id: SectionId, entries: CatEntry[]): CatSection["status"] {
+  if (!entries.length) return null;
+  const n = (s: EntryState) => entries.filter((e) => e.state === s).length;
+  const parts: string[] = [];
+  // Aranacak with a record (a placeholder, a plan said with nothing concrete, a booking cancelled): "aranacak",
+  // never "eklenmedi" (it is added).
+  const toFind = entries.filter((e) => e.state === "empty" && e.itemIds.length && e.nights === 0).length;
+  const empty = n("empty") - toFind;
+  if (empty) {
+    const nights = entries.reduce((s, e) => s + e.nights, 0);
+    parts.push(
+      id === "stay" && nights
+        ? L(`${nights} gece boş`, `${nights} night${nights === 1 ? "" : "s"} empty`)
+        : id === "flight"
+          ? L(`${empty} uçuş eklenmedi`, `${empty} flight${empty === 1 ? "" : "s"} not added`)
+          : L(`${empty} planlanmadı`, `${empty} not planned`),
+    );
+  }
+  if (toFind) parts.push(L(`${toFind} aranacak`, `${toFind} to find`));
+  const booking = entries.filter((e) => e.state === "book");
+  if (booking.length) {
+    const tickets = booking.filter((e) => e.ticket).length;
+    const rest = booking.length - tickets;
+    if (tickets) parts.push(L(`${tickets} bilet yok`, `${tickets} without a ticket`));
+    if (rest) parts.push(id === "other" ? L(`${rest} satın alınmadı`, `${rest} not bought`) : L(`${rest} rezerve edilmedi`, `${rest} not booked`));
+  }
+  // A restaurant not picked yet is an idea like the rest; one picked and not booked is still waiting.
+  const decide = isIdeaSection(id) ? 0 : n("decide");
+  const later = n("unscheduled");
+  if (decide) parts.push(parts.length || later ? L(`${decide} karar`, `${decide} to decide`) : L(`${decide} karar bekliyor`, `${decide} to decide`));
+  // An idea without a day isn't waiting for anything (0.35.3): never "güne eklenmedi".
+  if (later && !isIdeaSection(id)) parts.push(L(`${later} güne eklenmedi`, `${later} without a day`));
+  if (parts.length) return { text: parts.join(" · "), tone: "wait" };
+  if (isIdeaSection(id)) return null; // the header says "5 fikir · 2 tanesi bir güne kondu" instead
+  const done = entries.length;
+  return {
+    text: id === "todo" || id === "food" ? L(`✓ ${done} planlandı`, `✓ ${done} planned`) : L(`✓ ${done} alındı`, `✓ ${done} booked`),
+    tone: "done",
+  };
+}
+
+/** The record an entry stands for, when it is one record (a chore, an idea, a restaurant with a time). */
+export const recordOf = (e: CatEntry): Item | null => (e.piece.kind === "item" ? e.piece.item : e.piece.kind === "entry" && e.piece.entry.kind === "event" ? e.piece.entry.item : null);
+/** One of Diğer's chores: a record there that needs no booking (insurance, a visa, an eSIM are bought). */
+const isPrepEntry = (e: CatEntry): boolean => {
+  const item = recordOf(e);
+  return e.section === "other" && item != null && isIdea(item);
+};
+
+function sectionOf(id: SectionId, list: CatEntry[], plan: Plan, hidden: HiddenThing[], today: string): CatSection {
+  const entries = sortEntries(list, plan);
+  const prep = entries.filter(isPrepEntry);
+  const rest = prep.length ? entries.filter((e) => !prep.includes(e)) : entries;
+  const status = withPrep(sectionStatus(id, rest), prep);
+  const ideas = isIdeaSection(id) ? ideaTally(entries, today) : null;
+  // Things to do and restaurants open while there are any (a list to use, on the road too); İlham waits closed.
+  // v11: every section opens at first look (İlham too); closing one is the traveller's choice, remembered.
+  const open = true;
+  return { id, entries, days: daysOf(rest, plan, id), status, settled: entries.filter((e) => e.state === "done").length, stages: countStages(needsOf([{ id, entries }]).map((n) => n.stage)), open, hidden, prep, ideas };
+}
+
+/** "5 fikir · 2 tanesi bir güne kondu · 1 yapıldı": on a day means a day still ahead (or a booked table). */
+function ideaTally(entries: CatEntry[], today: string): CatSection["ideas"] {
+  let onDay = 0;
+  let done = 0;
+  for (const e of entries) {
+    const item = recordOf(e);
+    if (item?.doneAt) done++;
+    else if (item ? ideaDay(item, today).day : e.date) onDay++;
+  }
+  return { total: entries.length, onDay, done };
+}
+
+/** "1 satın alınmadı · 2 hazırlık": the chores not ticked yet join the line; all ticked, they add to "✓ N alındı" silently. */
+function withPrep(status: CatSection["status"], prep: CatEntry[]): CatSection["status"] {
+  const open = prep.filter((e) => e.state !== "done").length;
+  if (!prep.length) return status;
+  if (!open) return status ?? { text: L(`✓ ${prep.length} hazırlık`, `✓ ${prep.length} prep`), tone: "done" };
+  const part = L(`${open} hazırlık`, `${open} prep`);
+  return { text: status?.tone === "wait" ? `${status.text} · ${part}` : part, tone: "wait" };
+}
+
+/** The header's bar and "3/4" (kategoriler-v4): settled of all, the fill in whole percent, green once all is settled. */
+export function sectionProgress(section: Pick<CatSection, "settled" | "entries">): { settled: number; total: number; pct: number; complete: boolean } {
+  const total = section.entries.length;
+  return { settled: section.settled, total, pct: total ? Math.round((section.settled / total) * 100) : 0, complete: total > 0 && section.settled === total };
+}
+
+/**
+ * The whole plan's progress for the hero (v9 "Rezervasyonların"): the sections' "3/4"s added up, so the hero
+ * and the section headers always say the same thing. The ideas (things to do, restaurants, İlham) have no
+ * "3/4" and aren't in it: only what gets booked or arranged is.
+ */
+export function planProgress(sections: Pick<CatSection, "id" | "settled" | "entries">[]): { settled: number; total: number; pct: number; complete: boolean } {
+  const work = sections.filter((s) => !isIdeaSection(s.id));
+  return sectionProgress({
+    settled: work.reduce((n, s) => n + s.settled, 0),
+    entries: work.flatMap((s) => s.entries),
+  });
+}
+
+/**
+ * A need that takes a booking, as the hero, the to-do list and the section headers count it (lifecycle.ts): its
+ * entries (one, or one per person when each person's options are a group of their own) and the stage of the
+ * whole (the furthest-behind part). The ideas, the chores and what's planned as something that takes no booking
+ * (a taxi) aren't needs; what's ruled out isn't in the entries at all.
+ */
+export interface Need {
+  key: string;
+  section: SectionId;
+  stage: Stage;
+  entries: CatEntry[];
+}
+
+export function needsOf(sections: Pick<CatSection, "id" | "entries">[]): Need[] {
+  const out = new Map<string, Need>();
+  for (const s of sections) {
+    if (isIdeaSection(s.id)) continue;
+    for (const e of s.entries) {
+      if (!e.stage) continue;
+      const need = out.get(e.need);
+      if (need) need.entries.push(e);
+      else out.set(e.need, { key: e.need, section: s.id, stage: e.stage, entries: [e] });
+    }
+  }
+  for (const n of out.values()) n.stage = needStage([...n.entries.map((e) => e.stage!), ...n.entries.flatMap((e) => (e.missingFor ?? []).map((): Stage => "search"))]);
+  return [...out.values()];
+}
+
+/** The needs at each stage (the hero's numbers: lifecycle.heroNumbers). */
+export const planStages = (sections: Pick<CatSection, "id" | "entries">[]): StageCounts => countStages(needsOf(sections).map((n) => n.stage));
+
+/** The section and entry that hold a to-do's target (a record, a transfer, a block), tried in that order; `dom`: its card's key. */
+export function findInSections(
+  sections: CatSection[],
+  target: { item?: string; leg?: string; entry?: string },
+): { section: SectionId; key: string; dom: string } | null {
+  const all = sections.flatMap((s) => s.entries);
+  const hit =
+    (target.item && all.find((e) => e.itemIds.includes(target.item!))) ||
+    (target.leg && all.find((e) => e.legKeys.includes(target.leg!))) ||
+    (target.entry && (all.find((e) => e.entryKeys.includes(target.entry!)) ?? (target.entry.startsWith("event:") ? all.find((e) => e.itemIds.includes(target.entry!.slice(6))) : undefined)));
+  return hit ? { section: planSectionOf(hit), key: hit.key, dom: catDomKey(hit) } : null;
+}
+
+/** The DOM id of an entry's card wrapper: its block's (the itinerary and the to-dos look for it), else its own. */
+export const catDomKey = (e: CatEntry): string => e.domKey ?? `cat:${e.key}`;
+
+/** What the traveller opened or closed, per trip ({"food": false}); the rest follow the first look. */
+export type OpenState = Partial<Record<SectionId, boolean>>;

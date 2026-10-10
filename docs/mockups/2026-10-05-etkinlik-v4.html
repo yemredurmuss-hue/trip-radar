@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trip Radar · Etkinlik, eSIM ve sigorta v4</title>
+<style>
+  /*
+    Kurallar
+    - Tek ızgara: kart iç boşluğu 16 · görsel 176×128 · görsel ile metin arası 16 · satır arası 4/8.
+    - Üç yazı boyu: 20 başlık · 15 metin · 13 ikincil (fiyat 17).
+    - Üst satır: durum çemberi · tür (renkli) · tarih | belge · •••. Durumun yazısı yalnız alt şeritte.
+    - Alt şerit: solda durum (ya da seçenek gezgini), sağda fiyat + tek eylem.
+    - Zemin durumu söyler: sarı-bej alınmadı, yeşil alındı. Renk dışında hep yazı ve çember de var.
+  */
+  :root {
+    --ink: #1d1d1f; --gray: #6e6e73; --line: #e8e8ed;
+    --sand: #fbf6ea; --sand-line: #efe2c3; --green: #eef8f1; --green-line: #cfe8d7;
+    --amber: #8a5a00; --ok: #1d7442; --link: #1556d6;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui, sans-serif;
+    color: var(--ink); -webkit-font-smoothing: antialiased;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; }
+  button { font-family: inherit; cursor: pointer; }
+  a { color: var(--link); text-decoration: none; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 32px 16px 80px; }
+  .sec { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 16px; }
+  .sec b { font-size: 17px; } .sec span { font-size: 13px; color: var(--gray); }
+
+  .card { border-radius: 20px; padding: 16px; margin-bottom: 16px; background: var(--sand); border: 1px solid var(--sand-line); }
+  .card.ok { background: var(--green); border-color: var(--green-line); }
+
+  /* üst satır */
+  .top { display: flex; align-items: center; gap: 8px; height: 24px; font-size: 13px; color: var(--gray); }
+  .st { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; }
+  .st.no { border: 2px dashed #cdb07a; }
+  .st.half { border: 2px solid #e0a43a; }
+  .st.yes { background: #1f8f4e; color: #fff; }
+  .kind { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--mc); }
+  .top .end { margin-left: auto; display: flex; gap: 4px; }
+  .ib { width: 28px; height: 24px; border: 0; border-radius: 8px; background: transparent; color: var(--gray); display: grid; place-items: center; }
+  .docpill { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px 0 7px; border: 0; border-radius: 8px; background: #fff; color: var(--ink); font-size: 13px; font-weight: 500; box-shadow: 0 0 0 1px rgba(0,0,0,.06); }
+  .docpill b { font-weight: 600; color: var(--gray); }
+  .ib.add { color: #b9b3a6; }
+  .ib:hover { background: rgba(255,255,255,.8); color: var(--ink); }
+
+  /* gövde: görsel + metin, her kartta aynı */
+  .body { display: grid; grid-template-columns: 176px 1fr; gap: 16px; align-items: center; margin: 12px 0 16px; }
+  .vis { position: relative; width: 176px; height: 128px; border-radius: 16px; overflow: hidden; background: color-mix(in srgb, var(--mc) 10%, #fff); }
+  .vis img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .vis svg.sil { position: absolute; inset: 0; margin: auto; width: 116px; height: 96px; color: var(--mc); }
+  .score { position: absolute; top: 6px; right: 6px; padding: 2px 6px; border-radius: 8px; background: #fff; font-size: 13px; font-weight: 700; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+  .score.best { color: var(--link); }
+  .txt { min-width: 0; }
+  .txt h3 { margin: 0; font-size: 20px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
+  .txt p { margin: 4px 0 0; font-size: 15px; color: #3a3a3c; font-variant-numeric: tabular-nums; }
+  .txt p b { font-weight: 600; color: var(--ink); }
+  .txt .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 8px; font-size: 13px; color: var(--gray); }
+  .txt .meta .star { color: var(--ink); font-weight: 600; }
+
+  /* alt şerit */
+  .foot { display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 6px 0 12px; border-radius: 14px; background: rgba(255,255,255,.75); }
+  .state { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .state.wait { color: var(--amber); } .state.done { color: var(--ok); }
+  .state .sub { font-weight: 400; color: var(--gray); }
+  .nav { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--gray); white-space: nowrap; }
+  .nav button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #e3dccb; background: #fff; display: grid; place-items: center; color: var(--ink); }
+  .price { margin-left: auto; font-size: 13px; color: var(--gray); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .price b { font-size: 17px; color: var(--ink); margin-right: 2px; }
+  .cta { height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--ink); color: #fff; font-size: 15px; font-weight: 600; white-space: nowrap; }
+
+  @media (max-width: 560px) {
+    .body { grid-template-columns: 1fr; gap: 12px; }
+    .vis { width: 100%; height: 168px; } .vis svg.sil { width: 140px; height: 116px; }
+    .docpill span { display: none; }
+    .txt h3 { font-size: 17px; } .txt p { font-size: 14px; }
+    .state .sub, .state.opt { display: none; }
+    .foot { gap: 8px; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <pattern id="ht" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.05" fill="currentColor"/></pattern>
+    <symbol id="k-ticket" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 9.5v-2a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2a2.5 2.5 0 0 0 0 5v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 7.5v2M14.5 11.5v1M14.5 14.5v2"/></g></symbol>
+    <symbol id="k-sim" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><rect x="9" y="11" width="6" height="6" rx="1"/></g></symbol>
+    <symbol id="k-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
+    <symbol id="u-doc" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4M9 13h6M9 17h4"/></g></symbol>
+    <symbol id="u-clip" viewBox="0 0 24 24"><path d="m20 11-8.5 8.5a5 5 0 0 1-7-7L13 4a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4L14.5 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="u-dots" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="18.5" cy="12" r="1.8"/></g></symbol>
+    <symbol id="u-l" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="u-r" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="u-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="s-museum" viewBox="0 0 120 100"><g fill="url(#ht)" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M10 40 60 12l50 28zM16 90h88v8H16z"/><path d="M24 44h12v42H24zM48 44h12v42H48zM72 44h12v42H72zM84 44h12v42H84z"/></g></symbol>
+    <symbol id="s-esim" viewBox="0 0 120 100"><rect x="38" y="8" width="44" height="84" rx="9" fill="url(#ht)" stroke="currentColor" stroke-width="2"/><rect x="47" y="24" width="26" height="30" rx="3" fill="#fff" stroke="currentColor" stroke-width="1.6"/><path d="M92 34a20 20 0 0 1 0 32M102 26a32 32 0 0 1 0 48M28 34a20 20 0 0 0 0 32M18 26a32 32 0 0 0 0 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="s-shield" viewBox="0 0 120 100"><path d="M60 6 26 18v26c0 22 15 38 34 48 19-10 34-26 34-48V18z" fill="url(#ht)" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M47 48h26M60 35v26" stroke="#fff" stroke-width="8" stroke-linecap="round"/><path d="M47 48h26M60 35v26" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <div class="sec"><b>Rezerve edilecekler</b><span>5 · 2 alındı</span></div>
+  <div id="list"></div>
+</div>
+
+<script>
+  const KIND = { act: ["Etkinlik", "k-ticket", "#a8336f"], esim: ["eSIM", "k-sim", "#3b6fd1"], ins: ["Sigorta", "k-shield", "#0f8a6a"] };
+  const items = [
+    { k: "act", st: "no", date: "9 Ekim · 16.00", img: "https://images.pexels.com/photos/13540077/pexels-photo-13540077.jpeg?auto=compress&cs=tinysrgb&h=350", score: [86, true],
+      title: "Douro altı köprü tekne turu", line: "Ribeira iskelesi · <b>16.00</b> · 50 dk · 2 kişi", meta: ["★ 4,8", "2.140 yorum", "GetYourGuide ↗"],
+      foot: { opt: [1, 2], price: "€18", unit: "/ kişi", cta: "Plana seç" } },
+    { k: "act", st: "half", date: "10 Ekim", sil: "s-museum",
+      title: "Serralves Müzesi ve parkı", line: "Serralves · istediğin saatte · ~3 sa · 2 kişi", meta: ["★ 4,6", "8.900 yorum", "serralves.pt ↗"],
+      foot: { state: ["wait", "Seçildi", "bilet alınmadı"], price: "€22", unit: "/ kişi", cta: "Bileti aldım" } },
+    { k: "act", st: "yes", date: "14 Ekim · 10.00", doc: ["biletler.pdf", 1], img: "https://images.pexels.com/photos/17980729/pexels-photo-17980729.jpeg?auto=compress&cs=tinysrgb&h=350",
+      title: "Balina ve yunus turu", line: "Funchal marinası · buluşma <b>09.45</b> · 3 sa · 2 kişi", meta: ["★ 4,9", "1.310 yorum", "VMT Madeira ↗"],
+      foot: { state: ["done", "Alındı", "VMT-2291 · iptal 13 Eki'ye kadar"], price: "€130", unit: "toplam" } },
+    { k: "esim", st: "yes", date: "7–18 Ekim", doc: ["kurulum-QR.png", 0], sil: "s-esim",
+      title: "10 GB · Portekiz", line: "15 gün · yola çıkmadan kur", meta: ["Airalo", "airalo.com ↗"],
+      foot: { state: ["wait", "Alındı", "kurulmadı"], price: "€13", unit: "toplam", cta: "Kurdum" } },
+    { k: "ins", st: "no", date: "7–18 Ekim", sil: "s-shield",
+      title: "Seyahat sağlık sigortası", line: "2 kişi · 12 gün", meta: ["Allianz", "★ 4,4", "allianz.com.tr ↗"],
+      foot: { opt: [1, 2], price: "₺1.240", unit: "2 kişi", cta: "Plana seç" } },
+  ];
+  const ring = (st) => st === "yes" ? `<span class="st yes" title="Alındı"><svg width="13" height="13"><use href="#u-check"/></svg></span>` : `<span class="st ${st}" title="${st === "half" ? "Seçildi, alınmadı" : "Karar bekliyor"}"></span>`;
+  const metaHtml = (m) => m.map((x) => x.endsWith("↗") ? `<a href="#">${x}</a>` : x.startsWith("★") ? `<span class="star">${x}</span>` : `<span>${x}</span>`).join("");
+  const footHtml = (f) => {
+    const left = f.opt
+      ? `<span class="state wait opt">${f.opt[1]} seçenek</span><span class="nav"><button aria-label="Önceki"><svg width="13" height="13"><use href="#u-l"/></svg></button>${f.opt[0]}/${f.opt[1]}<button aria-label="Sonraki"><svg width="13" height="13"><use href="#u-r"/></svg></button></span>`
+      : `<span class="state ${f.state[0]}">${f.state[0] === "done" ? '<svg width="13" height="13"><use href="#u-check"/></svg>' : ""}${f.state[1]}<span class="sub">· ${f.state[2]}</span></span>`;
+    return `<div class="foot">${left}<span class="price"><b>${f.price}</b> ${f.unit}</span>${f.cta ? `<button class="cta">${f.cta}</button>` : ""}</div>`;
+  };
+  document.getElementById("list").innerHTML = items.map((t) => {
+    const [name, icon, color] = KIND[t.k];
+    const vis = t.img ? `<img src="${t.img}" alt="">${t.score ? `<span class="score${t.score[1] ? " best" : ""}" title="Uyum puanı">${t.score[0]}</span>` : ""}` : `<svg class="sil"><use href="#${t.sil}"/></svg>`;
+    return `<article class="card${t.st === "yes" ? " ok" : ""}" style="--mc:${color}">
+      <div class="top">${ring(t.st)}<span class="kind"><svg width="15" height="15"><use href="#${icon}"/></svg>${name}</span><span>· ${t.date}</span>
+        <span class="end">${t.doc ? `<button class="docpill" title="Belgeyi aç"><svg width="15" height="15"><use href="#u-doc"/></svg><span>${t.doc[0]}</span>${t.doc[1] ? `<b>+${t.doc[1]}</b>` : ""}</button>` : '<button class="ib add" title="Belge ekle (PDF, ekran görüntüsü)"><svg width="16" height="16"><use href="#u-clip"/></svg></button>'}<button class="ib" title="Diğer"><svg width="16" height="16"><use href="#u-dots"/></svg></button></span></div>
+      <div class="body"><div class="vis">${vis}</div><div class="txt"><h3>${t.title}</h3><p>${t.line}</p><div class="meta">${metaHtml(t.meta)}</div></div></div>
+      ${footHtml(t.foot)}
+    </article>`;
+  }).join("");
+</script>
+</body>
+</html>

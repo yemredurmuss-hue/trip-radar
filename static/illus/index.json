@@ -1,0 +1,128 @@
+[
+  {
+    "id": "ucus",
+    "file": "ucus.png",
+    "label_tr": "Uçuş",
+    "label_en": "Flight",
+    "group": "ulasim"
+  },
+  {
+    "id": "tren",
+    "file": "tren.png",
+    "label_tr": "Tren",
+    "label_en": "Train",
+    "group": "ulasim"
+  },
+  {
+    "id": "otobus",
+    "file": "otobus.png",
+    "label_tr": "Otobüs",
+    "label_en": "Bus",
+    "group": "ulasim"
+  },
+  {
+    "id": "minibus",
+    "file": "minibus.png",
+    "label_tr": "Minibüs",
+    "label_en": "Minibus",
+    "group": "ulasim"
+  },
+  {
+    "id": "vapur",
+    "file": "vapur.png",
+    "label_tr": "Vapur",
+    "label_en": "Ferry",
+    "group": "ulasim"
+  },
+  {
+    "id": "taksi-transfer",
+    "file": "taksi-transfer.png",
+    "label_tr": "Taksi · transfer",
+    "label_en": "Taxi · transfer",
+    "group": "ulasim"
+  },
+  {
+    "id": "arac-kiralama",
+    "file": "arac-kiralama.png",
+    "label_tr": "Araç kiralama",
+    "label_en": "Car rental",
+    "group": "ulasim"
+  },
+  {
+    "id": "motosiklet",
+    "file": "motosiklet.png",
+    "label_tr": "Motosiklet",
+    "label_en": "Motorbike",
+    "group": "ulasim"
+  },
+  {
+    "id": "karavan",
+    "file": "karavan.png",
+    "label_tr": "Karavan",
+    "label_en": "Campervan",
+    "group": "ulasim"
+  },
+  {
+    "id": "bisiklet",
+    "file": "bisiklet.png",
+    "label_tr": "Bisiklet",
+    "label_en": "Bicycle",
+    "group": "ulasim"
+  },
+  {
+    "id": "otel",
+    "file": "otel.png",
+    "label_tr": "Otel",
+    "label_en": "Hotel",
+    "group": "kalacak-yer"
+  },
+  {
+    "id": "ev-daire",
+    "file": "ev-daire.png",
+    "label_tr": "Ev · daire",
+    "label_en": "Home · apartment",
+    "group": "kalacak-yer"
+  },
+  {
+    "id": "etkinlik-tur",
+    "file": "etkinlik-tur.png",
+    "label_tr": "Etkinlik · tur",
+    "label_en": "Event · tour",
+    "group": "yapilacak-diger"
+  },
+  {
+    "id": "yapilacak",
+    "file": "yapilacak.png",
+    "label_tr": "Yapılacak",
+    "label_en": "Thing to do",
+    "group": "yapilacak-diger"
+  },
+  {
+    "id": "restoran",
+    "file": "restoran.png",
+    "label_tr": "Restoran",
+    "label_en": "Restaurant",
+    "group": "yapilacak-diger"
+  },
+  {
+    "id": "esim",
+    "file": "esim.png",
+    "label_tr": "eSIM",
+    "label_en": "eSIM",
+    "group": "yapilacak-diger"
+  },
+  {
+    "id": "sigorta",
+    "file": "sigorta.png",
+    "label_tr": "Sigorta",
+    "label_en": "Insurance",
+    "group": "yapilacak-diger"
+  },
+  {
+    "id": "not",
+    "file": "not.png",
+    "label_tr": "Not",
+    "label_en": "Note",
+    "group": "yapilacak-diger"
+  }
+]

@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kişiye özel rezervasyon v1</title>
+<style>
+  :root { --ink:#1d1d1f; --gray:#6e6e73; --soft:#8e8e93; --accent:#5b45e0; --plane:#6a4fe0; --stay:#23998b;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif; color:var(--ink); -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f8f7f4; }
+  .wrap { max-width:1280px; margin:0 auto; padding:24px 16px 48px; display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); gap:18px 22px; align-items:start; }
+  @media (max-width:980px){ .wrap{ grid-template-columns:1fr; } }
+  .cap { grid-column:1/-1; margin:0 4px; font-size:15px; color:var(--gray); font-weight:600; }
+  .sub { grid-column:1/-1; margin:-8px 4px 4px; font-size:13px; color:var(--gray); line-height:1.6; }
+  .lbl { margin:0 4px 8px; font-size:14px; color:var(--gray); }
+  .lbl b { color:var(--ink); }
+  .plan { background:#fff; border-radius:22px; box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 24px rgba(0,0,0,.04); padding:16px 18px; }
+  .sh { display:flex; align-items:center; gap:10px; }
+  .sh b { font-size:16px; font-weight:600; }
+  .sh svg { width:20px; height:20px; color:var(--c); }
+  .sh .n { margin-left:auto; font-size:13px; color:var(--soft); }
+  .stat { font-size:12.5px; color:#b07f00; margin:4px 0 10px 30px; }
+  .row { display:grid; grid-template-columns:62px 1fr; gap:14px; margin-bottom:12px; }
+  .date { text-align:right; font-size:14px; font-weight:700; padding-top:8px; }
+  .date small { display:block; font-size:11.5px; font-weight:400; color:var(--soft); }
+
+  /* kartlar (uygulamadaki gibi) */
+  .card { position:relative; border-radius:16px; padding:10px 14px 10px; border:1.5px solid #ecd9a6; background:#fdf8ea; }
+  .card.ok { border-color:#bfe2cb; background:#eef8f1; }
+  .card.empty { border:1.5px dashed #ddd7cd; background:#fff; }
+  .top { display:flex; align-items:center; gap:7px; font-size:12.5px; min-height:24px; }
+  .ring { width:16px; height:16px; border-radius:50%; border:1.5px solid #d6a93a; }
+  .ok .ring { border:0; background:#22a35a; display:grid; place-items:center; color:#fff; font-size:10px; }
+  .empty .ring { border:1.5px dashed #c6bfb3; }
+  .kind { display:inline-flex; align-items:center; gap:5px; font-weight:600; color:var(--c); }
+  .kind svg { width:14px; height:14px; }
+  .when { color:var(--soft); }
+  .dots { color:var(--soft); margin-left:8px; letter-spacing:1px; }
+  .route { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; margin:6px 0 4px; }
+  .route .a, .route .b { font-size:19px; font-weight:700; }
+  .route .b { text-align:right; }
+  .route small { display:block; font-size:11.5px; font-weight:600; color:var(--gray); }
+  .route small.l { font-weight:400; color:var(--soft); }
+  .sil { width:120px; height:34px; color:var(--c); opacity:.55; }
+  .empty .sil { opacity:.25; }
+  .mid { text-align:center; font-size:11.5px; color:var(--gray); }
+  .foot { display:flex; align-items:center; gap:8px; margin-top:6px; padding:8px 0 0; border-top:1px solid rgba(0,0,0,.06); font-size:12.5px; color:var(--gray); }
+  .empty .foot { border-top:1px dashed #eee9e1; color:var(--soft); }
+  .foot .st { color:#9a6b00; font-weight:600; }
+  .ok .foot .st { color:#22a35a; }
+  .foot .price { margin-left:auto; font-weight:700; color:var(--ink); font-size:14px; }
+  .foot .price small { font-weight:400; color:var(--gray); font-size:11.5px; }
+  .buy { height:28px; padding:0 12px; border-radius:999px; border:0; background:#111; color:#fff; font-size:12.5px; font-weight:600; }
+  .find { margin-left:auto; display:flex; gap:4px; align-items:center; }
+  .find em { font-style:normal; color:var(--soft); margin-right:2px; }
+  .find a { display:inline-flex; align-items:center; gap:5px; height:26px; padding:0 8px 0 5px; border-radius:999px; border:1px solid #ece8e1; color:#55526a; font-size:12px; text-decoration:none; }
+  .lg { width:15px; height:15px; border-radius:4px; display:grid; place-items:center; font-size:8.5px; font-weight:800; color:#fff; }
+
+  /* ---- yeni: kişiler ---- */
+  .av { width:20px; height:20px; border-radius:50%; display:inline-grid; place-items:center; font-size:10px; font-weight:700; background:#e9e4ff; color:var(--accent); border:2px solid #fff; background-size:cover; background-position:center; flex:none; }
+  .av.s { background-image:url(https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&w=80&h=80&fit=crop); }
+  .heads { display:inline-flex; margin-left:auto; }
+  .heads .av + .av { margin-left:-7px; }
+  .whose { display:inline-flex; align-items:center; gap:5px; margin-left:6px; padding:1px 8px 1px 1px; border-radius:999px; background:#fff; border:1px solid #e6e1f7; color:#4b3fb0; font-size:12px; font-weight:600; }
+  .whose .av { width:20px; height:20px; border:0; }
+  .tag { margin-left:auto; }
+
+  /* sağ sütun parçaları */
+  .chat { background:#fff; border-radius:22px; padding:16px 18px; box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 24px rgba(0,0,0,.04); font-size:14.5px; line-height:1.5; }
+  .u { margin:0 0 12px auto; width:fit-content; max-width:85%; background:#f1f0ee; border-radius:16px; padding:8px 14px; }
+  .bt { margin:0 0 10px; }
+  .bt b { display:block; margin-top:6px; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+  .chip { height:32px; padding:0 14px; border-radius:999px; border:1px solid #e3e0da; background:#fff; font-size:13.5px; display:inline-flex; align-items:center; gap:6px; }
+  .sys { text-align:center; font-size:12px; color:var(--soft); margin:2px 0 10px; }
+  .menu { width:250px; background:#fff; border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,.12); padding:6px; font-size:13.5px; }
+  .menu .it { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:9px; }
+  .menu .it.on { background:#f6f3ff; }
+  .menu .hd { font-size:11.5px; color:var(--soft); padding:6px 10px 4px; font-weight:600; letter-spacing:.3px; text-transform:uppercase; }
+  .menu .ck { margin-left:auto; color:var(--accent); font-weight:700; }
+  .menu hr { border:0; border-top:1px solid #f0eee9; margin:4px 6px; }
+  .menu .av { width:24px; height:24px; border:0; font-size:11px; }
+  .flow { background:#fff; border-radius:18px; padding:8px 14px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .fr { display:grid; grid-template-columns:48px 22px 1fr auto; gap:8px; align-items:center; padding:9px 0; border-bottom:1px solid #f1efea; font-size:14px; }
+  .fr:last-child { border-bottom:0; }
+  .fr .t { font-weight:700; font-size:13.5px; }
+  .fr svg { width:18px; height:18px; color:var(--plane); }
+  .fr small { display:block; color:var(--soft); font-size:12px; }
+  .note { grid-column:1/-1; margin:4px 4px 0; font-size:13px; color:var(--gray); line-height:1.75; }
+  .note b { color:var(--ink); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <pattern id="dots" width="3" height="3" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r=".7" fill="currentColor"/></pattern>
+  <symbol id="plane" viewBox="0 0 24 24"><path fill="currentColor" d="M21 15.5v-1.8l-7.5-4.6V4a1.5 1.5 0 0 0-3 0v5.1L3 13.7v1.8l7.5-2.3V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-4.8z"/></symbol>
+  <symbol id="bed" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6.5A2.5 2.5 0 0 1 5.5 9h13a2.5 2.5 0 0 1 2.5 2.5V18M3 15h18M3 18v2M21 18v2"/><path d="M5 9V6.5A1.5 1.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5V9"/></g></symbol>
+  <symbol id="silplane" viewBox="0 0 120 34"><path fill="url(#dots)" stroke="currentColor" stroke-width=".8" d="M6 18c0-2 2-3 5-3h34l14-12h8l-6 12h30l7-7h6l-3 9c3 1 4 2 4 3s-1 2-4 3l3 9h-6l-7-7H65l6 12h-8L49 25H11c-3 0-5-1-5-3z"/></symbol>
+</defs></svg>
+<div class="wrap" id="app"></div>
+<script>
+  const E = `<span class="av">E</span>`, S = `<span class="av s"></span>`;
+  const both = `<span class="heads" title="Emre ve Sabine">${E}${S}</span>`;
+  const whose = (who) => who === "s" ? `<span class="whose"><span class="av s"></span>Sabine'in bileti</span>` : `<span class="whose"><span class="av">E</span>Emre'nin bileti</span>`;
+  const kind = `<span class="kind" style="--c:var(--plane)"><svg><use href="#plane"/></svg>Uçuş</span>`;
+  const topRow = (cls, when, right) => `<div class="top"><span class="ring">${cls === "ok" ? "✓" : ""}</span>${kind}<span class="when">· ${when}</span>${right}<span class="dots">···</span></div>`;
+  const fl = (cls, when, who, a, ac, b, bc, mid, foot) => `<div class="card ${cls}" style="--c:var(--plane)">${topRow(cls, when, whose(who))}
+      <div class="route"><span class="a">${a}<small>${ac}</small></span><span><svg class="sil"><use href="#silplane"/></svg><div class="mid">${mid}</div></span><span class="b">${b}<small>${bc}</small></span></div>
+      <div class="foot">${foot}</div></div>`;
+  const row = (d, w, c, body) => `<div class="row"><div class="date">${d}<small>${w}<br>${c}</small></div><div>${body}</div></div>`;
+
+  document.getElementById("app").innerHTML = `
+    <h2 class="cap">Kişiye özel rezervasyon · v1 (onaylı)</h2>
+    <p class="sub">Yalnız bir kişiye ait kart işaretlenir: türün yanında fotoğraflı "Sabine'in bileti" / "Emre'nin bileti" rozeti (her zaman adla, "senin" değil). Herkesin olan kartta hiçbir şey görünmez; tek kişilik gezide de. Kart tasarımı aynı kalır; yalnız üst satıra bir öğe eklenir.</p>
+
+    <div>
+      <p class="lbl"><b>Plan</b> · aynı gün iki ayrı uçuş, ortak otel</p>
+      <div class="plan">
+        <div class="sh" style="--c:var(--plane)"><svg><use href="#plane"/></svg><b>Uçuş</b><span class="n">1/4</span></div>
+        <div class="stat">2 bilet yok · 1 karar bekliyor</div>
+        ${row("8 Eki","Per","Porto", fl("", "8 Ekim", "e", "İstanbul", "IST · 07:10", "Porto", "OPO · 10:05", "4 sa 55 dk · direkt",
+          `<span class="st">Seçildi</span> · bilet alınmadı <span class="price">€148 <small>1 kişi</small></span><button class="buy">Bileti aldım</button>`))}
+        ${row("8 Eki","Per","Porto", fl("ok", "8 Ekim", "s", "Alicante", "ALC · 09:40", "Porto", "OPO · 10:35", "1 sa 55 dk · direkt",
+          `<span class="st">✓ Alındı</span> · Ryanair FR 8341 <span class="price">€64 <small>1 kişi</small></span>`))}
+        ${row("14 Eki","Çar","Lizbon", fl("empty", "14 Ekim", "e", "Lizbon", "LIS", "İstanbul", "IST", "",
+          `Bilet yok · 1 kişi <span class="find"><em>Ara:</em><a href="#"><span class="lg" style="background:#4285f4">G</span>Google Flights</a><a href="#"><span class="lg" style="background:#0770e3">S</span>Skyscanner</a></span>`))}
+        ${row("14 Eki","Çar","Lizbon", fl("empty", "14 Ekim", "s", "Lizbon", "LIS", "Alicante", "ALC", "",
+          `Bilet yok · 1 kişi <span class="find"><em>Ara:</em><a href="#"><span class="lg" style="background:#4285f4">G</span>Google Flights</a><a href="#"><span class="lg" style="background:#0770e3">S</span>Skyscanner</a></span>`))}
+
+        <div class="sh" style="--c:var(--stay); margin-top:18px"><svg><use href="#bed"/></svg><b>Konaklama</b><span class="n">1/2</span></div>
+        <div style="height:10px"></div>
+        ${row("8 Eki","Per","Porto", `<div class="card ok"><div class="top"><span class="ring">✓</span><span class="kind" style="--c:var(--stay)"><svg><use href="#bed"/></svg>Rezerve edildi</span><span style="margin-left:auto"></span><span class="dots">···</span></div>
+          <div style="display:grid;grid-template-columns:92px 1fr;gap:12px;align-items:center;margin:8px 0 4px"><span style="width:92px;height:70px;border-radius:12px;background:url(https://images.pexels.com/photos/271624/pexels-photo-271624.jpeg?auto=compress&w=240) center/cover"></span>
+          <span><b style="font-size:15.5px">Jardim Stay</b><br><span style="font-size:12.5px;color:var(--gray)">Porto · 8 – 11 Ekim · 2 kişi</span></span></div>
+          <div class="foot"><span class="st">✓ Rezerve edildi</span> <span class="price">€285 <small>3 gece toplam</small></span></div></div>`)}
+      </div>
+    </div>
+
+    <div style="display:grid;gap:16px">
+      <div>
+        <p class="lbl"><b>Sohbetle</b> · anlatınca ayırır</p>
+        <div class="chat">
+          <div class="u">Sabine Alicante'den geliyor, 8 Ekim sabah</div>
+          <div class="bt">Sabine için ayrı uçuş ekledim: Alicante → Porto, 8 Ekim. Senin İstanbul uçuşun aynı kaldı.<b>Sabine dönüşte de Alicante'ye mi?</b></div>
+          <div class="chips"><span class="chip">Evet, Alicante</span><span class="chip">Hayır, İstanbul'a</span><span class="chip">Henüz belli değil</span></div>
+          <div class="sys" style="margin-top:12px">Sabine'in uçuşu eklendi · Geri al</div>
+          <div class="u">bu Ryanair bileti Sabine'in</div>
+          <div class="bt">Tamam, FR 8341 Sabine'e ait; kartında artık onun fotoğrafı var.</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start">
+        <div>
+          <p class="lbl"><b>Kart menüsü</b> · •••</p>
+          <div class="menu">
+            <div class="hd">Kimin için?</div>
+            <div class="it"><span class="heads" style="margin:0">${E}${S}</span>Herkes</div>
+            <div class="it"><span class="av">E</span>Ben (Emre)</div>
+            <div class="it on"><span class="av s"></span>Sabine<span class="ck">✓</span></div>
+            <hr>
+            <div class="it">Bileti aldım</div>
+            <div class="it">Düzenle</div>
+            <div class="it" style="color:#c0392b">Sil</div>
+          </div>
+        </div>
+        <div>
+          <p class="lbl"><b>Günlük akış</b> · 8 Ekim</p>
+          <div class="flow">
+            <div class="fr"><span class="t">07:10</span><svg><use href="#plane"/></svg><span>İstanbul > Porto uçuşu<small>TK 1451 · 4 sa 55 dk</small></span>${E}</div>
+            <div class="fr"><span class="t">09:40</span><svg><use href="#plane"/></svg><span>Alicante > Porto uçuşu<small>FR 8341 · 1 sa 55 dk</small></span>${S}</div>
+            <div class="fr"><span class="t">10:35</span><svg style="color:#d29a00" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/></svg><span>Porto Havalimanı'nda buluşma<small>Sabine 10:35 iner, sen 10:05</small></span><span class="heads">${E}${S}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="note"><b>Kurallar:</b>
+    <b>Görünüm:</b> herkesin olan kartta yüz yok; tek kişilik gezide hiç yok. Bir kişinin (ya da herkesten azının) kartında türün yanında fotoğraflı "Sabine'in bileti" / "Emre'nin bileti" rozeti, adla; fiyat "1 kişi" olur. Fotoğraf yoksa baş harf.
+    <b>Kim olduğu nasıl anlaşılır:</b> (1) belge: bilet PDF'inde yazan ad Sabine ise otomatik ona; (2) kalkış yeri: Sabine "Alicante'den geliyor" dediyse Alicante kalkışlı uçuş ona; (3) sohbet: "bu bilet Sabine'in"; (4) ••• → Kimin için? Hiçbiri yoksa herkesin. Emin olmadığında sorar, tahminle atamaz.
+    <b>Plan:</b> "Sabine Alicante'den geliyor" deyince Sabine için ayrı gidiş (ve sorup dönüş) boş kartı açılır; arama bağlantıları Alicante'den, 1 kişi dolar. Sayaç kişi başı biletleri sayar (1/4).
+    <b>Günlük akış:</b> iki uçuş ayrı satır, her biri sahibinin yüzüyle; iki varış farklıysa "buluşma" satırı.
+    <b>Paylaşımda:</b> Sabine davetli ise kendi profil fotoğrafı kullanılır; değilse senin bu bilgisayarda verdiğin fotoğraf.</p>
+  `;
+</script>
+</body>
+</html>
