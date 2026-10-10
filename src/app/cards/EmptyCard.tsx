@@ -40,7 +40,7 @@ import { AskButton } from "./AskButton";
 import { KindIcon, MediaSilhouette, TransportArt } from "./Silhouettes";
 import { StayLine } from "./StayLine";
 
-/** "Ara: [G] Google Flights [S] Skyscanner [K] Kayak": the brand's letter on its colour, drawn here (nothing fetched). */
+/** "Kendin ara [G] [S] [K]": the brand's letter on its colour, drawn here (nothing fetched); its name opens beside it on hover or focus. */
 export function SearchRow({ links }: { links: SearchLink[] }) {
   if (!links.length) return null;
   return (
@@ -52,7 +52,11 @@ export function SearchRow({ links }: { links: SearchLink[] }) {
           <span className="ek-lg" style={{ background: BRANDS[l.brand].color }} aria-hidden>
             {BRANDS[l.brand].letter}
           </span>
-          {l.label}
+          {/* Logo first: on a screen with a pointer the name and the ↗ open beside it on hover or focus (docs/mockups/ux-katmanli-arayuz, option C). */}
+          <span className="ek-nm">
+            {l.label}
+            <span className="ek-up" aria-hidden> ↗</span>
+          </span>
         </a>
       ))}
     </span>

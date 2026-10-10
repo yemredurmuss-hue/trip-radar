@@ -9,9 +9,12 @@ import { createPortal } from "react-dom";
 
 const WIDTH = 260;
 
-type At = { left?: number; right?: number; top?: number; bottom?: number };
+type At = { left?: number; right?: number; top?: number; bottom?: number; under: boolean };
 
-function useTip({ align, below, anchor }: { align: "left" | "right"; below: boolean; anchor?: "edge" | "card" }) {
+/** About how tall a box gets (a headline and a handful of lines; the photo of a city tip is more): where there is less room than this on its side it goes to the other. */
+const ROOM = 190;
+
+function useTip({ align, below }: { align: "left" | "right"; below: boolean }) {
   const id = useId();
   const [at, setAt] = useState<At | null>(null);
   const [tapped, setTapped] = useState(false);
@@ -19,12 +22,12 @@ function useTip({ align, below, anchor }: { align: "left" | "right"; below: bool
   const open = () => {
     const r = trigger.current?.getBoundingClientRect();
     if (!r) return;
-    // "card": the box lines up with the trigger's edge, wide enough for a card's facts and kept on screen.
     const edge = align === "right" ? { right: Math.max(8, window.innerWidth - r.right) } : { left: Math.max(8, Math.min(r.left, window.innerWidth - WIDTH - 8)) };
-    // Over the trigger unless there is no room above it (or `below`): then under it.
-    const roomAbove = r.top > 120;
-    const under = below || (anchor === "card" && !roomAbove);
-    setAt({ ...edge, ...(under ? { top: r.bottom + 10 } : { bottom: window.innerHeight - r.top + 10 }) });
+    // Over the trigger (under it for `below`), unless that side has no room and the other has.
+    const roomAbove = r.top;
+    const roomBelow = window.innerHeight - r.bottom;
+    const under = below ? !(roomBelow < ROOM && roomAbove > roomBelow) : roomAbove < ROOM && roomBelow > roomAbove;
+    setAt({ ...edge, under, ...(under ? { top: r.bottom + 10 } : { bottom: window.innerHeight - r.top + 10 }) });
   };
   const close = () => {
     setAt(null);
@@ -51,7 +54,7 @@ function useTip({ align, below, anchor }: { align: "left" | "right"; below: bool
   const box = (tip: ReactNode, extra = "") =>
     at &&
     createPortal(
-      <span role="tooltip" id={id} className={`tipx-box${align === "right" ? " right" : ""}${below ? " below" : ""}${extra}`} style={{ ...at, maxWidth: `min(${WIDTH}px, calc(100vw - 16px))` }}>
+      <span role="tooltip" id={id} className={`tipx-box${align === "right" ? " right" : ""}${at.under ? " below" : ""}${extra}`} style={{ left: at.left, right: at.right, top: at.top, bottom: at.bottom, maxWidth: `min(${WIDTH}px, calc(100vw - 16px))` }}>
         {tip}
       </span>,
       document.body,
@@ -108,17 +111,15 @@ export interface TipBind {
   "aria-describedby"?: string;
 }
 
-export function TipOn({ tip, children, align = "left", below = false, anchor = "edge", boxClass = "" }: {
+export function TipOn({ tip, children, align = "left", below = false, boxClass = "" }: {
   /** Null: no tip (the element is drawn as it is). */
   tip: ReactNode | null;
   children: (bind: TipBind) => ReactNode;
   align?: "left" | "right";
   below?: boolean;
-  /** "card": for a whole card as the trigger; the box goes under it when there is no room above. */
-  anchor?: "edge" | "card";
   boxClass?: string;
 }) {
-  const t = useTip({ align, below, anchor });
+  const t = useTip({ align, below });
   const bind: TipBind = {
     ref: (el) => {
       t.trigger.current = el;

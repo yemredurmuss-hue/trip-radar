@@ -32,7 +32,7 @@ function Stop({ end, right, field, timed, codes }: { end: End | null; right: boo
       <span>
         {codes && code ? (
           <>
-            <CopyText value={code} side={right ? "left" : "right"} label={L("Havalimanı kodu", "Airport code")}>{code}</CopyText>
+            <CopyText value={code} side="below" label={L("Havalimanı kodu", "Airport code")}>{code}</CopyText>
             {end!.sub!.slice(code.length)}
           </>
         ) : (
