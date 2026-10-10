@@ -3,7 +3,17 @@
 // (view-transition-name). Without the API, with reduced motion, or in a hidden tab the change is made at once.
 import { flushSync } from "react-dom";
 
-type WithTransitions = Document & { startViewTransition?: (update: () => void) => { finished: Promise<void> } };
+type Transition = { ready: Promise<void>; updateCallbackDone: Promise<void>; finished: Promise<void> };
+type WithTransitions = Document & { startViewTransition?: (update: () => void) => Transition };
+
+// A transition the browser gives up on (a busy machine: "Transition was aborted because of timeout in DOM update")
+// rejects `ready` while the change itself is still made: every promise is handled, or the rejection reaches the
+// board's error banner (ErrorBoundary.tsx) and covers the screen.
+function quietly(t: Transition): Promise<void> {
+  t.ready.catch(() => undefined);
+  t.updateCallbackDone.catch(() => undefined);
+  return t.finished.catch(() => undefined);
+}
 
 function canTransition(doc: WithTransitions): boolean {
   const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -14,7 +24,7 @@ export function withTransition(update: () => void): void {
   const doc = document as WithTransitions;
   if (!canTransition(doc)) return update();
   try {
-    doc.startViewTransition(() => flushSync(update)).finished.catch(() => undefined);
+    quietly(doc.startViewTransition(() => flushSync(update)));
   } catch {
     update();
   }
@@ -41,18 +51,17 @@ export function withTripPhoto(update: () => void, tripId: string, open: boolean)
   name(from, true);
   try {
     carrying = open;
-    doc
-      .startViewTransition(() => {
+    quietly(
+      doc.startViewTransition(() => {
         name(from, false);
         flushSync(update);
         to = open ? heroPhoto() : cardPhoto(tripId);
         name(to, true);
-      })
-      .finished.catch(() => undefined)
-      .finally(() => {
-        carrying = false;
-        name(to, false);
-      });
+      }),
+    ).finally(() => {
+      carrying = false;
+      name(to, false);
+    });
   } catch {
     carrying = false;
     name(from, false);
