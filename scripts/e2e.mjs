@@ -3347,6 +3347,8 @@ try {
     ["airbnb", "https://www.airbnb.com/s/Ubud/homes?checkin=2026-12-10&checkout=2026-12-22&adults=2"],
   ]);
   assert.equal(await ekSec("stay").locator(".ek-card").count(), 3, "three stops, three empty stays");
+  await ekSec("flight").screenshot({ path: `${out}/20f-empty-flight.png` });
+  await ekSec("stay").screenshot({ path: `${out}/20f-empty-stay.png` });
   // Ulaşım: the transfers and changes of city with no plan, "Nasıl gideceğin belli değil", Uber and the directions.
   const transfers = ekSec("transport").locator(".ek-card.pk-leg");
   assert.ok((await transfers.count()) >= 2, "the transfers with no plan are empty cards");

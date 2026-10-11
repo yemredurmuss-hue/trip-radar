@@ -38,8 +38,8 @@ export function StickyBar({ hero, active, title, dates, daysLeft, cover, pct, bu
   useEffect(() => {
     const el = hero.current;
     if (!active || !el || typeof IntersectionObserver === "undefined") return setShow(false);
-    // Out of view above (scrolled past), not merely not yet drawn.
-    const io = new IntersectionObserver(([e]) => setShow(!e.isIntersecting && e.boundingClientRect.bottom < 0), { threshold: 0 });
+    // Out of view above (scrolled past, its last strip under the bar's own height counts as gone), not merely not yet drawn.
+    const io = new IntersectionObserver(([e]) => setShow(!e.isIntersecting && e.boundingClientRect.bottom < 56), { threshold: 0, rootMargin: "-56px 0px 0px 0px" });
     io.observe(el);
     return () => io.disconnect();
   }, [hero, active]);

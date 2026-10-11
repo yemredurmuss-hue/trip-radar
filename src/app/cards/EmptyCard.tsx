@@ -93,6 +93,20 @@ export function EmptyRoute({ from, to, art, fields }: { from: End | null; to: En
 
 /** A stay's, an activity's, an eSIM's body: the drawing's tile and the name, a grey line under it. */
 export function EmptyMedia({ kind, drawing, title, sub }: { kind: CardKind; drawing?: MediaDrawing | null; title: ReactNode; sub: ReactNode }) {
+  // Plan v30: a stay not chosen yet is the stay card's shape: the kind's drawing on a band across the top, the place large under it.
+  if (kind === "stay") {
+    return (
+      <div className="ek-media ek-stayband">
+        <span className="ek-band" aria-hidden>
+          <img src="illus/otel.png" alt="" />
+        </span>
+        <span className="ek-txt">
+          <b>{title}</b>
+          {sub && <small>{sub}</small>}
+        </span>
+      </div>
+    );
+  }
   return (
     <div className="ek-media">
       <span className="ek-tile" aria-hidden>
@@ -297,6 +311,7 @@ function EmptyRecordFace({ item }: { item: Item }) {
     return (
       <EmptyShell
         {...shell}
+        label={kind === "flight" && face.from?.city && (face.to?.city ?? to) ? `${face.from.city} → ${face.to?.city ?? to}` : undefined}
         date={<CardDate item={item} kind={kind} />}
         body={<EmptyRoute from={face.from} to={face.to ?? (to && !rental ? { city: to, sub: null, time: null } : null)} art={kind === "transport" ? null : kind} fields={rental ? ["city", null] : ["from", "to"]} />}
         links={links}

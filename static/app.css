@@ -4309,3 +4309,9 @@ a.ch-why { text-decoration: none; }
 .sbar-name { flex: 0 1 auto; min-width: 0; max-width: 280px; overflow: hidden; }
 .sbar-name small { overflow: hidden; text-overflow: ellipsis; }
 .sbar-p { flex: none; }
+
+/* Plan v30: a stay not chosen yet: the drawing on a band across the card, the place large under it. */
+.ek-media.ek-stayband { display: block; margin: 6px 0 4px; }
+.ek-stayband .ek-band { display: block; height: 96px; border-radius: 12px; background: color-mix(in srgb, var(--mc) 7%, #fff); overflow: hidden; margin-bottom: 8px; }
+.ek-stayband .ek-band img { display: block; height: 92%; width: auto; max-width: 90%; margin: 4% auto 0; opacity: .5; }
+.ek-stayband .ek-txt b { font-size: 19px; }
