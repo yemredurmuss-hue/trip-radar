@@ -243,6 +243,12 @@ export function ratingOf(item: Item): { value: string; word: string; count: stri
   };
 }
 
+/** v30: a stay's rating for its card (ratingOf plus whether the site scores out of 5, drawn as a star). */
+export function stayRatingOf(item: Item): { value: string; word: string; count: string | null; star: boolean } | null {
+  const r = ratingOf(item);
+  return r ? { ...r, star: (item.rating.scale ?? 10) <= 5 } : null;
+}
+
 /** "2.'ye göre +€30 · bagaj dahil, direkt · eksiği: iade yok": why it stands where it does, against the one it's weighed with. */
 export function TradeLine({ ranked, currency, className }: { ranked: Ranked; currency: string; className: string }) {
   const trade = ranked.trade;

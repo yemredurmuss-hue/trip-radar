@@ -2,6 +2,8 @@
 // activity, an eSIM, insurance, a restaurant or a note. NavGroup shows a need's options as one card with
 // ‹ 1/2 › in its bottom strip (stays keep their side-by-side cards). CardEnv carries what every card needs
 // from the board (decisions, files, delete with undo, the add sheet) without threading it through Timeline.
+import { brandOf } from "../../lib/brands";
+import { RideCardBody, RouteArc } from "./RideCard";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { cardFacts, durationText } from "../../lib/cardFacts";
 import { cardKind, isTransportKind, type LegEnds } from "../../lib/cardKinds";
@@ -15,7 +17,7 @@ import type { DateRange } from "../../lib/plan";
 import type { InsertAt } from "../../lib/templates";
 import type { DocMeta, Item, LegMode, Trip } from "../../lib/types";
 import type { Undoable } from "../../lib/undoables";
-import { chooseItem, setInstalled, setItemStatus, setOwner } from "../actions";
+import { chooseItem, setArranged, setInstalled, setItemStatus, setOwner } from "../actions";
 import { CopyText } from "../CopyButton";
 import { dropsIn, useJustBecame, useJustChanged } from "../motion";
 import type { CityWeather } from "../../lib/climate";
@@ -38,7 +40,8 @@ import { InlineEdit } from "./InlineEdit";
 import { groupKeyOf } from "../../lib/plan";
 import { useStageMenu } from "./stageMenu";
 import { MediaCardBody } from "./MediaCard";
-import { datedLink } from "./parts";
+import { datedLink, stayRatingOf } from "./parts";
+import { cancelLineOf, showBookingRef } from "../../lib/cardTime";
 import { TransportArt, UiIcon } from "./Silhouettes";
 import { TransportCardBody } from "./TransportCard";
 import { FlightTiles } from "./FlightLive";
@@ -162,7 +165,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
             };
           }),
         ];
-  const menu: MenuEntry[] = [...forWho, ...stageMenu.menu.map((e, i) => ({ ...e, sep: forWho.length > 0 && i === 0 }))];
+  const arrangedMenu: MenuEntry[] = item.arranged && item.noBooking != null && item.status !== "booked" ? [{ label: L("Ayarlandı: geri al", "Arranged: take back"), run: () => void setArranged(item, false) }] : [];
+  const menu: MenuEntry[] = [...forWho, ...stageMenu.menu.map((e, i) => ({ ...e, sep: forWho.length > 0 && i === 0 })), ...arrangedMenu];
   const alternatives = onChange ? Math.max(0, group.length - 1) : 0;
   // v11: chosen, not bought yet: its other options are a link by the price ("Pano'da 2 alternatif").
   const altCount = item.status === "chosen" ? group.filter((g) => g.id !== item.id && g.status !== "dismissed").length : 0;
@@ -244,6 +248,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       }
       docs={bookedCard ? null : <DocAccess item={item} docs={docs} />}
       onDelete={stageMenu.hide}
+      onArranged={stageMenu.booked || bookedCard ? undefined : () => void setArranged(item, true)}
       deleteLabel={stageMenu.booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed")}
       topAction={
         bookTop ? (
@@ -262,11 +267,18 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       body={
         transport ? (
           <>
-            <TransportCardBody face={face!} title={item.name} art={kind !== "transport" ? <TransportArt mode={kind} /> : null} />
+            {/* v30: a flight's middle is the curved route; any other way (not a rental) is a ride: its drawing, "A → B", the way. */}
+            {kind !== "flight" && !face!.rental && face!.from && face!.to ? (
+              <RideCardBody face={face!} title={item.name} kind={kind} brand={brandOf(facts.source?.label, facts.source?.host)} when={null} />
+            ) : (
+              <TransportCardBody face={face!} title={item.name} art={kind === "flight" ? <RouteArc stops={(item.flight?.stops ?? 0) > 0} /> : kind !== "transport" ? <TransportArt mode={kind} /> : null} />
+            )}
             <FlightTiles tiles={tiles} />
           </>
         ) : (
           <MediaCardBody face={mediaFace(item, kind, facts.source)} kind={kind} score={facts.score} best={best} city={item.city}
+            brand={kind === "stay" ? brandOf(facts.source?.label, facts.source?.host) : null} area={kind === "stay" ? (item.location.area ?? null) : null}
+            rating={kind === "stay" ? stayRatingOf(item) : null} cancel={kind === "stay" ? cancelLineOf(item, env.today) : null}
             nights={kind === "stay" && item.dates.start && item.dates.end ? nightsBetween(item.dates.start.slice(0, 10), item.dates.end.slice(0, 10)) : null} />
         )
       }
@@ -293,14 +305,15 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
           {bookedCard && kind === "flight" && (
             <div className="pk-stub">
               <span>{item.flight?.carrier ?? item.provider ?? L("Uçuş", "Flight")}</span>
-              {item.bookingRef && <b><CopyText value={item.bookingRef} label={L("Rezervasyon kodu", "Booking code")}>{item.bookingRef}</CopyText></b>}
+              {/* v30: the code waits for the flight's day; before that the stub says what it cost (the code is in its window). */}
+              {item.bookingRef && showBookingRef(item, env.today) ? <b><CopyText value={item.bookingRef} label={L("Rezervasyon kodu", "Booking code")}>{item.bookingRef}</CopyText></b> : facts.price ? <b>{facts.price.text}</b> : null}
               {item.guests.adults ? <span>{L(`${item.guests.adults} yolcu`, `${item.guests.adults} passenger${item.guests.adults === 1 ? "" : "s"}`)}</span> : null}
               <span className="pk-stamp" aria-hidden><UiIcon name="check" size={14} /></span>
             </div>
           )}
           {stageMenu.field}
           {sheet && (
-            <BookingSheet item={item} kind={kind} facts={facts} docs={docs} date={topDate(item, kind)}
+            <BookingSheet item={item} kind={kind} facts={facts} docs={docs} date={topDate(item, kind)} today={env.today}
               onChange={stageMenu.change} onCancel={stageMenu.cancel} onUnbook={() => void setItemStatus(item, "chosen")} onDetails={() => env.onOpenItem(item)} onClose={() => setSheet(false)} />
           )}
         </>
@@ -351,7 +364,6 @@ export function NavGroup({ items, heading, nested, decision, choice, decided, on
     return (
       <div className={nested ? "group nested" : "section"} data-option-ids={ids}>
         {heading && <div className={nested ? "group-head" : "section-head"}>{heading}</div>}
-        <PlanCard key={decided.id} item={decided} group={items} decision={decision} ranked={rankedOf(decided)} onChange={onChange} changing={changing} onCompare={onCompare} headline={null} />
         <ChoiceSheet items={items} decision={decision} choice={choice} title={needTitleOf(decided)} kind={cardKind(decided)} onClose={() => onChange?.()} onCompare={onCompare} />
       </div>
     );

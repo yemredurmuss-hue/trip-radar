@@ -54,9 +54,8 @@ function words(item: Item, kind: CardKind): Words {
 
 /** What a booking keeps on the card: the note said with it (a PNR, a meeting point), else until when it's free to cancel. */
 function bookedSub(item: Item): string | null {
-  if (item.statusNote) return item.statusNote;
-  const until = isoDate(item.cancellation.freeUntil);
-  return until ? L(`ücretsiz iptal: ${formatDateRange(until, null)}`, `free cancellation until ${formatDateRange(until, null)}`) : null;
+  // v30: a far-off cancel date isn't a worry once it's bought: its alert (progress.dateAlert) speaks in the last two weeks.
+  return item.statusNote ?? null;
 }
 
 /**
@@ -79,7 +78,11 @@ export function footOf(item: Item, kind: CardKind, opts: { options?: number; ale
     case "chosen": {
       if (NO_BOOKING.includes(kind)) return { left: withAlert(state("done", L("Planlandı", "Planned"), kind === "taxi" ? L("rezervasyon gerekmez", "no booking needed") : null)), action: null };
       // Set aside by the traveller as needing no booking (0.36.47): an idea on the plan; booking it still can be said.
-      if (setAside(item)) return { left: withAlert(state("done", L("Fikir", "Idea"), L("rezervasyon gerekmiyor", "no booking needed"))), action: { label: w.act, does: "book" } };
+      if (setAside(item)) {
+        // v30: "Ben hallettim" says "Ayarlandı · sen hallettin"; an idea set aside keeps its words.
+        const left = item.arranged ? state("done", L("Ayarlandı", "Arranged"), L("sen hallettin", "you sorted it")) : state("done", L("Fikir", "Idea"), L("rezervasyon gerekmiyor", "no booking needed"));
+        return { left: withAlert(left), action: { label: w.act, does: "book" } };
+      }
       // Decided, not booked yet (0.36.30, Emre: "Plan: karar verildi, muhtemelen book edilecek ama henüz edilmedi").
       const text = L("Planlandı", "Planned");
       return { left: withAlert(state("wait", text, w.not)), action: { label: w.act, does: "book" } };

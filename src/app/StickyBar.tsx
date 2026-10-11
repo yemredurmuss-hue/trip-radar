@@ -81,7 +81,8 @@ export function StickyBar({ hero, active, title, dates, daysLeft, cover, pct, bu
           </span>
           {action && (
             <button type="button" className="sbar-go" tabIndex={show ? 0 : -1} onClick={action.run} title={action.title}>
-              {action.label}
+              {/* "Planı tamamla" says what's next here (the hero's button keeps its words). */}
+              {action.title && action.label === L("Planı tamamla", "Finish the plan") ? `${L("Sıradaki", "Next")}: ${action.title} →` : action.label}
             </button>
           )}
         </div>

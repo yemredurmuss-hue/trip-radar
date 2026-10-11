@@ -21,6 +21,20 @@ describe("the ring and the ground", () => {
   });
 });
 
+describe("Ben hallettim (plan v30): arranged outside the tool", () => {
+  it("a chosen plan set aside and arranged says Ayarlandı, done, and can still be booked", () => {
+    const f = footOf(train({ status: "chosen", noBooking: 1, arranged: true }), "train");
+    expect(state(f)).toEqual(["done", "Ayarlandı", "sen hallettin"]);
+    expect(f.action).toMatchObject({ does: "book" });
+  });
+  it("an idea set aside keeps its own words", () => {
+    expect(state(footOf(train({ status: "chosen", noBooking: 1 }), "train"))).toEqual(["done", "Fikir", "rezervasyon gerekmiyor"]);
+  });
+  it("the mark only counts while it's set aside: a stale 'arranged' with no noBooking reads as an ordinary plan", () => {
+    expect(state(footOf(train({ status: "chosen", arranged: true }), "train"))[1]).toBe("Planlandı");
+  });
+});
+
 describe("the bottom strip, per the spec's action table", () => {
   it("an option: the navigator with several, 'Karar bekliyor' alone; the action picks it", () => {
     expect(footOf(train(), "train", { options: 2 })).toEqual({ left: { kind: "nav" }, action: { label: "Plana koy", does: "choose" } });
@@ -44,10 +58,10 @@ describe("the bottom strip, per the spec's action table", () => {
       action: null,
     });
   });
-  it("booked: done, with the note said with it or the free-cancellation day", () => {
+  it("booked: done, with the note said with it; the free-cancellation day is the alert's, in the last two weeks (v30)", () => {
     expect(state(footOf(train({ status: "booked" }), "flight"))).toEqual(["done", "Alındı", null]);
     expect(state(footOf(train({ status: "booked", statusNote: "PNR X7K2LQ" }), "flight"))).toEqual(["done", "Alındı", "PNR X7K2LQ"]);
-    expect(state(footOf(train({ status: "booked", cancellation: { summary: null, freeUntil: "2026-10-13", source: "page" } }), "activity"))).toEqual(["done", "Alındı", "ücretsiz iptal: 13 Ekim"]);
+    expect(state(footOf(train({ status: "booked", cancellation: { summary: null, freeUntil: "2026-10-13", source: "page" } }), "activity"))).toEqual(["done", "Alındı", null]);
     expect(state(footOf(train({ status: "booked" }), "car"))).toEqual(["done", "Rezerve", null]);
   });
   it("an eSIM: bought, then installed", () => {

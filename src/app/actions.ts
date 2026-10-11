@@ -101,6 +101,26 @@ export async function setNotNeeded(item: Item): Promise<Undoable> {
 }
 
 /**
+ * A card's × then "Ben hallettim" (v30): not needed here because the traveller arranged it themselves (a friend picks them up,
+ * a ticket bought elsewhere). It stays on the plan, set aside like an idea (noBooking: nothing left to do, out of the booked
+ * percentage) with its own words ("Ayarlandı · sen hallettin"). A plan not chosen yet is chosen first: a plan you arranged is in it.
+ */
+export async function setArranged(item: Item, arranged: boolean): Promise<void> {
+  const d = await db();
+  const found = (await d.get("items", item.id)) ?? item;
+  const now = Date.now();
+  if (arranged) {
+    await d.put("items", { ...found, status: found.status === "booked" ? "booked" : "chosen", noBooking: now, arranged: true, statusAt: now, updatedAt: now });
+    await addEvent(item.tripId, L(`${item.name}: sen hallettin, plana ayarlandı olarak girdi`, `${item.name}: you arranged it, in the plan as arranged`));
+  } else {
+    const { noBooking: _n, arranged: _a, ...rest } = found;
+    await d.put("items", { ...rest, updatedAt: now });
+    await addEvent(item.tripId, L(`${item.name}: ayarlandı işareti geri alındı`, `${item.name}: arranged mark taken back`));
+  }
+  notifyChanged();
+}
+
+/**
  * Applies a change to the trip as stored right now (not a possibly stale copy from the last render).
  * `touch: false` keeps `updatedAt` as it was: for cache writes (hero photos, mood sentence) that aren't an edit
  * by the traveller and mustn't win a settings-sync conflict.

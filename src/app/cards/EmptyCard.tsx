@@ -392,7 +392,8 @@ export function EmptyStayBlock({ block, label }: { block: Extract<StayBlock, { k
       menu={slot ? [{ label: L("Düzenle", "Edit"), run: () => env.edit(slot) }, { label: L("Sil", "Delete"), run: () => env.remove(slot), danger: true }] : [{ label: L("Gerek yok", "Not needed"), run: hide }]}
       x={slot ? <DeleteX name={slot.name} className="stay-x" onDelete={() => env.remove(slot)} /> : <DeleteX name={label} hide className="stay-x" onDelete={hide} />}
       body={body}
-      status={L("Henüz otel yok", "No place yet")}
+      // v30: the nights on a boat, in a camp or a van have no hotel to find: they say so (nothing to book).
+      status={own ? L("Rezervasyon gerekmez", "No booking needed") : L("Henüz otel yok", "No place yet")}
       links={own ? [] : stayLinks({ city, checkin: block.range.start, checkout: block.range.end, adults: n })}
       onSkip={slot ? undefined : hide}
       skipTitle={L("Bu geceler için yer gerekmiyor", "No place needed for these nights")}

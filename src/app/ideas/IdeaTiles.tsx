@@ -24,7 +24,7 @@ import { useCardEnv } from "../cards/PlanCard";
 import { usePhotoOf, WhoAvatar } from "../cards/WhoseBadge";
 import { FallbackImg } from "../FallbackImg";
 import { useMyName } from "../Profile";
-import { SuggestTile, useRemembered } from "../plan/ActivityBoard";
+import { SuggestTile } from "../plan/ActivityBoard";
 import { useSectionSuggest } from "../plan/sectionSuggest";
 
 
@@ -48,7 +48,24 @@ export function IdeaTiles({ section, fallback }: { section: CatSection; fallback
   const onPlan = shown.filter(({ item }) => ideaPlanned(item) || Boolean(item.doneAt));
   const ideas = shown.filter(({ item }) => !ideaPlanned(item) && !item.doneAt);
   const sugg = (suggest?.list ?? []).filter((x) => filter === "all" || (filter === "food") === (x.section === "food" || x.template === "food"));
-  const [open, setOpen] = useRemembered(`trip-radar:ideasOpen:${env.tripId}:todo`, true);
+  // v30 (docs/superpowers/specs/2026-10-11-plan-v30-design.md): the trip's places and tables by city, in the order lived: each city one
+  // row of tiles of one size, what's on the plan first (✓), the ideas and suggestions after (dashed, +). The corner ✓ / + puts it on
+  // the plan and takes it off.
+  const groups = new Map<string, { planned: typeof shown; ideas: typeof shown; sugg: typeof sugg }>();
+  const order: string[] = [];
+  const at = (city: string | null | undefined) => {
+    const key = (city ?? "").trim();
+    if (!groups.has(key)) {
+      groups.set(key, { planned: [], ideas: [], sugg: [] });
+      order.push(key);
+    }
+    return groups.get(key)!;
+  };
+  onPlan.forEach((r) => at(r.item.city).planned.push(r));
+  ideas.forEach((r) => at(r.item.city).ideas.push(r));
+  sugg.forEach((x) => at(x.payload?.city).sugg.push(x));
+  // A place with no city yet comes last.
+  order.sort((a, b) => (a === "" ? 1 : 0) - (b === "" ? 1 : 0));
   return (
     <div className="it-wrap">
       <div className="it-filters" role="group" aria-label={L("Ne", "What")}>
@@ -57,54 +74,54 @@ export function IdeaTiles({ section, fallback }: { section: CatSection; fallback
             {f === "all" ? L("Hepsi", "All") : f === "go" ? L("Gezilecek yerler", "Places to see") : L("Restoranlar", "Restaurants")} <i>{n(f)}</i>
           </button>
         ))}
-      </div>
-      <section className="ac-block it-on-plan" aria-label={L("Planda", "On the plan")}>
-        <p className="ac-h">
-          <b>{L("Planda", "On the plan")}</b>
-          <i>{onPlan.length}</i>
-          <span>{onPlan.length ? L("günü olmayanlara günü Gün gün'de verirsin", "give the ones with no day theirs in Day by day") : L("Henüz bir şey yok; aşağıdan “+ Plana koy”.", "Nothing yet; “+ Add to plan” from below.")}</span>
-        </p>
-        {onPlan.length > 0 && (
-          <div className="it-rows">
-            {onPlan.map(({ e, item }) => (
-              <InlineEdit key={e.key} item={item} only={["name"]}>
-                <IdeaTile item={item} row />
-              </InlineEdit>
-            ))}
-          </div>
-        )}
-      </section>
-      <section className={`ac-block ac-ideas${open ? " open" : ""}`} aria-label={L("Fikirler ve öneriler", "Ideas and suggestions")}>
-        <div className="ac-ideas-h">
-          <button type="button" className="ac-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
-            <span className="ac-chev" aria-hidden>▾</span>
-            <b>{L("Fikirler ve öneriler", "Ideas and suggestions")}</b>
-            <i>{ideas.length + sugg.length}</i>
+        <span className="it-sp" />
+        {env.ask && (
+          <button type="button" className="ac-more" onClick={() => env.ask!(L("Bu gezi için gezilecek birkaç yer ve restoran daha öner.", "Suggest a few more places to see and restaurants for this trip."))}>
+            ✨ {L("Daha fazla öner", "Suggest more")}
           </button>
-          <span className="it-sp" />
-          {env.ask && (
-            <button type="button" className="ac-more" onClick={() => env.ask!(L("Bu gezi için gezilecek birkaç yer ve restoran daha öner.", "Suggest a few more places to see and restaurants for this trip."))}>
-              ✨ {L("Daha fazla öner", "Suggest more")}
-            </button>
-          )}
-        </div>
-        {open &&
-          (ideas.length || sugg.length ? (
-            <div className="it-grid">
-              {sugg.map((x) => (
-                <SuggestTile key={x.key} s={x} note={suggest?.notes[x.key] ?? null} onAdd={() => suggest?.add(x)} onDismiss={() => suggest?.dismiss(x)}
-                  art={`illus/${x.section === "food" || x.template === "food" ? "restoran" : "yapilacak"}.png`} />
-              ))}
-              {ideas.map(({ e, item }) => (
-                <InlineEdit key={e.key} item={item} only={["name"]}>
-                  <IdeaTile item={item} />
-                </InlineEdit>
-              ))}
-            </div>
-          ) : (
-            <p className="il-none">{L("Burada bekleyen fikir yok.", "No ideas waiting here.")}</p>
-          ))}
-      </section>
+        )}
+      </div>
+      <p className="it-key">
+        <span className="it-key-on">✓</span>
+        {L("planda", "on the plan")}
+        <span className="it-key-add">+</span>
+        {L("öneri, basınca plana girer", "an idea, one tap puts it on the plan")}
+      </p>
+      {order.length === 0 && <p className="il-none">{L("Burada bekleyen bir şey yok.", "Nothing here yet.")}</p>}
+      <div className="it-cities" data-pit-children="">
+        {order.map((city, k) => {
+          const x = groups.get(city)!;
+          const waiting = x.ideas.length + x.sugg.length;
+          return (
+            <section key={city || "none"} className="it-city" aria-label={city || L("Şehri belli değil", "City not set")}>
+              <div className="it-city-h">
+                <span className="it-city-n" aria-hidden>{k + 1}</span>
+                <b>{city || L("Şehri belli değil", "City not set")}</b>
+                <span className="it-city-c">
+                  {x.planned.length > 0 && <i className="ok">✓ {L(`${x.planned.length} planda`, `${x.planned.length} on the plan`)}</i>}
+                  {waiting > 0 && <i>+ {L(`${waiting} öneri`, `${waiting} idea${waiting === 1 ? "" : "s"}`)}</i>}
+                </span>
+              </div>
+              <div className="it-grid">
+                {x.planned.map(({ e, item }) => (
+                  <InlineEdit key={e.key} item={item} only={["name"]}>
+                    <IdeaTile item={item} />
+                  </InlineEdit>
+                ))}
+                {x.ideas.map(({ e, item }) => (
+                  <InlineEdit key={e.key} item={item} only={["name"]}>
+                    <IdeaTile item={item} />
+                  </InlineEdit>
+                ))}
+                {x.sugg.map((sx) => (
+                  <SuggestTile key={sx.key} s={sx} note={suggest?.notes[sx.key] ?? null} onAdd={() => suggest?.add(sx)} onDismiss={() => suggest?.dismiss(sx)}
+                    art={`illus/${sx.section === "food" || sx.template === "food" ? "restoran" : "yapilacak"}.png`} />
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
       {others.map((e) => (
         <div key={e.key} className="it-other">{fallback(e)}</div>
       ))}
@@ -156,6 +173,15 @@ function IdeaTile({ item, row = false }: { item: Item; row?: boolean }) {
           {who === "ai" ? <span className="it-ai">✨</span> : <WhoAvatar name={who ?? (myName || L("Ben", "Me"))} photo={photoOf(who ?? myName)} />}
         </span>
         {!row && tools}
+        {/* v30: the corner ✓ / +: on the plan, or one tap to put it there (its words stay for the reader and the tests; the drawing is the corner mark). */}
+        {done ? null : booked ? (
+          <span className="it-put on corner">✓ {L("Rezerve", "Booked")}</span>
+        ) : (
+          <button type="button" className={`it-put corner${planned ? " on" : ""}`} aria-pressed={planned} title={planned ? L("Planda · çıkarmak için bas", "On the plan · tap to take it off") : L("Plana koy", "Add to plan")}
+            onClick={() => void (planned ? (day ? setIdeaDay(item, null, null).then(() => setItemStatus(item, "saved")) : setItemStatus(item, "saved")) : setItemStatus(item, "chosen"))}>
+            {planned ? `✓ ${L("Planda", "On the plan")}` : `+ ${L("Plana koy", "Add to plan")}`}
+          </button>
+        )}
       </div>
       <b className="it-t">
         {edit?.open === "name" ? (
@@ -168,16 +194,7 @@ function IdeaTile({ item, row = false }: { item: Item; row?: boolean }) {
       </b>
       {meta && <span className="it-m">{meta}</span>}
       <div className="it-foot">
-        {done ? (
-          <span className="it-done">✓ {food ? L("Gidildi", "Been there") : L("Yapıldı", "Done")}</span>
-        ) : booked ? (
-          <span className="it-put on">✓ {L("Rezerve", "Booked")}</span>
-        ) : (
-          <button type="button" className={`it-put${planned ? " on" : ""}`} aria-pressed={planned}
-            onClick={() => void (planned ? (day ? setIdeaDay(item, null, null).then(() => setItemStatus(item, "saved")) : setItemStatus(item, "saved")) : setItemStatus(item, "chosen"))}>
-            {planned ? `✓ ${L("Planda", "On the plan")}` : `+ ${L("Plana koy", "Add to plan")}`}
-          </button>
-        )}
+        {done && <span className="it-done">✓ {food ? L("Gidildi", "Been there") : L("Yapıldı", "Done")}</span>}
         {day && !done ? <span className="it-day">{day}</span> : row && !done ? <span className="it-noday">{L("Günü yok", "No day yet")}</span> : null}
         {row && tools}
       </div>

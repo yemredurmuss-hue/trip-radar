@@ -341,6 +341,22 @@ Her fazdan önce dokunulacak dosya listesi Hareket Dili oturumuna gönderilir. T
 - Yapışkan özet: tepeye yapışık, opak, % halka, tek satır bütçe.
 - Bilgi gerektiği an; uzun metin kartı büyütmez.
 
+## Uygulama durumu (2026-10-11 gecesi)
+
+Fazlar `plan-v30` dalında, her sürüm `git log origin/release`'ten alındı. Yayınlananlar: **0.36.79** (Faz 1), sonrası aşağıda.
+
+**Faz 1 · yayında 0.36.79.** İki sekme (Plan · Pano; Belgeler yalnız açıkken üçüncü sekme). "Gün gün" ve "Yolculuk sırasıyla" planın üç görünümünden ikisi (`plan/PlanOrder.tsx`). Yolculuk sırasıyla `timeline.board`'dan tarih kutulu (`plan/StoryView.tsx`, `lib/storyDates.ts`). ••• gezi menüsüne Belgeler ve "Planı PDF olarak indir" (`panelBus.ts`). Yeni yapışkan özet (`StickyBar.tsx`).
+
+**Çizimden bilerek ayrılanlar:**
+- **Özet halkası** çizimdeki "%77 hazır" değil, kahramanın kendi sayısı (`Planlananların %X'i rezerve`). Kural: ekranda ikinci bir sayı kümesi yok (DESIGN.md).
+- **× katlanması:** hiçbir şey seçilmezse kart katlı kalır, veri değişmez ("gerek yok sayılır" yerine). Yalnız plan kartlarında (`CardShell`); etkinlik satırları ve konaklama araçları (`StayTools`) eskisi gibi.
+- **Ayarlandı** ayrı bir durum değil: `noBooking` + yeni `Item.arranged` bayrağı. Sayımlar ve halka mevcut "fikir olarak ayrıldı" yolundan akar; yalnız sözler değişir.
+- **Yolculuk çizgisi hop satırı** (Yapılacaklar'da şehirler arası "Kyoto'ya · Shinkansen") yapılmadı; numaralı duraklar ve kesikli çizgi var.
+- **Otel giriş saati 2 gün kala** kuralı yapılmadı: canlıda giriş saati karta yazılmıyor, rezervasyon penceresinde duruyor.
+- **Pano çekmecesi** yok; kart arkası "Pano'da aç" sayfayı değiştiriyor.
+- **Gerçek otel fotoğrafı:** kaynağın görseli varsa o, yoksa türün çizimi.
+- **Etkinlikte "Bilet aldım"** yazısı değişmedi (kartın üstündeki "✓ Aldım" duruyor).
+
 ## Durum
 
 Çizim onaylandı (v30, `404c755`). Kod yok. Sıradaki adım: uygulama planı. Faz 1'in dosya listesi Hareket Dili oturumuna gönderilecek.

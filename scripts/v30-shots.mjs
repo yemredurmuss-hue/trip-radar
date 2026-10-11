@@ -38,6 +38,19 @@ await app.goto(`chrome-extension://${id}/app.html`);
 await app.getByText(/Örnek geziyi yükle →|Load the sample trip →/).click();
 await app.getByRole("heading", { name: /Portekiz \(örnek\)|\(sample\)/ }).waitFor();
 await app.waitForTimeout(1500);
+// The sample has no train on the plan: its saved one is chosen here, so the ride card can be looked at.
+await app.evaluate(async () => {
+  const request = indexedDB.open("trip-radar");
+  const database = await new Promise((resolve, reject) => ((request.onsuccess = () => resolve(request.result)), (request.onerror = () => reject(request.error))));
+  const tx = database.transaction("items", "readwrite");
+  const items = tx.objectStore("items");
+  const all = await new Promise((resolve) => (items.getAll().onsuccess = (e) => resolve(e.target.result)));
+  const train = all.find((i) => i.category === "transport" && i.status === "saved");
+  if (train) items.put({ ...train, status: "chosen", provider: train.provider ?? "Comboios de Portugal", updatedAt: Date.now() });
+  await new Promise((resolve) => (tx.oncomplete = resolve));
+  new BroadcastChannel("trip-radar").postMessage("changed");
+});
+await app.waitForTimeout(1500);
 for (const s of await app.locator(".cat-sec.closed .cat-title").all()) await s.click();
 await app.waitForTimeout(600);
 await app.mouse.move(0, 0);
@@ -49,11 +62,35 @@ await app.screenshot({ path: `${out}/02-sticky.png`, clip: { x: 0, y: 0, width: 
 await app.locator(".panel").evaluate((el) => (el.scrollTop = 0));
 // The sections, one by one.
 await app.setViewportSize({ width: WIDTH, height: 7000 });
-await app.waitForTimeout(500);
+// The entrances (the motion language) finish before a section is shot.
+await app.waitForTimeout(2500);
 const secs = app.locator(".cat-sec");
 for (let i = 0; i < (await secs.count()); i++) {
   const sid = await secs.nth(i).getAttribute("data-section");
   await secs.nth(i).screenshot({ path: `${out}/sec-${i}-${sid}.png` });
+}
+// The card's back: "N seçenek ›" turns the card in place; its options are small cards across the row.
+for (const sec of ["stay", "flight"]) {
+  const opts = app.locator(`.cat-sec[data-section="${sec}"] .nd-opts`).first();
+  if (await opts.count()) {
+    await opts.click();
+    await app.waitForTimeout(700);
+    await app.locator(`.cat-sec[data-section="${sec}"]`).screenshot({ path: `${out}/back-${sec}.png` });
+    await app.locator(`.cat-sec[data-section="${sec}"] .ch-head`).getByRole("button", { name: "Kapat" }).click();
+    await app.waitForTimeout(300);
+  }
+}
+// × folds a chosen card in place: why it went.
+{
+  const card = app.locator(".cat-sec[data-section=\"transport\"] .pk-card").first();
+  if (await card.count()) {
+    await card.hover();
+    await card.locator(".pk-x").click({ force: true });
+    await app.waitForTimeout(400);
+    await app.locator(".cat-sec[data-section=\"transport\"]").screenshot({ path: `${out}/sec-2-transport-fold.png` });
+    await app.locator(".pk-fold-u").click();
+    await app.waitForTimeout(300);
+  }
 }
 await app.setViewportSize({ width: WIDTH, height: 1000 });
 // "Yolculuk sırasıyla" and "Gün gün".

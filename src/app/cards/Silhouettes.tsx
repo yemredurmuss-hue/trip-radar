@@ -67,6 +67,9 @@ const UI_ICONS = {
   doc: g(<><path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /><path d="M14 3v4h4M9 13h6M9 17h4" /></>),
   clip: g(<path d="m20 11-8.5 8.5a5 5 0 0 1-7-7L13 4a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4L14.5 7" />, 2.2),
   check: g(<path d="m5 12.5 4.5 4.5L19 7.5" />, 3),
+  // The Pano (the card back's "Pano'da aç").
+  board: g(<><rect x="4" y="4" width="6" height="16" rx="1.6" /><rect x="14" y="4" width="6" height="10" rx="1.6" /></>),
+  pin: g(<><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.3" /></>),
   left: g(<path d="m15 5-7 7 7 7" />, 2.4),
   right: g(<path d="m9 5 7 7-7 7" />, 2.4),
   dots: (
@@ -173,7 +176,12 @@ const SCENES: Record<TransportMode, () => ReactNode> = {
 };
 
 /** The way of travel drawn behind a transport card's middle (`.pk-art`: centred, edges fading out). */
+/** v30: the way's drawing (static/illus) instead of its silhouette, where there is one. */
+const MODE_ILLUS: Partial<Record<TransportMode, string>> = { flight: "ucus", train: "tren", bus: "otobus", minibus: "minibus", ferry: "vapur", taxi: "taksi-transfer", car: "arac-kiralama", moto: "motosiklet", rv: "karavan", bike: "bisiklet" };
+
 export function TransportArt({ mode }: { mode: TransportMode }) {
+  const illus = MODE_ILLUS[mode];
+  if (illus) return <img className="pk-routeimg" src={`illus/${illus}.png`} alt="" />;
   return (
     <svg className="pk-art" viewBox="0 0 400 128" preserveAspectRatio="xMidYMid meet" aria-hidden>
       {SCENES[mode]()}

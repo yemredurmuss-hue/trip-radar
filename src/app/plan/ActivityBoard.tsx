@@ -9,6 +9,8 @@ import { cardFacts } from "../../lib/cardFacts";
 import { ringOf, topDate } from "../../lib/cardView";
 import { catDomKey, type CatEntry, type CatSection } from "../../lib/categories";
 import { entryDomId } from "../../lib/progress";
+import { reasonItemOf } from "../../lib/reason";
+import { playbookOf } from "../../lib/playbooks";
 import { L } from "../../lib/i18n";
 import { isAiOption } from "../../lib/pano";
 import type { Item } from "../../lib/types";
@@ -29,6 +31,7 @@ import { useCardEnv } from "../cards/PlanCard";
 import { useStageMenu } from "../cards/stageMenu";
 import { usePhotoOf, WhoAvatar } from "../cards/WhoseBadge";
 import { Editable, InlineEdit, useInlineEdit } from "../cards/InlineEdit";
+import { KindIcon } from "../cards/Silhouettes";
 import { FallbackImg } from "../FallbackImg";
 import { useMyName } from "../Profile";
 import type { Suggestion } from "../../lib/types";
@@ -61,6 +64,12 @@ export function ActivityBoard({ section, plan, fallback }: { section: CatSection
     // eslint-disable-next-line react-hooks/exhaustive-deps -- when the offers or the records without a photo change
   }, [offers.all.length, missingPhotos.map((i) => i.id).join(" ")]);
   const sugg = suggest?.list ?? [];
+  // v30: on a trip with a purpose (a festival), its ticket leads the section, pinned: "Gezinin sebebi".
+  const reason = env.trip ? reasonItemOf(env.trip, planned.map((p) => p.item)) : null;
+  const reasonRow = reason ? (planned.find((p) => p.item.id === reason.id) ?? null) : null;
+  const restPlanned = reasonRow ? planned.filter((p) => p !== reasonRow) : planned;
+  const intent = env.trip?.intent ?? null;
+  const closedTours = Boolean(intent && playbookOf(intent.playbook, intent.custom).blocked?.sections?.includes("activity"));
   const [open, setOpen] = useRemembered(`trip-radar:ideasOpen:${env.tripId}:activity`, true);
   const count = sugg.length + ideas.length + offers.tiles.length;
   const more = env.ask;
@@ -75,8 +84,20 @@ export function ActivityBoard({ section, plan, fallback }: { section: CatSection
         </p>
         {planned.length > 0 && (
           <div className="ac-planned">
+            {reasonRow && (
+              <div className="ac-reason">
+                <span className="ac-reason-tag">
+                  <KindIcon kind="activity" size={14} />
+                  {L("Gezinin sebebi", "The reason for the trip")}
+                </span>
+                <InlineEdit key={reasonRow.e.key} item={reasonRow.item} only={["name"]}>
+                  <ActivityRow item={reasonRow.item} domId={entryDomId(catDomKey(reasonRow.e))} />
+                </InlineEdit>
+                {closedTours && <p className="ac-reason-note">{L("Bu gezide tur ve gezi önerilmez: gezinin sebebi bu.", "No tours or sightseeing are suggested on this trip: this is what it's for.")}</p>}
+              </div>
+            )}
             {/* The name is edited where it stands (just added from "+ Ekle", a page's title corrected). */}
-            {planned.map(({ e, item }) => (
+            {restPlanned.map(({ e, item }) => (
               <InlineEdit key={e.key} item={item} only={["name"]}>
                 <ActivityRow item={item} domId={entryDomId(catDomKey(e))} />
               </InlineEdit>
@@ -176,16 +197,12 @@ export function SuggestTile({ s, note, onAdd, onDismiss, art = ACTIVITY_ART }: {
         <span className="it-tools">
           <DeleteX name={s.title} onDelete={onDismiss} label={L("Gerek yok", "Not needed")} className="it-x" />
         </span>
+        {s.kind === "add" && <button type="button" className="it-put corner" title={L("Plana koy", "Add to plan")} onClick={onAdd}>+ {L("Plana koy", "Add to plan")}</button>}
       </div>
       <b className="it-t">{s.title}</b>
       {s.payload?.city && <span className="it-m">📍 {s.payload.city}</span>}
       {s.why && <span className="it-m ac-why">{s.why}</span>}
       {note && <span className="it-m ac-note" role="status">{note}</span>}
-      {s.kind === "add" && (
-        <div className="it-foot">
-          <button type="button" className="it-put" onClick={onAdd}>+ {L("Plana koy", "Add to plan")}</button>
-        </div>
-      )}
     </div>
   );
 }
@@ -290,6 +307,7 @@ function ActivityTile({ item, domId }: { item: Item; domId: string }) {
           <DeleteX name={item.name} onDelete={stageMenu.hide} label={L("Gerek yok", "Not needed")} className="it-x" />
           <CardMenu entries={stageMenu.menu} />
         </span>
+        <button type="button" className="it-put corner" title={L("Plana koy", "Add to plan")} onClick={() => void chooseItem(item, [])}>+ {L("Plana koy", "Add to plan")}</button>
       </div>
       <b className="it-t">
         {edit?.open === "name" ? (
@@ -299,9 +317,6 @@ function ActivityTile({ item, domId }: { item: Item; domId: string }) {
         )}
       </b>
       {meta && <span className="it-m">{meta}</span>}
-      <div className="it-foot">
-        <button type="button" className="it-put" onClick={() => void chooseItem(item, [])}>+ {L("Plana koy", "Add to plan")}</button>
-      </div>
       {stageMenu.field}
     </div>
   );
@@ -378,6 +393,7 @@ function OfferTile({ offer: o, city, adults, onPut }: { offer: Offer; city: stri
         <span className="it-who" title={L("Kaynaktan öneri", "From the source")}>
           <span className="it-ai">✨</span>
         </span>
+        <button type="button" className="it-put corner" title={L("Plana koy", "Add to plan")} onClick={onPut}>+ {L("Plana koy", "Add to plan")}</button>
       </div>
       <b className="it-t">
         <a href={o.url} target="_blank" rel="noreferrer" className="ac-name">{o.title}</a>
@@ -391,9 +407,6 @@ function OfferTile({ offer: o, city, adults, onPut }: { offer: Offer; city: stri
         )}
       </span>
       {per != null && <span className="it-m ac-pp">{L(`${formatPrice(Math.round(per), o.currency ?? "EUR")} · kişi`, `${formatPrice(Math.round(per), o.currency ?? "EUR")} · person`)}</span>}
-      <div className="it-foot">
-        <button type="button" className="it-put" onClick={onPut}>+ {L("Plana koy", "Add to plan")}</button>
-      </div>
     </div>
   );
 }

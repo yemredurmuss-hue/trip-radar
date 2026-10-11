@@ -177,7 +177,7 @@ export function TripHero(props: {
   const barLabel = L(`${headline}: ${booked} rezerve, ${planned} planlandı, ${open} ihtiyaç karar bekliyor`, `${headline}: ${booked} booked, ${planned} planned, ${open} to decide`);
   return (
     <div className="hx-left">
-      <div className={`hx-photo${hasImage ? "" : " empty"}`}>
+      <div className={`hx-photo${hasImage ? "" : " empty"}`} data-pit-photo="">
         {/* Under the photos: seen while there's none, or when one fails to load. */}
         <div className="hx-ph" aria-hidden={hasImage || undefined}>
           <HeroIcon name="landscape" size={36} />

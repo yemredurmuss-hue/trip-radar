@@ -172,11 +172,19 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go, a
       {(price || pricing) && (
         <span className="pk-price">
           <Editable field="price">
-            {price && (
-              <>
-                <b>{price.text}</b>
-                {price.label ? ` ${price.label}` : ""}
-              </>
+            {price && price.perNight ? (
+              // v30: a stay's price the way the sites write it: the night large, the sum small beneath.
+              <span className="pk-price2">
+                <b>{price.perNight}</b>
+                <i>{L(`${price.text} toplam`, `${price.text} total`)}</i>
+              </span>
+            ) : (
+              price && (
+                <>
+                  <b>{price.text}</b>
+                  {price.label ? ` ${price.label}` : ""}
+                </>
+              )
             )}
           </Editable>
         </span>
@@ -225,6 +233,8 @@ export function CardShell(props: {
   onDelete?: () => void;
   /** What the × says (v11: "Gerek yok", "Kaldır" on a booking). */
   deleteLabel?: string;
+  /** v30: with it, the × doesn't take the card away at once: it folds in place into a line asking why ("Gerek yok" · "Ben hallettim") and "Geri al". Not on a booking (its × asks first). */
+  onArranged?: () => void;
   /** v11: the planned card's "✓ Aldım", on the top line. */
   topAction?: ReactNode;
   menu: MenuEntry[];
@@ -237,11 +247,32 @@ export function CardShell(props: {
   detail: ReactNode;
 }) {
   const style = { "--mc": cardKindColor(props.kind) } as CSSProperties;
+  const [folded, setFolded] = useState(false);
+  const foldable = Boolean(props.onDelete && props.onArranged);
   // A tap anywhere on the card opens it, except on its controls and inside what's opened.
   const tap = (e: MouseEvent) => {
     if ((e.target as HTMLElement).closest("button, a, input, select, label, .pk-detail, .pk-menu, .pk-doclist")) return;
     props.onToggle();
   };
+  if (folded && foldable) {
+    const name = props.ariaLabel;
+    return (
+      <div className="pk-fold" role="group" aria-label={L(`${name}: kaldırıldı`, `${name}: removed`)} data-item-id={props.itemId}>
+        <span className="pk-fold-t">
+          <UiIcon name="x" size={13} />
+          <b title={name}>{name}</b> {L("kaldırıldı", "removed")}
+        </span>
+        <span className="pk-fold-q">{L("Neden?", "Why?")}</span>
+        <button type="button" className="pk-fold-b" onClick={() => { setFolded(false); props.onDelete!(); }}>{L("Gerek yok", "Not needed")}</button>
+        <button type="button" className="pk-fold-b" onClick={() => { setFolded(false); props.onArranged!(); }}>
+          <UiIcon name="check" size={13} />
+          {L("Ben hallettim", "I sorted it")}
+        </button>
+        <span className="pk-fold-sp" />
+        <button type="button" className="pk-fold-u" onClick={() => setFolded(false)}>{L("Geri al", "Undo")}</button>
+      </div>
+    );
+  }
   return (
     <TipOn tip={props.open ? null : (props.peek ?? null)} delay={450} interactive boxClass="tipx-peek">
       {(bind) => (
@@ -266,7 +297,7 @@ export function CardShell(props: {
             <span className="pk-end">
               {props.topAction}
               {props.docs}
-              {props.onDelete && <DeleteX name={props.ariaLabel} onDelete={props.onDelete} label={props.deleteLabel} />}
+              {props.onDelete && <DeleteX name={props.ariaLabel} onDelete={foldable ? () => setFolded(true) : props.onDelete} label={props.deleteLabel} />}
               <CardMenu entries={props.menu} />
             </span>
           </div>

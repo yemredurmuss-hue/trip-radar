@@ -579,6 +579,8 @@ export interface Item {
    * made later (status booked) wins; the chat's "rezervasyon gerekiyor" takes it off.
    */
   noBooking?: number;
+  /** v30: "Ben hallettim": the traveller arranged it outside the tool (a friend picks them up, the ticket is bought elsewhere). Rides on noBooking (so it counts as nothing left to do); this only changes the words, "Ayarlandı". */
+  arranged?: boolean;
   /** A to-do or an idea ticked off ("Yapıldı · 12 Eki"). */
   doneAt?: number;
   /** Moved by the traveller between Hazırlık (true) and Yapılacak şeyler (false); wins over its words. */

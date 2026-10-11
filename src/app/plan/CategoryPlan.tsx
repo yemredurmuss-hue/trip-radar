@@ -109,7 +109,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
       ))}
       {pending?.lead && <div className="ar-lead">{pending.lead}</div>}
       {shown.length > 0 && (
-        <div className="cat-sheet">
+        <div className="cat-sheet" data-pit-children="">
           {shown.map((s) => {
             // A section drawn only for its suggestions stays closed ("2 öneri" in its header) and keeps no first look,
             // so the first real card there gives it its normal one.

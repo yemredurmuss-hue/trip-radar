@@ -10,18 +10,22 @@ import { splitAround } from "../../lib/copyText";
 import { CopyText } from "../CopyButton";
 import type { CardFacts } from "../../lib/cardFacts";
 import { cardKindColor, cardKindLabel, type CardKind } from "../../lib/cardKinds";
+import { cancelLineOf } from "../../lib/cardTime";
 import { L } from "../../lib/i18n";
+import { ideaMapUrl } from "../../lib/ideas";
 import type { DocMeta, Item } from "../../lib/types";
 import { DocList, DocPickButton } from "./DocAccess";
 import { KindIcon, UiIcon } from "./Silhouettes";
 
-export function BookingSheet({ item, kind, facts, docs, date, onChange, onCancel, onUnbook, onDetails, onClose }: {
+export function BookingSheet({ item, kind, facts, docs, date, today, onChange, onCancel, onUnbook, onDetails, onClose }: {
   item: Item;
   kind: CardKind;
   facts: CardFacts;
   docs: DocMeta[];
   /** The card's top-line day ("8 Ekim", "1–6 Nis"). */
   date: string | null;
+  /** Today (YYYY-MM-DD), for a stay's cancel line. */
+  today?: string;
   onChange: () => void;
   onCancel: () => void;
   /** "Aldım" by mistake: not booked after all (Seçildi again). */
@@ -53,6 +57,8 @@ export function BookingSheet({ item, kind, facts, docs, date, onChange, onCancel
     );
   };
   const sub = [date, item.provider].filter(Boolean).join(" · ");
+  // A stay's cancel terms, here in its window (the card itself says them only in the last two weeks).
+  const cancel = kind === "stay" && today ? cancelLineOf({ ...item, status: "chosen" }, today) : null;
   return createPortal(
     <div className="modal" onClick={(e) => (e.stopPropagation(), onClose())}>
       <div className="bk-sheet" role="dialog" aria-modal="true" aria-labelledby="bk-title" style={{ "--c": cardKindColor(kind) } as React.CSSProperties} onClick={(e) => e.stopPropagation()}>
@@ -76,6 +82,21 @@ export function BookingSheet({ item, kind, facts, docs, date, onChange, onCancel
             {docs.length ? L("Rezerve · belgeli", "Booked · with its file") : L("Rezerve", "Booked")}
           </span>
         </div>
+        {kind === "stay" && (
+          <div className="bk-acts">
+            <a className="bk-btn" href={ideaMapUrl(item)} target="_blank" rel="noreferrer">
+              <UiIcon name="pin" size={14} />
+              {L("Haritada aç ↗", "Open on the map ↗")}
+            </a>
+            {item.url && (
+              <a className="bk-btn" href={item.url} target="_blank" rel="noreferrer">
+                {L(`${item.provider ?? "Sayfası"} ↗`, `${item.provider ?? "Its page"} ↗`)}
+              </a>
+            )}
+            <span className="bk-sp" />
+            {cancel && <span className={`pk-cancel ${cancel.tone}`}>{cancel.text}</span>}
+          </div>
+        )}
         <section className="bk-sec">
           <h4>{L("Rezervasyon ayrıntısı", "Booking details")}</h4>
           {rows.length ? (
