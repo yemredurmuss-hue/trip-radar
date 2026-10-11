@@ -21,6 +21,8 @@ chromium.launchPersistentContext = async (...args) => {
   // E2E_OFFLINE=1 (a sandbox with no outbound network): the sources the pages ask for on their own (Wikipedia photos, the sharing
   // server's functions) answer "nothing found", as they do for a trip with no photo; a real network is used otherwise.
   if (process.env.E2E_OFFLINE) {
+    // Anything else on the web: a quick "not found" (the PDF maker's picture of the page rejects on a refused connection, not on a 404).
+    await ctx.route(/^https?:/, (route) => route.fulfill({ status: 404, body: "" }));
     await ctx.route(/wikipedia\.org|wikimedia\.org/, (route) => route.fulfill({ status: 404, json: {} }));
     await ctx.route(/supabase\.co\/functions/, (route) => route.fulfill({ json: { answer: null, url: null, offers: [], reason: "not-configured" } }));
   }
