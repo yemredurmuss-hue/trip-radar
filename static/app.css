@@ -4018,8 +4018,8 @@ a.ch-why { text-decoration: none; }
 
 /* 2 · windows and the drawer: the backdrop fades in, the window grows from 96 %, the drawer slides in from the right.
    (They leave at once: each is taken off the page when closed.) The options window (ChoiceSheet) is left to the card design. */
-.modal:not(:has(> .ch-sheet)), .overlay, .compare-modal, .pk-sheet-back { animation: mv-fade var(--t-base) var(--e-out) backwards; }
-.modal > .modal-card, .modal > .hs-dlg, .modal > .hs-hist, .modal > .bk-sheet:not(.ch-sheet), .compare-card, .pk-sheet { animation: mv-pop var(--t-base) var(--e-out) backwards; }
+.modal, .overlay, .compare-modal, .pk-sheet-back { animation: mv-fade var(--t-base) var(--e-out) backwards; }
+.modal > .modal-card, .modal > .hs-dlg, .modal > .hs-hist, .modal > .bk-sheet, .compare-card, .pk-sheet { animation: mv-pop var(--t-base) var(--e-out) backwards; }
 .drawer { animation: mv-drawer var(--t-slow) var(--e-out) backwards; }
 .mv-leaving { pointer-events: none !important; animation: mv-leave var(--t-quick) var(--e-in) forwards !important; }
 .mv-leaving > .modal-card, .mv-leaving > .hs-dlg, .mv-leaving > .hs-hist, .mv-leaving > .bk-sheet, .mv-leaving .compare-card, .mv-leaving > .pk-sheet { animation: mv-shrink var(--t-quick) var(--e-in) forwards !important; }
@@ -4038,6 +4038,12 @@ a.ch-why { text-decoration: none; }
 .vcard img.pic-img.loaded { animation: mv-blur-up var(--t-story) var(--e-out) backwards; }
 .work-pill { display: inline-flex; align-items: center; gap: 8px; width: max-content; padding: 5px 12px; border-radius: 99px; background: #fff; border: 1px solid #e6e2ef; font-weight: 600; animation: mv-rise var(--t-quick) var(--e-out) backwards; }
 .work-spin { width: 12px; height: 12px; flex: none; border-radius: 50%; border: 2px solid #ddd5ff; border-top-color: #5b45e0; animation: mv-spin .8s linear infinite; }
+/* "Plana koy" (putFly.ts): the card's name flies to the Plan tab */
+.mv-fly { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; max-width: 220px; padding: 5px 11px; border-radius: 10px; background: #fffaf0; border: 1.5px solid #ecd28f; color: #1c1a33; font: 650 12.5px var(--hx-font, inherit); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 8px 20px -10px rgba(28, 26, 51, .45); }
+/* A link being read (arrive/ArriveViews.tsx): a light passes over its row while it waits */
+.ar-pending:not(.ar-failed) { position: relative; overflow: hidden; }
+.ar-pending:not(.ar-failed)::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .7) 50%, transparent 70%); transform: translateX(-100%); animation: mv-sweep 1.6s ease-in-out infinite; }
+@keyframes mv-sweep { to { transform: translateX(100%); } }
 /* "Asistana bağlanamadım · Ayarlar'a git" (Chat.tsx): a strip at the chat's top, down from above */
 .chat-banner { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; padding: 10px 12px; border-radius: 12px; background: #fff3f6; border: 1.5px solid #ffc9d9; color: #8a1f4a; font-size: 13.5px; line-height: 1.4; animation: mv-drop var(--t-slow) var(--e-out) backwards; }
 .chat-banner.offline { background: #f6f4fa; border-color: #e1dced; color: #3b3560; }
@@ -4074,7 +4080,7 @@ a.ch-why { text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   .view-tabs button.on::after, .panel .cat-plan, .panel .trip-plan, .panel .doc-tab, .panel .tm-tab, .panel .pn, .modal, .overlay, .compare-modal,
   .pk-sheet-back, .modal > *, .compare-card, .pk-sheet, .drawer, .cat-body.mv-unfold, .thinking .th-line, .vcard img.pic-img.loaded, .work-pill,
-  .trips-empty > *, .pn-empty, .chat-error, .field input.key-bad, .ms-wrap .zz, .reconnect, .chat-banner { animation: none !important; }
+  .trips-empty > *, .pn-empty, .chat-error, .field input.key-bad, .ms-wrap .zz, .reconnect, .chat-banner, .ar-pending::after { animation: none !important; }
   .cat-chev svg { transition: none; }
   .th-dots i, .work-spin { animation-duration: 2.4s; }
   .ms-wrap[data-state] .ms { animation: none !important; }

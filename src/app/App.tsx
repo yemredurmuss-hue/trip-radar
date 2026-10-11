@@ -29,6 +29,7 @@ import { newId } from "../lib/db";
 import { loadPassport } from "../lib/passport";
 import { useMyName } from "./Profile";
 import { guessOrigin, newStart, type StartCtx } from "../lib/startTrip";
+import { OfflineNotice } from "./OfflineNotice";
 import { UpdateBanner } from "./UpdateBanner";
 import { readSelectedTrip, useBoard } from "./useBoard";
 import { useDecisions } from "./useDecisions";
@@ -330,6 +331,8 @@ export function App() {
           onOpenItem={(i) => setOpenItemId(i.id)}
         />
       )}
+      {/* "İnternet yok · N sn sonra tekrar deniyorum": a save that couldn't get out is tried again by itself (reconnect.ts). */}
+      <OfflineNotice captures={board.openCaptures} />
       {settingsOpen && (
         <Settings
           onClose={() => {
