@@ -4141,3 +4141,164 @@ a.ch-why { text-decoration: none; }
 .sy-ev small { margin-left: auto; color: var(--v-book-ink); font-weight: 650; white-space: nowrap; }
 @media (max-width: 760px) { .sy-row { grid-template-columns: 52px 36px minmax(0, 1fr); } .sy-date { width: 46px; } .sy-cb { grid-template-columns: 1fr; } .sy-node { width: 30px; height: 30px; } }
 
+/* ===== v30 · cards: the brand label, the curved route, the ride card, the stay's order, price per night, × folding ===== */
+.brand { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; font-size: 11.5px; font-weight: 800; letter-spacing: -.01em; color: #fff; background: var(--bc, #475467); white-space: nowrap; flex: none; line-height: 1; vertical-align: 1px; }
+.brand.plain { background: var(--v-soft); color: var(--v-muted); border: 1px solid var(--v-line2); font-weight: 650; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+
+/* A flight's middle: the curved dashed route, the plane in a white circle. */
+.pk-arc { position: relative; display: block; width: 100%; height: 40px; color: var(--mc, #6d4ce0); margin: 0 auto; }
+.pk-arc svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.pk-arc > svg path { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-dasharray: 4 5; stroke-linecap: round; opacity: .6; }
+.pk-arc-a, .pk-arc-b { position: absolute; top: 91%; width: 8px; height: 8px; border-radius: 50%; background: currentColor; transform: translate(-50%, -50%); }
+.pk-arc-a { left: 2.5%; } .pk-arc-b { left: 97.5%; background: #fff; border: 2px solid currentColor; }
+.pk-arc-pl { position: absolute; left: 50%; top: 36%; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: #fff; box-shadow: 0 1px 5px rgba(0, 0, 0, .14); transform: translate(-50%, -50%) rotate(-6deg); }
+.pk-arc-pl svg { width: 19px; height: 19px; position: static; }
+.pk-arc-pl.off { left: 28%; top: 50%; transform: translate(-50%, -50%) rotate(-20deg); }
+.pk-arc-stop { position: absolute; left: 50%; top: 36%; width: 10px; height: 10px; border-radius: 50%; background: #fff; border: 2px solid #c27a1b; transform: translate(-50%, -50%); }
+.pk-route .pk-arc { max-width: none; }
+.pk-route:has(.pk-arc) { min-height: 56px; }
+.pk-route:has(.pk-arc) small { display: block; }
+
+/* A ride: its drawing, "A → B", the way, the hours. */
+.pk-ride { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 14px; align-items: center; margin: 4px 0 0; }
+.pk-ride-art { width: 88px; height: 66px; border-radius: 14px; display: grid; place-items: center; overflow: hidden; background: var(--v-tile); color: var(--mc); }
+.pk-ride-art img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply; }
+.pk-ride-t { display: grid; gap: 2px; min-width: 0; }
+.pk-ride-ab { display: flex; gap: 7px; align-items: flex-start; min-width: 0; font-size: 19px; font-weight: 750; letter-spacing: -.015em; line-height: 1.2; }
+.pk-ride-end { flex: 0 1 auto; min-width: min-content; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word; }
+.pk-ride-arr { color: var(--mc); font-weight: 600; flex: none; }
+.pk-ride-how { font-size: 13.5px; font-weight: 600; color: var(--v-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-ride-how .brand { height: 18px; font-size: 10.5px; padding: 0 6px; margin-right: 6px; }
+.pk-ride-t > small { font-size: 12.5px; color: var(--v-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+
+/* A stay: the picture on top as a band, then where it's from, its name, what guests thought, the nights. */
+.pk-media.pk-stay { grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: start; }
+.pk-stay .pk-vis { width: 100%; height: 132px; border-radius: 14px; }
+.pk-stay .pk-vis .pk-illus { width: auto; height: 92%; max-width: 90%; padding: 0; margin: 0 auto; display: block; position: relative; top: 4%; }
+.pk-stay .pk-vis .pk-img { object-position: 50% 55%; }
+.pk-stay .pk-score { display: block; }
+.pk-srcrow { display: flex; gap: 8px; align-items: center; min-width: 0; margin-bottom: 3px; }
+.pk-loc { font-size: 13px; color: var(--v-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.pk-stay .pk-txt h3 { font-size: 19px; }
+.pk-rate { display: flex; gap: 6px; align-items: center; font-size: 13.5px; min-width: 0; white-space: nowrap; margin-top: 3px; }
+.pk-rate b { font-weight: 650; } .pk-rate span:last-child { color: var(--v-muted); }
+.pk-rb { background: #003b95; color: #fff; font-weight: 800; font-size: 12.5px; border-radius: 6px 6px 6px 0; padding: 1px 6px; }
+.pk-rb.star { background: none; color: var(--v-ink); padding: 0; border-radius: 0; }
+
+/* A stay's price: the night large, the sum small beneath. */
+.pk-price2 { display: grid; justify-items: end; line-height: 1.15; }
+.pk-price2 b { font-size: 17px; font-weight: 800; color: var(--v-ink); margin: 0; }
+.pk-price2 i { font-style: normal; font-size: 12px; color: var(--v-muted); font-weight: 500; }
+
+/* The × folds the card in place: why it went. */
+.pk-fold { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; padding: 12px 14px; border-radius: 16px; border: 1.5px dashed var(--v-dash); background: var(--v-soft); font-size: 14px; }
+.pk-fold-t { display: inline-flex; gap: 6px; align-items: center; color: var(--v-muted); min-width: 0; }
+.pk-fold-t b { color: var(--v-ink); font-weight: 650; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-fold-t svg { flex: none; }
+.pk-fold-q { color: var(--v-muted); font-size: 13px; }
+.pk-fold-b { display: inline-flex; gap: 5px; align-items: center; padding: 5px 12px; border-radius: 999px; border: 1px solid #e7e4dd; background: #fff; font: inherit; font-size: 13px; font-weight: 600; color: var(--v-ink); cursor: pointer; }
+.pk-fold-b:hover { border-color: var(--v-accent-ink); color: var(--v-accent-ink); }
+.pk-fold-sp { flex: 1; }
+.pk-fold-u { background: none; border: 0; color: var(--v-accent-ink); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+
+/* Long names never grow a card: a plan card's title is one line, "…", the whole of it on hover (title=). */
+.pk-txt h3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-stop b, .pk-stop b.long { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word; }
+.pk-routeimg { display: block; height: 54px; width: auto; max-width: 100%; margin: 0 auto; mix-blend-mode: multiply; }
+
+/* Touch: the × and ••• are 30 px, and always there where there's no hover. */
+.pk-x, .pk-ib { min-width: 30px; min-height: 30px; }
+@media (hover: none) { .pk-x { opacity: 1; } }
+.pk-cancel { display: inline-flex; gap: 5px; align-items: center; font-size: 12.5px; font-weight: 650; margin-top: 3px; } .pk-cancel.ok { color: var(--v-book-ink); } .pk-cancel.no { color: #c62828; }
+
+/* ===== v30 · the card's back: the options as small cards across the whole row (cards/NeedCard.tsx ChoiceSheet) ===== */
+.cat-card:has(.ch-back), .ek-cell:has(.ch-back) { grid-column: 1 / -1; }
+.ch-back { display: grid; gap: 12px; padding: 14px 16px 12px; border-radius: 18px; background: #fff; border: 1.5px dashed var(--v-dash); color: var(--v-ink); min-width: 0; }
+@media (prefers-reduced-motion: no-preference) { .ch-back { animation: ch-flip var(--t-slow, 380ms) var(--e-out, cubic-bezier(.16, 1, .3, 1)) both; transform-origin: 50% 50%; } }
+@keyframes ch-flip { from { opacity: 0; transform: perspective(900px) rotateY(-78deg); } to { opacity: 1; transform: none; } }
+.ch-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.ch-head .bk-tt h3 { font-size: 18px; }
+.ch-pano { display: inline-flex; gap: 7px; align-items: center; padding: 7px 13px; border-radius: 999px; border: 0; background: var(--v-lav); color: var(--v-accent-ink); font: inherit; font-size: 13.5px; font-weight: 650; cursor: pointer; white-space: nowrap; flex: none; }
+.ch-pano:hover { background: color-mix(in srgb, var(--hx-accent, #5b45e0) 16%, var(--v-lav)); }
+.ch-back .ch-for, .ch-back .ch-verify { margin-left: 0; margin-right: 0; }
+.ch-back .ch-wants { margin: 0; }
+.ch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 12px; align-items: start; }
+.ch-back .ch-row.ch-tile { display: flex; flex-direction: column; align-items: stretch; gap: 0; padding: 0; overflow: hidden; border-radius: 14px; border: 1px solid var(--v-line2); background: #fff; box-shadow: var(--v30-shadow, none); min-width: 0; }
+.ch-back .ch-row.ch-tile.ai { border: 1px dashed color-mix(in srgb, var(--hx-accent, #5b45e0) 45%, var(--v-line2)); box-shadow: none; }
+.ch-back .ch-row.ch-tile.on { border: 1.5px dashed var(--v-plan-dot); background: var(--v-plan-bg); }
+.ch-ph { position: relative; height: 112px; display: grid; place-items: center; background: var(--v-tile); overflow: hidden; }
+.ch-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ch-ill { height: 84px; width: auto; max-width: 86%; mix-blend-mode: multiply; }
+.ch-kind { color: var(--c, var(--v-muted)); opacity: .7; }
+.ch-fl { font-size: 17px; font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums; color: var(--v-ink); }
+.ch-by { position: absolute; left: 8px; top: 8px; display: inline-flex; }
+.ch-ph .ch-badge { position: absolute; right: 8px; top: 8px; margin: 0; background: #fff; }
+.ch-back .ch-sc { position: absolute; right: 8px; bottom: 8px; width: 38px; height: 38px; font-size: 14px; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .14); }
+.ch-back .ch-sc small { font-size: 8px; margin-top: 0; }
+.ch-back .ch-main { padding: 10px 12px 12px; gap: 3px; }
+.ch-src { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-height: 20px; min-width: 0; font-size: 12px; color: var(--v-muted); }
+.ch-rate { display: inline-flex; gap: 5px; align-items: center; } .ch-rate small { font-size: 12px; color: var(--v-muted); }
+.ch-back .ch-main > b { font-size: 14.5px; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-height: calc(2 * 1.3em); }
+.ch-back .ch-who { font-size: 12px; }
+.ch-tf { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.ch-back .ch-pr { text-align: left; } .ch-back .ch-pr b { font-size: 16px; font-weight: 800; display: block; } .ch-back .ch-pr small { display: block; }
+.ch-back .ch-put { padding: 7px 16px; flex: none; }
+.ch-panotile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 180px; padding: 14px; border-radius: 14px; border: 1.5px dashed color-mix(in srgb, var(--hx-accent, #5b45e0) 45%, transparent); background: var(--v-lav); color: var(--v-accent-ink); font: inherit; cursor: pointer; text-align: center; }
+.ch-panotile b { font-size: 15px; font-weight: 750; } .ch-panotile span { font-size: 12.5px; }
+.ch-panotile:hover { background: color-mix(in srgb, var(--hx-accent, #5b45e0) 16%, var(--v-lav)); }
+.ch-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 4px 0 0; border: 0; }
+.ch-foot .ch-self { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--v-muted); }
+
+/* ===== v30 · Yapılacaklar and Etkinlik tiles: by city in trip order, one size, the corner ✓ / + ===== */
+.it-key { display: flex; gap: 8px; align-items: center; margin: 0; font-size: 12.5px; color: var(--v-muted); }
+.it-key-on, .it-key-add { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px; font-weight: 800; }
+.it-key-on { background: var(--v-book-ink); color: #fff; } .it-key-add { border: 1.5px dashed var(--v-dash); color: var(--v-accent-ink); margin-left: 8px; }
+.it-cities { position: relative; display: grid; gap: 6px; padding-left: 40px; margin-top: 4px; }
+.it-cities::before { content: ""; position: absolute; left: 14px; top: 16px; bottom: 16px; border-left: 2px dashed color-mix(in srgb, var(--v-book-ink) 40%, var(--v-dash)); }
+.it-city { position: relative; display: grid; gap: 10px; padding: 0 0 12px; }
+.it-city-h { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; min-height: 30px; }
+.it-city-n { position: absolute; left: -40px; top: 0; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 2px solid var(--v-book-ink); color: var(--v-book-ink); font-size: 13px; font-weight: 800; }
+.it-city-h b { font-size: 18px; letter-spacing: -.015em; }
+.it-city-c { margin-left: auto; display: inline-flex; gap: 12px; font-size: 12.5px; }
+.it-city-c i { font-style: normal; font-weight: 650; color: var(--v-accent-ink); } .it-city-c i.ok { color: var(--v-book-ink); }
+.it-city .it-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 168px), 1fr)); align-items: stretch; }
+.it-city .it-tile { grid-template-rows: 100px auto auto 1fr; align-content: start; border-radius: 14px; box-shadow: var(--v30-shadow, none); border: 1px solid var(--v-line2); padding: 0 0 10px; overflow: hidden; }
+.it-city .it-tile:not(.planned) { box-shadow: none; border: 1.5px dashed var(--v-dash); background: transparent; }
+.it-city .it-tile .it-pic { height: 100px; border-radius: 0; }
+.it-city .it-tile .it-t, .it-city .it-tile .it-m, .it-city .it-tile .it-foot { padding: 0 10px; }
+.it-city .it-tile .it-t { margin-top: 8px; font-size: 13.5px; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-height: calc(2 * 1.3em); }
+.it-city .it-tile .it-t a, .it-city .it-tile .it-t .ac-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.it-city .it-tile:not(.planned) .it-pic { opacity: .82; }
+.it-tile:hover { transform: none; }
+/* The corner mark: ✓ on the plan, + to put it there. The words stay in the markup (readers, tests); the drawing is the circle. */
+.it-put.corner { position: absolute; right: 7px; bottom: 7px; width: 30px; height: 30px; padding: 0; border-radius: 50%; font-size: 0; line-height: 0; display: grid; place-items: center; background: #fff; border: 1.5px dashed var(--v-dash); color: var(--v-accent-ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.it-put.corner::before { content: "+"; font-size: 18px; line-height: 1; font-weight: 600; }
+.it-put.corner.on { background: var(--v-book-ink); border: 0; color: #fff; }
+.it-put.corner.on::before { content: "✓"; font-size: 15px; font-weight: 800; }
+.it-put.corner:hover { transform: scale(1.08); }
+.it-wrap .it-sp { flex: 1; }
+@media (max-width: 640px) { .it-cities { padding-left: 34px; } .it-city-n { left: -34px; width: 26px; height: 26px; } .it-city .it-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ===== v30 · Pano: the menu on the left, a row per need, the cards scroll sideways ===== */
+.pn-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; align-items: start; }
+.pn-main { min-width: 0; }
+.pn-body .pn-cats { position: sticky; top: 12px; flex-direction: column; flex-wrap: nowrap; gap: 2px; border: 0; margin: 0; padding: 0; }
+.pn-body .pn-cats button { width: 100%; padding: 9px 12px; border: 0; border-radius: 12px; font-size: 14.5px; font-weight: 600; text-align: left; }
+.pn-body .pn-cats button:hover { background: var(--v-soft); }
+.pn-body .pn-cats button.on { background: var(--v-lav); color: var(--v-accent-ink); border: 0; }
+.pn-body .pn-cats button i { margin-left: auto; font-weight: 500; font-size: 12.5px; }
+.pn-body .pn-cats button[data-cat="liked"] { margin-top: 8px; border-top: 1px solid var(--v-line2); border-radius: 0 0 12px 12px; }
+.pn-strip { grid-template-columns: none !important; grid-auto-flow: column; grid-auto-columns: minmax(250px, 272px); overflow-x: auto; scroll-snap-type: x proximity; padding: 4px 2px 12px; scrollbar-width: thin; }
+.pn-strip > * { scroll-snap-align: start; }
+.pn-group { padding: 14px 0 12px; border-bottom: 1px solid var(--v-line2); margin: 0; border-radius: 0; }
+.pn-group:last-child { border-bottom: 0; }
+.pn-group.focus { border-radius: 16px; padding-left: 10px; padding-right: 10px; }
+@media (max-width: 860px) { .pn-body { grid-template-columns: 1fr; } .pn-body .pn-cats { position: static; flex-direction: row; overflow-x: auto; } .pn-body .pn-cats button { width: auto; white-space: nowrap; } .pn-body .pn-cats button[data-cat="liked"] { margin: 0; border-top: 0; } }
+
+/* ===== v30 · the trip's reason pinned in Etkinlik; a booking window's map and cancel line ===== */
+.ac-reason { position: relative; display: grid; gap: 6px; padding: 12px 12px 10px; margin-bottom: 8px; border-radius: 18px; background: linear-gradient(120deg, color-mix(in srgb, #d14a7a 10%, #fff), #fff 70%); border: 1.5px solid color-mix(in srgb, #d14a7a 32%, transparent); }
+.ac-reason-tag { display: inline-flex; gap: 6px; align-items: center; width: fit-content; font-size: 11.5px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: #b83a68; }
+.ac-reason-tag svg { width: 14px; height: 14px; }
+.ac-reason-note { margin: 0; font-size: 12.5px; color: var(--v-muted); }
+.bk-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 20px 0; }
+.bk-acts .bk-btn { display: inline-flex; gap: 6px; align-items: center; text-decoration: none; }
