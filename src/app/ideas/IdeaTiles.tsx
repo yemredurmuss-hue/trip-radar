@@ -16,7 +16,10 @@ import { isIdea } from "../../lib/booking";
 import { planSectionOfItem } from "../../lib/categories";
 import { DayButton } from "./DayPicker";
 import { isAiOption } from "../../lib/pano";
+import { durationText } from "../../lib/cardFacts";
+import { hopBetween, hopWord, type JourneyHop, type JourneyStop } from "../../lib/tripShape";
 import type { Item } from "../../lib/types";
+import { KindIcon } from "../cards/Silhouettes";
 import { setItemStatus } from "../actions";
 import { CardMenu, DeleteX, type MenuEntry } from "../cards/CardShell";
 import { Editable, InlineEdit, useInlineEdit } from "../cards/InlineEdit";
@@ -33,7 +36,7 @@ const recordOf = (e: CatEntry): Item | null => (e.piece.kind === "item" ? e.piec
 /** On the plan: put there ("Plana koy"), booked (a table), or already on a day. */
 export const ideaPlanned = (i: Item): boolean => i.status === "chosen" || i.status === "booked" || Boolean(dayChip(i));
 
-export function IdeaTiles({ section, fallback }: { section: CatSection; fallback: (entry: CatEntry) => ReactNode }) {
+export function IdeaTiles({ section, fallback, journey = null }: { section: CatSection; fallback: (entry: CatEntry) => ReactNode; /** The trip's shape: the way between one city and the next is a line between their rows. */ journey?: { stops: JourneyStop[]; hops: JourneyHop[] } | null }) {
   const env = useCardEnv();
   const suggest = useSectionSuggest();
   const [filter, setFilter] = useState<Filter>("all");
@@ -118,6 +121,19 @@ export function IdeaTiles({ section, fallback }: { section: CatSection; fallback
                     art={`illus/${sx.section === "food" || sx.template === "food" ? "restoran" : "yapilacak"}.png`} />
                 ))}
               </div>
+              {(() => {
+                const next = order[k + 1];
+                const hop = city && next ? hopBetween(journey, city, next) : null;
+                return hop ? (
+                  <div className="it-hop">
+                    <span className="it-hop-ic" aria-hidden>
+                      <KindIcon kind={hop.mode === "other" ? "transport" : hop.mode === "car" ? "car" : hop.mode} size={14} />
+                    </span>
+                    {L(`${next}'ye · ${hopWord(hop.mode)}`, `To ${next} · ${hopWord(hop.mode)}`)}
+                    {hop.minutes ? ` · ${durationText(hop.minutes)}` : ""}
+                  </div>
+                ) : null;
+              })()}
             </section>
           );
         })}

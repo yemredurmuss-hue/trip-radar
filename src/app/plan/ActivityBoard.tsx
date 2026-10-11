@@ -253,7 +253,7 @@ function ActivityRow({ item, domId }: { item: Item; domId: string }) {
           ) : (
             <>
               <button type="button" className="pk-aldim" aria-label={L(`${item.name}: aldım`, `${item.name}: got it`)} onClick={() => void setItemStatus(item, "booked")}>
-                ✓ {L("Aldım", "Got it")}
+                ✓ {L("Bilet aldım", "I got the ticket")}
               </button>
               {page && (
                 <a className="ac-go" href={page} target="_blank" rel="noreferrer">
@@ -273,8 +273,9 @@ function ActivityRow({ item, domId }: { item: Item; domId: string }) {
         </span>
         {facts.price && (
           <span className="ac-price-big">
-            <b>{perHead ?? facts.price.text}</b>
-            <small>{perHead ? L(`kişi · ${facts.price.text} toplam`, `a person · ${facts.price.text} total`) : facts.price.label}</small>
+            {/* v30: one price, the whole of it, and for how many. */}
+            <b>{facts.price.text}</b>
+            <small>{perHead && people ? L(`${people} kişi`, `${people} people`) : facts.price.label}</small>
           </span>
         )}
       </span>

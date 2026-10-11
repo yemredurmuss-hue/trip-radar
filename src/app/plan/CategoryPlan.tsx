@@ -132,7 +132,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
                   own ? null : <ActivityBoard section={s} plan={plan} fallback={() => null} />
                 ) : s.id === "todo" && !own ? (
                   // Only suggestions so far: they're tiles under "Fikirler ve öneriler" all the same.
-                  <IdeaTiles section={s} fallback={() => null} />
+                  <IdeaTiles section={s} fallback={() => null} journey={shape} />
                 ) : own ? null : (
                   <EmptyRows rows={rows} onAdd={(at) => onAdd(s.id, at)} />
                 )}

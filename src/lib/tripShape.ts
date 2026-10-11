@@ -100,3 +100,34 @@ export function journeyOf(plan: Pick<Plan, "stayBlocks">, legs: Leg[], items: It
   }
   return { stops, hops };
 }
+
+/**
+ * The way between two cities the trip goes through in a row (plan v30, Yapılacaklar by city: "Kyoto'ya · Trenle · 2 sa"):
+ * the shape's hop from the first stop to the one right after it, when that is the second city. None when they aren't
+ * neighbours in the trip's order, or no stop says so.
+ */
+export function hopBetween(journey: { stops: JourneyStop[]; hops: JourneyHop[] } | null | undefined, from: string, to: string): JourneyHop | null {
+  if (!journey) return null;
+  const i = journey.stops.findIndex((s) => s.kind === "stay" && sameCity(s.city, from));
+  if (i < 0 || i >= journey.hops.length) return null;
+  const next = journey.stops[i + 1];
+  return next && next.kind === "stay" && sameCity(next.city, to) ? journey.hops[i] : null;
+}
+
+/** "Trenle", "Uçakla": how a hop is travelled, in a word. */
+export function hopWord(mode: JourneyMode): string {
+  switch (mode) {
+    case "flight":
+      return L("Uçakla", "By plane");
+    case "train":
+      return L("Trenle", "By train");
+    case "bus":
+      return L("Otobüsle", "By bus");
+    case "car":
+      return L("Arabayla", "By car");
+    case "ferry":
+      return L("Vapurla", "By ferry");
+    default:
+      return L("Yolla", "Overland");
+  }
+}

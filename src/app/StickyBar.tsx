@@ -57,7 +57,7 @@ export function StickyBar({ hero, active, title, dates, daysLeft, cover, pct, bu
           {pct != null && (
             <span className="sbar-p" title={L(`Planlananların %${pct}'i rezerve`, `${pct}% of what's planned is booked`)}>
               <span className="sbar-ring" style={{ ["--p" as string]: `${pct}%` }} aria-hidden>
-                <span>%{pct}</span>
+                <span>{L(`%${pct}`, `${pct}%`)}</span>
               </span>
               <span className="sbar-pl">{L("rezerve", "booked")}</span>
             </span>

@@ -31,3 +31,27 @@ describe("the trip's shape", () => {
     expect(journeyOf({ stayBlocks: [] }, [], [])).toBeNull();
   });
 });
+
+import { hopBetween, hopWord, type JourneyHop, type JourneyStop } from "../src/lib/tripShape";
+
+describe("hopBetween (Yapılacaklar by city)", () => {
+  const stop = (city: string, kind: "end" | "stay" = "stay"): JourneyStop => ({ key: city, city, sub: "", kind, stage: "open", name: null });
+  const hops: JourneyHop[] = [{ mode: "train", minutes: 150 }, { mode: "bus", minutes: null }, { mode: "flight", minutes: 90 }];
+  const journey = { stops: [stop("Tokyo"), stop("Hakone"), stop("Kyoto"), stop("Osaka")], hops };
+  it("is the hop from a city to the one after it", () => {
+    expect(hopBetween(journey, "Tokyo", "Hakone")).toEqual({ mode: "train", minutes: 150 });
+    expect(hopBetween(journey, "Kyoto", "Osaka")).toEqual({ mode: "flight", minutes: 90 });
+  });
+  it("is none when the cities aren't neighbours in that order", () => {
+    expect(hopBetween(journey, "Tokyo", "Kyoto")).toBeNull();
+    expect(hopBetween(journey, "Hakone", "Tokyo")).toBeNull();
+  });
+  it("is none without a shape or for an unknown city", () => {
+    expect(hopBetween(null, "Tokyo", "Hakone")).toBeNull();
+    expect(hopBetween(journey, "Lisbon", "Porto")).toBeNull();
+  });
+  it("names how it's travelled", () => {
+    expect(hopWord("train")).toBe("Trenle");
+    expect(hopWord("other")).toBe("Yolla");
+  });
+});

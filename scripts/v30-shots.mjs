@@ -18,13 +18,14 @@ function macChromium() {
   return null;
 }
 const WIDTH = Number(process.env.SHOTS_WIDTH ?? 1440);
+const EN = process.env.SHOTS_LANG === "en";
 const context = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-v30-")), {
   executablePath: process.env.CHROMIUM_PATH ?? macChromium(),
   headless: false,
   timezoneId: "Europe/Istanbul",
   viewport: { width: WIDTH, height: 1000 },
-  locale: "tr-TR",
-  args: ["--headless=new", "--lang=tr-TR", `--disable-extensions-except=${path.resolve("dist")}`, `--load-extension=${path.resolve("dist")}`],
+  locale: process.env.SHOTS_LANG === "en" ? "en-US" : "tr-TR",
+  args: ["--headless=new", process.env.SHOTS_LANG === "en" ? "--lang=en-US" : "--lang=tr-TR", `--disable-extensions-except=${path.resolve("dist")}`, `--load-extension=${path.resolve("dist")}`],
 });
 await context.route(/functions\/v1\/(web-search|city-image|offers)/, (route) => route.fulfill({ json: { answer: null, url: null, offers: [], reason: "not-configured" } }));
 await context.clock.install({ time: new Date("2026-10-05T10:00:00") });
@@ -76,7 +77,7 @@ for (const sec of ["stay", "flight"]) {
     await opts.click();
     await app.waitForTimeout(700);
     await app.locator(`.cat-sec[data-section="${sec}"]`).screenshot({ path: `${out}/back-${sec}.png` });
-    await app.locator(`.cat-sec[data-section="${sec}"] .ch-head`).getByRole("button", { name: "Kapat" }).click();
+    await app.locator(`.cat-sec[data-section="${sec}"] .ch-head`).getByRole("button", { name: EN ? "Close" : "Kapat" }).click();
     await app.waitForTimeout(300);
   }
 }
@@ -94,19 +95,19 @@ for (const sec of ["stay", "flight"]) {
 }
 await app.setViewportSize({ width: WIDTH, height: 1000 });
 // "Yolculuk sırasıyla" and "Gün gün".
-await app.getByRole("tab", { name: "Yolculuk sırasıyla", exact: true }).click();
+await app.getByRole("tab", { name: EN ? "In trip order" : "Yolculuk sırasıyla", exact: true }).click();
 await app.waitForTimeout(800);
 await app.setViewportSize({ width: WIDTH, height: 4200 });
 await app.waitForTimeout(500);
 await app.locator(".sy").screenshot({ path: `${out}/03-story.png` }).catch(() => app.screenshot({ path: `${out}/03-story.png` }));
 await app.setViewportSize({ width: WIDTH, height: 1000 });
-await app.getByRole("tab", { name: "Gün gün", exact: true }).click();
+await app.getByRole("tab", { name: EN ? "Day by day" : "Gün gün", exact: true }).click();
 await app.waitForTimeout(800);
 await app.screenshot({ path: `${out}/04-days.png` });
 // Belgeler from the ••• menu, then the Pano.
-await app.getByRole("button", { name: "Gezi menüsü" }).click();
+await app.getByRole("button", { name: EN ? "Trip menu" : "Gezi menüsü" }).click();
 await app.screenshot({ path: `${out}/05-menu.png`, clip: { x: 0, y: 0, width: WIDTH, height: 700 } });
-await app.locator(".menu").getByRole("button", { name: "Belgeler", exact: true }).click();
+await app.locator(".menu").getByRole("button", { name: EN ? "Documents" : "Belgeler", exact: true }).click();
 await app.waitForTimeout(600);
 await app.screenshot({ path: `${out}/06-docs.png` });
 await app.getByRole("tab", { name: /^(Pano|Board)$/ }).click();
