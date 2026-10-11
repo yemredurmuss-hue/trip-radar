@@ -96,9 +96,11 @@ function DayBox({ card }: { card: DayCard }) {
 function NightLine({ card, stays }: { card: DayCard; stays: Map<string, StayEntry> }) {
   const st = nightStay(card, stays);
   if (!st) return null;
+  // A night with no stay chosen yet says so (its entry's title is only the dates).
+  const name = st.block.kind === "open" ? L("konaklama aranıyor", "stay still open") : st.title;
   return (
-    <p className="dc-night" title={st.title}>
-      {L("Gece", "Night")}: <b>{st.title}</b>
+    <p className="dc-night" title={name}>
+      {L("Gece", "Night")}: <b>{name}</b>
     </p>
   );
 }

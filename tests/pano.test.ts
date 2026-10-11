@@ -54,11 +54,11 @@ describe("the Pano", () => {
     expect(sortEntries(stays, "new").map((e) => e.item.name)).toEqual(["Kyoto Shijo Hotel", "Higashiyama Inn", "Gion Machiya Evi"]);
   });
 
-  it("groups a section by need, the one on the plan named, needs to compare first", () => {
+  it("groups a section by need, the one on the plan named, decisions waiting first (v30)", () => {
     const groups = panoGroups(entries.filter((e) => e.section === "stay" || e.section === "flight"));
     expect(groups.map((g) => [g.entries.length, g.chosen?.item.name ?? null])).toEqual([
-      [3, "Gion Machiya Evi"],
       [1, null],
+      [3, "Gion Machiya Evi"],
     ]);
   });
 });

@@ -114,7 +114,7 @@ describe("the row as drawn", () => {
   it("open, a flight: carrier, hours and codes, how long, Direkt; the total for who goes", () => {
     const flight = offer({ id: "f1", kind: "flight", title: "TK 1951", carrier: "Turkish Airlines", depart: "07:40", arrive: "10:25", fromCode: "IST", toCode: "AMS", durationMinutes: 225, stops: 0, price: 312, nights: null, photo: null, source: "Google Flights" });
     const html = renderToStaticMarkup(<OfferRowView offers={[flight]} open adults={2} onToggle={noop} onAdd={noop} onLess={noop} />);
-    for (const part of ["Turkish Airlines", "07:40", "IST", "10:25", "AMS", "3 sa 45 dk", "Direkt", "€312", "2 kişi toplam"]) expect(html).toContain(part);
+    for (const part of ["Turkish Airlines", "07:40", "IST", "10:25", "AMS", "3 sa 45 dk", "Direkt", "€312", "€156", "kişi başı · €312 toplam"]) expect(html).toContain(part);
     expect(html).not.toContain("/ gece");
     // No code given: the carrier's initial, never one made from its name (TU, SU, İB).
     expect(html).toContain('<span class="ek-of-air" aria-hidden="true">T</span>');

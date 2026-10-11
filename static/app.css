@@ -4360,3 +4360,5 @@ a.ch-why { text-decoration: none; }
 .ac-hit:focus-visible { outline: 2px solid #6a4fe0; outline-offset: 2px; }
 .ac-row > .ac-photo, .ac-row .ac-main, .ac-row .ac-side { position: relative; z-index: 1; }
 .ek-offers-est { margin-left: 8px; font-size: 12.5px; font-weight: 650; color: var(--v-muted); }
+.pk-ride-ab > .pk-ride-end:first-child { flex: 0 0 auto; max-width: 48%; }
+.pk-ride-ab > .pk-ride-end:last-child { flex: 1 1 0; }
