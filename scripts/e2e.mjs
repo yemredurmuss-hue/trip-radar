@@ -1195,7 +1195,8 @@ try {
   assert.equal(await move.locator(".pk-kind").innerText(), "Uçuş");
   await move.locator(".pk-ring.half").waitFor();
   // Its details open again in its new place.
-  // Opened as an empty card, it stays open as the full card the way picked made it.
+  // plan v30: the way was picked on the drawn choices without opening the card; opened now, it shows the full card the way made it.
+  if ((await move.locator(".pk-body").getAttribute("aria-expanded")) !== "true") await move.locator(".pk-body").click();
   await move.getByRole("link", { name: "Uçuş ara ↗" }).waitFor();
   assert.equal(await move.locator(".pk-body").getAttribute("aria-expanded"), "true");
   await move.locator(".pk-foot").getByText("bilet alınmadı").waitFor();
