@@ -18,6 +18,12 @@ chromium.launchPersistentContext = async (...args) => {
   ctx.on("page", settledShots);
   // The rate source is a live network call: a sandbox without outbound access would leave the hero without its rate tip.
   await ctx.route(/frankfurter/, (route) => route.fulfill({ json: { date: "2026-09-28", rates: { TRY: 40, THB: 38, USD: 1.1 } } }));
+  // E2E_OFFLINE=1 (a sandbox with no outbound network): the sources the pages ask for on their own (Wikipedia photos, the sharing
+  // server's functions) answer "nothing found", as they do for a trip with no photo; a real network is used otherwise.
+  if (process.env.E2E_OFFLINE) {
+    await ctx.route(/wikipedia\.org|wikimedia\.org/, (route) => route.fulfill({ status: 404, json: {} }));
+    await ctx.route(/supabase\.co\/functions/, (route) => route.fulfill({ json: { answer: null, url: null, offers: [], reason: "not-configured" } }));
+  }
   return ctx;
 };
 // The motion language (app.css "Hareket dili", mv-* keyframes) fades windows and drawers in: a page screenshot waits for those
