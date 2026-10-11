@@ -304,7 +304,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
           {/* v11: a booked flight's stub under a dashed line — the airline, the booking code, how many go — and its stamp. */}
           {bookedCard && kind === "flight" && (
             <div className="pk-stub">
-              <span>{item.flight?.carrier ?? item.provider ?? L("Uçuş", "Flight")}</span>
+              <span className="pk-stub-st">{L("Rezerve", "Booked")}</span>
               {/* v30: the code waits for the flight's day; before that the stub says what it cost (the code is in its window). */}
               {item.bookingRef && showBookingRef(item, env.today) ? <b><CopyText value={item.bookingRef} label={L("Rezervasyon kodu", "Booking code")}>{item.bookingRef}</CopyText></b> : facts.price ? <b>{facts.price.text}</b> : null}
               {item.guests.adults ? <span>{L(`${item.guests.adults} yolcu`, `${item.guests.adults} passenger${item.guests.adults === 1 ? "" : "s"}`)}</span> : null}

@@ -254,8 +254,14 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
           <div className="ch-tf">
             {facts.price && (
               <span className="ch-pr">
-                <b>{facts.price.perNight ?? facts.price.text}</b>
-                <small>{facts.price.perNight ? L(`${facts.price.text} toplam`, `${facts.price.text} total`) : (facts.price.label ?? "")}</small>
+                <b>{facts.price.perNight ?? facts.price.each ?? facts.price.text}</b>
+                <small>
+                  {facts.price.perNight
+                    ? L(`${facts.price.text} toplam`, `${facts.price.text} total`)
+                    : facts.price.each
+                      ? L(`kişi başı · ${facts.price.text} toplam`, `per person · ${facts.price.text} total`)
+                      : (facts.price.label ?? "")}
+                </small>
                 {facts.price.provisional && <small className="ch-prov">{L("geçici", "provisional")}</small>}
               </span>
             )}
@@ -315,7 +321,15 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
     );
   };
   return (
-    <section className="ch-back" role="group" aria-labelledby="ch-title" style={{ "--c": cardKindColor(kind) } as React.CSSProperties}>
+    <section
+      className="ch-back"
+      role="group"
+      aria-labelledby="ch-title"
+      // Empty space on the back turns the card over again (plan v30); a tile, a button or a link keeps its own click.
+      onClick={(e) => {
+        if (!(e.target as HTMLElement).closest("button, a, input, textarea, label, .ch-tile, .bk-tt, .ch-for, .ch-verify, .ch-wants")) onClose();
+      }}
+      style={{ "--c": cardKindColor(kind) } as React.CSSProperties}>
       <header className="ch-head">
         <span className="bk-ic" aria-hidden>
           <KindIcon kind={kind} size={20} />

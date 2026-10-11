@@ -27,7 +27,7 @@ export const SECTION_META: Record<SectionId, SectionMeta> = {
   },
   activity: { color: "#a8336f", icon: "activity", label: () => L("Etkinlik ve turlar", "Activities and tours"), short: () => L("Etkinlik", "Activity"), templates: ["activity"] },
   // v11: restaurants are drawn here too (food stays their own record section).
-  todo: { color: "#5d8a1c", icon: "todo", label: () => L("Yapılacak şeyler", "Things to do"), short: () => L("Yapılacak", "To-do"), templates: ["todo", "food"] },
+  todo: { color: "#5d8a1c", icon: "todo", label: () => L("Yapılacaklar ve restoranlar", "Things to do and restaurants"), short: () => L("Yapılacak", "To-do"), templates: ["todo", "food"] },
   food: { color: "#b4532a", icon: "food", label: () => L("Restoranlar", "Restaurants"), short: () => L("Restoran", "Restaurant"), templates: ["food"] },
   other: { color: "#3b6fd1", icon: "insurance", label: () => L("Belgeler ve internet", "Documents and internet"), short: () => L("Sigorta · eSIM", "Insurance · eSIM"), templates: ["esim", "insurance"] },
   // The chores before the trip (v11, out of Diğer): said in the chat or moved here from Yapılacak şeyler, no template.

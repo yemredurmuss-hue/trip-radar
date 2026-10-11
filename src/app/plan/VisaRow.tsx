@@ -19,7 +19,7 @@ export function VisaRow({ visa, done, onDone }: { visa: Visa | null; done: boole
       <i className="visa-sp" />
       {!free && (
         <a href={visa.link} target="_blank" rel="noreferrer">
-          {L("Resmi kaynak ↗", "Official source ↗")}
+          {L("Resmî kaynak ↗", "Official source ↗")}
         </a>
       )}
       {visa.kind === "visa" && (

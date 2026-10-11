@@ -129,7 +129,8 @@ function legTodo(leg: Leg, entry?: string): Draft | null {
 
 /** A date running out: the sentence (the card's details, a stay's card) and its short form for a card's strip ("4 gün"). */
 export interface DateAlert {
-  tone: "red" | "amber";
+  /** red: the last day; amber: the last 7 days (a flight's ticket: the last 14); plain: still time. */
+  tone: "red" | "amber" | "plain";
   text: string;
   short: string;
 }
@@ -142,7 +143,7 @@ export function dateAlert(item: Item, today: string): DateAlert | null {
     const days = daysUntil(until, today);
     if (days > SOON_DAYS) return null;
     return {
-      tone: "red",
+      tone: days === 0 ? "red" : days <= 7 ? "amber" : "plain",
       text:
         days === 0
           ? L("Ücretsiz iptal bugün bitiyor", "Free cancellation ends today")
@@ -154,7 +155,8 @@ export function dateAlert(item: Item, today: string): DateAlert | null {
   const start = departureDay(item);
   if (!start || start < today) return null;
   const days = daysUntil(start, today);
-  if (days > 30) return null;
+  // A flight's missing ticket is always said (orange in its last 14 days); everything else only within 30.
+  if (days > 30 && item.category !== "flight") return null;
   const what =
     item.category === "stay"
       ? L("girişe", "check-in")
@@ -167,9 +169,9 @@ export function dateAlert(item: Item, today: string): DateAlert | null {
   const safe = item.cancellation.freeUntil && item.cancellation.freeUntil >= today ? L(" · ücretsiz iptalli, şimdi ayırmak risksiz", " · free cancellation, so booking now is risk-free") : "";
   const state = ticket ? L("Bilet alınmadı", "No ticket yet") : L("Rezerve edilmedi", "Not booked");
   return {
-    tone: "amber",
+    tone: days <= (item.category === "flight" ? 14 : 30) ? "amber" : "plain",
     text: L(`${state} · ${what} ${days} gün${safe}`, `${state} · ${count(days, "gün", "day")} to ${what}${safe}`),
-    short: days === 0 ? L("bugün", "today") : count(days, "gün", "day"),
+    short: days === 0 ? L("bugün", "today") : item.category === "flight" ? L(`uçuşa ${days} gün`, `${count(days, "day", "day")} to the flight`) : count(days, "gün", "day"),
   };
 }
 

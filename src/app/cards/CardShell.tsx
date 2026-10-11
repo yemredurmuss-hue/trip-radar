@@ -214,6 +214,9 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go, a
   );
 }
 
+/** How long a folded card waits for an answer before it counts as "Gerek yok". */
+const FOLD_GRACE_MS = 15_000;
+
 export function CardShell(props: {
   kind: CardKind;
   /** The top line's name when it isn't the kind's ("Metro", "Şehir değişimi"). */
@@ -254,6 +257,12 @@ export function CardShell(props: {
     if ((e.target as HTMLElement).closest("button, a, input, select, label, .pk-detail, .pk-menu, .pk-doclist")) return;
     props.onToggle();
   };
+  // Nothing picked after a while counts as "Gerek yok" (spec: the × is for dropping what the plan made, no question left open).
+  useEffect(() => {
+    if (!folded || !foldable) return;
+    const t = setTimeout(() => { setFolded(false); props.onDelete!(); }, FOLD_GRACE_MS);
+    return () => clearTimeout(t);
+  }, [folded]);
   if (folded && foldable) {
     const name = props.ariaLabel;
     return (

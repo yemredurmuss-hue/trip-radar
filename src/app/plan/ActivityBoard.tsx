@@ -228,9 +228,10 @@ function ActivityRow({ item, domId }: { item: Item; domId: string }) {
   const open = () => (booked ? setSheet(true) : env.onOpenItem(item));
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   return (
-    <div className={`ac-row${booked ? " booked" : " chosen"}${item.imageUrl ? " has-photo" : ""}`} aria-label={item.name} data-item-id={item.id} id={domId} role="button" tabIndex={0}
-      onClick={(e) => !(e.target as HTMLElement).closest("button, a, input, .pk-menu, .pk-ed-wrap") && open()}
-      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && (e.preventDefault(), open())}>
+    <div className={`ac-row${booked ? " booked" : " chosen"}${item.imageUrl ? " has-photo" : ""}`} aria-label={item.name} data-item-id={item.id} id={domId}
+      onClick={(e) => !(e.target as HTMLElement).closest("button, a, input, .pk-menu, .pk-ed-wrap") && open()}>
+      {/* The row opens from one real button laid behind its controls: no button or link sits inside another one. */}
+      <button type="button" className="ac-hit" aria-label={item.name} onClick={open} />
       <span className="ac-photo">
         <FallbackImg className="ac-pic" src={item.imageUrl ?? null} fallback={<img className="ac-pic art" src={ACTIVITY_ART} alt="" />} />
       </span>

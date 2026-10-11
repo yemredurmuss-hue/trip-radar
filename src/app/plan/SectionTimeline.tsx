@@ -18,6 +18,7 @@ import { InspoGrid } from "../ideas/IdeaList";
 import { IdeaTiles } from "../ideas/IdeaTiles";
 import { ActivityBoard } from "./ActivityBoard";
 import type { CardFor, LegCardFor, RenderGroup, SettledFor } from "../Timeline";
+import type { JourneyHop, JourneyStop } from "../../lib/tripShape";
 import { PlanEntry } from "./PlanEntry";
 import { PrepList } from "./PrepList";
 
@@ -31,10 +32,12 @@ export interface SectionCards {
 
 
 
-export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, onIdea, today, items, extra = [] }: {
+export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, onIdea, today, items, extra = [], journey = null }: {
   section: CatSection;
   /** v11: the section's empty cards (the insurance's, the eSIM's), in the same grid as its cards. */
   extra?: { key: string; card: ReactNode }[];
+  /** The trip's shape: the way between one city and the next shows as a line between the Yapılacaklar rows. */
+  journey?: { stops: JourneyStop[]; hops: JourneyHop[] } | null;
   plan: Pick<Plan, "range" | "stayBlocks">;
   tripId: string;
   cities: string[];
@@ -49,7 +52,7 @@ export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, o
 }) {
   if (section.id === "inspo") return <InspoGrid section={section} plan={plan} />;
   // v11 phase 4: tiles, "+ Plana koy" ↔ "✓ Planda"; no quick box (the chat adds), no day here (Gün gün gives it).
-  if (section.id === "todo" || section.id === "food") return <IdeaTiles section={section} fallback={(e) => <Piece entry={e} cards={cards} />} />;
+  if (section.id === "todo" || section.id === "food") return <IdeaTiles section={section} fallback={(e) => <Piece entry={e} cards={cards} />} journey={journey} />;
   // v11: what's on the plan as rows, the ideas as tiles under "Fikirler" (plan/ActivityBoard).
   if (section.id === "activity")
     return (

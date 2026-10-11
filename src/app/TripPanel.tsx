@@ -62,6 +62,7 @@ import { PanoNewsTip } from "./PanoNewsTip";
 import { usePanoDot } from "./usePanoDot";
 import { claimOpening, playOpening } from "./opening";
 import { heroNumbers, openNeedsText, plannedBookedText } from "../lib/lifecycle";
+import { panoEntries } from "../lib/pano";
 import { countdown, countdownText } from "../lib/countdown";
 import { kindLabel, LegRow } from "./LegRow";
 import { HistoryDialog } from "./HistoryDialog";
@@ -697,6 +698,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     items,
   };
 
+  const panoTotal = panoEntries(items, decisions?.byGroup).length;
   return (
     <CardEnvContext.Provider value={env}>
       <SilhouetteDefs />
@@ -711,6 +713,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             {(bind) => (
               <button {...bind} role="tab" aria-selected={view === "board"} className={view === "board" ? "on" : ""} onClick={() => (setPanoFocus(null), setView("board"))}>
                 {L("Pano", "Board")}
+                {panoTotal > 0 && <span className="tab-n" aria-hidden>{panoTotal}</span>}
                 {panoNews.length > 0 && <i className="tab-dot" aria-hidden />}
               </button>
             )}
@@ -724,12 +727,14 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       )}
       <StickyBar
         hero={heroRef}
-        active={view === "plan" || view === "story"}
+        active={view !== "board"}
         title={trip.title}
         dates={range ? formatDateRange(range.start, range.end) : null}
         daysLeft={countdownText(countdown(range, today))}
         cover={trip.heroImage ?? null}
         pct={done.total ? numbers.pct : null}
+        counts={done.total ? { done: numbers.done, chosen: numbers.planned, open: numbers.open } : null}
+        ready={done.total > 0 && !first && !unsettled && numbers.open === 0}
         budget={stickyBudget}
         view="plan"
         onView={(v) => (v === "board" ? (setPanoFocus(null), setView("board")) : setView("plan"))}
@@ -883,6 +888,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         />
       ) : view === "story" ? (
         <EmptyEnvContext.Provider value={emptyEnv}>
+          {plan.notices.map((x) => (
+            <div key={x.text} className="notice">
+              ⚠ {x.text}
+            </div>
+          ))}
           <StoryView timeline={timeline} tripStart={range?.start ?? null} cards={{ legCard: planLegCard, renderGroup: planRenderGroup, settled: planSettled }} />
         </EmptyEnvContext.Provider>
       ) : view === "map" ? (
@@ -891,6 +901,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         <DocsTab tripId={trip.id} items={items} onGo={(id) => reveal({ item: id })} offer={offer} />
       ) : view === "days" && timeline.entries.length > 0 ? (
         <>
+        {plan.notices.map((x) => (
+          <div key={x.text} className="notice">
+            ⚠ {x.text}
+          </div>
+        ))}
         <UndatedIdeas items={items} plan={plan} />
         <TimelineView onShow={showOnPlan} timeline={timeline} tripId={trip.id} leg={leg} onAdd={env.add} listings={listings} today={today} cityImage={cityImageOf} cards={{ legCard, renderGroup, settled }} dayTimes={trip.dayTimes} dayOrder={trip.dayOrder} dayLoose={trip.dayLoose} mainPlaces={mains} />
         </>

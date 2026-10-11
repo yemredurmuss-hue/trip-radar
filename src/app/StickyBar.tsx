@@ -17,7 +17,7 @@ export interface StickyBudget {
   totalText: string | null;
 }
 
-export function StickyBar({ hero, active, title, dates, daysLeft, cover, pct, budget, view, onView, action }: {
+export function StickyBar({ hero, active, title, dates, daysLeft, cover, pct, counts, ready, budget, view, onView, action }: {
   hero: RefObject<HTMLElement | null>;
   /** On the Plan's views (not the Pano or Belgeler: no hero there). */
   active: boolean;
@@ -29,6 +29,10 @@ export function StickyBar({ hero, active, title, dates, daysLeft, cover, pct, bu
   cover: string | null;
   /** How much of what's planned is booked, 0 to 100 (the hero's own number). */
   pct: number | null;
+  /** Booked / chosen / still open, for the ring's three tones and its tip. */
+  counts: { done: number; chosen: number; open: number } | null;
+  /** Nothing is left to do: "✓ Her şey hazır" stands where the next step would. */
+  ready: boolean;
   budget: StickyBudget | null;
   view: "plan" | "board";
   onView: (v: "plan" | "board") => void;
@@ -55,8 +59,8 @@ export function StickyBar({ hero, active, title, dates, daysLeft, cover, pct, bu
             <small>{[dates, daysLeft].filter(Boolean).join(" · ")}</small>
           </span>
           {pct != null && (
-            <span className="sbar-p" title={L(`Planlananların %${pct}'i rezerve`, `${pct}% of what's planned is booked`)}>
-              <span className="sbar-ring" style={{ ["--p" as string]: `${pct}%` }} aria-hidden>
+            <span className="sbar-p" title={counts ? L(`${counts.done} rezerve · ${counts.chosen} seçildi · ${counts.open} karar bekliyor`, `${counts.done} booked · ${counts.chosen} chosen · ${counts.open} to decide`) : L(`Planlananların %${pct}'i rezerve`, `${pct}% of what's planned is booked`)}>
+              <span className="sbar-ring" style={{ ["--p" as string]: `${pct}%`, ["--q" as string]: `${counts && counts.done + counts.chosen ? Math.round(((counts.done + counts.chosen) / (counts.done + counts.chosen + counts.open)) * 100) : pct}%` }} aria-hidden>
                 <span>{L(`%${pct}`, `${pct}%`)}</span>
               </span>
               <span className="sbar-pl">{L("rezerve", "booked")}</span>
@@ -79,11 +83,19 @@ export function StickyBar({ hero, active, title, dates, daysLeft, cover, pct, bu
               {L("Pano", "Board")}
             </button>
           </span>
-          {action && (
-            <button type="button" className="sbar-go" tabIndex={show ? 0 : -1} onClick={action.run} title={action.title}>
-              {/* "Planı tamamla" says what's next here (the hero's button keeps its words). */}
-              {action.title && action.label === L("Planı tamamla", "Finish the plan") ? `${L("Sıradaki", "Next")}: ${action.title} →` : action.label}
-            </button>
+          {ready ? (
+            <span className="sbar-ok">{L("✓ Her şey hazır", "✓ All set")}</span>
+          ) : (
+            action && (
+              <button type="button" className="sbar-go" tabIndex={show ? 0 : -1} onClick={action.run} title={action.title}>
+                {/* "Planı tamamla" says what's next here (the hero's button keeps its words). */}
+                {action.title && action.label === L("Planı tamamla", "Finish the plan") ? (
+                  <><span className="sbar-nl">{L("Sıradaki", "Next")}: </span>{action.title} →</>
+                ) : (
+                  action.label
+                )}
+              </button>
+            )
           )}
         </div>
       </div>

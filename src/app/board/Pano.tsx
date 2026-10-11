@@ -75,6 +75,9 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"cards" | "table">("cards");
   const [adding, setAdding] = useState(false);
+  // v30: a row's own "Karşılaştır" turns that row from cards into a table and back.
+  const [tableRows, setTableRows] = useState<Set<string>>(() => new Set());
+  const toggleRow = (group: string) => setTableRows((s) => new Set(s.has(group) ? [...s].filter((g) => g !== group) : [...s, group]));
   useEffect(() => {
     if (!focused) return;
     setCat(focused.section);
@@ -89,6 +92,7 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
     <PanoCard key={e.item.id} entry={e} showNeed={showNeed} siblings={list} decisions={decisions} onShow={onShow} onCompare={onCompare} />
   );
   // v30: one row per need ("Kyoto · 5 gece · 3 seçenek"): its header says where it stands and has its own Karşılaştır; the cards scroll sideways.
+  const asTable = (g: PanoGroup) => g.entries.length > 1 && (view === "table" || tableRows.has(g.group));
   const groupView = (g: PanoGroup) => (
     <section key={g.group} id={groupDomId(g.group)} className={`pn-group${focus === g.group ? " focus" : ""}`}>
       <div className="pn-gh">
@@ -100,16 +104,16 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
             <UiIcon name="check" size={13} />
             {g.chosen.inPlan === "booked" ? L("Rezerve", "Booked") : L("Seçildi", "Chosen")}: {g.chosen.item.name} · {L("Plan'da gör", "See on the plan")} →
           </button>
-        ) : g.entries.length > 1 ? (
+        ) : (
           <span className="pn-gw">{L("Karar bekliyor", "To decide")}</span>
-        ) : null}
+        )}
         {g.entries.length > 1 && (
-          <button type="button" className="pn-cmp" onClick={() => onCompare(g.group)}>
-            {L("Karşılaştır", "Compare")}
+          <button type="button" className="pn-cmp" aria-pressed={asTable(g)} onClick={() => toggleRow(g.group)}>
+            {asTable(g) ? L("Kartlar", "Cards") : L("Karşılaştır", "Compare")}
           </button>
         )}
       </div>
-      {view === "table" && g.entries.length > 1 ? <PanoTable entries={g.entries} decisions={decisions} /> : <div className="pn-grid pn-strip">{g.entries.map((e) => card(e, false, g.entries))}</div>}
+      {asTable(g) ? <PanoTable entries={g.entries} decisions={decisions} /> : <div className="pn-grid pn-strip">{g.entries.map((e) => card(e, false, g.entries))}</div>}
     </section>
   );
   // Tümü: the needs as rows (decisions waiting first), then the activities, things to do and inspiration as rows of their own.

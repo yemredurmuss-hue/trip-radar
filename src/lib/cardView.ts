@@ -33,7 +33,7 @@ export type FootAction = "choose" | "book" | "install" | "restore";
 export type FootLeft =
   | { kind: "nav" }
   /** `when`: a date running out, in a word or two ("4 gün"); the sentence is in the details. */
-  | { kind: "state"; tone: "wait" | "done" | "plain"; text: string; sub: string | null; when: string | null; alert: "red" | "amber" | null };
+  | { kind: "state"; tone: "wait" | "done" | "plain"; text: string; sub: string | null; when: string | null; alert: "red" | "amber" | "plain" | null };
 export interface FootView {
   left: FootLeft;
   action: { label: string; does: FootAction } | null;

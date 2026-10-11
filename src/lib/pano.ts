@@ -102,12 +102,12 @@ export interface PanoGroup {
   chosen: PanoEntry | null;
 }
 
-/** A section's records by need, the needs with two or more options first (those are the ones to compare). */
+/** A section's records by need: decisions waiting first (v30), then, among those, the needs with two or more options (the ones to compare). */
 export function panoGroups(list: PanoEntry[]): PanoGroup[] {
   const byGroup = new Map<string, PanoEntry[]>();
   for (const e of list) byGroup.set(e.group, [...(byGroup.get(e.group) ?? []), e]);
   const groups = [...byGroup.entries()].map(([group, entries]) => ({ group, entries, chosen: entries.find((e) => e.inPlan) ?? null }));
-  return groups.sort((a, b) => Number(b.entries.length > 1) - Number(a.entries.length > 1));
+  return groups.sort((a, b) => Number(Boolean(a.chosen)) - Number(Boolean(b.chosen)) || Number(b.entries.length > 1) - Number(a.entries.length > 1));
 }
 
 export function panoCatLabel(cat: PanoCat): string {

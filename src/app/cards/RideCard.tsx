@@ -51,9 +51,9 @@ export function RideCardBody({ face, title, kind, brand, when }: { face: Transpo
       <span className="pk-ride-art">{art ? <img src={`illus/${art}.png`} alt="" /> : <KindIcon kind={kind} size={40} />}</span>
       <span className="pk-ride-t">
         <b className="pk-ride-ab">
-          <span className="pk-ride-end">{editsEnds ? <Editable field="from">{face.from?.city}</Editable> : face.from?.city}</span>
+          <span className="pk-ride-end" title={face.from?.city ?? undefined}>{editsEnds ? <Editable field="from">{face.from?.city}</Editable> : face.from?.city}</span>
           <span className="pk-ride-arr" aria-hidden>→</span>
-          <span className="pk-ride-end">{editsEnds ? <Editable field="to">{face.to?.city}</Editable> : face.to?.city}</span>
+          <span className="pk-ride-end" title={face.to?.city ?? undefined}>{editsEnds ? <Editable field="to">{face.to?.city}</Editable> : face.to?.city}</span>
         </b>
         <span className="pk-ride-how" title={how}>
           <BrandPill brand={brand} />

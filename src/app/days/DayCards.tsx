@@ -21,6 +21,7 @@ import type { DayRow } from "../../lib/journey";
 import { insertAtDay, type InsertAt } from "../../lib/templates";
 import { updateTrip } from "../actions";
 import type { RentalEntry, StayEntry, TimelineSection } from "../../lib/timeline";
+import { dateBox } from "../../lib/storyDates";
 import type { Item, Listing } from "../../lib/types";
 import { saveArrival } from "../../lib/userEdits";
 import { liveLine } from "../../lib/flightData";
@@ -71,6 +72,36 @@ const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(loc
 const dateText = (c: DayCard) => (c.end ? formatDateRange(c.date, c.end) : `${formatDateRange(c.date, null)} ${weekday(c.date)}`);
 const time = (r: DayRow) => (r.time ? `${r.estimated ? "~" : ""}${r.time}` : "");
 const isTransport = (k: CardKind): k is TransportMode => (TRANSPORT_MODES as readonly string[]).includes(k) && !RENTAL_MODES.includes(k as TransportMode);
+
+/** The stay that holds the night of a day (its check-in day up to the day before check-out), for the "Gece:" line. */
+function nightStay(card: DayCard, stays: Map<string, StayEntry>): StayEntry | null {
+  if (card.end) return null;
+  for (const st of stays.values()) if (st.block.range.start <= card.date && card.date < st.block.range.end && st.title) return st;
+  return null;
+}
+/** The v30 date box of a single dated day: month, day, weekday and the trip's day number; a merged stretch keeps its pill. */
+function DayBox({ card }: { card: DayCard }) {
+  if (card.end || !/^\d{4}-\d{2}-\d{2}/.test(card.date)) return <b className="dc-pill">{card.dayNo ?? dateText(card)}</b>;
+  const b = dateBox(card.date, null);
+  if (!b) return <b className="dc-pill">{card.dayNo ?? dateText(card)}</b>;
+  return (
+    <span className="dc-box" title={dateText(card)}>
+      <small>{b.month}</small>
+      <b>{b.day}</b>
+      <small>{b.weekday}</small>
+      {card.dayNo && <i className="dc-pill">{card.dayNo}</i>}
+    </span>
+  );
+}
+function NightLine({ card, stays }: { card: DayCard; stays: Map<string, StayEntry> }) {
+  const st = nightStay(card, stays);
+  if (!st) return null;
+  return (
+    <p className="dc-night" title={st.title}>
+      {L("Gece", "Night")}: <b>{st.title}</b>
+    </p>
+  );
+}
 
 type Mode = "list" | "cards";
 const MODE_KEY = "trip-radar:days-mode";
@@ -148,7 +179,7 @@ export function DayCards(props: DayCardsProps) {
       {mode === "list" && (
         <div className="dl">
           {cards.map((c) => (
-            <DayListCard key={c.key} card={c} isToday={isToday(c)} open={isToday(c) !== flipped.has(c.key)} onToggle={() => flip(c.key)} onPick={(row) => setMode("cards", { id: `dc-${row}`, flash: true })} {...props} />
+            <DayListCard key={c.key} card={c} stays={stays} isToday={isToday(c)} open={isToday(c) !== flipped.has(c.key)} onToggle={() => flip(c.key)} onPick={(row) => setMode("cards", { id: `dc-${row}`, flash: true })} {...props} />
           ))}
         </div>
       )}
@@ -306,7 +337,7 @@ function DaySection({ card, mode, isToday, stays, onPick, ...props }: { card: Da
         <span className="dc-thumb">{photo && <img src={photo} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />}</span>
         <span className="dc-dtext">
           <span className="dc-dmeta">
-            <b className="dc-pill">{card.dayNo ?? dateText(card)}</b>
+            <DayBox card={card} />
             {card.dayNo && <span className={isToday ? "today" : ""}>{isToday ? L("Bugün", "Today") : dateText(card)}</span>}
             {experiences > 0 && <span>{L(`${experiences} deneyim`, `${experiences} experience${experiences === 1 ? "" : "s"}`)}</span>}
           </span>
@@ -317,8 +348,9 @@ function DaySection({ card, mode, isToday, stays, onPick, ...props }: { card: Da
         </span>
         <DayChips card={card} />
       </header>
+      <NightLine card={card} stays={stays} />
       {flow.length === 0 ? (
-        <p className="dc-free">{L("Henüz plan yok.", "Nothing planned yet.")}</p>
+        <p className="dc-free">{L("Serbest gün · yapılacaklardan seç", "Free day · pick from the to-dos")}</p>
       ) : (
         <ol className={`dc-tl${mode === "cards" ? " full" : ""}`}>
           {flow.map((r, i) => (
@@ -673,7 +705,7 @@ const MOTIFS: Record<Motif, ReactNode> = {
  * A day of the list: the photo with "1. gün" on it, the title and the date, the arrow that opens it; its lines
  * one each (a layover between two connecting flights); opened, "+ Bu güne ekle". A line opens the cards at that line.
  */
-function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card: DayCard; isToday: boolean; open: boolean; onToggle: () => void; onPick: (row: string) => void } & DayCardsProps) {
+function DayListCard({ card, isToday, open, onToggle, onPick, stays, ...props }: { card: DayCard; stays: Map<string, StayEntry>; isToday: boolean; open: boolean; onToggle: () => void; onPick: (row: string) => void } & DayCardsProps) {
   const photo = useDayPhoto(card, props.cityImage);
   const place = usePlace();
   // Every line of the day (0.35.6): with a time by the clock, without one where it was put (drag, or ↑ ↓).
@@ -687,7 +719,7 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
     <section className={`dc-cday list dl-day${open ? " open" : ""}${isToday ? " today" : ""}`} id={`dcd-list-${card.key}`} aria-label={`${card.dayNo ?? ""} ${card.title}`}>
       <div className="dl-photo">
         {photo && <img src={photo} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />}
-        <b className="dc-pill">{card.dayNo ?? dateText(card)}</b>
+        <DayBox card={card} />
       </div>
       <div className="dl-body" style={{ ["--m" as string]: tint }}>
         <svg className="dl-motif" viewBox="0 0 260 140" aria-hidden fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
@@ -711,6 +743,7 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
             </svg>
           </button>
         </header>
+        <NightLine card={card} stays={stays} />
         {lines.length > 0 ? (
           <ol className="dc-tl">
             {shown.map((r, i) => (
@@ -721,7 +754,7 @@ function DayListCard({ card, isToday, open, onToggle, onPick, ...props }: { card
             ))}
           </ol>
         ) : (
-          <p className="dc-free">{L("Henüz plan yok.", "Nothing planned yet.")}</p>
+          <p className="dc-free">{L("Serbest gün · yapılacaklardan seç", "Free day · pick from the to-dos")}</p>
         )}
         {/* A free day has nothing to open: its "+" is there. */}
         {(open || !lines.length) && <AddDay card={card} onAdd={props.onAdd} />}

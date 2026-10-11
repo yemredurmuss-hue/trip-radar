@@ -18,7 +18,7 @@ export interface CardFacts {
   title: string;
   subtitle: string | null;
   /** The total (for a stay: its own nights) and, for stays, the price per night. */
-  price: { text: string; label: string | null; perNight: string | null; provisional: boolean; note?: string } | null;
+  price: { text: string; label: string | null; perNight: string | null; provisional: boolean; note?: string; /** A flight for several: what one person pays (the total is `text`). */ each?: string | null } | null;
   score: number | null;
   best: boolean;
   /** Where it stands ("En uygun · konum", "Elendi", "Seçildi"); null when the pros and cons say it. */
@@ -166,7 +166,8 @@ function priceOf(item: Item, decision: GroupDecision | undefined, currency: stri
       const n = item.guests.adults;
       label = n === 1 ? SCOPE_LABELS.per_person : L(`${n} kişi toplam`, `${n} people total`);
     }
-    return { text: formatPrice(compared, currency), label, perNight: null, provisional };
+    const each = item.category === "flight" && (item.guests.adults ?? 0) > 1 ? formatPrice(compared / item.guests.adults!, currency) : null;
+    return { text: formatPrice(compared, currency), label, perNight: null, provisional, ...(each ? { each } : {}) };
   }
   if (item.price.amount == null) return null;
   return { text: formatPrice(item.price.amount, item.price.currency), label: scopeLabel(item.price.scope), perNight: null, provisional };

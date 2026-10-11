@@ -25,7 +25,7 @@ const context = await chromium.launchPersistentContext(mkdtempSync(path.join(tmp
   timezoneId: "Europe/Istanbul",
   viewport: { width: WIDTH, height: 1000 },
   locale: process.env.SHOTS_LANG === "en" ? "en-US" : "tr-TR",
-  args: ["--headless=new", process.env.SHOTS_LANG === "en" ? "--lang=en-US" : "--lang=tr-TR", `--disable-extensions-except=${path.resolve("dist")}`, `--load-extension=${path.resolve("dist")}`],
+  args: ["--headless=new", "--hide-scrollbars", "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4", process.env.SHOTS_LANG === "en" ? "--lang=en-US" : "--lang=tr-TR", `--disable-extensions-except=${path.resolve("dist")}`, `--load-extension=${path.resolve("dist")}`],
 });
 await context.route(/functions\/v1\/(web-search|city-image|offers)/, (route) => route.fulfill({ json: { answer: null, url: null, offers: [], reason: "not-configured" } }));
 await context.clock.install({ time: new Date("2026-10-05T10:00:00") });

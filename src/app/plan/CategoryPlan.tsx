@@ -126,7 +126,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
                 {suggestions && !TILED.includes(s.id) && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
                 {pending?.bySection[s.id]}
                 {/* The empty cards join the section's own grid (side by side with its cards), except Etkinlikler's. */}
-                {own && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} extra={s.id === "activity" ? [] : rows} />}
+                {own && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} journey={shape} extra={s.id === "activity" ? [] : rows} />}
                 {s.id === "activity" ? (
                   // v11: the tours and tickets come from the source as the shelf's tiles (plan/ActivityBoard), no empty card.
                   own ? null : <ActivityBoard section={s} plan={plan} fallback={() => null} />

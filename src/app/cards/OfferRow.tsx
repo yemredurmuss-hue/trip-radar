@@ -126,11 +126,16 @@ export function OfferRowView({ offers, open, adults = null, now = Date.now(), on
   onLess: (offer: Offer) => void;
 }) {
   if (!offers.length) return null;
+  // A flight's estimate, only from at least three real fares (never made up): the cheapest to the dearest, whole trip.
+  const fares = offers.filter((o) => o.kind === "flight" && o.price != null).map((o) => o.price as number);
+  const money = offers.find((o) => o.kind === "flight" && o.price != null)?.currency ?? null;
+  const estimate = fares.length >= 3 ? `${formatPrice(Math.round(Math.min(...fares)), money)}–${formatPrice(Math.round(Math.max(...fares)), money)}` : null;
   return (
     <div className={`ek-offers${open ? " open" : ""}`}>
       <button type="button" className="ek-offers-head" aria-expanded={open} onClick={onToggle}>
         <span aria-hidden>✨</span>
         <span className="ek-offers-count">{offerCount(offers.length)}</span>
+        {estimate && <span className="ek-offers-est">{L(`Tahmini ${estimate}${adults ? ` · ${adults} kişi` : ""}`, `Estimated ${estimate}${adults ? ` · ${adults} ${adults === 1 ? "person" : "people"}` : ""}`)}</span>}
         <span className="ek-offers-chev" aria-hidden>
           ▾
         </span>
@@ -139,6 +144,8 @@ export function OfferRowView({ offers, open, adults = null, now = Date.now(), on
         <div className="ek-offer-list">
           {offers.map((o) => {
             const deal = dealPrice(o, adults);
+            // A flight for several: one person's fare big, the whole of it small (plan v30).
+            const eachFlight = o.kind === "flight" && deal != null && (adults ?? 0) > 1;
             const total = o.price != null ? formatPrice(o.price, o.currency ?? null) : "";
             const fresh = freshness(o.fetchedAt, now);
             return (
@@ -155,10 +162,10 @@ export function OfferRowView({ offers, open, adults = null, now = Date.now(), on
                   {deal && (
                     <>
                       <b className="ek-amt">
-                        {formatPrice(Math.round(deal.amount), o.currency ?? null)}
+                        {formatPrice(Math.round(eachFlight ? deal.amount / adults! : deal.amount), o.currency ?? null)}
                         {deal.perNight && <small> {L("/ gece", "/ night")}</small>}
                       </b>
-                      <span className="ek-per">{deal.unit(total)}</span>
+                      <span className="ek-per">{eachFlight ? L(`kişi başı · ${total} toplam`, `per person · ${total} total`) : deal.unit(total)}</span>
                     </>
                   )}
                   <button type="button" className="ek-go" onClick={() => onAdd(o)} aria-label={L(`${o.title}: seçeneklere ekle`, `${o.title}: add to options`)}>

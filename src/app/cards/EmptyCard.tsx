@@ -22,7 +22,8 @@ import type { Need } from "../../lib/offerSource";
 import type { StayBlock } from "../../lib/plan";
 import { activityLinks, airportCode, BRANDS, esimLinks, flightLinks, stayLinks, transferLinks, type SearchLink, insuranceLinks } from "../../lib/searchLinks";
 import { countryOfPlace } from "../../lib/chatBooking";
-import type { Item, Suggestion } from "../../lib/types";
+import type { Item, LegMode, Suggestion } from "../../lib/types";
+import { UiIcon } from "./Silhouettes";
 import { fromOf } from "../../lib/tripSettings";
 import { headCountOf, whoseOf } from "../../lib/whose";
 import { useWhoCtx, WhoseBadge } from "./WhoseBadge";
@@ -455,7 +456,12 @@ export function EmptyLegCard({ leg }: { leg: Leg }) {
       domId={`leg-${leg.key}`}
       extraClass="pk-leg"
       menu={menu}
-      body={<EmptyRoute from={move ? { ...v.from, sub: null } : v.from} to={move ? { ...v.to, sub: null } : v.to} art={v.kind !== "transport" ? v.kind : move ? null : "taxi"} />}
+      body={
+        <>
+          <EmptyRoute from={move ? { ...v.from, sub: null } : v.from} to={move ? { ...v.to, sub: null } : v.to} art={v.kind !== "transport" ? v.kind : move ? null : "taxi"} />
+          {move && v.kind === "transport" && !leg.choice?.mode && !leg.choice?.booked && <WaysRow leg={leg} tripId={env.tripId} />}
+        </>
+      }
       status={L("Nasıl gideceğin belli değil", "How you'll go isn't decided")}
       links={transferLinks({ from, to })}
       onSkip={move ? undefined : hide}
@@ -469,6 +475,31 @@ export function EmptyLegCard({ leg }: { leg: Leg }) {
       }
       need={to ? { key: needKey("transfer", from, to, leg.date), section: "transport", kind: "transfer", from, to, start: leg.date, adults: n } : null}
     />
+  );
+}
+
+/** How to go between two cities when nobody knows yet (plan v30): drawn choices, one tap says it ("Ben hallettim": arranged). */
+const WAYS: { mode: LegMode; art: string; label: [string, string] }[] = [
+  { mode: "train", art: "tren", label: ["Tren", "Train"] },
+  { mode: "bus", art: "otobus", label: ["Otobüs", "Bus"] },
+  { mode: "car", art: "arac-kiralama", label: ["Araba", "Car"] },
+  { mode: "flight", art: "ucus", label: ["Uçak", "Plane"] },
+];
+function WaysRow({ leg, tripId }: { leg: Leg; tripId: string }) {
+  const save = (patch: Parameters<typeof withLegChoice>[2]) => void updateTrip(tripId, (t) => withLegChoice(t, leg.key, patch));
+  return (
+    <div className="pk-ways" role="group" aria-label={L("Nasıl gideceksin?", "How will you go?")}>
+      {WAYS.map((w) => (
+        <button key={w.mode} type="button" className="pk-way" onClick={() => save({ mode: w.mode })}>
+          <img src={`illus/${w.art}.png`} alt="" />
+          <span>{L(w.label[0], w.label[1])}</span>
+        </button>
+      ))}
+      <button type="button" className="pk-way own" onClick={() => save({ booked: true })}>
+        <UiIcon name="check" size={22} />
+        <span>{L("Ben hallettim", "I've got it")}</span>
+      </button>
+    </div>
   );
 }
 
