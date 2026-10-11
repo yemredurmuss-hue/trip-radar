@@ -52,7 +52,7 @@ export function TripFacts(props: {
   const placeAppear = useAppear(names.length > 0);
   const weatherAppear = useAppear(weather.length > 0);
   return (
-    <aside className="hx-side">
+    <aside className="hx-side" data-pit-children>
       <div className="hx-block hx-who">
         <Travellers trip={props.trip} who={props.who} onShare={props.onShare} items={props.items} />
         {props.chips.length > 0 ? (

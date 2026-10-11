@@ -96,7 +96,7 @@ export function Section({ section, allot = null, allotNum = null, open, onToggle
         </span>
       </div>
       {open && (
-        <div className={`cat-body${toggled.current ? " mv-unfold" : ""}`}>
+        <div className={`cat-body${toggled.current ? " mv-unfold" : ""}`} data-pit-children>
           {children}
           {section.hidden.length > 0 && <HiddenList things={section.hidden} />}
           {/* v11: the plan's head has the one "+ Ekle"; a section adds its own kind quietly at its end. */}

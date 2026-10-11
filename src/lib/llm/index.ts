@@ -3,8 +3,8 @@ import { GoogleGenAI } from "@google/genai";
 import { getSettings } from "../db";
 import { aiGate } from "../share/ai";
 import { L } from "../i18n";
-import { anthropicProvider, describeAnthropicError } from "./anthropic";
-import { describeGeminiError, geminiProvider } from "./gemini";
+import { anthropicNeedsSettings, anthropicProvider, anthropicUnreached, describeAnthropicError } from "./anthropic";
+import { describeGeminiError, geminiNeedsSettings, geminiProvider } from "./gemini";
 import { MissingKeyError, type LlmProvider } from "./types";
 
 export { MissingKeyError } from "./types";
@@ -24,6 +24,17 @@ export async function getProvider(): Promise<LlmProvider> {
   }
   if (!s.apiKey) throw new MissingKeyError();
   return anthropicProvider(new Anthropic({ apiKey: s.apiKey, dangerouslyAllowBrowser: true }), s.model);
+}
+
+/**
+ * What the traveller can do about a failed model call: "settings" (no key, a bad key, no access, a model gone: fixed in Ayarlar),
+ * "offline" (the request never got out), or null (anything else: the message says it). The chat's banner (Chat.tsx) reads it.
+ */
+export type ErrorKind = "settings" | "offline";
+export function errorKind(error: unknown): ErrorKind | null {
+  if (error instanceof MissingKeyError || anthropicNeedsSettings(error) || geminiNeedsSettings(error)) return "settings";
+  if (anthropicUnreached(error) || (error instanceof TypeError && /fetch/i.test(error.message))) return "offline";
+  return null;
 }
 
 /** User-facing message (in the current language) for any failure during a model call. */

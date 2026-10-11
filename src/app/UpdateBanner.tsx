@@ -10,8 +10,9 @@ function safeToReload(): boolean {
   const fields = document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
     "input:not([type=file]):not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea",
   );
-  const typed = [...fields].some((el) => el.value.trim() !== "");
-  return !typed && !document.querySelector('.drawer, .compare-modal, .modal, .thinking, [aria-expanded="true"]');
+  // (a window that just closed leaves a still copy for its exit, .mv-leaving: exitMotion.ts; it is not open and holds nothing typed)
+  const typed = [...fields].some((el) => !el.closest(".mv-leaving") && el.value.trim() !== "");
+  return !typed && !document.querySelector('.drawer:not(.mv-leaving), .compare-modal:not(.mv-leaving), .modal:not(.mv-leaving), .thinking, [aria-expanded="true"]');
 }
 
 const apply = () => void chrome.runtime.sendMessage({ type: "apply-update", reopen: location.hash });
