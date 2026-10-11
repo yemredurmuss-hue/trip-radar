@@ -136,7 +136,7 @@ export interface DateAlert {
 }
 
 /** "Rezerve edilmedi · girişe 9 gün" / "Ücretsiz iptal için 6 gün kaldı (5 Eki)": null when nothing's near. */
-export function dateAlert(item: Item, today: string): DateAlert | null {
+export function dateAlert(item: Item, today: string, opts: { empty?: boolean } = {}): DateAlert | null {
   if (item.status === "booked") {
     const until = item.cancellation.freeUntil;
     if (!until || until < today) return null;
@@ -156,7 +156,7 @@ export function dateAlert(item: Item, today: string): DateAlert | null {
   if (!start || start < today) return null;
   const days = daysUntil(start, today);
   // A flight's missing ticket is always said (orange in its last 14 days); everything else only within 30.
-  if (days > 30 && item.category !== "flight") return null;
+  if (days > 30 && (item.category !== "flight" || opts.empty)) return null;
   const what =
     item.category === "stay"
       ? L("girişe", "check-in")

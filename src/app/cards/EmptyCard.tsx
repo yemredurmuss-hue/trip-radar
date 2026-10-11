@@ -281,7 +281,7 @@ function EmptyRecordFace({ item }: { item: Item }) {
     menu,
     x: <DeleteX name={item.name} onDelete={() => env.remove(item)} />,
     status: STATUS_WORD(kind, n),
-    alert: dateAlert(item, env.today),
+    alert: dateAlert(item, env.today, { empty: true }),
     extra,
     badge: trip ? <WhoseBadge item={item} trip={trip} /> : null,
   };
