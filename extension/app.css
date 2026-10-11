@@ -3966,11 +3966,9 @@ a.ch-why { text-decoration: none; }
   .pk-card { transition: none; }
   .pk-card:not(.pk-open):not(.ek-still):hover { transform: none; }
 }
-/* -- Sihirli açılış (opening.ts, docs/mockups/sihirli-acilis): the mascot and what is drawn only for the show -- */
+/* -- The assistant's mascot in the chat (Mascot.tsx); the opening itself (opening.ts) draws nothing of its own -- */
 .chat-title { display: flex; align-items: center; gap: 10px; }
 .mascot-seat { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; margin: -2px 0; border-radius: 50%; }
-.mascot-seat.away { box-shadow: inset 0 0 0 2px #ddd4ff; }
-.mascot-seat.away .ms { opacity: 0; }
 .ms-wrap { display: inline-block; line-height: 0; }
 .ms { overflow: visible; }
 .ms-wrap .eyes, .ms-wrap .eye { transform-box: fill-box; transform-origin: center; }
@@ -3985,14 +3983,6 @@ a.ch-why { text-decoration: none; }
 @keyframes ms-wink { 0%, 100% { transform: scaleY(1); } 25%, 75% { transform: scaleY(.12); } }
 @keyframes ms-bob { 50% { transform: translateY(-4px); } }
 @keyframes ms-look { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(-1.5px); } 65% { transform: translateX(1.5px); } }
-.op-fx { position: fixed; inset: 0; z-index: 8; overflow: hidden; pointer-events: none; }
-.op-orb { position: absolute; left: 0; top: 0; width: 46px; height: 46px; pointer-events: none; filter: drop-shadow(0 6px 14px rgba(91, 69, 224, .45)); }
-.op-orb-in { display: block; width: 46px; height: 46px; transform-origin: 23px 23px; }
-.op-orb svg { width: 46px; height: 46px; }
-.op-spark { position: absolute; width: 7px; height: 7px; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, #fff 0 30%, #a596ff 31% 100%); box-shadow: 0 0 8px 2px rgba(165, 150, 255, .7); }
-.op-star { position: absolute; pointer-events: none; color: #8b74ff; font-size: 14px; line-height: 1; }
-.op-glint { position: absolute; overflow: hidden; pointer-events: none; }
-.op-glint i { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, .85) 48%, rgba(181, 166, 255, .45) 52%, transparent 70%); transform: translateX(-120%); }
 @media (prefers-reduced-motion: reduce) { .ms-wrap .eyes, .ms-wrap .eye, .ms-wrap .ms { animation: none !important; } }
 
 /* -- Hareket dili (docs/mockups/hareket, 2026-10-10): five durations, three curves. Exits are quicker than entrances;
@@ -4004,6 +3994,9 @@ a.ch-why { text-decoration: none; }
 }
 @keyframes mv-fade { from { opacity: 0; } }
 @keyframes mv-pop { from { opacity: 0; transform: scale(.96); } }
+@keyframes mv-leave { to { opacity: 0; } }
+@keyframes mv-shrink { to { opacity: 0; transform: scale(.97); } }
+@keyframes mv-drawer-out { to { transform: translateX(100%); } }
 @keyframes mv-drawer { from { transform: translateX(100%); } }
 @keyframes mv-rise { from { opacity: 0; transform: translateY(8px); } }
 @keyframes mv-unfold { from { opacity: 0; transform: translateY(-6px); } }
@@ -4025,9 +4018,12 @@ a.ch-why { text-decoration: none; }
 
 /* 2 · windows and the drawer: the backdrop fades in, the window grows from 96 %, the drawer slides in from the right.
    (They leave at once: each is taken off the page when closed.) The options window (ChoiceSheet) is left to the card design. */
-.modal:not(:has(> .ch-sheet)), .overlay, .compare-modal, .pk-sheet-back { animation: mv-fade var(--t-base) var(--e-out) backwards; }
-.modal > .modal-card, .modal > .hs-dlg, .modal > .hs-hist, .modal > .bk-sheet:not(.ch-sheet), .compare-card, .pk-sheet { animation: mv-pop var(--t-base) var(--e-out) backwards; }
+.modal, .overlay, .compare-modal, .pk-sheet-back { animation: mv-fade var(--t-base) var(--e-out) backwards; }
+.modal > .modal-card, .modal > .hs-dlg, .modal > .hs-hist, .modal > .bk-sheet, .compare-card, .pk-sheet { animation: mv-pop var(--t-base) var(--e-out) backwards; }
 .drawer { animation: mv-drawer var(--t-slow) var(--e-out) backwards; }
+.mv-leaving { pointer-events: none !important; animation: mv-leave var(--t-quick) var(--e-in) forwards !important; }
+.mv-leaving > .modal-card, .mv-leaving > .hs-dlg, .mv-leaving > .hs-hist, .mv-leaving > .bk-sheet, .mv-leaving .compare-card, .mv-leaving > .pk-sheet { animation: mv-shrink var(--t-quick) var(--e-in) forwards !important; }
+.drawer.mv-leaving { animation: mv-drawer-out var(--t-base) var(--e-in) forwards !important; }
 /* a section the traveller opens unfolds; its arrow turns with it */
 .cat-chev svg { transition: transform var(--t-base) var(--e-out); }
 .cat-body.mv-unfold { animation: mv-unfold var(--t-base) var(--e-out) 40ms backwards; }
@@ -4042,6 +4038,23 @@ a.ch-why { text-decoration: none; }
 .vcard img.pic-img.loaded { animation: mv-blur-up var(--t-story) var(--e-out) backwards; }
 .work-pill { display: inline-flex; align-items: center; gap: 8px; width: max-content; padding: 5px 12px; border-radius: 99px; background: #fff; border: 1px solid #e6e2ef; font-weight: 600; animation: mv-rise var(--t-quick) var(--e-out) backwards; }
 .work-spin { width: 12px; height: 12px; flex: none; border-radius: 50%; border: 2px solid #ddd5ff; border-top-color: #5b45e0; animation: mv-spin .8s linear infinite; }
+/* "Plana koy" (putFly.ts): the card's name flies to the Plan tab */
+.mv-fly { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; max-width: 220px; padding: 5px 11px; border-radius: 10px; background: #fffaf0; border: 1.5px solid #ecd28f; color: #1c1a33; font: 650 12.5px var(--hx-font, inherit); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 8px 20px -10px rgba(28, 26, 51, .45); }
+/* A link being read (arrive/ArriveViews.tsx): a light passes over its row while it waits */
+.ar-pending:not(.ar-failed) { position: relative; overflow: hidden; }
+.ar-pending:not(.ar-failed)::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .7) 50%, transparent 70%); transform: translateX(-100%); animation: mv-sweep 1.6s ease-in-out infinite; }
+@keyframes mv-sweep { to { transform: translateX(100%); } }
+/* "Asistana bağlanamadım · Ayarlar'a git" (Chat.tsx): a strip at the chat's top, down from above */
+.chat-banner { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; padding: 10px 12px; border-radius: 12px; background: #fff3f6; border: 1.5px solid #ffc9d9; color: #8a1f4a; font-size: 13.5px; line-height: 1.4; animation: mv-drop var(--t-slow) var(--e-out) backwards; }
+.chat-banner.offline { background: #f6f4fa; border-color: #e1dced; color: #3b3560; }
+.chat-banner > span:not(.ms-wrap) { flex: 1; min-width: 0; }
+.chat-banner .small-btn { flex: none; }
+@keyframes mv-drop { from { opacity: 0; transform: translateY(-10px); } }
+/* "İnternet yok · N sn sonra tekrar deniyorum" (OfflineNotice.tsx): bottom right, clear of the chat's box and the undo toast */
+.reconnect { position: fixed; right: 24px; bottom: 24px; z-index: 30; display: inline-flex; align-items: center; gap: 10px; max-width: calc(100vw - 48px); padding: 9px 12px 9px 14px; border-radius: 12px; background: #221b3a; color: #fff; font-size: 13.5px; font-weight: 600; box-shadow: 0 14px 30px -14px rgba(28, 26, 51, .55); animation: mv-rise var(--t-base) var(--e-out) backwards; }
+.reconnect.bad { background: #3a1526; }
+.reconnect.ok { background: #1d6b48; }
+.reconnect .small-btn { background: #fff; color: #1c1a33; border: 0; }
 
 /* 4 · empty screens: the mascot, then the words, rise one after another */
 .trips-empty > * { animation: mv-rise var(--t-slow) var(--e-out) backwards; }
@@ -4067,7 +4080,7 @@ a.ch-why { text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   .view-tabs button.on::after, .panel .cat-plan, .panel .trip-plan, .panel .doc-tab, .panel .tm-tab, .panel .pn, .modal, .overlay, .compare-modal,
   .pk-sheet-back, .modal > *, .compare-card, .pk-sheet, .drawer, .cat-body.mv-unfold, .thinking .th-line, .vcard img.pic-img.loaded, .work-pill,
-  .trips-empty > *, .pn-empty, .chat-error, .field input.key-bad, .ms-wrap .zz { animation: none !important; }
+  .trips-empty > *, .pn-empty, .chat-error, .field input.key-bad, .ms-wrap .zz, .reconnect, .chat-banner, .ar-pending::after { animation: none !important; }
   .cat-chev svg { transition: none; }
   .th-dots i, .work-spin { animation-duration: 2.4s; }
   .ms-wrap[data-state] .ms { animation: none !important; }
