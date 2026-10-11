@@ -3764,6 +3764,7 @@ try {
     window.__printed = 0;
     window.print = () => void (window.__printed += 1);
   });
+  board.on("console", (m) => { if (/\[print\]|PDF/i.test(m.text())) console.log("  page said:", m.text().slice(0, 400)); });
   const [pdfFile] = await Promise.all([board.waitForEvent("download", { timeout: 120000 }), board.locator(".hx-go", { hasText: "Planı PDF olarak indir" }).click()]);
   assert.match(pdfFile.suggestedFilename(), /^Portekiz .*Trip Radar\.pdf$/, "named after the trip");
   await pdfFile.saveAs(`${out}/27d-plan.pdf`);
