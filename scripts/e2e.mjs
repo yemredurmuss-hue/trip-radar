@@ -22,7 +22,10 @@ chromium.launchPersistentContext = async (...args) => {
   // server's functions) answer "nothing found", as they do for a trip with no photo; a real network is used otherwise.
   if (process.env.E2E_OFFLINE) {
     // Anything else on the web: a quick "not found" (the PDF maker's picture of the page rejects on a refused connection, not on a 404).
-    await ctx.route(/^https?:\/\/(?!generativelanguage\.googleapis|api\.anthropic|api\.frankfurter|zjkesdsbructiyflzqvq)/, (route) => route.fulfill({ status: 404, body: "" }));
+    await ctx.route(/^https?:\/\/(?!generativelanguage\.googleapis|api\.anthropic|api\.frankfurter|zjkesdsbructiyflzqvq)/, (route) =>
+      route.request().resourceType() === "image" || /\.(png|jpe?g|webp|gif|ico)(\?|$)/i.test(route.request().url())
+        ? route.fulfill({ status: 200, contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64") })
+        : route.fulfill({ status: 404, body: "" }));
     await ctx.route(/wikipedia\.org|wikimedia\.org/, (route) => route.fulfill({ status: 404, json: {} }));
     await ctx.route(/supabase\.co\/functions/, (route) => route.fulfill({ json: { answer: null, url: null, offers: [], reason: "not-configured" } }));
   }
