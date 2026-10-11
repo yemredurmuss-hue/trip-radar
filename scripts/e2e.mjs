@@ -5113,7 +5113,13 @@ try {
   // What is below the fold waits, and comes in as it is scrolled into view.
   const waitingBelow = await faint();
   assert.ok(waitingBelow > 0, "what is below the fold waits for the scroll");
-  await app.locator(".panel").evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+  // (scrolled the way a traveller does, a screen at a time: a piece the panel jumps over hasn't been seen, and waits)
+  await app.locator(".panel").evaluate(async (el) => {
+    while (el.scrollTop + el.clientHeight < el.scrollHeight - 2) {
+      el.scrollBy({ top: el.clientHeight * 0.7 });
+      await new Promise((r) => setTimeout(r, 180));
+    }
+  });
   await app.waitForFunction((sel) => [...document.querySelectorAll(sel)].every((e) => e.getBoundingClientRect().bottom < 0 || Number(getComputedStyle(e).opacity) === 1), PIECES, { timeout: 4000 });
   await app.screenshot({ path: `${out}/39c-opening-scrolled.png` });
   await app.locator(".panel").evaluate((el) => el.scrollTo({ top: 0 }));
