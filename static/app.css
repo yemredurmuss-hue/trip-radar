@@ -1277,6 +1277,8 @@ button.dg-main:hover .dg-ttl { text-decoration: underline; text-underline-offset
 .dg-sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--v-muted); }
 .dg-i .t { padding: 1px 4px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--v-ink); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; }
 .dg-i .t:empty { padding: 0; min-width: 0; }
+/* A line moved by hand has no time but stays tappable: a dashed blank cell (tap to set one, × to put it back). */
+.dg-i .t.freed:empty { min-width: 34px; min-height: 22px; border: 1px dashed var(--v-dash); }
 .dg-i button.t:hover { background: var(--v-soft); }
 .dg-i .t.est { color: var(--v-muted); font-weight: 500; }
 .dg-i .t.own { text-decoration: underline dotted var(--v-dash); text-underline-offset: 3px; }
