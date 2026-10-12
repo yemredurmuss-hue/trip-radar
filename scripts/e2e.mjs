@@ -824,7 +824,7 @@ try {
   // Cancellations running out get their own "⏳ N" there (the sample trip is dated, so only when those dates are near).
   // And the money: booked, planned and free a line each against the budget; a tap splits it and adds a guess for what's open.
   const budget = app.locator(".hx-budget");
-  assert.match((await budget.innerText()).replace(/\s+/g, " "), /^Bütçe €1\.500 (Rezerve|Planlanan) €\d[\d.]*.* Boşta €923$/);
+  assert.match((await budget.innerText()).replace(/\s+/g, " "), /^Bütçe €1\.500 (Rezerve|Planlanan) €\d[\d.]*.* Boşta €923( Tahmini toplam ~€[\d.]+( .*)?)?$/);
   await budget.click();
   assert.match(await budget.locator(".hx-pop").innerText(), /Kalan\s*€923[\s\S]*yaklaşık €442 daha eklenir/);
   await budget.click();
