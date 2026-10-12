@@ -701,6 +701,8 @@ try {
   await app.waitForFunction((el) => getComputedStyle(el).opacity === "0", await checkIn.locator(".dg-grip").elementHandle());
   await checkIn.hover();
   await app.waitForFunction((el) => getComputedStyle(el).opacity === "1", await checkIn.locator(".dg-grip").elementHandle());
+  // The line scrolls to below the sticky bar (scroll-margin), where the drop can land; dragTo's own scroll would leave it behind the bar.
+  await lineOf(1, "Uçuş · İstanbul → Porto").scrollIntoViewIfNeeded();
   await checkIn.locator(".dg-grip").dragTo(lineOf(1, "Uçuş · İstanbul → Porto"), { targetPosition: { x: 200, y: 4 } });
   await app.waitForFunction(() => document.querySelector(".dg-day .dg-tl > li")?.getAttribute("data-title") === "Check-in · Porto konaklaması");
   assert.deepEqual(await day1(), ["Check-in · Porto konaklaması", "Uçuş · İstanbul → Porto", "Havalimanı transferi"]);
