@@ -7,7 +7,7 @@ import { L } from "../../lib/i18n";
 import { dateBox, spanText } from "../../lib/storyDates";
 import type { Timeline, TimelineEntry, TimelineSection } from "../../lib/timeline";
 import type { Item } from "../../lib/types";
-import { KindIcon } from "../cards/Silhouettes";
+import { KindIcon, UiIcon } from "../cards/Silhouettes";
 import type { LegCardFor, RenderGroup, SettledFor } from "../Timeline";
 import { PlanEntry } from "./PlanEntry";
 
@@ -95,6 +95,15 @@ export function StoryView({ timeline, tripStart, cards }: { timeline: Timeline; 
         ),
       );
     }
+  }
+  // The way home ends the line (the drawing's "✓ Eve dönüş · İstanbul"): the day the last flight lands, where home is.
+  const lastSec = timeline.board[timeline.board.length - 1];
+  const home = lastSec?.kind === "journey" && lastSec.journey.role === "departure" ? lastSec.journey : lastSec?.kind === "travel" && lastSec.entry.role === "departure" ? lastSec.entry : null;
+  if (home) {
+    const homeCity = "to" in home ? home.to : null;
+    const homeDay = "date" in home ? home.date : null;
+    const label = homeCity ? L(`Eve dönüş · ${homeCity}`, `Back home · ${homeCity}`) : L("Eve dönüş", "Back home");
+    rows.push(row("home-end", homeDay, <UiIcon name="check" size={18} />, <span className="sy-end">{label}</span>, "sy-endrow"));
   }
   if (!rows.length) return null;
   return (
