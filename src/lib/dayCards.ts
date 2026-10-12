@@ -299,7 +299,11 @@ export function stageOf(r: DayRow): Stage | null {
   if (r.layover || r.meeting) return null;
   if (r.kind === "idea") return { tone: "idea", text: r.item?.arranged ? L("Ayarlandı", "Arranged") : r.item?.doneAt ? L("Yapıldı", "Done") : L("Fikir", "Idea") };
   if (r.kind === "info") return null;
-  const arranged = !!r.item?.arranged || /ayarland|arranged/i.test(`${r.line ?? ""} ${r.status}`) || (r.entry?.kind === "travel" && !!r.entry.leg?.choice?.booked && !r.entry.travel?.settled && r.item?.status !== "booked");
+  // "Ben hallettim" only: the item says it, or the leg says "ayarlandı" with nothing of ours booked on it (a ticket bought, "Bileti aldım", is Rezerve).
+  const travel = r.entry?.kind === "travel" ? r.entry : null;
+  const leg = travel?.leg ?? null;
+  const ticketBooked = r.item?.status === "booked" || !!leg?.options.some((i) => i.status === "booked") || !!travel?.travel?.settled;
+  const arranged = !!r.item?.arranged || (!ticketBooked && (/ayarland|arranged/i.test(`${r.line ?? ""} ${r.status}`) || !!leg?.choice?.booked));
   switch (r.state) {
     case "done":
       return arranged ? { tone: "rez", text: L("Ayarlandı", "Arranged") } : { tone: "rez", text: L("Rezerve", "Booked") };
