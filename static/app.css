@@ -4377,3 +4377,12 @@ a.ch-why { text-decoration: none; }
 .ek-offers-est { margin-left: 8px; font-size: 12.5px; font-weight: 650; color: var(--v-muted); }
 .pk-ride-ab > .pk-ride-end:first-child { flex: 0 0 auto; max-width: 48%; }
 .pk-ride-ab > .pk-ride-end:last-child { flex: 1 1 0; }
+
+/* Plan v30 (denetim): the ••• menu's one-line explanations. */
+.menu button small { display: block; margin-top: 1px; font-size: 12px; font-weight: 400; color: #8e8e93; white-space: nowrap; }
+
+/* Plan v30 (denetim): the hero budget's likely total. */
+.hx-est { margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--v-line2, #eceaf4); font-size: 13.5px; color: var(--v-muted); display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+.hx-est b { color: var(--v-ink); font-weight: 750; }
+.hx-est em { font-style: normal; font-weight: 650; }
+.hx-est em.ok { color: var(--v-book-ink, #1d6b45); } .hx-est em.over { color: #c62828; }

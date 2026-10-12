@@ -188,6 +188,19 @@ function Budget({ bar, ready }: { bar: BudgetBar | null; ready: boolean }) {
             </span>
           ))}
       </button>
+      {/* v30: what the plan will likely cost (booked + chosen + each open decision's leading option; the sticky bar's own sum) against the budget. */}
+      {bar.open > 0 && (
+        <p className="hx-est" title={L("Rezerve, seçilen ve karar bekleyenlerin önde gelen seçeneği", "Booked, chosen and each open decision's leading option")}>
+          {L("Tahmini toplam", "Likely total")} <b>~{money(known + bar.open)}</b>
+          {bar.total != null && (
+            <em className={known + bar.open <= bar.total ? "ok" : "over"}>
+              {known + bar.open <= bar.total
+                ? L(`bütçeye sığar · ${money(bar.total - known - bar.open)} pay`, `fits the budget · ${money(bar.total - known - bar.open)} to spare`)
+                : L(`bütçeyi ${money(known + bar.open - bar.total)} aşar`, `${money(known + bar.open - bar.total)} over the budget`)}
+            </em>
+          )}
+        </p>
+      )}
       {open && (
         <div className="hx-pop">
           {slices.map((s) => (

@@ -15,6 +15,7 @@ import type { InsertAt } from "../../lib/templates";
 import type { Item, Suggestion } from "../../lib/types";
 import type { Visa } from "../../lib/visa";
 import { AddButton } from "../cards/AddSheet";
+import { PlanKey } from "./PlanOrder";
 import { EmptyActivityCard, EmptyEsimCard, EmptyInsuranceCard } from "../cards/EmptyCard";
 import { KindIcon } from "../cards/Silhouettes";
 import { Section } from "./Section";
@@ -95,11 +96,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
         <strong className="plan-h">{L("Plan", "Plan")}</strong>
         {order}
         <AddButton onClick={() => onAdd(null, null)} />
-        <span className="plan-key" aria-label={L("Renklerin anlamı", "What the colours say")}>
-          <span><i className="pk-sw open" />{L("Arıyoruz", "Searching")}</span>
-          <span><i className="pk-sw chosen" />{L("Seçildi", "Chosen")}</span>
-          <span><i className="pk-sw booked" />{L("Rezerve", "Booked")}</span>
-        </span>
+        <PlanKey />
       </div>
       {shape && shape.stops.length > 1 && <TripShape {...shape} onStop={(s) => onStop?.(s)} />}
       {plan.notices.map((x) => (

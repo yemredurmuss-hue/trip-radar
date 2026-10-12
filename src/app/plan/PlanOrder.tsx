@@ -4,6 +4,17 @@ import { L } from "../../lib/i18n";
 
 export type PlanOrderView = "plan" | "story" | "days";
 
+/** The colours' key, shared by all three ways to read the plan. */
+export function PlanKey() {
+  return (
+    <span className="plan-key" aria-label={L("Renklerin anlamı", "What the colours say")}>
+      <span><i className="pk-sw open" />{L("Arıyoruz", "Searching")}</span>
+      <span><i className="pk-sw chosen" />{L("Seçildi", "Chosen")}</span>
+      <span><i className="pk-sw booked" />{L("Rezerve", "Booked")}</span>
+    </span>
+  );
+}
+
 export function PlanOrder({ view, onView }: { view: PlanOrderView; onView: (v: PlanOrderView) => void }) {
   const tabs: [PlanOrderView, string][] = [
     ["plan", L("Kategoriye göre", "By category")],

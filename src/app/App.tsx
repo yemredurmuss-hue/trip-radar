@@ -186,9 +186,9 @@ export function App() {
               <button onClick={() => document.querySelector<HTMLInputElement>('.composer input[type="text"]')?.focus()}>
                 {L("Link ya da ekran görüntüsü ekle", "Add a link or screenshot")}
               </button>
-              <button onClick={() => sendPanel("docs")}>{L("Belgeler", "Documents")}</button>
-              {sharable && <button onClick={() => setShareOpen(true)}>{trip.shareId ? L("Paylaşım kodu", "Share code") : L("Bu geziyi paylaş", "Share this trip")}</button>}
-              <button onClick={() => sendPanel("pdf")}>{L("Planı PDF olarak indir", "Download the plan as PDF")}</button>
+              <button onClick={() => sendPanel("docs")}>{L("Belgeler", "Documents")}<small aria-hidden>{L("bütün belgeler tek listede", "every document in one list")}</small></button>
+              {sharable && <button onClick={() => setShareOpen(true)}>{trip.shareId ? L("Paylaşım kodu", "Share code") : L("Bu geziyi paylaş", "Share this trip")}<small aria-hidden>{L("gezi arkadaşlarınla birlikte", "with your travel companions")}</small></button>}
+              <button onClick={() => sendPanel("pdf")}>{L("Planı PDF olarak indir", "Download the plan as PDF")}<small aria-hidden>{L("özet ve gün gün akış, tek dosya", "summary and days, one file")}</small></button>
               {mapUrl && (
                 <a href={mapUrl} target="_blank" rel="noreferrer">
                   {L("Rotayı haritada gör", "See the route on a map")}
@@ -196,7 +196,7 @@ export function App() {
               )}
               <hr />
               <button onClick={() => void resetConversation(trip.id)}>{L("Bu gezide yeni sohbet başlat", "Start a new chat for this trip")}</button>
-              <button onClick={() => setHistoryOpen(true)}>{L("Geçmiş ve çöp kutusu", "History and trash")}</button>
+              <button onClick={() => setHistoryOpen(true)}>{L("Geçmiş ve çöp kutusu", "History and trash")}<small aria-hidden>{L("kim neyi değiştirdi, silinenler", "who changed what, deleted items")}</small></button>
             </>
           )}
           {!trip && <button onClick={() => setHistoryOpen(true)}>{L("Çöp kutusu", "Trash")}</button>}

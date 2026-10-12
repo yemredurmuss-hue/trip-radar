@@ -32,7 +32,7 @@ import { categorize, catDomKey, findInSections, planProgress, sectionOfItem, SEC
 import { listTodos, planList } from "../lib/planList";
 import { firstField, keepDraftFor, type CardFocus } from "../lib/inlineEdit";
 import { newId } from "../lib/db";
-import { AddSheet } from "./cards/AddSheet";
+import { AddButton, AddSheet } from "./cards/AddSheet";
 import { useTripDocs } from "./cards/DocAccess";
 import { LegCard } from "./cards/LegCard";
 import { EmptyLegCard, EmptyRecordCard } from "./cards/EmptyCard";
@@ -55,7 +55,7 @@ import { TripHero, type HeroAction, type HeroCity } from "./TripHero";
 import { PrintPlan } from "./PrintPlan";
 import { StickyBar } from "./StickyBar";
 import { onPanel } from "./panelBus";
-import { PlanOrder } from "./plan/PlanOrder";
+import { PlanKey, PlanOrder } from "./plan/PlanOrder";
 import { StoryView } from "./plan/StoryView";
 import { TipOn } from "./HoverTip";
 import { PanoNewsTip } from "./PanoNewsTip";
@@ -854,6 +854,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         <div className="plan-bar-slim">
           <strong className="plan-h">{L("Plan", "Plan")}</strong>
           <PlanOrder view={view === "story" ? "story" : "days"} onView={(v) => setView(v)} />
+          <AddButton onClick={() => addIn(null, null)} />
+          <PlanKey />
         </div>
       )}
       {(view === "days" || view === "map") && timeline.entries.length > 0 && (
