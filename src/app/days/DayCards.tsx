@@ -6,6 +6,7 @@
 // time can be set by hand and its place in the day moved (drag or ↑ ↓); a tap on it shows its card on the Plan.
 // Insurance, the eSIM and a visa aren't part of a day: they stay in Plan → Diğer. (The old photo cards, their
 // Liste | Kartlar switch and the strip of days are gone: the row is the view.)
+import { LegBody } from "../LegRow";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { dayCards, dayLinesOf, isAsideRow, isPlanRow, rowKind, stageOf, type DayCard } from "../../lib/dayCards";
 import { cardKindColor } from "../../lib/cardKinds";
@@ -222,6 +223,11 @@ function DayLine({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; 
   const place = usePlace();
   const t = rowTitle(row, place);
   const kind = rowKind(row);
+  // A transfer or a change of city has no card of its own on the Plan until it has a plan: its way to go (Metro, Taksi…),
+  // what's easy to miss and "Gerek yok" open right under its line (the leg's own body), as the day's cards had them.
+  const env = useContext(CardEnvContext);
+  const [legOpen, setLegOpen] = useState(false);
+  const inline = Boolean(row.leg && env && row.kind === "leg");
   if (row.layover)
     return (
       <li className="dg-i quiet" data-title={titleText(t)}>
@@ -241,7 +247,7 @@ function DayLine({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; 
   return (
     <li className={`dg-i${row.kind === "idea" ? " idea" : isInfo(row) ? " info quiet" : ""}${dnd?.cls ?? ""}`} data-title={titleText(t)} {...dnd?.li}>
       {dnd?.grip}
-      <button type="button" className="dg-main" onClick={onTap} title={`${titleText(t)}${sub ? ` · ${sub}` : ""}`}>
+      <button type="button" className="dg-main" aria-expanded={inline ? legOpen : undefined} onClick={inline ? () => setLegOpen(!legOpen) : onTap} title={`${titleText(t)}${sub ? ` · ${sub}` : ""}`}>
         <span className="dg-ic" style={{ ["--k" as string]: cardKindColor(kind) }} aria-hidden>
           <RowGlyph name={rowIcon(row, place)} />
         </span>
@@ -253,6 +259,14 @@ function DayLine({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; 
         <Faces row={row} />
       </span>
       <Stage row={row} />
+      {inline && legOpen && row.leg && env && (
+        <div className="dg-leg">
+          <LegBody leg={row.leg} tripId={tripId} onOpenItem={env.onOpenItem} onRemove={env.remove} />
+          <button type="button" className="dg-leg-plan" onClick={onTap}>
+            {L("Plan'da göster", "Show on the Plan")}
+          </button>
+        </div>
+      )}
       <LiveLine row={row} />
       <ArrivalAsk row={row} />
       {row.warn && (

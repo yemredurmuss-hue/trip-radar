@@ -1123,10 +1123,12 @@ try {
   assert.equal(await dayCard(1).locator('.dg-tl > li[data-title="Check-in · Jardim Stay"] .t').innerText(), "14:00");
   assert.equal(flat(await dayCard(1).locator(".dg-n").allInnerTexts())[0], "Gece: Porto · Jardim Stay");
   // Two transfers read the same ("Transfer"): the route is on the transfer's card on the Plan (a line stays short, 0.36.27).
-  // A transfer's card (its notes, how to go, "Gerek yok") is on the Plan now: a tap on its line shows it there.
+  // A transfer with no plan opens right under its line: what's easy to miss, how to go.
   await arrive.locator(".dg-main").click();
-  await tab("Plan").and(app.locator('[aria-selected="true"]')).waitFor();
-  await tab("Gün gün").click();
+  await arrive.locator(".leg-note", { hasText: "Varış 10:05, giriş en erken 14:00 (sayfada yazıyor)" }).waitFor();
+  // "Metroyla gideceğim": nothing to book, so the transfer becomes a plan, its way as which.
+  await arrive.getByRole("button", { name: "🚇 Metro" }).click();
+  await dayCard(1).locator('.dg-tl > li[data-title="Havalimanı transferi · Metro"]').waitFor();
   await dayCard(1).scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/5-legs.png` });
   // A narrow window: nothing spills out sideways.

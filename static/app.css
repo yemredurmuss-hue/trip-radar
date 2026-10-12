@@ -4708,3 +4708,7 @@ a.ch-why { text-decoration: none; }
 
 /* Plan v30 (denetim): what scrolls into view (a card, a day, a section, an anchor jump) stops under the sticky bar's height, not behind it. */
 .dg-day, .dg-tl > li, .cat-sec, .sy-row, .pk-card, .pn-row { scroll-margin-top: 76px; }
+
+/* Plan v30 (denetim): a transfer's way to go opens under its line in Gün gün. */
+.dg-i .dg-leg { grid-column: 1 / -1; margin: 6px 0 4px 26px; padding: 10px 12px; border-radius: 12px; background: var(--v-soft, #f4f2fa); border: 1px solid var(--v-line2, #eceaf4); }
+.dg-i .dg-leg-plan { margin-top: 8px; border: 0; background: none; padding: 0; font: inherit; font-size: 13px; color: var(--v-accent, #5b3fd9); cursor: pointer; text-decoration: underline; }
