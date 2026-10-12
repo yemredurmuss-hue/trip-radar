@@ -606,6 +606,7 @@ a.sc-source.link:focus-visible { outline: 2px solid var(--accent); outline-offse
   .stc-img { width: 110px; height: 96px; }
 }
 
+/* @@css-cardsA: reserved insertion point, parallel work (remove marker line when done) */
 /* ---------- nights at a glance ---------- */
 .day-strip { display: flex; gap: 4px; margin: 12px 0 6px; overflow-x: auto; padding-bottom: 2px; }
 .strip-block {
@@ -3041,6 +3042,7 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
   body.printing .print-plan { position: static; width: auto; padding: 0; }
 }
 
+/* @@css-cardsB: reserved insertion point, parallel work (remove marker line when done) */
 /* v11 (phase 2a): a planned card's "✓ Aldım" on its top line; the strip's link to the page to book on. */
 .pk-aldim { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; padding: 3px 11px; border: 1.5px solid #f0a53a; border-radius: 999px; background: #fff; color: #9a6400; font: inherit; font-size: 13px; font-weight: 650; white-space: nowrap; cursor: pointer; }
 .pk-aldim:hover { background: #fbf6ea; }
