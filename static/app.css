@@ -1203,6 +1203,88 @@ button.hx-h:hover { color: var(--hx-accent); }
 .hx-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 /* @@css-days: reserved insertion point, parallel work (remove marker line when done) */
+/* Gün gün (plan v30): one compact row a day: the date box, then a card with the day's lines (icon, NE · HANGİSİ, the grey word,
+   a time, its stage on the right), the night line, or the free day's word. Drawn in docs/mockups/plan-v30 (.dv). */
+.dg { display: grid; gap: 8px; align-content: start; }
+.dg-day { align-self: start; display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 14px; align-items: start; scroll-margin-top: 90px; }
+.dg-d { display: flex; justify-content: center; }
+.dg-date { display: grid; justify-items: center; line-height: 1.12; width: 56px; padding: 6px 2px 7px; border-radius: 12px; background: #fff; box-shadow: var(--v30-shadow); }
+.dg-date span { font-size: 10.5px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--v-accent-ink); }
+.dg-date b { font-size: 21px; font-weight: 800; letter-spacing: -.02em; color: var(--v-ink); }
+.dg-date small { font-size: 11.5px; color: var(--v-muted); }
+.dg-date i { font-style: normal; font-size: 10.5px; font-weight: 700; color: var(--v-muted); margin-top: 3px; padding-top: 3px; border-top: 1px solid var(--v-line2); width: 78%; text-align: center; white-space: nowrap; }
+.dg-date.nd span { color: var(--v-muted); }
+.dg-day.today .dg-date { box-shadow: 0 0 0 2px var(--v-accent-ink), var(--v30-shadow); }
+.dg-b { display: grid; gap: 6px; align-content: center; min-width: 0; min-height: 76px; padding: 10px 14px; border-radius: 14px; background: #fff; box-shadow: var(--v30-shadow); }
+.dg-tl { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.dg-i { position: relative; display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; align-items: center; column-gap: 8px; row-gap: 2px; min-height: 26px; font-size: 14px; }
+.dg-main { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; padding: 0; border: 0; background: none; font: inherit; color: var(--v-ink); text-align: left; cursor: pointer; }
+.dg-main.static { cursor: default; }
+button.dg-main:hover .dg-ttl { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--v-dash); }
+.dg-ic { flex: none; display: inline-grid; place-items: center; width: 16px; height: 16px; color: var(--v-muted); }
+.dg-ic svg { width: 16px; height: 16px; stroke: currentColor; }
+.dg-ttl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-what { font-weight: 700; }
+.dg-which { font-weight: 600; }
+.dg-meta { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--v-muted); }
+.dg-sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--v-muted); }
+.dg-i .t { padding: 1px 4px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--v-ink); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; }
+.dg-i .t:empty { padding: 0; min-width: 0; }
+.dg-i button.t:hover { background: var(--v-soft); }
+.dg-i .t.est { color: var(--v-muted); font-weight: 500; }
+.dg-i .t.own { text-decoration: underline dotted var(--v-dash); text-underline-offset: 3px; }
+.dg-i .t.edit { display: inline-flex; align-items: center; gap: 2px; }
+.dg-i .t.edit input { width: 86px; height: 26px; padding: 0 4px; border: 1px solid var(--v-dash); border-radius: 7px; font: inherit; font-size: 13px; }
+.dg-i .t-reset { width: 22px; height: 22px; border: 0; border-radius: 50%; background: var(--v-soft); color: var(--v-muted); cursor: pointer; }
+.dg-i .t .t-hint { display: inline; font-size: 12px; }
+.dg-lab { justify-self: end; font-size: 12px; font-weight: 650; white-space: nowrap; color: var(--v-muted); }
+.dg-lab.rez { color: var(--v-book-ink); }
+.dg-lab.plan { color: var(--v-plan-ink); }
+.dg-lab.open, .dg-lab.idea { color: var(--v-muted); font-weight: 500; }
+.dg-i.quiet { min-height: 22px; font-size: 13.5px; }
+.dg-i.quiet .dg-what, .dg-i.quiet .dg-which { font-weight: 500; color: var(--v-muted); }
+.dg-i.quiet .dg-ic { opacity: .75; }
+.dg-i.idea .dg-what { font-weight: 600; }
+.dg-who { display: inline-flex; flex: none; padding-left: 4px; }
+.dg-who .wh-av + .wh-av { margin-left: -7px; box-shadow: 0 0 0 2px #fff; }
+.dg-live, .dg-arrive, .dg-warn { grid-column: 1 / -1; margin: 0 0 0 24px; font-size: 12.5px; }
+.dg-live { font-weight: 600; color: #13756a; }
+.dg-live.alert { color: #b42318; }
+.dg-live small { font-weight: 400; color: var(--v-muted); }
+.dg-arrive { justify-self: start; font-weight: 600; }
+.dg-arrive input { font: inherit; padding: 3px 6px; border: 1px solid var(--v-dash); border-radius: 8px; }
+.dg-warn { color: #b42318; font-weight: 500; }
+.dg-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-width: 0; }
+.dg-n { display: inline-flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 auto; font-size: 13px; color: var(--v-muted); }
+.dg-n svg { flex: none; width: 14px; height: 14px; }
+.dg-n b { color: var(--v-ink); }
+.dg-nt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-n.dg-home { color: var(--v-muted); }
+.dg-free { font-size: 13px; color: var(--v-muted); font-style: italic; }
+.dg-left, .dg-today { flex: none; font-size: 12px; font-weight: 650; color: var(--v-plan-ink); white-space: nowrap; }
+.dg-today { color: var(--v-accent-ink); }
+.dg-add { flex: none; margin-left: auto; padding: 2px 8px; border: 1.5px dashed var(--v-dash); border-radius: 8px; background: none; font: inherit; font-size: 12px; color: var(--v-muted); white-space: nowrap; cursor: pointer; }
+.dg-add:hover { border-color: var(--v-ink); color: var(--v-ink); }
+.dg-grip { position: absolute; left: -12px; top: 1px; z-index: 2; width: 14px; height: 24px; padding: 0; border: 0; border-radius: 6px; background: none; color: #aeaeb2; display: grid; place-items: center; cursor: grab; opacity: 0; transition: opacity .12s; }
+.dg-i:hover > .dg-grip, .dg-grip:focus, .dg-grip:focus-visible { opacity: 1; }
+.dg-grip:hover { color: var(--v-ink); background: rgba(0,0,0,.05); }
+.dg-grip:active { cursor: grabbing; }
+@media (hover: none) { .dg-grip { opacity: .6; } }
+.dg-i.dragging { opacity: .45; }
+.dg-i.drop-before { box-shadow: 0 -2px 0 var(--v-accent-ink); }
+.dg-i.drop-after { box-shadow: 0 2px 0 var(--v-accent-ink); }
+.dg-flash { background: var(--v-lav); }
+@media (max-width: 560px) {
+  .dg-day { grid-template-columns: 52px minmax(0, 1fr); gap: 10px; }
+  .dg-date { width: 46px; }
+  .dg-b { padding: 10px 12px; }
+  .dg-i { grid-template-columns: minmax(0, 1fr) auto; }
+  .dg-meta { grid-column: 1 / -1; grid-row: 2; margin-left: 24px; }
+  .dg-lab { grid-column: 2; grid-row: 1; }
+  .dg-live, .dg-arrive, .dg-warn { grid-row: auto; }
+  .dg-add span { display: none; }
+  .dg-grip { left: -10px; }
+}
 /* Who goes: overlapping initials, the names, how many; then the style chips. */
 .hx-people { display: flex; align-items: center; gap: 16px; width: 100%; padding: 0; border: 0; background: none; text-align: left; color: inherit; }
 button.hx-people:hover b { color: var(--hx-accent); }

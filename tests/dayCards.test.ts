@@ -4,7 +4,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { loadDecisions } from "../src/lib/analysis";
 import { db, listItems } from "../src/lib/db";
-import { orderRows, movedOrder, dayCards, endsOf, foldRows, highlightOf, isAsideRow, isPlanRow, rowMark, tieredRows, tierOf, type DayCard } from "../src/lib/dayCards";
+import { orderRows, movedOrder, dayCards, endsOf, foldRows, highlightOf, isAsideRow, isPlanRow, rowMark, stageOf, tieredRows, tierOf, type DayCard } from "../src/lib/dayCards";
 import { makeItem } from "./fixtures/makeItem";
 import { loadDemoTrip } from "../src/lib/demo";
 import type { DayRow } from "../src/lib/journey";
@@ -38,6 +38,32 @@ describe("day cards", () => {
     expect(new Set(covered).size).toBe(covered.length);
     // Lisbon's two free days are one card.
     expect(cards.find((c) => c.end)).toMatchObject({ title: "Lizbon 5–6. Gün", tag: "Boş günler" });
+  });
+  it("Gün gün: with merge off every free day is its own card, the home-going one says so", async () => {
+    const id = await loadDemoTrip({ today: "2026-10-05" });
+    const trip = (await (await db()).get("trips", id))!;
+    const items = await listItems(id);
+    const { ctx } = await loadDecisions(trip, items);
+    const plan = buildPlan(trip, items);
+    const timeline = buildTimeline(plan, buildLegs(plan, trip, ctx.listings), items);
+    const days = dayCards(timeline.sections, { listings: ctx.listings, merge: false });
+    // The sample's seven days, a card each (Lisbon's two free days are no longer one).
+    expect(days.map((c) => c.date)).toEqual(["2026-10-08", "2026-10-09", "2026-10-10", "2026-10-11", "2026-10-12", "2026-10-13", "2026-10-14"]);
+    expect(days.every((c) => !c.end)).toBe(true);
+    expect(days.map((c) => c.role)).toEqual(["arrival", null, null, "move", null, null, "departure"]);
+  });
+  it("a line's stage in the Plan's words", () => {
+    const row = (over: Partial<DayRow>) => ({ kind: "item", state: "done", status: "", line: null, item: null, entry: null, ...over }) as DayRow;
+    expect(stageOf(row({ state: "done" }))).toEqual({ tone: "rez", text: "Rezerve" });
+    expect(stageOf(row({ state: "done", status: "Ayarlandı ✓", kind: "leg" }))).toEqual({ tone: "rez", text: "Ayarlandı" });
+    expect(stageOf(row({ state: "pending" }))).toEqual({ tone: "plan", text: "Seçildi" });
+    expect(stageOf(row({ state: "decide" }))?.text).toBe("Arıyoruz");
+    expect(stageOf(row({ state: "open", kind: "leg" }))?.tone).toBe("open");
+    expect(stageOf(row({ state: "info", kind: "leg" }))?.text).toBe("Seçildi"); // the metro, a walk: chosen
+    expect(stageOf(row({ state: "info", kind: "idea" }))).toEqual({ tone: "idea", text: "Fikir" });
+    // check-in, check-out and a layover have no stage
+    expect(stageOf(row({ state: "info", kind: "info" }))).toBeNull();
+    expect(stageOf(row({ state: "info", kind: "leg", layover: { airport: "LIS", minutes: 90 } }))).toBeNull();
   });
   it("folds a long day to three lines and the rest", () => {
     const r = (key: string, kind: DayRow["kind"] = "item", state: DayRow["state"] = "done") => ({ key, kind, state }) as DayRow;
