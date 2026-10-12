@@ -4446,7 +4446,7 @@ a.ch-why { text-decoration: none; }
 @media (max-width: 860px) {
   /* Below this the page scrolls, not the panel: the panel must not be the sticky root, or the bar scrolls away with it. */
   .panel { overflow: visible; }
-  .sbar-slot { top: 0; }
+  .sbar-slot { top: 0; margin: 0 -16px; }
 }
 
 /* "Yolculuk sırasıyla": the dates at the left, a dashed line with a node per stop, the Plan's cards on the right. */
