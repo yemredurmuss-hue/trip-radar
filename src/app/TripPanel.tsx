@@ -7,7 +7,7 @@ import { buildLegs, staleHiddenMoves, type Leg } from "../lib/legs";
 import { buildTimeline } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
 import { cardFacts } from "../lib/cardFacts";
-import { budgetBar, sectionAllotments, decisionProgress, entryDomId, nextStepText, type DecisionProgress, type Todo } from "../lib/progress";
+import { budgetBar, sectionAllotments, decisionProgress, entryDomId, nextStepText, nextStepShort, type DecisionProgress, type Todo } from "../lib/progress";
 import { cachedWeather } from "../lib/climate";
 import { cityKeyOf, groupKeyOf, sameCity, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
