@@ -1194,8 +1194,9 @@ try {
   await sec("transport").locator('.pk-leg[aria-label="Porto → Lizbon"]').waitFor();
   await move.locator(".pk-ring.open").waitFor();
   // Nothing said for it: its empty card (boş kartlar), "Nasıl gideceğin belli değil", the directions to search; tapped, how to go.
-  await move.locator(".ek-foot", { hasText: "Nasıl gideceğin belli değil" }).waitFor();
-  assert.match(await move.locator(".ek-route").innerText(), /Porto[\s\S]*Lizbon/);
+  // plan v30: a change of city says it on top ("Porto → Lizbon", "Nasıl gideceğin belli değil"), the foot says what to do.
+  await move.locator(".ek-undec", { hasText: "Nasıl gideceğin belli değil" }).waitFor();
+  assert.match(await move.locator(".ek-undec").innerText(), /Porto[\s\S]*Lizbon/);
   assert.equal(new URL(await move.getByRole("link", { name: "Yol tarifi" }).getAttribute("href")).searchParams.get("destination"), "Lizbon");
   // plan v30: the ways are drawn choices right on the empty card (Tren · Otobüs · Araba · Uçak · Ben hallettim); one tap says it.
   assert.deepEqual(await move.locator(".pk-way").allInnerTexts(), ["Tren", "Otobüs", "Araba", "Uçak", "Ben hallettim"]);
@@ -3129,7 +3130,7 @@ try {
   const esimRect = await esimCard.boundingBox();
   const insRect = await insCard.boundingBox();
   assert.ok(Math.abs(esimRect.height - insRect.height) < 2 && Math.abs(esimRect.y - insRect.y) < 2, `insurance and eSIM side by side, as large (${JSON.stringify([esimRect, insRect])})`);
-  await esimCard.getByRole("button", { name: "Gerek yok" }).click();
+  await esimCard.getByRole("button", { name: "Gerek yok", exact: true }).click();
   await esimCard.waitFor({ state: "detached" });
   await insCard.waitFor();
   await board.waitForTimeout(300); // the trip write lands

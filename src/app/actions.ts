@@ -153,7 +153,7 @@ export async function addArrangedLike(like: Item, name: string): Promise<void> {
     statusAt: now,
     addedBy: undefined,
     likedBy: undefined,
-    origin: "chat",
+    origin: undefined,
     noBooking: now,
     arranged: true,
     createdAt: now,

@@ -190,7 +190,7 @@ export function EmptyShell(props: {
           {props.date && <span className="pk-date">· {props.date}</span>}
           <span className="pk-end">
             <span className="pk-lab open">{L("Arıyoruz", "Searching")}</span>
-            {props.fold ? <DeleteX name={props.ariaLabel} hide onDelete={() => setFolded(true)} className="ek-x" /> : props.x}
+            {props.fold ? <DeleteX name={props.ariaLabel} hide onDelete={() => setFolded(true)} className={props.extraClass?.includes("stay-open") ? "stay-x" : undefined} /> : props.x}
             <CardMenu entries={props.menu} />
           </span>
         </div>
@@ -478,6 +478,7 @@ export function EmptyLegCard({ leg }: { leg: Leg }) {
     ),
   ];
   const move = leg.kind === "move";
+  const ways = move && v.kind === "transport" && !leg.choice?.mode && !leg.choice?.booked;
   const from = endPlace(leg, "from");
   const to = endPlace(leg, "to");
   return (
@@ -491,12 +492,23 @@ export function EmptyLegCard({ leg }: { leg: Leg }) {
       menu={menu}
       fold={{ gone: hide, arranged }}
       body={
-        <>
+        ways ? (
+          <>
+            {/* v30: how to go isn't known: it's said on top, the way drawn faint and large at the left, the ways to pick right under. */}
+            <div className="ek-undec">
+              <span className="ek-undec-art" aria-hidden><img src="illus/tren.png" alt="" /></span>
+              <span className="ek-undec-t">
+                <b>{v.from.city}<span className="ek-arr" aria-hidden> → </span>{v.to.city}</b>
+                <span className="ek-undec-how">{L("Nasıl gideceğin belli değil", "How you'll go isn't decided")}</span>
+              </span>
+            </div>
+            <WaysRow leg={leg} tripId={env.tripId} />
+          </>
+        ) : (
           <EmptyRoute from={move ? { ...v.from, sub: null } : v.from} to={move ? { ...v.to, sub: null } : v.to} art={v.kind !== "transport" ? v.kind : move ? null : "taxi"} />
-          {move && v.kind === "transport" && !leg.choice?.mode && !leg.choice?.booked && <WaysRow leg={leg} tripId={env.tripId} />}
-        </>
+        )
       }
-      status={L("Nasıl gideceğin belli değil", "How you'll go isn't decided")}
+      status={ways ? L("Seç, ben arayayım", "Pick one, I'll search") : L("Nasıl gideceğin belli değil", "How you'll go isn't decided")}
       links={transferLinks({ from, to })}
       onSkip={move ? undefined : hide}
       skipTitle={L("Bu transfer gerekmiyor", "This transfer isn't needed")}

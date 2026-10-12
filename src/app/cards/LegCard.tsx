@@ -41,6 +41,7 @@ export function LegCard({ leg }: { leg: Leg }) {
       ariaLabel={v.ariaLabel}
       domId={`leg-${leg.key}`}
       extraClass={v.arranged ? "pk-leg pk-arranged" : "pk-leg"}
+      topAction={v.arranged ? <span className="pk-lab arranged">{L("Ayarlandı", "Arranged")}</span> : undefined}
       docs={own ? <DocAccess item={own} docs={env.docsFor(own.id)} /> : undefined}
       menu={menu}
       peek={legPeekHasFacts(peek) ? <LegPeekBox peek={peek} /> : null}
