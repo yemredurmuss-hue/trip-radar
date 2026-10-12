@@ -125,13 +125,15 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   const alert = dateAlert(item, env.today);
   const ring = ringOf(item, kind);
   const docs = env.docsFor(item.id);
-  const foot = footOf(item, kind, { options: nav?.total ?? 1, alert, docs: docs.length });
+  // v30: "Ben hallettim" (Ayarlandı): grey and flat, nothing left to do: no "✓ Aldım", no page to book on, no countdown.
+  const arranged = Boolean(item.arranged && item.noBooking != null && item.status !== "booked");
+  const foot = footOf(item, kind, { options: nav?.total ?? 1, alert: arranged ? null : alert, docs: docs.length });
   const stageMenu = useStageMenu(item);
   const { url: datedUrl } = datedLink(item, decision);
   const page = datedUrl ?? item.url;
   const best = ranked?.rank === 1;
   // v11: planned and not bought yet, "✓ Aldım" moves to the top line and the strip's action is the page to book on.
-  const bookTop = foot.action?.does === "book";
+  const bookTop = !arranged && foot.action?.does === "book";
   const goLabel = ["flight", "train", "bus", "minibus", "ferry", "activity"].includes(kind)
     ? L("Bileti al ↗", "Get the ticket ↗")
     : kind === "esim" || kind === "insurance"
@@ -239,7 +241,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       ariaLabel={item.name}
       itemId={item.id}
       badge={<WhoseBadge item={item} trip={env.trip} />}
-      extraClass={[allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined}
+      extraClass={[arranged ? "pk-arranged" : "", allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined}
       art={
         <>
           {/* v11: a booking's stamp, the green ✓ turned a little, faint, in its corner (a ticket's ends fill that corner: none there). */}
@@ -258,6 +260,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
           </button>
         ) : bookedCard ? (
           <span className="pk-lab booked">{L("Rezerve", "Booked")}</span>
+        ) : arranged ? (
+          <span className="pk-lab arranged">{L("Ayarlandı", "Arranged")}</span>
         ) : null
       }
       menu={menu}
@@ -284,7 +288,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       }
       foot={
         <>
-          <CardFoot view={bookTop ? { ...foot, action: null } : foot} nav={nav} best={best} price={facts.price} onAction={act} live={liveFoot}
+          <CardFoot view={bookTop || arranged ? { ...foot, action: null } : foot} nav={nav} best={best} price={facts.price} onAction={act} live={liveFoot}
             go={bookTop && page ? { href: page, label: goLabel } : null}
             alt={altCount > 0 ? { count: altCount, onClick: () => env.onPano(groupKeyOf(item)) } : null}
             quietWait={item.status === "chosen"}

@@ -217,6 +217,34 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go, a
 /** How long a folded card waits for an answer before it counts as "Gerek yok". */
 const FOLD_GRACE_MS = 15_000;
 
+/**
+ * The × folded in place (v30): "X kaldırıldı · Neden? [Gerek yok] [Ben hallettim] · Geri al". Nothing picked after a
+ * while counts as "Gerek yok". Plan cards and every empty card fold the same way.
+ */
+export function FoldLine({ name, itemId, onGone, onArranged, onUndo }: { name: string; itemId?: string; onGone: () => void; onArranged: () => void; onUndo: () => void }) {
+  // Nothing picked after a while counts as "Gerek yok" (spec: the × is for dropping what the plan made, no question left open).
+  useEffect(() => {
+    const t = setTimeout(onGone, FOLD_GRACE_MS);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div className="pk-fold" role="group" aria-label={L(`${name}: kaldırıldı`, `${name}: removed`)} data-item-id={itemId}>
+      <span className="pk-fold-t">
+        <UiIcon name="x" size={13} />
+        <b title={name}>{name}</b> {L("kaldırıldı", "removed")}
+      </span>
+      <span className="pk-fold-q">{L("Neden?", "Why?")}</span>
+      <button type="button" className="pk-fold-b" onClick={onGone}>{L("Gerek yok", "Not needed")}</button>
+      <button type="button" className="pk-fold-b" onClick={onArranged}>
+        <UiIcon name="check" size={13} />
+        {L("Ben hallettim", "I sorted it")}
+      </button>
+      <span className="pk-fold-sp" />
+      <button type="button" className="pk-fold-u" onClick={onUndo}>{L("Geri al", "Undo")}</button>
+    </div>
+  );
+}
+
 export function CardShell(props: {
   kind: CardKind;
   /** The top line's name when it isn't the kind's ("Metro", "Şehir değişimi"). */
@@ -257,30 +285,8 @@ export function CardShell(props: {
     if ((e.target as HTMLElement).closest("button, a, input, select, label, .pk-detail, .pk-menu, .pk-doclist")) return;
     props.onToggle();
   };
-  // Nothing picked after a while counts as "Gerek yok" (spec: the × is for dropping what the plan made, no question left open).
-  useEffect(() => {
-    if (!folded || !foldable) return;
-    const t = setTimeout(() => { setFolded(false); props.onDelete!(); }, FOLD_GRACE_MS);
-    return () => clearTimeout(t);
-  }, [folded]);
   if (folded && foldable) {
-    const name = props.ariaLabel;
-    return (
-      <div className="pk-fold" role="group" aria-label={L(`${name}: kaldırıldı`, `${name}: removed`)} data-item-id={props.itemId}>
-        <span className="pk-fold-t">
-          <UiIcon name="x" size={13} />
-          <b title={name}>{name}</b> {L("kaldırıldı", "removed")}
-        </span>
-        <span className="pk-fold-q">{L("Neden?", "Why?")}</span>
-        <button type="button" className="pk-fold-b" onClick={() => { setFolded(false); props.onDelete!(); }}>{L("Gerek yok", "Not needed")}</button>
-        <button type="button" className="pk-fold-b" onClick={() => { setFolded(false); props.onArranged!(); }}>
-          <UiIcon name="check" size={13} />
-          {L("Ben hallettim", "I sorted it")}
-        </button>
-        <span className="pk-fold-sp" />
-        <button type="button" className="pk-fold-u" onClick={() => setFolded(false)}>{L("Geri al", "Undo")}</button>
-      </div>
-    );
+    return <FoldLine name={props.ariaLabel} itemId={props.itemId} onGone={() => { setFolded(false); props.onDelete!(); }} onArranged={() => { setFolded(false); props.onArranged!(); }} onUndo={() => setFolded(false)} />;
   }
   return (
     <TipOn tip={props.open ? null : (props.peek ?? null)} delay={450} interactive boxClass="tipx-peek">

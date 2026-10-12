@@ -99,3 +99,13 @@ describe("a transfer's ends, short (spec 0.33 §4)", () => {
     }
   });
 });
+
+describe("Ayarlandı (Ben hallettim) on a transfer", () => {
+  it("a transfer said arranged is flagged (grey, 'sen hallettin'); a ticket bought stays Alındı", () => {
+    const v = legCardView(leg({ choice: choice(null, true), status: "booked" }));
+    expect([v.arranged, v.ring]).toEqual([true, "done"]);
+    expect(state(v)).toEqual(["done", "Ayarlandı", "sen hallettin"]);
+    expect(legCardView(leg({ choice: choice("flight", true), status: "booked" })).arranged).toBe(false);
+    expect(legCardView(leg()).arranged).toBe(false);
+  });
+});

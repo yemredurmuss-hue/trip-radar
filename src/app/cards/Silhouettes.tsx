@@ -233,3 +233,21 @@ export function MediaSilhouette({ name }: { name: keyof typeof MEDIA }) {
     </svg>
   );
 }
+
+/** A camp's drawing for an empty stay (static/illus has none for a tent): soft shapes in the others' pastel. */
+export function TentArt({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 160 110" aria-hidden role="img">
+      <ellipse cx="80" cy="96" rx="62" ry="7" fill="#d9e3d3" />
+      <path d="M22 94 80 22l58 72z" fill="#f3d9c9" stroke="#b98d78" strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M80 22 62 94h-40zM80 22l18 72h40z" fill="none" />
+      <path d="M80 22v72" stroke="#b98d78" strokeWidth="2" />
+      <path d="M80 50 62 94h36z" fill="#8c6a5a" opacity=".85" />
+      <path d="M80 50v44" stroke="#f3d9c9" strokeWidth="1.5" />
+      <path d="M80 22l-3-8M80 22l3-8" stroke="#b98d78" strokeWidth="2" strokeLinecap="round" />
+      <path d="M26 94l-12 6M134 94l12 6" stroke="#b98d78" strokeWidth="2" strokeLinecap="round" />
+      <path d="M142 94V76M142 76l-9 12M142 70l-7 10M142 70l7 10" stroke="#8fae85" strokeWidth="3" strokeLinecap="round" fill="none" />
+      <circle cx="26" cy="30" r="9" fill="#fbe8b5" />
+    </svg>
+  );
+}
