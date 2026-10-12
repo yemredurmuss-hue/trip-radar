@@ -315,6 +315,11 @@ export function nextStepText(todo: Todo): string {
   }
 }
 
+/** The sticky bar's "Sıradaki: Osaka konaklaması →": just what it is about, no verb, no date ("Porto konaklama · 8–11 Ekim" → "Porto konaklama"). */
+export function nextStepShort(todo: Todo): string {
+  return todo.title.split(" · ")[0].trim();
+}
+
 export type BudgetSlice = "flight" | "stay" | "transport" | "activity" | "other";
 export const BUDGET_SLICES: BudgetSlice[] = ["flight", "stay", "transport", "activity", "other"];
 const sliceOf = (c: Item["category"]): BudgetSlice =>

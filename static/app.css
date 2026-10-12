@@ -1201,6 +1201,7 @@ button.hx-h:hover { color: var(--hx-accent); }
 .hx-link { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; font-size: 16px; color: var(--hx-accent); }
 .hx-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
+/* @@css-days: reserved insertion point, parallel work (remove marker line when done) */
 /* Who goes: overlapping initials, the names, how many; then the style chips. */
 .hx-people { display: flex; align-items: center; gap: 16px; width: 100%; padding: 0; border: 0; background: none; text-align: left; color: inherit; }
 button.hx-people:hover b { color: var(--hx-accent); }
@@ -2402,6 +2403,7 @@ button.cat-hidden-name:hover { text-decoration: underline; }
   .ar-actions { width: 100%; padding-left: 48px; }
 }
 
+/* @@css-pano: reserved insertion point, parallel work (remove marker line when done) */
 /* the card that just came, and its section's count */
 .ar-new { animation: ar-in .32s ease-out both, ar-ring 1.5s ease-out .32s both; }
 .ar-pop { animation: ar-pop .36s ease-out; transform-origin: right center; }
@@ -3319,6 +3321,7 @@ a.ch-why { text-decoration: none; }
   .ac-r { grid-row: auto; grid-column: 1 / -1; justify-content: flex-start; }
 }
 
+/* @@css-timing: reserved insertion point, parallel work (remove marker line when done) */
 /* The drawings' pictures have a white ground: laid on their tint, the white drops out. */
 .ac-pic.art, .ac-tile .ac-art { mix-blend-mode: multiply; }
 .ac-empty { margin: 4px 0 6px; }

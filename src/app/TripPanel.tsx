@@ -610,7 +610,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           ? { label: L("Paylaş", "Share"), title: L("Bu geziyi paylaş", "Share this trip"), run: onShare }
           : null
         : first
-          ? { label: L("Planı tamamla", "Finish the plan"), title: nextStepText(first), run: () => reveal(first.target) }
+          ? { label: L("Planı tamamla", "Finish the plan"), title: nextStepText(first), short: nextStepShort(first), run: () => reveal(first.target) }
           : unsettled
             ? { label: L("Planı tamamla", "Finish the plan"), run: () => openSection(unsettled.id) }
             : null;

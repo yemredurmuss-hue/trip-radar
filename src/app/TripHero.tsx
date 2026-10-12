@@ -57,6 +57,8 @@ export interface HeroAction {
   label: string;
   /** What it does in words, for the tooltip and screen readers ("Karar ver: Madeira konaklama"). */
   title?: string;
+  /** The sticky bar's short form of the next step (what it is about, no verb). */
+  short?: string;
   run: () => void;
 }
 
