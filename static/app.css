@@ -2404,6 +2404,51 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 }
 
 /* @@css-pano: reserved insertion point, parallel work (remove marker line when done) */
+/* Pano v30 (rows by need, "Senin için", nothing wraps, the price always shown). These come before the Pano's older rules in the file, so they carry `.pn ` to win. */
+.pn .pn-head { flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.pn .pn-head h2, .pn .pn-n, .pn .pn-addlink, .pn .pn-back { white-space: nowrap; flex: none; }
+.pn .pn-search { flex: 1 1 140px; min-width: 0; max-width: 300px; }
+.pn .pn-search input { width: 100%; min-width: 0; }
+.pn .pn-addlink { flex: none; }
+.pn .pn-sp { min-width: 0; }
+.pn .pn-cats button, .pn .pn-seg button, .pn .pn-sort, .pn .pn-cmp, .pn .pn-gp, .pn .pn-gw, .pn .pn-gn { white-space: nowrap; }
+.pn .pn-gh { flex-wrap: wrap; min-width: 0; }
+.pn .pn-gh > b { flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pn .pn-gh > .pn-gn, .pn .pn-gh > .pn-gw, .pn .pn-gh > .pn-cmp { flex: none; }
+.pn .pn-gh > .pn-sp { flex: 1 1 0; }
+.pn .pn-gp { flex: 0 1 auto; min-width: 0; max-width: 100%; }
+.pn .pn-gpt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pn .pn-gpl { flex: none; }
+.pn .pn-cmp { border: 1px solid var(--v-line2); border-radius: 999px; padding: 5px 12px; background: #fff; color: var(--v-accent-ink); }
+.pn .pn-cmp:hover, .pn .pn-cmp[aria-pressed="true"] { background: var(--v-lav); }
+.pn .pn-foryou { display: grid; gap: 2px; margin: 0 0 12px; padding: 11px 14px; border-radius: 14px; background: var(--v-lav); font-size: 14px; line-height: 1.4; color: var(--v-ink); }
+.pn .pn-foryou b { font-weight: 700; overflow-wrap: anywhere; }
+.pn .pn-sep { display: block; height: 0; margin: 8px 4px 6px; border-top: 1px solid var(--v-line2); }
+.pn .pn-ci { display: inline-flex; flex: none; }
+.pn .pn-ci.liked { color: #e11d5b; }
+.pn .pn-ci svg { display: block; }
+.pn-body .pn-cats > button[data-cat="liked"] { margin-top: 0; border-top: 0; border-radius: 12px; }
+.pn-body .pn-cats button { display: flex; align-items: center; gap: 10px; }
+.pn-body .pn-cats button .pn-cl { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* a price is never cut: the amount on one line, what it is for ("2 people total") under it */
+.pn .pn-price { flex: 1 1 0; min-width: 0; display: grid; gap: 1px; line-height: 1.2; white-space: normal; overflow: visible; font-size: 12px; }
+.pn .pn-price b { display: block; font-size: 16.5px; white-space: nowrap; }
+.pn .pn-price .pn-pl { display: block; overflow-wrap: anywhere; }
+.pn .pn-act { align-items: center; }
+/* a narrow Plan column (the chat beside it): the menu goes on top, the header sheds words */
+@container panel (max-width: 800px) {
+  .pn .pn-body { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .pn .pn-body .pn-cats { position: static; flex-direction: row; overflow-x: auto; gap: 4px; padding-bottom: 4px; scrollbar-width: none; }
+  .pn .pn-body .pn-cats button { width: auto; flex: none; white-space: nowrap; }
+  .pn .pn-sep { width: 1px; height: auto; align-self: stretch; margin: 4px 4px; border-top: 0; border-left: 1px solid var(--v-line2); flex: none; }
+  .pn .pn-head h2 { font-size: 26px; }
+}
+@container panel (max-width: 460px) {
+  .pn .pn-addlbl { display: none; }
+  .pn .pn-addlink { padding: 7px 10px; }
+  .pn .pn-gp .pn-gpl { display: none; }
+  .pn .pn-gh { gap: 6px 8px; }
+}
 /* the card that just came, and its section's count */
 .ar-new { animation: ar-in .32s ease-out both, ar-ring 1.5s ease-out .32s both; }
 .ar-pop { animation: ar-pop .36s ease-out; transform-origin: right center; }

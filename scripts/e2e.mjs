@@ -1943,14 +1943,15 @@ try {
   await pano.locator('.pn-cats [data-cat="stay"]').click();
   assert.ok((await pano.locator(".pn-group").count()) >= 1, "stays grouped by need");
   await app.screenshot({ path: `${out}/30b-pano-stays.png` });
-  // v11: Kartlar | Karşılaştır — a need's options side by side (fit, the same rows for all, what was asked, ✓ ✗ ?).
-  await pano.locator(".pn-view button", { hasText: "Karşılaştır" }).click();
+  // v30: a need's own "Karşılaştır" turns its row into a table (fit, the same rows for all, what was asked, ✓ ✗ ?); there is no global toggle.
+  assert.equal(await pano.locator(".pn-view").count(), 0, "no global Kartlar | Karşılaştır switch");
+  await pano.locator(".pn-cmp", { hasText: "Karşılaştır" }).first().click();
   const panoTable = pano.locator(".pn-table").first();
   await panoTable.waitFor();
   assert.ok((await panoTable.locator("thead th .pn-tn").count()) >= 2, "two or more options side by side");
   assert.ok((await panoTable.locator("tbody th").allInnerTexts()).includes("Fiyat"));
   await app.screenshot({ path: `${out}/30d-pano-compare.png` });
-  await pano.locator(".pn-view button", { hasText: "Kartlar" }).click();
+  await pano.locator(".pn-cmp", { hasText: "Kartlar" }).first().click();
   // "Kayıtlarda ara": every word somewhere in the record; nothing found says so.
   await pano.getByRole("searchbox", { name: "Kayıtlarda ara" }).fill("jardim");
   assert.deepEqual(await pano.locator(".pn-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Jardim Stay"]);

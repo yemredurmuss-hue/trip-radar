@@ -1,6 +1,6 @@
 // The Pano (v11 phase 5, lib/pano.ts): what's on it, its tabs and state filter, the sort, the groups by need.
 import { describe, expect, it } from "vitest";
-import { inCat, inState, matchesQuery, panoCounts, panoEntries, panoGroups, sortEntries, withLoves } from "../src/lib/pano";
+import { inCat, inState, forYouOf, matchesQuery, needTitleOf, needWhenOf, panoCityRows, panoCounts, panoEntries, panoGroups, panoRows, sortEntries, withLoves } from "../src/lib/pano";
 import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -60,6 +60,54 @@ describe("the Pano", () => {
       [1, null],
       [3, "Gion Machiya Evi"],
     ]);
+  });
+});
+
+describe("a row's title and the rows of a tab (v30)", () => {
+  const entries = panoEntries(items);
+  const stays = entries.filter((e) => e.section === "stay");
+
+  it("names a stay's row 'city · nights · records', a flight's 'route · records'", () => {
+    expect(needTitleOf(stays[0].item, 3)).toBe("Kyoto · 5 gece · 3 kayıt");
+    expect(needWhenOf(stays[0].item)).toBeTruthy();
+    expect(needTitleOf(stays[0].item)).toMatch(/^Kyoto · /); // without a count: the card's need line, dates and all
+    const flight = makeItem({ category: "flight", needKey: "flight:out", flight: { from: "IST", to: "OPO" } } as Partial<Item>);
+    expect(needTitleOf(flight, 2)).toMatch(/ → .* · 2 kayıt$/);
+  });
+
+  const todo = (name: string, city: string | null, createdAt: number) => makeItem({ name, category: "food", city, status: "saved", booking: "none", needKey: `food:${name}`, createdAt } as Partial<Item>);
+  const trip = panoEntries([
+    stay("Porto otel", "saved", 100, 1, { city: "Porto", needKey: "stay:porto", dates: { start: "2027-04-01", end: "2027-04-04", source: "url" } }),
+    stay("Lizbon otel", "saved", 100, 2, { city: "Lizbon", needKey: "stay:lizbon", dates: { start: "2027-04-04", end: "2027-04-07", source: "url" } }),
+    todo("Lizbon kafe", "Lizbon", 3),
+    todo("Porto kafe", "Porto", 4),
+    todo("Porto pastane", "porto", 5),
+    todo("Şehir dışı", null, 6),
+    todo("Sintra", "Sintra", 7),
+  ]);
+
+  it("makes the things to do one row per city, in trip order, no decision, the ones without a city last", () => {
+    const rows = panoRows(trip, "todo");
+    expect(rows.every((r) => r.kind === "city")).toBe(true);
+    expect(rows.map((r) => (r.kind === "city" ? [r.city, r.entries.length] : null))).toEqual([["Porto", 2], ["Lizbon", 1], ["Sintra", 1], [null, 1]]);
+    expect(panoCityRows(trip.filter((e) => e.section === "todo"), []).length).toBe(4);
+  });
+
+  it("'Tümü' says the same as the tabs: needs to decide first, activities as needs too, then cities", () => {
+    const act = (name: string, key: string) => makeItem({ name, category: "activity", city: "Porto", needKey: key, status: "saved", booking: "needed", createdAt: 9 } as Partial<Item>);
+    const all = panoEntries([...trip.map((e) => e.item), act("Tur A", "activity:porto"), act("Tur B", "activity:porto")]);
+    const kinds = panoRows(all, "all").map((r) => r.kind + (r.kind === "need" ? `:${r.group.entries.length}` : ""));
+    expect(kinds).toEqual(["need:1", "need:1", "need:2", "city", "city", "city", "city"]);
+    expect(panoRows(all, "activity").map((r) => r.kind)).toEqual(["need"]);
+  });
+});
+
+describe("forYouOf (Senin için)", () => {
+  const stays = panoEntries(items).filter((e) => e.section === "stay");
+  it("says nothing without a leader, for one option, or for a booked need: never invented", () => {
+    expect(forYouOf(stays, undefined, undefined)).toBeNull();
+    expect(forYouOf(stays.slice(0, 1), undefined, undefined)).toBeNull();
+    expect(forYouOf(stays.map((e) => ({ ...e, inPlan: "booked" as const })), undefined, undefined)).toBeNull();
   });
 });
 

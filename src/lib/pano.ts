@@ -3,12 +3,14 @@
 // Karar bekleyen · Planda), the sort, the likes and the groups by need. Pure: the board draws what this says.
 import { cityOfAirport } from "./airports";
 import { isIdea } from "./booking";
+import { cardFacts } from "./cardFacts";
 import { cardKind, cardKindLabel } from "./cardKinds";
 import { planSectionOfItem, type SectionId } from "./categories";
-import type { GroupDecision } from "./decision";
+import { advantageOver, type GroupDecision } from "./decision";
 import { L } from "./i18n";
-import { formatDateRange, isoDate } from "./items";
-import { groupKeyOf } from "./plan";
+import { capitalize, nNights } from "./i18nText";
+import { formatDateRange, isoDate, nightsBetween } from "./items";
+import { groupKeyOf, stayRange } from "./plan";
 import { voteKeyOf, type Vote } from "./share/votes";
 import type { Item } from "./types";
 
@@ -133,13 +135,112 @@ export function panoCatLabel(cat: PanoCat): string {
   }
 }
 
-/** A need's name, as the Plan says it: "Porto → Lizbon", "Porto · 8–11 Eki", "eSIM · Portekiz". */
-export function needTitleOf(item: Item): string {
-  if (item.category === "flight" && item.flight?.from && item.flight?.to) return `${cityOfAirport(item.flight.from)} → ${cityOfAirport(item.flight.to)}`;
-  const start = isoDate(item.dates.start);
-  const when = start ? formatDateRange(start, isoDate(item.dates.end)) : null;
+/** "3 kayıt" / "3 saved": how many records a row holds. */
+export const recordsText = (n: number): string => L(`${n} kayıt`, `${n} saved`);
+
+/**
+ * A need's name, as the Plan says it: "Porto → Lizbon", "Porto · 8–11 Eki", "eSIM · Portekiz". With `records` it is a
+ * Pano row's title (v30): "Osaka · 3 gece · 3 kayıt", "Porto → Lizbon · 4 kayıt", the dates left to `needWhenOf`.
+ */
+export function needTitleOf(item: Item, records?: number): string {
+  const route = item.category === "flight" && item.flight?.from && item.flight?.to ? `${cityOfAirport(item.flight.from)} → ${cityOfAirport(item.flight.to)}` : null;
+  if (records != null) {
+    const range = item.category === "stay" ? stayRange(item) : null;
+    const nights = range ? nightsBetween(range.start, range.end) : 0;
+    const head = route ? [route] : item.category === "stay" ? [item.city ?? L("Konaklama", "Stay"), nights > 0 ? nNights(nights) : null] : [cardKindLabel(cardKind(item)), item.city ?? item.country];
+    return [...head, recordsText(records)].filter(Boolean).join(" · ");
+  }
+  if (route) return route;
+  const when = needWhenOf(item);
   if (item.category === "stay") return [item.city ?? L("Konaklama", "Stay"), when].filter(Boolean).join(" · ");
   return [cardKindLabel(cardKind(item)), item.city ?? item.country, when].filter(Boolean).join(" · ");
+}
+
+/** The dates a need's row carries beside its title ("8–11 Eki"), when its records say them. */
+export function needWhenOf(item: Item): string | null {
+  const start = isoDate(item.dates.start);
+  return start ? formatDateRange(start, isoDate(item.dates.end)) : null;
+}
+
+/** A row of the Pano: a need to decide (its options), a city's things to do (not alternatives), or the inspiration. */
+export type PanoRow =
+  | { kind: "need"; key: string; group: PanoGroup }
+  | { kind: "city"; key: string; city: string | null; entries: PanoEntry[] }
+  | { kind: "inspo"; key: string; entries: PanoEntry[] };
+
+const foldCity = (c: string | null | undefined) => (c ?? "").trim().toLocaleLowerCase("tr");
+
+/** The cities of the trip in the order it goes: those of the stays by their dates; any other city after, as met. */
+export function cityOrderOf(entries: PanoEntry[]): string[] {
+  const stays = entries
+    .filter((e) => e.section === "stay" && e.item.city)
+    .map((e) => ({ city: foldCity(e.item.city), at: stayRange(e.item)?.start ?? isoDate(e.item.dates.start) ?? "9999" }))
+    .sort((a, b) => a.at.localeCompare(b.at));
+  return [...new Set(stays.map((s) => s.city))];
+}
+
+/** The things to do by city, in trip order; the ones without a city last. */
+export function panoCityRows(list: PanoEntry[], order: string[] = []): PanoRow[] {
+  const rank = (c: string) => {
+    const i = order.indexOf(c);
+    return i < 0 ? order.length : i;
+  };
+  const byCity = new Map<string, { city: string | null; entries: PanoEntry[] }>();
+  for (const e of list) {
+    const key = foldCity(e.item.city);
+    const row = byCity.get(key) ?? { city: e.item.city?.trim() || null, entries: [] };
+    row.entries.push(e);
+    byCity.set(key, row);
+  }
+  return [...byCity.entries()]
+    .map(([key, r], i) => ({ key, ...r, i }))
+    .sort((a, b) => Number(a.key === "") - Number(b.key === "") || rank(a.key) - rank(b.key) || a.i - b.i)
+    .map((r) => ({ kind: "city" as const, key: `city:${r.key}`, city: r.city, entries: r.entries }));
+}
+
+const DECISION_SECTIONS: readonly PanoEntry["section"][] = ["flight", "stay", "transport", "other"];
+
+/**
+ * What the Pano draws for a tab (v30), the same in "Tümü" and in a tab: needs to decide (flights, stays, rides,
+ * documents, and the activities, each need one row with its options), then one row per city for the things to do
+ * (trip order, no decision: they aren't alternatives), then the inspiration as one row. `all`: everything on the
+ * board, for the cities' order.
+ */
+export function panoRows(shown: PanoEntry[], cat: PanoCat, all: PanoEntry[] = shown): PanoRow[] {
+  const need = (list: PanoEntry[]): PanoRow[] => panoGroups(list).map((group) => ({ kind: "need", key: group.group, group }));
+  const sections = cat === "all" || cat === "liked" ? null : cat;
+  const of = (...secs: PanoEntry["section"][]) => shown.filter((e) => secs.includes(e.section) && (!sections || e.section === sections));
+  const inspo = of("inspo");
+  return [
+    ...need(of(...DECISION_SECTIONS)),
+    ...need(of("activity")),
+    ...panoCityRows(of("todo"), cityOrderOf(all)),
+    ...(inspo.length ? [{ kind: "inspo" as const, key: "inspo", entries: inspo }] : []),
+  ];
+}
+
+/**
+ * "Senin için" (the line under a need row's header): why the option leading this need fits this trip, from the row's
+ * own data: what it has of what the traveller asked and of the pros read for it, and what the runner-up does better.
+ * Null when there's nothing to say: a single option, a booked need, no clear leader, or nothing real to put in it.
+ */
+export function forYouOf(entries: PanoEntry[], decision: GroupDecision | undefined, ctx: Parameters<typeof cardFacts>[2]): { lead: string; text: string } | null {
+  if (entries.length < 2 || entries.some((e) => e.inPlan === "booked")) return null;
+  const winner = decision?.status === "ok" ? decision.winner : null;
+  if (!decision || !winner || !entries.some((e) => e.item.id === winner.item.id)) return null;
+  const facts = cardFacts(winner.item, decision, ctx);
+  const have = [
+    ...facts.needs.filter((n) => n.state === "yes").map((n) => n.text),
+    ...facts.pros.filter((p) => p.mine).map((p) => p.text),
+    ...facts.pros.filter((p) => !p.mine).map((p) => p.text),
+  ];
+  const seen = new Set<string>();
+  const strengths = have.filter((t) => t.trim() && !seen.has(t.toLocaleLowerCase("tr")) && seen.add(t.toLocaleLowerCase("tr"))).slice(0, 2);
+  const edge = decision.runnerUp ? advantageOver(decision.runnerUp, winner, ctx?.currency ?? "EUR") : null;
+  const short = (n: string) => n.split(" · ")[0];
+  const instead = decision.runnerUp && edge ? `${short(decision.runnerUp.item.name)}: ${edge}` : null;
+  const parts = [strengths.length ? capitalize(strengths.join(" · ")) : null, instead].filter((x): x is string => Boolean(x));
+  return parts.length ? { lead: winner.item.name, text: `${parts.join("; ")}.`.replace(/\.\.$/, ".") } : null;
 }
 
 
