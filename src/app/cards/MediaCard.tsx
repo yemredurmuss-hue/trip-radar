@@ -11,7 +11,7 @@ import type { CancelLine } from "../../lib/cardTime";
 import { BrandPill } from "./RideCard";
 import { campArt } from "../../lib/playbooks";
 import type { Item } from "../../lib/types";
-import { KindIcon, MediaSilhouette } from "./Silhouettes";
+import { KindIcon, MediaSilhouette, TentArt } from "./Silhouettes";
 
 /** A stay's rating as the site writes it: "9,0 Muhteşem · 770 yorum" (a score out of 10) or "★ 4,9 Misafirler çok sevmiş" (out of 5). */
 export interface StayRating {
@@ -23,6 +23,19 @@ export interface StayRating {
 
 /** The v11 drawing for a kind with no photo (static/illus; index.json lists them). */
 export const ILLUS: Partial<Record<CardKind, string>> = { stay: "otel", activity: "etkinlik-tur", insurance: "sigorta", esim: "esim", food: "restoran", todo: "yapilacak", note: "not" };
+/** A stay's drawing by the kind of place (plan v30): a hotel, a flat or house (Airbnb's too), a camper van, a tent. */
+export type StayArt = "otel" | "ev-daire" | "karavan" | "tent";
+export function stayArtOf(item: Pick<Item, "metrics" | "provider" | "url"> | null | undefined): StayArt {
+  const kind = item?.metrics?.stayKind;
+  if (kind === "camp") return "tent";
+  if (kind === "vehicle") return "karavan";
+  if (kind === "apartment" || kind === "house") return "ev-daire";
+  if (!kind || kind === "other") return /airbnb/i.test(`${item?.provider ?? ""} ${item?.url ?? ""}`) ? "ev-daire" : "otel";
+  return "otel";
+}
+/** The picture itself, whole (never cropped: object-fit contain in the CSS). */
+export const StayDrawing = ({ art }: { art: StayArt }) => (art === "tent" ? <TentArt className="ek-tent" /> : <img src={`illus/${art}.png`} alt="" />);
+
 /** The drawing for any kind, the ways of travel too (the Pano's cards). */
 export const illusOf = (kind: CardKind): string | null =>
   ILLUS[kind] ?? ({ train: "tren", bus: "otobus", minibus: "minibus", ferry: "vapur", taxi: "taksi-transfer", transfer: "taksi-transfer", car: "arac-kiralama", moto: "motosiklet", rv: "karavan", bike: "bisiklet" } as Partial<Record<CardKind, string>>)[kind] ?? null;

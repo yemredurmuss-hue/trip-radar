@@ -293,6 +293,8 @@ export interface LegCardView {
   ariaLabel: string;
   /** A move by plane not booked yet: a flight search for the day. */
   searchUrl: string | null;
+  /** v30: "Ben hallettim": the traveller says they arranged it themselves (no ticket of ours): grey and flat, "Ayarlandı · sen hallettin". */
+  arranged: boolean;
 }
 
 /** Ways between cities that need a ticket; everything else (taxi, transfer, metro, a city bus) is planned once said. */
@@ -355,6 +357,8 @@ export function legCardView(leg: Leg): LegCardView {
   const label = kind !== "transport" ? cardKindLabel(kind) : mode ? MODE_LABELS[mode] : move ? L("Şehir değişimi", "City change") : L("Transfer", "Transfer");
   const ticketed = move && mode != null && LEG_TICKETS.includes(mode);
   const booked = leg.status === "booked" || Boolean(leg.choice?.booked);
+  // "Ben hallettim" (arranged outside the tool, no ticket of ours): not "Alındı" for a ticket bought (that one is booked, green).
+  const arranged = Boolean(leg.choice?.booked) && !ticketed && !leg.options.some((i) => i.status === "booked");
   // Set aside by the traveller as needing no ticket (0.36.47): an idea, out of the booked percentage.
   const aside = !booked && Boolean(leg.choice?.noBooking);
   const planned = !booked && (mode != null || leg.status === "chosen" || leg.status === "planned");
@@ -362,7 +366,8 @@ export function legCardView(leg: Leg): LegCardView {
   const to = move ? (leg.to.city ?? leg.to.label) : leg.to.label;
   const date = move ? formatDateRange(leg.date, null) : null;
   let foot: FootView;
-  if (booked) foot = { left: state("done", ticketed ? L("Alındı", "Booked") : L("Ayarlandı", "Arranged"), settled?.name ?? null), action: null };
+  if (arranged) foot = { left: state("done", L("Ayarlandı", "Arranged"), settled?.name ?? L("sen hallettin", "you sorted it")), action: null };
+  else if (booked) foot = { left: state("done", ticketed ? L("Alındı", "Booked") : L("Ayarlandı", "Arranged"), settled?.name ?? null), action: null };
   else if (planned && ticketed && aside) foot = { left: state("done", L("Fikir", "Idea"), L("bilet gerekmiyor", "no ticket needed")), action: { label: L("Bileti aldım", "I got the ticket"), does: "book" } };
   else if (planned && ticketed) foot = { left: state("wait", L("Planlandı", "Planned"), L("bilet alınmadı", "no ticket yet")), action: { label: L("Bileti aldım", "I got the ticket"), does: "book" } };
   else if (planned) foot = { left: state("done", L("Planlandı", "Planned"), settled?.name ?? L("rezervasyon gerekmez", "no booking needed")), action: null };
@@ -378,5 +383,6 @@ export function legCardView(leg: Leg): LegCardView {
     foot,
     ariaLabel: `${from} → ${to}`,
     searchUrl: move && mode === "flight" && !booked ? flightSearchUrl("from", from, leg.date, to) : null,
+    arranged,
   };
 }

@@ -12,17 +12,21 @@ import type { Choice } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
 import { L } from "../../lib/i18n";
 import { isAiOption, needTitleOf } from "../../lib/pano";
-import { groupKeyOf } from "../../lib/plan";
+import { groupKeyOf, rangeOfGroupKey, stayRange } from "../../lib/plan";
+import { estimatedRange, rangeLabel } from "../../lib/estRange";
+import { nightsBetween } from "../../lib/items";
+import { nNights } from "../../lib/i18nText";
 import { sameName } from "../../lib/tripSettings";
 import type { Item } from "../../lib/types";
-import { chooseItem, setNeedNotNeeded } from "../actions";
+import { addArrangedLike, chooseItem, setNeedNotNeeded } from "../actions";
 import { useMyName } from "../Profile";
 import { CardShell } from "./CardShell";
 import { useCardEnv } from "./PlanCard";
 import { useStageMenu } from "./stageMenu";
 import { AskButton } from "./AskButton";
 import { TransportCardBody } from "./TransportCard";
-import { ILLUS, illusOf } from "./MediaCard";
+import { ILLUS, illusOf, StayDrawing, stayArtOf } from "./MediaCard";
+import { useWhoMenu } from "./whoMenu";
 import { FallbackImg } from "../FallbackImg";
 import { brandOf } from "../../lib/brands";
 import { BrandPill } from "./RideCard";
@@ -92,6 +96,14 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
   const self = useSelfLinks(first);
   // One option only: its own ••• (Çıkar, Sil…), as its card had.
   const single = useStageMenu(first);
+  const forWho = useWhoMenu(first);
+  // v30: a stay, an eSIM, insurance still to choose is the empty card's shape (a drawing, the name large, "Arıyoruz", "N seçenek ⌄"),
+  // with a range only from three or more real prices ("tahmini"), else the real "from €X".
+  const shaped = kind === "stay" || kind === "esim" || kind === "insurance";
+  const own = first.category === "stay" ? (rangeOfGroupKey(groupKeyOf(first)) ?? stayRange(first)) : null;
+  const nights = own ? nightsBetween(own.start, own.end) : null;
+  const est = shaped ? estimatedRange(items, nights) : null;
+  const arranged = () => void addArrangedLike(first, title);
   const face = isTransportKind(kind) ? transportFace(first, kind as Parameters<typeof transportFace>[1], env.legEnds.get(first.id)) : null;
   const route = face && (face.from || face.to) ? { ...face, from: face.from && { ...face.from, time: null }, to: face.to && { ...face.to, time: null }, middle: null, logo: null } : null;
   // v30: "N seçenek ›" turns the card in place: its back is the options (the row's whole width).
@@ -106,12 +118,36 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
         itemId={first.id}
         extraClass="nd-card"
         onDelete={() => void setNeedNotNeeded(items).then(env.offer)}
+        onArranged={arranged}
         deleteLabel={L("Gerek yok", "Not needed")}
         topAction={<span className="pk-lab open">{L("Arıyoruz", "Searching")}</span>}
-        menu={n === 1 ? single.menu : []}
+        menu={[
+          { label: L("Değiştir", "Change"), run: onOpen },
+          { label: L("Ben hallettim", "I've got it"), run: arranged },
+          ...(n === 1 ? [...forWho, ...single.menu].map((e, i) => ({ ...e, sep: i === 0 })) : []),
+        ]}
         open={false}
         onToggle={onOpen}
         body={
+          shaped ? (
+            <div className={`nd-body nd-shaped${kind === "stay" ? " nd-stay" : " nd-pic"}`}>
+              {kind === "stay" ? (
+                <span className="ek-band" aria-hidden>
+                  <StayDrawing art={stayArtOf(first)} />
+                </span>
+              ) : (
+                <span className="ek-tile ek-ill" aria-hidden>
+                  <img src={`illus/${ILLUS[kind]}.png`} alt="" />
+                </span>
+              )}
+              <div className="ek-txt">
+                <h3>{first.category === "stay" && first.city ? first.city : title}</h3>
+                {kind === "stay" && (wants.length > 0 || nights) && <small>{[nights ? nNights(nights) : null, ...wants].filter(Boolean).join(" · ")}</small>}
+                {!est && lowText && <p className="nd-sub">{L(`${lowText}'den başlıyor`, `from ${lowText}`)}</p>}
+              </div>
+              {self.length > 0 && <div className="nd-self"><SearchRow links={self} /></div>}
+            </div>
+          ) : (
           <div className={`nd-body${ILLUS[kind] ? " nd-has-art" : ""}${route ? " nd-route" : ""}`}>
             {ILLUS[kind] && <img className="nd-art" src={`illus/${ILLUS[kind]}.png`} alt="" />}
             {/* v11: a ticket still to find shows its ends (no hours yet); a stay its city (the nights are on the top line). */}
@@ -124,15 +160,23 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
             )}
             {self.length > 0 && <div className="nd-self"><SearchRow links={self} /></div>}
           </div>
+          )
         }
         foot={
           <div className="pk-foot nd-foot">
-            <button type="button" className="nd-opts" onClick={(e) => (e.stopPropagation(), onOpen())} aria-haspopup="dialog">
+            <button type="button" className={`nd-opts${shaped ? " nd-chip" : ""}`} onClick={(e) => (e.stopPropagation(), onOpen())} aria-haspopup="dialog">
               <Faces items={items} />
               {L(`${n} seçenek`, `${n} option${n === 1 ? "" : "s"}`)}
               <UiIcon name="right" size={13} />
             </button>
             <AskButton text={L(`${title} için öneri bul`, `Find options for ${title}`)} />
+            {est && (
+              <span className="nd-est" title={L(`Tahmini · kaynaklardaki ${est.n} gerçek teklife göre`, `Estimate · from ${est.n} real offers in the sources`)}>
+                <b>{rangeLabel(est)}</b>
+                {est.unit !== "total" && <small> / {est.unit === "night" ? L("gece", "night") : L("kişi", "person")}</small>}
+                <i>{L("tahmini", "estimate")}</i>
+              </span>
+            )}
             {n === 1 && single.field}
           </div>
         }

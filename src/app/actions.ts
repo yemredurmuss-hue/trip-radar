@@ -15,6 +15,7 @@ import { checkVehicle, overlaps, periodOf, vehicleOf } from "../lib/vehicles";
 import { nightsKey } from "../lib/timeline";
 import { offerItem, type Need, type Offer } from "../lib/offerSource";
 import type { DateRange } from "../lib/plan";
+import { plannedItem, type PlannedInput } from "../lib/planned";
 import type { Category, Item, ItemStatus, Suggestion, SuggestionState, Trip } from "../lib/types";
 import type { Undoable } from "../lib/undoables";
 
@@ -118,6 +119,65 @@ export async function setArranged(item: Item, arranged: boolean): Promise<void> 
     await addEvent(item.tripId, L(`${item.name}: ayarlandı işareti geri alındı`, `${item.name}: arranged mark taken back`));
   }
   notifyChanged();
+}
+
+/**
+ * "Ben hallettim" on a need that has no record of its own (a need with saved options, empty nights): a record of the
+ * need's kind is made and set aside as arranged ("Ayarlandı · sen hallettin"); the saved options stay under it.
+ * `like` gives the kind, the need and the nights; none of its page, price or photo is copied.
+ */
+export async function addArrangedLike(like: Item, name: string): Promise<void> {
+  const now = Date.now();
+  const made: Item = {
+    ...like,
+    id: newId(),
+    captureIds: [],
+    key: null,
+    name,
+    provider: null,
+    summary: "",
+    optionDetail: null,
+    url: null,
+    imageUrl: null,
+    price: { amount: null, currency: null, scope: "unknown", taxesIncluded: "unknown", source: "none", observedAt: now },
+    priceHistory: [],
+    cancellation: { summary: null, freeUntil: null, source: "none" },
+    rating: { value: null, scale: null, count: null, source: "none" },
+    flight: like.flight ? { from: like.flight.from, to: like.flight.to, departure: null, arrival: null, carrier: null, flightNumber: null, stops: null } : null,
+    highlights: [],
+    concerns: [],
+    reviewSummary: null,
+    missing: [],
+    status: "chosen",
+    statusNote: null,
+    statusAt: now,
+    addedBy: undefined,
+    likedBy: undefined,
+    origin: undefined,
+    noBooking: now,
+    arranged: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await (await db()).put("items", made);
+  await addEvent(like.tripId, L(`${name}: sen hallettin, plana ayarlandı olarak girdi`, `${name}: you arranged it, in the plan as arranged`));
+  notifyChanged();
+}
+
+/** "Ben hallettim" on an empty card with no record (empty nights, a missing flight): the plan it stands for is made and set aside as arranged. */
+export async function addArrangedPlanned(tripId: string, input: PlannedInput, name?: string): Promise<void> {
+  const now = Date.now();
+  const made = plannedItem(input, tripId, newId(), now);
+  const named = name ? { ...made, name } : made;
+  await (await db()).put("items", { ...named, noBooking: now, arranged: true, statusAt: now });
+  await addEvent(tripId, L(`${named.name}: sen hallettin, plana ayarlandı olarak girdi`, `${named.name}: you arranged it, in the plan as arranged`));
+  notifyChanged();
+}
+
+/** "Ben hallettim" on an eSIM or insurance suggestion: the record is added (as "Plana koy" does), then set aside as arranged. */
+export async function arrangeSuggested(tripId: string, s: Suggestion): Promise<void> {
+  const out = await addSuggested(tripId, s);
+  if (out?.kind === "added" && out.undo.kind === "suggestion" && out.undo.item) await setArranged(out.undo.item, true);
 }
 
 /**

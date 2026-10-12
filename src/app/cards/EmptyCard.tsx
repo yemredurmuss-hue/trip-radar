@@ -4,7 +4,7 @@
 // and the name), on a white ground in a dashed frame, the cities a size smaller, the drawing faint, no price and
 // no action button. The bottom line: one grey word where it stands, then "Ara:" and the brands' searches.
 // The board picks this card or the full one (TripPanel's Plan cards); the full card is untouched.
-import { useRef, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { addDoc, DOC_ACCEPT } from "../../lib/docs";
 import { dateAlert, type DateAlert } from "../../lib/progress";
 import { useLegOpen } from "./legOpen";
@@ -27,9 +27,11 @@ import { UiIcon } from "./Silhouettes";
 import { fromOf } from "../../lib/tripSettings";
 import { headCountOf, whoseOf } from "../../lib/whose";
 import { useWhoCtx, WhoseBadge } from "./WhoseBadge";
-import { setHidden, setItemStatus, updateTrip } from "../actions";
+import { addArrangedPlanned, arrangeSuggested, setArranged, setHidden, setItemStatus, setNotNeeded, updateTrip } from "../actions";
 import { kindLabel, LegBody } from "../LegRow";
-import { CardMenu, DeleteX, Ring, type MenuEntry } from "./CardShell";
+import { CardMenu, DeleteX, FoldLine, Ring, type MenuEntry } from "./CardShell";
+import { ILLUS, StayDrawing, stayArtOf, type StayArt } from "./MediaCard";
+import { useWhoMenu } from "./whoMenu";
 import { useEmptyEnv } from "./emptyEnv";
 import { Editable, InlineEdit, useInlineEdit } from "./InlineEdit";
 import { CardDate } from "./CardDate";
@@ -93,13 +95,13 @@ export function EmptyRoute({ from, to, art, fields }: { from: End | null; to: En
 }
 
 /** A stay's, an activity's, an eSIM's body: the drawing's tile and the name, a grey line under it. */
-export function EmptyMedia({ kind, drawing, title, sub }: { kind: CardKind; drawing?: MediaDrawing | null; title: ReactNode; sub: ReactNode }) {
-  // Plan v30: a stay not chosen yet is the stay card's shape: the kind's drawing on a band across the top, the place large under it.
+export function EmptyMedia({ kind, drawing, title, sub, art = "otel" }: { kind: CardKind; drawing?: MediaDrawing | null; title: ReactNode; sub: ReactNode; art?: StayArt }) {
+  // Plan v30: a stay not chosen yet is the stay card's shape: the kind's drawing (hotel, flat, camper van, tent) whole on a band across the top, the place large under it.
   if (kind === "stay") {
     return (
       <div className="ek-media ek-stayband">
         <span className="ek-band" aria-hidden>
-          <img src="illus/otel.png" alt="" />
+          <StayDrawing art={art} />
         </span>
         <span className="ek-txt">
           <b>{title}</b>
@@ -108,10 +110,12 @@ export function EmptyMedia({ kind, drawing, title, sub }: { kind: CardKind; draw
       </div>
     );
   }
+  // eSIM and insurance: their drawing (illus/esim, illus/sigorta), whole, in place of the small tile.
+  const picture = kind === "esim" || kind === "insurance" ? ILLUS[kind] : null;
   return (
-    <div className="ek-media">
-      <span className="ek-tile" aria-hidden>
-        {drawing ? <MediaSilhouette name={drawing} /> : <KindIcon kind={kind} size={26} />}
+    <div className={`ek-media${picture ? " ek-pic" : ""}`}>
+      <span className={`ek-tile${picture ? " ek-ill" : ""}`} aria-hidden>
+        {picture ? <img src={`illus/${picture}.png`} alt="" /> : drawing ? <MediaSilhouette name={drawing} /> : <KindIcon kind={kind} size={26} />}
       </span>
       <span className="ek-txt">
         <b>{title}</b>
@@ -151,13 +155,20 @@ export function EmptyShell(props: {
   alert?: DateAlert | null;
   /** Hidden helpers inside the card (the file picker "Belge ekle" opens). */
   extra?: ReactNode;
+  /** v30: the ×. It doesn't take the card away: it folds in place into "Neden? [Gerek yok] [Ben hallettim] · Geri al" (nothing picked in 15 s counts as "Gerek yok"). */
+  fold?: { gone: () => void; arranged: () => void };
 }) {
+  const [folded, setFolded] = useState(false);
   const style = { "--mc": cardKindColor(props.kind) } as CSSProperties;
   const tap = (e: MouseEvent) => {
     if (!props.onToggle || (e.target as HTMLElement).closest("button, a, input, select, label, .pk-detail, .pk-menu, .pk-doclist")) return;
     props.onToggle();
   };
   const toggle = props.onToggle;
+  if (folded && props.fold) {
+    const { gone, arranged } = props.fold;
+    return <FoldLine name={props.ariaLabel} itemId={props.itemId} onGone={() => { setFolded(false); gone(); }} onArranged={() => { setFolded(false); arranged(); }} onUndo={() => setFolded(false)} />;
+  }
   return (
     <>
       <article
@@ -179,7 +190,7 @@ export function EmptyShell(props: {
           {props.date && <span className="pk-date">· {props.date}</span>}
           <span className="pk-end">
             <span className="pk-lab open">{L("Arıyoruz", "Searching")}</span>
-            {props.x}
+            {props.fold ? <DeleteX name={props.ariaLabel} hide onDelete={() => setFolded(true)} className={props.extraClass?.includes("stay-open") ? "stay-x" : undefined} /> : props.x}
             <CardMenu entries={props.menu} />
           </span>
         </div>
@@ -258,12 +269,15 @@ function EmptyRecordFace({ item }: { item: Item }) {
   const kind = cardKind(item, env.legModes.get(item.id) ?? null);
   const action = footOf(item, kind).action;
   const picker = useRef<HTMLInputElement>(null);
+  const forWho = useWhoMenu(item);
   const menu: MenuEntry[] = [
+    ...(item.origin === "chat" ? [{ label: L("Değiştir", "Change"), run: () => env.edit(item) }] : []),
     ...(action?.does === "book" ? [{ label: action.label, run: () => void setItemStatus(item, "booked") }] : []),
-    ...(item.origin === "chat" ? [{ label: L("Düzenle", "Edit"), run: () => env.edit(item) }] : []),
     // What the full card's details offered: a file (a ticket's PDF makes it a full card), all its details.
     { label: L("Belge ekle", "Add a document"), run: () => picker.current?.click() },
-    { label: L("Tüm detaylar", "All details"), run: () => env.onOpenItem(item) },
+    { label: L("Ben hallettim", "I've got it"), run: () => void setArranged(item, true) },
+    ...forWho.map((e, i) => ({ ...e, sep: i === 0 })),
+    { label: L("Tüm detaylar", "All details"), run: () => env.onOpenItem(item), sep: forWho.length === 0 },
     { label: L("Sil", "Delete"), run: () => env.remove(item), danger: true },
   ];
   const extra = (
@@ -279,7 +293,8 @@ function EmptyRecordFace({ item }: { item: Item }) {
     ariaLabel: item.name,
     itemId: item.id,
     menu,
-    x: <DeleteX name={item.name} onDelete={() => env.remove(item)} />,
+    // v30: the × folds in place (why: "Gerek yok" hides it as it stood, "Ben hallettim" sets it aside as arranged).
+    fold: { gone: () => void setNotNeeded(item).then(env.offer), arranged: () => void setArranged(item, true) },
     status: STATUS_WORD(kind, n),
     alert: dateAlert(item, env.today, { empty: true }),
     extra,
@@ -296,7 +311,7 @@ function EmptyRecordFace({ item }: { item: Item }) {
       <EmptyShell
         {...shell}
         date={<CardDate item={item} kind={kind} />}
-        body={<EmptyMedia kind="stay" title={title} sub={[nights ? nNights(nights) : null, n ? nPeople(n) : null, own ? L("yer seçilmedi", "not chosen yet") : L("otel seçilmedi", "no hotel chosen")].filter(Boolean).join(" · ")} />}
+        body={<EmptyMedia kind="stay" art={stayArtOf(item)} title={title} sub={[nights ? nNights(nights) : null, n ? nPeople(n) : null, own ? L("yer seçilmedi", "not chosen yet") : L("otel seçilmedi", "no hotel chosen")].filter(Boolean).join(" · ")} />}
         links={own ? [] : stayLinks({ city: item.city, checkin: start, checkout: end, adults: n })}
         need={own ? null : { key: needKey("stay", item.city, start, end), section: "stay", kind: "stay", city: item.city, start, end, adults: n, country: item.countryCode ?? countryOfPlace(item.city, items)?.code ?? null }}
       />
@@ -346,17 +361,28 @@ function EmptyRecordFace({ item }: { item: Item }) {
 export function EmptyTravelCard({ role, date, city, home = null }: { role: "arrival" | "departure"; date: string; city: string; home?: string | null }) {
   const env = useCardEnv();
   const { travellers: n } = useEmptyEnv();
+  // v30: its × says "Gerek yok" (kept under the trip's hidden keys, 8 seconds of "Geri al") or "Ben hallettim" (a flight set aside as arranged).
+  const hiddenKey = `travel:${role}:${date}`;
+  if (env.trip.hidden?.includes(hiddenKey)) return null;
   const at = { city, sub: null, time: null };
   // Where the trip starts and ends (the other flight's airport): the other end, so the searches have both.
   const there = home ? { city: cityOfAirport(home), sub: cityOfAirport(home) !== home ? home : null, time: null } : null;
   const [from, to] = role === "arrival" ? [there, at] : [at, there];
   const [a, b] = role === "arrival" ? [home, city] : [city, home];
+  const name = role === "arrival" ? L(`Uçuş · ${city}`, `Flight · ${city}`) : L(`Dönüş · ${city}`, `Flight home · ${city}`);
+  const gone = () => void setHidden(env.tripId, hiddenKey, true, name).then(() => env.offer({ kind: "hidden", tripId: env.tripId, key: hiddenKey, label: name }));
+  const arranged = () => void addArrangedPlanned(env.tripId, { kind: "flight", date, end_date: null, time: null, from: a, to: b, city: null, title: null, booked: false, note: null });
   return (
     <EmptyShell
       kind="flight"
       date={formatDateRange(date, null)}
-      ariaLabel={role === "arrival" ? L(`Uçuş · ${city}`, `Flight · ${city}`) : L(`Dönüş · ${city}`, `Flight home · ${city}`)}
-      menu={[{ label: L("Uçuş ekle", "Add a flight"), run: () => env.add({ city, date }) }]}
+      ariaLabel={name}
+      fold={{ gone, arranged }}
+      menu={[
+        { label: L("Değiştir", "Change"), run: () => env.add({ city, date }) },
+        { label: L("Ben hallettim", "I've got it"), run: arranged },
+        { label: L("Gerek yok", "Not needed"), run: gone },
+      ]}
       body={<EmptyRoute from={from} to={to} art="flight" />}
       status={noTicket(n)}
       links={flightLinks({ from: a, to: b, date, adults: n })}
@@ -376,6 +402,8 @@ export function EmptyStayBlock({ block, label }: { block: Extract<StayBlock, { k
   const slot = block.slot ?? null;
   const city = slot?.city ?? block.city;
   const hide = () => env.hideNights(block.range, label);
+  // v30: "Ben hallettim" on nights: a stay record for them, set aside as arranged (a stay said apart is that record already).
+  const arranged = () => void (slot ? setArranged(slot, true) : addArrangedPlanned(env.tripId, { kind: "stay", date: block.range.start, end_date: block.range.end, time: null, from: null, to: null, city: block.city ?? null, title: null, booked: false, note: null }, label));
   // The nights on the boat, in the camp or the van (a trip kind's own stay): no hotel to find or price.
   const own = isOwnStay(slot);
   const nights = L(`${block.nights} gece`, `${block.nights} night${block.nights === 1 ? "" : "s"}`);
@@ -386,6 +414,7 @@ export function EmptyStayBlock({ block, label }: { block: Extract<StayBlock, { k
     <InlineEdit item={slot}>
       <EmptyMedia
         kind="stay"
+        art={stayArtOf(slot)}
         title={<Editable field="name">{slot.name}</Editable>}
         sub={
           <>
@@ -396,7 +425,7 @@ export function EmptyStayBlock({ block, label }: { block: Extract<StayBlock, { k
       />
     </InlineEdit>
   ) : (
-    <EmptyMedia kind="stay" title={city ?? L("Konaklama", "Stay")} sub={[nights, n ? nPeople(n) : null, L("otel seçilmedi", "no hotel chosen")].filter(Boolean).join(" · ")} />
+    <EmptyMedia kind="stay" art={stayArtOf(slot)} title={city ?? L("Konaklama", "Stay")} sub={[nights, n ? nPeople(n) : null, L("otel seçilmedi", "no hotel chosen")].filter(Boolean).join(" · ")} />
   );
   return (
     <EmptyShell
@@ -405,8 +434,8 @@ export function EmptyStayBlock({ block, label }: { block: Extract<StayBlock, { k
       ariaLabel={slot?.name ?? label}
       itemId={slot?.id}
       extraClass="stay-open"
-      menu={slot ? [{ label: L("Düzenle", "Edit"), run: () => env.edit(slot) }, { label: L("Sil", "Delete"), run: () => env.remove(slot), danger: true }] : [{ label: L("Gerek yok", "Not needed"), run: hide }]}
-      x={slot ? <DeleteX name={slot.name} className="stay-x" onDelete={() => env.remove(slot)} /> : <DeleteX name={label} hide className="stay-x" onDelete={hide} />}
+      menu={slot ? [{ label: L("Değiştir", "Change"), run: () => env.edit(slot) }, { label: L("Ben hallettim", "I've got it"), run: arranged }, { label: L("Sil", "Delete"), run: () => env.remove(slot), danger: true }] : [{ label: L("Ben hallettim", "I've got it"), run: arranged }, { label: L("Gerek yok", "Not needed"), run: hide }]}
+      fold={{ gone: slot ? () => env.remove(slot) : hide, arranged }}
       body={body}
       // v30: the nights on a boat, in a camp or a van have no hotel to find: they say so (nothing to book).
       status={own ? L("Rezervasyon gerekmez", "No booking needed") : L("Henüz otel yok", "No place yet")}
@@ -437,14 +466,19 @@ export function EmptyLegCard({ leg }: { leg: Leg }) {
   const v = legCardView(leg);
   const own = legItem(leg);
   const hide = () => void setHidden(env.tripId, `leg:${leg.key}`, true, kindLabel()[leg.kind]);
-  const menu: MenuEntry[] = legMenuFor(leg).map((a) =>
-    a === "hide"
-      ? { label: L("Gerek yok", "Not needed"), run: hide }
-      : a === "clear"
-        ? { label: L("Planı temizle", "Clear the plan"), run: () => void updateTrip(env.tripId, (t) => withLegChoice(t, leg.key, null)) }
-        : { label: L("Sil", "Delete"), run: () => own && env.remove(own), danger: true },
-  );
+  const arranged = () => void updateTrip(env.tripId, (t) => withLegChoice(t, leg.key, { booked: true }));
+  const menu: MenuEntry[] = [
+    { label: L("Ben hallettim", "I've got it"), run: arranged },
+    ...legMenuFor(leg).map((a) =>
+      a === "hide"
+        ? { label: L("Gerek yok", "Not needed"), run: hide }
+        : a === "clear"
+          ? { label: L("Planı temizle", "Clear the plan"), run: () => void updateTrip(env.tripId, (t) => withLegChoice(t, leg.key, null)) }
+          : { label: L("Sil", "Delete"), run: () => own && env.remove(own), danger: true },
+    ),
+  ];
   const move = leg.kind === "move";
+  const ways = move && v.kind === "transport" && !leg.choice?.mode && !leg.choice?.booked;
   const from = endPlace(leg, "from");
   const to = endPlace(leg, "to");
   return (
@@ -456,13 +490,25 @@ export function EmptyLegCard({ leg }: { leg: Leg }) {
       domId={`leg-${leg.key}`}
       extraClass="pk-leg"
       menu={menu}
+      fold={{ gone: hide, arranged }}
       body={
-        <>
+        ways ? (
+          <>
+            {/* v30: how to go isn't known: it's said on top, the way drawn faint and large at the left, the ways to pick right under. */}
+            <div className="ek-undec">
+              <span className="ek-undec-art" aria-hidden><img src="illus/tren.png" alt="" /></span>
+              <span className="ek-undec-t">
+                <b>{v.from.city}<span className="ek-arr" aria-hidden> → </span>{v.to.city}</b>
+                <span className="ek-undec-how">{L("Nasıl gideceğin belli değil", "How you'll go isn't decided")}</span>
+              </span>
+            </div>
+            <WaysRow leg={leg} tripId={env.tripId} />
+          </>
+        ) : (
           <EmptyRoute from={move ? { ...v.from, sub: null } : v.from} to={move ? { ...v.to, sub: null } : v.to} art={v.kind !== "transport" ? v.kind : move ? null : "taxi"} />
-          {move && v.kind === "transport" && !leg.choice?.mode && !leg.choice?.booked && <WaysRow leg={leg} tripId={env.tripId} />}
-        </>
+        )
       }
-      status={L("Nasıl gideceğin belli değil", "How you'll go isn't decided")}
+      status={ways ? L("Seç, ben arayayım", "Pick one, I'll search") : L("Nasıl gideceğin belli değil", "How you'll go isn't decided")}
       links={transferLinks({ from, to })}
       onSkip={move ? undefined : hide}
       skipTitle={L("Bu transfer gerekmiyor", "This transfer isn't needed")}
@@ -505,7 +551,7 @@ function WaysRow({ leg, tripId }: { leg: Leg; tripId: string }) {
 
 /** Diğer's eSIM while there's none on a trip abroad (the rule's suggestion, drawn as the eSIM's empty card). */
 export function EmptyEsimCard({ suggestion, onAdd, onDismiss }: { suggestion: Suggestion; onAdd: (s: Suggestion) => void; onDismiss: (s: Suggestion) => void }) {
-  const { esimCountries } = useEmptyEnv();
+  const { esimCountries, tripId } = useEmptyEnv();
   const names = countryNames(esimCountries);
   const start = isoDate(suggestion.payload?.start ?? null);
   const end = isoDate(suggestion.payload?.end ?? null);
@@ -516,8 +562,10 @@ export function EmptyEsimCard({ suggestion, onAdd, onDismiss }: { suggestion: Su
       date={start ? formatDateRange(start, end) : null}
       ariaLabel={title}
       data={{ "data-suggestion": suggestion.key }}
+      fold={{ gone: () => onDismiss(suggestion), arranged: () => void arrangeSuggested(tripId, suggestion) }}
       menu={[
         { label: L("Plana koy", "Add to plan"), run: () => onAdd(suggestion) },
+        { label: L("Ben hallettim", "I've got it"), run: () => void arrangeSuggested(tripId, suggestion) },
         { label: L("Gerek yok", "Not needed"), run: () => onDismiss(suggestion) },
       ]}
       body={<EmptyMedia kind="esim" drawing="esim" title={title} sub={L("tüm gezi için internet", "internet for the whole trip")} />}
@@ -535,7 +583,7 @@ export function EmptyEsimCard({ suggestion, onAdd, onDismiss }: { suggestion: Su
  * empty card, beside the eSIM's and as large): "Seyahat sağlık sigortası", the shield, "Alınmadı", a search to compare.
  */
 export function EmptyInsuranceCard({ suggestion, onAdd, onDismiss }: { suggestion: Suggestion; onAdd: (s: Suggestion) => void; onDismiss: (s: Suggestion) => void }) {
-  const { esimCountries } = useEmptyEnv();
+  const { esimCountries, tripId } = useEmptyEnv();
   const names = countryNames(esimCountries);
   const start = isoDate(suggestion.payload?.start ?? null);
   const end = isoDate(suggestion.payload?.end ?? null);
@@ -546,8 +594,10 @@ export function EmptyInsuranceCard({ suggestion, onAdd, onDismiss }: { suggestio
       date={start ? formatDateRange(start, end) : null}
       ariaLabel={title}
       data={{ "data-suggestion": suggestion.key }}
+      fold={{ gone: () => onDismiss(suggestion), arranged: () => void arrangeSuggested(tripId, suggestion) }}
       menu={[
         { label: L("Plana koy", "Add to plan"), run: () => onAdd(suggestion) },
+        { label: L("Ben hallettim", "I've got it"), run: () => void arrangeSuggested(tripId, suggestion) },
         { label: L("Gerek yok", "Not needed"), run: () => onDismiss(suggestion) },
       ]}
       body={<EmptyMedia kind="insurance" drawing="shield" title={title} sub={names.length ? L(`${names.join(", ")} · zorunlu değil ama önerilir`, `${names.join(", ")} · not required, advised`) : L("zorunlu değil ama önerilir", "not required, advised")} />}

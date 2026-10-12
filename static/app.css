@@ -607,6 +607,55 @@ a.sc-source.link:focus-visible { outline: 2px solid var(--accent); outline-offse
 }
 
 /* @@css-cardsA: reserved insertion point, parallel work (remove marker line when done) */
+/* ===== cardsA (plan v30): empty cards with options, eSIM and insurance, the × fold and •••, Ayarlandı, touch targets ===== */
+/* The drawings are shown whole, never cropped (object-fit contain); a tent is drawn here, the others are static/illus. */
+article.pk-card .ek-band { display: block; height: 104px; border-radius: 12px; background: color-mix(in srgb, var(--mc) 7%, #fff); overflow: hidden; margin: 0 0 8px; }
+article.pk-card .ek-band img, article.pk-card .ek-band .ek-tent { display: block; width: 100%; height: 100%; max-width: none; margin: 0; padding: 6px 0; object-fit: contain; opacity: .9; box-sizing: border-box; mix-blend-mode: multiply; }
+/* A need with saved options: the same shape as the empty stay (the band across the top, the place large under it). */
+.nd-card .nd-body.nd-shaped { display: block; padding: 0; }
+.nd-card .nd-stay h3, .nd-card .nd-pic h3 { margin: 0; font-size: 19px; line-height: 1.2; font-weight: 750; letter-spacing: -.015em; overflow-wrap: anywhere; }
+.nd-shaped .ek-txt > small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--v-muted); overflow-wrap: anywhere; }
+.nd-shaped .nd-sub { margin: 2px 0 0; font-size: 13px; color: var(--v-muted); }
+.nd-card .nd-pic { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 4px 14px; align-items: center; }
+.nd-card .nd-pic .nd-self { grid-column: 1 / -1; }
+/* eSIM and insurance: their drawing in place of the small tile, as large as the mockup's. */
+.ek-media.ek-pic { grid-template-columns: 72px minmax(0, 1fr); gap: 14px; }
+.ek-tile.ek-ill { width: 72px; height: 58px; border-radius: 12px; background: color-mix(in srgb, var(--mc) 8%, #fff); }
+.ek-tile.ek-ill img { width: 100%; height: 100%; padding: 4px; box-sizing: border-box; object-fit: contain; mix-blend-mode: multiply; }
+.ek-pic .ek-txt b, .nd-pic .ek-txt h3 { font-size: 17px; }
+/* "N seçenek ⌄": a chip that opens downward; the estimate, or the real "from", at the right of the foot. */
+.nd-opts.nd-chip svg { transform: rotate(90deg); }
+.nd-foot .nd-est { margin-left: auto; display: inline-flex; align-items: baseline; gap: 4px; flex-wrap: wrap; justify-content: flex-end; font-size: 12.5px; color: var(--v-muted); }
+.nd-est b { font-size: 15px; font-weight: 750; color: var(--v-ink); }
+.nd-est i { font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: .02em; color: var(--v-muted); }
+/* Ayarlandı (Ben hallettim): grey and flat, in both paths (a plan, a transfer): no sand, no green, no shadow, nothing left to do. */
+article.pk-card.pk-arranged { background: #f3f2ef; border: 1px solid #dcdad4; box-shadow: none; }
+article.pk-card.pk-arranged:hover { box-shadow: none; }
+.pk-arranged .pk-ring.done, .pk-arranged .pk-ring.half { background: #8e8e93; border: 0; }
+.pk-arranged .pk-lab.arranged, .pk-arranged .pk-state.done { color: #6e6e73; font-weight: 600; }
+.pk-arranged .pk-state.done svg { color: #8e8e93; }
+.pk-arranged .pk-art, .pk-arranged .pk-illus, .pk-arranged .pk-img, .pk-arranged .pk-route svg { filter: grayscale(1); opacity: .6; }
+.pk-arranged .pk-moons i { background: #a8a8ad; opacity: 1; }
+.pk-arranged .pk-stamp { display: none; }
+.pk-arranged .pk-media { padding-right: 0; }
+.pk-arranged .pk-foot .pk-sub { display: inline; }
+.pk-lab.arranged { font-size: 12.5px; }
+/* Empty transport (how to go isn't known): "A → B" and the sentence on top, the way drawn faint and large at the left. */
+.ek-undec { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 14px; align-items: center; }
+.ek-undec-art { width: 76px; height: 58px; border-radius: 14px; display: grid; place-items: center; overflow: hidden; background: color-mix(in srgb, var(--mc) 8%, #fff); }
+.ek-undec-art img { width: 100%; height: 100%; object-fit: contain; padding: 4px; box-sizing: border-box; mix-blend-mode: multiply; opacity: .45; filter: grayscale(.5); }
+.ek-undec-t { display: grid; gap: 2px; min-width: 0; }
+.ek-undec-t b { font-size: 19px; font-weight: 750; letter-spacing: -.015em; line-height: 1.2; overflow-wrap: anywhere; }
+.ek-undec-t .ek-arr { color: var(--mc); font-weight: 600; }
+.ek-undec-how { font-size: 13.5px; font-weight: 600; color: var(--v-ink); }
+/* Touch targets (spec: 30 px): the hit area of × and ••• is 30 px everywhere (an invisible edge), their size 30 px on a touch screen. */
+.pk-x, .pk-ib { position: relative; }
+.pk-x::after, .pk-ib::after { content: ""; position: absolute; left: -3px; right: -3px; top: -4px; bottom: -4px; }
+@media (pointer: coarse) {
+  .pk-x { width: 30px; height: 30px; }
+  .pk-ib { width: 30px; height: 30px; }
+  .pk-x::after, .pk-ib::after { left: 0; right: 0; top: 0; bottom: 0; }
+}
 /* ---------- nights at a glance ---------- */
 .day-strip { display: flex; gap: 4px; margin: 12px 0 6px; overflow-x: auto; padding-bottom: 2px; }
 .strip-block {
