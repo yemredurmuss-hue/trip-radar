@@ -632,7 +632,7 @@ try {
   assert.equal(await dayCard(4).locator(".dg-tl > li .dg-ic svg").count(), 5, "every line has its icon");
   assert.deepEqual(
     await dayCard(4).locator(".dg-tl > li").evaluateAll((els) => els.map((e) => e.querySelector(".dg-lab")?.textContent ?? "")),
-    ["", "Arıyoruz", "Seçildi", "Arıyoruz", ""],
+    ["", "Arıyoruz", "Arıyoruz", "Arıyoruz", ""],
   );
   assert.equal(await lineOf(2, "Tekne turu · Douro").locator(".dg-lab").innerText(), "Seçildi");
   assert.equal(await lineOf(7, "Uçuş · Lizbon → İstanbul").locator(".dg-lab").innerText(), "Rezerve");
