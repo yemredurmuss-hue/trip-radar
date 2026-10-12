@@ -129,8 +129,8 @@ function legTodo(leg: Leg, entry?: string): Draft | null {
 
 /** A date running out: the sentence (the card's details, a stay's card) and its short form for a card's strip ("4 gün"). */
 export interface DateAlert {
-  /** red: the last day; amber: the last 7 days (a flight's ticket: the last 14); plain: still time. */
-  tone: "red" | "amber" | "plain";
+  /** red: the last day; orange: a booking's last 7 days to cancel, a flight's missing ticket in its last 14; amber: another plan not bought, within 30; plain: still time. */
+  tone: "red" | "orange" | "amber" | "plain";
   text: string;
   short: string;
 }
@@ -142,14 +142,9 @@ export function dateAlert(item: Item, today: string, opts: { empty?: boolean } =
     if (!until || until < today) return null;
     const days = daysUntil(until, today);
     if (days > SOON_DAYS) return null;
-    return {
-      tone: days === 0 ? "red" : days <= 7 ? "amber" : "plain",
-      text:
-        days === 0
-          ? L("Ücretsiz iptal bugün bitiyor", "Free cancellation ends today")
-          : L(`Ücretsiz iptal için ${days} gün kaldı (${fmt(until)})`, `${count(days, "gün", "day")} left to cancel for free (${fmt(until)})`),
-      short: days === 0 ? L("iptal bugün biter", "cancel by today") : L(`iptale ${days} gün`, `${count(days, "day", "day")} to cancel`),
-    };
+    // v30: a booking says nothing of its cancel date until the last two weeks; the last 7 turn orange, the last day red.
+    const text = days === 0 ? L("İptal bugün biter", "Cancellation ends today") : L(`İptale ${days} gün · son gün ${fmt(until)}`, `${count(days, "gün", "day")} to cancel · last day ${fmt(until)}`);
+    return { tone: days === 0 ? "red" : days <= 7 ? "orange" : "plain", text, short: text };
   }
   if (item.status !== "chosen") return null;
   const start = departureDay(item);
@@ -169,9 +164,9 @@ export function dateAlert(item: Item, today: string, opts: { empty?: boolean } =
   const safe = item.cancellation.freeUntil && item.cancellation.freeUntil >= today ? L(" · ücretsiz iptalli, şimdi ayırmak risksiz", " · free cancellation, so booking now is risk-free") : "";
   const state = ticket ? L("Bilet alınmadı", "No ticket yet") : L("Rezerve edilmedi", "Not booked");
   return {
-    tone: days <= (item.category === "flight" ? 14 : 30) ? "amber" : "plain",
+    tone: item.category === "flight" ? (days <= 14 ? "orange" : "plain") : days <= 30 ? "amber" : "plain",
     text: L(`${state} · ${what} ${days} gün${safe}`, `${state} · ${count(days, "gün", "day")} to ${what}${safe}`),
-    short: days === 0 ? L("bugün", "today") : item.category === "flight" ? L(`uçuşa ${days} gün`, `${count(days, "day", "day")} to the flight`) : count(days, "gün", "day"),
+    short: days === 0 ? (item.category === "flight" ? L("uçuş bugün", "flight today") : L("bugün", "today")) : item.category === "flight" ? L(`uçuşa ${days} gün`, `${count(days, "day", "day")} to the flight`) : count(days, "gün", "day"),
   };
 }
 

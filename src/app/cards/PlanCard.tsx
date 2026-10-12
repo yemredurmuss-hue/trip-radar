@@ -34,18 +34,18 @@ import { ChoiceSheet, NeedCard } from "./NeedCard";
 import { needTitleOf } from "../../lib/pano";
 import { CardDetail } from "./CardDetail";
 import { CardFoot, CardShell, type MenuEntry, type Nav } from "./CardShell";
-import { nightsBetween } from "../../lib/items";
+import { listingKeyOf, nightsBetween } from "../../lib/items";
 import { DocAccess, openDoc, DocPickButton } from "./DocAccess";
 import { InlineEdit } from "./InlineEdit";
 import { groupKeyOf } from "../../lib/plan";
 import { useStageMenu } from "./stageMenu";
 import { MediaCardBody } from "./MediaCard";
 import { datedLink, stayRatingOf } from "./parts";
-import { cancelLineOf, showBookingRef } from "../../lib/cardTime";
+import { cancelLineOf, checkInNote, showBookingRef } from "../../lib/cardTime";
 import { TransportArt, UiIcon } from "./Silhouettes";
 import { TransportCardBody } from "./TransportCard";
 import { FlightTiles } from "./FlightLive";
-import { flightAlert, flightTiles, sourceText, ticketDiff } from "../../lib/flightData";
+import { delayShiftNote, flightAlert, flightTiles, phaseOf, sourceText, ticketDiff, wasTimes } from "../../lib/flightData";
 import { flightNumber } from "../../../supabase/functions/flight/shape";
 
 export interface CardEnv {
@@ -171,6 +171,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   // v11: chosen, not bought yet: its other options are a link by the price ("Pano'da 2 alternatif").
   const altCount = item.status === "chosen" ? group.filter((g) => g.id !== item.id && g.status !== "dismissed").length : 0;
   const bookedCard = item.status === "booked";
+  // v30: a booked stay's check-in time joins its foot two days before (only the time its record knows).
+  const checkIn = kind === "stay" && bookedCard ? checkInNote(item, env.today, env.decisions?.ctx.listings.get(listingKeyOf(item))?.house) : null;
   // The motion dictionary: a card that turns booked pops its tick (mühür), a change glows (parlama), one the chat just added drops in (düşüş).
   const sealed = useJustBecame(bookedCard);
   const glow = useJustChanged(item.updatedAt);
@@ -217,13 +219,14 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   if (face && !face.middle && live?.minutes) face.middle = [durationText(live.minutes), item.flight?.stops === 0 ? L("direkt", "direct") : null].filter(Boolean).join(" · ");
   if (face && live) {
     const term = (t: string | null) => (t ? ` T${t}` : "");
+    const was = wasTimes(live);
     // Red only where a new time came (a landing not yet re-estimated stays as it was).
-    if (face.from) face.from = { ...face.from, sub: `${face.from.sub ?? ""}${term(live.departure.terminal)}`.trim(), late: red && !!live.departure.revised };
-    if (face.to) face.to = { ...face.to, sub: `${face.to.sub ?? ""}${term(live.arrival.terminal)}`.trim(), late: red && !!live.arrival.revised };
+    if (face.from) face.from = { ...face.from, sub: `${face.from.sub ?? ""}${term(live.departure.terminal)}`.trim(), late: red && !!live.departure.revised, was: red ? was.departure : null };
+    if (face.to) face.to = { ...face.to, sub: `${face.to.sub ?? ""}${term(live.arrival.terminal)}`.trim(), late: red && !!live.arrival.revised, was: red ? was.arrival : null };
   }
   const liveFoot = live
     ? red
-      ? { note: L("Rötar: plan yeni saate göre kaydı", "Delayed: the plan moved with it"), tone: "bad" as const, source: sourceText(live) }
+      ? { note: phaseOf(live) === "before" ? delayShiftNote(live) : null, tone: "bad" as const, source: sourceText(live) }
       : { note: ticketDiff(live), tone: "warn" as const, source: tiles.length ? sourceText(live) : null }
     : null;
   return (
@@ -288,6 +291,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
             go={bookTop && page ? { href: page, label: goLabel } : null}
             alt={altCount > 0 ? { count: altCount, onClick: () => env.onPano(groupKeyOf(item)) } : null}
             quietWait={item.status === "chosen"}
+            says={kind === "flight" && item.status === "chosen"}
+            timed={checkIn}
             docs={
               bookedCard ? (
                 docs.length === 1 ? (

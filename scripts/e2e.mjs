@@ -4960,8 +4960,11 @@ try {
   assert.ok(await tpCard.evaluate((el) => el.classList.contains("pk-alert")), "late: the card goes red");
   assert.deepEqual(flat(await tpCard.locator(".pk-lv").allInnerTexts()), ["Yeni kalkış 20:05+25 dk", "Kapı 14"]);
   assert.match(flat([await tpCard.locator(".pk-top").innerText()])[0], /TAP TP1760/);
-  assert.match(flat([await tpCard.locator(".pk-foot").innerText()])[0], /Rötar: plan yeni saate göre kaydı.*AeroDataBox/);
-  assert.match(flat([await tpCard.locator(".pk-stop").first().innerText()])[0], /LIS T1 · 20:05/);
+  assert.match(flat([await tpCard.locator(".pk-foot").innerText()])[0], /Planı yeni saate göre kaydırdım.*AeroDataBox/);
+  // v30: the old time struck through beside the new one, in a clear red frame.
+  assert.match(flat([await tpCard.locator(".pk-stop").first().innerText()])[0], /LIS T1 · 19:40 20:05/);
+  assert.equal(await tpCard.locator(".pk-stop .pk-was").first().innerText(), "19:40");
+  assert.equal(await tpCard.evaluate((el) => getComputedStyle(el).borderTopColor), "rgb(198, 40, 40)", "late: a clear red frame");
   await tpCard.scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/3e-flight-card-live.png` });
   console.log("✓ flight on its day: late in red with its new time and gate, in the day's line and as boxes on the Plan's card, the source named");

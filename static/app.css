@@ -3321,7 +3321,17 @@ a.ch-why { text-decoration: none; }
   .ac-r { grid-row: auto; grid-column: 1 / -1; justify-content: flex-start; }
 }
 
-/* @@css-timing: reserved insertion point, parallel work (remove marker line when done) */
+/* v30 · zamana göre gösterme: iptal süresi renkleri (yeşil > amber 14 gün > turuncu-kırmızı 7 gün > kırmızı son gün), alınmamış bilet, rötar, otel giriş saati */
+.pk-cancel.soon { color: #a86400; }
+.pk-cancel.near { color: #c2550a; }
+.pk-cancel.red { color: #c62828; }
+.pk-state.alert-orange .pk-when, .pk-state.alert-orange.pk-says { color: #c2550a; }
+.pk-state.pk-says .pk-when { white-space: normal; margin-left: 0; }
+.card-alert.orange, .pk-alert.orange, .ek-state.alert-orange { color: #c2550a; }
+.pk-timed { min-width: 0; font-size: 12.5px; font-weight: 650; color: var(--v-book-ink, #1b7f45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-stop .pk-was { margin-right: 6px; font-weight: 500; color: var(--v-muted, #6b6790); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.pk-card.pk-alert.pk-alert { background: #fff5f4; border-color: #c62828; box-shadow: inset 0 0 0 1px #c62828, 0 6px 18px -10px rgba(198, 40, 40, .45); }
+.pk-card.pk-alert.pk-alert .pk-live-note.bad { font-weight: 700; }
 /* The drawings' pictures have a white ground: laid on their tint, the white drops out. */
 .ac-pic.art, .ac-tile .ac-art { mix-blend-mode: multiply; }
 .ac-empty { margin: 4px 0 6px; }
