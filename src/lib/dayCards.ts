@@ -299,7 +299,7 @@ export function stageOf(r: DayRow): Stage | null {
   if (r.layover || r.meeting) return null;
   if (r.kind === "idea") return { tone: "idea", text: r.item?.arranged ? L("Ayarlandı", "Arranged") : r.item?.doneAt ? L("Yapıldı", "Done") : L("Fikir", "Idea") };
   if (r.kind === "info") return null;
-  const arranged = !!r.item?.arranged || /ayarland|arranged/i.test(`${r.line ?? ""} ${r.status}`) || (r.entry?.kind === "travel" && !!r.entry.leg?.choice?.booked && !r.entry.travel?.settled);
+  const arranged = !!r.item?.arranged || /ayarland|arranged/i.test(`${r.line ?? ""} ${r.status}`) || (r.entry?.kind === "travel" && !!r.entry.leg?.choice?.booked && !r.entry.travel?.settled && r.item?.status !== "booked");
   switch (r.state) {
     case "done":
       return arranged ? { tone: "rez", text: L("Ayarlandı", "Arranged") } : { tone: "rez", text: L("Rezerve", "Booked") };
