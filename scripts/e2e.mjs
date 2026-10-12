@@ -1122,8 +1122,7 @@ try {
   assert.match(await arrive.innerText(), /planlanmadı/);
   assert.equal(await dayCard(1).locator('.dg-tl > li[data-title="Check-in · Jardim Stay"] .t').innerText(), "14:00");
   assert.equal(flat(await dayCard(1).locator(".dg-n").allInnerTexts())[0], "Gece: Porto · Jardim Stay");
-  // Two transfers read the same ("Transfer"): the first is to the station.
-  assert.match(await dayCard(4).locator('.dg-tl > li[data-title="Transfer"]').first().innerText(), /Porto Campanhã/);
+  // Two transfers read the same ("Transfer"): the route is on the transfer's card on the Plan (a line stays short, 0.36.27).
   // A transfer's card (its notes, how to go, "Gerek yok") is on the Plan now: a tap on its line shows it there.
   await arrive.locator(".dg-main").click();
   await tab("Plan").and(app.locator('[aria-selected="true"]')).waitFor();
