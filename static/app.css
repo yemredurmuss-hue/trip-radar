@@ -4386,3 +4386,9 @@ a.ch-why { text-decoration: none; }
 .hx-est b { color: var(--v-ink); font-weight: 750; }
 .hx-est em { font-style: normal; font-weight: 650; }
 .hx-est em.ok { color: var(--v-book-ink, #1d6b45); } .hx-est em.over { color: #c62828; }
+
+/* Plan v30 (denetim): Yolculuk sırasıyla closes with "✓ Eve dönüş"; the stay card keeps its words at a narrow panel. */
+.sy-endrow .sy-c { padding-bottom: 6px; }
+.sy-end { display: inline-flex; align-items: center; min-height: 36px; font-size: 16px; font-weight: 750; color: var(--v-book-ink, #1d6b45); }
+.sy-endrow .sy-node { background: #fff; color: var(--v-book-ink, #1d6b45); border-color: var(--v-book-ink, #1d6b45); }
+@container panel (max-width: 700px) { .sy-cb { grid-template-columns: 1fr; } }
