@@ -581,6 +581,12 @@ export interface Item {
   noBooking?: number;
   /** v30: "Ben hallettim": the traveller arranged it outside the tool (a friend picks them up, the ticket is bought elsewhere). Rides on noBooking (so it counts as nothing left to do); this only changes the words, "Ayarlandı". */
   arranged?: boolean;
+  /** v30: the way's own line as it was said or read ("Al 25 Tem 09:45 · Havalimanı → bırak 2 Ağu · Deák tér": a rental's pick-up and return). Absent: the card writes it from the record's dates and places. */
+  when?: string;
+  /** v30: the host or the hotel to write to, as the booking's document or page gave it. Nothing is invented: the booking window shows a contact only when `url` is here (an http(s) page or a mailto: address). */
+  host?: { name?: string; url?: string };
+  /** v30: a stay's door or key-box code as the booking says it (Airbnb sends it a day before check-in: until then there is none). */
+  doorCode?: { text: string; when?: string };
   /** A to-do or an idea ticked off ("Yapıldı · 12 Eki"). */
   doneAt?: number;
   /** Moved by the traveller between Hazırlık (true) and Yapılacak şeyler (false); wins over its words. */

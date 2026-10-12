@@ -4,7 +4,7 @@
 // pick, the options saved by the travellers first, the alternative a data source found apart (dashed, "Sizin
 // linklerinizin dışında"), each with "+ Plana koy"; Karşılaştır (the full comparison) and Pano'da gör at its foot.
 // Not for stays (their nights keep the comparison block) nor a need with one option (that card is the option).
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cardFacts } from "../../lib/cardFacts";
 import { cardKind, cardKindColor, isTransportKind } from "../../lib/cardKinds";
 import { topDate, transportFace } from "../../lib/cardView";
@@ -172,6 +172,26 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
   const found = items.filter(isAiOption);
   const ordered = [...mine, ...found];
   const shown = ordered.slice(0, BACK_MAX);
+  // v30: ‹ › and the arrow keys go through the options (the grid keeps one in focus; it starts on the one on the plan).
+  const [cur, setCur] = useState(() => Math.max(0, shown.findIndex((i) => i.status === "chosen" || i.status === "booked")));
+  const count = shown.length;
+  const step = (by: -1 | 1) => setCur((c) => (c + by + count) % count);
+  useEffect(() => {
+    if (count < 2) return;
+    const onArrow = (e: KeyboardEvent) => {
+      if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      e.preventDefault();
+      step(e.key === "ArrowLeft" ? -1 : 1);
+    };
+    document.addEventListener("keydown", onArrow);
+    return () => document.removeEventListener("keydown", onArrow);
+  }, [count]);
+  const grid = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (count > 1) (grid.current?.querySelectorAll(".ch-row.ch-tile")[cur] as HTMLElement | undefined)?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [cur]);
   const more = ordered.length - shown.length;
   const date = topDate(items[0], kind);
   const wants = useWants(items[0]);
@@ -180,7 +200,7 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
   const currency = env.decisions?.ctx.currency ?? "EUR";
   const art = ILLUS[kind] ?? illusOf(kind);
   const goPano = () => (onClose(), env.onPano(groupKeyOf(items[0])));
-  const tile = (item: Item): ReactNode => {
+  const tile = (item: Item, index: number): ReactNode => {
     const facts = cardFacts(item, decision, env.decisions?.ctx);
     const ranked = choice?.ranked.find((r) => r.option.item.id === item.id);
     const badge = ranked?.badges[0] ?? null;
@@ -197,7 +217,7 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
     const stops = item.category === "flight" && item.flight?.stops != null ? (item.flight.stops === 0 ? L("Direkt", "Direct") : L(`${item.flight.stops} aktarma`, `${item.flight.stops} stop${item.flight.stops === 1 ? "" : "s"}`)) : null;
     const drawing = art ? <img className="ch-ill" src={`illus/${art}.png`} alt="" /> : <KindIcon kind={kind} size={44} className="ch-kind" />;
     return (
-      <div key={item.id} className={`ch-row ch-tile${on ? " on" : ""}${who === "ai" ? " ai" : ""}`}>
+      <div key={item.id} className={`ch-row ch-tile${on ? " on" : ""}${who === "ai" ? " ai" : ""}${count > 1 && index === cur ? " cur" : ""}`} aria-current={count > 1 && index === cur ? "true" : undefined}>
         <div className="ch-ph">
           {facts.image ? <FallbackImg className="ch-img" src={facts.image} fallback={drawing} /> : item.category === "flight" && time && /^\d\d:\d\d$/.test(time) ? <span className="ch-fl">{time}{item.flight?.arrival?.slice(11, 16) ? ` → ${item.flight.arrival.slice(11, 16)}` : ""}</span> : drawing}
           <span className="ch-by" title={who === "ai" ? L("AI önerisi", "AI pick") : isMe ? L("Sen kaydettin", "You saved it") : L(`${who} kaydetti`, `${who} saved it`)}>
@@ -338,6 +358,17 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
           <h3 id="ch-title">{title}</h3>
           <p>{[date, L(`${items.length} seçenek`, `${items.length} option${items.length === 1 ? "" : "s"}`)].filter(Boolean).join(" · ")}</p>
         </div>
+        {count > 1 && (
+          <span className="ch-nav" role="group" aria-label={L("Seçenekler arasında gez", "Go through the options")}>
+            <button type="button" aria-label={L("Önceki seçenek", "Previous option")} onClick={() => step(-1)}>
+              <UiIcon name="left" size={13} />
+            </button>
+            <span aria-live="polite">{cur + 1}/{count}</span>
+            <button type="button" aria-label={L("Sonraki seçenek", "Next option")} onClick={() => step(1)}>
+              <UiIcon name="right" size={13} />
+            </button>
+          </span>
+        )}
         <button type="button" className="ch-pano" onClick={goPano} title={L("Bütün seçenekleri Pano'da büyük gör", "See every option large on the Board")}>
           <UiIcon name="board" size={15} />
           {L("Pano'da aç", "Open on the Board")}
@@ -361,7 +392,7 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
           ))}
         </ul>
       )}
-      <div className="ch-grid">
+      <div className="ch-grid" ref={grid}>
         {shown.map(tile)}
         <button type="button" className="ch-tile ch-panotile" onClick={goPano}>
           <UiIcon name="board" size={24} />

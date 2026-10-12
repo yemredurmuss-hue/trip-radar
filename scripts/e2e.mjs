@@ -900,7 +900,7 @@ try {
   await bk.waitFor({ state: "detached" });
 
   // The cities big, the airport codes and hours small; the landing day only because it's the next day.
-  assert.match(await home.locator(".pk-mid").innerText(), /Lizbon\s*LIS · 19:40[\s\S]*İstanbul\s*IST · 15 Ekim · 01:35/);
+  assert.match(await home.locator(".pk-mid").innerText(), /Lizbon\s*LIS · 19:40[\s\S]*İstanbul\s*IST · 01:35\+1/);
   // Round 2: the card's airport codes have the copy button too; it takes no room and a click on it doesn't open the card.
   {
     const stop = home.locator(".pk-mid .pk-stop .cpy").first();
@@ -1105,21 +1105,36 @@ try {
   if ((await changeFold.getAttribute("aria-expanded")) !== "true") await changeFold.click();
   await app.screenshot({ path: `${out}/36e-chat-fold-open.png` });
   await app.getByText("Jardim Stay plana alındı").waitFor();
-  // v11: chosen, the stay is the plan's card: "✓ Aldım" on its top line, "Pano'da 2 alternatif" by its price; its
-  // details' "Diğer 2 seçenek" brings the choice window back.
+  // v11: chosen, the stay is the plan's card: "✓ Aldım" on its top line, "2 alternatif" by its price; plan v30: a click on the card
+  // (or on that chip) turns it to its back, the options, with ‹ › and the arrow keys through them.
   const jardimRow = app.locator('.stay-block.chosen .pk-card[aria-label="Jardim Stay"]');
   await jardimRow.locator(".pk-aldim").waitFor();
   assert.equal(await app.locator(".stay-block.chosen .swipe-card").count(), 0);
-  assert.equal(await jardimRow.locator(".pk-alt").innerText(), "Pano'da 2 alternatif");
+  assert.equal(await jardimRow.locator(".pk-alt").innerText(), "2 alternatif");
   await sec("stay").screenshot({ path: `${out}/35-stay-chosen-v11.png` });
   await jardimRow.locator(".pk-body").click();
-  await jardimRow.locator(".pk-detail").getByRole("button", { name: "Tüm detaylar" }).waitFor();
-  await jardimRow.locator(".pk-detail").getByRole("button", { name: "Diğer 2 seçenek" }).click();
+  assert.equal(await jardimRow.locator(".pk-detail").count(), 0, "a click on a chosen card turns it, no inline panel");
   const otherStays = app.locator(".ch-back");
   await otherStays.locator(".ch-row", { hasText: "Jardim Stay" }).waitFor();
+  // ‹ › and the arrow keys go through the options, the one in focus ringed.
+  const navAt = async () => (await otherStays.locator(".ch-nav").innerText()).replace(/\s+/g, "");
+  const first = await navAt();
+  assert.match(first, /^\d\/3$/);
+  const wrap = (n) => ((n - 1 + 3) % 3) + 1;
+  const dir = Number(first[0]) === 3 ? -1 : 1;
+  const afterKey = wrap(Number(first[0]) + dir);
+  await app.keyboard.press(dir === 1 ? "ArrowRight" : "ArrowLeft");
+  assert.equal(await navAt(), `${afterKey}/3`);
+  await otherStays.getByRole("button", { name: dir === 1 ? "Sonraki seçenek" : "Önceki seçenek" }).click();
+  assert.equal(await navAt(), `${wrap(afterKey + dir)}/3`);
+  assert.equal(await otherStays.locator(".ch-tile.cur").count(), 1);
   await otherStays.locator(".ch-head").getByRole("button", { name: "Kapat" }).click();
   await otherStays.waitFor({ state: "detached" });
-  if (await jardimRow.locator(".pk-detail").count()) await jardimRow.locator(".pk-body").click();
+  // The "2 alternatif" chip turns it too (it doesn't go to the Pano); Esc turns it back.
+  await jardimRow.locator(".pk-alt").click();
+  await otherStays.waitFor();
+  await app.keyboard.press("Escape");
+  await otherStays.waitFor({ state: "detached" });
   // "Seç" on a flight card: the flight folds into a line, and its landing time reaches the transfer to the hotel.
   await app.locator('.nd-card[aria-label="İstanbul → Porto"]').locator(".nd-opts").click();
   await app.locator(".ch-row", { hasText: "Pegasus · direkt" }).getByRole("button", { name: /^Seç · / }).click();
@@ -1981,10 +1996,11 @@ try {
   await app.locator(".cat-plan").waitFor();
   await app.locator(`.flash`).first().waitFor({ timeout: 5000 });
   assert.equal(await app.locator(".pn").count(), 0, "back on the Plan");
-  // From a chosen card's foot (v11): "Pano'da N alternatif" by its price opens the Pano on its need, framed, with "← Plan'a dön".
+  // From a chosen card's foot (v11, v30): "N alternatif" by its price turns the card to its options; "Pano'da aç" there opens the Pano on its need, framed, with "← Plan'a dön".
   const fromCard = app.locator(".pk-card").filter({ has: app.locator(".pk-alt") }).first();
-  assert.match(await fromCard.locator(".pk-alt").innerText(), /^Pano'da \d+ alternatif$/);
+  assert.match(await fromCard.locator(".pk-alt").innerText(), /^\d+ alternatif$/);
   await fromCard.locator(".pk-alt").click();
+  await app.locator(".ch-back .ch-pano").click();
   await app.locator(".pn-group.focus").waitFor();
   await app.getByRole("button", { name: "← Plan'a dön" }).click();
   await app.locator(".cat-plan").waitFor();

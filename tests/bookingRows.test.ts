@@ -61,3 +61,15 @@ describe("what a booking's rows can copy", () => {
     expect(bookingCopies(makeItem({ category: "stay" }), "stay")).toEqual({});
   });
 });
+
+describe("a stay's host and door code (v30)", () => {
+  const stay = (over: Partial<Parameters<typeof makeItem>[0]> = {}) => makeItem({ category: "stay", status: "booked", dates: { start: "2027-04-01", end: "2027-04-06", source: "url" }, ...over });
+  it("shown only when the booking gave them", () => {
+    expect(bookingRows(stay(), "stay").map(([k]) => k)).not.toContain("Kapı kodu");
+    expect(bookingRows(stay(), "stay").map(([k]) => k)).not.toContain("Ev sahibi");
+    const rows = bookingRows(stay({ host: { name: "Marta", url: "https://example.com/h" }, doorCode: { text: "4821#", when: "girişten 1 gün önce geldi" } }), "stay");
+    expect(rows).toContainEqual(["Ev sahibi", "Marta"]);
+    expect(rows).toContainEqual(["Kapı kodu", "4821# · girişten 1 gün önce geldi"]);
+    expect(bookingCopies(stay({ doorCode: { text: "4821#" } }), "stay")["Kapı kodu"]).toEqual({ value: "4821#" });
+  });
+});

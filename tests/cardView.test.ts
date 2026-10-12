@@ -110,9 +110,16 @@ describe("a trip's two ends", () => {
     expect(transportFace(f, "flight")).toEqual({
       rental: false,
       from: { city: "Lizbon", sub: "LIS", time: "19:40" },
-      to: { city: "İstanbul", sub: "IST · 15 Ekim", time: "01:35" },
+      // v30: it lands the next day: "+1" by the hour, the date kept for its title.
+      to: { city: "İstanbul", sub: "IST", time: "01:35", plus: { days: 1, date: "15 Ekim" } },
       middle: "4 sa 55 dk · direkt",
     });
+  });
+  it("landing two days later is +2; landing the same day has no plus; a landing with no hour keeps its day in the small line", () => {
+    const f = (departure: string, arrival: string | null) => makeItem({ category: "flight", flight: { from: "IST", to: "HND", departure, arrival, carrier: null, flightNumber: null, stops: 0 } });
+    expect(transportFace(f("2026-10-14T23:00", "2026-10-16T05:30"), "flight").to).toMatchObject({ time: "05:30", plus: { days: 2, date: "16 Ekim" } });
+    expect(transportFace(f("2026-10-14T10:00", "2026-10-14T14:00"), "flight").to?.plus).toBeUndefined();
+    expect(transportFace(f("2026-10-14T23:00", "2026-10-15"), "flight").to).toMatchObject({ sub: "15 Ekim", time: null });
   });
   it("a train: the plan's cities big, the stations small", () => {
     const t = train({ flight: { from: "Porto Campanhã", to: "Lisboa Santa Apolónia", departure: "2026-10-11T09:30", arrival: "2026-10-11T12:20", carrier: null, flightNumber: null, stops: null } });
