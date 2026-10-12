@@ -4,7 +4,7 @@
 // mark), Önerim / En ucuz, the heart, its score, "✓ Planda" when it's on the plan; its need, its name (two lines at
 // most), one grey line; the price and one button (Plana koy, or Plan'da gör →); who saved it and who liked it.
 // A section's tab groups the options by need ("Kyoto · 5 gece · 3 seçenek", "Seçildi: X · Plan'da gör →").
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { cardFacts } from "../../lib/cardFacts";
 import { cardKind, cardKindColor } from "../../lib/cardKinds";
 import { L } from "../../lib/i18n";
@@ -18,13 +18,17 @@ import {
   panoCatLabel,
   panoCounts,
   panoEntries,
-  panoGroups,
   needTitleOf,
+  needWhenOf,
+  forYouOf,
+  panoRows,
+  recordsText,
   sortEntries,
   isAiOption,
   type PanoCat,
   type PanoEntry,
   type PanoGroup,
+  type PanoRow,
   type PanoSort,
   type PanoState,
 } from "../../lib/pano";
@@ -71,9 +75,8 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
   const [cat, setCat] = useState<PanoCat>(focused?.section ?? "all");
   const [state, setState] = useState<PanoState>("all");
   const [sort, setSort] = useState<PanoSort>("fit");
-  // v11: "Kayıtlarda ara", the view (Kartlar | Karşılaştır) and "+ Link ekle".
+  // v11: "Kayıtlarda ara" and "+ Link ekle".
   const [query, setQuery] = useState("");
-  const [view, setView] = useState<"cards" | "table">("cards");
   const [adding, setAdding] = useState(false);
   // v30: a row's own "Karşılaştır" turns that row from cards into a table and back.
   const [tableRows, setTableRows] = useState<Set<string>>(() => new Set());
@@ -87,60 +90,70 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
   }, [focus]);
   const counts = panoCounts(entries);
   const shown = sortEntries(entries.filter((e) => inCat(e, cat) && inState(e, state) && matchesQuery(e, query)), sort);
-  const grouped = cat !== "all" && cat !== "liked";
   const card = (e: PanoEntry, showNeed: boolean, list: PanoEntry[]) => (
     <PanoCard key={e.item.id} entry={e} showNeed={showNeed} siblings={list} decisions={decisions} onShow={onShow} onCompare={onCompare} />
   );
-  // v30: one row per need ("Kyoto · 5 gece · 3 seçenek"): its header says where it stands and has its own Karşılaştır; the cards scroll sideways.
-  const asTable = (g: PanoGroup) => g.entries.length > 1 && (view === "table" || tableRows.has(g.group));
-  const groupView = (g: PanoGroup) => (
-    <section key={g.group} id={groupDomId(g.group)} className={`pn-group${focus === g.group ? " focus" : ""}`}>
-      <div className="pn-gh">
-        <b>{needTitleOf(g.entries[0].item)}</b>
-        <span className="pn-gn">{L(`${g.entries.length} seçenek`, `${g.entries.length} option${g.entries.length === 1 ? "" : "s"}`)}</span>
-        <span className="pn-sp" />
-        {g.chosen ? (
-          <button type="button" className={`pn-gp${g.chosen.inPlan === "booked" ? " booked" : ""}`} onClick={() => onShow(g.chosen!.item.id)}>
-            <UiIcon name="check" size={13} />
-            {g.chosen.inPlan === "booked" ? L("Rezerve", "Booked") : L("Seçildi", "Chosen")}: {g.chosen.item.name} · {L("Plan'da gör", "See on the plan")} →
-          </button>
-        ) : (
-          <span className="pn-gw">{L("Karar bekliyor", "To decide")}</span>
-        )}
-        {g.entries.length > 1 && (
-          <button type="button" className="pn-cmp" aria-pressed={asTable(g)} onClick={() => toggleRow(g.group)}>
-            {asTable(g) ? L("Kartlar", "Cards") : L("Karşılaştır", "Compare")}
-          </button>
-        )}
-      </div>
-      {asTable(g) ? <PanoTable entries={g.entries} decisions={decisions} /> : <div className="pn-grid pn-strip">{g.entries.map((e) => card(e, false, g.entries))}</div>}
-    </section>
-  );
-  // Tümü: the needs as rows (decisions waiting first), then the activities, things to do and inspiration as rows of their own.
-  const NEED_SECTIONS = ["flight", "stay", "transport", "other"];
-  const allRows = (): ReactNode => {
-    const needs = panoGroups(shown.filter((e) => NEED_SECTIONS.includes(e.section))).sort((a, b) => Number(Boolean(a.chosen)) - Number(Boolean(b.chosen)) || Number(b.entries.length > 1) - Number(a.entries.length > 1));
-    const rest = (["activity", "todo", "inspo"] as const).map((sec) => ({ sec, list: shown.filter((e) => e.section === sec) })).filter((x) => x.list.length > 0);
+  // v30: one row per need ("Kyoto · 5 gece · 3 kayıt"): its header says where it stands and has its own Karşılaştır; the cards scroll sideways.
+  const asTable = (g: PanoGroup) => g.entries.length > 1 && tableRows.has(g.group);
+  const needView = (g: PanoGroup) => {
+    const first = g.entries[0].item;
+    const title = needTitleOf(first, g.entries.length);
+    const when = needWhenOf(first);
+    const forYou = asTable(g) ? null : forYouOf(g.entries, decisions?.byGroup.get(g.group), decisions?.ctx);
     return (
-      <>
-        {needs.map(groupView)}
-        {rest.map(({ sec, list }) => (
-          <section key={sec} className="pn-group pn-sec">
-            <div className="pn-gh">
-              <b>{panoCatLabel(sec)}</b>
-              <span className="pn-gn">{L(`${list.length} kayıt`, `${list.length} saved`)}</span>
-            </div>
-            <div className="pn-grid pn-strip">{list.map((e) => card(e, false, list))}</div>
-          </section>
-        ))}
-      </>
+      <section key={g.group} id={groupDomId(g.group)} className={`pn-group${focus === g.group ? " focus" : ""}`}>
+        <div className="pn-gh">
+          <b title={title}>{title}</b>
+          {when && <span className="pn-gn">{when}</span>}
+          <span className="pn-sp" />
+          {g.chosen ? (
+            <button type="button" className={`pn-gp${g.chosen.inPlan === "booked" ? " booked" : ""}`} title={g.chosen.item.name} onClick={() => onShow(g.chosen!.item.id)}>
+              <UiIcon name="check" size={13} />
+              <span className="pn-gpt">
+                {g.chosen.inPlan === "booked" ? L("Rezerve", "Booked") : L("Seçildi", "Chosen")}: {g.chosen.item.name}
+              </span>
+              <span className="pn-gpl">· {L("Plan'da gör", "See on the plan")} →</span>
+            </button>
+          ) : (
+            <span className="pn-gw">{L("Karar bekliyor", "To decide")}</span>
+          )}
+          {g.entries.length > 1 && (
+            <button type="button" className="pn-cmp" aria-pressed={asTable(g)} onClick={() => toggleRow(g.group)}>
+              {asTable(g) ? L("Kartlar", "Cards") : L("Karşılaştır", "Compare")}
+            </button>
+          )}
+        </div>
+        {forYou && (
+          <div className="pn-foryou">
+            <b>{L("Senin için", "For you")}: {forYou.lead}</b>
+            <span>{forYou.text}</span>
+          </div>
+        )}
+        {asTable(g) ? <PanoTable entries={g.entries} decisions={decisions} /> : <div className="pn-grid pn-strip">{g.entries.map((e) => card(e, false, g.entries))}</div>}
+      </section>
     );
   };
+  // v30: things to do are not alternatives: a row per city (trip order), the inspiration one row; no decision, no Karşılaştır.
+  const listView = (key: string, title: string, entries: PanoEntry[]) => (
+    <section key={key} className="pn-group pn-sec">
+      <div className="pn-gh">
+        <b title={title}>{title}</b>
+        <span className="pn-gn">{recordsText(entries.length)}</span>
+      </div>
+      <div className="pn-grid pn-strip">{entries.map((e) => card(e, false, entries))}</div>
+    </section>
+  );
+  const rowView = (r: PanoRow) =>
+    r.kind === "need"
+      ? needView(r.group)
+      : r.kind === "city"
+        ? listView(r.key, [L("Yapılacaklar", "To do"), r.city].filter(Boolean).join(" · "), r.entries)
+        : listView(r.key, panoCatLabel("inspo"), r.entries);
   return (
     <section className="pn" aria-label={L("Pano", "Board")}>
       <header className="pn-head">
         <h2>{L("Pano", "Board")}</h2>
-        <span className="pn-n">{L(`${entries.length} kayıt`, `${entries.length} saved`)}</span>
+        <span className="pn-n">{recordsText(entries.length)}</span>
         <span className="pn-sp" />
         {focus && (
           <button type="button" className="pn-back" onClick={onBack}>
@@ -154,23 +167,22 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
           </svg>
           <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={L("Kayıtlarda ara", "Search saved")} aria-label={L("Kayıtlarda ara", "Search saved")} />
         </label>
-        <span className="pn-view" role="group" aria-label={L("Görünüm", "View")}>
-          <button type="button" aria-pressed={view === "cards"} onClick={() => setView("cards")}>{L("Kartlar", "Cards")}</button>
-          <button type="button" aria-pressed={view === "table"} onClick={() => setView("table")}>{L("Karşılaştır", "Compare")}</button>
-        </span>
-        <button type="button" className="pn-addlink" aria-expanded={adding} onClick={() => setAdding(!adding)}>
+        <button type="button" className="pn-addlink" aria-expanded={adding} title={L("Link ekle", "Add a link")} onClick={() => setAdding(!adding)}>
           <UiIcon name="plus" size={13} />
-          {L("Link ekle", "Add a link")}
+          <span className="pn-addlbl">{L("Link ekle", "Add a link")}</span>
         </button>
       </header>
       {adding && <LinkForm tripId={tripId} onDone={() => setAdding(false)} />}
       <div className="pn-body">
       <nav className="pn-cats" role="tablist" aria-orientation="vertical" aria-label={L("Ne", "What")}>
         {PANO_CATS.filter((c) => c === "all" || counts.cats[c] > 0).map((c) => (
-          <button key={c} type="button" role="tab" aria-selected={cat === c} className={cat === c ? "on" : ""} data-cat={c} onClick={() => setCat(c)}>
-            {c === "liked" ? <UiIcon name="heart" size={14} /> : null}
-            {panoCatLabel(c)} <i>{counts.cats[c]}</i>
-          </button>
+          <Fragment key={c}>
+            {c === "liked" && <span className="pn-sep" aria-hidden />}
+            <button type="button" role="tab" aria-selected={cat === c} className={cat === c ? "on" : ""} data-cat={c} title={panoCatLabel(c)} onClick={() => setCat(c)}>
+              <CatIcon cat={c} />
+              <span className="pn-cl">{panoCatLabel(c)}</span> <i>{counts.cats[c]}</i>
+            </button>
+          </Fragment>
         ))}
       </nav>
       <div className="pn-main">
@@ -194,9 +206,7 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
           </select>
         </label>
       </div>
-      {view === "table" && cat === "liked" ? (
-        <p className="pn-empty">{L("Karşılaştırma bir ihtiyaç içinde anlamlı: soldan Uçuş ya da Konaklama'yı seç.", "Comparing makes sense within one need: pick Flights or Stays on the left.")}</p>
-      ) : !shown.length ? (
+      {!shown.length ? (
         <p className="pn-empty">
           {/* (hareket dili) nothing saved yet: the mascot waits; a filter or search that finds nothing: it looks puzzled */}
           {state !== "plan" && state !== "open" && <Mascot size={48} state={entries.length ? "oops" : "sleepy"} className="empty-mascot" />}
@@ -208,16 +218,26 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
                 ? L("Burada kayıt yok.", "Nothing saved here.")
                 : L("Henüz kayıt yok. Eklentiyle bir sayfa kaydet ya da sohbette bir link bırak; hepsi burada birikir.", "Nothing saved yet. Save a page with the extension or drop a link in the chat; it all gathers here.")}
         </p>
-      ) : grouped ? (
-        panoGroups(shown).map(groupView)
-      ) : cat === "all" ? (
-        allRows()
-      ) : (
+      ) : cat === "liked" ? (
         <div className="pn-grid">{shown.map((e) => card(e, true, entries.filter((x) => x.group === e.group)))}</div>
+      ) : (
+        panoRows(shown, cat, entries).map(rowView)
       )}
       </div>
       </div>
     </section>
+  );
+}
+
+/** The left menu's mark for a tab: the Plan's own drawing for its kind, in its colour (Tümü: the board, Beğenilenler: the heart). */
+function CatIcon({ cat }: { cat: PanoCat }) {
+  if (cat === "all") return <UiIcon name="board" size={17} />;
+  if (cat === "liked") return <span className="pn-ci liked"><UiIcon name="heart" size={17} /></span>;
+  const kind = cat === "inspo" ? "inspo" : cat === "other" ? "insurance" : cat;
+  return (
+    <span className="pn-ci" style={{ color: kind === "inspo" ? "#c2255c" : cardKindColor(kind) }}>
+      <KindIcon kind={kind} size={17} />
+    </span>
   );
 }
 
@@ -440,7 +460,8 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
         <span className="pn-price">
           {facts.price ? (
             <>
-              <b>{facts.price.text}</b> {facts.price.label}
+              <b>{facts.price.text}</b>
+              {facts.price.label ? <span className="pn-pl">{facts.price.label}</span> : null}
             </>
           ) : null}
         </span>
