@@ -1,6 +1,7 @@
 // The day-by-day view as cards (0.34.1, approved widget "günlük akış v4"): one card a day, its photo on
 // the left and what happens as a short list; tapping it opens the day on its own page. Days with
 // nothing planned in a row (in the same city) are one card. Pure.
+import { legCardView } from "./cardView";
 import { cityOfAirport } from "./airports";
 import { cardKind, legTransportMode, type CardKind } from "./cardKinds";
 import { sectionOfItem } from "./categories";
@@ -299,11 +300,10 @@ export function stageOf(r: DayRow): Stage | null {
   if (r.layover || r.meeting) return null;
   if (r.kind === "idea") return { tone: "idea", text: r.item?.arranged ? L("Ayarlandı", "Arranged") : r.item?.doneAt ? L("Yapıldı", "Done") : L("Fikir", "Idea") };
   if (r.kind === "info") return null;
-  // "Ben hallettim" only: the item says it, or the leg says "ayarlandı" with nothing of ours booked on it (a ticket bought, "Bileti aldım", is Rezerve).
+  // "Ben hallettim" only: the item says it, or the leg's own card does (legCardView: marked arranged, no ticket of ours; a ticket bought, "Bileti aldım", is Rezerve).
   const travel = r.entry?.kind === "travel" ? r.entry : null;
-  const leg = travel?.leg ?? null;
-  const ticketBooked = r.item?.status === "booked" || !!leg?.options.some((i) => i.status === "booked") || !!travel?.travel?.settled;
-  const arranged = !!r.item?.arranged || (!ticketBooked && (/ayarland|arranged/i.test(`${r.line ?? ""} ${r.status}`) || !!leg?.choice?.booked));
+  const leg = travel?.leg ?? (r.entry?.kind === "leg" ? r.entry.leg : null);
+  const arranged = !!r.item?.arranged || (leg ? legCardView(leg).arranged : r.item?.status !== "booked" && /ayarland|arranged/i.test(`${r.line ?? ""} ${r.status}`));
   switch (r.state) {
     case "done":
       return arranged ? { tone: "rez", text: L("Ayarlandı", "Arranged") } : { tone: "rez", text: L("Rezerve", "Booked") };
