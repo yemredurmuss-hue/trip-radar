@@ -36,6 +36,7 @@ export function bookingCopies(item: Item, kind: CardKind): Record<string, { valu
     if (f.to && /^[A-Z]{3}$/.test(f.to)) out[L("Varış", "Arrives")] = { value: f.to, token: f.to };
   }
   if (item.location.address) out[L("Adres", "Address")] = { value: item.location.address };
+  if (kind === "stay" && item.doorCode?.text) out[L("Kapı kodu", "Door code")] = { value: item.doorCode.text };
   return out;
 }
 
@@ -61,6 +62,9 @@ export function bookingRows(item: Item, kind: CardKind): [string, string][] {
     if (start) rows.push([L("Tarih", "Date"), formatDateRange(start, isoDate(item.dates.end))]);
   }
   if (item.location.address) rows.push([L("Adres", "Address"), item.location.address]);
+  // v30: a stay's host and its door code, only as the booking said them (nothing is invented).
+  if (kind === "stay" && item.host?.name) rows.push([L("Ev sahibi", "Host"), item.host.name]);
+  if (kind === "stay" && item.doorCode?.text) rows.push([L("Kapı kodu", "Door code"), [item.doorCode.text, item.doorCode.when].filter(Boolean).join(" · ")]);
   if (item.guests.adults) rows.push([L("Kişi", "People"), L(`${item.guests.adults} kişi`, `${item.guests.adults} ${item.guests.adults === 1 ? "person" : "people"}`)]);
   const free = day(item.cancellation.freeUntil);
   if (free) rows.push([L("Ücretsiz iptal", "Free cancellation"), L(`${free}'e kadar`, `until ${free}`)]);

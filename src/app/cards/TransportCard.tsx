@@ -58,6 +58,8 @@ function Stop({ end, right, field, timed, codes }: { end: End | null; right: boo
         ) : (
           end?.time && <Hour end={end} />
         )}
+        {/* v30: it lands another day: "+1" by the hour, the date on hover. */}
+        {end?.plus && <sup className="pk-plus" title={end.plus.date}>+{end.plus.days}</sup>}
       </span>
     </div>
   );

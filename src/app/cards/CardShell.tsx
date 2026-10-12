@@ -121,7 +121,9 @@ export interface Nav {
 }
 
 /** The bottom strip: where it stands (or ‹ 1/2 ›) on the left, the price and the one action on the right. */
-export function CardFoot({ view, nav, best = false, price, onAction, live, go, alt, quietWait = false, says = false, timed = null, docs = null, more }: {
+export function CardFoot({ view, nav, best = false, price, onAction, live, go, alt, quietWait = false, says = false, timed = null, docs = null, more, noTicket = false }: {
+  /** v30: a way of travel that needs no ticket says so by its price ("Bilet gerekmez") instead of a page to buy on. */
+  noTicket?: boolean;
   view: FootView;
   /** v11: a plan chosen and not bought: its stage is the card's colour and its top line, not words here (a date running out stays). */
   quietWait?: boolean;
@@ -134,7 +136,7 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go, a
   /** v11: "Ayrıntı ›", a booking's window. */
   more?: () => void;
   /** v11: a chosen plan's other options, "Pano'da 2 alternatif" by its price (they open on the Pano). */
-  alt?: { count: number; onClick: () => void } | null;
+  alt?: { count: number; onClick: () => void; /** v30: it turns the card to its options in place (a chevron); else it goes to the Board. */ flips?: boolean } | null;
   /** v11: a plan's page to book on ("Rezerve et ↗"), where its "Aldım" moved to the top line. */
   go?: { href: string; label: string } | null;
   nav?: Nav;
@@ -201,8 +203,9 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go, a
         </span>
       )}
       {alt && alt.count > 0 && (
-        <button type="button" className="pk-alt" onClick={(e) => { e.stopPropagation(); alt.onClick(); }}>
-          {L(`Pano'da ${alt.count} alternatif`, `${alt.count} alternative${alt.count === 1 ? "" : "s"} on the Board`)}
+        <button type="button" className="pk-alt" aria-expanded={alt.flips ? false : undefined} onClick={(e) => { e.stopPropagation(); alt.onClick(); }}>
+          {alt.flips ? L(`${alt.count} alternatif`, `${alt.count} alternative${alt.count === 1 ? "" : "s"}`) : L(`Pano'da ${alt.count} alternatif`, `${alt.count} alternative${alt.count === 1 ? "" : "s"} on the Board`)}
+          {alt.flips && <UiIcon name="down" size={12} />}
         </button>
       )}
       {view.action && onAction && (
@@ -210,7 +213,8 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go, a
           {view.action.label}
         </button>
       )}
-      {!view.action && go && (
+      {!view.action && noTicket && <span className="pk-noticket">{L("Bilet gerekmez", "No ticket needed")}</span>}
+      {!view.action && !noTicket && go && (
         <a className="pk-cta pk-go" href={go.href} target="_blank" rel="noreferrer">
           {go.label}
         </a>

@@ -7,7 +7,7 @@ import { RideCardBody, RouteArc } from "./RideCard";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { cardFacts, durationText } from "../../lib/cardFacts";
 import { cardKind, isTransportKind, type LegEnds } from "../../lib/cardKinds";
-import { footOf, mediaFace, ringOf, topDate, transportFace } from "../../lib/cardView";
+import { footOf, mediaFace, ringOf, stayPlatform, topDate, transportFace } from "../../lib/cardView";
 import type { Choice, Ranked } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
 import { L } from "../../lib/i18n";
@@ -42,6 +42,7 @@ import { useStageMenu } from "./stageMenu";
 import { MediaCardBody } from "./MediaCard";
 import { datedLink, stayRatingOf } from "./parts";
 import { cancelLineOf, checkInNote, showBookingRef } from "../../lib/cardTime";
+import { needsNoTicket, rentalLine, stayArt, ticketPriceLine, ticketPrices } from "../../lib/cardTicket";
 import { TransportArt, UiIcon } from "./Silhouettes";
 import { TransportCardBody } from "./TransportCard";
 import { FlightTiles } from "./FlightLive";
@@ -173,6 +174,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   const bookedCard = item.status === "booked";
   // v30: a booked stay's check-in time joins its foot two days before (only the time its record knows).
   const checkIn = kind === "stay" && bookedCard ? checkInNote(item, env.today, env.decisions?.ctx.listings.get(listingKeyOf(item))?.house) : null;
+  // v30: a click on a chosen card turns it to its back, the options (the choice window); with no other option it opens its details.
+  const flips = item.status === "chosen" && Boolean(onChange);
   // The motion dictionary: a card that turns booked pops its tick (mühür), a change glows (parlama), one the chat just added drops in (düşüş).
   const sealed = useJustBecame(bookedCard);
   const glow = useJustChanged(item.updatedAt);
@@ -224,6 +227,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
     if (face.from) face.from = { ...face.from, sub: `${face.from.sub ?? ""}${term(live.departure.terminal)}`.trim(), late: red && !!live.departure.revised, was: red ? was.departure : null };
     if (face.to) face.to = { ...face.to, sub: `${face.to.sub ?? ""}${term(live.arrival.terminal)}`.trim(), late: red && !!live.arrival.revised, was: red ? was.arrival : null };
   }
+  const stub = kind === "flight" && item.status === "chosen" ? ticketPrices(item, facts.price) : null;
   const liveFoot = live
     ? red
       ? { note: phaseOf(live) === "before" ? delayShiftNote(live) : null, tone: "bad" as const, source: sourceText(live) }
@@ -242,7 +246,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       ariaLabel={item.name}
       itemId={item.id}
       badge={<WhoseBadge item={item} trip={env.trip} />}
-      extraClass={[allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined}
+      extraClass={[allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", stub ? "pk-stubbed" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined}
       art={
         <>
           {/* v11: a booking's stamp, the green ✓ turned a little, faint, in its corner (a ticket's ends fill that corner: none there). */}
@@ -266,13 +270,13 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       menu={menu}
       peek={flightFacts.length ? <FlightPeekBox facts={flightFacts} /> : null}
       open={open}
-      onToggle={() => (item.status === "booked" && !["taxi", "note", "todo"].includes(kind) ? setSheet(true) : setOpen(!open))}
+      onToggle={() => (item.status === "booked" && !["taxi", "note", "todo"].includes(kind) ? setSheet(true) : flips ? onChange!() : setOpen(!open))}
       body={
         transport ? (
           <>
-            {/* v30: a flight's middle is the curved route; any other way (not a rental) is a ride: its drawing, "A → B", the way. */}
-            {kind !== "flight" && !face!.rental && face!.from && face!.to ? (
-              <RideCardBody face={face!} title={item.name} kind={kind} brand={brandOf(facts.source?.label, facts.source?.host)} when={null} />
+            {/* v30: a flight's middle is the curved route; any other way is a ride: its drawing, "A → B", the way (a rental: where, how long, and its pick-up and return line). */}
+            {kind !== "flight" && (face!.rental ? face!.from : face!.from && face!.to) ? (
+              <RideCardBody face={face!.rental ? { ...face!, to: null, middle: [face!.middle, face!.to?.city].filter(Boolean).join(" · ") || null } : face!} title={item.name} kind={kind} brand={brandOf(facts.source?.label, facts.source?.host)} when={null} line={face!.rental ? rentalLine(item) : null} />
             ) : (
               <TransportCardBody face={face!} title={item.name} art={kind === "flight" ? <RouteArc stops={(item.flight?.stops ?? 0) > 0} /> : kind !== "transport" ? <TransportArt mode={kind} /> : null} />
             )}
@@ -280,6 +284,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
           </>
         ) : (
           <MediaCardBody face={mediaFace(item, kind, facts.source)} kind={kind} score={facts.score} best={best} city={item.city}
+            art={kind === "stay" ? stayArt(item, stayPlatform(item) === "Airbnb") : undefined}
             brand={kind === "stay" ? brandOf(facts.source?.label, facts.source?.host) : null} area={kind === "stay" ? (item.location.area ?? null) : null}
             rating={kind === "stay" ? stayRatingOf(item) : null} cancel={kind === "stay" ? cancelLineOf(item, env.today) : null}
             nights={kind === "stay" && item.dates.start && item.dates.end ? nightsBetween(item.dates.start.slice(0, 10), item.dates.end.slice(0, 10)) : null} />
@@ -289,7 +294,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
         <>
           <CardFoot view={bookTop ? { ...foot, action: null } : foot} nav={nav} best={best} price={facts.price} onAction={act} live={liveFoot}
             go={bookTop && page ? { href: page, label: goLabel } : null}
-            alt={altCount > 0 ? { count: altCount, onClick: () => env.onPano(groupKeyOf(item)) } : null}
+            alt={altCount > 0 ? { count: altCount, onClick: flips ? onChange! : () => env.onPano(groupKeyOf(item)), flips } : null}
+            noTicket={needsNoTicket(item, kind, transport)}
             quietWait={item.status === "chosen"}
             says={kind === "flight" && item.status === "chosen"}
             timed={checkIn}
@@ -314,6 +320,14 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
               {item.bookingRef && showBookingRef(item, env.today) ? <b><CopyText value={item.bookingRef} label={L("Rezervasyon kodu", "Booking code")}>{item.bookingRef}</CopyText></b> : facts.price ? <b>{facts.price.text}</b> : null}
               {item.guests.adults ? <span>{L(`${item.guests.adults} yolcu`, `${item.guests.adults} passenger${item.guests.adults === 1 ? "" : "s"}`)}</span> : null}
               <span className="pk-stamp" aria-hidden><UiIcon name="check" size={14} /></span>
+            </div>
+          )}
+          {/* v30: a chosen flight's stub: what it costs per person and in all, from what was saved. */}
+          {stub && (
+            <div className="pk-stub pk-stub-plan">
+              <span className="pk-stub-k">{L("Fiyat", "Price")}</span>
+              <b>{stub.each ?? stub.total}</b>
+              <span>{ticketPriceLine(stub)}</span>
             </div>
           )}
           {stageMenu.field}

@@ -26,13 +26,13 @@ export const illusOf = (kind: CardKind): string | null =>
   ILLUS[kind] ?? ({ train: "tren", bus: "otobus", minibus: "minibus", ferry: "vapur", taxi: "taksi-transfer", transfer: "taksi-transfer", car: "arac-kiralama", moto: "motosiklet", rv: "karavan", bike: "bisiklet" } as Partial<Record<CardKind, string>>)[kind] ?? null;
 
 /** On a record's card the title and the city are editable where they stand (the day and hour are on the top line). */
-export function MediaCardBody({ face, kind, score, best, city = null, nights = null, brand = null, area = null, rating = null, cancel = null }: { face: MediaFace; kind: CardKind; score: number | null; best: boolean; city?: string | null; nights?: number | null; brand?: Brand | null; area?: string | null; rating?: StayRating | null; cancel?: CancelLine | null }) {
+export function MediaCardBody({ face, kind, score, best, city = null, nights = null, brand = null, area = null, rating = null, cancel = null, art: artOf }: { face: MediaFace; kind: CardKind; score: number | null; best: boolean; city?: string | null; nights?: number | null; brand?: Brand | null; area?: string | null; rating?: StayRating | null; cancel?: CancelLine | null; /** v30: the stay's drawing by what it is (a flat, a caravan), null: the kind's icon; absent: the kind's. */ art?: string | null }) {
   const placed = Boolean(useInlineEdit()?.fields.includes("city"));
   // The city first, editable; the hour is on the top line then.
   const info = placed ? face.info.filter((x) => x.text !== city && !x.strong) : face.info;
   // The kind's drawing (ticket, museum, eSIM, shield) or its icon: in place of a photo, and when a photo fails.
   // v11: the drawings' pictures (static/illus) where there's one for the kind.
-  const art = ILLUS[kind];
+  const art = artOf === undefined ? ILLUS[kind] : artOf;
   const drawing = art ? <img className="pk-illus" src={`illus/${art}.png`} alt="" /> : face.drawing ? <MediaSilhouette name={face.drawing} /> : <KindIcon kind={kind} size={56} className="pk-kindbig" />;
   return (
     <div className={`pk-media${kind === "stay" ? " pk-stay" : ""}`}>

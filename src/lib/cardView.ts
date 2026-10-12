@@ -152,6 +152,8 @@ export interface End {
   late?: boolean;
   /** v30: the time it was before the delay, struck through beside the new one. */
   was?: string | null;
+  /** v30: it lands on a later day than it leaves: "+1" by the time, the date in its title ("15 Ekim"). */
+  plus?: { days: number; date: string };
 }
 export interface TransportFace {
   from: End | null;
@@ -176,6 +178,13 @@ function endOf(place: string, city: string | null | undefined, day: string | nul
   const same = (x: string) => x.trim().toLocaleLowerCase("tr");
   const code = same(place) === same(big) ? null : place;
   return { city: big, sub: [code, day].filter(Boolean).join(" · ") || null, time };
+}
+
+/** Where a trip lands: with an hour and a later day it's "+1" by the hour (the date in its title); without an hour the day stays in the small line. */
+function toEnd(place: string, city: string | null | undefined, leaves: string | null, lands: string | null, time: string | null): End {
+  const other = Boolean(lands && leaves && lands !== leaves);
+  if (!other || !time || lands! < leaves!) return endOf(place, city, other ? dayOf(lands) : null, time);
+  return { ...endOf(place, city, null, time), plus: { days: nightsBetween(leaves, lands), date: dayOf(lands) ?? (lands as string) } };
 }
 
 /**
@@ -203,7 +212,7 @@ export function transportFace(item: Item, kind: TransportMode | "transport", end
   return {
     rental: false,
     from: f?.from ? endOf(f.from, ends.from, null, clockOf(f.departure)) : null,
-    to: f?.to ? endOf(f.to, ends.to, lands && leaves && lands !== leaves ? dayOf(lands) : null, clockOf(f.arrival)) : null,
+    to: f?.to ? toEnd(f.to, ends.to, leaves, lands, clockOf(f.arrival)) : null,
     middle: [m.durationMinutes ? durationText(m.durationMinutes) : null, stops].filter(Boolean).join(" · ") || null,
   };
 }

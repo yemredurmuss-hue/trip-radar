@@ -10,7 +10,9 @@ import { splitAround } from "../../lib/copyText";
 import { CopyText } from "../CopyButton";
 import type { CardFacts } from "../../lib/cardFacts";
 import { cardKindColor, cardKindLabel, type CardKind } from "../../lib/cardKinds";
+import { safeContactUrl } from "../../lib/cardTicket";
 import { cancelLineOf } from "../../lib/cardTime";
+import { stayPlatform } from "../../lib/cardView";
 import { L } from "../../lib/i18n";
 import { ideaMapUrl } from "../../lib/ideas";
 import type { DocMeta, Item } from "../../lib/types";
@@ -59,6 +61,11 @@ export function BookingSheet({ item, kind, facts, docs, date, today, onChange, o
   const sub = [date, item.provider].filter(Boolean).join(" · ");
   // A stay's cancel terms, here in its window (the card itself says them only in the last two weeks).
   const cancel = kind === "stay" && today ? cancelLineOf({ ...item, status: "chosen" }, today) : null;
+  // v30: "Ev sahibine yaz ↗" ("Otele yaz ↗" at a hotel) only when the booking gave a real link or address to write to; Airbnb's door code
+  // comes a day before check-in, said only while there is none yet.
+  const contact = kind === "stay" ? safeContactUrl(item.host?.url) : null;
+  const home = stayPlatform(item) === "Airbnb" || ["apartment", "house"].includes(item.metrics?.stayKind ?? "");
+  const doorLater = kind === "stay" && stayPlatform(item) === "Airbnb" && !item.doorCode?.text;
   return createPortal(
     <div className="modal" onClick={(e) => (e.stopPropagation(), onClose())}>
       <div className="bk-sheet" role="dialog" aria-modal="true" aria-labelledby="bk-title" style={{ "--c": cardKindColor(kind) } as React.CSSProperties} onClick={(e) => e.stopPropagation()}>
@@ -93,6 +100,11 @@ export function BookingSheet({ item, kind, facts, docs, date, today, onChange, o
                 {L(`${item.provider ?? "Sayfası"} ↗`, `${item.provider ?? "Its page"} ↗`)}
               </a>
             )}
+            {contact && (
+              <a className="bk-btn" href={contact} target="_blank" rel="noreferrer">
+                {home ? L("Ev sahibine yaz ↗", "Message the host ↗") : L("Otele yaz ↗", "Message the hotel ↗")}
+              </a>
+            )}
             <span className="bk-sp" />
             {cancel && <span className={`pk-cancel ${cancel.tone}`}>{cancel.text}</span>}
           </div>
@@ -111,6 +123,7 @@ export function BookingSheet({ item, kind, facts, docs, date, today, onChange, o
           ) : (
             <p className="bk-none">{L("Ayrıntı yok; belgeyi eklersen PNR, saat ve tutarı ben okurum.", "No details yet; add its document and I'll read the reference, times and amount.")}</p>
           )}
+          {doorLater && <p className="bk-note bk-door">{L("Kapı kodu girişten 1 gün önce gelir.", "Airbnb sends the door code 1 day before check-in.")}</p>}
         </section>
         <section className="bk-sec">
           <h4>{L("Belgeler", "Documents")}</h4>

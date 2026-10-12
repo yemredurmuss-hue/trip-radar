@@ -3170,6 +3170,57 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 }
 
 /* @@css-cardsB: reserved insertion point, parallel work (remove marker line when done) */
+/* ===== cardsB (plan v30): flip chip, +1, ticket stub, ride/rental, stay band, equal heights, back-face ‹ › ===== */
+/* Equal heights: the cards of a row are one height; the bottom strip (price, button) sits at the bottom. */
+.cat-sec .cat-grid { align-items: stretch; }
+.cat-grid > .cat-card, .cat-grid > .ek-cell { display: flex; flex-direction: column; }
+.cat-grid > .cat-card > :not(.pk-insert), .cat-grid > .cat-card > :not(.pk-insert) > .group.nested, .cat-grid > .cat-card > :not(.pk-insert) > .section { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+.cat-grid > .cat-card > :not(.pk-insert) > .group.nested > .group-head, .cat-grid > .cat-card > :not(.pk-insert) > .section > .section-head { flex: none; }
+.cat-grid .pk-card:not(.pk-fold) { display: flex; flex-direction: column; flex: 1 1 auto; }
+.cat-grid .pk-card > .pk-foot { margin-top: auto; }
+.cat-grid > .ek-cell > .ek-card { flex: 1 1 auto; }
+.cat-grid .pk-card > .pk-top, .cat-grid .pk-card > .pk-body { flex: none; }
+.cat-grid .pk-card > .pk-stub-plan { margin-top: 0; }
+/* The top line is one line: the date gives way ("…"), the status and the buttons stay. */
+.cat-grid .pk-card > .pk-top { flex-wrap: nowrap; gap: 6px; }
+.cat-grid .pk-card > .pk-top .pk-kind { flex: none; }
+.cat-grid .pk-card > .pk-top .pk-date { white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; }
+.cat-grid .pk-card > .pk-top .pk-end { flex: none; margin-left: auto; gap: 2px; }
+.cat-grid .pk-card > .pk-top .pk-aldim { margin-right: 2px; padding: 3px 9px; }
+/* A foot with a price and a button keeps them in one row (the left side gives way). */
+.cat-grid .pk-card > .pk-foot:has(> .pk-cta, > .pk-go) { flex-wrap: nowrap; gap: 6px; }
+@media (max-width: 520px) { .cat-grid .pk-card > .pk-foot:has(> .pk-cta, > .pk-go) { flex-wrap: wrap; } }
+.cat-grid .pk-card > .pk-foot:has(> .pk-cta, > .pk-go) > .pk-state { flex: none; white-space: nowrap; }
+.cat-grid .pk-card > .pk-foot > .pk-price, .cat-grid .pk-card > .pk-foot > .pk-cta, .cat-grid .pk-card > .pk-foot > .pk-go { flex: none; white-space: nowrap; }
+.cat-grid .pk-card > .pk-foot > .pk-alt { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-grid .pk-card > .pk-foot > .pk-cta, .cat-grid .pk-card > .pk-foot > .pk-go { padding: 7px 12px; }
+.cat-grid .pk-card > .pk-foot .pk-price2 b { font-size: 16px; }
+.pk-foot .pk-alt { display: inline-flex; align-items: center; gap: 3px; border-bottom: 0; padding: 3px 6px 3px 8px; font-size: 12px; border-radius: 999px; background: var(--v-lav, #f1eefc); color: var(--v-accent-ink, #4a35c8); font-weight: 650; }
+.pk-foot .pk-alt:hover { background: color-mix(in srgb, var(--hx-accent, #5b45e0) 16%, var(--v-lav, #f1eefc)); color: var(--v-accent-ink, #4a35c8); }
+.pk-noticket { margin-left: auto; font-size: 12.5px; color: var(--v-muted); white-space: nowrap; flex: none; }
+.pk-foot > .pk-price ~ .pk-noticket { margin-left: 4px; }
+/* A flight that lands another day: "+1" by the hour. */
+.pk-stop > span sup.pk-plus { font-size: 10.5px; font-weight: 800; color: var(--v-accent-ink, #4a35c8); margin-left: 2px; vertical-align: 5px; line-height: 0; cursor: help; }
+/* A chosen flight's stub: what it costs per person and in all. */
+.pk-stub-plan { background: color-mix(in srgb, var(--v-plan-bg, #fbf6ea) 50%, #fff); }
+.pk-stub-plan .pk-stub-k { font-weight: 700; color: var(--v-plan-ink, #9a6400); }
+.pk-stubbed > .pk-foot .pk-price { display: none; }
+/* A rental in the ride template: its line is under "Lizbon · the way". */
+.pk-ride-t > small:last-child { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+/* A stay's picture: a band across the card's whole width (~3:1), the photo covers it, a drawing sits whole in it. */
+.pk-r-done .pk-media.pk-stay, .pk-r-half .pk-media.pk-stay { padding-right: 0; }
+.pk-card:has(.pk-media.pk-stay) > .pk-stamp { top: 52px; right: 12px; z-index: 2; background: #fff; opacity: .95; }
+.pk-card .pk-media.pk-stay .pk-vis { width: auto; margin: 0 -16px; height: auto; aspect-ratio: 3 / 1; border-radius: 0; }
+.pk-card .pk-media.pk-stay .pk-vis .pk-img { object-fit: cover; object-position: 50% 55%; }
+.pk-card .pk-media.pk-stay .pk-vis .pk-illus { width: auto; height: 100%; max-width: 100%; margin: 0 auto; padding: 6px 0; top: 0; object-fit: contain; }
+.pk-card .pk-media.pk-stay .pk-vis .pk-kindbig { transform: scale(1); }
+/* The back: ‹ 2/4 › in its head, the one in focus ringed. */
+.ch-nav { display: inline-flex; align-items: center; gap: 4px; flex: none; font-size: 12.5px; color: var(--v-muted); font-variant-numeric: tabular-nums; }
+.ch-nav button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--v-line2); border-radius: 50%; background: #fff; color: var(--v-ink); cursor: pointer; }
+.ch-nav button:hover { border-color: var(--v-accent-ink, #4a35c8); color: var(--v-accent-ink, #4a35c8); }
+.ch-back .ch-row.ch-tile.cur { box-shadow: 0 0 0 2px var(--hx-accent, #5b45e0); }
+.bk-door { margin-top: 6px; }
+
 /* v11 (phase 2a): a planned card's "✓ Aldım" on its top line; the strip's link to the page to book on. */
 .pk-aldim { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; padding: 3px 11px; border: 1.5px solid #f0a53a; border-radius: 999px; background: #fff; color: #9a6400; font: inherit; font-size: 13px; font-weight: 650; white-space: nowrap; cursor: pointer; }
 .pk-aldim:hover { background: #fbf6ea; }

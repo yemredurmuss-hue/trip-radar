@@ -37,30 +37,31 @@ export function BrandPill({ brand }: { brand: Brand | null }) {
   );
 }
 
-const clockText = (e: End | null) => [e?.time, e?.sub].filter(Boolean).join(" ");
+const clockText = (e: End | null) => [e?.time && e.plus ? `${e.time} +${e.plus.days}` : e?.time, e?.sub].filter(Boolean).join(" ");
 
 /** A way of travel that isn't a flight or a rental: drawing, "A → B", the way, the hours. */
-export function RideCardBody({ face, title, kind, brand, when }: { face: TransportFace; title: string; kind: CardKind; brand: Brand | null; when: string | null }) {
+export function RideCardBody({ face, title, kind, brand, when, line = null }: { face: TransportFace; title: string; kind: CardKind; brand: Brand | null; when: string | null; /** A rental's pick-up and return line, in place of the hours. */ line?: string | null }) {
   const api = useInlineEdit();
   const art = illusOf(kind);
   const how = [title, face.middle, when].filter(Boolean).join(" · ");
-  const hours = [clockText(face.from), clockText(face.to)].filter((x) => x).join(" → ");
-  const editsEnds = Boolean(api?.fields.includes("from"));
+  const hours = line ?? [clockText(face.from), clockText(face.to)].filter((x) => x).join(" → ");
+  const fromField = face.rental ? "city" : "from";
+  const editsEnds = Boolean(api?.fields.includes(fromField));
   return (
     <div className="pk-ride">
       <span className="pk-ride-art">{art ? <img src={`illus/${art}.png`} alt="" /> : <KindIcon kind={kind} size={40} />}</span>
       <span className="pk-ride-t">
         <b className="pk-ride-ab">
-          <span className="pk-ride-end" title={face.from?.city ?? undefined}>{editsEnds ? <Editable field="from">{face.from?.city}</Editable> : face.from?.city}</span>
-          <span className="pk-ride-arr" aria-hidden>→</span>
-          <span className="pk-ride-end" title={face.to?.city ?? undefined}>{editsEnds ? <Editable field="to">{face.to?.city}</Editable> : face.to?.city}</span>
+          <span className="pk-ride-end" title={face.from?.city ?? undefined}>{editsEnds ? <Editable field={fromField}>{face.from?.city}</Editable> : face.from?.city}</span>
+          {face.to && <span className="pk-ride-arr" aria-hidden>→</span>}
+          {face.to && <span className="pk-ride-end" title={face.to.city ?? undefined}>{editsEnds ? <Editable field="to">{face.to.city}</Editable> : face.to.city}</span>}
         </b>
         <span className="pk-ride-how" title={how}>
           <BrandPill brand={brand} />
           {how}
         </span>
         {hours && <small title={hours}>{hours}</small>}
-        {!hours && editsEnds && api?.fields.includes("time") && (
+        {!hours && editsEnds && !face.rental && api?.fields.includes("time") && (
           <small>
             <Editable field="time">{null}</Editable>
           </small>
