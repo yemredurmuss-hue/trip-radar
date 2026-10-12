@@ -20,7 +20,7 @@ import { addDays, cityKeyOf } from "./plan";
 import { looksLikeUrl } from "./url";
 import type { PlannedInput } from "./planned";
 import {
-  budgetSet, chipsFor, effectsOf, optionsText, planSchema, playbookFor, playbookPromptLine, readAnswer, realPlace, say, startOffset, startPlaybook, startPlaybookObj, staysAfter,
+  budgetSet, chipsFor, effectsOf, optionsText, planSchema, playbookFor, playbookPromptLine, readAnswer, realPlace, say, campWords, startOffset, startPlaybook, startPlaybookObj, stayKindSet, staysAfter,
   validModelPlaybook, validQuestions, type PbChip, type PbEffect, type PbQuestion, type RawPlan,
 } from "./playbooks";
 import { CIRCUITS, englishName, fitCircuit } from "./startCircuits";
@@ -3237,8 +3237,19 @@ export function creationOf(s: StartState): Creation | null {
   const effects = pbEffects(s);
   const shaped0 = effects.length ? staysAfter(stays, effects, { dest: port ?? where.place, eventPlace: s.intent?.kind === "event" ? s.intent.place : null }) : stays;
   // The nights of a kind's own (on the boat, in the camp, in the van): named for it, never "Konaklama · …" to fill with a hotel.
-  const stayAs = custom && custom.stayType !== "hotel" ? { kind: custom.stayType as StayKind, city: custom.stayType === "vehicle" ? null : (port ?? where.place) } : null;
-  const shaped = stayAs ? shaped0.map((x) => (stayAs.city == null || samePlace(x.city, stayAs.city) ? { ...x, title: ownStayTitle(custom!, x.city) } : x)) : shaped0;
+  // v30: a festival's nights at its own place are a camp (a tent; a caravan when that was the answer), never a hotel.
+  const festivalStay = !custom && startPlaybook(s) === "festival" && s.intent?.kind === "event" && s.intent.place ? { kind: (stayKindSet(effects) ?? "camp") as StayKind, city: s.intent.place } : null;
+  const stayAs = custom && custom.stayType !== "hotel" ? { kind: custom.stayType as StayKind, city: custom.stayType === "vehicle" ? null : (port ?? where.place) } : festivalStay;
+  const shaped = stayAs
+    ? shaped0.map((x) => {
+        if (!(stayAs.city == null || samePlace(x.city, stayAs.city))) return x;
+        if (festivalStay) {
+          const w = campWords(festivalStay.kind as "camp" | "vehicle");
+          return { ...x, title: w.title, note: w.note };
+        }
+        return { ...x, title: ownStayTitle(custom!, x.city) };
+      })
+    : shaped0;
   for (const e of effects) {
     const key = e.op === "moveCards" ? cityKeyOf(e.to) : null;
     // A resort inside the country said: the country's flag, weather and visa.

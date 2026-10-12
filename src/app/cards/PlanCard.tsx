@@ -39,7 +39,9 @@ import { DocAccess, openDoc, DocPickButton } from "./DocAccess";
 import { InlineEdit } from "./InlineEdit";
 import { groupKeyOf } from "../../lib/plan";
 import { useStageMenu } from "./stageMenu";
-import { MediaCardBody } from "./MediaCard";
+import { CampBody, MediaCardBody } from "./MediaCard";
+import { isCampStay } from "../../lib/campStay";
+import type { FieldKey } from "../../lib/inlineEdit";
 import { datedLink, stayRatingOf } from "./parts";
 import { cancelLineOf, checkInNote, showBookingRef } from "../../lib/cardTime";
 import { needsNoTicket, rentalLine, stayArt, ticketPriceLine, ticketPrices } from "../../lib/cardTicket";
@@ -92,9 +94,12 @@ export function useCardEnv(): CardEnv {
 }
 
 /** Every record's card is edited where it stands (spec 0.33 §3): its day, ends, title, city, price. */
+/** A camp's card edits its name, nights and place; there is no price to add (the ticket covers the ground). */
+const CAMP_FIELDS: FieldKey[] = ["name", "city", "date", "end"];
+
 export function PlanCard(props: Parameters<typeof PlanCardFace>[0]) {
   return (
-    <InlineEdit item={props.item}>
+    <InlineEdit item={props.item} only={isCampStay(props.item) ? CAMP_FIELDS : undefined}>
       <PlanCardFace {...props} />
     </InlineEdit>
   );
@@ -126,7 +131,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   const alert = dateAlert(item, env.today);
   const ring = ringOf(item, kind);
   const docs = env.docsFor(item.id);
-  const foot = footOf(item, kind, { options: nav?.total ?? 1, alert, docs: docs.length });
+  const camp = kind === "stay" && isCampStay(item);
+  const foot = footOf(item, kind, { options: nav?.total ?? 1, alert, docs: docs.length, included: env.trip?.intent?.playbook === "festival" });
   const stageMenu = useStageMenu(item);
   const { url: datedUrl } = datedLink(item, decision);
   const page = datedUrl ?? item.url;
@@ -282,6 +288,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
             )}
             <FlightTiles tiles={tiles} />
           </>
+        ) : camp ? (
+          <CampBody item={item} nights={item.dates.start && item.dates.end ? nightsBetween(item.dates.start.slice(0, 10), item.dates.end.slice(0, 10)) : null} />
         ) : (
           <MediaCardBody face={mediaFace(item, kind, facts.source)} kind={kind} score={facts.score} best={best} city={item.city}
             art={kind === "stay" ? stayArt(item, stayPlatform(item) === "Airbnb") : undefined}

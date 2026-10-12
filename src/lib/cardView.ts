@@ -3,6 +3,7 @@
 // the bottom strip (where it stands or which option, and its one action), the date on its top line, the
 // ••• menu, the two ends of a trip, a media card's lines, and a transfer as a card. Pure.
 import { durationText, type CardFacts } from "./cardFacts";
+import { isCampStay } from "./campStay";
 import { L } from "./i18n";
 import { count, nDays, nOptions, nReviews, nStops, num } from "./i18nText";
 import { formatDateRange, isoDate, metricsOf, nightsBetween } from "./items";
@@ -22,7 +23,7 @@ const NO_BOOKING: readonly CardKind[] = ["taxi", "note", "todo"];
 
 export function ringOf(item: Item, kind: CardKind): Ring {
   if (item.status === "booked") return "done";
-  if (item.status === "chosen") return NO_BOOKING.includes(kind) ? "done" : "half";
+  if (item.status === "chosen") return NO_BOOKING.includes(kind) || (kind === "stay" && isCampStay(item)) ? "done" : "half";
   return "open";
 }
 
@@ -63,7 +64,7 @@ function bookedSub(item: Item): string | null {
  * "Plana koy" (v11: one verb for putting on the plan); chosen, what's missing and the one action; done, a ✓ and what was kept. A deadline from
  * progress.dateAlert adds its short form ("Seçildi · bilet alınmadı · 4 gün"); its sentence is in the details.
  */
-export function footOf(item: Item, kind: CardKind, opts: { options?: number; alert?: DateAlert | null; docs?: number } = {}): FootView {
+export function footOf(item: Item, kind: CardKind, opts: { options?: number; alert?: DateAlert | null; docs?: number; included?: boolean } = {}): FootView {
   const w = words(item, kind);
   const alert = opts.alert ?? null;
   const withAlert = (left: FootLeft): FootLeft => (alert && left.kind === "state" ? { ...left, when: alert.short, alert: alert.tone } : left);
@@ -77,6 +78,8 @@ export function footOf(item: Item, kind: CardKind, opts: { options?: number; ale
       };
     case "chosen": {
       if (NO_BOOKING.includes(kind)) return { left: withAlert(state("done", L("Planlandı", "Planned"), kind === "taxi" ? L("rezervasyon gerekmez", "no booking needed") : null)), action: null };
+      // v30: a festival's camp or caravan: "✓ Rezervasyon gerekmez · bilete dahil" (nothing to book; the ticket covers the ground).
+      if (kind === "stay" && isCampStay(item)) return { left: state("done", opts.included ? L("Rezervasyon gerekmez · bilete dahil", "No booking needed · included with the ticket") : L("Rezervasyon gerekmez", "No booking needed")), action: null };
       // Set aside by the traveller as needing no booking (0.36.47): an idea on the plan; booking it still can be said.
       if (setAside(item)) {
         // v30: "Ben hallettim" says "Ayarlandı · sen hallettin"; an idea set aside keeps its words.

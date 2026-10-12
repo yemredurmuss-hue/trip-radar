@@ -36,13 +36,13 @@ export const festival: Playbook = {
   tip: () => L("Çoğu kişi 1–2 gün erken gidip iyi kamp yeri kapıyor.", "Most people arrive a day or two early to get a good camping spot."),
   questions: [
     {
+      // v30: no hotel at a festival; the nights there are a camp, and the chat asks which kind (a tent, or a caravan).
       id: "stay",
-      text: { tr: "Kamp mı yapacaksın, otelde mi kalacaksın?", en: "Camping, or a hotel?" },
+      text: { tr: "Çadır kampı mı, karavan kiralamak ister misiniz?", en: "A tent camp, or would you like to rent a caravan?" },
       chips: [
-        // Camping: no room opened for the festival's own nights; a spot to get on the list.
-        { value: "camp", label: { tr: "Kamp", en: "Camping" }, aliases: ["kamp", "camp", "camping", "çadır", "tent"], effects: [{ op: "dropCard", card: "stay:event" }, { op: "addPrep", items: [{ tr: "Kamp yeri ayır", en: "Book a camping spot" }] }] },
-        // A hotel: the stay by the site stays as it is made.
-        { value: "hotel", label: { tr: "Otel", en: "Hotel" }, aliases: ["otel", "hotel", "pansiyon", "apart", "airbnb", "glamping"], effects: [] },
+        // The camp card says "Rezervasyon gerekmez · bilete dahil": nothing to book, so no "book a spot" line either.
+        { value: "camp", label: { tr: "Çadır kampı", en: "Tent camp" }, aliases: ["kamp", "camp", "camping", "çadır", "cadir", "tent"], effects: [{ op: "setStay", kind: "camp" }] },
+        { value: "caravan", label: { tr: "Karavan kiralayalım", en: "Let's rent a caravan" }, aliases: ["karavan", "caravan", "camper", "van", "rv", "motorhome"], effects: [{ op: "setStay", kind: "vehicle" }] },
       ],
     },
     {
