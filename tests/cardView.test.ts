@@ -78,6 +78,13 @@ describe("the bottom strip, per the spec's action table", () => {
   });
 });
 
+describe("a chosen flight's missing ticket (v30)", () => {
+  it("keeps its words and the orange tone the alert gives within 14 days", () => {
+    const f = footOf(train({ status: "chosen" }), "flight", { alert: { tone: "orange", text: "Bilet alınmadı · uçuşa 12 gün", short: "uçuşa 12 gün" } });
+    expect(f.left).toMatchObject({ tone: "wait", sub: "bilet alınmadı", when: "uçuşa 12 gün", alert: "orange" });
+  });
+});
+
 describe("the date on the top line", () => {
   it("a day for a trip, a span for a rental or an eSIM, the hour for an activity", () => {
     expect(topDate(makeItem({ category: "flight", dates: { start: "2026-10-12", end: null, source: "page" }, flight: { from: "LIS", to: "FNC", departure: "2026-10-12T08:15", arrival: null, carrier: null, flightNumber: null, stops: 0 } }), "flight")).toBe("12 Ekim");

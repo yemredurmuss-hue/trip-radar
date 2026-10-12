@@ -111,7 +111,17 @@ export interface FlightTile {
   tone?: "bad" | "ok";
 }
 
-/** Where the flight is: far off (no boxes), its day before take-off, in the air, landed, or off. */
+/** The flight's departure day is today or already past (the calendar day, v30: the live strip is for the flight's day, not the 30 hours before). */
+const onItsDay = (live: FlightLive, now: Date) => {
+  const day = (live.departure.revised ?? live.departure.scheduled)?.slice(0, 10);
+  return !day || day <= now.toISOString().slice(0, 10);
+};
+
+/**
+ * Where the flight is: far off (no boxes), its day before take-off, in the air, landed, or off. "Before" starts on
+ * the flight's own day (a night flight late into the next day stays "before" until it leaves), or as soon as a delay
+ * exists (v30 "Zamana göre gösterme": a delay shows the moment it's there).
+ */
 export function phaseOf(live: FlightLive, now: Date = new Date()): "far" | "before" | "air" | "landed" | "canceled" | "diverted" {
   if (/^Canceled/.test(live.status)) return "canceled";
   if (live.status === "Diverted") return "diverted";
@@ -121,8 +131,7 @@ export function phaseOf(live: FlightLive, now: Date = new Date()): "far" | "befo
   // early), so it counts only once it's well in the past.
   if (live.status === "Arrived" || hoursTo(live.arrival.actual) < -4) return "landed";
   if (["Departed", "EnRoute", "Approaching"].includes(live.status) || hoursTo(live.departure.actual) < -4) return "air";
-  const hours = hoursTo(live.departure.revised ?? live.departure.scheduled);
-  return hours > 30 ? "far" : "before";
+  return onItsDay(live, now) || delayOf(live) >= LATE ? "before" : "far";
 }
 
 /** The boxes for where the flight is (only what's known; none while it's far off). */
@@ -142,8 +151,10 @@ export function flightTiles(live: FlightLive | null | undefined, now: Date = new
           ? { icon: "up", label: L("Yeni kalkış", "New departure"), value: leaves, note: L(`+${late} dk`, `+${late} min`), tone: "bad" }
           : { icon: "up", label: L("Tahmini kalkış", "Expected departure"), value: leaves },
       );
-    if (live.departure.desk) tiles.push({ icon: "desk", label: L("Check-in masası", "Check-in desks"), value: live.departure.desk.replace(/\s*-\s*/, "–") });
-    if (live.departure.gate) {
+    // Desks and gate (the strip's "Terminal · Kapı · check-in") are for the flight's day; a delay seen earlier shows its times only.
+    const today = onItsDay(live, now);
+    if (today && live.departure.desk) tiles.push({ icon: "desk", label: L("Check-in masası", "Check-in desks"), value: live.departure.desk.replace(/\s*-\s*/, "–") });
+    if (today && live.departure.gate) {
       const prev = (live as FlightSeen).prevGate;
       tiles.push(prev ? { icon: "gate", label: L(`Kapı (${prev}'ti)`, `Gate (was ${prev})`), value: live.departure.gate, tone: "bad" } : { icon: "gate", label: L("Kapı", "Gate"), value: live.departure.gate });
     }
@@ -165,6 +176,18 @@ export function flightTiles(live: FlightLive | null | undefined, now: Date = new
 /** The card goes red: late, cancelled or diverted. */
 export const flightAlert = (live: FlightLive | null | undefined, now: Date = new Date()): boolean =>
   !!live && (["canceled", "diverted"].includes(phaseOf(live, now)) || (phaseOf(live, now) === "before" && delayOf(live) >= LATE));
+
+/** The times a delay moved, as they were ("19:40" struck through beside the new one): only where a new time came and it's 5 minutes or more off. */
+export function wasTimes(live: FlightLive | null | undefined): { departure: string | null; arrival: string | null } {
+  const was = (end: FlightLive["departure"]) => (end.scheduled && end.revised && Math.abs(minutesBetween(end.scheduled, end.revised)) >= 5 ? clock(end.scheduled) : null);
+  return live ? { departure: was(live.departure), arrival: was(live.arrival) } : { departure: null, arrival: null };
+}
+
+/** The foot's line on a late flight: the plan moved with it, and where it now lands (when a new landing time is known). */
+export function delayShiftNote(live: FlightLive): string {
+  const lands = clock(live.arrival.revised);
+  return lands ? L(`Planı yeni saate göre kaydırdım: iniş ${lands}`, `I moved the plan to the new time: landing ${lands}`) : L("Planı yeni saate göre kaydırdım", "I moved the plan to the new time");
+}
 
 /** "Biletinde iniş 22:05, tarifede 22:15": the ticket's time against the schedule's (5 minutes or more apart). */
 export function ticketDiff(live: FlightSeen | null | undefined): string | null {

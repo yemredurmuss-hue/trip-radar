@@ -116,12 +116,20 @@ describe("date alerts", () => {
   });
 
   it("says when a free cancellation ends, and when a chosen stay still isn't booked", () => {
-    expect(dateAlert(base({ status: "booked", cancellation: { summary: null, freeUntil: "2026-10-01", source: "page" } }), TODAY)).toEqual({ tone: "amber", text: "Ücretsiz iptal için 2 gün kaldı (1 Ekim)", short: "iptale 2 gün" });
-    expect(dateAlert(base({ status: "booked", cancellation: { summary: null, freeUntil: TODAY, source: "page" } }), TODAY)).toMatchObject({ tone: "red", text: "Ücretsiz iptal bugün bitiyor" });
+    expect(dateAlert(base({ status: "booked", cancellation: { summary: null, freeUntil: "2026-10-01", source: "page" } }), TODAY)).toEqual({ tone: "orange", text: "İptale 2 gün · son gün 1 Ekim", short: "İptale 2 gün · son gün 1 Ekim" });
+    expect(dateAlert(base({ status: "booked", cancellation: { summary: null, freeUntil: TODAY, source: "page" } }), TODAY)).toMatchObject({ tone: "red", text: "İptal bugün biter" });
     expect(dateAlert(base({ status: "booked", cancellation: { summary: null, freeUntil: "2026-10-10", source: "page" } }), TODAY)?.tone).toBe("plain"); // 11 days: shown, not urgent
+    const booked = (freeUntil: string) => base({ status: "booked", cancellation: { summary: null, freeUntil, source: "page" } });
+    expect(dateAlert(booked("2026-10-06"), TODAY)).toMatchObject({ tone: "orange", text: "İptale 7 gün · son gün 6 Ekim" }); // the last 7 days: orange
+    expect(dateAlert(booked("2026-10-07"), TODAY)?.tone).toBe("plain"); // 8
+    expect(dateAlert(booked("2026-10-13"), TODAY)).toMatchObject({ tone: "plain", text: "İptale 14 gün · son gün 13 Ekim" }); // 14: the first day it speaks
+    expect(dateAlert(booked("2026-10-14"), TODAY)).toBeNull(); // 15: nothing to worry about yet
     const flight = (start: string) => base({ category: "flight", dates: { start, end: null, source: "url" } });
     expect(dateAlert(flight("2027-03-01"), TODAY)).toMatchObject({ tone: "plain", short: expect.stringContaining("uçuşa") }); // always said for a flight
-    expect(dateAlert(flight("2026-10-10"), TODAY)?.tone).toBe("amber");
+    expect(dateAlert(flight("2026-10-10"), TODAY)?.tone).toBe("orange"); // a missing ticket: orange within 14 days
+    expect(dateAlert(flight("2026-10-13"), TODAY)?.tone).toBe("orange"); // 14 days
+    expect(dateAlert(flight("2026-10-14"), TODAY)?.tone).toBe("plain"); // 15
+    expect(dateAlert(flight(TODAY), TODAY)).toMatchObject({ tone: "orange", short: "uçuş bugün" });
     expect(dateAlert(base({ status: "booked", cancellation: { summary: null, freeUntil: "2026-09-01", source: "page" } }), TODAY)).toBeNull(); // over
     expect(dateAlert(base({}), TODAY)).toEqual({ tone: "amber", text: "Rezerve edilmedi · girişe 9 gün", short: "9 gün" });
     expect(dateAlert(base({ dates: { start: "2027-03-01", end: "2027-03-04", source: "url" } }), TODAY)).toBeNull(); // far off

@@ -20,6 +20,20 @@ const isLong = (name: string): boolean => name.length > 12 || name.split(/\s+/).
 // The airport code a trip's end starts with ("LIS", "IST · 15 Ekim"): its copy button sits by it.
 const codeOf = (end: End | null): string | null => /^[A-Z]{3}(?![\p{L}\p{N}])/u.exec(end?.sub ?? "")?.[0] ?? null;
 
+/** The hour, bold; on a late flight the old one struck through before the new, red (v30). */
+function Hour({ end }: { end: End }) {
+  return (
+    <>
+      {end.late && end.was && end.was !== end.time && (
+        <>
+          <s className="pk-was" title={L("Eski saat", "Old time")}>{end.was}</s>{" "}
+        </>
+      )}
+      <strong className={end.late ? "pk-late" : undefined}>{end.time}</strong>
+    </>
+  );
+}
+
 function Stop({ end, right, field, timed, codes }: { end: End | null; right: boolean; field: FieldKey | null; timed: boolean; codes: boolean }) {
   const api = useInlineEdit();
   const editable = Boolean(field && api?.fields.includes(field));
@@ -40,9 +54,9 @@ function Stop({ end, right, field, timed, codes }: { end: End | null; right: boo
         )}
         {end?.sub && (end?.time || time) ? " · " : ""}
         {time ? (
-          <Editable field="time">{end?.time && <strong className={end.late ? "pk-late" : undefined}>{end.time}</strong>}</Editable>
+          <Editable field="time">{end?.time && <Hour end={end} />}</Editable>
         ) : (
-          end?.time && <strong className={end.late ? "pk-late" : undefined}>{end.time}</strong>
+          end?.time && <Hour end={end} />
         )}
       </span>
     </div>

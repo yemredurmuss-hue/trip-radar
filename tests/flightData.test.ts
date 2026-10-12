@@ -111,9 +111,36 @@ describe("asking the server", () => {
 describe("a runway time isn't a landing (AeroDataBox forecasts it days ahead)", () => {
   it("KL1274 on 6 October: 'landed 17:47' was wrong, it's tomorrow", () => {
     const f = kl({ status: "Expected", departure: { ...kl().departure, scheduled: "2026-10-07T16:30" }, arrival: { ...kl().arrival, scheduled: "2026-10-07T17:55", actual: "2026-10-07T17:47", revised: "2026-10-07T17:47" } });
-    expect(phaseOf(f, new Date("2026-10-06T13:00:00Z"))).toBe("before");
-    expect(flightTiles(f, new Date("2026-10-06T13:00:00Z")).map((t) => `${t.label} ${t.value}`)).toEqual(["Tahmini kalkış 16:30"]);
+    expect(phaseOf(f, new Date("2026-10-06T13:00:00Z"))).toBe("far"); // v30: the strip is for the flight's day only
+    expect(flightTiles(f, new Date("2026-10-06T13:00:00Z"))).toEqual([]);
+    expect(phaseOf(f, new Date("2026-10-07T06:00:00Z"))).toBe("before");
+    expect(flightTiles(f, new Date("2026-10-07T06:00:00Z")).map((t) => `${t.label} ${t.value}`)).toEqual(["Tahmini kalkış 16:30"]);
     expect(phaseOf(f, new Date("2026-10-04T13:00:00Z"))).toBe("far");
     expect(phaseOf(f, new Date("2026-10-07T23:30:00Z"))).toBe("landed");
+  });
+});
+
+describe("the strip is for the flight's day (v30, Zamana göre gösterme)", () => {
+  const night = (over = {}) => kl({ departure: { ...kl().departure, scheduled: "2026-10-07T23:40", gate: "D5", desk: "12 - 16" }, arrival: { ...kl().arrival, scheduled: "2026-10-08T03:10", belt: "4", terminal: "2" }, ...over });
+  it("the day before, even 30 minutes to midnight: nothing", () => {
+    expect(phaseOf(night(), new Date("2026-10-06T23:45:00Z"))).toBe("far");
+    expect(flightTiles(night(), new Date("2026-10-06T23:45:00Z"))).toEqual([]);
+  });
+  it("from midnight of its day: expected departure, desks and gate", () => {
+    expect(phaseOf(night(), new Date("2026-10-07T00:05:00Z"))).toBe("before");
+    expect(flightTiles(night(), new Date("2026-10-07T00:05:00Z")).map((t) => t.label)).toEqual(["Tahmini kalkış", "Check-in masası", "Kapı"]);
+  });
+  it("a delay shows as soon as it exists, without the desks and gate before the day", () => {
+    const late = night({ status: "Delayed", departure: { ...kl().departure, scheduled: "2026-10-07T23:40", revised: "2026-10-08T00:30", gate: "D5", desk: "12 - 16" }, arrival: { ...kl().arrival, scheduled: "2026-10-08T03:10", revised: "2026-10-08T04:00" } });
+    const early = new Date("2026-10-03T09:00:00Z");
+    expect(phaseOf(late, early)).toBe("before");
+    expect(flightAlert(late, early)).toBe(true);
+    expect(flightTiles(late, early).map((t) => `${t.label} ${t.value}`)).toEqual(["Yeni kalkış 00:30", "Tahmini iniş 04:00"]);
+  });
+  it("a night flight pushed past midnight is still 'before' on the next day, then in the air, then landed", () => {
+    const late = night({ status: "Delayed", departure: { ...kl().departure, scheduled: "2026-10-07T23:40", revised: "2026-10-08T00:30" } });
+    expect(phaseOf(late, new Date("2026-10-08T00:10:00Z"))).toBe("before");
+    expect(phaseOf(night({ status: "EnRoute" }), new Date("2026-10-08T01:00:00Z"))).toBe("air");
+    expect(phaseOf(night({ status: "Arrived", arrival: { ...kl().arrival, actual: "2026-10-08T03:05", belt: "4", terminal: "2" } }), new Date("2026-10-08T04:00:00Z"))).toBe("landed");
   });
 });
