@@ -174,7 +174,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const [isOpen, setOpened] = useSectionOpen(trip.id);
   /** Opens a block of the plan (from the itinerary): its section opens, the card comes into view. */
   const showOnPlan = (key: string) => {
-    const hit = findInSections(sections, { entry: key });
+    // A line of Gün gün with no entry of its own ("item:ID", "idea:ID") is found by its record.
+    const rec = /^(?:item|idea):(.+)$/.exec(key);
+    const hit = findInSections(sections, rec ? { item: rec[1] } : { entry: key });
     setView("plan");
     if (hit) setOpened(hit.section, true);
     setTimeout(() => show(document.getElementById(entryDomId(key)) ?? (hit && document.getElementById(entryDomId(hit.dom)))), 60);
@@ -907,7 +909,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           </div>
         ))}
         <UndatedIdeas items={items} plan={plan} />
-        <TimelineView onShow={showOnPlan} timeline={timeline} tripId={trip.id} leg={leg} onAdd={env.add} listings={listings} today={today} cityImage={cityImageOf} cards={{ legCard, renderGroup, settled }} dayTimes={trip.dayTimes} dayOrder={trip.dayOrder} dayLoose={trip.dayLoose} mainPlaces={mains} />
+        <TimelineView onShow={showOnPlan} timeline={timeline} tripId={trip.id} onAdd={env.add} listings={listings} today={today} dayTimes={trip.dayTimes} dayOrder={trip.dayOrder} dayLoose={trip.dayLoose} mainPlaces={mains} />
         </>
       ) : (
         <EmptyEnvContext.Provider value={emptyEnv}>

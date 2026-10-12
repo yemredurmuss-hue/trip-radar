@@ -603,53 +603,43 @@ try {
   assert.equal(await sec("todo").locator(".it-tile").count(), 1);
   // No days, no check-in lines, no transfers without a plan.
   assert.equal(await app.locator(".cat-plan .tl-day, .cat-plan .leg, .cat-plan .pk-leg").count(), 0);
-  // The itinerary, a tab away (0.34.7): a card a day (its photo, its title, the whole day as a timeline, check-in
-  // and transfers too; free days in a row are one card). One switch, Liste | Kartlar (0.34.8): Kartlar shows
-  // every day as the Plan's cards under a header that stays on top; no day opens or closes on its own.
+  // Gün gün, the Plan's third view (plan v30): ONE COMPACT ROW A DAY: the date box, the day's lines (icon, NE · HANGİSİ,
+  // the grey word, a time, the stage on the right), "Gece: şehir · konaklama", or "Serbest gün" for a day with nothing.
   const tab = (name) => app.getByRole("tab", { name, exact: true });
   await tab("Gün gün").click();
-  const dcMode = (name) => app.locator(".dc-seg").getByRole("tab", { name, exact: true });
-  const listMode = () => dcMode("Liste").click();
-  // A day is the same section in both views (its header, then its lines): .list in Liste, .cards in Kartlar.
-  const dayCard = (n) => app.locator(".dc-cday.list", { has: app.locator(".dc-pill", { hasText: new RegExp(`^${n}\\. gün$`) }) });
-  const cardsDay = (n) => app.locator(".dc-cday.cards", { has: app.locator(".dc-pill", { hasText: new RegExp(`^${n}\\. gün$`) }) });
-  let dayPage = cardsDay(1);
-  // A day as cards: Kartlar, then that day's section (the strip jumps there).
-  const openDay = async (n) => {
-    await dcMode("Kartlar").click();
-    dayPage = cardsDay(n);
-    await app.locator(".dc-strip").getByRole("button", { name: String(n), exact: true }).click();
-    await dayPage.waitFor();
-  };
-  const dayTitles = () => dayPage.locator(".dc-tl > [data-title]").evaluateAll((els) => els.map((e) => e.getAttribute("data-title")));
-  const dayTimes = () => dayPage.locator(".dc-tl > li").evaluateAll((els) => els.map((e) => e.querySelector(".t")?.textContent ?? ""));
-  // A line by its title in the standard (NE · HANGİSİ, dayRowTitle.ts); the nth when two read the same ("Transfer").
-  const flowCard = (title, nth = 0) => dayPage.locator(`.dc-tl > li[data-title="${title}"]`).nth(nth);
-  const flowTime = (title) => flowCard(title).locator("> .t");
-  // Open, a line is its Plan card: a tap on its body opens its details there.
-  const openCard = (title, nth = 0) => flowCard(title, nth).locator(".pk-body").first().click();
-  assert.deepEqual(await app.locator(".dc-pill").allInnerTexts(), ["1. gün", "2. gün", "3. gün", "4. gün", "5–6. gün", "7. gün"]);
-  assert.deepEqual(await app.locator(".dc-strip button").allInnerTexts(), ["1", "2", "3", "4", "5–6", "7"]);
-  // Liste as Emre's reference: a card a day, its photo on the left with "N. gün" on it, the title, the hours.
-  assert.equal(await app.locator(".dc-raillab").count(), 0, "no rail in the list");
-  // Standard titles by the code (0.35.5): "Porto 1. Gün" and the kind of day beside it; the route under it.
-  assert.deepEqual(flat(await app.locator(".dl-head .ttl").allInnerTexts()), ["Porto 1. Gün Varış", "Porto 2. Gün", "Porto 3. Gün Boş gün", "Lizbon 4. Gün Yolculuk", "Lizbon 5–6. Gün Boş günler", "Lizbon 7. Gün Dönüş"]);
-  await dayCard(4).locator(".dl-date", { hasText: "Porto → Lizbon" }).waitFor();
-  const photoBox = await dayCard(4).locator(".dl-photo").boundingBox();
-  const bodyBox = await dayCard(4).locator(".dl-body").boundingBox();
-  assert.ok(photoBox.x < bodyBox.x && Math.abs(photoBox.height - bodyBox.height) < 1, "the photo on the left, as tall as the day");
-  // Every line the same (satır standardı v2): NE · HANGİSİ by the code ("Tren · Porto → Lizbon", never a code), a
-  // check-out like a train, each with its icon, the same height; no dot, no dotted line.
-  const lines = await dayCard(4).locator(".dc-tl > .dc-step").evaluateAll((els) => els.map((e) => [e.dataset.title, !!e.querySelector(".dc-tile svg"), Math.round(e.getBoundingClientRect().height)]));
-  assert.deepEqual(lines.map(([t]) => t), ["Check-out · Porto konaklaması", "Transfer", "Tren · Porto → Lizbon", "Transfer", "Check-in · Lisboa Loft"]);
-  assert.ok(lines.every(([, icon]) => icon), "every line has its icon");
-  assert.equal(new Set(lines.map(([, , h]) => h)).size, 1, `every line the same height (${lines.map(([, , h]) => h)})`);
+  // A day is a row, found by the "Gün N" in its date box.
+  const dayCard = (n) => app.locator(".dg-day", { has: app.locator(".dg-no", { hasText: new RegExp(`^Gün ${n}$`) }) });
+  const lineOf = (n, title, nth = 0) => dayCard(n).locator(`.dg-tl > li[data-title="${title}"]`).nth(nth);
+  const dayTitlesOf = (n) => dayCard(n).locator(".dg-tl > [data-title]").evaluateAll((els) => els.map((e) => e.getAttribute("data-title")));
+  const dayTimesOf = (n) => dayCard(n).locator(".dg-tl > li").evaluateAll((els) => els.map((e) => e.querySelector(".t")?.textContent ?? ""));
+  // The seven days of the trip, each its own row (the two free days in Lisbon too), in order, each with its date box.
+  assert.deepEqual(await app.locator(".dg-day .dg-no").allInnerTexts(), ["Gün 1", "Gün 2", "Gün 3", "Gün 4", "Gün 5", "Gün 6", "Gün 7"]);
+  assert.deepEqual(flat(await app.locator(".dg-day .dg-date").allInnerTexts()), ["EKİ 8 Per Gün 1", "EKİ 9 Cum Gün 2", "EKİ 10 Cmt Gün 3", "EKİ 11 Paz Gün 4", "EKİ 12 Pzt Gün 5", "EKİ 13 Sal Gün 6", "EKİ 14 Çar Gün 7"]);
+  assert.equal(await app.locator(".dg-day").count(), 7);
+  // One row a day: a row is its date box and a card, no photo, no strip of days, no Liste | Kartlar switch.
+  assert.equal(await app.locator(".dg-day img, .dc-strip, .dc-seg, .dc-cday").count(), 0, "no photo cards, no strip, no switch");
+  // The night's line: the city and the stay ("konaklama aranıyor" while none is chosen); the last day, home.
+  assert.equal(flat(await dayCard(1).locator(".dg-n").allInnerTexts())[0], "Gece: Porto · konaklama aranıyor");
+  assert.equal(flat(await dayCard(4).locator(".dg-n").allInnerTexts())[0], "Gece: Lizbon · Lisboa Loft");
+  assert.equal(flat(await dayCard(7).locator(".dg-n").allInnerTexts())[0], "Eve dönüş");
+  // A free day says so, every one of them its own row (no merged "5–6. gün").
+  assert.deepEqual(flat(await app.locator(".dg-free").allInnerTexts()), ["Serbest gün · yapılacaklardan seç", "Serbest gün · yapılacaklardan seç", "Serbest gün · yapılacaklardan seç"]);
+  assert.match(await dayCard(5).innerText(), /Gece: Lizbon/);
+  // The day's lines in the standard (NE · HANGİSİ, never a code), each with its icon; a stage on the plans (Arıyoruz · Seçildi · Rezerve), none on a check-in.
+  assert.deepEqual(await dayTitlesOf(4), ["Check-out · Porto konaklaması", "Transfer", "Tren · Porto → Lizbon", "Transfer", "Check-in · Lisboa Loft"]);
+  assert.equal(await dayCard(4).locator(".dg-tl > li .dg-ic svg").count(), 5, "every line has its icon");
   assert.deepEqual(
-    await dayCard(4).locator(".dc-tl > .dc-step").evaluateAll((els) => els.map((e) => e.querySelector(".name small")?.textContent ?? "")),
-    // Short (0.36.27): the route the title says and a worked-out time's reason aren't repeated; two pieces at most.
+    await dayCard(4).locator(".dg-tl > li").evaluateAll((els) => els.map((e) => e.querySelector(".dg-lab")?.textContent ?? "")),
+    ["", "Arıyoruz", "Seçildi", "Arıyoruz", ""],
+  );
+  assert.equal(await lineOf(2, "Tekne turu · Douro").locator(".dg-lab").innerText(), "Seçildi");
+  assert.equal(await lineOf(7, "Uçuş · Lizbon → İstanbul").locator(".dg-lab").innerText(), "Rezerve");
+  // The grey word is short (0.36.27): the route the title says and a worked-out time's reason aren't repeated; two pieces at most.
+  assert.deepEqual(
+    await dayCard(4).locator(".dg-tl > li").evaluateAll((els) => els.map((e) => e.querySelector(".dg-sub")?.textContent ?? "")),
     ["yer seçilmedi", "planlanmadı", "varış 16:04 · 1 seçenek", "planlanmadı", "3 gece"],
   );
-  // 0.36.13: a worked-out time says where it comes from, on its grey line (the lines stay one height).
+  // 0.36.13: a worked-out time says where it comes from, on the time (hover).
   // The train in without its arrival time: no hotel hour while still on the train, "varıştan sonra"; the
   // line asks for it, and from the time typed the check-in is worked out again.
   const setTrainArrival = (arrival) =>
@@ -663,15 +653,14 @@ try {
       new BroadcastChannel("trip-radar").postMessage("changed");
     }, arrival);
   await setTrainArrival(null);
-  const loftIn = dayCard(4).locator('.dc-tl > li[data-title="Check-in · Lisboa Loft"]');
+  const loftIn = lineOf(4, "Check-in · Lisboa Loft");
   await loftIn.locator(".t .t-hint", { hasText: "varıştan sonra" }).waitFor();
-  // Why it has no clock: on the time, on hover (the list's grey line stays short, 0.36.27).
-  assert.match(await loftIn.locator("> .t").getAttribute("title"), /varış saati yok/);
+  assert.match(await loftIn.locator(".t").getAttribute("title"), /varış saati yok/);
   await dayCard(4).getByRole("button", { name: "Varış saati?" }).click();
-  const arriveBox = dayCard(4).getByRole("textbox", { name: /varış saati/ }).or(dayCard(4).locator('.dc-arrive input[type="time"]'));
+  const arriveBox = dayCard(4).getByRole("textbox", { name: /varış saati/ }).or(dayCard(4).locator('.dg-arrive input[type="time"]'));
   await arriveBox.fill("16:04");
   await arriveBox.blur();
-  await app.waitForFunction(() => [...document.querySelectorAll('.dc-cday.list li[data-title="Check-in · Lisboa Loft"] > .t')].some((t) => t.textContent === "~17:14"), null, { timeout: 10000 });
+  await app.waitForFunction(() => [...document.querySelectorAll('.dg-day li[data-title="Check-in · Lisboa Loft"] .t')].some((t) => t.textContent === "~17:14"), null, { timeout: 10000 });
   await app.screenshot({ path: `${out}/3e-arrival-asked.png` });
   // Typed by hand, kept as a correction: the record's own arrival is the page's (empty here); put it back.
   await setTrainArrival("2026-10-11T16:04");
@@ -698,42 +687,35 @@ try {
   assert.ok(!asked.some((u) => u.includes("TP1761") || u.includes("PC1201")), "an option without a ticket isn't");
   await setTrip({ demo: true });
   await app.unroute("**/functions/v1/flight**");
-  assert.equal(await dayCard(4).locator(".dc-tl .dot").count(), 0, "no dot on a line of the list");
-  assert.equal(await dayCard(4).locator(".dc-tl").evaluate((el) => getComputedStyle(el, "::before").display), "none", "no dotted line");
-  assert.equal(await app.locator(".dc-cday .dc-free").count(), 2);
-  await dayCard(7).locator('.dc-step[data-title="Uçuş · Lizbon → İstanbul"]').locator(".dc-tile i.done").waitFor();
-  assert.equal(await dayCard(7).locator('.dc-step[data-title="Uçuş · Lizbon → İstanbul"] .name small').innerText(), "varış 01:35 (+1) · TP 1760"); // short (0.36.27): the airports the title says aren't repeated
-  // Closed, nothing is folded: check-out, the transfer to the airport, the flight.
-  assert.deepEqual(await dayCard(7).locator(".dc-tl > [data-title]").evaluateAll((els) => els.map((e) => e.getAttribute("data-title"))), ["Check-out · Lisboa Loft", "Havalimanı transferi", "Uçuş · Lizbon → İstanbul"]);
-  // 0.35.6: a line without a time is moved by its grip (drag, or ↑ ↓); the day keeps that order, in both views.
-  const day1 = () => dayCard(1).locator(".dc-tl > li").evaluateAll((els) => els.map((e) => e.dataset.title));
+  assert.equal(await dayCard(7).locator('.dg-tl > li[data-title="Uçuş · Lizbon → İstanbul"] .dg-sub').innerText(), "varış 01:35 (+1) · TP 1760"); // short (0.36.27): the airports the title says aren't repeated
+  // Nothing is folded: check-out, the transfer to the airport, the flight.
+  assert.deepEqual(await dayTitlesOf(7), ["Check-out · Lisboa Loft", "Havalimanı transferi", "Uçuş · Lizbon → İstanbul"]);
+  // 0.35.6: a line without a time is moved by its grip (drag, or ↑ ↓); the day keeps that order.
+  const day1 = () => dayTitlesOf(1);
   assert.deepEqual(await day1(), ["Uçuş · İstanbul → Porto", "Havalimanı transferi", "Check-in · Porto konaklaması"]);
-  const checkIn = dayCard(1).locator('.dc-tl > li[data-title="Check-in · Porto konaklaması"]');
+  const checkIn = lineOf(1, "Check-in · Porto konaklaması");
   // The grip shows on hover only.
   await app.mouse.move(1, 1);
-  await app.waitForFunction((el) => getComputedStyle(el).opacity === "0", await checkIn.locator(".dc-grip").elementHandle());
+  await app.waitForFunction((el) => getComputedStyle(el).opacity === "0", await checkIn.locator(".dg-grip").elementHandle());
   await checkIn.hover();
-  await app.waitForFunction((el) => getComputedStyle(el).opacity === "1", await checkIn.locator(".dc-grip").elementHandle());
-  await checkIn.locator(".dc-grip").dragTo(dayCard(1).locator('.dc-tl > li[data-title="Uçuş · İstanbul → Porto"]'), { targetPosition: { x: 200, y: 4 } });
-  await app.waitForFunction(() => document.querySelector(".dc-cday.list .dc-tl > li")?.getAttribute("data-title") === "Check-in · Porto konaklaması");
+  await app.waitForFunction((el) => getComputedStyle(el).opacity === "1", await checkIn.locator(".dg-grip").elementHandle());
+  await checkIn.locator(".dg-grip").dragTo(lineOf(1, "Uçuş · İstanbul → Porto"), { targetPosition: { x: 200, y: 4 } });
+  await app.waitForFunction(() => document.querySelector(".dg-day .dg-tl > li")?.getAttribute("data-title") === "Check-in · Porto konaklaması");
   assert.deepEqual(await day1(), ["Check-in · Porto konaklaması", "Uçuş · İstanbul → Porto", "Havalimanı transferi"]);
-  await dcMode("Kartlar").click();
-  assert.deepEqual(await cardsDay(1).locator(".dc-tl > li").evaluateAll((els) => els.map((e) => e.dataset.title)), ["Check-in · Porto konaklaması", "Uçuş · İstanbul → Porto", "Havalimanı transferi"]);
-  await listMode();
   // Back down with the keyboard, one step at a time.
-  await checkIn.locator(".dc-grip").focus();
+  await checkIn.locator(".dg-grip").focus();
   await app.keyboard.press("ArrowDown");
-  await app.waitForFunction(() => document.querySelector(".dc-cday.list .dc-tl > li")?.getAttribute("data-title") === "Uçuş · İstanbul → Porto");
-  await checkIn.locator(".dc-grip").focus();
+  await app.waitForFunction(() => document.querySelector(".dg-day .dg-tl > li")?.getAttribute("data-title") === "Uçuş · İstanbul → Porto");
+  await checkIn.locator(".dg-grip").focus();
   await app.keyboard.press("ArrowDown");
-  await app.waitForFunction(() => [...document.querySelectorAll(".dc-cday.list")][0].querySelector(".dc-tl > li:last-child")?.getAttribute("data-title") === "Check-in · Porto konaklaması");
+  await app.waitForFunction(() => [...document.querySelectorAll(".dg-day")][0].querySelector(".dg-tl > li:last-child")?.getAttribute("data-title") === "Check-in · Porto konaklaması");
   assert.deepEqual(await day1(), ["Uçuş · İstanbul → Porto", "Havalimanı transferi", "Check-in · Porto konaklaması"]);
   // A line with a time moves too (0.35.10): it stays where it's dropped, its time hidden; "×" puts it back on its time.
-  const day7 = () => dayCard(7).locator(".dc-tl > li").evaluateAll((els) => els.map((e) => `${e.querySelector(".t")?.textContent} ${e.dataset.title}`));
+  const day7 = () => dayCard(7).locator(".dg-tl > li").evaluateAll((els) => els.map((e) => `${e.querySelector(".t")?.textContent} ${e.dataset.title}`));
   assert.deepEqual(await day7(), ["~11:00 Check-out · Lisboa Loft", "~15:40 Havalimanı transferi", "19:40 Uçuş · Lizbon → İstanbul"]);
-  const flight7 = dayCard(7).locator('.dc-tl > li[data-title="Uçuş · Lizbon → İstanbul"]');
+  const flight7 = lineOf(7, "Uçuş · Lizbon → İstanbul");
   await flight7.hover();
-  await flight7.locator(".dc-grip").dragTo(dayCard(7).locator('.dc-tl > li[data-title="Check-out · Lisboa Loft"]'), { targetPosition: { x: 200, y: 4 } });
+  await flight7.locator(".dg-grip").dragTo(lineOf(7, "Check-out · Lisboa Loft"), { targetPosition: { x: 200, y: 4 } });
   await flight7.locator("button.t.freed").waitFor();
   // Untimed, the cell is blank.
   assert.deepEqual(await day7(), [" Uçuş · Lizbon → İstanbul", "~11:00 Check-out · Lisboa Loft", "~15:40 Havalimanı transferi"]);
@@ -743,37 +725,25 @@ try {
   await flight7.getByRole("button", { name: "×" }).click();
   await flight7.locator("button.t.freed").waitFor({ state: "detached" });
   assert.deepEqual(await day7(), ["~11:00 Check-out · Lisboa Loft", "~15:40 Havalimanı transferi", "19:40 Uçuş · Lizbon → İstanbul"]);
+  // A time of one's own (dayTimes.ts): kept, a late one warned about in red; "×" gives the worked-out one back.
+  const going = lineOf(7, "Havalimanı transferi");
+  // Emre: abroad 2 h at the least, 3 h ideally: the time worked out from the ideal, a warning only past the latest.
+  assert.match(await going.locator("button.t").getAttribute("title"), /İdeali 16:40, en geç 17:40 havalimanında; transfer ~1 sa/);
+  await going.locator("button.t").click();
+  await going.locator('input[type="time"]').fill("17:00");
+  await going.locator(".dg-warn", { hasText: "17:40'ta havalimanında olmalısın" }).waitFor();
+  await going.getByRole("button", { name: "×" }).click();
+  await going.locator(".dg-warn").waitFor({ state: "detached" });
+  assert.equal(await going.locator("button.t").innerText(), "~15:40");
   await app.screenshot({ path: `${out}/3e-itinerary.png` });
   await app.setViewportSize({ width: 560, height: 1400 });
   await dayCard(4).scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/3e-itinerary-narrow.png` });
   assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll in the list");
   await app.setViewportSize({ width: 1440, height: 900 });
-  await openDay(4);
-  // Kartlar as the trip goes: arrival, Porto's days, the move, Lisbon's days, home.
-  assert.deepEqual((await app.locator(".dc-raillab b").allInnerTexts()), ["Varış", "2–3. gün", "Yolculuk", "5–6. gün", "Dönüş"]);
-  assert.deepEqual(await dayTitles(), ["Check-out · Porto konaklaması", "Transfer", "Tren · Porto → Lizbon", "Transfer", "Check-in · Lisboa Loft"]);
-  // A line that isn't a card of its own reads the same in Kartlar: NE in bold, which, the grey line.
-  assert.equal(await flowCard("Check-out · Porto konaklaması").locator(".txt").innerText(), "Check-out · Porto konaklaması · yer seçilmedi");
-  await openDay(7);
-  assert.deepEqual(await dayTimes(), ["~11:00", "~15:40", "19:40"]); // at the airport ideally by 16:40 (leaving Schengen: 3 h), the transfer an hour before
-  await flowCard("Uçuş · Lizbon → İstanbul").locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
-  // A time of one's own (dayTimes.ts): kept, a late one warned about in red; "×" gives the worked-out one back.
-  const going = flowCard("Havalimanı transferi");
-  // Emre: abroad 2 h at the least, 3 h ideally: the time worked out from the ideal, a warning only past the latest.
-  assert.match(await going.locator("> button.t").getAttribute("title"), /İdeali 16:40, en geç 17:40 havalimanında; transfer ~1 sa/);
-  await going.locator("> button.t").click();
-  await going.locator('input[type="time"]').fill("17:00");
-  await going.locator(".dc-warn", { hasText: "17:40'ta havalimanında olmalısın" }).waitFor();
-  await going.getByRole("button", { name: "×" }).click();
-  await going.locator(".dc-warn").waitFor({ state: "detached" });
-  assert.equal(await going.locator("> button.t").innerText(), "~15:40");
-  await app.screenshot({ path: `${out}/3f-day-page.png` });
-  // A line in the list takes you to its card in Kartlar.
-  await listMode();
-  await dayCard(4).locator(".dc-line", { hasText: "Tren · Porto → Lizbon" }).click();
-  await cardsDay(4).locator('.dc-tl > li[data-title="Tren · Porto → Lizbon"]').waitFor();
-  assert.equal(await dcMode("Kartlar").getAttribute("aria-selected"), "true");
+  // A line is clickable: a tap shows its card on the Plan (the Plan tab is on, the card in view).
+  await lineOf(4, "Tren · Porto → Lizbon").locator(".dg-main").click();
+  await tab("Plan").and(app.locator('[aria-selected="true"]')).waitFor();
   await tab("Plan").click();
   // Where each plan stands is on top of its card (v11): a booked stay says "Rezerve", its ring green.
   await app.locator(".cat-card.tl-stay .pk-card .pk-lab.booked", { hasText: "Rezerve" }).waitFor();
@@ -1128,51 +1098,23 @@ try {
   // the move, with a station transfer on each side), and the way home says what's easy to miss.
   await tab("Gün gün").click();
   // Landing 10:05: the transfer then, check-in from 14:00 as the page says.
-  await openDay(1);
-  const arrive = flowCard("Havalimanı transferi");
-  assert.equal(await flowTime("Havalimanı transferi").innerText(), "~10:50"); // landing 10:05 + 45 min out of the airport
-  assert.match(await arrive.innerText(), /Planlanmadı/);
-  // Check-in opens to the stay's own card, as on the Plan.
-  assert.equal(await flowTime("Check-in · Jardim Stay").innerText(), "14:00");
-  await flowCard("Check-in · Jardim Stay").locator('.pk-card[aria-label="Jardim Stay"]').waitFor();
-  // A transfer with no plan opens right there: what's easy to miss, how to go, "Gerek yok".
-  await openCard("Havalimanı transferi");
-  await arrive.locator(".leg-note", { hasText: "Varış 10:05, giriş en erken 14:00 (sayfada yazıyor)" }).waitFor();
-  // "Metroyla gideceğim": nothing to book, so the transfer becomes a line of the day, its way as which.
-  await arrive.getByRole("button", { name: "🚇 Metro" }).click();
-  await dayPage.locator('.dc-step.info[data-title="Havalimanı transferi · Metro"]', { hasText: "planlandı" }).waitFor();
-  await openDay(4);
+  const arrive = dayCard(1).locator('.dg-tl > li[data-title="Havalimanı transferi"]');
+  assert.equal(await arrive.locator(".t").innerText(), "~10:50"); // landing 10:05 + 45 min out of the airport
+  assert.match(await arrive.innerText(), /planlanmadı/);
+  assert.equal(await dayCard(1).locator('.dg-tl > li[data-title="Check-in · Jardim Stay"] .t').innerText(), "14:00");
+  assert.equal(flat(await dayCard(1).locator(".dg-n").allInnerTexts())[0], "Gece: Porto · Jardim Stay");
   // Two transfers read the same ("Transfer"): the first is to the station.
-  assert.match(await flowCard("Transfer").innerText(), /Porto Campanhã/);
-  await openDay(7);
-  await openCard("Havalimanı transferi");
-  await flowCard("Havalimanı transferi").locator(".leg-note", { hasText: "arada ~5 saat boşluk" }).waitFor();
-  // "Gerek yok": a transfer they don't need leaves the day (and the to-dos), and comes back from "Gizlenenler".
-  await openDay(4);
-  const lisbonIn = flowCard("Transfer", 1);
-  await openCard("Transfer", 1);
-  await lisbonIn.getByRole("button", { name: "Gerek yok · gizle" }).click();
-  await lisbonIn.waitFor({ state: "detached" });
-  await tab("Plan").click();
-  // It waits at the end of Ulaşım: "Gizlenenler · 1 göster" opens it there, "Geri getir" brings it back.
-  if (await sec("transport").locator(".cat-body").count() === 0) await sec("transport").locator(".cat-title").click();
-  assert.equal(await sec("transport").locator(".cat-hidden-link").innerText(), "Gizlenenler · 1 göster");
-  await sec("transport").locator(".cat-hidden-link button").click();
-  const hiddenLeg = sec("transport").locator(".cat-hidden-row.leg");
-  assert.match(await hiddenLeg.innerText(), /Varış transferi[\s\S]*→/);
-  await hiddenLeg.getByRole("button", { name: "Geri getir", exact: true }).click();
-  await sec("transport").locator(".cat-hidden").waitFor({ state: "detached" });
+  assert.match(await dayCard(4).locator('.dg-tl > li[data-title="Transfer"]').first().innerText(), /Porto Campanhã/);
+  // A transfer's card (its notes, how to go, "Gerek yok") is on the Plan now: a tap on its line shows it there.
+  await arrive.locator(".dg-main").click();
+  await tab("Plan").and(app.locator('[aria-selected="true"]')).waitFor();
   await tab("Gün gün").click();
-  await openDay(4);
-  await lisbonIn.waitFor();
-  await app.screenshot({ path: `${out}/5b-legs.png` });
-  await openDay(1);
+  await dayCard(1).scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/5-legs.png` });
-  await openDay(4);
   // A narrow window: nothing spills out sideways.
   const wide = app.viewportSize();
   await app.setViewportSize({ width: 820, height: 900 });
-  await dayPage.evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await dayCard(4).evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5c-narrow.png` });
   assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll");
   await app.setViewportSize(wide);
@@ -1221,10 +1163,9 @@ try {
   await move.locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
   // By plane there's an airport at each end: the itinerary's day 4 now has them, around the flight.
   await tab("Gün gün").click();
-  await openDay(4);
-  await flowCard("Havalimanı transferi", 1).waitFor();
-  assert.deepEqual(await dayTitles(), ["Check-out · Jardim Stay", "Havalimanı transferi", "Uçuş · Porto → Lizbon", "Havalimanı transferi", "Check-in · Lisboa Loft"]);
-  await flowCard("Uçuş · Porto → Lizbon").locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
+  await dayCard(4).locator('.dg-tl > li[data-title="Havalimanı transferi"]').nth(1).waitFor();
+  assert.deepEqual(await dayTitlesOf(4), ["Check-out · Jardim Stay", "Havalimanı transferi", "Uçuş · Porto → Lizbon", "Havalimanı transferi", "Check-in · Lisboa Loft"]);
+  await lineOf(4, "Uçuş · Porto → Lizbon").locator(".dg-lab", { hasText: "Rezerve" }).waitFor();
   await tab("Plan").click();
   // What still needs booking without a day: Etkinlikler's "Tarihsiz · Porto", one card under another (Majestic
   // Café, a café with no booking, is a restaurant card instead).
@@ -1439,8 +1380,7 @@ try {
   await app.waitForFunction((n) => document.querySelectorAll(".cat-card").length === n, before);
   // On a day of the itinerary: that day and its city. A to-do added there is a thin line of the day.
   await tab("Gün gün").click();
-  // Day 3 is empty ("boş gün"): its card has the "+".
-  await listMode();
+  // Day 3 is empty ("boş gün"): its row has the "+".
   await dayCard(3).getByRole("button", { name: "10 Ekim: bu güne ekle" }).click();
   const addSheet = app.getByRole("dialog", { name: "Ne eklemek istersin?" });
   assert.equal(await addSheet.locator("header span").innerText(), "Porto · 10 Ekim");
@@ -1453,9 +1393,8 @@ try {
   await box("Ad").press("Enter");
   await sec("todo").locator('.it-tile[aria-label="Bolhão pazarı"]').waitFor();
   await tab("Gün gün").click();
-  await listMode();
   // An idea without an hour is a line of the day like the rest (0.35.6), never hidden.
-  await dayCard(3).locator(".dc-tl > .dc-step.idea", { hasText: "Bolhão pazarı" }).waitFor();
+  await dayCard(3).locator(".dg-tl > li.idea", { hasText: "Bolhão pazarı" }).waitFor();
   // v11 phase 4: Yapılacak şeyler as tiles, restaurants with the things to do; no quick box (the chat adds: the run
   // writes three ideas as the chat would), no day here (Gün gün's "Planda, günü yok" gives it); the rest in the •••.
   await tab("Plan").click();
@@ -1557,9 +1496,8 @@ try {
   await lello.waitFor({ state: "detached" });
   // The restaurant on its day is a thin line of the itinerary; the moved one is a booking in Etkinlikler.
   await tab("Gün gün").click();
-  await listMode();
   // Its meal is its NE: "Öğle yemeği · Majestic Café"; put on the plan ("Plana koy"), it's a line of the plan, not an idea.
-  await dayCard(2).locator('.dc-step[data-title="Öğle yemeği · Majestic Café"]').waitFor();
+  await dayCard(2).locator('.dg-tl > li[data-title="Öğle yemeği · Majestic Café"]').waitFor();
   await app.screenshot({ path: `${out}/4k-itinerary-032.png` });
   await tab("Plan").click();
   assert.match(await sec("activity").locator(".cat-count").textContent(), /^\d+\/5$/);
@@ -2664,15 +2602,10 @@ try {
   assert.equal(await board.locator('.cat-sec[data-section="todo"] [aria-label="Seyahat sağlık sigortası · Allianz"]').count(), 0, "a policy is never a thing to do");
   await otherSec.scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/13a-policy-card.png` });
-  // Insurance isn't part of a day (satır standardı v2): no line of it in Günlük akış, in Liste or in Kartlar.
+  // Insurance isn't part of a day (satır standardı v2): no line of it in Gün gün.
   await board.getByRole("tab", { name: "Gün gün", exact: true }).click();
-  for (const view of ["Liste", "Kartlar"]) {
-    await board.locator(".dc-seg").getByRole("tab", { name: view, exact: true }).click();
-    await board.locator(".dc-tl > li").first().waitFor();
-    assert.equal(await board.locator(".dc-tl > li", { hasText: /Allianz|sigorta/i }).count(), 0, `no insurance in the day (${view})`);
-  }
-  assert.equal(await board.locator(".dl-more, .dl-sub").count(), 0);
-  await board.locator(".dc-seg").getByRole("tab", { name: "Liste", exact: true }).click();
+  await board.locator(".dg-tl > li").first().waitFor();
+  assert.equal(await board.locator(".dg-tl > li", { hasText: /Allianz|sigorta/i }).count(), 0, "no insurance in the day");
 
   // v30: Belgeler left the tab bar; it opens from the trip's ••• menu.
   await board.getByRole("button", { name: "Gezi menüsü" }).click();
@@ -2792,9 +2725,8 @@ try {
   // Günlük akış says the routes the hero's way (display only): "Porto → Madeira", never "Porto → Funchal"; within
   // one main place the places themselves ("Funchal → Gaula", never "Madeira → Madeira"); nothing saved, a "Yolculuk".
   await board.getByRole("tab", { name: "Gün gün", exact: true }).click();
-  await board.locator(".dc-seg").getByRole("tab", { name: "Liste", exact: true }).click();
-  await board.locator(".dl-date", { hasText: "Porto → Madeira" }).first().waitFor();
-  const routes = await board.locator(".dl-date, .dc-ttl").allInnerTexts();
+  await board.locator(".dg-ttl", { hasText: "Porto → Madeira" }).first().waitFor();
+  const routes = await board.locator(".dg-ttl").allInnerTexts();
   assert.ok(!routes.some((t) => /Porto → (Funchal|Gaula)|Madeira → Madeira/.test(t)), `routes by main place (${routes.filter((t) => t.includes("→"))})`);
   assert.ok(routes.includes("Uçuş · Porto → Madeira") && routes.includes("Yolculuk · Funchal → Gaula"), `routes (${routes.filter((t) => t.includes("→"))})`);
   await board.getByRole("tab", { name: "Plan", exact: true }).click();
@@ -3412,7 +3344,7 @@ try {
   await board.setViewportSize({ width: 1440, height: 900 });
   // Günlük akış keeps its own markup: no empty card there.
   await board.getByRole("tab", { name: "Gün gün", exact: true }).click();
-  await board.locator(".panel .dc-bar").waitFor();
+  await board.locator(".panel .dg").waitFor();
   assert.equal(await panel.locator(".ek-card, .ek-route, .ek-foot, .ek-find, .ek-link, .ek-line").count(), 0, "no empty card in Günlük akış");
   await board.getByRole("tab", { name: "Plan", exact: true }).click();
   await ekSec("flight").waitFor();
@@ -3577,7 +3509,7 @@ try {
   // The empty answers asked so far are kept for hours: forgotten, and the Plan drawn again (each card asks anew).
   await board.evaluate(() => chrome.storage.local.remove("offersSeen"));
   await board.getByRole("tab", { name: "Gün gün", exact: true }).click();
-  await board.locator(".panel .dc-bar").waitFor();
+  await board.locator(".panel .dg").waitFor();
   await board.getByRole("tab", { name: "Plan", exact: true }).click();
   await ekOpen("stay");
   const ubudCard = ekSec("stay").locator(".ek-card", { hasText: "Ubud" }).first();
@@ -4934,8 +4866,7 @@ try {
   const flat = (texts) => texts.map((t) => t.replace(/\s+/g, " ").trim());
   const tab = (name) => app.getByRole("tab", { name, exact: true });
   await tab("Gün gün").click();
-  await app.locator(".dc-seg").getByRole("tab", { name: "Liste", exact: true }).click();
-  const dayCard = (n) => app.locator(".dc-cday.list", { has: app.locator(".dc-pill", { hasText: new RegExp(`^${n}\\. gün$`) }) });
+  const dayCard = (n) => app.locator(".dg-day", { has: app.locator(".dg-no", { hasText: new RegExp(`^Gün ${n}$`) }) });
   // 0.36.15/0.36.18: a flight's real data (as the server would give it) on its day: late in red, its gate, the
   // source, in the day view's line and as boxes on the Plan's card.
   await app.evaluate(async () => {
@@ -4949,7 +4880,7 @@ try {
     await chrome.storage.local.set({ flightLive: { "TP1760|2026-10-14": { flight, at: Date.now() } } });
     new BroadcastChannel("trip-radar").postMessage("changed");
   });
-  const live = dayCard(7).locator(".dc-live.alert");
+  const live = dayCard(7).locator(".dg-live.alert");
   await live.waitFor();
   assert.equal(await live.innerText(), "Yeni kalkış 20:05 (+25 dk) · Kapı 14 · Veri: AeroDataBox");
   await live.scrollIntoViewIfNeeded();

@@ -24,6 +24,8 @@ export interface DayCard {
   route: string | null;
   /** The standard title (0.35.5, worked out by the code): the city and the day, "Porto 2. Gün". */
   title: string;
+  /** The journey's role for a day it carries (arrival, the way on, the way home); null for a plain day. */
+  role: "arrival" | "move" | "departure" | null;
   /** What kind of day, beside the title: "Varış", "Yolculuk", "Dönüş", "Boş gün"; null for a day in a city. */
   tag: string | null;
   rows: DayRow[];
@@ -50,7 +52,7 @@ export function dayTitle(city: string | null, dayNo: string | null, otherwise: s
 }
 
 /** The days in order, each titled "Porto 2. Gün" (and "Varış", "Yolculuk", "Dönüş", "Boş gün" beside it). */
-export function dayCards(sections: TimelineSection[], opts: { rentals?: RentalEntry[]; listings?: Map<string, Listing>; times?: DayTimeOverrides } = {}): DayCard[] {
+export function dayCards(sections: TimelineSection[], opts: { rentals?: RentalEntry[]; listings?: Map<string, Listing>; times?: DayTimeOverrides; /** false: every free day its own card (Gün gün's one row a day). */ merge?: boolean } = {}): DayCard[] {
   const out: DayCard[] = [];
   for (const section of sections) {
     if (section.kind === "journey") {
@@ -70,6 +72,7 @@ export function dayCards(sections: TimelineSection[], opts: { rentals?: RentalEn
         end: null,
         dayNo,
         city,
+        role: j.role,
         route,
         title: dayTitle(city, dayNo, route ?? word),
         tag: word,
@@ -78,14 +81,14 @@ export function dayCards(sections: TimelineSection[], opts: { rentals?: RentalEn
     } else if (section.kind === "travel") {
       const e = section.entry;
       const rows = dayRows({ journey: { kind: "journey", key: section.key, journey: { key: section.key, role: "move", date: e.date, dayNo: null, from: null, to: null, out: null, in: null }, entries: [e] } });
-      out.push({ key: section.key, date: e.date, end: null, dayNo: null, city: null, route: null, title: rows.find((r) => isPlanRow(r) && !isAsideRow(r))?.title ?? formatDateRange(e.date, null), tag: null, rows });
+      out.push({ key: section.key, date: e.date, end: null, dayNo: null, city: null, role: null, route: null, title: rows.find((r) => isPlanRow(r) && !isAsideRow(r))?.title ?? formatDateRange(e.date, null), tag: null, rows });
     } else {
       for (const e of section.entries) {
         if (e.kind !== "day") continue;
         const rows = applyDayTimes(dayRows({ day: e, rentals: opts.rentals, listings: opts.listings }), opts.times);
         const prev = out.at(-1);
         // A free day after a free day in the same city: one card for both.
-        if (!rows.length && prev && !prev.rows.length && prev.city === section.city && prev.dayNo) {
+        if (opts.merge !== false && !rows.length && prev && !prev.rows.length && prev.city === section.city && prev.dayNo) {
           prev.end = e.date;
           prev.dayNo = prev.dayNo.replace(/^(\d+)(?:–\d+)?/, `$1–${e.dayNo}`).replace(/^Day (\d+)(?:–\d+)?/, `Days $1–${e.dayNo}`);
           prev.title = dayTitle(section.city, prev.dayNo, L("Boş günler", "Free days"));
@@ -98,6 +101,7 @@ export function dayCards(sections: TimelineSection[], opts: { rentals?: RentalEn
           end: null,
           dayNo: L(`${e.dayNo}. gün`, `Day ${e.dayNo}`),
           city: section.city,
+          role: null,
           route: null,
           title: dayTitle(section.city, L(`${e.dayNo}. gün`, `Day ${e.dayNo}`), rows.length ? (section.city ?? e.title) : L("Boş gün", "Free day")),
           tag: rows.length ? null : L("Boş gün", "Free day"),
@@ -284,4 +288,28 @@ export function daysLabel(cards: DayCard[]): string {
 export function dayLinesOf(card: DayCard, opts: { times?: DayTimeOverrides; order?: Record<string, string[]>; loose?: readonly string[] }): DayRow[] {
   const all = flowRows(card, opts.times).map((r) => (r.time && opts.loose?.includes(r.key) ? { ...r, freed: r.time, time: null, estimated: false } : r));
   return tieredRows(orderRows(all.filter((r) => !isAsideRow(r)), opts.order?.[card.date]));
+}
+
+/** A line's stage as Gün gün's row says it (the Plan's words and colours): Arıyoruz · Seçildi · Rezerve · Ayarlandı; null for what has no stage (check-in, a layover). */
+export interface Stage {
+  tone: "open" | "plan" | "rez" | "idea";
+  text: string;
+}
+export function stageOf(r: DayRow): Stage | null {
+  if (r.layover || r.meeting) return null;
+  if (r.kind === "idea") return { tone: "idea", text: r.item?.arranged ? L("Ayarlandı", "Arranged") : r.item?.doneAt ? L("Yapıldı", "Done") : L("Fikir", "Idea") };
+  if (r.kind === "info") return null;
+  const arranged = !!r.item?.arranged || /ayarland|arranged/i.test(`${r.line ?? ""} ${r.status}`) || (r.entry?.kind === "travel" && !!r.entry.leg?.choice?.booked && !r.entry.travel?.settled);
+  switch (r.state) {
+    case "done":
+      return arranged ? { tone: "rez", text: L("Ayarlandı", "Arranged") } : { tone: "rez", text: L("Rezerve", "Booked") };
+    case "pending":
+      return { tone: "plan", text: L("Seçildi", "Chosen") };
+    case "decide":
+    case "open":
+      return { tone: "open", text: L("Arıyoruz", "Searching") };
+    default:
+      // Something planned that needs no booking (the metro, a walk): chosen.
+      return r.kind === "leg" || r.kind === "travel" ? { tone: "plan", text: L("Seçildi", "Chosen") } : null;
+  }
 }
