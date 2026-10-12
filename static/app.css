@@ -1858,6 +1858,7 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .ins-tile .ins-x { position: absolute; top: 6px; right: 6px; background: rgba(255, 255, 255, .92); }
 .ins-tile:hover .ins-x, .ins-tile:focus-within .ins-x { opacity: 1; }
 
+/* @@css-acts: reserved insertion point, parallel work (remove marker line when done) */
 /* 0.36 Profilim, and photos in the hero's circles */
 .profile-set { margin: 0 0 16px; padding-bottom: 14px; border-bottom: 1px solid #ece9e3; }
 .profile-set h3 { margin: 0 0 8px; font-size: 15px; }
