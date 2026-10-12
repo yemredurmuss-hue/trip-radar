@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { db, listItems } from "../src/lib/db";
 import { setLang, withLang } from "../src/lib/i18n";
 import { isPrep } from "../src/lib/prep";
-import { allowedSuggestions, matchChip, moneyOf, playbookAsks, playbookFor, playbookPromptLine, playbookQuestions, startPlaybook, validEffect, validQuestion, validQuestions } from "../src/lib/playbooks";
+import { allowedSuggestions, isCampStay, matchChip, moneyOf, playbookAsks, playbookFor, playbookPromptLine, playbookQuestions, startPlaybook, validEffect, validQuestion, validQuestions } from "../src/lib/playbooks";
 import { playbookCards, runStep, stepsFor, wouldMake } from "../src/lib/startCreate";
 import {
   acceptExtraction, applyAnswer, applyText, creationOf, essentialsDone, isPlaceholder, knownLines, mergeExtracted, newStart, nextQuestion, parseStartText, pbAsks, pbCurrent, pbPromptOf, questionOf, skip,
@@ -75,7 +75,7 @@ describe("which playbook", () => {
     expect(playbookFor({ kind: "event", name: "AfrikaBurn", id: "afrikaburn" }, "AfrikaBurn'de yoga yapacağız")).toBe("festival");
   });
   it("asks at most three questions, none on a classic trip", () => {
-    expect(playbookQuestions("festival")).toEqual(["Kamp mı yapacaksın, otelde mi kalacaksın?", "Biletini aldın mı?", "Festivalden kaç gün önce gitmek istersin?"]);
+    expect(playbookQuestions("festival")).toEqual(["Çadır kampı mı, karavan kiralamak ister misiniz?", "Biletini aldın mı?", "Festivalden kaç gün önce gitmek istersin?"]);
     expect(playbookQuestions("ski").length).toBe(3);
     expect(playbookQuestions("classic")).toEqual([]);
   });
@@ -222,8 +222,8 @@ describe("the trip kind's questions", () => {
     expect(essentialsDone(s)).toBe(true);
     expect(nextQuestion(s)).toBe("pb");
     const q = withLang("tr", () => questionOf(s, "pb", ctx));
-    expect(q.text).toBe("Kamp mı yapacaksın, otelde mi kalacaksın?");
-    expect(q.chips.map((c) => c.label)).toEqual(["Kamp", "Otel"]);
+    expect(q.text).toBe("Çadır kampı mı, karavan kiralamak ister misiniz?");
+    expect(q.chips.map((c) => c.label)).toEqual(["Çadır kampı", "Karavan kiralayalım"]);
     s = skip(s, "pb", 6);
     expect(withLang("tr", () => questionOf(s, "pb", ctx)).chips.map((c) => c.label)).toEqual(["Aldım", "Henüz değil"]);
     s = skip(s, "pb", 7);
@@ -244,23 +244,37 @@ describe("the trip kind's questions", () => {
     expect(skipped.items).toEqual(plain.items);
     expect(skipped.trip).toEqual(plain.trip);
   });
-  it("Ozora + Kamp: no room for the festival's nights, a camping spot on the list; the ticket and transfer stay", () => {
+  it("Ozora: the festival's nights are a tent camp from the start (never a hotel), nothing to book; the ticket and transfer stay", () => {
     const s = ozoraReady();
-    expect(stays(wouldMake(s)!.items).some((x) => x.startsWith("Ozora"))).toBe(true);
-    const camp = chip(s, "Kamp");
+    const ozoraStay = (m: ReturnType<typeof wouldMake>) => m!.items.find((i) => i.category === "stay" && i.city === "Ozora");
+    // Unanswered: a camp all the same.
+    const plain = ozoraStay(wouldMake(s));
+    expect(plain).toMatchObject({ name: "Çadır kampı · festival alanı", summary: "kendi çadırın", metrics: { stayKind: "camp" } });
+    expect(plain?.noBooking).toBeTypeOf("number");
+    expect(isCampStay(plain)).toBe(true);
+    const camp = chip(s, "Çadır kampı");
     const made = wouldMake(camp)!;
-    expect(stays(made.items).some((x) => x.startsWith("Ozora"))).toBe(false);
-    expect(stays(made.items).length).toBeGreaterThan(0);
-    expect(titles(made.items.filter(isPrep))).toContain("Kamp yeri ayır");
+    expect(ozoraStay(made)).toMatchObject({ metrics: { stayKind: "camp" } });
+    // The other stays (Budapest after it) are hotels as before.
+    expect(made.items.filter((i) => i.category === "stay" && i.city !== "Ozora").every((i) => !isCampStay(i) && i.noBooking == null)).toBe(true);
+    // "Book a spot" is no line any more: the ticket covers the ground.
+    expect(titles(made.items.filter(isPrep))).not.toContain("Kamp yeri ayır");
     expect(made.items.find((i) => i.name === "Festival bileti")).toBeTruthy();
     expect(made.items.find((i) => i.plannedKind === "transfer")).toMatchObject({ city: "Ozora", dates: { start: "2027-07-26" } });
     // Typed: "kamp yapacağız" is read by the code the same way.
-    expect(stays(wouldMake(typed(s, "kamp yapacağız"))!.items)).toEqual(stays(made.items));
+    expect(ozoraStay(wouldMake(typed(s, "kamp yapacağız")))).toMatchObject({ metrics: { stayKind: "camp" } });
   });
-  it("Otel keeps the stay by the site; the ticket bought is opened as booked, never a place to fill", () => {
-    const s = chip(chip(ozoraReady(), "Otel"), "Aldım");
+  it("Karavan: the same nights as a caravan, its own words, still nothing to book; typed too", () => {
+    const s = ozoraReady();
+    for (const made of [wouldMake(chip(s, "Karavan kiralayalım"))!, wouldMake(typed(s, "karavan kiralayalım"))!]) {
+      const stay = made.items.find((i) => i.category === "stay" && i.city === "Ozora");
+      expect(stay).toMatchObject({ name: "Karavan · festival alanı", summary: "karavan alanı", metrics: { stayKind: "vehicle" } });
+      expect(stay?.noBooking).toBeTypeOf("number");
+    }
+  });
+  it("a festival's ticket bought is opened as booked, never a place to fill", () => {
+    const s = chip(chip(ozoraReady(), "Çadır kampı"), "Aldım");
     const made = wouldMake(s)!;
-    expect(stays(made.items).some((x) => x.startsWith("Ozora"))).toBe(true);
     expect(made.items.find((i) => i.name === "Festival bileti")?.status).toBe("booked");
   });
   it("'2 gün': the trip starts two days before the festival; 'Aynı gün' on its first day", () => {
@@ -314,17 +328,17 @@ describe("the trip kind's questions", () => {
   it("a typed answer the code can't place goes to the model's pick among the options, bound to that question", () => {
     const s = ozoraReady();
     const key = pbCurrent(s)!.key;
-    const read = { ...parseStartText("bir şeyler ayarlarız", TODAY, "pb"), choice: "hotel" };
+    const read = { ...parseStartText("bir şeyler ayarlarız", TODAY, "pb"), choice: "caravan" };
     const out = applyText(s, "bir şeyler ayarlarız", read, 9, "pb", key);
     expect(out.understood).toBe(true);
-    expect(out.state.pbAnswers).toEqual({ [key]: "hotel" });
+    expect(out.state.pbAnswers).toEqual({ [key]: "caravan" });
     // The same reading landing late answers that question only, never the next one.
     expect(applyText(out.state, "bir şeyler ayarlarız", { ...read, choice: "have" }, 10, "pb", key).understood).toBe(false);
     // "skip" from the model: no answer, asked no more; a value not among the options: nothing.
     expect(applyText(s, "bilmem", { ...read, choice: "skip" }, 9, "pb", key).state.pbAnswers).toEqual({ [key]: null });
     expect(applyText(s, "bilmem", { ...read, choice: "yacht" }, 9, "pb", key).understood).toBe(false);
     // The model is given the question with its options.
-    expect(withLang("tr", () => pbPromptOf(s, key))).toBe('"Kamp mı yapacaksın, otelde mi kalacaksın?" (seçenekler: camp = Kamp; hotel = Otel)');
+    expect(withLang("tr", () => pbPromptOf(s, key))).toBe('"Çadır kampı mı, karavan kiralamak ister misiniz?" (seçenekler: camp = Çadır kampı; caravan = Karavan kiralayalım)');
   });
   it("the validator drops a malformed question or an unknown operation, never crashes", () => {
     expect(validEffect({ op: "teleport", to: "Mars" })).toBeNull();
@@ -340,9 +354,9 @@ describe("the trip kind's questions", () => {
   });
   it("reads the obvious answers by their words, Turkish endings and money included", () => {
     const [stay] = playbookAsks("festival");
-    expect(matchChip(stay.chips, "otelde kalırım")?.value).toBe("hotel");
+    expect(matchChip(stay.chips, "karavanda kalırız")?.value).toBe("caravan");
     expect(matchChip(stay.chips, "Kampta")?.value).toBe("camp");
-    expect(matchChip(stay.chips, "kamp değil otel")).toBeNull();
+    expect(matchChip(stay.chips, "çadır")?.value).toBe("camp");
     expect(moneyOf("5.000 €")).toEqual({ amount: 5000, currency: "EUR" });
     expect(moneyOf("150 bin TL")).toEqual({ amount: 150000, currency: "TRY" });
     expect(moneyOf("2 kişi 5000 euro")).toEqual({ amount: 5000, currency: "EUR" });

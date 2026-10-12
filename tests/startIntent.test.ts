@@ -83,7 +83,7 @@ describe("the owner's sentence (English, no model)", () => {
     s = withLang("en", () => applyAnswer(s, { q: "duration", duration: { unit: "day", n: 11 } }, 3));
     // Said back exactly, never as a month only ("April · 11 days"): the days, estimated, and the route.
     expect(withLang("en", () => replyText(asked, s, ctx, false, true))).toBe(
-      "The trip: 24 April – 4 May · 10 nights (estimated) (Cape Town 2 · Tankwa Karoo 6 · Cape Town 2 nights).\nCamping, or a hotel?",
+      "The trip: 24 April – 4 May · 10 nights (estimated) (Cape Town 2 · Tankwa Karoo 6 · Cape Town 2 nights).\nA tent camp, or would you like to rent a caravan?",
     );
     expect(tripDates(s)).toEqual({ start: "2027-04-24", end: "2027-05-04" });
     expect(s.start).toEqual({ date: "2027-04-24", approx: true, event: true });
@@ -93,7 +93,7 @@ describe("the owner's sentence (English, no model)", () => {
     // Not a "which day in April" question: the event's start is no month only. (K4: the festival's own questions, then
     // what they want, then how many, and where from last.)
     expect(nextQuestion(s)).toBe("pb");
-    expect(withLang("en", () => questionOf(s, "pb", ctx).text)).toBe("Camping, or a hotel?");
+    expect(withLang("en", () => questionOf(s, "pb", ctx).text)).toBe("A tent camp, or would you like to rent a caravan?");
     expect(essentialsDone(s)).toBe(false);
     s = skipKind(s);
     expect(nextQuestion(s)).toBe("want");

@@ -226,3 +226,15 @@ export const SHARED_RIDE = /paylaşımlı|paylasimli|shared|shuttle|servis arac�
 /** The kinds of stay that are a trip kind's own (a liveaboard, a camp, a camper van): never a hotel to find or price. */
 const OWN_STAYS = new Set<string>(["boat", "camp", "vehicle"]);
 export const isOwnStay = (item: Pick<Item, "metrics"> | null | undefined): boolean => OWN_STAYS.has(item?.metrics?.stayKind ?? "");
+
+export { isCampStay } from "../campStay";
+
+/** The name and the line under it of a festival's camp, by what was asked ("Çadır kampı mı, karavan mı?"). */
+export function campWords(kind: "camp" | "vehicle"): { title: string; note: string } {
+  return kind === "vehicle"
+    ? { title: L("Karavan · festival alanı", "Caravan · festival grounds"), note: L("karavan alanı", "caravan area") }
+    : { title: L("Çadır kampı · festival alanı", "Tent camp · festival grounds"), note: L("kendi çadırın", "your own tent") };
+}
+
+/** The drawing of a camp's card (static/illus): a tent, or a caravan. */
+export const campArt = (item: Pick<Item, "metrics"> | null | undefined): string => (item?.metrics?.stayKind === "vehicle" ? "illus/karavan.png" : "illus/cadir.svg");

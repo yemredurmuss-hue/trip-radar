@@ -1,6 +1,7 @@
 // Trip skeleton: which nights are booked, planned or still open, and which saved options are still
 // live. Pure and derived from the saved items on every render, so it can never go stale: un-booking
 // a stay brings its alternatives straight back, and nothing is ever deleted to "close" a need.
+import { isCampStay } from "./campStay";
 import { L } from "./i18n";
 import { nNights } from "./i18nText";
 import { experienceOf } from "./experiences";
@@ -179,7 +180,8 @@ export function tripRange(trip: Trip, items: Item[]): DateRange | null {
 const chosenAt = (i: Item) => i.statusAt ?? i.updatedAt;
 
 /** A stay said in the chat and not booked: its nights are one stay of their own, a hotel still to pick. */
-const isSlot = (i: Item) => i.origin === "chat" && i.category === "stay" && i.status === "chosen" && Boolean(stayRange(i));
+// v30: a festival's camp or caravan is a stay complete in itself (nothing to pick), never a hotel still to find.
+const isSlot = (i: Item) => i.origin === "chat" && i.category === "stay" && i.status === "chosen" && Boolean(stayRange(i)) && !isCampStay(i);
 
 /**
  * Whether a chosen page takes a stay said in the chat: one for those nights only (or fewer), or one
@@ -557,7 +559,7 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
     const covers = (a: DateRange, b: DateRange) => a.start <= b.start && a.end >= b.end;
     // The latest choice wins a night two choices share; a stay said in the chat keeps its nights to
     // itself (the latest said first), open until a page is chosen for it.
-    const picks = chosenStays.filter((i) => i.origin !== "chat").sort((a, b) => chosenAt(b) - chosenAt(a) || byStart(a, b));
+    const picks = chosenStays.filter((i) => i.origin !== "chat" || isCampStay(i)).sort((a, b) => chosenAt(b) - chosenAt(a) || byStart(a, b));
     const slots = stays.filter(isSlot).sort((a, b) => b.updatedAt - a.updatedAt);
     for (let night = range.start; night < range.end; night = addDays(night, 1)) {
       const booked = bookedStays.find((b) => holds(stayRange(b)!, night));

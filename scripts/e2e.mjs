@@ -587,12 +587,14 @@ try {
   // A block for each thing, in its section: the flights in and home, the stays, the train, the boat tour.
   const kinds = await app.locator(".cat-card").evaluateAll((els) => els.map((e) => `${e.closest(".cat-sec").dataset.section}:${[...e.classList].find((c) => c.startsWith("tl-")) ?? "item"}`));
   assert.deepEqual(kinds, ["flight:tl-travel", "flight:tl-travel", "stay:tl-stay", "stay:tl-stay", "transport:tl-travel", "other:item"]);
-  // v11 Etkinlik ve turlar: what's on the plan is a row (the boat tour), the ideas are tiles under "Fikirler".
+  // v30 Etkinlik ve turlar: one grid of cards; what's on the plan has a ✓ (the boat tour), the ideas are dashed with a + ("Plana ekle").
   assert.deepEqual(await sec("activity").locator(".ac-row").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Douro tekne turu"]);
   assert.deepEqual(await sec("activity").locator(".ac-tile").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Livraria Lello", "Serralves Müzesi", "Tiyatro"]);
-  // v11 revision: "Planda" first (big rows), then "Öneriler ve fikirler" (the chat's suggestions, the source's tours and
-  // the saved ideas as tiles), folding away.
-  assert.match(await sec("activity").locator(".ac-on-plan .ac-h").innerText(), /^Planda\s*1/);
+  // v30: one grid (what's on the plan first, ✓), the key above it, "Öneriler ve fikirler" (the chat's suggestions, the source's
+  // tours and the saved ideas as dashed cards) folding away.
+  assert.match(await sec("activity").locator(".ac-key").innerText(), /planda/);
+  assert.equal(await sec("activity").locator(".ac-grid .ax-on, .ax-grid .ax-on").count(), 1, "the boat tour is on the plan");
+  assert.equal(await sec("activity").locator(".ax-grid .ax-on .ax-tick").count(), 1, "its ✓ corner");
   assert.match(await sec("activity").locator(".ac-ideas-h").innerText(), /Öneriler ve fikirler\s*3\s*bilet ya da rezervasyon gerektirenler\s*✨ Daha fazla fikir$/);
   await sec("activity").locator(".ac-toggle").click();
   assert.equal(await sec("activity").locator(".ac-tile").count(), 0, "folded away");
@@ -1229,11 +1231,12 @@ try {
   // What still needs booking without a day: Etkinlikler's "Tarihsiz · Porto", one card under another (Majestic
   // Café, a café with no booking, is a restaurant card instead).
   // (Lizbon, with no activity yet, is an empty card on its own line after them: .ek-line.)
-  // v11: the ideas, tiles under "Fikirler" (each its city, "+ Plana koy").
+  // v11: the ideas, tiles under "Fikirler" (each its city, "+ Plana ekle").
   const actTiles = sec("activity").locator(".ac-tile");
   assert.deepEqual(await actTiles.evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Livraria Lello", "Serralves Müzesi", "Tiyatro"]);
-  assert.match(await actTiles.first().locator(".it-m").innerText(), /^Porto/);
-  await actTiles.first().locator(".it-put", { hasText: "+ Plana koy" }).waitFor();
+  assert.match(await actTiles.first().locator(".it-m").first().innerText(), /Porto/);
+  await actTiles.first().locator(".it-put", { hasText: "+ Plana ekle" }).waitFor();
+  await actTiles.first().locator(".ax-add", { hasText: "+ Plana ekle" }).waitFor();
   assert.equal(await app.locator(".pk-card", { hasText: "Majestic Café" }).count(), 0);
   await sec("todo").locator('.it-tile[aria-label="Majestic Café"]').waitFor();
   assert.equal(await app.locator(".crash").count(), 0, "board crashed after chat updates");
@@ -1504,8 +1507,8 @@ try {
   // A tile's name goes to the map.
   const majestic = tile("Majestic Café");
   assert.match(await majestic.locator(".it-t a").getAttribute("href"), /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=41\.1471%2C-8\.6066$/);
-  // "+ Plana koy" ↔ "✓ Planda", in place.
-  await majestic.getByRole("button", { name: "+ Plana koy" }).click();
+  // "+ Plana ekle" ↔ "✓ Planda", in place.
+  await majestic.getByRole("button", { name: "+ Plana ekle" }).click();
   await majestic.getByRole("button", { name: "✓ Planda" }).waitFor();
   await todos.locator('.it-city .it-tile.planned[aria-label="Majestic Café"]').waitFor(); // it's a ✓ tile now, ahead of the ideas
   // Its day in Gün gün: "Planda, günü yok", a day and a meal, then it's on that day.
@@ -3381,16 +3384,16 @@ try {
   assert.equal(await esimEmpty.locator(".ek-state").innerText(), "Alınmadı");
   assert.deepEqual((await hrefs(esimEmpty)).map(([, u]) => u), ["https://www.airalo.com/indonesia-esim", "https://esim.holafly.com/esim-indonesia/"]);
   // Etkinlikler (v11): the source's tours as tiles; with none, each stop's own searches ("Kendin ara"), no empty card.
-  // Uluwatu's source answers one Viator tour: it's a tile there (the brand's mark, the price a person, "+ Plana koy").
+  // Uluwatu's source answers one Viator tour: it's a tile there (the brand's label, the price a person, "+ Plana ekle").
   await ekOpen("activity");
   assert.equal(await ekSec("activity").locator(".ek-card").count(), 0);
   const tourTile = ekSec("activity").locator('.ac-offer[aria-label="Uluwatu gün batımı ve kecak dansı"]');
   await tourTile.waitFor({ timeout: 10000 });
-  assert.equal(await tourTile.locator(".ac-bm").innerText(), "V");
-  assert.match(await tourTile.locator(".ac-pp").innerText(), /^€45 · kişi$/);
-  assert.match(await tourTile.locator(".it-m").first().innerText(), /Uluwatu · 4 sa/);
+  assert.equal(await tourTile.locator(".brand").innerText(), "Viator");
+  assert.match(await tourTile.locator(".ac-pp").innerText(), /^€45\s+kişi başı$/);
+  assert.match(await tourTile.locator(".ax-where").innerText(), /Uluwatu · 4 sa/);
   assert.equal(await ekSec("activity").locator(".ac-self-row").count(), 2, "the stops the source found nothing for: their own searches");
-  await tourTile.getByRole("button", { name: "+ Plana koy" }).click();
+  await tourTile.getByRole("button", { name: "+ Plana ekle" }).click();
   await ekSec("activity").locator('.ac-row.chosen[aria-label="Uluwatu gün batımı ve kecak dansı"]').waitFor();
   await tourTile.waitFor({ state: "detached" });
   assert.deepEqual((await hrefs(ekSec("activity").locator(".ac-self-row", { hasText: "Canggu" }))).map(([, u]) => u), [
@@ -4464,11 +4467,11 @@ try {
   await board.screenshot({ path: `${out}/26a-intent-afrikaburn.png` });
   await answers.getByRole("button", { name: "+4 days in Cape Town" }).click();
   await board.locator(".st-msg-bot", { hasText: /The trip: \d+ April – \d+ May · 10 nights \(estimated\) \(Cape Town 2 · Tankwa Karoo 6 · Cape Town 2 nights\)\./ }).waitFor();
-  await board.locator(".st-msg-bot .st-q", { hasText: "Camping, or a hotel?" }).last().waitFor();
+  await board.locator(".st-msg-bot .st-q", { hasText: "A tent camp, or would you like to rent a caravan?" }).last().waitFor();
   await abList.locator(".st-row.done", { hasText: "ROUTE" }).getByText("Cape Town 2 · Tankwa Karoo 6 · Cape Town 2 nights").waitFor();
   // K4 (2026-10-09): the festival's own questions (2026-10-07) first, each with its chips, then the style, how many,
   // and where from last. The countdown starts only when the essentials are in, so not before the last answer.
-  for (const q of ["Camping, or a hotel?", "Have you got your ticket yet?", "How many days before the festival would you like to arrive?"]) {
+  for (const q of ["A tent camp, or would you like to rent a caravan?", "Have you got your ticket yet?", "How many days before the festival would you like to arrive?"]) {
     await board.locator(".st-msg-bot .st-q", { hasText: q }).last().waitFor();
     await answers.getByRole("button", { name: "Skip" }).click();
   }

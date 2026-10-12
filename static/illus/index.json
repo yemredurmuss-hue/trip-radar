@@ -124,5 +124,12 @@
     "label_tr": "Not",
     "label_en": "Note",
     "group": "yapilacak-diger"
+  },
+  {
+    "id": "cadir",
+    "file": "cadir.svg",
+    "label_tr": "Çadır",
+    "label_en": "Tent",
+    "group": "kalacak-yer"
   }
 ]

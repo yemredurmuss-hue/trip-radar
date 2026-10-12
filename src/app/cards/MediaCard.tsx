@@ -9,6 +9,8 @@ import { Editable, useInlineEdit } from "./InlineEdit";
 import type { Brand } from "../../lib/brands";
 import type { CancelLine } from "../../lib/cardTime";
 import { BrandPill } from "./RideCard";
+import { campArt } from "../../lib/playbooks";
+import type { Item } from "../../lib/types";
 import { KindIcon, MediaSilhouette } from "./Silhouettes";
 
 /** A stay's rating as the site writes it: "9,0 Muhteşem · 770 yorum" (a score out of 10) or "★ 4,9 Misafirler çok sevmiş" (out of 5). */
@@ -92,6 +94,32 @@ export function MediaCardBody({ face, kind, score, best, city = null, nights = n
             )}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * v30: a festival's camp (a tent, a caravan) as the stay card's body: the kind's drawing across the top, where it is,
+ * its name large, the nights and what it is ("kendi çadırın"). No hotel to find, no price: the foot says it needs no booking.
+ */
+export function CampBody({ item, nights }: { item: Item; nights: number | null }) {
+  const place = item.location.area ?? item.city;
+  return (
+    <div className="pk-media pk-stay pk-camp">
+      <div className="pk-vis">
+        <img className="pk-illus" src={campArt(item)} alt="" />
+      </div>
+      <div className="pk-txt">
+        {place && (
+          <div className="pk-srcrow">
+            <span className="pk-loc">📍 {place}</span>
+          </div>
+        )}
+        <h3 title={item.name}>
+          <Editable field="name">{item.name}</Editable>
+        </h3>
+        <p>{[nights ? L(`${nights} gece`, `${nights} night${nights === 1 ? "" : "s"}`) : null, item.summary || null].filter(Boolean).join(" · ")}</p>
       </div>
     </div>
   );

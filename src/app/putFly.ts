@@ -4,8 +4,8 @@
 // isn't on screen, nothing for "azaltılmış hareket".
 import { reducedMotion } from "./motion";
 
-/** The words of a "Plana koy" button, in either language, with or without its "+". Pure. */
-export const isPutButton = (text: string) => /^\+?\s*(plana koy|add to plan)$/i.test(text.trim());
+/** The words of a "Plana koy" / "Plana ekle" button (the cards of v30 say "Plana ekle"), in either language, with or without its "+". Pure. */
+export const isPutButton = (text: string) => /^\+?\s*(plana koy|plana ekle|add to plan|add to the plan)$/i.test(text.trim());
 /** The name a card shows first, cut to fit the flying chip. Pure. */
 export const chipName = (text: string, max = 28) => {
   const first = text.split("\n").map((l) => l.trim()).find((l) => l.length > 1) ?? "";
@@ -29,7 +29,8 @@ export function installPutFly(doc: Document = document): () => void {
     const chip = doc.createElement("span");
     chip.className = "mv-fly";
     chip.setAttribute("aria-hidden", "true");
-    chip.textContent = chipName(card?.innerText ?? "") || "+1";
+    // v30 cards (.ax-c) carry their name as their label; the older ones read it from their first line.
+    chip.textContent = chipName(card?.closest<HTMLElement>(".ax-c")?.getAttribute("aria-label") ?? card?.innerText ?? "") || "+1";
     doc.body.appendChild(chip);
     const x0 = from.left + 12, y0 = from.top + 10;
     const x1 = to.left + to.width / 2 - 20, y1 = to.top + to.height / 2 - 14;

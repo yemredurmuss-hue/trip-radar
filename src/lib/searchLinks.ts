@@ -235,11 +235,15 @@ const activityUrl = (brand: "getyourguide" | "viator" | "klook", city: string): 
       : `https://www.klook.com/search/result/?query=${enc(city)}`;
 
 /** Tours and tickets in a city: GetYourGuide (`/s/?q=`), Viator (`/searchResults/all?text=`), Klook (`/search/result/?query=`). */
-export function activityLinks(city: string | null | undefined): SearchLink[] {
+export function activityLinks(city: string | null | undefined, query?: string): SearchLink[] {
   const where = city?.trim();
   if (!where) return [];
-  return (["getyourguide", "viator", "klook"] as const).map((b) => link(b, activityUrl(b, where)));
+  const q = query?.trim() ? `${where} ${query.trim()}` : where;
+  return (["getyourguide", "viator", "klook"] as const).map((b) => link(b, activityUrl(b, q)));
 }
+
+/** v30: a place to rest after a festival (a thermal bath, a spa): the same sites' searches for it, never a made-up place. */
+export const restLinks = (city: string | null | undefined): SearchLink[] => activityLinks(city, L("termal hamam spa", "thermal bath spa"));
 
 /** The country's page names where its English name doesn't make the slug (each site's own, checked). */
 const ESIM_SLUGS: Record<string, { airalo: string; holafly: string }> = {

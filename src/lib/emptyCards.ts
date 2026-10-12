@@ -2,6 +2,7 @@
 // because nothing is booked or saved for them yet. As soon as an option or a booking exists the board draws
 // today's full card again; everything here only says "this one is still empty". Pure.
 import { cardKind, type CardKind } from "./cardKinds";
+import { isCampStay } from "./campStay";
 import { sectionOfItem } from "./categories";
 import { formatDateRange } from "./items";
 import { legItem, type Leg } from "./legs";
@@ -34,6 +35,8 @@ const NEVER_EMPTY: readonly CardKind[] = ["taxi", "note", "todo", "food", "other
 export function isEmptyRecord(_trip: Pick<Trip, "startGuide">, item: Item, files = 0, siblings: Item[] = []): boolean {
   if (item.status !== "chosen" || files > 0) return false;
   if (NEVER_EMPTY.includes(cardKind(item))) return false;
+  // v30: a festival's camp is a finished card (a tent, "Rezervasyon gerekmez · bilete dahil"), never a place left to find.
+  if (isCampStay(item)) return false;
   if (siblings.some((i) => i.id !== item.id && i.status !== "dismissed" && i.category === item.category && i.needKey === item.needKey)) return false;
   // The start's placeholders (startTrip isPlaceholder) are such plans: made in the chat, nothing concrete. One that
   // got a page, a price or an hour is a real option now, whatever its print says.

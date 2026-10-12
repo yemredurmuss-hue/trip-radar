@@ -1,15 +1,17 @@
-// Etkinlik ve turlar as drawn in v11 (docs/mockups/2026-10-08-japonya-web-v11.html, expBody): what's on the plan
-// is a row — the picture, the name, its ring, day, city, source and price; chosen: "✓ Aldım" and "Bilet al ↗";
-// booked: "✓ Bilet alındı", its file (or "Belge eksik") and "Ayrıntı ›", the row opening the booking's window;
-// × on each. Under them "Fikirler · bilet ya da rezervasyon gerektirenler" with "Daha fazla fikir" (the chat
-// looks for more), and the ideas as tiles like Yapılacak şeyler's: the picture, who saved it, ×, the name, city,
-// source and price, "+ Plana koy". Whatever isn't one record (a group of options) keeps its card after them.
+// Etkinlik ve turlar as drawn in plan v30 (docs/mockups/plan-v30, "Etkinlik ve turlar"): ONE grid of cards of one size.
+// Each: a square picture (the source's photo, else the drawing), the name (two lines at most), the source's label on its
+// own colour and the city, one price (for how many). What's on the plan has a ✓ in its corner (one press takes it off the
+// plan, to the Pano) and its strip, "✓ Bilet aldım" and "Bilet al ↗" side by side; booked: "✓ Bilet alındı", its file
+// (or "Belge eksik") and "Ayrıntı ›", the card opening the booking's window. The ideas and the suggestions are dashed
+// with a + in the corner and "Plana ekle" (the chat looks for more: "Daha fazla fikir"). On a trip with a purpose its
+// ticket leads, wide ("Gezinin sebebi"). Whatever isn't one record (a group of options) keeps its card after them.
 import { useEffect, useState, type ReactNode } from "react";
 import { cardFacts } from "../../lib/cardFacts";
 import { ringOf, topDate } from "../../lib/cardView";
+import { brandOf, type Brand } from "../../lib/brands";
 import { catDomKey, type CatEntry, type CatSection } from "../../lib/categories";
 import { entryDomId } from "../../lib/progress";
-import { reasonItemOf } from "../../lib/reason";
+import { closedNoteOf, reasonItemOf } from "../../lib/reason";
 import { playbookOf } from "../../lib/playbooks";
 import { L } from "../../lib/i18n";
 import { isAiOption } from "../../lib/pano";
@@ -20,8 +22,9 @@ import { needKey } from "../../lib/emptyCards";
 import { formatPrice } from "../../lib/items";
 import { dealPrice, photoFromOffers, sameTour, type Need, type Offer } from "../../lib/offerSource";
 import { sameCity, type Plan } from "../../lib/plan";
-import { activityLinks, BRANDS } from "../../lib/searchLinks";
+import { activityLinks, restLinks } from "../../lib/searchLinks";
 import { SearchRow } from "../cards/EmptyCard";
+import { BrandPill } from "../cards/RideCard";
 import { useEmptyEnv } from "../cards/emptyEnv";
 import { BookingSheet } from "../cards/BookingSheet";
 import { CardMenu, DeleteX, Ring } from "../cards/CardShell";
@@ -73,93 +76,116 @@ export function ActivityBoard({ section, plan, fallback }: { section: CatSection
   const [open, setOpen] = useRemembered(`trip-radar:ideasOpen:${env.tripId}:activity`, true);
   const count = sugg.length + ideas.length + offers.tiles.length;
   const more = env.ask;
+  // After a festival: where the days after it are spent, for its "Festivalden sonra · dinlenme" (a search, never a made-up place).
+  const rest = intent?.playbook === "festival" ? restCityOf(plan, reason?.city ?? null) : null;
+  const note = closedTours && intent ? closedNoteOf(intent.playbook, Boolean(rest)) : null;
+  const gridCount = restPlanned.length + (open ? count : 0);
   return (
-    <div className="ac-wrap">
-      {/* v11 revision (Emre 2026-10-09): what's on the plan in its own place, big; the suggestions and ideas apart. */}
-      <section className="ac-block ac-on-plan" aria-label={L("Planda", "On the plan")}>
-        <p className="ac-h">
-          <b>{L("Planda", "On the plan")}</b>
-          <i>{planned.length}</i>
-          {!planned.length && <span>{L("Henüz bir şey yok; aşağıdaki önerilerden “+ Plana koy”.", "Nothing yet; “+ Add to plan” from the suggestions below.")}</span>}
-        </p>
-        {planned.length > 0 && (
-          <div className="ac-planned">
-            {reasonRow && (
-              <div className="ac-reason">
-                <span className="ac-reason-tag">
-                  <KindIcon kind="activity" size={14} />
-                  {L("Gezinin sebebi", "The reason for the trip")}
-                </span>
-                <InlineEdit key={reasonRow.e.key} item={reasonRow.item} only={["name"]}>
-                  <ActivityRow item={reasonRow.item} domId={entryDomId(catDomKey(reasonRow.e))} />
-                </InlineEdit>
-                {closedTours && <p className="ac-reason-note">{L("Bu gezide tur ve gezi önerilmez: gezinin sebebi bu.", "No tours or sightseeing are suggested on this trip: this is what it's for.")}</p>}
-              </div>
-            )}
-            {/* The name is edited where it stands (just added from "+ Ekle", a page's title corrected). */}
-            {restPlanned.map(({ e, item }) => (
-              <InlineEdit key={e.key} item={item} only={["name"]}>
-                <ActivityRow item={item} domId={entryDomId(catDomKey(e))} />
-              </InlineEdit>
-            ))}
-          </div>
-        )}
-        {others.map((e) => (
-          <div key={e.key} className="ac-other">{fallback(e)}</div>
-        ))}
-      </section>
-      <section className={`ac-block ac-ideas${open ? " open" : ""}`} aria-label={L("Öneriler ve fikirler", "Suggestions and ideas")}>
-        <div className="ac-ideas-h">
-          <button type="button" className="ac-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
-            <span className="ac-chev" aria-hidden>▾</span>
-            <b>{L("Öneriler ve fikirler", "Suggestions and ideas")}</b>
-            <i>{count}</i>
-            <span>{L("bilet ya da rezervasyon gerektirenler", "the ones that take a ticket or a booking")}</span>
+    <div className="ac-wrap ac-one">
+      {/* The trip's reason, wide and pinned: the ticket the trip is for. */}
+      {reasonRow && (
+        <div className="ac-reason">
+          <span className="ac-reason-tag">
+            <KindIcon kind="activity" size={14} />
+            {L("Gezinin sebebi", "The reason for the trip")}
+          </span>
+          <InlineEdit key={reasonRow.e.key} item={reasonRow.item} only={["name"]}>
+            <ActivityRow item={reasonRow.item} domId={entryDomId(catDomKey(reasonRow.e))} />
+          </InlineEdit>
+        </div>
+      )}
+      {note && <p className="ac-type-note">{note}</p>}
+      {/* v11 (kept): what the ideas are, folding away, and "Daha fazla fikir" (the chat looks for more). */}
+      <div className={`ac-ideas-h ac-bar${open ? " open" : ""}`}>
+        <button type="button" className="ac-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <span className="ac-chev" aria-hidden>▾</span>
+          <b>{L("Öneriler ve fikirler", "Suggestions and ideas")}</b>
+          <i>{count}</i>
+          <span>{L("bilet ya da rezervasyon gerektirenler", "the ones that take a ticket or a booking")}</span>
+        </button>
+        <span className="ac-sp" />
+        {more && (
+          <button type="button" className="ac-more" onClick={() => more(L("Bu gezi için bilet ya da rezervasyon gerektiren birkaç etkinlik ve tur fikri daha öner.", "Suggest a few more activities and tours for this trip, the kind that take a ticket or a booking."))}>
+            ✨ {L("Daha fazla fikir", "More ideas")}
           </button>
-          <span className="ac-sp" />
-          {more && (
-            <button type="button" className="ac-more" onClick={() => more(L("Bu gezi için bilet ya da rezervasyon gerektiren birkaç etkinlik ve tur fikri daha öner.", "Suggest a few more activities and tours for this trip, the kind that take a ticket or a booking."))}>
-              ✨ {L("Daha fazla fikir", "More ideas")}
-            </button>
+        )}
+      </div>
+      <p className="it-key ac-key">
+        <span className="it-key-on">✓</span>
+        {L("planda", "on the plan")}
+        <span className="it-key-add">+</span>
+        {L("öneri, basınca plana girer", "an idea, one tap puts it on the plan")}
+      </p>
+      {!planned.length && count === 0 && <p className="ac-empty-note">{L("Henüz plana bir şey eklenmedi; “+ Plana ekle” ile ekle ya da sohbete yaz.", "Nothing on the plan yet; “+ Add to the plan”, or say it in the chat.")}</p>}
+      {rest && gridCount > 0 && <h4 className="ac-sub">{L("Festivalden sonra · dinlenme", "After the festival · rest")}</h4>}
+      {gridCount > 0 && (
+        <div className="it-grid ax-grid ac-shelf" data-pit-children="">
+          {/* What's on the plan first (✓, solid); then the ideas and the suggestions (dashed, +). */}
+          {restPlanned.map(({ e, item }) => (
+            <InlineEdit key={e.key} item={item} only={["name"]}>
+              <ActivityCard item={item} domId={entryDomId(catDomKey(e))} />
+            </InlineEdit>
+          ))}
+          {open && (
+            <>
+              {sugg.map((x) => (
+                <SuggestTile key={x.key} s={x} note={suggest?.notes[x.key] ?? null} onAdd={() => suggest?.add(x)} onDismiss={() => suggest?.dismiss(x)} />
+              ))}
+              {offers.tiles.map(({ o, need, city }) => (
+                <OfferTile key={o.id} offer={o} city={city} adults={offers.adults} onPut={() => void offers.put(o, need)} />
+              ))}
+              {ideas.map(({ e, item }) => (
+                <InlineEdit key={e.key} item={item} only={["name"]}>
+                  <ActivityTile item={item} domId={entryDomId(catDomKey(e))} />
+                </InlineEdit>
+              ))}
+            </>
           )}
         </div>
-        {open && (
-          <>
-            {count > 0 && (
-              <div className="it-grid ac-shelf">
-                {sugg.map((x) => (
-                  <SuggestTile key={x.key} s={x} note={suggest?.notes[x.key] ?? null} onAdd={() => suggest?.add(x)} onDismiss={() => suggest?.dismiss(x)} />
-                ))}
-                {offers.tiles.map(({ o, need, city }) => (
-                  <OfferTile key={o.id} offer={o} city={city} adults={offers.adults} onPut={() => void offers.put(o, need)} />
-                ))}
-                {ideas.map(({ e, item }) => (
-                  <InlineEdit key={e.key} item={item} only={["name"]}>
-                    <ActivityTile item={item} domId={entryDomId(catDomKey(e))} />
-                  </InlineEdit>
-                ))}
+      )}
+      {others.map((e) => (
+        <div key={e.key} className="ac-other">{fallback(e)}</div>
+      ))}
+      {open && (
+        <>
+          {rest && (
+            <div className="ac-self ac-rest">
+              <p className="ac-self-note">{L("Dinlenmek için kendin bakabilirsin (arama bağlantıları):", "To rest, look yourself (search links):")}</p>
+              <div className="ac-self-row">
+                <b>{rest}</b>
+                <SearchRow links={restLinks(rest)} />
               </div>
-            )}
-            {offers.missing.length > 0 && (
-              <div className="ac-self">
-                <p className="ac-self-note">
-                  {offers.available
-                    ? L("Bu şehirler için kaynak şu an öneri getirmedi; kendin bakabilirsin:", "The source brought nothing for these cities just now; look yourself:")
-                    : L("Canlı tur ve bilet kaynağı bağlı değil; kendin bakabilirsin:", "No live tours-and-tickets source is connected; look yourself:")}
-                </p>
-                {offers.missing.map((c) => (
-                  <div key={c.city} className="ac-self-row">
-                    <b>{c.city}</b>
-                    <SearchRow links={activityLinks(c.city)} />
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </section>
+            </div>
+          )}
+          {offers.missing.length > 0 && (
+            <div className="ac-self">
+              <p className="ac-self-note">
+                {offers.available
+                  ? L("Bu şehirler için kaynak şu an öneri getirmedi; kendin bakabilirsin:", "The source brought nothing for these cities just now; look yourself:")
+                  : L("Canlı tur ve bilet kaynağı bağlı değil; kendin bakabilirsin:", "No live tours-and-tickets source is connected; look yourself:")}
+              </p>
+              {offers.missing.map((c) => (
+                <div key={c.city} className="ac-self-row">
+                  <b>{c.city}</b>
+                  <SearchRow links={activityLinks(c.city)} />
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
+}
+
+/** The city the days after a festival are spent in (the last stop that isn't the festival's own place), or null. */
+export function restCityOf(plan: Pick<Plan, "stayBlocks">, festivalPlace: string | null): string | null {
+  const cities = citiesOfPlan(plan);
+  const at = festivalPlace ? cities.findIndex((c) => sameCity(c.city, festivalPlace)) : -1;
+  // The stops after the festival's own place count (the way in is no rest); not knowing it, any stop after the first.
+  const last = cities.at(-1);
+  if (!last || cities.length < 2) return null;
+  return at >= 0 ? (cities.length - 1 > at ? last.city : null) : festivalPlace ? null : last.city;
 }
 
 /** A per-viewer open/closed state kept in the browser (nothing else depends on it). */
@@ -185,24 +211,57 @@ export function useRemembered(key: string, initial: boolean): [boolean, (v: bool
   ];
 }
 
-/** A suggestion (the chat's, a rule's) as a tile among the ideas: ✨, its name, why, "+ Plana koy", ×. */
-export function SuggestTile({ s, note, onAdd, onDismiss, art = ACTIVITY_ART }: { s: Suggestion; note: string | null; onAdd: () => void; onDismiss: () => void; art?: string }) {
+/** Who a card is from, on the picture's corner: ✨ "Önerimiz" (ours), "Sabine ekledi" (a person), "✓ Bilet alındı" (booked). */
+function WhoTag({ item, booked = false }: { item: Item; booked?: boolean }) {
+  const myName = useMyName();
+  const photoOf = usePhotoOf();
+  if (booked) return <span className="ax-tag ok">✓ {L("Bilet alındı", "Ticket bought")}</span>;
+  if (isAiOption(item)) return <span className="ax-tag" title={L("AI önerisi", "AI pick")}><span aria-hidden>✨</span> {L("Önerimiz", "Our pick")}</span>;
+  const who = item.addedBy ?? myName ?? null;
+  if (!who) return null;
   return (
-    <div className="it-tile ac-tile ac-sugg" aria-label={s.title} data-suggestion={s.key}>
-      <div className="it-pic ac-tile-pic">
+    <span className="ax-tag" title={who}>
+      <WhoAvatar name={who} photo={photoOf(who)} /> {L(`${who} ekledi`, `${who} added`)}
+    </span>
+  );
+}
+
+/** A name on a card: two lines at most, the whole of it on hover. */
+const nameProps = (name: string) => ({ title: name });
+
+/** The brand's label (the source's own colour) and the place, one line: "Viator · Kyoto · 30 dk". */
+function MetaLine({ brand, parts }: { brand: Brand | null; parts: (string | null | undefined)[] }) {
+  const text = parts.filter(Boolean).join(" · ");
+  return (
+    <span className="ac-m it-m ax-meta">
+      <BrandPill brand={brand} />
+      {text && <span className="ax-where" title={text}>{text}</span>}
+    </span>
+  );
+}
+
+/** A suggestion (the chat's, a rule's) as a card among the ideas: ✨, its name, why, "+ Plana ekle", ×. */
+export function SuggestTile({ s, note, onAdd, onDismiss, art = ACTIVITY_ART, tag = null }: { s: Suggestion; note: string | null; onAdd: () => void; onDismiss: () => void; art?: string; /** What it is, in the picture's corner ("Restoran", "Gezilecek"). */ tag?: string | null }) {
+  return (
+    <div className="it-tile ac-tile ac-sugg ax-c ax-idea" aria-label={s.title} data-suggestion={s.key}>
+      <div className="it-pic ac-tile-pic ax-sq">
         <img className="ac-art" src={art} alt="" />
-        <span className="it-who" title={L("Öneri", "Suggestion")}>
-          <span className="it-ai">✨</span>
-        </span>
-        <span className="it-tools">
+        {tag ? <span className="it-kindtag">{tag}</span> : <span className="ax-tag" title={L("Öneri", "Suggestion")}><span aria-hidden>✨</span> {L("Önerimiz", "Our pick")}</span>}
+        {tag && <span className="it-who" title={L("Öneri", "Suggestion")}><span className="it-ai">✨</span></span>}
+        <span className="it-tools ax-tools">
           <DeleteX name={s.title} onDelete={onDismiss} label={L("Gerek yok", "Not needed")} className="it-x" />
         </span>
-        {s.kind === "add" && <button type="button" className="it-put corner" title={L("Plana koy", "Add to plan")} onClick={onAdd}>+ {L("Plana koy", "Add to plan")}</button>}
+        {s.kind === "add" && <button type="button" className="it-put corner" data-put="" aria-label={L("Plana ekle", "Add to the plan")} title={L("Plana ekle", "Add to the plan")} onClick={onAdd}>+ {L("Plana ekle", "Add to the plan")}</button>}
       </div>
-      <b className="it-t">{s.title}</b>
-      {s.payload?.city && <span className="it-m">📍 {s.payload.city}</span>}
-      {s.why && <span className="it-m ac-why">{s.why}</span>}
+      <b className="it-t ac-t" {...nameProps(s.title)}>{s.title}</b>
+      <MetaLine brand={null} parts={[s.payload?.city]} />
+      {s.why && <span className="it-m ac-why ax-why" title={s.why}>{s.why}</span>}
       {note && <span className="it-m ac-note" role="status">{note}</span>}
+      {!tag && s.kind === "add" && (
+        <div className="ax-foot ax-foot-idea">
+          <button type="button" className="ax-add" data-put="" onClick={onAdd}>+ {L("Plana ekle", "Add to the plan")}</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -236,7 +295,7 @@ function ActivityRow({ item, domId }: { item: Item; domId: string }) {
         <FallbackImg className="ac-pic" src={item.imageUrl ?? null} fallback={<img className="ac-pic art" src={ACTIVITY_ART} alt="" />} />
       </span>
       <span className="ac-main">
-        <b className="ac-t">
+        <b className="ac-t" title={item.name}>
           <Editable field="name">{item.name}</Editable>
         </b>
         <span className="ac-m">
@@ -289,37 +348,112 @@ function ActivityRow({ item, domId }: { item: Item; domId: string }) {
   );
 }
 
+/** An idea (saved, not on the plan): the card dashed, a + in the corner, "Plana ekle" under it. */
 function ActivityTile({ item, domId }: { item: Item; domId: string }) {
   const env = useCardEnv();
   const stageMenu = useStageMenu(item);
-  const myName = useMyName();
-  const photoOf = usePhotoOf();
+  const { travellers } = useEmptyEnv();
   const facts = cardFacts(item, undefined, env.decisions?.ctx);
-  const who = isAiOption(item) ? "ai" : (item.addedBy ?? null);
-  const meta = [item.city, facts.source?.label, facts.price?.text].filter(Boolean).join(" · ");
   const edit = useInlineEdit();
+  const people = item.guests.adults ?? travellers;
+  const put = () => void chooseItem(item, []);
   return (
-    <div className="it-tile ac-tile" aria-label={item.name} data-item-id={item.id} id={domId} title={item.summary ?? undefined}>
-      <div className="it-pic ac-tile-pic">
+    <div className="it-tile ac-tile ax-c ax-idea" aria-label={item.name} data-item-id={item.id} id={domId} title={item.summary ?? undefined}>
+      <div className="it-pic ac-tile-pic ax-sq">
         <FallbackImg className="it-photo" src={item.imageUrl ?? null} fallback={<img className="ac-art" src={ACTIVITY_ART} alt="" />} />
-        <span className="it-who" title={who === "ai" ? L("AI önerisi", "AI pick") : who ?? myName ?? undefined}>
-          {who === "ai" ? <span className="it-ai">✨</span> : <WhoAvatar name={who ?? (myName || L("Ben", "Me"))} photo={photoOf(who ?? myName)} />}
-        </span>
-        <span className="it-tools">
+        <WhoTag item={item} />
+        <span className="it-tools ax-tools">
           <DeleteX name={item.name} onDelete={stageMenu.hide} label={L("Gerek yok", "Not needed")} className="it-x" />
           <CardMenu entries={stageMenu.menu} />
         </span>
-        <button type="button" className="it-put corner" title={L("Plana koy", "Add to plan")} onClick={() => void chooseItem(item, [])}>+ {L("Plana koy", "Add to plan")}</button>
+        <button type="button" className="it-put corner" data-put="" aria-label={L("Plana ekle", "Add to the plan")} title={L("Plana ekle", "Add to the plan")} onClick={put}>+ {L("Plana ekle", "Add to the plan")}</button>
       </div>
-      <b className="it-t">
+      <b className="it-t ac-t" {...nameProps(item.name)}>
         {edit?.open === "name" ? (
           <Editable field="name">{item.name}</Editable>
         ) : (
           <button type="button" className="ac-name" onClick={() => env.onOpenItem(item)}>{item.name}</button>
         )}
       </b>
-      {meta && <span className="it-m">{meta}</span>}
+      <MetaLine brand={brandOf(facts.source?.label, facts.source?.host)} parts={[item.city]} />
+      <span className="ax-price">{facts.price ? <><b>{facts.price.text}</b><small>{people && people > 1 ? L(`${people} kişi`, `${people} people`) : facts.price.label}</small></> : null}</span>
+      <div className="ax-foot ax-foot-idea">
+        <button type="button" className="ax-add" data-put="" onClick={put}>+ {L("Plana ekle", "Add to the plan")}</button>
+      </div>
       {stageMenu.field}
+    </div>
+  );
+}
+
+/**
+ * A tour or a ticket on the plan (chosen or booked) as the drawing's card: the square picture with a ✓ in the corner (one
+ * press takes it off the plan, to the Pano), the name, the source's label and the city, one price (for how many); its strip,
+ * "✓ Bilet aldım" and "Bilet al ↗" side by side, or, booked, "✓ Bilet alındı", its file and "Ayrıntı ›".
+ */
+function ActivityCard({ item, domId }: { item: Item; domId: string }) {
+  const env = useCardEnv();
+  const { travellers } = useEmptyEnv();
+  const stageMenu = useStageMenu(item);
+  const [sheet, setSheet] = useState(false);
+  const facts = cardFacts(item, undefined, env.decisions?.ctx);
+  const docs = env.docsFor(item.id);
+  const booked = item.status === "booked";
+  const page = datedLink(item, undefined).url ?? item.url;
+  const date = topDate(item, "activity");
+  const people = item.guests.adults ?? travellers;
+  const open = () => (booked ? setSheet(true) : env.onOpenItem(item));
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+  return (
+    <div className={`ac-row ax-c ax-on${booked ? " booked" : " chosen"}`} aria-label={item.name} data-item-id={item.id} id={domId}
+      onClick={(e) => !(e.target as HTMLElement).closest("button, a, input, .pk-menu, .pk-ed-wrap") && open()}>
+      <button type="button" className="ac-hit" aria-label={item.name} onClick={open} />
+      <span className="ax-sq ac-photo">
+        <FallbackImg className="ac-pic" src={item.imageUrl ?? null} fallback={<img className="ac-pic art" src={ACTIVITY_ART} alt="" />} />
+        <WhoTag item={item} booked={booked} />
+        <span className="ax-tools" onClick={stop}>
+          <DeleteX name={item.name} onDelete={stageMenu.hide} label={booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed")} className="ac-x" />
+          <CardMenu entries={stageMenu.menu} />
+        </span>
+        {booked ? (
+          <span className="ax-tick on" aria-hidden>✓</span>
+        ) : (
+          <button type="button" className="ax-tick on" aria-label={L(`${item.name}: plandan çıkar`, `${item.name}: take off the plan`)} title={L("Planda · çıkarınca Pano'ya gider", "On the plan · taking it off sends it to the Board")}
+            onClick={(e) => { stop(e); void setItemStatus(item, "saved"); }}>✓</button>
+        )}
+      </span>
+      <b className="ac-t" {...nameProps(item.name)}>
+        <Editable field="name">{item.name}</Editable>
+      </b>
+      <MetaLine brand={brandOf(facts.source?.label, facts.source?.host)} parts={[item.city, date]} />
+      <span className="ax-price">
+        {facts.price ? <><b>{facts.price.text}</b><small>{people && people > 1 ? L(`${people} kişi`, `${people} people`) : facts.price.label}</small></> : null}
+      </span>
+      <div className="ax-foot ac-acts" onClick={stop}>
+        {booked ? (
+          <>
+            <DocAccess item={item} docs={docs} />
+            <button type="button" className="ac-detail" onClick={() => setSheet(true)}>{L("Ayrıntı", "Details")} ›</button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="pk-aldim" aria-label={L(`${item.name}: aldım`, `${item.name}: got it`)} onClick={() => void setItemStatus(item, "booked")}>
+              ✓ {L("Bilet aldım", "I got the ticket")}
+            </button>
+            {page && (
+              <a className="ac-go" href={page} target="_blank" rel="noreferrer">
+                {facts.source?.host && <FallbackImg className="sc-favicon" src={`https://${facts.source.host}/favicon.ico`} fallback={null} />}
+                {L("Bilet al ↗", "Get the ticket ↗")}
+              </a>
+            )}
+            <DocAccess item={item} docs={docs} />
+          </>
+        )}
+      </div>
+      {stageMenu.field}
+      {sheet && (
+        <BookingSheet item={item} kind="activity" facts={facts} docs={docs} date={date}
+          onChange={stageMenu.change} onCancel={stageMenu.cancel} onUnbook={() => void setItemStatus(item, "chosen")} onDetails={() => env.onOpenItem(item)} onClose={() => setSheet(false)} />
+      )}
     </div>
   );
 }
@@ -341,7 +475,7 @@ const PER_CITY = 4;
 
 /**
  * v11 (Emre, 2026-10-09: "kaynaklarımızdan, API'lerden gerçek öneri olarak çıkmasını bekliyorduk"): each city's tours
- * and tickets from the connected source (Viator), for the shelf's tiles — "+ Plana koy" puts one on the plan at once.
+ * and tickets from the connected source (Viator), for the shelf's tiles — "+ Plana ekle" puts one on the plan at once.
  * Nothing is made up: the cities the source brought nothing for are listed for their own searches ("Kendin ara").
  */
 function useActivityOffers(plan: Pick<Plan, "stayBlocks">, saved: Item[]) {
@@ -383,32 +517,24 @@ function useActivityOffers(plan: Pick<Plan, "stayBlocks">, saved: Item[]) {
 }
 
 function OfferTile({ offer: o, city, adults, onPut }: { offer: Offer; city: string; adults: number | null; onPut: () => void }) {
-  const brandKey = o.source.toLocaleLowerCase("en").replace(/[^a-z]/g, "") as keyof typeof BRANDS;
-  const brand = BRANDS[brandKey] ?? null;
   const deal = dealPrice(o, adults);
   const per = deal && adults && adults > 1 ? deal.amount / adults : deal?.amount ?? null;
   const meta = [city, o.durationMinutes ? durationText(o.durationMinutes) : o.meta].filter(Boolean).join(" · ");
   return (
-    <div className="it-tile ac-tile ac-offer" aria-label={o.title} data-offer={o.id} title={o.why || undefined}>
-      <div className="it-pic ac-tile-pic">
+    <div className="it-tile ac-tile ac-offer ax-c ax-idea" aria-label={o.title} data-offer={o.id} title={o.why || undefined}>
+      <div className="it-pic ac-tile-pic ax-sq">
         <FallbackImg className="it-photo" src={o.photo ?? null} fallback={<img className="ac-art" src={ACTIVITY_ART} alt="" />} />
-        <span className="it-who" title={L("Kaynaktan öneri", "From the source")}>
-          <span className="it-ai">✨</span>
-        </span>
-        <button type="button" className="it-put corner" title={L("Plana koy", "Add to plan")} onClick={onPut}>+ {L("Plana koy", "Add to plan")}</button>
+        <span className="ax-tag" title={L("Kaynaktan öneri", "From the source")}><span aria-hidden>✨</span> {L("Önerimiz", "Our pick")}</span>
+        <button type="button" className="it-put corner" data-put="" aria-label={L("Plana ekle", "Add to the plan")} title={L("Plana ekle", "Add to the plan")} onClick={onPut}>+ {L("Plana ekle", "Add to the plan")}</button>
       </div>
-      <b className="it-t">
+      <b className="it-t ac-t" {...nameProps(o.title)}>
         <a href={o.url} target="_blank" rel="noreferrer" className="ac-name">{o.title}</a>
       </b>
-      <span className="it-m">
-        📍 {meta}
-        {brand && (
-          <span className="ac-bm" style={{ background: brand.color }} title={brand.name}>
-            {brand.letter}
-          </span>
-        )}
-      </span>
-      {per != null && <span className="it-m ac-pp">{L(`${formatPrice(Math.round(per), o.currency ?? "EUR")} · kişi`, `${formatPrice(Math.round(per), o.currency ?? "EUR")} · person`)}</span>}
+      <MetaLine brand={brandOf(o.source, null)} parts={[meta]} />
+      <span className="ax-price">{per != null ? <span className="ac-pp"><b>{formatPrice(Math.round(per), o.currency ?? "EUR")}</b> <small>{L("kişi başı", "per person")}</small></span> : null}</span>
+      <div className="ax-foot ax-foot-idea">
+        <button type="button" className="ax-add" data-put="" onClick={onPut}>+ {L("Plana ekle", "Add to the plan")}</button>
+      </div>
     </div>
   );
 }

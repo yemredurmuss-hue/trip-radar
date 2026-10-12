@@ -28,6 +28,18 @@ export interface JourneyHop {
   mode: JourneyMode;
   /** How long the way takes, when a flight's hours or the chosen way say ("11 sa", "1,5 sa" under the line). */
   minutes: number | null;
+  /** The chosen or booked way in the card's own words ("Shinkansen Hikari", "Romancecar"), without its route; null when none is. */
+  name?: string | null;
+}
+
+/** A transport card's name without its route and its brand's prefix: "JR Shinkansen Hikari · Odawara → Kyoto" → "Shinkansen Hikari". */
+export function wayName(item: Pick<Item, "name" | "provider"> | null | undefined): string | null {
+  if (!item) return null;
+  const parts = item.name.split(" · ").map((x) => x.trim()).filter((x) => x && !/→|->/.test(x));
+  let name = parts[0] ?? "";
+  const brand = item.provider?.trim();
+  if (brand && name.toLowerCase().startsWith(`${brand.toLowerCase()} `)) name = name.slice(brand.length).trim();
+  return name || null;
 }
 
 /** A flight's or a way's minutes: what was read, else its hours (gate to gate). */
@@ -96,7 +108,8 @@ export function journeyOf(plan: Pick<Plan, "stayBlocks">, legs: Leg[], items: It
     const leg = legs.find((l) => l.date === day && (l.kind === "move" || l.kind === "change"));
     const mode = flown ? "flight" : leg?.mode ? (MODE_OF[leg.mode] ?? "other") : leg?.options.some((o) => o.category === "flight") ? "flight" : "train";
     const way = flown ? flights.find((f) => f.flight!.departure!.slice(0, 10) === day) : leg?.options.find((o) => o.status === "booked" || o.status === "chosen");
-    hops.push({ mode, minutes: minutesOf(way) });
+    const chosen = way && (way.status === "chosen" || way.status === "booked") ? way : null;
+    hops.push({ mode, minutes: minutesOf(way), name: wayName(chosen) });
   }
   return { stops, hops };
 }

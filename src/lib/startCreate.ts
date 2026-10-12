@@ -320,6 +320,8 @@ function placedFor(item: Item, c: Creation): Item {
   return {
     ...item,
     ...(own ? { metrics: { ...(item.metrics ?? EMPTY_METRICS), stayKind: own } } : {}),
+    // A camp or a caravan (a festival's own nights, covered by its ticket) has nothing to book: set aside like an idea (booking.setAside).
+    ...((own === "camp" || own === "vehicle") && item.noBooking == null ? { noBooking: item.updatedAt } : {}),
     // The flag, the weather, the visa, the minis.
     ...(country && !item.countryCode ? { countryCode: country.code, country: item.country ?? country.name } : {}),
     // How many travel, on the plans themselves (the search links read it from there).

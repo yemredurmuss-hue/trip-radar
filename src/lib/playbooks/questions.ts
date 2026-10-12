@@ -25,6 +25,7 @@ export const say = (w: Words): string => L(w.tr, w.en);
  * - splitStay: the longest stay split into n stays of about equal nights (two resorts).
  * - setBudget: the trip's budget.
  * - addPrep: lines added to the preparation list.
+ * - setStay: the nights at the event's own place are a camp (a tent) or a vehicle (a caravan): a stay of that kind, never a hotel.
  */
 export type PbEffect =
   | { op: "dropCard"; card: string }
@@ -33,7 +34,8 @@ export type PbEffect =
   | { op: "setStartOffsetDays"; n: number }
   | { op: "splitStay"; n: number }
   | { op: "setBudget"; amount: number; currency: string }
-  | { op: "addPrep"; items: Words[] };
+  | { op: "addPrep"; items: Words[] }
+  | { op: "setStay"; kind: "camp" | "vehicle" };
 
 export interface PbChip {
   /** What the answer is (kept on the start, given to the model as the option's id). */
@@ -100,6 +102,8 @@ export function validEffect(v: unknown): PbEffect | null {
       const currency = typeof e.currency === "string" && /^[A-Z]{3}$/.test(e.currency) ? e.currency : null;
       return amount && currency ? { op: "setBudget", amount, currency } : null;
     }
+    case "setStay":
+      return e.kind === "camp" || e.kind === "vehicle" ? { op: "setStay", kind: e.kind } : null;
     case "addPrep": {
       const items = Array.isArray(e.items) ? e.items.map(validWords).filter((w): w is Words => !!w).slice(0, 10) : [];
       return items.length ? { op: "addPrep", items } : null;
@@ -304,6 +308,9 @@ export function cardsAfter(cards: Card[], effects: PbEffect[], at: { dest: strin
 
 /** The lines the operations add to the preparation list, in the language now. */
 export const prepAdded = (effects: PbEffect[]): string[] => effects.flatMap((e) => (e.op === "addPrep" ? e.items.map(say) : []));
+
+/** The kind of stay an answer set for the event's own nights (the last one wins), or null when none did. */
+export const stayKindSet = (effects: PbEffect[]): "camp" | "vehicle" | null => effects.reduce<"camp" | "vehicle" | null>((k, e) => (e.op === "setStay" ? e.kind : k), null);
 
 /** How many days before the event the trip starts, when an answer said so (the last one wins). */
 export const startOffset = (effects: PbEffect[]): number | null => effects.reduce<number | null>((n, e) => (e.op === "setStartOffsetDays" ? e.n : n), null);
