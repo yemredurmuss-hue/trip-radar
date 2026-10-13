@@ -26,6 +26,8 @@ import { bookedAs } from "../lib/cardView";
 import { BookedBadge } from "./cards/BookedBadge";
 import { ProsConsView } from "./ProsConsView";
 import { OptionBoard } from "./board/OptionBoard";
+import { StepDecide } from "./board/StepDecide";
+import { stepKeys, type DecideStep } from "../lib/decideSteps";
 import type { ValueCard } from "../lib/value";
 import { updateTrip } from "./actions";
 import { AMENITIES, amenityLabel, type Amenity, type CriterionId, type Item, type PriorityLevel, type Trip } from "../lib/types";
@@ -39,6 +41,8 @@ interface Props {
   /** For each option's pros and cons (what was read on its page). */
   ctx?: DecisionContext;
   title: string | null;
+  /** Every need of the trip with its decision: "Sırayla karar ver" goes through the open ones. */
+  steps?: DecideStep[];
   onClose: () => void;
   onOpenItem: (item: Item) => void;
 }
@@ -50,12 +54,15 @@ const MAX_COLUMNS = 5;
  * (0.37): Kartlar, the options as a board of photo cards (stays with something to compare start there), and
  * Tablo, the criteria side by side; cards ticked on the board open the table with just those.
  */
-export function CompareView({ trip, decision, card, inferred, ctx, title, onClose, onOpenItem }: Props) {
+export function CompareView({ trip, decision, card, inferred, ctx, title, steps, onClose, onOpenItem }: Props) {
   const d = decision;
   const single = d.status === "single";
   const [view, setView] = useState<"cards" | "table">(() => (d.category === "stay" && d.options.filter((o) => !o.excluded).length >= 2 ? "cards" : "table"));
   const [only, setOnly] = useState<string[] | null>(null);
   const [why, setWhy] = useState(false);
+  // "Sırayla karar ver": one open decision per screen, on top of the same window (the cards and the table stay as they are).
+  const [stepping, setStepping] = useState(false);
+  const canStep = !!steps && stepKeys(steps, d.key).length > 0;
   const columns = d.options.filter((o) => !o.excluded && (!only || only.includes(o.item.id))).slice(0, MAX_COLUMNS);
   const excluded = d.options.filter((o) => o.excluded);
   // A wish nobody asked for isn't "missing information" (the ones asked for, from a note or set here, are).
@@ -106,6 +113,10 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
         <div className="muted">{L("Karşılaştırma", "Comparison")}</div>
         <h2>{[CATEGORY_LABELS[d.category], title].filter(Boolean).join(" · ")}</h2>
 
+        {stepping && steps ? (
+          <StepDecide steps={steps} firstKey={d.key} ctx={ctx} onOpenItem={onOpenItem} onExit={() => setStepping(false)} />
+        ) : (
+        <>
         {/* One line (0.37): the pick and why, in the AI's words when it gave some; the rest under "Neden?". */}
         <div className={`verdict-box cmp-verdict status-${d.status}`}>
           <div className="cmp-verdict-row">
@@ -135,6 +146,11 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
           {view === "table" && only && (
             <button type="button" className="link-btn" onClick={() => setOnly(null)}>
               {L("Hepsini göster", "Show all")}
+            </button>
+          )}
+          {canStep && (
+            <button type="button" className="cmp-step" onClick={() => setStepping(true)}>
+              {L("Sırayla karar ver", "Decide one by one")}
             </button>
           )}
         </div>
@@ -315,6 +331,8 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
               ))}
             </div>
           </div>
+        )}
+        </>
         )}
 
         <div className="compare-foot">

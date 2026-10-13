@@ -4,6 +4,7 @@ import { resetConversation } from "../lib/assistant";
 import { loadDemoTrip } from "../lib/demo";
 import { L } from "../lib/i18n";
 import { routeUrl } from "../lib/items";
+import { buildSteps } from "../lib/decideSteps";
 import { buildPlan, groupKeyOf, liveGroups } from "../lib/plan";
 import { purgeTrash, restoreTrash, trashTrip } from "../lib/trash";
 import { checkStraysOnce } from "../lib/strays";
@@ -327,6 +328,7 @@ export function App() {
           inferred={decisions?.ctx.inferred}
           ctx={decisions?.ctx}
           title={comparedTitle}
+          steps={plan && decisions ? buildSteps(liveGroups(plan), decisions.byGroup, decisions.cards) : undefined}
           onClose={() => setCompareKey(null)}
           onOpenItem={(i) => setOpenItemId(i.id)}
         />

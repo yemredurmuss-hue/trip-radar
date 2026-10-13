@@ -1095,6 +1095,31 @@ try {
   await app.setViewportSize({ width: 1440, height: 1100 });
   await app.screenshot({ path: `${out}/3c-board.png` });
   await app.setViewportSize({ width: 1440, height: 900 });
+  // Karar Panosu #10 "Sırayla karar ver": one open decision per screen ("1 / N"), the options side by side with one line of advice;
+  // "Sonra" passes one on, "Geri" comes back, the last screen says what is left; the cards and the table stay as they were.
+  await compare.getByRole("button", { name: "Sırayla karar ver" }).click();
+  const stepHead = compare.locator(".sd-top h3");
+  assert.match(await stepHead.innerText(), /^1 \/ \d+ · Konaklama/, "the window's decision comes first");
+  await compare.locator(".sd-reco").waitFor();
+  assert.ok((await compare.locator(".sd-card").count()) >= 2, "its options side by side");
+  await compare.locator('.sd-card[aria-label="Jardim Stay"] .sd-price').waitFor(); // the price is never hidden
+  await app.screenshot({ path: `${out}/3c-step.png` });
+  await app.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll in the one-by-one view at 390 px");
+  assert.ok(await compare.locator(".compare-card, .sd").first().evaluate((el) => el.scrollWidth <= el.clientWidth + 1), "the window doesn't spill at 390 px");
+  await app.screenshot({ path: `${out}/3c-step-390.png` });
+  await app.setViewportSize({ width: 1440, height: 900 });
+  await compare.getByRole("button", { name: "Sonra", exact: true }).click();
+  while (!(await compare.getByRole("heading", { name: "Bitti" }).count())) {
+    await compare.getByRole("button", { name: "Sonra", exact: true }).click();
+  }
+  await compare.getByText(/karar sonraya kaldı/).waitFor();
+  await compare.getByRole("button", { name: "← Geri" }).click();
+  assert.match(await stepHead.innerText(), /^\d+ \/ \d+ · /, "Geri comes back to the last decision");
+  await compare.getByRole("button", { name: "Sonra", exact: true }).click();
+  await compare.getByRole("button", { name: "Tamam" }).click();
+  await compare.locator(".cmp-views [role=tab].on", { hasText: "Kartlar" }).waitFor();
+  console.log("✓ compare: Sırayla karar ver goes through the open decisions one per screen, Sonra / Geri walk them, the end says what is left, the cards come back");
   // Two ticked → side by side in the table, just those; "Hepsini göster" brings the rest back.
   await boardCard("Jardim Stay").locator(".bd-tick").click();
   await boardCard("Casa Azul").locator(".bd-tick").click();

@@ -334,6 +334,41 @@ body.popup { width: 320px; }
   .bd-grid { grid-template-columns: 1fr; }
   .bd-count { width: 100%; margin-left: 0; }
 }
+/* -- Karar Panosu -- (docs/mockups/artifact-arsivi/karar-panosu-taslagi-Hajs4s, #10 Sırayla karar ver, #2/#4 öncelik ★, #9 sohbet adı; the cards' own "neden" line)
+   The window's own colours and sizes (bd-*, --accent, --success, --danger); nothing new. */
+.cmp-step { margin-left: auto; height: 32px; padding: 0 14px; border: 1px solid #1d1d1f; border-radius: 9px; background: #fff; font: inherit; font-size: 13.5px; font-weight: 600; color: #1d1d1f; cursor: pointer; }
+.cmp-step:hover { background: #1d1d1f; color: #fff; }
+.sd { margin-top: 14px; }
+.sd-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sd-top h3 { margin: 0; font-size: 18px; color: #1d1d1f; outline: none; }
+.sd-actions { display: flex; gap: 14px; }
+.sd-nav { font-size: 14px; }
+.sd-reco { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 14px; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); font-size: 14.5px; line-height: 1.45; }
+.sd-tick { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.sd-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.sd-card { display: flex; flex-direction: column; min-width: 0; padding: 14px; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.07), 0 4px 14px rgba(0,0,0,.04); }
+.sd-card.best { box-shadow: 0 0 0 2px var(--accent), 0 6px 20px rgba(23,104,255,.12); }
+.sd-card.chosen { box-shadow: 0 0 0 2px #23998b, 0 6px 20px rgba(35,153,139,.16); }
+.sd-card.out { opacity: .7; }
+.sd-name { margin-top: 0; }
+.sd-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 6px; font-size: 12.5px; color: #6e6e73; }
+.sd-score b { color: #1d1d1f; }
+.sd-price { margin-top: 8px; line-height: 1.2; }
+.sd-price b { font-size: 18px; }
+.sd-price small { display: block; font-size: 12px; color: #6e6e73; }
+.sd-foot { margin-top: auto; padding-top: 14px; display: flex; justify-content: flex-end; }
+.bd-pick.ghost { background: #fff; color: #1d1d1f; box-shadow: inset 0 0 0 1px #cfcac1; }
+.sd-more { margin-top: 12px; }
+.sd-done-msg { margin: 14px 0 10px; font-size: 16px; font-weight: 600; color: #1d1d1f; }
+.sd-sum { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; font-size: 14.5px; }
+.sd-sum li { display: flex; gap: 8px; align-items: baseline; }
+.sd-sum.later li { justify-content: space-between; max-width: 460px; color: #3a3a3c; }
+.sd-ok { color: var(--success); font-weight: 800; }
+.sd-finish { margin-top: 6px; height: 34px; }
+.sd-card, .sd-reco { animation: mv-rise var(--t-base) var(--e-out) backwards; }
+@media (prefers-reduced-motion: reduce) { .sd-card, .sd-reco { animation: none; } }
+body.still .sd-card, body.still .sd-reco { animation: none; }
+@media (max-width: 620px) { .cmp-step { margin-left: 0; } .sd-cards { grid-template-columns: 1fr; } }
 .compare-card h3 { font-size: 15px; color: #3a3a3c; margin: 0 0 6px; }
 .compare-card .close { position: absolute; top: 18px; right: 18px; background: var(--soft); border: 0; border-radius: 50%; width: 36px; height: 36px; font-size: 18px; }
 .verdict-box { background: var(--accent-soft); border-radius: 14px; padding: 14px 16px; line-height: 1.5; }
