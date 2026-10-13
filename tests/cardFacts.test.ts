@@ -123,8 +123,8 @@ describe("a trip's operator in the details", () => {
 
 describe("how many go, when a record does not say", () => {
   const trip = (travellers?: { names: string[]; count?: number | null }) => ({ trip: { travellers } }) as unknown as Parameters<typeof tripPeople>[0];
-  it("is the names said or the count said (never fewer than the names); nobody said: unknown", () => {
-    expect(tripPeople(trip({ names: ["Emre", "Sabine"] }))).toBe(2);
+  it("is me and the companions named, or the count said (never fewer than the names); nobody said: unknown", () => {
+    expect(tripPeople(trip({ names: ["Sabine"] }))).toBe(2);
     expect(tripPeople(trip({ names: ["Emre"], count: 4 }))).toBe(4);
     expect(tripPeople(trip({ names: [] }))).toBeNull();
     expect(tripPeople(trip())).toBeNull();

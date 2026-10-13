@@ -1935,6 +1935,15 @@ try {
   assert.equal(new Set(acts).size, 1, `the price rows line up (${acts})`);
   await pano.evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/30a-pano.png` });
+  // F1d: the strip's column is 296-316 px wide; a flight's picture is its two cities with the plane between (ucus.png); its price is per person
+  // from the passengers on the record, "2 kişi · €162" small under it.
+  const colW = await pano.locator(".pn-strip .pn-card").first().evaluate((e) => e.getBoundingClientRect().width);
+  assert.ok(colW >= 295.5 && colW <= 316.5, `the Pano column is 296-316 px wide (${colW})`);
+  await pano.locator('.pn-cats [data-cat="flight"]').click();
+  const panoFlight = pano.locator(".pn-card", { hasText: "TAP" }).first();
+  assert.equal(await panoFlight.locator('.pn-img img[src$="ucus.png"]').count(), 1, "a flight card draws the plane between its two cities");
+  assert.match(await panoFlight.locator(".pn-price").innerText(), /€81[\s\S]*kişi başı[\s\S]*2 kişi · €162/, "per person, from the record's two passengers");
+  await app.screenshot({ path: `${out}/30a2-pano-flight.png` });
   // Konaklama: its options by need, the one on the plan named in the group's header.
   await pano.locator('.pn-cats [data-cat="stay"]').click();
   assert.ok((await pano.locator(".pn-group").count()) >= 1, "stays grouped by need");
