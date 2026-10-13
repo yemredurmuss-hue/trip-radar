@@ -57,6 +57,7 @@ import { FlightTiles } from "./FlightLive";
 import { FlightTicket } from "./FlightTicket";
 import { delayShiftNote, flightAlert, flightTiles, phaseOf, sourceText, ticketDiff, wasTimes } from "../../lib/flightData";
 import { flightNumber } from "../../../supabase/functions/flight/shape";
+import { WhyLine } from "./WhyLine";
 
 export interface CardEnv {
   tripId: string;
@@ -345,6 +346,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
         }}
         foot={
           <>
+            <WhyLine item={item} needs={facts.needs} notes={env.decisions?.ctx.preferences} />
             <CardFoot view={view} nav={nav} best={best} price={null} onAction={act} live={liveFoot} alt={alt} docs={bookedCard ? docsFoot : <DocAccess item={item} docs={docs} />} more={more} />
             {stageMenu.field}
             {sheetNode}
@@ -412,6 +414,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       }
       foot={
         <>
+          <WhyLine item={item} needs={facts.needs} notes={env.decisions?.ctx.preferences} />
           <CardFoot view={bookTop || arranged ? { ...foot, action: null } : foot} nav={nav} best={best} price={facts.price} each={eachLine} onAction={act} live={liveFoot}
             go={(bookTop || draft) && page ? { href: page, label: goLabel, onClick: draft ? take : undefined } : null}
             alt={alt}

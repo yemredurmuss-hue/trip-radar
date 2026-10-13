@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
 import { resumeSearches, sendMessage } from "../lib/assistant";
 import { chatStatusOf, chatStepsOf, onChatStatus, type ChatStatus, type ChatStep } from "../lib/chatStatus";
 import { L, lang } from "../lib/i18n";
 import { reloadIfLangChanged } from "./langSwitch";
+import { nameTargets, splitNames, type NameTarget } from "../lib/chatNames";
 import { noChangeNote } from "../lib/claims";
 import { describeError, errorKind, type ErrorKind } from "../lib/llm";
 import { shownReply } from "../lib/replyText";
@@ -19,6 +20,7 @@ import { EventFold, foldRuns } from "./ChatFold";
 import { ChatOffers } from "./ChatOffers";
 import { ArrowUp, Back } from "./Icons";
 import { Mascot } from "./Mascot";
+import { show } from "./Progress";
 import { DONE_FOR, LONG_WAIT, mascotFace, thinkingLine } from "./thinking";
 
 interface Props {
@@ -88,6 +90,8 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
   const fileInput = useRef<HTMLInputElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
 
+  // The names of the trip's options in the assistant's replies are buttons that go to their cards (Karar Panosu #9).
+  const names = useMemo(() => nameTargets(items, trip.id), [items, trip.id]);
   const visible = messages.filter((m) => m.text.trim() !== "");
   // A web search's late line isn't a reply: the reply before it keeps its chips.
   const last = visible.filter((m) => !m.landed).at(-1);
@@ -233,7 +237,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
           const line = (
             <div key={m.id} className={`msg-${m.role}`}>
               {/* A reply stored before the filter (the raw trip state as the answer) is cleaned here too. */}
-              <RichText text={m.role === "assistant" ? shownReply(m.text) : m.text} links={m.role === "assistant" ? m.webSources : undefined} />
+              <RichText text={m.role === "assistant" ? shownReply(m.text) : m.text} links={m.role === "assistant" ? m.webSources : undefined} names={m.role === "assistant" ? names : undefined} />
               {/* A change said with no tool that made it (claims.ts): on screen only, never in the model's history. */}
               {m.role === "assistant" && m.unbacked && <p className="msg-note">{noChangeNote()}</p>}
               {/* find_offers: the real offers it found, as cards with "Ekle". */}
@@ -425,19 +429,58 @@ export function RoutingLine({ m, routing, trips }: { m: ChatMessage; routing: Ro
   );
 }
 
-/** The model's light formatting: **bold** is shown bold, [site](https://…) as a link (a web search's "Kaynak:"), everything else as plain text. */
-function RichText({ text, links }: { text: string; links?: string[] }) {
+/** The card of an option the assistant named: on the Pano if that is what is open, else on the Plan (its section opens); it glows once there. */
+function goToOption(id: string) {
+  const onPano = document.getElementById(`pn-${id}`);
+  if (onPano && onPano.offsetParent) show(onPano);
+  else requestReveal(id);
+}
+
+/** The model's light formatting: **bold** is shown bold, [site](https://…) as a link (a web search's "Kaynak:"), the names of the trip's options as buttons to their cards, everything else as plain text. */
+function RichText({ text, links, names }: { text: string; links?: string[]; names?: NameTarget[] }) {
   const parts = text.split(/\*\*(.+?)\*\*/g);
-  return <>{parts.map((part, i) => (i % 2 ? <b key={i}>{part}</b> : <Links key={i} text={part} allowed={links ?? []} />))}</>;
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 ? (
+          <b key={i}>
+            <Named text={part} names={names} />
+          </b>
+        ) : (
+          <Links key={i} text={part} allowed={links ?? []} names={names} />
+        ),
+      )}
+    </>
+  );
+}
+
+/** Plain words with the names of the trip's options in them as small buttons ("Jardim Stay ↗"). */
+function Named({ text, names }: { text: string; names?: NameTarget[] }) {
+  if (!names?.length) return <>{text}</>;
+  const pieces = splitNames(text, names);
+  if (pieces.length === 1 && typeof pieces[0] === "string") return <>{text}</>;
+  return (
+    <>
+      {pieces.map((p, i) =>
+        typeof p === "string" ? (
+          p
+        ) : (
+          <button key={i} type="button" className="chat-ref" title={L("Kartta göster", "Show the card")} onClick={() => goToOption(p.id)}>
+            {p.text}
+          </button>
+        ),
+      )}
+    </>
+  );
 }
 
 /** [site](https://…): a link only when it's one of that reply's web sources; any other, its host as plain text. */
-function Links({ text, allowed }: { text: string; allowed: string[] }) {
+function Links({ text, allowed, names }: { text: string; allowed: string[]; names?: NameTarget[] }) {
   const parts = text.split(/\[([^\]\n]{1,80})\]\((https:\/\/[^\s)]+)\)/g);
-  if (parts.length === 1) return <>{text}</>;
+  if (parts.length === 1) return <Named text={text} names={names} />;
   const out: ReactNode[] = [];
   for (let i = 0; i < parts.length; i += 3) {
-    out.push(parts[i]);
+    out.push(<Named key={`t${i}`} text={parts[i]} names={names} />);
     if (i + 2 < parts.length) {
       const url = parts[i + 2];
       out.push(

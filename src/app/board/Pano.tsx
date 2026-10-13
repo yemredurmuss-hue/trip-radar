@@ -46,6 +46,7 @@ import { addLinks } from "../capture";
 import { useShare } from "../Share";
 import { BRANDS } from "../../lib/searchLinks";
 import { BookedBadge } from "../cards/BookedBadge";
+import { MineStar } from "../cards/MineStar";
 import { FlightOption } from "../cards/FlightOption";
 import { illusOf } from "../cards/MediaCard";
 import { voteKeyOf } from "../../lib/share/votes";
@@ -586,10 +587,10 @@ function PanoCard({ entry, fresh, showNeed, siblings, decisions, onShow, onCompa
         <div>
           <ul className="pn-whylist">
             {facts.pros.slice(0, 3).map((p) => (
-              <li key={`+${p.text}`} className="pro">+ {p.text}</li>
+              <li key={`+${p.text}`} className="pro">+ {p.text}{p.mine && <MineStar />}</li>
             ))}
             {facts.cons.slice(0, 2).map((c) => (
-              <li key={`-${c.text}`} className="con">− {c.text}</li>
+              <li key={`-${c.text}`} className="con">− {c.text}{c.mine && <MineStar />}</li>
             ))}
             {siblings.length > 1 && (
               <li className="cmp">

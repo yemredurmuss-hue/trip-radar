@@ -1,7 +1,7 @@
 // What a decision card shows, from the saved record and the engine's result: where it's from, what it
 // is, what it costs for these dates, where it stands, and the two things for and against it that
 // matter most. Pure, and no model calls: everything on a card is read from a page or computed.
-import { advantageOver, amenityLabel, levelFor, levelSource, saidTopics, TOPIC_CRITERION, type DecisionContext, type GroupDecision } from "./decision";
+import { advantageOver, amenityLabel, isWish, levelFor, levelSource, saidTopics, TOPIC_CRITERION, touchesTopic, WISH_TOPIC, type DecisionContext, type GroupDecision } from "./decision";
 import { L } from "./i18n";
 import { lookWord } from "./stageWords";
 import { capitalize, count, hoursMinutes, liveLabels, nDays, nNights, nReviews, nStops, num } from "./i18nText";
@@ -11,7 +11,7 @@ import { rangeOfGroupKey, stayRange } from "./plan";
 import { checkNeeds, type NeedCheck } from "./needs";
 import { whoGoes } from "./tripSettings";
 import { cardLines, prosConsFor, tagOf, type ProCon } from "./proscons";
-import type { CriterionId, Item, Listing, StayKind } from "./types";
+import type { Category, CriterionId, Item, Listing, StayKind } from "./types";
 
 export interface CardFacts {
   /** The site or company it's from ("Booking.com", "TAP Air Portugal"), the site's host for its icon, and its page. */
@@ -180,7 +180,7 @@ function priceOf(item: Item, decision: GroupDecision | undefined, currency: stri
  * A line the traveller's own words stand behind: a requirement, or a criterion they (or what they
  * said) made important, the reason an option is out included. Defaults don't count.
  */
-function touchesPriority(
+export function touchesPriority(
   line: ProCon,
   item: Item,
   ctx: (Pick<DecisionContext, "trip" | "inferred"> & { preferences?: string[] }) | undefined,
@@ -189,14 +189,32 @@ function touchesPriority(
   const said = saidTopics(ctx.preferences ?? []);
   if (line.kind === "requirement") return true;
   const topic = line.finding?.topic ?? null;
-  if (topic && said.has(topic)) return true;
-  // "Elendi: yan binada inşaat; sessiz bir yer istiyorsun": out because of what they said.
-  if (line.kind === "elimination" && [...saidTopics([line.text])].some((t) => said.has(t))) return true;
+  // A finding speaks to a topic by its own topic or by what it says ("inşaat gürültüsü" is about noise too).
+  if (line.finding && [...said].some((t) => touchesTopic(line.finding!, t))) return true;
+  // "Elendi: yan binada inşaat; sessiz bir yer istiyorsun": out (or to check) because of what they said.
+  if ((line.kind === "elimination" || line.kind === "check") && [...saidTopics([line.text])].some((t) => said.has(t))) return true;
   const criterion = line.key.startsWith("c:") ? (line.key.slice(2) as CriterionId) : topic ? TOPIC_CRITERION[topic] : null;
-  if (!criterion) return false;
-  if ((criterion === "cancellation" || criterion === "location") && said.has(criterion)) return true;
-  return levelSource(ctx.trip, item.category, criterion, ctx.inferred) !== "default" && levelFor(ctx.trip, item.category, criterion, ctx.inferred) >= 3;
+  return criterion ? criterionMatters(criterion, item.category, ctx) : false;
 }
+
+/**
+ * Whether the traveller's own words stand behind a criterion ("★ öncelik"): a note that asks for it, or a level of Önemli or more
+ * that they (or what they said or confirmed) gave it. The defaults don't count.
+ */
+export function criterionMatters(
+  criterion: CriterionId,
+  category: Category,
+  ctx: (Pick<DecisionContext, "trip" | "inferred"> & { preferences?: string[] }) | undefined,
+): boolean {
+  if (!ctx) return false;
+  const said = saidTopics(ctx.preferences ?? []);
+  if ((criterion === "cancellation" || criterion === "location") && said.has(criterion)) return true;
+  if (isWish(criterion) && said.has(WISH_TOPIC[criterion])) return true;
+  return levelSource(ctx.trip, category, criterion, ctx.inferred, said) !== "default" && levelFor(ctx.trip, category, criterion, ctx.inferred, said) >= 3;
+}
+
+/** Whether any of a card's shown pros and cons carries the "★ öncelik" star. */
+export const hasMine = (facts: Pick<CardFacts, "pros" | "cons">, max = 4): boolean => [...facts.pros.slice(0, max), ...facts.cons.slice(0, max)].some((l) => l.mine);
 
 /** Lines about the same thing share a tag slot (by comparison key or finding topic). */
 const TAG_TOPICS: Record<string, string> = {

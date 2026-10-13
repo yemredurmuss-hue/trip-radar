@@ -825,6 +825,15 @@ try {
   assert.equal(await portoDraft.locator(".pk-aldim:not(.pk-pick)").count(), 0, "no ✓ Aldım: nothing is chosen yet");
   assert.match(await portoDraft.locator(".pk-price").innerText(), /€\d+\s*\/ gece/, "its real price per night");
   assert.equal(await portoDraft.locator(".pk-alt").innerText().then((t) => t.replace(/\s+/g, " ")), "Değiştir 2");
+  // K6 "neden": one line in their own word (the quiet they asked for), above the strip; it stays inside the card at 390 px.
+  assert.equal(await portoDraft.locator(".pk-why").innerText(), "Sessiz · “Sessiz bir yer istiyoruz” dediğin için");
+  assert.equal(await portoDraft.locator(".pk-why").count(), 1, "one line, not a list");
+  await app.setViewportSize({ width: 390, height: 844 });
+  const whyBox = await portoDraft.locator(".pk-why").boundingBox();
+  const cardBox = await portoDraft.boundingBox();
+  assert.ok(whyBox && cardBox && whyBox.x >= cardBox.x - 1 && whyBox.x + whyBox.width <= cardBox.x + cardBox.width + 1, "the neden line stays inside its card at 390 px");
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with the neden line at 390 px");
+  await app.setViewportSize({ width: 1440, height: 900 });
   await portoDraft.scrollIntoViewIfNeeded();
   await portoDraft.screenshot({ path: `${out}/40a-draft-stay.png` });
   await portoDraft.locator(".pk-alt").click();
@@ -1151,6 +1160,31 @@ try {
   await app.setViewportSize({ width: 1440, height: 1100 });
   await app.screenshot({ path: `${out}/3c-board.png` });
   await app.setViewportSize({ width: 1440, height: 900 });
+  // Karar Panosu #10 "Sırayla karar ver": one open decision per screen ("1 / N"), the options side by side with one line of advice;
+  // "Sonra" passes one on, "Geri" comes back, the last screen says what is left; the cards and the table stay as they were.
+  await compare.getByRole("button", { name: "Sırayla karar ver" }).click();
+  const stepHead = compare.locator(".sd-top h3");
+  assert.match(await stepHead.innerText(), /^1 \/ \d+ · Konaklama/, "the window's decision comes first");
+  await compare.locator(".sd-reco").waitFor();
+  assert.ok((await compare.locator(".sd-card").count()) >= 2, "its options side by side");
+  await compare.locator('.sd-card[aria-label="Jardim Stay"] .sd-price').waitFor(); // the price is never hidden
+  await app.screenshot({ path: `${out}/3c-step.png` });
+  await app.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll in the one-by-one view at 390 px");
+  assert.ok(await compare.locator(".compare-card, .sd").first().evaluate((el) => el.scrollWidth <= el.clientWidth + 1), "the window doesn't spill at 390 px");
+  await app.screenshot({ path: `${out}/3c-step-390.png` });
+  await app.setViewportSize({ width: 1440, height: 900 });
+  await compare.getByRole("button", { name: "Sonra", exact: true }).click();
+  while (!(await compare.getByRole("heading", { name: "Bitti" }).count())) {
+    await compare.getByRole("button", { name: "Sonra", exact: true }).click();
+  }
+  await compare.getByText(/karar sonraya kaldı/).waitFor();
+  await compare.getByRole("button", { name: "← Geri" }).click();
+  assert.match(await stepHead.innerText(), /^\d+ \/ \d+ · /, "Geri comes back to the last decision");
+  await compare.getByRole("button", { name: "Sonra", exact: true }).click();
+  await compare.getByRole("button", { name: "Tamam" }).click();
+  await compare.locator(".cmp-views [role=tab].on", { hasText: "Kartlar" }).waitFor();
+  console.log("✓ compare: Sırayla karar ver goes through the open decisions one per screen, Sonra / Geri walk them, the end says what is left, the cards come back");
   // Two ticked → side by side in the table, just those; "Hepsini göster" brings the rest back.
   await boardCard("Jardim Stay").locator(".bd-tick").click();
   await boardCard("Casa Azul").locator(".bd-tick").click();
@@ -1165,6 +1199,15 @@ try {
     console.log("pros/cons row:", await compare.locator(".pc-row").innerText());
     throw e;
   });
+  // Karar Panosu #2/#4 "★ öncelik": the quiet they asked for carries the star (its plus, its row); what nobody asked for doesn't.
+  await compare.locator('.pc-row .pc-line:has-text("Sessiz odalar, iyi uyku") .mine-star').first().waitFor();
+  assert.ok((await compare.locator(".pc-row .pc-line .mine-star").count()) < (await compare.locator(".pc-row .pc-line").count()), "only some of the lines are starred");
+  await compare.locator("tr:has(.crit-col > div:text-matches('^Sessizlik')) .crit-col .mine-star").waitFor();
+  assert.equal(await compare.locator(".mine-star").first().getAttribute("aria-label"), "Senin için önemli");
+  await compare.locator(".mine-legend").waitFor();
+  await app.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with the stars at 390 px");
+  await app.setViewportSize({ width: 1440, height: 900 });
   // The verdict is one line; the rest under "Neden?".
   assert.equal(await compare.locator(".cmp-verdict-detail").count(), 0, "the verdict starts as one line");
   await compare.locator(".cmp-verdict-more").click();
@@ -1172,7 +1215,7 @@ try {
   await app.screenshot({ path: `${out}/3c-compare.png`, fullPage: true });
   // Quiet, which they asked for, is its own row now ("Sessizlik: Önemli" from their note). Location and quiet
   // stop mattering and price matters most → the cheaper stay wins, and the view says what would flip it back.
-  const quietRow = compare.locator("tr:has(.crit-col > div:text-is('Sessizlik')) select");
+  const quietRow = compare.locator("tr:has(.crit-col > div:text-matches('^Sessizlik')) select");
   await quietRow.waitFor();
   assert.equal(await quietRow.inputValue(), "3");
   await compare.locator("tr", { hasText: "Konum" }).locator("select").selectOption("0");
@@ -2563,7 +2606,7 @@ try {
     const text = JSON.stringify(body.contents);
     chatPrompts.push(text);
     const last = JSON.stringify(body.contents.at(-1));
-    if (last.includes("functionResponse")) return route.fulfill(reply([{ text: last.includes("plan_item") ? "Panoyu güncelledim." : "Fiyatı konaklamada çok önemli yaptım." }]));
+    if (last.includes("functionResponse")) return route.fulfill(reply([{ text: last.includes("plan_item") ? "Panoyu güncelledim." : "Fiyatı konaklamada çok önemli yaptım. Jardim Stay öne çıkıyor." }]));
     // The plan shaped from the chat: nights said apart, then one block, a ticket, a taxi and an eSIM.
     const plan = (id, args) => ({ functionCall: { id, name: "plan_item", args: { kind: "stay", date: null, end_date: null, time: null, from: null, to: null, city: null, title: null, booked: false, note: null, ...args } } });
     if (last.includes("ayrı kalalım")) {
@@ -2723,6 +2766,17 @@ try {
   await board.getByPlaceholder("Bir link bırak, görsel yapıştır veya yaz…").fill("Hangisi daha mantıklı?");
   await board.getByRole("button", { name: "Gönder" }).click();
   await board.getByText("Fiyatı konaklamada çok önemli yaptım.").waitFor({ timeout: 20000 });
+  // Karar Panosu #9: the name of an option in the reply is a button to its card; the card glows when the page gets there.
+  const nameRef = board.locator(".msg-assistant", { hasText: "Jardim Stay öne çıkıyor." }).locator(".chat-ref");
+  assert.equal(await nameRef.count(), 1, "only the real option's name is a button");
+  assert.equal(await nameRef.filter({ hasText: "Fiyatı" }).count(), 0, "nothing else in the reply is");
+  assert.match(await board.locator(".msg-assistant", { hasText: "Jardim Stay öne çıkıyor." }).innerText(), /Jardim Stay öne çıkıyor\./, "the reply reads as it was written");
+  await nameRef.click();
+  await board.locator(".flash").first().waitFor({ timeout: 5000 });
+  const wide = board.viewportSize();
+  await board.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await board.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with the name buttons at 390 px");
+  await board.setViewportSize(wide ?? { width: 1440, height: 900 });
   assert.ok(chatPrompts[0].includes("decisions") && chatPrompts[0].includes("would_change_if"), "chat sees the engine's result");
   // Remembered as something the traveller said: a tag of the hero's "Tercihler" (scope and level in its window, removable there).
   await board.locator('.hx-ptag.strong[title="Fiyat · Çok önemli"]').waitFor();
