@@ -19,7 +19,7 @@ import type { InsertAt } from "../../lib/templates";
 import type { DocMeta, Item, LegMode, Trip } from "../../lib/types";
 import type { Undoable } from "../../lib/undoables";
 import { chooseItem, setArranged, setInstalled, setItemStatus, setOwner } from "../actions";
-import { dropsIn, useJustBecame, useJustChanged } from "../motion";
+import { dropsIn, useJustBecame, useJustChanged, useStageChange } from "../motion";
 import type { CityWeather } from "../../lib/climate";
 import { flightPeek, stayPeek, transferPeek, type PeekCtx } from "../../lib/cardPeek";
 import { FactsBox } from "./InfoButton";
@@ -195,6 +195,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   // The motion dictionary: a card that turns booked pops its tick (mühür), a change glows (parlama), one the chat just added drops in (düşüş).
   const sealed = useJustBecame(bookedCard);
   const glow = useJustChanged(item.updatedAt);
+  // K29: Seçildi / Rezerve: the ticket's plane takes off, its label pops and the card glows once (it takes the place of the plain glow).
+  const stage = useStageChange(item.status);
   const [drop] = useState(() => dropsIn(item.id, item.createdAt, item.origin === "chat"));
   const actions = (
     <>
@@ -308,14 +310,14 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
           ) : null
         }
         warn={arranged ? null : ticketWarn(item, env.today, tl)}
-        tiles={<FlightTiles tiles={tiles} />}
+        tiles={<FlightTiles tiles={tiles} dot={live && ["before", "air"].includes(phaseOf(live)) ? (red ? "late" : "on") : null} />}
         shell={{
           ariaLabel: item.name,
           itemId: item.id,
           badge: <WhoseBadge item={item} trip={env.trip} />,
           // F1c: whoever saved it, on the corner: ✨ for our pick, a fellow traveller always, the owner's own face only on a trip of two or more.
           corner: adderOf(item) || people.length > 1 ? <SavedFace item={item} /> : null,
-          extraClass: [arranged ? "pk-arranged" : "", allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined,
+          extraClass: [arranged ? "pk-arranged" : "", allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", sealed ? "pk-seal" : "", stage ? "pk-stage" : glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined,
           onDelete: stageMenu.hide,
           onArranged: stageMenu.booked || bookedCard ? undefined : () => void setArranged(item, true),
           deleteLabel: stageMenu.booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed"),
@@ -347,7 +349,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       badge={<WhoseBadge item={item} trip={env.trip} />}
       // F1c: whoever saved it, on the corner: ✨ for our pick, a fellow traveller always, the owner's own face only on a trip of two or more.
       corner={adderOf(item) || people.length > 1 ? <SavedFace item={item} /> : null}
-      extraClass={[ride ? "pk-rd-card" : "", arranged ? "pk-arranged" : "", allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined}
+      extraClass={[ride ? "pk-rd-card" : "", arranged ? "pk-arranged" : "", allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", sealed ? "pk-seal" : "", stage ? "pk-stage" : glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined}
       docs={bookedCard ? null : <DocAccess item={item} docs={docs} />}
       onDelete={stageMenu.hide}
       onArranged={stageMenu.booked || bookedCard ? undefined : () => void setArranged(item, true)}

@@ -1,6 +1,7 @@
 // A booked flight's boxes on its Plan card (0.36.18, docs/mockups/2026-10-06-ucus-karti-v6.png): only what's
 // known where the flight is (its day: expected departure, check-in desks, gate; in the air: took off, expected
 // landing; landed: landed, belt, terminal), each with its icon, a label and one value that never wraps.
+import { L } from "../../lib/i18n";
 import type { FlightTile, TileIcon } from "../../lib/flightData";
 
 const PATHS: Record<TileIcon, string> = {
@@ -13,12 +14,14 @@ const PATHS: Record<TileIcon, string> = {
   alert: "M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17zM12 8v5M12 16h.01",
 };
 
-export function FlightTiles({ tiles }: { tiles: FlightTile[] }) {
+/** The pulsing "Canlı" dot (lvp 1.6 s) on the first box while the flight is on its day or in the air: green on time, red late. */
+export function FlightTiles({ tiles, dot = null }: { tiles: FlightTile[]; dot?: "on" | "late" | null }) {
   if (!tiles.length) return null;
   return (
     <div className="pk-live">
-      {tiles.map((t) => (
+      {tiles.map((t, i) => (
         <div key={t.label} className={`pk-lv${t.tone ? ` ${t.tone}` : ""}`}>
+          {i === 0 && dot && <i className={`lv-dot ${dot}`} role="img" aria-label={L("Canlı", "Live")} />}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d={PATHS[t.icon]} />
           </svg>

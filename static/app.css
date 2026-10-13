@@ -4659,10 +4659,33 @@ a.ch-why { text-decoration: none; }
 .st-ph i:nth-child(2) { animation-delay: 3s; }
 .st-ph i:nth-child(3) { animation-delay: 6s; }
 .st-prompt textarea.rot::placeholder { color: transparent; }
+
+/* Aşama geçişi (K29, plan-v45 §4b #1): Seçildi / Rezerve: the card glows 0 > 6 > 14 px for 1.6 s (in place of the plain glow), the ticket's plane
+   takes off, its logo drops, the stage's word pops. rt-fly (#3): the plane glides to its card on the first draw. Canlı dot (#4): lvp 1.6 s, ring 4 > 7 px.
+   Landed (#2): a draft card that arrives or changes rings 9 px and swells 1.5 % for 1.1 s (the draft's `useJustChanged` adds it, P7). */
+@keyframes pk-stage-glow { 0% { box-shadow: 0 0 0 0 rgba(91, 69, 224, .4); } 35% { box-shadow: 0 0 0 6px rgba(91, 69, 224, .4); } 100% { box-shadow: 0 0 0 14px rgba(91, 69, 224, 0); } }
+@keyframes pk-takeoff { 0% { transform: translate(-40%, 8px) rotate(-6deg); opacity: 0; } 60% { transform: translate(6%, -4px) rotate(-3deg); opacity: 1; } 100% { transform: none; } }
+@keyframes pk-logo-drop { 0% { transform: translateY(-14px) scale(.85); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes pk-lab-pop { 0% { transform: scale(.6); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes pk-fly { from { opacity: 0; margin-left: -18px; } }
+@keyframes pk-live-pulse { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, currentColor 6%, transparent); } }
+@keyframes pk-landed { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--hx-accent, #5b45e0) 60%, transparent); } 30% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--hx-accent, #5b45e0) 22%, transparent); transform: scale(1.015); } 100% { box-shadow: 0 0 0 0 transparent; transform: none; } }
+.pk-stage { animation: pk-stage-glow 1.6s cubic-bezier(.16, 1, .3, 1); }
+.pk-stage .tk-plane { animation: pk-takeoff 1.1s cubic-bezier(.16, 1, .3, 1); }
+.pk-stage .tk-logo { animation: pk-logo-drop .7s cubic-bezier(.16, 1, .3, 1); }
+.pk-stage .tk-lab, .pk-stage .pk-state { animation: pk-lab-pop .5s cubic-bezier(.2, 1.6, .4, 1); }
+.tk-fly { animation: pk-fly .9s cubic-bezier(.16, 1, .3, 1) both; }
+.lv-dot { flex: none; width: 8px; height: 8px; margin-right: 2px; border-radius: 50%; background: currentColor; color: var(--book-ink); box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 18%, transparent); animation: pk-live-pulse 1.6s ease-in-out infinite; }
+.lv-dot.late { color: #c62828; }
+.pk-landed { animation: pk-landed 1.1s cubic-bezier(.16, 1, .3, 1); }
+/* The ticket's frame changes colour over .4 s when its stage does (draft > chosen > booked); a colour is not movement, so it stays when motion is off. */
+.pk-card.tk { transition: transform .18s ease, box-shadow .2s ease, border-color .4s ease, background-color .4s ease; }
+.tk-stub, .tk-stub::before, .tk-stub::after { transition: border-color .4s ease; }
 /* Same rules twice: the system setting, and the person's own switch (Settings, body.still). The undo toast's countdown ring is a
    working clock, not decoration: it keeps running. */
 @media (prefers-reduced-motion: reduce) {
-  .dc-flash, .gm-ring.go, .pk-seal .okt, .pk-glow, .pk-drop, .ek-card .pk-ring.open, .ek-card .pk-ring.half { animation: none; }
+  .dc-flash, .gm-ring.go, .pk-seal .okt, .pk-glow, .pk-drop, .ek-card .pk-ring.open, .ek-card .pk-ring.half,
+  .pk-stage, .pk-stage .tk-plane, .pk-stage .tk-logo, .pk-stage .tk-lab, .pk-stage .pk-state, .tk-fly, .lv-dot, .pk-landed { animation: none; }
   .cat-bar > span, .hx-bar i, .pn-card, .pk-card { transition: none; }
   .pk-fold, .msg-user, .msg-assistant, .pk-undo { animation: none; }
   .pn-detail, .pn-heart, .pn-chev { transition: none; }
@@ -4670,8 +4693,11 @@ a.ch-why { text-decoration: none; }
   .st-prompt textarea.rot::placeholder { color: #8f8bab; }
   .pn-card:hover, .pk-card:not(.pk-open):not(.ek-still):hover { transform: none; }
   *:not(.pk-undo-ring .run), *:not(.pk-undo-ring .run)::before, *:not(.pk-undo-ring .run)::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .pk-card.tk { transition: border-color .4s ease, background-color .4s ease !important; }
+  .pk-card.tk .tk-stub, .pk-card.tk .tk-stub::before, .pk-card.tk .tk-stub::after { transition: border-color .4s ease !important; }
 }
-body.still .dc-flash, body.still .gm-ring.go, body.still .pk-seal .okt, body.still .pk-glow, body.still .pk-drop, body.still .ek-card .pk-ring.open, body.still .ek-card .pk-ring.half { animation: none; }
+body.still .dc-flash, body.still .gm-ring.go, body.still .pk-seal .okt, body.still .pk-glow, body.still .pk-drop, body.still .ek-card .pk-ring.open, body.still .ek-card .pk-ring.half,
+body.still .pk-stage, body.still .pk-stage .tk-plane, body.still .pk-stage .tk-logo, body.still .pk-stage .tk-lab, body.still .pk-stage .pk-state, body.still .tk-fly, body.still .lv-dot, body.still .pk-landed { animation: none; }
 body.still .cat-bar > span, body.still .hx-bar i, body.still .pn-card, body.still .pk-card { transition: none; }
 body.still .pk-fold, body.still .msg-user, body.still .msg-assistant, body.still .pk-undo { animation: none; }
 body.still .pn-detail, body.still .pn-heart, body.still .pn-chev { transition: none; }
@@ -4680,6 +4706,8 @@ body.still .st-prompt textarea.rot::placeholder { color: #8f8bab; }
 body.still .ar-new { animation: none; outline: 2px solid color-mix(in srgb, var(--c, #5b45e0) 45%, transparent); outline-offset: 2px; }
 body.still .pn-card:hover, body.still .pk-card:not(.pk-open):not(.ek-still):hover { transform: none; }
 body.still *:not(.pk-undo-ring .run), body.still *:not(.pk-undo-ring .run)::before, body.still *:not(.pk-undo-ring .run)::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+body.still .pk-card.tk { transition: border-color .4s ease, background-color .4s ease !important; }
+body.still .pk-card.tk .tk-stub, body.still .pk-card.tk .tk-stub::before, body.still .pk-card.tk .tk-stub::after { transition: border-color .4s ease !important; }
 
 /* -- F3 otel -- the plain stay card: the site and its score, the name, only a warning; the foot reads "Değiştir N · €210 / gece · Rezerve et ↗" (the rest is in the ⓘ) -- */
 .pk-foot .pk-alt { display: inline-flex; align-items: center; gap: 7px; flex: 0 1 auto; margin: 0 auto 0 0; padding: 5px 10px 5px 12px; border: 1px solid #e7e4dd; border-radius: 999px; background: none; color: var(--v-accent-ink, #4a35c8); font-size: 13px; font-weight: 650; }

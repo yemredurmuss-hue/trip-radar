@@ -16,7 +16,7 @@ describe("reduced motion and Hareketi duraklat", () => {
   });
   for (const [name, block, prefix] of [["system setting", reduced, ""], ["body.still", still, "body.still "]] as const) {
     it(`${name}: the animated gaps are stopped`, () => {
-      for (const sel of [".dc-flash", ".gm-ring.go", ".pk-glow", ".pk-drop", ".pk-seal .okt", ".ek-card .pk-ring.open"]) expect(block).toContain(`${prefix}${sel}`);
+      for (const sel of [".dc-flash", ".gm-ring.go", ".pk-glow", ".pk-drop", ".pk-seal .okt", ".ek-card .pk-ring.open", ".pk-stage .tk-plane", ".pk-stage .tk-logo", ".pk-stage .tk-lab", ".tk-fly", ".lv-dot", ".pk-landed"]) expect(block).toContain(`${prefix}${sel}`);
       expect(block).toMatch(/animation: none/);
     });
     it(`${name}: bars and card hover stop moving`, () => {
@@ -24,6 +24,10 @@ describe("reduced motion and Hareketi duraklat", () => {
       expect(block).toMatch(/transition: none/);
       expect(block).toContain(`${prefix}.pn-card:hover`);
       expect(block).toMatch(/transform: none/);
+    });
+    it(`${name}: the ticket frame's colour change stays (a colour is not movement)`, () => {
+      expect(block).toContain(`${prefix}.pk-card.tk { transition: border-color .4s ease, background-color .4s ease !important; }`);
+      expect(block).toContain(`${prefix}.pk-card.tk .tk-stub::before`);
     });
     it(`${name}: everything else collapses to no time, except the undo countdown`, () => {
       expect(block).toContain("animation-duration: .01ms !important");
