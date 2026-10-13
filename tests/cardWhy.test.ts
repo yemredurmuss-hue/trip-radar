@@ -6,6 +6,7 @@ import { cardWhy, whyText } from "../src/lib/cardWhy";
 import { needsFor } from "../src/lib/cardFacts";
 import { db, listItems } from "../src/lib/db";
 import { loadDemoTrip } from "../src/lib/demo";
+import { setLang } from "../src/lib/i18n";
 import type { NeedCheck } from "../src/lib/needs";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -62,6 +63,22 @@ describe("cardWhy", () => {
     expect(cardWhy(makeItem({ category: "activity", name: "Porto yürüyüşü", city: "Porto" }), [], ["Porto'da kalmak istiyoruz"])).toBeNull();
     // Filler words match nothing.
     expect(cardWhy(makeItem({ category: "food", name: "Güzel Lokanta" }), [], ["Mutlaka güzel bir yer olsun"])).toBeNull();
+  });
+});
+
+describe("cardWhy in English", () => {
+  it("says the same things in the traveller's own words", () => {
+    setLang("en");
+    try {
+      const stay = makeItem({ category: "stay", name: "Jardim Stay" });
+      expect(whyText(cardWhy(flight, [need({ label: "Direct", source: { kind: "requirement" } })])!)).toBe("Direct · you made direct a must");
+      expect(whyText(cardWhy(stay, [need({ label: "Quiet", source: { kind: "note", text: "We want a quiet place" } })])!)).toBe("Quiet · you said “We want a quiet place”");
+      expect(whyText(cardWhy(stay, [need({ label: "Kitchen", source: { kind: "amenity" } })])!)).toBe("Kitchen · you wanted kitchen");
+      expect(whyText(cardWhy(stay, [need({ label: "Close by", source: { kind: "level", criterion: "location", level: 4 } })])!)).toBe("Close by · you said location is very important");
+      expect(cardWhy(stay, [need({ source: { kind: "inferred", evidence: "x" } })])!.because).toBe("I read it from your choices");
+    } finally {
+      setLang("tr");
+    }
   });
 });
 
