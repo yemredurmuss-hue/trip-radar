@@ -5160,7 +5160,7 @@ try {
   const tpCard = app.locator('.pk-card[aria-label*="Lizbon → İstanbul"]').first();
   await tpCard.locator(".pk-live").waitFor();
   assert.ok(await tpCard.evaluate((el) => el.classList.contains("pk-alert")), "late: the card goes red");
-  assert.deepEqual(flat(await tpCard.locator(".pk-lv").allInnerTexts()), ["Yeni kalkış 20:05+25 dk", "Kapı 14"]);
+  assert.deepEqual(flat(await tpCard.locator(".pk-lv").allInnerTexts()), ["Yeni kalkış 20:05 +25 dk", "Kapı 14"]);
   // H4: nothing in the delay boxes is cut ("Yeni kal…", "+25 dk"): every label and value fits its box.
   assert.deepEqual(await tpCard.locator(".pk-lv small, .pk-lv b, .pk-lv b i").evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent)), [], "H4: the delay boxes cut nothing");
   assert.equal(await tpCard.locator(".pk-lv").first().evaluate((box) => { const r = box.getBoundingClientRect(); return [...box.querySelectorAll("small, b, i")].every((e) => e.getBoundingClientRect().right <= r.right + 1); }), true, "H4: the delay box holds its words");
