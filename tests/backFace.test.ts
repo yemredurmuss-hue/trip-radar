@@ -77,3 +77,14 @@ describe("seen ids", () => {
     expect(loadSeen("t1").size).toBe(0);
   });
 });
+
+import { hasSearched, markSearched, resetSearched } from "../src/app/cards/searching";
+describe("'Sana uyan başka seçenek bulamadık' waits for a search", () => {
+  it("is false until a search was started for that card (in memory)", () => {
+    resetSearched();
+    expect(hasSearched("k1")).toBe(false);
+    markSearched("k1");
+    expect(hasSearched("k1")).toBe(true);
+    expect(hasSearched("k2")).toBe(false);
+  });
+});

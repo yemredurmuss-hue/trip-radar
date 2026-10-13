@@ -1512,6 +1512,8 @@ button.hx-people:hover b { color: var(--hx-accent); }
   .hx { grid-template-columns: minmax(0, 1fr); }
   .hx-photo { aspect-ratio: auto; height: 220px; }
   .hx-cities button { padding: 0 16px; }
+  /* The city tabs drop to the photo's foot, the days-left pill and the menu keep the top: all the tabs fit, or slide inside their own bar. */
+  .hx-cities { top: auto; bottom: 14px; max-width: calc(100% - 32px - 36px); }
   .hx-busy span { display: none; }
   .hx-busy { padding: 0 10px; }
   .hx-story h1 { font-size: 32px; }
@@ -3345,6 +3347,15 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .cat-grid .pk-card > .pk-top .pk-kind { flex: none; }
 .cat-grid .pk-card > .pk-top .pk-date { white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; }
 .cat-grid .pk-card > .pk-top .pk-end { flex: none; margin-left: auto; gap: 2px; }
+/* Narrow screens (E2): the top line may wrap, so the status, the clip and the ••• never run past the card; the date wraps instead of "1–…". */
+@media (max-width: 480px) {
+  .cat-grid .pk-card > .pk-top { flex-wrap: wrap; height: auto; min-height: 22px; row-gap: 2px; gap: 4px; }
+  .cat-grid .pk-card > .pk-top .pk-date { white-space: normal; overflow: visible; text-overflow: clip; flex: 1 1 auto; }
+  .cat-grid .pk-card > .pk-top .pk-end { gap: 0; max-width: 100%; }
+  .cat-grid .pk-card > .pk-top .pk-aldim { padding: 3px 7px; }
+  .cat-grid .pk-card > .pk-top .pk-ib { width: 26px; }
+  .cat-grid .pk-card > .pk-top .wh-badge { max-width: 100%; }
+}
 .cat-grid .pk-card > .pk-top .pk-aldim { margin-right: 2px; padding: 3px 9px; }
 /* A foot with a price and a button keeps them in one row (the left side gives way). */
 .cat-grid .pk-card > .pk-foot:has(> .pk-cta, > .pk-go) { flex-wrap: nowrap; gap: 6px; }

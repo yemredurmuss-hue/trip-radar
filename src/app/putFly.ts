@@ -13,6 +13,10 @@ export const chipName = (text: string, max = 28) => {
   return first.length > max ? `${first.slice(0, max - 1)}…` : first;
 };
 
+/** The flying chip's words: the card's own name (the label of a v46 .ev-card or a Pano .pn-card), else its first line. Never the price. */
+export const chipLabel = (card: { closest?: (sel: string) => { getAttribute: (n: string) => string | null } | null; innerText?: string } | null) =>
+  chipName(card?.closest?.(".ev-card, .pn-card")?.getAttribute("aria-label") ?? card?.innerText ?? "") || "+1";
+
 export const FLY_MS = 420;
 /** The number's jump (m-planakoy): 1.35x over 380 ms, springing back. */
 export const BUMP_MS = 380;
@@ -48,7 +52,8 @@ export function installPutFly(doc: Document = document): () => void {
     chip.className = "mv-fly";
     chip.setAttribute("aria-hidden", "true");
     // v46 cards (.ev-card) carry their name as their label; the older ones read it from their first line.
-    chip.textContent = chipName(card?.closest<HTMLElement>(".ev-card")?.getAttribute("aria-label") ?? card?.innerText ?? "") || "+1";
+    // The Pano's cards (.pn-card) carry their name as their label too; their own first line is the price.
+    chip.textContent = chipLabel(card);
     doc.body.appendChild(chip);
     const x0 = from.left + 12, y0 = from.top + 10;
     const x1 = to.left + to.width / 2 - 20, y1 = to.top + to.height / 2 - 14;

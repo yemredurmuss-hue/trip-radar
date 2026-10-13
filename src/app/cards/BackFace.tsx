@@ -31,7 +31,7 @@ import { BrandPill } from "./RideCard";
 import { KindIcon, UiIcon } from "./Silhouettes";
 import { SavedFace } from "./WhoseBadge";
 import { datedLink, stayRatingOf, TradeLine } from "./parts";
-import { useSearching } from "./searching";
+import { hasSearched, useSearching } from "./searching";
 
 /** The closing turn back is this long (ms): --t-quick, with a little room. */
 const CLOSE_MS = 190;
@@ -193,6 +193,8 @@ export function BackFace({ items, decision, choice, title, kind, wants, self, as
 
   const [why, setWhy] = useState<string | null>(null);
   const [searching, startSearch] = useSearching(askKey);
+  // "Sana uyan başka seçenek bulamadık" only after a search was made (Emre): asked once for this card, in memory.
+  const asked = hasSearched(askKey);
   const currency = env.decisions?.ctx.currency ?? "EUR";
   const art = ILLUS[kind] ?? illusOf(kind);
   const flight = kind === "flight";
@@ -454,7 +456,7 @@ export function BackFace({ items, decision, choice, title, kind, wants, self, as
           <b>{L("Önerimiz", "Our picks")}</b>
           <span className="n">{split.aiTotal}</span>
         </div>
-        {split.aiTotal === 0 && !searching && <p className="bk-empty">{L("Sana uyan başka seçenek bulamadık.", "No other fitting option found.")}</p>}
+        {split.aiTotal === 0 && !searching && asked && <p className="bk-empty">{L("Sana uyan başka seçenek bulamadık.", "No other fitting option found.")}</p>}
         <div className={`bk-grid${flight ? " fl" : ""}`}>
           {split.ai.map(option)}
           {askTile}
