@@ -225,6 +225,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
     ends: env.legEnds.get(item.id),
     rating: kind === "stay" ? [rating?.value, rating?.word, rating?.count].filter(Boolean).join(" · ") || null : null,
     total: facts.price?.perNight ? facts.price.text : null,
+    fit: kind === "stay" ? facts.score : null,
   };
   const peekFacts = kind === "flight" ? flightPeek(item, peekCtx) : kind === "stay" && !camp ? stayPeek(item, peekCtx) : transport ? transferPeek(item, kind as TransportMode, peekCtx) : [];
   // A booked flight's real data (0.36.18): its number in the header, the terminals by the codes, boxes for
@@ -311,7 +312,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
           <MediaCardBody face={mediaFace(item, kind, facts.source)} kind={kind} score={facts.score} best={best} city={item.city} intent={intent ? <IntentChip item={item} /> : undefined}
             art={kind === "stay" ? stayArt(item, stayPlatform(item) === "Airbnb") : undefined}
             brand={kind === "stay" ? brandOf(facts.source?.label, facts.source?.host) : null} area={kind === "stay" ? (item.location.area ?? null) : null}
-            rating={rating} cancel={kind === "stay" ? cancelLineOf(item, env.today) : null}
+            rating={rating} cancel={kind === "stay" ? cancelLineOf(item, env.today) : null} lean={kind === "stay" && !bookedCard}
             nights={kind === "stay" && item.dates.start && item.dates.end ? nightsBetween(item.dates.start.slice(0, 10), item.dates.end.slice(0, 10)) : null} />
         )
       }

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { setLang } from "../src/lib/i18n";
-import { cancelLineOf, checkInNote, checkInTimeOf, daysToStart, showBookingRef } from "../src/lib/cardTime";
+import { warnsOnCard, cancelLineOf, checkInNote, checkInTimeOf, daysToStart, showBookingRef } from "../src/lib/cardTime";
 
 const flight = (departure: string | null) => ({ flight: departure ? ({ departure } as never) : null, dates: { start: null, end: null } }) as never;
 const stay = (start: string | null) => ({ flight: null, dates: { start, end: null } }) as never;
@@ -90,5 +90,15 @@ describe("checkInNote", () => {
   it("reads a time on the first night when the page gave none", () => {
     expect(checkInTimeOf({ dates: { start: "2027-04-08T14:30", end: null } } as never, null)).toBe("14:30");
     expect(checkInTimeOf({ dates: { start: "2027-04-08", end: null } } as never, { checkInFrom: "from 3 pm" })).toBeNull();
+  });
+});
+
+describe("warnsOnCard (F3 plain stay card)", () => {
+  it("keeps the fact and the near dates on the card; a far-off free cancellation waits in the balloon", () => {
+    const at = (until: string) => cancelLineOf(cancel({ cancellation: { summary: null, freeUntil: until, source: "page" } }), "2027-03-01")!;
+    expect(warnsOnCard(at("2027-03-01"))).toBe(true);
+    expect(warnsOnCard(at("2027-03-05"))).toBe(true);
+    expect(warnsOnCard(at("2027-03-30"))).toBe(false);
+    expect(warnsOnCard(cancelLineOf(cancel({ cancellation: { summary: "Non-refundable", freeUntil: null, source: "page" } }), "2027-03-01")!)).toBe(true);
   });
 });

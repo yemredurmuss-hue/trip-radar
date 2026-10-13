@@ -95,7 +95,7 @@ export function DocAccess({ item, docs }: { item: Item; docs: DocMeta[] }) {
     return (
       <DocPickButton item={item} className="pk-docmiss" title={L("Rezerve edildi ama bileti ya da onayı yok: ekle (PDF, görsel)", "Booked, but no ticket or confirmation: add it (PDF, image)")}>
         <UiIcon name="clip" size={14} />
-        {L("Belge eksik", "No document")}
+        {L("belge yok", "no document")}
       </DocPickButton>
     );
   }

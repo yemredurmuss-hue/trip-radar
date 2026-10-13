@@ -33,6 +33,8 @@ export interface PeekCtx {
   /** A stay's rating line ("9,0 Muhteşem · 770 yorum") and the whole sum, as its card has them. */
   rating?: string | null;
   total?: string | null;
+  /** A stay's fit score (out of 100) as the comparison gives it; its face doesn't show it (mockup v46), the balloon does. */
+  fit?: number | null;
 }
 
 const row = (label: string, value: string | null | undefined, copy?: string): PeekFact[] => (value ? [{ label, value, ...(copy ? { copy } : {}) }] : []);
@@ -74,6 +76,7 @@ export function stayPeek(item: Item, ctx: PeekCtx): PeekFact[] {
   return [
     ...row(L("Semt", "Neighbourhood"), item.location.area),
     ...row(L("Puan", "Rating"), ctx.rating),
+    ...row(L("Uyum puanı", "Fit score"), ctx.fit != null ? `${ctx.fit} / 100` : null),
     ...row(L("İptal", "Cancellation"), cancelLineOf(item, ctx.today)?.text ?? item.cancellation.summary),
     ...row(L("Not", "Note"), item.statusNote),
     ...row(L("Toplam", "Total"), ctx.total),

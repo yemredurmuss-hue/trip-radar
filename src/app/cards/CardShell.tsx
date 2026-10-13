@@ -133,7 +133,7 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go, a
   docs?: ReactNode;
   /** v11: "Ayrıntı ›", a booking's window. */
   more?: () => void;
-  /** v11: a chosen plan's other options, "Pano'da 2 alternatif" by its price (they open on the Pano). */
+  /** F3: a chosen plan's other options, "Değiştir 2", a pill at the foot's left (it turns the card to its options, or opens them on the Board). */
   alt?: { count: number; onClick: () => void; /** v30: it turns the card to its options in place (a chevron); else it goes to the Board. */ flips?: boolean } | null;
   /** v11: a plan's page to book on ("Rezerve et ↗"), where its "Aldım" moved to the top line. */
   go?: { href: string; label: string } | null;
@@ -177,6 +177,12 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go, a
           {left.when && <span className="pk-when">{left.text ? "· " : ""}⏳ {left.when}</span>}
         </span>
       ) : null}
+      {alt && alt.count > 0 && (
+        <button type="button" className="pk-alt" aria-haspopup={alt.flips ? "dialog" : undefined} title={alt.flips ? L("Diğer seçenekler", "Other options") : L("Pano'da diğer seçenekler", "Other options on the Board")} onClick={(e) => { e.stopPropagation(); alt.onClick(); }}>
+          {L("Değiştir", "Change")}
+          <span className="pk-alt-n">{alt.count}</span>
+        </button>
+      )}
       {timed && <span className="pk-timed">{timed}</span>}
       {live?.note && <span className={`pk-live-note ${live.tone}`}>{live.note}</span>}
       {live?.source && <span className="pk-src">{live.source}</span>}
@@ -184,10 +190,10 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go, a
         <span className="pk-price">
           <Editable field="price">
             {price && price.perNight ? (
-              // v30: a stay's price the way the sites write it: the night large, the sum small beneath.
+              // F3: a stay's price the way the sites write it, the night alone ("€210 / gece"); the whole sum is in the ⓘ.
               <span className="pk-price2">
-                <b>{price.perNight}</b>
-                <i>{L(`${price.text} toplam`, `${price.text} total`)}</i>
+                <b>{price.perNight.split(" / ")[0]}</b>
+                <small> / {price.perNight.split(" / ")[1]}</small>
               </span>
             ) : (
               price && (
@@ -199,12 +205,6 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go, a
             )}
           </Editable>
         </span>
-      )}
-      {alt && alt.count > 0 && (
-        <button type="button" className="pk-alt" aria-expanded={alt.flips ? false : undefined} onClick={(e) => { e.stopPropagation(); alt.onClick(); }}>
-          {alt.flips ? L(`${alt.count} alternatif`, `${alt.count} alternative${alt.count === 1 ? "" : "s"}`) : L(`Pano'da ${alt.count} alternatif`, `${alt.count} alternative${alt.count === 1 ? "" : "s"} on the Board`)}
-          {alt.flips && <UiIcon name="down" size={12} />}
-        </button>
       )}
       {view.action && onAction && (
         <button type="button" className="pk-cta" onClick={onAction}>

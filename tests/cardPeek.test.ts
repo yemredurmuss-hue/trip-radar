@@ -65,6 +65,10 @@ describe("a stay's peek", () => {
     ]);
     expect(stayPeek(makeItem({ category: "stay" }), CTX)).toEqual([{ label: "Kimden", value: "Sabine" }]);
   });
+  it("carries the fit score its face leaves out (F3), only when the comparison has one", () => {
+    expect(stayPeek(makeItem({ category: "stay" }), { ...CTX, fit: 87 })[0]).toEqual({ label: "Uyum puanı", value: "87 / 100" });
+    expect(stayPeek(makeItem({ category: "stay" }), { ...CTX, fit: null }).some((f) => f.label === "Uyum puanı")).toBe(false);
+  });
 });
 
 describe("a way of travel's peek", () => {

@@ -4401,10 +4401,8 @@ a.ch-why { text-decoration: none; }
 .pk-rb { background: #003b95; color: #fff; font-weight: 800; font-size: 12.5px; border-radius: 6px 6px 6px 0; padding: 1px 6px; }
 .pk-rb.star { background: none; color: var(--v-ink); padding: 0; border-radius: 0; }
 
-/* A stay's price: the night large, the sum small beneath. */
-.pk-price2 { display: grid; justify-items: end; line-height: 1.15; }
-.pk-price2 b { font-size: 17px; font-weight: 800; color: var(--v-ink); margin: 0; }
-.pk-price2 i { font-style: normal; font-size: 12px; color: var(--v-muted); font-weight: 500; }
+/* A stay's price: the night large ("€210 / gece"); see F3 otel below. */
+.pk-price2 b { font-weight: 800; color: var(--v-ink); margin: 0; }
 
 /* The × folds the card in place: why it went. */
 .pk-fold { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; padding: 12px 14px; border-radius: 16px; border: 1.5px dashed var(--v-dash); background: var(--v-soft); font-size: 14px; }
@@ -4669,3 +4667,17 @@ body.still .dc-flash, body.still .gm-ring.go, body.still .pk-seal .okt, body.sti
 body.still .cat-bar > span, body.still .hx-bar i, body.still .pn-card, body.still .pk-card { transition: none; }
 body.still .pn-card:hover, body.still .pk-card:not(.pk-open):not(.ek-still):hover { transform: none; }
 body.still *:not(.pk-undo-ring .run), body.still *:not(.pk-undo-ring .run)::before, body.still *:not(.pk-undo-ring .run)::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+
+/* -- F3 otel -- the plain stay card: the site and its score, the name, only a warning; the foot reads "Değiştir N · €210 / gece · Rezerve et ↗" (the rest is in the ⓘ) -- */
+.pk-foot .pk-alt { display: inline-flex; align-items: center; gap: 7px; flex: 0 1 auto; margin: 0 auto 0 0; padding: 5px 10px 5px 12px; border: 1px solid #e7e4dd; border-radius: 999px; background: none; color: var(--v-accent-ink, #4a35c8); font-size: 13px; font-weight: 650; }
+.pk-foot .pk-alt:hover { border-color: var(--hx-accent, #5b45e0); background: var(--v-lav, #f1eefc); color: var(--v-accent-ink, #4a35c8); }
+.pk-alt-n { min-width: 18px; padding: 0 7px; border-radius: 99px; background: var(--v-lav, #f1eefc); color: var(--v-accent-ink, #4a35c8); font-size: 11.5px; font-weight: 700; text-align: center; }
+.pk-foot > .pk-alt ~ .pk-cta, .pk-foot > .pk-alt ~ .pk-go, .pk-foot > .pk-alt ~ .pk-noticket, .pk-foot > .pk-alt ~ .pk-more { margin-left: 0; }
+.pk-foot > .pk-alt ~ .pk-price { margin-left: 0; }
+.pk-price2 { display: inline-flex; align-items: baseline; gap: 0; line-height: 1.15; }
+.pk-price2 b { font-size: 18px; }
+.pk-price2 small { margin-left: 4px; font-size: 12.5px; font-weight: 500; color: var(--v-muted); white-space: nowrap; }
+.pk-stay .pk-srcrow { gap: 8px; }
+.pk-stay .pk-txt .pk-cancel { font-size: 13px; }
+:root[data-theme="dark"] .pk-foot .pk-alt { border-color: #3a3452; }
+@media (max-width: 520px) { .pk-foot > .pk-alt ~ .pk-cta, .pk-foot > .pk-alt ~ .pk-go { margin-left: auto; } }

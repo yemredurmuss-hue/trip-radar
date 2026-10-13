@@ -61,6 +61,9 @@ export function cancelLineOf(item: Pick<Item, "status" | "cancellation" | "refun
   return null;
 }
 
+/** What of a stay's cancel terms stays on its plain card (F3): the fact "İade yok" and a date close by; a far-off free cancellation is in the ⓘ. */
+export const warnsOnCard = (line: CancelLine): boolean => line.tone === "no" || line.tone === "red" || line.tone === "near";
+
 /** The time a stay's check-in opens, "15:00", when the record knows it (the page's rules, or a time on the first night); never guessed. */
 export function checkInTimeOf(item: Pick<Item, "dates">, house?: { checkInFrom?: string | null } | null): string | null {
   const given = house?.checkInFrom?.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);

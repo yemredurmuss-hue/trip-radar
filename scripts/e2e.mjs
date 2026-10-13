@@ -1116,12 +1116,12 @@ try {
   if ((await changeFold.getAttribute("aria-expanded")) !== "true") await changeFold.click();
   await app.screenshot({ path: `${out}/36e-chat-fold-open.png` });
   await app.getByText("Jardim Stay plana alındı").waitFor();
-  // v11: chosen, the stay is the plan's card: "✓ Aldım" on its top line, "2 alternatif" by its price; plan v30: a click on the card
+  // v11: chosen, the stay is the plan's card: "✓ Aldım" on its top line, "Değiştir 2" by its price; plan v30: a click on the card
   // (or on that chip) turns it to its back, the options, with ‹ › and the arrow keys through them.
   const jardimRow = app.locator('.stay-block.chosen .pk-card[aria-label="Jardim Stay"]');
   await jardimRow.locator(".pk-aldim").waitFor();
   assert.equal(await app.locator(".stay-block.chosen .swipe-card").count(), 0);
-  assert.equal(await jardimRow.locator(".pk-alt").innerText(), "2 alternatif");
+  assert.match(await jardimRow.locator(".pk-alt").innerText(), /^Değiştir\s*2$/);
   await sec("stay").screenshot({ path: `${out}/35-stay-chosen-v11.png` });
   await jardimRow.locator(".pk-body").click();
   assert.equal(await jardimRow.locator(".pk-detail").count(), 0, "a click on a chosen card turns it, no inline panel");
@@ -1141,7 +1141,7 @@ try {
   assert.equal(await otherStays.locator(".ch-tile.cur").count(), 1);
   await otherStays.locator(".ch-head").getByRole("button", { name: "Kapat" }).click();
   await otherStays.waitFor({ state: "detached" });
-  // The "2 alternatif" chip turns it too (it doesn't go to the Pano); Esc turns it back.
+  // The "Değiştir 2" pill turns it too (it doesn't go to the Pano); Esc turns it back.
   await jardimRow.locator(".pk-alt").click();
   await otherStays.waitFor();
   await app.keyboard.press("Escape");
@@ -1593,7 +1593,7 @@ try {
     await app.waitForTimeout(450);
     assert.ok((await chip.boundingBox()).width < 40, "the chip folds back");
   }
-  assert.ok((await app.locator(".cat-plan .pk-docmiss", { hasText: "Belge eksik" }).count()) > 0, "a booking without its ticket says so");
+  assert.ok((await app.locator(".cat-plan .pk-docmiss", { hasText: /belge yok/i }).count()) > 0, "a booking without its ticket says so");
   await app.setViewportSize({ width: 1440, height: 900 });
   // Narrow: the + and × are there without a hover.
   await app.setViewportSize({ width: 560, height: 2600 });
@@ -1992,9 +1992,9 @@ try {
   await app.locator(".cat-plan").waitFor();
   await app.locator(`.flash`).first().waitFor({ timeout: 5000 });
   assert.equal(await app.locator(".pn").count(), 0, "back on the Plan");
-  // From a chosen card's foot (v11, v30): "N alternatif" by its price turns the card to its options; "Pano'da aç" there opens the Pano on its need, framed, with "← Plan'a dön".
+  // From a chosen card's foot (v11, v30): "Değiştir N" at its foot turns the card to its options; "Pano'da aç" there opens the Pano on its need, framed, with "← Plan'a dön".
   const fromCard = app.locator(".pk-card").filter({ has: app.locator(".pk-alt") }).first();
-  assert.match(await fromCard.locator(".pk-alt").innerText(), /^\d+ alternatif$/);
+  assert.match(await fromCard.locator(".pk-alt").innerText(), /^Değiştir\s*\d+$/);
   await fromCard.locator(".pk-alt").click();
   await app.locator(".ch-back .ch-pano").click();
   await app.locator(".pn-group.focus").waitFor();

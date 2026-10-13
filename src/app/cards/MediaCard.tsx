@@ -7,7 +7,7 @@ import { L } from "../../lib/i18n";
 import { FallbackImg } from "../FallbackImg";
 import { Editable, useInlineEdit } from "./InlineEdit";
 import type { Brand } from "../../lib/brands";
-import type { CancelLine } from "../../lib/cardTime";
+import { warnsOnCard, type CancelLine } from "../../lib/cardTime";
 import { BrandPill } from "./RideCard";
 import { campArt } from "../../lib/playbooks";
 import type { Item } from "../../lib/types";
@@ -73,7 +73,7 @@ export function IntentChip({ item }: { item: Item }) {
 }
 
 /** On a record's card the title and the city are editable where they stand (the day and hour are on the top line). */
-export function MediaCardBody({ face, kind, score, best, city = null, nights = null, intent = null, brand = null, area = null, rating = null, cancel = null, art: artOf }: { face: MediaFace; kind: CardKind; score: number | null; best: boolean; city?: string | null; nights?: number | null; /** D1: a stay's intent label over its picture (it carries the city, dates and nights, so the info line leaves them out). */ intent?: ReactNode; brand?: Brand | null; area?: string | null; rating?: StayRating | null; cancel?: CancelLine | null; /** v30: the stay's drawing by what it is (a flat, a caravan), null: the kind's icon; absent: the kind's. */ art?: string | null }) {
+export function MediaCardBody({ face, kind, score, best, city = null, nights = null, intent = null, brand = null, area = null, rating = null, cancel = null, lean = false, art: artOf }: { face: MediaFace; kind: CardKind; score: number | null; best: boolean; city?: string | null; nights?: number | null; /** D1: a stay's intent label over its picture (it carries the city, dates and nights, so the info line leaves them out). */ intent?: ReactNode; brand?: Brand | null; area?: string | null; rating?: StayRating | null; cancel?: CancelLine | null; /** F3: a stay not booked yet, the plain face: the site and its score, the name, and only a warning that has a date or is a fact ("İade yok"). The rest is in the ⓘ. */ lean?: boolean; /** v30: the stay's drawing by what it is (a flat, a caravan), null: the kind's icon; absent: the kind's. */ art?: string | null }) {
   const placed = Boolean(useInlineEdit()?.fields.includes("city"));
   // The city first, editable; the hour is on the top line then.
   const info = placed ? face.info.filter((x) => x.text !== city && !x.strong) : face.info;
@@ -86,7 +86,7 @@ export function MediaCardBody({ face, kind, score, best, city = null, nights = n
       <div className="pk-vis">
         {face.image ? <FallbackImg className="pk-img" src={face.image} fallback={drawing} /> : drawing}
         {intent}
-        {score != null && (
+        {score != null && !lean && (
           <span className={`pk-score${best ? " best" : ""}`} title={L("Uyum puanı (100 üzerinden)", "Fit score (out of 100)")}>
             {score}
           </span>
@@ -94,7 +94,14 @@ export function MediaCardBody({ face, kind, score, best, city = null, nights = n
       </div>
       <div className="pk-txt">
         {/* v30: a stay says where it's from (the site's label) and where it is, then its name and what guests thought of it. */}
-        {kind === "stay" && (brand || area) && (
+        {lean ? (
+          (brand || rating) && (
+            <div className="pk-srcrow">
+              <BrandPill brand={brand} />
+              {rating && <span className={`pk-rb${rating.star ? " star" : ""}`}>{rating.star ? "★ " : ""}{rating.value}</span>}
+            </div>
+          )
+        ) : kind === "stay" && (brand || area) && (
           <div className="pk-srcrow">
             <BrandPill brand={brand} />
             {area && <span className="pk-loc">{area}</span>}
@@ -103,7 +110,7 @@ export function MediaCardBody({ face, kind, score, best, city = null, nights = n
         <h3 title={face.title}>
           <Editable field="name">{face.title}</Editable>
         </h3>
-        {kind === "stay" && rating && (
+        {!lean && kind === "stay" && rating && (
           <div className="pk-rate">
             <span className={`pk-rb${rating.star ? " star" : ""}`}>{rating.star ? "★ " : ""}{rating.value}</span>
             <b>{rating.word}</b>
@@ -128,7 +135,7 @@ export function MediaCardBody({ face, kind, score, best, city = null, nights = n
             {nights ? L(` · ${nights} gece`, ` · ${nights} night${nights === 1 ? "" : "s"}`) : null}
           </p>
         )}
-        {kind === "stay" && cancel && <span className={`pk-cancel ${cancel.tone}`}>{cancel.text}</span>}
+        {kind === "stay" && cancel && (!lean || warnsOnCard(cancel)) && <span className={`pk-cancel ${cancel.tone}`}>{cancel.text}</span>}
         {face.meta.length > 0 && (
           <div className="pk-meta">
             {face.meta.map((m) =>
