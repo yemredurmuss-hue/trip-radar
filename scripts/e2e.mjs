@@ -2539,7 +2539,7 @@ try {
     const text = JSON.stringify(body.contents);
     chatPrompts.push(text);
     const last = JSON.stringify(body.contents.at(-1));
-    if (last.includes("functionResponse")) return route.fulfill(reply([{ text: last.includes("plan_item") ? "Panoyu güncelledim." : "Fiyatı konaklamada çok önemli yaptım." }]));
+    if (last.includes("functionResponse")) return route.fulfill(reply([{ text: last.includes("plan_item") ? "Panoyu güncelledim." : "Fiyatı konaklamada çok önemli yaptım. Jardim Stay öne çıkıyor." }]));
     // The plan shaped from the chat: nights said apart, then one block, a ticket, a taxi and an eSIM.
     const plan = (id, args) => ({ functionCall: { id, name: "plan_item", args: { kind: "stay", date: null, end_date: null, time: null, from: null, to: null, city: null, title: null, booked: false, note: null, ...args } } });
     if (last.includes("ayrı kalalım")) {
@@ -2699,6 +2699,17 @@ try {
   await board.getByPlaceholder("Bir link bırak, görsel yapıştır veya yaz…").fill("Hangisi daha mantıklı?");
   await board.getByRole("button", { name: "Gönder" }).click();
   await board.getByText("Fiyatı konaklamada çok önemli yaptım.").waitFor({ timeout: 20000 });
+  // Karar Panosu #9: the name of an option in the reply is a button to its card; the card glows when the page gets there.
+  const nameRef = board.locator(".msg-assistant", { hasText: "Jardim Stay öne çıkıyor." }).locator(".chat-ref");
+  assert.equal(await nameRef.count(), 1, "only the real option's name is a button");
+  assert.equal(await nameRef.filter({ hasText: "Fiyatı" }).count(), 0, "nothing else in the reply is");
+  assert.match(await board.locator(".msg-assistant", { hasText: "Jardim Stay öne çıkıyor." }).innerText(), /Jardim Stay öne çıkıyor\./, "the reply reads as it was written");
+  await nameRef.click();
+  await board.locator(".flash").first().waitFor({ timeout: 5000 });
+  const wide = board.viewportSize();
+  await board.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await board.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with the name buttons at 390 px");
+  await board.setViewportSize(wide ?? { width: 1440, height: 900 });
   assert.ok(chatPrompts[0].includes("decisions") && chatPrompts[0].includes("would_change_if"), "chat sees the engine's result");
   // Remembered as something the traveller said: a tag of the hero's "Tercihler" (scope and level in its window, removable there).
   await board.locator('.hx-ptag.strong[title="Fiyat · Çok önemli"]').waitFor();
