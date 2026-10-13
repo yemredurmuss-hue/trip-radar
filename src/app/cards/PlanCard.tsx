@@ -4,7 +4,7 @@
 // from the board (decisions, files, delete with undo, the add sheet) without threading it through Timeline.
 import { brandOf } from "../../lib/brands";
 import { RideCardBody } from "./RideCard";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import { cardFacts, durationText, tripPeople } from "../../lib/cardFacts";
 import { cardKind, isTransportKind, type LegEnds, type TransportMode } from "../../lib/cardKinds";
 import { bookedAs, footOf, mediaFace, ringOf, stayPlatform, topDate, transportFace } from "../../lib/cardView";
@@ -32,7 +32,8 @@ import { useShare } from "../Share";
 import type { Decisions } from "../useDecisions";
 import { CardDate } from "./CardDate";
 import { BookingSheet } from "./BookingSheet";
-import { ChoiceSheet, NeedCard } from "./NeedCard";
+import { BackHost } from "./BackFace";
+import { NeedBack, NeedCard } from "./NeedCard";
 import { needTitleOf } from "../../lib/pano";
 import { lookOf } from "../../lib/stageWords";
 import { stageOf } from "../../lib/lifecycle";
@@ -399,9 +400,9 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
 }
 
 /**
- * A need's options (not a stay) as one card: best first, ‹ 1/2 › to go through them. Decided, the chosen
- * one alone (its details bring the others back: "Diğer N seçenek"). The wrapper names every option's id,
- * so a to-do can find the card of one not on screen (Progress.findTarget).
+ * A need's options (not a stay) as one card. Undecided, the need's own card (its options on its back, "N seçenek ›"). Decided, the
+ * chosen one alone; "Diğer N seçenek" turns it in place to its back (BackFace over its row, the card kept under it). The wrapper
+ * names every option's id, so a to-do can find the card of one not on screen (Progress.findTarget).
  */
 export function NavGroup({ items, heading, nested, decision, choice, decided, onChange, changing, rankedOf, onCompare }: {
   items: Item[];
@@ -415,60 +416,24 @@ export function NavGroup({ items, heading, nested, decision, choice, decided, on
   rankedOf: (item: Item) => Ranked | undefined;
   onCompare?: () => void;
 }) {
-  const [index, setIndex] = useState(0);
-  // v11 phase 2b: the choice window (a need's "N seçenek ›", a decided card's "Diğer N seçenek").
+  // v11 phase 2b: the need's own card, its options on the back (a need's "N seçenek ›").
   const [choosing, setChoosing] = useState(false);
   const ids = items.map((i) => i.id).join(" ");
-  useEffect(() => setIndex(0), [ids]);
-  // Bringing the options back starts at the chosen one.
-  useEffect(() => {
-    if (changing && decided) setIndex(Math.max(0, items.findIndex((i) => i.id === decided.id)));
-  }, [changing]);
-  const single = decided && !changing;
-  // Not decided and more than one option: the need's own card, one size, its options in the choice window (v11).
-  if (!decided && items.length >= 1) {
-    return (
-      <div className={nested ? "group nested" : "section"} data-option-ids={ids}>
-        {heading && <div className={nested ? "group-head" : "section-head"}>{heading}</div>}
-        <NeedCard items={items} decision={decision} choice={choice} open={choosing} onOpen={() => setChoosing(true)} onClose={() => setChoosing(false)} onCompare={onCompare} />
-      </div>
-    );
-  }
-  // Decided, "Diğer N seçenek": the chosen card stays, the choice window opens over it.
-  if (decided && changing) {
-    return (
-      <div className={nested ? "group nested" : "section"} data-option-ids={ids}>
-        {heading && <div className={nested ? "group-head" : "section-head"}>{heading}</div>}
-        <ChoiceSheet items={items} decision={decision} choice={choice} title={needTitleOf(decided)} kind={cardKind(decided)} onClose={() => onChange?.()} onCompare={onCompare} />
-      </div>
-    );
-  }
-  const shown = single ? decided : items[Math.min(index, items.length - 1)];
-  // A group emptied under us (its last option deleted, the board not yet redrawn): nothing to show.
-  if (!shown) return null;
-  const nav: Nav | undefined =
-    !single && items.length > 1 ? { index: Math.min(index, items.length - 1), total: items.length, go: (step) => setIndex((i) => Math.min(items.length - 1, Math.max(0, i + step))) } : undefined;
-  const ranked = rankedOf(shown);
-  return (
+  const wrap = (card: ReactNode) => (
     <div className={nested ? "group nested" : "section"} data-option-ids={ids}>
       {heading && <div className={nested ? "group-head" : "section-head"}>{heading}</div>}
-      {changing && (
-        <button type="button" className="link-btn pk-close" onClick={onChange}>
-          {L("Kapat", "Close")}
-        </button>
-      )}
-      <PlanCard
-        key={shown.id}
-        item={shown}
-        group={items}
-        decision={decision}
-        ranked={ranked}
-        nav={nav}
-        onChange={single ? onChange : undefined}
-        changing={changing}
-        onCompare={onCompare}
-        headline={ranked?.rank === 1 ? choice : null}
-      />
+      {card}
     </div>
+  );
+  if (!decided) {
+    return items.length >= 1 ? wrap(<NeedCard items={items} decision={decision} choice={choice} open={choosing} onOpen={() => setChoosing(true)} onClose={() => setChoosing(false)} onCompare={onCompare} />) : null;
+  }
+  const ranked = rankedOf(decided);
+  return wrap(
+    <BackHost
+      open={changing}
+      front={<PlanCard key={decided.id} item={decided} group={items} decision={decision} ranked={ranked} onChange={onChange} changing={changing} onCompare={onCompare} headline={ranked?.rank === 1 ? choice : null} />}
+      back={<NeedBack items={items} decision={decision} choice={choice} title={needTitleOf(decided)} kind={cardKind(decided)} askKey={`${decided.needKey}:${items.length}`} onClose={() => onChange?.()} onCompare={onCompare} />}
+    />,
   );
 }

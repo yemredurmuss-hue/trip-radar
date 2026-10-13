@@ -1,47 +1,41 @@
 // A need with options to choose from (v11 phase 2b, docs/mockups/2026-10-08-japonya-web-v11.html): the card stays
 // the need itself, one size however many links come ("İstanbul → Porto", "3 seçenek · €118'den"), its foot the
-// faces of who saved them and "3 seçenek ›". That opens the choice window: "Senin için" when the comparison has a
-// pick, the options saved by the travellers first, the alternative a data source found apart (dashed, "Sizin
-// linklerinizin dışında"), each with "+ Plana koy"; Karşılaştır (the full comparison) and Pano'da gör at its foot.
+// faces of who saved them and "3 seçenek ›". That turns the card in place (BackFace): "Kaydettikleriniz" and "Önerimiz",
+// three small cards at most each, "Seç" on each, "Kendin ara" and "AI'a arat" at the end of the two.
 // Not for stays (their nights keep the comparison block) nor a need with one option (that card is the option).
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { cardFacts, tripPeople } from "../../lib/cardFacts";
-import { flightLeg, flightWants, ticketPrices, ticketStub } from "../../lib/cardTicket";
-import { cardKind, cardKindColor, isTransportKind } from "../../lib/cardKinds";
+import { useState, type ReactNode } from "react";
+import { cardFacts } from "../../lib/cardFacts";
+import { flightWants, ticketStub } from "../../lib/cardTicket";
+import { cardKind, isTransportKind } from "../../lib/cardKinds";
 import { topDate, transportFace } from "../../lib/cardView";
 import type { Choice } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
 import { L } from "../../lib/i18n";
 import { lookWord } from "../../lib/stageWords";
-import { adderOf, isAiOption, needTitleOf } from "../../lib/pano";
+import { adderOf, needTitleOf } from "../../lib/pano";
 import { groupKeyOf, rangeOfGroupKey, stayRange } from "../../lib/plan";
 import { estimatedRange, rangeLabel } from "../../lib/estRange";
 import { nightsBetween } from "../../lib/items";
 import { nNights } from "../../lib/i18nText";
-import { sameName } from "../../lib/tripSettings";
 import type { Item } from "../../lib/types";
-import { addArrangedLike, chooseItem, setNeedNotNeeded } from "../actions";
+import { addArrangedLike, setNeedNotNeeded } from "../actions";
 import { useMyName } from "../Profile";
 import { CardShell } from "./CardShell";
 import { FlightTicket } from "./FlightTicket";
-import { FlightOption } from "./FlightOption";
 import { useSearching } from "./searching";
 import { useCardEnv } from "./PlanCard";
 import { useStageMenu } from "./stageMenu";
 import { AskButton } from "./AskButton";
 import { TransportCardBody } from "./TransportCard";
-import { ILLUS, illusOf, StayDrawing, stayArtOf } from "./MediaCard";
+import { ILLUS, StayDrawing, stayArtOf } from "./MediaCard";
 import { useWhoMenu } from "./whoMenu";
-import { FallbackImg } from "../FallbackImg";
-import { brandOf } from "../../lib/brands";
-import { BrandPill } from "./RideCard";
+import { BackFace, BackHost } from "./BackFace";
 import { SearchRow } from "./EmptyCard";
 import { headCount, needSearchLinks } from "../../lib/searchLinks";
 import { peopleOf } from "../../lib/whose";
 import { useWhoCtx } from "./WhoseBadge";
-import { KindIcon, TransportArt, UiIcon } from "./Silhouettes";
-import { SavedFace, usePhotoOf, WhoAvatar } from "./WhoseBadge";
-import { datedLink, stayRatingOf, TradeLine } from "./parts";
+import { TransportArt, UiIcon } from "./Silhouettes";
+import { usePhotoOf, WhoAvatar } from "./WhoseBadge";
 
 function Faces({ items }: { items: Item[] }) {
   const myName = useMyName();
@@ -106,11 +100,10 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
   const nights = own ? nightsBetween(own.start, own.end) : null;
   const est = shaped ? estimatedRange(items, nights) : null;
   const arranged = () => void addArrangedLike(first, title);
-  const [searching, startSearch] = useSearching(`${first.needKey}:${n}`);
+  const askKey = `${first.needKey}:${n}`;
+  const [searching, startSearch] = useSearching(askKey);
   const face = isTransportKind(kind) ? transportFace(first, kind as Parameters<typeof transportFace>[1], env.legEnds.get(first.id)) : null;
   const route = face && (face.from || face.to) ? { ...face, from: face.from && { ...face.from, time: null }, to: face.to && { ...face.to, time: null }, middle: null, logo: null } : null;
-  // v30: "N seçenek ›" turns the card in place: its back is the options (the row's whole width).
-  if (open) return <ChoiceSheet items={items} decision={decision} choice={choice} title={title} kind={kind} onClose={onClose} onCompare={onCompare} />;
   const optionsFoot = (
     <div className="pk-foot nd-foot">
       <button type="button" className={`nd-opts${shaped ? " nd-chip" : ""}`} onClick={(e) => (e.stopPropagation(), onOpen())} aria-haspopup="dialog">
@@ -135,9 +128,8 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
     ...(n === 1 ? [...forWho, ...single.menu].map((e, i) => ({ ...e, sep: i === 0 })) : []),
   ];
   // F2: a flight still to choose is the empty ticket: "Arıyoruz" (or "Aranıyor" while the AI looks), what we look for, an estimate only from three real prices.
-  if (kind === "flight") {
-    const flightEst = estimatedRange(items);
-    return (
+  const flightEst = kind === "flight" ? estimatedRange(items) : null;
+  const front = kind === "flight" ? (
       <FlightTicket
         look={searching ? "searching" : "search"}
         stub={ticketStub({ look: searching ? "searching" : "search", prices: null, estimate: flightEst, from: lowText, today: env.today })}
@@ -166,10 +158,7 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
           </>
         }
       />
-    );
-  }
-  return (
-    <>
+  ) : (
       <CardShell
         kind={kind}
         ring="open"
@@ -221,330 +210,25 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
         foot={optionsFoot}
         detail={null}
       />
-    </>
   );
+  // v30: "N seçenek ›" turns the card in place: its back is the options (BackFace, over the row, the front kept under it).
+  return <BackHost open={open} front={front} back={<NeedBack items={items} decision={decision} choice={choice} title={title} kind={kind} askKey={askKey} onClose={onClose} onCompare={onCompare} />} />;
 }
 
-/**
- * The card's back (plan v30): the card turns in place and its options are a grid of small cards across the whole row,
- * each with its picture, where it's from (the site's label), what guests thought, its price and "Seç"; who saved it is
- * the face on its picture. Yours and the alternative a data source found sit in one grid (the ✨ face tells them apart).
- * What the window held stays: what's wanted, "Senin için", "Seçmeden kontrol et", "Neden?", Karşılaştır, Kendin ara.
- * "Pano'da aç" is at the top, and the grid's last tile.
- */
-const BACK_MAX = 7;
-
-export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onCompare }: {
+/** The need's back (BackFace) with what a need adds to it: what is wanted and its own searches. */
+export function NeedBack({ items, decision, choice, title, kind, askKey, onClose, onCompare }: {
   items: Item[];
   decision?: GroupDecision;
   choice: Choice | null;
   title: string;
   kind: ReturnType<typeof cardKind>;
+  askKey: string;
   onClose: () => void;
   onCompare?: () => void;
 }) {
-  const env = useCardEnv();
-  const myName = useMyName();
-  const photoOf = usePhotoOf();
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && (e.stopPropagation(), onClose());
-    document.addEventListener("keydown", onKey, true);
-    return () => document.removeEventListener("keydown", onKey, true);
-  }, [onClose]);
-  const mine = items.filter((i) => !isAiOption(i));
-  const found = items.filter(isAiOption);
-  const ordered = [...mine, ...found];
-  const shown = ordered.slice(0, BACK_MAX);
-  // v30: ‹ › and the arrow keys go through the options (the grid keeps one in focus; it starts on the one on the plan).
-  const [cur, setCur] = useState(() => Math.max(0, shown.findIndex((i) => i.status === "chosen" || i.status === "booked")));
-  const count = shown.length;
-  const step = (by: -1 | 1) => setCur((c) => (c + by + count) % count);
-  useEffect(() => {
-    if (count < 2) return;
-    const onArrow = (e: KeyboardEvent) => {
-      if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-      const t = e.target as HTMLElement | null;
-      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
-      e.preventDefault();
-      step(e.key === "ArrowLeft" ? -1 : 1);
-    };
-    document.addEventListener("keydown", onArrow);
-    return () => document.removeEventListener("keydown", onArrow);
-  }, [count]);
-  const grid = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (count > 1) (grid.current?.querySelectorAll(".ch-row.ch-tile")[cur] as HTMLElement | undefined)?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [cur]);
-  const more = ordered.length - shown.length;
-  const date = topDate(items[0], kind);
   const wants = useWants(items[0]);
   const self = useSelfLinks(items[0]);
-  const [why, setWhy] = useState<string | null>(null);
-  const currency = env.decisions?.ctx.currency ?? "EUR";
-  const art = ILLUS[kind] ?? illusOf(kind);
-  const goPano = () => (onClose(), env.onPano(groupKeyOf(items[0])));
-  const tile = (item: Item, index: number): ReactNode => {
-    const facts = cardFacts(item, decision, env.decisions?.ctx);
-    const ranked = choice?.ranked.find((r) => r.option.item.id === item.id);
-    const badge = ranked?.badges[0] ?? null;
-    // Saved without dates: priced for these nights for now; its page again with the dates gets the real price.
-    const { url: datedUrl } = datedLink(item, decision);
-    const open = why === item.id;
-    const score = decision?.options.find((o) => o.item.id === item.id)?.score ?? null;
-    const on = item.status === "chosen" || item.status === "booked";
-    const who = adderOf(item);
-    const isMe = !who || (myName && sameName(who, myName));
-    const time = item.flight?.departure?.slice(11, 16);
-    const brand = brandOf(facts.source?.label, facts.source?.host);
-    const rating = item.category === "stay" ? stayRatingOf(item) : null;
-    const needs = facts.needs.length > 0 && (
-            <span className="ch-needs">
-              {facts.needs.map((n) => (
-                <span key={n.key} className={`ch-need ${n.state}`} title={n.text}>
-                  {n.state === "yes" ? "✓" : n.state === "no" ? "✕" : "?"} {n.label}
-                </span>
-              ))}
-            </span>
-          );
-    const status = facts.status && <span className={`ch-status ${facts.status.tone}`}>{facts.status.text}</span>;
-    const linksNode = (
-    <span className="ch-links">
-      {(ranked?.trade || facts.pros.length > 0 || facts.cons.length > 0) && (
-        <button type="button" className="ch-why ch-pc" aria-expanded={open} onClick={() => setWhy(open ? null : item.id)}>
-          {L("Neden?", "Why?")} {open ? "▴" : "▾"}
-        </button>
-      )}
-      {datedUrl && (
-        <a className="ch-why" href={datedUrl} target="_blank" rel="noreferrer">
-          {L("Tarihlerle aç ↗", "Open with dates ↗")}
-        </a>
-      )}
-      <button type="button" className="ch-why ch-all" onClick={() => (onClose(), env.onOpenItem(item))}>
-        {L("Tüm detaylar", "All details")}
-      </button>
-    </span>
-    );
-    const detailNode = open && (
-            <div className="ch-detail">
-              {ranked && <TradeLine ranked={ranked} currency={currency} className="ch-trade" />}
-              {facts.pros.length > 0 && (
-                <ul className="ch-pros">
-                  {facts.pros.map((p) => (
-                    <li key={p.text}>
-                      <span>{p.text}</span>
-                      {p.unique && <i>{L("yalnız bunda", "only this one")}</i>}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {facts.cons.length > 0 && (
-                <ul className="ch-cons">
-                  {facts.cons.map((c) => (
-                    <li key={c.text}>
-                      <span>{c.text}</span>
-                      {c.unique && <i>{L("yalnız bunda", "only this one")}</i>}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          );
-    // F2: a flight option is the small flight card (FlightOption): its row, its price, "Seç"; what the tile also kept sits under it.
-    if (item.category === "flight") {
-      const going = tripPeople(env.decisions?.ctx);
-      const fare = ticketStub({ look: "chosen", item, prices: ticketPrices(item, facts.price, going), fallback: facts.price ? { text: facts.price.text, label: facts.price.label ?? null } : null, people: going, today: env.today });
-      return (
-        <FlightOption
-          key={item.id}
-          className={`ch-row ch-tile${on ? " on" : ""}${who === "ai" ? " ai" : ""}${count > 1 && index === cur ? " cur" : ""}`}
-          aria-current={count > 1 && index === cur ? "true" : undefined}
-          flightNo={item.flight?.flightNumber}
-          who={<SavedFace item={item} />}
-          tag={on ? { word: L("Seçili", "Selected") } : null}
-          name={item.url ? <a className="ch-name" href={item.url} target="_blank" rel="noreferrer" title={item.name}>{item.name}</a> : <span className="ch-name" title={item.name}>{item.name}</span>}
-          leg={flightLeg(item)}
-          fare={fare}
-          action={
-            on ? (
-              <span className="ch-on"><UiIcon name="check" size={13} />{L("Planda", "On the plan")}</span>
-            ) : (
-              <button type="button" className="ch-put" onClick={() => void chooseItem(item, items).then(onClose)} aria-label={`${L("Seç", "Choose")} · ${item.name}`} title={L("Seç ve plana koy", "Choose and add to the plan")}>
-                {L("Seç", "Choose")}
-              </button>
-            )
-          }
-          extras={
-            <div className="fo-x">
-              {(badge || score != null) && (
-                <span className="fo-m">
-                  {badge && <span className="ch-badge">{badge}</span>}
-                  {score != null && <span className="ch-sc" title={L("Tercihlerinize uyum (100 üzerinden)", "Fit with your preferences (out of 100)")}>{Math.round(score)}<small>{L("uyum", "fit")}</small></span>}
-                </span>
-              )}
-              {needs}
-              {status}
-              {linksNode}
-              {detailNode}
-            </div>
-          }
-        />
-      );
-    }
-    const drawing = art ? <img className="ch-ill" src={`illus/${art}.png`} alt="" /> : <KindIcon kind={kind} size={44} className="ch-kind" />;
-    return (
-      <div key={item.id} className={`ch-row ch-tile${on ? " on" : ""}${who === "ai" ? " ai" : ""}${count > 1 && index === cur ? " cur" : ""}`} aria-current={count > 1 && index === cur ? "true" : undefined}>
-        <div className="ch-ph">
-          {facts.image ? <FallbackImg className="ch-img" src={facts.image} fallback={drawing} /> : drawing}
-          <span className="ch-by"><SavedFace item={item} /></span>
-          {badge && <span className="ch-badge">{badge}</span>}
-          <span className="ch-sc" title={L("Tercihlerinize uyum (100 üzerinden)", "Fit with your preferences (out of 100)")}>
-            {score != null ? Math.round(score) : "–"}
-            <small>{L("uyum", "fit")}</small>
-          </span>
-        </div>
-        <div className="ch-main">
-          <span className="ch-src">
-            <BrandPill brand={brand} />
-            {rating ? (
-              <span className="ch-rate">
-                <span className={`pk-rb${rating.star ? " star" : ""}`}>{rating.star ? "★ " : ""}{rating.value}</span>
-                {rating.count && <small>{rating.count}</small>}
-              </span>
-            ) : null}
-          </span>
-          <b>
-            {item.url ? (
-              <a className="ch-name" href={item.url} target="_blank" rel="noreferrer" title={item.name}>
-                {item.name}
-              </a>
-            ) : (
-              <span className="ch-name" title={item.name}>{item.name}</span>
-            )}
-            {time && /^\d\d:\d\d$/.test(time) ? <span className="ch-time"> · {time}</span> : null}
-          </b>
-          <span className="ch-sub">{[brand ? null : item.provider, item.city].filter(Boolean).join(" · ")}</span>
-          <span className="ch-who">
-            {who === "ai" ? (
-              <>✨ {L("AI önerisi", "AI pick")}</>
-            ) : isMe ? (
-              L("Sen kaydettin", "You saved it")
-            ) : (
-              L(`${who} kaydetti`, `${who} saved it`)
-            )}
-          </span>
-          {needs}
-          {status}
-          <div className="ch-tf">
-            {facts.price && (
-              <span className="ch-pr">
-                <b>{facts.price.perNight ?? facts.price.each ?? facts.price.text}</b>
-                <small>
-                  {facts.price.perNight
-                    ? L(`${facts.price.text} toplam`, `${facts.price.text} total`)
-                    : facts.price.each
-                      ? L(`kişi başı · ${facts.price.text} toplam`, `per person · ${facts.price.text} total`)
-                      : (facts.price.label ?? "")}
-                </small>
-                {facts.price.provisional && <small className="ch-prov">{L("geçici", "provisional")}</small>}
-              </span>
-            )}
-            {on ? (
-              <span className="ch-on">
-                <UiIcon name="check" size={13} />
-                {L("Planda", "On the plan")}
-              </span>
-            ) : (
-              <button type="button" className="ch-put" onClick={() => void chooseItem(item, items).then(onClose)} aria-label={`${L("Seç", "Choose")} · ${item.name}`} title={L("Seç ve plana koy", "Choose and add to the plan")}>
-                {L("Seç", "Choose")}
-              </button>
-            )}
-          </div>
-          {linksNode}
-          {detailNode}
-        </div>
-      </div>
-    );
-  };
-  return (
-    <section
-      className="ch-back"
-      role="group"
-      aria-labelledby="ch-title"
-      // Empty space on the back turns the card over again (plan v30); a tile, a button or a link keeps its own click.
-      onClick={(e) => {
-        if (!(e.target as HTMLElement).closest("button, a, input, textarea, label, .ch-tile, .bk-tt, .ch-for, .ch-verify, .ch-wants")) onClose();
-      }}
-      style={{ "--c": cardKindColor(kind) } as React.CSSProperties}>
-      <header className="ch-head">
-        <span className="bk-ic" aria-hidden>
-          <KindIcon kind={kind} size={20} />
-        </span>
-        <div className="bk-tt">
-          <h3 id="ch-title">{title}</h3>
-          <p>{[date, L(`${items.length} seçenek`, `${items.length} option${items.length === 1 ? "" : "s"}`)].filter(Boolean).join(" · ")}</p>
-        </div>
-        {count > 1 && (
-          <span className="ch-nav" role="group" aria-label={L("Seçenekler arasında gez", "Go through the options")}>
-            <button type="button" aria-label={L("Önceki seçenek", "Previous option")} onClick={() => step(-1)}>
-              <UiIcon name="left" size={13} />
-            </button>
-            <span aria-live="polite">{cur + 1}/{count}</span>
-            <button type="button" aria-label={L("Sonraki seçenek", "Next option")} onClick={() => step(1)}>
-              <UiIcon name="right" size={13} />
-            </button>
-          </span>
-        )}
-        <button type="button" className="ch-pano" onClick={goPano} title={L("Bütün seçenekleri Pano'da büyük gör", "See every option large on the Board")}>
-          <UiIcon name="board" size={15} />
-          {L("Pano'da aç", "Open on the Board")}
-        </button>
-        <button type="button" className="bk-x" aria-label={L("Kapat", "Close")} onClick={onClose} autoFocus>
-          <UiIcon name="x" size={14} />
-        </button>
-      </header>
-      {wants.length > 0 && (
-        <ul className="nd-wants ch-wants" aria-label={L("Aradığımız", "What we're looking for")}>
-          {wants.map((w) => <li key={w}>{w}</li>)}
-        </ul>
-      )}
-      {choice?.headline && <p className="ch-for">{choice.headline}</p>}
-      {choice && choice.verify.length > 0 && (
-        <ul className="ch-verify" aria-label={L("Seçmeden kontrol et", "Check before choosing")}>
-          {choice.verify.map((v) => (
-            <li key={`${v.itemId}:${v.what}`}>
-              <b>{L("Seçmeden kontrol et", "Check before choosing")} · {v.name}:</b> {v.what}
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className={`ch-grid${kind === "flight" ? " fo-grid" : ""}`} ref={grid}>
-        {shown.map(tile)}
-        <button type="button" className="ch-tile ch-panotile" onClick={goPano}>
-          <UiIcon name="board" size={24} />
-          <b>{more > 0 ? L(`+${more} daha`, `+${more} more`) : L("Pano", "Board")}</b>
-          <span>{L("Pano'da büyük aç", "Open large on the Board")}</span>
-        </button>
-      </div>
-      <footer className="bk-foot ch-foot">
-        {env.ask && (
-          <button type="button" className="bk-btn ch-more" onClick={() => (onClose(), env.ask!(L(`${title} için daha fazla öneri bul`, `Find more options for ${title}`)))}>
-            ✨ {L("Daha fazla bul", "Find more")}
-          </button>
-        )}
-        {onCompare && (
-          <button type="button" className="bk-btn" onClick={() => (onClose(), onCompare())}>
-            {L("Karşılaştır", "Compare")}
-          </button>
-        )}
-        <span className="bk-sp" />
-        {self.length > 0 && (
-          <span className="ch-self">
-            <SearchRow links={self} />
-          </span>
-        )}
-      </footer>
-    </section>
-  );
+  return <BackFace items={items} decision={decision} choice={choice} title={title} kind={kind} wants={wants} self={self} askKey={askKey} onClose={onClose} onCompare={onCompare} />;
 }
 
 /** A need's card with its own window (a stay's options, v11): the heading above it as the group's, the state kept here. */

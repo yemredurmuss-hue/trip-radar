@@ -1137,17 +1137,17 @@ try {
   assert.equal(await jardimRow.locator(".pk-detail").count(), 0, "a click on a chosen card turns it, no inline panel");
   const otherStays = app.locator(".ch-back");
   await otherStays.locator(".ch-row", { hasText: "Jardim Stay" }).waitFor();
-  // ‹ › and the arrow keys go through the options, the one in focus ringed.
-  const navAt = async () => (await otherStays.locator(".ch-nav").innerText()).replace(/\s+/g, "");
-  const first = await navAt();
-  assert.match(first, /^\d\/3$/);
-  const wrap = (n) => ((n - 1 + 3) % 3) + 1;
-  const dir = Number(first[0]) === 3 ? -1 : 1;
-  const afterKey = wrap(Number(first[0]) + dir);
-  await app.keyboard.press(dir === 1 ? "ArrowRight" : "ArrowLeft");
-  assert.equal(await navAt(), `${afterKey}/3`);
-  await otherStays.getByRole("button", { name: dir === 1 ? "Sonraki seçenek" : "Önceki seçenek" }).click();
-  assert.equal(await navAt(), `${wrap(afterKey + dir)}/3`);
+  // F4: the arrow keys go through the options (the one in focus is `cur`; the ‹ › buttons are gone), the back lies over its row.
+  const curAt = async () => otherStays.locator(".ch-tile").evaluateAll((els) => els.findIndex((e) => e.classList.contains("cur")));
+  const tiles = await otherStays.locator(".ch-tile").count();
+  assert.equal(tiles, 3, "three small cards in Kaydettikleriniz");
+  assert.equal(await otherStays.locator(".ch-nav").count(), 0, "no ‹ › buttons on the back");
+  const first = await curAt();
+  await app.keyboard.press("ArrowRight");
+  assert.equal(await curAt(), (first + 1) % tiles);
+  await app.keyboard.press("ArrowLeft");
+  await app.keyboard.press("ArrowLeft");
+  assert.equal(await curAt(), (first - 1 + tiles) % tiles);
   assert.equal(await otherStays.locator(".ch-tile.cur").count(), 1);
   await otherStays.locator(".ch-head").getByRole("button", { name: "Kapat" }).click();
   await otherStays.waitFor({ state: "detached" });
@@ -2773,7 +2773,7 @@ try {
   // A lone option has nothing to be compared with: no score, but its measured criteria are one click away (v11: its
   // need's card, "1 seçenek ›", then the window's "Karşılaştır").
   await board.locator(".nd-card .nd-opts", { hasText: "1 seçenek" }).first().click();
-  await board.locator(".ch-back .bk-foot").getByRole("button", { name: "Karşılaştır" }).click();
+  await board.locator(".ch-back").getByRole("button", { name: "Karşılaştır", exact: true }).click();
   await board.getByRole("dialog", { name: "Karşılaştırma" }).getByText("Puan, karşılaştırınca çıkar").waitFor();
   await board.getByRole("dialog", { name: "Karşılaştırma" }).getByRole("button", { name: "Kapat" }).click();
   await board.getByRole("button", { name: /Seyahatlerim/ }).click();
