@@ -44,7 +44,7 @@ import { DocAccess, openDoc, DocPickButton } from "./DocAccess";
 import { InlineEdit } from "./InlineEdit";
 import { groupKeyOf } from "../../lib/plan";
 import { useStageMenu } from "./stageMenu";
-import { CampBody, MediaCardBody } from "./MediaCard";
+import { CampBody, IntentChip, MediaCardBody } from "./MediaCard";
 import { isCampStay } from "../../lib/campStay";
 import type { FieldKey } from "../../lib/inlineEdit";
 import { datedLink, stayRatingOf } from "./parts";
@@ -215,6 +215,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
     </>
   );
   const transport = isTransportKind(kind);
+  // D1: a stay (not a camp) says its city, days and nights on its picture, so its top line has no date of its own.
+  const intent = kind === "stay" && !camp && Boolean(item.city);
   const rating = kind === "stay" ? stayRatingOf(item) : null;
   // The ⓘ balloon (a flight, a stay, a way of travel): what the record holds beyond the face; the booking code only on the flight's day.
   const peekCtx: PeekCtx = {
@@ -261,10 +263,12 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       kind={kind}
       ring={ring}
       date={
-        <>
-          <CardDate item={item} kind={kind} />
-          {tag && ` · ${tag}`}
-        </>
+        intent ? null : (
+          <>
+            <CardDate item={item} kind={kind} />
+            {tag && ` · ${tag}`}
+          </>
+        )
       }
       ariaLabel={item.name}
       itemId={item.id}
@@ -302,7 +306,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
         ) : camp ? (
           <CampBody item={item} nights={item.dates.start && item.dates.end ? nightsBetween(item.dates.start.slice(0, 10), item.dates.end.slice(0, 10)) : null} />
         ) : (
-          <MediaCardBody face={mediaFace(item, kind, facts.source)} kind={kind} score={facts.score} best={best} city={item.city}
+          <MediaCardBody face={mediaFace(item, kind, facts.source)} kind={kind} score={facts.score} best={best} city={item.city} intent={intent ? <IntentChip item={item} /> : undefined}
             art={kind === "stay" ? stayArt(item, stayPlatform(item) === "Airbnb") : undefined}
             brand={kind === "stay" ? brandOf(facts.source?.label, facts.source?.host) : null} area={kind === "stay" ? (item.location.area ?? null) : null}
             rating={rating} cancel={kind === "stay" ? cancelLineOf(item, env.today) : null}

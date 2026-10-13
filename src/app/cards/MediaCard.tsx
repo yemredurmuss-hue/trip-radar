@@ -1,8 +1,8 @@
 // A media card's body (etkinlik-v4): a 176×128 picture on the left (the photo, else the kind's dotted
 // drawing; the fit score on its corner, blue on the pick), the title (20), the info line and the source line.
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import type { CardKind } from "../../lib/cardKinds";
-import type { MediaFace } from "../../lib/cardView";
+import { intentOf, type MediaFace } from "../../lib/cardView";
 import { L } from "../../lib/i18n";
 import { FallbackImg } from "../FallbackImg";
 import { Editable, useInlineEdit } from "./InlineEdit";
@@ -12,6 +12,7 @@ import { BrandPill } from "./RideCard";
 import { campArt } from "../../lib/playbooks";
 import type { Item } from "../../lib/types";
 import { KindIcon, MediaSilhouette, TentArt } from "./Silhouettes";
+import { nNights } from "../../lib/i18nText";
 
 /** A stay's rating as the site writes it: "9,0 Muhteşem · 770 yorum" (a score out of 10) or "★ 4,9 Misafirler çok sevmiş" (out of 5). */
 export interface StayRating {
@@ -40,8 +41,39 @@ export const StayDrawing = ({ art }: { art: StayArt }) => (art === "tent" ? <Ten
 export const illusOf = (kind: CardKind): string | null =>
   ILLUS[kind] ?? ({ train: "tren", bus: "otobus", minibus: "minibus", ferry: "vapur", taxi: "taksi-transfer", transfer: "taksi-transfer", car: "arac-kiralama", moto: "motosiklet", rv: "karavan", bike: "bisiklet" } as Partial<Record<CardKind, string>>)[kind] ?? null;
 
+/**
+ * D1 the intent label on a stay's picture (top left): which need's stay this is, "Kyoto · 8–13 Nis · 5 gece" (the hotel's name doesn't say
+ * the city). Only what the record's dates give: with none it is the city alone, never a made-up night count (S13). A camp or a caravan
+ * (a festival's own nights) reads "Kamp · Ozora". Its city and dates are edited where they stand.
+ */
+export function IntentChip({ item }: { item: Item }) {
+  const intent = intentOf(item);
+  if (!intent) return null;
+  return (
+    <span className="pk-intent">
+      <KindIcon kind="stay" size={14} />
+      {intent.camp ? (
+        <>
+          <b>{L("Kamp", "Camp")}</b>
+          {intent.city && <span> · <Editable field="city">{intent.city}</Editable></span>}
+        </>
+      ) : (
+        <>
+          <b><Editable field="city">{intent.city}</Editable></b>
+          {intent.days && (
+            <span>
+              <Editable field="date">{intent.days}</Editable>
+              {intent.nights > 0 && ` · ${nNights(intent.nights)}`}
+            </span>
+          )}
+        </>
+      )}
+    </span>
+  );
+}
+
 /** On a record's card the title and the city are editable where they stand (the day and hour are on the top line). */
-export function MediaCardBody({ face, kind, score, best, city = null, nights = null, brand = null, area = null, rating = null, cancel = null, art: artOf }: { face: MediaFace; kind: CardKind; score: number | null; best: boolean; city?: string | null; nights?: number | null; brand?: Brand | null; area?: string | null; rating?: StayRating | null; cancel?: CancelLine | null; /** v30: the stay's drawing by what it is (a flat, a caravan), null: the kind's icon; absent: the kind's. */ art?: string | null }) {
+export function MediaCardBody({ face, kind, score, best, city = null, nights = null, intent = null, brand = null, area = null, rating = null, cancel = null, art: artOf }: { face: MediaFace; kind: CardKind; score: number | null; best: boolean; city?: string | null; nights?: number | null; /** D1: a stay's intent label over its picture (it carries the city, dates and nights, so the info line leaves them out). */ intent?: ReactNode; brand?: Brand | null; area?: string | null; rating?: StayRating | null; cancel?: CancelLine | null; /** v30: the stay's drawing by what it is (a flat, a caravan), null: the kind's icon; absent: the kind's. */ art?: string | null }) {
   const placed = Boolean(useInlineEdit()?.fields.includes("city"));
   // The city first, editable; the hour is on the top line then.
   const info = placed ? face.info.filter((x) => x.text !== city && !x.strong) : face.info;
@@ -53,6 +85,7 @@ export function MediaCardBody({ face, kind, score, best, city = null, nights = n
     <div className={`pk-media${kind === "stay" ? " pk-stay" : ""}`}>
       <div className="pk-vis">
         {face.image ? <FallbackImg className="pk-img" src={face.image} fallback={drawing} /> : drawing}
+        {intent}
         {score != null && (
           <span className={`pk-score${best ? " best" : ""}`} title={L("Uyum puanı (100 üzerinden)", "Fit score (out of 100)")}>
             {score}
@@ -77,7 +110,7 @@ export function MediaCardBody({ face, kind, score, best, city = null, nights = n
             {rating.count && <span>· {rating.count}</span>}
           </div>
         )}
-        {(info.length > 0 || placed || nights) && (
+        {!intent && (info.length > 0 || placed || nights) && (
           <p>
             {/* v11: a stay's nights as dots, then its city and "N gece". */}
             {nights ? (
@@ -122,6 +155,7 @@ export function CampBody({ item, nights }: { item: Item; nights: number | null }
     <div className="pk-media pk-stay pk-camp">
       <div className="pk-vis">
         <img className="pk-illus" src={campArt(item)} alt="" />
+        <IntentChip item={item} />
       </div>
       <div className="pk-txt">
         {place && (

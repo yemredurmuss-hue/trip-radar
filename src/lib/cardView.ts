@@ -115,6 +115,20 @@ export function topDate(item: Item, kind: CardKind): string | null {
   return time ? `${formatDateRange(start, null)} · ${time}` : formatDateRange(start, null);
 }
 
+/**
+ * D1/S13 the intent label of a stay's picture: its city, the days and the nights, only what the record's dates give (no dates: the
+ * city alone, never a made-up night count). A camp or a caravan has no dates in it: "Kamp · Ozora". null: no city to say.
+ */
+export function intentOf(item: Item): { camp: boolean; city: string | null; days: string | null; nights: number } | null {
+  const camp = isCampStay(item);
+  const city = item.city ?? (camp ? item.location.area : null);
+  if (!city && !camp) return null;
+  if (camp) return { camp, city, days: null, nights: 0 };
+  const start = isoDate(item.dates.start);
+  const end = isoDate(item.dates.end);
+  return { camp, city, days: start ? formatDateRange(start, end) : null, nights: start && end ? nightsBetween(start, end) : 0 };
+}
+
 export type MenuAction = "edit" | "dismiss" | "change" | "addDoc" | "cancel" | "delete";
 /**
  * The ••• menu: change a plan made by hand or in the chat, rule out a saved option (it waits under its section's

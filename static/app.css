@@ -4729,3 +4729,10 @@ a.ch-why { text-decoration: none; }
 .inf-pop .cpy-t { color: inherit; }
 :root[data-theme="dark"] .inf, :root[data-theme="dark"] .tipx-box.inf-pop { background: #241f33; border-color: #3a3452; color: #efeaff; }
 @media (prefers-reduced-motion: reduce) { .tipx-box.inf-pop { animation: none; } }
+
+/* -- F1b niyet etiketi: over a stay's picture, top left: bed · city · days · nights (a camp: "Kamp · Ozora") -- */
+.pk-intent { position: absolute; top: 10px; left: 10px; z-index: 3; display: inline-flex; align-items: center; gap: 6px; max-width: calc(100% - 20px); padding: 4px 11px 4px 9px; border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(40, 28, 90, .12), 0 6px 14px -8px rgba(40, 28, 90, .35); font-size: 12.5px; line-height: 1.2; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.pk-intent b { color: var(--text); font-size: 13.5px; }
+.pk-intent svg { flex: none; width: 14px; height: 14px; color: var(--mc); }
+.pk-intent > span, .pk-intent > b { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+:root[data-theme="dark"] .pk-intent { background: #241f33; }

@@ -1,6 +1,6 @@
 // tests/cardView.test.ts
 import { describe, expect, it } from "vitest";
-import { activityDrawing, bookedAs, footOf, mediaFace, menuFor, ringOf, topDate, transportFace } from "../src/lib/cardView";
+import { activityDrawing, bookedAs, footOf, intentOf, mediaFace, menuFor, ringOf, topDate, transportFace } from "../src/lib/cardView";
 import { EMPTY_METRICS } from "../src/lib/items";
 import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
@@ -209,5 +209,25 @@ describe("a media card's lines", () => {
       meta: [{ text: "Allianz", kind: "plain" }, { text: "★ 4,4", kind: "star" }, { text: "allianz.com.tr ↗", kind: "link" }],
       silhouette: "shield",
     });
+  });
+});
+
+describe("the intent label over a stay's picture", () => {
+  const stay = (over: Partial<Item> = {}) => makeItem({ category: "stay", city: "Kyoto", ...over });
+  it("says the city, the days and the nights the record's dates give", () => {
+    const i = intentOf(stay({ dates: { start: "2026-04-08", end: "2026-04-13", source: "page" } }))!;
+    expect(i).toMatchObject({ camp: false, city: "Kyoto", nights: 5 });
+    expect(i.days).toMatch(/8/);
+  });
+  it("with no dates it is the city alone, never a made-up night count", () => {
+    expect(intentOf(stay())).toEqual({ camp: false, city: "Kyoto", days: null, nights: 0 });
+  });
+  it("a camp or a caravan reads Kamp and its place, with no dates", () => {
+    const m = (k: "camp" | "vehicle") => ({ ...EMPTY_METRICS, stayKind: k });
+    expect(intentOf(stay({ city: "Ozora", metrics: m("camp"), dates: { start: "2026-07-25", end: "2026-08-02", source: "page" } }))).toEqual({ camp: true, city: "Ozora", days: null, nights: 0 });
+    expect(intentOf(stay({ city: null, location: { address: null, area: "Dádpuszta", approximate: false }, metrics: m("vehicle") }))?.city).toBe("Dádpuszta");
+  });
+  it("has nothing to say with no city", () => {
+    expect(intentOf(stay({ city: null }))).toBeNull();
   });
 });
