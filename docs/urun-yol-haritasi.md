@@ -43,7 +43,7 @@ adayları, AI hakem satırı) → Seçildi → Rezerve ettim`.
 | **P3** | **Pano iskeleti: hangi kart, hangi tip, hangi sırada** | ⬅ **şimdi** |
 | **P4** | **Niyet kartı ve durumları** (brief, neden, arama, aday tepsisi) | 🟠 boş kart var; brief, neden, durumlar yok |
 | **P5** | **Öneri kartı: Ekle, ×, yeni öneriler, boşalan yer dolar** | 🟠 Viator/eSIM var; ×/yenile standardı yok |
-| **P6** | **Sohbet = bilgi toplayıcı** (K4 soru sırası, K5 geri bildirim) | 🟠 sohbet var; soru önceliği ve parlama yok |
+| **P6** | **Sohbet = bilgi toplayıcı** (K4 soru sırası, K5 geri bildirim) | 🟠 sohbet, K4 soru sırası (başlatma sohbetinde) ve kartta parlama (K5, `pk-glow`) var; çelişki sorusu ve sohbette tek satırlık değişiklik özeti yok |
 | P7 | Fikir standardı: gezilecek · restoran · ipucu · etkinlik · Google Maps | ❌ ayrı tasarım oturumu (Emre: "her biri ayrı konu, bir standart gerek") |
 | P8 | Dışarıdan aday getirme (link yapıştır, eklenti) | ✅ eklenti var; niyet kartına bağlanacak |
 | P9 | AI hakem: adayları kullanıcının kriterleriyle karşılaştırma | 🟠 CompareView, stayPicks var |
@@ -430,7 +430,7 @@ Emre'nin isteğiyle (çizim adımı atlanarak, "yap, sabah bakarım") doğrudan 
   gezi kartları fotoğraf + duraklar + geri sayım + aşama çubuğu (yeşil rezerve, amber seçildi) + yüzler; taslak kesikli.
 - **Geçiş:** Enter'da kutu sohbetin ilk balonuna akar (View Transitions), sağ taraf kayarak gelir; oluşturunca pano yumuşak geçer.
 - **Sohbet sırasında sağ taraf:** fotoğraflar büyük, sırayla, adıyla; "Plan taslağı" = Oluştur'un yazacağı kartlar
-  panonun bölümlerinde (kesikli = Arıyoruz), cevap geldikçe düşer, cevap bir kartı değiştirince parlar (K5).
+  panonun bölümlerinde (**vazgeçildi**: sağ taraf bugün fotoğraflar ve satırlar; "Yazıyor…" aşaması da `d34f0a2`'de kaldırıldı) (kesikli = Arıyoruz), cevap geldikçe düşer, cevap bir kartı değiştirince parlar (K5).
 - **Fotoğraflar:** yerler + gezinin anları (romantik akşam, havuzlu villa, yerel lezzetler…; tarz ve kimle gidildiğinden),
   aynı foto bir kez, varış yeri İngilizce adıyla aranır (Lizbon → Lisbon; eskiden "travel the world" yazılı taş geliyordu).
 - **Sohbet konuşur:** sorulan şeye önce kısa ve dürüst cevap ("kesin bilmiyorum" dahil), sonra soru; soru kalın, neyi
@@ -440,7 +440,7 @@ Emre'nin isteğiyle (çizim adımı atlanarak, "yap, sabah bakarım") doğrudan 
 - **Hatalar:** pano sohbeti ve başlatma sohbeti sayfanın tamamını kaydırıyordu (yalnız kendi kutusu kayar);
   panonun Hazırlık'a çekilmesi (0.36.58'de diğer oturum yayınladı).
 
-**Açık karar (Emre):** K4 soru sırası ile "temel bilgiler önce" kuralı çakışıyor. Bugün sıra: nereye → süre → başlangıç →
+**Açık karar (Emre) [bayat: K4 sırası başlatma sohbetinde sonradan kodlandı, bkz. K4 satırı]:** K4 soru sırası ile "temel bilgiler önce" kuralı çakışıyor. Bugün sıra: nereye → süre → başlangıç →
 nereden → kimle → gün → tarz → rota (temel bilgiler bitince gezi kendini oluşturabilsin diye). K4'e tam uyum: tarih (gün
 dahil) → tarz/bütçe → rota → kimle → nereden. Denendi; 36 birim testi ve gezi türü sorularının "temel bilgilerden sonra"
 kuralı değişiyor. Karar verilmeden uygulanmadı.
