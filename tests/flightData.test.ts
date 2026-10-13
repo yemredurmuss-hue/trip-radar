@@ -70,6 +70,18 @@ describe("the boxes: only what's known, where the flight is", () => {
     expect(flightAlert(f, day)).toBe(true);
     expect(liveLine(f, day)?.text).toBe("Yeni kalkış 20:55 (+25 dk) · Kapı (D5'ti) D7 · Tahmini iniş 22:40");
   });
+  it("the stage AeroDataBox names: boarding, gate closed, approaching; only fresh and only from the data", () => {
+    const at = new Date("2026-10-07T19:50:00Z");
+    const fresh = "2026-10-07T19:40:00Z";
+    const boarding = kl({ status: "Boarding", fetchedAt: fresh });
+    expect(flightTiles(boarding, at).map((t) => `${t.label} ${t.value}`)).toEqual(["Tahmini kalkış 20:30", "Durum Biniş başladı"]);
+    expect(flightTiles(kl({ status: "GateClosed", fetchedAt: fresh }), at).at(-1)).toMatchObject({ value: "Kapı kapandı", tone: "bad" });
+    const near = kl({ status: "Approaching", fetchedAt: "2026-10-07T21:50:00Z", departure: { ...kl().departure, actual: "2026-10-07T20:34" } });
+    expect(flightTiles(near, new Date("2026-10-07T21:55:00Z")).at(-1)).toMatchObject({ value: "İnişe geçiyor" });
+    // No stage from the clock alone, none from a stale answer.
+    expect(flightTiles(kl({ fetchedAt: fresh }), at).map((t) => t.label)).toEqual(["Tahmini kalkış"]);
+    expect(flightTiles(kl({ status: "Boarding", fetchedAt: "2026-10-07T16:00:00Z" }), at).map((t) => t.label)).toEqual(["Tahmini kalkış"]);
+  });
   it("in the air, landed, cancelled", () => {
     const air = kl({ status: "EnRoute", departure: { ...kl().departure, actual: "2026-10-07T20:34" }, arrival: { ...kl().arrival, revised: "2026-10-07T22:11" } });
     expect(flightTiles(air, day).map((t) => `${t.label} ${t.value}`)).toEqual(["Kalktı 20:34", "Tahmini iniş 22:11"]);

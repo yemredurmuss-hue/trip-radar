@@ -5042,6 +5042,19 @@ try {
   assert.equal(await tpCard.evaluate((el) => getComputedStyle(el).borderTopColor), "rgb(198, 40, 40)", "late: a clear red frame");
   await tpCard.scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/3e-flight-card-live.png` });
+  // The stage AeroDataBox names (0.36.17's "Biniş başladı"), only while the answer is fresh and only when the data says so: nothing above (status Delayed).
+  assert.equal(await tpCard.locator(".pk-lv", { hasText: "Durum" }).count(), 0, "no stage without the data");
+  await app.evaluate(async () => {
+    const stored = (await chrome.storage.local.get("flightLive")).flightLive;
+    const e = stored["TP1760|2026-10-14"];
+    e.flight = { ...e.flight, status: "Boarding", fetchedAt: new Date().toISOString() };
+    await chrome.storage.local.set({ flightLive: stored });
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  const stage = tpCard.locator(".pk-lv", { hasText: "Durum" });
+  await stage.waitFor();
+  assert.deepEqual(flat(await stage.allInnerTexts()), ["Durum Biniş başladı"]);
+  assert.equal(await stage.evaluate((el) => getComputedStyle(el.querySelector("b")).color), "rgb(29, 116, 66)", "boarding: the existing green");
   console.log("✓ flight on its day: late in red with its new time and gate, in the day's line and as boxes on the Plan's card, the source named");
 } finally {
   await flightDay.close();
