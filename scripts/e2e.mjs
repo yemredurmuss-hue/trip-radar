@@ -703,7 +703,7 @@ try {
   await checkIn.hover();
   await app.waitForFunction((el) => getComputedStyle(el).opacity === "1", await checkIn.locator(".dg-grip").elementHandle());
   // The line scrolls to below the sticky bar (scroll-margin), where the drop can land; dragTo's own scroll would leave it behind the bar.
-  await lineOf(1, "Uçuş · İstanbul → Porto").scrollIntoViewIfNeeded();
+  await lineOf(1, "Uçuş · İstanbul → Porto").evaluate((el) => el.scrollIntoView({ block: "center" })); // "IfNeeded" leaves a visible line under the sticky bar
   await checkIn.locator(".dg-grip").dragTo(lineOf(1, "Uçuş · İstanbul → Porto"), { targetPosition: { x: 200, y: 4 } });
   await app.waitForFunction(() => document.querySelector(".dg-day .dg-tl > li")?.getAttribute("data-title") === "Check-in · Porto konaklaması");
   assert.deepEqual(await day1(), ["Check-in · Porto konaklaması", "Uçuş · İstanbul → Porto", "Havalimanı transferi"]);
@@ -842,6 +842,7 @@ try {
   await home.locator(".pk-aldim").waitFor(); // v11: chosen, not bought: "✓ Aldım" on its top line, its ground cream
   await home.getByRole("button", { name: "Bileti aldım" }).click();
   await home.locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
+  await app.locator(".bk-sheet").waitFor({ state: "detached" }); // the undone booking's window has finished leaving
   // Its window: the booking's rows (the flight, from and to with their hours), its files or "Belge eksik · ekle",
   // Değiştir · İptal ettim · Rezervasyonu geri al · Tüm detaylar · Kapat; Esc closes it.
   await home.locator(".pk-body").click();
@@ -1565,7 +1566,8 @@ try {
   await app.setViewportSize({ width: 560, height: 2600 });
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.mouse.move(0, 0);
-  assert.equal(await opacity(douroCard().locator(".pk-x")), "0.55");
+  assert.equal(await opacity(douroCard().locator(".ax-tools")), "1", "an activity card's tools are there without a hover when narrow");
+  assert.equal(await opacity(douroCard().locator(".pk-x")), "1");
   await app.screenshot({ path: `${out}/4i-plan-narrow-032.png` });
   await app.setViewportSize({ width: 1440, height: 2600 });
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
@@ -1622,14 +1624,15 @@ try {
   await box("Giriş").press("Enter");
   await app.locator("#block-2026-10-09 .stay-open", { hasText: "Casa do Rio" }).waitFor();
   assert.match(await apart.innerText(), /9 Ekim – 10 Ekim · 1 gece/);
-  // × on the stay apart: gone (its night goes back to Jardim Stay), then back with "Geri al", then gone for good.
+  // × on the stay apart (v30): it folds into "kaldırıldı · Neden?"; "Geri al" brings it back, "Gerek yok" deletes it (its night goes back to Jardim Stay).
   await apart.hover();
-  await apart.getByRole("button", { name: "Casa do Rio: sil" }).click();
-  await apart.waitFor({ state: "detached" });
-  await app.locator(".pk-undo", { hasText: "Casa do Rio silindi" }).getByRole("button", { name: "Geri al" }).click();
+  await apart.getByRole("button", { name: "Casa do Rio: gerek yok" }).click();
+  const folded = app.locator(".pk-fold", { hasText: "Casa do Rio" });
+  await folded.getByRole("button", { name: "Geri al" }).click();
   await apart.waitFor();
   await apart.hover();
-  await apart.getByRole("button", { name: "Casa do Rio: sil" }).click();
+  await apart.getByRole("button", { name: "Casa do Rio: gerek yok" }).click();
+  await folded.getByRole("button", { name: "Gerek yok" }).click();
   await apart.waitFor({ state: "detached" });
   // A saved page corrected where it stands: the title, then the page's value back from the hint.
   const douroId = await douroCard().getAttribute("data-item-id");
@@ -3328,7 +3331,9 @@ try {
   const transfers = ekSec("transport").locator(".ek-card.pk-leg");
   assert.ok((await transfers.count()) >= 2, "the transfers with no plan are empty cards");
   const firstLeg = transfers.first();
-  assert.equal(await firstLeg.locator(".ek-state").innerText(), "Nasıl gideceğin belli değil");
+  // v30: a change of city says "Nasıl gideceğin belli değil" on top and offers the ways ("Seç, ben arayayım"); a plain transfer keeps the old line.
+  assert.match(await firstLeg.locator(".ek-state").innerText(), /^(Seç, ben arayayım|Nasıl gideceğin belli değil)$/);
+  if ((await firstLeg.locator(".ek-state").innerText()).startsWith("Seç")) assert.equal(await firstLeg.locator(".ek-undec-how").innerText(), "Nasıl gideceğin belli değil");
   const legLinks = await hrefs(firstLeg);
   assert.deepEqual(legLinks.map(([b]) => b), ["uber", "maps"]);
   assert.match(decodeURIComponent(legLinks[0][1]), /^https:\/\/m\.uber\.com\/ul\/\?action=setPickup&.*dropoff\[formatted_address\]=/);
