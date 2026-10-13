@@ -22,7 +22,8 @@ function useTip({ align, below }: { align: "left" | "right"; below: boolean }) {
   const open = () => {
     const r = trigger.current?.getBoundingClientRect();
     if (!r) return;
-    const edge = align === "right" ? { right: Math.max(8, window.innerWidth - r.right) } : { left: Math.max(8, Math.min(r.left, window.innerWidth - WIDTH - 8)) };
+    // The right edge lines up with the trigger's, unless that would push the box off the left of a narrow screen: then it is the left that lines up.
+    const edge = align === "right" && r.right - WIDTH >= 8 ? { right: Math.max(8, window.innerWidth - r.right) } : { left: Math.max(8, Math.min(r.left, window.innerWidth - WIDTH - 8)) };
     // Over the trigger (under it for `below`), unless that side has no room and the other has.
     const roomAbove = r.top;
     const roomBelow = window.innerHeight - r.bottom;
@@ -68,7 +69,7 @@ function useTip({ align, below }: { align: "left" | "right"; below: boolean }) {
   const box = (tip: ReactNode, extra = "", interactive = false) =>
     at &&
     createPortal(
-      <span role="tooltip" id={id} onMouseEnter={interactive ? keep : undefined} onMouseLeave={interactive ? () => closeSoon() : undefined} className={`tipx-box${align === "right" ? " right" : ""}${at.under ? " below" : ""}${extra}`} style={{ left: at.left, right: at.right, top: at.top, bottom: at.bottom, maxWidth: `min(${WIDTH}px, calc(100vw - 16px))` }}>
+      <span role="tooltip" id={id} onMouseEnter={interactive ? keep : undefined} onMouseLeave={interactive ? () => closeSoon() : undefined} className={`tipx-box${at.right != null ? " right" : ""}${at.under ? " below" : ""}${extra}`} style={{ left: at.left, right: at.right, top: at.top, bottom: at.bottom, maxWidth: `min(${WIDTH}px, calc(100vw - 16px))` }}>
         {tip}
       </span>,
       document.body,

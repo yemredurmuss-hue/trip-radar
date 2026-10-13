@@ -9,7 +9,7 @@ Kural: paket bitince bu tabloyu güncelle, commit + push et. Yayın yalnız F10 
 | P1a ⓘ balonu | bitti | 138f7b2 | InfoButton + HoverTip(button); flightPeek/stayPeek/transferPeek, PNR yalnız uçuş günü; Peek.tsx kalktı |
 | P1b niyet etiketi | bitti | 41835e1 | IntentChip + intentOf; tarih yoksa yalnız şehir, kamp/karavan "Kamp · yer"; "ayrı konaklama" bloğu görselsiz olduğundan etiketsiz (F10 bakar) |
 | P1c köşe yüzü | bitti | dc63a10 | SavedFace (kart köşesi, arka yüz karosu, fikir karosu, Pano); etkinlik kartındaki minik yüz P6 (ActivityBoard) ile gelir |
-| P1d Pano ferah | bitti | 0ebfdf9 (+ ara kayıt ceb22d4) | sütun 296-316, ucus.png, kişi başı fiyat tripPeople ile; uçuş şeridi/seçenek satırı P2'de |
+| P1d Pano ferah | bitti | 0ebfdf9 (+ ara kayıt ceb22d4; P1 doğrulaması: tsc, vitest 1870, build, tam e2e 56 adım yeşil) | sütun 296-316, ucus.png, kişi başı fiyat tripPeople ile; uçuş şeridi/seçenek satırı P2'de |
 | P8a hareket değerleri | bekliyor | | |
 | P8b reduced-motion + Hareketi duraklat | bekliyor | | |
 | P8e exitMotion testi | bekliyor | | |

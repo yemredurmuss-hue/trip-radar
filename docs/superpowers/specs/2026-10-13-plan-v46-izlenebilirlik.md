@@ -181,7 +181,7 @@ Eşlik eden belge: `docs/superpowers/specs/2026-10-13-plan-v45-kod-plani.md` (fa
 | KO07 | Otel giriş saati alt şeritte konaklamaya 2 gün kala; öncesinde "✓ Rezerve". | CANLI | zaten canlı; F0, F2, F3 dokunur, korunur (F10 doğrular) | ☐ |
 | KO08 | Seçenekli konaklama tek kart ("N seçenek ›"); seçilmiş/rezerve konaklama da v11 kartı (esk | CANLI | zaten canlı; F0, F2, F3, F4 dokunur, korunur (F10 doğrular) | ☐ |
 | KO09 | Konaklamanın bir kısmının boş kalması uyarısı (PlanEntry), iki rezervasyon çakışması (lib/ | CANLI | zaten canlı (v46'dan etkilenmez) | ☐ |
-| KO10 | Görselin sol üstünde niyet etiketi: yatak simgesi · Kyoto · "8–13 Nis · 5 gece"; tarih·gec | YAYINDA DEĞİL | F1b (niyet etiketi) | ☐ |
+| KO10 | Görselin sol üstünde niyet etiketi: yatak simgesi · Kyoto · "8–13 Nis · 5 gece"; tarih·gec | YAYINDA DEĞİL | F1b (niyet etiketi) | ☑ P1b |
 | UL01 | Solda büyük taşıt illüstrasyonu (tren, otobüs, araba, taksi, vapur, karavan); satırlar: bü | CANLI | zaten canlı; F0, F1, F3, F5a, F2 dokunur, korunur (F10 doğrular) | ☐ |
 | UL02 | Kiralık arabada saat yerine "Al 25 Tem 09:45 · Havalimanı → bırak 2 Ağu · Deák tér" satırı | CANLI | zaten canlı; F2 dokunur, korunur (F10 doğrular) | ☐ |
 | UL03 | Boş ulaşım (model nasıl gidileceğini bilmiyorsa): "Kyoto → Osaka · Nasıl gideceğin belli d | CANLI | zaten canlı; F2, F3, F5a dokunur, korunur (F10 doğrular) | ☐ |
@@ -270,7 +270,7 @@ Eşlik eden belge: `docs/superpowers/specs/2026-10-13-plan-v45-kod-plani.md` (fa
 | KM14 | Erişilebilirlik: kart gövdesi tıklanır, içindeki düğmeler ayrı (.pk-body ayrımı); article  | CANLI | zaten canlı; F0, F1, F3, F2 dokunur, korunur (F10 doğrular) | ☐ |
 | KM15 | Yalnız istisna işaretlenir (herkesin kartında yüz yok); bir kişiye ait kartta türün yanınd | CANLI | zaten canlı; F0, F2, F3 dokunur, korunur (F10 doğrular) | ☐ |
 | KM16 | forWho paylaşılan gezide paylaşılmaz (kayıtlar paylaşılmaz); kişi başı bütçe/masraf bölüşm | YAYINDA DEĞİL | KAPSAM AÇIĞI: forWho paylaşılan gezide paylaşılmaz, kişi başı bütçe/belge klasörü (paylaşım v2); v46 dışı, Emre kararı | ☐ |
-| KM17 | Kartın üst kenarında hover ikon şeridi (ActionStrip), uçuş ve transfer kartlarında bakış k | CANLI | zaten canlı; F1a dokunur, korunur (F10 doğrular) | ☐ |
+| KM17 | Kartın üst kenarında hover ikon şeridi (ActionStrip), uçuş ve transfer kartlarında bakış k | CANLI | zaten canlı; F1a dokunur, korunur (F10 doğrular) | ☑ P1a |
 | KM18 | Kim ne yaptı yüzlerde (WhoAvatar/✨), Pano sekmesinde "son ziyaretinden beri" noktası. | CANLI | zaten canlı; F0, F1d, F2 dokunur, korunur (F10 doğrular) | ☐ |
 | BK01 | Boş kart = onaylı kartın sade hâli: kesikli çerçeve, beyaz zemin; şehir adları bir boy küç | CANLI | zaten canlı; F2, F3, F5a dokunur, korunur (F10 doğrular) | ☐ |
 | BK02 | "Yer yok" (boş konaklama) Türkçede "dolu" gibi okunduğu için "Henüz otel yok" (gece UX den | CANLI | zaten canlı; F2, F3, F5a dokunur, korunur (F10 doğrular) | ☐ |
@@ -356,7 +356,7 @@ Eşlik eden belge: `docs/superpowers/specs/2026-10-13-plan-v45-kod-plani.md` (fa
 | K3b | Uydurma veri yok: fiyat, saat, süre, ülke/hava, açıklama yalnız kayıttan, hesaptan ya da k | CANLI | zaten canlı (v46'dan etkilenmez) | ☐ |
 | MD02 | Durum asla yalnız renkle anlatılmaz: yanında hep yazısı olur. | CANLI | zaten canlı; F0, F1, F3, F2 dokunur, korunur (F10 doğrular) | ☐ |
 | MD03 | Aşama malzemesi kesikli=Arıyoruz; alt satır solda bilgi sağda tek eylem; kimden = yüz (E,S | CANLI | zaten canlı; F4 dokunur, korunur (F10 doğrular) | ☐ |
-| MD04 | Kimden: yüz (E, S) ve "Önerimiz"; kaynak markası okunur etiketle yazılır. | ÇELİŞKİ | F0 + F1c (kimden: yüz + "Önerimiz"; S16 etiket birliği) | ☐ |
+| MD04 | Kimden: yüz (E, S) ve "Önerimiz"; kaynak markası okunur etiketle yazılır. | ÇELİŞKİ | F0 + F1c (kimden: yüz + "Önerimiz"; S16 etiket birliği) | ☑ P1c |
 | MD05 | Marka etiketi: kaynak kendi renginde okunur etiket (Booking.com · Airbnb · JR · Klook · Vi | ÇELİŞKİ | F6 + F10 (marka etiketi: etkinlikte site adı düğmesi; gri "Resmî site" metni yok: KAPSAM AÇIĞI küçük, karar F10'da) | ☐ |
 | MD06 | İngilizce: her yeni metin L("tr","en") çiftiyle yazılır. | CANLI | zaten canlı (v46'dan etkilenmez) | ☐ |
 | MD07 | Gezi türü yeni bölüm açmaz, bölüm adı değiştirmez, sıra değiştirmez (bölüm sırası sabit). | CANLI | zaten canlı (v46'dan etkilenmez) | ☐ |
@@ -374,23 +374,23 @@ Eşlik eden belge: `docs/superpowers/specs/2026-10-13-plan-v45-kod-plani.md` (fa
 | MD19 | Ayrı konaklama bloğunda ve boş gece bloğunda × (8 sn Geri al); boş geceler "Gerek yok" olu | CANLI | zaten canlı (v46'dan etkilenmez) | ☐ |
 | VB-A1 | Boş kart yerine "Önerimiz" taslağı: elinde gerçek seçenek varsa en uygunu kesikli mor çerç | YAYINDA DEĞİL | F7 | ☐ |
 | VB-A2 | Dördüncü görünüm "Önerimiz" durum sözlüğüne girer (Arıyoruz · Önerimiz · Seçildi · Rezerve | YAYINDA DEĞİL | F0 + F7 | ☐ |
-| VB-A3 | Kartın sol üst köşesinde (−9 px) küçük yüz (kim kaydetti / AI ✨); üstüne gelince "Önerimiz | YAYINDA DEĞİL | F1c | ☐ |
+| VB-A3 | Kartın sol üst köşesinde (−9 px) küçük yüz (kim kaydetti / AI ✨); üstüne gelince "Önerimiz | YAYINDA DEĞİL | F1c | ☑ P1c |
 | VB-A4 | Kartın alt satırında sol "Değiştir [N]" hap düğmesi (N = diğer seçenek); sağda fiyat; en s | YAYINDA DEĞİL | F3 (+F2 bilet alt satırı) | ☐ |
 | VB-B1 | Sade otel kartı: görsel + marka etiketi + puan rozeti + ad + tek satır ("İade yok" kırmızı | YAYINDA DEĞİL | F3 | ☐ |
-| VB-B2 | ⓘ düğmesi (20 px, sağ üst): hover/odak/dokunmada 250 px balon, "etiket · değer"; uçuş: Sef | YAYINDA DEĞİL | F1a | ☐ |
+| VB-B2 | ⓘ düğmesi (20 px, sağ üst): hover/odak/dokunmada 250 px balon, "etiket · değer"; uçuş: Sef | YAYINDA DEĞİL | F1a | ☑ P1a |
 | VB-B3 | "Rezerve et ↗" birincil düğme tüm Seçildi/Önerimiz kartlarında altta sağda (uçuşta "Bileti | ÇELİŞKİ | F2 + F3 (S5) | ☐ |
 | VB-C1 | Yatay tek bilet: sol ana bölüm (logo · havayolu · "· Gidiş · 1 Nis Çar" · ⓘ; sol şehir 23  | YAYINDA DEĞİL | F2 | ☐ |
 | VB-C2 | Koçan durum göstergesi: v37 46 px durum dairesi (Arıyoruz boş kesikli gri · Aranıyor dönen | ÇELİŞKİ | F2 (v38/v39: daire yok, aşama etiketi + kişi başı + Rezerve et; v37 dairesi geçersiz) | ☐ |
 | VB-C3 | Kişi başı fiyat büyük (19 px/800) + "kişi başı" + küçük "2 kişi · €1.960"; boşta "Tahmini  | YAYINDA DEĞİL | F2 | ☐ |
 | VB-C4 | Boş uçuş bileti: başlıkta uçak + "Uçuş"; orta metin "Aradığımız: direkt"; altta "N seçenek | YAYINDA DEĞİL | F2 | ☐ |
 | VB-C5 | Bilet alındı: alt satırda belge çipi (dosya adı) ya da "Belge eksik", sağda "Ayrıntı ›". | CANLI | zaten canlı (PlanCard.tsx:259-279); F2 korur; F10 doğrular | ☐ |
-| VB-D1 | Görselin sol üstünde niyet etiketi: yatak simgesi · Kyoto (kalın) · "8–13 Nis · 5 gece"; e | YAYINDA DEĞİL | F1b | ☐ |
+| VB-D1 | Görselin sol üstünde niyet etiketi: yatak simgesi · Kyoto (kalın) · "8–13 Nis · 5 gece"; e | YAYINDA DEĞİL | F1b | ☑ P1b |
 | VB-E1 | Arka yüz kartın yerinde biner, düzen kaymaz (ön yüz visibility:hidden, arka yüz satır geni | ÇELİŞKİ | F4 | ☐ |
 | VB-E2 | Arka yüz iki bölüm: "Kaydettikleriniz" (kişi/eklenti) ve "Önerimiz" (AI); her biri en çok  | YAYINDA DEĞİL | F4 | ☐ |
 | VB-E3 | Karo: üstte görsel ya da uçuşta logo + "01:55 → 19:25"; köşede yüz; etiket Seçili / Kartta | YAYINDA DEĞİL | F4 | ☐ |
 | VB-E4 | "Kendin ara" kutucuğu (Kaydettikleriniz ızgarasının son karosu, marka bağlantıları) ve "AI | YAYINDA DEĞİL | F4 | ☐ |
 | VB-E5 | v30: "en çok 7 seçenek, son kare '+N daha · Pano'da büyük aç'"; v37: 3+1 karo. İki sayı çe | ÇELİŞKİ | F4 (3+3 karar) | ☐ |
-| VB-F1 | Pano şerit sütunu 296–316 px (v30 mock 264–280; canlı .pn-strip 250–272), "Neden?" yandaki | YAYINDA DEĞİL | F1d (+F2 uçuş kartı) | ☐ |
+| VB-F1 | Pano şerit sütunu 296–316 px (v30 mock 264–280; canlı .pn-strip 250–272), "Neden?" yandaki | YAYINDA DEĞİL | F1d (+F2 uçuş kartı) | ☑ P1d |
 | VB-S1 | Taslak nasıl onaylanır? (v37'de "Bunu seç" yok.) Öneri: kartta küçük "✓ Bunu seç" ya da "R | YAYINDA DEĞİL | F7 (§2.1 S1) | ☐ |
 | VB-S2 | Taslak kalıcı mı görünüm mü? Öneri: yazmayan görünüm (byRank[0]); sayımlar: taslak "karar  | YAYINDA DEĞİL | F7 (S2) | ☐ |
 | VB-S3 | Taslak kimlere (yalnız uçuş+otel mi, tren/eSIM/sigorta da)? Kaç seçenekle (1 yeter mi)? "G | YAYINDA DEĞİL | F7 (S3) | ☐ |
@@ -403,7 +403,7 @@ Eşlik eden belge: `docs/superpowers/specs/2026-10-13-plan-v45-kod-plani.md` (fa
 | VB-S10 | Omurga → Aranıyor → Sonuçlar akışı ürün davranışı mı, yalnız çizim kontrolü mü? Ürünse: he | YAYINDA DEĞİL | F2 (S10: çizim aracı, ürün değil) | ☐ |
 | VB-S11 | Pano'da taslak: çizimde taslak seçenek Pano kartında "Planda" şeridi alıyor; taslak için " | YAYINDA DEĞİL | F7 (S11) | ☐ |
 | VB-S12 | Yolcu sayısı: Pano ve bilet "kişi başı = toplam / 2" sabit varsayıyor; gerçekte item.guest | YAYINDA DEĞİL | F2 (S12) | ☐ |
-| VB-S13 | Niyet etiketi kamp/karavan/ayrı konaklama ("Bu geceler ayrı konaklama") ve tarihsiz gezide | YAYINDA DEĞİL | F1b (S13) | ☐ |
+| VB-S13 | Niyet etiketi kamp/karavan/ayrı konaklama ("Bu geceler ayrı konaklama") ve tarihsiz gezide | YAYINDA DEĞİL | F1b (S13) | ☐ (P1b kısmen: kamp, karavan ve tarihsiz gezide etiket tamam; "ayrı konaklama" bloğu görselsiz olduğundan etiket almadı (F10 karar)) |
 | VB-S14 | Rezerve uçuşta fiyat: v30 "Rezerve · €1.960 · 2 yolcu"; v37 kişi başı büyük + "2 kişi · €1 | YAYINDA DEĞİL | F2 (S14) | ☐ |
 | VB-S15 | "Kaydettikleriniz" tanımı: who !== AI (kişi + eklenti + Pano linki). "Yeni" etiketi ne kad | YAYINDA DEĞİL | F4 (S15) | ☐ |
 | VB-S16 | Dil/etiket birliği: "Seçili" (karo) / "Seçildi" (kart) / "Kartta" (taslak karo) / "Önerimi | YAYINDA DEĞİL | F0 + F4 (S16) | ☐ |
@@ -515,7 +515,7 @@ Eşlik eden belge: `docs/superpowers/specs/2026-10-13-plan-v45-kod-plani.md` (fa
 | K22 | Karta git + parla (.flash) | CANLI | zaten canlı (v46'dan etkilenmez) | ☐ |
 | K23 | Aşama halkası/çubuk dolumu | CANLI | zaten canlı (v46'dan etkilenmez) | ☐ |
 | K24 | Kendin ara çipi, kart araç şeridi, tooltip | CANLI | zaten canlı; F0, F2, F3, F6, F8 dokunur, korunur | ☐ |
-| K25 | ⓘ düğmesi balonu (v34+: 250 px balon, odakla/dokunmayla) | YAYINDA DEĞİL | F1a + F8d #16 (ⓘ balonu tipx-in .14 sn) | ☐ |
+| K25 | ⓘ düğmesi balonu (v34+: 250 px balon, odakla/dokunmayla) | YAYINDA DEĞİL | F1a + F8d #16 (ⓘ balonu tipx-in .14 sn) | ☐ (P1a bitti, F8d #16 (ⓘ açılış hareketi) bekliyor) |
 | K26 | Kalp/beğeni zıplaması | ÇELİŞKİ | F8d #16 (kalp .25 sn) | ☐ |
 | K27 | Kart fotoğrafı bulanıklıktan çıkar (gezi kartı) | CANLI | zaten canlı; F8 dokunur, korunur | ☐ |
 | P1 | Plan ⇄ Pano sekme çizgisi ve görünüm geçişi | CANLI | zaten canlı; F0, F1d, F2, F8 dokunur, korunur | ☐ |
@@ -655,10 +655,10 @@ Kaynak: v46 HTML'indeki işlevler (`hero`, `secBlock`, `ticket3`, `mvTicket`, `e
 | V46-28 | Onay kutusu (`confirmBox`, `dialog`) rezervasyon silme | zaten canlı (confirm); §2.3-9 | ☐ |
 | V46-29 | Kart ayrıntı penceresi rezerve (`openDetail`, `detailHtml`: kimden, belge, değişiklik, İptal ettim) | zaten canlı (BookingSheet.tsx); F0 rozet | ☐ |
 | V46-30 | Kart menüsü ••• (`openMenu`: Düzenle, Kimin için?, Gerek yok…) ve ActionStrip | zaten canlı (CardMenu/ActionStrip); §2.3-5 | ☐ |
-| V46-31 | Köşe yüzü (kim kaydetti/AI) kartta, karoda, etkinlikte, mini kartta | F1c | ☐ |
-| V46-32 | ⓘ bilgi balonu (`infoBtn`) uçuş, otel, ulaşım | F1a | ☐ |
+| V46-31 | Köşe yüzü (kim kaydetti/AI) kartta, karoda, etkinlikte, mini kartta | F1c | ☐ (P1c: kart, arka yüz karosu, fikir karosu bitti; etkinlik kartı (P6) ve Yolculuk mini kartı (P5b) bekliyor) |
+| V46-32 | ⓘ bilgi balonu (`infoBtn`) uçuş, otel, ulaşım | F1a | ☑ P1a |
 | V46-33 | Tek "satın alındı" rozeti `okt` (bilet, otel, ulaşım, etkinlik, Gün gün, Yolculuk, Pano) | F0 | ☑ P0 |
-| V46-34 | Pano sayfası: kategori çipleri, arama, uçuş şeridi/kartı (pfRow), otel/etkinlik kartları, kalp, uyum, "Neden?", Planda/Önerimiz şeridi, Karşılaştır (`panoPage`) | F1d + F2 + F0 + F7 (S11) | ☐ |
+| V46-34 | Pano sayfası: kategori çipleri, arama, uçuş şeridi/kartı (pfRow), otel/etkinlik kartları, kalp, uyum, "Neden?", Planda/Önerimiz şeridi, Karşılaştır (`panoPage`) | F1d + F2 + F0 + F7 (S11) | ☐ (P1d bitti (sütun, ucus.png, kişi başı); uçuş şeridi/kartı P2, taslak şeridi P7 bekliyor) |
 | V46-35 | Pano karşılaştırma tablosu | zaten canlı (Pano.tsx table); F0 rozet; F10 | ☐ |
 | V46-36 | Yolculuk sırasıyla (v46): Yola çıkış, uçuş, ulaşım, şehir başlığı, otel, etkinlik kartları, yapılacak kutusu, Eve dönüş (`storyView`, `jf*`, `jc*`, `jsEv`) | F5b | ☐ |
 | V46-37 | Gün gün görünümü (`dayView`): gün kutusu, o günün satırları, "Gece: şehir" | zaten canlı (DayCards.tsx); F0 rozet (dg-lab → BookedBadge); F10 | ☐ |

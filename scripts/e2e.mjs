@@ -5045,7 +5045,8 @@ try {
   await app.mouse.move(2, 2);
   const at0 = await flight.evaluate((el) => getComputedStyle(el).transform);
   await flight.hover({ position: { x: 60, y: 60 } });
-  await app.waitForTimeout(400);
+  // (the lift takes 180 ms; a busy machine may take longer to show it: wait for it)
+  await app.waitForFunction((el) => getComputedStyle(el).transform === "matrix(1, 0, 0, 1, 0, -2)", await flight.elementHandle(), { timeout: 4000 });
   assert.equal(await flight.evaluate((el) => getComputedStyle(el).transform), "matrix(1, 0, 0, 1, 0, -2)", "yükselme: the card lifts 2 px on hover");
   assert.equal(at0, "none");
   await app.mouse.move(2, 2);
