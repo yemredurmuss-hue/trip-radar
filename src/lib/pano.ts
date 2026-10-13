@@ -91,6 +91,13 @@ export function inState(e: PanoEntry, state: PanoState): boolean {
   return state === "plan" ? e.inPlan != null : e.open && e.inPlan == null;
 }
 
+/** "Yeni": saved by a person (not our pick) in the last 48 hours and not yet seen on this device. */
+export const FRESH_MS = 48 * 3600 * 1000;
+export const seenKey = (tripId: string): string => `trip-radar:seen:${tripId}`;
+export function freshIds(items: Item[], seen: ReadonlySet<string>, now = Date.now()): Set<string> {
+  return new Set(items.filter((i) => !isAiOption(i) && !seen.has(i.id) && now - (i.createdAt ?? 0) < FRESH_MS).map((i) => i.id));
+}
+
 const priceOf = (i: Item): number => (i.price.amount != null && i.price.amount > 0 ? i.price.amount : Number.POSITIVE_INFINITY);
 const addedAt = (i: Item): number => i.createdAt ?? 0;
 

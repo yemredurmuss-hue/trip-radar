@@ -5141,6 +5141,82 @@ try {
   assert.ok(seen.size >= 3, `sayaç: the figure passed through numbers on its way (${[...seen].join(" → ")})`);
   void total;
 
+  // × katlama satırı (#7): the empty card folds into its row, which rises 6 px over 300 ms; "Geri al" puts the card back.
+  const emptyCard = app.locator(".ek-card").first();
+  await emptyCard.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await emptyCard.hover();
+  await emptyCard.locator(".pk-x").click();
+  const foldRow = app.locator(".pk-fold").first();
+  await foldRow.waitFor();
+  assert.deepEqual(await foldRow.evaluate((el) => [getComputedStyle(el).animationName, getComputedStyle(el).animationDuration]), ["mv-rise-s", "0.3s"], "× satırı: rises in 300 ms");
+  await foldRow.getByRole("button", { name: "Geri al" }).click();
+  await foldRow.waitFor({ state: "detached" });
+
+  // Geri alma bildirimi (#15): comes up from 20 px in 300 ms (--e-out), the countdown ring is still 8 s; when it goes it fades with a still copy.
+  const douro = app.locator(".ev-card", { hasText: "Douro tekne turu" }).first();
+  await douro.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await douro.getByRole("button", { name: "Kart menüsü" }).click();
+  await douro.getByRole("menuitem", { name: "Sil" }).click();
+  const toast = app.locator(".pk-undo:not(.mv-leaving)", { hasText: "Douro tekne turu silindi" });
+  await toast.waitFor();
+  assert.deepEqual(await toast.evaluate((el) => [getComputedStyle(el).animationName, getComputedStyle(el).animationDuration]), ["mv-toast", "0.3s"], "toast: comes up in 300 ms");
+  assert.equal(await toast.locator(".pk-undo-ring .run").evaluate((el) => getComputedStyle(el).animationDuration), "8s", "toast: the countdown ring is unchanged");
+  await toast.getByRole("button", { name: "Geri al" }).click();
+  await app.locator(".pk-undo.mv-leaving").first().waitFor({ state: "attached", timeout: 3000 });
+  await app.waitForFunction(() => !document.querySelector(".pk-undo.mv-leaving"), null, { timeout: 3000 });
+
+  // Sohbet mesajı girişi (#14), ⓘ balonu (#16): the rules the chat's messages and the balloon carry (a message is only drawn while a chat runs).
+  const rules = await app.evaluate(() => {
+    const probe = document.createElement("div");
+    probe.className = "msg-assistant";
+    document.body.appendChild(probe);
+    const msg = [getComputedStyle(probe).animationName, getComputedStyle(probe).animationDuration];
+    probe.remove();
+    const tip = document.createElement("div");
+    tip.className = "tipx-box";
+    document.body.appendChild(tip);
+    const balloon = [getComputedStyle(tip).animationName, getComputedStyle(tip).animationDuration];
+    tip.remove();
+    return { msg, balloon };
+  });
+  assert.deepEqual(rules, { msg: ["mv-rise-s", "0.26s"], balloon: ["tipx-in", "0.14s"] }, "chat message rises in 260 ms; the ⓘ balloon in 140 ms");
+
+  // Pano: "Yeni" until seen (with the ring of a card that just came), the strip's cards marked for the opening, "Neden?" unfolds, the heart springs.
+  await app.getByRole("tab", { name: /Pano/ }).click();
+  await app.locator(".pn-card").first().waitFor();
+  assert.ok((await app.locator(".pn-grid[data-pit-children]").count()) > 0, "Pano: the strips are marked for the opening");
+  assert.ok((await app.locator(".pn-card.ar-new .pn-new").count()) > 0, "Pano: what came since the last visit says Yeni and carries the ring");
+  const heartMotion = await app.locator(".pn-heart").first().evaluate((el) => [getComputedStyle(el).transitionDuration, getComputedStyle(el).transitionTimingFunction]);
+  assert.deepEqual(heartMotion, ["0.25s", "cubic-bezier(0.2, 1.6, 0.4, 1)"], "the heart springs in 250 ms");
+  const why = app.locator(".pn-card:has(.pn-why)").first();
+  await why.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  const detail = why.locator(".pn-detail");
+  assert.equal(await detail.evaluate((el) => el.getBoundingClientRect().height), 0, "Neden?: closed, no height");
+  assert.equal(await detail.evaluate((el) => getComputedStyle(el).transitionDuration), "0.4s", "Neden?: opens over 400 ms");
+  await why.locator(".pn-why").click();
+  await app.waitForFunction((el) => el.getBoundingClientRect().height > 20, await detail.elementHandle(), { timeout: 3000 });
+  await app.waitForTimeout(450);
+  assert.match(await why.locator(".pn-chev").evaluate((el) => getComputedStyle(el).transform), /^matrix\(-1/, "Neden?: the arrow has turned");
+  await why.locator(".pn-why").click();
+  // A second visit has seen it all: no "Yeni", no ring.
+  await app.getByRole("tab", { name: /^Plan/ }).first().click();
+  await app.getByRole("tab", { name: /Pano/ }).click();
+  await app.locator(".pn-card").first().waitFor();
+  assert.equal(await app.locator(".pn-new, .pn-card.ar-new").count(), 0, "Pano: seen once, no Yeni the next time");
+
+  // Yer tutucu cümleler (#12): three hints turn over 9 s while the home box is empty and left alone; focus stops them and the first stays.
+  await app.getByRole("button", { name: "Seyahatlerim" }).first().click();
+  const homeBox = app.getByLabel("Gezi kutusu");
+  await homeBox.waitFor();
+  assert.equal(await app.locator(".st-ph i").count(), 3, "three hints turn");
+  assert.deepEqual(await app.locator(".st-ph i").first().evaluate((el) => [getComputedStyle(el).animationName, getComputedStyle(el).animationDuration]), ["phc", "9s"], "the hints turn over 9 s");
+  await homeBox.focus();
+  assert.equal(await app.locator(".st-ph").count(), 0, "focus stops the turning");
+  assert.match(await homeBox.getAttribute("placeholder"), /^Bali'ye 3 hafta/, "…and the first hint stays");
+  await homeBox.blur();
+  await app.getByText("Portekiz (örnek)").first().click();
+  await app.locator(".cat-plan").waitFor();
+
   // The window leaves with a still copy (exitMotion.ts): out of the flow, hidden from readers, without ids, gone within a moment.
   const settingsTab = await motion.newPage();
   await settingsTab.goto(`chrome-extension://${id}/app.html#settings`);
@@ -5168,7 +5244,7 @@ try {
   await settingsTab.getByLabel("Hareketi duraklat", { exact: false }).uncheck();
   assert.equal(await settingsTab.evaluate(() => localStorage.getItem("trip-radar:still")), null);
   await settingsTab.close();
-  console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, each on its own and over within a moment");
+  console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, × satırı, geri alma bildirimi, sohbet mesajı, ⓘ balonu, yer tutucu cümleler, Pano (Yeni, Neden?, kalp), each on its own and over within a moment");
 } finally {
   await motion.close();
 }
@@ -5243,11 +5319,22 @@ try {
   assert.equal(await scripted(), 0, "a reload doesn't play it again");
   assert.equal(await faint(), 0, "a reload shows everything at once");
 
+  // The Pano has a small opening of its own (once per trip): its cards come in one by one; a second visit is still.
+  await app.getByRole("tab", { name: /Pano/ }).click();
+  await app.waitForFunction(() => document.getAnimations().some((x) => !("animationName" in x)), null, { timeout: 3000 });
+  await app.waitForTimeout(1500);
+  assert.equal(await scripted(), 0, "the Pano's opening ends by itself");
+  await app.getByRole("tab", { name: /^Plan/ }).first().click();
+  await app.getByRole("tab", { name: /Pano/ }).click();
+  await app.waitForTimeout(300);
+  assert.equal(await scripted(), 0, "the Pano doesn't open a second time");
+
   // A key ends it at once: opened afresh, one key press and everything is in place, below the fold too.
   await app.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("trip-radar:opened:")).forEach((k) => localStorage.removeItem(k)));
   await app.getByRole("button", { name: "Seyahatlerim" }).first().click();
   await app.getByText("Portekiz (örnek)").first().click();
-  await app.waitForFunction(() => document.getAnimations().some((x) => !("animationName" in x)), null, { timeout: 3000 });
+  // (the hero's own pieces: another script animation on the way in must not stand in for the opening)
+  await app.waitForFunction(() => document.getAnimations().some((x) => !("animationName" in x) && !("transitionProperty" in x) && x.effect?.target?.closest?.(".hx-story")), null, { timeout: 5000 });
   await app.keyboard.press("Shift");
   await app.waitForTimeout(150);
   assert.equal(await scripted(), 0, "ended at once: nothing left running");

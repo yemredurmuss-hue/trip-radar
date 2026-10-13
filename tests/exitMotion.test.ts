@@ -47,7 +47,7 @@ const el = (classes: string[], id: string | null = "x"): FakeEl => {
 
 describe("exitMotion: what leaves with a copy", () => {
   it("names the windows and drawers of the entrance block", () => {
-    for (const c of [".modal", ".overlay", ".drawer", ".compare-modal", ".pk-sheet-back"]) expect(LEAVING).toContain(c);
+    for (const c of [".modal", ".overlay", ".drawer", ".compare-modal", ".pk-sheet-back", ".pk-undo"]) expect(LEAVING).toContain(c);
     expect(EXIT_MS).toBeGreaterThanOrEqual(260);
     expect(EXIT_MS).toBeLessThanOrEqual(400);
   });
