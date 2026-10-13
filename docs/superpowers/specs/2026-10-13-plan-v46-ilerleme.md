@@ -20,9 +20,9 @@ Kural: paket bitince bu tabloyu güncelle, commit + push et. Yayın yalnız F10 
 | P5a ulaşım kartı | bitti (birleşti) | 76cd9d5 | |
 | P5b Yolculuk görünümü | bitti (birleşti) | 5069224 | |
 | P6 etkinlikler şehre göre | bitti (birleşti) | 543b2b4 | |
-| P7 taslak Önerimiz | bekliyor | | |
-| P8c aşama geçişi (K29) | bekliyor | | |
+| P7 taslak Önerimiz | bitti (birleşti) | 67814c3, birleşme d2eff45 | denetimde doğrulandı |
+| P8c aşama geçişi (K29) | bitti (birleşti) | 73da513, birleşme eb55e72 | denetimde doğrulandı |
 | P8d kalan hareketler | bitti (birleşti) | 19a2ef6 | |
-| P9b son temizlik | bitti (birleşme bekliyor) | dal `plan-v46-temizlik` | ölü bileşen/export/CSS silindi (176 kural), bayat belgeler ve envanter durumları güncellendi; Mascot wink, WorldFlight, st-map-* silinmedi, `2026-10-13-plan-v46-silme-onerileri.md`; tsc, vitest, build, tam e2e yeşil |
-| P10 bitiş denetimi | bekliyor | | |
+| P9b son temizlik | bitti (birleşti) | 2fe397f | ölü bileşen/export/CSS silindi (176 kural), bayat belgeler ve envanter durumları güncellendi; Mascot wink, WorldFlight, st-map-* silinmedi, `2026-10-13-plan-v46-silme-onerileri.md`; tsc, vitest, build, tam e2e yeşil |
+| P10 bitiş denetimi | denetim yapıldı: yayın kapısı KAPALI | dal `plan-v46-denetim` | 41 açık satır, 5 HATA (H1 Seçildi yazısı, H2 ve H3 390 px taşma, H4 rötar kutusu, H5 belgeler): `2026-10-13-plan-v46-fark-raporu.md` |
 | Yayın | bekliyor | | |
