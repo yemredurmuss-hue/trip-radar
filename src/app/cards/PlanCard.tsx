@@ -6,7 +6,7 @@ import { brandOf } from "../../lib/brands";
 import { RideCardBody, RouteArc } from "./RideCard";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { cardFacts, durationText } from "../../lib/cardFacts";
-import { cardKind, isTransportKind, type LegEnds } from "../../lib/cardKinds";
+import { cardKind, isTransportKind, type LegEnds, type TransportMode } from "../../lib/cardKinds";
 import { bookedAs, footOf, mediaFace, ringOf, stayPlatform, topDate, transportFace } from "../../lib/cardView";
 import type { Choice, Ranked } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
@@ -21,8 +21,10 @@ import { chooseItem, setArranged, setInstalled, setItemStatus, setOwner } from "
 import { CopyText } from "../CopyButton";
 import { dropsIn, useJustBecame, useJustChanged } from "../motion";
 import type { CityWeather } from "../../lib/climate";
-import { flightPeek } from "../../lib/cardPeek";
-import { FlightPeekBox } from "./Peek";
+import { flightPeek, stayPeek, transferPeek, type PeekCtx } from "../../lib/cardPeek";
+import { FactsBox } from "./InfoButton";
+import { useMyName } from "../Profile";
+import { saverName } from "../../lib/pano";
 import { WhoAvatar, WhoseBadge, usePhotoOf, useWhoCtx } from "./WhoseBadge";
 import { isUnnamedMe, peopleOf, whoseOf } from "../../lib/whose";
 import { sameName } from "../../lib/tripSettings";
@@ -213,7 +215,16 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
     </>
   );
   const transport = isTransportKind(kind);
-  const flightFacts = kind === "flight" ? flightPeek(item) : [];
+  const rating = kind === "stay" ? stayRatingOf(item) : null;
+  // The ⓘ balloon (a flight, a stay, a way of travel): what the record holds beyond the face; the booking code only on the flight's day.
+  const peekCtx: PeekCtx = {
+    today: env.today,
+    from: saverName(item, useMyName() || null),
+    ends: env.legEnds.get(item.id),
+    rating: kind === "stay" ? [rating?.value, rating?.word, rating?.count].filter(Boolean).join(" · ") || null : null,
+    total: facts.price?.perNight ? facts.price.text : null,
+  };
+  const peekFacts = kind === "flight" ? flightPeek(item, peekCtx) : kind === "stay" && !camp ? stayPeek(item, peekCtx) : transport ? transferPeek(item, kind as TransportMode, peekCtx) : [];
   // A booked flight's real data (0.36.18): its number in the header, the terminals by the codes, boxes for
   // what's known on its day, red when it's late; the ticket against the schedule and the source at the foot.
   const booked = kind === "flight" && item.status === "booked";
@@ -274,7 +285,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
         ) : null
       }
       menu={menu}
-      peek={flightFacts.length ? <FlightPeekBox facts={flightFacts} /> : null}
+      info={peekFacts.length ? <FactsBox facts={peekFacts} /> : null}
       open={open}
       onToggle={() => (item.status === "booked" && !["taxi", "note", "todo"].includes(kind) ? setSheet(true) : flips ? onChange!() : setOpen(!open))}
       body={
@@ -294,7 +305,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
           <MediaCardBody face={mediaFace(item, kind, facts.source)} kind={kind} score={facts.score} best={best} city={item.city}
             art={kind === "stay" ? stayArt(item, stayPlatform(item) === "Airbnb") : undefined}
             brand={kind === "stay" ? brandOf(facts.source?.label, facts.source?.host) : null} area={kind === "stay" ? (item.location.area ?? null) : null}
-            rating={kind === "stay" ? stayRatingOf(item) : null} cancel={kind === "stay" ? cancelLineOf(item, env.today) : null}
+            rating={rating} cancel={kind === "stay" ? cancelLineOf(item, env.today) : null}
             nights={kind === "stay" && item.dates.start && item.dates.end ? nightsBetween(item.dates.start.slice(0, 10), item.dates.end.slice(0, 10)) : null} />
         )
       }

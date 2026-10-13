@@ -11,6 +11,7 @@ import { L } from "./i18n";
 import { capitalize, nNights } from "./i18nText";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
 import { groupKeyOf, stayRange } from "./plan";
+import { sameName } from "./tripSettings";
 import { voteKeyOf, type Vote } from "./share/votes";
 import type { Item } from "./types";
 
@@ -54,6 +55,27 @@ export function panoEntries(items: Item[], decisions?: Map<string, GroupDecision
  * field (a sample's saved stay has no capture either): it counts as the traveller's own.
  */
 export const isAiOption = (item: Item): boolean => item.addedBy === "ai";
+
+/** Who saved it: "ai", a fellow traveller's name, or null (the board's owner). */
+export const adderOf = (item: Item): string | null => (isAiOption(item) ? "ai" : (item.addedBy ?? null));
+
+/** Whether the board's owner saved it (no one else did). */
+export const savedByMe = (item: Item, me: string | null): boolean => {
+  const who = adderOf(item);
+  return who !== "ai" && (!who || Boolean(me && sameName(who, me)));
+};
+
+/** Who saved it, as a name: "Önerimiz (AI)", a fellow traveller, or me (my name, else "Sen"). */
+export function saverName(item: Item, me: string | null): string {
+  if (isAiOption(item)) return L("Önerimiz (AI)", "Our pick (AI)");
+  return savedByMe(item, me) ? me || L("Sen", "You") : item.addedBy!;
+}
+
+/** The same as a sentence, for a face's tip: "Sabine kaydetti", "Sen kaydettin", "Önerimiz (AI)". */
+export function savedByText(item: Item, me: string | null): string {
+  if (isAiOption(item)) return L("Önerimiz (AI)", "Our pick (AI)");
+  return savedByMe(item, me) ? L("Sen kaydettin", "You saved it") : L(`${item.addedBy} kaydetti`, `${item.addedBy} saved it`);
+}
 
 /** Who liked it (the board's owner as their name, or "me" when they have none yet). */
 export const likersOf = (item: Item): string[] => item.likedBy ?? [];

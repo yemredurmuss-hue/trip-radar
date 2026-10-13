@@ -11,7 +11,7 @@ import { kindLabel, LegBody } from "../LegRow";
 import { legPeek, legPeekHasFacts } from "../../lib/cardPeek";
 import { BookedBadge } from "./BookedBadge";
 import { CardFoot, CardShell, type MenuEntry } from "./CardShell";
-import { LegPeekBox } from "./Peek";
+import { LegFactsBox } from "./InfoButton";
 import { DocAccess } from "./DocAccess";
 import { useCardEnv } from "./PlanCard";
 import { TransportArt } from "./Silhouettes";
@@ -45,7 +45,7 @@ export function LegCard({ leg }: { leg: Leg }) {
       topAction={v.badge ? <BookedBadge look={v.badge} as="ticket" /> : undefined}
       docs={own ? <DocAccess item={own} docs={env.docsFor(own.id)} /> : undefined}
       menu={menu}
-      peek={legPeekHasFacts(peek) ? <LegPeekBox peek={peek} /> : null}
+      info={legPeekHasFacts(peek) ? <LegFactsBox peek={peek} /> : null}
       open={open}
       onToggle={() => setOpen(!open)}
       body={<TransportCardBody face={{ from: v.from, to: v.to, middle: v.middle, rental: false }} title={v.ariaLabel} art={v.kind !== "transport" ? <TransportArt mode={v.kind} /> : null} />}

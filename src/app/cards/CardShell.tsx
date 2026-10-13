@@ -7,9 +7,9 @@ import { cardKindColor, cardKindLabel, type CardKind } from "../../lib/cardKinds
 import type { FootView, Ring as RingState } from "../../lib/cardView";
 import { L } from "../../lib/i18n";
 import { nOptions } from "../../lib/i18nText";
-import { TipOn } from "../HoverTip";
 import { ActionStrip } from "./ActionStrip";
 import { Editable, useInlineEdit } from "./InlineEdit";
+import { InfoButton } from "./InfoButton";
 import { KindIcon, UiIcon } from "./Silhouettes";
 
 /** Where a plan not bought stands: searching (dashed) or chosen (a green line). A bought one draws nothing: it wears the BookedBadge. */
@@ -282,8 +282,8 @@ export function CardShell(props: {
   /** v11: the planned card's "✓ Aldım", on the top line. */
   topAction?: ReactNode;
   menu: MenuEntry[];
-  /** The box that adds facts over the card on hover or a key's focus (Peek.tsx); null: none. The card's face is as it was. */
-  peek?: ReactNode | null;
+  /** What the ⓘ balloon says (InfoButton.tsx): rows of facts beyond the face; null: no ⓘ. The card's face is as it was. */
+  info?: ReactNode | null;
   open: boolean;
   onToggle: () => void;
   body: ReactNode;
@@ -302,43 +302,39 @@ export function CardShell(props: {
     return <FoldLine name={props.ariaLabel} itemId={props.itemId} onGone={() => { setFolded(false); props.onDelete!(); }} onArranged={() => { setFolded(false); props.onArranged!(); }} onUndo={() => setFolded(false)} />;
   }
   return (
-    <TipOn tip={props.open ? null : (props.peek ?? null)} delay={450} interactive boxClass="tipx-peek">
-      {(bind) => (
-        <article
-          {...bind}
-          className={`pk-card pk-r-${props.ring}${props.open ? " pk-open" : ""}${props.extraClass ? ` ${props.extraClass}` : ""}`}
-          style={style}
-          aria-label={props.ariaLabel}
-          data-item-id={props.itemId}
-          id={props.domId}
-          onClick={tap}
+    <article
+      className={`pk-card pk-r-${props.ring}${props.open ? " pk-open" : ""}${props.extraClass ? ` ${props.extraClass}` : ""}`}
+      style={style}
+      aria-label={props.ariaLabel}
+      data-item-id={props.itemId}
+      id={props.domId}
+      onClick={tap}
         >
-          {props.art}
-          <div className="pk-top">
-            <Ring state={props.ring} />
-            <span className="pk-kind">
-              <KindIcon kind={props.kind} size={15} />
-              {props.label ?? cardKindLabel(props.kind)}
-            </span>
-            {props.date && <span className="pk-date">· {props.date}</span>}
-            {props.badge}
-            <span className="pk-end">
-              {props.topAction}
-              {props.docs}
-              {props.onDelete && <DeleteX name={props.ariaLabel} onDelete={foldable ? () => setFolded(true) : props.onDelete} label={props.deleteLabel} />}
-              <CardMenu entries={props.menu} />
-            </span>
-          </div>
-          <div className="pk-body" role="button" tabIndex={0} aria-expanded={props.open}
-            aria-label={props.open ? L(`${props.ariaLabel}: ayrıntıyı kapat`, `${props.ariaLabel}: close details`) : L(`${props.ariaLabel}: ayrıntı`, `${props.ariaLabel}: details`)}
-            onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), props.onToggle())}>
-            {props.body}
-          </div>
-          {props.foot}
-          {props.open && props.detail}
-          <ActionStrip entries={props.menu} />
-        </article>
-      )}
-    </TipOn>
+      {props.art}
+      <div className="pk-top">
+        <Ring state={props.ring} />
+        <span className="pk-kind">
+          <KindIcon kind={props.kind} size={15} />
+          {props.label ?? cardKindLabel(props.kind)}
+        </span>
+        {props.date && <span className="pk-date">· {props.date}</span>}
+        {props.badge}
+        <span className="pk-end">
+          {props.info && <InfoButton>{props.info}</InfoButton>}
+          {props.topAction}
+          {props.docs}
+          {props.onDelete && <DeleteX name={props.ariaLabel} onDelete={foldable ? () => setFolded(true) : props.onDelete} label={props.deleteLabel} />}
+          <CardMenu entries={props.menu} />
+        </span>
+      </div>
+      <div className="pk-body" role="button" tabIndex={0} aria-expanded={props.open}
+        aria-label={props.open ? L(`${props.ariaLabel}: ayrıntıyı kapat`, `${props.ariaLabel}: close details`) : L(`${props.ariaLabel}: ayrıntı`, `${props.ariaLabel}: details`)}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), props.onToggle())}>
+        {props.body}
+      </div>
+      {props.foot}
+      {props.open && props.detail}
+      <ActionStrip entries={props.menu} />
+    </article>
   );
 }

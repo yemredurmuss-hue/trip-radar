@@ -4226,10 +4226,6 @@ a.ch-why { text-decoration: none; }
 .pk-card:hover > .pk-strip, .pk-card:focus-within > .pk-strip { opacity: 1; transform: none; pointer-events: auto; }
 @media (hover: none) { .pk-strip { display: none; } }
 @media (prefers-reduced-motion: reduce) { .pk-strip { transition: none; } }
-/* -- Bakış kutusu: over a flight's or a transfer's card, wider, and pointable (the copy button is in it) -- */
-.tipx-box.tipx-peek { pointer-events: auto; width: 280px; max-width: min(280px, calc(100vw - 16px)); }
-.tipx-peek .tipx-line b { color: #fff; }
-.tipx-peek .tipx-line .cpy-t { color: #fff; }
 /* -- Kim ne yaptı: a person's latest action under their name in the who box -- */
 .hx-who-list .who-name small.wh-last { display: block; margin-top: 1px; font-size: 11.5px; line-height: 1.25; color: var(--hx-muted); }
 /* -- Pano sekmesindeki nokta: the other traveller did something since the Pano was last open here -- */
@@ -4718,3 +4714,18 @@ a.ch-why { text-decoration: none; }
 .plan-key .pk-sw.chosen { border-color: var(--plan-line); }
 .plan-key .pk-sw.booked { background: var(--okb); border-color: var(--okb); }
 .plan-key .pk-sw.arranged { background: var(--okb-set); border-color: var(--okb-set); }
+
+/* -- F1a ⓘ balonu: a 20 px round button on a card's top line; its 250 px balloon is light, "label | value" rows -- */
+.inf { position: relative; display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: #fff; color: var(--muted); cursor: help; }
+.inf i { font: italic 700 11px/1 Georgia, serif; }
+.inf:hover, .inf:focus-visible { color: var(--hx-accent); border-color: var(--hx-accent); outline: none; }
+.tipx-box.inf-pop { width: 250px; max-width: min(250px, calc(100vw - 16px)); display: grid; gap: 6px; padding: 12px 14px; border-radius: 14px; background: #fff; color: var(--text); border: 1px solid var(--line); box-shadow: 0 18px 40px -16px rgba(40, 28, 90, .4); font-size: 12.5px; font-weight: 400; line-height: 1.35; pointer-events: auto; }
+.tipx-box.inf-pop::after { display: none; }
+.inf-row { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px; }
+.inf-row i { font-style: normal; color: var(--muted); overflow-wrap: anywhere; }
+.inf-row b { font-weight: 600; overflow-wrap: anywhere; }
+.inf-h { font-weight: 700; }
+.inf-note { color: var(--muted); font-size: 12px; }
+.inf-pop .cpy-t { color: inherit; }
+:root[data-theme="dark"] .inf, :root[data-theme="dark"] .tipx-box.inf-pop { background: #241f33; border-color: #3a3452; color: #efeaff; }
+@media (prefers-reduced-motion: reduce) { .tipx-box.inf-pop { animation: none; } }

@@ -51,7 +51,7 @@ function useTip({ align, below }: { align: "left" | "right"; below: boolean }) {
   useEffect(() => {
     if (!at) return;
     const away = (e: Event) => {
-      if (e.type === "click" && trigger.current?.contains(e.target as Node)) return;
+      if (e.type === "click" && (trigger.current?.contains(e.target as Node) || document.getElementById(id)?.contains(e.target as Node))) return;
       close();
     };
     const esc = (e: KeyboardEvent) => e.key === "Escape" && close();
@@ -76,7 +76,7 @@ function useTip({ align, below }: { align: "left" | "right"; below: boolean }) {
   return { id, at, tapped, setTapped, trigger, open, close, openSoon, closeSoon, touch, box };
 }
 
-export function HoverTip({ tip, children, align = "left", below = false, className = "" }: {
+export function HoverTip({ tip, children, align = "left", below = false, className = "", label, boxClass = "", interactive = false }: {
   tip: ReactNode;
   children: ReactNode;
   /** The box's edge that lines up with the trigger: the right one for triggers near the right edge. */
@@ -84,17 +84,23 @@ export function HoverTip({ tip, children, align = "left", below = false, classNa
   /** Under the trigger instead of over it. */
   below?: boolean;
   className?: string;
+  /** With it the trigger is a button of that name (the ⓘ) instead of a focusable span. */
+  label?: string;
+  boxClass?: string;
+  /** The box can be pointed at and clicked in (a copy button): it stays while the pointer is on it. */
+  interactive?: boolean;
 }) {
   const t = useTip({ align, below });
+  const Trigger = label ? "button" : "span";
   return (
     <>
-      <span
-        ref={t.trigger}
+      <Trigger
+        ref={t.trigger as never}
         className={`tipx${className ? ` ${className}` : ""}`}
-        tabIndex={0}
+        {...(label ? { type: "button" as const, "aria-label": label } : { tabIndex: 0 })}
         aria-describedby={t.at ? t.id : undefined}
         onMouseEnter={() => !t.touch() && t.open()}
-        onMouseLeave={() => !t.tapped && t.close()}
+        onMouseLeave={() => !t.tapped && (interactive ? t.closeSoon() : t.close())}
         onFocus={t.open}
         onBlur={t.close}
         onClick={(e) => {
@@ -109,8 +115,8 @@ export function HoverTip({ tip, children, align = "left", below = false, classNa
         }}
       >
         {children}
-      </span>
-      {t.box(tip)}
+      </Trigger>
+      {t.box(tip, boxClass ? ` ${boxClass}` : "", interactive)}
     </>
   );
 }

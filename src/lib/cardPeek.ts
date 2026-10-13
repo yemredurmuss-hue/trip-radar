@@ -1,10 +1,16 @@
-// What a card's peek box says beyond its face (docs/mockups/ux-katmanli-arayuz, "Transfer kartı" and "Uçuş kartı"): only
-// facts the records already hold, nothing worked out or made up. A flight: the bag, the booking code, the terminal and gate
-// once its live data is in. A transfer: the weekday of its day, the city's weather when the hero has it, and the options saved
-// for it with their prices. A fact the record doesn't have is left out, and a card with none has no peek. Pure.
+// What a card's ⓘ balloon says beyond its face (mockup v46 infoBtn): only facts the records already hold, nothing worked out
+// or made up. A flight: number, ends, duration, stops, bag, the booking code (on its day only), the terminal and gate once its
+// live data is in. A stay: area, rating, cancel terms, note, total. A way of travel: ends, duration, booking, note. All say who
+// saved it. A change of city (a leg): the weekday of its day, the city's weather when the hero has it, and the options saved for
+// it with their prices. A fact the record doesn't have is left out. Pure.
+import { flightNumber } from "../../supabase/functions/flight/shape";
 import type { CityWeather } from "./climate";
 import { durationText } from "./cardFacts";
+import { cancelLineOf, showBookingRef } from "./cardTime";
+import type { LegEnds, TransportMode } from "./cardKinds";
+import { transportFace, type End } from "./cardView";
 import { L, locale } from "./i18n";
+import { nStops } from "./i18nText";
 import { formatPrice, isoDate, metricsOf } from "./items";
 import type { Leg } from "./legs";
 import { refFromNote } from "./bookingRows";
@@ -17,22 +23,77 @@ export interface PeekFact {
   copy?: string;
 }
 
-/** A flight's bag, booking code, and the terminals, gate, desks and belt its live data names. */
-export function flightPeek(item: Item): PeekFact[] {
-  const facts: PeekFact[] = [];
-  const bag = metricsOf(item).checkedBagIncluded;
-  if (bag != null) facts.push({ label: L("Bagaj", "Baggage"), value: bag ? L("Bavul dahil", "Checked bag included") : L("Bavul dahil değil", "No checked bag") });
+/** What the ⓘ balloons need from outside the record: the day, who saved it, and what a stay's own card computes. */
+export interface PeekCtx {
+  today: string;
+  /** "Kimden": who saved it (pano.saverName). */
+  from: string;
+  /** The cities at a trip's ends (cardKinds.legEndsByItem). */
+  ends?: LegEnds;
+  /** A stay's rating line ("9,0 Muhteşem · 770 yorum") and the whole sum, as its card has them. */
+  rating?: string | null;
+  total?: string | null;
+}
+
+const row = (label: string, value: string | null | undefined, copy?: string): PeekFact[] => (value ? [{ label, value, ...(copy ? { copy } : {}) }] : []);
+const endText = (end: End | null, extra: string | null): string | null =>
+  end ? [[end.city, end.time].filter(Boolean).join(" · ") + (end.plus ? ` (+${end.plus.days})` : ""), extra].filter(Boolean).join(" · ") : null;
+const terminal = (t: string | null | undefined) => (t ? L(`Terminal ${t}`, `Terminal ${t}`) : null);
+
+/** The booking code, on the day it matters (a flight's PNR waits for its day) and from an older note too. */
+const refRows = (item: Item, today: string): PeekFact[] => {
   const ref = item.bookingRef ?? refFromNote(item.statusNote);
-  if (ref) facts.push({ label: L("Rezervasyon kodu", "Booking code"), value: ref, copy: ref });
+  return ref && showBookingRef(item, today) ? row(L("Rezervasyon kodu", "Booking code"), ref, ref) : [];
+};
+
+/** A flight: its number, both ends, the way it takes, the bag, the booking code (only on its day), what its live data names, and whose it is. */
+export function flightPeek(item: Item, ctx: PeekCtx): PeekFact[] {
+  const face = transportFace(item, "flight", ctx.ends);
   const live = item.flightLive;
-  if (live) {
-    const out = [live.departure.terminal ? L(`Terminal ${live.departure.terminal}`, `Terminal ${live.departure.terminal}`) : null, live.departure.gate ? L(`Kapı ${live.departure.gate}`, `Gate ${live.departure.gate}`) : null].filter(Boolean).join(" · ");
-    if (out) facts.push({ label: L("Kalkış", "Departure"), value: out });
-    if (live.departure.desk) facts.push({ label: L("Check-in masası", "Check-in desks"), value: live.departure.desk.replace(/\s*-\s*/, "–") });
-    const inn = [live.arrival.terminal ? L(`Terminal ${live.arrival.terminal}`, `Terminal ${live.arrival.terminal}`) : null, live.arrival.belt ? L(`Bagaj bandı ${live.arrival.belt}`, `Belt ${live.arrival.belt}`) : null].filter(Boolean).join(" · ");
-    if (inn) facts.push({ label: L("Varış", "Arrival"), value: inn });
-  }
-  return facts;
+  const number = live?.number ?? flightNumber(item.flight?.flightNumber);
+  const stops = item.flight?.stops;
+  const minutes = metricsOf(item).durationMinutes ?? live?.minutes ?? null;
+  const bag = metricsOf(item).checkedBagIncluded;
+  const out = live ? [terminal(live.departure.terminal), live.departure.gate ? L(`Kapı ${live.departure.gate}`, `Gate ${live.departure.gate}`) : null].filter(Boolean).join(" · ") : null;
+  const inn = live ? [terminal(live.arrival.terminal), live.arrival.belt ? L(`Bagaj bandı ${live.arrival.belt}`, `Belt ${live.arrival.belt}`) : null].filter(Boolean).join(" · ") : null;
+  return [
+    ...row(L("Sefer", "Flight"), number ? [live?.airline ?? item.flight?.carrier, number].filter(Boolean).join(" ") : null),
+    ...row(L("Kalkış", "Departure"), endText(face.from, out)),
+    ...row(L("Varış", "Arrival"), endText(face.to, inn)),
+    ...row(L("Süre", "Duration"), minutes ? durationText(minutes) : null),
+    ...row(L("Aktarma", "Stops"), stops == null ? null : stops === 0 ? L("Yok", "None") : nStops(stops)),
+    ...row(L("Bagaj", "Baggage"), bag == null ? null : bag ? L("Bavul dahil", "Checked bag included") : L("Bavul dahil değil", "No checked bag")),
+    ...refRows(item, ctx.today),
+    ...row(L("Check-in masası", "Check-in desks"), live?.departure.desk?.replace(/\s*-\s*/, "–")),
+    ...row(L("Kimden", "From"), ctx.from),
+  ];
+}
+
+/** A stay: where it is, what guests said, the cancel terms, the note, the whole sum, and whose it is. */
+export function stayPeek(item: Item, ctx: PeekCtx): PeekFact[] {
+  return [
+    ...row(L("Semt", "Neighbourhood"), item.location.area),
+    ...row(L("Puan", "Rating"), ctx.rating),
+    ...row(L("İptal", "Cancellation"), cancelLineOf(item, ctx.today)?.text ?? item.cancellation.summary),
+    ...row(L("Not", "Note"), item.statusNote),
+    ...row(L("Toplam", "Total"), ctx.total),
+    ...refRows(item, ctx.today),
+    ...row(L("Kimden", "From"), ctx.from),
+  ];
+}
+
+/** A way of travel other than a flight (a train, a bus, a ferry, a taxi): both ends, how long, the booking, the note, whose it is. */
+export function transferPeek(item: Item, kind: TransportMode | "transport", ctx: PeekCtx): PeekFact[] {
+  const face = transportFace(item, kind, ctx.ends);
+  const minutes = metricsOf(item).durationMinutes;
+  return [
+    ...row(L("Kalkış", "Departure"), endText(face.from, null)),
+    ...row(L("Varış", "Arrival"), endText(face.to, null)),
+    ...row(L("Süre", "Duration"), minutes ? durationText(minutes) : null),
+    ...refRows(item, ctx.today).map((f) => ({ ...f, label: L("Rezervasyon", "Booking") })),
+    ...row(L("Not", "Note"), item.statusNote),
+    ...row(L("Kimden", "From"), ctx.from),
+  ];
 }
 
 export interface LegPeek {
