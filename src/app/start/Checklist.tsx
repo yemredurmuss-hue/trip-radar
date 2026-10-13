@@ -5,7 +5,7 @@ import { useState } from "react";
 import { L, withLang, type Lang } from "../../lib/i18n";
 import type { ChecklistRow, Preview, QuestionId } from "../../lib/startTrip";
 import { STYLE_META, STYLES } from "../../lib/tripStyle";
-import { PhotoStrip } from "./Preview";
+import { Photos } from "./Preview";
 import { UiIcon } from "../cards/Silhouettes";
 
 /** "4'ü", "6'sı": the ending after a number read aloud (sıfır, bir, iki, üç, dört, beş, altı). */
@@ -57,7 +57,9 @@ export function Checklist({ rows, onAsk, disabled, drawing = null, reading = [],
   const done = rows.filter((r) => r.done || r.tentative).length;
   return withLang(lang, () => (
     <div className="st-list">
-      {preview && <PhotoStrip photos={preview.photos} place={place} />}
+      {preview && (
+        <Photos photos={preview.photos} place={place} labels={{ group: L("Fotoğraf düzeni", "Photo layout"), mosaic: L("Mozaik", "Mosaic"), strip: L("Şerit", "Strip") }} />
+      )}
       <div className="st-list-head">
         <Ring done={done} total={rows.length} />
         <div>
@@ -156,7 +158,7 @@ export function GenerateCard({ ready, complete, onGenerate, lang }: { ready: boo
 }
 
 /** Narrow screens: "4/6 · Gezin şekilleniyor ▾", the list opening under it. */
-export function ChecklistBar({ rows, onAsk, complete, onGenerate, disabled, drawing, reading, now, lang }: Props & { ready: boolean; complete: boolean; onGenerate: () => void }) {
+export function ChecklistBar({ rows, onAsk, complete, onGenerate, disabled, drawing, reading, now, preview, place, lang }: Props & { ready: boolean; complete: boolean; onGenerate: () => void }) {
   const [open, setOpen] = useState(false);
   const done = rows.filter((r) => r.done || r.tentative).length;
   return withLang(lang, () => (
@@ -177,7 +179,7 @@ export function ChecklistBar({ rows, onAsk, complete, onGenerate, disabled, draw
           ✨ {L("Oluştur", "Generate")}
         </button>
       </div>
-      {open && <Checklist rows={rows} onAsk={(q) => (setOpen(false), onAsk(q))} disabled={disabled} drawing={drawing} reading={reading} now={now} lang={lang} />}
+      {open && <Checklist rows={rows} onAsk={(q) => (setOpen(false), onAsk(q))} disabled={disabled} drawing={drawing} reading={reading} now={now} preview={preview} place={place} lang={lang} />}
     </div>
   ));
 }

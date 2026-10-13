@@ -5025,3 +5025,18 @@ body.still .tk-bar i, body.still .pk-seal .tk-chk, body.still .pk-card.tk.tk-sea
 .op-glint { position: absolute; overflow: hidden; }
 .op-glint i { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, .85) 48%, rgba(181, 166, 255, .45) 52%, transparent 70%); transform: translateX(-120%); }
 body.still .op-fx { display: none; }
+
+/* The trip's photos as a mosaic (Preview.tsx; third drawing of the start flow, "B: mozaik + kutucuklar"): one big photo, two beside it.
+   The strip stays as the other layout; two small buttons at the corner switch. */
+.st-pv-block { position: relative; margin-bottom: 16px; }
+.st-pv-block .st-pv-photos, .st-side .st-list .st-pv-block .st-pv-photos { margin-bottom: 0; }
+.st-pv-mosaic { display: grid; grid-template-columns: 1.7fr 1fr; grid-template-rows: 1fr 1fr; gap: 8px; height: 220px; }
+.st-pv-mosaic .st-pv-photo { min-width: 0; min-height: 0; }
+.st-pv-mosaic .st-pv-photo:first-child { grid-row: 1 / 3; }
+.st-pv-mosaic .st-pv-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(20, 16, 40, .45)); }
+.st-pv-mosaic .st-pv-photo-name { right: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-pv-layout { position: absolute; top: 8px; right: 8px; z-index: 2; display: flex; gap: 2px; padding: 2px; border-radius: 999px; background: rgba(255, 255, 255, .88); box-shadow: 0 1px 6px rgba(28, 26, 51, .25); }
+.st-pv-layout button { display: grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 50%; background: none; color: #5d5885; cursor: pointer; }
+.st-pv-layout button[aria-pressed="true"] { background: var(--hx-accent); color: #fff; }
+.st-pv-layout button:focus-visible { outline: 2px solid var(--hx-accent); outline-offset: 1px; }
+@media (max-width: 860px) { .st-pv-mosaic { height: 180px; } }

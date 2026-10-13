@@ -4158,6 +4158,14 @@ try {
   await revList.getByText(/10 Ocak – 10 Şubat · 31 gece/).waitFor();
   await revList.getByText(/Sabine/).first().waitFor();
   await revList.locator(".st-pv-photo img.in").first().waitFor({ timeout: 15000 });
+  // The photos are a mosaic (one big, two beside it) by default; the strip is the other layout, kept in this browser.
+  assert.equal(await revList.locator(".st-pv-mosaic .st-pv-photo").count(), 3, "the trip's photos sit in a mosaic of three");
+  assert.equal(await board.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "the mosaic doesn't widen the page");
+  await revList.getByRole("button", { name: /Strip|Şerit/ }).click();
+  assert.equal(await revList.locator(".st-pv-mosaic").count(), 0, "the strip replaces the mosaic");
+  assert.ok((await revList.locator(".st-pv-photos .st-pv-photo").count()) >= 1, "the photo strip is still there");
+  await revList.getByRole("button", { name: /Mosaic|Mozaik/ }).click();
+  assert.equal(await revList.locator(".st-pv-mosaic").count(), 1, "and back to the mosaic");
   assert.equal(await board.locator(".st-pv").count(), 0, "no second box: the preview is part of the list");
   const genBtn = board.locator(".st-side .st-gen-btn");
   assert.match(await genBtn.innerText(), /Oluştur/, "one word at every step: what is missing is said under the button");
