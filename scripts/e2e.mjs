@@ -42,7 +42,8 @@ function settledShots(page) {
         return Promise.race([Promise.all(entering.map((a) => a.finished.catch(() => undefined))), new Promise((done) => setTimeout(done, 2000))]);
       })
       .catch(() => undefined);
-    return shot(options);
+    // A busy machine can stall a capture past 30 s: one more try, longer, before it counts as a failure.
+    return shot(options).catch((e) => (/Timeout/.test(String(e)) ? shot({ ...options, timeout: 120000 }) : Promise.reject(e)));
   };
 }
 
