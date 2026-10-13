@@ -5063,10 +5063,22 @@ try {
   assert.equal(await app.locator('.pk-card[aria-label="Lisboa Loft"]').evaluate((el) => el.classList.contains("pk-drop")), false, "an old card doesn't");
 
   // mühür + parlama: the chosen eSIM becomes booked: its tick pops and the card glows, each for a moment, then both are gone.
+  // (the moment lasts 600 ms: a busy machine can look too late, so what happens is recorded as it happens)
+  await app.evaluate(() => {
+    window.__moment = { seal: false, glow: false, pop: false };
+    new MutationObserver(() => {
+      const card = document.querySelector('.pk-card[aria-label="Hareket eSIM"]');
+      if (!card?.classList.contains("pk-seal")) return;
+      window.__moment.seal = true;
+      window.__moment.glow ||= card.classList.contains("pk-glow");
+      window.__moment.pop ||= Boolean(card.querySelector(".okt")?.getAnimations().some((a) => a.animationName === "pk-pop"));
+    }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class"], childList: true });
+  });
   await idb("book", "e2e-motion-esim");
-  await app.waitForFunction(() => document.querySelector('.pk-card[aria-label="Hareket eSIM"]')?.classList.contains("pk-seal"), null, { timeout: 3000 });
-  assert.ok(await app.locator('.pk-card[aria-label="Hareket eSIM"]').evaluate((el) => el.classList.contains("pk-glow")), "parlama: the changed card glows");
-  assert.ok(await animating(app.locator('.pk-card[aria-label="Hareket eSIM"] .okt'), "pk-pop"), "mühür: its badge pops");
+  await app.waitForFunction(() => window.__moment.seal, null, { timeout: 5000 });
+  const moment = await app.evaluate(() => window.__moment);
+  assert.ok(moment.glow, "parlama: the changed card glows");
+  assert.ok(moment.pop, "mühür: its badge pops");
   await app.waitForTimeout(350);
   await app.screenshot({ path: `${out}/38a-motion-seal.png` });
   await app.waitForFunction(() => !document.querySelector('.pk-card[aria-label="Hareket eSIM"]')?.classList.contains("pk-seal"), null, { timeout: 3000 });
