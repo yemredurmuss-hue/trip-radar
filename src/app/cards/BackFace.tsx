@@ -26,6 +26,7 @@ import { SearchRow } from "./EmptyCard";
 import { FlightOption } from "./FlightOption";
 import { ILLUS, illusOf } from "./MediaCard";
 import { useCardEnv } from "./PlanCard";
+import { MineStar } from "./MineStar";
 import { BrandPill } from "./RideCard";
 import { KindIcon, UiIcon } from "./Silhouettes";
 import { SavedFace } from "./WhoseBadge";
@@ -251,7 +252,7 @@ export function BackFace({ items, decision, choice, title, kind, wants, self, as
           <ul className="ch-pros">
             {facts.pros.map((p) => (
               <li key={p.text}>
-                <span>{p.text}</span>
+                <span>{p.text}{p.mine && <MineStar />}</span>
                 {p.unique && <i>{L("yalnız bunda", "only this one")}</i>}
               </li>
             ))}
@@ -261,7 +262,7 @@ export function BackFace({ items, decision, choice, title, kind, wants, self, as
           <ul className="ch-cons">
             {facts.cons.map((c) => (
               <li key={c.text}>
-                <span>{c.text}</span>
+                <span>{c.text}{c.mine && <MineStar />}</span>
                 {c.unique && <i>{L("yalnız bunda", "only this one")}</i>}
               </li>
             ))}

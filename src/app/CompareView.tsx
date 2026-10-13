@@ -20,10 +20,12 @@ import {
 import { L, locale } from "../lib/i18n";
 import { lowerFirst, lowerText } from "../lib/i18nText";
 import { CATEGORY_LABELS, formatPrice } from "../lib/items";
+import { criterionMatters, touchesPriority } from "../lib/cardFacts";
 import { prosConsFor } from "../lib/proscons";
 import type { DecisionContext } from "../lib/decision";
 import { bookedAs } from "../lib/cardView";
 import { BookedBadge } from "./cards/BookedBadge";
+import { MineLegend, MineStar } from "./cards/MineStar";
 import { ProsConsView } from "./ProsConsView";
 import { OptionBoard } from "./board/OptionBoard";
 import { StepDecide } from "./board/StepDecide";
@@ -217,14 +219,14 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, steps,
                   </th>
                   {columns.map((o) => {
                     const pc = prosConsFor(o.item, d, ctx.listings, ctx);
-                    return <td key={o.item.id}>{pc && <ProsConsView pc={pc} limit={3} stacked />}</td>;
+                    return <td key={o.item.id}>{pc && <ProsConsView pc={pc} limit={3} stacked mine={(line) => touchesPriority(line, o.item, ctx)} />}</td>;
                   })}
                 </tr>
               )}
               {d.criteria.map((c) => (
                 <tr key={c} className={levelOf(c) === 0 ? "off" : ""}>
                   <th className="crit-col">
-                    <div>{CRITERION_LABELS[c]}</div>
+                    <div>{CRITERION_LABELS[c]}{criterionMatters(c, d.category, ctx) && <MineStar />}</div>
                     <LevelPicker level={levelOf(c)} onChange={(level) => void setLevel(c, level)} />
                     {ctx && levelSource(trip, d.category, c, inferred, saidOf(ctx)) === "said" && (
                       <div className="muted level-note">{L("notundan · seçersen senin ayarın olur", "from your note · pick one to make it yours")}</div>
@@ -253,6 +255,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, steps,
             </tbody>
           </table>
         </div>
+        {d.criteria.some((c) => criterionMatters(c, d.category, ctx)) && <MineLegend />}
         {unmeasured.length > 0 && (
           <p className="muted small-note">
             {L("Bilgi olmadığı için karşılaştırılamadı", "Couldn't compare, no info")}:{" "}
@@ -272,7 +275,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, steps,
               <ul>
                 {d.reasons.map((r) => (
                   <li key={r.key ?? r.criterion}>
-                    {r.text} <span className="pts plus">+{r.points}</span>
+                    {r.text}{criterionMatters(r.criterion, d.category, ctx) && <MineStar />} <span className="pts plus">+{r.points}</span>
                   </li>
                 ))}
               </ul>
@@ -284,7 +287,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, steps,
               <ul>
                 {d.tradeoffs.map((r) => (
                   <li key={r.key ?? r.criterion}>
-                    {r.text} <span className="pts minus">{r.points}</span>
+                    {r.text}{criterionMatters(r.criterion, d.category, ctx) && <MineStar />} <span className="pts minus">{r.points}</span>
                   </li>
                 ))}
               </ul>

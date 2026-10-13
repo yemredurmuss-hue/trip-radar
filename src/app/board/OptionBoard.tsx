@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { boardBadges, boardOptions, otherDates, type BoardBadge, type BoardSort } from "../../lib/board";
 import { bookedAs } from "../../lib/cardView";
-import { cardFacts } from "../../lib/cardFacts";
+import { cardFacts, hasMine } from "../../lib/cardFacts";
 import type { DecisionContext, GroupDecision, OptionResult } from "../../lib/decision";
 import { L } from "../../lib/i18n";
 import { NEED_MARK } from "../../lib/needs";
@@ -16,6 +16,7 @@ import type { Item } from "../../lib/types";
 import { setItemStatus } from "../actions";
 import { FallbackImg } from "../FallbackImg";
 import { BookedBadge } from "../cards/BookedBadge";
+import { MineLegend, MineStar } from "../cards/MineStar";
 import { KindIcon } from "../cards/Silhouettes";
 import { ratingOf } from "../cards/parts";
 import { useShare } from "../Share";
@@ -94,6 +95,7 @@ export function OptionBoard({ decision, ctx, onOpenItem, onChoose, onSideBySide,
           <small>{L("Linki sohbet kutusuna bırak ya da sayfada Trip Radar'da \"Kaydet\"e bas", "Drop the link in the chat box, or press \"Save\" in Trip Radar on the page")}</small>
         </button>
       </div>
+      {options.some((o) => !o.excluded && !o.eliminated && hasMine(cardFacts(o.item, decision, ctx), 2)) && <MineLegend />}
       {ticked.length >= 2 && (
         <div className="bd-bar">
           <span>{L(`${ticked.length} seçenek işaretli`, `${ticked.length} options ticked`)}</span>
@@ -195,13 +197,13 @@ function OptionCard({ option, decision, ctx, badge, ticked, onTick, onOpen, onCh
             {pros.map((p) => (
               <li key={`p${p.text}`}>
                 <span className="p" aria-hidden>+</span>
-                <span>{p.text}{p.unique && <i className="bd-only">{L("yalnız bunda", "only here")}</i>}</span>
+                <span>{p.text}{p.mine && <MineStar />}{p.unique && <i className="bd-only">{L("yalnız bunda", "only here")}</i>}</span>
               </li>
             ))}
             {cons.map((c) => (
               <li key={`c${c.text}`}>
                 <span className="m" aria-hidden>−</span>
-                <span>{c.text}{c.unique && <i className="bd-only m">{L("yalnız bunda", "only here")}</i>}</span>
+                <span>{c.text}{c.mine && <MineStar />}{c.unique && <i className="bd-only m">{L("yalnız bunda", "only here")}</i>}</span>
               </li>
             ))}
             {more > 0 && (

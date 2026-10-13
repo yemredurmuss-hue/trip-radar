@@ -2,7 +2,7 @@
 // one open decision per screen ("1 / 3 · Porto · Konaklama"), its options side by side with one line of advice, and "Seç" moves
 // on; "Geri" and "Sonra" walk the queue, and the last screen says what was decided. The cards and the table stay as they are.
 import { useEffect, useRef, useState } from "react";
-import { cardFacts } from "../../lib/cardFacts";
+import { cardFacts, hasMine } from "../../lib/cardFacts";
 import type { DecisionContext, GroupDecision, OptionResult } from "../../lib/decision";
 import { outcomeText, stepKeys, stepTitle, type DecideStep } from "../../lib/decideSteps";
 import { L } from "../../lib/i18n";
@@ -10,6 +10,7 @@ import { NEED_MARK } from "../../lib/needs";
 import type { ValueCard } from "../../lib/value";
 import type { Item } from "../../lib/types";
 import { chooseItem } from "../actions";
+import { MineLegend, MineStar } from "../cards/MineStar";
 
 /** The advice in one line: the value card's pick and why, else the engine's own summary. */
 function reco(d: GroupDecision, card: ValueCard | undefined): { lead: string | null; text: string } {
@@ -130,6 +131,7 @@ export function StepDecide({ steps, firstKey, ctx, onOpenItem, onExit }: {
           <StepOption key={o.item.id} option={o} decision={decision} ctx={ctx} winner={o === decision.winner} onOpen={() => onOpenItem(o.item)} onPick={() => void pick(o)} />
         ))}
       </div>
+      {shown.some((o) => !o.excluded && !o.eliminated && hasMine(cardFacts(o.item, decision, ctx), 3)) && <MineLegend />}
       {rest > 0 && (
         <button type="button" className="bd-more sd-more" onClick={() => setAll(true)}>
           {L(`+${rest} seçenek daha`, `+${rest} more option${rest === 1 ? "" : "s"}`)}
@@ -180,10 +182,10 @@ function StepOption({ option, decision, ctx, winner, onOpen, onPick }: {
       ) : (
         <ul className="bd-pc">
           {facts.pros.slice(0, 3).map((p) => (
-            <li key={`p${p.text}`}><span className="p" aria-hidden>+</span><span>{p.text}</span></li>
+            <li key={`p${p.text}`}><span className="p" aria-hidden>+</span><span>{p.text}{p.mine && <MineStar />}</span></li>
           ))}
           {facts.cons.slice(0, 3).map((c) => (
-            <li key={`c${c.text}`}><span className="m" aria-hidden>−</span><span>{c.text}</span></li>
+            <li key={`c${c.text}`}><span className="m" aria-hidden>−</span><span>{c.text}{c.mine && <MineStar />}</span></li>
           ))}
         </ul>
       )}

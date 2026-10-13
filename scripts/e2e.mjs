@@ -1134,6 +1134,15 @@ try {
     console.log("pros/cons row:", await compare.locator(".pc-row").innerText());
     throw e;
   });
+  // Karar Panosu #2/#4 "★ öncelik": the quiet they asked for carries the star (its plus, its row); what nobody asked for doesn't.
+  await compare.locator('.pc-row .pc-line:has-text("Sessiz odalar, iyi uyku") .mine-star').first().waitFor();
+  assert.ok((await compare.locator(".pc-row .pc-line .mine-star").count()) < (await compare.locator(".pc-row .pc-line").count()), "only some of the lines are starred");
+  await compare.locator("tr:has(.crit-col > div:text-matches('^Sessizlik')) .crit-col .mine-star").waitFor();
+  assert.equal(await compare.locator(".mine-star").first().getAttribute("aria-label"), "Senin için önemli");
+  await compare.locator(".mine-legend").waitFor();
+  await app.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with the stars at 390 px");
+  await app.setViewportSize({ width: 1440, height: 900 });
   // The verdict is one line; the rest under "Neden?".
   assert.equal(await compare.locator(".cmp-verdict-detail").count(), 0, "the verdict starts as one line");
   await compare.locator(".cmp-verdict-more").click();
@@ -1141,7 +1150,7 @@ try {
   await app.screenshot({ path: `${out}/3c-compare.png`, fullPage: true });
   // Quiet, which they asked for, is its own row now ("Sessizlik: Önemli" from their note). Location and quiet
   // stop mattering and price matters most → the cheaper stay wins, and the view says what would flip it back.
-  const quietRow = compare.locator("tr:has(.crit-col > div:text-is('Sessizlik')) select");
+  const quietRow = compare.locator("tr:has(.crit-col > div:text-matches('^Sessizlik')) select");
   await quietRow.waitFor();
   assert.equal(await quietRow.inputValue(), "3");
   await compare.locator("tr", { hasText: "Konum" }).locator("select").selectOption("0");

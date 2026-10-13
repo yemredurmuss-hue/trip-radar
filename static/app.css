@@ -338,6 +338,9 @@ body.popup { width: 320px; }
    The window's own colours and sizes (bd-*, --accent, --success, --danger); nothing new. */
 .cmp-step { margin-left: auto; height: 32px; padding: 0 14px; border: 1px solid #1d1d1f; border-radius: 9px; background: #fff; font: inherit; font-size: 13.5px; font-weight: 600; color: #1d1d1f; cursor: pointer; }
 .cmp-step:hover { background: #1d1d1f; color: #fff; }
+.mine-star { display: inline-block; margin-left: 4px; color: #c98a00; font-size: 12px; line-height: 1; cursor: help; }
+.mine-legend { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); }
+.mine-legend .mine-star { margin: 0 2px 0 0; cursor: default; }
 .sd { margin-top: 14px; }
 .sd-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .sd-top h3 { margin: 0; font-size: 18px; color: #1d1d1f; outline: none; }
