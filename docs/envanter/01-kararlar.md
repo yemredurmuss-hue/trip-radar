@@ -2,6 +2,8 @@
 
 Hazırlanma: 2026-10-13 · Salt okunur envanter (kaynak kod değiştirilmedi, commit/push yok) · Canlı = `origin/plan-v30-fix` @ `bb30cd6` = çalışma ağacı = **0.36.84** (`package.json`). Tüm uzak dallar `git fetch origin` ile güncellendi (14 dal; ayrıntı: Ek C).
 
+**Güncelleme (P9b, plan-v46-temizlik).** v46 paketleri (P0–P8d) `plan-v46-kod`'a birleşti; kodda kanıtı (dosya ve commit) bulunan 17 satır YAYINDA DEĞİL'den CANLI'ya alındı (`**CANLI** — v46'da kodlandı (paket, commit)`). Emin olunmayanlar, karar sorusu olanlar (VB-S1…S17) ve KAPSAM AÇIĞI satırları olduğu gibi bırakıldı; satırların tamamını F10 denetçisi doğrular.
+
 **Durum anlamları.** CANLI: kodda var (dosya:satır ya da bileşen verildi; satır numaraları 0.36.84 için yaklaşıktır, ±5) · YAYINDA DEĞİL: karar verildi/tasarlandı, kodda yok · VAZGEÇİLDİ: sonradan başka karar onun yerine geçti (yerine ne geldiği yazılı) · ÇELİŞKİ: iki kaynak (belge-belge ya da belge-kod) farklı diyor, hangisinin geçerli olduğu notta · DOĞRULANAMADI: kodda ya da belgede bir izine rastlanmadı / emin olunamadı.
 
 **Kaynaklar.** `docs/superpowers/specs/*.md` (21 spec) · `docs/superpowers/plans/*.md` (4 plan; yalnız "Spec'te belirsiz olup … karara bağlananlar" bölümleri) · `docs/superpowers/audits/` · `DESIGN.md` · `PLAN.md` · `README.md` (kural bölümleri) · `PRIVACY.md` · `docs/urun-yol-haritasi.md` (K1–K75) · `docs/arastirma/*` (7 not) · `docs/mockups` v12–v39 (başlık/yorum bannerları ve v30/v38/v39 farkları) · `git log --all` (978 satır, dallar arası tekrarlar dahil; "Emre" geçen ve karar içeren commit gövdeleri okundu) · 14 dalın docs farkları. Testler/e2e çalıştırılmadı; durumlar kod okuma ve `grep` ile çıkarıldı.
@@ -14,8 +16,8 @@ Hazırlanma: 2026-10-13 · Salt okunur envanter (kaynak kod değiştirilmedi, co
 
 | Durum | Tüm satırlar | Yalnız K1–K75 |
 |---|---:|---:|
-| CANLI | 262 | 48 |
-| YAYINDA DEĞİL | 50 | 2 |
+| CANLI | 279 | 48 |
+| YAYINDA DEĞİL | 33 | 2 |
 | VAZGEÇİLDİ | 31 | 12 |
 | ÇELİŞKİ | 47 | 8 |
 | DOĞRULANAMADI | 20 | 5 |
@@ -23,11 +25,9 @@ Hazırlanma: 2026-10-13 · Salt okunur envanter (kaynak kod değiştirilmedi, co
 
 Okuma notu: canlı kod büyük ölçüde v30 spec'ini (0.36.79–0.36.84) uyguluyor. Asıl açık iş üç kümede: (1) v37 hedefleri ve 17 soru (çizimler `plan-v30-wip`'te v39'a kadar gitti, fix dalındaki fark listesi v37'de kaldı), (2) "Seçildi" renginin tek karara bağlanması ve aşama adlarının birleştirilmesi (EK-A1, EK-A4), (3) eski belgelerin (DESIGN.md, v30 spec'in "Uygulama durumu", roadmap'in K4 paragrafı, akıllı-saat spec'i) canlıya göre güncellenmesi (Ek A).
 
-### YAYINDA DEĞİL olanlar (50): karar var, kodda yok
+### YAYINDA DEĞİL olanlar (33): karar var, kodda yok
 
-- **YS04** — Yolculuk sırasıyla görünümü de aynı `slotCard`'ı kullanır; yeni (v37) kartlar orada da görünecek.
 - **PN07** — Pano çekmecesi: kartın arkasındaki "Pano'da aç" sayfa değiştirmek yerine Pano'yu sağdan, o ihtiyaca süzülmüş…
-- **KO10** — Görselin sol üstünde niyet etiketi: yatak simgesi · Kyoto · "8–13 Nis · 5 gece"; tarih·gece satırı karttan…
 - **KM06** — "Seçildi" ile "Rezerve" yeşil tonları yan yana yeterince ayrışıyor mu?
 - **KM07** — Aşama renkleri sarısız: boş çizgili, seçildi açık yeşil çizgili, rezerve koyu yeşil (v13 çizimi → v30).
 - **K6** — Her kartta "neden" satırı, kullanıcının kelimesiyle ("Direkt uçuş · lüks dediğin için"); varsayım kaynağıyla…
@@ -40,20 +40,6 @@ Okuma notu: canlı kod büyük ölçüde v30 spec'ini (0.36.79–0.36.84) uygulu
 - **GS03** — Gerçek otel/yer fotoğraflarının kaynağı ve maliyeti (Booking/Airbnb kaydı, Google Places); tahmini fiyat…
 - **GS13** — Gezi düzeyinde "uçaksız / yalnız tren" kısıtı yok (şartlar seçenek düzeyinde, ör. direct_flight).
 - **GS16** — P10 kişisel hafıza (akıllı planlayıcı E), P11 ilham birikimi (AI'nın bulduğu blog/YouTube), T veri kaynakları…
-- **VB-A1** — Boş kart yerine "Önerimiz" taslağı: elinde gerçek seçenek varsa en uygunu kesikli mor çerçeve + beyaz zemin +…
-- **VB-A2** — Dördüncü görünüm "Önerimiz" durum sözlüğüne girer (Arıyoruz · Önerimiz · Seçildi · Rezerve · Ayarlandı);…
-- **VB-A3** — Kartın sol üst köşesinde (−9 px) küçük yüz (kim kaydetti / AI ✨); üstüne gelince "Önerimiz (AI)" / "Sabine…
-- **VB-A4** — Kartın alt satırında sol "Değiştir [N]" hap düğmesi (N = diğer seçenek); sağda fiyat; en sağda koyu "Rezerve…
-- **VB-B1** — Sade otel kartı: görsel + marka etiketi + puan rozeti + ad + tek satır ("İade yok" kırmızı yalnız varsa);…
-- **VB-B2** — ⓘ düğmesi (20 px, sağ üst): hover/odak/dokunmada 250 px balon, "etiket · değer"; uçuş: Sefer · Kalkış · Varış…
-- **VB-C1** — Yatay tek bilet: sol ana bölüm (logo · havayolu · "· Gidiş · 1 Nis Çar" · ⓘ; sol şehir 23 px kalın +…
-- **VB-C3** — Kişi başı fiyat büyük (19 px/800) + "kişi başı" + küçük "2 kişi · €1.960"; boşta "Tahmini ~€850–1.000 kişi…
-- **VB-C4** — Boş uçuş bileti: başlıkta uçak + "Uçuş"; orta metin "Aradığımız: direkt"; altta "N seçenek" ya da "✨ Seçenek…
-- **VB-D1** — Görselin sol üstünde niyet etiketi: yatak simgesi · Kyoto (kalın) · "8–13 Nis · 5 gece"; etiket…
-- **VB-E2** — Arka yüz iki bölüm: "Kaydettikleriniz" (kişi/eklenti) ve "Önerimiz" (AI); her biri en çok 3 karo + 1 eylem…
-- **VB-E3** — Karo: üstte görsel ya da uçuşta logo + "01:55 → 19:25"; köşede yüz; etiket Seçili / Kartta (taslak, mor) /…
-- **VB-E4** — "Kendin ara" kutucuğu (Kaydettikleriniz ızgarasının son karosu, marka bağlantıları) ve "AI'a arat" kutucuğu…
-- **VB-F1** — Pano şerit sütunu 296–316 px (v30 mock 264–280; canlı .pn-strip 250–272), "Neden?" yandakileri uzatmaz, alt…
 - **VB-S1** — Taslak nasıl onaylanır?
 - **VB-S2** — Taslak kalıcı mı görünüm mü?
 - **VB-S3** — Taslak kimlere (yalnız uçuş+otel mi, tren/eSIM/sigorta da)?
@@ -74,7 +60,6 @@ Okuma notu: canlı kod büyük ölçüde v30 spec'ini (0.36.79–0.36.84) uygulu
 - **VB-O1** — 1) ⓘ + Pano ferah + köşe yüzü + niyet etiketi (küçük, bağımsız); 2) kart gövdeleri (sade otel, bilet, Rezerve…
 - **VB-O6** — "Bu turun kararları yol haritasına K76 ve sonrası olarak işlenecek" (v30 spec).
 - **VB-O8** — Sonra: vibe (ışık, teras, yeşillik; fotoğraftan), kısmi konaklama kombinasyonları, "farka değer mi?", 7 sade…
-- **PG23** — "× çıkarır, ↻ yerine başkasını koyar" (etkinlik karelerinde).
 
 ### ÇELİŞKİ olanlar (47): neyin geçerli olduğuna karar gerekir ya da belge eskimiş
 
@@ -182,7 +167,7 @@ VAZGEÇİLDİ olanlar (31): ilgili satırlarda "yerine ne geldiği" yazılı; ay
 | **PG20** · yol haritası "Çalışma sırası" | Her parça için sıra: akış → UX → UI çizimi (artifact, sayfa sayfa) → Emre onayı → spec → kod; kod çizim onaylanmadan başlamaz. | 2026-10-08 | **ÇELİŞKİ** — İstisna: gece işi (2026-10-09, "yap, sabah bakarım") çizim adımı atlanarak koda geçti (roadmap "Gece işi"); v30 sonrası v31-v39 çizimleri onaylanmadan fark listesi çıkarıldı |
 | **PG21** · yol haritası "Tez" | Trip Radar Booking/Skyscanner ile yarışmaz, onları kullanır: niyeti netleştirir, doğru aramayı hazırlar, bulunanı geri toplar, AI ile karşılaştırır; AI otel dayatmaz, iyi olduğu yerde (niyet, semt, fikir, karşılaştırma) konuşur. "Biz arama yapmayız, sunucudan kazıma yapmayız; kullanıcının gördüğü sayfayı onun tıklamasıyla kaydederiz" (PLAN.md İlke). | 2026-10-08 | **CANLI** — İlke; Kendin ara/arama linkleri, capture.ts, lib/searchLinks.ts. İstisna: Viator teklifleri offers fonksiyonuyla sunucudan geliyor (supabase/functions/offers) |
 | **PG22** · Tasarım turu v12 (plan-v12) | Etkinlik ve turlar: kaynaktan gerçek teklifler planda kare gelir; kaynak açık ("Pano'dan" / "Önerimiz"); hazır gelenler (etkinlik, yapılacak, restoran, eSIM önerilerle planda). | 2026-10-10 | **CANLI** — ET01, ET07 (ActivityBoard.tsx) |
-| **PG23** · Tasarım turu v12: ↻ | "× çıkarır, ↻ yerine başkasını koyar" (etkinlik karelerinde). | 2026-10-10 | **YAYINDA DEĞİL** — ↻ düğmesi kodda yok (K8 ile aynı: "Yeni öneriler ↻" yerine sohbete giden "Daha fazla fikir") |
+| **PG23** · Tasarım turu v12: ↻ | "× çıkarır, ↻ yerine başkasını koyar" (etkinlik karelerinde). | 2026-10-10 | **CANLI** — v46'da kodlandı (P6, `543b2b4`): ↻ (sohbete "başka etkinlik öner" yollar) ve × etkinlik kartında (ActivityBoard.tsx) |
 | **PG24** · Tasarım turu v13-v14 | v13: sade niyet kartı + altında açılan liste (Pano'dan, sonra Önerimiz), aşama renkleri sarısız; v14: karta basınca dört açılış denendi (Çevir, Balon, Çekmece, Kart içinde); Çevir seçildi. | 2026-10-10 | **CANLI** — Çevir: KM11. Balon/Çekmece/Kart içinde: vazgeçildi; "sarısız" renkler: KM07 (Y) |
 | **PG25** · Tasarım turu v15-v16 | v15: Pano'da çok seçenek kartta ilk 4 + 2 "Pano'da geniş aç"; v16: link atma anı (8 link doğru kartlara yerleşir, "+N yeni"), açılan seçenekler aynı boy küçük kartlar, kart boyları sabit, uzun ad tek satır. | 2026-10-10 | **DOĞRULANAMADI** — v15 yerine v30 "en çok 7 + son kare '+N daha'" (KM12); "+N yeni" yazısı kodda bulunamadı; kart boyu sabit PG13 (C) |
 | **PG26** · Tasarım turu v17-v19 | v17: niyet kartında tahmini fiyat aralığı, hero'da tahmini toplam ve bütçeye sığıyor mu; v18: lila sayfa, bölüm kendi renginde, gölgeli kartlar, bölümler kaydırınca belirir; v19: çevir + kart içinde ‹ ›, ulaşım bilet gibi, kaydırınca üst özet, Yolculuk sırasıyla hikâye, Pano'da yedek. | 2026-10-10 | **CANLI** — v17 → BK07, HS17; v19 → KM11, HS01, YS01, PN05. v18'in "lila sayfa/renkli bölüm" kısmı vazgeçildi (v20: "bölümler sade beyaz", css cat-sec beyaz); "bölümler kaydırınca belirir" → açılış B (HS28) |
@@ -242,7 +227,7 @@ VAZGEÇİLDİ olanlar (31): ilgili satırlarda "yerine ne geldiği" yazılı; ay
 | **YS01** · v30: Yolculuk sırasıyla | Sütunlar: solda tarih sütunu, ortada kesikli çizgi ve düğüm, sağda kart. Tarih kutusu ay · gün · haftanın günü · "Gün N"; aynı güne düşen satırda tarih tekrar edilmez; tarihsiz gezide yalnız "Gün N". | 2026-10-11 | **CANLI** — plan/StoryView.tsx:38-52; lib/storyDates.ts:23 |
 | **YS02** · v30: Şehir bölümü | Başlık "5 gece · 1–6 Nis · Per–Sal · Gün 1–6"; içerik: konaklama kartı ve "Burada" listesi (etkinlikler ve ✓'li yapılacaklar). | 2026-10-11 | **CANLI** — StoryView.tsx:72-95; storyDates.ts:38 (spanText) |
 | **YS03** · v30 denetimi | Yolculuk sırasıyla sonunda "✓ Eve dönüş · İstanbul" satırı; 1000 px'te otel kartı sütunda sıkışıp kesilmesin. | 2026-10-11 | **CANLI** — StoryView.tsx:99-107; commits cdc3370, 45d693a |
-| **YS04** · v37 fark §4 | Yolculuk sırasıyla görünümü de aynı `slotCard`'ı kullanır; yeni (v37) kartlar orada da görünecek. | 2026-10-13 | **YAYINDA DEĞİL** — v37 hedefi; bugünkü kartlar kullanılıyor (StoryView.tsx:9, PlanEntry) |
+| **YS04** · v37 fark §4 | Yolculuk sırasıyla görünümü de aynı `slotCard`'ı kullanır; yeni (v37) kartlar orada da görünecek. | 2026-10-13 | **CANLI** — v46'da kodlandı (P5b, `5069224`): Yolculuk sırasıyla görünümü planın kartlarıyla aynı kalıpta (StoryView.tsx, JourneyCards.tsx) |
 
 ## 4. Gün gün
 
@@ -323,7 +308,7 @@ VAZGEÇİLDİ olanlar (31): ilgili satırlarda "yerine ne geldiği" yazılı; ay
 | **KO07** · v30: otel giriş saati | Otel giriş saati alt şeritte konaklamaya 2 gün kala; öncesinde "✓ Rezerve". | 2026-10-11 / 10-12 | **CANLI** — lib/cardTime.ts:12,75 (CHECKIN_DAYS=2, checkInNote); PlanCard.tsx:175. (v30 "Uygulama durumu" 'yapılmadı' diyor: o not 0.36.79 sonrası eskidi) |
 | **KO08** · 0.36.62-64 + K74 | Seçenekli konaklama tek kart ("N seçenek ›"); seçilmiş/rezerve konaklama da v11 kartı (eski "settled card" kalktı): "Aldım", "Pano'da N alternatif", "Rezerve et ↗", rezervede damga + rezervasyon penceresi. | 2026-10-09 | **CANLI** — SwipeCard.tsx (stay kararı kartı) + NeedCard.tsx; "settled card" hâlâ SwipeCard içinde yaşıyor → D (kart gövdesi PlanCard mı SwipeCard mı karışık) |
 | **KO09** · v30 Korunacaklar 4 (uyarılar) | Konaklamanın bir kısmının boş kalması uyarısı (PlanEntry), iki rezervasyon çakışması (lib/plan.ts), kısa aktarma uyarısı + "Anladım" (SuggestionCards), tek yön uçuşta "Dönüş bileti ara". | 2026-10-11 | **CANLI** — plan/PlanEntry.tsx:77, plan/SuggestionCards.tsx:38, plan/SectionTimeline.tsx:105 |
-| **KO10** · v37 D1 (hedef) | Görselin sol üstünde niyet etiketi: yatak simgesi · Kyoto · "8–13 Nis · 5 gece"; tarih·gece satırı karttan kalkar. | 2026-10-13 | **YAYINDA DEĞİL** — v37 hedefi — bkz. VB bölümü |
+| **KO10** · v37 D1 (hedef) | Görselin sol üstünde niyet etiketi: yatak simgesi · Kyoto · "8–13 Nis · 5 gece"; tarih·gece satırı karttan kalkar. | 2026-10-13 | **CANLI** — v46'da kodlandı (P1b, `41835e1`): niyet etiketi görselin sol üstünde (IntentChip) |
 
 ### Ulaşım
 
@@ -574,25 +559,25 @@ VAZGEÇİLDİ olanlar (31): ilgili satırlarda "yerine ne geldiği" yazılı; ay
 
 | Kimlik / kaynak | Karar | Tarih / sürüm | Durum |
 |---|---|---|---|
-| **VB-A1** · v37 A1 (taslak kart) | Boş kart yerine "Önerimiz" taslağı: elinde gerçek seçenek varsa en uygunu kesikli mor çerçeve + beyaz zemin + "✨ Önerimiz" etiketiyle kartta hazır durur; "Seç" deyince Seçildi'ye döner. (v39: düz çerçeve, kesikli çizgi hiçbir kartta yok.) | 2026-10-13 | **YAYINDA DEĞİL** — v37 hedefi (docs/mockups/plan-v36..v39 plan-v30-wip'te); canlı: seçenekli ihtiyaç tek boş kart (NeedCard) |
-| **VB-A2** · v37 A2 | Dördüncü görünüm "Önerimiz" durum sözlüğüne girer (Arıyoruz · Önerimiz · Seçildi · Rezerve · Ayarlandı); anahtarda örnek kutu; bölüm başlığında "2 önerimiz · 1 seçildi · 1 aranıyor"; "değişmez 3" güncellenir. | 2026-10-13 | **YAYINDA DEĞİL** — PlanKey 3 kutu, stageLine "N rezerve · N seçildi · N aranıyor" (plan/PlanOrder.tsx:7-16, lib/categories.ts:745) |
-| **VB-A3** · v37 A3 (köşe yüzü) | Kartın sol üst köşesinde (−9 px) küçük yüz (kim kaydetti / AI ✨); üstüne gelince "Önerimiz (AI)" / "Sabine kaydetti". | 2026-10-13 | **YAYINDA DEĞİL** — Canlı: yüz yalnız arka yüz karolarında ve Pano'da (WhoAvatar) |
-| **VB-A4** · v37 A4 | Kartın alt satırında sol "Değiştir [N]" hap düğmesi (N = diğer seçenek); sağda fiyat; en sağda koyu "Rezerve et ↗". | 2026-10-13 | **YAYINDA DEĞİL** — Canlı: "Pano'da N alternatif" / "N alternatif ⌄" (CardShell.tsx:200-205) |
-| **VB-B1** · v37 B1 (sade otel kartı) | Sade otel kartı: görsel + marka etiketi + puan rozeti + ad + tek satır ("İade yok" kırmızı yalnız varsa); toplam fiyat, iptal satırı, yorum sayısı, semt, not ⓘ'de; altta [Değiştir N] · "€210 / gece" · [Rezerve et ↗]. | 2026-10-13 | **YAYINDA DEĞİL** — Canlı: v30 tam konaklama düzeni (MediaCard.tsx) |
-| **VB-B2** · v37 B2/B3 (ⓘ düğmesi) | ⓘ düğmesi (20 px, sağ üst): hover/odak/dokunmada 250 px balon, "etiket · değer"; uçuş: Sefer · Kalkış · Varış (+1) · Süre · Aktarma · Bagaj · Kimden; otel: Semt · Puan · İptal · Not · Toplam · Kimden; gerçek uyarılar kartta kalır. | 2026-10-13 | **YAYINDA DEĞİL** — Canlı: uçuşta yalnız fare üstü Peek (cards/Peek.tsx, 450 ms); klavye/dokunma yolu yok |
+| **VB-A1** · v37 A1 (taslak kart) | Boş kart yerine "Önerimiz" taslağı: elinde gerçek seçenek varsa en uygunu kesikli mor çerçeve + beyaz zemin + "✨ Önerimiz" etiketiyle kartta hazır durur; "Seç" deyince Seçildi'ye döner. (v39: düz çerçeve, kesikli çizgi hiçbir kartta yok.) | 2026-10-13 | **CANLI** — v46'da kodlandı (P7, `67814c3`): taslak "Önerimiz" kartı (lookWord "draft", pk-draft) |
+| **VB-A2** · v37 A2 | Dördüncü görünüm "Önerimiz" durum sözlüğüne girer (Arıyoruz · Önerimiz · Seçildi · Rezerve · Ayarlandı); anahtarda örnek kutu; bölüm başlığında "2 önerimiz · 1 seçildi · 1 aranıyor"; "değişmez 3" güncellenir. | 2026-10-13 | **CANLI** — v46'da kodlandı (P0 + P7, `8019f19, 67814c3`): dördüncü görünüm "Önerimiz" durum sözlüğünde (stageWords.ts Look "draft") |
+| **VB-A3** · v37 A3 (köşe yüzü) | Kartın sol üst köşesinde (−9 px) küçük yüz (kim kaydetti / AI ✨); üstüne gelince "Önerimiz (AI)" / "Sabine kaydetti". | 2026-10-13 | **CANLI** — v46'da kodlandı (P1c, `dc63a10`): köşe yüzü (SavedFace: kart, arka yüz karosu, Pano) |
+| **VB-A4** · v37 A4 | Kartın alt satırında sol "Değiştir [N]" hap düğmesi (N = diğer seçenek); sağda fiyat; en sağda koyu "Rezerve et ↗". | 2026-10-13 | **CANLI** — v46'da kodlandı (P3, `3e1879b`): alt satırda "Değiştir N" hapı (CardShell.tsx pk-alt) |
+| **VB-B1** · v37 B1 (sade otel kartı) | Sade otel kartı: görsel + marka etiketi + puan rozeti + ad + tek satır ("İade yok" kırmızı yalnız varsa); toplam fiyat, iptal satırı, yorum sayısı, semt, not ⓘ'de; altta [Değiştir N] · "€210 / gece" · [Rezerve et ↗]. | 2026-10-13 | **CANLI** — v46'da kodlandı (P3, `3e1879b`): sade otel kartı |
+| **VB-B2** · v37 B2/B3 (ⓘ düğmesi) | ⓘ düğmesi (20 px, sağ üst): hover/odak/dokunmada 250 px balon, "etiket · değer"; uçuş: Sefer · Kalkış · Varış (+1) · Süre · Aktarma · Bagaj · Kimden; otel: Semt · Puan · İptal · Not · Toplam · Kimden; gerçek uyarılar kartta kalır. | 2026-10-13 | **CANLI** — v46'da kodlandı (P1a, `138f7b2`): ⓘ düğmesi ve 250 px balon (InfoButton.tsx) |
 | **VB-B3** · v37 B4 | "Rezerve et ↗" birincil düğme tüm Seçildi/Önerimiz kartlarında altta sağda (uçuşta "Bileti al ↗" mı "Rezerve et ↗" mı: SORU 5). | 2026-10-13 | **ÇELİŞKİ** — Canlı: uçuşta "Bileti al ↗", otelde "Rezerve et ↗" (PlanCard.tsx:144-148); "✓ Aldım" üstte |
-| **VB-C1** · v37 C1 (uçuş bileti) | Yatay tek bilet: sol ana bölüm (logo · havayolu · "· Gidiş · 1 Nis Çar" · ⓘ; sol şehir 23 px kalın + kod·saat; ortada ucus.png 84×46 + "11 sa 30 dk · Direkt" (aktarmada amber "1 aktarma"); sağ şehir) + sağda 132 px koçan (kesik sol çizgi, çentikler). v39: çerçeve düz, yalnız koparma çizgisi kesikli; başlık her kartta logo + (havayolu / yön · tarih); isimler hiç kesilmez. | 2026-10-13 | **YAYINDA DEĞİL** — Canlı: dikey kart, koçan alt kenarda (pk-stub, css:3331); mockup v37-v39 |
+| **VB-C1** · v37 C1 (uçuş bileti) | Yatay tek bilet: sol ana bölüm (logo · havayolu · "· Gidiş · 1 Nis Çar" · ⓘ; sol şehir 23 px kalın + kod·saat; ortada ucus.png 84×46 + "11 sa 30 dk · Direkt" (aktarmada amber "1 aktarma"); sağ şehir) + sağda 132 px koçan (kesik sol çizgi, çentikler). v39: çerçeve düz, yalnız koparma çizgisi kesikli; başlık her kartta logo + (havayolu / yön · tarih); isimler hiç kesilmez. | 2026-10-13 | **CANLI** — v46'da kodlandı (P2, `ff4ef9c`): yatay tek bilet (FlightTicket.tsx) |
 | **VB-C2** · v37 C2 → v38 → v39 | Koçan durum göstergesi: v37 46 px durum dairesi (Arıyoruz boş kesikli gri · Aranıyor dönen · Önerimiz kesikli mor · Seçildi kesikli yeşil · Bilet alındı dolu koyu yeşil + tik); v38 (Emre sonrası): uçuş biletinde BOŞ DAİRE YOK, alınmadan önce koçanda aşama etiketi + kişi başı fiyat + "Rezerve et", alınınca büyük yeşil tik; v39: küçük aşama etiketleri, tahmin kapsülsüz tek satır, rezervede yolcu sayısı tekrarlanmaz. | 2026-10-13 | **ÇELİŞKİ** — v37 fark listesi (bb30cd6) hâlâ v37'nin dairesini tarif ediyor; v38/v39 (plan-v30-wip) bunu geçersiz kılıyor → fark listesi güncellenmeli |
-| **VB-C3** · v37 C3 | Kişi başı fiyat büyük (19 px/800) + "kişi başı" + küçük "2 kişi · €1.960"; boşta "Tahmini ~€850–1.000 kişi başı" (uçuşta tahmin: ≥3 gerçek teklif). | 2026-10-13 | **YAYINDA DEĞİL** — Canlı: seçildide "Fiyat €980 · kişi başı · €1.960 toplam" alt koçan (PlanCard.tsx:309-318); boş uçuşta tahmin yok |
-| **VB-C4** · v37 C4 | Boş uçuş bileti: başlıkta uçak + "Uçuş"; orta metin "Aradığımız: direkt"; altta "N seçenek" ya da "✨ Seçenek ara". | 2026-10-13 | **YAYINDA DEĞİL** — Canlı: EmptyTravelCard "Bilet yok · N kişi" + Kendin ara + ✨ (EmptyCard.tsx:361-396); uçuş "aradığımız" kaynağı SORU 9 |
+| **VB-C3** · v37 C3 | Kişi başı fiyat büyük (19 px/800) + "kişi başı" + küçük "2 kişi · €1.960"; boşta "Tahmini ~€850–1.000 kişi başı" (uçuşta tahmin: ≥3 gerçek teklif). | 2026-10-13 | **CANLI** — v46'da kodlandı (P2, `ff4ef9c`): kişi başı büyük fiyat ve tahmin yalnız gerçek tekliflerden (FlightTicket.tsx) |
+| **VB-C4** · v37 C4 | Boş uçuş bileti: başlıkta uçak + "Uçuş"; orta metin "Aradığımız: direkt"; altta "N seçenek" ya da "✨ Seçenek ara". | 2026-10-13 | **CANLI** — v46'da kodlandı (P2, `ff4ef9c`): boş bilet "Aradığımız: direkt" (FlightTicket.tsx, EmptyCard.tsx) |
 | **VB-C5** · v37 C5 | Bilet alındı: alt satırda belge çipi (dosya adı) ya da "Belge eksik", sağda "Ayrıntı ›". | 2026-10-13 | **CANLI** — Zaten canlı: PlanCard.tsx:259-279 |
-| **VB-D1** · v37 D1 (niyet etiketi) | Görselin sol üstünde niyet etiketi: yatak simgesi · Kyoto (kalın) · "8–13 Nis · 5 gece"; etiket Seçildi/Önerimiz/Rezerve'de; tarih·gece satırı karttan kalkar (yalnız "İade yok" kalır). | 2026-10-13 | **YAYINDA DEĞİL** — Canlı: tarih üst satırda, gece sayısı "· N gece" satırında (MediaCard.tsx:92) |
+| **VB-D1** · v37 D1 (niyet etiketi) | Görselin sol üstünde niyet etiketi: yatak simgesi · Kyoto (kalın) · "8–13 Nis · 5 gece"; etiket Seçildi/Önerimiz/Rezerve'de; tarih·gece satırı karttan kalkar (yalnız "İade yok" kalır). | 2026-10-13 | **CANLI** — v46'da kodlandı (P1b, `41835e1`): niyet etiketi görselin sol üstünde (IntentChip) |
 | **VB-E1** · v37 E1 (arka yüz yerinde biner) | Arka yüz kartın yerinde biner, düzen kaymaz (ön yüz visibility:hidden, arka yüz satır genişliğinde mutlak konum, JS placeBack); v30'da yan kart bir satır aşağı kayar ("bilerek"). | 2026-10-13 | **ÇELİŞKİ** — v30 spec kayma "bilerek" der; v35 (mockup) bunu tersine çevirdi → VB-E1 Y (karar: SORU 6) |
-| **VB-E2** · v37 E2 (iki bölüm arka yüz) | Arka yüz iki bölüm: "Kaydettikleriniz" (kişi/eklenti) ve "Önerimiz" (AI); her biri en çok 3 karo + 1 eylem kutucuğu; üstte durum noktası · "İstanbul → Tokyo" · "Pano'da aç · +N" hapı · ×. | 2026-10-13 | **YAYINDA DEĞİL** — Canlı: tek ızgara en çok 7 (BACK_MAX) — v30 kararı ("Izgara: en çok 7 seçenek") ile çelişir (VB-E5) |
-| **VB-E3** · v37 E3 (karo) | Karo: üstte görsel ya da uçuşta logo + "01:55 → 19:25"; köşede yüz; etiket Seçili / Kartta (taslak, mor) / Yeni; marka + puan ya da süre·aktarma; fiyat (uçuşta kişi başı) + "Seç". | 2026-10-13 | **YAYINDA DEĞİL** — Canlı karo: uyum puanı, rozet, ✓✕ ihtiyaçlar, Neden?, Tarihlerle aç, Tüm detaylar da var (NeedCard.tsx:240-330) — SORU 7 |
-| **VB-E4** · v37 E4/E5 | "Kendin ara" kutucuğu (Kaydettikleriniz ızgarasının son karosu, marka bağlantıları) ve "AI'a arat" kutucuğu (lavanta zemin, [Ara], "Arıyoruz…" çubuğu, sonuç yerinde karo). | 2026-10-13 | **YAYINDA DEĞİL** — Canlı: alt bilgide küçük "Kendin ara" bağlantıları ve "✨ Daha fazla bul" (sohbete satır gönderir, env.ask) — SORU 8 |
+| **VB-E2** · v37 E2 (iki bölüm arka yüz) | Arka yüz iki bölüm: "Kaydettikleriniz" (kişi/eklenti) ve "Önerimiz" (AI); her biri en çok 3 karo + 1 eylem kutucuğu; üstte durum noktası · "İstanbul → Tokyo" · "Pano'da aç · +N" hapı · ×. | 2026-10-13 | **CANLI** — v46'da kodlandı (P4, `a799601`): arka yüz Kaydettikleriniz / Önerimiz bölümleri (BackFace.tsx) |
+| **VB-E3** · v37 E3 (karo) | Karo: üstte görsel ya da uçuşta logo + "01:55 → 19:25"; köşede yüz; etiket Seçili / Kartta (taslak, mor) / Yeni; marka + puan ya da süre·aktarma; fiyat (uçuşta kişi başı) + "Seç". | 2026-10-13 | **CANLI** — v46'da kodlandı (P4, `a799601`): karo: Seçili / Kartta / Yeni etiketleri, köşe yüzü (BackFace.tsx) |
+| **VB-E4** · v37 E4/E5 | "Kendin ara" kutucuğu (Kaydettikleriniz ızgarasının son karosu, marka bağlantıları) ve "AI'a arat" kutucuğu (lavanta zemin, [Ara], "Arıyoruz…" çubuğu, sonuç yerinde karo). | 2026-10-13 | **CANLI** — v46'da kodlandı (P4, `a799601`): "Kendin ara" ve "AI'a arat" kutucukları (BackFace.tsx) |
 | **VB-E5** · v30 Kart çevirme vs v37 E2 | v30: "en çok 7 seçenek, son kare '+N daha · Pano'da büyük aç'"; v37: 3+1 karo. İki sayı çelişiyor. | 2026-10-13 | **ÇELİŞKİ** — v30 canlı (BACK_MAX=7); v37 hedefi 3+1 |
-| **VB-F1** · v37 F1-F3 (Pano ferah) | Pano şerit sütunu 296–316 px (v30 mock 264–280; canlı .pn-strip 250–272), "Neden?" yandakileri uzatmaz, alt satır sarar; uçuş karesinde iki şehir arasında ucus.png; uçuşta kişi başı büyük + "2 kişi · €1.960"; boş "Herkes için" başlığı gizlenir (canlıda böyle başlık yok). | 2026-10-13 | **YAYINDA DEĞİL** — static/app.css .pn-strip (4633), board/Pano.tsx PanoArt/PanoCard |
+| **VB-F1** · v37 F1-F3 (Pano ferah) | Pano şerit sütunu 296–316 px (v30 mock 264–280; canlı .pn-strip 250–272), "Neden?" yandakileri uzatmaz, alt satır sarar; uçuş karesinde iki şehir arasında ucus.png; uçuşta kişi başı büyük + "2 kişi · €1.960"; boş "Herkes için" başlığı gizlenir (canlıda böyle başlık yok). | 2026-10-13 | **CANLI** — v46'da kodlandı (P1d, `0ebfdf9`): Pano şerit sütunu 296–316 px (.pn-strip) |
 | **VB-S1** · v37 SORU 1 | Taslak nasıl onaylanır? (v37'de "Bunu seç" yok.) Öneri: kartta küçük "✓ Bunu seç" ya da "Rezerve et ↗"e basınca otomatik Seçildi. | 2026-10-13 | **YAYINDA DEĞİL** — Karar bekliyor |
 | **VB-S2** · v37 SORU 2 | Taslak kalıcı mı görünüm mü? Öneri: yazmayan görünüm (byRank[0]); sayımlar: taslak "karar bekliyor" mu "seçildi" mi; hero %77 hazır, yapışkan bütçe ve Sıradaki taslağı nasıl sayar? | 2026-10-13 | **YAYINDA DEĞİL** — Karar bekliyor |
 | **VB-S3** · v37 SORU 3 | Taslak kimlere (yalnız uçuş+otel mi, tren/eSIM/sigorta da)? Kaç seçenekle (1 yeter mi)? "Gerçek seçenek" yalnız kaynaktan/kayıtlı fiyatlı; en uygun = decision.winner mı choice sırası mı? | 2026-10-13 | **YAYINDA DEĞİL** — Karar bekliyor |

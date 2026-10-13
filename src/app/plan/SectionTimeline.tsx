@@ -32,21 +32,15 @@ export interface SectionCards {
 
 
 
-export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, onIdea, today, items, extra = [], journey = null }: {
+export function SectionTimeline({ section, plan, cards, onAdd, items, extra = [], journey = null }: {
   section: CatSection;
   /** v11: the section's empty cards (the insurance's, the eSIM's), in the same grid as its cards. */
   extra?: { key: string; card: ReactNode }[];
   /** The trip's shape: the way between one city and the next shows as a line between the Yapılacaklar rows. */
   journey?: { stops: JourneyStop[]; hops: JourneyHop[] } | null;
   plan: Pick<Plan, "range" | "stayBlocks">;
-  tripId: string;
-  cities: string[];
   cards: SectionCards;
   onAdd: (at: InsertAt) => void;
-  /** A line typed in the quick box is saved (its section opens). */
-  onIdea: (item: Item) => void;
-  /** YYYY-MM-DD: "Bugün" during the trip, and a day gone by sends an idea back to its pool. */
-  today: string;
   /** The trip's records (a one-way flight's "Dönüş bileti ara"). */
   items: Item[];
 }) {

@@ -6,7 +6,7 @@
 // with nothing booked there, Diğer the eSIM's while a trip abroad has none (the rule's suggestion, drawn as its
 // card); a section with only those is drawn and open, and they're never in its "3/4".
 import type { ReactNode } from "react";
-import { planSectionOfItem, type CatSection, type SectionId } from "../../lib/categories";
+import { type CatSection, type SectionId } from "../../lib/categories";
 import { activityGaps } from "../../lib/emptyCards";
 import { L } from "../../lib/i18n";
 import { nightsSummary } from "../../lib/lifecycle";
@@ -37,18 +37,15 @@ const TILED: SectionId[] = ["activity", "todo"];
 
 const SLICE: Partial<Record<SectionId, BudgetSlice>> = { flight: "flight", stay: "stay", transport: "transport", activity: "activity", other: "other" };
 
-export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, shape = null, onStop, order = null }: {
+export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, cards, onAdd, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, shape = null, onStop, order = null }: {
   plan: Plan;
   sections: CatSection[];
   /** Open now: the traveller's choice, else the first look (sectionMeta.useSectionOpen). */
   isOpen: (section: CatSection) => boolean;
   onOpen: (id: SectionId, open: boolean) => void;
-  tripId: string;
-  cities: string[];
   cards: SectionCards;
   /** Adds in a section (its kind; at a day and city when given), or (null) anything from the plan's head. */
   onAdd: (section: SectionId | null, at: InsertAt | null) => void;
-  today: string;
   items: Item[];
   /** What's being read now (arrive/useArrivals): under the header when its place can't be guessed, else atop its section (drawn even while empty). */
   pending?: { lead: ReactNode; bySection: Partial<Record<SectionId, ReactNode>> };
@@ -123,7 +120,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
                 {suggestions && !TILED.includes(s.id) && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
                 {pending?.bySection[s.id]}
                 {/* The empty cards join the section's own grid (side by side with its cards), except Etkinlikler's. */}
-                {own && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} journey={shape} extra={s.id === "activity" ? [] : rows} />}
+                {own && <SectionTimeline section={s} plan={plan} cards={cards} onAdd={(at) => onAdd(s.id, at)} items={items} journey={shape} extra={s.id === "activity" ? [] : rows} />}
                 {s.id === "activity" ? (
                   // v11: the tours and tickets come from the source as the shelf's tiles (plan/ActivityBoard), no empty card.
                   own ? null : <ActivityBoard section={s} plan={plan} fallback={() => null} />

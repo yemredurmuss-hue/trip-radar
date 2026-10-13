@@ -119,14 +119,12 @@ export interface Nav {
 }
 
 /** The bottom strip: where it stands (or ‹ 1/2 ›) on the left, the price and the one action on the right. */
-export function CardFoot({ view, nav, best = false, price, each = null, onAction, live, go, alt, quietWait = false, says = false, timed = null, docs = null, more, noTicket = false }: {
+export function CardFoot({ view, nav, best = false, price, each = null, onAction, live, go, alt, quietWait = false, timed = null, docs = null, more, noTicket = false }: {
   /** v30: a way of travel that needs no ticket says so by its price ("Bilet gerekmez") instead of a page to buy on. */
   noTicket?: boolean;
   view: FootView;
   /** v11: a plan chosen and not bought: its stage is the card's colour and its top line, not words here (a date running out stays). */
   quietWait?: boolean;
-  /** v30: a chosen flight keeps saying its words even then: "Bilet alınmadı · uçuşa 12 gün" (orange within 14 days). */
-  says?: boolean;
   /** v30: a booked stay's check-in time, from two days before ("Giriş saati 15:00"). */
   timed?: string | null;
   /** v11: a booking's file (its name) or "Belge eksik", after its proof. */
@@ -165,10 +163,6 @@ export function CardFoot({ view, nav, best = false, price, each = null, onAction
           </span>
           {best && <span className="pk-best">{L("Önerim", "My pick")}</span>}
         </>
-      ) : left.kind === "state" && quietWait && says && left.tone === "wait" ? (
-        <span className={`pk-state wait pk-says${left.alert ? ` alert-${left.alert}` : ""}`}>
-          <span className="pk-when">⏳ {capitalFirst(left.sub ?? left.text)}{left.when ? ` · ${left.when}` : ""}</span>
-        </span>
       ) : left.kind === "state" && quietWait && left.tone === "wait" ? (
         left.when ? <span className={`pk-state wait${left.alert ? ` alert-${left.alert}` : ""}`}><span className="pk-when">⏳ {left.when}</span></span> : null
       ) : left.kind === "state" && (left.text || left.sub || left.when) ? (

@@ -27,7 +27,7 @@ function stops(items: Item[]): string[] {
 }
 
 /** The trip's places: its stops, its countries, the event's place. */
-export function tripPlaces(trip: Pick<Trip, "intent" | "title">, items: Item[]): string[] {
+export function tripPlaces(items: Item[]): string[] {
   const all = [...stops(items), ...items.map((i) => i.city), ...items.map((i) => i.country)].filter((x): x is string => !!x && !!x.trim());
   return [...new Map(all.map((x) => [cityKeyOf(x), x])).values()];
 }
@@ -100,7 +100,7 @@ export function conceptState(trip: Pick<Trip, "intent">): { label: string | null
 export function groundQuery(query: string, trip: Pick<Trip, "intent" | "title">, items: Item[]): string {
   const q = query.trim();
   const said = ` ${normWords(q).join(" ")} `;
-  const places = tripPlaces(trip, items);
+  const places = tripPlaces(items);
   const main = stops(items)[0] ?? places[0] ?? null;
   if (!main) return q;
   // The query names one of the trip's places (or its country), with or without a Turkish ending: as it is.

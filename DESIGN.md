@@ -28,7 +28,7 @@ Bu panonun tek işi karar vermeyi kolaylaştırmak. Her yeni ekran ve bileşen b
 | Renk | Anlamı | Nerede |
 | --- | --- | --- |
 | Yeşil `#1f8f4e` | Rezerve edildi, bilet alındı; artı | Durum şeridi, ✓ rozeti, artı işareti |
-| Amber `#f0a53a` | Seçildi ya da planlanıyor, henüz rezerve değil | Durum şeridi, "rezerve edilmedi" uyarısı |
+| Amber `#f0a53a` | Süre uyarısı (v46'dan beri Seçildi'nin rengi değil: Seçildi beyaz zemin + açık yeşil çerçeve) | "rezerve edilmedi" uyarısı, iptal süresi |
 | Kırmızı `#d9534f` / `--danger` | Eksi, risk, elendi, süresi dolmak üzere | Eksi işareti, eleme sebebi, iptal uyarısı |
 | Mavi `--accent` | Yalnız öneri ve link | Öneri satırı, önerilen kartın çerçevesi, linkler |
 | Gri, kesikli çizgi | Henüz planlanmadı, boş | "Planlanmadı" kartı, boş gün |
@@ -88,14 +88,14 @@ hareket tercihinde yok). Uydurma yok.
 - **Kart ilerleme kutusuyla aynı hizada biter** (revizyon 1): geniş ekranda kart hikâye sütunu kadar uzar, alt kenarı
   "Rezervasyonların" kutusunun alt kenarıyla bir; kendi başına sıkı (çizginin iki yanında 14 px), artan yer her
   çizginin iki yanına eşit dağılır. İçerik hikâyeden uzunsa (dört ülke) kart uzar, hiçbir şey kesilmez.
-- **Sekmeler** hero'nun altında, ortalı ve alt çizgili: Plan | Günlük akış | Belgeler; seçili olan ink, 3 px accent çizgi.
+- **Sekmeler** hero'nun altında, ortalı ve alt çizgili: **Plan | Pano** (Pano'da kayıt sayısı); seçili olan ink, 3 px accent çizgi. Günlük akış ayrı sekme değildir: Plan'ın üçüncü görünümü "Gün gün"dür (Kategoriye göre · Yolculuk sırasıyla · Gün gün). Belgeler ••• gezi menüsündedir (Belgeler · Paylaş · PDF olarak indir · Geçmiş).
 
 ## Plan kartları
 
 Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabuğu paylaşır (onaylı görseller
 `docs/mockups/2026-10-05-ulasim-v3.html` ve `docs/mockups/2026-10-05-etkinlik-v4.html`).
 
-- **Kabuk:** zemin durumu söyler (sarı-bej alınmadı, yeşil alındı ya da planlandı). Üst satır 24 px: çember (kesikli
+- **Kabuk (v46 durum dili):** Arıyoruz = hafif gri çerçeve, boş · Önerimiz = beyaz zemin, mor-gri ince düz çerçeve · Seçildi = beyaz zemin, açık yeşil (`--plan-line`) düz çerçeve · Rezerve = yeşil zemin, koyu yeşil çerçeve · Ayarlandı ayrı sözdür. Kesikli çerçeve ve krem/amber zemin (`#fbf6ea`, `#e9d29a`) kalktı; amber yalnız süre uyarısında (iptal süresi, alınmamış bilet) kalır. Eski tarif (bu satırın devamı ve yukarıdaki renk tablosu) v30'a aittir: Üst satır 24 px: çember (kesikli
   karar bekliyor · amber seçildi · yeşil ✓ alındı) · renkli tür ikonu ve adı · tarih [· saat] | belge · •••.
   Altta 48 px şerit: solda durum ya da seçenek gezgini, sağda fiyat ve tek koyu eylem. Durum yazısı yalnız altta;
   sağ üstte durum hapı yok. Alt şerit kısa kalır ("Seçildi · bilet alınmadı · ⏳ 4 gün"), "…" ile kesilmez; uzun tarih
@@ -125,7 +125,9 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
   Boş alan soluk "Tarih ekle" / "Saat ekle" / "Fiyat ekle". Sayfadan kaydedilen kartta değişiklik düzeltme olarak
   durur (sayfa yeniden kaydedilse de kalır); üstüne gelince "sayfadaki: X · geri al".
 
-## İki görünüm: Plan · Günlük akış
+## Plan görünümleri: Kategoriye göre · Yolculuk sırasıyla · Gün gün
+
+> Bu bölüm 0.34–0.35 dönemini anlatır; o zaman Günlük akış ayrı bir sekmeydi. Bugün sekmeler Plan | Pano'dur ve günlük akış Plan'ın içinde "Gün gün" görünümüdür (`plan/PlanOrder.tsx`); "Liste | Kartlar" anahtarı, gün şeridi ve gün satırı kuralları aşağıda Gün gün görünümü için geçerli kalır.
 
 - **Plan kategorilere göre** (`docs/mockups/2026-10-05-kategoriler-v4.html`, spec 0.34): yedi bölüm, bu sırayla —
   Uçuş · Konaklama (gece blokları dahil) · Ulaşım (transferler, şehir değişimi, kiralama) · Etkinlikler (rezervasyonlu)
@@ -261,7 +263,7 @@ Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabu�
 Ölçek: 40 gezi adı · 22 şehir · 17 kart başlığı · 15 metin · 13–14 kart satırı · 12.5 not. Hero: 40 başlık · 22 özet
 rakamı · 17 metin/değer · 15 küçük satır · 13 etiket. Plan kartları: 30 şehir (ulaşım) · 20 başlık (medya) · 15 metin ·
 13 ikincil · 17 fiyat. Türkçe
-büyük harfle etiket yazılmaz (İ/i sorun çıkarır); etiketler küçük ve gri olur.
+büyük harfle etiket yazılmaz (İ/i sorun çıkarır); etiketler küçük ve gri olur. Kural v46 kartlarında da aynıdır (Seçildi, Önerimiz, Rezerve, Arıyoruz yazıldığı gibi durur); `text-transform: uppercase` yeni bir etikete konmaz. Eski küçük başlıklardaki mevcut kullanımlara görünümü değiştirmemek için dokunulmadı.
 
 ## Okunurluk
 

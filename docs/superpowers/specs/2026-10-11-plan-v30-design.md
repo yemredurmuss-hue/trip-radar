@@ -352,7 +352,7 @@ Fazlar `plan-v30` dalında, her sürüm `git log origin/release`'ten alındı. Y
 - **× katlanması:** hiçbir şey seçilmezse kart katlı kalır, veri değişmez ("gerek yok sayılır" yerine). Yalnız plan kartlarında (`CardShell`); etkinlik satırları ve konaklama araçları (`StayTools`) eskisi gibi.
 - **Ayarlandı** ayrı bir durum değil: `noBooking` + yeni `Item.arranged` bayrağı. Sayımlar ve halka mevcut "fikir olarak ayrıldı" yolundan akar; yalnız sözler değişir.
 - **Yolculuk çizgisi hop satırı** (Yapılacaklar'da şehirler arası "Kyoto'ya · Shinkansen") yapılmadı; numaralı duraklar ve kesikli çizgi var.
-- **Otel giriş saati 2 gün kala** kuralı yapılmadı: canlıda giriş saati karta yazılmıyor, rezervasyon penceresinde duruyor.
+- **Otel giriş saati 2 gün kala** kuralı bu satırın yazıldığı geceden sonra yapıldı (`1d08709`, 2026-10-12; `lib/cardTime.ts` `checkInNote`): rezerve otel kartının alt şeridinde "Giriş saati 15:00" görünür. (Eski not: "yapılmadı".)
 - **Pano çekmecesi** yok; kart arkası "Pano'da aç" sayfayı değiştiriyor.
 - **Gerçek otel fotoğrafı:** kaynağın görseli varsa o, yoksa türün çizimi.
 - **Etkinlikte "Bilet aldım"** yazısı değişmedi (kartın üstündeki "✓ Aldım" duruyor).

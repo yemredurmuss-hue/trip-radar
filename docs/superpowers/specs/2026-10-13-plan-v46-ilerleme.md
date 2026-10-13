@@ -23,6 +23,6 @@ Kural: paket bitince bu tabloyu güncelle, commit + push et. Yayın yalnız F10 
 | P7 taslak Önerimiz | bekliyor | | |
 | P8c aşama geçişi (K29) | bekliyor | | |
 | P8d kalan hareketler | bitti (birleşti) | 19a2ef6 | |
-| P9b son temizlik | bekliyor | | |
+| P9b son temizlik | bitti (birleşme bekliyor) | dal `plan-v46-temizlik` | ölü bileşen/export/CSS silindi (176 kural), bayat belgeler ve envanter durumları güncellendi; Mascot wink, WorldFlight, st-map-* silinmedi, `2026-10-13-plan-v46-silme-onerileri.md`; tsc, vitest, build, tam e2e yeşil |
 | P10 bitiş denetimi | bekliyor | | |
 | Yayın | bekliyor | | |

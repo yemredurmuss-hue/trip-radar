@@ -130,14 +130,6 @@ export function VoteBar({ item }: { item: Item }) {
   );
 }
 
-/** The votes in one line, for compact rows ("Emre 👍 · Sabine 👎"). */
-export function VoteTallyText({ item }: { item: Item }) {
-  const share = useShare();
-  const t = share?.me ? share.tally(item) : null;
-  if (!t?.line) return null;
-  return <span className="vote-line"> · {t.allNo && share ? noText(t, share.members) : t.line}</span>;
-}
-
 // --- status on the trip --------------------------------------------------------------------------
 
 function ago(ms: number, now: number): string {

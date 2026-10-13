@@ -427,7 +427,7 @@ Emre'nin isteğiyle (çizim adımı atlanarak, "yap, sabah bakarım") doğrudan 
 
 - **Ana ekran (Seyahatlerim):** v11 çerçevesi ve üst çubuk; solda soru + kutu + başlangıç çipleri (emoji yerine çizgi
   ikonlar), sağda "senin köşen" (profil, yol arkadaşları, gezi/rezervasyon/taslak sayısı, sıradaki gezi, hangi AI);
-  gezi kartları fotoğraf + duraklar + geri sayım + aşama çubuğu (yeşil rezerve, amber seçildi) + yüzler; taslak kesikli.
+  gezi kartları fotoğraf + duraklar + geri sayım + aşama çubuğu (yeşil rezerve, amber seçildi; v46'da seçildi açık yeşil çerçeve) + yüzler; taslak kesikli.
 - **Geçiş:** Enter'da kutu sohbetin ilk balonuna akar (View Transitions), sağ taraf kayarak gelir; oluşturunca pano yumuşak geçer.
 - **Sohbet sırasında sağ taraf:** fotoğraflar büyük, sırayla, adıyla; "Plan taslağı" = Oluştur'un yazacağı kartlar
   panonun bölümlerinde (**vazgeçildi**: sağ taraf bugün fotoğraflar ve satırlar; "Yazıyor…" aşaması da `d34f0a2`'de kaldırıldı) (kesikli = Arıyoruz), cevap geldikçe düşer, cevap bir kartı değiştirince parlar (K5).
@@ -440,7 +440,7 @@ Emre'nin isteğiyle (çizim adımı atlanarak, "yap, sabah bakarım") doğrudan 
 - **Hatalar:** pano sohbeti ve başlatma sohbeti sayfanın tamamını kaydırıyordu (yalnız kendi kutusu kayar);
   panonun Hazırlık'a çekilmesi (0.36.58'de diğer oturum yayınladı).
 
-**Açık karar (Emre) [bayat: K4 sırası başlatma sohbetinde sonradan kodlandı, bkz. K4 satırı]:** K4 soru sırası ile "temel bilgiler önce" kuralı çakışıyor. Bugün sıra: nereye → süre → başlangıç →
+**Açık karar (Emre) [KAPANDI: Emre onayıyla 2026-10-09'da K4 sırası başlatma sohbetinde kodlandı, bkz. K4 satırı; aşağıdaki "karar verilmeden uygulanmadı" cümlesi eski durumdur]:** K4 soru sırası ile "temel bilgiler önce" kuralı çakışıyor. Bugün sıra: nereye → süre → başlangıç →
 nereden → kimle → gün → tarz → rota (temel bilgiler bitince gezi kendini oluşturabilsin diye). K4'e tam uyum: tarih (gün
 dahil) → tarz/bütçe → rota → kimle → nereden. Denendi; 36 birim testi ve gezi türü sorularının "temel bilgilerden sonra"
 kuralı değişiyor. Karar verilmeden uygulanmadı.

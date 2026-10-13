@@ -12,8 +12,6 @@ import { DayCards } from "./days/DayCards";
 export type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => ReactNode;
 export type CardFor = (item: Item, group: Item[], decision?: GroupDecision, ranked?: Ranked, onCompare?: () => void) => ReactNode;
 export type SettledFor = (item: Item, decision?: GroupDecision, onChange?: () => void, changing?: boolean) => ReactNode;
-/** A transfer: its own row; `embedded`, only its body (under a line that is its head); `timed`, its time is beside it already. */
-export type LegFor = (l: Leg, opts?: { embedded?: boolean; timed?: boolean }) => ReactNode;
 /** A transfer or a change of city as a card on the plan (cards/LegCard.tsx). */
 export type LegCardFor = (l: Leg) => ReactNode;
 

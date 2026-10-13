@@ -156,7 +156,7 @@ export function GenerateCard({ ready, complete, onGenerate, lang }: { ready: boo
 }
 
 /** Narrow screens: "4/6 · Gezin şekilleniyor ▾", the list opening under it. */
-export function ChecklistBar({ rows, onAsk, complete, onGenerate, disabled, drawing, reading, now, lang }: Props & { ready: boolean; complete: boolean; onGenerate: () => void }) {
+export function ChecklistBar({ rows, onAsk, onGenerate, disabled, drawing, reading, now, lang }: Props & { ready: boolean; onGenerate: () => void }) {
   const [open, setOpen] = useState(false);
   const done = rows.filter((r) => r.done || r.tentative).length;
   return withLang(lang, () => (

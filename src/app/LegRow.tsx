@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { legItem, legShortTitle, legTiming, MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib/legs";
+import { MODE_LABELS, modesFor, withLegChoice, type Leg } from "../lib/legs";
 import type { Item, LegMode } from "../lib/types";
 import { setHidden, updateTrip } from "./actions";
 import { L } from "../lib/i18n";
@@ -23,61 +22,6 @@ export const kindLabel = () => ({
   change: L("Otel değişimi", "Hotel change"),
   departure: L("Gidiş transferi", "Departure transfer"),
 });
-
-/**
- * One transfer between the stays: where from and to, when, and where it stands (open, planned by
- * metro, a saved option, booked). Opening it shows what's easy to miss and lets the traveller say
- * how they'll go; saying it in the chat ("metroyla gideceğim") does the same.
- */
-export function LegRow({
-  leg,
-  tripId,
-  onOpenItem,
-  onRemove,
-  embedded = false,
-  timed = false,
-}: {
-  leg: Leg;
-  tripId: string;
-  onOpenItem: (item: Item) => void;
-  onRemove: (item: Item) => void;
-  /** Only the body, open: the line above it is its head. */
-  embedded?: boolean;
-  /** Its time is beside it already (a day's rows): the sub line keeps only the places. */
-  timed?: boolean;
-}) {
-  const [toggled, setOpen] = useState(false);
-  // Inside a day on the move the step is the head; only the body shows, open.
-  const open = embedded || toggled;
-  const timing = legTiming(leg);
-  const settled = legItem(leg);
-
-  return (
-    <div className={`leg st-${leg.status}${open ? " open" : ""}${embedded ? " embedded" : ""}`} id={`leg-${leg.key}`}>
-      {!embedded && (
-        <button className="leg-head" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`${kindLabel()[leg.kind]}: ${leg.from.label} → ${leg.to.label}`}>
-          <span className="leg-icon" aria-hidden>
-            {leg.mode ? ICONS[leg.mode] : "↓"}
-          </span>
-          <span className="leg-main">
-            <span className="leg-title">{legShortTitle(leg)}</span>
-            <span className="leg-sub">
-              {[timed ? null : timing, `${leg.from.label} → ${leg.to.label}`, settled?.name].filter(Boolean).join(" · ")}
-              {!open && leg.notes.length > 0 && (
-                <span className="leg-hint" title={leg.notes.join("\n")} aria-label={L(`${leg.notes.length} not`, `${leg.notes.length} note${leg.notes.length === 1 ? "" : "s"}`)}>
-                  {" "}
-                  ⓘ
-                </span>
-              )}
-            </span>
-          </span>
-          <span className={`leg-chip st-${leg.status}`}>{leg.statusText}</span>
-        </button>
-      )}
-      {open && <LegBody leg={leg} tripId={tripId} onOpenItem={onOpenItem} onRemove={onRemove} />}
-    </div>
-  );
-}
 
 /** A transfer's body: notes, saved options, how to go, "Ayarlandı", the chat hint, "Gerek yok · gizle". */
 export function LegBody({ leg, tripId, onOpenItem, onRemove }: { leg: Leg; tripId: string; onOpenItem: (item: Item) => void; onRemove: (item: Item) => void }) {

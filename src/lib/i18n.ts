@@ -4,8 +4,6 @@
 // Code that never loads it (the tests) runs in Turkish.
 export type Lang = "tr" | "en";
 
-export const LANGS: Lang[] = ["tr", "en"];
-
 let current: Lang = "tr";
 
 export const lang = (): Lang => current;

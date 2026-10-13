@@ -803,9 +803,6 @@ export function seriousDoubts(item: Item, ctx: Pick<DecisionContext, "listings" 
     });
 }
 
-/** @deprecated The single-guest case of seriousDoubts, kept for callers that want only the findings. */
-export const singleReports = (item: Item, ctx: Pick<DecisionContext, "listings" | "today" | "trip">): Finding[] => seriousDoubts(item, ctx).map((d) => d.finding);
-
 /**
  * What rules a place out: only the traveller does. A problem read on the page (construction next door,
  * bugs, a flat unlike its photos) costs points, however serious the reader thought it; it rules the place

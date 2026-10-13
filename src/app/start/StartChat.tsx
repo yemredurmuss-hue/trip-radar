@@ -30,9 +30,9 @@ import { applyLiveDates, checkingLine, datesWait, lookupFor, startLookup, type D
 import { rulesPreview } from "../../lib/startHooks";
 import {
   applyAnswer, applyExtracted, applyText, askAgain, budgetChips, budgetWord, canGenerate, checklist, autoPrint, drawingLine, isComplete, isGoCommand, knownLines, lineLink, mergeExtracted, startName,
-  missingForGenerate, modelReplyText, NOT_UNDERSTOOD, nextQuestion, onlyEmpty, parseRouteText, parseStartText, pbCurrent, pbPromptOf, photosToFind, preparedRoute, previewOf, skipPb,
+  modelReplyText, NOT_UNDERSTOOD, nextQuestion, onlyEmpty, parseRouteText, parseStartText, pbCurrent, pbPromptOf, photosToFind, preparedRoute, previewOf, skipPb,
   questionOf, readingLine, readingName, readingRows, replyText, restoreRoute, routeThinkingLine, shouldAutoStart, autoHeld, memoAfterGenerate, AUTO_SECONDS, autoSeconds, waitingInstead, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
-  tentativeWhere, whereKey, withGuessTaken, withoutOverruled, withPhotos, withPreparedRoute, withTypedLang,
+  whereKey, withGuessTaken, withoutOverruled, withPhotos, withPreparedRoute, withTypedLang,
   type Answer, type Extracted, type QuestionId, type SlotId, type StartCtx, type StartRoute, type StartState,
 } from "../../lib/startTrip";
 import { STYLE_META, STYLES, type BudgetLevel, type StyleId } from "../../lib/tripStyle";
@@ -753,7 +753,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
             </button>
             <div className="st-top-title">{startName(state) ? L(`${startName(state)} · yeni gezi`, `${startName(state)} · new trip`) : L("Yeni gezi", "New trip")}</div>
           </div>
-          {!generating && <ChecklistBar rows={rows} onAsk={ask} ready={ready} complete={complete} onGenerate={generate} disabled={holding} drawing={drawing} reading={readingIds} now={q} lang={lang} />}
+          {!generating && <ChecklistBar rows={rows} onAsk={ask} ready={ready} onGenerate={generate} disabled={holding} drawing={drawing} reading={readingIds} now={q} lang={lang} />}
           <div className="st-msgs" role="log" aria-live="polite" aria-label={L("Sohbet", "Conversation")}>
             {state.messages.map((m, i) => (
               <div key={m.id ?? `line-${i}`} className={m.role === "user" ? "st-msg-user" : "st-msg-bot"}
