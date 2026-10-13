@@ -310,7 +310,8 @@ export function stageOf(r: DayRow): Stage | null {
   switch (r.state) {
     case "done": {
       if (arranged) return { tone: "rez", text: lookWord("arranged"), badge: { look: "arranged" } };
-      const as = r.item ? bookedAs(r.item) : leg && legCardView(leg).badge === "booked" ? "ticket" : undefined;
+      const settled = r.item ?? (travel ? (travel.travel?.settled ?? null) : null);
+      const as = settled ? bookedAs(settled, rowKind(r)) : leg && legCardView(leg).badge === "booked" ? "ticket" : undefined;
       return { tone: "rez", text: lookWord("booked", { as }), badge: { look: "booked", as } };
     }
     case "pending":

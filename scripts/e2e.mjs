@@ -207,7 +207,7 @@ try {
     const meta = flat([await app.locator(".hx .hx-progress-meta").innerText()])[0];
     const label = await app.locator(".hx .hx-bar").getAttribute("aria-label");
     const of = (text, words) => Number(text.match(new RegExp(`(\\d+) ${words}`))?.[1] ?? 0);
-    return { head, meta, label, booked: of(label, "rezerve,"), planned: of(label, "planlandı"), open: of(label, "ihtiyaç karar bekliyor"), pct: Number(await app.locator(".hx .hx-bar").getAttribute("aria-valuenow")) };
+    return { head, meta, label, booked: of(label, "rezerve,"), planned: of(label, "seçildi"), open: of(label, "ihtiyaç karar bekliyor"), pct: Number(await app.locator(".hx .hx-bar").getAttribute("aria-valuenow")) };
   };
   const listMatchesHero = async (where) => {
     const s = await heroNumbersOnPage();
@@ -260,7 +260,7 @@ try {
   assert.ok(Number(tallyWant[3].split(" ")[0]) >= 4, "every activity and restaurant on the Plan counts, chosen or not");
   // The box counts the stages, so no sentence of counts above it ("3 karar ve 1 rezervasyon bekliyor" said another 3).
   assert.equal(await hero.locator(".hx-lead").count(), 0, "no second set of numbers in the lead");
-  // The hero's % (spec aşamalar): over what's planned only, (Rezerve + Hazır) ÷ (Planlandı + Rezerve + Hazır); what
+  // The hero's % (spec aşamalar): over what's planned only, (Rezerve + Hazır) ÷ (Seçildi + Rezerve + Hazır); what
   // waits for a decision is a count beside it. The sample: 2 booked, the boat tour planned, 7 decisions to make.
   // The ideas (Yapılacak şeyler, Restoranlar, İlham) have no "3/4" and are never needs (0.35.3).
   assert.equal(await app.locator('.cat-sec[data-section="todo"] .cat-count, .cat-sec[data-section="food"] .cat-count').count(), 0, "an idea section has no x/y");
@@ -276,7 +276,7 @@ try {
   // The bar: one progressbar, the planned set in two tones from the left, booked (dark) inside it (light, whole).
   const planBar = hero.locator(".hx-bar");
   assert.equal(await planBar.getAttribute("role"), "progressbar");
-  assert.equal(await planBar.getAttribute("aria-label"), `${atStart.head}: 2 rezerve, 1 planlandı, 7 ihtiyaç karar bekliyor`);
+  assert.equal(await planBar.getAttribute("aria-label"), `${atStart.head}: 2 rezerve, 1 seçildi, 7 ihtiyaç karar bekliyor`);
   const fills = await planBar.evaluate((el) => {
     const of = (sel) => {
       const i = el.querySelector(sel);
@@ -494,7 +494,7 @@ try {
   // v11: the trip's shape under the Plan's head (İstanbul → Porto → Lizbon → İstanbul, each stop in its stage) and
   // the head's order switch and the stages' key.
   assert.deepEqual(await app.locator(".ts-strip .ts-stop b").allInnerTexts(), ["İstanbul", "Porto", "Lizbon", "İstanbul"]);
-  assert.deepEqual(await app.locator(".plan-key span").allInnerTexts(), ["Arıyoruz", "Seçildi", "Rezerve"]);
+  assert.deepEqual(await app.locator(".plan-key span").allInnerTexts(), ["Arıyoruz", "Önerimiz", "Seçildi", "Rezerve", "Ayarlandı"]);
   await app.locator(".ts-strip").screenshot({ path: `${out}/33a-trip-shape.png` });
   // Layered interface, round 2: a city on the strip says its days, what is chosen there, its weather; the strip itself is as it was.
   {
@@ -636,7 +636,7 @@ try {
     ["", "Arıyoruz", "Arıyoruz", "Arıyoruz", ""],
   );
   assert.equal(await lineOf(2, "Tekne turu · Douro").locator(".dg-lab").innerText(), "Seçildi");
-  assert.equal(await lineOf(7, "Uçuş · Lizbon → İstanbul").locator(".dg-lab").innerText(), "Rezerve");
+  assert.equal(await lineOf(7, "Uçuş · Lizbon → İstanbul").locator(".dg-lab").innerText(), "Bilet alındı");
   // The grey word is short (0.36.27): the route the title says and a worked-out time's reason aren't repeated; two pieces at most.
   assert.deepEqual(
     await dayCard(4).locator(".dg-tl > li").evaluateAll((els) => els.map((e) => e.querySelector(".dg-sub")?.textContent ?? "")),
@@ -750,8 +750,8 @@ try {
   await lineOf(4, "Tren · Porto → Lizbon").locator(".dg-main").click();
   await tab("Plan").and(app.locator('[aria-selected="true"]')).waitFor();
   await tab("Plan").click();
-  // Where each plan stands is on top of its card (v11): a booked stay says "Rezerve", its ring green.
-  await app.locator(".cat-card.tl-stay .pk-card .pk-lab.booked", { hasText: "Rezerve" }).waitFor();
+  // Where each plan stands is on top of its card (v11): a booked stay wears the one badge, "Rezerve" (no ring, no second word at its foot).
+  await app.locator(".cat-card.tl-stay .pk-card .okt", { hasText: "Rezerve" }).waitFor();
   // v11: an undecided stay is one card too ("Porto · 8–11 Eki", "3 seçenek ›"); its window: the pick in a sentence,
   // what to check before choosing, the options best first with their fit, what each is strongest on, a mark per
   // thing asked for, and "Neden? Artılar ve eksiler" (against the first; the first against the second, then the pros
@@ -802,7 +802,7 @@ try {
   await app.screenshot({ path: `${out}/32a-choice-window.png` });
   await app.keyboard.press("Escape");
   await chooser.waitFor({ state: "detached" });
-  // "Planı tamamla" goes to the next step; "2 rezerve · 1 planlandı · …" lists every to-do under the hero in groups
+  // "Planı tamamla" goes to the next step; "2 rezerve · 1 seçildi · …" lists every to-do under the hero in groups
   // (Karar bekliyor and Rezerve edilecek: the box's own needs; then the transfers, then the cancellations), a tap
   // goes there; tapped again, the list closes.
   const todoCount = app.locator(".hx-progress-count");
@@ -834,14 +834,14 @@ try {
   const douro = sec("activity").locator(".ac-row", { hasText: "Douro tekne turu" });
   await douro.locator(".pk-aldim", { hasText: "Aldım" }).waitFor();
   const home = app.locator(".tl-travel.role-departure .pk-card");
-  await home.locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
+  await home.locator(".okt", { hasText: "Bilet alındı" }).waitFor();
   // A misclick on "Bileti aldım" can be taken back (in the details), and redone.
   // v11 phase 3: a booking opens its own window; "Rezervasyonu geri al" is there.
   await home.locator(".pk-body").click();
   await app.getByRole("dialog").getByRole("button", { name: "Rezervasyonu geri al" }).click();
   await home.locator(".pk-aldim").waitFor(); // v11: chosen, not bought: "✓ Aldım" on its top line, its ground cream
   await home.getByRole("button", { name: "Bileti aldım" }).click();
-  await home.locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
+  await home.locator(".okt", { hasText: "Bilet alındı" }).waitFor();
   await app.locator(".bk-sheet").waitFor({ state: "detached" }); // the undone booking's window has finished leaving
   // Its window: the booking's rows (the flight, from and to with their hours), its files or "Belge eksik · ekle",
   // Değiştir · İptal ettim · Rezervasyonu geri al · Tüm detaylar · Kapat; Esc closes it.
@@ -1183,12 +1183,12 @@ try {
   await move.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await app.screenshot({ path: `${out}/5d-move.png` });
   await move.getByRole("button", { name: "Bileti aldım" }).click();
-  await move.locator(".pk-foot .pk-state.done", { hasText: "Alındı" }).waitFor();
+  await move.locator(".okt", { hasText: "Bilet alındı" }).waitFor();
   // By plane there's an airport at each end: the itinerary's day 4 now has them, around the flight.
   await tab("Gün gün").click();
   await dayCard(4).locator('.dg-tl > li[data-title="Havalimanı transferi"]').nth(1).waitFor();
   assert.deepEqual(await dayTitlesOf(4), ["Check-out · Jardim Stay", "Havalimanı transferi", "Uçuş · Porto → Lizbon", "Havalimanı transferi", "Check-in · Lisboa Loft"]);
-  await lineOf(4, "Uçuş · Porto → Lizbon").locator(".dg-lab", { hasText: "Rezerve" }).waitFor();
+  await lineOf(4, "Uçuş · Porto → Lizbon").locator(".dg-lab", { hasText: "Bilet alındı" }).waitFor();
   await tab("Plan").click();
   // What still needs booking without a day: Etkinlikler's "Tarihsiz · Porto", one card under another (Majestic
   // Café, a café with no booking, is a restaurant card instead).
@@ -1246,7 +1246,7 @@ try {
   await bus.locator(".pk-price", { hasText: "18" }).waitFor();
   await bus.locator(".pk-kind", { hasText: "Otobüs" }).waitFor();
   await bus.locator(".pk-aldim").waitFor();
-  assert.ok(await bus.evaluate((el) => el.classList.contains("pk-r-half")), "chosen: the cream ground");
+  assert.ok(await bus.evaluate((el) => el.classList.contains("pk-r-half")), "chosen: the white ground with the light-green line");
   // The panel scrolls inside the page, so a tall window shows the whole plan in one picture.
   await app.setViewportSize({ width: 1440, height: 2600 });
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
@@ -1335,13 +1335,13 @@ try {
   await bus.getByRole("button", { name: "Otobüs · Lizbon → Lagos: gerek yok" }).click();
   await app.locator(".pk-fold").getByRole("button", { name: "Ben hallettim", exact: true }).click();
   await bus.waitFor();
-  await bus.locator(".pk-state", { hasText: "Ayarlandı" }).waitFor();
+  await bus.locator(".okt.set", { hasText: "Ayarlandı" }).waitFor();
   await bus.getByRole("button", { name: "Kart menüsü" }).click();
   await bus.getByRole("menuitem", { name: "Ayarlandı: geri al" }).click();
-  await bus.locator(".pk-state", { hasText: "Ayarlandı" }).waitFor({ state: "detached" });
+  await bus.locator(".okt.set").waitFor({ state: "detached" });
   const jardim = app.locator('.stay-block.chosen .pk-card[aria-label="Jardim Stay"]');
   await jardim.getByRole("button", { name: "Kart menüsü" }).click();
-  // Planlandı (aşamalar, lifecycle.ts): Değiştir takes it back to its options.
+  // Seçildi (aşamalar, lifecycle.ts): Değiştir takes it back to its options.
   assert.deepEqual((await jardim.getByRole("menuitem").allInnerTexts()).slice(-2), ["Değiştir", "Sil"]);
   await jardim.getByRole("button", { name: "Kart menüsü" }).click();
   await jardim.hover();
@@ -1355,9 +1355,9 @@ try {
   // brings the booking back.
   const loft = app.locator('.stay-block .pk-card[aria-label="Lisboa Loft"]');
   await loft.scrollIntoViewIfNeeded();
-  // v11: a booking says so on its top line, its stamp in the corner.
-  assert.equal(await loft.locator(".pk-lab.booked").innerText(), "Rezerve");
-  await loft.locator(".pk-stamp").waitFor({ state: "attached" });
+  // v11/F0: a booking says so on its top line with the one badge (no stamp in the corner, no ring).
+  assert.equal(await loft.locator(".okt").innerText(), "Rezerve");
+  assert.equal(await loft.locator(".pk-ring").count(), 0, "a booked card has the badge, not a ring");
   await loft.getByRole("button", { name: "Kart menüsü" }).click();
   assert.deepEqual((await loft.getByRole("menuitem").allInnerTexts()).slice(-4), ["Belge ekle", "İptal ettim", "Değiştir", "Sil"]);
   // v11: the board's own window asks, not the browser's confirm().
@@ -2623,7 +2623,7 @@ try {
   await otherSec.waitFor();
   if (await otherSec.evaluate((el) => el.classList.contains("closed"))) await otherSec.locator(".cat-title").click();
   const policyCard = otherSec.locator('.pk-card[aria-label="Seyahat sağlık sigortası · Allianz"]');
-  await policyCard.locator(".pk-ring.done").waitFor();
+  await policyCard.locator(".okt", { hasText: "Alındı" }).waitFor();
   // v11: a booking's one file by its name at the foot, then "Ayrıntı ›".
   await policyCard.locator('.pk-foot .pk-docname[title="allianz-police.pdf"]').waitFor();
   await policyCard.locator(".pk-foot .pk-more", { hasText: "Ayrıntı" }).waitFor();
@@ -3296,8 +3296,8 @@ try {
   };
   const hrefs = (scope) => scope.locator(".ek-link").evaluateAll((els) => els.map((a) => [a.dataset.brand, a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel")]));
   for (const id of ["flight", "stay", "transport", "other"]) await ekOpen(id);
-  // Emre's rule: what the start made (startGuide.placeholders) is never the yellow "Seçildi · bilet alınmadı" card.
-  assert.equal(await panel.locator(".cat-plan .pk-card.pk-sand, .cat-plan .settled-card").count(), 0, "no yellow card for a placeholder: only empty cards");
+  // Emre's rule: what the start made (startGuide.placeholders) is never a chosen "Seçildi · bilet alınmadı" card.
+  assert.equal(await panel.locator(".cat-plan .pk-card.pk-r-half, .cat-plan .pk-card.pk-r-open, .cat-plan .settled-card").count(), 0, "no chosen card for a placeholder: only empty cards");
   assert.equal(await panel.locator(".cat-plan .pk-cta", { hasText: /Bileti aldım|Rezerve ettim/ }).count(), 0);
   // Uçuş: İstanbul → Denpasar and back, "Bilet yok · 2 kişi"; Google Flights by city, Skyscanner and Kayak by airport.
   const [outFlight, backFlight] = [ekSec("flight").locator(".ek-card").nth(0), ekSec("flight").locator(".ek-card").nth(1)];
@@ -3386,7 +3386,7 @@ try {
   await board.locator('.pk-ed-input[aria-label="Tarih"]').press("Enter");
   await board.locator('.pk-ed-input[aria-label="Tarih"]').waitFor({ state: "detached" });
   await back.locator(".pk-date", { hasText: "9 Ocak" }).waitFor();
-  assert.equal(await panel.locator(`[data-item-id="${backId}"].pk-sand, [data-item-id="${backId}"] .pk-sand, .cat-plan .settled-card`).count(), 0, "an edited placeholder stays an empty card");
+  assert.equal(await panel.locator(`[data-item-id="${backId}"].pk-r-half, [data-item-id="${backId}"] .pk-r-half, .cat-plan .settled-card`).count(), 0, "an edited placeholder stays an empty card");
   assert.equal(new URL((await hrefs(back))[0][1]).searchParams.get("q"), "Flights from Denpasar to İstanbul on 2027-01-09 one way");
   console.log("✓ boş kartlar: a new trip's flights, stays, transfers, eSIM and activities are plain cards with Ara: and branded searches (cities, dates, 2 people), no AI row; none in Günlük akış; a placeholder's day edited stays empty");
 
@@ -5022,7 +5022,7 @@ try {
   await idb("book", "e2e-motion-esim");
   await app.waitForFunction(() => document.querySelector('.pk-card[aria-label="Hareket eSIM"]')?.classList.contains("pk-seal"), null, { timeout: 3000 });
   assert.ok(await app.locator('.pk-card[aria-label="Hareket eSIM"]').evaluate((el) => el.classList.contains("pk-glow")), "parlama: the changed card glows");
-  assert.ok(await animating(app.locator('.pk-card[aria-label="Hareket eSIM"] .pk-ring.done'), "pk-pop"), "mühür: its tick pops");
+  assert.ok(await animating(app.locator('.pk-card[aria-label="Hareket eSIM"] .okt'), "pk-pop"), "mühür: its badge pops");
   await app.waitForTimeout(350);
   await app.screenshot({ path: `${out}/38a-motion-seal.png` });
   await app.waitForFunction(() => !document.querySelector('.pk-card[aria-label="Hareket eSIM"]')?.classList.contains("pk-seal"), null, { timeout: 3000 });

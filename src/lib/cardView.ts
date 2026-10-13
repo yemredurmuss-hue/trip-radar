@@ -118,9 +118,9 @@ export function topDate(item: Item, kind: CardKind): string | null {
 export type MenuAction = "edit" | "dismiss" | "change" | "addDoc" | "cancel" | "delete";
 /**
  * The ••• menu: change a plan made by hand or in the chat, rule out a saved option (it waits under its section's
- * Gizlenenler), and by its stage (lifecycle.ts actionsFor): Planlandı "Değiştir" (back to the options), Rezerve
- * edildi "Belge ekle", "İptal ettim" and "Değiştir" (once the old one is cancelled), Hazır "İptal ettim"; delete.
- * `docs`: its files (booked with one is Hazır).
+ * Gizlenenler), and by its stage (lifecycle.ts actionsFor): chosen "Değiştir" (back to the options), booked
+ * "Belge ekle", "İptal ettim" and "Değiştir" (once the old one is cancelled), booked with a file "İptal ettim"; delete.
+ * `docs`: its files (booked with one is "ready" in lifecycle.ts).
  */
 export function menuFor(item: Item, opts: { docs?: number } = {}): MenuAction[] {
   const out: MenuAction[] = [];
@@ -359,7 +359,7 @@ export function legCardView(leg: Leg): LegCardView {
   const label = kind !== "transport" ? cardKindLabel(kind) : mode ? MODE_LABELS[mode] : move ? L("Şehir değişimi", "City change") : L("Transfer", "Transfer");
   const ticketed = move && mode != null && LEG_TICKETS.includes(mode);
   const booked = leg.status === "booked" || Boolean(leg.choice?.booked);
-  // "Ben hallettim" (arranged outside the tool, no ticket of ours): not "Alındı" for a ticket bought (that one is booked, green).
+  // "Ben hallettim" (arranged outside the tool, no ticket of ours): not the ticket-bought badge for a ticket bought (that one is booked, green).
   const arranged = Boolean(leg.choice?.booked) && !ticketed && !leg.options.some((i) => i.status === "booked");
   // Set aside by the traveller as needing no ticket (0.36.47): an idea, out of the booked percentage.
   const aside = !booked && Boolean(leg.choice?.noBooking);

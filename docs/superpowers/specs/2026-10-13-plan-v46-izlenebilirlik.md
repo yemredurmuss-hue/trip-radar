@@ -227,13 +227,13 @@ Eşlik eden belge: `docs/superpowers/specs/2026-10-13-plan-v45-kod-plani.md` (fa
 | KM01 | Durum etiketinin yanında, üstüne gelince iki düğme: ••• menü (Değiştir · Belge ekle · Kimi | CANLI | zaten canlı; F0, F1, F3 dokunur, korunur (F10 doğrular) | ☐ |
 | KM02 | × kartı kaybettirmez, yerinde ince satıra katlar: "X kaldırıldı · Neden? [Gerek yok] [Ben  | CANLI | zaten canlı; F0, F1, F3 dokunur, korunur (F10 doğrular) | ☐ |
 | KM03 | × katlanmasında hiçbir şey seçilmezse kart katlı kalır, veri değişmez ("gerek yok sayılır" | VAZGEÇİLDİ | YAPILMIYOR: vazgeçildi; yerine geçen karar canlı ya da mockup v46'da | ☐ |
-| KM04 | Ayarlandı: gri, düz, "Kendin ayarladın"; ayrı durum değil: noBooking + Item.arranged bayra | ÇELİŞKİ | F0 (Ayarlandı rozeti §2.2: sözcük "Ayarlandı", dolgu --okb-set; Emre onayı §6.1) | ☐ |
-| KM05 | Aşamalar: Arıyoruz renksiz kesikli; Seçildi açık yeşil kesikli; Rezerve koyu yeşil düz dam | ÇELİŞKİ | F0 (Seçildi/Önerimiz/Rezerve görsel dili §2.2: beyaz düz, yeşil zemin yalnız Rezerve) | ☐ |
-| KM06 | "Seçildi" ile "Rezerve" yeşil tonları yan yana yeterince ayrışıyor mu? Emre teyit etmedi. | YAYINDA DEĞİL | F0 (ayrışma: Seçildi beyaz + açık yeşil çerçeve, Rezerve yeşil zemin + koyu rozet; mockup v41 çözdü) | ☐ |
+| KM04 | Ayarlandı: gri, düz, "Kendin ayarladın"; ayrı durum değil: noBooking + Item.arranged bayra | ÇELİŞKİ | F0 (Ayarlandı rozeti §2.2: sözcük "Ayarlandı", dolgu --okb-set; Emre onayı §6.1) | ☑ P0 |
+| KM05 | Aşamalar: Arıyoruz renksiz kesikli; Seçildi açık yeşil kesikli; Rezerve koyu yeşil düz dam | ÇELİŞKİ | F0 (Seçildi/Önerimiz/Rezerve görsel dili §2.2: beyaz düz, yeşil zemin yalnız Rezerve) | ☑ P0 |
+| KM06 | "Seçildi" ile "Rezerve" yeşil tonları yan yana yeterince ayrışıyor mu? Emre teyit etmedi. | YAYINDA DEĞİL | F0 (ayrışma: Seçildi beyaz + açık yeşil çerçeve, Rezerve yeşil zemin + koyu rozet; mockup v41 çözdü) | ☑ P0 |
 | K12 | Aşama malzemeyle okunur: Arıyoruz = kesikli çerçeve + çizim + boş çember; adaylar var = ar | ÇELİŞKİ | F0 + F2 (aşama malzemeyle okunur: boş = hafif gri bilet/kart, Seçildi = gerçek görsel) | ☐ |
-| KM07 | Aşama renkleri sarısız: boş çizgili, seçildi açık yeşil çizgili, rezerve koyu yeşil (v13 ç | YAYINDA DEĞİL | F0 (sarısız: amber kalkar) | ☐ |
-| KM08 | Aşamalar tek kaynaktan (lib/lifecycle.ts): Aranacak → Seçenekler (N) → Planlandı → Rezerve | ÇELİŞKİ | F0 (lib/stageWords.ts tek sözlük) | ☐ |
-| KM09 | Orta aşama her yerde "Planlandı" (Seçildi, Planlanıyor, Seçildi · rezerve edilmedi hepsi " | ÇELİŞKİ | F0 (orta aşama her yerde "Seçildi"; "Planlandı" kullanıcıya görünmez) | ☐ |
+| KM07 | Aşama renkleri sarısız: boş çizgili, seçildi açık yeşil çizgili, rezerve koyu yeşil (v13 ç | YAYINDA DEĞİL | F0 (sarısız: amber kalkar) | ☑ P0 |
+| KM08 | Aşamalar tek kaynaktan (lib/lifecycle.ts): Aranacak → Seçenekler (N) → Planlandı → Rezerve | ÇELİŞKİ | F0 (lib/stageWords.ts tek sözlük) | ☑ P0 |
+| KM09 | Orta aşama her yerde "Planlandı" (Seçildi, Planlanıyor, Seçildi · rezerve edilmedi hepsi " | ÇELİŞKİ | F0 (orta aşama her yerde "Seçildi"; "Planlandı" kullanıcıya görünmez) | ☑ P0 |
 | KM10 | Aranacak/Seçenekler/Planlandı silme hemen + Geri al; Rezerve edildi/Hazır silme sorar ("Bu | CANLI | zaten canlı; F0 dokunur, korunur (F10 doğrular) | ☐ |
 | K53 | Her plan kartında × (üzerine gelince); Arıyoruz/Seçildi kart hemen gider → bölüm sonunda " | CANLI | zaten canlı (v46'dan etkilenmez) | ☐ |
 | K54 | Rezerve şey sormadan silinmez: × → "Bu rezervasyon onaylı. İptal ettin mi?" (belgesi varsa | CANLI | zaten canlı; F0, F1, F3 dokunur, korunur (F10 doğrular) | ☐ |
@@ -418,10 +418,10 @@ Eşlik eden belge: `docs/superpowers/specs/2026-10-13-plan-v45-kod-plani.md` (fa
 | VB-O6 | "Bu turun kararları yol haritasına K76 ve sonrası olarak işlenecek" (v30 spec). | YAYINDA DEĞİL | F9 (K76+ numaraları bu kararlara atanır) | ☐ |
 | VB-O7 | v11 spec "Bilinçli dışarıda": konaklamaların kendi karşılaştırma bloğu; paylaşılan gezide  | CANLI | zaten canlı | ☐ |
 | VB-O8 | Sonra: vibe (ışık, teras, yeşillik; fotoğraftan), kısmi konaklama kombinasyonları, "farka  | YAYINDA DEĞİL | KAPSAM AÇIĞI: PLAN.md onay bekleyen maddeler (vibe, kısmi konaklama, v1 telefon, v2 ürün); v46 dışı, Emre kararı | ☐ |
-| EK-A1 | Seçildi rengi dört yerde dört farklı: v12-v13 mockup ve v30 spec "açık yeşil, kesikli, sar | ÇELİŞKİ | F0 (Seçildi rengi §2.2) | ☐ |
+| EK-A1 | Seçildi rengi dört yerde dört farklı: v12-v13 mockup ve v30 spec "açık yeşil, kesikli, sar | ÇELİŞKİ | F0 (Seçildi rengi §2.2) | ☑ P0 |
 | EK-A2 | DESIGN.md hâlâ şunları söylüyor: sekmeler Plan \ | ÇELİŞKİ | F9 (DESIGN.md) | ☐ |
 | EK-A3 | K33: "Etkinlikler · Uçuş · Konaklama · Ulaşım · Vize ve sigorta · Hazırlık · Fikirler"; v7 | ÇELİŞKİ | zaten canlı (sectionMeta.ts); F9 belge notu | ☐ |
-| EK-A4 | İki ad kümesi birlikte yaşıyor: lifecycle.ts / asamalar spec / Emre 2026-10-06: Aranacak · | ÇELİŞKİ | F0 (stageWords) | ☐ |
+| EK-A4 | İki ad kümesi birlikte yaşıyor: lifecycle.ts / asamalar spec / Emre 2026-10-06: Aranacak · | ÇELİŞKİ | F0 (stageWords) | ☑ P0 |
 | EK-A5 | akilli-saat spec (onaylı 2026-10-05): AB içi 2 sa / dışı 3 sa tek değer; Emre 2026-10-07:  | ÇELİŞKİ | F9 (akıllı saat spec'i) | ☐ |
 | EK-A6 | urun-yol-haritasi.md K4 satırı "KODLANDI (2026-10-09, Emre onayı)" diyor, aynı belgenin so | ÇELİŞKİ | F9 (yol haritası K4 paragrafı) | ☐ |
 | EK-A7 | Spec sonu "Kod yok. Sıradaki adım: uygulama planı" ve 0.36.79 sapma listesi (otel giriş sa | ÇELİŞKİ | F9 (v30 spec durum) | ☐ |
@@ -657,7 +657,7 @@ Kaynak: v46 HTML'indeki işlevler (`hero`, `secBlock`, `ticket3`, `mvTicket`, `e
 | V46-30 | Kart menüsü ••• (`openMenu`: Düzenle, Kimin için?, Gerek yok…) ve ActionStrip | zaten canlı (CardMenu/ActionStrip); §2.3-5 | ☐ |
 | V46-31 | Köşe yüzü (kim kaydetti/AI) kartta, karoda, etkinlikte, mini kartta | F1c | ☐ |
 | V46-32 | ⓘ bilgi balonu (`infoBtn`) uçuş, otel, ulaşım | F1a | ☐ |
-| V46-33 | Tek "satın alındı" rozeti `okt` (bilet, otel, ulaşım, etkinlik, Gün gün, Yolculuk, Pano) | F0 | ☐ |
+| V46-33 | Tek "satın alındı" rozeti `okt` (bilet, otel, ulaşım, etkinlik, Gün gün, Yolculuk, Pano) | F0 | ☑ P0 |
 | V46-34 | Pano sayfası: kategori çipleri, arama, uçuş şeridi/kartı (pfRow), otel/etkinlik kartları, kalp, uyum, "Neden?", Planda/Önerimiz şeridi, Karşılaştır (`panoPage`) | F1d + F2 + F0 + F7 (S11) | ☐ |
 | V46-35 | Pano karşılaştırma tablosu | zaten canlı (Pano.tsx table); F0 rozet; F10 | ☐ |
 | V46-36 | Yolculuk sırasıyla (v46): Yola çıkış, uçuş, ulaşım, şehir başlığı, otel, etkinlik kartları, yapılacak kutusu, Eve dönüş (`storyView`, `jf*`, `jc*`, `jsEv`) | F5b | ☐ |
@@ -678,8 +678,8 @@ Envanter (v39'a kadar) bunları içermiyordu; plan §1.2 ve §2'de karara bağla
 
 | Kimlik | Karar | Karşılık | Doğrulandı |
 |---|---|---|---|
-| N1 | v40: Tek rozet koyu yeşil, damga kalktı | F0 | ☐ |
-| N2 | v41: yeşil zemin yalnız alınmışta | F0 | ☐ |
+| N1 | v40: Tek rozet koyu yeşil, damga kalktı | F0 | ☑ P0 |
+| N2 | v41: yeşil zemin yalnız alınmışta | F0 | ☑ P0 |
 | N3 | v40–v41: etkinlik şehre göre, site adı düğmede, "belge yok" | F6 | ☐ |
 | N4 | v42: uçuş seçeneği kartı (3 yan yana; Pano aynı genişlik) | F2 + F4 | ☐ |
 | N5 | v42–v43: ulaşım ok başlık + tarih/saat kapsülü, soldan sağa | F5a | ☐ |

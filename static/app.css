@@ -671,9 +671,9 @@ article.pk-card.pk-arranged:hover { box-shadow: none; }
 
 /* ---------- stay blocks: one clear block per stretch of nights ---------- */
 .stay-block { margin: 14px 0 6px; padding: 0 4px 6px; border-left-width: 5px; scroll-margin-top: 12px; }
-.stay-block.booked { border-left-color: #6cc392; }
-.stay-block.chosen { border-left-color: var(--accent); }
-.stay-block.open { border-left-color: #f0b35b; }
+.stay-block.booked { border-left-color: var(--book-line); }
+.stay-block.chosen { border-left-color: var(--plan-line); }
+.stay-block.open { border-left-color: var(--v-dash); }
 .block-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 10px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
 .block-date { display: flex; flex-direction: column; gap: 1px; }
 .block-range { font-size: 19px; font-weight: 700; letter-spacing: -.01em; color: var(--text); }
@@ -686,8 +686,8 @@ article.pk-card.pk-arranged:hover { box-shadow: none; }
 .status-mark { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: 12px; font-weight: 800; line-height: 1; }
 .status-bar.st-booked { background: #e1f3e8; color: #16623a; }
 .status-bar.st-booked .status-mark { background: #1f8f4e; color: #fff; }
-.status-bar.st-planned { background: #fff1d9; color: #8a5300; }
-.status-bar.st-planned .status-mark { background: #f0a53a; color: #fff; }
+.status-bar.st-planned { background: var(--plan-bg); color: var(--plan-ink); }
+.status-bar.st-planned .status-mark { background: var(--plan-dot); color: #fff; }
 .status-bar.st-open { background: #f1efeb; color: #5f5a54; }
 .status-bar.st-open .status-mark { border: 1.5px dashed #a39d95; }
 .settled-card.st-booked { box-shadow: 0 0 0 2px #7cc79b, 0 6px 20px rgba(40, 30, 20, .05); }
@@ -1400,7 +1400,7 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .hx-budget-line i { width: 10px; height: 10px; border-radius: 50%; background: #c9c5bc; }
 .hx-budget-line b { font-weight: 500; color: var(--hx-ink); white-space: nowrap; }
 .hx-budget-line.booked i { background: #22c08e; }
-.hx-budget-line.planned i { background: #f5a524; }
+.hx-budget-line.planned i { background: var(--hx-planned); box-shadow: inset 0 0 0 1px var(--hx-booked); }
 .hx-budget-line.over i { background: #d93a3a; }
 .hx-budget-line.over, .hx-budget-line.over b { color: #c62828; }
 .hx-budget-btn:hover .hx-h { color: var(--hx-accent); }
@@ -1499,8 +1499,8 @@ button.hx-people:hover b { color: var(--hx-accent); }
 /* top line */
 .pk-top { position: relative; display: flex; align-items: center; gap: 8px; height: 24px; font-size: 13px; color: var(--pk-gray); }
 .pk-ring { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; }
-.pk-ring.open { border: 2px dashed #cdb07a; }
-.pk-ring.half { border: 2px solid #e0a43a; }
+.pk-ring.open { border: 2px dashed var(--v-dash); }
+.pk-ring.half { border: 2px solid var(--plan-dot); }
 .pk-kind { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--mc); white-space: nowrap; }
 .pk-date { white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* Kişiye özel rezervasyon (docs/mockups/2026-10-06-kisiye-ozel-v1.html): whose a plan is, only when it isn't
@@ -2012,7 +2012,7 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .cat-sec .ac-wrap .ax-tag .wh-av { width: 18px; height: 18px; flex: none; }
 /* the corner: ✓ on the plan, + an idea */
 .cat-sec .ac-wrap .ax-tick { position: absolute; right: 8px; top: 8px; z-index: 2; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; background: #fff; color: var(--v-ink); font-size: 15px; font-weight: 800; line-height: 1; cursor: pointer; box-shadow: 0 1px 4px rgba(28, 26, 51, .15); }
-.cat-sec .ac-wrap .ax-tick.on { background: var(--v-book-ink); color: #fff; }
+.cat-sec .ac-wrap .ax-tick.on { background: var(--plan-bg); border: 1.5px solid var(--plan-line); color: var(--plan-ink); }
 .cat-sec .ac-wrap button.ax-tick:hover { transform: scale(1.08); }
 .cat-sec .ac-wrap span.ax-tick { cursor: default; }
 .cat-sec .ac-wrap .ax-c .it-put.corner { top: 8px; right: 8px; bottom: auto; left: auto; z-index: 2; }
@@ -3341,7 +3341,7 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 /* v11 (phase 2a): a planned card's "✓ Aldım" on its top line; the strip's link to the page to book on. */
 .pk-aldim { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; padding: 3px 11px; border: 1.5px solid var(--plan-dot); border-radius: 999px; background: #fff; color: var(--plan-ink); font: inherit; font-size: 13px; font-weight: 650; white-space: nowrap; cursor: pointer; }
 .pk-aldim:hover { background: var(--plan-bg); }
-.pk-aldim:focus-visible { outline: 2px solid #f0a53a; outline-offset: 2px; }
+.pk-aldim:focus-visible { outline: 2px solid var(--plan-dot); outline-offset: 2px; }
 a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: center; }
 .ask-dlg h3 { overflow-wrap: anywhere; }
 
@@ -3378,8 +3378,8 @@ a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: cente
 .pn-cmp, .pn-why { border: 0; background: none; padding: 0; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--hx-accent); cursor: pointer; }
 .pn-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border-radius: 16px; background: #fff; border: 1px solid var(--hx-line); box-shadow: 0 1px 2px rgba(28,26,51,.04), 0 6px 18px rgba(28,26,51,.05); transition: transform .25s cubic-bezier(.16, 1, .3, 1), box-shadow .25s; }
 .pn-card:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(28,26,51,.05), 0 12px 28px rgba(28,26,51,.09); }
-.pn-card.in-chosen { border-color: #f0a53a; }
-.pn-card.in-booked { border-color: #1f8f4e; }
+.pn-card.in-chosen { border-color: var(--plan-line); }
+.pn-card.in-booked { border-color: var(--book-line); }
 .pn-img { position: relative; aspect-ratio: 4 / 3; max-width: 100%; background: color-mix(in srgb, var(--c) 10%, #fff); display: grid; place-items: center; overflow: hidden; }
 .pn-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
 .pn-art { color: var(--c); opacity: .85; }
@@ -3460,7 +3460,7 @@ a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: cente
 .ch-for { margin: 14px 20px 2px; padding: 12px 14px; border-radius: 14px; background: var(--hx-lav); color: #2d2470; font-size: 14px; line-height: 1.5; }
 .ch-list { display: grid; gap: 8px; }
 .ch-row { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--hx-line); background: #fff; }
-.ch-row.on { border-color: #f0a53a; background: #fffaf0; }
+.ch-row.on { border-color: var(--plan-line); background: #fff; }
 .ch-sc { width: 46px; height: 46px; border-radius: 50%; display: grid; place-content: center; text-align: center; background: var(--hx-card); font-weight: 750; font-size: 16px; line-height: 1; }
 .ch-sc small { display: block; margin-top: 2px; font-size: 9px; font-weight: 600; color: var(--hx-muted); }
 .ch-main { display: grid; gap: 2px; min-width: 0; }
@@ -3830,7 +3830,7 @@ a.ch-why { text-decoration: none; }
 .cat-bar { display: flex; width: 110px; height: 6px; border-radius: 99px; background: var(--v-line2); overflow: hidden; }
 .cat-bar > span { border-radius: 0; height: 100%; transition: width .8s cubic-bezier(.16, 1, .3, 1); }
 .cat-bar > .bk { background: var(--v-book-ink); }
-.cat-bar > .ch { background: #f0a53a; }
+.cat-bar > .ch { background: var(--plan-dot); }
 .cat-bud { display: grid; justify-items: end; text-align: right; min-width: 78px; line-height: 1.25; }
 .cat-bud .cat-spent { font-size: 15px; font-weight: 700; color: var(--v-ink); }
 .cat-bud .cat-allot { font-size: 13px; color: var(--v-muted); }
@@ -3854,9 +3854,6 @@ a.ch-why { text-decoration: none; }
 .pk-kind { color: var(--v-ink); font-weight: 650; gap: 5px; }
 .pk-kind svg { color: var(--mc); }
 .pk-ring { width: 18px; height: 18px; }
-.pk-ring.open { border: 1.5px dashed var(--v-dash); }
-.pk-ring.half { border: 2px solid var(--plan-dot); }
-.pk-ring.done { background: var(--v-book-ink); }
 .pk-lab { font-size: 12.5px; }
 .pk-lab.open { color: var(--v-muted); font-weight: 500; }
 .pk-aldim { padding: 3px 10px; font-size: 12.5px; }
@@ -4562,7 +4559,7 @@ a.ch-why { text-decoration: none; }
 /* ===== v30 · Yapılacaklar and Etkinlik tiles: by city in trip order, one size, the corner ✓ / + ===== */
 .it-key { display: flex; gap: 8px; align-items: center; margin: 0; font-size: 12.5px; color: var(--v-muted); }
 .it-key-on, .it-key-add { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px; font-weight: 800; }
-.it-key-on { background: var(--v-book-ink); color: #fff; } .it-key-add { border: 1.5px dashed var(--v-dash); color: var(--v-accent-ink); margin-left: 8px; }
+.it-key-on { background: var(--plan-bg); border: 1.5px solid var(--plan-line); color: var(--plan-ink); } .it-key-add { border: 1.5px dashed var(--v-dash); color: var(--v-accent-ink); margin-left: 8px; }
 .it-cities { position: relative; display: grid; gap: 6px; padding-left: 40px; margin-top: 4px; }
 .it-cities::before { content: ""; position: absolute; left: 14px; top: 16px; bottom: 16px; border-left: 2px dashed color-mix(in srgb, var(--v-book-ink) 40%, var(--v-dash)); }
 .it-city { position: relative; display: grid; gap: 10px; padding: 0 0 12px; }
