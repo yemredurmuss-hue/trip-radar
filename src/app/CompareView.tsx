@@ -113,7 +113,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, steps,
           ×
         </button>
         <div className="muted">{L("Karşılaştırma", "Comparison")}</div>
-        <h2>{[CATEGORY_LABELS[d.category], title].filter(Boolean).join(" · ")}</h2>
+        <h2>{stepping ? L("Sırayla karar ver", "Deciding one by one") : [CATEGORY_LABELS[d.category], title].filter(Boolean).join(" · ")}</h2>
 
         {stepping && steps ? (
           <StepDecide steps={steps} firstKey={d.key} ctx={ctx} onOpenItem={onOpenItem} onExit={() => setStepping(false)} />
