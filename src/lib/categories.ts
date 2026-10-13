@@ -77,6 +77,8 @@ export interface CatEntry {
    * planned as a taxi). `state` follows it, so the ring, the row and the header say the same.
    */
   stage: Stage | null;
+  /** Its option groups' cards all stand as "Önerimiz" (lib/draft.ts): a need waiting for a decision, with a pick to show. */
+  draft: boolean;
   /** The need it's part of: its own key, or the need shared with other people's groups (Emre's and Sabine's flight). */
   need: string;
   /**
@@ -118,6 +120,8 @@ export interface CatSection {
   settled: number;
   /** Its needs at each stage (needsOf): the sections' stages add up to the hero's. */
   stages: StageCounts;
+  /** How many of those needs wait on an "Önerimiz" draft (they are in `stages` as Seçenekler: a draft is no choice). */
+  drafts: number;
   /** First look: open while something's left, closed once all is done. */
   open: boolean;
   /** What belongs here but is out of the way (kategoriler-v4): behind "Gizlenenler · N göster" at the section's end. */
@@ -542,8 +546,26 @@ function piecesItems(piece: CatPiece): Item[] {
 /** The state a stage draws (the ring, the row's words, the header's "3/4"). */
 const STATE_OF: Partial<Record<Stage, EntryState>> = { search: "empty", options: "decide", planned: "book", booked: "done", ready: "done", used: "done" };
 
-function finish(d: Draft, seq: number, rank: Ranking, ctxOf: (item: Item) => StageCtx = () => ({})): CatEntry {
+/** The option groups an entry draws as cards (the Plan's OptionGroupView): where an "Önerimiz" can stand. */
+function groupsOf(piece: CatPiece): Item[][] {
+  if (piece.kind === "group") return [piece.group.items];
+  if (piece.kind !== "entry") return [];
+  const e = piece.entry;
+  switch (e.kind) {
+    case "travel":
+      return e.travel ? [e.travel.items] : [];
+    case "stay":
+      return e.block.kind === "open" ? e.block.groups.map((g) => g.items) : [];
+    default:
+      return [];
+  }
+}
+
+function finish(d: Draft, seq: number, rank: Ranking, ctxOf: (item: Item) => StageCtx = () => ({}), draftFor: (items: Item[]) => Item | null = () => null): CatEntry {
   const stage = draftStage(d, ctxOf);
+  // Waiting for a decision with a pick to show on every one of its cards: "Önerimiz".
+  const groups = stage === "options" ? groupsOf(d.piece) : [];
+  const draft = groups.length > 0 && groups.every((items) => draftFor(items) != null);
   if (stage && STATE_OF[stage]) d = { ...d, state: STATE_OF[stage]! };
   // Each person's own group joins its need (groupNeedOf); a stay's blocks join theirs after (joinStayNeeds).
   const need = groupNeedOf(d.piece) ?? d.key;
@@ -553,6 +575,7 @@ function finish(d: Draft, seq: number, rank: Ranking, ctxOf: (item: Item) => Sta
   const { status, ok } = rowStatus(d.section, d.state, d.items, options, ticket, leg);
   return {
     stage,
+    draft,
     need,
     key: d.key,
     section: d.section,
@@ -603,6 +626,8 @@ export interface CategorizeInput {
   stageCtx?: (item: Item) => Omit<StageCtx, "today">;
   /** Who comes their own way (the names of Trip.travellers.from): the way in and home are theirs to find too. */
   ownWayIn?: string[];
+  /** The option a need's card shows as "Önerimiz" (lib/draft.ts with the need's decision), so the headers can count them. */
+  draftFor?: (items: Item[]) => Item | null;
 }
 
 /**
@@ -610,7 +635,7 @@ export interface CategorizeInput {
  * then what has no block: options with no day (another flight, a stay outside the dates, an eSIM), what
  * needs booking without a block of its own, and the ideas. A record already drawn is never drawn twice.
  */
-export function categorize({ plan, timeline, items, legs = [], hidden = new Set(), rank = new Map(), today = new Date().toISOString().slice(0, 10), stageCtx = () => ({}), ownWayIn = [] }: CategorizeInput): CatSection[] {
+export function categorize({ plan, timeline, items, legs = [], hidden = new Set(), rank = new Map(), today = new Date().toISOString().slice(0, 10), stageCtx = () => ({}), ownWayIn = [], draftFor }: CategorizeInput): CatSection[] {
   const drafts: Draft[] = [];
   const drawn = new Set<string>();
   const closed = new Set(plan.closed.map((c) => c.item.id));
@@ -721,7 +746,7 @@ export function categorize({ plan, timeline, items, legs = [], hidden = new Set(
     drawn.add(item.id);
   }
 
-  const entries = withOwnWays(joinStayNeeds(drafts.map((d, i) => finish(d, i, rank, (item) => ({ ...stageCtx(item), today })))), ownWayIn);
+  const entries = withOwnWays(joinStayNeeds(drafts.map((d, i) => finish(d, i, rank, (item) => ({ ...stageCtx(item), today }), draftFor))), ownWayIn);
   const out = hiddenThings({ plan, timeline, items, legs, hidden });
   return SECTION_ORDER.map((id) => sectionOf(id, entries.filter((e) => planSectionOf(e) === id), plan, out.filter((h) => (h.section === "food" ? "todo" : h.section) === id), today));
 }
@@ -740,15 +765,17 @@ export function planSectionOf(e: Pick<CatEntry, "section" | "piece">): SectionId
 }
 
 /**
- * The header's line in stage words (v11): "1 rezerve · 2 seçildi · 1 aranıyor". Rezerve is booked and ready,
- * seçildi planned, aranıyor what's still to find or pick. Null when nothing in it takes a booking.
+ * The header's line in stage words (v11): "1 rezerve · 1 önerimiz · 2 seçildi · 1 aranıyor". Rezerve is booked and ready,
+ * önerimiz a need waiting on a draft (`drafts` of the Seçenekler, F7), seçildi planned, aranıyor what's still to find or
+ * pick. Null when nothing in it takes a booking.
  */
-export function stageLine(stages: StageCounts): string | null {
+export function stageLine(stages: StageCounts, drafts = 0): string | null {
   const booked = stages.booked + stages.ready;
   const chosen = stages.planned;
-  const open = stages.search + stages.options;
+  const open = stages.search + stages.options - drafts;
   const parts = [
     booked && L(`${booked} rezerve`, `${booked} booked`),
+    drafts && L(`${drafts} önerimiz`, `${drafts} of our picks`),
     chosen && L(`${chosen} seçildi`, `${chosen} chosen`),
     open && L(`${open} aranıyor`, `${open} to find`),
   ].filter((x): x is string => Boolean(x));
@@ -907,7 +934,8 @@ function sectionOf(id: SectionId, list: CatEntry[], plan: Plan, hidden: HiddenTh
   // Things to do and restaurants open while there are any (a list to use, on the road too); İlham waits closed.
   // v11: every section opens at first look (İlham too); closing one is the traveller's choice, remembered.
   const open = true;
-  return { id, entries, days: daysOf(rest, plan, id), status, settled: entries.filter((e) => e.state === "done").length, stages: countStages(needsOf([{ id, entries }]).map((n) => n.stage)), open, hidden, prep, ideas };
+  const needs = needsOf([{ id, entries }]);
+  return { id, entries, days: daysOf(rest, plan, id), status, settled: entries.filter((e) => e.state === "done").length, stages: countStages(needs.map((n) => n.stage)), drafts: needs.filter(isDraftNeed).length, open, hidden, prep, ideas };
 }
 
 /** "5 fikir · 2 tanesi bir güne kondu · 1 yapıldı": on a day means a day still ahead (or a booked table). */
@@ -977,6 +1005,9 @@ export function needsOf(sections: Pick<CatSection, "id" | "entries">[]): Need[] 
   for (const n of out.values()) n.stage = needStage([...n.entries.map((e) => e.stage!), ...n.entries.flatMap((e) => (e.missingFor ?? []).map((): Stage => "search"))]);
   return [...out.values()];
 }
+
+/** A need waiting for a decision whose waiting parts all show an "Önerimiz": still a decision to make, only with a pick ready. */
+export const isDraftNeed = (n: Need): boolean => n.stage === "options" && n.entries.filter((e) => e.stage === "options").every((e) => e.draft);
 
 /** The needs at each stage (the hero's numbers: lifecycle.heroNumbers). */
 export const planStages = (sections: Pick<CatSection, "id" | "entries">[]): StageCounts => countStages(needsOf(sections).map((n) => n.stage));

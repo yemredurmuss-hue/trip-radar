@@ -18,7 +18,7 @@ import type { DateRange } from "../../lib/plan";
 import type { InsertAt } from "../../lib/templates";
 import type { DocMeta, Item, LegMode, Trip } from "../../lib/types";
 import type { Undoable } from "../../lib/undoables";
-import { chooseItem, setArranged, setInstalled, setItemStatus, setOwner } from "../actions";
+import { addArrangedLike, chooseItem, setArranged, setInstalled, setItemStatus, setNeedNotNeeded, setOwner } from "../actions";
 import { dropsIn, useJustBecame, useJustChanged } from "../motion";
 import type { CityWeather } from "../../lib/climate";
 import { flightPeek, stayPeek, transferPeek, type PeekCtx } from "../../lib/cardPeek";
@@ -35,7 +35,7 @@ import { BookingSheet } from "./BookingSheet";
 import { BackHost } from "./BackFace";
 import { NeedBack, NeedCard } from "./NeedCard";
 import { needTitleOf } from "../../lib/pano";
-import { lookOf } from "../../lib/stageWords";
+import { lookOf, lookWord } from "../../lib/stageWords";
 import { stageOf } from "../../lib/lifecycle";
 import { BookedBadge } from "./BookedBadge";
 import { CardDetail } from "./CardDetail";
@@ -112,8 +112,10 @@ export function PlanCard(props: Parameters<typeof PlanCardFace>[0]) {
   );
 }
 
-function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing = false, onCompare, headline = null }: {
+function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing = false, onCompare, headline = null, draft = false }: {
   item: Item;
+  /** F7: the card's pick of a need still to choose, "Önerimiz": a way of looking (nothing written), taken with "✓ Bunu seç" or "Rezerve et ↗". */
+  draft?: boolean;
   /** The options it's compared with (a choice replaces another chosen one among them). */
   group: Item[];
   decision?: GroupDecision;
@@ -141,14 +143,18 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   const camp = kind === "stay" && isCampStay(item);
   // v30: "Ben hallettim" (Ayarlandı): grey and flat, nothing left to do: no "✓ Aldım", no page to book on, no countdown.
   const arranged = Boolean(item.arranged && item.noBooking != null && item.status !== "booked");
-  const look = lookOf(stageOf(item, { docs: docs.length }), { arranged });
-  const foot = footOf(item, kind, { options: nav?.total ?? 1, alert: arranged ? null : alert, docs: docs.length, included: env.trip?.intent?.playbook === "festival" });
+  const look = draft ? "draft" : lookOf(stageOf(item, { docs: docs.length }), { arranged });
+  const footed = footOf(item, kind, { options: nav?.total ?? 1, alert: arranged ? null : alert, docs: docs.length, included: env.trip?.intent?.playbook === "festival" });
+  // A draft says its word on the card's top line (or the ticket's stub), not "Karar bekliyor", and its one action is below.
+  const foot = draft ? { ...footed, left: { kind: "state" as const, tone: "plain" as const, text: "", sub: null, when: null, alert: null }, action: null } : footed;
   const stageMenu = useStageMenu(item);
   const { url: datedUrl } = datedLink(item, decision);
   const page = datedUrl ?? item.url;
   const best = ranked?.rank === 1;
   // v11: planned and not bought yet, "✓ Aldım" moves to the top line and the strip's action is the page to book on.
   const bookTop = !arranged && foot.action?.does === "book";
+  // F7: taking the draft is the choice (S1): "✓ Bunu seç", and "Rezerve et ↗" chooses first, then the page opens.
+  const take = () => void chooseItem(item, group);
   const goLabel = ["train", "bus", "minibus", "ferry", "activity"].includes(kind)
     ? L("Bileti al ↗", "Get the ticket ↗")
     : kind === "esim" || kind === "insurance"
@@ -186,12 +192,12 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   const menu: MenuEntry[] = [...forWho, ...stageMenu.menu.map((e, i) => ({ ...e, sep: forWho.length > 0 && i === 0 })), ...arrangedMenu];
   const alternatives = onChange ? Math.max(0, group.length - 1) : 0;
   // v11: chosen, not bought yet: its other options are a link by the price ("Pano'da 2 alternatif").
-  const altCount = item.status === "chosen" ? group.filter((g) => g.id !== item.id && g.status !== "dismissed").length : 0;
+  const altCount = item.status === "chosen" || draft ? group.filter((g) => g.id !== item.id && g.status !== "dismissed").length : 0;
   const bookedCard = item.status === "booked";
   // v30: a booked stay's check-in time joins its foot two days before (only the time its record knows).
   const checkIn = kind === "stay" && bookedCard ? checkInNote(item, env.today, env.decisions?.ctx.listings.get(listingKeyOf(item))?.house) : null;
   // v30: a click on a chosen card turns it to its back, the options (the choice window); with no other option it opens its details.
-  const flips = item.status === "chosen" && Boolean(onChange);
+  const flips = (item.status === "chosen" || draft) && Boolean(onChange);
   // The motion dictionary: a card that turns booked pops its tick (mühür), a change glows (parlama), one the chat just added drops in (düşüş).
   const sealed = useJustBecame(bookedCard);
   const glow = useJustChanged(item.updatedAt);
@@ -281,11 +287,14 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
     </button>
   ) : null;
   const onToggle = () => (item.status === "booked" && !["taxi", "note", "todo"].includes(kind) ? setSheet(true) : flips ? onChange!() : setOpen(!open));
+  // A draft stands for its whole need: the × and "Ben hallettim" are the need's (as on the card it replaced), not this option's.
+  const remove = draft ? () => void setNeedNotNeeded(group).then(env.offer) : stageMenu.hide;
+  const arrange = draft ? () => void addArrangedLike(item, needTitleOf(item)) : stageMenu.booked || bookedCard ? undefined : () => void setArranged(item, true);
   const alt = altCount > 0 ? { count: altCount, onClick: flips ? onChange! : () => env.onPano(groupKeyOf(item)), flips } : null;
   const detail = <CardDetail item={item} group={group} decision={decision} decisions={env.decisions} ranked={ranked} headline={headline} facts={facts} alert={alert} docs={docs} actions={actions} />;
   // F2: a flight is a ticket. Its stub says the stage and what one pays; the head the airline; the warnings, the live boxes and the code stay on it.
   if (kind === "flight") {
-    const tl: TicketLook = look === "booked" || look === "arranged" ? look : "chosen";
+    const tl: TicketLook = look === "booked" || look === "arranged" || look === "draft" ? look : "chosen";
     const going = tripPeople(env.decisions?.ctx);
     const stubFace = ticketStub({ look: tl, item, prices: ticketPrices(item, facts.price, going), fallback: facts.price ? { text: facts.price.text, label: facts.price.label ?? null } : null, people: going, today: env.today });
     // A chosen flight's words ("Seçildi · bilet alınmadı") are the stub's label and the warning under the route; a booking keeps its note and its cancel date.
@@ -305,6 +314,11 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
               {page && <a className="tk-buy" href={page} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{L("Rezerve et ↗", "Book ↗")}</a>}
               {aldim}
             </>
+          ) : draft ? (
+            <>
+              {page && <a className="tk-buy" href={page} target="_blank" rel="noreferrer" onClick={take}>{L("Rezerve et ↗", "Book ↗")}</a>}
+              <button type="button" className="tk-pick" onClick={take}>✓ {L("Bunu seç", "Pick this")}</button>
+            </>
           ) : null
         }
         warn={arranged ? null : ticketWarn(item, env.today, tl)}
@@ -316,8 +330,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
           // F1c: whoever saved it, on the corner: ✨ for our pick, a fellow traveller always, the owner's own face only on a trip of two or more.
           corner: adderOf(item) || people.length > 1 ? <SavedFace item={item} /> : null,
           extraClass: [arranged ? "pk-arranged" : "", allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined,
-          onDelete: stageMenu.hide,
-          onArranged: stageMenu.booked || bookedCard ? undefined : () => void setArranged(item, true),
+          onDelete: remove,
+          onArranged: arrange,
           deleteLabel: stageMenu.booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed"),
           menu,
           info: peekFacts.length ? <FactsBox facts={peekFacts} /> : null,
@@ -347,12 +361,21 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       badge={<WhoseBadge item={item} trip={env.trip} />}
       // F1c: whoever saved it, on the corner: ✨ for our pick, a fellow traveller always, the owner's own face only on a trip of two or more.
       corner={adderOf(item) || people.length > 1 ? <SavedFace item={item} /> : null}
-      extraClass={[ride ? "pk-rd-card" : "", arranged ? "pk-arranged" : "", allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined}
-      docs={bookedCard ? null : <DocAccess item={item} docs={docs} />}
-      onDelete={stageMenu.hide}
-      onArranged={stageMenu.booked || bookedCard ? undefined : () => void setArranged(item, true)}
+      extraClass={[ride ? "pk-rd-card" : "", draft ? "pk-draft" : "", arranged ? "pk-arranged" : "", allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined}
+      docs={bookedCard || draft ? null : <DocAccess item={item} docs={docs} />}
+      onDelete={remove}
+      onArranged={arrange}
       deleteLabel={stageMenu.booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed")}
-      topAction={aldim ?? (look === "booked" || look === "arranged" ? <BookedBadge look={look} as={bookedAs(item, kind)} /> : null)}
+      topAction={
+        draft ? (
+          <>
+            <span className="pk-lab draft"><span aria-hidden>✨</span> {lookWord("draft")}</span>
+            <button type="button" className="pk-aldim pk-pick" onClick={take}>✓ {L("Bunu seç", "Pick this")}</button>
+          </>
+        ) : (
+          aldim ?? (look === "booked" || look === "arranged" ? <BookedBadge look={look} as={bookedAs(item, kind)} /> : null)
+        )
+      }
       menu={menu}
       info={peekFacts.length ? <FactsBox facts={peekFacts} /> : null}
       open={open}
@@ -383,10 +406,10 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       foot={
         <>
           <CardFoot view={bookTop || arranged ? { ...foot, action: null } : foot} nav={nav} best={best} price={facts.price} each={eachLine} onAction={act} live={liveFoot}
-            go={bookTop && page ? { href: page, label: goLabel } : null}
+            go={(bookTop || draft) && page ? { href: page, label: goLabel, onClick: draft ? take : undefined } : null}
             alt={alt}
             noTicket={needsNoTicket(item, kind, transport)}
-            quietWait={item.status === "chosen"}
+            quietWait={item.status === "chosen" || draft}
             timed={checkIn}
             docs={docsFoot}
             more={more} />
@@ -400,17 +423,20 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
 }
 
 /**
- * A need's options (not a stay) as one card. Undecided, the need's own card (its options on its back, "N seçenek ›"). Decided, the
- * chosen one alone; "Diğer N seçenek" turns it in place to its back (BackFace over its row, the card kept under it). The wrapper
- * names every option's id, so a to-do can find the card of one not on screen (Progress.findTarget).
+ * A need's options (not a stay) as one card. Undecided, the need's own card (its options on its back, "N seçenek ›"), or, with a
+ * pick to show, the draft "Önerimiz" (F7: the best real option as the card, nothing written until it is taken). Decided, the
+ * chosen one alone. "Diğer N seçenek" / "Değiştir N" turns either in place to its back (BackFace over its row, the card kept under
+ * it). The wrapper names every option's id, so a to-do can find the card of one not on screen (Progress.findTarget).
  */
-export function NavGroup({ items, heading, nested, decision, choice, decided, onChange, changing, rankedOf, onCompare }: {
+export function NavGroup({ items, heading, nested, decision, choice, decided, draft = null, onChange, changing, rankedOf, onCompare }: {
   items: Item[];
   heading: ReactNode;
   nested: boolean;
   decision?: GroupDecision;
   choice: Choice | null;
   decided: Item | null;
+  /** The option the card shows as "Önerimiz" while nothing is decided (lib/draft.ts). */
+  draft?: Item | null;
   onChange?: () => void;
   changing: boolean;
   rankedOf: (item: Item) => Ranked | undefined;
@@ -425,15 +451,16 @@ export function NavGroup({ items, heading, nested, decision, choice, decided, on
       {card}
     </div>
   );
-  if (!decided) {
+  const shown = decided ?? draft;
+  if (!shown) {
     return items.length >= 1 ? wrap(<NeedCard items={items} decision={decision} choice={choice} open={choosing} onOpen={() => setChoosing(true)} onClose={() => setChoosing(false)} onCompare={onCompare} />) : null;
   }
-  const ranked = rankedOf(decided);
+  const ranked = rankedOf(shown);
   return wrap(
     <BackHost
       open={changing}
-      front={<PlanCard key={decided.id} item={decided} group={items} decision={decision} ranked={ranked} onChange={onChange} changing={changing} onCompare={onCompare} headline={ranked?.rank === 1 ? choice : null} />}
-      back={<NeedBack items={items} decision={decision} choice={choice} title={needTitleOf(decided)} kind={cardKind(decided)} askKey={`${decided.needKey}:${items.length}`} onClose={() => onChange?.()} onCompare={onCompare} />}
+      front={<PlanCard key={shown.id} item={shown} draft={!decided} group={items} decision={decision} ranked={ranked} onChange={onChange} changing={changing} onCompare={onCompare} headline={ranked?.rank === 1 ? choice : null} />}
+      back={<NeedBack items={items} decision={decision} choice={choice} title={needTitleOf(shown)} kind={cardKind(shown)} askKey={`${shown.needKey}:${items.length}`} onClose={() => onChange?.()} onCompare={onCompare} />}
     />,
   );
 }

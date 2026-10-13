@@ -1,6 +1,6 @@
 // The back of a card (plan v46 F4): what a need's options are split into. "Kaydettikleriniz" is every option anyone but
 // the AI saved (you, the extension, a Pano link), "Önerimiz" what the AI found; each shows three at most and says how
-// many more wait on the Pano. The one on the plan is always among those shown. "Yeni" is a record saved in the last two
+// many more wait on the Pano. The one on the plan, or on the card as the draft, is always among those shown. "Yeni" is a record saved in the last two
 // days that this device hasn't seen on a back yet (the seen ids are kept in localStorage, never in the trip's data). Pure,
 // except for the two seen-id helpers at the foot.
 import { isAiOption } from "./pano";
@@ -24,20 +24,20 @@ export interface BackSplit {
   more: number;
 }
 
-/** The first `cap` of a list, the one on the plan kept in (it takes the last place when it would fall outside). */
-function shownOf(list: Item[], cap: number): Item[] {
+/** The first `cap` of a list, the one on the plan (or on the card as the draft) kept in: it takes the last place when it would fall outside. */
+function shownOf(list: Item[], cap: number, drafted?: string): Item[] {
   const head = list.slice(0, cap);
-  const chosen = list.find(onPlan);
+  const chosen = list.find(onPlan) ?? list.find((i) => i.id === drafted);
   if (chosen && !head.includes(chosen)) head[cap - 1] = chosen;
   return head;
 }
 
-/** The options (best first) as the back's two sections. */
-export function splitBack(items: Item[], cap = BACK_CAP): BackSplit {
+/** The options (best first) as the back's two sections; `drafted` is the id of the one the card shows as "Önerimiz". */
+export function splitBack(items: Item[], drafted?: string, cap = BACK_CAP): BackSplit {
   const mine = items.filter((i) => !isAiOption(i));
   const ai = items.filter(isAiOption);
-  const shownMine = shownOf(mine, cap);
-  const shownAi = shownOf(ai, cap);
+  const shownMine = shownOf(mine, cap, drafted);
+  const shownAi = shownOf(ai, cap, drafted);
   return { mine: shownMine, ai: shownAi, mineTotal: mine.length, aiTotal: ai.length, more: mine.length - shownMine.length + (ai.length - shownAi.length) };
 }
 
@@ -45,10 +45,13 @@ export function splitBack(items: Item[], cap = BACK_CAP): BackSplit {
 export const isFresh = (item: Item, seen: ReadonlySet<string>, now: number): boolean =>
   !onPlan(item) && !seen.has(item.id) && now - item.createdAt >= 0 && now - item.createdAt <= FRESH_MS;
 
-export type BackTag = "selected" | "new";
+export type BackTag = "selected" | "onCard" | "new";
 
-/** The word on a card's corner: "Seçili" when it is the one on the plan, "Yeni" when fresh, else none. */
-export const tagOf = (item: Item, fresh: boolean): BackTag | null => (onPlan(item) ? "selected" : fresh ? "new" : null);
+/**
+ * The word on a card's corner: "Seçili" when it is the one on the plan, "Kartta" when it is the one the card shows as
+ * "Önerimiz" (a draft, not chosen), "Yeni" when fresh, else none.
+ */
+export const tagOf = (item: Item, fresh: boolean, drafted = false): BackTag | null => (onPlan(item) ? "selected" : drafted ? "onCard" : fresh ? "new" : null);
 
 // --- seen ids (this device only) ----------------------------------------------------------------------------------
 

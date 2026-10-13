@@ -78,6 +78,7 @@ import { useSuggestions } from "./useSuggestions";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
 import { Pano } from "./board/Pano";
 import { NeedGroup } from "./cards/NeedCard";
+import { draftOf } from "../lib/draft";
 import { journeyOf } from "../lib/tripShape";
 import { UndatedIdeas } from "./ideas/IdeaTiles";
 import { choiceOf, type Choice } from "../lib/choice";
@@ -140,6 +141,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const timeline = useMemo(() => buildTimeline(plan, legs, items, hidden), [plan, legs, items, hidden]);
   // The Plan by category (spec 0.34): every block and record in one of seven sections; which are open, per trip.
   const rank = useMemo(() => new Map([...(decisions?.byGroup.values() ?? [])].flatMap((d) => d.options.map((o, i) => [o.item.id, i] as const))), [decisions?.byGroup]);
+  // The decision each option is in, and the option a need's card shows as "Önerimiz" (lib/draft.ts): the headers count them (F7).
+  const decisionByItem = useMemo(() => new Map([...(decisions?.byGroup.values() ?? [])].flatMap((d) => d.options.map((o) => [o.item.id, d] as const))), [decisions?.byGroup]);
+  const draftFor = useCallback((list: Item[]) => draftOf(list, decisionByItem.get(list[0]?.id)), [decisionByItem]);
   // A record's files (its own and those of the plans it replaced): a booking with one is Hazır (lifecycle.ts).
   const inherited = useMemo(() => inheritedDocs(plan.closed), [plan.closed]);
   const docsFor = useTripDocs(trip.id, inherited);
@@ -151,8 +155,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // Who comes their own way in (kişiye özel): the way in is theirs to find too.
   const ownWayIn = useMemo(() => Object.keys(trip.travellers?.from ?? {}), [trip.travellers?.from]);
   const sections = useMemo(
-    () => categorize({ plan, timeline, items, legs, hidden, rank, today, stageCtx, ownWayIn }),
-    [plan, timeline, items, legs, hidden, rank, today, stageCtx, ownWayIn],
+    () => categorize({ plan, timeline, items, legs, hidden, rank, today, stageCtx, ownWayIn, draftFor }),
+    [plan, timeline, items, legs, hidden, rank, today, stageCtx, ownWayIn, draftFor],
   );
   // What Gizlenenler holds, for the history's "Geri getir" (0.37): ruled-out records, transfers and nights not needed.
   const hiddenForHistory = useMemo<HiddenInput[]>(
@@ -629,7 +633,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const stickyBudget = bar
     ? { expected: bar.booked + bar.chosen + bar.open, total: bar.total, currency: bar.currency, expectedText: formatPrice(bar.booked + bar.chosen + bar.open, bar.currency), totalText: bar.total != null ? formatPrice(bar.total, bar.currency) : null }
     : null;
-  const decisionOf = (item: Item) => [...(decisions?.byGroup.values() ?? [])].find((d) => d.options.some((o) => o.item.id === item.id));
+  const decisionOf = (item: Item) => decisionByItem.get(item.id);
   /** A stay keeps its decision card; everything else is a plan card (cards/PlanCard.tsx). */
   const card: CardFor = (item, group, decision, ranked, onCompareGroup) =>
     item.category === "stay" ? (
@@ -1020,6 +1024,8 @@ function OptionGroupView({
   };
   const ranked = rankItems(group.items, rank);
   const decided = ranked.find((i) => i.status === "booked") ?? ranked.find((i) => i.status === "chosen");
+  // F7: a flight or stay still to choose, with a real option to show: its card is that option as "Önerimiz".
+  const draft = decided ? null : draftOf(group.items, decision);
   const live = !group.booked && decision;
   const comparable = live && decision.options.filter((o) => !o.excluded).length > 1;
   const single = live && decision.status === "single";
@@ -1035,7 +1041,7 @@ function OptionGroupView({
       </span>
     ) : null;
   // Decided: one line (the cards come back with "Değiştir"). A booking settles it for good.
-  const change = decided && decided.status === "chosen" && ranked.length > 1 ? () => setChanging(!changing) : undefined;
+  const change = (decided && decided.status === "chosen" && ranked.length > 1) || draft ? () => setChanging(!changing) : undefined;
   // A new pick (or a booking) closes the cards again.
   const decidedId = decided?.id;
   useEffect(() => setChanging(false), [decidedId]);
@@ -1049,9 +1055,9 @@ function OptionGroupView({
   // Not a stay: the options as one card with ‹ 1/2 ›, the pick and the reasons in its details (cards/PlanCard.tsx).
   // v11: a stay chosen or booked is that same card (its picture, its nights, "Aldım", "Pano'da N alternatif",
   // "Rezerve et ↗"; booked: its stamp, the booking's window), its other options back in the choice window.
-  if (group.category !== "stay" || decided) {
+  if (group.category !== "stay" || decided || draft) {
     return (
-      <NavGroup items={byRank} heading={head} nested={nested} decision={decision} choice={choice} decided={decided ?? null}
+      <NavGroup items={byRank} heading={head} nested={nested} decision={decision} choice={choice} decided={decided ?? null} draft={draft}
         onChange={change} changing={changing} rankedOf={rankedOf} onCompare={comparable || single ? onCompare : undefined} />
     );
   }
