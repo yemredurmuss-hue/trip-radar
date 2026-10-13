@@ -753,7 +753,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
             </button>
             <div className="st-top-title">{startName(state) ? L(`${startName(state)} · yeni gezi`, `${startName(state)} · new trip`) : L("Yeni gezi", "New trip")}</div>
           </div>
-          {!generating && <ChecklistBar rows={rows} onAsk={ask} ready={ready} complete={complete} onGenerate={generate} disabled={holding} drawing={drawing} reading={readingIds} now={q} lang={lang} />}
+          {!generating && <ChecklistBar rows={rows} onAsk={ask} ready={ready} complete={complete} onGenerate={generate} disabled={holding} drawing={drawing} reading={readingIds} now={q} preview={preview} place={state.where?.place ?? ""} lang={lang} />}
           <div className="st-msgs" role="log" aria-live="polite" aria-label={L("Sohbet", "Conversation")}>
             {state.messages.map((m, i) => (
               <div key={m.id ?? `line-${i}`} className={m.role === "user" ? "st-msg-user" : "st-msg-bot"}

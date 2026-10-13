@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GAP, MAX_START, OFF_KEY, claimOpening, countAt, openedKey, schedule } from "../src/app/opening";
+import { FLOURISH, FLOURISH_MS, GAP, MAX_START, OFF_KEY, RISE_MS, SPARKS, claimOpening, countAt, openedKey, schedule, sparkVectors } from "../src/app/opening";
 
 const memory = () => {
   const data = new Map<string, string>();
@@ -49,5 +49,21 @@ describe("when it plays", () => {
     expect(claimOpening("t1", null)).toBe(true);
     const broken = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } };
     expect(claimOpening("t1", broken)).toBe(true);
+  });
+});
+
+describe("the flourish: orb, sparks, glint (Emre, 2026-10-13)", () => {
+  it("is over within 1.2 s, with the burst at the border before the orb heads home", () => {
+    expect(FLOURISH_MS).toBeLessThanOrEqual(1200);
+    expect(FLOURISH.burst).toBeLessThan(FLOURISH.back);
+    expect(FLOURISH.back).toBeLessThan(FLOURISH_MS);
+    // what is in view finishes by about a second too, so the flourish does not outlast the opening
+    expect(FLOURISH_MS).toBeLessThanOrEqual(MAX_START + RISE_MS + 200);
+  });
+  it("sends the sparks round the whole circle", () => {
+    const v = sparkVectors(SPARKS, 46, () => 0);
+    expect(v).toHaveLength(SPARKS);
+    expect(v.some((s) => s.dx > 0) && v.some((s) => s.dx < 0) && v.some((s) => s.dy > 0) && v.some((s) => s.dy < 0)).toBe(true);
+    expect(sparkVectors(0)).toEqual([]);
   });
 });
