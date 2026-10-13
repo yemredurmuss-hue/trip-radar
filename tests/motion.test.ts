@@ -53,19 +53,23 @@ describe("motion dictionary: ticket and stage (plan-v45 4b)", () => {
 
 describe("motion dictionary: the values (plan-v45 4a)", () => {
   const css = readFileSync("static/app.css", "utf8");
-  it("parlama lasts 1.1 s and grows a 10 px ring; nabız is 1.4 s with a 7 px ring; yükselme is 3 px", () => {
+  it("parlama lasts 1.1 s and grows a 10 px ring; nabız is 2.4 s with a 6 px ring (the drawing's); yükselme is 3 px", () => {
     expect(GLOW_MS).toBe(1100);
     expect(css).toMatch(/\.pk-glow \{ animation: pk-glow 1\.1s ease-out; \}/);
     expect(css).toMatch(/@keyframes pk-glow[^\n]*0 0 0 10px rgba\(91, 69, 224, \.6\)/);
-    expect(css).toMatch(/animation: pk-pulse 1\.4s ease-in-out infinite/);
-    expect(css).toMatch(/@keyframes pk-pulse[^\n]*0 0 0 7px/);
+    expect(css).toMatch(/animation: pk-pulse 2\.4s ease-in-out infinite/);
+    expect(css).toMatch(/@keyframes pk-pulse[^\n]*0 0 0 6px rgba\(139, 116, 255, \.15\)/);
     expect(css).toMatch(/\.pk-card:not\(\.pk-open\):not\(\.ek-still\):hover \{ transform: translateY\(-3px\)/);
     expect(css).toMatch(/\.pn-card:hover \{ transform: translateY\(-3px\)/);
   });
-  it("düşüş starts a little smaller; mühür keeps its turn, 0.5 s", () => {
+  it("mühür is pressed down from big: 1.8 > .92 > 1 over 420 ms (the old turn stays defined)", () => {
+    expect(css).toMatch(/@keyframes mv-stamp \{ from \{ transform: scale\(1\.8\); opacity: 0; \} 70% \{ transform: scale\(\.92\); opacity: 1; \} \}/);
+    expect(css).toContain(".pk-seal .okt { animation: mv-stamp 420ms cubic-bezier(.2, .9, .3, 1.3) backwards; }");
+    expect(css).toContain(".pk-seal .tk-chk { animation: mv-stamp 420ms cubic-bezier(.2, .9, .3, 1.3) backwards; }");
+  });
+  it("düşüş starts a little smaller; the old mühür turn stays defined, 0.5 s", () => {
     expect(css).toMatch(/@keyframes pk-drop \{ 0% \{ opacity: 0; transform: translateY\(-14px\) scale\(\.96\)/);
     expect(css).toMatch(/@keyframes pk-pop \{ 0% \{ transform: scale\(\.4\) rotate\(-14deg\)/);
-    expect(css).toMatch(/animation: pk-pop \.5s cubic-bezier\(\.2, \.9, \.3, 1\.3\) backwards/);
   });
 });
 

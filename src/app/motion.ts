@@ -151,3 +151,61 @@ export function useCountUp(target: number, ms = MOTION_MS): { value: number; cou
   }, [target, ms]);
   return { value, counting };
 }
+
+/** Hareket Dili, "hızlı biten iş titremez": a wait shorter than this shows no skeleton and no turning mark at all. */
+export const LATE_MS = 400;
+
+/** True only once `on` has held for `ms` without a break (a wait that ends sooner never shows its skeleton or spinner). A timing rule, not
+ *  a movement: it applies with reduced motion too. */
+export function useLate(on: boolean, ms = LATE_MS): boolean {
+  const [late, setLate] = useState(false);
+  useEffect(() => {
+    if (!on) {
+      setLate(false);
+      return;
+    }
+    const t = setTimeout(() => setLate(true), ms);
+    return () => clearTimeout(t);
+  }, [on, ms]);
+  return on && late;
+}
+
+/** A section's body folds open and shut over this long (app.css `.cat-fold`, --t-base). */
+export const FOLD_MS = 260;
+
+/**
+ * A section's body kept mounted while it folds shut, and drawn folded for one frame when it opens, so the grid's rows (0fr and 1fr) can move.
+ * `mounted`: draw the body; `expanded`: rows at 1fr; `settled`: unfolded and at rest (the clip comes off, a card's flip may leave the box).
+ * A body that is open when the Plan appears is just there; with reduced motion nothing waits.
+ */
+export function useFold(open: boolean): { mounted: boolean; expanded: boolean; settled: boolean } {
+  const [s, setS] = useState({ mounted: open, expanded: open, settled: open });
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    if (reducedMotion()) {
+      setS({ mounted: open, expanded: open, settled: open });
+      return;
+    }
+    if (open) {
+      setS({ mounted: true, expanded: false, settled: false });
+      let inner = 0;
+      const outer = requestAnimationFrame(() => {
+        inner = requestAnimationFrame(() => setS({ mounted: true, expanded: true, settled: false }));
+      });
+      const done = setTimeout(() => setS({ mounted: true, expanded: true, settled: true }), FOLD_MS + 40);
+      return () => {
+        cancelAnimationFrame(outer);
+        cancelAnimationFrame(inner);
+        clearTimeout(done);
+      };
+    }
+    setS({ mounted: true, expanded: false, settled: false });
+    const gone = setTimeout(() => setS({ mounted: false, expanded: false, settled: false }), FOLD_MS + 20);
+    return () => clearTimeout(gone);
+  }, [open]);
+  return { mounted: open || s.mounted, expanded: open && s.expanded, settled: open && s.settled };
+}

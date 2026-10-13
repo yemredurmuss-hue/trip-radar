@@ -90,6 +90,7 @@ import { useWho } from "./Travellers";
 import { onTripChange } from "../lib/tripUndo";
 import { takeLangUndo } from "./langSwitch";
 import { StartGuideCard } from "./start/StartGuideCard";
+import { WorkLine } from "./WorkPill";
 import { isPlaceholder, startLead } from "../lib/startTrip";
 
 interface Props {
@@ -740,6 +741,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           )}
         </div>
       )}
+      {/* (hareket dili, m-isik) a thin light along the top while captures are read or prices looked up */}
+      <WorkLine on={working.length + reading > 0} />
       <StickyBar
         hero={heroRef}
         active={view !== "board"}

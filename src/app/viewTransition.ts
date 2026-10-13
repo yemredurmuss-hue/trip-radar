@@ -34,6 +34,12 @@ export function withTransition(update: () => void): void {
 // trip's hero photo, and shrinks back into its card. Only the two photos of the change carry the shared name, and only
 // while it runs (a name must be unique on the page). The rest of the screen crossfades as in withTransition.
 const PHOTO = "trip-photo";
+const way = (doc: Document, to?: "open" | "back") => {
+  const root = doc.documentElement;
+  if (!root) return;
+  if (to) root.dataset.photo = to;
+  else delete root.dataset.photo;
+};
 let carrying = false;
 /** True while a trip's photo is being carried to its hero: the opening (opening.ts) then leaves the hero photo as it lands. */
 export const photoCarried = () => carrying;
@@ -49,6 +55,8 @@ export function withTripPhoto(update: () => void, tripId: string, open: boolean)
   const name = (el: HTMLElement | null, on: boolean) => el?.style.setProperty("view-transition-name", on ? PHOTO : "");
   let to: HTMLElement | null = null;
   name(from, true);
+  // (m-cekmece) the photo takes 600 ms to grow into the hero and 420 ms to shrink back: app.css reads the way from the root.
+  way(doc, open ? "open" : "back");
   try {
     carrying = open;
     quietly(
@@ -61,10 +69,12 @@ export function withTripPhoto(update: () => void, tripId: string, open: boolean)
     ).finally(() => {
       carrying = false;
       name(to, false);
+      way(doc);
     });
   } catch {
     carrying = false;
     name(from, false);
+    way(doc);
     update();
   }
 }

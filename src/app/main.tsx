@@ -7,6 +7,7 @@ import { reloadIfStale } from "../lib/update";
 import { App } from "./App";
 import { ErrorBoundary, installErrorBanner } from "./ErrorBoundary";
 import { installExitMotion } from "./exitMotion";
+import { installHareketDili } from "./hareketDili";
 import { applyStill } from "./motion";
 import { installPutFly } from "./putFly";
 
@@ -17,6 +18,8 @@ applyStill();
 installExitMotion();
 // "Plana koy": the card's name flies to the Plan tab (hareket dili).
 installPutFly();
+// Hareket Dili: the tabs' sliding highlight and the view that comes in from the side, a banner pulled up out of the page, at most two pulsing rings.
+installHareketDili();
 // A partner brand's page opened from the board goes through the partner link, only as it's clicked (affiliate.ts).
 installPartnerLinks();
 // The language first (stored choice, else the browser's), so nothing renders in the wrong one. And
