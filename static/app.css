@@ -1986,76 +1986,79 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .ins-tile .ins-x { position: absolute; top: 6px; right: 6px; background: rgba(255, 255, 255, .92); }
 .ins-tile:hover .ins-x, .ins-tile:focus-within .ins-x { opacity: 1; }
 
-/* plan v30, Etkinlik ve turlar: one grid of cards of one size (ActivityBoard). Scoped under .ac-wrap, with the weight to
-   win over the older .ac-row / .it-tile rules further down the file. */
-.cat-sec .ac-wrap.ac-one { display: grid; gap: 12px; padding: 4px 0 6px; }
-.cat-sec .ac-wrap .ac-type-note { margin: 0; font-size: 13px; color: var(--v-muted); }
-.cat-sec .ac-wrap .ac-type-note::before { content: "💡"; margin-right: 8px; filter: grayscale(.3); }
-.cat-sec .ac-wrap .ac-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 0; border: 0; }
-.cat-sec .ac-wrap .ac-key { margin: 0; }
-.cat-sec .ac-wrap .ac-empty-note { margin: 0; font-size: 13px; color: var(--v-muted); }
-.cat-sec .ac-wrap .ac-sub { margin: 6px 0 -2px; font-size: 11.5px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; color: var(--v-muted); }
-.cat-sec .ac-wrap .ac-rest { margin-top: 2px; }
-.cat-sec .ac-wrap .ax-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); gap: 14px; align-items: stretch; }
-.cat-sec .ac-wrap .ax-c { position: relative; display: flex; flex-direction: column; grid-template-columns: none; gap: 0; min-height: 0; padding: 0; overflow: hidden; border-radius: 16px; background: #fff; border: 1px solid var(--v-line2); transition: box-shadow .2s; }
-.cat-sec .ac-wrap .ax-c:hover { transform: none; box-shadow: 0 6px 18px rgba(28, 26, 51, .08); }
-.cat-sec .ac-wrap .ax-c.ax-idea { background: transparent; border: 1.5px dashed var(--v-dash); box-shadow: none; }
-.cat-sec .ac-wrap .ax-c.ax-idea:hover { background: #fff; }
-.cat-sec .ac-wrap .ax-c > .ac-hit { position: absolute; inset: 0; z-index: 0; }
-.cat-sec .ac-wrap .ax-c > *:not(.ac-hit) { position: relative; z-index: 1; }
-/* the square picture */
-.cat-sec .ac-wrap .ax-sq { position: relative; display: block; width: 100%; height: auto; min-height: 0; aspect-ratio: 1 / 1; border-radius: 0; overflow: hidden; background: color-mix(in srgb, #c0256b 9%, #fff); }
-.cat-sec .ac-wrap .ax-sq > .ac-pic, .cat-sec .ac-wrap .ax-sq > .it-photo { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 0; object-fit: cover; background: none; grid-row: auto; }
-.cat-sec .ac-wrap .ax-sq > .ac-pic.art, .cat-sec .ac-wrap .ax-sq .ac-art { position: absolute; inset: 0; margin: auto; width: 62%; height: 62%; max-width: none; padding: 0; object-fit: contain; mix-blend-mode: multiply; }
-.cat-sec .ac-wrap .ax-c.ax-idea .ax-sq { opacity: .9; }
-.cat-sec .ac-wrap .ax-tag { position: absolute; left: 8px; top: 8px; z-index: 2; display: inline-flex; align-items: center; gap: 5px; max-width: calc(100% - 52px); padding: 3px 9px 3px 6px; border-radius: 999px; background: #fff; color: #4b36c9; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 1px 4px rgba(28, 26, 51, .12); }
-.cat-sec .ac-wrap .ax-tag .wh-av { width: 18px; height: 18px; flex: none; }
-/* the corner: ✓ on the plan, + an idea */
-.cat-sec .ac-wrap .ax-tick { position: absolute; right: 8px; top: 8px; z-index: 2; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; background: #fff; color: var(--v-ink); font-size: 15px; font-weight: 800; line-height: 1; cursor: pointer; box-shadow: 0 1px 4px rgba(28, 26, 51, .15); }
-.cat-sec .ac-wrap .ax-tick.on { background: var(--plan-bg); border: 1.5px solid var(--plan-line); color: var(--plan-ink); }
-.cat-sec .ac-wrap button.ax-tick:hover { transform: scale(1.08); }
-.cat-sec .ac-wrap span.ax-tick { cursor: default; }
-.cat-sec .ac-wrap .ax-c .it-put.corner { top: 8px; right: 8px; bottom: auto; left: auto; z-index: 2; }
-.cat-sec .ac-wrap .ax-tools { position: absolute; right: 8px; bottom: 8px; top: auto; z-index: 2; display: inline-flex; gap: 4px; align-items: center; opacity: 0; transition: opacity .15s; }
-.cat-sec .ac-wrap .ax-tools .pk-ib, .cat-sec .ac-wrap .ax-tools .pk-x { background: rgba(255, 255, 255, .94); border-radius: 50%; opacity: 1; }
-.cat-sec .ac-wrap .ax-c:hover .ax-tools, .cat-sec .ac-wrap .ax-c:focus-within .ax-tools { opacity: 1; }
-/* no hover on a touch screen or a narrow board: the + and × are always there */
-@media (hover: none) { .cat-sec .ac-wrap .ax-tools { opacity: 1; } }
-@container panel (max-width: 620px) { .cat-sec .ac-wrap .ax-tools { opacity: 1; } }
-.cat-sec .ac-wrap .ax-c .ac-x, .cat-sec .ac-wrap .ax-c .pk-menu-wrap, .cat-sec .ac-wrap .ax-c .pk-ib { opacity: 1; }
-/* the name: two lines at most, always the room of two */
-.cat-sec .ac-wrap .ax-c .ac-t, .cat-sec .ac-wrap .ax-c .it-t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 10px 0 0; padding: 0 12px; font-size: 15px; font-weight: 700; line-height: 1.3; min-height: calc(2 * 1.3em); overflow-wrap: anywhere; grid-column: auto; flex-direction: initial; }
-.cat-sec .ac-wrap .ax-c .ac-t:has(input, textarea, .pk-ed-input) { display: block; overflow: visible; }
-.cat-sec .ac-wrap .ax-c .ac-t .ac-name, .cat-sec .ac-wrap .ax-c .ac-t a { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; text-align: left; }
-.cat-sec .ac-wrap .ax-meta { grid-column: auto; display: flex; align-items: center; flex-wrap: nowrap; gap: 6px; padding: 6px 12px 0; min-width: 0; font-size: 12.5px; color: var(--v-muted); white-space: nowrap; overflow: hidden; }
-.cat-sec .ac-wrap .ax-meta .brand { flex: none; }
-.cat-sec .ac-wrap .ax-where { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.cat-sec .ac-wrap .ax-why { padding: 4px 12px 0; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 12.5px; }
-.cat-sec .ac-wrap .ax-price { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-height: 26px; padding: 6px 12px 0; margin-top: auto; }
-.cat-sec .ac-wrap .ax-price b { font-size: 17px; font-weight: 750; color: var(--v-ink); font-variant-numeric: tabular-nums; }
-.cat-sec .ac-wrap .ax-price small { font-size: 12px; color: var(--v-muted); white-space: nowrap; }
-.cat-sec .ac-wrap .ax-price .ac-pp { display: flex; align-items: baseline; justify-content: space-between; width: 100%; color: inherit; }
-/* the strip: ✓ Bilet aldım + Bilet al ↗, side by side; for an idea, "+ Plana ekle" */
-.cat-sec .ac-wrap .ax-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 10px 12px 12px; padding-top: 10px; border-top: 1px solid var(--v-line2); min-height: 40px; }
-.cat-sec .ac-wrap .ax-c > .ax-price + .ax-foot { margin-top: 8px; }
-.cat-sec .ac-wrap .ax-foot-idea { justify-content: flex-end; }
-.cat-sec .ac-wrap .ax-c:not(:has(.ax-price)) > .ax-foot { margin-top: auto; }
-.cat-sec .ac-wrap .ax-c .ac-why + .ax-foot, .cat-sec .ac-wrap .ax-c .ac-note + .ax-foot { margin-top: auto; }
-.cat-sec .ac-wrap .ax-add { display: inline-flex; align-items: center; gap: 4px; padding: 5px 13px; border: 1.5px dashed #9b8cf0; border-radius: 999px; background: #fff; color: #4b36c9; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-.cat-sec .ac-wrap .ax-add:hover { background: #efebff; }
-.cat-sec .ac-wrap .ax-c .ac-acts { margin-top: 0; }
-.cat-sec .ac-wrap .ax-c .ac-acts .pk-aldim, .cat-sec .ac-wrap .ax-c .ac-acts .ac-go { white-space: nowrap; }
-.cat-sec .ac-wrap .ax-c .ac-go { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 999px; background: var(--v-ink); color: #fff; font-weight: 700; }
-.cat-sec .ac-wrap .ax-c .ac-go:hover { text-decoration: none; background: #34304f; }
-.cat-sec .ac-wrap .ax-c .ac-go .sc-favicon { background: #fff; border-radius: 4px; padding: 1px; }
-.cat-sec .ac-wrap .ax-c .ac-m { justify-content: flex-start; }
-@media (max-width: 480px) {
-  .cat-sec .ac-wrap .ax-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .cat-sec .ac-wrap .ax-c .ac-t, .cat-sec .ac-wrap .ax-c .it-t { font-size: 14px; padding: 0 10px; }
-  .cat-sec .ac-wrap .ax-meta, .cat-sec .ac-wrap .ax-price { padding-left: 10px; padding-right: 10px; }
-  .cat-sec .ac-wrap .ax-foot { margin-left: 10px; margin-right: 10px; }
-  .cat-sec .ac-wrap .ax-c .ac-acts { gap: 6px; }
-}
+/* -- F6 etkinlik -- Etkinlik ve turlar city by city (plan/ActivityBoard): a row of cards for each city, one card for everything. */
+.ev-wrap { display: grid; gap: 12px; padding: 4px 0 6px; min-width: 0; }
+.ev-note, .ev-empty { margin: 0; font-size: 13px; color: var(--v-muted); }
+.ev-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13.5px; color: var(--v-muted); }
+.ev-sp { flex: 1; }
+.ev-toggle { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 6px 8px; border: 0; background: none; padding: 0; font: inherit; color: var(--v-muted); cursor: pointer; text-align: left; }
+.ev-toggle b { font-size: 15px; color: var(--v-ink); }
+.ev-toggle i { font-style: normal; font-weight: 600; }
+.ev-chev { display: inline-block; transition: transform .25s cubic-bezier(.16, 1, .3, 1); }
+.ev-bar:not(.open) .ev-chev { transform: rotate(-90deg); }
+.ev-key { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0; font-size: 12.5px; color: var(--v-muted); }
+.ev-cities { display: grid; gap: 16px; min-width: 0; }
+.ev-city { display: grid; gap: 8px; min-width: 0; }
+.ev-city-h { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 13px; color: var(--v-muted); }
+.ev-city-h > svg { width: 14px; height: 14px; color: #c0256b; flex: none; }
+.ev-city-h b { font-size: 14.5px; font-weight: 750; color: var(--v-ink); overflow-wrap: anywhere; }
+.ev-city-h .ok { color: var(--okb); font-weight: 650; }
+.ev-after { padding: 1px 9px; border-radius: 999px; background: var(--v-lav); color: var(--v-accent-ink); font-size: 12px; font-weight: 650; }
+.ev-city.empty .ev-city-h { padding: 8px 12px; border: 1px solid var(--v-line2); border-radius: 12px; background: #fff; }
+.ev-ask { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border: 1px solid color-mix(in srgb, var(--hx-accent) 40%, var(--v-line2)); border-radius: 999px; background: #fff; color: var(--v-accent-ink); font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; }
+.ev-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(184px, calc((100% - 36px) / 4)); gap: 12px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; padding: 2px 2px 6px; }
+.ev-slot { display: grid; min-width: 0; scroll-snap-align: start; }
+.ev-card { position: relative; display: grid; grid-template-rows: auto 1fr; min-width: 0; border-radius: 16px; background: #fff; border: 1.5px solid var(--v-line2); transition: box-shadow .2s; }
+.ev-card:hover { box-shadow: 0 6px 18px rgba(28, 26, 51, .08); }
+/* what opens from a card (the page's value under its name, the ••• menu) lies over the next card */
+.ev-card:hover, .ev-card:focus-within { z-index: 2; }
+.ev-card.chosen { border-color: var(--plan-line); }
+.ev-card.booked { background: var(--book-bg); border-color: var(--book-line); }
+.ev-hit { position: absolute; inset: 0; z-index: 0; padding: 0; border: 0; border-radius: 14px; background: none; }
+.ev-hit:focus-visible { outline: 2px solid var(--hx-accent); outline-offset: 2px; }
+.ev-card > :not(.ev-hit) { position: relative; z-index: 1; }
+.ev-img { position: relative; display: grid; place-items: center; aspect-ratio: 16 / 10; border-radius: 14px 14px 0 0; background: color-mix(in srgb, #c0256b 9%, #fff); }
+.ev-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.ev-art { width: 62%; height: 78%; object-fit: contain; mix-blend-mode: multiply; }
+.ev-who { position: absolute; top: 8px; left: 8px; z-index: 2; display: inline-grid; place-items: center; border-radius: 50%; box-shadow: 0 0 0 2px #fff; }
+.ev-who .wh-av { width: 22px; height: 22px; font-size: 10.5px; }
+.ev-who.ai { width: 22px; height: 22px; background: var(--v-lav); color: var(--v-accent-ink); font-size: 12px; }
+.ev-key .ev-who { position: static; width: 18px; height: 18px; box-shadow: none; }
+.ev-key .ev-who .wh-av { width: 18px; height: 18px; font-size: 9.5px; }
+.ev-img > .okt { position: absolute; top: 8px; left: 8px; z-index: 2; }
+.ev-pin { position: absolute; left: 8px; bottom: 8px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: #c0256b; color: #fff; font-size: 11px; font-weight: 700; }
+.ev-tools { position: absolute; top: 6px; right: 6px; z-index: 3; display: flex; gap: 4px; opacity: 0; transition: opacity .18s; }
+.ev-card:hover .ev-tools, .ev-card:focus-within .ev-tools { opacity: 1; }
+@media (hover: none) { .ev-tools { opacity: 1; } }
+@container panel (max-width: 620px) { .ev-tools { opacity: 1; } }
+.ev-tool, .ev-tools .pk-x, .ev-tools .pk-ib { position: static; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .94); color: var(--v-ink); font-size: 15px; line-height: 1; opacity: 1; box-shadow: 0 1px 4px rgba(28, 26, 51, .15); cursor: pointer; }
+.ev-tools .pk-menu-wrap { opacity: 1; }
+.ev-tool.got { color: var(--okb); }
+.ev-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 10px 12px 12px; }
+.ev-n { font-size: 14.5px; font-weight: 750; line-height: 1.25; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.ev-link { color: inherit; text-decoration: none; }
+.ev-link:hover { text-decoration: underline; }
+.ev-s { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--v-muted); }
+.ev-why { font-size: 12.5px; line-height: 1.3; color: var(--v-muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.ev-why.note { color: var(--v-warn-ink); }
+.ev-f { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 8px; }
+.ev-p { display: grid; font-size: 12px; line-height: 1.25; color: var(--v-muted); }
+.ev-p b { margin-right: 3px; font-size: 17px; font-weight: 800; color: var(--v-ink); font-variant-numeric: tabular-nums; }
+.ev-p small { font-size: 11.5px; }
+.ev-go { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 999px; background: var(--v-ink); color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.ev-go:hover { background: #34304f; }
+.ev-go .sc-favicon { width: 14px; height: 14px; padding: 1px; border-radius: 4px; background: #fff; }
+.ev-put { display: inline-flex; align-items: center; gap: 4px; padding: 4px 11px; border: 1.5px dashed #9b8cf0; border-radius: 999px; background: #fff; color: #4b36c9; font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.ev-put:hover { background: #efebff; }
+.ev-d { display: flex; align-items: center; gap: 6px; min-width: 0; margin-top: 2px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--book-line) 35%, transparent); font-size: 12px; }
+/* chosen, not bought: the file's clip or chip under the line */
+.ev-card.chosen .ev-d { border-top-color: var(--v-line2); }
+.ev-detail { padding: 0; border: 0; background: none; font: inherit; font-size: 12px; color: var(--v-muted); white-space: nowrap; cursor: pointer; }
+.ev-detail:hover { color: var(--v-ink); }
+.ev-self { display: grid; gap: 6px; }
+.ev-self-note { margin: 0; font-size: 13px; color: var(--v-muted); }
+.ev-self-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 13px; }
+.ev-self-row .ek-find { margin: 0; justify-content: flex-start; }
 /* Yapılacaklar: the city header (days and nights), the picture's corner tag, the way to the next city */
 .it-city-h .it-city-d { font-size: 13px; color: var(--v-muted); font-weight: 500; }
 .it-city .it-tile .it-kindtag { position: absolute; left: 7px; top: 7px; z-index: 2; padding: 3px 9px; border-radius: 999px; background: #fff; color: var(--v-ink); font-size: 12px; font-weight: 700; box-shadow: 0 1px 4px rgba(28, 26, 51, .12); }
@@ -3568,47 +3571,13 @@ a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: cente
 .ch-prov { color: #9a6400 !important; font-weight: 650; }
 a.ch-why { text-decoration: none; }
 
-/* v11 Etkinlik ve turlar (plan/ActivityBoard): what's on the plan as rows, the ideas as tiles under "Fikirler". */
-.ac-wrap { display: grid; gap: 14px; padding: 4px 0 6px; }
-.ac-planned { display: grid; gap: 8px; }
-.ac-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 8px 10px 8px 8px; border: 1px solid var(--hx-line, #ececf1); border-radius: 14px; background: #fff; cursor: pointer; transition: box-shadow .2s, border-color .2s; }
-.ac-row:hover { box-shadow: 0 2px 10px rgba(28, 26, 51, .07); }
-.ac-row:focus-visible { outline: 2px solid #6a4fe0; outline-offset: 2px; }
-.ac-row .ac-pic { grid-row: span 2; width: 52px; height: 52px; border-radius: 11px; object-fit: cover; background: #f6f3fb; }
-.ac-row .ac-pic.art { object-fit: contain; padding: 3px; }
+/* v11 the ideas' tiles (a suggestion in ideas/IdeaTiles) and the "Daha fazla" button. */
 .ac-t { font-size: 15px; font-weight: 650; min-width: 0; overflow-wrap: anywhere; }
 .ac-m { grid-column: 2; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; font-size: 13px; color: var(--hx-muted, #6e6e78); font-variant-numeric: tabular-nums; }
-.ac-m .pk-ring { width: 13px; height: 13px; }
-.ac-price { color: #1c1a33; font-weight: 600; }
-.ac-r { grid-row: 1 / span 2; grid-column: 3; display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
-.ac-r .pk-aldim { margin-right: 0; }
-.ac-go { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 650; color: #4b36c9; text-decoration: none; white-space: nowrap; }
-.ac-go:hover { text-decoration: underline; }
-.ac-go .sc-favicon { width: 14px; height: 14px; border-radius: 3px; }
-.ac-doc { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: #3d3d47; background: #eef0f4; border-radius: 999px; padding: 2px 9px; }
-.ac-docmiss { font: inherit; font-size: 12.5px; font-weight: 600; color: #a34a00; background: #fff4e5; border: 1px dashed #f0a53a; border-radius: 999px; padding: 2px 9px; cursor: pointer; }
-.ac-detail { font: inherit; font-size: 13px; font-weight: 600; color: #3d3d47; background: none; border: 0; cursor: pointer; padding: 2px 4px; }
-.ac-detail:hover { color: #1c1a33; }
-.ac-row .ac-x, .ac-row .pk-menu-wrap, .ac-row .pk-ib { opacity: 0; transition: opacity .15s; }
-.ac-row:hover .ac-x, .ac-row:focus-within .ac-x, .ac-row:hover .pk-ib, .ac-row:focus-within .pk-ib { opacity: 1; }
-@media (hover: none) { .ac-row .ac-x, .ac-row .pk-ib { opacity: .55; } }
-@container panel (max-width: 620px) { .ac-row .ac-x, .ac-row .pk-ib { opacity: .55; } }
-.ac-ideas-h { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13.5px; color: var(--hx-muted, #6e6e78); padding-top: 4px; }
-.ac-ideas-h b { color: #1c1a33; }
-.ac-sp { flex: 1; }
 .ac-more { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13px; font-weight: 600; color: #4b36c9; background: #efebff; border: 0; border-radius: 999px; padding: 5px 12px; cursor: pointer; }
 .ac-more:hover { background: #e2dcff; }
 .ac-tile-pic { background: color-mix(in srgb, #c0256b 9%, #fff); }
 .ac-tile .ac-art { height: 80px; object-fit: contain; }
-.ac-name { all: unset; cursor: pointer; }
-.ac-name:hover { text-decoration: underline; }
-.ac-name:focus-visible { outline: 2px solid #6a4fe0; outline-offset: 2px; border-radius: 4px; }
-@media (max-width: 560px) {
-  .ac-row { grid-template-columns: 44px minmax(0, 1fr); }
-  .ac-row .ac-pic { width: 44px; height: 44px; }
-  .ac-r { grid-row: auto; grid-column: 1 / -1; justify-content: flex-start; }
-}
-
 /* v30 · zamana göre gösterme: iptal süresi renkleri (yeşil > amber 14 gün > turuncu-kırmızı 7 gün > kırmızı son gün), alınmamış bilet, rötar, otel giriş saati */
 .pk-cancel.soon { color: #a86400; }
 .pk-cancel.near { color: #c2550a; }
@@ -3621,8 +3590,7 @@ a.ch-why { text-decoration: none; }
 .pk-card.pk-alert.pk-alert { background: #fff5f4; border-color: #c62828; box-shadow: inset 0 0 0 1px #c62828, 0 6px 18px -10px rgba(198, 40, 40, .45); }
 .pk-card.pk-alert.pk-alert .pk-live-note.bad { font-weight: 700; }
 /* The drawings' pictures have a white ground: laid on their tint, the white drops out. */
-.ac-pic.art, .ac-tile .ac-art { mix-blend-mode: multiply; }
-.ac-empty { margin: 4px 0 6px; }
+.ac-tile .ac-art { mix-blend-mode: multiply; }
 .cat-sec[data-section="activity"] .cat-search { margin-left: 0; padding-left: 0; }
 
 /* v11 Hazırlık: why these, "Daha fazla öner", a line under each, "Hazır", Amazon for a thing to buy. */
@@ -3989,16 +3957,6 @@ a.ch-why { text-decoration: none; }
 .ac-tile-pic { background: var(--v-tile); }
 .ac-tile .it-pic { height: 92px; }
 .ac-tile .ac-art { height: 80px; }
-.ac-bm { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 4px; border-radius: 5px; color: #fff; font-size: 10px; font-weight: 800; vertical-align: middle; }
-.ac-pp { color: var(--v-muted); }
-.ac-offer .ac-name { color: inherit; text-decoration: none; }
-.ac-offer .ac-name:hover { text-decoration: underline; }
-.ac-self { display: grid; gap: 6px; }
-.ac-self-note { margin: 0; font-size: 13px; color: var(--v-muted); }
-.ac-self-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 13px; }
-.ac-self-row .ek-find { margin: 0; justify-content: flex-start; }
-.ac-row .ac-pic { width: 48px; height: 48px; border-radius: 10px; background: var(--v-tile); }
-
 /* v11 the Pano's cards as drawn: the drawing when the page gave no photo, a flight's arc, the site's mark, "Neden?". */
 .pn-illus { background: var(--v-tile); }
 .pn-illus img { width: 70%; height: 82%; object-fit: contain; mix-blend-mode: multiply; }
@@ -4077,31 +4035,11 @@ a.ch-why { text-decoration: none; }
 .pk-route .pk-art { position: static; transform: none; width: 100%; max-width: 120px; height: 40px; margin: 0 auto; opacity: .6; }
 .pk-r-done .pk-route .pk-art, .pk-r-half .pk-route .pk-art { opacity: .75; }
 
-/* v11 revision: Etkinlik ve turlar in two places — "Planda" (big rows, the price to the right) and "Öneriler ve
-   fikirler" (the chat's suggestions, the source's tours and the saved ideas as one shelf of tiles, folds away). */
-.ac-wrap { gap: 18px; }
-.ac-block { display: grid; gap: 10px; }
-.ac-h { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 8px; margin: 0; font-size: 13.5px; color: var(--v-muted); }
-.ac-h b { font-size: 15px; color: var(--v-ink); }
-.ac-h i, .ac-toggle i { font-style: normal; font-weight: 600; color: var(--v-muted); }
-.ac-on-plan .ac-planned { gap: 10px; }
-.ac-row { grid-template-columns: 64px minmax(0, 1fr) auto; gap: 2px 14px; padding: 10px 12px 10px 10px; border-radius: 16px; }
-.ac-row .ac-pic { width: 64px; height: 64px; border-radius: 12px; }
+/* v11 revision: the suggestions' tiles. */
 .ac-t { font-size: 16px; font-weight: 700; }
 .ac-m { font-size: 13px; }
-.ac-price-big { display: grid; justify-items: end; line-height: 1.2; margin-right: 4px; }
-.ac-price-big b { font-size: 18px; font-weight: 750; color: var(--v-ink); font-variant-numeric: tabular-nums; }
-.ac-price-big small { font-size: 12px; color: var(--v-muted); }
-.ac-ideas { padding-top: 14px; border-top: 1px solid var(--v-line2); }
-.ac-ideas-h { padding-top: 0; }
-.ac-toggle { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 6px 8px; border: 0; background: none; padding: 0; font: inherit; color: var(--v-muted); cursor: pointer; text-align: left; }
-.ac-toggle b { font-size: 15px; color: var(--v-ink); }
-.ac-chev { display: inline-block; transition: transform .25s cubic-bezier(.16, 1, .3, 1); color: var(--v-muted); }
-.ac-ideas:not(.open) .ac-chev { transform: rotate(-90deg); }
 .ac-sugg .ac-why { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .ac-sugg .ac-note { color: #8a5a00; }
-@media (max-width: 560px) { .ac-row .ac-price-big { justify-items: start; } }
-
 /* v11 revision: Yapılacak şeyler — on the plan as rows (picture, name, its line, its day or "Günü yok", ✓ Planda), the
    ideas and suggestions as tiles under them. */
 .it-rows { display: grid; gap: 8px; }
@@ -4122,25 +4060,6 @@ a.ch-why { text-decoration: none; }
 @media (hover: none) { .it-row .it-foot .it-tools { opacity: 1; } }
 .cat-grid.cat-in-transport { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
 
-/* A tour on the plan as its card: the photo big on the left (the tile's, kept), the name and what's next in the
-   middle, the price a person and the total on the right. */
-.ac-row { display: grid; grid-template-columns: 148px minmax(0, 1fr) auto; grid-template-rows: auto; align-items: stretch; gap: 0 16px; padding: 0; overflow: hidden; border-radius: 16px; min-height: 104px; }
-.ac-photo { position: relative; display: block; min-height: 104px; background: var(--v-tile); }
-.ac-row .ac-photo .ac-pic { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 0; object-fit: cover; background: none; grid-row: auto; }
-.ac-row .ac-photo .ac-pic.art { object-fit: contain; padding: 12px; mix-blend-mode: multiply; }
-.ac-main { display: grid; align-content: center; gap: 4px; min-width: 0; padding: 12px 0; }
-.ac-row .ac-t { grid-column: auto; font-size: 16px; }
-.ac-row .ac-m { grid-column: auto; }
-.ac-acts { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-.ac-acts .pk-aldim { margin: 0; }
-.ac-side { display: grid; align-content: space-between; justify-items: end; gap: 8px; padding: 10px 14px 12px 0; }
-.ac-tools { display: inline-flex; align-items: center; gap: 2px; }
-.ac-row .ac-price-big { margin: 0; }
-.ac-row .ac-price-big b { font-size: 20px; }
-@media (max-width: 560px) {
-  .ac-row { grid-template-columns: 96px minmax(0, 1fr); }
-  .ac-side { grid-column: 1 / -1; grid-row: auto; justify-items: start; padding: 0 12px 12px; display: flex; justify-content: space-between; align-items: center; }
-}
 /* The layered interface (docs/mockups/ux-katmanli-arayuz): tips, the folded change lines, the sticky bar. Additions only. */
 .tipx { position: relative; outline: none; }
 .tipx:focus-visible { outline: 2px solid #5b45e0; outline-offset: 3px; border-radius: 6px; }
@@ -4564,7 +4483,7 @@ a.ch-why { text-decoration: none; }
 .it-city .it-tile .it-pic { height: 100px; border-radius: 0; }
 .it-city .it-tile .it-t, .it-city .it-tile .it-m, .it-city .it-tile .it-foot { padding: 0 10px; }
 .it-city .it-tile .it-t { margin-top: 8px; font-size: 13.5px; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-height: calc(2 * 1.3em); }
-.it-city .it-tile .it-t a, .it-city .it-tile .it-t .ac-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.it-city .it-tile .it-t a { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .it-city .it-tile:not(.planned) .it-pic { opacity: .82; }
 .it-tile:hover { transform: none; }
 /* The corner mark: ✓ on the plan, + to put it there. The words stay in the markup (readers, tests); the drawing is the circle. */
@@ -4592,11 +4511,7 @@ a.ch-why { text-decoration: none; }
 .pn-group.focus { border-radius: 16px; padding-left: 10px; padding-right: 10px; }
 @media (max-width: 860px) { .pn-body { grid-template-columns: 1fr; } .pn-body .pn-cats { position: static; flex-direction: row; overflow-x: auto; } .pn-body .pn-cats button { width: auto; white-space: nowrap; } .pn-body .pn-cats button[data-cat="liked"] { margin: 0; border-top: 0; } }
 
-/* ===== v30 · the trip's reason pinned in Etkinlik; a booking window's map and cancel line ===== */
-.ac-reason { position: relative; display: grid; gap: 6px; padding: 12px 12px 10px; margin-bottom: 8px; border-radius: 18px; background: linear-gradient(120deg, color-mix(in srgb, #d14a7a 10%, #fff), #fff 70%); border: 1.5px solid color-mix(in srgb, #d14a7a 32%, transparent); }
-.ac-reason-tag { display: inline-flex; gap: 6px; align-items: center; width: fit-content; font-size: 11.5px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: #b83a68; }
-.ac-reason-tag svg { width: 14px; height: 14px; }
-.ac-reason-note { margin: 0; font-size: 12.5px; color: var(--v-muted); }
+/* ===== v30 · a booking window's map and cancel line ===== */
 .bk-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 20px 0; }
 .bk-acts .bk-btn { display: inline-flex; gap: 6px; align-items: center; text-decoration: none; }
 .it-hop { display: flex; gap: 8px; align-items: center; margin: 4px 0 -2px; font-size: 12.5px; color: var(--v-muted); }
@@ -4639,11 +4554,6 @@ a.ch-why { text-decoration: none; }
 .pk-way:hover { border-style: solid; background: var(--v-soft); }
 @media (max-width: 420px) { .pk-ways { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
-/* Etkinlik row: its opening button lies behind the controls (no button inside a button). */
-.ac-row { position: relative; }
-.ac-hit { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; border-radius: inherit; background: none; cursor: pointer; z-index: 0; }
-.ac-hit:focus-visible { outline: 2px solid #6a4fe0; outline-offset: 2px; }
-.ac-row > .ac-photo, .ac-row .ac-main, .ac-row .ac-side { position: relative; z-index: 1; }
 .ek-offers-est { margin-left: 8px; font-size: 12.5px; font-weight: 650; color: var(--v-muted); }
 .pk-ride-ab > .pk-ride-end:first-child { flex: 0 0 auto; max-width: 48%; }
 .pk-ride-ab > .pk-ride-end:last-child { flex: 1 1 0; }
@@ -4686,9 +4596,9 @@ a.ch-why { text-decoration: none; }
   --plan-bg: #14211a; --plan-line: #3a7a55; --plan-ink: #86d9a8; --plan-dot: #5bb57f;
 }
 /* Seçildi: white, a thin light-green line, solid. */
-.pk-card.pk-r-half, .cat-sec .ac-wrap .ax-c.ax-on.chosen, .ac-row.chosen { background: #fff; border: 1.5px solid var(--plan-line); }
+.pk-card.pk-r-half { background: #fff; border: 1.5px solid var(--plan-line); }
 /* Rezerve: the green ground and the darker line. */
-.pk-card.pk-r-done, .cat-sec .ac-wrap .ax-c.ax-on.booked, .ac-row.booked { background: var(--book-bg); border: 2px solid var(--book-line); }
+.pk-card.pk-r-done { background: var(--book-bg); border: 2px solid var(--book-line); }
 /* The one badge: dark green capsule, white tick; Ayarlandı is the same capsule in grey. */
 .okt { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 3px 11px 3px 3px; border-radius: 999px; background: var(--okb); color: #fff; font-size: 12px; font-weight: 700; line-height: 1.2; white-space: nowrap; box-shadow: 0 2px 8px -3px var(--okb); }
 .okt i { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: rgb(255 255 255 / .2); flex: none; }
@@ -4698,9 +4608,7 @@ a.ch-why { text-decoration: none; }
 .okt.sm i { width: 16px; height: 16px; } .okt.sm i svg { width: 10px; height: 10px; }
 .bk-lab, .it-badge { display: inline-flex; }
 .it-badge { position: absolute; right: 7px; bottom: 7px; z-index: 2; }
-.cat-sec .ac-wrap .ax-c .it-badge { top: 8px; right: 8px; bottom: auto; }
 .it-city .it-tile .it-badge { top: 7px; bottom: auto; }
-.cat-sec .ac-wrap .ax-c .okt.sm { margin: 0; }
 /* The key: five sample boxes, flat lines (searching dashed, our pick purple-grey, chosen light green, booked the badge's green). */
 .plan-key .pk-sw { display: inline-grid; place-items: center; width: 26px; height: 16px; border-radius: 5px; background: #fff; border: 1.5px solid var(--v-line2); color: #fff; }
 .plan-key .pk-sw.search { border: 1.5px dashed var(--v-dash); }

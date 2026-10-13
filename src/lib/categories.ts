@@ -999,3 +999,36 @@ export const catDomKey = (e: CatEntry): string => e.domKey ?? `cat:${e.key}`;
 
 /** What the traveller opened or closed, per trip ({"food": false}); the rest follow the first look. */
 export type OpenState = Partial<Record<SectionId, boolean>>;
+
+/** The trip's cities in order, a city's nights side by side as one (where to look for its tours and tickets). */
+export function citiesOfPlan(plan: Pick<Plan, "stayBlocks">): { city: string; start: string; end: string; nights: number }[] {
+  const out: { city: string; start: string; end: string; nights: number }[] = [];
+  for (const b of plan.stayBlocks) {
+    const city = b.city ?? (b.kind !== "open" ? b.item.city : null);
+    if (!city) continue;
+    const last = out.at(-1);
+    if (last && sameCity(last.city, city)) {
+      last.end = b.range.end;
+      last.nights += b.nights;
+    } else out.push({ city, start: b.range.start, end: b.range.end, nights: b.nights });
+  }
+  return out;
+}
+
+/**
+ * Etkinlik ve turlar by city (v40): the trip's cities in order, each with its cards. A card whose city the plan doesn't
+ * stay in follows after them (in the order it first shows); one with no city goes last, under `city: null`. Inside a
+ * city: the trip's reason, then what is bought, then what is on the plan, then the ideas (`rank` 0–3; ties keep order).
+ */
+export const EVENT_RANK = { reason: 0, booked: 1, plan: 2, idea: 3 } as const;
+export function eventsByCity<T extends { city: string | null; rank: number }>(cities: readonly { city: string }[], cards: readonly T[]): { city: string | null; cards: T[] }[] {
+  const groups: { city: string | null; cards: T[] }[] = cities.map((c) => ({ city: c.city, cards: [] }));
+  const orphans: { city: string | null; cards: T[] } = { city: null, cards: [] };
+  for (const card of cards) {
+    const home = card.city ? (groups.find((g) => sameCity(g.city, card.city)) ?? (groups.push({ city: card.city, cards: [] }), groups.at(-1)!)) : orphans;
+    home.cards.push(card);
+  }
+  if (orphans.cards.length) groups.push(orphans);
+  for (const g of groups) g.cards.sort((a, b) => a.rank - b.rank);
+  return groups;
+}
