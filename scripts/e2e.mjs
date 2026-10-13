@@ -588,20 +588,21 @@ try {
   // A block for each thing, in its section: the flights in and home, the stays, the train, the boat tour.
   const kinds = await app.locator(".cat-card").evaluateAll((els) => els.map((e) => `${e.closest(".cat-sec").dataset.section}:${[...e.classList].find((c) => c.startsWith("tl-")) ?? "item"}`));
   assert.deepEqual(kinds, ["flight:tl-travel", "flight:tl-travel", "stay:tl-stay", "stay:tl-stay", "transport:tl-travel", "other:item"]);
-  // v30 Etkinlik ve turlar: one grid of cards; what's on the plan has a ✓ (the boat tour), the ideas are dashed with a + ("Plana ekle").
-  assert.deepEqual(await sec("activity").locator(".ac-row").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Douro tekne turu"]);
-  assert.deepEqual(await sec("activity").locator(".ac-tile").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Livraria Lello", "Serralves Müzesi", "Tiyatro"]);
+  // v46 Etkinlik ve turlar: a row of cards for each city; what's on the plan is a green-lined card (the boat tour), the ideas carry "+ Plana koy".
+  assert.deepEqual(await sec("activity").locator(".ev-card:is(.chosen, .booked)").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Douro tekne turu"]);
+  assert.deepEqual(await sec("activity").locator(".ev-card.idea").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Livraria Lello", "Serralves Müzesi", "Tiyatro"]);
   // v30: one grid (what's on the plan first, ✓), the key above it, "Öneriler ve fikirler" (the chat's suggestions, the source's
   // tours and the saved ideas as dashed cards) folding away.
-  assert.match(await sec("activity").locator(".ac-key").innerText(), /planda/);
-  assert.equal(await sec("activity").locator(".ac-grid .ax-on, .ax-grid .ax-on").count(), 1, "the boat tour is on the plan");
-  assert.equal(await sec("activity").locator(".ax-grid .ax-on .ax-tick").count(), 1, "its ✓ corner");
-  assert.match(await sec("activity").locator(".ac-ideas-h").innerText(), /Öneriler ve fikirler\s*3\s*bilet ya da rezervasyon gerektirenler\s*✨ Daha fazla fikir$/);
-  await sec("activity").locator(".ac-toggle").click();
-  assert.equal(await sec("activity").locator(".ac-tile").count(), 0, "folded away");
-  await sec("activity").locator(".ac-toggle").click();
-  await sec("activity").locator(".ac-tile").first().waitFor();
-  assert.equal(await sec("activity").locator(".ac-row .ac-pic").count(), 1, "a row has its picture");
+  // v46: city by city: Porto's row (what's on the plan first), its heading counts them; Lizbon has none yet and asks the chat.
+  assert.match(await sec("activity").locator(".ev-city", { hasText: "Porto" }).locator(".ev-city-h").innerText(), /Porto\s+8–11 Ekim\s+1 planda · 3 öneri/);
+  assert.equal(await sec("activity").locator(".ev-card.chosen").count(), 1, "the boat tour is on the plan");
+  assert.equal(await sec("activity").locator(".ev-city.empty", { hasText: "Lizbon" }).locator(".ev-ask").count(), 1, "an empty city: AI'a arat");
+  assert.match(await sec("activity").locator(".ev-bar").innerText(), /Öneriler ve fikirler\s*3\s*bilet ya da rezervasyon gerektirenler\s*✨ Daha fazla fikir$/);
+  await sec("activity").locator(".ev-toggle").click();
+  assert.equal(await sec("activity").locator(".ev-card.idea").count(), 0, "folded away");
+  await sec("activity").locator(".ev-toggle").click();
+  await sec("activity").locator(".ev-card.idea").first().waitFor();
+  assert.equal(await sec("activity").locator(".ev-card.chosen .ev-img img").count(), 1, "a card has its picture");
   // The restaurant is a tile of the ideas, not a card (0.35.3); v11: under Yapılacak şeyler, as a tile.
   assert.equal(await sec("todo").locator(".it-tile").count(), 1);
   // No days, no check-in lines, no transfers without a plan.
@@ -831,8 +832,8 @@ try {
   await budget.click();
   await budget.locator(".hx-pop").waitFor({ state: "detached" });
   // Decided already: the boat tour on the 9th and the flight home.
-  const douro = sec("activity").locator(".ac-row", { hasText: "Douro tekne turu" });
-  await douro.locator(".pk-aldim", { hasText: "Aldım" }).waitFor();
+  const douro = sec("activity").locator(".ev-card", { hasText: "Douro tekne turu" });
+  await douro.getByRole("button", { name: "Douro tekne turu: aldım" }).waitFor();
   const home = app.locator(".tl-travel.role-departure .pk-card");
   await home.locator(".okt", { hasText: "Bilet alındı" }).waitFor();
   // A misclick on "Bileti aldım" can be taken back (in the details), and redone.
@@ -964,7 +965,7 @@ try {
     await home.locator(".pk-stub b", { hasText: "ABC123" }).waitFor({ state: "detached" });
   }
   // v11: a row on the plan opens its record (a tap anywhere but its controls; its title is edited where it stands).
-  await douro.locator(".ac-m").click();
+  await douro.locator(".ev-s").click();
   const douroDrawer = app.getByRole("dialog");
   await douroDrawer.waitFor();
   await douroDrawer.getByRole("button", { name: "Kapat" }).first().click();
@@ -1193,18 +1194,16 @@ try {
   // What still needs booking without a day: Etkinlikler's "Tarihsiz · Porto", one card under another (Majestic
   // Café, a café with no booking, is a restaurant card instead).
   // (Lizbon, with no activity yet, is an empty card on its own line after them: .ek-line.)
-  // v11: the ideas, tiles under "Fikirler" (each its city, "+ Plana ekle").
-  const actTiles = sec("activity").locator(".ac-tile");
+  // v46: the ideas, cards in their city's row ("+ Plana koy").
+  const actTiles = sec("activity").locator(".ev-card.idea");
   assert.deepEqual(await actTiles.evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Livraria Lello", "Serralves Müzesi", "Tiyatro"]);
-  assert.match(await actTiles.first().locator(".it-m").first().innerText(), /Porto/);
-  await actTiles.first().locator(".it-put", { hasText: "+ Plana ekle" }).waitFor();
-  await actTiles.first().locator(".ax-add", { hasText: "+ Plana ekle" }).waitFor();
+  await actTiles.first().locator(".ev-put", { hasText: "+ Plana koy" }).waitFor();
   assert.equal(await app.locator(".pk-card", { hasText: "Majestic Café" }).count(), 0);
   await sec("todo").locator('.it-tile[aria-label="Majestic Café"]').waitFor();
   assert.equal(await app.locator(".crash").count(), 0, "board crashed after chat updates");
   await app.screenshot({ path: `${out}/5-chosen.png` });
   // 4b. Plan cards: a file on a card, delete + undo (the file comes back), add from a template, narrow.
-  const douroCard = () => app.locator(".ac-row", { hasText: "Douro tekne turu" });
+  const douroCard = () => app.locator(".ev-card", { hasText: "Douro tekne turu" });
   await douroCard().locator("input.pk-file").first().setInputFiles({ name: "bilet.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n%e2e\n") });
   // The chip is short ("Belge"); the file's name on hover (0.36.20).
   const pill = douroCard().locator('.pk-docpill[title^="bilet.pdf"]', { hasText: "Belge" });
@@ -1534,9 +1533,9 @@ try {
   await app.screenshot({ path: `${out}/4l-activities.png` });
   // v11: the tours and tickets come from the source as tiles; with none (no offers here), each city's own searches
   // ("Kendin ara") under a plain line saying so; no empty card.
-  await sec("activity").locator(".ac-self-note").waitFor();
-  assert.deepEqual(await sec("activity").locator(".ac-self-row b").allInnerTexts(), ["Porto", "Lizbon"]);
-  assert.deepEqual(await sec("activity").locator('.ac-self-row:has(b:text-is("Lizbon")) .ek-link').evaluateAll((els) => els.map((a) => a.getAttribute("href"))), [
+  await sec("activity").locator(".ev-self-note").waitFor();
+  assert.deepEqual(await sec("activity").locator(".ev-self-row b").allInnerTexts(), ["Porto", "Lizbon"]);
+  assert.deepEqual(await sec("activity").locator('.ev-self-row:has(b:text-is("Lizbon")) .ek-link').evaluateAll((els) => els.map((a) => a.getAttribute("href"))), [
     "https://www.getyourguide.com/s/?q=Lizbon",
     "https://www.viator.com/searchResults/all?text=Lizbon",
     "https://www.klook.com/search/result/?query=Lizbon",
@@ -1544,7 +1543,7 @@ try {
   assert.equal(await sec("activity").locator(".ek-card").count(), 0, "no empty card in Etkinlik ve turlar");
   // Round 2: the chips are logos first; the name and ↗ open beside one on hover, and the row keeps its height.
   {
-    const row = sec("activity").locator('.ac-self-row:has(b:text-is("Lizbon"))');
+    const row = sec("activity").locator('.ev-self-row:has(b:text-is("Lizbon"))');
     const chip = row.locator(".ek-link").first();
     const h = (await row.boundingBox()).height;
     const w0 = (await chip.boundingBox()).width;
@@ -1566,7 +1565,10 @@ try {
   await app.setViewportSize({ width: 560, height: 2600 });
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.mouse.move(0, 0);
-  assert.equal(await opacity(douroCard().locator(".ax-tools")), "1", "an activity card's tools are there without a hover when narrow");
+  assert.equal(await opacity(douroCard().locator(".ev-tools")), "1", "an activity card's tools are there without a hover when narrow");
+  // v46: a city's row scrolls sideways inside itself; the page does not.
+  assert.ok(await app.locator(".ev-row").first().evaluate((el) => el.scrollWidth > el.clientWidth), "a city's row scrolls sideways");
+  assert.ok(await app.locator(".panel").evaluate((el) => el.scrollWidth <= el.clientWidth + 1), "no sideways scroll of the page");
   assert.equal(await opacity(douroCard().locator(".pk-x")), "1");
   await app.screenshot({ path: `${out}/4i-plan-narrow-032.png` });
   await app.setViewportSize({ width: 1440, height: 2600 });
@@ -1636,24 +1638,24 @@ try {
   await apart.waitFor({ state: "detached" });
   // A saved page corrected where it stands: the title, then the page's value back from the hint.
   const douroId = await douroCard().getAttribute("data-item-id");
-  const douroPage = app.locator(`.ac-row[data-item-id="${douroId}"]`);
+  const douroPage = app.locator(`.ev-card[data-item-id="${douroId}"]`);
   await douroPage.evaluate((el) => el.scrollIntoView({ block: "center" }));
-  await douroPage.locator(".ac-t").getByRole("button", { name: "Ad: düzenle" }).click();
+  await douroPage.locator(".ev-n").getByRole("button", { name: "Ad: düzenle" }).click();
   await box("Ad").fill("Douro gün batımı turu");
   await box("Ad").press("Enter");
-  await douroPage.locator(".ac-t", { hasText: "Douro gün batımı turu" }).waitFor();
-  await douroPage.locator(".ac-t .pk-ed").hover();
-  const hint = douroPage.locator(".ac-t .pk-ed-hint");
+  await douroPage.locator(".ev-n", { hasText: "Douro gün batımı turu" }).waitFor();
+  await douroPage.locator(".ev-n .pk-ed").hover();
+  const hint = douroPage.locator(".ev-n .pk-ed-hint");
   assert.match(await hint.innerText(), /sayfadaki: Douro tekne turu · geri al/);
   await app.screenshot({ path: `${out}/4n-page-correction.png` });
   // The hint shows under the pointer: point at the title again if the card was drawn anew meanwhile, then take the
   // page's value back (the title coming back proves the click).
   for (let i = 0; i < 3 && !(await hint.getByRole("button", { name: "geri al" }).isVisible()); i++) {
     await app.mouse.move(0, 0);
-    await douroPage.locator(".ac-t .pk-ed").hover();
+    await douroPage.locator(".ev-n .pk-ed").hover();
   }
   await hint.getByRole("button", { name: "geri al" }).click({ force: true });
-  await douroPage.locator(".ac-t", { hasText: "Douro tekne turu" }).waitFor();
+  await douroPage.locator(".ev-n", { hasText: "Douro tekne turu" }).waitFor();
   // A transfer's ends, short: "Porto Havalimanı" over OPO, "Booking.com" over the stay's name.
   assert.match(await arrivalLeg.locator(".pk-mid").innerText(), /Porto Havalimanı\s*OPO[\s\S]*Booking\.com\s*Jardim Stay/);
   // One word isn't broken in the middle ("Booking.co / m"): the end stays on one line.
@@ -2030,12 +2032,12 @@ try {
   assert.equal(await app.locator(".cat-sec.closed").count(), 6);
   // The header opens it (its cards come back) and closes it again.
   await sec("activity").locator(".cat-head").click({ position: { x: 300, y: 20 } });
-  await sec("activity").locator('.ac-tile[aria-label="Tiyatro"]').waitFor();
+  await sec("activity").locator('.ev-card.idea[aria-label="Tiyatro"]').waitFor();
   assert.doesNotMatch(await sec("activity").getAttribute("class"), /closed/);
   await sec("activity").locator(".cat-head").click({ position: { x: 300, y: 20 } });
   await sec("activity").and(app.locator(".closed")).waitFor();
   await sec("activity").locator(".cat-title").click();
-  await sec("activity").locator(".ac-row").first().waitFor();
+  await sec("activity").locator(".ev-card.chosen").first().waitFor();
   assert.match(await turn(sec("activity")), /^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
   // A to-do in a closed section: the hero's list opens it there.
   assert.match(await sec("stay").getAttribute("class"), /closed/);
@@ -3343,19 +3345,20 @@ try {
   assert.equal(await esimEmpty.locator(".ek-state").innerText(), "Alınmadı");
   assert.deepEqual((await hrefs(esimEmpty)).map(([, u]) => u), ["https://www.airalo.com/indonesia-esim", "https://esim.holafly.com/esim-indonesia/"]);
   // Etkinlikler (v11): the source's tours as tiles; with none, each stop's own searches ("Kendin ara"), no empty card.
-  // Uluwatu's source answers one Viator tour: it's a tile there (the brand's label, the price a person, "+ Plana ekle").
+  // Uluwatu's source answers one Viator tour: it's a card in its row (the brand's label, the price a person, "+ Plana koy").
   await ekOpen("activity");
   assert.equal(await ekSec("activity").locator(".ek-card").count(), 0);
-  const tourTile = ekSec("activity").locator('.ac-offer[aria-label="Uluwatu gün batımı ve kecak dansı"]');
+  const tourTile = ekSec("activity").locator('.ev-card[data-offer][aria-label="Uluwatu gün batımı ve kecak dansı"]');
   await tourTile.waitFor({ timeout: 10000 });
   assert.equal(await tourTile.locator(".brand").innerText(), "Viator");
-  assert.match(await tourTile.locator(".ac-pp").innerText(), /^€45\s+kişi başı$/);
-  assert.match(await tourTile.locator(".ax-where").innerText(), /Uluwatu · 4 sa/);
-  assert.equal(await ekSec("activity").locator(".ac-self-row").count(), 2, "the stops the source found nothing for: their own searches");
-  await tourTile.getByRole("button", { name: "+ Plana ekle" }).click();
-  await ekSec("activity").locator('.ac-row.chosen[aria-label="Uluwatu gün batımı ve kecak dansı"]').waitFor();
+  assert.match(await tourTile.locator(".ev-p > span").innerText(), /^€45\s+kişi başı$/);
+  assert.match(await tourTile.locator(".ev-s").innerText(), /4 sa$/);
+  assert.match(await ekSec("activity").locator(".ev-city", { hasText: "Uluwatu gün batımı ve kecak dansı" }).locator(".ev-city-h b").innerText(), /Uluwatu/, "the tour is in its city's row");
+  assert.equal(await ekSec("activity").locator(".ev-self-row").count(), 2, "the stops the source found nothing for: their own searches");
+  await tourTile.getByRole("button", { name: "+ Plana koy" }).click();
+  await ekSec("activity").locator('.ev-card.chosen[aria-label="Uluwatu gün batımı ve kecak dansı"]').waitFor();
   await tourTile.waitFor({ state: "detached" });
-  assert.deepEqual((await hrefs(ekSec("activity").locator(".ac-self-row", { hasText: "Canggu" }))).map(([, u]) => u), [
+  assert.deepEqual((await hrefs(ekSec("activity").locator(".ev-self-row", { hasText: "Canggu" }))).map(([, u]) => u), [
     "https://www.getyourguide.com/s/?q=Canggu",
     "https://www.viator.com/searchResults/all?text=Canggu",
     "https://www.klook.com/search/result/?query=Canggu",
@@ -4696,7 +4699,7 @@ try {
   }
 
   // A card deleted → Geçmiş shows it → Çöp kutusu → "Geri getir" → it's on the board again.
-  const douro = app.locator(".ac-row", { hasText: "Douro tekne turu" });
+  const douro = app.locator(".ev-card", { hasText: "Douro tekne turu" });
   await douro.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await douro.getByRole("button", { name: "Kart menüsü" }).click();
   await douro.getByRole("menuitem", { name: "Sil" }).click();

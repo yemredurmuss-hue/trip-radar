@@ -10,6 +10,7 @@ import { closedNoteOf } from "../src/lib/reason";
 import { activityLinks, restLinks } from "../src/lib/searchLinks";
 import { wayName } from "../src/lib/tripShape";
 import { restCityOf } from "../src/app/plan/ActivityBoard";
+import { citiesOfPlan, EVENT_RANK, eventsByCity } from "../src/lib/categories";
 import { EMPTY_METRICS } from "../src/lib/items";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -87,5 +88,34 @@ describe("the way between two cities, in the transport card's own words", () => 
     expect(wayName({ name: "Romancecar · Shinjuku → Odawara", provider: "Odakyu" })).toBe("Romancecar");
     expect(wayName({ name: "Odawara → Kyoto", provider: null })).toBeNull();
     expect(wayName(null)).toBeNull();
+  });
+});
+
+describe("Etkinlik ve turlar by city (v40)", () => {
+  const stay = (city: string, start: string, end: string, nights: number) => ({ kind: "open", range: { start, end }, nights, city, groups: [], searchUrl: "" }) as never;
+  const card = (id: string, city: string | null, rank: number) => ({ id, city, rank });
+  it("lists the trip's cities in order, a city's nights side by side as one, with the nights it adds up", () => {
+    const cities = citiesOfPlan({ stayBlocks: [stay("Kyoto", "2027-04-08", "2027-04-10", 2), stay("Kyoto", "2027-04-10", "2027-04-13", 3), stay("Osaka", "2027-04-13", "2027-04-16", 3)] });
+    expect(cities).toEqual([
+      { city: "Kyoto", start: "2027-04-08", end: "2027-04-13", nights: 5 },
+      { city: "Osaka", start: "2027-04-13", end: "2027-04-16", nights: 3 },
+    ]);
+  });
+  it("puts each card in its city's row, the reason first, then bought, on the plan, the ideas (ties keep their order)", () => {
+    const groups = eventsByCity([{ city: "Hakone" }, { city: "Kyoto" }], [
+      card("idea-a", "Kyoto", EVENT_RANK.idea),
+      card("plan", "kyoto", EVENT_RANK.plan),
+      card("idea-b", "Kyoto", EVENT_RANK.idea),
+      card("bought", "Kyoto", EVENT_RANK.booked),
+      card("reason", "Kyoto", EVENT_RANK.reason),
+    ]);
+    expect(groups.map((g) => g.city)).toEqual(["Hakone", "Kyoto"]);
+    expect(groups[0].cards).toEqual([]);
+    expect(groups[1].cards.map((c) => c.id)).toEqual(["reason", "bought", "plan", "idea-a", "idea-b"]);
+  });
+  it("lets a city the plan doesn't stay in follow the trip's, and a card with no city come last", () => {
+    const groups = eventsByCity([{ city: "Kyoto" }], [card("x", null, 2), card("o", "Osaka", 3), card("k", "Kyoto", 3)]);
+    expect(groups.map((g) => [g.city, g.cards.map((c) => c.id)])).toEqual([["Kyoto", ["k"]], ["Osaka", ["o"]], [null, ["x"]]]);
+    expect(eventsByCity([], [])).toEqual([]);
   });
 });

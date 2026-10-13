@@ -1,25 +1,25 @@
-// Etkinlik ve turlar as drawn in plan v30 (docs/mockups/plan-v30, "Etkinlik ve turlar"): ONE grid of cards of one size.
-// Each: a square picture (the source's photo, else the drawing), the name (two lines at most), the source's label on its
-// own colour and the city, one price (for how many). What's on the plan has a ✓ in its corner (one press takes it off the
-// plan, to the Pano) and its strip, "✓ Bilet aldım" and "Bilet al ↗" side by side; booked: "✓ Bilet alındı", its file
-// (or "Belge eksik") and "Ayrıntı ›", the card opening the booking's window. The ideas and the suggestions are dashed
-// with a + in the corner and "Plana ekle" (the chat looks for more: "Daha fazla fikir"). On a trip with a purpose its
-// ticket leads, wide ("Gezinin sebebi"). Whatever isn't one record (a group of options) keeps its card after them.
+// Etkinlik ve turlar as drawn in plan v46 (v40-v41), city by city: each city of the trip is one row of cards (it scrolls
+// sideways, four fit), under a heading with its dates and what stands there ("2 planda · 1 bilet alındı · 1 öneri"); a city
+// with nothing yet says so and asks the chat ("AI'a arat"). ONE card does for everything: a tour on the plan, a booked
+// ticket, a saved idea, the source's offer, a suggestion: the picture with who found it in the corner (a face; booked, the
+// green badge), the name (never cut), the source and the time, a price a person (and the total), the source's name as the
+// button. In a row: the trip's reason first ("Gezinin sebebi"), then what's bought, what's on the plan, the ideas.
 import { useEffect, useState, type ReactNode } from "react";
-import { cardFacts } from "../../lib/cardFacts";
-import { ringOf, topDate } from "../../lib/cardView";
+import { cardFacts, durationText } from "../../lib/cardFacts";
+import { ticketPrices } from "../../lib/cardTicket";
+import { topDate } from "../../lib/cardView";
 import { brandOf, type Brand } from "../../lib/brands";
-import { catDomKey, type CatEntry, type CatSection } from "../../lib/categories";
+import { catDomKey, citiesOfPlan, EVENT_RANK, eventsByCity, type CatEntry, type CatSection } from "../../lib/categories";
 import { entryDomId } from "../../lib/progress";
 import { closedNoteOf, reasonItemOf } from "../../lib/reason";
 import { playbookOf } from "../../lib/playbooks";
 import { L } from "../../lib/i18n";
+import { nNights } from "../../lib/i18nText";
+import { formatDateRange, formatPrice, isoDate } from "../../lib/items";
 import { isAiOption } from "../../lib/pano";
-import type { Item } from "../../lib/types";
+import type { Item, Suggestion } from "../../lib/types";
 import { addOffer, chooseItem, setItemPhoto, setItemStatus } from "../actions";
-import { durationText } from "../../lib/cardFacts";
 import { needKey } from "../../lib/emptyCards";
-import { formatPrice } from "../../lib/items";
 import { dealPrice, photoFromOffers, sameTour, type Need, type Offer } from "../../lib/offerSource";
 import { sameCity, type Plan } from "../../lib/plan";
 import { activityLinks, restLinks } from "../../lib/searchLinks";
@@ -28,25 +28,27 @@ import { BrandPill } from "../cards/RideCard";
 import { useEmptyEnv } from "../cards/emptyEnv";
 import { BookingSheet } from "../cards/BookingSheet";
 import { BookedBadge } from "../cards/BookedBadge";
-import { CardMenu, DeleteX, Ring } from "../cards/CardShell";
+import { CardMenu, DeleteX } from "../cards/CardShell";
 import { DocAccess } from "../cards/DocAccess";
 import { datedLink } from "../cards/parts";
 import { useCardEnv } from "../cards/PlanCard";
 import { useStageMenu } from "../cards/stageMenu";
 import { usePhotoOf, WhoAvatar } from "../cards/WhoseBadge";
-import { Editable, InlineEdit, useInlineEdit } from "../cards/InlineEdit";
-import { KindIcon } from "../cards/Silhouettes";
+import { Editable, InlineEdit } from "../cards/InlineEdit";
+import { KindIcon, UiIcon } from "../cards/Silhouettes";
 import { FallbackImg } from "../FallbackImg";
 import { useMyName } from "../Profile";
-import type { Suggestion } from "../../lib/types";
 import { useSectionSuggest } from "./sectionSuggest";
 
 /** The drawing's picture for a ticket, a tour or a show (static/illus). */
-export const ACTIVITY_ART = "illus/etkinlik-tur.png";
+const ACTIVITY_ART = "illus/etkinlik-tur.png";
 
 const recordOf = (e: CatEntry): Item | null => (e.piece.kind === "item" ? e.piece.item : e.piece.kind === "entry" && e.piece.entry.kind === "event" ? e.piece.entry.item : null);
 /** On the plan: chosen or booked (an idea is only saved). */
-export const activityPlanned = (i: Item): boolean => i.status === "chosen" || i.status === "booked";
+const activityPlanned = (i: Item): boolean => i.status === "chosen" || i.status === "booked";
+
+/** A card of a city's row: where it stands, whose city, and the card itself. */
+type Card = { key: string; city: string | null; state: "booked" | "plan" | "idea"; rank: number; node: ReactNode };
 
 export function ActivityBoard({ section, plan, fallback }: { section: CatSection; plan: Pick<Plan, "stayBlocks">; fallback: (entry: CatEntry) => ReactNode }) {
   const env = useCardEnv();
@@ -68,10 +70,8 @@ export function ActivityBoard({ section, plan, fallback }: { section: CatSection
     // eslint-disable-next-line react-hooks/exhaustive-deps -- when the offers or the records without a photo change
   }, [offers.all.length, missingPhotos.map((i) => i.id).join(" ")]);
   const sugg = suggest?.list ?? [];
-  // v30: on a trip with a purpose (a festival), its ticket leads the section, pinned: "Gezinin sebebi".
+  // v30: on a trip with a purpose (a festival), its ticket leads its city's row, pinned: "Gezinin sebebi".
   const reason = env.trip ? reasonItemOf(env.trip, planned.map((p) => p.item)) : null;
-  const reasonRow = reason ? (planned.find((p) => p.item.id === reason.id) ?? null) : null;
-  const restPlanned = reasonRow ? planned.filter((p) => p !== reasonRow) : planned;
   const intent = env.trip?.intent ?? null;
   const closedTours = Boolean(intent && playbookOf(intent.playbook, intent.custom).blocked?.sections?.includes("activity"));
   const [open, setOpen] = useRemembered(`trip-radar:ideasOpen:${env.tripId}:activity`, true);
@@ -80,93 +80,121 @@ export function ActivityBoard({ section, plan, fallback }: { section: CatSection
   // After a festival: where the days after it are spent, for its "Festivalden sonra · dinlenme" (a search, never a made-up place).
   const rest = intent?.playbook === "festival" ? restCityOf(plan, reason?.city ?? null) : null;
   const note = closedTours && intent ? closedNoteOf(intent.playbook, Boolean(rest)) : null;
-  const gridCount = restPlanned.length + (open ? count : 0);
+  const myName = useMyName();
+  const photoOf = usePhotoOf();
+
+  // Everything that has a card, in the order a tie keeps (what's on the plan, the suggestions, the source's tours, the ideas).
+  const card = (key: string, city: string | null, state: Card["state"], node: ReactNode, isReason = false): Card => ({ key, city, state, rank: EVENT_RANK[isReason ? "reason" : state], node });
+  const cards: Card[] = [
+    ...planned.map(({ e, item }) => {
+      const isReason = item.id === reason?.id;
+      return card(e.key, item.city ?? null, item.status === "booked" ? "booked" : "plan", (
+        <InlineEdit key={e.key} item={item} only={["name"]}>
+          <ItemCard item={item} domId={entryDomId(catDomKey(e))} reason={isReason} />
+        </InlineEdit>
+      ), isReason);
+    }),
+    ...sugg.map((x) => card(x.key, x.payload?.city ?? null, "idea", <SuggestCard s={x} note={suggest?.notes[x.key] ?? null} onAdd={() => suggest?.add(x)} onDismiss={() => suggest?.dismiss(x)} />)),
+    ...offers.tiles.map(({ o, need, city }) => card(o.id, city, "idea", <OfferCard offer={o} adults={offers.adults} onPut={() => void offers.put(o, need)} />)),
+    ...ideas.map(({ e, item }) =>
+      card(e.key, item.city ?? null, "idea", (
+        <InlineEdit key={e.key} item={item} only={["name"]}>
+          <ItemCard item={item} domId={entryDomId(catDomKey(e))} />
+        </InlineEdit>
+      )),
+    ),
+  ];
+  const cities = citiesOfPlan(plan);
+  const groups = eventsByCity(cities, cards);
+  const asked = (city: string) => L(`${city} için bilet ya da rezervasyon gerektiren birkaç etkinlik ve tur öner.`, `Suggest a few activities and tours for ${city}, the kind that take a ticket or a booking.`);
   return (
-    <div className="ac-wrap ac-one">
-      {/* The trip's reason, wide and pinned: the ticket the trip is for. */}
-      {reasonRow && (
-        <div className="ac-reason">
-          <span className="ac-reason-tag">
-            <KindIcon kind="activity" size={14} />
-            {L("Gezinin sebebi", "The reason for the trip")}
-          </span>
-          <InlineEdit key={reasonRow.e.key} item={reasonRow.item} only={["name"]}>
-            <ActivityRow item={reasonRow.item} domId={entryDomId(catDomKey(reasonRow.e))} />
-          </InlineEdit>
-        </div>
-      )}
-      {note && <p className="ac-type-note">{note}</p>}
+    <div className="ev-wrap">
+      {note && <p className="ev-note">{note}</p>}
       {/* v11 (kept): what the ideas are, folding away, and "Daha fazla fikir" (the chat looks for more). */}
-      <div className={`ac-ideas-h ac-bar${open ? " open" : ""}`}>
-        <button type="button" className="ac-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
-          <span className="ac-chev" aria-hidden>▾</span>
+      <div className={`ev-bar${open ? " open" : ""}`}>
+        <button type="button" className="ev-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <span className="ev-chev" aria-hidden>▾</span>
           <b>{L("Öneriler ve fikirler", "Suggestions and ideas")}</b>
           <i>{count}</i>
           <span>{L("bilet ya da rezervasyon gerektirenler", "the ones that take a ticket or a booking")}</span>
         </button>
-        <span className="ac-sp" />
+        <span className="ev-sp" />
         {more && (
           <button type="button" className="ac-more" onClick={() => more(L("Bu gezi için bilet ya da rezervasyon gerektiren birkaç etkinlik ve tur fikri daha öner.", "Suggest a few more activities and tours for this trip, the kind that take a ticket or a booking."))}>
             ✨ {L("Daha fazla fikir", "More ideas")}
           </button>
         )}
       </div>
-      <p className="it-key ac-key">
-        <span className="it-key-on">✓</span>
-        {L("planda", "on the plan")}
-        <span className="it-key-add">+</span>
-        {L("öneri, basınca plana girer", "an idea, one tap puts it on the plan")}
+      <p className="ev-key">
+        <span className="ev-who ai" aria-hidden>✨</span>
+        {L("AI buldu", "AI found")}
+        {myName && (
+          <>
+            {" · "}
+            <span className="ev-who"><WhoAvatar name={myName} photo={photoOf(myName)} /></span>
+            {L("siz eklediniz", "you added")}
+          </>
+        )}
+        {more && ` · ${L("Beğenmediğini ↻ ile değiştir.", "Don't like one? Swap it with ↻.")}`}
       </p>
-      {!planned.length && count === 0 && <p className="ac-empty-note">{L("Henüz plana bir şey eklenmedi; “+ Plana ekle” ile ekle ya da sohbete yaz.", "Nothing on the plan yet; “+ Add to the plan”, or say it in the chat.")}</p>}
-      {rest && gridCount > 0 && <h4 className="ac-sub">{L("Festivalden sonra · dinlenme", "After the festival · rest")}</h4>}
-      {gridCount > 0 && (
-        <div className="it-grid ax-grid ac-shelf" data-pit-children="">
-          {/* What's on the plan first (✓, solid); then the ideas and the suggestions (dashed, +). */}
-          {restPlanned.map(({ e, item }) => (
-            <InlineEdit key={e.key} item={item} only={["name"]}>
-              <ActivityCard item={item} domId={entryDomId(catDomKey(e))} />
-            </InlineEdit>
-          ))}
-          {open && (
-            <>
-              {sugg.map((x) => (
-                <SuggestTile key={x.key} s={x} note={suggest?.notes[x.key] ?? null} onAdd={() => suggest?.add(x)} onDismiss={() => suggest?.dismiss(x)} />
-              ))}
-              {offers.tiles.map(({ o, need, city }) => (
-                <OfferTile key={o.id} offer={o} city={city} adults={offers.adults} onPut={() => void offers.put(o, need)} />
-              ))}
-              {ideas.map(({ e, item }) => (
-                <InlineEdit key={e.key} item={item} only={["name"]}>
-                  <ActivityTile item={item} domId={entryDomId(catDomKey(e))} />
-                </InlineEdit>
-              ))}
-            </>
-          )}
-        </div>
-      )}
+      {!groups.length && <p className="ev-empty">{L("Henüz plana bir şey eklenmedi; “+ Plana koy” ile ekle ya da sohbete yaz.", "Nothing on the plan yet; “+ Add to plan”, or say it in the chat.")}</p>}
+      <div className="ev-cities">
+        {groups.map((g) => {
+          const stay = g.city ? cities.find((c) => sameCity(c.city, g.city)) : null;
+          const when = stay ? (isoDate(stay.start) ? formatDateRange(stay.start, stay.end) : stay.nights > 0 ? nNights(stay.nights) : null) : null;
+          const onPlan = g.cards.filter((c) => c.state !== "idea").length;
+          const bought = g.cards.filter((c) => c.state === "booked").length;
+          const waiting = g.cards.length - onPlan;
+          const counts = [
+            onPlan > 0 && L(`${onPlan} planda`, `${onPlan} on the plan`),
+            bought > 0 && <span key="b" className="ok">{L(`${bought} bilet alındı`, `${bought} ${bought === 1 ? "ticket" : "tickets"} bought`)}</span>,
+            waiting > 0 && L(`${waiting} öneri`, `${waiting} ${waiting === 1 ? "suggestion" : "suggestions"}`),
+          ].filter(Boolean);
+          const nothing = g.cards.length === 0;
+          // The ideas folded away still count in the heading; their cards wait.
+          const visible = g.cards.filter((c) => open || c.state !== "idea").map((c) => <div key={c.key} className="ev-slot">{c.node}</div>);
+          return (
+            <section key={g.city ?? "none"} className={`ev-city${nothing ? " empty" : ""}`} aria-label={g.city ?? L("Şehri belli değil", "City not set")}>
+              <div className="ev-city-h">
+                <UiIcon name="pin" size={14} />
+                <b>{g.city ?? L("Şehri belli değil", "City not set")}</b>
+                {when && <span>{when}</span>}
+                {rest && g.city && sameCity(rest, g.city) && <span className="ev-after">{L("Festivalden sonra · dinlenme", "After the festival · rest")}</span>}
+                <span>{counts.length ? counts.flatMap((c, i) => (i ? [" · ", c] : [c])) : L("henüz etkinlik yok", "no activities yet")}</span>
+                {nothing && more && g.city && (
+                  <button type="button" className="ev-ask" onClick={() => more(asked(g.city!))}>
+                    ✨ {L("AI'a arat", "Ask the AI")}
+                  </button>
+                )}
+              </div>
+              {visible.length > 0 && <div className="ev-row" data-pit-children="">{visible}</div>}
+            </section>
+          );
+        })}
+      </div>
       {others.map((e) => (
-        <div key={e.key} className="ac-other">{fallback(e)}</div>
+        <div key={e.key}>{fallback(e)}</div>
       ))}
       {open && (
         <>
           {rest && (
-            <div className="ac-self ac-rest">
-              <p className="ac-self-note">{L("Dinlenmek için kendin bakabilirsin (arama bağlantıları):", "To rest, look yourself (search links):")}</p>
-              <div className="ac-self-row">
+            <div className="ev-self">
+              <p className="ev-self-note">{L("Dinlenmek için kendin bakabilirsin (arama bağlantıları):", "To rest, look yourself (search links):")}</p>
+              <div className="ev-self-row">
                 <b>{rest}</b>
                 <SearchRow links={restLinks(rest)} />
               </div>
             </div>
           )}
           {offers.missing.length > 0 && (
-            <div className="ac-self">
-              <p className="ac-self-note">
+            <div className="ev-self">
+              <p className="ev-self-note">
                 {offers.available
                   ? L("Bu şehirler için kaynak şu an öneri getirmedi; kendin bakabilirsin:", "The source brought nothing for these cities just now; look yourself:")
                   : L("Canlı tur ve bilet kaynağı bağlı değil; kendin bakabilirsin:", "No live tours-and-tickets source is connected; look yourself:")}
               </p>
               {offers.missing.map((c) => (
-                <div key={c.city} className="ac-self-row">
+                <div key={c.city} className="ev-self-row">
                   <b>{c.city}</b>
                   <SearchRow links={activityLinks(c.city)} />
                 </div>
@@ -190,7 +218,7 @@ export function restCityOf(plan: Pick<Plan, "stayBlocks">, festivalPlace: string
 }
 
 /** A per-viewer open/closed state kept in the browser (nothing else depends on it). */
-export function useRemembered(key: string, initial: boolean): [boolean, (v: boolean) => void] {
+function useRemembered(key: string, initial: boolean): [boolean, (v: boolean) => void] {
   const [v, setV] = useState<boolean>(() => {
     try {
       const got = localStorage.getItem(key);
@@ -212,271 +240,257 @@ export function useRemembered(key: string, initial: boolean): [boolean, (v: bool
   ];
 }
 
-/** Who a card is from, on the picture's corner: ✨ "Önerimiz" (ours), "Sabine ekledi" (a person), "✓ Bilet alındı" (booked). */
-function WhoTag({ item, booked = false }: { item: Item; booked?: boolean }) {
-  const myName = useMyName();
-  const photoOf = usePhotoOf();
-  if (booked) return <BookedBadge as="ticket" small />;
-  if (isAiOption(item)) return <span className="ax-tag" title={L("AI önerisi", "AI pick")}><span aria-hidden>✨</span> {L("Önerimiz", "Our pick")}</span>;
-  const who = item.addedBy ?? myName ?? null;
-  if (!who) return null;
+/**
+ * The one card. What it shows is handed to it; the three small cards under it (a record, the source's offer, a
+ * suggestion) only work out what to hand. `state`: booked (green ground, its badge in the corner), plan (on the plan:
+ * green line), idea (a dashed button puts it on the plan).
+ */
+function EventCard({ state, label, photo, art, corner, pinned = false, tools, name, meta, price, action, foot, why, note, hit, attrs, domId, hint }: {
+  state: "booked" | "plan" | "idea";
+  label: string;
+  photo: string | null;
+  art: string;
+  /** Who found it (a face), or "Bilet alındı" when bought. */
+  corner: ReactNode;
+  pinned?: boolean;
+  tools?: ReactNode;
+  name: ReactNode;
+  meta: ReactNode;
+  price: { each: string; unit: string; total: string | null } | null;
+  action: ReactNode;
+  foot?: ReactNode;
+  why?: string | null;
+  note?: string | null;
+  /** A press on the card (its record opens). */
+  hit?: () => void;
+  attrs?: Record<string, string>;
+  domId?: string;
+  hint?: string;
+}) {
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   return (
-    <span className="ax-tag" title={who}>
-      <WhoAvatar name={who} photo={photoOf(who)} /> {L(`${who} ekledi`, `${who} added`)}
-    </span>
+    <div className={`ev-card ${state === "plan" ? "chosen" : state}`} aria-label={label} id={domId} title={hint} {...attrs}
+      onClick={hit ? (e) => !(e.target as HTMLElement).closest("button, a, input, .pk-menu, .pk-ed-wrap") && hit() : undefined}>
+      {hit && <button type="button" className="ev-hit" aria-label={label} onClick={hit} />}
+      <span className="ev-img">
+        <FallbackImg className="ev-photo" src={photo} fallback={<img className="ev-art" src={art} alt="" />} />
+        {corner}
+        {pinned && (
+          <span className="ev-pin">
+            <KindIcon kind="activity" size={12} />
+            {L("Gezinin sebebi", "The reason for the trip")}
+          </span>
+        )}
+        {tools && <span className="ev-tools" onClick={stop}>{tools}</span>}
+      </span>
+      <span className="ev-body">
+        <b className="ev-n" title={label}>{name}</b>
+        {meta}
+        {why && <span className="ev-why" title={why}>{why}</span>}
+        {note && <span className="ev-why note" role="status">{note}</span>}
+        <span className="ev-f" onClick={stop}>
+          {price ? (
+            <span className="ev-p">
+              <span><b>{price.each}</b> {price.unit}</span>
+              {price.total && <small>{price.total}</small>}
+            </span>
+          ) : (
+            <span />
+          )}
+          {action}
+        </span>
+        {foot && <span className="ev-d" onClick={stop}>{foot}</span>}
+      </span>
+    </div>
   );
 }
 
-/** A name on a card: two lines at most, the whole of it on hover. */
-const nameProps = (name: string) => ({ title: name });
-
-/** The brand's label (the source's own colour) and the place, one line: "Viator · Kyoto · 30 dk". */
-function MetaLine({ brand, parts }: { brand: Brand | null; parts: (string | null | undefined)[] }) {
-  const text = parts.filter(Boolean).join(" · ");
-  return (
-    <span className="ac-m it-m ax-meta">
+/** The source's name and the time, one line: "Viator · 30 dk". */
+function Meta({ brand, text }: { brand: Brand | null; text: string | null }) {
+  return brand || text ? (
+    <span className="ev-s">
       <BrandPill brand={brand} />
-      {text && <span className="ax-where" title={text}>{text}</span>}
+      {text && <span title={text}>{text}</span>}
+    </span>
+  ) : null;
+}
+
+/** "+ Plana koy": an idea onto the plan. */
+function PutButton({ onPut }: { onPut: () => void }) {
+  return (
+    <button type="button" className="ev-put" data-put="" onClick={onPut}>
+      + {L("Plana koy", "Add to plan")}
+    </button>
+  );
+}
+
+/** The face of whoever found a card, in the picture's corner: ✨ when we did, else the person's own. */
+function Who({ name, ai, title }: { name?: string | null; ai?: boolean; title: string }) {
+  const photoOf = usePhotoOf();
+  if (ai) return <span className="ev-who ai" title={title}><span aria-hidden>✨</span></span>;
+  if (!name) return null;
+  return (
+    <span className="ev-who" title={title}>
+      <WhoAvatar name={name} photo={photoOf(name)} />
     </span>
   );
 }
 
-/** A suggestion (the chat's, a rule's) as a card among the ideas: ✨, its name, why, "+ Plana ekle", ×. */
-export function SuggestTile({ s, note, onAdd, onDismiss, art = ACTIVITY_ART, tag = null }: { s: Suggestion; note: string | null; onAdd: () => void; onDismiss: () => void; art?: string; /** What it is, in the picture's corner ("Restoran", "Gezilecek"). */ tag?: string | null }) {
+/** A record of the trip: a tour or a ticket on the plan, booked or not, or a saved idea. */
+function ItemCard({ item, domId, reason = false }: { item: Item; domId: string; reason?: boolean }) {
+  const env = useCardEnv();
+  const { travellers } = useEmptyEnv();
+  const myName = useMyName();
+  const stageMenu = useStageMenu(item);
+  const [sheet, setSheet] = useState(false);
+  const facts = cardFacts(item, undefined, env.decisions?.ctx);
+  const docs = env.docsFor(item.id);
+  const booked = item.status === "booked";
+  const onPlan = activityPlanned(item);
+  const page = datedLink(item, undefined).url ?? item.url;
+  const date = topDate(item, "activity");
+  const people = item.guests.adults ?? travellers;
+  const prices = ticketPrices(item, facts.price);
+  const price = prices?.each
+    ? { each: prices.each, unit: L("kişi başı", "per person"), total: people && people > 1 ? L(`${people} kişi · ${prices.total}`, `${people} people · ${prices.total}`) : null }
+    : facts.price
+      ? { each: facts.price.text, unit: facts.price.label ?? "", total: null }
+      : null;
+  const open = () => (booked ? setSheet(true) : env.onOpenItem(item));
+  const who = item.addedBy ?? myName ?? null;
+  const siteName = facts.source?.label ?? L("Bilet al", "Get the ticket");
   return (
-    <div className="it-tile ac-tile ac-sugg ax-c ax-idea" aria-label={s.title} data-suggestion={s.key}>
-      <div className="it-pic ac-tile-pic ax-sq">
+    <>
+      <EventCard
+        state={booked ? "booked" : onPlan ? "plan" : "idea"}
+        label={item.name}
+        domId={domId}
+        attrs={{ "data-item-id": item.id }}
+        hint={item.summary ?? undefined}
+        photo={item.imageUrl ?? null}
+        art={ACTIVITY_ART}
+        pinned={reason}
+        corner={booked ? <BookedBadge as="ticket" small /> : <Who name={who} ai={isAiOption(item)} title={isAiOption(item) ? L("AI buldu", "AI found") : L(`${who} ekledi`, `${who} added`)} />}
+        hit={open}
+        tools={
+          <>
+            {onPlan && !booked && env.ask && (
+              <button type="button" className="ev-tool" aria-label={L(`${item.name}: yerine başkasını öner`, `${item.name}: suggest another`)} title={L("Yerine başkasını öner", "Suggest another in its place")}
+                onClick={() => env.ask!(L(`“${item.name}” yerine başka bir etkinlik ya da tur öner.`, `Suggest another activity or tour in place of “${item.name}”.`))}>↻</button>
+            )}
+            {onPlan && !booked && (
+              <button type="button" className="ev-tool got" aria-label={L(`${item.name}: aldım`, `${item.name}: got it`)} title={L("Bileti başka yerden aldıysan işaretle", "Mark it if you bought the ticket elsewhere")} onClick={() => void setItemStatus(item, "booked")}>
+                <UiIcon name="check" size={13} />
+              </button>
+            )}
+            <DeleteX name={item.name} onDelete={stageMenu.hide} label={booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed")} />
+            <CardMenu entries={stageMenu.menu} />
+          </>
+        }
+        name={<Editable field="name">{item.name}</Editable>}
+        meta={<Meta brand={brandOf(facts.source?.label, facts.source?.host)} text={date} />}
+        price={price}
+        action={
+          !onPlan ? (
+            <PutButton onPut={() => void chooseItem(item, [])} />
+          ) : booked ? null : page ? (
+            <a className="ev-go" href={page} target="_blank" rel="noreferrer" aria-label={L(`Bilet al: ${siteName}`, `Get the ticket: ${siteName}`)} title={L(`${siteName} sitesinde bilet al`, `Get the ticket on ${siteName}`)}>
+              {facts.source?.host && <FallbackImg className="sc-favicon" src={`https://${facts.source.host}/favicon.ico`} fallback={null} />}
+              {siteName} ↗
+            </a>
+          ) : null
+        }
+        foot={
+          booked ? (
+            <>
+              <DocAccess item={item} docs={docs} />
+              <span className="ev-sp" />
+              <button type="button" className="ev-detail" onClick={() => setSheet(true)}>{L("Ayrıntı", "Details")} ›</button>
+            </>
+          ) : onPlan ? (
+            <DocAccess item={item} docs={docs} />
+          ) : null
+        }
+      />
+      {stageMenu.field}
+      {sheet && (
+        <BookingSheet item={item} kind="activity" facts={facts} docs={docs} date={date}
+          onChange={stageMenu.change} onCancel={stageMenu.cancel} onUnbook={() => void setItemStatus(item, "chosen")} onDetails={() => env.onOpenItem(item)} onClose={() => setSheet(false)} />
+      )}
+    </>
+  );
+}
+
+/** What the source offers for a city (Viator): its page on the name, the price a person, "+ Plana koy". */
+function OfferCard({ offer: o, adults, onPut }: { offer: Offer; adults: number | null; onPut: () => void }) {
+  const deal = dealPrice(o, adults);
+  const per = deal && adults && adults > 1 ? deal.amount / adults : deal?.amount ?? null;
+  const currency = o.currency ?? "EUR";
+  const meta = o.durationMinutes ? durationText(o.durationMinutes) : o.meta;
+  return (
+    <EventCard
+      state="idea"
+      label={o.title}
+      attrs={{ "data-offer": o.id }}
+      hint={o.why || undefined}
+      photo={o.photo ?? null}
+      art={ACTIVITY_ART}
+      corner={<Who ai title={L("Kaynaktan öneri", "From the source")} />}
+      name={<a href={o.url} target="_blank" rel="noreferrer" className="ev-link">{o.title}</a>}
+      meta={<Meta brand={brandOf(o.source, null)} text={meta ?? null} />}
+      price={per != null ? { each: formatPrice(Math.round(per), currency), unit: L("kişi başı", "per person"), total: adults && adults > 1 ? L(`${adults} kişi · ${formatPrice(Math.round(per * adults), currency)}`, `${adults} people · ${formatPrice(Math.round(per * adults), currency)}`) : null } : null}
+      action={<PutButton onPut={onPut} />}
+    />
+  );
+}
+
+/** A suggestion (the chat's, a rule's) among a city's ideas: ✨, its name, why, "+ Plana koy", ×. */
+function SuggestCard({ s, note, onAdd, onDismiss }: { s: Suggestion; note: string | null; onAdd: () => void; onDismiss: () => void }) {
+  return (
+    <EventCard
+      state="idea"
+      label={s.title}
+      attrs={{ "data-suggestion": s.key }}
+      photo={null}
+      art={ACTIVITY_ART}
+      corner={<Who ai title={L("Öneri", "Suggestion")} />}
+      tools={<DeleteX name={s.title} onDelete={onDismiss} label={L("Gerek yok", "Not needed")} />}
+      name={s.title}
+      meta={null}
+      why={s.why}
+      note={note}
+      price={null}
+      action={s.kind === "add" ? <PutButton onPut={onAdd} /> : null}
+    />
+  );
+}
+
+/** A suggestion as a tile among the ideas of Yapılacak şeyler (ideas/IdeaTiles): ✨, its kind in the corner, why, "+ Plana ekle", ×. */
+export function SuggestTile({ s, note, onAdd, onDismiss, art, tag }: { s: Suggestion; note: string | null; onAdd: () => void; onDismiss: () => void; art: string; /** What it is, in the picture's corner ("Restoran", "Gezilecek"). */ tag: string }) {
+  return (
+    <div className="it-tile ac-tile ac-sugg" aria-label={s.title} data-suggestion={s.key}>
+      <div className="it-pic ac-tile-pic">
         <img className="ac-art" src={art} alt="" />
-        {tag ? <span className="it-kindtag">{tag}</span> : <span className="ax-tag" title={L("Öneri", "Suggestion")}><span aria-hidden>✨</span> {L("Önerimiz", "Our pick")}</span>}
-        {tag && <span className="it-who" title={L("Öneri", "Suggestion")}><span className="it-ai">✨</span></span>}
-        <span className="it-tools ax-tools">
+        <span className="it-kindtag">{tag}</span>
+        <span className="it-who" title={L("Öneri", "Suggestion")}><span className="it-ai">✨</span></span>
+        <span className="it-tools">
           <DeleteX name={s.title} onDelete={onDismiss} label={L("Gerek yok", "Not needed")} className="it-x" />
         </span>
         {s.kind === "add" && <button type="button" className="it-put corner" data-put="" aria-label={L("Plana ekle", "Add to the plan")} title={L("Plana ekle", "Add to the plan")} onClick={onAdd}>+ {L("Plana ekle", "Add to the plan")}</button>}
       </div>
-      <b className="it-t ac-t" {...nameProps(s.title)}>{s.title}</b>
-      <MetaLine brand={null} parts={[s.payload?.city]} />
-      {s.why && <span className="it-m ac-why ax-why" title={s.why}>{s.why}</span>}
+      <b className="it-t ac-t" title={s.title}>{s.title}</b>
+      {s.payload?.city && <span className="it-m ac-m">{s.payload.city}</span>}
+      {s.why && <span className="it-m ac-why" title={s.why}>{s.why}</span>}
       {note && <span className="it-m ac-note" role="status">{note}</span>}
-      {!tag && s.kind === "add" && (
-        <div className="ax-foot ax-foot-idea">
-          <button type="button" className="ax-add" data-put="" onClick={onAdd}>+ {L("Plana ekle", "Add to the plan")}</button>
-        </div>
-      )}
     </div>
   );
-}
-
-/**
- * A tour or a ticket on the plan as its card (Emre 2026-10-09: the photo got lost and the look got worse once on the
- * plan): the photo kept big on the left, the name, its ring, day, city and source, what to do next under them; the
- * price a person (and the total) to the right, as on its tile.
- */
-function ActivityRow({ item, domId }: { item: Item; domId: string }) {
-  const env = useCardEnv();
-  const { travellers } = useEmptyEnv();
-  const stageMenu = useStageMenu(item);
-  const [sheet, setSheet] = useState(false);
-  const facts = cardFacts(item, undefined, env.decisions?.ctx);
-  const docs = env.docsFor(item.id);
-  const booked = item.status === "booked";
-  const page = datedLink(item, undefined).url ?? item.url;
-  const date = topDate(item, "activity");
-  const people = item.guests.adults ?? travellers;
-  const amount = item.price.amount;
-  const perHead = amount != null && amount > 0 && people && people > 1 ? formatPrice(Math.round(amount / people), item.price.currency ?? "EUR") : null;
-  const open = () => (booked ? setSheet(true) : env.onOpenItem(item));
-  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
-  return (
-    <div className={`ac-row${booked ? " booked" : " chosen"}${item.imageUrl ? " has-photo" : ""}`} aria-label={item.name} data-item-id={item.id} id={domId}
-      onClick={(e) => !(e.target as HTMLElement).closest("button, a, input, .pk-menu, .pk-ed-wrap") && open()}>
-      {/* The row opens from one real button laid behind its controls: no button or link sits inside another one. */}
-      <button type="button" className="ac-hit" aria-label={item.name} onClick={open} />
-      <span className="ac-photo">
-        <FallbackImg className="ac-pic" src={item.imageUrl ?? null} fallback={<img className="ac-pic art" src={ACTIVITY_ART} alt="" />} />
-      </span>
-      <span className="ac-main">
-        <b className="ac-t" title={item.name}>
-          <Editable field="name">{item.name}</Editable>
-        </b>
-        <span className="ac-m">
-          <Ring state={ringOf(item)} />
-          {[date, item.city].filter(Boolean).join(" · ")}
-          {facts.source && <span className="ac-src">· {facts.source.label}</span>}
-        </span>
-        <span className="ac-acts" onClick={stop}>
-          {booked ? (
-            <>
-              <BookedBadge as="ticket" small />
-              <DocAccess item={item} docs={docs} />
-              <button type="button" className="ac-detail" onClick={() => setSheet(true)}>{L("Ayrıntı", "Details")} ›</button>
-            </>
-          ) : (
-            <>
-              <button type="button" className="pk-aldim" aria-label={L(`${item.name}: aldım`, `${item.name}: got it`)} onClick={() => void setItemStatus(item, "booked")}>
-                ✓ {L("Bilet aldım", "I got the ticket")}
-              </button>
-              {page && (
-                <a className="ac-go" href={page} target="_blank" rel="noreferrer">
-                  {facts.source?.host && <FallbackImg className="sc-favicon" src={`https://${facts.source.host}/favicon.ico`} fallback={null} />}
-                  {L("Bilet al ↗", "Get the ticket ↗")}
-                </a>
-              )}
-              <DocAccess item={item} docs={docs} />
-            </>
-          )}
-        </span>
-      </span>
-      <span className="ac-side" onClick={stop}>
-        <span className="ac-tools">
-          <DeleteX name={item.name} onDelete={stageMenu.hide} label={booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed")} className="ac-x" />
-          <CardMenu entries={stageMenu.menu} />
-        </span>
-        {facts.price && (
-          <span className="ac-price-big">
-            {/* v30: one price, the whole of it, and for how many. */}
-            <b>{facts.price.text}</b>
-            <small>{perHead && people ? L(`${people} kişi`, `${people} people`) : facts.price.label}</small>
-          </span>
-        )}
-      </span>
-      {stageMenu.field}
-      {sheet && (
-        <BookingSheet item={item} kind="activity" facts={facts} docs={docs} date={date}
-          onChange={stageMenu.change} onCancel={stageMenu.cancel} onUnbook={() => void setItemStatus(item, "chosen")} onDetails={() => env.onOpenItem(item)} onClose={() => setSheet(false)} />
-      )}
-    </div>
-  );
-}
-
-/** An idea (saved, not on the plan): the card dashed, a + in the corner, "Plana ekle" under it. */
-function ActivityTile({ item, domId }: { item: Item; domId: string }) {
-  const env = useCardEnv();
-  const stageMenu = useStageMenu(item);
-  const { travellers } = useEmptyEnv();
-  const facts = cardFacts(item, undefined, env.decisions?.ctx);
-  const edit = useInlineEdit();
-  const people = item.guests.adults ?? travellers;
-  const put = () => void chooseItem(item, []);
-  return (
-    <div className="it-tile ac-tile ax-c ax-idea" aria-label={item.name} data-item-id={item.id} id={domId} title={item.summary ?? undefined}>
-      <div className="it-pic ac-tile-pic ax-sq">
-        <FallbackImg className="it-photo" src={item.imageUrl ?? null} fallback={<img className="ac-art" src={ACTIVITY_ART} alt="" />} />
-        <WhoTag item={item} />
-        <span className="it-tools ax-tools">
-          <DeleteX name={item.name} onDelete={stageMenu.hide} label={L("Gerek yok", "Not needed")} className="it-x" />
-          <CardMenu entries={stageMenu.menu} />
-        </span>
-        <button type="button" className="it-put corner" data-put="" aria-label={L("Plana ekle", "Add to the plan")} title={L("Plana ekle", "Add to the plan")} onClick={put}>+ {L("Plana ekle", "Add to the plan")}</button>
-      </div>
-      <b className="it-t ac-t" {...nameProps(item.name)}>
-        {edit?.open === "name" ? (
-          <Editable field="name">{item.name}</Editable>
-        ) : (
-          <button type="button" className="ac-name" onClick={() => env.onOpenItem(item)}>{item.name}</button>
-        )}
-      </b>
-      <MetaLine brand={brandOf(facts.source?.label, facts.source?.host)} parts={[item.city]} />
-      <span className="ax-price">{facts.price ? <><b>{facts.price.text}</b><small>{people && people > 1 ? L(`${people} kişi`, `${people} people`) : facts.price.label}</small></> : null}</span>
-      <div className="ax-foot ax-foot-idea">
-        <button type="button" className="ax-add" data-put="" onClick={put}>+ {L("Plana ekle", "Add to the plan")}</button>
-      </div>
-      {stageMenu.field}
-    </div>
-  );
-}
-
-/**
- * A tour or a ticket on the plan (chosen or booked) as the drawing's card: the square picture with a ✓ in the corner (one
- * press takes it off the plan, to the Pano), the name, the source's label and the city, one price (for how many); its strip,
- * "✓ Bilet aldım" and "Bilet al ↗" side by side, or, booked, "✓ Bilet alındı", its file and "Ayrıntı ›".
- */
-function ActivityCard({ item, domId }: { item: Item; domId: string }) {
-  const env = useCardEnv();
-  const { travellers } = useEmptyEnv();
-  const stageMenu = useStageMenu(item);
-  const [sheet, setSheet] = useState(false);
-  const facts = cardFacts(item, undefined, env.decisions?.ctx);
-  const docs = env.docsFor(item.id);
-  const booked = item.status === "booked";
-  const page = datedLink(item, undefined).url ?? item.url;
-  const date = topDate(item, "activity");
-  const people = item.guests.adults ?? travellers;
-  const open = () => (booked ? setSheet(true) : env.onOpenItem(item));
-  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
-  return (
-    <div className={`ac-row ax-c ax-on${booked ? " booked" : " chosen"}`} aria-label={item.name} data-item-id={item.id} id={domId}
-      onClick={(e) => !(e.target as HTMLElement).closest("button, a, input, .pk-menu, .pk-ed-wrap") && open()}>
-      <button type="button" className="ac-hit" aria-label={item.name} onClick={open} />
-      <span className="ax-sq ac-photo">
-        <FallbackImg className="ac-pic" src={item.imageUrl ?? null} fallback={<img className="ac-pic art" src={ACTIVITY_ART} alt="" />} />
-        <WhoTag item={item} booked={booked} />
-        <span className="ax-tools" onClick={stop}>
-          <DeleteX name={item.name} onDelete={stageMenu.hide} label={booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed")} className="ac-x" />
-          <CardMenu entries={stageMenu.menu} />
-        </span>
-        {booked ? (
-          <span className="ax-tick on" aria-hidden>✓</span>
-        ) : (
-          <button type="button" className="ax-tick on" aria-label={L(`${item.name}: plandan çıkar`, `${item.name}: take off the plan`)} title={L("Planda · çıkarınca Pano'ya gider", "On the plan · taking it off sends it to the Board")}
-            onClick={(e) => { stop(e); void setItemStatus(item, "saved"); }}>✓</button>
-        )}
-      </span>
-      <b className="ac-t" {...nameProps(item.name)}>
-        <Editable field="name">{item.name}</Editable>
-      </b>
-      <MetaLine brand={brandOf(facts.source?.label, facts.source?.host)} parts={[item.city, date]} />
-      <span className="ax-price">
-        {facts.price ? <><b>{facts.price.text}</b><small>{people && people > 1 ? L(`${people} kişi`, `${people} people`) : facts.price.label}</small></> : null}
-      </span>
-      <div className="ax-foot ac-acts" onClick={stop}>
-        {booked ? (
-          <>
-            <DocAccess item={item} docs={docs} />
-            <button type="button" className="ac-detail" onClick={() => setSheet(true)}>{L("Ayrıntı", "Details")} ›</button>
-          </>
-        ) : (
-          <>
-            <button type="button" className="pk-aldim" aria-label={L(`${item.name}: aldım`, `${item.name}: got it`)} onClick={() => void setItemStatus(item, "booked")}>
-              ✓ {L("Bilet aldım", "I got the ticket")}
-            </button>
-            {page && (
-              <a className="ac-go" href={page} target="_blank" rel="noreferrer">
-                {facts.source?.host && <FallbackImg className="sc-favicon" src={`https://${facts.source.host}/favicon.ico`} fallback={null} />}
-                {L("Bilet al ↗", "Get the ticket ↗")}
-              </a>
-            )}
-            <DocAccess item={item} docs={docs} />
-          </>
-        )}
-      </div>
-      {stageMenu.field}
-      {sheet && (
-        <BookingSheet item={item} kind="activity" facts={facts} docs={docs} date={date}
-          onChange={stageMenu.change} onCancel={stageMenu.cancel} onUnbook={() => void setItemStatus(item, "chosen")} onDetails={() => env.onOpenItem(item)} onClose={() => setSheet(false)} />
-      )}
-    </div>
-  );
-}
-
-/** The trip's cities in order, a city's nights side by side as one (where to look for its tours and tickets). */
-export function citiesOfPlan(plan: Pick<Plan, "stayBlocks">): { city: string; start: string; end: string }[] {
-  const out: { city: string; start: string; end: string }[] = [];
-  for (const b of plan.stayBlocks) {
-    const city = b.city ?? (b.kind !== "open" ? b.item.city : null);
-    if (!city) continue;
-    const last = out.at(-1);
-    if (last && sameCity(last.city, city)) last.end = b.range.end;
-    else out.push({ city, start: b.range.start, end: b.range.end });
-  }
-  return out;
 }
 
 const PER_CITY = 4;
 
 /**
  * v11 (Emre, 2026-10-09: "kaynaklarımızdan, API'lerden gerçek öneri olarak çıkmasını bekliyorduk"): each city's tours
- * and tickets from the connected source (Viator), for the shelf's tiles — "+ Plana ekle" puts one on the plan at once.
+ * and tickets from the connected source (Viator), for the cities' rows: "+ Plana koy" puts one on the plan at once.
  * Nothing is made up: the cities the source brought nothing for are listed for their own searches ("Kendin ara").
  */
 function useActivityOffers(plan: Pick<Plan, "stayBlocks">, saved: Item[]) {
@@ -515,27 +529,4 @@ function useActivityOffers(plan: Pick<Plan, "stayBlocks">, saved: Item[]) {
   };
   const all = Object.values(byCity).flatMap((x) => (x === "none" ? [] : x.offers));
   return { tiles, missing, available, put, adults: travellers, all };
-}
-
-function OfferTile({ offer: o, city, adults, onPut }: { offer: Offer; city: string; adults: number | null; onPut: () => void }) {
-  const deal = dealPrice(o, adults);
-  const per = deal && adults && adults > 1 ? deal.amount / adults : deal?.amount ?? null;
-  const meta = [city, o.durationMinutes ? durationText(o.durationMinutes) : o.meta].filter(Boolean).join(" · ");
-  return (
-    <div className="it-tile ac-tile ac-offer ax-c ax-idea" aria-label={o.title} data-offer={o.id} title={o.why || undefined}>
-      <div className="it-pic ac-tile-pic ax-sq">
-        <FallbackImg className="it-photo" src={o.photo ?? null} fallback={<img className="ac-art" src={ACTIVITY_ART} alt="" />} />
-        <span className="ax-tag" title={L("Kaynaktan öneri", "From the source")}><span aria-hidden>✨</span> {L("Önerimiz", "Our pick")}</span>
-        <button type="button" className="it-put corner" data-put="" aria-label={L("Plana ekle", "Add to the plan")} title={L("Plana ekle", "Add to the plan")} onClick={onPut}>+ {L("Plana ekle", "Add to the plan")}</button>
-      </div>
-      <b className="it-t ac-t" {...nameProps(o.title)}>
-        <a href={o.url} target="_blank" rel="noreferrer" className="ac-name">{o.title}</a>
-      </b>
-      <MetaLine brand={brandOf(o.source, null)} parts={[meta]} />
-      <span className="ax-price">{per != null ? <span className="ac-pp"><b>{formatPrice(Math.round(per), o.currency ?? "EUR")}</b> <small>{L("kişi başı", "per person")}</small></span> : null}</span>
-      <div className="ax-foot ax-foot-idea">
-        <button type="button" className="ax-add" data-put="" onClick={onPut}>+ {L("Plana ekle", "Add to the plan")}</button>
-      </div>
-    </div>
-  );
 }

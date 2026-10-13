@@ -29,8 +29,8 @@ export function installPutFly(doc: Document = document): () => void {
     const chip = doc.createElement("span");
     chip.className = "mv-fly";
     chip.setAttribute("aria-hidden", "true");
-    // v30 cards (.ax-c) carry their name as their label; the older ones read it from their first line.
-    chip.textContent = chipName(card?.closest<HTMLElement>(".ax-c")?.getAttribute("aria-label") ?? card?.innerText ?? "") || "+1";
+    // v46 cards (.ev-card) carry their name as their label; the older ones read it from their first line.
+    chip.textContent = chipName(card?.closest<HTMLElement>(".ev-card")?.getAttribute("aria-label") ?? card?.innerText ?? "") || "+1";
     doc.body.appendChild(chip);
     const x0 = from.left + 12, y0 = from.top + 10;
     const x1 = to.left + to.width / 2 - 20, y1 = to.top + to.height / 2 - 14;
