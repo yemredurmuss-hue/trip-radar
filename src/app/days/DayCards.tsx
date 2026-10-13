@@ -4,8 +4,8 @@
 // time, then "Gece: Kyoto · Gion Machiya Evi" (or "konaklama aranıyor"); a day with nothing says "Serbest gün ·
 // yapılacaklardan seç". Each line is titled by the code in one standard (satır standardı v2, dayRowTitle.ts). A line's
 // time can be set by hand and its place in the day moved (drag or ↑ ↓); a tap on it shows its card on the Plan.
-// Insurance, the eSIM and a visa aren't part of a day: they stay in Plan → Diğer. (The old photo cards, their
-// Liste | Kartlar switch and the strip of days are gone: the row is the view.)
+// Insurance, the eSIM and a visa aren't part of a day: they stay in Plan → Diğer. This is Kompakt, the default;
+// Liste and Kartlar (the photo, the strip of days, the day's reservations) are DayViews.tsx.
 import { LegBody } from "../LegRow";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { dayCards, dayLinesOf, isAsideRow, isPlanRow, rowKind, stageOf, type DayCard } from "../../lib/dayCards";
