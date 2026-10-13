@@ -1,0 +1,28 @@
+const { app, ctx, T, log, step, open, tab, shot } = P;
+await ctx.clock.setSystemTime(new Date("2026-10-14T12:00:00"));
+const set = (status, extra = {}, fresh = true) => app.evaluate(async ([status, extra, fresh]) => {
+  const end = (iata, t) => ({ iata, airport: null, scheduled: t, revised: null, actual: null, terminal: null, gate: null });
+  const flight = { number: "TP1760", airline: "TAP", status, departure: { ...end("LIS", "2026-10-14T19:40"), terminal: "1", gate: "14", ...(extra.dep ?? {}) }, arrival: { ...end("IST", "2026-10-15T01:35"), belt: null, ...(extra.arr ?? {}) }, fetchedAt: fresh ? new Date().toISOString() : "2026-10-14T05:00:00Z" };
+  await chrome.storage.local.set({ flightLive: { "TP1760|2026-10-14": { flight, at: Date.now() } } });
+  new BroadcastChannel("trip-radar").postMessage("changed");
+}, [status, extra, fresh]);
+await open(T.sample);
+const card = () => app.locator('.pk-card[aria-label*="Lizbon → İstanbul"]').first();
+const tiles = async (n) => { await app.waitForTimeout(900); const t = await card().locator(".pk-lv").allInnerTexts().catch(() => []); log(n, JSON.stringify(t.map((x) => x.replace(/\s+/g, " ")))); await card().scrollIntoViewIfNeeded().catch(() => {}); await card().screenshot({ path: `${P.out}/live-${n}.png` }).catch(() => {}); };
+await tiles("0-nodata");
+await set("Expected"); await tiles("1-expected-today");
+await set("Boarding"); await tiles("2-boarding");
+await set("Boarding", {}, false); await tiles("3-boarding-stale");
+await set("GateClosed"); await tiles("4-gateclosed");
+await set("Approaching", { dep: { actual: "2026-10-14T19:50" } }); await tiles("5-approaching");
+await set("Approaching", { dep: { actual: "2026-10-14T19:50" } }, false); await tiles("6-approaching-stale");
+await set("Delayed", { dep: { revised: "2026-10-14T20:05" } }); await tiles("7-delayed-nostage");
+log("tone colors", await app.evaluate(() => 0));
+await set("Boarding");
+await app.waitForTimeout(900);
+log("boarding color", await card().locator(".pk-lv", { hasText: "Durum" }).locator("b").evaluate((e) => getComputedStyle(e).color).catch((e) => "n/a"));
+await set("GateClosed"); await app.waitForTimeout(900);
+log("gateclosed color", await card().locator(".pk-lv", { hasText: "Durum" }).locator("b").evaluate((e) => getComputedStyle(e).color).catch((e) => "n/a"));
+await tab("Gün gün"); await app.waitForTimeout(800);
+log("day line live", JSON.stringify(await app.locator(".dg-live").allInnerTexts()));
+await app.evaluate(() => chrome.storage.local.remove("flightLive"));

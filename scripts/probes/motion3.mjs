@@ -1,0 +1,36 @@
+const { app, T, log, open, tab, shot, ctx } = P;
+const row = (st, id = "aud-wait") => app.evaluate(async ([st, id]) => {
+  const db = await new Promise((r) => { const q = indexedDB.open("trip-radar"); q.onsuccess = () => r(q.result); });
+  const tx = db.transaction("captures", "readwrite");
+  if (st === "gone") tx.objectStore("captures").delete(id);
+  else tx.objectStore("captures").put({ id, kind: "paste-link", url: "https://www.airbnb.com/rooms/4242", title: null, pageText: "", viewportText: "", selection: "", jsonLd: [], meta: {}, screenshot: null, capturedAt: Date.now(), status: st, error: st === "error" ? "boom" : null, itemId: null });
+  await new Promise((r) => (tx.oncomplete = r));
+  new BroadcastChannel("trip-radar").postMessage("changed");
+}, [st, id]);
+await open(T.sample);
+await row("processing");
+await app.waitForTimeout(200);
+log("t=200ms skeleton", await app.locator(".ar-pending.ar-skel, .ar-ph").count(), "pending", await app.locator(".ar-pending").count(), "work-line.on", await app.locator(".work-line.on").count());
+await app.waitForTimeout(900);
+await shot("skeleton");
+log("t=1.1s skeleton", await app.locator(".ar-pending.ar-skel").count(), JSON.stringify(await app.locator(".ar-pending.ar-skel").evaluate((el) => [getComputedStyle(el).borderTopStyle, getComputedStyle(el, "::after").animationDuration, el.querySelectorAll(".ar-ph i").length]).catch(() => "n/a")), "work-line", JSON.stringify(await app.locator(".work-line.on i").evaluate((el) => el.getAnimations().map((a) => [a.animationName, a.effect.getComputedTiming().duration])).catch(() => "n/a")));
+await app.locator(".work-line").screenshot({ path: `${P.out}/workline.png` }).catch(() => {});
+await app.getByRole("button", { name: "Seyahatlerim" }).first().click();
+await app.waitForTimeout(700);
+log("pill", await app.locator(".work-pill").allInnerTexts());
+await shot("pill-processing", { clip: { x: 0, y: 0, width: P.W, height: 220 } });
+await row("gone");
+await app.waitForTimeout(600);
+log("pill done", await app.locator(".work-pill.done").allInnerTexts());
+await shot("pill-done", { clip: { x: 0, y: 0, width: P.W, height: 220 } });
+await app.waitForTimeout(2800);
+log("pill gone", await app.locator(".work-pill").count());
+// failed capture -> reconnect notice
+await row("error", "aud-err");
+await app.waitForTimeout(1500);
+log("reconnect", await app.locator(".reconnect").allInnerTexts(), await app.locator(".reconnect").first().evaluate((e) => [getComputedStyle(e).backgroundColor, getComputedStyle(e).position]).catch(() => "n/a"));
+await shot("reconnect-bad");
+await row("gone", "aud-err");
+await app.waitForTimeout(700);
+log("after removal", await app.locator(".reconnect").allInnerTexts(), await app.locator(".reconnect.ok").first().evaluate((e) => getComputedStyle(e).backgroundColor).catch(() => "n/a"));
+await shot("reconnect-ok");

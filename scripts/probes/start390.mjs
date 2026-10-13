@@ -1,0 +1,25 @@
+const { app, ctx, log, shot, over, W, step } = P;
+const photoSvg = (hue) => `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="hsl(${hue},60%,55%)"/></svg>`;
+await ctx.route(/wikipedia\.org\/api\/rest_v1\//, (route) => { const name = decodeURIComponent(new URL(route.request().url()).pathname.split("/").pop() ?? "x"); return route.fulfill({ json: route.request().url().includes("/summary/") ? { originalimage: { source: `https://upload.wikimedia.org/e2e/${encodeURIComponent(name)}.jpg` } } : { items: [] } }); });
+await ctx.route(/upload\.wikimedia\.org\/e2e\//, (route) => route.fulfill({ contentType: "image/svg+xml", body: photoSvg(Math.round(Math.random() * 360)) }));
+await ctx.route(/functions\/v1\/city-image/, (route) => route.fulfill({ status: 404, json: {} }));
+await ctx.route("https://generativelanguage.googleapis.com/**", (route) => route.abort());
+await app.goto(`chrome-extension://${P.id}/app.html`); await app.waitForTimeout(1200);
+await app.getByLabel(/Gezi kutusu|Trip box/).fill("Sabine ile beraber Tayland Kohphandan 1 ay 10 ocak civarları gitmeyi düşünüyorum");
+await app.getByRole("button", { name: /Planlamaya başla/ }).click();
+await app.locator(".st-ask, .st-screen").first().waitFor();
+if (await app.locator(".st-ask").count()) await app.locator(".st-ask").getByRole("button", { name: /Yeni gezi/ }).click();
+await app.waitForTimeout(3000);
+await app.getByText(/Gezin şekilleniyor/).first().click();
+await app.waitForTimeout(1200);
+await shot("start390-mosaic-open"); await over("390 start mosaic open");
+const sw = app.locator(".st-pv-switch button, .st-pv button, [aria-label*=Şerit]").first();
+log("switch buttons", await app.locator("button[aria-label*='erit'], button[title*='erit']").count());
+await app.getByRole("button", { name: /Şerit|Strip/ }).click({ timeout: 5000 }).catch((e) => log("click fail", String(e).slice(0, 100)));
+await app.waitForTimeout(600);
+await shot("start390-strip-open"); await over("390 start strip open");
+log("strip photos", await app.locator(".st-pv-photos .st-pv-photo").count(), "mosaic", await app.locator(".st-pv-mosaic").count());
+await app.getByRole("button", { name: /Mozaik|Mosaic/ }).click({ timeout: 5000 }).catch(() => {});
+await app.waitForTimeout(500); await over("390 back to mosaic");
+await app.getByRole("button", { name: /Mozaik|Mosaic/ }).count();
+// also switch to Şerit to leave profile default? reset

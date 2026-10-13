@@ -1,0 +1,10 @@
+const { app, log, T, open, shot, ctx } = P;
+await open(T.sample);
+await app.getByPlaceholder(/Bir link bırak/).fill("Porto'da yağmur yağarsa ne yapalım?");
+await app.getByPlaceholder(/Bir link bırak/).press("Enter");
+await app.waitForTimeout(300);
+log("thinking dots", await app.locator(".thinking").count());
+await app.waitForTimeout(2500);
+log("banner", await app.locator(".chat-banner").count(), JSON.stringify(await app.locator(".chat-banner").allInnerTexts()), await app.locator(".chat-banner").first().evaluate((e) => [getComputedStyle(e).backgroundColor, e.getAnimations().map((a) => [a.animationName, a.effect.getComputedTiming().duration])]).catch(() => "n/a"));
+await shot("banner");
+log("mascot state", await app.locator(".ms-wrap").first().getAttribute("data-state"));

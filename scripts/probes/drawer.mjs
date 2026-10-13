@@ -1,0 +1,11 @@
+const { app, T, log, open, tab, shot } = P;
+await open(T.sample);
+const sec = app.locator('.cat-sec[data-section="stay"]'); await sec.scrollIntoViewIfNeeded(); await sec.locator(".pk-alt").first().click(); await app.waitForTimeout(800);
+await app.evaluate(() => { window.__d = []; const o = new MutationObserver(() => { for (const d of document.querySelectorAll(".drawer")) { const k = d.className + "|" + d.getAnimations().map((a) => a.animationName + ":" + Math.round(a.effect.getComputedTiming().duration)).join(","); if (window.__d[window.__d.length - 1] !== k) window.__d.push(k); } }); o.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] }); });
+const card = sec.getByRole("button", { name: /Tüm detaylar/ }).first();
+await card.click().catch((e) => log("click fail", String(e).slice(0, 80)));
+await app.waitForTimeout(600);
+log("drawer present", await app.locator(".drawer").count());
+await shot("drawer-open");
+await app.keyboard.press("Escape"); await app.waitForTimeout(500);
+log("drawer anims", JSON.stringify(await app.evaluate(() => window.__d)));
