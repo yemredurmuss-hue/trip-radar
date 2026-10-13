@@ -391,6 +391,7 @@ export function BackFace({ items, decision, choice, title, kind, wants, self, as
       tabIndex={-1}
       className={`ch-back${out ? " out" : ""}${keys ? " keys" : ""}`}
       role="group"
+      aria-modal="true"
       aria-labelledby="ch-title"
       onKeyDown={trap}
       // Empty space on the back turns the card over again (plan v30); a tile, a button or a link keeps its own click.

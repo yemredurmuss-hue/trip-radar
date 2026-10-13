@@ -377,7 +377,10 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
             <button type="button" className="pk-aldim pk-pick" onClick={take}>✓ {L("Bunu seç", "Pick this")}</button>
           </>
         ) : (
-          aldim ?? (look === "booked" || look === "arranged" ? <BookedBadge look={look} as={bookedAs(item, kind)} /> : null)
+          <>
+            {look === "chosen" && <span className="pk-lab chosen">{lookWord("chosen")}</span>}
+            {aldim ?? (look === "booked" || look === "arranged" ? <BookedBadge look={look} as={bookedAs(item, kind)} /> : null)}
+          </>
         )
       }
       menu={menu}

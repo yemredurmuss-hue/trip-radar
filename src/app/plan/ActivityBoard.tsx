@@ -4,6 +4,7 @@
 // ticket, a saved idea, the source's offer, a suggestion: the picture with who found it in the corner (a face; booked, the
 // green badge), the name (never cut), the source and the time, a price a person (and the total), the source's name as the
 // button. In a row: the trip's reason first ("Gezinin sebebi"), then what's bought, what's on the plan, the ideas.
+import { lookWord } from "../../lib/stageWords";
 import { useEffect, useState, type ReactNode } from "react";
 import { cardFacts, durationText } from "../../lib/cardFacts";
 import { ticketPrices } from "../../lib/cardTicket";
@@ -275,6 +276,8 @@ function EventCard({ state, label, photo, art, corner, pinned = false, tools, na
       <span className="ev-img">
         <FallbackImg className="ev-photo" src={photo} fallback={<img className="ev-art" src={art} alt="" />} />
         {corner}
+        {/* Durum asla yalnız renkle (§2.3-7, S16): a card on the plan, not bought, says Seçildi. */}
+        {state === "plan" && <span className="ev-chosen">✓ {lookWord("chosen")}</span>}
         {pinned && (
           <span className="ev-pin">
             <KindIcon kind="activity" size={12} />
