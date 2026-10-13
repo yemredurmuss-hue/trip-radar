@@ -786,11 +786,12 @@ try {
   // choice window: the pick in a sentence, the options with their fit, who saved them, "Seç" (v30).
   const pk = (name) => app.locator(`.pk-card[aria-label="${name}"]`);
   const outNeed = app.locator('.nd-card[aria-label="İstanbul → Porto"]');
-  // v11 as drawn: "Arıyoruz" on its top line, its ends (no hours yet), "Kendin ara", "2 seçenek ›" and ✨ at its foot.
+  // F2: the empty ticket: "Arıyoruz" on its stub with the real lowest price (fewer than three offers: no estimate), its ends (no hours yet), "Kendin ara", "2 seçenek ›" and ✨ at its foot.
   assert.match(await outNeed.locator(".pk-foot").innerText(), /2 seçenek/);
-  assert.equal(await outNeed.locator(".pk-lab.open").innerText(), "Arıyoruz");
+  assert.equal(await outNeed.locator(".tk-lab").innerText(), "Arıyoruz");
   assert.match(await outNeed.locator(".pk-mid").innerText(), /İstanbul[\s\S]*Porto/);
-  assert.match(await outNeed.locator(".nd-sub").innerText(), /^€\d+.*'den başlıyor$/);
+  assert.match(await outNeed.locator(".tk-price b").innerText(), /^€\d+.*'den$/);
+  assert.equal(await outNeed.evaluate((el) => getComputedStyle(el).borderTopStyle), "solid", "no dashed frame on a ticket");
   await outNeed.scrollIntoViewIfNeeded();
   await outNeed.screenshot({ path: `${out}/32b-need-card.png` });
   await outNeed.locator(".nd-opts").click();
@@ -876,6 +877,12 @@ try {
   await app.keyboard.press("Escape");
   await bk.waitFor({ state: "detached" });
 
+  // F2: a booked flight is a ticket: the one badge and a big green tick on its stub (no empty circle), what one pays and how many go, the frame solid.
+  assert.equal(await home.locator(".tk-stub .tk-chk").count(), 1, "a big tick once it is bought");
+  assert.equal(await home.locator(".tk-stub .okt").innerText(), "Bilet alındı");
+  assert.match(await home.locator(".tk-stub .tk-price").innerText(), /€\d[\s\S]*kişi başı[\s\S]*\d kişi · €\d/, "per person large, how many go and the whole sum small");
+  assert.equal(await home.evaluate((el) => getComputedStyle(el).borderTopStyle), "solid");
+  assert.equal(await home.locator(".pk-ring, .pk-stub").count(), 0, "no ring, no old stub");
   // The cities big, the airport codes and hours small; the landing day only because it's the next day.
   assert.match(await home.locator(".pk-mid").innerText(), /Lizbon\s*LIS · 19:40[\s\S]*İstanbul\s*IST · 01:35\+1/);
   // Round 2: the card's airport codes have the copy button too; it takes no room and a click on it doesn't open the card.
@@ -918,7 +925,9 @@ try {
     await app.screenshot({ path: `${out}/37g-peek-flight.png` });
     await app.mouse.move(2, 2);
     await peek.waitFor({ state: "detached" });
-    // By the keyboard too: focus opens it, Escape closes it.
+    // By the keyboard too: focus opens it, Escape closes it. (The panel scrolls smoothly: the ⓘ is put in view for good first, so the focus has no scrolling of its own to close the balloon.)
+    await info.evaluate((el) => el.scrollIntoView({ block: "center", behavior: "instant" }));
+    await app.waitForTimeout(500);
     await info.focus();
     await peek.waitFor({ state: "visible" });
     await app.keyboard.press("Escape");
@@ -950,8 +959,8 @@ try {
     });
     // v30: the code waits for the flight's day (it's nine days off here): the stub says what the flight cost, and the ⓘ balloon waits too.
     await app.waitForTimeout(800);
-    assert.equal(await home.locator(".pk-stub", { hasText: "ABC123" }).count(), 0, "the booking code waits for the flight's day");
-    assert.ok((await home.locator(".pk-stub b").first().innerText()).includes("€"), "until then the stub shows the price");
+    assert.equal(await home.locator(".tk-stub", { hasText: "ABC123" }).count(), 0, "the booking code waits for the flight's day");
+    assert.ok((await home.locator(".tk-stub .tk-price b").first().innerText()).includes("€"), "until then the stub shows the price");
     await home.locator(".inf").hover();
     await peek.waitFor({ state: "visible", timeout: 4000 });
     assert.equal(await peek.getByText("Rezervasyon kodu").count(), 0, "the balloon holds the code back until the day");
@@ -972,6 +981,7 @@ try {
     });
     await app.waitForTimeout(800);
     await tpCard.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    assert.match(await tpCard.locator(".tk-stub .tk-code").innerText(), /ABC123/, "F2: on the flight's day the stub carries the booking code");
     await tpCard.locator(".inf").hover();
     await peek.waitFor({ state: "visible", timeout: 4000 });
     assert.match(await peek.innerText(), /Rezervasyon kodu[\s\S]*ABC123/);
@@ -996,7 +1006,7 @@ try {
       await new Promise((resolve) => (tx.oncomplete = resolve));
       new BroadcastChannel("trip-radar").postMessage("changed");
     });
-    await home.locator(".pk-stub b", { hasText: "ABC123" }).waitFor({ state: "detached" });
+    await home.locator(".tk-code", { hasText: "ABC123" }).waitFor({ state: "detached" });
   }
   // v11: a row on the plan opens its record (a tap anywhere but its controls; its title is edited where it stands).
   await douro.locator(".ev-s").click();
@@ -1150,6 +1160,25 @@ try {
   await app.locator('.nd-card[aria-label="İstanbul → Porto"]').locator(".nd-opts").click();
   await app.locator(".ch-row", { hasText: "Pegasus · direkt" }).getByRole("button", { name: /^Seç · / }).click();
   await app.locator(".tl-travel.role-arrival .pk-card", { hasText: "IST" }).locator(".pk-aldim").waitFor();
+  // F2: a chosen flight is a ticket: "Seçildi" on its stub with what one pays, and under the route the warning, amber within 14 days (3 here).
+  const pegCard = app.locator(".tl-travel.role-arrival .pk-card", { hasText: "IST" });
+  assert.equal(await pegCard.locator(".tk-lab").innerText(), "Seçildi");
+  assert.match(await pegCard.locator(".tk-price b").innerText(), /^€\d+$/);
+  assert.equal((await pegCard.locator(".tk-warn").innerText()).replace(/\s+/g, " ").trim(), "⏳ Uçuşa 3 gün · bilet alınmadı");
+  assert.equal(await pegCard.locator(".tk-warn").evaluate((el) => getComputedStyle(el).color), "rgb(161, 92, 0)", "within 14 days the warning is amber");
+  assert.equal(await pegCard.locator(".tk-stub .pk-aldim").count(), 1, "✓ Aldım stays, by the stub");
+  assert.equal(await pegCard.evaluate((el) => getComputedStyle(el).borderTopStyle), "solid", "Seçildi: a solid frame, no dashes");
+  // Ayarlandı: the × asks why, "Ben hallettim" makes the ticket grey, nothing left to do (no ✓ Aldım, no warning); its menu takes that back.
+  await pegCard.hover();
+  await pegCard.locator(".pk-x").click({ force: true });
+  await app.locator(".pk-fold").getByRole("button", { name: "Ben hallettim", exact: true }).click();
+  const pegSet = app.locator(".tl-travel.role-arrival .pk-card.tk-arranged");
+  await pegSet.locator(".tk-stub .okt.set", { hasText: "Ayarlandı" }).waitFor();
+  assert.equal(await pegSet.locator(".pk-aldim, .tk-warn, .tk-buy").count(), 0, "Ayarlandı: nothing left to do");
+  assert.equal(await pegSet.locator(".tk-chk").evaluate((el) => getComputedStyle(el).backgroundColor), "rgb(107, 102, 95)", "Ayarlandı is grey");
+  await pegSet.getByRole("button", { name: "Kart menüsü" }).click();
+  await pegSet.getByRole("menuitem", { name: "Ayarlandı: geri al" }).click();
+  await pegCard.locator(".pk-aldim").waitFor();
   // Porto chosen, Lisbon booked: in the itinerary the transfers lay themselves out (the saved train is
   // the move, with a station transfer on each side), and the way home says what's easy to miss.
   await tab("Gün gün").click();
@@ -1328,7 +1357,7 @@ try {
     await transfer.locator(".pk-detail").waitFor();
   }
   const inbound = app.locator(".tl-travel.role-arrival .pk-card").first();
-  assert.equal(await inbound.locator(".pk-kind").innerText(), "Uçuş");
+  assert.match(await inbound.locator(".tk-hn").innerText(), /Pegasus/, "F2: the ticket's head names the airline and the day");
   assert.match(await inbound.locator(".pk-mid").innerText(), /İstanbul\s*IST · 07:10[\s\S]*Porto\s*OPO · 10:05/);
   // The flight and, under the stay, the taxi transfer in one picture.
   await app.setViewportSize({ width: 1440, height: 1400 });
@@ -1934,8 +1963,8 @@ try {
   await pano.waitFor();
   assert.equal(await app.locator(".hx").count(), 0, "no hero over the Pano");
   assert.equal(await pano.locator(".pn-cats button").first().innerText().then((t) => t.replace(/\s+/g, " ")), `Tümü ${await pano.locator(".pn-card").count()}`);
-  // Every card lines its price and button up with the others in its row.
-  const acts = await pano.locator(".pn-card").evaluateAll((els) => els.slice(0, 3).map((e) => Math.round(e.querySelector(".pn-act").getBoundingClientRect().bottom - e.getBoundingClientRect().bottom)));
+  // Every card lines its price and button up with the others in its row (a flight is its own small card: its price row is checked below).
+  const acts = await pano.locator(".pn-card:not(.pn-flt)").evaluateAll((els) => els.slice(0, 3).map((e) => Math.round(e.querySelector(".pn-act").getBoundingClientRect().bottom - e.getBoundingClientRect().bottom)));
   assert.equal(new Set(acts).size, 1, `the price rows line up (${acts})`);
   await pano.evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/30a-pano.png` });
@@ -1945,9 +1974,13 @@ try {
   assert.ok(colW >= 295.5 && colW <= 316.5, `the Pano column is 296-316 px wide (${colW})`);
   await pano.locator('.pn-cats [data-cat="flight"]').click();
   const panoFlight = pano.locator(".pn-card", { hasText: "TAP" }).first();
-  assert.equal(await panoFlight.locator('.pn-img img[src$="ucus.png"]').count(), 1, "a flight card draws the plane between its two cities");
-  const fare = (await panoFlight.locator(".pn-price").innerText()).match(/€(\d+)\s*kişi başı\s*2 kişi · €(\d+)/);
+  assert.equal(await panoFlight.locator('.fx-leg img[src$="ucus.png"]').count(), 1, "F2: a flight card draws the plane between its two hours");
+  assert.equal(await panoFlight.locator(".pn-strip-l").count(), 1, "F2: the strip on top: where it stands, its first plus");
+  const fare = (await panoFlight.locator(".fx-pr").innerText()).match(/€(\d+)\s*kişi başı\s*2 kişi · €(\d+)/);
   assert.ok(fare && Number(fare[1]) * 2 === Number(fare[2]), `per person from the record's two passengers, the whole under it (${fare?.[0]})`);
+  // F2: the flight cards of one need stand in a row of one height.
+  const heights = await pano.locator(".pn-group").evaluateAll((gs) => gs.map((g) => [...g.querySelectorAll(".pn-flt")].map((c) => Math.round(c.getBoundingClientRect().height))).filter((h) => h.length > 1));
+  assert.ok(heights.length > 0 && heights.every((h) => new Set(h).size === 1), `the flight cards of a row are one height (${JSON.stringify(heights)})`);
   await app.screenshot({ path: `${out}/30a2-pano-flight.png` });
   // Konaklama: its options by need, the one on the plan named in the group's header.
   await pano.locator('.pn-cats [data-cat="stay"]').click();
@@ -1986,7 +2019,7 @@ try {
   await pano.locator('.pn-cats [data-cat="all"]').click();
   await pano.locator(".pn-seg button", { hasText: "Planda" }).click();
   const planned = await pano.locator(".pn-card").count();
-  assert.ok(planned > 0 && (await pano.locator(".pn-card .pn-rib").count()) === planned, "Planda: each card on the plan wears its ribbon");
+  assert.ok(planned > 0 && (await pano.locator(".pn-card .pn-rib, .pn-flt .pn-strip-l .okt, .pn-flt .pn-strip-l .pn-tag.on").count()) === planned, "Planda: each card on the plan wears its ribbon (a flight's is on its strip)");
   const shownName = await pano.locator(".pn-card").first().getAttribute("aria-label");
   await pano.locator(".pn-card").first().locator(".pn-goplan").click();
   await app.locator(".cat-plan").waitFor();
@@ -3343,13 +3376,14 @@ try {
   const hrefs = (scope) => scope.locator(".ek-link").evaluateAll((els) => els.map((a) => [a.dataset.brand, a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel")]));
   for (const id of ["flight", "stay", "transport", "other"]) await ekOpen(id);
   // Emre's rule: what the start made (startGuide.placeholders) is never a chosen "Seçildi · bilet alınmadı" card.
-  assert.equal(await panel.locator(".cat-plan .pk-card.pk-r-half, .cat-plan .pk-card.pk-r-open, .cat-plan .settled-card").count(), 0, "no chosen card for a placeholder: only empty cards");
+  assert.equal(await panel.locator(".cat-plan .pk-card.pk-r-half, .cat-plan .pk-card.pk-r-open:not(.ek-card), .cat-plan .settled-card").count(), 0, "no chosen card for a placeholder: only empty cards");
   assert.equal(await panel.locator(".cat-plan .pk-cta", { hasText: /Bileti aldım|Rezerve ettim/ }).count(), 0);
   // Uçuş: İstanbul → Denpasar and back, "Bilet yok · 2 kişi"; Google Flights by city, Skyscanner and Kayak by airport.
   const [outFlight, backFlight] = [ekSec("flight").locator(".ek-card").nth(0), ekSec("flight").locator(".ek-card").nth(1)];
   assert.equal(await ekSec("flight").locator(".ek-card").count(), 2, "both flights the start made are empty cards");
   assert.equal(await ekSec("flight").locator(".pk-card:not(.ek-card)").count(), 0, "no full flight card yet");
-  assert.match(await outFlight.locator(".ek-route").innerText(), /İstanbul[\s\S]*Denpasar/);
+  assert.match(await outFlight.locator(".pk-mid").innerText(), /İstanbul[\s\S]*Denpasar/);
+  assert.equal(await outFlight.locator(".tk-lab").innerText(), "Arıyoruz", "the empty ticket says Arıyoruz on its stub");
   assert.equal(await outFlight.locator(".ek-state").innerText(), "Bilet yok · 2 kişi");
   assert.equal(await outFlight.locator(".ek-ara").innerText(), "Kendin ara");
   assert.equal(await outFlight.locator(".pk-cta, .pk-price").count(), 0, "no price, no Bileti aldım");
@@ -3410,8 +3444,8 @@ try {
   // The source finds nothing (routed empty): no offers' row anywhere; the logos are drawn here (no request to a brand's site).
   assert.equal(await panel.locator(".ek-offers").count(), 0, "no offers' row when the source finds nothing");
   assert.equal(await panel.locator('.ek-card img:not([src^="illus/"])').count(), 0, "no brand image fetched (the drawings are the app's own files)");
-  // The look: a white ground in a dashed frame, the cities 17 px.
-  assert.deepEqual(await outFlight.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopStyle, getComputedStyle(el.querySelector(".ek-end b")).fontSize]), ["rgb(255, 255, 255)", "dashed", "17px"]);
+  // The look (F2): a white ground in a flat solid frame (no dashes on a ticket), the cities large.
+  assert.deepEqual(await outFlight.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopStyle, parseFloat(getComputedStyle(el.querySelector(".pk-stop b")).fontSize) >= 16]), ["rgb(255, 255, 255)", "solid", true]);
   await ekSec("flight").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await board.screenshot({ path: `${out}/22a-empty-cards.png` });
   await board.setViewportSize({ width: 560, height: 1400 });
@@ -3432,7 +3466,7 @@ try {
   await board.locator('.pk-ed-input[aria-label="Tarih"]').fill("2027-01-09");
   await board.locator('.pk-ed-input[aria-label="Tarih"]').press("Enter");
   await board.locator('.pk-ed-input[aria-label="Tarih"]').waitFor({ state: "detached" });
-  await back.locator(".pk-date", { hasText: "9 Ocak" }).waitFor();
+  await back.locator(".tk-when", { hasText: "9 Ocak" }).waitFor();
   assert.equal(await panel.locator(`[data-item-id="${backId}"].pk-r-half, [data-item-id="${backId}"] .pk-r-half, .cat-plan .settled-card`).count(), 0, "an edited placeholder stays an empty card");
   assert.equal(new URL((await hrefs(back))[0][1]).searchParams.get("q"), "Flights from Denpasar to İstanbul on 2027-01-09 one way");
   console.log("✓ boş kartlar: a new trip's flights, stays, transfers, eSIM and activities are plain cards with Ara: and branded searches (cities, dates, 2 people), no AI row; none in Günlük akış; a placeholder's day edited stays empty");
@@ -5055,7 +5089,7 @@ try {
   await app.mouse.move(2, 2);
 
   // nabız: an empty card's ring pulses, slowly, forever (box-shadow only: nothing moves).
-  const ring = app.locator(".ek-card .pk-ring.open").first();
+  const ring = app.locator(".ek-card .pk-ring.open, .ek-card.tk-search").first();
   await ring.waitFor();
   assert.equal(await ring.evaluate((el) => getComputedStyle(el).animationName), "pk-pulse", "nabız: an empty card's ring pulses");
 
