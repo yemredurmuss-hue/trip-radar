@@ -10,19 +10,19 @@ Kural: paket bitince bu tabloyu güncelle, commit + push et. Yayın yalnız F10 
 | P1b niyet etiketi | bitti | 41835e1 | IntentChip + intentOf; tarih yoksa yalnız şehir, kamp/karavan "Kamp · yer"; "ayrı konaklama" bloğu görselsiz olduğundan etiketsiz (F10 bakar) |
 | P1c köşe yüzü | bitti | dc63a10 | SavedFace (kart köşesi, arka yüz karosu, fikir karosu, Pano); etkinlik kartındaki minik yüz P6 (ActivityBoard) ile gelir |
 | P1d Pano ferah | bitti | 0ebfdf9 (+ ara kayıt ceb22d4; P1 doğrulaması: tsc, vitest 1870, build, tam e2e 56 adım yeşil) | sütun 296-316, ucus.png, kişi başı fiyat tripPeople ile; uçuş şeridi/seçenek satırı P2'de |
-| P8a hareket değerleri | bekliyor | | |
-| P8b reduced-motion + Hareketi duraklat | bekliyor | | |
-| P8e exitMotion testi | bekliyor | | |
-| P9a ölü kod + bayat belgeler | bekliyor | | |
-| P2 uçuş bileti + seçenek kartları | bekliyor | | |
-| P3 sade otel + Değiştir N | bekliyor | | |
-| P4 arka yüz | bekliyor | | |
-| P5a ulaşım kartı | bekliyor | | |
-| P5b Yolculuk görünümü | bekliyor | | |
-| P6 etkinlikler şehre göre | bekliyor | | |
+| P8a hareket değerleri | bitti (birleşti) | c146c3c | |
+| P8b reduced-motion + Hareketi duraklat | bitti (birleşti) | c146c3c | |
+| P8e exitMotion testi | bitti (birleşti) | c146c3c | |
+| P9a ölü kod + bayat belgeler | bitti (birleşti) | c146c3c (silme önerileri P9b'de) | |
+| P2 uçuş bileti + seçenek kartları | bitti (birleşti) | ff4ef9c | |
+| P3 sade otel + Değiştir N | bitti (birleşti) | 3e1879b | |
+| P4 arka yüz | bitti (birleşti) | a799601 | |
+| P5a ulaşım kartı | bitti (birleşti) | 76cd9d5 | |
+| P5b Yolculuk görünümü | bitti (birleşti) | 5069224 | |
+| P6 etkinlikler şehre göre | bitti (birleşti) | 543b2b4 | |
 | P7 taslak Önerimiz | bekliyor | | |
 | P8c aşama geçişi (K29) | bekliyor | | |
-| P8d kalan hareketler | bekliyor | | |
+| P8d kalan hareketler | bitti (birleşti) | 19a2ef6 | |
 | P9b son temizlik | bekliyor | | |
 | P10 bitiş denetimi | bekliyor | | |
 | Yayın | bekliyor | | |
