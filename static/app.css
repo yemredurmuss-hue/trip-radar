@@ -5013,3 +5013,32 @@ body.still .tk-bar i, body.still .pk-seal .tk-chk, body.still .pk-card.tk.tk-sea
 .pk-card.pk-draft .pk-ring { display: none; }
 /* the card's own top line is crowded by "Önerimiz" and "✓ Bunu seç": the kind's word goes (its icon and the picture's label say it) */
 .pk-card.pk-draft .pk-kind { font-size: 0; gap: 0; }
+
+/* -- Denetim düzeltmeleri (v46 bağımsız denetim H1-H4) -- */
+/* H1: "Seçildi" yazısı kartın üst satırında (durum asla yalnız renkle/halkayla değil; DOKUNULMAZ §2.3-7, S16). */
+.pk-lab.chosen { color: var(--v-ink2, var(--v-ink, #1c1a33)); font-weight: 650; margin-right: 4px; }
+.cat-grid .pk-card > .pk-top .pk-lab.chosen { margin-right: 2px; }
+/* H4: Rötar kutucuğu: etiket ve değer sarsın, hiçbir şey kesilmesin ("Yeni kalkış", "+25 dk"). */
+.pk-lv small { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.pk-lv b { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 6px; white-space: normal; }
+.pk-lv b i { margin-left: 0; white-space: nowrap; }
+/* H2: 390 px: bölüm başlığı sarsın, ilerleme çubuğu alt satıra insin; ızgara ve arka yüz tek sütun, taşmasız. */
+@media (max-width: 480px) {
+  .cat-head { flex-wrap: wrap; row-gap: 8px; }
+  .cat-head > .cat-title { flex: 1 1 200px; min-width: 0; }
+  .cat-head > .cat-end { flex: 1 1 100%; flex-wrap: wrap; margin-left: 0; justify-content: flex-start; min-width: 0; }
+  .cat-head > .cat-end .cat-bar { flex: 1 1 80px; width: auto; min-width: 60px; }
+  .cat-head > .cat-end .cat-bud { margin-left: auto; }
+  .cat-grid, .cat-grid.cat-in-transport { grid-template-columns: minmax(0, 1fr); }
+  .ch-back { max-width: 100%; box-sizing: border-box; }
+  .ch-back .ch-row.ch-tile, .ch-back .ch-main { min-width: 0; max-width: 100%; }
+  /* H3: gezinin şekli şeridi kendi içinde kayar; sayfa taşmaz. */
+  .ts-strip { overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+}
+/* H1 (dar ekran): Seçildi + Aldım + ⓘ + ata/× + ··· sığsın: türün adı ve tarih gider (simge ve resim etiketi söylüyor), hiçbiri taşmaz. */
+@media (max-width: 520px) {
+  .pk-card > .pk-top:has(.pk-lab.chosen) .pk-kind { font-size: 0; gap: 0; }
+  .pk-card > .pk-top:has(.pk-lab.chosen) .pk-date { display: none; }
+}
+/* H1: etkinlik kartında Seçildi yazısı, resmin sol altında. */
+.ev-img > .ev-chosen { position: absolute; left: 8px; bottom: 8px; z-index: 2; padding: 2px 9px; border-radius: 999px; background: #fff; border: 1px solid var(--plan-line, #8fcfa6); color: var(--v-book-ink, #1d7442); font-size: 12px; font-weight: 650; line-height: 18px; white-space: nowrap; }

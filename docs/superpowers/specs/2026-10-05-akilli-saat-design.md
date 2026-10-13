@@ -70,3 +70,9 @@ transfer, check-out, check-in, araç alış/iade) bunlardan geriye ve ileriye do
 
 Araç alış/iade saatleri · gece yarısı sonrası inişte konaklama uyarısı · resepsiyon kapanışı · saatli etkinlik
 çakışması · transfer süresinin mesafeden/şekilden hesaplanması (şimdilik hep 1 sa, istersen değiştirirsin).
+
+## Not (2026-10-13, denetim H5): uçuş tamponu, güncel kural
+
+Yukarıdaki "AB içi 2 sa, dışı 3 sa" onayı eski durumdur (silinmedi). Kod Emre'nin 07 Ekim 2026 sözüne uyuyor:
+**yurt dışı (uluslararası) uçuşta havalimanına en az 2 saat tampon**; bilinmeyen havalimanı da bu kurala girer.
+Spec bu noktada koddan geride; kod doğru kabul edildi.

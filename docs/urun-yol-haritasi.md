@@ -452,3 +452,8 @@ kuralı değişiyor. Karar verilmeden uygulanmadı.
   (liste: `docs/superpowers/specs/2026-10-09-v11-canli-fark-listesi.md`). Etkinlik fikirleri artık kaynaktan gelen
   gerçek teklifler (Viator), "+ Plana koy" ile plana girer; kaynak bir şehir için bir şey getirmezse o şehrin kendi
   aramaları gösterilir, uydurma kart yok.
+
+## Not (2026-10-13): K76 ve sonrası
+
+K76+ numaraları henüz atanmadı. v30 ve sonrası kararlar `docs/envanter/01-kararlar.md` içinde bölüm önekli kimliklerle
+(PG, HS, YS, ... PL) durur; yol haritasına işlenmeleri bekliyor.

@@ -98,7 +98,7 @@ export function HoverTip({ tip, children, align = "left", below = false, classNa
       <Trigger
         ref={t.trigger as never}
         className={`tipx${className ? ` ${className}` : ""}`}
-        {...(label ? { type: "button" as const, "aria-label": label } : { tabIndex: 0 })}
+        {...(label ? { type: "button" as const, "aria-label": label, "aria-expanded": Boolean(t.at) } : { tabIndex: 0 })}
         aria-describedby={t.at ? t.id : undefined}
         onMouseEnter={() => !t.touch() && t.open()}
         onMouseLeave={() => !t.tapped && (interactive ? t.closeSoon() : t.close())}

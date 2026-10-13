@@ -599,6 +599,7 @@ try {
   // v46: city by city: Porto's row (what's on the plan first), its heading counts them; Lizbon has none yet and asks the chat.
   assert.match(await sec("activity").locator(".ev-city", { hasText: "Porto" }).locator(".ev-city-h").innerText(), /Porto\s+8–11 Ekim\s+1 planda · 3 öneri/);
   assert.equal(await sec("activity").locator(".ev-card.chosen").count(), 1, "the boat tour is on the plan");
+  assert.match(await sec("activity").locator(".ev-card.chosen .ev-chosen").innerText(), /Seçildi/, "H1: a chosen tour says Seçildi in words");
   assert.equal(await sec("activity").locator(".ev-city.empty", { hasText: "Lizbon" }).locator(".ev-ask").count(), 1, "an empty city: AI'a arat");
   assert.match(await sec("activity").locator(".ev-bar").innerText(), /Öneriler ve fikirler\s*3\s*bilet ya da rezervasyon gerektirenler\s*✨ Daha fazla fikir$/);
   await sec("activity").locator(".ev-toggle").click();
@@ -1150,6 +1151,7 @@ try {
   // (or on that chip) turns it to its back, the options, with ‹ › and the arrow keys through them.
   const jardimRow = app.locator('.stay-block.chosen .pk-card[aria-label="Jardim Stay"]');
   await jardimRow.locator(".pk-aldim").waitFor();
+  assert.equal(await jardimRow.locator(".pk-lab.chosen").innerText(), "Seçildi", "H1: a chosen stay says Seçildi in words");
   assert.equal(await app.locator(".stay-block.chosen .swipe-card").count(), 0);
   assert.match(await jardimRow.locator(".pk-alt").innerText(), /^Değiştir\s*2$/);
   await sec("stay").screenshot({ path: `${out}/35-stay-chosen-v11.png` });
@@ -1335,6 +1337,7 @@ try {
   await bus.locator(".pk-price", { hasText: "18" }).waitFor();
   await bus.locator(".pk-kind", { hasText: "Otobüs" }).waitFor();
   await bus.locator(".pk-aldim").waitFor();
+  assert.equal(await bus.locator(".pk-lab.chosen").innerText(), "Seçildi", "H1: a chosen ride says Seçildi in words");
   assert.ok(await bus.evaluate((el) => el.classList.contains("pk-r-half")), "chosen: the white ground with the light-green line");
   // The panel scrolls inside the page, so a tall window shows the whole plan in one picture.
   await app.setViewportSize({ width: 1440, height: 2600 });
@@ -5034,6 +5037,9 @@ try {
   await tpCard.locator(".pk-live").waitFor();
   assert.ok(await tpCard.evaluate((el) => el.classList.contains("pk-alert")), "late: the card goes red");
   assert.deepEqual(flat(await tpCard.locator(".pk-lv").allInnerTexts()), ["Yeni kalkış 20:05+25 dk", "Kapı 14"]);
+  // H4: nothing in the delay boxes is cut ("Yeni kal…", "+25 dk"): every label and value fits its box.
+  assert.deepEqual(await tpCard.locator(".pk-lv small, .pk-lv b, .pk-lv b i").evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent)), [], "H4: the delay boxes cut nothing");
+  assert.equal(await tpCard.locator(".pk-lv").first().evaluate((box) => { const r = box.getBoundingClientRect(); return [...box.querySelectorAll("small, b, i")].every((e) => e.getBoundingClientRect().right <= r.right + 1); }), true, "H4: the delay box holds its words");
   assert.match(flat([await tpCard.locator(".pk-top").innerText()])[0], /TAP TP1760/);
   assert.match(flat([await tpCard.locator(".pk-foot").innerText()])[0], /Planı yeni saate göre kaydırdım.*AeroDataBox/);
   // v30: the old time struck through beside the new one, in a clear red frame.
@@ -5510,4 +5516,38 @@ try {
   console.log("✓ opening: what is in view comes in from the first frame with the counters counting, the panel never scrolls itself, below the fold comes in as it is scrolled to, a reload doesn't repeat it, a key press ends it at once");
 } finally {
   await opening.close();
+}
+
+// H2/H3: at 390 px the page never scrolls sideways: the Plan (three views), Ozora-like trips with many stops, the back of a card.
+{
+  const narrow = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-narrow-")), {
+    headless: false,
+    timezoneId: "Europe/Istanbul",
+    viewport: { width: 390, height: 900 },
+    locale: "tr-TR",
+    reducedMotion: "no-preference",
+    args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+  });
+  await frozen(narrow);
+  try {
+    const worker = narrow.serviceWorkers()[0] ?? (await narrow.waitForEvent("serviceworker"));
+    const id = new URL(worker.url()).host;
+    const app = await narrow.newPage();
+    await app.goto(`chrome-extension://${id}/app.html`);
+    await app.getByText("Örnek geziyi yükle →").click();
+    await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
+    await app.waitForTimeout(1800);
+    const over = () => app.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    for (const view of ["Gün gün", "Yolculuk", "Pano", "Plan"]) {
+      const t = app.getByRole("tab", { name: new RegExp(view === "Plan" ? "^Plan" : view) }).first();
+      if (await t.count()) { await t.click(); await app.waitForTimeout(600); }
+      assert.ok((await over()) <= 0, `390 px: no sideways scroll on ${view}`);
+    }
+    assert.ok((await over()) <= 0, "390 px: no sideways scroll on the Plan");
+    const strip = app.locator(".ts-strip").first();
+    if (await strip.count()) assert.ok(await strip.evaluate((el) => el.scrollWidth >= el.clientWidth), "the shape strip scrolls inside itself");
+    console.log("✓ 390 px: no sideways scroll (Plan views, shape strip)");
+  } finally {
+    await narrow.close();
+  }
 }
