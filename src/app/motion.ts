@@ -5,8 +5,37 @@
 import { useEffect, useRef, useState } from "react";
 
 export const MOTION_MS = 600;
+/** Parlama (an answer changed a card): 1.1 s, the ring grows to 10 px (app.css `pk-glow`). */
+export const GLOW_MS = 1100;
+
+/** "Hareketi duraklat": the person's own switch (Settings), kept in this browser; body.still stops the CSS, reducedMotion() the rest. */
+export const STILL_KEY = "trip-radar:still";
+
+export const stillChosen = (): boolean => {
+  try {
+    return localStorage.getItem(STILL_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+
+/** Puts the saved choice on the page (call once at start, and after a change). */
+export const applyStill = (on = stillChosen()): void => {
+  if (typeof document !== "undefined") document.body?.classList.toggle("still", on);
+};
+
+export const setStill = (on: boolean): void => {
+  try {
+    if (on) localStorage.setItem(STILL_KEY, "1");
+    else localStorage.removeItem(STILL_KEY);
+  } catch {
+    /* the switch still works for this page */
+  }
+  applyStill(on);
+};
 
 export const reducedMotion = (): boolean => {
+  if (stillChosen()) return true;
   try {
     return matchMedia("(prefers-reduced-motion: reduce)").matches;
   } catch {
@@ -15,7 +44,7 @@ export const reducedMotion = (): boolean => {
 };
 
 /** True for `ms` after `value` changed to something new; never at mount (a board that opens doesn't glow), never with reduced motion. */
-export function useJustChanged(value: unknown, ms = MOTION_MS): boolean {
+export function useJustChanged(value: unknown, ms = GLOW_MS): boolean {
   const first = useRef(true);
   const previous = useRef(value);
   const [on, setOn] = useState(false);

@@ -5,8 +5,8 @@
 // a draft (startDrafts.ts) until the trip is made.
 //
 // Revision 2: the chat speaks the language of its first typed message (state.lang: every line is made inside
-// withLang, whatever the board's language); a small row says what is going on while waiting ("Düşünüyor…",
-// "Yazıyor…"); photos, the route and the rules' suggestions are prepared in the draft while chatting (item 7), so
+// withLang, whatever the board's language); a small row says what is going on while waiting ("Düşünüyor…"; the
+// "Yazıyor…" stage was dropped, the wait for the words has no row of its own); photos, the route and the rules' suggestions are prepared in the draft while chatting (item 7), so
 // "Oluştur" mostly writes what is there; "Oluştur" works once the destination is known.
 //
 // Revision 3: a message's reading isn't thrown away with a slow reply: the screen stops waiting for the model's

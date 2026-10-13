@@ -359,4 +359,4 @@ Fazlar `plan-v30` dalında, her sürüm `git log origin/release`'ten alındı. Y
 
 ## Durum
 
-Çizim onaylandı (v30, `404c755`). Kod yok. Sıradaki adım: uygulama planı. Faz 1'in dosya listesi Hareket Dili oturumuna gönderilecek.
+Çizim onaylandı (v30, `404c755`) ve kodlandı: 0.36.84 (`04436aa`). Sonraki çizimler (v31–v46) ve kod planı: `2026-10-13-plan-v45-kod-plani.md`.

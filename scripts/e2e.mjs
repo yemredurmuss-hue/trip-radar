@@ -4936,7 +4936,7 @@ try {
 // ---------------------------------------------------------------------------------------------
 // Part 5: the motion dictionary (src/app/motion.ts, drawing ux-katmanli-arayuz "Altı hareketlik sözlük"), with motion on.
 // Each movement has its own meaning and none moves the layout:
-//  - yükselme: a card lifts 2 px on hover; nabız: an empty card's ring pulses;
+//  - yükselme: a card lifts 3 px on hover; nabız: an empty card's ring pulses;
 //  - mühür + parlama: a card that turns booked pops its tick and glows; düşüş: a card the chat added drops in;
 //  - sayaç: the budget's figure counts to its new value.
 // ---------------------------------------------------------------------------------------------
@@ -4995,14 +4995,14 @@ try {
     );
   const animating = (loc, name) => loc.evaluate((el, n) => el.getAnimations().some((a) => a.animationName === n), name);
 
-  // yükselme: a plan card lifts 2 px while pointed at; the page's layout (the card's place in the flow) stays.
+  // yükselme: a plan card lifts 3 px while pointed at; the page's layout (the card's place in the flow) stays.
   const flight = app.locator('.pk-card[aria-label*="TAP"]').first();
   await flight.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await app.mouse.move(2, 2);
   const at0 = await flight.evaluate((el) => getComputedStyle(el).transform);
   await flight.hover({ position: { x: 60, y: 60 } });
   await app.waitForTimeout(400);
-  assert.equal(await flight.evaluate((el) => getComputedStyle(el).transform), "matrix(1, 0, 0, 1, 0, -2)", "yükselme: the card lifts 2 px on hover");
+  assert.equal(await flight.evaluate((el) => getComputedStyle(el).transform), "matrix(1, 0, 0, 1, 0, -3)", "yükselme: the card lifts 3 px on hover");
   assert.equal(at0, "none");
   await app.mouse.move(2, 2);
 
@@ -5026,6 +5026,7 @@ try {
   await app.waitForTimeout(350);
   await app.screenshot({ path: `${out}/38a-motion-seal.png` });
   await app.waitForFunction(() => !document.querySelector('.pk-card[aria-label="Hareket eSIM"]')?.classList.contains("pk-seal"), null, { timeout: 3000 });
+  await app.waitForFunction(() => !document.querySelector('.pk-card[aria-label="Hareket eSIM"]')?.classList.contains("pk-glow"), null, { timeout: 3000 }); // the glow lasts 1.1 s
   assert.equal(await app.locator('.pk-card[aria-label="Hareket eSIM"]').evaluate((el) => el.classList.contains("pk-glow")), false, "…and it is over within a moment");
 
   // sayaç: the budget's figure counts to its new value (it passes through numbers between), then stands.
@@ -5045,6 +5046,34 @@ try {
   assert.notEqual(after, before, "the booked sum changed");
   assert.ok(seen.size >= 3, `sayaç: the figure passed through numbers on its way (${[...seen].join(" → ")})`);
   void total;
+
+  // The window leaves with a still copy (exitMotion.ts): out of the flow, hidden from readers, without ids, gone within a moment.
+  const settingsTab = await motion.newPage();
+  await settingsTab.goto(`chrome-extension://${id}/app.html#settings`);
+  await settingsTab.locator(".modal-card").waitFor();
+  await settingsTab.locator(".modal").click({ position: { x: 5, y: 5 } });
+  await settingsTab.locator(".mv-leaving").first().waitFor({ state: "attached", timeout: 1000 });
+  const leaving = await settingsTab.locator(".mv-leaving").first().evaluate((el) => ({ inert: el.inert, hidden: el.getAttribute("aria-hidden"), ids: el.querySelectorAll("[id]").length + (el.id ? 1 : 0) }));
+  assert.deepEqual(leaving, { inert: true, hidden: "true", ids: 0 }, "exit: the copy is inert, aria-hidden and carries no id");
+  await settingsTab.waitForFunction(() => !document.querySelector(".mv-leaving"), null, { timeout: 1000 });
+  assert.equal(await settingsTab.locator(".modal-card").count(), 0, "exit: the real window is gone, not the copy only");
+
+  // Hareketi duraklat (Settings): body.still, kept in this browser, stops the lift on hover.
+  await settingsTab.goto("about:blank");
+  await settingsTab.goto(`chrome-extension://${id}/app.html#settings`);
+  await settingsTab.locator(".modal-card").waitFor();
+  await settingsTab.getByLabel("Hareketi duraklat", { exact: false }).check();
+  assert.equal(await settingsTab.evaluate(() => [document.body.classList.contains("still"), localStorage.getItem("trip-radar:still")]).then((v) => v.join()), "true,1", "duraklat: body.still and the saved choice");
+  await app.reload();
+  await app.locator(".pk-card").first().waitFor();
+  const still = app.locator('.pk-card[aria-label*="TAP"]').first();
+  await still.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await still.hover({ position: { x: 60, y: 60 } });
+  await app.waitForTimeout(400);
+  assert.equal(await still.evaluate((el) => getComputedStyle(el).transform), "none", "duraklat: the card no longer lifts");
+  await settingsTab.getByLabel("Hareketi duraklat", { exact: false }).uncheck();
+  assert.equal(await settingsTab.evaluate(() => localStorage.getItem("trip-radar:still")), null);
+  await settingsTab.close();
   console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, each on its own and over within a moment");
 } finally {
   await motion.close();
