@@ -1,21 +1,22 @@
-# Plan v30 → v44 (→ v46): tasarım değişikliklerini canlı koda taşıma planı (2026-10-13)
+# Plan v30 → v46: tasarım değişikliklerini canlı koda taşıma planı (2026-10-13)
 
-Salt okunur çıkarım; kod değişmedi. Canlı: `plan-v30-fix` @ 0.36.84. Tasarım: `origin/plan-v30-wip` içinde `docs/mockups/plan-v31-oneri … plan-v44-akis` (en son itilen **v44**).
-Emre hedefi **v46** yaptı (henüz itilmedi). Bu plan **v44 tabanlıdır**; v45/v46 itilince §1.3'teki komutla yeniden diff'lenir ve `[v44]` işaretli maddeler güncellenir. Dosya adındaki "v45" eski hedeftir, ad değişmedi.
+Salt okunur çıkarım; kod değişmedi. Canlı: `plan-v30-fix` @ 0.36.84. Tasarım: `origin/plan-v30-wip` içinde `docs/mockups/plan-v31-oneri … plan-v44-akis`, `plan-v45-durak`, `plan-v46-sira`.
+**Emre v46'yı ONAYLADI: FINAL hedef v46** (c61f380). Plan v46'ya göre yazıldı; v45'te denenip v46'da değişen yerler "v46 geçerli" diye §1.2'de ayrıldı. Yeni bir sürüm çıkarsa §1.3 komutları kalır. Dosya adındaki "v45" eski hedeftir, ad değişmedi.
+**Eşlik eden belge:** `docs/superpowers/specs/2026-10-13-plan-v46-izlenebilirlik.md` (410 karar + hareket satırı + v46 mockup bileşenleri, her biri bir faza/pakete ya da "YAPILMIYOR + gerekçe" / "zaten canlı" / "KAPSAM AÇIĞI").
 
 Önceki belgeler: `docs/superpowers/specs/2026-10-13-plan-v37-fark-listesi.md` (v31–v37 kod eşlemesi, hâlâ geçerli; A/B/C/D/E/F numaraları buradan atıf alır), `docs/envanter/01-kararlar.md`, `02-hareket-ve-sohbet.md`, `03-gorsel-envanter.md`, `docs/envanter/tasarim-envanteri.html` §1.
 
-> **ŞİMDİ BAŞLANABİLİR (v45/v46'ya bağlı değil): F0 temel, F1 küçükler, F8 hareket, F9 temizlik (kısmen).**
-> F2–F7 mockup'a bağlıdır: v44 ile başlanabilir ama v46 bu ekranları (özellikle F5 Yolculuk, F6 etkinlik, F2 bilet) değiştirebilir. Öneri: F0/F1/F8/F9a hemen; F2, F3, F5a, F6 v44 ile başlanabilir (v46 farkı yama olarak gelir); **F4, F5b ve F7 v46 itilince**.
+> **Hedef donduruldu (v46 onaylı): bütün fazlar başlanabilir.** Bağımlılık sırası §7'dedir; F0, F1, F8, F9a **hiçbir mockup ekranına bağlı olmadığı için** hemen başlar ve paralel gider (ŞİMDİ).
+> Bitiş kapısı: **F10 bağımsız denetim** (v46 her ekranı ↔ canlı; izlenebilirlik tablosu doğrulanır). Açık satır kalırsa yayın yok.
 
 ---
 
 ## 1. Hedef sürüm ve nasıl güncellenir
 
 ### 1.1 Hedef
-v44 (taban) → v46 (hedef). Canlı = v30. Yapılacak iş v30→v44'ün tamamı; v45/v46 farkı üstüne eklenir.
+Canlı = v30; hedef = v46 (onaylı, final). Yapılacak iş v30→v46'nın tamamıdır.
 
-### 1.2 v38 → v44 farkları (madde madde) ve geçersiz kılınan kararlar
+### 1.2 v38 → v46 farkları (madde madde) ve geçersiz kılınan kararlar
 
 | Sürüm | Yeni | Eski kararı geçersiz kılıyor mu? |
 |---|---|---|
@@ -26,12 +27,16 @@ v44 (taban) → v46 (hedef). Canlı = v30. Yapılacak iş v30→v44'ün tamamı;
 | v42 | Uçuş seçeneği satır yerine **derli toplu kart** (arka yüzde en çok 3 yan yana, Pano'da diğer kartlarla aynı genişlik, şerit her kartta: ilk artı yoksa ilk eksi amber). Arama şeritleri ("Kendin ara", "AI'a arat") grubun altında ince şerit. **Ulaşım kartı soldan sağa**: nereden (saat · durak) —araç, süre— nereye; hover'da hiçbir şey kaymaz; tekrar eden durak adı atılır; belirsiz kart aynı düzende, ortada kesikli yol, küçük mod kutucukları; `×` hover'da köşede | v37 ulaşım kartı **geçersiz**; v41 uçuş satırı **geçersiz** (kart); v37 E2 grup yapısı geçerli |
 | v43 | **Ulaşım başlığı yine okla** ("Hakone → Kyoto"), hemen altında ne zaman (tarih · saat kapsülü + araç); ortadaki çizim kutusuz, iki yanında yol çizgisi; **Yolculuk sırasıyla**: sıra başına tek mini kart (tarih solda, kesikli yol, şehir başlıkları, aynı rozet), mini karta basınca kategori görünümünde asıl karta gider | v42 ulaşım başlığı (araç ikon+ad) **geçersiz**; v30 Yolculuk (asıl kartlar sağda) **geçersiz** |
 | v44 | **Yolculuk görünümü tek sütun, minik kart sütunu noktalı yol üstünde**: her adım asıl kartın küçük hâli ortada (mini bilet koçanlı, mini ulaşım, otel/etkinlik görselli), kartın alt ortasından bir sonrakine noktalı çizgi; **gün değişince yolda koyu tarih kapsülü**; şehir değişince şehir başlığı; sonda "✓ Eve dönüş" | v43 satır düzeni (tarih solda) **geçersiz** |
+| v45 | Yolculuk "yol ve duraklar": şehir = bir **durak bloğu** (`.jc`, başlık şehir+tarih; içinde otele giriş "Giriş X · Çıkış Y", etkinlikler yan yana **kare kartlar** 140 px, yapılacak/restoran **minik kareler**); ulaşım = yolun üstünde **planın ulaşım kartı** (alt satırsız); yol "Yola çıkış" (koyu hap) ile başlar, "Eve dönüş" ile biter; bilet başlığında tarih | v44 gün kapsülü (`.jf-day`) **geçersiz** (tarih kartların içinde) |
+| v46 | **Yolculuk tek sütun, her şey sırayla alt alta**: Yola çıkış → uçuş → ulaşım → ince şehir başlığı → otel (Giriş/Çıkış) → **her etkinlik kendi kartı** (tarih kapsülü ya da "gün seç") → "Yapılacaklar ve restoranlar" kutusunda minik kareler → sonraki ulaşım … Eve dönüş. Kart kalıpları planınkiyle aynı | **v45 durak bloğu (`.jc`) ve yan yana etkinlik kareleri geçersiz** (yalnız `jcStay` ve `jcPl` yeniden kullanılır); v44 gün kapsülü geri gelmedi |
+
+**v46 geçerli (v45'te denenip değişenler):** Yolculuk = tek sütun alt alta (v45 durak bloğu YOK); etkinlik = kendi kartı (`jsEv`: görsel, "Etkinlik · gezinin sebebi" etiketi, ad, tarih kapsülü ya da "gün seç", site, kişi başı fiyat, köşe yüzü ya da rozet), v45 kare kart YOK; şehir = ince başlık (`.jf-city`: pin + ad + tarih·gece, iki yanda çizgi); otel = `jcStay` ("Giriş X · Çıkış Y"; tarihsizde "N gece"); yapılacak/restoran = tek kutu `jf-todo` içinde minik kareler (`jcPl`, restoran turuncu, gezilecek mavi); uçuş = mini bilet + başlıkta tarih (`jfFly` v45 değişikliği); ulaşım = planın ulaşım kartı alt satırsız (`jfMove` v45); başlangıç hapı "Yola çıkış · {şehir}" koyu, bitiş "Eve dönüş · {şehir}" yeşil. **v44 `jf-day` gün kapsülü kullanılmaz** (v46 çağırmaz). v46'nın yeni keyframe'i yok (§4).
 
 **Hâlâ geçerli (v37 fark listesinden):** A1 taslak "Önerimiz" (düz çerçeveli, v39), A2 beşinci durum, A3 köşe yüzü (etkinlikte v41 ile pekişti), A4 "Değiştir N", B1 sade otel, B3 ⓘ, C1 yatay bilet (C2 dairesi geçersiz), C3 kişi başı fiyat, D1 niyet etiketi, E1–E5 arka yüz (E3 uçuşta karo yerine kart), F1–F3 Pano. v39 bileti **hâlâ geçerli**; v40–v44 üstüne ekler.
 
-**Mockup'ın kendi iç tutarsızlıkları (v44):** (a) Ayarlandı: v40 `okFix` "Ayarlandı", v42/v43 `mvTicket` "Hallettim" yazar, ikisi de koyu yeşil rozet ve yeşil zemin; (b) Arıyoruz: v39 "kesikli yok" ama v43/v44 Yolculuk mini kartlarında Arıyoruz kesikli; (c) "Bilet al ↗" (ulaşım) ↔ "Rezerve et ↗" (bilet, otel) ↔ site adı (etkinlik). Kararlar §2.
+**Mockup'ın kendi iç tutarsızlıkları (v46'da da duruyor):** (a) Ayarlandı: v40 `okFix` "Ayarlandı", v42/v43 `mvTicket` "Hallettim" yazar, ikisi de koyu yeşil rozet ve yeşil zemin; (b) Arıyoruz: v39 "kesikli yok" ama v43/v44 Yolculuk mini kartlarında Arıyoruz kesikli; (c) "Bilet al ↗" (ulaşım) ↔ "Rezerve et ↗" (bilet, otel) ↔ site adı (etkinlik). Kararlar §2.
 
-### 1.3 v45 / v46 itilince güncelleme komutları
+### 1.3 Yeni bir sürüm (v47+) çıkarsa güncelleme komutları (v46 final; yöntem kayıt için)
 
 ```bash
 git fetch origin
@@ -39,15 +44,15 @@ git ls-tree -r --name-only origin/plan-v30-wip docs/mockups | grep -E 'plan-v4[5
 git log origin/plan-v30-wip --format='--- %h %s%n%b' 45b5221..origin/plan-v30-wip                          # Emre'nin kararları (commit gövdeleri)
 S=$(mktemp -d)                                                                                              # herhangi bir geçici klasör
 git show origin/plan-v30-wip:docs/mockups/plan-v44-akis/index.html > $S/v44.html
-git show origin/plan-v30-wip:docs/mockups/plan-v45-XXXX/index.html > $S/v45.html    # XXXX: yukarıdaki listeden
-git show origin/plan-v30-wip:docs/mockups/plan-v46-XXXX/index.html > $S/v46.html
+git show origin/plan-v30-wip:docs/mockups/plan-v45-durak/index.html > $S/v45.html
+git show origin/plan-v30-wip:docs/mockups/plan-v46-sira/index.html > $S/v46.html
 diff $S/v44.html $S/v45.html | cut -c1-360      # v45 farkı (base64 görsel satırları çok uzun: cut şart)
 diff $S/v45.html $S/v46.html | cut -c1-360      # v46 farkı
 diff $S/v44.html $S/v46.html | cut -c1-360      # v44'e göre toplam fark (bu planın tabanı)
 grep -o '@keyframes [a-zA-Z0-9_-]*' $S/v46.html | sort -u   # yeni hareket var mı (v44: bob drop fadein flipin glow landed lvp newlink pop rise rt-fly shimmer slidein spin takeoff travel)
 ```
 
-Güncelleme prosedürü: (1) §1.2 tablosuna "v45", "v46" satırları ekle; (2) belgedeki `[v44]` işaretli maddeleri tara, her biri için "değişti / aynı" yaz; (3) §2'de "mockup'a göre" kapatılan satırlardan etkilenenleri güncelle; (4) §3'te etkilenen fazın "mockup'tan farkı" listesini yeniden üret; (5) §7 iş paketlerinde ilgili paketi "yeniden aç" işaretle. v45/v46'nın yalnız renk/boşluk değiştirdiği yerler ilgili fazda "ince ayar" paketi olur (yeni faz açılmaz). Yeni bir ekran/kart çıkarsa yeni faz numarası (F10…) açılır, mevcutlar kaymaz.
+v46 farkı bu belgeye **işlendi** (§1.2). Yöntem aynı kalır: (1) §1.2 tablosuna yeni sürüm satırı ekle; (2) belgedeki `[v46]` işaretli maddeleri tara, her biri için "değişti / aynı" yaz; (3) §2'de "mockup'a göre" kapatılan satırlardan etkilenenleri güncelle; (4) §3'te etkilenen fazın "mockup'tan farkı" listesini yeniden üret; (5) §7 iş paketlerinde ilgili paketi "yeniden aç" işaretle. v45/v46'nın yalnız renk/boşluk değiştirdiği yerler ilgili fazda "ince ayar" paketi olur (yeni faz açılmaz). Yeni bir ekran/kart çıkarsa yeni faz numarası (F10…) açılır, mevcutlar kaymaz.
 
 ---
 
@@ -88,7 +93,7 @@ Güncelleme prosedürü: (1) §1.2 tablosuna "v45", "v46" satırları ekle; (2) 
 | Havalimanı süresi | Emre 07 Ekim kararı (yurt dışı en az 2 sa); akilli-saat spec'i güncellenir (F9) | 01-kararlar Ek A5 |
 | PDF/Paylaş hero | v30: ••• menüde kalır, hero'dan kalkar (**kapsam dışı**, ayrı küçük iş) | Önerim |
 | "Plana koy"/"Plana ekle" | Tek fiil **"Plana koy"** (EN "Add to plan"); `putFly.isPutButton` ikisini de tanımaya devam eder | Önerim; mockup v41+ "Plana koy" |
-| Arıyoruz kesikli mi | Bilet/ulaşım/otel kartlarında düz hafif gri (v39); Yolculuk mini kartında kesikli (v43/v44); boş etkinlik/yapılacak kartları kesikli (canlı) | Mockup'ın kendi ikiliği olduğu gibi |
+| Arıyoruz kesikli mi | Bilet/ulaşım/otel kartlarında düz hafif gri (v39); Yolculuk mini kartında kesikli (v43–v46); boş etkinlik/yapılacak kartları kesikli (canlı) | Mockup'ın kendi ikiliği olduğu gibi |
 | "Bilet alınmadı" uyarısı | Uçuşa ≤14 gün kala amber **"Uçuşa N gün · bilet alınmadı"** (mockup yalnız "Uçuşa N gün" yazar; kısaltma uyarıyı zayıflatır) | UX ek kuralı |
 | Etkinlik "Planda/Öneriler" ayrımı, Gizlenenler, bölüm altı "+ Ekle", PDF, Gün gün haritası | Canlıda olup çizimde olmayanlar **korunur** | Envanter "Bilinçli sapmalar" |
 
@@ -115,6 +120,10 @@ Güncelleme prosedürü: (1) §1.2 tablosuna "v45", "v46" satırları ekle; (2) 
 
 Her faz ayrı commit(ler)dir; çıkışında: `npx tsc -p .` temiz, `npx vitest run` yeşil, ilgili e2e bölümü yeşil, "mockup'tan farkı" kontrol listesi (1440 + 390 + EN) doldurulmuş. Entegrasyon dalı: `plan-v46-kod` (plan-v30-fix'ten). Sürüm: F0–F1 → 0.36.85; F2–F7 → 0.37.0 (ya da faz faz patch); F8 → 0.37.1. Kısaltmalar: `CSS` = `static/app.css`, `TP` = `src/app/TripPanel.tsx`. Zorluk: S ≤ ½ gün · M 1–2 gün · L 3+ gün (test dahil değil).
 
+### 3.0 Yeniden kullanım ilkesi ("gereksiz kod yok")
+
+Yeni bileşen yalnız mockup'ta **en az iki yerde** kullanılıyorsa ve canlıda karşılığı yoksa yazılır. Kullanılacak **mevcut** parçalar: `WhoAvatar`/`WhoseBadge` (köşe yüzü, karo yüzü, mini kart yüzü), `HoverTip`/`TipOn` + `Peek.tsx` (ⓘ balonu; yeni yalnız tetikleyici düğme), `lib/cardTicket.ts ticketPrices` (kişi başı fiyat: bilet, seçenek kartı ve Pano hep bunu çağırır), `lib/estRange.ts estimatedRange`, `cardKind`/`cardView` (`transportFace`, `mediaFace`, `topDate`; "+1" bayrağı cardView.ts:158–186'daki mevcut hesap), `DocAccess`/`BookingSheet`/`DocPickButton` (belge çipi, "belge yok"), `SearchRow`/`lib/searchLinks.ts` (Kendin ara), `AskButton` (AI'a arat), `useStageMenu`/`CardMenu`/`FoldLine`/`DeleteX` (menü, ×), `dropsIn`/`useJustChanged`/`useJustBecame`/`useCountUp` (hareket), `FallbackImg`, `KindIcon`/`UiIcon`/`TransportArt` (ikonlar), `lib/storyDates.dateBox`, `timeline.board` ve `hereItems` (Yolculuk), `Progress.show` (karta git + parla), `putFly`, `useAppear`, `opening.ts` işaretleri (`data-pit`), `lib/offerSource.ts` `Offer` alanları (seçenek kartı için ek alan yok). **Tek tanım kuralı:** aynı görünüm iki yerde yazılmaz: bilet/ulaşım/otel kartlarının Yolculuk mini kartı ayrı bileşen değil aynı bileşenin `compact` prop'udur; `BookedBadge`, `InfoButton` tek yerde. Bir faz eski bir bileşenin yerini alırsa eski bileşeni **aynı fazda silmez** (silme önerisi F9'da listelenir ve ayrıca onaylanır); ama yeni kodun eski kodu kopyalaması yasaktır.
+
 ### F0 · Temel — **ŞİMDİ BAŞLANABİLİR** (v46'dan bağımsız) · M
 
 **Kapsam.** Durum sözlüğü, tek Seçildi/Önerimiz/Rezerve görsel dili, tek "satın alındı" rozeti, tasarım belirteçleri.
@@ -140,7 +149,7 @@ Her faz ayrı commit(ler)dir; çıkışında: `npx tsc -p .` temiz, `npx vitest 
 **Kabul.** ⓘ klavye+dokunma+fare ile; Pano 1440'ta sütun ≥296 px; niyet etiketi tüm Seçildi/Önerimiz/Rezerve otelde.
 **Bağımlılık.** F0'a gevşek (rozet); F1a tamamen bağımsız ilk adım olabilir. **Paralel.** F1a/F1b/F1d ayrı worktree; F1c `CardShell`'i F1a ile paylaşır, F1a'dan sonra.
 
-### F2 · Uçuş bileti + uçuş seçenek kartları [v44] · L
+### F2 · Uçuş bileti + uçuş seçenek kartları [v46] · L
 
 **Kapsam.** Yatay bilet (v39 düz çerçeve, çentik, koçan), aşama etiketi, kişi başı fiyat, "Rezerve et ↗", alınınca büyük tik + `BookedBadge`, boş bilet ("Aradığımız: direkt", kapsülsüz tahmin), durumlar Arıyoruz/Aranıyor/Önerimiz/Seçildi/Rezerve/Ayarlandı; **rötar/PNR/uyarılar korunur**; uçuş seçenek kartları (arka yüz 3 yan yana; Pano kartı + şerit).
 **Dosyalar.** Yeni `cards/FlightTicket.tsx`; `PlanCard.tsx` transport dalı (285–294) ve stub (328–344) buna geçer; `TransportCard.tsx`, `RideCard.tsx` (`RouteArc` yerine `ucus.png`, aktarmada amber); `EmptyCard.tsx` `EmptyTravelCard` (361–396); `FlightLive.tsx`; `lib/cardTicket.ts` (`ticketPrices` + yeni `ticketStub`); `lib/estRange.ts` uçuş tahmini; `lib/emptyCards.ts` (wants); yeni `cards/FlightOption.tsx` (kart: havayolu · kalkış —süre/aktarma— varış · fiyat · Seç), kullanıcıları `NeedCard.tsx ChoiceSheet` (uçuş dalı) ve `board/Pano.tsx` (uçuş grubu: şerit rozet + ilk artı/eksi + uyum). CSS: `.pk-stub*` yerine `.tk-*` (bilet), `.fo-*` (seçenek), `.fx-*`; çentik `clip-path`; `container-type:inline-size` + `clamp(16px,6.4cqi,23px)`.
@@ -148,9 +157,9 @@ Her faz ayrı commit(ler)dir; çıkışında: `npx tsc -p .` temiz, `npx vitest 
 **Test.** `cardTicket.test.ts` (gerçek yolcu sayısı, `scope`), `estRange.test.ts` (<3 teklif → tahmin yok), `flightData.test.ts` (bilete taşınan notlar aynı çıktı), `emptyCards.test.ts`; yeni `tests/ticketStub.test.ts` (PNR yalnız uçuş günü, ≤14 gün amber metin, taslak/Seçildi/Rezerve koçan içeriği). e2e: `pk-stub` (3), "Bileti al" (5 yer → uçuşta "Rezerve et ↗"), `pk-aldim` (5; bilette ⓘ yanında kalır), `pk-alt` (5), rötar senaryosu (korunur, selektör güncellenir), `ch-back` uçuş (F4 ile).
 **Kabul.** 360–1440 px isim kesilmez; rötar/kapı/PNR uçuş günü/Ayarlandı görünür; taslakta "Bunu seç" (F7 ile) çalışır; Pano uçuş kartları aynı boy.
 **Bağımlılık.** F0, F1a. **Paralel.** F3, F6 ile paralel; F4 ile `NeedCard` ortak → sıralı.
-**Mockup'tan farkı.** Bilet 6 durumda + boş + uzun şehir adı; arka yüz uçuş 3 kart; Pano uçuş şeridi. **[v44] v39'dan beri sabit; v46 değiştirirse en çok burası.**
+**Mockup'tan farkı.** Bilet 6 durumda + boş + uzun şehir adı; arka yüz uçuş 3 kart; Pano uçuş şeridi. **[v46] v39'dan beri sabit; v46 değiştirirse en çok burası.**
 
-### F3 · Sade otel kartı + "Değiştir N" [v44] · M
+### F3 · Sade otel kartı + "Değiştir N" [v46] · M
 
 **Kapsam.** Görsel + marka + puan rozeti + ad + tek satır ("İade yok" yalnız varsa); alt satır `[Değiştir N] · €210 / gece · [Rezerve et ↗]`; Seçildi/Önerimiz beyaz, Rezerve yeşil + rozet; belge çipi / "belge yok"; toplam/iptal/yorum/semt/not ⓘ'de; tarihli uyarılar kartta kalır.
 **Dosyalar.** `cards/MediaCard.tsx` `MediaCardBody` (stay), `cards/CardShell.tsx CardFoot` (`alt` → "Değiştir N" hap), `PlanCard.tsx` 298–326, `StayLine.tsx`, `lib/cardView.ts mediaFace`, `lib/cardTime.ts`; `NeedCard.tsx` stay "N seçenek" kartı (Arıyoruz) aynı dil; CSS `.ek-band`, `.ek-card`.
@@ -159,7 +168,7 @@ Her faz ayrı commit(ler)dir; çıkışında: `npx tsc -p .` temiz, `npx vitest 
 **Kabul.** Kart sabit boy; uyarılar görünür; Değiştir arka yüzü açar.
 **Bağımlılık.** F0, F1a, F1b. **Paralel.** F2 ile ayrı worktree (`PlanCard.tsx`'te farklı bölgeler; birleştirme F3→F2).
 
-### F4 · Arka yüz [v44] · L — v46 farkından sonra
+### F4 · Arka yüz [v46] · L
 
 **Kapsam.** E1 yerinde biner (S6), E2 iki bölüm (Kaydettikleriniz / Önerimiz; her biri ≤3 kart + eylem kutucuğu), E3 kart/karo (S7, S15, S16), E4 "Kendin ara", E5 "AI'a arat" (S8), E6 seçenekli Arıyoruz aynı arka yüz.
 **Dosyalar.** `cards/NeedCard.tsx` (`ChoiceSheet` 198–470: `BACK_MAX=7` → 3+3, `mine/found`, `tile`), `PlanCard.tsx NavGroup` (`changing` kolu), `cards/OfferRow.tsx`, `cards/AskButton.tsx`, `cards/EmptyCard.tsx SearchRow`, `lib/searchLinks.ts`, yeni `cards/BackFace.tsx` (`ResizeObserver` konumlama), yeni `lib/backFace.ts` (bölümleme); CSS `.ch-back` (4557–4560), `.ch-grid`; `.cat-card:has(.ch-back){grid-column:1/-1}` kuralı kalkar.
@@ -167,17 +176,17 @@ Her faz ayrı commit(ler)dir; çıkışında: `npx tsc -p .` temiz, `npx vitest 
 **Test.** Yeni `tests/backFace.test.ts`; e2e `ch-back` (12 yer; "yan kart bir satır aşağı kayar" beklentileri tersine), `ch-tile` (1), "Daha fazla bul"/"Kendin ara" bağlantıları, klavye okları (korunur).
 **Kabul.** Arka yüz açılınca kart yerinden oynamaz (1440); 390'da tek sütun ve iter; son satırda yukarı; Esc/boşa basış/× kapatır; örtülenler `inert`.
 **Bağımlılık.** F0, F1c, F2, F3. **Paralel.** F5a, F6 ile paralel; F2/F3 ile `NeedCard`/`PlanCard` ortak → sıralı.
-**Mockup'tan farkı.** Uçuş, otel, ulaşım arka yüzleri; boş bölümler; "Pano'da aç"; AI'a arat çalışırken. **[v44]**
+**Mockup'tan farkı.** Uçuş, otel, ulaşım arka yüzleri; boş bölümler; "Pano'da aç"; AI'a arat çalışırken. **[v46]**
 
-### F5 · Transfer kartları + Yolculuk görünümü [v43–v44] · L — F5a hemen, **F5b v46'yı bekle**
+### F5 · Transfer kartları + Yolculuk görünümü [v43–v46] · L
 
 **F5a Ulaşım kartı (M).** Ok başlık "A → B"; altında kapsül "tarih · saat" + araç; soldan sağa [saat/durak —çizim, süre— saat/durak]; alt satır `[Değiştir N] fiyat Bilet al ↗` / rezervede belge + "Ayrıntı ›"; hover'da kayma yok; tekrar eden durak adı atılır; boş kart aynı düzende (kesikli yol, mod kutucukları); × hover köşede. Dosyalar: `cards/RideCard.tsx` (`RideCardBody`), `TransportCard.tsx`, `cards/LegCard.tsx`, `cards/EmptyCard.tsx EmptyLegCard` (462–552), `lib/cardView.ts transportFace`, `lib/cardKinds.ts legEndsByItem`; `static/illus/*.png` (var; `mix-blend-mode:multiply`, koyu temada normal).
-**F5b Yolculuk görünümü (L).** Tek sütun mini kart + noktalı yol + gün kapsülü + şehir başlığı + "Eve dönüş". `plan/StoryView.tsx` yeniden yazılır; yeni `plan/JourneyCards.tsx` (`MiniFlight`, `MiniMove`, `MiniStay`, `MiniEvent`); `lib/storyDates.ts`, `lib/journey.ts`; veri kaynağı **aynı** (`timeline.board`, ikinci kaynak yok); mini karta basınca kategori görünümüne geçip asıl karta gider (`Progress.show` + `flash`); `TP.tsx` story kolu; sihirli açılış işaretleri (`data-pit`) yeni sütuna; CSS `.sy-*` kalkar, `.jf-*`, `.jf-link` (`border-left:3px dotted`), `.jf-day`.
+**F5b Yolculuk görünümü (L) — v46.** Tek sütun, sırayla alt alta, kart kalıpları planınkiyle aynı: `Yola çıkış · {şehir}` koyu hap → (her adımın arasında noktalı `jf-link`, 26 px, `border-left:3px dotted`) uçuş (mini bilet, başlıkta tarih) → ulaşım (planın ulaşım kartı, alt satırsız) → ince şehir başlığı (pin + ad + "tarih · N gece", iki yanda çizgi) → otel (`Giriş X · Çıkış Y`; tarihsizde "N gece") → **her etkinlik kendi kartı** (tarih kapsülü ya da "gün seç"; "Etkinlik · gezinin sebebi") → tek kutuda "Yapılacaklar ve restoranlar" minik kareleri → sonraki ulaşım … → `Eve dönüş · {şehir}` yeşil hap. v44 gün kapsülü ve v45 durak bloğu/kare etkinlik **yapılmaz**. Dosyalar: `plan/StoryView.tsx` yeniden yazılır (iskelet: dizi üret + `jf-link` serpiştir); yeni `plan/JourneyCards.tsx` yalnız **gerçekten yeni** parçalar: `JourneyStay` (otel mini), `JourneyEvent`, `JourneyTodo` (+`JourneyPlace`); uçuş/ulaşım mini kartları **F2/F5a bileşenlerinin `compact` kipi** (yeni bileşen yazılmaz); `lib/storyDates.ts` (`dateBox` yeniden kullanılır; kapsül için `dayChip`), `lib/journey.ts`; veri kaynağı **aynı** (`timeline.board`, `hereItems`), ikinci kaynak yok; yapılacak/restoran = canlıdaki `hereItems` süzmesi (category `todo|food`, chosen/booked); mini karta basınca kategori görünümüne geçip asıl karta gider (`Progress.show` + `flash`); sihirli açılış işaretleri (`data-pit`) yeni sütuna. CSS `.sy-*` kalkar, `.jf-*`. Kaldırılan: `sy-ev` "Burada" listesi (yerini etkinlik kartları ve minik kareler alır).
 **i18n.** "Eve dönüş · {şehir}/Back home · {city}", "Gün {n}/Day {n}", "gün seç/pick a day", "{n} etkinlik/{n} activities", "etkinlik yok/no activities", "{n} yapılacak/{n} to do".
 **Test.** Yeni `tests/journeyFlow.test.ts` (gün kapsülü yalnız gün değişince, şehir başlığı, tarihsiz "gün seç", Gezi sebebi), `storyDates.test.ts`, `legCard.test.ts`; e2e Yolculuk bölümü yeniden yazılır (`.sy-*` selektörü yok), mini karta basınca kart parlar, boş transfer kartı tıklaması (238e9b0 testi).
 **Kabul.** Her adım ≥1 mini kart; tarih uydurulmaz; tarihsiz gezide "Gün N"; boş şehir ve dönüş doğru.
 **Bağımlılık.** F5a: F0, F1a. F5b: F2, F3, F5a, F6. **Paralel.** F5a F2/F3/F6 ile paralel.
-**Mockup'tan farkı.** Yolculuk tarihli/tarihsiz, 390 px, boş şehir, tarihsiz etkinlik. **[v44] v43→v44'te tamamen yeniden çizildi; v46'da yeniden değişme olasılığı yüksek: F5b'ye v46 farkı çıkınca başla.**
+**Mockup'tan farkı.** Yolculuk: Japonya (tarihli) ve Ozora (festival: kamp, araba al/bırak, gezinin sebebi, dinlenme), tarihsiz gezi, 390 px, boş şehir, tarihsiz etkinlik "gün seç". **[v46] final.**
 
 ### F6 · Etkinlikler şehre göre [v40–v41] · M
 
@@ -188,7 +197,7 @@ Her faz ayrı commit(ler)dir; çıkışında: `npx tsc -p .` temiz, `npx vitest 
 **Kabul.** Fiyat/saat görünür; 390'da yatay kaydırma; uzun ad kesilmez; sebep kartı önde.
 **Bağımlılık.** F0, F1c. **Paralel.** Diğerleriyle tam paralel (`ActivityBoard` ayrı dosya).
 
-### F7 · Taslak "Önerimiz" modeli [v44] · L — en riskli, en son; v46'yı bekle
+### F7 · Taslak "Önerimiz" modeli [v46] · L — en riskli, en son
 
 **Kapsam.** Elinde gerçek seçenek varsa uçuş ve otel ihtiyacı kartta hazır **Önerimiz taslağı** (düz mor-gri çerçeve, beyaz, "✨ Önerimiz"); S1 kabul yolları; sayım S2; bölüm başlığı "N önerimiz · N seçildi · N aranıyor"; Pano şeridi S11; Yolculuk mini kartı "Önerimiz"; hero/yapışkan şerit: taslak "karar bekliyor".
 **Veri modeli değişmez** (yazmayan görünüm). Dosyalar: yeni `lib/draft.ts` (`draftOf(group, decision)`: yalnız `flight|stay`, gerçek fiyatlı, `decision.winner ?? byRank[0]`), `TP.tsx` ~1030–1065 (`NeedGroup` yerine taslak varsa `PlanCard draft`), `PlanCard.tsx` (`draft` kipi, "Bunu seç" → `chooseItem`), `lib/categories.ts stageLine`/`StageCounts` (türetilmiş `draft` sayacı), `lib/progress.ts`/`planList.ts`, `TripFacts.tsx`/`StickyBar.tsx` (taslak seçilmiş sayılmaz), `board/Pano.tsx`.
@@ -201,14 +210,28 @@ Her faz ayrı commit(ler)dir; çıkışında: `npx tsc -p .` temiz, `npx vitest 
 Alt paketler: F8a sözlük değerleri, F8b reduced-motion + "Hareketi duraklat", F8d kalan 18 madde (uygulananlar), F8e `exitMotion` testi; **F8c aşama geçişi (K29) F2 sonrası** bilete oturur.
 
 ### F9 · Temizlik + dokümanlar · S–M — **KISMEN ŞİMDİ BAŞLANABİLİR**
-- Şimdi: ölü kod (`Mascot.tsx` `wink` + `ms-wink`; `FlightMap.tsx`/`WorldFlight` + `st-map-*` CSS ~3001–3016; `--t-instant`; `Stage="writing"` bayat yorumları `StartChat.tsx:8–9`), DESIGN.md, v30 spec bayat "Durum" bölümleri, yol haritası (K76+, "Plan taslağı"/"Yazıyor…" satırları "vazgeçildi", K4 paragrafı), akilli-saat spec'i.
+- Şimdi: **ölü kod silme ÖNERİSİ (silmeden önce ayrı onay; grep ile doğrulandı):** `Mascot.tsx` `wink` durumu ve `ms-wink` CSS (hiçbir bileşen `state="wink"` vermiyor); `start/FlightMap.tsx` içinde yalnız **`WorldFlight` bileşeni** ve `st-map-*` CSS (~3001–3016) (dosyadaki `loadWorld`, `PLANE`, `WorldMap` StartChat, Generating, GenMap ve TripMap'te **kullanılıyor**, kalır); `--t-instant` (CSS ~4312, kullanılmıyor); `Stage="writing"` bayat yorumları `StartChat.tsx:8–9`), DESIGN.md, v30 spec bayat "Durum" bölümleri, yol haritası (K76+, "Plan taslağı"/"Yazıyor…" satırları "vazgeçildi", K4 paragrafı), akilli-saat spec'i.
 - F2–F7 sonrası: `pk-stub*`, `pk-stamp`, `pk-lab`, `sy-*`, `ax-*`/`ac-*`, `nd-card` artıkları, `RouteArc` (kullanılmıyorsa), eski `ch-tile` CSS'i; envanter durumları.
+
+### FB · Backend (supabase) — **varsayılan: değişmez**; tek isteğe bağlı ek · S
+
+Tek tek inceleme sonucu §5.2'dedir. Zorunlu backend değişikliği **yoktur**. İsteğe bağlı tek ek: uçuş seçenek kartında "1 aktarma · {yer}" için SerpApi bacaklarından aktarma yeri (`serpFlights` zaten `legs` okuyor; `OfferOut.via` alanı vardır ve transferde kullanılıyor, uçuşta boş). Yapılırsa: `supabase/functions/offers/shape.ts` (`serpFlights` → `AviaFlight.via`, `flightOffer` → `via`), `src/lib/offerSources/index.ts` (alanı geçir), `tests/offersShape.test.ts` (aktarma yeri yalnız kaynak verdiyse; verilmezse `null`), dağıtım `supabase functions deploy offers --no-verify-jwt` (diğer fonksiyonlar gibi), SQL yok. Aviasales önbellek verisinde aktarma yeri **yoktur**: o zaman yalnız "1 aktarma" yazılır, yer uydurulmaz. Yapılmazsa hiçbir ekran bozulmaz (mockup'ın "Doha"sı örnek veridir). Karar: Emre onayına bağlı, F2'den bağımsız.
+
+### F10 · BİTİŞ DENETİMİ (bağımsız ajan) · M — yayın kapısı
+
+Kodlamayı yapmamış **bağımsız bir ajan** (yeni oturum, yalnız bu plan + izlenebilirlik tablosu + mockup + canlı build ile):
+1. `docs/superpowers/specs/2026-10-13-plan-v46-izlenebilirlik.md` içindeki **her satırı** doğrular: "zaten canlı" ise kodda/test'te kanıt (dosya:satır ya da test adı); faz/paket ise commit'te var ve davranışı çalışıyor; "YAPILMIYOR" ise gerekçe yazılı ve Emre onaylı; **KAPSAM AÇIĞI** satırları Emre'den yazılı karar alır (yap / bu sürümde yapma). Karar çıkmadan ya da açık satır kalırsa **yayın yok**.
+2. v46 mockup'ının **her ekranını** canlıyla yan yana karşılaştırır: 1440 px, 390 px ve EN; iki gezi (Japonya klasik tur, **Ozora festival**: Gezinin sebebi, kamp, araba al/bırak, kapalı tur notu, festivalden sonra dinlenme); üç Plan görünümü (Kategoriye göre, Yolculuk sırasıyla, Gün gün); Pano; sohbet paneli; yapışkan şerit; arka yüzler; ⓘ balonları; ayrıntı penceresi (`openDetail`, `openEvDetail`); gezi menüsü; durum anahtarı. Araç: `node scripts/v30-shots.mjs` (genişletilmiş) + mockup'ın Playwright ekran görüntüsü; çıktı `e2e-output/v46/{1440,390,en}/` altında çiftler + `fark-raporu.md` (ekran | fark yok / bilinçli sapma §2 / HATA).
+3. Dokunulmaz listeyi (§2.3) tek tek dener: rötar senaryosu, PNR uçuş günü, ••• ve ×, Ayarlandı, fiyat/saat/uyarı görünürlüğü, 14 gün uyarısı, paylaşılan gezi.
+4. `npx tsc -p .`, `npx vitest run`, `E2E_OFFLINE=1 faketime -f "@2026-10-05 10:00:00" xvfb-run -a node scripts/e2e.mjs` çalıştırır; yeşil değilse rapor, kod değişikliğini kodlayan ajan yapar (denetçi kod yazmaz).
+5. Eski kullanıcı verisiyle açılış: 0.36.84 ile üretilmiş bir IndexedDB yedeği (örnek gezi + Ozora + paylaşılan gezi) yeni build'de açılır, hiçbir kayıt kaybolmaz, "Yeni"/taslak/hareket anahtarı yokken de ekranlar tam.
+Çıktı: `fark-raporu.md` + izlenebilirlik tablosunda her satırın "Doğrulandı" sütunu. **Kabul: açık satır 0.**
 
 ---
 
 ## 4. HAREKET / ANİMASYON BACKLOG'u (hiçbiri kaybolmasın)
 
-Mockup'ın hareketleri (v44 `@keyframes`: bob, drop, fadein, flipin, glow, landed, lvp, newlink, pop, rise, rt-fly, shimmer, slidein, spin, takeoff, travel). **v31–v44 arasında yalnız `spin` yeni keyframe**'dir (`spin 3s linear`: v37 Aranıyor halkası; v39'da bilette halka kalktığı için kodda gerekmez, shimmer çubuğu yeter). Yeni geçişler: `.mvt-x`/`.hz-tools` opacity `.15–.18s`, `.jm` border/shadow `.15s`, Pano `.detail` `grid-template-rows .4s (.16,1,.3,1)`, `.why2 svg` `.3s`, kalp `transform .25s (.2,1.6,.4,1)`. v44 Yolculuk noktalı yolu **statik**. **[v44] v46'da yeni keyframe çıkarsa §1.3'teki `grep @keyframes` ile eklenir.**
+Mockup'ın hareketleri (v46 `@keyframes`: bob, drop, fadein, flipin, glow, landed, lvp, newlink, pop, rise, rt-fly, shimmer, slidein, spin, takeoff, travel). **v31–v46 arasında yalnız `spin` yeni keyframe**'dir (`spin 3s linear`: v37 Aranıyor halkası; v39'da bilette halka kalktığı için kodda gerekmez, shimmer çubuğu yeter). Yeni geçişler: `.mvt-x`/`.hz-tools` opacity `.15–.18s`, `.jm` border/shadow `.15s`, Pano `.detail` `grid-template-rows .4s (.16,1,.3,1)`, `.why2 svg` `.3s`, kalp `transform .25s (.2,1.6,.4,1)`. v44 Yolculuk noktalı yolu **statik**. **[v46] v46'da yeni keyframe çıkarsa §1.3'teki `grep @keyframes` ile eklenir.**
 
 ### 4(a) Altı hareket (F8a)
 
@@ -264,8 +287,21 @@ Vitest node ortamında: `tests/exitMotion.test.ts` — `leavesWithCopy` (sahte `
 ## 5. RİSKLER ve geri dönüş
 
 **Veri modeli.** IndexedDB şeması **değişmez** (`DB_VERSION = 5`, `src/lib/db.ts`). `Item`'a alan eklenmez: taslak yazmayan görünüm (S2); "Yeni" `localStorage` (`trip-radar:seen:<tripId>`; yoksa "yeni yok", hata fırlatmaz); "Hareketi duraklat" `localStorage` (`trip-radar:still`). Sonuç: 0.36.84'ten gelen kullanıcı verisi için **taşıma gerekmez**; paylaşılan gezi şeması (`supabase`, `src/lib/share`) değişmez; eski sürüm yeni veriyi okur. Emre S2'yi "kalıcı taslak" yaparsa o **ayrı onaylı iş**: `Item.draft?: boolean` isteğe bağlı alan (DB sürümü değişmez) + `tests/dbUpgrade.test.ts` + geri uyumluluk testi.
+**Backend (supabase/functions, SQL) — tek tek inceleme.**
+
+| Parça | Yeni tasarımın isteği | Karar |
+|---|---|---|
+| `ai` (Gemini geçidi, `policy.ts`) | Yeni AI çağrısı yok; "AI'a arat" (S8) sohbet satırı gönderir (mevcut `Chat`/asistan yolu) | **Değişmez** |
+| `ai-admin` | Yok | **Değişmez** |
+| `city-image` (Unsplash/Pexels, `pick.ts`, `CACHE_VERSION`) | Etkinlik/otel kartları mevcut görsel yolunu (`FallbackImg`, çizim yedeği) kullanır | **Değişmez** |
+| `flight` (AeroDataBox, `shape.ts`, `FlightLive`) | Yeni bilet aynı alanları okur: kalkış/varış saatleri, terminal, kapı, durum, `revised`, `minutes` (rötar, kırmızı saat, kapı değişti bilette korunur) | **Değişmez** |
+| `offers` (Aviasales, Xotelo, SerpApi, Viator, Airalo, Omio; `OfferOut`) | Uçuş seçenek kartı/Skyscanner satırı için gereken alanlar **zaten dönüyor**: `carrier`, `carrierCode` (logo), `depart`, `arrive`, `fromCode`, `toCode`, `durationMinutes`, `stops`, `price`, `why`, `source`, `fetchedAt`. **Kişi başı fiyat:** `price` herkes için toplamdır (`Math.round(f.price * adults)`), kişi başı = `price / Need.adults` istemcide (`Offer`'da `adults` yok, `Need` taşır) → backend değişmez. "+1" gün: istemcideki mevcut `cardView` hesabı. Bagaj: kaynak vermiyor → yazılmaz. Aktarma yeri: yalnız SerpApi bacaklarında var → isteğe bağlı FB | **Değişmez** (isteğe bağlı: FB) |
+| `web-search` (etkinlik tarihleri/olgu) | Yok; "AI'a arat" yerinde arama (S8) kapsam dışı. İleride yapılırsa `offers` + istemci `addOffer` zaten kaydeder (`addedBy:"ai"`); yeni uç gerekmez | **Değişmez** |
+| SQL (`schema.sql` paylaşım, `profiles.sql`, `history.sql`, `ai-gateway.sql`, `offers-cache.sql`, `flight-cache.sql`, `web_search*.sql`, `city_image*.sql`) | Yeni tablo/sütun/RPC yok; taslak yazılmaz, "Yeni" ve hareket anahtarı yerel | **Değişmez**, dağıtım adımı yok |
+Dağıtım: backend değişmediği için `supabase functions deploy` **çalıştırılmaz**; FB yapılırsa yalnız `offers` (`--no-verify-jwt`, mevcut gibi). Test: `tests/offersShape.test.ts`, `flightShape.test.ts`, `shareSafety.test.ts` zaten yeşil kalmalı (backend sözleşmesi bozulmadı kanıtı).
+
 **Riskler.**
-1. Hedef kayması (v45/v46): en çok F5b, F2, F6 → v46 sonrası başlat / `[v44]` işaretleri.
+1. Hedef kayması: v46 onaylı final; yine de yeni sürüm gelirse §1.3 ve `[v46]` işaretleri. Bitişte F10 denetimi.
 2. Rötar/PNR/uyarıların sade tasarımda sessiz kaybı (en riskli kayıp): F2 kabul testi §2.3-4 ve -6'yı tek tek doğrular.
 3. Arka yüz örtme (F4): dar ekran, son satır, odak tuzağı → e2e 390 + klavye.
 4. Aşama sözlüğü (F0) çok dosyaya dokunur, e2e metin kırılması → F0 tek commit + hızlı e2e.
@@ -280,7 +316,7 @@ Vitest node ortamında: `tests/exitMotion.test.ts` — `leavesWithCopy` (sahte `
 
 ## 6. "Bitti" tanımı
 
-1. `npx tsc -p .` temiz. 2. `npx vitest run` yeşil (yeni: stageWords, cardPeek+, ticketStub, backFace, journeyFlow, draft, reducedMotion, exitMotion). 3. e2e **tam** yeşil (komut §5). 4. Yan yana ekran görüntüleri: `node scripts/v30-shots.mjs e2e-output/v46` — `SHOTS_WIDTH=1440` ve `390`, `SHOTS_LANG=en` (script yeni görünümleri kapsayacak şekilde genişletilir: Uçuş/Konaklama/Ulaşım/Etkinlik bölümleri, arka yüzler, Yolculuk, Gün gün, Pano, 5 durumlu anahtar); karşıda mockup ekranları (`git show origin/plan-v30-wip:docs/mockups/plan-v44-akis/index.html` → aynı genişlikte Playwright). 5. **Her mockup ekranı** (bilet 6 durum + boş, otel 4 durum, ulaşım dolu/boş/rezerve, etkinlik şehir satırı + boş şehir, uçuş arka yüz + Pano şeridi, otel arka yüz, Yolculuk tarihli/tarihsiz, anahtar) için bir karşılaştırma satırı: "fark yok / bilinçli sapma (§2)". 6. F9 dokümanları.
+1. `npx tsc -p .` temiz. 2. `npx vitest run` yeşil (yeni: stageWords, cardPeek+, ticketStub, backFace, journeyFlow, draft, reducedMotion, exitMotion). 3. e2e **tam** yeşil (komut §5). 4. Yan yana ekran görüntüleri: `node scripts/v30-shots.mjs e2e-output/v46` — `SHOTS_WIDTH=1440` ve `390`, `SHOTS_LANG=en` (script yeni görünümleri kapsayacak şekilde genişletilir: Uçuş/Konaklama/Ulaşım/Etkinlik bölümleri, arka yüzler, Yolculuk, Gün gün, Pano, 5 durumlu anahtar); karşıda mockup ekranları (`git show origin/plan-v30-wip:docs/mockups/plan-v46-sira/index.html` → aynı genişlikte Playwright; her iki gezi sekmesi: Japonya ve Ozora). 5. **Her mockup ekranı** (bilet 6 durum + boş, otel 4 durum, ulaşım dolu/boş/rezerve, etkinlik şehir satırı + boş şehir, uçuş arka yüz + Pano şeridi, otel arka yüz, Yolculuk tarihli/tarihsiz, anahtar) için bir karşılaştırma satırı: "fark yok / bilinçli sapma (§2)". 6. F9 dokümanları. 7. **F10 bağımsız denetim: izlenebilirlik tablosunda açık satır 0, fark raporunda HATA 0.**
 
 ### 6.1 Emre'ye sorulacak (varsayılanla ilerlenir)
 Ayarlandı rozeti gri mi yeşil mi (§2.2); S1 "Bunu seç" düğmesi; S11 Pano'da taslak yazısı; S8 yerinde arama ayrı iş mi.
@@ -301,14 +337,18 @@ Ayarlandı rozeti gri mi yeşil mi (§2.2); S1 "Bunu seç" düğmesi; S11 Pano'd
 | P8e exitMotion testi | F8e | `tests/exitMotion.test.ts`, e2e Part 5 küçük ek | Evet | — | **ŞİMDİ** |
 | P8d Kalan hareketler (#7, #9, #12, #14, #15, #16) | F8d | `Chat.tsx`, `UndoToast.tsx`, `TripsHome.tsx`, `CardShell.tsx`(FoldLine), `Pano.tsx`(kalp, Neden?), css | Parçalı paralel | P1a (#16 ⓘ) | **ŞİMDİ** |
 | P9a Ölü kod + bayat yorum/spec | F9 | `Mascot.tsx`, `FlightMap.tsx`, css `st-map-*`, `StartChat.tsx` yorum, DESIGN.md, v30 spec, yol haritası | Evet | — | **ŞİMDİ** |
-| P2 Uçuş bileti + seçenek kartları | F2 | `cards/FlightTicket.tsx`, `FlightOption.tsx`, `PlanCard.tsx`(transport), `TransportCard.tsx`, `RideCard.tsx`, `EmptyCard.tsx`(EmptyTravelCard), `FlightLive.tsx`, `cardTicket.ts`, `estRange.ts`, `emptyCards.ts`, Pano uçuş kartı, css `.tk-*`,`.fo-*` | P3, P6 ile paralel; P4 ile sıralı | P0, P1a | v44 ile başlanabilir; v46 farkı yama |
-| P3 Sade otel + Değiştir N | F3 | `MediaCard.tsx`, `CardShell.tsx CardFoot`, `PlanCard.tsx`(MediaCardBody çağrısı), `StayLine.tsx`, `NeedCard.tsx`(stay Arıyoruz) | P2, P6 ile | P0, P1a, P1b | v44 ile başlanabilir |
-| P4 Arka yüz | F4 | `NeedCard.tsx ChoiceSheet`, `cards/BackFace.tsx`, `lib/backFace.ts`, `OfferRow.tsx`, `AskButton.tsx`, `EmptyCard.tsx SearchRow`, css `.ch-*`, e2e `ch-back` | P5a, P6 ile; P2/P3 sonrası | P0, P1c, P2, P3 | **v46 farkından sonra** |
-| P5a Ulaşım kartı | F5a | `RideCard.tsx`, `LegCard.tsx`, `EmptyCard.tsx EmptyLegCard`, `transportFace` | P2/P3/P6 ile paralel | P0, P1a | v44 ile başlanabilir |
-| P5b Yolculuk görünümü | F5b | `plan/StoryView.tsx`, `plan/JourneyCards.tsx`, `storyDates.ts`, `journey.ts`, `TripPanel.tsx`(story kolu), css `.jf-*` | Sıralı | P2, P3, P5a, P6 | **v46'yı bekle** |
-| P6 Etkinlikler şehre göre | F6 | `plan/ActivityBoard.tsx`, `categories.ts`(şehir grup), css `.ev-*`, `actsV30.test.ts` | Tam paralel | P0, P1c | v44 ile başlanabilir |
-| P7 Taslak modeli | F7 | `lib/draft.ts`, `TripPanel.tsx`, `PlanCard.tsx`(draft), `categories.ts stageLine`, `progress.ts`, `Pano.tsx` şerit, testler | Yalnız | P2, P3, P4 | **v46'yı bekle**, en son |
+| P2 Uçuş bileti + seçenek kartları | F2 | `cards/FlightTicket.tsx`, `FlightOption.tsx`, `PlanCard.tsx`(transport), `TransportCard.tsx`, `RideCard.tsx`, `EmptyCard.tsx`(EmptyTravelCard), `FlightLive.tsx`, `cardTicket.ts`, `estRange.ts`, `emptyCards.ts`, Pano uçuş kartı, css `.tk-*`,`.fo-*` | P3, P6 ile paralel; P4 ile sıralı | P0, P1a | başlanabilir |
+| P3 Sade otel + Değiştir N | F3 | `MediaCard.tsx`, `CardShell.tsx CardFoot`, `PlanCard.tsx`(MediaCardBody çağrısı), `StayLine.tsx`, `NeedCard.tsx`(stay Arıyoruz) | P2, P6 ile | P0, P1a, P1b | başlanabilir |
+| P4 Arka yüz | F4 | `NeedCard.tsx ChoiceSheet`, `cards/BackFace.tsx`, `lib/backFace.ts`, `OfferRow.tsx`, `AskButton.tsx`, `EmptyCard.tsx SearchRow`, css `.ch-*`, e2e `ch-back` | P5a, P6 ile; P2/P3 sonrası | P0, P1c, P2, P3 | P2, P3 sonrası |
+| P5a Ulaşım kartı | F5a | `RideCard.tsx`, `LegCard.tsx`, `EmptyCard.tsx EmptyLegCard`, `transportFace` | P2/P3/P6 ile paralel | P0, P1a | başlanabilir |
+| P5b Yolculuk görünümü | F5b | `plan/StoryView.tsx`, `plan/JourneyCards.tsx`, `storyDates.ts`, `journey.ts`, `TripPanel.tsx`(story kolu), css `.jf-*` | Sıralı | P2, P3, P5a, P6 | sıralı |
+| P6 Etkinlikler şehre göre | F6 | `plan/ActivityBoard.tsx`, `categories.ts`(şehir grup), css `.ev-*`, `actsV30.test.ts` | Tam paralel | P0, P1c | başlanabilir |
+| P7 Taslak modeli | F7 | `lib/draft.ts`, `TripPanel.tsx`, `PlanCard.tsx`(draft), `categories.ts stageLine`, `progress.ts`, `Pano.tsx` şerit, testler | Yalnız | P2, P3, P4 | en son |
 | P8c Aşama geçişi (K29) | F8c | `cards/FlightTicket.tsx`, `BookedBadge.tsx`, css | P2 sonrası | P2, P8a | P2 sonrası |
+| PB Aktarma yeri (isteğe bağlı) | FB | `supabase/functions/offers/shape.ts`, `offerSources/index.ts`, `tests/offersShape.test.ts` | Evet | Emre onayı | İsteğe bağlı |
+| P10 Bitiş denetimi | F10 | yalnız `e2e-output/v46/*`, `docs/superpowers/specs/2026-10-13-plan-v46-izlenebilirlik.md` (doğrulama sütunu), `scripts/v30-shots.mjs` genişletme | Hayır (son) | P0–P9b tümü | **Yayın kapısı** |
 | P9b Son temizlik | F9 | eski `pk-stub`, `sy-*`, `ax-*` CSS, kullanılmayan bileşenler, envanter durumları | Yalnız | P2–P7 | Son |
+
+Not: F5b artık v46 kesin tasarımına göre yazılır (mockup beklenmez); F4, F7 de başlanabilir (yalnız bağımlılık sırası).
 
 Çakışma kuralı: `PlanCard.tsx`, `NeedCard.tsx`, `CardShell.tsx`, `static/app.css`, `Pano.tsx`, `TripPanel.tsx` birden çok pakette değişir; her paket kendi bölgesine dokunur, birleştirme sırası P0 → P1 → P3/P2 → P4 → P5/P6 → P7 → P8c → P9b; `app.css` için her paket **kendi bölüm başlığıyla** (`/* -- F2 bilet -- */`) ekler, genel kuralı değiştirmez.
