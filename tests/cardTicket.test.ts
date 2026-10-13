@@ -28,6 +28,12 @@ describe("a chosen flight's stub: per person and in all, from what was saved", (
     expect(ticketPrices(priced(148, "unknown", 2))).toBeNull();
     expect(ticketPrices(priced(0, "total", 2))).toBeNull();
   });
+  it("a record that does not say how many go takes the trip's count, never a fixed two", () => {
+    expect(ticketPrices(priced(300, "total", null), undefined, 3)).toEqual({ each: "€100", total: "€300" });
+    expect(ticketPrices(priced(300, "total", null), undefined, 1)).toEqual({ each: null, total: "€300" });
+    expect(ticketPrices(priced(300, "total", null))).toEqual({ each: null, total: "€300" });
+    expect(ticketPrices(priced(300, "total", 2), undefined, 3)).toEqual({ each: "€150", total: "€300" });
+  });
   it("the compared price (the engine's) wins when it has the person's share", () => {
     expect(ticketPrices(priced(148, "total", 2), { text: "€160", label: null, perNight: null, provisional: false, each: "€80" })).toEqual({ each: "€80", total: "€160" });
   });

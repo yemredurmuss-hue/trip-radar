@@ -5,7 +5,7 @@
 import { brandOf } from "../../lib/brands";
 import { RideCardBody, RouteArc } from "./RideCard";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { cardFacts, durationText } from "../../lib/cardFacts";
+import { cardFacts, durationText, tripPeople } from "../../lib/cardFacts";
 import { cardKind, isTransportKind, type LegEnds, type TransportMode } from "../../lib/cardKinds";
 import { bookedAs, footOf, mediaFace, ringOf, stayPlatform, topDate, transportFace } from "../../lib/cardView";
 import type { Choice, Ranked } from "../../lib/choice";
@@ -252,7 +252,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
     if (face.from) face.from = { ...face.from, sub: `${face.from.sub ?? ""}${term(live.departure.terminal)}`.trim(), late: red && !!live.departure.revised, was: red ? was.departure : null };
     if (face.to) face.to = { ...face.to, sub: `${face.to.sub ?? ""}${term(live.arrival.terminal)}`.trim(), late: red && !!live.arrival.revised, was: red ? was.arrival : null };
   }
-  const stub = kind === "flight" && item.status === "chosen" ? ticketPrices(item, facts.price) : null;
+  const stub = kind === "flight" && item.status === "chosen" ? ticketPrices(item, facts.price, tripPeople(env.decisions?.ctx)) : null;
   const liveFoot = live
     ? red
       ? { note: phaseOf(live) === "before" ? delayShiftNote(live) : null, tone: "bad" as const, source: sourceText(live) }

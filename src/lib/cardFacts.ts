@@ -9,6 +9,7 @@ import { formatDateRange, formatPrice, listingKeyOf, metricsOf, nightsBetween, t
 import { decisionLabel } from "./labels";
 import { rangeOfGroupKey, stayRange } from "./plan";
 import { checkNeeds, type NeedCheck } from "./needs";
+import { whoGoes } from "./tripSettings";
 import { cardLines, prosConsFor, tagOf, type ProCon } from "./proscons";
 import type { CriterionId, Item, Listing, StayKind } from "./types";
 
@@ -132,7 +133,7 @@ const scopeLabel = (scope: Item["price"]["scope"]) => (scope === "unknown" ? nul
  * it. Stays show the total for their own nights and the price per night (what compares fairly when
  * stays cover different nights).
  */
-function priceOf(item: Item, decision: GroupDecision | undefined, currency: string): CardFacts["price"] {
+function priceOf(item: Item, decision: GroupDecision | undefined, currency: string, people: number | null): CardFacts["price"] {
   const option = decision?.options.find((o) => o.item.id === item.id);
   const provisional = Boolean(option?.limited.length);
   const compared = option?.parts.find((p) => p.criterion === "price")?.value;
@@ -167,7 +168,8 @@ function priceOf(item: Item, decision: GroupDecision | undefined, currency: stri
       const n = item.guests.adults;
       label = n === 1 ? SCOPE_LABELS.per_person : L(`${n} kişi toplam`, `${n} people total`);
     }
-    const each = item.category === "flight" && (item.guests.adults ?? 0) > 1 ? formatPrice(compared / item.guests.adults!, currency) : null;
+    const going = item.guests.adults ?? people ?? 0;
+    const each = item.category === "flight" && going > 1 ? formatPrice(compared / going, currency) : null;
     return { text: formatPrice(compared, currency), label, perNight: null, provisional, ...(each ? { each } : {}) };
   }
   if (item.price.amount == null) return null;
@@ -208,6 +210,9 @@ const TAG_TOPICS: Record<string, string> = {
 };
 
 type CardCtx = Pick<DecisionContext, "trip" | "today" | "currency" | "inferred" | "listings"> & { preferences?: string[] };
+
+/** How many go on the trip (the names said and the count said; null: nobody said), for a price when its record doesn't say how many it is for. */
+export const tripPeople = (ctx: Pick<CardCtx, "trip"> | undefined): number | null => whoGoes({ travellers: ctx?.trip?.travellers }).count || null;
 
 /** The traveller's needs checked on an option, against the others it's compared with. */
 export function needsFor(item: Item, decision: GroupDecision | undefined, ctx: CardCtx | undefined, listings: Map<string, Listing> | undefined = ctx?.listings): NeedCheck[] {
@@ -273,7 +278,7 @@ export function cardFacts(
     subtitle: subtitleOf(item),
     price: (() => {
       // Only some of the nights: said with the price, as a fact, not as a minus.
-      const p = priceOf(item, decision, currency);
+      const p = priceOf(item, decision, currency, tripPeople(ctx));
       const c = option?.coverage;
       return p && c ? { ...p, note: L(`${c.of} gecelik konaklamanın yalnız ${c.nights} gecesi`, `only ${c.nights} of the ${c.of} nights`) } : p;
     })(),

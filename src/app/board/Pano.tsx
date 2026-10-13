@@ -6,7 +6,8 @@
 // A section's tab groups the options by need ("Kyoto · 5 gece · 3 seçenek", "Seçildi: X · Plan'da gör →").
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { bookedAs } from "../../lib/cardView";
-import { cardFacts } from "../../lib/cardFacts";
+import { cardFacts, tripPeople } from "../../lib/cardFacts";
+import { ticketPrices } from "../../lib/cardTicket";
 import { cardKind, cardKindColor } from "../../lib/cardKinds";
 import { L } from "../../lib/i18n";
 import { lookWord } from "../../lib/stageWords";
@@ -26,7 +27,8 @@ import {
   panoRows,
   recordsText,
   sortEntries,
-  isAiOption,
+  adderOf,
+  savedByText,
   type PanoCat,
   type PanoEntry,
   type PanoGroup,
@@ -45,7 +47,7 @@ import { BookedBadge } from "../cards/BookedBadge";
 import { illusOf } from "../cards/MediaCard";
 import { voteKeyOf } from "../../lib/share/votes";
 import { KindIcon, UiIcon } from "../cards/Silhouettes";
-import { usePhotoOf, WhoAvatar } from "../cards/WhoseBadge";
+import { SavedFace, usePhotoOf, WhoAvatar } from "../cards/WhoseBadge";
 import { FallbackImg } from "../FallbackImg";
 import { Mascot } from "../Mascot";
 import { useMyName } from "../Profile";
@@ -269,6 +271,7 @@ function LinkForm({ tripId, onDone }: { tripId: string; onDone: () => void }) {
  * marked; "+ Plana koy" at the foot.
  */
 function PanoTable({ entries, decisions }: { entries: PanoEntry[]; decisions: Decisions | null }) {
+  const myName = useMyName();
   const rows = entries.map((e) => ({ e, facts: cardFacts(e.item, decisions?.byGroup.get(e.group), decisions?.ctx) }));
   const bestOf = (vals: (number | null)[], mode: "min" | "max") => {
     const nums = vals.filter((v): v is number => v != null);
@@ -303,7 +306,7 @@ function PanoTable({ entries, decisions }: { entries: PanoEntry[]; decisions: De
             {rows.map(({ e }) => (
               <th key={e.item.id} scope="col">
                 <span className="pn-tn">{e.item.name}</span>
-                <small>{isAiOption(e.item) ? L("AI önerisi", "AI pick") : e.item.addedBy ? L(`${e.item.addedBy} kaydetti`, `${e.item.addedBy} saved it`) : L("Sen kaydettin", "You saved it")}</small>
+                <small>{savedByText(e.item, myName || null)}</small>
               </th>
             ))}
           </tr>
@@ -349,19 +352,17 @@ function PanoTable({ entries, decisions }: { entries: PanoEntry[]; decisions: De
   );
 }
 
-/** The card's picture when the page gave none: the drawing for its kind; a flight its two cities under a dashed arc. */
+/** The card's picture when the page gave none: the drawing for its kind; a flight its two cities with the plane between them (ucus.png). */
 function PanoArt({ item, kind }: { item: Item; kind: ReturnType<typeof cardKind> }) {
   if (kind === "flight" && (item.flight?.from || item.flight?.to)) {
     const end = (s: string | null | undefined) => (s ? cityOfAirport(s) : "");
     return (
-      <span className="pn-arc" aria-hidden>
-        <svg viewBox="0 0 240 90" preserveAspectRatio="none">
-          <path d="M30 70 Q120 -10 210 70" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="6 7" strokeLinecap="round" />
-          <circle cx="30" cy="70" r="5" fill="currentColor" />
-          <circle cx="210" cy="70" r="6" fill="#fff" stroke="currentColor" strokeWidth="2.5" />
-        </svg>
-        <b className="a">{end(item.flight?.from)}</b>
-        <b className="b">{end(item.flight?.to)}</b>
+      <span className="pn-illus pn-fl" aria-hidden>
+        <span>
+          <b>{end(item.flight?.from)}</b>
+          <img src="illus/ucus.png" alt="" />
+          <b>{end(item.flight?.to)}</b>
+        </span>
       </span>
     );
   }
@@ -405,6 +406,9 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
   const kind = cardKind(item);
   const decision = decisions?.byGroup.get(entry.group);
   const facts = cardFacts(item, decision, decisions?.ctx);
+  const people = tripPeople(decisions?.ctx);
+  const going = item.guests.adults ?? people;
+  const fare = kind === "flight" ? ticketPrices(item, facts.price, people) : null;
   const share = useShare();
   const likers = likersOf(item);
   const liked = likers.some((n) => sameName(n, me) || (share?.me ? sameName(n, share.me) : false));
@@ -420,7 +424,6 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
   const prices = siblings.map((s) => s.item.price.amount).filter((p): p is number => p != null && p > 0);
   const cheapest = !best && siblings.length > 1 && item.price.amount != null && item.price.amount === Math.min(...prices);
   const meta = [item.provider, item.location.area ?? item.city, item.rating.value != null ? String(item.rating.value).replace(".", ",") : null].filter(Boolean).join(" · ");
-  const who = isAiOption(item) ? "ai" : item.addedBy;
   const [why, setWhy] = useState(false);
   return (
     <article className={`pn-card${entry.inPlan ? ` in-${entry.inPlan}` : ""}`} id={`pn-${item.id}`} aria-label={item.name} style={{ "--c": cardKindColor(kind) } as React.CSSProperties}>
@@ -465,7 +468,14 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
       </div>
       <div className="pn-act">
         <span className="pn-price">
-          {facts.price ? (
+          {fare?.each ? (
+            // A flight for several: what one pays, large; how many go and the whole sum, small (from the record's count or the trip's, never a fixed two).
+            <>
+              <b>{fare.each}</b>
+              <span className="pn-pl">{L("kişi başı", "per person")}</span>
+              <span className="pn-pl">{L(`${going} kişi · ${fare.total}`, `${going} people · ${fare.total}`)}</span>
+            </>
+          ) : facts.price ? (
             <>
               <b>{facts.price.text}</b>
               {facts.price.label ? <span className="pn-pl">{facts.price.label}</span> : null}
@@ -483,14 +493,10 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
         )}
       </div>
       <div className="pn-ft">
-        {who === "ai" ? (
-          <span className="pn-who ai">✨ {L("AI önerisi", "AI pick")}</span>
-        ) : (
-          <span className="pn-who">
-            <WhoAvatar name={who ?? (myName || L("Ben", "Me"))} photo={photoOf(who ?? me)} />
-            {who ? L(`${who} kaydetti`, `${who} saved it`) : L("Sen kaydettin", "You saved it")}
-          </span>
-        )}
+        <span className={`pn-who${adderOf(item) === "ai" ? " ai" : ""}`}>
+          <SavedFace item={item} />
+          {savedByText(item, myName || null)}
+        </span>
         {likers.length > 0 && (
           <span className="pn-likes" title={L(`${likers.map((n) => (n === "me" ? "Sen" : n)).join(", ")} beğendi`, `Liked by ${likers.join(", ")}`)}>
             <UiIcon name="heart" size={12} />

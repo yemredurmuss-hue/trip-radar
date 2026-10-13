@@ -12,13 +12,14 @@ import type { Item } from "./types";
  * A ticket's stub for a flight chosen and not bought ("€74 kişi başı · €148 toplam"). Per person and total are read from
  * what was saved: a price said per person, or a total with the number of passengers. A price whose scope is unknown
  * says neither (null: the strip's own price stays); one passenger has a single figure. `facts` (the compared price in
- * the trip's currency) wins when the engine has one.
+ * the trip's currency) wins when the engine has one. How many go is the record's own count, else `people` (the trip's, see
+ * cardFacts.tripPeople); never a fixed two.
  */
-export function ticketPrices(item: Item, facts?: CardFacts["price"]): { each: string | null; total: string } | null {
+export function ticketPrices(item: Item, facts?: CardFacts["price"], people?: number | null): { each: string | null; total: string } | null {
   if (facts?.each) return { each: facts.each, total: facts.text };
   const { amount, currency, scope } = item.price;
   if (amount == null || amount <= 0) return null;
-  const adults = item.guests.adults ?? 0;
+  const adults = item.guests.adults ?? people ?? 0;
   if (scope === "per_person") {
     if (adults > 1) return { each: formatPrice(amount, currency), total: formatPrice(amount * adults, currency) };
     return { each: formatPrice(amount, currency), total: formatPrice(amount, currency) };

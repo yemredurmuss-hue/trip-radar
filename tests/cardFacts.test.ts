@@ -3,7 +3,7 @@
 import "fake-indexeddb/auto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { loadDecisions } from "../src/lib/analysis";
-import { cardDetails, cardFacts, hostOf } from "../src/lib/cardFacts";
+import { cardDetails, cardFacts, hostOf, tripPeople } from "../src/lib/cardFacts";
 import { db, listItems } from "../src/lib/db";
 import { loadDemoTrip } from "../src/lib/demo";
 import { choiceOf, tradeText } from "../src/lib/choice";
@@ -118,5 +118,16 @@ describe("a trip's operator in the details", () => {
     expect(cardDetails(f, undefined, undefined).facts.find((x) => x.label === "İşletme")?.value).toBe("Pegasus · PC 1201");
     const bus = makeItem({ provider: "FlixBus", flight: { from: "Lizbon", to: "Lagos", departure: null, arrival: null, carrier: null, flightNumber: null, stops: null } });
     expect(cardDetails(bus, undefined, undefined).facts.find((x) => x.label === "İşletme")?.value).toBe("FlixBus");
+  });
+});
+
+describe("how many go, when a record does not say", () => {
+  const trip = (travellers?: { names: string[]; count?: number | null }) => ({ trip: { travellers } }) as unknown as Parameters<typeof tripPeople>[0];
+  it("is the names said or the count said (never fewer than the names); nobody said: unknown", () => {
+    expect(tripPeople(trip({ names: ["Emre", "Sabine"] }))).toBe(2);
+    expect(tripPeople(trip({ names: ["Emre"], count: 4 }))).toBe(4);
+    expect(tripPeople(trip({ names: [] }))).toBeNull();
+    expect(tripPeople(trip())).toBeNull();
+    expect(tripPeople(undefined)).toBeNull();
   });
 });
