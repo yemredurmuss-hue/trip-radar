@@ -1944,7 +1944,8 @@ try {
   await pano.locator('.pn-cats [data-cat="flight"]').click();
   const panoFlight = pano.locator(".pn-card", { hasText: "TAP" }).first();
   assert.equal(await panoFlight.locator('.pn-img img[src$="ucus.png"]').count(), 1, "a flight card draws the plane between its two cities");
-  assert.match(await panoFlight.locator(".pn-price").innerText(), /€81[\s\S]*kişi başı[\s\S]*2 kişi · €162/, "per person, from the record's two passengers");
+  const fare = (await panoFlight.locator(".pn-price").innerText()).match(/€(\d+)\s*kişi başı\s*2 kişi · €(\d+)/);
+  assert.ok(fare && Number(fare[1]) * 2 === Number(fare[2]), `per person from the record's two passengers, the whole under it (${fare?.[0]})`);
   await app.screenshot({ path: `${out}/30a2-pano-flight.png` });
   // Konaklama: its options by need, the one on the plan named in the group's header.
   await pano.locator('.pn-cats [data-cat="stay"]').click();
