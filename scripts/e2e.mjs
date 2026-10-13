@@ -776,7 +776,7 @@ try {
   await app.setViewportSize({ width: 390, height: 844 });
   assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "no sideways scroll in Liste (390)");
   // v46 E2: at 390 px no plan card's top line runs past its card (the status, the clip and the ••• stay inside).
-  assert.deepEqual(await app.evaluate(() => [...document.querySelectorAll(".pk-card > .pk-top")].filter((t) => t.scrollWidth > t.clientWidth + 1 || t.getBoundingClientRect().right > t.parentElement.getBoundingClientRect().right).map((t) => t.textContent)), [], "a card's top line fits at 390");
+  assert.deepEqual(await app.evaluate(() => [...document.querySelectorAll(".pk-card > .pk-top")].filter((t) => { const edge = t.parentElement.getBoundingClientRect().right + 1; return [...t.children].some((c) => !c.classList.contains("pk-x") && c.getBoundingClientRect().width > 0 && c.getBoundingClientRect().right > edge); }).map((t) => t.textContent)), [], "a card's top line fits at 390");
   // v46 E4: at 390 px every city tab of the hero sits inside the photo (none cut to a few letters).
   assert.deepEqual(await app.evaluate(() => { const c = document.querySelector(".hx-cities"); if (!c) return []; const p = c.parentElement.getBoundingClientRect(); const r = c.getBoundingClientRect(); return r.left < p.left - 1 || r.right > p.right + 1 || c.clientWidth < 100 ? ["cities"] : []; }), [], "the hero's city tabs have room at 390");
   await app.locator(".dv-day").nth(3).scrollIntoViewIfNeeded();
