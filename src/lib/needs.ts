@@ -8,6 +8,7 @@ import {
   cancellationType,
   CRITERION_LABELS,
   findingWeight,
+  inferredKey,
   levelFor,
   levelSource,
   locationBasis,
@@ -27,6 +28,17 @@ import type { Category, CriterionId, Finding, Item, Listing } from "./types";
 
 export type NeedState = "yes" | "no" | "unknown";
 
+/**
+ * Whose word a need is: what the traveller said or did that made the card check it (for the card's "neden" line, cardWhy.ts).
+ * A must they set, an amenity they ticked, a note they wrote (its words), a level they gave a criterion, or a guess they confirmed.
+ */
+export type NeedSource =
+  | { kind: "requirement" }
+  | { kind: "amenity" }
+  | { kind: "note"; text: string }
+  | { kind: "level"; criterion: CriterionId; level: number }
+  | { kind: "inferred"; evidence: string };
+
 export interface NeedCheck {
   /** "a:mutfak", "c:cancellation", "t:noise". */
   key: string;
@@ -37,6 +49,8 @@ export interface NeedCheck {
   text: string;
   /** The pros/cons lines it stands for (they aren't repeated under it on the card). */
   covers: string[];
+  /** What made the card check it. */
+  source?: NeedSource;
 }
 
 type Ctx = Pick<DecisionContext, "trip" | "today" | "currency" | "inferred" | "listings"> & { preferences?: string[] };
@@ -70,6 +84,15 @@ const CRITERION_NEEDS: Readonly<Partial<Record<CriterionId, string>>> = liveLabe
 
 const important = (ctx: Ctx, category: Category, c: CriterionId) =>
   levelSource(ctx.trip, category, c, ctx.inferred) !== "default" && levelFor(ctx.trip, category, c, ctx.inferred) >= 3;
+
+/** The note the traveller wrote that asks for a topic ("sessiz bir yer istiyoruz" for noise), as they wrote it. */
+const noteFor = (ctx: Ctx, topic: string): string | undefined => (ctx.preferences ?? []).find((text) => saidTopics([text]).has(topic))?.trim();
+
+/** Who made a criterion important: a level they set, or a guess from their choices that they confirmed. */
+function levelSourceOf(ctx: Ctx, category: Category, c: CriterionId): NeedSource {
+  if (levelSource(ctx.trip, category, c, ctx.inferred) === "inferred") return { kind: "inferred", evidence: ctx.inferred.get(inferredKey(category, c))?.evidence ?? "" };
+  return { kind: "level", criterion: c, level: levelFor(ctx.trip, category, c, ctx.inferred) };
+}
 
 /** Short: "Gezeceğin yerlere 6 dk", "Merkeze 1,2 km", "Konum puanı 9,2/10" (or "Centre 1.2 km", "6 min to your places"). */
 export function locationText(display: string | null | undefined): string | null {
@@ -184,14 +207,15 @@ export function checkNeeds(item: Item, option: OptionResult | undefined, peers: 
   const category = item.category;
   const out: NeedCheck[] = [];
   const seen = new Set<string>();
-  const push = (key: string, label: string, check: Omit<NeedCheck, "key" | "label"> | null) => {
+  const push = (key: string, label: string, check: Omit<NeedCheck, "key" | "label"> | null, source?: NeedSource) => {
     if (!check || seen.has(key)) return;
     seen.add(key);
-    out.push({ key, label, ...check });
+    out.push({ key, label, ...check, ...(source ? { source } : {}) });
   };
   const said = saidTopics(ctx.preferences ?? []);
   const page = listing ?? ctx.listings.get(listingKeyOf(item));
 
+  const required = new Set((ctx.trip.requirements ?? []).flatMap((r) => (r.kind === "amenity" ? [r.amenity] : [])));
   if (category === "stay") {
     for (const a of wantedAmenities(ctx.trip)) {
       const state = amenityState(item, a, ctx as DecisionContext);
@@ -202,24 +226,28 @@ export function checkNeeds(item: Item, option: OptionResult | undefined, peers: 
           : state === "no"
             ? L(`${capital(name)} yok`, `No ${name}`)
             : L(`${capital(name)} yazmıyor`, `${capital(name)} not stated`);
-      push(`a:${a}`, capital(name), { state, text, covers: ["c:amenities"] });
+      push(`a:${a}`, capital(name), { state, text, covers: ["c:amenities"] }, { kind: required.has(a) ? "requirement" : "amenity" });
     }
   }
   for (const r of ctx.trip.requirements ?? []) {
-    if (r.kind === "free_cancellation" && category !== "esim") push("c:cancellation", CRITERION_NEEDS.cancellation!, criterionCheck("cancellation", item, option, peers, ctx));
-    if (r.kind === "direct_flight" && category === "flight") push("c:stops", CRITERION_NEEDS.stops!, criterionCheck("stops", item, option, peers, ctx));
+    const must: NeedSource = { kind: "requirement" };
+    if (r.kind === "free_cancellation" && category !== "esim") push("c:cancellation", CRITERION_NEEDS.cancellation!, criterionCheck("cancellation", item, option, peers, ctx), must);
+    if (r.kind === "direct_flight" && category === "flight") push("c:stops", CRITERION_NEEDS.stops!, criterionCheck("stops", item, option, peers, ctx), must);
     if (r.kind === "max_walk" && category === "stay")
-      push("c:location", L(`En fazla ${r.minutes} dk`, `At most ${r.minutes} min`), criterionCheck("location", item, option, peers, ctx, r.minutes));
+      push("c:location", L(`En fazla ${r.minutes} dk`, `At most ${r.minutes} min`), criterionCheck("location", item, option, peers, ctx, r.minutes), must);
   }
   if (category === "stay") {
     for (const [topic, label] of Object.entries(TOPIC_NEEDS) as [Finding["topic"], string][]) {
-      if (said.has(topic)) push(`t:${topic}`, label, topicCheck(topic, label, page, ctx));
+      const note = said.has(topic) ? noteFor(ctx, topic) : undefined;
+      if (said.has(topic)) push(`t:${topic}`, label, topicCheck(topic, label, page, ctx), note ? { kind: "note", text: note } : undefined);
     }
-    if (said.has("location")) push("c:location", CRITERION_NEEDS.location!, criterionCheck("location", item, option, peers, ctx));
-    if (said.has("cancellation")) push("c:cancellation", CRITERION_NEEDS.cancellation!, criterionCheck("cancellation", item, option, peers, ctx));
+    for (const topic of ["location", "cancellation"] as const) {
+      const note = said.has(topic) ? noteFor(ctx, topic) : undefined;
+      if (said.has(topic)) push(`c:${topic}`, CRITERION_NEEDS[topic]!, criterionCheck(topic, item, option, peers, ctx), note ? { kind: "note", text: note } : undefined);
+    }
   }
   for (const [c, label] of Object.entries(CRITERION_NEEDS) as [CriterionId, string][]) {
-    if (important(ctx, category, c)) push(`c:${c}`, label, criterionCheck(c, item, option, peers, ctx));
+    if (important(ctx, category, c)) push(`c:${c}`, label, criterionCheck(c, item, option, peers, ctx), levelSourceOf(ctx, category, c));
   }
   return out;
 }

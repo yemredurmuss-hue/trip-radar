@@ -769,6 +769,15 @@ try {
   assert.equal(await portoDraft.locator(".pk-aldim:not(.pk-pick)").count(), 0, "no ✓ Aldım: nothing is chosen yet");
   assert.match(await portoDraft.locator(".pk-price").innerText(), /€\d+\s*\/ gece/, "its real price per night");
   assert.equal(await portoDraft.locator(".pk-alt").innerText().then((t) => t.replace(/\s+/g, " ")), "Değiştir 2");
+  // K6 "neden": one line in their own word (the quiet they asked for), above the strip; it stays inside the card at 390 px.
+  assert.equal(await portoDraft.locator(".pk-why").innerText(), "Sessiz · “Sessiz bir yer istiyoruz” dediğin için");
+  assert.equal(await portoDraft.locator(".pk-why").count(), 1, "one line, not a list");
+  await app.setViewportSize({ width: 390, height: 844 });
+  const whyBox = await portoDraft.locator(".pk-why").boundingBox();
+  const cardBox = await portoDraft.boundingBox();
+  assert.ok(whyBox && cardBox && whyBox.x >= cardBox.x - 1 && whyBox.x + whyBox.width <= cardBox.x + cardBox.width + 1, "the neden line stays inside its card at 390 px");
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with the neden line at 390 px");
+  await app.setViewportSize({ width: 1440, height: 900 });
   await portoDraft.scrollIntoViewIfNeeded();
   await portoDraft.screenshot({ path: `${out}/40a-draft-stay.png` });
   await portoDraft.locator(".pk-alt").click();
