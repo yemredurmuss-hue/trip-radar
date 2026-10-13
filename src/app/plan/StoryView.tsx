@@ -1,116 +1,95 @@
-// "Yolculuk sırasıyla" (plan v30): the trip in the order it's lived, the dates down the left (month, day, weekday, "Gün N"),
-// a dashed line with a node for each stop, the Plan's own cards on the right: each city with its stays and what's
-// planned there ("Burada"), the way between them as the same cards. The data is the timeline's board (the plan's
-// front), so nothing here is a second source: it only lays the same blocks out by date.
-import type { ReactNode } from "react";
+// "Yolculuk sırasıyla" (plan v46, F5b): the trip as ONE column, card after card in the order it is lived. A dark "Yola çıkış"
+// capsule, then (a dotted link between every two) the flight, the way on, a thin heading for the city, its stay, each of its
+// events as its own card, the to-dos and restaurants in one box, the next way ... and the green "Eve dönüş". Flights and rides are
+// the Plan's own cards (PlanEntry), here at a compact width; the stay, the events and the to-dos are small cards that take
+// the reader to the real card (JourneyCards). The data is the timeline's board (lib/journey.ts journeyFlow): nothing here
+// is a second source, it only lays the same blocks out in order.
+import { Fragment, type ReactNode } from "react";
+import { journeyFlow, type FlowNode } from "../../lib/journey";
 import { L } from "../../lib/i18n";
-import { dateBox, spanText } from "../../lib/storyDates";
-import type { Timeline, TimelineEntry, TimelineSection } from "../../lib/timeline";
+import { nNights } from "../../lib/i18nText";
+import { reasonItemOf } from "../../lib/reason";
+import { rangeText, spanText } from "../../lib/storyDates";
+import type { Timeline } from "../../lib/timeline";
 import type { Item } from "../../lib/types";
-import { bookedAs } from "../../lib/cardView";
-import { BookedBadge } from "../cards/BookedBadge";
+import { useCardEnv } from "../cards/PlanCard";
 import { KindIcon, UiIcon } from "../cards/Silhouettes";
 import type { LegCardFor, RenderGroup, SettledFor } from "../Timeline";
+import { JourneyEvent, JourneyStay, JourneyTodo, type GoTarget } from "./JourneyCards";
 import { PlanEntry } from "./PlanEntry";
 
 type Cards = { legCard: LegCardFor; renderGroup: RenderGroup; settled: SettledFor };
 
-const dayOf = (s: TimelineSection): string | null => (s.kind === "travel" ? s.entry.date : s.kind === "journey" ? s.journey.date : (s.range?.start ?? null));
-
-/** The things planned in a city that aren't a stay or a way there: plans and bookings on its days. */
-function hereItems(entries: TimelineEntry[]): Item[] {
-  const out: Item[] = [];
-  for (const e of entries) {
-    if (e.kind === "plan") out.push(...e.items);
-    else if (e.kind === "event") out.push(e.item);
-    else if (e.kind === "day") out.push(...e.items);
-  }
-  return out.filter((i) => i.status === "chosen" || i.status === "booked");
-}
-
-export function StoryView({ timeline, tripStart, cards }: { timeline: Timeline; tripStart: string | null; cards: Cards }) {
-  const rows: ReactNode[] = [];
-  let last = "";
-  const dateCell = (iso: string | null) => {
-    const b = dateBox(iso, tripStart);
-    if (!b) return <span className="sy-nodate" />;
-    if (b.iso === last) return <span className="sy-same" title={L("aynı gün", "same day")} />;
-    last = b.iso;
-    return (
-      <span className="sy-date" data-pit-sy="">
-        <span>{b.month}</span>
-        <b>{b.day}</b>
-        <small>{b.weekday}</small>
-        {b.dayNo != null && <i>{L(`Gün ${b.dayNo}`, `Day ${b.dayNo}`)}</i>}
-      </span>
-    );
-  };
-  const row = (key: string, iso: string | null, icon: ReactNode, body: ReactNode, cls: string) => (
-    <div key={key} className={`sy-row ${cls}`}>
-      <div className="sy-d">{dateCell(iso)}</div>
-      <div className="sy-r">
-        <span className="sy-node" aria-hidden>
-          {icon}
-        </span>
-      </div>
-      <div className="sy-c">{body}</div>
-    </div>
-  );
-  const entry = (e: TimelineEntry) => <PlanEntry key={e.key} entry={e} legCard={cards.legCard} renderGroup={cards.renderGroup} settled={cards.settled} plain />;
-  for (const s of timeline.board) {
-    if (s.kind === "travel") {
-      rows.push(row(s.key, s.entry.date, <KindIcon kind={s.entry.role === "move" ? "transport" : "flight"} size={18} />, entry(s.entry), "sy-leg"));
-    } else if (s.kind === "journey") {
-      rows.push(row(s.key, s.journey.date, <KindIcon kind={s.journey.role === "move" ? "transport" : "flight"} size={18} />, <>{s.entries.map(entry)}</>, "sy-leg"));
-    } else {
-      const here = hereItems(s.entries);
-      const start = s.range?.start ?? null;
-      rows.push(
-        row(
-          s.key || `city:${s.index}`,
-          start,
-          <KindIcon kind="stay" size={18} />,
-          <div className="sy-city">
-            <div className="sy-ch">
-              <b>{s.city ?? L("Konaklama", "Stay")}</b>
-              <span>
-                {s.nights > 0 ? `${L(`${s.nights} gece`, `${s.nights} night${s.nights === 1 ? "" : "s"}`)} · ` : ""}
-                {spanText(s.range?.start, s.range?.end, tripStart)}
-              </span>
-            </div>
-            <div className="sy-cb">
-              <div className="sy-stays">{s.stays.map(entry)}</div>
-              <div className="sy-here">
-                <span className="sy-lbl">{L("Burada", "Here")}</span>
-                {here.length === 0 && <span className="sy-none">{L("Henüz bir şey yok", "Nothing yet")}</span>}
-                {here.map((i) => (
-                  <span key={i.id} className={`sy-ev${i.status === "booked" ? " rez" : ""}`} title={i.name}>
-                    <KindIcon kind={i.category === "food" ? "food" : "activity"} size={15} />
-                    <b>{i.name}</b>
-                    {i.status === "booked" && <BookedBadge as={bookedAs(i)} small />}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>,
-          "sy-stop",
-        ),
-      );
+export function StoryView({ timeline, tripStart, cards, items, onGo }: { timeline: Timeline; tripStart: string | null; items: Item[]; cards: Cards; onGo: (target: GoTarget) => void }) {
+  const env = useCardEnv();
+  const nodes = journeyFlow(timeline, items);
+  if (!nodes.length) return null;
+  // The activity the trip is for (a festival's ticket) says so on its card.
+  const reasonId = reasonItemOf(env.trip, nodes.flatMap((n) => (n.kind === "event" ? [n.item] : [])))?.id ?? null;
+  const draw = (n: FlowNode): ReactNode => {
+    switch (n.kind) {
+      case "start":
+        return (
+          <div className="jf-end start">
+            <KindIcon kind="flight" size={16} />
+            {n.city ? L(`Yola çıkış · ${n.city}`, `Setting off · ${n.city}`) : L("Yola çıkış", "Setting off")}
+          </div>
+        );
+      case "entry":
+        return (
+          <div className="jf-w jf-plan">
+            <PlanEntry entry={n.entry} legCard={cards.legCard} renderGroup={cards.renderGroup} settled={cards.settled} plain />
+          </div>
+        );
+      case "city": {
+        const dates = rangeText(n.range?.start, n.range?.end);
+        return (
+          <div className="jf-city" title={spanText(n.range?.start, n.range?.end, tripStart) || undefined}>
+            <i />
+            <span className="jf-cb">
+              <UiIcon name="pin" size={15} />
+              <b>{n.city ?? L("Konaklama", "Stay")}</b>
+              {(dates || n.nights > 0) && <span className="num">{[dates, n.nights > 0 ? nNights(n.nights) : null].filter(Boolean).join(" · ")}</span>}
+            </span>
+            <i />
+          </div>
+        );
+      }
+      case "stay":
+        return (
+          <div className="jf-w">
+            <JourneyStay stay={n.stay} onGo={onGo} />
+          </div>
+        );
+      case "event":
+        return (
+          <div className="jf-w">
+            <JourneyEvent item={n.item} date={n.date} reason={n.item.id === reasonId} onGo={onGo} />
+          </div>
+        );
+      case "todo":
+        return (
+          <div className="jf-w">
+            <JourneyTodo items={n.items} onGo={onGo} />
+          </div>
+        );
+      case "end":
+        return (
+          <div className="jf-end">
+            <UiIcon name="check" size={16} />
+            {n.city ? L(`Eve dönüş · ${n.city}`, `Back home · ${n.city}`) : L("Eve dönüş", "Back home")}
+          </div>
+        );
     }
-  }
-  // The way home ends the line (the drawing's "✓ Eve dönüş · İstanbul"): the day the last flight lands, where home is.
-  const lastSec = timeline.board[timeline.board.length - 1];
-  const home = lastSec?.kind === "journey" && lastSec.journey.role === "departure" ? lastSec.journey : lastSec?.kind === "travel" && lastSec.entry.role === "departure" ? lastSec.entry : null;
-  if (home) {
-    const homeCity = "to" in home ? home.to : null;
-    const homeDay = "date" in home ? home.date : null;
-    const label = homeCity ? L(`Eve dönüş · ${homeCity}`, `Back home · ${homeCity}`) : L("Eve dönüş", "Back home");
-    rows.push(row("home-end", homeDay, <UiIcon name="check" size={18} />, <span className="sy-end">{label}</span>, "sy-endrow"));
-  }
-  if (!rows.length) return null;
+  };
   return (
-    <div className="sy section trip-plan" data-pit-children="">
-      {rows}
+    <div className="jf section trip-plan" data-pit-children="">
+      {nodes.map((n, i) => (
+        <Fragment key={n.key}>
+          {i > 0 && <div className="jf-link" aria-hidden />}
+          {draw(n)}
+        </Fragment>
+      ))}
     </div>
   );
 }

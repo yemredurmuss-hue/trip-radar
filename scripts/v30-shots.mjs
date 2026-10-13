@@ -112,7 +112,7 @@ await app.getByRole("tab", { name: EN ? "In trip order" : "Yolculuk sırasıyla"
 await app.waitForTimeout(800);
 await app.setViewportSize({ width: WIDTH, height: 4200 });
 await app.waitForTimeout(500);
-await app.locator(".sy").screenshot({ path: `${out}/03-story.png` }).catch(() => app.screenshot({ path: `${out}/03-story.png` }));
+await app.locator(".jf").screenshot({ path: `${out}/03-story.png` }).catch(() => app.screenshot({ path: `${out}/03-story.png` }));
 await app.setViewportSize({ width: WIDTH, height: 1000 });
 await app.getByRole("tab", { name: EN ? "Day by day" : "Gün gün", exact: true }).click();
 await app.waitForTimeout(800);

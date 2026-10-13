@@ -4300,36 +4300,89 @@ a.ch-why { text-decoration: none; }
   .sbar-slot { top: 0; margin: 0 -16px; }
 }
 
-/* "Yolculuk sırasıyla": the dates at the left, a dashed line with a node per stop, the Plan's cards on the right. */
-.sy { display: grid; }
-.sy-row { display: grid; grid-template-columns: 64px 48px minmax(0, 1fr); column-gap: 8px; }
-.sy-d { padding-top: 10px; display: flex; justify-content: flex-end; align-items: flex-start; }
-.sy-r { position: relative; display: flex; justify-content: center; }
-.sy-r::before { content: ""; position: absolute; left: calc(50% - 1px); top: 0; bottom: 0; border-left: 2px dashed var(--v-dash); }
-.sy-row:first-child .sy-r::before { top: 34px; }
-.sy-row:last-child .sy-r::before { bottom: auto; height: 34px; }
-.sy-node { position: relative; z-index: 1; margin-top: 12px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 2px dashed var(--v-dash); color: var(--v-muted); }
-.sy-c { padding: 6px 0 18px; min-width: 0; }
-.sy-leg .sy-c { max-width: 760px; }
-.sy-date { display: grid; justify-items: center; line-height: 1.12; width: 56px; padding: 6px 2px 7px; border-radius: 12px; background: #fff; box-shadow: var(--v30-shadow); }
-.sy-date span { font-size: 10.5px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--v-accent-ink); }
-.sy-date b { font-size: 21px; font-weight: 800; letter-spacing: -.02em; color: var(--v-ink); }
-.sy-date small { font-size: 11.5px; color: var(--v-muted); }
-.sy-date i { font-style: normal; font-size: 10.5px; font-weight: 700; color: var(--v-muted); margin-top: 3px; padding-top: 3px; border-top: 1px solid var(--v-line2); width: 78%; text-align: center; }
-.sy-same { display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--v-dash); margin: 16px 25px 0 0; }
-.sy-city { border-radius: 20px; background: color-mix(in srgb, #2a8a72 5%, #fff); border: 1px solid color-mix(in srgb, #2a8a72 18%, transparent); padding: 14px; display: grid; gap: 12px; }
-.sy-ch { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
-.sy-ch b { font-size: 24px; letter-spacing: -.02em; color: var(--v-ink); }
-.sy-ch span { color: var(--v-muted); font-size: 13.5px; }
-.sy-cb { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px; align-items: start; }
-.sy-here { display: grid; gap: 6px; align-content: start; }
-.sy-lbl { font-size: 11.5px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--v-muted); }
-.sy-none { font-size: 13px; color: var(--v-muted); }
-.sy-ev { display: flex; gap: 8px; align-items: center; padding: 6px 9px; border-radius: 12px; background: #fff; border: 1.5px solid var(--plan-line); font-size: 13.5px; min-width: 0; }
-.sy-ev.rez { border: 1px solid var(--v-book-line); background: var(--v-book-bg); }
-.sy-ev b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.sy-ev small { margin-left: auto; color: var(--v-book-ink); font-weight: 650; white-space: nowrap; }
-@media (max-width: 760px) { .sy-row { grid-template-columns: 52px 36px minmax(0, 1fr); } .sy-date { width: 46px; } .sy-cb { grid-template-columns: 1fr; } .sy-node { width: 30px; height: 30px; } }
+/* -- F5b yolculuk -- (plan v46, F5b): "Yolculuk sırasıyla" is one column, card after card: the dark "Yola çıkış" capsule, a dotted link
+   between every two, the flight and the way on (the Plan's own cards at a compact width: the ride's foot keeps its price and says
+   nothing to press), a thin city heading, the stay, each event as a card, the to-dos and restaurants in one box, the green "Eve dönüş".
+   A small card is a window to the real card (it has no hover lift beyond a shadow). No capital letters, no animation. */
+.jf { display: grid; justify-items: center; padding: 6px 0 14px; }
+.jf > * { min-width: 0; }
+.jf-w { width: min(100%, 520px); }
+.jf-link { width: 0; height: 26px; border-left: 3px dotted color-mix(in srgb, var(--hx-accent, #5b45e0) 45%, var(--v-dash)); }
+.jf-end { display: inline-flex; align-items: center; gap: 7px; padding: 7px 16px 7px 10px; border-radius: 999px; background: var(--okb); color: #fff; font-size: 13.5px; font-weight: 700; }
+.jf-end svg { width: 16px; height: 16px; flex: none; }
+.jf-end.start { background: #1c1a33; }
+:root[data-theme="dark"] .jf-end.start { background: #3a3452; }
+.jf-city { width: min(100%, 640px); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; }
+.jf-city > i { height: 0; border-top: 1px solid var(--v-line2); }
+.jf-cb { display: inline-flex; align-items: baseline; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 100%; padding: 8px 16px; border-radius: 14px; background: color-mix(in srgb, #2a8a72 9%, #fff); border: 1px solid color-mix(in srgb, #2a8a72 22%, transparent); }
+.jf-cb svg { width: 15px; height: 15px; color: #2a8a72; align-self: center; flex: none; }
+.jf-cb b { font-size: 18px; font-weight: 800; letter-spacing: -.015em; overflow-wrap: anywhere; }
+.jf-cb span { font-size: 13px; font-weight: 650; color: var(--v-muted); }
+:root[data-theme="dark"] .jf-cb { background: color-mix(in srgb, #2a8a72 18%, #1d1830); }
+/* the plan's own cards, compact: a ride's foot keeps its state and price, the buttons are on the Plan */
+.jf-plan .pk-card.pk-rd-card .pk-foot > .pk-alt, .jf-plan .pk-card.pk-rd-card .pk-foot > .pk-go { display: none; }
+/* the small cards: stay and event, one row each */
+.jf-h { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; min-height: 92px; padding: 8px 14px 8px 8px; border-radius: 18px; background: #fff; border: 1.5px solid var(--line); cursor: pointer; transition: box-shadow .15s, border-color .15s; }
+.jf-h:hover { box-shadow: var(--v30-shadow); }
+.jf-h:focus-visible, .jc-pl:focus-visible { outline: 2px solid var(--hx-accent, #5b45e0); outline-offset: 2px; }
+.jf-h.s-search { border-style: dashed; border-color: var(--v-dash); }
+.jf-h.s-chosen, .jf-h.s-draft { border-color: var(--plan-line); }
+.jf-h.s-booked { background: var(--book-bg); border: 2px solid var(--book-line); }
+.jf-h.s-arranged { border-color: var(--okb-set); }
+:root[data-theme="dark"] .jf-h, :root[data-theme="dark"] .jf-todo { background: #1d1830; }
+:root[data-theme="dark"] .jf-h.s-booked { background: var(--book-bg); }
+.jf-img { width: 96px; height: 74px; border-radius: 12px; display: grid; place-items: center; overflow: hidden; background: color-mix(in srgb, #2a8a72 10%, var(--v-tile)); color: var(--v-muted); }
+.jf-img.ev { background: color-mix(in srgb, #c25a1c 9%, var(--v-tile)); }
+.jf-photo { width: 100%; height: 100%; object-fit: cover; }
+.jf-art { width: 86%; height: 86%; object-fit: contain; mix-blend-mode: multiply; filter: brightness(1.04) contrast(1.06); }
+:root[data-theme="dark"] .jf-art, :root[data-theme="dark"] .jc-pi img { mix-blend-mode: normal; border-radius: 8px; }
+.jf-t { display: grid; gap: 4px; min-width: 0; }
+.jf-t b { font-size: 15.5px; font-weight: 750; letter-spacing: -.01em; line-height: 1.25; overflow-wrap: anywhere; }
+.jf-t small { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: 12.5px; color: var(--v-muted); }
+.jf-t small svg { width: 12px; height: 12px; flex: none; }
+.jf-t .jc-k { font-size: 11.5px; font-weight: 700; color: var(--v-muted); }
+.jf-t small b { color: var(--v-ink); font-weight: 750; font-size: inherit; }
+.jf-t .brand { height: 18px; font-size: 10.5px; padding: 0 6px; }
+.jf-warn { font-weight: 650; }
+.jf-warn.amber, .jf-warn.orange, .jf-flex { color: #a15c00; }
+.jf-warn.red { color: #b3261e; }
+.jf-flex { font-weight: 650; }
+.jf-dchip { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--v-ink); background: color-mix(in srgb, #c25a1c 12%, #fff); border-radius: 999px; padding: 1px 8px 1px 6px; }
+.jf-dchip svg { width: 11px !important; height: 11px !important; color: #c25a1c; }
+.jf-r { display: grid; justify-items: end; gap: 5px; text-align: right; }
+.jf-rs { display: inline-flex; align-items: center; gap: 6px; }
+.jf-r .jm-p { display: inline-flex; align-items: baseline; gap: 4px; font-size: 11.5px; color: var(--v-muted); white-space: nowrap; }
+.jf-r .jm-p b { font-size: 15px; font-weight: 800; color: var(--v-ink); }
+.jf-st { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.jf-st.chosen { color: var(--plan-ink); background: var(--plan-bg); }
+.jf-st.search { color: var(--v-muted); background: var(--v-soft); }
+.jf-who { display: inline-grid; place-items: center; border-radius: 50%; }
+.jf-who .wh-av { width: 22px; height: 22px; font-size: 10.5px; }
+.jf-who.ai { width: 22px; height: 22px; background: var(--v-lav, #ece8ff); color: var(--v-accent-ink); font-size: 12px; }
+/* to-dos and restaurants: one box, small squares (a table orange, a place to see blue) */
+.jf-todo { display: grid; gap: 8px; width: 100%; padding: 10px 12px 12px; border-radius: 18px; background: #fff; border: 1.5px solid var(--line); }
+.jc-l { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; font-weight: 750; color: var(--v-muted); }
+.jc-l svg { width: 13px; height: 13px; }
+.jc-l i { font-style: normal; font-size: 11px; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; }
+.jc-pls { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; align-items: start; }
+.jc-pl { display: grid; gap: 5px; min-width: 0; align-content: start; cursor: pointer; border-radius: 12px; }
+.jc-pl > b { font-size: 11.5px; font-weight: 650; line-height: 1.25; overflow-wrap: anywhere; }
+.jc-pi { position: relative; aspect-ratio: 1; border-radius: 12px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); transition: box-shadow .15s; }
+.jc-pl:hover .jc-pi { box-shadow: var(--v30-shadow); }
+.jc-pi.food { background: #fdeee0; } .jc-pi.go { background: #e3eefb; }
+.jc-pi img { width: 82%; height: 82%; object-fit: contain; mix-blend-mode: multiply; filter: brightness(1.04) contrast(1.06); }
+.jc-pk { position: absolute; left: 5px; top: 5px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: var(--v-muted); }
+.jc-pi.food .jc-pk { color: #c25a1c; } .jc-pi.go .jc-pk { color: #2f6db5; }
+.jc-ok { position: absolute; right: 5px; top: 5px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--okb); color: #fff; }
+.jc-ok svg { width: 10px; height: 10px; stroke-width: 3.2; }
+:root[data-theme="dark"] .jc-pi.food { background: #3a2a1f; } :root[data-theme="dark"] .jc-pi.go { background: #1d2a3a; }
+:root[data-theme="dark"] .jc-pk, :root[data-theme="dark"] .jc-l i { background: #1d1830; }
+@media (max-width: 640px) {
+  .jf-h { grid-template-columns: 72px minmax(0, 1fr); }
+  .jf-img { width: 72px; height: 58px; }
+  .jf-r { grid-column: 2; justify-items: start; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; text-align: left; }
+  .jf-city { gap: 8px; }
+}
 
 /* ===== v30 · cards: the brand label, the curved route, the ride card, the stay's order, price per night, × folding ===== */
 .brand { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; font-size: 11.5px; font-weight: 800; letter-spacing: -.01em; color: #fff; background: var(--bc, #475467); white-space: nowrap; flex: none; line-height: 1; vertical-align: 1px; }
@@ -4504,14 +4557,8 @@ a.ch-why { text-decoration: none; }
 .hx-est em { font-style: normal; font-weight: 650; }
 .hx-est em.ok { color: var(--v-book-ink, #1d6b45); } .hx-est em.over { color: #c62828; }
 
-/* Plan v30 (denetim): Yolculuk sırasıyla closes with "✓ Eve dönüş"; the stay card keeps its words at a narrow panel. */
-.sy-endrow .sy-c { padding-bottom: 6px; }
-.sy-end { display: inline-flex; align-items: center; min-height: 36px; font-size: 16px; font-weight: 750; color: var(--v-book-ink, #1d6b45); }
-.sy-endrow .sy-node { background: #fff; color: var(--v-book-ink, #1d6b45); border-color: var(--v-book-ink, #1d6b45); }
-@container panel (max-width: 700px) { .sy-cb { grid-template-columns: 1fr; } }
-
 /* Plan v30 (denetim): what scrolls into view (a card, a day, a section, an anchor jump) stops under the sticky bar's height, not behind it. */
-.dg-day, .dg-tl > li, .cat-sec, .sy-row, .pk-card, .pn-row { scroll-margin-top: 76px; }
+.dg-day, .dg-tl > li, .cat-sec, .pk-card, .pn-row { scroll-margin-top: 76px; }
 
 /* Plan v30 (denetim): a transfer's way to go opens under its line in Gün gün. */
 .dg-i .dg-leg { grid-column: 1 / -1; margin: 6px 0 4px 26px; padding: 10px 12px; border-radius: 12px; background: var(--v-soft, #f4f2fa); border: 1px solid var(--v-line2, #eceaf4); }
