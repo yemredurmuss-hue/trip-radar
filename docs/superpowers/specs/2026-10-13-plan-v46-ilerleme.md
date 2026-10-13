@@ -5,7 +5,7 @@ Kural: paket bitince bu tabloyu güncelle, commit + push et. Yayın yalnız F10 
 
 | Paket | Durum | Commit | Not |
 |---|---|---|---|
-| P0 durum sözlüğü + rozet + belirteçler | bitti | HASH | stageWords.ts, BookedBadge, 5 örnek kutu, F0 belirteçleri; tsc, vitest 1858, build ve tam e2e (56 adım) yeşil |
+| P0 durum sözlüğü + rozet + belirteçler | bitti | 8019f19 | stageWords.ts, BookedBadge, 5 örnek kutu, F0 belirteçleri; tsc, vitest 1858, build ve tam e2e (56 adım) yeşil |
 | P1a ⓘ balonu | bekliyor | | |
 | P1b niyet etiketi | bekliyor | | |
 | P1c köşe yüzü | bekliyor | | |
