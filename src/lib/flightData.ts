@@ -134,6 +134,24 @@ export function phaseOf(live: FlightLive, now: Date = new Date()): "far" | "befo
   return onItsDay(live, now) || delayOf(live) >= LATE ? "before" : "far";
 }
 
+/**
+ * The stage AeroDataBox names for a flight on its way (0.36.17 had them as a line, 0.36.18 dropped them): boarding and gate
+ * closed before take-off, approaching in the air. Only while the answer is fresh (an hour and a half), since a stage that
+ * has passed would say something false; never guessed from the clock.
+ */
+const STAGES: Record<string, { phase: "before" | "air"; icon: TileIcon; tr: string; en: string; tone?: "bad" | "ok" }> = {
+  Boarding: { phase: "before", icon: "gate", tr: "Biniş başladı", en: "Boarding", tone: "ok" },
+  GateClosed: { phase: "before", icon: "gate", tr: "Kapı kapandı", en: "Gate closed", tone: "bad" },
+  Approaching: { phase: "air", icon: "down", tr: "İnişe geçiyor", en: "Approaching", tone: "ok" },
+};
+export function stageOf(live: FlightLive | null | undefined, now: Date = new Date()): FlightTile | null {
+  const st = live ? STAGES[live.status] : undefined;
+  if (!live || !st || phaseOf(live, now) !== st.phase) return null;
+  const age = (now.getTime() - Date.parse(live.fetchedAt)) / 6e4;
+  if (!Number.isFinite(age) || age > 90) return null;
+  return { icon: st.icon, label: L("Durum", "Status"), value: L(st.tr, st.en), tone: st.tone };
+}
+
 /** The boxes for where the flight is (only what's known; none while it's far off). */
 export function flightTiles(live: FlightLive | null | undefined, now: Date = new Date()): FlightTile[] {
   if (!live) return [];
@@ -159,11 +177,15 @@ export function flightTiles(live: FlightLive | null | undefined, now: Date = new
       tiles.push(prev ? { icon: "gate", label: L(`Kapı (${prev}'ti)`, `Gate (was ${prev})`), value: live.departure.gate, tone: "bad" } : { icon: "gate", label: L("Kapı", "Gate"), value: live.departure.gate });
     }
     if (late >= LATE && at(live.arrival.revised)) tiles.push({ icon: "down", label: L("Tahmini iniş", "Expected landing"), value: at(live.arrival.revised)! });
+    const stage = stageOf(live, now);
+    if (stage) tiles.push(stage);
   } else if (phase === "air") {
     const left = at(live.departure.actual ?? live.departure.revised);
     if (left) tiles.push({ icon: "up", label: L("Kalktı", "Took off"), value: left });
     const lands = at(live.arrival.revised ?? live.arrival.scheduled);
     if (lands) tiles.push({ icon: "down", label: L("Tahmini iniş", "Expected landing"), value: lands });
+    const stage = stageOf(live, now);
+    if (stage) tiles.push(stage);
   } else if (phase === "landed") {
     const landed = at(live.arrival.actual ?? live.arrival.revised ?? live.arrival.scheduled);
     if (landed) tiles.push({ icon: "down", label: L("İndi", "Landed"), value: landed, tone: "ok" });

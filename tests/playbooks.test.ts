@@ -75,7 +75,7 @@ describe("which playbook", () => {
     expect(playbookFor({ kind: "event", name: "AfrikaBurn", id: "afrikaburn" }, "AfrikaBurn'de yoga yapacağız")).toBe("festival");
   });
   it("asks at most three questions, none on a classic trip", () => {
-    expect(playbookQuestions("festival")).toEqual(["Çadır kampı mı, karavan kiralamak ister misiniz?", "Biletini aldın mı?", "Festivalden kaç gün önce gitmek istersin?"]);
+    expect(playbookQuestions("festival")).toEqual(["Çadır kampı mı, karavan mı, otel mi?", "Biletini aldın mı?", "Festivalden kaç gün önce gitmek istersin?"]);
     expect(playbookQuestions("ski").length).toBe(3);
     expect(playbookQuestions("classic")).toEqual([]);
   });
@@ -222,8 +222,8 @@ describe("the trip kind's questions", () => {
     expect(essentialsDone(s)).toBe(true);
     expect(nextQuestion(s)).toBe("pb");
     const q = withLang("tr", () => questionOf(s, "pb", ctx));
-    expect(q.text).toBe("Çadır kampı mı, karavan kiralamak ister misiniz?");
-    expect(q.chips.map((c) => c.label)).toEqual(["Çadır kampı", "Karavan kiralayalım"]);
+    expect(q.text).toBe("Çadır kampı mı, karavan mı, otel mi?");
+    expect(q.chips.map((c) => c.label)).toEqual(["Çadır kampı", "Karavan kiralayalım", "Otel"]);
     s = skip(s, "pb", 6);
     expect(withLang("tr", () => questionOf(s, "pb", ctx)).chips.map((c) => c.label)).toEqual(["Aldım", "Henüz değil"]);
     s = skip(s, "pb", 7);
@@ -255,6 +255,11 @@ describe("the trip kind's questions", () => {
     const camp = chip(s, "Çadır kampı");
     const made = wouldMake(camp)!;
     expect(ozoraStay(made)).toMatchObject({ metrics: { stayKind: "camp" } });
+    // 0.36.83's "camp or a hotel?": the hotel answer leaves the festival's nights a stay to find, as on any trip.
+    const hotel = ozoraStay(wouldMake(chip(s, "Otel")));
+    expect(hotel).toBeTruthy();
+    expect(isCampStay(hotel)).toBe(false);
+    expect(hotel?.noBooking ?? null).toBeNull();
     // The other stays (Budapest after it) are hotels as before.
     expect(made.items.filter((i) => i.category === "stay" && i.city !== "Ozora").every((i) => !isCampStay(i) && i.noBooking == null)).toBe(true);
     // "Book a spot" is no line any more: the ticket covers the ground.
@@ -338,7 +343,7 @@ describe("the trip kind's questions", () => {
     expect(applyText(s, "bilmem", { ...read, choice: "skip" }, 9, "pb", key).state.pbAnswers).toEqual({ [key]: null });
     expect(applyText(s, "bilmem", { ...read, choice: "yacht" }, 9, "pb", key).understood).toBe(false);
     // The model is given the question with its options.
-    expect(withLang("tr", () => pbPromptOf(s, key))).toBe('"Çadır kampı mı, karavan kiralamak ister misiniz?" (seçenekler: camp = Çadır kampı; caravan = Karavan kiralayalım)');
+    expect(withLang("tr", () => pbPromptOf(s, key))).toBe('"Çadır kampı mı, karavan mı, otel mi?" (seçenekler: camp = Çadır kampı; caravan = Karavan kiralayalım; hotel = Otel)');
   });
   it("the validator drops a malformed question or an unknown operation, never crashes", () => {
     expect(validEffect({ op: "teleport", to: "Mars" })).toBeNull();

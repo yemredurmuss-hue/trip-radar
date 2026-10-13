@@ -1233,7 +1233,7 @@ export function knownLines(s: StartState, ctx: StartCtx): string {
     wantText(s) ? `${L("Tarz", "Style")}: ${wantText(s)}` : "",
     // A festival, a ski trip, a honeymoon, a retreat (playbooks/): its tone, and its one tip until it's been said.
     playbookPromptLine(s),
-    // Its questions answered so far ("Kamp mı yapacaksın, otelde mi kalacaksın? Kamp").
+    // Its questions answered so far ("Çadır kampı mı, karavan mı, otel mi? Otel").
     ...pbAsks(s).flatMap((a) => {
       const v = s.pbAnswers?.[a.key];
       return v ? [`${say(a.q.text)} ${a.chips.find((c) => c.value === v) ? say(a.chips.find((c) => c.value === v)!.label) : v}`] : [];
@@ -3238,7 +3238,8 @@ export function creationOf(s: StartState): Creation | null {
   const shaped0 = effects.length ? staysAfter(stays, effects, { dest: port ?? where.place, eventPlace: s.intent?.kind === "event" ? s.intent.place : null }) : stays;
   // The nights of a kind's own (on the boat, in the camp, in the van): named for it, never "Konaklama · …" to fill with a hotel.
   // v30: a festival's nights at its own place are a camp (a tent; a caravan when that was the answer), never a hotel.
-  const festivalStay = !custom && startPlaybook(s) === "festival" && s.intent?.kind === "event" && s.intent.place ? { kind: (stayKindSet(effects) ?? "camp") as StayKind, city: s.intent.place } : null;
+  const festivalKind = stayKindSet(effects) ?? "camp";
+  const festivalStay = !custom && festivalKind !== "hotel" && startPlaybook(s) === "festival" && s.intent?.kind === "event" && s.intent.place ? { kind: festivalKind as StayKind, city: s.intent.place } : null;
   const stayAs = custom && custom.stayType !== "hotel" ? { kind: custom.stayType as StayKind, city: custom.stayType === "vehicle" ? null : (port ?? where.place) } : festivalStay;
   const shaped = stayAs
     ? shaped0.map((x) => {

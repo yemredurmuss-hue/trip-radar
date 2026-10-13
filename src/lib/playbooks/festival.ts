@@ -36,13 +36,15 @@ export const festival: Playbook = {
   tip: () => L("Çoğu kişi 1–2 gün erken gidip iyi kamp yeri kapıyor.", "Most people arrive a day or two early to get a good camping spot."),
   questions: [
     {
-      // v30: no hotel at a festival; the nights there are a camp, and the chat asks which kind (a tent, or a caravan).
+      // v30: the nights at a festival are a camp by default, and the chat asks which kind (a tent, or a caravan); the old "camp or a hotel?"
+      // (0.36.83) comes back as the third answer, a hotel by the site, which leaves the stay to find as on any trip.
       id: "stay",
-      text: { tr: "Çadır kampı mı, karavan kiralamak ister misiniz?", en: "A tent camp, or would you like to rent a caravan?" },
+      text: { tr: "Çadır kampı mı, karavan mı, otel mi?", en: "A tent camp, a caravan, or a hotel?" },
       chips: [
         // The camp card says "Rezervasyon gerekmez · bilete dahil": nothing to book, so no "book a spot" line either.
         { value: "camp", label: { tr: "Çadır kampı", en: "Tent camp" }, aliases: ["kamp", "camp", "camping", "çadır", "cadir", "tent"], effects: [{ op: "setStay", kind: "camp" }] },
         { value: "caravan", label: { tr: "Karavan kiralayalım", en: "Let's rent a caravan" }, aliases: ["karavan", "caravan", "camper", "van", "rv", "motorhome"], effects: [{ op: "setStay", kind: "vehicle" }] },
+        { value: "hotel", label: { tr: "Otel", en: "Hotel" }, aliases: ["otel", "hotel", "pansiyon", "apart", "airbnb", "glamping"], effects: [{ op: "setStay", kind: "hotel" }] },
       ],
     },
     {
