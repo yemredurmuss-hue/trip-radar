@@ -11,7 +11,7 @@ import { retryCapture } from "../../lib/process";
 import type { Capture, ChatMessage, Item, Trip } from "../../lib/types";
 import { SECTION_META } from "../plan/sectionMeta";
 import { ArriveChip } from "./ArriveViews";
-import { captureById, requestReveal, useIntake, type FileIntake, type Intake } from "./intake";
+import { captureById, endIntake, requestReveal, useIntake, type FileIntake, type Intake } from "./intake";
 
 /** A capture as it stands: the open ones from the board, a finished one read back once. Undefined: not known yet. */
 function useCaptures(ids: readonly string[], open: Capture[]): (id: string) => Capture | null | undefined {

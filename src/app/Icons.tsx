@@ -22,6 +22,12 @@ export function CategoryIcon({ category, size = 26 }: { category: IconName; size
   );
 }
 
+export const Chevron = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+    <path d="M9 6l6 6-6 6" />
+  </svg>
+);
+
 export const Back = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
     <path d="M15 6l-6 6 6 6" />
@@ -31,6 +37,12 @@ export const Back = () => (
 export const ArrowUp = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} aria-hidden>
     <path d="M12 19V5M6 11l6-6 6 6" />
+  </svg>
+);
+
+export const Plus = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
+    <path d="M12 5v14M5 12h14" />
   </svg>
 );
 

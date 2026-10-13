@@ -63,7 +63,7 @@ export interface HeroAction {
 }
 
 /** The box over a cell of the plan line: its records by name and where each stands, then "Plan'da göster". Null while it holds nothing. */
-function tallyTip(word: string, count: number, lines: TallyLine[]): ReactNode | null {
+function tallyTip(kind: keyof HeroTally, word: string, count: number, lines: TallyLine[]): ReactNode | null {
   if (!count || !lines.length) return null;
   return (
     <>
@@ -238,7 +238,7 @@ export function TripHero(props: {
             <Fragment key={k}>
               {n > 0 && <i className="hx-sep" aria-hidden />}
               {/* Hover or focus lists what is inside; a click still opens its section. */}
-              <TipOn tip={tallyTip(word, tally[k], props.tallyLines?.[k] ?? [])} align={n % 2 ? "right" : "left"}>
+              <TipOn tip={tallyTip(k, word, tally[k], props.tallyLines?.[k] ?? [])} align={n % 2 ? "right" : "left"}>
                 {(bind) => (
                   <button {...bind} data-count className={`c-${k}${tally[k] ? "" : " zero"}`} aria-label={`${tally[k]} ${word}. ${L("Plan'da göster", "Show on the Plan")}`} onClick={() => props.onTally(k)}>
                     <HeroIcon name={icon} size={22} />

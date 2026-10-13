@@ -21,6 +21,7 @@ export type Stage = "search" | "options" | "planned" | "booked" | "ready" | "can
 export const MAIN_STAGES = ["search", "options", "planned", "booked", "ready"] as const;
 export type MainStage = (typeof MAIN_STAGES)[number];
 const RANK: Record<MainStage, number> = { search: 0, options: 1, planned: 2, booked: 3, ready: 4 };
+export const isMainStage = (s: Stage): s is MainStage => s in RANK;
 
 /** What the caller knows about a record beyond the record itself. */
 export interface StageCtx {

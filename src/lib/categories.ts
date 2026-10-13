@@ -293,6 +293,8 @@ function itemsOfEntry(entry: TimelineEntry): Item[] {
 }
 
 const best = (items: Item[]): Item | null => items.find((i) => i.status === "booked") ?? items.find((i) => i.status === "chosen") ?? null;
+const cheapest = (items: Item[]): Item | null =>
+  [...items].filter((i) => i.price.amount != null).sort((a, b) => a.price.amount! - b.price.amount!)[0] ?? null;
 /** The one that stands for a block's options in its row: the chosen, else the one its card shows first (best ranked, else cheapest). */
 /** Each option's place in its decision, best first (the order its card shows them in). */
 export type Ranking = ReadonlyMap<string, number>;

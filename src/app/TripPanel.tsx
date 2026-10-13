@@ -6,6 +6,7 @@ import { formatDateRange, formatPrice, listingKeyOf, nightsBetween, rankItems, t
 import { buildLegs, staleHiddenMoves, type Leg } from "../lib/legs";
 import { buildTimeline } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
+import { cardFacts } from "../lib/cardFacts";
 import { budgetBar, sectionAllotments, decisionProgress, entryDomId, nextStepText, nextStepShort, type DecisionProgress, type Todo } from "../lib/progress";
 import { cachedWeather } from "../lib/climate";
 import { cityKeyOf, groupKeyOf, sameCity, type OptionGroup, type Plan } from "../lib/plan";
@@ -64,7 +65,7 @@ import { claimOpening, playOpening } from "./opening";
 import { heroNumbers, openNeedsText, plannedBookedText } from "../lib/lifecycle";
 import { panoEntries } from "../lib/pano";
 import { countdown, countdownText } from "../lib/countdown";
-import { kindLabel } from "./LegRow";
+import { kindLabel, LegRow } from "./LegRow";
 import { HistoryDialog } from "./HistoryDialog";
 import { ChangeNotices } from "./ShareSafety";
 import type { HiddenInput } from "../lib/history";
@@ -83,6 +84,7 @@ import { journeyOf } from "../lib/tripShape";
 import { UndatedIdeas } from "./ideas/IdeaTiles";
 import { choiceOf, type Choice } from "../lib/choice";
 import { pivotalFindings } from "../lib/pivots";
+import type { ValueCard } from "../lib/value";
 import type { Decisions } from "./useDecisions";
 import { useWho } from "./Travellers";
 import { onTripChange } from "../lib/tripUndo";
@@ -652,6 +654,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const settled: SettledFor = (item, decision, onChange, changing) => (
     <PlanCard key={item.id} item={item} group={[item]} decision={decision ?? decisionOf(item)} onChange={onChange} changing={changing} />
   );
+  const leg = (l: Leg, opts: { embedded?: boolean; timed?: boolean } = {}) => (
+    <LegRow key={l.key} leg={l} tripId={trip.id} onOpenItem={onOpenItem} onRemove={env.remove} embedded={opts.embedded} timed={opts.timed} />
+  );
   const legCard = (l: Leg) => <LegCard key={l.key} leg={l} />;
 
   const renderGroup: RenderGroup = (group, heading, groupSubtitle, nested = false) => (
@@ -662,6 +667,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       subtitle={groupSubtitle}
       nested={nested}
       decision={decisions?.byGroup.get(group.key)}
+      card={decisions?.cards.get(group.key)}
       ctx={decisions?.ctx}
       renderCard={card}
       renderSettled={settled}
@@ -929,8 +935,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             isOpen={arrivals.isOpen}
             onOpen={arrivals.onOpen}
             pending={arrivals.pending}
+            tripId={trip.id}
+            cities={cityNames}
             cards={{ legCard: planLegCard, renderGroup: planRenderGroup, card, settled: planSettled }}
             onAdd={addIn}
+            today={today}
             items={items}
             suggestions={suggestions}
             visa={facts.visa}
@@ -999,6 +1008,7 @@ function OptionGroupView({
   subtitle,
   nested,
   decision,
+  card,
   ctx,
   renderCard,
   renderSettled,
@@ -1009,6 +1019,7 @@ function OptionGroupView({
   subtitle: string | null;
   nested: boolean;
   decision: GroupDecision | undefined;
+  card: ValueCard | undefined;
   ctx: Decisions["ctx"] | undefined;
   renderCard: CardFor;
   renderSettled: SettledFor;
@@ -1141,4 +1152,9 @@ function Headline({ choice, alternatives, onCompare }: { choice: Choice; alterna
       </span>
     </div>
   );
+}
+
+/** "Porto, Lizbon ve Madeira" / "Porto, Lisbon and Madeira": names joined in the current language. */
+export function joinTr(names: string[]): string {
+  return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} ${L("ve", "and")} ${names.at(-1)}`;
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { decideTrip, makeContext } from "../src/lib/decision";
 import { EMPTY_METRICS } from "../src/lib/items";
 import { buildLegs } from "../src/lib/legs";
-import { buildPlan, cityKeyOf, liveGroups, tripRange, type StayBlock } from "../src/lib/plan";
+import { buildPlan, cityKeyOf, groupKeyOf, liveGroups, tripRange, type StayBlock } from "../src/lib/plan";
 import type { Item, ItemStatus, Trip } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 

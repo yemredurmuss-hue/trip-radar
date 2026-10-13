@@ -8,7 +8,7 @@ import { retryCapture } from "../lib/process";
 import { listDrafts, onDraftsChanged, removeDraft, saveDraft } from "../lib/startDrafts";
 import { checklist, dative, detectLang, progressOf, splitLinks, tripNamedIn, type StartCtx, type StartMode, type StartState } from "../lib/startTrip";
 import { creditLine, creditOf } from "../lib/cityImages";
-import { tripCardPhoto } from "../lib/tripBrief";
+import { tripCardPhoto, tripCardPlaces } from "../lib/tripBrief";
 import { isDemoTrip } from "../lib/trips";
 import { getSettings, listMessages, onChanged } from "../lib/db";
 import { CURRENCIES, CURRENCY_SIGN, displayCurrency, saveCurrency, type DisplayCurrency } from "../lib/displayCurrency";
@@ -23,6 +23,7 @@ import { HeroIcon, type HeroIconName } from "./Icons";
 import { useMyPhoto, usePeoplePhotos } from "./Profile";
 import { JoinShared } from "./Share";
 import { DraftCard, TripCard } from "./TripCard";
+import { joinTr } from "./TripPanel";
 
 /** What opens the start chat: a mode (the chips), what was typed, or a draft to go on with. */
 export interface StartLaunch {
@@ -67,6 +68,7 @@ const MODES: { mode: StartMode | "join"; icon: HeroIconName; label: () => string
 
 /** The people's own colours (v11: Emre violet, Sabine teal), then the rest of the set, the same name the same colour. */
 const FACES = ["#5b45e0", "#1d8577", "#c0256b", "#b5761c", "#2563c9", "#5d8a1c"];
+const faceColour = (name: string, order: string[]) => FACES[Math.max(0, order.indexOf(name)) % FACES.length];
 
 /** A face: the photo when there is one, else the initials on the person's colour. */
 function Face({ name, photo, colour, size = 30 }: { name: string; photo: string | null; colour: string; size?: number }) {

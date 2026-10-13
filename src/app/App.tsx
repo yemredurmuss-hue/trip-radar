@@ -307,6 +307,7 @@ export function App() {
       {openItem && (
         <ItemDrawer
           item={openItem}
+          group={board.items.filter((i) => groupKeyOf(i) === groupKeyOf(openItem))}
           trips={board.trips}
           decision={decisionOf(openItem)}
           decisions={decisions}

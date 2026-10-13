@@ -44,6 +44,9 @@ export function hoursMinutes(minutes: number): string {
   return h ? `${h} ${hw}${m ? ` ${m} ${mw}` : ""}` : `${m} ${mw}`;
 }
 
+/** "dk" / "min": the minutes word. */
+export const minWord = () => L("dk", "min");
+
 /** A walking or travel time in a display ("6 dk yürüme", "6 min walk"): the minutes word in either language. */
 export const MINUTES_SHOWN = /\d\s*(dk|min)\b/;
 

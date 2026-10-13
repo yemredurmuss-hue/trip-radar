@@ -28,6 +28,7 @@ import { loadWho } from "./whoseStore";
 export const DOC_READ_MAX_BYTES = 10 * 1024 * 1024;
 
 const READ_KINDS = [...DOC_KINDS, "not_a_document"] as const;
+export type ReadKind = (typeof READ_KINDS)[number];
 
 /** What the model reads off the document: only what's written on it, null otherwise. */
 export const DocFactsSchema = z.object({

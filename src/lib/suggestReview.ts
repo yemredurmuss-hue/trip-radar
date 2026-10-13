@@ -10,7 +10,7 @@ import { getProvider, MissingKeyError, type LlmProvider } from "./llm";
 import { cityKeyOf, type DateRange } from "./plan";
 import { allowedSuggestions, blockedWords, type KindOrIntent } from "./playbooks";
 import { checkSuggestionInput, mergeIncoming, SECTION_TEMPLATES, SUGGESTION_SECTIONS } from "./suggestions";
-import type { Item, Suggestion, Trip } from "./types";
+import type { Item, PlaybookKind, Suggestion, Trip } from "./types";
 
 export const REVIEW_EVERY_MS = 24 * 60 * 60 * 1000;
 /** A review marked running this long ago never came back (a closed tab): it may be asked again. */

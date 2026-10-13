@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { rideName, type End, type TransportFace } from "../../lib/cardView";
 import type { Brand } from "../../lib/brands";
 import type { CardKind } from "../../lib/cardKinds";
+import { L } from "../../lib/i18n";
 import { Editable, useInlineEdit } from "./InlineEdit";
 import { illusOf } from "./MediaCard";
 import { KindIcon, UiIcon } from "./Silhouettes";
@@ -89,3 +90,6 @@ export function RideCardBody({ face, title, kind, brand, when = null, line = nul
     </div>
   );
 }
+
+/** "Nasıl gideceğin belli değil": what the model couldn't know; the ways to pick from are drawn by EmptyLegCard. */
+export const unknownHow = () => L("Nasıl gideceğin belli değil", "How you'll get there isn't set");

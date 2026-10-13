@@ -48,7 +48,7 @@ export function AddSheet({ at, editing, only, currency, onClose, onPick }: {
   onPick: (tpl: Template) => void;
 }) {
   const initial = editing ? formOf(editing, currency) : null;
-  const [tpl] = useState<Template | null>(initial?.template ?? null);
+  const [tpl, setTpl] = useState<Template | null>(initial?.template ?? null);
   const [form, setForm] = useState<FormValues | null>(initial?.values ?? null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

@@ -116,6 +116,7 @@ function DecisionBreakdown({ item, decision, onCompare }: { item: Item; decision
 
 interface Props {
   item: Item;
+  group: Item[];
   trips: Trip[];
   decision: GroupDecision | undefined;
   decisions: Decisions | null;
@@ -124,7 +125,7 @@ interface Props {
   onCompare: () => void;
 }
 
-export function ItemDrawer({ item, trips, decision, decisions, onClose, onMoved, onCompare }: Props) {
+export function ItemDrawer({ item, group, trips, decision, decisions, onClose, onMoved, onCompare }: Props) {
   async function setStatus(status: ItemStatus, event: (name: string) => string) {
     const d = await db();
     // The stored record, not the board's corrected copy (its corrections stay beside the page's values).

@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { cardFacts } from "../lib/cardFacts";
+import { cardFacts, type CardFacts } from "../lib/cardFacts";
 import type { GroupDecision } from "../lib/decision";
 import { L } from "../lib/i18n";
 import { formatDateRange } from "../lib/items";
 import { NEED_MARK } from "../lib/needs";
 import type { Ranked } from "../lib/choice";
+import { dateAlert } from "../lib/progress";
 import { isRental, isTrip } from "../lib/travelKinds";
-import type { Item } from "../lib/types";
+import type { Category, Item } from "../lib/types";
 import { chooseItem, setItemStatus } from "./actions";
 import { FallbackImg } from "./FallbackImg";
 import { PivotNote } from "./PivotNote";
 import { lookWord } from "../lib/stageWords";
+import { StatusBar } from "./Status";
 import { CategoryIcon } from "./Icons";
 import { datedLink, Details, Links, Price, ProsCons, ratingOf, SourceBadge, TradeLine } from "./cards/parts";
 import { DocAccess } from "./cards/DocAccess";
@@ -39,6 +41,8 @@ function StayTools({ item }: { item: Item }) {
 /** A ticket is bought for a flight, a train or an activity; a stay, a rental car or a transfer is reserved. */
 const ticketed = (i: Item) => i.category === "flight" || i.category === "activity" || (i.category === "transport" && isTrip(i));
 const bookedWord = (i: Item) => lookWord("booked", { as: ticketed(i) ? "ticket" : undefined });
+const notBookedWord = (i: Item) => (ticketed(i) ? L("bilet alınmadı", "no ticket yet") : L("rezerve edilmedi", "not booked"));
+const bookAction = (i: Item) => (ticketed(i) ? L("Bileti aldım", "I got the ticket") : L("Rezerve ettim", "I booked it"));
 
 interface CardProps {
   item: Item;
@@ -209,5 +213,177 @@ function SwipeCardFace({ item, group, decision, decisions, ranked, onOpen, onCom
         </div>
       )}
     </article>
+  );
+}
+
+/** A stay, a tour, a restaurant: picture, name, what it is, the rating and the price. */
+function Media({ item, facts }: { item: Item; facts: CardFacts }) {
+  const rating = ratingOf(item);
+  const lines = [facts.subtitle, item.cancellation.summary, item.origin === "chat" ? L("Sohbette söyledin", "You said it in the chat") : null].filter(
+    (l, i, all): l is string => Boolean(l) && all.indexOf(l) === i,
+  );
+  return (
+    <div className="stc-media-row">
+      <FallbackImg
+        className="stc-img"
+        src={item.imageUrl}
+        fallback={
+          <span className={`stc-img placeholder cat-${item.category}`}>
+            <CategoryIcon category={isRental(item) ? "car" : item.category} size={30} />
+          </span>
+        }
+      />
+      <div className="stc-info">
+        <SourceBadge source={facts.source} />
+        <div className="stc-name">
+          <Editable field="name">{item.name}</Editable>
+        </div>
+        {item.category === "stay" && (
+          <div className="stc-line st-edit">
+            <StayLine item={item} />
+          </div>
+        )}
+        {lines.map((l) => (
+          <div key={l} className="stc-line">
+            {l}
+          </div>
+        ))}
+        {rating && (
+          <div className="rating-badge">
+            <b>{rating.value}</b>
+            <span>
+              {rating.word}
+              {rating.count && <small>{rating.count}</small>}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A decided need as one calm card: the flight as a route, a stay or a tour with its picture, where it
+ * stands ("Seçildi · rezerve edilmedi", "Bilet alındı ✓") and the price. A tap opens the details;
+ * "Değiştir" brings the other options back as cards.
+ */
+export function SettledCard(props: Parameters<typeof SettledCardFace>[0]) {
+  return (
+    <InlineEdit item={props.item}>
+      <SettledCardFace {...props} />
+    </InlineEdit>
+  );
+}
+
+function SettledCardFace({
+  item,
+  decision,
+  decisions,
+  onOpen,
+  onChange,
+  changing = false,
+}: {
+  item: Item;
+  decision?: GroupDecision;
+  decisions: Decisions | null;
+  onOpen: () => void;
+  onChange?: () => void;
+  changing?: boolean;
+}) {
+  const env = useCardEnv();
+  const [open, setOpen] = useState(false);
+  const facts = cardFacts(item, decision, decisions?.ctx);
+  const booked = item.status === "booked";
+  // Time running out: a free cancellation ending, or a trip near and still not booked.
+  const alert = dateAlert(item, decisions?.ctx.today ?? new Date().toISOString().slice(0, 10));
+  /** Said in the chat, no page yet: a plan. */
+  const planned = item.origin === "chat";
+  const toggle = () => setOpen(!open);
+  // A tap on the card shows the other options for this need (when there are some to switch to);
+  // ⓘ opens the details. Without alternatives, a tap opens the details too.
+  const alternatives = onChange && !booked ? Math.max(0, (decision?.options.length ?? 1) - 1) : 0;
+  const tap = alternatives ? onChange! : toggle;
+  return (
+    <div className={`settled-card st-${booked ? "booked" : "planned"}${open ? " open" : ""}`} aria-label={item.name} data-item-id={item.id}>
+      <StayTools item={item} />
+      <StatusBar
+        standing={booked ? "booked" : "planned"}
+        text={booked ? bookedWord(item) : lookWord("chosen")}
+        sub={booked ? null : notBookedWord(item)}
+        ring={<Ring state={booked ? "done" : "half"} />}
+      />
+      {alert && <div className={`card-alert ${alert.tone}`}>⏳ {alert.text}</div>}
+      <button className="info-btn" aria-label={L("Detaylar", "Details")} aria-expanded={open} title={L("Detaylar", "Details")} onClick={toggle}>
+        i
+      </button>
+      <div
+        className="stc-main"
+        role="button"
+        tabIndex={0}
+        aria-expanded={alternatives ? changing : open}
+        aria-label={alternatives ? L(`${item.name}: diğer seçenekleri göster`, `${item.name}: show the other options`) : L(`${item.name}: detaylar`, `${item.name}: details`)}
+        onClick={tap}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), tap())}
+      >
+        <Media item={item} facts={facts} />
+      </div>
+      <div className="stc-foot">
+        <Editable field="price">{facts.price && <Price price={facts.price} compact dated={Boolean(item.dates.start || item.flight?.departure) || booked} />}</Editable>
+        <span className="stc-actions">
+          <DocAccess item={item} docs={env.docsFor(item.id)} />
+          {booked ? (
+            // A misclick shouldn't stick: the booking can be taken back (the options it closed come back too).
+            <button className="pill-btn outline" onClick={() => void setItemStatus(item, "chosen")} title={L("Rezerve edilmedi olarak geri al", "Mark as not booked")}>
+              {L("Geri al", "Undo")}
+            </button>
+          ) : (
+            <button className="pill-btn outline" onClick={() => void setItemStatus(item, "booked")}>
+              {bookAction(item)}
+            </button>
+          )}
+          {/* The options side by side (0.37): the Comparison window's board; a tap on the card still unfolds them here. */}
+          {alternatives > 0 && decision && (
+            <button className="pill-btn outline board-btn" onClick={() => env.onCompare(decision.key)}>
+              ▦ {L(`Seçenekleri karşılaştır (${alternatives + 1})`, `Compare the options (${alternatives + 1})`)}
+            </button>
+          )}
+          {changing && (
+            <button className="pill-btn outline" aria-expanded onClick={onChange}>
+              {L("Kapat", "Close")}
+            </button>
+          )}
+          {/* A plan said in the chat (a taxi, a ticket to find) comes off the board in one tap. */}
+          {planned && !booked && (
+            <button className="pill-btn outline quiet" onClick={() => env.remove(item)} title={L("Bu planı panodan kaldır", "Remove this plan from the board")}
+              aria-label={L(`${item.name}: kaldır`, `${item.name}: remove`)}
+            >
+              {L("Kaldır", "Remove")}
+            </button>
+          )}
+        </span>
+      </div>
+      {open && (
+        <div className="stc-details">
+          <Details item={item} decision={decision} decisions={decisions} />
+          <div className="sc-links">
+            <Links item={item} decision={decision} onOpen={onOpen} />
+            {planned ? (
+              // Not booked: "Kaldır" is on the card itself.
+              booked && (
+                <button className="link-btn" onClick={() => env.remove(item)}>
+                  {L("Planı kaldır", "Remove plan")}
+                </button>
+              )
+            ) : (
+              !booked && (
+                <button className="link-btn" onClick={() => void setItemStatus(item, "saved")}>
+                  {L("Seçimi geri al", "Undo choice")}
+                </button>
+              )
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
