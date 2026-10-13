@@ -750,6 +750,61 @@ try {
   await app.screenshot({ path: `${out}/3e-itinerary-narrow.png` });
   assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll in the list");
   await app.setViewportSize({ width: 1440, height: 900 });
+  // Gün gün's three ways to read (r-gungun): Kompakt (the default, the one above) | Liste (the city's photo beside the day) | Kartlar
+  // (the day on a rail) | Harita; the choice is the traveller's own, kept on the device (localStorage, never the trip).
+  const modes = app.locator(".days-mode");
+  assert.deepEqual(await modes.getByRole("button").allInnerTexts(), ["Kompakt", "Liste", "Kartlar", "Harita"]);
+  assert.equal(await modes.getByRole("button", { name: "Kompakt" }).getAttribute("aria-pressed"), "true", "Kompakt is the default");
+  await modes.getByRole("button", { name: "Liste", exact: true }).click();
+  await app.locator(".dv-day").first().waitFor();
+  assert.equal(await app.locator(".dv-day").count(), 7);
+  assert.equal(await app.locator(".dg-day").count(), 0, "the compact rows are off");
+  assert.deepEqual(await app.locator(".dv-pill").allInnerTexts(), ["Gün 1", "Gün 2", "Gün 3", "Gün 4", "Gün 5", "Gün 6", "Gün 7"]);
+  assert.equal(await app.locator(".dv-strip button").count(), 7, "the strip of days");
+  assert.equal(await app.locator(".dv-day").nth(0).locator(".dv-photo").count(), 1, "the day's photo (or its faint drawing)");
+  assert.equal(flat(await app.locator(".dv-day").nth(0).locator(".dg-n").allInnerTexts())[0], "Gece: Porto · konaklama aranıyor");
+  assert.equal(await app.locator(".dv-day").nth(0).locator(".dv-part-label", { hasText: "Günün akışı" }).count(), 1);
+  assert.equal(await app.locator(".dv-day").nth(0).locator(".dv-part-label", { hasText: "Günün rezervasyonları" }).count(), 1);
+  // Day 4 changes city: its way is one card (check-out, transfer, the train as the Plan's ticket, transfer, check-in).
+  const jd = app.locator(".dv-day").nth(3).locator(".jd");
+  await jd.waitFor();
+  assert.equal(flat(await jd.locator(".jd-head").allInnerTexts())[0].startsWith("Yolculuk günü Porto → Lizbon"), true);
+  assert.equal(await jd.locator(".jd-ticket .pk-card, .jd-ticket .cat-card, .jd-ticket [class*=card]").count() > 0, true, "the trip is the Plan's own card");
+  assert.deepEqual(await jd.locator(".dg-tl > li").evaluateAll((els) => els.map((e) => e.getAttribute("data-title"))), ["Check-out · Porto konaklaması", "Transfer", "Transfer", "Check-in · Lisboa Loft"]);
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways scroll in Liste (1440)");
+  await app.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "no sideways scroll in Liste (390)");
+  await app.locator(".dv-day").nth(3).scrollIntoViewIfNeeded();
+  await app.screenshot({ path: `${out}/3e2-gungun-liste-narrow.png` });
+  await app.setViewportSize({ width: 1440, height: 900 });
+  await app.locator(".dv-strip button").nth(3).click();
+  assert.equal(await app.evaluate(() => localStorage.getItem("trip-radar:days-view")), "list", "the choice is remembered on the device");
+  await modes.getByRole("button", { name: "Kartlar" }).click();
+  await app.locator(".dv-chead").first().waitFor();
+  assert.equal(await app.locator(".dv-chead").count(), 7);
+  assert.equal(await app.locator(".dv-rail").count(), 7);
+  assert.equal(await app.locator(".dv-photo").count(), 0, "Kartlar: a small photo by the title, not the big one");
+  await app.locator(".dv-day").nth(3).locator(".jd").waitFor();
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways scroll in Kartlar (1440)");
+  await app.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "no sideways scroll in Kartlar (390)");
+  await app.setViewportSize({ width: 1440, height: 900 });
+  // The choice stays across the Plan tab and back, and Harita keeps working.
+  await tab("Plan").click();
+  await tab("Gün gün").click();
+  await app.locator(".dv-chead").first().waitFor();
+  assert.equal(await modes.getByRole("button", { name: "Kartlar" }).getAttribute("aria-pressed"), "true");
+  await modes.getByRole("button", { name: "Harita" }).click();
+  await modes.getByRole("button", { name: "Kompakt" }).click();
+  await app.locator(".dg-day").first().waitFor();
+  assert.equal(await app.locator(".dv-day").count(), 0);
+  // Kompakt: a day that changes city has a "Yolculuk günü" that opens its card under the lines (the others have none).
+  assert.equal(await app.locator(".dg-trip").count(), 1);
+  await dayCard(4).locator(".dg-trip").click();
+  await dayCard(4).locator(".jd").waitFor();
+  assert.equal(await dayCard(4).locator(".dg-trip").getAttribute("aria-expanded"), "true");
+  await dayCard(4).locator(".dg-trip").click();
+  assert.equal(await dayCard(4).locator(".jd").count(), 0);
   // A line is clickable: a tap shows its card on the Plan (the Plan tab is on, the card in view).
   await lineOf(4, "Tren · Porto → Lizbon").locator(".dg-main").click();
   await tab("Plan").and(app.locator('[aria-selected="true"]')).waitFor();

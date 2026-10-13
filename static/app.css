@@ -5013,3 +5013,74 @@ body.still .tk-bar i, body.still .pk-seal .tk-chk, body.still .pk-card.tk.tk-sea
 .pk-card.pk-draft .pk-ring { display: none; }
 /* the card's own top line is crowded by "Önerimiz" and "✓ Bunu seç": the kind's word goes (its icon and the picture's label say it) */
 .pk-card.pk-draft .pk-kind { font-size: 0; gap: 0; }
+/* -- Gün gün foto -- (plan v46, r-gungun / r-yolgunu / r-gunrez): Gün gün's Liste and Kartlar (the day's photo, its lines, its reservations), the journey day's one card, the Kompakt row's "Yolculuk günü". The lines are Kompakt's own (.dg-*). */
+.days-mode { flex-wrap: wrap; max-width: 100%; }
+.dv { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.dv-strip { display: flex; align-items: flex-end; gap: 6px; min-width: 0; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: none; }
+.dv-strip::-webkit-scrollbar { display: none; }
+.dv-strip-item { flex: none; display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.dv-strip-item small { font-size: 11.5px; font-weight: 650; color: var(--v-muted); }
+.dv-strip button { min-width: 34px; height: 30px; padding: 0 9px; border: 1px solid var(--v-line2); border-radius: 9px; background: #fff; font: inherit; font-size: 13px; font-weight: 650; color: var(--v-ink); font-variant-numeric: tabular-nums; cursor: pointer; }
+.dv-strip button:hover { border-color: var(--v-ink); }
+.dv-strip button.today { background: var(--v-accent-ink); border-color: var(--v-accent-ink); color: #fff; }
+.dv-day { display: grid; gap: 10px; min-width: 0; scroll-margin-top: 90px; }
+.dv-card { display: grid; grid-template-columns: minmax(150px, 34%) minmax(0, 1fr); min-width: 0; border-radius: 18px; overflow: hidden; background: #fff; box-shadow: var(--v30-shadow); }
+.dv-day.today .dv-card, .dv-day.today .dv-chead { box-shadow: 0 0 0 2px var(--v-accent-ink), var(--v30-shadow); }
+.dv-photo, .dv-thumb { position: relative; overflow: hidden; background: var(--v-soft); color: var(--v-muted); }
+.dv-photo { min-height: 180px; }
+.dv-photo img, .dv-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.dv-motif { position: absolute; right: 6%; bottom: 8%; width: 84%; height: auto; max-height: 80%; opacity: .35; pointer-events: none; }
+.dv-pill { position: absolute; top: 12px; left: 12px; z-index: 1; padding: 4px 11px; border-radius: 999px; background: rgba(255, 255, 255, .94); color: var(--v-ink); font-style: normal; font-size: 13px; font-weight: 700; box-shadow: 0 1px 6px rgba(0,0,0,.14); }
+.dv-body { display: grid; gap: 8px; align-content: start; min-width: 0; padding: 14px 16px; }
+.dv-head { display: grid; gap: 2px; min-width: 0; }
+.dv-ttl { margin: 0; font-size: 19px; font-weight: 750; letter-spacing: -.01em; line-height: 1.2; color: var(--v-ink); overflow-wrap: anywhere; }
+.dv-ttl em { margin-left: 8px; font-style: normal; font-size: .72em; font-weight: 550; color: var(--v-muted); white-space: nowrap; }
+.dv-meta { font-size: 13px; color: var(--v-muted); }
+
+.dv-part { display: grid; gap: 6px; min-width: 0; }
+.dv-part-label { font-size: 12.5px; font-weight: 700; color: var(--v-muted); }
+.dv-flow { gap: 4px; }
+/* Kartlar: the day's head with its small photo, then the day on a rail */
+.dv-chead { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 8px 14px 8px 8px; border-radius: 16px; background: #fff; box-shadow: var(--v30-shadow); }
+.dv-thumb { flex: none; width: 64px; height: 48px; border-radius: 10px; }
+.dv-thumb .dv-motif { right: 4px; bottom: 4px; width: 90%; }
+.dv-ctext { display: grid; gap: 1px; min-width: 0; }
+.dv-ctext .dv-ttl { font-size: 17px; }
+.dv-rail { position: relative; display: grid; gap: 12px; min-width: 0; margin-left: 12px; padding-left: 18px; }
+.dv-rail::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; border-left: 2px solid var(--v-line2); }
+.dv-rail > .dv-part { position: relative; }
+.dv-rail > .dv-part::before { content: ""; position: absolute; left: -23px; top: 3px; width: 9px; height: 9px; border-radius: 50%; background: #fff; border: 2px solid var(--v-dash); }
+/* the day's reservations: a card each, the Plan's own */
+.dv-rez-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 0; border: 0; background: none; font: inherit; text-align: left; color: inherit; cursor: pointer; }
+.dv-rez-head .dv-part-label { flex: 1; }
+.dv-ready, .dv-wait { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.dv-ready { color: var(--v-book-ink); }
+.dv-wait { color: var(--v-plan-ink); }
+.dv-chev { width: 7px; height: 7px; margin: 0 4px 3px 0; border-right: 2px solid var(--v-muted); border-bottom: 2px solid var(--v-muted); transform: rotate(45deg); }
+.dv-rez-head[aria-expanded="true"] .dv-chev { transform: rotate(-135deg); margin-bottom: -2px; }
+.dv-rcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; min-width: 0; }
+.dv-rc { min-width: 0; }
+.dv-rc.wide { grid-column: 1 / -1; }
+/* a day that changes city: one card, the trip in the middle as the Plan's ticket */
+.jd { display: grid; gap: 8px; min-width: 0; padding: 10px 12px; border-radius: 14px; background: var(--v-soft); box-shadow: inset 0 0 0 1px var(--v-line2); }
+.jd-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.jd-head b { font-size: 14px; color: var(--v-ink); }
+.jd-head span { font-size: 13px; color: var(--v-muted); }
+.jd-head .jd-left { margin-left: auto; font-size: 12px; font-weight: 650; color: var(--v-plan-ink); }
+.jd-edge { display: grid; grid-template-columns: 56px minmax(0, 1fr); align-items: start; gap: 6px; padding: 6px 10px; border-radius: 10px; background: #fff; }
+.jd-lbl { padding-top: 4px; font-size: 12px; font-weight: 700; color: var(--v-muted); }
+.jd-body { display: grid; gap: 6px; min-width: 0; }
+.jd-body > .dg-tl { padding: 0 10px; border-radius: 10px; background: #fff; }
+.jd-ticket { min-width: 0; }
+.jd-body > .dg-arrive, .jd-body > .dg-warn { margin-left: 4px; }
+.dg-trip { flex: none; padding: 2px 9px; border: 1px solid var(--v-line2); border-radius: 999px; background: #fff; font: inherit; font-size: 12px; font-weight: 650; color: var(--v-accent-ink); white-space: nowrap; cursor: pointer; }
+.dg-trip[aria-expanded="true"] { background: var(--v-lav); }
+@media (max-width: 560px) {
+  .dv-card { grid-template-columns: minmax(0, 1fr); }
+  .dv-photo { min-height: 130px; }
+  .dv-body { padding: 12px; }
+  .dv-rail { margin-left: 8px; padding-left: 14px; }
+  .dv-rail > .dv-part::before { left: -19px; }
+  .jd-edge { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .jd-lbl { padding-top: 0; }
+}

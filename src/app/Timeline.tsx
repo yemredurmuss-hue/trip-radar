@@ -7,7 +7,8 @@ import type { InsertAt } from "../lib/templates";
 import type { RentalEntry, Timeline } from "../lib/timeline";
 import type { Item, Listing } from "../lib/types";
 import type { MainPlace } from "../lib/destinations";
-import { DayCards } from "./days/DayCards";
+import { DayCards } from "./days/DayViews";
+import type { DayPlanCards } from "./days/DayCards";
 
 export type RenderGroup = (group: OptionGroup, heading: string | null, subtitle: string | null, nested?: boolean) => ReactNode;
 export type CardFor = (item: Item, group: Item[], decision?: GroupDecision, ranked?: Ranked, onCompare?: () => void) => ReactNode;
@@ -20,7 +21,7 @@ export type LegCardFor = (l: Leg) => ReactNode;
 /** The Plan (plan/CategoryPlan.tsx, sections) or the day-by-day itinerary (this view). */
 export type TimelineMode = "plan" | "days";
 
-/** Gün gün: the days as one compact row each (days/DayCards.tsx); a line shows its card on the Plan. */
+/** Gün gün: the days, as one compact row each (days/DayCards.tsx), a card with the city's photo (Liste) or on a rail (Kartlar, days/DayViews.tsx); a line shows its card on the Plan. */
 export function TimelineView({
   timeline,
   tripId,
@@ -32,6 +33,8 @@ export function TimelineView({
   dayOrder,
   dayLoose,
   mainPlaces,
+  cards,
+  cityImage,
 }: {
   timeline: Timeline;
   tripId: string;
@@ -49,11 +52,15 @@ export function TimelineView({
   dayLoose?: string[] | null;
   /** The hero's main places, so a route reads "Porto → Madeira" (destinations.ts). */
   mainPlaces?: MainPlace[];
+  /** The Plan's own cards, for a journey day and the day's reservations. */
+  cards: DayPlanCards;
+  /** The city's photo for a day's picture (Liste, Kartlar). */
+  cityImage?: (city: string | null) => string | null;
 }) {
   const rentals = timeline.entries.filter((e): e is RentalEntry => e.kind === "rental");
   return (
     <div className="section trip-plan">
-      <DayCards sections={timeline.sections} onAdd={onAdd} listings={listings} today={today} rentals={rentals} onShow={onShow} tripId={tripId} times={dayTimes ?? undefined} order={dayOrder ?? undefined} loose={dayLoose ?? undefined} mainPlaces={mainPlaces} />
+      <DayCards sections={timeline.sections} onAdd={onAdd} listings={listings} today={today} rentals={rentals} onShow={onShow} tripId={tripId} times={dayTimes ?? undefined} order={dayOrder ?? undefined} loose={dayLoose ?? undefined} mainPlaces={mainPlaces} cards={cards} cityImage={cityImage} />
     </div>
   );
 }
