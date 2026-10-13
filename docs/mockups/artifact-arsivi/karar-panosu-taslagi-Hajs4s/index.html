@@ -1,0 +1,581 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Karar Panosu Taslağı</title>
+<style>
+/* Layout: the board as it would look, top to bottom; each proposal sits where it would live, marked with its number. */
+/* Deliberately one light look: it previews the extension, which is light only. */
+:root {
+  --bg: #f5f2ed;
+  --surface: #ffffff;
+  --block: #efebe4;
+  --ink: #2b2230;
+  --text: #1d1b1f;
+  --muted: #6b665f;
+  --line: #e4ddd2;
+  --green: #1f8f4e;
+  --green-soft: #e3f3e9;
+  --amber: #9a5a00;
+  --amber-soft: #fff0d6;
+  --amber-mark: #f0a53a;
+  --red: #b3261e;
+  --red-soft: #fcebea;
+  --red-mark: #d9534f;
+  --accent: #1768ff;
+  --accent-soft: #edf3ff;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  --r-card: 22px;
+  --r-block: 28px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font: 15px/1.45 var(--font); }
+.page { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; display: flex; flex-direction: column; gap: 34px; }
+h1, h2, h3 { margin: 0; color: var(--ink); text-wrap: balance; }
+p { margin: 0; }
+button { font: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* intro */
+.intro { display: flex; flex-direction: column; gap: 10px; }
+.intro h1 { font-size: 34px; letter-spacing: -.02em; }
+.intro p { max-width: 70ch; color: var(--muted); }
+.index { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; padding: 0; list-style: none; }
+.index a { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: 14px; }
+.index a:hover { border-color: var(--ink); }
+
+/* proposal badge and section heads */
+.badge { flex: none; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; }
+.sec { display: flex; flex-direction: column; gap: 14px; scroll-margin-top: 16px; }
+.sec-head { display: flex; align-items: flex-start; gap: 12px; }
+.sec-head h2 { font-size: 21px; letter-spacing: -.01em; }
+.sec-head p { color: var(--muted); font-size: 14.5px; margin-top: 2px; max-width: 75ch; }
+.frame { background: var(--surface); border: 1px solid var(--line); border-radius: 26px; padding: 22px; min-width: 0; }
+.tagline { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--muted); letter-spacing: .02em; }
+.pin { position: relative; }
+.pin > .badge { position: absolute; top: -12px; left: -12px; z-index: 2; box-shadow: 0 0 0 3px var(--surface); }
+
+/* hero */
+.hero { display: flex; gap: 24px; align-items: center; }
+.hero-img { flex: none; width: 150px; height: 150px; border-radius: 26px; background: linear-gradient(140deg, #f7c77e, #7aa6d8); box-shadow: 0 8px 22px rgba(40, 30, 20, .14); }
+.hero-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+.hero h3 { font-size: 32px; letter-spacing: -.02em; }
+.stats { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 0; margin: 0; list-style: none; color: var(--ink); font-size: 15px; }
+.stats li { display: inline-flex; align-items: center; gap: 6px; }
+.stats svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+
+/* 6 budget */
+.budget { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.budget-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 14px; }
+.budget-top b { color: var(--ink); }
+.bar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--block); }
+.bar span { display: block; height: 100%; }
+.bar .b-booked { background: var(--green); }
+.bar .b-chosen { background: var(--amber-mark); }
+.bar .b-open { background: repeating-linear-gradient(45deg, #cfc6b8 0 6px, #e3dccf 6px 12px); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+/* 1 decision queue */
+.queue { display: flex; flex-direction: column; gap: 10px; background: var(--ink); color: #fff; border-radius: 22px; padding: 14px 16px; }
+.queue-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; }
+.queue-top b { font-size: 16px; }
+.progress { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #d9d2e0; }
+.dots { display: flex; gap: 4px; }
+.dots i { width: 18px; height: 6px; border-radius: 3px; background: #5a4f63; }
+.dots i.done { background: #7fd4a0; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.qchip { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 14px; border-radius: 14px; border: 0; background: #3d3345; color: #fff; text-align: left; }
+.qchip small { color: #cfc6d8; font-size: 12px; }
+.qchip.urgent { background: #fff; color: var(--ink); }
+.qchip.urgent small { color: var(--red); font-weight: 700; }
+.qchip:hover { filter: brightness(1.1); }
+
+/* 2 + 4 decision: recommendation line + cards side by side */
+.decision { background: var(--block); border-radius: var(--r-block); padding: 18px; display: flex; flex-direction: column; gap: 14px; transition: box-shadow .3s; }
+.decision.flash { box-shadow: 0 0 0 3px var(--accent); }
+.dec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
+.dec-head h3 { font-size: 18px; }
+.reco { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 14px; border-radius: 16px; background: var(--surface); border: 1.5px solid #cfdcff; }
+.reco p { flex: 1; min-width: 220px; }
+.reco b { color: var(--ink); }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.card { background: var(--surface); border-radius: var(--r-card); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(40, 30, 20, .05), 0 6px 18px rgba(40, 30, 20, .06); transition: box-shadow .3s; }
+.card.best { box-shadow: 0 0 0 2px #9fbcff, 0 6px 18px rgba(23, 104, 255, .08); }
+.card.out { opacity: .78; }
+.card.flash { box-shadow: 0 0 0 3px var(--accent); }
+.media { position: relative; height: 104px; margin: 8px 8px 0; border-radius: 16px; background: linear-gradient(160deg, #f3e7d9, #e6d3bd); }
+.src { position: absolute; top: 8px; left: 8px; padding: 3px 10px; border-radius: 999px; background: #fff; font-size: 12px; font-weight: 600; }
+.score { position: absolute; top: 8px; right: 8px; width: 46px; height: 46px; border-radius: 50%; background: #fff; display: grid; place-items: center; line-height: 1; text-align: center; font-weight: 800; font-size: 17px; }
+.score small { display: block; font-size: 9.5px; font-weight: 500; color: var(--muted); }
+.flag { position: absolute; left: 8px; bottom: 8px; padding: 2px 9px; border-radius: 999px; background: #fff; font-size: 11.5px; font-weight: 700; color: var(--green); }
+.flag.bad { color: var(--red); }
+.body { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px 14px; flex: 1; }
+.body h4 { margin: 0; font-size: 16px; color: var(--ink); }
+.kind { font-size: 13px; color: var(--muted); }
+.price { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 8px; }
+.price b { font-size: 20px; color: var(--ink); }
+.price span { font-size: 12.5px; color: var(--muted); }
+.pc { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 8px; border-top: 1px solid #f0ebe3; }
+.pc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.pc li { display: flex; gap: 6px; font-size: 13px; line-height: 1.3; }
+.pc li i { flex: none; display: grid; place-items: center; width: 15px; height: 15px; margin-top: 1px; border-radius: 50%; color: #fff; font-style: normal; font-size: 11px; font-weight: 700; }
+.pc .pros i { background: var(--green); }
+.pc .cons i { background: var(--red-mark); }
+.pc li:first-child { font-weight: 700; }
+.pc .pros li:first-child { color: #176c3c; }
+.pc .cons li:first-child { color: #97241d; }
+.pc li.strong { color: var(--red); font-weight: 700; }
+.star { color: #c98a00; font-size: 12px; margin-left: 2px; }
+.foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 6px; }
+.link { background: none; border: 0; color: var(--accent); padding: 0; font-size: 13.5px; }
+.btn { border: 0; border-radius: 999px; padding: 8px 20px; font-weight: 700; font-size: 14px; background: var(--ink); color: #fff; }
+.btn.ghost { background: var(--surface); color: var(--ink); border: 1.5px solid #d8cfe4; }
+.btn.small { padding: 6px 14px; font-size: 13px; }
+.note { font-size: 13px; color: var(--muted); }
+
+/* 5 chosen card with alerts */
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.settled { background: var(--surface); border-radius: var(--r-card); overflow: hidden; box-shadow: 0 0 0 2px #f3c98a; }
+.settled.booked { box-shadow: 0 0 0 2px #86cda2; }
+.status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 8px 16px; font-size: 13.5px; }
+.status.planned { background: var(--amber-soft); color: var(--amber); }
+.status.booked { background: var(--green-soft); color: #16623a; }
+.status b { font-weight: 700; }
+.alert { display: flex; align-items: center; gap: 8px; padding: 8px 16px; font-size: 13.5px; font-weight: 600; }
+.alert.red { background: var(--red-soft); color: var(--red); }
+.alert.amber { background: #fff7e8; color: var(--amber); border-top: 1px solid #f6e2bd; }
+.settled .inner { display: flex; gap: 12px; padding: 14px 16px; align-items: center; }
+.thumb { flex: none; width: 64px; height: 64px; border-radius: 14px; background: linear-gradient(160deg, #f3e7d9, #e6d3bd); }
+.settled h4 { margin: 0; font-size: 16px; color: var(--ink); }
+.settled .foot { padding: 0 16px 14px; }
+
+/* 7 compare */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 560px; font-size: 14px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #efe9df; vertical-align: top; }
+thead th { font-size: 15px; color: var(--ink); }
+th.row { color: var(--muted); font-weight: 600; width: 22%; }
+td.win { background: var(--green-soft); color: #16623a; font-weight: 700; border-radius: 10px; }
+tr.same { display: none; }
+.show-same tr.same { display: table-row; }
+tr.same td, tr.same th { color: var(--muted); font-weight: 400; }
+.compare-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+
+/* 8 before/after */
+.ba { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.mini { background: var(--block); border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.mini-head { font-weight: 700; color: var(--ink); }
+.mini-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px; align-items: start; }
+.mini-row.wide { grid-template-columns: minmax(0, 1fr); }
+.mini-label { font-size: 13px; color: var(--muted); }
+.mini-label b { display: block; color: var(--ink); font-size: 14px; }
+.mini-card { background: var(--surface); border-radius: 14px; padding: 10px 12px; font-size: 13.5px; }
+.mini-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.mini-cards .mini-card { height: 58px; }
+.mini-cards.two-only { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.x { color: var(--red); font-weight: 700; }
+
+/* 9 chat link */
+.chat-demo { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.chat { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.bubble-user { align-self: flex-end; background: #eeeae4; padding: 8px 12px; border-radius: 14px; }
+.chat .ref { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; border: 0; font-size: 13.5px; }
+
+/* 10 focus mode */
+.focus { background: var(--ink); border-radius: 28px; padding: 20px; color: #fff; display: flex; flex-direction: column; gap: 14px; }
+.focus-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.focus-top h3 { color: #fff; font-size: 20px; }
+.focus .cards { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.focus .card { color: var(--text); }
+.focus .reco { border-color: transparent; color: var(--text); }
+.focus-nav { display: flex; gap: 8px; }
+.focus-nav .btn.ghost { background: transparent; color: #fff; border-color: #6d6275; }
+.done-msg { padding: 24px; border-radius: 18px; background: #3d3345; text-align: center; font-size: 16px; }
+
+/* 3 rules */
+.rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.rule { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.rule h4 { margin: 0; font-size: 14px; color: var(--ink); letter-spacing: .01em; }
+.swatches { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+.sw { display: flex; align-items: center; gap: 8px; }
+.sw i { flex: none; width: 18px; height: 18px; border-radius: 6px; }
+.scale { display: flex; flex-direction: column; gap: 4px; color: var(--ink); }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.contrast { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+.contrast span { padding: 6px 10px; border-radius: 8px; background: var(--block); }
+
+@media (max-width: 820px) {
+  .cards, .rules { grid-template-columns: minmax(0, 1fr); }
+  .two, .ba, .chat-demo { grid-template-columns: minmax(0, 1fr); }
+  .hero { flex-direction: column; align-items: flex-start; }
+  .hero-img { width: 100%; height: 120px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+html { scroll-behavior: smooth; }
+</style>
+
+<main class="page">
+  <header class="intro">
+    <h1>Karar Panosu Taslağı</h1>
+    <p>Önerilerin panoda nasıl duracağı, örnek gezi (Portekiz) üzerinde. Kodda bir şey değişmedi. Beğendiklerinin numarasını yazman yeter; bazı parçalar tıklanabilir.</p>
+    <ul class="index">
+      <li><a href="#o1"><span class="badge">1</span>Karar sırası</a></li>
+      <li><a href="#o2"><span class="badge">2</span>Yan yana seçenekler</a></li>
+      <li><a href="#o3"><span class="badge">3</span>UI kuralları</a></li>
+      <li><a href="#o2"><span class="badge">4</span>Önceliğin ★</a></li>
+      <li><a href="#o5"><span class="badge">5</span>Tarih uyarıları</a></li>
+      <li><a href="#o1"><span class="badge">6</span>Bütçe çubuğu</a></li>
+      <li><a href="#o7"><span class="badge">7</span>Sade karşılaştırma</a></li>
+      <li><a href="#o8"><span class="badge">8</span>Tekrar yok</a></li>
+      <li><a href="#o9"><span class="badge">9</span>Sohbet ↔ pano</a></li>
+      <li><a href="#o10"><span class="badge">10</span>Sırayla karar ver</a></li>
+    </ul>
+  </header>
+
+  <!-- top of the board: hero, budget (6), decision queue (1) -->
+  <section class="sec" id="o1">
+    <div class="sec-head">
+      <span class="badge">1</span>
+      <div>
+        <h2>Karar sırası ve bütçe (1 + 6)</h2>
+        <p>Özetin hemen altında: kaç karar kaldı, hangisi acil. Tıklayınca o karara gider. Bütçe çubuğu rezerve, seçilen ve henüz açık ihtiyaçların tahmini toplamını gösterir.</p>
+      </div>
+    </div>
+    <div class="frame" style="display:flex;flex-direction:column;gap:18px">
+      <div class="hero">
+        <div class="hero-img" role="img" aria-label="Gezi resmi"></div>
+        <div class="hero-main">
+          <h3>Portekiz (örnek)</h3>
+          <span class="muted">8–14 Ekim · Porto ve Lizbon</span>
+          <ul class="stats">
+            <li><svg viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg>7 gün</li>
+            <li><svg viewBox="0 0 24 24"><path d="M12 21s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12zM12 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>2 şehir</li>
+            <li><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>5 etkinlik</li>
+            <li><svg viewBox="0 0 24 24"><path d="M3 18v-6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v6M3 18h18M3 18v2m18-2v2M6 9V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3"/></svg>1 konaklama</li>
+            <li><svg viewBox="0 0 24 24"><path d="M5 17h14M6 17l1-9h10l1 9M8 20h.01M16 20h.01M7 12h10"/></svg>1 ulaşım</li>
+          </ul>
+          <div class="budget pin">
+            <span class="badge" style="top:-14px;left:-34px">6</span>
+            <div class="budget-top"><span><b class="num">€1.120</b> <span class="muted">/ €1.500 bütçe</span></span><span class="muted num">€380 kalıyor</span></div>
+            <div class="bar" role="img" aria-label="Rezerve 612 euro, seçilen 148 euro, açık ihtiyaçlar için tahmini 360 euro">
+              <span class="b-booked" style="width:40.8%"></span><span class="b-chosen" style="width:9.9%"></span><span class="b-open" style="width:24%"></span>
+            </div>
+            <div class="legend"><span><i style="background:var(--green)"></i>Rezerve €612</span><span><i style="background:var(--amber-mark)"></i>Seçilen €148</span><span><i style="background:#d6cdbf"></i>Açık, tahmini €360</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="queue">
+        <div class="queue-top">
+          <b>3 karar kaldı</b>
+          <span class="progress"><span class="dots" aria-hidden="true"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i></i><i></i><i></i></span><span class="num">5 / 8 karar verildi</span></span>
+        </div>
+        <div class="chips">
+          <button class="qchip urgent" data-go="dec-porto"><span>Porto konaklama · 8–11 Eki</span><small>Jardim'in ücretsiz iptali 5 Eki'de bitiyor</small></button>
+          <button class="qchip" data-go="dec-porto"><span>Varış uçuşu · 8 Eki</span><small>2 seçenek · Pegasus önde</small></button>
+          <button class="qchip" data-go="dec-porto"><span>Porto → Lizbon · 11 Eki</span><small>nasıl geçeceksin?</small></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 + 4: one decision -->
+  <section class="sec" id="o2">
+    <div class="sec-head">
+      <span class="badge">2</span>
+      <div>
+        <h2>Seçenekler yan yana, öneri tek satır (2 + 4)</h2>
+        <p>2–3 seçenekte kaydırma yok, hepsi aynı anda görünür. Alttaki uzun "Senin için" kutusu tek cümleye iner. ★ işareti, söylediğin önceliğe (sessiz yer, ücretsiz iptal) dokunan satırları gösterir.</p>
+      </div>
+    </div>
+    <div class="decision" id="dec-porto">
+      <div class="dec-head"><h3>Porto · Konaklama · 8–11 Ekim · 3 gece</h3><span class="muted">3 seçenek</span></div>
+      <div class="reco">
+        <span class="badge" style="background:var(--accent)">✓</span>
+        <p><b>Önerim Jardim Stay:</b> €45 pahalı ama merkezde, sessiz ve 5 Eki'ye kadar ücretsiz iptal.</p>
+        <button class="btn">Jardim'i seç</button>
+        <button class="link">Karşılaştır →</button>
+      </div>
+      <div class="cards">
+        <article class="card best" id="card-jardim">
+          <div class="media"><span class="src">Booking.com</span><span class="score">86<small>uyum</small></span><span class="flag">Önerilen</span></div>
+          <div class="body">
+            <h4>Jardim Stay</h4>
+            <span class="kind">Otel odası</span>
+            <div class="price"><b class="num">€285</b><span class="num">3 gece · €95/gece</span></div>
+            <div class="pc">
+              <ul class="pros"><li><i>+</i>Yakın</li><li><i>+</i>Ücretsiz iptal<span class="star" title="Senin için önemli">★</span></li><li><i>+</i>Sessiz odalar<span class="star" title="Senin için önemli">★</span></li><li><i>+</i>Kahvaltı çok iyi</li></ul>
+              <ul class="cons"><li><i>−</i>Odalar küçük</li><li><i>−</i>€45 pahalı</li><li><i>−</i>TV yok</li></ul>
+            </div>
+            <div class="foot"><button class="link">Detaylar ▾</button><button class="btn small">Seç</button></div>
+          </div>
+        </article>
+        <article class="card">
+          <div class="media"><span class="src">Booking.com</span><span class="score">54<small>uyum</small></span></div>
+          <div class="body">
+            <h4>Ribeira Rooms</h4>
+            <span class="kind">Otel odası</span>
+            <div class="price"><b class="num">€330</b><span class="num">3 gece · €110/gece</span></div>
+            <div class="pc">
+              <ul class="pros"><li><i>+</i>Yakın</li><li><i>+</i>Nehir manzarası</li><li><i>+</i>Puanı yüksek</li></ul>
+              <ul class="cons"><li><i>−</i>İade yok<span class="star" title="Senin için önemli">★</span></li><li><i>−</i>€90 pahalı</li><li><i>−</i>Gece gürültüsü<span class="star" title="Senin için önemli">★</span></li><li><i>−</i>Asansör yok</li></ul>
+            </div>
+            <div class="foot"><button class="link">Detaylar ▾</button><button class="btn small">Seç</button></div>
+          </div>
+        </article>
+        <article class="card out">
+          <div class="media"><span class="src">Airbnb</span><span class="score">–<small>elendi</small></span><span class="flag bad">Elendi</span></div>
+          <div class="body">
+            <h4>Casa Azul</h4>
+            <span class="kind">Daire · 1 yatak odası</span>
+            <div class="price"><b class="num">€240</b><span class="num">3 gece · €80/gece</span></div>
+            <div class="pc">
+              <ul class="pros"><li><i>+</i>En ucuz</li><li><i>+</i>Ücretsiz iptal<span class="star" title="Senin için önemli">★</span></li><li><i>+</i>Geniş</li></ul>
+              <ul class="cons"><li class="strong"><i>−</i>Elendi: yanda inşaat<span class="star" title="Senin için önemli">★</span></li><li><i>−</i>Uzak</li><li><i>−</i>Yıpranmış</li></ul>
+            </div>
+            <div class="foot"><button class="link">Detaylar ▾</button><button class="btn small ghost">Yine de seç</button></div>
+          </div>
+        </article>
+      </div>
+      <p class="note">4 seçenekten fazlası olursa ilk üçü yan yana, gerisi "+2 seçenek daha" altında durur.</p>
+    </div>
+  </section>
+
+  <!-- 5: alerts on chosen and booked cards -->
+  <section class="sec" id="o5">
+    <div class="sec-head">
+      <span class="badge">5</span>
+      <div>
+        <h2>Tarih uyarıları</h2>
+        <p>Seçilmiş ya da rezerve edilmiş kartta, zamanı yaklaşan şey kartın üstünde yazar. Aynı uyarı karar sırasında da çıkar.</p>
+      </div>
+    </div>
+    <div class="two">
+      <div class="settled">
+        <div class="status planned"><b>◷ Seçildi</b><span>rezerve edilmedi</span></div>
+        <div class="alert amber">⏳ Rezerve edilmedi · girişe 9 gün kaldı</div>
+        <div class="inner"><div class="thumb"></div><div><h4>Jardim Stay</h4><span class="muted">Otel odası · 8–11 Ekim</span></div></div>
+        <div class="foot"><span class="num"><b>€285</b> <span class="muted">3 gece</span></span><button class="btn small">Rezerve ettim</button></div>
+      </div>
+      <div class="settled booked">
+        <div class="status booked"><b>✓ Rezerve edildi</b></div>
+        <div class="alert red">Ücretsiz iptal için 6 gün kaldı (5 Eki)</div>
+        <div class="inner"><div class="thumb"></div><div><h4>Lisboa Loft</h4><span class="muted">Daire · 11–14 Ekim</span></div></div>
+        <div class="foot"><span class="num"><b>€327</b> <span class="muted">3 gece</span></span><button class="btn small ghost">Geri al</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7: compare -->
+  <section class="sec" id="o7">
+    <div class="sec-head">
+      <span class="badge">7</span>
+      <div>
+        <h2>Sade karşılaştırma</h2>
+        <p>Yalnız farklı olan satırlar görünür, her satırda kazanan hücre yeşildir. Önem ayarları bir düğmenin arkasındadır.</p>
+      </div>
+    </div>
+    <div class="frame" id="compare">
+      <div class="compare-top">
+        <b>Porto · Konaklama</b>
+        <div class="btn-row"><button class="btn small ghost" id="toggle-same" aria-pressed="false">Aynı olanları da göster</button><button class="btn small ghost">Önemleri ayarla</button></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th class="row"></th><th>Jardim Stay <span class="muted num">86</span></th><th>Ribeira Rooms <span class="muted num">54</span></th><th>Casa Azul <span class="muted">elendi</span></th></tr></thead>
+          <tbody>
+            <tr><th class="row">Fiyat (3 gece)</th><td class="num">€285</td><td class="num">€330</td><td class="win num">€240</td></tr>
+            <tr><th class="row">Kaydettiğin yerlere</th><td class="win">6 dk yürüme</td><td>11 dk</td><td>43 dk</td></tr>
+            <tr><th class="row">İptal</th><td class="win">5 Eki'ye kadar ücretsiz</td><td>İade yok</td><td class="win">Ücretsiz</td></tr>
+            <tr><th class="row">Sessizlik ★</th><td class="win">Sessiz odalar</td><td>Gece gürültüsü</td><td>Yanda inşaat</td></tr>
+            <tr><th class="row">Puan</th><td>8,9 · 1.204 yorum</td><td class="win">9,2 · 640 yorum</td><td>4,8/5 · 96 yorum</td></tr>
+            <tr class="same"><th class="row">Wi-Fi</th><td>Var</td><td>Var</td><td>Var</td></tr>
+            <tr class="same"><th class="row">Klima</th><td>Var</td><td>Var</td><td>Var</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8: fewer repeats on the timeline -->
+  <section class="sec" id="o8">
+    <div class="sec-head">
+      <span class="badge">8</span>
+      <div>
+        <h2>Tekrar yok, kartlara yer</h2>
+        <p>Tek konaklamalı şehirde "Konaklama · 8–11 Ekim · 3 gece" etiketi şehir başlığını tekrarlıyor. Etiket kalkar, sol sütun daralır, kartlar genişler.</p>
+      </div>
+    </div>
+    <div class="ba">
+      <div class="mini">
+        <span class="tagline">ŞİMDİ</span>
+        <div class="mini-head">1 Porto · 8–11 Ekim · 3 gece</div>
+        <div class="mini-row"><div class="mini-label"><b>Konaklama</b><span class="x">8–11 Ekim · 3 gece</span></div><div class="mini-cards two-only"><div class="mini-card">Jardim</div><div class="mini-card">Ribeira</div></div></div>
+      </div>
+      <div class="mini">
+        <span class="tagline">ÖNERİ</span>
+        <div class="mini-head">1 Porto · 8–11 Ekim · 3 gece</div>
+        <div class="mini-row wide"><div class="mini-cards"><div class="mini-card">Jardim</div><div class="mini-card">Ribeira</div><div class="mini-card">Casa Azul</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9: chat to board -->
+  <section class="sec" id="o9">
+    <div class="sec-head">
+      <span class="badge">9</span>
+      <div>
+        <h2>Sohbet ↔ pano</h2>
+        <p>Asistan bir seçenekten bahsedince adı tıklanır olur. Tıklayınca pano o karta gider ve kart bir an parlar.</p>
+      </div>
+    </div>
+    <div class="chat-demo">
+      <div class="chat">
+        <span class="bubble-user">Merkezi olsun ama bütçeyi aşmayalım.</span>
+        <p><button class="ref" data-flash="card-jardim">Jardim Stay ↗</button> öne çıkıyor: kaydettiğin yerlere birkaç dakika yürüme ve ücretsiz iptal var. Casa Azul €45 daha ucuz ama yanında inşaat var.</p>
+      </div>
+      <p class="note">Dene: soldaki "Jardim Stay ↗" düğmesi yukarıdaki kartı gösterir.</p>
+    </div>
+  </section>
+
+  <!-- 10: focus mode -->
+  <section class="sec" id="o10">
+    <div class="sec-head">
+      <span class="badge">10</span>
+      <div>
+        <h2>Sırayla karar ver (daha büyük iş)</h2>
+        <p>Karar sırasındaki "Başla" ile tek tek ilerlersin: her ekranda bir karar, seçenekler yan yana ve tek bir öneri. Seçince sıradakine geçer.</p>
+      </div>
+    </div>
+    <div class="focus" id="focus" aria-live="polite">
+      <div class="focus-top"><h3 id="focus-title">1 / 3 · Porto konaklama</h3><div class="focus-nav"><button class="btn small ghost" id="focus-skip">Sonra</button></div></div>
+      <div id="focus-body"></div>
+    </div>
+  </section>
+
+  <!-- 3: rules -->
+  <section class="sec" id="o3">
+    <div class="sec-head">
+      <span class="badge">3</span>
+      <div>
+        <h2>UI kuralları (DESIGN.md)</h2>
+        <p>Her rengin tek bir anlamı, tek bir ana buton stili, sabit yazı boyutları ve okunur gri. Repoya yazılır, yeni her ekran buna uyar.</p>
+      </div>
+    </div>
+    <div class="rules">
+      <div class="rule">
+        <h4>Renkler ne demek</h4>
+        <div class="swatches">
+          <span class="sw"><i style="background:var(--green)"></i>Yeşil: rezerve edildi, artı</span>
+          <span class="sw"><i style="background:var(--amber-mark)"></i>Amber: seçildi ya da planlanıyor</span>
+          <span class="sw"><i style="background:var(--red-mark)"></i>Kırmızı: eksi, risk, elendi</span>
+          <span class="sw"><i style="background:var(--accent)"></i>Mavi: yalnız öneri ve link</span>
+          <span class="sw"><i style="background:#cfc6b8"></i>Gri kesikli: henüz planlanmadı</span>
+        </div>
+      </div>
+      <div class="rule">
+        <h4>Butonlar ve yazı</h4>
+        <div class="btn-row"><button class="btn small">Ana eylem</button><button class="btn small ghost">İkincil</button><button class="link">Link →</button></div>
+        <div class="scale">
+          <span style="font-size:32px;font-weight:800;letter-spacing:-.02em">32 Başlık</span>
+          <span style="font-size:20px;font-weight:700">20 Bölüm</span>
+          <span style="font-size:15px">15 Metin</span>
+          <span style="font-size:13px;color:var(--muted)">13 Not</span>
+        </div>
+      </div>
+      <div class="rule">
+        <h4>Okunurluk</h4>
+        <div class="contrast">
+          <span style="color:#a19c95">Şimdi: bej üstünde açık gri, zor okunuyor</span>
+          <span style="color:var(--muted)">Öneri: bir ton koyu gri, rahat okunuyor</span>
+        </div>
+        <p class="note">Durum hiçbir yerde yalnız renkle anlatılmaz, yanında hep yazısı olur.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const flash = (el) => {
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("flash");
+    setTimeout(() => el.classList.remove("flash"), 1400);
+  };
+  document.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => flash(document.getElementById(b.dataset.go))));
+  document.querySelectorAll("[data-flash]").forEach((b) => b.addEventListener("click", () => flash(document.getElementById(b.dataset.flash))));
+
+  const toggle = document.getElementById("toggle-same");
+  const compare = document.getElementById("compare");
+  toggle.addEventListener("click", () => {
+    const on = compare.classList.toggle("show-same");
+    toggle.setAttribute("aria-pressed", String(on));
+    toggle.textContent = on ? "Aynı olanları gizle" : "Aynı olanları da göster";
+  });
+
+  // Focus mode: one decision per screen, "Seç" moves on.
+  const steps = [
+    {
+      title: "Porto konaklama",
+      reco: "<b>Önerim Jardim Stay:</b> €45 pahalı ama merkezde, sessiz ve ücretsiz iptal.",
+      options: [
+        { name: "Jardim Stay", price: "€285", best: true, pros: ["Yakın", "Ücretsiz iptal ★", "Sessiz odalar ★"], cons: ["Odalar küçük", "€45 pahalı"] },
+        { name: "Ribeira Rooms", price: "€330", pros: ["Yakın", "Nehir manzarası"], cons: ["İade yok ★", "Gece gürültüsü ★"] },
+        { name: "Casa Azul", price: "€240", out: true, pros: ["En ucuz", "Geniş"], cons: ["Elendi: yanda inşaat ★", "Uzak"] },
+      ],
+    },
+    {
+      title: "Varış uçuşu · 8 Ekim",
+      reco: "<b>Önerim Pegasus direkt:</b> €30 pahalı ama 3 saat kısa, bagaj dahil.",
+      options: [
+        { name: "Pegasus · direkt", price: "€148", best: true, pros: ["Kısa yolculuk", "Direkt", "Bagaj dahil"], cons: ["€30 pahalı", "İade yok"] },
+        { name: "TAP · aktarmalı", price: "€118", pros: ["En ucuz"], cons: ["Uzun yolculuk", "Bagaj yok", "05:40 kalkış"] },
+      ],
+    },
+    {
+      title: "Porto → Lizbon · 11 Ekim",
+      reco: "<b>Önerim tren:</b> 3 saat, şehir merkezinden merkeze. Uçağa göre havalimanı yolu yok.",
+      options: [
+        { name: "Tren (CP Alfa)", price: "~€60", best: true, pros: ["Merkezden merkeze", "Rahat"], cons: ["3 saat"] },
+        { name: "Uçak", price: "~€90", pros: ["1 saat uçuş"], cons: ["Havalimanı yolu", "€30 pahalı"] },
+        { name: "Otobüs", price: "~€35", pros: ["En ucuz"], cons: ["3,5 saat"] },
+      ],
+    },
+  ];
+  let at = 0;
+  const title = document.getElementById("focus-title");
+  const body = document.getElementById("focus-body");
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const render = () => {
+    if (at >= steps.length) {
+      title.textContent = "Bitti";
+      body.innerHTML = '<div class="done-msg">3 karar verildi. Plan hazır; sırada rezerve etmek var.</div>';
+      document.getElementById("focus-skip").hidden = true;
+      return;
+    }
+    const s = steps[at];
+    title.textContent = `${at + 1} / ${steps.length} · ${s.title}`;
+    body.innerHTML =
+      `<div class="reco"><span class="badge" style="background:var(--accent)">✓</span><p>${s.reco}</p></div>` +
+      `<div class="cards" style="margin-top:14px">` +
+      s.options
+        .map(
+          (o, i) => `<article class="card${o.best ? " best" : ""}${o.out ? " out" : ""}"><div class="body">
+            <h4>${esc(o.name)}</h4><div class="price"><b class="num">${esc(o.price)}</b></div>
+            <div class="pc"><ul class="pros">${o.pros.map((p) => `<li><i>+</i>${esc(p)}</li>`).join("")}</ul>
+            <ul class="cons">${o.cons.map((c) => `<li${c.startsWith("Elendi") ? ' class="strong"' : ""}><i>−</i>${esc(c)}</li>`).join("")}</ul></div>
+            <div class="foot"><span></span><button class="btn small${o.out ? " ghost" : ""}" data-pick="${i}">${o.out ? "Yine de seç" : "Seç"}</button></div>
+          </div></article>`,
+        )
+        .join("") +
+      `</div>`;
+    body.querySelectorAll("[data-pick]").forEach((b) => b.addEventListener("click", () => { at++; render(); }));
+  };
+  document.getElementById("focus-skip").addEventListener("click", () => { at = Math.min(at + 1, steps.length); render(); });
+  render();
+})();
+</script>
+
+</body></html>

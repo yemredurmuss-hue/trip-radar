@@ -1,0 +1,192 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Trip Radar Hareket Durumu</title>
+<style>
+/* Layout: one reading column; a status strip that filters, then one list per area, each row a decision and where it stands. */
+:root {
+  --bg: #f3f1f8; --card: #ffffff; --ink: #1c1a33; --muted: #625e86; --line: #e4e0ef; --accent: #5b45e0; --soft: #ece8ff;
+  --live: #1d8a5a; --live-bg: #e4f4eb; --disk: #2f6fd0; --disk-bg: #e5eefb; --next: #b06d0c; --next-bg: #fdf0d8;
+  --cards: #8a4fc4; --cards-bg: #f1e7fb; --no: #8e8aa8; --no-bg: #efedf3;
+  --shadow: 0 1px 2px rgba(28,26,51,.06), 0 14px 32px -24px rgba(28,26,51,.35);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #12111a; --card: #1b1a26; --ink: #edebfa; --muted: #a9a5c8; --line: #2d2b3d; --accent: #a596ff; --soft: #29254a;
+    --live: #6fd3a0; --live-bg: #173126; --disk: #8db8ff; --disk-bg: #18263d; --next: #f3bf6a; --next-bg: #3a2c12; --cards: #cfa5f5; --cards-bg: #2e2140; --no: #a09cb8; --no-bg: #252433;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 32px -24px rgba(0,0,0,.8); color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #12111a; --card: #1b1a26; --ink: #edebfa; --muted: #a9a5c8; --line: #2d2b3d; --accent: #a596ff; --soft: #29254a;
+  --live: #6fd3a0; --live-bg: #173126; --disk: #8db8ff; --disk-bg: #18263d; --next: #f3bf6a; --next-bg: #3a2c12; --cards: #cfa5f5; --cards-bg: #2e2140; --no: #a09cb8; --no-bg: #252433;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 32px -24px rgba(0,0,0,.8); color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--font); padding-inline: 20px; padding-block: 36px 80px; }
+.wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 36px; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.08; letter-spacing: -.03em; font-weight: 800; }
+h2 { font-size: 21px; letter-spacing: -.015em; font-weight: 750; }
+p { margin: 0; max-width: 70ch; }
+.muted { color: var(--muted); }
+.kicker { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+header { display: flex; flex-direction: column; gap: 12px; }
+.lede { font-size: 17px; color: var(--muted); }
+
+.strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.tile { border: 2px solid transparent; background: var(--card); border-radius: 16px; padding: 12px 14px; box-shadow: var(--shadow); text-align: left; font: inherit; color: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tile b { font: 800 28px/1.1 var(--display); font-variant-numeric: tabular-nums; color: var(--c); }
+.tile span { font-size: 13.5px; font-weight: 650; }
+.tile small { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.tile[aria-pressed="true"] { border-color: var(--c); }
+.tile:focus-visible, .all:focus-visible { outline: 3px solid var(--soft); outline-offset: 2px; }
+.all { align-self: flex-start; font: 650 14px var(--font); border: 1.5px solid var(--line); background: var(--card); color: var(--ink); border-radius: 99px; padding: 6px 14px; cursor: pointer; }
+.s-live { --c: var(--live); --cb: var(--live-bg); } .s-disk { --c: var(--disk); --cb: var(--disk-bg); } .s-next { --c: var(--next); --cb: var(--next-bg); }
+.s-cards { --c: var(--cards); --cb: var(--cards-bg); } .s-no { --c: var(--no); --cb: var(--no-bg); }
+
+.area { display: flex; flex-direction: column; gap: 10px; }
+.list { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
+.row { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 4px 18px; padding: 13px 18px; border-top: 1px solid var(--line); }
+.row:first-child { border-top: 0; }
+.row[hidden] { display: none !important; }
+.chip { align-self: start; justify-self: start; font: 700 12.5px var(--font); padding: 3px 10px; border-radius: 99px; background: var(--cb); color: var(--c); white-space: nowrap; }
+.row h3 { font-size: 16px; font-weight: 700; }
+.row p { font-size: 14.5px; color: var(--muted); }
+.row .what { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.row .ver { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.empty-note { padding: 14px 18px; color: var(--muted); font-size: 14.5px; }
+
+.decide { background: var(--card); border-radius: 18px; padding: 6px 22px; box-shadow: var(--shadow); }
+.decide > div { padding: 16px 0; display: flex; flex-direction: column; gap: 6px; }
+.decide > div + div { border-top: 1px solid var(--line); }
+.decide b { font-family: var(--display); font-size: 17px; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opts span { font-size: 14px; padding: 5px 12px; border-radius: 99px; background: var(--soft); }
+.opts span.rec { background: var(--accent); color: #fff; }
+a { color: var(--accent); }
+@media (max-width: 760px) {
+  .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .row { grid-template-columns: minmax(0, 1fr); }
+  body { padding-inline: 16px; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="kicker">Trip Radar · 11 Ekim 2026</div>
+    <h1>Hareket dili ve açılış: ne onaylandı, ne nerede</h1>
+    <p class="lede">Hareket dili çizimindeki her madde, senin kararın ve bugünkü durumu. 11 Ekim gecesi kalanların hepsi 0.36.82 ile yayına çıktı. Yayında olan sürüm 0.36.78. Üstteki kutulara basınca liste o duruma göre süzülür.</p>
+  </header>
+
+  <section class="area" aria-label="Durum özeti">
+    <div class="strip" id="strip">
+      <button type="button" class="tile s-live" data-f="live" aria-pressed="false"><b data-n="live">0</b><span>Yayında</span><small>0.36.78'de, Mac'inde</small></button>
+      <button type="button" class="tile s-disk" data-f="disk" aria-pressed="false"><b data-n="disk">0</b><span>Kodlandı, bekliyor</span><small>kart tasarımıyla çıkacak</small></button>
+      <button type="button" class="tile s-next" data-f="next" aria-pressed="false"><b data-n="next">0</b><span>Sırada</span><small>onaylı, kod yok</small></button>
+      <button type="button" class="tile s-cards" data-f="cards" aria-pressed="false"><b data-n="cards">0</b><span>Kart tasarımını bekliyor</span><small>kartlar diğer oturumda</small></button>
+      <button type="button" class="tile s-no" data-f="no" aria-pressed="false"><b data-n="no">0</b><span>Vazgeçildi</span><small>senin kararın</small></button>
+    </div>
+    <button type="button" class="all" id="all" hidden>Hepsini göster</button>
+  </section>
+
+  <section class="area">
+    <h2>Sihirli açılış</h2>
+    <div class="list">
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Gezi başına bir kez</h3><p>Her girişte değil, bir gezinin ilk açılışında bir kez oynar.</p><span class="ver">0.36.78</span></div></div>
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Yeni açılış: B · Ritim ve sayaçlar</h3><p>Senin seçimin. Göz kırpma, boş bekleme ve zorla kaydırma kalktı. İçerik ilk andan sırayla gelir, sayılar sayar, alttakiler sen kaydırdıkça gelir. Görmek için yeni bir gezi aç (gezi başına bir kez oynar).</p><span class="ver">0.36.82</span><p style="display:none"></p><span class="ver">çizim: <a href="https://claude.ai/artifact/SstEinoancnipsz5Bom3qr">açılış v2</a></span></div></div>
+    </div>
+  </section>
+
+  <section class="area">
+    <h2>Geçişler</h2>
+    <div class="list">
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Sekme değişimi</h3><p>Sade hâli: seçilen sekmenin alt çizgisi belirir, içerik yumuşakça gelir. Çizimdeki "alt çizgi kayar, içerik sekmenin yönünden kayar" kısmı yapılmadı.</p><span class="ver">0.36.78</span></div></div>
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Gezi kartı → gezinin kendisi</h3><p>Kartın fotoğrafı büyüyüp gezinin üstündeki büyük fotoğrafa dönüşür, geri dönüşte küçülür.</p><span class="ver">0.36.78</span></div></div>
+    </div>
+  </section>
+
+  <section class="area">
+    <h2>Aç / kapa</h2>
+    <div class="list">
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Pencere ve çekmece açılışı</h3><p>Arka plan kararır, pencere hafifçe büyüyerek, çekmece sağdan kayarak gelir. Kart seçenek penceresi bilerek hariç (kartlara ait).</p><span class="ver">0.36.78</span></div></div>
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Pencere ve çekmece kapanışı</h3><p>Kapanırken açılıştan hızlı, solarak gider; çekmece sağa çekilir.</p><span class="ver">0.36.82</span><p style="display:none"></p></div></div>
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Bölüm aç / kapa</h3><p>Sen bir bölümü açınca içerik yukarıdan iner, ok döner.</p><span class="ver">0.36.78</span></div></div>
+      <div class="row" data-s="no"><span class="chip s-no">Vazgeçildi</span><div class="what"><h3>Kart menüsü (•••) ve "Geri al" bildirimi</h3><p>Kararın: hayır.</p></div></div>
+    </div>
+  </section>
+
+  <section class="area">
+    <h2>Yükleniyor</h2>
+    <div class="list">
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Asistan düşünüyor</h3><p>Üç nokta ve ne yaptığını söyleyen satır ("Web'de arıyorum…"); 12 saniyeyi geçerse "Uzun sürüyor" der. Maskot çalışırken salınır, cevap gelince güler.</p><span class="ver">0.36.78</span></div></div>
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Fotoğraf buğudan netleşir</h3><p>Ana sayfadaki gezi kartlarında. Pano kartlarındaki fotoğraflar kartlara ait, onlar kart tasarımıyla gelir.</p><span class="ver">0.36.78</span></div></div>
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Arka planda iş</h3><p>Ana sayfada "N kayıt işleniyor" hapı ve dönen işaret. Çizimdeki üstte akan ince ışık çizgisi yapılmadı.</p><span class="ver">0.36.78</span></div></div>
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Link yapıştırınca iskelet kart</h3><p>Linkin bekleme satırının üstünden ışık geçer; okununca kart yerine iner.</p><span class="ver">0.36.82</span><p style="display:none"></p></div></div>
+    </div>
+  </section>
+
+  <section class="area">
+    <h2>Boş ekranlar</h2>
+    <div class="list">
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Hiç gezi yok</h3><p>Maskot, başlık ve düğme sırayla yükselerek gelir.</p><span class="ver">0.36.78</span></div></div>
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Pano boş</h3><p>Uyuyan maskot.</p><span class="ver">0.36.78</span></div></div>
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Aramada sonuç yok</h3><p>Şaşkın maskot; kırmızı yok.</p><span class="ver">0.36.78</span></div></div>
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Boş kartın nabzı</h3><p>Boş kartın kesikli halkası yavaşça nefes alır. 0.36.75'ten beri vardı, v30 kartlarında da duruyor.</p><span class="ver">0.36.75</span><p style="display:none"></p></div></div>
+    </div>
+  </section>
+
+  <section class="area">
+    <h2>Hatalar</h2>
+    <div class="list">
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>"Asistana bağlanamadım · Ayarlar'a git" şeridi</h3><p>Anahtar yoksa, geçersizse ya da erişim yoksa sohbetin üstüne iner, üzgün maskot ve tek düğme. İnternet yoksa sade bir şerit.</p><span class="ver">0.36.82</span><p style="display:none"></p></div></div>
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>"İnternet yok · 5 sn sonra tekrar deniyorum"</h3><p>Sağ altta geri sayar, kendisi tekrar dener, internet gelince hemen dener; "Şimdi dene" düğmesi var. İngilizcede bu kayıtların hiç tekrar denenmemesi hatası da düzeldi.</p><span class="ver">0.36.82</span><p style="display:none"></p></div></div>
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Yanlış anahtar</h3><p>Ayarlar'da kötü anahtarda kutu kırmızı olur ve bir kez sallanır; doğru anahtarda yeşil satır.</p><span class="ver">0.36.78</span></div></div>
+      <div class="row" data-s="no"><span class="chip s-no">Vazgeçildi</span><div class="what"><h3>"Okunamadı → Tekrar dene" dönütü</h3><p>Kararın: hayır.</p></div></div>
+    </div>
+  </section>
+
+  <section class="area">
+    <h2>Küçük dönütler ve maskot</h2>
+    <div class="list">
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Maskotun iki yeni yüzü</h3><p>Şaşkın (hata, sonuç yok) ve uyuyan (boş Pano). Kararın: boş ekranlarda ve büyük hatada evet.</p><span class="ver">0.36.78</span></div></div>
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>"Plana koy": kart plandaki yerine uçar</h3><p>Pano'da "Plana koy"a basınca kartın adı yay çizerek Plan sekmesine uçar, sekme küçük bir zıplama yapar.</p><span class="ver">0.36.82</span><p style="display:none"></p></div></div>
+    </div>
+  </section>
+
+  <section class="area">
+    <h2>Bu hattaki diğer çizimler</h2>
+    <div class="list">
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Katmanlı arayüz, 1. ve 2. tur</h3><p>Hero ipuçları, kopyala düğmesi, geri alma halkası, şehir mini kartı, kart üst kenarında eylem ikonları, kişilerin son hareketi, Pano noktası, altı hareketlik sözlük.</p><span class="ver">0.36.72 – 0.36.76</span></div></div>
+      <div class="row" data-s="live"><span class="chip s-live">Yayında</span><div class="what"><h3>Kart tasarımı (plan v19 → v25)</h3><p>Uçuş bileti, otel, ulaşım, yapılacaklar; v30 olarak tasarım oturumunda yayınlandı.</p><span class="ver">0.36.79 – 0.36.81</span><p style="display:none"></p></div></div>
+    </div>
+  </section>
+
+  <section class="area">
+    <div class="kicker">11 Ekim gecesi</div>
+    <h2>Kalan hepsi yayında: 0.36.82</h2>
+    <div class="decide">
+      <div><b>Kart tasarımı (v30) çıktıktan sonra, onun üstüne tek seferde</b><p class="muted">Yeni açılış, pencere kapanışı, "Plana koy" uçuşu, link okunurken ışık, "internet yok" bildirimi ve "bağlanamadım" şeridi. Testlerin hepsi geçti (birim 1797, e2e 56/56). Test bir gerçek hata da yakaladı: bir pencere kapanınca güncelleme takılıyordu, düzeldi. Sekme alt çizgisi v30'da tasarım oturumunun kararıyla kalktı.</p></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const rows = [...document.querySelectorAll(".row[data-s]")];
+  const tiles = [...document.querySelectorAll(".tile")];
+  const all = document.getElementById("all");
+  for (const t of tiles) t.querySelector("b").textContent = rows.filter((r) => r.dataset.s === t.dataset.f).length;
+  let on = null;
+  const apply = () => {
+    rows.forEach((r) => (r.hidden = on !== null && r.dataset.s !== on));
+    document.querySelectorAll(".area").forEach((a) => {
+      const list = a.querySelector(".list");
+      if (!list) return;
+      a.hidden = on !== null && !list.querySelector(".row:not([hidden])");
+    });
+    tiles.forEach((t) => t.setAttribute("aria-pressed", String(t.dataset.f === on)));
+    all.hidden = on === null;
+  };
+  tiles.forEach((t) => t.addEventListener("click", () => { on = on === t.dataset.f ? null : t.dataset.f; apply(); }));
+  all.addEventListener("click", () => { on = null; apply(); });
+})();
+</script>
+
+</body></html>

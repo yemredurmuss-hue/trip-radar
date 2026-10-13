@@ -1,0 +1,335 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Trip Radar Hero Fikirleri</title>
+<style>
+/* Layout: one reading column; the trip's hero (as drawn in plan-v30) in a fixed 1000x620 frame that switches between today and three ideas. Page chrome follows the theme; the product inside stays light. */
+:root {
+  --bg: #f3f1f8; --card: #ffffff; --ink: #1c1a33; --muted: #625e86; --line: #e4e0ef; --accent: #5b45e0; --soft: #ece8ff; --deep: #221b3a;
+  --shadow: 0 1px 2px rgba(28,26,51,.06), 0 14px 32px -24px rgba(28,26,51,.35);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #12111a; --card: #1b1a26; --ink: #edebfa; --muted: #a9a5c8; --line: #2d2b3d; --accent: #a596ff; --soft: #29254a; --deep: #0e0c18; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 32px -24px rgba(0,0,0,.8); color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #12111a; --card: #1b1a26; --ink: #edebfa; --muted: #a9a5c8; --line: #2d2b3d; --accent: #a596ff; --soft: #29254a; --deep: #0e0c18; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 32px -24px rgba(0,0,0,.8); color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--font); padding-inline: 20px; padding-block: 36px 90px; }
+.wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 34px; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.08; letter-spacing: -.03em; font-weight: 800; }
+h2 { font-size: 21px; letter-spacing: -.015em; font-weight: 750; }
+p { margin: 0; max-width: 72ch; }
+.muted { color: var(--muted); }
+.kicker { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+header, section.blk { display: flex; flex-direction: column; gap: 12px; }
+.lede { font-size: 17px; color: var(--muted); }
+.ctl { display: flex; flex-wrap: wrap; gap: 8px; }
+.ctl button { font: 650 14.5px var(--font); border: 1.5px solid var(--line); background: var(--card); color: var(--ink); border-radius: 99px; padding: 8px 15px; cursor: pointer; }
+.ctl button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ctl button .sc { font-weight: 800; opacity: .75; margin-left: 4px; }
+.ctl button:focus-visible { outline: 3px solid var(--soft); outline-offset: 2px; }
+.note { background: var(--card); border-radius: 14px; padding: 12px 16px; box-shadow: var(--shadow); font-size: 15px; display: flex; flex-direction: column; gap: 4px; }
+.note b { font-family: var(--display); }
+
+/* the product frame */
+.fit { position: relative; width: 100%; aspect-ratio: 1000 / 640; border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); background: #f6f5fa; container-type: inline-size; }
+.stage { position: absolute; left: 0; top: 0; width: 1000px; height: 640px; transform-origin: 0 0; transform: scale(calc(100cqw / 1000px)); padding: 24px; display: grid; grid-template-columns: 1fr 330px; gap: 24px; color: #1c1a33; font-family: var(--font); font-size: 15px; }
+.stage button { font: inherit; color: inherit; cursor: pointer; }
+.stage :focus-visible { outline: 3px solid #c9bff3; outline-offset: 2px; }
+.i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* left: photo and story (as in v30) */
+.photo { position: relative; height: 270px; border-radius: 20px; overflow: hidden; background: linear-gradient(180deg, #d9d4f6 0%, #ece7fb 55%, #a7bf8a 56%, #7f9f69 100%); }
+.photo .mt { position: absolute; left: 34%; top: 70px; width: 0; height: 0; border-left: 150px solid transparent; border-right: 150px solid transparent; border-bottom: 130px solid #7f8ab3; }
+.photo .mt::after { content: ""; position: absolute; left: -40px; top: 0; border-left: 40px solid transparent; border-right: 40px solid transparent; border-bottom: 36px solid #fff; }
+.photo .bl { position: absolute; border-radius: 50%; background: #f4a6c0; }
+.photo .cities { position: absolute; left: 12px; top: 12px; display: flex; gap: 2px; background: rgba(255,255,255,.88); border-radius: 99px; padding: 3px; font-size: 13.5px; }
+.photo .cities span { padding: 4px 12px; border-radius: 99px; color: #6c6888; }
+.photo .cities .on { background: #fff; color: #1c1a33; font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.photo .left { position: absolute; right: 12px; top: 12px; background: rgba(236,232,255,.95); color: #5b45e0; font: 650 13px var(--font); border-radius: 99px; padding: 4px 11px; }
+.ttl { font: 800 38px/1.1 var(--display); letter-spacing: -.03em; margin: 14px 0 6px; }
+.when { display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.est { font-size: 12.5px; color: #7a76a0; border: 1px dashed #cdc7e6; border-radius: 99px; padding: 1px 8px; }
+.lead { color: #6c6888; margin: 8px 0 0; font-size: 15.5px; }
+.tally { display: grid; grid-template-columns: repeat(4, auto); justify-content: start; gap: 0; margin: 12px 0; }
+.tally span { display: flex; align-items: center; gap: 7px; font-size: 16px; padding: 4px 18px; }
+.tally span:first-child { padding-left: 0; }
+.tally span + span { border-left: 1px solid #e6e2ee; }
+.prog { background: #eaf6ef; border-radius: 18px; padding: 14px 16px; display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; align-items: center; }
+.prog b { font: 750 16px var(--display); }
+.prog .bar { height: 8px; border-radius: 4px; background: #d3ebdd; overflow: hidden; }
+.prog .bar i { display: block; height: 100%; width: 54%; background: #8fd1ad; }
+.prog small { color: #4f7f69; font-size: 13px; }
+.prog .go { grid-column: 2; grid-row: 1 / 4; background: #221b3a; color: #fff; border: 0; border-radius: 14px; padding: 12px 18px; font-weight: 650; }
+
+/* right: today's side card */
+.side { background: #fff; border-radius: 22px; padding: 16px 18px; box-shadow: 0 1px 2px rgba(28,26,51,.05), 0 12px 30px -20px rgba(28,26,51,.3); display: flex; flex-direction: column; gap: 10px; font-size: 14.5px; align-self: start; }
+.faces { display: flex; align-items: center; gap: 10px; }
+.av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 700 12.5px var(--font); border: 2px solid #fff; }
+.av + .av { margin-left: -16px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px 14px; color: #3b3560; font-size: 14px; }
+.hr { height: 1px; background: #efedf3; }
+.kv { display: flex; justify-content: space-between; color: #625e86; font-size: 14px; }
+.kv b { color: #1c1a33; font-weight: 600; }
+.big { display: flex; justify-content: space-between; font: 750 17px var(--display); }
+.fit-ok { color: #1d8a5a; font-weight: 650; font-size: 13px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.wx { display: flex; gap: 16px; }
+.minis { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; color: #625e86; font-size: 14px; }
+
+/* A · one line each */
+.lines { padding: 6px 6px; gap: 0; }
+.ln { border: 0; background: none; width: 100%; text-align: left; display: grid; grid-template-columns: 22px 1fr auto 16px; gap: 10px; align-items: center; padding: 11px 10px; border-radius: 12px; }
+.ln:hover { background: #f7f5fc; }
+.ln .k { font-weight: 650; }
+.ln .v { color: #625e86; font-size: 13.5px; white-space: nowrap; }
+.ln .chev { transition: rotate 260ms cubic-bezier(.16,1,.3,1); color: #9a95b8; }
+.ln[aria-expanded="true"] .chev { rotate: 180deg; }
+.ln + .ln, .det + .ln { border-top: 1px solid #f1eff5; border-radius: 0; }
+.det { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 260ms cubic-bezier(.16,1,.3,1); }
+.det.open { grid-template-rows: 1fr; }
+.det > div { overflow: hidden; }
+.det .in { padding: 2px 12px 12px 42px; display: flex; flex-direction: column; gap: 6px; }
+.meter { height: 6px; border-radius: 3px; background: #efecf5; overflow: hidden; display: flex; width: 70px; }
+.meter i { height: 100%; }
+
+/* B · postcard */
+.post { perspective: 1200px; align-self: start; }
+.post-in { position: relative; height: 470px; transform-style: preserve-3d; transition: transform 600ms cubic-bezier(.65,0,.35,1); }
+.post.back .post-in { transform: rotateY(180deg); }
+.face { position: absolute; inset: 0; backface-visibility: hidden; background: #fff; border-radius: 22px; padding: 18px; box-shadow: 0 1px 2px rgba(28,26,51,.05), 0 12px 30px -20px rgba(28,26,51,.3); display: flex; flex-direction: column; gap: 12px; }
+.face.b { transform: rotateY(180deg); background: #fffdf8; background-image: repeating-linear-gradient(0deg, transparent 0 27px, #efe9dc 27px 28px); }
+.ring { position: relative; width: 170px; height: 170px; margin: 2px auto 0; }
+.ring svg { width: 170px; height: 170px; rotate: -90deg; }
+.ring .c { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.ring .c b { font: 800 26px var(--display); letter-spacing: -.02em; }
+.ring .c small { color: #7a76a0; font-size: 12.5px; }
+.stamps { display: flex; gap: 10px; justify-content: center; }
+.stamp { width: 74px; padding: 6px 4px; border: 2px dashed #d9cdb4; border-radius: 6px; text-align: center; font-size: 12.5px; color: #6b5a3a; background: #fffaf0; rotate: -3deg; }
+.stamp:nth-child(2) { rotate: 2.5deg; }
+.stamp b { display: block; font: 800 17px var(--display); color: #1c1a33; }
+.stage .turn { align-self: flex-end; border: 0; background: #f3f0fb; color: #5b45e0; border-radius: 99px; padding: 5px 12px; font-weight: 650; font-size: 13px; margin-top: auto; }
+.hand { font-size: 14.5px; line-height: 28px; color: #3b3560; }
+.hand b { color: #1c1a33; }
+.corner { position: absolute; right: 0; top: 0; width: 34px; height: 34px; border-top-right-radius: 22px; background: linear-gradient(225deg, #ebe6f7 0 50%, transparent 50%); }
+
+/* C · facts on the photo */
+.frost { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 8px 14px; border-radius: 14px; background: rgba(255,255,255,.72); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font-size: 13.5px; color: #2b2747; }
+.frost span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.frost .sep { width: 1px; height: 16px; background: rgba(28,26,51,.15); }
+.pchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.pchip { font-size: 13px; border-radius: 99px; padding: 3px 11px; background: #f1edff; color: #4a36c9; font-weight: 600; }
+.pchip.soft { background: #f6f4fa; color: #625e86; }
+.calm { gap: 14px; }
+.calm .total { display: flex; align-items: baseline; justify-content: space-between; }
+.calm .total b { font: 800 30px var(--display); letter-spacing: -.02em; }
+.track { height: 10px; border-radius: 5px; background: #eeebf5; overflow: hidden; display: flex; }
+.track i { height: 100%; }
+.stage .more { border: 0; background: none; color: #5b45e0; font-weight: 650; font-size: 13.5px; padding: 0; align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; }
+.more .chev { transition: rotate 260ms cubic-bezier(.16,1,.3,1); }
+.more[aria-expanded="true"] .chev { rotate: 180deg; }
+
+[data-v] { display: contents; }
+[data-v][hidden] { display: none !important; }
+
+.decide { background: var(--card); border-radius: 18px; padding: 6px 22px; box-shadow: var(--shadow); }
+.decide > div { padding: 16px 0; display: flex; flex-direction: column; gap: 6px; }
+.decide > div + div { border-top: 1px solid var(--line); }
+.decide b { font-family: var(--display); font-size: 17px; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opts span { font-size: 14px; padding: 5px 12px; border-radius: 99px; background: var(--soft); }
+.opts span.rec { background: var(--accent); color: #fff; }
+.cmp { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.cmp > div { background: var(--card); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow); font-size: 14.5px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cmp b { font-family: var(--display); font-size: 15.5px; }
+@media (max-width: 760px) { body { padding-inline: 16px; } }
+@media (prefers-reduced-motion: reduce) { .post-in, .det, .ln .chev, .more .chev { transition: none !important; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plane" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></symbol>
+  <symbol id="i-bed" viewBox="0 0 24 24"><path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4M12 4v6M2 18h20"/></symbol>
+  <symbol id="i-bus" viewBox="0 0 24 24"><path d="M6 17V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v11M6 12h12M8 20v-3M16 20v-3M5 17h14"/></symbol>
+  <symbol id="i-tix" viewBox="0 0 24 24"><path d="M3 8a2 2 0 0 0 0 4v4h18v-4a2 2 0 0 0 0-4V4H3zM13 4v12"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 10h16M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3.2 3.2 0 0 1 0 6.4M21 20c0-2.6-1.6-4.8-4-5.6"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h13v4M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2zM16 14h2"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></symbol>
+  <symbol id="i-turn" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.7-5.7L20 8.5M20 4v4.5h-4.5M20 12a8 8 0 0 1-13.7 5.7L4 15.5M4 20v-4.5h4.5"/></symbol>
+</svg>
+
+<div class="wrap">
+  <header>
+    <div class="kicker">Hero · fikir turu</div>
+    <h1>Hepsi görünsün, göz yorulmasın</h1>
+    <p class="lede">Bugünkü hero'nun sevdiğin yanı: her şey açıkta. Yorucu yanı: sağdaki kartta çizgilerle ayrılmış altı ayrı blok var, göz nereden başlayacağını bilmiyor. Aşağıda v30 hero'su (tasarım oturumunun son çizimi) ve üç fikir. Hiçbirinde önemli bir rakam saklanmıyor; açılır kapanır yerler kapalıyken de ana bilgiyi gösteriyor.</p>
+  </header>
+
+  <section class="blk">
+    <div class="ctl" role="group" aria-label="Fikir seç">
+      <button type="button" data-pick="now" aria-pressed="false">Bugün (v30) <span class="sc">6/10</span></button>
+      <button type="button" data-pick="A" aria-pressed="false">A · Tek satır özet <span class="sc">6/10</span></button>
+      <button type="button" data-pick="B" aria-pressed="false">B · Kartpostal <span class="sc">7/10</span></button>
+      <button type="button" data-pick="C" aria-pressed="true">C · Fotoğrafa yerleşen bilgiler <span class="sc">8/10</span></button>
+    </div>
+    <div class="note" id="note" aria-live="polite"></div>
+    <div class="fit"><div class="stage" id="stage">
+      <!-- left column: photo and story -->
+      <div>
+        <div class="photo">
+          <i class="mt"></i>
+          <i class="bl" style="left:20px;top:70px;width:60px;height:60px"></i><i class="bl" style="left:60px;top:50px;width:46px;height:46px;background:#f7bdd0"></i>
+          <i class="bl" style="right:30px;top:60px;width:56px;height:56px"></i><i class="bl" style="right:14px;top:96px;width:36px;height:36px;background:#f7bdd0"></i>
+          <span class="cities"><span class="on">Tokyo</span><span>Hakone</span><span>Kyoto</span><span>Osaka</span></span>
+          <span class="left">175 gün kaldı</span>
+          <div data-v="C" hidden><div class="frost">
+            <span><svg class="i" style="width:16px;height:16px;color:#d39a1c"><use href="#i-sun"/></svg>Tokyo 17° · Kyoto 18°</span><i class="sep"></i>
+            <span>¥ Yen</span><span>A/B priz</span><span>+6 saat</span><span>Japonca</span>
+          </div></div>
+        </div>
+        <div class="ttl">Japonya 2027</div>
+        <div class="when"><svg class="i"><use href="#i-cal"/></svg>1–16 Nisan · 16 gün <span class="est">sakura tahmini</span></div>
+        <div data-v="now A B"><p class="lead">Tokyo'nun ışıklarından Kyoto'nun sakura sabahlarına, ikinize sakin bir Japonya.</p></div>
+        <div data-v="C" hidden><div class="pchips"><span class="pchip">🌸 Sakura</span><span class="pchip">♡ Romantik</span><span class="pchip soft">Sakin semt · çok önemli</span><span class="pchip soft">Yürüme mesafesi</span><span class="pchip soft">+4</span></div></div>
+        <div class="tally">
+          <span><svg class="i" style="color:#5b45e0"><use href="#i-plane"/></svg>2 uçuş</span>
+          <span><svg class="i" style="color:#1d8577"><use href="#i-bed"/></svg>4 konaklama</span>
+          <span><svg class="i" style="color:#b5761c"><use href="#i-bus"/></svg>5 ulaşım</span>
+          <span><svg class="i" style="color:#c0256b"><use href="#i-tix"/></svg>4 deneyim</span>
+        </div>
+        <div class="prog"><b>Japonya planın şekilleniyor</b><button class="go" type="button">Planı tamamla →</button><span class="bar"><i></i></span><small>● 0 rezerve · 7 seçili · 6 aranıyor</small></div>
+      </div>
+
+      <!-- right column: today -->
+      <div data-v="now" hidden><aside class="side">
+        <div class="faces"><span class="av" style="background:#5b45e0">E</span><span class="av" style="background:#1d8577">S</span><span><b style="font-weight:600">Emre &amp; Sabine</b><br><small style="color:#7a76a0">2 kişi</small></span></div>
+        <div class="chips"><span>✿ Sakura</span><span>♡ Romantik</span></div>
+        <div class="hr"></div>
+        <div class="big"><span>Bütçe</span><span>€9.000</span></div>
+        <div class="kv"><span><i class="dot" style="background:#1d8a5a"></i>Rezerve</span><b>€0</b></div>
+        <div class="kv"><span><i class="dot" style="background:#8fd1ad"></i>Seçilen</span><b>€1.222</b></div>
+        <div class="kv"><span><i class="dot" style="background:#ddd8ea"></i>Henüz seçilmedi</span><b>~€5.775</b></div>
+        <div class="hr"></div>
+        <div><small style="color:#7a76a0">Tahmini toplam</small><div class="big" style="font-size:19px">~€7.247</div><span class="fit-ok">bütçeye sığar · €1.753 pay</span></div>
+        <div class="hr"></div>
+        <b style="font:750 16px var(--display)">Tercihler</b>
+        <div class="kv"><span>Sakin semt</span><b>Çok önemli</b></div>
+        <div class="kv"><span>Yürüme mesafesi</span><b>Önemli</b></div>
+        <span style="color:#5b45e0;font-size:13.5px">+4 tercih ›</span>
+        <div class="hr"></div>
+        <div class="wx"><span>🇯🇵 <b style="font-weight:600">Japonya</b></span></div>
+        <div class="wx"><span>Tokyo ☀ 17°</span><span>Kyoto ☀ 18°</span></div>
+        <div class="minis"><span>¥ Yen</span><span>A/B priz</span><span>+6 saat</span><span>Japonca</span></div>
+      </aside></div>
+
+      <!-- A: one line each -->
+      <div data-v="A" hidden><aside class="side lines" id="lines">
+        <button class="ln" type="button" aria-expanded="false" data-d="d1"><svg class="i" style="color:#5b45e0"><use href="#i-people"/></svg><span class="k">Emre &amp; Sabine</span><span class="v">2 kişi · Sakura · Romantik</span><svg class="i chev"><use href="#i-chev"/></svg></button>
+        <div class="det" id="d1"><div><div class="in"><span>Emre (sen) · Sabine (paylaşılıyor)</span><span class="muted" style="color:#7a76a0">Tarz: Sakura, Romantik</span></div></div></div>
+        <button class="ln" type="button" aria-expanded="true" data-d="d2"><svg class="i" style="color:#1d8a5a"><use href="#i-wallet"/></svg><span class="k">~€7.247 / €9.000</span><span class="v" style="color:#1d8a5a;font-weight:650">sığar ✓</span><svg class="i chev"><use href="#i-chev"/></svg></button>
+        <div class="det open" id="d2"><div><div class="in">
+          <div class="kv"><span><i class="dot" style="background:#1d8a5a"></i>Rezerve</span><b>€0</b></div>
+          <div class="kv"><span><i class="dot" style="background:#8fd1ad"></i>Seçilen</span><b>€1.222</b></div>
+          <div class="kv"><span><i class="dot" style="background:#ddd8ea"></i>Henüz seçilmedi</span><b>~€5.775</b></div>
+          <span class="fit-ok">€1.753 pay kalıyor</span></div></div></div>
+        <button class="ln" type="button" aria-expanded="false" data-d="d3"><svg class="i" style="color:#c0256b"><use href="#i-heart"/></svg><span class="k">Tercihler</span><span class="v">Sakin semt · Yürüme +4</span><svg class="i chev"><use href="#i-chev"/></svg></button>
+        <div class="det" id="d3"><div><div class="in"><div class="kv"><span>Sakin semt</span><b>Çok önemli</b></div><div class="kv"><span>Yürüme mesafesi</span><b>Önemli</b></div><span style="color:#7a76a0;font-size:13.5px">ve 4 tercih daha</span></div></div></div>
+        <button class="ln" type="button" aria-expanded="false" data-d="d4"><svg class="i" style="color:#d39a1c"><use href="#i-sun"/></svg><span class="k">Japonya</span><span class="v">Tokyo 17° · Kyoto 18°</span><svg class="i chev"><use href="#i-chev"/></svg></button>
+        <div class="det" id="d4"><div><div class="in"><span>Nisan başı: gündüz ılık, akşam serin. Sakura tahmini 1–10 Nisan.</span></div></div></div>
+        <button class="ln" type="button" aria-expanded="false" data-d="d5"><svg class="i" style="color:#2563c9"><use href="#i-globe"/></svg><span class="k">Pratik</span><span class="v">¥ · A/B · +6 sa · Japonca</span><svg class="i chev"><use href="#i-chev"/></svg></button>
+        <div class="det" id="d5"><div><div class="in"><span>Para birimi Yen · A/B priz (adaptör gerekir) · İstanbul'dan 6 saat ileride · Japonca</span></div></div></div>
+      </aside></div>
+
+      <!-- B: postcard -->
+      <div data-v="B" hidden><div class="post" id="post">
+        <div class="post-in">
+          <div class="face">
+            <i class="corner"></i>
+            <div class="faces"><span class="av" style="background:#5b45e0">E</span><span class="av" style="background:#1d8577">S</span><span><b style="font-weight:600">Emre &amp; Sabine</b> <small style="color:#7a76a0">· Sakura · Romantik</small></span></div>
+            <div class="ring">
+              <svg viewBox="0 0 170 170"><circle cx="85" cy="85" r="70" fill="none" stroke="#eeebf5" stroke-width="16"/><circle cx="85" cy="85" r="70" fill="none" stroke="#8fd1ad" stroke-width="16" stroke-linecap="round" stroke-dasharray="59.7 440"/><circle cx="85" cy="85" r="70" fill="none" stroke="#ddd8ea" stroke-width="16" stroke-dasharray="282 440" stroke-dashoffset="-62"/></svg>
+              <div class="c"><b>~€7.247</b><small>€9.000 bütçenin</small><span class="fit-ok">sığar · €1.753 pay</span></div>
+            </div>
+            <div class="kv" style="justify-content:center;gap:16px;font-size:13px"><span><i class="dot" style="background:#1d8a5a"></i>Rezerve €0</span><span><i class="dot" style="background:#8fd1ad"></i>Seçilen €1.222</span></div>
+            <div class="stamps"><span class="stamp">Tokyo<b>17°</b>☀</span><span class="stamp">Kyoto<b>18°</b>☀</span></div>
+            <button class="turn" type="button" data-turn><svg class="i" style="width:14px;height:14px;vertical-align:-2px"><use href="#i-turn"/></svg> Arkası: tercihler, pratik</button>
+          </div>
+          <div class="face b">
+            <div class="hand"><b>Tercihler</b><br>Sakin semt · çok önemli<br>Yürüme mesafesi · önemli<br><span style="color:#7a76a0">ve 4 tercih daha ›</span><br><b>Japonya'da</b><br>¥ Yen · A/B priz<br>+6 saat · Japonca</div>
+            <button class="turn" type="button" data-turn><svg class="i" style="width:14px;height:14px;vertical-align:-2px"><use href="#i-turn"/></svg> Önü: bütçe, hava</button>
+          </div>
+        </div>
+      </div></div>
+
+      <!-- C: facts on the photo, a calm side card -->
+      <div data-v="C" hidden><aside class="side calm">
+        <div class="faces"><span class="av" style="background:#5b45e0">E</span><span class="av" style="background:#1d8577">S</span><span><b style="font-weight:600">Emre &amp; Sabine</b><br><small style="color:#7a76a0">2 kişi</small></span></div>
+        <div class="hr"></div>
+        <small style="color:#7a76a0">Tahmini toplam</small>
+        <div class="total"><b>~€7.247</b><span style="color:#7a76a0">/ €9.000</span></div>
+        <div class="track"><i style="width:0%;background:#1d8a5a"></i><i style="width:13.6%;background:#8fd1ad"></i><i style="width:64%;background:#ddd8ea"></i></div>
+        <span class="fit-ok">bütçeye sığar · €1.753 pay</span>
+        <button class="more" type="button" aria-expanded="false" id="more">Kalemler <svg class="i chev" style="width:15px;height:15px"><use href="#i-chev"/></svg></button>
+        <div class="det" id="dC"><div><div class="in" style="padding:0;gap:6px">
+          <div class="kv"><span><i class="dot" style="background:#1d8a5a"></i>Rezerve</span><b>€0</b></div>
+          <div class="kv"><span><i class="dot" style="background:#8fd1ad"></i>Seçilen</span><b>€1.222</b></div>
+          <div class="kv"><span><i class="dot" style="background:#ddd8ea"></i>Henüz seçilmedi</span><b>~€5.775</b></div>
+        </div></div></div>
+      </aside></div>
+    </div></div>
+  </section>
+
+  <section class="blk">
+    <h2>Üç fikir yan yana</h2>
+    <div class="cmp">
+      <div><b>A · Tek satır özet · 6/10</b><span>Sağ kart beş satıra iner, her satır kapalıyken de ana bilgiyi söyler ("~€7.247 / €9.000 · sığar ✓"). Aynı anda tek satır açık.</span><span class="muted">Sade ama 9 Ekim'de reddettiğin akordeona yakın; tıklamadan ayrıntı yok.</span></div>
+      <div><b>B · Kartpostal · 7/10</b><span>Ön yüz: bütçe halkası ortada, hava pul gibi. "Arkası"na basınca kart döner: tercihler ve pratik bilgiler el yazısı satırlarda.</span><span class="muted">En tatlısı; ama tercihler ve pratik bilgi arkada kalıyor, bir dokunuş istiyor.</span></div>
+      <div><b>C · Fotoğrafa yerleşen bilgiler · 8/10 · önerim</b><span>Hava ve pratik bilgiler fotoğrafın altına buzlu bir şeride, tercihler başlığın altına çiplere iner. Sağ kartta yalnız kişiler ve bütçe kalır. Tek açılır yer bütçe kalemleri; toplam ve "sığar" hep görünür.</span><span class="muted">Bilgi açıkta kalır, kutu sayısı altıdan ikiye iner. Bir şey eksik: gezinin tek cümlelik özeti çiplere yer açmak için kalkıyor; istersen ipucuna taşınır.</span></div>
+    </div>
+  </section>
+
+  <section class="blk">
+    <div class="kicker">Senden karar</div>
+    <h2>İki soru</h2>
+    <div class="decide">
+      <div><b>1 · Hangi yön?</b><p class="muted">Önerim C: "her şey açıkta" hissini koruyup gözü dinlendiren tek yol bu. B'nin tatlılığını istersen, C'ye küçük bir dokunuş olarak hava "pul" gibi eklenebilir.</p><div class="opts"><span class="rec">C · Fotoğrafa yerleşen</span><span>C + B'nin hava pulları</span><span>B · Kartpostal</span><span>A · Tek satır özet</span></div></div>
+      <div><b>2 · Kim yapsın?</b><p class="muted">Hero şu an tasarım oturumunun v30 çiziminde de değişiyor (tahmini toplam, tercih listesi). İki ayrı hero çıkmasın diye seçtiğin yönü onların çizimine ve kart tasarımıyla aynı yayına eklemelerini öneriyorum. Ben kenardan yardım ederim.</p><div class="opts"><span class="rec">Tasarım oturumu, kartlarla birlikte</span><span>Ben, ayrı bir sürümde</span></div></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const NOTES = {
+    now: ["Bugün (v30)", "Her şey açıkta. Sağ kartta altı blok çizgilerle ayrılmış: kişiler, bütçe, tahmini toplam, tercihler, ülke ve hava, pratik bilgiler."],
+    A: ["A · Tek satır özet", "Satırlara bas: aynı anda tek satır açılır, kapalı satırlar da ana bilgiyi söyler. Bütçe açık başlar."],
+    B: ["B · Kartpostal", "\"Arkası\" düğmesine bas: kart döner, tercihler ve pratik bilgiler arkada."],
+    C: ["C · Fotoğrafa yerleşen bilgiler (önerim)", "Hava ve pratik bilgiler fotoğrafın altında, tercihler başlığın altında. Sağ kartta yalnız kişiler ve bütçe; \"Kalemler\" ayrıntıyı açar."],
+  };
+  const pick = (v) => {
+    document.querySelectorAll("[data-v]").forEach((el) => (el.hidden = !el.dataset.v.split(" ").includes(v)));
+    document.querySelectorAll("[data-pick]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.pick === v)));
+    const [t, d] = NOTES[v];
+    document.getElementById("note").innerHTML = `<b>${t}</b><span class="muted">${d}</span>`;
+  };
+  document.querySelectorAll("[data-pick]").forEach((b) => b.addEventListener("click", () => pick(b.dataset.pick)));
+  // A: one open at a time
+  const lines = [...document.querySelectorAll("#lines .ln")];
+  lines.forEach((b) => b.addEventListener("click", () => {
+    const opening = b.getAttribute("aria-expanded") !== "true";
+    lines.forEach((x) => { x.setAttribute("aria-expanded", "false"); document.getElementById(x.dataset.d).classList.remove("open"); });
+    if (opening) { b.setAttribute("aria-expanded", "true"); document.getElementById(b.dataset.d).classList.add("open"); }
+  }));
+  // B: turn the card
+  document.querySelectorAll("[data-turn]").forEach((b) => b.addEventListener("click", () => document.getElementById("post").classList.toggle("back")));
+  // C: the budget's lines
+  const more = document.getElementById("more");
+  more.addEventListener("click", () => { const on = more.getAttribute("aria-expanded") !== "true"; more.setAttribute("aria-expanded", String(on)); document.getElementById("dC").classList.toggle("open", on); });
+  pick("C");
+})();
+</script>
+
+</body></html>

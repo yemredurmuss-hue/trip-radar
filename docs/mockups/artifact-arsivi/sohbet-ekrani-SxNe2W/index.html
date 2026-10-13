@@ -1,0 +1,695 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>Radar AI · Sohbet Ekranı Tasarımı</title>
+<style>
+  :root {
+    --ink: #0B1B33;
+    --ink-soft: #44546B;
+    --ink-mute: #7A8797;
+    --mint: #2EE6A8;
+    --mint-tint: #E4F9F0;
+    --mint-deep: #0E9F72;
+    --orange: #EF8239;
+    --cream: #F7F6F1;
+    --line: #E9E7DE;
+    --white: #FFFFFF;
+
+    --page-bg: #EDEBE3;
+    --page-fg: #0B1B33;
+    --page-mute: #6E7A87;
+    --page-card: #F7F6F1;
+    --page-line: #DBD8CD;
+
+    --r-bubble: 22px;
+    --r-card: 16px;
+    --shadow-bubble: 0 8px 26px rgba(11, 27, 51, .09);
+    --shadow-soft: 0 4px 14px rgba(11, 27, 51, .06);
+    --shadow-frame: 0 30px 70px rgba(11, 27, 51, .18);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page-bg: #0E1725;
+      --page-fg: #EEF2F6;
+      --page-mute: #93A1B1;
+      --page-card: #16213247;
+      --page-line: #24334A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page-bg: #0E1725;
+    --page-fg: #EEF2F6;
+    --page-mute: #93A1B1;
+    --page-card: #16213247;
+    --page-line: #24334A;
+  }
+  :root[data-theme="light"] {
+    --page-bg: #EDEBE3;
+    --page-fg: #0B1B33;
+    --page-mute: #6E7A87;
+    --page-card: #F7F6F1;
+    --page-line: #DBD8CD;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--page-fg);
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+
+  .wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+  }
+
+  /* ── Sayfa başlığı ─────────────────────────────── */
+  .page-head { display: flex; flex-direction: column; gap: 10px; max-width: 720px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--page-mute);
+  }
+  .eyebrow i { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); display: block; }
+  .page-head h1 {
+    margin: 0; font-size: clamp(28px, 4vw, 40px); font-weight: 800;
+    letter-spacing: -.03em; line-height: 1.1; text-wrap: balance;
+  }
+  .page-head p { margin: 0; color: var(--page-mute); font-size: 15.5px; max-width: 62ch; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+  .legend span {
+    font-size: 12.5px; font-weight: 600; color: var(--page-fg);
+    background: var(--page-card); border: 1px solid var(--page-line);
+    padding: 7px 12px; border-radius: 999px;
+  }
+
+  /* ── Bölüm başlığı ─────────────────────────────── */
+  .section-label {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    border-top: 1px solid var(--page-line); padding-top: 18px;
+  }
+  .section-label h2 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -.015em; }
+  .section-label span { font-size: 13.5px; color: var(--page-mute); }
+
+  .stage { display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; }
+
+  /* ══════════════════════════════════════════════════
+     Ortak sohbet dili (mobil + masaüstü paylaşır)
+     ══════════════════════════════════════════════════ */
+  .app { font-size: 15px; color: var(--ink); background: var(--cream); }
+  .app *, .app *::before, .app *::after { box-sizing: border-box; }
+
+  .thread { display: flex; flex-direction: column; gap: 26px; }
+
+  .row { display: flex; flex-direction: column; gap: 7px; }
+  .row.user { align-items: flex-end; }
+
+  .who {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-mute); padding-left: 2px;
+  }
+  .who .mark {
+    width: 20px; height: 20px; border-radius: 7px;
+    background: linear-gradient(140deg, #0B1B33 0%, #1B3B66 100%);
+    display: grid; place-items: center; color: var(--mint);
+  }
+
+  /* Asistan balonu: krem zeminde beyaz, yüzen kart */
+  .bubble {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--r-bubble);
+    border-top-left-radius: 6px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow-bubble);
+    max-width: 86%;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .bubble p { margin: 0; font-size: 15px; line-height: 1.62; color: var(--ink-soft); }
+  .bubble p strong { color: var(--ink); font-weight: 650; }
+  .bubble p.lead { color: var(--ink); font-size: 15.5px; font-weight: 600; letter-spacing: -.01em; }
+
+  /* Kullanıcı balonu: dolu lacivert, sohbetin ritmini veren blok */
+  .bubble.me {
+    background: var(--ink);
+    border-color: var(--ink);
+    border-radius: var(--r-bubble);
+    border-bottom-right-radius: 6px;
+    border-top-left-radius: var(--r-bubble);
+    color: #fff;
+    box-shadow: 0 10px 26px rgba(11, 27, 51, .22);
+    max-width: 80%;
+  }
+  .bubble.me p { color: #E7EDF5; }
+
+  /* Balon içi fırsat kartı */
+  .offer {
+    display: flex; align-items: center; gap: 13px;
+    border: 1px solid var(--line); border-radius: var(--r-card);
+    padding: 13px 14px; background: #FCFCFA;
+    text-decoration: none;
+  }
+  .offer .ic {
+    width: 42px; height: 42px; border-radius: 13px; flex: 0 0 auto;
+    background: var(--mint-tint); color: var(--mint-deep);
+    display: grid; place-items: center;
+  }
+  .offer .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .offer .t { font-size: 14.5px; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
+  .offer .s { font-size: 12.5px; color: var(--ink-mute); }
+  .offer .price {
+    font-size: 14.5px; font-weight: 800; color: var(--ink);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .offer .price small { display: block; font-size: 11px; font-weight: 600; color: var(--mint-deep); text-align: right; }
+
+  .aside {
+    display: flex; gap: 9px; align-items: flex-start;
+    border-left: 2px solid var(--line); padding-left: 11px;
+    font-size: 13.5px; line-height: 1.55; color: var(--ink-mute);
+  }
+  .aside svg { flex: 0 0 auto; margin-top: 2px; color: var(--orange); }
+
+  .more {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 700; color: var(--orange); text-decoration: none;
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font-size: 13px; font-weight: 600; color: var(--ink-soft);
+    background: #fff; border: 1px solid var(--line);
+    border-radius: 999px; padding: 9px 14px;
+    display: inline-flex; align-items: center; gap: 7px;
+    box-shadow: var(--shadow-soft);
+  }
+  .chip svg { color: var(--mint-deep); }
+
+  .typing { display: inline-flex; align-items: center; gap: 9px; font-size: 14px; color: var(--ink-mute); font-weight: 500; }
+  .typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:.3; transform: scale(.8);} 50% { opacity:1; transform: scale(1);} }
+  @media (prefers-reduced-motion: reduce) { .typing i { animation: none; opacity: 1; } }
+
+  /* Composer */
+  .composer { display: flex; flex-direction: column; gap: 10px; }
+  .composer-box {
+    display: flex; align-items: center; gap: 10px;
+    background: #fff; border: 1px solid #DDDACF; border-radius: 26px;
+    padding: 9px 9px 9px 18px;
+    box-shadow: 0 10px 26px rgba(11, 27, 51, .10);
+  }
+  .composer-box .ph { flex: 1; font-size: 15px; color: #9AA4AF; }
+  .composer-box .send {
+    width: 40px; height: 40px; border-radius: 50%; flex: 0 0 auto;
+    background: var(--mint); color: #06301F; display: grid; place-items: center;
+  }
+  .composer .note { font-size: 11.5px; color: #9AA4AF; text-align: center; }
+
+  /* ══════════════════════════════════════════════════
+     Mobil çerçeve
+     ══════════════════════════════════════════════════ */
+  .phone {
+    width: 390px; max-width: 100%;
+    border-radius: 44px; background: #10192B; padding: 11px;
+    box-shadow: var(--shadow-frame); flex: 0 0 auto;
+  }
+  .phone .screen {
+    border-radius: 34px; overflow: hidden; background: var(--cream);
+    height: 812px; display: flex; flex-direction: column; position: relative;
+  }
+
+  .m-head {
+    height: 56px; flex: 0 0 auto; display: flex; align-items: center; gap: 10px;
+    padding: 0 16px; border-bottom: 1px solid var(--line);
+    background: rgba(247, 246, 241, .92); backdrop-filter: blur(10px);
+  }
+  .logo-mark {
+    width: 30px; height: 30px; border-radius: 10px;
+    background: linear-gradient(140deg, #0B1B33 0%, #1B3B66 100%);
+    display: grid; place-items: center; color: var(--mint);
+  }
+  .m-head .title { font-size: 15.5px; font-weight: 700; letter-spacing: -.015em; }
+  .m-head .title span { display: block; font-size: 11px; font-weight: 600; color: var(--mint-deep); letter-spacing: .04em; }
+  .newchat {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+    height: 34px; padding: 0 13px; border-radius: 999px;
+    border: 1px solid var(--line); background: #fff;
+    font-size: 12.5px; font-weight: 650; color: var(--ink-soft);
+  }
+
+  .m-thread { flex: 1; overflow: hidden; padding: 20px 16px 8px; }
+  .m-foot { flex: 0 0 auto; padding: 8px 16px 10px; background: linear-gradient(to bottom, rgba(247,246,241,0), var(--cream) 40%); }
+
+  .tabbar {
+    flex: 0 0 auto; height: 68px; display: flex; align-items: center;
+    border-top: 1px solid var(--line); background: #fff; padding-bottom: 4px;
+  }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: #97A0AB; }
+  .tab.on { color: var(--ink); }
+  .tab.on .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--mint); }
+  .tab .dot { width: 5px; height: 5px; }
+  .tab .badge {
+    position: absolute; transform: translate(16px, -8px);
+    font-size: 9px; font-weight: 700; color: #06301F; background: var(--mint);
+    border-radius: 999px; padding: 1px 6px; letter-spacing: .02em;
+  }
+
+  /* ══════════════════════════════════════════════════
+     Masaüstü çerçeve
+     ══════════════════════════════════════════════════ */
+  .desk {
+    flex: 1 1 620px; min-width: 320px;
+    border-radius: 20px; overflow: hidden; background: var(--cream);
+    box-shadow: var(--shadow-frame); display: flex; height: 812px;
+  }
+  .side {
+    width: 232px; flex: 0 0 auto; background: #0B1B33; color: #C9D4E2;
+    display: flex; flex-direction: column; padding: 20px 14px;
+    gap: 4px;
+  }
+  .side .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 22px; }
+  .side .brand b { font-size: 15px; font-weight: 800; color: #fff; letter-spacing: -.01em; }
+  .side .brand .pro { font-size: 9.5px; font-weight: 800; background: var(--mint); color: #06301F; padding: 2px 6px; border-radius: 6px; letter-spacing: .06em; }
+  .nav-item {
+    display: flex; align-items: center; gap: 11px; padding: 11px 12px;
+    border-radius: 12px; font-size: 14px; font-weight: 600; color: #9FB0C4;
+  }
+  .nav-item.on { background: rgba(46, 230, 168, .12); color: #fff; }
+  .nav-item.on svg { color: var(--mint); }
+  .side .spacer { flex: 1; }
+  .side .promo {
+    border-radius: 14px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.09);
+    padding: 13px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .side .promo b { color: #fff; font-size: 13.5px; }
+  .side .promo span { font-size: 12px; color: #9FB0C4; line-height: 1.45; }
+
+  .deskmain { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .d-head {
+    height: 60px; flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
+    padding: 0 26px; border-bottom: 1px solid var(--line);
+  }
+  .d-head .title { font-size: 16px; font-weight: 700; letter-spacing: -.015em; }
+  .d-head .sub { font-size: 12.5px; color: var(--ink-mute); }
+  .d-thread { flex: 1; overflow: hidden; padding: 26px 26px 6px; }
+  .d-thread .inner { max-width: 680px; margin: 0 auto; }
+  .d-foot { flex: 0 0 auto; padding: 10px 26px 20px; }
+  .d-foot .inner { max-width: 680px; margin: 0 auto; }
+
+  .note-card {
+    background: var(--page-card); border: 1px solid var(--page-line);
+    border-radius: 16px; padding: 20px 22px;
+    display: flex; flex-direction: column; gap: 10px; max-width: 340px; flex: 1 1 280px;
+  }
+  .note-card h3 { margin: 0; font-size: 14.5px; font-weight: 700; letter-spacing: -.01em; }
+  .note-card ul { margin: 0; padding-left: 17px; display: flex; flex-direction: column; gap: 7px; }
+  .note-card li { font-size: 13.5px; line-height: 1.5; color: var(--page-mute); }
+  .note-card li b { color: var(--page-fg); font-weight: 650; }
+
+  @media (max-width: 900px) {
+    .desk { height: 700px; }
+    .side { display: none; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="page-head">
+    <span class="eyebrow"><i></i> Radar Pro · AI Asistan</span>
+    <h1>Sohbet ekranı tasarımı</h1>
+    <p>Ana sayfanın dili aynen korundu: krem zemin, lacivert metin, mint vurgu, yumuşak beyaz kartlar.
+       Tek fark, konuşmanın kendisi artık ekranın ana kahramanı. Balonlar büyüdü, gölge aldı ve iki taraf
+       birbirinden net ayrıldı.</p>
+    <div class="legend">
+      <span>Kullanıcı: dolu lacivert blok</span>
+      <span>Asistan: yüzen beyaz kart</span>
+      <span>Cevap içinde fırsat kartı</span>
+      <span>Devam çipleri</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="section-label">
+      <h2>Mobil</h2>
+      <span>390 px · alt navigasyon korunuyor, sohbet dikey ritimle akıyor</span>
+    </div>
+
+    <div class="stage" style="margin-top:22px">
+
+      <div class="phone">
+        <div class="screen app">
+
+          <div class="m-head">
+            <div class="logo-mark">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3m0 12v3m9-9h-3M6 12H3"/><circle cx="12" cy="12" r="4.5"/></svg>
+            </div>
+            <div class="title">Radar AI<span>Seyahat konsiyerjin</span></div>
+            <div class="newchat">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              Yeni
+            </div>
+          </div>
+
+          <div class="m-thread">
+            <div class="thread">
+
+              <div class="row">
+                <span class="who">
+                  <span class="mark"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5l-2.2-6.3L3.5 10l6.3-1.7z"/></svg></span>
+                  Radar AI
+                </span>
+                <div class="bubble">
+                  <p class="lead">Merhaba Emre, hoş geldin.</p>
+                  <p>Eylül için Bangkok rotanı hatırlıyorum. Nereye bakalım, uçuşa mı yoksa yanındaki işlere mi?</p>
+                </div>
+              </div>
+
+              <div class="row user">
+                <div class="bubble me">
+                  <p>Eylül ortasında Bangkok'a gitmeyi düşünüyorum, uygun uçuş var mı?</p>
+                </div>
+              </div>
+
+              <div class="row">
+                <span class="who">
+                  <span class="mark"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5l-2.2-6.3L3.5 10l6.3-1.7z"/></svg></span>
+                  Radar AI
+                </span>
+                <div class="bubble">
+                  <p>Eylülün ikinci haftası şu an en ucuz pencere. Radar'da duran iki kayıttan biri senin tarihlerine oturuyor:</p>
+
+                  <a class="offer" href="#">
+                    <span class="ic">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5a2.1 2.1 0 0 0-3-3L13 8 4.8 6.2a.7.7 0 0 0-.6 1.2l6 3.6-2.7 2.7-2.4-.5a.6.6 0 0 0-.5 1l2.1 2.2 2.2 2.1a.6.6 0 0 0 1-.5l-.5-2.4 2.7-2.7 3.6 6a.7.7 0 0 0 1.2-.6Z"/></svg>
+                    </span>
+                    <span class="body">
+                      <span class="t">İstanbul, Bangkok</span>
+                      <span class="s">12 Eylül, tek aktarma, Qatar</span>
+                    </span>
+                    <span class="price">18.740 ₺<small>%38 altında</small></span>
+                  </a>
+
+                  <div class="aside">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z"/><path d="M10 20h4"/></svg>
+                    Tayland vizesi Türk pasaportuna 30 güne kadar gerekmiyor, o adımı atlayabilirsin.
+                  </div>
+
+                  <a class="more" href="#">
+                    Fırsatın tamamını aç
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+                  </a>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="chips" style="padding-left:2px">
+                  <span class="chip">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12.5 10 17l9-10"/></svg>
+                    Dönüşü de ekle
+                  </span>
+                  <span class="chip">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                    Fiyat düşerse haber ver
+                  </span>
+                </div>
+              </div>
+
+              <div class="row">
+                <span class="typing"><i></i> Havalimanı avantajlarına bakıyorum</span>
+              </div>
+
+            </div>
+          </div>
+
+          <div class="m-foot">
+            <div class="composer">
+              <div class="composer-box">
+                <span class="ph">Bir şey sor ya da rotanı anlat</span>
+                <span class="send">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 20 4l-7 16-2.5-6.5L4 12Z"/></svg>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="tabbar">
+            <div class="tab">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1Z"/></svg>
+              Ana Sayfa
+            </div>
+            <div class="tab">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12.5 12 4h7v7l-8.5 8.5a1.5 1.5 0 0 1-2.1 0l-4.9-4.9a1.5 1.5 0 0 1 0-2.1Z"/><circle cx="15.5" cy="8.5" r="1.2" fill="currentColor" stroke="none"/></svg>
+              Fırsatlar
+            </div>
+            <div class="tab on">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3l1.8 5L18 9.8l-5.2 1.7L11 17l-1.8-5.5L4 9.8 9.2 8z"/><path d="M18 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>
+              AI Asistan
+              <span class="dot"></span>
+            </div>
+            <div class="tab">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.7"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>
+              Profil
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="note-card">
+        <h3>Mobilde ne değişti</h3>
+        <ul>
+          <li><b>Kullanıcı balonu dolu lacivert.</b> Sohbetin kimden gittiği yarım saniyede okunuyor, gri kutu değil.</li>
+          <li><b>Asistan balonu beyaz ve gölgeli.</b> Krem zeminden ayrılıp yüzüyor, ana sayfadaki fırsat kartlarıyla aynı malzeme.</li>
+          <li><b>Fırsat cevabın içinde.</b> Ayrı sayfaya atmadan fiyat, tarih ve indirim oranı balonda duruyor.</li>
+          <li><b>Çipler cevabın altında.</b> Konuşmayı sürdüren adım, boş ekranda değil tam ihtiyaç anında.</li>
+          <li><b>Alt navigasyon aynı kaldı.</b> Ana sayfayla arasında sıçrama yok.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label">
+      <h2>Masaüstü</h2>
+      <span>Lacivert kenar çubuğu duruyor, sohbet 680 px kolonda ortalanıyor</span>
+    </div>
+
+    <div class="stage" style="margin-top:22px">
+
+      <div class="desk app">
+
+        <aside class="side">
+          <div class="brand">
+            <div class="logo-mark">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3m0 12v3m9-9h-3M6 12H3"/><circle cx="12" cy="12" r="4.5"/></svg>
+            </div>
+            <b>RADAR</b><span class="pro">PRO</span>
+          </div>
+
+          <div class="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1Z"/></svg>
+            Ana Sayfa
+          </div>
+          <div class="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12.5 12 4h7v7l-8.5 8.5a1.5 1.5 0 0 1-2.1 0l-4.9-4.9a1.5 1.5 0 0 1 0-2.1Z"/></svg>
+            Fırsatlar
+          </div>
+          <div class="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7.5" width="17" height="12" rx="2"/><path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.5"/></svg>
+            Seyahatlerim
+          </div>
+          <div class="nav-item on">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3l1.8 5L18 9.8l-5.2 1.7L11 17l-1.8-5.5L4 9.8 9.2 8z"/><path d="M18 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>
+            AI Asistan
+          </div>
+          <div class="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 4h11v16l-5.5-3.5L6.5 20Z"/></svg>
+            Kaydedilenler
+          </div>
+
+          <div class="spacer"></div>
+
+          <div class="promo">
+            <b>Bu ay 4 rota takipte</b>
+            <span>Fiyat düşünce Radar AI sana ilk haber verir.</span>
+          </div>
+        </aside>
+
+        <main class="deskmain">
+          <div class="d-head">
+            <div>
+              <div class="title">Radar AI</div>
+              <div class="sub">Bangkok, Eylül planı</div>
+            </div>
+            <div class="newchat" style="margin-left:auto">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              Yeni sohbet
+            </div>
+          </div>
+
+          <div class="d-thread">
+            <div class="inner thread">
+
+              <div class="row user">
+                <div class="bubble me">
+                  <p>Eylül ortasında Bangkok'a gitmeyi düşünüyorum, uygun uçuş var mı?</p>
+                </div>
+              </div>
+
+              <div class="row">
+                <span class="who">
+                  <span class="mark"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5l-2.2-6.3L3.5 10l6.3-1.7z"/></svg></span>
+                  Radar AI
+                </span>
+                <div class="bubble">
+                  <p>Eylülün ikinci haftası şu an en ucuz pencere. Radar'da duran iki kayıttan biri senin tarihlerine oturuyor:</p>
+
+                  <a class="offer" href="#">
+                    <span class="ic">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5a2.1 2.1 0 0 0-3-3L13 8 4.8 6.2a.7.7 0 0 0-.6 1.2l6 3.6-2.7 2.7-2.4-.5a.6.6 0 0 0-.5 1l2.1 2.2 2.2 2.1a.6.6 0 0 0 1-.5l-.5-2.4 2.7-2.7 3.6 6a.7.7 0 0 0 1.2-.6Z"/></svg>
+                    </span>
+                    <span class="body">
+                      <span class="t">İstanbul, Bangkok</span>
+                      <span class="s">12 Eylül, tek aktarma, Qatar</span>
+                    </span>
+                    <span class="price">18.740 ₺<small>%38 altında</small></span>
+                  </a>
+
+                  <div class="aside">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z"/><path d="M10 20h4"/></svg>
+                    Tayland vizesi Türk pasaportuna 30 güne kadar gerekmiyor, o adımı atlayabilirsin.
+                  </div>
+
+                  <a class="more" href="#">
+                    Fırsatın tamamını aç
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+                  </a>
+                </div>
+              </div>
+
+              <div class="row user">
+                <div class="bubble me">
+                  <p>Havalimanında lounge girişim var mı?</p>
+                </div>
+              </div>
+
+              <div class="row">
+                <span class="who">
+                  <span class="mark"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5l-2.2-6.3L3.5 10l6.3-1.7z"/></svg></span>
+                  Radar AI
+                </span>
+                <div class="bubble">
+                  <p>Var. Kartınla İstanbul Havalimanı'nda yılda 2 giriş hakkın duruyor, Bangkok dönüşünde de geçerli.</p>
+                  <a class="offer" href="#">
+                    <span class="ic">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v-5a2 2 0 0 1 2-2h8v7"/><path d="M3 17h13"/><path d="M18 6v11"/><path d="M18 6h2"/></svg>
+                    </span>
+                    <span class="body">
+                      <span class="t">IGA Lounge, dış hatlar</span>
+                      <span class="s">Kart avantajı, 2 giriş kaldı</span>
+                    </span>
+                    <span class="price">Ücretsiz<small>kartınla</small></span>
+                  </a>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="chips" style="padding-left:2px">
+                  <span class="chip">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12.5 10 17l9-10"/></svg>
+                    Dönüş uçuşunu da bul
+                  </span>
+                  <span class="chip">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                    Fiyat düşerse haber ver
+                  </span>
+                  <span class="chip">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z"/><circle cx="12" cy="10" r="2.4"/></svg>
+                    Bangkok'ta internet
+                  </span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div class="d-foot">
+            <div class="inner composer">
+              <div class="composer-box">
+                <span class="ph">Bir şey sor ya da rotanı anlat</span>
+                <span class="send">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 20 4l-7 16-2.5-6.5L4 12Z"/></svg>
+                </span>
+              </div>
+              <div class="note">Radar AI fiyatları anlık kaynaktan okur, satın alma öncesi son fiyatı sayfada gör.</div>
+            </div>
+          </div>
+        </main>
+
+      </div>
+
+      <div class="note-card">
+        <h3>Masaüstünde ne değişti</h3>
+        <ul>
+          <li><b>Kenar çubuğu ana sayfadan aynen geldi.</b> AI Asistan satırı mint zeminle aktif duruyor.</li>
+          <li><b>Kolon 680 px.</b> Satır uzunluğu okunur kalıyor, balon geniş ekranda dağılmıyor.</li>
+          <li><b>Balon genişliği sınırlı.</b> Kullanıcı sağda %80, asistan solda %86, konuşma hissi geniş ekranda da bozulmuyor.</li>
+          <li><b>Kenar çubuğunda takip kutusu.</b> Sohbeti kesmeden, kaç rotanın izlendiğini gösteriyor.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label">
+      <h2>Tasarım kararları</h2>
+      <span>Onaylarsan koda bu kurallar girer</span>
+    </div>
+
+    <div class="stage" style="margin-top:22px">
+      <div class="note-card">
+        <h3>Renk</h3>
+        <ul>
+          <li><b>Zemin</b> krem #F7F6F1, ana sayfayla aynı.</li>
+          <li><b>Kullanıcı balonu</b> lacivert #0B1B33, metin beyaz.</li>
+          <li><b>Asistan balonu</b> beyaz, kenar #E9E7DE, gölge yumuşak.</li>
+          <li><b>Mint</b> #2EE6A8 sadece gönder tuşu, aktif sekme ve ikon halkasında.</li>
+          <li><b>Turuncu</b> #EF8239 yalnız tek bir aksiyon bağlantısında, satış rengi seyrek kalsın diye.</li>
+        </ul>
+      </div>
+      <div class="note-card">
+        <h3>Ölçü</h3>
+        <ul>
+          <li><b>Balon yarıçapı</b> 22 px, kuyruk köşesi 6 px.</li>
+          <li><b>Balon içi</b> 16 px üst alt, 18 px yan.</li>
+          <li><b>Mesajlar arası</b> 26 px, önceki tasarımdan geniş.</li>
+          <li><b>Gövde metni</b> 15 px, satır aralığı 1.62.</li>
+          <li><b>Yazı tipi</b> Inter, üründe zaten yüklü.</li>
+        </ul>
+      </div>
+      <div class="note-card">
+        <h3>Davranış</h3>
+        <ul>
+          <li><b>Cevap kartlı gelir.</b> Uçuş, lounge, vize bilgisi balonun içinde kart olur.</li>
+          <li><b>Çipler cevaptan sonra.</b> Boş ekranda değil, konuşma sürerken.</li>
+          <li><b>Yazıyor satırı</b> balon dışında, nabız atan mint nokta ile.</li>
+          <li><b>Satış dili yok.</b> Alt not fiyatın anlık olduğunu söyler, baskı kurmaz.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+</body></html>

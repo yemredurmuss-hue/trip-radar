@@ -1,0 +1,353 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Rezervasyon kartları</title>
+<style>
+/* Layout: one narrow column like the board; the rail with times on the left, info as thin lines, bookable things as cards, a city's hotel once at the top of its block. */
+:root {
+  --bg: #f5f2ed;
+  --panel: #faf9f6;
+  --block: #efebe4;
+  --surface: #ffffff;
+  --text: #1d1b1f;
+  --ink: #2b2230;
+  --on-ink: #ffffff;
+  --muted: #6b665f;
+  --faint: #9a948c;
+  --line: #e7e1d7;
+  --rail: #dcd7cf;
+  --dash: #b9b2a8;
+  --green: #1f8f4e;
+  --green-soft: #e1f3e8;
+  --green-text: #16623a;
+  --amber: #f0a53a;
+  --amber-soft: #fff1d9;
+  --amber-text: #8a5300;
+  --accent: #1768ff;
+  --accent-soft: #edf3ff;
+  --accent-line: #cddcff;
+  --route: #d9d2c7;
+  --photo-a: #9cc6c9;
+  --photo-b: #e7c9a0;
+  --shadow: rgba(40, 30, 20, .07);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141316; --panel: #1b1a1d; --block: #232126; --surface: #2c2a30; --text: #ece8ef; --ink: #f4f0f7; --on-ink: #1d1b1f;
+    --muted: #aaa39b; --faint: #7f7972; --line: #3a373e; --rail: #4a4650; --dash: #7a746d; --green: #34b36a; --green-soft: #173a27;
+    --green-text: #8fe0b0; --amber: #f0a53a; --amber-soft: #3b2c12; --amber-text: #f5c77e; --accent: #6d9bff; --accent-soft: #1d2a45;
+    --accent-line: #34508a; --route: #4a4650; --photo-a: #2f5558; --photo-b: #5d4a31; --shadow: rgba(0, 0, 0, .35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141316; --panel: #1b1a1d; --block: #232126; --surface: #2c2a30; --text: #ece8ef; --ink: #f4f0f7; --on-ink: #1d1b1f;
+  --muted: #aaa39b; --faint: #7f7972; --line: #3a373e; --rail: #4a4650; --dash: #7a746d; --green: #34b36a; --green-soft: #173a27;
+  --green-text: #8fe0b0; --amber: #f0a53a; --amber-soft: #3b2c12; --amber-text: #f5c77e; --accent: #6d9bff; --accent-soft: #1d2a45;
+  --accent-line: #34508a; --route: #4a4650; --photo-a: #2f5558; --photo-b: #5d4a31; --shadow: rgba(0, 0, 0, .35);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 var(--font); }
+.page { max-width: 720px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 64px; display: flex; flex-direction: column; gap: 36px; }
+h1, h2, h3 { margin: 0; color: var(--ink); text-wrap: balance; font-family: var(--font-display); }
+p { margin: 0; }
+button { font: inherit; cursor: pointer; color: inherit; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+svg.i { width: 16px; height: 16px; flex: none; display: block; }
+
+/* intro and the three rules */
+.intro { display: flex; flex-direction: column; gap: 12px; }
+.intro h1 { font-size: 32px; letter-spacing: -.02em; }
+.intro > p { color: var(--muted); max-width: 62ch; }
+.rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.rules li { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); font-size: 13.5px; color: var(--muted); }
+.rules b { font-size: 14.5px; color: var(--ink); }
+.rules .ex { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+.sample-line { display: inline-block; width: 36px; height: 2px; background: var(--rail); }
+.sample-card { display: inline-block; width: 36px; height: 20px; border-radius: 6px; background: var(--panel); border: 1.5px solid var(--amber); }
+.sample-hotel { display: inline-block; width: 36px; height: 20px; border-radius: 6px; background: linear-gradient(135deg, var(--photo-a), var(--photo-b)); }
+
+/* board */
+.board { display: flex; flex-direction: column; gap: 16px; padding: 12px; border-radius: 26px; background: var(--panel); border: 1px solid var(--line); }
+.city { display: flex; flex-direction: column; gap: 14px; padding: 14px 12px; border-radius: 26px; background: var(--block); }
+.city-head { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; padding-left: 2px; }
+.city-head b { font-size: 21px; letter-spacing: -.01em; color: var(--ink); font-family: var(--font-display); }
+.city-head .muted { font-size: 14px; }
+.no { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--surface); border: 1.5px solid var(--rail); color: var(--ink); font-size: 13px; font-weight: 700; }
+.folded { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 20px; background: var(--block); font-size: 14px; color: var(--muted); }
+.folded b { color: var(--ink); font-size: 16px; }
+
+/* the city's hotel: once, big, it holds the city's nights */
+.hotel { display: grid; grid-template-columns: 120px minmax(0, 1fr); border-radius: 22px; overflow: hidden; background: var(--surface); box-shadow: 0 1px 2px var(--shadow), 0 6px 20px var(--shadow); }
+.hotel .photo { background: linear-gradient(135deg, var(--photo-a), var(--photo-b)); min-height: 118px; }
+.hotel .body { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; min-width: 0; }
+.hotel .kind { font-size: 12px; font-weight: 700; color: var(--faint); letter-spacing: .02em; }
+.hotel h3 { font-size: 19px; letter-spacing: -.01em; }
+.hotel .meta { font-size: 13.5px; color: var(--muted); }
+.hotel .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 2px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.chip.done { background: var(--green-soft); color: var(--green-text); }
+.chip.need { background: var(--amber-soft); color: var(--amber-text); }
+.chip.open { background: var(--panel); color: var(--muted); border: 1px dashed var(--dash); }
+.price { font-weight: 800; color: var(--ink); }
+
+/* a multi-day booking (car) sits with the hotel, smaller */
+.span { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 18px; background: var(--surface); border: 1.5px solid var(--amber); }
+.span .ic { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--amber-soft); color: var(--amber-text); flex: none; }
+.span .t { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.span b { color: var(--ink); font-size: 15px; }
+.span small { color: var(--muted); font-size: 13px; }
+
+/* a day: header on the rail, then times */
+.day { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.day::before { content: ""; position: absolute; left: 67px; top: 40px; bottom: 14px; width: 2px; background: var(--rail); }
+.day-head { position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 6px 14px 6px 6px; align-self: flex-start; max-width: 100%; border-radius: 22px; background: var(--surface); box-shadow: 0 2px 10px var(--shadow); }
+.day-head .n { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--rail); font-weight: 700; font-size: 13px; }
+.day-head b { color: var(--ink); font-size: 15.5px; white-space: nowrap; }
+.day-head .muted { font-size: 14px; }
+.left { font-size: 13px; font-weight: 700; color: var(--amber-text); white-space: nowrap; }
+.day.travel .day-head { box-shadow: 0 0 0 1.5px var(--accent-line), 0 2px 10px var(--shadow); }
+.trip-chip { font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 1px 9px; white-space: nowrap; }
+
+.t-row { position: relative; display: grid; grid-template-columns: 52px 16px minmax(0, 1fr); gap: 8px; align-items: start; }
+.t-row .tm { padding-top: 3px; font-size: 13.5px; font-weight: 700; color: var(--ink); text-align: right; white-space: nowrap; }
+.t-row .tm.est { color: var(--muted); font-weight: 600; }
+.t-row .tm.none { color: var(--faint); font-weight: 500; font-size: 12.5px; }
+.pin { z-index: 1; width: 12px; height: 12px; margin: 7px 0 0 1px; border-radius: 50%; background: var(--surface); border: 2px solid var(--rail); }
+.t-row.info .pin { width: 8px; height: 8px; margin: 9px 0 0 3px; border: 0; background: var(--dash); }
+.t-row.done .pin { background: var(--green); border-color: var(--green); }
+.t-row.need .pin { border-color: var(--amber); }
+.t-row.open .pin { border-style: dashed; border-color: var(--dash); }
+
+/* information: a thin line, no card */
+.info-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 2px 0; font-size: 14px; color: var(--muted); }
+.info-line b { font-weight: 600; color: var(--text); }
+.info-line a { color: var(--accent); text-decoration: none; font-size: 13px; }
+
+/* booked: the card shrinks back into a quiet line */
+.booked { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; width: 100%; padding: 2px 0; border: 0; background: none; text-align: left; font-size: 14px; color: var(--text); }
+.booked .ok { display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--green-soft); color: var(--green-text); font-size: 11px; font-weight: 800; }
+.booked .muted { font-size: 13.5px; }
+
+/* a booking card: what, when, price, where it stands, one main action */
+.bk { display: flex; flex-direction: column; border-radius: 20px; background: var(--surface); box-shadow: 0 1px 2px var(--shadow), 0 6px 18px var(--shadow); overflow: hidden; }
+.bk.need { border: 1.5px solid var(--amber); }
+.bk.open { border: 1.5px dashed var(--dash); box-shadow: none; background: transparent; }
+.bk.decide { border: 1.5px solid var(--accent-line); }
+.bk-top { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px 14px; }
+.bk-top .ic { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--panel); color: var(--ink); }
+.bk-top b { display: block; font-size: 15px; color: var(--ink); }
+.bk-top small { display: block; font-size: 13px; color: var(--muted); }
+.bk-state { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 9px 14px 12px; border-top: 1px solid var(--line); font-size: 13.5px; }
+.bk.open .bk-state { border-top-style: dashed; }
+.bk-state .why { color: var(--amber-text); font-weight: 700; }
+.bk-state .soft { color: var(--muted); }
+.bk-state .go { margin-left: auto; display: inline-flex; align-items: center; gap: 12px; }
+.btn { border: 0; border-radius: 999px; padding: 8px 18px; background: var(--ink); color: var(--on-ink); font-weight: 700; font-size: 14px; white-space: nowrap; }
+.btn.ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+.link { color: var(--accent); font-weight: 600; font-size: 13.5px; background: none; border: 0; padding: 0; text-decoration: none; white-space: nowrap; }
+.opts { display: flex; flex-direction: column; gap: 0; padding: 0 14px 4px; }
+.opt-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.opt-row .star { font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 1px 8px; }
+
+/* the flight: the ticket the board already had */
+.route { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 16px 8px; }
+.end { display: flex; flex-direction: column; }
+.end.r { text-align: right; }
+.end b { font-size: 26px; letter-spacing: -.01em; color: var(--ink); font-family: var(--font-display); line-height: 1.1; }
+.end .tt { font-size: 15px; font-weight: 700; color: var(--ink); }
+.end small { font-size: 12.5px; color: var(--muted); }
+.mid { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12.5px; color: var(--muted); text-align: center; min-width: 0; }
+.bar { position: relative; width: 100%; height: 2px; background: var(--route); border-radius: 1px; }
+.bar svg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 22px; height: 22px; padding: 3px; border-radius: 50%; background: var(--surface); color: var(--ink); }
+.carrier { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
+.logo { display: grid; place-items: center; min-width: 32px; height: 22px; padding: 0 6px; border-radius: 6px; background: var(--ink); color: var(--on-ink); font-size: 11px; font-weight: 800; letter-spacing: .04em; }
+
+.empty-day { padding: 9px 14px; margin-left: 76px; border-radius: 16px; border: 1.5px dashed var(--dash); font-size: 13.5px; color: var(--muted); }
+
+/* the four states */
+.frame { display: flex; flex-direction: column; gap: 14px; padding: 18px; border-radius: 22px; background: var(--surface); border: 1px solid var(--line); }
+.frame h2 { font-size: 18px; }
+.states { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.states li { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; color: var(--muted); }
+.states li b { color: var(--ink); font-size: 14px; }
+.arrow { color: var(--faint); }
+.reco { display: flex; gap: 12px; align-items: flex-start; padding: 13px 15px; border-radius: 16px; background: var(--surface); border: 1.5px solid var(--accent-line); }
+.reco .m { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 13px; font-weight: 800; }
+.reco b { color: var(--ink); }
+.hint { font-size: 13px; color: var(--muted); }
+
+@media (max-width: 560px) {
+  .rules, .states { grid-template-columns: 1fr; }
+  .hotel { grid-template-columns: 84px minmax(0, 1fr); }
+  .end b { font-size: 22px; }
+  .bk-state .go { margin-left: 0; }
+  .empty-day { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="plane" viewBox="0 0 24 24"><path fill="currentColor" d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></symbol>
+  <symbol id="car" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5v-4l1.9-4.6A1.6 1.6 0 0 1 7.9 7h8.2a1.6 1.6 0 0 1 1.5.9l1.9 4.6v4z"/><path d="M4.5 12.5h15M6.5 16.5v2M17.5 16.5v2"/></g><circle cx="8" cy="14.5" r="1.1" fill="currentColor"/><circle cx="16" cy="14.5" r="1.1" fill="currentColor"/></symbol>
+  <symbol id="ticket" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z M9.5 6v12" /></symbol>
+  <symbol id="fork" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 0-3 2.5-3 6s1 4 3 4v8"/></symbol>
+</svg>
+
+<main class="page">
+  <header class="intro">
+    <h1>Rezervasyon kartları</h1>
+    <p>Kart yalnız rezervasyonu olan şeyde: taksi, uçuş, tren, etkinlik, restoran. Check-in ve iniş gibi bilgiler çizgide ince satır. Otel ise şehrin başında bir kez durur ve o şehrin gecelerini taşır.</p>
+    <ul class="rules">
+      <li><span class="ex"><span class="sample-card" aria-hidden="true"></span></span><b>Rezervasyonu var → kart</b>Fiyatı, durumu, tek ana düğmesi. Rezerve edilince küçülür.</li>
+      <li><span class="ex"><span class="sample-line" aria-hidden="true"></span></span><b>Bilgi → ince satır</b>Check-out, iniş, check-in. Yapılacak bir şey yok.</li>
+      <li><span class="ex"><span class="sample-hotel" aria-hidden="true"></span></span><b>Günlere yayılan → şehrin başında</b>Otel (ve kiralık araç) bir kez, büyük.</li>
+    </ul>
+  </header>
+
+  <section class="board" aria-label="Pano örneği: Porto'dan Madeira'ya">
+    <div class="folded"><span class="no">1</span><b>Porto</b><span class="num">7–10 Eki · Jardim Stay</span><span class="chip done">✓ Rezerve</span></div>
+
+    <!-- the day on the move, between the two cities -->
+    <section class="day travel" aria-label="4. gün, yolculuk günü">
+      <div class="day-head">
+        <span class="n">4</span><b>4. gün</b><span class="muted num">Cmt 10 Eki</span><span class="trip-chip">Porto → Madeira</span><span class="left">2 iş kaldı</span>
+      </div>
+
+      <div class="t-row info">
+        <span class="tm num">11:00</span><span class="pin" aria-hidden="true"></span>
+        <p class="info-line"><b>Check-out</b> Jardim Stay</p>
+      </div>
+
+      <div class="t-row done">
+        <span class="tm num">13:00</span><span class="pin" aria-hidden="true"></span>
+        <button type="button" class="booked"><span class="ok" aria-hidden="true">✓</span><b>Taksi</b><span class="muted">Jardim Stay → OPO · €25 · rezerve</span></button>
+      </div>
+
+      <div class="t-row need">
+        <span class="tm num">15:00</span><span class="pin" aria-hidden="true"></span>
+        <article class="bk need" aria-label="Uçuş Porto → Madeira">
+          <div class="route">
+            <div class="end"><b>OPO</b><span class="tt num">15:00</span><small>Porto</small></div>
+            <div class="mid"><span class="num">1 sa 55 dk</span><span class="bar"><svg aria-hidden="true"><use href="#plane"/></svg></span><span>Direkt</span></div>
+            <div class="end r"><b>FNC</b><span class="tt num">16:55</span><small>Madeira</small></div>
+          </div>
+          <div class="bk-state">
+            <span class="carrier"><span class="logo">TAP</span><span class="num">TP1693</span><span class="price num">€118</span></span>
+            <span class="why">Bilet alınmadı</span>
+            <span class="go"><a class="link" href="#bilet">Bilet al ↗</a><button type="button" class="btn">Aldım</button></span>
+          </div>
+        </article>
+      </div>
+
+      <div class="t-row info">
+        <span class="tm num">16:55</span><span class="pin" aria-hidden="true"></span>
+        <p class="info-line"><b>İniş</b> Madeira (FNC)</p>
+      </div>
+
+      <div class="t-row open">
+        <span class="tm est num">~17:10</span><span class="pin" aria-hidden="true"></span>
+        <article class="bk open" aria-label="Transfer havalimanından otele">
+          <div class="bk-top">
+            <span class="ic"><svg class="i" aria-hidden="true"><use href="#car"/></svg></span>
+            <span><b>Havalimanı → Quinta Vista</b><small>Taksi, servis ya da araç: henüz yok</small></span>
+            <span></span>
+          </div>
+          <div class="bk-state">
+            <span class="soft">Planlanmadı</span>
+            <span class="go"><button type="button" class="link">Gerek yok</button><button type="button" class="btn ghost">Planla</button></span>
+          </div>
+        </article>
+      </div>
+
+      <div class="t-row info">
+        <span class="tm est num">~17:55</span><span class="pin" aria-hidden="true"></span>
+        <p class="info-line"><b>Check-in</b> Quinta Vista <a href="#otel">otel kartı ↓</a></p>
+      </div>
+    </section>
+
+    <!-- the next city: its hotel once, big; then its days -->
+    <section class="city" aria-label="Madeira">
+      <div class="city-head"><span class="no">2</span><b>Madeira</b><span class="muted num">10–14 Eki · 4 gece</span></div>
+
+      <article class="hotel" id="otel" aria-label="Quinta Vista, Madeira'daki otel">
+        <div class="photo" aria-hidden="true"></div>
+        <div class="body">
+          <span class="kind">Otel · 4 gece</span>
+          <h3>Quinta Vista</h3>
+          <span class="meta num">10–14 Eki · Funchal · giriş 15:00, çıkış 11:00</span>
+          <span class="row"><span class="chip done">✓ Rezerve</span><span class="price num">€520</span><span class="muted num" style="font-size:13px">ücretsiz iptal 3 Eki'ye kadar</span></span>
+        </div>
+      </article>
+
+      <div class="span" aria-label="Araç kiralama">
+        <span class="ic"><svg class="i" aria-hidden="true"><use href="#car"/></svg></span>
+        <span class="t"><b>Araç kiralama · 11–14 Eki</b><small>2 seçenek · FAA Rentals önde</small></span>
+        <button type="button" class="btn ghost">Karar ver</button>
+      </div>
+
+      <section class="day" aria-label="5. gün">
+        <div class="day-head"><span class="n">5</span><b>5. gün</b><span class="muted num">Paz 11 Eki</span><span class="left">2 iş</span></div>
+
+        <div class="t-row info">
+          <span class="tm num">09:00</span><span class="pin" aria-hidden="true"></span>
+          <p class="info-line"><b>Araç teslim</b> havalimanı ofisi</p>
+        </div>
+
+        <div class="t-row need">
+          <span class="tm num">10:00</span><span class="pin" aria-hidden="true"></span>
+          <article class="bk need" aria-label="Levada yürüyüşü">
+            <div class="bk-top">
+              <span class="ic"><svg class="i" aria-hidden="true"><use href="#ticket"/></svg></span>
+              <span><b>Levada dos Balcões yürüyüşü</b><small>Rehberli · 4 sa · 2 kişi</small></span>
+              <span class="price num">€90</span>
+            </div>
+            <div class="bk-state">
+              <span class="why">Rezerve edilmedi</span><span class="soft num">ücretsiz iptal 8 Eki'ye kadar</span>
+              <span class="go"><button type="button" class="btn">Rezerve et</button></span>
+            </div>
+          </article>
+        </div>
+
+        <div class="t-row need">
+          <span class="tm num">20:00</span><span class="pin" aria-hidden="true"></span>
+          <article class="bk decide" aria-label="Akşam yemeği, iki seçenek">
+            <div class="bk-top">
+              <span class="ic"><svg class="i" aria-hidden="true"><use href="#fork"/></svg></span>
+              <span><b>Akşam yemeği</b><small>2 seçenek kaydettin</small></span>
+              <span></span>
+            </div>
+            <div class="opts">
+              <div class="opt-row"><span>Armazém do Sal <span class="star">önerim</span></span><span class="muted num">~€70</span><button type="button" class="link">Seç</button></div>
+              <div class="opt-row"><span>Kampo</span><span class="muted num">~€95</span><button type="button" class="link">Seç</button></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <div class="empty-day">6. gün · Pzt 12 Eki · boş gün</div>
+    </section>
+  </section>
+
+  <section class="frame" aria-labelledby="st-h">
+    <h2 id="st-h">Bir kartın dört hali</h2>
+    <ul class="states">
+      <li><b>Planlanmadı</b>Kesikli çerçeve: "Planla" ya da "Gerek yok".</li>
+      <li><b><span class="arrow">→</span> Karar ver</b>Seçenekler kartın içinde, önerim işaretli.</li>
+      <li><b><span class="arrow">→</span> Rezerve et</b>Amber çerçeve, fiyat, iptal süresi, tek ana düğme.</li>
+      <li><b><span class="arrow">→</span> ✓ Rezerve</b>Kart küçülür, çizgide tek satıra döner.</li>
+    </ul>
+    <p class="hint">Böylece göz hep bekleyen işe gider: bitenler geri çekilir, rezerve edilmemiş olan öne çıkar. Günün başında kaç iş kaldığı yazar.</p>
+  </section>
+
+  <div class="reco">
+    <span class="m" aria-hidden="true">✓</span>
+    <p><b>Sıra:</b> gün başlığı, sonra saat saat. Otel ve kiralık araç gibi günlere yayılanlar şehrin başında bir kez; gün içinde yalnız giriş, çıkış, teslim satırları. Yolculuk günü iki şehrin arasında durur, kendi başlığıyla.</p>
+  </div>
+</main>
+
+</body></html>
