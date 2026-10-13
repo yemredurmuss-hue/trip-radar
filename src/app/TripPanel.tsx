@@ -76,6 +76,8 @@ import { SECTION_META, useSectionOpen } from "./plan/sectionMeta";
 import { SwipeCard } from "./SwipeCard";
 import { useArrivals } from "./arrive/useArrivals";
 import { useSuggestions } from "./useSuggestions";
+import { DAY_MODES } from "../lib/dayView";
+import { setDayMode, useDayMode } from "./days/dayMode";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
 import { Pano } from "./board/Pano";
 import { NeedGroup } from "./cards/NeedCard";
@@ -114,6 +116,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
+  const dayMode = useDayMode();
   const [view, setView] = useState<TimelineMode | "story" | "docs" | "map" | "board">("plan");
   // The Pano opened from a plan card ("Pano'da gör"): that need's group, framed, with "← Plan'a dön".
   const [panoFocus, setPanoFocus] = useState<string | null>(null);
@@ -875,9 +878,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       )}
       {(view === "days" || view === "map") && timeline.entries.length > 0 && (
         <div className="days-mode" role="group" aria-label={L("Gün gün", "Day by day")}>
-          <button type="button" aria-pressed={view === "days"} onClick={() => setView("days")}>
-            {L("Liste", "List")}
-          </button>
+          {DAY_MODES.map((m) => (
+            <button key={m} type="button" aria-pressed={view === "days" && dayMode === m} onClick={() => (setDayMode(m), setView("days"))}>
+              {m === "compact" ? L("Kompakt", "Compact") : m === "list" ? L("Liste", "List") : L("Kartlar", "Cards")}
+            </button>
+          ))}
           <button type="button" aria-pressed={view === "map"} onClick={() => setView("map")}>
             {L("Harita", "Map")}
           </button>
@@ -924,7 +929,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           </div>
         ))}
         <UndatedIdeas items={items} plan={plan} />
-        <TimelineView onShow={showOnPlan} timeline={timeline} tripId={trip.id} onAdd={env.add} listings={listings} today={today} dayTimes={trip.dayTimes} dayOrder={trip.dayOrder} dayLoose={trip.dayLoose} mainPlaces={mains} />
+        <TimelineView onShow={showOnPlan} timeline={timeline} tripId={trip.id} onAdd={env.add} listings={listings} today={today} dayTimes={trip.dayTimes} dayOrder={trip.dayOrder} dayLoose={trip.dayLoose} mainPlaces={mains} cards={{ legCard, renderGroup, settled }} cityImage={cityImageOf} />
         </>
       ) : (
         <EmptyEnvContext.Provider value={emptyEnv}>

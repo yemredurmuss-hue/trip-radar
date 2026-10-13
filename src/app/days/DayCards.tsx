@@ -4,8 +4,8 @@
 // time, then "Gece: Kyoto · Gion Machiya Evi" (or "konaklama aranıyor"); a day with nothing says "Serbest gün ·
 // yapılacaklardan seç". Each line is titled by the code in one standard (satır standardı v2, dayRowTitle.ts). A line's
 // time can be set by hand and its place in the day moved (drag or ↑ ↓); a tap on it shows its card on the Plan.
-// Insurance, the eSIM and a visa aren't part of a day: they stay in Plan → Diğer. (The old photo cards, their
-// Liste | Kartlar switch and the strip of days are gone: the row is the view.)
+// Insurance, the eSIM and a visa aren't part of a day: they stay in Plan → Diğer. This is Kompakt, the default;
+// Liste and Kartlar (the photo, the strip of days, the day's reservations) are DayViews.tsx.
 import { LegBody } from "../LegRow";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { dayCards, dayLinesOf, isAsideRow, isPlanRow, rowKind, stageOf, type DayCard } from "../../lib/dayCards";
@@ -27,6 +27,9 @@ import type { RentalEntry, StayEntry, TimelineSection } from "../../lib/timeline
 import { dateBox } from "../../lib/storyDates";
 import type { Item, Listing } from "../../lib/types";
 import { saveArrival } from "../../lib/userEdits";
+import { journeyDay } from "../../lib/dayView";
+import { JourneyDay } from "./JourneyDay";
+import type { LegCardFor, RenderGroup, SettledFor } from "../Timeline";
 import { liveLine } from "../../lib/flightData";
 
 export interface DayCardsProps {
@@ -46,29 +49,40 @@ export interface DayCardsProps {
   loose?: string[];
   /** The hero's main places (destinations.ts): a route reads "Porto → Madeira", not "Porto → Funchal". */
   mainPlaces?: MainPlace[];
+  /** The Plan's own cards (their ticket, transfer and booking cards), for the journey day and the day's reservations. */
+  cards: DayPlanCards;
+  /** The city's photo (the trip's), null when there is none yet: Liste and Kartlar' day photo. */
+  cityImage?: (city: string | null) => string | null;
+}
+
+/** The Plan's own cards, so a day's journey and reservations show each thing as the Plan does. */
+export interface DayPlanCards {
+  legCard: LegCardFor;
+  renderGroup: RenderGroup;
+  settled: SettledFor;
 }
 
 /** A city as its main place, for the lines' routes (display only; the plan keeps its places). */
-const PlaceCtx = createContext<Place>((c) => c);
+export const PlaceCtx = createContext<Place>((c) => c);
 /** Whose a record is (kişiye özel rezervasyon): its owners by name, null for everyone's. */
-const OwnersCtx = createContext<(item: Item) => string[] | null>(() => null);
-const useOwners = () => useContext(OwnersCtx);
+export const OwnersCtx = createContext<(item: Item) => string[] | null>(() => null);
+export const useOwners = () => useContext(OwnersCtx);
 /** A day's lines with their layovers and meet-ups (two people landing at the same airport on their own flights). */
-const withAside = (lines: DayRow[], ownersOf: (item: Item) => string[] | null) => withMeetings(withLayovers(lines), ownersOf);
-const usePlace = () => useContext(PlaceCtx);
+export const withAside = (lines: DayRow[], ownersOf: (item: Item) => string[] | null) => withMeetings(withLayovers(lines), ownersOf);
+export const usePlace = () => useContext(PlaceCtx);
 
 const weekday = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(locale(), { weekday: "short", timeZone: "UTC" });
-const dateText = (c: DayCard) => `${formatDateRange(c.date, null)} ${weekday(c.date)}`;
+export const dateText = (c: DayCard) => `${formatDateRange(c.date, null)} ${weekday(c.date)}`;
 const time = (r: DayRow) => (r.time ? `${r.estimated ? "~" : ""}${r.time}` : "");
 
 /** The stay that holds the night of a day (its check-in day up to the day before check-out), for the "Gece:" line. */
-function nightStay(card: DayCard, stays: Map<string, StayEntry>): StayEntry | null {
+export function nightStay(card: DayCard, stays: Map<string, StayEntry>): StayEntry | null {
   for (const st of stays.values()) if (st.block.range.start <= card.date && card.date < st.block.range.end) return st;
   return null;
 }
 
 /** The date box of a day: month, day, weekday and the trip's day ("Gün 3"), as in "Yolculuk sırasıyla". */
-function DayBox({ card }: { card: DayCard }) {
+export function DayBox({ card }: { card: DayCard }) {
   const n = card.dayNo?.match(/\d+/)?.[0] ?? null;
   const b = dateBox(card.date, null);
   if (!b)
@@ -100,7 +114,7 @@ const Check = () => (
 );
 
 /** "Gece: Kyoto · Gion Machiya Evi"; a night with no stay chosen says so; the day the trip ends, "Eve dönüş". */
-function NightLine({ card, stays }: { card: DayCard; stays: Map<string, StayEntry> }) {
+export function NightLine({ card, stays }: { card: DayCard; stays: Map<string, StayEntry> }) {
   const place = usePlace();
   const st = nightStay(card, stays);
   if (!st && card.role === "departure")
@@ -128,13 +142,13 @@ function NightLine({ card, stays }: { card: DayCard; stays: Map<string, StayEntr
 }
 
 /** The stage on a line's right, in the Plan's words and colours. */
-function Stage({ row }: { row: DayRow }) {
+export function Stage({ row }: { row: DayRow }) {
   const s = stageOf(row);
   return s ? <span className={`dg-lab ${s.tone}`}>{s.badge ? <BookedBadge look={s.badge.look} as={s.badge.as} small /> : s.text}</span> : null;
 }
 
 /** Lines of this day still to book, decide or plan: said once, in the foot (a count the old view had). */
-function Left({ card }: { card: DayCard }) {
+export function Left({ card }: { card: DayCard }) {
   // Insurance and the eSIM aren't part of the day: not its to-dos either.
   const left = card.rows.filter((r) => isPlanRow(r) && !isAsideRow(r) && r.state !== "done" && r.state !== "info").length;
   if (!left) return null;
@@ -145,33 +159,41 @@ function Left({ card }: { card: DayCard }) {
   );
 }
 
-const AddDay = ({ card, onAdd }: { card: DayCard; onAdd: DayCardsProps["onAdd"] }) => (
+export const AddDay = ({ card, onAdd }: { card: DayCard; onAdd: DayCardsProps["onAdd"] }) => (
   <button type="button" className="dg-add" aria-label={L(`${formatDateRange(card.date, null)}: bu güne ekle`, `${formatDateRange(card.date, null)}: add to this day`)} onClick={() => onAdd(insertAtDay(card.date, card.city))}>
     + <span>{L("Bu güne ekle", "Add to this day")}</span>
   </button>
 );
 
-/** The days, a row each, in order. */
-export function DayCards(props: DayCardsProps) {
-  // Every free day is its own row (merge: false): the trip's days are the rows.
-  const cards = dayCards(props.sections, { rentals: props.rentals, listings: props.listings, times: props.times, merge: false });
-  // The stays by their nights' first day, for each day's "Gece:" line.
-  const stays = new Map<string, StayEntry>(props.sections.flatMap((s) => (s.kind === "city" ? s.stays.map((st) => [st.key, st] as [string, StayEntry]) : [])));
-  const mains = props.mainPlaces;
-  const place = useMemo<Place>(() => (c) => (mains?.length ? (mainPlaceOf(mains, c) ?? c) : c), [mains]);
+/** What a view of the days needs around them: the main places' names for a route, whose a record is. */
+export function DayProviders({ mainPlaces, children }: { mainPlaces?: MainPlace[]; children: ReactNode }) {
+  const place = useMemo<Place>(() => (c) => (mainPlaces?.length ? (mainPlaceOf(mainPlaces, c) ?? c) : c), [mainPlaces]);
   const env = useContext(CardEnvContext);
   const who = useWhoCtx();
   const ownersOf = useMemo(() => (item: Item) => (env ? (whoseOf(item, env.trip, who)?.names ?? null) : null), [env, who]);
   return (
     <PlaceCtx.Provider value={place}>
-      <OwnersCtx.Provider value={ownersOf}>
-        <div className="dg" aria-label={L("Gün gün", "Day by day")}>
-          {cards.map((c) => (
-            <DayRowCard key={c.key} card={c} stays={stays} isToday={c.date === props.today} {...props} />
-          ))}
-        </div>
-      </OwnersCtx.Provider>
+      <OwnersCtx.Provider value={ownersOf}>{children}</OwnersCtx.Provider>
     </PlaceCtx.Provider>
+  );
+}
+
+/** The stays by their nights' first day, for each day's "Gece:" line. */
+export const staysOf = (sections: TimelineSection[]) => new Map<string, StayEntry>(sections.flatMap((s) => (s.kind === "city" ? s.stays.map((st) => [st.key, st] as [string, StayEntry]) : [])));
+
+/** The days, a row each, in order (Kompakt). */
+export function CompactDays(props: DayCardsProps) {
+  // Every free day is its own row (merge: false): the trip's days are the rows.
+  const cards = dayCards(props.sections, { rentals: props.rentals, listings: props.listings, times: props.times, merge: false });
+  const stays = staysOf(props.sections);
+  return (
+    <DayProviders mainPlaces={props.mainPlaces}>
+      <div className="dg" aria-label={L("Gün gün", "Day by day")}>
+        {cards.map((c) => (
+          <DayRowCard key={c.key} card={c} stays={stays} isToday={c.date === props.today} {...props} />
+        ))}
+      </div>
+    </DayProviders>
   );
 }
 
@@ -181,6 +203,9 @@ function DayRowCard({ card, stays, isToday, ...props }: { card: DayCard; stays: 
   const lines = dayLines(card, props);
   const flow = withAside(lines, useOwners());
   const dnd = useReorder(lines, card.date, props.tripId);
+  // A day that changes city: its way, from check-out to check-in, can be opened as one card under the lines.
+  const journey = journeyDay(card, flow);
+  const [trip, setTrip] = useState(false);
   return (
     <section className={`dg-day${isToday ? " today" : ""}`} id={`dcd-${card.key}`} aria-label={`${card.dayNo ?? ""} ${card.title}`}>
       <div className="dg-d">
@@ -194,10 +219,16 @@ function DayRowCard({ card, stays, isToday, ...props }: { card: DayCard; stays: 
             ))}
           </ol>
         )}
+        {journey && trip && <JourneyDay journey={journey} card={card} cards={props.cards} onShow={props.onShow} tripId={props.tripId} />}
         <div className="dg-foot">
           {isToday && <span className="dg-today">{L("Bugün", "Today")}</span>}
           <NightLine card={card} stays={stays} />
           <Left card={card} />
+          {journey && (
+            <button type="button" className="dg-trip" aria-expanded={trip} onClick={() => setTrip(!trip)}>
+              {L("Yolculuk günü", "Travel day")}
+            </button>
+          )}
           <AddDay card={card} onAdd={props.onAdd} />
         </div>
         {flow.length === 0 && <span className="dg-free">{L("Serbest gün · yapılacaklardan seç", "Free day · pick from the to-dos")}</span>}
@@ -220,7 +251,7 @@ const Title = ({ t }: { t: RowTitle }) => (
  * A line of the day: its icon, NE · HANGİSİ, the grey word (and a time, tap it to set one), whose it is, its stage on the
  * right; a flight's live data, "İniş saati?" and a late-time warning under it. A tap on the title shows its card.
  */
-function DayLine({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tripId: string; dnd?: Dnd }) {
+export function DayLine({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; tripId: string; dnd?: Dnd }) {
   const place = usePlace();
   const t = rowTitle(row, place);
   const kind = rowKind(row);
@@ -270,20 +301,26 @@ function DayLine({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; 
       )}
       <LiveLine row={row} />
       <ArrivalAsk row={row} />
-      {row.warn && (
-        <p className="dg-warn">
-          {row.warn}
-          {(row.user || row.ownTime) && (
-            <>
-              {" "}
-              <button type="button" className="link-btn" onClick={() => void clearOwnTime(tripId, row.key)}>
-                {row.ownTime ? L("Elle girileni sil", "Remove the time set by hand") : L("Hesaplanan saate dön", "Back to the worked-out time")}
-              </button>
-            </>
-          )}
-        </p>
-      )}
+      <RowWarn row={row} tripId={tripId} />
     </li>
+  );
+}
+
+/** A line's warning ("17:40'ta havalimanında olmalısın") with the way to take back the time set by hand. */
+export function RowWarn({ row, tripId }: { row: DayRow; tripId: string }) {
+  if (!row.warn) return null;
+  return (
+    <p className="dg-warn">
+      {row.warn}
+      {(row.user || row.ownTime) && (
+        <>
+          {" "}
+          <button type="button" className="link-btn" onClick={() => void clearOwnTime(tripId, row.key)}>
+            {row.ownTime ? L("Elle girileni sil", "Remove the time set by hand") : L("Hesaplanan saate dön", "Back to the worked-out time")}
+          </button>
+        </>
+      )}
+    </p>
   );
 }
 
@@ -291,7 +328,7 @@ function DayLine({ row, onTap, tripId, dnd }: { row: DayRow; onTap: () => void; 
  * A line's time: "~" when worked out (why on hover), plain when fixed or set by the traveller. A tap lets them
  * set their own (the rest of the day follows it); "×" gives it back to the plan.
  */
-function TimeCell({ row, tripId }: { row: DayRow; tripId: string }) {
+export function TimeCell({ row, tripId }: { row: DayRow; tripId: string }) {
   const [edit, setEdit] = useState(false);
   const place = usePlace();
   // A layover's time is its first flight's landing: nothing to set.
@@ -404,7 +441,7 @@ const ticketOf = (row: DayRow): Item | null => {
  * "İniş saati?" on a flight whose page didn't say when it lands (0.36.13): the traveller types it from their
  * ticket, and the transfer and the check-in after it are worked out from it.
  */
-function ArrivalAsk({ row }: { row: DayRow }) {
+export function ArrivalAsk({ row }: { row: DayRow }) {
   const [open, setOpen] = useState(false);
   const item = ticketOf(row);
   if (!item?.flight?.departure || item.flight.arrival) return null;
@@ -440,10 +477,10 @@ function ArrivalAsk({ row }: { row: DayRow }) {
  * The day's lines in their order (the timed by the clock, the rest where put). Insurance, the eSIM and a visa
  * aren't part of a day (satır standardı v2): they stay in Plan → Diğer.
  */
-const dayLines = (card: DayCard, props: Pick<DayCardsProps, "times" | "order" | "loose">): DayRow[] => dayLinesOf(card, props);
+export const dayLines = (card: DayCard, props: Pick<DayCardsProps, "times" | "order" | "loose">): DayRow[] => dayLinesOf(card, props);
 
 /** What a line needs to be moved: its grip, its drop handlers, its class while dragged over. */
-interface Dnd {
+export interface Dnd {
   grip: ReactNode;
   li: { onDragOver: (e: React.DragEvent<HTMLLIElement>) => void; onDrop: (e: React.DragEvent<HTMLLIElement>) => void };
   cls: string;
@@ -455,7 +492,7 @@ interface Dnd {
  * "evet"): it stays where it was put, its time hidden (trip.dayLoose) and its own time forgotten; a time given,
  * or "×" on it, puts it back by the clock.
  */
-function useReorder(rows: DayRow[], date: string, tripId: string): (row: DayRow) => Dnd {
+export function useReorder(rows: DayRow[], date: string, tripId: string): (row: DayRow) => Dnd {
   const [drag, setDrag] = useState<string | null>(null);
   const [over, setOver] = useState<{ key: string; after: boolean } | null>(null);
   const place = usePlace();

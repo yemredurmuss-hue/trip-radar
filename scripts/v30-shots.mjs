@@ -366,6 +366,21 @@ async function shootTrip(tag) {
       await app.setViewportSize({ width: WIDTH, height: 1000 });
     });
   }
+  // Gün gün's other two ways to read (Liste: the day's photo; Kartlar: the day on a rail), then back to Kompakt.
+  for (const [mode, trn, enn] of [["list", "Liste", "List"], ["cards", "Kartlar", "Cards"]]) {
+    await step("days " + mode, async () => {
+      await app.getByRole("tab", { name: tabName("Gün gün", "Day by day"), exact: true }).click();
+      await app.locator(".days-mode").getByRole("button", { name: tabName(trn, enn), exact: true }).click();
+      await app.waitForTimeout(1200);
+      await app.setViewportSize({ width: WIDTH, height: 6500 });
+      await app.waitForTimeout(500);
+      await app.locator(".panel").evaluate((el) => (el.scrollTop = 0));
+      await app.locator(".panel").first().screenshot({ path: shot(`view-days-${mode}`) }).catch(() => app.screenshot({ path: shot(`view-days-${mode}`) }));
+      await overflow(`${tag} days ${mode}`);
+      await app.setViewportSize({ width: WIDTH, height: 1000 });
+    });
+  }
+  await step("days compact", async () => { await app.locator(".days-mode").getByRole("button", { name: tabName("Kompakt", "Compact"), exact: true }).click(); });
   await step("view cat", async () => { await app.getByRole("tab", { name: tabName("Kategoriye göre", "By category"), exact: true }).click(); await app.waitForTimeout(500); });
   // The trip menu.
   await step("menu", async () => {
