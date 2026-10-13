@@ -5935,6 +5935,7 @@ try {
 // H2/H3: at 390 px the page never scrolls sideways: the Plan (three views), Ozora-like trips with many stops, the back of a card.
 {
   const narrow = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-narrow-")), {
+    executablePath,
     headless: false,
     timezoneId: "Europe/Istanbul",
     viewport: { width: 390, height: 900 },
