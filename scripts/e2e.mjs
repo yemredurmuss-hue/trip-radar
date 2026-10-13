@@ -956,7 +956,8 @@ try {
     assert.equal(await peek.getByText("Rezervasyon kodu").count(), 0, "the balloon holds the code back until the day");
     await app.mouse.move(2, 2);
     await peek.waitFor({ state: "detached" });
-    // On the flight's day the balloon carries it with the copy button (pointable).
+    // On the flight's day the balloon carries it with the copy button (pointable). (Its card moves to another day group: found by its id.)
+    const tpCard = app.locator(`.pk-card[data-item-id="${await home.getAttribute("data-item-id")}"]`);
     await app.evaluate(async () => {
       const request = indexedDB.open("trip-radar");
       const database = await new Promise((resolve, reject) => ((request.onsuccess = () => resolve(request.result)), (request.onerror = () => reject(request.error))));
@@ -969,7 +970,8 @@ try {
       new BroadcastChannel("trip-radar").postMessage("changed");
     });
     await app.waitForTimeout(800);
-    await home.locator(".inf").hover();
+    await tpCard.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    await tpCard.locator(".inf").hover();
     await peek.waitFor({ state: "visible", timeout: 4000 });
     assert.match(await peek.innerText(), /Rezervasyon kodu[\s\S]*ABC123/);
     const codeBox = peek.locator(".cpy");

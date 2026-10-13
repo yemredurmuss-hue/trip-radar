@@ -6,10 +6,10 @@ Kural: paket bitince bu tabloyu güncelle, commit + push et. Yayın yalnız F10 
 | Paket | Durum | Commit | Not |
 |---|---|---|---|
 | P0 durum sözlüğü + rozet + belirteçler | bitti | 8019f19 | stageWords.ts, BookedBadge, 5 örnek kutu, F0 belirteçleri; tsc, vitest 1858, build ve tam e2e (56 adım) yeşil |
-| P1a ⓘ balonu | bekliyor | | |
-| P1b niyet etiketi | bekliyor | | |
-| P1c köşe yüzü | bekliyor | | |
-| P1d Pano ferah | bekliyor | | |
+| P1a ⓘ balonu | bitti | 138f7b2 | InfoButton + HoverTip(button); flightPeek/stayPeek/transferPeek, PNR yalnız uçuş günü; Peek.tsx kalktı |
+| P1b niyet etiketi | bitti | 41835e1 | IntentChip + intentOf; tarih yoksa yalnız şehir, kamp/karavan "Kamp · yer"; "ayrı konaklama" bloğu görselsiz olduğundan etiketsiz (F10 bakar) |
+| P1c köşe yüzü | bitti | dc63a10 | SavedFace (kart köşesi, arka yüz karosu, fikir karosu, Pano); etkinlik kartındaki minik yüz P6 (ActivityBoard) ile gelir |
+| P1d Pano ferah | bitti | 0ebfdf9 (+ ara kayıt ceb22d4) | sütun 296-316, ucus.png, kişi başı fiyat tripPeople ile; uçuş şeridi/seçenek satırı P2'de |
 | P8a hareket değerleri | bekliyor | | |
 | P8b reduced-motion + Hareketi duraklat | bekliyor | | |
 | P8e exitMotion testi | bekliyor | | |
