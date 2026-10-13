@@ -10,6 +10,11 @@
 //   data-pit-photo       the hero photo: left as it is when it was carried in from the trip's card (viewTransition.ts)
 //   data-count           the first number in its text counts up from 0 as its piece comes in
 // With no mark at all on the page, the panel's own blocks come in.
+//
+// On top of that, a short flourish (Emre, 2026-10-13, "orb, kıvılcım, ışıltı geri gelsin"): the assistant's mascot leaves its seat in the chat as
+// a small orb for the border of the board, a burst of sparks and stars goes off there, a glint sweeps over the counters, and the orb is home
+// again, all within FLOURISH_MS. It is drawn in a layer of its own over the page and never moves a piece; the old slow wink and the panel's
+// glide down stay gone. It ends with the opening, at a touch, or by itself.
 import { reducedMotion } from "./motion";
 import { photoCarried } from "./viewTransition";
 
@@ -23,6 +28,24 @@ export const COUNT_MS = 520;
 export const BAR_MS = 600;
 /** Pieces scrolled into view together come in this far apart (ms). */
 export const SCROLL_GAP = 45;
+
+/** The flourish, in ms from the start: the orb is out at the border by `burst`, leaves it at `back`, and is home when it is over. */
+export const FLOURISH = { burst: 260, back: 560 } as const;
+export const FLOURISH_MS = 900;
+/** The sparks of a burst: how many, and how far they fly. */
+export const SPARKS = 14;
+/** A glint sweeps only the counters that start within this long (ms), so it is over with the rest. */
+export const GLINT_UNTIL = 300;
+export const GLINT_MS = 560;
+
+/** The `n` sparks of a burst as flight vectors (dx, dy in px), spread around the full circle and a little uneven. Pure given `rand`. */
+export function sparkVectors(n: number, far = 46, rand: () => number = Math.random): { dx: number; dy: number }[] {
+  return Array.from({ length: Math.max(0, n) }, (_, i) => {
+    const angle = (Math.PI * 2 * i) / n + rand() * 0.5;
+    const d = far + rand() * far * 0.8;
+    return { dx: Math.round(Math.cos(angle) * d), dy: Math.round(Math.sin(angle) * d) };
+  });
+}
 
 /** The start time of each of `n` pieces, in order, on the beat; squeezed when the whole would run past `max`. Pure. */
 export function schedule(n: number, gap = GAP, max = MAX_START): number[] {
@@ -121,6 +144,105 @@ export function findPieces(root: ParentNode = document): Piece[] {
     .map((el) => ({ el, how: howOf(el) }));
 }
 
+// --- the flourish: orb, sparks, glint -----------------------------------------------------------------------------------
+
+const SPRING = "cubic-bezier(.2,.9,.3,1.25)";
+const FLY = "cubic-bezier(.5,0,.3,1)";
+
+/**
+ * The orb, its sparks and a glint over `counters` (each with the delay its piece starts at). Returns what ends it at once; it ends itself at
+ * FLOURISH_MS. Without the chat's seat on the page (a narrow screen) only the glint plays. Nothing of the page moves.
+ */
+function flourish(doc: Document, counters: { el: HTMLElement; delay: number }[]): () => void {
+  const anims: Animation[] = [];
+  const timers: ReturnType<typeof setTimeout>[] = [];
+  const layer = doc.createElement("div");
+  layer.className = "op-fx";
+  layer.setAttribute("aria-hidden", "true");
+  doc.body.appendChild(layer);
+  const later = (fn: () => void, ms: number) => void timers.push(setTimeout(fn, ms));
+  const anim = (el: Element, keyframes: Keyframe[], ms: number, easing: string, delay = 0) => {
+    const a = el.animate(keyframes, { duration: ms, delay, easing, fill: "both" });
+    anims.push(a);
+    return a;
+  };
+
+  const burst = (x: number, y: number) => {
+    sparkVectors(SPARKS).forEach(({ dx, dy }, i) => {
+      const star = i % 3 === 0;
+      const s = doc.createElement("span");
+      s.className = star ? "op-star" : "op-spark";
+      if (star) s.textContent = "✦";
+      s.style.left = `${x}px`;
+      s.style.top = `${y}px`;
+      layer.appendChild(s);
+      anim(s, [{ transform: "translate(-50%,-50%) scale(.4)", opacity: 1 }, { transform: `translate(calc(${dx}px - 50%),calc(${dy}px - 50%)) scale(1)`, opacity: 0 }], 600, "cubic-bezier(.2,.7,.3,1)");
+    });
+  };
+  const glint = (el: HTMLElement) => {
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const box = doc.createElement("span");
+    box.className = "op-glint";
+    Object.assign(box.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, borderRadius: getComputedStyle(el).borderRadius });
+    const bar = doc.createElement("i");
+    box.appendChild(bar);
+    layer.appendChild(box);
+    anim(bar, [{ transform: "translateX(-120%)" }, { transform: "translateX(120%)" }], GLINT_MS, "ease-out");
+  };
+  counters.filter((c) => c.delay <= GLINT_UNTIL).forEach((c) => later(() => glint(c.el), c.delay + 120));
+
+  // The orb: a copy of the mascot at the seat's size, out to the board's border, a burst there, home again smiling.
+  const seat = doc.querySelector<HTMLElement>("[data-mascot-seat]");
+  const chat = doc.querySelector<HTMLElement>(".chat");
+  const svg = seat?.querySelector("svg");
+  const sr = seat?.getBoundingClientRect();
+  if (seat && chat && svg && sr && sr.width > 0 && sr.height > 0) {
+    const at = { x: sr.left + sr.width / 2 - 23, y: sr.top + sr.height / 2 - 23 };
+    const border = { x: chat.getBoundingClientRect().right - 23, y: sr.top + 60 };
+    const orb = doc.createElement("span");
+    orb.className = "op-orb";
+    const inner = doc.createElement("span");
+    inner.className = "op-orb-in ms-wrap";
+    inner.dataset.state = "hold";
+    // (its own gradient id: two of the same id in one page would be one definition)
+    inner.innerHTML = svg.outerHTML.replace(/id="([^"]+)"/g, 'id="$1-orb"').replace(/url\(#([^)]+)\)/g, "url(#$1-orb)");
+    orb.appendChild(inner);
+    layer.appendChild(orb);
+    const tr = (p: { x: number; y: number }) => `translate(${p.x}px,${p.y}px)`;
+    const fly = (from: typeof at, to: typeof at, ms: number, arc: number, delay: number) =>
+      anim(orb, [{ transform: tr(from) }, { transform: tr({ x: (from.x + to.x) / 2, y: Math.min(from.y, to.y) - arc }), offset: 0.5 }, { transform: tr(to) }], ms, FLY, delay);
+    seat.classList.add("away");
+    orb.style.transform = tr(at);
+    fly(at, border, FLOURISH.burst, 18, 0);
+    anim(inner, [{ transform: "scale(.74)" }, { transform: "scale(1.4)" }], FLOURISH.burst, SPRING);
+    later(() => {
+      burst(border.x + 23, border.y + 23);
+      inner.dataset.state = "done";
+    }, FLOURISH.burst);
+    fly(border, at, FLOURISH_MS - FLOURISH.back, 30, FLOURISH.back);
+    anim(inner, [{ transform: "scale(1.4)" }, { transform: "scale(.74)" }], FLOURISH_MS - FLOURISH.back, SPRING, FLOURISH.back);
+  }
+
+  let over = false;
+  const end = () => {
+    if (over) return;
+    over = true;
+    timers.forEach(clearTimeout);
+    anims.forEach((a) => {
+      try {
+        a.cancel();
+      } catch {
+        /* gone */
+      }
+    });
+    seat?.classList.remove("away");
+    layer.remove();
+  };
+  later(end, FLOURISH_MS);
+  return end;
+}
+
 // --- the run -----------------------------------------------------------------------------------------------------------------
 
 const EASE = "cubic-bezier(.2,.8,.2,1)";
@@ -129,6 +251,8 @@ export interface Run {
   /** Everything at its final state now. */
   finish: () => void;
 }
+
+const countersOf = (el: HTMLElement) => [...(el.matches("[data-count]") ? [el] : []), ...el.querySelectorAll<HTMLElement>("[data-count]")];
 
 /** Plays the opening over the Plan view in `doc`. Returns a handle to end it at once; it ends itself once everything is in. */
 export function playOpening(doc: Document = document): Run | null {
@@ -193,8 +317,7 @@ export function playOpening(doc: Document = document): Run | null {
         anim(g, [{ scale: "0 1" }, { scale: "1 1" }], p.how === "bar" ? BAR_MS : RISE_MS, d);
       }
     }
-    const counters = [...(el.matches("[data-count]") ? [el] : []), ...el.querySelectorAll<HTMLElement>("[data-count]")];
-    counters.forEach((c) => countUp(c, d));
+    countersOf(el).forEach((c) => countUp(c, d));
   };
 
   // 1 · what is in view: pıt pıt, from the first frame.
@@ -202,7 +325,10 @@ export function playOpening(doc: Document = document): Run | null {
   const bottom = (panel?.getBoundingClientRect().bottom ?? doc.defaultView?.innerHeight ?? 0) - 24;
   const inView = pieces.filter((p) => p.el.getBoundingClientRect().top < bottom);
   const below = pieces.filter((p) => p.el.getBoundingClientRect().top >= bottom);
-  schedule(inView.length).forEach((t, i) => enter(inView[i], t));
+  const starts = schedule(inView.length);
+  starts.forEach((t, i) => enter(inView[i], t));
+  // (and the flourish over it: the orb, its sparks, a glint over the counters)
+  const stopFlourish = flourish(doc, inView.flatMap((p, i) => countersOf(p.el).map((el) => ({ el, delay: starts[i] }))));
 
   // 2 · what is below waits, hidden, until it is scrolled into view (its own style comes back at the end, whatever happens).
   let io: IntersectionObserver | null = null;
@@ -241,6 +367,7 @@ export function playOpening(doc: Document = document): Run | null {
     if (done) return;
     done = true;
     clearTimeout(guard);
+    stopFlourish();
     io?.disconnect();
     frames.forEach((f) => cancelAnimationFrame(f));
     anims.forEach((a) => {

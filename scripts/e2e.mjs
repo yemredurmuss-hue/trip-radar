@@ -5451,6 +5451,22 @@ try {
   const faint = () => app.evaluate((sel) => [...document.querySelectorAll(sel)].filter((e) => e.getBoundingClientRect().height > 0 && Number(getComputedStyle(e).opacity) < 1).length, PIECES);
   // Coming in from the first frame (no wait before it): pieces are on their way while the counters count.
   await app.waitForFunction(() => document.getAnimations().some((x) => !("animationName" in x)), null, { timeout: 3000 });
+  // The flourish over it (orb, sparks, glint): the mascot's orb is out of its seat, a burst of sparks and stars goes off, and all of it
+  // is over within 1.2 s, leaving the mascot back in its seat; the panel is not scrolled by it.
+  await app.waitForSelector(".op-fx .op-orb", { timeout: 3000 });
+  await app.waitForSelector(".op-fx .op-spark", { timeout: 3000 });
+  assert.ok((await app.locator(".op-fx .op-star").count()) > 0, "the burst has stars as well as sparks");
+  assert.equal(await app.locator(".mascot-seat.away").count(), 1, "the orb has left the mascot's seat");
+  const flourishMs = await app.evaluate(async () => {
+    const t0 = performance.now() - (Number(document.querySelector(".op-fx")?.getAnimations({ subtree: true })[0]?.currentTime) || 0);
+    await new Promise((done) => {
+      const timer = setInterval(() => document.querySelector(".op-fx") || (clearInterval(timer), done()), 16);
+    });
+    return performance.now() - t0;
+  });
+  assert.ok(flourishMs > 0, "the flourish was measured while it played");
+  assert.ok(flourishMs <= 1200, `the flourish is over within 1.2 s (${Math.round(flourishMs)} ms)`);
+  assert.equal(await app.locator(".mascot-seat.away").count(), 0, "the mascot is back in its seat");
   await app.screenshot({ path: `${out}/39a-opening-mid.png` });
   assert.ok(await app.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1), "the page doesn't scroll while it plays");
   // Within about a second what is in view is in: full opacity, the counters read their figures, the panel hasn't moved.
@@ -5485,6 +5501,7 @@ try {
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
   await app.waitForTimeout(400);
   assert.equal(await scripted(), 0, "a reload doesn't play it again");
+  assert.equal(await app.locator(".op-fx").count(), 0, "a reload brings no orb or sparks");
   assert.equal(await faint(), 0, "a reload shows everything at once");
 
   // The Pano has a small opening of its own (once per trip): its cards come in one by one; a second visit is still.
@@ -5506,6 +5523,8 @@ try {
   await app.keyboard.press("Shift");
   await app.waitForTimeout(150);
   assert.equal(await scripted(), 0, "ended at once: nothing left running");
+  assert.equal(await app.locator(".op-fx").count(), 0, "ended at once: the orb and sparks are gone");
+  assert.equal(await app.locator(".mascot-seat.away").count(), 0, "ended at once: the mascot is back in its seat");
   assert.equal(await faint(), 0, "ended at once: everything is in place");
   console.log("✓ opening: what is in view comes in from the first frame with the counters counting, the panel never scrolls itself, below the fold comes in as it is scrolled to, a reload doesn't repeat it, a key press ends it at once");
 } finally {

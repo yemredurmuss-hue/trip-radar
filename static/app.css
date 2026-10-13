@@ -3968,7 +3968,6 @@ a.ch-why { text-decoration: none; }
 .cat-in-transport .pk-stop b { font-size: 18px; }
 .cat-in-transport .pk-stop b.long { font-size: 15px; }
 .nd-body.nd-has-art > .nd-wants, .nd-body.nd-has-art > .nd-self { grid-column: 1 / -1; }
-=======
 /* One card (drawing v3, 2026-10-09): the photos on top of the checklist; the flights and the styles inside their rows. */
 .st-side .st-list .st-pv-photos { margin-bottom: 16px; }
 .st-row-sub { display: block; margin-top: 1px; font-size: 13px; font-weight: 500; color: #7a76a0; }
@@ -5013,3 +5012,16 @@ body.still .tk-bar i, body.still .pk-seal .tk-chk, body.still .pk-card.tk.tk-sea
 .pk-card.pk-draft .pk-ring { display: none; }
 /* the card's own top line is crowded by "Önerimiz" and "✓ Bunu seç": the kind's word goes (its icon and the picture's label say it) */
 .pk-card.pk-draft .pk-kind { font-size: 0; gap: 0; }
+
+/* -- Açılış orb ve mozaik -- */
+/* The opening's flourish (opening.ts): the mascot's orb, its sparks and stars, a glint over the counters. Drawn over the page for under a second. */
+.mascot-seat.away .ms { opacity: 0; }
+.op-fx { position: fixed; inset: 0; z-index: 8; overflow: hidden; pointer-events: none; }
+.op-orb { position: absolute; left: 0; top: 0; width: 46px; height: 46px; filter: drop-shadow(0 6px 14px rgba(91, 69, 224, .45)); }
+.op-orb-in { display: block; width: 46px; height: 46px; transform-origin: 23px 23px; }
+.op-orb svg { width: 46px; height: 46px; }
+.op-spark { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: radial-gradient(circle, #fff 0 30%, #a596ff 31% 100%); box-shadow: 0 0 8px 2px rgba(165, 150, 255, .7); }
+.op-star { position: absolute; color: #8b74ff; font-size: 14px; line-height: 1; }
+.op-glint { position: absolute; overflow: hidden; }
+.op-glint i { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, .85) 48%, rgba(181, 166, 255, .45) 52%, transparent 70%); transform: translateX(-120%); }
+body.still .op-fx { display: none; }
