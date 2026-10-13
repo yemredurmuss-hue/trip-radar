@@ -4,11 +4,13 @@
 // records or are worked out from them, and a worked-out or usual time is marked ("~15:00 genelde"). Pure.
 import { L } from "./i18n";
 import { count, hoursMinutes, liveLabels, lowerFirst, nOptions } from "./i18nText";
-import { formatDateRange, formatPrice, metricsOf } from "./items";
+import { cityOfAirport } from "./airports";
+import { planSectionOfItem } from "./categories";
+import { formatDateRange, formatPrice, isoDate, metricsOf } from "./items";
 import { addMinutes, BOOKABLE, clockOf, laterOf, legShortTitle, minutesOf, MODE_LABELS, stayTimes, type Leg } from "./legs";
-import type { StayBlock } from "./plan";
+import { sameCity, type DateRange, type StayBlock } from "./plan";
 import { lookWord } from "./stageWords";
-import type { Journey, RentalEntry, TimelineEntry, TimelineSection } from "./timeline";
+import type { Journey, RentalEntry, StayEntry, Timeline, TimelineEntry, TimelineSection } from "./timeline";
 import { isIdea } from "./booking";
 import { mealLabel } from "./ideas";
 import type { Item, LegMode, Listing } from "./types";
@@ -493,4 +495,108 @@ export function daySummary(rows: DayRow[]): string {
           : L(`${plans.length} plan · hepsi hazır`, `${count(plans.length, "plan", "plan")} · all set`);
   const more = ideas ? count(ideas, "fikir", "idea") : "";
   return [head, more].filter(Boolean).join(" · ");
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// "Yolculuk sırasıyla" (plan v46, F5b): the trip as one column, card after card in the order it is lived. Only the
+// order is made here, from the timeline's board (the plan's front) and nothing else: "Yola çıkış", the way in, each city
+// (a thin heading, its stays, what travels inside it, each event as its own card, the to-dos and restaurants in one box),
+// the way on, ... "Eve dönüş". What a node draws is the view's (plan/StoryView, plan/JourneyCards). Pure.
+// ---------------------------------------------------------------------------------------------------------------
+
+export type FlowNode =
+  /** The dark capsule that starts the line: where the trip leaves from (null: no flight says it). */
+  | { kind: "start"; key: string; city: string | null }
+  /** A flight, a transfer, a trip: the plan's own card (flights and rides at their compact width). */
+  | { kind: "entry"; key: string; entry: TimelineEntry }
+  /** A city's thin heading: its name, its days and its nights. */
+  | { kind: "city"; key: string; city: string | null; range: DateRange | null; nights: number }
+  | { kind: "stay"; key: string; stay: StayEntry }
+  /** One event (a tour, a ticket) of the city: `date` null reads "gün seç". */
+  | { kind: "event"; key: string; item: Item; date: string | null }
+  /** The city's to-dos and restaurants, in one box. */
+  | { kind: "todo"; key: string; items: Item[] }
+  /** The green capsule that ends it: back home (null city: nothing says where). */
+  | { kind: "end"; key: string; city: string | null };
+
+type CitySection = Extract<TimelineSection, { kind: "city" }>;
+const planned = (i: Item) => i.status === "chosen" || i.status === "booked";
+
+/** What is planned on a city's days and plans: the records on the plan's front, and the ones sitting on a day. */
+function plannedIn(entries: TimelineEntry[]): Item[] {
+  const out: Item[] = [];
+  for (const e of entries) {
+    if (e.kind === "plan" || e.kind === "day") out.push(...e.items);
+    else if (e.kind === "event") out.push(e.item);
+  }
+  return out;
+}
+
+/** The airport code or city a flight says, as a city ("IST" is İstanbul). */
+const cityOf = (place: string | null | undefined): string | null => (place ? cityOfAirport(place) : null);
+
+/** Where the trip leaves from, as the way in or home says it: the entry's home, else the first flight's origin. */
+function startCity(sections: TimelineSection[]): string | null {
+  for (const s of sections) {
+    if (s.kind !== "travel" || s.entry.role !== "arrival") continue;
+    const t = s.entry.travel;
+    return cityOf(s.entry.home ?? (t?.settled ?? t?.items[0])?.flight?.from);
+  }
+  return null;
+}
+
+/** Where it ends: home, as the way home says it (its home, else the flight's destination). */
+function homeCity(entry: Extract<TimelineEntry, { kind: "travel" }>): string | null {
+  const t = entry.travel;
+  return cityOf(entry.home ?? (t?.settled ?? t?.items[0])?.flight?.to);
+}
+
+export function journeyFlow(timeline: Timeline, items: Item[] = []): FlowNode[] {
+  const board = timeline.board;
+  // What sits on a day lives in the itinerary's blocks (the board keeps only what needs a booking): by the city's key,
+  // and a day on the move by the city it reaches (or leaves, on the way home).
+  const cities = board.filter((s): s is CitySection => s.kind === "city");
+  const onDays = new Map<string, Item[]>();
+  for (const s of timeline.sections) {
+    if (s.kind === "city") onDays.set(s.key, [...(onDays.get(s.key) ?? []), ...plannedIn(s.entries)]);
+    else if (s.kind === "journey") {
+      const where = s.journey.role === "departure" ? s.journey.from : s.journey.to;
+      const target = where ? cities.find((c) => c.city && sameCity(c.city, where)) : undefined;
+      if (target) onDays.set(target.key, [...(onDays.get(target.key) ?? []), ...plannedIn(s.entries)]);
+    }
+  }
+  const out: FlowNode[] = [];
+  // A record is drawn once, in the first stop of its city (a trip can come back to the same one).
+  const seen = new Set<string>();
+  const first = board[0];
+  const startsAway = first?.kind === "travel" && first.entry.role === "arrival";
+  if (startsAway) out.push({ kind: "start", key: "journey:start", city: startCity(board) });
+  for (const s of board) {
+    if (s.kind === "travel") {
+      out.push({ kind: "entry", key: s.key, entry: s.entry });
+      continue;
+    }
+    if (s.kind === "journey") {
+      for (const e of s.entries) out.push({ kind: "entry", key: e.key, entry: e });
+      continue;
+    }
+    out.push({ kind: "city", key: `${s.key}:city`, city: s.city, range: s.range, nights: s.nights });
+    for (const stay of s.stays) out.push({ kind: "stay", key: stay.key, stay });
+    // What travels inside a city (a transfer with a plan, a day trip, a rented car) keeps its own card, in order.
+    for (const e of s.entries) if (e.kind === "leg" || e.kind === "travel" || e.kind === "rental") out.push({ kind: "entry", key: e.key, entry: e });
+    // A to-do or a table chosen with no day is no block of the front (an idea): it is found by its city among the trip's records.
+    const ofCity = s.city ? items.filter((i) => planned(i) && i.category !== "stay" && i.city && sameCity(i.city, s.city!) && planSectionOfItem(i) === "todo") : [];
+    const here = [...plannedIn(s.entries), ...(onDays.get(s.key) ?? []), ...ofCity].filter((i) => planned(i) && !seen.has(i.id) && seen.add(i.id));
+    // Events in the order of their days; one with no day yet comes last ("gün seç").
+    const events = here
+      .filter((i) => planSectionOfItem(i) === "activity")
+      .map((item) => ({ item, date: isoDate(item.dates.start) }))
+      .sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999"));
+    for (const e of events) out.push({ kind: "event", key: `event:${e.item.id}`, item: e.item, date: e.date });
+    const todo = here.filter((i) => planSectionOfItem(i) === "todo");
+    if (todo.length) out.push({ kind: "todo", key: `${s.key}:todo`, items: todo });
+  }
+  const last = board[board.length - 1];
+  if (last?.kind === "travel" && last.entry.role === "departure") out.push({ kind: "end", key: "journey:end", city: homeCity(last.entry) });
+  return out;
 }

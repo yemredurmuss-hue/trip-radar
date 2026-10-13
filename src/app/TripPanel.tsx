@@ -56,6 +56,7 @@ import { PrintPlan } from "./PrintPlan";
 import { StickyBar } from "./StickyBar";
 import { onPanel } from "./panelBus";
 import { PlanKey, PlanOrder } from "./plan/PlanOrder";
+import type { GoTarget } from "./plan/JourneyCards";
 import { StoryView } from "./plan/StoryView";
 import { TipOn } from "./HoverTip";
 import { PanoNewsTip } from "./PanoNewsTip";
@@ -180,6 +181,13 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     setView("plan");
     if (hit) setOpened(hit.section, true);
     setTimeout(() => show(document.getElementById(entryDomId(key)) ?? (hit && document.getElementById(entryDomId(hit.dom)))), 60);
+  };
+  /** A small card of "Yolculuk sırasıyla" (a stay, an event, a place) goes to its real card on the Plan: its section opens, the card comes into view with a flash. */
+  const showFromStory = (target: GoTarget) => {
+    const hit = findInSections(sections, target);
+    setView("plan");
+    if (hit) setOpened(hit.section, true);
+    setTimeout(() => show(findTarget(target) ?? (hit && document.getElementById(entryDomId(hit.dom)))), 60);
   };
   // A card that changes section (a change of city now by plane: Ulaşım → Uçuş; a to-do moved to Etkinlikler)
   // isn't lost from under the hand: its new section opens and the page goes to it, with a flash.
@@ -897,7 +905,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
               ⚠ {x.text}
             </div>
           ))}
-          <StoryView timeline={timeline} tripStart={range?.start ?? null} cards={{ legCard: planLegCard, renderGroup: planRenderGroup, settled: planSettled }} />
+          <StoryView timeline={timeline} items={items} tripStart={range?.start ?? null} cards={{ legCard: planLegCard, renderGroup: planRenderGroup, settled: planSettled }} onGo={showFromStory} />
         </EmptyEnvContext.Provider>
       ) : view === "map" ? (
         <BoardMap trip={trip} plan={plan} legs={legs} />
