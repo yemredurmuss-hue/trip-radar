@@ -4,10 +4,11 @@
 // pays, how many go. An empty ticket says what we look for ("Aradığımız: direkt") and an estimate only from real offers.
 // Rötar, the gate, the booking code on the flight's day, the "Uçuşa N gün" warning and the cancel notes stay on it; this file
 // only draws: the cards (PlanCard, NeedCard, EmptyCard) say what goes in. It wears CardShell's frame (menu, ×, tap, details).
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { TicketStub, TicketLook } from "../../lib/cardTicket";
 import type { TransportFace } from "../../lib/cardView";
 import { L } from "../../lib/i18n";
+import { flysIn } from "../motion";
 import { CopyText } from "../CopyButton";
 import { FallbackImg } from "../FallbackImg";
 import { BookedBadge } from "./BookedBadge";
@@ -85,6 +86,8 @@ export function FlightTicket({ look, stub, airline, number, date, face, stops, w
   foot: ReactNode;
   shell: Omit<CardShellProps, "kind" | "ring" | "head" | "art" | "body" | "foot" | "date" | "extraClass"> & { extraClass?: string };
 }) {
+  // rt-fly: the plane glides to its card the first time that ticket is drawn in this session.
+  const [fly] = useState(() => flysIn(shell.itemId));
   const code = number ? number.replace(/\s+/g, "").slice(0, 2) : null;
   const ring = look === "booked" ? "done" : look === "chosen" || look === "arranged" ? "half" : "open";
   const middle = wants ? L(`Aradığımız: ${wants}`, `We're looking for: ${wants}`) : face.middle;
@@ -109,7 +112,7 @@ export function FlightTicket({ look, stub, airline, number, date, face, stops, w
       body={
         <>
           <TransportCardBody face={{ ...face, middle, logo: null, logo2: null }} title={shell.ariaLabel} tone={tone}
-            art={<img className="tk-plane" src="illus/ucus.png" alt="" />} />
+            art={<img className={`tk-plane${fly ? " tk-fly" : ""}`} src="illus/ucus.png" alt="" />} />
           {tiles}
         </>
       }

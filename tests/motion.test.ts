@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { applyStill, countAt, dropsIn, GLOW_MS, reducedMotion, setStill, STILL_KEY, stillChosen } from "../src/app/motion";
+import { applyStill, countAt, dropsIn, flysIn, GLOW_MS, STAGE_MS, reducedMotion, setStill, STILL_KEY, stillChosen } from "../src/app/motion";
 
 describe("motion dictionary: the pure parts", () => {
   it("a number counts from where it was to where it is going, never past it", () => {
@@ -20,6 +20,34 @@ describe("motion dictionary: the pure parts", () => {
     expect(dropsIn("b", now - 60_000, true, now, false)).toBe(false); // an old card
     expect(dropsIn("c", now - 500, false, now, false)).toBe(false); // not from the chat
     expect(dropsIn("d", now - 500, true, now, true)).toBe(false); // reduced motion
+  });
+});
+
+describe("motion dictionary: ticket and stage (plan-v45 4b)", () => {
+  it("a ticket's plane glides to its card once per card in a session, never with reduced motion or without a card", () => {
+    expect(flysIn("t-1", false)).toBe(true);
+    expect(flysIn("t-1", false)).toBe(false);
+    expect(flysIn("t-2", true)).toBe(false);
+    expect(flysIn("t-2", false)).toBe(true); // reduced did not use up its turn
+    expect(flysIn(undefined, false)).toBe(false);
+  });
+  const css = readFileSync("static/app.css", "utf8");
+  it("aşama geçişi: glow 1.6 s 0 > 6 > 14 px, take-off 1.1 s, logo drop .7 s, label pop .5 s", () => {
+    expect(STAGE_MS).toBe(1600);
+    expect(css).toMatch(/\.pk-stage \{ animation: pk-stage-glow 1\.6s cubic-bezier\(\.16, 1, \.3, 1\); \}/);
+    expect(css).toMatch(/@keyframes pk-stage-glow \{ 0% \{ box-shadow: 0 0 0 0 [^\n]*35% \{ box-shadow: 0 0 0 6px [^\n]*100% \{ box-shadow: 0 0 0 14px/);
+    expect(css).toMatch(/@keyframes pk-takeoff \{ 0% \{ transform: translate\(-40%, 8px\) rotate\(-6deg\)/);
+    expect(css).toMatch(/\.pk-stage \.tk-plane \{ animation: pk-takeoff 1\.1s cubic-bezier\(\.16, 1, \.3, 1\); \}/);
+    expect(css).toMatch(/\.pk-stage \.tk-logo \{ animation: pk-logo-drop \.7s/);
+    expect(css).toMatch(/animation: pk-lab-pop \.5s cubic-bezier\(\.2, 1\.6, \.4, 1\)/);
+  });
+  it("rt-fly .9 s from 18 px left, the Canlı dot pulses 1.6 s from a 4 px to a 7 px ring, landed 1.1 s with a 9 px ring", () => {
+    expect(css).toMatch(/@keyframes pk-fly \{ from \{ opacity: 0; margin-left: -18px; \} \}/);
+    expect(css).toMatch(/\.tk-fly \{ animation: pk-fly \.9s cubic-bezier\(\.16, 1, \.3, 1\) both; \}/);
+    expect(css).toMatch(/box-shadow: 0 0 0 4px color-mix\(in srgb, currentColor 18%[^\n]*animation: pk-live-pulse 1\.6s ease-in-out infinite/);
+    expect(css).toMatch(/@keyframes pk-live-pulse \{ 50% \{ box-shadow: 0 0 0 7px/);
+    expect(css).toMatch(/\.pk-landed \{ animation: pk-landed 1\.1s/);
+    expect(css).toMatch(/@keyframes pk-landed[^\n]*0 0 0 9px[^\n]*scale\(1\.015\)/);
   });
 });
 

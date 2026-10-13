@@ -5057,6 +5057,9 @@ try {
         if (m === "book") {
           const it = items.find((i) => i.id === a);
           tx.objectStore("items").put({ ...it, status: "booked", statusAt: now, updatedAt: now });
+        } else if (m === "status") {
+          const it = items.find((i) => i.name === a[0]);
+          tx.objectStore("items").put({ ...it, status: a[1], statusAt: now, updatedAt: now });
         } else if (m === "dearer") {
           const it = items.find((i) => i.name === a);
           tx.objectStore("items").put({ ...it, price: { ...it.price, amount: (it.price.amount ?? 0) + 600 }, updatedAt: now });
@@ -5093,6 +5096,13 @@ try {
   await ring.waitFor();
   assert.equal(await ring.evaluate((el) => getComputedStyle(el).animationName), "pk-pulse", "nabız: an empty card's ring pulses");
 
+  // rt-fly: a ticket's plane glided to its card when it was first drawn (.9 s, from 18 px left); it is on the sample's flights.
+  const glide = await app.locator(".pk-card.tk .tk-plane.tk-fly").first().evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return [cs.animationName, cs.animationDuration, cs.animationTimingFunction, el.getAnimations()[0]?.effect.getKeyframes()[0].marginLeft];
+  });
+  assert.deepEqual(glide, ["pk-fly", "0.9s", "cubic-bezier(0.16, 1, 0.3, 1)", "-18px"], "rt-fly: the plane glides to its card on the first draw");
+
   // düşüş: a card the chat just made drops in (an old one, from before, never does).
   await idb("chatEsim");
   const esim = app.locator('.pk-card[aria-label="Hareket eSIM"]');
@@ -5108,7 +5118,7 @@ try {
       const card = document.querySelector('.pk-card[aria-label="Hareket eSIM"]');
       if (!card?.classList.contains("pk-seal")) return;
       window.__moment.seal = true;
-      window.__moment.glow ||= card.classList.contains("pk-glow");
+      window.__moment.glow ||= card.classList.contains("pk-glow") || card.classList.contains("pk-stage");
       window.__moment.pop ||= Boolean(card.querySelector(".okt")?.getAnimations().some((a) => a.animationName === "pk-pop"));
     }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class"], childList: true });
   });
@@ -5141,6 +5151,60 @@ try {
   assert.ok(seen.size >= 3, `sayaç: the figure passed through numbers on its way (${[...seen].join(" → ")})`);
   void total;
 
+  // K29 aşama geçişi: the booked flight is taken back to Seçildi and booked again; each time its card glows 1.6 s (0 > 6 > 14 px), the plane
+  // takes off (1.1 s), the logo drops (.7 s) and, while it is only chosen, the stage's word pops (.5 s). The glow of a plain change gives way to it.
+  const TAP_OUT = "TAP · Lizbon → İstanbul";
+  await app.evaluate((name) => {
+    window.__stage = {};
+    new MutationObserver(() => {
+      const card = document.querySelector(`.pk-card[aria-label="${name}"]`);
+      if (!card?.classList.contains("pk-stage")) return;
+      const anim = (sel) => {
+        const el = sel ? card.querySelector(sel) : card;
+        const cs = el && getComputedStyle(el);
+        return cs ? [cs.animationName, cs.animationDuration, cs.animationTimingFunction].join(" ") : null;
+      };
+      window.__stage[card.classList.contains("tk-booked") ? "booked" : "chosen"] ||= {
+        card: anim(), plane: anim(".tk-plane"), logo: anim(".tk-logo, .tk-ph"), lab: anim(".tk-lab"), glow: card.classList.contains("pk-glow"),
+      };
+    }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class"], childList: true });
+  }, TAP_OUT);
+  const tapOut = app.locator(`.pk-card[aria-label="${TAP_OUT}"]`);
+  await idb("status", [TAP_OUT, "chosen"]);
+  await app.waitForFunction(() => window.__stage.chosen, null, { timeout: 5000 });
+  await app.waitForFunction((name) => !document.querySelector(`.pk-card[aria-label="${name}"]`)?.classList.contains("pk-stage"), TAP_OUT, { timeout: 4000 }); // 1.6 s
+  await idb("status", [TAP_OUT, "booked"]);
+  await app.waitForFunction(() => window.__stage.booked, null, { timeout: 5000 });
+  const stage = await app.evaluate(() => window.__stage);
+  const E = "cubic-bezier(0.16, 1, 0.3, 1)";
+  for (const when of ["chosen", "booked"]) {
+    assert.equal(stage[when].card, `pk-stage-glow 1.6s ${E}`, `K29: the card glows 1.6 s (${when})`);
+    assert.equal(stage[when].plane, `pk-takeoff 1.1s ${E}`, `K29: the plane takes off (${when})`);
+    assert.equal(stage[when].logo, `pk-logo-drop 0.7s ${E}`, `K29: the logo drops (${when})`);
+    assert.equal(stage[when].glow, false, `K29: the plain glow gives way (${when})`);
+  }
+  assert.equal(stage.chosen.lab, "pk-lab-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1)", "K29: the stage's word pops");
+  await app.waitForFunction((name) => !document.querySelector(`.pk-card[aria-label="${name}"]`)?.classList.contains("pk-stage"), TAP_OUT, { timeout: 4000 });
+  assert.ok(await tapOut.evaluate((el) => el.classList.contains("tk-booked")), "…and it stays booked once the moment is over");
+  // (the frame changes colour over .4 s, which stays when motion is off)
+  assert.match(await tapOut.evaluate((el) => getComputedStyle(el).transitionProperty), /border-color/, "the frame's colour is a transition");
+
+  // Canlı dot: a flight late on the data's word has the pulse on its first box (lvp 1.6 s, ring 4 > 7 px), red; it is only the dot that moves.
+  await app.evaluate(async () => {
+    const end = (iata, t) => ({ iata, airport: null, scheduled: t, revised: null, actual: null, terminal: null, gate: null });
+    const flight = { number: "TP1760", airline: "TAP", status: "Delayed", departure: { ...end("LIS", "2026-10-14T19:40"), revised: "2026-10-14T20:25" }, arrival: { ...end("IST", "2026-10-15T01:35"), belt: null }, fetchedAt: "t" };
+    await chrome.storage.local.set({ flightLive: { "TP1760|2026-10-14": { flight, at: Date.now() } } });
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  const dot = tapOut.locator(".pk-live .lv-dot.late");
+  await dot.waitFor({ timeout: 5000 });
+  const pulse = await dot.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    const keys = el.getAnimations()[0].effect.getKeyframes();
+    return [cs.animationName, cs.animationDuration, cs.animationIterationCount, cs.boxShadow.includes("4px"), keys.some((k) => String(k.boxShadow).includes("7px")), el.getAttribute("aria-label")];
+  });
+  assert.deepEqual(pulse, ["pk-live-pulse", "1.6s", "infinite", true, true, "Canlı"], "Canlı dot: lvp 1.6 s, ring 4 to 7 px");
+
   // The window leaves with a still copy (exitMotion.ts): out of the flow, hidden from readers, without ids, gone within a moment.
   const settingsTab = await motion.newPage();
   await settingsTab.goto(`chrome-extension://${id}/app.html#settings`);
@@ -5168,7 +5232,7 @@ try {
   await settingsTab.getByLabel("Hareketi duraklat", { exact: false }).uncheck();
   assert.equal(await settingsTab.evaluate(() => localStorage.getItem("trip-radar:still")), null);
   await settingsTab.close();
-  console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, each on its own and over within a moment");
+  console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, aşama geçişi (kalkış), rt-fly, Canlı noktası, each on its own and over within a moment");
 } finally {
   await motion.close();
 }

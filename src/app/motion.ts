@@ -8,6 +8,9 @@ export const MOTION_MS = 600;
 /** Parlama (an answer changed a card): 1.1 s, the ring grows to 10 px (app.css `pk-glow`). */
 export const GLOW_MS = 1100;
 
+/** Aşama geçişi (K29): the card's ring and the ticket's take-off play for 1.6 s (app.css `pk-stage`). */
+export const STAGE_MS = 1600;
+
 /** "Hareketi duraklat": the person's own switch (Settings), kept in this browser; body.still stops the CSS, reducedMotion() the rest. */
 export const STILL_KEY = "trip-radar:still";
 
@@ -84,6 +87,12 @@ export function useJustBecame(flag: boolean, ms = MOTION_MS): boolean {
   return on;
 }
 
+/** True for `ms` after a plan's stage turned to chosen or booked (K29), never at mount, never with reduced motion. */
+export function useStageChange(status: string, ms = STAGE_MS): boolean {
+  const changed = useJustChanged(status, ms);
+  return changed && (status === "chosen" || status === "booked");
+}
+
 /** Ease-out: where a number is `t` (0 to 1) of the way from `from` to `to`. */
 export const countAt = (from: number, to: number, t: number): number => {
   const k = Math.min(1, Math.max(0, t));
@@ -95,6 +104,14 @@ const dropped = new Set<string>();
 export function dropsIn(id: string, createdAt: number, fromChat: boolean, now = Date.now(), reduced = reducedMotion()): boolean {
   if (!fromChat || dropped.has(id) || now - createdAt > 4000 || reduced) return false;
   dropped.add(id);
+  return true;
+}
+
+const flown = new Set<string>();
+/** A ticket's plane glides to its card (rt-fly) the first time that card is drawn in this session, once. */
+export function flysIn(id: string | undefined, reduced = reducedMotion()): boolean {
+  if (!id || flown.has(id) || reduced) return false;
+  flown.add(id);
   return true;
 }
 
