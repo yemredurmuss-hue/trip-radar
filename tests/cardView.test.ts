@@ -1,6 +1,6 @@
 // tests/cardView.test.ts
 import { describe, expect, it } from "vitest";
-import { activityDrawing, footOf, groundOf, mediaFace, menuFor, ringOf, topDate, transportFace } from "../src/lib/cardView";
+import { activityDrawing, bookedAs, footOf, mediaFace, menuFor, ringOf, topDate, transportFace } from "../src/lib/cardView";
 import { EMPTY_METRICS } from "../src/lib/items";
 import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
@@ -8,30 +8,39 @@ import { makeItem } from "./fixtures/makeItem";
 const train = (over: Partial<Item> = {}) => makeItem({ category: "transport", name: "CP Alfa Pendular", ...over });
 const state = (f: ReturnType<typeof footOf>) => (f.left.kind === "state" ? [f.left.tone, f.left.text, f.left.sub] : ["nav"]);
 
-describe("the ring and the ground", () => {
-  it("dashed while open, amber when chosen, green when done", () => {
-    expect(ringOf(train(), "train")).toBe("open");
-    expect(ringOf(train({ status: "chosen" }), "train")).toBe("half");
-    expect(ringOf(train({ status: "booked" }), "train")).toBe("done");
-    expect([groundOf("open"), groundOf("half"), groundOf("done")]).toEqual(["sand", "sand", "green"]);
+describe("the ring", () => {
+  it("dashed while open, a green line when chosen, done only when booked (the badge, no ring)", () => {
+    expect(ringOf(train())).toBe("open");
+    expect(ringOf(train({ status: "chosen" }))).toBe("half");
+    expect(ringOf(train({ status: "booked" }))).toBe("done");
   });
-  it("a taxi or a note needs no booking: planned is done", () => {
-    expect(ringOf(train({ status: "chosen" }), "taxi")).toBe("done");
-    expect(ringOf(makeItem({ category: "other", status: "chosen" }), "note")).toBe("done");
+  it("a taxi or a note needs no booking, but planned is still only chosen: the green ground is for what was bought", () => {
+    expect(ringOf(train({ status: "chosen" }))).toBe("half");
+    expect(ringOf(makeItem({ category: "other", status: "chosen" }))).toBe("half");
+  });
+});
+
+describe("the one badge's word", () => {
+  it("a ticket for a trip or a tour, a purchase for an eSIM or a policy, a reservation otherwise", () => {
+    expect(bookedAs(train({ status: "booked" }), "train")).toBe("ticket");
+    expect(bookedAs(makeItem({ category: "activity" }), "activity")).toBe("ticket");
+    expect(bookedAs(makeItem({ category: "esim" }), "esim")).toBe("bought");
+    expect(bookedAs(makeItem({ category: "stay" }), "stay")).toBeUndefined();
+    expect(bookedAs(train(), "car")).toBeUndefined();
   });
 });
 
 describe("Ben hallettim (plan v30): arranged outside the tool", () => {
   it("a chosen plan set aside and arranged says Ayarlandı, done, and can still be booked", () => {
     const f = footOf(train({ status: "chosen", noBooking: 1, arranged: true }), "train");
-    expect(state(f)).toEqual(["done", "Ayarlandı", "sen hallettin"]);
+    expect(state(f)).toEqual(["done", "sen hallettin", null]);
     expect(f.action).toMatchObject({ does: "book" });
   });
   it("an idea set aside keeps its own words", () => {
     expect(state(footOf(train({ status: "chosen", noBooking: 1 }), "train"))).toEqual(["done", "Fikir", "rezervasyon gerekmiyor"]);
   });
   it("the mark only counts while it's set aside: a stale 'arranged' with no noBooking reads as an ordinary plan", () => {
-    expect(state(footOf(train({ status: "chosen", arranged: true }), "train"))[1]).toBe("Planlandı");
+    expect(state(footOf(train({ status: "chosen", arranged: true }), "train"))[1]).toBe("Seçildi");
   });
 });
 
@@ -42,31 +51,31 @@ describe("the bottom strip, per the spec's action table", () => {
   });
   it("chosen: what is still missing and the one action", () => {
     expect(footOf(train({ status: "chosen" }), "train")).toMatchObject({ action: { label: "Bileti aldım", does: "book" } });
-    expect(state(footOf(train({ status: "chosen" }), "train"))).toEqual(["wait", "Planlandı", "bilet alınmadı"]);
-    expect(state(footOf(train({ status: "chosen", origin: "chat" }), "train"))).toEqual(["wait", "Planlandı", "bilet alınmadı"]);
+    expect(state(footOf(train({ status: "chosen" }), "train"))).toEqual(["wait", "Seçildi", "bilet alınmadı"]);
+    expect(state(footOf(train({ status: "chosen", origin: "chat" }), "train"))).toEqual(["wait", "Seçildi", "bilet alınmadı"]);
     expect(footOf(train({ status: "chosen" }), "car")).toMatchObject({ left: { sub: "rezerve edilmedi" }, action: { label: "Rezerve ettim" } });
     expect(footOf(makeItem({ category: "activity", status: "chosen" }), "activity")).toMatchObject({ action: { label: "Bileti aldım" } });
     expect(footOf(makeItem({ category: "esim", status: "chosen" }), "esim")).toMatchObject({ left: { sub: "satın alınmadı" }, action: { label: "Satın aldım" } });
-    // Booked with its file: Hazır (an eSIM is ready once put in, not by a file).
-    expect(state(footOf(train({ status: "booked" }), "train", { docs: 1 }))[1]).toBe("Hazır");
-    expect(state(footOf(train({ status: "booked" }), "train"))[1]).not.toBe("Hazır");
+    // Booked: the word is the card's one badge, so the foot doesn't repeat it (with a file or without); only the kept note shows.
+    expect(state(footOf(train({ status: "booked" }), "train", { docs: 1 }))).toEqual(["done", "", null]);
+    expect(state(footOf(train({ status: "booked", statusNote: "Peron 4" }), "train"))).toEqual(["done", "Peron 4", null]);
     expect(footOf(makeItem({ category: "other", status: "chosen" }), "insurance")).toMatchObject({ left: { sub: "poliçe alınmadı" }, action: { label: "Poliçe aldım" } });
   });
   it("a taxi: planned, no booking, no button", () => {
     expect(footOf(train({ status: "chosen" }), "taxi")).toEqual({
-      left: { kind: "state", tone: "done", text: "Planlandı", sub: "rezervasyon gerekmez", when: null, alert: null },
+      left: { kind: "state", tone: "done", text: "Seçildi", sub: "rezervasyon gerekmez", when: null, alert: null },
       action: null,
     });
   });
-  it("booked: done, with the note said with it; the free-cancellation day is the alert's, in the last two weeks (v30)", () => {
-    expect(state(footOf(train({ status: "booked" }), "flight"))).toEqual(["done", "Alındı", null]);
-    expect(state(footOf(train({ status: "booked", statusNote: "PNR X7K2LQ" }), "flight"))).toEqual(["done", "Alındı", "PNR X7K2LQ"]);
-    expect(state(footOf(train({ status: "booked", cancellation: { summary: null, freeUntil: "2026-10-13", source: "page" } }), "activity"))).toEqual(["done", "Alındı", null]);
-    expect(state(footOf(train({ status: "booked" }), "car"))).toEqual(["done", "Rezerve", null]);
+  it("booked: done, the word is the badge's; the foot keeps the note said with it; the free-cancellation day is the alert's, in the last two weeks (v30)", () => {
+    expect(state(footOf(train({ status: "booked" }), "flight"))).toEqual(["done", "", null]);
+    expect(state(footOf(train({ status: "booked", statusNote: "PNR X7K2LQ" }), "flight"))).toEqual(["done", "PNR X7K2LQ", null]);
+    expect(state(footOf(train({ status: "booked", cancellation: { summary: null, freeUntil: "2026-10-13", source: "page" } }), "activity"))).toEqual(["done", "", null]);
+    expect(state(footOf(train({ status: "booked" }), "car"))).toEqual(["done", "", null]);
   });
   it("an eSIM: bought, then installed", () => {
     const esim = makeItem({ category: "esim", status: "booked" });
-    expect(footOf(esim, "esim")).toMatchObject({ left: { tone: "wait", text: "Alındı", sub: "kurulmadı" }, action: { label: "Kurdum", does: "install" } });
+    expect(footOf(esim, "esim")).toMatchObject({ left: { tone: "wait", text: "kurulmadı" }, action: { label: "Kurdum", does: "install" } });
     expect(footOf({ ...esim, installedAt: 5 }, "esim")).toMatchObject({ left: { tone: "done", text: "Kuruldu" }, action: null });
   });
   it("ruled out: it can come back", () => {
@@ -74,7 +83,7 @@ describe("the bottom strip, per the spec's action table", () => {
   });
   it("time running out adds a word or two, never the sentence (that's in the details)", () => {
     const f = footOf(train({ status: "chosen" }), "train", { alert: { tone: "amber", text: "Bilet alınmadı · yolculuğa 4 gün · ücretsiz iptalli, şimdi ayırmak risksiz", short: "4 gün" } });
-    expect(f.left).toMatchObject({ text: "Planlandı", sub: "bilet alınmadı", when: "4 gün", alert: "amber" });
+    expect(f.left).toMatchObject({ text: "Seçildi", sub: "bilet alınmadı", when: "4 gün", alert: "amber" });
   });
 });
 

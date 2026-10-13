@@ -1,10 +1,10 @@
-// The frame every plan card shares (etkinlik-v4): the ground says where it stands (sand: not bought yet,
-// green: done), a 24 px top line (ring · kind · date | files · •••), the body, the 48 px bottom strip, and
-// the details that open inside the card on a tap.
+// The frame every plan card shares (etkinlik-v4): the ground says where it stands (white: searching, our pick,
+// chosen; green: bought or booked, with its one BookedBadge), a 24 px top line (ring · kind · date | badge · files ·
+// •••), the body, the bottom strip, and the details that open inside the card on a tap.
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import type { CardFacts } from "../../lib/cardFacts";
 import { cardKindColor, cardKindLabel, type CardKind } from "../../lib/cardKinds";
-import { groundOf, type FootView, type Ring as RingState } from "../../lib/cardView";
+import type { FootView, Ring as RingState } from "../../lib/cardView";
 import { L } from "../../lib/i18n";
 import { nOptions } from "../../lib/i18nText";
 import { TipOn } from "../HoverTip";
@@ -12,13 +12,11 @@ import { ActionStrip } from "./ActionStrip";
 import { Editable, useInlineEdit } from "./InlineEdit";
 import { KindIcon, UiIcon } from "./Silhouettes";
 
+/** Where a plan not bought stands: searching (dashed) or chosen (a green line). A bought one draws nothing: it wears the BookedBadge. */
 export function Ring({ state }: { state: RingState }) {
-  const label = { open: L("Karar bekliyor", "To decide"), half: L("Planlandı, rezerve edilmedi", "Planned, not booked"), done: L("Rezerve edildi ya da rezervasyon gerekmiyor", "Booked, or no booking needed") }[state];
-  return (
-    <span className={`pk-ring ${state}`} role="img" aria-label={label} title={label}>
-      {state === "done" && <UiIcon name="check" size={13} />}
-    </span>
-  );
+  if (state === "done") return null;
+  const label = state === "open" ? L("Karar bekliyor", "To decide") : L("Seçildi, rezerve edilmedi", "Chosen, not booked");
+  return <span className={`pk-ring ${state}`} role="img" aria-label={label} title={label} />;
 }
 
 export interface MenuEntry {
@@ -171,12 +169,12 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go, a
         </span>
       ) : left.kind === "state" && quietWait && left.tone === "wait" ? (
         left.when ? <span className={`pk-state wait${left.alert ? ` alert-${left.alert}` : ""}`}><span className="pk-when">⏳ {left.when}</span></span> : null
-      ) : left.kind === "state" ? (
+      ) : left.kind === "state" && (left.text || left.sub || left.when) ? (
         <span className={`pk-state ${left.tone}${left.alert ? ` alert-${left.alert}` : ""}`}>
-          {left.tone === "done" && <UiIcon name="check" size={13} />}
+          {left.tone === "done" && left.text && <UiIcon name="check" size={13} />}
           {left.text}
           {left.sub && <span className="pk-sub">· {left.sub}</span>}
-          {left.when && <span className="pk-when">· ⏳ {left.when}</span>}
+          {left.when && <span className="pk-when">{left.text ? "· " : ""}⏳ {left.when}</span>}
         </span>
       ) : null}
       {timed && <span className="pk-timed">{timed}</span>}
@@ -308,7 +306,7 @@ export function CardShell(props: {
       {(bind) => (
         <article
           {...bind}
-          className={`pk-card pk-${groundOf(props.ring)} pk-r-${props.ring}${props.open ? " pk-open" : ""}${props.extraClass ? ` ${props.extraClass}` : ""}`}
+          className={`pk-card pk-r-${props.ring}${props.open ? " pk-open" : ""}${props.extraClass ? ` ${props.extraClass}` : ""}`}
           style={style}
           aria-label={props.ariaLabel}
           data-item-id={props.itemId}

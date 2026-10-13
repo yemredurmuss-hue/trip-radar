@@ -22,6 +22,8 @@ import { lowerFirst, lowerText } from "../lib/i18nText";
 import { CATEGORY_LABELS, formatPrice } from "../lib/items";
 import { prosConsFor } from "../lib/proscons";
 import type { DecisionContext } from "../lib/decision";
+import { bookedAs } from "../lib/cardView";
+import { BookedBadge } from "./cards/BookedBadge";
 import { ProsConsView } from "./ProsConsView";
 import { OptionBoard } from "./board/OptionBoard";
 import type { ValueCard } from "../lib/value";
@@ -180,13 +182,13 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, onClos
                         <span className="tone-warning">{L("Puan yok", "No score")}</span>
                       )}
                     </div>
-                    <button
-                      className={`plan-btn${o.item.status === "chosen" || o.item.status === "booked" ? " on" : ""}`}
-                      disabled={o.item.status === "booked"}
-                      onClick={() => void choose(o)}
-                    >
-                      {o.item.status === "booked" ? L("Rezerve ✓", "Booked ✓") : o.item.status === "chosen" ? L("Planda ✓", "In plan ✓") : L("Plana al", "Add to plan")}
-                    </button>
+                    {o.item.status === "booked" ? (
+                      <BookedBadge as={bookedAs(o.item)} />
+                    ) : (
+                      <button className={`plan-btn${o.item.status === "chosen" ? " on" : ""}`} onClick={() => void choose(o)}>
+                        {o.item.status === "chosen" ? L("Planda ✓", "In plan ✓") : L("Plana al", "Add to plan")}
+                      </button>
+                    )}
                   </th>
                 ))}
               </tr>

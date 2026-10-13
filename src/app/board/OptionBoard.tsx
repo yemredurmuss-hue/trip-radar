@@ -6,6 +6,7 @@
 // the table; "+ Seçenek ekle" points to the chat box and the Save button.
 import { useState } from "react";
 import { boardBadges, boardOptions, otherDates, type BoardBadge, type BoardSort } from "../../lib/board";
+import { bookedAs } from "../../lib/cardView";
 import { cardFacts } from "../../lib/cardFacts";
 import type { DecisionContext, GroupDecision, OptionResult } from "../../lib/decision";
 import { L } from "../../lib/i18n";
@@ -14,6 +15,7 @@ import { voteKeyOf, type VoteValue } from "../../lib/share/votes";
 import type { Item } from "../../lib/types";
 import { setItemStatus } from "../actions";
 import { FallbackImg } from "../FallbackImg";
+import { BookedBadge } from "../cards/BookedBadge";
 import { KindIcon } from "../cards/Silhouettes";
 import { ratingOf } from "../cards/parts";
 import { useShare } from "../Share";
@@ -173,7 +175,7 @@ function OptionCard({ option, decision, ctx, badge, ticked, onTick, onOpen, onCh
             </span>
           )}
           {item.location.area && <span>{item.location.area}</span>}
-          {(chosen || booked) && <span className="bd-in">{booked ? L("✓ Rezerve", "✓ Booked") : L("✓ Planında", "✓ In your plan")}</span>}
+          {booked ? <BookedBadge as={bookedAs(item)} small /> : chosen && <span className="bd-in">{L("✓ Planında", "✓ In your plan")}</span>}
         </div>
         {/* What the traveller asked for, checked on this one ("✓ Sessiz", "✕ Mutfak"), as on the Plan's cards. */}
         {!out && facts.needs.length > 0 && (
@@ -220,7 +222,7 @@ function OptionCard({ option, decision, ctx, badge, ticked, onTick, onOpen, onCh
               </button>
             )}
             {booked ? (
-              <span className="bd-pick done">{L("Rezerve ✓", "Booked ✓")}</span>
+              <BookedBadge as={bookedAs(item)} />
             ) : chosen ? (
               <button type="button" className="bd-pick done" onClick={onChoose} title={L("Seçimi geri al", "Undo choice")}>
                 {L("✓ Seçili", "✓ Chosen")}

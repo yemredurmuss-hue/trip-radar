@@ -2,6 +2,7 @@
 import { classify, normalize } from "./evidence";
 import type { Extraction } from "./extract";
 import { L, locale } from "./i18n";
+import { lookWord } from "./stageWords";
 import type { Capture, Category, FactSource, Item, ItemMetrics } from "./types";
 import { countryCodeOf } from "./trips";
 import type { UrlFacts } from "./url";
@@ -384,8 +385,8 @@ const STALE_MS: Partial<Record<Category, number>> = { flight: 24 * 3600e3 };
 const DEFAULT_STALE_MS = 3 * 24 * 3600e3;
 
 export function rowLabel(item: Item, group: Item[], now = Date.now()): RowLabel {
-  if (item.status === "booked") return { text: L("Rezerve edildi", "Booked"), tone: "success" };
-  if (item.status === "chosen") return { text: L("Planlandı", "Planned"), tone: "success" };
+  if (item.status === "booked") return { text: lookWord("booked"), tone: "success" };
+  if (item.status === "chosen") return { text: lookWord("chosen"), tone: "success" };
 
   const majority = mostCommon(group.map((i) => `${i.dates.start}|${i.dates.end}`));
   if (item.dates.start && majority && `${item.dates.start}|${item.dates.end}` !== majority) {

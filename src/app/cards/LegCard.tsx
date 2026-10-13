@@ -9,6 +9,7 @@ import { legItem, withLegChoice, type Leg } from "../../lib/legs";
 import { setHidden, updateTrip } from "../actions";
 import { kindLabel, LegBody } from "../LegRow";
 import { legPeek, legPeekHasFacts } from "../../lib/cardPeek";
+import { BookedBadge } from "./BookedBadge";
 import { CardFoot, CardShell, type MenuEntry } from "./CardShell";
 import { LegPeekBox } from "./Peek";
 import { DocAccess } from "./DocAccess";
@@ -41,7 +42,7 @@ export function LegCard({ leg }: { leg: Leg }) {
       ariaLabel={v.ariaLabel}
       domId={`leg-${leg.key}`}
       extraClass={v.arranged ? "pk-leg pk-arranged" : "pk-leg"}
-      topAction={v.arranged ? <span className="pk-lab arranged">{L("Ayarlandı", "Arranged")}</span> : undefined}
+      topAction={v.badge ? <BookedBadge look={v.badge} as="ticket" /> : undefined}
       docs={own ? <DocAccess item={own} docs={env.docsFor(own.id)} /> : undefined}
       menu={menu}
       peek={legPeekHasFacts(peek) ? <LegPeekBox peek={peek} /> : null}

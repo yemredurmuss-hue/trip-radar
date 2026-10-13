@@ -1,13 +1,14 @@
 // The day-by-day view as cards (0.34.1, approved widget "günlük akış v4"): one card a day, its photo on
 // the left and what happens as a short list; tapping it opens the day on its own page. Days with
 // nothing planned in a row (in the same city) are one card. Pure.
-import { legCardView } from "./cardView";
+import { bookedAs, legCardView } from "./cardView";
 import { cityOfAirport } from "./airports";
 import { cardKind, legTransportMode, type CardKind } from "./cardKinds";
 import { sectionOfItem } from "./categories";
 import type { LegMode } from "./types";
 import { formatDateRange } from "./items";
 import { L } from "./i18n";
+import { lookWord } from "./stageWords";
 import { applyDayTimes, type DayTimeOverrides } from "./dayTimes";
 import { dayRows, type DayRow } from "./journey";
 import type { RentalEntry, TimelineSection } from "./timeline";
@@ -295,25 +296,30 @@ export function dayLinesOf(card: DayCard, opts: { times?: DayTimeOverrides; orde
 export interface Stage {
   tone: "open" | "plan" | "rez" | "idea";
   text: string;
+  /** A bought, booked or arranged line wears the one BookedBadge (its word is `text`). */
+  badge?: { look: "booked" | "arranged"; as?: "ticket" | "bought" };
 }
 export function stageOf(r: DayRow): Stage | null {
   if (r.layover || r.meeting) return null;
-  if (r.kind === "idea") return { tone: "idea", text: r.item?.arranged ? L("Ayarlandı", "Arranged") : r.item?.doneAt ? L("Yapıldı", "Done") : L("Fikir", "Idea") };
+  if (r.kind === "idea") return { tone: "idea", text: r.item?.arranged ? lookWord("arranged") : r.item?.doneAt ? L("Yapıldı", "Done") : L("Fikir", "Idea") };
   if (r.kind === "info") return null;
   // "Ben hallettim" only: the item says it, or the leg's own card does (legCardView: marked arranged, no ticket of ours; a ticket bought, "Bileti aldım", is Rezerve).
   const travel = r.entry?.kind === "travel" ? r.entry : null;
   const leg = travel?.leg ?? (r.entry?.kind === "leg" ? r.entry.leg : null);
   const arranged = !!r.item?.arranged || (leg ? legCardView(leg).arranged : r.item?.status !== "booked" && /ayarland|arranged/i.test(`${r.line ?? ""} ${r.status}`));
   switch (r.state) {
-    case "done":
-      return arranged ? { tone: "rez", text: L("Ayarlandı", "Arranged") } : { tone: "rez", text: L("Rezerve", "Booked") };
+    case "done": {
+      if (arranged) return { tone: "rez", text: lookWord("arranged"), badge: { look: "arranged" } };
+      const as = r.item ? bookedAs(r.item) : leg && legCardView(leg).badge === "booked" ? "ticket" : undefined;
+      return { tone: "rez", text: lookWord("booked", { as }), badge: { look: "booked", as } };
+    }
     case "pending":
-      return { tone: "plan", text: L("Seçildi", "Chosen") };
+      return { tone: "plan", text: lookWord("chosen") };
     case "decide":
     case "open":
-      return { tone: "open", text: L("Arıyoruz", "Searching") };
+      return { tone: "open", text: lookWord("search") };
     default:
       // Something planned that needs no booking (the metro, a walk): chosen.
-      return r.kind === "leg" || r.kind === "travel" ? { tone: "plan", text: L("Seçildi", "Chosen") } : null;
+      return r.kind === "leg" || r.kind === "travel" ? { tone: "plan", text: lookWord("chosen") } : null;
   }
 }

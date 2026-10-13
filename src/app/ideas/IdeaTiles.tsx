@@ -21,6 +21,8 @@ import { hopBetween, hopWord, type JourneyHop, type JourneyStop } from "../../li
 import { formatDateRange } from "../../lib/items";
 import { sameCity } from "../../lib/plan";
 import type { Item } from "../../lib/types";
+import { bookedAs } from "../../lib/cardView";
+import { BookedBadge } from "../cards/BookedBadge";
 import { KindIcon } from "../cards/Silhouettes";
 import { setItemStatus } from "../actions";
 import { CardMenu, DeleteX, type MenuEntry } from "../cards/CardShell";
@@ -201,7 +203,7 @@ function IdeaTile({ item, row = false }: { item: Item; row?: boolean }) {
         {!row && tools}
         {/* v30: the corner ✓ / +: on the plan, or one tap to put it there (its words stay for the reader and the tests; the drawing is the corner mark). */}
         {done ? null : booked ? (
-          <span className="it-put on corner">✓ {L("Rezerve", "Booked")}</span>
+          <span className="it-badge"><BookedBadge as={bookedAs(item)} small /></span>
         ) : (
           <button type="button" className={`it-put corner${planned ? " on" : ""}`} aria-pressed={planned} title={planned ? L("Planda · çıkarmak için bas", "On the plan · tap to take it off") : L("Plana ekle", "Add to the plan")} data-put={planned ? undefined : ""}
             onClick={() => void (planned ? (day ? setIdeaDay(item, null, null).then(() => setItemStatus(item, "saved")) : setItemStatus(item, "saved")) : setItemStatus(item, "chosen"))}>

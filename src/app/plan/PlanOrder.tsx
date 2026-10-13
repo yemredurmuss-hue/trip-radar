@@ -1,16 +1,21 @@
 // The Plan's three ways to read the same trip (plan v30): by category, in trip order (the stops and their dates), day by day.
 // One tablist, drawn atop each of them.
 import { L } from "../../lib/i18n";
+import { LOOKS, lookWord } from "../../lib/stageWords";
+import { UiIcon } from "../cards/Silhouettes";
 
 export type PlanOrderView = "plan" | "story" | "days";
 
-/** The colours' key, shared by all three ways to read the plan. */
+/** The key, shared by all three ways to read the plan: a sample box for each of the five looks, in the words of stageWords. */
 export function PlanKey() {
   return (
     <span className="plan-key" aria-label={L("Renklerin anlamı", "What the colours say")}>
-      <span><i className="pk-sw open" />{L("Arıyoruz", "Searching")}</span>
-      <span><i className="pk-sw chosen" />{L("Seçildi", "Chosen")}</span>
-      <span><i className="pk-sw booked" />{L("Rezerve", "Booked")}</span>
+      {LOOKS.map((look) => (
+        <span key={look}>
+          <i className={`pk-sw ${look}`}>{look === "booked" && <UiIcon name="check" size={11} />}</i>
+          {lookWord(look)}
+        </span>
+      ))}
     </span>
   );
 }

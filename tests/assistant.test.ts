@@ -204,7 +204,7 @@ describe("assistant", () => {
     expect(state).toContain("2026-10-08:arrival:porto");
     expect(state).toContain("Boş");
     const [ok, bad] = calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[];
-    expect(String(ok.content)).toContain("Metro · planlandı");
+    expect(String(ok.content)).toContain("Metro · seçildi");
     expect(bad.is_error).toBe(true);
     expect(String(bad.content)).toContain("Olanlar: 2026-10-08:arrival:porto, 2026-10-11:departure:porto");
     const trip = (await (await db()).get("trips", "t1"))!;

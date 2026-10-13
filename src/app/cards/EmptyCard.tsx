@@ -14,6 +14,7 @@ import { activityDrawing, footOf, legCardView, legEnd, legMenuFor, transportFace
 import { needKey, rangeText, type ActivityGap } from "../../lib/emptyCards";
 import { countryNames, nPeople } from "../../lib/heroInfo";
 import { L } from "../../lib/i18n";
+import { lookWord } from "../../lib/stageWords";
 import { locative, nNights } from "../../lib/i18nText";
 import { formatDateRange, formatPrice, isoDate, nightsBetween } from "../../lib/items";
 import { legItem, withLegChoice, type Leg } from "../../lib/legs";
@@ -189,7 +190,7 @@ export function EmptyShell(props: {
           {props.badge}
           {props.date && <span className="pk-date">· {props.date}</span>}
           <span className="pk-end">
-            <span className="pk-lab open">{L("Arıyoruz", "Searching")}</span>
+            <span className="pk-lab open">{lookWord("search")}</span>
             {props.fold ? <DeleteX name={props.ariaLabel} hide onDelete={() => setFolded(true)} className={props.extraClass?.includes("stay-open") ? "stay-x" : undefined} /> : props.x}
             <CardMenu entries={props.menu} />
           </span>

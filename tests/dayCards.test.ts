@@ -54,8 +54,8 @@ describe("day cards", () => {
   });
   it("a line's stage in the Plan's words", () => {
     const row = (over: Partial<DayRow>) => ({ kind: "item", state: "done", status: "", line: null, item: null, entry: null, ...over }) as DayRow;
-    expect(stageOf(row({ state: "done" }))).toEqual({ tone: "rez", text: "Rezerve" });
-    expect(stageOf(row({ state: "done", status: "Ayarlandı ✓", kind: "leg" }))).toEqual({ tone: "rez", text: "Ayarlandı" });
+    expect(stageOf(row({ state: "done" }))).toEqual({ tone: "rez", text: "Rezerve", badge: { look: "booked" } });
+    expect(stageOf(row({ state: "done", status: "Ayarlandı ✓", kind: "leg" }))).toEqual({ tone: "rez", text: "Ayarlandı", badge: { look: "arranged" } });
     expect(stageOf(row({ state: "pending" }))).toEqual({ tone: "plan", text: "Seçildi" });
     expect(stageOf(row({ state: "decide" }))?.text).toBe("Arıyoruz");
     expect(stageOf(row({ state: "open", kind: "leg" }))?.tone).toBe("open");

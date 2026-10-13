@@ -9,6 +9,8 @@
 import { cardKind, cardKindLabel, type CardKind } from "./cardKinds";
 import { fold } from "./experiences";
 import { L, lang } from "./i18n";
+import { lookWord } from "./stageWords";
+import { lowerFirst } from "./i18nText";
 import { currencyCode, formatDateRange, isoDate, metricsOf } from "./items";
 import { cityKeyOf, departureDay, sameCity, stayRange } from "./plan";
 import { isGeneratedName, plannedItem, type PlannedInput } from "./planned";
@@ -133,7 +135,7 @@ export function changedFields(beforeRaw: Item, afterRaw: Item): Map<ChangeField,
   if (!same(clock(a), clock(b))) out.set("time", clock(b) ?? "");
   if (!same(a.provider, b.provider)) out.set("provider", b.provider ?? "");
   if (!same(a.price.amount, b.price.amount) || !same(a.price.currency, b.price.currency)) out.set("price", b.price.amount != null ? `${b.price.amount} ${b.price.currency ?? ""}`.trim() : "");
-  if (a.status !== b.status) out.set("status", b.status === "booked" ? L("rezerve edildi", "booked") : b.status === "chosen" ? L("planlandı", "planned") : b.status);
+  if (a.status !== b.status) out.set("status", b.status === "booked" ? L("rezerve edildi", "booked") : b.status === "chosen" ? lowerFirst(lookWord("chosen")) : b.status);
   const [ma, mb] = [metricsOf(a), metricsOf(b)];
   if (!same(ma.dataGb, mb.dataGb) || !same(ma.unlimitedData, mb.unlimitedData) || !same(ma.validityDays, mb.validityDays)) out.set("package", mb.dataGb ? gbText(mb.dataGb) : "");
   return out;

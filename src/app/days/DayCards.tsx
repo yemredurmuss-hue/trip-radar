@@ -11,6 +11,7 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from "re
 import { dayCards, dayLinesOf, isAsideRow, isPlanRow, rowKind, stageOf, type DayCard } from "../../lib/dayCards";
 import { cardKindColor } from "../../lib/cardKinds";
 import { rowIcon, rowItem, rowTitle, simpleName, titleText, withLayovers, withMeetings, type Place, type RowTitle } from "../../lib/dayRowTitle";
+import { BookedBadge } from "../cards/BookedBadge";
 import { CardEnvContext } from "../cards/PlanCard";
 import { WhoAvatar, usePhotoOf, useWhoCtx } from "../cards/WhoseBadge";
 import { whoseOf } from "../../lib/whose";
@@ -129,7 +130,7 @@ function NightLine({ card, stays }: { card: DayCard; stays: Map<string, StayEntr
 /** The stage on a line's right, in the Plan's words and colours. */
 function Stage({ row }: { row: DayRow }) {
   const s = stageOf(row);
-  return s ? <span className={`dg-lab ${s.tone}`}>{s.text}</span> : null;
+  return s ? <span className={`dg-lab ${s.tone}`}>{s.badge ? <BookedBadge look={s.badge.look} as={s.badge.as} small /> : s.text}</span> : null;
 }
 
 /** Lines of this day still to book, decide or plan: said once, in the foot (a count the old view had). */

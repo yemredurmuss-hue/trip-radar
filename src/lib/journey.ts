@@ -3,10 +3,11 @@
 // where it stands and what it is, in a few words; the full card opens under it. Times come from the
 // records or are worked out from them, and a worked-out or usual time is marked ("~15:00 genelde"). Pure.
 import { L } from "./i18n";
-import { count, hoursMinutes, liveLabels, nOptions } from "./i18nText";
+import { count, hoursMinutes, liveLabels, lowerFirst, nOptions } from "./i18nText";
 import { formatDateRange, formatPrice, metricsOf } from "./items";
 import { addMinutes, BOOKABLE, clockOf, laterOf, legShortTitle, minutesOf, MODE_LABELS, stayTimes, type Leg } from "./legs";
 import type { StayBlock } from "./plan";
+import { lookWord } from "./stageWords";
 import type { Journey, RentalEntry, TimelineEntry, TimelineSection } from "./timeline";
 import { isIdea } from "./booking";
 import { mealLabel } from "./ideas";
@@ -72,14 +73,10 @@ const duration = (m: number | null) => (m ? hoursMinutes(m) : null);
 
 /** The words of a step's state, read in the current language. */
 const W = liveLabels({
-  booked: ["Rezerve", "Booked"],
   notBooked: ["Rezerve edilmedi", "Not booked"],
   decide: ["Karar ver", "Decide"],
   notPlanned: ["Planlanmadı", "Not planned"],
-  ticketBought: ["Bilet alındı", "Ticket bought"],
   noTicket: ["Bilet alınmadı", "No ticket yet"],
-  arranged: ["Ayarlandı", "Arranged"],
-  planned: ["Planlandı", "Planned"],
   latest: ["en geç", "latest"],
   usually: ["genelde", "usually"],
   earliest: ["en erken", "earliest"],
@@ -95,7 +92,7 @@ function stayItem(b: StayBlock): Item | null {
 }
 
 function stayStanding(b: StayBlock): { standing: StepStanding; status: string } {
-  if (b.kind === "booked") return { standing: "booked", status: W.booked };
+  if (b.kind === "booked") return { standing: "booked", status: lookWord("booked") };
   if (b.kind === "chosen") return { standing: "planned", status: W.notBooked };
   return { standing: "open", status: b.groups.length ? W.decide : W.notPlanned };
 }
@@ -171,15 +168,15 @@ function travelStep(j: Journey, e: Extract<TimelineEntry, { kind: "travel" }>): 
   let status: string;
   if (t?.settled) {
     standing = t.settled.status === "booked" ? "booked" : "planned";
-    status = t.settled.status === "booked" ? (ticket ? W.ticketBought : W.booked) : ticket ? W.noTicket : W.notBooked;
+    status = t.settled.status === "booked" ? (ticket ? lookWord("booked", { as: "ticket" }) : lookWord("booked")) : ticket ? W.noTicket : W.notBooked;
   } else if (t?.items.length) {
     status = t.items.length === 1 ? L("1 seçenek · seç", "1 option · pick it") : L(`${t.items.length} seçenek · karar ver`, `${nOptions(t.items.length)} · decide`);
   } else if (e.leg?.choice?.booked) {
     standing = "booked";
-    status = ticket ? W.ticketBought : W.arranged;
+    status = ticket ? lookWord("booked", { as: "ticket" }) : lookWord("arranged");
   } else if (e.leg?.choice?.mode) {
     standing = "planned";
-    status = ticket ? W.noTicket : W.planned;
+    status = ticket ? W.noTicket : lookWord("chosen");
   } else {
     status = e.role === "move" ? L("Planlanmadı · nasıl?", "Not planned · how?") : L("Uçuş yok", "No flight");
   }
@@ -288,7 +285,7 @@ export interface DayRow {
   otherDay: string | null;
   title: string;
   sub: string | null;
-  /** Its folded line once done: "Metro · planlandı", "TAP · 19:40 → 01:35", "€90 · rezerve". */
+  /** Its folded line once done: "Metro · seçildi", "TAP · 19:40 → 01:35", "€90 · rezerve". */
   line: string | null;
   state: RowState;
   status: string;
@@ -358,7 +355,7 @@ function fromStep(st: JourneyStep): DayRow {
       ? TICKETED.includes(choice.mode)
         ? L("bilet alındı", "ticket bought")
         : L("ayarlandı", "arranged")
-      : L("planlandı", "planned")
+      : lowerFirst(lookWord("chosen"))
     : null;
   const line = done
     ? [done.name, times[0] && times[1] ? `${times[0]} → ${times[1]}` : null].filter(Boolean).join(" · ")
@@ -368,7 +365,7 @@ function fromStep(st: JourneyStep): DayRow {
   return row({ ...base, kind: "travel", state: travelState(e), entry: e, line });
 }
 
-/** "Metro · planlandı", "Taksi · ayarlandı", "Rezerve": a done transfer in a few words. */
+/** "Metro · seçildi", "Taksi · ayarlandı", "Rezerve": a done transfer in a few words. */
 const legLine = (leg: Leg) => leg.statusText.replace(/\s*✓\s*$/, "") || null;
 
 function legRow(leg: Leg): DayRow {
@@ -398,7 +395,7 @@ function itemRow(item: Item): DayRow {
     title: item.name,
     sub: [price, item.status === "booked" ? L("rezerve", "booked") : null].filter(Boolean).join(" · ") || null,
     state: item.status === "booked" ? "done" : "pending",
-    status: item.status === "booked" ? W.booked : W.notBooked,
+    status: item.status === "booked" ? lookWord("booked") : W.notBooked,
     line: [price, L("rezerve", "booked")].filter(Boolean).join(" · "),
     item,
   });
@@ -428,7 +425,7 @@ function rentalRows(date: string, rentals: RentalEntry[]): { start: DayRow[]; en
     const name = lead?.name ?? (items.length === 1 ? items[0].name : nOptions(items.length));
     if (r.date === date) {
       const state: RowState = lead?.status === "booked" ? "done" : lead ? "pending" : "decide";
-      const status = state === "done" ? W.booked : state === "pending" ? W.notBooked : nOptions(items.length);
+      const status = state === "done" ? lookWord("booked") : state === "pending" ? W.notBooked : nOptions(items.length);
       start.push(row({ key: r.key, kind: "rental", state, status, title: L("Araç kiralama", "Car rental"), sub: name, time: clockOf(lead?.flight?.departure), rental: r }));
     }
     if (r.end === date && r.end !== r.date) {

@@ -94,7 +94,7 @@ describe("legs: every transfer the plan needs", () => {
       "2026-10-10:arrival:lizbon": { mode: "transfer", booked: true, note: "Otel servisi", updatedAt: 1 },
     };
     expect(brief(legsOf(items, { legs }))).toEqual([
-      "2026-10-07 arrival: Varış → Jardim Stay [Metro · planlandı]",
+      "2026-10-07 arrival: Varış → Jardim Stay [Metro · seçildi]",
       "2026-10-10 departure: Jardim Stay → Porto gar [Boş]",
       "2026-10-10 move: Jardim Stay → Lisboa Loft [Tren · rezerve edilmedi]",
       "2026-10-10 arrival: Lizbon gar → Lisboa Loft [Transfer · ayarlandı ✓]",

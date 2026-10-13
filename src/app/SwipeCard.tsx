@@ -11,6 +11,7 @@ import type { Category, Item } from "../lib/types";
 import { chooseItem, setItemStatus } from "./actions";
 import { FallbackImg } from "./FallbackImg";
 import { PivotNote } from "./PivotNote";
+import { lookWord } from "../lib/stageWords";
 import { StatusBar } from "./Status";
 import { CategoryIcon } from "./Icons";
 import { datedLink, Details, Links, Price, ProsCons, ratingOf, SourceBadge, TradeLine } from "./cards/parts";
@@ -39,7 +40,7 @@ function StayTools({ item }: { item: Item }) {
 
 /** A ticket is bought for a flight, a train or an activity; a stay, a rental car or a transfer is reserved. */
 const ticketed = (i: Item) => i.category === "flight" || i.category === "activity" || (i.category === "transport" && isTrip(i));
-const bookedWord = (i: Item) => (ticketed(i) ? L("Bilet alındı", "Ticket booked") : L("Rezerve edildi", "Booked"));
+const bookedWord = (i: Item) => lookWord("booked", { as: ticketed(i) ? "ticket" : undefined });
 const notBookedWord = (i: Item) => (ticketed(i) ? L("bilet alınmadı", "no ticket yet") : L("rezerve edilmedi", "not booked"));
 const bookAction = (i: Item) => (ticketed(i) ? L("Bileti aldım", "I got the ticket") : L("Rezerve ettim", "I booked it"));
 
@@ -307,7 +308,7 @@ function SettledCardFace({
       <StayTools item={item} />
       <StatusBar
         standing={booked ? "booked" : "planned"}
-        text={booked ? bookedWord(item) : L("Planlandı", "Planned")}
+        text={booked ? bookedWord(item) : lookWord("chosen")}
         sub={booked ? null : notBookedWord(item)}
         ring={<Ring state={booked ? "done" : "half"} />}
       />

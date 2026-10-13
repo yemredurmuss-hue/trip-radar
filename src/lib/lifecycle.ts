@@ -1,16 +1,19 @@
 // Aşamalar (spec 2026-10-06-asamalar-design.md): the one place that says where a record and a need stand, so the
 // cards, the hero, the Plan's sections, the to-do list, the day view and the chat never count differently.
 //
-//   Aranacak (search) → Seçenekler (options) → Planlandı (planned) → Rezerve edildi (booked) → Hazır (ready)
+//   search → options → planned → booked → ready   (code names; the traveller reads Arıyoruz → N seçenek → Seçildi → Rezerve,
+//   see stageWords.ts)
 //   side stages: İptal edildi (cancelled), Gerek yok (notNeeded), Kullanıldı (used)
 //
 // Only needs that take a booking have stages (a stay, a flight, a train / bus / ferry, a car, a transfer, a
 // ticketed activity, an eSIM, insurance); a walk, a market or a restaurant is an idea and never in a percentage.
-// "Hazır" isn't a status of its own: booked with a file on it. A need made of parts (the nights of a stay in
+// "ready" isn't a status of its own: booked with a file on it (it reads as Rezerve too). A need made of parts (the nights of a stay in
 // blocks, one ticket per person) stands where its furthest-behind part stands. Pure.
 import { L } from "./i18n";
 import { isoDate } from "./items";
+import { nOptions } from "./i18nText";
 import { namesSomething } from "./planned";
+import { lookWord } from "./stageWords";
 import type { Item } from "./types";
 
 export type Stage = "search" | "options" | "planned" | "booked" | "ready" | "cancelled" | "notNeeded" | "used";
@@ -139,22 +142,21 @@ export function deleteLevel(stage: Stage, opts: { shared?: boolean } = {}): { le
 }
 
 /**
- * A stage in words: "Aranacak", "Seçenekler (3)", "Planlandı · bilet alınmadı" / "Planlandı · rezerve edilmedi",
- * "Rezerve edildi", "Hazır", "İptal edildi", "Gerek yok", "Kullanıldı". `ticket`: a ticket is bought for it
- * (a flight, a train, a tour); `options`: how many are saved.
+ * A stage in words, from the one dictionary (stageWords.ts): "Arıyoruz", "3 seçenek", "Seçildi · bilet alınmadı" /
+ * "Seçildi · rezerve edilmedi", "Rezerve" / "Bilet alındı", "İptal edildi", "Gerek yok", "Kullanıldı". `ticket`: a
+ * ticket is bought for it (a flight, a train, a tour); `options`: how many are saved.
  */
 export function stageLabel(stage: Stage, opts: { ticket?: boolean; options?: number } = {}): string {
   switch (stage) {
     case "search":
-      return L("Aranacak", "To find");
+      return lookWord("search");
     case "options":
-      return opts.options ? L(`Seçenekler (${opts.options})`, `Options (${opts.options})`) : L("Seçenekler", "Options");
+      return opts.options ? nOptions(opts.options) : L("Seçenekler", "Options");
     case "planned":
-      return opts.ticket ? L("Planlandı · bilet alınmadı", "Planned · no ticket yet") : L("Planlandı · rezerve edilmedi", "Planned · not booked");
+      return `${lookWord("chosen")} · ${opts.ticket ? L("bilet alınmadı", "no ticket yet") : L("rezerve edilmedi", "not booked")}`;
     case "booked":
-      return L("Rezerve edildi", "Booked");
     case "ready":
-      return L("Hazır", "Ready");
+      return lookWord("booked", { as: opts.ticket ? "ticket" : undefined });
     case "cancelled":
       return L("İptal edildi", "Cancelled");
     case "notNeeded":

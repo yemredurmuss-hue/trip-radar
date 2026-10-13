@@ -157,10 +157,10 @@ describe("one source: hero = list = Plan sections", () => {
     const out = flight("Out", "IST", "OPO", "2026-10-08", "booked");
     const back = listOf([hotel, cancel(out), flight("Alt", "IST", "OPO", "2026-10-08", "saved")]).list.counts;
     expect(back.options).toBe(1);
-    // Its row says "Aranacak", the header "1 aranacak" (it was added: never "eklenmedi").
+    // Its row says "Arıyoruz", the header "1 aranıyor" (it was added: never "eklenmedi").
     const esim = listOf([hotel, cancel(kinds[2][1])]).sections.find((s) => s.id === "other")!;
-    expect(esim.entries.map((e) => e.row.status)).toEqual(["Aranacak"]);
-    expect(esim.status?.text).toBe("1 aranacak");
+    expect(esim.entries.map((e) => e.row.status)).toEqual(["Arıyoruz"]);
+    expect(esim.status?.text).toBe("1 aranıyor");
   });
 
   it("a stay's nights back to back in one city are one need, the furthest-behind block's stage; a gap or another city, needs of their own", () => {
@@ -188,8 +188,8 @@ describe("one source: hero = list = Plan sections", () => {
     const bare = listOf([stay("Jardim", "booked"), said({ kind: "flight", date: "2026-10-08", from: "IST", to: "OPO" })]);
     const flights = bare.sections.find((s) => s.id === "flight")!;
     expect(bare.list.counts.planned).toBe(0);
-    // The one with a record says "aranacak"; the one with nothing at all "eklenmedi".
-    expect(flights.status?.text).toBe("1 uçuş eklenmedi · 1 aranacak");
+    // The one with a record says "aranıyor"; the one with nothing at all "eklenmedi".
+    expect(flights.status?.text).toBe("1 uçuş eklenmedi · 1 aranıyor");
   });
 
   it("someone coming their own way in with nothing for it yet: the way in is Aranacak, with a row for them", () => {

@@ -7,7 +7,7 @@ import { RideCardBody, RouteArc } from "./RideCard";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { cardFacts, durationText } from "../../lib/cardFacts";
 import { cardKind, isTransportKind, type LegEnds } from "../../lib/cardKinds";
-import { footOf, mediaFace, ringOf, stayPlatform, topDate, transportFace } from "../../lib/cardView";
+import { bookedAs, footOf, mediaFace, ringOf, stayPlatform, topDate, transportFace } from "../../lib/cardView";
 import type { Choice, Ranked } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
 import { L } from "../../lib/i18n";
@@ -32,6 +32,9 @@ import { CardDate } from "./CardDate";
 import { BookingSheet } from "./BookingSheet";
 import { ChoiceSheet, NeedCard } from "./NeedCard";
 import { needTitleOf } from "../../lib/pano";
+import { lookOf } from "../../lib/stageWords";
+import { stageOf } from "../../lib/lifecycle";
+import { BookedBadge } from "./BookedBadge";
 import { CardDetail } from "./CardDetail";
 import { CardFoot, CardShell, type MenuEntry, type Nav } from "./CardShell";
 import { listingKeyOf, nightsBetween } from "../../lib/items";
@@ -129,11 +132,12 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   const kind = cardKind(item, env.legModes.get(item.id) ?? null);
   const facts = cardFacts(item, decision, env.decisions?.ctx);
   const alert = dateAlert(item, env.today);
-  const ring = ringOf(item, kind);
+  const ring = ringOf(item);
   const docs = env.docsFor(item.id);
   const camp = kind === "stay" && isCampStay(item);
   // v30: "Ben hallettim" (Ayarlandı): grey and flat, nothing left to do: no "✓ Aldım", no page to book on, no countdown.
   const arranged = Boolean(item.arranged && item.noBooking != null && item.status !== "booked");
+  const look = lookOf(stageOf(item, { docs: docs.length }), { arranged });
   const foot = footOf(item, kind, { options: nav?.total ?? 1, alert: arranged ? null : alert, docs: docs.length, included: env.trip?.intent?.playbook === "festival" });
   const stageMenu = useStageMenu(item);
   const { url: datedUrl } = datedLink(item, decision);
@@ -255,12 +259,6 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       itemId={item.id}
       badge={<WhoseBadge item={item} trip={env.trip} />}
       extraClass={[arranged ? "pk-arranged" : "", allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", stub ? "pk-stubbed" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined}
-      art={
-        <>
-          {/* v11: a booking's stamp, the green ✓ turned a little, faint, in its corner (a ticket's ends fill that corner: none there). */}
-          {bookedCard && !transport && <span className="pk-stamp" aria-hidden><UiIcon name="check" size={16} /></span>}
-        </>
-      }
       docs={bookedCard ? null : <DocAccess item={item} docs={docs} />}
       onDelete={stageMenu.hide}
       onArranged={stageMenu.booked || bookedCard ? undefined : () => void setArranged(item, true)}
@@ -271,10 +269,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
             onClick={(e) => { e.stopPropagation(); act(); }}>
             ✓ {L("Aldım", "Got it")}
           </button>
-        ) : bookedCard ? (
-          <span className="pk-lab booked">{L("Rezerve", "Booked")}</span>
-        ) : arranged ? (
-          <span className="pk-lab arranged">{L("Ayarlandı", "Arranged")}</span>
+        ) : look === "booked" || look === "arranged" ? (
+          <BookedBadge look={look} as={bookedAs(item, kind)} />
         ) : null
       }
       menu={menu}
@@ -324,14 +320,12 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
               ) : null
             }
             more={bookedCard && !["taxi", "note", "todo"].includes(kind) ? () => setSheet(true) : undefined} />
-          {/* v11: a booked flight's stub under a dashed line — the airline, the booking code, how many go — and its stamp. */}
+          {/* v11: a booked flight's stub under a dashed line: the booking code (or the price), how many go. The badge on the top line says it's bought. */}
           {bookedCard && kind === "flight" && (
             <div className="pk-stub">
-              <span className="pk-stub-st">{L("Rezerve", "Booked")}</span>
               {/* v30: the code waits for the flight's day; before that the stub says what it cost (the code is in its window). */}
               {item.bookingRef && showBookingRef(item, env.today) ? <b><CopyText value={item.bookingRef} label={L("Rezervasyon kodu", "Booking code")}>{item.bookingRef}</CopyText></b> : facts.price ? <b>{facts.price.text}</b> : null}
               {item.guests.adults ? <span>{L(`${item.guests.adults} yolcu`, `${item.guests.adults} passenger${item.guests.adults === 1 ? "" : "s"}`)}</span> : null}
-              <span className="pk-stamp" aria-hidden><UiIcon name="check" size={14} /></span>
             </div>
           )}
           {/* v30: a chosen flight's stub: what it costs per person and in all, from what was saved. */}

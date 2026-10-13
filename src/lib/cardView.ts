@@ -1,34 +1,32 @@
 // src/lib/cardView.ts
-// What a plan card says, from the record: the ring (to decide / chosen / done), the colour of its ground,
-// the bottom strip (where it stands or which option, and its one action), the date on its top line, the
+// What a plan card says, from the record: the ring (to decide / chosen; booked is the badge, not a ring), the
+// bottom strip (where it stands or which option, and its one action), the date on its top line, the
 // ••• menu, the two ends of a trip, a media card's lines, and a transfer as a card. Pure.
 import { durationText, type CardFacts } from "./cardFacts";
 import { isCampStay } from "./campStay";
 import { L } from "./i18n";
 import { count, nDays, nOptions, nReviews, nStops, num } from "./i18nText";
 import { formatDateRange, isoDate, metricsOf, nightsBetween } from "./items";
-import { actionsFor, stageLabel, stageOf } from "./lifecycle";
+import { actionsFor, stageOf } from "./lifecycle";
+import { lookWord } from "./stageWords";
 import { clockOf, legItem, legTiming, MODE_LABELS, stayWordOf, type Leg } from "./legs";
 import type { DateAlert } from "./progress";
 import { flightSearchUrl } from "./timeline";
 import { isTrip } from "./travelKinds";
 import { cityOfAirport } from "./airports";
 import { setAside } from "./booking";
-import { cardKindLabel, legTransportMode, RENTAL_MODES, TICKET_MODES, transportMode, type CardKind, type LegEnds, type TransportMode } from "./cardKinds";
+import { cardKind, cardKindLabel, legTransportMode, RENTAL_MODES, TICKET_MODES, transportMode, type CardKind, type LegEnds, type TransportMode } from "./cardKinds";
 import type { Item } from "./types";
 
 export type Ring = "open" | "half" | "done";
 /** Nothing to book: once planned it's done (a taxi from the rank, a note, a to-do). */
 const NO_BOOKING: readonly CardKind[] = ["taxi", "note", "todo"];
 
-export function ringOf(item: Item, kind: CardKind): Ring {
+/** "done" is a booking and nothing else (green ground, the one badge); a plan that needs no booking is chosen like any other. */
+export function ringOf(item: Item): Ring {
   if (item.status === "booked") return "done";
-  if (item.status === "chosen") return NO_BOOKING.includes(kind) || (kind === "stay" && isCampStay(item)) ? "done" : "half";
-  return "open";
+  return item.status === "chosen" ? "half" : "open";
 }
-
-/** The ground says what the ring says: sand until it's done, green once it is. */
-export const groundOf = (ring: Ring): "sand" | "green" => (ring === "done" ? "green" : "sand");
 
 export type FootAction = "choose" | "book" | "install" | "restore";
 export type FootLeft =
@@ -42,15 +40,17 @@ export interface FootView {
 
 const state = (tone: "wait" | "done" | "plain", text: string, sub: string | null = null): FootLeft => ({ kind: "state", tone, text, sub, when: null, alert: null });
 
-type Words = { not: string; act: string; done: string };
-const ticketWords = (): Words => ({ not: L("bilet alınmadı", "no ticket yet"), act: L("Bileti aldım", "I got the ticket"), done: L("Alındı", "Booked") });
-const reserveWords = (): Words => ({ not: L("rezerve edilmedi", "not booked"), act: L("Rezerve ettim", "I booked it"), done: L("Rezerve", "Booked") });
+type Words = { not: string; act: string };
+/** What was done to a booked card, for its one badge: a ticket bought (a trip, a tour), a purchase (an eSIM, a policy), else a reservation. */
+export function bookedAs(item: Item, kind: CardKind = cardKind(item, null)): "ticket" | "bought" | undefined {
+  if ((TICKET_MODES as readonly string[]).includes(kind) || kind === "activity" || (kind === "transport" && isTrip(item))) return "ticket";
+  return kind === "esim" || kind === "insurance" ? "bought" : undefined;
+}
 function words(item: Item, kind: CardKind): Words {
-  if ((TICKET_MODES as readonly string[]).includes(kind) || kind === "activity") return ticketWords();
-  if (kind === "transport") return isTrip(item) ? ticketWords() : reserveWords();
-  if (kind === "esim") return { not: L("satın alınmadı", "not bought"), act: L("Satın aldım", "I bought it"), done: L("Alındı", "Bought") };
-  if (kind === "insurance") return { not: L("poliçe alınmadı", "no policy yet"), act: L("Poliçe aldım", "I got the policy"), done: L("Alındı", "Bought") };
-  return reserveWords();
+  if (bookedAs(item, kind) === "ticket") return { not: L("bilet alınmadı", "no ticket yet"), act: L("Bileti aldım", "I got the ticket") };
+  if (kind === "esim") return { not: L("satın alınmadı", "not bought"), act: L("Satın aldım", "I bought it") };
+  if (kind === "insurance") return { not: L("poliçe alınmadı", "no policy yet"), act: L("Poliçe aldım", "I got the policy") };
+  return { not: L("rezerve edilmedi", "not booked"), act: L("Rezerve ettim", "I booked it") };
 }
 
 /** What a booking keeps on the card: the note said with it (a PNR, a meeting point), else until when it's free to cancel. */
@@ -77,28 +77,28 @@ export function footOf(item: Item, kind: CardKind, opts: { options?: number; ale
         action: { label: L("Plana koy", "Add to plan"), does: "choose" },
       };
     case "chosen": {
-      if (NO_BOOKING.includes(kind)) return { left: withAlert(state("done", L("Planlandı", "Planned"), kind === "taxi" ? L("rezervasyon gerekmez", "no booking needed") : null)), action: null };
+      if (NO_BOOKING.includes(kind)) return { left: withAlert(state("done", lookWord("chosen"), kind === "taxi" ? L("rezervasyon gerekmez", "no booking needed") : null)), action: null };
       // v30: a festival's camp or caravan: "✓ Rezervasyon gerekmez · bilete dahil" (nothing to book; the ticket covers the ground).
       if (kind === "stay" && isCampStay(item)) return { left: state("done", opts.included ? L("Rezervasyon gerekmez · bilete dahil", "No booking needed · included with the ticket") : L("Rezervasyon gerekmez", "No booking needed")), action: null };
       // Set aside by the traveller as needing no booking (0.36.47): an idea on the plan; booking it still can be said.
       if (setAside(item)) {
-        // v30: "Ben hallettim" says "Ayarlandı · sen hallettin"; an idea set aside keeps its words.
-        const left = item.arranged ? state("done", L("Ayarlandı", "Arranged"), L("sen hallettin", "you sorted it")) : state("done", L("Fikir", "Idea"), L("rezervasyon gerekmiyor", "no booking needed"));
+        // v30: "Ben hallettim": the badge says Ayarlandı, the foot "sen hallettin"; an idea set aside keeps its words.
+        const left = item.arranged ? state("done", L("sen hallettin", "you sorted it")) : state("done", L("Fikir", "Idea"), L("rezervasyon gerekmiyor", "no booking needed"));
         return { left: withAlert(left), action: { label: w.act, does: "book" } };
       }
       // Decided, not booked yet (0.36.30, Emre: "Plan: karar verildi, muhtemelen book edilecek ama henüz edilmedi").
-      const text = L("Planlandı", "Planned");
+      const text = lookWord("chosen");
       return { left: withAlert(state("wait", text, w.not)), action: { label: w.act, does: "book" } };
     }
     case "booked": {
-      if (NO_BOOKING.includes(kind)) return { left: withAlert(state("done", L("Planlandı", "Planned"), bookedSub(item))), action: null };
-      // Booked with its file (a ticket, a voucher): Hazır (lifecycle.ts); an eSIM is ready once put in, below.
-      if (kind !== "esim" && (opts.docs ?? 0) > 0) return { left: withAlert(state("done", stageLabel("ready"), bookedSub(item))), action: null };
+      if (NO_BOOKING.includes(kind)) return { left: withAlert(state("done", lookWord("chosen"), bookedSub(item))), action: null };
+      // A booking's word is the card's one badge (BookedBadge), so the foot doesn't say it again: only the note kept
+      // with it and a date running out. An eSIM adds whether it is put in.
       if (kind === "esim" && !item.installedAt) {
-        return { left: withAlert(state("wait", L("Alındı", "Bought"), L("kurulmadı", "not installed"))), action: { label: L("Kurdum", "Installed it"), does: "install" } };
+        return { left: withAlert(state("wait", L("kurulmadı", "not installed"))), action: { label: L("Kurdum", "Installed it"), does: "install" } };
       }
       if (kind === "esim") return { left: withAlert(state("done", L("Kuruldu", "Installed"), bookedSub(item))), action: null };
-      return { left: withAlert(state("done", w.done, bookedSub(item))), action: null };
+      return { left: withAlert(state("done", bookedSub(item) ?? "")), action: null };
     }
   }
 }
@@ -295,6 +295,8 @@ export interface LegCardView {
   searchUrl: string | null;
   /** v30: "Ben hallettim": the traveller says they arranged it themselves (no ticket of ours): grey and flat, "Ayarlandı · sen hallettin". */
   arranged: boolean;
+  /** The one badge it wears: a ticket bought, or the arrangement; null while it isn't booked. */
+  badge: "booked" | "arranged" | null;
 }
 
 /** Ways between cities that need a ticket; everything else (taxi, transfer, metro, a city bus) is planned once said. */
@@ -366,17 +368,17 @@ export function legCardView(leg: Leg): LegCardView {
   const to = move ? (leg.to.city ?? leg.to.label) : leg.to.label;
   const date = move ? formatDateRange(leg.date, null) : null;
   let foot: FootView;
-  if (arranged) foot = { left: state("done", L("Ayarlandı", "Arranged"), settled?.name ?? L("sen hallettin", "you sorted it")), action: null };
-  else if (booked) foot = { left: state("done", ticketed ? L("Alındı", "Booked") : L("Ayarlandı", "Arranged"), settled?.name ?? null), action: null };
+  if (arranged) foot = { left: state("done", settled?.name ?? L("sen hallettin", "you sorted it")), action: null };
+  else if (booked) foot = { left: state("done", settled?.name ?? ""), action: null };
   else if (planned && ticketed && aside) foot = { left: state("done", L("Fikir", "Idea"), L("bilet gerekmiyor", "no ticket needed")), action: { label: L("Bileti aldım", "I got the ticket"), does: "book" } };
-  else if (planned && ticketed) foot = { left: state("wait", L("Planlandı", "Planned"), L("bilet alınmadı", "no ticket yet")), action: { label: L("Bileti aldım", "I got the ticket"), does: "book" } };
-  else if (planned) foot = { left: state("done", L("Planlandı", "Planned"), settled?.name ?? L("rezervasyon gerekmez", "no booking needed")), action: null };
+  else if (planned && ticketed) foot = { left: state("wait", lookWord("chosen"), L("bilet alınmadı", "no ticket yet")), action: { label: L("Bileti aldım", "I got the ticket"), does: "book" } };
+  else if (planned) foot = { left: state("done", lookWord("chosen"), settled?.name ?? L("rezervasyon gerekmez", "no booking needed")), action: null };
   else if (leg.status === "options") foot = { left: state("wait", nOptions(leg.options.length), L("birini seç", "pick one")), action: null };
   else foot = { left: state("plain", L("Planlanmadı", "Not planned"), move ? L("nasıl geçeceksiniz?", "how will you get there?") : L("nasıl gideceksin?", "how will you go?")), action: null };
   return {
     kind,
     label,
-    ring: booked ? "done" : planned ? (ticketed && !aside ? "half" : "done") : "open",
+    ring: booked ? "done" : planned ? "half" : "open",
     from: move ? { city: from, sub: date, time: null } : legEnd(leg, "from"),
     to: move ? { city: to, sub: date, time: null } : legEnd(leg, "to"),
     middle: legTiming(leg),
@@ -384,5 +386,6 @@ export function legCardView(leg: Leg): LegCardView {
     ariaLabel: `${from} → ${to}`,
     searchUrl: move && mode === "flight" && !booked ? flightSearchUrl("from", from, leg.date, to) : null,
     arranged,
+    badge: !booked ? null : arranged || !ticketed ? "arranged" : "booked",
   };
 }

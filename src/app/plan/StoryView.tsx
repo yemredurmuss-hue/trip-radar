@@ -7,6 +7,8 @@ import { L } from "../../lib/i18n";
 import { dateBox, spanText } from "../../lib/storyDates";
 import type { Timeline, TimelineEntry, TimelineSection } from "../../lib/timeline";
 import type { Item } from "../../lib/types";
+import { bookedAs } from "../../lib/cardView";
+import { BookedBadge } from "../cards/BookedBadge";
 import { KindIcon, UiIcon } from "../cards/Silhouettes";
 import type { LegCardFor, RenderGroup, SettledFor } from "../Timeline";
 import { PlanEntry } from "./PlanEntry";
@@ -85,7 +87,7 @@ export function StoryView({ timeline, tripStart, cards }: { timeline: Timeline; 
                   <span key={i.id} className={`sy-ev${i.status === "booked" ? " rez" : ""}`} title={i.name}>
                     <KindIcon kind={i.category === "food" ? "food" : "activity"} size={15} />
                     <b>{i.name}</b>
-                    {i.status === "booked" && <small>{L("✓ alındı", "✓ booked")}</small>}
+                    {i.status === "booked" && <BookedBadge as={bookedAs(i)} small />}
                   </span>
                 ))}
               </div>

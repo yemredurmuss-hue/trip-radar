@@ -132,10 +132,11 @@ describe("what a stage allows", () => {
 describe("words", () => {
   it("each stage in Turkish and English", () => {
     const all: Stage[] = ["search", "options", "planned", "booked", "ready", "cancelled", "notNeeded", "used"];
-    expect(all.map((s) => stageLabel(s, { options: 3 }))).toEqual(["Aranacak", "Seçenekler (3)", "Planlandı · rezerve edilmedi", "Rezerve edildi", "Hazır", "İptal edildi", "Gerek yok", "Kullanıldı"]);
-    expect(stageLabel("planned", { ticket: true })).toBe("Planlandı · bilet alınmadı");
+    expect(all.map((s) => stageLabel(s, { options: 3 }))).toEqual(["Arıyoruz", "3 seçenek", "Seçildi · rezerve edilmedi", "Rezerve", "Rezerve", "İptal edildi", "Gerek yok", "Kullanıldı"]);
+    expect(stageLabel("planned", { ticket: true })).toBe("Seçildi · bilet alınmadı");
+    expect(stageLabel("booked", { ticket: true })).toBe("Bilet alındı");
     setLang("en");
-    expect(all.map((s) => stageLabel(s, { options: 3 }))).toEqual(["To find", "Options (3)", "Planned · not booked", "Booked", "Ready", "Cancelled", "Not needed", "Used"]);
+    expect(all.map((s) => stageLabel(s, { options: 3 }))).toEqual(["Searching", "3 options", "Chosen · not booked", "Booked", "Booked", "Cancelled", "Not needed", "Used"]);
   });
 
   it("the percentage's Turkish suffix, as the number is read", () => {

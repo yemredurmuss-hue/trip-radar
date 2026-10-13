@@ -11,6 +11,7 @@ import { topDate, transportFace } from "../../lib/cardView";
 import type { Choice } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
 import { L } from "../../lib/i18n";
+import { lookWord } from "../../lib/stageWords";
 import { isAiOption, needTitleOf } from "../../lib/pano";
 import { groupKeyOf, rangeOfGroupKey, stayRange } from "../../lib/plan";
 import { estimatedRange, rangeLabel } from "../../lib/estRange";
@@ -120,7 +121,7 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
         onDelete={() => void setNeedNotNeeded(items).then(env.offer)}
         onArranged={arranged}
         deleteLabel={L("Gerek yok", "Not needed")}
-        topAction={<span className="pk-lab open">{L("Arıyoruz", "Searching")}</span>}
+        topAction={<span className="pk-lab open">{lookWord("search")}</span>}
         menu={[
           { label: L("Değiştir", "Change"), run: onOpen },
           { label: L("Ben hallettim", "I've got it"), run: arranged },

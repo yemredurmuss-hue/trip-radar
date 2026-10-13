@@ -27,6 +27,7 @@ import { SearchRow } from "../cards/EmptyCard";
 import { BrandPill } from "../cards/RideCard";
 import { useEmptyEnv } from "../cards/emptyEnv";
 import { BookingSheet } from "../cards/BookingSheet";
+import { BookedBadge } from "../cards/BookedBadge";
 import { CardMenu, DeleteX, Ring } from "../cards/CardShell";
 import { DocAccess } from "../cards/DocAccess";
 import { datedLink } from "../cards/parts";
@@ -215,7 +216,7 @@ export function useRemembered(key: string, initial: boolean): [boolean, (v: bool
 function WhoTag({ item, booked = false }: { item: Item; booked?: boolean }) {
   const myName = useMyName();
   const photoOf = usePhotoOf();
-  if (booked) return <span className="ax-tag ok">✓ {L("Bilet alındı", "Ticket bought")}</span>;
+  if (booked) return <BookedBadge as="ticket" small />;
   if (isAiOption(item)) return <span className="ax-tag" title={L("AI önerisi", "AI pick")}><span aria-hidden>✨</span> {L("Önerimiz", "Our pick")}</span>;
   const who = item.addedBy ?? myName ?? null;
   if (!who) return null;
@@ -299,14 +300,14 @@ function ActivityRow({ item, domId }: { item: Item; domId: string }) {
           <Editable field="name">{item.name}</Editable>
         </b>
         <span className="ac-m">
-          <Ring state={ringOf(item, "activity")} />
+          <Ring state={ringOf(item)} />
           {[date, item.city].filter(Boolean).join(" · ")}
           {facts.source && <span className="ac-src">· {facts.source.label}</span>}
         </span>
         <span className="ac-acts" onClick={stop}>
           {booked ? (
             <>
-              <span className="ac-proof">✓ {L("Bilet alındı", "Ticket bought")}</span>
+              <BookedBadge as="ticket" small />
               <DocAccess item={item} docs={docs} />
               <button type="button" className="ac-detail" onClick={() => setSheet(true)}>{L("Ayrıntı", "Details")} ›</button>
             </>

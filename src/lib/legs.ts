@@ -6,8 +6,9 @@
 // switching hotels.
 import { countryOfAirport } from "./airports";
 import { L } from "./i18n";
+import { lookWord } from "./stageWords";
 import { SCHENGEN } from "./visa";
-import { capitalize, liveLabels, nOptions } from "./i18nText";
+import { capitalize, liveLabels, lowerFirst, nOptions } from "./i18nText";
 import { formatDateRange, listingKeyOf } from "./items";
 import { addDays, arrivalDay, cityKeyOf, departureDay, knownPlace, placeKeyOf, sameCity, type OptionGroup, type Plan, type StayBlock } from "./plan";
 import { isLocalTransfer, isRental, itemText, LOCAL, RENTAL } from "./travelKinds";
@@ -266,14 +267,14 @@ const legacyKey = (date: string, kind: LegKind, from: string | null, to: string 
 
 function status(options: Item[], choice: LegChoice | null, mode: LegMode | null): Pick<Leg, "status" | "statusText"> {
   const label = mode ? MODE_LABELS[mode] : null;
-  if (options.some((i) => i.status === "booked")) return { status: "booked", statusText: L("Rezerve ✓", "Booked ✓") };
-  if (choice?.booked) return { status: "booked", statusText: label ? `${label} · ${L("ayarlandı", "arranged")} ✓` : L("Ayarlandı ✓", "Arranged ✓") };
+  if (options.some((i) => i.status === "booked")) return { status: "booked", statusText: `${lookWord("booked")} ✓` };
+  if (choice?.booked) return { status: "booked", statusText: label ? `${label} · ${lowerFirst(lookWord("arranged"))} ✓` : `${lookWord("arranged")} ✓` };
   const chosen = options.find((i) => i.status === "chosen");
   // Said in the chat ("11'ine taksi"): planned, like any plan said there.
-  if (chosen?.origin === "chat") return { status: "planned", statusText: label ? `${label} · ${L("planlandı", "planned")}` : L("Planlandı", "Planned") };
-  if (chosen) return { status: "chosen", statusText: L("Planlandı · rezerve edilmedi", "Planned · not booked") };
+  if (chosen?.origin === "chat") return { status: "planned", statusText: label ? `${label} · ${lowerFirst(lookWord("chosen"))}` : lookWord("chosen") };
+  if (chosen) return { status: "chosen", statusText: `${lookWord("chosen")} · ${L("rezerve edilmedi", "not booked")}` };
   if (choice?.mode && label) {
-    return { status: "planned", statusText: `${label} · ${BOOKABLE.includes(choice.mode) ? L("rezerve edilmedi", "not booked") : L("planlandı", "planned")}` };
+    return { status: "planned", statusText: `${label} · ${BOOKABLE.includes(choice.mode) ? L("rezerve edilmedi", "not booked") : lowerFirst(lookWord("chosen"))}` };
   }
   if (options.length) return { status: "options", statusText: nOptions(options.length) };
   return { status: "empty", statusText: L("Boş", "Open") };

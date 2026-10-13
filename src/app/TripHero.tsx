@@ -176,7 +176,7 @@ export function TripHero(props: {
       </span>
     </Fragment>
   ));
-  const barLabel = L(`${headline}: ${booked} rezerve, ${planned} planlandı, ${open} ihtiyaç karar bekliyor`, `${headline}: ${booked} booked, ${planned} planned, ${open} to decide`);
+  const barLabel = L(`${headline}: ${booked} rezerve, ${planned} seçildi, ${open} ihtiyaç karar bekliyor`, `${headline}: ${booked} booked, ${planned} chosen, ${open} to decide`);
   return (
     <div className="hx-left">
       <div className={`hx-photo${hasImage ? "" : " empty"}`} data-pit data-pit-photo>

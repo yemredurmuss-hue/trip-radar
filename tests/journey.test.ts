@@ -63,7 +63,7 @@ describe("a day on the move", () => {
     };
     expect(out(trip)).toMatchObject({ kind: "leg", state: "pending" });
     const metro: Trip = { ...trip, legs: { "2026-10-10:departure:porto": { mode: "metro", booked: false, note: null, updatedAt: 1 } } };
-    expect(out(metro)).toMatchObject({ kind: "leg", state: "info", line: "Metro · planlandı" });
+    expect(out(metro)).toMatchObject({ kind: "leg", state: "info", line: "Metro · seçildi" });
     // The day's own card isn't among Madeira's days any more: it's this card.
     const madeira = timeline.sections.find((s) => s.kind === "city" && s.city === "Madeira")!;
     expect(madeira.kind === "city" && madeira.entries.filter((e) => e.kind === "day").map((e) => e.kind === "day" && e.title)).toEqual(["5. gün", "6. gün", "7. gün"]);

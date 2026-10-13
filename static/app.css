@@ -630,15 +630,13 @@ article.pk-card .ek-band img, article.pk-card .ek-band .ek-tent { display: block
 /* Ayarlandı (Ben hallettim): grey and flat, in both paths (a plan, a transfer): no sand, no green, no shadow, nothing left to do. */
 article.pk-card.pk-arranged { background: #f3f2ef; border: 1px solid #dcdad4; box-shadow: none; }
 article.pk-card.pk-arranged:hover { box-shadow: none; }
-.pk-arranged .pk-ring.done, .pk-arranged .pk-ring.half { background: #8e8e93; border: 0; }
-.pk-arranged .pk-lab.arranged, .pk-arranged .pk-state.done { color: #6e6e73; font-weight: 600; }
+.pk-arranged .pk-ring { display: none; }
+.pk-arranged .pk-state.done { color: #6e6e73; font-weight: 600; }
 .pk-arranged .pk-state.done svg { color: #8e8e93; }
 .pk-arranged .pk-art, .pk-arranged .pk-illus, .pk-arranged .pk-img, .pk-arranged .pk-route svg { filter: grayscale(1); opacity: .6; }
 .pk-arranged .pk-moons i { background: #a8a8ad; opacity: 1; }
-.pk-arranged .pk-stamp { display: none; }
 .pk-arranged .pk-media { padding-right: 0; }
 .pk-arranged .pk-foot .pk-sub { display: inline; }
-.pk-lab.arranged { font-size: 12.5px; }
 /* Empty transport (how to go isn't known): "A → B" and the sentence on top, the way drawn faint and large at the left. */
 .ek-undec { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 14px; align-items: center; }
 .ek-undec-art { width: 76px; height: 58px; border-radius: 14px; display: grid; place-items: center; overflow: hidden; background: color-mix(in srgb, var(--mc) 8%, #fff); }
@@ -1288,7 +1286,7 @@ button.dg-main:hover .dg-ttl { text-decoration: underline; text-underline-offset
 .dg-i .t .t-hint { display: inline; font-size: 12px; }
 .dg-lab { justify-self: end; font-size: 12px; font-weight: 650; white-space: nowrap; color: var(--v-muted); }
 .dg-lab.rez { color: var(--v-book-ink); }
-.dg-lab.plan { color: var(--v-plan-ink); }
+.dg-lab.plan { color: var(--plan-ink); }
 .dg-lab.open, .dg-lab.idea { color: var(--v-muted); font-weight: 500; }
 .dg-i.quiet { min-height: 22px; font-size: 13.5px; }
 .dg-i.quiet .dg-what, .dg-i.quiet .dg-which { font-weight: 500; color: var(--v-muted); }
@@ -1310,7 +1308,7 @@ button.dg-main:hover .dg-ttl { text-decoration: underline; text-underline-offset
 .dg-nt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dg-n.dg-home { color: var(--v-muted); }
 .dg-free { font-size: 13px; color: var(--v-muted); font-style: italic; }
-.dg-left, .dg-today { flex: none; font-size: 12px; font-weight: 650; color: var(--v-plan-ink); white-space: nowrap; }
+.dg-left, .dg-today { flex: none; font-size: 12px; font-weight: 650; color: var(--v-warn-ink); white-space: nowrap; }
 .dg-today { color: var(--v-accent-ink); }
 .dg-add { flex: none; margin-left: auto; padding: 2px 8px; border: 1.5px dashed var(--v-dash); border-radius: 8px; background: none; font: inherit; font-size: 12px; color: var(--v-muted); white-space: nowrap; cursor: pointer; }
 .dg-add:hover { border-color: var(--v-ink); color: var(--v-ink); }
@@ -1488,10 +1486,9 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .pk-card {
   --pk-ink: #1d1d1f; --pk-gray: #6e6e73; --pk-line: #e8e8ed; --pk-link: #1556d6;
   position: relative; overflow: hidden; border-radius: 20px; padding: 16px; margin: 0 0 6px;
-  background: #fbf6ea; border: 1px solid #efe2c3; color: var(--pk-ink); cursor: pointer; transition: box-shadow .15s;
+  background: #fff; border: 1px solid #e8e8ed; color: var(--pk-ink); cursor: pointer; transition: box-shadow .15s;
 }
 .pk-card:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, .06); }
-.pk-card.pk-green { background: #eef8f1; border-color: #cfe8d7; }
 .pk-card.pk-all-no { opacity: .6; }
 .pk-art {
   position: absolute; left: 50%; top: 32px; height: 104px; width: 46%; transform: translateX(-50%); color: var(--mc); opacity: .9; pointer-events: none;
@@ -1504,7 +1501,6 @@ button.hx-people:hover b { color: var(--hx-accent); }
 .pk-ring { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; }
 .pk-ring.open { border: 2px dashed #cdb07a; }
 .pk-ring.half { border: 2px solid #e0a43a; }
-.pk-ring.done { background: #1f8f4e; color: #fff; }
 .pk-kind { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--mc); white-space: nowrap; }
 .pk-date { white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* Kişiye özel rezervasyon (docs/mockups/2026-10-06-kisiye-ozel-v1.html): whose a plan is, only when it isn't
@@ -2005,8 +2001,6 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .cat-sec .ac-wrap .ax-c:hover { transform: none; box-shadow: 0 6px 18px rgba(28, 26, 51, .08); }
 .cat-sec .ac-wrap .ax-c.ax-idea { background: transparent; border: 1.5px dashed var(--v-dash); box-shadow: none; }
 .cat-sec .ac-wrap .ax-c.ax-idea:hover { background: #fff; }
-.cat-sec .ac-wrap .ax-c.ax-on.chosen { background: var(--v-book-bg); border: 1.5px dashed #86c9a0; }
-.cat-sec .ac-wrap .ax-c.ax-on.booked { background: var(--v-book-bg); border: 1.5px solid var(--v-book-ink); }
 .cat-sec .ac-wrap .ax-c > .ac-hit { position: absolute; inset: 0; z-index: 0; }
 .cat-sec .ac-wrap .ax-c > *:not(.ac-hit) { position: relative; z-index: 1; }
 /* the square picture */
@@ -2015,7 +2009,6 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .cat-sec .ac-wrap .ax-sq > .ac-pic.art, .cat-sec .ac-wrap .ax-sq .ac-art { position: absolute; inset: 0; margin: auto; width: 62%; height: 62%; max-width: none; padding: 0; object-fit: contain; mix-blend-mode: multiply; }
 .cat-sec .ac-wrap .ax-c.ax-idea .ax-sq { opacity: .9; }
 .cat-sec .ac-wrap .ax-tag { position: absolute; left: 8px; top: 8px; z-index: 2; display: inline-flex; align-items: center; gap: 5px; max-width: calc(100% - 52px); padding: 3px 9px 3px 6px; border-radius: 999px; background: #fff; color: #4b36c9; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 1px 4px rgba(28, 26, 51, .12); }
-.cat-sec .ac-wrap .ax-tag.ok { color: var(--v-book-ink); padding-left: 9px; }
 .cat-sec .ac-wrap .ax-tag .wh-av { width: 18px; height: 18px; flex: none; }
 /* the corner: ✓ on the plan, + an idea */
 .cat-sec .ac-wrap .ax-tick { position: absolute; right: 8px; top: 8px; z-index: 2; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; background: #fff; color: var(--v-ink); font-size: 15px; font-weight: 800; line-height: 1; cursor: pointer; box-shadow: 0 1px 4px rgba(28, 26, 51, .15); }
@@ -3328,14 +3321,12 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 /* A flight that lands another day: "+1" by the hour. */
 .pk-stop > span sup.pk-plus { font-size: 10.5px; font-weight: 800; color: var(--v-accent-ink, #4a35c8); margin-left: 2px; vertical-align: 5px; line-height: 0; cursor: help; }
 /* A chosen flight's stub: what it costs per person and in all. */
-.pk-stub-plan { background: color-mix(in srgb, var(--v-plan-bg, #fbf6ea) 50%, #fff); }
-.pk-stub-plan .pk-stub-k { font-weight: 700; color: var(--v-plan-ink, #9a6400); }
+.pk-stub-plan { background: color-mix(in srgb, var(--plan-bg) 50%, #fff); }
+.pk-stub-plan .pk-stub-k { font-weight: 700; color: var(--plan-ink); }
 .pk-stubbed > .pk-foot .pk-price { display: none; }
 /* A rental in the ride template: its line is under "Lizbon · the way". */
 .pk-ride-t > small:last-child { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 /* A stay's picture: a band across the card's whole width (~3:1), the photo covers it, a drawing sits whole in it. */
-.pk-r-done .pk-media.pk-stay, .pk-r-half .pk-media.pk-stay { padding-right: 0; }
-.pk-card:has(.pk-media.pk-stay) > .pk-stamp { top: 52px; right: 12px; z-index: 2; background: #fff; opacity: .95; }
 .pk-card .pk-media.pk-stay .pk-vis { width: auto; margin: 0 -16px; height: auto; aspect-ratio: 3 / 1; border-radius: 0; }
 .pk-card .pk-media.pk-stay .pk-vis .pk-img { object-fit: cover; object-position: 50% 55%; }
 .pk-card .pk-media.pk-stay .pk-vis .pk-illus { width: auto; height: 100%; max-width: 100%; margin: 0 auto; padding: 6px 0; top: 0; object-fit: contain; }
@@ -3348,8 +3339,8 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .bk-door { margin-top: 6px; }
 
 /* v11 (phase 2a): a planned card's "✓ Aldım" on its top line; the strip's link to the page to book on. */
-.pk-aldim { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; padding: 3px 11px; border: 1.5px solid #f0a53a; border-radius: 999px; background: #fff; color: #9a6400; font: inherit; font-size: 13px; font-weight: 650; white-space: nowrap; cursor: pointer; }
-.pk-aldim:hover { background: #fbf6ea; }
+.pk-aldim { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; padding: 3px 11px; border: 1.5px solid var(--plan-dot); border-radius: 999px; background: #fff; color: var(--plan-ink); font: inherit; font-size: 13px; font-weight: 650; white-space: nowrap; cursor: pointer; }
+.pk-aldim:hover { background: var(--plan-bg); }
 .pk-aldim:focus-visible { outline: 2px solid #f0a53a; outline-offset: 2px; }
 a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: center; }
 .ask-dlg h3 { overflow-wrap: anywhere; }
@@ -3383,8 +3374,7 @@ a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: cente
 .pn-gh { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 12px; }
 .pn-gh b { font-size: 17px; }
 .pn-gn, .pn-gw { color: var(--hx-muted); font-size: 14px; }
-.pn-gp { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; padding: 4px 0; font: inherit; font-size: 14px; font-weight: 600; color: #9a6400; cursor: pointer; }
-.pn-gp.booked { color: #1f7a45; }
+.pn-gp { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; padding: 4px 0; font: inherit; font-size: 14px; font-weight: 600; color: var(--plan-ink); cursor: pointer; }
 .pn-cmp, .pn-why { border: 0; background: none; padding: 0; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--hx-accent); cursor: pointer; }
 .pn-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border-radius: 16px; background: #fff; border: 1px solid var(--hx-line); box-shadow: 0 1px 2px rgba(28,26,51,.04), 0 6px 18px rgba(28,26,51,.05); transition: transform .25s cubic-bezier(.16, 1, .3, 1), box-shadow .25s; }
 .pn-card:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(28,26,51,.05), 0 12px 28px rgba(28,26,51,.09); }
@@ -3400,8 +3390,8 @@ a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: cente
 .pn-heart.on svg, .pn-likes svg { fill: currentColor; }
 .pn-score { position: absolute; right: 10px; bottom: 10px; width: 44px; height: 44px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.12); display: grid; place-content: center; text-align: center; font-weight: 750; font-size: 15px; line-height: 1; }
 .pn-score small { display: block; margin-top: 2px; font-size: 9px; font-weight: 600; color: var(--hx-muted); }
-.pn-rib { position: absolute; left: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; background: #fbf6ea; color: #9a6400; border: 1px solid #f0a53a; }
-.pn-rib.booked { background: #eef8f1; color: #1f7a45; border-color: #1f8f4e; }
+.pn-rib { position: absolute; left: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 4px; }
+.pn-rib.chosen { padding: 4px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; background: #fff; color: var(--plan-ink); border: 1.5px solid var(--plan-line); }
 .pn-bd { flex: 1; display: grid; align-content: start; gap: 5px; padding: 14px 14px 4px; min-width: 0; }
 .pn-need { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 650; color: var(--hx-muted); min-width: 0; }
 .pn-need svg { color: var(--c); flex: none; }
@@ -3545,18 +3535,12 @@ a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: cente
 .plan-order button[aria-pressed="true"] { background: #fff; color: #1d1d1f; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 .plan-key { display: inline-flex; flex-wrap: wrap; gap: 4px 14px; margin-left: auto; font-size: 12.5px; color: #6e6a86; }
 .plan-key span { display: inline-flex; align-items: center; gap: 6px; }
-.pk-sw { width: 18px; height: 11px; border-radius: 4px; display: inline-block; }
-.pk-sw.open { border: 1.5px dashed #b7b2c9; }
-.pk-sw.chosen { background: #fbf6ea; border: 1.5px solid #f0a53a; }
-.pk-sw.booked { background: #eef8f1; border: 1.5px solid #1f8f4e; }
 .ts-strip { display: flex; align-items: flex-start; list-style: none; margin: 4px 0 18px; padding: 6px 4px 2px; overflow-x: auto; scrollbar-width: thin; }
 .ts-item { display: flex; align-items: flex-start; flex: 1 0 auto; min-width: 0; }
 .ts-item:last-child { flex: 0 0 auto; }
 .ts-stop { display: grid; justify-items: center; gap: 2px; border: 0; background: none; padding: 0 4px; font: inherit; color: #1d1d1f; cursor: pointer; min-width: 64px; }
 .ts-ring { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: #6e6a86; border: 2px dashed #b7b2c9; transition: transform .2s cubic-bezier(.16, 1, .3, 1); }
 .ts-stop:hover .ts-ring { transform: scale(1.06); }
-.ts-stop.chosen .ts-ring { border: 2px solid #f0a53a; background: #fbf6ea; color: #9a6400; }
-.ts-stop.booked .ts-ring { border: 2px solid #1f8f4e; background: #eef8f1; color: #1f7a45; }
 .ts-stop b { font-size: 13.5px; font-weight: 650; white-space: nowrap; }
 .ts-stop small { font-size: 12px; color: #6e6a86; white-space: nowrap; }
 .ts-hop { flex: 1; min-width: 28px; height: 2px; margin: 19px 2px 0; border-top: 2px dotted #c9c4d8; position: relative; }
@@ -3590,8 +3574,6 @@ a.ch-why { text-decoration: none; }
 .ac-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 8px 10px 8px 8px; border: 1px solid var(--hx-line, #ececf1); border-radius: 14px; background: #fff; cursor: pointer; transition: box-shadow .2s, border-color .2s; }
 .ac-row:hover { box-shadow: 0 2px 10px rgba(28, 26, 51, .07); }
 .ac-row:focus-visible { outline: 2px solid #6a4fe0; outline-offset: 2px; }
-.ac-row.chosen { border-color: #f3d9a4; background: #fffbf2; }
-.ac-row.booked { border-color: #bfe3cf; background: #f5fbf7; }
 .ac-row .ac-pic { grid-row: span 2; width: 52px; height: 52px; border-radius: 11px; object-fit: cover; background: #f6f3fb; }
 .ac-row .ac-pic.art { object-fit: contain; padding: 3px; }
 .ac-t { font-size: 15px; font-weight: 650; min-width: 0; overflow-wrap: anywhere; }
@@ -3603,7 +3585,6 @@ a.ch-why { text-decoration: none; }
 .ac-go { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 650; color: #4b36c9; text-decoration: none; white-space: nowrap; }
 .ac-go:hover { text-decoration: underline; }
 .ac-go .sc-favicon { width: 14px; height: 14px; border-radius: 3px; }
-.ac-proof { font-size: 13px; font-weight: 650; color: #17784a; white-space: nowrap; }
 .ac-doc { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: #3d3d47; background: #eef0f4; border-radius: 999px; padding: 2px 9px; }
 .ac-docmiss { font: inherit; font-size: 12.5px; font-weight: 600; color: #a34a00; background: #fff4e5; border: 1px dashed #f0a53a; border-radius: 999px; padding: 2px 9px; cursor: pointer; }
 .ac-detail { font: inherit; font-size: 13px; font-weight: 600; color: #3d3d47; background: none; border: 0; cursor: pointer; padding: 2px 4px; }
@@ -3659,8 +3640,6 @@ a.ch-why { text-decoration: none; }
 /* v11: a card's stage word on its top line (Arıyoruz, Rezerve), the booking's stamp, ✨ ask, "Pano'da N alternatif". */
 .pk-lab { font-size: 12.5px; font-weight: 650; white-space: nowrap; margin-right: 6px; }
 .pk-lab.open { color: #8e8e93; font-weight: 500; }
-.pk-lab.booked { color: #17784a; }
-.pk-stamp { position: absolute; right: 16px; top: 46px; width: 40px; height: 40px; border-radius: 50%; border: 2px solid #17784a; color: #17784a; display: grid; place-items: center; transform: rotate(-12deg); opacity: .35; pointer-events: none; }
 .pk-card { position: relative; }
 .pk-ask { flex: none; margin-left: auto; width: 30px; height: 30px; border-radius: 50%; border: 0; background: #efebff; font-size: 14px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
 .pk-ask:hover { background: #e2dcff; }
@@ -3822,8 +3801,9 @@ a.ch-why { text-decoration: none; }
 :root {
   --v-ink: #1c1a33; --v-muted: #6b6790; --v-line2: #efece7; --v-dash: #b9b5cf; --v-soft: #f7f5f1; --v-tile: #fbfaf7;
   --v-lav: #ece8ff; --v-accent-ink: #4a35cc;
-  --v-plan-bg: #fbf6ea; --v-plan-line: #e9d29a; --v-plan-ink: #8a5a00; --v-plan-dot: #e09422;
-  --v-book-bg: #eef8f1; --v-book-line: #b9e0c7; --v-book-ink: #1b7f45;
+  /* Amber is a warning's colour only (a visa to sort, a count of what is left): Seçildi is green, see the F0 block at the end. */
+  --v-warn-bg: #fbf6ea; --v-warn-ink: #8a5a00; --v-warn-dot: #e09422;
+  --v-book-bg: var(--book-bg); --v-book-line: var(--book-line); --v-book-ink: var(--book-ink);
 }
 /* The plan bar: "Plan", the order switch, "+ Ekle", the key on the right. */
 .cat-plan > .plan-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-start; margin: 0 0 8px; padding: 0 2px; border: 0; }
@@ -3832,10 +3812,6 @@ a.ch-why { text-decoration: none; }
 .plan-bar .plan-order button { padding: 4px 10px; font-size: 13px; color: var(--v-muted); }
 .plan-bar .plan-order button[aria-pressed="true"] { color: var(--v-ink); }
 .plan-bar .plan-key { margin-left: auto; gap: 14px; font-size: 12.5px; color: var(--v-muted); }
-.plan-key .pk-sw { width: 26px; height: 16px; border-radius: 5px; }
-.plan-key .pk-sw.open { background: #fff; border: 1.5px dashed var(--v-dash); }
-.plan-key .pk-sw.chosen { background: var(--v-plan-bg); border: 1px solid var(--v-plan-line); }
-.plan-key .pk-sw.booked { background: var(--v-book-bg); border: 1px solid var(--v-book-line); }
 
 /* Each section its own card. */
 .cat-sheet { background: none; box-shadow: none; border-radius: 0; display: grid; gap: 12px; }
@@ -3873,20 +3849,17 @@ a.ch-why { text-decoration: none; }
 /* A card: the three stages' grounds. */
 .pk-card { border-radius: 18px; padding: 14px 16px; display: grid; gap: 10px; align-content: start; background: #fff; border: 1.5px dashed var(--v-dash); color: var(--v-ink); box-shadow: none; }
 .pk-card:hover { box-shadow: 0 1px 2px rgba(28, 26, 51, .06), 0 6px 18px -10px rgba(28, 26, 51, .25); }
-.pk-card.pk-r-half { background: var(--v-plan-bg); border: 1px solid var(--v-plan-line); }
-.pk-card.pk-r-done, .pk-card.pk-green { background: var(--v-book-bg); border: 1px solid var(--v-book-line); }
 .pk-card.pk-r-open, .ek-card { background: #fff; border: 1.5px dashed var(--v-dash); }
 .pk-top { height: auto; min-height: 24px; gap: 8px; font-size: 13px; color: var(--v-muted); }
 .pk-kind { color: var(--v-ink); font-weight: 650; gap: 5px; }
 .pk-kind svg { color: var(--mc); }
 .pk-ring { width: 18px; height: 18px; }
 .pk-ring.open { border: 1.5px dashed var(--v-dash); }
-.pk-ring.half { border: 2px solid var(--v-plan-dot); }
+.pk-ring.half { border: 2px solid var(--plan-dot); }
 .pk-ring.done { background: var(--v-book-ink); }
 .pk-lab { font-size: 12.5px; }
 .pk-lab.open { color: var(--v-muted); font-weight: 500; }
-.pk-lab.booked { color: var(--v-book-ink); }
-.pk-aldim { border-color: var(--v-plan-dot); color: var(--v-plan-ink); padding: 3px 10px; font-size: 12.5px; }
+.pk-aldim { padding: 3px 10px; font-size: 12.5px; }
 
 /* The body: a small picture beside the name and one grey line. */
 .pk-media { grid-template-columns: 60px minmax(0, 1fr); gap: 12px; margin: 0; align-items: center; }
@@ -3901,7 +3874,7 @@ a.ch-why { text-decoration: none; }
 .pk-txt p b { color: var(--v-muted); font-weight: 400; }
 .pk-moons { display: inline-flex; gap: 3px; margin-right: 6px; vertical-align: 1px; }
 .pk-moons i { width: 7px; height: 7px; border-radius: 50%; background: #1d8577; opacity: .35; }
-.pk-r-half .pk-moons i { background: var(--v-plan-dot); opacity: 1; }
+.pk-r-half .pk-moons i { background: var(--plan-dot); opacity: 1; }
 .pk-r-done .pk-moons i { background: var(--v-book-ink); opacity: 1; }
 
 /* A ticket's ends: the cities big, the hour and code small, the plane faint in the middle. */
@@ -3927,13 +3900,10 @@ a.ch-why { text-decoration: none; }
 .pk-more { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; border: 0; background: none; padding: 0; font: inherit; font-size: 12.5px; color: var(--v-muted); cursor: pointer; white-space: nowrap; }
 .pk-more:hover { color: var(--v-ink); }
 .pk-docname { display: inline-flex; align-items: center; gap: 4px; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--v-book-ink); border: 1px solid var(--v-book-line); background: #fff; border-radius: 999px; padding: 2px 9px; cursor: pointer; font-family: inherit; }
-.pk-stamp { top: 44px; right: 16px; width: 42px; height: 42px; border-color: var(--v-book-ink); color: var(--v-book-ink); opacity: .4; }
-.pk-r-done .pk-media { padding-right: 50px; }
 
 /* A ticket's stub (a booked flight): the airline, the booking code, how many go. */
 .pk-stub { display: grid; gap: 2px; margin: 0 -16px -14px; padding: 12px 16px 14px; border-top: 1.5px dashed var(--v-dash); font-size: 13px; color: var(--v-muted); position: relative; }
 .pk-stub b { font-size: 15px; color: var(--v-ink); letter-spacing: .02em; }
-.pk-stub .pk-stamp { top: auto; bottom: 12px; right: 14px; width: 36px; height: 36px; }
 
 /* v11 fixes after the first look: the plan bar's "+ Ekle" by the switch; the plane in the ticket's middle, no
    duration under it; a booking's foot is its proof, its file and "Ayrıntı" (its price is in the section's head). */
@@ -3950,7 +3920,7 @@ a.ch-why { text-decoration: none; }
 .ts-stop { position: relative; gap: 3px; }
 .ts-ring { width: 46px; height: 46px; background: var(--v-tile); border: 2px dashed var(--v-dash); transition: transform .35s cubic-bezier(.16, 1, .3, 1); }
 .ts-ring img { width: 32px; height: 26px; object-fit: contain; mix-blend-mode: multiply; }
-.ts-stop.chosen .ts-ring { background: var(--v-tile); border: 2px solid var(--v-plan-dot); }
+.ts-stop.chosen .ts-ring { background: var(--v-tile); border: 2px solid var(--plan-dot); }
 .ts-stop.booked .ts-ring { background: var(--v-tile); border: 2px solid var(--v-book-ink); }
 .ts-stop:hover .ts-ring, .ts-stop:focus-visible .ts-ring { transform: translateY(-3px) scale(1.06); }
 .ts-stop b { font-size: 13px; }
@@ -3978,14 +3948,14 @@ a.ch-why { text-decoration: none; }
 .cat-body > .cat-hidden-link, .cat-body .cat-hidden { margin-left: 0; padding-left: 0; }
 
 /* v11 the visa as drawn: one full-width line (green when none is needed or it's got, amber while one is to get). */
-.visa-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin: 0; padding: 10px 12px; border-radius: 14px; font-size: 14px; font-weight: 400; background: var(--v-plan-bg); color: var(--v-plan-ink); }
+.visa-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin: 0; padding: 10px 12px; border-radius: 14px; font-size: 14px; font-weight: 400; background: var(--v-warn-bg); color: var(--v-warn-ink); }
 .visa-row.ok { background: var(--v-book-bg); color: var(--v-book-ink); }
 .visa-row b { font-weight: 650; }
 .visa-row > span:not(.visa-ic) { color: var(--v-ink); }
 .visa-ic { display: inline-grid; place-items: center; width: 16px; height: 16px; font-weight: 800; }
 .visa-sp { flex: 1; }
 .visa-row a { margin: 0; color: inherit; font-weight: 600; font-size: 13px; }
-.visa-row .visa-tick { width: auto; height: auto; display: inline-flex; align-items: center; gap: 4px; border: 1.5px solid var(--v-plan-dot); border-radius: 999px; background: #fff; color: var(--v-plan-ink); padding: 3px 10px; font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; }
+.visa-row .visa-tick { width: auto; height: auto; display: inline-flex; align-items: center; gap: 4px; border: 1.5px solid var(--v-warn-dot); border-radius: 999px; background: #fff; color: var(--v-warn-ink); padding: 3px 10px; font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; }
 .visa-row.ok .visa-tick { background: none; border-color: transparent; color: var(--v-muted); font-weight: 500; text-decoration: underline dotted; }
 
 /* v11 Hazırlık as drawn: three across, each a soft tile with a square tick; a ready one white with a green edge and
@@ -4030,8 +4000,6 @@ a.ch-why { text-decoration: none; }
 .ac-self-note { margin: 0; font-size: 13px; color: var(--v-muted); }
 .ac-self-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 13px; }
 .ac-self-row .ek-find { margin: 0; justify-content: flex-start; }
-.ac-row.chosen { background: var(--v-plan-bg); border-color: var(--v-plan-line); }
-.ac-row.booked { background: var(--v-book-bg); border-color: var(--v-book-line); }
 .ac-row .ac-pic { width: 48px; height: 48px; border-radius: 10px; background: var(--v-tile); }
 
 /* v11 the Pano's cards as drawn: the drawing when the page gave no photo, a flight's arc, the site's mark, "Neden?". */
@@ -4146,7 +4114,7 @@ a.ch-why { text-decoration: none; }
 /* v11 revision: Yapılacak şeyler — on the plan as rows (picture, name, its line, its day or "Günü yok", ✓ Planda), the
    ideas and suggestions as tiles under them. */
 .it-rows { display: grid; gap: 8px; }
-.it-tile.it-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; gap: 1px 14px; padding: 8px 12px 8px 8px; border-radius: 14px; background: var(--v-plan-bg); border: 1px solid var(--v-plan-line); }
+.it-tile.it-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; gap: 1px 14px; padding: 8px 12px 8px 8px; border-radius: 14px; background: #fff; border: 1.5px solid var(--plan-line); }
 .it-tile.it-row.done { background: #fff; border-color: var(--v-line2); }
 .it-tile.it-row:hover { transform: none; }
 .it-row .it-pic { grid-row: 1 / span 2; width: 56px; height: 56px; border-radius: 11px; }
@@ -4274,7 +4242,7 @@ a.ch-why { text-decoration: none; }
 @keyframes pk-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(91, 69, 224, 0); } 35% { box-shadow: 0 0 0 4px rgba(91, 69, 224, .35); } }
 @keyframes pk-drop { 0% { opacity: 0; transform: translateY(-14px); } 70% { opacity: 1; transform: translateY(2px); } }
 @keyframes pk-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(120, 110, 160, 0); } 50% { box-shadow: 0 0 0 5px rgba(120, 110, 160, .16); } }
-.pk-seal .pk-stamp, .pk-seal .pk-ring.done { animation: pk-pop .5s cubic-bezier(.2, 1.4, .4, 1) backwards; }
+.pk-seal .okt { animation: pk-pop .5s cubic-bezier(.2, 1.4, .4, 1) backwards; }
 .pk-glow { animation: pk-glow .6s ease-out; }
 .pk-drop { animation: pk-drop .55s cubic-bezier(.2, .9, .3, 1) backwards; }
 .ek-card .pk-ring.open, .ek-card .pk-ring.half { border-radius: 50%; animation: pk-pulse 2.8s ease-in-out infinite; }
@@ -4282,7 +4250,7 @@ a.ch-why { text-decoration: none; }
 @media (hover: hover) { .pk-card:not(.pk-open):not(.ek-still):hover { transform: translateY(-2px); } }
 .counting { font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) {
-  .pk-seal .pk-stamp, .pk-seal .pk-ring.done, .pk-glow, .pk-drop, .ek-card .pk-ring.open, .ek-card .pk-ring.half { animation: none; }
+  .pk-seal .okt, .pk-glow, .pk-drop, .ek-card .pk-ring.open, .ek-card .pk-ring.half { animation: none; }
   .pk-card { transition: none; }
   .pk-card:not(.pk-open):not(.ek-still):hover { transform: none; }
 }
@@ -4477,7 +4445,7 @@ a.ch-why { text-decoration: none; }
 .sy-here { display: grid; gap: 6px; align-content: start; }
 .sy-lbl { font-size: 11.5px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--v-muted); }
 .sy-none { font-size: 13px; color: var(--v-muted); }
-.sy-ev { display: flex; gap: 8px; align-items: center; padding: 6px 9px; border-radius: 12px; background: #fff; border: 1px dashed var(--v-plan-line); font-size: 13.5px; min-width: 0; }
+.sy-ev { display: flex; gap: 8px; align-items: center; padding: 6px 9px; border-radius: 12px; background: #fff; border: 1.5px solid var(--plan-line); font-size: 13.5px; min-width: 0; }
 .sy-ev.rez { border: 1px solid var(--v-book-line); background: var(--v-book-bg); }
 .sy-ev b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .sy-ev small { margin-left: auto; color: var(--v-book-ink); font-weight: 650; white-space: nowrap; }
@@ -4567,7 +4535,7 @@ a.ch-why { text-decoration: none; }
 .ch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 12px; align-items: start; }
 .ch-back .ch-row.ch-tile { display: flex; flex-direction: column; align-items: stretch; gap: 0; padding: 0; overflow: hidden; border-radius: 14px; border: 1px solid var(--v-line2); background: #fff; box-shadow: var(--v30-shadow, none); min-width: 0; }
 .ch-back .ch-row.ch-tile.ai { border: 1px dashed color-mix(in srgb, var(--hx-accent, #5b45e0) 45%, var(--v-line2)); box-shadow: none; }
-.ch-back .ch-row.ch-tile.on { border: 1.5px dashed var(--v-plan-dot); background: var(--v-plan-bg); }
+.ch-back .ch-row.ch-tile.on { border: 1.5px solid var(--plan-line); background: #fff; }
 .ch-ph { position: relative; height: 112px; display: grid; place-items: center; background: var(--v-tile); overflow: hidden; }
 .ch-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ch-ill { height: 84px; width: auto; max-width: 86%; mix-blend-mode: multiply; }
@@ -4615,7 +4583,7 @@ a.ch-why { text-decoration: none; }
 /* The corner mark: ✓ on the plan, + to put it there. The words stay in the markup (readers, tests); the drawing is the circle. */
 .it-put.corner { position: absolute; right: 7px; bottom: 7px; width: 30px; height: 30px; padding: 0; border-radius: 50%; font-size: 0; line-height: 0; display: grid; place-items: center; background: #fff; border: 1.5px dashed var(--v-dash); color: var(--v-accent-ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
 .it-put.corner::before { content: "+"; font-size: 18px; line-height: 1; font-weight: 600; }
-.it-put.corner.on { background: var(--v-book-ink); border: 0; color: #fff; }
+.it-put.corner.on { background: var(--plan-bg); border: 1.5px solid var(--plan-line); color: var(--plan-ink); }
 .it-put.corner.on::before { content: "✓"; font-size: 15px; font-weight: 800; }
 .it-put.corner:hover { transform: scale(1.08); }
 .it-wrap .it-sp { flex: 1; }
@@ -4683,7 +4651,6 @@ a.ch-why { text-decoration: none; }
 .pk-way.own { color: var(--v-muted); }
 .pk-way:hover { border-style: solid; background: var(--v-soft); }
 @media (max-width: 420px) { .pk-ways { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.pk-stub .pk-stub-st { font-weight: 700; color: var(--v-book-ink); }
 
 /* Etkinlik row: its opening button lies behind the controls (no button inside a button). */
 .ac-row { position: relative; }
@@ -4715,3 +4682,42 @@ a.ch-why { text-decoration: none; }
 /* Plan v30 (denetim): a transfer's way to go opens under its line in Gün gün. */
 .dg-i .dg-leg { grid-column: 1 / -1; margin: 6px 0 4px 26px; padding: 10px 12px; border-radius: 12px; background: var(--v-soft, #f4f2fa); border: 1px solid var(--v-line2, #eceaf4); }
 .dg-i .dg-leg-plan { margin-top: 8px; border: 0; background: none; padding: 0; font: inherit; font-size: 13px; color: var(--v-accent, #5b3fd9); cursor: pointer; text-decoration: underline; }
+
+/* -- F0 durum dili -- (plan v46, F0): five looks, one set of tokens. White is searching, our pick or chosen; green
+   ground is bought or booked and only that, with the one BookedBadge (.okt). Grey is what the traveller arranged herself.
+   Amber is gone from every Seçildi (it stays a warning's colour: --v-warn-*). The app has no dark theme yet, so the dark
+   values hang on an explicit [data-theme="dark"] and cost nothing until one sets it. */
+:root {
+  --okb: #17723f; --okb-ring: rgb(23 114 63 / .13); --okb-set: #6b665f;
+  --book-bg: #e0f1e6; --book-line: #3f9c66; --book-ink: #146c3a;
+  --plan-bg: #f5fbf7; --plan-line: #8fcca5; --plan-ink: #2b7a4b; --plan-dot: #5bb57f;
+  --draft-line: color-mix(in srgb, var(--hx-accent, #5b45e0) 38%, var(--v-line2));
+}
+:root[data-theme="dark"] {
+  --okb: #2b9d5f; --okb-ring: rgb(43 157 95 / .22);
+  --book-bg: #173a27; --book-line: #46a873; --book-ink: #74e0a4;
+  --plan-bg: #14211a; --plan-line: #3a7a55; --plan-ink: #86d9a8; --plan-dot: #5bb57f;
+}
+/* Seçildi: white, a thin light-green line, solid. */
+.pk-card.pk-r-half, .cat-sec .ac-wrap .ax-c.ax-on.chosen, .ac-row.chosen { background: #fff; border: 1.5px solid var(--plan-line); }
+/* Rezerve: the green ground and the darker line. */
+.pk-card.pk-r-done, .cat-sec .ac-wrap .ax-c.ax-on.booked, .ac-row.booked { background: var(--book-bg); border: 2px solid var(--book-line); }
+/* The one badge: dark green capsule, white tick; Ayarlandı is the same capsule in grey. */
+.okt { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 3px 11px 3px 3px; border-radius: 999px; background: var(--okb); color: #fff; font-size: 12px; font-weight: 700; line-height: 1.2; white-space: nowrap; box-shadow: 0 2px 8px -3px var(--okb); }
+.okt i { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: rgb(255 255 255 / .2); flex: none; }
+.okt i svg { width: 12px; height: 12px; stroke-width: 3.2; color: #fff; }
+.okt.set { background: var(--okb-set); box-shadow: none; }
+.okt.sm { font-size: 11.5px; gap: 4px; padding: 2px 9px 2px 2px; box-shadow: none; }
+.okt.sm i { width: 16px; height: 16px; } .okt.sm i svg { width: 10px; height: 10px; }
+.bk-lab, .it-badge { display: inline-flex; }
+.it-badge { position: absolute; right: 7px; bottom: 7px; z-index: 2; }
+.cat-sec .ac-wrap .ax-c .it-badge { top: 8px; right: 8px; bottom: auto; }
+.it-city .it-tile .it-badge { top: 7px; bottom: auto; }
+.cat-sec .ac-wrap .ax-c .okt.sm { margin: 0; }
+/* The key: five sample boxes, flat lines (searching dashed, our pick purple-grey, chosen light green, booked the badge's green). */
+.plan-key .pk-sw { display: inline-grid; place-items: center; width: 26px; height: 16px; border-radius: 5px; background: #fff; border: 1.5px solid var(--v-line2); color: #fff; }
+.plan-key .pk-sw.search { border: 1.5px dashed var(--v-dash); }
+.plan-key .pk-sw.draft { border-color: var(--draft-line); }
+.plan-key .pk-sw.chosen { border-color: var(--plan-line); }
+.plan-key .pk-sw.booked { background: var(--okb); border-color: var(--okb); }
+.plan-key .pk-sw.arranged { background: var(--okb-set); border-color: var(--okb-set); }

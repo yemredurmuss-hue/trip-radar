@@ -3,6 +3,7 @@
 // matter most. Pure, and no model calls: everything on a card is read from a page or computed.
 import { advantageOver, amenityLabel, levelFor, levelSource, saidTopics, TOPIC_CRITERION, type DecisionContext, type GroupDecision } from "./decision";
 import { L } from "./i18n";
+import { lookWord } from "./stageWords";
 import { capitalize, count, hoursMinutes, liveLabels, nDays, nNights, nReviews, nStops, num } from "./i18nText";
 import { formatDateRange, formatPrice, listingKeyOf, metricsOf, nightsBetween, type Tone } from "./items";
 import { decisionLabel } from "./labels";
@@ -259,9 +260,9 @@ export function cardFacts(
   const label = item.status === "saved" ? decisionLabel(item, decision, currency) : null;
   const status: CardFacts["status"] =
     item.status === "booked"
-      ? { text: L("Rezerve ✓", "Booked ✓"), tone: "success" }
+      ? { text: `${lookWord("booked")} ✓`, tone: "success" }
       : item.status === "chosen"
-        ? { text: L("Planlandı", "Planned"), tone: "accent" }
+        ? { text: lookWord("chosen"), tone: "accent" }
         : label && label.tone !== "muted"
           ? { text: label.text, tone: label.tone }
           : null;

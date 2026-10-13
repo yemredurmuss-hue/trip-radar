@@ -331,12 +331,12 @@ describe("sections from what's saved and said", () => {
     const planned = sectionsOf(items, { ...trip, legs: { [arrival.key]: choice("taxi"), [move.key]: choice("train") } }).sections;
     const transport = planned.find((s) => s.id === "transport")!;
     expect(transport.entries.map((e) => [e.row.name, e.state, e.row.status])).toEqual([
-      ["Havalimanı → Otel", "done", "Planlandı"],
+      ["Havalimanı → Otel", "done", "Seçildi"],
       ["Porto → Lizbon", "book", "Bilet yok"],
     ]);
     expect(transport.status).toEqual({ text: "1 bilet yok", tone: "wait" });
     const bought = sectionsOf(items, { ...trip, legs: { [arrival.key]: choice("taxi", true), [move.key]: choice("train", true) } }).sections;
-    expect(bought.find((s) => s.id === "transport")!.entries.map((e) => e.row.status)).toEqual(["Ayarlandı", "Alındı"]);
+    expect(bought.find((s) => s.id === "transport")!.entries.map((e) => e.row.status)).toEqual(["Ayarlandı", "Bilet alındı"]);
   });
 
   it("a change of city by plane is a flight, under Uçuş, with or without a ticket saved", () => {
@@ -347,11 +347,11 @@ describe("sections from what's saved and said", () => {
     expect(planned.find((s) => s.id === "transport")?.entries.map((e) => e.row.name) ?? []).not.toContain("Porto → Lizbon");
     const flights = planned.find((s) => s.id === "flight")!;
     expect(flights.entries.map((e) => [e.row.name, e.state, e.row.status])).toEqual([
-      ["İstanbul → Porto", "done", "Alındı"],
+      ["İstanbul → Porto", "done", "Bilet alındı"],
       ["Porto → Lizbon", "book", "Bilet yok"],
       ["Dönüş uçuşu", "empty", "Eklenmedi"],
     ]);
-    expect(byPlane(true).find((s) => s.id === "flight")!.entries.map((e) => e.row.status)).toEqual(["Alındı", "Alındı", "Eklenmedi"]);
+    expect(byPlane(true).find((s) => s.id === "flight")!.entries.map((e) => e.row.status)).toEqual(["Bilet alındı", "Bilet alındı", "Eklenmedi"]);
     // The same block, by train: Ulaşım.
     const byTrain = sectionsOf(items, { ...trip, legs: { [move.key]: { mode: "train", booked: false, note: null, updatedAt: 1 } } }).sections;
     expect(byTrain.find((s) => s.id === "transport")!.entries.map((e) => e.row.name)).toContain("Porto → Lizbon");

@@ -47,8 +47,8 @@ describe("the festival's camp", () => {
     const plan = buildPlan({ id: "t", title: "Ozora", confirmedDates: { start: "2027-07-25", end: "2027-08-02" } } as never, [camp()]);
     expect(plan.stayBlocks.map((b) => b.kind)).toEqual(["chosen"]);
   });
-  it("says at its foot that nothing is to be booked, in a done ring; 'bilete dahil' on a festival trip", () => {
-    expect(ringOf(camp(), "stay")).toBe("done");
+  it("says at its foot that nothing is to be booked, as a chosen plan; 'bilete dahil' on a festival trip", () => {
+    expect(ringOf(camp())).toBe("half");
     const plain = withLang("tr", () => footOf(camp(), "stay"));
     expect(plain.action).toBeNull();
     expect(plain.left).toMatchObject({ kind: "state", tone: "done", text: "Rezervasyon gerekmez" });

@@ -10,11 +10,12 @@ import { cityOfAirport } from "./airports";
 import { isIdea, needsBooking, setAside } from "./booking";
 import { legTransportMode, TICKET_MODES, transportMode } from "./cardKinds";
 import { L } from "./i18n";
-import { nNights } from "./i18nText";
+import { lowerFirst, nNights } from "./i18nText";
 import { ideaDay, shortDay } from "./ideas";
 import { isInspiration } from "./inspo";
 import { formatDateRange, isoDate } from "./items";
-import { countStages, needStage, needStageOf, stageLabel, type Stage, type StageCounts, type StageCtx } from "./lifecycle";
+import { countStages, needStage, needStageOf, type Stage, type StageCounts, type StageCtx } from "./lifecycle";
+import { lookWord } from "./stageWords";
 import { isHiddenLeg, legItem, legShortTitle, type Leg } from "./legs";
 import { cityKeyOf, departureDay, sameCity, type DateRange, type OptionGroup, type Plan } from "./plan";
 import { hiddenNights, nightsKey, toBook, type Timeline, type TimelineEntry } from "./timeline";
@@ -407,14 +408,14 @@ const bookWord = (section: SectionId, ticket: boolean): string =>
 function rowStatus(section: SectionId, state: EntryState, items: Item[], options: number, ticket: boolean, leg: Leg | null): { status: string; ok: boolean } {
   switch (state) {
     case "done": {
-      if (leg && legBooked(leg) && !items.some((i) => i.status === "booked")) return { status: ticket ? L("Alındı", "Booked") : L("Ayarlandı", "Arranged"), ok: true };
+      if (leg && legBooked(leg) && !items.some((i) => i.status === "booked")) return { status: ticket ? lookWord("booked", { as: "ticket" }) : lookWord("arranged"), ok: true };
       if (section === "todo" || (section === "food" && items.every(isIdea))) {
         return { status: items.some((i) => i.doneAt) ? L("Yapıldı", "Done") : L("Güne eklendi", "On a day"), ok: true };
       }
       const booked = items.some((i) => i.status === "booked");
       if (!booked && asideOnly(items)) return { status: L("Fikir", "Idea"), ok: true };
-      if (!booked) return { status: items.some((i) => i.installedAt) ? L("Kuruldu", "Installed") : L("Planlandı", "Planned"), ok: true };
-      return { status: section === "stay" || section === "food" ? L("Rezerve", "Booked") : L("Alındı", "Booked"), ok: true };
+      if (!booked) return { status: items.some((i) => i.installedAt) ? L("Kuruldu", "Installed") : lookWord("chosen"), ok: true };
+      return { status: lookWord("booked", { as: section === "stay" || section === "food" ? undefined : section === "other" ? "bought" : "ticket" }), ok: true };
     }
     case "book":
       return { status: bookWord(section, ticket), ok: false };
@@ -422,7 +423,7 @@ function rowStatus(section: SectionId, state: EntryState, items: Item[], options
       return { status: options >= 2 ? L(`${options} seçenek`, `${options} options`) : L("Karar", "Decide"), ok: false };
     case "empty":
       // A record there that's still to find (a placeholder, a booking cancelled): it is added, just not found yet.
-      if (items.length) return { status: stageLabel("search"), ok: false };
+      if (items.length) return { status: lookWord("search"), ok: false };
       return { status: section === "stay" ? L("Boş", "Empty") : section === "flight" ? L("Eklenmedi", "Not added") : L("Planlanmadı", "Not planned"), ok: false };
     case "unscheduled":
       // An idea without a day is just an idea (0.35.3), nothing missing.
@@ -852,7 +853,7 @@ export function sectionStatus(id: SectionId, entries: CatEntry[]): CatSection["s
   if (!entries.length) return null;
   const n = (s: EntryState) => entries.filter((e) => e.state === s).length;
   const parts: string[] = [];
-  // Aranacak with a record (a placeholder, a plan said with nothing concrete, a booking cancelled): "aranacak",
+  // Searching, with a record (a placeholder, a plan said with nothing concrete, a booking cancelled): "aranıyor",
   // never "eklenmedi" (it is added).
   const toFind = entries.filter((e) => e.state === "empty" && e.itemIds.length && e.nights === 0).length;
   const empty = n("empty") - toFind;
@@ -866,7 +867,7 @@ export function sectionStatus(id: SectionId, entries: CatEntry[]): CatSection["s
           : L(`${empty} planlanmadı`, `${empty} not planned`),
     );
   }
-  if (toFind) parts.push(L(`${toFind} aranacak`, `${toFind} to find`));
+  if (toFind) parts.push(L(`${toFind} aranıyor`, `${toFind} to find`));
   const booking = entries.filter((e) => e.state === "book");
   if (booking.length) {
     const tickets = booking.filter((e) => e.ticket).length;
@@ -884,7 +885,7 @@ export function sectionStatus(id: SectionId, entries: CatEntry[]): CatSection["s
   if (isIdeaSection(id)) return null; // the header says "5 fikir · 2 tanesi bir güne kondu" instead
   const done = entries.length;
   return {
-    text: id === "todo" || id === "food" ? L(`✓ ${done} planlandı`, `✓ ${done} planned`) : L(`✓ ${done} alındı`, `✓ ${done} booked`),
+    text: id === "todo" || id === "food" ? `✓ ${done} ${lowerFirst(lookWord("chosen"))}` : L(`✓ ${done} alındı`, `✓ ${done} booked`),
     tone: "done",
   };
 }

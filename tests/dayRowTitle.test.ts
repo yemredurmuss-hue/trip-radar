@@ -167,8 +167,8 @@ describe("transfers", () => {
     expect(rowTitle(row({ kind: "leg", state: "pending", leg: taxi }))).toEqual({ what: "Havalimanı transferi", which: "Taksi", detail: "Lisboa Loft → havalimanı · rezerve edilmedi" });
     const metro = leg({ mode: "metro", status: "planned", choice: { mode: "metro", booked: false, note: null, updatedAt: 1 } });
     expect(both(() => rowTitle(row({ kind: "leg", leg: metro })))).toEqual({
-      tr: { what: "Havalimanı transferi", which: "Metro", detail: "Havalimanı → Bonfim Konaklaması · planlandı" },
-      en: { what: "Airport transfer", which: "Metro", detail: "Airport → Bonfim Konaklaması · planned" },
+      tr: { what: "Havalimanı transferi", which: "Metro", detail: "Havalimanı → Bonfim Konaklaması · seçildi" },
+      en: { what: "Airport transfer", which: "Metro", detail: "Airport → Bonfim Konaklaması · chosen" },
     });
     const booked = leg({ mode: "transfer", status: "booked", options: [makeItem({ status: "booked", plannedKind: "transfer", metrics: { ...makeItem().metrics!, durationMinutes: 25 } })] });
     expect(rowTitle(row({ kind: "leg", state: "done", leg: booked }))).toEqual({ what: "Havalimanı transferi", which: "Özel transfer", detail: "Havalimanı → Bonfim Konaklaması · 25 dk" });
@@ -176,8 +176,8 @@ describe("transfers", () => {
   it("to a station or between stays: Transfer", () => {
     const station = leg({ kind: "departure", from: point("Jardim Stay"), to: point("Porto Campanhã"), via: "train", mode: "walk", status: "planned", choice: { mode: "walk", booked: false, note: null, updatedAt: 1 } });
     expect(both(() => rowTitle(row({ kind: "leg", leg: station })))).toEqual({
-      tr: { what: "Transfer", which: "Yürüyerek", detail: "Jardim Stay → Porto Campanhã · planlandı" },
-      en: { what: "Transfer", which: "On foot", detail: "Jardim Stay → Porto Campanhã · planned" },
+      tr: { what: "Transfer", which: "Yürüyerek", detail: "Jardim Stay → Porto Campanhã · seçildi" },
+      en: { what: "Transfer", which: "On foot", detail: "Jardim Stay → Porto Campanhã · chosen" },
     });
   });
 });

@@ -1,5 +1,5 @@
 // The booking's window (v11 phase 3, docs/mockups/2026-10-08-japonya-web-v11.html): a booked card opens this instead
-// of its decision details. Its brand, name and times with "Rezerve · belgeli"; "Rezervasyon ayrıntısı" (the
+// of its decision details. Its brand, name and times with the booking's one badge; "Rezervasyon ayrıntısı" (the
 // reference, the way there or the nights, the address, how many, free cancellation: lib/bookingRows.ts); its files
 // (open, or "Belge eksik · ekle"; they stay on this computer); and what's done with a booking: Değiştir (asks first
 // whether the old one was cancelled), İptal ettim (its need to find again, "Geri al"), Tüm detaylar, Kapat.
@@ -12,10 +12,11 @@ import type { CardFacts } from "../../lib/cardFacts";
 import { cardKindColor, cardKindLabel, type CardKind } from "../../lib/cardKinds";
 import { safeContactUrl } from "../../lib/cardTicket";
 import { cancelLineOf } from "../../lib/cardTime";
-import { stayPlatform } from "../../lib/cardView";
+import { bookedAs, stayPlatform } from "../../lib/cardView";
 import { L } from "../../lib/i18n";
 import { ideaMapUrl } from "../../lib/ideas";
 import type { DocMeta, Item } from "../../lib/types";
+import { BookedBadge } from "./BookedBadge";
 import { DocList, DocPickButton } from "./DocAccess";
 import { KindIcon, UiIcon } from "./Silhouettes";
 
@@ -84,10 +85,7 @@ export function BookingSheet({ item, kind, facts, docs, date, today, onChange, o
         <div className="bk-hero">
           <span className="bk-kind">{cardKindLabel(kind)}</span>
           <b>{facts.price ? `${facts.price.text}${facts.price.label ? ` ${facts.price.label}` : ""}` : item.name}</b>
-          <span className="bk-lab">
-            <UiIcon name="check" size={13} />
-            {docs.length ? L("Rezerve · belgeli", "Booked · with its file") : L("Rezerve", "Booked")}
-          </span>
+          <span className="bk-lab"><BookedBadge as={bookedAs(item, kind)} /></span>
         </div>
         {kind === "stay" && (
           <div className="bk-acts">

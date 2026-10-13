@@ -25,25 +25,26 @@ describe("a transfer or a change of city as a card", () => {
   it("by plane between cities: amber until the ticket, with a flight search", () => {
     const v = legCardView(leg({ choice: choice("flight"), status: "planned" }));
     expect([v.kind, v.label, v.ring]).toEqual(["flight", "Uçuş", "half"]);
-    expect(state(v)).toEqual(["wait", "Planlandı", "bilet alınmadı"]);
+    expect(state(v)).toEqual(["wait", "Seçildi", "bilet alınmadı"]);
     expect(v.foot.action).toEqual({ label: "Bileti aldım", does: "book" });
     expect(decodeURIComponent(v.searchUrl!)).toBe("https://www.google.com/travel/flights?q=Flights from Porto to Lizbon on 2026-10-11");
     const done = legCardView(leg({ choice: choice("flight", true), status: "booked" }));
-    expect([done.ring, done.searchUrl]).toEqual(["done", null]);
-    expect(state(done)).toEqual(["done", "Alındı", null]);
+    expect([done.ring, done.searchUrl, done.badge]).toEqual(["done", null, "booked"]);
+    // The word is the card's one badge: the foot doesn't say it again.
+    expect(state(done)).toEqual(["done", "", null]);
   });
   it("by metro from the airport: planned is done, no booking", () => {
     const v = legCardView(leg({ kind: "arrival", from: { label: "OPO havalimanı", city: "Porto", item: null }, to: { label: "Jardim Stay", city: "Porto", item: null }, choice: choice("metro"), status: "planned", after: "10:05" }));
-    expect([v.kind, v.label, v.ring, v.middle]).toEqual(["transport", "Metro", "done", "Varış 10:05"]);
-    expect(state(v)).toEqual(["done", "Planlandı", "rezervasyon gerekmez"]);
+    expect([v.kind, v.label, v.ring, v.middle]).toEqual(["transport", "Metro", "half", "Varış 10:05"]);
+    expect(state(v)).toEqual(["done", "Seçildi", "rezervasyon gerekmez"]);
     // No way said for the hub (via null): its label as it is; nights with no place yet: "Konaklama", the city under it.
     expect([v.from, v.to]).toEqual([{ city: "OPO havalimanı", sub: null, time: null }, { city: "Konaklama", sub: "Porto", time: null }]);
   });
   it("a taxi said in the chat: its name on the strip", () => {
     const taxi = plannedItem({ kind: "taxi", date: "2026-10-14", end_date: null, time: null, from: "Otel", to: "Havalimanı", city: "Lizbon", title: null, booked: false, note: null }, "t1", "x1", 1);
     const v = legCardView(leg({ kind: "departure", options: [taxi], mode: "taxi", status: "planned" }));
-    expect([v.kind, v.label, v.ring]).toEqual(["taxi", "Taksi · transfer", "done"]);
-    expect(state(v)).toEqual(["done", "Planlandı", "Taksi · Otel → Havalimanı"]);
+    expect([v.kind, v.label, v.ring]).toEqual(["taxi", "Taksi · transfer", "half"]);
+    expect(state(v)).toEqual(["done", "Seçildi", "Taksi · Otel → Havalimanı"]);
   });
   it("saved options, nothing chosen: pick one in the details", () => {
     expect(state(legCardView(leg({ kind: "arrival", status: "options", options: [plannedItem({ kind: "transfer", date: "2026-10-08", end_date: null, time: null, from: null, to: "Otel", city: "Porto", title: null, booked: false, note: null }, "t1", "x2", 1)].map((i) => ({ ...i, status: "saved" as const })) })))).toEqual(["wait", "1 seçenek", "birini seç"]);
@@ -101,10 +102,10 @@ describe("a transfer's ends, short (spec 0.33 §4)", () => {
 });
 
 describe("Ayarlandı (Ben hallettim) on a transfer", () => {
-  it("a transfer said arranged is flagged (grey, 'sen hallettin'); a ticket bought stays Alındı", () => {
+  it("a transfer said arranged is flagged (grey, 'sen hallettin'); a ticket bought wears the Bilet alındı badge", () => {
     const v = legCardView(leg({ choice: choice(null, true), status: "booked" }));
-    expect([v.arranged, v.ring]).toEqual([true, "done"]);
-    expect(state(v)).toEqual(["done", "Ayarlandı", "sen hallettin"]);
+    expect([v.arranged, v.ring, v.badge]).toEqual([true, "done", "arranged"]);
+    expect(state(v)).toEqual(["done", "sen hallettin", null]);
     expect(legCardView(leg({ choice: choice("flight", true), status: "booked" })).arranged).toBe(false);
     expect(legCardView(leg()).arranged).toBe(false);
   });

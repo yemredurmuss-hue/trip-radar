@@ -5,9 +5,11 @@
 // most), one grey line; the price and one button (Plana koy, or Plan'da gör →); who saved it and who liked it.
 // A section's tab groups the options by need ("Kyoto · 5 gece · 3 seçenek", "Seçildi: X · Plan'da gör →").
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { bookedAs } from "../../lib/cardView";
 import { cardFacts } from "../../lib/cardFacts";
 import { cardKind, cardKindColor } from "../../lib/cardKinds";
 import { L } from "../../lib/i18n";
+import { lookWord } from "../../lib/stageWords";
 import {
   inCat,
   inState,
@@ -39,6 +41,7 @@ import { addLinks } from "../capture";
 import { useShare } from "../Share";
 import { cityOfAirport } from "../../lib/airports";
 import { BRANDS } from "../../lib/searchLinks";
+import { BookedBadge } from "../cards/BookedBadge";
 import { illusOf } from "../cards/MediaCard";
 import { voteKeyOf } from "../../lib/share/votes";
 import { KindIcon, UiIcon } from "../cards/Silhouettes";
@@ -108,9 +111,9 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
           <span className="pn-sp" />
           {g.chosen ? (
             <button type="button" className={`pn-gp${g.chosen.inPlan === "booked" ? " booked" : ""}`} title={g.chosen.item.name} onClick={() => onShow(g.chosen!.item.id)}>
-              <UiIcon name="check" size={13} />
+              {g.chosen.inPlan === "booked" ? <BookedBadge as={bookedAs(g.chosen.item)} small /> : <UiIcon name="check" size={13} />}
               <span className="pn-gpt">
-                {g.chosen.inPlan === "booked" ? L("Rezerve", "Booked") : L("Seçildi", "Chosen")}: {g.chosen.item.name}
+                {g.chosen.inPlan === "booked" ? "" : `${lookWord("chosen")}: `}{g.chosen.item.name}
               </span>
               <span className="pn-gpl">· {L("Plan'da gör", "See on the plan")} →</span>
             </button>
@@ -333,7 +336,7 @@ function PanoTable({ entries, decisions }: { entries: PanoEntry[]; decisions: De
             {rows.map(({ e }) => (
               <td key={e.item.id}>
                 {e.inPlan ? (
-                  <span className="pn-tin">✓ {e.inPlan === "booked" ? L("Rezerve", "Booked") : L("Planda", "On the plan")}</span>
+                  e.inPlan === "booked" ? <BookedBadge as={bookedAs(e.item)} small /> : <span className="pn-tin">✓ {L("Planda", "On the plan")}</span>
                 ) : (
                   <button type="button" className="pn-put" onClick={() => void chooseItem(e.item, entries.map((x) => x.item))}>+ {L("Plana koy", "Add to plan")}</button>
                 )}
@@ -434,11 +437,15 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
             <small>{L("uyum", "fit")}</small>
           </span>
         )}
-        {entry.inPlan && (
-          <span className={`pn-rib ${entry.inPlan}`}>
-            <UiIcon name="check" size={12} />
-            {entry.inPlan === "booked" ? L("Rezerve", "Booked") : L("Planda", "On the plan")}
-          </span>
+        {entry.inPlan === "booked" ? (
+          <span className="pn-rib"><BookedBadge as={bookedAs(entry.item)} small /></span>
+        ) : (
+          entry.inPlan && (
+            <span className="pn-rib chosen">
+              <UiIcon name="check" size={12} />
+              {L("Planda", "On the plan")}
+            </span>
+          )
         )}
       </div>
       <div className="pn-bd">

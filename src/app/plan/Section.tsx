@@ -9,6 +9,7 @@ import { L } from "../../lib/i18n";
 import { formatPrice } from "../../lib/items";
 import { suggestionCount } from "../../lib/suggestions";
 import { HoverTip } from "../HoverTip";
+import { lookWord } from "../../lib/stageWords";
 import { KindIcon, UiIcon } from "../cards/Silhouettes";
 import { HiddenList } from "./HiddenList";
 import { SECTION_META } from "./sectionMeta";
@@ -161,8 +162,8 @@ function budgetTip(section: CatSection, allot: { amount: number; currency: strin
   return (
     <>
       <b className="tipx-h">{L("Bu bölümün parası", "This part's money")}</b>
-      {top && top[1].booked > 0 && line("bk", L("Rezerve", "Booked"), money(top[1].booked, top[0]))}
-      {top && top[1].chosen > 0 && line("ch", L("Seçildi", "Chosen"), money(top[1].chosen, top[0]))}
+      {top && top[1].booked > 0 && line("bk", lookWord("booked"), money(top[1].booked, top[0]))}
+      {top && top[1].chosen > 0 && line("ch", lookWord("chosen"), money(top[1].chosen, top[0]))}
       {left != null && line(left < 0 ? "ov" : "fr", left < 0 ? L("Aşıyor", "Over") : L("Boşta", "Free"), money(Math.abs(left), top![0]))}
       <span className="tipx-note">{L("Ayrılan pay, gezi bütçesinden beklenen maliyete göre bölünür.", "The share set aside is the trip's budget divided by what each part is likely to cost.")}</span>
     </>

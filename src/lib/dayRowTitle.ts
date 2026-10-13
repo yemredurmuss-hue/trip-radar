@@ -7,6 +7,7 @@ import { airportName, cityOfAirport, knownAirport } from "./airports";
 import { isIdea } from "./booking";
 import { transportMode } from "./cardKinds";
 import { L } from "./i18n";
+import { lookWord } from "./stageWords";
 import { count, hoursMinutes, lowerFirst, nDays, nNights, nOptions } from "./i18nText";
 import { experienceOf, fold, type Experience } from "./experiences";
 import { ideaKindOf, type IdeaKind } from "./ideaKinds";
@@ -229,7 +230,7 @@ function legLeft(leg: Leg): string | null {
     case "chosen":
       return L("rezerve edilmedi", "not booked");
     case "planned":
-      return leg.choice?.mode && BOOKABLE.includes(leg.choice.mode) && !leg.options.some((i) => i.origin === "chat") ? L("rezerve edilmedi", "not booked") : L("planlandı", "planned");
+      return leg.choice?.mode && BOOKABLE.includes(leg.choice.mode) && !leg.options.some((i) => i.origin === "chat") ? L("rezerve edilmedi", "not booked") : lowerFirst(lookWord("chosen"));
     case "options":
       return nOptions(leg.options.length);
     default:
