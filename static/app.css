@@ -4635,16 +4635,47 @@ a.ch-why { text-decoration: none; }
 /* -- F8 hareket (plan-v45 §4): pulse spread (a board of many empty cards does not blink as one) and the reduced-motion / "Hareketi duraklat" blocks -- */
 .ek-card:nth-child(3n+2) .pk-ring.open, .ek-card:nth-child(3n+2) .pk-ring.half { animation-delay: -.47s; }
 .ek-card:nth-child(3n) .pk-ring.open, .ek-card:nth-child(3n) .pk-ring.half { animation-delay: -.93s; }
+/* The last small movements (plan-v45 §4(b) #7 #9 #12 #14 #15 #16): the "×" fold row and a chat message rise 6 px, the undo toast comes up
+   from 20 px, the Pano's "Neden?" unfolds (the strip lets a card grow alone) and its arrow turns, the heart springs, the home box's hints rotate. */
+@keyframes mv-rise-s { from { opacity: 0; transform: translateY(6px); } }
+@keyframes mv-toast { from { opacity: 0; transform: translateX(-50%) translateY(20px); } }
+@keyframes phc { 0% { opacity: 0; transform: translateY(6px); } 5%, 30% { opacity: 1; transform: none; } 36%, 100% { opacity: 0; transform: translateY(-4px); } }
+.pk-fold { animation: mv-rise-s 300ms var(--e-out) backwards; }
+.msg-user, .msg-assistant { animation: mv-rise-s var(--t-base) var(--e-out) backwards; }
+.pk-undo { animation: mv-toast 300ms var(--e-out) backwards; }
+.mv-leaving .pk-undo-ring { visibility: hidden; }
+.pn-heart { transition: transform .25s cubic-bezier(.2, 1.6, .4, 1); }
+.pn-detail { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .4s var(--e-out); }
+.pn-detail.open { grid-template-rows: 1fr; }
+.pn-detail > div { min-height: 0; overflow: hidden; }
+.pn-chev { display: inline-block; transition: transform .3s var(--e-out); }
+.pn-why[aria-expanded="true"] .pn-chev { transform: rotate(180deg); }
+.pn-new { padding: 1px 8px; border-radius: 99px; background: var(--v-lav, #f1eefc); color: var(--v-accent-ink, #4a35c8); font-size: 11.5px; font-weight: 700; }
+.st-ta { position: relative; }
+.st-ph { position: absolute; inset: 0 0 auto; pointer-events: none; font-size: 19px; line-height: 1.45; color: #8f8bab; }
+.st-ph i { position: absolute; left: 0; right: 0; top: 0; font-style: normal; opacity: 0; animation: phc 9s infinite; }
+.st-ph i:nth-child(2) { animation-delay: 3s; }
+.st-ph i:nth-child(3) { animation-delay: 6s; }
+.st-prompt textarea.rot::placeholder { color: transparent; }
 /* Same rules twice: the system setting, and the person's own switch (Settings, body.still). The undo toast's countdown ring is a
    working clock, not decoration: it keeps running. */
 @media (prefers-reduced-motion: reduce) {
   .dc-flash, .gm-ring.go, .pk-seal .okt, .pk-glow, .pk-drop, .ek-card .pk-ring.open, .ek-card .pk-ring.half { animation: none; }
   .cat-bar > span, .hx-bar i, .pn-card, .pk-card { transition: none; }
+  .pk-fold, .msg-user, .msg-assistant, .pk-undo { animation: none; }
+  .pn-detail, .pn-heart, .pn-chev { transition: none; }
+  .st-ph { display: none; }
+  .st-prompt textarea.rot::placeholder { color: #8f8bab; }
   .pn-card:hover, .pk-card:not(.pk-open):not(.ek-still):hover { transform: none; }
   *:not(.pk-undo-ring .run), *:not(.pk-undo-ring .run)::before, *:not(.pk-undo-ring .run)::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
 body.still .dc-flash, body.still .gm-ring.go, body.still .pk-seal .okt, body.still .pk-glow, body.still .pk-drop, body.still .ek-card .pk-ring.open, body.still .ek-card .pk-ring.half { animation: none; }
 body.still .cat-bar > span, body.still .hx-bar i, body.still .pn-card, body.still .pk-card { transition: none; }
+body.still .pk-fold, body.still .msg-user, body.still .msg-assistant, body.still .pk-undo { animation: none; }
+body.still .pn-detail, body.still .pn-heart, body.still .pn-chev { transition: none; }
+body.still .st-ph { display: none; }
+body.still .st-prompt textarea.rot::placeholder { color: #8f8bab; }
+body.still .ar-new { animation: none; outline: 2px solid color-mix(in srgb, var(--c, #5b45e0) 45%, transparent); outline-offset: 2px; }
 body.still .pn-card:hover, body.still .pk-card:not(.pk-open):not(.ek-still):hover { transform: none; }
 body.still *:not(.pk-undo-ring .run), body.still *:not(.pk-undo-ring .run)::before, body.still *:not(.pk-undo-ring .run)::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 

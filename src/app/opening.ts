@@ -1,5 +1,5 @@
 // "Sihirli açılış" (docs/mockups/acilis-v2, B · Ritim ve sayaçlar, Emre 2026-10-10): the first time a trip's Plan is ever opened (once per
-// trip, kept in localStorage), what is in view comes in from the first frame, in reading order, each piece rising a little (pıt pıt), and the
+// trip, kept in localStorage; the Pano has its own, with its strips' cards), what is in view comes in from the first frame, in reading order, each piece rising a little (pıt pıt), and the
 // counters count up from 0; it is all in within about a second. What is below the fold comes in once, as the traveller scrolls it into view:
 // the panel never scrolls on its own. Only opacity and transform move (cheap for the browser), nothing waits for anything (a photo, the
 // weather, prices arrive when they arrive), and a touch or key ends it at once. No motion at all for "azaltılmış hareket".

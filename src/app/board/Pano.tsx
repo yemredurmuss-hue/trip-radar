@@ -24,6 +24,8 @@ import {
   needTitleOf,
   needWhenOf,
   forYouOf,
+  freshIds,
+  seenKey,
   panoRows,
   recordsText,
   sortEntries,
@@ -60,6 +62,15 @@ const SORTS: [PanoSort, () => string][] = [
   ["new", () => L("En yeni eklenen", "Newest")],
 ];
 
+/** What this device has already seen on the trip's Pano (localStorage, no schema change). */
+const seenOnDevice = (tripId: string): Set<string> => {
+  try {
+    return new Set<string>(JSON.parse(localStorage.getItem(seenKey(tripId)) ?? "[]"));
+  } catch {
+    return new Set();
+  }
+};
+
 export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompare }: {
   /** "+ Link ekle" puts a pasted link into this trip (read and placed like any capture). */
   tripId: string;
@@ -76,6 +87,16 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
   const share = useShare();
   const loved = useMemo(() => (share ? items.map((i) => withLoves(i, share.votes)) : items), [items, share?.votes]);
   const entries = useMemo(() => panoEntries(loved, decisions?.byGroup), [loved, decisions?.byGroup]);
+  // "Yeni": what came after the last visit stays marked until this visit ends; the next visit has seen it.
+  const [seen] = useState(() => seenOnDevice(tripId));
+  const fresh = useMemo(() => freshIds(items, seen), [items, seen]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(seenKey(tripId), JSON.stringify(items.map((i) => i.id)));
+    } catch {
+      /* the mark just shows again next time */
+    }
+  }, [tripId, items]);
   const focused = focus ? entries.find((e) => e.group === focus) : undefined;
   const [cat, setCat] = useState<PanoCat>(focused?.section ?? "all");
   const [state, setState] = useState<PanoState>("all");
@@ -96,7 +117,7 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
   const counts = panoCounts(entries);
   const shown = sortEntries(entries.filter((e) => inCat(e, cat) && inState(e, state) && matchesQuery(e, query)), sort);
   const card = (e: PanoEntry, showNeed: boolean, list: PanoEntry[]) => (
-    <PanoCard key={e.item.id} entry={e} showNeed={showNeed} siblings={list} decisions={decisions} onShow={onShow} onCompare={onCompare} />
+    <PanoCard key={e.item.id} entry={e} fresh={fresh.has(e.item.id)} showNeed={showNeed} siblings={list} decisions={decisions} onShow={onShow} onCompare={onCompare} />
   );
   // v30: one row per need ("Kyoto · 5 gece · 3 kayıt"): its header says where it stands and has its own Karşılaştır; the cards scroll sideways.
   const asTable = (g: PanoGroup) => g.entries.length > 1 && tableRows.has(g.group);
@@ -134,7 +155,7 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
             <span>{forYou.text}</span>
           </div>
         )}
-        {asTable(g) ? <PanoTable entries={g.entries} decisions={decisions} /> : <div className="pn-grid pn-strip">{g.entries.map((e) => card(e, false, g.entries))}</div>}
+        {asTable(g) ? <PanoTable entries={g.entries} decisions={decisions} /> : <div className="pn-grid pn-strip" data-pit-children="">{g.entries.map((e) => card(e, false, g.entries))}</div>}
       </section>
     );
   };
@@ -145,7 +166,7 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
         <b title={title}>{title}</b>
         <span className="pn-gn">{recordsText(entries.length)}</span>
       </div>
-      <div className="pn-grid pn-strip">{entries.map((e) => card(e, false, entries))}</div>
+      <div className="pn-grid pn-strip" data-pit-children="">{entries.map((e) => card(e, false, entries))}</div>
     </section>
   );
   const rowView = (r: PanoRow) =>
@@ -224,7 +245,7 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
                 : L("Henüz kayıt yok. Eklentiyle bir sayfa kaydet ya da sohbette bir link bırak; hepsi burada birikir.", "Nothing saved yet. Save a page with the extension or drop a link in the chat; it all gathers here.")}
         </p>
       ) : cat === "liked" ? (
-        <div className="pn-grid">{shown.map((e) => card(e, true, entries.filter((x) => x.group === e.group)))}</div>
+        <div className="pn-grid" data-pit-children="">{shown.map((e) => card(e, true, entries.filter((x) => x.group === e.group)))}</div>
       ) : (
         panoRows(shown, cat, entries).map(rowView)
       )}
@@ -391,8 +412,9 @@ function BrandMark({ label }: { label: string }) {
 
 export const groupDomId = (group: string) => `pn-g-${group.replace(/[^\w-]/g, "_")}`;
 
-function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
+function PanoCard({ entry, fresh, showNeed, siblings, decisions, onShow, onCompare }: {
   entry: PanoEntry;
+  fresh: boolean;
   showNeed: boolean;
   siblings: PanoEntry[];
   decisions: Decisions | null;
@@ -426,7 +448,7 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
   const meta = [item.provider, item.location.area ?? item.city, item.rating.value != null ? String(item.rating.value).replace(".", ",") : null].filter(Boolean).join(" · ");
   const [why, setWhy] = useState(false);
   return (
-    <article className={`pn-card${entry.inPlan ? ` in-${entry.inPlan}` : ""}`} id={`pn-${item.id}`} aria-label={item.name} style={{ "--c": cardKindColor(kind) } as React.CSSProperties}>
+    <article className={`pn-card${entry.inPlan ? ` in-${entry.inPlan}` : ""}${fresh ? " ar-new" : ""}`} id={`pn-${item.id}`} aria-label={item.name} style={{ "--c": cardKindColor(kind) } as React.CSSProperties}>
       <div className="pn-img">
         <FallbackImg src={item.imageUrl} className="pn-photo" fallback={<PanoArt item={item} kind={kind} />} />
         {(best || cheapest) && <span className="pn-badge">{best ? L("Önerim", "My pick") : L("En ucuz", "Cheapest")}</span>}
@@ -496,6 +518,7 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
         <span className={`pn-who${adderOf(item) === "ai" ? " ai" : ""}`}>
           <SavedFace item={item} />
           {savedByText(item, myName || null)}
+          {fresh && <b className="pn-new">{L("Yeni", "New")}</b>}
         </span>
         {likers.length > 0 && (
           <span className="pn-likes" title={L(`${likers.map((n) => (n === "me" ? "Sen" : n)).join(", ")} beğendi`, `Liked by ${likers.join(", ")}`)}>
@@ -507,25 +530,27 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
         )}
         {(facts.pros.length > 0 || facts.cons.length > 0) && (
           <button type="button" className="pn-why" aria-expanded={why} onClick={() => setWhy(!why)}>
-            {L("Neden?", "Why?")} <span aria-hidden>{why ? "▴" : "▾"}</span>
+            {L("Neden?", "Why?")} <span className="pn-chev" aria-hidden>▾</span>
           </button>
         )}
       </div>
-      {why && (
-        <ul className="pn-whylist">
-          {facts.pros.slice(0, 3).map((p) => (
-            <li key={`+${p.text}`} className="pro">+ {p.text}</li>
-          ))}
-          {facts.cons.slice(0, 2).map((c) => (
-            <li key={`-${c.text}`} className="con">− {c.text}</li>
-          ))}
-          {siblings.length > 1 && (
-            <li className="cmp">
-              <button type="button" onClick={() => onCompare(entry.group)}>{L("Karşılaştır →", "Compare →")}</button>
-            </li>
-          )}
-        </ul>
-      )}
+      <div className={`pn-detail${why ? " open" : ""}`} aria-hidden={!why} inert={!why}>
+        <div>
+          <ul className="pn-whylist">
+            {facts.pros.slice(0, 3).map((p) => (
+              <li key={`+${p.text}`} className="pro">+ {p.text}</li>
+            ))}
+            {facts.cons.slice(0, 2).map((c) => (
+              <li key={`-${c.text}`} className="con">− {c.text}</li>
+            ))}
+            {siblings.length > 1 && (
+              <li className="cmp">
+                <button type="button" onClick={() => onCompare(entry.group)}>{L("Karşılaştır →", "Compare →")}</button>
+              </li>
+            )}
+          </ul>
+        </div>
+      </div>
     </article>
   );
 }

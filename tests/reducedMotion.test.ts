@@ -30,7 +30,17 @@ describe("reduced motion and Hareketi duraklat", () => {
       expect(block).toContain("transition-duration: .01ms !important");
       expect(block).toContain(":not(.pk-undo-ring .run)");
     });
+    it(`${name}: the small F8d movements stop (fold row, chat message, undo toast, Neden?, heart, rotating hints)`, () => {
+      for (const sel of [".pk-fold", ".msg-user", ".msg-assistant", ".pk-undo", ".pn-detail", ".pn-heart", ".pn-chev", ".st-ph", ".st-prompt textarea.rot::placeholder"]) expect(block).toContain(`${prefix}${sel}`);
+    });
   }
+  it("the new movements use the motion language's own durations and curves", () => {
+    expect(f8).toContain(".pk-fold { animation: mv-rise-s 300ms var(--e-out)");
+    expect(f8).toContain(".pk-undo { animation: mv-toast 300ms var(--e-out)");
+    expect(f8).toContain(".pn-detail { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .4s var(--e-out)");
+    expect(f8).toContain("cubic-bezier(.2, 1.6, .4, 1)");
+    expect(css).toContain("animation: tipx-in .14s");
+  });
   it("every top-level animation rule from the dictionary has a stop", () => {
     // each class whose rule starts an animation in the dictionary block is named in the reduced block
     const dictionary = css.slice(css.indexOf("/* -- Hareket sözlüğü"), css.indexOf("/* -- The assistant's mascot"));

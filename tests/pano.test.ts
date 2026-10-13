@@ -1,6 +1,6 @@
 // The Pano (v11 phase 5, lib/pano.ts): what's on it, its tabs and state filter, the sort, the groups by need.
 import { describe, expect, it } from "vitest";
-import { adderOf, inCat, inState, forYouOf, matchesQuery, needTitleOf, needWhenOf, panoCityRows, panoCounts, panoEntries, panoGroups, panoRows, saverName, savedByMe, savedByText, sortEntries, withLoves } from "../src/lib/pano";
+import { adderOf, inCat, inState, forYouOf, freshIds, matchesQuery, needTitleOf, needWhenOf, panoCityRows, panoCounts, panoEntries, panoGroups, panoRows, saverName, savedByMe, savedByText, sortEntries, withLoves } from "../src/lib/pano";
 import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -154,5 +154,22 @@ describe("who saved an option", () => {
   it("says it as a name for a Kimden row and as a sentence for a face's tip", () => {
     expect([saverName(own, "Emre"), saverName(own, null), saverName(sabine, "Emre"), saverName(ours, "Emre")]).toEqual(["Emre", "Sen", "Sabine", "Önerimiz (AI)"]);
     expect([savedByText(own, "Emre"), savedByText(sabine, "Emre"), savedByText(ours, null)]).toEqual(["Sen kaydettin", "Sabine kaydetti", "Önerimiz (AI)"]);
+  });
+});
+
+describe("freshIds (Yeni: saved by a person in the last 48 hours, not yet seen on this device)", () => {
+  const now = 10 * 24 * 3600 * 1000;
+  const hour = 3600 * 1000;
+  const mine = [
+    stay("Yeni otel", "saved", 100, now - hour),
+    stay("Eski otel", "saved", 100, now - 49 * hour),
+    stay("Önerimiz", "saved", 100, now - hour, { addedBy: "ai" }),
+    stay("Görülen", "saved", 100, now - hour),
+  ];
+  it("marks a recent record that a person saved", () => {
+    expect([...freshIds(mine, new Set([mine[3].id]), now)]).toEqual([mine[0].id]);
+  });
+  it("marks nothing once everything was seen", () => {
+    expect(freshIds(mine, new Set(mine.map((i) => i.id)), now).size).toBe(0);
   });
 });

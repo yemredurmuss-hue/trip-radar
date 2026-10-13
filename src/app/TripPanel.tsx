@@ -119,11 +119,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const panoNews = usePanoDot(trip.id, items, view === "board");
   // "Sihirli açılış": the first time this trip's Plan is ever open in this browser (once per trip), what is in view comes in in reading order and the
   // counters count up; below the fold as it is scrolled into view (opening.ts). Never on a tab switch or a re-render; a touch or key ends it at once.
-  const openingTried = useRef(false);
+  // The Pano's strips have the same small opening, once per trip of their own (their cards come in one by one).
+  const openingTried = useRef(new Set<string>());
   useLayoutEffect(() => {
-    if (view !== "plan" || openingTried.current) return;
-    openingTried.current = true;
-    if (!claimOpening(trip.id)) return;
+    if ((view !== "plan" && view !== "board") || openingTried.current.has(view)) return;
+    openingTried.current.add(view);
+    if (!claimOpening(view === "plan" ? trip.id : `${trip.id}:pano`)) return;
     const run = playOpening();
     return () => run?.finish();
   }, [view, trip.id]);

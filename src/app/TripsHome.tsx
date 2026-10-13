@@ -51,6 +51,13 @@ interface Props {
   onTrash: () => void;
 }
 
+/** What the home box suggests, one after another (a writing hint, not data); the first is the one that stays. */
+const HINTS: (() => string)[] = [
+  () => L("Bali'ye 3 hafta, Sabine'yle… ya da bir link yapıştır", "Three weeks in Bali with Sabine… or paste a link"),
+  () => L("Mayısta Lizbon, babamlarla, merdiven yok…", "Lisbon in May, with my parents, no stairs…"),
+  () => L("Ozora festivaline 3 arkadaş gidiyoruz…", "Three friends going to the Ozora festival…"),
+];
+
 const MODES: { mode: StartMode | "join"; icon: HeroIconName; label: () => string }[] = [
   { mode: "plan", icon: "sparkle", label: () => L("Yeni gezi planla", "Create a new trip") },
   { mode: "inspire", icon: "globe", label: () => L("Bana ilham ver", "Inspire me where to go") },
@@ -189,6 +196,7 @@ function ProfileMenu(p: { name: string | null; photo: string | null; model: stri
 export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettings, onStart, onAddToTrip, ctx, onTrash }: Props) {
   const [text, setText] = useState("");
   const [dragging, setDragging] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [joining, setJoining] = useState(false);
   const [ask, setAsk] = useState<{ trip: Trip; text: string } | null>(null);
   const [drafts, setDrafts] = useState<StartState[]>([]);
@@ -335,24 +343,35 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
             void submit();
           }}
         >
-          <textarea
-            value={text}
-            rows={2}
-            aria-label={L("Gezi kutusu", "Trip box")}
-            placeholder={L("Bali'ye 3 hafta, Sabine'yle… ya da bir link yapıştır", "Three weeks in Bali with Sabine… or paste a link")}
-            onChange={(e) => {
-              setText(e.target.value);
-              setAsk(null);
-            }}
-            onPaste={onPaste}
-            onKeyDown={(e) => {
-              // Enter sends; never while an input method is still composing (Japanese, Chinese, Korean…).
-              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                void submit();
-              }
-            }}
-          />
+          {/* The hints turn while the box is empty and left alone; focus or typing stops them, and the first stays (reduced motion: app.css). */}
+          <div className="st-ta">
+            {!text && !focused && (
+              <span className="st-ph" aria-hidden>
+                {HINTS.map((hint, i) => <i key={i}>{hint()}</i>)}
+              </span>
+            )}
+            <textarea
+              className={!text && !focused ? "rot" : undefined}
+              value={text}
+              rows={2}
+              aria-label={L("Gezi kutusu", "Trip box")}
+              placeholder={HINTS[0]()}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              onChange={(e) => {
+                setText(e.target.value);
+                setAsk(null);
+              }}
+              onPaste={onPaste}
+              onKeyDown={(e) => {
+                // Enter sends; never while an input method is still composing (Japanese, Chinese, Korean…).
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  void submit();
+                }
+              }}
+            />
+          </div>
           <div className="st-prompt-foot">
             <button type="button" className="st-clip" aria-label={L("Ekran görüntüsü ekle", "Add a screenshot")} title={L("Ekran görüntüsü ekle", "Add a screenshot")} onClick={() => fileInput.current?.click()}>
               <UiIcon name="clip" size={18} />
