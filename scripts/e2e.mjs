@@ -4540,11 +4540,13 @@ try {
   await board.screenshot({ path: `${out}/26a-intent-afrikaburn.png` });
   await answers.getByRole("button", { name: "+4 days in Cape Town" }).click();
   await board.locator(".st-msg-bot", { hasText: /The trip: \d+ April – \d+ May · 10 nights \(estimated\) \(Cape Town 2 · Tankwa Karoo 6 · Cape Town 2 nights\)\./ }).waitFor();
-  await board.locator(".st-msg-bot .st-q", { hasText: "A tent camp, or would you like to rent a caravan?" }).last().waitFor();
+  await board.locator(".st-msg-bot .st-q", { hasText: "A tent camp, a caravan, or a hotel?" }).last().waitFor();
   await abList.locator(".st-row.done", { hasText: "ROUTE" }).getByText("Cape Town 2 · Tankwa Karoo 6 · Cape Town 2 nights").waitFor();
   // K4 (2026-10-09): the festival's own questions (2026-10-07) first, each with its chips, then the style, how many,
   // and where from last. The countdown starts only when the essentials are in, so not before the last answer.
-  for (const q of ["A tent camp, or would you like to rent a caravan?", "Have you got your ticket yet?", "How many days before the festival would you like to arrive?"]) {
+  // 0.36.83's "camp or a hotel?" is back as the festival question's third answer, beside the tent and the caravan.
+  for (const chipName of ["Tent camp", "Let's rent a caravan", "Hotel"]) await answers.getByRole("button", { name: chipName, exact: true }).waitFor();
+  for (const q of ["A tent camp, a caravan, or a hotel?", "Have you got your ticket yet?", "How many days before the festival would you like to arrive?"]) {
     await board.locator(".st-msg-bot .st-q", { hasText: q }).last().waitFor();
     await answers.getByRole("button", { name: "Skip" }).click();
   }

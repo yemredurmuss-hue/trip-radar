@@ -33,9 +33,10 @@ describe("the festival's camp", () => {
     expect(isCampStay(makeItem({ category: "stay" }))).toBe(false);
     expect(isCampStay(null)).toBe(false);
   });
-  it("its answer is an operation the validator knows (a tent or a caravan, nothing else)", () => {
+  it("its answer is an operation the validator knows (a tent, a caravan or a hotel, nothing else)", () => {
     expect(validEffect({ op: "setStay", kind: "vehicle" })).toEqual({ op: "setStay", kind: "vehicle" });
-    expect(validEffect({ op: "setStay", kind: "hotel" })).toBeNull();
+    expect(validEffect({ op: "setStay", kind: "hotel" })).toEqual({ op: "setStay", kind: "hotel" });
+    expect(validEffect({ op: "setStay", kind: "yacht" })).toBeNull();
     expect(stayKindSet([{ op: "setStay", kind: "camp" }, { op: "setStay", kind: "vehicle" }])).toBe("vehicle");
     expect(stayKindSet([])).toBeNull();
   });
