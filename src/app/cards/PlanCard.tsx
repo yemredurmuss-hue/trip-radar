@@ -3,7 +3,7 @@
 // ‹ 1/2 › in its bottom strip (stays keep their side-by-side cards). CardEnv carries what every card needs
 // from the board (decisions, files, delete with undo, the add sheet) without threading it through Timeline.
 import { brandOf } from "../../lib/brands";
-import { RideCardBody, RouteArc } from "./RideCard";
+import { RideCardBody } from "./RideCard";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { cardFacts, durationText, tripPeople } from "../../lib/cardFacts";
 import { cardKind, isTransportKind, type LegEnds, type TransportMode } from "../../lib/cardKinds";
@@ -19,7 +19,6 @@ import type { InsertAt } from "../../lib/templates";
 import type { DocMeta, Item, LegMode, Trip } from "../../lib/types";
 import type { Undoable } from "../../lib/undoables";
 import { chooseItem, setArranged, setInstalled, setItemStatus, setOwner } from "../actions";
-import { CopyText } from "../CopyButton";
 import { dropsIn, useJustBecame, useJustChanged } from "../motion";
 import type { CityWeather } from "../../lib/climate";
 import { flightPeek, stayPeek, transferPeek, type PeekCtx } from "../../lib/cardPeek";
@@ -49,11 +48,12 @@ import { CampBody, IntentChip, MediaCardBody } from "./MediaCard";
 import { isCampStay } from "../../lib/campStay";
 import type { FieldKey } from "../../lib/inlineEdit";
 import { datedLink, stayRatingOf } from "./parts";
-import { cancelLineOf, checkInNote, showBookingRef } from "../../lib/cardTime";
-import { needsNoTicket, rentalLine, stayArt, ticketPriceLine, ticketPrices } from "../../lib/cardTicket";
+import { cancelLineOf, checkInNote } from "../../lib/cardTime";
+import { needsNoTicket, rentalLine, stayArt, ticketPrices, ticketStub, ticketWarn, type TicketLook } from "../../lib/cardTicket";
 import { TransportArt, UiIcon } from "./Silhouettes";
 import { TransportCardBody } from "./TransportCard";
 import { FlightTiles } from "./FlightLive";
+import { FlightTicket } from "./FlightTicket";
 import { delayShiftNote, flightAlert, flightTiles, phaseOf, sourceText, ticketDiff, wasTimes } from "../../lib/flightData";
 import { flightNumber } from "../../../supabase/functions/flight/shape";
 
@@ -148,7 +148,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   const best = ranked?.rank === 1;
   // v11: planned and not bought yet, "✓ Aldım" moves to the top line and the strip's action is the page to book on.
   const bookTop = !arranged && foot.action?.does === "book";
-  const goLabel = ["flight", "train", "bus", "minibus", "ferry", "activity"].includes(kind)
+  const goLabel = ["train", "bus", "minibus", "ferry", "activity"].includes(kind)
     ? L("Bileti al ↗", "Get the ticket ↗")
     : kind === "esim" || kind === "insurance"
       ? L("Satın al ↗", "Buy ↗")
@@ -235,16 +235,9 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   const live = booked ? (item.flightLive ?? null) : null;
   // The number and the logo on any flight that has one (an option too, as on flight search sites).
   const number = kind === "flight" ? (live?.number ?? flightNumber(item.flight?.flightNumber)) : null;
-  const tag = number ? [live?.airline ?? item.flight?.carrier, number].filter(Boolean).join(" ") : null;
   const tiles = flightTiles(live);
   const red = flightAlert(live);
   const face = transport ? transportFace(item, kind, env.legEnds.get(item.id)) : null;
-  // The airline's logo by its code (the flight number's first two letters), beside the duration; none when it
-  // won't load.
-  if (face && number) {
-    face.logo = `https://images.kiwi.com/airlines/64/${number.slice(0, 2)}.png`;
-    face.logo2 = `https://pics.avs.io/128/128/${number.slice(0, 2)}.png`;
-  }
   // No duration on the page: the schedule's (gate to gate, by UTC).
   if (face && !face.middle && live?.minutes) face.middle = [durationText(live.minutes), item.flight?.stops === 0 ? L("direkt", "direct") : null].filter(Boolean).join(" · ");
   if (face && live) {
@@ -259,61 +252,122 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
   const party = item.guests.adults ?? tripPeople(env.decisions?.ctx);
   const rideEach = ride && !face!.rental ? ticketPrices(item, facts.price, party) : null;
   const eachLine = rideEach?.each ? { each: rideEach.each, line: party && party > 1 ? `${nPeople(party)} · ${rideEach.total}` : null } : null;
-  const stub = kind === "flight" && item.status === "chosen" ? ticketPrices(item, facts.price, tripPeople(env.decisions?.ctx)) : null;
   const liveFoot = live
     ? red
       ? { note: phaseOf(live) === "before" ? delayShiftNote(live) : null, tone: "bad" as const, source: sourceText(live) }
       : { note: ticketDiff(live), tone: "warn" as const, source: tiles.length ? sourceText(live) : null }
     : null;
+  const docsFoot =
+    bookedCard ? (
+      docs.length === 1 ? (
+        <button type="button" className="pk-docname" title={docs[0].name} onClick={(e) => { e.stopPropagation(); void openDoc(docs[0].id); }}>
+          <UiIcon name="clip" size={12} />
+          <span>{docs[0].name}</span>
+        </button>
+      ) : (
+        <DocAccess item={item} docs={docs} />
+      )
+    ) : null;
+  const more = bookedCard && !["taxi", "note", "todo"].includes(kind) ? () => setSheet(true) : undefined;
+  const sheetNode = sheet ? (
+    <BookingSheet item={item} kind={kind} facts={facts} docs={docs} date={topDate(item, kind)} today={env.today}
+      onChange={stageMenu.change} onCancel={stageMenu.cancel} onUnbook={() => void setItemStatus(item, "chosen")} onDetails={() => env.onOpenItem(item)} onClose={() => setSheet(false)} />
+  ) : null;
+  const aldim = bookTop ? (
+    <button type="button" className="pk-aldim" aria-label={L(`${item.name}: ${foot.action!.label}`, `${item.name}: ${foot.action!.label}`)} title={foot.action!.label}
+      onClick={(e) => { e.stopPropagation(); act(); }}>
+      ✓ {L("Aldım", "Got it")}
+    </button>
+  ) : null;
+  const onToggle = () => (item.status === "booked" && !["taxi", "note", "todo"].includes(kind) ? setSheet(true) : flips ? onChange!() : setOpen(!open));
+  const alt = altCount > 0 ? { count: altCount, onClick: flips ? onChange! : () => env.onPano(groupKeyOf(item)), flips } : null;
+  const detail = <CardDetail item={item} group={group} decision={decision} decisions={env.decisions} ranked={ranked} headline={headline} facts={facts} alert={alert} docs={docs} actions={actions} />;
+  // F2: a flight is a ticket. Its stub says the stage and what one pays; the head the airline; the warnings, the live boxes and the code stay on it.
+  if (kind === "flight") {
+    const tl: TicketLook = look === "booked" || look === "arranged" ? look : "chosen";
+    const going = tripPeople(env.decisions?.ctx);
+    const stubFace = ticketStub({ look: tl, item, prices: ticketPrices(item, facts.price, going), fallback: facts.price ? { text: facts.price.text, label: facts.price.label ?? null } : null, people: going, today: env.today });
+    // A chosen flight's words ("Seçildi · bilet alınmadı") are the stub's label and the warning under the route; a booking keeps its note and its cancel date.
+    const view = tl === "chosen" ? { ...foot, left: { kind: "state" as const, tone: "plain" as const, text: "", sub: null, when: null, alert: null }, action: null } : bookTop || arranged ? { ...foot, action: null } : foot;
+    return (
+      <FlightTicket
+        look={tl}
+        stub={stubFace}
+        airline={live?.airline ?? item.flight?.carrier ?? null}
+        number={number}
+        date={<CardDate item={item} kind={kind} />}
+        face={face!}
+        stops={item.flight?.stops ?? null}
+        action={
+          bookTop ? (
+            <>
+              {page && <a className="tk-buy" href={page} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{L("Rezerve et ↗", "Book ↗")}</a>}
+              {aldim}
+            </>
+          ) : null
+        }
+        warn={arranged ? null : ticketWarn(item, env.today, tl)}
+        tiles={<FlightTiles tiles={tiles} />}
+        shell={{
+          ariaLabel: item.name,
+          itemId: item.id,
+          badge: <WhoseBadge item={item} trip={env.trip} />,
+          // F1c: whoever saved it, on the corner: ✨ for our pick, a fellow traveller always, the owner's own face only on a trip of two or more.
+          corner: adderOf(item) || people.length > 1 ? <SavedFace item={item} /> : null,
+          extraClass: [arranged ? "pk-arranged" : "", allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined,
+          onDelete: stageMenu.hide,
+          onArranged: stageMenu.booked || bookedCard ? undefined : () => void setArranged(item, true),
+          deleteLabel: stageMenu.booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed"),
+          menu,
+          info: peekFacts.length ? <FactsBox facts={peekFacts} /> : null,
+          open,
+          onToggle,
+          detail,
+        }}
+        foot={
+          <>
+            <CardFoot view={view} nav={nav} best={best} price={null} onAction={act} live={liveFoot} alt={alt} docs={bookedCard ? docsFoot : <DocAccess item={item} docs={docs} />} more={more} />
+            {stageMenu.field}
+            {sheetNode}
+          </>
+        }
+      />
+    );
+  }
   return (
     <CardShell
       kind={kind}
       ring={ring}
       date={
-        intent || (ride && !face!.rental) ? null : (
-          <>
-            <CardDate item={item} kind={kind} />
-            {tag && ` · ${tag}`}
-          </>
-        )
+        intent || (ride && !face!.rental) ? null : <CardDate item={item} kind={kind} />
       }
       ariaLabel={item.name}
       itemId={item.id}
       badge={<WhoseBadge item={item} trip={env.trip} />}
       // F1c: whoever saved it, on the corner: ✨ for our pick, a fellow traveller always, the owner's own face only on a trip of two or more.
       corner={adderOf(item) || people.length > 1 ? <SavedFace item={item} /> : null}
-      extraClass={[ride ? "pk-rd-card" : "", arranged ? "pk-arranged" : "", allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", stub ? "pk-stubbed" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined}
+      extraClass={[ride ? "pk-rd-card" : "", arranged ? "pk-arranged" : "", allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined}
       docs={bookedCard ? null : <DocAccess item={item} docs={docs} />}
       onDelete={stageMenu.hide}
       onArranged={stageMenu.booked || bookedCard ? undefined : () => void setArranged(item, true)}
       deleteLabel={stageMenu.booked ? L("Kaldır", "Take off") : L("Gerek yok", "Not needed")}
-      topAction={
-        bookTop ? (
-          <button type="button" className="pk-aldim" aria-label={L(`${item.name}: ${foot.action!.label}`, `${item.name}: ${foot.action!.label}`)} title={foot.action!.label}
-            onClick={(e) => { e.stopPropagation(); act(); }}>
-            ✓ {L("Aldım", "Got it")}
-          </button>
-        ) : look === "booked" || look === "arranged" ? (
-          <BookedBadge look={look} as={bookedAs(item, kind)} />
-        ) : null
-      }
+      topAction={aldim ?? (look === "booked" || look === "arranged" ? <BookedBadge look={look} as={bookedAs(item, kind)} /> : null)}
       menu={menu}
       info={peekFacts.length ? <FactsBox facts={peekFacts} /> : null}
       open={open}
-      onToggle={() => (item.status === "booked" && !["taxi", "note", "todo"].includes(kind) ? setSheet(true) : flips ? onChange!() : setOpen(!open))}
+      onToggle={onToggle}
       body={
         transport ? (
           <>
-            {/* v30: a flight's middle is the curved route; any other way is a ride: its drawing, "A → B", the way (a rental: where, how long, and its pick-up and return line). */}
-            {kind !== "flight" && (face!.rental ? face!.from : face!.from && face!.to) ? (
+            {/* v30: any way but a flight is a ride (a flight is a ticket): its drawing, "A → B", the way (a rental: where, how long, and its pick-up and return line). */}
+            {(face!.rental ? face!.from : face!.from && face!.to) ? (
               <RideCardBody face={face!.rental ? { ...face!, to: null, middle: [face!.middle, face!.to?.city].filter(Boolean).join(" · ") || null } : face!} title={item.name} kind={kind} brand={brandOf(facts.source?.label, facts.source?.host)} when={face!.rental ? null : <>
                 <CardDate item={item} kind={kind} />
                 {face!.from?.time && ` · ${face!.from.time}`}
               </>} line={face!.rental ? rentalLine(item) : null} />
             ) : (
-              <TransportCardBody face={face!} title={item.name} art={kind === "flight" ? <RouteArc stops={(item.flight?.stops ?? 0) > 0} /> : kind !== "transport" ? <TransportArt mode={kind} /> : null} />
+              <TransportCardBody face={face!} title={item.name} art={kind !== "transport" ? <TransportArt mode={kind} /> : null} />
             )}
-            <FlightTiles tiles={tiles} />
           </>
         ) : camp ? (
           <CampBody item={item} nights={item.dates.start && item.dates.end ? nightsBetween(item.dates.start.slice(0, 10), item.dates.end.slice(0, 10)) : null} />
@@ -329,48 +383,17 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
         <>
           <CardFoot view={bookTop || arranged ? { ...foot, action: null } : foot} nav={nav} best={best} price={facts.price} each={eachLine} onAction={act} live={liveFoot}
             go={bookTop && page ? { href: page, label: goLabel } : null}
-            alt={altCount > 0 ? { count: altCount, onClick: flips ? onChange! : () => env.onPano(groupKeyOf(item)), flips } : null}
+            alt={alt}
             noTicket={needsNoTicket(item, kind, transport)}
             quietWait={item.status === "chosen"}
-            says={kind === "flight" && item.status === "chosen"}
             timed={checkIn}
-            docs={
-              bookedCard ? (
-                docs.length === 1 ? (
-                  <button type="button" className="pk-docname" title={docs[0].name} onClick={(e) => { e.stopPropagation(); void openDoc(docs[0].id); }}>
-                    <UiIcon name="clip" size={12} />
-                    <span>{docs[0].name}</span>
-                  </button>
-                ) : (
-                  <DocAccess item={item} docs={docs} />
-                )
-              ) : null
-            }
-            more={bookedCard && !["taxi", "note", "todo"].includes(kind) ? () => setSheet(true) : undefined} />
-          {/* v11: a booked flight's stub under a dashed line: the booking code (or the price), how many go. The badge on the top line says it's bought. */}
-          {bookedCard && kind === "flight" && (
-            <div className="pk-stub">
-              {/* v30: the code waits for the flight's day; before that the stub says what it cost (the code is in its window). */}
-              {item.bookingRef && showBookingRef(item, env.today) ? <b><CopyText value={item.bookingRef} label={L("Rezervasyon kodu", "Booking code")}>{item.bookingRef}</CopyText></b> : facts.price ? <b>{facts.price.text}</b> : null}
-              {item.guests.adults ? <span>{L(`${item.guests.adults} yolcu`, `${item.guests.adults} passenger${item.guests.adults === 1 ? "" : "s"}`)}</span> : null}
-            </div>
-          )}
-          {/* v30: a chosen flight's stub: what it costs per person and in all, from what was saved. */}
-          {stub && (
-            <div className="pk-stub pk-stub-plan">
-              <span className="pk-stub-k">{L("Fiyat", "Price")}</span>
-              <b>{stub.each ?? stub.total}</b>
-              <span>{ticketPriceLine(stub)}</span>
-            </div>
-          )}
+            docs={docsFoot}
+            more={more} />
           {stageMenu.field}
-          {sheet && (
-            <BookingSheet item={item} kind={kind} facts={facts} docs={docs} date={topDate(item, kind)} today={env.today}
-              onChange={stageMenu.change} onCancel={stageMenu.cancel} onUnbook={() => void setItemStatus(item, "chosen")} onDetails={() => env.onOpenItem(item)} onClose={() => setSheet(false)} />
-          )}
+          {sheetNode}
         </>
       }
-      detail={<CardDetail item={item} group={group} decision={decision} decisions={env.decisions} ranked={ranked} headline={headline} facts={facts} alert={alert} docs={docs} actions={actions} />}
+      detail={detail}
     />
   );
 }

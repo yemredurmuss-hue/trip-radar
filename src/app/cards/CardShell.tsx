@@ -269,6 +269,8 @@ export function CardShell(props: {
   kind: CardKind;
   /** The top line's name when it isn't the kind's ("Metro", "Şehir değişimi"). */
   label?: string;
+  /** F2: a flight ticket's own head (logo, airline, day) in place of the ring, kind and date. */
+  head?: ReactNode;
   ring: RingState;
   /** The top line's day (a string, or its editable pieces on a record's card). */
   date: ReactNode;
@@ -322,12 +324,16 @@ export function CardShell(props: {
       {props.corner && <span className="who-dot">{props.corner}</span>}
       {props.art}
       <div className="pk-top">
-        <Ring state={props.ring} />
-        <span className="pk-kind">
-          <KindIcon kind={props.kind} size={15} />
-          {props.label ?? cardKindLabel(props.kind)}
-        </span>
-        {props.date && <span className="pk-date">· {props.date}</span>}
+        {props.head ?? (
+          <>
+            <Ring state={props.ring} />
+            <span className="pk-kind">
+              <KindIcon kind={props.kind} size={15} />
+              {props.label ?? cardKindLabel(props.kind)}
+            </span>
+            {props.date && <span className="pk-date">· {props.date}</span>}
+          </>
+        )}
         {props.badge}
         <span className="pk-end">
           {props.info && <InfoButton>{props.info}</InfoButton>}

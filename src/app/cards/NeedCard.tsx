@@ -5,7 +5,8 @@
 // linklerinizin dışında"), each with "+ Plana koy"; Karşılaştır (the full comparison) and Pano'da gör at its foot.
 // Not for stays (their nights keep the comparison block) nor a need with one option (that card is the option).
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { cardFacts } from "../../lib/cardFacts";
+import { cardFacts, tripPeople } from "../../lib/cardFacts";
+import { flightLeg, flightWants, ticketPrices, ticketStub } from "../../lib/cardTicket";
 import { cardKind, cardKindColor, isTransportKind } from "../../lib/cardKinds";
 import { topDate, transportFace } from "../../lib/cardView";
 import type { Choice } from "../../lib/choice";
@@ -22,6 +23,9 @@ import type { Item } from "../../lib/types";
 import { addArrangedLike, chooseItem, setNeedNotNeeded } from "../actions";
 import { useMyName } from "../Profile";
 import { CardShell } from "./CardShell";
+import { FlightTicket } from "./FlightTicket";
+import { FlightOption } from "./FlightOption";
+import { useSearching } from "./searching";
 import { useCardEnv } from "./PlanCard";
 import { useStageMenu } from "./stageMenu";
 import { AskButton } from "./AskButton";
@@ -102,10 +106,68 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
   const nights = own ? nightsBetween(own.start, own.end) : null;
   const est = shaped ? estimatedRange(items, nights) : null;
   const arranged = () => void addArrangedLike(first, title);
+  const [searching, startSearch] = useSearching(`${first.needKey}:${n}`);
   const face = isTransportKind(kind) ? transportFace(first, kind as Parameters<typeof transportFace>[1], env.legEnds.get(first.id)) : null;
   const route = face && (face.from || face.to) ? { ...face, from: face.from && { ...face.from, time: null }, to: face.to && { ...face.to, time: null }, middle: null, logo: null } : null;
   // v30: "N seçenek ›" turns the card in place: its back is the options (the row's whole width).
   if (open) return <ChoiceSheet items={items} decision={decision} choice={choice} title={title} kind={kind} onClose={onClose} onCompare={onCompare} />;
+  const optionsFoot = (
+    <div className="pk-foot nd-foot">
+      <button type="button" className={`nd-opts${shaped ? " nd-chip" : ""}`} onClick={(e) => (e.stopPropagation(), onOpen())} aria-haspopup="dialog">
+        <Faces items={items} />
+        {L(`${n} seçenek`, `${n} option${n === 1 ? "" : "s"}`)}
+        <UiIcon name="right" size={13} />
+      </button>
+      {kind === "flight" && searching ? <span className="tk-bar" role="status" aria-label={L("Aranıyor", "Searching now")}><i /></span> : <AskButton text={L(`${title} için öneri bul`, `Find options for ${title}`)} onAsk={kind === "flight" ? startSearch : undefined} />}
+      {est && (
+        <span className="nd-est" title={L(`Tahmini · kaynaklardaki ${est.n} gerçek teklife göre`, `Estimate · from ${est.n} real offers in the sources`)}>
+          <b>{rangeLabel(est)}</b>
+          {est.unit !== "total" && <small> / {est.unit === "night" ? L("gece", "night") : L("kişi", "person")}</small>}
+          <i>{L("tahmini", "estimate")}</i>
+        </span>
+      )}
+      {n === 1 && single.field}
+    </div>
+  );
+  const menu = [
+    { label: L("Değiştir", "Change"), run: onOpen },
+    { label: L("Ben hallettim", "I've got it"), run: arranged },
+    ...(n === 1 ? [...forWho, ...single.menu].map((e, i) => ({ ...e, sep: i === 0 })) : []),
+  ];
+  // F2: a flight still to choose is the empty ticket: "Arıyoruz" (or "Aranıyor" while the AI looks), what we look for, an estimate only from three real prices.
+  if (kind === "flight") {
+    const flightEst = estimatedRange(items);
+    return (
+      <FlightTicket
+        look={searching ? "searching" : "search"}
+        stub={ticketStub({ look: searching ? "searching" : "search", prices: null, estimate: flightEst, from: lowText, today: env.today })}
+        airline={null}
+        number={null}
+        date={topDate(first, kind)}
+        face={route ?? { from: null, to: null, middle: null, rental: false }}
+        stops={null}
+        wants={flightWants(env.trip, env.decisions?.ctx.preferences)[0] ?? null}
+        shell={{
+          ariaLabel: title,
+          itemId: first.id,
+          extraClass: "nd-card",
+          onDelete: () => void setNeedNotNeeded(items).then(env.offer),
+          onArranged: arranged,
+          deleteLabel: L("Gerek yok", "Not needed"),
+          menu,
+          open: false,
+          onToggle: onOpen,
+          detail: null,
+        }}
+        foot={
+          <>
+            {self.length > 0 && <div className="nd-self"><SearchRow links={self} /></div>}
+            {optionsFoot}
+          </>
+        }
+      />
+    );
+  }
   return (
     <>
       <CardShell
@@ -119,11 +181,7 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
         onArranged={arranged}
         deleteLabel={L("Gerek yok", "Not needed")}
         topAction={<span className="pk-lab open">{lookWord("search")}</span>}
-        menu={[
-          { label: L("Değiştir", "Change"), run: onOpen },
-          { label: L("Ben hallettim", "I've got it"), run: arranged },
-          ...(n === 1 ? [...forWho, ...single.menu].map((e, i) => ({ ...e, sep: i === 0 })) : []),
-        ]}
+        menu={menu}
         open={false}
         onToggle={onOpen}
         body={
@@ -160,24 +218,7 @@ export function NeedCard({ items, decision, choice, open, onOpen, onClose, onCom
           </div>
           )
         }
-        foot={
-          <div className="pk-foot nd-foot">
-            <button type="button" className={`nd-opts${shaped ? " nd-chip" : ""}`} onClick={(e) => (e.stopPropagation(), onOpen())} aria-haspopup="dialog">
-              <Faces items={items} />
-              {L(`${n} seçenek`, `${n} option${n === 1 ? "" : "s"}`)}
-              <UiIcon name="right" size={13} />
-            </button>
-            <AskButton text={L(`${title} için öneri bul`, `Find options for ${title}`)} />
-            {est && (
-              <span className="nd-est" title={L(`Tahmini · kaynaklardaki ${est.n} gerçek teklife göre`, `Estimate · from ${est.n} real offers in the sources`)}>
-                <b>{rangeLabel(est)}</b>
-                {est.unit !== "total" && <small> / {est.unit === "night" ? L("gece", "night") : L("kişi", "person")}</small>}
-                <i>{L("tahmini", "estimate")}</i>
-              </span>
-            )}
-            {n === 1 && single.field}
-          </div>
-        }
+        foot={optionsFoot}
         detail={null}
       />
     </>
@@ -256,12 +297,104 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
     const time = item.flight?.departure?.slice(11, 16);
     const brand = brandOf(facts.source?.label, facts.source?.host);
     const rating = item.category === "stay" ? stayRatingOf(item) : null;
-    const stops = item.category === "flight" && item.flight?.stops != null ? (item.flight.stops === 0 ? L("Direkt", "Direct") : L(`${item.flight.stops} aktarma`, `${item.flight.stops} stop${item.flight.stops === 1 ? "" : "s"}`)) : null;
+    const needs = facts.needs.length > 0 && (
+            <span className="ch-needs">
+              {facts.needs.map((n) => (
+                <span key={n.key} className={`ch-need ${n.state}`} title={n.text}>
+                  {n.state === "yes" ? "✓" : n.state === "no" ? "✕" : "?"} {n.label}
+                </span>
+              ))}
+            </span>
+          );
+    const status = facts.status && <span className={`ch-status ${facts.status.tone}`}>{facts.status.text}</span>;
+    const linksNode = (
+    <span className="ch-links">
+      {(ranked?.trade || facts.pros.length > 0 || facts.cons.length > 0) && (
+        <button type="button" className="ch-why ch-pc" aria-expanded={open} onClick={() => setWhy(open ? null : item.id)}>
+          {L("Neden?", "Why?")} {open ? "▴" : "▾"}
+        </button>
+      )}
+      {datedUrl && (
+        <a className="ch-why" href={datedUrl} target="_blank" rel="noreferrer">
+          {L("Tarihlerle aç ↗", "Open with dates ↗")}
+        </a>
+      )}
+      <button type="button" className="ch-why ch-all" onClick={() => (onClose(), env.onOpenItem(item))}>
+        {L("Tüm detaylar", "All details")}
+      </button>
+    </span>
+    );
+    const detailNode = open && (
+            <div className="ch-detail">
+              {ranked && <TradeLine ranked={ranked} currency={currency} className="ch-trade" />}
+              {facts.pros.length > 0 && (
+                <ul className="ch-pros">
+                  {facts.pros.map((p) => (
+                    <li key={p.text}>
+                      <span>{p.text}</span>
+                      {p.unique && <i>{L("yalnız bunda", "only this one")}</i>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {facts.cons.length > 0 && (
+                <ul className="ch-cons">
+                  {facts.cons.map((c) => (
+                    <li key={c.text}>
+                      <span>{c.text}</span>
+                      {c.unique && <i>{L("yalnız bunda", "only this one")}</i>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+    // F2: a flight option is the small flight card (FlightOption): its row, its price, "Seç"; what the tile also kept sits under it.
+    if (item.category === "flight") {
+      const going = tripPeople(env.decisions?.ctx);
+      const fare = ticketStub({ look: "chosen", item, prices: ticketPrices(item, facts.price, going), fallback: facts.price ? { text: facts.price.text, label: facts.price.label ?? null } : null, people: going, today: env.today });
+      return (
+        <FlightOption
+          key={item.id}
+          className={`ch-row ch-tile${on ? " on" : ""}${who === "ai" ? " ai" : ""}${count > 1 && index === cur ? " cur" : ""}`}
+          aria-current={count > 1 && index === cur ? "true" : undefined}
+          flightNo={item.flight?.flightNumber}
+          who={<SavedFace item={item} />}
+          tag={on ? { word: L("Seçili", "Selected") } : null}
+          name={item.url ? <a className="ch-name" href={item.url} target="_blank" rel="noreferrer" title={item.name}>{item.name}</a> : <span className="ch-name" title={item.name}>{item.name}</span>}
+          leg={flightLeg(item)}
+          fare={fare}
+          action={
+            on ? (
+              <span className="ch-on"><UiIcon name="check" size={13} />{L("Planda", "On the plan")}</span>
+            ) : (
+              <button type="button" className="ch-put" onClick={() => void chooseItem(item, items).then(onClose)} aria-label={`${L("Seç", "Choose")} · ${item.name}`} title={L("Seç ve plana koy", "Choose and add to the plan")}>
+                {L("Seç", "Choose")}
+              </button>
+            )
+          }
+          extras={
+            <div className="fo-x">
+              {(badge || score != null) && (
+                <span className="fo-m">
+                  {badge && <span className="ch-badge">{badge}</span>}
+                  {score != null && <span className="ch-sc" title={L("Tercihlerinize uyum (100 üzerinden)", "Fit with your preferences (out of 100)")}>{Math.round(score)}<small>{L("uyum", "fit")}</small></span>}
+                </span>
+              )}
+              {needs}
+              {status}
+              {linksNode}
+              {detailNode}
+            </div>
+          }
+        />
+      );
+    }
     const drawing = art ? <img className="ch-ill" src={`illus/${art}.png`} alt="" /> : <KindIcon kind={kind} size={44} className="ch-kind" />;
     return (
       <div key={item.id} className={`ch-row ch-tile${on ? " on" : ""}${who === "ai" ? " ai" : ""}${count > 1 && index === cur ? " cur" : ""}`} aria-current={count > 1 && index === cur ? "true" : undefined}>
         <div className="ch-ph">
-          {facts.image ? <FallbackImg className="ch-img" src={facts.image} fallback={drawing} /> : item.category === "flight" && time && /^\d\d:\d\d$/.test(time) ? <span className="ch-fl">{time}{item.flight?.arrival?.slice(11, 16) ? ` → ${item.flight.arrival.slice(11, 16)}` : ""}</span> : drawing}
+          {facts.image ? <FallbackImg className="ch-img" src={facts.image} fallback={drawing} /> : drawing}
           <span className="ch-by"><SavedFace item={item} /></span>
           {badge && <span className="ch-badge">{badge}</span>}
           <span className="ch-sc" title={L("Tercihlerinize uyum (100 üzerinden)", "Fit with your preferences (out of 100)")}>
@@ -277,8 +410,6 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
                 <span className={`pk-rb${rating.star ? " star" : ""}`}>{rating.star ? "★ " : ""}{rating.value}</span>
                 {rating.count && <small>{rating.count}</small>}
               </span>
-            ) : stops ? (
-              <small>{stops}</small>
             ) : null}
           </span>
           <b>
@@ -289,7 +420,7 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
             ) : (
               <span className="ch-name" title={item.name}>{item.name}</span>
             )}
-            {time && /^\d\d:\d\d$/.test(time) && item.category !== "flight" ? <span className="ch-time"> · {time}</span> : null}
+            {time && /^\d\d:\d\d$/.test(time) ? <span className="ch-time"> · {time}</span> : null}
           </b>
           <span className="ch-sub">{[brand ? null : item.provider, item.city].filter(Boolean).join(" · ")}</span>
           <span className="ch-who">
@@ -301,16 +432,8 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
               L(`${who} kaydetti`, `${who} saved it`)
             )}
           </span>
-          {facts.needs.length > 0 && (
-            <span className="ch-needs">
-              {facts.needs.map((n) => (
-                <span key={n.key} className={`ch-need ${n.state}`} title={n.text}>
-                  {n.state === "yes" ? "✓" : n.state === "no" ? "✕" : "?"} {n.label}
-                </span>
-              ))}
-            </span>
-          )}
-          {facts.status && <span className={`ch-status ${facts.status.tone}`}>{facts.status.text}</span>}
+          {needs}
+          {status}
           <div className="ch-tf">
             {facts.price && (
               <span className="ch-pr">
@@ -336,46 +459,8 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
               </button>
             )}
           </div>
-          <span className="ch-links">
-            {(ranked?.trade || facts.pros.length > 0 || facts.cons.length > 0) && (
-              <button type="button" className="ch-why ch-pc" aria-expanded={open} onClick={() => setWhy(open ? null : item.id)}>
-                {L("Neden?", "Why?")} {open ? "▴" : "▾"}
-              </button>
-            )}
-            {datedUrl && (
-              <a className="ch-why" href={datedUrl} target="_blank" rel="noreferrer">
-                {L("Tarihlerle aç ↗", "Open with dates ↗")}
-              </a>
-            )}
-            <button type="button" className="ch-why ch-all" onClick={() => (onClose(), env.onOpenItem(item))}>
-              {L("Tüm detaylar", "All details")}
-            </button>
-          </span>
-          {open && (
-            <div className="ch-detail">
-              {ranked && <TradeLine ranked={ranked} currency={currency} className="ch-trade" />}
-              {facts.pros.length > 0 && (
-                <ul className="ch-pros">
-                  {facts.pros.map((p) => (
-                    <li key={p.text}>
-                      <span>{p.text}</span>
-                      {p.unique && <i>{L("yalnız bunda", "only this one")}</i>}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {facts.cons.length > 0 && (
-                <ul className="ch-cons">
-                  {facts.cons.map((c) => (
-                    <li key={c.text}>
-                      <span>{c.text}</span>
-                      {c.unique && <i>{L("yalnız bunda", "only this one")}</i>}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+          {linksNode}
+          {detailNode}
         </div>
       </div>
     );
@@ -432,7 +517,7 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
           ))}
         </ul>
       )}
-      <div className="ch-grid" ref={grid}>
+      <div className={`ch-grid${kind === "flight" ? " fo-grid" : ""}`} ref={grid}>
         {shown.map(tile)}
         <button type="button" className="ch-tile ch-panotile" onClick={goPano}>
           <UiIcon name="board" size={24} />

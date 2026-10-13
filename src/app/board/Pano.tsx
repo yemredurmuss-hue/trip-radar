@@ -3,11 +3,12 @@
 // a section of the Plan, Beğenilenler); Hepsi · Karar bekleyen · Planda; Sırala. A card: its photo (or its kind's
 // mark), Önerim / En ucuz, the heart, its score, "✓ Planda" when it's on the plan; its need, its name (two lines at
 // most), one grey line; the price and one button (Plana koy, or Plan'da gör →); who saved it and who liked it.
-// A section's tab groups the options by need ("Kyoto · 5 gece · 3 seçenek", "Seçildi: X · Plan'da gör →").
+// A section's tab groups the options by need ("Kyoto · 5 gece · 3 seçenek", "Seçildi: X · Plan'da gör →"). A flight is not a photo card
+// (F2): a one-line strip (where it stands, its first plus or minus), then the same small flight card the back of a flight card sets.
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { bookedAs } from "../../lib/cardView";
 import { cardFacts, tripPeople } from "../../lib/cardFacts";
-import { ticketPrices } from "../../lib/cardTicket";
+import { flightLeg, ticketPrices, ticketStub } from "../../lib/cardTicket";
 import { cardKind, cardKindColor } from "../../lib/cardKinds";
 import { L } from "../../lib/i18n";
 import { lookWord } from "../../lib/stageWords";
@@ -41,9 +42,9 @@ import type { Item } from "../../lib/types";
 import { chooseItem, toggleLike } from "../actions";
 import { addLinks } from "../capture";
 import { useShare } from "../Share";
-import { cityOfAirport } from "../../lib/airports";
 import { BRANDS } from "../../lib/searchLinks";
 import { BookedBadge } from "../cards/BookedBadge";
+import { FlightOption } from "../cards/FlightOption";
 import { illusOf } from "../cards/MediaCard";
 import { voteKeyOf } from "../../lib/share/votes";
 import { KindIcon, UiIcon } from "../cards/Silhouettes";
@@ -352,20 +353,8 @@ function PanoTable({ entries, decisions }: { entries: PanoEntry[]; decisions: De
   );
 }
 
-/** The card's picture when the page gave none: the drawing for its kind; a flight its two cities with the plane between them (ucus.png). */
-function PanoArt({ item, kind }: { item: Item; kind: ReturnType<typeof cardKind> }) {
-  if (kind === "flight" && (item.flight?.from || item.flight?.to)) {
-    const end = (s: string | null | undefined) => (s ? cityOfAirport(s) : "");
-    return (
-      <span className="pn-illus pn-fl" aria-hidden>
-        <span>
-          <b>{end(item.flight?.from)}</b>
-          <img src="illus/ucus.png" alt="" />
-          <b>{end(item.flight?.to)}</b>
-        </span>
-      </span>
-    );
-  }
+/** The card's picture when the page gave none: the drawing for its kind (a flight is drawn as its own small card, not a picture). */
+function PanoArt({ kind }: { kind: ReturnType<typeof cardKind> }) {
   const art = illusOf(kind);
   return art ? (
     <span className="pn-art pn-illus">
@@ -425,15 +414,66 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
   const cheapest = !best && siblings.length > 1 && item.price.amount != null && item.price.amount === Math.min(...prices);
   const meta = [item.provider, item.location.area ?? item.city, item.rating.value != null ? String(item.rating.value).replace(".", ",") : null].filter(Boolean).join(" · ");
   const [why, setWhy] = useState(false);
+  // F2: a flight is the small flight card under a one-line strip: where it stands, its first plus (else its first minus), its score.
+  const flight = kind === "flight";
+  const strip = flight ? (
+    <div className="pn-strip-l">
+      {entry.inPlan === "booked" ? (
+        <BookedBadge as="ticket" small />
+      ) : entry.inPlan ? (
+        <span className="pn-tag on"><UiIcon name="check" size={11} />{L("Planda", "On the plan")}</span>
+      ) : best || cheapest ? (
+        <span className={`pn-tag${best ? " ai" : ""}`}>{best ? <span aria-hidden>✨ </span> : null}{best ? L("Önerim", "My pick") : L("En ucuz", "Cheapest")}</span>
+      ) : null}
+      {facts.pros[0] ? <span className="pn-why1">{facts.pros[0].text}</span> : facts.cons[0] ? <span className="pn-why1 minus">{facts.cons[0].text}</span> : null}
+    </div>
+  ) : null;
+  const action = entry.inPlan ? (
+    <button type="button" className={`pn-goplan ${entry.inPlan}`} onClick={() => onShow(item.id)}>
+      {L("Plan'da gör", "See on the plan")} →
+    </button>
+  ) : (
+    <button type="button" className="pn-put" onClick={() => void chooseItem(item, siblings.map((s) => s.item))}>
+      + {L("Plana koy", "Add to plan")}
+    </button>
+  );
+  const likeHeart = (
+    <button type="button" className={`pn-heart${liked ? " on" : ""}`} aria-pressed={liked} aria-label={liked ? L(`${item.name}: beğeniyi geri al`, `${item.name}: unlike`) : L(`${item.name}: beğen`, `${item.name}: like`)}
+      onClick={heart}>
+      <UiIcon name="heart" size={16} />
+    </button>
+  );
   return (
-    <article className={`pn-card${entry.inPlan ? ` in-${entry.inPlan}` : ""}`} id={`pn-${item.id}`} aria-label={item.name} style={{ "--c": cardKindColor(kind) } as React.CSSProperties}>
+    <article className={`pn-card${flight ? " pn-flt" : ""}${entry.inPlan ? ` in-${entry.inPlan}` : ""}`} id={`pn-${item.id}`} aria-label={item.name} style={{ "--c": cardKindColor(kind) } as React.CSSProperties}>
+      {flight ? (
+        <>
+          {strip}
+          <FlightOption
+            className="pn-fo"
+            flightNo={item.flight?.flightNumber}
+            name={<span title={item.name}>{item.name}</span>}
+            leg={flightLeg(item)}
+            fare={ticketStub({ look: "chosen", item, prices: fare, fallback: facts.price ? { text: facts.price.text, label: facts.price.label ?? null } : null, people, today: decisions?.ctx.today ?? "" })}
+            action={action}
+            aside={
+              <>
+                {entry.score != null && (
+                  <span className="pn-fscore num" title={L("Tercihlerinize uyum (100 üzerinden)", "Fit with your preferences (out of 100)")}>
+                    <b>{Math.round(entry.score)}</b> {L("uyum", "fit")}
+                  </span>
+                )}
+                {likeHeart}
+              </>
+            }
+            extras={showNeed ? <span className="pn-need"><KindIcon kind={kind} size={13} />{needTitleOf(item)}</span> : null}
+          />
+        </>
+      ) : (
+        <>
       <div className="pn-img">
-        <FallbackImg src={item.imageUrl} className="pn-photo" fallback={<PanoArt item={item} kind={kind} />} />
+        <FallbackImg src={item.imageUrl} className="pn-photo" fallback={<PanoArt kind={kind} />} />
         {(best || cheapest) && <span className="pn-badge">{best ? L("Önerim", "My pick") : L("En ucuz", "Cheapest")}</span>}
-        <button type="button" className={`pn-heart${liked ? " on" : ""}`} aria-pressed={liked} aria-label={liked ? L(`${item.name}: beğeniyi geri al`, `${item.name}: unlike`) : L(`${item.name}: beğen`, `${item.name}: like`)}
-          onClick={heart}>
-          <UiIcon name="heart" size={16} />
-        </button>
+        {likeHeart}
         {entry.score != null && (
           <span className="pn-score" title={L("Tercihlerinize uyum (100 üzerinden)", "Fit with your preferences (out of 100)")}>
             {Math.round(entry.score)}
@@ -482,16 +522,10 @@ function PanoCard({ entry, showNeed, siblings, decisions, onShow, onCompare }: {
             </>
           ) : null}
         </span>
-        {entry.inPlan ? (
-          <button type="button" className={`pn-goplan ${entry.inPlan}`} onClick={() => onShow(item.id)}>
-            {L("Plan'da gör", "See on the plan")} →
-          </button>
-        ) : (
-          <button type="button" className="pn-put" onClick={() => void chooseItem(item, siblings.map((s) => s.item))}>
-            + {L("Plana koy", "Add to plan")}
-          </button>
-        )}
+        {action}
       </div>
+        </>
+      )}
       <div className="pn-ft">
         <span className={`pn-who${adderOf(item) === "ai" ? " ai" : ""}`}>
           <SavedFace item={item} />

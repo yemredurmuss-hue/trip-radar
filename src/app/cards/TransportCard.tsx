@@ -66,7 +66,7 @@ function Stop({ end, right, field, timed, codes }: { end: End | null; right: boo
 }
 
 /** `art`: the way's drawing, in the middle between the two ends (v11: in the flow, so nothing lies over it). */
-export function TransportCardBody({ face, title, art = null }: { face: TransportFace; title: string; art?: ReactNode }) {
+export function TransportCardBody({ face, title, art = null, tone }: { face: TransportFace; title: string; art?: ReactNode; /** F2: how the line under the drawing is tinted on a ticket ("direct" green, "stop" amber, "want" what we look for). */ tone?: "direct" | "stop" | "want" }) {
   const api = useInlineEdit();
   const ends = Boolean(api?.fields.includes(face.rental ? "city" : "from"));
   if (!face.from && !face.to && !ends) return <h3 className="pk-title">{title}</h3>;
@@ -77,7 +77,7 @@ export function TransportCardBody({ face, title, art = null }: { face: Transport
       <Stop end={face.from} right={false} field={face.rental ? "city" : "from"} timed={!face.rental} codes={!face.rental} />
       <div className="pk-route">
         {art}
-        {face.middle && <small>{face.middle}</small>}
+        {face.middle && <small className={tone}>{face.middle}</small>}
       </div>
       <Stop end={face.to} right field={face.rental ? null : "to"} timed={false} codes={!face.rental} />
     </div>

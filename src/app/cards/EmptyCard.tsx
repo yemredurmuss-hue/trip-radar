@@ -39,6 +39,9 @@ import { CardDate } from "./CardDate";
 import type { FieldKey } from "../../lib/inlineEdit";
 import { isGeneratedName } from "../../lib/planned";
 import { OfferRow } from "./OfferRow";
+import { FlightTicket } from "./FlightTicket";
+import { useSearching } from "./searching";
+import { flightWants, ticketStub } from "../../lib/cardTicket";
 import { useCardEnv } from "./PlanCard";
 import { AskButton } from "./AskButton";
 import { KindIcon, MediaSilhouette, TransportArt } from "./Silhouettes";
@@ -231,6 +234,74 @@ export function EmptyShell(props: {
   );
 }
 
+/**
+ * A flight with nothing booked or saved, as the empty ticket (F2): "Arıyoruz" on its stub (or "Aranıyor" while the AI looks), what
+ * we look for ("Aradığımız: direkt", only when the trip says it), where it stands ("Bilet yok · 2 kişi"), "Kendin ara" and
+ * "Seçenek ara". Its ends (and a record's day) are edited where they stand; its × folds like every empty card.
+ */
+function EmptyFlight({ id, ariaLabel, itemId, date, from, to, menu, fold, status, alert, links, need, extra, badge }: {
+  id: string;
+  ariaLabel: string;
+  itemId?: string;
+  date: ReactNode;
+  from: End | null;
+  to: End | null;
+  menu: MenuEntry[];
+  fold: { gone: () => void; arranged: () => void };
+  status: string;
+  alert?: DateAlert | null;
+  links: SearchLink[];
+  need: Need | null;
+  extra?: ReactNode;
+  badge?: ReactNode;
+}) {
+  const env = useCardEnv();
+  const [searching, startSearch] = useSearching(id);
+  const look = searching ? "searching" : "search";
+  return (
+    <>
+      <FlightTicket
+        look={look}
+        stub={ticketStub({ look, prices: null, today: env.today })}
+        airline={null}
+        number={null}
+        date={date}
+        face={{ from, to, middle: null, rental: false }}
+        stops={null}
+        wants={flightWants(env.trip, env.decisions?.ctx.preferences)[0] ?? null}
+        shell={{
+          ariaLabel,
+          itemId,
+          extraClass: "ek-card ek-still",
+          badge,
+          menu,
+          onDelete: fold.gone,
+          onArranged: fold.arranged,
+          deleteLabel: L("Gerek yok", "Not needed"),
+          open: false,
+          onToggle: () => undefined,
+          detail: null,
+        }}
+        foot={
+          <>
+            {links.length > 0 && <div className="ek-self"><SearchRow links={links} /></div>}
+            <div className="pk-foot ek-foot">
+              <span className={`ek-state${alert ? ` alert-${alert.tone}` : ""}`} title={alert?.text}>
+                {status}
+                {alert && <span className="ek-when"> · ⏳ {alert.short}</span>}
+              </span>
+              <i className="ek-sp" />
+              {searching ? <span className="tk-bar" role="status" aria-label={L("Aranıyor", "Searching now")}><i /></span> : <AskButton text={L(`${ariaLabel} için öneri bul`, `Find options for ${ariaLabel}`)} label={L("Seçenek ara", "Find options")} onAsk={startSearch} />}
+            </div>
+            {extra}
+          </>
+        }
+      />
+      {need && <OfferRow key={need.key} need={need} />}
+    </>
+  );
+}
+
 const withPeople = (word: string, n: number | null) => (n ? `${word} · ${nPeople(n)}` : word);
 const noTicket = (n: number | null) => withPeople(L("Bilet yok", "No ticket"), n);
 
@@ -325,14 +396,32 @@ function EmptyRecordFace({ item }: { item: Item }) {
     const to = item.flight?.to ?? (rental ? null : item.city) ?? null;
     const links = kind === "flight" ? flightLinks({ from, to, date: start, adults: n }) : rental ? [] : transferLinks({ from, to }).filter((l) => l.brand === "maps");
     const section = kind === "flight" ? "flight" : "transport";
+    if (kind === "flight") {
+      return (
+        <EmptyFlight
+          id={item.id}
+          ariaLabel={item.name}
+          itemId={item.id}
+          date={<CardDate item={item} kind={kind} />}
+          from={face.from}
+          to={face.to ?? (to ? { city: to, sub: null, time: null } : null)}
+          menu={menu}
+          fold={shell.fold}
+          status={shell.status}
+          alert={shell.alert}
+          links={links}
+          badge={shell.badge}
+          extra={extra}
+          need={to ? { key: needKey("flight", from, to, start), section, kind: "flight", from, to, start, adults: n, fromCode: airportCode(from), toCode: airportCode(to) } : null}
+        />
+      );
+    }
     return (
       <EmptyShell
         {...shell}
-        label={kind === "flight" && face.from?.city && (face.to?.city ?? to) ? `${face.from.city} → ${face.to?.city ?? to}` : undefined}
         date={<CardDate item={item} kind={kind} />}
         body={<EmptyRoute from={face.from} to={face.to ?? (to && !rental ? { city: to, sub: null, time: null } : null)} art={kind === "transport" ? null : kind} fields={rental ? ["city", null] : ["from", "to"]} />}
         links={links}
-        need={kind === "flight" && to ? { key: needKey("flight", from, to, start), section, kind: "flight", from, to, start, adults: n, fromCode: airportCode(from), toCode: airportCode(to) } : null}
       />
     );
   }
@@ -374,17 +463,18 @@ export function EmptyTravelCard({ role, date, city, home = null }: { role: "arri
   const gone = () => void setHidden(env.tripId, hiddenKey, true, name).then(() => env.offer({ kind: "hidden", tripId: env.tripId, key: hiddenKey, label: name }));
   const arranged = () => void addArrangedPlanned(env.tripId, { kind: "flight", date, end_date: null, time: null, from: a, to: b, city: null, title: null, booked: false, note: null });
   return (
-    <EmptyShell
-      kind="flight"
-      date={formatDateRange(date, null)}
+    <EmptyFlight
+      id={hiddenKey}
       ariaLabel={name}
+      date={formatDateRange(date, null)}
+      from={from}
+      to={to}
       fold={{ gone, arranged }}
       menu={[
         { label: L("Değiştir", "Change"), run: () => env.add({ city, date }) },
         { label: L("Ben hallettim", "I've got it"), run: arranged },
         { label: L("Gerek yok", "Not needed"), run: gone },
       ]}
-      body={<EmptyRoute from={from} to={to} art="flight" />}
       status={noTicket(n)}
       links={flightLinks({ from: a, to: b, date, adults: n })}
       need={{ key: needKey("flight", a, b, date), section: "flight", kind: "flight", from: a, to: b, start: date, adults: n, fromCode: airportCode(a), toCode: airportCode(b) }}

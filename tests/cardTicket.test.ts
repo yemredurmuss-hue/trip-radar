@@ -1,6 +1,6 @@
 // A ticket's stub prices, a rental's line, "Bilet gerekmez", a stay's drawing, a contact link (lib/cardTicket.ts).
 import { describe, expect, it } from "vitest";
-import { needsNoTicket, rentalLine, safeContactUrl, stayArt, ticketPriceLine, ticketPrices } from "../src/lib/cardTicket";
+import { needsNoTicket, rentalLine, safeContactUrl, stayArt, ticketPrices } from "../src/lib/cardTicket";
 import { EMPTY_METRICS } from "../src/lib/items";
 import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
@@ -12,7 +12,6 @@ describe("a chosen flight's stub: per person and in all, from what was saved", (
   it("a price per person for two: the person's and the whole", () => {
     const p = ticketPrices(priced(74, "per_person", 2))!;
     expect(p).toEqual({ each: "€74", total: "€148" });
-    expect(ticketPriceLine(p)).toBe("kişi başı · €148 toplam");
   });
   it("a total for two: halved for the person", () => {
     expect(ticketPrices(priced(148, "total", 2))).toEqual({ each: "€74", total: "€148" });
@@ -20,8 +19,6 @@ describe("a chosen flight's stub: per person and in all, from what was saved", (
   it("one passenger: a single figure", () => {
     const p = ticketPrices(priced(148, "total", 1))!;
     expect(p).toEqual({ each: null, total: "€148" });
-    expect(ticketPriceLine(p)).toBe("toplam");
-    expect(ticketPriceLine(ticketPrices(priced(90, "per_person", 1))!)).toBe("kişi başı");
   });
   it("nothing is invented: no price, or one whose scope is unknown, says nothing", () => {
     expect(ticketPrices(priced(null, "total", 2))).toBeNull();

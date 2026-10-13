@@ -1,6 +1,6 @@
-// Plan v30: how a way of travel reads on a card. A flight's middle is a curved dashed route with the plane in a white
-// circle (RouteArc); any other way (train, bus, ferry, taxi) is a ride (RideCardBody, F5a): "Hakone → Kyoto" large, when and
-// by what in a capsule, the hours with the way drawn between them. The ends and the hour stay editable where they stand.
+// Plan v30: how a way of travel reads on a card. A flight is a ticket (FlightTicket); any other way (train, bus, ferry,
+// taxi) is a ride (RideCardBody, F5a): "Hakone → Kyoto" large, when and by what in a capsule, the hours with the way drawn
+// between them. The ends and the hour stay editable where they stand, as on the ticket.
 import type { ReactNode } from "react";
 import { rideName, type End, type TransportFace } from "../../lib/cardView";
 import type { Brand } from "../../lib/brands";
@@ -9,23 +9,6 @@ import { L } from "../../lib/i18n";
 import { Editable, useInlineEdit } from "./InlineEdit";
 import { illusOf } from "./MediaCard";
 import { KindIcon, UiIcon } from "./Silhouettes";
-
-/** A curved dashed route, the two ends as dots and the plane over its middle. A stop (a connection) is a ring on the curve. */
-export function RouteArc({ stops = false }: { stops?: boolean }) {
-  return (
-    <span className="pk-arc" aria-hidden>
-      <svg viewBox="0 0 160 44" preserveAspectRatio="none">
-        <path d="M4 40 Q80 -8 156 40" vectorEffect="non-scaling-stroke" />
-      </svg>
-      <i className="pk-arc-a" />
-      <i className="pk-arc-b" />
-      {stops && <i className="pk-arc-stop" />}
-      <span className={`pk-arc-pl${stops ? " off" : ""}`}>
-        <KindIcon kind="flight" size={18} />
-      </span>
-    </span>
-  );
-}
 
 /** The label of where a way comes from, on its own colour ("Booking.com", "JR"); a grey one for a name we don't know. */
 export function BrandPill({ brand }: { brand: Brand | null }) {
