@@ -34,7 +34,7 @@ export function Section({ section, allot = null, allotNum = null, open, onToggle
   const ideas = section.ideas;
   // v11: the header says where its needs stand in stage words ("1 rezerve · 2 seçildi · 1 aranıyor"); the ideas and
   // Hazırlık count instead.
-  const line = isIdeaSection(section.id) || section.id === "prep" ? null : section.id === "activity" ? activityLine(section) : stageLine(section.stages);
+  const line = isIdeaSection(section.id) || section.id === "prep" ? null : section.id === "activity" ? activityLine(section) : stageLine(section.stages, section.drafts);
   const spent = isIdeaSection(section.id) || section.id === "prep" ? null : spentOf(section);
   // v11: the bar in two colours, booked (green) then chosen (amber), out of all of its needs.
   const st = section.stages;

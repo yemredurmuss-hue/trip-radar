@@ -7,6 +7,7 @@ import { cardFacts } from "./cardFacts";
 import { cardKind, cardKindLabel } from "./cardKinds";
 import { planSectionOfItem, type SectionId } from "./categories";
 import { advantageOver, type GroupDecision } from "./decision";
+import { draftOf } from "./draft";
 import { L } from "./i18n";
 import { capitalize, nNights } from "./i18nText";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
@@ -30,6 +31,8 @@ export interface PanoEntry {
   score: number | null;
   /** On the plan: chosen (Seçildi / planned) or booked; null while it's only an option or an idea. */
   inPlan: "chosen" | "booked" | null;
+  /** The need's card shows it as "Önerimiz" (lib/draft.ts): not on the plan, only on the card. */
+  draft: boolean;
   /** Its need is still open: nothing among its options is chosen or booked. */
   open: boolean;
 }
@@ -40,13 +43,17 @@ const onPano = (item: Item) => item.status !== "dismissed" && planSectionOfItem(
 export function panoEntries(items: Item[], decisions?: Map<string, GroupDecision> | null): PanoEntry[] {
   const live = items.filter(onPano);
   const decided = new Set(live.filter((i) => i.status === "chosen" || i.status === "booked").map(groupKeyOf));
+  // The draft of each need (F7): the card's pick, the same the Plan shows.
+  const byGroup = new Map<string, Item[]>();
+  for (const item of live) byGroup.set(groupKeyOf(item), [...(byGroup.get(groupKeyOf(item)) ?? []), item]);
+  const drafts = new Set([...byGroup].flatMap(([group, list]) => draftOf(list, decisions?.get(group))?.id ?? []));
   return live.map((item) => {
     const group = groupKeyOf(item);
     const score = decisions?.get(group)?.options.find((o) => o.item.id === item.id)?.score ?? null;
     const inPlan = item.status === "booked" ? "booked" : item.status === "chosen" ? "chosen" : null;
     // An idea (a thing to do, a meal, a Reel) is its own need: open until it's put on the plan.
     const open = isIdea(item) ? !inPlan : !decided.has(group);
-    return { item, section: planSectionOfItem(item) as PanoEntry["section"], group, score, inPlan, open };
+    return { item, section: planSectionOfItem(item) as PanoEntry["section"], group, score, inPlan, draft: drafts.has(item.id), open };
   });
 }
 
@@ -131,13 +138,15 @@ export interface PanoGroup {
   entries: PanoEntry[];
   /** The one on the plan, if any: the header says "Seçildi: X · Plan'da gör →". */
   chosen: PanoEntry | null;
+  /** The one the card shows as "Önerimiz", if any: the header says "Önerimiz: X · Plan'da gör →" (it is not on the plan). */
+  draft: PanoEntry | null;
 }
 
 /** A section's records by need: decisions waiting first (v30), then, among those, the needs with two or more options (the ones to compare). */
 export function panoGroups(list: PanoEntry[]): PanoGroup[] {
   const byGroup = new Map<string, PanoEntry[]>();
   for (const e of list) byGroup.set(e.group, [...(byGroup.get(e.group) ?? []), e]);
-  const groups = [...byGroup.entries()].map(([group, entries]) => ({ group, entries, chosen: entries.find((e) => e.inPlan) ?? null }));
+  const groups = [...byGroup.entries()].map(([group, entries]) => ({ group, entries, chosen: entries.find((e) => e.inPlan) ?? null, draft: entries.find((e) => e.draft) ?? null }));
   return groups.sort((a, b) => Number(Boolean(a.chosen)) - Number(Boolean(b.chosen)) || Number(b.entries.length > 1) - Number(a.entries.length > 1));
 }
 

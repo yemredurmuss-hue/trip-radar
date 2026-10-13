@@ -266,6 +266,8 @@ try {
   assert.equal(await app.locator('.cat-sec[data-section="todo"] .cat-count, .cat-sec[data-section="food"] .cat-count').count(), 0, "an idea section has no x/y");
   const atStart = await listMatchesHero("the sample");
   console.log(`  hero: ${atStart.head} · ${atStart.meta}`);
+  // F7 (S2): the flight and the Porto stay stand as "Önerimiz" here, and they are among the 7: a draft is a decision still to make, not in the %.
+  assert.equal(await app.locator(".pk-card.pk-draft, .pk-card.tk-draft").count(), 2, "two drafts on the sample's Plan");
   assert.deepEqual([atStart.booked, atStart.planned, atStart.open], [2, 1, 7], JSON.stringify(atStart));
   assert.equal(atStart.pct, Math.round((atStart.booked / (atStart.booked + atStart.planned)) * 100));
   assert.equal(atStart.head, `Planlananların %${atStart.pct}'si rezerve`);
@@ -570,8 +572,9 @@ try {
     assert.equal(await app.locator(".hx-tally button").count(), 4);
   }
   assert.equal(await sec("activity").locator(".cat-st").innerText(), "1 planda · 3 fikir");
-  assert.match(await sec("flight").locator(".cat-head").innerText(), /^Uçuş\s*2\s*1 rezerve · 1 aranıyor/);
-  assert.equal(await sec("flight").locator(".cat-st").innerText(), "1 rezerve · 1 aranıyor");
+  // F7: the flight with a real priced option saved is "Önerimiz" (a pick shown as the card), no longer "aranıyor"; the percentage and the bar don't move.
+  assert.match(await sec("flight").locator(".cat-head").innerText(), /^Uçuş\s*2\s*1 rezerve · 1 önerimiz/);
+  assert.equal(await sec("flight").locator(".cat-st").innerText(), "1 rezerve · 1 önerimiz");
   assert.equal(await app.locator(".cat-wait").count(), 0, "no amber line: the stage line says it");
   assert.equal(await sec("flight").locator(".cat-bar > .bk").evaluate((el) => el.style.width), "50%");
   assert.equal(await sec("flight").locator(".cat-head .cat-add").count(), 0, "\"+ Ekle\" is at the section's end, not in its head");
@@ -753,12 +756,22 @@ try {
   await tab("Plan").click();
   // Where each plan stands is on top of its card (v11): a booked stay wears the one badge, "Rezerve" (no ring, no second word at its foot).
   await app.locator(".cat-card.tl-stay .pk-card .okt", { hasText: "Rezerve" }).waitFor();
-  // v11: an undecided stay is one card too ("Porto · 8–11 Eki", "3 seçenek ›"); its window: the pick in a sentence,
-  // what to check before choosing, the options best first with their fit, what each is strongest on, a mark per
-  // thing asked for, and "Neden? Artılar ve eksiler" (against the first; the first against the second, then the pros
-  // and cons). The name is the way to the page.
-  const portoNeed = app.locator(".nd-card").filter({ has: app.locator(".nd-body h3", { hasText: /^Porto/ }) }).first();
-  await portoNeed.locator(".nd-opts").click();
+  // F7 (S3): an undecided stay with a real priced option is the draft "Önerimiz": the best option as the card (white, one flat purple-grey
+  // line, ✨ Önerimiz, "✓ Bunu seç", its price and "Değiştir 2"). Its window ("Değiştir 2" turns the card in place): the pick in a
+  // sentence, what to check before choosing, the options best first with their fit, what each is strongest on, a mark per thing
+  // asked for, and "Neden? Artılar ve eksiler" (against the first; the first against the second, then the pros and cons). The
+  // name is the way to the page.
+  const portoDraft = app.locator('.stay-block .pk-card.pk-draft[aria-label="Jardim Stay"]');
+  await portoDraft.waitFor();
+  assert.equal((await portoDraft.locator(".pk-lab.draft").innerText()).replace(/\s+/g, " "), "✨ Önerimiz");
+  assert.equal(await portoDraft.locator(".pk-pick").innerText(), "✓ Bunu seç");
+  assert.equal(await portoDraft.evaluate((el) => getComputedStyle(el).borderTopStyle), "solid", "a flat frame, no dashes");
+  assert.equal(await portoDraft.locator(".pk-aldim:not(.pk-pick)").count(), 0, "no ✓ Aldım: nothing is chosen yet");
+  assert.match(await portoDraft.locator(".pk-price").innerText(), /€\d+\s*\/ gece/, "its real price per night");
+  assert.equal(await portoDraft.locator(".pk-alt").innerText().then((t) => t.replace(/\s+/g, " ")), "Değiştir 2");
+  await portoDraft.scrollIntoViewIfNeeded();
+  await portoDraft.screenshot({ path: `${out}/40a-draft-stay.png` });
+  await portoDraft.locator(".pk-alt").click();
   const stayChoice = app.locator(".ch-back");
   await stayChoice.waitFor();
   assert.equal(await stayChoice.locator(".ch-for").innerText(), "Önerim Jardim Stay: en sessiz; 2.'ye göre €45 daha ucuz, 5 Eki'ye kadar ücretsiz iptal ve daha konforlu. Tasarruf için 3. Casa Azul (1.'ye göre €45 daha ucuz).");
@@ -766,6 +779,10 @@ try {
   assert.deepEqual(await stayChoice.locator(".ch-name").allInnerTexts(), ["Jardim Stay", "Ribeira Rooms", "Casa Azul"]);
   assert.deepEqual((await stayChoice.locator(".ch-sc").allInnerTexts()).map((t) => t.split("\n")[0]), ["83", "55", "53"]);
   assert.equal(await optionRow("Jardim Stay").locator(".ch-badge").innerText(), "En sessiz");
+  // F7: the tile of the option the card shows says "Kartta" (not "Seçili": nothing is chosen), the others have no tag but "Yeni".
+  assert.equal(await stayChoice.locator(".ch-tile.draft .ch-tag").innerText(), "Kartta");
+  assert.equal(await optionRow("Jardim Stay").locator(".ch-tag").innerText(), "Kartta");
+  assert.equal(await stayChoice.locator(".ch-tag", { hasText: "Seçili" }).count(), 0);
   const site = optionRow("Jardim Stay").locator(".ch-name");
   assert.equal(await site.getAttribute("target"), "_blank");
   assert.match(await site.getAttribute("href"), /^https:\/\/www\.booking\.com\//);
@@ -782,25 +799,28 @@ try {
   await app.screenshot({ path: `${out}/34a-stay-choice.png` });
   await app.keyboard.press("Escape");
   await stayChoice.waitFor({ state: "detached" });
-  // Flights (v11 phase 2b): the need is one card, one size ("İstanbul → Porto · 2 seçenek"); "2 seçenek ›" opens the
-  // choice window: the pick in a sentence, the options with their fit, who saved them, "Seç" (v30).
+  // Flights (v11 phase 2b, F7): the need with two real priced options is the draft ticket "Önerimiz" (the Pegasus, the engine's pick):
+  // "Önerimiz" on its stub with what one pays, "✓ Bunu seç" under it, "Değiştir 1"; "Değiştir 1" turns it to the options, with "Seç" on each (v30).
   const pk = (name) => app.locator(`.pk-card[aria-label="${name}"]`);
-  const outNeed = app.locator('.nd-card[aria-label="İstanbul → Porto"]');
-  // F2: the empty ticket: "Arıyoruz" on its stub with the real lowest price (fewer than three offers: no estimate), its ends (no hours yet), "Kendin ara", "2 seçenek ›" and ✨ at its foot.
-  assert.match(await outNeed.locator(".pk-foot").innerText(), /2 seçenek/);
-  assert.equal(await outNeed.locator(".tk-lab").innerText(), "Arıyoruz");
-  assert.match(await outNeed.locator(".pk-mid").innerText(), /İstanbul[\s\S]*Porto/);
-  assert.match(await outNeed.locator(".tk-price b").innerText(), /^€\d+.*'den$/);
-  assert.equal(await outNeed.evaluate((el) => getComputedStyle(el).borderTopStyle), "solid", "no dashed frame on a ticket");
-  await outNeed.scrollIntoViewIfNeeded();
-  await outNeed.screenshot({ path: `${out}/32b-need-card.png` });
-  await outNeed.locator(".nd-opts").click();
+  const outDraft = app.locator('.pk-card.tk-draft[aria-label="Pegasus · direkt"]');
+  await outDraft.waitFor();
+  assert.match(await outDraft.locator(".tk-lab").innerText(), /Önerimiz$/);
+  assert.match(await outDraft.locator(".tk-price b").innerText(), /^€\d+$/);
+  assert.equal(await outDraft.locator(".tk-pick").innerText(), "✓ Bunu seç");
+  assert.match(await outDraft.locator(".pk-mid").innerText(), /İstanbul[\s\S]*Porto/);
+  assert.equal(await outDraft.evaluate((el) => getComputedStyle(el).borderTopStyle), "solid", "no dashed frame on a ticket");
+  assert.equal(await outDraft.locator(".tk-warn").count(), 1, "the real warning stays on a pick: no ticket yet, 3 days to the flight");
+  assert.equal(await outDraft.locator(".tk-stub .pk-aldim").count(), 0, "no ✓ Aldım on a pick");
+  await outDraft.scrollIntoViewIfNeeded();
+  await outDraft.screenshot({ path: `${out}/32b-draft-ticket.png` });
+  await outDraft.locator(".pk-alt").click();
   const chooser = app.locator(".ch-back");
   await chooser.waitFor();
   assert.deepEqual((await chooser.locator(".ch-name").allInnerTexts()).sort(), ["Pegasus · direkt", "TAP · Lizbon aktarmalı"]);
   assert.equal(await chooser.locator(".ch-row", { hasText: "TAP · Lizbon aktarmalı" }).locator(".ch-badge").innerText(), "En ekonomik");
   assert.match(await chooser.locator(".ch-for").innerText(), /Pegasus/);
   assert.equal(await chooser.getByRole("button", { name: /^Seç · / }).count(), 2);
+  assert.equal(await chooser.locator(".ch-row", { hasText: "Pegasus · direkt" }).locator(".fo-tag.draft").innerText(), "Kartta");
   await app.screenshot({ path: `${out}/32a-choice-window.png` });
   await app.keyboard.press("Escape");
   await chooser.waitFor({ state: "detached" });
@@ -1021,7 +1041,7 @@ try {
   // record's drawer, where the evidence behind a finding is, with "sorun değil": the construction then no longer
   // needs checking before choosing.
   const openStayChoice = async () => {
-    await app.locator(".nd-card").filter({ has: app.locator(".nd-body h3", { hasText: /^Porto/ }) }).first().locator(".nd-opts").click();
+    await app.locator('.stay-block .pk-card.pk-draft[aria-label="Jardim Stay"] .pk-alt').click();
     await app.locator(".ch-back").waitFor();
     return app.locator(".ch-back");
   };
@@ -1156,10 +1176,17 @@ try {
   await otherStays.waitFor();
   await app.keyboard.press("Escape");
   await otherStays.waitFor({ state: "detached" });
-  // "Seç" on a flight card: the flight folds into a line, and its landing time reaches the transfer to the hotel.
-  await app.locator('.nd-card[aria-label="İstanbul → Porto"]').locator(".nd-opts").click();
-  await app.locator(".ch-row", { hasText: "Pegasus · direkt" }).getByRole("button", { name: /^Seç · / }).click();
+  // F7 (S1, S2): "✓ Bunu seç" on the flight's draft makes it Seçildi: the flight turns into the chosen ticket, and its landing time reaches the
+  // transfer to the hotel. The hero's % and its counts moved only now (the draft was a decision waiting: 7 of them at the start), by one.
+  const beforePick = await heroNumbersOnPage();
+  const draftOut = app.locator('.tl-travel.role-arrival .pk-card.tk-draft[aria-label="Pegasus · direkt"]');
+  await draftOut.locator(".tk-pick").click();
   await app.locator(".tl-travel.role-arrival .pk-card", { hasText: "IST" }).locator(".pk-aldim").waitFor();
+  assert.equal(await app.locator(".pk-card.tk-draft").count(), 0, "chosen: no draft left on the flight");
+  const afterPick = await heroNumbersOnPage();
+  assert.deepEqual([afterPick.booked, afterPick.planned, afterPick.open], [beforePick.booked, beforePick.planned + 1, beforePick.open - 1], `${JSON.stringify(beforePick)} → ${JSON.stringify(afterPick)}`);
+  assert.equal(afterPick.pct, Math.round((afterPick.booked / (afterPick.booked + afterPick.planned)) * 100));
+  assert.ok(afterPick.pct < beforePick.pct, "the percentage falls with what is chosen and not booked yet (a draft left it alone)");
   // F2: a chosen flight is a ticket: "Seçildi" on its stub with what one pays, and under the route the warning, amber within 14 days (3 here).
   const pegCard = app.locator(".tl-travel.role-arrival .pk-card", { hasText: "IST" });
   assert.equal(await pegCard.locator(".tk-lab").innerText(), "Seçildi");
@@ -2562,7 +2589,15 @@ try {
   // Weighed by the analysis, which sees the findings with their counts.
   // v11: the stay's window says it ("Seçmeden kontrol et · Casa Azul: …"); its pros under "Neden?"; "Tüm detaylar"
   // opens the record with the evidence.
-  await board.locator(".nd-card").filter({ has: board.locator(".nd-body h3", { hasText: /^Porto/ }) }).first().locator(".nd-opts").click();
+  // F7: the Porto nights have a real priced option, so their card is the draft "Önerimiz"; its back opens from "Değiştir N" (by the card itself when it is alone).
+  const portoDraftB = board.locator(".stay-block .pk-card.pk-draft").first();
+  const openPortoBack = async () => {
+    await portoDraftB.waitFor({ timeout: 20000 });
+    const alt = portoDraftB.locator(".pk-alt");
+    if (await alt.count()) await alt.click();
+    else await portoDraftB.locator(".pk-body").click();
+  };
+  await openPortoBack();
   const casaWin = board.locator(".ch-back");
   await casaWin.locator(".ch-verify li", { hasText: "Casa Azul" }).filter({ hasText: "Yan binada inşaat" }).waitFor({ timeout: 40000 });
   assert.ok(analysisPrompts.some((p) => p.includes("Yan binada inşaat gürültüsü") && p.includes('"count":2')), "analysis sees findings and counts");
@@ -2602,9 +2637,7 @@ try {
     await chrome.runtime.sendMessage({ type: "process" });
   });
   // v11: it joins the Porto nights' window, priced for them for now ("geçici"), with a way back to its page with dates.
-  const portoNeedB = board.locator(".nd-card").filter({ has: board.locator(".nd-body h3", { hasText: /^Porto/ }) }).first();
-  await portoNeedB.waitFor({ timeout: 20000 });
-  await portoNeedB.locator(".nd-opts").click();
+  await openPortoBack();
   const loftRow = board.locator(".ch-back .ch-row", { has: board.locator(".ch-name", { hasText: "Ribeira Loft" }) });
   await loftRow.waitFor({ timeout: 20000 });
   assert.equal(await board.getByText("tarih seçilmemiş").count(), 0, "the undated stay is not set aside");
@@ -2617,7 +2650,7 @@ try {
   console.log("✓ flow: an undated Airbnb page joins the same nights' comparison, provisionally, with a link to add the dates");
 
   // Two stays → the engine ranks them and the worker asks Gemini for the written analysis.
-  await portoNeedB.locator(".nd-opts").click();
+  await openPortoBack();
   await board.locator(".ch-back").getByRole("button", { name: "Karşılaştır", exact: true }).click({ timeout: 20000 });
   let compare = board.getByRole("dialog", { name: "Karşılaştırma" });
   await compare.getByRole("tab", { name: /Tablo/ }).click();
@@ -2635,7 +2668,7 @@ try {
   assert.ok(chatPrompts[0].includes("decisions") && chatPrompts[0].includes("would_change_if"), "chat sees the engine's result");
   // Remembered as something the traveller said: a tag of the hero's "Tercihler" (scope and level in its window, removable there).
   await board.locator('.hx-ptag.strong[title="Fiyat · Çok önemli"]').waitFor();
-  await portoNeedB.locator(".nd-opts").click();
+  await openPortoBack();
   await board.locator(".ch-back").getByRole("button", { name: "Karşılaştır", exact: true }).click();
   compare = board.getByRole("dialog", { name: "Karşılaştırma" });
   await compare.getByRole("tab", { name: /Tablo/ }).click();
@@ -2771,8 +2804,8 @@ try {
   await board.getByRole("heading", { name: "Tayland" }).waitFor();
   assert.equal(await board.getByText("Jardim Stay").count(), 0, "Portugal items must not show in the Thailand trip");
   // A lone option has nothing to be compared with: no score, but its measured criteria are one click away (v11: its
-  // need's card, "1 seçenek ›", then the window's "Karşılaştır").
-  await board.locator(".nd-card .nd-opts", { hasText: "1 seçenek" }).first().click();
+  // need's card (F7: with a real price, its draft "Önerimiz": the card itself turns), then the window's "Karşılaştır").
+  await board.locator('.cat-sec[data-section="stay"] .pk-card.pk-draft .pk-body').first().click();
   await board.locator(".ch-back").getByRole("button", { name: "Karşılaştır", exact: true }).click();
   await board.getByRole("dialog", { name: "Karşılaştırma" }).getByText("Puan, karşılaştırınca çıkar").waitFor();
   await board.getByRole("dialog", { name: "Karşılaştırma" }).getByRole("button", { name: "Kapat" }).click();
@@ -5012,6 +5045,75 @@ try {
   console.log("✓ flight on its day: late in red with its new time and gate, in the day's line and as boxes on the Plan's card, the source named");
 } finally {
   await flightDay.close();
+}
+
+// ---------------------------------------------------------------------------------------------
+// Part 6b (F7): the draft "Önerimiz", in its own browser on a fresh sample trip. A flight or a stay with a real priced option saved shows its
+// best one as the card; it writes nothing and is no choice (the Board says "Önerimiz · kartta", never "Planda"; the hero's % waits); it is taken with
+// "✓ Bunu seç" or "Rezerve et ↗" (S1: choosing first, then the page), and goes with its need ("Gerek yok").
+const draftCtx = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-draft-")), {
+  executablePath,
+  headless: false,
+  timezoneId: "Europe/Istanbul",
+  viewport: { width: 1440, height: 900 },
+  ...TURKISH,
+  args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+});
+await draftCtx.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
+await draftCtx.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
+await draftCtx.route(/functions\/v1\/city-image/, (route) => route.fulfill({ json: { url: null, reason: "no-photo" } }));
+await draftCtx.clock.install({ time: new Date("2026-10-05T10:00:00") });
+try {
+  const worker = draftCtx.serviceWorkers()[0] ?? (await draftCtx.waitForEvent("serviceworker"));
+  const id = new URL(worker.url()).host;
+  const app = await draftCtx.newPage();
+  await app.goto(`chrome-extension://${id}/app.html`);
+  await app.getByText("Örnek geziyi yükle →").click();
+  await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
+  const flat = (texts) => texts.map((t) => t.replace(/\s+/g, " ").trim());
+  const heroNow = async () => {
+    const label = await app.locator(".hx .hx-bar").getAttribute("aria-label");
+    const of = (words) => Number(label.match(new RegExp(`(\\d+) ${words}`))?.[1] ?? 0);
+    return { booked: of("rezerve,"), planned: of("seçildi"), open: of("ihtiyaç karar bekliyor"), pct: Number(await app.locator(".hx .hx-bar").getAttribute("aria-valuenow")) };
+  };
+  const stayDraft = app.locator('.stay-block .pk-card.pk-draft[aria-label="Jardim Stay"]');
+  const flightDraft = app.locator('.pk-card.tk-draft[aria-label="Pegasus · direkt"]');
+  await stayDraft.waitFor();
+  await flightDraft.waitFor();
+  // A draft is not on the plan: the hero says what it said before (2 booked, 1 planned, 7 decisions), the sections count it as "önerimiz".
+  const before = await heroNow();
+  assert.deepEqual([before.booked, before.planned, before.open], [2, 1, 7]);
+  assert.equal(await app.locator('.cat-sec[data-section="stay"] .cat-st').innerText(), "1 rezerve · 1 önerimiz");
+  // The Board: the pick is "Önerimiz · kartta" with "Plan'da gör →", not "Planda"; the draft stays among the decisions waiting.
+  await app.getByRole("tab", { name: "Pano", exact: true }).click();
+  const panoFlight = app.locator(".pn-card.in-draft.pn-flt");
+  await panoFlight.waitFor();
+  assert.match(await panoFlight.locator(".pn-strip-l .pn-tag.ai").innerText(), /Önerimiz · kartta/);
+  assert.match(await panoFlight.locator(".pn-goplan").innerText(), /Plan'da gör/);
+  assert.equal(await panoFlight.locator(".pn-tag.on").count(), 0, "not 'Planda'");
+  assert.match(flat([await app.locator(".pn-gp.draft").first().innerText()])[0], /^✨ Önerimiz: .* · Plan'da gör →$/);
+  assert.match(await app.locator(".pn-card.in-draft .pn-rib.draft").first().innerText(), /Önerimiz · kartta/);
+  assert.equal(await app.locator(".pn-card.in-draft .pn-rib.chosen").count(), 0);
+  assert.equal(flat(await app.locator(".pn-seg button").allInnerTexts()).find((t) => t.startsWith("Planda")), "Planda 3", "the draft is not counted as on the plan");
+  await app.screenshot({ path: `${out}/40c-draft-pano.png` });
+  await app.getByRole("tab", { name: "Plan", exact: true }).click();
+  // S1: "Rezerve et ↗" on the stay's draft chooses it first (the page opens in a tab of its own; here the navigation is held back).
+  await stayDraft.locator(".pk-go").evaluate((a) => a.addEventListener("click", (e) => e.preventDefault()));
+  await stayDraft.locator(".pk-go").click();
+  await app.locator('.stay-block.chosen .pk-card[aria-label="Jardim Stay"] .pk-aldim').waitFor();
+  assert.equal(await app.locator('.stay-block .pk-card.pk-draft').count(), 0, "chosen: the draft is gone");
+  const chosen = await heroNow();
+  assert.deepEqual([chosen.booked, chosen.planned, chosen.open], [2, 2, 6], "the hero moved only with the choice");
+  assert.ok(chosen.pct < before.pct);
+  // The flight's draft goes with its need: "Gerek yok" on it is the need's, and nothing is left on the card.
+  await flightDraft.hover();
+  await flightDraft.getByRole("button", { name: /gerek yok/i }).first().click();
+  await app.locator(".pk-fold").getByRole("button", { name: "Gerek yok", exact: true }).click();
+  await flightDraft.waitFor({ state: "detached" });
+  assert.equal(await app.locator(".pk-card.tk-draft").count(), 0, "a need set aside has no draft");
+  console.log("✓ draft: the best real option is the card (\"Önerimiz\"), no choice (hero, Board \"Önerimiz · kartta\"); \"Rezerve et ↗\" and \"✓ Bunu seç\" choose; it goes with its need");
+} finally {
+  await draftCtx.close();
 }
 
 // ---------------------------------------------------------------------------------------------

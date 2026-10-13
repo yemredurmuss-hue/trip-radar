@@ -141,6 +141,13 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
               </span>
               <span className="pn-gpl">· {L("Plan'da gör", "See on the plan")} →</span>
             </button>
+          ) : g.draft ? (
+            // F7 (S11): the card's pick is not on the plan; it says "Önerimiz", and the plan shows it.
+            <button type="button" className="pn-gp draft" title={g.draft.item.name} onClick={() => onShow(g.draft!.item.id)}>
+              <span aria-hidden>✨</span>
+              <span className="pn-gpt">{lookWord("draft")}: {g.draft.item.name}</span>
+              <span className="pn-gpl">· {L("Plan'da gör", "See on the plan")} →</span>
+            </button>
           ) : (
             <span className="pn-gw">{L("Karar bekliyor", "To decide")}</span>
           )}
@@ -444,14 +451,16 @@ function PanoCard({ entry, fresh, showNeed, siblings, decisions, onShow, onCompa
         <BookedBadge as="ticket" small />
       ) : entry.inPlan ? (
         <span className="pn-tag on"><UiIcon name="check" size={11} />{L("Planda", "On the plan")}</span>
+      ) : entry.draft ? (
+        <span className="pn-tag ai"><span aria-hidden>✨ </span>{L("Önerimiz · kartta", "Our pick · on the card")}</span>
       ) : best || cheapest ? (
         <span className={`pn-tag${best ? " ai" : ""}`}>{best ? <span aria-hidden>✨ </span> : null}{best ? L("Önerim", "My pick") : L("En ucuz", "Cheapest")}</span>
       ) : null}
       {facts.pros[0] ? <span className="pn-why1">{facts.pros[0].text}</span> : facts.cons[0] ? <span className="pn-why1 minus">{facts.cons[0].text}</span> : null}
     </div>
   ) : null;
-  const action = entry.inPlan ? (
-    <button type="button" className={`pn-goplan ${entry.inPlan}`} onClick={() => onShow(item.id)}>
+  const action = entry.inPlan || entry.draft ? (
+    <button type="button" className={`pn-goplan ${entry.inPlan ?? "draft"}`} onClick={() => onShow(item.id)}>
       {L("Plan'da gör", "See on the plan")} →
     </button>
   ) : (
@@ -466,7 +475,7 @@ function PanoCard({ entry, fresh, showNeed, siblings, decisions, onShow, onCompa
     </button>
   );
   return (
-    <article className={`pn-card${flight ? " pn-flt" : ""}${entry.inPlan ? ` in-${entry.inPlan}` : ""}${fresh ? " ar-new" : ""}`} id={`pn-${item.id}`} aria-label={item.name} style={{ "--c": cardKindColor(kind) } as React.CSSProperties}>
+    <article className={`pn-card${flight ? " pn-flt" : ""}${entry.inPlan ? ` in-${entry.inPlan}` : ""}${entry.draft ? " in-draft" : ""}${fresh ? " ar-new" : ""}`} id={`pn-${item.id}`} aria-label={item.name} style={{ "--c": cardKindColor(kind) } as React.CSSProperties}>
       {flight ? (
         <>
           {strip}
@@ -504,11 +513,16 @@ function PanoCard({ entry, fresh, showNeed, siblings, decisions, onShow, onCompa
         )}
         {entry.inPlan === "booked" ? (
           <span className="pn-rib"><BookedBadge as={bookedAs(entry.item)} small /></span>
+        ) : entry.inPlan ? (
+          <span className="pn-rib chosen">
+            <UiIcon name="check" size={12} />
+            {L("Planda", "On the plan")}
+          </span>
         ) : (
-          entry.inPlan && (
-            <span className="pn-rib chosen">
-              <UiIcon name="check" size={12} />
-              {L("Planda", "On the plan")}
+          entry.draft && (
+            <span className="pn-rib draft">
+              <span aria-hidden>✨</span>
+              {L("Önerimiz · kartta", "Our pick · on the card")}
             </span>
           )
         )}

@@ -13,6 +13,7 @@ import type { Choice } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
 import { brandOf } from "../../lib/brands";
 import { isFresh, loadSeen, markSeen, onPlan, splitBack, tagOf } from "../../lib/backFace";
+import { draftOf } from "../../lib/draft";
 import { L } from "../../lib/i18n";
 import { groupKeyOf } from "../../lib/plan";
 import type { SearchLink } from "../../lib/searchLinks";
@@ -137,7 +138,9 @@ export function BackFace({ items, decision, choice, title, kind, wants, self, as
     setTimeout(onClose, CLOSE_MS);
   }, [out, onClose]);
 
-  const split = splitBack(items);
+  // The one the card shows as "Önerimiz" (no draft once anything is chosen): its tile says "Kartta", and it is the one in focus.
+  const drafted = draftOf(items, decision)?.id;
+  const split = splitBack(items, drafted);
   const shown = [...split.mine, ...split.ai];
   const [seen] = useState(() => loadSeen(env.tripId));
   const now = Date.now();
@@ -145,7 +148,7 @@ export function BackFace({ items, decision, choice, title, kind, wants, self, as
   useEffect(() => () => markSeen(env.tripId, shown.map((i) => i.id)), []);
 
   // ← → go through the options (the one in focus ringed); Esc closes; Tab stays on the back; focus goes in, and back to the card on close.
-  const [cur, setCur] = useState(() => Math.max(0, shown.findIndex(onPlan)));
+  const [cur, setCur] = useState(() => Math.max(0, shown.findIndex((i) => onPlan(i) || i.id === drafted)));
   const [keys, setKeys] = useState(false);
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -206,9 +209,10 @@ export function BackFace({ items, decision, choice, title, kind, wants, self, as
     const score = decision?.options.find((o) => o.item.id === item.id)?.score ?? null;
     const on = onPlan(item);
     const ai = item.addedBy === "ai";
-    const tagKind = tagOf(item, isFresh(item, seen, now));
-    const tag = tagKind === "selected" ? { word: L("Seçili", "Selected") } : tagKind === "new" ? { word: L("Yeni", "New"), tone: "new" as const } : null;
-    const cls = `ch-row ch-tile${on ? " on" : ""}${ai ? " ai" : ""}${count > 1 && index === cur ? " cur" : ""}`;
+    const tagKind = tagOf(item, isFresh(item, seen, now), item.id === drafted);
+    const tag =
+      tagKind === "selected" ? { word: L("Seçili", "Selected") } : tagKind === "onCard" ? { word: L("Kartta", "On card"), tone: "draft" as const } : tagKind === "new" ? { word: L("Yeni", "New"), tone: "new" as const } : null;
+    const cls = `ch-row ch-tile${on ? " on" : ""}${item.id === drafted ? " draft" : ""}${ai ? " ai" : ""}${count > 1 && index === cur ? " cur" : ""}`;
     const current = count > 1 && index === cur ? ("true" as const) : undefined;
     const rating = item.category === "stay" ? stayRatingOf(item) : null;
     const brand = brandOf(facts.source?.label, facts.source?.host);

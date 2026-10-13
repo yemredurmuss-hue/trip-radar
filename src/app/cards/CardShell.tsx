@@ -136,7 +136,7 @@ export function CardFoot({ view, nav, best = false, price, each = null, onAction
   /** F3: a chosen plan's other options, "Değiştir 2", a pill at the foot's left (it turns the card to its options, or opens them on the Board). */
   alt?: { count: number; onClick: () => void; /** v30: it turns the card to its options in place (a chevron); else it goes to the Board. */ flips?: boolean } | null;
   /** v11: a plan's page to book on ("Rezerve et ↗"), where its "Aldım" moved to the top line. */
-  go?: { href: string; label: string } | null;
+  go?: { href: string; label: string; /** F7: a draft's page is also the choice (taken before it opens). */ onClick?: () => void } | null;
   nav?: Nav;
   best?: boolean;
   price: CardFacts["price"] | null;
@@ -220,7 +220,7 @@ export function CardFoot({ view, nav, best = false, price, each = null, onAction
       )}
       {!view.action && noTicket && <span className="pk-noticket">{L("Bilet gerekmez", "No ticket needed")}</span>}
       {!view.action && !noTicket && go && (
-        <a className="pk-cta pk-go" href={go.href} target="_blank" rel="noreferrer">
+        <a className="pk-cta pk-go" href={go.href} target="_blank" rel="noreferrer" onClick={go.onClick}>
           {go.label}
         </a>
       )}

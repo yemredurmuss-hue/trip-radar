@@ -13,6 +13,7 @@ import { L } from "../../lib/i18n";
 import { nNights, nOptions } from "../../lib/i18nText";
 import { clockOf } from "../../lib/legs";
 import { stageOf } from "../../lib/lifecycle";
+import { draftOf } from "../../lib/draft";
 import { isAiOption } from "../../lib/pano";
 import { nightsBetween } from "../../lib/items";
 import { dateAlert } from "../../lib/progress";
@@ -90,7 +91,11 @@ export function JourneyStay({ stay, onGo }: { stay: StayEntry; onGo: (t: GoTarge
   const camp = Boolean(item && isCampStay(item));
   const facts = item ? cardFacts(item, undefined, env.decisions?.ctx) : null;
   const arranged = Boolean(item && item.arranged && item.noBooking != null && item.status !== "booked");
-  const look: Look = item ? (lookOf(stageOf(item, { docs: env.docsFor(item.id).length }), { arranged }) ?? "chosen") : "search";
+  // An open need with a real option on hand wears our pick (P7): the same draft the Plan's card shows.
+  const lead = block.kind === "open" ? block.groups[0]?.items ?? [] : [];
+  const leadDecision = lead.length ? [...(env.decisions?.byGroup.values() ?? [])].find((d) => d.options.some((o) => o.item.id === lead[0].id)) : undefined;
+  const drafted = lead.length ? draftOf(lead, leadDecision) : null;
+  const look: Look = drafted ? "draft" : item ? (lookOf(stageOf(item, { docs: env.docsFor(item.id).length }), { arranged }) ?? "chosen") : "search";
   const days = inOut(block.range.start, block.range.end);
   const platform = item ? stayPlatform(item) : null;
   const options = block.kind === "open" ? block.groups.reduce((n, g) => n + g.items.length, 0) : 0;

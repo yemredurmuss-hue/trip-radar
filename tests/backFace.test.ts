@@ -25,6 +25,10 @@ describe("splitBack", () => {
     expect(s.mine.map((i) => i.id)).toEqual(["a", "b", "d"]);
     expect(s.more).toBe(1);
   });
+  it("keeps the option the card shows as Önerimiz among those shown too", () => {
+    const s = splitBack([mine("a"), mine("b"), mine("c"), mine("d")], "d");
+    expect(s.mine.map((i) => i.id)).toEqual(["a", "b", "d"]);
+  });
   it("is empty for a section without options", () => {
     const s = splitBack([ai("x")]);
     expect(s.mine).toEqual([]);
@@ -45,6 +49,11 @@ describe("isFresh and tagOf", () => {
     expect(tagOf(mine("a", { status: "booked" }), true)).toBe("selected");
     expect(tagOf(mine("b"), true)).toBe("new");
     expect(tagOf(mine("c"), false)).toBeNull();
+  });
+  it("words the one the card shows as Önerimiz Kartta, before Yeni; the one on the plan stays Seçili", () => {
+    expect(tagOf(mine("a"), true, true)).toBe("onCard");
+    expect(tagOf(mine("b"), false, true)).toBe("onCard");
+    expect(tagOf(mine("c", { status: "chosen" }), false, true)).toBe("selected");
   });
 });
 
