@@ -38,6 +38,12 @@ describe("reduced motion and Hareketi duraklat", () => {
       for (const sel of [".pk-fold", ".msg-user", ".msg-assistant", ".pk-undo", ".pn-detail", ".pn-heart", ".pn-chev", ".st-ph", ".st-prompt textarea.rot::placeholder"]) expect(block).toContain(`${prefix}${sel}`);
     });
   }
+  for (const [name, block, prefix] of [["system setting", reduced, ""], ["body.still", still, "body.still "]] as const) {
+    it(`${name}: the Hareket Dili movements stop (hop, tick, banner, light, pill, skeleton, view in, section fold, sliding highlight)`, () => {
+      for (const sel of [".ms-wrap[data-state=\"done\"] .ms", ".mv-tick", ".mv-banner-out", ".work-line.on i", ".work-pill.done", ".ar-skel::after", ".ar-new", ".panel .cat-plan", ".chat-banner"]) expect(block).toContain(`${prefix}${sel}`);
+      for (const sel of [".cat-fold", ".cat-body", ".view-tabs.has-ind::before", ".plan-order.has-ind::before"]) expect(block).toContain(`${prefix}${sel}`);
+    });
+  }
   it("the new movements use the motion language's own durations and curves", () => {
     expect(f8).toContain(".pk-fold { animation: mv-rise-s 300ms var(--e-out)");
     expect(f8).toContain(".pk-undo { animation: mv-toast 300ms var(--e-out)");

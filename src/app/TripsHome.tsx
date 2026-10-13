@@ -24,6 +24,7 @@ import { useMyPhoto, usePeoplePhotos } from "./Profile";
 import { JoinShared } from "./Share";
 import { DraftCard, TripCard } from "./TripCard";
 import { joinTr } from "./TripPanel";
+import { WorkPill } from "./WorkPill";
 
 /** What opens the start chat: a mode (the chips), what was typed, or a draft to go on with. */
 export interface StartLaunch {
@@ -418,12 +419,9 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
         )}
       </section>
 
-      {(working.length > 0 || failed.length > 0) && (
+      <WorkPill count={working.length} failed={failed.length} />
+      {failed.length > 0 && (
         <div className="errors">
-          {working.length > 0 && <div className="muted work-pill" role="status">
-              <span className="work-spin" aria-hidden />
-              {L(`${working.length} kayıt işleniyor…`, `Processing ${working.length} save${working.length === 1 ? "" : "s"}…`)}
-            </div>}
           {failed.map((c) => (
             <div key={c.id}>
               <span className="error-text" title={c.error ?? ""}>

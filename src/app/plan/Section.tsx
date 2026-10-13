@@ -3,12 +3,13 @@
 // right a thin bar of settled of all (green once complete), "3/4", the arrow — and opens and closes it. Under the
 // name, its needs in stage words (v11: "1 rezerve · 2 seçildi · 1 aranıyor"). Open, "+ Ekle" joins the header, then the timeline
 // of cards and, last, "Gizlenenler · N göster" for what's out of the way.
-import { useRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { isIdeaSection, sectionProgress, stageLine, type CatSection } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import { formatPrice } from "../../lib/items";
 import { suggestionCount } from "../../lib/suggestions";
 import { HoverTip } from "../HoverTip";
+import { useFold } from "../motion";
 import { lookWord } from "../../lib/stageWords";
 import { KindIcon, UiIcon } from "../cards/Silhouettes";
 import { HiddenList } from "./HiddenList";
@@ -42,16 +43,13 @@ export function Section({ section, allot = null, allotNum = null, open, onToggle
   const chosen = st.planned;
   const needs = booked + chosen + st.search + st.options;
   const pctOf = (n: number) => (needs ? Math.round((n / needs) * 100) : 0);
-  // (hareket dili) a section the traveller opens unfolds; one that is open when the Plan appears is just there.
-  const toggled = useRef(false);
-  const toggle = () => {
-    toggled.current = true;
-    onToggle();
-  };
+  // (hareket dili, m-bolum) a section folds open and shut on a grid (rows 0fr and 1fr, 260 ms); its cards come in 80 ms late; what is under it
+  // slides. Shut, the body stays drawn until it has folded (app.css `.cat-fold`); a section open when the Plan appears is just there.
+  const fold = useFold(open);
   return (
     <section className={`cat-sec${open ? "" : " closed"}`} style={{ "--c": meta.color } as React.CSSProperties} aria-label={label} data-section={section.id}>
-      <div className="cat-head" onClick={toggle}>
-        <button type="button" className="cat-title" aria-expanded={open} onClick={(e) => { e.stopPropagation(); toggle(); }}>
+      <div className="cat-head" onClick={onToggle}>
+        <button type="button" className="cat-title" aria-expanded={open} onClick={(e) => { e.stopPropagation(); onToggle(); }}>
           <span className="cat-ic" aria-hidden>
             <KindIcon kind={meta.icon} size={20} />
           </span>
@@ -96,17 +94,21 @@ export function Section({ section, allot = null, allotNum = null, open, onToggle
           </span>
         </span>
       </div>
-      {open && (
-        <div className={`cat-body${toggled.current ? " mv-unfold" : ""}`} data-pit-children>
-          {children}
-          {section.hidden.length > 0 && <HiddenList things={section.hidden} />}
-          {/* v11: the plan's head has the one "+ Ekle"; a section adds its own kind quietly at its end. */}
-          {meta.templates.length > 0 && (
-            <button type="button" className="cat-add" onClick={onAdd} aria-label={L(`${label}: ekle`, `${label}: add`)}>
-              <UiIcon name="plus" size={13} />
-              {L("Ekle", "Add")}
-            </button>
-          )}
+      {fold.mounted && (
+        <div className={`cat-fold${fold.expanded ? " on" : ""}${fold.settled ? " settled" : ""}`} inert={!open}>
+          <div className="cat-fold-in">
+            <div className="cat-body" data-pit-children>
+              {children}
+              {section.hidden.length > 0 && <HiddenList things={section.hidden} />}
+              {/* v11: the plan's head has the one "+ Ekle"; a section adds its own kind quietly at its end. */}
+              {meta.templates.length > 0 && (
+                <button type="button" className="cat-add" onClick={onAdd} aria-label={L(`${label}: ekle`, `${label}: add`)}>
+                  <UiIcon name="plus" size={13} />
+                  {L("Ekle", "Add")}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </section>

@@ -2695,7 +2695,7 @@ button.cat-hidden-name:hover { text-decoration: underline; }
   .pn .pn-gh { gap: 6px 8px; }
 }
 /* the card that just came, and its section's count */
-.ar-new { animation: ar-in .32s ease-out both, ar-ring 1.5s ease-out .32s both; }
+.ar-new { animation: mv-swap-in var(--t-slow) var(--e-out) both, ar-ring 1.5s ease-out var(--t-slow) both; }
 .ar-pop { animation: ar-pop .36s ease-out; transform-origin: right center; }
 @keyframes ar-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes ar-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -4162,14 +4162,15 @@ a.ch-why { text-decoration: none; }
 /* -- Pano sekmesindeki nokta: the other traveller did something since the Pano was last open here -- */
 .tab-dot { position: absolute; top: 12px; right: 12px; width: 8px; height: 8px; border-radius: 50%; background: #e0457b; box-shadow: 0 0 0 2px #fff; }
 /* -- Hareket sözlüğü (motion.ts): nothing here moves the layout; all off for reduced motion -- */
+@keyframes mv-stamp { from { transform: scale(1.8); opacity: 0; } 70% { transform: scale(.92); opacity: 1; } }
 @keyframes pk-pop { 0% { transform: scale(.4) rotate(-14deg); opacity: .2; } 60% { transform: scale(1.18) rotate(4deg); opacity: 1; } }
 @keyframes pk-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(91, 69, 224, 0); } 35% { box-shadow: 0 0 0 10px rgba(91, 69, 224, .6); } }
 @keyframes pk-drop { 0% { opacity: 0; transform: translateY(-14px) scale(.96); } 70% { opacity: 1; transform: translateY(2px) scale(1); } }
-@keyframes pk-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(120, 110, 160, 0); } 50% { box-shadow: 0 0 0 7px rgba(120, 110, 160, .16); } }
-.pk-seal .okt { animation: pk-pop .5s cubic-bezier(.2, .9, .3, 1.3) backwards; }
+@keyframes pk-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(139, 116, 255, 0); } 50% { box-shadow: 0 0 0 6px rgba(139, 116, 255, .15); } }
+.pk-seal .okt { animation: mv-stamp 420ms cubic-bezier(.2, .9, .3, 1.3) backwards; }
 .pk-glow { animation: pk-glow 1.1s ease-out; }
 .pk-drop { animation: pk-drop .55s cubic-bezier(.2, .9, .3, 1.2) backwards; }
-.ek-card .pk-ring.open, .ek-card .pk-ring.half { border-radius: 50%; animation: pk-pulse 1.4s ease-in-out infinite; }
+.ek-card .pk-ring.open, .ek-card .pk-ring.half { border-radius: 50%; animation: pk-pulse 2.4s ease-in-out infinite; }
 .pk-card { transition: transform .18s ease, box-shadow .2s ease; }
 @media (hover: hover) { .pk-card:not(.pk-open):not(.ek-still):hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(28,26,51,.05), 0 12px 28px rgba(28,26,51,.09); } }
 .counting { font-variant-numeric: tabular-nums; }
@@ -4189,11 +4190,13 @@ a.ch-why { text-decoration: none; }
 .ms-wrap[data-state="wink"] .eye.r { animation: ms-wink .7s ease-in-out both; }
 .ms-wrap[data-state="work"] .ms { animation: ms-bob 1.1s ease-in-out infinite; }
 .ms-wrap[data-state="work"] .eyes { animation: ms-look 2.2s ease-in-out infinite; }
+.ms-wrap[data-state="done"] .ms { animation: ms-hop 900ms cubic-bezier(.2, .9, .3, 1.3) infinite alternate; }
 .ms-wrap[data-state="done"] .eye { opacity: 0; }
 .ms-wrap[data-state="done"] .happy { opacity: 1; }
 @keyframes ms-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
 @keyframes ms-wink { 0%, 100% { transform: scaleY(1); } 25%, 75% { transform: scaleY(.12); } }
 @keyframes ms-bob { 50% { transform: translateY(-4px); } }
+@keyframes ms-hop { to { transform: translateY(-5px) scale(1.04); } }
 @keyframes ms-look { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(-1.5px); } 65% { transform: translateX(1.5px); } }
 @media (prefers-reduced-motion: reduce) { .ms-wrap .eyes, .ms-wrap .eye, .ms-wrap .ms { animation: none !important; } }
 
@@ -4208,34 +4211,36 @@ a.ch-why { text-decoration: none; }
 @keyframes mv-pop { from { opacity: 0; transform: scale(.96); } }
 @keyframes mv-leave { to { opacity: 0; } }
 @keyframes mv-shrink { to { opacity: 0; transform: scale(.97); } }
-@keyframes mv-drawer-out { to { transform: translateX(100%); } }
-@keyframes mv-drawer { from { transform: translateX(100%); } }
+@keyframes mv-drawer-out { to { transform: translateX(102%); } }
+@keyframes mv-drawer { from { transform: translateX(102%); } }
 @keyframes mv-rise { from { opacity: 0; transform: translateY(8px); } }
 @keyframes mv-unfold { from { opacity: 0; transform: translateY(-6px); } }
 @keyframes mv-tab { from { opacity: 0; transform: scaleX(.3); } }
+@keyframes mv-tab-in { from { opacity: 0; transform: translateX(calc(var(--tab-dir, 0) * 12px)); } }
 @keyframes mv-shake { 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
 @keyframes mv-dot { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
 @keyframes mv-spin { to { transform: rotate(360deg); } }
-@keyframes mv-blur-up { from { opacity: 0; filter: blur(14px); transform: scale(1.04); } }
+@keyframes mv-blur-up { from { opacity: 0; filter: blur(16px); transform: scale(1.05); } }
 @keyframes ms-oops { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(-2deg); } }
 @keyframes ms-breathe { 50% { transform: scale(1.035); } }
 @keyframes ms-zz { 0% { opacity: 0; transform: translate(0, 2px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(3px, -6px); } }
 
 /* 1 · the view tabs: the line grows under the chosen tab; the view fades in (opacity only: nothing shifts under the pointer) */
 .view-tabs button.on::after { animation: mv-tab var(--t-base) var(--e-out) backwards; }
-.panel .cat-plan, .panel .trip-plan, .panel .doc-tab, .panel .tm-tab, .panel .pn { animation: mv-fade var(--t-base) var(--e-out) backwards; }
+.panel .cat-plan, .panel .trip-plan, .panel .doc-tab, .panel .tm-tab, .panel .pn { animation: mv-tab-in var(--t-base) var(--e-out) backwards; }
 /* a trip's card photo grows into its hero (viewTransition.ts withTripPhoto); the rest crossfades as before */
-::view-transition-group(trip-photo) { animation-duration: .5s; animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
-::view-transition-old(trip-photo), ::view-transition-new(trip-photo) { height: 100%; object-fit: cover; animation-duration: .5s; }
+::view-transition-group(trip-photo) { animation-duration: 600ms; animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
+::view-transition-old(trip-photo), ::view-transition-new(trip-photo) { height: 100%; object-fit: cover; animation-duration: 600ms; }
+:root[data-photo="back"]::view-transition-group(trip-photo), :root[data-photo="back"]::view-transition-old(trip-photo), :root[data-photo="back"]::view-transition-new(trip-photo) { animation-duration: 420ms; }
 
 /* 2 · windows and the drawer: the backdrop fades in, the window grows from 96 %, the drawer slides in from the right.
    (They leave at once: each is taken off the page when closed.) The options window (ChoiceSheet) is left to the card design. */
 .modal, .overlay, .compare-modal, .pk-sheet-back { animation: mv-fade var(--t-base) var(--e-out) backwards; }
 .modal > .modal-card, .modal > .hs-dlg, .modal > .hs-hist, .modal > .bk-sheet, .compare-card, .pk-sheet { animation: mv-pop var(--t-base) var(--e-out) backwards; }
-.drawer { animation: mv-drawer var(--t-slow) var(--e-out) backwards; }
+.drawer { animation: mv-drawer 320ms var(--e-out) backwards; }
 .mv-leaving { pointer-events: none !important; animation: mv-leave var(--t-quick) var(--e-in) forwards !important; }
 .mv-leaving > .modal-card, .mv-leaving > .hs-dlg, .mv-leaving > .hs-hist, .mv-leaving > .bk-sheet, .mv-leaving .compare-card, .mv-leaving > .pk-sheet { animation: mv-shrink var(--t-quick) var(--e-in) forwards !important; }
-.drawer.mv-leaving { animation: mv-drawer-out var(--t-base) var(--e-in) forwards !important; }
+.drawer.mv-leaving { animation: mv-drawer-out 220ms var(--e-in) forwards !important; }
 /* a section the traveller opens unfolds; its arrow turns with it */
 .cat-chev svg { transition: transform var(--t-base) var(--e-out); }
 .cat-body.mv-unfold { animation: mv-unfold var(--t-base) var(--e-out) 40ms backwards; }
@@ -4257,15 +4262,16 @@ a.ch-why { text-decoration: none; }
 .ar-pending:not(.ar-failed)::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .7) 50%, transparent 70%); transform: translateX(-100%); animation: mv-sweep 1.6s ease-in-out infinite; }
 @keyframes mv-sweep { to { transform: translateX(100%); } }
 /* "Asistana bağlanamadım · Ayarlar'a git" (Chat.tsx): a strip at the chat's top, down from above */
-.chat-banner { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; padding: 10px 12px; border-radius: 12px; background: #fff3f6; border: 1.5px solid #ffc9d9; color: #8a1f4a; font-size: 13.5px; line-height: 1.4; animation: mv-drop var(--t-slow) var(--e-out) backwards; }
+.chat-banner { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; padding: 10px 12px; border-radius: 12px; background: #fff3f6; border: 1.5px solid #ffc9d9; color: #8a1f4a; font-size: 13.5px; line-height: 1.4; animation: mv-banner-in var(--t-slow) var(--e-out) backwards; }
 .chat-banner.offline { background: #f6f4fa; border-color: #e1dced; color: #3b3560; }
 .chat-banner > span:not(.ms-wrap) { flex: 1; min-width: 0; }
 .chat-banner .small-btn { flex: none; }
 @keyframes mv-drop { from { opacity: 0; transform: translateY(-10px); } }
+@keyframes mv-banner-in { from { transform: translateY(-105%); } }
 /* "İnternet yok · N sn sonra tekrar deniyorum" (OfflineNotice.tsx): bottom right, clear of the chat's box and the undo toast */
-.reconnect { position: fixed; right: 24px; bottom: 24px; z-index: 30; display: inline-flex; align-items: center; gap: 10px; max-width: calc(100vw - 48px); padding: 9px 12px 9px 14px; border-radius: 12px; background: #221b3a; color: #fff; font-size: 13.5px; font-weight: 600; box-shadow: 0 14px 30px -14px rgba(28, 26, 51, .55); animation: mv-rise var(--t-base) var(--e-out) backwards; }
+.reconnect { transition: background-color var(--t-base) var(--e-out); position: fixed; right: 24px; bottom: 24px; z-index: 30; display: inline-flex; align-items: center; gap: 10px; max-width: calc(100vw - 48px); padding: 9px 12px 9px 14px; border-radius: 12px; background: #221b3a; color: #fff; font-size: 13.5px; font-weight: 600; box-shadow: 0 14px 30px -14px rgba(28, 26, 51, .55); animation: mv-rise var(--t-base) var(--e-out) backwards; }
 .reconnect.bad { background: #3a1526; }
-.reconnect.ok { background: #1d6b48; }
+.reconnect.ok { background: #16311f; }
 .reconnect .small-btn { background: #fff; color: #1c1a33; border: 0; }
 
 /* 4 · empty screens: the mascot, then the words, rise one after another */
@@ -4680,8 +4686,8 @@ a.ch-why { text-decoration: none; }
 .pn-act .pn-put, .pn-act .pn-goplan { margin-left: auto; }
 .pn-whylist { padding: 12px 16px 14px; gap: 6px; }
 /* -- F8 hareket (plan-v45 §4): pulse spread (a board of many empty cards does not blink as one) and the reduced-motion / "Hareketi duraklat" blocks -- */
-.ek-card:nth-child(3n+2) .pk-ring.open, .ek-card:nth-child(3n+2) .pk-ring.half { animation-delay: -.47s; }
-.ek-card:nth-child(3n) .pk-ring.open, .ek-card:nth-child(3n) .pk-ring.half { animation-delay: -.93s; }
+.ek-card:nth-child(3n+2) .pk-ring.open, .ek-card:nth-child(3n+2) .pk-ring.half { animation-delay: -.8s; }
+.ek-card:nth-child(3n) .pk-ring.open, .ek-card:nth-child(3n) .pk-ring.half { animation-delay: -1.6s; }
 /* The last small movements (plan-v45 §4(b) #7 #9 #12 #14 #15 #16): the "×" fold row and a chat message rise 6 px, the undo toast comes up
    from 20 px, the Pano's "Neden?" unfolds (the strip lets a card grow alone) and its arrow turns, the heart springs, the home box's hints rotate. */
 @keyframes mv-rise-s { from { opacity: 0; transform: translateY(6px); } }
@@ -4731,7 +4737,8 @@ a.ch-why { text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   .dc-flash, .gm-ring.go, .pk-seal .okt, .pk-glow, .pk-drop, .ek-card .pk-ring.open, .ek-card .pk-ring.half,
   .pk-stage, .pk-stage .tk-plane, .pk-stage .tk-logo, .pk-stage .tk-lab, .pk-stage .pk-state, .tk-fly, .lv-dot, .pk-landed { animation: none; }
-  .cat-bar > span, .hx-bar i, .pn-card, .pk-card { transition: none; }
+  .ms-wrap[data-state="done"] .ms, .mv-tick, .mv-banner-out, .work-line.on i, .work-pill.done, .ar-skel::after, .ar-new, .panel .cat-plan, .panel .trip-plan, .panel .doc-tab, .panel .tm-tab, .panel .pn, .chat-banner { animation: none !important; }
+  .cat-bar > span, .hx-bar i, .pn-card, .pk-card, .cat-fold, .cat-body, .view-tabs.has-ind::before, .plan-order.has-ind::before { transition: none; }
   .pk-fold, .msg-user, .msg-assistant, .pk-undo { animation: none; }
   .pn-detail, .pn-heart, .pn-chev { transition: none; }
   .st-ph { display: none; }
@@ -4743,7 +4750,8 @@ a.ch-why { text-decoration: none; }
 }
 body.still .dc-flash, body.still .gm-ring.go, body.still .pk-seal .okt, body.still .pk-glow, body.still .pk-drop, body.still .ek-card .pk-ring.open, body.still .ek-card .pk-ring.half,
 body.still .pk-stage, body.still .pk-stage .tk-plane, body.still .pk-stage .tk-logo, body.still .pk-stage .tk-lab, body.still .pk-stage .pk-state, body.still .tk-fly, body.still .lv-dot, body.still .pk-landed { animation: none; }
-body.still .cat-bar > span, body.still .hx-bar i, body.still .pn-card, body.still .pk-card { transition: none; }
+body.still .ms-wrap[data-state="done"] .ms, body.still .mv-tick, body.still .mv-banner-out, body.still .work-line.on i, body.still .work-pill.done, body.still .ar-skel::after, body.still .ar-new, body.still .panel .cat-plan, body.still .panel .trip-plan, body.still .panel .doc-tab, body.still .panel .tm-tab, body.still .panel .pn, body.still .chat-banner { animation: none !important; }
+body.still .cat-bar > span, body.still .hx-bar i, body.still .pn-card, body.still .pk-card, body.still .cat-fold, body.still .cat-body, body.still .view-tabs.has-ind::before, body.still .plan-order.has-ind::before { transition: none; }
 body.still .pk-fold, body.still .msg-user, body.still .msg-assistant, body.still .pk-undo { animation: none; }
 body.still .pn-detail, body.still .pn-heart, body.still .pn-chev { transition: none; }
 body.still .st-ph { display: none; }
@@ -4886,7 +4894,7 @@ body.still .pk-card.tk .tk-stub, body.still .pk-card.tk .tk-stub::before, body.s
 .tk-buy:hover { background: color-mix(in srgb, var(--v-ink) 86%, var(--hx-accent, #5b45e0)); }
 .tk-stub .pk-aldim { margin: 4px 0 0; padding: 3px 10px; font-size: 12px; }
 .tk-buy:focus-visible { outline: 2px solid var(--hx-accent, #5b45e0); outline-offset: 2px; }
-.pk-seal .tk-chk { animation: pk-pop .5s cubic-bezier(.2, .9, .3, 1.3) backwards; }
+.pk-seal .tk-chk { animation: mv-stamp 420ms cubic-bezier(.2, .9, .3, 1.3) backwards; }
 /* searching: a shimmering bar where the button was */
 .tk-bar { position: relative; flex: none; margin-left: auto; width: 60px; height: 8px; border-radius: 99px; overflow: hidden; background: var(--v-line2); }
 .tk-bar i { position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--hx-accent, #5b45e0) 45%, transparent), transparent); animation: tk-shimmer 1.4s linear infinite; }
@@ -4965,9 +4973,9 @@ body.still .pk-card.tk .tk-stub, body.still .pk-card.tk .tk-stub::before, body.s
 .pn-flt .pn-need { margin: 0; }
 .pn-flt.in-chosen { border-color: var(--plan-line); }
 /* nabız (the dictionary's pulse): an empty ticket has no ring, so its frame breathes; the pulse is spread over a row of them */
-.pk-card.tk.tk-search { animation: pk-pulse 1.4s ease-in-out infinite; }
-.cat-grid > :nth-child(3n+2) .pk-card.tk-search { animation-delay: -.47s; }
-.cat-grid > :nth-child(3n) .pk-card.tk-search { animation-delay: -.93s; }
+.pk-card.tk.tk-search { animation: pk-pulse 2.4s ease-in-out infinite; }
+.cat-grid > :nth-child(3n+2) .pk-card.tk-search { animation-delay: -.8s; }
+.cat-grid > :nth-child(3n) .pk-card.tk-search { animation-delay: -1.6s; }
 @media (prefers-reduced-motion: reduce) { .tk-bar i, .pk-seal .tk-chk, .pk-card.tk.tk-search { animation: none; } }
 body.still .tk-bar i, body.still .pk-seal .tk-chk, body.still .pk-card.tk.tk-search { animation: none; }
 
@@ -5186,3 +5194,58 @@ body.still .op-fx { display: none; }
   .jd-edge { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .jd-lbl { padding-top: 0; }
 }
+
+/* -- F8b Hareket Dili (docs/mockups/artifact-arsivi/hareket-dili-P2qVN5; Emre's m-* decisions, 2026-10-13): what the drawing has that the cards' own
+   motion did not. The durations and curves are the dictionary's tokens (--t-*, --e-*); opacity, transform and light only, but for the folding
+   sections (their rows) and the banner pulled up; the reduced-motion and "Hareketi duraklat" stops are in the F8 block above. -- */
+@keyframes mv-swap-in { from { opacity: 0; transform: translateY(-6px) scale(.98); } }
+@keyframes mv-indet { from { transform: translateX(-100%); } to { transform: translateX(286%); } }
+@keyframes mv-pill-bye { 0%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-6px); } }
+@keyframes mv-banner-up { to { opacity: 0; transform: translateY(-105%); margin-bottom: var(--mv-pull, 0px); } }
+
+/* m-sekme: the chosen segment's highlight is one piece that slides to the next segment (hareketDili.ts places it); the view that is left
+   fades in 120 ms as a still copy (hareketDili.ts, in its own shadow tree), the new one comes in 12 px from the side it was chosen on (mv-tab-in) */
+.view-tabs, .plan-order { position: relative; isolation: isolate; }
+.view-tabs.has-ind::before, .plan-order.has-ind::before { content: ""; position: absolute; z-index: -1; left: 0; top: 0; width: var(--ind-w); height: var(--ind-h); transform: translate(var(--ind-x), var(--ind-y)); border-radius: 10px; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .1); pointer-events: none; transition: transform var(--t-base) var(--e-out), width var(--t-base) var(--e-out), height var(--t-base) var(--e-out); }
+.plan-order.has-ind::before { border-radius: 8px; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.view-tabs.has-ind button.on, .view-tabs.has-ind button[aria-selected="true"], .plan-order.has-ind button.on, .plan-order.has-ind button[aria-selected="true"], .plan-order.has-ind button[aria-pressed="true"] { background: none; box-shadow: none; }
+
+/* m-bolum: a section's body folds on a grid, its rows 0fr and 1fr (260 ms); the cards come in 80 ms late and go first when it shuts (180 ms);
+   what is under the section slides; the arrow turns with it (.cat-chev, above). The card's own opening (the detail, the back) is not touched. */
+.cat-fold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--t-base) var(--e-out); }
+.cat-fold.on { grid-template-rows: 1fr; }
+.cat-fold-in { min-height: 0; overflow: hidden; }
+.cat-fold.settled > .cat-fold-in { overflow: visible; }
+.cat-fold .cat-body { opacity: 0; transition: opacity var(--t-quick) var(--e-out); }
+.cat-fold.on .cat-body { opacity: 1; transition-delay: 80ms; }
+.cat-n { display: inline-block; }
+
+/* m-iskelet: after 0.4 s a link being read is a dashed skeleton of the card to come, the light passing over it 1.3 s; the real card sets in
+   over 380 ms (mv-swap-in, .ar-new above; the Pano's "Yeni" card keeps its old slide: it is no skeleton's place) and a small tick is stamped on it (mv-tick) */
+.pn-card.ar-new { animation: ar-in .32s ease-out both, ar-ring 1.5s ease-out .32s both; }
+.ar-pending.ar-skel:not(.ar-failed) { border: 1.5px dashed #ddd8ea; padding: 11.5px 13.5px; background: #fff; }
+.ar-pending.ar-skel:not(.ar-failed)::after { background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .85) 50%, transparent 70%); animation-duration: 1.3s; }
+.ar-ph { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.ar-ph i { display: block; height: 10px; border-radius: 5px; background: #eeebf6; }
+.ar-ph i:first-child { width: 70%; }
+.ar-ph i:last-child { width: 45%; }
+.mv-tick { position: fixed; z-index: 45; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: #1d8a5a; color: #fff; font: 800 13px/1 var(--hx-font, inherit); pointer-events: none; box-shadow: 0 4px 10px -4px rgba(29, 138, 90, .6); animation: mv-stamp 420ms cubic-bezier(.2, .9, .3, 1.3) both, mv-leave var(--t-quick) var(--e-in) 1100ms forwards; }
+
+/* m-isik: a thin light runs along the top while work goes on in the background (WorkPill.tsx); the pill ends with "N kayıt eklendi" and fades */
+.work-line { position: fixed; left: 0; right: 0; top: 0; z-index: 70; height: 3px; overflow: hidden; opacity: 0; pointer-events: none; transition: opacity var(--t-base); }
+.work-line.on { opacity: 1; }
+.work-line i { position: absolute; left: 0; top: 0; width: 35%; height: 100%; background: linear-gradient(90deg, transparent, var(--hx-accent, #5b45e0), transparent); }
+.work-line.on i { animation: mv-indet 1.2s var(--e-move) infinite; }
+.work-pill.done { color: #1d8a5a; animation: mv-pill-bye 2200ms var(--e-out) forwards; }
+
+/* m-kurallar: a wait under 0.4 s shows no dots (they come in after 400 ms); one focus at a time (a window open, the cards behind keep still);
+   at most two pulsing rings on screen (hareketDili.ts marks the third and later) */
+.thinking { animation: mv-fade var(--t-quick) var(--e-out) 400ms backwards; }
+[data-np] { animation: none !important; }
+body:has(.modal:not(.mv-leaving), .overlay:not(.mv-leaving), .drawer:not(.mv-leaving), .compare-modal:not(.mv-leaving), .pk-sheet-back:not(.mv-leaving)) :is(.ek-card .pk-ring.open, .ek-card .pk-ring.half, .pk-card.tk.tk-search, .lv-dot, .tk-bar i) { animation-play-state: paused; }
+
+/* m-sert: the banner is pulled up out of the page when it is solved (hareketDili.ts keeps a copy for the 200 ms) */
+.mv-banner-out { pointer-events: none; animation: mv-banner-up 200ms var(--e-in) forwards; }
+.work-slot.errors { position: fixed; top: 68px; right: 24px; z-index: 40; margin: 0; }
+@media (prefers-reduced-motion: reduce) { .work-line i { width: 100%; opacity: .5; } }
+body.still .work-line i { width: 100%; opacity: .5; }

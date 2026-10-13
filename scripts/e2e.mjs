@@ -2192,7 +2192,10 @@ try {
   assert.equal(await sec("todo").locator(".cat-chev").evaluate((el) => getComputedStyle(el).transform), "none");
   // Closed, a section is its header line alone, the same in every section: icon, name … bar, settled of all, the arrow;
   // an idea section (Yapılacak şeyler) its neutral count in place of the bar and "x/y"; v11: the stage line under the name.
-  assert.equal(await app.locator(".cat-sec.closed .cat-body, .cat-sec.closed .cat-card, .cat-sec.closed .it-tile, .cat-sec.closed li, .cat-sec.closed .cat-wait, .cat-sec.closed .cat-hidden").count(), 0, "nothing under a closed header");
+  // (a section folds shut over 260 ms, its body drawn until it has folded: m-bolum)
+  const underClosed = ".cat-sec.closed .cat-body, .cat-sec.closed .cat-card, .cat-sec.closed .it-tile, .cat-sec.closed li, .cat-sec.closed .cat-wait, .cat-sec.closed .cat-hidden";
+  await app.waitForFunction((sel) => document.querySelectorAll(sel).length === 0, underClosed, { timeout: 3000 });
+  assert.equal(await app.locator(underClosed).count(), 0, "nothing under a closed header");
   const counts = [];
   for (const id of ["flight", "stay", "transport", "activity", "todo", "other"]) {
     const head = await sec(id).boundingBox();
@@ -3601,6 +3604,8 @@ try {
   // Günlük akış keeps its own markup: no empty card there.
   await board.getByRole("tab", { name: "Gün gün", exact: true }).click();
   await board.locator(".panel .dg").waitFor();
+  // (the copy of the plan that was just left fades for 120 ms: wait for it)
+  await board.waitForFunction(() => document.querySelectorAll(".panel .ek-card, .panel .ek-route, .panel .ek-foot, .panel .ek-find, .panel .ek-link, .panel .ek-line").length === 0, null, { timeout: 3000 });
   assert.equal(await panel.locator(".ek-card, .ek-route, .ek-foot, .ek-find, .ek-link, .ek-line").count(), 0, "no empty card in Günlük akış");
   await board.getByRole("tab", { name: "Plan", exact: true }).click();
   await ekSec("flight").waitFor();
@@ -5335,6 +5340,7 @@ try {
   const ring = app.locator(".ek-card .pk-ring.open, .ek-card.tk-search").first();
   await ring.waitFor();
   assert.equal(await ring.evaluate((el) => getComputedStyle(el).animationName), "pk-pulse", "nabız: an empty card's ring pulses");
+  assert.equal(await ring.evaluate((el) => getComputedStyle(el).animationDuration), "2.4s", "m-nabiz: slowly, 2.4 s a breath (the drawing's)");
 
   // rt-fly: a ticket's plane glided to its card when it was first drawn (.9 s, from 18 px left); it is on the sample's flights.
   const glide = await app.locator(".pk-card.tk .tk-plane.tk-fly").first().evaluate((el) => {
@@ -5359,7 +5365,7 @@ try {
       if (!card?.classList.contains("pk-seal")) return;
       window.__moment.seal = true;
       window.__moment.glow ||= card.classList.contains("pk-glow") || card.classList.contains("pk-stage");
-      window.__moment.pop ||= Boolean(card.querySelector(".okt")?.getAnimations().some((a) => a.animationName === "pk-pop"));
+      window.__moment.pop ||= Boolean(card.querySelector(".okt")?.getAnimations().some((a) => a.animationName === "mv-stamp"));
     }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class"], childList: true });
   });
   await idb("book", "e2e-motion-esim");
@@ -5453,6 +5459,263 @@ try {
   await app.getByRole("tab", { name: /Pano/ }).click();
   await app.locator(".pn-card").first().waitFor();
   assert.equal(await app.locator(".pn-new, .pn-card.ar-new").count(), 0, "Pano: seen once, no Yeni the next time");
+
+  // ---- F8b Hareket Dili (docs/mockups/artifact-arsivi/hareket-dili-P2qVN5; Emre's m-* decisions): one short claim for each movement ----
+  const named = "(el) => el.getAnimations().map((a) => [a.animationName, a.effect.getComputedTiming().duration])"; // (run in the page)
+  // m-sekme: the pair's highlight is one piece that slides to the chosen segment (260 ms --e-out); the new view comes in 12 px from the side
+  // it was chosen on (260 ms), the one left stays a moment as a still copy that fades (120 ms).
+  await app.getByRole("tab", { name: /^Plan/ }).first().click();
+  await app.locator(".cat-plan").waitFor();
+  await app.locator(".panel").evaluate((el) => (el.scrollTop = 0));
+  const viewTabs = app.locator(".view-tabs");
+  assert.ok(await viewTabs.evaluate((el) => el.classList.contains("has-ind")), "m-sekme: the pair carries a sliding highlight");
+  assert.deepEqual(await viewTabs.evaluate((el) => { const cs = getComputedStyle(el, "::before"); return [cs.transitionDuration.split(",")[0].trim(), cs.transitionTimingFunction.match(/cubic-bezier\([^)]*\)/)[0]]; }), ["0.26s", "cubic-bezier(0.16, 1, 0.3, 1)"], "m-sekme: the highlight slides 260 ms, --e-out");
+  const toPano = await app.evaluate(async () => {
+    [...document.querySelectorAll(".view-tabs [role=tab]")].find((b) => /Pano/.test(b.textContent)).click();
+    const out = {
+      ghost: [...document.querySelectorAll(".mv-ghost")].flatMap((g) => g.getAnimations().map((a) => ["fade", a.effect.getComputedTiming().duration, a.effect.getComputedTiming().easing])),
+      inside: document.querySelectorAll(".mv-ghost *").length,
+      dir: document.documentElement.style.getPropertyValue("--tab-dir"),
+      view: [],
+    };
+    // (the Pano is drawn within a frame or two of the press)
+    for (let i = 0; i < 100 && !document.querySelector(".panel .pn"); i++) await new Promise((r) => requestAnimationFrame(r));
+    out.view = [...document.querySelectorAll(".panel .pn")].flatMap((g) => g.getAnimations().map((a) => [a.animationName, a.effect.getComputedTiming().duration]));
+    return out;
+  });
+  assert.ok(toPano.ghost.some(([, d, easing]) => d === 120 && easing === "cubic-bezier(0.5, 0, 0.75, 0)"), `m-sekme: the old view fades 120 ms, --e-in (${JSON.stringify(toPano.ghost)})`);
+  assert.equal(toPano.inside, 0, "m-sekme: the copy of the old view is out of every query's reach (a closed shadow tree)");
+  assert.ok(toPano.view.some(([n, d]) => n === "mv-tab-in" && d === 260), `m-sekme: the new view comes in over 260 ms (${JSON.stringify(toPano.view)})`);
+  assert.equal(toPano.dir, "1", "m-sekme: Pano is the later segment: it comes from the right");
+  await app.waitForFunction(() => !document.querySelector(".mv-ghost"), null, { timeout: 2000 });
+  await app.waitForFunction(() => { const el = document.querySelector(".view-tabs"); return Math.abs(new DOMMatrix(getComputedStyle(el, "::before").transform).m41 - el.querySelector('[aria-selected="true"]').offsetLeft) < 1.5; }, null, { timeout: 5000 });
+  const slid = await viewTabs.evaluate((el) => [new DOMMatrix(getComputedStyle(el, "::before").transform).m41, el.querySelector('[aria-selected="true"]').offsetLeft, el.querySelector('[aria-selected="true"]').textContent]);
+  assert.ok(Math.abs(slid[0] - slid[1]) < 1.5 && /Pano/.test(slid[2]), `m-sekme: the highlight has slid to the chosen segment (${slid})`);
+  const toPlan = await app.evaluate(() => { [...document.querySelectorAll(".view-tabs [role=tab]")].find((b) => /^Plan/.test(b.textContent)).click(); return document.documentElement.style.getPropertyValue("--tab-dir"); });
+  assert.equal(toPlan, "-1", "m-sekme: back to the earlier segment, from the left");
+  await app.locator(".cat-plan").waitFor();
+  await app.getByRole("tab", { name: "Yolculuk sırasıyla", exact: true }).click();
+  assert.ok(await app.locator(".plan-order").evaluate((el) => el.classList.contains("has-ind")), "m-sekme: the Plan's three ways to read carry the highlight too");
+  await app.getByRole("tab", { name: "Kategoriye göre", exact: true }).click();
+  await app.locator(".cat-plan").waitFor();
+
+  // m-bolum: a section folds on a grid (rows 0fr and 1fr, 260 ms); its cards come in 80 ms late (180 ms); shut, the body stays drawn until it has folded.
+  const flightSec = app.locator('.cat-sec[data-section="flight"]');
+  await flightSec.evaluate((el) => el.scrollIntoView({ block: "start" }));
+  if (await flightSec.evaluate((el) => el.classList.contains("closed"))) await flightSec.locator(".cat-title").click();
+  await flightSec.locator(".cat-fold.settled").waitFor({ timeout: 3000 });
+  const shutting = await flightSec.evaluate(async (sec) => {
+    sec.querySelector(".cat-title").click();
+    for (let i = 0; i < 60 && !sec.classList.contains("closed"); i++) await new Promise((r) => requestAnimationFrame(r));
+    const fold = sec.querySelector(".cat-fold");
+    const cs = fold && getComputedStyle(fold);
+    return fold && { on: fold.classList.contains("on"), inert: fold.inert, prop: cs.transitionProperty, dur: cs.transitionDuration, closed: sec.classList.contains("closed") };
+  });
+  assert.deepEqual(shutting, { on: false, inert: true, prop: "grid-template-rows", dur: "0.26s", closed: true }, "m-bolum: shutting, the body is still drawn while its rows fold (260 ms)");
+  await app.waitForFunction(() => !document.querySelector('.cat-sec[data-section="flight"] .cat-fold'), null, { timeout: 3000 });
+  await flightSec.locator(".cat-title").click();
+  await flightSec.locator(".cat-fold.on").waitFor({ timeout: 3000 });
+  assert.deepEqual(await flightSec.locator(".cat-fold .cat-body").evaluate((el) => [getComputedStyle(el).transitionDuration, getComputedStyle(el).transitionDelay]), ["0.18s", "0.08s"], "m-bolum: the cards come in 80 ms late, over 180 ms");
+  await flightSec.locator(".cat-fold.settled").waitFor({ timeout: 3000 });
+
+  // m-iskelet + m-isik + m-kurallar: a link being read. Under 0.4 s there is no skeleton; after it the card is a dashed skeleton with a light
+  // over it; a thin light runs along the top; the home's pill counts it and, when it is over, says "1 kayıt eklendi ✓" and fades.
+  const captureRow = (status) =>
+    app.evaluate(async (st) => {
+      const request = indexedDB.open("trip-radar");
+      const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+      const tx = database.transaction("captures", "readwrite");
+      if (st === "gone") tx.objectStore("captures").delete("e2e-motion-wait");
+      else tx.objectStore("captures").put({ id: "e2e-motion-wait", kind: "paste-link", url: "https://www.airbnb.com/rooms/4242", title: null, pageText: "", viewportText: "", selection: "", jsonLd: [], meta: {}, screenshot: null, capturedAt: Date.now(), status: st, error: null, itemId: null });
+      await new Promise((resolve) => (tx.oncomplete = resolve));
+      new BroadcastChannel("trip-radar").postMessage("changed");
+    }, status);
+  await captureRow("processing");
+  const waiting = app.locator(".ar-pending", { hasText: "airbnb.com" });
+  await waiting.waitFor({ timeout: 5000 });
+  assert.equal(await app.locator(".ar-pending.ar-skel, .ar-ph").count(), 0, "m-kurallar: a wait under 0.4 s shows no skeleton");
+  await app.locator(".ar-pending.ar-skel").waitFor({ timeout: 5000 });
+  const skel = await app.locator(".ar-pending.ar-skel").evaluate((el) => [getComputedStyle(el).borderTopStyle, getComputedStyle(el, "::after").animationDuration, el.querySelectorAll(".ar-ph i").length]);
+  assert.deepEqual(skel, ["dashed", "1.3s", 2], "m-iskelet: a dashed skeleton, the light passing over it in 1.3 s");
+  assert.deepEqual(await app.locator(".work-line.on i").evaluate(new Function("el", `return (${named})(el)`)), [["mv-indet", 1200]], "m-isik: a thin light runs along the top, 1.2 s a pass");
+  assert.equal(await app.locator(".work-line").evaluate((el) => getComputedStyle(el).height), "3px");
+  const swapIn = await app.locator(".pk-card").first().evaluate((el) => {
+    el.classList.add("ar-new");
+    const r = el.getAnimations().map((a) => [a.animationName, a.effect.getComputedTiming().duration]);
+    el.classList.remove("ar-new");
+    return r;
+  });
+  assert.ok(swapIn.some(([n, d]) => n === "mv-swap-in" && d === 380), `m-iskelet: the real card sets in over 380 ms (${JSON.stringify(swapIn)})`);
+  await app.getByRole("button", { name: "Seyahatlerim" }).first().click();
+  const pill = app.locator(".work-pill");
+  await pill.waitFor({ timeout: 5000 });
+  assert.equal(await app.locator(".work-slot").evaluate((el) => getComputedStyle(el).position), "fixed", "m-isik: the pill is at the top right, where it stays");
+  await pill.locator(".work-spin").waitFor({ timeout: 3000 });
+  await captureRow("gone");
+  await app.locator(".work-pill.done", { hasText: "1 kayıt eklendi ✓" }).waitFor({ timeout: 3000 });
+  assert.deepEqual(await app.locator(".work-pill.done").evaluate(new Function("el", `return (${named})(el)`)), [["mv-pill-bye", 2200]], "m-isik: the pill says what was added, then fades");
+  await app.locator(".work-pill").waitFor({ state: "detached", timeout: 5000 });
+  await app.getByText("Portekiz (örnek)").first().click();
+  await app.locator(".cat-plan").waitFor();
+
+  // m-maskot: "Oldu" hops (900 ms, alternating); m-sert: the seal is pressed down from big (420 ms), the banner comes down whole (380 ms) and is
+  // pulled up (200 ms), the notice ends in #16311f; m-cekmece: the drawer 320 ms in, 220 ms out; m-kurallar: dots wait 400 ms.
+  const probes = await app.evaluate(async () => {
+    const pick = (el, ...keys) => keys.map((k) => getComputedStyle(el)[k]);
+    const add = (tag, cls, parent = document.body) => {
+      const el = document.createElement(tag);
+      el.className = cls;
+      parent.appendChild(el);
+      return el;
+    };
+    const mascot = add("span", "ms-wrap");
+    mascot.dataset.state = "done";
+    mascot.innerHTML = '<svg class="ms" viewBox="0 0 48 48" width="34" height="34"></svg>';
+    const out = { hop: pick(mascot.querySelector(".ms"), "animationName", "animationDuration", "animationIterationCount", "animationDirection") };
+    mascot.remove();
+    const okt = add("div", "pk-seal");
+    const seal = add("span", "okt", okt);
+    out.seal = pick(seal, "animationName", "animationDuration");
+    okt.remove();
+    const chat = document.querySelector(".chat") ?? document.body;
+    const banner = add("div", "chat-banner settings", chat);
+    out.bannerIn = pick(banner, "animationName", "animationDuration", "animationTimingFunction");
+    banner.remove();
+    await new Promise((r) => setTimeout(r, 0)); // (the page's observer sees the removal)
+    const gone = document.querySelector(".mv-banner-out");
+    out.bannerOut = gone ? pick(gone, "animationName", "animationDuration") : null;
+    gone?.remove();
+    const ok = add("div", "reconnect ok");
+    out.ok = pick(ok, "backgroundColor");
+    ok.remove();
+    const drawer = add("aside", "drawer");
+    out.drawerIn = pick(drawer, "animationName", "animationDuration");
+    drawer.classList.add("mv-leaving");
+    out.drawerOut = pick(drawer, "animationName", "animationDuration");
+    drawer.remove();
+    const thinking = add("div", "thinking");
+    out.thinking = pick(thinking, "animationName", "animationDelay");
+    thinking.remove();
+    return out;
+  });
+  assert.deepEqual(probes.hop, ["ms-hop", "0.9s", "infinite", "alternate"], "m-maskot: Oldu hops, 900 ms");
+  assert.deepEqual(probes.seal, ["mv-stamp", "0.42s"], "m-sert: the seal is pressed down from big, 420 ms");
+  assert.deepEqual(probes.bannerIn, ["mv-banner-in", "0.38s", "cubic-bezier(0.16, 1, 0.3, 1)"], "m-sert: the banner comes down whole, 380 ms --e-out");
+  assert.deepEqual(probes.bannerOut, ["mv-banner-up", "0.2s"], "m-sert: solved, it is pulled up in 200 ms");
+  assert.equal(probes.ok[0], "rgb(22, 49, 31)", "m-sert: the notice ends in #16311f");
+  assert.deepEqual(probes.drawerIn, ["mv-drawer", "0.32s"], "m-cekmece: the drawer comes in over 320 ms");
+  assert.deepEqual(probes.drawerOut, ["mv-drawer-out", "0.22s"], "m-cekmece: and leaves over 220 ms");
+  assert.deepEqual(probes.thinking, ["mv-fade", "0.4s"], "m-kurallar: the dots come in after 400 ms");
+
+  // m-cekmece: the trip's photo takes 420 ms back to its card (and 600 ms in: the way is on the page while it runs).
+  const photoWay = await app.evaluate(async () => {
+    const back = [...document.querySelectorAll("button")].find((b) => /Seyahatlerim/.test(b.textContent));
+    back.click();
+    const seen = { way: document.documentElement.dataset.photo, ms: null };
+    for (let i = 0; i < 40 && !seen.ms; i++) {
+      await new Promise((r) => setTimeout(r, 40));
+      const a = document.documentElement.getAnimations({ subtree: true }).find((x) => x.effect?.pseudoElement === "::view-transition-old(trip-photo)");
+      if (a) seen.ms = a.effect.getComputedTiming().duration;
+    }
+    return seen;
+  });
+  assert.equal(photoWay.way, "back", "m-cekmece: the way back is set");
+  assert.ok(photoWay.ms == null || photoWay.ms === 420, `m-cekmece: the photo goes back over 420 ms (${photoWay.ms})`);
+  await app.getByText("Portekiz (örnek)").first().click();
+  await app.locator(".cat-plan").waitFor();
+
+  // m-planakoy: the card's small copy flies in an arc (420 ms) to the number of its section, which jumps 1.35x (380 ms); with no section in
+  // sight (the Pano) it flies to the Plan tab as before. (a stand-in button, so nothing is put on the plan)
+  const actSec = app.locator('.cat-sec[data-section="activity"]');
+  await actSec.evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.waitForTimeout(300);
+  const flew = await app.evaluate(async () => {
+    const sec = document.querySelector('.cat-sec[data-section="activity"]');
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = "+ Plana koy";
+    sec.querySelector(".cat-head").insertAdjacentElement("afterend", b);
+    const calls = [];
+    const real = Element.prototype.animate;
+    Element.prototype.animate = function (k, o) {
+      calls.push([this, k, o]);
+      return real.call(this, k, o);
+    };
+    b.click();
+    const chip = document.querySelector(".mv-fly");
+    const mark = sec.querySelector(".cat-head .cat-n");
+    const keys = chip?.getAnimations()[0]?.effect.getKeyframes().map((k) => k.transform) ?? [];
+    const timing = chip?.getAnimations()[0]?.effect.getComputedTiming().duration;
+    let bump = null;
+    for (let i = 0; i < 100 && !bump; i++) {
+      await new Promise((r) => setTimeout(r, 40));
+      bump = calls.find(([el, k]) => el === mark && k.some((f) => f.scale === "1.35"))?.[2].duration ?? null;
+    }
+    Element.prototype.animate = real;
+    b.remove();
+    return { keys, timing, bump, toMark: Boolean(mark), seen: calls.map(([el, k]) => `${el.className}|${el.tagName}|${JSON.stringify(k).slice(0, 60)}`), box: JSON.stringify(mark?.getBoundingClientRect()) };
+  });
+  assert.ok(flew.toMark && flew.timing === 420, `m-planakoy: the copy flies 420 ms to the section's number (${JSON.stringify(flew)})`);
+  assert.ok(/scale\(0?\.9\)/.test(flew.keys[1]) && /scale\(0?\.6\)/.test(flew.keys[2]), `m-planakoy: from the drawing: .9 at the top of the arc, .6 at the end (${flew.keys})`);
+  assert.equal(flew.bump, 380, `m-planakoy: the number jumps 1.35x over 380 ms (${JSON.stringify(flew)})`);
+  await app.locator(".panel").evaluate((el) => (el.scrollTop = 0));
+  await app.getByRole("tab", { name: /Pano/ }).click();
+  await app.locator(".pn-card").first().waitFor();
+  const flewTab = await app.evaluate(async () => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = "+ Plana koy";
+    document.querySelector(".pn").prepend(b);
+    const calls = [];
+    const real = Element.prototype.animate;
+    Element.prototype.animate = function (k, o) {
+      calls.push([this, k, o]);
+      return real.call(this, k, o);
+    };
+    b.click();
+    const tab = document.querySelector(".view-tabs [role=tab]");
+    let bump = null;
+    for (let i = 0; i < 100 && !bump; i++) {
+      await new Promise((r) => setTimeout(r, 40));
+      bump = calls.find(([el, k]) => el === tab && k.some((f) => f.scale === "1.18"))?.[2].duration ?? null;
+    }
+    Element.prototype.animate = real;
+    b.remove();
+    return bump;
+  });
+  assert.equal(flewTab, 380, "m-planakoy: on the Pano, where no section is drawn, the Plan tab is still the target");
+  await app.getByRole("tab", { name: /^Plan/ }).first().click();
+  await app.locator(".cat-plan").waitFor();
+
+  // m-kurallar: at most two pulsing rings on screen (the third and later keep still); a window open, the cards behind keep still (one focus).
+  const rings = await app.evaluate(async () => {
+    const panel = document.querySelector(".panel");
+    panel.scrollTop = 0;
+    const fakes = [];
+    for (let i = 0; i < 4; i++) {
+      const card = document.createElement("div");
+      card.className = "ek-card";
+      card.style.cssText = "position:absolute;left:" + (200 + i * 40) + "px;top:" + (120 + i * 24) + "px;width:30px;height:30px;z-index:5";
+      card.innerHTML = '<span class="pk-ring open" style="display:block;width:20px;height:20px"></span>';
+      panel.appendChild(card);
+      fakes.push(card.firstChild);
+    }
+    for (let i = 0; i < 75 && fakes.filter((f) => f.hasAttribute("data-np")).length < 2; i++) await new Promise((r) => setTimeout(r, 40));
+    const still = fakes.filter((f) => f.hasAttribute("data-np")).length;
+    const names = fakes.map((f) => getComputedStyle(f).animationName);
+    const modal = document.createElement("div");
+    modal.className = "modal";
+    document.body.appendChild(modal);
+    const paused = fakes.slice(0, 2).map((f) => f.getAnimations()[0]?.playState ?? "none");
+    modal.remove();
+    const running = fakes.slice(0, 2).map((f) => f.getAnimations()[0]?.playState ?? "none");
+    fakes.forEach((f) => f.parentElement.remove());
+    return { still, names, paused, running };
+  });
+  assert.equal(rings.still, 2, `m-kurallar: of four rings on screen two keep still (${JSON.stringify(rings)})`);
+  assert.deepEqual(rings.names, ["pk-pulse", "pk-pulse", "none", "none"], "m-kurallar: the first two pulse, the third and fourth do not");
+  assert.deepEqual(rings.paused, ["paused", "paused"], "m-kurallar: a window open, the rings behind keep still");
+  assert.deepEqual(rings.running, ["running", "running"], "m-kurallar: closed, they pulse again");
 
   // Yer tutucu cümleler (#12): three hints turn over 9 s while the home box is empty and left alone; focus stops them and the first stays.
   await app.getByRole("button", { name: "Seyahatlerim" }).first().click();

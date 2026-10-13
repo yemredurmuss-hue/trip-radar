@@ -8,6 +8,7 @@ import { arrivedText, diffArrivals, pendingSlot, predictSection, siteOf, hostOf,
 import { findInSections, planSectionOfItem, type CatSection, type SectionId } from "../../lib/categories";
 import type { Todo } from "../../lib/progress";
 import type { Capture, Item } from "../../lib/types";
+import { stampTick } from "../hareketDili";
 import { findTarget } from "../Progress";
 import { ArriveToast, PendingCard, type Pending } from "./ArriveViews";
 import { captureById, endIntake, intakeNow, onRevealRequest, useIntake } from "./intake";
@@ -141,7 +142,7 @@ export function useArrivals({ tripId, items, sections, openCaptures, view, isOpe
     // on its own (İlham, one the traveller closed) stays closed: the count pops and the toast says where.
     setTimeout(() => {
       const els = placed.map((p) => findTarget({ item: p.id }));
-      els.forEach((el) => pulse(el, "ar-new", RING_MS));
+      els.forEach((el) => (pulse(el, "ar-new", RING_MS), stampTick(el)));
       for (const sec of new Set(placed.map((p) => p.section))) pulse(document.querySelector(`[data-section="${sec}"] :is(.cat-count, .cat-ideas)`), "ar-pop", POP_MS);
       const seen = live.current.view === "plan" && els.some((el) => el && inView(el));
       if (opts.toast && !seen) setToast({ text: arrivedText(placed), itemId: placed[0].id, at: Date.now() });

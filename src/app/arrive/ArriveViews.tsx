@@ -9,6 +9,7 @@ import { L } from "../../lib/i18n";
 import { retryCapture } from "../../lib/process";
 import { KindIcon, UiIcon } from "../cards/Silhouettes";
 import { FallbackImg } from "../FallbackImg";
+import { useLate } from "../motion";
 import { dropCapture } from "./intake";
 
 export interface Pending {
@@ -50,8 +51,11 @@ export function PendingCard({ p }: { p: Pending }) {
     return () => clearTimeout(t);
   }, [line.next]);
   const stage = line.text;
+  // (hareket dili, m-iskelet) after 0.4 s of waiting the card turns into a dashed skeleton of the card to come, a light passing over it;
+  // a link read sooner never shows it. The real card then sets in (app.css `.ar-new`).
+  const skeleton = useLate(!failed);
   return (
-    <div className={`ar-pending${failed ? " ar-failed" : ""}${line.stale ? " ar-stale" : ""}`} data-arrive={p.key} title={failed ? (p.error ?? undefined) : undefined} role={failed ? undefined : "status"}>
+    <div className={`ar-pending${failed ? " ar-failed" : ""}${line.stale ? " ar-stale" : ""}${skeleton ? " ar-skel" : ""}`} data-arrive={p.key} title={failed ? (p.error ?? undefined) : undefined} role={failed ? undefined : "status"}>
       <span className={`ar-fav${p.thumb ? " ar-has-thumb" : ""}`} aria-hidden>
         {p.thumb ? <img className="ar-thumb" src={p.thumb} alt="" /> : <SiteIcon host={p.host} kind={p.kind} size={18} />}
       </span>
@@ -72,6 +76,12 @@ export function PendingCard({ p }: { p: Pending }) {
         </span>
         {!failed && !line.stale && (
           <span className="ar-bar" aria-hidden>
+            <i />
+          </span>
+        )}
+        {skeleton && (
+          <span className="ar-ph" aria-hidden>
+            <i />
             <i />
           </span>
         )}
@@ -133,13 +143,14 @@ export function ArriveChip({ host, label, state, onShow, onRetry }: {
   onShow?: () => void;
   onRetry?: () => void;
 }) {
+  const spin = useLate(state.tone === "work");
   return (
     <div className={`ar-chip ar-${state.tone}`} role="status" aria-live="polite" title={state.tone === "error" ? (state.detail ?? undefined) : undefined}>
       <span className="ar-chip-site">
         <SiteIcon host={host} kind={host ? "link" : "file"} size={14} />
         {label && <span>{label}</span>}
       </span>
-      {state.tone === "work" && <i className="ar-spin" aria-hidden />}
+      {spin && <i className="ar-spin" aria-hidden />}
       <span className="ar-chip-text">{state.tone === "error" ? `⚠ ${state.text}` : state.text}</span>
       {onShow && (
         <button type="button" className="ar-chip-btn" onClick={onShow}>
