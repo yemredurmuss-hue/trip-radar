@@ -486,7 +486,7 @@ export function EmptyLegCard({ leg }: { leg: Leg }) {
     <EmptyShell
       kind={v.kind}
       label={v.label}
-      date={formatDateRange(leg.date, null)}
+      date={ways ? null : formatDateRange(leg.date, null)}
       ariaLabel={v.ariaLabel}
       domId={`leg-${leg.key}`}
       extraClass="pk-leg"
@@ -495,11 +495,16 @@ export function EmptyLegCard({ leg }: { leg: Leg }) {
       body={
         ways ? (
           <>
-            {/* v30: how to go isn't known: it's said on top, the way drawn faint and large at the left, the ways to pick right under. */}
+            {/* F5a: how to go isn't known: "A → B" large, the day in a capsule and the sentence beside it, the ways to pick right under. */}
             <div className="ek-undec">
-              <span className="ek-undec-art" aria-hidden><img src="illus/tren.png" alt="" /></span>
-              <span className="ek-undec-t">
-                <b>{v.from.city}<span className="ek-arr" aria-hidden> → </span>{v.to.city}</b>
+              <b className="ek-undec-ttl">{v.from.city}<span className="ek-arr" aria-hidden> → </span>{v.to.city}</b>
+              <span className="ek-undec-w">
+                {leg.date && (
+                  <span className="pk-rd-when">
+                    <UiIcon name="cal" size={13} />
+                    {formatDateRange(leg.date, null)}
+                  </span>
+                )}
                 <span className="ek-undec-how">{L("Nasıl gideceğin belli değil", "How you'll go isn't decided")}</span>
               </span>
             </div>

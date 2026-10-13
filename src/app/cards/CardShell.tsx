@@ -119,7 +119,7 @@ export interface Nav {
 }
 
 /** The bottom strip: where it stands (or ‹ 1/2 ›) on the left, the price and the one action on the right. */
-export function CardFoot({ view, nav, best = false, price, onAction, live, go, alt, quietWait = false, says = false, timed = null, docs = null, more, noTicket = false }: {
+export function CardFoot({ view, nav, best = false, price, each = null, onAction, live, go, alt, quietWait = false, says = false, timed = null, docs = null, more, noTicket = false }: {
   /** v30: a way of travel that needs no ticket says so by its price ("Bilet gerekmez") instead of a page to buy on. */
   noTicket?: boolean;
   view: FootView;
@@ -140,6 +140,8 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go, a
   nav?: Nav;
   best?: boolean;
   price: CardFacts["price"] | null;
+  /** F5a: a ticket's price per person, big, and the party's line under it ("2 kişi · €30"); in place of the price's own text. */
+  each?: { each: string; line: string | null } | null;
   onAction?: () => void;
   /** A flight's real data (0.36.18): a note (the ticket against the schedule, a delay) and its source. */
   live?: { note: string | null; tone: "warn" | "bad"; source: string | null } | null;
@@ -196,12 +198,17 @@ export function CardFoot({ view, nav, best = false, price, onAction, live, go, a
                 <small> / {price.perNight.split(" / ")[1]}</small>
               </span>
             ) : (
-              price && (
+              price && (each ? (
+                <span className="pk-price3">
+                  <span><b>{each.each}</b> {L("kişi başı", "per person")}</span>
+                  {each.line && <small>{each.line}</small>}
+                </span>
+              ) : (
                 <>
                   <b>{price.text}</b>
                   {price.label ? ` ${price.label}` : ""}
                 </>
-              )
+              ))
             )}
           </Editable>
         </span>

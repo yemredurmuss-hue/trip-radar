@@ -69,6 +69,7 @@ const UI_ICONS = {
   check: g(<path d="m5 12.5 4.5 4.5L19 7.5" />, 3),
   // The Pano (the card back's "Pano'da aç").
   board: g(<><rect x="4" y="4" width="6" height="16" rx="1.6" /><rect x="14" y="4" width="6" height="10" rx="1.6" /></>),
+  cal: g(<><rect x="4" y="5.5" width="16" height="14.5" rx="2.4" /><path d="M8 3.5v4M16 3.5v4M4 10.5h16" /></>, 2),
   pin: g(<><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.3" /></>),
   left: g(<path d="m15 5-7 7 7 7" />, 2.4),
   right: g(<path d="m9 5 7 7-7 7" />, 2.4),

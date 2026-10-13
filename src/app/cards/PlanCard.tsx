@@ -8,6 +8,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { cardFacts, durationText, tripPeople } from "../../lib/cardFacts";
 import { cardKind, isTransportKind, type LegEnds, type TransportMode } from "../../lib/cardKinds";
 import { bookedAs, footOf, mediaFace, ringOf, stayPlatform, topDate, transportFace } from "../../lib/cardView";
+import { nPeople } from "../../lib/heroInfo";
 import type { Choice, Ranked } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
 import { L } from "../../lib/i18n";
@@ -253,6 +254,11 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
     if (face.from) face.from = { ...face.from, sub: `${face.from.sub ?? ""}${term(live.departure.terminal)}`.trim(), late: red && !!live.departure.revised, was: red ? was.departure : null };
     if (face.to) face.to = { ...face.to, sub: `${face.to.sub ?? ""}${term(live.arrival.terminal)}`.trim(), late: red && !!live.arrival.revised, was: red ? was.arrival : null };
   }
+  // F5a: a ticketed ride (train, bus, ferry) reads like the sites: when and by what in a capsule (so the top line has no day), the price per person.
+  const ride = transport && kind !== "flight" && Boolean(face && (face.rental ? face.from : face.from && face.to));
+  const party = item.guests.adults ?? tripPeople(env.decisions?.ctx);
+  const rideEach = ride && !face!.rental ? ticketPrices(item, facts.price, party) : null;
+  const eachLine = rideEach?.each ? { each: rideEach.each, line: party && party > 1 ? `${nPeople(party)} · ${rideEach.total}` : null } : null;
   const stub = kind === "flight" && item.status === "chosen" ? ticketPrices(item, facts.price, tripPeople(env.decisions?.ctx)) : null;
   const liveFoot = live
     ? red
@@ -264,7 +270,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       kind={kind}
       ring={ring}
       date={
-        intent ? null : (
+        intent || (ride && !face!.rental) ? null : (
           <>
             <CardDate item={item} kind={kind} />
             {tag && ` · ${tag}`}
@@ -276,7 +282,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       badge={<WhoseBadge item={item} trip={env.trip} />}
       // F1c: whoever saved it, on the corner: ✨ for our pick, a fellow traveller always, the owner's own face only on a trip of two or more.
       corner={adderOf(item) || people.length > 1 ? <SavedFace item={item} /> : null}
-      extraClass={[arranged ? "pk-arranged" : "", allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", stub ? "pk-stubbed" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined}
+      extraClass={[ride ? "pk-rd-card" : "", arranged ? "pk-arranged" : "", allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", stub ? "pk-stubbed" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined}
       docs={bookedCard ? null : <DocAccess item={item} docs={docs} />}
       onDelete={stageMenu.hide}
       onArranged={stageMenu.booked || bookedCard ? undefined : () => void setArranged(item, true)}
@@ -300,7 +306,10 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
           <>
             {/* v30: a flight's middle is the curved route; any other way is a ride: its drawing, "A → B", the way (a rental: where, how long, and its pick-up and return line). */}
             {kind !== "flight" && (face!.rental ? face!.from : face!.from && face!.to) ? (
-              <RideCardBody face={face!.rental ? { ...face!, to: null, middle: [face!.middle, face!.to?.city].filter(Boolean).join(" · ") || null } : face!} title={item.name} kind={kind} brand={brandOf(facts.source?.label, facts.source?.host)} when={null} line={face!.rental ? rentalLine(item) : null} />
+              <RideCardBody face={face!.rental ? { ...face!, to: null, middle: [face!.middle, face!.to?.city].filter(Boolean).join(" · ") || null } : face!} title={item.name} kind={kind} brand={brandOf(facts.source?.label, facts.source?.host)} when={face!.rental ? null : <>
+                <CardDate item={item} kind={kind} />
+                {face!.from?.time && ` · ${face!.from.time}`}
+              </>} line={face!.rental ? rentalLine(item) : null} />
             ) : (
               <TransportCardBody face={face!} title={item.name} art={kind === "flight" ? <RouteArc stops={(item.flight?.stops ?? 0) > 0} /> : kind !== "transport" ? <TransportArt mode={kind} /> : null} />
             )}
@@ -318,7 +327,7 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       }
       foot={
         <>
-          <CardFoot view={bookTop || arranged ? { ...foot, action: null } : foot} nav={nav} best={best} price={facts.price} onAction={act} live={liveFoot}
+          <CardFoot view={bookTop || arranged ? { ...foot, action: null } : foot} nav={nav} best={best} price={facts.price} each={eachLine} onAction={act} live={liveFoot}
             go={bookTop && page ? { href: page, label: goLabel } : null}
             alt={altCount > 0 ? { count: altCount, onClick: flips ? onChange! : () => env.onPano(groupKeyOf(item)), flips } : null}
             noTicket={needsNoTicket(item, kind, transport)}

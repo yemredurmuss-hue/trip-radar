@@ -1,6 +1,6 @@
 // tests/cardView.test.ts
 import { describe, expect, it } from "vitest";
-import { activityDrawing, bookedAs, footOf, intentOf, mediaFace, menuFor, ringOf, topDate, transportFace } from "../src/lib/cardView";
+import { activityDrawing, bookedAs, footOf, intentOf, mediaFace, menuFor, ringOf, rideName, topDate, transportFace } from "../src/lib/cardView";
 import { EMPTY_METRICS } from "../src/lib/items";
 import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
@@ -229,5 +229,16 @@ describe("the intent label over a stay's picture", () => {
   });
   it("has nothing to say with no city", () => {
     expect(intentOf(stay({ city: null }))).toBeNull();
+  });
+});
+
+describe("rideName (F5a: the way's name once the route is the title)", () => {
+  it("drops the route part of a name and keeps the rest", () => {
+    expect(rideName("CP Alfa Pendular · Porto → Lizbon")).toBe("CP Alfa Pendular");
+    expect(rideName("Shinkansen Hikari")).toBe("Shinkansen Hikari");
+  });
+  it("a name that is only the route stays whole; nothing is nothing", () => {
+    expect(rideName("Porto → Lizbon")).toBe("Porto → Lizbon");
+    expect(rideName(null)).toBe("");
   });
 });

@@ -14,8 +14,7 @@ import { CardFoot, CardShell, type MenuEntry } from "./CardShell";
 import { LegFactsBox } from "./InfoButton";
 import { DocAccess } from "./DocAccess";
 import { useCardEnv } from "./PlanCard";
-import { TransportArt } from "./Silhouettes";
-import { TransportCardBody } from "./TransportCard";
+import { RideCardBody } from "./RideCard";
 
 export function LegCard({ leg }: { leg: Leg }) {
   const env = useCardEnv();
@@ -38,17 +37,21 @@ export function LegCard({ leg }: { leg: Leg }) {
       kind={v.kind}
       label={v.label}
       ring={v.ring}
-      date={formatDateRange(leg.date, null)}
+      date={null}
       ariaLabel={v.ariaLabel}
       domId={`leg-${leg.key}`}
-      extraClass={v.arranged ? "pk-leg pk-arranged" : "pk-leg"}
+      extraClass={v.arranged ? "pk-leg pk-rd-card pk-arranged" : "pk-leg pk-rd-card"}
       topAction={v.badge ? <BookedBadge look={v.badge} as="ticket" /> : undefined}
       docs={own ? <DocAccess item={own} docs={env.docsFor(own.id)} /> : undefined}
       menu={menu}
       info={legPeekHasFacts(peek) ? <LegFactsBox peek={peek} /> : null}
       open={open}
       onToggle={() => setOpen(!open)}
-      body={<TransportCardBody face={{ from: v.from, to: v.to, middle: v.middle, rental: false }} title={v.ariaLabel} art={v.kind !== "transport" ? <TransportArt mode={v.kind} /> : null} />}
+      body={
+        <RideCardBody
+          face={{ from: leg.kind === "move" ? { ...v.from, sub: null } : v.from, to: leg.kind === "move" ? { ...v.to, sub: null } : v.to, middle: v.middle, rental: false }}
+          title={own?.name ?? ""} kind={v.kind} brand={null} when={leg.date ? formatDateRange(leg.date, null) : null} />
+      }
       foot={<CardFoot view={v.foot} price={null} onAction={book} />}
       detail={
         <div className="pk-detail">

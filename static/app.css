@@ -638,13 +638,6 @@ article.pk-card.pk-arranged:hover { box-shadow: none; }
 .pk-arranged .pk-media { padding-right: 0; }
 .pk-arranged .pk-foot .pk-sub { display: inline; }
 /* Empty transport (how to go isn't known): "A → B" and the sentence on top, the way drawn faint and large at the left. */
-.ek-undec { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 14px; align-items: center; }
-.ek-undec-art { width: 76px; height: 58px; border-radius: 14px; display: grid; place-items: center; overflow: hidden; background: color-mix(in srgb, var(--mc) 8%, #fff); }
-.ek-undec-art img { width: 100%; height: 100%; object-fit: contain; padding: 4px; box-sizing: border-box; mix-blend-mode: multiply; opacity: .45; filter: grayscale(.5); }
-.ek-undec-t { display: grid; gap: 2px; min-width: 0; }
-.ek-undec-t b { font-size: 19px; font-weight: 750; letter-spacing: -.015em; line-height: 1.2; overflow-wrap: anywhere; }
-.ek-undec-t .ek-arr { color: var(--mc); font-weight: 600; }
-.ek-undec-how { font-size: 13.5px; font-weight: 600; color: var(--v-ink); }
 /* Touch targets (spec: 30 px): the hit area of × and ••• is 30 px everywhere (an invisible edge), their size 30 px on a touch screen. */
 .pk-x, .pk-ib { position: relative; }
 .pk-x::after, .pk-ib::after { content: ""; position: absolute; left: -3px; right: -3px; top: -4px; bottom: -4px; }
@@ -3328,7 +3321,6 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .pk-stub-plan .pk-stub-k { font-weight: 700; color: var(--plan-ink); }
 .pk-stubbed > .pk-foot .pk-price { display: none; }
 /* A rental in the ride template: its line is under "Lizbon · the way". */
-.pk-ride-t > small:last-child { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 /* A stay's picture: a band across the card's whole width (~3:1), the photo covers it, a drawing sits whole in it. */
 .pk-card .pk-media.pk-stay .pk-vis { width: auto; margin: 0 -16px; height: auto; aspect-ratio: 3 / 1; border-radius: 0; }
 .pk-card .pk-media.pk-stay .pk-vis .pk-img { object-fit: cover; object-position: 50% 55%; }
@@ -4376,16 +4368,6 @@ a.ch-why { text-decoration: none; }
 .pk-route:has(.pk-arc) small { display: block; }
 
 /* A ride: its drawing, "A → B", the way, the hours. */
-.pk-ride { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 14px; align-items: center; margin: 4px 0 0; }
-.pk-ride-art { width: 88px; height: 66px; border-radius: 14px; display: grid; place-items: center; overflow: hidden; background: var(--v-tile); color: var(--mc); }
-.pk-ride-art img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply; }
-.pk-ride-t { display: grid; gap: 2px; min-width: 0; }
-.pk-ride-ab { display: flex; gap: 7px; align-items: baseline; min-width: 0; font-size: 19px; font-weight: 750; letter-spacing: -.015em; line-height: 1.2; }
-.pk-ride-end { flex: 0 1 auto; min-width: 0; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pk-ride-arr { color: var(--mc); font-weight: 600; flex: none; }
-.pk-ride-how { font-size: 13.5px; font-weight: 600; color: var(--v-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pk-ride-how .brand { height: 18px; font-size: 10.5px; padding: 0 6px; margin-right: 6px; }
-.pk-ride-t > small { font-size: 12.5px; color: var(--v-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 
 /* A stay: the picture on top as a band, then where it's from, its name, what guests thought, the nights. */
 .pk-media.pk-stay { grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: start; }
@@ -4553,8 +4535,6 @@ a.ch-why { text-decoration: none; }
 @media (max-width: 420px) { .pk-ways { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 .ek-offers-est { margin-left: 8px; font-size: 12.5px; font-weight: 650; color: var(--v-muted); }
-.pk-ride-ab > .pk-ride-end:first-child { flex: 0 0 auto; max-width: 48%; }
-.pk-ride-ab > .pk-ride-end:last-child { flex: 1 1 0; }
 
 /* Plan v30 (denetim): the ••• menu's one-line explanations. */
 .menu button small { display: block; margin-top: 1px; font-size: 12px; font-weight: 400; color: #8e8e93; white-space: nowrap; }
@@ -4681,3 +4661,45 @@ body.still *:not(.pk-undo-ring .run), body.still *:not(.pk-undo-ring .run)::befo
 .pk-stay .pk-txt .pk-cancel { font-size: 13px; }
 :root[data-theme="dark"] .pk-foot .pk-alt { border-color: #3a3452; }
 @media (max-width: 520px) { .pk-foot > .pk-alt ~ .pk-cta, .pk-foot > .pk-alt ~ .pk-go { margin-left: auto; } }
+
+/* -- F5a ulaşım -- a way of travel (train, bus, ferry, taxi, a transfer between cities) read left to right: "A → B", when and by what, the hours with the way between them; nothing moves on hover -- */
+.pk-rd { display: grid; gap: 10px; margin: 6px 0 4px; min-width: 0; }
+.pk-rd-ttl { margin: 0; display: flex; align-items: baseline; gap: 0; min-width: 0; font-size: 19px; font-weight: 750; letter-spacing: -.015em; line-height: 1.2; white-space: nowrap; }
+.pk-rd-end { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-rd-ttl > .pk-rd-end:first-child { flex: 0 1 auto; max-width: 50%; }
+.pk-rd-ttl > .pk-rd-end:last-child { flex: 1 1 0; }
+.pk-rd-arr { flex: none; margin: 0 7px; color: #b07a1f; font-weight: 600; }
+.pk-rd-w { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; font-size: 13px; color: var(--v-muted); }
+.pk-rd-when { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 2px 10px 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--mc) 12%, #fff); color: var(--v-ink); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pk-rd-when svg { flex: none; color: var(--mc); }
+.pk-rd-how { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-weight: 600; color: var(--v-ink); }
+.pk-rd-how > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-rd-how .brand { height: 18px; font-size: 10.5px; padding: 0 6px; flex: none; }
+.pk-rd-r { display: grid; grid-template-columns: minmax(0, 1fr) minmax(96px, 1.3fr) minmax(0, 1fr); align-items: center; gap: 10px; }
+.pk-rd-c { display: grid; gap: 3px; min-width: 0; }
+.pk-rd-c.r { justify-items: end; text-align: right; }
+.pk-rd-h { font-size: 19px; font-weight: 750; letter-spacing: -.015em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.pk-rd-c small { font-size: 12px; color: var(--v-muted); line-height: 1.3; overflow-wrap: anywhere; }
+.pk-rd-mid { display: grid; justify-items: center; gap: 1px; min-width: 0; }
+.pk-rd-line { display: flex; align-items: center; gap: 4px; width: 100%; color: var(--mc); }
+.pk-rd-line i { flex: 1; height: 0; border-top: 1.5px solid color-mix(in srgb, var(--v-muted) 40%, transparent); }
+.pk-rd-line img { flex: none; width: 80px; height: 48px; object-fit: contain; mix-blend-mode: multiply; }
+.pk-rd-mid small { font-size: 11.5px; font-weight: 650; color: var(--v-muted); white-space: nowrap; }
+.pk-rd-line-t { color: var(--v-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+:root[data-theme="dark"] .pk-rd-line img { mix-blend-mode: normal; border-radius: 8px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pk-rd-line img { mix-blend-mode: normal; border-radius: 8px; } }
+/* hover: the lift is for the cards that open; a ride sits still, its shadow alone answers */
+@media (hover: hover) { .pk-card.pk-rd-card:not(.pk-open):not(.ek-still):hover { transform: none; } }
+/* the price per person large, the party under it; a booked ride keeps its price in the foot (the file and "Ayrıntı ›" frame it) */
+.pk-price3 { display: inline-grid; justify-items: end; line-height: 1.2; font-size: 12px; color: var(--v-muted); }
+.pk-price3 b { font-size: 17px; font-weight: 800; color: var(--v-ink); }
+.pk-price3 small { font-size: 11.5px; }
+.pk-rd-card.pk-r-done .pk-foot .pk-price { display: inline-block; margin-left: auto; }
+.pk-rd-card .pk-foot > .pk-docname, .pk-rd-card .pk-foot > .pk-docs, .pk-rd-card .pk-foot > .pk-docmiss { order: -1; }
+.pk-rd-card .pk-foot > .pk-price ~ .pk-more { margin-left: 0; }
+/* the empty way: the same left-to-right head, the day's capsule and the sentence beside it, the ways drawn dashed under */
+.ek-undec { display: grid; gap: 10px; min-width: 0; }
+.ek-undec-ttl { font-size: 19px; font-weight: 750; letter-spacing: -.015em; line-height: 1.2; overflow-wrap: anywhere; }
+.ek-undec-ttl .ek-arr { color: #b07a1f; font-weight: 600; }
+.ek-undec-w { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 13px; color: var(--v-muted); }
+.ek-undec-how { font-weight: 500; color: var(--v-muted); }

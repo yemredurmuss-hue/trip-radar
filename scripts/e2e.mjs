@@ -1690,10 +1690,10 @@ try {
   }
   await hint.getByRole("button", { name: "geri al" }).click({ force: true });
   await douroPage.locator(".ev-n", { hasText: "Douro tekne turu" }).waitFor();
-  // A transfer's ends, short: "Porto Havalimanı" over OPO, "Booking.com" over the stay's name.
-  assert.match(await arrivalLeg.locator(".pk-mid").innerText(), /Porto Havalimanı\s*OPO[\s\S]*Booking\.com\s*Jardim Stay/);
+  // A transfer's ends (F5a): "Porto Havalimanı → Booking.com" large, the airport code and the stay's name under the hours' row.
+  assert.match(await arrivalLeg.locator(".pk-rd").innerText(), /Porto Havalimanı\s*→\s*Booking\.com[\s\S]*OPO[\s\S]*Jardim Stay/);
   // One word isn't broken in the middle ("Booking.co / m"): the end stays on one line.
-  assert.ok(await arrivalLeg.locator(".pk-stop.r b").evaluate((el) => el.getClientRects().length <= 1 && el.offsetHeight < 1.6 * parseFloat(getComputedStyle(el).fontSize)), "Booking.com on one line");
+  assert.ok(await arrivalLeg.locator(".pk-rd-ttl .pk-rd-end").last().evaluate((el) => el.getClientRects().length <= 1 && el.offsetHeight < 1.6 * parseFloat(getComputedStyle(el).fontSize)), "Booking.com on one line");
   // Empty nights (the trip a night longer): × hides them ("Gerek yok"), Gizlenenler brings them back.
   const setEnd = (end) =>
     app.evaluate(async (end) => {

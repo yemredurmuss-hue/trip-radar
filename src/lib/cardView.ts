@@ -403,3 +403,13 @@ export function legCardView(leg: Leg): LegCardView {
     badge: !booked ? null : arranged || !ticketed ? "arranged" : "booked",
   };
 }
+
+/**
+ * F5a: what a way of travel is called once its ends are in the title: "CP Alfa Pendular · Porto → Lizbon" is "CP Alfa Pendular"
+ * (the route is the card's title already). A name that is only the route stays whole, so the line is never empty.
+ */
+export function rideName(name: string | null | undefined): string {
+  const whole = (name ?? "").trim();
+  const kept = whole.split(" · ").filter((part) => !/[→>]/.test(part)).join(" · ").trim();
+  return kept || whole;
+}
