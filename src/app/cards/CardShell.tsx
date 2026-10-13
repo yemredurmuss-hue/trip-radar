@@ -282,6 +282,8 @@ export function CardShell(props: {
   /** v11: the planned card's "✓ Aldım", on the top line. */
   topAction?: ReactNode;
   menu: MenuEntry[];
+  /** Who saved it: a small face on the card's top left corner (WhoseBadge.tsx SavedFace); null: none. */
+  corner?: ReactNode;
   /** What the ⓘ balloon says (InfoButton.tsx): rows of facts beyond the face; null: no ⓘ. The card's face is as it was. */
   info?: ReactNode | null;
   open: boolean;
@@ -310,6 +312,7 @@ export function CardShell(props: {
       id={props.domId}
       onClick={tap}
         >
+      {props.corner && <span className="who-dot">{props.corner}</span>}
       {props.art}
       <div className="pk-top">
         <Ring state={props.ring} />

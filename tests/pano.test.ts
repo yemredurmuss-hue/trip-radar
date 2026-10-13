@@ -1,6 +1,6 @@
 // The Pano (v11 phase 5, lib/pano.ts): what's on it, its tabs and state filter, the sort, the groups by need.
 import { describe, expect, it } from "vitest";
-import { inCat, inState, forYouOf, matchesQuery, needTitleOf, needWhenOf, panoCityRows, panoCounts, panoEntries, panoGroups, panoRows, sortEntries, withLoves } from "../src/lib/pano";
+import { adderOf, inCat, inState, forYouOf, matchesQuery, needTitleOf, needWhenOf, panoCityRows, panoCounts, panoEntries, panoGroups, panoRows, saverName, savedByMe, savedByText, sortEntries, withLoves } from "../src/lib/pano";
 import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -140,5 +140,19 @@ describe("withLoves (a heart is the shared trip's Süper vote)", () => {
   });
   it("the record unchanged with no Süper vote on it", () => {
     expect(withLoves(item, [])).toBe(item);
+  });
+});
+
+describe("who saved an option", () => {
+  const own = makeItem({});
+  const sabine = makeItem({ addedBy: "Sabine" });
+  const ours = makeItem({ addedBy: "ai" });
+  it("is ours (ai), a fellow traveller, or the board's owner", () => {
+    expect([adderOf(own), adderOf(sabine), adderOf(ours)]).toEqual([null, "Sabine", "ai"]);
+    expect([savedByMe(own, "Emre"), savedByMe(makeItem({ addedBy: "emre" }), "Emre"), savedByMe(sabine, "Emre"), savedByMe(ours, "Emre")]).toEqual([true, true, false, false]);
+  });
+  it("says it as a name for a Kimden row and as a sentence for a face's tip", () => {
+    expect([saverName(own, "Emre"), saverName(own, null), saverName(sabine, "Emre"), saverName(ours, "Emre")]).toEqual(["Emre", "Sen", "Sabine", "Önerimiz (AI)"]);
+    expect([savedByText(own, "Emre"), savedByText(sabine, "Emre"), savedByText(ours, null)]).toEqual(["Sen kaydettin", "Sabine kaydetti", "Önerimiz (AI)"]);
   });
 });

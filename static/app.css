@@ -4736,3 +4736,9 @@ a.ch-why { text-decoration: none; }
 .pk-intent svg { flex: none; width: 14px; height: 14px; color: var(--mc); }
 .pk-intent > span, .pk-intent > b { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 :root[data-theme="dark"] .pk-intent { background: #241f33; }
+
+/* -- F1c köşe yüzü: who saved the card, a 22 px face on its top left corner (-9 px). The card no longer clips, so its own bands round themselves. -- */
+.pk-card { overflow: visible; }
+.who-dot { position: absolute; top: -9px; left: -9px; z-index: 4; display: inline-flex; }
+.who-dot .wh-av, .who-dot .nd-ai { width: 22px; height: 22px; font-size: 10px; box-shadow: 0 0 0 2px #fff, 0 2px 6px -1px rgba(40, 28, 90, .35); border-radius: 50%; }
+:root[data-theme="dark"] .who-dot .wh-av, :root[data-theme="dark"] .who-dot .nd-ai { box-shadow: 0 0 0 2px #1d1830, 0 2px 6px -1px rgba(0, 0, 0, .5); }

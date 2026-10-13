@@ -7,9 +7,12 @@
 //   useWhoCtx()                             me on this computer, as whoseOf takes it (the sharing name and people)
 //   usePhotoOf()                            a person's photo by name, from the hero's sources (Travellers.tsx)
 //   <WhoAvatar name photo />                the 20 px face alone (Günlük akış's rows)
+//   <SavedFace item />                      who saved the record: ✨ for our pick (AI), else their face (mine when none else's)
 import { initials } from "../../lib/heroInfo";
 import { sameName } from "../../lib/tripSettings";
 import type { Item, Trip } from "../../lib/types";
+import { adderOf, savedByMe, savedByText } from "../../lib/pano";
+import { L } from "../../lib/i18n";
 import { whoseOf, type WhoCtx } from "../../lib/whose";
 import { useMyName, useMyPhoto, usePeoplePhotos } from "../Profile";
 import { useShare } from "../Share";
@@ -50,6 +53,20 @@ export function WhoseBadge({ item, trip }: { item: Item; trip: Pick<Trip, "trave
         ))}
       </span>
       <span className="wh-label">{whose.label}</span>
+    </span>
+  );
+}
+
+/** Who saved a record, as a face with its words on hover: ✨ "Önerimiz (AI)", "Sabine kaydetti", "Sen kaydettin". */
+export function SavedFace({ item }: { item: Item }) {
+  const me = useMyName() || null;
+  const photoOf = usePhotoOf();
+  const title = savedByText(item, me);
+  if (adderOf(item) === "ai") return <span className="nd-ai" title={title}>✨</span>;
+  const name = savedByMe(item, me) ? me || L("Ben", "Me") : item.addedBy!;
+  return (
+    <span title={title}>
+      <WhoAvatar name={name} photo={photoOf(name)} />
     </span>
   );
 }

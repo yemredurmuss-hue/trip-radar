@@ -24,8 +24,8 @@ import type { CityWeather } from "../../lib/climate";
 import { flightPeek, stayPeek, transferPeek, type PeekCtx } from "../../lib/cardPeek";
 import { FactsBox } from "./InfoButton";
 import { useMyName } from "../Profile";
-import { saverName } from "../../lib/pano";
-import { WhoAvatar, WhoseBadge, usePhotoOf, useWhoCtx } from "./WhoseBadge";
+import { adderOf, saverName } from "../../lib/pano";
+import { SavedFace, WhoAvatar, WhoseBadge, usePhotoOf, useWhoCtx } from "./WhoseBadge";
 import { isUnnamedMe, peopleOf, whoseOf } from "../../lib/whose";
 import { sameName } from "../../lib/tripSettings";
 import { useShare } from "../Share";
@@ -273,6 +273,8 @@ function PlanCardFace({ item, group, decision, ranked, nav, onChange, changing =
       ariaLabel={item.name}
       itemId={item.id}
       badge={<WhoseBadge item={item} trip={env.trip} />}
+      // F1c: whoever saved it, on the corner: ✨ for our pick, a fellow traveller always, the owner's own face only on a trip of two or more.
+      corner={adderOf(item) || people.length > 1 ? <SavedFace item={item} /> : null}
       extraClass={[arranged ? "pk-arranged" : "", allNo ? "pk-all-no" : "", red ? "pk-alert" : "", bookedCard ? "pk-booked" : "", stub ? "pk-stubbed" : "", sealed ? "pk-seal" : "", glow ? "pk-glow" : "", drop ? "pk-drop" : ""].filter(Boolean).join(" ") || undefined}
       docs={bookedCard ? null : <DocAccess item={item} docs={docs} />}
       onDelete={stageMenu.hide}

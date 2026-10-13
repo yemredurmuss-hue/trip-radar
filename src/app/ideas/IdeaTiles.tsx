@@ -15,7 +15,7 @@ import { dayChip, ideaMapUrl, ideaSource, ideaThumb, isFoodIdea, moveToBookings,
 import { isIdea } from "../../lib/booking";
 import { planSectionOfItem } from "../../lib/categories";
 import { DayButton } from "./DayPicker";
-import { isAiOption } from "../../lib/pano";
+
 import { durationText } from "../../lib/cardFacts";
 import { hopBetween, hopWord, type JourneyHop, type JourneyStop } from "../../lib/tripShape";
 import { formatDateRange } from "../../lib/items";
@@ -28,9 +28,8 @@ import { setItemStatus } from "../actions";
 import { CardMenu, DeleteX, type MenuEntry } from "../cards/CardShell";
 import { Editable, InlineEdit, useInlineEdit } from "../cards/InlineEdit";
 import { useCardEnv } from "../cards/PlanCard";
-import { usePhotoOf, WhoAvatar } from "../cards/WhoseBadge";
+import { SavedFace } from "../cards/WhoseBadge";
 import { FallbackImg } from "../FallbackImg";
-import { useMyName } from "../Profile";
 import { SuggestTile } from "../plan/ActivityBoard";
 import { useSectionSuggest } from "../plan/sectionSuggest";
 
@@ -160,8 +159,6 @@ export function IdeaTiles({ section, fallback, journey = null }: { section: CatS
 function IdeaTile({ item, row = false }: { item: Item; row?: boolean }) {
   const env = useCardEnv();
   const edit = useInlineEdit();
-  const myName = useMyName();
-  const photoOf = usePhotoOf();
   const food = isFoodIdea(item);
   const kind = ideaKindOf(item);
   const tint = kind ? KIND_TINT[kind] : food ? "#b4532a" : "#5d8a1c";
@@ -172,7 +169,6 @@ function IdeaTile({ item, row = false }: { item: Item; row?: boolean }) {
   const from = ideaSource(item);
   const booking = food && needsBooking(item);
   const booked = item.status === "booked";
-  const who = isAiOption(item) ? "ai" : (item.addedBy ?? null);
   const rating = item.rating.value != null ? `★ ${num(item.rating.value)}` : null;
   const meta = [item.city, kind ? kindLabel(kind) : null, item.location.area, rating].filter(Boolean).join(" · ");
   const menu: MenuEntry[] = [
@@ -197,9 +193,7 @@ function IdeaTile({ item, row = false }: { item: Item; row?: boolean }) {
         {/* v30: what it is, in the picture's corner. */}
         <span className="it-kindtag">{food ? L("Restoran", "Restaurant") : L("Gezilecek", "To see")}</span>
         {from === "Maps" && <span className="it-maps">Maps</span>}
-        <span className="it-who" title={who === "ai" ? L("AI önerisi", "AI pick") : who ?? myName ?? undefined}>
-          {who === "ai" ? <span className="it-ai">✨</span> : <WhoAvatar name={who ?? (myName || L("Ben", "Me"))} photo={photoOf(who ?? myName)} />}
-        </span>
+        <span className="it-who"><SavedFace item={item} /></span>
         {!row && tools}
         {/* v30: the corner ✓ / +: on the plan, or one tap to put it there (its words stay for the reader and the tests; the drawing is the corner mark). */}
         {done ? null : booked ? (

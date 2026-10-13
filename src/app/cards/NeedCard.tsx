@@ -12,7 +12,7 @@ import type { Choice } from "../../lib/choice";
 import type { GroupDecision } from "../../lib/decision";
 import { L } from "../../lib/i18n";
 import { lookWord } from "../../lib/stageWords";
-import { isAiOption, needTitleOf } from "../../lib/pano";
+import { adderOf, isAiOption, needTitleOf } from "../../lib/pano";
 import { groupKeyOf, rangeOfGroupKey, stayRange } from "../../lib/plan";
 import { estimatedRange, rangeLabel } from "../../lib/estRange";
 import { nightsBetween } from "../../lib/items";
@@ -36,11 +36,8 @@ import { headCount, needSearchLinks } from "../../lib/searchLinks";
 import { peopleOf } from "../../lib/whose";
 import { useWhoCtx } from "./WhoseBadge";
 import { KindIcon, TransportArt, UiIcon } from "./Silhouettes";
-import { usePhotoOf, WhoAvatar } from "./WhoseBadge";
+import { SavedFace, usePhotoOf, WhoAvatar } from "./WhoseBadge";
 import { datedLink, stayRatingOf, TradeLine } from "./parts";
-
-/** Who saved each option: "ai", a fellow traveller's name, or the board's owner (null). */
-const adderOf = (item: Item): string | null => (isAiOption(item) ? "ai" : (item.addedBy ?? null));
 
 function Faces({ items }: { items: Item[] }) {
   const myName = useMyName();
@@ -265,9 +262,7 @@ export function ChoiceSheet({ items, decision, choice, title, kind, onClose, onC
       <div key={item.id} className={`ch-row ch-tile${on ? " on" : ""}${who === "ai" ? " ai" : ""}${count > 1 && index === cur ? " cur" : ""}`} aria-current={count > 1 && index === cur ? "true" : undefined}>
         <div className="ch-ph">
           {facts.image ? <FallbackImg className="ch-img" src={facts.image} fallback={drawing} /> : item.category === "flight" && time && /^\d\d:\d\d$/.test(time) ? <span className="ch-fl">{time}{item.flight?.arrival?.slice(11, 16) ? ` → ${item.flight.arrival.slice(11, 16)}` : ""}</span> : drawing}
-          <span className="ch-by" title={who === "ai" ? L("AI önerisi", "AI pick") : isMe ? L("Sen kaydettin", "You saved it") : L(`${who} kaydetti`, `${who} saved it`)}>
-            {who === "ai" ? <span className="nd-ai">✨</span> : <WhoAvatar name={isMe ? myName || L("Ben", "Me") : who!} photo={photoOf(isMe ? myName : who!)} />}
-          </span>
+          <span className="ch-by"><SavedFace item={item} /></span>
           {badge && <span className="ch-badge">{badge}</span>}
           <span className="ch-sc" title={L("Tercihlerinize uyum (100 üzerinden)", "Fit with your preferences (out of 100)")}>
             {score != null ? Math.round(score) : "–"}

@@ -47,7 +47,10 @@ await app.evaluate(async () => {
   const items = tx.objectStore("items");
   const all = await new Promise((resolve) => (items.getAll().onsuccess = (e) => resolve(e.target.result)));
   const train = all.find((i) => i.category === "transport" && i.status === "saved");
-  if (train) items.put({ ...train, status: "chosen", provider: train.provider ?? "Comboios de Portugal", updatedAt: Date.now() });
+  if (train) items.put({ ...train, status: "chosen", provider: train.provider ?? "Comboios de Portugal", addedBy: "ai", updatedAt: Date.now() });
+  // Who saved what, for the corner faces: a fellow traveller's booked stay, our pick's ride (the rest are the owner's own).
+  const stay = all.find((i) => i.category === "stay" && i.status === "booked");
+  if (stay) items.put({ ...stay, addedBy: "Sabine" });
   await new Promise((resolve) => (tx.oncomplete = resolve));
   new BroadcastChannel("trip-radar").postMessage("changed");
 });
@@ -69,6 +72,16 @@ const secs = app.locator(".cat-sec");
 for (let i = 0; i < (await secs.count()); i++) {
   const sid = await secs.nth(i).getAttribute("data-section");
   await secs.nth(i).screenshot({ path: `${out}/sec-${i}-${sid}.png` });
+}
+// The ⓘ balloons: a booked flight's and a booked stay's, open.
+for (const sec of ["flight", "stay"]) {
+  const info = app.locator(`.cat-sec[data-section="${sec}"] .pk-card .inf`).first();
+  if (!(await info.count())) continue;
+  await info.hover();
+  await app.waitForTimeout(500);
+  const box = await app.locator(`.cat-sec[data-section="${sec}"]`).boundingBox();
+  await app.screenshot({ path: `${out}/info-${sec}.png`, clip: { x: Math.max(0, box.x), y: Math.max(0, box.y), width: box.width, height: box.height + 120 } });
+  await app.mouse.move(0, 0);
 }
 // The card's back: "N seçenek ›" turns the card in place; its options are small cards across the row.
 for (const sec of ["stay", "flight"]) {
