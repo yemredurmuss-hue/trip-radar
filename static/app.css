@@ -5260,3 +5260,15 @@ body:has(.modal:not(.mv-leaving), .overlay:not(.mv-leaving), .drawer:not(.mv-lea
 .work-slot.errors { position: fixed; top: 68px; right: 24px; z-index: 40; margin: 0; }
 @media (prefers-reduced-motion: reduce) { .work-line i { width: 100%; opacity: .5; } }
 body.still .work-line i { width: 100%; opacity: .5; }
+
+/* -- fark-etkinlik -- (v46 Etkinlik ve turlar: the drawing's one toolbar line, a violet line for what we found and put on the plan) */
+.ev-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ev-top .ev-key { flex: 1 1 240px; min-width: 0; }
+.ev-ghost { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 9px; border: 1px solid var(--v-line2); background: #fff; color: var(--v-accent-ink); font: inherit; font-size: 13px; font-weight: 650; white-space: nowrap; cursor: pointer; }
+.ev-ghost:hover { background: var(--v-lav); }
+.ev-ghost:focus-visible { outline: 2px solid var(--hx-accent); outline-offset: 2px; }
+.ev-bar .ev-toggle b { font-size: 13.5px; }
+.ev-card.chosen.ai { border-color: color-mix(in srgb, var(--hx-accent) 38%, var(--v-line2)); }
+.ev-n-h { white-space: normal; }
+/* The section's own "+ Ekle" is in the toolbar now (the drawing); the one at the section's end would say it twice. */
+.cat-body:has(> .ev-wrap) > .cat-add { display: none; }

@@ -16,7 +16,9 @@ import { bookedAs, stayPlatform } from "../../lib/cardView";
 import { L } from "../../lib/i18n";
 import { ideaMapUrl } from "../../lib/ideas";
 import type { DocMeta, Item } from "../../lib/types";
+import { brandOf } from "../../lib/brands";
 import { BookedBadge } from "./BookedBadge";
+import { BrandPill } from "./RideCard";
 import { DocList, DocPickButton } from "./DocAccess";
 import { KindIcon, UiIcon } from "./Silhouettes";
 
@@ -59,7 +61,10 @@ export function BookingSheet({ item, kind, facts, docs, date, today, onChange, o
       v
     );
   };
-  const sub = [date, item.provider].filter(Boolean).join(" · ");
+  // v46: a ticket's window says for how many too ("Ozora · 26 Tem–2 Ağu · 2 kişi").
+  const sourceBrand = kind === "activity" ? brandOf(facts.source?.label, facts.source?.host) : null;
+  const people = kind === "activity" ? item.guests.adults : null;
+  const sub = [item.provider, date, people ? L(`${people} kişi`, `${people} ${people === 1 ? "person" : "people"}`) : null].filter(Boolean).join(" · ");
   // A stay's cancel terms, here in its window (the card itself says them only in the last two weeks).
   const cancel = kind === "stay" && today ? cancelLineOf({ ...item, status: "chosen" }, today) : null;
   // v30: "Ev sahibine yaz ↗" ("Otele yaz ↗" at a hotel) only when the booking gave a real link or address to write to; Airbnb's door code
@@ -83,7 +88,7 @@ export function BookingSheet({ item, kind, facts, docs, date, today, onChange, o
           </button>
         </header>
         <div className="bk-hero">
-          <span className="bk-kind">{cardKindLabel(kind)}</span>
+          {sourceBrand ? <BrandPill brand={sourceBrand} /> : <span className="bk-kind">{cardKindLabel(kind)}</span>}
           <b>{facts.price ? `${facts.price.text}${facts.price.label ? ` ${facts.price.label}` : ""}` : item.name}</b>
           <span className="bk-lab"><BookedBadge as={bookedAs(item, kind)} /></span>
         </div>

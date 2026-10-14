@@ -49,9 +49,9 @@ const recordOf = (e: CatEntry): Item | null => (e.piece.kind === "item" ? e.piec
 const activityPlanned = (i: Item): boolean => i.status === "chosen" || i.status === "booked";
 
 /** A card of a city's row: where it stands, whose city, and the card itself. */
-type Card = { key: string; city: string | null; state: "booked" | "plan" | "idea"; rank: number; node: ReactNode };
+type Card = { key: string; city: string | null; state: "booked" | "plan" | "idea"; rank: number; node: ReactNode; /** Its day (YYYY-MM-DD), to find the stop of a city the trip passes twice. */ at?: string | null };
 
-export function ActivityBoard({ section, plan, fallback }: { section: CatSection; plan: Pick<Plan, "stayBlocks">; fallback: (entry: CatEntry) => ReactNode }) {
+export function ActivityBoard({ section, plan, fallback, onAdd }: { section: CatSection; plan: Pick<Plan, "stayBlocks">; fallback: (entry: CatEntry) => ReactNode; /** The toolbar's "Ekle": this section's own kind, no day. */ onAdd?: () => void }) {
   const env = useCardEnv();
   const suggest = useSectionSuggest();
   const rows = section.entries.map((e) => ({ e, item: recordOf(e) }));
@@ -85,7 +85,7 @@ export function ActivityBoard({ section, plan, fallback }: { section: CatSection
   const photoOf = usePhotoOf();
 
   // Everything that has a card, in the order a tie keeps (what's on the plan, the suggestions, the source's tours, the ideas).
-  const card = (key: string, city: string | null, state: Card["state"], node: ReactNode, isReason = false): Card => ({ key, city, state, rank: EVENT_RANK[isReason ? "reason" : state], node });
+  const card = (key: string, city: string | null, state: Card["state"], node: ReactNode, isReason = false, at: string | null = null): Card => ({ key, city, state, rank: EVENT_RANK[isReason ? "reason" : state], node, at });
   const cards: Card[] = [
     ...planned.map(({ e, item }) => {
       const isReason = item.id === reason?.id;
@@ -93,7 +93,7 @@ export function ActivityBoard({ section, plan, fallback }: { section: CatSection
         <InlineEdit key={e.key} item={item} only={["name"]}>
           <ItemCard item={item} domId={entryDomId(catDomKey(e))} reason={isReason} />
         </InlineEdit>
-      ), isReason);
+      ), isReason, isoDate(item.dates.start));
     }),
     ...sugg.map((x) => card(x.key, x.payload?.city ?? null, "idea", <SuggestCard s={x} note={suggest?.notes[x.key] ?? null} onAdd={() => suggest?.add(x)} onDismiss={() => suggest?.dismiss(x)} />)),
     ...offers.tiles.map(({ o, need, city }) => card(o.id, city, "idea", <OfferCard offer={o} adults={offers.adults} onPut={() => void offers.put(o, need)} />)),
@@ -102,7 +102,7 @@ export function ActivityBoard({ section, plan, fallback }: { section: CatSection
         <InlineEdit key={e.key} item={item} only={["name"]}>
           <ItemCard item={item} domId={entryDomId(catDomKey(e))} />
         </InlineEdit>
-      )),
+      ), false, isoDate(item.dates.start)),
     ),
   ];
   const cities = citiesOfPlan(plan);
@@ -111,7 +111,34 @@ export function ActivityBoard({ section, plan, fallback }: { section: CatSection
   return (
     <div className="ev-wrap">
       {note && <p className="ev-note">{note}</p>}
-      {/* v11 (kept): what the ideas are, folding away, and "Daha fazla fikir" (the chat looks for more). */}
+      {/* v46: the drawing's one line: who found what (left), "Başka öneriler" (the chat looks for more) and "Ekle" (right). */}
+      <div className="ev-top">
+        <p className="ev-key">
+          <span className="ev-who ai" aria-hidden>✨</span>
+          {L("AI buldu", "AI found")}
+          {myName && (
+            <>
+              {" · "}
+              <span className="ev-who"><WhoAvatar name={myName} photo={photoOf(myName)} /></span>
+              {L("siz eklediniz", "you added")}
+            </>
+          )}
+          {more && ` · ${L("Beğenmediğini ↻ ile değiştir.", "Don't like one? Swap it with ↻.")}`}
+        </p>
+        <span className="ev-sp" />
+        {more && (
+          <button type="button" className="ev-ghost" onClick={() => more(L("Bu gezi için bilet ya da rezervasyon gerektiren birkaç etkinlik ve tur fikri daha öner.", "Suggest a few more activities and tours for this trip, the kind that take a ticket or a booking."))}>
+            ✨ {L("Başka öneriler", "More suggestions")}
+          </button>
+        )}
+        {onAdd && (
+          <button type="button" className="ev-ghost ev-add" onClick={onAdd} aria-label={L("Etkinlik ve turlar: ekle", "Activities and tours: add")}>
+            <UiIcon name="plus" size={13} />
+            {L("Ekle", "Add")}
+          </button>
+        )}
+      </div>
+      {/* v11 (kept): what the ideas are, folding away. */}
       <div className={`ev-bar${open ? " open" : ""}`}>
         <button type="button" className="ev-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
           <span className="ev-chev" aria-hidden>▾</span>
@@ -119,30 +146,14 @@ export function ActivityBoard({ section, plan, fallback }: { section: CatSection
           <i>{count}</i>
           <span>{L("bilet ya da rezervasyon gerektirenler", "the ones that take a ticket or a booking")}</span>
         </button>
-        <span className="ev-sp" />
-        {more && (
-          <button type="button" className="ac-more" onClick={() => more(L("Bu gezi için bilet ya da rezervasyon gerektiren birkaç etkinlik ve tur fikri daha öner.", "Suggest a few more activities and tours for this trip, the kind that take a ticket or a booking."))}>
-            ✨ {L("Daha fazla fikir", "More ideas")}
-          </button>
-        )}
       </div>
-      <p className="ev-key">
-        <span className="ev-who ai" aria-hidden>✨</span>
-        {L("AI buldu", "AI found")}
-        {myName && (
-          <>
-            {" · "}
-            <span className="ev-who"><WhoAvatar name={myName} photo={photoOf(myName)} /></span>
-            {L("siz eklediniz", "you added")}
-          </>
-        )}
-        {more && ` · ${L("Beğenmediğini ↻ ile değiştir.", "Don't like one? Swap it with ↻.")}`}
-      </p>
       {!groups.length && <p className="ev-empty">{L("Henüz plana bir şey eklenmedi; “+ Plana koy” ile ekle ya da sohbete yaz.", "Nothing on the plan yet; “+ Add to plan”, or say it in the chat.")}</p>}
       <div className="ev-cities">
-        {groups.map((g) => {
-          const stay = g.city ? cities.find((c) => sameCity(c.city, g.city)) : null;
+        {groups.map((g, gi) => {
+          const stay = g.city ? cities[gi] ?? null : null;
           const when = stay ? (isoDate(stay.start) ? formatDateRange(stay.start, stay.end) : stay.nights > 0 ? nNights(stay.nights) : null) : null;
+          // The days after the festival belong to the LAST stop of that city (the way in is no rest).
+          const afterFest = Boolean(rest && g.city && sameCity(rest, g.city) && gi === lastStopOf(groups, rest));
           const onPlan = g.cards.filter((c) => c.state !== "idea").length;
           const bought = g.cards.filter((c) => c.state === "booked").length;
           const waiting = g.cards.length - onPlan;
@@ -160,8 +171,8 @@ export function ActivityBoard({ section, plan, fallback }: { section: CatSection
                 <UiIcon name="pin" size={14} />
                 <b>{g.city ?? L("Şehri belli değil", "City not set")}</b>
                 {when && <span>{when}</span>}
-                {rest && g.city && sameCity(rest, g.city) && <span className="ev-after">{L("Festivalden sonra · dinlenme", "After the festival · rest")}</span>}
-                <span>{counts.length ? counts.flatMap((c, i) => (i ? [" · ", c] : [c])) : L("henüz etkinlik yok", "no activities yet")}</span>
+                {afterFest && <span className="ev-after">{L("Festivalden sonra · dinlenme", "After the festival · rest")}</span>}
+                <span className="ev-n-h">· {counts.length ? counts.flatMap((c, i) => (i ? [" · ", c] : [c])) : L("henüz etkinlik yok", "no activities yet")}</span>
                 {nothing && more && g.city && (
                   <button type="button" className="ev-ask" onClick={() => more(asked(g.city!))}>
                     ✨ {L("AI'a arat", "Ask the AI")}
@@ -208,6 +219,9 @@ export function ActivityBoard({ section, plan, fallback }: { section: CatSection
   );
 }
 
+/** The index of the last row of a city (a city the trip passes twice has two). */
+const lastStopOf = (groups: readonly { city: string | null }[], city: string): number => groups.map((g) => g.city != null && sameCity(g.city, city)).lastIndexOf(true);
+
 /** The city the days after a festival are spent in (the last stop that isn't the festival's own place), or null. */
 export function restCityOf(plan: Pick<Plan, "stayBlocks">, festivalPlace: string | null): string | null {
   const cities = citiesOfPlan(plan);
@@ -246,8 +260,10 @@ function useRemembered(key: string, initial: boolean): [boolean, (v: boolean) =>
  * suggestion) only work out what to hand. `state`: booked (green ground, its badge in the corner), plan (on the plan:
  * green line), idea (a dashed button puts it on the plan).
  */
-function EventCard({ state, label, photo, art, corner, pinned = false, tools, name, meta, price, action, foot, why, note, hit, attrs, domId, hint }: {
+function EventCard({ state, ai = false, label, photo, art, corner, pinned = false, tools, name, meta, price, action, foot, why, note, hit, attrs, domId, hint }: {
   state: "booked" | "plan" | "idea";
+  /** Found by us and on the plan: the drawing's violet line (a person's own is green, an idea grey). */
+  ai?: boolean;
   label: string;
   photo: string | null;
   art: string;
@@ -270,7 +286,7 @@ function EventCard({ state, label, photo, art, corner, pinned = false, tools, na
 }) {
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   return (
-    <div className={`ev-card ${state === "plan" ? "chosen" : state}`} aria-label={label} id={domId} title={hint} {...attrs}
+    <div className={`ev-card ${state === "plan" ? "chosen" : state}${state === "plan" && ai ? " ai" : ""}`} aria-label={label} id={domId} title={hint} {...attrs}
       onClick={hit ? (e) => !(e.target as HTMLElement).closest("button, a, input, .pk-menu, .pk-ed-wrap") && hit() : undefined}>
       {hit && <button type="button" className="ev-hit" aria-label={label} onClick={hit} />}
       <span className="ev-img">
@@ -366,6 +382,7 @@ function ItemCard({ item, domId, reason = false }: { item: Item; domId: string; 
     <>
       <EventCard
         state={booked ? "booked" : onPlan ? "plan" : "idea"}
+        ai={isAiOption(item)}
         label={item.name}
         domId={domId}
         attrs={{ "data-item-id": item.id }}
@@ -391,7 +408,7 @@ function ItemCard({ item, domId, reason = false }: { item: Item; domId: string; 
           </>
         }
         name={<Editable field="name">{item.name}</Editable>}
-        meta={<Meta brand={brandOf(facts.source?.label, facts.source?.host)} text={date} />}
+        meta={<Meta brand={onPlan && !booked && page ? null : brandOf(facts.source?.label, facts.source?.host)} text={date} />}
         price={price}
         action={
           !onPlan ? (

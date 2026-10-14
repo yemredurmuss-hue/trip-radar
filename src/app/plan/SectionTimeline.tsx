@@ -57,7 +57,7 @@ export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, o
   if (section.id === "activity")
     return (
       <>
-        <ActivityBoard section={section} plan={plan} fallback={(e) => <Piece entry={e} cards={cards} />} />
+        <ActivityBoard section={section} plan={plan} fallback={(e) => <Piece entry={e} cards={cards} />} onAdd={() => onAdd({ city: null, date: null })} />
       </>
     );
   return (

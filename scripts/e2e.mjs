@@ -597,11 +597,11 @@ try {
   // v30: one grid (what's on the plan first, ✓), the key above it, "Öneriler ve fikirler" (the chat's suggestions, the source's
   // tours and the saved ideas as dashed cards) folding away.
   // v46: city by city: Porto's row (what's on the plan first), its heading counts them; Lizbon has none yet and asks the chat.
-  assert.match(await sec("activity").locator(".ev-city", { hasText: "Porto" }).locator(".ev-city-h").innerText(), /Porto\s+8–11 Ekim\s+1 planda · 3 öneri/);
+  assert.match(await sec("activity").locator(".ev-city", { hasText: "Porto" }).locator(".ev-city-h").innerText(), /Porto\s+8–11 Ekim\s+· 1 planda · 3 öneri/);
   assert.equal(await sec("activity").locator(".ev-card.chosen").count(), 1, "the boat tour is on the plan");
   assert.match(await sec("activity").locator(".ev-card.chosen .ev-chosen").innerText(), /Seçildi/, "H1: a chosen tour says Seçildi in words");
   assert.equal(await sec("activity").locator(".ev-city.empty", { hasText: "Lizbon" }).locator(".ev-ask").count(), 1, "an empty city: AI'a arat");
-  assert.match(await sec("activity").locator(".ev-bar").innerText(), /Öneriler ve fikirler\s*3\s*bilet ya da rezervasyon gerektirenler\s*✨ Daha fazla fikir$/);
+  assert.match(await sec("activity").locator(".ev-bar").innerText(), /Öneriler ve fikirler\s*3\s*bilet ya da rezervasyon gerektirenler$/);
   await sec("activity").locator(".ev-toggle").click();
   assert.equal(await sec("activity").locator(".ev-card.idea").count(), 0, "folded away");
   await sec("activity").locator(".ev-toggle").click();

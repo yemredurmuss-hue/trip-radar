@@ -114,6 +114,11 @@ describe("Etkinlik ve turlar by city (v40)", () => {
     expect(groups[0].cards).toEqual([]);
     expect(groups[1].cards.map((c) => c.id)).toEqual(["reason", "bought", "plan", "idea-a", "idea-b"]);
   });
+  it("puts a card of a city the trip passes twice in the stop whose days hold its day (else the first)", () => {
+    const stops = [{ city: "Budapeşte", start: "2027-07-24", end: "2027-07-26" }, { city: "Dádpuszta", start: "2027-07-26", end: "2027-08-02" }, { city: "Budapeşte", start: "2027-08-02", end: "2027-08-04" }];
+    const groups = eventsByCity(stops, [{ ...card("after", "Budapeşte", 3), at: "2027-08-03" }, { ...card("before", "Budapeşte", 3), at: "2027-07-25" }, card("undated", "Budapeşte", 3)]);
+    expect(groups.map((g) => g.cards.map((c) => c.id))).toEqual([["before", "undated"], [], ["after"]]);
+  });
   it("lets a city the plan doesn't stay in follow the trip's, and a card with no city come last", () => {
     const groups = eventsByCity([{ city: "Kyoto" }], [card("x", null, 2), card("o", "Osaka", 3), card("k", "Kyoto", 3)]);
     expect(groups.map((g) => [g.city, g.cards.map((c) => c.id)])).toEqual([["Kyoto", ["k"]], ["Osaka", ["o"]], [null, ["x"]]]);

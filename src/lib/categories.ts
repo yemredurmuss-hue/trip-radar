@@ -1052,11 +1052,14 @@ export function citiesOfPlan(plan: Pick<Plan, "stayBlocks">): { city: string; st
  * city: the trip's reason, then what is bought, then what is on the plan, then the ideas (`rank` 0–3; ties keep order).
  */
 export const EVENT_RANK = { reason: 0, booked: 1, plan: 2, idea: 3 } as const;
-export function eventsByCity<T extends { city: string | null; rank: number }>(cities: readonly { city: string }[], cards: readonly T[]): { city: string | null; cards: T[] }[] {
-  const groups: { city: string | null; cards: T[] }[] = cities.map((c) => ({ city: c.city, cards: [] }));
+export function eventsByCity<T extends { city: string | null; rank: number; at?: string | null }>(cities: readonly { city: string; start?: string; end?: string }[], cards: readonly T[]): { city: string | null; start?: string; end?: string; cards: T[] }[] {
+  const groups: { city: string | null; start?: string; end?: string; cards: T[] }[] = cities.map((c) => ({ city: c.city, start: c.start, end: c.end, cards: [] }));
   const orphans: { city: string | null; cards: T[] } = { city: null, cards: [] };
   for (const card of cards) {
-    const home = card.city ? (groups.find((g) => sameCity(g.city, card.city)) ?? (groups.push({ city: card.city, cards: [] }), groups.at(-1)!)) : orphans;
+    // A city the trip passes twice (Budapeşte before and after a festival): the stop whose days hold the card's day, else the first.
+    const same = card.city ? groups.filter((g) => sameCity(g.city, card.city)) : [];
+    const dated = card.at && same.length > 1 ? same.find((g) => g.start && g.end && g.start <= card.at! && card.at! <= g.end) : undefined;
+    const home = card.city ? (dated ?? same[0] ?? (groups.push({ city: card.city, cards: [] }), groups.at(-1)!)) : orphans;
     home.cards.push(card);
   }
   if (orphans.cards.length) groups.push(orphans);
