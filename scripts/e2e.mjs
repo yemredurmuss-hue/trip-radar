@@ -243,7 +243,7 @@ try {
       else if (await ideas.count()) {
         const text = await ideas.innerText();
         const of = (word) => Number(text.match(new RegExp(`(\\d+) ${word}`))?.[1] ?? 0);
-        n += of("yer") + of("restoran") + of("fikir") + of("kayıt");
+        n += of("yer") + of("restoran") + of("fikir") + of("kayıt") || Number(await app.locator(`.cat-sec[data-section="${id}"] .cat-n`).innerText());
       }
     }
     return n;
@@ -1656,7 +1656,7 @@ try {
   assert.deepEqual(await names(todos), ["Majestic Café", "Pastel de nata"]);
   await todos.locator(".it-filters button", { hasText: "Hepsi" }).click();
   // The header counts places, restaurants and what's on the plan; no bar, no amber line.
-  assert.equal(await todos.locator(".cat-ideas").innerText(), "3 yer · 2 restoran · 1 planda");
+  assert.equal(await todos.locator(".cat-ideas").innerText(), "1 planda · 4 öneri");
   assert.equal(await todos.locator(".cat-wait").count(), 0);
   // A tile's name goes to the map.
   const majestic = tile("Majestic Café");
@@ -2029,7 +2029,7 @@ try {
   // v11: open at first look like every section.
   const inspo = sec("inspo");
   assert.ok(!(await inspo.evaluate((el) => el.classList.contains("closed"))), "İlham opens at first look (v11)");
-  assert.equal(await inspo.locator(".cat-ideas").innerText(), "1 kayıt");
+  assert.equal(await inspo.locator(".cat-ideas").innerText(), "kaydettiğin video ve gönderiler");
   assert.equal(await todoRow("Ribeira'da gün batımı").count(), 0);
   const reel = inspo.locator('.ins-tile[aria-label="Ribeira\'da gün batımı"]');
   assert.equal(await reel.locator(".ins-badge").innerText(), "Reels");
@@ -2211,7 +2211,7 @@ try {
     // its share · the arrow; the settled-of-all said for a screen reader only.
     const kids = await sec(id).locator(".cat-head").evaluate((el) => [...el.querySelectorAll(".cat-title > *, .cat-end > *")].map((c) => c.className || c.tagName.toLowerCase()));
     if (id === "todo" || id === "food") {
-      assert.match(await sec(id).locator(".cat-st").innerText(), /^(\d+ yer)?( · )?(\d+ restoran)?( · .+)?$/, `${id}: its places and restaurants`);
+      assert.match(await sec(id).locator(".cat-st").innerText(), /^(\d+ planda)?( · )?(\d+ öneri)?( · .+)?$/, `${id}: what is on the plan and what waits`);
       assert.deepEqual(kids, ["cat-ic", "cat-tt", ...sg, "cat-chev"], `${id}: no bar, no count`);
     } else {
       assert.match(await sec(id).locator(".cat-count").textContent(), /^\d+\/\d+$/);

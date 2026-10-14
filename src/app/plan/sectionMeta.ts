@@ -8,7 +8,7 @@ import type { TemplateId } from "../../lib/templates";
 
 export interface SectionMeta {
   color: string;
-  icon: CardKind | "inspo" | "prep";
+  icon: CardKind | "inspo" | "prep" | "map";
   label: () => string;
   /** The empty section's chip at the bottom ("+ Restoran"). */
   short: () => string;
@@ -27,13 +27,13 @@ export const SECTION_META: Record<SectionId, SectionMeta> = {
   },
   activity: { color: "#a8336f", icon: "activity", label: () => L("Etkinlik ve turlar", "Activities and tours"), short: () => L("Etkinlik", "Activity"), templates: ["activity"] },
   // v11: restaurants are drawn here too (food stays their own record section).
-  todo: { color: "#5d8a1c", icon: "todo", label: () => L("Yapılacaklar ve restoranlar", "Things to do and restaurants"), short: () => L("Yapılacak", "To-do"), templates: ["todo", "food"] },
+  todo: { color: "#1f7a45", icon: "map", label: () => L("Yapılacaklar ve restoranlar", "Things to do and restaurants"), short: () => L("Yapılacak", "To-do"), templates: ["todo", "food"] },
   food: { color: "#b4532a", icon: "food", label: () => L("Restoranlar", "Restaurants"), short: () => L("Restoran", "Restaurant"), templates: ["food"] },
-  other: { color: "#3b6fd1", icon: "insurance", label: () => L("Belgeler ve internet", "Documents and internet"), short: () => L("Sigorta · eSIM", "Insurance · eSIM"), templates: ["esim", "insurance"] },
+  other: { color: "#0f7a5e", icon: "insurance", label: () => L("Belgeler ve internet", "Documents and internet"), short: () => L("Sigorta · eSIM", "Insurance · eSIM"), templates: ["esim", "insurance"] },
   // The chores before the trip (v11, out of Diğer): said in the chat or moved here from Yapılacak şeyler, no template.
-  prep: { color: "#0f8a6a", icon: "prep", label: () => L("Hazırlık", "Prep"), short: () => L("Hazırlık", "Prep"), templates: [] },
+  prep: { color: "#475467", icon: "prep", label: () => L("Hazırlık", "Prep"), short: () => L("Hazırlık", "Prep"), templates: [] },
   // Saved by sending a link (a Reel, a pin, a video, a blog), never added by hand: no template, no "Ekle" chip.
-  inspo: { color: "#8a5cc7", icon: "inspo", label: () => L("İlham", "Inspiration"), short: () => L("İlham", "Inspiration"), templates: [] },
+  inspo: { color: "#c0256b", icon: "inspo", label: () => L("İlham", "Inspiration"), short: () => L("İlham", "Inspiration"), templates: [] },
 };
 
 const storeKey = (tripId: string) => `trip-radar:plan-sections:${tripId}`;

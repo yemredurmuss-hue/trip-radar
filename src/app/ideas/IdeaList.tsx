@@ -17,6 +17,7 @@ import { FallbackImg } from "../FallbackImg";
 import { DeleteX } from "../cards/CardShell";
 import { useCardEnv } from "../cards/PlanCard";
 import { KindIcon } from "../cards/Silhouettes";
+import { SavedFace } from "../cards/WhoseBadge";
 import { DayButton } from "./DayPicker";
 import { IdeaLine } from "./IdeaLine";
 
@@ -120,7 +121,7 @@ function GroupTitle({ group, today }: { group: IdeaGroup; today: string }) {
   }
 }
 
-/** İlham: the saved Reels, pins, videos and blogs as tiles, newest first. */
+/** İlham: the saved Reels, pins, videos and blogs as compact cards (v46: the play thumbnail, the title as a link, who saved it and where from), newest first. */
 export function InspoGrid({ section, plan }: { section: CatSection; plan: Pick<Plan, "range" | "stayBlocks"> }) {
   const items = section.entries
     .map((e) => ({ e, item: e.piece.kind === "item" ? e.piece.item : null }))
@@ -145,19 +146,28 @@ function InspoTile({ item, plan }: { item: Item; plan: Pick<Plan, "range" | "sta
   const platform = inspoPlatform(item.url);
   const tile = (
     <span className="ins-ph-ic">
-      <KindIcon kind="inspo" size={30} />
+      <KindIcon kind="inspo" size={20} />
     </span>
   );
   return (
     <div className="ins-tile" aria-label={item.name} data-item-id={item.id}>
       <a className="ins-ph" href={item.url ?? undefined} target="_blank" rel="noreferrer" title={L("Kaynağını aç", "Open it")}>
         <FallbackImg className="ins-img" src={item.imageUrl} fallback={tile} />
-        {platform && <span className={`ins-badge p-${platform}`}>{INSPO_LABEL[platform]}</span>}
+        {item.imageUrl && <span className="ins-play" aria-hidden><KindIcon kind="inspo" size={18} /></span>}
       </a>
+      <b className="ins-t">
+        <a href={item.url ?? undefined} target="_blank" rel="noreferrer">{item.name}</a>
+      </b>
+      <span className="ins-src">
+        <SavedFace item={item} />
+        {platform && <i className={`ins-bm p-${platform}`} aria-hidden>{INSPO_LABEL[platform].charAt(0)}</i>}
+        {platform && <span className={`ins-badge p-${platform}`}>{INSPO_LABEL[platform]}</span>}
+      </span>
+      <span className="ins-foot">
+        <span className="ins-city">{item.city ?? " "}</span>
+        <DayButton item={item} plan={plan} />
+      </span>
       <DeleteX name={item.name} onDelete={() => env.remove(item)} className="ins-x" />
-      <b title={item.name}>{item.name}</b>
-      <span className="ins-city">{item.city ?? " "}</span>
-      <DayButton item={item} plan={plan} />
     </div>
   );
 }

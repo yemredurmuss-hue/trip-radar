@@ -170,7 +170,8 @@ function IdeaTile({ item, row = false }: { item: Item; row?: boolean }) {
   const booking = food && needsBooking(item);
   const booked = item.status === "booked";
   const rating = item.rating.value != null ? `★ ${num(item.rating.value)}` : null;
-  const meta = [item.city, kind ? kindLabel(kind) : null, item.location.area, rating].filter(Boolean).join(" · ");
+  // v46 (as drawn): the note first ("Shinjuku · akşam"); the city is the row's own heading, so it isn't said again.
+  const meta = [item.summary, kind ? kindLabel(kind) : null, item.location.area, rating].filter((x, i, all): x is string => Boolean(x) && all.indexOf(x) === i).join(" · ");
   const menu: MenuEntry[] = [
     { label: done ? (food ? L("Gidilmedi olarak geri al", "Mark as not been") : L("Yapılmadı olarak geri al", "Mark as not done")) : food ? L("Gittim", "Been there") : L("Yaptım", "Done it"), run: () => void setDone(item, !done) },
     { label: L("Haritada aç", "Open on the map"), run: () => void window.open(mapUrl, "_blank", "noopener") },
@@ -187,7 +188,7 @@ function IdeaTile({ item, row = false }: { item: Item; row?: boolean }) {
     </span>
   );
   return (
-    <div className={`it-tile${row ? " it-row" : ""}${food ? " food" : ""}${done ? " done" : ""}${planned ? " planned" : ""}`} aria-label={item.name} data-item-id={item.id} title={item.summary ?? undefined}>
+    <div className={`it-tile${row ? " it-row" : ""}${food ? " food" : ""}${done ? " done" : ""}${planned ? " planned" : ""}`} aria-label={item.name} data-item-id={item.id}>
       <div className="it-pic" style={{ background: `color-mix(in srgb, ${tint} 12%, #fff)` }}>
         <FallbackImg className="it-photo" src={ideaThumb(item)} fallback={<img className="it-illus" src={`illus/${food ? "restoran" : "yapilacak"}.png`} alt="" />} />
         {/* v30: what it is, in the picture's corner. */}

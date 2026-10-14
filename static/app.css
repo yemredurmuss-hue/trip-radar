@@ -5293,3 +5293,34 @@ body.still .work-line i { width: 100%; opacity: .5; }
 @media (min-width: 900px) { .bk-grid.fl { grid-template-columns: repeat(auto-fill, minmax(min(100%, max(250px, calc((100% - 24px) / 3))), 1fr)); } }
 /* when the record's airline is only its code ("TK"), the number alone is the name */
 .tk-hn > b > .tk-no:first-child { margin-left: 0; font-size: inherit; font-weight: inherit; color: inherit; }
+/* -- fark-listeler -- Yapılacaklar, Hazırlık, İlham as the v46 drawing has them */
+/* a place's name and its note are said whole (no "…", no clamp): the card grows */
+.it-city .it-tile .it-t { display: block; -webkit-line-clamp: unset; overflow: visible; min-height: 0; }
+.it-city .it-tile .it-t a { display: inline; -webkit-line-clamp: unset; overflow: visible; }
+.it-tile .it-m { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.3; }
+/* Hazırlık: the line "0/6 hazır" and "Daha fazla öner" stay on one row, the note wraps inside itself */
+.prep-head .prep-why { flex: 1 1 0; min-width: 0; }
+.prep-head .prep-sp { display: none; }
+.prep-head .prep-more { margin-left: auto; flex: none; }
+.prep-buy { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.prep-bm { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 5px; background: #232f3e; color: #fff; font-size: 9px; font-weight: 800; text-decoration: none; }
+/* İlham: compact cards, the play thumbnail at the left, the title a link, who saved it and where from under it */
+.ins-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 10px; }
+.ins-tile { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 2px 10px; align-items: center; align-content: center; padding: 8px; border-radius: 14px; background: var(--v-soft, #f7f5f1); }
+.ins-tile .ins-ph { grid-row: span 3; width: 88px; height: 56px; aspect-ratio: auto; border-radius: 10px; background: linear-gradient(135deg, #e9b9d0, #8a5a7a); display: grid; place-items: center; color: #fff; }
+.ins-tile .ins-ph-ic { position: static; color: #fff; }
+.ins-play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; }
+.ins-play svg { fill: #fff; stroke: none; }
+.ins-ph-ic svg { fill: #fff; stroke: none; }
+.ins-ph-ic + .ins-play { display: none; }
+.ins-tile > b.ins-t { display: block; margin: 0; font-size: 13.5px; line-height: 1.25; -webkit-line-clamp: unset; overflow: visible; }
+.ins-t a { color: var(--v-accent-ink, #4a35cc); text-decoration: underline; text-underline-offset: 2px; }
+.ins-src { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--v-muted, #6b6790); min-width: 0; }
+.ins-src .ins-badge { position: static; padding: 0; background: none; color: inherit; font-size: 12px; font-weight: 400; text-decoration: underline; text-underline-offset: 2px; }
+.ins-bm { display: inline-grid; place-items: center; flex: none; width: 18px; height: 18px; border-radius: 5px; background: #475467; color: #fff; font-size: 10px; font-weight: 800; font-style: normal; }
+.ins-bm.p-youtube { background: #d00; } .ins-bm.p-reels, .ins-bm.p-instagram { background: #c0256b; } .ins-bm.p-pinterest { background: #e60023; } .ins-bm.p-tiktok { background: #111; }
+.ins-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.ins-foot .ins-city { white-space: normal; }
+.ins-tile .fk-daywrap { margin-top: 0; }
+.ins-tile > b.ins-t { padding-right: 22px; }
+@media (max-width: 480px) { .prep-head { flex-wrap: wrap; } .prep-head .prep-why { flex-basis: 100%; order: 3; } }
