@@ -3,7 +3,7 @@
 Çizim: `docs/mockups/plan-v33/index.html`. Kod yazılmadı, onay bekleniyor.
 
 Emre'nin geri bildirimi ve karşılığı:
-- Seçilen hemen niyet kartının yanında; öneriler her grupta kapalı açılır listede, en çok 6 kart, daha fazlası Pano'da ("Pano'da hepsine bak").
+- Seçilen hemen niyet kartının yanında: tek seçimli ihtiyaçlarda (otel, uçuş, yol) bir kart; çok seçimli olanlarda (etkinlik, yapılacak) seçilenlerin hepsi, seçilmeyenler açılır listede; öneriler her grupta kapalı açılır listede, en çok 6 kart, daha fazlası Pano'da ("Pano'da hepsine bak").
 - Seçenekler görsel ağırlıklı: büyük görsel, altında ad ve "Ekle" (fiyat ve sağlayıcı alt satırda). Önceki düğmeler ve davranışlar yeniden yaratılmadı.
 - Niyet kartı: görsel ile ad (tür, şehir, tek satır bilgi) yan yana; altında etiketler ve kendin ara; büyük boşluk yok; içerik kaydırırken kartta görünür kalır (sticky).
 - Kendin ara: logo biçimi (adı üstüne gelince) ve yazı biçimi (minimal, küçük renk noktası ve ad); çizimde anahtarla denenir.
