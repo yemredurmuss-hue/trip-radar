@@ -43,3 +43,8 @@ Yeni: her ihtiyaç için niyet kartı (solda, bagaj etiketi), canlı kart yanın
 - Uçuşa kalan gün uyarısı, rötar, kapı, rezervasyon kodu gibi uçuş günü şeritleri.
 - Üst sayfa: hero, bütçe kartı, tercihler, planlama çubuğu, yol şeridi, gün gün ve pano görünümleri (v67'de aynen duruyor).
 Bilinen veri farkı: canlıdaki örnek gezide kart yüzleri ile aria etiketleri bazı yerde çelişiyor (Hakone → Osaka / Kyoto → Osaka). Niyet kartı kart yüzünü izledi.
+
+## v68 (v67 üstüne ince ayar, yapı aynı) · docs/mockups/plan-v68-vurgu
+- Niyet kartı sakinleşti: etiket 19 px / kalın çerçeve yerine 14,5 px / ince çerçeve, ad 30 px yerine 23 px ve 700, ince çizgi, hafif zemin, küçük mühür. Sütun 260 px yerine 236 px.
+- Önemli bilgi öne: fiyat 24 px / 800, saat 22 px, rota ve otel adı 20-21 px, "kişi başı" ve "/ gece" okunur gri.
+- CTA tek eylem rengi (mor), 42 px, gölgeli, üstüne gelince kalkar: Rezerve et, Klook ↗ gibi dış bağlantılar. İkincil düğmeler (Bunu seç, Plana koy) mor çerçeveli, "Aldım" yeşil çerçeveli.
