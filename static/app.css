@@ -5272,3 +5272,18 @@ body.still .work-line i { width: 100%; opacity: .5; }
 .ev-n-h { white-space: normal; }
 /* The section's own "+ Ekle" is in the toolbar now (the drawing); the one at the section's end would say it twice. */
 .cat-body:has(> .ev-wrap) > .cat-add { display: none; }
+/* -- fark-konaklama -- a stay's three picks follow the width of the card they sit in (the plan column is narrow when the window is ~1000 px): the grid
+   wraps by its own width, never three squeezed columns; the name takes two lines, the rating chip, reviews, area and price are shown whole, the
+   buttons never overflow. Card layout as drawn in v46: photo band, source and rating chip, name, price, one action row. */
+.ek-pick-list { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); }
+.ek-pick-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; overflow: hidden; overflow-wrap: anywhere; line-height: 1.25; text-overflow: ellipsis; }
+.ek-pick-s { flex-wrap: wrap; row-gap: 2px; white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.35; }
+.ek-pick-s .ek-of-rate { flex: none; white-space: nowrap; }
+.ek-pick-price { line-height: 1.35; overflow-wrap: anywhere; }
+.ek-pick-price b { white-space: nowrap; }
+.ek-pick-acts { grid-template-columns: repeat(auto-fit, minmax(min(100%, 96px), 1fr)); }
+.ek-pick-fav, .ek-pick-go { min-width: 0; padding: 0 8px; white-space: nowrap; }
+
+/* -- fark-konaklama -- the back face's option grid wraps by the width of the card it is in (as the v46 drawing's ~220 px tiles), not by the window:
+   in the narrow plan column the old 3 columns made 140 px tiles whose chips ran over each other */
+.bk-grid:not(.fl) { grid-template-columns: repeat(auto-fill, minmax(min(100%, 208px), 1fr)); }
