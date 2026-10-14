@@ -5370,3 +5370,8 @@ body.still .work-line i { width: 100%; opacity: .5; }
 .composer input[type="text"]::placeholder { text-overflow: ellipsis; }
 .composer .icon-btn { width: 32px; height: 32px; flex: none; }
 .composer input[type="text"]::placeholder { font-size: 13px; }
+
+/* -- fark-toast -- the arrival and undo toasts sit over the Plan column, never over the chat's box (its send button) when the chat is a side column */
+@media (min-width: 861px) {
+  .toast { --chat-w: clamp(360px, 34%, 540px); left: calc(var(--chat-w) + (100% - var(--chat-w)) / 2); max-width: min(720px, calc(100vw - var(--chat-w) - 32px)); }
+}
