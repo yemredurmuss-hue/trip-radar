@@ -3782,7 +3782,7 @@ a.ch-why { text-decoration: none; }
 .vcard .foot { position: absolute; left: 20px; right: 20px; bottom: 18px; z-index: 2; display: block; color: #fff; }
 .vcard .ttl { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; text-wrap: balance; overflow-wrap: break-word; font-size: 26px; line-height: 1.08; font-weight: 800; letter-spacing: -.025em; text-shadow: 0 1px 14px rgba(0, 0, 0, .25); }
 .vcard .ttl.m { font-size: 22px; line-height: 1.1; } .vcard .ttl.l { font-size: 19px; line-height: 1.14; letter-spacing: -.015em; }
-.vcard .inf { display: block; max-width: 100%; margin-top: 6px; font-size: 14px; font-weight: 550; opacity: .92; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vcard .vc-inf { display: block; max-width: 100%; margin-top: 6px; font-size: 14px; font-weight: 550; opacity: .92; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vcard .fc { display: inline-flex; flex: none; }
 .vcard .fc i { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; overflow: hidden; font-style: normal; font-size: 12.5px; font-weight: 700; color: #fff; box-shadow: 0 0 0 2.5px var(--ring); }
 .vcard .fc i img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -5260,3 +5260,118 @@ body:has(.modal:not(.mv-leaving), .overlay:not(.mv-leaving), .drawer:not(.mv-lea
 .work-slot.errors { position: fixed; top: 68px; right: 24px; z-index: 40; margin: 0; }
 @media (prefers-reduced-motion: reduce) { .work-line i { width: 100%; opacity: .5; } }
 body.still .work-line i { width: 100%; opacity: .5; }
+
+/* -- fark-etkinlik -- (v46 Etkinlik ve turlar: the drawing's one toolbar line, a violet line for what we found and put on the plan) */
+.ev-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ev-top .ev-key { flex: 1 1 240px; min-width: 0; }
+.ev-ghost { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 9px; border: 1px solid var(--v-line2); background: #fff; color: var(--v-accent-ink); font: inherit; font-size: 13px; font-weight: 650; white-space: nowrap; cursor: pointer; }
+.ev-ghost:hover { background: var(--v-lav); }
+.ev-ghost:focus-visible { outline: 2px solid var(--hx-accent); outline-offset: 2px; }
+.ev-bar .ev-toggle b { font-size: 13.5px; }
+.ev-card.chosen.ai { border-color: color-mix(in srgb, var(--hx-accent) 38%, var(--v-line2)); }
+.ev-n-h { white-space: normal; }
+/* The section's own "+ Ekle" is in the toolbar now (the drawing); the one at the section's end would say it twice. */
+.cat-body:has(> .ev-wrap) > .cat-add { display: none; }
+/* -- fark-konaklama -- a stay's three picks follow the width of the card they sit in (the plan column is narrow when the window is ~1000 px): the grid
+   wraps by its own width, never three squeezed columns; the name takes two lines, the rating chip, reviews, area and price are shown whole, the
+   buttons never overflow. Card layout as drawn in v46: photo band, source and rating chip, name, price, one action row. */
+.ek-pick-list { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); }
+.ek-pick-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; overflow: hidden; overflow-wrap: anywhere; line-height: 1.25; text-overflow: ellipsis; }
+.ek-pick-s { flex-wrap: wrap; row-gap: 2px; white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.35; }
+.ek-pick-s .ek-of-rate { flex: none; white-space: nowrap; }
+.ek-pick-price { line-height: 1.35; overflow-wrap: anywhere; }
+.ek-pick-price b { white-space: nowrap; }
+.ek-pick-acts { grid-template-columns: repeat(auto-fit, minmax(min(100%, 96px), 1fr)); }
+.ek-pick-fav, .ek-pick-go { min-width: 0; padding: 0 8px; white-space: nowrap; }
+
+/* -- fark-konaklama -- the back face's option grid wraps by the width of the card it is in (as the v46 drawing's ~220 px tiles), not by the window:
+   in the narrow plan column the old 3 columns made 140 px tiles whose chips ran over each other */
+.bk-grid:not(.fl) { grid-template-columns: repeat(auto-fill, minmax(min(100%, 208px), 1fr)); }
+/* -- fark-ucusyol -- the back of a flight card: at most three options side by side, but never narrower than 250 px of the CARD
+   (the old rule counted the window: at 1000 px the Plan column is ~520 px and three 160 px cards cut their hours). */
+.bk-grid.fl { grid-template-columns: repeat(auto-fill, minmax(min(100%, max(250px, calc((100% - 24px) / 3))), 1fr)); }
+@media (min-width: 900px) { .bk-grid.fl { grid-template-columns: repeat(auto-fill, minmax(min(100%, max(250px, calc((100% - 24px) / 3))), 1fr)); } }
+/* when the record's airline is only its code ("TK"), the number alone is the name */
+.tk-hn > b > .tk-no:first-child { margin-left: 0; font-size: inherit; font-weight: inherit; color: inherit; }
+/* -- fark-listeler -- Yapılacaklar, Hazırlık, İlham as the v46 drawing has them */
+/* a place's name and its note are said whole (no "…", no clamp): the card grows */
+.it-city .it-tile .it-t { display: block; -webkit-line-clamp: unset; overflow: visible; min-height: 0; }
+.it-city .it-tile .it-t a { display: inline; -webkit-line-clamp: unset; overflow: visible; }
+.it-tile .it-m { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.3; }
+/* Hazırlık: the line "0/6 hazır" and "Daha fazla öner" stay on one row, the note wraps inside itself */
+.prep-head .prep-why { flex: 1 1 0; min-width: 0; }
+.prep-head .prep-sp { display: none; }
+.prep-head .prep-more { margin-left: auto; flex: none; }
+.prep-buy { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.prep-bm { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 5px; background: #232f3e; color: #fff; font-size: 9px; font-weight: 800; text-decoration: none; }
+/* İlham: compact cards, the play thumbnail at the left, the title a link, who saved it and where from under it */
+.ins-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 10px; }
+.ins-tile { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 2px 10px; align-items: center; align-content: center; padding: 8px; border-radius: 14px; background: var(--v-soft, #f7f5f1); }
+.ins-tile .ins-ph { grid-row: span 3; width: 88px; height: 56px; aspect-ratio: auto; border-radius: 10px; background: linear-gradient(135deg, #e9b9d0, #8a5a7a); display: grid; place-items: center; color: #fff; }
+.ins-tile .ins-ph-ic { position: static; color: #fff; }
+.ins-play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; }
+.ins-play svg { fill: #fff; stroke: none; }
+.ins-ph-ic svg { fill: #fff; stroke: none; }
+.ins-ph-ic + .ins-play { display: none; }
+.ins-tile > b.ins-t { display: block; margin: 0; font-size: 13.5px; line-height: 1.25; -webkit-line-clamp: unset; overflow: visible; }
+.ins-t a { color: var(--v-accent-ink, #4a35cc); text-decoration: underline; text-underline-offset: 2px; }
+.ins-src { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--v-muted, #6b6790); min-width: 0; }
+.ins-src .ins-badge { position: static; padding: 0; background: none; color: inherit; font-size: 12px; font-weight: 400; text-decoration: underline; text-underline-offset: 2px; }
+.ins-bm { display: inline-grid; place-items: center; flex: none; width: 18px; height: 18px; border-radius: 5px; background: #475467; color: #fff; font-size: 10px; font-weight: 800; font-style: normal; }
+.ins-bm.p-youtube { background: #d00; } .ins-bm.p-reels, .ins-bm.p-instagram { background: #c0256b; } .ins-bm.p-pinterest { background: #e60023; } .ins-bm.p-tiktok { background: #111; }
+.ins-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.ins-foot .ins-city { white-space: normal; }
+.ins-tile .fk-daywrap { margin-top: 0; }
+.ins-tile > b.ins-t { padding-right: 22px; }
+@media (max-width: 480px) { .prep-head { flex-wrap: wrap; } .prep-head .prep-why { flex-basis: 100%; order: 3; } }
+/* -- fark-ust -- v46 çizimiyle üst kısım farkları */
+/* Gezi menüsü: satır simgeleri (çizimde Belgeler, Paylaş, PDF, Geçmiş simgeli; başlık koyu, açıklama küçük). */
+.menu button:has(.menu-ic), .menu a:has(.menu-ic) { display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 12px; align-items: center; }
+.menu .menu-ic { grid-row: span 2; color: #6b6b75; }
+.menu .danger .menu-ic { color: inherit; }
+.menu button:has(.menu-ic) > small { grid-column: 2; }
+.menu button:has(.menu-ic):not(:has(small)) .menu-ic { grid-row: auto; }
+/* Hero: şehir sekmeleri çizimdeki gibi fotoğrafın sol üstünde kalır (dar pencerede küçülür); alta yalnız çok dar ekranda iner. */
+@container panel (min-width: 481px) and (max-width: 760px) {
+  .hx-cities { top: 14px; bottom: auto; left: 14px; padding: 3px; max-width: calc(100% - 28px - 200px); }
+  .hx-cities button { height: 34px; padding: 0 14px; font-size: 14.5px; }
+  .hx-badges { top: 14px; right: 62px; }
+  .hx-count { height: 34px; padding: 0 12px; font-size: 14px; }
+  .hx-menu { top: 14px; right: 14px; }
+  .hx-menu .menu-btn { width: 36px; height: 36px; }
+}
+/* Sohbet: kayan kutunun üst kenarında yarım kalan satır sert kesilmez, yumuşakça solar (kutu en üstteyken içerik tam görünür). */
+.messages, .st-msgs { padding-top: 16px; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16px); mask-image: linear-gradient(to bottom, transparent 0, #000 16px); }
+.menu:has(.menu-ic) { min-width: 276px; max-width: min(340px, calc(100vw - 32px)); }
+.menu button:has(.menu-ic), .menu a:has(.menu-ic) { white-space: normal; }
+.menu button:has(.menu-ic) > small { white-space: normal; }
+/* Sohbet: çizimdeki kutular (kişi lavanta, asistan krem, değişiklik özeti kesikli çerçeve, hızlı yanıtlar çerçeveli çip). */
+.messages { gap: 10px; }
+.messages .msg-user, .messages .msg-assistant { align-self: stretch; max-width: 100%; padding: 10px 12px; border-radius: 14px; border-top-left-radius: 5px; font-size: 14.5px; line-height: 1.5; min-width: 0; overflow-wrap: anywhere; }
+.messages .msg-user { background: var(--hx-lav); color: var(--hx-ink); }
+.messages .ar-sent { align-self: stretch; align-items: stretch; max-width: 100%; }
+.messages .msg-assistant { background: var(--hx-card); color: var(--hx-ink); }
+.msg-assistant[data-who]::before { content: attr(data-who); display: flex; align-items: center; gap: 6px; margin-bottom: 3px; font-size: 12px; line-height: 20px; color: var(--hx-muted); white-space: nowrap; }
+.msg-assistant[data-who]::before { padding-left: 26px; background: no-repeat left center / 20px 20px url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='10' fill='%23ece8ff'/%3E%3Cpath d='M10 4.5l1 2.8 2.8 1-2.8 1-1 2.8-1-2.8-2.8-1 2.8-1zM14.5 12.5v2.4M15.7 13.7h-2.4' fill='none' stroke='%234a35cc' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.messages .chat-ref { color: #4a35cc; text-decoration-color: color-mix(in srgb, #4a35cc 35%, transparent); }
+.messages .msg-event, .messages button.msg-event.ar-ev { align-self: stretch; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px dashed var(--hx-accent); border-radius: 14px; background: #fff; color: #4a35cc; font-size: 13.5px; font-weight: 600; text-align: left; }
+.messages .msg-event::before { content: "\2726"; flex: none; font-size: 14px; }
+.messages .choices { gap: 6px; margin-top: -2px; }
+.messages .choices button, .messages .choices .btn-primary, .messages .choices .btn-link { padding: 4px 10px; border: 1px solid var(--hx-accent); border-radius: 999px; background: #fff; color: #4a35cc; font-size: 13px; }
+.messages .choices .btn-primary { background: var(--hx-lav); font-weight: 600; }
+.messages .choices button:hover { background: var(--hx-lav); }
+.thinking { font-size: 13px; }
+.composer { border-radius: 14px; }
+.composer .send-btn { width: 32px; height: 32px; border-radius: 10px; background: var(--hx-lav); color: #4a35cc; }
+.composer .send-btn:not(:disabled) { background: var(--hx-accent); color: #fff; opacity: 1; }
+.composer .send-btn:disabled { opacity: .7; }
+.composer { margin: 0 12px 16px; gap: 6px; padding: 6px 6px 6px 6px; }
+.composer input[type="text"] { font-size: 14px; padding: 8px 2px; text-overflow: ellipsis; }
+.composer input[type="text"]::placeholder { text-overflow: ellipsis; }
+.composer .icon-btn { width: 32px; height: 32px; flex: none; }
+.composer input[type="text"]::placeholder { font-size: 13px; }
+
+/* -- fark-toast -- the arrival and undo toasts sit over the Plan column, never over the chat's box (its send button) when the chat is a side column */
+@media (min-width: 861px) {
+  .toast { --chat-w: clamp(360px, 34%, 540px); left: calc(var(--chat-w) + (100% - var(--chat-w)) / 2); max-width: min(720px, calc(100vw - var(--chat-w) - 32px)); }
+}
