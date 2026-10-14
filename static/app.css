@@ -5260,3 +5260,25 @@ body:has(.modal:not(.mv-leaving), .overlay:not(.mv-leaving), .drawer:not(.mv-lea
 .work-slot.errors { position: fixed; top: 68px; right: 24px; z-index: 40; margin: 0; }
 @media (prefers-reduced-motion: reduce) { .work-line i { width: 100%; opacity: .5; } }
 body.still .work-line i { width: 100%; opacity: .5; }
+
+/* -- fark-ust -- v46 çizimiyle üst kısım farkları */
+/* Gezi menüsü: satır simgeleri (çizimde Belgeler, Paylaş, PDF, Geçmiş simgeli; başlık koyu, açıklama küçük). */
+.menu button:has(.menu-ic), .menu a:has(.menu-ic) { display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 12px; align-items: center; }
+.menu .menu-ic { grid-row: span 2; color: #6b6b75; }
+.menu .danger .menu-ic { color: inherit; }
+.menu button:has(.menu-ic) > small { grid-column: 2; }
+.menu button:has(.menu-ic):not(:has(small)) .menu-ic { grid-row: auto; }
+/* Hero: şehir sekmeleri çizimdeki gibi fotoğrafın sol üstünde kalır (dar pencerede küçülür); alta yalnız çok dar ekranda iner. */
+@container panel (min-width: 481px) and (max-width: 760px) {
+  .hx-cities { top: 14px; bottom: auto; left: 14px; padding: 3px; max-width: calc(100% - 28px - 200px); }
+  .hx-cities button { height: 34px; padding: 0 14px; font-size: 14.5px; }
+  .hx-badges { top: 14px; right: 62px; }
+  .hx-count { height: 34px; padding: 0 12px; font-size: 14px; }
+  .hx-menu { top: 14px; right: 14px; }
+  .hx-menu .menu-btn { width: 36px; height: 36px; }
+}
+/* Sohbet: kayan kutunun üst kenarında yarım kalan satır sert kesilmez, yumuşakça solar (kutu en üstteyken içerik tam görünür). */
+.messages, .st-msgs { padding-top: 16px; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16px); mask-image: linear-gradient(to bottom, transparent 0, #000 16px); }
+.menu:has(.menu-ic) { min-width: 276px; max-width: min(340px, calc(100vw - 32px)); }
+.menu button:has(.menu-ic), .menu a:has(.menu-ic) { white-space: normal; }
+.menu button:has(.menu-ic) > small { white-space: normal; }
