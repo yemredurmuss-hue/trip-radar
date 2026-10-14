@@ -17,7 +17,7 @@ import { DropOverlay } from "./arrive/ArriveViews";
 import { useBoardIntake } from "./arrive/useBoardIntake";
 import { Chat } from "./Chat";
 import { CompareView } from "./CompareView";
-import { HeroIcon } from "./Icons";
+import { HeroIcon, MenuIcon } from "./Icons";
 import { ItemDrawer } from "./ItemDrawer";
 import { Settings } from "./Settings";
 import { ShareDialog, ShareProvider } from "./Share";
@@ -185,31 +185,34 @@ export function App() {
           {trip && (
             <>
               <button onClick={() => document.querySelector<HTMLInputElement>('.composer input[type="text"]')?.focus()}>
-                {L("Link ya da ekran görüntüsü ekle", "Add a link or screenshot")}
+                <MenuIcon name="link" />
+                <span>{L("Link ya da ekran görüntüsü ekle", "Add a link or screenshot")}</span>
               </button>
-              <button onClick={() => sendPanel("docs")}>{L("Belgeler", "Documents")}<small aria-hidden>{L("bütün belgeler tek listede", "every document in one list")}</small></button>
-              {sharable && <button onClick={() => setShareOpen(true)}>{trip.shareId ? L("Paylaşım kodu", "Share code") : L("Bu geziyi paylaş", "Share this trip")}<small aria-hidden>{L("gezi arkadaşlarınla birlikte", "with your travel companions")}</small></button>}
-              <button onClick={() => sendPanel("pdf")}>{L("Planı PDF olarak indir", "Download the plan as PDF")}<small aria-hidden>{L("özet ve gün gün akış, tek dosya", "summary and days, one file")}</small></button>
+              <button onClick={() => sendPanel("docs")}><MenuIcon name="clip" /><span>{L("Belgeler", "Documents")}</span><small aria-hidden>{L("bütün belgeler tek listede", "every document in one list")}</small></button>
+              {sharable && <button onClick={() => setShareOpen(true)}><MenuIcon name="users" /><span>{trip.shareId ? L("Paylaşım kodu", "Share code") : L("Bu geziyi paylaş", "Share this trip")}</span><small aria-hidden>{L("gezi arkadaşlarınla birlikte", "with your travel companions")}</small></button>}
+              <button onClick={() => sendPanel("pdf")}><MenuIcon name="out" /><span>{L("Planı PDF olarak indir", "Download the plan as PDF")}</span><small aria-hidden>{L("özet ve gün gün akış, tek dosya", "summary and days, one file")}</small></button>
               {mapUrl && (
                 <a href={mapUrl} target="_blank" rel="noreferrer">
-                  {L("Rotayı haritada gör", "See the route on a map")}
+                  <MenuIcon name="map" />
+                  <span>{L("Rotayı haritada gör", "See the route on a map")}</span>
                 </a>
               )}
               <hr />
-              <button onClick={() => void resetConversation(trip.id)}>{L("Bu gezide yeni sohbet başlat", "Start a new chat for this trip")}</button>
-              <button onClick={() => setHistoryOpen(true)}>{L("Geçmiş ve çöp kutusu", "History and trash")}<small aria-hidden>{L("kim neyi değiştirdi, silinenler", "who changed what, deleted items")}</small></button>
+              <button onClick={() => void resetConversation(trip.id)}><MenuIcon name="chat" /><span>{L("Bu gezide yeni sohbet başlat", "Start a new chat for this trip")}</span></button>
+              <button onClick={() => setHistoryOpen(true)}><MenuIcon name="clock" /><span>{L("Geçmiş ve çöp kutusu", "History and trash")}</span><small aria-hidden>{L("kim neyi değiştirdi, silinenler", "who changed what, deleted items")}</small></button>
             </>
           )}
-          {!trip && <button onClick={() => setHistoryOpen(true)}>{L("Çöp kutusu", "Trash")}</button>}
-          <button onClick={() => setSettingsOpen(true)}>{L("Ayarlar", "Settings")}</button>
+          {!trip && <button onClick={() => setHistoryOpen(true)}><MenuIcon name="trash" /><span>{L("Çöp kutusu", "Trash")}</span></button>}
+          <button onClick={() => setSettingsOpen(true)}><MenuIcon name="gear" /><span>{L("Ayarlar", "Settings")}</span></button>
           {!board.trips.some((t) => t.demo) && (
-            <button onClick={() => void loadDemoTrip().then(board.selectTrip)}>{L("Örnek geziyi yükle", "Load the sample trip")}</button>
+            <button onClick={() => void loadDemoTrip().then(board.selectTrip)}><MenuIcon name="demo" /><span>{L("Örnek geziyi yükle", "Load the sample trip")}</span></button>
           )}
           {trip && (
             <>
               <hr />
               <button className="danger" onClick={() => void deleteTrip()}>
-                {L("Bu geziyi sil", "Delete this trip")}
+                <MenuIcon name="trash" />
+                <span>{L("Bu geziyi sil", "Delete this trip")}</span>
               </button>
             </>
           )}

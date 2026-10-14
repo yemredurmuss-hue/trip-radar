@@ -372,6 +372,13 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     // The plan said back when it starts counting: in view (2026-10-07).
   }, [state.messages.length, stage, auto != null]);
 
+  // The answers (chips, the summary) arrive after their question and grow the box: if the reader was at the foot, the foot stays in view
+  // (the line above never rides half cut at the top while the new part hides below).
+  useEffect(() => {
+    const box = bottom.current?.closest(".st-msgs");
+    if (box && box.scrollHeight - box.scrollTop - box.clientHeight < 260) box.scrollTop = box.scrollHeight;
+  });
+
   // The typing box ready on open; the screen left (unmounted): every answer still on its way is dropped and stopped.
   useEffect(() => {
     left.current = false;

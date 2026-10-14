@@ -235,7 +235,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
             );
           }
           const line = (
-            <div key={m.id} className={`msg-${m.role}`}>
+            <div key={m.id} className={`msg-${m.role}`} data-who={m.role === "assistant" ? L("Asistan", "Assistant") : undefined}>
               {/* A reply stored before the filter (the raw trip state as the answer) is cleaned here too. */}
               <RichText text={m.role === "assistant" ? shownReply(m.text) : m.text} links={m.role === "assistant" ? m.webSources : undefined} names={m.role === "assistant" ? names : undefined} />
               {/* A change said with no tool that made it (claims.ts): on screen only, never in the model's history. */}
