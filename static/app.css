@@ -5287,3 +5287,9 @@ body.still .work-line i { width: 100%; opacity: .5; }
 /* -- fark-konaklama -- the back face's option grid wraps by the width of the card it is in (as the v46 drawing's ~220 px tiles), not by the window:
    in the narrow plan column the old 3 columns made 140 px tiles whose chips ran over each other */
 .bk-grid:not(.fl) { grid-template-columns: repeat(auto-fill, minmax(min(100%, 208px), 1fr)); }
+/* -- fark-ucusyol -- the back of a flight card: at most three options side by side, but never narrower than 250 px of the CARD
+   (the old rule counted the window: at 1000 px the Plan column is ~520 px and three 160 px cards cut their hours). */
+.bk-grid.fl { grid-template-columns: repeat(auto-fill, minmax(min(100%, max(250px, calc((100% - 24px) / 3))), 1fr)); }
+@media (min-width: 900px) { .bk-grid.fl { grid-template-columns: repeat(auto-fill, minmax(min(100%, max(250px, calc((100% - 24px) / 3))), 1fr)); } }
+/* when the record's airline is only its code ("TK"), the number alone is the name */
+.tk-hn > b > .tk-no:first-child { margin-left: 0; font-size: inherit; font-weight: inherit; color: inherit; }

@@ -15,7 +15,10 @@ describe("a booking's rows", () => {
     });
     const rows = bookingRows(flight, "flight");
     expect(rows[0]).toEqual(["PNR", "K7T2QX"]);
-    expect(rows[1]).toEqual(["Uçuş", "TK TK52"]);
+    // the carrier is only its code, which the number already says: once
+    expect(rows[1]).toEqual(["Uçuş", "TK52"]);
+    const named = bookingRows({ ...flight, flight: { ...flight.flight!, carrier: "Turkish Airlines" } }, "flight");
+    expect(named[1]).toEqual(["Uçuş", "Turkish Airlines TK52"]);
     expect(rows[2][0]).toBe("Kalkış");
     expect(rows[2][1]).toMatch(/IST · .*01:55$/);
     expect(rows.at(-1)).toEqual(["Kişi", "2 kişi"]);

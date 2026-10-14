@@ -89,6 +89,8 @@ export function FlightTicket({ look, stub, airline, number, date, face, stops, w
   // rt-fly: the plane glides to its card the first time that ticket is drawn in this session.
   const [fly] = useState(() => flysIn(shell.itemId));
   const code = number ? number.replace(/\s+/g, "").slice(0, 2) : null;
+  // The airline's name is the carrier's bare code ("TK") already said by the number ("TK 52"): say it once.
+  const nameIsCode = Boolean(airline && number && number.replace(/\s+/g, "").toUpperCase().startsWith(airline.toUpperCase()));
   const ring = look === "booked" ? "done" : look === "chosen" || look === "arranged" ? "half" : "open";
   const middle = wants ? L(`Aradığımız: ${wants}`, `We're looking for: ${wants}`) : face.middle;
   const tone = wants ? "want" : stops == null ? undefined : stops === 0 ? "direct" : "stop";
@@ -103,7 +105,7 @@ export function FlightTicket({ look, stub, airline, number, date, face, stops, w
         <span className="tk-head">
           <AirlineLogo code={code} />
           <span className="tk-hn">
-            <b title={airline ?? undefined}>{airline ?? L("Uçuş", "Flight")}{number && <>{" "}<span className="tk-no num">{number}</span></>}</b>
+            <b title={airline ?? undefined}>{nameIsCode ? null : airline ?? L("Uçuş", "Flight")}{number && <>{nameIsCode ? null : " "}<span className="tk-no num">{number}</span></>}</b>
             <span className="tk-when num">{date}</span>
           </span>
         </span>
