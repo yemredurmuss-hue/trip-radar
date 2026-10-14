@@ -65,7 +65,7 @@ export function TripCard({ title, info, image, photoBy, left, people, order, onO
           <b className={`ttl ${titleSize(title)}`} title={title}>
             {title}
           </b>
-          <span className="inf">{info}</span>
+          <span className="vc-inf">{info}</span>
         </span>
       </span>
     </button>
@@ -88,7 +88,7 @@ export function DraftCard({ place, done, total, onOpen, onRemove }: DraftProps) 
           <span className="vp">{L("Taslak", "Draft")}</span>
           <span className="foot">
             <b className={`ttl ${titleSize(place)}`}>{place}</b>
-            <span className="inf">{L(`${done}/${total} bilgi · yarıda kaldı · Devam et`, `${done}/${total} answers · left halfway · Continue`)}</span>
+            <span className="vc-inf">{L(`${done}/${total} bilgi · yarıda kaldı · Devam et`, `${done}/${total} answers · left halfway · Continue`)}</span>
           </span>
         </span>
       </button>
