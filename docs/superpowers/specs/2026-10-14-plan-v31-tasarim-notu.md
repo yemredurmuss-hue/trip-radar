@@ -14,6 +14,13 @@ Kategori içinde her ihtiyaç bir **grup** (tek çerçeve, türün renginde):
 - **İlerleme:** üstte yapışkan şerit (halka %, "2 seçildi · 3 karar bekliyor", "Sıradaki: Hakone konaklaması →"); bölüm başlığında ince çubuk.
 - **Hareket:** grup girişi (rise), seçim parlaması, kat açılışı; `prefers-reduced-motion` hepsini kapatır. Hareket Dili oturumunun işaretleri (`data-pit` vb.) koda geçerken eklenecek.
 
+## 4. tur değişiklikleri (Emre geri bildirimi)
+- **Niyet kartı sadeleşti:** tür etiketi, ad, TEK satır bilgi (gece · tarih · kişi), en çok 2 niyet etiketi (fazlası "+N", üstüne gelince listelenir), aşama etiketi görselin sağ üstünde.
+- **Kendin ara bağlantıları niyet kartında:** üstüne gelince (dokunmatikte hep görünür) Booking.com / Airbnb / Resmî site (konaklama), JR / Rome2rio (ulaşım), Skyscanner / Google Uçuşlar (uçuş), Viator / Klook / GetYourGuide (etkinlik), Haritalar (yapılacak), Airalo (eSIM). Seçenek alanındaki Booking/Resmî site satırı kalktı.
+- **Seçenekler her grupta, seçili olsun olmasın altta katlanır** ("Seçenekler · Pano ve AI" + sayı). Seçilmemiş ihtiyaçta büyük kart yerine ince "Henüz seçilmedi" satırı (tahmini aralık yalnız ≥3 gerçek teklifle).
+- **Tüm bölümler aynı yapıda:** Konaklama, Ulaşım, Uçuş, Etkinlik ve turlar (✓ planda kartlar + katlanır öneriler), Yapılacaklar ve restoranlar, Belgeler ve internet (eSIM, sigorta).
+- İlerleme: 7 karar ihtiyacı (konaklama x3, ulaşım, uçuş, eSIM, sigorta); etkinlik ve yapılacaklar karar sayılmaz.
+
 ## Kodlama sırası (onaydan sonra)
 1. Niyet kartı + çerçeve grup bileşeni (Plan'ın her bölümü; `PlanEntry`/`CategoryPlan`), seçili otel yatay biçimi.
 2. Seçenekler katlanır (arka yüz `ChoiceSheet` ile aynı veri), yolun adı etiketi.
