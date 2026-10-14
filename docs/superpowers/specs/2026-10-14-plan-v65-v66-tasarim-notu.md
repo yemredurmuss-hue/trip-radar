@@ -48,3 +48,9 @@ Bilinen veri farkı: canlıdaki örnek gezide kart yüzleri ile aria etiketleri 
 - Niyet kartı sakinleşti: etiket 19 px / kalın çerçeve yerine 14,5 px / ince çerçeve, ad 30 px yerine 23 px ve 700, ince çizgi, hafif zemin, küçük mühür. Sütun 260 px yerine 236 px.
 - Önemli bilgi öne: fiyat 24 px / 800, saat 22 px, rota ve otel adı 20-21 px, "kişi başı" ve "/ gece" okunur gri.
 - CTA tek eylem rengi (mor), 42 px, gölgeli, üstüne gelince kalkar: Rezerve et, Klook ↗ gibi dış bağlantılar. İkincil düğmeler (Bunu seç, Plana koy) mor çerçeveli, "Aldım" yeşil çerçeveli.
+
+## v69 (v68 + onaylı "seçenek paneli") · docs/mockups/plan-v69-secenekler
+- Onaylanmış "altta açılan diğer öneriler" paneli geri geldi (v67 ve v68'de unutulmuştu): Konaklama Tokyo ve Kyoto'da "Diğer oteller", Uçuş İstanbul → Osaka'da "Diğer uçuşlar". Etkinlik'te "Öneriler" zaten vardı.
+- Seçenek kartında kalan: görsel, kaynak ve puan, ad, fiyat, tek düğme ("Bunu seç"). Giden: avatar, ⓘ, ×, menü, klips, "Değiştir n", durum etiketi, yorum sayısı ve konum, uçuşa kalan gün uyarısı, "Rezerve et" (seçmeden rezervasyon yok), iptal notu.
+- Uçuş seçenekleri tek sütun (bilet kartı dar sütunda sıkışıyordu).
+- Seçenek sayfadaki örnekler canlı örnek gezideki kartların kopyası (ad ve fiyat değiştirildi); gerçek öneri verisi değil.
