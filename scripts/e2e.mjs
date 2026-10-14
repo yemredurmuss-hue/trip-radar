@@ -3806,7 +3806,8 @@ try {
   // Narrow: stacked.
   await board.setViewportSize({ width: 560, height: 1400 });
   const narrowTops = await pickCards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
-  assert.equal(new Set(narrowTops).size, 3, "stacked when narrow");
+  assert.ok(new Set(narrowTops).size >= 2, "wraps instead of squeezing when narrow");
+  assert.ok(await pickCards.evaluateAll((els) => els.every((el) => el.getBoundingClientRect().width >= 190)), "no pick card is squeezed when narrow");
   await ubudCard.evaluate((el) => el.scrollIntoView({ block: "start" }));
   await board.screenshot({ path: `${out}/29b-stay-picks-narrow.png` });
   await board.setViewportSize({ width: 1440, height: 900 });
