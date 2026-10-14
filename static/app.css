@@ -5260,3 +5260,10 @@ body:has(.modal:not(.mv-leaving), .overlay:not(.mv-leaving), .drawer:not(.mv-lea
 .work-slot.errors { position: fixed; top: 68px; right: 24px; z-index: 40; margin: 0; }
 @media (prefers-reduced-motion: reduce) { .work-line i { width: 100%; opacity: .5; } }
 body.still .work-line i { width: 100%; opacity: .5; }
+
+/* -- fark-ucusyol -- the back of a flight card: at most three options side by side, but never narrower than 250 px of the CARD
+   (the old rule counted the window: at 1000 px the Plan column is ~520 px and three 160 px cards cut their hours). */
+.bk-grid.fl { grid-template-columns: repeat(auto-fill, minmax(min(100%, max(250px, calc((100% - 24px) / 3))), 1fr)); }
+@media (min-width: 900px) { .bk-grid.fl { grid-template-columns: repeat(auto-fill, minmax(min(100%, max(250px, calc((100% - 24px) / 3))), 1fr)); } }
+/* when the record's airline is only its code ("TK"), the number alone is the name */
+.tk-hn > b > .tk-no:first-child { margin-left: 0; font-size: inherit; font-weight: inherit; color: inherit; }

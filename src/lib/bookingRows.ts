@@ -51,7 +51,7 @@ export function bookingRows(item: Item, kind: CardKind): [string, string][] {
     if (start) rows.push([L("Giriş", "Check-in"), start]);
     if (end) rows.push([L("Çıkış", "Check-out"), end]);
   } else if (f && (f.from || f.to || f.departure)) {
-    if (f.flightNumber) rows.push([kind === "flight" ? L("Uçuş", "Flight") : L("Sefer", "Service"), [f.carrier, f.flightNumber].filter(Boolean).join(" ")]);
+    if (f.flightNumber) rows.push([kind === "flight" ? L("Uçuş", "Flight") : L("Sefer", "Service"), [f.carrier && f.carrier.toUpperCase() === f.flightNumber.replace(/\s+/g, "").slice(0, f.carrier.length).toUpperCase() ? null : f.carrier, f.flightNumber].filter(Boolean).join(" ")]);
     const end = (code: string | null, at: string | null) => [code ? `${cityOfAirport(code)}${code.length === 3 ? ` ${code}` : ""}` : null, [day(at), clockOf(at)].filter(Boolean).join(" ")].filter(Boolean).join(" · ");
     const out = end(f.from, f.departure);
     const back = end(f.to, f.arrival);
