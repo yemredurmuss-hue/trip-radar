@@ -58,7 +58,7 @@ export function Section({ section, allot = null, allotNum = null, open, onToggle
               {label}
               {total > 0 && <i className="cat-n">{total}</i>}
             </b>
-            {line ? <small className="cat-st">{line}</small> : ideas && (section.entries.length || section.hidden.length) ? <small className="cat-st cat-ideas">{ideaCount(section.id, ideas, section.entries)}</small> : null}
+            {line ? <small className="cat-st">{line}</small> : section.id === "prep" && total > 0 ? <small className="cat-st">{L(`${section.settled}/${total} hazır`, `${section.settled}/${total} ready`)}</small> : ideas && (section.entries.length || section.hidden.length) ? <small className="cat-st cat-ideas">{ideaCount(section.id, ideas, section.entries, suggestions)}</small> : null}
           </span>
         </button>
         <span className="cat-end">
@@ -176,16 +176,16 @@ function budgetTip(section: CatSection, allot: { amount: number; currency: strin
  * An idea section's neutral count (0.35.3), never a "3/4": "5 fikir · 2 tanesi bir güne kondu", İlham "4 kayıt".
  * Done ones join it quietly ("· 1 yapıldı").
  */
-export function ideaCount(id: CatSection["id"], { total, onDay, done }: NonNullable<CatSection["ideas"]>, entries: CatSection["entries"] = []): string {
-  if (id === "inspo") return L(`${total} kayıt`, `${total} saved`);
-  // v11 phase 4: Yapılacak şeyler counts its places, its restaurants and what's on the plan ("4 yer · 4 restoran · 3 planda").
+export function ideaCount(id: CatSection["id"], { total, onDay, done }: NonNullable<CatSection["ideas"]>, entries: CatSection["entries"] = [], suggested = 0): string {
+  if (id === "inspo") return L("kaydettiğin video ve gönderiler", "videos and posts you saved");
+  // v46 (as drawn): Yapılacaklar says what is on the plan and what waits as an idea ("8 planda · 6 öneri"); the suggestions wait too.
   if (id === "todo") {
     const records = entries.map((e) => (e.piece.kind === "item" ? e.piece.item : e.piece.kind === "entry" && e.piece.entry.kind === "event" ? e.piece.entry.item : null)).filter((i): i is NonNullable<typeof i> => i != null);
-    const food = records.filter((i) => i.category === "food").length;
     const planned = records.filter((i) => !i.doneAt && (i.status === "chosen" || i.status === "booked" || Boolean(i.dates.start))).length;
-    const parts = records.length - food ? [L(`${records.length - food} yer`, `${records.length - food} place${records.length - food === 1 ? "" : "s"}`)] : [];
-    if (food) parts.push(L(`${food} restoran`, `${food} restaurant${food === 1 ? "" : "s"}`));
+    const waiting = records.filter((i) => !i.doneAt).length - planned + suggested;
+    const parts = [];
     if (planned) parts.push(L(`${planned} planda`, `${planned} on the plan`));
+    if (waiting) parts.push(L(`${waiting} öneri`, `${waiting} idea${waiting === 1 ? "" : "s"}`));
     if (done) parts.push(L(`${done} yapıldı`, `${done} done`));
     return parts.join(" · ");
   }

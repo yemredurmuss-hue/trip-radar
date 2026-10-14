@@ -69,6 +69,7 @@ function PrepRow({ item, domId }: { item: Item; domId: string }) {
       {done && <span className="prep-done" title={doneText(item) ?? undefined}>{L("Hazır", "Ready")}</span>}
       {buy && (
         <a className="prep-buy" href={buy} target="_blank" rel="noreferrer" title={L("Amazon'da ara", "Search on Amazon")}>
+          <span className="prep-bm" aria-hidden>a</span>
           Amazon ↗
         </a>
       )}
