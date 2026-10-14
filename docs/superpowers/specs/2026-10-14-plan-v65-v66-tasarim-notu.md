@@ -54,3 +54,8 @@ Bilinen veri farkı: canlıdaki örnek gezide kart yüzleri ile aria etiketleri 
 - Seçenek kartında kalan: görsel, kaynak ve puan, ad, fiyat, tek düğme ("Bunu seç"). Giden: avatar, ⓘ, ×, menü, klips, "Değiştir n", durum etiketi, yorum sayısı ve konum, uçuşa kalan gün uyarısı, "Rezerve et" (seçmeden rezervasyon yok), iptal notu.
 - Uçuş seçenekleri tek sütun (bilet kartı dar sütunda sıkışıyordu).
 - Seçenek sayfadaki örnekler canlı örnek gezideki kartların kopyası (ad ve fiyat değiştirildi); gerçek öneri verisi değil.
+
+## v70 · docs/mockups/plan-v70-tek-eylem
+- Düğme yazıları ortalandı (satır yüksekliği düzeltildi).
+- Eylemler tek yerde: seçili otel/ulaşım kartında "Aldım" ve "Rezerve et" artık altta, fiyatın yanında yan yana (üstteki şeritten indi). Önerimiz kartında "Bunu seç" + "Rezerve et" aynı sırada. Bilet kartı koçanında düğmeler fiyatın altında alt alta.
+- Seçenek kartında tek düğme "Bunu seç" fiyatın karşısında.
