@@ -3796,7 +3796,11 @@ try {
   assert.equal(await pickCards.nth(0).getByRole("link", { name: "İncele ↗" }).getAttribute("href"), "https://www.booking.com/hotel/id/e2e-alaya.html");
   // Wide: three side by side, the best one accented.
   const tops = await pickCards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
-  assert.equal(new Set(tops).size, 1, "three columns when wide");
+  // The columns follow the card's own width (fark-konaklama): as many as fit at 210 px each, never more than three, and no card squeezed.
+  const pickCols = await picksRow.locator(".ek-pick-list").first().evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length);
+  assert.ok(pickCols >= 2, "at least two columns when wide");
+  assert.equal(new Set(tops).size, Math.ceil(3 / pickCols), "the cards fill the columns the card's width allows");
+  assert.ok(await pickCards.evaluateAll((els) => els.every((el) => el.getBoundingClientRect().width >= 190)), "no pick card is squeezed");
   assert.equal(await pickCards.nth(0).locator(".ek-pick-label").evaluate((el) => getComputedStyle(el).color), "rgb(255, 255, 255)");
   await ubudCard.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await board.screenshot({ path: `${out}/29a-stay-picks.png` });
