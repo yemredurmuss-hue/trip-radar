@@ -5272,3 +5272,7 @@ body.still .work-line i { width: 100%; opacity: .5; }
 .ek-pick-price b { white-space: nowrap; }
 .ek-pick-acts { grid-template-columns: repeat(auto-fit, minmax(min(100%, 96px), 1fr)); }
 .ek-pick-fav, .ek-pick-go { min-width: 0; padding: 0 8px; white-space: nowrap; }
+
+/* -- fark-konaklama -- the back face's option grid wraps by the width of the card it is in (as the v46 drawing's ~220 px tiles), not by the window:
+   in the narrow plan column the old 3 columns made 140 px tiles whose chips ran over each other */
+.bk-grid:not(.fl) { grid-template-columns: repeat(auto-fill, minmax(min(100%, 208px), 1fr)); }
