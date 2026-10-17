@@ -85,3 +85,13 @@ Artifact: https://claude.ai/artifact/89dVEm5d6bUs6pAhg1b9x9 · elle yazılmış 
 - Niyet: türün illüstrasyonu (48 px) + tür, ad, tek satır bilgi. Seçenekler kendi fotoğrafıyla (otel, etkinlik) ya da logosuyla (eSIM, sigorta, havayolu harfi).
 - Seçenekler derli toplu: niyet sütununun hizasından başlayan tek kutu; uçuş/ulaşım sabit sütunlu satırlar (logo, kalkış–süre–varış, etiket, fiyat, Seç); otel ve etkinlik 200 px fotoğraf kartları yatay şeritte.
 - Yazı ölçüsü dört basamak (20/16/13,5/12), tek CTA moru, ikincil düğmeler çerçeveli.
+
+## v74 · docs/mockups/plan-v74-standart (17 Ekim)
+Sistem (Emre): prompt → AI omurgayı kurar, API'den bulabildiği en iyi seçeneği her niyete SEÇER ("AI seçti"); kullanıcı sohbete link atar, o da o niyetin seçeneği olur ("Senin linkin"); Pano her şeyin biriktiği yer ("Pano"). Seçenekler yalnız AI'nın bulduğu değil, kullanıcının getirdikleri de.
+- Üst özet (hero) geri: kapak, şehir sekmeleri, kalan gün, ad, tarih·gece·şehir, sayaçlar, tek ilerleme çubuğu + Sıradaki, sağda bütçe (alındı/seçildi/boşta), kişiler, tercihler.
+- Satır 4 sabit sütun: TARİH (ay, gün, haftanın günü, "→ bitiş") | niyet (illüstrasyon, tür, ad, kişi/niyet) | seçili | EYLEM.
+- Standart eylem sütunu (her satırda aynı yer, aynı boy): fiyat; dolu "Satın al ↗"; çerçeveli "Değiştir"; altta "Pano'da n kayıt". Alındıysa yeşil tik + "Bilet alındı / Rezerve / Alındı" + "Ayrıntı". Boşsa tahmini fiyat + "AI bulsun" + "Gerek yok".
+- Boş ihtiyaç diğerleriyle aynı ağırlıkta (gri başlık, tek satır "Kendin ara" bağlantıları).
+- Seçenekler satırın altında tam genişlik: uçuş Skyscanner sütunları (logo, saatler, süre/aktarma, kaynak etiketi En ucuz/Senin linkin/Pano, fiyat, Seç); otel 4 fotoğraf kutusu, marka yazıyla (Booking.com, Airbnb), kaynak etiketi.
+- Uçuş ve ulaşımda yayındaki bilet çizimi: şehir büyük, kavisli kesikli rota, ortada daire içinde araç ikonu.
+- Etkinlik ve Yapılacaklar kutu kutu (fotoğraf, marka, ✓ planda, AI/Senin linkin etiketi, Satın al / + Plana ekle / Haritada aç).

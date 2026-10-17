@@ -1,0 +1,434 @@
+<title>Trip Radar Plan v74</title>
+<style>
+/* Düzen: solda asistan, sağda plan. Plan: üst özet (hero), sonra kategori kutuları. Her ihtiyaç satırı 4 sabit sütun: tarih | niyet | seçili | eylem. Seçenekler satırın altında tam genişlikte açılır. */
+:root{
+  --bg:#f4f3f0; --surface:#ffffff; --sunk:#f6f5f9; --ink:#17152b; --muted:#6a6684; --faint:#9a97ad; --line:#e7e4ee; --hair:#efedf3;
+  --accent:#5b45e0; --accent-soft:#efecff; --on-accent:#ffffff;
+  --ok:#1d7a47; --ok-bg:#e4f4ea; --ok-solid:#1f8a50; --chosen:#2b7a4b; --chosen-bg:#f1f9f4; --chosen-line:#bfe3cc; --bad:#b3261e;
+  --c-fly:#6a4fe0; --c-stay:#14907f; --c-move:#b5761c; --c-exp:#c0256b; --c-todo:#5f7d1c; --c-doc:#2f6fd0;
+  --shadow:0 1px 2px rgba(23,21,43,.04),0 12px 32px -22px rgba(23,21,43,.32);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111018; --surface:#1a1924; --sunk:#211f2d; --ink:#eeecfb; --muted:#a9a5c6; --faint:#77738f; --line:#2e2c40; --hair:#272536;
+  --accent:#9a8bff; --accent-soft:#2a2550; --on-accent:#14112b; --ok:#74e0a4; --ok-bg:#173a27; --ok-solid:#2e9c62; --chosen:#86d9a8; --chosen-bg:#14211a; --chosen-line:#2f5c40; --bad:#ff8a80;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px -22px rgba(0,0,0,.9); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111018; --surface:#1a1924; --sunk:#211f2d; --ink:#eeecfb; --muted:#a9a5c6; --faint:#77738f; --line:#2e2c40; --hair:#272536;
+  --accent:#9a8bff; --accent-soft:#2a2550; --on-accent:#14112b; --ok:#74e0a4; --ok-bg:#173a27; --ok-solid:#2e9c62; --chosen:#86d9a8; --chosen-bg:#14211a; --chosen-line:#2f5c40; --bad:#ff8a80;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px -22px rgba(0,0,0,.9); color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:13.5px/1.45 var(--font);-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4,h5,p{margin:0}
+button{font:inherit;cursor:pointer;color:inherit}
+a{color:var(--accent);text-decoration:none}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 40%,transparent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.shell{display:grid;grid-template-columns:340px minmax(0,1fr);min-height:100vh}
+
+/* asistan */
+.chat{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;border-right:1px solid var(--line);background:var(--surface)}
+.chat-h{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--hair)}
+.orb{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#b9aaff,#5b45e0 70%);flex:none}
+.chat-h b{font-size:16px}.chat-h small{display:block;color:var(--muted);font-size:12px}
+.msgs{flex:1;overflow:auto;padding:18px 20px;display:grid;gap:14px;align-content:start}
+.m{max-width:94%;line-height:1.5}
+.m.me{justify-self:end;background:var(--sunk);border-radius:14px 14px 4px 14px;padding:9px 12px}
+.m.me .url{display:block;color:var(--accent);font-size:12px;word-break:break-all;margin-top:2px}
+.land{margin-top:8px;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:8px 10px;color:var(--ink)}
+.land img{width:34px;height:34px;object-fit:contain;border-radius:8px;background:var(--sunk)}
+.land b{display:block;font-size:13px}.land small{color:var(--muted);font-size:12px}
+.land .go{margin-left:auto;color:var(--accent);font-size:12px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 11px;font-size:12px;font-weight:600}
+.comp{margin:12px 16px 16px;border:1px solid var(--line);border-radius:16px;padding:10px 10px 10px 14px;display:flex;align-items:center;gap:10px;color:var(--faint)}
+.comp .send{margin-left:auto;width:34px;height:34px;border-radius:50%;border:0;background:var(--accent);color:var(--on-accent)}
+
+/* plan */
+.plan{padding-block:24px 80px;padding-inline:28px;display:grid;gap:18px;align-content:start;max-width:1000px;width:100%}
+
+/* üst özet (hero) */
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+.cover{position:relative;height:190px;background:var(--sunk)}
+.cover img{width:100%;height:100%;object-fit:cover;display:block}
+.cover .cities{position:absolute;left:16px;top:16px;display:flex;gap:4px;background:rgba(255,255,255,.88);border-radius:99px;padding:3px}
+.cover .cities span{font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;color:#3a3752}
+.cover .cities span.on{background:#fff;color:#17152b;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.cover .left{position:absolute;right:16px;top:16px;background:rgba(255,255,255,.9);color:#4a36c9;border-radius:99px;font-size:12px;font-weight:700;padding:5px 11px}
+.hero-b{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:0}
+.hero-l{padding:18px 20px;display:grid;gap:12px}
+.hero-l h1{font-size:28px;letter-spacing:-.02em}
+.when{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink)}
+.when .sep{color:var(--faint)}
+.tally{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted)}
+.tally span{display:inline-flex;align-items:center;gap:6px}
+.tally b{color:var(--ink)}
+.prog{display:grid;gap:8px;background:var(--sunk);border-radius:14px;padding:12px 14px}
+.prog-t{display:flex;align-items:center;gap:10px}
+.prog-t b{font-size:14px}.prog-t small{color:var(--muted);font-size:12px}
+.prog-t .next{margin-left:auto;border:0;border-radius:99px;background:var(--ink);color:var(--surface);font-weight:600;font-size:12.5px;padding:7px 13px;white-space:nowrap}
+.bar{height:6px;border-radius:99px;background:var(--line);display:flex;overflow:hidden}
+.bar i{height:100%}.bar .b1{background:var(--ok-solid)}.bar .b2{background:color-mix(in srgb,var(--ok-solid) 40%,transparent)}
+.hero-r{border-left:1px solid var(--hair);padding:16px 18px;display:grid;gap:12px;align-content:start}
+.hero-r h3{font-size:12px;font-weight:600;color:var(--muted)}
+.budget b{font-size:22px;letter-spacing:-.02em}.budget small{color:var(--muted)}
+.bl{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted)}.bl b{color:var(--ink);font-size:12.5px}
+.people{display:flex;align-items:center;gap:8px;font-size:13px}
+.av{width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;color:#fff;font-size:11px;font-weight:800}
+.tags{display:flex;flex-wrap:wrap;gap:5px}.tags span{font-size:12px;border:1px solid var(--line);border-radius:99px;padding:2px 9px;color:var(--muted)}
+.views{display:flex;justify-content:space-between;align-items:center}
+.vs{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:3px}
+.vs button{border:0;background:none;color:var(--muted);font-size:12px;font-weight:600;padding:6px 11px;border-radius:8px}
+.vs button[aria-pressed="true"]{background:var(--sunk);color:var(--ink)}
+
+/* kategori kutusu */
+.cat{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+.cat-h{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--hair)}
+.cat-ic{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;color:var(--k);background:color-mix(in srgb,var(--k) 13%,transparent)}
+.cat-h h2{font-size:17px;letter-spacing:-.01em}.cat-h .cnt{color:var(--muted);font-size:12px;margin-top:1px}
+.cat-h .bud{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.cat-h .bud b{color:var(--ink);font-size:13.5px}
+.mini{width:64px;height:4px;border-radius:99px;background:var(--hair);overflow:hidden}.mini i{display:block;height:100%;background:var(--ok-solid)}
+.cat-add{display:block;width:100%;text-align:left;border:0;border-top:1px solid var(--hair);background:none;color:var(--muted);font-size:12px;font-weight:600;padding:11px 18px}
+
+/* ihtiyaç satırı: tarih | niyet | seçili | eylem (hepsi sabit) */
+.need{border-top:1px solid var(--hair)}
+.need:first-of-type{border-top:0}
+.row{display:grid;grid-template-columns:64px 218px minmax(0,1fr) 168px;align-items:stretch;min-height:104px}
+.date{display:grid;align-content:center;justify-items:center;gap:0;padding:12px 0 12px 14px;text-align:center}
+.date .mo{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--k)}
+.date .d{font-size:24px;font-weight:750;letter-spacing:-.02em;line-height:1.05}
+.date .wd{font-size:11px;color:var(--muted)}
+.date .to{font-size:11px;color:var(--muted);margin-top:2px}
+.int{display:grid;grid-template-columns:44px minmax(0,1fr);gap:10px;align-items:center;padding:12px 14px;border-right:1px solid var(--hair)}
+.ill{width:44px;height:44px;border-radius:12px;background:color-mix(in srgb,var(--k) 10%,var(--surface));display:grid;place-items:center;overflow:hidden}
+.ill img{width:40px;height:40px;object-fit:contain;mix-blend-mode:multiply}
+.int .k{font-size:12px;font-weight:600;color:var(--k)}
+.int b{display:block;font-size:16px;line-height:1.25;letter-spacing:-.01em}
+.int small{display:block;font-size:12px;color:var(--muted);margin-top:1px}
+.sel{padding:12px 18px;min-width:0;display:grid;align-content:center;gap:5px}
+.meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.st{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:99px;font-size:11.5px;font-weight:700}
+.st.ai{background:var(--accent-soft);color:var(--accent)}
+.st.me{background:#fff3e2;color:#9a5b00}
+.st.ch{background:var(--chosen-bg);color:var(--chosen);box-shadow:inset 0 0 0 1px var(--chosen-line)}
+.st.ar{background:var(--sunk);color:var(--muted)}
+.brand{display:inline-flex;align-items:center;height:19px;padding:0 7px;border-radius:5px;color:#fff;background:var(--bc);font-size:11px;font-weight:700}
+.sel h4{font-size:16px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sel .ln{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sel h4.muted{color:var(--muted);font-weight:600}
+.ok{color:var(--ok)}.no{color:var(--bad)}
+.with-ph{display:grid;grid-template-columns:76px minmax(0,1fr);gap:12px;align-items:center}
+.with-ph img{width:76px;height:56px;border-radius:10px;object-fit:cover;background:var(--sunk)}
+/* uçuş: yayındaki bilet çizimi (kavisli rota, ortada uçak) */
+.tk{display:grid;grid-template-columns:auto minmax(80px,1fr) auto;gap:10px;align-items:center}
+.tk .c b{display:block;font-size:18px;letter-spacing:-.01em}
+.tk .c small{font-size:12px;color:var(--muted)}
+.tk .c.r{text-align:right}
+.arc{position:relative;height:38px}
+.arc svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.arc path{fill:none;stroke:color-mix(in srgb,var(--c-fly) 55%,transparent);stroke-width:1.5;stroke-dasharray:4 4}
+.arc .pl{position:absolute;left:50%;top:-2px;transform:translateX(-50%);width:26px;height:26px;border-radius:50%;background:var(--surface);box-shadow:0 0 0 1px var(--line);display:grid;place-items:center;color:var(--c-fly)}
+.arc .du{position:absolute;left:50%;bottom:-4px;transform:translateX(-50%);font-size:11px;color:var(--muted);white-space:nowrap;background:var(--surface);padding:0 4px}
+/* standart eylem sütunu: aynı yer, aynı büyüklük */
+.act{padding:12px 16px;display:grid;align-content:center;gap:6px;border-left:1px solid var(--hair)}
+.price{line-height:1.15;margin-bottom:2px}
+.price b{font-size:18px;letter-spacing:-.02em}.price small{font-size:12px;color:var(--muted)}
+.price span{display:block;font-size:11.5px;color:var(--muted)}
+.price.est b{font-size:15px;color:var(--muted);font-weight:600}
+.b{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:34px;border-radius:10px;font-size:12.5px;font-weight:650;white-space:nowrap}
+.b.pri{border:0;background:var(--accent);color:var(--on-accent)}
+.b.sec{border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.pano{font-size:11.5px;color:var(--muted);text-align:center}
+.pano a{color:var(--muted);text-decoration:underline;text-underline-offset:2px}
+.done{display:flex;align-items:center;gap:8px;height:34px}
+.done .tick{width:30px;height:30px;border-radius:50%;background:var(--ok-solid);color:#fff;display:grid;place-items:center;box-shadow:0 0 0 4px var(--ok-bg)}
+.done b{font-size:12.5px;color:var(--ok)}
+.need.bought{background:color-mix(in srgb,var(--ok-bg) 35%,var(--surface))}
+
+/* seçenekler: satırın altında, tam genişlik */
+.opts{margin:0 16px 16px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.opts-h{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--hair);font-size:12.5px}
+.opts-h b{font-size:13px}
+.opts-h .src{color:var(--muted)}
+.opts-h .x{margin-left:auto;border:0;background:none;color:var(--muted);font-size:12px}
+.opts-f{display:flex;align-items:center;gap:12px;padding:9px 14px;border-top:1px solid var(--hair);font-size:12px;color:var(--muted);background:var(--sunk)}
+.opts-f .more{border:0;background:none;color:var(--accent);font-weight:600;font-size:12px;padding:0;margin-right:auto}
+.who{font-size:11px;font-weight:700;border-radius:99px;padding:1px 7px}
+.who.ai{background:var(--accent-soft);color:var(--accent)}.who.me{background:#fff3e2;color:#9a5b00}.who.pn{background:var(--sunk);color:var(--muted)}
+/* uçuş seçenekleri: Skyscanner sütunları */
+.fo{display:grid;grid-template-columns:30px 220px minmax(0,1fr) 92px 112px;gap:14px;align-items:center;padding:10px 14px;border-top:1px solid var(--hair)}
+.fo:first-of-type{border-top:0}
+.al{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800;background:var(--alc)}
+.fo-t{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+.fo-t b{font-size:15px}.fo-t small{display:block;font-size:11px;color:var(--muted)}
+.leg{display:grid;justify-items:center;gap:2px;font-size:11px;color:var(--muted)}.leg i{display:block;width:100%;height:1px;background:var(--line)}
+.fo-m{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.fo-p{text-align:right}.fo-p b{font-size:15px}.fo-p small{display:block;font-size:11px;color:var(--muted)}
+/* otel / etkinlik / yer: fotoğraflı kutular */
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:14px}
+.box{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);display:grid;grid-template-rows:auto 1fr}
+.box .ph{position:relative;aspect-ratio:4/3;background:var(--sunk)}
+.box .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.box .ph .brand{position:absolute;left:8px;top:8px}
+.box .ph .who{position:absolute;right:8px;top:8px}
+.box .ph .on{position:absolute;right:8px;bottom:8px;width:24px;height:24px;border-radius:50%;background:var(--ok-solid);color:#fff;display:grid;place-items:center;font-size:13px;box-shadow:0 0 0 3px rgba(255,255,255,.8)}
+.box .bb{padding:10px 12px 12px;display:grid;gap:3px;align-content:start}
+.box h5{font-size:13.5px;line-height:1.3;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-height:2.6em}
+.box .r{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.box .bf{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+.box .bf b{font-size:15px}.box .bf small{font-size:11px;color:var(--muted)}
+.box .bf .b{width:auto;height:30px;padding:0 12px;font-size:12px}
+.box.pick{border-color:color-mix(in srgb,var(--accent) 50%,var(--line));box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 12%,transparent)}
+/* etkinlik / yapılacak satırı: niyet + kutular */
+.tiles{padding:12px 18px 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.row.wide{grid-template-columns:64px 218px minmax(0,1fr)}
+
+/* telefon */
+@media(max-width:980px){.shell{grid-template-columns:1fr}.chat{position:static;height:auto}.plan{padding-inline:16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-b{grid-template-columns:1fr}.hero-r{border-left:0;border-top:1px solid var(--hair)}}
+@media(max-width:680px){
+  .row,.row.wide{grid-template-columns:56px minmax(0,1fr)}
+  .int{border-right:0}
+  .sel,.tiles{grid-column:1/-1;padding-top:0}
+  .act{grid-column:1/-1;border-left:0;border-top:1px solid var(--hair);grid-template-columns:1fr 1fr;align-items:center}
+  .act .price{grid-column:1/-1}
+  .fo{grid-template-columns:30px minmax(0,1fr) auto}.fo-m{grid-column:2/-1;grid-row:2}.fo>.b{grid-column:3;grid-row:1}
+}
+
+.row.wide{align-items:start}
+.row.wide .date,.row.wide .int{padding-top:18px;align-self:start}
+.row.wide .int{border-right:0}
+.tiles{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.tiles .box .ph{aspect-ratio:16/11}
+.tiles .box .bf{flex-wrap:wrap}
+.tiles .box .bf .b{flex:1 1 auto}
+@media(max-width:1180px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+</style>
+
+<div class="shell">
+<aside class="chat" aria-label="Asistan">
+  <div class="chat-h"><span class="orb" aria-hidden="true"></span><div><b>Asistan</b><small>Japonya · 1–16 Nisan</small></div></div>
+  <div class="msgs">
+    <div class="m me">Nisan'da Sabine'yle 2 hafta Japonya. Tokyo, Kyoto, Hakone, Osaka. Sakin yerler, orta bütçe.</div>
+    <div class="m ai"><p>Planı kurdum: 4 şehir, 15 gece. Uçuş, otel ve trenler için en uygun seçenekleri seçtim; her birinin altında diğer seçenekler duruyor. Kyoto otelini sana bıraktım, iki aday arasında kaldım.</p></div>
+    <div class="m me">Şunu buldum, Kyoto için bak:<span class="url">booking.com/hotel/jp/kanra-kyoto</span></div>
+    <div class="m ai">
+      <p>Hotel Kanra'yı Kyoto konaklamasının seçeneklerine ekledim. 9,2 puan, istasyona 6 dk, ücretsiz iptal. Diğer iki adaydan €40 pahalı ama en sakin olanı.</p>
+      <a class="land" href="#k-kyoto"><img src="{{IMG_OTEL}}" alt=""><span><b>Konaklama · Kyoto</b><small>Senin linkin + 2 aday</small></span><span class="go">Planda göster</span></a>
+      <div class="chips"><button class="chip" type="button">Kanra'yı seç</button><button class="chip" type="button">Karşılaştır</button></div>
+    </div>
+  </div>
+  <div class="comp">Bir link bırak ya da yaz…<button class="send" type="button" aria-label="Gönder">↑</button></div>
+</aside>
+
+<main class="plan">
+  <!-- ÜST ÖZET -->
+  <section class="hero" aria-label="Gezi özeti">
+    <div class="cover"><img src="{{IMG_COVER}}" alt="Tokyo silüeti"><div class="cities"><span class="on">Tokyo</span><span>Kyoto</span><span>Hakone</span><span>Osaka</span></div><span class="left">175 gün kaldı</span></div>
+    <div class="hero-b">
+      <div class="hero-l">
+        <h1>Japonya</h1>
+        <div class="when num"><b>1–16 Nisan 2027</b><span class="sep">·</span>15 gece<span class="sep">·</span>4 şehir</div>
+        <div class="tally"><span><b>2</b> uçuş</span><span><b>4</b> konaklama</span><span><b>2</b> ulaşım</span><span><b>4</b> etkinlik</span><span><b>6</b> yer</span></div>
+        <div class="prog">
+          <div class="prog-t"><b class="num">16 ihtiyaçtan 9'u hazır</b><small class="num">5 alındı · 4 seçildi</small><button class="next" type="button">Sıradaki: Kyoto oteli</button></div>
+          <div class="bar" role="img" aria-label="5 alındı, 4 seçildi, 7 bekliyor"><i class="b1" style="width:31%"></i><i class="b2" style="width:25%"></i></div>
+        </div>
+      </div>
+      <div class="hero-r">
+        <div><h3>Bütçe</h3><div class="budget"><b class="num">€7.250</b> <small>/ €9.000</small></div></div>
+        <div class="bl"><span>Alındı</span><b class="num">€3.240</b></div><div class="bl"><span>Seçildi</span><b class="num">€2.410</b></div><div class="bl"><span>Boşta</span><b class="num">€1.750</b></div>
+        <div class="people"><span class="av" style="background:#5b45e0">E</span><span class="av" style="background:#14907f">S</span>Emre ve Sabine</div>
+        <div class="tags"><span>sakin</span><span>orta bütçe</span><span>tren</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="views"><div class="vs" role="group" aria-label="Görünüm"><button aria-pressed="true">Kategoriye göre</button><button aria-pressed="false">Yolculuk sırasıyla</button><button aria-pressed="false">Gün gün</button></div></div>
+
+  <!-- UÇUŞ -->
+  <section class="cat" style="--k:var(--c-fly)" aria-labelledby="h1">
+    <div class="cat-h"><span class="cat-ic">{{IC_PLANE}}</span><div><h2 id="h1">Uçuş</h2><div class="cnt">1 alındı · 1 seçildi · 1 bekliyor</div></div><span class="bud"><span class="mini"><i style="width:45%"></i></span><b class="num">€3.390</b> / €3.500</span></div>
+
+    <article class="need">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">1</span><span class="wd">Per</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_UCUS}}" alt=""></span><div><span class="k">Gidiş</span><b>İstanbul → Tokyo</b><small>2 kişi · aktarma az</small></div></div>
+        <div class="sel">
+          <div class="meta"><span class="st ai">✦ AI seçti</span><span>Turkish Airlines · TK 52</span></div>
+          <div class="tk"><div class="c"><b>İstanbul</b><small class="num">IST · 09:40</small></div><div class="arc"><svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><path d="M2 28 Q50 -10 98 28" vector-effect="non-scaling-stroke"/></svg><span class="pl">{{IC_PLANE_S}}</span><span class="du num">13 sa · direkt</span></div><div class="c r"><b>Tokyo</b><small class="num">HND · 07:15 +1</small></div></div>
+        </div>
+        <div class="act"><div class="price"><b class="num">€905</b> <small>kişi</small><span class="num">2 kişi · €1.810</span></div><button class="b pri" type="button">Satın al ↗</button><button class="b sec" type="button" aria-expanded="true">Değiştir ▴</button><div class="pano"><a href="#">Pano'da 5 kayıt</a></div></div>
+      </div>
+      <div class="opts">
+        <div class="opts-h"><b>İstanbul → Tokyo için diğer uçuşlar</b><span class="src">AI'nın bulduğu ve senin eklediklerin</span><button class="x" type="button">Kapat</button></div>
+        <div class="fo"><span class="al" style="--alc:#8a1538">QR</span><div class="fo-t"><div><b class="num">09:40</b><small>IST</small></div><div class="leg"><span>15 sa</span><i></i><span>1 aktarma</span></div><div><b class="num">07:15<sup>+1</sup></b><small>HND</small></div></div><div class="fo-m"><span class="who ai">En ucuz</span>Qatar · Doha'da 2 sa</div><div class="fo-p"><b class="num">€820</b><small>kişi</small></div><button class="b sec" type="button">Seç</button></div>
+        <div class="fo"><span class="al" style="--alc:#c8102e">TK</span><div class="fo-t"><div><b class="num">13:05</b><small>IST</small></div><div class="leg"><span>12 sa 50</span><i></i><span>direkt</span></div><div><b class="num">10:55<sup>+1</sup></b><small>NRT</small></div></div><div class="fo-m"><span class="who me">Senin linkin</span>Turkish · Narita</div><div class="fo-p"><b class="num">€930</b><small>kişi</small></div><button class="b sec" type="button">Seç</button></div>
+        <div class="fo"><span class="al" style="--alc:#00205b">JL</span><div class="fo-t"><div><b class="num">22:30</b><small>IST</small></div><div class="leg"><span>16 sa</span><i></i><span>1 aktarma</span></div><div><b class="num">21:30<sup>+1</sup></b><small>HND</small></div></div><div class="fo-m"><span class="who pn">Pano</span>Japan Airlines · Helsinki'de 3 sa</div><div class="fo-p"><b class="num">€870</b><small>kişi</small></div><button class="b sec" type="button">Seç</button></div>
+        <div class="opts-f"><button class="more" type="button">✦ AI daha fazla bulsun</button><span>Kendin ara:</span><a href="#">Skyscanner ↗</a><a href="#">Google Uçuşlar ↗</a></div>
+      </div>
+    </article>
+
+    <article class="need bought">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">16</span><span class="wd">Cum</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_UCUS}}" alt=""></span><div><span class="k">Dönüş</span><b>Osaka → İstanbul</b><small>2 kişi</small></div></div>
+        <div class="sel">
+          <div class="meta"><span>Turkish Airlines · TK 49</span></div>
+          <div class="tk"><div class="c"><b>Osaka</b><small class="num">KIX · 11:00</small></div><div class="arc"><svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><path d="M2 28 Q50 -10 98 28" vector-effect="non-scaling-stroke"/></svg><span class="pl">{{IC_PLANE_S}}</span><span class="du num">15 sa · direkt</span></div><div class="c r"><b>İstanbul</b><small class="num">IST · 17:40</small></div></div>
+        </div>
+        <div class="act"><div class="price"><b class="num">€790</b> <small>kişi</small><span class="num">2 kişi · €1.580</span></div><div class="done"><span class="tick">✓</span><b>Bilet alındı</b></div><button class="b sec" type="button">Ayrıntı</button></div>
+      </div>
+    </article>
+
+    <article class="need">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">12</span><span class="wd">Pzt</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_UCUS}}" alt=""></span><div><span class="k">İç hat</span><b>Tokyo → Osaka</b><small>2 kişi</small></div></div>
+        <div class="sel"><div class="meta"><span>Henüz seçilmedi</span></div><h4 class="muted">Tokyo'dan Osaka'ya uçuş</h4><div class="ln">Kendin ara: <a href="#">Skyscanner ↗</a> · <a href="#">Google Uçuşlar ↗</a> · ya da linki sohbete bırak</div></div>
+        <div class="act"><div class="price est"><b class="num">~€60–110</b> <small>kişi</small></div><button class="b pri" type="button">✦ AI bulsun</button><button class="b sec" type="button">Gerek yok</button><div class="pano"><a href="#">Pano'da kayıt yok</a></div></div>
+      </div>
+    </article>
+    <button class="cat-add" type="button">+ Uçuş ekle</button>
+  </section>
+
+  <!-- KONAKLAMA -->
+  <section class="cat" style="--k:var(--c-stay)" aria-labelledby="h2">
+    <div class="cat-h"><span class="cat-ic">{{IC_BED}}</span><div><h2 id="h2">Konaklama</h2><div class="cnt">1 alındı · 1 seçildi · 1 ayarlandı · 1 bekliyor</div></div><span class="bud"><span class="mini"><i style="width:40%"></i></span><b class="num">€1.540</b> / €3.600</span></div>
+
+    <article class="need">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">2</span><span class="wd">Cum</span><span class="to num">→ 5 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_OTEL}}" alt=""></span><div><span class="k">Konaklama</span><b>Tokyo</b><small>3 gece · 2 kişi · sakin</small></div></div>
+        <div class="sel"><div class="with-ph"><img src="{{IMG_PH1}}" alt=""><div style="min-width:0;display:grid;gap:4px">
+          <div class="meta"><span class="st ai">✦ AI seçti</span><span class="brand" style="--bc:#003b95">Booking.com</span><span>9,0 · Ginza</span></div>
+          <h4>Hyatt Centric Ginza</h4><div class="ln"><span class="ok">Ücretsiz iptal · 30 Mar'a kadar</span></div></div></div></div>
+        <div class="act"><div class="price"><b class="num">€213</b> <small>/ gece</small><span class="num">3 gece · €640</span></div><button class="b pri" type="button">Satın al ↗</button><button class="b sec" type="button">Değiştir ▾</button><div class="pano"><a href="#">Pano'da 4 kayıt</a></div></div>
+      </div>
+    </article>
+
+    <article class="need" id="k-kyoto">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">5</span><span class="wd">Pzt</span><span class="to num">→ 9 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_OTEL}}" alt=""></span><div><span class="k">Konaklama</span><b>Kyoto</b><small>4 gece · 2 kişi · merkez</small></div></div>
+        <div class="sel"><div class="meta"><span>Henüz seçilmedi · 3 aday</span></div><h4 class="muted">Kyoto'da 4 gece</h4><div class="ln">Kendin ara: <a href="#">Booking.com ↗</a> · <a href="#">Airbnb ↗</a> · ya da linki sohbete bırak</div></div>
+        <div class="act"><div class="price est"><b class="num">~€120–300</b> <small>/ gece</small></div><button class="b pri" type="button">✦ AI bulsun</button><button class="b sec" type="button" aria-expanded="true">Seçenekler ▴</button><div class="pano"><a href="#">Pano'da 3 kayıt</a></div></div>
+      </div>
+      <div class="opts">
+        <div class="opts-h"><b>Kyoto'da 4 gece için adaylar</b><span class="src">senin linkin, AI ve Pano</span><button class="x" type="button">Kapat</button></div>
+        <div class="grid">
+          <div class="box pick"><div class="ph"><img src="{{IMG_PH2}}" alt=""><span class="brand" style="--bc:#003b95">Booking.com</span><span class="who me">Senin linkin</span></div><div class="bb"><h5>Hotel Kanra Kyoto</h5><div class="r">9,2 · Shimogyo · istasyona 6 dk</div><div class="r ok">Ücretsiz iptal · 1 Nis'e kadar</div><div class="bf"><span><b class="num">€230</b> <small>/ gece</small></span><button class="b pri" type="button">Seç</button></div></div></div>
+          <div class="box"><div class="ph"><img src="{{IMG_PH3}}" alt=""><span class="brand" style="--bc:#d6325f">Airbnb</span><span class="who ai">AI</span></div><div class="bb"><h5>Gion Machiya, tüm ev</h5><div class="r">★ 4,8 · Gion</div><div class="r no">İade yok</div><div class="bf"><span><b class="num">€140</b> <small>/ gece</small></span><button class="b sec" type="button">Seç</button></div></div></div>
+          <div class="box"><div class="ph"><img src="{{IMG_PH1}}" alt=""><span class="brand" style="--bc:#003b95">Booking.com</span><span class="who ai">AI</span></div><div class="bb"><h5>Sakura Terrace</h5><div class="r">8,7 · istasyona 4 dk</div><div class="r ok">Ücretsiz iptal</div><div class="bf"><span><b class="num">€125</b> <small>/ gece</small></span><button class="b sec" type="button">Seç</button></div></div></div>
+          <div class="box"><div class="ph"><img src="{{IMG_PH6}}" alt=""><span class="brand" style="--bc:#003b95">Booking.com</span><span class="who pn">Pano</span></div><div class="bb"><h5>Ryokan Yachiyo</h5><div class="r">9,0 · Nanzen-ji</div><div class="r ok">Ücretsiz iptal</div><div class="bf"><span><b class="num">€260</b> <small>/ gece</small></span><button class="b sec" type="button">Seç</button></div></div></div>
+        </div>
+        <div class="opts-f"><button class="more" type="button">✦ AI daha fazla bulsun</button><span>Kendin ara:</span><a href="#">Booking.com ↗</a><a href="#">Airbnb ↗</a></div>
+      </div>
+    </article>
+
+    <article class="need bought">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">9</span><span class="wd">Cum</span><span class="to num">→ 12 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_OTEL}}" alt=""></span><div><span class="k">Konaklama</span><b>Hakone</b><small>3 gece · 2 kişi · onsen</small></div></div>
+        <div class="sel"><div class="with-ph"><img src="{{IMG_PH3}}" alt=""><div style="min-width:0;display:grid;gap:4px">
+          <div class="meta"><span class="brand" style="--bc:#003b95">Booking.com</span><span>9,5 · Gora</span></div>
+          <h4>Gora Kadan</h4><div class="ln">Giriş 15:00 · çıkış 11:00</div></div></div></div>
+        <div class="act"><div class="price"><b class="num">€300</b> <small>/ gece</small><span class="num">3 gece · €900</span></div><div class="done"><span class="tick">✓</span><b>Rezerve</b></div><button class="b sec" type="button">Ayrıntı</button></div>
+      </div>
+    </article>
+
+    <article class="need">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">12</span><span class="wd">Pzt</span><span class="to num">→ 16 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_EV}}" alt=""></span><div><span class="k">Konaklama</span><b>Osaka</b><small>4 gece · 2 kişi</small></div></div>
+        <div class="sel"><div class="meta"><span class="st ar">Ayarlandı</span></div><h4>Arkadaşın evi</h4><div class="ln">Sen hallettin · rezervasyon gerekmez</div></div>
+        <div class="act"><div class="price est"><b>—</b></div><div class="done"><span class="tick" style="background:#8a879e;box-shadow:0 0 0 4px var(--sunk)">✓</span><b style="color:var(--muted)">Ayarlandı</b></div><button class="b sec" type="button">Değiştir ▾</button></div>
+      </div>
+    </article>
+    <button class="cat-add" type="button">+ Konaklama ekle</button>
+  </section>
+
+  <!-- ULAŞIM -->
+  <section class="cat" style="--k:var(--c-move)" aria-labelledby="h3">
+    <div class="cat-h"><span class="cat-ic">{{IC_TRAIN}}</span><div><h2 id="h3">Ulaşım</h2><div class="cnt">1 alındı · 1 seçildi</div></div><span class="bud"><span class="mini"><i style="width:60%"></i></span><b class="num">€136</b> / €300</span></div>
+    <article class="need">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">9</span><span class="wd">Cum</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_TREN}}" alt=""></span><div><span class="k">Şehir değişimi</span><b>Kyoto → Hakone</b><small>2 kişi · bagajlı</small></div></div>
+        <div class="sel">
+          <div class="meta"><span class="st ai">✦ AI seçti</span><span class="brand" style="--bc:#2a7a46">JR</span><span>Shinkansen + Romancecar</span></div>
+          <div class="tk"><div class="c"><b>Kyoto</b><small class="num">08:30</small></div><div class="arc"><svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><path d="M2 28 Q50 -10 98 28" vector-effect="non-scaling-stroke" style="stroke:color-mix(in srgb,var(--c-move) 55%,transparent)"/></svg><span class="pl" style="color:var(--c-move)">{{IC_TRAIN_S}}</span><span class="du num">3 sa 45 · 1 aktarma</span></div><div class="c r"><b>Hakone</b><small class="num">12:15</small></div></div>
+        </div>
+        <div class="act"><div class="price"><b class="num">€60</b> <small>kişi</small><span class="num">2 kişi · €120</span></div><button class="b pri" type="button">Satın al ↗</button><button class="b sec" type="button">Değiştir ▾</button><div class="pano"><a href="#">Pano'da 2 kayıt</a></div></div>
+      </div>
+    </article>
+    <article class="need bought">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">2</span><span class="wd">Cum</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_TAKSI}}" alt=""></span><div><span class="k">Transfer</span><b>Haneda → otel</b><small>inişten sonra</small></div></div>
+        <div class="sel"><div class="meta"><span>Keikyu treni</span></div><h4>Haneda → Shinagawa → Ginza</h4><div class="ln">~40 dk · Suica ile</div></div>
+        <div class="act"><div class="price"><b class="num">€8</b> <small>kişi</small></div><div class="done"><span class="tick">✓</span><b>Alındı</b></div><button class="b sec" type="button">Ayrıntı</button></div>
+      </div>
+    </article>
+    <button class="cat-add" type="button">+ Ulaşım ekle</button>
+  </section>
+
+  <!-- ETKİNLİK -->
+  <section class="cat" style="--k:var(--c-exp)" aria-labelledby="h4">
+    <div class="cat-h"><span class="cat-ic">{{IC_TICKET}}</span><div><h2 id="h4">Etkinlik ve turlar</h2><div class="cnt">2 planda · 1 bileti alındı · 3 öneri</div></div><span class="bud"><b class="num">€192</b> / €400</span></div>
+    <article class="need">
+      <div class="row wide">
+        <div class="date"><span class="mo">NİS</span><span class="d num">2</span><span class="wd">Cum</span><span class="to num">→ 5 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_ACT}}" alt=""></span><div><span class="k">Etkinlik</span><b>Tokyo</b><small>kültür · akşam</small></div></div>
+        <div class="tiles">
+          <div class="box"><div class="ph"><img src="{{IMG_PH4}}" alt=""><span class="brand" style="--bc:#ff5b00">Klook</span><span class="on" aria-label="Planda">✓</span></div><div class="bb"><h5>teamLab Planets</h5><div class="r num">3 Nis · 19:00</div><div class="bf"><span><b class="num">€56</b> <small>2 kişi</small></span><button class="b pri" type="button">Satın al ↗</button></div></div></div>
+          <div class="box"><div class="ph"><img src="{{IMG_PH5}}" alt=""><span class="brand" style="--bc:#ff5b00">Klook</span><span class="on" aria-label="Planda">✓</span></div><div class="bb"><h5>Shibuya Sky gün batımı</h5><div class="r num">4 Nis · 17:30</div><div class="bf"><span><b class="num">€40</b> <small>2 kişi</small></span><span class="done" style="height:30px"><span class="tick" style="width:24px;height:24px;font-size:12px">✓</span><b>Alındı</b></span></div></div></div>
+          <div class="box"><div class="ph"><img src="{{IMG_PH5}}" alt=""><span class="brand" style="--bc:#0b7a6f">Viator</span><span class="who ai">AI</span></div><div class="bb"><h5>Asakusa gece yemek turu</h5><div class="r">★ 4,9 · 3 sa</div><div class="bf"><span><b class="num">€85</b> <small>kişi</small></span><button class="b sec" type="button">+ Plana ekle</button></div></div></div>
+          <div class="box"><div class="ph"><img src="{{IMG_PH4}}" alt=""><span class="brand" style="--bc:#0b7a6f">Viator</span><span class="who me">Senin linkin</span></div><div class="bb"><h5>Sumo antrenmanı izleme</h5><div class="r">★ 4,7 · sabah</div><div class="bf"><span><b class="num">€70</b> <small>kişi</small></span><button class="b sec" type="button">+ Plana ekle</button></div></div></div>
+        </div>
+      </div>
+    </article>
+    <button class="cat-add" type="button">+ Etkinlik ekle</button>
+  </section>
+
+  <!-- YAPILACAKLAR -->
+  <section class="cat" style="--k:var(--c-todo)" aria-labelledby="h5">
+    <div class="cat-h"><span class="cat-ic">{{IC_MAP}}</span><div><h2 id="h5">Yapılacaklar ve restoranlar</h2><div class="cnt">2 planda · 2 öneri</div></div></div>
+    <article class="need">
+      <div class="row wide">
+        <div class="date"><span class="mo">NİS</span><span class="d num">5</span><span class="wd">Pzt</span><span class="to num">→ 9 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_TODO}}" alt=""></span><div><span class="k">Yapılacak</span><b>Kyoto</b><small>yürüyüş · yerel yemek</small></div></div>
+        <div class="tiles">
+          <div class="box"><div class="ph"><img src="{{IMG_PH7}}" alt=""><span class="brand" style="--bc:#34a853">Haritalar</span><span class="on" aria-label="Planda">✓</span></div><div class="bb"><h5>Fushimi Inari, sabah 7'de</h5><div class="r">Gezilecek · 6 Nis</div><div class="bf"><span class="r">ücretsiz</span><button class="b sec" type="button">Haritada aç</button></div></div></div>
+          <div class="box"><div class="ph"><img src="{{IMG_PH8}}" alt=""><span class="brand" style="--bc:#34a853">Haritalar</span><span class="on" aria-label="Planda">✓</span></div><div class="bb"><h5>Nishiki pazarı</h5><div class="r">Restoran · 7 Nis öğle</div><div class="bf"><span class="r">€€</span><button class="b sec" type="button">Haritada aç</button></div></div></div>
+          <div class="box"><div class="ph"><img src="{{IMG_PH7}}" alt=""><span class="brand" style="--bc:#34a853">Haritalar</span><span class="who ai">AI</span></div><div class="bb"><h5>Arashiyama bambu ormanı</h5><div class="r">Gezilecek</div><div class="bf"><span class="r">ücretsiz</span><button class="b sec" type="button">+ Plana ekle</button></div></div></div>
+          <div class="box"><div class="ph"><img src="{{IMG_PH8}}" alt=""><span class="brand" style="--bc:#34a853">Haritalar</span><span class="who me">Senin linkin</span></div><div class="bb"><h5>Kiyamachi Yoshikawa Tempura</h5><div class="r">Restoran · Pontocho</div><div class="bf"><span class="r">€€€</span><button class="b sec" type="button">+ Plana ekle</button></div></div></div>
+        </div>
+      </div>
+    </article>
+    <button class="cat-add" type="button">+ Yer ekle</button>
+  </section>
+
+  <!-- BELGELER -->
+  <section class="cat" style="--k:var(--c-doc)" aria-labelledby="h6">
+    <div class="cat-h"><span class="cat-ic">{{IC_DOC}}</span><div><h2 id="h6">Belgeler ve internet</h2><div class="cnt">vize gerekmiyor · 1 seçildi · 1 bekliyor</div></div></div>
+    <article class="need">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">1</span><span class="wd">Per</span><span class="to num">→ 16 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_ESIM}}" alt=""></span><div><span class="k">İnternet</span><b>Japonya eSIM</b><small>16 gün · 2 telefon</small></div></div>
+        <div class="sel"><div class="meta"><span class="st ai">✦ AI seçti</span><span class="brand" style="--bc:#1b1b1b">Airalo</span></div><h4>Moshi Moshi · 10 GB</h4><div class="ln">30 gün geçerli</div></div>
+        <div class="act"><div class="price"><b class="num">$32</b> <small>2 telefon</small></div><button class="b pri" type="button">Satın al ↗</button><button class="b sec" type="button">Değiştir ▾</button><div class="pano"><a href="#">Pano'da 3 paket</a></div></div>
+      </div>
+    </article>
+    <article class="need">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">1</span><span class="wd">Per</span><span class="to num">→ 16 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_SIGORTA}}" alt=""></span><div><span class="k">Sigorta</span><b>Seyahat sağlık</b><small>16 gün · 2 kişi</small></div></div>
+        <div class="sel"><div class="meta"><span>Henüz seçilmedi</span></div><h4 class="muted">Sağlık sigortası</h4><div class="ln">Kendin ara: <a href="#">SafetyWing ↗</a> · ya da linki sohbete bırak</div></div>
+        <div class="act"><div class="price est"><b class="num">~€34</b> <small>kişi</small></div><button class="b pri" type="button">✦ AI bulsun</button><button class="b sec" type="button">Gerek yok</button><div class="pano"><a href="#">Pano'da kayıt yok</a></div></div>
+      </div>
+    </article>
+    <button class="cat-add" type="button">+ Belge ekle</button>
+  </section>
+</main>
+</div>
