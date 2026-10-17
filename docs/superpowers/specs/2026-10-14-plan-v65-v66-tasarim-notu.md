@@ -59,3 +59,13 @@ Bilinen veri farkı: canlıdaki örnek gezide kart yüzleri ile aria etiketleri 
 - Düğme yazıları ortalandı (satır yüksekliği düzeltildi).
 - Eylemler tek yerde: seçili otel/ulaşım kartında "Aldım" ve "Rezerve et" artık altta, fiyatın yanında yan yana (üstteki şeritten indi). Önerimiz kartında "Bunu seç" + "Rezerve et" aynı sırada. Bilet kartı koçanında düğmeler fiyatın altında alt alta.
 - Seçenek kartında tek düğme "Bunu seç" fiyatın karşısında.
+
+## v71 · docs/mockups/plan-v71-eylem-hiyerarsi (17 Ekim, v70 üstüne, açık soruların cevabı)
+- **Eylem hiyerarşisi:** her kartta tek eylem satırı; solda fiyat, sağda bir dolu bir ikincil düğme, satır kırılmaz (v70'te "Rezerve et" alt satıra düşüyordu). Önerimiz: dolu "Bunu seç", yanında yazı bağlantısı "Rezerve et ↗" (önce seç, sonra rezerve). Seçildi: dolu "Rezerve et ↗", çerçeveli "Aldım". Seçenek kartı: tek dolu "Bunu seç".
+- **"Değiştir n" kartta gizli:** altındaki "Diğer oteller / uçuşlar n" paneli aynı işi görüyor (kodda diyalog korunur, giriş noktası panel olur).
+- **CTA rengi tek mor** (kategori rengine bağlanmadı: 6 renk eylemi tanınmaz yapar, kategori rengi niyet kartında ve çerçevede kalıyor).
+- **Niyet kartı sakinleşti:** görsel 78 px, ad 20 px, ince çizgi, zemin daha açık.
+- **Seçenek kartında iptal satırı** ("Ücretsiz iptal · 1 Nis'e kadar" yeşil, "İade yok" kırmızı); yalnız veri varsa gösterilir (çizimde örnek veri).
+- **Uzun ad:** niyet kartı adı ve kart başlığı 2 satıra sarar, sonra "…" (Kyoto grubu "Playa del Carmen" ile denendi).
+- **Mobil (390 px):** niyet kartı üstte, kart altta; eylem satırı sığmazsa fiyat üstte, iki düğme altta eşit genişlikte.
+- **Karanlık mod:** canlı uygulamada karanlık mod yok (app.css'te tema değişkeni yok); kontrol edilecek bir şey yok, istenirse ayrı iş.
