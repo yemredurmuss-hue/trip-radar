@@ -69,3 +69,12 @@ Bilinen veri farkı: canlıdaki örnek gezide kart yüzleri ile aria etiketleri 
 - **Uzun ad:** niyet kartı adı ve kart başlığı 2 satıra sarar, sonra "…" (Kyoto grubu "Playa del Carmen" ile denendi).
 - **Mobil (390 px):** niyet kartı üstte, kart altta; eylem satırı sığmazsa fiyat üstte, iki düğme altta eşit genişlikte.
 - **Karanlık mod:** canlı uygulamada karanlık mod yok (app.css'te tema değişkeni yok); kontrol edilecek bir şey yok, istenirse ayrı iş.
+
+## v72 · docs/mockups/plan-v72-derli-toplu (17 Ekim, Emre'nin "app gibi derli toplu" isteği)
+Artifact: https://claude.ai/artifact/89dVEm5d6bUs6pAhg1b9x9 · elle yazılmış kaynak `kaynak.html` (canlı yakalama değil).
+- **Her ihtiyaç tek kart, tek satır:** solda dar niyet şeridi (tür · yer · gece/tarih/kişi · niyet sözleri, tür rengi şerit), ortada seçili (durum etiketi, marka, ad, tek satır bilgi; uçuşta saatler ve süre), sağda fiyat ve tek eylem satırı. ••• menüsü sağ üstte.
+- **Seçenekler kartın altında açılır** ("n seçenek daha · en ucuzu €820"), seçili olsun olmasın. Uçuş ve ulaşım Skyscanner gibi satır (havayolu harfi, kalkış–varış, süre/aktarma, etiket En ucuz/En kısa, fiyat, Seç). Otel fotoğraf önde (4:3 görsel, marka, "En uygun", fotoğraf sayısı, ad, puan, iptal satırı, gece fiyatı, Seç). Etkinlik Viator/Klook fotoğraflı, Yapılacak Haritalar fotoğraflı.
+- **Boş ihtiyaç:** tahmini fiyat niyete taşındı; sağda "Kyoto için 4 gece yer bul" + Booking.com'da ara, Airbnb'de ara, "AI önersin", link bırak notu; "Gerek yok" sağda. Resmî site kalktı.
+- **Üst özet:** tek çubuk + "16 ihtiyaçtan 9'u hazır: 5 rezerve, 4 seçildi" + "Sıradaki" düğmesi. Plan çubuğundan renk göstergesi ve "+ Ekle" kalktı (Ekle bölüm sonunda).
+- **Kart içi ikonlar** (ⓘ, klips, ×) ••• menüsüne; avatar yalnız başkası eklediyse.
+- Kaybolmayanlar sayfanın altında listeli. Karanlık mod tokenları çizimde var (canlıda yok).
