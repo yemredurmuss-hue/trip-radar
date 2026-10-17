@@ -33,3 +33,6 @@ Kategori içinde her ihtiyaç bir **grup** (tek çerçeve, türün renginde):
 - Tepsi (B) ve yan yana liste (C) bırakıldı, çizimde arşivde.
 - Otel kartı iki biçim: liste görünümünde yatay, arka yüz karoları dikey kare.
 - Haritalar fotoğrafı için Google Places API (anahtar + maliyet) eklensin mi?
+
+## 5. tur: canlı tasarımın üstüne (2026-10-17)
+Canlı 0.37.1'in gerçek Plan ekranı (Durumlar, Örnek gezi, Ozora) yakalanıp her ihtiyaç niyet kartıyla sarıldı: Artifact https://claude.ai/artifact/2LttiBKCSAcB7bkLSXzY3v (3 artboard). Kartlar canlıdaki gibi; değişen yalnız: bölüm içinde her ihtiyaç tek sıra (iki sütun yerine), solda niyet kartı, altında her zaman açılabilen "Seçenekler" (kartın kendi "Değiştir N" düğmesi bu katın yerine geçiyor), seçenek karoları canlı kart arka yüzünün kendisi. CSS: `docs/mockups/plan-v31-canli/niyet-karti.css`; yakalama betiği: `yakala.mjs` (v30-shots.mjs tohumlarını kullanır). Niyet sözleri (sakin, orta bütçe…) örnek: canlı veride ihtiyaç başına niyet henüz yok, sohbetten çıkarılıp kaydedilmesi gerek.

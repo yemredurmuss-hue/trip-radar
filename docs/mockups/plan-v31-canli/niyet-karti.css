@@ -1,0 +1,58 @@
+/* ===== Plan v31: niyet kartı + seçenekler (canlı v46 tasarımının üstüne) ===== */
+body{background:#f7f5f1}
+.panel{overflow:visible!important;height:auto!important;max-width:1000px;margin:0 auto}
+.ng-list{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important}
+.ng{display:grid;grid-template-columns:216px minmax(0,1fr);border:1px solid color-mix(in srgb,var(--gk) 30%,#fff);border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 0 0 3px color-mix(in srgb,var(--gk) 6%,transparent);animation:ng-rise .5s cubic-bezier(.16,1,.3,1) both}
+@keyframes ng-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ni{position:relative;background:color-mix(in srgb,var(--k) 6%,#fff);border-right:1.5px dashed color-mix(in srgb,var(--k) 40%,#fff);display:flex;flex-direction:column;min-width:0}
+.ni::before{content:"";position:absolute;right:-1px;top:0;bottom:0;width:4px;background:var(--k);opacity:.5}
+.ni-art{position:relative;height:72px;background:color-mix(in srgb,var(--k) 13%,#fff);display:grid;place-items:center;overflow:hidden}
+.ni-art img{max-height:54px;max-width:78%;margin-top:12px;mix-blend-mode:multiply}
+.ni-kind{position:absolute;left:9px;top:8px;font-size:10.5px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:var(--k);background:#fff;border-radius:99px;padding:2px 8px}
+.ni-st{position:absolute;right:8px;top:8px;font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 9px;background:#fff;border:1px dashed #b9b5cf;color:#6b6790}
+.ni-st.ch{border:1px solid #8fcca5;color:#2b7a4b;background:#f5fbf7}
+.ni-st.bk{border:1px solid #3f9c66;color:#146c3a;background:#e0f1e6}
+.ni-st.ar{border:1px solid #c9c6d6;color:#55526b;background:#f1f0f5}
+.ni-b{padding:10px 13px 12px;display:grid;gap:5px}
+.ni-t{font-size:16px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1c1a33}
+.ni-m{font-size:12.5px;color:#6b6790}
+.ni-w{display:flex;flex-wrap:wrap;gap:4px}
+.ni-w i{font-style:normal;font-size:12px;background:#fff;border:1px solid #ece9e4;border-radius:99px;padding:1px 8px;color:#6b6790}
+.ni-w i.more{background:#ece8ff;color:#5b45e0;border-color:transparent;font-weight:700}
+.ni-links{position:absolute;left:8px;right:8px;bottom:8px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;background:#fff;border:1px solid #e7e4dd;border-radius:12px;padding:7px 8px;box-shadow:0 8px 22px -12px rgba(28,26,51,.35);opacity:0;transform:translateY(6px);pointer-events:none;transition:opacity .18s,transform .18s;z-index:3}
+.ni-links small{width:100%;font-size:11px;color:#6b6790}
+.ni-links a{font-size:12px;font-weight:650;color:#5b45e0;text-decoration:none;background:#ece8ff;border-radius:99px;padding:2px 9px}
+.ni:hover .ni-links,.ni:focus-within .ni-links{opacity:1;transform:none;pointer-events:auto}
+@media (hover:none){.ni-links{position:static;opacity:1;transform:none;pointer-events:auto;margin:0 10px 10px}}
+.ng-r{padding:12px 14px;display:grid;gap:8px;align-content:start;background:color-mix(in srgb,var(--gk) 3%,#fff);min-width:0}
+.ng-main{min-width:0}
+.ng-main>.cat-card,.ng-main>.ek-cell{width:100%;max-width:none;margin:0}
+.ng-main .ev-row,.ng-main .it-grid{margin:0}
+.ng-empty{border:1.5px dashed #b9b5cf;border-radius:14px;padding:12px 14px;color:#6b6790;font-size:13.5px;background:#fff}
+/* seçili konaklama yatay ve kısa */
+.ng .pk-media.pk-stay{grid-template-columns:150px minmax(0,1fr)!important;align-items:center;gap:14px!important}
+.ng .pk-stay .pk-vis{height:106px!important;width:150px!important}
+/* seçenekler: her grupta altta, isteğe bağlı açılır */
+.nf{border:1px solid #e7e4dd;border-radius:12px;background:#fff}
+.nf>summary{list-style:none;display:flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;cursor:pointer;font-size:13px;color:#1c1a33}
+.nf>summary::-webkit-details-marker{display:none}
+.nf-dot{width:8px;height:8px;border-radius:50%;background:var(--gk);flex:none}
+.nf-n{background:#ece8ff;color:#5b45e0;border-radius:99px;font-size:12px;font-weight:750;padding:1px 8px}
+.nf-r{margin-left:auto;display:inline-flex;align-items:center;gap:10px;color:#6b6790}
+.nf-r a{color:#5b45e0;font-weight:650;text-decoration:none}
+.nf[open] .nf-r svg{transform:rotate(180deg)}
+.nf-r svg{transition:transform .2s}
+.nf-in{padding:4px 10px 10px;border-top:1px solid #efece7;animation:ng-rise .3s cubic-bezier(.16,1,.3,1) both}
+.nf-in .ch-grid{margin-top:8px}
+.nf-none{margin:10px 2px;color:#6b6790;font-size:13px}
+.nf-f{display:flex;gap:8px;margin-top:8px}
+.nf-more{border:0;border-radius:99px;background:#ece8ff;color:#5b45e0;font:inherit;font-size:12.5px;font-weight:700;padding:6px 12px;cursor:pointer}
+@media (max-width:760px){.ng{grid-template-columns:1fr}.ni{border-right:0;border-bottom:1.5px dashed color-mix(in srgb,var(--k) 40%,#fff)}.ni::before{display:none}}
+@media (prefers-reduced-motion:reduce){.ng,.nf-in{animation:none}}
+.ni-st.ai{border:1px solid #c9bff3;color:#5b45e0;background:#f3f0ff}
+.nf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:8px}
+.nf-grid .ch-row{margin:0}
+.ng .pk-alt,.ng .nd-opts{display:none!important}
+.nf-grid.nf-flight,.nf-grid.nf-transport{grid-template-columns:minmax(0,1fr)}
+.nf-grid.ch-back{padding:0;border:0;box-shadow:none;background:none;animation:none;border-radius:0;margin-top:8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.nf-grid.ch-back.nf-flight,.nf-grid.ch-back.nf-transport{grid-template-columns:minmax(0,1fr)}
