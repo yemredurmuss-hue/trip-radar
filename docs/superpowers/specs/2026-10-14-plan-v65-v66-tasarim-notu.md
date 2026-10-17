@@ -103,3 +103,12 @@ Emre: "bizim özeti koy, kendininkini değil; uçak biletinde yayındaki tasarı
 - Durum tek yerde: kart üstünde etiket (AI seçti / Henüz seçilmedi), yeşil tik + "Bilet alındı/Rezerve" yalnız eylem sütununda; kart altında yalnız ek bilgi (kaynak, iptal, belge).
 - Seçenekler iki grup: "Senin bulduğun" (sohbete attığın linkler + Pano'dan, kaynağı satırda yazar: "Sohbete attığın link · 12 Eki", "Pano'dan") ve "AI önerileri" (En ucuz / En hızlı / İstasyona en yakın etiketiyle). Uçuşta alt alta, otelde yan yana iki sütun.
 - Hizalama: satır 64 | 228 | esnek | 172; dört sütun üstten 16px; etkinlik/yer kutularında düğme hep en altta tam genişlik, rozetler fotoğrafın alt solunda (marka üst solda).
+
+## v76 · docs/mockups/plan-v76-niyet-secili-pano (17 Ekim)
+Emre: "daha derli toplu, niyet kartı ile seçili hizalı durmuyor, daha kompakt. Niyet · Seçili · altta geniş açılan Pano (birikenler + AI önerileri): bu denklemin üçünü en iyi deneyimle ver."
+- Satır tek ızgara: tarih 52 | niyet 212 | seçili esnek | eylem 196. Üçü aynı üç çizgiye oturur (üst 18 · ana 24 · alt 18): tarihte ay/gün/haftanın günü, niyette tür/ad/kişi, seçilide durum/ad/ayrıntı. Satır ~84px (v75'te ~200px).
+- Seçili ayrı kart değil, satırın ortasında tonlu şerit (canlının renkleri: kum seçili, yeşil alınmış, gri ayarlandı, kesik çizgi boş). Uçuş/tren canlı biletin tek satıra sığan hali: şehir saat ⌒✈⌒ saat şehir; dar alanda logo, daha da darda saatler gizlenir.
+- Etkinlik ve yer: seçili = planda olanlar (küçük fotoğraflı çipler, her birinde durum halkası).
+- Eylem: fiyat + yan yana iki eşit düğme, hep aynı yer: sol = Satın al / ✓ Bilet alındı / ✦ AI bulsun / Ayarlandı; sağ = "Pano · n ▾" (açıkken koyu).
+- Pano satırın altında geniş açılır, iki eşit yarım: solda "Biriktirdiklerin" (her öğede kaynak: sohbete attığın link / Pano'dan; altta "linki sohbete bırak"), sağda "AI önerileri" (En ucuz / En hızlı / Erken al etiketleri; altta Daha fazla bul + Kendin ara). Uçuşta Skyscanner tipi satırlar, otel/etkinlikte her yarımda iki fotoğraflı kutu (2:1).
+- Görseller CSS'te bir kez (sayfa 2,2 MB → 0,96 MB).
