@@ -1,0 +1,953 @@
+<title>Trip Radar Plan v75</title>
+<style>
+/* Düzen: solda asistan, sağda plan. Plan: üst özet (hero), sonra kategori kutuları. Her ihtiyaç satırı 4 sabit sütun: tarih | niyet | seçili | eylem. Seçenekler satırın altında tam genişlikte açılır. */
+:root{
+  --bg:#f4f3f0; --surface:#ffffff; --sunk:#f6f5f9; --ink:#17152b; --muted:#6a6684; --faint:#9a97ad; --line:#e7e4ee; --hair:#efedf3;
+  --accent:#5b45e0; --accent-soft:#efecff; --on-accent:#ffffff;
+  --ok:#1d7a47; --ok-bg:#e4f4ea; --ok-solid:#1f8a50; --chosen:#2b7a4b; --chosen-bg:#f1f9f4; --chosen-line:#bfe3cc; --bad:#b3261e;
+  --c-fly:#6a4fe0; --c-stay:#14907f; --c-move:#b5761c; --c-exp:#c0256b; --c-todo:#5f7d1c; --c-doc:#2f6fd0;
+  --shadow:0 1px 2px rgba(23,21,43,.04),0 12px 32px -22px rgba(23,21,43,.32);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111018; --surface:#1a1924; --sunk:#211f2d; --ink:#eeecfb; --muted:#a9a5c6; --faint:#77738f; --line:#2e2c40; --hair:#272536;
+  --accent:#9a8bff; --accent-soft:#2a2550; --on-accent:#14112b; --ok:#74e0a4; --ok-bg:#173a27; --ok-solid:#2e9c62; --chosen:#86d9a8; --chosen-bg:#14211a; --chosen-line:#2f5c40; --bad:#ff8a80;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px -22px rgba(0,0,0,.9); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111018; --surface:#1a1924; --sunk:#211f2d; --ink:#eeecfb; --muted:#a9a5c6; --faint:#77738f; --line:#2e2c40; --hair:#272536;
+  --accent:#9a8bff; --accent-soft:#2a2550; --on-accent:#14112b; --ok:#74e0a4; --ok-bg:#173a27; --ok-solid:#2e9c62; --chosen:#86d9a8; --chosen-bg:#14211a; --chosen-line:#2f5c40; --bad:#ff8a80;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px -22px rgba(0,0,0,.9); color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:13.5px/1.45 var(--font);-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4,h5,p{margin:0}
+button{font:inherit;cursor:pointer;color:inherit}
+a{color:var(--accent);text-decoration:none}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 40%,transparent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.shell{display:grid;grid-template-columns:340px minmax(0,1fr);min-height:100vh}
+
+/* asistan */
+.chat{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;border-right:1px solid var(--line);background:var(--surface)}
+.chat-h{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--hair)}
+.orb{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#b9aaff,#5b45e0 70%);flex:none}
+.chat-h b{font-size:16px}.chat-h small{display:block;color:var(--muted);font-size:12px}
+.msgs{flex:1;overflow:auto;padding:18px 20px;display:grid;gap:14px;align-content:start}
+.m{max-width:94%;line-height:1.5}
+.m.me{justify-self:end;background:var(--sunk);border-radius:14px 14px 4px 14px;padding:9px 12px}
+.m.me .url{display:block;color:var(--accent);font-size:12px;word-break:break-all;margin-top:2px}
+.land{margin-top:8px;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:8px 10px;color:var(--ink)}
+.land img{width:34px;height:34px;object-fit:contain;border-radius:8px;background:var(--sunk)}
+.land b{display:block;font-size:13px}.land small{color:var(--muted);font-size:12px}
+.land .go{margin-left:auto;color:var(--accent);font-size:12px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 11px;font-size:12px;font-weight:600}
+.comp{margin:12px 16px 16px;border:1px solid var(--line);border-radius:16px;padding:10px 10px 10px 14px;display:flex;align-items:center;gap:10px;color:var(--faint)}
+.comp .send{margin-left:auto;width:34px;height:34px;border-radius:50%;border:0;background:var(--accent);color:var(--on-accent)}
+
+/* plan */
+.plan{padding-block:24px 80px;padding-inline:28px;display:grid;gap:18px;align-content:start;max-width:1000px;width:100%}
+
+/* üst özet (hero) */
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+.cover{position:relative;height:190px;background:var(--sunk)}
+.cover img{width:100%;height:100%;object-fit:cover;display:block}
+.cover .cities{position:absolute;left:16px;top:16px;display:flex;gap:4px;background:rgba(255,255,255,.88);border-radius:99px;padding:3px}
+.cover .cities span{font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;color:#3a3752}
+.cover .cities span.on{background:#fff;color:#17152b;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.cover .left{position:absolute;right:16px;top:16px;background:rgba(255,255,255,.9);color:#4a36c9;border-radius:99px;font-size:12px;font-weight:700;padding:5px 11px}
+.hero-b{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:0}
+.hero-l{padding:18px 20px;display:grid;gap:12px}
+.hero-l h1{font-size:28px;letter-spacing:-.02em}
+.when{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink)}
+.when .sep{color:var(--faint)}
+.tally{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted)}
+.tally span{display:inline-flex;align-items:center;gap:6px}
+.tally b{color:var(--ink)}
+.prog{display:grid;gap:8px;background:var(--sunk);border-radius:14px;padding:12px 14px}
+.prog-t{display:flex;align-items:center;gap:10px}
+.prog-t b{font-size:14px}.prog-t small{color:var(--muted);font-size:12px}
+.prog-t .next{margin-left:auto;border:0;border-radius:99px;background:var(--ink);color:var(--surface);font-weight:600;font-size:12.5px;padding:7px 13px;white-space:nowrap}
+.bar{height:6px;border-radius:99px;background:var(--line);display:flex;overflow:hidden}
+.bar i{height:100%}.bar .b1{background:var(--ok-solid)}.bar .b2{background:color-mix(in srgb,var(--ok-solid) 40%,transparent)}
+.hero-r{border-left:1px solid var(--hair);padding:16px 18px;display:grid;gap:12px;align-content:start}
+.hero-r h3{font-size:12px;font-weight:600;color:var(--muted)}
+.budget b{font-size:22px;letter-spacing:-.02em}.budget small{color:var(--muted)}
+.bl{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted)}.bl b{color:var(--ink);font-size:12.5px}
+.people{display:flex;align-items:center;gap:8px;font-size:13px}
+.av{width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;color:#fff;font-size:11px;font-weight:800}
+.tags{display:flex;flex-wrap:wrap;gap:5px}.tags span{font-size:12px;border:1px solid var(--line);border-radius:99px;padding:2px 9px;color:var(--muted)}
+.views{display:flex;justify-content:space-between;align-items:center}
+.vs{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:3px}
+.vs button{border:0;background:none;color:var(--muted);font-size:12px;font-weight:600;padding:6px 11px;border-radius:8px}
+.vs button[aria-pressed="true"]{background:var(--sunk);color:var(--ink)}
+
+/* kategori kutusu */
+.cat{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+.cat-h{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--hair)}
+.cat-ic{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;color:var(--k);background:color-mix(in srgb,var(--k) 13%,transparent)}
+.cat-h h2{font-size:17px;letter-spacing:-.01em}.cat-h .cnt{color:var(--muted);font-size:12px;margin-top:1px}
+.cat-h .bud{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.cat-h .bud b{color:var(--ink);font-size:13.5px}
+.mini{width:64px;height:4px;border-radius:99px;background:var(--hair);overflow:hidden}.mini i{display:block;height:100%;background:var(--ok-solid)}
+.cat-add{display:block;width:100%;text-align:left;border:0;border-top:1px solid var(--hair);background:none;color:var(--muted);font-size:12px;font-weight:600;padding:11px 18px}
+
+/* ihtiyaç satırı: tarih | niyet | seçili | eylem (hepsi sabit) */
+.need{border-top:1px solid var(--hair)}
+.need:first-of-type{border-top:0}
+.row{display:grid;grid-template-columns:64px 218px minmax(0,1fr) 168px;align-items:stretch;min-height:104px}
+.date{display:grid;align-content:center;justify-items:center;gap:0;padding:12px 0 12px 14px;text-align:center}
+.date .mo{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--k)}
+.date .d{font-size:24px;font-weight:750;letter-spacing:-.02em;line-height:1.05}
+.date .wd{font-size:11px;color:var(--muted)}
+.date .to{font-size:11px;color:var(--muted);margin-top:2px}
+.int{display:grid;grid-template-columns:44px minmax(0,1fr);gap:10px;align-items:center;padding:12px 14px;border-right:1px solid var(--hair)}
+.ill{width:44px;height:44px;border-radius:12px;background:color-mix(in srgb,var(--k) 10%,var(--surface));display:grid;place-items:center;overflow:hidden}
+.ill img{width:40px;height:40px;object-fit:contain;mix-blend-mode:multiply}
+.int .k{font-size:12px;font-weight:600;color:var(--k)}
+.int b{display:block;font-size:16px;line-height:1.25;letter-spacing:-.01em}
+.int small{display:block;font-size:12px;color:var(--muted);margin-top:1px}
+.sel{padding:12px 18px;min-width:0;display:grid;align-content:center;gap:5px}
+.meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.st{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:99px;font-size:11.5px;font-weight:700}
+.st.ai{background:var(--accent-soft);color:var(--accent)}
+.st.me{background:#fff3e2;color:#9a5b00}
+.st.ch{background:var(--chosen-bg);color:var(--chosen);box-shadow:inset 0 0 0 1px var(--chosen-line)}
+.st.ar{background:var(--sunk);color:var(--muted)}
+.brand{display:inline-flex;align-items:center;height:19px;padding:0 7px;border-radius:5px;color:#fff;background:var(--bc);font-size:11px;font-weight:700}
+.sel h4{font-size:16px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sel .ln{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sel h4.muted{color:var(--muted);font-weight:600}
+.ok{color:var(--ok)}.no{color:var(--bad)}
+.with-ph{display:grid;grid-template-columns:76px minmax(0,1fr);gap:12px;align-items:center}
+.with-ph img{width:76px;height:56px;border-radius:10px;object-fit:cover;background:var(--sunk)}
+/* uçuş: yayındaki bilet çizimi (kavisli rota, ortada uçak) */
+.tk{display:grid;grid-template-columns:auto minmax(80px,1fr) auto;gap:10px;align-items:center}
+.tk .c b{display:block;font-size:18px;letter-spacing:-.01em}
+.tk .c small{font-size:12px;color:var(--muted)}
+.tk .c.r{text-align:right}
+.arc{position:relative;height:38px}
+.arc svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.arc path{fill:none;stroke:color-mix(in srgb,var(--c-fly) 55%,transparent);stroke-width:1.5;stroke-dasharray:4 4}
+.arc .pl{position:absolute;left:50%;top:-2px;transform:translateX(-50%);width:26px;height:26px;border-radius:50%;background:var(--surface);box-shadow:0 0 0 1px var(--line);display:grid;place-items:center;color:var(--c-fly)}
+.arc .du{position:absolute;left:50%;bottom:-4px;transform:translateX(-50%);font-size:11px;color:var(--muted);white-space:nowrap;background:var(--surface);padding:0 4px}
+/* standart eylem sütunu: aynı yer, aynı büyüklük */
+.act{padding:12px 16px;display:grid;align-content:center;gap:6px;border-left:1px solid var(--hair)}
+.price{line-height:1.15;margin-bottom:2px}
+.price b{font-size:18px;letter-spacing:-.02em}.price small{font-size:12px;color:var(--muted)}
+.price span{display:block;font-size:11.5px;color:var(--muted)}
+.price.est b{font-size:15px;color:var(--muted);font-weight:600}
+.b{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:34px;border-radius:10px;font-size:12.5px;font-weight:650;white-space:nowrap}
+.b.pri{border:0;background:var(--accent);color:var(--on-accent)}
+.b.sec{border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.pano{font-size:11.5px;color:var(--muted);text-align:center}
+.pano a{color:var(--muted);text-decoration:underline;text-underline-offset:2px}
+.done{display:flex;align-items:center;gap:8px;height:34px}
+.done .tick{width:30px;height:30px;border-radius:50%;background:var(--ok-solid);color:#fff;display:grid;place-items:center;box-shadow:0 0 0 4px var(--ok-bg)}
+.done b{font-size:12.5px;color:var(--ok)}
+.need.bought{background:color-mix(in srgb,var(--ok-bg) 35%,var(--surface))}
+
+/* seçenekler: satırın altında, tam genişlik */
+.opts{margin:0 16px 16px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.opts-h{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--hair);font-size:12.5px}
+.opts-h b{font-size:13px}
+.opts-h .src{color:var(--muted)}
+.opts-h .x{margin-left:auto;border:0;background:none;color:var(--muted);font-size:12px}
+.opts-f{display:flex;align-items:center;gap:12px;padding:9px 14px;border-top:1px solid var(--hair);font-size:12px;color:var(--muted);background:var(--sunk)}
+.opts-f .more{border:0;background:none;color:var(--accent);font-weight:600;font-size:12px;padding:0;margin-right:auto}
+.who{font-size:11px;font-weight:700;border-radius:99px;padding:1px 7px}
+.who.ai{background:var(--accent-soft);color:var(--accent)}.who.me{background:#fff3e2;color:#9a5b00}.who.pn{background:var(--sunk);color:var(--muted)}
+/* uçuş seçenekleri: Skyscanner sütunları */
+.fo{display:grid;grid-template-columns:30px 220px minmax(0,1fr) 92px 112px;gap:14px;align-items:center;padding:10px 14px;border-top:1px solid var(--hair)}
+.fo:first-of-type{border-top:0}
+.al{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800;background:var(--alc)}
+.fo-t{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+.fo-t b{font-size:15px}.fo-t small{display:block;font-size:11px;color:var(--muted)}
+.leg{display:grid;justify-items:center;gap:2px;font-size:11px;color:var(--muted)}.leg i{display:block;width:100%;height:1px;background:var(--line)}
+.fo-m{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.fo-p{text-align:right}.fo-p b{font-size:15px}.fo-p small{display:block;font-size:11px;color:var(--muted)}
+/* otel / etkinlik / yer: fotoğraflı kutular */
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:14px}
+.box{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);display:grid;grid-template-rows:auto 1fr}
+.box .ph{position:relative;aspect-ratio:4/3;background:var(--sunk)}
+.box .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.box .ph .brand{position:absolute;left:8px;top:8px}
+.box .ph .who{position:absolute;right:8px;top:8px}
+.box .ph .on{position:absolute;right:8px;bottom:8px;width:24px;height:24px;border-radius:50%;background:var(--ok-solid);color:#fff;display:grid;place-items:center;font-size:13px;box-shadow:0 0 0 3px rgba(255,255,255,.8)}
+.box .bb{padding:10px 12px 12px;display:grid;gap:3px;align-content:start}
+.box h5{font-size:13.5px;line-height:1.3;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-height:2.6em}
+.box .r{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.box .bf{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+.box .bf b{font-size:15px}.box .bf small{font-size:11px;color:var(--muted)}
+.box .bf .b{width:auto;height:30px;padding:0 12px;font-size:12px}
+.box.pick{border-color:color-mix(in srgb,var(--accent) 50%,var(--line));box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 12%,transparent)}
+/* etkinlik / yapılacak satırı: niyet + kutular */
+.tiles{padding:12px 18px 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.row.wide{grid-template-columns:64px 218px minmax(0,1fr)}
+
+/* telefon */
+@media(max-width:980px){.shell{grid-template-columns:1fr}.chat{position:static;height:auto}.plan{padding-inline:16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-b{grid-template-columns:1fr}.hero-r{border-left:0;border-top:1px solid var(--hair)}}
+@media(max-width:680px){
+  .row,.row.wide{grid-template-columns:56px minmax(0,1fr)}
+  .int{border-right:0}
+  .sel,.tiles{grid-column:1/-1;padding-top:0}
+  .act{grid-column:1/-1;border-left:0;border-top:1px solid var(--hair);grid-template-columns:1fr 1fr;align-items:center}
+  .act .price{grid-column:1/-1}
+  .fo{grid-template-columns:30px minmax(0,1fr) auto}.fo-m{grid-column:2/-1;grid-row:2}.fo>.b{grid-column:3;grid-row:1}
+}
+
+.row.wide{align-items:start}
+.row.wide .date,.row.wide .int{padding-top:18px;align-self:start}
+.row.wide .int{border-right:0}
+.tiles{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.tiles .box .ph{aspect-ratio:16/11}
+.tiles .box .bf{flex-wrap:wrap}
+.tiles .box .bf .b{flex:1 1 auto}
+@media(max-width:1180px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+
+/* ===== canlı uygulamadan (0.37.1): özet ve bilet ===== */
+:root{--hx-ink:#1c1a33;--hx-muted:#6b6790;--hx-accent:#5b45e0;--hx-lav:#ece8ff;--hx-mint:#eaf7f2;--hx-mintbar:#2cc79a;--hx-card:#f7f5f1;--hx-line:#e7e4dd;--hx-booked:#1a9f78;--hx-planned:#a5e3cf;--hx-planned2:#b9eadb;--danger:#c62828;
+--v-ink:#1c1a33;--v-muted:#6b6790;--v-line2:#efece7;--v-dash:#b9b5cf;--v-soft:#f7f5f1;--v-tile:#fbfaf7;--v-lav:#ece8ff;--v-accent-ink:#4a35cc;--v-plan-bg:#fbf6ea;--v-plan-line:#e9d29a;--v-plan-ink:#8a5a00;--v-plan-dot:#e09422;--v-book-bg:#eef8f1;--v-book-line:#b9e0c7;--v-book-ink:#1b7f45}
+article.pk-card .ek-band{ display: block; height: 104px; border-radius: 12px; background: color-mix(in srgb, var(--mc) 7%, #fff); overflow: hidden; margin: 0 0 8px; }
+article.pk-card .ek-band img, article.pk-card .ek-band .ek-tent{ display: block; width: 100%; height: 100%; max-width: none; margin: 0; padding: 6px 0; object-fit: contain; opacity: .9; box-sizing: border-box; mix-blend-mode: multiply; }
+.nd-card .nd-pic .nd-self{ grid-column: 1 / -1; }
+.pk-lab.arranged{ font-size: 12.5px; }
+.pk-ib{ position: relative; }
+.pk-ib::after{ content: ""; position: absolute; left: -3px; right: -3px; top: -4px; bottom: -4px; }
+@media (pointer: coarse){.pk-ib{ width: 30px; height: 30px; }.pk-ib::after{ left: 0; right: 0; top: 0; bottom: 0; }}
+.view-tabs{ display: flex; justify-content: center; flex-wrap: wrap; margin: 4px 0 20px; }
+.view-tabs button{ position: relative; border: 0; padding: 10px 24px 14px; background: none; font-size: 17px; font-weight: 400; color: var(--hx-muted); }
+.view-tabs button + button::before{ content: ""; position: absolute; left: 0; top: 13px; width: 1px; height: 20px; background: var(--hx-line); }
+.view-tabs button:hover{ color: var(--hx-ink); }
+.view-tabs button.on{ color: var(--hx-ink); font-weight: 600; }
+.view-tabs button.on::after{ content: ""; position: absolute; left: 18px; right: 18px; bottom: 0; height: 3px; border-radius: 3px; background: var(--hx-accent); }
+.view-tabs{ margin: 0 0 16px; }
+.hx{
+  display: grid; grid-template-columns: minmax(0, 1.82fr) minmax(320px, 1fr); gap: 24px; align-items: stretch; margin: 8px 0 24px; color: var(--hx-ink);
+}
+.hx-left{ position: relative; min-width: 0; container: hxleft / inline-size; }
+.hx button{ font-family: inherit; }
+@keyframes hx-appear{ from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.hx-appear{ animation: hx-appear .3s ease-out; }
+@media (prefers-reduced-motion: reduce){.hx-appear{ animation: none; }}
+.hx-photo{ position: relative; aspect-ratio: 1.92; border-radius: 22px; overflow: hidden; background: linear-gradient(135deg, #eeebf7 0%, #e7e4ee 55%, #efece6 100%); }
+.hx-photo img{ position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .5s; }
+.hx-photo img.on{ opacity: 1; }
+.hx-ph{ position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 0 24px; color: #b3aec8; text-align: center; }
+.hx-ph span{ font-size: 14px; color: var(--hx-muted); }
+.hx-cities{
+  position: absolute; top: 16px; left: 16px; display: flex; gap: 2px; padding: 4px; border-radius: 999px; max-width: calc(100% - 32px - 250px); overflow-x: auto; scrollbar-width: none;
+  background: rgba(255,255,255,.82); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.hx-cities button{ flex: none; height: 40px; border: 0; background: transparent; padding: 0 22px; border-radius: 999px; font-size: 16px; font-weight: 500; color: var(--hx-muted); }
+.hx-cities button.on{ background: #fff; color: var(--hx-ink); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.hx-credit{
+  position: absolute; right: 10px; bottom: 10px; max-width: calc(100% - 20px); display: flex; align-items: center; justify-content: flex-end;
+  color: rgba(255,255,255,.95); font-size: 11.5px; line-height: 1.4; outline: none;
+}
+.hx-credit-i{
+  flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(0,0,0,.42); font: italic 600 12px/1 Georgia, serif; color: #fff; cursor: default;
+}
+.hx-credit-text{
+  display: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  margin-right: 6px; padding: 3px 9px; border-radius: 999px; background: rgba(0,0,0,.6);
+}
+.hx-credit:hover .hx-credit-text, .hx-credit:focus-within .hx-credit-text{ display: block; }
+.hx-credit:focus-visible .hx-credit-i{ box-shadow: 0 0 0 2px #fff; }
+.hx-credit a{ color: inherit; text-decoration: none; }
+.hx-credit a:hover{ text-decoration: underline; }
+.hx-badges{ position: absolute; top: 16px; right: 70px; display: flex; align-items: center; gap: 8px; }
+.hx-count{ height: 40px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 999px; background: var(--hx-lav); color: var(--hx-accent); font-size: 15px; font-weight: 500; white-space: nowrap; }
+.hx-busy{ height: 32px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 999px; background: #fff; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.hx-busy i{ width: 12px; height: 12px; border-radius: 50%; border: 2px solid #d2d2d7; border-top-color: var(--hx-ink); animation: hx-spin 1s linear infinite; }
+@keyframes hx-spin{ to { transform: rotate(360deg); } }
+@container hxleft (max-width: 699px){.hx-busy span{ display: none; }.hx-busy{ padding: 0 10px; }}
+.hx-menu{ position: absolute; right: 16px; top: 16px; z-index: 6; }
+.hx-menu .menu-btn{ width: 40px; height: 40px; border-radius: 50%; color: var(--hx-ink); background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.hx-story{ margin-top: 20px; }
+.hx-story h1{ margin: 0; font-size: 40px; line-height: 1.12; font-weight: 700; letter-spacing: -.025em; color: var(--hx-ink); overflow-wrap: anywhere; }
+.hx-when{ display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 10px; font-size: 17px; color: var(--hx-ink); }
+.hx-when svg{ flex: none; }
+.hx-when .dot{ margin: 0 2px; }
+.hx-when.empty{ color: var(--hx-muted); }
+.hx-lead{ margin: 8px 0 0; font-size: 17px; line-height: 1.5; color: var(--hx-muted); }
+.hx-tally{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 4px; margin-top: 22px; }
+.hx-tally .hx-sep{ display: none; }
+.hx-tally button{
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 6px 4px; border: 0; border-radius: 14px;
+  background: none; font-size: 17px; color: var(--hx-ink); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.hx-tally button:hover{ background: rgba(28,26,51,.04); }
+.hx-tally button:nth-of-type(2n)::before{ content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 36px; margin-top: -18px; background: var(--hx-line); }
+@container hxleft (min-width: 520px){.hx-tally{ display: flex; align-items: center; justify-content: space-between; row-gap: 0; }.hx-tally button{ flex: none; justify-content: flex-start; gap: 8px; padding: 6px 4px; font-size: 16px; }.hx-tally button:nth-of-type(2n)::before{ content: none; }.hx-tally .hx-sep{ display: block; flex: none; width: 1px; height: 36px; margin: 0 6px; background: var(--hx-line); }}
+@container hxleft (min-width: 540px){.hx-tally button{ font-size: 17px; }}
+@container hxleft (max-width: 299px){.hx-tally button{ white-space: normal; }.hx-tally span{ overflow-wrap: break-word; }}
+.hx-tally svg{ flex: none; }
+.hx-tally span{ min-width: 0; text-align: left; }
+.hx-tally .c-flight svg{ color: #6a4fe0; }
+.hx-tally .c-stay svg{ color: #23998b; }
+.hx-tally .c-transport svg{ color: #c58a2e; }
+.hx-tally .c-experience svg{ color: #a8336f; }
+.hx-tally button.zero, .hx-tally button.zero svg{ color: var(--hx-muted); opacity: .7; }
+.hx-progress{ display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 26px; margin-top: 16px; padding: 22px; border-radius: 20px; background: var(--hx-mint); }
+.hx-progress-head{ display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.hx-progress-head > b{ flex: 0 1 auto; min-width: 0; font-size: 17px; font-weight: 700; color: var(--hx-ink); }
+.hx-progress-meta{ display: block; margin-top: 6px; font-size: 15px; color: var(--hx-muted); }
+.hx-progress-count{ padding: 0; border: 0; background: none; font-size: 15px; color: var(--hx-muted); font-variant-numeric: tabular-nums; text-align: left; }
+.hx-progress-count .dot{ margin: 0 0 0 2px; }
+.hx-part{ white-space: nowrap; }
+.hx-key{ display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; vertical-align: 1px; }
+.hx-key.booked{ background: var(--hx-booked); }
+.hx-key.planned{ background: var(--hx-planned); box-shadow: inset 0 0 0 1px var(--hx-booked); }
+button.hx-progress-count:hover, button.hx-progress-count[aria-expanded="true"]{ text-decoration: underline; text-underline-offset: 3px; }
+.hx-deadline{ flex: none; white-space: nowrap; padding: 2px 10px; border: 0; border-radius: 999px; background: #fff1d9; color: #8a5300; font-size: 14px; font-weight: 600; }
+.hx-deadline[aria-expanded="true"]{ background: #f6dfb3; }
+.hx-bar{ position: relative; flex: 1 1 48px; min-width: 48px; height: 12px; border-radius: 999px; overflow: hidden; background: #dfe4e8; }
+.hx-bar i{ position: absolute; top: 0; left: 0; bottom: 0; border-radius: 999px; transition: width .4s; }
+.hx-bar .hx-bar-booked{ background: var(--hx-booked); }
+.hx-bar .hx-bar-planned{ background: repeating-linear-gradient(135deg, var(--hx-planned) 0 6px, var(--hx-planned2) 6px 12px); }
+.hx-go{ display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 52px; padding: 0 22px; border: 0; border-radius: 14px; background: var(--hx-ink); color: #fff; font-size: 17px; font-weight: 500; white-space: nowrap; }
+.hx-go:hover{ background: #2c2950; }
+.hx-acts{ display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.hx-alt{ align-self: center; padding: 2px 6px; border: 0; background: none; color: var(--hx-ink); font-size: 14px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(0,0,0,.25); }
+.hx-alt:hover{ text-decoration-color: currentColor; }
+@container hxleft (max-width: 499px){.hx-progress{ grid-template-columns: minmax(0, 1fr); gap: 18px; }.hx-go{ width: 100%; }}
+.hx-go svg{ flex: none; }
+.hx-side{ display: flex; flex-direction: column; min-width: 0; padding: 20px 24px; border-radius: 22px; background: var(--hx-card); border: 1px solid #efebe3; box-shadow: 0 1px 2px rgba(40,30,20,.03), 0 8px 24px rgba(40,30,20,.05); }
+.hx-block{ position: relative; }
+.hx-block + .hx-block{ margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hx-line); }
+.hx-side > .hx-block{ flex: 2 1 auto; display: flex; flex-direction: column; justify-content: center; }
+.hx-side > .hx-block:first-child{ flex-grow: 1; justify-content: flex-start; }
+.hx-side > .hx-block:last-child{ flex-grow: 1; justify-content: flex-end; }
+.hx-side > .hx-block > button.hx-h{ align-self: flex-start; }
+.hx-h{ display: block; margin: 0; padding: 0; border: 0; background: none; font-size: 20px; font-weight: 700; letter-spacing: -.01em; color: var(--hx-ink); text-align: left; }
+button.hx-h:hover{ color: var(--hx-accent); }
+.hx-empty{ margin: 8px 0 0; font-size: 15px; line-height: 1.45; color: var(--hx-muted); }
+.hx-wait{ visibility: hidden; }
+.hx-styles .hx-wait{ visibility: visible; width: 128px; padding: 0; background: rgba(28,26,51,.04); }
+.hx-link{ display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; font-size: 16px; color: var(--hx-accent); }
+.hx-link:hover{ text-decoration: underline; text-underline-offset: 3px; }
+.hx-people{ display: flex; align-items: center; gap: 16px; width: 100%; padding: 0; border: 0; background: none; text-align: left; color: inherit; }
+button.hx-people:hover b{ color: var(--hx-accent); }
+.hx-avatars{ flex: none; display: inline-flex; }
+.hx-avatars i{
+  width: 52px; height: 52px; margin-left: -12px; border-radius: 50%; border: 3px solid #fff; display: grid; place-items: center; font-style: normal; font-size: 18px; font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+.hx-avatars i:first-child{ margin-left: 0; }
+.hx-avatars .p0{ background: #e7e2fb; color: #4b36b8; }
+.hx-avatars .p1{ background: #d8f0ea; color: #11695c; }
+.hx-avatars .p2{ background: #fbe3d4; color: #9a3f12; }
+.hx-avatars .p3{ background: #f8dfe9; color: #8b2554; }
+.hx-avatars .more{ background: #fff; color: var(--hx-muted); font-size: 16px; }
+.hx-avatars .dashed{ background: none; border: 2px dashed #cfcadc; color: #b3aec8; box-shadow: none; }
+.hx-who-text{ display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hx-who-text b{ font-size: 17px; font-weight: 600; color: var(--hx-ink); overflow-wrap: anywhere; }
+.hx-who-text small{ font-size: 15px; color: var(--hx-muted); }
+.hx-who-text small.accent{ color: var(--hx-accent); }
+.hx-who-box{ position: relative; }
+.hx-who-pop{ z-index: 8; display: flex; flex-direction: column; gap: 10px; }
+.hx-who-pop h4{ margin: 0; font-size: 15px; font-weight: 600; color: var(--hx-ink); }
+.hx-who-list{ list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.hx-who-list li{ display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 2px 4px 2px 10px; border-radius: 10px; background: #f6f4ef; }
+.hx-who-list .who-name{ flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.hx-who-list li{ padding-left: 4px; }
+.hx-who-list small{ color: var(--hx-muted); font-size: 12px; }
+.hx-who-list .who-x{ flex: none; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: none; font-size: 18px; line-height: 1; color: var(--hx-muted); cursor: pointer; }
+.hx-who-list .who-x:hover{ background: #ebe7df; color: var(--danger); }
+.hx-who-add{ display: flex; gap: 8px; }
+.hx-who-add input{ flex: 1; min-width: 0; height: 34px; padding: 0 10px; border: 1px solid var(--hx-line); border-radius: 10px; font: inherit; font-size: 14px; }
+.hx-who-add button{ flex: none; height: 34px; padding: 0 12px; border: 0; border-radius: 10px; background: var(--hx-accent); color: #fff; font: inherit; font-size: 14px; cursor: pointer; }
+.hx-who-add button:disabled{ opacity: .45; cursor: default; }
+.hx-who-count{ display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+.hx-who-count .stepper{ display: inline-flex; align-items: center; gap: 10px; }
+.hx-who-count .stepper button{ width: 30px; height: 30px; padding: 0; border: 1px solid var(--hx-line); border-radius: 50%; background: #fff; font-size: 16px; line-height: 1; cursor: pointer; color: var(--hx-ink); }
+.hx-who-count .stepper button:disabled{ opacity: .4; cursor: default; }
+.hx-who-count .stepper b{ min-width: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+.hx-who-note{ margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--hx-muted); }
+.hx-who-invite{ align-self: flex-start; font-size: 14px; }
+.hx-share{ margin-top: 8px; font-size: 13px; color: var(--hx-muted); }
+.hx-share .err{ color: var(--danger); }
+.hx-styles{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.hx-styles span{ flex: none; height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 999px; font-size: 14px; font-weight: 500; white-space: nowrap; }
+.hx-styles svg{ flex: none; }
+.hx-styles .empty{ padding: 0 16px; border: 1.5px dashed #d6d1e3; color: var(--hx-muted); font-weight: 400; font-size: 15px; white-space: normal; }
+.hx-budget-btn{ display: block; width: 100%; padding: 0; border: 0; background: none; text-align: left; color: inherit; cursor: pointer; }
+.hx-budget-top{ display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.hx-budget-top strong{ font-size: 20px; font-weight: 700; color: var(--hx-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hx-budget-line{ display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; font-size: 16px; color: var(--hx-muted); font-variant-numeric: tabular-nums; }
+.hx-budget-line > span{ display: inline-flex; align-items: center; gap: 12px; }
+.hx-budget-line i{ width: 10px; height: 10px; border-radius: 50%; background: #c9c5bc; }
+.hx-budget-line b{ font-weight: 500; color: var(--hx-ink); white-space: nowrap; }
+.hx-budget-line.booked i{ background: #22c08e; }
+.hx-budget-line.planned i{ background: #f5a524; }
+.hx-budget-line.over i{ background: #d93a3a; }
+.hx-budget-line.over, .hx-budget-line.over b{ color: #c62828; }
+.hx-budget-btn:hover .hx-h{ color: var(--hx-accent); }
+.hx-pop{
+  position: absolute; z-index: 7; right: -8px; left: -8px; top: calc(100% + 8px); padding: 16px 18px; border-radius: 16px; background: #fff; font-size: 15px; cursor: default; color: var(--hx-ink);
+  box-shadow: 0 12px 40px rgba(0,0,0,.16), 0 0 0 1px rgba(0,0,0,.04);
+}
+.hx-pop .line{ display: flex; justify-content: space-between; padding: 5px 0; font-variant-numeric: tabular-nums; }
+.hx-pop .line i{ display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 8px; }
+.hx-pop .sep{ border-top: 1px solid var(--hx-line); margin: 10px 0; }
+.hx-pop .left{ color: var(--hx-muted); font-size: 13px; margin-top: 8px; }
+.hx-pop i.c-flight{ background: #6a4fe0; }
+.hx-pop i.c-stay{ background: #23998b; }
+.hx-pop i.c-transport{ background: #c58a2e; }
+.hx-pop i.c-activity{ background: #a8336f; }
+.hx-pop i.c-other{ background: #8e8e93; }
+.hx-ptags{ display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; margin: 10px 0 0; padding: 0; list-style: none; }
+.hx-ptag{ max-width: 100%; min-height: 28px; padding: 4px 11px; border-radius: 14px; background: #f0eef3; color: var(--hx-ink); font-size: 14px; line-height: 20px; overflow-wrap: anywhere; }
+.hx-ptag.strong{ background: color-mix(in srgb, var(--hx-accent) 13%, #fff); color: var(--hx-accent); font-weight: 600; }
+.hx-prefs-link{ margin-top: 8px; flex-wrap: wrap; }
+.hx-prefs-link .sep{ color: var(--hx-muted); }
+.hx-prefs-link .ask-mark{ display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; }
+.hx-prefs-link .ask-mark i{ width: 8px; height: 8px; border-radius: 50%; background: var(--hx-accent); }
+.hx-prefs-pop{
+  position: absolute; z-index: 7; left: -12px; right: -12px; top: calc(100% + 8px); padding: 16px 18px; border-radius: 16px; background: #fff; color: var(--hx-ink);
+  box-shadow: 0 12px 40px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.04); font-size: 15px; line-height: 1.5;
+}
+.hx-prefs-pop .pop-title{ margin-bottom: 10px; font-weight: 700; }
+.hx-prefs-pop ul{ list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.hx-prefs-pop li{ display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.hx-prefs-pop li small{ font-size: 13px; color: var(--hx-muted); }
+.hx-prefs-pop li .x{ flex: none; border: 0; background: none; color: #aeaeb2; font-size: 17px; line-height: 1; padding: 0 2px; }
+.hx-prefs-pop li .x:hover{ color: #c62828; }
+.hx-prefs-pop .ask{ margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hx-line); }
+.hx-prefs-pop .ask.first{ margin-top: 0; padding-top: 0; border-top: 0; }
+.hx-prefs-pop .ask p{ margin: 0 0 8px; }
+.hx-prefs-pop .ask .muted{ color: var(--hx-muted); }
+.hx-prefs-pop .ask button{ height: 32px; padding: 0 14px; border-radius: 999px; font-size: 14px; border: 1px solid #d2d2d7; background: #fff; color: var(--hx-ink); margin-right: 6px; }
+.hx-prefs-pop .ask button.yes{ background: var(--hx-ink); border-color: var(--hx-ink); color: #fff; }
+.hx-prefs-pop .edit{ margin-top: 10px; font-size: 13px; color: var(--hx-muted); }
+.hx-tag{ display: inline-block; font-size: 12px; color: var(--hx-muted); background: #f1efea; border-radius: 6px; padding: 1px 7px; margin-right: 6px; vertical-align: 1px; }
+.hx-countries{ display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 17px; color: var(--hx-ink); }
+.hx-countries > span{ display: inline-flex; align-items: center; gap: 14px; }
+.hx-countries .flag{ display: inline-grid; place-items: center; width: 34px; height: 26px; border-radius: 4px; overflow: hidden; font-style: normal; font-size: 30px; line-height: 1; }
+.hx-weather{ display: flex; flex-wrap: wrap; row-gap: 8px; margin: 10px 0 0 -14px; overflow: hidden; }
+.hx-weather > span{ display: inline-flex; align-items: center; gap: 6px; min-height: 36px; margin-left: -1px; padding: 0 14px; border-left: 1px solid var(--hx-line); font-size: 16px; color: var(--hx-ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hx-weather svg{ flex: none; }
+.hx-weather .city{ margin-right: 4px; }
+.hx-weather .sky-sun, .hx-weather .sky-partly{ color: #f0a020; }
+.hx-weather .sky-cloud, .hx-weather .sky-rain{ color: var(--hx-ink); }
+.hx-minis{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 6px; margin-left: -10px; overflow: hidden; font-size: 14px; line-height: 1.35; color: var(--hx-muted); }
+.hx-minis span{ display: flex; align-items: flex-start; gap: 7px; min-width: 0; margin-left: -1px; padding: 0 10px; border-left: 1px solid var(--hx-line); white-space: normal; overflow-wrap: break-word; }
+.hx-minis span:nth-child(odd){ border-left-color: transparent; }
+.hx-minis svg{ flex: none; margin-top: 0; color: var(--hx-ink); }
+@container panel (max-width: 760px){.hx{ grid-template-columns: minmax(0, 1fr); }.hx-photo{ aspect-ratio: auto; height: 220px; }.hx-cities button{ padding: 0 16px; }.hx-busy span{ display: none; }.hx-busy{ padding: 0 10px; }.hx-story h1{ font-size: 32px; }.hx-side{ padding: 20px; }.hx-minis{ display: flex; flex-wrap: wrap; align-items: center; }.hx-minis span:nth-child(odd){ border-left-color: var(--hx-line); }}
+.pk-card{
+  --pk-ink: #1d1d1f; --pk-gray: #6e6e73; --pk-line: #e8e8ed; --pk-link: #1556d6;
+  position: relative; overflow: hidden; border-radius: 20px; padding: 16px; margin: 0 0 6px;
+  background: #fbf6ea; border: 1px solid #efe2c3; color: var(--pk-ink); cursor: pointer; transition: box-shadow .15s;
+}
+.pk-card:hover{ box-shadow: 0 6px 22px rgba(0, 0, 0, .06); }
+.pk-card.pk-green{ background: #eef8f1; border-color: #cfe8d7; }
+.pk-top{ position: relative; display: flex; align-items: center; gap: 8px; height: 24px; font-size: 13px; color: var(--pk-gray); }
+.pk-ring{ flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; }
+.pk-ring.open{ border: 2px dashed #cdb07a; }
+.pk-ring.half{ border: 2px solid #e0a43a; }
+.pk-ring.done{ background: #1f8f4e; color: #fff; }
+.pk-kind{ display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--mc); white-space: nowrap; }
+.pk-date{ white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hx-who-list .who-name small.wh-from{ display: block; margin-top: 1px; font-size: 11.5px; line-height: 1.2; }
+.pk-end{ margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.pk-ib{ width: 28px; height: 24px; border: 0; border-radius: 8px; background: transparent; color: var(--pk-gray); display: grid; place-items: center; cursor: pointer; }
+.pk-ib.pk-clip{ color: #b9b3a6; }
+.pk-ib:hover{ background: rgba(255, 255, 255, .8); color: var(--pk-ink); }
+.pk-menu-wrap{ position: relative; }
+.pk-body{ position: relative; outline: none; }
+.pk-body:focus-visible{ outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 12px; }
+.pk-mid{ display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, 46%) minmax(0, 1fr); align-items: center; gap: 10px; margin: 8px 0 26px; }
+.pk-stop{ min-width: 0; }
+.pk-stop b{ display: block; font-size: 30px; line-height: 1.1; font-weight: 700; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.pk-stop b.long{ font-size: 24px; }
+.pk-stop > span{ display: block; margin-top: 3px; font-size: 14px; color: var(--pk-gray); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pk-stop > span strong{ color: var(--pk-ink); font-weight: 600; white-space: nowrap; }
+.pk-stop.r{ text-align: right; }
+.pk-route{ position: relative; height: 78px; }
+.pk-route small{ position: absolute; left: -20px; right: -20px; bottom: -26px; text-align: center; font-size: 13px; color: #3a3a3c; white-space: nowrap; }
+.pk-vis .pk-kindbig{ position: absolute; inset: 0; margin: auto; }
+.pk-foot{ position: relative; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 6px 0 12px; border-radius: 14px; background: rgba(255, 255, 255, .75); }
+.pk-state{ display: block; flex: 0 1 auto; min-width: 0; font-size: 13px; font-weight: 600; line-height: 1.35; }
+.pk-state > svg{ vertical-align: -2px; margin-right: 6px; }
+.pk-state.wait{ color: #8a5a00; }
+.pk-state.done{ color: #1d7442; }
+.pk-state.plain{ color: var(--pk-gray); }
+.pk-when{ margin-left: 6px; font-weight: 600; white-space: nowrap; }
+.pk-state.alert-red .pk-when{ color: #c62828; }
+.pk-state.alert-amber .pk-when{ color: #8a5a00; }
+.carousel-track > .pk-card{ flex: 0 0 560px; max-width: 92%; scroll-snap-align: start; margin: 0; }
+.pk-sheet header .pk-ib{ margin-left: auto; font-size: 20px; }
+@container panel (max-width: 620px){.pk-mid{ grid-template-columns: 1fr 1fr; }.pk-route{ grid-column: 1 / -1; grid-row: 2; }.pk-stop.r{ grid-column: 2; grid-row: 1; }.pk-stop b{ font-size: 24px; }.pk-foot{ gap: 8px; flex-wrap: wrap; row-gap: 4px; padding-block: 6px; }}
+.pk-card{ padding: 12px 14px; border-radius: 18px; }
+.pk-top{ height: 22px; font-size: 12.5px; gap: 7px; }
+.pk-ring{ width: 20px; height: 20px; }
+.pk-ib{ height: 22px; }
+.pk-mid{ margin: 6px 0 20px; }
+.pk-stop b{ font-size: 24px; }
+.pk-stop b.long{ font-size: 20px; }
+.pk-stop > span{ font-size: 13px; margin-top: 2px; }
+.pk-route{ height: 60px; }
+.pk-route small{ bottom: -22px; font-size: 12.5px; }
+.pk-foot{ min-height: 40px; border-radius: 12px; gap: 10px; }
+.pk-state{ font-size: 12.5px; }
+@container panel (max-width: 620px){.pk-stop b{ font-size: 20px; }}
+.cat-sec .ac-wrap .ax-tools .pk-ib{ background: rgba(255, 255, 255, .94); border-radius: 50%; opacity: 1; }
+.cat-sec .ac-wrap .ax-c .pk-menu-wrap, .cat-sec .ac-wrap .ax-c .pk-ib{ opacity: 1; }
+.hx-avatars i.photo{ overflow: hidden; padding: 0; }
+.hx-avatars i.photo img{ width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
+.ek-card .pk-ring.open{ border: 1.5px dashed #c6bfb3; }
+.ek-card .pk-date{ color: #8e8e93; }
+.ek-find{ margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px; }
+.ek-ara{ margin-right: 2px; font-size: 12px; color: #8e8e93; }
+.ek-link{ display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px 0 5px; border-radius: 999px; border: 1px solid #ece8e1; background: #fff; color: #55526a; font-size: 12px; text-decoration: none; white-space: nowrap; }
+.ek-link:hover, .ek-link:focus-visible{ border-color: #cfc9be; color: #1d1d1f; }
+.ek-lg{ flex: none; width: 15px; height: 15px; border-radius: 4px; display: grid; place-items: center; font-size: 8.5px; font-weight: 800; line-height: 1; color: #fff; }
+@container panel (max-width: 620px){.ek-find{ margin-left: 0; justify-content: flex-start; width: 100%; }}
+.ek-from .ek-lg{ width: 13px; height: 13px; font-size: 7.5px; border-radius: 3px; }
+.pk-mid.has-logo{ grid-template-columns: 44px minmax(0, 1fr) minmax(150px, 40%) minmax(0, 1fr); }
+@media (max-width: 560px){.pk-mid.has-logo{ grid-template-columns: 36px minmax(0, 1fr) minmax(110px, 34%) minmax(0, 1fr); }}
+@container panel (max-width: 620px){.pk-mid.has-logo{ grid-template-columns: 36px 1fr 1fr; }.pk-mid.has-logo .pk-stop.r{ grid-column: 3; }}
+.pk-stop > span sup.pk-plus{ font-size: 10.5px; font-weight: 800; color: var(--v-accent-ink, #4a35c8); margin-left: 2px; vertical-align: 5px; line-height: 0; cursor: help; }
+.nd-foot .pk-state{ margin-left: auto; }
+.ac-m .pk-ring{ width: 13px; height: 13px; }
+.pk-state.alert-orange .pk-when, .pk-state.alert-orange.pk-says{ color: #c2550a; }
+.pk-state.pk-says .pk-when{ white-space: normal; margin-left: 0; }
+.pk-stop .pk-was{ margin-right: 6px; font-weight: 500; color: var(--v-muted, #6b6790); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.pk-lab{ font-size: 12.5px; font-weight: 650; white-space: nowrap; margin-right: 6px; }
+.pk-lab.open{ color: #8e8e93; font-weight: 500; }
+.pk-lab.booked{ color: #17784a; }
+.pk-card{ position: relative; }
+.nd-self{ margin-top: 8px; }
+.nd-self .ek-find, .ch-self .ek-find{ margin: 0; }
+.nd-self .ek-find, .ch-self .ek-find{ justify-content: flex-start; }
+.pk-card{ border-radius: 18px; padding: 14px 16px; display: grid; gap: 10px; align-content: start; background: #fff; border: 1.5px dashed var(--v-dash); color: var(--v-ink); box-shadow: none; }
+.pk-card:hover{ box-shadow: 0 1px 2px rgba(28, 26, 51, .06), 0 6px 18px -10px rgba(28, 26, 51, .25); }
+.pk-card.pk-r-half{ background: var(--v-plan-bg); border: 1px solid var(--v-plan-line); }
+.pk-card.pk-r-done, .pk-card.pk-green{ background: var(--v-book-bg); border: 1px solid var(--v-book-line); }
+.pk-card.pk-r-open{ background: #fff; border: 1.5px dashed var(--v-dash); }
+.pk-top{ height: auto; min-height: 24px; gap: 8px; font-size: 13px; color: var(--v-muted); }
+.pk-kind{ color: var(--v-ink); font-weight: 650; gap: 5px; }
+.pk-kind svg{ color: var(--mc); }
+.pk-ring{ width: 18px; height: 18px; }
+.pk-ring.open{ border: 1.5px dashed var(--v-dash); }
+.pk-ring.half{ border: 2px solid var(--v-plan-dot); }
+.pk-ring.done{ background: var(--v-book-ink); }
+.pk-lab{ font-size: 12.5px; }
+.pk-lab.open{ color: var(--v-muted); font-weight: 500; }
+.pk-lab.booked{ color: var(--v-book-ink); }
+.pk-vis .pk-kindbig{ transform: scale(.45); }
+.pk-r-half .pk-moons i{ background: var(--v-plan-dot); opacity: 1; }
+.pk-r-done .pk-moons i{ background: var(--v-book-ink); opacity: 1; }
+.pk-mid{ grid-template-columns: auto minmax(50px, 1fr) auto; gap: 8px; margin: 0; }
+.pk-mid.has-logo{ grid-template-columns: auto minmax(50px, 1fr) auto; }
+.pk-mid .pk-logo{ display: none; }
+.pk-stop b, .pk-stop b.long{ font-size: 21px; font-weight: 750; letter-spacing: -.02em; }
+.pk-stop > span{ font-size: 12.5px; color: var(--v-muted); margin-top: 1px; }
+.pk-stop > span strong{ font-size: 14px; color: var(--v-ink); font-weight: 700; }
+.pk-route{ height: 44px; }
+.pk-route small{ position: static; display: block; margin: 0; text-align: center; font-size: 12px; color: var(--v-muted); white-space: nowrap; }
+.pk-foot{ min-height: 34px; padding: 10px 0 0; margin: 0; border-radius: 0; background: none; border-top: 1px solid color-mix(in srgb, var(--v-dash) 40%, transparent); gap: 8px; flex-wrap: wrap; row-gap: 6px; font-size: 13px; }
+.pk-state{ font-size: 13px; }
+.pk-state.done{ color: var(--v-book-ink); }
+.pk-route small{ display: none; }
+.nd-route .pk-mid{ margin: 2px 0 0; }
+.ek-self .ek-find{ margin: 0; justify-content: flex-start; }
+.ek-card .pk-top{ min-height: 24px; }
+.ac-self-row .ek-find{ margin: 0; justify-content: flex-start; }
+.pk-stop b, .pk-stop b.long{ overflow-wrap: normal; word-break: normal; }
+.pk-stop b.long{ font-size: 17px; }
+.cat-in-transport .pk-stop b{ font-size: 18px; }
+.cat-in-transport .pk-stop b.long{ font-size: 15px; }
+.nd-body.nd-has-art > .nd-self{ grid-column: 1 / -1; }
+.pk-card{ min-width: 0; max-width: 100%; }
+.pk-top{ flex-wrap: wrap; row-gap: 4px; }
+.pk-top .pk-date{ white-space: normal; }
+.pk-end{ margin-left: auto; }
+.pk-mid, .pk-mid.has-logo{ grid-template-columns: minmax(0, 1fr) minmax(36px, .55fr) minmax(0, 1fr); }
+.pk-stop{ min-width: 0; }
+.pk-stop b, .pk-stop b.long{ overflow-wrap: break-word; hyphens: auto; }
+.pk-stop > span{ display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.pk-booked .pk-foot .pk-sub{ display: none; }
+.pk-foot .pk-state{ min-width: 0; }
+.pk-route{ position: relative; display: grid; align-items: center; height: auto; min-height: 40px; }
+.tipx{ position: relative; outline: none; }
+.tipx:focus-visible{ outline: 2px solid #5b45e0; outline-offset: 3px; border-radius: 6px; }
+.tipx-box{ position: fixed; z-index: 1000; width: max-content; box-sizing: border-box; padding: 9px 12px; border-radius: 12px; background: #221b3a; color: #fff; font-size: 12.5px; font-weight: 500; line-height: 1.4; text-align: left; white-space: normal; letter-spacing: 0; text-transform: none; pointer-events: none; box-shadow: 0 12px 28px -12px rgba(0, 0, 0, .55); animation: tipx-in .14s ease-out both; }
+.tipx-box::after{ content: ""; position: absolute; left: 18px; top: 100%; border: 6px solid transparent; border-top-color: #221b3a; }
+.tipx-box.right::after{ left: auto; right: 18px; }
+.tipx-box.below::after{ top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: #221b3a; }
+.tipx-h{ display: block; margin-bottom: 4px; font-weight: 700; }
+.tipx-line{ display: flex; justify-content: space-between; gap: 16px; padding: 2px 0; }
+.tipx-line .d{ display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; }
+.tipx-line .d.bk{ background: #4cc38a; }
+.tipx-line .d.ch{ background: #f0c25c; }
+.tipx-line .d.fr{ background: #c9c3e6; }
+.tipx-line .d.ov{ background: #ff7ab0; }
+.tipx-note{ display: block; margin-top: 6px; font-size: 12px; color: #c9c3e6; }
+.hx-tip{ cursor: help; }
+@media (prefers-reduced-motion: reduce){.tipx-box{ transition: none; animation: none; }}
+.cpy{ position: relative; display: inline; }
+.cpy-b{ position: relative; display: inline-block; width: 0; height: 1em; margin: 0; padding: 0; border: 0; background: none; vertical-align: middle; overflow: visible; font: inherit; cursor: pointer; user-select: none; -webkit-user-select: none; }
+.cpy-b::before{ content: attr(data-label); position: absolute; top: 50%; z-index: 3; transform: translateY(-50%); box-sizing: border-box; padding: 3px 9px 3px 25px; border-radius: 99px; background: #f1edff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a36c9' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 9h10v11H9zM5 15V4h10'/%3E%3C/svg%3E") no-repeat 9px center / 12px; color: #4a36c9; font-family: inherit; font-size: 11.5px; font-weight: 650; line-height: 1.3; letter-spacing: 0; text-transform: none; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .16s ease; box-shadow: 0 2px 8px -3px rgba(28, 26, 51, .35); }
+.cpy.right .cpy-b::before{ left: 6px; }
+.pk-stop > span:has(.cpy){ overflow: visible; }
+.cpy.below .cpy-b{ position: static; }
+.cpy.below .cpy-b::before{ top: 100%; left: 0; margin-top: 5px; transform: none; }
+.cpy:hover .cpy-b::before, .cpy-b:focus-visible::before, .cpy-b.done::before{ opacity: 1; pointer-events: auto; }
+.cpy-b:focus-visible{ outline: none; }
+.cpy-b:focus-visible::before{ outline: 2px solid #5b45e0; outline-offset: 2px; }
+.cpy-b.done::before{ background-color: #e4f5ec; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231d8a5a' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E"); color: #1d8a5a; }
+@media (hover: none){.cpy-b::before{ opacity: 1; pointer-events: auto; }}
+@media (prefers-reduced-motion: reduce){.cpy-b::before{ transition: none; }}
+.tipx-nm{ min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tipx-line b{ flex: none; font-weight: 650; color: #c9c3e6; }
+.tipx-ph{ display: block; width: 100%; height: 64px; margin-bottom: 7px; border-radius: 8px; object-fit: cover; background: #3a3158; }
+.ek-up{ color: #8e8e93; }
+@media (hover: hover){.ek-find{ flex-wrap: nowrap; }.ek-link{ gap: 0; padding: 0 5px; }.ek-link .ek-nm{ display: inline-block; max-width: 0; overflow: hidden; opacity: 0; transition: max-width .22s ease, opacity .18s ease, margin-left .22s ease; }.ek-link:hover .ek-nm, .ek-link:focus-visible .ek-nm{ max-width: 190px; margin-left: 5px; padding-right: 3px; opacity: 1; }}
+@media (hover: hover) and (prefers-reduced-motion: reduce){.ek-link .ek-nm{ transition: none; }}
+.tipx-box.tipx-peek{ pointer-events: auto; width: 280px; max-width: min(280px, calc(100vw - 16px)); }
+.tipx-peek .tipx-line b{ color: #fff; }
+.tipx-peek .tipx-line .cpy-t{ color: #fff; }
+.hx-who-list .who-name small.wh-last{ display: block; margin-top: 1px; font-size: 11.5px; line-height: 1.25; color: var(--hx-muted); }
+.ek-card .pk-ring.open, .ek-card .pk-ring.half{ border-radius: 50%; animation: pk-pulse 2.8s ease-in-out infinite; }
+.pk-card{ transition: transform .18s ease, box-shadow .2s ease; }
+@media (prefers-reduced-motion: reduce){.ek-card .pk-ring.open, .ek-card .pk-ring.half{ animation: none; }.pk-card{ transition: none; }}
+.view-tabs button.on::after{ animation: mv-tab var(--t-base) var(--e-out) backwards; }
+@media (prefers-reduced-motion: reduce){.view-tabs button.on::after{ animation: none !important; }}
+.view-tabs{ display: flex; justify-content: center; margin: 4px 0 18px; gap: 0; }
+.view-tabs button{ padding: 7px 22px; font-size: 15px; font-weight: 600; border-radius: 10px; color: var(--v-muted); }
+.view-tabs button + button::before{ display: none; }
+.view-tabs button.on{ background: #fff; color: var(--v-ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
+.view-tabs button.on::after{ display: none; }
+.view-tabs{ background: var(--v-soft); border: 1px solid var(--v-line2); border-radius: 13px; padding: 3px; width: fit-content; margin-left: auto; margin-right: auto; }
+.pk-arc{ position: relative; display: block; width: 100%; height: 40px; color: var(--mc, #6d4ce0); margin: 0 auto; }
+.pk-arc svg{ position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.pk-arc > svg path{ fill: none; stroke: currentColor; stroke-width: 1.6; stroke-dasharray: 4 5; stroke-linecap: round; opacity: .6; }
+.pk-arc-a, .pk-arc-b{ position: absolute; top: 91%; width: 8px; height: 8px; border-radius: 50%; background: currentColor; transform: translate(-50%, -50%); }
+.pk-arc-a{ left: 2.5%; }
+.pk-arc-b{ left: 97.5%; background: #fff; border: 2px solid currentColor; }
+.pk-arc-pl{ position: absolute; left: 50%; top: 36%; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: #fff; box-shadow: 0 1px 5px rgba(0, 0, 0, .14); transform: translate(-50%, -50%) rotate(-6deg); }
+.pk-arc-pl svg{ width: 19px; height: 19px; position: static; }
+.pk-arc-pl.off{ left: 28%; top: 50%; transform: translate(-50%, -50%) rotate(-20deg); }
+.pk-arc-stop{ position: absolute; left: 50%; top: 36%; width: 10px; height: 10px; border-radius: 50%; background: #fff; border: 2px solid #c27a1b; transform: translate(-50%, -50%); }
+.pk-route .pk-arc{ max-width: none; }
+.pk-route:has(.pk-arc){ min-height: 56px; }
+.pk-route:has(.pk-arc) small{ display: block; }
+.pk-stop b, .pk-stop b.long{ display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word; }
+.pk-routeimg{ display: block; height: 54px; width: auto; max-width: 100%; margin: 0 auto; mix-blend-mode: multiply; }
+.pk-ib{ min-width: 30px; min-height: 30px; }
+.view-tabs .tab-n{ margin-left: 6px; padding: 1px 7px; border-radius: 99px; background: var(--v-soft); color: var(--v-muted); font-size: 11.5px; font-weight: 700; }
+.view-tabs button.on .tab-n{ background: var(--v-line2); color: var(--v-ink); }
+.hx-est{ margin: 2px 0 0; padding: 0; font-size: 13px; line-height: 1.3; color: var(--v-muted); display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+.hx-est b{ color: var(--v-ink); font-weight: 750; }
+.hx-est em{ font-style: normal; font-weight: 650; }
+.hx-est em.ok{ color: var(--v-book-ink, #1d6b45); }
+.hx-est em.over{ color: #c62828; }
+.pk-card{ scroll-margin-top: 76px; }
+
+/* ===== v75 ===== */
+.plan{container:panel / inline-size;gap:16px}
+.vt{justify-self:center}
+.hx{margin:0}
+.pbar{display:flex;align-items:center;gap:14px;margin-top:6px}
+.pbar>b{font-size:19px;letter-spacing:-.01em}
+.pbar .lg{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.pbar .lg i{width:18px;height:12px;border-radius:4px;margin-left:8px}
+.lg .l1{border:1.5px dashed var(--v-dash)}.lg .l2{background:var(--v-plan-bg);border:1px solid var(--v-plan-line)}.lg .l3{background:var(--v-book-bg);border:1px solid var(--v-book-line)}
+.jr{list-style:none;margin:0;padding:4px 8px 2px;display:grid;grid-template-columns:auto 1fr auto 1fr auto 1fr auto 1fr auto 1fr auto;align-items:start}
+.j{display:grid;justify-items:center;gap:1px;text-align:center;min-width:64px}
+.jc{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:2px solid var(--v-book-ink);overflow:hidden;margin-bottom:4px}
+.jc img{width:34px;height:34px;object-fit:contain;mix-blend-mode:multiply}
+.j.half .jc{border-color:var(--v-plan-dot)}.j.open .jc{border:2px dashed var(--v-dash)}
+.j b{font-size:13px}.j small{font-size:11.5px;color:var(--muted)}
+.jl{position:relative;height:44px;display:grid;place-items:center}
+.jl::before{content:"";position:absolute;left:4px;right:4px;top:50%;border-top:1.5px dotted var(--v-dash)}
+.jl span{position:relative;background:var(--bg);padding:0 6px;font-size:11.5px;color:var(--muted);margin-top:28px}
+
+/* satır: dört sütun, içerik üstten hizalı, sütun çizgileri tam boy */
+.row{grid-template-columns:72px 212px minmax(0,1fr) 172px;align-items:stretch;min-height:0}
+.date,.int,.sel,.act{align-content:start;padding-top:16px;padding-bottom:16px}
+.date{padding-left:16px;padding-right:0}
+.int{align-items:start;padding-left:14px;padding-right:14px}
+.int>div{padding-top:1px}
+.sel{padding-left:16px;padding-right:16px;gap:6px}
+.act{padding-left:16px;padding-right:16px}
+.row.wide .date,.row.wide .int{padding-top:16px}
+.tiles{padding:16px 16px 16px 16px}
+
+/* canlı bilet satırın içinde: kenar boşluğu satırla aynı */
+.sel .pk-card{margin:0;cursor:default}
+.sel .pk-card:hover{box-shadow:none}
+.pk-lab.ai{color:var(--v-accent-ink);background:var(--v-lav);border-radius:99px;padding:2px 8px;font-size:12px}
+.pk-lab.open{font-size:12.5px}
+.pk-end{margin-left:auto;display:inline-flex;align-items:center;gap:2px}
+.pk-foot .pk-hint{font-size:12px;color:var(--v-muted);margin-left:auto}
+.pk-foot{justify-content:flex-start}
+
+/* seçenek grupları */
+.og{padding:12px 14px 14px;border-top:1px solid var(--hair)}
+.opts-h+.og{border-top:0}
+.og-h{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+.og-ic{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:12px}
+.og.me .og-ic{background:#fff3e2;color:#9a5b00}
+.og.ai .og-ic{background:var(--accent-soft);color:var(--accent)}
+.og-h b{font-size:13px}
+.og-n{min-width:20px;height:18px;padding:0 6px;border-radius:99px;background:var(--sunk);color:var(--muted);font-size:11px;font-weight:700;display:inline-grid;place-items:center}
+.og-h small{color:var(--muted);font-size:12px}
+.og .fo{border:1px solid var(--line);border-radius:12px;margin-top:8px;padding:10px 12px}
+.og .fo:first-of-type{border-top:1px solid var(--line);margin-top:0}
+.og.me .fo{background:color-mix(in srgb,#fff3e2 35%,var(--surface))}
+.fo{grid-template-columns:30px 210px minmax(0,1fr) 84px 76px}
+.fo .b{height:32px}
+.fo-m{flex-wrap:nowrap;white-space:nowrap;overflow:hidden}
+.from{display:inline-flex;align-items:center;gap:5px;height:19px;font-size:11.5px;color:#9a5b00;font-weight:600}
+.tag{display:inline-flex;align-items:center;height:19px;padding:0 7px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700}
+.og-split{display:grid;grid-template-columns:1fr 1fr}
+.og-split .og{border-top:0}
+.og-split .og+.og{border-left:1px solid var(--hair)}
+.grid.g2{grid-template-columns:repeat(2,minmax(0,1fr));padding:0;gap:12px}
+.og.me .box{border-color:color-mix(in srgb,#e9b46a 55%,var(--line))}
+.box .bb .from,.box .bb .tag{margin-top:4px;justify-self:start}
+.box .bf{margin-top:8px}
+.need.bought{background:none}
+
+/* v75 düzeltmeler */
+.row,.row.wide{grid-template-columns:64px 228px minmax(0,1fr) 172px}
+.row.wide{grid-template-columns:64px 228px minmax(0,1fr)}
+.hx .hx-cities button{padding:0 13px;font-size:15px}
+@container hxleft (max-width:580px){.hx .hx-cities button{padding:0 9px;font-size:14px}}
+.hx-progress-head{flex-wrap:wrap}
+.hx-progress-head>b{flex-basis:100%}
+.pk-foot .ek-find{margin:0}
+.pk-item{display:grid;grid-template-columns:72px minmax(0,1fr);gap:14px;align-items:center}
+.pk-thumb{width:72px;height:54px;border-radius:10px;object-fit:cover;background:#fff;display:block}
+.pk-thumb.ill{object-fit:contain;background:transparent;mix-blend-mode:multiply}
+.pk-logo2{width:72px;height:54px;border-radius:10px;display:grid;place-items:center;background:#16151c;color:#fff;font-weight:800;font-size:14px;letter-spacing:-.02em}
+.pk-tx{min-width:0}
+.pk-meta{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--v-muted)}
+.pk-name{display:block;font-size:18px;font-weight:750;letter-spacing:-.015em;line-height:1.25;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--v-ink)}
+.pk-sub{display:block;font-size:12.5px;color:var(--v-muted);margin-top:2px}
+.pk-card.pk-r-arr{background:var(--sunk);border:1px solid var(--line)}
+.pk-ring.arr{background:#8a879e;color:#fff}
+.pk-lab.arr{color:var(--muted)}
+.pk-state.okc{color:var(--ok)}
+.box .ph .who{top:auto;bottom:8px;right:auto;left:8px}
+.tiles .box .bb{display:flex;flex-direction:column}
+.tiles .box .bf{flex-direction:column;align-items:stretch;flex-wrap:nowrap;margin-top:auto;padding-top:8px;gap:8px}
+.tiles .box .bf .b{width:100%;height:34px}
+.tiles .box .bf .done{height:34px;justify-content:center;border-radius:10px;background:var(--chosen-bg);box-shadow:inset 0 0 0 1px var(--chosen-line)}
+.tiles .box .bf .done b{font-size:12.5px}
+@media(max-width:1180px){.og-split{grid-template-columns:1fr}.og-split .og+.og{border-left:0;border-top:1px solid var(--hair)}}
+@media(max-width:980px){.jr{overflow-x:auto}}
+
+</style>
+
+<div class="shell">
+<aside class="chat" aria-label="Asistan">
+  <div class="chat-h"><span class="orb" aria-hidden="true"></span><div><b>Asistan</b><small>Japonya · 1–16 Nisan</small></div></div>
+  <div class="msgs">
+    <div class="m me">Nisan'da Sabine'yle 2 hafta Japonya. Tokyo, Kyoto, Hakone, Osaka. Sakin yerler, orta bütçe.</div>
+    <div class="m ai"><p>Planı kurdum: 4 şehir, 15 gece. Uçuş, otel ve trenler için en uygun seçenekleri seçtim; her birinin altında diğer seçenekler duruyor. Kyoto otelini sana bıraktım, iki aday arasında kaldım.</p></div>
+    <div class="m me">Şunu buldum, Kyoto için bak:<span class="url">booking.com/hotel/jp/kanra-kyoto</span></div>
+    <div class="m ai">
+      <p>Hotel Kanra'yı Kyoto konaklamasının seçeneklerine ekledim. 9,2 puan, istasyona 6 dk, ücretsiz iptal. Diğer iki adaydan €40 pahalı ama en sakin olanı.</p>
+      <a class="land" href="#k-kyoto"><img src="{{IMG_OTEL}}" alt=""><span><b>Konaklama · Kyoto</b><small>Senin linkin + 2 aday</small></span><span class="go">Planda göster</span></a>
+      <div class="chips"><button class="chip" type="button">Kanra'yı seç</button><button class="chip" type="button">Karşılaştır</button></div>
+    </div>
+  </div>
+  <div class="comp">Bir link bırak ya da yaz…<button class="send" type="button" aria-label="Gönder">↑</button></div>
+</aside>
+
+<main class="plan">
+  <!-- ÜST ÖZET: canlıdaki özet (hx) -->
+  <div class="view-tabs vt" role="tablist" aria-label="Görünüm"><button type="button" role="tab" aria-selected="true" class="on">Plan</button><button type="button" role="tab" aria-selected="false" class="">Pano<span class="tab-n" aria-hidden="true">16</span></button></div>
+  <section class="hx"><div class="hx-left"><div class="hx-photo" data-pit="true" data-pit-photo="true"><div class="hx-ph" aria-hidden="true"><svg width="36" height="36" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="3"></rect><path d="m3.5 16.5 5-5 4.5 4.5 2.5-2.5 5 4.5"></path><circle cx="15.5" cy="9" r="1.6"></circle></g></svg></div><img alt="Tokyo" class="on" src="{{IMG_COVER}}"><div class="hx-cities"><button type="button" class="on">Tokyo</button><button type="button" class="">Kyoto</button><button type="button" class="">Hakone</button><button type="button" class="">Osaka</button></div><div class="hx-credit" tabindex="0" aria-label="Fotoğraf: Wikipedia"><span class="hx-credit-i" aria-hidden="true">i</span><span class="hx-credit-text">Fotoğraf: örnek görsel</span></div><div class="hx-badges"><span class="hx-count">175 gün kaldı</span></div></div><div class="hx-menu"><button class="menu-btn" aria-label="Gezi menüsü" aria-expanded="false"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="18.5" cy="12" r="1.8"></circle></g></svg></button></div><div class="hx-story" data-pit-children="true"><h1>Japonya</h1><div class="hx-when"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="16.5" rx="3"></rect><path d="M3 9.5h18M8 2.5v4M16 2.5v4"></path></g></svg><span>1–16 Nisan</span><span class="dot" aria-hidden="true">·</span><span>16 gün</span></div><div class="hx-tally" data-pit-children="true" role="group" aria-label="Planda"><button data-count="true" class="c-flight" aria-label="3 uçuş. Plan'da göster"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 15.5v-1.8l-7.5-4.6V4a1.5 1.5 0 0 0-3 0v5.1L3 13.7v1.8l7.5-2.3V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-4.8z"></path></svg><span>3 uçuş</span></button><i class="hx-sep" aria-hidden="true"></i><button data-count="true" class="c-stay" aria-label="4 konaklama. Plan'da göster"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6.5A2.5 2.5 0 0 1 5.5 9h13a2.5 2.5 0 0 1 2.5 2.5V18M3 15h18M3 18v2M21 18v2"></path><path d="M5 9V6.5A1.5 1.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5V9"></path></g></svg><span>4 konaklama</span></button><i class="hx-sep" aria-hidden="true"></i><button data-count="true" class="c-transport" aria-label="2 ulaşım. Plan'da göster"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-3.5l2-5A2 2 0 0 1 7.9 6h8.2a2 2 0 0 1 1.9 1.5l2 5V16"></path><rect x="3" y="12.5" width="18" height="5" rx="1.5"></rect><path d="M5 17.5V19M19 17.5V19"></path></g></svg><span>2 ulaşım</span></button><i class="hx-sep" aria-hidden="true"></i><button data-count="true" class="c-experience" aria-label="4 deneyim. Plan'da göster"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" d="m12 3.2 2.7 5.5 6 .9-4.35 4.25 1 6L12 17l-5.35 2.85 1-6L3.3 9.6l6-.9z"></path></svg><span>4 deneyim</span></button></div><div class="hx-progress"><div class="hx-progress-main"><div class="hx-progress-head"><b data-count="true">Planlananların %50'si rezerve</b><div class="hx-bar" data-pit="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-label="Planlananların %50'si rezerve: 2 rezerve, 2 planlandı, 3 ihtiyaç karar bekliyor"><i class="hx-bar-planned" style="width: 100%; transform-origin: left center;"></i><i class="hx-bar-booked" style="width: 50%; transform-origin: left center;"></i></div><button class="hx-deadline" aria-expanded="false" aria-label="Ücretsiz iptal süresi yaklaşan 2 rezervasyon" title="Ücretsiz iptal süresi yaklaşan 2 rezervasyon">⏳ 2</button></div><span class="hx-progress-meta"><button class="hx-progress-count" aria-expanded="false" title="Yapılacakları göster"><span class="hx-part">3 ihtiyaç karar bekliyor <span class="dot" aria-hidden="true">·</span></span> <span class="hx-part"><i class="hx-key planned" aria-hidden="true"></i>4 rezerve edilecek</span></button></span></div><div class="hx-acts"><button class="hx-go" title="Lisboa Loft: ücretsiz iptal bugün bitiyor" aria-label="Planı tamamla: Lisboa Loft: ücretsiz iptal bugün bitiyor">Planı tamamla<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button><button type="button" class="hx-alt" title="Gezinin özeti ve gün gün akışı, bir PDF dosyası olarak">PDF indir</button></div></div></div></div><aside class="hx-side" data-pit-children="true"><div class="hx-block hx-who"><div class="hx-who-box"><button type="button" class="hx-people" title="Kimler gidiyor?" aria-label="2 kişi · 2 kişi · Düzenle" aria-expanded="false" aria-haspopup="dialog"><span class="hx-avatars" aria-hidden="true"><i class="p0"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="9" r="3.6"></circle><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"></path></g></svg></i><i class="p1"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="9" r="3.6"></circle><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"></path></g></svg></i></span><span class="hx-who-text"><b>2 kişi</b></span></button></div><div class="hx-styles" aria-label="Gezinin tarzı"><span style="background: rgb(239, 237, 232); color: rgb(58, 58, 60);"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 7.5h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11.5"></path><path d="M16.5 12.5H21v4h-4.5a2 2 0 0 1 0-4z"></path></g></svg>Orta bütçe</span></div></div><div class="hx-block hx-budget"><button class="hx-budget-btn" aria-expanded="false" aria-label="Bütçe €9.000, Rezerve €3.240, Planlanan €2.410, Boşta €3.350" title="Ayrıntı için tıkla"><span class="hx-budget-top"><span class="hx-h">Bütçe</span><strong><span>€9.000</span></strong></span><span class="hx-budget-line booked"><span><i aria-hidden="true"></i>Rezerve</span><b><span>€3.240</span></b></span><span class="hx-budget-line planned"><span><i aria-hidden="true"></i>Planlanan</span><b><span>€2.410</span></b></span><span class="hx-budget-line free"><span><i aria-hidden="true"></i>Boşta</span><b><span>€3.350</span></b></span></button><p class="hx-est" title="Rezerve, seçilen ve karar bekleyenlerin önde gelen seçeneği">Tahmini toplam <b>~€8.100</b><em class="ok">bütçeye sığar · €900 pay</em></p></div><div class="hx-block hx-prefs"><button class="hx-h" aria-expanded="false">Tercihler</button><div class="hx-prefs-body"><ul class="hx-ptags" aria-label="Tercihler"><li class="hx-ptag">Sakin yerler</li><li class="hx-ptag">Tren</li></ul><button class="hx-link hx-prefs-link" aria-expanded="false"><span>Düzenle</span><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg><span class="ask-mark"><i aria-hidden="true"></i>1 soru</span></button></div></div><div class="hx-block hx-place"><div class="hx-countries"><span><i class="flag" aria-hidden="true">🇯🇵</i>Japonya</span></div><div class="hx-weather hx-appear"><span><span class="tipx hx-tip" tabindex="0"><span class="city">Tokyo</span><svg width="22" height="22" viewBox="0 0 24 24" class="sky-partly" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 3v1.5M3.8 5l1 1M2.5 9.5H4M13.2 5l-1 1"></path><path d="M5.7 12.3A3.8 3.8 0 1 1 12.4 9"></path><path d="M8.5 20h9a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.6 1.2A2.9 2.9 0 0 0 8.5 20z"></path></g></svg><span class="deg">16°</span></span></span><span><span class="tipx hx-tip" tabindex="0"><span class="city">Kyoto</span><svg width="22" height="22" viewBox="0 0 24 24" class="sky-partly" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 3v1.5M3.8 5l1 1M2.5 9.5H4M13.2 5l-1 1"></path><path d="M5.7 12.3A3.8 3.8 0 1 1 12.4 9"></path><path d="M8.5 20h9a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.6 1.2A2.9 2.9 0 0 0 8.5 20z"></path></g></svg><span class="deg">17°</span></span></span></div></div><div class="hx-block"><div class="hx-minis"><span class="tipx hx-tip" tabindex="0"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M15.2 8.6a4 4 0 1 0 0 6.8M7.5 11h6M7.5 13.2h6"></path></g></svg>Yen</span><span class="tipx hx-tip" tabindex="0"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v5M15 3v5M6.5 8h11v3.5a5.5 5.5 0 0 1-11 0zM12 17v4"></path></g></svg>A/B priz</span><span class="tipx hx-tip" tabindex="0"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></g></svg>+6 saat</span><span><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16v10H11l-4.5 4v-4H4z"></path><path d="M8.5 9.5h7M8.5 12h4.5"></path></g></svg>Japonca</span></div></div></aside></section>
+  <div class="pbar"><b>Plan</b><div class="vs" role="group" aria-label="Görünüm"><button type="button" aria-pressed="true">Kategoriye göre</button><button type="button" aria-pressed="false">Yolculuk sırasıyla</button><button type="button" aria-pressed="false">Gün gün</button></div><span class="lg"><i class="l1"></i>Arıyoruz<i class="l2"></i>Seçildi<i class="l3"></i>Rezerve</span></div>
+  <ol class="jr" aria-label="Rota">
+    <li class="j ok"><span class="jc"><img src="{{IMG_UCUS}}" alt=""></span><b>İstanbul</b><small>1 Nis</small></li>
+    <li class="jl"><span>13 sa</span></li>
+    <li class="j half"><span class="jc"><img src="{{IMG_OTEL}}" alt=""></span><b>Tokyo</b><small>3 gece</small></li>
+    <li class="jl"><span>2 sa 15</span></li>
+    <li class="j open"><span class="jc"><img src="{{IMG_OTEL}}" alt=""></span><b>Kyoto</b><small>4 gece</small></li>
+    <li class="jl"><span>3 sa 45</span></li>
+    <li class="j ok"><span class="jc"><img src="{{IMG_OTEL}}" alt=""></span><b>Hakone</b><small>3 gece</small></li>
+    <li class="jl"><span>1 sa 10</span></li>
+    <li class="j ok"><span class="jc"><img src="{{IMG_EV}}" alt=""></span><b>Osaka</b><small>4 gece</small></li>
+    <li class="jl"><span>15 sa</span></li>
+    <li class="j ok"><span class="jc"><img src="{{IMG_UCUS}}" alt=""></span><b>İstanbul</b><small>16 Nis</small></li>
+  </ol>
+
+  <!-- UÇUŞ -->
+  <section class="cat" style="--k:var(--c-fly)" aria-labelledby="h1">
+    <div class="cat-h"><span class="cat-ic">{{IC_PLANE}}</span><div><h2 id="h1">Uçuş</h2><div class="cnt">1 alındı · 1 seçildi · 1 bekliyor</div></div><span class="bud"><span class="mini"><i style="width:45%"></i></span><b class="num">€3.390</b> / €3.500</span></div>
+
+    <article class="need">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">1</span><span class="wd">Per</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_UCUS}}" alt=""></span><div><span class="k">Gidiş</span><b>İstanbul → Tokyo</b><small>2 kişi · aktarma az</small></div></div>
+        <div class="sel">
+          <article class="pk-card  pk-r-half" style="--mc:#6a4fe0"><div class="pk-top"><span class="pk-ring half"></span><span class="pk-kind"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" transform="rotate(90 12 12)" d="M21 15.5v-1.8l-7.5-4.6V4a1.5 1.5 0 0 0-3 0v5.1L3 13.7v1.8l7.5-2.3V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-4.8z"></path></svg>Uçuş</span><span class="pk-date">· 1 Nisan · TK 52</span><span class="pk-end"><span class="pk-lab ai">✦ AI seçti</span><span class="pk-menu-wrap"><button type="button" class="pk-ib" aria-label="Kart menüsü"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="18.5" cy="12" r="1.8"></circle></g></svg></button></span></span></div><div class="pk-body"><div class="pk-mid"><div class="pk-stop"><b>İstanbul</b><span>IST · <strong>09:40</strong></span></div><div class="pk-route"><span class="pk-arc" aria-hidden="true"><svg viewBox="0 0 160 44" preserveAspectRatio="none"><path d="M4 40 Q80 -8 156 40" vector-effect="non-scaling-stroke"></path></svg><i class="pk-arc-a"></i><i class="pk-arc-b"></i><span class="pk-arc-pl"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" transform="rotate(90 12 12)" d="M21 15.5v-1.8l-7.5-4.6V4a1.5 1.5 0 0 0-3 0v5.1L3 13.7v1.8l7.5-2.3V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-4.8z"></path></svg></span></span><small>13 sa · direkt</small></div><div class="pk-stop r"><b>Tokyo</b><span>HND · <strong>07:15</strong><sup class="pk-plus">+1</sup></span></div></div></div><div class="pk-foot"><span class="pk-state plain">Turkish Airlines<span class="pk-when"> · Skyscanner fiyatı · 2 saat önce</span></span></div></article>
+        </div>
+        <div class="act"><div class="price"><b class="num">€905</b> <small>kişi</small><span class="num">2 kişi · €1.810</span></div><button class="b pri" type="button">Satın al ↗</button><button class="b sec" type="button" aria-expanded="true">Değiştir ▴</button><div class="pano"><a href="#">Pano'da 5 kayıt</a></div></div>
+      </div>
+      <div class="opts">
+        <div class="opts-h"><b>İstanbul → Tokyo · diğer uçuşlar</b><span class="src">1 Nisan · 2 kişi</span><button class="x" type="button">Kapat</button></div>
+        <section class="og me "><div class="og-h"><span class="og-ic"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></g></svg></span><b>Senin bulduğun</b><span class="og-n">2</span><small>sohbete attığın linkler ve Pano'ya kaydettiklerin</small></div><div class="fo"><span class="al" style="--alc:#c8102e">TK</span><div class="fo-t"><div><b class="num">13:05</b><small>IST</small></div><div class="leg"><span>12 sa 50</span><i></i><span>direkt</span></div><div><b class="num">10:55<sup>+1</sup></b><small>NRT</small></div></div><div class="fo-m"><span class="from"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></g></svg>Sohbete attığın link · 12 Eki</span></div><div class="fo-p"><b class="num">€930</b><small>kişi başı</small></div><button class="b sec" type="button">Seç</button></div><div class="fo"><span class="al" style="--alc:#00205b">JL</span><div class="fo-t"><div><b class="num">22:30</b><small>IST</small></div><div class="leg"><span>16 sa</span><i></i><span>1 aktarma</span></div><div><b class="num">21:30<sup>+1</sup></b><small>HND</small></div></div><div class="fo-m"><span class="from"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 3h12v18l-6-4-6 4z"/></svg>Pano'dan · skyscanner.com</span></div><div class="fo-p"><b class="num">€870</b><small>kişi başı</small></div><button class="b sec" type="button">Seç</button></div></section><section class="og ai "><div class="og-h"><span class="og-ic"><span aria-hidden="true">✦</span></span><b>AI önerileri</b><span class="og-n">2</span><small>canlı fiyat · 2 saat önce</small></div><div class="fo"><span class="al" style="--alc:#8a1538">QR</span><div class="fo-t"><div><b class="num">09:40</b><small>IST</small></div><div class="leg"><span>15 sa</span><i></i><span>1 aktarma</span></div><div><b class="num">07:15<sup>+1</sup></b><small>HND</small></div></div><div class="fo-m"><span class="tag">En ucuz</span>Qatar · Doha'da 2 sa</div><div class="fo-p"><b class="num">€820</b><small>kişi başı</small></div><button class="b sec" type="button">Seç</button></div><div class="fo"><span class="al" style="--alc:#13448f">NH</span><div class="fo-t"><div><b class="num">21:55</b><small>IST</small></div><div class="leg"><span>12 sa 30</span><i></i><span>direkt</span></div><div><b class="num">18:25<sup>+1</sup></b><small>HND</small></div></div><div class="fo-m"><span class="tag">En hızlı</span>ANA · Haneda</div><div class="fo-p"><b class="num">€960</b><small>kişi başı</small></div><button class="b sec" type="button">Seç</button></div></section>
+        <div class="opts-f"><button class="more" type="button">✦ AI daha fazla bulsun</button><span>Kendin ara:</span><a href="#">Skyscanner ↗</a><a href="#">Google Uçuşlar ↗</a></div>
+      </div>
+    </article>
+
+    <article class="need bought">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">16</span><span class="wd">Cum</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_UCUS}}" alt=""></span><div><span class="k">Dönüş</span><b>Osaka → İstanbul</b><small>2 kişi</small></div></div>
+        <div class="sel">
+          <article class="pk-card pk-green pk-booked pk-r-done" style="--mc:#6a4fe0"><div class="pk-top"><span class="pk-ring done"><svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"></path></g></svg></span><span class="pk-kind"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" transform="rotate(90 12 12)" d="M21 15.5v-1.8l-7.5-4.6V4a1.5 1.5 0 0 0-3 0v5.1L3 13.7v1.8l7.5-2.3V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-4.8z"></path></svg>Uçuş</span><span class="pk-date">· 16 Nisan · TK 49</span><span class="pk-end"><span class="pk-menu-wrap"><button type="button" class="pk-ib" aria-label="Kart menüsü"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="18.5" cy="12" r="1.8"></circle></g></svg></button></span></span></div><div class="pk-body"><div class="pk-mid"><div class="pk-stop"><b>Osaka</b><span>KIX · <strong>11:00</strong></span></div><div class="pk-route"><span class="pk-arc" aria-hidden="true"><svg viewBox="0 0 160 44" preserveAspectRatio="none"><path d="M4 40 Q80 -8 156 40" vector-effect="non-scaling-stroke"></path></svg><i class="pk-arc-a"></i><i class="pk-arc-b"></i><span class="pk-arc-pl"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" transform="rotate(90 12 12)" d="M21 15.5v-1.8l-7.5-4.6V4a1.5 1.5 0 0 0-3 0v5.1L3 13.7v1.8l7.5-2.3V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-4.8z"></path></svg></span></span><small>15 sa · direkt</small></div><div class="pk-stop r"><b>İstanbul</b><span>IST · <strong>17:40</strong></span></div></div></div><div class="pk-foot"><span class="pk-state plain">Turkish Airlines<span class="pk-when"> · bilet PDF'i eklendi</span></span></div></article>
+        </div>
+        <div class="act"><div class="price"><b class="num">€790</b> <small>kişi</small><span class="num">2 kişi · €1.580</span></div><div class="done"><span class="tick">✓</span><b>Bilet alındı</b></div><button class="b sec" type="button">Ayrıntı</button></div>
+      </div>
+    </article>
+
+    <article class="need">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">12</span><span class="wd">Pzt</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_UCUS}}" alt=""></span><div><span class="k">İç hat</span><b>Tokyo → Osaka</b><small>2 kişi</small></div></div>
+        <div class="sel"><article class="pk-card pk-r-open"><div class="pk-top"><span class="pk-ring open"></span><span class="pk-kind"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" transform="rotate(90 12 12)" d="M21 15.5v-1.8l-7.5-4.6V4a1.5 1.5 0 0 0-3 0v5.1L3 13.7v1.8l7.5-2.3V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-4.8z"></path></svg>Uçuş</span><span class="pk-date">· 12 Nisan</span><span class="pk-end"><span class="pk-lab open">Henüz seçilmedi</span><span class="pk-menu-wrap"><button type="button" class="pk-ib" aria-label="Kart menüsü"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="18.5" cy="12" r="1.8"></circle></g></svg></button></span></span></div><div class="pk-body"><div class="pk-mid"><div class="pk-stop"><b>Tokyo</b><span>HND</span></div><div class="pk-route"><img class="pk-routeimg" alt="" src="{{IMG_UCUS}}"></div><div class="pk-stop r"><b>Osaka</b><span>ITM · KIX</span></div></div></div><div class="pk-foot"><span class="ek-find"><span class="ek-ara">Kendin ara</span><a class="ek-link" href="#"><span class="ek-lg" style="background:#4285f4">G</span><span class="ek-nm">Google Flights<span class="ek-up"> ↗</span></span></a><a class="ek-link" href="#"><span class="ek-lg" style="background:#0062e3">S</span><span class="ek-nm">Skyscanner<span class="ek-up"> ↗</span></span></a><a class="ek-link" href="#"><span class="ek-lg" style="background:#ff690f">K</span><span class="ek-nm">Kayak<span class="ek-up"> ↗</span></span></a></span><span class="pk-hint">ya da linki sohbete bırak</span></div></article></div>
+        <div class="act"><div class="price est"><b class="num">~€60–110</b> <small>kişi</small></div><button class="b pri" type="button">✦ AI bulsun</button><button class="b sec" type="button">Gerek yok</button><div class="pano"><a href="#">Pano'da kayıt yok</a></div></div>
+      </div>
+    </article>
+    <button class="cat-add" type="button">+ Uçuş ekle</button>
+  </section>
+
+  <!-- KONAKLAMA -->
+  <section class="cat" style="--k:var(--c-stay)" aria-labelledby="h2">
+    <div class="cat-h"><span class="cat-ic">{{IC_BED}}</span><div><h2 id="h2">Konaklama</h2><div class="cnt">1 alındı · 1 seçildi · 1 ayarlandı · 1 bekliyor</div></div><span class="bud"><span class="mini"><i style="width:40%"></i></span><b class="num">€1.540</b> / €3.600</span></div>
+
+    <article class="need">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">2</span><span class="wd">Cum</span><span class="to num">→ 5 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_OTEL}}" alt=""></span><div><span class="k">Konaklama</span><b>Tokyo</b><small>3 gece · 2 kişi · sakin</small></div></div>
+        <div class="sel"><article class="pk-card pk-r-half"><div class="pk-top"><span class="pk-ring half"></span><span class="pk-kind"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18V7M21 18v-5a3 3 0 0 0-3-3h-8v6M3 15h18"/><circle cx="6.5" cy="11.5" r="1.5"/></g></svg>Konaklama</span><span class="pk-date">· 2–5 Nisan · 3 gece</span><span class="pk-end"><span class="pk-lab ai">✦ AI seçti</span><span class="pk-menu-wrap"><button type="button" class="pk-ib" aria-label="Kart menüsü"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="18.5" cy="12" r="1.8"></circle></g></svg></button></span></span></div><div class="pk-body"><div class="pk-item"><img class="pk-thumb" src="{{IMG_PH1}}" alt=""><div class="pk-tx"><div class="pk-meta"><span class="brand" style="--bc:#003b95">Booking.com</span><span>9,0 · Ginza</span></div><b class="pk-name">Hyatt Centric Ginza</b></div></div></div><div class="pk-foot"><span class="pk-state okc">Ücretsiz iptal<span class="pk-when"> · 30 Mart'a kadar</span></span></div></article></div>
+        <div class="act"><div class="price"><b class="num">€213</b> <small>/ gece</small><span class="num">3 gece · €640</span></div><button class="b pri" type="button">Satın al ↗</button><button class="b sec" type="button">Değiştir ▾</button><div class="pano"><a href="#">Pano'da 4 kayıt</a></div></div>
+      </div>
+    </article>
+
+    <article class="need" id="k-kyoto">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">5</span><span class="wd">Pzt</span><span class="to num">→ 9 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_OTEL}}" alt=""></span><div><span class="k">Konaklama</span><b>Kyoto</b><small>4 gece · 2 kişi · merkez</small></div></div>
+        <div class="sel"><article class="pk-card pk-r-open"><div class="pk-top"><span class="pk-ring open"></span><span class="pk-kind"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18V7M21 18v-5a3 3 0 0 0-3-3h-8v6M3 15h18"/><circle cx="6.5" cy="11.5" r="1.5"/></g></svg>Konaklama</span><span class="pk-date">· 5–9 Nisan · 4 gece</span><span class="pk-end"><span class="pk-lab open">Henüz seçilmedi</span><span class="pk-menu-wrap"><button type="button" class="pk-ib" aria-label="Kart menüsü"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="18.5" cy="12" r="1.8"></circle></g></svg></button></span></span></div><div class="pk-body"><div class="pk-item"><img class="pk-thumb ill" src="{{IMG_OTEL}}" alt=""><div class="pk-tx"><b class="pk-name">Kyoto'da 4 gece</b><span class="pk-sub">4 aday hazır: 2'si senin, 2'si AI'dan · aşağıda</span></div></div></div><div class="pk-foot"><span class="ek-find"><span class="ek-ara">Kendin ara</span><a class="ek-link" href="#"><span class="ek-lg" style="background:#003b95">B</span><span class="ek-nm">Booking.com<span class="ek-up"> ↗</span></span></a><a class="ek-link" href="#"><span class="ek-lg" style="background:#d6325f">A</span><span class="ek-nm">Airbnb<span class="ek-up"> ↗</span></span></a></span><span class="pk-hint">ya da linki sohbete bırak</span></div></article></div>
+        <div class="act"><div class="price est"><b class="num">~€120–300</b> <small>/ gece</small></div><button class="b pri" type="button">✦ AI bulsun</button><button class="b sec" type="button" aria-expanded="true">Seçenekler ▴</button><div class="pano"><a href="#">Pano'da 3 kayıt</a></div></div>
+      </div>
+      <div class="opts">
+        <div class="opts-h"><b>Kyoto · 4 gece · adaylar</b><span class="src">5–9 Nisan · 2 kişi</span><button class="x" type="button">Kapat</button></div>
+        <div class="og-split"><section class="og me "><div class="og-h"><span class="og-ic"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></g></svg></span><b>Senin bulduğun</b><span class="og-n">2</span><small>sohbetten ve Pano'dan</small></div><div class="grid g2"><div class="box"><div class="ph"><img src="{{IMG_PH2}}" alt=""><span class="brand" style="--bc:#003b95">Booking.com</span></div><div class="bb"><h5>Hotel Kanra Kyoto</h5><div class="r">9,2 · Shimogyo · istasyona 6 dk</div><div class="r ok">Ücretsiz iptal · 1 Nis'e kadar</div><div class="from"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></g></svg>Sohbete attığın link</div><div class="bf"><span><b class="num">€230</b> <small>/ gece</small></span><button class="b pri" type="button">Seç</button></div></div></div><div class="box"><div class="ph"><img src="{{IMG_PH6}}" alt=""><span class="brand" style="--bc:#003b95">Booking.com</span></div><div class="bb"><h5>Ryokan Yachiyo</h5><div class="r">9,0 · Nanzen-ji</div><div class="r ok">Ücretsiz iptal</div><div class="from"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 3h12v18l-6-4-6 4z"/></svg>Pano'dan</div><div class="bf"><span><b class="num">€260</b> <small>/ gece</small></span><button class="b sec" type="button">Seç</button></div></div></div></div></section><section class="og ai "><div class="og-h"><span class="og-ic"><span aria-hidden="true">✦</span></span><b>AI önerileri</b><span class="og-n">2</span><small>sakin, merkeze yakın</small></div><div class="grid g2"><div class="box"><div class="ph"><img src="{{IMG_PH3}}" alt=""><span class="brand" style="--bc:#d6325f">Airbnb</span></div><div class="bb"><h5>Gion Machiya, tüm ev</h5><div class="r">★ 4,8 · Gion</div><div class="r no">İade yok</div><div class="from"><span class="tag">En ucuz</span></div><div class="bf"><span><b class="num">€140</b> <small>/ gece</small></span><button class="b sec" type="button">Seç</button></div></div></div><div class="box"><div class="ph"><img src="{{IMG_PH1}}" alt=""><span class="brand" style="--bc:#003b95">Booking.com</span></div><div class="bb"><h5>Sakura Terrace</h5><div class="r">8,7 · istasyona 4 dk</div><div class="r ok">Ücretsiz iptal</div><div class="from"><span class="tag">İstasyona en yakın</span></div><div class="bf"><span><b class="num">€125</b> <small>/ gece</small></span><button class="b sec" type="button">Seç</button></div></div></div></div></section></div>
+        <div class="opts-f"><button class="more" type="button">✦ AI daha fazla bulsun</button><span>Kendin ara:</span><a href="#">Booking.com ↗</a><a href="#">Airbnb ↗</a></div>
+      </div>
+    </article>
+
+    <article class="need bought">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">9</span><span class="wd">Cum</span><span class="to num">→ 12 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_OTEL}}" alt=""></span><div><span class="k">Konaklama</span><b>Hakone</b><small>3 gece · 2 kişi · onsen</small></div></div>
+        <div class="sel"><article class="pk-card pk-r-done pk-green"><div class="pk-top"><span class="pk-ring done"><svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"></path></g></svg></span><span class="pk-kind"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18V7M21 18v-5a3 3 0 0 0-3-3h-8v6M3 15h18"/><circle cx="6.5" cy="11.5" r="1.5"/></g></svg>Konaklama</span><span class="pk-date">· 9–12 Nisan · 3 gece</span><span class="pk-end"><span class="pk-menu-wrap"><button type="button" class="pk-ib" aria-label="Kart menüsü"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="18.5" cy="12" r="1.8"></circle></g></svg></button></span></span></div><div class="pk-body"><div class="pk-item"><img class="pk-thumb" src="{{IMG_PH3}}" alt=""><div class="pk-tx"><div class="pk-meta"><span class="brand" style="--bc:#003b95">Booking.com</span><span>9,5 · Gora</span></div><b class="pk-name">Gora Kadan</b></div></div></div><div class="pk-foot"><span class="pk-state plain">Onay e-postası eklendi</span></div></article></div>
+        <div class="act"><div class="price"><b class="num">€300</b> <small>/ gece</small><span class="num">3 gece · €900</span></div><div class="done"><span class="tick">✓</span><b>Rezerve</b></div><button class="b sec" type="button">Ayrıntı</button></div>
+      </div>
+    </article>
+
+    <article class="need">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">12</span><span class="wd">Pzt</span><span class="to num">→ 16 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_EV}}" alt=""></span><div><span class="k">Konaklama</span><b>Osaka</b><small>4 gece · 2 kişi</small></div></div>
+        <div class="sel"><article class="pk-card pk-r-arr"><div class="pk-top"><span class="pk-ring arr"><svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"></path></g></svg></span><span class="pk-kind"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18V7M21 18v-5a3 3 0 0 0-3-3h-8v6M3 15h18"/><circle cx="6.5" cy="11.5" r="1.5"/></g></svg>Konaklama</span><span class="pk-date">· 12–16 Nisan · 4 gece</span><span class="pk-end"><span class="pk-menu-wrap"><button type="button" class="pk-ib" aria-label="Kart menüsü"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="18.5" cy="12" r="1.8"></circle></g></svg></button></span></span></div><div class="pk-body"><div class="pk-item"><img class="pk-thumb ill" src="{{IMG_EV}}" alt=""><div class="pk-tx"><b class="pk-name">Arkadaşın evi</b><span class="pk-sub">Sen hallettin · rezervasyon gerekmez</span></div></div></div></article></div>
+        <div class="act"><div class="price est"><b>Ücret yok</b></div><div class="done"><span class="tick" style="background:#8a879e;box-shadow:0 0 0 4px var(--sunk)">✓</span><b style="color:var(--muted)">Ayarlandı</b></div><button class="b sec" type="button">Değiştir ▾</button></div>
+      </div>
+    </article>
+    <button class="cat-add" type="button">+ Konaklama ekle</button>
+  </section>
+
+  <!-- ULAŞIM -->
+  <section class="cat" style="--k:var(--c-move)" aria-labelledby="h3">
+    <div class="cat-h"><span class="cat-ic">{{IC_TRAIN}}</span><div><h2 id="h3">Ulaşım</h2><div class="cnt">1 alındı · 1 seçildi</div></div><span class="bud"><span class="mini"><i style="width:60%"></i></span><b class="num">€136</b> / €300</span></div>
+    <article class="need">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">9</span><span class="wd">Cum</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_TREN}}" alt=""></span><div><span class="k">Şehir değişimi</span><b>Kyoto → Hakone</b><small>2 kişi · bagajlı</small></div></div>
+        <div class="sel">
+          <article class="pk-card  pk-r-half" style="--mc:#b5761c"><div class="pk-top"><span class="pk-ring half"></span><span class="pk-kind"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 11h14M9 21l1.5-4M15 21l-1.5-4"/><circle cx="9" cy="14" r=".8" fill="currentColor"/><circle cx="15" cy="14" r=".8" fill="currentColor"/></g></svg>Tren</span><span class="pk-date">· 9 Nisan · JR</span><span class="pk-end"><span class="pk-lab ai">✦ AI seçti</span><span class="pk-menu-wrap"><button type="button" class="pk-ib" aria-label="Kart menüsü"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="18.5" cy="12" r="1.8"></circle></g></svg></button></span></span></div><div class="pk-body"><div class="pk-mid"><div class="pk-stop"><b>Kyoto</b><span><strong>08:30</strong></span></div><div class="pk-route"><span class="pk-arc" aria-hidden="true"><svg viewBox="0 0 160 44" preserveAspectRatio="none"><path d="M4 40 Q80 -8 156 40" vector-effect="non-scaling-stroke"></path></svg><i class="pk-arc-a"></i><i class="pk-arc-b"></i><span class="pk-arc-stop"></span><span class="pk-arc-pl"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 11h14M9 21l1.5-4M15 21l-1.5-4"/><circle cx="9" cy="14" r=".8" fill="currentColor"/><circle cx="15" cy="14" r=".8" fill="currentColor"/></g></svg></span></span><small>3 sa 45 · Odawara'da aktarma</small></div><div class="pk-stop r"><b>Hakone</b><span><strong>12:15</strong></span></div></div></div><div class="pk-foot"><span class="pk-state plain">Shinkansen + Romancecar<span class="pk-when"> · JR Pass geçerli değil</span></span></div></article>
+        </div>
+        <div class="act"><div class="price"><b class="num">€60</b> <small>kişi</small><span class="num">2 kişi · €120</span></div><button class="b pri" type="button">Satın al ↗</button><button class="b sec" type="button">Değiştir ▾</button><div class="pano"><a href="#">Pano'da 2 kayıt</a></div></div>
+      </div>
+    </article>
+    <article class="need bought">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">2</span><span class="wd">Cum</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_TAKSI}}" alt=""></span><div><span class="k">Transfer</span><b>Haneda → otel</b><small>inişten sonra</small></div></div>
+        <div class="sel"><article class="pk-card pk-green pk-booked pk-r-done" style="--mc:#b5761c"><div class="pk-top"><span class="pk-ring done"><svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"></path></g></svg></span><span class="pk-kind"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 11h14M9 21l1.5-4M15 21l-1.5-4"/><circle cx="9" cy="14" r=".8" fill="currentColor"/><circle cx="15" cy="14" r=".8" fill="currentColor"/></g></svg>Transfer</span><span class="pk-date">· 2 Nisan · inişten sonra</span><span class="pk-end"><span class="pk-menu-wrap"><button type="button" class="pk-ib" aria-label="Kart menüsü"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="18.5" cy="12" r="1.8"></circle></g></svg></button></span></span></div><div class="pk-body"><div class="pk-mid"><div class="pk-stop"><b>Haneda</b><span>HND</span></div><div class="pk-route"><span class="pk-arc" aria-hidden="true"><svg viewBox="0 0 160 44" preserveAspectRatio="none"><path d="M4 40 Q80 -8 156 40" vector-effect="non-scaling-stroke"></path></svg><i class="pk-arc-a"></i><i class="pk-arc-b"></i><span class="pk-arc-pl"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 11h14M9 21l1.5-4M15 21l-1.5-4"/><circle cx="9" cy="14" r=".8" fill="currentColor"/><circle cx="15" cy="14" r=".8" fill="currentColor"/></g></svg></span></span><small>~40 dk · Keikyu</small></div><div class="pk-stop r"><b>Ginza</b><span>otel</span></div></div></div><div class="pk-foot"><span class="pk-state plain">Keikyu + Asakusa hattı<span class="pk-when"> · Suica ile</span></span></div></article></div>
+        <div class="act"><div class="price"><b class="num">€8</b> <small>kişi</small></div><div class="done"><span class="tick">✓</span><b>Alındı</b></div><button class="b sec" type="button">Ayrıntı</button></div>
+      </div>
+    </article>
+    <button class="cat-add" type="button">+ Ulaşım ekle</button>
+  </section>
+
+  <!-- ETKİNLİK -->
+  <section class="cat" style="--k:var(--c-exp)" aria-labelledby="h4">
+    <div class="cat-h"><span class="cat-ic">{{IC_TICKET}}</span><div><h2 id="h4">Etkinlik ve turlar</h2><div class="cnt">2 planda · 1 bileti alındı · 3 öneri</div></div><span class="bud"><b class="num">€192</b> / €400</span></div>
+    <article class="need">
+      <div class="row wide">
+        <div class="date"><span class="mo">NİS</span><span class="d num">2</span><span class="wd">Cum</span><span class="to num">→ 5 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_ACT}}" alt=""></span><div><span class="k">Etkinlik</span><b>Tokyo</b><small>kültür · akşam</small></div></div>
+        <div class="tiles">
+          <div class="box"><div class="ph"><img src="{{IMG_PH4}}" alt=""><span class="brand" style="--bc:#ff5b00">Klook</span><span class="on" aria-label="Planda">✓</span></div><div class="bb"><h5>teamLab Planets</h5><div class="r num">3 Nis · 19:00</div><div class="bf"><span><b class="num">€56</b> <small>2 kişi</small></span><button class="b pri" type="button">Satın al ↗</button></div></div></div>
+          <div class="box"><div class="ph"><img src="{{IMG_PH5}}" alt=""><span class="brand" style="--bc:#ff5b00">Klook</span><span class="on" aria-label="Planda">✓</span></div><div class="bb"><h5>Shibuya Sky gün batımı</h5><div class="r num">4 Nis · 17:30</div><div class="bf"><span><b class="num">€40</b> <small>2 kişi</small></span><span class="done" style="height:30px"><span class="tick" style="width:24px;height:24px;font-size:12px">✓</span><b>Alındı</b></span></div></div></div>
+          <div class="box"><div class="ph"><img src="{{IMG_PH5}}" alt=""><span class="brand" style="--bc:#0b7a6f">Viator</span><span class="who ai">✦ AI önerisi</span></div><div class="bb"><h5>Asakusa gece yemek turu</h5><div class="r">★ 4,9 · 3 sa</div><div class="bf"><span><b class="num">€85</b> <small>kişi</small></span><button class="b sec" type="button">+ Plana ekle</button></div></div></div>
+          <div class="box"><div class="ph"><img src="{{IMG_PH4}}" alt=""><span class="brand" style="--bc:#0b7a6f">Viator</span><span class="who me">Senin bulduğun</span></div><div class="bb"><h5>Sumo antrenmanı izleme</h5><div class="r">★ 4,7 · sabah</div><div class="bf"><span><b class="num">€70</b> <small>kişi</small></span><button class="b sec" type="button">+ Plana ekle</button></div></div></div>
+        </div>
+      </div>
+    </article>
+    <button class="cat-add" type="button">+ Etkinlik ekle</button>
+  </section>
+
+  <!-- YAPILACAKLAR -->
+  <section class="cat" style="--k:var(--c-todo)" aria-labelledby="h5">
+    <div class="cat-h"><span class="cat-ic">{{IC_MAP}}</span><div><h2 id="h5">Yapılacaklar ve restoranlar</h2><div class="cnt">2 planda · 2 öneri</div></div></div>
+    <article class="need">
+      <div class="row wide">
+        <div class="date"><span class="mo">NİS</span><span class="d num">5</span><span class="wd">Pzt</span><span class="to num">→ 9 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_TODO}}" alt=""></span><div><span class="k">Yapılacak</span><b>Kyoto</b><small>yürüyüş · yerel yemek</small></div></div>
+        <div class="tiles">
+          <div class="box"><div class="ph"><img src="{{IMG_PH7}}" alt=""><span class="brand" style="--bc:#34a853">Haritalar</span><span class="on" aria-label="Planda">✓</span></div><div class="bb"><h5>Fushimi Inari, sabah 7'de</h5><div class="r">Gezilecek · 6 Nis</div><div class="bf"><span class="r">ücretsiz</span><button class="b sec" type="button">Haritada aç</button></div></div></div>
+          <div class="box"><div class="ph"><img src="{{IMG_PH8}}" alt=""><span class="brand" style="--bc:#34a853">Haritalar</span><span class="on" aria-label="Planda">✓</span></div><div class="bb"><h5>Nishiki pazarı</h5><div class="r">Restoran · 7 Nis öğle</div><div class="bf"><span class="r">€€</span><button class="b sec" type="button">Haritada aç</button></div></div></div>
+          <div class="box"><div class="ph"><img src="{{IMG_PH7}}" alt=""><span class="brand" style="--bc:#34a853">Haritalar</span><span class="who ai">✦ AI önerisi</span></div><div class="bb"><h5>Arashiyama bambu ormanı</h5><div class="r">Gezilecek</div><div class="bf"><span class="r">ücretsiz</span><button class="b sec" type="button">+ Plana ekle</button></div></div></div>
+          <div class="box"><div class="ph"><img src="{{IMG_PH8}}" alt=""><span class="brand" style="--bc:#34a853">Haritalar</span><span class="who me">Senin bulduğun</span></div><div class="bb"><h5>Kiyamachi Yoshikawa Tempura</h5><div class="r">Restoran · Pontocho</div><div class="bf"><span class="r">€€€</span><button class="b sec" type="button">+ Plana ekle</button></div></div></div>
+        </div>
+      </div>
+    </article>
+    <button class="cat-add" type="button">+ Yer ekle</button>
+  </section>
+
+  <!-- BELGELER -->
+  <section class="cat" style="--k:var(--c-doc)" aria-labelledby="h6">
+    <div class="cat-h"><span class="cat-ic">{{IC_DOC}}</span><div><h2 id="h6">Belgeler ve internet</h2><div class="cnt">vize gerekmiyor · 1 seçildi · 1 bekliyor</div></div></div>
+    <article class="need">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">1</span><span class="wd">Per</span><span class="to num">→ 16 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_ESIM}}" alt=""></span><div><span class="k">İnternet</span><b>Japonya eSIM</b><small>16 gün · 2 telefon</small></div></div>
+        <div class="sel"><article class="pk-card pk-r-half"><div class="pk-top"><span class="pk-ring half"></span><span class="pk-kind"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><rect x="9.5" y="11" width="6" height="6" rx="1"/></g></svg>eSIM</span><span class="pk-date">· 1–16 Nisan</span><span class="pk-end"><span class="pk-lab ai">✦ AI seçti</span><span class="pk-menu-wrap"><button type="button" class="pk-ib" aria-label="Kart menüsü"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="18.5" cy="12" r="1.8"></circle></g></svg></button></span></span></div><div class="pk-body"><div class="pk-item"><span class="pk-logo2">airalo</span><div class="pk-tx"><div class="pk-meta"><span>Airalo</span></div><b class="pk-name">Moshi Moshi · 10 GB</b><span class="pk-sub">30 gün geçerli · 2 telefon</span></div></div></div></article></div>
+        <div class="act"><div class="price"><b class="num">$32</b> <small>2 telefon</small></div><button class="b pri" type="button">Satın al ↗</button><button class="b sec" type="button">Değiştir ▾</button><div class="pano"><a href="#">Pano'da 3 paket</a></div></div>
+      </div>
+    </article>
+    <article class="need">
+      <div class="row">
+        <div class="date"><span class="mo">NİS</span><span class="d num">1</span><span class="wd">Per</span><span class="to num">→ 16 Nis</span></div>
+        <div class="int"><span class="ill"><img src="{{IMG_SIGORTA}}" alt=""></span><div><span class="k">Sigorta</span><b>Seyahat sağlık</b><small>16 gün · 2 kişi</small></div></div>
+        <div class="sel"><article class="pk-card pk-r-open"><div class="pk-top"><span class="pk-ring open"></span><span class="pk-kind"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v6c0 4 3 7.5 7 9 4-1.5 7-5 7-9V6z"/></g></svg>Sigorta</span><span class="pk-date">· 1–16 Nisan</span><span class="pk-end"><span class="pk-lab open">Henüz seçilmedi</span><span class="pk-menu-wrap"><button type="button" class="pk-ib" aria-label="Kart menüsü"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="18.5" cy="12" r="1.8"></circle></g></svg></button></span></span></div><div class="pk-body"><div class="pk-item"><img class="pk-thumb ill" src="{{IMG_SIGORTA}}" alt=""><div class="pk-tx"><b class="pk-name">Seyahat sağlık sigortası</b><span class="pk-sub">Japonya için zorunlu değil, önerilir</span></div></div></div><div class="pk-foot"><span class="ek-find"><span class="ek-ara">Kendin ara</span><a class="ek-link" href="#"><span class="ek-lg" style="background:#5b2fd6">S</span><span class="ek-nm">SafetyWing<span class="ek-up"> ↗</span></span></a><a class="ek-link" href="#"><span class="ek-lg" style="background:#4285f4">G</span><span class="ek-nm">Google<span class="ek-up"> ↗</span></span></a></span><span class="pk-hint">ya da linki sohbete bırak</span></div></article></div>
+        <div class="act"><div class="price est"><b class="num">~€34</b> <small>kişi</small></div><button class="b pri" type="button">✦ AI bulsun</button><button class="b sec" type="button">Gerek yok</button><div class="pano"><a href="#">Pano'da kayıt yok</a></div></div>
+      </div>
+    </article>
+    <button class="cat-add" type="button">+ Belge ekle</button>
+  </section>
+</main>
+</div>

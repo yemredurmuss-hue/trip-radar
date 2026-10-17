@@ -95,3 +95,11 @@ Sistem (Emre): prompt → AI omurgayı kurar, API'den bulabildiği en iyi seçen
 - Seçenekler satırın altında tam genişlik: uçuş Skyscanner sütunları (logo, saatler, süre/aktarma, kaynak etiketi En ucuz/Senin linkin/Pano, fiyat, Seç); otel 4 fotoğraf kutusu, marka yazıyla (Booking.com, Airbnb), kaynak etiketi.
 - Uçuş ve ulaşımda yayındaki bilet çizimi: şehir büyük, kavisli kesikli rota, ortada daire içinde araç ikonu.
 - Etkinlik ve Yapılacaklar kutu kutu (fotoğraf, marka, ✓ planda, AI/Senin linkin etiketi, Satın al / + Plana ekle / Haritada aç).
+
+## v75 · docs/mockups/plan-v75-canli-ozet (17 Ekim)
+Emre: "bizim özeti koy, kendininkini değil; uçak biletinde yayındaki tasarım güzeldi; seçenekler açılınca benim biriktirdiklerim ve AI önerdikleri belli olsun; hizalama ve UI kalitesi."
+- Üst özet canlıdaki `hx` bileşeni: işaretleme 0.37.1'in DOM'undan, CSS'i `dist/app.css`'ten (`.hx*`, `view-tabs`) birebir; yalnız veri Japonya. Üstte Plan · Pano sekmesi, altta Plan çubuğu + rota şeridi. 4 şehirde sekmeler dar özet sütununda taşıyordu: `@container hxleft (max-width:580px)` ile küçülüyor (canlıda da 4+ şehirde aynı taşma olabilir, kontrol edilmeli).
+- Seçili alan canlıdaki `pk-card` çerçevesi: üst satır (halka, tür, tarih, durum etiketi, •••), gövde, alt satır. Uçuş/tren/transfer kavisli rota + ortada araç (aktarmada durak noktası). Otel/eSIM/sigorta aynı çerçevede fotoğraf/logo + ad. Renk dili canlıyla aynı: boş = kesik çizgili beyaz, seçili = kum, alınmış = yeşil, ayarlandı = gri.
+- Durum tek yerde: kart üstünde etiket (AI seçti / Henüz seçilmedi), yeşil tik + "Bilet alındı/Rezerve" yalnız eylem sütununda; kart altında yalnız ek bilgi (kaynak, iptal, belge).
+- Seçenekler iki grup: "Senin bulduğun" (sohbete attığın linkler + Pano'dan, kaynağı satırda yazar: "Sohbete attığın link · 12 Eki", "Pano'dan") ve "AI önerileri" (En ucuz / En hızlı / İstasyona en yakın etiketiyle). Uçuşta alt alta, otelde yan yana iki sütun.
+- Hizalama: satır 64 | 228 | esnek | 172; dört sütun üstten 16px; etkinlik/yer kutularında düğme hep en altta tam genişlik, rozetler fotoğrafın alt solunda (marka üst solda).
