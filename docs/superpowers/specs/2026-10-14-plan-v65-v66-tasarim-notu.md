@@ -78,3 +78,10 @@ Artifact: https://claude.ai/artifact/89dVEm5d6bUs6pAhg1b9x9 · elle yazılmış 
 - **Üst özet:** tek çubuk + "16 ihtiyaçtan 9'u hazır: 5 rezerve, 4 seçildi" + "Sıradaki" düğmesi. Plan çubuğundan renk göstergesi ve "+ Ekle" kalktı (Ekle bölüm sonunda).
 - **Kart içi ikonlar** (ⓘ, klips, ×) ••• menüsüne; avatar yalnız başkası eklediyse.
 - Kaybolmayanlar sayfanın altında listeli. Karanlık mod tokenları çizimde var (canlıda yok).
+
+## v73 · docs/mockups/plan-v73-asistanla (17 Ekim)
+- Uygulama kabuğu: solda asistan (sohbet, sonucun ihtiyaca indiği "Planda göster" kartı, hızlı yanıt çipleri, "arıyorum" satırı, yazı kutusu), sağda plan.
+- Kategori kutusu geri geldi (Emre: vazgeçme): başlıkta ikon, ad, durum özeti, bütçe çubuğu; içinde ihtiyaçlar ince çizgiyle ayrılmış satırlar; sonda "+ Ekle".
+- Niyet: türün illüstrasyonu (48 px) + tür, ad, tek satır bilgi. Seçenekler kendi fotoğrafıyla (otel, etkinlik) ya da logosuyla (eSIM, sigorta, havayolu harfi).
+- Seçenekler derli toplu: niyet sütununun hizasından başlayan tek kutu; uçuş/ulaşım sabit sütunlu satırlar (logo, kalkış–süre–varış, etiket, fiyat, Seç); otel ve etkinlik 200 px fotoğraf kartları yatay şeritte.
+- Yazı ölçüsü dört basamak (20/16/13,5/12), tek CTA moru, ikincil düğmeler çerçeveli.
