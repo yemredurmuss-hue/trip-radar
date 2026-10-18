@@ -1,0 +1,107 @@
+[
+ {
+  "x": "Temmuzda Tomorrowland'e gidiyoruz, 2 kişi",
+  "where": "Boom",
+  "who": null,
+  "start": {
+   "date": "2027-07-01",
+   "approx": true
+  },
+  "duration": null
+ },
+ {
+  "x": "Porto'ya 2 kişi gidiyoruz",
+  "where": "Porto",
+  "who": {
+   "kind": null,
+   "names": [],
+   "count": 2
+  },
+  "start": null,
+  "duration": null
+ },
+ {
+  "x": "Lizbon, 2 kişiyiz",
+  "where": "Lizbon",
+  "who": {
+   "kind": null,
+   "names": [],
+   "count": 2
+  },
+  "start": null,
+  "duration": null
+ },
+ {
+  "x": "Roma 3 gece 2 kişi",
+  "where": "Roma",
+  "who": null,
+  "start": null,
+  "duration": {
+   "unit": "night",
+   "n": 3
+  }
+ },
+ {
+  "x": "Bu hafta sonu Bursa'ya otobüsle",
+  "where": null,
+  "who": null,
+  "start": {
+   "date": "2026-10-23",
+   "approx": false
+  },
+  "duration": {
+   "unit": "weekend",
+   "n": 1
+  }
+ },
+ {
+  "x": "Cumartesi günübirlik Şile'ye",
+  "where": null,
+  "who": null,
+  "start": null,
+  "duration": null
+ },
+ {
+  "x": "yazın 10 gün İtalya",
+  "where": "İtalya",
+  "who": null,
+  "start": null,
+  "duration": {
+   "unit": "day",
+   "n": 10
+  }
+ },
+ {
+  "x": "Ağustos ortası 10 gün Roma",
+  "where": "Roma",
+  "who": null,
+  "start": {
+   "date": "2027-08-01",
+   "approx": true
+  },
+  "duration": {
+   "unit": "day",
+   "n": 10
+  }
+ },
+ {
+  "x": "Kızıldeniz'de 1 hafta",
+  "where": null,
+  "who": null,
+  "start": null,
+  "duration": {
+   "unit": "week",
+   "n": 1
+  }
+ },
+ {
+  "x": "Akdeniz kruvaziyeri 7 gece",
+  "where": null,
+  "who": null,
+  "start": null,
+  "duration": {
+   "unit": "night",
+   "n": 7
+  }
+ }
+]

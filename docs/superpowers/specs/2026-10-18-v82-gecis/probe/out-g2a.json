@@ -1,0 +1,4037 @@
+{
+ "01a_liveaboard_AI_plan": {
+  "where": "Kızıldeniz (Mısır, EG)",
+  "intentEvent": null,
+  "playbook": "custom",
+  "pbQuestions": [
+   "custom:gear"
+  ],
+  "tripIntent": {
+   "playbook": "custom",
+   "label": "Kızıldeniz liveaboard dalış gezisi",
+   "musts": [
+    "İleri seviye dalgıç"
+   ]
+  },
+  "title": "Kızıldeniz Gezisi",
+  "dates": {
+   "start": "2026-11-10",
+   "end": "2026-11-17"
+  },
+  "road": false,
+  "stayAs": {
+   "kind": "boat",
+   "city": "Hurgada"
+  },
+  "budget": null,
+  "travellers": {
+   "names": [],
+   "count": 2
+  },
+  "items": [
+   {
+    "name": "Liveaboard · Hurgada",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Hurgada",
+    "d": "2026-11-10→2026-11-17",
+    "from": null,
+    "to": null,
+    "stayKind": "boat",
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Hurgada",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Hurgada",
+    "d": "2026-11-10",
+    "from": "İstanbul",
+    "to": "Hurgada",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Hurgada → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2026-11-17",
+    "from": "Hurgada",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Limana transfer",
+    "cat": "transport",
+    "kind": "transfer",
+    "city": "Hurgada",
+    "d": "2026-11-10",
+    "from": null,
+    "to": "Hurgada",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Dalış ekipmanı kiralama",
+    "cat": "activity",
+    "kind": "activity",
+    "city": "Hurgada",
+    "d": "2026-11-10→2026-11-17",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Dalış sertifikası",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "EG",
+    "visa": "Resmi kaynağa bak",
+    "currency": "EGP"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2026-11-10",
+    "end": "2026-11-17"
+   },
+   "nights": {
+    "total": 7,
+    "booked": 0,
+    "chosen": 0,
+    "open": 7
+   },
+   "stayBlocks": [
+    "open Hurgada 2026-11-10→2026-11-17 (7)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2026-11-10 Hurgada→Hurgada [planned transfer]",
+    "departure 2026-11-17 Hurgada→Hurgada [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Hurgada · Hurgada · 10 Kas · empty/search",
+      "Hurgada → İstanbul · Hurgada · 17 Kas · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "1 rezerve edilmedi",
+     "entries": [
+      "Liveaboard · Hurgada · Hurgada · 10–17 Kasım · 7 gece · book/planned"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "transport",
+     "status": "✓ 1 alındı",
+     "entries": [
+      "Havalimanı → Otel · Hurgada · 10 Kas · done/-"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "todo",
+     "status": null,
+     "entries": [
+      "Dalış ekipmanı kiralama · Hurgada · 10 Kas · done/-"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "prep",
+     "status": "1 hazırlık",
+     "entries": [
+      "Dalış sertifikası · Tüm gezi · unscheduled/-"
+     ],
+     "prep": 1,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Mısır)"
+   ],
+   "shape": "Hurgada(7 gece,open) | hops: "
+  }
+ },
+ "01b_liveaboard_AI_no_plan": {
+  "where": "Kızıldeniz (Mısır, EG)",
+  "intentEvent": null,
+  "playbook": "classic",
+  "pbQuestions": [],
+  "tripIntent": null,
+  "title": "Kızıldeniz Gezisi",
+  "dates": {
+   "start": "2026-11-10",
+   "end": "2026-11-17"
+  },
+  "road": false,
+  "stayAs": null,
+  "budget": null,
+  "travellers": {
+   "names": [],
+   "count": 2
+  },
+  "items": [
+   {
+    "name": "Konaklama · Kızıldeniz",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Kızıldeniz",
+    "d": "2026-11-10→2026-11-17",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Kızıldeniz",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Kızıldeniz",
+    "d": "2026-11-10",
+    "from": "İstanbul",
+    "to": "Kızıldeniz",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Kızıldeniz → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2026-11-17",
+    "from": "Kızıldeniz",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "EG",
+    "visa": "Resmi kaynağa bak",
+    "currency": "EGP"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2026-11-10",
+    "end": "2026-11-17"
+   },
+   "nights": {
+    "total": 7,
+    "booked": 0,
+    "chosen": 0,
+    "open": 7
+   },
+   "stayBlocks": [
+    "open Kızıldeniz 2026-11-10→2026-11-17 (7)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2026-11-10 Kızıldeniz→Kızıldeniz [empty]",
+    "departure 2026-11-17 Kızıldeniz→Kızıldeniz [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Kızıldeniz · Kızıldeniz · 10 Kas · empty/search",
+      "Kızıldeniz → İstanbul · Kızıldeniz · 17 Kas · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "7 gece boş",
+     "entries": [
+      "Konaklama · Kızıldeniz · Kızıldeniz · 10–17 Kasım · 7 gece · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Mısır)"
+   ],
+   "shape": "Kızıldeniz(7 gece,open) | hops: "
+  }
+ },
+ "01c_liveaboard_no_AI": {
+  "parsed": {
+   "where": null,
+   "from": null,
+   "who": {
+    "kind": null,
+    "names": [],
+    "count": 2
+   },
+   "start": {
+    "date": "2026-11-01",
+    "approx": true
+   },
+   "duration": {
+    "unit": "week",
+    "n": 1
+   },
+   "styles": [],
+   "budget": null
+  },
+  "made": {
+   "error": "creationOf null (nereye bilinmiyor)",
+   "where": null,
+   "intent": null
+  }
+ },
+ "02a_tomorrowland": {
+  "where": "Boom (Belçika, BE)",
+  "intentEvent": "event:Tomorrowland@Boom",
+  "playbook": "festival",
+  "pbQuestions": [
+   "festival:stay",
+   "festival:ticket",
+   "festival:early"
+  ],
+  "tripIntent": {
+   "playbook": "festival",
+   "label": null,
+   "musts": []
+  },
+  "title": "Tomorrowland 2027",
+  "dates": null,
+  "road": false,
+  "stayAs": {
+   "kind": "camp",
+   "city": "Boom"
+  },
+  "budget": null,
+  "travellers": null,
+  "items": [
+   {
+    "name": "Çadır kampı · festival alanı",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Boom",
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": "camp",
+    "noBooking": true,
+    "status": "chosen",
+    "adults": null,
+    "note": "kendi çadırın"
+   },
+   {
+    "name": "Uçuş · İstanbul → Boom",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Boom",
+    "d": null,
+    "from": "İstanbul",
+    "to": "Boom",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Boom → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": null,
+    "from": "Boom",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Transfer · Boom",
+    "cat": "transport",
+    "kind": "transfer",
+    "city": "Boom",
+    "d": "2027-07-23",
+    "from": null,
+    "to": "Boom",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Festival bileti",
+    "cat": "activity",
+    "kind": "activity",
+    "city": "Boom",
+    "d": "2027-07-23→2027-08-01",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": "Resmî site: https://www.tomorrowland.com"
+   },
+   {
+    "name": "Çadır",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uyku tulumu",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kafa lambası",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Nakit",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kulak tıkacı",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "BE",
+    "visa": "Schengen vizesi",
+    "currency": "EUR"
+   }
+  ],
+  "live": {
+   "range": null,
+   "nights": {
+    "total": 0,
+    "booked": 0,
+    "chosen": 0,
+    "open": 0
+   },
+   "stayBlocks": [],
+   "looseStays": 1,
+   "legs": [],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Boom · Boom · tarih yok · empty/search · 1 seçenek",
+      "Boom → İstanbul · İstanbul · tarih yok · empty/search · 1 seçenek"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "✓ 1 alındı",
+     "entries": [
+      "Çadır kampı · festival alanı · Boom · tarih yok · done/- · 1 seçenek"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "transport",
+     "status": "1 rezerve edilmedi",
+     "entries": [
+      "Transfer · Boom · Boom · 23 Tem · book/planned · 1 seçenek"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "activity",
+     "status": "1 bilet yok",
+     "entries": [
+      "Festival bileti · Boom · 23 Tem · book/planned"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "prep",
+     "status": "5 hazırlık",
+     "entries": [
+      "Çadır · Tüm gezi · unscheduled/-",
+      "Kafa lambası · Tüm gezi · unscheduled/-",
+      "Kulak tıkacı · Tüm gezi · unscheduled/-",
+      "Nakit · Tüm gezi · unscheduled/-",
+      "Uyku tulumu · Tüm gezi · unscheduled/-"
+     ],
+     "prep": 5,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Belçika)"
+   ],
+   "shape": null
+  }
+ },
+ "02b_tomorrowland_hotel_ticket": {
+  "where": "Boom (Belçika, BE)",
+  "intentEvent": "event:Tomorrowland@Boom",
+  "playbook": "festival",
+  "pbQuestions": [
+   "festival:stay",
+   "festival:ticket",
+   "festival:early"
+  ],
+  "tripIntent": {
+   "playbook": "festival",
+   "label": null,
+   "musts": []
+  },
+  "title": "Tomorrowland 2027",
+  "dates": null,
+  "road": false,
+  "stayAs": null,
+  "budget": null,
+  "travellers": null,
+  "items": [
+   {
+    "name": "Konaklama · Boom",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Boom",
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Boom",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Boom",
+    "d": null,
+    "from": "İstanbul",
+    "to": "Boom",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Boom → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": null,
+    "from": "Boom",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Transfer · Boom",
+    "cat": "transport",
+    "kind": "transfer",
+    "city": "Boom",
+    "d": "2027-07-23",
+    "from": null,
+    "to": "Boom",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Festival bileti",
+    "cat": "activity",
+    "kind": "activity",
+    "city": "Boom",
+    "d": "2027-07-23→2027-08-01",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "booked",
+    "adults": null,
+    "note": "Resmî site: https://www.tomorrowland.com"
+   },
+   {
+    "name": "Çadır",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uyku tulumu",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kafa lambası",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Nakit",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kulak tıkacı",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "BE",
+    "visa": "Schengen vizesi",
+    "currency": "EUR"
+   }
+  ],
+  "live": {
+   "range": null,
+   "nights": {
+    "total": 0,
+    "booked": 0,
+    "chosen": 0,
+    "open": 0
+   },
+   "stayBlocks": [],
+   "looseStays": 1,
+   "legs": [],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Boom · Boom · tarih yok · empty/search · 1 seçenek",
+      "Boom → İstanbul · İstanbul · tarih yok · empty/search · 1 seçenek"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "1 aranıyor",
+     "entries": [
+      "Konaklama · Boom · Boom · tarih yok · empty/search · 1 seçenek"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "transport",
+     "status": "1 rezerve edilmedi",
+     "entries": [
+      "Transfer · Boom · Boom · 23 Tem · book/planned · 1 seçenek"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "activity",
+     "status": "✓ 1 alındı",
+     "entries": [
+      "Festival bileti · Boom · 23 Tem · done/booked"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "prep",
+     "status": "5 hazırlık",
+     "entries": [
+      "Çadır · Tüm gezi · unscheduled/-",
+      "Kafa lambası · Tüm gezi · unscheduled/-",
+      "Kulak tıkacı · Tüm gezi · unscheduled/-",
+      "Nakit · Tüm gezi · unscheduled/-",
+      "Uyku tulumu · Tüm gezi · unscheduled/-"
+     ],
+     "prep": 5,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Belçika)"
+   ],
+   "shape": null
+  }
+ },
+ "03_yoga_retreat_ubud": {
+  "where": "Ubud (Endonezya, ID)",
+  "intentEvent": null,
+  "playbook": "wellness",
+  "pbQuestions": [
+   "wellness:signed"
+  ],
+  "tripIntent": {
+   "playbook": "wellness",
+   "label": null,
+   "musts": []
+  },
+  "title": "Ubud Gezisi",
+  "dates": {
+   "start": "2027-03-08",
+   "end": "2027-03-15"
+  },
+  "road": false,
+  "stayAs": null,
+  "budget": null,
+  "travellers": {
+   "names": [],
+   "count": 1
+  },
+  "items": [
+   {
+    "name": "Konaklama · Ubud",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Ubud",
+    "d": "2027-03-08→2027-03-15",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 1,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Ubud",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Ubud",
+    "d": "2027-03-08",
+    "from": "İstanbul",
+    "to": "Ubud",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 1,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Ubud → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2027-03-15",
+    "from": "Ubud",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 1,
+    "note": null
+   },
+   {
+    "name": "Transfer · Ubud",
+    "cat": "transport",
+    "kind": "transfer",
+    "city": "Ubud",
+    "d": "2027-03-08",
+    "from": null,
+    "to": "Ubud",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 1,
+    "note": null
+   },
+   {
+    "name": "Wellness programı",
+    "cat": "activity",
+    "kind": "activity",
+    "city": "Ubud",
+    "d": "2027-03-08→2027-03-15",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 1,
+    "note": null
+   },
+   {
+    "name": "Rahat kıyafet",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 1,
+    "note": null
+   },
+   {
+    "name": "Yoga matı",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 1,
+    "note": null
+   },
+   {
+    "name": "Matara",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 1,
+    "note": null
+   },
+   {
+    "name": "Kitap ya da defter",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 1,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "ID",
+    "visa": "Resmi kaynağa bak",
+    "currency": "IDR"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2027-03-08",
+    "end": "2027-03-15"
+   },
+   "nights": {
+    "total": 7,
+    "booked": 0,
+    "chosen": 0,
+    "open": 7
+   },
+   "stayBlocks": [
+    "open Ubud 2027-03-08→2027-03-15 (7)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2027-03-08 Ubud→Ubud [planned transfer]",
+    "departure 2027-03-15 Ubud→Ubud [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Ubud · Ubud · 8 Mar · empty/search",
+      "Ubud → İstanbul · Ubud · 15 Mar · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "7 gece boş",
+     "entries": [
+      "Konaklama · Ubud · Ubud · 8–15 Mart · 7 gece · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "transport",
+     "status": "✓ 1 alındı",
+     "entries": [
+      "Havalimanı → Otel · Ubud · 8 Mar · done/-"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "todo",
+     "status": null,
+     "entries": [
+      "Wellness programı · Ubud · 8 Mar · done/-"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "prep",
+     "status": "4 hazırlık",
+     "entries": [
+      "Kitap ya da defter · Tüm gezi · unscheduled/-",
+      "Matara · Tüm gezi · unscheduled/-",
+      "Rahat kıyafet · Tüm gezi · unscheduled/-",
+      "Yoga matı · Tüm gezi · unscheduled/-"
+     ],
+     "prep": 4,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Endonezya)"
+   ],
+   "shape": "Ubud(7 gece,open) | hops: "
+  }
+ },
+ "04a_ski_bansko": {
+  "where": "Bansko (Bulgaristan, BG)",
+  "intentEvent": null,
+  "playbook": "ski",
+  "pbQuestions": [
+   "ski:level",
+   "ski:gear"
+  ],
+  "tripIntent": {
+   "playbook": "ski",
+   "label": null,
+   "musts": []
+  },
+  "title": "Bansko Gezisi",
+  "dates": {
+   "start": "2027-01-15",
+   "end": "2027-01-20"
+  },
+  "road": false,
+  "stayAs": null,
+  "budget": null,
+  "travellers": null,
+  "items": [
+   {
+    "name": "Konaklama · Bansko",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Bansko",
+    "d": "2027-01-15→2027-01-20",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Bansko",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Bansko",
+    "d": "2027-01-15",
+    "from": "İstanbul",
+    "to": "Bansko",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Bansko → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2027-01-20",
+    "from": "Bansko",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Transfer · Bansko",
+    "cat": "transport",
+    "kind": "transfer",
+    "city": "Bansko",
+    "d": "2027-01-15",
+    "from": null,
+    "to": "Bansko",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kayak pası",
+    "cat": "activity",
+    "kind": "activity",
+    "city": "Bansko",
+    "d": "2027-01-15→2027-01-20",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Ekipman kiralama",
+    "cat": "activity",
+    "kind": "activity",
+    "city": "Bansko",
+    "d": "2027-01-15→2027-01-20",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kayak okulu",
+    "cat": "activity",
+    "kind": "activity",
+    "city": "Bansko",
+    "d": "2027-01-15→2027-01-20",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Eldiven",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kayak gözlüğü",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Termal içlik",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kask",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Güneş kremi",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "BG",
+    "visa": "Schengen vizesi",
+    "currency": "(tabloda yok)"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2027-01-15",
+    "end": "2027-01-20"
+   },
+   "nights": {
+    "total": 5,
+    "booked": 0,
+    "chosen": 0,
+    "open": 5
+   },
+   "stayBlocks": [
+    "open Bansko 2027-01-15→2027-01-20 (5)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2027-01-15 Bansko→Bansko [planned transfer]",
+    "departure 2027-01-20 Bansko→Bansko [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Bansko · Bansko · 15 Oca · empty/search",
+      "Bansko → İstanbul · Bansko · 20 Oca · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "5 gece boş",
+     "entries": [
+      "Konaklama · Bansko · Bansko · 15–20 Ocak · 5 gece · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "transport",
+     "status": "✓ 1 alındı",
+     "entries": [
+      "Havalimanı → Otel · Bansko · 15 Oca · done/-"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "todo",
+     "status": null,
+     "entries": [
+      "Kayak pası · Bansko · 15 Oca · done/-",
+      "Ekipman kiralama · Bansko · 15 Oca · done/-",
+      "Kayak okulu · Bansko · 15 Oca · done/-"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "prep",
+     "status": "5 hazırlık",
+     "entries": [
+      "Eldiven · Tüm gezi · unscheduled/-",
+      "Güneş kremi · Tüm gezi · unscheduled/-",
+      "Kask · Tüm gezi · unscheduled/-",
+      "Kayak gözlüğü · Tüm gezi · unscheduled/-",
+      "Termal içlik · Tüm gezi · unscheduled/-"
+     ],
+     "prep": 5,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Bulgaristan)"
+   ],
+   "shape": "Bansko(5 gece,open) | hops: "
+  }
+ },
+ "04b_ski_advanced_owngear": {
+  "where": "Bansko (Bulgaristan, BG)",
+  "intentEvent": null,
+  "playbook": "ski",
+  "pbQuestions": [
+   "ski:level",
+   "ski:gear"
+  ],
+  "tripIntent": {
+   "playbook": "ski",
+   "label": null,
+   "musts": []
+  },
+  "title": "Bansko Gezisi",
+  "dates": {
+   "start": "2027-01-15",
+   "end": "2027-01-20"
+  },
+  "road": false,
+  "stayAs": null,
+  "budget": null,
+  "travellers": null,
+  "items": [
+   {
+    "name": "Konaklama · Bansko",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Bansko",
+    "d": "2027-01-15→2027-01-20",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Bansko",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Bansko",
+    "d": "2027-01-15",
+    "from": "İstanbul",
+    "to": "Bansko",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Bansko → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2027-01-20",
+    "from": "Bansko",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Transfer · Bansko",
+    "cat": "transport",
+    "kind": "transfer",
+    "city": "Bansko",
+    "d": "2027-01-15",
+    "from": null,
+    "to": "Bansko",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kayak pası",
+    "cat": "activity",
+    "kind": "activity",
+    "city": "Bansko",
+    "d": "2027-01-15→2027-01-20",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Eldiven",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kayak gözlüğü",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Termal içlik",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kask",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Güneş kremi",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "BG",
+    "visa": "Schengen vizesi",
+    "currency": "(tabloda yok)"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2027-01-15",
+    "end": "2027-01-20"
+   },
+   "nights": {
+    "total": 5,
+    "booked": 0,
+    "chosen": 0,
+    "open": 5
+   },
+   "stayBlocks": [
+    "open Bansko 2027-01-15→2027-01-20 (5)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2027-01-15 Bansko→Bansko [planned transfer]",
+    "departure 2027-01-20 Bansko→Bansko [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Bansko · Bansko · 15 Oca · empty/search",
+      "Bansko → İstanbul · Bansko · 20 Oca · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "5 gece boş",
+     "entries": [
+      "Konaklama · Bansko · Bansko · 15–20 Ocak · 5 gece · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "transport",
+     "status": "✓ 1 alındı",
+     "entries": [
+      "Havalimanı → Otel · Bansko · 15 Oca · done/-"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "todo",
+     "status": null,
+     "entries": [
+      "Kayak pası · Bansko · 15 Oca · done/-"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "prep",
+     "status": "5 hazırlık",
+     "entries": [
+      "Eldiven · Tüm gezi · unscheduled/-",
+      "Güneş kremi · Tüm gezi · unscheduled/-",
+      "Kask · Tüm gezi · unscheduled/-",
+      "Kayak gözlüğü · Tüm gezi · unscheduled/-",
+      "Termal içlik · Tüm gezi · unscheduled/-"
+     ],
+     "prep": 5,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Bulgaristan)"
+   ],
+   "shape": "Bansko(5 gece,open) | hops: "
+  }
+ },
+ "04c_ski_country_only": {
+  "where": "Bulgaristan (Bulgaristan, BG)",
+  "intentEvent": null,
+  "playbook": "ski",
+  "pbQuestions": [
+   "ski:level",
+   "ski:resort",
+   "ski:gear"
+  ],
+  "tripIntent": {
+   "playbook": "ski",
+   "label": null,
+   "musts": []
+  },
+  "title": "Bulgaristan Gezisi",
+  "dates": {
+   "start": "2027-02-05",
+   "end": "2027-02-09"
+  },
+  "road": false,
+  "stayAs": null,
+  "budget": null,
+  "travellers": null,
+  "items": [
+   {
+    "name": "Konaklama · Bulgaristan",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Bulgaristan",
+    "d": "2027-02-05→2027-02-09",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Bulgaristan",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Bulgaristan",
+    "d": "2027-02-05",
+    "from": "İstanbul",
+    "to": "Bulgaristan",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Bulgaristan → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2027-02-09",
+    "from": "Bulgaristan",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Transfer · Bulgaristan",
+    "cat": "transport",
+    "kind": "transfer",
+    "city": "Bulgaristan",
+    "d": "2027-02-05",
+    "from": null,
+    "to": "Bulgaristan",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kayak pası",
+    "cat": "activity",
+    "kind": "activity",
+    "city": "Bulgaristan",
+    "d": "2027-02-05→2027-02-09",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Ekipman kiralama",
+    "cat": "activity",
+    "kind": "activity",
+    "city": "Bulgaristan",
+    "d": "2027-02-05→2027-02-09",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kayak okulu",
+    "cat": "activity",
+    "kind": "activity",
+    "city": "Bulgaristan",
+    "d": "2027-02-05→2027-02-09",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Eldiven",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kayak gözlüğü",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Termal içlik",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kask",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Güneş kremi",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "BG",
+    "visa": "Schengen vizesi",
+    "currency": "(tabloda yok)"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2027-02-05",
+    "end": "2027-02-09"
+   },
+   "nights": {
+    "total": 4,
+    "booked": 0,
+    "chosen": 0,
+    "open": 4
+   },
+   "stayBlocks": [
+    "open Bulgaristan 2027-02-05→2027-02-09 (4)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2027-02-05 Bulgaristan→Bulgaristan [planned transfer]",
+    "departure 2027-02-09 Bulgaristan→Bulgaristan [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Bulgaristan · Bulgaristan · 5 Şub · empty/search",
+      "Bulgaristan → İstanbul · Bulgaristan · 9 Şub · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "4 gece boş",
+     "entries": [
+      "Konaklama · Bulgaristan · Bulgaristan · 5–9 Şubat · 4 gece · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "transport",
+     "status": "✓ 1 alındı",
+     "entries": [
+      "Havalimanı → Otel · Bulgaristan · 5 Şub · done/-"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "todo",
+     "status": null,
+     "entries": [
+      "Kayak pası · Bulgaristan · 5 Şub · done/-",
+      "Ekipman kiralama · Bulgaristan · 5 Şub · done/-",
+      "Kayak okulu · Bulgaristan · 5 Şub · done/-"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "prep",
+     "status": "5 hazırlık",
+     "entries": [
+      "Eldiven · Tüm gezi · unscheduled/-",
+      "Güneş kremi · Tüm gezi · unscheduled/-",
+      "Kask · Tüm gezi · unscheduled/-",
+      "Kayak gözlüğü · Tüm gezi · unscheduled/-",
+      "Termal içlik · Tüm gezi · unscheduled/-"
+     ],
+     "prep": 5,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Bulgaristan)"
+   ],
+   "shape": "Bulgaristan(4 gece,open) | hops: "
+  }
+ },
+ "05_roadtrip_10_cities": {
+  "where": "İtalya (İtalya, IT)",
+  "intentEvent": null,
+  "playbook": "classic",
+  "pbQuestions": [],
+  "tripIntent": null,
+  "title": "İtalya Gezisi",
+  "dates": {
+   "start": "2027-05-01",
+   "end": "2027-05-11"
+  },
+  "road": true,
+  "stayAs": null,
+  "budget": null,
+  "travellers": null,
+  "items": [
+   {
+    "name": "Konaklama · Milano",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Milano",
+    "d": "2027-05-01→2027-05-02",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Verona",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Verona",
+    "d": "2027-05-02→2027-05-03",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Venedik",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Venedik",
+    "d": "2027-05-03→2027-05-04",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Bologna",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Bologna",
+    "d": "2027-05-04→2027-05-05",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Floransa",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Floransa",
+    "d": "2027-05-05→2027-05-06",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Siena",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Siena",
+    "d": "2027-05-06→2027-05-07",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Pisa",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Pisa",
+    "d": "2027-05-07→2027-05-08",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Cinque Terre",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Cinque Terre",
+    "d": "2027-05-08→2027-05-09",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Cenova",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Cenova",
+    "d": "2027-05-09→2027-05-10",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Torino",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Torino",
+    "d": "2027-05-10→2027-05-11",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Araç kiralama · Milano",
+    "cat": "transport",
+    "kind": "car_rental",
+    "city": "Milano",
+    "d": "2027-05-01→2027-05-11",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "IT",
+    "visa": "Schengen vizesi",
+    "currency": "EUR"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2027-05-01",
+    "end": "2027-05-11"
+   },
+   "nights": {
+    "total": 10,
+    "booked": 0,
+    "chosen": 0,
+    "open": 10
+   },
+   "stayBlocks": [
+    "open Milano 2027-05-01→2027-05-02 (1)",
+    "open Verona 2027-05-02→2027-05-03 (1)",
+    "open Venedik 2027-05-03→2027-05-04 (1)",
+    "open Bologna 2027-05-04→2027-05-05 (1)",
+    "open Floransa 2027-05-05→2027-05-06 (1)",
+    "open Siena 2027-05-06→2027-05-07 (1)",
+    "open Pisa 2027-05-07→2027-05-08 (1)",
+    "open Cinque Terre 2027-05-08→2027-05-09 (1)",
+    "open Cenova 2027-05-09→2027-05-10 (1)",
+    "open Torino 2027-05-10→2027-05-11 (1)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2027-05-01 Milano→Milano [empty]",
+    "move 2027-05-02 Milano→Verona [empty]",
+    "move 2027-05-03 Verona→Venedik [empty]",
+    "move 2027-05-04 Venedik→Bologna [empty]",
+    "move 2027-05-05 Bologna→Floransa [empty]",
+    "move 2027-05-06 Floransa→Siena [empty]",
+    "move 2027-05-07 Siena→Pisa [empty]",
+    "move 2027-05-08 Pisa→Cinque Terre [empty]",
+    "move 2027-05-09 Cinque Terre→Cenova [empty]",
+    "move 2027-05-10 Cenova→Torino [empty]",
+    "departure 2027-05-11 Torino→Torino [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 uçuş eklenmedi",
+     "entries": [
+      "Gidiş uçuşu · 1 May · empty/search",
+      "Dönüş uçuşu · 11 May · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "10 gece boş",
+     "entries": [
+      "Konaklama · Milano · Milano · 1–2 Mayıs · 1 gece · empty/search",
+      "Konaklama · Verona · Verona · 2–3 Mayıs · 1 gece · empty/search",
+      "Konaklama · Venedik · Venedik · 3–4 Mayıs · 1 gece · empty/search",
+      "Konaklama · Bologna · Bologna · 4–5 Mayıs · 1 gece · empty/search",
+      "Konaklama · Floransa · Floransa · 5–6 Mayıs · 1 gece · empty/search",
+      "Konaklama · Siena · Siena · 6–7 Mayıs · 1 gece · empty/search",
+      "Konaklama · Pisa · Pisa · 7–8 Mayıs · 1 gece · empty/search",
+      "Konaklama · Cinque Terre · Cinque Terre · 8–9 Mayıs · 1 gece · empty/search",
+      "Konaklama · Cenova · Cenova · 9–10 Mayıs · 1 gece · empty/search",
+      "Konaklama · Torino · Torino · 10–11 Mayıs · 1 gece · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "transport",
+     "status": "9 planlanmadı · 1 aranıyor",
+     "entries": [
+      "Araç kiralama · Milano · Milano · 1–11 Mayıs · empty/search",
+      "Milano → Verona · Verona · 2 May · empty/search",
+      "Verona → Venedik · Venedik · 3 May · empty/search",
+      "Venedik → Bologna · Bologna · 4 May · empty/search",
+      "Bologna → Floransa · Floransa · 5 May · empty/search",
+      "Floransa → Siena · Siena · 6 May · empty/search",
+      "Siena → Pisa · Pisa · 7 May · empty/search",
+      "Pisa → Cinque Terre · Cinque Terre · 8 May · empty/search",
+      "Cinque Terre → Cenova · Cenova · 9 May · empty/search",
+      "Cenova → Torino · Torino · 10 May · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (İtalya)"
+   ],
+   "shape": "Milano(1 gece,open) — Verona(1 gece,open) — Venedik(1 gece,open) — Bologna(1 gece,open) — Floransa(1 gece,open) — Siena(1 gece,open) — Pisa(1 gece,open) — Cinque Terre(1 gece,open) — Cenova(1 gece,open) — Torino(1 gece,open) | hops: train,train,train,train,train,train,train,train,train"
+  }
+ },
+ "06a_cruise_no_plan": {
+  "where": "Akdeniz (-, -)",
+  "intentEvent": null,
+  "playbook": "classic",
+  "pbQuestions": [],
+  "tripIntent": null,
+  "title": "Akdeniz Gezisi",
+  "dates": {
+   "start": "2027-08-07",
+   "end": "2027-08-14"
+  },
+  "road": false,
+  "stayAs": null,
+  "budget": null,
+  "travellers": null,
+  "items": [
+   {
+    "name": "Konaklama · Akdeniz",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Akdeniz",
+    "d": "2027-08-07→2027-08-14",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Akdeniz",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Akdeniz",
+    "d": "2027-08-07",
+    "from": "İstanbul",
+    "to": "Akdeniz",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Akdeniz → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2027-08-14",
+    "from": "Akdeniz",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   }
+  ],
+  "countries": [],
+  "live": {
+   "range": {
+    "start": "2027-08-07",
+    "end": "2027-08-14"
+   },
+   "nights": {
+    "total": 7,
+    "booked": 0,
+    "chosen": 0,
+    "open": 7
+   },
+   "stayBlocks": [
+    "open Akdeniz 2027-08-07→2027-08-14 (7)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2027-08-07 Akdeniz→Akdeniz [empty]",
+    "departure 2027-08-14 Akdeniz→Akdeniz [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Akdeniz · Akdeniz · 7 Ağu · empty/search",
+      "Akdeniz → İstanbul · Akdeniz · 14 Ağu · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "7 gece boş",
+     "entries": [
+      "Konaklama · Akdeniz · Akdeniz · 7–14 Ağustos · 7 gece · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    }
+   ],
+   "rules": [],
+   "shape": "Akdeniz(7 gece,open) | hops: "
+  }
+ },
+ "06b_cruise_AI_plan": {
+  "where": "Barselona (İspanya, ES)",
+  "intentEvent": null,
+  "playbook": "custom",
+  "pbQuestions": [],
+  "tripIntent": {
+   "playbook": "custom",
+   "label": "Akdeniz kruvaziyeri",
+   "musts": []
+  },
+  "title": "Barselona Gezisi",
+  "dates": {
+   "start": "2027-08-07",
+   "end": "2027-08-14"
+  },
+  "road": false,
+  "stayAs": {
+   "kind": "boat",
+   "city": "Barselona"
+  },
+  "budget": null,
+  "travellers": null,
+  "items": [
+   {
+    "name": "Tekne · Barselona",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Barselona",
+    "d": "2027-08-07→2027-08-14",
+    "from": null,
+    "to": null,
+    "stayKind": "boat",
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Barselona",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Barselona",
+    "d": "2027-08-07",
+    "from": "İstanbul",
+    "to": "Barselona",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Barselona → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2027-08-14",
+    "from": "Barselona",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Limana transfer",
+    "cat": "transport",
+    "kind": "transfer",
+    "city": "Barselona",
+    "d": "2027-08-07",
+    "from": null,
+    "to": "Barselona",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kıyı turları",
+    "cat": "activity",
+    "kind": "activity",
+    "city": "Barselona",
+    "d": "2027-08-07→2027-08-14",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "ES",
+    "visa": "Schengen vizesi",
+    "currency": "EUR"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2027-08-07",
+    "end": "2027-08-14"
+   },
+   "nights": {
+    "total": 7,
+    "booked": 0,
+    "chosen": 0,
+    "open": 7
+   },
+   "stayBlocks": [
+    "open Barselona 2027-08-07→2027-08-14 (7)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2027-08-07 Barselona→Barselona [planned transfer]",
+    "departure 2027-08-14 Barselona→Barselona [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Barselona · Barselona · 7 Ağu · empty/search",
+      "Barselona → İstanbul · Barselona · 14 Ağu · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "1 rezerve edilmedi",
+     "entries": [
+      "Tekne · Barselona · Barselona · 7–14 Ağustos · 7 gece · book/planned"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "transport",
+     "status": "✓ 1 alındı",
+     "entries": [
+      "Havalimanı → Otel · Barselona · 7 Ağu · done/-"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "activity",
+     "status": "1 bilet yok",
+     "entries": [
+      "Kıyı turları · Barselona · 7 Ağu · book/planned"
+     ],
+     "prep": 0,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (İspanya)"
+   ],
+   "shape": "Barselona(7 gece,open) | hops: "
+  }
+ },
+ "07_business_frankfurt": {
+  "where": "Frankfurt (Almanya, DE)",
+  "intentEvent": null,
+  "playbook": "classic",
+  "pbQuestions": [],
+  "tripIntent": null,
+  "title": "Frankfurt Gezisi",
+  "dates": {
+   "start": "2026-10-26",
+   "end": "2026-10-28"
+  },
+  "road": false,
+  "stayAs": null,
+  "budget": null,
+  "travellers": {
+   "names": [],
+   "count": 1
+  },
+  "items": [
+   {
+    "name": "Konaklama · Frankfurt",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Frankfurt",
+    "d": "2026-10-26→2026-10-28",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 1,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Frankfurt",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Frankfurt",
+    "d": "2026-10-26",
+    "from": "İstanbul",
+    "to": "Frankfurt",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 1,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Frankfurt → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2026-10-28",
+    "from": "Frankfurt",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 1,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "DE",
+    "visa": "Schengen vizesi",
+    "currency": "EUR"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2026-10-26",
+    "end": "2026-10-28"
+   },
+   "nights": {
+    "total": 2,
+    "booked": 0,
+    "chosen": 0,
+    "open": 2
+   },
+   "stayBlocks": [
+    "open Frankfurt 2026-10-26→2026-10-28 (2)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2026-10-26 Frankfurt→Frankfurt [empty]",
+    "departure 2026-10-28 Frankfurt→Frankfurt [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Frankfurt · Frankfurt · 26 Eki · empty/search",
+      "Frankfurt → İstanbul · Frankfurt · 28 Eki · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "2 gece boş",
+     "entries": [
+      "Konaklama · Frankfurt · Frankfurt · 26–28 Ekim · 2 gece · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Almanya)"
+   ],
+   "shape": "Frankfurt(2 gece,open) | hops: "
+  }
+ },
+ "08a_safari_kenya_no_plan": {
+  "where": "Kenya (Kenya, KE)",
+  "intentEvent": null,
+  "playbook": "classic",
+  "pbQuestions": [],
+  "tripIntent": null,
+  "title": "Kenya Gezisi",
+  "dates": {
+   "start": "2027-02-10",
+   "end": "2027-02-16"
+  },
+  "road": false,
+  "stayAs": null,
+  "budget": null,
+  "travellers": null,
+  "items": [
+   {
+    "name": "Konaklama · Kenya",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Kenya",
+    "d": "2027-02-10→2027-02-16",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Kenya",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Kenya",
+    "d": "2027-02-10",
+    "from": "İstanbul",
+    "to": "Kenya",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Kenya → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2027-02-16",
+    "from": "Kenya",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "KE",
+    "visa": "Resmi kaynağa bak",
+    "currency": "(tabloda yok)"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2027-02-10",
+    "end": "2027-02-16"
+   },
+   "nights": {
+    "total": 6,
+    "booked": 0,
+    "chosen": 0,
+    "open": 6
+   },
+   "stayBlocks": [
+    "open Kenya 2027-02-10→2027-02-16 (6)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2027-02-10 Kenya→Kenya [empty]",
+    "departure 2027-02-16 Kenya→Kenya [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Kenya · Kenya · 10 Şub · empty/search",
+      "Kenya → İstanbul · Kenya · 16 Şub · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "6 gece boş",
+     "entries": [
+      "Konaklama · Kenya · Kenya · 10–16 Şubat · 6 gece · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Kenya)"
+   ],
+   "shape": "Kenya(6 gece,open) | hops: "
+  }
+ },
+ "08b_safari_kenya_AI_camp": {
+  "where": "Kenya (Kenya, KE)",
+  "intentEvent": null,
+  "playbook": "custom",
+  "pbQuestions": [],
+  "tripIntent": {
+   "playbook": "custom",
+   "label": "Masai Mara safari",
+   "musts": []
+  },
+  "title": "Kenya Gezisi",
+  "dates": {
+   "start": "2027-02-10",
+   "end": "2027-02-16"
+  },
+  "road": false,
+  "stayAs": {
+   "kind": "camp",
+   "city": "Masai Mara"
+  },
+  "budget": null,
+  "travellers": null,
+  "items": [
+   {
+    "name": "Kamp · Masai Mara",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Masai Mara",
+    "d": "2027-02-10→2027-02-16",
+    "from": null,
+    "to": null,
+    "stayKind": "camp",
+    "noBooking": true,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Masai Mara",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Masai Mara",
+    "d": "2027-02-10",
+    "from": "İstanbul",
+    "to": "Masai Mara",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Masai Mara → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2027-02-16",
+    "from": "Masai Mara",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Nairobi → Masai Mara küçük uçak",
+    "cat": "transport",
+    "kind": "transfer",
+    "city": "Masai Mara",
+    "d": "2027-02-10",
+    "from": null,
+    "to": "Masai Mara",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Safari (game drive) paketi",
+    "cat": "activity",
+    "kind": "activity",
+    "city": "Masai Mara",
+    "d": "2027-02-10→2027-02-16",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Sarıhumma aşısı",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Sıtma ilacı",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "KE",
+    "visa": "Resmi kaynağa bak",
+    "currency": "(tabloda yok)"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2027-02-10",
+    "end": "2027-02-16"
+   },
+   "nights": {
+    "total": 6,
+    "booked": 0,
+    "chosen": 6,
+    "open": 0
+   },
+   "stayBlocks": [
+    "chosen Masai Mara 2027-02-10→2027-02-16 (6)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2027-02-10 Masai Mara→Masai Mara [planned]",
+    "departure 2027-02-16 Masai Mara→Masai Mara [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Masai Mara · Masai Mara · 10 Şub · empty/search",
+      "Masai Mara → İstanbul · Masai Mara · 16 Şub · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "✓ 1 alındı",
+     "entries": [
+      "Kamp · Masai Mara · Masai Mara · 10–16 Şubat · 6 gece · done/-"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "transport",
+     "status": "✓ 1 alındı",
+     "entries": [
+      "Havalimanı → Kamp · Masai Mara · 10 Şub · done/-"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "todo",
+     "status": null,
+     "entries": [
+      "Safari (game drive) paketi · Masai Mara · 10 Şub · done/-"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "prep",
+     "status": "2 hazırlık",
+     "entries": [
+      "Sarıhumma aşısı · Tüm gezi · unscheduled/-",
+      "Sıtma ilacı · Tüm gezi · unscheduled/-"
+     ],
+     "prep": 2,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Kenya)"
+   ],
+   "shape": "Masai Mara(6 gece,chosen) | hops: "
+  }
+ },
+ "09_interrail_6": {
+  "where": "Budapeşte (Macaristan, HU)",
+  "intentEvent": null,
+  "playbook": "classic",
+  "pbQuestions": [],
+  "tripIntent": null,
+  "title": "Budapeşte Gezisi",
+  "dates": {
+   "start": "2027-07-01",
+   "end": "2027-07-22"
+  },
+  "road": false,
+  "stayAs": null,
+  "budget": null,
+  "travellers": null,
+  "items": [
+   {
+    "name": "Konaklama · Londra",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Londra",
+    "d": "2027-07-01→2027-07-04",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Paris",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Paris",
+    "d": "2027-07-04→2027-07-08",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Amsterdam",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Amsterdam",
+    "d": "2027-07-08→2027-07-11",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Berlin",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Berlin",
+    "d": "2027-07-11→2027-07-15",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Prag",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Prag",
+    "d": "2027-07-15→2027-07-18",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Budapeşte",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Budapeşte",
+    "d": "2027-07-18→2027-07-22",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Londra",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Londra",
+    "d": "2027-07-01",
+    "from": "İstanbul",
+    "to": "Londra",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Budapeşte → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2027-07-22",
+    "from": "Budapeşte",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "GB",
+    "visa": "Birleşik Krallık vizesi",
+    "currency": "GBP"
+   },
+   {
+    "code": "FR",
+    "visa": "Schengen vizesi",
+    "currency": "EUR"
+   },
+   {
+    "code": "NL",
+    "visa": "Schengen vizesi",
+    "currency": "EUR"
+   },
+   {
+    "code": "DE",
+    "visa": "Schengen vizesi",
+    "currency": "EUR"
+   },
+   {
+    "code": "CZ",
+    "visa": "Schengen vizesi",
+    "currency": "CZK"
+   },
+   {
+    "code": "HU",
+    "visa": "Schengen vizesi",
+    "currency": "HUF"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2027-07-01",
+    "end": "2027-07-22"
+   },
+   "nights": {
+    "total": 21,
+    "booked": 0,
+    "chosen": 0,
+    "open": 21
+   },
+   "stayBlocks": [
+    "open Londra 2027-07-01→2027-07-04 (3)",
+    "open Paris 2027-07-04→2027-07-08 (4)",
+    "open Amsterdam 2027-07-08→2027-07-11 (3)",
+    "open Berlin 2027-07-11→2027-07-15 (4)",
+    "open Prag 2027-07-15→2027-07-18 (3)",
+    "open Budapeşte 2027-07-18→2027-07-22 (4)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2027-07-01 Londra→Londra [empty]",
+    "move 2027-07-04 Londra→Paris [empty]",
+    "move 2027-07-08 Paris→Amsterdam [empty]",
+    "move 2027-07-11 Amsterdam→Berlin [empty]",
+    "move 2027-07-15 Berlin→Prag [empty]",
+    "move 2027-07-18 Prag→Budapeşte [empty]",
+    "departure 2027-07-22 Budapeşte→Budapeşte [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Londra · Londra · 1 Tem · empty/search",
+      "Budapeşte → İstanbul · Budapeşte · 22 Tem · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "21 gece boş",
+     "entries": [
+      "Konaklama · Londra · Londra · 1–4 Temmuz · 3 gece · empty/search",
+      "Konaklama · Paris · Paris · 4–8 Temmuz · 4 gece · empty/search",
+      "Konaklama · Amsterdam · Amsterdam · 8–11 Temmuz · 3 gece · empty/search",
+      "Konaklama · Berlin · Berlin · 11–15 Temmuz · 4 gece · empty/search",
+      "Konaklama · Prag · Prag · 15–18 Temmuz · 3 gece · empty/search",
+      "Konaklama · Budapeşte · Budapeşte · 18–22 Temmuz · 4 gece · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "transport",
+     "status": "5 planlanmadı",
+     "entries": [
+      "Londra → Paris · Paris · 4 Tem · empty/search",
+      "Paris → Amsterdam · Amsterdam · 8 Tem · empty/search",
+      "Amsterdam → Berlin · Berlin · 11 Tem · empty/search",
+      "Berlin → Prag · Prag · 15 Tem · empty/search",
+      "Prag → Budapeşte · Budapeşte · 18 Tem · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Birleşik Krallık, Fransa, Hollanda, Almanya, Çekya, Macaristan)"
+   ],
+   "shape": "Londra(3 gece,open) — Paris(4 gece,open) — Amsterdam(3 gece,open) — Berlin(4 gece,open) — Prag(3 gece,open) — Budapeşte(4 gece,open) | hops: train,train,train,train,train"
+  }
+ },
+ "10_weekend_bursa_bus": {
+  "parsed": {
+   "where": null,
+   "from": null,
+   "who": null,
+   "start": {
+    "date": "2026-10-23",
+    "approx": false
+   },
+   "duration": {
+    "unit": "weekend",
+    "n": 1
+   },
+   "styles": [],
+   "budget": null
+  },
+  "made": {
+   "error": "creationOf null (nereye bilinmiyor)",
+   "where": null,
+   "intent": null
+  }
+ },
+ "11_daytrip_sile": {
+  "parsed": {
+   "where": null,
+   "from": null,
+   "who": null,
+   "start": null,
+   "duration": null,
+   "styles": [],
+   "budget": null
+  },
+  "made": {
+   "where": "Şile (Türkiye, TR)",
+   "intentEvent": null,
+   "playbook": "classic",
+   "pbQuestions": [],
+   "tripIntent": null,
+   "title": "Şile Gezisi",
+   "dates": {
+    "start": "2026-10-24",
+    "end": "2026-10-25"
+   },
+   "road": false,
+   "stayAs": null,
+   "budget": null,
+   "travellers": null,
+   "items": [
+    {
+     "name": "Konaklama · Şile",
+     "cat": "stay",
+     "kind": "stay",
+     "city": "Şile",
+     "d": "2026-10-24→2026-10-25",
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": null,
+     "note": null
+    },
+    {
+     "name": "Uçuş · İstanbul → Şile",
+     "cat": "flight",
+     "kind": "flight",
+     "city": "Şile",
+     "d": "2026-10-24",
+     "from": "İstanbul",
+     "to": "Şile",
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": null,
+     "note": null
+    },
+    {
+     "name": "Uçuş · Şile → İstanbul",
+     "cat": "flight",
+     "kind": "flight",
+     "city": "İstanbul",
+     "d": "2026-10-25",
+     "from": "Şile",
+     "to": "İstanbul",
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": null,
+     "note": null
+    }
+   ],
+   "countries": [
+    {
+     "code": "TR",
+     "visa": "Gerekmez",
+     "currency": "TRY"
+    }
+   ],
+   "live": {
+    "range": {
+     "start": "2026-10-24",
+     "end": "2026-10-25"
+    },
+    "nights": {
+     "total": 1,
+     "booked": 0,
+     "chosen": 0,
+     "open": 1
+    },
+    "stayBlocks": [
+     "open Şile 2026-10-24→2026-10-25 (1)"
+    ],
+    "looseStays": 0,
+    "legs": [
+     "arrival 2026-10-24 Şile→Şile [empty]",
+     "departure 2026-10-25 Şile→Şile [empty]"
+    ],
+    "sections": [
+     {
+      "id": "flight",
+      "status": "2 aranıyor",
+      "entries": [
+       "İstanbul → Şile · Şile · 24 Eki · empty/search",
+       "Şile → İstanbul · Şile · 25 Eki · empty/search"
+      ],
+      "prep": 0,
+      "hidden": 0
+     },
+     {
+      "id": "stay",
+      "status": "1 gece boş",
+      "entries": [
+       "Konaklama · Şile · Şile · 24–25 Ekim · 1 gece · empty/search"
+      ],
+      "prep": 0,
+      "hidden": 0
+     }
+    ],
+    "rules": [],
+    "shape": "Şile(1 gece,open) | hops: "
+   }
+  }
+ },
+ "12_no_date_summer": {
+  "parsed": {
+   "where": {
+    "place": "Portekiz",
+    "country": "Portekiz",
+    "code": "PT"
+   },
+   "from": null,
+   "who": null,
+   "start": null,
+   "duration": null,
+   "styles": [],
+   "budget": null,
+   "whereSure": true
+  },
+  "made": {
+   "where": "Portekiz (Portekiz, PT)",
+   "intentEvent": null,
+   "playbook": "classic",
+   "pbQuestions": [],
+   "tripIntent": null,
+   "title": "Portekiz Gezisi",
+   "dates": null,
+   "road": false,
+   "stayAs": null,
+   "budget": null,
+   "travellers": null,
+   "items": [
+    {
+     "name": "Konaklama · Portekiz",
+     "cat": "stay",
+     "kind": "stay",
+     "city": "Portekiz",
+     "d": null,
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": null,
+     "note": null
+    },
+    {
+     "name": "Uçuş · İstanbul → Portekiz",
+     "cat": "flight",
+     "kind": "flight",
+     "city": "Portekiz",
+     "d": null,
+     "from": "İstanbul",
+     "to": "Portekiz",
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": null,
+     "note": null
+    },
+    {
+     "name": "Uçuş · Portekiz → İstanbul",
+     "cat": "flight",
+     "kind": "flight",
+     "city": "İstanbul",
+     "d": null,
+     "from": "Portekiz",
+     "to": "İstanbul",
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": null,
+     "note": null
+    }
+   ],
+   "countries": [
+    {
+     "code": "PT",
+     "visa": "Schengen vizesi",
+     "currency": "EUR"
+    }
+   ],
+   "live": {
+    "range": null,
+    "nights": {
+     "total": 0,
+     "booked": 0,
+     "chosen": 0,
+     "open": 0
+    },
+    "stayBlocks": [],
+    "looseStays": 1,
+    "legs": [],
+    "sections": [
+     {
+      "id": "flight",
+      "status": "2 aranıyor",
+      "entries": [
+       "Portekiz → İstanbul · İstanbul · tarih yok · empty/search · 1 seçenek",
+       "İstanbul → Portekiz · Portekiz · tarih yok · empty/search · 1 seçenek"
+      ],
+      "prep": 0,
+      "hidden": 0
+     },
+     {
+      "id": "stay",
+      "status": "1 aranıyor",
+      "entries": [
+       "Konaklama · Portekiz · Portekiz · tarih yok · empty/search · 1 seçenek"
+      ],
+      "prep": 0,
+      "hidden": 0
+     }
+    ],
+    "rules": [
+     "other: Seyahat sağlık sigortası",
+     "other: eSIM (Portekiz)"
+    ],
+    "shape": null
+   }
+  }
+ },
+ "13_group_8_kids": {
+  "parsed": {
+   "where": {
+    "place": "Antalya",
+    "country": "Türkiye",
+    "code": "TR"
+   },
+   "from": null,
+   "who": {
+    "kind": null,
+    "names": [],
+    "count": 8
+   },
+   "start": {
+    "date": "2027-08-01",
+    "approx": true
+   },
+   "duration": {
+    "unit": "night",
+    "n": 7
+   },
+   "styles": [],
+   "budget": null,
+   "whereSure": false
+  },
+  "made": {
+   "where": "Antalya (Türkiye, TR)",
+   "intentEvent": null,
+   "playbook": "classic",
+   "pbQuestions": [],
+   "tripIntent": null,
+   "title": "Antalya Gezisi",
+   "dates": {
+    "start": "2027-08-01",
+    "end": "2027-08-08"
+   },
+   "road": false,
+   "stayAs": null,
+   "budget": null,
+   "travellers": {
+    "names": [],
+    "count": 8
+   },
+   "items": [
+    {
+     "name": "Konaklama · Antalya",
+     "cat": "stay",
+     "kind": "stay",
+     "city": "Antalya",
+     "d": "2027-08-01→2027-08-08",
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 8,
+     "note": null
+    },
+    {
+     "name": "Uçuş · İstanbul → Antalya",
+     "cat": "flight",
+     "kind": "flight",
+     "city": "Antalya",
+     "d": "2027-08-01",
+     "from": "İstanbul",
+     "to": "Antalya",
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 8,
+     "note": null
+    },
+    {
+     "name": "Uçuş · Antalya → İstanbul",
+     "cat": "flight",
+     "kind": "flight",
+     "city": "İstanbul",
+     "d": "2027-08-08",
+     "from": "Antalya",
+     "to": "İstanbul",
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 8,
+     "note": null
+    }
+   ],
+   "countries": [
+    {
+     "code": "TR",
+     "visa": "Gerekmez",
+     "currency": "TRY"
+    }
+   ],
+   "live": {
+    "range": {
+     "start": "2027-08-01",
+     "end": "2027-08-08"
+    },
+    "nights": {
+     "total": 7,
+     "booked": 0,
+     "chosen": 0,
+     "open": 7
+    },
+    "stayBlocks": [
+     "open Antalya 2027-08-01→2027-08-08 (7)"
+    ],
+    "looseStays": 0,
+    "legs": [
+     "arrival 2027-08-01 Antalya→Antalya [empty]",
+     "departure 2027-08-08 Antalya→Antalya [empty]"
+    ],
+    "sections": [
+     {
+      "id": "flight",
+      "status": "2 aranıyor",
+      "entries": [
+       "İstanbul → Antalya · Antalya · 1 Ağu · empty/search",
+       "Antalya → İstanbul · Antalya · 8 Ağu · empty/search"
+      ],
+      "prep": 0,
+      "hidden": 0
+     },
+     {
+      "id": "stay",
+      "status": "7 gece boş",
+      "entries": [
+       "Konaklama · Antalya · Antalya · 1–8 Ağustos · 7 gece · empty/search"
+      ],
+      "prep": 0,
+      "hidden": 0
+     }
+    ],
+    "rules": [],
+    "shape": "Antalya(7 gece,open) | hops: "
+   }
+  }
+ },
+ "14_solo_lisbon": {
+  "where": "Lizbon (Portekiz, PT)",
+  "intentEvent": null,
+  "playbook": "classic",
+  "pbQuestions": [],
+  "tripIntent": null,
+  "title": "Lizbon Gezisi",
+  "dates": {
+   "start": "2026-12-10",
+   "end": "2026-12-15"
+  },
+  "road": false,
+  "stayAs": null,
+  "budget": null,
+  "travellers": {
+   "names": [],
+   "count": 1
+  },
+  "items": [
+   {
+    "name": "Konaklama · Lizbon",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Lizbon",
+    "d": "2026-12-10→2026-12-15",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 1,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Lizbon",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Lizbon",
+    "d": "2026-12-10",
+    "from": "İstanbul",
+    "to": "Lizbon",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 1,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Lizbon → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2026-12-15",
+    "from": "Lizbon",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 1,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "PT",
+    "visa": "Schengen vizesi",
+    "currency": "EUR"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2026-12-10",
+    "end": "2026-12-15"
+   },
+   "nights": {
+    "total": 5,
+    "booked": 0,
+    "chosen": 0,
+    "open": 5
+   },
+   "stayBlocks": [
+    "open Lizbon 2026-12-10→2026-12-15 (5)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2026-12-10 Lizbon→Lizbon [empty]",
+    "departure 2026-12-15 Lizbon→Lizbon [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Lizbon · Lizbon · 10 Ara · empty/search",
+      "Lizbon → İstanbul · Lizbon · 15 Ara · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "5 gece boş",
+     "entries": [
+      "Konaklama · Lizbon · Lizbon · 10–15 Aralık · 5 gece · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Portekiz)"
+   ],
+   "shape": "Lizbon(5 gece,open) | hops: "
+  }
+ },
+ "16a_long_name": {
+  "parsed": {
+   "where": null,
+   "from": null,
+   "who": null,
+   "start": null,
+   "duration": {
+    "unit": "night",
+    "n": 2
+   },
+   "styles": [],
+   "budget": null
+  },
+  "made": {
+   "error": "creationOf null (nereye bilinmiyor)",
+   "where": null,
+   "intent": null
+  }
+ },
+ "16b_playa_del_carmen": {
+  "parsed": {
+   "where": null,
+   "from": null,
+   "who": null,
+   "start": {
+    "date": "2027-01-01",
+    "approx": true
+   },
+   "duration": {
+    "unit": "night",
+    "n": 5
+   },
+   "styles": [],
+   "budget": null
+  },
+  "made": {
+   "where": "Playa Del Carmen (Meksika, MX)",
+   "intentEvent": null,
+   "playbook": "classic",
+   "pbQuestions": [],
+   "tripIntent": null,
+   "title": "Playa Del Carmen Gezisi",
+   "dates": {
+    "start": "2027-01-10",
+    "end": "2027-01-15"
+   },
+   "road": false,
+   "stayAs": null,
+   "budget": null,
+   "travellers": null,
+   "items": [
+    {
+     "name": "Konaklama · Playa Del Carmen",
+     "cat": "stay",
+     "kind": "stay",
+     "city": "Playa Del Carmen",
+     "d": "2027-01-10→2027-01-15",
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": null,
+     "note": null
+    },
+    {
+     "name": "Uçuş · İstanbul → Playa Del Carmen",
+     "cat": "flight",
+     "kind": "flight",
+     "city": "Playa Del Carmen",
+     "d": "2027-01-10",
+     "from": "İstanbul",
+     "to": "Playa Del Carmen",
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": null,
+     "note": null
+    },
+    {
+     "name": "Uçuş · Playa Del Carmen → İstanbul",
+     "cat": "flight",
+     "kind": "flight",
+     "city": "İstanbul",
+     "d": "2027-01-15",
+     "from": "Playa Del Carmen",
+     "to": "İstanbul",
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": null,
+     "note": null
+    }
+   ],
+   "countries": [
+    {
+     "code": "MX",
+     "visa": "Resmi kaynağa bak",
+     "currency": "(tabloda yok)"
+    }
+   ],
+   "live": {
+    "range": {
+     "start": "2027-01-10",
+     "end": "2027-01-15"
+    },
+    "nights": {
+     "total": 5,
+     "booked": 0,
+     "chosen": 0,
+     "open": 5
+    },
+    "stayBlocks": [
+     "open Playa Del Carmen 2027-01-10→2027-01-15 (5)"
+    ],
+    "looseStays": 0,
+    "legs": [
+     "arrival 2027-01-10 Playa Del Carmen→Playa Del Carmen [empty]",
+     "departure 2027-01-15 Playa Del Carmen→Playa Del Carmen [empty]"
+    ],
+    "sections": [
+     {
+      "id": "flight",
+      "status": "2 aranıyor",
+      "entries": [
+       "İstanbul → Playa Del Carmen · Playa Del Carmen · 10 Oca · empty/search",
+       "Playa Del Carmen → İstanbul · Playa Del Carmen · 15 Oca · empty/search"
+      ],
+      "prep": 0,
+      "hidden": 0
+     },
+     {
+      "id": "stay",
+      "status": "5 gece boş",
+      "entries": [
+       "Konaklama · Playa Del Carmen · Playa Del Carmen · 10–15 Ocak · 5 gece · empty/search"
+      ],
+      "prep": 0,
+      "hidden": 0
+     }
+    ],
+    "rules": [
+     "other: Seyahat sağlık sigortası",
+     "other: eSIM (Meksika)"
+    ],
+    "shape": "Playa Del Carmen(5 gece,open) | hops: "
+   }
+  }
+ },
+ "20_open_jaw_japan": {
+  "where": "Japonya (Japonya, JP)",
+  "intentEvent": null,
+  "playbook": "classic",
+  "pbQuestions": [],
+  "tripIntent": null,
+  "title": "Japonya Gezisi",
+  "dates": {
+   "start": "2027-04-01",
+   "end": "2027-04-16"
+  },
+  "road": false,
+  "stayAs": null,
+  "budget": null,
+  "travellers": {
+   "names": [
+    "Sabine"
+   ],
+   "count": 2
+  },
+  "items": [
+   {
+    "name": "Konaklama · Tokyo",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Tokyo",
+    "d": "2027-04-01→2027-04-05",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Kyoto",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Kyoto",
+    "d": "2027-04-05→2027-04-09",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Hakone",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Hakone",
+    "d": "2027-04-09→2027-04-12",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Osaka",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Osaka",
+    "d": "2027-04-12→2027-04-16",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Tokyo",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Tokyo",
+    "d": "2027-04-01",
+    "from": "İstanbul",
+    "to": "Tokyo",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Osaka → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2027-04-16",
+    "from": "Osaka",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "JP",
+    "visa": "Vizesiz · 90 gün",
+    "currency": "JPY"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2027-04-01",
+    "end": "2027-04-16"
+   },
+   "nights": {
+    "total": 15,
+    "booked": 0,
+    "chosen": 0,
+    "open": 15
+   },
+   "stayBlocks": [
+    "open Tokyo 2027-04-01→2027-04-05 (4)",
+    "open Kyoto 2027-04-05→2027-04-09 (4)",
+    "open Hakone 2027-04-09→2027-04-12 (3)",
+    "open Osaka 2027-04-12→2027-04-16 (4)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2027-04-01 Tokyo→Tokyo [empty]",
+    "move 2027-04-05 Tokyo→Kyoto [empty]",
+    "move 2027-04-09 Kyoto→Hakone [empty]",
+    "move 2027-04-12 Hakone→Osaka [empty]",
+    "departure 2027-04-16 Osaka→Osaka [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Tokyo · Tokyo · 1 Nis · empty/search",
+      "Osaka → İstanbul · Osaka · 16 Nis · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "15 gece boş",
+     "entries": [
+      "Konaklama · Tokyo · Tokyo · 1–5 Nisan · 4 gece · empty/search",
+      "Konaklama · Kyoto · Kyoto · 5–9 Nisan · 4 gece · empty/search",
+      "Konaklama · Hakone · Hakone · 9–12 Nisan · 3 gece · empty/search",
+      "Konaklama · Osaka · Osaka · 12–16 Nisan · 4 gece · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "transport",
+     "status": "3 planlanmadı",
+     "entries": [
+      "Tokyo → Kyoto · Kyoto · 5 Nis · empty/search",
+      "Kyoto → Hakone · Hakone · 9 Nis · empty/search",
+      "Hakone → Osaka · Osaka · 12 Nis · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Japonya)"
+   ],
+   "shape": "Tokyo(4 gece,open) — Kyoto(4 gece,open) — Hakone(3 gece,open) — Osaka(4 gece,open) | hops: train,train,train"
+  }
+ },
+ "20b_japan_route_unconfirmed": {
+  "where": "Japonya (Japonya, JP)",
+  "intentEvent": null,
+  "playbook": "classic",
+  "pbQuestions": [],
+  "tripIntent": null,
+  "title": "Japonya Gezisi",
+  "dates": {
+   "start": "2027-04-01",
+   "end": "2027-04-16"
+  },
+  "road": false,
+  "stayAs": null,
+  "budget": null,
+  "travellers": {
+   "names": [
+    "Sabine"
+   ],
+   "count": 2
+  },
+  "items": [
+   {
+    "name": "Konaklama · Japonya",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Japonya",
+    "d": "2027-04-01→2027-04-16",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Japonya",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Japonya",
+    "d": "2027-04-01",
+    "from": "İstanbul",
+    "to": "Japonya",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Japonya → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2027-04-16",
+    "from": "Japonya",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "JP",
+    "visa": "Vizesiz · 90 gün",
+    "currency": "JPY"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2027-04-01",
+    "end": "2027-04-16"
+   },
+   "nights": {
+    "total": 15,
+    "booked": 0,
+    "chosen": 0,
+    "open": 15
+   },
+   "stayBlocks": [
+    "open Japonya 2027-04-01→2027-04-16 (15)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2027-04-01 Japonya→Japonya [empty]",
+    "departure 2027-04-16 Japonya→Japonya [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Japonya · Japonya · 1 Nis · empty/search",
+      "Japonya → İstanbul · Japonya · 16 Nis · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "15 gece boş",
+     "entries": [
+      "Konaklama · Japonya · Japonya · 1–16 Nisan · 15 gece · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Japonya)"
+   ],
+   "shape": "Japonya(15 gece,open) | hops: "
+  }
+ }
+}

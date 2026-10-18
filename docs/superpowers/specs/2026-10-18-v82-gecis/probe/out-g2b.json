@@ -1,0 +1,1737 @@
+{
+ "00_japan_base": {
+  "sections": [
+   {
+    "id": "flight",
+    "status": "✓ 2 alındı",
+    "entries": [
+     "İstanbul → HND · HND · 1 Nis · 01:55 · done/booked",
+     "KIX → İstanbul · KIX · 16 Nis · 11:00 · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "stay",
+    "status": "1 rezerve edilmedi · 2 karar",
+    "entries": [
+     "Hyatt Centric Ginza · Tokyo · 1–5 Nisan · 4 gece · book/planned",
+     "Kyoto konaklaması · Kyoto · 5–9 Nisan · 4 gece · decide/options",
+     "Gora Kadan · Hakone · 9–12 Nisan · 3 gece · done/booked",
+     "Osaka konaklaması · Osaka · 12–16 Nisan · 4 gece · decide/options"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "transport",
+    "status": "3 planlanmadı",
+    "entries": [
+     "Tokyo → Kyoto · Kyoto · 5 Nis · empty/search",
+     "Kyoto → Hakone · Hakone · 9 Nis · empty/search",
+     "Hakone → Osaka · Osaka · 12 Nis · empty/search"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "activity",
+    "status": "✓ 1 alındı",
+    "entries": [
+     "Shibuya Sky günbatımı · Tokyo · 4 Nis · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   }
+  ],
+  "rules": [
+   "other: Seyahat sağlık sigortası",
+   "other: eSIM (Japonya)"
+  ],
+  "legs": [
+   "arrival 2027-04-01 Tokyo→Tokyo [empty]",
+   "move 2027-04-05 Tokyo→Kyoto [empty]",
+   "move 2027-04-09 Kyoto→Hakone [empty]",
+   "move 2027-04-12 Hakone→Osaka [empty]",
+   "departure 2027-04-16 Osaka→Osaka [empty]"
+  ],
+  "blocks": [
+   "chosen Tokyo 2027-04-01→2027-04-05 (4)",
+   "open Kyoto 2027-04-05→2027-04-09 (4)",
+   "booked Hakone 2027-04-09→2027-04-12 (3)",
+   "open Osaka 2027-04-12→2027-04-16 (4)"
+  ],
+  "shape": "İstanbul(1 Nisan,booked) — Tokyo(4 gece,chosen) — Kyoto(4 gece,open) — Hakone(3 gece,booked) — Osaka(4 gece,open) — İstanbul(16 Nisan,booked) | hops: flight,train,train,train,flight",
+  "nights": {
+   "total": 15,
+   "booked": 3,
+   "chosen": 4,
+   "open": 8
+  }
+ },
+ "17_same_city_two_hotels": {
+  "sections": [
+   {
+    "id": "flight",
+    "status": "✓ 2 alındı",
+    "entries": [
+     "İstanbul → HND · HND · 1 Nis · 01:55 · done/booked",
+     "KIX → İstanbul · KIX · 16 Nis · 11:00 · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "stay",
+    "status": "1 rezerve edilmedi · 2 karar",
+    "entries": [
+     "Asakusa Ryokan · Tokyo · 1–3 Nisan · 2 gece · done/booked",
+     "Shinjuku Granbell · Tokyo · 3–5 Nisan · 2 gece · book/planned",
+     "Kyoto konaklaması · Kyoto · 5–9 Nisan · 4 gece · decide/options",
+     "Gora Kadan · Hakone · 9–12 Nisan · 3 gece · done/booked",
+     "Osaka konaklaması · Osaka · 12–16 Nisan · 4 gece · decide/options"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "transport",
+    "status": "3 planlanmadı",
+    "entries": [
+     "Tokyo → Kyoto · Kyoto · 5 Nis · empty/search",
+     "Kyoto → Hakone · Hakone · 9 Nis · empty/search",
+     "Hakone → Osaka · Osaka · 12 Nis · empty/search"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "activity",
+    "status": "✓ 1 alındı",
+    "entries": [
+     "Shibuya Sky günbatımı · Tokyo · 4 Nis · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   }
+  ],
+  "rules": [
+   "other: Seyahat sağlık sigortası",
+   "other: eSIM (Japonya)"
+  ],
+  "legs": [
+   "arrival 2027-04-01 Tokyo→Tokyo [empty]",
+   "change 2027-04-03 Tokyo→Tokyo [empty]",
+   "move 2027-04-05 Tokyo→Kyoto [empty]",
+   "move 2027-04-09 Kyoto→Hakone [empty]",
+   "move 2027-04-12 Hakone→Osaka [empty]",
+   "departure 2027-04-16 Osaka→Osaka [empty]"
+  ],
+  "blocks": [
+   "booked Tokyo 2027-04-01→2027-04-03 (2)",
+   "chosen Tokyo 2027-04-03→2027-04-05 (2)",
+   "open Kyoto 2027-04-05→2027-04-09 (4)",
+   "booked Hakone 2027-04-09→2027-04-12 (3)",
+   "open Osaka 2027-04-12→2027-04-16 (4)"
+  ],
+  "shape": "İstanbul(1 Nisan,booked) — Tokyo(4 gece,chosen) — Kyoto(4 gece,open) — Hakone(3 gece,booked) — Osaka(4 gece,open) — İstanbul(16 Nisan,booked) | hops: flight,train,train,train,flight",
+  "nights": {
+   "total": 15,
+   "booked": 5,
+   "chosen": 2,
+   "open": 8
+  }
+ },
+ "18_night_flight_plus1": {
+  "sections": [
+   {
+    "id": "flight",
+    "status": "✓ 2 alındı",
+    "entries": [
+     "İstanbul → HND · HND · 31 Mar · 23:55 · done/booked",
+     "KIX → İstanbul · KIX · 16 Nis · 11:00 · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "stay",
+    "status": "1 gece boş · 2 karar",
+    "entries": [
+     "Konaklama yok · 31 Mart – 1 Nisan · 1 gece · empty/search",
+     "Hyatt Centric Ginza · Tokyo · 1–5 Nisan · 4 gece · done/booked",
+     "Kyoto konaklaması · Kyoto · 5–9 Nisan · 4 gece · decide/options",
+     "Gora Kadan · Hakone · 9–12 Nisan · 3 gece · done/booked",
+     "Osaka konaklaması · Osaka · 12–16 Nisan · 4 gece · decide/options"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "transport",
+    "status": "3 planlanmadı",
+    "entries": [
+     "Tokyo → Kyoto · Kyoto · 5 Nis · empty/search",
+     "Kyoto → Hakone · Hakone · 9 Nis · empty/search",
+     "Hakone → Osaka · Osaka · 12 Nis · empty/search"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "activity",
+    "status": "✓ 1 alındı",
+    "entries": [
+     "Shibuya Sky günbatımı · Tokyo · 4 Nis · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   }
+  ],
+  "rules": [
+   "other: Seyahat sağlık sigortası",
+   "other: eSIM (Japonya)"
+  ],
+  "legs": [
+   "arrival 2027-04-01 HND havalimanı→Konaklama [empty]",
+   "move 2027-04-05 Tokyo→Kyoto [empty]",
+   "move 2027-04-09 Kyoto→Hakone [empty]",
+   "move 2027-04-12 Hakone→Osaka [empty]",
+   "departure 2027-04-16 Osaka→Osaka [empty]"
+  ],
+  "blocks": [
+   "open null 2027-03-31→2027-04-01 (1)",
+   "booked Tokyo 2027-04-01→2027-04-05 (4)",
+   "open Kyoto 2027-04-05→2027-04-09 (4)",
+   "booked Hakone 2027-04-09→2027-04-12 (3)",
+   "open Osaka 2027-04-12→2027-04-16 (4)"
+  ],
+  "shape": "İstanbul(31 Mart,booked) — Tokyo(4 gece,booked) — Kyoto(4 gece,open) — Hakone(3 gece,booked) — Osaka(4 gece,open) — İstanbul(16 Nisan,booked) | hops: flight,train,train,train,flight",
+  "nights": {
+   "total": 16,
+   "booked": 7,
+   "chosen": 0,
+   "open": 9
+  }
+ },
+ "19_multileg_separate": {
+  "sections": [
+   {
+    "id": "flight",
+    "status": "2 bilet yok",
+    "entries": [
+     "İstanbul → Doha · Doha · 1 Nis · 02:10 · book/planned",
+     "Doha → HND · HND · 1 Nis · 06:50 · book/planned",
+     "KIX → İstanbul · KIX · 16 Nis · 11:00 · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "stay",
+    "status": "1 rezerve edilmedi · 2 karar",
+    "entries": [
+     "Hyatt Centric Ginza · Tokyo · 1–5 Nisan · 4 gece · book/planned",
+     "Kyoto konaklaması · Kyoto · 5–9 Nisan · 4 gece · decide/options",
+     "Gora Kadan · Hakone · 9–12 Nisan · 3 gece · done/booked",
+     "Osaka konaklaması · Osaka · 12–16 Nisan · 4 gece · decide/options"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "transport",
+    "status": "3 planlanmadı",
+    "entries": [
+     "Tokyo → Kyoto · Kyoto · 5 Nis · empty/search",
+     "Kyoto → Hakone · Hakone · 9 Nis · empty/search",
+     "Hakone → Osaka · Osaka · 12 Nis · empty/search"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "activity",
+    "status": "✓ 1 alındı",
+    "entries": [
+     "Shibuya Sky günbatımı · Tokyo · 4 Nis · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   }
+  ],
+  "rules": [
+   "flight: Kısa aktarma: 50 dk (DOH)",
+   "transport: Havalimanı transferi · Taksi",
+   "other: Seyahat sağlık sigortası",
+   "other: eSIM (Japonya)"
+  ],
+  "legs": [
+   "arrival 2027-04-01 Tokyo→Tokyo [empty]",
+   "move 2027-04-05 Tokyo→Kyoto [empty]",
+   "move 2027-04-09 Kyoto→Hakone [empty]",
+   "move 2027-04-12 Hakone→Osaka [empty]",
+   "departure 2027-04-16 Osaka→Osaka [empty]"
+  ],
+  "blocks": [
+   "chosen Tokyo 2027-04-01→2027-04-05 (4)",
+   "open Kyoto 2027-04-05→2027-04-09 (4)",
+   "booked Hakone 2027-04-09→2027-04-12 (3)",
+   "open Osaka 2027-04-12→2027-04-16 (4)"
+  ],
+  "shape": "İstanbul(1 Nisan,chosen) — Tokyo(4 gece,chosen) — Kyoto(4 gece,open) — Hakone(3 gece,booked) — Osaka(4 gece,open) — İstanbul(16 Nisan,booked) | hops: flight,train,train,train,flight",
+  "nights": {
+   "total": 15,
+   "booked": 3,
+   "chosen": 4,
+   "open": 8
+  }
+ },
+ "19b_multileg_one_record": {
+  "sections": [
+   {
+    "id": "flight",
+    "status": "1 bilet yok",
+    "entries": [
+     "İstanbul → HND · HND · 1 Nis · 02:10 · book/planned",
+     "KIX → İstanbul · KIX · 16 Nis · 11:00 · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "stay",
+    "status": "1 rezerve edilmedi · 2 karar",
+    "entries": [
+     "Hyatt Centric Ginza · Tokyo · 1–5 Nisan · 4 gece · book/planned",
+     "Kyoto konaklaması · Kyoto · 5–9 Nisan · 4 gece · decide/options",
+     "Gora Kadan · Hakone · 9–12 Nisan · 3 gece · done/booked",
+     "Osaka konaklaması · Osaka · 12–16 Nisan · 4 gece · decide/options"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "transport",
+    "status": "3 planlanmadı",
+    "entries": [
+     "Tokyo → Kyoto · Kyoto · 5 Nis · empty/search",
+     "Kyoto → Hakone · Hakone · 9 Nis · empty/search",
+     "Hakone → Osaka · Osaka · 12 Nis · empty/search"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "activity",
+    "status": "✓ 1 alındı",
+    "entries": [
+     "Shibuya Sky günbatımı · Tokyo · 4 Nis · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   }
+  ],
+  "rules": [
+   "transport: Havalimanı transferi · Taksi",
+   "other: Seyahat sağlık sigortası",
+   "other: eSIM (Japonya)"
+  ],
+  "legs": [
+   "arrival 2027-04-01 Tokyo→Tokyo [empty]",
+   "move 2027-04-05 Tokyo→Kyoto [empty]",
+   "move 2027-04-09 Kyoto→Hakone [empty]",
+   "move 2027-04-12 Hakone→Osaka [empty]",
+   "departure 2027-04-16 Osaka→Osaka [empty]"
+  ],
+  "blocks": [
+   "chosen Tokyo 2027-04-01→2027-04-05 (4)",
+   "open Kyoto 2027-04-05→2027-04-09 (4)",
+   "booked Hakone 2027-04-09→2027-04-12 (3)",
+   "open Osaka 2027-04-12→2027-04-16 (4)"
+  ],
+  "shape": "İstanbul(1 Nisan,chosen) — Tokyo(4 gece,chosen) — Kyoto(4 gece,open) — Hakone(3 gece,booked) — Osaka(4 gece,open) — İstanbul(16 Nisan,booked) | hops: flight,train,train,train,flight",
+  "nights": {
+   "total": 15,
+   "booked": 3,
+   "chosen": 4,
+   "open": 8
+  }
+ },
+ "21a_during_trip_kyoto": {
+  "sections": [
+   {
+    "id": "flight",
+    "status": "✓ 2 alındı",
+    "entries": [
+     "İstanbul → HND · HND · 1 Nis · 01:55 · done/used",
+     "KIX → İstanbul · KIX · 16 Nis · 11:00 · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "stay",
+    "status": "1 rezerve edilmedi · 2 karar",
+    "entries": [
+     "Hyatt Centric Ginza · Tokyo · 1–5 Nisan · 4 gece · book/planned",
+     "Kyoto konaklaması · Kyoto · 5–9 Nisan · 4 gece · decide/options",
+     "Gora Kadan · Hakone · 9–12 Nisan · 3 gece · done/booked",
+     "Osaka konaklaması · Osaka · 12–16 Nisan · 4 gece · decide/options"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "transport",
+    "status": "3 planlanmadı",
+    "entries": [
+     "Tokyo → Kyoto · Kyoto · 5 Nis · empty/search",
+     "Kyoto → Hakone · Hakone · 9 Nis · empty/search",
+     "Hakone → Osaka · Osaka · 12 Nis · empty/search"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "activity",
+    "status": "✓ 1 alındı",
+    "entries": [
+     "Shibuya Sky günbatımı · Tokyo · 4 Nis · done/used"
+    ],
+    "prep": 0,
+    "hidden": 0
+   }
+  ],
+  "rules": [
+   "other: Seyahat sağlık sigortası",
+   "other: eSIM (Japonya)"
+  ],
+  "legs": [
+   "arrival 2027-04-01 Tokyo→Tokyo [empty]",
+   "move 2027-04-05 Tokyo→Kyoto [empty]",
+   "move 2027-04-09 Kyoto→Hakone [empty]",
+   "move 2027-04-12 Hakone→Osaka [empty]",
+   "departure 2027-04-16 Osaka→Osaka [empty]"
+  ],
+  "blocks": [
+   "chosen Tokyo 2027-04-01→2027-04-05 (4)",
+   "open Kyoto 2027-04-05→2027-04-09 (4)",
+   "booked Hakone 2027-04-09→2027-04-12 (3)",
+   "open Osaka 2027-04-12→2027-04-16 (4)"
+  ],
+  "shape": "İstanbul(1 Nisan,booked) — Tokyo(4 gece,chosen) — Kyoto(4 gece,open) — Hakone(3 gece,booked) — Osaka(4 gece,open) — İstanbul(16 Nisan,booked) | hops: flight,train,train,train,flight",
+  "nights": {
+   "total": 15,
+   "booked": 3,
+   "chosen": 4,
+   "open": 8
+  }
+ },
+ "21b_after_trip": {
+  "sections": [
+   {
+    "id": "flight",
+    "status": "✓ 2 alındı",
+    "entries": [
+     "İstanbul → HND · HND · 1 Nis · 01:55 · done/used",
+     "KIX → İstanbul · KIX · 16 Nis · 11:00 · done/used"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "stay",
+    "status": "1 rezerve edilmedi · 2 karar",
+    "entries": [
+     "Hyatt Centric Ginza · Tokyo · 1–5 Nisan · 4 gece · book/planned",
+     "Kyoto konaklaması · Kyoto · 5–9 Nisan · 4 gece · decide/options",
+     "Gora Kadan · Hakone · 9–12 Nisan · 3 gece · done/used",
+     "Osaka konaklaması · Osaka · 12–16 Nisan · 4 gece · decide/options"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "transport",
+    "status": "3 planlanmadı",
+    "entries": [
+     "Tokyo → Kyoto · Kyoto · 5 Nis · empty/search",
+     "Kyoto → Hakone · Hakone · 9 Nis · empty/search",
+     "Hakone → Osaka · Osaka · 12 Nis · empty/search"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "activity",
+    "status": "✓ 1 alındı",
+    "entries": [
+     "Shibuya Sky günbatımı · Tokyo · 4 Nis · done/used"
+    ],
+    "prep": 0,
+    "hidden": 0
+   }
+  ],
+  "rules": [],
+  "legs": [
+   "arrival 2027-04-01 Tokyo→Tokyo [empty]",
+   "move 2027-04-05 Tokyo→Kyoto [empty]",
+   "move 2027-04-09 Kyoto→Hakone [empty]",
+   "move 2027-04-12 Hakone→Osaka [empty]",
+   "departure 2027-04-16 Osaka→Osaka [empty]"
+  ],
+  "blocks": [
+   "chosen Tokyo 2027-04-01→2027-04-05 (4)",
+   "open Kyoto 2027-04-05→2027-04-09 (4)",
+   "booked Hakone 2027-04-09→2027-04-12 (3)",
+   "open Osaka 2027-04-12→2027-04-16 (4)"
+  ],
+  "shape": "İstanbul(1 Nisan,booked) — Tokyo(4 gece,chosen) — Kyoto(4 gece,open) — Hakone(3 gece,booked) — Osaka(4 gece,open) — İstanbul(16 Nisan,booked) | hops: flight,train,train,train,flight",
+  "nights": {
+   "total": 15,
+   "booked": 3,
+   "chosen": 4,
+   "open": 8
+  }
+ },
+ "21c_stages": {
+  "during": [
+   "TK 52: used",
+   "Hyatt Centric Ginza: planned",
+   "Gion Hatanaka: options",
+   "Gora Kadan: booked",
+   "Swissotel Nankai: options",
+   "TK 49: booked",
+   "Shibuya Sky günbatımı: used"
+  ],
+  "after": [
+   "TK 52: used",
+   "Hyatt Centric Ginza: planned",
+   "Gion Hatanaka: options",
+   "Gora Kadan: used",
+   "Swissotel Nankai: options",
+   "TK 49: used",
+   "Shibuya Sky günbatımı: used"
+  ]
+ },
+ "22_cancelled_hotel": {
+  "sections": [
+   {
+    "id": "flight",
+    "status": "✓ 2 alındı",
+    "entries": [
+     "İstanbul → HND · HND · 1 Nis · 01:55 · done/booked",
+     "KIX → İstanbul · KIX · 16 Nis · 11:00 · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "stay",
+    "status": "1 rezerve edilmedi · 1 karar",
+    "entries": [
+     "Hyatt Centric Ginza · Tokyo · 1–5 Nisan · 4 gece · book/planned",
+     "Kyoto konaklaması · Kyoto · 5–16 Nisan · 11 gece · decide/options"
+    ],
+    "prep": 0,
+    "hidden": 1
+   },
+   {
+    "id": "transport",
+    "status": "1 planlanmadı",
+    "entries": [
+     "Tokyo → Kyoto · Kyoto · 5 Nis · empty/search"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "activity",
+    "status": "✓ 1 alındı",
+    "entries": [
+     "Shibuya Sky günbatımı · Tokyo · 4 Nis · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   }
+  ],
+  "rules": [
+   "other: Seyahat sağlık sigortası",
+   "other: eSIM (Japonya)"
+  ],
+  "legs": [
+   "arrival 2027-04-01 Tokyo→Tokyo [empty]",
+   "move 2027-04-05 Tokyo→Kyoto [empty]",
+   "departure 2027-04-16 Kyoto→Kyoto [empty]"
+  ],
+  "blocks": [
+   "chosen Tokyo 2027-04-01→2027-04-05 (4)",
+   "open Kyoto 2027-04-05→2027-04-16 (11)"
+  ],
+  "shape": "İstanbul(1 Nisan,booked) — Tokyo(4 gece,chosen) — Kyoto(11 gece,open) — İstanbul(16 Nisan,booked) | hops: flight,train,flight",
+  "nights": {
+   "total": 15,
+   "booked": 0,
+   "chosen": 4,
+   "open": 11
+  },
+  "stage": "cancelled",
+  "need": "search"
+ },
+ "23_thirty_links": {
+  "sections": [
+   {
+    "id": "flight",
+    "status": "✓ 2 alındı",
+    "entries": [
+     "İstanbul → HND · HND · 1 Nis · 01:55 · done/booked",
+     "KIX → İstanbul · KIX · 16 Nis · 11:00 · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "stay",
+    "status": "1 rezerve edilmedi · 2 karar",
+    "entries": [
+     "Hyatt Centric Ginza · Tokyo · 1–5 Nisan · 4 gece · book/planned",
+     "Kyoto konaklaması · Kyoto · 5–9 Nisan · 4 gece · decide/options",
+     "Gora Kadan · Hakone · 9–12 Nisan · 3 gece · done/booked",
+     "Osaka konaklaması · Osaka · 12–16 Nisan · 4 gece · decide/options"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "transport",
+    "status": "3 planlanmadı",
+    "entries": [
+     "Tokyo → Kyoto · Kyoto · 5 Nis · empty/search",
+     "Kyoto → Hakone · Hakone · 9 Nis · empty/search",
+     "Hakone → Osaka · Osaka · 12 Nis · empty/search"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "activity",
+    "status": "✓ 1 alındı",
+    "entries": [
+     "Shibuya Sky günbatımı · Tokyo · 4 Nis · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   }
+  ],
+  "rules": [
+   "other: Seyahat sağlık sigortası",
+   "other: eSIM (Japonya)"
+  ],
+  "legs": [
+   "arrival 2027-04-01 Tokyo→Tokyo [empty]",
+   "move 2027-04-05 Tokyo→Kyoto [empty]",
+   "move 2027-04-09 Kyoto→Hakone [empty]",
+   "move 2027-04-12 Hakone→Osaka [empty]",
+   "departure 2027-04-16 Osaka→Osaka [empty]"
+  ],
+  "blocks": [
+   "chosen Tokyo 2027-04-01→2027-04-05 (4)",
+   "open Kyoto 2027-04-05→2027-04-09 (4)",
+   "booked Hakone 2027-04-09→2027-04-12 (3)",
+   "open Osaka 2027-04-12→2027-04-16 (4)"
+  ],
+  "shape": "İstanbul(1 Nisan,booked) — Tokyo(4 gece,chosen) — Kyoto(4 gece,open) — Hakone(3 gece,booked) — Osaka(4 gece,open) — İstanbul(16 Nisan,booked) | hops: flight,train,train,train,flight",
+  "nights": {
+   "total": 15,
+   "booked": 3,
+   "chosen": 4,
+   "open": 8
+  },
+  "pano": {
+   "all": 39,
+   "flight": 2,
+   "stay": 36,
+   "transport": 0,
+   "activity": 1,
+   "todo": 0,
+   "other": 0,
+   "inspo": 0,
+   "liked": 0
+  }
+ },
+ "24_no_options": {
+  "where": "Japonya (Japonya, JP)",
+  "intentEvent": null,
+  "playbook": "classic",
+  "pbQuestions": [],
+  "tripIntent": null,
+  "title": "Japonya Gezisi",
+  "dates": {
+   "start": "2027-04-01",
+   "end": "2027-04-16"
+  },
+  "road": false,
+  "stayAs": null,
+  "budget": null,
+  "travellers": {
+   "names": [
+    "Sabine"
+   ],
+   "count": 2
+  },
+  "items": [
+   {
+    "name": "Konaklama · Tokyo",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Tokyo",
+    "d": "2027-04-01→2027-04-05",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Kyoto",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Kyoto",
+    "d": "2027-04-05→2027-04-09",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Hakone",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Hakone",
+    "d": "2027-04-09→2027-04-12",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Konaklama · Osaka",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Osaka",
+    "d": "2027-04-12→2027-04-16",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Tokyo",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Tokyo",
+    "d": "2027-04-01",
+    "from": "İstanbul",
+    "to": "Tokyo",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Osaka → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2027-04-16",
+    "from": "Osaka",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "JP",
+    "visa": "Vizesiz · 90 gün",
+    "currency": "JPY"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2027-04-01",
+    "end": "2027-04-16"
+   },
+   "nights": {
+    "total": 15,
+    "booked": 0,
+    "chosen": 0,
+    "open": 15
+   },
+   "stayBlocks": [
+    "open Tokyo 2027-04-01→2027-04-05 (4)",
+    "open Kyoto 2027-04-05→2027-04-09 (4)",
+    "open Hakone 2027-04-09→2027-04-12 (3)",
+    "open Osaka 2027-04-12→2027-04-16 (4)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2027-04-01 Tokyo→Tokyo [empty]",
+    "move 2027-04-05 Tokyo→Kyoto [empty]",
+    "move 2027-04-09 Kyoto→Hakone [empty]",
+    "move 2027-04-12 Hakone→Osaka [empty]",
+    "departure 2027-04-16 Osaka→Osaka [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Tokyo · Tokyo · 1 Nis · empty/search",
+      "Osaka → İstanbul · Osaka · 16 Nis · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "15 gece boş",
+     "entries": [
+      "Konaklama · Tokyo · Tokyo · 1–5 Nisan · 4 gece · empty/search",
+      "Konaklama · Kyoto · Kyoto · 5–9 Nisan · 4 gece · empty/search",
+      "Konaklama · Hakone · Hakone · 9–12 Nisan · 3 gece · empty/search",
+      "Konaklama · Osaka · Osaka · 12–16 Nisan · 4 gece · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "transport",
+     "status": "3 planlanmadı",
+     "entries": [
+      "Tokyo → Kyoto · Kyoto · 5 Nis · empty/search",
+      "Kyoto → Hakone · Hakone · 9 Nis · empty/search",
+      "Hakone → Osaka · Osaka · 12 Nis · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Japonya)"
+   ],
+   "shape": "Tokyo(4 gece,open) — Kyoto(4 gece,open) — Hakone(3 gece,open) — Osaka(4 gece,open) | hops: train,train,train"
+  }
+ },
+ "25_links_no_dates": {
+  "sections": [
+   {
+    "id": "flight",
+    "status": "1 karar bekliyor",
+    "entries": [
+     "İstanbul → HND · HND · tarih yok · decide/options · 1 seçenek"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "stay",
+    "status": "2 karar bekliyor",
+    "entries": [
+     "Kyoto Brighton · Kyoto · tarih yok · decide/options · 1 seçenek",
+     "Hotel Gracery Shinjuku · Tokyo · tarih yok · decide/options · 1 seçenek"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "activity",
+    "status": "1 karar bekliyor",
+    "entries": [
+     "teamLab Planets · Tokyo · tarih yok · decide/options"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "todo",
+    "status": null,
+    "entries": [
+     "Ichiran Ramen · Tokyo · tarih yok · unscheduled/-"
+    ],
+    "prep": 0,
+    "hidden": 0
+   }
+  ],
+  "rules": [
+   "other: Seyahat sağlık sigortası",
+   "other: eSIM (Japonya)"
+  ],
+  "legs": [],
+  "blocks": [],
+  "shape": null,
+  "nights": {
+   "total": 0,
+   "booked": 0,
+   "chosen": 0,
+   "open": 0
+  }
+ },
+ "28_mixed_currency": {
+  "bar": {
+   "currency": "EUR",
+   "total": 8000,
+   "booked": 2286.41975308642,
+   "chosen": 1018.5185185185185,
+   "open": 0,
+   "uncounted": 0,
+   "byCategory": {
+    "flight": 1800,
+    "stay": 1418.5185185185185,
+    "transport": 0,
+    "activity": 86.41975308641975,
+    "other": 0
+   },
+   "expected": {
+    "flight": 1800,
+    "stay": 1418.5185185185185,
+    "transport": 0,
+    "activity": 86.41975308641975,
+    "other": 0
+   }
+  },
+  "barNoJpy": {
+   "currency": "EUR",
+   "total": 8000,
+   "booked": 2200,
+   "chosen": 1018.5185185185185,
+   "open": 0,
+   "uncounted": 1,
+   "byCategory": {
+    "flight": 1800,
+    "stay": 1418.5185185185185,
+    "transport": 0,
+    "activity": 0,
+    "other": 0
+   },
+   "expected": {
+    "flight": 1800,
+    "stay": 1418.5185185185185,
+    "transport": 0,
+    "activity": 0,
+    "other": 0
+   }
+  },
+  "barJpyBudget": {
+   "currency": "JPY",
+   "total": 300000,
+   "booked": 370400,
+   "chosen": 165000,
+   "open": 0,
+   "uncounted": 0,
+   "byCategory": {
+    "flight": 291600,
+    "stay": 229800,
+    "transport": 0,
+    "activity": 14000,
+    "other": 0
+   },
+   "expected": {
+    "flight": 291600,
+    "stay": 229800,
+    "transport": 0,
+    "activity": 14000,
+    "other": 0
+   }
+  },
+  "displayCurrencies": [
+   "TRY",
+   "EUR",
+   "USD",
+   "GBP"
+  ],
+  "conv": 86.41975308641975
+ },
+ "13b_group_guests": {
+  "sections": [
+   {
+    "id": "flight",
+    "status": "2 uçuş eklenmedi",
+    "entries": [
+     "Gidiş uçuşu · 1 Ağu · empty/search",
+     "Dönüş uçuşu · 8 Ağu · empty/search"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "stay",
+    "status": "1 karar bekliyor",
+    "entries": [
+     "Antalya konaklaması · Antalya · 1–8 Ağustos · 7 gece · decide/options"
+    ],
+    "prep": 0,
+    "hidden": 0
+   }
+  ],
+  "rules": [
+   "other: Seyahat sağlık sigortası",
+   "other: eSIM (Japonya)"
+  ],
+  "legs": [
+   "arrival 2027-08-01 Antalya→Antalya [empty]",
+   "departure 2027-08-08 Antalya→Antalya [empty]"
+  ],
+  "blocks": [
+   "open Antalya 2027-08-01→2027-08-08 (7)"
+  ],
+  "shape": "Antalya(7 gece,open) | hops: ",
+  "nights": {
+   "total": 7,
+   "booked": 0,
+   "chosen": 0,
+   "open": 7
+  },
+  "bar": {
+   "currency": "EUR",
+   "total": null,
+   "booked": 0,
+   "chosen": 0,
+   "open": 0,
+   "uncounted": 0,
+   "byCategory": {
+    "flight": 0,
+    "stay": 0,
+    "transport": 0,
+    "activity": 0,
+    "other": 0
+   },
+   "expected": {
+    "flight": 0,
+    "stay": 0,
+    "transport": 0,
+    "activity": 0,
+    "other": 0
+   }
+  }
+ },
+ "10b_weekend_bursa_bus_AI": {
+  "where": "Bursa (Türkiye, TR)",
+  "intentEvent": null,
+  "playbook": "classic",
+  "pbQuestions": [],
+  "tripIntent": null,
+  "title": "Bursa Gezisi",
+  "dates": {
+   "start": "2026-10-23",
+   "end": "2026-10-25"
+  },
+  "road": false,
+  "stayAs": null,
+  "budget": null,
+  "travellers": null,
+  "items": [
+   {
+    "name": "Konaklama · Bursa",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Bursa",
+    "d": "2026-10-23→2026-10-25",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · İstanbul → Bursa",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Bursa",
+    "d": "2026-10-23",
+    "from": "İstanbul",
+    "to": "Bursa",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Bursa → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2026-10-25",
+    "from": "Bursa",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "TR",
+    "visa": "Gerekmez",
+    "currency": "TRY"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2026-10-23",
+    "end": "2026-10-25"
+   },
+   "nights": {
+    "total": 2,
+    "booked": 0,
+    "chosen": 0,
+    "open": 2
+   },
+   "stayBlocks": [
+    "open Bursa 2026-10-23→2026-10-25 (2)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2026-10-23 Bursa→Bursa [empty]",
+    "departure 2026-10-25 Bursa→Bursa [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Bursa · Bursa · 23 Eki · empty/search",
+      "Bursa → İstanbul · Bursa · 25 Eki · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "2 gece boş",
+     "entries": [
+      "Konaklama · Bursa · Bursa · 23–25 Ekim · 2 gece · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    }
+   ],
+   "rules": [],
+   "shape": "Bursa(2 gece,open) | hops: "
+  }
+ },
+ "02c_tomorrowland_confirmed": {
+  "where": "Boom (Belçika, BE)",
+  "intentEvent": "event:Tomorrowland@Boom",
+  "playbook": "festival",
+  "pbQuestions": [
+   "festival:stay",
+   "festival:ticket",
+   "festival:early"
+  ],
+  "tripIntent": {
+   "playbook": "festival",
+   "label": null,
+   "musts": []
+  },
+  "title": "Tomorrowland 2027",
+  "dates": null,
+  "road": false,
+  "stayAs": {
+   "kind": "camp",
+   "city": "Boom"
+  },
+  "budget": null,
+  "travellers": null,
+  "items": [
+   {
+    "name": "Çadır kampı · festival alanı",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Boom",
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": "camp",
+    "noBooking": true,
+    "status": "chosen",
+    "adults": null,
+    "note": "kendi çadırın"
+   },
+   {
+    "name": "Uçuş · İstanbul → Boom",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Boom",
+    "d": null,
+    "from": "İstanbul",
+    "to": "Boom",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Boom → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": null,
+    "from": "Boom",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Transfer · Boom",
+    "cat": "transport",
+    "kind": "transfer",
+    "city": "Boom",
+    "d": "2027-07-23",
+    "from": null,
+    "to": "Boom",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Festival bileti",
+    "cat": "activity",
+    "kind": "activity",
+    "city": "Boom",
+    "d": "2027-07-23→2027-08-01",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": "Resmî site: https://www.tomorrowland.com"
+   },
+   {
+    "name": "Çadır",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Uyku tulumu",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kafa lambası",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Nakit",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   },
+   {
+    "name": "Kulak tıkacı",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": null,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "BE",
+    "visa": "Schengen vizesi",
+    "currency": "EUR"
+   }
+  ],
+  "live": {
+   "range": null,
+   "nights": {
+    "total": 0,
+    "booked": 0,
+    "chosen": 0,
+    "open": 0
+   },
+   "stayBlocks": [],
+   "looseStays": 1,
+   "legs": [],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Boom · Boom · tarih yok · empty/search · 1 seçenek",
+      "Boom → İstanbul · İstanbul · tarih yok · empty/search · 1 seçenek"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "✓ 1 alındı",
+     "entries": [
+      "Çadır kampı · festival alanı · Boom · tarih yok · done/- · 1 seçenek"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "transport",
+     "status": "1 rezerve edilmedi",
+     "entries": [
+      "Transfer · Boom · Boom · 23 Tem · book/planned · 1 seçenek"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "activity",
+     "status": "1 bilet yok",
+     "entries": [
+      "Festival bileti · Boom · 23 Tem · book/planned"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "prep",
+     "status": "5 hazırlık",
+     "entries": [
+      "Çadır · Tüm gezi · unscheduled/-",
+      "Kafa lambası · Tüm gezi · unscheduled/-",
+      "Kulak tıkacı · Tüm gezi · unscheduled/-",
+      "Nakit · Tüm gezi · unscheduled/-",
+      "Uyku tulumu · Tüm gezi · unscheduled/-"
+     ],
+     "prep": 5,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Belçika)"
+   ],
+   "shape": null
+  }
+ },
+ "27_english": {
+  "ski": {
+   "where": "Bansko (Bulgaria, BG)",
+   "intentEvent": null,
+   "playbook": "ski",
+   "pbQuestions": [
+    "ski:level",
+    "ski:gear"
+   ],
+   "tripIntent": {
+    "playbook": "ski",
+    "label": null,
+    "musts": []
+   },
+   "title": "Bansko trip",
+   "dates": {
+    "start": "2027-01-15",
+    "end": "2027-01-20"
+   },
+   "road": false,
+   "stayAs": null,
+   "budget": null,
+   "travellers": {
+    "names": [],
+    "count": 2
+   },
+   "items": [
+    {
+     "name": "Stay · Bansko",
+     "cat": "stay",
+     "kind": "stay",
+     "city": "Bansko",
+     "d": "2027-01-15→2027-01-20",
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Flight · Istanbul → Bansko",
+     "cat": "flight",
+     "kind": "flight",
+     "city": "Bansko",
+     "d": "2027-01-15",
+     "from": "Istanbul",
+     "to": "Bansko",
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Flight · Bansko → Istanbul",
+     "cat": "flight",
+     "kind": "flight",
+     "city": "Istanbul",
+     "d": "2027-01-20",
+     "from": "Bansko",
+     "to": "Istanbul",
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Transfer · Bansko",
+     "cat": "transport",
+     "kind": "transfer",
+     "city": "Bansko",
+     "d": "2027-01-15",
+     "from": null,
+     "to": "Bansko",
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Ski pass",
+     "cat": "activity",
+     "kind": "activity",
+     "city": "Bansko",
+     "d": "2027-01-15→2027-01-20",
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Equipment rental",
+     "cat": "activity",
+     "kind": "activity",
+     "city": "Bansko",
+     "d": "2027-01-15→2027-01-20",
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Ski school",
+     "cat": "activity",
+     "kind": "activity",
+     "city": "Bansko",
+     "d": "2027-01-15→2027-01-20",
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Gloves",
+     "cat": "other",
+     "kind": "prep",
+     "city": null,
+     "d": null,
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Goggles",
+     "cat": "other",
+     "kind": "prep",
+     "city": null,
+     "d": null,
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Thermal layers",
+     "cat": "other",
+     "kind": "prep",
+     "city": null,
+     "d": null,
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Helmet",
+     "cat": "other",
+     "kind": "prep",
+     "city": null,
+     "d": null,
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Sunscreen",
+     "cat": "other",
+     "kind": "prep",
+     "city": null,
+     "d": null,
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    }
+   ],
+   "countries": [
+    {
+     "code": "BG",
+     "visa": "Schengen visa",
+     "currency": "(tabloda yok)"
+    }
+   ],
+   "live": {
+    "range": {
+     "start": "2027-01-15",
+     "end": "2027-01-20"
+    },
+    "nights": {
+     "total": 5,
+     "booked": 0,
+     "chosen": 0,
+     "open": 5
+    },
+    "stayBlocks": [
+     "open Bansko 2027-01-15→2027-01-20 (5)"
+    ],
+    "looseStays": 0,
+    "legs": [
+     "arrival 2027-01-15 Bansko→Bansko [planned transfer]",
+     "departure 2027-01-20 Bansko→Bansko [empty]"
+    ],
+    "sections": [
+     {
+      "id": "flight",
+      "status": "2 to find",
+      "entries": [
+       "Istanbul → Bansko · Bansko · 15 Jan · empty/search",
+       "Bansko → Istanbul · Bansko · 20 Jan · empty/search"
+      ],
+      "prep": 0,
+      "hidden": 0
+     },
+     {
+      "id": "stay",
+      "status": "5 nights empty",
+      "entries": [
+       "Stay · Bansko · Bansko · 15–20 January · 5 nights · empty/search"
+      ],
+      "prep": 0,
+      "hidden": 0
+     },
+     {
+      "id": "transport",
+      "status": "✓ 1 booked",
+      "entries": [
+       "Airport → Hotel · Bansko · 15 Jan · done/-"
+      ],
+      "prep": 0,
+      "hidden": 0
+     },
+     {
+      "id": "todo",
+      "status": null,
+      "entries": [
+       "Ski pass · Bansko · 15 Jan · done/-",
+       "Equipment rental · Bansko · 15 Jan · done/-",
+       "Ski school · Bansko · 15 Jan · done/-"
+      ],
+      "prep": 0,
+      "hidden": 0
+     },
+     {
+      "id": "prep",
+      "status": "5 prep",
+      "entries": [
+       "Gloves · Whole trip · unscheduled/-",
+       "Goggles · Whole trip · unscheduled/-",
+       "Helmet · Whole trip · unscheduled/-",
+       "Sunscreen · Whole trip · unscheduled/-",
+       "Thermal layers · Whole trip · unscheduled/-"
+      ],
+      "prep": 5,
+      "hidden": 0
+     }
+    ],
+    "rules": [
+     "other: Travel health insurance",
+     "other: eSIM (Bulgaria)"
+    ],
+    "shape": "Bansko(5 nights,open) | hops: "
+   }
+  },
+  "japanSections": [
+   {
+    "id": "flight",
+    "status": "✓ 2 booked",
+    "entries": [
+     "Istanbul → HND · HND · 1 Apr · 01:55 · done/booked",
+     "KIX → Istanbul · KIX · 16 Apr · 11:00 · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "stay",
+    "status": "1 not booked · 2 to decide",
+    "entries": [
+     "Hyatt Centric Ginza · Tokyo · 1–5 April · 4 nights · book/planned",
+     "Stay in Kyoto · Kyoto · 5–9 April · 4 nights · decide/options",
+     "Gora Kadan · Hakone · 9–12 April · 3 nights · done/booked",
+     "Stay in Osaka · Osaka · 12–16 April · 4 nights · decide/options"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "transport",
+    "status": "3 not planned",
+    "entries": [
+     "Tokyo → Kyoto · Kyoto · 5 Apr · empty/search",
+     "Kyoto → Hakone · Hakone · 9 Apr · empty/search",
+     "Hakone → Osaka · Osaka · 12 Apr · empty/search"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "activity",
+    "status": "✓ 1 booked",
+    "entries": [
+     "Shibuya Sky günbatımı · Tokyo · 4 Apr · done/booked"
+    ],
+    "prep": 0,
+    "hidden": 0
+   }
+  ],
+  "rules": [
+   "other: Travel health insurance",
+   "other: eSIM (Japan)"
+  ]
+ },
+ "29_journey_flow": [
+  "start İstanbul",
+  "entry",
+  "city Tokyo",
+  "stay",
+  "event 2027-04-04",
+  "entry",
+  "city Kyoto",
+  "stay",
+  "entry",
+  "city Hakone",
+  "stay",
+  "entry",
+  "city Osaka",
+  "stay",
+  "entry",
+  "end İstanbul"
+ ]
+}
