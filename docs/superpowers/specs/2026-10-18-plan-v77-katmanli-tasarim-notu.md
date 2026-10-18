@@ -1,8 +1,8 @@
-# Plan v71: katmanlı plan (tasarım, kod yok)
+# Plan v77: katmanlı plan (tasarım, kod yok)
 
-Amaç (Emre, 18 Ekim): prompt ya da linkle omurga oluşunca seyahatin şeklini görmek; her kategoride seçenekleri ve biriken linkleri karışıklık olmadan görmek; her durumda kartın üstündeki eylem değişsin (Seç, Satın al, Değiştir); infolar gerekli yerin arkasında. Kartlar v70'teki onaylı kartlar (canlı sınıflar), yeni olan katmanlar.
+Amaç (Emre, 18 Ekim): prompt ya da linkle omurga oluşunca seyahatin şeklini görmek; her kategoride seçenekleri ve biriken linkleri karışıklık olmadan görmek; her durumda kartın üstündeki eylem değişsin (Seç, Satın al, Değiştir); infolar gerekli yerin arkasında. Kartlar v70'teki onaylı kartlar (canlı sınıflar), yeni olan katmanlar. Emre bu turda v70'i temel aldı; 17 Ekim'de Mac'te yapılan v71–v76 (kompakt satır, Biriktirdiklerin | AI önerileri Pano'su) ayrı bir yol olarak duruyor, ikisi karşılaştırılacak.
 
-Mockup: docs/mockups/plan-v71-katmanli/index.html (etkileşimli; kaynak/ altında üretici). Altta prototip çubuğu: Durum (Plan ilerledi / Omurga yeni oluştu), Açık kategori (A Akış / B Odak / C Sekme), Değiştir (1 Yerinde / 2 Takas / 3 Çekmece).
+Mockup: docs/mockups/plan-v77-katmanli/index.html (etkileşimli; kaynak/ altında üretici). Altta prototip çubuğu: Durum (Plan ilerledi / Omurga yeni oluştu), Açık kategori (A Akış / B Odak / C Sekme), Değiştir (1 Yerinde / 2 Takas / 3 Çekmece).
 
 ## Katmanlar
 1. Omurga: tüm kategoriler kapalı. Satırda ad, içerik özeti ("5 seçenek · 1 seçildi · 1 rezerve · 1 aranıyor"), niyet özeti ("Tokyo 3 · Kyoto 4 · Hakone 3 · Osaka 4 gece"), en çok 6 mini görsel (+n), kategori bütçesi, "n karar bekliyor". Mini görsel kaynağı rozetle: ✨ AI, 🔗 senin linkin, S/E ekleyen, ✓ seçili/rezerve. Seçeneği olmayan niyet kesikli boş kutu.
