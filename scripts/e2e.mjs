@@ -1166,29 +1166,35 @@ try {
   await app.setViewportSize({ width: 1440, height: 900 });
   // Karar Panosu #10 "Sırayla karar ver": one open decision per screen ("1 / N"), the options side by side with one line of advice;
   // "Sonra" passes one on, "Geri" comes back, the last screen says what is left; the cards and the table stay as they were.
-  await compare.getByRole("button", { name: "Sırayla karar ver" }).click();
-  const stepHead = compare.locator(".sd-top h3");
-  assert.match(await stepHead.innerText(), /^1 \/ \d+ · Konaklama/, "the window's decision comes first");
-  await compare.locator(".sd-reco").waitFor();
-  assert.ok((await compare.locator(".sd-card").count()) >= 2, "its options side by side");
-  await compare.locator('.sd-card[aria-label="Jardim Stay"] .sd-price').waitFor(); // the price is never hidden
-  await app.screenshot({ path: `${out}/3c-step.png` });
-  await app.setViewportSize({ width: 390, height: 844 });
-  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll in the one-by-one view at 390 px");
-  assert.ok(await compare.locator(".compare-card, .sd").first().evaluate((el) => el.scrollWidth <= el.clientWidth + 1), "the window doesn't spill at 390 px");
-  await app.screenshot({ path: `${out}/3c-step-390.png` });
-  await app.setViewportSize({ width: 1440, height: 900 });
-  await compare.getByRole("button", { name: "Sonra", exact: true }).click();
-  while (!(await compare.getByRole("heading", { name: "Bitti" }).count())) {
+  // v82: C11 (karar yardımı) is out of this version's interface (spec §1.1, bu sürümde arayüzden düştü): the button is not offered,
+  // its code (board/StepDecide) stays. The walk below waits, as it was, for the version that brings it back.
+  const C11_SHOWN = false;
+  assert.equal(await compare.getByRole("button", { name: "Sırayla karar ver" }).count(), 0, "C11: Sırayla karar ver is not offered in this version");
+  if (C11_SHOWN) {
+    await compare.getByRole("button", { name: "Sırayla karar ver" }).click();
+    const stepHead = compare.locator(".sd-top h3");
+    assert.match(await stepHead.innerText(), /^1 \/ \d+ · Konaklama/, "the window's decision comes first");
+    await compare.locator(".sd-reco").waitFor();
+    assert.ok((await compare.locator(".sd-card").count()) >= 2, "its options side by side");
+    await compare.locator('.sd-card[aria-label="Jardim Stay"] .sd-price').waitFor(); // the price is never hidden
+    await app.screenshot({ path: `${out}/3c-step.png` });
+    await app.setViewportSize({ width: 390, height: 844 });
+    assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll in the one-by-one view at 390 px");
+    assert.ok(await compare.locator(".compare-card, .sd").first().evaluate((el) => el.scrollWidth <= el.clientWidth + 1), "the window doesn't spill at 390 px");
+    await app.screenshot({ path: `${out}/3c-step-390.png` });
+    await app.setViewportSize({ width: 1440, height: 900 });
     await compare.getByRole("button", { name: "Sonra", exact: true }).click();
+    while (!(await compare.getByRole("heading", { name: "Bitti" }).count())) {
+      await compare.getByRole("button", { name: "Sonra", exact: true }).click();
+    }
+    await compare.getByText(/karar sonraya kaldı/).waitFor();
+    await compare.getByRole("button", { name: "← Geri" }).click();
+    assert.match(await stepHead.innerText(), /^\d+ \/ \d+ · /, "Geri comes back to the last decision");
+    await compare.getByRole("button", { name: "Sonra", exact: true }).click();
+    await compare.getByRole("button", { name: "Tamam" }).click();
+    await compare.locator(".cmp-views [role=tab].on", { hasText: "Kartlar" }).waitFor();
   }
-  await compare.getByText(/karar sonraya kaldı/).waitFor();
-  await compare.getByRole("button", { name: "← Geri" }).click();
-  assert.match(await stepHead.innerText(), /^\d+ \/ \d+ · /, "Geri comes back to the last decision");
-  await compare.getByRole("button", { name: "Sonra", exact: true }).click();
-  await compare.getByRole("button", { name: "Tamam" }).click();
-  await compare.locator(".cmp-views [role=tab].on", { hasText: "Kartlar" }).waitFor();
-  console.log("✓ compare: Sırayla karar ver goes through the open decisions one per screen, Sonra / Geri walk them, the end says what is left, the cards come back");
+  console.log("✓ compare: Sırayla karar ver is not offered (C11, bu sürümde arayüzden düştü); the one-by-one walk is kept for when it comes back");
   // Two ticked → side by side in the table, just those; "Hepsini göster" brings the rest back.
   await boardCard("Jardim Stay").locator(".bd-tick").click();
   await boardCard("Casa Azul").locator(".bd-tick").click();
@@ -2086,93 +2092,126 @@ try {
   await app.screenshot({ path: `${out}/5i-visa.png` });
   await visaRow.getByRole("checkbox").click();
   await sec("other").locator(".visa-row:not(.ok)", { hasText: "Vize gerekiyor" }).waitFor();
-  // v11 phase 5: the Pano, a tab of its own (no hero over it). Every link as a big photo card; tabs by what it is,
-  // Hepsi · Karar bekleyen · Planda, Sırala; a section's tab groups by need. The heart is a like (Beğenilenler);
-  // "Plan'da gör →" goes to the card on the Plan (it flashes); a plan card's "Pano'da …" comes back framed.
+  // v82 (aşama 6): the Pano is a window over the plan (E8), no longer a tab of its own: the plan stays behind it and the Pano tab reads
+  // as chosen while it is open. Its side menu (Tümü · Biriktirdiklerim · AI önerileri · İlham · Belgeler, then the intents by category
+  // with their dots); every option a card of one size (220 px), group by group; an intent's options side by side (280 px columns that
+  // line up, best fit first with "n. sırada", ✓ / ✕ only); Seç changes the plan at once; the heart; Belgeler's "Kartı göster" closes the
+  // window and the card flashes on the plan; a plan card's "Pano'da aç" opens it on that intent; Escape and × close it, the focus goes
+  // back. Not in this version (bu sürümde arayüzden düştü): C32 (arama, durum süzgeci, sıralama, "Plan'da gör"), Beğenilenler and
+  // "+ Link ekle" (B6): only that they are not there is checked.
   await app.setViewportSize({ width: 1440, height: 1400 });
-  await app.getByRole("tab", { name: "Pano", exact: true }).click();
-  const pano = app.locator(".pn");
+  const panoTab = app.getByRole("tab", { name: "Pano", exact: true });
+  await panoTab.click();
+  const pano = app.getByRole("dialog", { name: "Pano" });
   await pano.waitFor();
-  assert.equal(await app.locator(".hx").count(), 0, "no hero over the Pano");
-  assert.equal(await pano.locator(".pn-cats button").first().innerText().then((t) => t.replace(/\s+/g, " ")), `Tümü ${await pano.locator(".pn-card").count()}`);
-  // Every card lines its price and button up with the others in its row (a flight is its own small card: its price row is checked below).
-  const acts = await pano.locator(".pn-card:not(.pn-flt)").evaluateAll((els) => els.slice(0, 3).map((e) => Math.round(e.querySelector(".pn-act").getBoundingClientRect().bottom - e.getBoundingClientRect().bottom)));
-  assert.equal(new Set(acts).size, 1, `the price rows line up (${acts})`);
-  await pano.evaluate((el) => el.scrollIntoView({ block: "start" }));
+  // (sizes are read once it has grown in: E8, 260 ms)
+  const settled = () => pano.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => undefined))));
+  await settled();
+  assert.ok((await app.locator(".hx").count()) > 0 && (await app.locator(".cat-plan").count()) > 0, "the plan stays behind the window");
+  assert.equal(await panoTab.getAttribute("aria-selected"), "true", "the Pano tab reads as chosen while the window is open");
+  assert.equal(await app.evaluate(() => document.activeElement?.getAttribute("aria-label")), "Pano'yu kapat", "the focus goes into the window, on its ×");
+  const pside = pano.locator(".q-side");
+  assert.deepEqual((await pside.locator(".q-st1").allInnerTexts()).map((t) => t.replace(/\s*\d*\s*$/, "").trim()), ["Tümü", "Biriktirdiklerim", "AI önerileri", "İlham", "Belgeler"]);
+  assert.equal(Number(await pside.locator('.q-st1[data-v="all"] i').innerText()), await pano.locator(".q-pg").count(), "Tümü counts every card");
+  assert.ok((await pside.locator(".q-sgh").count()) >= 4, "İhtiyaçlar: the categories");
+  assert.deepEqual([...new Set(await pside.locator(".q-si .q-sd").evaluateAll((els) => els.map((e) => [...e.classList].find((c) => c !== "q-sd"))))].every((c) => ["ok", "sel", "ai", "open"].includes(c)), true, "each intent has its dot");
+  // C32 and B6: no search, no filter, no sort, no "+ Link ekle", no "Plan'da gör", no Beğenilenler.
+  assert.equal(await pano.getByRole("searchbox").count(), 0, "C32: no search in this version");
+  assert.equal(await pano.getByText(/^Sırala|Karar bekleyen|Beğenilenler|Plan'da gör|Link ekle/).count(), 0, "C32, B6: no filter, sort, Plan'da gör or link form");
+  // Every card one size, its price row and button in line with the others in its row.
+  const widths = await pano.locator(".q-pg").evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().width)))]);
+  assert.deepEqual(widths, [220], `every Pano card is 220 px wide (${widths})`);
+  const rows = await pano.locator(".q-pgrid").evaluateAll((gs) => gs.map((g) => [...g.querySelectorAll(".q-pg")].map((c) => Math.round(c.querySelector(".q-pgf").getBoundingClientRect().bottom - c.getBoundingClientRect().bottom))));
+  assert.ok(rows.every((r) => new Set(r).size === 1), `the price rows line up (${JSON.stringify(rows)})`);
   await app.screenshot({ path: `${out}/30a-pano.png` });
-  // F1d: the strip's column is 296-316 px wide; a flight's picture is its two cities with the plane between (ucus.png); its price is per person
-  // from the passengers on the record, "2 kişi · €162" small under it.
-  const colW = await pano.locator(".pn-strip .pn-card").first().evaluate((e) => e.getBoundingClientRect().width);
-  assert.ok(colW >= 295.5 && colW <= 316.5, `the Pano column is 296-316 px wide (${colW})`);
-  await pano.locator('.pn-cats [data-cat="flight"]').click();
-  const panoFlight = pano.locator(".pn-card", { hasText: "TAP" }).first();
-  assert.equal(await panoFlight.locator('.fx-leg img[src$="ucus.png"]').count(), 1, "F2: a flight card draws the plane between its two hours");
-  assert.equal(await panoFlight.locator(".pn-strip-l").count(), 1, "F2: the strip on top: where it stands, its first plus");
-  const fare = (await panoFlight.locator(".fx-pr").innerText()).match(/€(\d+)\s*kişi başı\s*2 kişi · €(\d+)/);
-  assert.ok(fare && Number(fare[1]) * 2 === Number(fare[2]), `per person from the record's two passengers, the whole under it (${fare?.[0]})`);
-  // F2: the flight cards of one need stand in a row of one height.
-  const heights = await pano.locator(".pn-group").evaluateAll((gs) => gs.map((g) => [...g.querySelectorAll(".pn-flt")].map((c) => Math.round(c.getBoundingClientRect().height))).filter((h) => h.length > 1));
+  // A flight: its carrier's mark instead of a picture, its price per person from the record's passengers; the cards of one intent one height.
+  await pside.locator('.q-sgh[data-cat="flight"]').click();
+  await pano.locator(".q-ph2 b", { hasText: "Uçuş" }).waitFor();
+  const panoFlight = pano.locator(".q-pg", { hasText: "TAP" }).first();
+  assert.equal(await panoFlight.locator(".q-bigl").innerText(), "TP", "F2: a flight shows its carrier's mark");
+  assert.equal(await panoFlight.locator(".q-pr small").innerText(), "kişi başı");
+  const heights = await pano.locator(".q-pgrid").evaluateAll((gs) => gs.map((g) => [...g.querySelectorAll(".q-pg")].map((c) => Math.round(c.getBoundingClientRect().height))).filter((h) => h.length > 1));
   assert.ok(heights.length > 0 && heights.every((h) => new Set(h).size === 1), `the flight cards of a row are one height (${JSON.stringify(heights)})`);
   await app.screenshot({ path: `${out}/30a2-pano-flight.png` });
-  // Konaklama: its options by need, the one on the plan named in the group's header.
-  await pano.locator('.pn-cats [data-cat="stay"]').click();
-  assert.ok((await pano.locator(".pn-group").count()) >= 1, "stays grouped by need");
+  // Konaklama: its options by intent; "Yan yana karşılaştır ›" puts one intent's options side by side.
+  await pside.locator('.q-sgh[data-cat="stay"]').click();
+  await pano.locator(".q-ph2 b", { hasText: "Konaklama" }).waitFor();
+  assert.ok((await pano.locator(".q-grp").count()) >= 1, "stays grouped by intent");
   await app.screenshot({ path: `${out}/30b-pano-stays.png` });
-  // v30: a need's own "Karşılaştır" turns its row into a table (fit, the same rows for all, what was asked, ✓ ✗ ?); there is no global toggle.
-  assert.equal(await pano.locator(".pn-view").count(), 0, "no global Kartlar | Karşılaştır switch");
-  await pano.locator(".pn-cmp", { hasText: "Karşılaştır" }).first().click();
-  const panoTable = pano.locator(".pn-table").first();
-  await panoTable.waitFor();
-  assert.ok((await panoTable.locator("thead th .pn-tn").count()) >= 2, "two or more options side by side");
-  assert.ok((await panoTable.locator("tbody th").allInnerTexts()).includes("Fiyat"));
+  await pano.locator(".q-cmpb", { hasText: "Yan yana karşılaştır" }).first().click();
+  const cols = pano.locator(".q-cmp3 .q-col");
+  await cols.first().waitFor();
+  await settled();
+  assert.ok((await cols.count()) >= 2, "two or more options side by side");
+  assert.equal(await pside.locator(".q-si.on, .q-si[aria-current='true']").count(), 1, "the side menu says which intent this is");
+  assert.deepEqual([...new Set(await cols.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().width))))], [280], "the columns are 280 px");
+  const lined = await cols.evaluateAll((els) => [".q-c3", ".q-c5", ".q-c8"].map((r) => new Set(els.map((e) => Math.round(e.querySelector(r).getBoundingClientRect().top))).size));
+  assert.deepEqual(lined, [1, 1, 1], "the rows line up across the columns (subgrid)");
+  const ranks = await cols.evaluateAll((els) => els.map((e) => e.querySelector(".q-score em")?.textContent ?? null).filter(Boolean));
+  assert.equal(ranks[0], "1. sırada", `best fit first (${ranks})`);
+  assert.ok((await cols.locator(".q-mc").allInnerTexts()).every((t) => /^[✓✕] /.test(t)), "B5: what was asked for is ✓ or ✕, never ?");
   await app.screenshot({ path: `${out}/30d-pano-compare.png` });
-  await pano.locator(".pn-cmp", { hasText: "Kartlar" }).first().click();
-  // "Kayıtlarda ara": every word somewhere in the record; nothing found says so.
-  await pano.getByRole("searchbox", { name: "Kayıtlarda ara" }).fill("jardim");
-  assert.deepEqual(await pano.locator(".pn-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Jardim Stay"]);
-  await pano.getByRole("searchbox", { name: "Kayıtlarda ara" }).fill("");
-  // "+ Link ekle": a form for a link; what isn't one says so.
-  await pano.locator(".pn-addlink").click();
-  await pano.locator(".pn-linkform input").fill("bir otel");
-  await pano.locator(".pn-linkgo").click();
-  await pano.locator(".pn-linkerr").waitFor();
-  await pano.locator(".pn-linkno").click();
-  await pano.locator(".pn-linkform").waitFor({ state: "detached" });
-  // The heart: a like, under Beğenilenler; taken back, gone again.
-  const panoFirst = pano.locator(".pn-card").first();
-  const likedName = await panoFirst.getAttribute("aria-label");
-  await panoFirst.locator(".pn-heart").click();
-  await panoFirst.locator(".pn-heart.on").waitFor();
-  await pano.locator('.pn-cats [data-cat="liked"]').click();
-  assert.deepEqual(await pano.locator(".pn-card").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), [likedName]);
-  await pano.locator(".pn-card .pn-heart.on").click();
-  await pano.locator('.pn-cats [data-cat="liked"]').waitFor({ state: "detached" });
-  // Planda: only what's on the plan, each with its ribbon and "Plan'da gör →".
-  await pano.locator('.pn-cats [data-cat="all"]').click();
-  await pano.locator(".pn-seg button", { hasText: "Planda" }).click();
-  const planned = await pano.locator(".pn-card").count();
-  assert.ok(planned > 0 && (await pano.locator(".pn-card .pn-rib, .pn-flt .pn-strip-l .okt, .pn-flt .pn-strip-l .pn-tag.on").count()) === planned, "Planda: each card on the plan wears its ribbon (a flight's is on its strip)");
-  const shownName = await pano.locator(".pn-card").first().getAttribute("aria-label");
-  await pano.locator(".pn-card").first().locator(".pn-goplan").click();
-  await app.locator(".cat-plan").waitFor();
-  await app.locator(`.flash`).first().waitFor({ timeout: 5000 });
-  assert.equal(await app.locator(".pn").count(), 0, "back on the Plan");
-  // From a chosen card's foot (v11, v30): "Değiştir N" at its foot turns the card to its options; "Pano'da aç" there opens the Pano on its need, framed, with "← Plan'a dön".
+  // Seç: the plan changes at once (no toast, E16); chosen again, it is as it was.
+  const current = cols.and(app.locator(".cur"));
+  assert.equal(await current.count(), 1, "the stay chosen on the plan is the one marked");
+  assert.equal(await current.locator(".q-stc").innerText(), "Şu an seçili");
+  const was = await current.getAttribute("aria-label");
+  const other = cols.and(app.locator(":not(.cur)")).first();
+  const otherName = await other.getAttribute("aria-label");
+  await other.locator("button.q-pick", { hasText: "Seç" }).click();
+  await pano.locator(`.q-col.cur[aria-label="${otherName}"]`).waitFor();
+  assert.equal(await pano.locator(`.q-col.cur[aria-label="${was}"]`).count(), 0, "one choice: the one before goes back to the options");
+  assert.equal(await app.locator(".pk-undo, .toast", { hasText: "seçildi" }).count(), 0, "E16: no toast on a choice");
+  await pano.locator(`.q-col[aria-label="${was}"] button.q-pick`).click();
+  await pano.locator(`.q-col.cur[aria-label="${was}"]`).waitFor();
+  // The heart: a like, with its face; taken back, gone again.
+  const heart = current.locator(".q-like");
+  await heart.click();
+  await current.locator(".q-like.on", { hasText: "1" }).waitFor();
+  assert.ok((await current.locator(".q-avs i").count()) >= 1, "who liked it");
+  await current.locator(".q-like.on").click();
+  await current.locator(".q-like:not(.on)").waitFor();
+  // Belgeler (C5): by kind, each file on its card; it opens in a tab; "Kartı göster" closes the window and the card flashes on the plan.
+  await pside.locator('.q-st1[data-v="docs"]').click();
+  const panoDoc = pano.locator('.q-dg[data-group="event"] .q-d1[data-state="ok"]', { hasText: "bilet.pdf" });
+  await panoDoc.waitFor();
+  assert.match(await panoDoc.locator(".q-dm small").innerText(), /Douro tekne turu kartına bağlı/);
+  const [panoDocTab] = await Promise.all([context.waitForEvent("page"), panoDoc.getByRole("button", { name: "bilet.pdf", exact: true }).click()]);
+  assert.match(panoDocTab.url(), /^blob:chrome-extension:\/\//);
+  await panoDocTab.close();
+  await app.screenshot({ path: `${out}/30e-pano-docs.png` });
+  await panoDoc.getByRole("button", { name: "Kartı göster ›" }).click();
+  await pano.waitFor({ state: "detached" });
+  await app.locator(".flash").first().waitFor({ timeout: 5000 });
+  assert.equal(await panoTab.getAttribute("aria-selected"), "false", "shut: the Plan tab is chosen again");
+  const shownName = "Douro tekne turu";
+  // From a chosen card's foot (v11, v30): "Değiştir N" turns the card to its options; "Pano'da aç" there opens the window on its intent.
   const fromCard = app.locator(".pk-card").filter({ has: app.locator(".pk-alt") }).first();
   assert.match(await fromCard.locator(".pk-alt").innerText(), /^Değiştir\s*\d+$/);
   await fromCard.locator(".pk-alt").click();
   await app.locator(".ch-back .ch-pano").click();
-  await app.locator(".pn-group.focus").waitFor();
-  await app.getByRole("button", { name: "← Plan'a dön" }).click();
+  await pano.waitFor();
+  await pside.locator(".q-si[aria-current='true']").waitFor();
+  assert.ok((await pano.locator(".q-cmp3 .q-col, .q-pg").count()) >= 1, "its options are there");
+  // × closes it; Escape too, and the focus goes back where it was (the Pano tab).
+  await pano.getByRole("button", { name: "Pano'yu kapat" }).click();
+  await pano.waitFor({ state: "detached" });
   await app.locator(".cat-plan").waitFor();
+  // Narrow: a drawer from below, the side menu one row; nothing spills sideways.
   await app.setViewportSize({ width: 560, height: 1400 });
-  await app.getByRole("tab", { name: "Pano", exact: true }).click();
-  await app.locator(".pn").waitFor();
+  await panoTab.click();
+  await pano.waitFor();
+  // (once it has come up: E8's drawer moves in over 320 ms)
+  await settled();
+  const drawer = await pano.evaluate((el) => { const r = el.getBoundingClientRect(); return { bottom: Math.round(r.bottom), width: Math.round(r.width) }; });
+  assert.deepEqual(drawer, { bottom: 1400, width: 560 }, "narrow: the window is a drawer from below");
   assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll on the Pano");
   await app.screenshot({ path: `${out}/30c-pano-narrow.png` });
-  await app.getByRole("tab", { name: "Plan", exact: true }).click();
+  await app.keyboard.press("Escape");
+  await pano.waitFor({ state: "detached" });
+  assert.equal(await app.evaluate(() => document.activeElement?.getAttribute("role")), "tab", "Escape: the focus is back on the Pano tab");
   await app.setViewportSize({ width: 1440, height: 3600 });
-  console.log(`✓ v11 Pano: a tab of its own, cards in line, stays by need, the heart under Beğenilenler, Planda → Plan'da gör (${shownName}) flashes on the Plan, a card's "Pano'da …" framed with "← Plan'a dön", narrow`);
+  console.log(`✓ v82 Pano: a window over the plan (the tab chosen while open), the side menu with its numbers and dots, cards of one size in line, a flight's mark, stays by intent, side by side in 280 px columns best fit first, Seç and back, the heart, Belgeler → Kartı göster (${shownName}) flashes on the plan, a card's "Pano'da aç" on its intent, × and Escape with the focus back, a drawer when narrow; C32 and "+ Link ekle" not in this version`);
   await app.setViewportSize({ width: 1440, height: 3600 });
   await app.setViewportSize({ width: 560, height: 3600 });
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
@@ -2866,40 +2905,42 @@ try {
   await board.locator(".dg-tl > li").first().waitFor();
   assert.equal(await board.locator(".dg-tl > li", { hasText: /Allianz|sigorta/i }).count(), 0, "no insurance in the day");
 
-  // v30: Belgeler left the tab bar; it opens from the trip's ••• menu.
+  // v82 (C5): Belgeler is in the Pano window's side menu (no tab of its own); the trip's ••• menu opens the window there.
   await board.getByRole("button", { name: "Gezi menüsü" }).click();
   await board.locator(".menu").getByRole("button", { name: "Belgeler", exact: true }).click();
-  const docRow = (name) => board.locator(`.doc-row[aria-label="${name}"]`);
-  await board.locator('.doc-group[data-group="insurance"]').locator(`.doc-row[aria-label="allianz-police.pdf"]`).waitFor();
-  assert.equal(await docRow("allianz-police.pdf").locator(".doc-go").innerText(), "Seyahat sağlık sigortası · Allianz →");
+  const docsWin = board.getByRole("dialog", { name: "Pano" });
+  await docsWin.locator('.q-st1[data-v="docs"][aria-current="true"]').waitFor();
+  const docRow = (name) => docsWin.locator(`.q-d1[aria-label="${name}"]`);
+  await docsWin.locator('.q-dg[data-group="insurance"]').locator('.q-d1[aria-label="allianz-police.pdf"]').waitFor();
+  assert.equal(await docRow("allianz-police.pdf").locator(".q-dst").innerText(), "Karta bağlı");
+  assert.match(await docRow("allianz-police.pdf").locator(".q-dm small").innerText(), /^PDF · Seyahat sağlık sigortası · Allianz kartına bağlı · /);
   await dropFile("rezervasyon-notu.pdf", "%PDF-1.4 e2e-other");
   await board.locator(".msg-assistant", { hasText: "rezervasyon-notu.pdf Belgeler'e kaydedildi" }).waitFor({ timeout: 20000 });
-  await board.locator('.doc-group[data-group="other"]').locator('.doc-row[aria-label="rezervasyon-notu.pdf"] select.doc-link').waitFor();
+  // A file the reader couldn't place: under Bağlanmamış, "Karta bağla".
+  await docsWin.locator('.q-dg[data-group="unlinked"]').locator('.q-d1[aria-label="rezervasyon-notu.pdf"] select.q-dgo').waitFor();
   await board.locator(".pk-undo").waitFor({ state: "detached", timeout: 10000 }); // the eSIM's "Geri al" from before
-  await board.locator(".doc-tab").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await board.screenshot({ path: `${out}/13-belgeler.png` });
   await board.setViewportSize({ width: 560, height: 1000 });
-  await board.locator(".doc-tab").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await board.waitForTimeout(400);
   await board.screenshot({ path: `${out}/13b-belgeler-narrow.png` });
   assert.ok(await board.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll in Belgeler");
   await board.setViewportSize({ width: 1440, height: 900 });
   // Linked by hand: it moves to its card's group and names it.
-  const jardimLabel = await docRow("rezervasyon-notu.pdf").locator("select.doc-link option", { hasText: "Jardim Stay" }).first().innerText();
-  await docRow("rezervasyon-notu.pdf").locator("select.doc-link").selectOption({ label: jardimLabel });
-  await board.locator('.doc-group[data-group="stay"]').locator('.doc-row[aria-label="rezervasyon-notu.pdf"] .doc-go', { hasText: "Jardim Stay" }).waitFor();
-  // Deleted, then taken back with "Geri al": back with its card.
-  await docRow("rezervasyon-notu.pdf").hover();
-  await docRow("rezervasyon-notu.pdf").locator(".doc-x").click();
+  const jardimLabel = await docRow("rezervasyon-notu.pdf").locator("select.q-dgo option", { hasText: "Jardim Stay" }).first().innerText();
+  await docRow("rezervasyon-notu.pdf").locator("select.q-dgo").selectOption({ label: jardimLabel });
+  await docsWin.locator('.q-dg[data-group="stay"]').locator('.q-d1[aria-label="rezervasyon-notu.pdf"]', { hasText: "Jardim Stay" }).waitFor();
+  // Deleted, then taken back with "Geri al" (the toast sits over the window): back with its card.
+  await docRow("rezervasyon-notu.pdf").locator(".q-dx").click();
   await docRow("rezervasyon-notu.pdf").waitFor({ state: "detached" });
   await board.locator(".pk-undo", { hasText: "rezervasyon-notu.pdf silindi" }).getByRole("button", { name: "Geri al" }).click();
-  await docRow("rezervasyon-notu.pdf").locator(".doc-go", { hasText: "Jardim Stay" }).waitFor();
-  await board.locator(".doc-tab").evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await docRow("rezervasyon-notu.pdf").locator(".q-dm small", { hasText: "Jardim Stay" }).waitFor();
   await board.screenshot({ path: `${out}/13c-belgeler-linked.png` });
-  // From Belgeler to the card: the Plan, its section open, the card in view with a flash.
-  await docRow("allianz-police.pdf").locator(".doc-go").click();
+  // From Belgeler to the card ("Kartı göster"): the window closes; the Plan, its section open, the card in view with a flash.
+  await docRow("allianz-police.pdf").getByRole("button", { name: "Kartı göster ›" }).click();
+  await docsWin.waitFor({ state: "detached" });
   await board.locator('[role="tab"][aria-selected="true"]', { hasText: "Plan" }).waitFor();
   await policyCard.and(board.locator(".flash")).waitFor({ timeout: 5000 });
-  console.log("✓ 0.34.6: a policy PDF dropped in the chat → booked insurance in Diğer with its file; Belgeler groups it, goes to its card; an unplaced file linked by hand; deleted and taken back");
+  console.log("✓ 0.34.6 + C5: a policy PDF dropped in the chat → booked insurance in Diğer with its file; Pano > Belgeler groups it on its card, an unplaced file under Bağlanmamış linked by hand, deleted and taken back, Kartı göster goes to the card");
 
   // A Thailand hotel saved while the Portugal trip is open → its own trip, and a notice to go there.
   await board.evaluate(async () => {
@@ -4939,8 +4980,11 @@ try {
     await app.screenshot({ path: `${out}/37j-pano-dot.png` });
     await app.mouse.move(2, 2);
     await panoTab.click();
+    // (v82: the Pano is a window over the plan; Escape shuts it)
+    await app.getByRole("dialog", { name: "Pano" }).waitFor();
     await app.locator(".view-tabs .tab-dot").waitFor({ state: "detached" });
-    await app.getByRole("tab", { name: "Plan", exact: true }).click();
+    await app.keyboard.press("Escape");
+    await app.getByRole("dialog", { name: "Pano" }).waitFor({ state: "detached" });
     assert.equal(await app.locator(".view-tabs .tab-dot").count(), 0, "seen: no dot after the Pano was open");
   }
 
@@ -5235,19 +5279,26 @@ try {
   const before = await heroNow();
   assert.deepEqual([before.booked, before.planned, before.open], [2, 1, 7]);
   assert.equal(await app.locator('.cat-sec[data-section="stay"] .cat-st').innerText(), "1 rezerve · 1 önerimiz");
-  // The Board: the pick is "Önerimiz · kartta" with "Plan'da gör →", not "Planda"; the draft stays among the decisions waiting.
+  // The Board (v82: the Pano window): our pick wears "✨ Önerimiz" and still says "Seç": it is not on the plan (no "Seçili", no green),
+  // its intent's dot is our pick's (purple); on the plan are the two bookings and the activity only. ("Plan'da gör" and the state
+  // filter are C32: not in this version, bu sürümde arayüzden düştü.)
   await app.getByRole("tab", { name: "Pano", exact: true }).click();
-  const panoFlight = app.locator(".pn-card.in-draft.pn-flt");
+  const draftPano = app.getByRole("dialog", { name: "Pano" });
+  const panoFlight = draftPano.locator('.q-pg[aria-label="Pegasus · direkt"]');
   await panoFlight.waitFor();
-  assert.match(await panoFlight.locator(".pn-strip-l .pn-tag.ai").innerText(), /Önerimiz · kartta/);
-  assert.match(await panoFlight.locator(".pn-goplan").innerText(), /Plan'da gör/);
-  assert.equal(await panoFlight.locator(".pn-tag.on").count(), 0, "not 'Planda'");
-  assert.match(flat([await app.locator(".pn-gp.draft").first().innerText()])[0], /^✨ Önerimiz: .* · Plan'da gör →$/);
-  assert.match(await app.locator(".pn-card.in-draft .pn-rib.draft").first().innerText(), /Önerimiz · kartta/);
-  assert.equal(await app.locator(".pn-card.in-draft .pn-rib.chosen").count(), 0);
-  assert.equal(flat(await app.locator(".pn-seg button").allInnerTexts()).find((t) => t.startsWith("Planda")), "Planda 3", "the draft is not counted as on the plan");
+  assert.match(await panoFlight.locator(".q-src.best").innerText(), /Önerimiz/);
+  assert.equal(await panoFlight.locator("button.q-pick").innerText(), "Seç");
+  assert.equal(await panoFlight.evaluate((el) => el.classList.contains("cur")), false, "not 'Seçili'");
+  assert.equal(await panoFlight.locator(".q-stc").count(), 0);
+  const panoStay = draftPano.locator('.q-pg[aria-label="Jardim Stay"]');
+  assert.match(await panoStay.locator(".q-src.best").innerText(), /Önerimiz/);
+  assert.equal(await panoStay.locator(".q-stc").count(), 0);
+  assert.ok((await draftPano.locator(".q-si .q-sd.ai").count()) >= 2, "the drafts' intents wear our pick's dot");
+  const onPlan = await draftPano.locator(".q-pg.cur").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+  assert.equal(onPlan.length, 3, `the draft is not counted as on the plan (${onPlan})`);
   await app.screenshot({ path: `${out}/40c-draft-pano.png` });
-  await app.getByRole("tab", { name: "Plan", exact: true }).click();
+  await app.keyboard.press("Escape");
+  await draftPano.waitFor({ state: "detached" });
   // S1: "Rezerve et ↗" on the stay's draft chooses it first (the page opens in a tab of its own; here the navigation is held back).
   await stayDraft.locator(".pk-go").evaluate((a) => a.addEventListener("click", (e) => e.preventDefault()));
   await stayDraft.locator(".pk-go").click();
@@ -5262,7 +5313,7 @@ try {
   await app.locator(".pk-fold").getByRole("button", { name: "Gerek yok", exact: true }).click();
   await flightDraft.waitFor({ state: "detached" });
   assert.equal(await app.locator(".pk-card.tk-draft").count(), 0, "a need set aside has no draft");
-  console.log("✓ draft: the best real option is the card (\"Önerimiz\"), no choice (hero, Board \"Önerimiz · kartta\"); \"Rezerve et ↗\" and \"✓ Bunu seç\" choose; it goes with its need");
+  console.log("✓ draft: the best real option is the card (\"Önerimiz\"), no choice (hero, Pano \"✨ Önerimiz\", Seç); \"Rezerve et ↗\" and \"✓ Bunu seç\" choose; it goes with its need");
 } finally {
   await draftCtx.close();
 }
@@ -5445,28 +5496,31 @@ try {
   });
   assert.deepEqual(rules, { msg: ["mv-rise-s", "0.26s"], balloon: ["tipx-in", "0.14s"] }, "chat message rises in 260 ms; the ⓘ balloon in 140 ms");
 
-  // Pano: "Yeni" until seen (with the ring of a card that just came), the strip's cards marked for the opening, "Neden?" unfolds, the heart springs.
+  // Pano (v82 window): "Yeni" until seen (with the ring of a card that just came), the heart springs. The v11 strips' own opening and a
+  // card's "Neden?" are not in the v82 Pano (E8 grows the window instead; the pluses and minuses are the comparison's own rows): only that
+  // they are gone is checked.
   await app.getByRole("tab", { name: /Pano/ }).click();
-  await app.locator(".pn-card").first().waitFor();
-  assert.ok((await app.locator(".pn-grid[data-pit-children]").count()) > 0, "Pano: the strips are marked for the opening");
-  assert.ok((await app.locator(".pn-card.ar-new .pn-new").count()) > 0, "Pano: what came since the last visit says Yeni and carries the ring");
-  const heartMotion = await app.locator(".pn-heart").first().evaluate((el) => [getComputedStyle(el).transitionDuration, getComputedStyle(el).transitionTimingFunction]);
+  const motionPano = app.getByRole("dialog", { name: "Pano" });
+  await motionPano.locator(".q-pg").first().waitFor();
+  assert.equal(await motionPano.locator("[data-pit-children]").count(), 0, "v82: no strip opening of its own (E8 grows the window)");
+  assert.ok((await motionPano.locator(".q-pg.ar-new .q-new").count()) > 0, "Pano: what came since the last visit says Yeni and carries the ring");
+  const heartMotion = await motionPano.locator(".q-like").first().evaluate((el) => [getComputedStyle(el).transitionDuration, getComputedStyle(el).transitionTimingFunction]);
   assert.deepEqual(heartMotion, ["0.25s", "cubic-bezier(0.2, 1.6, 0.4, 1)"], "the heart springs in 250 ms");
-  const why = app.locator(".pn-card:has(.pn-why)").first();
-  await why.evaluate((el) => el.scrollIntoView({ block: "center" }));
-  const detail = why.locator(".pn-detail");
-  assert.equal(await detail.evaluate((el) => el.getBoundingClientRect().height), 0, "Neden?: closed, no height");
-  assert.equal(await detail.evaluate((el) => getComputedStyle(el).transitionDuration), "0.4s", "Neden?: opens over 400 ms");
-  await why.locator(".pn-why").click();
-  await app.waitForFunction((el) => el.getBoundingClientRect().height > 20, await detail.elementHandle(), { timeout: 3000 });
-  await app.waitForTimeout(450);
-  assert.match(await why.locator(".pn-chev").evaluate((el) => getComputedStyle(el).transform), /^matrix\(-1/, "Neden?: the arrow has turned");
-  await why.locator(".pn-why").click();
+  assert.equal(await motionPano.getByRole("button", { name: /^Neden\?/ }).count(), 0, "v82: no Neden? on a card (the comparison has Artılar and Eksiler)");
+  // E8: Escape takes it away in 180 ms, shrinking to 97% (--e-in); the scrim lightens with it.
+  const goes = await app.evaluate(async () => {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return [".q-sheetp", ".q-scrim"].map((sel) => [...document.querySelectorAll(sel)].flatMap((g) => g.getAnimations().map((a) => [a.animationName, a.effect.getComputedTiming().duration])));
+  });
+  assert.deepEqual(goes, [[["q-sheet-out", 180]], [["q-fade-out", 180]]], `E8: the window goes in 180 ms (${JSON.stringify(goes)})`);
+  await motionPano.waitFor({ state: "detached" });
   // A second visit has seen it all: no "Yeni", no ring.
-  await app.getByRole("tab", { name: /^Plan/ }).first().click();
   await app.getByRole("tab", { name: /Pano/ }).click();
-  await app.locator(".pn-card").first().waitFor();
-  assert.equal(await app.locator(".pn-new, .pn-card.ar-new").count(), 0, "Pano: seen once, no Yeni the next time");
+  await motionPano.locator(".q-pg").first().waitFor();
+  assert.equal(await motionPano.locator(".q-new, .q-pg.ar-new").count(), 0, "Pano: seen once, no Yeni the next time");
+  await app.keyboard.press("Escape");
+  await motionPano.waitFor({ state: "detached" });
 
   // ---- F8b Hareket Dili (docs/mockups/artifact-arsivi/hareket-dili-P2qVN5; Emre's m-* decisions): one short claim for each movement ----
   const named = "(el) => el.getAnimations().map((a) => [a.animationName, a.effect.getComputedTiming().duration])"; // (run in the page)
@@ -5478,22 +5532,17 @@ try {
   const viewTabs = app.locator(".view-tabs");
   assert.ok(await viewTabs.evaluate((el) => el.classList.contains("has-ind")), "m-sekme: the pair carries a sliding highlight");
   assert.deepEqual(await viewTabs.evaluate((el) => { const cs = getComputedStyle(el, "::before"); return [cs.transitionDuration.split(",")[0].trim(), cs.transitionTimingFunction.match(/cubic-bezier\([^)]*\)/)[0]]; }), ["0.26s", "cubic-bezier(0.16, 1, 0.3, 1)"], "m-sekme: the highlight slides 260 ms, --e-out");
+  // v82 (E8): the Pano tab opens the Pano window over the plan: it grows from the middle (from 96%, 260 ms) as the plan darkens behind it;
+  // the plan stays where it is (no view comes in from the side for it, E report §3.9). The tabs' highlight still slides to Pano.
   const toPano = await app.evaluate(async () => {
     [...document.querySelectorAll(".view-tabs [role=tab]")].find((b) => /Pano/.test(b.textContent)).click();
-    const out = {
-      ghost: [...document.querySelectorAll(".mv-ghost")].flatMap((g) => g.getAnimations().map((a) => ["fade", a.effect.getComputedTiming().duration, a.effect.getComputedTiming().easing])),
-      inside: document.querySelectorAll(".mv-ghost *").length,
-      dir: document.documentElement.style.getPropertyValue("--tab-dir"),
-      view: [],
-    };
-    // (the Pano is drawn within a frame or two of the press)
-    for (let i = 0; i < 100 && !document.querySelector(".panel .pn"); i++) await new Promise((r) => requestAnimationFrame(r));
-    out.view = [...document.querySelectorAll(".panel .pn")].flatMap((g) => g.getAnimations().map((a) => [a.animationName, a.effect.getComputedTiming().duration]));
-    return out;
+    for (let i = 0; i < 100 && !document.querySelector(".q-sheetp"); i++) await new Promise((r) => requestAnimationFrame(r));
+    const anim = (sel) => [...document.querySelectorAll(sel)].flatMap((g) => g.getAnimations().map((a) => [a.animationName, a.effect.getComputedTiming().duration]));
+    return { sheet: anim(".q-sheetp"), scrim: anim(".q-scrim"), plan: document.querySelectorAll(".panel .cat-plan").length, dir: document.documentElement.style.getPropertyValue("--tab-dir") };
   });
-  assert.ok(toPano.ghost.some(([, d, easing]) => d === 120 && easing === "cubic-bezier(0.5, 0, 0.75, 0)"), `m-sekme: the old view fades 120 ms, --e-in (${JSON.stringify(toPano.ghost)})`);
-  assert.equal(toPano.inside, 0, "m-sekme: the copy of the old view is out of every query's reach (a closed shadow tree)");
-  assert.ok(toPano.view.some(([n, d]) => n === "mv-tab-in" && d === 260), `m-sekme: the new view comes in over 260 ms (${JSON.stringify(toPano.view)})`);
+  assert.deepEqual(toPano.sheet, [["q-sheet-in", 260]], `E8: the Pano window grows in over 260 ms (${JSON.stringify(toPano.sheet)})`);
+  assert.deepEqual(toPano.scrim, [["q-fade-in", 260]], "E8: the plan darkens behind it over the same 260 ms");
+  assert.equal(toPano.plan, 1, "the plan stays behind the window");
   assert.equal(toPano.dir, "1", "m-sekme: Pano is the later segment: it comes from the right");
   await app.waitForFunction(() => !document.querySelector(".mv-ghost"), null, { timeout: 2000 });
   await app.waitForFunction(() => { const el = document.querySelector(".view-tabs"); return Math.abs(new DOMMatrix(getComputedStyle(el, "::before").transform).m41 - el.querySelector('[aria-selected="true"]').offsetLeft) < 1.5; }, null, { timeout: 5000 });
@@ -5502,7 +5551,24 @@ try {
   const toPlan = await app.evaluate(() => { [...document.querySelectorAll(".view-tabs [role=tab]")].find((b) => /^Plan/.test(b.textContent)).click(); return document.documentElement.style.getPropertyValue("--tab-dir"); });
   assert.equal(toPlan, "-1", "m-sekme: back to the earlier segment, from the left");
   await app.locator(".cat-plan").waitFor();
-  await app.getByRole("tab", { name: "Yolculuk sırasıyla", exact: true }).click();
+  assert.equal(await app.getByRole("dialog", { name: "Pano" }).count(), 0, "the Plan tab shuts the Pano window");
+  // The copy of the view left and the new one from the side: a view's own change (Kategoriye göre → Yolculuk sırasıyla) still has both.
+  const toTrip = await app.evaluate(async () => {
+    [...document.querySelectorAll(".plan-order [role=tab]")].find((b) => /Yolculuk/.test(b.textContent)).click();
+    const out = {
+      ghost: [...document.querySelectorAll(".mv-ghost")].flatMap((g) => g.getAnimations().map((a) => ["fade", a.effect.getComputedTiming().duration, a.effect.getComputedTiming().easing])),
+      inside: document.querySelectorAll(".mv-ghost *").length,
+      view: [],
+    };
+    // (Yolculuk sırasıyla is drawn within a frame or two of the press: its own .jf, the plan's other .trip-plan pieces were there before)
+    for (let i = 0; i < 100 && !document.querySelector(".panel .jf.trip-plan"); i++) await new Promise((r) => requestAnimationFrame(r));
+    out.view = [...document.querySelectorAll(".panel .jf.trip-plan")].flatMap((g) => g.getAnimations().map((a) => [a.animationName, a.effect.getComputedTiming().duration]));
+    return out;
+  });
+  assert.ok(toTrip.ghost.some(([, d, easing]) => d === 120 && easing === "cubic-bezier(0.5, 0, 0.75, 0)"), `m-sekme: the old view fades 120 ms, --e-in (${JSON.stringify(toTrip.ghost)})`);
+  assert.equal(toTrip.inside, 0, "m-sekme: the copy of the old view is out of every query's reach (a closed shadow tree)");
+  assert.ok(toTrip.view.some(([n, d]) => n === "mv-tab-in" && d === 260), `m-sekme: the new view comes in over 260 ms (${JSON.stringify(toTrip.view)})`);
+  await app.waitForFunction(() => !document.querySelector(".mv-ghost"), null, { timeout: 2000 });
   assert.ok(await app.locator(".plan-order").evaluate((el) => el.classList.contains("has-ind")), "m-sekme: the Plan's three ways to read carry the highlight too");
   await app.getByRole("tab", { name: "Kategoriye göre", exact: true }).click();
   await app.locator(".cat-plan").waitFor();
@@ -5668,12 +5734,12 @@ try {
   assert.equal(flew.bump, 380, `m-planakoy: the number jumps 1.35x over 380 ms (${JSON.stringify(flew)})`);
   await app.locator(".panel").evaluate((el) => (el.scrollTop = 0));
   await app.getByRole("tab", { name: /Pano/ }).click();
-  await app.locator(".pn-card").first().waitFor();
+  await app.locator(".q-sheetp .q-pg").first().waitFor();
   const flewTab = await app.evaluate(async () => {
     const b = document.createElement("button");
     b.type = "button";
     b.textContent = "+ Plana koy";
-    document.querySelector(".pn").prepend(b);
+    document.querySelector(".q-sheetp .q-sc").prepend(b);
     const calls = [];
     const real = Element.prototype.animate;
     Element.prototype.animate = function (k, o) {
@@ -5692,7 +5758,8 @@ try {
     return bump;
   });
   assert.equal(flewTab, 380, "m-planakoy: on the Pano, where no section is drawn, the Plan tab is still the target");
-  await app.getByRole("tab", { name: /^Plan/ }).first().click();
+  await app.keyboard.press("Escape");
+  await app.locator(".q-sheetp").waitFor({ state: "detached" });
   await app.locator(".cat-plan").waitFor();
 
   // m-kurallar: at most two pulsing rings on screen (the third and later keep still); a window open, the cards behind keep still (one focus).
@@ -5819,7 +5886,7 @@ try {
   await settingsTab.getByLabel("Hareketi duraklat", { exact: false }).uncheck();
   assert.equal(await settingsTab.evaluate(() => localStorage.getItem("trip-radar:still")), null);
   await settingsTab.close();
-  console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, × satırı, geri alma bildirimi, sohbet mesajı, ⓘ balonu, yer tutucu cümleler, Pano (Yeni, Neden?, kalp), each on its own and over within a moment");
+  console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, × satırı, geri alma bildirimi, sohbet mesajı, ⓘ balonu, yer tutucu cümleler, Pano (Yeni, kalp, pencerenin gelişi ve gidişi E8), each on its own and over within a moment");
 
   console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, aşama geçişi (kalkış), rt-fly, Canlı noktası, each on its own and over within a moment");
 } finally {
@@ -5913,15 +5980,20 @@ try {
   assert.equal(await app.locator(".op-fx").count(), 0, "a reload brings no orb or sparks");
   assert.equal(await faint(), 0, "a reload shows everything at once");
 
-  // The Pano has a small opening of its own (once per trip): its cards come in one by one; a second visit is still.
+  // v82 (E8): the Pano has no scripted opening of its own (the v11 one, its cards one by one, is gone): it is a window that grows in, the
+  // same each time, and nothing of it is left running.
   await app.getByRole("tab", { name: /Pano/ }).click();
-  await app.waitForFunction(() => document.getAnimations().some((x) => !("animationName" in x)), null, { timeout: 3000 });
+  await app.getByRole("dialog", { name: "Pano" }).waitFor();
+  assert.ok(await app.locator(".q-sheetp").evaluate((el) => el.getAnimations().some((a) => a.animationName === "q-sheet-in")), "E8: the window grows in");
   await app.waitForTimeout(1500);
   assert.equal(await scripted(), 0, "the Pano's opening ends by itself");
-  await app.getByRole("tab", { name: /^Plan/ }).first().click();
+  await app.keyboard.press("Escape");
+  await app.getByRole("dialog", { name: "Pano" }).waitFor({ state: "detached" });
   await app.getByRole("tab", { name: /Pano/ }).click();
   await app.waitForTimeout(300);
   assert.equal(await scripted(), 0, "the Pano doesn't open a second time");
+  await app.keyboard.press("Escape");
+  await app.getByRole("dialog", { name: "Pano" }).waitFor({ state: "detached" });
 
   // A key ends it at once: opened afresh, one key press and everything is in place, below the fold too.
   await app.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("trip-radar:opened:")).forEach((k) => localStorage.removeItem(k)));
@@ -5965,6 +6037,11 @@ try {
       const t = app.getByRole("tab", { name: new RegExp(view === "Plan" ? "^Plan" : view) }).first();
       if (await t.count()) { await t.click(); await app.waitForTimeout(600); }
       assert.ok((await over()) <= 0, `390 px: no sideways scroll on ${view}`);
+      // (v82: the Pano is a window over the plan; Escape shuts it before the next view)
+      if (view === "Pano" && (await app.getByRole("dialog", { name: "Pano" }).count())) {
+        await app.keyboard.press("Escape");
+        await app.getByRole("dialog", { name: "Pano" }).waitFor({ state: "detached" });
+      }
     }
     assert.ok((await over()) <= 0, "390 px: no sideways scroll on the Plan");
     const strip = app.locator(".ts-strip").first();
