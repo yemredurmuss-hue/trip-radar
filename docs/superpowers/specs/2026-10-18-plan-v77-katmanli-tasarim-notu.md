@@ -22,3 +22,17 @@ Hepsini gör = o niyetin küçük panosu: Hepsi / AI / Linklerim / Ekleyenler s�
 - Değiştir: 1, 2 ya da 3.
 - Pano görünümü: bu katmanlı yapıda Pano sekmesi neyi gösterecek.
 - Mini görseller canlıda gerçek fotoğraf/logo (Places API kararı verildi); burada çizim.
+
+## v78 · docs/mockups/plan-v78-toparlanmis (18 Ekim, v77 üstüne UI toparlama)
+Emre'nin geri bildirimi: kapalı hal karışık; Skyscanner gibi bilinen format; tek kategori açık kalsın; niyet ile seçenekler birbirine girmiş; seçili otel çok yatay ince; Pano hep aynı yerde, büyük açılsın, artı/eksi yan yana; ulaşımda niyet ile bilet iki kez yazılmış; etkinlikte "Klook'ta bilet al" uzun, Aldım altta, "belge yok" göze batıyor; link yapıştır ve "Pano'da karşılaştır" kalksın.
+- Kapalı satır: hizalı 5 sütun (ikon | ad + en çok 3 anahtar kelime | en çok 3 mini görsel üst üste | tek durum "n karar" ya da "hazır" | bütçe). Sayaçlar, ilerleme çubuğu ve rozetler kalktı.
+- Akordiyon: bir kategori açılınca diğeri kapanır, açılan üste kayar.
+- Her niyet tek kutu: üstte niyet (plaka, çizim, ad, ikonlu bilgi, istekler), sağ üstte hep aynı yerde durum ve "Pano n" düğmesi; altında seçenekler ya da seçili. Kutunun kenarı durumu söyler: kesik = karar bekliyor, kum = seçildi, yeşil = alındı.
+- Uçuş ve tren seçenekleri Skyscanner satırı (logo, kalkış, süre ve aktarma, varış, kaynak, etiket, fiyat, Seç). Otel/eSIM/etkinlik Booking/Airbnb kartı (fotoğraf, marka, ad, konum, puan, fiyat, Seç).
+- İlk 3 seçenek görünür ("en iyi 3 · tümü 5, Pano'da"); fazlası Pano'da.
+- Seçili otel: fotoğraf solda, bilgi sağda; eylem satırı Değiştir · fiyat · Aldım · [logo] Rezerve et. Rezervede yerinde "✓ Rezerve edildi" ve sessiz "Onayı ekle".
+- Uçuş/tren seçilince niyet bilete dönüşür: kutunun alt yarısı bilet (taşıyıcı, saatler ve istasyon/kod, süre), sağda koçan (fiyat, [logo] Satın al, Aldım, Değiştir). Şehir adları yalnız niyette, tekrar yok.
+- Etkinlik: plandakilerde Aldım ve [logo] Satın al aynı satırda; alınınca "✓ Alındı" + sessiz "Bileti ekle". Önerilerde "+ Plana koy".
+- Pano: büyük pencere (telefonda alttan tam ekran). Üstte aynı kategorideki niyetler arasında geçiş (Tokyo · Kyoto · Hakone · Osaka), süzgeç Hepsi / Biriktirdiklerin / AI önerileri, Daha fazla öner. Gövde yan yana karşılaştırma: görsel ve kaynak, nerede/saat, fiyat ve toplam, puan, iptal, artılar, eksiler, Seç. Seçili sütun yeşil, "Şu an seçili". "Değiştir" de Pano'yu açar.
+- Link yapıştırma alanları kalktı (linkler sohbetten gelir, niyetin altında "Sohbete attığın linkler buraya düşer" notu). "Pano'da karşılaştır", "Hepsini gör", "Daha fazla öner" dağınık bağlantıları kalktı.
+- Prototip çubuğunda yalnız "Plan ilerledi / Omurga yeni oluştu".
