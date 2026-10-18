@@ -53,7 +53,14 @@ export function TripMenu({ actions }: { actions: TripMenuActions }) {
     items[to]?.focus();
   };
   return (
-    <div className="x-tmenu" ref={pop.box}>
+    <div
+      className="x-tmenu"
+      ref={pop.box}
+      // Tabbed away from the menu: it closes (a click outside does too).
+      onBlur={(e) => {
+        if (pop.open && e.relatedTarget && !e.currentTarget.contains(e.relatedTarget as Node)) pop.close();
+      }}
+    >
       <button
         ref={pop.trigger}
         type="button"
