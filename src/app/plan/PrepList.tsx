@@ -1,84 +1,121 @@
-// Hazırlık (spec 0.34.6 §3; its own section since v11): the chores before the trip — buy, apply, print, pack,
-// change money — a quiet tick list, what's done staying in its place ("Hazırları gizle" folds it away), one short row each: the tick, the title (edited in place), "Yapıldı ·
-// 12 Eki" once done, × on hover (deleted with "Geri al"). No day chip: a chore is done or not.
-import { useState } from "react";
-import { catDomKey, type CatEntry } from "../../lib/categories";
+// Hazırlık open (v82 geçişi aşama 7; tasarım notu "v83 ek · Hazırlık", the prototype's z83_prep.py): "Bilmen gerekenler"
+// first (T8 b), then "2/6 hazır · güne göre sıralı" with "Hazırları gizle" and "Daha fazla öner", the chores by their day
+// (T3 a: the stored ones and the ones worked out from the trip, lib/prepDays.ts), and at the end the folded Bavul (T6 a,
+// lib/prepPack.ts). Everything is read from the board (the plan's EmptyEnv and CardEnv, and chrome.storage.local), so
+// the category's shell only passes its entries.
+import { useMemo, useState } from "react";
+import { catDomKey, recordOf, type CatEntry } from "../../lib/categories";
+import type { CityWeather } from "../../lib/climate";
+import { countryInfo } from "../../lib/countries";
 import { L } from "../../lib/i18n";
-import { doneText, setDone, setPrep } from "../../lib/ideas";
-import { amazonLink } from "../../lib/prepBuy";
+import { tripPlaybook } from "../../lib/playbooks";
+import { countryName, knowRows, knowSub } from "../../lib/prepKnow";
+import { bagFact, drivesOnTrip, kindWord, packSub, packView, planNames, rulesAsk, rulesPack, stayCities, stayLines, tripDays } from "../../lib/prepPack";
 import { entryDomId } from "../../lib/progress";
-import type { Item } from "../../lib/types";
-import { DeleteX } from "../cards/CardShell";
-import { Editable, InlineEdit } from "../cards/InlineEdit";
+import { useEmptyEnv } from "../cards/emptyEnv";
 import { useCardEnv } from "../cards/PlanCard";
-import { IdeaGlyph } from "../ideas/IdeaIcons";
-
-const recordOf = (e: CatEntry): Item | null => (e.piece.kind === "item" ? e.piece.item : e.piece.kind === "entry" && e.piece.entry.kind === "event" ? e.piece.entry.item : null);
+import { Bavul } from "./prep/Bavul";
+import { KnowCard } from "./prep/KnowCard";
+import { PrepIcon } from "./prep/PrepIcons";
+import { PrepRow } from "./prep/PrepRow";
+import { usePackAi } from "./prep/usePackAi";
+import { usePrep } from "./prep/usePrep";
 
 export function PrepList({ entries }: { entries: CatEntry[] }) {
   const env = useCardEnv();
+  const { travellers } = useEmptyEnv();
+  const model = usePrep(entries);
+  const { trip, items, tasks, summary, range, countries, facts, mine } = model;
   const [hideDone, setHideDone] = useState(false);
-  const done = entries.filter((e) => e.state === "done").length;
-  const shown = hideDone ? entries.filter((e) => e.state !== "done") : entries;
+  const domIds = useMemo(() => new Map(entries.map((e) => [recordOf(e)?.id, entryDomId(catDomKey(e))])), [entries]);
+
+  // The Bavul: the AI's list once made, else the trip's own.
+  const cities = useMemo(() => stayCities(items), [items]);
+  const weather = cities.map((c) => env.weather?.(c) ?? null).filter((w): w is CityWeather => w != null);
+  const kind = kindWord(trip.intent);
+  const list = trip.packing?.list ?? null;
+  const main = facts.country;
+  const bag = bagFact(items);
+  const groups =
+    list?.groups ??
+    rulesPack({
+      weather,
+      range,
+      kind: kind ? { title: kind, lines: tripPlaybook(trip).prep() } : null,
+      country: main,
+      countryName: main ? countryName(main) : null,
+      home: model.passport,
+      plug: model.plug,
+      visa: facts.visa,
+      money: model.money && !model.money.own ? model.money.name : null,
+      driving: drivesOnTrip(items),
+    });
+  const view = packView({
+    groups,
+    ask: list ? list.ask : rulesAsk(range),
+    answers: trip.packing?.answers ?? {},
+    ready: trip.packing?.ready ?? [],
+    records: model.packs,
+    recordsTitle: kind ?? L("Eklediklerin", "Added by you"),
+    never: mine.never,
+    always: mine.always,
+  });
+  const month = range ? new Date(`${range.start}T12:00:00Z`).toLocaleDateString(L("tr-TR", "en-GB"), { month: "long", timeZone: "UTC" }) : null;
+  const sub = packSub({
+    name: model.name,
+    month: month ? month.charAt(0).toLocaleUpperCase(L("tr-TR", "en-GB")) + month.slice(1) : null,
+    weather: weather.length > 0,
+    days: tripDays(range),
+    kind: kind?.toLocaleLowerCase(L("tr-TR", "en-GB")) ?? null,
+    places: list != null,
+  });
+  const plugs = countryInfo(main)?.plugs;
+  usePackAi(
+    trip,
+    {
+      countries,
+      cities: stayLines(items),
+      range,
+      people: travellers,
+      kind,
+      weather,
+      plan: planNames(items),
+      bag,
+      plug: plugs?.length && model.plug ? `${plugs.join("/")} (${model.plug === "fits" ? "the traveller's plugs fit" : "an adapter is needed"})` : null,
+      home: model.passport,
+      never: mine.never,
+      always: mine.always,
+    },
+    range != null && (cities.length > 0 || countries.length > 0),
+  );
+
+  const know = knowRows({ countries, passport: model.passport, money: model.money, plug: model.plug, tips: list?.tips ?? [] });
+  const shown = hideDone ? tasks.filter((t) => !t.done) : tasks;
   return (
-    <div className="prep" aria-label={L("Hazırlık", "Prep")}>
-      <p className="prep-head">
-        <span>{L(`${done}/${entries.length} hazır`, `${done}/${entries.length} ready`)}</span>
-        <small className="prep-why">{L("· gezine göre önerildi, sohbette “şunu da ekle” diyebilirsin", "· suggested for this trip; say “add this too” in the chat")}</small>
-        <i className="prep-sp" />
-        {done > 0 && (
-          <button type="button" className="prep-hide" aria-pressed={hideDone} onClick={() => setHideDone(!hideDone)}>
+    <div className="q-pbody" aria-label={L("Hazırlık", "Prep")}>
+      <KnowCard rows={know} sub={knowSub(countries.slice(0, 3))} />
+      <div className="q-ph1">
+        {tasks.length > 0 && <span className="q-pc2">{L(`${summary.done}/${summary.total} hazır`, `${summary.done}/${summary.total} ready`)}</span>}
+        {tasks.some((t) => t.day) && <small>{L("güne göre sıralı", "by day")}</small>}
+        <span className="q-sp" />
+        {summary.done > 0 && (
+          <button type="button" className="q-phide" aria-pressed={hideDone} onClick={() => setHideDone(!hideDone)}>
             {hideDone ? L("Hazırları göster", "Show the ready ones") : L("Hazırları gizle", "Hide the ready ones")}
           </button>
         )}
         {env.ask && (
-          <button type="button" className="ac-more prep-more" onClick={() => env.ask!(L("Bu gezi için hazırlık listesine eklenecek birkaç şey daha öner (alınacaklar, yapılacak başvurular, yanına alınacaklar).", "Suggest a few more things for this trip's prep list (things to buy, to apply for, to pack)."))}>
-            ✨ {L("Daha fazla öner", "Suggest more")}
+          <button type="button" className="q-ai sm" onClick={() => env.ask!(L("Bu gezi için hazırlık listesine eklenecek birkaç şey daha öner (alınacaklar, yapılacak başvurular, yanına alınacaklar).", "Suggest a few more things for this trip's prep list (things to buy, to apply for, to pack)."))}>
+            <PrepIcon name="spark" size={14} />
+            {L("Daha fazla öner", "Suggest more")}
           </button>
         )}
-      </p>
-      <ul className="prep-rows">
-        {shown.map((e) => {
-          const item = recordOf(e);
-          return item ? (
-            <InlineEdit key={e.key} item={item} only={["name"]}>
-              <PrepRow item={item} domId={entryDomId(catDomKey(e))} />
-            </InlineEdit>
-          ) : null;
-        })}
+      </div>
+      <ul className="q-prows">
+        {shown.map((t) => (
+          <PrepRow key={t.key} task={t} trip={trip} today={model.today} shopHome={model.shopHome} domId={t.item ? domIds.get(t.item.id) : undefined} />
+        ))}
+        <Bavul view={view} sub={sub} bag={bag} model={model} />
       </ul>
     </div>
-  );
-}
-
-function PrepRow({ item, domId }: { item: Item; domId: string }) {
-  const env = useCardEnv();
-  const done = Boolean(item.doneAt);
-  const buy = done ? null : amazonLink(item.name);
-  return (
-    <li id={domId} className={`prep-row${done ? " done" : ""}`} aria-label={item.name} data-item-id={item.id}>
-      <button type="button" className="prep-check" role="checkbox" aria-checked={done}
-        aria-label={done ? L(`${item.name}: yapılmadı`, `${item.name}: not done`) : L(`${item.name}: yapıldı`, `${item.name}: done`)}
-        onClick={() => void setDone(item, !done)}>
-        {done && <IdeaGlyph name="check" size={11} />}
-      </button>
-      <span className="prep-t">
-        <Editable field="name">{item.name}</Editable>
-        {item.summary && <small className="prep-sub">{item.summary}</small>}
-      </span>
-      {done && <span className="prep-done" title={doneText(item) ?? undefined}>{L("Hazır", "Ready")}</span>}
-      {buy && (
-        <a className="prep-buy" href={buy} target="_blank" rel="noreferrer" title={L("Amazon'da ara", "Search on Amazon")}>
-          <span className="prep-bm" aria-hidden>a</span>
-          Amazon ↗
-        </a>
-      )}
-      {/* Not a chore after all ("şemsiye al" to buy there): one tap moves it to Yapılacak şeyler. */}
-      <button type="button" className="prep-move" title={L("Gidilen yerde yapılacak: Yapılacak şeyler'e taşı", "Done there: move to Things to do")}
-        aria-label={L(`${item.name}: Yapılacak şeyler'e taşı`, `${item.name}: move to Things to do`)} onClick={() => void setPrep(item, false)}>
-        {L("Orada yapılacak", "Done there")}
-      </button>
-      <DeleteX name={item.name} onDelete={() => env.remove(item)} />
-    </li>
   );
 }
