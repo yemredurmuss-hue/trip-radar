@@ -251,10 +251,12 @@ export function ruleSuggestions({ trip, plan, items, timeline, legs, mains, home
     );
   }
 
-  // Diğer: abroad without travel health insurance, or without an eSIM.
+  // Diğer: abroad without travel health insurance, or without an eSIM. Not once the trip has begun (H8, İ10: on the
+  // trip, the rules make no prep suggestions).
   const own = home ?? homeFromFlights(items);
   const abroad = own ? foreignCountries(items, own) : [];
-  if (abroad.length) {
+  const begun = Boolean(range && range.start <= today);
+  if (abroad.length && !begun) {
     const names = countryNames(abroad);
     if (!items.some((i) => live(i) && isInsurance(i))) {
       out.push(
