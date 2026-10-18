@@ -2,7 +2,7 @@
 // "Tercihler" with what was understood in a few words, "+N" and the waiting question's "1"; a tap opens "Seni böyle
 // anladım" (each entry with its scope and source, × to remove it, the question with Evet / Hayır). Nothing understood
 // yet and no question: no Tercihler (C19). "Özeti küçült" ends the row.
-import { useEffect } from "react";
+import { Fragment, useEffect } from "react";
 import { L } from "../../lib/i18n";
 import { preferenceTags } from "../../lib/preferences";
 import type { StyleChip } from "../../lib/tripStyle";
@@ -10,6 +10,7 @@ import type { Trip } from "../../lib/types";
 import { updateTrip } from "../actions";
 import { HeroIcon } from "../Icons";
 import { intentEntries } from "../IntentCard";
+import { useAppear } from "../useAppear";
 import type { Decisions } from "../useDecisions";
 import { XIcon } from "./icons";
 import { usePop } from "./usePop";
@@ -18,6 +19,8 @@ function Prefs({ trip, decisions }: { trip: Trip; decisions: Decisions | null })
   const pop = usePop();
   const { entries, guess } = intentEntries(trip, decisions);
   const nothing = !entries.length && !guess;
+  // Understood after the hero was drawn (a note, a priority said): it fades in once.
+  const appear = useAppear(!nothing, !!decisions);
   // The last entry removed, the question answered: the window goes, so a later one doesn't come back already open.
   useEffect(() => {
     if (nothing) pop.close();
@@ -29,16 +32,18 @@ function Prefs({ trip, decisions }: { trip: Trip; decisions: Decisions | null })
       yes ? { ...t, confirmedSignals: [...new Set([...(t.confirmedSignals ?? []), guess!.id])] } : { ...t, ignoredSignals: [...new Set([...(t.ignoredSignals ?? []), guess!.id])] },
     );
   return (
-    <div className="x-prefs" ref={pop.box}>
+    <div className={`x-prefs${appear}`} ref={pop.box}>
       <button ref={pop.trigger} type="button" className="x-prefb" aria-expanded={pop.open} aria-haspopup="dialog" onClick={pop.toggle}>
         <span>{L("Tercihler", "Preferences")}</span>
         {tags.length > 0 && (
           <b>
             {tags.map((t, n) => (
-              <span key={t.label} className={`x-ptag${t.strong ? " strong" : ""}`} title={`${t.label} · ${t.title}`}>
+              <Fragment key={t.label}>
                 {n > 0 && " · "}
-                {t.label}
-              </span>
+                <span className={`x-ptag${t.strong ? " strong" : ""}`} title={`${t.label} · ${t.title}`}>
+                  {t.label}
+                </span>
+              </Fragment>
             ))}
           </b>
         )}

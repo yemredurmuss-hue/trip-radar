@@ -30,7 +30,7 @@ describe("heroCounts and its words", () => {
     expect(fresh.fresh).toBe(true);
     expect(freshWords(fresh)).toBe("18 ihtiyaç · 5'inde önerimiz var");
     expect(freshWords(heroCounts(of([["searching", 4]])))).toBe("4 ihtiyaç");
-    expect(withLang("en", () => freshWords(fresh))).toBe("18 needs · our pick for 5");
+    expect(withLang("en", () => freshWords(fresh))).toBe("18 needs · 5 with our pick");
   });
 
   it("puts a number in the locative", () => {

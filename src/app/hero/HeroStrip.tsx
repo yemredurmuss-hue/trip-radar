@@ -5,7 +5,7 @@
 // A part with nothing to say isn't drawn (C19).
 import type { ReactNode } from "react";
 import { BUDGET_SLICES, type BudgetBar, type BudgetSlice } from "../../lib/progress";
-import { formatDateRange, formatPrice } from "../../lib/items";
+import { formatDateRange, formatPrice, nightsBetween } from "../../lib/items";
 import { initials, nPeople } from "../../lib/heroInfo";
 import { freshWords, shareSentence, shareWords, type BudgetView, type HeroCounts } from "../../lib/heroStrip";
 import { L } from "../../lib/i18n";
@@ -40,7 +40,7 @@ export interface HeroNext {
 
 function Dates({ dates }: { dates: HeroDates }) {
   const { range } = dates;
-  const days = Math.round((Date.parse(`${range.end}T12:00:00Z`) - Date.parse(`${range.start}T12:00:00Z`)) / 86_400_000) + 1;
+  const days = nightsBetween(range.start, range.end) + 1;
   const small = [nDays(days), dates.countdown].filter(Boolean).join(" · ");
   return (
     <TipOn tip={dates.tip} below>

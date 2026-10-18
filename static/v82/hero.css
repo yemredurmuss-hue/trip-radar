@@ -2,7 +2,8 @@
    (plan-v32-tasarim: docs/mockups/plan-v83-turler/kaynak/mk81.css, mk82.css, mk83.css) and keep its class names. */
 /* Aşama 1 (hero/Hero.tsx): the summary on its own light purple ground in a round box, 40 px above the Plan; the mosaic,
    the strip in four parts, the chips, Tercihler, the folded line and the thin bar. Narrow by the panel's own width
-   (its container, app.css; its content box): one row of the strip above 880 px, the cover over the tiles under 600 px. */
+   (its container, app.css; its content box): one row of the strip above 880 px, a lower mosaic from 840 px, the cover
+   over the tiles under 600 px. */
 :root { --x-in: cubic-bezier(.2, .8, .2, 1); }
 
 .x-hero { position: relative; z-index: 3; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 16px; margin: 0 0 40px; border-radius: 30px; background: linear-gradient(180deg, #f3f1fa, #f6f4fb); border: 1px solid #ebe8f4; color: var(--q-ink); }
@@ -217,9 +218,11 @@ button.x-ps:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2px
 @container panel (max-width: 460px) { .h-mp, .h-mt { display: none; } .h-next.sm { max-width: none; margin-left: auto; } }
 
 /* ---- narrow: the strip in two rows with "Sıradaki" whole, then the cover over the tiles ---- */
-@container panel (max-width: 880px) {
+@container panel (max-width: 840px) {
   .x-mos { height: 300px; }
   .x-mos.solo { height: 240px; }
+}
+@container panel (max-width: 880px) {
   .x-strip { flex-wrap: wrap; gap: 14px; }
   .x-dv { display: none; }
   .x-next { margin-left: 0; width: 100%; max-width: none; flex-basis: 100%; }

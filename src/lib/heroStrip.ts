@@ -68,7 +68,7 @@ export function shareSentence(c: HeroCounts): string {
 export function freshWords(c: HeroCounts): string {
   const needs = L(`${c.total} ihtiyaç`, `${c.total} ${c.total === 1 ? "need" : "needs"}`);
   if (!c.suggested) return needs;
-  return `${needs} · ${L(`${numberLocative(c.suggested)} önerimiz var`, `our pick for ${c.suggested}`)}`;
+  return `${needs} · ${L(`${numberLocative(c.suggested)} önerimiz var`, `${c.suggested} with our pick`)}`;
 }
 
 /** The dates' tip: each city's own days ("Porto 8–11 Ekim · Lizbon 11–14 Ekim"), and that they are a guess. */
