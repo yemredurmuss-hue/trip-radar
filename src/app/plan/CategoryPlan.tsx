@@ -35,6 +35,19 @@ import { formatPrice } from "../../lib/items";
 /** The sections whose suggestions are tiles among their ideas. */
 const TILED: SectionId[] = ["activity", "todo"];
 
+/**
+ * v82 geçişi (docs/superpowers/specs/2026-10-18-v82-gecis, C raporu §3): the categories drawn with the new intent boxes
+ * (lib/intents.ts) instead of the timeline below. A category joins once its boxes are built (3a: stay and other; 3b: flight
+ * and transport; 4: activity and todo), so the plan is never two whole interfaces at once. Empty in phase 0: nothing on
+ * screen changes.
+ */
+export const V82_SECTIONS: ReadonlySet<SectionId> = new Set<SectionId>();
+
+/** Where a v82 category's intent boxes will be drawn (phase 3a's IntentList); nothing yet, and no category reaches it. */
+function V82Intents(_: { section: CatSection }): ReactNode {
+  return null;
+}
+
 const SLICE: Partial<Record<SectionId, BudgetSlice>> = { flight: "flight", stay: "stay", transport: "transport", activity: "activity", other: "other" };
 
 export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, shape = null, onStop, order = null }: {
@@ -117,6 +130,9 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
             const opened = isOpen(onlySuggested ? provisionalSection(s) : !own && (rows.length || visaLine(s)) ? { ...s, open: true } : s);
             return (
               <Section key={s.id} section={s} allot={allot && SLICE[s.id] && allot.by[SLICE[s.id]!] > 0 ? formatPrice(allot.by[SLICE[s.id]!], allot.currency) : null} allotNum={allot && SLICE[s.id] && allot.by[SLICE[s.id]!] > 0 ? { amount: allot.by[SLICE[s.id]!], currency: allot.currency } : null} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)} suggestions={suggested(s).length}>
+                {V82_SECTIONS.has(s.id) ? (
+                  <V82Intents section={s} />
+                ) : (
                 <SectionSuggestContext.Provider value={suggestions && TILED.includes(s.id) ? { list: suggested(s), add: suggestions.add, dismiss: suggestions.dismiss, notes: suggestions.notes } : null}>
                 {visaLine(s) && <VisaRow visa={visa} done={visaDone} onDone={(d) => onVisaDone?.(d)} />}
                 {/* Etkinlik ve turlar and Yapılacak şeyler show their suggestions among their ideas, as tiles (sectionSuggest). */}
@@ -134,6 +150,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
                   <EmptyRows rows={rows} onAdd={(at) => onAdd(s.id, at)} />
                 )}
                 </SectionSuggestContext.Provider>
+                )}
               </Section>
             );
           })}

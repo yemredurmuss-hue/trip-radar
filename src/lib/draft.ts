@@ -8,6 +8,7 @@ import type { Item } from "./types";
 
 /** Only these needs have a draft: the others (a train, an eSIM, insurance) stay as they are. */
 const DRAFTED = ["flight", "stay"] as const;
+const drafted = (item: Item): boolean => (DRAFTED as readonly string[]).includes(item.category);
 
 /** The part of a need's decision a draft reads: who leads and the options in the order the card shows them. */
 export type DraftDecision = Pick<GroupDecision, "winner" | "options">;
@@ -16,12 +17,13 @@ export type DraftDecision = Pick<GroupDecision, "winner" | "options">;
  * The option a need's card shows as "Önerimiz", or null when it has none. Only a real, priced option saved for the need
  * can stand (no price, no draft: nothing is made up); an option the comparison rules out (other dates, a must it fails,
  * the assistant's ruling) can't. The pick is the decision's winner, else the first the card shows (the decision's order,
- * then the lowest price); one option is enough. Nothing when something there is already chosen or booked.
+ * then the lowest price); one option is enough. Nothing when something there is already chosen or booked. `kinds`: which
+ * needs have one (the v82 boxes add a train and an eSIM, intents.ts suggestsFor); the old cards keep a flight and a stay.
  */
-export function draftOf(items: readonly Item[], decision?: DraftDecision | null): Item | null {
+export function draftOf(items: readonly Item[], decision?: DraftDecision | null, kinds: (item: Item) => boolean = drafted): Item | null {
   if (items.some((i) => i.status === "chosen" || i.status === "booked")) return null;
   const options = items.filter((i) => i.status === "saved");
-  if (!options.length || !(DRAFTED as readonly string[]).includes(options[0].category)) return null;
+  if (!options.length || !kinds(options[0])) return null;
   const ruledOut = new Set((decision?.options ?? []).filter((o) => o.excluded || o.eliminated || o.unmet.length > 0).map((o) => o.item.id));
   const place = new Map((decision?.options ?? []).map((o, n) => [o.item.id, n] as const));
   const real = options.filter((i) => i.price.amount != null && i.price.amount > 0 && !ruledOut.has(i.id));

@@ -5375,3 +5375,53 @@ body.still .work-line i { width: 100%; opacity: .5; }
 @media (min-width: 861px) {
   .toast { --chat-w: clamp(360px, 34%, 540px); left: calc(var(--chat-w) + (100% - var(--chat-w)) / 2); max-width: min(720px, calc(100vw - var(--chat-w) - 32px)); }
 }
+
+/* ============================================================================================================
+   v82 tokens (aşama 0, docs/superpowers/specs/2026-10-18-v82-gecis/02-spec.md; values from the prototype's mk81/mk82.css):
+   the plan's one type scale (nine sizes) and the intent boxes' colours, each state its own: the action and our pick purple,
+   Seçildi sand (B7), Alındı green, Ayarlandı grey, a decision dashed. Only defined: no rule reads them until the new boxes
+   come in (CategoryPlan's V82_SECTIONS), so nothing on screen changes. The app has no dark theme yet; the dark values wait
+   on an explicit [data-theme="dark"] like the rest.
+   =================================================================================================================== */
+:root {
+  /* The type scale (v81): badge 11 · small 12 · info 13.5 · button and option 15 · card title 17 · intent 19 · category 22 · price 24 · page title 30. */
+  --q-fs-badge: 11px; --q-fs-small: 12px; --q-fs-info: 13.5px; --q-fs-button: 15px; --q-fs-card: 17px;
+  --q-fs-intent: 19px; --q-fs-category: 22px; --q-fs-price: 24px; --q-fs-page: 30px;
+  /* Ink and ground. */
+  --q-ink: #1c1a33; --q-mut: #5d5a78; --q-line: #e7e4ef; --q-soft: #f7f6fb;
+  /* The action (Seç, Rezerve et, AI'dan öner) and Önerimiz: purple. */
+  --q-acc: #5b45e0; --q-acc-d: #4a36c9; --q-acc-s: #efecff;
+  /* Seçildi: sand (B7). */
+  --q-sand: #f7f0e3; --q-sand-l: #e6d3ad; --q-sand-ink: #7a5a1c;
+  /* Alındı: green. */
+  --q-ok: #1f7a45; --q-ok-s: #e8f6ee; --q-ok-l: #bfe3c9;
+  /* A warning (a document missing) and a must failed. */
+  --q-warn: #b5761c; --q-bad: #c0392b;
+  /* An intent box's ground and line, and its dot on the category's rail, by state. */
+  --q-rail: #e6e3ee;
+  /* Aranıyor and Karar bekliyor: dashed. */
+  --q-st-wait-bg: #fbfafd; --q-st-wait-line: #cfcae0; --q-st-wait-dot: #b4afc9;
+  /* Önerimiz: its dot is --q-acc on --q-acc-s. */
+  --q-st-pick-bg: #f8f7ff; --q-st-pick-line: #dcd6fb;
+  --q-st-chosen-bg: #fdfaf3; --q-st-chosen-line: #efe2c4; --q-st-chosen-dot: #c99a3a;
+  /* Alındı: its line is --q-ok-l, its dot --q-ok. */
+  --q-st-booked-bg: #f4fbf6;
+  /* Ayarlandı, Dahil, Gerek yok: grey. */
+  --q-st-arranged-dot: #8e8aa6;
+  /* The fixed frame (v82): head 76, body 196, side column 232, main action 42, second row 32; a row's card 224, a Pano card 220, a comparison column 280. */
+  --q-head-h: 76px; --q-body-h: 196px; --q-side-w: 232px; --q-act-h: 42px; --q-act2-h: 32px;
+  --q-card-w: 224px; --q-pano-w: 220px; --q-col-w: 280px;
+}
+:root[data-theme="dark"] {
+  --q-ink: #ece9f8; --q-mut: #a9a5c4; --q-line: #34304a; --q-soft: #221e33;
+  --q-acc: #8b7bff; --q-acc-d: #a497ff; --q-acc-s: #2a2450;
+  --q-sand: #3a3020; --q-sand-l: #6b5730; --q-sand-ink: #e8c98a;
+  --q-ok: #3fb675; --q-ok-s: #173a27; --q-ok-l: #2f6b48;
+  --q-warn: #e0a84a; --q-bad: #ef6b5d;
+  --q-rail: #34304a;
+  --q-st-wait-bg: #1d1a2c; --q-st-wait-line: #4a4566; --q-st-wait-dot: #6f6a8e;
+  --q-st-pick-bg: #221d3d; --q-st-pick-line: #463c86;
+  --q-st-chosen-bg: #2a2418; --q-st-chosen-line: #5a4a2a; --q-st-chosen-dot: #d6aa52;
+  --q-st-booked-bg: #14251b;
+  --q-st-arranged-dot: #7d7999;
+}
