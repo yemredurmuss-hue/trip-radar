@@ -36,3 +36,20 @@ Emre'nin geri bildirimi: kapalı hal karışık; Skyscanner gibi bilinen format;
 - Pano: büyük pencere (telefonda alttan tam ekran). Üstte aynı kategorideki niyetler arasında geçiş (Tokyo · Kyoto · Hakone · Osaka), süzgeç Hepsi / Biriktirdiklerin / AI önerileri, Daha fazla öner. Gövde yan yana karşılaştırma: görsel ve kaynak, nerede/saat, fiyat ve toplam, puan, iptal, artılar, eksiler, Seç. Seçili sütun yeşil, "Şu an seçili". "Değiştir" de Pano'yu açar.
 - Link yapıştırma alanları kalktı (linkler sohbetten gelir, niyetin altında "Sohbete attığın linkler buraya düşer" notu). "Pano'da karşılaştır", "Hepsini gör", "Daha fazla öner" dağınık bağlantıları kalktı.
 - Prototip çubuğunda yalnız "Plan ilerledi / Omurga yeni oluştu".
+
+## v79 · docs/mockups/plan-v79-durumlar (18 Ekim, v78 üstüne revize)
+Emre: "Amacımız link kaosunu derli toplu, karar verilebilen bir şeye dönüştürmek; gerisi buna destek." v78 "şu ana kadar en beğendiğim".
+- **Değiştir artık seçenekleri yerinde açar** (Pano'yu değil): seçili kart üstte kalır, altında "Başka bir seçenek seç", şu anki "Seçili" işaretli, Vazgeç. Pano yalnız Pano düğmesinden açılır.
+- **Omurga yeni oluşunca AI seçer:** "Omurga yeni oluştu" halinde her niyette AI'nın seçtiği kart "✨ Önerimiz · onayla" durumuyla gelir; eylem "Bunu seç" (onay), yanında kaynak ↗ ve Değiştir. Rezervasyon onaydan sonra.
+- **Uçuş/tren satırı Skyscanner'a yaklaştı:** her seçenek ayrı kart; solda logo ve havayolu, ortada kalkış · süre/aktarma · varış, sağda fiyat ve bagaj ("1 bagaj dahil" / "Yalnız el bagajı"), en sağda kaynak simgesi (✨ AI, S/E ekleyen, 🔗 link) ve Seç. "Önerimiz" ve "En hızlı/En ucuz" kartın üst kenarında şerit.
+- **Bilet tasarımı:** seçili uçuş/trende rota çizgisinin ortasında uçak/tren illüstrasyonu (yayındaki bilet gibi), altında bagaj.
+- **Boş niyet = yönlendirme:** tahmini fiyat niyet satırına taşındı ("tahmini €90–160 / gece"); altta "Osaka'da 4 gece için nerede kalınır" ve üç bölge kartı (Namba, Umeda, Shin-Osaka: neden, tahmini fiyat, Booking.com'da ara ↗) + AI'dan öner. Sigortada iki paket.
+- **Durumlar tamamlandı:** Karar bekliyor · Önerimiz (onayla) · Seçildi · Alındı/Rezerve · Ayarlandı ("Sen hallettin", transfer örneği, Fiyat ekle, Değiştir) · Gerek yok (× ile; niyet soluklaşır, "Geri al").
+- **Ayrıntı (ⓘ / Ayrıntı ›) duruma göre:** seçiliyken karar yardımı (niyetine uyuyor mu ✓/✕, artılar, eksiler, iptal); alındıktan sonra yayındaki rezervasyon ayrıntısı (onay/PNR kodu + kopyala, giriş/çıkış ya da koltuk/bagaj/check-in, belge ekle, Otele yaz ↗, Haritada aç ↗, İptal ettim değiştir/kaldır, Düzenle). Uçuş günü canlı şeridi ayrı ele alınacak.
+- **Etkinlik alındı:** "✓ Alındı" + Ayrıntı ›; belge ekleme ayrıntının içinde.
+- **Hazırlık geri geldi** (yayındaki PrepList): ayrı kapalı satır "Hazırlık · 2/6 hazır"; açılınca tik listesi, her satırda neden (ör. "Kyoto'da 7–8 Nisan yağmur bekleniyor"), Amazon ↗ / Resmî site ↗, üstüne gelince "Orada yapılacak" ve ×, "Hazırları gizle", "Daha fazla öner".
+- **Pano:** üst sekmeler Hepsi · Uçuş · Konaklama · Ulaşım · Etkinlik · Yapılacaklar · Belgeler (sayılarıyla); altında niyet süzgeci (Tokyo · Kyoto · Hakone), Kartlar | Karşılaştır, Hepsi | Biriktirdiklerin | AI.
+  - Kartlar: niyete göre gruplanmış kare kartlar; kim ekledi, kaç beğeni (♥ + avatarlar), Seç; her grupta "Karşılaştır ›".
+  - Karşılaştır: büyük sütunlar yan yana; büyük görsel, ad, fiyat ve toplam, niyetine uyuyor mu, artılar | eksiler yan yana, puan/iptal/bagaj, beğeni, kaynak ↗, Seç. Şu an seçili sütun yeşil.
+  - Niyetin Pano düğmesi Pano'yu o niyetin karşılaştırmasıyla açar; plan sekmesindeki "Pano" Hepsi/Kartlar ile açar.
+- Açık konular: uçuş günü / iptal takibi (ayrı ele alınacak); artı-eksi ve "niyetine uyuyor mu" verisinin kaynağı (AI özeti mi, kaynak site mi); beğeni ve "kim ne koydu" çok kişili veride nasıl tutulacak.
