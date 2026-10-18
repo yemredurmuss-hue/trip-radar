@@ -96,3 +96,28 @@ Emre'nin istekleri: alınan şeyde fiyat değil ulaşma bilgisi ve belge; hero i
   - "Kendin ara" satırı ve boş durum bölge kartlarındaki "…'da ara" düğmeleri de bu kayıttan gelir.
 - Açık konular: Gün gün görünümü; uçuş günü ve iptal takibi; AI uyum puanının nasıl hesaplanacağı (niyetteki isteklere uyum + fiyat + puan; açıklaması ⓘ'de); artı/eksi verisinin kaynağı; beğeni ve "kim ekledi" için ortak gezi verisi; İlham'dan yer çıkarma akışı (hangi niyete düşer).
 - Prototipte "Üst özet: Mozaik / Şehirler / Kapak" ve "Plan ilerledi / Omurga yeni" seçicileri var.
+
+## v82 · docs/mockups/plan-v82-standart (18 Ekim, v81 üstüne)
+Emre: kutuların boyu içindeki yazıya ve duruma göre değişmesin, bir standart olsun; bilgi gelse de gelmese de aynı boyda dursun (uçuşta bilet bilgisi varken güzel, yokken kötü duruyordu); küçük gereksiz bilgiler kalksın ya da gizlensin; referans görseldeki hizalamaya bak; hero = mozaik, referansa göre; yayındaki hero'nun üzerine gelince açılan bilgileri (özellikle Tercihler) unutma; hero ile plan güzel bir arayüzle ayrılsın.
+
+- **Niyet kutusu standardı.** Her niyet = sabit başlık (76 px: görsel 52, ad 19, tek satır bilgi + istekler, sağda durum · Pano · ⋯) + sabit gövde (masaüstünde 196 px). Gövde her durumda aynı çerçeve, aynı yerde aynı bilgi:
+  - Konaklama, eSIM, sigorta: görsel (196) | bilgi 4 satır (1: marka + puan ya da durum, 2: ad, 3: konum ya da tarih, 4: çipler) | yan sütun 232 (üstte fiyat ya da kod, altta ana eylem 42 px + ikincil satır 32 px).
+  - Uçuş, tren, transfer: bilet (taşıyıcı satırı, şehirler + istasyon/saat, çipler) | aynı yan sütun.
+  - Durumlar aynı çerçevede: Karar bekliyor (aynı yükseklikte 3 seçenek), Önerimiz (fiyat + Bunu seç), Seçildi (fiyat + Rezerve et/Satın al + Aldım · Değiştir), Alındı (kod + Belgeyi aç ya da kesik çizgili "Belgeyi ekle", aynı boy), Ayarlandı (transfer), Aranıyor (boş görsel, tahmini fiyat, bölge çipleri, Kendin ara simgeleri, AI'dan öner).
+  - Değiştir: seçili kart yerinde seçeneklere döner (kutu büyümez), seçili olan yeşil çerçeveli, Vazgeç.
+  - Ayrıntı (ⓘ ya da ⋯ > Ayrıntı) kartı büyütmez, kartın üstünde açılır.
+  - Etkinlik ve yapılacaklar: iki sabit sıra, Planında ve Öneriler; kart boyu sabit (224 px, 4 sütun). Planında boşsa aynı yükseklikte boş yuvalar ("Henüz plana koymadın"). Fazlası "+n Pano'da". Alınan etkinlik kartı büyümez: görselin altında yeşil "Bilet alındı" şeridi, alt satırda kod + Bileti aç.
+  - Prototipte tüm tekli niyetler (12'si) masaüstünde aynı yükseklikte ölçüldü.
+- **Açık kategoride durum çizgisi** (referanstaki gibi): niyetler solda dikey çizgiye bağlı, noktanın rengi durum (kesik = karar, kum = seçildi, mor = önerimiz, yeşil = alındı, gri = ayarlandı). Niyet kutusunun zemini durumun açık rengi, içerik beyaz kart.
+- **Sadeleştirme (küçük bilgiler):**
+  - kalktı: niyet plakaları (Tren, eSIM, Etkinlik etiketi; karışık kategoride tür adı bilgi satırının başında), her niyetteki "Sohbete attığın linkler buraya düşer", "en iyi 3 · tümü 4, Pano'da" (yerine "4 · ilk 3, tümü Pano'da"), puan kelimesi ("Muhteşem"), trende "Rezervasyonlu koltuk", eSIM'de "Kurulumdan önce iade" / "İade yok" ve ad tekrarı ("Japonya 10 GB" + "10 GB"), sigorta boşken uydurma paketler ("Tedavi ve acil dönüş, 16 gün"), niyet satırında gezi geneliyle aynı olan "2 kişi", Hazırlık açıklama cümlesi.
+  - kısaldı: iptal "Ücretsiz iptal" (tarih Ayrıntı'da); istekte "ücretsiz iptal" varsa iptal çipi tekrar etmez; seçenek satırında "kişi başı" her satırda değil.
+  - yer değiştirdi: "Kendin ara" seçenek başlığının sağına (boşken simge olarak yan sütuna); Önerimiz / En hızlı rozetleri satırda kendi sütununa (adın üstüne binmiyor); ⓘ, × ve ⋯ tek "⋯" menüsünde (Ayrıntı, Gerek yok).
+- **Hero = mozaik (referansa göre).** Solda büyük Fuji kapağı (ad 30 px + şehirler), sağda 3 × 2 kare (Shibuya Sky, Fushimi Inari, Ichiran Ramen, Gora Kadan onsen, Dotonbori, Arashiyama). Altında 4 bölmeli şerit: tarih | kişiler + hazırlık çubuğu | bütçe | Sıradaki. Altında çipler: Japonya, hava, yen, A/B priz, +6 saat, Japonca, Vize gerekmiyor; sonra Tercihler ve "Özeti küçült".
+  - Yayındaki üzerine gelince/tıklayınca açılanlar korundu: hava (şehir şehir ortalama ve yağışlı gün), kur, priz uyumu (adaptör gerekir), saat farkı ("Sende 12:00 iken orada 18:00"), vize ayrıntısı, tarih (şehir şehir günler), hazırlık (alındı/seçildi/karar sayısı), kişilerin son hareketi ve "Kimler gidiyor" + davet, bütçe penceresi (Rezerve / Planlanan / Boşta, kategori dağılımı, karar bekleyenler eklenince), Tercihler penceresi "Seni böyle anladım" (kapsam etiketi, kaynak, × kaldır, AI'nın sorusu Evet/Hayır, "Yanlış olanı × ile kaldır").
+  - Fotoğraflar prototipte Emre'nin referans görselinden kesildi, üstlerine basılı yazılar temizlendi. Canlıda Places API fotoğrafı.
+  - Küçültülünce tek satır: görsel, ad, tarih · kişi · %hazır · bütçe, "Özeti aç". Aşağı kaydırınca yapışkan ince şerit (v81'deki gibi) duruyor.
+- **Hero ile plan ayrı:** hero kendi açık mor zemininde, yuvarlak bir kutu içinde; altında 40 px boşluk, sonra "Plan" bölüm başlığı (30 px, altında "Gezinin omurgası · 7 karar bekliyor") ve sağda görünüm seçici.
+- **Yolculuk sırasıyla:** şehir bölümleri hero'daki fotoğraflarla.
+- **Telefonda** sabit yükseklik yerine aynı yapı korunuyor (görsel solda, bilgi sağda, yan sütun alta iniyor); başlıktaki istekler alt satıra kayıyor.
+- Açık konular: Gün gün görünümü; telefonda çerçevelerin de eşit boyda olması gerekiyor mu (şimdi yalnız yapı aynı); Planında 4'ten fazla kalem olunca ne olacağı; Pano bu turda değişmedi.
