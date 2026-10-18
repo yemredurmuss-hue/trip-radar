@@ -13,6 +13,8 @@ import {
   decideCount,
   emptyLine,
   emptyTitle,
+  headName,
+  unlessEmpty,
   firstDecision,
   frameForm,
   optionPrice,
@@ -105,6 +107,11 @@ describe("a booking's hours and the empty frame", () => {
     expect(emptyTitle(vm("searching"))).toBe("Osaka'da nerede kalınır");
     expect(withLang("en", () => emptyTitle(vm("searching")))).toBe("Where to stay in Osaka");
     expect(emptyTitle(vm("searching", { kind: "insurance", head: { ...vm("searching").head, name: "Seyahat sağlık sigortası", city: null } }))).toBe("Seyahat sağlık sigortası");
+    // Nights with no city yet: never "Konaklama yok" (C19).
+    const nowhere = vm("searching", { head: { ...vm("searching").head, name: "Konaklama yok", city: null } });
+    expect(headName(nowhere)).toBe("Konaklama");
+    expect(emptyTitle(nowhere)).toBe("Bu geceler için nerede kalınır");
+    expect(headName(vm("searching"))).toBe(vm("searching").head.name);
     expect(emptyLine(vm("searching", { estimate: { label: "~€90–160", unit: "night", n: 3 } }))).toBe("tahmini ~€90–160");
     expect(emptyLine(vm("searching"))).toBeNull();
     expect(emptyLine(vm("searching", { kind: "insurance" }))).toBe("zorunlu değil ama önerilir");
@@ -140,5 +147,23 @@ describe("the plan's decisions (F5)", () => {
     expect(firstDecision(cols as never)).toMatchObject({ section: "stay", intent: { key: "s2" } });
     expect(firstDecision([cols[0]] as never)).toMatchObject({ section: "flight", intent: { key: "f1" } });
     expect(firstDecision([col("other", [vm("booked")], 0)] as never)).toBeNull();
+  });
+});
+
+describe("what the start only made room for", () => {
+  const trip = { startGuide: undefined };
+  const bare = makeItem({ id: "ph", name: "Otel", category: "stay", origin: "chat", status: "chosen", url: null, provider: null });
+  it("a bare chat stay planned is Aranıyor, never Seçildi (Emre's rule); a real one stays chosen", () => {
+    // Named by the traveller, it's theirs.
+    const named = { ...bare, name: "Casa do Rio" };
+    expect(unlessEmpty(vm("chosen", { chosen: opt("ph", 1, { item: named }) }), trip, [named], () => 0).status).toBe("chosen");
+    const made = { ...bare, name: "Konaklama · Ubud" };
+    expect(unlessEmpty(vm("chosen", { chosen: opt("ph", 1, { item: made }) }), trip, [made], () => 0).status).toBe("searching");
+    const shown = unlessEmpty(vm("chosen", { chosen: opt("ph", 1, { item: bare }) }), trip, [bare], () => 0);
+    expect(shown).toMatchObject({ status: "searching", word: "Aranıyor", chosen: null });
+    const real = { ...bare, url: "https://www.booking.com/hotel/x.html" };
+    expect(unlessEmpty(vm("chosen", { chosen: opt("ph", 1, { item: real }) }), trip, [real], () => 0).status).toBe("chosen");
+    // A file on it says it's real.
+    expect(unlessEmpty(vm("chosen", { chosen: opt("ph", 1, { item: bare }) }), trip, [bare], () => 1).status).toBe("chosen");
   });
 });

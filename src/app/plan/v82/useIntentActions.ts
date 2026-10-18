@@ -6,6 +6,7 @@ import type { IntentVM } from "../../../lib/intents";
 import { L } from "../../../lib/i18n";
 import { formatDateRange } from "../../../lib/items";
 import { notNeededRule } from "../../../lib/hiddenIntents";
+import { headName } from "../../../lib/intentFrame";
 import { needTitleOf } from "../../../lib/pano";
 import { addDays } from "../../../lib/plan";
 import type { Item } from "../../../lib/types";
@@ -26,7 +27,8 @@ export function useIntentActions(vm: IntentVM) {
   const lead = vm.chosen?.item ?? vm.options[0]?.item ?? live[0] ?? null;
   const suggestion = vm.suggestions[0] ?? null;
   const nights = vm.section === "stay" ? nightsOf(vm) : null;
-  const label = nights ? `${vm.head.city ?? L("Konaklama", "Stay")} ${formatDateRange(nights.start, nights.end)}` : vm.head.name;
+  const name = headName(vm);
+  const label = nights ? `${vm.head.city ?? L("Konaklama", "Stay")} ${formatDateRange(nights.start, nights.end)}` : name;
   const [searching, startSearch] = useSearching(`intent:${vm.key}`);
 
   /** `except`: records already gone (a booking just said cancelled). */
@@ -36,14 +38,15 @@ export function useIntentActions(vm: IntentVM) {
     // Nights said not needed take their options with them (they come back together, from Gizlenenler); the toast's
     // "Geri al" brings the options back, and the nights with them.
     if (nights && records.length) {
-      await hideNights(env.tripId, nights, label);
-      env.offer(await setNeedNotNeeded(records));
+      const hidden = await hideNights(env.tripId, nights, label);
+      const undo = await setNeedNotNeeded(records);
+      env.offer(undo.kind === "notNeeded" && hidden.kind === "hidden" ? { ...undo, nights: { tripId: hidden.tripId, key: hidden.key, label } } : undo);
       return;
     }
     if (nights) return env.hideNights(nights, label);
     if (!records.length) return;
     const undo = await setNeedNotNeeded(records);
-    const rule = notNeededRule(vm.kind, vm.head.name);
+    const rule = notNeededRule(vm.kind, name);
     if (rule) await dismissSuggestion(env.tripId, rule);
     env.offer(undo);
   };
@@ -71,7 +74,7 @@ export function useIntentActions(vm: IntentVM) {
     /** "AI'dan öner": the line goes to the trip's chat, which looks; the box says it is looking (E13). */
     ask: env.ask
       ? () => {
-          env.ask!(L(`${vm.head.name} için öneri bul`, `Find options for ${vm.head.name}`));
+          env.ask!(L(`${name} için öneri bul`, `Find options for ${name}`));
           startSearch();
         }
       : null,

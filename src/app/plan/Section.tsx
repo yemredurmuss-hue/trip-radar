@@ -13,6 +13,9 @@ import { HiddenList } from "./HiddenList";
 import { SECTION_META } from "./sectionMeta";
 import { CategoryRow, type RowView } from "./v82/CategoryRow";
 
+/** The word of a category's own "+ … ekle" where it isn't its short name (as drawn: "+ Yer ekle", "+ Belge ekle"). */
+const ADD_WORD: Partial<Record<CatSection["id"], () => string>> = { todo: () => L("Yer", "Place"), other: () => L("Belge", "Document") };
+
 export function Section({ section, row, v82, open, instant = false, onToggle, onAdd, onDecide, decideTip, allotNum = null, suggestions = 0, children }: {
   section: CatSection;
   row: RowView;
@@ -49,7 +52,7 @@ export function Section({ section, row, v82, open, instant = false, onToggle, on
               {meta.templates.length > 0 && (
                 <button type="button" className="q-add" onClick={onAdd} aria-label={L(`${label}: ekle`, `${label}: add`)}>
                   <UiIcon name="plus" size={13} />
-                  {L(`${meta.short()} ekle`, `Add: ${meta.short()}`)}
+                  {L(`${(ADD_WORD[section.id] ?? meta.short)()} ekle`, `Add: ${(ADD_WORD[section.id] ?? meta.short)()}`)}
                 </button>
               )}
             </div>

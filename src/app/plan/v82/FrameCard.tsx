@@ -6,12 +6,14 @@
 //   Alındı     the code and copy, "€900 ödendi" (B10), the file or a dashed "Onayı ekle", check-in, check-out, the address;
 //   Ayarlandı  sorted out ("sen hallettin"), Dahil covered by another booking;
 //   Aranıyor   an empty picture, the estimate, the areas, "Kendin ara" and "AI'dan öner" (and its thin line when nothing came).
+// A record's name and price edit where they stand (C2, inside the box's InlineEdit); elsewhere they're plain text.
 import type { ReactNode } from "react";
 import { L } from "../../../lib/i18n";
-import { bookedWhen, bookedWord, bookWord, codeLabel, docWord, emptyLine, emptyTitle, sidePrice, type FrameForm, type SelfSearch } from "../../../lib/intentFrame";
+import { bookedWhen, bookedWord, bookWord, codeLabel, docWord, emptyLine, emptyTitle, headName, sidePrice, type FrameForm, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
 import type { RegionHint } from "../../../lib/regionHints";
 import { formatPrice } from "../../../lib/items";
+import { Editable, useInlineEdit } from "../../cards/InlineEdit";
 import { CopyCode } from "./DetailLayer";
 import { Ic, Mark } from "./icons";
 import { BrandChip, Rating, SourceBadge } from "./OptionCompact";
@@ -69,7 +71,9 @@ function Card({ cls = "", info, media, photo, l1, title, l2, l3, top, primary, r
       <div className={`z-m${photo ? "" : " art"}`}>{media}</div>
       <div className="z-i">
         <span className="z-l1">{l1}</span>
-        <h3 className="z-t" title={title}>{title}</h3>
+        <h3 className="z-t" title={title}>
+          <Editable field="name">{title}</Editable>
+        </h3>
         <span className="z-l2">{l2}</span>
         <span className="z-l3">{l3}</span>
       </div>
@@ -87,12 +91,15 @@ function Card({ cls = "", info, media, photo, l1, title, l2, l3, top, primary, r
 
 function Price({ o }: { o: OptionVM }) {
   const p = sidePrice(o.price);
-  if (!p) return null;
   return (
-    <span className="q-pr big">
-      <b>{p.big}</b>
-      {p.small && <small>{p.small}</small>}
-    </span>
+    <Editable field="price">
+      {p && (
+        <span className="q-pr big">
+          <b>{p.big}</b>
+          {p.small && <small>{p.small}</small>}
+        </span>
+      )}
+    </Editable>
   );
 }
 
@@ -128,6 +135,7 @@ const Picture = ({ o, art, children }: { o: OptionVM | null; art: string; childr
 
 export function FrameCard({ vm, form, art, page, links, hints, info, detail, quiet, on }: FrameCardProps) {
   const o = vm.chosen;
+  const edit = useInlineEdit();
   if ((form === "suggested" || form === "chosen") && o) {
     const lines = optionLines(o);
     const brand = o.brand?.label ?? null;
@@ -186,7 +194,8 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
         photo={Boolean(o.image)}
         l1={
           <>
-            <span className="z-ok"><Ic name="check" size={13} stroke={3} /> {bookedWord(vm.kind)}</span>
+            {/* An eSIM put on the phone says so ("Kuruldu"; its ⋯ takes it back). */}
+            <span className="z-ok"><Ic name="check" size={13} stroke={3} /> {vm.kind === "esim" && o.item.installedAt != null ? L("Kuruldu", "Installed") : bookedWord(vm.kind)}</span>
             {o.brand && <span className="z-dim">· {o.brand.label}</span>}
           </>
         }
@@ -201,7 +210,11 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
                 <CopyCode value={a.code.value} label={label} className="q-code st" />
               </>
             )}
-            {vm.paid && <small className="z-paid">{vm.paid}</small>}
+            {vm.paid && (
+              <small className="z-paid">
+                <Editable field="price">{vm.paid}</Editable>
+              </small>
+            )}
             {a?.docMissing && <small className="z-docw">{L("belge yok", "no document")}</small>}
           </>
         }
@@ -229,7 +242,7 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
   if (form === "arranged" || form === "included") {
     const inc = form === "included";
     const word = inc ? L("Dahil", "Included") : L("Ayarlandı", "Arranged");
-    const title = o?.title ?? vm.head.name;
+    const title = o?.title ?? headName(vm);
     return (
       <Card
         cls={inc ? " inc" : " ar"}
@@ -249,12 +262,16 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
           <>
             <span className={inc ? "z-inc" : "z-gr"}>{word}</span>
             {vm.note && <small className="z-note">{vm.note}</small>}
-            {o?.price && <span className="z-paid">{o.price.text}</span>}
+            {(o?.price || edit?.open === "price") && (
+              <span className="z-paid">
+                <Editable field="price">{o?.price?.text}</Editable>
+              </span>
+            )}
           </>
         }
         primary={
-          !inc && !o?.price ? (
-            <button type="button" className="q-doc add" onClick={on.edit}>
+          !inc && !o?.price && edit?.open !== "price" ? (
+            <button type="button" className="q-doc add" onClick={() => (edit?.fields.includes("price") ? edit.go("price") : on.edit())}>
               {L("Fiyat ekle", "Add the price")}
             </button>
           ) : null

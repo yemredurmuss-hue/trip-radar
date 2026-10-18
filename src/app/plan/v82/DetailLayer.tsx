@@ -102,16 +102,18 @@ export function DetailLayer({ vm, option, booked, onClose, onAddDoc, footer }: {
   const facts = cardFacts(item, decision, ctx);
   const docs = env.docsFor(item.id);
   const { url: dated } = datedLink(item, decision);
-  // C12: the options side by side (the comparison window) while there is more than one to compare.
-  const comparable = !booked && decision != null && decision.options.filter((o) => !o.excluded).length > 1;
+  // C12: the options side by side (the comparison window); a lone option opens it too: no score yet, but what is
+  // measured is one tap away ("Puan, karşılaştırınca çıkar").
+  const comparable = !booked && decision != null && decision.options.some((o) => !o.excluded);
   const more = (
     <>
       {comparable && (
-        <button type="button" className="q-dact" onClick={() => env.onCompare(groupKeyOf(item))}>
+        <button type="button" className="q-dact" onClick={() => (onClose(), env.onCompare(groupKeyOf(item)))}>
           {L("Karşılaştır", "Compare")}
         </button>
       )}
-      <button type="button" className="q-dact" onClick={() => env.onOpenItem(item)}>
+      {/* The drawer and the comparison open in place of the layer (one window at a time). */}
+      <button type="button" className="q-dact" onClick={() => (onClose(), env.onOpenItem(item))}>
         {L("Tüm detaylar ›", "All details ›")}
       </button>
       {(dated ?? item.url) && (
@@ -193,12 +195,27 @@ export function DetailLayer({ vm, option, booked, onClose, onAddDoc, footer }: {
         )}
         {facts.pros.length > 0 && (
           <Col title={L("Artılar", "Pros")}>
-            <ul className="q-pl p">{facts.pros.slice(0, 4).map((p) => <li key={p.text}>{p.text}</li>)}</ul>
+            {/* C12: ★ by what touches a priority the traveller gave. */}
+            <ul className="q-pl p">
+              {facts.pros.slice(0, 4).map((p) => (
+                <li key={p.text}>
+                  {p.mine && <i className="q-star" title={L("Önceliğine dokunuyor", "Touches your priority")}>★</i>}
+                  {p.text}
+                </li>
+              ))}
+            </ul>
           </Col>
         )}
         {facts.cons.length > 0 && (
           <Col title={L("Eksiler", "Cons")}>
-            <ul className="q-pl m">{facts.cons.slice(0, 4).map((p) => <li key={p.text}>{p.text}</li>)}</ul>
+            <ul className="q-pl m">
+              {facts.cons.slice(0, 4).map((p) => (
+                <li key={p.text}>
+                  {p.mine && <i className="q-star" title={L("Önceliğine dokunuyor", "Touches your priority")}>★</i>}
+                  {p.text}
+                </li>
+              ))}
+            </ul>
           </Col>
         )}
         {(cancel.state !== "unknown" || place) && (

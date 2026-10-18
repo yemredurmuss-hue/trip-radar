@@ -62,6 +62,8 @@
 .q-fold.on { grid-template-rows: 1fr; }
 .q-fold-in { min-height: 0; overflow: hidden; }
 .q-fold.settled > .q-fold-in { overflow: visible; }
+/* Settled, it is open whatever became of the move (a busy machine can leave a transition unstarted): no transition holds it. */
+.q-fold.settled { transition: none; }
 .q-fold-in > * { opacity: 0; transition: opacity var(--t-quick) var(--e-out); }
 .q-fold.on > .q-fold-in > * { opacity: 1; transition-delay: 80ms; }
 .q-foldb { display: grid; gap: 26px; padding: 6px 18px 20px; }
@@ -127,3 +129,5 @@
   .q-ints::before { left: 9px; }
   .q-ints > .q-int::before, .q-ints > .z-visa::before { left: -21px; }
 }
+/* Etkinlik ve turlar's own board has its "+ Ekle" in its head line: the category's end needs none (as before). */
+.cat-body:has(> .ev-wrap) > .q-add { display: none; }

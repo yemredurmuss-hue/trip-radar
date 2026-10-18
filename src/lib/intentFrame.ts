@@ -8,14 +8,16 @@ import type { CardFacts } from "./cardFacts";
 import type { CardKind } from "./cardKinds";
 import { L } from "./i18n";
 import { locative } from "./i18nText";
-import type { AccessVM, Collection, IntentStatus, IntentVM, OptionBadge, OptionSource, OptionVM } from "./intents";
+import { statusWord, type AccessVM, type Collection, type IntentStatus, type IntentVM, type OptionBadge, type OptionSource, type OptionVM } from "./intents";
 import { shortDay } from "./ideas";
-import { needKey } from "./emptyCards";
+import { isEmptyRecord, needKey } from "./emptyCards";
 import type { Need } from "./offerSource";
 import { addDays, stayRange } from "./plan";
+import { isGeneratedName } from "./planned";
 import { providerLinks, type ProviderKind } from "./providers";
 import { BRANDS, insuranceLinks } from "./searchLinks";
-import type { Item } from "./types";
+import { isKindWord } from "./templates";
+import type { Item, Trip } from "./types";
 
 /**
  * The form a box's body takes: the options to pick from (Karar bekliyor, also an Aranıyor that has some), the empty frame
@@ -190,10 +192,18 @@ export function bookedWhen(item: Item, access: Pick<AccessVM, "when" | "checkIn"
   return L(`Giriş ${shortDay(range.start)} ${access.checkIn} · Çıkış ${out}`, `Check-in ${shortDay(range.start)} ${access.checkIn} · Check-out ${out}`);
 }
 
-/** The empty frame's title: where to stay in a city ("Osaka'da nerede kalınır"), else the intent's own name. */
-export function emptyTitle(vm: Pick<IntentVM, "kind" | "head">): string {
-  if (vm.kind === "stay" && vm.head.city) return L(`${locative(vm.head.city)} nerede kalınır`, `Where to stay in ${vm.head.city}`);
-  return vm.head.name;
+/**
+ * The head's name: the intent's own, except nights with no city and nothing found for them yet, which are "Konaklama"
+ * (the plan's row says "Konaklama yok"; what isn't there isn't written, C19).
+ */
+export function headName(vm: Pick<IntentVM, "kind" | "head" | "chosen" | "options">): string {
+  return vm.kind === "stay" && !vm.head.city && !vm.chosen && !vm.options.length ? L("Konaklama", "Stay") : vm.head.name;
+}
+
+/** The empty frame's title: where to stay in a city ("Osaka'da nerede kalınır"), these nights with none, else the intent's name. */
+export function emptyTitle(vm: Pick<IntentVM, "kind" | "head" | "chosen" | "options">): string {
+  if (vm.kind === "stay") return vm.head.city ? L(`${locative(vm.head.city)} nerede kalınır`, `Where to stay in ${vm.head.city}`) : L("Bu geceler için nerede kalınır", "Where to stay these nights");
+  return headName(vm);
 }
 
 /** The empty frame's second line: the estimate ("tahmini €90–160 / gece") and the kind's own word, only what is known (C19). */
@@ -321,4 +331,16 @@ export function countParts(counts: Collection["summary"]["counts"], multi: boole
   if (counts.decide) out.push({ text: L(`${counts.decide} karar`, `${counts.decide} to decide`), decide: true });
   if (!out.length) out.push({ text: counts.arranged ? L(`${counts.arranged} ayarlandı`, `${counts.arranged} arranged`) : L("boş", "empty"), decide: false });
   return out;
+}
+
+/**
+ * What the start only made room for, or a bare "Otel" added in one tap (a plan with nothing concrete and no name of its own:
+ * emptyCards.isEmptyRecord, a kind's word or a made-up name), is never a chosen box: it is still to find (Aranıyor), as the
+ * old empty card was (Emre's rule). Named by the traveller ("Casa do Rio"), it's theirs: chosen.
+ */
+export function unlessEmpty(vm: IntentVM, trip: Pick<Trip, "startGuide">, records: Item[], files: (id: string) => number): IntentVM {
+  const item = vm.status === "chosen" ? vm.chosen?.item : null;
+  if (!item || !isEmptyRecord(trip, item, files(item.id), records)) return vm;
+  if (!isKindWord(item.name) && !isGeneratedName(item.name)) return vm;
+  return { ...vm, status: "searching", word: statusWord("searching", vm.kind), chosen: null, access: null, paid: null };
 }

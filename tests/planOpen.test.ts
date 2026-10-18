@@ -38,3 +38,11 @@ describe("E1: up to the top in one move, unless already there", () => {
     expect(eMove(0.1)).toBeLessThan(0.1);
   });
 });
+
+describe("an update waits for nothing a category being open holds (B8)", () => {
+  it("the category row's button is no reason to wait; a menu or a card's details still is", async () => {
+    const { RELOAD_BLOCKERS } = await import("../src/app/UpdateBanner");
+    expect(RELOAD_BLOCKERS).toContain('[aria-expanded="true"]:not(.q-tt)');
+    expect(RELOAD_BLOCKERS).not.toMatch(/\[aria-expanded="true"\](,|$)/);
+  });
+});

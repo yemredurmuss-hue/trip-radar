@@ -1,11 +1,12 @@
 // The frame's content changing in place (E3, E4, E5; hareket dili §2.2–2.4): the old content fades out in 120 ms while the
 // box keeps its size, then the new one comes in over 260 ms; a pick (E4) turns straight into the chosen card (380 ms), and
-// Değiştir's options are turned in (380 ms). Nothing moves at the first drawing, with reduced motion or "Hareketi duraklat".
+// Değiştir's options are turned in (380 ms) and Vazgeç turns the card back (180 ms, E5). Nothing moves at the first drawing,
+// with reduced motion or "Hareketi duraklat".
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { reducedMotion } from "../../motion";
 
 /** How the next content comes in. */
-export type Entry = "in" | "morph" | "flip";
+export type Entry = "in" | "morph" | "flip" | "back";
 
 const OUT_MS = 120;
 
@@ -21,7 +22,7 @@ export function useCrossfade(key: string, node: ReactNode, entry: Entry = "in"):
     if (key === shown.key) return;
     if (reducedMotion()) return setShown({ key, node: latest.current.node, phase: "still" });
     // A pick turns into its card at once (the shared element moves, E4); anything else fades out first.
-    if (entry === "morph" || entry === "flip") return setShown({ key, node: latest.current.node, phase: entry });
+    if (entry !== "in") return setShown({ key, node: latest.current.node, phase: entry });
     setShown((s) => ({ ...s, phase: "out" }));
     const t = setTimeout(() => setShown({ key: latest.current.key, node: latest.current.node, phase: latest.current.entry }), OUT_MS);
     return () => clearTimeout(t);

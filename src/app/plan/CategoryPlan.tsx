@@ -265,7 +265,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
                       hidden={<Hidden section={s} live={items.filter((i) => i.status !== "dismissed" && planSectionOfItem(i) === s.id)} suggestions={dismissed} art={(kind) => artOf(kind)} />}
                     >
                       {(c?.intents ?? []).filter((i) => i.status !== "skipped").map((vm) => (
-                        <IntentBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} />
+                        <IntentBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} onHere={s.id === "stay" ? (at) => onAdd(s.id, at) : null} />
                       ))}
                     </TimelineRail>
                   ) : (

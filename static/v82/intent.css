@@ -320,3 +320,31 @@ button.q-dl:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2px
 .q-dtrade .opt-vs { color: var(--q-mut); margin-right: 4px; }
 .q-dverify { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: var(--q-fs-small); color: #7a4b00; }
 .z-det .pk-why { margin: 2px 0 0; font-size: var(--q-fs-small); color: var(--q-mut); }
+
+/* C3: "+ Buraya ekle" under a stay, in the gap before the next box: faint until the box is pointed at or it has the focus. */
+.q-int > .q-here { position: absolute; left: 0; right: 0; bottom: -16px; height: 16px; display: grid; place-items: center; z-index: 2; opacity: 0; transition: opacity var(--t-quick) var(--e-out); }
+.q-int:hover > .q-here, .q-int > .q-here:focus-within, .q-int > .q-here:hover { opacity: 1; }
+.q-here > button { border: 0; padding: 0 10px; height: 20px; border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px var(--q-line); color: var(--q-mut); font: inherit; font-size: var(--q-fs-small); font-weight: 650; cursor: pointer; }
+.q-here > button:hover, .q-here > button:focus-visible { color: var(--q-acc); box-shadow: 0 0 0 1px var(--q-acc); outline: none; }
+@media (hover: none) { .q-int > .q-here { opacity: 1; } }
+.q-ints > .q-offers:empty { display: none; }
+.z-int .q-ln .pk-ed-box, .z-int .z-t .pk-ed-box { flex-wrap: nowrap; }
+.z-of .q-pr .z-prov { font-style: normal; color: var(--q-warn); font-weight: 650; }
+/* A need's other blocks: anchors at the box's top; the box flashes for them (Progress.show). */
+.q-int > .q-anchor { position: absolute; top: 0; left: 0; width: 1px; height: 1px; pointer-events: none; }
+.q-int:has(> .q-anchor.flash) { animation: flash 1.6s ease-out; }
+@media (prefers-reduced-motion: reduce) { .q-int:has(> .q-anchor.flash) { animation: none; outline: 3px solid var(--accent); } }
+/* What just arrived (C10, C35): "Yeni" while it rings. */
+.q-int.ar-new::after, .z-oc.ar-new::after { content: attr(data-new); position: absolute; z-index: 3; padding: 2px 8px; border-radius: 999px; background: var(--q-acc); color: #fff; font-size: var(--q-fs-badge); font-weight: 750; line-height: 1.4; pointer-events: none; }
+.q-int.ar-new::after { top: -9px; right: 22px; }
+.z-oc.ar-new::after { top: 6px; right: 6px; }
+.q-pl .q-star { font-style: normal; color: var(--q-warn); margin-right: 4px; }
+/* C10: options that came in after a search set in one after another, 60 ms apart. */
+.z-xf.in .z-ocs > * { animation: z-in var(--t-base) var(--e-out) both; }
+.z-xf.in .z-ocs > :nth-child(2) { animation-delay: 60ms; }
+.z-xf.in .z-ocs > :nth-child(3) { animation-delay: 120ms; }
+body.still .z-xf.in .z-ocs > * { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .z-xf.in .z-ocs > * { animation: none !important; } }
+.z-xf.back { animation: z-flip 180ms var(--e-out) both; transform-origin: top center; }
+body.still .z-xf.back { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .z-xf.back { animation: none !important; } }

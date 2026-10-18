@@ -2,13 +2,16 @@
 // state, its ground and its dot on the category's rail the state's colour. The frame is the family's (FrameCard: a stay, an
 // eSIM, insurance; FrameTicket and CollectionRow come with phases 3b and 4); with options to pick from it is three cards
 // (OptionCompact), and "Değiştir" turns the chosen card back to them in place. Ayrıntı opens over the frame (DetailLayer);
-// "Gerek yok" folds the body (E7) and the box goes under the category's "Gizlenenler · n" (F3).
+// "Gerek yok" folds the body (E7) and the box goes under the category's "Gizlenenler · n" (F3). A record's days, name and
+// price edit where they stand (C2); a thin "+ Buraya ekle" under a stay adds on its last night, in its city (C3).
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { isCampStay } from "../../../lib/campStay";
 import { L } from "../../../lib/i18n";
-import { areaSearch, changeList, currentOption, frameForm, offerNeed, railState, selfSearches, statusChip } from "../../../lib/intentFrame";
+import { areaSearch, changeList, currentOption, frameForm, headName, offerNeed, railState, selfSearches, statusChip, unlessEmpty } from "../../../lib/intentFrame";
 import type { IntentStatus, IntentVM, OptionVM } from "../../../lib/intents";
+import { addDays } from "../../../lib/plan";
 import { regionHints, type RegionHint } from "../../../lib/regionHints";
+import type { InsertAt } from "../../../lib/templates";
 import type { Item } from "../../../lib/types";
 import { entryDomId } from "../../../lib/progress";
 import { setInstalled, setItemStatus, cancelBooking } from "../../actions";
@@ -17,6 +20,7 @@ import { openDoc, useDocPick } from "../../cards/DocAccess";
 import { useEmptyEnv } from "../../cards/emptyEnv";
 import { illusOf, stayArtOf } from "../../cards/MediaCard";
 import { OfferRow } from "../../cards/OfferRow";
+import { InlineEdit } from "../../cards/InlineEdit";
 import { datedLink } from "../../cards/parts";
 import { useCardEnv } from "../../cards/PlanCard";
 import { hasSearched } from "../../cards/searching";
@@ -80,13 +84,47 @@ function useRegionHints(vm: IntentVM, ask: boolean): RegionHint[] {
   return need && hints?.key === need.key ? hints.list : [];
 }
 
-export function IntentBox({ vm, color }: { vm: IntentVM; color: string }) {
+/** The fields a box draws (its head's days, its card's name and price): Tab never opens one that isn't there. */
+const DRAWN = ["name", "date", "end", "price"] as const;
+
+export function IntentBox({ vm: given, color, onHere = null }: {
+  vm: IntentVM;
+  color: string;
+  /** C3: "+ Buraya ekle" under the box opens the add window at this place (null: none). */
+  onHere?: ((at: InsertAt) => void) | null;
+}) {
+  const env = useCardEnv();
+  const { byId } = useV82Env();
+  const records = given.itemIds.map((id) => byId.get(id)).filter((i): i is Item => i != null);
+  const vm = unlessEmpty(given, env.trip, records, (id) => env.docsFor(id).length);
   const record = vm.chosen?.item ?? null;
-  return record ? <RecordBox vm={vm} color={color} record={record} /> : <Box vm={vm} color={color} extra={[]} field={null} pickDoc={null} cancel={null} />;
+  // Still to find with a bare record in it (one tap's "Otel"): its name is the title's, to type where it stands.
+  const held = record ? null : (given.chosen?.item ?? null);
+  if (record) {
+    return (
+      <InlineEdit item={record} only={[...DRAWN]}>
+        <RecordBox vm={vm} color={color} record={record} onHere={onHere} />
+      </InlineEdit>
+    );
+  }
+  const box = <Box vm={vm} color={color} extra={[]} field={null} pickDoc={null} cancel={null} onHere={onHere} />;
+  return held ? (
+    <InlineEdit item={held} only={["name"]}>
+      {box}
+    </InlineEdit>
+  ) : (
+    box
+  );
+}
+
+/** A stay's place for "+ Buraya ekle": its city and its last night (templates.insertAt); none without its days. */
+function hereOf(vm: IntentVM): InsertAt | null {
+  if (vm.kind !== "stay" || !vm.head.date || vm.head.nights < 1) return null;
+  return { city: vm.head.city, date: null, night: addDays(vm.head.date, vm.head.nights - 1) };
 }
 
 /** A box with a record to show (our pick, the chosen one, the booking): its card's ••• entries and its file picker. */
-function RecordBox({ vm, color, record }: { vm: IntentVM; color: string; record: Item }) {
+function RecordBox({ vm, color, record, onHere }: { vm: IntentVM; color: string; record: Item; onHere: ((at: InsertAt) => void) | null }) {
   const env = useCardEnv();
   const stage = useStageMenu(record);
   const who = useWhoMenu(record);
@@ -96,18 +134,19 @@ function RecordBox({ vm, color, record }: { vm: IntentVM; color: string; record:
   const extra: MenuEntry[] = [
     ...(record.status === "chosen" && record.origin !== "chat" && !record.arranged ? [{ label: L("Seçimi geri al", "Undo choice"), run: () => void setItemStatus(record, "saved") }] : []),
     ...(booked ? [{ label: L("Rezervasyonu geri al", "Mark as not booked"), run: () => void setItemStatus(record, "chosen") }] : []),
-    ...(booked && vm.kind === "esim" ? [record.installedAt ? { label: L("Kurulmadı", "Not installed"), run: () => void setInstalled(record, false) } : { label: L("eSIM kuruldu", "eSIM installed"), run: () => void setInstalled(record, true) }] : []),
+    // An eSIM put on the phone ("Kurdum") is done, bought through the box or not (lifecycle: chosen and installed).
+    ...((booked || record.status === "chosen") && vm.kind === "esim" ? [record.installedAt ? { label: L("Kurulmadı", "Not installed"), run: () => void setInstalled(record, false) } : { label: L("Kurdum", "Installed it"), run: () => void setInstalled(record, true) }] : []),
     ...stage.menu.filter((m) => m.id !== "change" && m.id !== "addDoc"),
     { label: L("Belge ekle", "Add a document"), run: doc.pick },
     ...who.map((e, i) => ({ ...e, sep: i === 0 })),
   ];
   const cancel = booked ? () => cancelBooking(record).then(env.offer) : null;
   return (
-    <Box vm={vm} color={color} extra={extra} field={<>{stage.field}{doc.field}</>} pickDoc={doc.pick} cancel={cancel} askedHide={booked ? stage.hide : null} />
+    <Box vm={vm} color={color} extra={extra} field={<>{stage.field}{doc.field}</>} pickDoc={doc.pick} cancel={cancel} askedHide={booked ? stage.hide : null} onHere={onHere} />
   );
 }
 
-function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null }: {
+function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHere }: {
   vm: IntentVM;
   color: string;
   extra: MenuEntry[];
@@ -117,6 +156,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null }: {
   cancel: (() => Promise<void>) | null;
   /** A booking's "Gerek yok" asks first whether it was cancelled (stageMenu.hide). */
   askedHide?: (() => void) | null;
+  onHere: ((at: InsertAt) => void) | null;
 }) {
   const env = useCardEnv();
   const v82 = useV82Env();
@@ -136,11 +176,12 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null }: {
   const boxRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!changing) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && focusNear(boxRef.current) && setChanging(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && focusNear(boxRef.current) && cancelChange();
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [changing]);
   const pop = useStepPop(vm.status);
+  const name = headName(vm);
   const entry = useRef<Entry>("in");
   const art = artOf(vm.kind, vm.chosen?.item ?? vm.options[0]?.item ?? null);
   const links = selfSearches(vm, v82.selfAt);
@@ -165,6 +206,10 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null }: {
   const change = () => {
     entry.current = "flip";
     setChanging(true);
+  };
+  const cancelChange = () => {
+    entry.current = "back";
+    setChanging(false);
   };
 
   const menu: MenuEntry[] = [
@@ -203,7 +248,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null }: {
       <div className="z-skel" role="status">
         <div className="q-oh">
           <span className="z-pulse" aria-hidden />
-          <b className="q-ot">{L(`AI ${vm.head.name} için arıyor`, `The AI is looking for ${vm.head.name}`)}</b>
+          <b className="q-ot">{L(`AI ${name} için arıyor`, `The AI is looking for ${name}`)}</b>
           <small className="q-oc">{L("seçenekler gelince burada", "options land here")}</small>
         </div>
         <div className="z-ocs" aria-hidden>
@@ -215,7 +260,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null }: {
     );
   } else if (showOptions) {
     const options = changing ? changeList(vm) : vm.options.slice(0, 3);
-    body = <OptionList vm={vm} options={options} current={changing ? currentOption(vm) : null} changing={changing} art={art} links={links} onPick={pick} onOpen={(o) => env.onOpenItem(o.item)} onCancel={() => setChanging(false)} onAsk={a.ask} />;
+    body = <OptionList vm={vm} options={options} current={changing ? currentOption(vm) : null} changing={changing} art={art} links={links} onPick={pick} onOpen={(o) => env.onOpenItem(o.item)} onCancel={cancelChange} onAsk={a.ask} />;
   } else if (form) {
     const props = {
       vm,
@@ -254,6 +299,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null }: {
   const chip = statusChip(vm);
   const headArt = vm.head.image ? { src: vm.head.image, photo: true } : { src: art, photo: false };
   const camp = record != null && vm.kind === "stay" && isCampStay(record);
+  const here = onHere ? hereOf(vm) : null;
   return (
     <>
       <section
@@ -266,9 +312,11 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null }: {
         data-item-id={record?.id}
         data-option-ids={vm.itemIds.join(" ") || undefined}
         style={{ "--k": color } as React.CSSProperties}
-        aria-label={vm.head.name}
+        aria-label={name}
+        // What just arrived wears "Yeni" while it rings (arrive/useArrivals pulses .ar-new on it, C10/C35).
+        data-new={L("Yeni", "New")}
       >
-        <IntentHead vm={vm} art={headArt} chip={chip} pop={pop} onPano={a.pano} menu={<IntentMenu entries={menu} name={vm.head.name} />} />
+        <IntentHead vm={vm} art={headArt} chip={chip} pop={pop} onPano={a.pano} menu={<IntentMenu entries={menu} name={name} />} />
         <div className="q-bwrap">
           <div className="q-body">
             <div key={xf.key} className={xf.cls}>
@@ -277,6 +325,17 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null }: {
           </div>
         </div>
         {field}
+        {/* The need's other blocks (its nights said apart): a to-do or a link to one of them finds this box (and flashes it). */}
+        {vm.domKeys.slice(1).map((k) => (
+          <i key={k} className="q-anchor" id={entryDomId(k)} aria-hidden />
+        ))}
+        {here && onHere && (
+          <div className="q-here">
+            <button type="button" title={L("Buraya ekle", "Add here")} onClick={() => onHere(here)}>
+              + {L("Buraya ekle", "Add here")}
+            </button>
+          </div>
+        )}
       </section>
       {need && !camp && (
         <div className="q-offers">

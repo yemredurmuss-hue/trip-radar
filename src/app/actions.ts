@@ -389,6 +389,7 @@ export async function undo(u: Undoable): Promise<void> {
   if (u.kind === "cancelled") return setItemStatus(u.item, "saved");
   // Back from a card's "Gerek yok": as it stood (setItemStatus reads dismissedFrom: a plan is planned again).
   if (u.kind === "notNeeded") {
+    if (u.nights) await setHidden(u.nights.tripId, u.nights.key, false, u.nights.label);
     for (const other of u.others ?? []) await setItemStatus(other, "saved");
     return setItemStatus(u.item, "saved");
   }

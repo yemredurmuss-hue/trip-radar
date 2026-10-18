@@ -2,9 +2,11 @@
 // "Seçenekler · 4 · ilk 3, tümü Pano'da", "Kendin ara" with the sites on the right, three cards as tall as the frame. Each
 // card: its picture (who added it, our pick, En ucuz), the site's label and its rating, the name, the price and "Seç". While
 // changing, the one chosen is marked ("Seçili") and "Vazgeç" turns the card back. Fewer than three: the rest asks for more.
+// Its name and price edit where they stand (C2): the price on a click, the name when the card was just added (or by Tab).
 import { L } from "../../../lib/i18n";
 import { badgeWord, optionPrice, optionsHead, ratingParts, sourceBadge, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
+import { Editable, InlineEdit, useInlineEdit } from "../../cards/InlineEdit";
 import { Ic, Mark } from "./icons";
 
 export function SelfLinks({ links, label = true }: { links: SelfSearch[]; label?: boolean }) {
@@ -54,11 +56,22 @@ export function SourceBadge({ option }: { option: OptionVM }) {
   );
 }
 
-function OptionCard({ o, art, current, onPick, onOpen }: { o: OptionVM; art: string; current: boolean; onPick: () => void; onOpen: () => void }) {
+type CardProps = { o: OptionVM; art: string; current: boolean; onPick: () => void; onOpen: () => void };
+
+function OptionCard(props: CardProps) {
+  return (
+    <InlineEdit item={props.o.item} only={["name", "price"]}>
+      <OptionFace {...props} />
+    </InlineEdit>
+  );
+}
+
+function OptionFace({ o, art, current, onPick, onOpen }: CardProps) {
   const price = optionPrice(o.price);
   const tag = o.badges[0];
+  const edit = useInlineEdit();
   return (
-    <article className={`q-card q-opt z-oc${current ? " is-cur" : ""}`} data-item-id={o.id} aria-label={o.title}>
+    <article className={`q-card q-opt z-oc${current ? " is-cur" : ""}`} data-item-id={o.id} aria-label={o.title} data-new={L("Yeni", "New")}>
       <div className={`z-op${o.image ? "" : " art"}`}>
         <img className={o.image ? "ph" : undefined} src={o.image ?? art} alt="" />
         <SourceBadge option={o} />
@@ -70,20 +83,30 @@ function OptionCard({ o, art, current, onPick, onOpen }: { o: OptionVM; art: str
           <Rating rating={o.rating} />
         </span>
         <h3 className="z-t" title={o.title}>
-          {/* B14: its name opens its record's details (Tüm detaylar). */}
-          <button type="button" className="z-tb" onClick={onOpen} aria-label={L(`${o.title}: tüm detaylar`, `${o.title}: all details`)}>
-            {o.title}
-          </button>
+          {edit?.open === "name" ? (
+            <Editable field="name" />
+          ) : (
+            // B14: its name opens its record's details (Tüm detaylar).
+            <button type="button" className="z-tb" onClick={onOpen} aria-label={L(`${o.title}: tüm detaylar`, `${o.title}: all details`)}>
+              {o.title}
+            </button>
+          )}
         </h3>
         <div className="z-of">
-          {price ? (
-            <span className="q-pr">
-              <b>{price.amount}</b>
-              {price.unit && <small>{price.unit}</small>}
-            </span>
-          ) : (
-            <span />
-          )}
+          <Editable field="price">
+            {price && (
+              <span className="q-pr">
+                <b>{price.amount}</b>
+                {/* Saved without its dates: priced for these nights for now ("geçici"; its page opens with them). */}
+                {(price.unit || o.price?.provisional) && (
+                  <small>
+                    {price.unit}
+                    {o.price?.provisional && <i className="z-prov">{price.unit ? " · " : ""}{L("geçici", "provisional")}</i>}
+                  </small>
+                )}
+              </span>
+            )}
+          </Editable>
           <button type="button" className="q-pick" aria-pressed={current || undefined} aria-label={current ? L(`${o.title}: seçili`, `${o.title}: chosen`) : L(`${o.title}: seç`, `${o.title}: choose`)}
             onClick={current ? undefined : onPick}>
             {current ? L("Seçili", "Chosen") : L("Seç", "Choose")}
@@ -131,7 +154,6 @@ export function OptionList({ vm, options, current, changing, art, links, onPick,
         {left > 0 && (
           <div className="z-oc0" style={{ "--span": left } as React.CSSProperties}>
             <b>{L("Daha fazla seçenek", "More options")}</b>
-            <small>{L("Sohbete bir link at ya da AI'dan iste; buraya gelir.", "Send a link in the chat or ask the AI; it lands here.")}</small>
             {onAsk && (
               <button type="button" className="q-ai" onClick={onAsk}>
                 <Ic name="spark" size={14} />
