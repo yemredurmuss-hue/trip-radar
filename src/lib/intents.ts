@@ -10,9 +10,14 @@
 //   B2  "Önerimiz" on a flight, a stay, a train and an eSIM;
 //   B4  an estimate only from at least three real prices, never for insurance;
 //   B5  the wants checked only as ✓ or ✕ (what the page doesn't say stays in the data, not in the box);
-//   B9  the hero's two shares (planShare, bookedShare);
-//   B10 a booking's price as "€900 ödendi".
-// Phase 0 (temel): nothing draws it yet (CategoryPlan's V82_SECTIONS is empty). Pure.
+//   B9  the hero's two shares (planShare, bookedShare), a Dahil box counted as what covers it (spec §1.3);
+//   B10 a booking's price as "€900 ödendi";
+//   D2, D10 a box a package, a pass or a rented car covers is "Dahil" (covers.ts), D3 nothing the start or the AI opened
+//   is ever "alındı" or "ayarlandı" by itself, D7 a connecting flight one box with two stubs;
+//   F2 the main button by the time (48 hours before a flight: check-in).
+// Aşama 3b: the trip's shape (gezi biçimi, playbooks/shape.ts) puts a part's record in its category and frame (a ski pass
+// one choice in Etkinlik), gives a category its short line (kısa bilgi satırı) and closes one it makes needless (a day out:
+// Konaklama); the ticket frame's view is ticketView.ts's. Pure.
 import { cityOfAirport } from "./airports";
 import { boardBadges, boardOptions } from "./board";
 import { brandOf, type Brand } from "./brands";
@@ -26,22 +31,27 @@ import { bookingCopies, refFromNote } from "./bookingRows";
 import { catDomKey, citiesOfPlan, EVENT_RANK, eventsByCity, needsOf, recordOf, type CatEntry, type CatSection, type SectionId } from "./categories";
 import type { GroupDecision } from "./decision";
 import { needsDoc } from "./docs";
+import { allAboard, nightsAboard } from "./nightsAboard";
+import { campCoverOf, coversWays, isPass, partCoverOf, rideCoverOf, wayCoverOf } from "./covers";
 import { draftOf } from "./draft";
 import { estimatedRange, rangeLabel, type EstRange } from "./estRange";
 import { L } from "./i18n";
-import { count, joinAnd, lowerFirst, nNights, nReviews } from "./i18nText";
+import { count, joinAnd, locative, lowerFirst, nNights, nReviews } from "./i18nText";
 import { shortDay } from "./ideas";
 import { formatDateRange, formatPrice, isoDate, listingKeyOf, nightsBetween, placeMapUrl, rankItems } from "./items";
 import { clockOf, legShortTitle, type Leg } from "./legs";
-import type { Stage } from "./lifecycle";
+import { noCounts, type Stage } from "./lifecycle";
 import { cancellationText } from "./needs";
 import { ratingText } from "./offerSource";
 import { adderOf } from "./pano";
-import { stayRange, type Plan } from "./plan";
+import { sameCity, stayRange, type Plan } from "./plan";
 import type { BudgetSlice } from "./progress";
+import { coverWords, shapeOf, type SignalId, type TripShape } from "./playbooks/shape";
 import { lookWord } from "./stageWords";
+import { isPlaceholder } from "./startTrip";
+import { hoursTo, ticketCarrier, ticketViewOf, type TicketCarrier, type TicketVM } from "./ticketView";
 import { whoGoes } from "./tripSettings";
-import type { DocMeta, Item, Suggestion, Trip } from "./types";
+import type { DocMeta, Item, LegMode, PartFrame, PartSection, Suggestion, Trip } from "./types";
 
 /**
  * The eight states of an intent box: Aranıyor (nothing to pick yet), Karar bekliyor (options to pick from), Önerimiz (our
@@ -151,6 +161,8 @@ export interface IntentInput {
   allot?: { by: Record<BudgetSlice, number>; currency: string } | null;
   /** The suggestions shown, by section (useSuggestions.bySection): a missing need is an intent still to find (C16). */
   suggestions?: Partial<Record<SectionId, readonly Suggestion[]>>;
+  /** Now, for what goes by the hour (F2: check-in 48 hours before a flight; the flight's live strip). Default: today's noon. */
+  now?: Date;
 }
 
 /** Who put an option on the board: a source the AI found it in, a link the traveller sent, a fellow traveller. */
@@ -185,6 +197,8 @@ export interface OptionVM {
   ours: boolean;
   /** A ticket's hours, ends, length and stops (cardTicket.flightLeg). */
   leg: FlightLeg | null;
+  /** A ticket's carrier on its row (Skyscanner's): the airline's or the operator's logo, its name, the number or the class. */
+  carrier: TicketCarrier | null;
   /** Chosen or booked: "Seçili" when the options open again (Değiştir). */
   current: boolean;
 }
@@ -203,6 +217,30 @@ export interface AccessVM {
   /** No file yet and it starts within DOC_SOON_DAYS: the amber "belge yok" (B15). */
   docMissing: boolean;
   links: { map: string | null; host: string | null; page: string | null };
+  /**
+   * F2: the box's main button by the time: a flight within CHECKIN_HOURS of leaving says "Check-in" (with its PNR); else
+   * its document ("E-bilet aç"), or the dashed "Belgeyi ekle" while it has none.
+   */
+  primary: "checkin" | "openDoc" | "addDoc";
+}
+
+/** F2: a flight's main button is its check-in this many hours before it leaves. */
+export const CHECKIN_HOURS = 48;
+
+/**
+ * Dahil (D2, D10, spec §1.3): what covers a box, and where that stands. A Dahil box counts as its cover does: alındı when
+ * the cover is bought or arranged, planda when it's chosen, neither (and no decision either) while the cover waits.
+ */
+export interface CoverVM {
+  /** The covering box's key ("Festival biletini aç" goes there); null when it isn't drawn on the plan. */
+  key: string | null;
+  itemId: string;
+  /** "festival biletiyle", "Hakone Free Pass ile", "kiralık araçla", "tekne paketiyle". */
+  by: string;
+  /** Its button: "Festival biletini aç", "Pass'i aç". */
+  open: string;
+  /** Where the covering one stands (its record's state); null when it's ruled out. */
+  status: IntentStatus | null;
 }
 
 export interface IntentHead {
@@ -213,6 +251,8 @@ export interface IntentHead {
   parts: string[];
   /** In a mixed category, the kind leads the line ("Tren", "eSIM"). */
   kindWord: string | null;
+  /** The word of the trip's shape for it (gezi biçimi: "Kamp", "Tekne", "Kabin", "Skipass", "Pass"); null when it's the kind's. */
+  word: string | null;
   /** What the traveller asked for (`must`: a requirement, else a wish). */
   wants: { label: string; must: boolean }[];
   image: string | null;
@@ -249,6 +289,17 @@ export interface IntentVM {
   note: string | null;
   /** The suggestions a row of cards waits on (not records yet). */
   suggestions: Suggestion[];
+  /**
+   * A row of cards' places the start opened for the trip's shape and nobody has filled (a festival's ticket, the shore
+   * excursions): still to find (D3), neither on the plan nor an option.
+   */
+  wanted: OptionVM[];
+  /** Dahil: what covers it (a package, a pass, a car); null when nothing does. */
+  cover: CoverVM | null;
+  /** The ticket frame's view (a flight, a train, a transfer, a bus, a boat, a rental, a pass); null in the other frames. */
+  ticket: TicketVM | null;
+  /** C15: a change of city nobody has planned: the ways to pick from (Tren, Otobüs, Araba, Uçak); "Ben hallettim" is the menu's. */
+  modes: LegMode[];
   itemIds: string[];
   /** Its entries' DOM keys (categories.catDomKey): the Plan scrolls to these. */
   domKeys: string[];
@@ -258,7 +309,13 @@ interface Env {
   input: IntentInput;
   byId: Map<string, Item>;
   people: number | null;
-  festival: boolean;
+  /** The trip's shape (gezi biçimi): its short lines, what it closes. */
+  shape: TripShape;
+  now: Date;
+  /** A place the start only made room for (startTrip.isPlaceholder): still to find, never chosen. */
+  placeholder: (item: Item) => boolean;
+  /** The stage of the entry a record is drawn in (categories), for where a covering record stands. */
+  stageOfItem: (itemId: string) => Stage | null;
   decisionOf: (item: Item) => GroupDecision | undefined;
   /** Its place in its comparison, best fit first (board.ts's order, the ruled-out last); null with no comparison. */
   placeOf: (item: Item) => number | null;
@@ -271,11 +328,16 @@ function envOf(input: IntentInput): Env {
   for (const d of input.decisions?.values() ?? []) for (const o of d.options) byItem.set(o.item.id, d);
   const facts = new Map<string, CardFacts>();
   const places = new Map<GroupDecision, string[]>();
+  const stages = new Map<string, Stage | null>();
+  for (const sec of input.sections) for (const e of sec.entries) for (const id of e.itemIds) if (!stages.has(id)) stages.set(id, e.stage);
   return {
     input,
     byId: new Map(input.items.map((i) => [i.id, i])),
     people: input.people ?? (whoGoes({ travellers: input.trip.travellers }).count || null),
-    festival: input.trip.intent?.playbook === "festival",
+    shape: shapeOf(input.trip),
+    now: input.now ?? new Date(`${input.today}T12:00:00Z`),
+    placeholder: (item) => isPlaceholder(input.trip, item),
+    stageOfItem: (id) => stages.get(id) ?? null,
     decisionOf: (item) => byItem.get(item.id),
     placeOf: (item) => {
       const d = byItem.get(item.id);
@@ -390,6 +452,7 @@ function optionVM(item: Item, env: Env, at: { place: number; frame: FrameFamily;
     badges: at.badges ?? [],
     ours: at.draft?.id === item.id,
     leg: at.frame === "ticket" ? flightLeg(item) : null,
+    carrier: at.frame === "ticket" ? ticketCarrier(item, at.kind) : null,
     current: item.status === "chosen" || item.status === "booked",
   };
 }
@@ -431,22 +494,24 @@ function peoplePart(lead: Item | null, env: Env): string | null {
   return n != null && env.people != null && n !== env.people ? count(n, "kişi", "person", "people") : null;
 }
 
-function headOf(section: SectionId, b: Bucket, lead: Item | null, leg: Leg | null, kind: CardKind, env: Env): IntentHead {
+function headOf(section: SectionId, frame: FrameFamily, b: Bucket, lead: Item | null, leg: Leg | null, kind: CardKind, env: Env): IntentHead {
   const first = b.entries[0];
-  const frame = frameOf(section);
   const facts = lead ? env.facts(lead) : null;
   const wants = facts
     ? facts.needs.map((n) => ({ label: n.label, must: n.source?.kind === "requirement" }))
     : section === "flight"
       ? flightWants(env.input.trip, env.input.ctx?.preferences ?? []).map((label) => ({ label, must: Boolean(env.input.trip.requirements?.some((r) => r.kind === "direct_flight")) }))
       : [];
-  // The way its options go ("Tren"); with none yet, the transfer's own word ("Transfer", "Şehir değişimi").
-  const kindWord = MIXED.includes(section) ? (kind === "transport" && leg ? legCardView(leg).label : cardKindLabel(kind)) : null;
+  const word = lead?.part?.word ?? null;
+  // The way its options go ("Tren"); with none yet, the transfer's own word ("Transfer", "Şehir değişimi"); the shape's own first ("Pass").
+  const kindWord = MIXED.includes(section) ? (word ?? (kind === "transport" && leg ? legCardView(leg).label : cardKindLabel(kind))) : null;
   const image = lead?.imageUrl ?? null;
   if (section === "stay") {
     const n = nightsOf(b, lead);
     const parts = [n.nights ? nNights(n.nights) : null, n.start ? formatDateRange(n.start, n.end) : null, peoplePart(lead, env)].filter(nonNull);
-    return { name: n.city ?? first.row.name, route: null, parts, kindWord, wants, image, city: n.city, date: n.start, nights: n.nights };
+    // A part that isn't a stay itself (a retreat's programme in Konaklama) goes by its own name.
+    const name = lead && lead.category !== "stay" ? lead.name : (n.city ?? first.row.name);
+    return { name, route: null, parts, kindWord, word, wants, image, city: n.city, date: n.start, nights: n.nights };
   }
   if (frame === "ticket") {
     const route = routeOf(b, lead, leg);
@@ -454,7 +519,14 @@ function headOf(section: SectionId, b: Bucket, lead: Item | null, leg: Leg | nul
     const codes = f?.from && f.to && /^[A-Z]{3}$/.test(f.from) && /^[A-Z]{3}$/.test(f.to) ? `${f.from} → ${f.to}` : null;
     const date = first.date;
     const parts = [section === "flight" ? codes : null, date ? shortDay(date) : null, peoplePart(lead, env)].filter(nonNull);
-    return { name: route && leg?.kind !== "arrival" && leg?.kind !== "departure" ? `${route.from} → ${route.to}` : first.row.name, route, parts, kindWord, wants, image, city: first.city, date, nights: 0 };
+    return { name: route && leg?.kind !== "arrival" && leg?.kind !== "departure" ? `${route.from} → ${route.to}` : first.row.name, route, parts, kindWord, word, wants, image, city: first.city, date, nights: 0 };
+  }
+  if (section === "activity" || section === "todo") {
+    // One choice of the trip's shape among the rows of cards (a ski pass, gear to rent): its own name and days.
+    const start = lead ? isoDate(lead.dates.start) : null;
+    const end = lead ? isoDate(lead.dates.end) : null;
+    const parts = [start ? formatDateRange(start, end && end !== start ? end : null) : null, peoplePart(lead, env)].filter(nonNull);
+    return { name: lead?.name ?? first.row.name, route: null, parts, kindWord: null, word, wants, image, city: lead?.city ?? first.city, date: start, nights: 0 };
   }
   // Belgeler ve internet: an eSIM or a policy for the whole trip (its own dates, else the trip's).
   const place = lead?.country ?? lead?.city ?? null;
@@ -462,7 +534,9 @@ function headOf(section: SectionId, b: Bucket, lead: Item | null, leg: Leg | nul
   const own = lead ? isoDate(lead.dates.start) : null;
   const range = own ? { start: own, end: isoDate(lead!.dates.end) } : env.input.plan.range;
   const parts = [range ? formatDateRange(range.start, range.end) : null, peoplePart(lead, env)].filter(nonNull);
-  return { name: place ? `${label} · ${place}` : label, route: null, parts, kindWord: null, wants, image, city: first.city, date: range?.start ?? null, nights: 0 };
+  // A paper of the trip's shape (a driving permit, a vaccination card) by its own name.
+  const name = lead?.part ? lead.name : place ? `${label} · ${place}` : label;
+  return { name, route: null, parts, kindWord: null, word, wants, image, city: first.city, date: range?.start ?? null, nights: 0 };
 }
 
 function accessOf(item: Item, kind: CardKind, env: Env): AccessVM {
@@ -484,6 +558,9 @@ function accessOf(item: Item, kind: CardKind, env: Env): AccessVM {
   const docs = env.docs(item.id);
   const days = daysToStart(item, env.input.today);
   const mapped = stay || kind === "activity" || kind === "food";
+  // F2: from 48 hours before a flight leaves, its main button is the check-in (its PNR beside it).
+  const hours = kind === "flight" ? hoursTo(item, env.now) : null;
+  const checkin = hours != null && hours >= 0 && hours <= CHECKIN_HOURS;
   return {
     code: ref ? { label: label ?? L("Kod", "Code"), value: ref } : null,
     // The page's (or the booking's) own hours, never guessed; the same reading checkInTimeOf does for the way out.
@@ -494,6 +571,7 @@ function accessOf(item: Item, kind: CardKind, env: Env): AccessVM {
     doc: { count: docs.length, name: docs[0]?.name ?? null },
     docMissing: needsDoc(item) && docs.length === 0 && days != null && days >= 0 && days <= DOC_SOON_DAYS,
     links: { map: mapped && (item.geo || item.location.address || item.name) ? placeMapUrl(item) : null, host: safeContactUrl(item.host?.url), page: item.url },
+    primary: checkin ? "checkin" : docs.length ? "openDoc" : "addDoc",
   };
 }
 
@@ -501,12 +579,79 @@ function accessOf(item: Item, kind: CardKind, env: Env): AccessVM {
 const footText = (left: ReturnType<typeof footOf>["left"]): string | null =>
   left.kind === "state" ? [left.text, left.sub].filter(Boolean).join(" · ") || null : null;
 
+/** Where one record stands, as its box would say it: what a covering one (a ticket, a pass, a car) is counted as. */
+function recordStatus(item: Item, env: Env): IntentStatus | null {
+  switch (item.status) {
+    case "booked":
+      return "booked";
+    case "chosen":
+      if (item.installedAt) return "booked";
+      if (item.arranged && item.noBooking != null) return "arranged";
+      return env.placeholder(item) || env.stageOfItem(item.id) === "search" ? "searching" : "chosen";
+    case "saved":
+      return "deciding";
+    default:
+      return null;
+  }
+}
+
+/** The kind of nights a covering stay is, for its words ("tekne paketiyle", "kabinle", "lodge paketiyle", "resort paketiyle"). */
+const sleepOf = (item: Item): "boat" | "camp" | "cabin" | "hotel" => {
+  const kind = item.metrics?.stayKind;
+  if (kind === "boat") return /kabin|cabin/i.test(item.part?.word ?? item.name) ? "cabin" : "boat";
+  return kind === "camp" ? "camp" : "hotel";
+};
+
+/**
+ * What covers a box (covers.ts), as it says it: its part's package (a festival's ticket, a retreat's programme, the boat it
+ * sits in), a festival camp made before the parts were kept, else for a way with nothing of its own (an empty change of
+ * city, a boat on the lake said with no price) a pass or a rented car over its day. A box with a choice of its own (a
+ * booking, a priced option) is its own: never Dahil.
+ */
+function coverOf(live: Item[], leg: Leg | null, env: Env): CoverVM | null {
+  const { items, trip } = env.input;
+  const own = live.some((i) => i.status === "booked" || i.status === "saved" || (i.status === "chosen" && !i.part && !env.placeholder(i) && (i.price.amount != null || i.url)));
+  if (own) return null;
+  const part = live.map((i) => partCoverOf(i, trip, items)[0]).find(nonNull) ?? null;
+  // A festival's camp made before the parts were kept: its ticket, said as the festival's ticket.
+  const camp = part ? null : (live.map((i) => campCoverOf(i, trip, items)[0]).find(nonNull) ?? null);
+  const by = part ?? camp ?? live.map((i) => rideCoverOf(i, items)).find(nonNull) ?? (!live.length && leg ? wayCoverOf(leg, items) : null);
+  if (!by) return null;
+  const words = camp
+    ? coverWords({ part: { ref: "ticket" }, name: camp.name })
+    : coverWords(by, { sleep: by.category === "stay" ? sleepOf(by) : "hotel", pass: isPass(by), rental: by.category === "transport" && coversWays(by) && !isPass(by) });
+  return { key: null, itemId: by.id, by: words.by, open: words.open, status: recordStatus(by, env) };
+}
+
+/** A box with nothing of its own decided (D3): the start or the trip's shape opened it, or nothing is there yet. */
+function stagelessStatus(live: Item[], settled: Item | null, options: Item[], draft: Item | null, env: Env): IntentStatus {
+  if (live.some((i) => i.status === "booked")) return "booked";
+  if (settled?.status === "chosen") {
+    if (settled.arranged && settled.noBooking != null) return "arranged";
+    // What the start or the shape opened (a camp set aside, a ski pass) is never "ayarlandı" by itself.
+    if (env.placeholder(settled) || settled.part || isCampStay(settled)) return "searching";
+    // A taxi planned, a way said: nothing to book.
+    return "arranged";
+  }
+  if (options.length) return draft ? "suggested" : "deciding";
+  return "searching";
+}
+
+/** The cities a ticket's ends are named by: a change of city both, the way in where it lands, the way home where it leaves. */
+const endsOf = (leg: Leg | null): { from?: string | null; to?: string | null } =>
+  !leg ? {} : leg.kind === "move" ? { from: leg.from.city, to: leg.to.city } : leg.kind === "arrival" ? { to: leg.to.city } : leg.kind === "departure" ? { from: leg.from.city } : {};
+
+/** C15: the ways to pick from for a change of city nobody has planned. */
+const MOVE_MODES: readonly LegMode[] = ["train", "bus", "car", "flight"];
+
 function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
-  const frame = frameOf(section);
   const records = uniq(b.entries.flatMap((e) => e.itemIds))
     .map((id) => env.byId.get(id))
     .filter(nonNull);
   const live = records.filter((i) => i.status !== "dismissed");
+  // A part of the trip's shape says its frame (a ski pass a stay card in Etkinlik), else the category does.
+  const part = live.find((i) => i.part)?.part ?? null;
+  const frame: FrameFamily = (part?.frame as PartFrame | undefined) ?? (isCollection(section) ? "stay" : frameOf(section));
   const settled = live.find((i) => i.status === "booked") ?? live.find((i) => i.status === "chosen") ?? null;
   const options = ordered(
     live.filter((i) => i.status === "saved"),
@@ -517,16 +662,13 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
   const legMode = leg ? (leg.choice?.mode ?? leg.mode) : null;
   const kind: CardKind = lead ? cardKind(lead, legMode) : (legTransportMode(legMode) ?? DEFAULT_KIND[section] ?? "other");
   const draft = b.stage === "options" && options.length ? draftOf(options, env.decisionOf(options[0]), suggestsFor) : null;
-  // A festival's camp is covered by the ticket (cardView.footOf's "bilete dahil"); a camp elsewhere is nothing to book.
-  const camp = settled && settled.status === "chosen" && kind === "stay" && isCampStay(settled);
   const view = leg ? legCardView(leg) : null;
   const legArranged = Boolean(view && (view.arranged || view.badge === "arranged") && !live.some((i) => i.status === "booked"));
-  const status: IntentStatus = camp
-    ? env.festival
-      ? "included"
-      : "arranged"
+  const cover = coverOf(live, leg, env);
+  const status: IntentStatus = cover
+    ? "included"
     : b.stage == null
-      ? "arranged"
+      ? stagelessStatus(live, settled, options, draft, env)
       : b.stage === "search" || b.stage === "cancelled"
         ? "searching"
         : b.stage === "options"
@@ -549,16 +691,19 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
   const open = status === "searching" || status === "deciding";
   const est = open && kind !== "insurance" ? estimatedRange(live, section === "stay" ? nightsOf(b, lead).nights || null : null) : null;
   const note =
-    status === "arranged" || status === "included"
-      ? settled
-        ? // "Ben hallettim" says it whatever the kind (cardView's words; a taxi's foot would say "rezervasyon gerekmez").
-          settled.arranged && settled.noBooking != null
-          ? L("sen hallettin", "you sorted it")
-          : footText(footOf(settled, kind, { included: env.festival }).left)
-        : view
-          ? footText(view.foot.left)
-          : null
-      : null;
+    status === "included"
+      ? (settled?.statusNote ?? null)
+      : status === "arranged"
+        ? settled
+          ? // "Ben hallettim" says it whatever the kind (cardView's words; a taxi's foot would say "rezervasyon gerekmez").
+            settled.arranged && settled.noBooking != null
+            ? L("sen hallettin", "you sorted it")
+            : footText(footOf(settled, kind).left)
+          : view
+            ? footText(view.foot.left)
+            : null
+        : null;
+  const head = headOf(section, frame, b, lead, leg, kind, env);
   return {
     key: b.key,
     section,
@@ -566,7 +711,7 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     kind,
     status,
     word: statusWord(status, kind),
-    head: headOf(section, b, lead, leg, kind, env),
+    head,
     options: top,
     optionCount: options.length + (shown && shown !== draft ? 1 : 0),
     chosen,
@@ -576,6 +721,10 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     estimate: est ? { label: rangeLabel(est), unit: est.unit, n: est.n } : null,
     note,
     suggestions: [],
+    wanted: [],
+    cover,
+    ticket: frame === "ticket" ? ticketViewOf(shown ? [shown] : [], { kind, leg, route: head.route, ends: endsOf(leg), now: env.now }) : null,
+    modes: status === "searching" && leg?.kind === "move" && !legMode ? [...MOVE_MODES] : [],
     itemIds: records.map((i) => i.id),
     domKeys: b.entries.map(catDomKey),
   };
@@ -586,14 +735,16 @@ function suggestedIntent(section: SectionId, s: Suggestion, env: Env): IntentVM 
   const kind: CardKind = s.template === "esim" ? "esim" : s.template === "insurance" ? "insurance" : (DEFAULT_KIND[section] ?? "other");
   const start = isoDate(s.payload?.start ?? null);
   const range = start ? { start, end: isoDate(s.payload?.end ?? null) } : env.input.plan.range;
+  const frame = frameOf(section);
+  const head: IntentHead = { name: s.title, route: null, parts: range ? [formatDateRange(range.start, range.end)] : [], kindWord: MIXED.includes(section) ? cardKindLabel(kind) : null, word: null, wants: [], image: null, city: s.payload?.city ?? null, date: range?.start ?? null, nights: 0 };
   return {
     key: `suggestion:${s.key}`,
     section,
-    frame: frameOf(section),
+    frame,
     kind,
     status: "searching",
     word: statusWord("searching", kind),
-    head: { name: s.title, route: null, parts: range ? [formatDateRange(range.start, range.end)] : [], kindWord: MIXED.includes(section) ? cardKindLabel(kind) : null, wants: [], image: null, city: s.payload?.city ?? null, date: range?.start ?? null, nights: 0 },
+    head,
     options: [],
     optionCount: 0,
     chosen: null,
@@ -603,6 +754,10 @@ function suggestedIntent(section: SectionId, s: Suggestion, env: Env): IntentVM 
     estimate: null,
     note: s.why || null,
     suggestions: [s],
+    wanted: [],
+    cover: null,
+    ticket: frame === "ticket" ? ticketViewOf([], { kind, leg: null, route: null, now: env.now }) : null,
+    modes: [],
     itemIds: [],
     domKeys: [],
   };
@@ -612,13 +767,16 @@ function suggestedIntent(section: SectionId, s: Suggestion, env: Env): IntentVM 
 function skippedIntents(section: CatSection): IntentVM[] {
   return section.hidden.flatMap((h): IntentVM[] => {
     if (h.kind !== "leg" && h.kind !== "nights") return [];
-    const base = { section: section.id, frame: frameOf(section.id), status: "skipped" as const, options: [], optionCount: 0, chosen: null, planned: [], access: null, paid: null, estimate: null, note: null, suggestions: [], itemIds: [], domKeys: [] };
+    const base = {
+      section: section.id, frame: frameOf(section.id), status: "skipped" as const, options: [], optionCount: 0, chosen: null, planned: [], access: null, paid: null, estimate: null, note: null,
+      suggestions: [], wanted: [], cover: null, ticket: null, modes: [], itemIds: [], domKeys: [],
+    };
     if (h.kind === "leg") {
       const view = legCardView(h.leg);
-      return [{ ...base, key: h.key, kind: view.kind, word: statusWord("skipped"), head: { name: legShortTitle(h.leg), route: null, parts: [shortDay(h.leg.date)], kindWord: MIXED.includes(section.id) ? view.label : null, wants: [], image: null, city: h.leg.to.city, date: h.leg.date, nights: 0 } }];
+      return [{ ...base, key: h.key, kind: view.kind, word: statusWord("skipped"), head: { name: legShortTitle(h.leg), route: null, parts: [shortDay(h.leg.date)], kindWord: MIXED.includes(section.id) ? view.label : null, word: null, wants: [], image: null, city: h.leg.to.city, date: h.leg.date, nights: 0 } }];
     }
     const nights = nightsBetween(h.range.start, h.range.end);
-    return [{ ...base, key: h.key, kind: "stay", word: statusWord("skipped"), head: { name: h.city ?? L("Konaklama", "Stay"), route: null, parts: [nNights(nights), formatDateRange(h.range.start, h.range.end)], kindWord: null, wants: [], image: null, city: h.city, date: h.range.start, nights } }];
+    return [{ ...base, key: h.key, kind: "stay", word: statusWord("skipped"), head: { name: h.city ?? L("Konaklama", "Stay"), route: null, parts: [nNights(nights), formatDateRange(h.range.start, h.range.end)], kindWord: null, word: null, wants: [], image: null, city: h.city, date: h.range.start, nights } }];
   });
 }
 
@@ -628,6 +786,12 @@ function skippedIntents(section: CatSection): IntentVM[] {
 const isPlanned = (section: SectionId, item: Item): boolean =>
   item.status === "chosen" || item.status === "booked" || (section !== "activity" && (Boolean(isoDate(item.dates.start)) || item.doneAt != null));
 
+/** A part of the trip's shape that is one choice of its own, not a card in a row (a ski pass, gear to rent). */
+const isSinglePart = (item: Item | undefined): boolean => Boolean(item?.part && (item.part.pick === "single" || (item.part.frame != null && item.part.frame !== "collection")));
+
+/** A card the start opened for the trip's shape that nobody has filled (a festival's ticket): still to find (D3). */
+const isWanted = (item: Item, env: Env): boolean => item.status === "chosen" && (env.placeholder(item) || env.stageOfItem(item.id) === "search");
+
 type Card = { city: string | null; rank: number; at: string | null; item?: Item; suggestion?: Suggestion };
 
 function collectionIntents(section: CatSection, env: Env): IntentVM[] {
@@ -635,7 +799,7 @@ function collectionIntents(section: CatSection, env: Env): IntentVM[] {
   const records = uniq(section.entries.map(recordOf).filter(nonNull)).filter((i) => i.status !== "dismissed");
   const open = [...(env.input.suggestions?.[id] ?? []), ...(id === "todo" ? (env.input.suggestions?.food ?? []) : [])].filter((s) => s.kind === "add");
   const cards: Card[] = [
-    ...records.map((item) => ({ city: item.city, rank: item.status === "booked" ? EVENT_RANK.booked : isPlanned(id, item) ? EVENT_RANK.plan : EVENT_RANK.idea, at: isoDate(item.dates.start), item })),
+    ...records.map((item) => ({ city: item.city, rank: item.status === "booked" ? EVENT_RANK.booked : isPlanned(id, item) && !isWanted(item, env) ? EVENT_RANK.plan : EVENT_RANK.idea, at: isoDate(item.dates.start), item })),
     ...open.map((s) => ({ city: s.payload?.city ?? null, rank: EVENT_RANK.idea, at: isoDate(s.payload?.start ?? null), suggestion: s })),
   ];
   const kind: CardKind = id === "activity" ? "activity" : "todo";
@@ -643,17 +807,23 @@ function collectionIntents(section: CatSection, env: Env): IntentVM[] {
     .filter((g) => g.cards.length)
     .map((g) => {
       const items = g.cards.map((c) => c.item).filter(nonNull);
-      const planned = items.filter((i) => isPlanned(id, i));
-      const ideas = items.filter((i) => !planned.includes(i));
+      const wanted = items.filter((i) => isWanted(i, env));
+      const rest = items.filter((i) => !wanted.includes(i));
+      const planned = rest.filter((i) => isPlanned(id, i));
+      const ideas = rest.filter((i) => !planned.includes(i));
       const suggestions = g.cards.map((c) => c.suggestion).filter(nonNull);
       const bought = planned.filter((i) => i.status === "booked").length;
-      const status: IntentStatus = planned.length ? (bought === planned.length ? "booked" : "chosen") : ideas.length || suggestions.length ? "deciding" : "searching";
-      const word = planned.length
-        ? [L(`${planned.length} planda`, `${planned.length} on the plan`), bought && bought < planned.length ? L(`${bought} alındı`, `${bought} booked`) : null].filter(Boolean).join(" · ")
-        : statusWord(status, kind);
+      // A row a package holds (a liveaboard's dives): Dahil, counted as the package is.
+      const cover = items.length && items.every((i) => i.part?.by) ? coverOf(items, null, env) : null;
+      const status: IntentStatus = cover ? "included" : planned.length ? (bought === planned.length ? "booked" : "chosen") : ideas.length || suggestions.length ? "deciding" : "searching";
+      const word =
+        !cover && planned.length
+          ? [L(`${planned.length} planda`, `${planned.length} on the plan`), bought && bought < planned.length ? L(`${bought} alındı`, `${bought} booked`) : null].filter(Boolean).join(" · ")
+          : statusWord(status, kind);
       const range = g.start ? formatDateRange(g.start, g.end ?? null) : null;
       const vm = (item: Item, n: number) => optionVM(item, env, { place: n + 1, frame: "collection", kind: cardKind(item), draft: null });
       const entries = section.entries.filter((e) => e.itemIds.some((x) => items.some((i) => i.id === x)));
+      const word0 = items.find((i) => i.part?.word)?.part?.word ?? null;
       return {
         key: `${id}:${g.city ?? "-"}`,
         section: id,
@@ -661,7 +831,7 @@ function collectionIntents(section: CatSection, env: Env): IntentVM[] {
         kind,
         status,
         word,
-        head: { name: g.city ?? L("Şehri belli değil", "No city yet"), route: null, parts: range ? [range] : [], kindWord: null, wants: [], image: null, city: g.city, date: g.start ?? null, nights: 0 },
+        head: { name: g.city ?? L("Şehri belli değil", "No city yet"), route: null, parts: range ? [range] : [], kindWord: null, word: word0, wants: [], image: null, city: g.city, date: g.start ?? null, nights: 0 },
         options: ideas.slice(0, 4).map(vm),
         optionCount: items.length + suggestions.length,
         chosen: null,
@@ -671,26 +841,149 @@ function collectionIntents(section: CatSection, env: Env): IntentVM[] {
         estimate: null,
         note: null,
         suggestions,
+        wanted: wanted.map(vm),
+        cover,
+        ticket: null,
+        modes: [],
         itemIds: items.map((i) => i.id),
         domKeys: entries.map(catDomKey),
       };
     });
 }
 
+// --- a connecting flight (D7): one intent, a stub per leg -----------------------------------------------------
+
+const AHEAD: Record<IntentStatus, number> = { skipped: -1, searching: 0, deciding: 1, suggested: 2, included: 3, chosen: 3, arranged: 4, booked: 5 };
+
+/** The record a flight box shows (chosen or booked), when it's one of its own. */
+const shownOf = (i: IntentVM, env: Env): Item | null => (i.chosen && (i.status === "chosen" || i.status === "booked") ? (env.byId.get(i.chosen.id) ?? null) : null);
+
+/** Two flights one ticket makes (İstanbul → Doha, Doha → Tokyo): the first lands where the second leaves, the second leaves within a day. */
+function connects(a: Item, b: Item): boolean {
+  const [fa, fb] = [a.flight, b.flight];
+  if (!fa?.to || !fb?.from) return false;
+  const here = fa.to === fb.from || cityOfAirport(fa.to) === cityOfAirport(fb.from);
+  if (!here) return false;
+  const lands = fa.arrival ?? fa.departure;
+  const leaves = fb.departure;
+  if (!lands || !leaves) return false;
+  if (lands.length >= 16 && leaves.length >= 16) {
+    const gap = (Date.parse(`${leaves.slice(0, 16)}:00Z`) - Date.parse(`${lands.slice(0, 16)}:00Z`)) / 36e5;
+    return gap >= 0 && gap <= 24;
+  }
+  const days = nightsBetween(lands.slice(0, 10), leaves.slice(0, 10));
+  return days >= 0 && days <= 1;
+}
+
+/** D7: the flights one connecting ticket makes are one intent with two stubs; each leg's record stays its own. */
+function joinConnections(list: IntentVM[], env: Env): IntentVM[] {
+  const out: IntentVM[] = [];
+  for (const cur of list) {
+    const prev = out.at(-1);
+    const [a, b] = prev ? [shownOf(prev, env), shownOf(cur, env)] : [null, null];
+    if (!prev || !a || !b || prev.status === "skipped" || !connects((prev.ticket?.legs.length ?? 0) > 1 ? env.byId.get(prev.ticket!.legs.at(-1)!.itemId)! : a, b)) {
+      out.push(cur);
+      continue;
+    }
+    const shown = [...(prev.ticket?.legs.map((l) => env.byId.get(l.itemId)).filter(nonNull) ?? [a]), b];
+    const route = prev.head.route && cur.head.route ? { from: prev.head.route.from, to: cur.head.route.to } : (prev.head.route ?? cur.head.route);
+    const first = shown[0].flight;
+    const last = shown.at(-1)!.flight;
+    const codes = first?.from && last?.to && /^[A-Z]{3}$/.test(first.from) && /^[A-Z]{3}$/.test(last.to) ? `${first.from} → ${last.to}` : null;
+    const status = AHEAD[cur.status] < AHEAD[prev.status] ? cur.status : prev.status;
+    const paid = prev.paid && cur.paid ? null : (prev.paid ?? cur.paid);
+    out[out.length - 1] = {
+      ...prev,
+      status,
+      word: statusWord(status, prev.kind),
+      head: { ...prev.head, name: route ? `${route.from} → ${route.to}` : prev.head.name, route, parts: [codes, ...prev.head.parts.filter((x) => !/→/.test(x))].filter(nonNull) },
+      // What both legs cost is said once, in the details: a box shows one price.
+      paid: status === "booked" ? (paid ?? prev.paid) : null,
+      access: status === "booked" ? prev.access : null,
+      ticket: ticketViewOf(shown, { kind: "flight", leg: null, route, now: env.now }),
+      itemIds: uniq([...prev.itemIds, ...cur.itemIds]),
+      domKeys: uniq([...prev.domKeys, ...cur.domKeys]),
+    };
+  }
+  return out;
+}
+
+// --- a category's intents --------------------------------------------------------------------------------------
+
+/** Nights with nothing of their own, every one of them on a plane. */
+const onPlane = (b: Bucket, aboard: ReadonlySet<string>): boolean =>
+  b.entries.every((e) => !e.itemIds.length && e.piece.kind === "entry" && e.piece.entry.kind === "stay" && e.piece.entry.block.kind === "open" && allAboard(e.piece.entry.block.range, aboard));
+
+/** An empty way in or home: a trip's flight to find, with nothing saved or planned for it. */
+const emptyWay = (b: Bucket): boolean => b.entries.every((e) => e.piece.kind === "entry" && e.piece.entry.kind === "travel" && !e.piece.entry.travel && !e.itemIds.length && !e.piece.entry.leg?.choice);
+
 /**
  * A category's intents in its order: one choice per need (the way in and home, each stay's nights, each transfer, an eSIM),
- * then what the category is told is missing, then what was said not needed; things to do and book one row per city.
- * Hazırlık is a checklist, not intents (its row counts it).
+ * then what the category is told is missing, then what was said not needed; things to do and book one row per city, a
+ * part of the trip's shape that is one choice of its own (a ski pass) before them. Hazırlık is a checklist, not intents.
  */
-export const intentsOf = (section: CatSection, input: IntentInput): IntentVM[] => intentsWith(section, envOf(input));
+export const intentsOf = (section: CatSection, input: IntentInput): IntentVM[] => {
+  const env = envOf(input);
+  return linked(sectionsWith(input.sections.some((s) => s === section) ? input.sections : [...input.sections, section], env), env).find((x) => x.section === section)?.intents ?? [];
+};
 
 function intentsWith(section: CatSection, env: Env): IntentVM[] {
   if (section.id === "prep" || section.id === "inspo") return [];
-  if (isCollection(section.id)) return collectionIntents(section, env);
-  const own = bucketsOf(section).map((b) => singleIntent(section.id, b, env));
-  const told = (env.input.suggestions?.[section.id] ?? []).filter((s) => s.kind === "add").map((s) => suggestedIntent(section.id, s, env));
-  return [...own, ...told, ...skippedIntents(section)];
+  const single = (e: CatEntry) => e.itemIds.some((id) => isSinglePart(env.byId.get(id)));
+  let own: IntentVM[];
+  if (isCollection(section.id)) {
+    const parts = bucketsOf({ ...section, entries: section.entries.filter(single) }).map((b) => singleIntent(section.id, b, env));
+    own = [...parts, ...collectionIntents({ ...section, entries: section.entries.filter((e) => !single(e)) }, env)];
+  } else {
+    // A road trip (the start's road mode): the car is the way there; an empty way in or home is no flight to find (H5).
+    const road = Boolean(env.input.trip.startGuide?.road) && section.id === "flight";
+    // D14 (H6): an empty night spent on the plane is no stay to find.
+    const aboard = section.id === "stay" ? nightsAboard(env.input.items) : null;
+    own = bucketsOf(section)
+      .filter((b) => !(road && emptyWay(b)) && !(aboard?.size && onPlane(b, aboard)))
+      .map((b) => singleIntent(section.id, b, env));
+    if (section.id === "flight") own = joinConnections(own, env);
+    own = [...own, ...(env.input.suggestions?.[section.id] ?? []).filter((s) => s.kind === "add").map((s) => suggestedIntent(section.id, s, env))];
+  }
+  // D4: a category the trip's shape makes needless (a day out: Konaklama) closes; what's still open in it is "Gerek yok", with why.
+  const reason = env.shape.closes[section.id as PartSection];
+  const closed = reason ? own.map((i) => (i.status === "searching" || i.status === "deciding" || i.status === "suggested" ? { ...i, status: "skipped" as const, word: statusWord("skipped"), note: reason } : i)) : own;
+  return [...closed, ...skippedIntents(section)];
 }
+
+interface Built {
+  section: CatSection;
+  intents: IntentVM[];
+}
+
+/** Every category's intents, in the v82 order (a category with no section yet is built empty, for one the shape closes). */
+function sectionsWith(sections: CatSection[], env: Env): Built[] {
+  return V82_ORDER.flatMap((id) => {
+    const section = sections.find((s) => s.id === id) ?? (env.shape.closes[id as PartSection] ? emptySection(id) : null);
+    return section ? [{ section, intents: intentsWith(section, env) }] : [];
+  });
+}
+
+/** What covers is drawn as its box's key, and a pass counts the ways on the plan it covers. */
+function linked(built: Built[], env: Env): Built[] {
+  const all = built.flatMap((b) => b.intents);
+  const keyOf = (itemId: string) => all.find((i) => i.itemIds.includes(itemId) && i.status !== "skipped")?.key ?? null;
+  const covered = new Map<string, number>();
+  for (const i of all) if (i.cover) covered.set(i.cover.itemId, (covered.get(i.cover.itemId) ?? 0) + 1);
+  const fix = (i: IntentVM): IntentVM => {
+    let out = i;
+    if (i.cover) out = { ...out, cover: { ...i.cover, key: keyOf(i.cover.itemId) } };
+    const pass = i.ticket?.pass && i.chosen ? (covered.get(i.chosen.id) ?? 0) : 0;
+    if (pass && i.ticket && i.chosen) {
+      const lead = env.byId.get(i.chosen.id);
+      if (lead) out = { ...out, ticket: ticketViewOf([lead], { kind: i.kind, leg: null, route: i.head.route, now: env.now, covers: pass }) };
+    }
+    return out;
+  };
+  return built.map((b) => ({ ...b, intents: b.intents.map(fix) }));
+}
+
+const emptySection = (id: SectionId): CatSection => ({ id, entries: [], days: [], status: null, settled: 0, stages: noCounts(), drafts: 0, open: false, hidden: [], prep: [], ideas: null });
 
 // --- the closed row (K0) -------------------------------------------------------------------------------------
 
@@ -704,7 +997,8 @@ export interface CollectionSummary {
   more: number;
   /** "1 alındı · 1 seçildi · 2 karar" (a row of cards: "planda"); "boş" when nothing is there yet. */
   countsText: string;
-  counts: { booked: number; chosen: number; decide: number; arranged: number; skipped: number };
+  /** A Dahil box is in `booked` or `chosen` as its cover is, else in none of them (spec §1.3); `included` counts the Dahil boxes. */
+  counts: { booked: number; chosen: number; decide: number; arranged: number; skipped: number; included: number };
   /** The bar's two tones, in percent of the intents: bought (and arranged), chosen. */
   bar: { booked: number; chosen: number };
   /** Every option gathered in it ("10 fikir"). */
@@ -714,6 +1008,14 @@ export interface CollectionSummary {
   allotted: { amount: number; currency: string } | null;
   /** Hazırlık: "2/6 hazır". */
   ready: { done: number; total: number } | null;
+  /**
+   * Kısa bilgi satırı (gezi biçimi, spec §1.4): one line at the category's head, only where the trip's shape changed
+   * something there (a camp the ticket includes, ways a pass covers, the nearest airport, suggestions it keeps away).
+   * `signal`: the signal it comes from. Null: nothing changed, no line.
+   */
+  info: { text: string; signal: SignalId } | null;
+  /** D4: the trip's shape closed the category ("Gerek yok"), with why ("aynı gün dönüş"); null when it's open. */
+  closed: string | null;
 }
 
 const SLICE: Partial<Record<SectionId, BudgetSlice>> = { flight: "flight", stay: "stay", transport: "transport", activity: "activity", other: "other" };
@@ -771,8 +1073,72 @@ function lineOf(section: CatSection, intents: IntentVM[], ideas: number): string
   return parts.filter(nonNull).join(" · ");
 }
 
-/** A category's closed row (K0): its name, its line, three pictures, where its intents stand, its money. */
+/** What a box counts as in the shares and the bars (spec §1.3): a Dahil box as its cover stands, else its own state. */
+export type CountedIntent = Pick<IntentVM, "status"> & { cover?: Pick<CoverVM, "status"> | null };
+export function countedStatus(i: CountedIntent): IntentStatus | null {
+  if (i.status !== "included") return i.status;
+  const c = i.cover?.status ?? null;
+  return c === "booked" || c === "arranged" ? "booked" : c === "chosen" ? "chosen" : null;
+}
+
+/** The records a category's intents are made of. */
+const recordsOf = (intents: IntentVM[], env: Env): Item[] => uniq(intents.flatMap((i) => i.itemIds)).map((id) => env.byId.get(id)).filter(nonNull);
+
+/** Kısa bilgi satırı: the shape's line for the category when it holds there, else what a pass or the nearest airport changed. */
+function infoOf(section: CatSection, intents: IntentVM[], env: Env): CollectionSummary["info"] {
+  const id = section.id as PartSection;
+  const records = recordsOf(intents, env);
+  const own = env.shape.info[id];
+  if (own) {
+    const holds =
+      own.when === "covered"
+        ? intents.some((i) => i.status === "included")
+        : own.when === "own"
+          ? env.input.items.some((r) => r.status !== "dismissed" && r.category === "stay" && r.part?.ref === "stay" && r.part.word)
+          : own.when === "parts"
+            ? records.some((r) => r.part)
+            : own.when === "focus"
+              ? env.shape.focus === "only" && intents.length > 0
+              : Boolean(env.shape.closes[id]) && intents.every((i) => i.status === "skipped");
+    const signal: SignalId = own.when === "covered" ? "package" : own.when === "own" ? "sleep" : own.when === "focus" ? "focus" : own.when === "closed" ? "time" : env.shape.perDay ? "perDay" : "package";
+    if (holds) return { text: own.text, signal };
+  }
+  if (id !== "transport") return null;
+  // What a pass covers (D10): "Hakone Free Pass alındığı için 1 yolculuk Dahil."
+  const byPass = intents.filter((i) => i.status === "included" && i.cover && isPass(env.byId.get(i.cover.itemId)!));
+  if (byPass.length) {
+    const pass = env.byId.get(byPass[0].cover!.itemId)!;
+    const n = byPass.filter((i) => i.cover!.itemId === pass.id).length;
+    const bought = byPass[0].cover!.status === "booked";
+    const name = pass.name.split(" · ")[0].trim() || pass.name;
+    return {
+      text: bought
+        ? L(`${name} alındığı için ${count(n, "yolculuk", "way")} Dahil.`, `${name} is booked, so ${n === 1 ? "1 way comes" : `${n} ways come`} with it.`)
+        : L(`${name} kapsıyor: ${count(n, "yolculuk", "way")} Dahil.`, `${name} covers ${n === 1 ? "1 way" : `${n} ways`}.`),
+      signal: "pass",
+    };
+  }
+  // Yakın havalimanı: the flight lands in a town the trip doesn't start sleeping in, and the way on starts there.
+  if (env.shape.gateway || env.shape.preset === "festival" || env.shape.preset === "ski") {
+    // Where the first flight lands, and where the way on from there goes (the transfer to the site, to the resort).
+    const flights = env.input.items.filter((i) => i.category === "flight" && i.status !== "dismissed" && i.flight?.to);
+    const first = [...flights].sort((a, b) => (a.flight!.departure ?? a.dates.start ?? "").localeCompare(b.flight!.departure ?? b.dates.start ?? ""))[0];
+    const gateway = first ? cityOfAirport(first.flight!.to!) : null;
+    const arrival = section.entries.map(legOfEntry).find((l) => l?.kind === "arrival")?.to.city ?? null;
+    const onward = gateway ? (intents.find((i) => i.head.route && sameCity(i.head.route.from, gateway))?.head.route?.to ?? null) : null;
+    const place = arrival ?? onward;
+    if (gateway && place && !sameCity(gateway, place)) return { text: L(`${locative(place)} havalimanı yok; en yakını ${gateway}.`, `${place} has no airport; the nearest is ${gateway}.`), signal: "gateway" };
+  }
+  return null;
+}
+
+/** A category's closed row (K0): its name, its line, three pictures, where its intents stand, its money, its short line. */
 export function collectionSummary(section: CatSection, intents: IntentVM[], input: IntentInput): CollectionSummary {
+  return summaryWith(section, intents, envOf(input));
+}
+
+function summaryWith(section: CatSection, intents: IntentVM[], env: Env): CollectionSummary {
+  const input = env.input;
   const allot = SLICE[section.id] && input.allot && input.allot.by[SLICE[section.id]!] > 0 ? { amount: input.allot.by[SLICE[section.id]!], currency: input.allot.currency } : null;
   if (section.id === "prep") {
     const done = section.entries.filter((e) => e.state === "done").length;
@@ -785,26 +1151,34 @@ export function collectionSummary(section: CatSection, intents: IntentVM[], inpu
       thumbs: [],
       more: 0,
       countsText: "",
-      counts: { booked: 0, chosen: 0, decide: 0, arranged: 0, skipped: 0 },
+      counts: { booked: 0, chosen: 0, decide: 0, arranged: 0, skipped: 0, included: 0 },
       bar: { booked: total ? Math.round((done / total) * 100) : 0, chosen: 0 },
       ideas: 0,
       spent: null,
       allotted: null,
       ready,
+      info: null,
+      closed: null,
     };
   }
   const counted = intents.filter((i) => i.status !== "skipped");
   const multi = isCollection(section.id);
-  const is = (...s: IntentStatus[]) => counted.filter((i) => s.includes(i.status)).length;
-  // A row of cards counts its cards (prototype: "1 alındı · 1 planda"), a single choice its intents.
-  const booked = multi ? counted.reduce((n, i) => n + i.planned.filter((o) => o.item.status === "booked").length, 0) : is("booked");
-  const chosen = multi ? counted.reduce((n, i) => n + i.planned.filter((o) => o.item.status !== "booked").length, 0) : is("chosen");
+  const is = (...s: IntentStatus[]) => counted.filter((i) => s.includes(countedStatus(i) as IntentStatus)).length;
+  // A row of cards counts its cards (prototype: "1 alındı · 1 planda"), a single choice its intents; a Dahil box as its cover.
+  const rows = counted.filter((i) => i.frame === "collection" && i.status !== "included");
+  const singles = counted.filter((i) => !rows.includes(i));
+  const one = (...s: IntentStatus[]) => singles.filter((i) => s.includes(countedStatus(i) as IntentStatus)).length;
+  const booked = rows.reduce((n, i) => n + i.planned.filter((o) => o.item.status === "booked").length, 0) + one("booked");
+  const chosen = rows.reduce((n, i) => n + i.planned.filter((o) => o.item.status !== "booked").length, 0) + one("chosen");
   const decide = is("searching", "deciding", "suggested");
-  const arranged = is("arranged", "included");
+  const arranged = is("arranged");
+  // A Dahil box whose cover still waits counts as nothing; it's said as what it is.
+  const waiting = counted.filter((i) => i.status === "included" && countedStatus(i) == null).length;
   const text = [
     booked ? L(`${booked} alındı`, `${booked} booked`) : null,
     chosen ? (multi ? L(`${chosen} planda`, `${chosen} on the plan`) : L(`${chosen} seçildi`, `${chosen} chosen`)) : null,
     decide ? L(`${decide} karar`, `${decide} to decide`) : null,
+    waiting ? L(`${waiting} dahil`, `${waiting} included`) : null,
   ].filter(nonNull);
   const total = counted.length;
   const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
@@ -815,6 +1189,7 @@ export function collectionSummary(section: CatSection, intents: IntentVM[], inpu
     }),
   );
   const ideas = counted.reduce((n, i) => n + i.optionCount, 0);
+  const reason = env.shape.closes[section.id as PartSection] ?? null;
   return {
     id: section.id,
     name: sectionName(section.id),
@@ -822,12 +1197,14 @@ export function collectionSummary(section: CatSection, intents: IntentVM[], inpu
     thumbs: pictures.slice(0, 3),
     more: Math.max(0, pictures.length - 3),
     countsText: text.length ? text.join(" · ") : L("boş", "empty"),
-    counts: { booked, chosen, decide, arranged, skipped: intents.length - counted.length },
-    bar: { booked: pct(is("booked", "arranged", "included")), chosen: pct(is("chosen")) },
+    counts: { booked, chosen, decide, arranged, skipped: intents.length - counted.length, included: counted.filter((i) => i.status === "included").length },
+    bar: { booked: pct(is("booked", "arranged")), chosen: pct(is("chosen")) },
     ideas,
     spent: spentOf(section),
     allotted: allot,
     ready: null,
+    info: infoOf(section, intents, env),
+    closed: reason && !counted.length ? reason : null,
   };
 }
 
@@ -837,15 +1214,17 @@ export interface Collection {
   intents: IntentVM[];
 }
 
-/** The v82 Plan's categories in order, each with its closed row and its intents; one with nothing in it isn't drawn. */
+/**
+ * The v82 Plan's categories in order, each with its closed row and its intents; one with nothing in it isn't drawn, but
+ * one the trip's shape closes is (folded, with why: D4).
+ */
 export function collectionsOf(input: IntentInput): Collection[] {
   const env = envOf(input);
-  return V82_ORDER.flatMap((id) => {
-    const section = input.sections.find((s) => s.id === id);
-    if (!section) return [];
-    const intents = intentsWith(section, env);
-    if (!section.entries.length && !section.hidden.length && !intents.length) return [];
-    return [{ section, summary: collectionSummary(section, intents, input), intents }];
+  return linked(sectionsWith(input.sections, env), env).flatMap(({ section, intents }) => {
+    // Hazırlık is drawn by its list; any other category by its intents (an empty way in on a road trip leaves none).
+    const something = section.id === "prep" ? section.entries.length > 0 : intents.length > 0 || section.hidden.length > 0;
+    if (!something && !env.shape.closes[section.id as PartSection]) return [];
+    return [{ section, summary: summaryWith(section, intents, env), intents }];
   });
 }
 
@@ -859,17 +1238,18 @@ export interface Share {
   pct: number | null;
 }
 
-const share = (intents: readonly Pick<IntentVM, "status">[], counts: readonly IntentStatus[]): Share => {
+const share = (intents: readonly CountedIntent[], counts: readonly IntentStatus[]): Share => {
   const live = intents.filter((i) => i.status !== "skipped");
-  const n = live.filter((i) => counts.includes(i.status)).length;
+  const n = live.filter((i) => counts.includes(countedStatus(i) as IntentStatus)).length;
   return { count: n, total: live.length, pct: live.length ? Math.round((n / live.length) * 100) : null };
 };
 
 /**
- * B9 "Omurganın %X'i planda": bought, arranged, chosen (a row of cards with at least one on the plan is chosen), and what
- * another booking covers, of every intent but those said not needed. Our pick isn't on the plan until it's taken.
+ * B9 "Omurganın %X'i planda": bought, arranged, chosen (a row of cards with at least one on the plan is chosen), of every
+ * intent but those said not needed. Our pick isn't on the plan until it's taken. A Dahil box counts as its cover does
+ * (spec §1.3): on the plan once the cover is chosen or bought, nowhere while the cover waits.
  */
-export const planShare = (intents: readonly Pick<IntentVM, "status">[]): Share => share(intents, ["booked", "arranged", "chosen", "included"]);
+export const planShare = (intents: readonly CountedIntent[]): Share => share(intents, ["booked", "arranged", "chosen"]);
 
-/** B9 "%Y'si alındı": bought or arranged, of the same intents. */
-export const bookedShare = (intents: readonly Pick<IntentVM, "status">[]): Share => share(intents, ["booked", "arranged"]);
+/** B9 "%Y'si alındı": bought or arranged (a Dahil box whose cover is), of the same intents. */
+export const bookedShare = (intents: readonly CountedIntent[]): Share => share(intents, ["booked", "arranged"]);
