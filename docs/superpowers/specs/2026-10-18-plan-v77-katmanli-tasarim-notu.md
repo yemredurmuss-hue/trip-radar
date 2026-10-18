@@ -64,3 +64,35 @@ Emre: "Amacımız link kaosunu derli toplu, karar verilebilen bir şeye dönüş
 - **Sohbet sütunu daraldı:** clamp(300px, 26%, 400px).
 - **Üst özet üç seçenek (prototipte seçilir):** A Kart (görsel solda, ad/tarih/şehirler/kişi/hazırlık ortada, bütçe sağda, altta Japonya bilgileri ve tercihler tek satır) · B Kapak (büyük kapak görseli, üstünde ad ve şehirler; altında Hazırlık, Bütçe, Japonya kutuları) · C Katlanır (tek ince satır: ad, hazırlık çubuğu, tahmini toplam, Sıradaki, "Ayrıntılar ▾" ile açılır). Üçünde de aşağı kaydırınca yapışkan ince şerit (ad, %hazır, toplam/bütçe, Sıradaki). Kapak görseli çizim; canlıda şehir fotoğrafı.
 - **Pano:** niyete basınca karşılaştırma doğrudan açılır (Kartlar/Karşılaştır düğmesi kalktı). İki seçenek: A Sekme (üstte kategoriler, altında niyet çipleri) · B Kenar menü (solda Tümü > kategori > niyet ağacı, her birinde sayı ve durum noktası; sağda içerik). Kaynak süzgeci tek açılır seçim (Hepsi / Biriktirdiklerin / AI önerileri). Tümü ve kategori seçiliyken kartlar niyete göre gruplu, her grupta "Karşılaştır ›". Uçuşta logo alanı küçüldü.
+
+## v81 · docs/mockups/plan-v81-yolculuk (18 Ekim, v80 üstüne)
+Emre'nin istekleri: alınan şeyde fiyat değil ulaşma bilgisi ve belge; hero için yeni seçenekler (büyük görsel, az yazı, belki mozaik, her zaman katlanır); çok fazla yazı boyutu; Pano'da kenar menü kalsın ama daha güzel, seçenekler hep aynı boyda, artı/eksi/fiyat derli toplu, İlham bölümü, tek tıkla Biriktirdiklerim, AI önerileri ayrı belli, AI uyum puanı, etkinlik/yapılacaklarda kıyas yok; hero ile kategoriler arasındaki durum açıklaması ve "Ekle" kalksın; "Kategoriye göre / Yolculuk sırasıyla" net olsun; Layla.ai gibi yolculuk sırası; sağlayıcılar dinamik olsun.
+
+- **Alındı = erişim modu.** Karar bitti, artık ulaşmak önemli. Fiyat kartın önünden kalkar (ayrıntıda "ödendi" olarak durur). Öne çıkanlar:
+  - Otel: "Rezerve edildi · Booking.com", ad, giriş/çıkış saati, adres, onay kodu + kopyala; büyük yeşil "Onay e-postası aç", altında Haritada aç ↗, Otele yaz ↗, Ayrıntı ›.
+  - Uçuş: koçanda tik, "Bilet alındı", PNR + kopyala, "Check-in 15 Nis 11:00'de açılır", büyük "E-bilet aç", Ayrıntı ›.
+  - Tren: bilet kodu, vagon/koltuk; belge yoksa sessiz kesik çizgili "Bileti ekle".
+  - Etkinlik: tarih-saat, buluşma yeri, bilet kodu, "Klook bileti aç", Haritada aç ↗.
+- **Tren adlandırma kararı:** logo operatörün (JR, Odakyu), kalın ad hizmetin ("Nozomi", "Hikari + Romancecar"), altında küçük "JR · Shinkansen". Kullanıcı "Shinkansen Nozomi" diye arar, ama hangi şirket sorusunun cevabı logoda.
+- **Hero üç yeni seçenek** (prototipte "Üst özet" ile seçilir), üçü de katlanır ve aşağı kaydırınca yapışkan ince şeride döner (ad, %hazır, toplam/bütçe, Sıradaki):
+  - Mozaik: solda büyük kapak (Fuji, ad, şehirler), sağda 6 kare "yolculuk nasıl olacak" (Shibuya Sky, Fushimi Inari, Ichiran ramen, Gora Kadan onsen, Dotonbori, Arashiyama). Kareler plandaki ve biriken yerlerden seçilir.
+  - Şehirler: ad + rota satırı, altında şehir sütunları; sütun genişliği gece sayısına göre.
+  - Kapak: tek büyük sinematik görsel, üstünde ad; bilgi şeridi görselin üstünde cam (telefonda görselin altında).
+  - Üçünde ortak şerit: tarih · kaç gün kaldı · kişiler · hazır çubuğu · tahmini toplam/bütçe · Sıradaki. Japonya bilgileri tek satır, tıklayınca açılır.
+  - Görseller şimdilik çizim (flat SVG). Canlıda Places API fotoğrafı, yoksa bu çizimler yedek.
+- **Yazı ölçeği (tek tablo):** 11 rozet · 12 küçük · 13,5 bilgi · 15 düğme/seçenek · 17 kart başlığı · 19 niyet · 22 kategori · 24 fiyat · 30 sayfa başlığı. v80'de 24 farklı boyut vardı, plan sayfasında artık 9. Yayındaki sohbet sütunu (26/16/14) bu tasarımın dışında, ayrıca ele alınmalı.
+- **Kategoriler üstü sadeleşti:** durum açıklaması (Arıyoruz/Önerimiz/Seçildi/Rezerve/Ayarlandı) ve "Ekle" kalktı. Yerine "Plan" başlığı + görünüm seçici: Kategoriye göre · Yolculuk sırasıyla · Gün gün (Gün gün henüz çizilmedi).
+- **Yolculuk sırasıyla** (Layla.ai benzeri, aynı veriden): bölümler Yola çıkmadan (Hazırlık, eSIM, sigorta) · İstanbul → Tokyo · Tokyo · Kyoto · Hakone · Osaka · Osaka → İstanbul. Şehir bölümünde görsel kare + ad + tarih/gece + "n hazır · n karar". Her adım: solda tarih (yoksa "esnek"), zaman çizgisinde durum noktası (kesik = karar, kum = seçildi, mor = önerimiz, yeşil = alındı), kartta tür · durum, ad, kısa bilgi, sağda duruma göre tek eylem (Seçeneklere bak / Ara / Bunu seç / fiyat + Rezerve et / E-bilet aç / Onay e-postası aç). Şehirdeki kullanılmamış etkinlik önerileri tek satır "Tokyo için 3 etkinlik önerisi › Önerilere bak". Bir görünümde yapılan seçim diğerine anında yansır; "›" planda o niyete götürür.
+- **Pano yeniden:** solda kenar menü üstte dört sabit giriş (Tümü · Biriktirdiklerim · AI önerileri · İlham, sayılarıyla), altında "İhtiyaçlar" ağacı (kategori > niyet, durum noktası ve sayı). Biriktirdiklerim tek tık. Kartlar sabit boy (220 px ızgara), tek seçenek de büyümez.
+  - Karşılaştırma yalnız konaklama, eSIM, uçuş ve trende. Sütunlar sabit 280 px, satırlar hizalı: görsel + kim ekledi/AI · ad · fiyat + toplam + **AI uyum puanı n/100 · n. sırada** · istekler (✓/✕) · artılar · eksiler · puan/iptal/bagaj · beğeni + kaynak ↗ + Seç. AI puanına göre sıralı; 3'ten fazlaysa yana kaydırılır; 3'ten azsa "Daha fazla seçenek · AI'dan öner" yer tutucusu. Durum etiketi: Şu an seçili / Alındı (AI önerisi seçili sayılmaz).
+  - Etkinlik ve yapılacaklar: kıyas yok, toplama ızgarası ("+ Plana koy" / "Planda").
+  - İlham: reels, YouTube, TikTok, blog kartları (platform rozeti, oynat/oku simgesi, süre, şehir, kim ekledi) + "✨ İçinden yerleri çıkar" ve "Aç ↗".
+  - Pano her yerden açılır: üstteki Plan/Pano sekmesi, her niyetteki "Pano n"; kapatma × ve dışarı tıklama.
+- **Sağlayıcılar dinamik olmalı (kod kuralı).** Logolu düğmeler sabit marka yazılmaz; bir sağlayıcı kaydından seçilir:
+  - Kayıt: `{id, ad, logo, renk, kategoriler[], ülkeler[] | "global", aramaUrl(şablon), ortaklıkParametresi?}`.
+  - Seçim sırası: (1) kullanıcının attığı linkin kaynağı, (2) gidilen ülke ve kullanıcının ülkesinde çalışanlar, (3) kategoriye uygun varsayılanlar.
+  - Hazırlık alışverişi: Türkiye'den gidene Trendyol / Hepsiburada / Amazon.com.tr; başka ülkelerde o ülkenin Amazon'u. Prototipte yağmurluk Amazon, priz dönüştürücü Trendyol.
+  - Konaklama: Booking.com · Airbnb · Agoda (Asya'da Agoda öne). Uçuş: Skyscanner · Google Uçuşlar. Tren: JR / Rome2rio, ülkeye göre (Trenitalia, SNCF, Renfe…). Etkinlik: Klook (Asya) · GetYourGuide · Viator.
+  - "Kendin ara" satırı ve boş durum bölge kartlarındaki "…'da ara" düğmeleri de bu kayıttan gelir.
+- Açık konular: Gün gün görünümü; uçuş günü ve iptal takibi; AI uyum puanının nasıl hesaplanacağı (niyetteki isteklere uyum + fiyat + puan; açıklaması ⓘ'de); artı/eksi verisinin kaynağı; beğeni ve "kim ekledi" için ortak gezi verisi; İlham'dan yer çıkarma akışı (hangi niyete düşer).
+- Prototipte "Üst özet: Mozaik / Şehirler / Kapak" ve "Plan ilerledi / Omurga yeni" seçicileri var.
