@@ -27,7 +27,7 @@ Kaynak: karar sayfası https://claude.ai/artifact/1Ww3APTcA7BZ9hGgig9g7k, db kol
 | B6 Kaldırılanlar: rota şeridi, durum anahtarı, plan başındaki "+ Ekle", Pano'daki "+ Link ekle", "Orada yapılacak" | Kalksınlar. Ekleme her kategorinin sonunda ve plan listesinin sonunda tek "+ Yeni ihtiyaç ekle" satırında |  |
 | B7 Seçildi rengi | Kum (v82), DESIGN.md güncellenir |  |
 | B8 Kategoriler aynı anda kaç tane açık olabilsin? | Tek açık; gezi başına son açılan hatırlanır |  |
-| B9 "%50 hazır" neyi saysın? | Alınmış ya da ayarlanmış ihtiyaç / bütün ihtiyaçlar (gerek yok hariç); ipucunda dağılım | omurganın % bu plana alınmış ama book edilmemiş |
+| B9 "%50 hazır" neyi saysın? | Alınmış ya da ayarlanmış ihtiyaç / bütün ihtiyaçlar (gerek yok hariç); ipucunda dağılım | omurganın % bu plana alınmış ama book edilmemiş → Emre onayı: ana sayı "Omurganın %X'i planda", altında "%Y'si alındı" (spec §1.3) |
 | B10 Alındıktan sonra fiyat | Yan sütunda küçük "€900 ödendi" ≠ |  |
 | B11 Önerimiz'de kaynak bağlantısına basmak seçim sayılsın mı? | Hayır, yalnız sayfayı açar |  |
 | B12 Değiştir'deki eski arka yüz araçları (AI'a arat, Karşılaştır, Kendin ara) | Seçenek başlığında "AI'a arat" ve "Kendin ara"; karşılaştırma Pano düğmesinde | yeni tasarım neyse o gerisini karıştırma |

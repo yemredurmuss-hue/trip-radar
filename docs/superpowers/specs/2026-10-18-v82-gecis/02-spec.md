@@ -1,6 +1,6 @@
 # Plan v82 → kod geçişi · spec (18 Ekim 2026)
 
-Durum: kararlar verildi (`01-kararlar.md`; karar sayfası https://claude.ai/artifact/1Ww3APTcA7BZ9hGgig9g7k). Açık tek nokta B9 yorumu (§1.3). Kod değişmedi.
+Durum: kararlar verildi ve kesinleşti (`01-kararlar.md`; karar sayfası https://claude.ai/artifact/1Ww3APTcA7BZ9hGgig9g7k). Aşama 0 `plan-v82-kod` dalında başladı; v83 çizim turu sürüyor.
 Hedef: v77–v82 plan tasarımının **eksiksiz** koda geçmesi; canlı 0.37.1'deki hiçbir özelliğin kaybolmaması; IndexedDB şeması (DB_VERSION 5) ve backend değişmeden.
 
 Kaynak raporlar (bu klasörde):
@@ -33,8 +33,8 @@ Kod silinmez, arayüze bağlanmaz; sonraki sürümde geri bağlanabilir. Değiş
 - A2 (v83 kapsamı): gezi ⋯ menüsü, diğer türler, uçuş günü, hata/yükleniyor/çevrimdışı, sohbet uyumu, 860 px altı, hero boş hali, paket/Dahil, Belgeler yeri, gezi sırasında "Bugün" şeridi. Ekleme penceresi (C3) ve yerinde düzenleme (C2) çizilmez; kodda C2/C3'teki yerlere konur.
 - A7, A8 ("mobil sonra"): 860 px altı düzen v83'te çizilir ve bu sürümde yapılır; 390 px ve dar ekranda eşit kutu boyu sonraki iş.
 
-### 1.3 Açık: B9 yorumu
-Not: "omurganın %'si: plana alınmış ama book edilmemiş". Öneri: ana sayı "Omurganın %70'i planda" (alındı + seçildi + ayarlandı / bütün ihtiyaçlar, gerek yok hariç), altında "%50'si alındı"; çubukta iki ton. Emre onaylayınca kesinleşir.
+### 1.3 B9: hazırlık sayısı (Emre onayladı)
+Ana sayı "Omurganın %X'i planda": planda = alındı + ayarlandı + seçildi + (çoklu niyette en az bir kalemi planda olan) / bütün ihtiyaçlar (gerek yok hariç; Önerimiz onaylanana kadar planda sayılmaz). Altında "%Y'si alındı" (alındı + ayarlandı). Çubukta iki ton: koyu yeşil alındı, açık yeşil planda. Hero, yapışkan şerit ve PDF aynı iki sayıyı kullanır. Örnek gezi: 15 ihtiyaçtan 8'i planda (%53), 4'ü alındı (%27).
 
 ## 2. Bilgi haritası (F1)
 Her bilgi tek katmanda: K0 kapalı kategori satırı · K1 niyet kutusu · K2 Ayrıntı (kartın üstünde) · K3 Pano. Tablo: bilgi · kısa hali (K1) · tam hali (K2/K3) · veri kaynağı (C raporu §1) · duruma göre (karar / önerimiz / seçildi / alındı / ayarlandı / aranıyor / gerek yok) · zamana göre (F2).
