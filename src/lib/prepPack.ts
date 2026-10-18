@@ -106,7 +106,7 @@ function papersGroup(f: PackFacts): PackGroup | null {
   if (f.country && f.home && f.country !== f.home) lines.push(line(L("Pasaport", "Passport")));
   if (f.visa?.kind === "visa") lines.push(line(f.visa.label, L("vize gerekiyor", "a visa is needed")));
   if (f.driving) lines.push(line(L("Ehliyet", "Driving licence"), L("plandaki araç kiralama için", "for the car rental on the plan")));
-  if (f.money) lines.push(line(L(`Kart ve biraz ${f.money}`, `A card and some ${f.money}`)));
+  if (f.money) lines.push(line(L(`Kart ve biraz ${f.money}`, `A card and some cash (${f.money})`)));
   return lines.length ? { title: L("Belgeler ve para", "Papers and money"), lines } : null;
 }
 
