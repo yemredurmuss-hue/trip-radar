@@ -524,6 +524,9 @@ describe("H13 and H10: the way there, a day out, a long name", () => {
     expect(parseStartText("Cumartesi günübirlik Şile", TODAY)).toMatchObject({ dayTrip: true, duration: { unit: "day", n: 1 } });
     expect(parseStartText("Otobüs bileti ne kadar?", TODAY).way).toBeUndefined();
     expect(parseStartText("Weekend in Bath by train", TODAY).way).toBe("train");
+    // D15: a season said alone is a rough start ("~").
+    expect(parseStartText("Yazın bir ara Portekiz'e gitmek istiyoruz", TODAY).start).toEqual({ date: "2027-07-01", approx: true });
+    expect(parseStartText("In the summer to Rome", TODAY).start).toEqual({ date: "2027-07-01", approx: true });
   });
   it("by bus: no flight made, the buses there and back, Uçuş closed", () => {
     const s = fromIst(typed(fresh(), "Bu hafta sonu Bursa'ya otobüsle, 2 kişi", { destination: "Bursa", destination_country: "Türkiye", destination_country_code: "TR" }));

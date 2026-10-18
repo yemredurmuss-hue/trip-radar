@@ -763,6 +763,13 @@ export interface PlaceGuess {
 
 export const EMPTY_EXTRACTED: Extracted = { where: null, from: null, who: null, start: null, duration: null, styles: [], budget: null };
 
+/** A season said for when ("yazın", "kışın", "in the spring"): its middle month. */
+const SEASONS: [RegExp, number][] = [
+  [/(?<![\p{L}])(yazın|yaz aylarında|yaz tatilinde|[iı]n (the )?summer)(?![\p{L}])/u, 7],
+  [/(?<![\p{L}])(kışın|kış aylarında|[iı]n (the )?winter)(?![\p{L}])/u, 1],
+  [/(?<![\p{L}])(ilkbaharda|baharda|[iı]n (the )?spring)(?![\p{L}])/u, 4],
+  [/(?<![\p{L}])(sonbaharda|güzün|[iı]n (the )?(autumn|fall))(?![\p{L}])/u, 10],
+];
 /** A day out, said in a word ("günübirlik", "day trip"). */
 const DAY_TRIP = /günübirlik|gunubirlik|\bday ?trip\b/u;
 /** The way there in the words that say it is the way ("otobüsle", "by bus"), never a ticket named in passing. */
@@ -950,6 +957,11 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
         break;
       }
     }
+  }
+  // A season alone ("yazın bir ara", "in the summer"; H13): its middle month's beginning, roughly (D15: "~").
+  if (!out.start) {
+    const season = SEASONS.find(([re]) => re.test(lowText))?.[1];
+    if (season) out.start = { date: monthStart(season, today), approx: true };
   }
 
   // Places: known ones (spelled loosely too); "X'den" is where from, "X'e" where to. An answer to "Nereden?" is
