@@ -12,6 +12,7 @@ import { partnerUrl } from "./affiliate";
 import { cityOfAirport } from "./airports";
 import { brandOf } from "./brands";
 import { L, lang } from "./i18n";
+import { locative } from "./i18nText";
 import { amazonLink } from "./prepBuy";
 import { activityLinks, BRANDS as MARKS, esimLinks, flightLinks, headCount, stayLinks, type Brand as MarkId, type SearchLink } from "./searchLinks";
 
@@ -257,3 +258,15 @@ export function shopLinks(chore: string, home: string | null = null): { provider
   const query = new URL(amazon).searchParams.get("k");
   return providerLinks("shop", { home }, { query, home });
 }
+
+/**
+ * The Bavul's shop for a line known to be still to buy (v82 T6: the list marks it, its words are the thing): the
+ * traveller's own first shop, with the words as they are. Null with nothing to look for.
+ */
+export function shopFor(thing: string, home: string | null = null): { provider: Provider; url: string } | null {
+  const query = thing.replace(/\s+/g, " ").trim();
+  return query ? (providerLinks("shop", { home }, { query, home })[0] ?? null) : null;
+}
+
+/** A shop link's words: "Trendyol'da al ↗" / "Buy on Trendyol ↗". */
+export const shopLabel = (p: Provider): string => L(`${locative(p.name())} al ↗`, `Buy on ${p.name()} ↗`);
